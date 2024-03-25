@@ -1,0 +1,8 @@
+coverage
+es
+lib
+dist
+node_modules
+examples
+rust
+__tests__

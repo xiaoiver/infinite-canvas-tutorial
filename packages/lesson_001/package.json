@@ -1,0 +1,27 @@
+{
+  "private": true,
+  "description": "An infinite canvas tutorial",
+  "keywords": [
+    "whiteboard",
+    "infinite canvas",
+    "webgl",
+    "webgpu"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/xiaoiver/infinite-canvas-tutorial"
+  },
+  "license": "MIT",
+  "author": {
+    "name": "xiaoiver",
+    "url": "https://github.com/xiaoiver"
+  },
+  "scripts": {
+    "dev": "vite dev",
+    "deploy": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@antv/g-device-api": "^1.6.5"
+  }
+}
