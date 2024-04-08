@@ -6,7 +6,7 @@ export const zh = defineConfig({
   description: '一个无限画布教程',
   themeConfig: {
     nav: [
-      { text: '主页', link: '/zh' },
+      { text: '主页', link: '/zh/' },
       { text: '课程', link: '/zh/lesson-001' },
     ],
 

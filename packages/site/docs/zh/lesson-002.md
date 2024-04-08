@@ -6,8 +6,9 @@ outline: deep
 
 在这节课中你将学习到以下内容：
 
--   向画布中添加图形
--   使用 SDF 绘制一个圆形
+- 向画布中添加图形
+- 使用 SDF 绘制一个圆形
+- 反走样
 
 启动项目后将看到画布中绘制了一个圆，可以修改宽高或者切换 WebGL / WebGPU 渲染器。
 
@@ -25,44 +26,44 @@ renderer = Inputs.select(['webgl', 'webgpu'], { label: 'renderer' });
 
 ```js eval code=false
 (async () => {
-    const { Canvas, Circle } = Lesson2;
+  const { Canvas, Circle } = Lesson2;
 
-    const $canvas = document.createElement('canvas');
-    $canvas.style.outline = 'none';
-    $canvas.style.padding = '0px';
-    $canvas.style.margin = '0px';
-    $canvas.style.border = '1px solid black';
+  const $canvas = document.createElement('canvas');
+  $canvas.style.outline = 'none';
+  $canvas.style.padding = '0px';
+  $canvas.style.margin = '0px';
+  $canvas.style.border = '1px solid black';
 
-    const canvas = await new Canvas({
-        canvas: $canvas,
-        renderer,
-        shaderCompilerPath:
-            'https://unpkg.com/@antv/g-device-api@1.6.8/dist/pkg/glsl_wgsl_compiler_bg.wasm',
-    }).initialized;
+  const canvas = await new Canvas({
+    canvas: $canvas,
+    renderer,
+    shaderCompilerPath:
+      'https://unpkg.com/@antv/g-device-api@1.6.8/dist/pkg/glsl_wgsl_compiler_bg.wasm',
+  }).initialized;
 
-    const circle = new Circle({
-        cx: 100,
-        cy: 100,
-        r: 50,
-        fill: 'red',
-    });
-    canvas.appendChild(circle);
+  const circle = new Circle({
+    cx: 100,
+    cy: 100,
+    r: 50,
+    fill: 'red',
+  });
+  canvas.appendChild(circle);
 
-    const resize = (width, height) => {
-        $canvas.width = width * window.devicePixelRatio;
-        $canvas.height = height * window.devicePixelRatio;
-        $canvas.style.width = `${width}px`;
-        $canvas.style.height = `${height}px`;
-        canvas.resize(width, height);
-    };
-    resize(width, height);
+  const resize = (width, height) => {
+    $canvas.width = width * window.devicePixelRatio;
+    $canvas.height = height * window.devicePixelRatio;
+    $canvas.style.width = `${width}px`;
+    $canvas.style.height = `${height}px`;
+    canvas.resize(width, height);
+  };
+  resize(width, height);
 
-    const animate = () => {
-        canvas.render();
-        requestAnimationFrame(animate);
-    };
-    animate();
-    return $canvas;
+  const animate = () => {
+    canvas.render();
+    requestAnimationFrame(animate);
+  };
+  animate();
+  return $canvas;
 })();
 ```
 
@@ -113,9 +114,9 @@ render() {
 
 在渲染插件中每一帧开始前都会创建一个 `RenderPass`，硬件抽象层在这里进行了封装。WebGL 中并没有这个概念，WebGPU 中 [beginRenderPass] 会返回 [GPURenderPassEncoder]，通过它可以记录包括 `draw` 在内的一系列命令，后续在 `render` 钩子中我们会看到。在创建 `RenderPass` 时我们提供了以下参数：
 
--   `colorAttachment`
--   `colorResolveTo` 输出到屏幕
--   `colorClearColor` WebGL 中通过 [gl.clearColor] 命令实现；WebGPU 中以 [clearValue] 属性声明，这里我们设置为白色。
+- `colorAttachment`
+- `colorResolveTo` 输出到屏幕
+- `colorClearColor` WebGL 中通过 [gl.clearColor] 命令实现；WebGPU 中以 [clearValue] 属性声明，这里我们设置为白色。
 
 ```ts{4}
 hooks.beginFrame.tap(() => {
@@ -142,7 +143,7 @@ hooks.endFrame.tap(() => {
 
 ```ts
 hooks.render.tap((shape) => {
-    // 稍后实现绘制逻辑
+  // 稍后实现绘制逻辑
 });
 ```
 
@@ -152,14 +153,14 @@ hooks.render.tap((shape) => {
 
 ```ts
 export class Circle extends Shape {
-    constructor(
-        config: Partial<{
-            cx: number;
-            cy: number;
-            r: number;
-            fill: string;
-        }> = {},
-    ) {}
+  constructor(
+    config: Partial<{
+      cx: number;
+      cy: number;
+      r: number;
+      fill: string;
+    }> = {},
+  ) {}
 }
 ```
 
@@ -181,10 +182,10 @@ export class Circle extends Shape {
 
 ```ts
 const circle = new Circle({
-    cx: 100,
-    cy: 100,
-    r: 50,
-    fill: 'red',
+  cx: 100,
+  cy: 100,
+  r: 50,
+  fill: 'red',
 });
 canvas.appendChild(circle);
 ```
@@ -263,9 +264,9 @@ void main() {
 
 除了更少的顶点使用，SDF 还具有以下优点：
 
--   易于抗锯齿/反走样。我们在下一小节会介绍它。
--   易于组合。交集、差集运算可以通过组合完成复杂图形的绘制。
--   易于实现一些看起来很复杂的效果。例如描边、圆角、阴影，当然我们后续在实现这些效果时也会介绍该方法的一些局限性。
+- 易于抗锯齿/反走样。我们在下一小节会介绍它。
+- 易于组合。交集、差集运算可以通过组合完成复杂图形的绘制。
+- 易于实现一些看起来很复杂的效果。例如描边、圆角、阴影，当然我们后续在实现这些效果时也会介绍该方法的一些局限性。
 
 对于 SDF 的解释和详细推导过程也可以在 [distfunctions] 中找到，这种方法可以绘制各种常见的 2D 甚至是 3D 图形，后续我们也会继续使用该方法绘制矩形和文本。
 
@@ -281,7 +282,7 @@ export abstract class Shape {
 
 ```ts
 hooks.render.tap((shape) => {
-    shape.render(this.#device, this.#renderPass);
+  shape.render(this.#device, this.#renderPass);
 });
 ```
 
@@ -291,13 +292,13 @@ hooks.render.tap((shape) => {
 
 ```ts
 this.#fragUnitBuffer = device.createBuffer({
-    viewOrSize: new Float32Array([-1, -1, 1, -1, 1, 1, -1, 1]),
-    usage: BufferUsage.VERTEX,
+  viewOrSize: new Float32Array([-1, -1, 1, -1, 1, 1, -1, 1]),
+  usage: BufferUsage.VERTEX,
 });
 
 this.#indexBuffer = device.createBuffer({
-    viewOrSize: new Uint32Array([0, 1, 2, 0, 2, 3]),
-    usage: BufferUsage.INDEX,
+  viewOrSize: new Uint32Array([0, 1, 2, 0, 2, 3]),
+  usage: BufferUsage.INDEX,
 });
 ```
 
@@ -305,17 +306,17 @@ this.#indexBuffer = device.createBuffer({
 
 ```ts
 this.#instancedBuffer = device.createBuffer({
-    viewOrSize: new Float32Array([
-        this.#cx,
-        this.#cy,
-        this.#r,
-        this.#r,
-        this.#fillRGB.r,
-        this.#fillRGB.g,
-        this.#fillRGB.b,
-        this.#fillRGB.opacity,
-    ]),
-    usage: BufferUsage.VERTEX,
+  viewOrSize: new Float32Array([
+    this.#cx,
+    this.#cy,
+    this.#r,
+    this.#r,
+    this.#fillRGB.r,
+    this.#fillRGB.g,
+    this.#fillRGB.b,
+    this.#fillRGB.opacity,
+  ]),
+  usage: BufferUsage.VERTEX,
 });
 ```
 
@@ -323,42 +324,42 @@ this.#instancedBuffer = device.createBuffer({
 
 ```ts
 this.#inputLayout = device.createInputLayout({
-    vertexBufferDescriptors: [
+  vertexBufferDescriptors: [
+    {
+      arrayStride: 4 * 2,
+      stepMode: VertexStepMode.VERTEX,
+      attributes: [
         {
-            arrayStride: 4 * 2,
-            stepMode: VertexStepMode.VERTEX,
-            attributes: [
-                {
-                    shaderLocation: 0, // layout(location = 0) in vec2 a_FragCoord;
-                    offset: 0,
-                    format: Format.F32_RG,
-                },
-            ],
+          shaderLocation: 0, // layout(location = 0) in vec2 a_FragCoord;
+          offset: 0,
+          format: Format.F32_RG,
+        },
+      ],
+    },
+    {
+      arrayStride: 4 * 8,
+      stepMode: VertexStepMode.INSTANCE,
+      attributes: [
+        {
+          shaderLocation: 1, // layout(location = 1) in vec2 a_Position;
+          offset: 0,
+          format: Format.F32_RG,
         },
         {
-            arrayStride: 4 * 8,
-            stepMode: VertexStepMode.INSTANCE,
-            attributes: [
-                {
-                    shaderLocation: 1, // layout(location = 1) in vec2 a_Position;
-                    offset: 0,
-                    format: Format.F32_RG,
-                },
-                {
-                    shaderLocation: 2, // layout(location = 2) in vec2 a_Size;
-                    offset: 4 * 2,
-                    format: Format.F32_RG,
-                },
-                {
-                    shaderLocation: 3, // layout(location = 3) in vec4 a_FillColor;
-                    offset: 4 * 4,
-                    format: Format.F32_RGBA,
-                },
-            ],
+          shaderLocation: 2, // layout(location = 2) in vec2 a_Size;
+          offset: 4 * 2,
+          format: Format.F32_RG,
         },
-    ],
-    indexBufferFormat: Format.U32_R,
-    program: this.#program,
+        {
+          shaderLocation: 3, // layout(location = 3) in vec4 a_FillColor;
+          offset: 4 * 4,
+          format: Format.F32_RGBA,
+        },
+      ],
+    },
+  ],
+  indexBufferFormat: Format.U32_R,
+  program: this.#program,
 });
 ```
 
@@ -370,9 +371,9 @@ this.#inputLayout = device.createInputLayout({
 
 在 [Using fwidth for distance based anti-aliasing] 一文中介绍了使用 `fwidth` 对 SDF 进行反走样的方法。[What is fwidth and how does it work?] 这个回答详细介绍了该方法的概念和计算方式。简而言之现代 GPU 以 2x2 的像素块为基本单位，便于开发者获取该像素点针对某个值的变化剧烈程度，OpenGL / WebGL 和 WebGPU 都提供了以下方法：
 
--   `dFdx` 计算屏幕水平方向上，一像素跨度内参数属性值改变了多少
--   `dFdy` 计算屏幕垂直方向上，一像素跨度内参数属性值改变了多少
--   `fwidth` 计算 `abs(dFdx) + abs(dFdy)`
+- `dFdx` 计算屏幕水平方向上，一像素跨度内参数属性值改变了多少
+- `dFdy` 计算屏幕垂直方向上，一像素跨度内参数属性值改变了多少
+- `fwidth` 计算 `abs(dFdx) + abs(dFdy)`
 
 我们把 SDF 计算得到的距离传入，计算得到它的变化程度最终反映在透明度上。这里需要通过 `smoothstep` 进行平滑处理。[Smoothstep - thebookofshaders.com] 形如：
 
@@ -391,8 +392,8 @@ outputColor.a *= alpha;
 
 ## 扩展阅读
 
--   [distfunctions]
--   [Leveraging Rust and the GPU to render user interfaces at 120 FPS]
+- [distfunctions]
+- [Leveraging Rust and the GPU to render user interfaces at 120 FPS]
 
 [Node API appendChild]: https://developer.mozilla.org/en-US/docs/Web/API/Node/appendChild
 [GPURenderPassEncoder]: https://developer.mozilla.org/en-US/docs/Web/API/GPURenderPassEncoder

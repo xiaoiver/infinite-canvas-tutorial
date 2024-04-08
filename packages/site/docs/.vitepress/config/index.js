@@ -8,7 +8,7 @@ export default defineConfig({
   extends: config,
   ...shared,
   locales: {
-    root: { label: 'English', ...en },
+    en: { label: 'English', ...en },
     zh: { label: '简体中文', ...zh },
   },
   vite: {

@@ -6,7 +6,7 @@ export const en = defineConfig({
   description: 'An infinite canvas tutorial.',
   themeConfig: {
     nav: [
-      { text: 'Home', link: '/en' },
+      { text: 'Home', link: '/en/' },
       { text: 'Lessons', link: '/en/lesson-001' },
     ],
 
