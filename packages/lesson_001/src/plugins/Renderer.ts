@@ -10,7 +10,8 @@ export class Renderer implements Plugin {
   #device: Device;
 
   apply(context: PluginContext) {
-    const { hooks, canvas, renderer } = context;
+    const { hooks, canvas, renderer, shaderCompilerPath, devicePixelRatio } =
+      context;
 
     hooks.initAsync.tapPromise(async () => {
       let deviceContribution: DeviceContribution;
@@ -24,10 +25,6 @@ export class Renderer implements Plugin {
           onContextRestored(e) {},
         });
       } else {
-        const shaderCompilerPath = new URL(
-          '/public/glsl_wgsl_compiler_bg.wasm',
-          import.meta.url,
-        ).href;
         deviceContribution = new WebGPUDeviceContribution({
           shaderCompilerPath,
           onContextLost: () => {},
@@ -43,7 +40,10 @@ export class Renderer implements Plugin {
     });
 
     hooks.resize.tap((width, height) => {
-      this.#swapChain.configureSwapChain(width, height);
+      this.#swapChain.configureSwapChain(
+        width * devicePixelRatio,
+        height * devicePixelRatio,
+      );
     });
 
     hooks.destroy.tap(() => {

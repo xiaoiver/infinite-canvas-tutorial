@@ -1,9 +1,8 @@
 {
   "compilerOptions": {
-    "outDir": "./",
     "module": "ESNext",
-    "target": "es5",
-    "jsx": "react",
+    "target": "es6",
+    "jsx": "preserve",
     "moduleResolution": "node",
     "experimentalDecorators": true,
     "declaration": true,
@@ -14,11 +13,9 @@
     "pretty": true,
     "lib": ["dom", "esnext"],
     "skipLibCheck": true,
-    "resolveJsonModule": true,
-    "downlevelIteration": true,
-    "importHelpers": true,
-    "types": ["@webgpu/types", "vite-plugin-glsl/ext"],
+    "sourceRoot": "src",
+    "baseUrl": "src",
+    "resolveJsonModule": true
   },
-  "include": ["src/**/*"],
-  "exclude": ["node_modules", "lib", "es"]
+  "include": ["src/**/*"]
 }

@@ -33,6 +33,7 @@ export interface Hooks {
 export interface PluginContext {
   canvas: HTMLCanvasElement;
   renderer: 'webgl' | 'webgpu';
+  shaderCompilerPath: string;
   /**
    * Contains the global this value.
    * @see https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/globalThis

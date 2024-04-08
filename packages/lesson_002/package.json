@@ -1,6 +1,16 @@
 {
-  "private": true,
+  "name": "@infinite-canvas-tutorial/lesson2",
   "description": "An infinite canvas tutorial",
+  "main": "lib/index.js",
+  "module": "esm/index.js",
+  "types": "lib/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./lib/index.d.ts",
+      "import": "./esm/index.js",
+      "require": "./lib/index.js"
+    }
+  },
   "keywords": [
     "whiteboard",
     "infinite canvas",
@@ -19,7 +29,10 @@
   "scripts": {
     "dev": "vite dev",
     "deploy": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "build:cjs": "rimraf ./lib && tsc --module commonjs --outDir lib",
+    "build:esm": "rimraf ./esm && tsc --module ESNext --outDir esm",
+    "build": "run-p build:*"
   },
   "dependencies": {
     "@antv/g-device-api": "^1.6.5",

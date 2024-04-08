@@ -1,19 +1,33 @@
 import { type PluginContext, Renderer } from './plugins';
 import { AsyncParallelHook, SyncHook } from './utils';
+import { getGlobalThis } from './utils/browser';
+
+export interface CanvasConfig {
+  canvas: HTMLCanvasElement;
+  renderer?: 'webgl' | 'webgpu';
+  shaderCompilerPath?: string;
+  devicePixelRatio?: number;
+}
 
 export class Canvas {
   #instancePromise: Promise<this>;
 
   #pluginContext: PluginContext;
 
-  constructor(config: {
-    canvas: HTMLCanvasElement;
-    renderer?: 'webgl' | 'webgpu';
-  }) {
-    const { canvas, renderer = 'webgl' } = config;
+  constructor(config: CanvasConfig) {
+    const {
+      canvas,
+      renderer = 'webgl',
+      shaderCompilerPath = '',
+      devicePixelRatio,
+    } = config;
+    const globalThis = getGlobalThis();
     this.#pluginContext = {
+      globalThis,
       canvas,
       renderer,
+      shaderCompilerPath,
+      devicePixelRatio: devicePixelRatio ?? globalThis.devicePixelRatio,
       hooks: {
         init: new SyncHook<[]>(),
         initAsync: new AsyncParallelHook<[]>(),

@@ -4,7 +4,6 @@ import {
   Format,
   TextureUsage,
   TransparentWhite,
-  VertexStepMode,
   WebGLDeviceContribution,
   WebGPUDeviceContribution,
 } from '@antv/g-device-api';
@@ -13,16 +12,21 @@ import type {
   DeviceContribution,
   Device,
   RenderPass,
+  Buffer,
+  RenderTarget,
 } from '@antv/g-device-api';
 import type { Plugin, PluginContext } from './interfaces';
 
 export class Renderer implements Plugin {
   #swapChain: SwapChain;
   #device: Device;
+  #renderTarget: RenderTarget;
   #renderPass: RenderPass;
+  #uniformBuffer: Buffer;
 
   apply(context: PluginContext) {
-    const { hooks, canvas, renderer } = context;
+    const { hooks, canvas, renderer, shaderCompilerPath, devicePixelRatio } =
+      context;
 
     hooks.initAsync.tapPromise(async () => {
       let deviceContribution: DeviceContribution;
@@ -36,10 +40,6 @@ export class Renderer implements Plugin {
           onContextRestored(e) {},
         });
       } else {
-        const shaderCompilerPath = new URL(
-          '/public/glsl_wgsl_compiler_bg.wasm',
-          import.meta.url,
-        ).href;
         deviceContribution = new WebGPUDeviceContribution({
           shaderCompilerPath,
           onContextLost: () => {},
@@ -52,20 +52,8 @@ export class Renderer implements Plugin {
 
       this.#swapChain = swapChain;
       this.#device = swapChain.getDevice();
-    });
 
-    hooks.resize.tap((width, height) => {
-      this.#swapChain.configureSwapChain(width, height);
-    });
-
-    hooks.destroy.tap(() => {
-      this.#device.destroy();
-    });
-
-    hooks.beginFrame.tap(() => {
-      const { width, height } = canvas;
-
-      const renderTarget = this.#device.createRenderTargetFromTexture(
+      this.#renderTarget = this.#device.createRenderTargetFromTexture(
         this.#device.createTexture({
           format: Format.U8_RGBA_RT,
           width,
@@ -73,14 +61,59 @@ export class Renderer implements Plugin {
           usage: TextureUsage.RENDER_TARGET,
         }),
       );
+
+      this.#uniformBuffer = this.#device.createBuffer({
+        viewOrSize: new Float32Array([
+          width / devicePixelRatio,
+          height / devicePixelRatio,
+        ]),
+        usage: BufferUsage.UNIFORM,
+        hint: BufferFrequencyHint.DYNAMIC,
+      });
+    });
+
+    hooks.resize.tap((width, height) => {
+      this.#swapChain.configureSwapChain(
+        width * devicePixelRatio,
+        height * devicePixelRatio,
+      );
+    });
+
+    hooks.destroy.tap(() => {
+      this.#device.destroy();
+      this.#device.checkForLeaks();
+    });
+
+    hooks.beginFrame.tap(() => {
+      const { width, height } = this.#swapChain.getCanvas();
       const onscreenTexture = this.#swapChain.getOnscreenTexture();
+
+      this.#uniformBuffer.setSubData(
+        0,
+        new Uint8Array(new Float32Array([width / 2, height / 2]).buffer),
+      );
+
+      if (this.#renderTarget) {
+        this.#renderTarget.destroy();
+        this.#renderTarget = this.#device.createRenderTargetFromTexture(
+          this.#device.createTexture({
+            format: Format.U8_RGBA_RT,
+            width,
+            height,
+            usage: TextureUsage.RENDER_TARGET,
+          }),
+        );
+      }
+
       this.#device.beginFrame();
 
       this.#renderPass = this.#device.createRenderPass({
-        colorAttachment: [renderTarget],
+        colorAttachment: [this.#renderTarget],
         colorResolveTo: [onscreenTexture],
         colorClearColor: [TransparentWhite],
       });
+
+      this.#renderPass.setViewport(0, 0, width, height);
     });
 
     hooks.endFrame.tap(() => {
@@ -89,70 +122,7 @@ export class Renderer implements Plugin {
     });
 
     hooks.render.tap((shape) => {
-      const program = this.#device.createProgram({
-        vertex: {
-          glsl: `
-    layout(location = 0) in vec2 a_Position;
-    
-    void main() {
-      gl_Position = vec4(a_Position, 0.0, 1.0);
-    } 
-    `,
-        },
-        fragment: {
-          glsl: `
-    out vec4 outputColor;
-    
-    void main() {
-      outputColor = vec4(1.0, 0.0, 0.0, 1.0);
-    }
-    `,
-        },
-      });
-
-      const vertexBuffer = this.#device.createBuffer({
-        viewOrSize: new Float32Array([0, 0.5, -0.5, -0.5, 0.5, -0.5]),
-        usage: BufferUsage.VERTEX,
-        hint: BufferFrequencyHint.DYNAMIC,
-      });
-      this.#device.setResourceName(vertexBuffer, 'a_Position');
-
-      const inputLayout = this.#device.createInputLayout({
-        vertexBufferDescriptors: [
-          {
-            arrayStride: 4 * 2,
-            stepMode: VertexStepMode.VERTEX,
-            attributes: [
-              {
-                shaderLocation: 0,
-                offset: 0,
-                format: Format.F32_RG,
-              },
-            ],
-          },
-        ],
-        indexBufferFormat: null,
-        program,
-      });
-
-      const pipeline = this.#device.createRenderPipeline({
-        inputLayout,
-        program,
-        colorAttachmentFormats: [Format.U8_RGBA_RT],
-      });
-
-      this.#renderPass.setPipeline(pipeline);
-      this.#renderPass.setVertexInput(
-        inputLayout,
-        [
-          {
-            buffer: vertexBuffer,
-          },
-        ],
-        null,
-      );
-      // this.#renderPass.setViewport(0, 0, $canvas.width, $canvas.height);
-      this.#renderPass.draw(3);
+      shape.render(this.#device, this.#renderPass, this.#uniformBuffer);
     });
   }
 }

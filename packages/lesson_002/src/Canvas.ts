@@ -1,7 +1,13 @@
-import { Plugin, type PluginContext, Renderer } from './plugins';
+import { type PluginContext, Renderer } from './plugins';
 import type { Shape } from './shapes';
 import { AsyncParallelHook, SyncHook, getGlobalThis } from './utils';
 
+export interface CanvasConfig {
+  canvas: HTMLCanvasElement;
+  renderer?: 'webgl' | 'webgpu';
+  shaderCompilerPath?: string;
+  devicePixelRatio?: number;
+}
 export class Canvas {
   #instancePromise: Promise<this>;
 
@@ -9,16 +15,11 @@ export class Canvas {
 
   #shapes: Shape[] = [];
 
-  constructor(config: {
-    canvas: HTMLCanvasElement;
-    renderer?: 'webgl' | 'webgpu';
-    plugins?: Plugin[];
-    devicePixelRatio?: number;
-  }) {
+  constructor(config: CanvasConfig) {
     const {
       canvas,
       renderer = 'webgl',
-      plugins = [],
+      shaderCompilerPath = '',
       devicePixelRatio,
     } = config;
     const globalThis = getGlobalThis();
@@ -26,6 +27,7 @@ export class Canvas {
       globalThis,
       canvas,
       renderer,
+      shaderCompilerPath,
       devicePixelRatio: devicePixelRatio ?? globalThis.devicePixelRatio,
       hooks: {
         init: new SyncHook<[]>(),
@@ -40,7 +42,7 @@ export class Canvas {
 
     this.#instancePromise = (async () => {
       const { hooks } = this.#pluginContext;
-      [new Renderer(), ...plugins].forEach((plugin) => {
+      [new Renderer()].forEach((plugin) => {
         plugin.apply(this.#pluginContext);
       });
       hooks.init.call();
