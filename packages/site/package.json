@@ -24,10 +24,12 @@
   },
   "dependencies": {
     "@infinite-canvas-tutorial/lesson1": "workspace:*",
-    "@infinite-canvas-tutorial/lesson2": "workspace:*"
+    "@infinite-canvas-tutorial/lesson2": "workspace:*",
+    "@infinite-canvas-tutorial/lesson3": "workspace:*"
   },
   "devDependencies": {
     "vitepress": "^1.0.1",
-    "genji-theme-vitepress": "^0.1.1"
+    "genji-theme-vitepress": "^0.1.1",
+    "stats.js": "^0.17.0"
   }
 }

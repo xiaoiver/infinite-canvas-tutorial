@@ -16,6 +16,7 @@ import type {
   RenderTarget,
 } from '@antv/g-device-api';
 import type { Plugin, PluginContext } from './interfaces';
+import { IDENTITY_TRANSFORM } from '../shapes';
 
 export class Renderer implements Plugin {
   #swapChain: SwapChain;
@@ -124,6 +125,9 @@ export class Renderer implements Plugin {
     });
 
     hooks.render.tap((shape) => {
+      shape.transform.updateTransform(
+        shape.parent ? shape.parent.transform : IDENTITY_TRANSFORM,
+      );
       shape.render(this.#device, this.#renderPass, this.#uniformBuffer);
     });
   }

@@ -16,6 +16,9 @@ export const zh = defineConfig({
         items: [
           { text: '课程1 - 初始化画布', link: '/zh/lesson-001' },
           { text: '课程2 - 绘制圆', link: '/zh/lesson-002' },
+          { text: '课程3 - 场景图和变换', link: '/zh/lesson-003' },
+          { text: '课程4 - 相机', link: '/zh/lesson-004' },
+          { text: '课程5 - 性能测试', link: '/zh/lesson-005' },
         ],
       },
     ],

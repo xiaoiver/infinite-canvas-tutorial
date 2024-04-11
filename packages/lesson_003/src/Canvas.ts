@@ -1,6 +1,6 @@
 import { type PluginContext, Renderer } from './plugins';
 import type { Shape } from './shapes';
-import { AsyncParallelHook, SyncHook, getGlobalThis } from './utils';
+import { AsyncParallelHook, SyncHook, getGlobalThis, traverse } from './utils';
 
 export interface CanvasConfig {
   canvas: HTMLCanvasElement;
@@ -68,7 +68,9 @@ export class Canvas {
     const { hooks } = this.#pluginContext;
     hooks.beginFrame.call();
     this.#shapes.forEach((shape) => {
-      hooks.render.call(shape);
+      traverse(shape, (s) => {
+        hooks.render.call(s);
+      });
     });
     hooks.endFrame.call();
   }
@@ -83,7 +85,11 @@ export class Canvas {
    */
   destroy() {
     const { hooks } = this.#pluginContext;
-    this.#shapes.forEach((shape) => shape.destroy());
+    this.#shapes.forEach((shape) => {
+      traverse(shape, (s) => {
+        s.destroy();
+      });
+    });
     hooks.destroy.call();
   }
 

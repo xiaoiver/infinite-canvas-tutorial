@@ -1,5 +1,5 @@
 import * as d3 from 'd3-color';
-import { Shape } from './Shape';
+import { PADDING, Shape } from './Shape';
 import {
   type Device,
   type RenderPass,
@@ -18,18 +18,18 @@ import {
 } from '@antv/g-device-api';
 import { vert, frag } from '../shaders/sdf';
 
-export enum AntiAliasingType {
-  NONE,
-  SMOOTHSTEP,
-  DIVIDE,
-  FWIDTH,
-}
-
 export class Circle extends Shape {
+  #cx: number;
+  #cy: number;
+  #r: number;
+  #fill: string;
+  #fillRGB: d3.RGBColor;
+
   #program: Program;
   #fragUnitBuffer: Buffer;
   #instancedBuffer: Buffer;
   #indexBuffer: Buffer;
+  #uniformBuffer: Buffer;
   #pipeline: RenderPipeline;
   #inputLayout: InputLayout;
   #bindings: Bindings;
@@ -40,27 +40,17 @@ export class Circle extends Shape {
       cy: number;
       r: number;
       fill: string;
-      antiAliasingType: AntiAliasingType;
     }> = {},
   ) {
     super();
 
-    const { cx, cy, r, fill, antiAliasingType } = config;
+    const { cx, cy, r, fill } = config;
 
     this.cx = cx ?? 0;
     this.cy = cy ?? 0;
     this.r = r ?? 0;
     this.fill = fill ?? 'black';
-    this.#antiAliasingType = antiAliasingType;
   }
-
-  #cx: number;
-  #cy: number;
-  #r: number;
-  #fill: string;
-  #fillRGB: d3.RGBColor;
-  #antiAliasingType = AntiAliasingType.NONE;
-  #uniformBuffer: Buffer;
 
   get cx() {
     return this.#cx;
@@ -109,11 +99,6 @@ export class Circle extends Shape {
 
   render(device: Device, renderPass: RenderPass, uniformBuffer: Buffer) {
     if (!this.#program) {
-      this.#uniformBuffer = device.createBuffer({
-        viewOrSize: new Float32Array([this.#antiAliasingType]),
-        usage: BufferUsage.UNIFORM,
-        hint: BufferFrequencyHint.DYNAMIC,
-      });
       this.#program = device.createProgram({
         vertex: {
           glsl: vert,
@@ -123,6 +108,11 @@ export class Circle extends Shape {
         },
       });
 
+      this.#uniformBuffer = device.createBuffer({
+        viewOrSize: Float32Array.BYTES_PER_ELEMENT * 12, // mat4
+        usage: BufferUsage.UNIFORM,
+        hint: BufferFrequencyHint.DYNAMIC,
+      });
       this.#instancedBuffer = device.createBuffer({
         viewOrSize: Float32Array.BYTES_PER_ELEMENT * 8,
         usage: BufferUsage.VERTEX,
@@ -214,6 +204,28 @@ export class Circle extends Shape {
       });
     }
 
+    const { a, b, c, d, tx, ty } = this.worldTransform;
+
+    this.#uniformBuffer.setSubData(
+      0,
+      new Uint8Array(
+        new Float32Array([
+          a,
+          b,
+          0,
+          PADDING,
+          c,
+          d,
+          0,
+          PADDING,
+          tx,
+          ty,
+          1,
+          PADDING,
+        ]).buffer,
+      ),
+    );
+
     if (this.renderDirtyFlag) {
       this.#instancedBuffer.setSubData(
         0,
@@ -258,7 +270,6 @@ export class Circle extends Shape {
     this.#instancedBuffer.destroy();
     this.#fragUnitBuffer.destroy();
     this.#indexBuffer.destroy();
-    this.#uniformBuffer.destroy();
     this.#pipeline.destroy();
     this.#inputLayout.destroy();
     this.#bindings.destroy();

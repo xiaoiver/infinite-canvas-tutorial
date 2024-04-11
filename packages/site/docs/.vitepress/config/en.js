@@ -16,6 +16,9 @@ export const en = defineConfig({
         items: [
           { text: 'Lesson 001', link: '/en/lesson-001' },
           { text: 'Lesson 002', link: '/en/lesson-002' },
+          { text: 'Lesson 003', link: '/en/lesson-003' },
+          { text: 'Lesson 004', link: '/en/lesson-004' },
+          { text: 'Lesson 005', link: '/en/lesson-005' },
         ],
       },
     ],
