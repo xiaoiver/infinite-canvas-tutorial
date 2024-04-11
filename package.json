@@ -23,7 +23,7 @@
     "lint": "npm run eslint",
     "lint-staged": "lint-staged",
     "prepare": "husky install",
-    "build": "pnpm run build"
+    "build": "pnpm -r run build"
   },
   "devDependencies": {
     "@commitlint/cli": "^19.2.1",
