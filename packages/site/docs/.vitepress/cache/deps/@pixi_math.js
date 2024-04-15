@@ -1,4 +1,4 @@
-import "./chunk-LQ2VYIYD.js";
+import "./chunk-ZS7NZCD4.js";
 
 // ../../node_modules/.pnpm/@pixi+math@7.4.2/node_modules/@pixi/math/lib/const.mjs
 var PI_2 = Math.PI * 2;

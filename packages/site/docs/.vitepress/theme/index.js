@@ -6,6 +6,8 @@ import Stats from 'stats.js';
 import * as Lesson1 from '@infinite-canvas-tutorial/lesson1';
 import * as Lesson2 from '@infinite-canvas-tutorial/lesson2';
 import * as Lesson3 from '@infinite-canvas-tutorial/lesson3';
+import * as Lesson4 from '@infinite-canvas-tutorial/lesson4';
+import * as Lesson5 from '@infinite-canvas-tutorial/lesson5';
 
 const Utils = {
   createCanvas: async (Canvas, width, height) => {
@@ -41,6 +43,8 @@ const props = {
     Lesson1,
     Lesson2,
     Lesson3,
+    Lesson4,
+    Lesson5,
     Utils,
     Stats,
   },

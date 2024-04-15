@@ -1,7 +1,8 @@
+import "./chunk-WVEPVUDD.js";
 import {
   __commonJS,
   __toESM
-} from "./chunk-LQ2VYIYD.js";
+} from "./chunk-ZS7NZCD4.js";
 
 // ../../node_modules/.pnpm/eventemitter3@5.0.1/node_modules/eventemitter3/index.js
 var require_eventemitter3 = __commonJS({
@@ -80,11 +81,11 @@ var require_eventemitter3 = __commonJS({
       var evt = prefix ? prefix + event : event;
       if (!this._events[evt])
         return false;
-      var listeners = this._events[evt], len2 = arguments.length, args, i;
+      var listeners = this._events[evt], len = arguments.length, args, i;
       if (listeners.fn) {
         if (listeners.once)
           this.removeListener(event, listeners.fn, void 0, true);
-        switch (len2) {
+        switch (len) {
           case 1:
             return listeners.fn.call(listeners.context), true;
           case 2:
@@ -98,16 +99,16 @@ var require_eventemitter3 = __commonJS({
           case 6:
             return listeners.fn.call(listeners.context, a1, a2, a3, a4, a5), true;
         }
-        for (i = 1, args = new Array(len2 - 1); i < len2; i++) {
+        for (i = 1, args = new Array(len - 1); i < len; i++) {
           args[i - 1] = arguments[i];
         }
         listeners.fn.apply(listeners.context, args);
       } else {
-        var length4 = listeners.length, j;
-        for (i = 0; i < length4; i++) {
+        var length = listeners.length, j;
+        for (i = 0; i < length; i++) {
           if (listeners[i].once)
             this.removeListener(event, listeners[i].fn, void 0, true);
-          switch (len2) {
+          switch (len) {
             case 1:
               listeners[i].fn.call(listeners[i].context);
               break;
@@ -122,7 +123,7 @@ var require_eventemitter3 = __commonJS({
               break;
             default:
               if (!args)
-                for (j = 1, args = new Array(len2 - 1); j < len2; j++) {
+                for (j = 1, args = new Array(len - 1); j < len; j++) {
                   args[j - 1] = arguments[j];
                 }
               listeners[i].fn.apply(listeners[i].context, args);
@@ -151,7 +152,7 @@ var require_eventemitter3 = __commonJS({
           clearEvent(this, evt);
         }
       } else {
-        for (var i = 0, events = [], length4 = listeners.length; i < length4; i++) {
+        for (var i = 0, events = [], length = listeners.length; i < length; i++) {
           if (listeners[i].fn !== fn || once && !listeners[i].once || context && listeners[i].context !== context) {
             events.push(listeners[i]);
           }
@@ -381,333 +382,6 @@ function toRGBString(color) {
 var toRGB = memoize_default(toRGBString, function(color) {
   return color;
 }, 256);
-
-// ../../node_modules/.pnpm/gl-matrix@3.4.3/node_modules/gl-matrix/esm/common.js
-var EPSILON = 1e-6;
-var ARRAY_TYPE = typeof Float32Array !== "undefined" ? Float32Array : Array;
-var degree = Math.PI / 180;
-if (!Math.hypot)
-  Math.hypot = function() {
-    var y = 0, i = arguments.length;
-    while (i--) {
-      y += arguments[i] * arguments[i];
-    }
-    return Math.sqrt(y);
-  };
-
-// ../../node_modules/.pnpm/gl-matrix@3.4.3/node_modules/gl-matrix/esm/mat3.js
-function create() {
-  var out = new ARRAY_TYPE(9);
-  if (ARRAY_TYPE != Float32Array) {
-    out[1] = 0;
-    out[2] = 0;
-    out[3] = 0;
-    out[5] = 0;
-    out[6] = 0;
-    out[7] = 0;
-  }
-  out[0] = 1;
-  out[4] = 1;
-  out[8] = 1;
-  return out;
-}
-
-// ../../node_modules/.pnpm/gl-matrix@3.4.3/node_modules/gl-matrix/esm/vec3.js
-function create2() {
-  var out = new ARRAY_TYPE(3);
-  if (ARRAY_TYPE != Float32Array) {
-    out[0] = 0;
-    out[1] = 0;
-    out[2] = 0;
-  }
-  return out;
-}
-function length(a) {
-  var x = a[0];
-  var y = a[1];
-  var z = a[2];
-  return Math.hypot(x, y, z);
-}
-function fromValues(x, y, z) {
-  var out = new ARRAY_TYPE(3);
-  out[0] = x;
-  out[1] = y;
-  out[2] = z;
-  return out;
-}
-function normalize(out, a) {
-  var x = a[0];
-  var y = a[1];
-  var z = a[2];
-  var len2 = x * x + y * y + z * z;
-  if (len2 > 0) {
-    len2 = 1 / Math.sqrt(len2);
-  }
-  out[0] = a[0] * len2;
-  out[1] = a[1] * len2;
-  out[2] = a[2] * len2;
-  return out;
-}
-function dot(a, b) {
-  return a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
-}
-function cross(out, a, b) {
-  var ax = a[0], ay = a[1], az = a[2];
-  var bx = b[0], by = b[1], bz = b[2];
-  out[0] = ay * bz - az * by;
-  out[1] = az * bx - ax * bz;
-  out[2] = ax * by - ay * bx;
-  return out;
-}
-var len = length;
-var forEach = function() {
-  var vec = create2();
-  return function(a, stride, offset, count, fn, arg) {
-    var i, l;
-    if (!stride) {
-      stride = 3;
-    }
-    if (!offset) {
-      offset = 0;
-    }
-    if (count) {
-      l = Math.min(count * stride + offset, a.length);
-    } else {
-      l = a.length;
-    }
-    for (i = offset; i < l; i += stride) {
-      vec[0] = a[i];
-      vec[1] = a[i + 1];
-      vec[2] = a[i + 2];
-      fn(vec, vec, arg);
-      a[i] = vec[0];
-      a[i + 1] = vec[1];
-      a[i + 2] = vec[2];
-    }
-    return a;
-  };
-}();
-
-// ../../node_modules/.pnpm/gl-matrix@3.4.3/node_modules/gl-matrix/esm/vec4.js
-function create3() {
-  var out = new ARRAY_TYPE(4);
-  if (ARRAY_TYPE != Float32Array) {
-    out[0] = 0;
-    out[1] = 0;
-    out[2] = 0;
-    out[3] = 0;
-  }
-  return out;
-}
-function normalize2(out, a) {
-  var x = a[0];
-  var y = a[1];
-  var z = a[2];
-  var w = a[3];
-  var len2 = x * x + y * y + z * z + w * w;
-  if (len2 > 0) {
-    len2 = 1 / Math.sqrt(len2);
-  }
-  out[0] = x * len2;
-  out[1] = y * len2;
-  out[2] = z * len2;
-  out[3] = w * len2;
-  return out;
-}
-var forEach2 = function() {
-  var vec = create3();
-  return function(a, stride, offset, count, fn, arg) {
-    var i, l;
-    if (!stride) {
-      stride = 4;
-    }
-    if (!offset) {
-      offset = 0;
-    }
-    if (count) {
-      l = Math.min(count * stride + offset, a.length);
-    } else {
-      l = a.length;
-    }
-    for (i = offset; i < l; i += stride) {
-      vec[0] = a[i];
-      vec[1] = a[i + 1];
-      vec[2] = a[i + 2];
-      vec[3] = a[i + 3];
-      fn(vec, vec, arg);
-      a[i] = vec[0];
-      a[i + 1] = vec[1];
-      a[i + 2] = vec[2];
-      a[i + 3] = vec[3];
-    }
-    return a;
-  };
-}();
-
-// ../../node_modules/.pnpm/gl-matrix@3.4.3/node_modules/gl-matrix/esm/quat.js
-function create4() {
-  var out = new ARRAY_TYPE(4);
-  if (ARRAY_TYPE != Float32Array) {
-    out[0] = 0;
-    out[1] = 0;
-    out[2] = 0;
-  }
-  out[3] = 1;
-  return out;
-}
-function setAxisAngle(out, axis, rad) {
-  rad = rad * 0.5;
-  var s = Math.sin(rad);
-  out[0] = s * axis[0];
-  out[1] = s * axis[1];
-  out[2] = s * axis[2];
-  out[3] = Math.cos(rad);
-  return out;
-}
-function slerp(out, a, b, t) {
-  var ax = a[0], ay = a[1], az = a[2], aw = a[3];
-  var bx = b[0], by = b[1], bz = b[2], bw = b[3];
-  var omega, cosom, sinom, scale0, scale1;
-  cosom = ax * bx + ay * by + az * bz + aw * bw;
-  if (cosom < 0) {
-    cosom = -cosom;
-    bx = -bx;
-    by = -by;
-    bz = -bz;
-    bw = -bw;
-  }
-  if (1 - cosom > EPSILON) {
-    omega = Math.acos(cosom);
-    sinom = Math.sin(omega);
-    scale0 = Math.sin((1 - t) * omega) / sinom;
-    scale1 = Math.sin(t * omega) / sinom;
-  } else {
-    scale0 = 1 - t;
-    scale1 = t;
-  }
-  out[0] = scale0 * ax + scale1 * bx;
-  out[1] = scale0 * ay + scale1 * by;
-  out[2] = scale0 * az + scale1 * bz;
-  out[3] = scale0 * aw + scale1 * bw;
-  return out;
-}
-function fromMat3(out, m) {
-  var fTrace = m[0] + m[4] + m[8];
-  var fRoot;
-  if (fTrace > 0) {
-    fRoot = Math.sqrt(fTrace + 1);
-    out[3] = 0.5 * fRoot;
-    fRoot = 0.5 / fRoot;
-    out[0] = (m[5] - m[7]) * fRoot;
-    out[1] = (m[6] - m[2]) * fRoot;
-    out[2] = (m[1] - m[3]) * fRoot;
-  } else {
-    var i = 0;
-    if (m[4] > m[0])
-      i = 1;
-    if (m[8] > m[i * 3 + i])
-      i = 2;
-    var j = (i + 1) % 3;
-    var k = (i + 2) % 3;
-    fRoot = Math.sqrt(m[i * 3 + i] - m[j * 3 + j] - m[k * 3 + k] + 1);
-    out[i] = 0.5 * fRoot;
-    fRoot = 0.5 / fRoot;
-    out[3] = (m[j * 3 + k] - m[k * 3 + j]) * fRoot;
-    out[j] = (m[j * 3 + i] + m[i * 3 + j]) * fRoot;
-    out[k] = (m[k * 3 + i] + m[i * 3 + k]) * fRoot;
-  }
-  return out;
-}
-var normalize3 = normalize2;
-var rotationTo = function() {
-  var tmpvec3 = create2();
-  var xUnitVec3 = fromValues(1, 0, 0);
-  var yUnitVec3 = fromValues(0, 1, 0);
-  return function(out, a, b) {
-    var dot4 = dot(a, b);
-    if (dot4 < -0.999999) {
-      cross(tmpvec3, xUnitVec3, a);
-      if (len(tmpvec3) < 1e-6)
-        cross(tmpvec3, yUnitVec3, a);
-      normalize(tmpvec3, tmpvec3);
-      setAxisAngle(out, tmpvec3, Math.PI);
-      return out;
-    } else if (dot4 > 0.999999) {
-      out[0] = 0;
-      out[1] = 0;
-      out[2] = 0;
-      out[3] = 1;
-      return out;
-    } else {
-      cross(tmpvec3, a, b);
-      out[0] = tmpvec3[0];
-      out[1] = tmpvec3[1];
-      out[2] = tmpvec3[2];
-      out[3] = 1 + dot4;
-      return normalize3(out, out);
-    }
-  };
-}();
-var sqlerp = function() {
-  var temp1 = create4();
-  var temp2 = create4();
-  return function(out, a, b, c, d, t) {
-    slerp(temp1, a, d, t);
-    slerp(temp2, b, c, t);
-    slerp(out, temp1, temp2, 2 * t * (1 - t));
-    return out;
-  };
-}();
-var setAxes = function() {
-  var matr = create();
-  return function(out, view, right, up) {
-    matr[0] = right[0];
-    matr[3] = right[1];
-    matr[6] = right[2];
-    matr[1] = up[0];
-    matr[4] = up[1];
-    matr[7] = up[2];
-    matr[2] = -view[0];
-    matr[5] = -view[1];
-    matr[8] = -view[2];
-    return normalize3(out, fromMat3(out, matr));
-  };
-}();
-
-// ../../node_modules/.pnpm/gl-matrix@3.4.3/node_modules/gl-matrix/esm/vec2.js
-function create5() {
-  var out = new ARRAY_TYPE(2);
-  if (ARRAY_TYPE != Float32Array) {
-    out[0] = 0;
-    out[1] = 0;
-  }
-  return out;
-}
-var forEach3 = function() {
-  var vec = create5();
-  return function(a, stride, offset, count, fn, arg) {
-    var i, l;
-    if (!stride) {
-      stride = 2;
-    }
-    if (!offset) {
-      offset = 0;
-    }
-    if (count) {
-      l = Math.min(count * stride + offset, a.length);
-    } else {
-      l = a.length;
-    }
-    for (i = offset; i < l; i += stride) {
-      vec[0] = a[i];
-      vec[1] = a[i + 1];
-      fn(vec, vec, arg);
-      a[i] = vec[0];
-      a[i + 1] = vec[1];
-    }
-    return a;
-  };
-}();
 
 // ../../node_modules/.pnpm/tslib@2.6.2/node_modules/tslib/tslib.es6.mjs
 var extendStatics = function(d, b) {
@@ -2459,15 +2133,15 @@ function getArraySetter(functionName, toArray, size2, uniformSetter) {
   var cacheLength = null;
   return function(gl, location, value) {
     var arrayValue = toArray(value, size2);
-    var length4 = arrayValue.length;
+    var length = arrayValue.length;
     var update = false;
     if (cache === null) {
-      cache = new Float32Array(length4);
-      cacheLength = length4;
+      cache = new Float32Array(length);
+      cacheLength = length;
       update = true;
     } else {
-      assert(cacheLength === length4, "Uniform length cannot change.");
-      for (var i = 0; i < length4; ++i) {
+      assert(cacheLength === length, "Uniform length cannot change.");
+      for (var i = 0; i < length; ++i) {
         if (arrayValue[i] !== cache[i]) {
           update = true;
           break;
@@ -2499,16 +2173,16 @@ function toTypedArray(value, uniformLength, Type, cache) {
     array1[0] = value;
     value = array1;
   }
-  var length4 = value.length;
+  var length = value.length;
   if (value instanceof Type) {
     return value;
   }
-  var result = cache[length4];
+  var result = cache[length];
   if (!result) {
-    result = new Type(length4);
-    cache[length4] = result;
+    result = new Type(length);
+    cache[length] = result;
   }
-  for (var i = 0; i < length4; i++) {
+  for (var i = 0; i < length; i++) {
     result[i] = value[i];
   }
   return result;
@@ -3794,7 +3468,7 @@ var Readback_GL = (
         test();
       });
     };
-    Readback_GL2.prototype.getBufferSubDataAsync = function(target, buffer, srcByteOffset, dstBuffer, dstOffset, length4) {
+    Readback_GL2.prototype.getBufferSubDataAsync = function(target, buffer, srcByteOffset, dstBuffer, dstOffset, length) {
       return __awaiter(this, void 0, void 0, function() {
         var gl;
         return __generator(this, function(_a2) {
@@ -3809,7 +3483,7 @@ var Readback_GL = (
             case 1:
               _a2.sent();
               gl.bindBuffer(target, buffer);
-              gl.getBufferSubData(target, srcByteOffset, dstBuffer, dstOffset, length4);
+              gl.getBufferSubData(target, srcByteOffset, dstBuffer, dstOffset, length);
               gl.bindBuffer(target, null);
               return [2, dstBuffer];
             case 2:
@@ -3821,12 +3495,12 @@ var Readback_GL = (
         });
       });
     };
-    Readback_GL2.prototype.readTexture = function(t, x, y, width, height, dstBuffer, dstOffset, length4) {
+    Readback_GL2.prototype.readTexture = function(t, x, y, width, height, dstBuffer, dstOffset, length) {
       if (dstOffset === void 0) {
         dstOffset = 0;
       }
-      if (length4 === void 0) {
-        length4 = dstBuffer.byteLength || 0;
+      if (length === void 0) {
+        length = dstBuffer.byteLength || 0;
       }
       return __awaiter(this, void 0, void 0, function() {
         var gl, texture, gl_format, gl_type, formatByteSize;
@@ -3839,7 +3513,7 @@ var Readback_GL = (
           if (isWebGL2(gl)) {
             this.gl_pbo = this.device.ensureResourceExists(gl.createBuffer());
             gl.bindBuffer(gl.PIXEL_PACK_BUFFER, this.gl_pbo);
-            gl.bufferData(gl.PIXEL_PACK_BUFFER, length4, gl.STREAM_READ);
+            gl.bufferData(gl.PIXEL_PACK_BUFFER, length, gl.STREAM_READ);
             gl.bindBuffer(gl.PIXEL_PACK_BUFFER, null);
             gl.bindFramebuffer(GL.READ_FRAMEBUFFER, this.device["readbackFramebuffer"]);
             gl.framebufferTexture2D(GL.READ_FRAMEBUFFER, GL.COLOR_ATTACHMENT0, GL.TEXTURE_2D, texture.gl_texture, 0);
@@ -3848,14 +3522,14 @@ var Readback_GL = (
             gl.bindBuffer(gl.PIXEL_PACK_BUFFER, null);
             return [2, this.getBufferSubDataAsync(gl.PIXEL_PACK_BUFFER, this.gl_pbo, 0, dstBuffer, dstOffset, 0)];
           } else {
-            return [2, this.readTextureSync(t, x, y, width, height, dstBuffer, dstOffset, length4)];
+            return [2, this.readTextureSync(t, x, y, width, height, dstBuffer, dstOffset, length)];
           }
         });
       });
     };
-    Readback_GL2.prototype.readTextureSync = function(t, x, y, width, height, dstBuffer, dstOffset, length4) {
-      if (length4 === void 0) {
-        length4 = dstBuffer.byteLength || 0;
+    Readback_GL2.prototype.readTextureSync = function(t, x, y, width, height, dstBuffer, dstOffset, length) {
+      if (length === void 0) {
+        length = dstBuffer.byteLength || 0;
       }
       var gl = this.device.gl;
       var texture = t;
@@ -3866,13 +3540,13 @@ var Readback_GL = (
       gl.readPixels(x, y, width, height, gl.RGBA, gl_type, dstBuffer);
       return dstBuffer;
     };
-    Readback_GL2.prototype.readBuffer = function(b, srcByteOffset, dstBuffer, dstOffset, length4) {
+    Readback_GL2.prototype.readBuffer = function(b, srcByteOffset, dstBuffer, dstOffset, length) {
       return __awaiter(this, void 0, void 0, function() {
         var gl;
         return __generator(this, function(_a2) {
           gl = this.device.gl;
           if (isWebGL2(gl)) {
-            return [2, this.getBufferSubDataAsync(gl.ARRAY_BUFFER, getPlatformBuffer$1(b, srcByteOffset), srcByteOffset, dstBuffer, dstOffset, length4)];
+            return [2, this.getBufferSubDataAsync(gl.ARRAY_BUFFER, getPlatformBuffer$1(b, srcByteOffset), srcByteOffset, dstBuffer, dstOffset, length)];
           }
           return [2, Promise.reject()];
         });
@@ -5762,9 +5436,9 @@ function getUint8Memory0() {
   }
   return cachedUint8Memory0;
 }
-function getStringFromWasm0(ptr, len2) {
+function getStringFromWasm0(ptr, len) {
   ptr = ptr >>> 0;
-  return cachedTextDecoder.decode(getUint8Memory0().subarray(ptr, ptr + len2));
+  return cachedTextDecoder.decode(getUint8Memory0().subarray(ptr, ptr + len));
 }
 var heap = new Array(128).fill(void 0);
 heap.push(void 0, null, true, false);
@@ -5815,22 +5489,22 @@ function passStringToWasm0(arg, malloc, realloc) {
     WASM_VECTOR_LEN = buf.length;
     return ptr2;
   }
-  let len2 = arg.length;
-  let ptr = malloc(len2, 1) >>> 0;
+  let len = arg.length;
+  let ptr = malloc(len, 1) >>> 0;
   const mem = getUint8Memory0();
   let offset = 0;
-  for (; offset < len2; offset++) {
+  for (; offset < len; offset++) {
     const code = arg.charCodeAt(offset);
     if (code > 127)
       break;
     mem[ptr + offset] = code;
   }
-  if (offset !== len2) {
+  if (offset !== len) {
     if (offset !== 0) {
       arg = arg.slice(offset);
     }
-    ptr = realloc(ptr, len2, len2 = offset + arg.length * 3, 1) >>> 0;
-    const view = getUint8Memory0().subarray(ptr + offset, ptr + len2);
+    ptr = realloc(ptr, len, len = offset + arg.length * 3, 1) >>> 0;
+    const view = getUint8Memory0().subarray(ptr + offset, ptr + len);
     const ret = encodeString(arg, view);
     offset += ret.written;
   }
@@ -7064,7 +6738,7 @@ var Readback_WebGPU = (
       _this.type = ResourceType.Readback;
       return _this;
     }
-    Readback_WebGPU2.prototype.readTexture = function(t, x, y, width, height, dst, dstOffset, length4) {
+    Readback_WebGPU2.prototype.readTexture = function(t, x, y, width, height, dst, dstOffset, length) {
       if (dstOffset === void 0) {
         dstOffset = 0;
       }
@@ -7105,7 +6779,7 @@ var Readback_WebGPU = (
         });
       });
     };
-    Readback_WebGPU2.prototype.readTextureSync = function(t, x, y, width, height, dst, dstOffset, length4) {
+    Readback_WebGPU2.prototype.readTextureSync = function(t, x, y, width, height, dst, dstOffset, length) {
       throw new Error("ERROR_MSG_METHOD_NOT_IMPLEMENTED");
     };
     Readback_WebGPU2.prototype.readBuffer = function(b, srcByteOffset, dstArrayBufferView, dstOffset, _size, type, noDataConversion, destroy, bytesPerRow, bytesPerRowAligned, height) {

@@ -85,6 +85,31 @@ importers:
         specifier: ^3.1.0
         version: 3.1.0
 
+  packages/lesson_004:
+    dependencies:
+      '@antv/g-device-api':
+        specifier: ^1.6.5
+        version: 1.6.5
+      '@pixi/math':
+        specifier: ^7.4.2
+        version: 7.4.2
+      bezier-easing:
+        specifier: ^2.1.0
+        version: 2.1.0
+      d3-color:
+        specifier: ^3.1.0
+        version: 3.1.0
+      gl-matrix:
+        specifier: ^3.4.3
+        version: 3.4.3
+    devDependencies:
+      '@types/d3-color':
+        specifier: ^3.1.0
+        version: 3.1.0
+      '@types/gl-matrix':
+        specifier: ^3.2.0
+        version: 3.2.0
+
   packages/site:
     dependencies:
       '@infinite-canvas-tutorial/lesson1':
@@ -96,6 +121,9 @@ importers:
       '@infinite-canvas-tutorial/lesson3':
         specifier: workspace:*
         version: link:../lesson_003
+      '@infinite-canvas-tutorial/lesson4':
+        specifier: workspace:*
+        version: link:../lesson_004
     devDependencies:
       genji-theme-vitepress:
         specifier: ^0.1.1
@@ -999,6 +1027,13 @@ packages:
     resolution: {integrity: sha512-/kYRxGDLWzHOB7q+wtSUQlFrtcdUccpfy+X+9iMBpHK8QLLhx2wIPYuS5DYtR9Wa/YlZAbIovy7qVdB1Aq6Lyw==}
     dev: true
 
+  /@types/gl-matrix@3.2.0:
+    resolution: {integrity: sha512-CY4JAtSOGQX7rVgqVuOk7ZfaLv8VeadDMPj3smMOy8Hp/YiHONa3Mr0mEUgbo0eEwV7+Owpf6BwspcA7hv4NXg==}
+    deprecated: This is a stub types definition. gl-matrix provides its own type definitions, so you do not need this installed.
+    dependencies:
+      gl-matrix: 3.4.3
+    dev: true
+
   /@types/json-schema@7.0.15:
     resolution: {integrity: sha512-5+fP8P8MFNC+AyZCDxrB2pkZFPGzqQWUzpSeuuVLvm8VMcorNYavBqoFcxK8bQz4Qsbn4oUEEem4wDLfcysGHA==}
     dev: true
@@ -1572,6 +1607,10 @@ packages:
   /balanced-match@1.0.2:
     resolution: {integrity: sha512-3oSeUO0TMV67hN1AmbXsK4yaqU7tjiHlbxRDZOpH0KW9+CeX4bRAaX0Anxt0tx2MrpRpWwQaPwIlISEJhYU5Pw==}
     dev: true
+
+  /bezier-easing@2.1.0:
+    resolution: {integrity: sha512-gbIqZ/eslnUFC1tjEvtz0sgx+xTK20wDnYMIA27VA04R7w6xxXQPZDbibjA9DTWZRA2CXtwHykkVzlCaAJAZig==}
+    dev: false
 
   /brace-expansion@1.1.11:
     resolution: {integrity: sha512-iCuPHDFgrHX7H2vEI/5xpz07zSHB00TpugqhmYtVmMO6518mCuRMoOYFldEBl0g187ufozdaHgWKcYFb61qGiA==}
@@ -2447,7 +2486,6 @@ packages:
 
   /gl-matrix@3.4.3:
     resolution: {integrity: sha512-wcCp8vu8FT22BnvKVPjXa/ICBWRq/zjFfdofZy1WSpQZpphblv12/bOQLBC1rMM7SGOFS9ltVmKOHil5+Ml7gA==}
-    dev: false
 
   /glob-parent@5.1.2:
     resolution: {integrity: sha512-AOIgSQCepiJYwP3ARnGx+5VnTu2HBYdzbGP45eLw1vr3zB3vZLeyed1sC9hnbcOc9/SrMyM5RPQrkGz4aS9Zow==}

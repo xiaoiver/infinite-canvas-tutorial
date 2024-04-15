@@ -92,7 +92,12 @@ export class Renderer implements Plugin {
 
       this.#uniformBuffer.setSubData(
         0,
-        new Uint8Array(new Float32Array([width / 2, height / 2]).buffer),
+        new Uint8Array(
+          new Float32Array([
+            width / devicePixelRatio,
+            height / devicePixelRatio,
+          ]).buffer,
+        ),
       );
 
       if (this.#renderTarget) {

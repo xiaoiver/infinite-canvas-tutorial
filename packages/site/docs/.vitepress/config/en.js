@@ -19,6 +19,7 @@ export const en = defineConfig({
           { text: 'Lesson 003', link: '/en/lesson-003' },
           { text: 'Lesson 004', link: '/en/lesson-004' },
           { text: 'Lesson 005', link: '/en/lesson-005' },
+          { text: 'Lesson 006', link: '/en/lesson-006' },
         ],
       },
     ],

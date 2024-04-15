@@ -470,6 +470,10 @@ export abstract class Shape {
 1. 描述父子关系
 2. 自动完成基于父子关系的某些复杂级联计算
 
+在 Figma 中左侧面板就展示了场景图：
+
+![scenegraph in figma](../images/scenegraph-figma.png)
+
 试想我们需要构建一个简单的太阳系场景，具有以下层次关系：
 
 ```bash

@@ -1,6 +1,6 @@
 import {
   __commonJS
-} from "./chunk-LQ2VYIYD.js";
+} from "./chunk-ZS7NZCD4.js";
 
 // ../../node_modules/.pnpm/stats.js@0.17.0/node_modules/stats.js/build/stats.min.js
 var require_stats_min = __commonJS({
