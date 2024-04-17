@@ -26,7 +26,8 @@
     "@infinite-canvas-tutorial/lesson1": "workspace:*",
     "@infinite-canvas-tutorial/lesson2": "workspace:*",
     "@infinite-canvas-tutorial/lesson3": "workspace:*",
-    "@infinite-canvas-tutorial/lesson4": "workspace:*"
+    "@infinite-canvas-tutorial/lesson4": "workspace:*",
+    "@infinite-canvas-tutorial/lesson5": "workspace:*"
   },
   "devDependencies": {
     "vitepress": "^1.0.1",

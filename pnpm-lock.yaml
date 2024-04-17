@@ -110,6 +110,31 @@ importers:
         specifier: ^3.2.0
         version: 3.2.0
 
+  packages/lesson_005:
+    dependencies:
+      '@antv/g-device-api':
+        specifier: ^1.6.5
+        version: 1.6.5
+      '@pixi/math':
+        specifier: ^7.4.2
+        version: 7.4.2
+      bezier-easing:
+        specifier: ^2.1.0
+        version: 2.1.0
+      d3-color:
+        specifier: ^3.1.0
+        version: 3.1.0
+      gl-matrix:
+        specifier: ^3.4.3
+        version: 3.4.3
+    devDependencies:
+      '@types/d3-color':
+        specifier: ^3.1.0
+        version: 3.1.0
+      '@types/gl-matrix':
+        specifier: ^3.2.0
+        version: 3.2.0
+
   packages/site:
     dependencies:
       '@infinite-canvas-tutorial/lesson1':
@@ -124,6 +149,9 @@ importers:
       '@infinite-canvas-tutorial/lesson4':
         specifier: workspace:*
         version: link:../lesson_004
+      '@infinite-canvas-tutorial/lesson5':
+        specifier: workspace:*
+        version: link:../lesson_005
     devDependencies:
       genji-theme-vitepress:
         specifier: ^0.1.1

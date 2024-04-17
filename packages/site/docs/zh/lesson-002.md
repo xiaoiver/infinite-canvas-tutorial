@@ -480,7 +480,17 @@ float alpha = clamp(-distance / 0.01, 0.0, 1.0);
 
 ### fwidth
 
-在 [Using fwidth for distance based anti-aliasing] 一文中介绍了使用 `fwidth` 对 SDF 进行反走样的方法。[What is fwidth and how does it work?] 这个回答详细介绍了该方法的概念和计算方式。简而言之现代 GPU 以 2x2 的像素块为基本单位，便于开发者获取该像素点针对某个值的变化剧烈程度，OpenGL / WebGL 和 WebGPU 都提供了以下方法：
+在 [Using fwidth for distance based anti-aliasing] 一文中介绍了使用 `fwidth` 对 SDF 进行反走样的方法。那什么是 `fwidth` 呢？
+
+[What are screen space derivatives and when would I use them?] 和 [What is fwidth and how does it work?] 这个两个回答详细介绍了该方法的概念和计算方式。简而言之 Fragment shader 每次处理的是 2x2 的 quad 而非单一像素点。GPU 这么做的理由如下，来自 [A trip through the Graphics Pipeline 2011, part 8]
+
+> Also, this is a good point to explain why we’re dealing with quads of 2×2 pixels and not individual pixels. The big reason is derivatives. Texture samplers depend on screen-space derivatives of texture coordinates to do their mip-map selection and filtering (as we saw back in part 4); and, as of shader model 3.0 and later, the same machinery is directly available to pixel shaders in the form of derivative instructions.
+
+下面来看在每个 2x2 quad 中偏导数是如何计算的，例如对于 uv：
+
+![uv fwidth](https://pic2.zhimg.com/80/v2-0f2d0605965ab352aec8826d0eed02dd_1440w.webp)
+
+因此便于开发者获取该像素点针对某个值的变化剧烈程度，OpenGL / WebGL 和 WebGPU 都提供了以下方法：
 
 -   `dFdx` 计算屏幕水平方向上，一像素跨度内参数属性值改变了多少
 -   `dFdy` 计算屏幕垂直方向上，一像素跨度内参数属性值改变了多少
@@ -650,7 +660,9 @@ call(() => {
 [clearValue]: https://www.w3.org/TR/webgpu/#dom-gpurenderpasscolorattachment-clearvalue
 [Using fwidth for distance based anti-aliasing]: http://www.numb3r23.net/2015/08/17/using-fwidth-for-distance-based-anti-aliasing/
 [What is fwidth and how does it work?]: https://computergraphics.stackexchange.com/a/63
+[What are screen space derivatives and when would I use them?]: https://gamedev.stackexchange.com/questions/130888/what-are-screen-space-derivatives-and-when-would-i-use-them
 [Smoothstep - thebookofshaders.com]: https://thebookofshaders.com/glossary/?search=smoothstep
 [Smooth SDF Shape Edges]: https://bohdon.com/docs/smooth-sdf-shape-edges/
 [Dirty Flag - Game Programming Patterns]: https://gameprogrammingpatterns.com/dirty-flag.html
 [Sub-pixel Distance Transform - High quality font rendering for WebGPU]: https://acko.net/blog/subpixel-distance-transform/
+[A trip through the Graphics Pipeline 2011, part 8]: https://fgiesen.wordpress.com/2011/07/10/a-trip-through-the-graphics-pipeline-2011-part-8/

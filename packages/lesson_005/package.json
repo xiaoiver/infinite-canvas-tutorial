@@ -1,0 +1,48 @@
+{
+  "name": "@infinite-canvas-tutorial/lesson5",
+  "description": "An infinite canvas tutorial",
+  "main": "lib/index.js",
+  "module": "esm/index.js",
+  "types": "lib/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./lib/index.d.ts",
+      "import": "./esm/index.js",
+      "require": "./lib/index.js"
+    }
+  },
+  "keywords": [
+    "whiteboard",
+    "infinite canvas",
+    "webgl",
+    "webgpu"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/xiaoiver/infinite-canvas-tutorial"
+  },
+  "license": "MIT",
+  "author": {
+    "name": "xiaoiver",
+    "url": "https://github.com/xiaoiver"
+  },
+  "scripts": {
+    "dev": "vite dev",
+    "deploy": "vite build",
+    "preview": "vite preview",
+    "build:cjs": "rimraf ./lib && tsc --module commonjs --outDir lib",
+    "build:esm": "rimraf ./esm && tsc --module ESNext --outDir esm",
+    "build": "run-p build:*"
+  },
+  "dependencies": {
+    "@antv/g-device-api": "^1.6.5",
+    "@pixi/math": "^7.4.2",
+    "bezier-easing": "^2.1.0",
+    "d3-color": "^3.1.0",
+    "gl-matrix": "^3.4.3"
+  },
+  "devDependencies": {
+    "@types/d3-color": "^3.1.0",
+    "@types/gl-matrix": "^3.2.0"
+  }
+}
