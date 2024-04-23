@@ -6,6 +6,7 @@ dist
 examples/dist
 rust/target
 coverage
+cache
 
 # tests
 __tests__/integration/**/*-diff.png

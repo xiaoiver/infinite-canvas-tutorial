@@ -1,5 +1,6 @@
 // .vitepress/theme/index.js
 import DefaultTheme from 'vitepress/theme';
+import './custom.css';
 import Layout from 'genji-theme-vitepress';
 import { h } from 'vue';
 import Stats from 'stats.js';
@@ -8,6 +9,8 @@ import * as Lesson2 from '@infinite-canvas-tutorial/lesson2';
 import * as Lesson3 from '@infinite-canvas-tutorial/lesson3';
 import * as Lesson4 from '@infinite-canvas-tutorial/lesson4';
 import * as Lesson5 from '@infinite-canvas-tutorial/lesson5';
+import * as Lesson6 from '@infinite-canvas-tutorial/lesson6';
+import * as Lesson7 from '@infinite-canvas-tutorial/lesson7';
 
 const Utils = {
   createCanvas: async (Canvas, width, height) => {
@@ -29,6 +32,7 @@ const Utils = {
       $canvas.height = height * window.devicePixelRatio;
       $canvas.style.width = `${width}px`;
       $canvas.style.height = `${height}px`;
+      $canvas.style.touchAction = 'none';
       canvas.resize(width, height);
     };
     resize(width, height);
@@ -45,6 +49,8 @@ const props = {
     Lesson3,
     Lesson4,
     Lesson5,
+    Lesson6,
+    Lesson7,
     Utils,
     Stats,
   },

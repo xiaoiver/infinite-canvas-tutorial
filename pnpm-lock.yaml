@@ -135,6 +135,62 @@ importers:
         specifier: ^3.2.0
         version: 3.2.0
 
+  packages/lesson_006:
+    dependencies:
+      '@antv/g-device-api':
+        specifier: ^1.6.5
+        version: 1.6.5
+      '@pixi/math':
+        specifier: ^7.4.2
+        version: 7.4.2
+      bezier-easing:
+        specifier: ^2.1.0
+        version: 2.1.0
+      d3-color:
+        specifier: ^3.1.0
+        version: 3.1.0
+      eventemitter3:
+        specifier: ^5.0.1
+        version: 5.0.1
+      gl-matrix:
+        specifier: ^3.4.3
+        version: 3.4.3
+    devDependencies:
+      '@types/d3-color':
+        specifier: ^3.1.0
+        version: 3.1.0
+      '@types/gl-matrix':
+        specifier: ^3.2.0
+        version: 3.2.0
+
+  packages/lesson_007:
+    dependencies:
+      '@antv/g-device-api':
+        specifier: ^1.6.5
+        version: 1.6.5
+      '@pixi/math':
+        specifier: ^7.4.2
+        version: 7.4.2
+      bezier-easing:
+        specifier: ^2.1.0
+        version: 2.1.0
+      d3-color:
+        specifier: ^3.1.0
+        version: 3.1.0
+      eventemitter3:
+        specifier: ^5.0.1
+        version: 5.0.1
+      gl-matrix:
+        specifier: ^3.4.3
+        version: 3.4.3
+    devDependencies:
+      '@types/d3-color':
+        specifier: ^3.1.0
+        version: 3.1.0
+      '@types/gl-matrix':
+        specifier: ^3.2.0
+        version: 3.2.0
+
   packages/site:
     dependencies:
       '@infinite-canvas-tutorial/lesson1':
@@ -152,10 +208,25 @@ importers:
       '@infinite-canvas-tutorial/lesson5':
         specifier: workspace:*
         version: link:../lesson_005
+      '@infinite-canvas-tutorial/lesson6':
+        specifier: workspace:*
+        version: link:../lesson_006
+      '@infinite-canvas-tutorial/lesson7':
+        specifier: workspace:*
+        version: link:../lesson_007
+      '@shoelace-style/shoelace':
+        specifier: ^2.0.0
+        version: 2.0.0
     devDependencies:
+      '@vitejs/plugin-vue':
+        specifier: latest
+        version: 5.0.4(vite@5.2.8)(vue@3.4.21)
       genji-theme-vitepress:
-        specifier: ^0.1.1
-        version: 0.1.1
+        specifier: ^0.2.1
+        version: 0.2.1(@algolia/client-search@4.23.2)(@types/node@20.12.7)(search-insights@2.13.0)(typescript@5.4.4)
+      markdown-it-implicit-figures:
+        specifier: latest
+        version: 0.12.0
       stats.js:
         specifier: ^0.17.0
         version: 0.17.0
@@ -571,6 +642,11 @@ packages:
       chalk: 5.3.0
     dev: true
 
+  /@ctrl/tinycolor@3.6.1:
+    resolution: {integrity: sha512-SITSV6aIXsuVNV3f3O0f2n/cgyEDWoSqtZMYiAmcsYHydcKrOz3gUxB/iXd/Qf08+IZX4KpgNbvUdMBmWz+kcA==}
+    engines: {node: '>=10'}
+    dev: false
+
   /@docsearch/css@3.6.0:
     resolution: {integrity: sha512-+sbxb71sWre+PwDK7X2T8+bhS6clcVMLwBPznX45Qu6opJcgRjAp7gYSDzVFp187J+feSj5dNBN1mJoi6ckkUQ==}
     dev: true
@@ -853,6 +929,23 @@ packages:
       - supports-color
     dev: true
 
+  /@floating-ui/core@1.6.0:
+    resolution: {integrity: sha512-PcF++MykgmTj3CIyOQbKA/hDzOAiqI3mhuoN44WRCopIs1sgoDoU4oty4Jtqaj/y3oDU6fnVSm4QG0a3t5i0+g==}
+    dependencies:
+      '@floating-ui/utils': 0.2.1
+    dev: false
+
+  /@floating-ui/dom@1.6.3:
+    resolution: {integrity: sha512-RnDthu3mzPlQ31Ss/BTwQ1zjzIhr3lk1gZB1OC56h/1vEtaXkESrOqL5fQVMfXpwGtRwX+YsZBdyHtJMQnkArw==}
+    dependencies:
+      '@floating-ui/core': 1.6.0
+      '@floating-ui/utils': 0.2.1
+    dev: false
+
+  /@floating-ui/utils@0.2.1:
+    resolution: {integrity: sha512-9TANp6GPoMtYzQdt54kfAyMmz1+osLlXdg2ENroU7zzrtflTLrrC/lgrIfaSe+Wu0b89GKccT7vxXA0MoAIO+Q==}
+    dev: false
+
   /@humanwhocodes/config-array@0.5.0:
     resolution: {integrity: sha512-FagtKFz74XrTl7y6HCzQpwDfXP0yhxe9lHLD1UZxjvZIcbyRz8zTFF/yYNfSfzU414eDwZ1SrO0Qvtyf+wFMQg==}
     engines: {node: '>=10.10.0'}
@@ -871,6 +964,20 @@ packages:
   /@jridgewell/sourcemap-codec@1.4.15:
     resolution: {integrity: sha512-eF2rxCRulEKXHTRiDrDy6erMYWqNw4LPdQ8UQA4huuxaQsVeRPFl2oM8oDGxMFhJUWZf9McpLtJasDDZb/Bpeg==}
     dev: true
+
+  /@lit-labs/react@1.2.1:
+    resolution: {integrity: sha512-DiZdJYFU0tBbdQkfwwRSwYyI/mcWkg3sWesKRsHUd4G+NekTmmeq9fzsurvcKTNVa0comNljwtg4Hvi1ds3V+A==}
+    dev: false
+
+  /@lit-labs/ssr-dom-shim@1.2.0:
+    resolution: {integrity: sha512-yWJKmpGE6lUURKAaIltoPIE/wrbY3TEkqQt+X0m+7fQNnAv0keydnYvbiJFP1PnMhizmIWRWOG5KLhYyc/xl+g==}
+    dev: false
+
+  /@lit/reactive-element@1.6.3:
+    resolution: {integrity: sha512-QuTgnG52Poic7uM1AN5yJ09QMe0O28e10XzSvWDz02TJiiKee4stsiownEIadWm8nYzyDAyT+gKzUoZmiWQtsQ==}
+    dependencies:
+      '@lit-labs/ssr-dom-shim': 1.2.0
+    dev: false
 
   /@nodelib/fs.scandir@2.1.5:
     resolution: {integrity: sha512-vq24Bq3ym5HEQm2NKCr3yXDwjc7vTsEThRDnkp2DK9p1uqLR+DHurm/NOTo0KG7HYHU7eppKZj3MyqYuMBf62g==}
@@ -1041,6 +1148,27 @@ packages:
       shiki: 1.2.0
     dev: true
 
+  /@shoelace-style/animations@1.1.0:
+    resolution: {integrity: sha512-Be+cahtZyI2dPKRm8EZSx3YJQ+jLvEcn3xzRP7tM4tqBnvd/eW/64Xh0iOf0t2w5P8iJKfdBbpVNE9naCaOf2g==}
+    dev: false
+
+  /@shoelace-style/localize@3.1.2:
+    resolution: {integrity: sha512-Hf45HeO+vdQblabpyZOTxJ4ZeZsmIUYXXPmoYrrR4OJ5OKxL+bhMz5mK8JXgl7HsoEowfz7+e248UGi861de9Q==}
+    dev: false
+
+  /@shoelace-style/shoelace@2.0.0:
+    resolution: {integrity: sha512-2pTXOUlU9CZcsr1hkac9G4RNR0TTNj1rfxLqcNZ1GKtd94BL7NgYp6EHMyVnGzTN+iaLfJVVIFTiLGXIA6SwnQ==}
+    engines: {node: '>=14.17.0'}
+    dependencies:
+      '@ctrl/tinycolor': 3.6.1
+      '@floating-ui/dom': 1.6.3
+      '@lit-labs/react': 1.2.1
+      '@shoelace-style/animations': 1.1.0
+      '@shoelace-style/localize': 3.1.2
+      lit: 2.8.0
+      qr-creator: 1.0.0
+    dev: false
+
   /@types/conventional-commits-parser@5.0.0:
     resolution: {integrity: sha512-loB369iXNmAZglwWATL+WRe+CRMmmBPtpolYzIebFaX4YA3x+BEfLqhUAV9WanycKI3TG1IMr5bMJDajDKLlUQ==}
     dependencies:
@@ -1094,6 +1222,10 @@ packages:
   /@types/semver@7.5.8:
     resolution: {integrity: sha512-I8EUhyrgfLrcTkzV3TSsGyl1tSuPrEDzr0yd5m90UgNxQkyDXULk3b6MlQqTCpZpNtWe1K0hzclnZkTcLBe2UQ==}
     dev: true
+
+  /@types/trusted-types@2.0.7:
+    resolution: {integrity: sha512-ScaPdn1dQczgbl0QFTeTOmVHFULt394XJgOQNoyVhZ6r2vLnMLJfBPd53SB52T/3G36VI1/g2MZaX0cwDuXsfw==}
+    dev: false
 
   /@types/web-bluetooth@0.0.20:
     resolution: {integrity: sha512-g9gZnnXVq7gM7v3tJCWV/qw7w+KeOlSHAhgF9RytFyifW6AF61hdT2ucrYhPq9hLs5JIryeupHV3qGk95dH9ow==}
@@ -2447,13 +2579,49 @@ packages:
     resolution: {integrity: sha512-xckBUXyTIqT97tq2x2AMb+g163b5JFysYk0x4qxNFwbfQkmNZoiRHb6sPzI9/QV33WeuvVYBUIiD4NzNIyqaRQ==}
     dev: true
 
-  /genji-theme-vitepress@0.1.1:
-    resolution: {integrity: sha512-Kwz/RuXq3bYiWAs3NH85U8TmtfubBs2zUGRgbcfdK5c3xpMKEYaFaJ3X78aSRa9Zk34S12tL626wBprGXshuBQ==}
+  /genji-runtime@0.2.1:
+    resolution: {integrity: sha512-8oDtkHe8SdjEq+R4EiHJkug7MKcfsgbvhxJypmVSHDdLm1MTX68QXuE3soSli3se59un1nZVcqhkZ3cLDKnF3w==}
     dependencies:
       '@observablehq/inputs': 0.10.6
       '@observablehq/inspector': 5.0.0
       esprima: 4.0.1
       estraverse: 5.3.0
+    dev: true
+
+  /genji-theme-vitepress@0.2.1(@algolia/client-search@4.23.2)(@types/node@20.12.7)(search-insights@2.13.0)(typescript@5.4.4):
+    resolution: {integrity: sha512-AIrr0NbVC+o3CRgUFSaZrPy+kpTlykrwp7PkmJLfPgrPJAs+krTJS7ufxow0asafzMKzUEAZwQzcaaQRp9ELKw==}
+    dependencies:
+      genji-runtime: 0.2.1
+      vitepress: 1.0.1(@algolia/client-search@4.23.2)(@types/node@20.12.7)(search-insights@2.13.0)(typescript@5.4.4)
+      vue: 3.4.21(typescript@5.4.4)
+    transitivePeerDependencies:
+      - '@algolia/client-search'
+      - '@types/node'
+      - '@types/react'
+      - '@vue/composition-api'
+      - async-validator
+      - axios
+      - change-case
+      - drauu
+      - fuse.js
+      - idb-keyval
+      - jwt-decode
+      - less
+      - lightningcss
+      - markdown-it-mathjax3
+      - nprogress
+      - postcss
+      - qrcode
+      - react
+      - react-dom
+      - sass
+      - search-insights
+      - sortablejs
+      - stylus
+      - sugarss
+      - terser
+      - typescript
+      - universal-cookie
     dev: true
 
   /get-caller-file@2.0.5:
@@ -3041,6 +3209,28 @@ packages:
       wrap-ansi: 7.0.0
     dev: true
 
+  /lit-element@3.3.3:
+    resolution: {integrity: sha512-XbeRxmTHubXENkV4h8RIPyr8lXc+Ff28rkcQzw3G6up2xg5E8Zu1IgOWIwBLEQsu3cOVFqdYwiVi0hv0SlpqUA==}
+    dependencies:
+      '@lit-labs/ssr-dom-shim': 1.2.0
+      '@lit/reactive-element': 1.6.3
+      lit-html: 2.8.0
+    dev: false
+
+  /lit-html@2.8.0:
+    resolution: {integrity: sha512-o9t+MQM3P4y7M7yNzqAyjp7z+mQGa4NS4CxiyLqFPyFWyc4O+nodLrkrxSaCTrla6M5YOLaT3RpbbqjszB5g3Q==}
+    dependencies:
+      '@types/trusted-types': 2.0.7
+    dev: false
+
+  /lit@2.8.0:
+    resolution: {integrity: sha512-4Sc3OFX9QHOJaHbmTMk28SYgVxLN3ePDjg7hofEft2zWlehFL3LiAuapWc4U/kYwMYJSh2hTCPZ6/LIC7ii0MA==}
+    dependencies:
+      '@lit/reactive-element': 1.6.3
+      lit-element: 3.3.3
+      lit-html: 2.8.0
+    dev: false
+
   /load-json-file@4.0.0:
     resolution: {integrity: sha512-Kx8hMakjX03tiGTLAIdJ+lL0htKnXjEZN6hk/tozf/WOuYGdZBJrZ+rCJRbVCugsjB3jMLn9746NsQIf5VjBMw==}
     engines: {node: '>=4'}
@@ -3137,6 +3327,11 @@ packages:
 
   /mark.js@8.11.1:
     resolution: {integrity: sha512-1I+1qpDt4idfgLQG+BNWmrqku+7/2bi5nLf4YwF8y8zXvmfiTBY3PV3ZibfrjBueCByROpuBjLLFCajqkgYoLQ==}
+    dev: true
+
+  /markdown-it-implicit-figures@0.12.0:
+    resolution: {integrity: sha512-IeD2V74f3ZBYrZ+bz/9uEGii0S61BYoD2731qsHTgYLlENUrTevlgODScScS1CK44/TV9ddlufGHCYCQueh1rw==}
+    engines: {node: '>=0.10.0'}
     dev: true
 
   /markdown-it@13.0.1:
@@ -3552,6 +3747,10 @@ packages:
     resolution: {integrity: sha512-vYt7UD1U9Wg6138shLtLOvdAu+8DsC/ilFtEVHcH+wydcSpNE20AfSOduf6MkRFahL5FY7X1oU7nKVZFtfq8Fg==}
     engines: {node: '>=6'}
     dev: true
+
+  /qr-creator@1.0.0:
+    resolution: {integrity: sha512-C0cqfbS1P5hfqN4NhsYsUXePlk9BO+a45bAQ3xLYjBL3bOIFzoVEjs79Fado9u9BPBD3buHi3+vY+C8tHh4qMQ==}
+    dev: false
 
   /queue-microtask@1.2.3:
     resolution: {integrity: sha512-NuaNSa6flKT5JaSYQzJok04JzTL1CA6aGhv5rfLW3PgqA+M2ChpZQnAC8h8i4ZFkBS8X5RqkDBHA7r4hej3K9A==}

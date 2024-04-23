@@ -15,6 +15,7 @@ module.exports = {
     'no-useless-escape': 'off',
     'no-case-declarations': 'off',
     'no-constant-condition': 'off',
+    '@typescript-eslint/no-explicit-any': 'off',
     '@typescript-eslint/no-duplicate-enum-values': 'off',
     '@typescript-eslint/no-empty-interface': 'off',
     '@typescript-eslint/no-shadow': 0,

@@ -6,10 +6,10 @@ outline: deep
 
 在这节课中你将学习到以下内容：
 
--   基于 WebGL1/2 和 WebGPU 的硬件抽象层
--   画布 API 设计
--   实现一个简单的插件系统
--   基于硬件抽象层实现一个渲染插件
+- 基于 WebGL1/2 和 WebGPU 的硬件抽象层
+- 画布 API 设计
+- 实现一个简单的插件系统
+- 基于硬件抽象层实现一个渲染插件
 
 启动项目后将看到一个空画布，可以修改宽高或者切换 WebGL / WebGPU 渲染器。
 
@@ -27,37 +27,37 @@ renderer = Inputs.select(['webgl', 'webgpu'], { label: 'renderer' });
 
 ```js eval code=false
 (async () => {
-    const { Canvas } = Lesson1;
+  const { Canvas } = Lesson1;
 
-    const $canvas = document.createElement('canvas');
-    $canvas.style.outline = 'none';
-    $canvas.style.padding = '0px';
-    $canvas.style.margin = '0px';
-    $canvas.style.border = '1px solid black';
+  const $canvas = document.createElement('canvas');
+  $canvas.style.outline = 'none';
+  $canvas.style.padding = '0px';
+  $canvas.style.margin = '0px';
+  $canvas.style.border = '1px solid black';
 
-    const canvas = await new Canvas({
-        canvas: $canvas,
-        renderer,
-        shaderCompilerPath:
-            'https://unpkg.com/@antv/g-device-api@1.6.8/dist/pkg/glsl_wgsl_compiler_bg.wasm',
-    }).initialized;
+  const canvas = await new Canvas({
+    canvas: $canvas,
+    renderer,
+    shaderCompilerPath:
+      'https://unpkg.com/@antv/g-device-api@1.6.8/dist/pkg/glsl_wgsl_compiler_bg.wasm',
+  }).initialized;
 
-    const resize = (width, height) => {
-        const scale = window.devicePixelRatio;
-        $canvas.width = Math.floor(width * scale);
-        $canvas.height = Math.floor(height * scale);
-        $canvas.style.width = `${width}px`;
-        $canvas.style.height = `${height}px`;
-        canvas.resize(width, height);
-    };
-    resize(width, height);
+  const resize = (width, height) => {
+    const scale = window.devicePixelRatio;
+    $canvas.width = Math.floor(width * scale);
+    $canvas.height = Math.floor(height * scale);
+    $canvas.style.width = `${width}px`;
+    $canvas.style.height = `${height}px`;
+    canvas.resize(width, height);
+  };
+  resize(width, height);
 
-    const animate = () => {
-        canvas.render();
-        requestAnimationFrame(animate);
-    };
-    animate();
-    return $canvas;
+  const animate = () => {
+    canvas.render();
+    requestAnimationFrame(animate);
+  };
+  animate();
+  return $canvas;
 })();
 ```
 
@@ -65,11 +65,11 @@ renderer = Inputs.select(['webgl', 'webgpu'], { label: 'renderer' });
 
 我希望画布使用 WebGL 和 WebGPU 这样更底层的渲染 API，作为 WebGL 的继任者，WebGPU 有非常多的特性增强，详见[From WebGL to WebGPU]：
 
--   底层基于新一代原生 GPU API，包括 Direct3D12 / Metal / Vulkan 等。
--   无状态式的 API，不用再忍受难以管理的全局状态。
--   支持 Compute Shader。
--   每个 `<canvas>` 创建的上下文数目不再有限制。
--   开发体验提升。包括更友好的错误信息以及为 GPU 对象添加自定义标签。
+- 底层基于新一代原生 GPU API，包括 Direct3D12 / Metal / Vulkan 等。
+- 无状态式的 API，不用再忍受难以管理的全局状态。
+- 支持 Compute Shader。
+- 每个 `<canvas>` 创建的上下文数目不再有限制。
+- 开发体验提升。包括更友好的错误信息以及为 GPU 对象添加自定义标签。
 
 目前 WebGPU 的生态已经延伸到了 JavaScript、C++ 和 Rust 中，很多 Web 端渲染引擎（例如 Three.js、Babylon.js）都正在或者已完成了对它的接入。这里特别提及 [wgpu]，除了游戏引擎 [bevy]，像 [Modyfi] 这样的 Web 端创意类设计工具也已经将其用于生产环境，并有着非常好的表现。下图来自：[WebGPU Ecosystem]
 
@@ -81,7 +81,7 @@ renderer = Inputs.select(['webgl', 'webgpu'], { label: 'renderer' });
 
 由于 WebGL 和 WebGPU 使用 Shader 语言不同，又不希望维护 GLSL 和 WGSL 两套代码，因此我们选择在运行时对 Shader 进行转译：
 
-![Transpile shader at runtime](../images/shader-transpile.png)
+![Transpile shader at runtime](/shader-transpile.png)
 
 在项目中只需要维护一套使用 GLSL 300 语法的 Shader，降级到 WebGL1 时进行关键词替换即可，在 WebGPU 环境下先转换成 GLSL 440 再交给 WASM 格式的[编译器](https://github.com/antvis/g-device-api/tree/master/rust)（使用了 naga 和 naga-oil ）转译成 WGSL。
 
@@ -111,19 +111,19 @@ fn main(@location(0) a_Position: vec4<f32>) -> VertexOutput {
 
 终于进入到了我们的画布 API 设计部分。我们期待的简单用法如下：
 
--   传入一个 HTMLCanvasElement `<canvas>` 完成画布的创建和初始化工作，包括使用硬件抽象层创建 Device（GPU 的抽象实例）
--   创建一个渲染循环，不断调用画布的渲染方法
--   支持重新设置画布宽高，例如响应 `resize` 事件
--   适时销毁
+- 传入一个 HTMLCanvasElement `<canvas>` 完成画布的创建和初始化工作，包括使用硬件抽象层创建 Device（GPU 的抽象实例）
+- 创建一个渲染循环，不断调用画布的渲染方法
+- 支持重新设置画布宽高，例如响应 `resize` 事件
+- 适时销毁
 
 ```ts
 const canvas = new Canvas({
-    canvas: $canvas,
+  canvas: $canvas,
 });
 
 const animate = () => {
-    requestAnimationFrame(animate);
-    canvas.render();
+  requestAnimationFrame(animate);
+  canvas.render();
 };
 animate();
 
@@ -137,16 +137,16 @@ canvas.destroy();
 
 ```ts
 interface Canvas {
-    constructor(config: { canvas: HTMLCanvasElement });
-    render(): void;
-    destroy(): void;
-    resize(width: number, height: number): void;
+  constructor(config: { canvas: HTMLCanvasElement });
+  render(): void;
+  destroy(): void;
+  resize(width: number, height: number): void;
 }
 ```
 
 ### 异步初始化
 
-这也是 WebGPU 和 WebGL 的一大差异，在 WebGL 中获取上下文是同步的，而 WebGL 获取 Device 是一个异步过程：
+这也是 WebGPU 和 WebGL 的一大差异，在 WebGL 中获取上下文是同步的，而 WebGPU 获取 Device 是一个异步过程：
 
 ```ts
 // 在 WebGL 中创建上下文
@@ -161,17 +161,17 @@ const device = await adapter.requestDevice();
 
 ```ts
 import {
-    WebGLDeviceContribution,
-    WebGPUDeviceContribution,
+  WebGLDeviceContribution,
+  WebGPUDeviceContribution,
 } from '@antv/g-device-api';
 
 // 创建一个 WebGL 的设备
 const deviceContribution = new WebGLDeviceContribution({
-    targets: ['webgl2', 'webgl1'],
+  targets: ['webgl2', 'webgl1'],
 });
 // 或者创建一个基于 WebGPU 的设备
 const deviceContribution = new WebGPUDeviceContribution({
-    shaderCompilerPath: '/glsl_wgsl_compiler_bg.wasm',
+  shaderCompilerPath: '/glsl_wgsl_compiler_bg.wasm',
 });
 // 这里是一个异步操作
 const swapChain = await deviceContribution.createSwapChain($canvas);
@@ -205,10 +205,10 @@ animation.ready.then(() => {});
 
 ```ts
 export class Canvas {
-    #instancePromise: Promise<this>;
-    get initialized() {
-        return this.#instancePromise.then(() => this);
-    }
+  #instancePromise: Promise<this>;
+  get initialized() {
+    return this.#instancePromise.then(() => this);
+  }
 }
 ```
 
@@ -239,28 +239,28 @@ destroy() {
 
 基于插件的架构是一种常见的设计模式，在 Webpack、VSCode 甚至是 Chrome 中都能看到它的身影。它有以下特点：
 
--   模块化。每个插件负责独立的部分，相互之间耦合度降低，更容易维护。
--   可扩展性。插件可以在运行时动态加载和卸载，不影响核心模块的结构，实现了应用程序的动态扩展能力。
+- 模块化。每个插件负责独立的部分，相互之间耦合度降低，更容易维护。
+- 可扩展性。插件可以在运行时动态加载和卸载，不影响核心模块的结构，实现了应用程序的动态扩展能力。
 
 通常该架构由以下部分组成：
 
--   主应用。提供插件的注册功能，在合适阶段调用插件执行，同时为插件提供运行所需的上下文。
--   插件接口。主应用和插件之间的桥梁。
--   插件集。一系列可独立执行的模块，每个插件遵循职责分离原则，仅包含所需的最小功能。
+- 主应用。提供插件的注册功能，在合适阶段调用插件执行，同时为插件提供运行所需的上下文。
+- 插件接口。主应用和插件之间的桥梁。
+- 插件集。一系列可独立执行的模块，每个插件遵循职责分离原则，仅包含所需的最小功能。
 
 主应用如何调用插件执行呢？不妨先看看 webpack 的思路：
 
--   在主应用中定义一系列钩子，这些钩子可以是同步或异步，也可以是串行或并行。如果是同步串行，就和我们常见的事件监听一样了。在下面的例子中 `run` 就是一个同步串行钩子。
--   每个插件在注册时，监听自己关心的生命周期事件。下面例子中 `apply` 会在注册时调用。
--   主应用执行钩子。
+- 在主应用中定义一系列钩子，这些钩子可以是同步或异步，也可以是串行或并行。如果是同步串行，就和我们常见的事件监听一样了。在下面的例子中 `run` 就是一个同步串行钩子。
+- 每个插件在注册时，监听自己关心的生命周期事件。下面例子中 `apply` 会在注册时调用。
+- 主应用执行钩子。
 
 ```ts
 class ConsoleLogOnBuildWebpackPlugin {
-    apply(compiler) {
-        compiler.hooks.run.tap(pluginName, (compilation) => {
-            console.log('webpack 构建正在启动！');
-        });
-    }
+  apply(compiler) {
+    compiler.hooks.run.tap(pluginName, (compilation) => {
+      console.log('webpack 构建正在启动！');
+    });
+  }
 }
 ```
 
@@ -268,18 +268,18 @@ webpack 实现了 [tapable] 工具库提供以上能力，为了提升大量调�
 
 ```ts
 export class SyncHook<T> {
-    #callbacks: ((...args: AsArray<T>) => void)[] = [];
+  #callbacks: ((...args: AsArray<T>) => void)[] = [];
 
-    tap(fn: (...args: AsArray<T>) => void) {
-        this.#callbacks.push(fn);
-    }
+  tap(fn: (...args: AsArray<T>) => void) {
+    this.#callbacks.push(fn);
+  }
 
-    call(...argsArr: AsArray<T>): void {
-        this.#callbacks.forEach(function (callback) {
-            /* eslint-disable-next-line prefer-spread */
-            callback.apply(void 0, argsArr);
-        });
-    }
+  call(...argsArr: AsArray<T>): void {
+    this.#callbacks.forEach(function (callback) {
+      /* eslint-disable-next-line prefer-spread */
+      callback.apply(void 0, argsArr);
+    });
+  }
 }
 ```
 
@@ -287,12 +287,12 @@ export class SyncHook<T> {
 
 ```ts
 export interface Hooks {
-    init: SyncHook<[]>; // 初始化阶段
-    initAsync: AsyncParallelHook<[]>; // 初始化阶段
-    destroy: SyncHook<[]>; // 销毁阶段
-    resize: SyncHook<[number, number]>; // 宽高改变时
-    beginFrame: SyncHook<[]>; // 渲染阶段
-    endFrame: SyncHook<[]>; // 渲染阶段
+  init: SyncHook<[]>; // 初始化阶段
+  initAsync: AsyncParallelHook<[]>; // 初始化阶段
+  destroy: SyncHook<[]>; // 销毁阶段
+  resize: SyncHook<[number, number]>; // 宽高改变时
+  beginFrame: SyncHook<[]>; // 渲染阶段
+  endFrame: SyncHook<[]>; // 渲染阶段
 }
 ```
 
@@ -300,11 +300,11 @@ export interface Hooks {
 
 ```ts
 export interface PluginContext {
-    hooks: Hooks;
-    canvas: HTMLCanvasElement;
+  hooks: Hooks;
+  canvas: HTMLCanvasElement;
 }
 export interface Plugin {
-    apply: (context: PluginContext) => void;
+  apply: (context: PluginContext) => void;
 }
 ```
 
@@ -414,9 +414,9 @@ hooks.resize.tap((width, height) => {
 
 那么如何获取 [devicePixelRatio] 呢？当然我们可以直接使用 `window.devicePixelRatio` 获取，绝大部分情况下都没有问题。但如果运行的环境中没有 `window` 对象呢？例如：
 
--   Node.js 服务端渲染。例如使用 [headless-gl]
--   在 WebWorker 中渲染，使用 [OffscreenCanvas]
--   小程序等非标准浏览器环境
+- Node.js 服务端渲染。例如使用 [headless-gl]
+- 在 WebWorker 中渲染，使用 [OffscreenCanvas]
+- 小程序等非标准浏览器环境
 
 因此更好的做法是支持创建画布时传入，未传入时再尝试从 [globalThis] 中获取。我们对 Canvas 的构造函数参数进行如下修改：
 
@@ -436,15 +436,15 @@ this.#pluginContext = {
 
 ```ts
 hooks.destroy.tap(() => {
-    this.#device.destroy();
+  this.#device.destroy();
 });
 
 hooks.beginFrame.tap(() => {
-    this.#device.beginFrame();
+  this.#device.beginFrame();
 });
 
 hooks.endFrame.tap(() => {
-    this.#device.endFrame();
+  this.#device.endFrame();
 });
 ```
 
@@ -462,7 +462,7 @@ hooks.endFrame.tap(() => {
 
 下图展示了使用 Spector.js 捕捉到的首帧命令，可以看到我们创建了一系列 FrameBuffer、Texture 等 GPU 对象：
 
-![Spector.js snapshot](../images/spectorjs.png)
+![Spector.js snapshot](/spectorjs.png)
 
 切换到 WebGPU 渲染后：
 
@@ -475,24 +475,25 @@ const canvas = await new Canvas({
 
 打开 WebGPU DevTools 可以看到当前我们创建的 GPU 对象和每一帧调用的命令：
 
-![WebGPU devtools snapshot](../images/webgpu-devtools.png)
+![WebGPU devtools snapshot](/webgpu-devtools.png)
 
 ## 扩展阅读
 
 如果你完全没有 WebGL 基础，可以先尝试学习：
 
--   [WebGL Fundamentals]
--   [WebGPU Fundamentals]
+- [WebGL Fundamentals]
+- [WebGPU Fundamentals]
 
 更多关于插件设计模式的介绍：
 
--   [Intro to Plugin Oriented Programming]
+- [Intro to Plugin Oriented Programming]
 
 [WebGPU Ecosystem]: https://developer.chrome.com/blog/webgpu-ecosystem/
 [From WebGL to WebGPU]: https://developer.chrome.com/blog/from-webgl-to-webgpu
 [@antv/g-device-api]: https://github.com/antvis/g-device-api
 [Intro to Plugin Oriented Programming]: https://pop-book.readthedocs.io/en/latest/index.html
 [wgpu]: https://wgpu.rs/
+[bevy]: https://bevyengine.org/
 [noclip]: https://github.com/magcius/noclip.website
 [Modyfi]: https://digest.browsertech.com/archive/browsertech-digest-how-modyfi-is-building-with/
 [Async Constructor Pattern in JavaScript]: https://qwtel.com/posts/software/async-constructor-pattern/

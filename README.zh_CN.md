@@ -53,8 +53,6 @@ pnpm run dev
 
 ## 课程 1
 
-在[课程 1](/packages/lesson_001/README.zh_CN.md)中我们将介绍：
-
 - 基于 WebGL1/2 和 WebGPU 的硬件抽象层
 - 画布 API 设计
 - 实现一个简单的插件系统
@@ -62,11 +60,33 @@ pnpm run dev
 
 ## 课程 2
 
-在[课程 2](/packages/lesson_002/README.zh_CN.md)中我们将介绍：
-
 - 向画布中添加图形
 - 使用 SDF 绘制一个圆形
 - 反走样
+
+## 课程 3
+
+- 变换。让图形支持平移、缩放、旋转、斜切变换。
+- 场景图。
+
+## 课程 4
+
+- 相机是什么？
+- 投影变换。
+- 相机变换。通过一个插件实现平移、旋转和缩放功能。
+- 相机动画。平滑过渡到任意相机状态。
+
+## 课程 5
+
+- 绘制直线网格。使用 Line Geometry 或者屏幕空间技术。
+- 绘制点网格。
+
+## 课程 6
+
+- 参考 DOM API 实现事件系统
+- 如何拾取一个圆形
+- 实现一个拖拽插件
+- 支持双指缩放手势
 
 [infinitecanvas]: https://infinitecanvas.tools/
 [Figma]: https://madebyevan.com/figma/building-a-professional-design-tool-on-the-web/

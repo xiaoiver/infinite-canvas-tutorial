@@ -95,6 +95,8 @@ export class Renderer implements Plugin {
           ...paddingMat3(camera.viewProjectionMatrixInv),
           camera.zoom,
           this.#checkboardStyle,
+          0,
+          0,
         ]),
         usage: BufferUsage.UNIFORM,
         hint: BufferFrequencyHint.DYNAMIC,
@@ -140,6 +142,8 @@ export class Renderer implements Plugin {
             ...paddingMat3(camera.viewProjectionMatrixInv),
             camera.zoom,
             this.#checkboardStyle,
+            0,
+            0,
           ]).buffer,
         ),
       );
