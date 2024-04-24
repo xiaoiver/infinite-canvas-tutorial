@@ -17,6 +17,7 @@ export default defineConfig({
       md.use(genjiAttrs);
     },
   },
+  cleanUrls: true,
   extends: config,
   ...shared,
   locales: {
