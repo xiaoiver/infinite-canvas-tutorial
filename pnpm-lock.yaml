@@ -233,6 +233,9 @@ importers:
       vitepress:
         specifier: ^1.0.1
         version: 1.0.1(@algolia/client-search@4.23.3)(@types/node@20.12.7)(search-insights@2.13.0)(typescript@5.4.5)
+      vue:
+        specifier: ^3.0.0
+        version: 3.4.21(typescript@5.4.5)
 
 packages:
 

@@ -1,0 +1,43 @@
+on: [push]
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      deployments: write
+    name: Publish to Cloudflare Pages
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - uses: pnpm/action-setup@v2
+        with:
+          version: 7
+
+      - name: Use Node.js 16
+        uses: actions/setup-node@v3
+        with:
+          node-version: 16
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Build
+        run: pnpm build
+
+      - name: Publish to Cloudflare Pages
+        uses: cloudflare/pages-action@v1
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: Pyqiverson@gmail.com
+          projectName: infinitecanvas.cc
+          directory: packages/site/docs/.vitepress/dist
+          # Optional: Switch what branch you are publishing to.
+          # By default this will be the branch which triggered this workflow
+          branch: master
+          # Optional: Change the working directory
+          # workingDirectory: my-site
+          # Optional: Change the Wrangler version, allows you to point to a specific version or a tag such as `beta`
+          wranglerVersion: '3'

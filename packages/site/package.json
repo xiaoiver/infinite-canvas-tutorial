@@ -33,6 +33,7 @@
     "@infinite-canvas-tutorial/lesson7": "workspace:*"
   },
   "devDependencies": {
+    "vue": "^3.0.0",
     "vitepress": "^1.0.1",
     "genji-theme-vitepress": "^0.2.1",
     "markdown-it-implicit-figures": "latest",
