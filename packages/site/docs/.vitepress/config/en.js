@@ -6,11 +6,19 @@ export const en = defineConfig({
   description: 'An infinite canvas tutorial.',
   themeConfig: {
     nav: [
-      { text: 'Home', link: '/' },
       { text: 'Lessons', link: '/lesson-001' },
+      { text: 'Demo', link: '/demo' },
     ],
-
     sidebar: [
+      {
+        text: 'Introduction',
+        items: [
+          {
+            text: 'What is an infinite canvas?',
+            link: '/what-is-an-infinite-canvas',
+          },
+        ],
+      },
       {
         text: 'Lessons',
         items: [
@@ -24,6 +32,10 @@ export const en = defineConfig({
           { text: 'Lesson 005 - Grid', link: '/lesson-005' },
           { text: 'Lesson 006 - Event system', link: '/lesson-006' },
         ],
+      },
+      {
+        text: 'Demo',
+        items: [{ text: 'A polar system', link: '/demo' }],
       },
     ],
   },

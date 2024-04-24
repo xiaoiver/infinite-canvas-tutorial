@@ -6,11 +6,19 @@ export const zh = defineConfig({
   description: '一个无限画布教程',
   themeConfig: {
     nav: [
-      { text: '主页', link: '/zh/' },
       { text: '课程', link: '/zh/lesson-001' },
+      { text: '案例', link: '/zh/demo' },
     ],
-
     sidebar: [
+      {
+        text: '介绍',
+        items: [
+          {
+            text: '什么是无限画布？',
+            link: '/zh/what-is-an-infinite-canvas',
+          },
+        ],
+      },
       {
         text: '课程',
         items: [
@@ -22,6 +30,10 @@ export const zh = defineConfig({
           { text: '课程6 - 事件系统', link: '/zh/lesson-006' },
           { text: '课程7 - UI 组件', link: '/zh/lesson-007' },
         ],
+      },
+      {
+        text: '案例',
+        items: [{ text: '一个太阳系', link: '/zh/demo' }],
       },
     ],
 
