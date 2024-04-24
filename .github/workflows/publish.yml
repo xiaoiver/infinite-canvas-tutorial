@@ -32,7 +32,7 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: 4abdc9b6ff77e69917753afff2a4ad14
-          projectName: infinitecanvas.cc
+          projectName: infinite-canvas-tutorial
           directory: packages/site/docs/.vitepress/dist
           # Optional: Switch what branch you are publishing to.
           # By default this will be the branch which triggered this workflow
