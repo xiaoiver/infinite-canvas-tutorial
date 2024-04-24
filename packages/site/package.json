@@ -34,7 +34,6 @@
   },
   "devDependencies": {
     "vitepress": "^1.0.1",
-    "@vitejs/plugin-vue": "latest",
     "genji-theme-vitepress": "^0.2.1",
     "markdown-it-implicit-figures": "latest",
     "stats.js": "^0.17.0"

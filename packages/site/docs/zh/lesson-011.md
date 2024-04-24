@@ -6,47 +6,48 @@ outline: deep
 
 在这节课中你将学习到以下内容：
 
-- 什么是 Draw call
-- 使用 GPU Instancing 提升绘制性能
+-   什么是 Draw call
+-   使用 GPU Instancing 提升绘制性能
 
 性能优化是一个复杂而长期的任务，我倾向于在项目早期就开始关注。在上一课中我们使用 SDF 绘制了一个圆，现在让我们来做一下性能测试，绘制 1000 个圆 FPS 约为 35：
 
 ```js eval code=false
 call(async () => {
-  const { Canvas, Circle } = Lesson3;
+    const { Canvas, Circle } = Lesson3;
 
-  const stats = new Stats();
-  stats.showPanel(0);
-  const $stats = stats.dom;
-  $stats.style.position = 'absolute';
-  $stats.style.left = '0px';
-  $stats.style.top = '0px';
+    const stats = new Stats();
+    stats.showPanel(0);
+    const $stats = stats.dom;
+    $stats.style.position = 'absolute';
+    $stats.style.left = '0px';
+    $stats.style.top = '0px';
 
-  const [$canvas, canvas] = await Utils.createCanvas(Canvas, 200, 200);
-  setTimeout(() => {
-    $canvas.parentElement.style.position = 'relative';
-    $canvas.parentElement.appendChild($stats);
-  });
-
-  for (let i = 0; i < 1000; i++) {
-    const circle = new Circle({
-      cx: Math.random() * 400,
-      cy: Math.random() * 400,
-      r: Math.random() * 20,
-      fill: 'red',
+    const canvas = await Utils.createCanvas(Canvas, 200, 200);
+    const $canvas = canvas.getDOM();
+    setTimeout(() => {
+        $canvas.parentElement.style.position = 'relative';
+        $canvas.parentElement.appendChild($stats);
     });
-    canvas.appendChild(circle);
-  }
 
-  const animate = () => {
-    if (stats) {
-      stats.update();
+    for (let i = 0; i < 1000; i++) {
+        const circle = new Circle({
+            cx: Math.random() * 400,
+            cy: Math.random() * 400,
+            r: Math.random() * 20,
+            fill: 'red',
+        });
+        canvas.appendChild(circle);
     }
-    canvas.render();
-    requestAnimationFrame(animate);
-  };
-  animate();
-  return $canvas;
+
+    const animate = () => {
+        if (stats) {
+            stats.update();
+        }
+        canvas.render();
+        requestAnimationFrame(animate);
+    };
+    animate();
+    return $canvas;
 });
 ```
 
@@ -57,12 +58,12 @@ const stats = new Stats();
 stats.showPanel(0); // 仅展示 FPS 面板
 
 const animate = () => {
-  // 触发更新
-  if (stats) {
-    stats.update();
-  }
-  canvas.render();
-  requestAnimationFrame(animate);
+    // 触发更新
+    if (stats) {
+        stats.update();
+    }
+    canvas.render();
+    requestAnimationFrame(animate);
 };
 ```
 
@@ -78,15 +79,15 @@ const animate = () => {
 
 那么如何减少 Draw call 呢？通常有两种思路：
 
-- Culling 剔除掉视口外的图形，我们放到之后的教程中介绍，感兴趣的话可以参考 [pixi-cull]。
-- Draw call batching。将多个 Draw call 进行合并，本文将着重介绍这种方式。
+-   Culling 剔除掉视口外的图形，我们放到之后的教程中介绍，感兴趣的话可以参考 [pixi-cull]。
+-   Draw call batching。将多个 Draw call 进行合并，本文将着重介绍这种方式。
 
 ## Draw call batching
 
 可以合并的 Draw call 是需要满足一定条件的。[Draw call batching - Unity] 提供了两种方式：
 
-- [Static batching]
-- [Dynamic batching]
+-   [Static batching]
+-   [Dynamic batching]
 
 ## 优化加速
 
@@ -98,15 +99,15 @@ const animate = () => {
 
 ```ts
 export class AABB {
-  minX: number;
-  minY: number;
-  maxX: number;
-  maxY: number;
-  matrix: Matrix;
+    minX: number;
+    minY: number;
+    maxX: number;
+    maxY: number;
+    matrix: Matrix;
 
-  isEmpty() {
-    return this.minX > this.maxX || this.minY > this.maxY;
-  }
+    isEmpty() {
+        return this.minX > this.maxX || this.minY > this.maxY;
+    }
 }
 ```
 

@@ -11,7 +11,7 @@ hero:
           link: /zh/lesson-001
         - theme: alt
           text: 示例
-          link: /demo
+          link: /zh/solar-system
 
 features:
     - title: 高性能渲染

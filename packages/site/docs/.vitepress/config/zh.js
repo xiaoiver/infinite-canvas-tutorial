@@ -7,7 +7,7 @@ export const zh = defineConfig({
   themeConfig: {
     nav: [
       { text: '课程', link: '/zh/lesson-001' },
-      { text: '案例', link: '/zh/demo' },
+      { text: '案例', link: '/zh/solar-system' },
     ],
     sidebar: [
       {
@@ -33,7 +33,7 @@ export const zh = defineConfig({
       },
       {
         text: '案例',
-        items: [{ text: '一个太阳系', link: '/zh/demo' }],
+        items: [{ text: '一个太阳系模型', link: '/zh/solar-system' }],
       },
     ],
 

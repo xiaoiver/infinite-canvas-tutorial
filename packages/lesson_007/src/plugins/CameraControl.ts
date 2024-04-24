@@ -33,7 +33,7 @@ export class CameraControl implements Plugin {
       canvas,
       camera,
       root,
-      api: { client2Viewport, viewport2Canvas },
+      api: { client2Viewport },
     } = context;
 
     root.hitArea = new Rectangle(
@@ -144,35 +144,32 @@ export class CameraControl implements Plugin {
       rotate = false;
     });
 
-    const zoomByPoint = (x: number, y: number, dist: number) => {
-      const { x: preZoomX, y: preZoomY } = viewport2Canvas(
-        client2Viewport({
-          x,
-          y,
-        }),
-      );
-
+    const zoomByClientPoint = (client: IPointData, dist: number) => {
       // multiply the wheel movement by the current zoom level
       // so we zoom less when zoomed in and more when zoomed out
-      const newZoom = camera.zoom * Math.pow(2, dist * -0.01);
-      camera.zoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, newZoom));
-
-      const { x: postZoomX, y: postZoomY } = viewport2Canvas(
-        client2Viewport({
-          x,
-          y,
-        }),
+      const newZoom = Math.max(
+        MIN_ZOOM,
+        Math.min(MAX_ZOOM, camera.zoom * Math.pow(2, dist * -0.01)),
       );
 
-      // camera needs to be moved the difference of before and after
-      camera.x += preZoomX - postZoomX;
-      camera.y += preZoomY - postZoomY;
+      const viewport = client2Viewport(client);
+      camera.gotoLandmark(
+        camera.createLandmark({
+          viewportX: viewport.x,
+          viewportY: viewport.y,
+          zoom: newZoom,
+        }),
+        { duration: 0 },
+      );
     };
 
     root.addEventListener('wheel', (e: FederatedWheelEvent) => {
       e.preventDefault();
 
-      zoomByPoint(e.nativeEvent.clientX, e.nativeEvent.clientY, e.deltaY);
+      zoomByClientPoint(
+        { x: e.nativeEvent.clientX, y: e.nativeEvent.clientY },
+        e.deltaY,
+      );
     });
 
     const down = (event: FederatedPointerEvent) => {
@@ -242,7 +239,7 @@ export class CameraControl implements Plugin {
               Math.pow(second.last.y - first.last.y, 2),
           );
 
-          zoomByPoint(point.x, point.y, (last / dist - 1) * PINCH_FACTOR);
+          zoomByClientPoint(point, (last / dist - 1) * PINCH_FACTOR);
         } else if (!this.#pinching) {
           this.#pinching = true;
         }

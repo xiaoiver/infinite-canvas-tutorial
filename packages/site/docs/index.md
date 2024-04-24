@@ -11,7 +11,7 @@ hero:
           link: /lesson-001
         - theme: alt
           text: Demo
-          link: /demo
+          link: /solar-system
 
 features:
     - title: High-Performance Rendering

@@ -56,7 +56,6 @@ export class Camera {
   constructor(width: number, height: number) {
     this.projection(width, height);
     this.updateMatrix();
-    this.updateViewProjectionMatrix();
   }
 
   projection(width: number, height: number) {

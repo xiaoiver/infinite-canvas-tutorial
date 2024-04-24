@@ -1,5 +1,4 @@
 import { defineConfig } from 'vitepress';
-// import vue from '@vitejs/plugin-vue';
 import { genjiAttrs } from 'genji-theme-vitepress/config';
 import config from 'genji-theme-vitepress/config';
 import implicitFigures from 'markdown-it-implicit-figures';
@@ -27,16 +26,12 @@ export default defineConfig({
     },
     zh: { label: '简体中文', ...zh },
   },
-  vite: {
-    plugins: [
-      // vue({
-      //   template: {
-      //     compilerOptions: {
-      //       // treat all tags with a dash as custom elements
-      //       isCustomElement: (tag) => tag.includes('-'),
-      //     },
-      //   },
-      // }),
-    ],
+  vue: {
+    template: {
+      compilerOptions: {
+        // treat all tags with a dash as custom elements
+        isCustomElement: (tag) => tag.includes('-'),
+      },
+    },
   },
 });

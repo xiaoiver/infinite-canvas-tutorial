@@ -1,25 +1,37 @@
 import { ClipSpaceNearZ } from '@antv/g-device-api';
 import { mat3, vec2 } from 'gl-matrix';
 import { EASING_FUNCTION } from './utils';
+import type { IPointData } from '@pixi/math';
 
-const EPSILON = 0.01;
+const EPSILON = 0.0001;
 
 export interface Landmark {
-  zoom: number;
   x: number;
   y: number;
+  zoom: number;
+  viewportX: number;
+  viewportY: number;
   rotation: number;
 }
 
 export class Camera {
   clipSpaceNearZ = ClipSpaceNearZ.NEGATIVE_ONE;
+  onchange: () => void;
 
   /**
    * Zoom factor of the camera, default is 1.
    * @see https://threejs.org/docs/#api/en/cameras/OrthographicCamera.zoom
    */
   #zoom = 1;
+
+  /**
+   * x in canvas space
+   */
   #x = 0;
+
+  /**
+   * y in canvas space
+   */
   #y = 0;
   #rotation = 0;
   #width = 0;
@@ -58,7 +70,16 @@ export class Camera {
   constructor(width: number, height: number) {
     this.projection(width, height);
     this.updateMatrix();
-    this.updateViewProjectionMatrix();
+  }
+
+  clone(): Camera {
+    const camera = new Camera(this.#width, this.#height);
+    camera.#x = this.#x;
+    camera.#y = this.#y;
+    camera.#zoom = this.#zoom;
+    camera.#rotation = this.#rotation;
+    camera.updateMatrix();
+    return camera;
   }
 
   projection(width: number, height: number) {
@@ -85,6 +106,9 @@ export class Camera {
       this.#viewMatrix,
     );
     mat3.invert(this.#viewProjectionMatrixInv, this.#viewProjectionMatrix);
+    if (this.onchange) {
+      this.onchange();
+    }
   }
 
   get projectionMatrix() {
@@ -154,7 +178,7 @@ export class Camera {
     return this.#height;
   }
 
-  createLandmark(params: Partial<Landmark> = {}): Landmark {
+  createLandmark(params: Partial<Landmark> = {}): Partial<Landmark> {
     return {
       zoom: this.#zoom,
       x: this.#x,
@@ -165,7 +189,7 @@ export class Camera {
   }
 
   gotoLandmark(
-    landmark: Landmark,
+    landmark: Partial<Landmark>,
     options: Partial<{
       easing: string;
       duration: number;
@@ -180,14 +204,19 @@ export class Camera {
       onfinish = undefined,
     } = options;
 
-    const { zoom, x, y, rotation } = landmark;
+    const {
+      zoom = this.#zoom,
+      x = this.#x,
+      y = this.#y,
+      rotation = this.#rotation,
+      viewportX = 0,
+      viewportY = 0,
+    } = landmark;
+
+    const useFixedViewport = viewportX || viewportY;
 
     const endAnimation = () => {
-      this.#zoom = zoom;
-      this.#x = x;
-      this.#y = y;
-      this.#rotation = rotation;
-      this.updateMatrix();
+      this.applyLandmark({ x, y, zoom, rotation, viewportX, viewportY });
       if (onfinish) {
         onfinish();
       }
@@ -201,8 +230,9 @@ export class Camera {
     this.cancelLandmarkAnimation();
 
     let timeStart: number | undefined;
-    const destPosition: vec2 = [x, y];
+    const destPosition: vec2 = [x, y]; // in world space
     const destZoomRotation: vec2 = [zoom, rotation];
+
     const animate = (timestamp: number) => {
       if (timeStart === undefined) {
         timeStart = timestamp;
@@ -227,14 +257,20 @@ export class Camera {
         t,
       );
 
-      this.#x = interPosition[0];
-      this.#y = interPosition[1];
-      this.#zoom = interZoomRotation[0];
-      this.#rotation = interZoomRotation[1];
-      this.updateMatrix();
+      this.applyLandmark({
+        x: interPosition[0],
+        y: interPosition[1],
+        zoom: interZoomRotation[0],
+        rotation: interZoomRotation[1],
+        viewportX,
+        viewportY,
+      });
 
-      const dist = vec2.dist(interPosition, destPosition);
-      if (dist <= EPSILON) {
+      if (
+        useFixedViewport
+          ? vec2.dist(interZoomRotation, destZoomRotation) <= EPSILON
+          : vec2.dist(interPosition, destPosition) <= EPSILON
+      ) {
         endAnimation();
         return;
       }
@@ -253,6 +289,60 @@ export class Camera {
   cancelLandmarkAnimation() {
     if (this.#landmarkAnimationID !== undefined) {
       cancelAnimationFrame(this.#landmarkAnimationID);
+    }
+  }
+
+  viewport2Canvas({ x, y }: IPointData, camera?: Camera): IPointData {
+    const { width, height, viewProjectionMatrixInv } = camera || this;
+    const canvas = vec2.transformMat3(
+      vec2.create(),
+      [(x / width) * 2 - 1, (1 - y / height) * 2 - 1],
+      viewProjectionMatrixInv,
+    );
+    return { x: canvas[0], y: canvas[1] };
+  }
+
+  canvas2Viewport({ x, y }: IPointData, camera?: Camera): IPointData {
+    const { width, height, viewProjectionMatrix } = camera || this;
+    const clip = vec2.transformMat3(
+      vec2.create(),
+      [x, y],
+      viewProjectionMatrix,
+    );
+    return {
+      x: ((clip[0] + 1) / 2) * width,
+      y: (1 - (clip[1] + 1) / 2) * height,
+    };
+  }
+
+  private applyLandmark(landmark: Landmark) {
+    const { x, y, zoom, rotation, viewportX, viewportY } = landmark;
+    const useFixedViewport = viewportX || viewportY;
+    let preZoomX = 0;
+    let preZoomY = 0;
+    if (useFixedViewport) {
+      const canvas = this.viewport2Canvas({
+        x: viewportX,
+        y: viewportY,
+      });
+      preZoomX = canvas.x;
+      preZoomY = canvas.y;
+    }
+
+    this.#zoom = zoom;
+    this.#rotation = rotation;
+    this.#x = x;
+    this.#y = y;
+    this.updateMatrix();
+
+    if (useFixedViewport) {
+      const { x: postZoomX, y: postZoomY } = this.viewport2Canvas({
+        x: viewportX,
+        y: viewportY,
+      });
+      this.#x += preZoomX - postZoomX;
+      this.#y += preZoomY - postZoomY;
+      this.updateMatrix();
     }
   }
 }

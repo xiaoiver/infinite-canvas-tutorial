@@ -20,8 +20,8 @@ outline: deep
 
 ```ts
 $resizeObserver.addEventListener('sl-resize', (event) => {
-  const { width } = event.detail.entries[0].contentRect;
-  resize(width, 500);
+    const { width } = event.detail.entries[0].contentRect;
+    resize(width, 500);
 });
 ```
 
@@ -35,14 +35,36 @@ $resizeObserver.addEventListener('sl-resize', (event) => {
 
 ```html
 <sl-icon-button
-  name="plus-lg"
-  label="Zoom in"
-  @click="() => canvas.zoomIn()"
+    name="plus-lg"
+    label="Zoom in"
+    @click="() => canvas.zoomIn()"
 ></sl-icon-button>
 ```
 
 ```ts
 canvas.camera;
+```
+
+在相机上增加一个回调函数，每次相机或者投影矩阵发生变化时触发：
+
+```ts
+export class Camera {
+    onchange: () => void;
+    private updateViewProjectionMatrix() {
+        if (this.onchange) {
+            this.onchange();
+        }
+    }
+}
+```
+
+回调触发时会修改响应式变量 `zoom`
+
+```ts
+const zoom = ref(100);
+canvas.camera.onchange = () => {
+    zoom.value = Math.round(canvas.camera.zoom * 100);
+};
 ```
 
 [Shoelace]: https://shoelace.style/

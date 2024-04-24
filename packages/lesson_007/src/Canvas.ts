@@ -21,7 +21,6 @@ import {
   getGlobalThis,
   traverse,
 } from './utils';
-import { vec2 } from 'gl-matrix';
 
 export interface CanvasConfig {
   canvas: HTMLCanvasElement;
@@ -100,9 +99,9 @@ export class Canvas {
         elementsFromPoint: this.elementsFromPoint.bind(this),
         elementFromPoint: this.elementFromPoint.bind(this),
         client2Viewport: this.client2Viewport.bind(this),
-        viewport2Canvas: this.viewport2Canvas.bind(this),
+        viewport2Canvas: camera.viewport2Canvas.bind(camera),
         viewport2Client: this.viewport2Client.bind(this),
-        canvas2Viewport: this.canvas2Viewport.bind(this),
+        canvas2Viewport: camera.canvas2Viewport.bind(camera),
       },
     };
 
@@ -170,6 +169,10 @@ export class Canvas {
     hooks.destroy.call();
   }
 
+  getDOM() {
+    return this.#pluginContext.canvas;
+  }
+
   appendChild(shape: Shape) {
     this.#root.appendChild(shape);
   }
@@ -226,41 +229,12 @@ export class Canvas {
     return { x: x + left, y: y + top };
   }
 
-  canvas2Viewport({ x, y }: IPointData): IPointData {
-    const { width, height, viewProjectionMatrix } = this.#camera;
-    const clip = vec2.transformMat3(
-      vec2.create(),
-      [x, y],
-      viewProjectionMatrix,
-    );
-    return {
-      x: ((clip[0] + 1) / 2) * width,
-      y: (1 - (clip[1] + 1) / 2) * height,
-    };
-  }
-
-  viewport2Canvas({ x, y }: IPointData): IPointData {
-    const { width, height, viewProjectionMatrixInv } = this.#camera;
-    const canvas = vec2.transformMat3(
-      vec2.create(),
-      [(x / width) * 2 - 1, (1 - y / height) * 2 - 1],
-      viewProjectionMatrixInv,
-    );
-    return { x: canvas[0], y: canvas[1] };
-  }
-
   zoomIn() {
     const { camera } = this;
     camera.cancelLandmarkAnimation();
-    const center = { x: camera.width / 2, y: camera.height / 2 };
-    const { x, y } = this.viewport2Canvas(center);
-
-    console.log(x, y);
-
     const landmark = camera.createLandmark({
-      x: center.x,
-      y: center.y,
-      rotation: 0,
+      viewportX: camera.width / 2,
+      viewportY: camera.height / 2,
       zoom: findZoomCeil(camera.zoom),
     });
     camera.gotoLandmark(landmark, { duration: 300, easing: 'ease' });
@@ -270,9 +244,8 @@ export class Canvas {
     const { camera } = this;
     camera.cancelLandmarkAnimation();
     const landmark = camera.createLandmark({
-      x: 0,
-      y: 0,
-      rotation: 0,
+      viewportX: camera.width / 2,
+      viewportY: camera.height / 2,
       zoom: findZoomFloor(camera.zoom),
     });
     camera.gotoLandmark(landmark, { duration: 300, easing: 'ease' });

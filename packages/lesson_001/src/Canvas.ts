@@ -80,4 +80,8 @@ export class Canvas {
     const { hooks } = this.#pluginContext;
     hooks.destroy.call();
   }
+
+  getDOM() {
+    return this.#pluginContext.canvas;
+  }
 }

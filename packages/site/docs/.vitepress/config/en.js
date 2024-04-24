@@ -7,7 +7,7 @@ export const en = defineConfig({
   themeConfig: {
     nav: [
       { text: 'Lessons', link: '/lesson-001' },
-      { text: 'Demo', link: '/demo' },
+      { text: 'Demo', link: '/solar-system' },
     ],
     sidebar: [
       {
@@ -35,7 +35,7 @@ export const en = defineConfig({
       },
       {
         text: 'Demo',
-        items: [{ text: 'A polar system', link: '/demo' }],
+        items: [{ text: 'A polar system', link: '/solar-system' }],
       },
     ],
   },

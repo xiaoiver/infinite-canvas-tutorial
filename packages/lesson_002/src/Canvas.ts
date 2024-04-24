@@ -87,6 +87,10 @@ export class Canvas {
     hooks.destroy.call();
   }
 
+  getDOM() {
+    return this.#pluginContext.canvas;
+  }
+
   appendChild(shape: Shape) {
     this.#shapes.push(shape);
   }

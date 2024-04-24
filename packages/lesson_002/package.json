@@ -32,7 +32,8 @@
     "preview": "vite preview",
     "build:cjs": "rimraf ./lib && tsc --module commonjs --outDir lib",
     "build:esm": "rimraf ./esm && tsc --module ESNext --outDir esm",
-    "build": "run-p build:*"
+    "build": "run-p build:*",
+    "watch": "rimraf ./esm && tsc --module ESNext --outDir esm --watch"
   },
   "dependencies": {
     "@antv/g-device-api": "^1.6.5",

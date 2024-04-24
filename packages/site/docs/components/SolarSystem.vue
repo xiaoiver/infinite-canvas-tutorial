@@ -27,14 +27,6 @@ onMounted(async () => {
   import(
     '@shoelace-style/shoelace/dist/components/resize-observer/resize-observer.js'
   );
-  import(
-    '@shoelace-style/shoelace/dist/components/radio-button/radio-button.js'
-  );
-  import('@shoelace-style/shoelace/dist/components/radio-group/radio-group.js');
-  import('@shoelace-style/shoelace/dist/components/menu/menu.js');
-  import('@shoelace-style/shoelace/dist/components/menu-item/menu-item.js');
-  import('@shoelace-style/shoelace/dist/components/dropdown/dropdown.js');
-  import('@shoelace-style/shoelace/dist/components/divider/divider.js');
 
   const $canvas = canvasRef.value;
   const $resizeObserver = resizeObserverRef.value;
@@ -123,19 +115,6 @@ onUnmounted(() => {
   <sl-resize-observer ref="resizeObserverRef">
     <div :class="$style.container">
       <canvas ref="canvasRef"></canvas>
-      <sl-dropdown>
-        <sl-button slot="trigger" caret>Menu</sl-button>
-        <sl-menu style="max-width: 200px">
-          <sl-menu-item>
-            View
-            <sl-menu slot="submenu">
-              <sl-menu-item value="find">Find…</sl-menu-item>
-              <sl-menu-item value="find-previous">Find Next</sl-menu-item>
-              <sl-menu-item value="find-next">Find Previous</sl-menu-item>
-            </sl-menu>
-          </sl-menu-item>
-        </sl-menu>
-      </sl-dropdown>
       <div :class="$style.zoomToolbar">
         <sl-button-group label="Zoom toolbar">
           <sl-tooltip content="Zoom out">
@@ -168,13 +147,6 @@ canvas {
 }
 .container {
   position: relative;
-}
-.gridToolbar {
-  position: absolute;
-  right: 16px;
-  top: 16px;
-  box-shadow: var(--sl-shadow-medium);
-  background: white;
 }
 .zoomToolbar {
   position: absolute;
