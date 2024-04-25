@@ -1,5 +1,6 @@
 // .vitepress/theme/index.js
 import DefaultTheme from 'vitepress/theme';
+import '@shoelace-style/shoelace/dist/themes/light.css';
 import './custom.css';
 import Layout from 'genji-theme-vitepress';
 import { h } from 'vue';
@@ -64,4 +65,17 @@ const props = {
 export default {
   extends: DefaultTheme,
   Layout: () => h(Layout, props),
+  async enhanceApp({ app }) {
+    // @see https://vitepress.dev/guide/ssr-compat#conditional-import
+    if (!import.meta.env.SSR) {
+      // @see https://shoelace.style/tutorials/integrating-with-nextjs/#defining-custom-elements
+      const { setBasePath } = await import(
+        '@shoelace-style/shoelace/dist/utilities/base-path'
+      );
+      setBasePath(
+        'https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.15.0/cdn/',
+      );
+      await import('@shoelace-style/shoelace');
+    }
+  },
 };

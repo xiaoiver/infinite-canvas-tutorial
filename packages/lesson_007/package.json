@@ -41,7 +41,9 @@
     "bezier-easing": "^2.1.0",
     "d3-color": "^3.1.0",
     "eventemitter3": "^5.0.1",
-    "gl-matrix": "^3.4.3"
+    "gl-matrix": "^3.4.3",
+    "lit": "^3.1.3",
+    "@lit/context": "latest"
   },
   "devDependencies": {
     "@types/d3-color": "^3.1.0",

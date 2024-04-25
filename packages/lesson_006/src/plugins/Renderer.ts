@@ -101,6 +101,18 @@ export class Renderer implements Plugin {
         width * devicePixelRatio,
         height * devicePixelRatio,
       );
+
+      if (this.#renderTarget) {
+        this.#renderTarget.destroy();
+        this.#renderTarget = this.#device.createRenderTargetFromTexture(
+          this.#device.createTexture({
+            format: Format.U8_RGBA_RT,
+            width: width * devicePixelRatio,
+            height: height * devicePixelRatio,
+            usage: TextureUsage.RENDER_TARGET,
+          }),
+        );
+      }
     });
 
     hooks.destroy.tap(() => {
@@ -130,18 +142,6 @@ export class Renderer implements Plugin {
         ),
       );
 
-      if (this.#renderTarget) {
-        this.#renderTarget.destroy();
-        this.#renderTarget = this.#device.createRenderTargetFromTexture(
-          this.#device.createTexture({
-            format: Format.U8_RGBA_RT,
-            width,
-            height,
-            usage: TextureUsage.RENDER_TARGET,
-          }),
-        );
-      }
-
       this.#device.beginFrame();
 
       this.#renderPass = this.#device.createRenderPass({
@@ -157,7 +157,6 @@ export class Renderer implements Plugin {
     hooks.endFrame.tap(() => {
       this.#device.submitPass(this.#renderPass);
       this.#device.endFrame();
-      this.#grid.reset();
     });
 
     hooks.render.tap((shape) => {

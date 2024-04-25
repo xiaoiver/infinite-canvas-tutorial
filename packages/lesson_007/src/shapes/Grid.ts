@@ -28,10 +28,6 @@ export class Grid {
     this.#vertices.appendFloat(x).appendFloat(y);
   }
 
-  reset() {
-    this.#vertices.clear();
-  }
-
   render(device: Device, renderPass: RenderPass, uniformBuffer: Buffer) {
     if (!this.#program) {
       this.#program = device.createProgram({
@@ -67,33 +63,32 @@ export class Grid {
         colorAttachmentFormats: [Format.U8_RGBA_RT],
         topology: PrimitiveTopology.TRIANGLE_STRIP,
       });
+
+      this.#vertices.clear();
+
+      this.appendVertex(-1, -1);
+      this.appendVertex(-1, 1);
+      this.appendVertex(1, -1);
+      this.appendVertex(1, 1);
+
+      const data = this.#vertices.bytes();
+      const buffer = device.createBuffer({
+        viewOrSize: data.byteLength,
+        usage: BufferUsage.VERTEX,
+        hint: BufferFrequencyHint.DYNAMIC,
+      });
+      this.#buffer = buffer;
+      buffer.setSubData(0, data);
+
+      this.#bindings = device.createBindings({
+        pipeline: this.#pipeline,
+        uniformBufferBindings: [
+          {
+            buffer: uniformBuffer,
+          },
+        ],
+      });
     }
-
-    this.#bindings = device.createBindings({
-      pipeline: this.#pipeline,
-      uniformBufferBindings: [
-        {
-          buffer: uniformBuffer,
-        },
-      ],
-    });
-
-    this.appendVertex(-1, -1);
-    this.appendVertex(-1, 1);
-    this.appendVertex(1, -1);
-    this.appendVertex(1, 1);
-
-    const data = this.#vertices.bytes();
-    if (this.#buffer) {
-      this.#buffer.destroy();
-    }
-    const buffer = device.createBuffer({
-      viewOrSize: data.byteLength,
-      usage: BufferUsage.VERTEX,
-      hint: BufferFrequencyHint.DYNAMIC,
-    });
-    this.#buffer = buffer;
-    buffer.setSubData(0, data);
 
     renderPass.setBindings(this.#bindings);
     renderPass.setPipeline(this.#pipeline);

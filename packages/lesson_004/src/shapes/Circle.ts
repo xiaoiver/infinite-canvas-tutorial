@@ -256,6 +256,7 @@ export class Circle extends Shape {
     this.#instancedBuffer.destroy();
     this.#fragUnitBuffer.destroy();
     this.#indexBuffer.destroy();
+    this.#uniformBuffer.destroy();
     this.#pipeline.destroy();
     this.#inputLayout.destroy();
     this.#bindings.destroy();

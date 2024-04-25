@@ -2,29 +2,29 @@
 outline: deep
 ---
 
-# 课程 7 - Web UI
+# Lesson 7 - Web UI
 
-在这节课中你将学习到以下内容：
+In this lesson, you will learn the following:
 
--   使用 Lit 和 Shoelace 开发 Web UI
--   实现画布组件，监听页面宽高变换
--   实现缩放组件
+-   Developing Web UI with Lit and Shoelace
+-   Implementing a canvas component
+-   Implementing a zoom toolbar component
 
 <div style="width: 100%; height: 200px;">
   <ic-canvas />
 </div>
 
-## 使用 Lit 和 Shoelace 开发 Web UI
+## Web UI with Lit and Shoelace
 
-在选择组件库时，我不希望它绑定在某个具体的框架实现上。Web components 是不错的选择，[Lit] 为它添加了响应式状态、声明式模版、模块化样式等特性，让开发过程变得更便捷。[Shoelace] 是一个基于 [Lit] 开发的组件库。使用它们可以让我们的画布组件同时支持 React、Vue 和 Angular，做到真正的框架无关。
+When choosing a component library, I didn't want it to be tied to a specific framework implementation. Web components is a good choice, and [Lit] provides reactive state, scoped styles, and a declarative template system to make the development process easier. [Shoelace] is an UI library based on [Lit]. Using them, we can make our canvas components framework-agnostic by supporting React, Vue, and Angular at the same time.
 
-由于本教程静态站点使用 [VitePress] 编写，因此在示例页面中使用了 [Vue 的接入方式]，但组件中不会使用到 Vue 的语法。
+Since this tutorial static site is written using [VitePress], [Vue instructions] is used in the example pages, but no Vue syntax will be used in the components.
 
-接下来我们将目前已有的简单功能封装成 UI 组件。
+Next, we'll take the simple functionality that we already have and wrap it into UI components.
 
-## 画布组件
+## Canvas component
 
-使用 [Lit] 声明一个画布组件，为了避免潜在的命名冲突，我们使用了 `ic` 作为组件前缀：
+A canvas component is declared using [Lit], and to avoid potential naming conflicts, we use `ic` as the component prefix:
 
 ```ts
 import { LitElement } from 'lit';
@@ -33,7 +33,7 @@ import { LitElement } from 'lit';
 export class InfiniteCanvas extends LitElement {}
 ```
 
-首先通过装饰器定义画布组件的属性，这样可以通过 `<ic-canvas renderer="webgl" />` 使用它：
+We define `renderer` property with decorator, so that we can use it with such syntax: `<ic-canvas renderer="webgl" />`.
 
 ```ts
 import { property } from 'lit/decorators.js';
@@ -44,7 +44,7 @@ export class InfiniteCanvas extends LitElement {
 }
 ```
 
-我们希望画布跟随页面宽高变化，Shoelace 提供了开箱即用的 [Resize Observer]，当元素宽高改变时会抛出自定义事件 `sl-resize`。我们在 [Lit] 提供的 `render` 生命周期中声明 HTML，通过 [query] 可以快捷地查询到实际的 HTMLCanvasElement：
+We want the canvas to follow the page's width and height, and Shoelace provides an out-of-the-box [Resize Observer] that throws a custom event `sl-resize` when the element's width or height changes. We declare the HTML in the `render` lifecycle provided by [Lit], and the actual HTMLCanvasElement can be quickly queried via [query]:
 
 ```ts
 export class InfiniteCanvas extends LitElement {
@@ -61,7 +61,7 @@ export class InfiniteCanvas extends LitElement {
 }
 ```
 
-在 [connectedCallback] 生命周期中，监听尺寸变化，在 [disconnectedCallback] 生命周期中解除监听：
+Listens for size changes during the [connectedCallback] lifecycle and unlistsens during the [disconnectedCallback] lifecycle:
 
 ```ts
 export class InfiniteCanvas extends LitElement {
@@ -74,7 +74,7 @@ export class InfiniteCanvas extends LitElement {
 }
 ```
 
-何时创建画布这个问题困扰了我一阵，在 [connectedCallback] 生命周期中尝试获取 `<canvas>` 将返回 `undefined`，因为此时 CustomElement 还没有加入到文档中，自然也没法通过 DOM API 查询到。最后我发现 [firstUpdated] 是个不错的时机，创建画布后触发自定义事件 `ic-ready` 并在事件对象中带上画布实例，同时在每个 tick 中触发自定义事件 `ic-frame`：
+The question of when to create the canvas has been bugging me for a while, trying to get `<canvas>` in the [connectedCallback] lifecycle would return `undefined` since the CustomElement had not been added to the document yet, so naturally I couldn't query it via the DOM API. In the end I found that [firstUpdated] was a good time to trigger the custom event `ic-ready` after creating the canvas and bring the canvas instance in the event object, and to trigger the custom event `ic-frame` on each tick:
 
 ```ts
 export class InfiniteCanvas extends LitElement {
@@ -98,7 +98,7 @@ export class InfiniteCanvas extends LitElement {
 }
 ```
 
-这样我们的画布组件就编写完成了。Web components 的框架无关性让我们可以以一致的方式使用。以 Vue 和 React 为例：
+So our canvas component is written. the framework-agnostic nature of web components allows us to use them in a consistent way. Take Vue and React for example:
 
 ```vue
 <template>
@@ -112,7 +112,7 @@ export class InfiniteCanvas extends LitElement {
 </div>
 ```
 
-画布加载完成后通过监听 `ic-ready` 自定义事件获取画布实例：
+Get the canvas instance by listening to the `ic-ready` custom event when the canvas is loaded:
 
 ```ts
 const $canvas = document.querySelector('ic-canvas');
@@ -123,22 +123,22 @@ $canvas.addEventListener('ic-ready', (e) => {
 });
 ```
 
-下面我们来实现相机缩放组件。
+Here we will implement the camera zoom component.
 
-## 相机缩放组件
+## Zoom component
 
-下图是 Miro 的缩放组件：
+The following figure shows the zoom component of Miro:
 
 ![miro zoom toolbar](/miro-toolbar.png)
 
-我们创建一个 `ic-zoom-toolbar`
+Let's create an `ic-zoom-toolbar` first:
 
 ```ts
 @customElement('ic-zoom-toolbar')
 export class ZoomToolbar extends LitElement {}
 ```
 
-在上一节的画布组件中添加：
+Add it to canvas component:
 
 ```html
 <sl-resize-observer>
@@ -147,7 +147,7 @@ export class ZoomToolbar extends LitElement {}
 </sl-resize-observer>
 ```
 
-这个组件内部结构如下，可以看到 Lit 使用的模版语法很接近 Vue：
+The internal structure of this component looks like this, and you can see that Lit uses a template syntax that is very close to Vue:
 
 ```html
 <sl-button-group label="Zoom toolbar">
@@ -169,7 +169,7 @@ export class ZoomToolbar extends LitElement {}
 </sl-button-group>
 ```
 
-为了将画布组件中的画布实例传递到组件中，我们使用了 [Lit Context]，在实例化后保存到上下文中：
+In order to pass the canvas instance from the canvas component to its children, we use [Lit Context], which is saved to the context after instantiation:
 
 ```ts
 const canvasContext = createContext<Canvas>(Symbol('canvas'));
@@ -183,7 +183,7 @@ export class InfiniteCanvas extends LitElement {
 }
 ```
 
-然后就可以通过上下文在组件中消费了，由于画布的创建是异步的，需要通过 `subscribe` 让我们实时保持对上下文的跟踪：
+It can then be consumed in the child component via the context, and since the canvas creation is asynchronous, it needs to be `subscribe` to allow us to keep track of the context in real time:
 
 ```ts
 export class ZoomToolbar extends LitElement {
@@ -192,7 +192,7 @@ export class ZoomToolbar extends LitElement {
 }
 ```
 
-在相机上增加一个回调函数，每次相机或者投影矩阵发生变化时触发：
+Add a callback function to the camera that is triggered every time the camera or projection matrix changes:
 
 ```ts
 export class Camera {
@@ -205,7 +205,7 @@ export class Camera {
 }
 ```
 
-回调触发时会修改响应式变量 `zoom`
+The responsive variable `zoom` is modified when the callback is triggered.
 
 ```ts
 this.#canvas.camera.onchange = () => {
@@ -213,11 +213,11 @@ this.#canvas.camera.onchange = () => {
 };
 ```
 
-后续我们就不再详细介绍 UI 部分的实现了。
+We won't go into the details of the UI implementation later.
 
 [Shoelace]: https://shoelace.style/
 [VitePress]: https://vitepress.dev/
-[Vue 的接入方式]: https://shoelace.style/frameworks/vue
+[Vue instructions]: https://shoelace.style/frameworks/vue
 [Resize Observer]: https://shoelace.style/components/resize-observer
 [Lit]: https://lit.dev/
 [connectedCallback]: https://lit.dev/docs/components/lifecycle/#connectedcallback

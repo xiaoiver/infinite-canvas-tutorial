@@ -29,11 +29,6 @@ export interface CanvasConfig {
   devicePixelRatio?: number;
 }
 
-export enum CanvasMode {
-  SELECT,
-  HAND,
-}
-
 export class Canvas {
   #instancePromise: Promise<this>;
 
