@@ -6,9 +6,9 @@ outline: deep
 
 在这节课中你将学习到以下内容：
 
--   使用 Lit 和 Shoelace 开发 Web UI
--   实现画布组件，监听页面宽高变换
--   实现缩放组件
+- 使用 Lit 和 Shoelace 开发 Web UI
+- 实现画布组件，监听页面宽高变换
+- 实现缩放组件
 
 <div style="width: 100%; height: 200px;">
   <ic-canvas />
@@ -39,8 +39,8 @@ export class InfiniteCanvas extends LitElement {}
 import { property } from 'lit/decorators.js';
 
 export class InfiniteCanvas extends LitElement {
-    @property()
-    renderer = 'webgl';
+  @property()
+  renderer = 'webgl';
 }
 ```
 
@@ -48,16 +48,16 @@ export class InfiniteCanvas extends LitElement {
 
 ```ts
 export class InfiniteCanvas extends LitElement {
-    @query('canvas', true)
-    $canvas: HTMLCanvasElement;
+  @query('canvas', true)
+  $canvas: HTMLCanvasElement;
 
-    render() {
-        return html`
-            <sl-resize-observer>
-                <canvas></canvas>
-            </sl-resize-observer>
-        `;
-    }
+  render() {
+    return html`
+      <sl-resize-observer>
+        <canvas></canvas>
+      </sl-resize-observer>
+    `;
+  }
 }
 ```
 
@@ -65,12 +65,12 @@ export class InfiniteCanvas extends LitElement {
 
 ```ts
 export class InfiniteCanvas extends LitElement {
-    connectedCallback() {
-        this.addEventListener('sl-resize', this.resize);
-    }
-    disconnectedCallback() {
-        this.removeEventListener('sl-resize', this.resize);
-    }
+  connectedCallback() {
+    this.addEventListener('sl-resize', this.resize);
+  }
+  disconnectedCallback() {
+    this.removeEventListener('sl-resize', this.resize);
+  }
 }
 ```
 
@@ -78,23 +78,21 @@ export class InfiniteCanvas extends LitElement {
 
 ```ts
 export class InfiniteCanvas extends LitElement {
-    async firstUpdated() {
-        this.#canvas = await new Canvas({
-            canvas: this.$canvas,
-            renderer: this.renderer as 'webgl' | 'webgpu',
-        }).initialized;
+  async firstUpdated() {
+    this.#canvas = await new Canvas({
+      canvas: this.$canvas,
+      renderer: this.renderer as 'webgl' | 'webgpu',
+    }).initialized;
 
-        this.dispatchEvent(
-            new CustomEvent('ic-ready', { detail: this.#canvas }),
-        );
+    this.dispatchEvent(new CustomEvent('ic-ready', { detail: this.#canvas }));
 
-        const animate = (time?: DOMHighResTimeStamp) => {
-            this.dispatchEvent(new CustomEvent('ic-frame', { detail: time }));
-            this.#canvas.render();
-            this.#rafHandle = window.requestAnimationFrame(animate);
-        };
-        animate();
-    }
+    const animate = (time?: DOMHighResTimeStamp) => {
+      this.dispatchEvent(new CustomEvent('ic-frame', { detail: time }));
+      this.#canvas.render();
+      this.#rafHandle = window.requestAnimationFrame(animate);
+    };
+    animate();
+  }
 }
 ```
 
@@ -102,13 +100,13 @@ export class InfiniteCanvas extends LitElement {
 
 ```vue
 <template>
-    <ic-canvas renderer="webgl"></ic-canvas>
+  <ic-canvas renderer="webgl"></ic-canvas>
 </template>
 ```
 
 ```tsx
 <div>
-    <ic-canvas renderer="webgl"></ic-canvas>
+  <ic-canvas renderer="webgl"></ic-canvas>
 </div>
 ```
 
@@ -117,9 +115,9 @@ export class InfiniteCanvas extends LitElement {
 ```ts
 const $canvas = document.querySelector('ic-canvas');
 $canvas.addEventListener('ic-ready', (e) => {
-    const canvas = e.detail;
-    // 创建场景图
-    canvas.appendChild(circle);
+  const canvas = e.detail;
+  // 创建场景图
+  canvas.appendChild(circle);
 });
 ```
 
@@ -142,8 +140,8 @@ export class ZoomToolbar extends LitElement {}
 
 ```html
 <sl-resize-observer>
-    <canvas></canvas>
-    <ic-zoom-toolbar zoom="${this.zoom}"></ic-zoom-toolbar> // [!code ++]
+  <canvas></canvas>
+  <ic-zoom-toolbar zoom="${this.zoom}"></ic-zoom-toolbar> // [!code ++]
 </sl-resize-observer>
 ```
 
@@ -151,21 +149,21 @@ export class ZoomToolbar extends LitElement {}
 
 ```html
 <sl-button-group label="Zoom toolbar">
-    <sl-tooltip content="Zoom out">
-        <sl-icon-button
-            name="dash-lg"
-            label="Zoom out"
-            @click="${this.zoomOut}"
-        ></sl-icon-button>
-    </sl-tooltip>
-    <span>${this.zoom}%</span>
-    <sl-tooltip content="Zoom in">
-        <sl-icon-button
-            name="plus-lg"
-            label="Zoom in"
-            @click="${this.zoomIn}"
-        ></sl-icon-button>
-    </sl-tooltip>
+  <sl-tooltip content="Zoom out">
+    <sl-icon-button
+      name="dash-lg"
+      label="Zoom out"
+      @click="${this.zoomOut}"
+    ></sl-icon-button>
+  </sl-tooltip>
+  <span>${this.zoom}%</span>
+  <sl-tooltip content="Zoom in">
+    <sl-icon-button
+      name="plus-lg"
+      label="Zoom in"
+      @click="${this.zoomIn}"
+    ></sl-icon-button>
+  </sl-tooltip>
 </sl-button-group>
 ```
 
@@ -175,11 +173,11 @@ export class ZoomToolbar extends LitElement {}
 const canvasContext = createContext<Canvas>(Symbol('canvas'));
 
 export class InfiniteCanvas extends LitElement {
-    #provider = new ContextProvider(this, { context: canvasContext });
+  #provider = new ContextProvider(this, { context: canvasContext });
 
-    async firstUpdated() {
-        this.#provider.setValue(this.#canvas);
-    }
+  async firstUpdated() {
+    this.#provider.setValue(this.#canvas);
+  }
 }
 ```
 
@@ -187,8 +185,8 @@ export class InfiniteCanvas extends LitElement {
 
 ```ts
 export class ZoomToolbar extends LitElement {
-    @consume({ context: canvasContext, subscribe: true })
-    canvas: Canvas;
+  @consume({ context: canvasContext, subscribe: true })
+  canvas: Canvas;
 }
 ```
 
@@ -196,12 +194,12 @@ export class ZoomToolbar extends LitElement {
 
 ```ts
 export class Camera {
-    onchange: () => void;
-    private updateViewProjectionMatrix() {
-        if (this.onchange) {
-            this.onchange();
-        }
+  onchange: () => void;
+  private updateViewProjectionMatrix() {
+    if (this.onchange) {
+      this.onchange();
     }
+  }
 }
 ```
 
@@ -209,7 +207,7 @@ export class Camera {
 
 ```ts
 this.#canvas.camera.onchange = () => {
-    this.zoom = Math.round(this.#canvas.camera.zoom * 100);
+  this.zoom = Math.round(this.#canvas.camera.zoom * 100);
 };
 ```
 

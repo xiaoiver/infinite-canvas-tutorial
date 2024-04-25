@@ -6,9 +6,9 @@ outline: deep
 
 In this lesson, you will learn the following:
 
--   Developing Web UI with Lit and Shoelace
--   Implementing a canvas component
--   Implementing a zoom toolbar component
+- Developing Web UI with Lit and Shoelace
+- Implementing a canvas component
+- Implementing a zoom toolbar component
 
 <div style="width: 100%; height: 200px;">
   <ic-canvas />
@@ -39,8 +39,8 @@ We define `renderer` property with decorator, so that we can use it with such sy
 import { property } from 'lit/decorators.js';
 
 export class InfiniteCanvas extends LitElement {
-    @property()
-    renderer = 'webgl';
+  @property()
+  renderer = 'webgl';
 }
 ```
 
@@ -48,16 +48,16 @@ We want the canvas to follow the page's width and height, and Shoelace provides 
 
 ```ts
 export class InfiniteCanvas extends LitElement {
-    @query('canvas', true)
-    $canvas: HTMLCanvasElement;
+  @query('canvas', true)
+  $canvas: HTMLCanvasElement;
 
-    render() {
-        return html`
-            <sl-resize-observer>
-                <canvas></canvas>
-            </sl-resize-observer>
-        `;
-    }
+  render() {
+    return html`
+      <sl-resize-observer>
+        <canvas></canvas>
+      </sl-resize-observer>
+    `;
+  }
 }
 ```
 
@@ -65,12 +65,12 @@ Listens for size changes during the [connectedCallback] lifecycle and unlistsens
 
 ```ts
 export class InfiniteCanvas extends LitElement {
-    connectedCallback() {
-        this.addEventListener('sl-resize', this.resize);
-    }
-    disconnectedCallback() {
-        this.removeEventListener('sl-resize', this.resize);
-    }
+  connectedCallback() {
+    this.addEventListener('sl-resize', this.resize);
+  }
+  disconnectedCallback() {
+    this.removeEventListener('sl-resize', this.resize);
+  }
 }
 ```
 
@@ -78,23 +78,21 @@ The question of when to create the canvas has been bugging me for a while, tryin
 
 ```ts
 export class InfiniteCanvas extends LitElement {
-    async firstUpdated() {
-        this.#canvas = await new Canvas({
-            canvas: this.$canvas,
-            renderer: this.renderer as 'webgl' | 'webgpu',
-        }).initialized;
+  async firstUpdated() {
+    this.#canvas = await new Canvas({
+      canvas: this.$canvas,
+      renderer: this.renderer as 'webgl' | 'webgpu',
+    }).initialized;
 
-        this.dispatchEvent(
-            new CustomEvent('ic-ready', { detail: this.#canvas }),
-        );
+    this.dispatchEvent(new CustomEvent('ic-ready', { detail: this.#canvas }));
 
-        const animate = (time?: DOMHighResTimeStamp) => {
-            this.dispatchEvent(new CustomEvent('ic-frame', { detail: time }));
-            this.#canvas.render();
-            this.#rafHandle = window.requestAnimationFrame(animate);
-        };
-        animate();
-    }
+    const animate = (time?: DOMHighResTimeStamp) => {
+      this.dispatchEvent(new CustomEvent('ic-frame', { detail: time }));
+      this.#canvas.render();
+      this.#rafHandle = window.requestAnimationFrame(animate);
+    };
+    animate();
+  }
 }
 ```
 
@@ -102,13 +100,13 @@ So our canvas component is written. the framework-agnostic nature of web compone
 
 ```vue
 <template>
-    <ic-canvas renderer="webgl"></ic-canvas>
+  <ic-canvas renderer="webgl"></ic-canvas>
 </template>
 ```
 
 ```tsx
 <div>
-    <ic-canvas renderer="webgl"></ic-canvas>
+  <ic-canvas renderer="webgl"></ic-canvas>
 </div>
 ```
 
@@ -117,9 +115,9 @@ Get the canvas instance by listening to the `ic-ready` custom event when the can
 ```ts
 const $canvas = document.querySelector('ic-canvas');
 $canvas.addEventListener('ic-ready', (e) => {
-    const canvas = e.detail;
-    // 创建场景图
-    canvas.appendChild(circle);
+  const canvas = e.detail;
+  // 创建场景图
+  canvas.appendChild(circle);
 });
 ```
 
@@ -142,8 +140,8 @@ Add it to canvas component:
 
 ```html
 <sl-resize-observer>
-    <canvas></canvas>
-    <ic-zoom-toolbar zoom="${this.zoom}"></ic-zoom-toolbar> // [!code ++]
+  <canvas></canvas>
+  <ic-zoom-toolbar zoom="${this.zoom}"></ic-zoom-toolbar> // [!code ++]
 </sl-resize-observer>
 ```
 
@@ -151,21 +149,21 @@ The internal structure of this component looks like this, and you can see that L
 
 ```html
 <sl-button-group label="Zoom toolbar">
-    <sl-tooltip content="Zoom out">
-        <sl-icon-button
-            name="dash-lg"
-            label="Zoom out"
-            @click="${this.zoomOut}"
-        ></sl-icon-button>
-    </sl-tooltip>
-    <span>${this.zoom}%</span>
-    <sl-tooltip content="Zoom in">
-        <sl-icon-button
-            name="plus-lg"
-            label="Zoom in"
-            @click="${this.zoomIn}"
-        ></sl-icon-button>
-    </sl-tooltip>
+  <sl-tooltip content="Zoom out">
+    <sl-icon-button
+      name="dash-lg"
+      label="Zoom out"
+      @click="${this.zoomOut}"
+    ></sl-icon-button>
+  </sl-tooltip>
+  <span>${this.zoom}%</span>
+  <sl-tooltip content="Zoom in">
+    <sl-icon-button
+      name="plus-lg"
+      label="Zoom in"
+      @click="${this.zoomIn}"
+    ></sl-icon-button>
+  </sl-tooltip>
 </sl-button-group>
 ```
 
@@ -175,11 +173,11 @@ In order to pass the canvas instance from the canvas component to its children, 
 const canvasContext = createContext<Canvas>(Symbol('canvas'));
 
 export class InfiniteCanvas extends LitElement {
-    #provider = new ContextProvider(this, { context: canvasContext });
+  #provider = new ContextProvider(this, { context: canvasContext });
 
-    async firstUpdated() {
-        this.#provider.setValue(this.#canvas);
-    }
+  async firstUpdated() {
+    this.#provider.setValue(this.#canvas);
+  }
 }
 ```
 
@@ -187,8 +185,8 @@ It can then be consumed in the child component via the context, and since the ca
 
 ```ts
 export class ZoomToolbar extends LitElement {
-    @consume({ context: canvasContext, subscribe: true })
-    canvas: Canvas;
+  @consume({ context: canvasContext, subscribe: true })
+  canvas: Canvas;
 }
 ```
 
@@ -196,12 +194,12 @@ Add a callback function to the camera that is triggered every time the camera or
 
 ```ts
 export class Camera {
-    onchange: () => void;
-    private updateViewProjectionMatrix() {
-        if (this.onchange) {
-            this.onchange();
-        }
+  onchange: () => void;
+  private updateViewProjectionMatrix() {
+    if (this.onchange) {
+      this.onchange();
     }
+  }
 }
 ```
 
@@ -209,7 +207,7 @@ The responsive variable `zoom` is modified when the callback is triggered.
 
 ```ts
 this.#canvas.camera.onchange = () => {
-    this.zoom = Math.round(this.#canvas.camera.zoom * 100);
+  this.zoom = Math.round(this.#canvas.camera.zoom * 100);
 };
 ```
 
