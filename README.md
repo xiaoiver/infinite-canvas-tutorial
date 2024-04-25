@@ -86,7 +86,7 @@ pnpm run dev
 -   Implement a drag-and-drop plugin based on our event system.
 -   Support for pinch zoom gestures.
 
-# Lesson 7
+## Lesson 7
 
 -   Developing Web UI with Lit and Shoelace
 -   Implementing a canvas component

@@ -31,7 +31,7 @@ export const en = defineConfig({
           { text: 'Lesson 004 - Camera', link: '/lesson-004' },
           { text: 'Lesson 005 - Grid', link: '/lesson-005' },
           { text: 'Lesson 006 - Event system', link: '/lesson-006' },
-          { text: 'Lesson 006 - Web UI', link: '/lesson-007' },
+          { text: 'Lesson 007 - Web UI', link: '/lesson-007' },
         ],
       },
       {
