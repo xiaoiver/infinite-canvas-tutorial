@@ -11,7 +11,7 @@ outline: deep
 - 实现缩放组件
 
 <div style="width: 100%; height: 200px;">
-  <ic-canvas />
+  <ic-canvas-lesson7 />
 </div>
 
 ## 使用 Lit 和 Shoelace 开发 Web UI

@@ -2,8 +2,8 @@
 import { Group, Circle } from '@infinite-canvas-tutorial/lesson7';
 import { onMounted } from 'vue';
 
-onMounted(async () => {
-  const $canvas = document.querySelector('ic-canvas');
+onMounted(() => {
+  const $canvas = document.querySelector('ic-canvas-lesson7');
 
   let solarSystem;
   let earthOrbit;
@@ -53,5 +53,5 @@ onMounted(async () => {
 </script>
 
 <template>
-  <ic-canvas></ic-canvas>
+  <ic-canvas-lesson7></ic-canvas-lesson7>
 </template>

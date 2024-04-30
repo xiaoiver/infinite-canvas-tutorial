@@ -95,7 +95,7 @@ export abstract class Shape
 
   removeEventListener(
     type: string,
-    listener?: EventListenerOrEventListenerObject,
+    listener: EventListenerOrEventListenerObject,
     options?: boolean | EventListenerOptions,
   ) {
     const capture =

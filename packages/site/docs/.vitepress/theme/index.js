@@ -12,6 +12,7 @@ import * as Lesson4 from '@infinite-canvas-tutorial/lesson4';
 import * as Lesson5 from '@infinite-canvas-tutorial/lesson5';
 import * as Lesson6 from '@infinite-canvas-tutorial/lesson6';
 import * as Lesson7 from '@infinite-canvas-tutorial/lesson7';
+import * as Lesson8 from '@infinite-canvas-tutorial/lesson8';
 
 const Utils = {
   createCanvas: async (Canvas, width, height, renderer = 'webgl') => {
@@ -57,6 +58,7 @@ const props = {
     Lesson5,
     Lesson6,
     Lesson7,
+    Lesson8,
     Utils,
     Stats,
   },

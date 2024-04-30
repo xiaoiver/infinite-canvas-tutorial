@@ -458,7 +458,7 @@ hooks.endFrame.tap(() => {
 
 ## 效果展示
 
-由于还没有绘制任何图形，画布一片空白，我们如何知道底层 WebGL / WebGPU 命令的调用情况呢？在 Web 端调试可以使用 Chrome 浏览器插件：[Spector.js] 和 [webgpu-devtools]。
+由于还没有绘制任何图形，画布一片空白，我们如何知道底层 WebGL / WebGPU 命令的调用情况呢？在 Web 端调试可以使用 Chrome 浏览器插件：[Spector.js] 和 [WebGPU Inspector]。
 
 下图展示了使用 Spector.js 捕捉到的首帧命令，可以看到我们创建了一系列 FrameBuffer、Texture 等 GPU 对象：
 
@@ -473,9 +473,9 @@ const canvas = await new Canvas({
 }).initialized;
 ```
 
-打开 WebGPU DevTools 可以看到当前我们创建的 GPU 对象和每一帧调用的命令：
+打开 WebGPU Inspector 可以看到当前我们创建的 GPU 对象和每一帧调用的命令：
 
-![WebGPU devtools snapshot](/webgpu-devtools.png)
+![WebGPU inspector snapshot](/webgpu-inspector.png)
 
 ## 扩展阅读
 
@@ -501,7 +501,7 @@ const canvas = await new Canvas({
 [Rendering the scene]: https://threejs.org/docs/index.html#manual/en/introduction/Creating-a-scene
 [Creation of the WebGPU engine is asynchronous]: https://doc.babylonjs.com/setup/support/WebGPU/webGPUBreakingChanges#creation-of-the-webgpu-engine-is-asynchronous
 [Spector.js]: https://spector.babylonjs.com/
-[webgpu-devtools]: https://github.com/takahirox/webgpu-devtools
+[WebGPU Inspector]: https://github.com/brendan-duncan/webgpu_inspector
 [tapable]: https://github.com/webpack/tapable
 [Is the new Function performance really good?]: https://github.com/webpack/tapable/issues/162
 [WebGL Fundamentals]: https://webglfundamentals.org/

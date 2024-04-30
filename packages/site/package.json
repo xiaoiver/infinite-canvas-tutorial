@@ -30,7 +30,8 @@
     "@infinite-canvas-tutorial/lesson4": "workspace:*",
     "@infinite-canvas-tutorial/lesson5": "workspace:*",
     "@infinite-canvas-tutorial/lesson6": "workspace:*",
-    "@infinite-canvas-tutorial/lesson7": "workspace:*"
+    "@infinite-canvas-tutorial/lesson7": "workspace:*",
+    "@infinite-canvas-tutorial/lesson8": "workspace:*"
   },
   "devDependencies": {
     "vue": "^3.0.0",

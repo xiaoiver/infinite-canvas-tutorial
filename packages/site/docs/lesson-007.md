@@ -11,7 +11,7 @@ In this lesson, you will learn the following:
 - Implementing a zoom toolbar component
 
 <div style="width: 100%; height: 200px;">
-  <ic-canvas />
+  <ic-canvas-lesson7 />
 </div>
 
 ## Web UI with Lit and Shoelace

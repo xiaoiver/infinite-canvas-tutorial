@@ -4,7 +4,7 @@ import { customElement, property, state, query } from 'lit/decorators.js';
 import { Canvas } from '../Canvas';
 import { canvasContext } from './context';
 
-@customElement('ic-canvas')
+@customElement('ic-canvas-lesson7')
 export class InfiniteCanvas extends LitElement {
   static styles = css`
     :host {
@@ -38,8 +38,6 @@ export class InfiniteCanvas extends LitElement {
   connectedCallback() {
     super.connectedCallback();
     this.addEventListener('sl-resize', this.resize);
-
-    console.log(this.#canvas);
   }
 
   disconnectedCallback() {
@@ -92,7 +90,7 @@ export class InfiniteCanvas extends LitElement {
     return html`
       <sl-resize-observer>
         <canvas></canvas>
-        <ic-zoom-toolbar zoom=${this.zoom}></ic-zoom-toolbar>
+        <ic-zoom-toolbar-lesson7 zoom=${this.zoom}></ic-zoom-toolbar-lesson7>
       </sl-resize-observer>
     `;
   }
@@ -100,6 +98,6 @@ export class InfiniteCanvas extends LitElement {
 
 declare global {
   interface HTMLElementTagNameMap {
-    'ic-canvas': InfiniteCanvas;
+    'ic-canvas-lesson7': InfiniteCanvas;
   }
 }

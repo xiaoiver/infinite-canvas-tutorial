@@ -21,6 +21,10 @@ export const shared = defineConfig({
         },
       },
     },
+    footer: {
+      message: 'Released under the MIT License.',
+      copyright: 'Copyright © 2024-present Yuqi Pan',
+    },
   },
   sitemap: {
     hostname: 'https://infinitecanvas.cc',
@@ -30,22 +34,19 @@ export const shared = defineConfig({
     //   'link',
     //   { rel: 'icon', type: 'image/svg+xml', href: '/vitepress-logo-mini.svg' },
     // ],
-    // [
-    //   'link',
-    //   { rel: 'icon', type: 'image/png', href: '/vitepress-logo-mini.png' },
-    // ],
+    ['link', { rel: 'icon', type: 'image/png', href: '/canvas-mini.png' }],
     ['meta', { name: 'theme-color', content: '#5f67ee' }],
     ['meta', { property: 'og:type', content: 'website' }],
     ['meta', { property: 'og:locale', content: 'en' }],
     ['meta', { property: 'og:title', content: 'Infinite Canvas Tutorial' }],
     ['meta', { property: 'og:site_name', content: 'Infinite Canvas Tutorial' }],
-    // [
-    //   'meta',
-    //   {
-    //     property: 'og:image',
-    //     content: 'https://vitepress.dev/vitepress-og.jpg',
-    //   },
-    // ],
+    [
+      'meta',
+      {
+        property: 'og:image',
+        content: 'https://infinitecanvas.cc/canvas.png',
+      },
+    ],
     ['meta', { property: 'og:url', content: 'https://infinitecanvas.cc' }],
   ],
 });

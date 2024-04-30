@@ -29,11 +29,15 @@ export const zh = defineConfig({
           { text: '课程5 - 绘制网格', link: '/zh/lesson-005' },
           { text: '课程6 - 事件系统', link: '/zh/lesson-006' },
           { text: '课程7 - UI 组件', link: '/zh/lesson-007' },
+          { text: '课程8 - 性能优化', link: '/zh/lesson-008' },
         ],
       },
       {
         text: '案例',
-        items: [{ text: '一个太阳系模型', link: '/zh/solar-system' }],
+        items: [
+          { text: '一个太阳系模型', link: '/zh/solar-system' },
+          { text: '通过剔除减少 draw call', link: '/zh/culling' },
+        ],
       },
     ],
 

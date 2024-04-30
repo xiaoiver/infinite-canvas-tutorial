@@ -4,7 +4,7 @@ import { consume } from '@lit/context';
 import { canvasContext } from './context';
 import type { Canvas } from '../Canvas';
 
-@customElement('ic-zoom-toolbar')
+@customElement('ic-zoom-toolbar-lesson7')
 export class ZoomToolbar extends LitElement {
   static styles = css`
     :host {
@@ -20,6 +20,7 @@ export class ZoomToolbar extends LitElement {
       line-height: 32px;
       width: 32px;
       text-align: center;
+      color: var(--sl-color-neutral-600);
     }
   `;
 
@@ -62,6 +63,6 @@ export class ZoomToolbar extends LitElement {
 
 declare global {
   interface HTMLElementTagNameMap {
-    'ic-zoom-toolbar': ZoomToolbar;
+    'ic-zoom-toolbar-lesson7': ZoomToolbar;
   }
 }

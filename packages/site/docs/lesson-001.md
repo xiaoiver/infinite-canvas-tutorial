@@ -458,7 +458,7 @@ Finally, add the plugin to the list of plugins in the canvas:
 
 ## Demo
 
-Since we haven't drawn any graphics yet and the canvas is blank, how do we know what the underlying WebGL / WebGPU commands are calling? Debugging on the web side can be done using the Chrome plugins: [Spector.js] and [webgpu-devtools].
+Since we haven't drawn any graphics yet and the canvas is blank, how do we know what the underlying WebGL / WebGPU commands are calling? Debugging on the web side can be done using the Chrome plugins: [Spector.js] and [WebGPU Inspector].
 
 The image below shows the first frame command captured using Spector.js, and you can see that we have created a series of GPU objects such as FrameBuffer, Texture, etc. The following image shows the first frame command captured using Spector.js:
 
@@ -473,9 +473,9 @@ const canvas = await new Canvas({
 }).initialized;
 ```
 
-Open WebGPU DevTools to see the current GPU objects we've created and the commands called for each frame:
+Open WebGPU Inspector to see the current GPU objects we've created and the commands called for each frame:
 
-![WebGPU devtools snapshot](/webgpu-devtools.png)
+![WebGPU inspector snapshot](/webgpu-inspector.png)
 
 ## Extended reading
 
@@ -501,7 +501,7 @@ More on the plug-in design pattern:
 [Rendering the scene]: https://threejs.org/docs/index.html#manual/en/introduction/Creating-a-scene
 [Creation of the WebGPU engine is asynchronous]: https://doc.babylonjs.com/setup/support/WebGPU/webGPUBreakingChanges#creation-of-the-webgpu-engine-is-asynchronous
 [Spector.js]: https://spector.babylonjs.com/
-[webgpu-devtools]: https://github.com/takahirox/webgpu-devtools
+[WebGPU Inspector]: https://github.com/brendan-duncan/webgpu_inspector
 [tapable]: https://github.com/webpack/tapable
 [Is the new Function performance really good?]: https://github.com/webpack/tapable/issues/162
 [WebGL Fundamentals]: https://webglfundamentals.org/
