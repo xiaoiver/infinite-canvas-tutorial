@@ -256,7 +256,7 @@ class Circle {
 
 ```ts
 hooks.render.tap((shape) => {
-  shape.render(); // [!code --]
+  shape.render(); !code --]
   if (shape.renderable) {
     this.#batchManager.add(shape); // [!code ++]
   }

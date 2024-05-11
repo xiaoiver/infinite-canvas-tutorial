@@ -61,6 +61,7 @@ export class Grid {
         inputLayout: this.#inputLayout,
         program: this.#program,
         colorAttachmentFormats: [Format.U8_RGBA_RT],
+        depthStencilAttachmentFormat: Format.D24_S8,
         topology: PrimitiveTopology.TRIANGLE_STRIP,
       });
 

@@ -11,10 +11,10 @@ hero:
   actions:
     - theme: brand
       text: 课程列表
-      link: /zh/lesson-001
+      link: /zh/guide/lesson-001
     - theme: alt
       text: 示例
-      link: /zh/solar-system
+      link: /zh/example/solar-system
 
 features:
   - title: 高性能渲染

@@ -7,7 +7,9 @@ outline: deep
 在这节课中你将学习到以下内容：
 
 - 什么是 Draw call
-- 使用 GPU Instancing 提升绘制性能
+- 使用剔除减少 draw call
+- 使用合批减少 draw call
+- 使用空间索引提升拾取效率
 
 性能优化是一个复杂而长期的任务，我倾向于在项目早期就开始关注。之前我们学习了如何使用 SDF 绘制圆，现在让我们来做一下性能测试，绘制 1000 个圆 FPS 约为 35：
 
@@ -82,7 +84,7 @@ const animate = () => {
 - Culling 剔除掉视口外的图形
 - Draw call batching。将多个 Draw call 进行合并
 
-## Culling
+## 剔除
 
 视口之外的图形是不需要渲染的，下图来自 Unreal [How Culling Works]，从上帝视角展示了相机视锥之外被剔除的红色对象，可以看出这将大大减少不必要的 draw call。
 
@@ -96,11 +98,11 @@ const animate = () => {
 - Babylon.js [Changing Mesh Culling Strategy]
 - [pixi-cull]
 
-相比 3D 场景，我们的 2D 画布实现起来会简单很多。那么如何判断一个图形是否在视口内呢？这就需要引入包围盒的概念。
+相比 3D 场景，我们的 2D 画布实现起来会简单很多。那么如何判断一个图形是否在视口内呢？这就需要引入包围盒的概念。当然不一定非要使用包围盒，3D 场景中也可以用包围球代替。
 
 ### 包围盒
 
-轴对齐包围盒（Axis-Aligned Bounding Box，简称 AABB）是一种在三维图形学中常用的简单包围盒，它与世界坐标系的轴平行。换句话说，它的边与坐标轴的方向一致。轴对齐包围盒通常是、长方体，其用途是将一个物体或一组物体在空间中占据的区域用一个简化的盒子来表示。
+轴对齐包围盒（Axis-Aligned Bounding Box，简称 AABB）是一种在三维图形学中常用的简单包围盒，它与世界坐标系的轴平行。换句话说，它的边与坐标轴的方向一致。轴对齐包围盒通常是长方体，其用途是将一个物体或一组物体在空间中占据的区域用一个简化的盒子来表示。在我们的 2D 场景中它是一个矩形，我们只需要存储它的左上角 `minX/Y` 和右下角 `maxX/Y` 坐标：
 
 ```ts
 export class AABB {
@@ -116,7 +118,25 @@ export class AABB {
 }
 ```
 
-接下来为图形增加获取包围盒的方法。
+接下来为图形增加获取包围盒的方法。以圆为例，将圆心、半径和线宽都考虑进来。另外这里使用了[脏检查模式]，只有当相关属性发生变化时才会进行重新计算：
+
+```ts
+export class Circle extends Shape {
+  getRenderBounds() {
+    if (this.renderBoundsDirtyFlag) {
+      const halfLineWidth = this.#strokeWidth / 2;
+      this.renderBoundsDirtyFlag = false;
+      this.renderBounds = new AABB(
+        this.#cx - this.#r - halfLineWidth,
+        this.#cy - this.#r - halfLineWidth,
+        this.#cx + this.#r + halfLineWidth,
+        this.#cy + this.#r + halfLineWidth,
+      );
+    }
+    return this.renderBounds;
+  }
+}
+```
 
 ### 增加剔除插件
 
@@ -168,7 +188,7 @@ hooks.beginFrame.tap(() => {
 });
 ```
 
-来看下效果，缩放时被剔除图形数量也会随之变化：
+来看下效果，缩放时被剔除图形数量也会随之变化，被剔除的图形数目越多，FPS 就越高：
 
 ```js eval code=false
 $total = call(() => {
@@ -206,16 +226,16 @@ call(() => {
   $icCanvas2.addEventListener('ic-ready', (e) => {
     const canvas = e.detail;
 
-    for (let i = 0; i < 100; i++) {
+    for (let i = 0; i < 500; i++) {
       const circle = new Circle({
         cx: Math.random() * 1000,
         cy: Math.random() * 1000,
-        // cx: Math.random() * 0,
-        // cy: Math.random() * 0,
         r: Math.random() * 20,
         fill: `rgb(${Math.floor(Math.random() * 255)},${Math.floor(
           Math.random() * 255,
         )},${Math.floor(Math.random() * 255)})`,
+        batchable: false,
+        // cullable: false,
       });
       canvas.appendChild(circle);
       circles.push(circle);
@@ -235,14 +255,14 @@ call(() => {
 
 当视口包含所有图形时，任何图形都没法剔除，此时我们得使用其他手段减少 draw call。
 
-## Draw call batching
+## 合批渲染
 
 可以合并的 Draw call 是需要满足一定条件的，例如拥有相似的 Geometry，相同的 Shader 等。[Draw call batching - Unity] 提供了两种方式：
 
 - [Static batching] 适用于静止不动的物体，将它们转换到世界坐标系下，使用共享的顶点数组。完成后就不能对单个物体应用变换了。
 - [Dynamic batching] 适用于运动的物体。在 CPU 侧将顶点转换到世界坐标系下，但转换本身也有开销。
 
-Pixi.js 也内置了一个合批渲染系统：[Inside PixiJS: Batch Rendering System]
+Pixi.js 也内置了一个合批渲染系统，一直沿用到目前开发中的 V8 版本：[Inside PixiJS: Batch Rendering System]
 
 首先我们将渲染逻辑从图形中分离出来，这也是合理的，图形不应该关心自身如何被渲染：
 
@@ -263,13 +283,22 @@ hooks.render.tap((shape) => {
 });
 ```
 
+然后我们抽象出 Drawcall 这个抽象类，让之前实现的 SDF 继承它。包含以下生命周期：
+
+```ts
+export abstract class Drawcall {
+  abstract createGeometry(): void;
+  abstract createMaterial(uniformBuffer: Buffer): void;
+  abstract render(renderPass: RenderPass): void;
+  abstract destroy(): void;
+}
+
+export class SDF extends Drawcall {}
+```
+
 ### Instanced
 
-[WebGL2 Optimization - Instanced Drawing]
-
-在 Three.js 中称作 [InstancedMesh]
-
-Babylon.js 中也提供了 [Instances]
+对于大量同类图形，[WebGL2 Optimization - Instanced Drawing] 可以显著减少 draw call 的数量。在 Three.js 中称作 [InstancedMesh]。Babylon.js 中也提供了 [Instances]，每个实例特有的属性例如变换矩阵、颜色等可以通过顶点数组传入：
 
 ![instances node](https://doc.babylonjs.com/img/how_to/instances-node.png)
 
@@ -295,14 +324,141 @@ Babylon.js 中也提供了 [Instances]
 #endif
 ```
 
-另外也可以将各个实例的变换矩阵存储在数据纹理中，通过索引引用：
+值得一提的是，各个实例的变换矩阵除了直接存储在顶点数据中，也可以存储在数据纹理中，在顶点数组通过索引引用：
 [Drawing Many different models in a single draw call]
+
+我们为 Drawcall 增加一个标志位 `instanced`：
+
+```ts
+export abstract class Drawcall {
+  constructor(protected device: Device, protected instanced: boolean) {}
+}
+```
+
+依据这个标志位在 Shader 头部添加 `define` 预编译指令：
+
+```ts{5}
+export class SDF extends Drawcall {
+  createMaterial(uniformBuffer: Buffer): void {
+    let defines = '';
+    if (this.instanced) {
+      defines += '#define USE_INSTANCES\n';
+    }
+  }
+}
+```
+
+这样模型变换矩阵就可以从顶点数组或 Uniform 中计算得到：
+
+```glsl
+void main() {
+  mat3 model;
+  #ifdef USE_INSTANCES
+    model = mat3(a_Abcd.x, a_Abcd.y, 0, a_Abcd.z, a_Abcd.w, 0, a_Txty.x, a_Txty.y, 1);
+  #else
+    model = u_ModelMatrix;
+  #endif
+}
+```
+
+此时使用 [Spector.js] 可以看到当视口中存在 1000 个圆时，也能用一条 draw call 完成：
+
+![instanced draw calls in spector.js](/instanced-spector.png)
+
+我们也可以限制一个 Drawcall 中实例的最大数目，在每次创建前进行检查，如果超出就重新创建：
+
+```ts
+export abstract class Drawcall {
+  protected maxInstances = Infinity;
+  validate() {
+    return this.count() <= this.maxInstances - 1;
+  }
+}
+```
+
+### 绘制顺序
+
+既然我们使用一条 draw call 绘制多个图形，那就需要注意绘制顺序问题。每个元素在实例数组中的位置并不一定等同于最后的绘制顺序，因此需要在实际绘制前为每一个图形分配一个值，稍后将传入 Shader 中作为 Z 轴坐标：
+
+```ts{4}
+export class Renderer implements Plugin {
+  apply(context: PluginContext) {
+    hooks.render.tap((shape) => {
+      shape['#globalRenderOrder'] = this.#zIndexCounter++;
+    });
+
+    hooks.beginFrame.tap(() => {
+      this.#zIndexCounter = 0;
+    });
+  }
+}
+```
+
+然后创建一个 Depth RenderTarget
+
+```ts
+this.#renderPass = this.#device.createRenderPass({
+  colorAttachment: [this.#renderTarget],
+  colorResolveTo: [onscreenTexture],
+  colorClearColor: [TransparentWhite],
+  depthStencilAttachment: mainDepthRT, // [!code ++]
+  depthClearValue: 1, // [!code ++]
+});
+```
+
+```js eval code=false
+$icCanvas3 = call(() => {
+  return document.createElement('ic-canvas-lesson8');
+});
+```
+
+```js eval code=false inspector=false
+call(() => {
+  const { Canvas, Circle } = Lesson8;
+
+  const stats = new Stats();
+  stats.showPanel(0);
+  const $stats = stats.dom;
+  $stats.style.position = 'absolute';
+  $stats.style.left = '0px';
+  $stats.style.top = '0px';
+
+  $icCanvas3.parentElement.style.position = 'relative';
+  $icCanvas3.parentElement.appendChild($stats);
+
+  const circles = [];
+  $icCanvas3.addEventListener('ic-ready', (e) => {
+    const canvas = e.detail;
+
+    for (let i = 0; i < 1000; i++) {
+      const circle = new Circle({
+        cx: Math.random() * 1000,
+        cy: Math.random() * 1000,
+        r: Math.random() * 20,
+        fill: `rgb(${Math.floor(Math.random() * 255)},${Math.floor(
+          Math.random() * 255,
+        )},${Math.floor(Math.random() * 255)})`,
+        batchable: true,
+        // cullable: false,
+      });
+      canvas.appendChild(circle);
+      circles.push(circle);
+    }
+  });
+
+  $icCanvas3.addEventListener('ic-frame', (e) => {
+    stats.update();
+  });
+});
+```
 
 ### Batching
 
 Three.js [BatchedMesh: Proposal]
 
 ## 优化拾取性能
+
+接下来
 
 首先想到为图形增加包围盒，相比数学方法可以进行更快速的近似判断。后续在基于视口的剔除时还会使用到。
 
@@ -333,3 +489,4 @@ Three.js [BatchedMesh: Proposal]
 [WebGL2 Optimization - Instanced Drawing]: https://webgl2fundamentals.org/webgl/lessons/webgl-instanced-drawing.html
 [Drawing Many different models in a single draw call]: https://webglfundamentals.org/webgl/lessons/webgl-qna-drawing-many-different-models-in-a-single-draw-call.html
 [Instances]: https://doc.babylonjs.com/features/featuresDeepDive/mesh/copies/instances
+[脏检查模式]: /zh/lesson-002#脏检查

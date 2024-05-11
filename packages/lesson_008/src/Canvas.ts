@@ -182,7 +182,7 @@ export class Canvas {
   }
 
   removeChild(shape: Shape) {
-    this.#root.removeChild(shape);
+    return this.#root.removeChild(shape);
   }
 
   setCheckboardStyle(style: CheckboardStyle) {

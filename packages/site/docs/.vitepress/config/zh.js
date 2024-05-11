@@ -6,40 +6,91 @@ export const zh = defineConfig({
   description: '一个无限画布教程',
   themeConfig: {
     nav: [
-      { text: '课程', link: '/zh/lesson-001' },
-      { text: '案例', link: '/zh/solar-system' },
-    ],
-    sidebar: [
+      { text: '课程', link: '/zh/guide/lesson-001', activeMatch: '/zh/guide/' },
       {
-        text: '介绍',
+        text: '案例',
+        link: '/zh/example/solar-system',
+        activeMatch: '/zh/example/',
+      },
+      {
+        text: '文档',
+        link: '/zh/reference/canvas',
+        activeMatch: '/zh/reference/',
+      },
+    ],
+
+    sidebar: {
+      '/zh/guide/': {
+        base: '/zh/guide/',
         items: [
           {
-            text: '什么是无限画布？',
-            link: '/zh/what-is-an-infinite-canvas',
+            text: '介绍',
+            items: [
+              {
+                text: '什么是无限画布？',
+                link: '/zh/guide/what-is-an-infinite-canvas',
+              },
+            ],
+          },
+          {
+            text: '课程',
+            items: [
+              { text: '课程1 - 初始化画布', link: 'lesson-001' },
+              { text: '课程2 - 绘制圆', link: 'lesson-002' },
+              { text: '课程3 - 场景图和变换', link: 'lesson-003' },
+              { text: '课程4 - 相机', link: 'lesson-004' },
+              { text: '课程5 - 绘制网格', link: 'lesson-005' },
+              { text: '课程6 - 事件系统', link: 'lesson-006' },
+              { text: '课程7 - UI 组件', link: 'lesson-007' },
+              { text: '课程8 - 性能优化', link: 'lesson-008' },
+            ],
           },
         ],
       },
-      {
-        text: '课程',
+      '/zh/reference/': {
+        base: '/zh/reference/',
         items: [
-          { text: '课程1 - 初始化画布', link: '/zh/lesson-001' },
-          { text: '课程2 - 绘制圆', link: '/zh/lesson-002' },
-          { text: '课程3 - 场景图和变换', link: '/zh/lesson-003' },
-          { text: '课程4 - 相机', link: '/zh/lesson-004' },
-          { text: '课程5 - 绘制网格', link: '/zh/lesson-005' },
-          { text: '课程6 - 事件系统', link: '/zh/lesson-006' },
-          { text: '课程7 - UI 组件', link: '/zh/lesson-007' },
-          { text: '课程8 - 性能优化', link: '/zh/lesson-008' },
+          {
+            text: '画布',
+            link: 'canvas',
+          },
+          {
+            text: '相机',
+            link: 'camera',
+          },
+          {
+            text: '图形',
+            items: [
+              { text: 'Shape', link: 'shape' },
+              { text: 'Group', link: 'group' },
+              { text: 'Circle', link: 'circle' },
+            ],
+          },
         ],
       },
-      {
-        text: '案例',
+      '/zh/example/': {
+        base: '/zh/example/',
         items: [
-          { text: '一个太阳系模型', link: '/zh/solar-system' },
-          { text: '通过剔除减少 draw call', link: '/zh/culling' },
+          {
+            text: '案例',
+            items: [
+              { text: '一个太阳系模型', link: 'solar-system' },
+              { text: '通过剔除减少 draw call', link: 'culling' },
+              {
+                text: '通过实例化数组减少 draw call',
+                link: 'instanced',
+              },
+            ],
+          },
         ],
       },
-    ],
+    },
+
+    editLink: {
+      pattern:
+        'https://github.com/xiaoiver/infinite-canvas-tutorial/tree/master/packages/site/docs/:path',
+      text: '在 GitHub 上编辑此页面',
+    },
 
     docFooter: {
       prev: '上一页',

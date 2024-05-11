@@ -1,51 +1,66 @@
-import { Buffer, Device, Program, RenderPass } from '@antv/g-device-api';
+import { Buffer, Device, RenderPass } from '@antv/g-device-api';
 import { Shape } from '../shapes';
 
-export class Drawcall {
-  shapes: Shape[] = [];
-  get instance() {
-    return this.shapes[0];
-  }
+export const ZINDEX_FACTOR = 50000;
 
-  instanced: boolean;
-
-  protected program: Program;
+export abstract class Drawcall {
+  protected shapes: Shape[] = [];
 
   /**
    * Create a new batch if the number of instances exceeds.
    */
-  maxInstances = Infinity;
+  protected maxInstances = Infinity;
 
-  index = 0;
+  protected geometryDirty = true;
+  protected materialDirty = true;
 
-  geometryDirty = true;
+  constructor(protected device: Device, protected instanced: boolean) {}
 
-  constructor(protected device: Device) {}
+  abstract createGeometry(): void;
+  abstract createMaterial(uniformBuffer: Buffer): void;
+  abstract render(renderPass: RenderPass): void;
+  abstract destroy(): void;
 
-  shouldMerge(shape: Shape, index: number) {
-    if (!this.instance) {
-      return true;
-    }
-
-    if (this.instance.constructor !== shape.constructor) {
-      return false;
-    }
-
-    return true;
+  validate() {
+    return this.count() <= this.maxInstances - 1;
   }
-
-  protected init() {}
-  protected render(renderPass: RenderPass, uniformBuffer: Buffer) {}
 
   submit(renderPass: RenderPass, uniformBuffer: Buffer) {
-    if (!this.program) {
-      this.init();
+    if (this.geometryDirty) {
+      this.createGeometry();
     }
 
-    this.render(renderPass, uniformBuffer);
+    if (this.materialDirty) {
+      this.createMaterial(uniformBuffer);
+    }
+
+    this.render(renderPass);
+
+    if (this.geometryDirty) {
+      this.geometryDirty = false;
+    }
+
+    if (this.materialDirty) {
+      this.materialDirty = false;
+    }
   }
 
-  destroy() {
-    this.program.destroy();
+  add(shape: Shape) {
+    if (!this.shapes.includes(shape)) {
+      this.shapes.push(shape);
+      this.geometryDirty = true;
+    }
+  }
+
+  remove(shape: Shape) {
+    if (this.shapes.includes(shape)) {
+      const index = this.shapes.indexOf(shape);
+      this.shapes.splice(index, 1);
+      this.geometryDirty = true;
+    }
+  }
+
+  count() {
+    return this.shapes.length;
   }
 }

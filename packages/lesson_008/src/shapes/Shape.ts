@@ -31,7 +31,17 @@ export abstract class Shape
   extends EventEmitter
   implements FederatedEventTarget
 {
+  /**
+   * A unique identifier for this object.
+   */
   uid = uid();
+
+  /**
+   * The global render order of this object.
+   * A higher value will render over the top of lower values.
+   * by {@link Renderer} plugin.
+   */
+  #globalRenderOrder: number;
 
   /**
    * Avoid unnecessary work like updating Buffer by deferring it until needed.
@@ -51,18 +61,54 @@ export abstract class Shape
   protected renderBounds: AABB;
   protected renderBoundsDirtyFlag = true;
 
+  /**
+   * The bounding box of the hit area.
+   */
   hitArea: Rectangle | undefined;
+
   /**
    * @see https://developer.mozilla.org/zh-CN/docs/Web/CSS/pointer-events
    */
   pointerEvents: PointerEvents;
+
+  /**
+   * The cursor to be displayed when the mouse pointer is over the object.
+   */
   cursor: Cursor | string;
+
+  /**
+   * Whether this object is visible.
+   */
   visible: boolean;
+
+  /**
+   * Whether this object is renderable.
+   */
   renderable: boolean;
+
+  /**
+   * Whether this object is draggable. Used in {@link DragAndDrop} plugin.
+   */
   draggable: boolean;
+
+  /**
+   * Whether this object is droppable. Used in {@link DragAndDrop} plugin.
+   */
   droppable: boolean;
+
+  /**
+   * Whether this object should be culled by the {@link Culling} plugin.
+   */
   cullable: boolean;
+  /**
+   * Whether this object is culled by the {@link Culling} plugin.
+   */
   culled: boolean;
+
+  /**
+   * Use instanced rendering to reduce the number of draw calls.
+   */
+  batchable: boolean;
 
   /**
    * World transform and local transform of this object.
@@ -72,11 +118,6 @@ export abstract class Shape
   parent?: Shape;
 
   readonly children: Shape[] = [];
-
-  /**
-   * Use instanced rendering to reduce the number of draw calls.
-   */
-  batchable: boolean;
 
   constructor(attributes: Partial<ShapeAttributes> = {}) {
     super();
@@ -89,6 +130,7 @@ export abstract class Shape
     this.cullable = attributes.cullable ?? true;
     this.draggable = attributes.draggable ?? false;
     this.droppable = attributes.droppable ?? false;
+    this.batchable = attributes.batchable ?? false;
   }
 
   addEventListener(

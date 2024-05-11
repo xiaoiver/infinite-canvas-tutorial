@@ -3,3 +3,7 @@ figcaption {
   text-align: center;
   font-style: italic;
 }
+
+.genji-cell {
+  z-index: calc(var(--vp-z-index-local-nav) - 1);
+}

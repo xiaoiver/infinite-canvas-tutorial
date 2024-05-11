@@ -10,11 +10,11 @@ hero:
     alt: Infinite Canvas
   actions:
     - theme: brand
-      text: Lessons
-      link: /lesson-001
+      text: Guide
+      link: /guide/lesson-001
     - theme: alt
-      text: Demo
-      link: /solar-system
+      text: Example
+      link: /example/solar-system
 
 features:
   - title: High-Performance Rendering

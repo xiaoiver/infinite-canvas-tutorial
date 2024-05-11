@@ -10,6 +10,9 @@ export interface CircleAttributes extends ShapeAttributes {
   fill: string;
   stroke: string;
   strokeWidth: number;
+  opacity: number;
+  fillOpacity: number;
+  strokeOpacity: number;
 }
 
 export class Circle extends Shape {
@@ -21,11 +24,24 @@ export class Circle extends Shape {
   #stroke: string;
   #strokeRGB: d3.RGBColor;
   #strokeWidth: number;
+  #opacity: number;
+  #fillOpacity: number;
+  #strokeOpacity: number;
 
   constructor(config: Partial<CircleAttributes> = {}) {
     super(config);
 
-    const { cx, cy, r, fill, stroke, strokeWidth } = config;
+    const {
+      cx,
+      cy,
+      r,
+      fill,
+      stroke,
+      strokeWidth,
+      opacity,
+      fillOpacity,
+      strokeOpacity,
+    } = config;
 
     this.cx = cx ?? 0;
     this.cy = cy ?? 0;
@@ -33,6 +49,9 @@ export class Circle extends Shape {
     this.fill = fill ?? 'black';
     this.stroke = stroke ?? 'black';
     this.strokeWidth = strokeWidth ?? 0;
+    this.opacity = opacity ?? 1;
+    this.fillOpacity = fillOpacity ?? 1;
+    this.strokeOpacity = strokeOpacity ?? 1;
   }
 
   get cx() {
@@ -107,6 +126,39 @@ export class Circle extends Shape {
   set strokeWidth(strokeWidth: number) {
     if (this.#strokeWidth !== strokeWidth) {
       this.#strokeWidth = strokeWidth;
+      this.renderDirtyFlag = true;
+    }
+  }
+
+  get opacity() {
+    return this.#opacity;
+  }
+
+  set opacity(opacity: number) {
+    if (this.#opacity !== opacity) {
+      this.#opacity = opacity;
+      this.renderDirtyFlag = true;
+    }
+  }
+
+  get fillOpacity() {
+    return this.#fillOpacity;
+  }
+
+  set fillOpacity(fillOpacity: number) {
+    if (this.#fillOpacity !== fillOpacity) {
+      this.#fillOpacity = fillOpacity;
+      this.renderDirtyFlag = true;
+    }
+  }
+
+  get strokeOpacity() {
+    return this.#strokeOpacity;
+  }
+
+  set strokeOpacity(strokeOpacity: number) {
+    if (this.#strokeOpacity !== strokeOpacity) {
+      this.#strokeOpacity = strokeOpacity;
       this.renderDirtyFlag = true;
     }
   }

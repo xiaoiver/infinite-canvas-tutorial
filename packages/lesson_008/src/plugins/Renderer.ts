@@ -16,9 +16,9 @@ import type {
   RenderTarget,
 } from '@antv/g-device-api';
 import type { Plugin, PluginContext } from './interfaces';
-import { IDENTITY_TRANSFORM, Grid } from '../shapes';
-import { paddingMat3 } from '../utils';
-import { BatchManager } from '../render/BatchManager';
+import { IDENTITY_TRANSFORM, Grid, Shape } from '../shapes';
+import { difference, paddingMat3 } from '../utils';
+import { BatchManager } from '../drawcalls/BatchManager';
 
 export enum CheckboardStyle {
   NONE,
@@ -30,6 +30,7 @@ export class Renderer implements Plugin {
   #swapChain: SwapChain;
   #device: Device;
   #renderTarget: RenderTarget;
+  #depthRenderTarget: RenderTarget;
   #renderPass: RenderPass;
   #uniformBuffer: Buffer;
 
@@ -37,6 +38,10 @@ export class Renderer implements Plugin {
   #grid: Grid;
 
   #batchManager: BatchManager;
+  #zIndexCounter = 1;
+
+  #shapesRenderedLastFrame: Shape[] = [];
+  #shapesRenderedThisFrame: Shape[] = [];
 
   apply(context: PluginContext) {
     const {
@@ -82,6 +87,14 @@ export class Renderer implements Plugin {
           usage: TextureUsage.RENDER_TARGET,
         }),
       );
+      this.#depthRenderTarget = this.#device.createRenderTargetFromTexture(
+        this.#device.createTexture({
+          format: Format.D24_S8,
+          width,
+          height,
+          usage: TextureUsage.RENDER_TARGET,
+        }),
+      );
 
       this.#uniformBuffer = this.#device.createBuffer({
         viewOrSize: new Float32Array([
@@ -116,6 +129,15 @@ export class Renderer implements Plugin {
             usage: TextureUsage.RENDER_TARGET,
           }),
         );
+        this.#depthRenderTarget.destroy();
+        this.#depthRenderTarget = this.#device.createRenderTargetFromTexture(
+          this.#device.createTexture({
+            format: Format.D24_S8,
+            width: width * devicePixelRatio,
+            height: height * devicePixelRatio,
+            usage: TextureUsage.RENDER_TARGET,
+          }),
+        );
       }
     });
 
@@ -124,6 +146,7 @@ export class Renderer implements Plugin {
       this.#uniformBuffer.destroy();
       this.#grid.destroy();
       this.#renderTarget.destroy();
+      this.#depthRenderTarget.destroy();
       this.#device.destroy();
       this.#device.checkForLeaks();
     });
@@ -153,26 +176,48 @@ export class Renderer implements Plugin {
         colorAttachment: [this.#renderTarget],
         colorResolveTo: [onscreenTexture],
         colorClearColor: [TransparentWhite],
+        depthStencilAttachment: this.#depthRenderTarget,
+        depthClearValue: 1,
       });
 
       this.#renderPass.setViewport(0, 0, width, height);
       this.#grid.render(this.#device, this.#renderPass, this.#uniformBuffer);
       this.#batchManager.clear();
+      this.#zIndexCounter = 1;
+      this.#shapesRenderedThisFrame = [];
     });
 
     hooks.endFrame.tap(() => {
+      this.#shapesRenderedThisFrame.forEach((shape) => {
+        this.#batchManager.add(shape);
+      });
+      difference(
+        this.#shapesRenderedLastFrame,
+        this.#shapesRenderedThisFrame,
+      ).forEach((shape) => {
+        this.#batchManager.remove(shape);
+      });
+
       this.#batchManager.flush(this.#renderPass, this.#uniformBuffer);
       this.#device.submitPass(this.#renderPass);
       this.#device.endFrame();
+      this.#shapesRenderedLastFrame = this.#shapesRenderedThisFrame;
     });
 
     hooks.render.tap((shape) => {
+      // Changed Transform should also set dirty flag.
+      const isDirty = shape['_localID'] !== shape['_currentLocalID'];
+      if (isDirty) {
+        shape['renderDirtyFlag'] = true;
+      }
+
       shape.transform.updateTransform(
         shape.parent ? shape.parent.transform : IDENTITY_TRANSFORM,
       );
 
       if (shape.renderable) {
-        this.#batchManager.add(shape);
+        this.#shapesRenderedThisFrame.push(shape);
+        shape['#globalRenderOrder'] = this.#zIndexCounter++;
       }
     });
   }
