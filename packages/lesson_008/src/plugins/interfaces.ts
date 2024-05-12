@@ -1,6 +1,7 @@
+import type RBush from 'rbush';
 import type { IPointData } from '@pixi/math';
 import { Camera } from '../Camera';
-import { type Group, Shape } from '../shapes';
+import { type Group, Shape, RBushNodeAABB } from '../shapes';
 import { AsyncParallelHook, SyncHook, SyncWaterfallHook } from '../utils';
 import type { InteractivePointerEvent } from './DOMEventListener';
 
@@ -82,9 +83,16 @@ export interface PluginContext {
   hooks: Hooks;
   camera: Camera;
   root: Group;
+  rBushRoot: RBush<RBushNodeAABB>;
   api: {
     elementsFromPoint(x: number, y: number): Shape[];
     elementFromPoint(x: number, y: number): Shape;
+    elementsFromBBox(
+      minX: number,
+      minY: number,
+      maxX: number,
+      maxY: number,
+    ): Shape[];
     client2Viewport({ x, y }: IPointData): IPointData;
     viewport2Client({ x, y }: IPointData): IPointData;
     viewport2Canvas({ x, y }: IPointData): IPointData;

@@ -92,7 +92,7 @@ $button = call(() => {
 })();
 ```
 
-## 相机是什么
+## 相机是什么 {#what-is-a-camera}
 
 首先需要明确的是无论是 WebGL，WebGPU 还是 WebXR 都没有相机相关的 API。但我们可以通过一个虚拟的相机（Camera）描述观察世界的角度。其中视点、相机位置都会影响最终的成像，它适用于 2D 和 3D 场景。通过控制相机，我们能轻松实现某些过去需要移动整个画布的操作，甚至能实现相机动画。下图来自 [WebGL 3D - Cameras] 展示了上帝视角下 XZ 平面的内容，如果想实现同样的视觉效果，移动相机（左图）相比旋转整个画布内的全部对象（右图）要更加符合直觉，并且在实现中性能更高，我们很快就将看到这一点：
 
@@ -106,7 +106,7 @@ $button = call(() => {
 
 ![coordinates](/coordinates.png)
 
-## 投影变换
+## 投影变换 {#projection-transformation}
 
 首先回顾下之前从像素空间到裁剪空间的变换：
 
@@ -197,7 +197,7 @@ export class Canvas {
 
 下面让我们考虑相机的变换问题，例如平移。
 
-## 相机变换
+## 相机变换 {#camera-transformation}
 
 同样相机变换也可以用矩阵表示，完成后我们在 Shader 中可以通过如下方式使用。相比计算并更新每个图形的模型变换矩阵 `u_ModelMatrix`，全局一次性更新相机变换矩阵效率更高：
 
@@ -237,7 +237,7 @@ export class Camera {
 }
 ```
 
-### 平移
+### 平移 {#translation}
 
 在 [infinitecanvas] 对无限画布的定义中，“延展性” 是通过画布级的平移体现的：
 
@@ -361,7 +361,7 @@ call(() => {
 
 看起来不错，如果能通过鼠标拖拽交互就更自然了。
 
-### 增加插件
+### 增加插件 {#implement-a-plugin}
 
 我们决定通过插件实现这一功能：
 
@@ -453,7 +453,7 @@ function moveCamera(e: MouseEvent) {
 
 可以回到页面顶部的例子中，尝试拖拽画布。
 
-### 旋转
+### 旋转 {#rotation}
 
 旋转对于画布来说显然不是一个重要的特性，但一位 FigJam 用户在论坛提过能否支持：[Rotate canvas]，因为画布稍稍旋转一定角度更符合自己平时的使用习惯。
 
@@ -501,7 +501,7 @@ function rotateCamera(e: MouseEvent) {
 
 可以回到页面顶部的例子中，尝试按住 <kbd>Shift</kbd> 并拖拽画布。
 
-### 指定点缩放
+### 指定点缩放 {#rotate-around-pivot}
 
 在电影摄影或视频制作中，zoom 一词通常指的是改变相机镜头的焦距来放大或缩小画面的拍摄手法，在中文中翻译为“变焦”。拉近拉远可以造成放大缩小的效果，在 3D 编程中可以通过改变相机的视野（Field of View）或缩放变换实现，我们选择后者。
 
@@ -548,7 +548,7 @@ canvas.addEventListener('wheel', (e) => {
 
 现在让我们进入下一个话题，如何让相机的运动效果更自然。
 
-## 相机动画
+## 相机动画 {#camera-animation}
 
 Mapbox 提供了 [flyTo - Mapbox] 方法，可以在不同地点间进行平滑的移动。下面我们参考 [WebGL Insights - 23.Designing Cameras for WebGL Applications] 来实现相机动画，在任意相机状态间平滑过渡。
 
@@ -564,7 +564,7 @@ const landmark = camera.createLandmark({ zoom: 2 });
 camera.gotoLandmark(landmark, { duration: 300 });
 ```
 
-### 创建 Landmark
+### 创建 Landmark {#create-landmark}
 
 `Landmark` 需要包含相机参数：
 
@@ -593,7 +593,7 @@ export class Camera {
 }
 ```
 
-### 动画效果
+### 动画效果 {#animation-effects}
 
 动画效果取决于缓动函数，我们使用 [bezier-easing] 实现了一些常用的 [Cubic Bézier easing functions]：
 
@@ -712,7 +712,7 @@ if (dist <= EPSILON) {
 
 回到页面顶部的例子试试吧，点击按钮回到相机的初始状态。
 
-## 扩展阅读
+## 扩展阅读 {#extended-reading}
 
 - [WebGL Insights - 23.Designing Cameras for WebGL Applications]
 - [LearnWebGL - Introduction to Cameras]
@@ -725,7 +725,7 @@ if (dist <= EPSILON) {
 [WebGL 3D - Cameras]: https://webglfundamentals.org/webgl/lessons/webgl-3d-camera.html
 [How to implement zoom from mouse in 2D WebGL]: https://webglfundamentals.org/webgl/lessons/webgl-qna-how-to-implement-zoom-from-mouse-in-2d-webgl.html
 [gl-matrix]: https://github.com/toji/gl-matrix
-[对齐问题]: /zh/lesson-003.html#对齐问题
+[对齐问题]: /zh/guide/lesson-003.html#对齐问题
 [OrthographicCamera.zoom]: https://threejs.org/docs/#api/en/cameras/OrthographicCamera.zoom
 [Rotate canvas]: https://forum.figma.com/t/rotate-canvas/42818
 [infinitecanvas]: https://infinitecanvas.tools

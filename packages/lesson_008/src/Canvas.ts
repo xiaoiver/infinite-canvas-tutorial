@@ -1,3 +1,4 @@
+import RBush from 'rbush';
 import type { IPointData } from '@pixi/math';
 import { Camera } from './Camera';
 import {
@@ -14,7 +15,7 @@ import {
   findZoomCeil,
   findZoomFloor,
 } from './plugins';
-import { Group, type Shape } from './shapes';
+import { Group, RBushNodeAABB, type Shape } from './shapes';
 import {
   AsyncParallelHook,
   SyncHook,
@@ -98,9 +99,11 @@ export class Canvas {
       },
       camera,
       root: this.#root,
+      rBushRoot: new RBush<RBushNodeAABB>(),
       api: {
         elementsFromPoint: this.elementsFromPoint.bind(this),
         elementFromPoint: this.elementFromPoint.bind(this),
+        elementsFromBBox: this.elementsFromBBox.bind(this),
         client2Viewport: this.client2Viewport.bind(this),
         viewport2Canvas: camera.viewport2Canvas.bind(camera),
         viewport2Client: this.viewport2Client.bind(this),
@@ -187,6 +190,43 @@ export class Canvas {
 
   setCheckboardStyle(style: CheckboardStyle) {
     this.#rendererPlugin.setCheckboardStyle(style);
+  }
+
+  elementsFromBBox(
+    minX: number,
+    minY: number,
+    maxX: number,
+    maxY: number,
+  ): Shape[] {
+    const { rBushRoot } = this.#pluginContext;
+    const rBushNodes = rBushRoot.search({ minX, minY, maxX, maxY });
+
+    const hitTestList: Shape[] = [];
+    rBushNodes.forEach(({ shape }) => {
+      const { pointerEvents = 'auto' } = shape;
+
+      // account for `visibility`
+      // @see https://developer.mozilla.org/en-US/docs/Web/CSS/pointer-events
+      const isVisibilityAffected = [
+        'auto',
+        'visiblepainted',
+        'visiblefill',
+        'visiblestroke',
+        'visible',
+      ].includes(pointerEvents);
+
+      if (
+        (!isVisibilityAffected || (isVisibilityAffected && shape.visible)) &&
+        !shape.culled &&
+        shape.pointerEvents !== 'none'
+      ) {
+        hitTestList.push(shape);
+      }
+    });
+    // find group with max z-index
+    hitTestList.sort((a, b) => b.globalRenderOrder - a.globalRenderOrder);
+
+    return hitTestList;
   }
 
   /**

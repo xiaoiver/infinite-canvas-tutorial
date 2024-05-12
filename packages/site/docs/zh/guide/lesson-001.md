@@ -61,7 +61,7 @@ renderer = Inputs.select(['webgl', 'webgpu'], { label: 'renderer' });
 })();
 ```
 
-## 硬件抽象层
+## 硬件抽象层 {#hardware-abstraction-layers}
 
 我希望画布使用 WebGL 和 WebGPU 这样更底层的渲染 API，作为 WebGL 的继任者，WebGPU 有非常多的特性增强，详见[From WebGL to WebGPU]：
 
@@ -107,7 +107,7 @@ fn main(@location(0) a_Position: vec4<f32>) -> VertexOutput {
 
 好了，关于硬件抽象层部分已经介绍地够多了，如果对其中的实现细节感兴趣可以直接参考 [@antv/g-device-api] 源码。在本节课最后一小节中我们会使用到其中的部分 API。
 
-## 画布 API 设计
+## 画布 API 设计 {#design-the-canvas-api}
 
 终于进入到了我们的画布 API 设计部分。我们期待的简单用法如下：
 
@@ -144,7 +144,7 @@ interface Canvas {
 }
 ```
 
-### 异步初始化
+### 异步初始化 {#asynchronous-initialization}
 
 这也是 WebGPU 和 WebGL 的一大差异，在 WebGL 中获取上下文是同步的，而 WebGPU 获取 Device 是一个异步过程：
 
@@ -199,7 +199,7 @@ const canvas = await new Canvas().initialized;
 animation.ready.then(() => {});
 ```
 
-### 实现
+### 实现 {#implementation}
 
 在实现中我们使用一个私有变量持有 Promise，getter 也能确保它是只读的：
 
@@ -225,7 +225,7 @@ constructor() {
 
 让我们继续优化目前的设计。
 
-## 插件系统
+## 插件系统 {#plugin-based-architecture}
 
 我们当然可以把调用硬件抽象层的代码放在 Canvas 的构造函数中，并在 `destroy` 方法中一并销毁。但后续在初始化、渲染、销毁阶段增加更多任务时，Canvas 的逻辑也会不断膨胀。我们很难在开始阶段就把所有需要支持的功能都想清楚，因此希望画布是具有可扩展性的。
 
@@ -326,7 +326,7 @@ this.#instancePromise = (async () => {
 
 现在我们拥有了所需的全部知识，可以实现第一个插件了。
 
-## 渲染插件
+## 渲染插件 {#renderer-plugin}
 
 我们希望支持 WebGL 和 WebGPU，因此在画布构造函数中支持通过 `renderer` 参数配置，随后传入插件上下文：
 
@@ -344,7 +344,7 @@ this.#pluginContext = {
 
 接下来我们介绍如何在渲染插件中使用硬件抽象层。
 
-### SwapChain
+### SwapChain {#swapchain}
 
 在 OpenGL / WebGL 中 [Default Framebuffer] 和通常的 Framebuffer Object(FBO) 不同，它是在初始化上下文时自动创建的。在调用绘制命令时如果没有特别指定 FBO，OpenGL 会自动将渲染结果写入 Default Framebuffer，其中的颜色缓冲区 Color Buffer 最终会显示在屏幕上。
 
@@ -387,7 +387,7 @@ export class Renderer implements Plugin {
 }
 ```
 
-### devicePixelRatio
+### devicePixelRatio {#devicepixelratio}
 
 [devicePixelRatio] 描述了单个 CSS 像素应该用多少屏幕实际像素来绘制。通常我们会使用如下代码设置 `<canvas>`：
 
@@ -456,7 +456,7 @@ hooks.endFrame.tap(() => {
 });
 ```
 
-## 效果展示
+## 效果展示 {#demo}
 
 由于还没有绘制任何图形，画布一片空白，我们如何知道底层 WebGL / WebGPU 命令的调用情况呢？在 Web 端调试可以使用 Chrome 浏览器插件：[Spector.js] 和 [WebGPU Inspector]。
 
@@ -477,7 +477,7 @@ const canvas = await new Canvas({
 
 ![WebGPU inspector snapshot](/webgpu-inspector.png)
 
-## 扩展阅读
+## 扩展阅读 {#extended-reading}
 
 如果你完全没有 WebGL 基础，可以先尝试学习：
 

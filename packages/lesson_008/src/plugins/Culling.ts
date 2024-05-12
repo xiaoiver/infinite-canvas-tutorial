@@ -1,5 +1,5 @@
 import type { Plugin, PluginContext } from './interfaces';
-import { AABB } from '../shapes';
+import { AABB, RBushNodeAABB } from '../shapes';
 import { traverse } from '../utils';
 
 export class Culling implements Plugin {
@@ -7,7 +7,7 @@ export class Culling implements Plugin {
   #viewport: AABB = new AABB();
 
   apply(context: PluginContext) {
-    const { root, hooks } = context;
+    const { root, hooks, rBushRoot } = context;
     this.#context = context;
 
     hooks.cameraChange.tap(this.updateViewport.bind(this));
@@ -15,6 +15,24 @@ export class Culling implements Plugin {
 
     hooks.beginFrame.tap(() => {
       const { minX, minY, maxX, maxY } = this.#viewport;
+
+      if (rBushRoot.all().length === 0) {
+        const bulk: RBushNodeAABB[] = [];
+        traverse(root, (shape) => {
+          if (shape.renderable) {
+            const bounds = shape.getBounds();
+            bulk.push({
+              minX: bounds.minX,
+              minY: bounds.minY,
+              maxX: bounds.maxX,
+              maxY: bounds.maxY,
+              shape,
+            });
+          }
+        });
+        rBushRoot.clear();
+        rBushRoot.load(bulk);
+      }
 
       // const timeStart = performance.now();
 

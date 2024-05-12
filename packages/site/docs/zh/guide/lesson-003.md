@@ -6,70 +6,70 @@ outline: deep
 
 上一节课中我们绘制了一个圆，在这节课中你将学习到以下内容：
 
--   变换。让图形支持平移、缩放、旋转、斜切变换。
--   场景图。
+- 变换。让图形支持平移、缩放、旋转、斜切变换。
+- 场景图。
 
 最后我们利用以上特性实现一个简单的“太阳系”模型。
 
 ```js eval code=false
 (async () => {
-    const { Canvas, Circle, Group } = Lesson3;
+  const { Canvas, Circle, Group } = Lesson3;
 
-    const canvas = await Utils.createCanvas(Canvas, 400, 400);
+  const canvas = await Utils.createCanvas(Canvas, 400, 400);
 
-    const solarSystem = new Group();
-    const earthOrbit = new Group();
-    const moonOrbit = new Group();
+  const solarSystem = new Group();
+  const earthOrbit = new Group();
+  const moonOrbit = new Group();
 
-    const sun = new Circle({
-        cx: 0,
-        cy: 0,
-        r: 100,
-        fill: 'red',
-    });
-    const earth = new Circle({
-        cx: 0,
-        cy: 0,
-        r: 50,
-        fill: 'blue',
-    });
-    const moon = new Circle({
-        cx: 0,
-        cy: 0,
-        r: 25,
-        fill: 'yellow',
-    });
-    solarSystem.appendChild(sun);
-    solarSystem.appendChild(earthOrbit);
-    earthOrbit.appendChild(earth);
-    earthOrbit.appendChild(moonOrbit);
-    moonOrbit.appendChild(moon);
+  const sun = new Circle({
+    cx: 0,
+    cy: 0,
+    r: 100,
+    fill: 'red',
+  });
+  const earth = new Circle({
+    cx: 0,
+    cy: 0,
+    r: 50,
+    fill: 'blue',
+  });
+  const moon = new Circle({
+    cx: 0,
+    cy: 0,
+    r: 25,
+    fill: 'yellow',
+  });
+  solarSystem.appendChild(sun);
+  solarSystem.appendChild(earthOrbit);
+  earthOrbit.appendChild(earth);
+  earthOrbit.appendChild(moonOrbit);
+  moonOrbit.appendChild(moon);
 
-    solarSystem.position.x = 200;
-    solarSystem.position.y = 200;
-    earthOrbit.position.x = 100;
-    moonOrbit.position.x = 100;
+  solarSystem.position.x = 200;
+  solarSystem.position.y = 200;
+  earthOrbit.position.x = 100;
+  moonOrbit.position.x = 100;
 
-    canvas.appendChild(solarSystem);
+  canvas.appendChild(solarSystem);
 
-    let id;
-    const animate = () => {
-        solarSystem.rotation += 0.01;
-        earthOrbit.rotation += 0.02;
-        canvas.render();
-        id = requestAnimationFrame(animate);
-    };
-    animate();
+  let id;
+  const animate = () => {
+    solarSystem.rotation += 0.01;
+    earthOrbit.rotation += 0.02;
+    canvas.render();
+    id = requestAnimationFrame(animate);
+  };
+  animate();
 
-    unsubscribe(() => {
-        cancelAnimationFrame(id);
-        canvas.destroy();
-    });
-    return canvas.getDOM();
+  unsubscribe(() => {
+    cancelAnimationFrame(id);
+    canvas.destroy();
+  });
+  return canvas.getDOM();
 })();
 ```
 
-## 变换
+## 变换 {#transform}
 
 [CSS Transform] 提供了 `translate` `scale` `rotate` `skew` 等变换。
 关于这些变换背后对应的矩阵可以参考：[Transformations - LearnOpenGL]。由于我们的场景中只包含 2D 图形，因此仅需要 3x3 的矩阵，由于最后一行 `[0, 0, 1]` 都是固定的，实际上只需要存储矩阵中的 6 个元素：
@@ -86,13 +86,13 @@ outline: deep
 import { Transform } from '@pixi/math';
 
 export abstract class Shape {
-    transform = new Transform();
+  transform = new Transform();
 }
 ```
 
 在增加更多方法前，我们先介绍一个重要的概念。
 
-### 局部和世界坐标系
+### 局部和世界坐标系 {#local-and-world-coordinates}
 
 坐标系可以用来描述场景中物体的位置、旋转和缩放情况，最著名的坐标系是欧式坐标系。在图形学中我们还会使用到重心坐标系。欧式空间可以包含 N 维，这里我们只使用二维空间。
 
@@ -112,12 +112,12 @@ export abstract class Shape {
 
 ```ts
 export abstract class Shape {
-    get localTransform(): Matrix {
-        return this.transform.localTransform;
-    }
-    get worldTransform(): Matrix {
-        return this.transform.worldTransform;
-    }
+  get localTransform(): Matrix {
+    return this.transform.localTransform;
+  }
+  get worldTransform(): Matrix {
+    return this.transform.worldTransform;
+  }
 }
 ```
 
@@ -127,7 +127,7 @@ export abstract class Shape {
 
 接下来我们需要将模型变换矩阵传入 Shader 中对顶点位置进行变换。
 
-### 对齐问题
+### 对齐问题 {#alignment}
 
 在 Vertex Shader 中模型变换矩阵通过 Uniform 传入，然后与位置向量左乘：
 
@@ -143,9 +143,9 @@ vec2 position = (u_ModelMatrix * vec3(a_Position + a_Size * a_FragCoord, 1)).xy;
 
 ```ts
 this.#uniformBuffer = device.createBuffer({
-    viewOrSize: Float32Array.BYTES_PER_ELEMENT * 9, // mat3
-    usage: BufferUsage.UNIFORM,
-    hint: BufferFrequencyHint.DYNAMIC,
+  viewOrSize: Float32Array.BYTES_PER_ELEMENT * 9, // mat3
+  usage: BufferUsage.UNIFORM,
+  hint: BufferFrequencyHint.DYNAMIC,
 });
 ```
 
@@ -163,8 +163,8 @@ this.#uniformBuffer = device.createBuffer({
 
 ```ts
 this.#uniformBuffer = device.createBuffer({
-    viewOrSize: Float32Array.BYTES_PER_ELEMENT * 12, // mat3
-    usage: BufferUsage.UNIFORM,
+  viewOrSize: Float32Array.BYTES_PER_ELEMENT * 12, // mat3
+  usage: BufferUsage.UNIFORM,
 });
 ```
 
@@ -181,23 +181,23 @@ this.#uniformBuffer = device.createBuffer({
 const PADDING = 0;
 const { a, b, c, d, tx, ty } = this.worldTransform;
 this.#uniformBuffer.setSubData(
-    0,
-    new Uint8Array(
-        new Float32Array([
-            a,
-            b,
-            0,
-            PADDING,
-            c,
-            d,
-            0,
-            PADDING,
-            tx,
-            ty,
-            1,
-            PADDING,
-        ]).buffer,
-    ),
+  0,
+  new Uint8Array(
+    new Float32Array([
+      a,
+      b,
+      0,
+      PADDING,
+      c,
+      d,
+      0,
+      PADDING,
+      tx,
+      ty,
+      1,
+      PADDING,
+    ]).buffer,
+  ),
 );
 ```
 
@@ -217,32 +217,32 @@ pub struct UiMaterialVertex {
 
 下面我们为图形添加平移、缩放、旋转等变换 API。
 
-### 平移
+### 平移 {#translation}
 
 首先是 [WebGL 2D Translation]：
 
 ```ts
 export abstract class Shape {
-    get position(): ObservablePoint {
-        return this.transform.position;
-    }
-    set position(value: IPointData) {
-        this.transform.position.copyFrom(value);
-    }
+  get position(): ObservablePoint {
+    return this.transform.position;
+  }
+  set position(value: IPointData) {
+    this.transform.position.copyFrom(value);
+  }
 
-    get x(): number {
-        return this.position.x;
-    }
-    set x(value: number) {
-        this.transform.position.x = value;
-    }
+  get x(): number {
+    return this.position.x;
+  }
+  set x(value: number) {
+    this.transform.position.x = value;
+  }
 
-    get y(): number {
-        return this.position.y;
-    }
-    set y(value: number) {
-        this.transform.position.y = value;
-    }
+  get y(): number {
+    return this.position.y;
+  }
+  set y(value: number) {
+    this.transform.position.y = value;
+  }
 }
 ```
 
@@ -250,13 +250,13 @@ export abstract class Shape {
 
 ```js eval code=false
 circle = call(() => {
-    const { Circle } = Lesson3;
-    return new Circle({
-        cx: 100,
-        cy: 100,
-        r: 50,
-        fill: 'red',
-    });
+  const { Circle } = Lesson3;
+  return new Circle({
+    cx: 100,
+    cy: 100,
+    r: 50,
+    fill: 'red',
+  });
 });
 ```
 
@@ -270,69 +270,69 @@ positionY = Inputs.range([0, 100], { label: 'position.y', value: 0, step: 1 });
 
 ```js eval
 call(() => {
-    circle.position.x = positionX;
-    circle.position.y = positionY;
+  circle.position.x = positionX;
+  circle.position.y = positionY;
 });
 ```
 
 ```js eval code=false
 (async () => {
-    const { Canvas } = Lesson3;
+  const { Canvas } = Lesson3;
 
-    const canvas = await Utils.createCanvas(Canvas, 200, 200);
+  const canvas = await Utils.createCanvas(Canvas, 200, 200);
 
-    canvas.appendChild(circle);
+  canvas.appendChild(circle);
 
-    let id;
-    const animate = () => {
-        canvas.render();
-        id = requestAnimationFrame(animate);
-    };
-    animate();
+  let id;
+  const animate = () => {
+    canvas.render();
+    id = requestAnimationFrame(animate);
+  };
+  animate();
 
-    unsubscribe(() => {
-        cancelAnimationFrame(id);
-        canvas.destroy();
-    });
-    return canvas.getDOM();
+  unsubscribe(() => {
+    cancelAnimationFrame(id);
+    canvas.destroy();
+  });
+  return canvas.getDOM();
 })();
 ```
 
-### 旋转
+### 旋转 {#rotation}
 
 旋转、缩放和斜切都需要指定变换中心，类似 CSS 中的 `transform-origin`：
 
 ```ts
 export abstract class Shape {
-    get pivot(): ObservablePoint {
-        return this.transform.pivot;
-    }
-    set pivot(value: IPointData) {
-        this.transform.pivot.copyFrom(value);
-    }
+  get pivot(): ObservablePoint {
+    return this.transform.pivot;
+  }
+  set pivot(value: IPointData) {
+    this.transform.pivot.copyFrom(value);
+  }
 }
 ```
 
 ```ts
 export abstract class Shape {
-    get rotation(): number {
-        return this.transform.rotation;
-    }
-    set rotation(value: number) {
-        this.transform.rotation = value;
-    }
+  get rotation(): number {
+    return this.transform.rotation;
+  }
+  set rotation(value: number) {
+    this.transform.rotation = value;
+  }
 }
 ```
 
 ```js eval code=false
 circle2 = call(() => {
-    const { Circle } = Lesson3;
-    return new Circle({
-        cx: 0,
-        cy: 0,
-        r: 50,
-        fill: 'red',
-    });
+  const { Circle } = Lesson3;
+  return new Circle({
+    cx: 0,
+    cy: 0,
+    r: 50,
+    fill: 'red',
+  });
 });
 ```
 
@@ -346,57 +346,57 @@ pivotY = Inputs.range([0, 100], { label: 'pivot.y', value: 0, step: 1 });
 
 ```js eval
 call(() => {
-    circle2.pivot.x = pivotX;
-    circle2.pivot.y = pivotY;
+  circle2.pivot.x = pivotX;
+  circle2.pivot.y = pivotY;
 });
 ```
 
 ```js eval code=false
 (async () => {
-    const { Canvas } = Lesson3;
+  const { Canvas } = Lesson3;
 
-    const canvas = await Utils.createCanvas(Canvas, 200, 200);
+  const canvas = await Utils.createCanvas(Canvas, 200, 200);
 
-    canvas.appendChild(circle2);
+  canvas.appendChild(circle2);
 
-    let id;
-    const animate = () => {
-        circle2.rotation += 0.01;
-        canvas.render();
-        id = requestAnimationFrame(animate);
-    };
-    animate();
+  let id;
+  const animate = () => {
+    circle2.rotation += 0.01;
+    canvas.render();
+    id = requestAnimationFrame(animate);
+  };
+  animate();
 
-    unsubscribe(() => {
-        cancelAnimationFrame(id);
-        canvas.destroy();
-    });
-    return canvas.getDOM();
+  unsubscribe(() => {
+    cancelAnimationFrame(id);
+    canvas.destroy();
+  });
+  return canvas.getDOM();
 })();
 ```
 
-### 缩放
+### 缩放 {#scaling}
 
 ```ts
 export abstract class Shape {
-    get scale(): ObservablePoint {
-        return this.transform.scale;
-    }
-    set scale(value: IPointData) {
-        this.transform.scale.copyFrom(value);
-    }
+  get scale(): ObservablePoint {
+    return this.transform.scale;
+  }
+  set scale(value: IPointData) {
+    this.transform.scale.copyFrom(value);
+  }
 }
 ```
 
 ```js eval code=false
 circle3 = call(() => {
-    const { Circle } = Lesson3;
-    return new Circle({
-        cx: 0,
-        cy: 0,
-        r: 50,
-        fill: 'red',
-    });
+  const { Circle } = Lesson3;
+  return new Circle({
+    cx: 0,
+    cy: 0,
+    r: 50,
+    fill: 'red',
+  });
 });
 ```
 
@@ -418,48 +418,48 @@ scaleY = Inputs.range([0, 5], { label: 'scale.y', value: 1, step: 0.1 });
 
 ```js eval
 call(() => {
-    circle3.pivot.x = pivotX2;
-    circle3.pivot.y = pivotY2;
-    circle3.scale.x = scaleX;
-    circle3.scale.y = scaleY;
-    circle3.position.x = 100;
-    circle3.position.y = 100;
+  circle3.pivot.x = pivotX2;
+  circle3.pivot.y = pivotY2;
+  circle3.scale.x = scaleX;
+  circle3.scale.y = scaleY;
+  circle3.position.x = 100;
+  circle3.position.y = 100;
 });
 ```
 
 ```js eval code=false
 (async () => {
-    const { Canvas } = Lesson3;
+  const { Canvas } = Lesson3;
 
-    const canvas = await Utils.createCanvas(Canvas, 200, 200);
+  const canvas = await Utils.createCanvas(Canvas, 200, 200);
 
-    canvas.appendChild(circle3);
+  canvas.appendChild(circle3);
 
-    let id;
-    const animate = () => {
-        canvas.render();
-        id = requestAnimationFrame(animate);
-    };
-    animate();
+  let id;
+  const animate = () => {
+    canvas.render();
+    id = requestAnimationFrame(animate);
+  };
+  animate();
 
-    unsubscribe(() => {
-        cancelAnimationFrame(id);
-        canvas.destroy();
-    });
-    return canvas.getDOM();
+  unsubscribe(() => {
+    cancelAnimationFrame(id);
+    canvas.destroy();
+  });
+  return canvas.getDOM();
 })();
 ```
 
-### 斜切
+### 斜切 {#skew}
 
 ```ts
 export abstract class Shape {
-    get skew(): ObservablePoint {
-        return this.transform.skew;
-    }
-    set skew(value: IPointData) {
-        this.transform.skew.copyFrom(value);
-    }
+  get skew(): ObservablePoint {
+    return this.transform.skew;
+  }
+  set skew(value: IPointData) {
+    this.transform.skew.copyFrom(value);
+  }
 }
 ```
 
@@ -498,22 +498,22 @@ const earthOrbit = new Group();
 const moonOrbit = new Group();
 
 const sun = new Circle({
-    cx: 0,
-    cy: 0,
-    r: 100,
-    fill: 'red',
+  cx: 0,
+  cy: 0,
+  r: 100,
+  fill: 'red',
 });
 const earth = new Circle({
-    cx: 0,
-    cy: 0,
-    r: 50,
-    fill: 'blue',
+  cx: 0,
+  cy: 0,
+  r: 50,
+  fill: 'blue',
 });
 const moon = new Circle({
-    cx: 0,
-    cy: 0,
-    r: 25,
-    fill: 'yellow',
+  cx: 0,
+  cy: 0,
+  r: 25,
+  fill: 'yellow',
 });
 solarSystem.appendChild(sun);
 solarSystem.appendChild(earthOrbit);
@@ -524,14 +524,14 @@ moonOrbit.appendChild(moon);
 
 这里我们使用了一些新增的 API。
 
-### 父子关系
+### 父子关系 {#parent-child-relationships}
 
 首先为图形基类增加 `parent` 和 `children` 两个属性：
 
 ```ts
 export abstract class Shape {
-    parent: Shape;
-    readonly children: Shape[] = [];
+  parent: Shape;
+  readonly children: Shape[] = [];
 }
 ```
 
@@ -552,16 +552,16 @@ export abstract class Shape {
 }
 ```
 
-### 遍历场景图
+### 遍历场景图 {#traverse-scene-graph}
 
 有了层次关系，我们就可以使用递归遍历整个场景图，这里增加一个工具方法：
 
 ```ts
 export function traverse(shape: Shape, callback: (shape: Shape) => void) {
-    callback(shape);
-    shape.children.forEach((child) => {
-        traverse(child, callback);
-    });
+  callback(shape);
+  shape.children.forEach((child) => {
+    traverse(child, callback);
+  });
 }
 ```
 
@@ -582,7 +582,7 @@ export class Canvas {
 }
 ```
 
-### 更新变换矩阵
+### 更新变换矩阵 {#update-transform}
 
 在场景图中，子节点在世界坐标系下的变换矩阵通过如下方式计算：
 
@@ -602,7 +602,7 @@ hooks.render.tap((shape) => {
 });
 ```
 
-你可能会担心，如果图形并没有发生变换，还需要每一帧都进行更新吗？毕竟整个场景图中每个图形都需要执行运算，这个开销可不小。在 [Lesson 2 - 脏检查](/zh/lesson-002.html#脏检查) 一节中我们介绍过这种设计模式，现在让我们分析一下 [@pixi/math] 的实现。
+你可能会担心，如果图形并没有发生变换，还需要每一帧都进行更新吗？毕竟整个场景图中每个图形都需要执行运算，这个开销可不小。在 [Lesson 2 - 脏检查](/zh/guide/lesson-002.html#脏检查) 一节中我们介绍过这种设计模式，现在让我们分析一下 [@pixi/math] 的实现。
 
 每次变换发生时，以平移变换为例，只是递增 `_localID` 这个版本号：
 
@@ -643,11 +643,11 @@ appendChild(child: Shape) {
 
 在 PIXI.js 中计算包围盒等开销较大的操作也都使用了这种模式。
 
-## 扩展阅读
+## 扩展阅读 {#extended-reading}
 
--   [Scene Graph - LearnOpenGL]
--   [Inside PixiJS: Display objects and their hierarchy]
--   [Understanding 3D matrix transforms]
+- [Scene Graph - LearnOpenGL]
+- [Inside PixiJS: Display objects and their hierarchy]
+- [Understanding 3D matrix transforms]
 
 [CSS Transform]: https://developer.mozilla.org/en-US/docs/Web/CSS/transform
 [Transformations - LearnOpenGL]: https://learnopengl.com/Getting-started/Transformations

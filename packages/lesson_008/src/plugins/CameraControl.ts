@@ -1,5 +1,5 @@
 import { mat3, vec2 } from 'gl-matrix';
-import { IPointData, Point, Rectangle } from '@pixi/math';
+import { IPointData, Point } from '@pixi/math';
 import type { Plugin, PluginContext } from './interfaces';
 import type { FederatedPointerEvent, FederatedWheelEvent } from '../events';
 
@@ -36,12 +36,6 @@ export class CameraControl implements Plugin {
       api: { client2Viewport },
     } = context;
 
-    root.hitArea = new Rectangle(
-      -Number.MAX_VALUE,
-      -Number.MAX_VALUE,
-      Infinity,
-      Infinity,
-    );
     root.draggable = true;
 
     const startInvertViewProjectionMatrix = mat3.create();

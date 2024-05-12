@@ -1,7 +1,7 @@
 import { Buffer, Device, RenderPass } from '@antv/g-device-api';
 import { Shape } from '../shapes';
 
-export const ZINDEX_FACTOR = 50000;
+export const ZINDEX_FACTOR = 100000;
 
 export abstract class Drawcall {
   protected shapes: Shape[] = [];

@@ -6,89 +6,89 @@ outline: deep
 
 In this lesson you will learn the following:
 
--   What is a Camera?
--   Projection transformation.
--   Camera transformation.
--   Camera animation. Using Landmark transition between different camera states.
+- What is a Camera?
+- Projection transformation.
+- Camera transformation.
+- Camera animation. Using Landmark transition between different camera states.
 
 We can change the content displayed on the canvas by controlling the camera. Clicking and dragging the mouse allows for panning; holding down <kbd>Shift</kbd> and dragging enables rotation around a specified point; using the mouse wheel allows for zooming in and out on a specified point. Pressing the button resets to the initial state with a smooth transition effect.
 
 ```js eval code=false
 $button = call(() => {
-    const $button = document.createElement('button');
-    $button.textContent = 'FlyTo origin';
-    return $button;
+  const $button = document.createElement('button');
+  $button.textContent = 'FlyTo origin';
+  return $button;
 });
 ```
 
 ```js eval code=false
 (async () => {
-    const { Canvas, Circle, Group } = Lesson4;
-    const canvas = await Utils.createCanvas(Canvas, 400, 400);
+  const { Canvas, Circle, Group } = Lesson4;
+  const canvas = await Utils.createCanvas(Canvas, 400, 400);
 
-    const solarSystem = new Group();
-    const earthOrbit = new Group();
-    const moonOrbit = new Group();
+  const solarSystem = new Group();
+  const earthOrbit = new Group();
+  const moonOrbit = new Group();
 
-    const sun = new Circle({
-        cx: 0,
-        cy: 0,
-        r: 100,
-        fill: 'red',
+  const sun = new Circle({
+    cx: 0,
+    cy: 0,
+    r: 100,
+    fill: 'red',
+  });
+  const earth = new Circle({
+    cx: 0,
+    cy: 0,
+    r: 50,
+    fill: 'blue',
+  });
+  const moon = new Circle({
+    cx: 0,
+    cy: 0,
+    r: 25,
+    fill: 'yellow',
+  });
+  solarSystem.appendChild(sun);
+  solarSystem.appendChild(earthOrbit);
+  earthOrbit.appendChild(earth);
+  earthOrbit.appendChild(moonOrbit);
+  moonOrbit.appendChild(moon);
+
+  solarSystem.position.x = 200;
+  solarSystem.position.y = 200;
+  earthOrbit.position.x = 100;
+  moonOrbit.position.x = 100;
+
+  canvas.appendChild(solarSystem);
+
+  let id;
+  const animate = () => {
+    solarSystem.rotation += 0.01;
+    earthOrbit.rotation += 0.02;
+    canvas.render();
+    id = requestAnimationFrame(animate);
+  };
+  animate();
+
+  unsubscribe(() => {
+    cancelAnimationFrame(id);
+    canvas.destroy();
+  });
+
+  const landmark = canvas.camera.createLandmark({
+    x: 0,
+    y: 0,
+    zoom: 1,
+    rotation: 0,
+  });
+  $button.onclick = () => {
+    canvas.camera.gotoLandmark(landmark, {
+      duration: 1000,
+      easing: 'ease',
     });
-    const earth = new Circle({
-        cx: 0,
-        cy: 0,
-        r: 50,
-        fill: 'blue',
-    });
-    const moon = new Circle({
-        cx: 0,
-        cy: 0,
-        r: 25,
-        fill: 'yellow',
-    });
-    solarSystem.appendChild(sun);
-    solarSystem.appendChild(earthOrbit);
-    earthOrbit.appendChild(earth);
-    earthOrbit.appendChild(moonOrbit);
-    moonOrbit.appendChild(moon);
+  };
 
-    solarSystem.position.x = 200;
-    solarSystem.position.y = 200;
-    earthOrbit.position.x = 100;
-    moonOrbit.position.x = 100;
-
-    canvas.appendChild(solarSystem);
-
-    let id;
-    const animate = () => {
-        solarSystem.rotation += 0.01;
-        earthOrbit.rotation += 0.02;
-        canvas.render();
-        id = requestAnimationFrame(animate);
-    };
-    animate();
-
-    unsubscribe(() => {
-        cancelAnimationFrame(id);
-        canvas.destroy();
-    });
-
-    const landmark = canvas.camera.createLandmark({
-        x: 0,
-        y: 0,
-        zoom: 1,
-        rotation: 0,
-    });
-    $button.onclick = () => {
-        canvas.camera.gotoLandmark(landmark, {
-            duration: 1000,
-            easing: 'ease',
-        });
-    };
-
-    return canvas.getDOM();
+  return canvas.getDOM();
 })();
 ```
 
@@ -146,15 +146,15 @@ We directly use the `projection` method provided by [gl-matrix]. If interested, 
 
 ```ts
 export class Camera {
-    #projectionMatrix = mat3.create();
+  #projectionMatrix = mat3.create();
 
-    get projectionMatrix() {
-        return this.#projectionMatrix;
-    }
+  get projectionMatrix() {
+    return this.#projectionMatrix;
+  }
 
-    projection(width: number, height: number) {
-        mat3.projection(this.#projectionMatrix, width, height);
-    }
+  projection(width: number, height: number) {
+    mat3.projection(this.#projectionMatrix, width, height);
+  }
 }
 ```
 
@@ -162,20 +162,20 @@ However, we cannot pass the `projectionMatrix` directly because of the [alignmen
 
 ```ts
 export function paddingMat3(matrix: mat3) {
-    return [
-        matrix[0],
-        matrix[1],
-        matrix[2],
-        0,
-        matrix[3],
-        matrix[4],
-        matrix[5],
-        0,
-        matrix[6],
-        matrix[7],
-        matrix[8],
-        0,
-    ];
+  return [
+    matrix[0],
+    matrix[1],
+    matrix[2],
+    0,
+    matrix[3],
+    matrix[4],
+    matrix[5],
+    0,
+    matrix[6],
+    matrix[7],
+    matrix[8],
+    0,
+  ];
 }
 ```
 
@@ -183,15 +183,15 @@ Finally, we create the camera in sync with the canvas initialization. Subsequent
 
 ```ts
 export class Canvas {
-    #camera: Camera;
-    get camera() {
-        return this.#camera;
-    }
+  #camera: Camera;
+  get camera() {
+    return this.#camera;
+  }
 
-    constructor() {
-        const camera = new Camera(width / dpr, height / dpr);
-        this.#camera = camera;
-    }
+  constructor() {
+    const camera = new Camera(width / dpr, height / dpr);
+    this.#camera = camera;
+  }
 }
 ```
 
@@ -247,20 +247,20 @@ Now, let's implement basic camera functionality. Compared to a 3D camera, it's m
 
 ```ts
 export class Camera {
-    #zoom = 1;
-    #x = 0;
-    #y = 0;
-    #rotation = 0;
+  #zoom = 1;
+  #x = 0;
+  #y = 0;
+  #rotation = 0;
 
-    private updateMatrix() {
-        const zoomScale = 1 / this.#zoom;
-        mat3.identity(this.#matrix);
-        mat3.translate(this.#matrix, this.#matrix, [this.#x, this.#y]);
-        mat3.rotate(this.#matrix, this.#matrix, this.#rotation);
-        mat3.scale(this.#matrix, this.#matrix, [zoomScale, zoomScale]);
-        mat3.invert(this.#viewMatrix, this.#matrix);
-        this.updateViewProjectionMatrix();
-    }
+  private updateMatrix() {
+    const zoomScale = 1 / this.#zoom;
+    mat3.identity(this.#matrix);
+    mat3.translate(this.#matrix, this.#matrix, [this.#x, this.#y]);
+    mat3.rotate(this.#matrix, this.#matrix, this.#rotation);
+    mat3.scale(this.#matrix, this.#matrix, [zoomScale, zoomScale]);
+    mat3.invert(this.#viewMatrix, this.#matrix);
+    this.updateViewProjectionMatrix();
+  }
 }
 ```
 
@@ -268,12 +268,12 @@ When we translate the camera using `camera.x += 100;`, we need to recalculate th
 
 ```ts
 export class Camera {
-    set x(x: number) {
-        if (this.#x !== x) {
-            this.#x = x;
-            this.updateMatrix();
-        }
+  set x(x: number) {
+    if (this.#x !== x) {
+      this.#x = x;
+      this.updateMatrix();
     }
+  }
 }
 ```
 
@@ -281,8 +281,8 @@ Try it out by dragging the Slider to move the camera:
 
 ```js eval code=false inspector=false
 canvas = call(() => {
-    const { Canvas } = Lesson4;
-    return Utils.createCanvas(Canvas, 400, 400);
+  const { Canvas } = Lesson4;
+  return Utils.createCanvas(Canvas, 400, 400);
 });
 ```
 
@@ -296,66 +296,66 @@ positionY = Inputs.range([0, 100], { label: 'camera.y', value: 0, step: 1 });
 
 ```js eval code=false inspector=false
 call(() => {
-    const camera = canvas.camera;
-    camera.x = positionX;
-    camera.y = positionY;
+  const camera = canvas.camera;
+  camera.x = positionX;
+  camera.y = positionY;
 });
 ```
 
 ```js eval code=false
 (async () => {
-    const { Circle, Group } = Lesson4;
-    canvas.getDOM().style.pointerEvents = 'none';
+  const { Circle, Group } = Lesson4;
+  canvas.getDOM().style.pointerEvents = 'none';
 
-    const solarSystem = new Group();
-    const earthOrbit = new Group();
-    const moonOrbit = new Group();
+  const solarSystem = new Group();
+  const earthOrbit = new Group();
+  const moonOrbit = new Group();
 
-    const sun = new Circle({
-        cx: 0,
-        cy: 0,
-        r: 100,
-        fill: 'red',
-    });
-    const earth = new Circle({
-        cx: 0,
-        cy: 0,
-        r: 50,
-        fill: 'blue',
-    });
-    const moon = new Circle({
-        cx: 0,
-        cy: 0,
-        r: 25,
-        fill: 'yellow',
-    });
-    solarSystem.appendChild(sun);
-    solarSystem.appendChild(earthOrbit);
-    earthOrbit.appendChild(earth);
-    earthOrbit.appendChild(moonOrbit);
-    moonOrbit.appendChild(moon);
+  const sun = new Circle({
+    cx: 0,
+    cy: 0,
+    r: 100,
+    fill: 'red',
+  });
+  const earth = new Circle({
+    cx: 0,
+    cy: 0,
+    r: 50,
+    fill: 'blue',
+  });
+  const moon = new Circle({
+    cx: 0,
+    cy: 0,
+    r: 25,
+    fill: 'yellow',
+  });
+  solarSystem.appendChild(sun);
+  solarSystem.appendChild(earthOrbit);
+  earthOrbit.appendChild(earth);
+  earthOrbit.appendChild(moonOrbit);
+  moonOrbit.appendChild(moon);
 
-    solarSystem.position.x = 200;
-    solarSystem.position.y = 200;
-    earthOrbit.position.x = 100;
-    moonOrbit.position.x = 100;
+  solarSystem.position.x = 200;
+  solarSystem.position.y = 200;
+  earthOrbit.position.x = 100;
+  moonOrbit.position.x = 100;
 
-    canvas.appendChild(solarSystem);
+  canvas.appendChild(solarSystem);
 
-    let id;
-    const animate = () => {
-        solarSystem.rotation += 0.01;
-        earthOrbit.rotation += 0.02;
-        canvas.render();
-        id = requestAnimationFrame(animate);
-    };
-    animate();
+  let id;
+  const animate = () => {
+    solarSystem.rotation += 0.01;
+    earthOrbit.rotation += 0.02;
+    canvas.render();
+    id = requestAnimationFrame(animate);
+  };
+  animate();
 
-    unsubscribe(() => {
-        cancelAnimationFrame(id);
-        canvas.destroy();
-    });
-    return canvas.getDOM();
+  unsubscribe(() => {
+    cancelAnimationFrame(id);
+    canvas.destroy();
+  });
+  return canvas.getDOM();
 })();
 ```
 
@@ -377,20 +377,20 @@ Referencing [How to implement zoom from mouse in 2D WebGL], we convert the coord
 
 ```ts
 function getClipSpaceMousePosition(e: MouseEvent): vec2 {
-    // CSS space
-    const rect = canvas.getBoundingClientRect();
-    const cssX = e.clientX - rect.left;
-    const cssY = e.clientY - rect.top;
+  // CSS space
+  const rect = canvas.getBoundingClientRect();
+  const cssX = e.clientX - rect.left;
+  const cssY = e.clientY - rect.top;
 
-    // Normalize to [0, 1]
-    const normalizedX = cssX / canvas.clientWidth;
-    const normalizedY = cssY / canvas.clientHeight;
+  // Normalize to [0, 1]
+  const normalizedX = cssX / canvas.clientWidth;
+  const normalizedY = cssY / canvas.clientHeight;
 
-    // Convert to clipspace
-    const clipX = normalizedX * 2 - 1;
-    const clipY = normalizedY * -2 + 1;
+  // Convert to clipspace
+  const clipX = normalizedX * 2 - 1;
+  const clipY = normalizedY * -2 + 1;
 
-    return [clipX, clipY];
+  return [clipX, clipY];
 }
 ```
 
@@ -398,37 +398,37 @@ Next, we listen to the `mousedown` event and handle the subsequent `mousemove` a
 
 ```ts
 canvas.addEventListener('mousedown', (e) => {
-    e.preventDefault();
-    window.addEventListener('mousemove', handleMouseMove);
-    window.addEventListener('mouseup', handleMouseUp);
+  e.preventDefault();
+  window.addEventListener('mousemove', handleMouseMove);
+  window.addEventListener('mouseup', handleMouseUp);
 
-    // the invert matrix of vp matrix
-    mat3.copy(startInvertViewProjectionMatrix, camera.viewProjectionMatrixInv);
-    // camera postion in world space
-    startCameraX = camera.x;
-    startCameraY = camera.y;
-    // convert mouse position to world space
-    startPos = vec2.transformMat3(
-        startPos,
-        getClipSpaceMousePosition(e),
-        startInvViewProjMatrix,
-    );
+  // the invert matrix of vp matrix
+  mat3.copy(startInvertViewProjectionMatrix, camera.viewProjectionMatrixInv);
+  // camera postion in world space
+  startCameraX = camera.x;
+  startCameraY = camera.y;
+  // convert mouse position to world space
+  startPos = vec2.transformMat3(
+    startPos,
+    getClipSpaceMousePosition(e),
+    startInvViewProjMatrix,
+  );
 });
 ```
 
 We need to record the following variables:
 
--   `startInvViewProjMatrix` - the inverse matrix of the camera's projection matrix
--   `startCameraX` - the camera's X coordinate in world space
--   `startCameraY` - the camera's Y coordinate in world space
--   `startPos` - the current mouse position in world space, which is obtained by transforming the coordinates in NDC (Normalized Device Coordinates) space with the inverse of the camera's projection matrix
+- `startInvViewProjMatrix` - the inverse matrix of the camera's projection matrix
+- `startCameraX` - the camera's X coordinate in world space
+- `startCameraY` - the camera's Y coordinate in world space
+- `startPos` - the current mouse position in world space, which is obtained by transforming the coordinates in NDC (Normalized Device Coordinates) space with the inverse of the camera's projection matrix
 
 When the mouse is released, unbind the event listeners which will ends the drag interaction.
 
 ```ts
 function handleMouseUp(e) {
-    window.removeEventListener('mousemove', handleMouseMove);
-    window.removeEventListener('mouseup', handleMouseUp);
+  window.removeEventListener('mousemove', handleMouseMove);
+  window.removeEventListener('mouseup', handleMouseUp);
 }
 ```
 
@@ -436,18 +436,18 @@ When the mouse moves, the camera is moved as well. Similarly, it needs to be con
 
 ```ts
 function handleMouseMove(e: MouseEvent) {
-    moveCamera(e);
+  moveCamera(e);
 }
 
 function moveCamera(e: MouseEvent) {
-    const pos = vec2.transformMat3(
-        vec2.create(),
-        getClipSpaceMousePosition(e),
-        startInvertViewProjectionMatrix,
-    );
+  const pos = vec2.transformMat3(
+    vec2.create(),
+    getClipSpaceMousePosition(e),
+    startInvertViewProjectionMatrix,
+  );
 
-    camera.x = startCameraX + startPos[0] - pos[0];
-    camera.y = startCameraY + startPos[1] - pos[1];
+  camera.x = startCameraX + startPos[0] - pos[0];
+  camera.y = startCameraY + startPos[1] - pos[1];
 }
 ```
 
@@ -477,25 +477,25 @@ In the camera rotation mode, the distance moved by the mouse will be taken as th
 
 ```ts
 function rotateCamera(e: MouseEvent) {
-    // convert moved distance to ratation
-    const delta = (e.clientX - startMousePos[0]) / 100;
+  // convert moved distance to ratation
+  const delta = (e.clientX - startMousePos[0]) / 100;
 
-    // create matrix with pivot
-    const camMat = mat3.create();
-    mat3.translate(camMat, camMat, [startPos[0], startPos[1]]);
-    mat3.rotate(camMat, camMat, delta);
-    mat3.translate(camMat, camMat, [-startPos[0], -startPos[1]]);
+  // create matrix with pivot
+  const camMat = mat3.create();
+  mat3.translate(camMat, camMat, [startPos[0], startPos[1]]);
+  mat3.rotate(camMat, camMat, delta);
+  mat3.translate(camMat, camMat, [-startPos[0], -startPos[1]]);
 
-    // apply transformation
-    camera.x = startCameraX;
-    camera.y = startCameraY;
-    camera.rotation = startCameraRotation;
-    mat3.multiply(camMat, camMat, camera.matrix);
+  // apply transformation
+  camera.x = startCameraX;
+  camera.y = startCameraY;
+  camera.rotation = startCameraRotation;
+  mat3.multiply(camMat, camMat, camera.matrix);
 
-    // Reset camera params
-    camera.x = camMat[6];
-    camera.y = camMat[7];
-    camera.rotation = startCameraRotation + delta;
+  // Reset camera params
+  camera.x = camMat[6];
+  camera.y = camMat[7];
+  camera.rotation = startCameraRotation + delta;
 }
 ```
 
@@ -511,30 +511,30 @@ Listen to the `wheel` event, first recording the position of the mouse before zo
 
 ```ts
 canvas.addEventListener('wheel', (e) => {
-    e.preventDefault();
-    const position = getClipSpaceMousePosition(e);
+  e.preventDefault();
+  const position = getClipSpaceMousePosition(e);
 
-    // mouse position in world space before zooming
-    const [preZoomX, preZoomY] = vec2.transformMat3(
-        vec2.create(),
-        position,
-        camera.viewProjectionMatrixInv,
-    );
+  // mouse position in world space before zooming
+  const [preZoomX, preZoomY] = vec2.transformMat3(
+    vec2.create(),
+    position,
+    camera.viewProjectionMatrixInv,
+  );
 
-    // calculate zoom factor
-    const newZoom = camera.zoom * Math.pow(2, e.deltaY * -0.01);
-    camera.zoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, newZoom));
+  // calculate zoom factor
+  const newZoom = camera.zoom * Math.pow(2, e.deltaY * -0.01);
+  camera.zoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, newZoom));
 
-    // mouse position in world space after zooming
-    const [postZoomX, postZoomY] = vec2.transformMat3(
-        vec2.create(),
-        position,
-        camera.viewProjectionMatrixInv,
-    );
+  // mouse position in world space after zooming
+  const [postZoomX, postZoomY] = vec2.transformMat3(
+    vec2.create(),
+    position,
+    camera.viewProjectionMatrixInv,
+  );
 
-    // move camera
-    camera.x += preZoomX - postZoomX;
-    camera.y += preZoomY - postZoomY;
+  // move camera
+  camera.x += preZoomX - postZoomX;
+  camera.y += preZoomY - postZoomY;
 });
 ```
 
@@ -568,10 +568,10 @@ camera.gotoLandmark(landmark, { duration: 300 });
 
 ```ts
 export interface Landmark {
-    zoom: number;
-    x: number;
-    y: number;
-    rotation: number;
+  zoom: number;
+  x: number;
+  y: number;
+  rotation: number;
 }
 ```
 
@@ -579,15 +579,15 @@ Creating a `Landmark` is essentially just about simply storing camera parameters
 
 ```ts
 export class Camera {
-    createLandmark(params: Partial<Landmark>): Landmark {
-        return {
-            zoom: this.#zoom,
-            x: this.#x,
-            y: this.#y,
-            rotation: this.#rotation,
-            ...params,
-        };
-    }
+  createLandmark(params: Partial<Landmark>): Landmark {
+    return {
+      zoom: this.#zoom,
+      x: this.#x,
+      y: this.#y,
+      rotation: this.#rotation,
+      ...params,
+    };
+  }
 }
 ```
 
@@ -598,32 +598,32 @@ We use [bezier-easing] to implement [Cubic Bézier easing functions]：
 ```ts
 import BezierEasing from 'bezier-easing';
 export const EASING_FUNCTION = {
-    linear: BezierEasing(0, 0, 1, 1),
-    ease: BezierEasing(0.25, 0.1, 0.25, 1),
-    'ease-in': BezierEasing(0.42, 0, 1, 1),
-    'ease-out': BezierEasing(0, 0, 0.58, 1),
-    'ease-in-out': BezierEasing(0.42, 0, 0.58, 1),
+  linear: BezierEasing(0, 0, 1, 1),
+  ease: BezierEasing(0.25, 0.1, 0.25, 1),
+  'ease-in': BezierEasing(0.42, 0, 1, 1),
+  'ease-out': BezierEasing(0, 0, 0.58, 1),
+  'ease-in-out': BezierEasing(0.42, 0, 0.58, 1),
 };
 ```
 
 Now, let's design the API for switching to `Landmark`. Referencing the [Web Animations API], we support the following parameters:
 
--   `easing` Supports `ease` `linear` same as CSS
--   `duration` Passing `0` will skip animation.
--   `onframe` Callback at the frame duration the animation
--   `onfinish` Callback when aniamtion ends
+- `easing` Supports `ease` `linear` same as CSS
+- `duration` Passing `0` will skip animation.
+- `onframe` Callback at the frame duration the animation
+- `onfinish` Callback when aniamtion ends
 
 ```ts
 export class Camera {
-    gotoLandmark(
-        landmark: Landmark,
-        options: Partial<{
-            easing: string;
-            duration: number;
-            onframe: (t: number) => void;
-            onfinish: () => void;
-        }> = {},
-    ) {}
+  gotoLandmark(
+    landmark: Landmark,
+    options: Partial<{
+      easing: string;
+      duration: number;
+      onframe: (t: number) => void;
+      onfinish: () => void;
+    }> = {},
+  ) {}
 }
 ```
 
@@ -703,8 +703,8 @@ There's a small optimization that can be made here: during the process, you can 
 ```ts
 const dist = vec2.dist(interPosition, destPosition);
 if (dist <= EPSILON) {
-    endAnimation();
-    return;
+  endAnimation();
+  return;
 }
 ```
 
@@ -712,9 +712,9 @@ Go back to the example at the top of the page and give it a try. Click the butto
 
 ## Extended reading
 
--   [WebGL Insights - 23.Designing Cameras for WebGL Applications]
--   [LearnWebGL - Introduction to Cameras]
--   [WebGL 3D - Cameras]
+- [WebGL Insights - 23.Designing Cameras for WebGL Applications]
+- [LearnWebGL - Introduction to Cameras]
+- [WebGL 3D - Cameras]
 
 [LearnWebGL - Introduction to Cameras]: https://learnwebgl.brown37.net/07_cameras/camera_introduction.html#a-camera-definition
 [How to Create a Figma-like Infinite Canvas in WebGL]: https://betterprogramming.pub/how-to-create-a-figma-like-infinite-canvas-in-webgl-8be94f65674f
@@ -722,7 +722,7 @@ Go back to the example at the top of the page and give it a try. Click the butto
 [WebGL 3D - Cameras]: https://webglfundamentals.org/webgl/lessons/webgl-3d-camera.html
 [How to implement zoom from mouse in 2D WebGL]: https://webglfundamentals.org/webgl/lessons/webgl-qna-how-to-implement-zoom-from-mouse-in-2d-webgl.html
 [gl-matrix]: https://github.com/toji/gl-matrix
-[alignment issue]: /zh/lesson-003.html#对齐问题
+[alignment issue]: /zh/guide/lesson-003.html#对齐问题
 [OrthographicCamera.zoom]: https://threejs.org/docs/#api/en/cameras/OrthographicCamera.zoom
 [Rotate canvas]: https://forum.figma.com/t/rotate-canvas/42818
 [infinitecanvas]: https://infinitecanvas.tools

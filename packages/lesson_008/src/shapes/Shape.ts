@@ -41,7 +41,7 @@ export abstract class Shape
    * A higher value will render over the top of lower values.
    * by {@link Renderer} plugin.
    */
-  #globalRenderOrder: number;
+  globalRenderOrder: number;
 
   /**
    * Avoid unnecessary work like updating Buffer by deferring it until needed.
@@ -407,3 +407,11 @@ type PointerEvents =
   | 'visiblepainted'
   | 'all'
   | 'non-transparent-pixel';
+
+export interface RBushNodeAABB {
+  shape: Shape;
+  minX: number;
+  minY: number;
+  maxX: number;
+  maxY: number;
+}

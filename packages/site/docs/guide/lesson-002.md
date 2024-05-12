@@ -6,10 +6,10 @@ outline: deep
 
 In this lesson you will learn the following:
 
--   Adding shapes to the canvas
--   Drawing a circle using SDF
--   Anti Aliasing
--   Dirty flag design pattern
+- Adding shapes to the canvas
+- Drawing a circle using SDF
+- Anti Aliasing
+- Dirty flag design pattern
 
 When you start the project you will see a circle drawn in the canvas and you can modify the width and height or switch the WebGL / WebGPU renderer.
 
@@ -27,44 +27,44 @@ renderer = Inputs.select(['webgl', 'webgpu'], { label: 'renderer' });
 
 ```js eval code=false inspector=false
 canvas = (async () => {
-    const { Canvas, Circle } = Lesson2;
+  const { Canvas, Circle } = Lesson2;
 
-    const canvas = await Utils.createCanvas(Canvas, 100, 100, renderer);
+  const canvas = await Utils.createCanvas(Canvas, 100, 100, renderer);
 
-    const circle = new Circle({
-        cx: 100,
-        cy: 100,
-        r: 100,
-        fill: 'red',
-        antiAliasingType: 3,
-    });
-    canvas.appendChild(circle);
+  const circle = new Circle({
+    cx: 100,
+    cy: 100,
+    r: 100,
+    fill: 'red',
+    antiAliasingType: 3,
+  });
+  canvas.appendChild(circle);
 
-    let id;
-    const animate = () => {
-        canvas.render();
-        id = requestAnimationFrame(animate);
-    };
-    animate();
+  let id;
+  const animate = () => {
+    canvas.render();
+    id = requestAnimationFrame(animate);
+  };
+  animate();
 
-    unsubscribe(() => {
-        cancelAnimationFrame(id);
-        canvas.destroy();
-    });
+  unsubscribe(() => {
+    cancelAnimationFrame(id);
+    canvas.destroy();
+  });
 
-    return canvas;
+  return canvas;
 })();
 ```
 
 ```js eval code=false inspector=false
 call(() => {
-    Utils.resizeCanvas(canvas, width, height);
+  Utils.resizeCanvas(canvas, width, height);
 });
 ```
 
 ```js eval code=false
 call(() => {
-    return canvas.getDOM();
+  return canvas.getDOM();
 });
 ```
 
@@ -115,9 +115,9 @@ render() {
 
 In the render plugin a `RenderPass` is created before the start of each frame, which is encapsulated in the hardware abstraction layer. there is no such concept in WebGL, but in WebGPU [beginRenderPass] returns [GPURenderPassEncoder], which records a series of commands, including `draw`, as we will see later in the `render` hook. commands, as we'll see later in the `render` hook. When creating `RenderPass` we provide the following parameters:
 
--   `colorAttachment`
--   `colorResolveTo`
--   `colorClearColor` This is implemented in WebGL with the [gl.clearColor] command; in WebGPU it is declared with the [clearValue] property, which we set to white here.
+- `colorAttachment`
+- `colorResolveTo`
+- `colorClearColor` This is implemented in WebGL with the [gl.clearColor] command; in WebGPU it is declared with the [clearValue] property, which we set to white here.
 
 ```ts{4}
 hooks.beginFrame.tap(() => {
@@ -146,20 +146,20 @@ Finally, we come to the `render` hook, where each graph is responsible for imple
 hooks.render.tap((shape) => {});
 ```
 
-## Draw a circle ⭕️
+## Draw a circle
 
 The first thing we need to do is to define the basic attributes of a circle. Those of you who are familiar with SVG [circle] will know that you can define the geometry of a circle based on its center, `cx/cy`, and its radius, `r`, and that you can use the generic drawing attributes of `fill` and `stroke` to satisfy the basic needs.
 
 ```ts
 export class Circle extends Shape {
-    constructor(
-        config: Partial<{
-            cx: number;
-            cy: number;
-            r: number;
-            fill: string;
-        }> = {},
-    ) {}
+  constructor(
+    config: Partial<{
+      cx: number;
+      cy: number;
+      r: number;
+      fill: string;
+    }> = {},
+  ) {}
 }
 ```
 
@@ -181,10 +181,10 @@ So if our canvas has a width and height of 200, the `Circle` added in the follow
 
 ```ts
 const circle = new Circle({
-    cx: 100,
-    cy: 100,
-    r: 50,
-    fill: 'red',
+  cx: 100,
+  cy: 100,
+  r: 50,
+  fill: 'red',
 });
 canvas.appendChild(circle);
 ```
@@ -263,9 +263,9 @@ void main() {
 
 In addition to using fewer vertices, SDF offers the following advantages:
 
--   Easy anti-aliasing. We will cover it in the next subsection.
--   Easy to combine. Intersection and difference operations can be combined to complete complex graphs.
--   It is easy to realize some complex-looking effects. For example, strokes, rounded corners, shadows, of course, we will introduce some limitations of this method when we realize these effects.
+- Easy anti-aliasing. We will cover it in the next subsection.
+- Easy to combine. Intersection and difference operations can be combined to complete complex graphs.
+- It is easy to realize some complex-looking effects. For example, strokes, rounded corners, shadows, of course, we will introduce some limitations of this method when we realize these effects.
 
 An explanation and detailed derivation of the SDF can also be found in [distfunctions]. This method can be used to draw a variety of common 2D and even 3D shapes, and we'll continue to use it to draw rectangles and text.
 
@@ -281,7 +281,7 @@ Called in the plugin's `render` hook and passed in the required parameters:
 
 ```ts
 hooks.render.tap((shape) => {
-    shape.render(this.#device, this.#renderPass);
+  shape.render(this.#device, this.#renderPass);
 });
 ```
 
@@ -291,13 +291,13 @@ Constructs a unitary coordinate system in the `render` method of `Circle`, consi
 
 ```ts
 this.#fragUnitBuffer = device.createBuffer({
-    viewOrSize: new Float32Array([-1, -1, 1, -1, 1, 1, -1, 1]),
-    usage: BufferUsage.VERTEX,
+  viewOrSize: new Float32Array([-1, -1, 1, -1, 1, 1, -1, 1]),
+  usage: BufferUsage.VERTEX,
 });
 
 this.#indexBuffer = device.createBuffer({
-    viewOrSize: new Uint32Array([0, 1, 2, 0, 2, 3]),
-    usage: BufferUsage.INDEX,
+  viewOrSize: new Uint32Array([0, 1, 2, 0, 2, 3]),
+  usage: BufferUsage.INDEX,
 });
 ```
 
@@ -305,17 +305,17 @@ Each of these four vertices can share the same style attributes, such as circle 
 
 ```ts
 this.#instancedBuffer = device.createBuffer({
-    viewOrSize: new Float32Array([
-        this.#cx,
-        this.#cy,
-        this.#r,
-        this.#r,
-        this.#fillRGB.r / 255,
-        this.#fillRGB.g / 255,
-        this.#fillRGB.b / 255,
-        this.#fillRGB.opacity,
-    ]),
-    usage: BufferUsage.VERTEX,
+  viewOrSize: new Float32Array([
+    this.#cx,
+    this.#cy,
+    this.#r,
+    this.#r,
+    this.#fillRGB.r / 255,
+    this.#fillRGB.g / 255,
+    this.#fillRGB.b / 255,
+    this.#fillRGB.opacity,
+  ]),
+  usage: BufferUsage.VERTEX,
 });
 ```
 
@@ -323,42 +323,42 @@ Next, specify how the array of vertices should be laid out, which is associated 
 
 ```ts
 this.#inputLayout = device.createInputLayout({
-    vertexBufferDescriptors: [
+  vertexBufferDescriptors: [
+    {
+      arrayStride: 4 * 2,
+      stepMode: VertexStepMode.VERTEX,
+      attributes: [
         {
-            arrayStride: 4 * 2,
-            stepMode: VertexStepMode.VERTEX,
-            attributes: [
-                {
-                    shaderLocation: 0, // layout(location = 0) in vec2 a_FragCoord;
-                    offset: 0,
-                    format: Format.F32_RG,
-                },
-            ],
+          shaderLocation: 0, // layout(location = 0) in vec2 a_FragCoord;
+          offset: 0,
+          format: Format.F32_RG,
+        },
+      ],
+    },
+    {
+      arrayStride: 4 * 8,
+      stepMode: VertexStepMode.INSTANCE,
+      attributes: [
+        {
+          shaderLocation: 1, // layout(location = 1) in vec2 a_Position;
+          offset: 0,
+          format: Format.F32_RG,
         },
         {
-            arrayStride: 4 * 8,
-            stepMode: VertexStepMode.INSTANCE,
-            attributes: [
-                {
-                    shaderLocation: 1, // layout(location = 1) in vec2 a_Position;
-                    offset: 0,
-                    format: Format.F32_RG,
-                },
-                {
-                    shaderLocation: 2, // layout(location = 2) in vec2 a_Size;
-                    offset: 4 * 2,
-                    format: Format.F32_RG,
-                },
-                {
-                    shaderLocation: 3, // layout(location = 3) in vec4 a_FillColor;
-                    offset: 4 * 4,
-                    format: Format.F32_RGBA,
-                },
-            ],
+          shaderLocation: 2, // layout(location = 2) in vec2 a_Size;
+          offset: 4 * 2,
+          format: Format.F32_RG,
         },
-    ],
-    indexBufferFormat: Format.U32_R,
-    program: this.#program,
+        {
+          shaderLocation: 3, // layout(location = 3) in vec4 a_FillColor;
+          offset: 4 * 4,
+          format: Format.F32_RGBA,
+        },
+      ],
+    },
+  ],
+  indexBufferFormat: Format.U32_R,
+  program: this.#program,
 });
 ```
 
@@ -370,30 +370,30 @@ If you look closely or zoom in, you can see that the edges are clearly jagged. A
 
 ```js eval code=false
 (async () => {
-    const { Canvas, Circle } = Lesson2;
+  const { Canvas, Circle } = Lesson2;
 
-    const canvas = await Utils.createCanvas(Canvas, 200, 200);
+  const canvas = await Utils.createCanvas(Canvas, 200, 200);
 
-    const circle = new Circle({
-        cx: 100,
-        cy: 100,
-        r: 100,
-        fill: 'red',
-    });
-    canvas.appendChild(circle);
+  const circle = new Circle({
+    cx: 100,
+    cy: 100,
+    r: 100,
+    fill: 'red',
+  });
+  canvas.appendChild(circle);
 
-    let id;
-    const animate = () => {
-        canvas.render();
-        id = requestAnimationFrame(animate);
-    };
-    animate();
+  let id;
+  const animate = () => {
+    canvas.render();
+    id = requestAnimationFrame(animate);
+  };
+  animate();
 
-    unsubscribe(() => {
-        cancelAnimationFrame(id);
-        canvas.destroy();
-    });
-    return canvas.getDOM();
+  unsubscribe(() => {
+    cancelAnimationFrame(id);
+    canvas.destroy();
+  });
+  return canvas.getDOM();
 })();
 ```
 
@@ -418,31 +418,31 @@ The effect is as follows:
 
 ```js eval code=false
 (async () => {
-    const { Canvas, Circle } = Lesson2;
+  const { Canvas, Circle } = Lesson2;
 
-    const canvas = await Utils.createCanvas(Canvas, 200, 200);
+  const canvas = await Utils.createCanvas(Canvas, 200, 200);
 
-    const circle = new Circle({
-        cx: 100,
-        cy: 100,
-        r: 100,
-        fill: 'red',
-        antiAliasingType: 1,
-    });
-    canvas.appendChild(circle);
+  const circle = new Circle({
+    cx: 100,
+    cy: 100,
+    r: 100,
+    fill: 'red',
+    antiAliasingType: 1,
+  });
+  canvas.appendChild(circle);
 
-    let id;
-    const animate = () => {
-        canvas.render();
-        id = requestAnimationFrame(animate);
-    };
-    animate();
+  let id;
+  const animate = () => {
+    canvas.render();
+    id = requestAnimationFrame(animate);
+  };
+  animate();
 
-    unsubscribe(() => {
-        cancelAnimationFrame(id);
-        canvas.destroy();
-    });
-    return canvas.getDOM();
+  unsubscribe(() => {
+    cancelAnimationFrame(id);
+    canvas.destroy();
+  });
+  return canvas.getDOM();
 })();
 ```
 
@@ -458,31 +458,31 @@ float alpha = clamp(-distance / 0.01, 0.0, 1.0);
 
 ```js eval code=false
 (async () => {
-    const { Canvas, Circle } = Lesson2;
+  const { Canvas, Circle } = Lesson2;
 
-    const canvas = await Utils.createCanvas(Canvas, 200, 200);
+  const canvas = await Utils.createCanvas(Canvas, 200, 200);
 
-    const circle = new Circle({
-        cx: 100,
-        cy: 100,
-        r: 100,
-        fill: 'red',
-        antiAliasingType: 2,
-    });
-    canvas.appendChild(circle);
+  const circle = new Circle({
+    cx: 100,
+    cy: 100,
+    r: 100,
+    fill: 'red',
+    antiAliasingType: 2,
+  });
+  canvas.appendChild(circle);
 
-    let id;
-    const animate = () => {
-        canvas.render();
-        id = requestAnimationFrame(animate);
-    };
-    animate();
+  let id;
+  const animate = () => {
+    canvas.render();
+    id = requestAnimationFrame(animate);
+  };
+  animate();
 
-    unsubscribe(() => {
-        cancelAnimationFrame(id);
-        canvas.destroy();
-    });
-    return canvas.getDOM();
+  unsubscribe(() => {
+    cancelAnimationFrame(id);
+    canvas.destroy();
+  });
+  return canvas.getDOM();
 })();
 ```
 
@@ -500,9 +500,9 @@ Here's a look at how the partial derivatives are calculated in each 2x2 quad, e.
 
 To make it easier for developers to get a sense of how drastically the pixel has changed for a given value, both OpenGL / WebGL and WebGPU provide the following methods:
 
--   `dFdx` Calculates how much the value of a parameter attribute has changed over the span of one pixel in the horizontal direction of the screen.
--   `dFdy` Calculates how much the value of a parameter attribute has changed over a one-pixel span in the vertical direction of the screen.
--   `fwidth` calculates `abs(dFdx) + abs(dFdy)
+- `dFdx` Calculates how much the value of a parameter attribute has changed over the span of one pixel in the horizontal direction of the screen.
+- `dFdy` Calculates how much the value of a parameter attribute has changed over a one-pixel span in the vertical direction of the screen.
+- `fwidth` calculates `abs(dFdx) + abs(dFdy)
 
 We pass in the distance from the SDF calculation and calculate how much it has changed to be reflected in the transparency.
 
@@ -512,31 +512,31 @@ float alpha = clamp(-distance / fwidth(-distance), 0.0, 1.0);
 
 ```js eval code=false
 (async () => {
-    const { Canvas, Circle } = Lesson2;
+  const { Canvas, Circle } = Lesson2;
 
-    const canvas = await Utils.createCanvas(Canvas, 200, 200);
+  const canvas = await Utils.createCanvas(Canvas, 200, 200);
 
-    const circle = new Circle({
-        cx: 100,
-        cy: 100,
-        r: 100,
-        fill: 'red',
-        antiAliasingType: 3,
-    });
-    canvas.appendChild(circle);
+  const circle = new Circle({
+    cx: 100,
+    cy: 100,
+    r: 100,
+    fill: 'red',
+    antiAliasingType: 3,
+  });
+  canvas.appendChild(circle);
 
-    let id;
-    const animate = () => {
-        canvas.render();
-        id = requestAnimationFrame(animate);
-    };
-    animate();
+  let id;
+  const animate = () => {
+    canvas.render();
+    id = requestAnimationFrame(animate);
+  };
+  animate();
 
-    unsubscribe(() => {
-        cancelAnimationFrame(id);
-        canvas.destroy();
-    });
-    return canvas.getDOM();
+  unsubscribe(() => {
+    cancelAnimationFrame(id);
+    canvas.destroy();
+  });
+  return canvas.getDOM();
 })();
 ```
 
@@ -565,21 +565,21 @@ In the `render` method, the underlying buffer is updated only when a property mo
 
 ```ts
 if (this.renderDirtyFlag) {
-    this.#instancedBuffer.setSubData(
-        0,
-        new Uint8Array(
-            new Float32Array([
-                this.#cx,
-                this.#cy,
-                this.#r,
-                this.#r,
-                this.#fillRGB.r / 255,
-                this.#fillRGB.g / 255,
-                this.#fillRGB.b / 255,
-                this.#fillRGB.opacity,
-            ]).buffer,
-        ),
-    );
+  this.#instancedBuffer.setSubData(
+    0,
+    new Uint8Array(
+      new Float32Array([
+        this.#cx,
+        this.#cy,
+        this.#r,
+        this.#r,
+        this.#fillRGB.r / 255,
+        this.#fillRGB.g / 255,
+        this.#fillRGB.b / 255,
+        this.#fillRGB.opacity,
+      ]).buffer,
+    ),
+  );
 }
 ```
 
@@ -609,47 +609,47 @@ fill2 = Inputs.color({ label: 'fill', value: '#ff0000' });
 
 ```js eval code=false inspector=false
 circle = (() => {
-    const { Circle } = Lesson2;
-    const circle = new Circle({
-        cx: 100,
-        cy: 100,
-        r: 100,
-        fill: 'red',
-        antiAliasingType: 3,
-    });
-    return circle;
+  const { Circle } = Lesson2;
+  const circle = new Circle({
+    cx: 100,
+    cy: 100,
+    r: 100,
+    fill: 'red',
+    antiAliasingType: 3,
+  });
+  return circle;
 })();
 ```
 
 ```js eval code=false inspector=false
 (() => {
-    circle.cx = cx2;
-    circle.cy = cy2;
-    circle.r = r2;
-    circle.fill = fill2;
+  circle.cx = cx2;
+  circle.cy = cy2;
+  circle.r = r2;
+  circle.fill = fill2;
 })();
 ```
 
 ```js eval code=false
 (async () => {
-    const { Canvas } = Lesson2;
+  const { Canvas } = Lesson2;
 
-    const canvas = await Utils.createCanvas(Canvas, 200, 200);
+  const canvas = await Utils.createCanvas(Canvas, 200, 200);
 
-    canvas.appendChild(circle);
+  canvas.appendChild(circle);
 
-    let id;
-    const animate = () => {
-        canvas.render();
-        id = requestAnimationFrame(animate);
-    };
-    animate();
+  let id;
+  const animate = () => {
+    canvas.render();
+    id = requestAnimationFrame(animate);
+  };
+  animate();
 
-    unsubscribe(() => {
-        cancelAnimationFrame(id);
-        canvas.destroy();
-    });
-    return canvas.getDOM();
+  unsubscribe(() => {
+    cancelAnimationFrame(id);
+    canvas.destroy();
+  });
+  return canvas.getDOM();
 })();
 ```
 
@@ -657,9 +657,9 @@ In the subsequent introduction to scene graphs, we will also apply the dirty fla
 
 ## Extended reading
 
--   [distfunctions]
--   [Leveraging Rust and the GPU to render user interfaces at 120 FPS]
--   [Sub-pixel Distance Transform - High quality font rendering for WebGPU]
+- [distfunctions]
+- [Leveraging Rust and the GPU to render user interfaces at 120 FPS]
+- [Sub-pixel Distance Transform - High quality font rendering for WebGPU]
 
 [Node API appendChild]: https://developer.mozilla.org/en-US/docs/Web/API/Node/appendChild
 [GPURenderPassEncoder]: https://developer.mozilla.org/en-US/docs/Web/API/GPURenderPassEncoder

@@ -17,7 +17,7 @@ import type {
 } from '@antv/g-device-api';
 import type { Plugin, PluginContext } from './interfaces';
 import { IDENTITY_TRANSFORM, Grid, Shape } from '../shapes';
-import { difference, paddingMat3 } from '../utils';
+import { paddingMat3 } from '../utils';
 import { BatchManager } from '../drawcalls/BatchManager';
 
 export enum CheckboardStyle {
@@ -40,8 +40,8 @@ export class Renderer implements Plugin {
   #batchManager: BatchManager;
   #zIndexCounter = 1;
 
-  #shapesRenderedLastFrame: Shape[] = [];
-  #shapesRenderedThisFrame: Shape[] = [];
+  #shapesRenderedLastFrame = new Set<Shape>();
+  #shapesRenderedThisFrame = new Set<Shape>();
 
   apply(context: PluginContext) {
     const {
@@ -184,19 +184,21 @@ export class Renderer implements Plugin {
       this.#grid.render(this.#device, this.#renderPass, this.#uniformBuffer);
       this.#batchManager.clear();
       this.#zIndexCounter = 1;
-      this.#shapesRenderedThisFrame = [];
+      this.#shapesRenderedThisFrame.clear();
     });
 
     hooks.endFrame.tap(() => {
       this.#shapesRenderedThisFrame.forEach((shape) => {
         this.#batchManager.add(shape);
       });
-      difference(
-        this.#shapesRenderedLastFrame,
-        this.#shapesRenderedThisFrame,
-      ).forEach((shape) => {
-        this.#batchManager.remove(shape);
-      });
+      // Use Set difference is much faster.
+      // @see https://stackoverflow.com/questions/1723168/what-is-the-fastest-or-most-elegant-way-to-compute-a-set-difference-using-javasc
+      // @see https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Set/difference
+      [...this.#shapesRenderedLastFrame]
+        .filter((shape) => !this.#shapesRenderedThisFrame.has(shape))
+        .forEach((shape) => {
+          this.#batchManager.remove(shape);
+        });
 
       this.#batchManager.flush(this.#renderPass, this.#uniformBuffer);
       this.#device.submitPass(this.#renderPass);
@@ -216,8 +218,8 @@ export class Renderer implements Plugin {
       );
 
       if (shape.renderable) {
-        this.#shapesRenderedThisFrame.push(shape);
-        shape['#globalRenderOrder'] = this.#zIndexCounter++;
+        this.#shapesRenderedThisFrame.add(shape);
+        shape.globalRenderOrder = this.#zIndexCounter++;
       }
     });
   }

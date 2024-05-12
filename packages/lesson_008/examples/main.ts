@@ -20,17 +20,14 @@ const canvas = await new Canvas({
 }).initialized;
 
 const circles: Circle[] = [];
-for (let i = 0; i < 100; i++) {
+for (let i = 0; i < 20000; i++) {
   const fill = `rgb(${Math.floor(Math.random() * 255)},${Math.floor(
     Math.random() * 255,
   )},${Math.floor(Math.random() * 255)})`;
   const circle = new Circle({
-    cx: Math.random() * 400,
-    cy: Math.random() * 200,
+    cx: Math.random() * 1000,
+    cy: Math.random() * 1000,
     r: Math.random() * 20,
-    // cx: i * 50,
-    // cy: i * 50,
-    // r: 100,
     fill,
     stroke: 'black',
     strokeWidth: 2,

@@ -6,101 +6,101 @@ outline: deep
 
 在这节课中你将学习到以下内容：
 
--   参考 DOM API 实现事件系统
--   如何拾取一个圆形
--   实现一个拖拽插件
--   支持双指缩放手势
+- 参考 DOM API 实现事件系统
+- 如何拾取一个圆形
+- 实现一个拖拽插件
+- 支持双指缩放手势
 
 ```js eval code=false
 $button = call(() => {
-    const $button = document.createElement('button');
-    $button.textContent = 'FlyTo origin';
-    return $button;
+  const $button = document.createElement('button');
+  $button.textContent = 'FlyTo origin';
+  return $button;
 });
 ```
 
 ```js eval code=false inspector=false
 canvas = call(() => {
-    const { Canvas } = Lesson6;
-    return Utils.createCanvas(Canvas, 400, 400);
+  const { Canvas } = Lesson6;
+  return Utils.createCanvas(Canvas, 400, 400);
 });
 ```
 
 ```js eval code=false
 (async () => {
-    const { Canvas, Circle, Group } = Lesson6;
+  const { Canvas, Circle, Group } = Lesson6;
 
-    const solarSystem = new Group();
-    const earthOrbit = new Group();
-    const moonOrbit = new Group();
+  const solarSystem = new Group();
+  const earthOrbit = new Group();
+  const moonOrbit = new Group();
 
-    const sun = new Circle({
-        cx: 0,
-        cy: 0,
-        r: 100,
-        fill: 'red',
-        cursor: 'pointer',
+  const sun = new Circle({
+    cx: 0,
+    cy: 0,
+    r: 100,
+    fill: 'red',
+    cursor: 'pointer',
+  });
+  const earth = new Circle({
+    cx: 0,
+    cy: 0,
+    r: 50,
+    fill: 'blue',
+  });
+  const moon = new Circle({
+    cx: 0,
+    cy: 0,
+    r: 25,
+    fill: 'yellow',
+  });
+  solarSystem.appendChild(sun);
+  solarSystem.appendChild(earthOrbit);
+  earthOrbit.appendChild(earth);
+  earthOrbit.appendChild(moonOrbit);
+  moonOrbit.appendChild(moon);
+
+  solarSystem.position.x = 200;
+  solarSystem.position.y = 200;
+  earthOrbit.position.x = 100;
+  moonOrbit.position.x = 100;
+
+  canvas.appendChild(solarSystem);
+
+  sun.addEventListener('pointerenter', () => {
+    sun.fill = 'green';
+  });
+  sun.addEventListener('pointerleave', () => {
+    sun.fill = 'red';
+  });
+
+  let id;
+  const animate = () => {
+    solarSystem.rotation += 0.01;
+    earthOrbit.rotation += 0.02;
+    canvas.render();
+    id = requestAnimationFrame(animate);
+  };
+  animate();
+
+  unsubscribe(() => {
+    cancelAnimationFrame(id);
+    canvas.destroy();
+  });
+
+  const landmark = canvas.camera.createLandmark({
+    x: 0,
+    y: 0,
+    zoom: 1,
+    rotation: 0,
+  });
+  $button.onclick = () => {
+    canvas.camera.gotoLandmark(landmark, {
+      duration: 1000,
+      easing: 'ease',
     });
-    const earth = new Circle({
-        cx: 0,
-        cy: 0,
-        r: 50,
-        fill: 'blue',
-    });
-    const moon = new Circle({
-        cx: 0,
-        cy: 0,
-        r: 25,
-        fill: 'yellow',
-    });
-    solarSystem.appendChild(sun);
-    solarSystem.appendChild(earthOrbit);
-    earthOrbit.appendChild(earth);
-    earthOrbit.appendChild(moonOrbit);
-    moonOrbit.appendChild(moon);
+  };
 
-    solarSystem.position.x = 200;
-    solarSystem.position.y = 200;
-    earthOrbit.position.x = 100;
-    moonOrbit.position.x = 100;
-
-    canvas.appendChild(solarSystem);
-
-    sun.addEventListener('pointerenter', () => {
-        sun.fill = 'green';
-    });
-    sun.addEventListener('pointerleave', () => {
-        sun.fill = 'red';
-    });
-
-    let id;
-    const animate = () => {
-        solarSystem.rotation += 0.01;
-        earthOrbit.rotation += 0.02;
-        canvas.render();
-        id = requestAnimationFrame(animate);
-    };
-    animate();
-
-    unsubscribe(() => {
-        cancelAnimationFrame(id);
-        canvas.destroy();
-    });
-
-    const landmark = canvas.camera.createLandmark({
-        x: 0,
-        y: 0,
-        zoom: 1,
-        rotation: 0,
-    });
-    $button.onclick = () => {
-        canvas.camera.gotoLandmark(landmark, {
-            duration: 1000,
-            easing: 'ease',
-        });
-    };
-
-    return canvas.getDOM();
+  return canvas.getDOM();
 })();
 ```
 
@@ -108,21 +108,21 @@ canvas = call(() => {
 
 ```ts
 sun.addEventListener('pointerenter', () => {
-    sun.fill = 'green';
+  sun.fill = 'green';
 });
 sun.addEventListener('pointerleave', () => {
-    sun.fill = 'red';
+  sun.fill = 'red';
 });
 ```
 
 这就需要实现一个完整的事件系统。
 
-## 事件系统设计
+## 事件系统设计 {#design-a-event-system}
 
 在设计事件系统时我们希望遵循以下原则：
 
--   尽可能和 DOM Event API 保持一致，除了能降低学习成本，最重要的是能接入已有生态（例如手势库）。
--   仅提供标准事件。拖拽、手势等高级事件通过扩展方式定义。
+- 尽可能和 DOM Event API 保持一致，除了能降低学习成本，最重要的是能接入已有生态（例如手势库）。
+- 仅提供标准事件。拖拽、手势等高级事件通过扩展方式定义。
 
 下面我们介绍的实现完全参考自 [PIXI.js Events Design Documents]，目前 PIXI.js v8 仍在沿用，如果想深入了解更多细节完全可以阅读它的源代码。
 
@@ -130,10 +130,10 @@ sun.addEventListener('pointerleave', () => {
 
 浏览器对于交互事件的支持历经了以下阶段，详见：[The brief history of PointerEvent]
 
--   最早支持的是 mouse 事件
--   随着移动设备普及，touch 事件出现，同时也触发 mouse 事件
--   再后来新的设备又出现了，比如 pen，这样一来各种事件结构各异，使用起来非常痛苦。例如 [hammer.js 对各类事件的兼容性处理]
--   新的标准被提出，[PointerEvent] 希望涵盖以上所有输入设备
+- 最早支持的是 mouse 事件
+- 随着移动设备普及，touch 事件出现，同时也触发 mouse 事件
+- 再后来新的设备又出现了，比如 pen，这样一来各种事件结构各异，使用起来非常痛苦。例如 [hammer.js 对各类事件的兼容性处理]
+- 新的标准被提出，[PointerEvent] 希望涵盖以上所有输入设备
 
 ![mouse, pointer and touch events](/mouse-pointer-touch-events.png)
 
@@ -145,13 +145,13 @@ sun.addEventListener('pointerleave', () => {
 
 ```ts
 circle.addEventListener('pointerdown', (e) => {
-    e.target; // circle
-    e.preventDefault();
-    e.stopPropagation();
+  e.target; // circle
+  e.preventDefault();
+  e.stopPropagation();
 });
 ```
 
-### 监听事件插件
+### 监听事件插件 {#domeventlistener}
 
 首先我们需要监听画布上的一系列交互事件，还是通过插件实现：
 
@@ -170,12 +170,12 @@ const supportsTouchEvents = 'ontouchstart' in globalThis;
 
 ```ts
 const addPointerEventListener = ($el: HTMLCanvasElement) => {
-    globalThis.document.addEventListener('pointermove', onPointerMove, true);
-    $el.addEventListener('pointerdown', onPointerDown, true);
-    $el.addEventListener('pointerleave', onPointerOut, true);
-    $el.addEventListener('pointerover', onPointerOver, true);
-    globalThis.addEventListener('pointerup', onPointerUp, true);
-    globalThis.addEventListener('pointercancel', onPointerCancel, true);
+  globalThis.document.addEventListener('pointermove', onPointerMove, true);
+  $el.addEventListener('pointerdown', onPointerDown, true);
+  $el.addEventListener('pointerleave', onPointerOut, true);
+  $el.addEventListener('pointerover', onPointerOver, true);
+  globalThis.addEventListener('pointerup', onPointerUp, true);
+  globalThis.addEventListener('pointercancel', onPointerCancel, true);
 };
 ```
 
@@ -183,17 +183,17 @@ const addPointerEventListener = ($el: HTMLCanvasElement) => {
 
 ```ts
 const addMouseEventListener = ($el: HTMLCanvasElement) => {
-    globalThis.document.addEventListener('mousemove', onPointerMove, true);
-    $el.addEventListener('mousedown', onPointerDown, true);
-    $el.addEventListener('mouseout', onPointerOut, true);
-    $el.addEventListener('mouseover', onPointerOver, true);
-    globalThis.addEventListener('mouseup', onPointerUp, true);
+  globalThis.document.addEventListener('mousemove', onPointerMove, true);
+  $el.addEventListener('mousedown', onPointerDown, true);
+  $el.addEventListener('mouseout', onPointerOut, true);
+  $el.addEventListener('mouseover', onPointerOver, true);
+  globalThis.addEventListener('mouseup', onPointerUp, true);
 };
 const onPointerMove = (ev: InteractivePointerEvent) => {
-    hooks.pointerMove.call(ev);
+  hooks.pointerMove.call(ev);
 };
 const onPointerUp = (ev: InteractivePointerEvent) => {
-    hooks.pointerUp.call(ev);
+  hooks.pointerUp.call(ev);
 };
 ```
 
@@ -201,25 +201,25 @@ const onPointerUp = (ev: InteractivePointerEvent) => {
 
 ```ts
 export interface Hooks {
-    pointerDown: SyncHook<[InteractivePointerEvent]>;
-    pointerUp: SyncHook<[InteractivePointerEvent]>;
-    pointerMove: SyncHook<[InteractivePointerEvent]>;
-    pointerOut: SyncHook<[InteractivePointerEvent]>;
-    pointerOver: SyncHook<[InteractivePointerEvent]>;
-    pointerWheel: SyncHook<[InteractivePointerEvent]>;
-    pointerCancel: SyncHook<[InteractivePointerEvent]>;
+  pointerDown: SyncHook<[InteractivePointerEvent]>;
+  pointerUp: SyncHook<[InteractivePointerEvent]>;
+  pointerMove: SyncHook<[InteractivePointerEvent]>;
+  pointerOut: SyncHook<[InteractivePointerEvent]>;
+  pointerOver: SyncHook<[InteractivePointerEvent]>;
+  pointerWheel: SyncHook<[InteractivePointerEvent]>;
+  pointerCancel: SyncHook<[InteractivePointerEvent]>;
 }
 ```
 
-### 图形事件方法
+### 图形事件方法 {#add-listeners-to-shape}
 
 首先让图形基类继承 `EventEmitter`，它提供了 `on` `once` `off` 等事件监听和解除监听的方法：
 
 ```ts
 import EventEmitter from 'eventemitter3';
 export abstract class Shape
-    extends EventEmitter
-    implements FederatedEventTarget {}
+  extends EventEmitter
+  implements FederatedEventTarget {}
 ```
 
 以 [addEventListener] 为例，我们需要使用已有方法按照 DOM API 标准实现。例如对于只想触发一次的事件监听器，在注册时通过 [once] 参数指定：
@@ -245,33 +245,33 @@ export abstract class Shape {
 
 其他方法限于篇幅就不展开介绍了，详细实现可以参考 PIXI.js 源码：
 
--   `removeEventListener` 移除事件监听器
--   `removeAllListeners` 移除所有事件监听器
--   `dispatchEvent` 派发自定义事件
+- `removeEventListener` 移除事件监听器
+- `removeAllListeners` 移除所有事件监听器
+- `dispatchEvent` 派发自定义事件
 
 这样我们就可以使用如下 API 监听事件了，接下来需要实现传入监听器的事件对象 `e`：
 
 ```ts
 circle.addEventListener('pointerenter', (e) => {
-    circle.fill = 'green';
+  circle.fill = 'green';
 });
 ```
 
-### 事件对象
+### 事件对象 {#event-object}
 
 为了完全兼容 DOM Event API，PIXI.js 使用了 `FederatedEvent` 意在体现它的通用性，让它实现 [UIEvent] 接口，一些方法可以直接调用原生事件，例如 `preventDefault`。
 
 ```ts
 export class FederatedEvent<N extends UIEvent | PixiTouch = UIEvent | PixiTouch>
-    implements UIEvent
+  implements UIEvent
 {
-    preventDefault(): void {
-        if (this.nativeEvent instanceof Event && this.nativeEvent.cancelable) {
-            this.nativeEvent.preventDefault();
-        }
-
-        this.defaultPrevented = true;
+  preventDefault(): void {
+    if (this.nativeEvent instanceof Event && this.nativeEvent.cancelable) {
+      this.nativeEvent.preventDefault();
     }
+
+    this.defaultPrevented = true;
+  }
 }
 ```
 
@@ -279,13 +279,13 @@ export class FederatedEvent<N extends UIEvent | PixiTouch = UIEvent | PixiTouch>
 
 ```ts
 function normalizeToPointerEvent(
-    event: InteractivePointerEvent,
+  event: InteractivePointerEvent,
 ): PointerEvent[] {
-    if (supportsTouchEvents && event instanceof TouchEvent) {
-        for (let i = 0; i < event.changedTouches.length; i++) {
-            const touch = event.changedTouches[i] as PixiTouch;
-        }
+  if (supportsTouchEvents && event instanceof TouchEvent) {
+    for (let i = 0; i < event.changedTouches.length; i++) {
+      const touch = event.changedTouches[i] as PixiTouch;
     }
+  }
 }
 ```
 
@@ -293,19 +293,19 @@ function normalizeToPointerEvent(
 
 ```ts
 function bootstrapEvent(
-    event: FederatedPointerEvent,
-    nativeEvent: PointerEvent,
+  event: FederatedPointerEvent,
+  nativeEvent: PointerEvent,
 ): FederatedPointerEvent {}
 ```
 
 其中大部分属性都可以从原生事件上拷贝，需要特殊处理的是两类属性：
 
--   画布坐标系下事件所在的位置。
--   [target] 事件派发的目标对象，即事件发生在画布中哪个图形上。
+- 画布坐标系下事件所在的位置。
+- [target] 事件派发的目标对象，即事件发生在画布中哪个图形上。
 
 我们先来看第一类属性。
 
-### 坐标系转换
+### 坐标系转换 {#coordinates}
 
 当我们说起“位置”，一定是相对于某个坐标系下而言。Client、Screen、Page 都是浏览器原生支持的坐标系。我们新增了画布和视口两个坐标系。
 
@@ -317,12 +317,12 @@ Viewport 视口坐标系可以类比浏览器的 Client 坐标系。相机决定
 
 ```ts
 interface PluginContext {
-    api: {
-        client2Viewport({ x, y }: IPointData): IPointData;
-        viewport2Client({ x, y }: IPointData): IPointData;
-        viewport2Canvas({ x, y }: IPointData): IPointData;
-        canvas2Viewport({ x, y }: IPointData): IPointData;
-    };
+  api: {
+    client2Viewport({ x, y }: IPointData): IPointData;
+    viewport2Client({ x, y }: IPointData): IPointData;
+    viewport2Canvas({ x, y }: IPointData): IPointData;
+    canvas2Viewport({ x, y }: IPointData): IPointData;
+  };
 }
 ```
 
@@ -330,29 +330,29 @@ interface PluginContext {
 
 ```ts
 export class Event implements Plugin {
-    private bootstrapEvent(
-        event: FederatedPointerEvent,
-        nativeEvent: PointerEvent,
-    ): FederatedPointerEvent {
-        const { x, y } = this.getViewportXY(nativeEvent);
-        event.client.x = x;
-        event.client.y = y;
-        const { x: canvasX, y: canvasY } = this.viewport2Canvas(event.client);
-        event.screen.x = canvasX;
-        event.screen.y = canvasY;
-    }
+  private bootstrapEvent(
+    event: FederatedPointerEvent,
+    nativeEvent: PointerEvent,
+  ): FederatedPointerEvent {
+    const { x, y } = this.getViewportXY(nativeEvent);
+    event.client.x = x;
+    event.client.y = y;
+    const { x: canvasX, y: canvasY } = this.viewport2Canvas(event.client);
+    event.screen.x = canvasX;
+    event.screen.y = canvasY;
+  }
 }
 ```
 
 这样事件对象上的坐标就有了，我们暂时跳过“事件发生在哪个图形上”这个问题，先来看看如何实现一套完整的事件传播流程。
 
-### 事件传播流程
+### 事件传播流程 {#event-propagation-process}
 
 熟悉 DOM 事件流 的开发者对以下概念肯定不陌生：
 
--   事件对象的 `target` 属性指向目标元素，在 DOM API 中自然是 DOM 元素，在我们的画布中是某个图形。我们将在下一小节介绍它。
--   事件流包含捕获和冒泡阶段，可以通过事件对象上的某些方法介入它们
--   可以为某个事件添加一个或多个监听器，它们按照注册顺序依次触发
+- 事件对象的 `target` 属性指向目标元素，在 DOM API 中自然是 DOM 元素，在我们的画布中是某个图形。我们将在下一小节介绍它。
+- 事件流包含捕获和冒泡阶段，可以通过事件对象上的某些方法介入它们
+- 可以为某个事件添加一个或多个监听器，它们按照注册顺序依次触发
 
 [Bubbling and capturing] 展示了事件传播的三个阶段，在捕获阶段自顶向下依次触发监听器，到达目标节点后向上冒泡。在监听器中可以通过 `eventPhase` 获取当前所处的阶段。
 
@@ -388,12 +388,12 @@ propagate(e: FederatedEvent, type?: string): void {
 }
 ```
 
-## 拾取
+## 拾取 {#picking}
 
 判断事件发生在哪个图形中是通过拾取功能完成的。DOM API 提供了 [elementsFromPoint] 方法返回视口坐标系下指定点对应的元素列表。但由于我们使用的并不是 SVG 渲染器，因此没法使用它。我们有以下两种选择：
 
--   几何方法。例如判断一个点是否在圆内。
--   基于 GPU 颜色编码的方法。后续我们会详细介绍。
+- 几何方法。例如判断一个点是否在圆内。
+- 基于 GPU 颜色编码的方法。后续我们会详细介绍。
 
 从拾取的判定条件看，图形可见性、描边、填充都可以考虑进来，例如 CSS 就提供了 [pointer-events] 属性。我们给图形基类也增加 `pointerEvents` 属性：
 
@@ -416,7 +416,7 @@ type PointerEvents =
   | 'non-transparent-pixel';
 ```
 
-### 拾取插件
+### 拾取插件 {#picking-plugin}
 
 创建一个拾取插件，从根节点开始遍历场景图，依次判断世界坐标系下的点是否在图形内。需要注意的是命中后需要添加到列表的前部，因为靠后的元素渲染次序也靠后，因此会出现在更上层。当然后续我们会引入 `zIndex` 属性用于修改渲染次序。
 
@@ -444,47 +444,47 @@ export class Picker implements Plugin {
 
 ```ts
 export class Picker implements Plugin {
-    private hitTest(shape: Shape, wx: number, wy: number): boolean {
-        // 跳过检测
-        if (shape.pointerEvents === 'none') {
-            return false;
-        }
-
-        shape.worldTransform.applyInverse({ x: wx, y: wy }, tempLocalMapping);
-        const { x, y } = tempLocalMapping;
-        return shape.containsPoint(x, y);
+  private hitTest(shape: Shape, wx: number, wy: number): boolean {
+    // 跳过检测
+    if (shape.pointerEvents === 'none') {
+      return false;
     }
+
+    shape.worldTransform.applyInverse({ x: wx, y: wy }, tempLocalMapping);
+    const { x, y } = tempLocalMapping;
+    return shape.containsPoint(x, y);
+  }
 }
 ```
 
 接下来我们来实现 `containsPoint` 这个方法。
 
-### 数学方法
+### 数学方法 {#geometric-method}
 
 如何判断一个点是否在圆内呢？还是使用熟悉的 SDF 方法，不过这次将 `strokeWidth` 和 `pointerEvents` 属性也考虑进来：
 
 ```ts
 class Circle {
-    containsPoint(x: number, y: number) {
-        const halfLineWidth = this.#strokeWidth / 2;
-        const absDistance = vec2.length([this.#cx - x, this.#cy - y]);
+  containsPoint(x: number, y: number) {
+    const halfLineWidth = this.#strokeWidth / 2;
+    const absDistance = vec2.length([this.#cx - x, this.#cy - y]);
 
-        const [hasFill, hasStroke] = isFillOrStrokeAffected(
-            this.pointerEvents,
-            this.#fill,
-            this.#stroke,
-        );
-        if (hasFill) {
-            return absDistance <= this.#r;
-        }
-        if (hasStroke) {
-            return (
-                absDistance >= this.#r - halfLineWidth &&
-                absDistance <= this.#r + halfLineWidth
-            );
-        }
-        return false;
+    const [hasFill, hasStroke] = isFillOrStrokeAffected(
+      this.pointerEvents,
+      this.#fill,
+      this.#stroke,
+    );
+    if (hasFill) {
+      return absDistance <= this.#r;
     }
+    if (hasStroke) {
+      return (
+        absDistance >= this.#r - halfLineWidth &&
+        absDistance <= this.#r + halfLineWidth
+      );
+    }
+    return false;
+  }
 }
 ```
 
@@ -496,7 +496,7 @@ class Circle {
 
 ```ts
 export interface FederatedEventTarget {
-    hitArea?: Rectangle;
+  hitArea?: Rectangle;
 }
 ```
 
@@ -504,10 +504,10 @@ export interface FederatedEventTarget {
 
 ```ts
 root.hitArea = new Rectangle(
-    -Number.MAX_VALUE,
-    -Number.MAX_VALUE,
-    Infinity,
-    Infinity,
+  -Number.MAX_VALUE,
+  -Number.MAX_VALUE,
+  Infinity,
+  Infinity,
 );
 ```
 
@@ -518,20 +518,20 @@ canvas.addEventListener('mousedown', (e: MouseEvent) => {}); // [!code --]
 root.addEventListener('pointerdown', (e: FederatedPointerEvent) => {}); // [!code ++]
 ```
 
-### 通过 API 方式拾取
+### 通过 API 方式拾取 {#picking-with-api}
 
 拾取功能不光可以通过交互事件完成，也可以以 API 形式暴露供显式调用，例如 [elementsFromPoint]。在下一节我们实现拖拽插件时就会用到。
 
 ```ts
 class Canvas {
-    elementsFromPoint(x: number, y: number): Shape[] {}
-    elementFromPoint(x: number, y: number): Shape {}
+  elementsFromPoint(x: number, y: number): Shape[] {}
+  elementFromPoint(x: number, y: number): Shape {}
 }
 ```
 
 下面让我们实现一个很常用的插件，并基于它让图形可移动。
 
-## 拖拽插件
+## 拖拽插件 {#dragndrop-plugin}
 
 参考 [Drag'n'Drop with mouse events]，基于 PointerEvent 可以实现一个拖拽插件：
 
@@ -541,8 +541,8 @@ export class Dragndrop implements Plugin {}
 
 对于满足何种条件判定“开始拖拽”，我们提供了以下配置项：分别基于拖拽距离和时间。只有这些判定条件全部满足，才会触发 `dragstart` 等一系列拖放事件。
 
--   `dragstartDistanceThreshold` 该配置项用于配置拖放距离的检测阈值，单位为像素，只有大于该值才会判定通过。默认值为 `0`。
--   `dragstartTimeThreshold` 该配置项用于配置拖放时间的检测阈值，单位为毫秒，只有大于该值才会判定通过。默认值为 `0`。
+- `dragstartDistanceThreshold` 该配置项用于配置拖放距离的检测阈值，单位为像素，只有大于该值才会判定通过。默认值为 `0`。
+- `dragstartTimeThreshold` 该配置项用于配置拖放时间的检测阈值，单位为毫秒，只有大于该值才会判定通过。默认值为 `0`。
 
 在 HTML 的 Drag'n'drop 实现中，`click` 和 `drag` 事件同时只会触发一个：[示例](https://plnkr.co/edit/5mdl7oTg0dPWXIip)
 
@@ -550,11 +550,11 @@ export class Dragndrop implements Plugin {}
 
 ```ts
 if (!e.detail.preventClick) {
-    this.dispatchEvent(clickEvent, 'click');
+  this.dispatchEvent(clickEvent, 'click');
 }
 ```
 
-## 改造相机控制插件
+## 改造相机控制插件 {#modify-cameracontrol-plugin}
 
 下面我们将之前的 `CameraControl` 插件改用拖拽实现。首先设置根节点 `draggable`，将之前对 `pointerdown` 等事件改为对 `drag` 系列事件的监听：
 
@@ -568,7 +568,7 @@ root.addEventListener('dragend', (e: FederatedPointerEvent) => {});
 目前我们的相机还不支持手势操作，除了通过鼠标滚轮缩放画布，参考
 [pixi-viewport]，我们希望加上常见的 `pinch` 双指手势。
 
-### 支持手势
+### 支持手势 {#support-pinch-gesture}
 
 为了在 PC 开发时也能模拟手势事件，我们可以使用 [hammer-touchemulator]，它是 [hammer.js] 生态的一部分。通过鼠标加键盘 <kbd>Shift</kbd> 可以模拟触发多个 PointerEvent。当然也可以使用 XCode 中的 iOS 模拟器，同样可以测试手势交互，例如双指缩放：[Interacting with your app in the iOS and iPadOS simulator]
 
@@ -590,11 +590,11 @@ zoomByPoint(point.x, point.y, (last / dist - 1) * PINCH_FACTOR);
 
 ![Pinch in ios simulator](/pinch-ios-simulator.gif)
 
-## 扩展阅读
+## 扩展阅读 {#extended-reading}
 
--   [The brief history of PointerEvent]
--   [Bubbling and capturing]
--   [Drag'n'Drop with mouse events]:
+- [The brief history of PointerEvent]
+- [Bubbling and capturing]
+- [Drag'n'Drop with mouse events]:
 
 [The brief history of PointerEvent]: https://javascript.info/pointer-events#the-brief-history
 [hammer.js 对各类事件的兼容性处理]: https://github.com/hammerjs/hammer.js/tree/master/src/input

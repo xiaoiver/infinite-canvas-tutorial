@@ -14,7 +14,7 @@ outline: deep
   <ic-canvas-lesson7 />
 </div>
 
-## 使用 Lit 和 Shoelace 开发 Web UI
+## 使用 Lit 和 Shoelace 开发 Web UI {#web-ui-with-lit-and-shoelace}
 
 在选择组件库时，我不希望它绑定在某个具体的框架实现上。Web components 是不错的选择，[Lit] 为它添加了响应式状态、声明式模版、模块化样式等特性，让开发过程变得更便捷。[Shoelace] 是一个基于 [Lit] 开发的组件库。使用它们可以让我们的画布组件同时支持 React、Vue 和 Angular，做到真正的框架无关。
 
@@ -22,7 +22,7 @@ outline: deep
 
 接下来我们将目前已有的简单功能封装成 UI 组件。
 
-## 画布组件
+## 画布组件 {#canvas-component}
 
 使用 [Lit] 声明一个画布组件，为了避免潜在的命名冲突，我们使用了 `ic` 作为组件前缀：
 
@@ -123,7 +123,7 @@ $canvas.addEventListener('ic-ready', (e) => {
 
 下面我们来实现相机缩放组件。
 
-## 相机缩放组件
+## 相机缩放组件 {#zoom-component}
 
 下图是 Miro 的缩放组件：
 

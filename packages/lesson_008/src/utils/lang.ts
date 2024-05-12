@@ -6,5 +6,3 @@ export const isBoolean = (arg): arg is boolean => arg === !!arg;
 export const isFunction = (val): val is Function => typeof val === 'function';
 export const isUndefined = (val): val is undefined => val === undefined;
 export const isNil = (val): val is null | undefined => val == null;
-export const difference = <T>(arr1: T[], arr2: T[]) =>
-  arr1.filter((x) => !arr2.includes(x));

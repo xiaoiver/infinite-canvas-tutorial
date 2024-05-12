@@ -73,7 +73,7 @@ const animate = () => {
 
 ![draw calls in spector.js](/draw-calls.png)
 
-## 什么是 Draw call
+## 什么是 Draw call {#draw-call}
 
 这些绘制命令称作 Draw call。下面这张图来自 [Draw calls in a nutshell]，解释了为何 Draw call 数量增多时会影响性能。这是由于 Draw call 都是从 CPU 发起调用的，当数量增多时 CPU 准备时间也更长，GPU 虽然渲染快但仍然需要等待，存在大量空闲时间，因此瓶颈在 CPU 上。
 
@@ -84,7 +84,7 @@ const animate = () => {
 - Culling 剔除掉视口外的图形
 - Draw call batching。将多个 Draw call 进行合并
 
-## 剔除
+## 剔除 {#culling}
 
 视口之外的图形是不需要渲染的，下图来自 Unreal [How Culling Works]，从上帝视角展示了相机视锥之外被剔除的红色对象，可以看出这将大大减少不必要的 draw call。
 
@@ -100,7 +100,7 @@ const animate = () => {
 
 相比 3D 场景，我们的 2D 画布实现起来会简单很多。那么如何判断一个图形是否在视口内呢？这就需要引入包围盒的概念。当然不一定非要使用包围盒，3D 场景中也可以用包围球代替。
 
-### 包围盒
+### 包围盒 {#aabb}
 
 轴对齐包围盒（Axis-Aligned Bounding Box，简称 AABB）是一种在三维图形学中常用的简单包围盒，它与世界坐标系的轴平行。换句话说，它的边与坐标轴的方向一致。轴对齐包围盒通常是长方体，其用途是将一个物体或一组物体在空间中占据的区域用一个简化的盒子来表示。在我们的 2D 场景中它是一个矩形，我们只需要存储它的左上角 `minX/Y` 和右下角 `maxX/Y` 坐标：
 
@@ -138,7 +138,7 @@ export class Circle extends Shape {
 }
 ```
 
-### 增加剔除插件
+### 增加剔除插件 {#culling-plugin}
 
 增加一个剔除插件，保存视口对应的包围盒，后续和每个图形的包围盒进行求交。考虑到相机变换，我们获取视口四个顶点在世界坐标系下的坐标，用一个包围盒框住它们。每次相机发生变化时更新这个包围盒。
 
@@ -255,7 +255,7 @@ call(() => {
 
 当视口包含所有图形时，任何图形都没法剔除，此时我们得使用其他手段减少 draw call。
 
-## 合批渲染
+## 合批渲染 {#batch-rendering}
 
 可以合并的 Draw call 是需要满足一定条件的，例如拥有相似的 Geometry，相同的 Shader 等。[Draw call batching - Unity] 提供了两种方式：
 
@@ -376,15 +376,15 @@ export abstract class Drawcall {
 }
 ```
 
-### 绘制顺序
+### 绘制顺序 {#rendering-order}
 
-既然我们使用一条 draw call 绘制多个图形，那就需要注意绘制顺序问题。每个元素在实例数组中的位置并不一定等同于最后的绘制顺序，因此需要在实际绘制前为每一个图形分配一个值，稍后将传入 Shader 中作为 Z 轴坐标：
+既然我们使用一条 draw call 绘制多个图形，那就需要注意绘制顺序问题。每个元素在实例数组中的位置并不一定等同于最后的绘制顺序，因此需要在实际绘制前为每一个图形分配一个值，稍后将这个值归一化到 `[0, 1]` 后传入 Shader 中作为深度值：
 
 ```ts{4}
 export class Renderer implements Plugin {
   apply(context: PluginContext) {
     hooks.render.tap((shape) => {
-      shape['#globalRenderOrder'] = this.#zIndexCounter++;
+      shape.globalRenderOrder = this.#zIndexCounter++;
     });
 
     hooks.beginFrame.tap(() => {
@@ -394,17 +394,34 @@ export class Renderer implements Plugin {
 }
 ```
 
-然后创建一个 Depth RenderTarget
+然后开启深度测试 [Depth testing]，测试方法改为：深度值大于当前 Depth buffer 存储的值（范围为 `[0, 1]`）就会写入（WebGL 默认为 `gl.LESS`）。在我们的场景中 ZIndex 大的图形会覆盖小的。
+
+```ts
+export class SDF extends Drawcall {
+  createMaterial(uniformBuffer: Buffer): void {
+    this.#pipeline = this.device.createRenderPipeline({
+      megaStateDescriptor: {
+        depthWrite: true, // [!code ++]
+        depthCompare: CompareFunction.GREATER, // [!code ++]
+      },
+    });
+  }
+}
+```
+
+最后在创建 RenderPass 时额外创建一个 Depth RenderTarget：
 
 ```ts
 this.#renderPass = this.#device.createRenderPass({
   colorAttachment: [this.#renderTarget],
   colorResolveTo: [onscreenTexture],
   colorClearColor: [TransparentWhite],
-  depthStencilAttachment: mainDepthRT, // [!code ++]
+  depthStencilAttachment: this.#depthRenderTarget, // [!code ++]
   depthClearValue: 1, // [!code ++]
 });
 ```
+
+看看效果，绘制 5000 个 Circle 同时开启剔除和合批优化：
 
 ```js eval code=false
 $icCanvas3 = call(() => {
@@ -430,7 +447,7 @@ call(() => {
   $icCanvas3.addEventListener('ic-ready', (e) => {
     const canvas = e.detail;
 
-    for (let i = 0; i < 1000; i++) {
+    for (let i = 0; i < 5000; i++) {
       const circle = new Circle({
         cx: Math.random() * 1000,
         cy: Math.random() * 1000,
@@ -439,7 +456,7 @@ call(() => {
           Math.random() * 255,
         )},${Math.floor(Math.random() * 255)})`,
         batchable: true,
-        // cullable: false,
+        cullable: true,
       });
       canvas.appendChild(circle);
       circles.push(circle);
@@ -452,23 +469,97 @@ call(() => {
 });
 ```
 
-### Batching
+## 优化拾取性能 {#optimizing-picking-perf}
 
-Three.js [BatchedMesh: Proposal]
+接下来我们来度量下拾取性能，首先为每个 Circle 添加鼠标移入移出的事件监听器：
 
-## 优化拾取性能
+```ts
+circle.addEventListener('pointerenter', () => {
+  circle.fill = 'red';
+});
+circle.addEventListener('pointerleave', () => {
+  circle.fill = fill;
+});
+```
 
-接下来
+20000 个 Circle 拾取耗时如下：
 
-首先想到为图形增加包围盒，相比数学方法可以进行更快速的近似判断。后续在基于视口的剔除时还会使用到。
+![pick perf](/pick-perf.png)
 
-### 使用空间索引加速
+之前在基于视口的剔除时用到了图形的包围盒，相比数学方法可以进行更快速的近似判断。
+
+### 使用空间索引加速 {#using-spatial-indexing}
 
 空间索引（Spatial Index）是一种数据结构，用于高效地处理空间数据和查询操作，特别是在地理信息系统（GIS）、计算机图形学、三维游戏开发和数据库技术中。空间索引的主要目的是减少在大量数据中搜索特定空间对象所需的计算量和时间。空间索引有多种数据结构，如四叉树（Quadtree）、八叉树（Octree）、R 树（R-tree）、K-d 树（K-dimensional tree）等，每种结构都有其特定的应用场景和优势。
 
 在 PIXI.js 的生态中有 [pixi-spatial-hash] 这样的库，在每一帧中创建新的空间索引。但目前似乎缺少维护。
 
 我们使用 [rbush]，它支持批量插入，通常比逐个插入要快 2-3 倍，在 mapbox 中也有应用。
+
+```ts
+import RBush from 'rbush';
+const rBushRoot = new RBush<RBushNodeAABB>();
+
+export interface RBushNodeAABB {
+  shape: Shape;
+  minX: number;
+  minY: number;
+  maxX: number;
+  maxY: number;
+}
+```
+
+### 区域查询 {#rbush-search}
+
+RBush 提供了区域查询功能 [search]，传入一个包围盒返回
+
+```ts
+export class Canvas {
+  elementsFromBBox(
+    minX: number,
+    minY: number,
+    maxX: number,
+    maxY: number,
+  ): Shape[] {
+    const { rBushRoot } = this.#pluginContext;
+    const rBushNodes = rBushRoot.search({ minX, minY, maxX, maxY });
+  }
+}
+```
+
+在[拾取插件]中我们使用上述区域查询方法，当然传入的是一个点而非包围盒：
+
+```ts{9}
+export class Picker implements Plugin {
+  apply(context: PluginContext) {
+    hooks.pickSync.tap((result: PickingResult) => {
+      const {
+        position: { x, y },
+      } = result;
+
+      const picked: Shape[] = [root];
+      elementsFromBBox(x, y, x, y).forEach((shape) => {
+        if (this.hitTest(shape, x, y)) {
+          picked.unshift(shape);
+        }
+      });
+      result.picked = picked;
+      return result;
+    });
+  }
+}
+```
+
+让我们重新度量一下，20000 个 Circle 拾取事件变成了 0.088ms，提升了大约 20 倍！
+
+![pick perf with rbush](/pick-rbush-perf.png)
+
+## 扩展阅读 {#extended-reading}
+
+- [Inside PixiJS: Batch Rendering System]
+- [Depth testing]
+- [The Depth Texture | WebGPU]
+- Three.js [BatchedMesh: Proposal]
 
 [stats.js]: https://github.com/mrdoob/stats.js
 [Spector.js]: https://spector.babylonjs.com/
@@ -489,4 +580,8 @@ Three.js [BatchedMesh: Proposal]
 [WebGL2 Optimization - Instanced Drawing]: https://webgl2fundamentals.org/webgl/lessons/webgl-instanced-drawing.html
 [Drawing Many different models in a single draw call]: https://webglfundamentals.org/webgl/lessons/webgl-qna-drawing-many-different-models-in-a-single-draw-call.html
 [Instances]: https://doc.babylonjs.com/features/featuresDeepDive/mesh/copies/instances
-[脏检查模式]: /zh/lesson-002#脏检查
+[脏检查模式]: /zh/guide/lesson-002#dirty-flag
+[Depth testing]: https://learnopengl.com/Advanced-OpenGL/Depth-testing
+[The Depth Texture | WebGPU]: https://carmencincotti.com/2022-06-13/webgpu-the-depth-texture/
+[拾取插件]: /zh/guide/lesson-006#picking-plugin
+[search]: https://github.com/mourner/rbush?tab=readme-ov-file#search
