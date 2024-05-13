@@ -20,7 +20,7 @@ import { vert, frag } from '../shaders/sdf';
 import { paddingMat3 } from '../utils';
 
 export class SDF extends Drawcall {
-  protected maxInstances = 5000;
+  // protected maxInstances = 5000;
 
   #program: Program;
   #fragUnitBuffer: Buffer;

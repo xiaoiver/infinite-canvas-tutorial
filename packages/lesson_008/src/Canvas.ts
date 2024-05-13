@@ -224,7 +224,7 @@ export class Canvas {
       }
     });
     // find group with max z-index
-    hitTestList.sort((a, b) => b.globalRenderOrder - a.globalRenderOrder);
+    hitTestList.sort((a, b) => a.globalRenderOrder - b.globalRenderOrder);
 
     return hitTestList;
   }

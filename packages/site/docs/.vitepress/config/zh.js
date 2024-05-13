@@ -80,6 +80,10 @@ export const zh = defineConfig({
                 text: '通过实例化数组减少 draw call',
                 link: 'instanced',
               },
+              {
+                text: '通过 RBush 加速拾取',
+                link: 'picking',
+              },
             ],
           },
         ],

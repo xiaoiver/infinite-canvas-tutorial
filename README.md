@@ -48,49 +48,56 @@ cd packages/lesson_001
 pnpm run dev
 ```
 
-## Lesson 1
+## Lesson 1 - Initialize canvas
 
 -   A hardware abstraction layer based on WebGL1/2 and WebGPU.
 -   Canvas API design.
 -   Implementing a simple plugin system.
 -   Implementing a rendering plugin based on the hardware abstraction layer.
 
-## Lesson 2
+## Lesson 2 - Draw a circle
 
 -   Adding shapes to the canvas.
 -   Drawing a circle using SDF.
 -   Anti Aliasing.
 -   Dirty flag design pattern.
 
-## Lesson 3
+## Lesson 3 - Scene graph and transform
 
 -   Transformations. Make shapes support pan, zoom, rotate, and skew transformations.
 -   Scene graph.
 
-## Lesson 4
+## Lesson 4 - Camera
 
 -   What is a Camera?
 -   Projection transformation.
 -   Camera transformation.
 -   Camera animation. Using Landmark transition between different camera states.
 
-## Lesson 5
+## Lesson 5 - Grid
 
 -   Drawing straight lines using Line Geometry or screen-space techniques.
 -   Drawing dots grid.
 
-## Lesson 6
+## Lesson 6 - Event System
 
 -   Implement an event system compatible with DOM Event API.
 -   How to pick a circle.
 -   Implement a drag-and-drop plugin based on our event system.
 -   Support for pinch zoom gestures.
 
-## Lesson 7
+## Lesson 7 - Web UI
 
 -   Developing Web UI with Lit and Shoelace
 -   Implementing a canvas component
 -   Implementing a zoom toolbar component
+
+# Lesson 8 - Optimize performance
+
+-   What is a draw call
+-   Reducing draw calls with culling
+-   Reducing draw calls by combining batches
+-   Using spatial indexing to improve pickup efficiency
 
 [infinitecanvas]: https://infinitecanvas.tools/
 [Figma]: https://madebyevan.com/figma/building-a-professional-design-tool-on-the-web/

@@ -51,48 +51,55 @@ cd packages/lesson_001
 pnpm run dev
 ```
 
-## 课程 1
+## 课程 1 - 初始化画布
 
 -   基于 WebGL1/2 和 WebGPU 的硬件抽象层
 -   画布 API 设计
 -   实现一个简单的插件系统
 -   基于硬件抽象层实现一个渲染插件
 
-## 课程 2
+## 课程 2 - 绘制圆
 
 -   向画布中添加图形
 -   使用 SDF 绘制一个圆形
 -   反走样
 
-## 课程 3
+## 课程 3 - 变换和场景图
 
 -   变换。让图形支持平移、缩放、旋转、斜切变换。
 -   场景图。
 
-## 课程 4
+## 课程 4 - 相机
 
 -   相机是什么？
 -   投影变换。
 -   相机变换。通过一个插件实现平移、旋转和缩放功能。
 -   相机动画。平滑过渡到任意相机状态。
 
-## 课程 5
+## 课程 5 - 绘制网格
 
 -   绘制直线网格。使用 Line Geometry 或者屏幕空间技术。
 -   绘制点网格。
 
-## 课程 6
+## 课程 6 - 事件系统
 
 -   参考 DOM API 实现事件系统
 -   如何拾取一个圆形
 -   实现一个拖拽插件
 -   支持双指缩放手势
 
-## 课程 7
+## 课程 7 - Web UI
 
 -   使用 Lit 和 Shoelace 开发 Web UI
 -   实现画布组件，监听页面宽高变换
 -   实现缩放组件
+
+## 课程 8 - 性能优化
+
+-   什么是 Draw call
+-   使用剔除减少 draw call
+-   使用合批减少 draw call
+-   使用空间索引提升拾取效率
 
 [infinitecanvas]: https://infinitecanvas.tools/
 [Figma]: https://madebyevan.com/figma/building-a-professional-design-tool-on-the-web/

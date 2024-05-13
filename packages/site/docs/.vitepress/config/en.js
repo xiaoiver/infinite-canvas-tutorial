@@ -92,6 +92,10 @@ export const en = defineConfig({
                 text: 'Reduce draw calls with instanced array',
                 link: 'instanced',
               },
+              {
+                text: 'Optimize picking performance with RBush',
+                link: 'picking',
+              },
             ],
           },
         ],

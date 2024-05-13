@@ -6,50 +6,50 @@ outline: deep
 
 在这节课中你将学习到以下内容：
 
-- 什么是 Draw call
-- 使用剔除减少 draw call
-- 使用合批减少 draw call
-- 使用空间索引提升拾取效率
+-   什么是 Draw call
+-   使用剔除减少 draw call
+-   使用合批减少 draw call
+-   使用空间索引提升拾取效率
 
 性能优化是一个复杂而长期的任务，我倾向于在项目早期就开始关注。之前我们学习了如何使用 SDF 绘制圆，现在让我们来做一下性能测试，绘制 1000 个圆 FPS 约为 35：
 
 ```js eval code=false
 $icCanvas = call(() => {
-  return document.createElement('ic-canvas-lesson7');
+    return document.createElement('ic-canvas-lesson7');
 });
 ```
 
 ```js eval code=false inspector=false
 call(() => {
-  const { Canvas, Circle } = Lesson7;
+    const { Canvas, Circle } = Lesson7;
 
-  const stats = new Stats();
-  stats.showPanel(0);
-  const $stats = stats.dom;
-  $stats.style.position = 'absolute';
-  $stats.style.left = '0px';
-  $stats.style.top = '0px';
+    const stats = new Stats();
+    stats.showPanel(0);
+    const $stats = stats.dom;
+    $stats.style.position = 'absolute';
+    $stats.style.left = '0px';
+    $stats.style.top = '0px';
 
-  $icCanvas.parentElement.style.position = 'relative';
-  $icCanvas.parentElement.appendChild($stats);
+    $icCanvas.parentElement.style.position = 'relative';
+    $icCanvas.parentElement.appendChild($stats);
 
-  $icCanvas.addEventListener('ic-ready', (e) => {
-    const canvas = e.detail;
+    $icCanvas.addEventListener('ic-ready', (e) => {
+        const canvas = e.detail;
 
-    for (let i = 0; i < 10; i++) {
-      const circle = new Circle({
-        cx: Math.random() * 400,
-        cy: Math.random() * 200,
-        r: Math.random() * 20,
-        fill: 'red',
-      });
-      canvas.appendChild(circle);
-    }
-  });
+        for (let i = 0; i < 100; i++) {
+            const circle = new Circle({
+                cx: Math.random() * 400,
+                cy: Math.random() * 200,
+                r: Math.random() * 20,
+                fill: 'red',
+            });
+            canvas.appendChild(circle);
+        }
+    });
 
-  $icCanvas.addEventListener('ic-frame', (e) => {
-    stats.update();
-  });
+    $icCanvas.addEventListener('ic-frame', (e) => {
+        stats.update();
+    });
 });
 ```
 
@@ -60,12 +60,12 @@ const stats = new Stats();
 stats.showPanel(0); // 仅展示 FPS 面板
 
 const animate = () => {
-  // 触发更新
-  if (stats) {
-    stats.update();
-  }
-  canvas.render();
-  requestAnimationFrame(animate);
+    // 触发更新
+    if (stats) {
+        stats.update();
+    }
+    canvas.render();
+    requestAnimationFrame(animate);
 };
 ```
 
@@ -81,8 +81,8 @@ const animate = () => {
 
 那么如何减少 Draw call 呢？通常有两种思路：
 
-- Culling 剔除掉视口外的图形
-- Draw call batching。将多个 Draw call 进行合并
+-   Culling 剔除掉视口外的图形
+-   Draw call batching。将多个 Draw call 进行合并
 
 ## 剔除 {#culling}
 
@@ -94,9 +94,9 @@ const animate = () => {
 
 渲染引擎都会提供相应的功能，例如：
 
-- Cesium [Fast Hierarchical Culling]
-- Babylon.js [Changing Mesh Culling Strategy]
-- [pixi-cull]
+-   Cesium [Fast Hierarchical Culling]
+-   Babylon.js [Changing Mesh Culling Strategy]
+-   [pixi-cull]
 
 相比 3D 场景，我们的 2D 画布实现起来会简单很多。那么如何判断一个图形是否在视口内呢？这就需要引入包围盒的概念。当然不一定非要使用包围盒，3D 场景中也可以用包围球代替。
 
@@ -106,15 +106,15 @@ const animate = () => {
 
 ```ts
 export class AABB {
-  minX: number;
-  minY: number;
-  maxX: number;
-  maxY: number;
-  matrix: Matrix;
+    minX: number;
+    minY: number;
+    maxX: number;
+    maxY: number;
+    matrix: Matrix;
 
-  isEmpty() {
-    return this.minX > this.maxX || this.minY > this.maxY;
-  }
+    isEmpty() {
+        return this.minX > this.maxX || this.minY > this.maxY;
+    }
 }
 ```
 
@@ -122,19 +122,19 @@ export class AABB {
 
 ```ts
 export class Circle extends Shape {
-  getRenderBounds() {
-    if (this.renderBoundsDirtyFlag) {
-      const halfLineWidth = this.#strokeWidth / 2;
-      this.renderBoundsDirtyFlag = false;
-      this.renderBounds = new AABB(
-        this.#cx - this.#r - halfLineWidth,
-        this.#cy - this.#r - halfLineWidth,
-        this.#cx + this.#r + halfLineWidth,
-        this.#cy + this.#r + halfLineWidth,
-      );
+    getRenderBounds() {
+        if (this.renderBoundsDirtyFlag) {
+            const halfLineWidth = this.#strokeWidth / 2;
+            this.renderBoundsDirtyFlag = false;
+            this.renderBounds = new AABB(
+                this.#cx - this.#r - halfLineWidth,
+                this.#cy - this.#r - halfLineWidth,
+                this.#cx + this.#r + halfLineWidth,
+                this.#cy + this.#r + halfLineWidth,
+            );
+        }
+        return this.renderBounds;
     }
-    return this.renderBounds;
-  }
 }
 ```
 
@@ -144,26 +144,26 @@ export class Circle extends Shape {
 
 ```ts
 export class Culling implements Plugin {
-  #viewport: AABB = new AABB();
+    #viewport: AABB = new AABB();
 
-  private updateViewport() {
-    const {
-      camera,
-      api: { viewport2Canvas },
-    } = this.#context;
-    const { width, height } = camera;
+    private updateViewport() {
+        const {
+            camera,
+            api: { viewport2Canvas },
+        } = this.#context;
+        const { width, height } = camera;
 
-    // tl, tr, br, bl
-    const tl = viewport2Canvas({
-      x: 0,
-      y: 0,
-    });
+        // tl, tr, br, bl
+        const tl = viewport2Canvas({
+            x: 0,
+            y: 0,
+        });
 
-    this.#viewport.minX = Math.min(tl.x, tr.x, br.x, bl.x);
-    this.#viewport.minY = Math.min(tl.y, tr.y, br.y, bl.y);
-    this.#viewport.maxX = Math.max(tl.x, tr.x, br.x, bl.x);
-    this.#viewport.maxY = Math.max(tl.y, tr.y, br.y, bl.y);
-  }
+        this.#viewport.minX = Math.min(tl.x, tr.x, br.x, bl.x);
+        this.#viewport.minY = Math.min(tl.y, tr.y, br.y, bl.y);
+        this.#viewport.maxX = Math.max(tl.x, tr.x, br.x, bl.x);
+        this.#viewport.maxY = Math.max(tl.y, tr.y, br.y, bl.y);
+    }
 }
 ```
 
@@ -171,20 +171,20 @@ export class Culling implements Plugin {
 
 ```ts
 hooks.beginFrame.tap(() => {
-  const { minX, minY, maxX, maxY } = this.#viewport;
+    const { minX, minY, maxX, maxY } = this.#viewport;
 
-  traverse(root, (shape) => {
-    if (shape.renderable && shape.cullable) {
-      const bounds = shape.getBounds();
-      shape.culled =
-        bounds.minX >= maxX ||
-        bounds.minY >= maxY ||
-        bounds.maxX <= minX ||
-        bounds.maxY <= minY;
-    }
+    traverse(root, (shape) => {
+        if (shape.renderable && shape.cullable) {
+            const bounds = shape.getBounds();
+            shape.culled =
+                bounds.minX >= maxX ||
+                bounds.minY >= maxY ||
+                bounds.maxX <= minX ||
+                bounds.maxY <= minY;
+        }
 
-    return shape.culled;
-  });
+        return shape.culled;
+    });
 });
 ```
 
@@ -192,64 +192,64 @@ hooks.beginFrame.tap(() => {
 
 ```js eval code=false
 $total = call(() => {
-  return document.createElement('div');
+    return document.createElement('div');
 });
 ```
 
 ```js eval code=false
 $culled = call(() => {
-  return document.createElement('div');
+    return document.createElement('div');
 });
 ```
 
 ```js eval code=false
 $icCanvas2 = call(() => {
-  return document.createElement('ic-canvas-lesson8');
+    return document.createElement('ic-canvas-lesson8');
 });
 ```
 
 ```js eval code=false inspector=false
 call(() => {
-  const { Canvas, Circle } = Lesson8;
+    const { Canvas, Circle } = Lesson8;
 
-  const stats = new Stats();
-  stats.showPanel(0);
-  const $stats = stats.dom;
-  $stats.style.position = 'absolute';
-  $stats.style.left = '0px';
-  $stats.style.top = '0px';
+    const stats = new Stats();
+    stats.showPanel(0);
+    const $stats = stats.dom;
+    $stats.style.position = 'absolute';
+    $stats.style.left = '0px';
+    $stats.style.top = '0px';
 
-  $icCanvas2.parentElement.style.position = 'relative';
-  $icCanvas2.parentElement.appendChild($stats);
+    $icCanvas2.parentElement.style.position = 'relative';
+    $icCanvas2.parentElement.appendChild($stats);
 
-  const circles = [];
-  $icCanvas2.addEventListener('ic-ready', (e) => {
-    const canvas = e.detail;
+    const circles = [];
+    $icCanvas2.addEventListener('ic-ready', (e) => {
+        const canvas = e.detail;
 
-    for (let i = 0; i < 500; i++) {
-      const circle = new Circle({
-        cx: Math.random() * 1000,
-        cy: Math.random() * 1000,
-        r: Math.random() * 20,
-        fill: `rgb(${Math.floor(Math.random() * 255)},${Math.floor(
-          Math.random() * 255,
-        )},${Math.floor(Math.random() * 255)})`,
-        batchable: false,
-        // cullable: false,
-      });
-      canvas.appendChild(circle);
-      circles.push(circle);
-    }
-  });
+        for (let i = 0; i < 500; i++) {
+            const circle = new Circle({
+                cx: Math.random() * 1000,
+                cy: Math.random() * 1000,
+                r: Math.random() * 20,
+                fill: `rgb(${Math.floor(Math.random() * 255)},${Math.floor(
+                    Math.random() * 255,
+                )},${Math.floor(Math.random() * 255)})`,
+                batchable: false,
+                // cullable: false,
+            });
+            canvas.appendChild(circle);
+            circles.push(circle);
+        }
+    });
 
-  $icCanvas2.addEventListener('ic-frame', (e) => {
-    stats.update();
-    const total = circles.length;
-    const culled = circles.filter((circle) => circle.culled).length;
+    $icCanvas2.addEventListener('ic-frame', (e) => {
+        stats.update();
+        const total = circles.length;
+        const culled = circles.filter((circle) => circle.culled).length;
 
-    $total.innerHTML = `total: ${total}`;
-    $culled.innerHTML = `culled: ${culled}`;
-  });
+        $total.innerHTML = `total: ${total}`;
+        $culled.innerHTML = `culled: ${culled}`;
+    });
 });
 ```
 
@@ -259,8 +259,8 @@ call(() => {
 
 可以合并的 Draw call 是需要满足一定条件的，例如拥有相似的 Geometry，相同的 Shader 等。[Draw call batching - Unity] 提供了两种方式：
 
-- [Static batching] 适用于静止不动的物体，将它们转换到世界坐标系下，使用共享的顶点数组。完成后就不能对单个物体应用变换了。
-- [Dynamic batching] 适用于运动的物体。在 CPU 侧将顶点转换到世界坐标系下，但转换本身也有开销。
+-   [Static batching] 适用于静止不动的物体，将它们转换到世界坐标系下，使用共享的顶点数组。完成后就不能对单个物体应用变换了。
+-   [Dynamic batching] 适用于运动的物体。在 CPU 侧将顶点转换到世界坐标系下，但转换本身也有开销。
 
 Pixi.js 也内置了一个合批渲染系统，一直沿用到目前开发中的 V8 版本：[Inside PixiJS: Batch Rendering System]
 
@@ -268,7 +268,7 @@ Pixi.js 也内置了一个合批渲染系统，一直沿用到目前开发中的
 
 ```ts
 class Circle {
-  render(device: Device, renderPass: RenderPass, uniformBuffer: Buffer) {} // [!code --]
+    render(device: Device, renderPass: RenderPass, uniformBuffer: Buffer) {} // [!code --]
 }
 ```
 
@@ -276,10 +276,10 @@ class Circle {
 
 ```ts
 hooks.render.tap((shape) => {
-  shape.render(); // [!code --]
-  if (shape.renderable) {
-    this.#batchManager.add(shape); // [!code ++]
-  }
+    shape.render(); // [!code --]
+    if (shape.renderable) {
+        this.#batchManager.add(shape); // [!code ++]
+    }
 });
 ```
 
@@ -287,10 +287,10 @@ hooks.render.tap((shape) => {
 
 ```ts
 export abstract class Drawcall {
-  abstract createGeometry(): void;
-  abstract createMaterial(uniformBuffer: Buffer): void;
-  abstract render(renderPass: RenderPass): void;
-  abstract destroy(): void;
+    abstract createGeometry(): void;
+    abstract createMaterial(uniformBuffer: Buffer): void;
+    abstract render(renderPass: RenderPass): void;
+    abstract destroy(): void;
 }
 
 export class SDF extends Drawcall {}
@@ -331,7 +331,7 @@ export class SDF extends Drawcall {}
 
 ```ts
 export abstract class Drawcall {
-  constructor(protected device: Device, protected instanced: boolean) {}
+    constructor(protected device: Device, protected instanced: boolean) {}
 }
 ```
 
@@ -369,10 +369,10 @@ void main() {
 
 ```ts
 export abstract class Drawcall {
-  protected maxInstances = Infinity;
-  validate() {
-    return this.count() <= this.maxInstances - 1;
-  }
+    protected maxInstances = Infinity;
+    validate() {
+        return this.count() <= this.maxInstances - 1;
+    }
 }
 ```
 
@@ -398,14 +398,14 @@ export class Renderer implements Plugin {
 
 ```ts
 export class SDF extends Drawcall {
-  createMaterial(uniformBuffer: Buffer): void {
-    this.#pipeline = this.device.createRenderPipeline({
-      megaStateDescriptor: {
-        depthWrite: true, // [!code ++]
-        depthCompare: CompareFunction.GREATER, // [!code ++]
-      },
-    });
-  }
+    createMaterial(uniformBuffer: Buffer): void {
+        this.#pipeline = this.device.createRenderPipeline({
+            megaStateDescriptor: {
+                depthWrite: true, // [!code ++]
+                depthCompare: CompareFunction.GREATER, // [!code ++]
+            },
+        });
+    }
 }
 ```
 
@@ -413,11 +413,11 @@ export class SDF extends Drawcall {
 
 ```ts
 this.#renderPass = this.#device.createRenderPass({
-  colorAttachment: [this.#renderTarget],
-  colorResolveTo: [onscreenTexture],
-  colorClearColor: [TransparentWhite],
-  depthStencilAttachment: this.#depthRenderTarget, // [!code ++]
-  depthClearValue: 1, // [!code ++]
+    colorAttachment: [this.#renderTarget],
+    colorResolveTo: [onscreenTexture],
+    colorClearColor: [TransparentWhite],
+    depthStencilAttachment: this.#depthRenderTarget, // [!code ++]
+    depthClearValue: 1, // [!code ++]
 });
 ```
 
@@ -425,47 +425,47 @@ this.#renderPass = this.#device.createRenderPass({
 
 ```js eval code=false
 $icCanvas3 = call(() => {
-  return document.createElement('ic-canvas-lesson8');
+    return document.createElement('ic-canvas-lesson8');
 });
 ```
 
 ```js eval code=false inspector=false
 call(() => {
-  const { Canvas, Circle } = Lesson8;
+    const { Canvas, Circle } = Lesson8;
 
-  const stats = new Stats();
-  stats.showPanel(0);
-  const $stats = stats.dom;
-  $stats.style.position = 'absolute';
-  $stats.style.left = '0px';
-  $stats.style.top = '0px';
+    const stats = new Stats();
+    stats.showPanel(0);
+    const $stats = stats.dom;
+    $stats.style.position = 'absolute';
+    $stats.style.left = '0px';
+    $stats.style.top = '0px';
 
-  $icCanvas3.parentElement.style.position = 'relative';
-  $icCanvas3.parentElement.appendChild($stats);
+    $icCanvas3.parentElement.style.position = 'relative';
+    $icCanvas3.parentElement.appendChild($stats);
 
-  const circles = [];
-  $icCanvas3.addEventListener('ic-ready', (e) => {
-    const canvas = e.detail;
+    const circles = [];
+    $icCanvas3.addEventListener('ic-ready', (e) => {
+        const canvas = e.detail;
 
-    for (let i = 0; i < 5000; i++) {
-      const circle = new Circle({
-        cx: Math.random() * 1000,
-        cy: Math.random() * 1000,
-        r: Math.random() * 20,
-        fill: `rgb(${Math.floor(Math.random() * 255)},${Math.floor(
-          Math.random() * 255,
-        )},${Math.floor(Math.random() * 255)})`,
-        batchable: true,
-        cullable: true,
-      });
-      canvas.appendChild(circle);
-      circles.push(circle);
-    }
-  });
+        for (let i = 0; i < 5000; i++) {
+            const circle = new Circle({
+                cx: Math.random() * 1000,
+                cy: Math.random() * 1000,
+                r: Math.random() * 20,
+                fill: `rgb(${Math.floor(Math.random() * 255)},${Math.floor(
+                    Math.random() * 255,
+                )},${Math.floor(Math.random() * 255)})`,
+                batchable: true,
+                cullable: true,
+            });
+            canvas.appendChild(circle);
+            circles.push(circle);
+        }
+    });
 
-  $icCanvas3.addEventListener('ic-frame', (e) => {
-    stats.update();
-  });
+    $icCanvas3.addEventListener('ic-frame', (e) => {
+        stats.update();
+    });
 });
 ```
 
@@ -475,10 +475,10 @@ call(() => {
 
 ```ts
 circle.addEventListener('pointerenter', () => {
-  circle.fill = 'red';
+    circle.fill = 'red';
 });
 circle.addEventListener('pointerleave', () => {
-  circle.fill = fill;
+    circle.fill = fill;
 });
 ```
 
@@ -501,29 +501,38 @@ import RBush from 'rbush';
 const rBushRoot = new RBush<RBushNodeAABB>();
 
 export interface RBushNodeAABB {
-  shape: Shape;
-  minX: number;
-  minY: number;
-  maxX: number;
-  maxY: number;
+    shape: Shape;
+    minX: number;
+    minY: number;
+    maxX: number;
+    maxY: number;
 }
 ```
 
 ### 区域查询 {#rbush-search}
 
-RBush 提供了区域查询功能 [search]，传入一个包围盒返回
+RBush 提供了区域查询功能 [search]，传入一个查询包围盒返回命中的图形列表：
 
 ```ts
 export class Canvas {
-  elementsFromBBox(
-    minX: number,
-    minY: number,
-    maxX: number,
-    maxY: number,
-  ): Shape[] {
-    const { rBushRoot } = this.#pluginContext;
-    const rBushNodes = rBushRoot.search({ minX, minY, maxX, maxY });
-  }
+    elementsFromBBox(
+        minX: number,
+        minY: number,
+        maxX: number,
+        maxY: number,
+    ): Shape[] {
+        const { rBushRoot } = this.#pluginContext;
+        const rBushNodes = rBushRoot.search({ minX, minY, maxX, maxY });
+
+        const hitTestList: Shape[] = [];
+        rBushNodes.forEach(({ shape }) => {
+            // 省略考虑 shape 的 visibility 和 pointerEvents 属性
+        });
+        // 按渲染次序排序
+        hitTestList.sort((a, b) => a.globalRenderOrder - b.globalRenderOrder);
+
+        return hitTestList;
+    }
 }
 ```
 
@@ -550,16 +559,16 @@ export class Picker implements Plugin {
 }
 ```
 
-让我们重新度量一下，20000 个 Circle 拾取事件变成了 0.088ms，提升了大约 20 倍！
+让我们重新度量一下，20000 个 Circle 拾取时间变成了 0.088ms，提升了大约 20 倍！
 
 ![pick perf with rbush](/pick-rbush-perf.png)
 
 ## 扩展阅读 {#extended-reading}
 
-- [Inside PixiJS: Batch Rendering System]
-- [Depth testing]
-- [The Depth Texture | WebGPU]
-- Three.js [BatchedMesh: Proposal]
+-   [Inside PixiJS: Batch Rendering System]
+-   [Depth testing]
+-   [The Depth Texture | WebGPU]
+-   Three.js [BatchedMesh: Proposal]
 
 [stats.js]: https://github.com/mrdoob/stats.js
 [Spector.js]: https://spector.babylonjs.com/
