@@ -15,7 +15,7 @@ import {
   findZoomCeil,
   findZoomFloor,
 } from './plugins';
-import { Group, RBushNodeAABB, type Shape } from './shapes';
+import { Group, IDENTITY_TRANSFORM, RBushNodeAABB, type Shape } from './shapes';
 import {
   AsyncParallelHook,
   SyncHook,
@@ -52,6 +52,10 @@ export class Canvas {
     return this.#camera;
   }
 
+  #renderDirtyFlag = true;
+  #shapesLastFrame = new Set<Shape>();
+  #shapesCurrentFrame = new Set<Shape>();
+
   constructor(config: CanvasConfig) {
     const {
       canvas,
@@ -82,9 +86,9 @@ export class Canvas {
       hooks: {
         init: new SyncHook<[]>(),
         initAsync: new AsyncParallelHook<[]>(),
-        beginFrame: new SyncHook<[]>(),
+        beginFrame: new SyncHook<[{ all: Shape[], modified: Shape[], removed: Shape[] }]>(),
         render: new SyncHook<[Shape]>(),
-        endFrame: new SyncHook<[]>(),
+        endFrame: new SyncHook<[{ all: Shape[]; modified: Shape[]; removed: Shape[] }]>(),
         destroy: new SyncHook<[]>(),
         resize: new SyncHook<[number, number]>(),
         pointerDown: new SyncHook<[InteractivePointerEvent]>(),
@@ -152,14 +156,47 @@ export class Canvas {
    */
   render() {
     const { hooks } = this.#pluginContext;
-    hooks.beginFrame.call();
-    traverse(this.#root, (child) => {
-      if (child.culled || !child.visible) {
-        return true;
-      }
-      hooks.render.call(child);
+
+    this.#shapesCurrentFrame.clear();
+    const modified: Shape[] = [];
+    // Dirty check first.
+    traverse(this.#root, (shape) => {
+      this.#shapesCurrentFrame.add(shape);
+
+      if (shape.transformDirtyFlag || (shape.renderable && shape.renderDirtyFlag)) {
+        modified.push(shape);
+        this.#renderDirtyFlag = true;
+      }      
+
+      shape.transform.updateTransform(
+        shape.parent ? shape.parent.transform : IDENTITY_TRANSFORM,
+      );
     });
-    hooks.endFrame.call();
+
+    if (this.#renderDirtyFlag) {
+      console.log('start rendering...');
+
+      const all = Array.from(this.#shapesCurrentFrame);
+      const removed = [...this.#shapesLastFrame].filter(
+        (shape) => !this.#shapesCurrentFrame.has(shape),
+      );
+
+      hooks.beginFrame.call({ all, modified, removed });
+      traverse(this.#root, (child) => {
+        if (child.culled || !child.visible) {
+          return true;
+        }
+        hooks.render.call(child);
+      });
+      hooks.endFrame.call({ all, modified, removed });
+
+      [...all, ...removed].forEach((shape) => {
+        shape.renderDirtyFlag = false;
+      });
+
+      this.#shapesLastFrame = this.#shapesCurrentFrame;
+      this.#renderDirtyFlag = false;
+    }
   }
 
   resize(width: number, height: number) {

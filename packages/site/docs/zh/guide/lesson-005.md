@@ -6,105 +6,105 @@ outline: deep
 
 在这节课中你将学习到以下内容：
 
-- 绘制直线网格。使用 Line Geometry 或者屏幕空间技术。
-- 绘制点网格。
+-   绘制直线网格。使用 Line Geometry 或者屏幕空间技术。
+-   绘制点网格。
 
 ```js eval code=false
 $button = call(() => {
-  const $button = document.createElement('button');
-  $button.textContent = 'FlyTo origin';
-  return $button;
+    const $button = document.createElement('button');
+    $button.textContent = 'FlyTo origin';
+    return $button;
 });
 ```
 
 ```js eval code=false
 checkboardStyle = Inputs.radio(['none', 'grid', 'dots'], {
-  label: 'Checkboard Style',
-  value: 'grid',
+    label: 'Checkboard Style',
+    value: 'grid',
 });
 ```
 
 ```js eval code=false inspector=false
 canvas = call(() => {
-  const { Canvas } = Lesson5;
-  return Utils.createCanvas(Canvas, 400, 400);
+    const { Canvas } = Lesson5;
+    return Utils.createCanvas(Canvas, 400, 400);
 });
 ```
 
 ```js eval code=false inspector=false
 call(() => {
-  const styles = ['none', 'grid', 'dots'];
-  canvas.setCheckboardStyle(styles.indexOf(checkboardStyle));
+    const styles = ['none', 'grid', 'dots'];
+    canvas.setCheckboardStyle(styles.indexOf(checkboardStyle));
 });
 ```
 
 ```js eval code=false
 (async () => {
-  const { Canvas, Circle, Group } = Lesson5;
+    const { Canvas, Circle, Group } = Lesson5;
 
-  const solarSystem = new Group();
-  const earthOrbit = new Group();
-  const moonOrbit = new Group();
+    const solarSystem = new Group();
+    const earthOrbit = new Group();
+    const moonOrbit = new Group();
 
-  const sun = new Circle({
-    cx: 0,
-    cy: 0,
-    r: 100,
-    fill: 'red',
-  });
-  const earth = new Circle({
-    cx: 0,
-    cy: 0,
-    r: 50,
-    fill: 'blue',
-  });
-  const moon = new Circle({
-    cx: 0,
-    cy: 0,
-    r: 25,
-    fill: 'yellow',
-  });
-  solarSystem.appendChild(sun);
-  solarSystem.appendChild(earthOrbit);
-  earthOrbit.appendChild(earth);
-  earthOrbit.appendChild(moonOrbit);
-  moonOrbit.appendChild(moon);
-
-  solarSystem.position.x = 200;
-  solarSystem.position.y = 200;
-  earthOrbit.position.x = 100;
-  moonOrbit.position.x = 100;
-
-  canvas.appendChild(solarSystem);
-
-  let id;
-  const animate = () => {
-    solarSystem.rotation += 0.01;
-    earthOrbit.rotation += 0.02;
-    canvas.render();
-    id = requestAnimationFrame(animate);
-  };
-  animate();
-
-  unsubscribe(() => {
-    cancelAnimationFrame(id);
-    canvas.destroy();
-  });
-
-  const landmark = canvas.camera.createLandmark({
-    x: 0,
-    y: 0,
-    zoom: 1,
-    rotation: 0,
-  });
-  $button.onclick = () => {
-    canvas.camera.gotoLandmark(landmark, {
-      duration: 1000,
-      easing: 'ease',
+    const sun = new Circle({
+        cx: 0,
+        cy: 0,
+        r: 100,
+        fill: 'red',
     });
-  };
+    const earth = new Circle({
+        cx: 0,
+        cy: 0,
+        r: 50,
+        fill: 'blue',
+    });
+    const moon = new Circle({
+        cx: 0,
+        cy: 0,
+        r: 25,
+        fill: 'yellow',
+    });
+    solarSystem.appendChild(sun);
+    solarSystem.appendChild(earthOrbit);
+    earthOrbit.appendChild(earth);
+    earthOrbit.appendChild(moonOrbit);
+    moonOrbit.appendChild(moon);
 
-  return canvas.getDOM();
+    solarSystem.position.x = 200;
+    solarSystem.position.y = 200;
+    earthOrbit.position.x = 100;
+    moonOrbit.position.x = 100;
+
+    canvas.appendChild(solarSystem);
+
+    let id;
+    const animate = () => {
+        solarSystem.rotation += 0.01;
+        earthOrbit.rotation += 0.02;
+        canvas.render();
+        id = requestAnimationFrame(animate);
+    };
+    animate();
+
+    unsubscribe(() => {
+        cancelAnimationFrame(id);
+        canvas.destroy();
+    });
+
+    const landmark = canvas.camera.createLandmark({
+        x: 0,
+        y: 0,
+        zoom: 1,
+        rotation: 0,
+    });
+    $button.onclick = () => {
+        canvas.camera.gotoLandmark(landmark, {
+            duration: 1000,
+            easing: 'ease',
+        });
+    };
+
+    return canvas.getDOM();
 })();
 ```
 
@@ -124,15 +124,15 @@ Miro 则支持在直线和点之间进行切换：
 
 ```ts
 hooks.initAsync.tapPromise(async () => {
-  this.#grid = new Grid();
+    this.#grid = new Grid();
 });
 hooks.beginFrame.tap(() => {
-  this.#grid.render(
-    this.#device,
-    this.#renderPass,
-    this.#uniformBuffer,
-    camera,
-  );
+    this.#grid.render(
+        this.#device,
+        this.#renderPass,
+        this.#uniformBuffer,
+        camera,
+    );
 });
 ```
 
@@ -143,8 +143,8 @@ hooks.beginFrame.tap(() => {
 ```ts
 // https://github.com/mrdoob/three.js/blob/master/src/helpers/GridHelper.js#L25-L37
 for (var i = 0, j = 0, k = -halfSize; i <= divisions; i++, k += step) {
-  vertices.push(-halfSize, 0, k, halfSize, 0, k);
-  vertices.push(k, 0, -halfSize, k, 0, halfSize);
+    vertices.push(-halfSize, 0, k, halfSize, 0, k);
+    vertices.push(k, 0, -halfSize, k, 0, halfSize);
 }
 
 var geometry = new BufferGeometry();
@@ -159,12 +159,12 @@ Figma CTO Evan 的 [thetamath] 项目中也是这么实现的，从水平和垂�
 
 ```ts
 for (let x = left; x < right; x++) {
-  const tx = ox + (x * zoom) / step;
-  this.strokeLine();
+    const tx = ox + (x * zoom) / step;
+    this.strokeLine();
 }
 for (let y = top; y < bottom; y++) {
-  const ty = oy - (y * zoom) / step;
-  this.strokeLine();
+    const ty = oy - (y * zoom) / step;
+    this.strokeLine();
 }
 ```
 
@@ -220,61 +220,62 @@ this.#inputLayout = device.createInputLayout({
 
 ```js eval code=false
 (async () => {
-  const { Canvas, Circle, Group } = Lesson5;
-  const [$canvas, canvas] = await Utils.createCanvas(Canvas, 400, 400);
+    const { Canvas, Circle, Group } = Lesson5;
+    const canvas = await Utils.createCanvas(Canvas, 400, 400);
+    const $canvas = canvas.getDOM();
 
-  canvas.setGridImplementation(0);
+    canvas.setGridImplementation(0);
 
-  const solarSystem = new Group();
-  const earthOrbit = new Group();
-  const moonOrbit = new Group();
+    const solarSystem = new Group();
+    const earthOrbit = new Group();
+    const moonOrbit = new Group();
 
-  const sun = new Circle({
-    cx: 0,
-    cy: 0,
-    r: 100,
-    fill: 'red',
-  });
-  const earth = new Circle({
-    cx: 0,
-    cy: 0,
-    r: 50,
-    fill: 'blue',
-  });
-  const moon = new Circle({
-    cx: 0,
-    cy: 0,
-    r: 25,
-    fill: 'yellow',
-  });
-  solarSystem.appendChild(sun);
-  solarSystem.appendChild(earthOrbit);
-  earthOrbit.appendChild(earth);
-  earthOrbit.appendChild(moonOrbit);
-  moonOrbit.appendChild(moon);
+    const sun = new Circle({
+        cx: 0,
+        cy: 0,
+        r: 100,
+        fill: 'red',
+    });
+    const earth = new Circle({
+        cx: 0,
+        cy: 0,
+        r: 50,
+        fill: 'blue',
+    });
+    const moon = new Circle({
+        cx: 0,
+        cy: 0,
+        r: 25,
+        fill: 'yellow',
+    });
+    solarSystem.appendChild(sun);
+    solarSystem.appendChild(earthOrbit);
+    earthOrbit.appendChild(earth);
+    earthOrbit.appendChild(moonOrbit);
+    moonOrbit.appendChild(moon);
 
-  solarSystem.position.x = 200;
-  solarSystem.position.y = 200;
-  earthOrbit.position.x = 100;
-  moonOrbit.position.x = 100;
+    solarSystem.position.x = 200;
+    solarSystem.position.y = 200;
+    earthOrbit.position.x = 100;
+    moonOrbit.position.x = 100;
 
-  canvas.appendChild(solarSystem);
+    canvas.appendChild(solarSystem);
 
-  let id;
-  const animate = () => {
-    solarSystem.rotation += 0.01;
-    earthOrbit.rotation += 0.02;
-    canvas.render();
-    id = requestAnimationFrame(animate);
-  };
-  animate();
+    let id;
+    const animate = () => {
+        solarSystem.rotation += 0.01;
+        earthOrbit.rotation += 0.02;
+        canvas.render();
+        id = requestAnimationFrame(animate);
+    };
+    animate();
 
-  unsubscribe(() => {
-    cancelAnimationFrame(id);
-    canvas.destroy();
-  });
+    unsubscribe(() => {
+        cancelAnimationFrame(id);
+        canvas.destroy();
+    });
 
-  return $canvas;
+    return $canvas;
 })();
 ```
 
@@ -419,9 +420,9 @@ rgb = mix(rgb, gridColor, gridWeight);
 
 ## 扩展阅读 {#extended-reading}
 
-- [thetamath]
-- [WebGL 绘制网格]
-- [如何使用 WebGL 绘制平面网格线]
+-   [thetamath]
+-   [WebGL 绘制网格]
+-   [如何使用 WebGL 绘制平面网格线]
 
 [thetamath]: http://thetamath.com/app/y=x%5E(3)-x
 [GridHelper - Three.js]: https://threejs.org/docs/#api/en/helpers/GridHelper

@@ -224,7 +224,7 @@ export class SDF extends Drawcall {
 
   render(renderPass: RenderPass) {
     if (
-      this.shapes.some((shape) => shape['renderDirtyFlag']) ||
+      this.shapes.some((shape) => shape.renderDirtyFlag) ||
       this.geometryDirty
     ) {
       if (this.instanced) {
@@ -330,10 +330,6 @@ export class SDF extends Drawcall {
           ),
         );
       }
-
-      this.shapes.forEach((shape) => {
-        shape['renderDirtyFlag'] = false;
-      });
     }
 
     const buffers = [

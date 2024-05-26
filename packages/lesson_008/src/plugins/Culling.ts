@@ -1,56 +1,63 @@
 import type { Plugin, PluginContext } from './interfaces';
 import { AABB, RBushNodeAABB } from '../shapes';
-import { traverse } from '../utils';
 
 export class Culling implements Plugin {
   #context: PluginContext;
-  #viewport: AABB = new AABB();
+  #viewport = new AABB();
+  
 
   apply(context: PluginContext) {
-    const { root, hooks, rBushRoot } = context;
+    const { hooks, rBushRoot } = context;
     this.#context = context;
 
     hooks.cameraChange.tap(this.updateViewport.bind(this));
     this.updateViewport();
 
-    hooks.beginFrame.tap(() => {
+    hooks.beginFrame.tap(({ all, removed, modified }) => {
       const { minX, minY, maxX, maxY } = this.#viewport;
 
-      if (rBushRoot.all().length === 0) {
-        const bulk: RBushNodeAABB[] = [];
-        traverse(root, (shape) => {
-          if (shape.renderable) {
-            const bounds = shape.getBounds();
-            bulk.push({
-              minX: bounds.minX,
-              minY: bounds.minY,
-              maxX: bounds.maxX,
-              maxY: bounds.maxY,
+      /**
+       * Traverse the scene graph and collect all renderable shapes
+       */
+
+      [...removed, ...modified].forEach((shape) => {
+        if (shape.renderable) {
+          rBushRoot.remove(
+            {
               shape,
-            });
-          }
-        });
-        rBushRoot.clear();
-        rBushRoot.load(bulk);
-      }
-
-      // const timeStart = performance.now();
-
-      traverse(root, (shape) => {
-        if (shape.renderable && shape.cullable) {
-          const bounds = shape.getBounds();
-          shape.culled =
-            bounds.minX >= maxX ||
-            bounds.minY >= maxY ||
-            bounds.maxX <= minX ||
-            bounds.maxY <= minY;
+              minX: 0,
+              minY: 0,
+              maxX: 0,
+              maxY: 0,
+            },
+            (a, b) => a.shape === b.shape,
+          );
         }
-
-        return shape.culled;
       });
 
-      // const timeEllapsed = performance.now() - timeStart;
-      // console.log(timeEllapsed);
+      const bulk: RBushNodeAABB[] = [];
+      modified.forEach((shape) => {
+        if (shape.renderable) {
+          const bounds = shape.getBounds();
+          bulk.push({
+            minX: bounds.minX,
+            minY: bounds.minY,
+            maxX: bounds.maxX,
+            maxY: bounds.maxY,
+            shape,
+          });
+        }
+      });
+      rBushRoot.load(bulk);
+
+      const shapesInViewport = rBushRoot
+        .search({ minX, minY, maxX, maxY })
+        .map((bush) => bush.shape);
+      all.forEach((shape) => {
+        if (shape.renderable && shape.cullable) {
+          shape.culled = !shapesInViewport.includes(shape);
+        }
+      });
     });
   }
 

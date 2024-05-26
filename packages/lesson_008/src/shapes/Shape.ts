@@ -47,19 +47,19 @@ export abstract class Shape
    * Avoid unnecessary work like updating Buffer by deferring it until needed.
    * @see https://gameprogrammingpatterns.com/dirty-flag.html
    */
-  protected renderDirtyFlag = true;
-
-  /**
-   * The bounding box of the geometry.
-   */
-  protected geometryBounds: AABB;
-  protected geometryBoundsDirtyFlag = true;
+  renderDirtyFlag = true;
 
   /**
    * The bounding box of the render.
    */
   protected renderBounds: AABB;
-  protected renderBoundsDirtyFlag = true;
+  renderBoundsDirtyFlag = true;
+
+  /**
+   * Account for its children.
+   */
+  protected bounds: AABB;
+  boundsDirtyFlag = true;
 
   /**
    * The bounding box of the hit area.
@@ -191,8 +191,6 @@ export abstract class Shape
   }
 
   abstract containsPoint(x: number, y: number): boolean;
-
-  abstract getGeometryBounds(): AABB;
   abstract getRenderBounds(): AABB;
 
   /**
@@ -278,6 +276,10 @@ export abstract class Shape
     this.transform.rotation = value * DEG_TO_RAD;
   }
 
+  get transformDirtyFlag() {
+    return this.transform['_localID'] !== this.transform['_currentLocalID'];
+  }
+
   appendChild(child: Shape) {
     if (child.parent) {
       child.parent.removeChild(child);
@@ -302,9 +304,15 @@ export abstract class Shape
     return child;
   }
 
-  getBounds(skipUpdateTransform?: boolean, bounds?: AABB) {
-    bounds = bounds || new AABB();
-    bounds.clear();
+  getBounds(skipUpdateTransform?: boolean) {
+    if (!this.boundsDirtyFlag) {
+      return this.bounds;
+    }
+
+    console.log('getBounds...');
+
+    this.bounds = this.bounds || new AABB();
+    this.bounds.clear();
 
     let parentTransform: Matrix;
     if (this.parent) {
@@ -318,9 +326,10 @@ export abstract class Shape
       parentTransform = Matrix.IDENTITY;
     }
 
-    getBounds(this, bounds, parentTransform, skipUpdateTransform);
+    getBounds(this, this.bounds, parentTransform, skipUpdateTransform);
 
-    return bounds;
+    this.boundsDirtyFlag = false;
+    return this.bounds;
   }
 }
 

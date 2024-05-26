@@ -62,6 +62,7 @@ export class Circle extends Shape {
     if (this.#cx !== cx) {
       this.#cx = cx;
       this.renderDirtyFlag = true;
+      this.renderBoundsDirtyFlag = true;
     }
   }
 
@@ -73,6 +74,7 @@ export class Circle extends Shape {
     if (this.#cy !== cy) {
       this.#cy = cy;
       this.renderDirtyFlag = true;
+      this.renderBoundsDirtyFlag = true;
     }
   }
 
@@ -84,6 +86,7 @@ export class Circle extends Shape {
     if (this.#r !== r) {
       this.#r = r;
       this.renderDirtyFlag = true;
+      this.renderBoundsDirtyFlag = true;
     }
   }
 
@@ -127,6 +130,7 @@ export class Circle extends Shape {
     if (this.#strokeWidth !== strokeWidth) {
       this.#strokeWidth = strokeWidth;
       this.renderDirtyFlag = true;
+      this.renderBoundsDirtyFlag = true;
     }
   }
 
@@ -182,19 +186,6 @@ export class Circle extends Shape {
       );
     }
     return false;
-  }
-
-  getGeometryBounds() {
-    if (this.geometryBoundsDirtyFlag) {
-      this.geometryBoundsDirtyFlag = false;
-      this.geometryBounds = new AABB(
-        this.#cx - this.#r,
-        this.#cy - this.#r,
-        this.#cx + this.#r,
-        this.#cy + this.#r,
-      );
-    }
-    return this.geometryBounds;
   }
 
   getRenderBounds() {

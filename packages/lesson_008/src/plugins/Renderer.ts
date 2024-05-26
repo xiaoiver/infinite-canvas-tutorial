@@ -16,7 +16,7 @@ import type {
   RenderTarget,
 } from '@antv/g-device-api';
 import type { Plugin, PluginContext } from './interfaces';
-import { IDENTITY_TRANSFORM, Grid, Shape } from '../shapes';
+import { Grid } from '../shapes';
 import { paddingMat3 } from '../utils';
 import { BatchManager } from '../drawcalls/BatchManager';
 
@@ -39,9 +39,6 @@ export class Renderer implements Plugin {
 
   #batchManager: BatchManager;
   #zIndexCounter = 1;
-
-  #shapesRenderedLastFrame = new Set<Shape>();
-  #shapesRenderedThisFrame = new Set<Shape>();
 
   apply(context: PluginContext) {
     const {
@@ -184,41 +181,30 @@ export class Renderer implements Plugin {
       this.#grid.render(this.#device, this.#renderPass, this.#uniformBuffer);
       this.#batchManager.clear();
       this.#zIndexCounter = 1;
-      this.#shapesRenderedThisFrame.clear();
     });
 
-    hooks.endFrame.tap(() => {
-      this.#shapesRenderedThisFrame.forEach((shape) => {
-        this.#batchManager.add(shape);
+    hooks.endFrame.tap(({ all, removed }) => {
+      all.forEach((shape) => {
+        if (shape.renderable) {
+          this.#batchManager.add(shape);
+        }
       });
       // Use Set difference is much faster.
       // @see https://stackoverflow.com/questions/1723168/what-is-the-fastest-or-most-elegant-way-to-compute-a-set-difference-using-javasc
       // @see https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Set/difference
-      [...this.#shapesRenderedLastFrame]
-        .filter((shape) => !this.#shapesRenderedThisFrame.has(shape))
-        .forEach((shape) => {
+      removed.forEach((shape) => {
+        if (shape.renderable) {
           this.#batchManager.remove(shape);
-        });
+        }
+      });
 
       this.#batchManager.flush(this.#renderPass, this.#uniformBuffer);
       this.#device.submitPass(this.#renderPass);
       this.#device.endFrame();
-      this.#shapesRenderedLastFrame = this.#shapesRenderedThisFrame;
     });
 
     hooks.render.tap((shape) => {
-      // Changed Transform should also set dirty flag.
-      const isDirty = shape['_localID'] !== shape['_currentLocalID'];
-      if (isDirty) {
-        shape['renderDirtyFlag'] = true;
-      }
-
-      shape.transform.updateTransform(
-        shape.parent ? shape.parent.transform : IDENTITY_TRANSFORM,
-      );
-
       if (shape.renderable) {
-        this.#shapesRenderedThisFrame.add(shape);
         shape.globalRenderOrder = this.#zIndexCounter++;
       }
     });

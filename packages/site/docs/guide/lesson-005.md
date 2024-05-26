@@ -222,6 +222,7 @@ Let's try it out:
 (async () => {
     const { Canvas, Circle, Group } = Lesson5;
     const canvas = await Utils.createCanvas(Canvas, 400, 400);
+    const $canvas = canvas.getDOM();
 
     canvas.setGridImplementation(0);
 
@@ -274,7 +275,7 @@ Let's try it out:
         canvas.destroy();
     });
 
-    return canvas.getDOM();
+    return $canvas;
 })();
 ```
 

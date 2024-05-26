@@ -17,11 +17,11 @@ export interface Hooks {
   /**
    * Called at the beginning of each frame.
    */
-  beginFrame: SyncHook<[]>;
+  beginFrame: SyncHook<[{ all: Shape[]; modified: Shape[]; removed: Shape[] }]>;
   /**
    * Called at the end of each frame.
    */
-  endFrame: SyncHook<[]>;
+  endFrame: SyncHook<[{ all: Shape[]; modified: Shape[]; removed: Shape[] }]>;
 
   render: SyncHook<[Shape]>;
   /**
