@@ -1,16 +1,14 @@
 import {
   Transform,
   Matrix,
-  type ObservablePoint,
-  type IPointData,
   type Rectangle,
-  RAD_TO_DEG,
-  DEG_TO_RAD,
 } from '@pixi/math';
-import EventEmitter from 'eventemitter3';
-import { Cursor, FederatedEvent, FederatedEventTarget } from '../events';
-import { isBoolean, isFunction, isObject, uid } from '../utils';
+import { uid } from '../utils';
+import { Cursor } from '../events';
 import { AABB } from './AABB';
+import { EventTarget } from './mixins/EventTarget';
+import { Renderable } from './mixins/Renderable';
+import { Transformable } from './mixins/Transformable';
 
 export const IDENTITY_TRANSFORM = new Transform();
 const pooledMatrix = new Matrix();
@@ -25,11 +23,19 @@ export interface ShapeAttributes {
   draggable: boolean;
   droppable: boolean;
   batchable: boolean;
+  fill: string;
+  stroke: string;
+  strokeWidth: number;
+  opacity: number;
+  fillOpacity: number;
+  strokeOpacity: number;
 }
 
+// @see https://www.typescriptlang.org/docs/handbook/mixins.html#constrained-mixins
+// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
+export interface Shape extends EventTarget, Renderable, Transformable {}
+// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export abstract class Shape
-  extends EventEmitter
-  implements FederatedEventTarget
 {
   /**
    * A unique identifier for this object.
@@ -44,24 +50,6 @@ export abstract class Shape
   globalRenderOrder: number;
 
   /**
-   * Avoid unnecessary work like updating Buffer by deferring it until needed.
-   * @see https://gameprogrammingpatterns.com/dirty-flag.html
-   */
-  renderDirtyFlag = true;
-
-  /**
-   * The bounding box of the render.
-   */
-  protected renderBounds: AABB;
-  renderBoundsDirtyFlag = true;
-
-  /**
-   * Account for its children.
-   */
-  protected bounds: AABB;
-  boundsDirtyFlag = true;
-
-  /**
    * The bounding box of the hit area.
    */
   hitArea: Rectangle | undefined;
@@ -72,29 +60,9 @@ export abstract class Shape
   pointerEvents: PointerEvents;
 
   /**
-   * The cursor to be displayed when the mouse pointer is over the object.
-   */
-  cursor: Cursor | string;
-
-  /**
    * Whether this object is visible.
    */
   visible: boolean;
-
-  /**
-   * Whether this object is renderable.
-   */
-  renderable: boolean;
-
-  /**
-   * Whether this object is draggable. Used in {@link DragAndDrop} plugin.
-   */
-  draggable: boolean;
-
-  /**
-   * Whether this object is droppable. Used in {@link DragAndDrop} plugin.
-   */
-  droppable: boolean;
 
   /**
    * Whether this object should be culled by the {@link Culling} plugin.
@@ -110,175 +78,44 @@ export abstract class Shape
    */
   batchable: boolean;
 
-  /**
-   * World transform and local transform of this object.
-   */
-  transform = new Transform();
-
-  parent?: Shape;
-
-  readonly children: Shape[] = [];
-
   constructor(attributes: Partial<ShapeAttributes> = {}) {
-    super();
+    const {
+      cursor,
+      hitArea,
+      visible,
+      renderable,
+      cullable,
+      draggable,
+      droppable,
+      batchable,
+      pointerEvents,
+      fill,
+      stroke,
+      strokeWidth,
+      opacity,
+      fillOpacity,
+      strokeOpacity,
+    } = attributes;
 
-    this.cursor = attributes.cursor ?? 'default';
-    this.hitArea = attributes.hitArea;
-    this.pointerEvents = attributes.pointerEvents ?? 'auto';
-    this.visible = attributes.visible ?? true;
-    this.renderable = attributes.renderable ?? true;
-    this.cullable = attributes.cullable ?? true;
-    this.draggable = attributes.draggable ?? false;
-    this.droppable = attributes.droppable ?? false;
-    this.batchable = attributes.batchable ?? false;
-  }
-
-  addEventListener(
-    type: string,
-    listener: EventListenerOrEventListenerObject,
-    options?: boolean | AddEventListenerOptions,
-  ) {
-    const capture =
-      (isBoolean(options) && options) || (isObject(options) && options.capture);
-    const signal = isObject(options) ? options.signal : undefined;
-    const once = isObject(options) && options.once;
-    const context = isFunction(listener) ? undefined : listener;
-
-    type = capture ? `${type}capture` : type;
-    const listenerFn = isFunction(listener) ? listener : listener.handleEvent;
-
-    if (signal) {
-      signal.addEventListener('abort', () => {
-        this.off(type, listenerFn, context);
-      });
-    }
-
-    if (once) {
-      this.once(type, listenerFn, context);
-    } else {
-      this.on(type, listenerFn, context);
-    }
-  }
-
-  removeEventListener(
-    type: string,
-    listener: EventListenerOrEventListenerObject,
-    options?: boolean | EventListenerOptions,
-  ) {
-    const capture =
-      (isBoolean(options) && options) || (isObject(options) && options.capture);
-    const context = isFunction(listener) ? undefined : listener;
-
-    type = capture ? `${type}capture` : type;
-    listener = isFunction(listener) ? listener : listener?.handleEvent;
-
-    this.off(type, listener, context);
-  }
-
-  dispatchEvent(e: Event) {
-    if (!(e instanceof FederatedEvent)) {
-      throw new Error(
-        'Container cannot propagate events outside of the Federated Events API',
-      );
-    }
-
-    e.defaultPrevented = false;
-    e.path = [];
-    e.target = this as unknown as FederatedEventTarget;
-    e.manager.dispatchEvent(e);
-
-    return !e.defaultPrevented;
+    this.cursor = cursor ?? 'default';
+    this.hitArea = hitArea;
+    this.pointerEvents = pointerEvents ?? 'auto';
+    this.visible = visible ?? true;
+    this.renderable = renderable ?? true;
+    this.cullable = cullable ?? true;
+    this.draggable = draggable ?? false;
+    this.droppable = droppable ?? false;
+    this.batchable = batchable ?? false;
+    this.fill = fill ?? 'black';
+    this.stroke = stroke ?? 'black';
+    this.strokeWidth = strokeWidth ?? 0;
+    this.opacity = opacity ?? 1;
+    this.fillOpacity = fillOpacity ?? 1;
+    this.strokeOpacity = strokeOpacity ?? 1;
   }
 
   abstract containsPoint(x: number, y: number): boolean;
   abstract getRenderBounds(): AABB;
-
-  /**
-   * Current transform of the object based on world (parent) factors.
-   * @readonly
-   */
-  get worldTransform(): Matrix {
-    return this.transform.worldTransform;
-  }
-
-  /**
-   * Current transform of the object based on local factors: position, scale, other stuff.
-   * @readonly
-   */
-  get localTransform(): Matrix {
-    return this.transform.localTransform;
-  }
-
-  /**
-   * The coordinate of the object relative to the local coordinates of the parent.
-   */
-  get position(): ObservablePoint {
-    return this.transform.position;
-  }
-  set position(value: IPointData) {
-    this.transform.position.copyFrom(value);
-  }
-
-  /**
-   * The scale factors of this object along the local coordinate axes.
-   *
-   * The default scale is (1, 1).
-   */
-  get scale(): ObservablePoint {
-    return this.transform.scale;
-  }
-  set scale(value: IPointData) {
-    this.transform.scale.copyFrom(value);
-  }
-
-  /**
-   * The center of rotation, scaling, and skewing for this display object in its local space. The `position`
-   * is the projection of `pivot` in the parent's local space.
-   *
-   * By default, the pivot is the origin (0, 0).
-   */
-  get pivot(): ObservablePoint {
-    return this.transform.pivot;
-  }
-  set pivot(value: IPointData) {
-    this.transform.pivot.copyFrom(value);
-  }
-
-  /**
-   * The skew factor for the object in radians.
-   */
-  get skew(): ObservablePoint {
-    return this.transform.skew;
-  }
-  set skew(value: IPointData) {
-    this.transform.skew.copyFrom(value);
-  }
-
-  /**
-   * The rotation of the object in radians.
-   * 'rotation' and 'angle' have the same effect on a display object; rotation is in radians, angle is in degrees.
-   */
-  get rotation(): number {
-    return this.transform.rotation;
-  }
-  set rotation(value: number) {
-    this.transform.rotation = value;
-  }
-
-  /**
-   * The angle of the object in degrees.
-   * 'rotation' and 'angle' have the same effect on a display object; rotation is in radians, angle is in degrees.
-   */
-  get angle(): number {
-    return this.transform.rotation * RAD_TO_DEG;
-  }
-  set angle(value: number) {
-    this.transform.rotation = value * DEG_TO_RAD;
-  }
-
-  get transformDirtyFlag() {
-    return this.transform['_localID'] !== this.transform['_currentLocalID'];
-  }
 
   appendChild(child: Shape) {
     if (child.parent) {
