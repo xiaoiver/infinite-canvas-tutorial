@@ -43,6 +43,7 @@ export const zh = defineConfig({
               { text: '课程6 - 事件系统', link: 'lesson-006' },
               { text: '课程7 - UI 组件', link: 'lesson-007' },
               { text: '课程8 - 性能优化', link: 'lesson-008' },
+              { text: '课程9 - 绘制椭圆、矩形和折线', link: 'lesson-009' },
             ],
           },
         ],

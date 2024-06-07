@@ -92,12 +92,17 @@ pnpm run dev
 -   Implementing a canvas component
 -   Implementing a zoom toolbar component
 
-# Lesson 8 - Optimize performance
+## Lesson 8 - Optimize performance
 
 -   What is a draw call
 -   Reducing draw calls with culling
 -   Reducing draw calls by combining batches
 -   Using spatial indexing to improve pickup efficiency
+
+## Lesson 9 - Draw ellipse, rectangle and polyline
+
+- Draw ellipse and rectangle with SDF
+- Draw line
 
 [infinitecanvas]: https://infinitecanvas.tools/
 [Figma]: https://madebyevan.com/figma/building-a-professional-design-tool-on-the-web/

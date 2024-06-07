@@ -52,6 +52,10 @@ export const en = defineConfig({
                 text: 'Lesson 008 - Optimize performance',
                 link: 'lesson-008',
               },
+              {
+                text: 'Lesson 009 - Draw ellipse, rectangle and polyline',
+                link: 'lesson-009',
+              },
             ],
           },
         ],
