@@ -23,24 +23,49 @@ export interface Shape
   extends FederatedEventTarget,
     IRenderable,
     ITransformable {
+  /**
+   * Unique ID
+   */
   uid: number;
+
+  /**
+   * The read-only property returns the parent of the specified node in scenegraph.
+   * @see https://developer.mozilla.org/en-US/docs/Web/API/Node/parentNode
+   */
   parent?: Shape;
+
+  /**
+   * The read-only children property.
+   * @see https://developer.mozilla.org/en-US/docs/Web/API/Element/children
+   */
   children: Shape[];
+
+  /**
+   * Hit testing.
+   */
   containsPoint(x: number, y: number): boolean;
+
   getBounds(): AABB;
   getRenderBounds(): AABB;
+
+  /**
+   * Adds a node to the end of the list of children of a specified parent node.
+   * @see https://developer.mozilla.org/en-US/docs/Web/API/Node/appendChild
+   */
   appendChild(child: Shape): Shape;
+
+  /**
+   * Removes a child node from the scenegraph and returns the removed node.
+   * @see https://developer.mozilla.org/en-US/docs/Web/API/Node/removeChild
+   */
   removeChild(child: Shape): Shape | null;
 }
+
 // @ts-ignore
-/* eslint-disable-next-line @typescript-eslint/no-redeclare */
+// eslint-disable-next-line @typescript-eslint/no-redeclare
 export const Shape = Shapable(Renderable(Transformable(EventTarget)));
 
-function Shapable<
-  TBase extends GConstructor<
-    IRenderable & ITransformable & FederatedEventTarget
-  >,
->(Base: TBase) {
+function Shapable<TBase extends GConstructor<Shape>>(Base: TBase) {
   // @ts-ignore
   abstract class S extends Base {
     /**
