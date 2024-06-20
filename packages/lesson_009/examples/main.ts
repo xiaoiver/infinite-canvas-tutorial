@@ -1,4 +1,4 @@
-import { Canvas, Circle } from '../src';
+import { Canvas, Circle, Ellipse, Rect } from '../src';
 
 const $canvas = document.getElementById('canvas') as HTMLCanvasElement;
 const resize = (width: number, height: number) => {
@@ -19,8 +19,7 @@ const canvas = await new Canvas({
     'https://unpkg.com/@antv/g-device-api@1.6.8/dist/pkg/glsl_wgsl_compiler_bg.wasm',
 }).initialized;
 
-const circles: Circle[] = [];
-for (let i = 0; i < 200; i++) {
+for (let i = 0; i < 2000; i++) {
   const fill = `rgb(${Math.floor(Math.random() * 255)},${Math.floor(
     Math.random() * 255,
   )},${Math.floor(Math.random() * 255)})`;
@@ -34,7 +33,24 @@ for (let i = 0; i < 200; i++) {
     batchable: true,
   });
   canvas.appendChild(circle);
-  circles.push(circle);
+
+  const ellipse = new Ellipse({
+    cx: Math.random() * 1000,
+    cy: Math.random() * 1000,
+    rx: Math.random() * 20,
+    ry: Math.random() * 20,
+    fill,
+  });
+  canvas.appendChild(ellipse);
+
+  const rect = new Rect({
+    x: Math.random() * 1000,
+    y: Math.random() * 1000,
+    width: Math.random() * 20,
+    height: Math.random() * 20,
+    fill,
+  });
+  canvas.appendChild(rect);
 
   circle.addEventListener('pointerenter', () => {
     circle.fill = 'red';

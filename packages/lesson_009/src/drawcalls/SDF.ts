@@ -14,7 +14,7 @@ import {
   Program,
   CompareFunction,
 } from '@antv/g-device-api';
-import { Circle } from '../shapes';
+import { Circle, Ellipse, Rect, Shape } from '../shapes';
 import { Drawcall, ZINDEX_FACTOR } from './Drawcall';
 import { vert, frag } from '../shaders/sdf';
 import { paddingMat3 } from '../utils';
@@ -249,39 +249,7 @@ export class SDF extends Drawcall {
         const instancedData: number[] = [];
         this.shapes.forEach((shape) => {
           if (shape instanceof Circle) {
-            const {
-              cx,
-              cy,
-              r: radius,
-              fillRGB: { r: fr, g: fg, b: fb, opacity: fo },
-              strokeRGB: { r: sr, g: sg, b: sb, opacity: so },
-              strokeWidth,
-              opacity,
-              fillOpacity,
-              strokeOpacity,
-            } = shape;
-            instancedData.push(
-              cx,
-              cy,
-              radius,
-              radius,
-              fr / 255,
-              fg / 255,
-              fb / 255,
-              fo,
-              sr / 255,
-              sg / 255,
-              sb / 255,
-              so,
-              shape.globalRenderOrder / ZINDEX_FACTOR,
-              strokeWidth,
-              0,
-              0,
-              opacity,
-              fillOpacity,
-              strokeOpacity,
-              0,
-            );
+            instancedData.push(...this.generateBuffer(shape));
           }
         });
         this.#instancedBuffer.setSubData(
@@ -289,43 +257,13 @@ export class SDF extends Drawcall {
           new Uint8Array(new Float32Array(instancedData).buffer),
         );
       } else {
-        const {
-          cx,
-          cy,
-          r: radius,
-          fillRGB: { r: fr, g: fg, b: fb, opacity: fo },
-          strokeRGB: { r: sr, g: sg, b: sb, opacity: so },
-          strokeWidth,
-          worldTransform,
-          opacity,
-          fillOpacity,
-          strokeOpacity,
-        } = this.shapes[0] as Circle;
+        const { worldTransform } = this.shapes[0];
         this.#uniformBuffer.setSubData(
           0,
           new Uint8Array(
             new Float32Array([
               ...paddingMat3(worldTransform.toArray(true)),
-              cx,
-              cy,
-              radius,
-              radius,
-              fr / 255,
-              fg / 255,
-              fb / 255,
-              fo,
-              sr / 255,
-              sg / 255,
-              sb / 255,
-              so,
-              this.shapes[0].globalRenderOrder / ZINDEX_FACTOR,
-              strokeWidth,
-              0,
-              0,
-              opacity,
-              fillOpacity,
-              strokeOpacity,
-              0,
+              ...this.generateBuffer(this.shapes[0]),
             ]).buffer,
           ),
         );
@@ -366,5 +304,52 @@ export class SDF extends Drawcall {
       this.#inputLayout?.destroy();
       this.#bindings?.destroy();
     }
+  }
+
+  private generateBuffer(shape: Shape) {
+    const {
+      fillRGB: { r: fr, g: fg, b: fb, opacity: fo },
+      strokeRGB: { r: sr, g: sg, b: sb, opacity: so },
+      strokeWidth,
+      opacity,
+      fillOpacity,
+      strokeOpacity,
+    } = shape;
+
+    let size: [number, number, number, number];
+    let type: number;
+    if (shape instanceof Circle) {
+      const { cx, cy, r } = shape;
+      size = [cx, cy, r, r];
+      type = 0;
+    } else if (shape instanceof Ellipse) {
+      const { cx, cy, rx, ry } = shape;
+      size = [cx, cy, rx, ry];
+      type = 1;
+    } else if (shape instanceof Rect) {
+      const { x, y, width, height } = shape;
+      size = [x, y, width, height];
+      type = 2;
+    }
+
+    return [
+      ...size,
+      fr / 255,
+      fg / 255,
+      fb / 255,
+      fo,
+      sr / 255,
+      sg / 255,
+      sb / 255,
+      so,
+      this.shapes[0].globalRenderOrder / ZINDEX_FACTOR,
+      strokeWidth,
+      type,
+      0,
+      opacity,
+      fillOpacity,
+      strokeOpacity,
+      0,
+    ];
   }
 }

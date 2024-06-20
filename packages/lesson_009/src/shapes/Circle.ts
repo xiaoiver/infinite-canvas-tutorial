@@ -3,12 +3,27 @@ import { distanceBetweenPoints } from '../utils';
 import { AABB } from './AABB';
 
 export interface CircleAttributes extends ShapeAttributes {
+  /**
+   * The cx attribute define the x-axis coordinate of a center point.
+   * @see https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/cx
+   */
   cx: number;
+
+  /**
+   * The cy attribute define the y-axis coordinate of a center point.
+   * @see https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/cy
+   */
   cy: number;
+
+  /**
+   * The r attribute defines the radius of a circle.
+   * @see https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/r
+   *
+   */
   r: number;
 }
 
-export class Circle extends Shape {
+export class Circle extends Shape implements CircleAttributes {
   #cx: number;
   #cy: number;
   #r: number;
@@ -16,16 +31,11 @@ export class Circle extends Shape {
   constructor(attributes: Partial<CircleAttributes> = {}) {
     super(attributes);
 
-    const {
-      cx,
-      cy,
-      r,
-    } = attributes;
+    const { cx, cy, r } = attributes;
 
     this.cx = cx ?? 0;
     this.cy = cy ?? 0;
     this.r = r ?? 0;
-    
   }
 
   get cx() {

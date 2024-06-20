@@ -1,25 +1,31 @@
 import EventEmitter from 'eventemitter3';
-import { Cursor, FederatedEvent, FederatedEventTarget } from '../../events';
+import { Rectangle } from '@pixi/math';
+import {
+  Cursor,
+  FederatedEvent,
+  FederatedEventTarget,
+  FederatedOptions,
+  PointerEvents,
+} from '../../events';
 import { isBoolean, isFunction, isObject } from '../../utils';
 
 export class EventTarget extends EventEmitter implements FederatedEventTarget {
-  /**
-   * The cursor to be displayed when the mouse pointer is over the object.
-   */
+  pointerEvents: PointerEvents;
   cursor: Cursor | string;
-
-  /**
-   * Whether this object is draggable. Used in {@link DragAndDrop} plugin.
-   */
+  hitArea: Rectangle | undefined;
   draggable: boolean;
-
-  /**
-   * Whether this object is droppable. Used in {@link DragAndDrop} plugin.
-   */
   droppable: boolean;
 
-  constructor() {
+  constructor(attributes: Partial<FederatedOptions> = {}) {
     super();
+
+    const { cursor, hitArea, pointerEvents, draggable, droppable } = attributes;
+
+    this.cursor = cursor ?? 'default';
+    this.hitArea = hitArea;
+    this.pointerEvents = pointerEvents ?? 'auto';
+    this.draggable = draggable ?? false;
+    this.droppable = droppable ?? false;
   }
 
   addEventListener(

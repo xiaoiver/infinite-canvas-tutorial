@@ -110,6 +110,20 @@ float sdf_circle(vec2 p, float r) {
   return length(p) - r;
 }
 
+// @see http://www.iquilezles.org/www/articles/ellipsoids/ellipsoids.htm
+float sdf_ellipse(vec2 p, vec2 r) {
+  float k0 = length(p / r);
+  float k1 = length(p / (r * r));
+  return k0 * (k0 - 1.0) / k1;
+}
+
+// @see https://www.shadertoy.com/view/4llXD7
+float sdf_rounded_box(vec2 p, vec2 b, float r) {
+  p = abs(p) - b + r;
+  return length(max(p, 0.0)) + min(max(p.x, p.y), 0.0) - r;
+}
+
+
 void main() {
   float strokeWidth;
   vec4 fillColor;

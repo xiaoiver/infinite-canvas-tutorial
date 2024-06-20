@@ -1,171 +1,116 @@
-import {
-  Transform,
-  Matrix,
-  type Rectangle,
-} from '@pixi/math';
+import { Transform, Matrix } from '@pixi/math';
 import { uid } from '../utils';
-import { Cursor } from '../events';
+import {
+  FederatedEventTarget,
+  FederatedOptions,
+  PointerEvents,
+} from '../events';
 import { AABB } from './AABB';
 import { EventTarget } from './mixins/EventTarget';
-import { Renderable } from './mixins/Renderable';
-import { Transformable } from './mixins/Transformable';
+import { IRenderable, Renderable } from './mixins/Renderable';
+import { ITransformable, Transformable } from './mixins/Transformable';
+import { GConstructor } from './mixins';
 
 export const IDENTITY_TRANSFORM = new Transform();
 const pooledMatrix = new Matrix();
 
-export interface ShapeAttributes {
-  pointerEvents: PointerEvents;
-  hitArea: Rectangle;
-  cursor: Cursor;
-  visible: boolean;
-  renderable: boolean;
-  cullable: boolean;
-  draggable: boolean;
-  droppable: boolean;
-  batchable: boolean;
-  fill: string;
-  stroke: string;
-  strokeWidth: number;
-  opacity: number;
-  fillOpacity: number;
-  strokeOpacity: number;
+export interface ShapeAttributes
+  extends FederatedOptions,
+    IRenderable,
+    ITransformable {}
+
+export interface Shape
+  extends FederatedEventTarget,
+    IRenderable,
+    ITransformable {
+  uid: number;
+  parent?: Shape;
+  children: Shape[];
+  containsPoint(x: number, y: number): boolean;
+  getBounds(): AABB;
+  getRenderBounds(): AABB;
+  appendChild(child: Shape): Shape;
+  removeChild(child: Shape): Shape | null;
 }
+// @ts-ignore
+/* eslint-disable-next-line @typescript-eslint/no-redeclare */
+export const Shape = Shapable(Renderable(Transformable(EventTarget)));
 
-// @see https://www.typescriptlang.org/docs/handbook/mixins.html#constrained-mixins
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export interface Shape extends EventTarget, Renderable, Transformable {}
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export abstract class Shape
-{
-  /**
-   * A unique identifier for this object.
-   */
-  uid = uid();
+function Shapable<
+  TBase extends GConstructor<
+    IRenderable & ITransformable & FederatedEventTarget
+  >,
+>(Base: TBase) {
+  // @ts-ignore
+  abstract class S extends Base {
+    /**
+     * A unique identifier for this object.
+     */
+    uid = uid();
 
-  /**
-   * The global render order of this object.
-   * A higher value will render over the top of lower values.
-   * by {@link Renderer} plugin.
-   */
-  globalRenderOrder: number;
+    parent?: Shape;
 
-  /**
-   * The bounding box of the hit area.
-   */
-  hitArea: Rectangle | undefined;
+    readonly children: Shape[] = [];
 
-  /**
-   * @see https://developer.mozilla.org/zh-CN/docs/Web/CSS/pointer-events
-   */
-  pointerEvents: PointerEvents;
-
-  /**
-   * Whether this object is visible.
-   */
-  visible: boolean;
-
-  /**
-   * Whether this object should be culled by the {@link Culling} plugin.
-   */
-  cullable: boolean;
-  /**
-   * Whether this object is culled by the {@link Culling} plugin.
-   */
-  culled: boolean;
-
-  /**
-   * Use instanced rendering to reduce the number of draw calls.
-   */
-  batchable: boolean;
-
-  constructor(attributes: Partial<ShapeAttributes> = {}) {
-    const {
-      cursor,
-      hitArea,
-      visible,
-      renderable,
-      cullable,
-      draggable,
-      droppable,
-      batchable,
-      pointerEvents,
-      fill,
-      stroke,
-      strokeWidth,
-      opacity,
-      fillOpacity,
-      strokeOpacity,
-    } = attributes;
-
-    this.cursor = cursor ?? 'default';
-    this.hitArea = hitArea;
-    this.pointerEvents = pointerEvents ?? 'auto';
-    this.visible = visible ?? true;
-    this.renderable = renderable ?? true;
-    this.cullable = cullable ?? true;
-    this.draggable = draggable ?? false;
-    this.droppable = droppable ?? false;
-    this.batchable = batchable ?? false;
-    this.fill = fill ?? 'black';
-    this.stroke = stroke ?? 'black';
-    this.strokeWidth = strokeWidth ?? 0;
-    this.opacity = opacity ?? 1;
-    this.fillOpacity = fillOpacity ?? 1;
-    this.strokeOpacity = strokeOpacity ?? 1;
-  }
-
-  abstract containsPoint(x: number, y: number): boolean;
-  abstract getRenderBounds(): AABB;
-
-  appendChild(child: Shape) {
-    if (child.parent) {
-      child.parent.removeChild(child);
+    constructor(attributes: Partial<ShapeAttributes> = {}) {
+      super(attributes);
     }
 
-    child.parent = this;
-    child.transform._parentID = -1;
-    this.children.push(child);
+    abstract containsPoint(x: number, y: number): boolean;
+    abstract getRenderBounds(): AABB;
 
-    return child;
-  }
+    appendChild(child: Shape) {
+      if (child.parent) {
+        child.parent.removeChild(child);
+      }
 
-  removeChild(child: Shape) {
-    const index = this.children.indexOf(child);
+      child.parent = this;
+      child.transform._parentID = -1;
+      this.children.push(child);
 
-    if (index === -1) return null;
+      return child;
+    }
 
-    child.parent = undefined;
-    child.transform._parentID = -1;
-    this.children.splice(index, 1);
+    removeChild(child: Shape) {
+      const index = this.children.indexOf(child);
 
-    return child;
-  }
+      if (index === -1) return null;
 
-  getBounds(skipUpdateTransform?: boolean) {
-    if (!this.boundsDirtyFlag) {
+      child.parent = undefined;
+      child.transform._parentID = -1;
+      this.children.splice(index, 1);
+
+      return child;
+    }
+
+    getBounds(skipUpdateTransform?: boolean) {
+      if (!this.boundsDirtyFlag) {
+        return this.bounds;
+      }
+
+      this.bounds = this.bounds || new AABB();
+      this.bounds.clear();
+
+      let parentTransform: Matrix;
+      if (this.parent) {
+        if (!skipUpdateTransform) {
+          pooledMatrix.identity();
+          parentTransform = updateTransformBackwards(this, pooledMatrix);
+        } else {
+          parentTransform = this.parent.worldTransform;
+        }
+      } else {
+        parentTransform = Matrix.IDENTITY;
+      }
+
+      getBounds(this, this.bounds, parentTransform, skipUpdateTransform);
+
+      this.boundsDirtyFlag = false;
       return this.bounds;
     }
-
-    this.bounds = this.bounds || new AABB();
-    this.bounds.clear();
-
-    let parentTransform: Matrix;
-    if (this.parent) {
-      if (!skipUpdateTransform) {
-        pooledMatrix.identity();
-        parentTransform = updateTransformBackwards(this, pooledMatrix);
-      } else {
-        parentTransform = this.parent.worldTransform;
-      }
-    } else {
-      parentTransform = Matrix.IDENTITY;
-    }
-
-    getBounds(this, this.bounds, parentTransform, skipUpdateTransform);
-
-    this.boundsDirtyFlag = false;
-    return this.bounds;
   }
+
+  return S;
 }
 
 export function getBounds(
@@ -238,19 +183,6 @@ export function isFillOrStrokeAffected(
 
   return [hasFill, hasStroke];
 }
-
-type PointerEvents =
-  | 'none'
-  | 'auto'
-  | 'stroke'
-  | 'fill'
-  | 'painted'
-  | 'visible'
-  | 'visiblestroke'
-  | 'visiblefill'
-  | 'visiblepainted'
-  | 'all'
-  | 'non-transparent-pixel';
 
 export interface RBushNodeAABB {
   shape: Shape;
