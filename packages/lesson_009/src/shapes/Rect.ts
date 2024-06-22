@@ -27,6 +27,18 @@ export interface RectAttributes extends ShapeAttributes {
    *
    */
   height: number;
+
+  /**
+   * For <rect>, rx defines the x-axis radius of the ellipse used to round off the corners of the rectangle.
+   * @see https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/rx
+   */
+  rx: number;
+
+  /**
+   * For <rect>, ry defines the y-axis radius of the ellipse used to round off the corners of the rectangle.
+   * @see https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/ry
+   */
+  ry: number;
 }
 
 export class Rect extends Shape implements RectAttributes {
@@ -34,22 +46,25 @@ export class Rect extends Shape implements RectAttributes {
   #y: number;
   #width: number;
   #height: number;
+  #rx: number;
+  #ry: number;
 
   constructor(attributes: Partial<RectAttributes> = {}) {
     super(attributes);
 
-    const { x, y, width, height } = attributes;
+    const { x, y, width, height, rx, ry } = attributes;
 
     this.#x = x ?? 0;
     this.#y = y ?? 0;
     this.#width = width ?? 0;
     this.#height = height ?? 0;
+    this.#rx = rx ?? ry ?? 0;
+    this.#ry = ry ?? rx ?? 0;
   }
 
   get x() {
     return this.#x;
   }
-
   set x(x: number) {
     if (this.#x !== x) {
       this.#x = x;
@@ -61,7 +76,6 @@ export class Rect extends Shape implements RectAttributes {
   get y() {
     return this.#y;
   }
-
   set y(y: number) {
     if (this.#y !== y) {
       this.#y = y;
@@ -73,7 +87,6 @@ export class Rect extends Shape implements RectAttributes {
   get width() {
     return this.#width;
   }
-
   set width(width: number) {
     if (this.#width !== width) {
       this.#width = width;
@@ -85,12 +98,31 @@ export class Rect extends Shape implements RectAttributes {
   get height() {
     return this.#height;
   }
-
   set height(height: number) {
     if (this.#height !== height) {
       this.#height = height;
       this.renderDirtyFlag = true;
       this.renderBoundsDirtyFlag = true;
+    }
+  }
+
+  get rx() {
+    return this.#rx;
+  }
+  set rx(rx: number) {
+    if (this.#rx !== rx) {
+      this.#rx = rx;
+      this.renderDirtyFlag = true;
+    }
+  }
+
+  get ry() {
+    return this.#ry;
+  }
+  set ry(ry: number) {
+    if (this.#ry !== ry) {
+      this.#ry = ry;
+      this.renderDirtyFlag = true;
     }
   }
 

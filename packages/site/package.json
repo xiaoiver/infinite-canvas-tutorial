@@ -39,6 +39,7 @@
     "vitepress": "^1.0.1",
     "genji-theme-vitepress": "^0.2.1",
     "markdown-it-implicit-figures": "latest",
+    "markdown-it-mathjax3": "latest",
     "stats.js": "^0.17.0"
   }
 }

@@ -248,9 +248,7 @@ export class SDF extends Drawcall {
 
         const instancedData: number[] = [];
         this.shapes.forEach((shape) => {
-          if (shape instanceof Circle) {
-            instancedData.push(...this.generateBuffer(shape));
-          }
+          instancedData.push(...this.generateBuffer(shape));
         });
         this.#instancedBuffer.setSubData(
           0,
@@ -318,6 +316,7 @@ export class SDF extends Drawcall {
 
     let size: [number, number, number, number];
     let type: number;
+    let rxRy: [number, number] = [0, 0];
     if (shape instanceof Circle) {
       const { cx, cy, r } = shape;
       size = [cx, cy, r, r];
@@ -327,9 +326,10 @@ export class SDF extends Drawcall {
       size = [cx, cy, rx, ry];
       type = 1;
     } else if (shape instanceof Rect) {
-      const { x, y, width, height } = shape;
-      size = [x, y, width, height];
+      const { x, y, width, height, rx, ry } = shape;
+      size = [x + width / 2, y + height / 2, width / 2, height / 2];
       type = 2;
+      rxRy = [rx, ry];
     }
 
     return [
@@ -342,14 +342,13 @@ export class SDF extends Drawcall {
       sg / 255,
       sb / 255,
       so,
-      this.shapes[0].globalRenderOrder / ZINDEX_FACTOR,
+      shape.globalRenderOrder / ZINDEX_FACTOR,
       strokeWidth,
-      type,
-      0,
+      ...rxRy,
       opacity,
       fillOpacity,
       strokeOpacity,
-      0,
+      type,
     ];
   }
 }

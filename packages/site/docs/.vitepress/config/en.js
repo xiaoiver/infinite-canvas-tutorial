@@ -53,7 +53,7 @@ export const en = defineConfig({
                 link: 'lesson-008',
               },
               {
-                text: 'Lesson 009 - Draw ellipse, rectangle and polyline',
+                text: 'Lesson 009 - Draw ellipse and rectangle',
                 link: 'lesson-009',
               },
             ],

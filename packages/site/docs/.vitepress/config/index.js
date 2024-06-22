@@ -15,6 +15,7 @@ export default defineConfig({
       });
       md.use(genjiAttrs);
     },
+    math: true
   },
   cleanUrls: true,
   extends: config,

@@ -31,6 +31,7 @@ out vec2 v_FragCoord;
   out vec4 v_StrokeColor;
   out float v_StrokeWidth;
   out vec4 v_Opacity;
+  out vec2 v_RxRy;
 #else
 #endif
 out vec2 v_Radius;
@@ -57,6 +58,7 @@ void main() {
     v_StrokeColor = strokeColor;
     v_StrokeWidth = strokeWidth;
     v_Opacity = a_Opacity;
+    v_RxRy = a_ZIndexStrokeWidth.zw;
   #else
     model = u_ModelMatrix;
     position = u_PositionSize.xy;
@@ -69,7 +71,7 @@ void main() {
 
   vec2 radius = size + vec2(strokeWidth / 2.0);
 
-  v_FragCoord = a_FragCoord;
+  v_FragCoord = vec2(a_FragCoord * radius / radius.y);
   v_Radius = radius;
 
   gl_Position = vec4((u_ProjectionMatrix 
@@ -100,6 +102,7 @@ in vec2 v_FragCoord;
   in vec4 v_StrokeColor;
   in float v_StrokeWidth;
   in vec4 v_Opacity;
+  in vec2 v_RxRy;
 #else
 #endif
 in vec2 v_Radius;
@@ -110,19 +113,26 @@ float sdf_circle(vec2 p, float r) {
   return length(p) - r;
 }
 
-// @see http://www.iquilezles.org/www/articles/ellipsoids/ellipsoids.htm
 float sdf_ellipse(vec2 p, vec2 r) {
   float k0 = length(p / r);
   float k1 = length(p / (r * r));
   return k0 * (k0 - 1.0) / k1;
+
+  // V1
+  // float k1 = length(p/r);
+  // return (k1-1.0)*min(r.x,r.y);
+
+  // V3
+  // float k1 = length(p/r);
+  // return length(p)*(1.0-1.0/k1);
 }
 
-// @see https://www.shadertoy.com/view/4llXD7
-float sdf_rounded_box(vec2 p, vec2 b, float r) {
-  p = abs(p) - b + r;
-  return length(max(p, 0.0)) + min(max(p.x, p.y), 0.0) - r;
+float sdf_rounded_box(vec2 p, vec2 b, vec4 r) {
+  r.xy = (p.x>0.0)?r.xy : r.zw;
+  r.x  = (p.y>0.0)?r.x  : r.y;
+  vec2 q = abs(p)-b+r.x;
+  return min(max(q.x,q.y),0.0) + length(max(q,0.0)) - r.x;
 }
-
 
 void main() {
   float strokeWidth;
@@ -131,6 +141,8 @@ void main() {
   float opacity;
   float fillOpacity;
   float strokeOpacity;
+  float shape;
+  vec2 rxRy;
   
   #ifdef USE_INSTANCES
     fillColor = v_FillColor;
@@ -139,6 +151,8 @@ void main() {
     opacity = v_Opacity.x;
     fillOpacity = v_Opacity.y;
     strokeOpacity = v_Opacity.z;
+    shape = v_Opacity.w;
+    rxRy = v_RxRy;
   #else
     fillColor = u_FillColor;
     strokeColor = u_StrokeColor;
@@ -146,13 +160,30 @@ void main() {
     opacity = u_Opacity.x;
     fillOpacity = u_Opacity.y;
     strokeOpacity = u_Opacity.z;
+    shape = u_Opacity.w;
+    rxRy = u_ZIndexStrokeWidth.zw;
   #endif
 
   vec2 r = (v_Radius - strokeWidth) / v_Radius.y;
+  float wh = v_Radius.x / v_Radius.y;
+  rxRy = rxRy / v_Radius.y;
 
-  float outerDistance = sdf_circle(v_FragCoord, 1.0);
-  float innerDistance = sdf_circle(v_FragCoord, r.x);
-  float antialiasedBlur = -fwidth(outerDistance);
+  float dist = length(v_FragCoord);
+  float antialiasedBlur = -fwidth(dist);
+
+  float outerDistance;
+  float innerDistance;
+  // 'circle', 'ellipse', 'rect'
+  if (shape < 0.5) {
+    outerDistance = sdf_circle(v_FragCoord, 1.0);
+    innerDistance = sdf_circle(v_FragCoord, r.x);
+  } else if (shape < 1.5) {
+    outerDistance = sdf_ellipse(v_FragCoord, vec2(wh, 1.0));
+    innerDistance = sdf_ellipse(v_FragCoord, r);
+  } else if (shape < 2.5) {
+    outerDistance = sdf_rounded_box(v_FragCoord, vec2(wh, 1.0), vec4(rxRy, rxRy));
+    innerDistance = sdf_rounded_box(v_FragCoord, r, vec4(rxRy, rxRy));
+  }
 
   float opacity_t = clamp(outerDistance / antialiasedBlur, 0.0, 1.0);
 
