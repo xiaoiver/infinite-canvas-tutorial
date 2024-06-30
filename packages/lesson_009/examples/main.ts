@@ -33,25 +33,24 @@ for (let i = 0; i < 1000; i++) {
   // });
   // canvas.appendChild(circle);
 
-  const ellipse = new Ellipse({
-    cx: Math.random() * 1000,
-    cy: Math.random() * 1000,
-    rx: Math.random() * 20,
-    ry: Math.random() * 20,
-    fill,
-  });
-  canvas.appendChild(ellipse);
-
-  // const rect = new Rect({
-  //   x: 0,
-  //   y: 0,
-  //   width: 100,
-  //   height: 100,
+  // const ellipse = new Ellipse({
+  //   cx: Math.random() * 1000,
+  //   cy: Math.random() * 1000,
+  //   rx: Math.random() * 20,
+  //   ry: Math.random() * 20,
   //   fill,
-  //   rx: 10,
-  //   ry: 50,
   // });
-  // canvas.appendChild(rect);
+  // canvas.appendChild(ellipse);
+
+  const rect = new Rect({
+    x: 0,
+    y: 0,
+    width: 100,
+    height: 100,
+    fill,
+    cornerRadius: 10,
+  });
+  canvas.appendChild(rect);
 
   // circle.addEventListener('pointerenter', () => {
   //   circle.fill = 'red';

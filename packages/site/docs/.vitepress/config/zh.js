@@ -85,6 +85,10 @@ export const zh = defineConfig({
                 text: '通过 RBush 加速拾取',
                 link: 'picking',
               },
+              {
+                text: '绘制一个矩形',
+                link: 'rect',
+              },
             ],
           },
         ],

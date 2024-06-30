@@ -29,16 +29,11 @@ export interface RectAttributes extends ShapeAttributes {
   height: number;
 
   /**
-   * For <rect>, rx defines the x-axis radius of the ellipse used to round off the corners of the rectangle.
+   * For <rect>, cornerRadius used to round off the corners of the rectangle.
    * @see https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/rx
-   */
-  rx: number;
-
-  /**
-   * For <rect>, ry defines the y-axis radius of the ellipse used to round off the corners of the rectangle.
    * @see https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/ry
    */
-  ry: number;
+  cornerRadius: number;
 }
 
 export class Rect extends Shape implements RectAttributes {
@@ -46,20 +41,18 @@ export class Rect extends Shape implements RectAttributes {
   #y: number;
   #width: number;
   #height: number;
-  #rx: number;
-  #ry: number;
+  #cornerRadius: number;
 
   constructor(attributes: Partial<RectAttributes> = {}) {
     super(attributes);
 
-    const { x, y, width, height, rx, ry } = attributes;
+    const { x, y, width, height, cornerRadius } = attributes;
 
     this.#x = x ?? 0;
     this.#y = y ?? 0;
     this.#width = width ?? 0;
     this.#height = height ?? 0;
-    this.#rx = rx ?? ry ?? 0;
-    this.#ry = ry ?? rx ?? 0;
+    this.#cornerRadius = cornerRadius ?? 0;
   }
 
   get x() {
@@ -106,22 +99,12 @@ export class Rect extends Shape implements RectAttributes {
     }
   }
 
-  get rx() {
-    return this.#rx;
+  get cornerRadius() {
+    return this.#cornerRadius;
   }
-  set rx(rx: number) {
-    if (this.#rx !== rx) {
-      this.#rx = rx;
-      this.renderDirtyFlag = true;
-    }
-  }
-
-  get ry() {
-    return this.#ry;
-  }
-  set ry(ry: number) {
-    if (this.#ry !== ry) {
-      this.#ry = ry;
+  set cornerRadius(cornerRadius: number) {
+    if (this.#cornerRadius !== cornerRadius) {
+      this.#cornerRadius = cornerRadius;
       this.renderDirtyFlag = true;
     }
   }

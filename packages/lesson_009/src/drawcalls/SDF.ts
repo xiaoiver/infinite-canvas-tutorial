@@ -316,7 +316,7 @@ export class SDF extends Drawcall {
 
     let size: [number, number, number, number];
     let type: number;
-    let rxRy: [number, number] = [0, 0];
+    let cornerRadius = 0;
     if (shape instanceof Circle) {
       const { cx, cy, r } = shape;
       size = [cx, cy, r, r];
@@ -326,10 +326,10 @@ export class SDF extends Drawcall {
       size = [cx, cy, rx, ry];
       type = 1;
     } else if (shape instanceof Rect) {
-      const { x, y, width, height, rx, ry } = shape;
+      const { x, y, width, height, cornerRadius: r } = shape;
       size = [x + width / 2, y + height / 2, width / 2, height / 2];
       type = 2;
-      rxRy = [rx, ry];
+      cornerRadius = r;
     }
 
     return [
@@ -344,7 +344,8 @@ export class SDF extends Drawcall {
       so,
       shape.globalRenderOrder / ZINDEX_FACTOR,
       strokeWidth,
-      ...rxRy,
+      cornerRadius,
+      0,
       opacity,
       fillOpacity,
       strokeOpacity,

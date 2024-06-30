@@ -100,6 +100,10 @@ export const en = defineConfig({
                 text: 'Optimize picking performance with RBush',
                 link: 'picking',
               },
+              {
+                text: 'Render a Rect',
+                link: 'rect',
+              },
             ],
           },
         ],

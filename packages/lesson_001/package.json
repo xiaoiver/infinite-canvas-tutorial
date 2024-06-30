@@ -35,6 +35,6 @@
     "build": "run-p build:*"
   },
   "dependencies": {
-    "@antv/g-device-api": "^1.6.5"
+    "@antv/g-device-api": "^1.6.12"
   }
 }

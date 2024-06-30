@@ -31,7 +31,7 @@ out vec2 v_FragCoord;
   out vec4 v_StrokeColor;
   out float v_StrokeWidth;
   out vec4 v_Opacity;
-  out vec2 v_RxRy;
+  out float v_CornerRadius;
 #else
 #endif
 out vec2 v_Radius;
@@ -58,7 +58,7 @@ void main() {
     v_StrokeColor = strokeColor;
     v_StrokeWidth = strokeWidth;
     v_Opacity = a_Opacity;
-    v_RxRy = a_ZIndexStrokeWidth.zw;
+    v_CornerRadius = a_ZIndexStrokeWidth.z;
   #else
     model = u_ModelMatrix;
     position = u_PositionSize.xy;
@@ -102,7 +102,7 @@ in vec2 v_FragCoord;
   in vec4 v_StrokeColor;
   in float v_StrokeWidth;
   in vec4 v_Opacity;
-  in vec2 v_RxRy;
+  in float v_CornerRadius;
 #else
 #endif
 in vec2 v_Radius;
@@ -127,11 +127,22 @@ float sdf_ellipse(vec2 p, vec2 r) {
   // return length(p)*(1.0-1.0/k1);
 }
 
-float sdf_rounded_box(vec2 p, vec2 b, vec4 r) {
-  r.xy = (p.x>0.0)?r.xy : r.zw;
-  r.x  = (p.y>0.0)?r.x  : r.y;
-  vec2 q = abs(p)-b+r.x;
-  return min(max(q.x,q.y),0.0) + length(max(q,0.0)) - r.x;
+float sdf_rounded_box(vec2 p, vec2 b, float r) {
+  vec2 q = abs(p) - b + r;
+  return min(max(q.x, q.y), 0.0) + length(max(q, 0.0)) - r;
+}
+
+vec4 erf(vec4 x) {
+  vec4 s = sign(x), a = abs(x);
+  x = 1.0 + (0.278393 + (0.230389 + 0.078108 * (a * a)) * a) * a;
+  x *= x;
+  return s - s / (x * x);
+}
+
+float boxShadow(vec2 lower, vec2 upper, vec2 point, float sigma) {
+  vec4 query = vec4(point - lower, upper - point);
+  vec4 integral = 0.5 + 0.5 * erf(query * (sqrt(0.5) / sigma));
+  return (integral.z - integral.x) * (integral.w - integral.y);
 }
 
 void main() {
@@ -142,7 +153,7 @@ void main() {
   float fillOpacity;
   float strokeOpacity;
   float shape;
-  vec2 rxRy;
+  float cornerRadius;
   
   #ifdef USE_INSTANCES
     fillColor = v_FillColor;
@@ -152,7 +163,7 @@ void main() {
     fillOpacity = v_Opacity.y;
     strokeOpacity = v_Opacity.z;
     shape = v_Opacity.w;
-    rxRy = v_RxRy;
+    cornerRadius = v_CornerRadius;
   #else
     fillColor = u_FillColor;
     strokeColor = u_StrokeColor;
@@ -161,12 +172,12 @@ void main() {
     fillOpacity = u_Opacity.y;
     strokeOpacity = u_Opacity.z;
     shape = u_Opacity.w;
-    rxRy = u_ZIndexStrokeWidth.zw;
+    cornerRadius = u_ZIndexStrokeWidth.z;
   #endif
 
   vec2 r = (v_Radius - strokeWidth) / v_Radius.y;
   float wh = v_Radius.x / v_Radius.y;
-  rxRy = rxRy / v_Radius.y;
+  cornerRadius = cornerRadius / v_Radius.y;
 
   float dist = length(v_FragCoord);
   float antialiasedBlur = -fwidth(dist);
@@ -181,9 +192,11 @@ void main() {
     outerDistance = sdf_ellipse(v_FragCoord, vec2(wh, 1.0));
     innerDistance = sdf_ellipse(v_FragCoord, r);
   } else if (shape < 2.5) {
-    outerDistance = sdf_rounded_box(v_FragCoord, vec2(wh, 1.0), vec4(rxRy, rxRy));
-    innerDistance = sdf_rounded_box(v_FragCoord, r, vec4(rxRy, rxRy));
+    outerDistance = sdf_rounded_box(v_FragCoord, vec2(wh, 1.0), cornerRadius);
+    innerDistance = sdf_rounded_box(v_FragCoord, r, cornerRadius);
   }
+
+  float a = boxShadow(vec2(-wh, -1.0), vec2(wh, 1.0), v_FragCoord, 5.0);
 
   float opacity_t = clamp(outerDistance / antialiasedBlur, 0.0, 1.0);
 
@@ -194,7 +207,7 @@ void main() {
   );
 
   outputColor = mix(vec4(fillColor.rgb, fillColor.a * fillOpacity), strokeColor * strokeOpacity, color_t);
-  outputColor.a = outputColor.a * opacity * opacity_t;
+  outputColor.a = outputColor.a * opacity * opacity_t * 1.0;
 
   if (outputColor.a < epsilon)
     discard;

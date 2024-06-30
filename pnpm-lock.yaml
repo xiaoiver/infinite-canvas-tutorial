@@ -60,14 +60,14 @@ importers:
   packages/lesson_001:
     dependencies:
       '@antv/g-device-api':
-        specifier: ^1.6.5
-        version: 1.6.5
+        specifier: ^1.6.12
+        version: 1.6.12
 
   packages/lesson_002:
     dependencies:
       '@antv/g-device-api':
-        specifier: ^1.6.5
-        version: 1.6.5
+        specifier: ^1.6.12
+        version: 1.6.12
       d3-color:
         specifier: ^3.1.0
         version: 3.1.0
@@ -79,8 +79,8 @@ importers:
   packages/lesson_003:
     dependencies:
       '@antv/g-device-api':
-        specifier: ^1.6.5
-        version: 1.6.5
+        specifier: ^1.6.12
+        version: 1.6.12
       '@pixi/math':
         specifier: ^7.4.2
         version: 7.4.2
@@ -95,8 +95,8 @@ importers:
   packages/lesson_004:
     dependencies:
       '@antv/g-device-api':
-        specifier: ^1.6.5
-        version: 1.6.5
+        specifier: ^1.6.12
+        version: 1.6.12
       '@pixi/math':
         specifier: ^7.4.2
         version: 7.4.2
@@ -120,8 +120,8 @@ importers:
   packages/lesson_005:
     dependencies:
       '@antv/g-device-api':
-        specifier: ^1.6.5
-        version: 1.6.5
+        specifier: ^1.6.12
+        version: 1.6.12
       '@pixi/math':
         specifier: ^7.4.2
         version: 7.4.2
@@ -145,8 +145,8 @@ importers:
   packages/lesson_006:
     dependencies:
       '@antv/g-device-api':
-        specifier: ^1.6.5
-        version: 1.6.5
+        specifier: ^1.6.12
+        version: 1.6.12
       '@pixi/math':
         specifier: ^7.4.2
         version: 7.4.2
@@ -173,8 +173,8 @@ importers:
   packages/lesson_007:
     dependencies:
       '@antv/g-device-api':
-        specifier: ^1.6.5
-        version: 1.6.5
+        specifier: ^1.6.12
+        version: 1.6.12
       '@lit/context':
         specifier: latest
         version: 1.1.1
@@ -207,8 +207,8 @@ importers:
   packages/lesson_008:
     dependencies:
       '@antv/g-device-api':
-        specifier: ^1.6.5
-        version: 1.6.5
+        specifier: ^1.6.12
+        version: 1.6.12
       '@lit/context':
         specifier: latest
         version: 1.1.1
@@ -247,8 +247,8 @@ importers:
   packages/lesson_009:
     dependencies:
       '@antv/g-device-api':
-        specifier: ^1.6.5
-        version: 1.6.5
+        specifier: ^1.6.12
+        version: 1.6.12
       '@lit/context':
         specifier: latest
         version: 1.1.2
@@ -422,8 +422,8 @@ packages:
   '@algolia/transporter@4.23.3':
     resolution: {integrity: sha512-Wjl5gttqnf/gQKJA+dafnD0Y6Yw97yvfY8R9h0dQltX1GXTgNs1zWgvtWW0tHl1EgMdhAyw189uWiZMnL3QebQ==}
 
-  '@antv/g-device-api@1.6.5':
-    resolution: {integrity: sha512-wKXvRZNQg39lWu/17gMDi2QQBPsXBg6mCwxWSueoaVEbnrjiedZd4guoeH+pKwnN1lzMN+bYJ/VJAsMmICAh2Q==}
+  '@antv/g-device-api@1.6.12':
+    resolution: {integrity: sha512-bOLA3MqvPFbTNNhrNyEpyYzAC8gHPioJHqKtPfAfdXBec+to2nciQoihGhRrosDwjAQLBLtVF+nc7zG2DnHgcg==}
 
   '@antv/util@3.3.5':
     resolution: {integrity: sha512-bVv1loamL/MgUEN9dNt7VKAsghO4Wgb+kzr8B9TgkM5tHgKk++xiTwi3pejIdgU8DDkzcyaRsO+VTOXJt8jLng==}
@@ -2980,7 +2980,7 @@ snapshots:
       '@algolia/logger-common': 4.23.3
       '@algolia/requester-common': 4.23.3
 
-  '@antv/g-device-api@1.6.5':
+  '@antv/g-device-api@1.6.12':
     dependencies:
       '@antv/util': 3.3.5
       '@webgpu/types': 0.1.40

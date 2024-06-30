@@ -55,6 +55,7 @@ export class Renderer implements Plugin {
       if (renderer === 'webgl') {
         deviceContribution = new WebGLDeviceContribution({
           targets: ['webgl2', 'webgl1'],
+          antialias: true,
           shaderDebug: true,
           trackResources: true,
           onContextCreationError: () => {},
