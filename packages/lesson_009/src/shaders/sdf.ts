@@ -132,17 +132,33 @@ float sdf_rounded_box(vec2 p, vec2 b, float r) {
   return min(max(q.x, q.y), 0.0) + length(max(q, 0.0)) - r;
 }
 
-vec4 erf(vec4 x) {
-  vec4 s = sign(x), a = abs(x);
+// vec4 erf(vec4 x) {
+//   vec4 s = sign(x), a = abs(x);
+//   x = 1.0 + (0.278393 + (0.230389 + 0.078108 * (a * a)) * a) * a;
+//   x *= x;
+//   return s - s / (x * x);
+// }
+
+vec2 erf(vec2 x) {
+  vec2 s = sign(x), a = abs(x);
   x = 1.0 + (0.278393 + (0.230389 + 0.078108 * (a * a)) * a) * a;
   x *= x;
   return s - s / (x * x);
 }
 
-float boxShadow(vec2 lower, vec2 upper, vec2 point, float sigma) {
-  vec4 query = vec4(point - lower, upper - point);
-  vec4 integral = 0.5 + 0.5 * erf(query * (sqrt(0.5) / sigma));
-  return (integral.z - integral.x) * (integral.w - integral.y);
+// float boxShadow(vec2 lower, vec2 upper, vec2 point, float sigma) {
+//   vec4 query = vec4(point - lower, upper - point);
+//   vec4 integral = 0.5 + 0.5 * erf(query * (sqrt(0.5) / sigma));
+//   return (integral.z - integral.x) * (integral.w - integral.y);
+// }
+
+float rect_shadow(vec2 pixel_position, vec2 origin, vec2 size, float sigma) {
+  vec2 bottom_right = origin + size;
+  vec2 x_distance = vec2(pixel_position.x - origin.x, pixel_position.x - bottom_right.x);
+  vec2 y_distance = vec2(pixel_position.y - origin.y, pixel_position.y - bottom_right.y);
+  vec2 integral_x = 0.5 + 0.5 * erf(x_distance * (sqrt(0.5) / sigma));
+  vec2 integral_y = 0.5 + 0.5 * erf(y_distance * (sqrt(0.5) / sigma));
+  return (integral_x.x - integral_x.y) * (integral_y.x - integral_y.y);
 }
 
 void main() {
@@ -196,7 +212,11 @@ void main() {
     innerDistance = sdf_rounded_box(v_FragCoord, r, cornerRadius);
   }
 
-  float a = boxShadow(vec2(-wh, -1.0), vec2(wh, 1.0), v_FragCoord, 5.0);
+  float sigma = 0.1;
+  float padding = 3.0 * sigma;
+  // padding = 0.0;
+  // float a = boxShadow(vec2(-wh, -1.0) - padding, vec2(wh, 1.0) + padding, v_FragCoord, sigma);
+  float a = rect_shadow(v_FragCoord, vec2(-wh, -1.0) - padding, 2.0 * vec2(wh, 1.0), sigma);
 
   float opacity_t = clamp(outerDistance / antialiasedBlur, 0.0, 1.0);
 
@@ -207,7 +227,8 @@ void main() {
   );
 
   outputColor = mix(vec4(fillColor.rgb, fillColor.a * fillOpacity), strokeColor * strokeOpacity, color_t);
-  outputColor.a = outputColor.a * opacity * opacity_t * 1.0;
+  outputColor.a = outputColor.a * opacity * opacity_t;
+  // outputColor.a = a;
 
   if (outputColor.a < epsilon)
     discard;

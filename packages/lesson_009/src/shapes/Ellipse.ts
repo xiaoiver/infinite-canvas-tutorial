@@ -103,35 +103,30 @@ export class Ellipse extends Shape implements EllipseAttributes {
       this.fill,
       this.stroke,
     );
-    const squareX = (x - cx) * (x - cx);
-    const squareY = (y - cy) * (y - cy);
     if (hasFill && hasStroke) {
-      return (
-        ellipseDistance(
-          squareX,
-          squareY,
-          rx + halfLineWidth,
-          ry + halfLineWidth,
-        ) <= 1
+      return isPointInEllipse(
+        x,
+        y,
+        cx,
+        cy,
+        rx + halfLineWidth,
+        ry + halfLineWidth,
       );
     }
     if (hasFill) {
-      return ellipseDistance(squareX, squareY, rx, ry) <= 1;
+      return isPointInEllipse(x, y, cx, cy, rx, ry);
     }
     if (hasStroke) {
       return (
-        ellipseDistance(
-          squareX,
-          squareY,
+        !isPointInEllipse(
+          x,
+          y,
+          cx,
+          cy,
           rx - halfLineWidth,
           ry - halfLineWidth,
-        ) >= 1 &&
-        ellipseDistance(
-          squareX,
-          squareY,
-          rx + halfLineWidth,
-          ry + halfLineWidth,
-        ) <= 1
+        ) &&
+        isPointInEllipse(x, y, cx, cy, rx + halfLineWidth, ry + halfLineWidth)
       );
     }
     return false;
@@ -153,11 +148,21 @@ export class Ellipse extends Shape implements EllipseAttributes {
   }
 }
 
-function ellipseDistance(
-  squareX: number,
-  squareY: number,
-  rx: number,
-  ry: number,
+function isPointInEllipse(
+  x: number,
+  y: number,
+  h: number,
+  k: number,
+  a: number,
+  b: number,
 ) {
-  return squareX / (rx * rx) + squareY / (ry * ry);
+  // 计算点到椭圆中心的 x 和 y 坐标差
+  const dx = x - h;
+  const dy = y - k;
+
+  // 计算点相对于椭圆中心的坐标平方，然后除以半轴长度的平方
+  const squaredDistance = (dx * dx) / (a * a) + (dy * dy) / (b * b);
+
+  // 如果计算结果小于或等于 1，则点在椭圆内
+  return squaredDistance <= 1;
 }

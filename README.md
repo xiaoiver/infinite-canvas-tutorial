@@ -99,10 +99,11 @@ pnpm run dev
 -   Reducing draw calls by combining batches
 -   Using spatial indexing to improve pickup efficiency
 
-## Lesson 9 - Draw ellipse, rectangle and polyline
+## Lesson 9 - Draw ellipse and rectangle
 
-- Draw ellipse and rectangle with SDF
-- Draw line
+-   How to derive the SDF representation of an ellipse or rounded rectangle
+-   Render drop-shadow for rounded rectangle
+-   How to determine if a point is inside an ellipse or rounded rectangle
 
 [infinitecanvas]: https://infinitecanvas.tools/
 [Figma]: https://madebyevan.com/figma/building-a-professional-design-tool-on-the-web/

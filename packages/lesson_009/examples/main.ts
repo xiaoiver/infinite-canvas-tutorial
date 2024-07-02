@@ -19,7 +19,7 @@ const canvas = await new Canvas({
     'https://unpkg.com/@antv/g-device-api@1.6.8/dist/pkg/glsl_wgsl_compiler_bg.wasm',
 }).initialized;
 
-for (let i = 0; i < 1000; i++) {
+for (let i = 0; i < 1; i++) {
   const fill = `rgb(${Math.floor(Math.random() * 255)},${Math.floor(
     Math.random() * 255,
   )},${Math.floor(Math.random() * 255)})`;
@@ -47,7 +47,7 @@ for (let i = 0; i < 1000; i++) {
     y: 0,
     width: 100,
     height: 100,
-    fill,
+    fill: 'rgba(190, 190, 190, 1)',
     cornerRadius: 10,
   });
   canvas.appendChild(rect);

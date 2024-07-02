@@ -101,10 +101,11 @@ pnpm run dev
 -   使用合批减少 draw call
 -   使用空间索引提升拾取效率
 
-## 课程 9 - 绘制椭圆、矩形和折线
+## 课程 9 - 绘制椭圆和矩形
 
--   使用 SDF 绘制椭圆和矩形
--   绘制折线
+-   推导椭圆和圆角矩形的 SDF 表示
+-   为圆角矩形增加阴影
+-   如何判定任意点是否在椭圆或圆角矩形内
 
 [infinitecanvas]: https://infinitecanvas.tools/
 [Figma]: https://madebyevan.com/figma/building-a-professional-design-tool-on-the-web/

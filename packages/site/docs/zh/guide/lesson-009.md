@@ -6,9 +6,9 @@ outline: deep
 
 在这节课中你将学习到以下内容：
 
--   使用 SDF 绘制椭圆和矩形
--   如何推导 SDF
--   拾取判定
+-   推导椭圆和圆角矩形的 SDF 表示
+-   为圆角矩形增加阴影
+-   如何判定任意点是否在椭圆或圆角矩形内
 
 在 [课程 2] 中我们使用 SDF 绘制了圆形，很容易将它扩展到椭圆和矩形。[2D distance functions] 提供了更多 2D 图形的 SDF 表达：
 
@@ -34,7 +34,7 @@ if (shape < 0.5) {
 
 下面我们来看 SDF 是如何推导的。
 
-## 矩形
+## 矩形 {#rect}
 
 [The SDF of a Box] 和 [Leveraging Rust and the GPU to render user interfaces at 120 FPS] 分别以视频和动画的形式对它的推导过程进行了展示。
 
@@ -73,7 +73,7 @@ const rect = new Rect({
 });
 ```
 
-### 增加圆角
+### 增加圆角 {#rounded-rect}
 
 下图来自 [Rounding Corners in SDFs]，如果我们仔细观察使用等高线可视化后的距离场，可以发现矩形本身就是圆角的。以矩形右上角附近的点为例，距离相等的点不止一个，它们刚好分布在以右上角顶点为圆心的圆上。
 
@@ -124,19 +124,27 @@ call(() => {
         const canvas = e.detail;
 
         for (let i = 0; i < 1000; i++) {
+            const fill = `rgb(${Math.floor(Math.random() * 255)},${Math.floor(
+                Math.random() * 255,
+            )},${Math.floor(Math.random() * 255)})`;
             const rect = new Rect({
-                // x: Math.random() * 1000,
-                // y: Math.random() * 1000,
-                fill: `rgb(${Math.floor(Math.random() * 255)},${Math.floor(
-                    Math.random() * 255,
-                )},${Math.floor(Math.random() * 255)})`,
+                x: Math.random() * 1000,
+                y: Math.random() * 1000,
+                fill,
                 cornerRadius: 10,
             });
-            rect.x = Math.random() * 1000;
-            rect.y = Math.random() * 1000;
+            // rect.x = Math.random() * 1000;
+            // rect.y = Math.random() * 1000;
             rect.width = Math.random() * 40;
             rect.height = Math.random() * 40;
             canvas.appendChild(rect);
+
+            rect.addEventListener('pointerenter', () => {
+                rect.fill = 'red';
+            });
+            rect.addEventListener('pointerleave', () => {
+                rect.fill = fill;
+            });
         }
     });
 
@@ -146,15 +154,37 @@ call(() => {
 });
 ```
 
-### 增加阴影
+### 增加阴影 {#drop-shadow}
 
 渲染阴影通常会使用后处理中的高斯模糊，例如 Pixi.js 的 [DropShadowFilter]，2D 高斯模糊效果可以分解成水平和垂直两次 1D 效果从而独立进行，但卷积操作还是需要对相邻像素点（取决于卷积核的大小）进行采样。
 
 Figma 的 CTO Evan Wallace 在 [Fast Rounded Rectangle Shadows] 一文中介绍了一种更快速的近似方法，无需对纹理进行采样，[Leveraging Rust and the GPU to render user interfaces at 120 FPS] 一文也对该方法进行了更详细的介绍。高斯函数与阶跃函数的卷积等同于高斯函数的积分，其结果为误差函数 [Error function]（也称为 erf）。因此生成一个模糊的矩形相当于分别模糊每个维度，然后取两个结果的交集，这里先不考虑圆角情况。
 
-$$ f(x) = exp(-x^2 / (2 \sigma^2)) / (\sigma sqrt(2 \pi)) $$
+高斯函数为：
 
-$$ F(x) = (1 + erf(x / (\sigma sqrt(2)))) / 2 $$
+$$ f(x) = \frac{\exp(-x^2 / (2 \sigma^2))}{(\sigma \sqrt{2 \pi})} $$
+
+误差函数是高斯函数的积分，用于描述正态分布的累积分布函数。
+
+$$ ∫f(x)dx=F(x) $$
+
+$$ F(x) = \frac{(1 + erf(\frac{x}{\sigma \sqrt2}))}{2} $$
+
+误差函数的一个常用近似来自 [Abramowitz and Stegun. Handbook of Mathematical Functions.]：
+
+$$ erf(x) ≈ \frac{x}{1 + ax^2 + bx^4 + cx^6 + dx^8 + ex^{10}} $$
+
+其中
+
+$$
+\displaylines{
+a =0.278393, \\
+b =0.230389, \\
+c =0.000972, \\
+d =0.078108, \\
+e =2.03380×10−4
+}
+$$
 
 ```glsl
 vec4 erf(vec4 x) {
@@ -183,11 +213,22 @@ float rect_shadow(vec2 pixel_position, vec2 origin, vec2 size, float sigma) {
 }
 ```
 
+参考 CSS [box-shadow]，我们为矩形增加如下属性：
+
+```ts
+rect.boxShadow = {
+    offsetX,
+    offsetY,
+    blurRadius,
+    spreadRadius,
+};
+```
+
 接着考虑圆角矩形。
 
 [Blurred rounded rectangles]
 
--   [Shape Lens Blur Effect with SDFs and WebGL]
+基于这种方法，还可以实现一些有趣的效果，详见：[Shape Lens Blur Effect with SDFs and WebGL]
 
 ## 椭圆 {#ellipse}
 
@@ -419,16 +460,23 @@ call(() => {
         const canvas = e.detail;
 
         for (let i = 0; i < 1000; i++) {
+            const fill = `rgb(${Math.floor(Math.random() * 255)},${Math.floor(
+                Math.random() * 255,
+            )},${Math.floor(Math.random() * 255)})`;
             const ellipse = new Ellipse({
                 cx: Math.random() * 1000,
                 cy: Math.random() * 1000,
                 rx: Math.random() * 20,
                 ry: Math.random() * 20,
-                fill: `rgb(${Math.floor(Math.random() * 255)},${Math.floor(
-                    Math.random() * 255,
-                )},${Math.floor(Math.random() * 255)})`,
+                fill,
             });
             canvas.appendChild(ellipse);
+            ellipse.addEventListener('pointerenter', () => {
+                ellipse.fill = 'red';
+            });
+            ellipse.addEventListener('pointerleave', () => {
+                ellipse.fill = fill;
+            });
         }
     });
 
@@ -436,6 +484,85 @@ call(() => {
         stats.update();
     });
 });
+```
+
+## 拾取判定 {#picking}
+
+目前我们的拾取插件使用[数学方法]。
+
+### 椭圆 {#picking-ellipse}
+
+椭圆的拾取判定比较简单，例如默认情况下填充和描边区域都要考虑：
+
+```ts
+function isPointInEllipse(
+    x: number,
+    y: number,
+    h: number,
+    k: number,
+    a: number,
+    b: number,
+) {
+    // 计算点到椭圆中心的 x 和 y 坐标差
+    const dx = x - h;
+    const dy = y - k;
+
+    // 计算点相对于椭圆中心的坐标平方，然后除以半轴长度的平方
+    const squaredDistance = (dx * dx) / (a * a) + (dy * dy) / (b * b);
+
+    // 如果计算结果小于或等于 1，则点在椭圆内
+    return squaredDistance <= 1;
+}
+```
+
+### 圆角矩形 {#picking-rounded-rect}
+
+如果不考虑圆角，矩形的判定也非常简单。
+
+```ts
+function isPointInRoundedRectangle(
+    x: number,
+    y: number,
+    x1: number,
+    y1: number,
+    x2: number,
+    y2: number,
+    r: number,
+) {
+    // 判断点是否在矩形的四个角的圆角内
+    function isInsideCorner(
+        x: number,
+        y: number,
+        cornerX: number,
+        cornerY: number,
+        r: number,
+    ) {
+        const distance = Math.sqrt(
+            Math.pow(x - cornerX, 2) + Math.pow(y - cornerY, 2),
+        );
+        return distance <= r;
+    }
+
+    // 判断点是否在圆角矩形内
+    if (x >= x1 && x <= x2 && y >= y1 && y <= y2) {
+        // 点在矩形内部
+        if (
+            isInsideCorner(x, y, x1 + r, y1 + r, r) || // 左上角
+            isInsideCorner(x, y, x2 - r, y1 + r, r) || // 右上角
+            isInsideCorner(x, y, x2 - r, y2 - r, r) || // 右下角
+            isInsideCorner(x, y, x1 + r, y2 - r, r) // 左下角
+        ) {
+            return true; // 点在圆角内
+        }
+        return !(
+            x <= x1 + r ||
+            x >= x2 - r || // 点在矩形的非圆角边界上
+            y <= y1 + r ||
+            y >= y2 - r
+        );
+    }
+    return false; // 点不在矩形内
+}
 ```
 
 ## 扩展阅读 {#extended-reading}
@@ -466,3 +593,6 @@ call(() => {
 [Fast Rounded Rectangle Shadows]: https://madebyevan.com/shaders/fast-rounded-rectangle-shadows/
 [DropShadowFilter]: https://pixijs.io/filters/docs/DropShadowFilter.html
 [Error function]: https://en.wikipedia.org/wiki/Error_function
+[数学方法]: /zh/guide/lesson-006#geometric-method
+[Abramowitz and Stegun. Handbook of Mathematical Functions.]: https://personal.math.ubc.ca/~cbm/aands/page_299.htm
+[box-shadow]: https://developer.mozilla.org/en-US/docs/Web/CSS/box-shadow
