@@ -174,7 +174,7 @@ $$ F(x) = \frac{(1 + erf(\frac{x}{\sigma \sqrt2}))}{2} $$
 
 $$ erf(x) ≈ \frac{x}{1 + ax^2 + bx^4 + cx^6 + dx^8 + ex^{10}} $$
 
-其中
+其中多项式各项系数为：
 
 $$
 \displaylines{
@@ -186,9 +186,11 @@ e =2.03380×10−4
 }
 $$
 
+下面的实现来自 [Zed Metal Shader]，我们将其用 GLSL 简单改写下：
+
 ```glsl
-vec4 erf(vec4 x) {
-  vec4 s = sign(x), a = abs(x);
+vec2 erf(vec2 x) {
+  vec2 s = sign(x), a = abs(x);
   x = 1.0 + (0.278393 + (0.230389 + 0.078108 * (a * a)) * a) * a;
   x *= x;
   return s - s / (x * x);
@@ -197,12 +199,6 @@ vec4 erf(vec4 x) {
 
 ```glsl
 // Return the mask for the shadow of a box from lower to upper
-float boxShadow(vec2 lower, vec2 upper, vec2 point, float sigma) {
-  vec4 query = vec4(point - lower, upper - point);
-  vec4 integral = 0.5 + 0.5 * erf(query * (sqrt(0.5) / sigma));
-  return (integral.z - integral.x) * (integral.w - integral.y);
-}
-
 float rect_shadow(vec2 pixel_position, vec2 origin, vec2 size, float sigma) {
   vec2 bottom_right = origin + size;
   vec2 x_distance = vec2(pixel_position.x - origin.x, pixel_position.x - bottom_right.x);
@@ -216,17 +212,26 @@ float rect_shadow(vec2 pixel_position, vec2 origin, vec2 size, float sigma) {
 参考 CSS [box-shadow]，我们为矩形增加如下属性：
 
 ```ts
-rect.boxShadow = {
-    offsetX,
-    offsetY,
-    blurRadius,
-    spreadRadius,
-};
+rect.boxShadowOffsetX = 10;
+rect.boxShadowOffsetY = 10;
+rect.boxShadowBlurRadius = 5;
+rect.boxShadowSpreadRadius = 5;
 ```
 
 接着考虑圆角矩形。
 
 [Blurred rounded rectangles]
+
+```glsl
+float blur_along_x(float x, float y, float sigma, float corner, vec2 half_size) {
+  float delta = min(half_size.y - corner - abs(y), 0.);
+  float curved =
+  half_size.x - corner + sqrt(max(0., corner * corner - delta * delta));
+  vec2 integral =
+  0.5 + 0.5 * erf((x + vec2(-curved, curved)) * (sqrt(0.5) / sigma));
+  return integral.y - integral.x;
+}
+```
 
 基于这种方法，还可以实现一些有趣的效果，详见：[Shape Lens Blur Effect with SDFs and WebGL]
 
@@ -488,7 +493,7 @@ call(() => {
 
 ## 拾取判定 {#picking}
 
-目前我们的拾取插件使用[数学方法]。
+目前我们的拾取插件使用[数学方法]，因此需要为椭圆和圆角矩形分别实现判定方法，后续我们会介绍更为通用的基于颜色编码的 GPU 拾取方式。在上面的两个示例中，你可以将鼠标悬停到任意图形上体验拾取效果。
 
 ### 椭圆 {#picking-ellipse}
 
@@ -596,3 +601,4 @@ function isPointInRoundedRectangle(
 [数学方法]: /zh/guide/lesson-006#geometric-method
 [Abramowitz and Stegun. Handbook of Mathematical Functions.]: https://personal.math.ubc.ca/~cbm/aands/page_299.htm
 [box-shadow]: https://developer.mozilla.org/en-US/docs/Web/CSS/box-shadow
+[Zed Metal Shader]: https://github.com/zed-industries/zed/blob/main/crates/gpui/src/platform/mac/shaders.metal#L180

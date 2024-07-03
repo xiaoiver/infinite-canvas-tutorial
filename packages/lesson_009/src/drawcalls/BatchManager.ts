@@ -8,6 +8,8 @@ import { Circle, Ellipse, Rect, type Shape } from '../shapes';
  * e.g. we need 2 drawcalls for a Circle with dashed stroke:
  * - A SDF drawcall to draw the fill.
  * - A Path drawcall to draw the dashed stroke.
+ *
+ * e.g. 2 drawcalls for a Rect with drop shadow.
  */
 const SHAPE_DRAWCALL_CTORS = new WeakMap<typeof Shape, (typeof Drawcall)[]>();
 SHAPE_DRAWCALL_CTORS.set(Circle, [SDF]);

@@ -49,6 +49,10 @@ for (let i = 0; i < 1; i++) {
     height: 100,
     fill: 'rgba(190, 190, 190, 1)',
     cornerRadius: 10,
+    // boxShadowOffsetX: 30,
+    // boxShadowOffsetY: 30,
+    // boxShadowBlurRadius: 30,
+    boxShadowSpreadRadius: 10,
   });
   canvas.appendChild(rect);
 
