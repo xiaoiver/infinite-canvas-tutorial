@@ -98,7 +98,7 @@ float sdf_rounded_box(vec2 p, vec2 b, float r) {
 }
 ```
 
-参考 Figma 的命名我们使用 `cornerRadius`，但仅凭 SDF 无法实现 `smoothing` 效果，详见 [Adjust corner radius and smoothing]。
+参考 Figma 的命名我们使用 `cornerRadius`，但仅凭 SDF 无法实现 `smoothing` 效果，详见 [Adjust corner radius and smoothing]。另外也可以支持四个角不同的圆角半径，可以参考 [Zed Blade WGSL]，这是 Zed 基于 [blade] 渲染器编写的 Shader，使用 WGSL 语法。
 
 ```js eval code=false
 $icCanvas2 = call(() => {
@@ -182,11 +182,11 @@ a =0.278393, \\
 b =0.230389, \\
 c =0.000972, \\
 d =0.078108, \\
-e =2.03380×10−4
+e =2.03380×10^{−4}
 }
 $$
 
-下面的实现来自 [Zed Metal Shader]，我们将其用 GLSL 简单改写下：
+下面的实现来自 [Zed Blade WGSL]，我们将其用 GLSL 简单改写下：
 
 ```glsl
 vec2 erf(vec2 x) {
@@ -235,6 +235,25 @@ float blur_along_x(float x, float y, float sigma, float corner, vec2 half_size) 
 
 基于这种方法，还可以实现一些有趣的效果，详见：[Shape Lens Blur Effect with SDFs and WebGL]
 
+最后阴影也会影响 `RenderBounds` 的计算，否则当矩形主体在视口之外，但阴影在视口之内时会被错误地剔除：
+
+```ts
+getRenderBounds() {
+  if (this.renderBoundsDirtyFlag) {
+    const { strokeWidth, x, y, width, height, boxShadowOffsetX, boxShadowOffsetY } = this;
+    const halfLineWidth = strokeWidth / 2;
+    this.renderBoundsDirtyFlag = false;
+    this.renderBounds = new AABB(
+      x - halfLineWidth + boxShadowOffsetX,
+      y - halfLineWidth + boxShadowOffsetY,
+      x + width + halfLineWidth + boxShadowBlurRadius,
+      y + height + halfLineWidth + boxShadowBlurRadius,
+    );
+  }
+  return this.renderBounds;
+}
+```
+
 ## 椭圆 {#ellipse}
 
 不同于判断任意点到圆上的最近距离，针对椭圆的精确分析方法要复杂得多，[Distance to an ellipse] 给出了两种方法：一元四次方程和 Newton 方法。
@@ -269,7 +288,7 @@ $$
 }
 $$
 
-为了将四次项的系数化成 1 得到 [Monic Polynomial]，将上述每个系数都除以 $k_4$，而且是椭圆的缘故不用担心除以 0 的问题。同时使用 $m n$ 代入：
+为了将四次项的系数化成 1 得到 [Monic Polynomial]，将上述每个系数都除以 $a_4$，而且是椭圆的缘故不用担心除以 0 的问题。同时使用 $m n$ 代入：
 
 $$ m=x \frac{a}{b^{2}-a^{2}} \quad n=y \frac{b}{b^{2}-a^{2}} $$
 
@@ -343,7 +362,7 @@ $$
 
 任意点 $p$ 到椭圆上距离最近点 $q$ 形成的向量一定是垂直于椭圆在 $q$ 点的切线的。
 
-$$ <p-q(\omega)), q'(\omega)> = 0 $$
+$$ <p-q(\omega), q'(\omega)> = 0 $$
 
 其中：
 
@@ -601,4 +620,5 @@ function isPointInRoundedRectangle(
 [数学方法]: /zh/guide/lesson-006#geometric-method
 [Abramowitz and Stegun. Handbook of Mathematical Functions.]: https://personal.math.ubc.ca/~cbm/aands/page_299.htm
 [box-shadow]: https://developer.mozilla.org/en-US/docs/Web/CSS/box-shadow
-[Zed Metal Shader]: https://github.com/zed-industries/zed/blob/main/crates/gpui/src/platform/mac/shaders.metal#L180
+[Zed Blade WGSL]: https://github.com/zed-industries/zed/blob/main/crates/gpui/src/platform/blade/shaders.wgsl
+[blade]: https://github.com/kvark/blade

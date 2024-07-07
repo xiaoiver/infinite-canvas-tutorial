@@ -6,11 +6,12 @@ What is an Infinite Canvas? The term "infinite" in [infinitecanvas] is described
 -   Zooming. Emulates the "zoom in" to get an overview and "zoom out" to observe details as in the real world.
 -   Direct manipulation. Provides intuitive editing capabilities for basic shapes, including moving, grouping, and modifying styles.
 
-The [infinitecanvas] showcases numerous examples ranging from design tools to creative boards, including some well-known products such as: [Figma], [Modyfi], [rnote], [tldraw], [excalidraw] and so on.
+The [infinitecanvas] showcases numerous examples ranging from design tools to creative boards, including some well-known products such as: [Figma], [Modyfi], [Motiff], [rnote], [tldraw], [excalidraw] and so on.
 
 As a front-end developer, I am very interested in the rendering technologies involved. Although tldraw, excalidraw, and others generally use more user-friendly technologies like Canvas2D/SVG, there are also many editors and design tools in the JS and Rust ecosystems that use more low-level rendering technologies for 2D graphics with GPU acceleration to achieve better performance and experience:
 
 -   [Figma] uses a tile-based rendering engine written in C++, compiled into WASM and then calls WebGL for rendering.
+-   [Motiff] also uses a tile-based rendering engine with WebGL.
 -   [Modyfi] uses [wgpu] from the Rust ecosystem, also compiled into WASM and then calls WebGL2 for rendering.
 -   [Zed] uses GPUI to render rectangles, shadows, text, images, and other UI elements.
 -   [Vello] and [xilem] experimentally use Compute Shader for 2D rendering.
@@ -122,3 +123,4 @@ pnpm run dev
 [mapbox]: https://blog.mapbox.com/rendering-big-geodata-on-the-fly-with-geojson-vt-4e4d2a5dd1f2?gi=e5acafcf219d
 [Yjs]: https://yjs.dev/
 [y-crdt]: https://github.com/y-crdt/y-crdt
+[Motiff]: https://www.motiff.com/blog/performance-magic-behind-motiff

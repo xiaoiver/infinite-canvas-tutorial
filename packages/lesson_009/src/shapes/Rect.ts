@@ -252,14 +252,23 @@ export class Rect extends Shape implements RectAttributes {
 
   getRenderBounds() {
     if (this.renderBoundsDirtyFlag) {
-      const { strokeWidth, x, y, width, height } = this;
+      const {
+        strokeWidth,
+        x,
+        y,
+        width,
+        height,
+        boxShadowOffsetX,
+        boxShadowOffsetY,
+        boxShadowBlurRadius,
+      } = this;
       const halfLineWidth = strokeWidth / 2;
       this.renderBoundsDirtyFlag = false;
       this.renderBounds = new AABB(
-        x - halfLineWidth,
-        y - halfLineWidth,
-        x + width + halfLineWidth,
-        y + height + halfLineWidth,
+        x - halfLineWidth + boxShadowOffsetX,
+        y - halfLineWidth + boxShadowOffsetY,
+        x + width + halfLineWidth + boxShadowBlurRadius,
+        y + height + halfLineWidth + boxShadowBlurRadius,
       );
     }
     return this.renderBounds;

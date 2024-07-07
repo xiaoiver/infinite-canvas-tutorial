@@ -14,7 +14,6 @@ layout(location = 0) in vec2 a_FragCoord;
   layout(location = 3) in vec4 a_StrokeColor;
   layout(location = 4) in vec4 a_ZIndexStrokeWidth;
   layout(location = 5) in vec4 a_Opacity;
-  layout(location = 6) in vec4 a_BoxShadow;
 #else
   layout(std140) uniform ShapeUniforms {
     mat3 u_ModelMatrix;
@@ -23,7 +22,6 @@ layout(location = 0) in vec2 a_FragCoord;
     vec4 u_StrokeColor;
     vec4 u_ZIndexStrokeWidth;
     vec4 u_Opacity;
-    vec4 u_BoxShadow;
   };
 #endif
 
@@ -34,7 +32,6 @@ out vec2 v_FragCoord;
   out float v_StrokeWidth;
   out vec4 v_Opacity;
   out float v_CornerRadius;
-  out vec4 v_BoxShadow;
 #else
 #endif
 out vec2 v_Radius;
@@ -47,7 +44,6 @@ void main() {
   vec4 strokeColor;
   float zIndex;
   float strokeWidth;
-  vec4 boxShadow;
 
   #ifdef USE_INSTANCES
     model = mat3(a_Abcd.x, a_Abcd.y, 0, a_Abcd.z, a_Abcd.w, 0, a_Txty.x, a_Txty.y, 1);
@@ -57,14 +53,12 @@ void main() {
     strokeColor = a_StrokeColor;
     zIndex = a_ZIndexStrokeWidth.x;
     strokeWidth = a_ZIndexStrokeWidth.y;
-    boxShadow = a_BoxShadow;
 
     v_FillColor = fillColor;
     v_StrokeColor = strokeColor;
     v_StrokeWidth = strokeWidth;
     v_Opacity = a_Opacity;
     v_CornerRadius = a_ZIndexStrokeWidth.z;
-    v_BoxShadow = boxShadow;
   #else
     model = u_ModelMatrix;
     position = u_PositionSize.xy;
@@ -73,19 +67,17 @@ void main() {
     strokeColor = u_StrokeColor;
     zIndex = u_ZIndexStrokeWidth.x;
     strokeWidth = u_ZIndexStrokeWidth.y;
-    boxShadow = u_BoxShadow;
   #endif
 
-  size += boxShadow.z;
   vec2 radius = size + vec2(strokeWidth / 2.0);
 
-  v_FragCoord = vec2(a_FragCoord * radius / radius.y);
+  v_FragCoord = vec2(a_FragCoord * radius);
   v_Radius = radius;
 
   gl_Position = vec4((u_ProjectionMatrix 
     * u_ViewMatrix
     * model 
-    * vec3(position + boxShadow.xy + size * a_FragCoord, 1)).xy, zIndex, 1);
+    * vec3(position + v_FragCoord, 1)).xy, zIndex, 1);
 }
 `;
 
@@ -99,7 +91,6 @@ export const frag = /* wgsl */ `
     vec4 u_StrokeColor;
     vec4 u_ZIndexStrokeWidth;
     vec4 u_Opacity;
-    vec4 u_BoxShadow;
   };
 #endif
 
@@ -112,7 +103,6 @@ in vec2 v_FragCoord;
   in float v_StrokeWidth;
   in vec4 v_Opacity;
   in float v_CornerRadius;
-  in vec4 v_BoxShadow;
 #else
 #endif
 in vec2 v_Radius;
@@ -142,30 +132,23 @@ float sdf_rounded_box(vec2 p, vec2 b, float r) {
   return min(max(q.x, q.y), 0.0) + length(max(q, 0.0)) - r;
 }
 
-// This approximates the error function, needed for the gaussian integral
-vec2 erf(vec2 x) {
-  vec2 s = sign(x), a = abs(x);
-  x = 1.0 + (0.278393 + (0.230389 + 0.078108 * (a * a)) * a) * a;
-  x *= x;
-  return s - s / (x * x);
+vec4 over(vec4 below, vec4 above) {
+  vec4 result;
+  float alpha = above.a + below.a * (1.0 - above.a);
+  result.rgb =
+      (above.rgb * above.a + below.rgb * below.a * (1.0 - above.a)) / alpha;
+  result.a = alpha;
+  return result;
 }
 
-float rect_shadow(vec2 pixel_position, vec2 origin, vec2 size, float sigma) {
-  vec2 bottom_right = origin + size;
-  vec2 x_distance = vec2(pixel_position.x - origin.x, pixel_position.x - bottom_right.x);
-  vec2 y_distance = vec2(pixel_position.y - origin.y, pixel_position.y - bottom_right.y);
-  vec2 integral_x = 0.5 + 0.5 * erf(x_distance * (sqrt(0.5) / sigma));
-  vec2 integral_y = 0.5 + 0.5 * erf(y_distance * (sqrt(0.5) / sigma));
-  return (integral_x.x - integral_x.y) * (integral_y.x - integral_y.y);
+float antialias(float distance) {
+  return clamp(distance / -fwidth(distance), 0.0, 1.0);
 }
 
-float blur_along_x(float x, float y, float sigma, float corner, vec2 half_size) {
-  float delta = min(half_size.y - corner - abs(y), 0.);
-  float curved =
-  half_size.x - corner + sqrt(max(0., corner * corner - delta * delta));
-  vec2 integral =
-  0.5 + 0.5 * erf((x + vec2(-curved, curved)) * (sqrt(0.5) / sigma));
-  return integral.y - integral.x;
+vec4 mix_border_inside(vec4 border, vec4 inside, float distance) {
+  // Blend the border on top of the background and then linearly interpolate
+  // between the two as we slide inside the background.
+  return mix(border, inside, clamp(1.0 - distance, 0.0, 1.0) * antialias(distance));
 }
 
 void main() {
@@ -177,7 +160,6 @@ void main() {
   float strokeOpacity;
   float shape;
   float cornerRadius;
-  vec4 boxShadow;
   
   #ifdef USE_INSTANCES
     fillColor = v_FillColor;
@@ -188,7 +170,6 @@ void main() {
     strokeOpacity = v_Opacity.z;
     shape = v_Opacity.w;
     cornerRadius = v_CornerRadius;
-    boxShadow = v_BoxShadow;
   #else
     fillColor = u_FillColor;
     strokeColor = u_StrokeColor;
@@ -198,47 +179,35 @@ void main() {
     strokeOpacity = u_Opacity.z;
     shape = u_Opacity.w;
     cornerRadius = u_ZIndexStrokeWidth.z;
-    boxShadow = u_BoxShadow;
   #endif
 
-  vec2 r = (v_Radius - strokeWidth) / v_Radius.y;
-  float wh = v_Radius.x / v_Radius.y;
-  cornerRadius = cornerRadius / v_Radius.y;
-
-  float dist = length(v_FragCoord);
-  float antialiasedBlur = -fwidth(dist);
-
-  float outerDistance;
-  float innerDistance;
+  float distance;
   // 'circle', 'ellipse', 'rect'
   if (shape < 0.5) {
-    outerDistance = sdf_circle(v_FragCoord, 1.0);
-    innerDistance = sdf_circle(v_FragCoord, r.x);
+    distance = sdf_circle(v_FragCoord, v_Radius.x);
   } else if (shape < 1.5) {
-    outerDistance = sdf_ellipse(v_FragCoord, vec2(wh, 1.0));
-    innerDistance = sdf_ellipse(v_FragCoord, r);
+    distance = sdf_ellipse(v_FragCoord, v_Radius);
   } else if (shape < 2.5) {
-    outerDistance = sdf_rounded_box(v_FragCoord, vec2(wh, 1.0), cornerRadius);
-    innerDistance = sdf_rounded_box(v_FragCoord, r, cornerRadius);
+    distance = sdf_rounded_box(v_FragCoord, v_Radius, cornerRadius);
+    // TODO: Fast path when the quad is not rounded and doesn't have any border.
   }
 
-  float shadowFactor = 1.0;
-  if (boxShadow.z > 0.0) {
-    float sigma = boxShadow.z / 3.0 * 0.1;
-    shadowFactor = rect_shadow(v_FragCoord, vec2(-wh, -1.0), 2.0 * vec2(wh, 1.0), sigma);
+  // based on the target alpha compositing mode.
+  fillColor.a *= fillOpacity;
+  strokeColor.a *= strokeOpacity;
+
+  vec4 color = fillColor;
+  if (strokeWidth > 0.0) {
+    color = mix_border_inside(over(fillColor, strokeColor), fillColor, distance + strokeWidth);
+    color = mix_border_inside(strokeColor, color, distance + strokeWidth / 2.0);
   }
+  outputColor = color;
 
-  float opacity_t = clamp(outerDistance / antialiasedBlur, 0.0, 1.0);
+  float antialiasedBlur = -fwidth(length(v_FragCoord));
+  float opacity_t = clamp(distance / antialiasedBlur, 0.0, 1.0);
+  outputColor.a *= clamp(1.0 - distance, 0.0, 1.0) * opacity * opacity_t;
 
-  float color_t = strokeWidth < 0.01 ? 0.0 : smoothstep(
-    antialiasedBlur,
-    0.0,
-    innerDistance
-  );
-
-  outputColor = mix(vec4(fillColor.rgb, fillColor.a * fillOpacity), strokeColor * strokeOpacity, color_t);
-  outputColor.a = outputColor.a * opacity * opacity_t * shadowFactor;
-
+  // TODO: antialiasing
   if (outputColor.a < epsilon)
     discard;
 }

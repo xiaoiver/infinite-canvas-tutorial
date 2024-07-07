@@ -14,14 +14,12 @@ import {
   Program,
   CompareFunction,
 } from '@antv/g-device-api';
-import { Circle, Ellipse, Rect, Shape } from '../shapes';
+import { Rect, Shape } from '../shapes';
 import { Drawcall, ZINDEX_FACTOR } from './Drawcall';
-import { vert, frag } from '../shaders/sdf';
+import { vert, frag } from '../shaders/shadow_rect';
 import { paddingMat3 } from '../utils';
 
-export class SDF extends Drawcall {
-  // protected maxInstances = 5000;
-
+export class ShadowRect extends Drawcall {
   #program: Program;
   #fragUnitBuffer: Buffer;
   #instancedBuffer: Buffer;
@@ -52,7 +50,7 @@ export class SDF extends Drawcall {
       }
 
       this.#instancedBuffer = this.device.createBuffer({
-        viewOrSize: Float32Array.BYTES_PER_ELEMENT * 20 * this.shapes.length,
+        viewOrSize: Float32Array.BYTES_PER_ELEMENT * 12 * this.shapes.length,
         usage: BufferUsage.VERTEX,
         hint: BufferFrequencyHint.DYNAMIC,
       });
@@ -105,7 +103,7 @@ export class SDF extends Drawcall {
     if (this.instanced) {
       vertexBufferDescriptors.push(
         {
-          arrayStride: 4 * 20,
+          arrayStride: 4 * 12,
           stepMode: VertexStepMode.INSTANCE,
           attributes: [
             {
@@ -114,23 +112,13 @@ export class SDF extends Drawcall {
               format: Format.F32_RGBA,
             },
             {
-              shaderLocation: 2, // a_FillColor
+              shaderLocation: 4, // a_ZIndexStrokeWidth
               offset: 4 * 4,
               format: Format.F32_RGBA,
             },
             {
-              shaderLocation: 3, // a_StrokeColor
+              shaderLocation: 6, // a_BoxShadow
               offset: 4 * 8,
-              format: Format.F32_RGBA,
-            },
-            {
-              shaderLocation: 4, // a_ZIndexStrokeWidth
-              offset: 4 * 12,
-              format: Format.F32_RGBA,
-            },
-            {
-              shaderLocation: 5, // a_Opacity
-              offset: 4 * 16,
               format: Format.F32_RGBA,
             },
           ],
@@ -165,7 +153,7 @@ export class SDF extends Drawcall {
       });
       if (!this.#uniformBuffer) {
         this.#uniformBuffer = this.device.createBuffer({
-          viewOrSize: Float32Array.BYTES_PER_ELEMENT * (16 + 4 + 4 + 4 + 4),
+          viewOrSize: Float32Array.BYTES_PER_ELEMENT * (16 + 4 + 4),
           usage: BufferUsage.UNIFORM,
           hint: BufferFrequencyHint.DYNAMIC,
         });
@@ -305,51 +293,40 @@ export class SDF extends Drawcall {
   }
 
   private generateBuffer(shape: Shape) {
-    const {
-      fillRGB: { r: fr, g: fg, b: fb, opacity: fo },
-      strokeRGB: { r: sr, g: sg, b: sb, opacity: so },
-      strokeWidth,
-      opacity,
-      fillOpacity,
-      strokeOpacity,
-    } = shape;
+    const { strokeWidth } = shape;
 
-    let size: [number, number, number, number];
-    let type: number;
+    let bounds: [number, number, number, number];
     let cornerRadius = 0;
-    if (shape instanceof Circle) {
-      const { cx, cy, r } = shape;
-      size = [cx, cy, r, r];
-      type = 0;
-    } else if (shape instanceof Ellipse) {
-      const { cx, cy, rx, ry } = shape;
-      size = [cx, cy, rx, ry];
-      type = 1;
-    } else if (shape instanceof Rect) {
-      const { x, y, width, height, cornerRadius: r } = shape;
-      size = [x + width / 2, y + height / 2, width / 2, height / 2];
-      type = 2;
+    let boxShadow: [number, number, number, number] = [0, 0, 0, 0];
+    if (shape instanceof Rect) {
+      const {
+        x,
+        y,
+        width,
+        height,
+        cornerRadius: r,
+        boxShadowOffsetX,
+        boxShadowOffsetY,
+        boxShadowBlurRadius,
+        boxShadowSpreadRadius,
+      } = shape;
+      bounds = [x, y, width, height];
       cornerRadius = r;
+      boxShadow = [
+        boxShadowOffsetX,
+        boxShadowOffsetY,
+        boxShadowBlurRadius,
+        boxShadowSpreadRadius,
+      ];
     }
 
     return [
-      ...size,
-      fr / 255,
-      fg / 255,
-      fb / 255,
-      fo,
-      sr / 255,
-      sg / 255,
-      sb / 255,
-      so,
+      ...bounds,
       shape.globalRenderOrder / ZINDEX_FACTOR,
       strokeWidth,
       cornerRadius,
       0,
-      opacity,
-      fillOpacity,
-      strokeOpacity,
-      type,
+      ...boxShadow,
     ];
   }
 }

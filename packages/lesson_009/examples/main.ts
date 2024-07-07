@@ -23,35 +23,53 @@ for (let i = 0; i < 1; i++) {
   const fill = `rgb(${Math.floor(Math.random() * 255)},${Math.floor(
     Math.random() * 255,
   )},${Math.floor(Math.random() * 255)})`;
-  // const circle = new Circle({
-  //   cx: Math.random() * 1000,
-  //   cy: Math.random() * 1000,
-  //   r: Math.random() * 20,
-  //   fill,
-  //   stroke: 'black',
-  //   strokeWidth: 2,
-  // });
-  // canvas.appendChild(circle);
+  const circle = new Circle({
+    // cx: Math.random() * 1000,
+    // cy: Math.random() * 1000,
+    // r: Math.random() * 20,
+    cx: 300,
+    cy: 300,
+    r: 50,
+    fill: 'red',
+    stroke: 'black',
+    strokeWidth: 20,
+    opacity: 0.5,
+    // strokeOpacity: 0.5,
+  });
+  canvas.appendChild(circle);
 
-  // const ellipse = new Ellipse({
-  //   cx: Math.random() * 1000,
-  //   cy: Math.random() * 1000,
-  //   rx: Math.random() * 20,
-  //   ry: Math.random() * 20,
-  //   fill,
-  // });
-  // canvas.appendChild(ellipse);
+  const ellipse = new Ellipse({
+    // cx: Math.random() * 1000,
+    // cy: Math.random() * 1000,
+    // rx: Math.random() * 20,
+    // ry: Math.random() * 20,
+    cx: 100,
+    cy: 300,
+    rx: 50,
+    ry: 100,
+    stroke: 'black',
+    strokeWidth: 20,
+    strokeOpacity: 0.5,
+    fillOpacity: 0.5,
+    fill: 'red',
+  });
+  canvas.appendChild(ellipse);
 
   const rect = new Rect({
     x: 0,
     y: 0,
-    width: 100,
+    width: 400,
     height: 100,
-    fill: 'rgba(190, 190, 190, 1)',
-    cornerRadius: 10,
-    // boxShadowOffsetX: 30,
-    // boxShadowOffsetY: 30,
-    // boxShadowBlurRadius: 30,
+    fill: 'red',
+    fillOpacity: 0.5,
+    // strokeWidth: 10,
+    stroke: 'black',
+    strokeOpacity: 0.5,
+    cornerRadius: 50,
+    batchable: true,
+    boxShadowOffsetX: 10,
+    boxShadowOffsetY: 10,
+    boxShadowBlurRadius: 10,
     boxShadowSpreadRadius: 10,
   });
   canvas.appendChild(rect);
