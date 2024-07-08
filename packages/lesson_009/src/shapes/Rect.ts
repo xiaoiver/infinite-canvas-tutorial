@@ -1,3 +1,4 @@
+import * as d3 from 'd3-color';
 import { Shape, ShapeAttributes, isFillOrStrokeAffected } from './Shape';
 import { AABB } from './AABB';
 
@@ -36,31 +37,29 @@ export interface RectAttributes extends ShapeAttributes {
   cornerRadius: number;
 
   /**
-   * Horizontal offset
-   * @see https://developer.mozilla.org/en-US/docs/Web/CSS/box-shadow
+   * Specifies color for the shadow.
+   * @see https://developer.mozilla.org/en-US/docs/Web/CSS/filter-function/drop-shadow#color
    */
-  boxShadowOffsetX: number;
+  dropShadowColor: string;
+
+  /**
+   * Horizontal offset
+   * @see https://developer.mozilla.org/en-US/docs/Web/CSS/filter-function/drop-shadow
+   */
+  dropShadowOffsetX: number;
 
   /**
    * Vertical offset
-   * @see https://developer.mozilla.org/en-US/docs/Web/CSS/box-shadow
+   * @see https://developer.mozilla.org/en-US/docs/Web/CSS/filter-function/drop-shadow
    */
-  boxShadowOffsetY: number;
+  dropShadowOffsetY: number;
 
   /**
    * The larger this value, the bigger the blur, so the shadow becomes bigger and lighter.
    * Negative values are not allowed. If not specified, it will be set to `0`.
-   * @see https://developer.mozilla.org/en-US/docs/Web/CSS/box-shadow
+   * @see https://developer.mozilla.org/en-US/docs/Web/CSS/filter-function/drop-shadow
    */
-  boxShadowBlurRadius: number;
-
-  /**
-   * Positive values will cause the shadow to expand and grow bigger,
-   * negative values will cause the shadow to shrink.
-   * If not specified, it will be set to 0 (that is, the shadow will be the same size as the element).
-   * @see https://developer.mozilla.org/en-US/docs/Web/CSS/box-shadow
-   */
-  boxShadowSpreadRadius: number;
+  dropShadowBlurRadius: number;
 }
 
 export class Rect extends Shape implements RectAttributes {
@@ -69,10 +68,11 @@ export class Rect extends Shape implements RectAttributes {
   #width: number;
   #height: number;
   #cornerRadius: number;
-  #boxShadowOffsetX: number;
-  #boxShadowOffsetY: number;
-  #boxShadowBlurRadius: number;
-  #boxShadowSpreadRadius: number;
+  #dropShadowColor: string;
+  #dropShadowColorRGB: d3.RGBColor;
+  #dropShadowOffsetX: number;
+  #dropShadowOffsetY: number;
+  #dropShadowBlurRadius: number;
 
   constructor(attributes: Partial<RectAttributes> = {}) {
     super(attributes);
@@ -83,21 +83,21 @@ export class Rect extends Shape implements RectAttributes {
       width,
       height,
       cornerRadius,
-      boxShadowOffsetX,
-      boxShadowOffsetY,
-      boxShadowBlurRadius,
-      boxShadowSpreadRadius,
+      dropShadowColor,
+      dropShadowOffsetX,
+      dropShadowOffsetY,
+      dropShadowBlurRadius,
     } = attributes;
 
-    this.#x = x ?? 0;
-    this.#y = y ?? 0;
-    this.#width = width ?? 0;
-    this.#height = height ?? 0;
-    this.#cornerRadius = cornerRadius ?? 0;
-    this.#boxShadowOffsetX = boxShadowOffsetX ?? 0;
-    this.#boxShadowOffsetY = boxShadowOffsetY ?? 0;
-    this.#boxShadowBlurRadius = boxShadowBlurRadius ?? 0;
-    this.#boxShadowSpreadRadius = boxShadowSpreadRadius ?? 0;
+    this.x = x ?? 0;
+    this.y = y ?? 0;
+    this.width = width ?? 0;
+    this.height = height ?? 0;
+    this.cornerRadius = cornerRadius ?? 0;
+    this.dropShadowColor = dropShadowColor ?? 'black';
+    this.dropShadowOffsetX = dropShadowOffsetX ?? 0;
+    this.dropShadowOffsetY = dropShadowOffsetY ?? 0;
+    this.dropShadowBlurRadius = dropShadowBlurRadius ?? 0;
   }
 
   get x() {
@@ -154,42 +154,47 @@ export class Rect extends Shape implements RectAttributes {
     }
   }
 
-  get boxShadowOffsetX() {
-    return this.#boxShadowOffsetX;
+  get dropShadowColor() {
+    return this.#dropShadowColor;
   }
-  set boxShadowOffsetX(boxShadowOffsetX: number) {
-    if (this.#boxShadowOffsetX !== boxShadowOffsetX) {
-      this.#boxShadowOffsetX = boxShadowOffsetX;
+  set dropShadowColor(dropShadowColor: string) {
+    if (this.#dropShadowColor !== dropShadowColor) {
+      this.#dropShadowColor = dropShadowColor;
+      this.#dropShadowColorRGB = d3.rgb(dropShadowColor);
       this.renderDirtyFlag = true;
     }
   }
 
-  get boxShadowOffsetY() {
-    return this.#boxShadowOffsetY;
+  get dropShadowColorRGB() {
+    return this.#dropShadowColorRGB;
   }
-  set boxShadowOffsetY(boxShadowOffsetY: number) {
-    if (this.#boxShadowOffsetY !== boxShadowOffsetY) {
-      this.#boxShadowOffsetY = boxShadowOffsetY;
+
+  get dropShadowOffsetX() {
+    return this.#dropShadowOffsetX;
+  }
+  set dropShadowOffsetX(dropShadowOffsetX: number) {
+    if (this.#dropShadowOffsetX !== dropShadowOffsetX) {
+      this.#dropShadowOffsetX = dropShadowOffsetX;
       this.renderDirtyFlag = true;
     }
   }
 
-  get boxShadowBlurRadius() {
-    return this.#boxShadowBlurRadius;
+  get dropShadowOffsetY() {
+    return this.#dropShadowOffsetY;
   }
-  set boxShadowBlurRadius(boxShadowBlurRadius: number) {
-    if (this.#boxShadowBlurRadius !== boxShadowBlurRadius) {
-      this.#boxShadowBlurRadius = boxShadowBlurRadius;
+  set dropShadowOffsetY(dropShadowOffsetY: number) {
+    if (this.#dropShadowOffsetY !== dropShadowOffsetY) {
+      this.#dropShadowOffsetY = dropShadowOffsetY;
       this.renderDirtyFlag = true;
     }
   }
 
-  get boxShadowSpreadRadius() {
-    return this.#boxShadowSpreadRadius;
+  get dropShadowBlurRadius() {
+    return this.#dropShadowBlurRadius;
   }
-  set boxShadowSpreadRadius(boxShadowSpreadRadius: number) {
-    if (this.#boxShadowSpreadRadius !== boxShadowSpreadRadius) {
-      this.#boxShadowSpreadRadius = boxShadowSpreadRadius;
+  set dropShadowBlurRadius(dropShadowBlurRadius: number) {
+    if (this.#dropShadowBlurRadius !== dropShadowBlurRadius) {
+      this.#dropShadowBlurRadius = dropShadowBlurRadius;
       this.renderDirtyFlag = true;
     }
   }
@@ -199,7 +204,7 @@ export class Rect extends Shape implements RectAttributes {
     const halfLineWidth = strokeWidth / 2;
     const [hasFill, hasStroke] = isFillOrStrokeAffected(
       this.pointerEvents,
-      this.fill,
+      this.dropShadowColor,
       this.stroke,
     );
 
@@ -258,17 +263,25 @@ export class Rect extends Shape implements RectAttributes {
         y,
         width,
         height,
-        boxShadowOffsetX,
-        boxShadowOffsetY,
-        boxShadowBlurRadius,
+        dropShadowOffsetX,
+        dropShadowOffsetY,
+        dropShadowBlurRadius,
       } = this;
       const halfLineWidth = strokeWidth / 2;
       this.renderBoundsDirtyFlag = false;
       this.renderBounds = new AABB(
-        x - halfLineWidth + boxShadowOffsetX,
-        y - halfLineWidth + boxShadowOffsetY,
-        x + width + halfLineWidth + boxShadowBlurRadius,
-        y + height + halfLineWidth + boxShadowBlurRadius,
+        x - halfLineWidth,
+        y - halfLineWidth,
+        x + width + halfLineWidth,
+        y + height + halfLineWidth,
+      );
+      this.renderBounds.addBounds(
+        new AABB(
+          x + dropShadowOffsetX - dropShadowBlurRadius,
+          y + dropShadowOffsetY - dropShadowBlurRadius,
+          x + dropShadowOffsetX + width + dropShadowBlurRadius,
+          y + dropShadowOffsetY + height + dropShadowBlurRadius,
+        ),
       );
     }
     return this.renderBounds;

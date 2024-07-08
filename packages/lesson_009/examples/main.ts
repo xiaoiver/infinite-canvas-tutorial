@@ -67,10 +67,10 @@ for (let i = 0; i < 1; i++) {
     strokeOpacity: 0.5,
     cornerRadius: 50,
     batchable: true,
-    boxShadowOffsetX: 10,
-    boxShadowOffsetY: 10,
-    boxShadowBlurRadius: 10,
-    boxShadowSpreadRadius: 10,
+    dropShadowColor: 'black',
+    dropShadowOffsetX: 10,
+    dropShadowOffsetY: 10,
+    dropShadowBlurRadius: 10,
   });
   canvas.appendChild(rect);
 

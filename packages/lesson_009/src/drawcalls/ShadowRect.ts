@@ -14,7 +14,7 @@ import {
   Program,
   CompareFunction,
 } from '@antv/g-device-api';
-import { Rect, Shape } from '../shapes';
+import { Rect } from '../shapes';
 import { Drawcall, ZINDEX_FACTOR } from './Drawcall';
 import { vert, frag } from '../shaders/shadow_rect';
 import { paddingMat3 } from '../utils';
@@ -50,7 +50,7 @@ export class ShadowRect extends Drawcall {
       }
 
       this.#instancedBuffer = this.device.createBuffer({
-        viewOrSize: Float32Array.BYTES_PER_ELEMENT * 12 * this.shapes.length,
+        viewOrSize: Float32Array.BYTES_PER_ELEMENT * 16 * this.shapes.length,
         usage: BufferUsage.VERTEX,
         hint: BufferFrequencyHint.DYNAMIC,
       });
@@ -103,7 +103,7 @@ export class ShadowRect extends Drawcall {
     if (this.instanced) {
       vertexBufferDescriptors.push(
         {
-          arrayStride: 4 * 12,
+          arrayStride: 4 * 16,
           stepMode: VertexStepMode.INSTANCE,
           attributes: [
             {
@@ -117,8 +117,13 @@ export class ShadowRect extends Drawcall {
               format: Format.F32_RGBA,
             },
             {
-              shaderLocation: 6, // a_BoxShadow
+              shaderLocation: 5, // a_DropShadowColor
               offset: 4 * 8,
+              format: Format.F32_RGBA,
+            },
+            {
+              shaderLocation: 6, // a_DropShadow
+              offset: 4 * 12,
               format: Format.F32_RGBA,
             },
           ],
@@ -153,7 +158,7 @@ export class ShadowRect extends Drawcall {
       });
       if (!this.#uniformBuffer) {
         this.#uniformBuffer = this.device.createBuffer({
-          viewOrSize: Float32Array.BYTES_PER_ELEMENT * (16 + 4 + 4),
+          viewOrSize: Float32Array.BYTES_PER_ELEMENT * (16 + 4 + 4 + 4),
           usage: BufferUsage.UNIFORM,
           hint: BufferFrequencyHint.DYNAMIC,
         });
@@ -235,7 +240,7 @@ export class ShadowRect extends Drawcall {
         );
 
         const instancedData: number[] = [];
-        this.shapes.forEach((shape) => {
+        this.shapes.forEach((shape: Rect) => {
           instancedData.push(...this.generateBuffer(shape));
         });
         this.#instancedBuffer.setSubData(
@@ -249,7 +254,7 @@ export class ShadowRect extends Drawcall {
           new Uint8Array(
             new Float32Array([
               ...paddingMat3(worldTransform.toArray(true)),
-              ...this.generateBuffer(this.shapes[0]),
+              ...this.generateBuffer(this.shapes[0] as Rect),
             ]).buffer,
           ),
         );
@@ -292,41 +297,37 @@ export class ShadowRect extends Drawcall {
     }
   }
 
-  private generateBuffer(shape: Shape) {
-    const { strokeWidth } = shape;
-
-    let bounds: [number, number, number, number];
-    let cornerRadius = 0;
-    let boxShadow: [number, number, number, number] = [0, 0, 0, 0];
-    if (shape instanceof Rect) {
-      const {
-        x,
-        y,
-        width,
-        height,
-        cornerRadius: r,
-        boxShadowOffsetX,
-        boxShadowOffsetY,
-        boxShadowBlurRadius,
-        boxShadowSpreadRadius,
-      } = shape;
-      bounds = [x, y, width, height];
-      cornerRadius = r;
-      boxShadow = [
-        boxShadowOffsetX,
-        boxShadowOffsetY,
-        boxShadowBlurRadius,
-        boxShadowSpreadRadius,
-      ];
-    }
+  private generateBuffer(shape: Rect) {
+    const {
+      x,
+      y,
+      width,
+      height,
+      strokeWidth,
+      cornerRadius,
+      dropShadowColorRGB: { r, g, b, opacity },
+      dropShadowOffsetX,
+      dropShadowOffsetY,
+      dropShadowBlurRadius,
+    } = shape;
 
     return [
-      ...bounds,
+      x,
+      y,
+      width,
+      height,
       shape.globalRenderOrder / ZINDEX_FACTOR,
       strokeWidth,
       cornerRadius,
       0,
-      ...boxShadow,
+      r / 255,
+      g / 255,
+      b / 255,
+      opacity,
+      dropShadowOffsetX,
+      dropShadowOffsetY,
+      dropShadowBlurRadius,
+      0,
     ];
   }
 }

@@ -11,20 +11,23 @@ layout(location = 0) in vec2 a_FragCoord;
   layout(location = 15) in vec2 a_Txty;
   layout(location = 1) in vec4 a_PositionSize;
   layout(location = 4) in vec4 a_ZIndexStrokeWidth;
-  layout(location = 6) in vec4 a_BoxShadow;
+  layout(location = 5) in vec4 a_DropShadowColor;
+  layout(location = 6) in vec4 a_DropShadow;
 #else
   layout(std140) uniform ShapeUniforms {
     mat3 u_ModelMatrix;
     vec4 u_PositionSize;
     vec4 u_ZIndexStrokeWidth;
-    vec4 u_BoxShadow;
+    vec4 u_DropShadowColor;
+    vec4 u_DropShadow;
   };
 #endif
 
 out vec2 v_Origin;
 #ifdef USE_INSTANCES
   out float v_CornerRadius;
-  out vec4 v_BoxShadow;
+  out vec4 v_DropShadowColor;
+  out vec4 v_DropShadow;
 #else
 #endif
 out vec2 v_Size;
@@ -35,28 +38,29 @@ void main() {
   vec2 origin;
   vec2 size;
   float zIndex;
-  vec4 boxShadow;
+  vec4 dropShadow;
 
   #ifdef USE_INSTANCES
     model = mat3(a_Abcd.x, a_Abcd.y, 0, a_Abcd.z, a_Abcd.w, 0, a_Txty.x, a_Txty.y, 1);
     origin = a_PositionSize.xy;
     size = a_PositionSize.zw;
     zIndex = a_ZIndexStrokeWidth.x;
-    boxShadow = a_BoxShadow;
+    dropShadow = a_DropShadow;
     v_CornerRadius = a_ZIndexStrokeWidth.z;
-    v_BoxShadow = boxShadow;
+    v_DropShadowColor = a_DropShadowColor;
+    v_DropShadow = dropShadow;
   #else
     model = u_ModelMatrix;
     origin = u_PositionSize.xy;
     size = u_PositionSize.zw;
     zIndex = u_ZIndexStrokeWidth.x;
-    boxShadow = u_BoxShadow;
+    dropShadow = u_DropShadow;
   #endif
 
   // Set the bounds of the shadow and adjust its size based on the shadow's
   // spread radius to achieve the spreading effect
-  float margin = 3.0 * boxShadow.z;
-  origin += boxShadow.xy;
+  float margin = 3.0 * dropShadow.z;
+  origin += dropShadow.xy;
   v_Origin = origin;
   v_Size = size;
 
@@ -79,7 +83,8 @@ export const frag = /* wgsl */ `
     mat3 u_ModelMatrix;
     vec4 u_PositionSize;
     vec4 u_ZIndexStrokeWidth;
-    vec4 u_BoxShadow;
+    vec4 u_DropShadowColor;
+    vec4 u_DropShadow;
   };
 #endif
 
@@ -88,7 +93,8 @@ out vec4 outputColor;
 in vec2 v_Origin;
 #ifdef USE_INSTANCES
   in float v_CornerRadius;
-  in vec4 v_BoxShadow;
+  in vec4 v_DropShadowColor;
+  in vec4 v_DropShadow;
 #else
 #endif
 in vec2 v_Size;
@@ -128,17 +134,20 @@ float blur_along_x(float x, float y, float sigma, float corner, vec2 half_size) 
 
 void main() {
   float cornerRadius;
-  vec4 boxShadow;
+  vec4 dropShadow;
+  vec4 dropShadowColor;
   
   #ifdef USE_INSTANCES
     cornerRadius = v_CornerRadius;
-    boxShadow = v_BoxShadow;
+    dropShadowColor = v_DropShadowColor;
+    dropShadow = v_DropShadow;
   #else
     cornerRadius = u_ZIndexStrokeWidth.z;
-    boxShadow = u_BoxShadow;
+    dropShadowColor = u_DropShadowColor;
+    dropShadow = u_DropShadow;
   #endif
 
-  float blur_radius = boxShadow.z;
+  float blur_radius = dropShadow.z;
   if (blur_radius > 0.0) {
     float alpha = 0.;
     vec2 point = v_Point;
@@ -168,9 +177,12 @@ void main() {
       alpha = rect_shadow(point, v_Origin, v_Size, blur_radius);
     }
 
-    // shadow color
-    outputColor = vec4(0.0, 0.0, 0.0, 1.0);
+    outputColor = dropShadowColor;
     outputColor.a = alpha;
+
+    // TODO: antialiasing
+    if (outputColor.a < epsilon)
+      discard;
   } else {
     discard;
   }

@@ -148,15 +148,28 @@ call(() => {
         }
     });
 
-    // $icCanvas2.addEventListener('ic-frame', (e) => {
-    //     stats.update();
-    // });
+    $icCanvas2.addEventListener('ic-frame', (e) => {
+        stats.update();
+    });
 });
 ```
 
 ### 增加阴影 {#drop-shadow}
 
-渲染阴影通常会使用后处理中的高斯模糊，例如 Pixi.js 的 [DropShadowFilter]，2D 高斯模糊效果可以分解成水平和垂直两次 1D 效果从而独立进行，但卷积操作还是需要对相邻像素点（取决于卷积核的大小）进行采样。
+提起阴影，你可能听说过 CSS 中的 [box-shadow] 和 `filter: drop-shadow()`。下图来自 [Drop-Shadow: The Underrated CSS Filter] 一文，直观展示了两者的区别：
+
+![Compare box-shadow with drop-shadow](https://css-irl.info/drop-shadow-01.jpg)
+
+通常后者更常用，例如 [tailwindcss - Drop Shadow]。因此我们为矩形增加如下属性：
+
+```ts
+rect.dropShadowColor = 'black';
+rect.dropShadowOffsetX = 10;
+rect.dropShadowOffsetY = 10;
+rect.dropShadowBlurRadius = 5;
+```
+
+接下来我们着手使用 WebGL / WebGPU 为 2D 图形绘制阴影。通常会使用后处理中的高斯模糊，例如 Pixi.js 的 [DropShadowFilter]。2D 高斯模糊效果可以分解成水平和垂直两次 1D 效果从而独立进行，但卷积操作还是需要对相邻像素点（取决于卷积核的大小）进行采样。
 
 Figma 的 CTO Evan Wallace 在 [Fast Rounded Rectangle Shadows] 一文中介绍了一种更快速的近似方法，无需对纹理进行采样，[Leveraging Rust and the GPU to render user interfaces at 120 FPS] 一文也对该方法进行了更详细的介绍。高斯函数与阶跃函数的卷积等同于高斯函数的积分，其结果为误差函数 [Error function]（也称为 erf）。因此生成一个模糊的矩形相当于分别模糊每个维度，然后取两个结果的交集，这里先不考虑圆角情况。
 
@@ -197,6 +210,8 @@ vec2 erf(vec2 x) {
 }
 ```
 
+先不考虑圆角，计算最终的阴影遮罩值。这里通过 `integral_x` 和 `integral_y` 的差值来确定阴影的边界。`integral_x.x - integral_x.y` 计算了 x 轴上阴影的宽度，`integral_y.x - integral_y.y` 计算了 y 轴上阴影的高度。将这两个值相乘得到最终的阴影遮罩值。
+
 ```glsl
 // Return the mask for the shadow of a box from lower to upper
 float rect_shadow(vec2 pixel_position, vec2 origin, vec2 size, float sigma) {
@@ -209,18 +224,7 @@ float rect_shadow(vec2 pixel_position, vec2 origin, vec2 size, float sigma) {
 }
 ```
 
-参考 CSS [box-shadow]，我们为矩形增加如下属性：
-
-```ts
-rect.boxShadowOffsetX = 10;
-rect.boxShadowOffsetY = 10;
-rect.boxShadowBlurRadius = 5;
-rect.boxShadowSpreadRadius = 5;
-```
-
-接着考虑圆角矩形。
-
-[Blurred rounded rectangles]
+然而，对于圆角矩形与高斯函数的二维卷积，并不存在着像上述那样的封闭形式的解，因为圆角矩形的公式不可分离。Evan Wallace 的近似方法的巧妙之处在于，沿着一个轴进行封闭形式的精确卷积，然后手动将高斯函数沿着相反轴滑动有限次：
 
 ```glsl
 float blur_along_x(float x, float y, float sigma, float corner, vec2 half_size) {
@@ -233,26 +237,99 @@ float blur_along_x(float x, float y, float sigma, float corner, vec2 half_size) 
 }
 ```
 
+```glsl
+// The signal is only non-zero in a limited range, so don't waste samples
+float low = center_to_point.y - half_size.y;
+float high = center_to_point.y + half_size.y;
+float start = clamp(-3. * blur_radius, low, high);
+float end = clamp(3. * blur_radius, low, high);
+
+// Accumulate samples (we can get away with surprisingly few samples)
+float step = (end - start) / 4.;
+float y = start + step * 0.5;
+
+for (int i = 0; i < 4; i++) {
+  alpha += blur_along_x(center_to_point.x, center_to_point.y - y, blur_radius,
+                        cornerRadius, half_size) *
+          gaussian(y, blur_radius) * step;
+  y += step;
+}
+```
+
+```js eval code=false
+$icCanvas3 = call(() => {
+    return document.createElement('ic-canvas-lesson9');
+});
+```
+
+```js eval code=false inspector=false
+call(() => {
+    const { Canvas, Rect } = Lesson9;
+
+    const stats = new Stats();
+    stats.showPanel(0);
+    const $stats = stats.dom;
+    $stats.style.position = 'absolute';
+    $stats.style.left = '0px';
+    $stats.style.top = '0px';
+
+    $icCanvas3.parentElement.style.position = 'relative';
+    $icCanvas3.parentElement.appendChild($stats);
+
+    $icCanvas3.addEventListener('ic-ready', (e) => {
+        const canvas = e.detail;
+
+        for (let i = 0; i < 1000; i++) {
+            const fill = `rgb(${Math.floor(Math.random() * 255)},${Math.floor(
+                Math.random() * 255,
+            )},${Math.floor(Math.random() * 255)})`;
+            const rect = new Rect({
+                x: Math.random() * 1000,
+                y: Math.random() * 1000,
+                fill,
+                dropShadowColor: 'black',
+                // dropShadowOffsetX: Math.random() * 5,
+                // dropShadowOffsetY: Math.random() * 5,
+                dropShadowBlurRadius: Math.random() * 5,
+            });
+            rect.width = Math.random() * 40;
+            rect.height = Math.random() * 40;
+            rect.cornerRadius = Math.min(rect.width / 2, rect.height / 2);
+            canvas.appendChild(rect);
+
+            rect.addEventListener('pointerenter', () => {
+                rect.fill = 'red';
+            });
+            rect.addEventListener('pointerleave', () => {
+                rect.fill = fill;
+            });
+        }
+    });
+
+    $icCanvas3.addEventListener('ic-frame', (e) => {
+        stats.update();
+    });
+});
+```
+
 基于这种方法，还可以实现一些有趣的效果，详见：[Shape Lens Blur Effect with SDFs and WebGL]
 
 最后阴影也会影响 `RenderBounds` 的计算，否则当矩形主体在视口之外，但阴影在视口之内时会被错误地剔除：
 
 ```ts
-getRenderBounds() {
-  if (this.renderBoundsDirtyFlag) {
-    const { strokeWidth, x, y, width, height, boxShadowOffsetX, boxShadowOffsetY } = this;
-    const halfLineWidth = strokeWidth / 2;
-    this.renderBoundsDirtyFlag = false;
-    this.renderBounds = new AABB(
-      x - halfLineWidth + boxShadowOffsetX,
-      y - halfLineWidth + boxShadowOffsetY,
-      x + width + halfLineWidth + boxShadowBlurRadius,
-      y + height + halfLineWidth + boxShadowBlurRadius,
-    );
-  }
-  return this.renderBounds;
-}
+this.renderBounds.addBounds(
+    new AABB(
+        x + dropShadowOffsetX - dropShadowBlurRadius,
+        y + dropShadowOffsetY - dropShadowBlurRadius,
+        x + dropShadowOffsetX + width + dropShadowBlurRadius,
+        y + dropShadowOffsetY + height + dropShadowBlurRadius,
+    ),
+);
 ```
+
+### 为其他 SDF 绘制阴影 {#other-sdf}
+
+但显然上面的方法只适用于圆角矩形，是否有针对圆、椭圆以及其他 SDF 表示更通用的方法呢？[Blurred rounded rectangles] 一文给出了解决方案。
 
 ## 椭圆 {#ellipse}
 
@@ -622,3 +699,5 @@ function isPointInRoundedRectangle(
 [box-shadow]: https://developer.mozilla.org/en-US/docs/Web/CSS/box-shadow
 [Zed Blade WGSL]: https://github.com/zed-industries/zed/blob/main/crates/gpui/src/platform/blade/shaders.wgsl
 [blade]: https://github.com/kvark/blade
+[Drop-Shadow: The Underrated CSS Filter]: https://css-irl.info/drop-shadow-the-underrated-css-filter/
+[tailwindcss - Drop Shadow]: https://tailwindcss.com/docs/drop-shadow
