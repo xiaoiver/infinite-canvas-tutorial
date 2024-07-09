@@ -179,10 +179,6 @@ void main() {
 
     outputColor = dropShadowColor;
     outputColor.a = alpha;
-
-    // TODO: antialiasing
-    if (outputColor.a < epsilon)
-      discard;
   } else {
     discard;
   }

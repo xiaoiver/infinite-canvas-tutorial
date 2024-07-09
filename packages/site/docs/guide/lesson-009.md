@@ -256,6 +256,21 @@ for (int i = 0; i < 4; i++) {
 }
 ```
 
+In the implementation, the shadows need to be drawn individually for each rectangle, which breaks the effect of the previous combined batch. The reason for this is that we have to do it in a strict drawing order, even reordering before each repaint. The following code comes from this article: [Fast Rounded Rectangle Shadows].
+
+```ts
+render() {
+  boxes.sort(function(a, b) {
+    return a.depth - b.depth;
+  });
+  for (var i = 0; i < boxes.length; i++) {
+    boxes[i].callback(); // Draw shadow first and then the rectangle itself.
+  }
+}
+```
+
+As an example, the following two rectangles are drawn in the following order: green rectangle shadow, green rectangle, red rectangle shadow, red rectangle.
+
 ```js eval code=false
 $icCanvas3 = call(() => {
     return document.createElement('ic-canvas-lesson9');
@@ -279,31 +294,33 @@ call(() => {
     $icCanvas3.addEventListener('ic-ready', (e) => {
         const canvas = e.detail;
 
-        for (let i = 0; i < 1000; i++) {
-            const fill = `rgb(${Math.floor(Math.random() * 255)},${Math.floor(
-                Math.random() * 255,
-            )},${Math.floor(Math.random() * 255)})`;
-            const rect = new Rect({
-                x: Math.random() * 1000,
-                y: Math.random() * 1000,
-                fill,
-                dropShadowColor: 'black',
-                // dropShadowOffsetX: Math.random() * 5,
-                // dropShadowOffsetY: Math.random() * 5,
-                dropShadowBlurRadius: Math.random() * 5,
-            });
-            rect.width = Math.random() * 40;
-            rect.height = Math.random() * 40;
-            rect.cornerRadius = Math.min(rect.width / 2, rect.height / 2);
-            canvas.appendChild(rect);
+        const rect = new Rect({
+            x: 50,
+            y: 50,
+            fill: 'green',
+            cornerRadius: 50,
+            batchable: false,
+            dropShadowColor: 'black',
+            dropShadowOffsetX: 10,
+            dropShadowOffsetY: 10,
+            dropShadowBlurRadius: 10,
+        });
+        rect.width = 400;
+        rect.height = 100;
+        canvas.appendChild(rect);
 
-            rect.addEventListener('pointerenter', () => {
-                rect.fill = 'red';
-            });
-            rect.addEventListener('pointerleave', () => {
-                rect.fill = fill;
-            });
-        }
+        const rect2 = new Rect({
+            x: 100,
+            y: 100,
+            fill: 'red',
+            batchable: false,
+            cornerRadius: 50,
+            dropShadowColor: 'black',
+            dropShadowBlurRadius: 10,
+        });
+        rect2.width = 400;
+        rect2.height = 100;
+        canvas.appendChild(rect2);
     });
 
     $icCanvas3.addEventListener('ic-frame', (e) => {

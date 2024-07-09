@@ -1,7 +1,7 @@
 ---
 ---
 
-参考 <a href="/guide/lesson-009">渲染矩形和椭圆</a>
+参考 <a href="/zh/guide/lesson-009">渲染矩形和椭圆</a>
 
 ```js eval code=false
 x = Inputs.range([50, 300], { label: 'x', value: 100, step: 1 });

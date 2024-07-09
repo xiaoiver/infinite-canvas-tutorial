@@ -256,6 +256,21 @@ for (int i = 0; i < 4; i++) {
 }
 ```
 
+在实现中，对于每个矩形都需要单独绘制阴影，这会打破之前合批的效果。原因是我们必须严格按照绘制次序执行，甚至每次重绘前都需要重新排序。下面的代码来自 [Fast Rounded Rectangle Shadows]：
+
+```ts
+render() {
+  boxes.sort(function(a, b) {
+    return a.depth - b.depth;
+  });
+  for (var i = 0; i < boxes.length; i++) {
+    boxes[i].callback(); // 先后绘制阴影和矩形
+  }
+}
+```
+
+以下面的两个矩形为例，绘制次序为：绿色矩形的阴影，绿色矩形，红色矩形阴影，红色矩形。
+
 ```js eval code=false
 $icCanvas3 = call(() => {
     return document.createElement('ic-canvas-lesson9');
@@ -279,31 +294,33 @@ call(() => {
     $icCanvas3.addEventListener('ic-ready', (e) => {
         const canvas = e.detail;
 
-        for (let i = 0; i < 1000; i++) {
-            const fill = `rgb(${Math.floor(Math.random() * 255)},${Math.floor(
-                Math.random() * 255,
-            )},${Math.floor(Math.random() * 255)})`;
-            const rect = new Rect({
-                x: Math.random() * 1000,
-                y: Math.random() * 1000,
-                fill,
-                dropShadowColor: 'black',
-                // dropShadowOffsetX: Math.random() * 5,
-                // dropShadowOffsetY: Math.random() * 5,
-                dropShadowBlurRadius: Math.random() * 5,
-            });
-            rect.width = Math.random() * 40;
-            rect.height = Math.random() * 40;
-            rect.cornerRadius = Math.min(rect.width / 2, rect.height / 2);
-            canvas.appendChild(rect);
+        const rect = new Rect({
+            x: 50,
+            y: 50,
+            fill: 'green',
+            cornerRadius: 50,
+            batchable: false,
+            dropShadowColor: 'black',
+            dropShadowOffsetX: 10,
+            dropShadowOffsetY: 10,
+            dropShadowBlurRadius: 10,
+        });
+        rect.width = 400;
+        rect.height = 100;
+        canvas.appendChild(rect);
 
-            rect.addEventListener('pointerenter', () => {
-                rect.fill = 'red';
-            });
-            rect.addEventListener('pointerleave', () => {
-                rect.fill = fill;
-            });
-        }
+        const rect2 = new Rect({
+            x: 100,
+            y: 100,
+            fill: 'red',
+            batchable: false,
+            cornerRadius: 50,
+            dropShadowColor: 'black',
+            dropShadowBlurRadius: 10,
+        });
+        rect2.width = 400;
+        rect2.height = 100;
+        canvas.appendChild(rect2);
     });
 
     $icCanvas3.addEventListener('ic-frame', (e) => {

@@ -104,6 +104,10 @@ export const en = defineConfig({
                 text: 'Render a Rect',
                 link: 'rect',
               },
+              {
+                text: 'Render a rounded rect with shadow',
+                link: 'rounded-rectangle-shadow',
+              },
             ],
           },
         ],

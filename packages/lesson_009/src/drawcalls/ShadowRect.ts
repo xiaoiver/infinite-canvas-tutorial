@@ -186,7 +186,7 @@ export class ShadowRect extends Drawcall {
             },
           },
         ],
-        depthWrite: true,
+        depthWrite: false,
         depthCompare: CompareFunction.GREATER,
       },
     });

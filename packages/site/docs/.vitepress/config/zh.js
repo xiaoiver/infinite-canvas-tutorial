@@ -89,6 +89,10 @@ export const zh = defineConfig({
                 text: '绘制一个矩形',
                 link: 'rect',
               },
+              {
+                text: '为圆角矩形添加阴影',
+                link: 'rounded-rectangle-shadow',
+              },
             ],
           },
         ],

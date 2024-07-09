@@ -6,10 +6,10 @@ outline: deep
 
 在这节课中你将学习到以下内容：
 
-- 向画布中添加图形
-- 使用 SDF 绘制一个圆形
-- 反走样
-- 脏检查模式
+-   向画布中添加图形
+-   使用 SDF 绘制一个圆形
+-   反走样
+-   脏检查模式
 
 启动项目后将看到画布中绘制了一个圆，可以修改宽高或者切换 WebGL / WebGPU 渲染器。
 
@@ -27,44 +27,44 @@ renderer = Inputs.select(['webgl', 'webgpu'], { label: 'renderer' });
 
 ```js eval code=false inspector=false
 canvas = (async () => {
-  const { Canvas, Circle } = Lesson2;
+    const { Canvas, Circle } = Lesson2;
 
-  const canvas = await Utils.createCanvas(Canvas, 100, 100, renderer);
+    const canvas = await Utils.createCanvas(Canvas, 100, 100, renderer);
 
-  const circle = new Circle({
-    cx: 100,
-    cy: 100,
-    r: 100,
-    fill: 'red',
-    antiAliasingType: 3,
-  });
-  canvas.appendChild(circle);
+    const circle = new Circle({
+        cx: 100,
+        cy: 100,
+        r: 100,
+        fill: 'red',
+        antiAliasingType: 3,
+    });
+    canvas.appendChild(circle);
 
-  let id;
-  const animate = () => {
-    canvas.render();
-    id = requestAnimationFrame(animate);
-  };
-  animate();
+    let id;
+    const animate = () => {
+        canvas.render();
+        id = requestAnimationFrame(animate);
+    };
+    animate();
 
-  unsubscribe(() => {
-    cancelAnimationFrame(id);
-    canvas.destroy();
-  });
+    unsubscribe(() => {
+        cancelAnimationFrame(id);
+        canvas.destroy();
+    });
 
-  return canvas;
+    return canvas;
 })();
 ```
 
 ```js eval code=false inspector=false
 call(() => {
-  Utils.resizeCanvas(canvas, width, height);
+    Utils.resizeCanvas(canvas, width, height);
 });
 ```
 
 ```js eval code=false
 call(() => {
-  return canvas.getDOM();
+    return canvas.getDOM();
 });
 ```
 
@@ -115,9 +115,9 @@ render() {
 
 在渲染插件中每一帧开始前都会创建一个 `RenderPass`，硬件抽象层在这里进行了封装。WebGL 中并没有这个概念，WebGPU 中 [beginRenderPass] 会返回 [GPURenderPassEncoder]，通过它可以记录包括 `draw` 在内的一系列命令，后续在 `render` 钩子中我们会看到。在创建 `RenderPass` 时我们提供了以下参数：
 
-- `colorAttachment`
-- `colorResolveTo` 输出到屏幕
-- `colorClearColor` WebGL 中通过 [gl.clearColor] 命令实现；WebGPU 中以 [clearValue] 属性声明，这里我们设置为白色。
+-   `colorAttachment`
+-   `colorResolveTo` 输出到屏幕
+-   `colorClearColor` WebGL 中通过 [gl.clearColor] 命令实现；WebGPU 中以 [clearValue] 属性声明，这里我们设置为白色。
 
 ```ts{4}
 hooks.beginFrame.tap(() => {
@@ -144,7 +144,7 @@ hooks.endFrame.tap(() => {
 
 ```ts
 hooks.render.tap((shape) => {
-  // 稍后实现绘制逻辑
+    // 稍后实现绘制逻辑
 });
 ```
 
@@ -154,14 +154,14 @@ hooks.render.tap((shape) => {
 
 ```ts
 export class Circle extends Shape {
-  constructor(
-    config: Partial<{
-      cx: number;
-      cy: number;
-      r: number;
-      fill: string;
-    }> = {},
-  ) {}
+    constructor(
+        config: Partial<{
+            cx: number;
+            cy: number;
+            r: number;
+            fill: string;
+        }> = {},
+    ) {}
 }
 ```
 
@@ -183,10 +183,10 @@ export class Circle extends Shape {
 
 ```ts
 const circle = new Circle({
-  cx: 100,
-  cy: 100,
-  r: 50,
-  fill: 'red',
+    cx: 100,
+    cy: 100,
+    r: 50,
+    fill: 'red',
 });
 canvas.appendChild(circle);
 ```
@@ -247,7 +247,7 @@ void main() {
 }
 ```
 
-有了距离信息就可以在 Fragment Shader 中依据不同图形的 SDF 公式，将当前像素点坐标带入就可以判断点是否在图形内部，如果在外部就可以直接丢弃，否则进行着色，GLSL 代码如下：
+有了距离信息就可以在 Fragment Shader 中依据不同图形的 SDF 公式，将当前像素点坐标带入就可以判断点是否在图形内部，如果在外部就可以直接丢弃，否则进行着色，GLSL 代码如下。也可以根据透明度选择性丢弃，详见 [Discarding fragments]。
 
 ```glsl
 float sdf_circle(vec2 p, float r) {
@@ -265,9 +265,9 @@ void main() {
 
 除了更少的顶点使用，SDF 还具有以下优点：
 
-- 易于抗锯齿/反走样。我们在下一小节会介绍它。
-- 易于组合。交集、差集运算可以通过组合完成复杂图形的绘制。
-- 易于实现一些看起来很复杂的效果。例如描边、圆角、阴影，当然我们后续在实现这些效果时也会介绍该方法的一些局限性。
+-   易于抗锯齿/反走样。我们在下一小节会介绍它。
+-   易于组合。交集、差集运算可以通过组合完成复杂图形的绘制。
+-   易于实现一些看起来很复杂的效果。例如描边、圆角、阴影，当然我们后续在实现这些效果时也会介绍该方法的一些局限性。
 
 对于 SDF 的解释和详细推导过程也可以在 [distfunctions] 中找到，这种方法可以绘制各种常见的 2D 甚至是 3D 图形，后续我们也会继续使用该方法绘制矩形和文本。
 
@@ -283,7 +283,7 @@ export abstract class Shape {
 
 ```ts
 hooks.render.tap((shape) => {
-  shape.render(this.#device, this.#renderPass);
+    shape.render(this.#device, this.#renderPass);
 });
 ```
 
@@ -293,13 +293,13 @@ hooks.render.tap((shape) => {
 
 ```ts
 this.#fragUnitBuffer = device.createBuffer({
-  viewOrSize: new Float32Array([-1, -1, 1, -1, 1, 1, -1, 1]),
-  usage: BufferUsage.VERTEX,
+    viewOrSize: new Float32Array([-1, -1, 1, -1, 1, 1, -1, 1]),
+    usage: BufferUsage.VERTEX,
 });
 
 this.#indexBuffer = device.createBuffer({
-  viewOrSize: new Uint32Array([0, 1, 2, 0, 2, 3]),
-  usage: BufferUsage.INDEX,
+    viewOrSize: new Uint32Array([0, 1, 2, 0, 2, 3]),
+    usage: BufferUsage.INDEX,
 });
 ```
 
@@ -307,17 +307,17 @@ this.#indexBuffer = device.createBuffer({
 
 ```ts
 this.#instancedBuffer = device.createBuffer({
-  viewOrSize: new Float32Array([
-    this.#cx,
-    this.#cy,
-    this.#r,
-    this.#r,
-    this.#fillRGB.r / 255,
-    this.#fillRGB.g / 255,
-    this.#fillRGB.b / 255,
-    this.#fillRGB.opacity,
-  ]),
-  usage: BufferUsage.VERTEX,
+    viewOrSize: new Float32Array([
+        this.#cx,
+        this.#cy,
+        this.#r,
+        this.#r,
+        this.#fillRGB.r / 255,
+        this.#fillRGB.g / 255,
+        this.#fillRGB.b / 255,
+        this.#fillRGB.opacity,
+    ]),
+    usage: BufferUsage.VERTEX,
 });
 ```
 
@@ -325,42 +325,42 @@ this.#instancedBuffer = device.createBuffer({
 
 ```ts
 this.#inputLayout = device.createInputLayout({
-  vertexBufferDescriptors: [
-    {
-      arrayStride: 4 * 2,
-      stepMode: VertexStepMode.VERTEX,
-      attributes: [
+    vertexBufferDescriptors: [
         {
-          shaderLocation: 0, // layout(location = 0) in vec2 a_FragCoord;
-          offset: 0,
-          format: Format.F32_RG,
-        },
-      ],
-    },
-    {
-      arrayStride: 4 * 8,
-      stepMode: VertexStepMode.INSTANCE,
-      attributes: [
-        {
-          shaderLocation: 1, // layout(location = 1) in vec2 a_Position;
-          offset: 0,
-          format: Format.F32_RG,
+            arrayStride: 4 * 2,
+            stepMode: VertexStepMode.VERTEX,
+            attributes: [
+                {
+                    shaderLocation: 0, // layout(location = 0) in vec2 a_FragCoord;
+                    offset: 0,
+                    format: Format.F32_RG,
+                },
+            ],
         },
         {
-          shaderLocation: 2, // layout(location = 2) in vec2 a_Size;
-          offset: 4 * 2,
-          format: Format.F32_RG,
+            arrayStride: 4 * 8,
+            stepMode: VertexStepMode.INSTANCE,
+            attributes: [
+                {
+                    shaderLocation: 1, // layout(location = 1) in vec2 a_Position;
+                    offset: 0,
+                    format: Format.F32_RG,
+                },
+                {
+                    shaderLocation: 2, // layout(location = 2) in vec2 a_Size;
+                    offset: 4 * 2,
+                    format: Format.F32_RG,
+                },
+                {
+                    shaderLocation: 3, // layout(location = 3) in vec4 a_FillColor;
+                    offset: 4 * 4,
+                    format: Format.F32_RGBA,
+                },
+            ],
         },
-        {
-          shaderLocation: 3, // layout(location = 3) in vec4 a_FillColor;
-          offset: 4 * 4,
-          format: Format.F32_RGBA,
-        },
-      ],
-    },
-  ],
-  indexBufferFormat: Format.U32_R,
-  program: this.#program,
+    ],
+    indexBufferFormat: Format.U32_R,
+    program: this.#program,
 });
 ```
 
@@ -372,24 +372,24 @@ SDF 还可以用来绘制椭圆、矩形、文本等等，但我们暂时不打�
 
 ```js eval code=false
 (async () => {
-  const { Canvas, Circle } = Lesson2;
+    const { Canvas, Circle } = Lesson2;
 
-  const canvas = await Utils.createCanvas(Canvas, 200, 200);
+    const canvas = await Utils.createCanvas(Canvas, 200, 200);
 
-  const circle = new Circle({
-    cx: 100,
-    cy: 100,
-    r: 100,
-    fill: 'red',
-  });
-  canvas.appendChild(circle);
+    const circle = new Circle({
+        cx: 100,
+        cy: 100,
+        r: 100,
+        fill: 'red',
+    });
+    canvas.appendChild(circle);
 
-  const animate = () => {
-    canvas.render();
-    requestAnimationFrame(animate);
-  };
-  animate();
-  return canvas.getDOM();
+    const animate = () => {
+        canvas.render();
+        requestAnimationFrame(animate);
+    };
+    animate();
+    return canvas.getDOM();
 })();
 ```
 
@@ -414,25 +414,25 @@ outputColor.a *= alpha;
 
 ```js eval code=false
 (async () => {
-  const { Canvas, Circle } = Lesson2;
+    const { Canvas, Circle } = Lesson2;
 
-  const canvas = await Utils.createCanvas(Canvas, 200, 200);
+    const canvas = await Utils.createCanvas(Canvas, 200, 200);
 
-  const circle = new Circle({
-    cx: 100,
-    cy: 100,
-    r: 100,
-    fill: 'red',
-    antiAliasingType: 1,
-  });
-  canvas.appendChild(circle);
+    const circle = new Circle({
+        cx: 100,
+        cy: 100,
+        r: 100,
+        fill: 'red',
+        antiAliasingType: 1,
+    });
+    canvas.appendChild(circle);
 
-  const animate = () => {
-    canvas.render();
-    requestAnimationFrame(animate);
-  };
-  animate();
-  return canvas.getDOM();
+    const animate = () => {
+        canvas.render();
+        requestAnimationFrame(animate);
+    };
+    animate();
+    return canvas.getDOM();
 })();
 ```
 
@@ -448,25 +448,25 @@ float alpha = clamp(-distance / 0.01, 0.0, 1.0);
 
 ```js eval code=false
 (async () => {
-  const { Canvas, Circle } = Lesson2;
+    const { Canvas, Circle } = Lesson2;
 
-  const canvas = await Utils.createCanvas(Canvas, 200, 200);
+    const canvas = await Utils.createCanvas(Canvas, 200, 200);
 
-  const circle = new Circle({
-    cx: 100,
-    cy: 100,
-    r: 100,
-    fill: 'red',
-    antiAliasingType: 2,
-  });
-  canvas.appendChild(circle);
+    const circle = new Circle({
+        cx: 100,
+        cy: 100,
+        r: 100,
+        fill: 'red',
+        antiAliasingType: 2,
+    });
+    canvas.appendChild(circle);
 
-  const animate = () => {
-    canvas.render();
-    requestAnimationFrame(animate);
-  };
-  animate();
-  return canvas.getDOM();
+    const animate = () => {
+        canvas.render();
+        requestAnimationFrame(animate);
+    };
+    animate();
+    return canvas.getDOM();
 })();
 ```
 
@@ -484,9 +484,9 @@ float alpha = clamp(-distance / 0.01, 0.0, 1.0);
 
 因此便于开发者获取该像素点针对某个值的变化剧烈程度，OpenGL / WebGL 和 WebGPU 都提供了以下方法：
 
-- `dFdx` 计算屏幕水平方向上，一像素跨度内参数属性值改变了多少
-- `dFdy` 计算屏幕垂直方向上，一像素跨度内参数属性值改变了多少
-- `fwidth` 计算 `abs(dFdx) + abs(dFdy)`
+-   `dFdx` 计算屏幕水平方向上，一像素跨度内参数属性值改变了多少
+-   `dFdy` 计算屏幕垂直方向上，一像素跨度内参数属性值改变了多少
+-   `fwidth` 计算 `abs(dFdx) + abs(dFdy)`
 
 我们把 SDF 计算得到的距离传入，计算得到它的变化程度最终反映在透明度上。
 
@@ -496,25 +496,25 @@ float alpha = clamp(-distance / fwidth(-distance), 0.0, 1.0);
 
 ```js eval code=false
 (async () => {
-  const { Canvas, Circle } = Lesson2;
+    const { Canvas, Circle } = Lesson2;
 
-  const canvas = await Utils.createCanvas(Canvas, 200, 200);
+    const canvas = await Utils.createCanvas(Canvas, 200, 200);
 
-  const circle = new Circle({
-    cx: 100,
-    cy: 100,
-    r: 100,
-    fill: 'red',
-    antiAliasingType: 3,
-  });
-  canvas.appendChild(circle);
+    const circle = new Circle({
+        cx: 100,
+        cy: 100,
+        r: 100,
+        fill: 'red',
+        antiAliasingType: 3,
+    });
+    canvas.appendChild(circle);
 
-  const animate = () => {
-    canvas.render();
-    requestAnimationFrame(animate);
-  };
-  animate();
-  return canvas.getDOM();
+    const animate = () => {
+        canvas.render();
+        requestAnimationFrame(animate);
+    };
+    animate();
+    return canvas.getDOM();
 })();
 ```
 
@@ -543,21 +543,21 @@ set cx(cx: number) {
 
 ```ts
 if (this.renderDirtyFlag) {
-  this.#instancedBuffer.setSubData(
-    0,
-    new Uint8Array(
-      new Float32Array([
-        this.#cx,
-        this.#cy,
-        this.#r,
-        this.#r,
-        this.#fillRGB.r / 255,
-        this.#fillRGB.g / 255,
-        this.#fillRGB.b / 255,
-        this.#fillRGB.opacity,
-      ]).buffer,
-    ),
-  );
+    this.#instancedBuffer.setSubData(
+        0,
+        new Uint8Array(
+            new Float32Array([
+                this.#cx,
+                this.#cy,
+                this.#r,
+                this.#r,
+                this.#fillRGB.r / 255,
+                this.#fillRGB.g / 255,
+                this.#fillRGB.b / 255,
+                this.#fillRGB.opacity,
+            ]).buffer,
+        ),
+    );
 }
 ```
 
@@ -587,47 +587,47 @@ fill2 = Inputs.color({ label: 'fill', value: '#ff0000' });
 
 ```js eval code=false inspector=false
 circle = (() => {
-  const { Circle } = Lesson2;
-  const circle = new Circle({
-    cx: 100,
-    cy: 100,
-    r: 100,
-    fill: 'red',
-    antiAliasingType: 3,
-  });
-  return circle;
+    const { Circle } = Lesson2;
+    const circle = new Circle({
+        cx: 100,
+        cy: 100,
+        r: 100,
+        fill: 'red',
+        antiAliasingType: 3,
+    });
+    return circle;
 })();
 ```
 
 ```js eval code=false inspector=false
 (() => {
-  circle.cx = cx2;
-  circle.cy = cy2;
-  circle.r = r2;
-  circle.fill = fill2;
+    circle.cx = cx2;
+    circle.cy = cy2;
+    circle.r = r2;
+    circle.fill = fill2;
 })();
 ```
 
 ```js eval code=false
 (async () => {
-  const { Canvas } = Lesson2;
+    const { Canvas } = Lesson2;
 
-  const canvas = await Utils.createCanvas(Canvas, 200, 200);
+    const canvas = await Utils.createCanvas(Canvas, 200, 200);
 
-  canvas.appendChild(circle);
+    canvas.appendChild(circle);
 
-  let id;
-  const animate = () => {
-    canvas.render();
-    id = requestAnimationFrame(animate);
-  };
-  animate();
+    let id;
+    const animate = () => {
+        canvas.render();
+        id = requestAnimationFrame(animate);
+    };
+    animate();
 
-  unsubscribe(() => {
-    cancelAnimationFrame(id);
-    canvas.destroy();
-  });
-  return canvas.getDOM();
+    unsubscribe(() => {
+        cancelAnimationFrame(id);
+        canvas.destroy();
+    });
+    return canvas.getDOM();
 })();
 ```
 
@@ -635,9 +635,9 @@ circle = (() => {
 
 ## 扩展阅读 {#extended-reading}
 
-- [distfunctions]
-- [Leveraging Rust and the GPU to render user interfaces at 120 FPS]
-- [Sub-pixel Distance Transform - High quality font rendering for WebGPU]
+-   [distfunctions]
+-   [Leveraging Rust and the GPU to render user interfaces at 120 FPS]
+-   [Sub-pixel Distance Transform - High quality font rendering for WebGPU]
 
 [Node API appendChild]: https://developer.mozilla.org/en-US/docs/Web/API/Node/appendChild
 [GPURenderPassEncoder]: https://developer.mozilla.org/en-US/docs/Web/API/GPURenderPassEncoder
@@ -660,3 +660,4 @@ circle = (() => {
 [Dirty Flag - Game Programming Patterns]: https://gameprogrammingpatterns.com/dirty-flag.html
 [Sub-pixel Distance Transform - High quality font rendering for WebGPU]: https://acko.net/blog/subpixel-distance-transform/
 [A trip through the Graphics Pipeline 2011, part 8]: https://fgiesen.wordpress.com/2011/07/10/a-trip-through-the-graphics-pipeline-2011-part-8/
+[Discarding fragments]: https://learnopengl.com/Advanced-OpenGL/Blending

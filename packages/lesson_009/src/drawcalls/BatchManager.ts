@@ -14,7 +14,7 @@ import { Circle, Ellipse, Rect, type Shape } from '../shapes';
 const SHAPE_DRAWCALL_CTORS = new WeakMap<typeof Shape, (typeof Drawcall)[]>();
 SHAPE_DRAWCALL_CTORS.set(Circle, [SDF]);
 SHAPE_DRAWCALL_CTORS.set(Ellipse, [SDF]);
-SHAPE_DRAWCALL_CTORS.set(Rect, [SDF, ShadowRect]);
+SHAPE_DRAWCALL_CTORS.set(Rect, [ShadowRect, SDF]);
 
 export class BatchManager {
   /**
