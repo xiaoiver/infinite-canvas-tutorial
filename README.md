@@ -49,62 +49,75 @@ cd packages/lesson_001
 pnpm run dev
 ```
 
-## Lesson 1 - Initialize canvas
+## Lesson 1 - Initialize canvas [🔗](https://infinitecanvas.cc/guide/lesson-001)
 
 -   A hardware abstraction layer based on WebGL1/2 and WebGPU.
 -   Canvas API design.
 -   Implementing a simple plugin system.
 -   Implementing a rendering plugin based on the hardware abstraction layer.
 
-## Lesson 2 - Draw a circle
+## Lesson 2 - Draw a circle [🔗](https://infinitecanvas.cc/guide/lesson-002)
 
 -   Adding shapes to the canvas.
 -   Drawing a circle using SDF.
 -   Anti Aliasing.
 -   Dirty flag design pattern.
 
-## Lesson 3 - Scene graph and transform
+## Lesson 3 - Scene graph and transform [🔗](https://infinitecanvas.cc/guide/lesson-003)
 
 -   Transformations. Make shapes support pan, zoom, rotate, and skew transformations.
 -   Scene graph.
 
-## Lesson 4 - Camera
+<img src="./screenshots/lesson3.png" width="300" alt="Lesson 3">
+
+## Lesson 4 - Camera [🔗](https://infinitecanvas.cc/guide/lesson-004)
 
 -   What is a Camera?
 -   Projection transformation.
 -   Camera transformation.
 -   Camera animation. Using Landmark transition between different camera states.
 
-## Lesson 5 - Grid
+## Lesson 5 - Grid [🔗](https://infinitecanvas.cc/guide/lesson-005)
 
 -   Drawing straight lines using Line Geometry or screen-space techniques.
 -   Drawing dots grid.
 
-## Lesson 6 - Event System
+<img src="./screenshots/lesson5.png" width="300" alt="Lesson 5">
+
+## Lesson 6 - Event System [🔗](https://infinitecanvas.cc/guide/lesson-006)
 
 -   Implement an event system compatible with DOM Event API.
 -   How to pick a circle.
 -   Implement a drag-and-drop plugin based on our event system.
 -   Support for pinch zoom gestures.
 
-## Lesson 7 - Web UI
+## Lesson 7 - Web UI [🔗](https://infinitecanvas.cc/guide/lesson-007)
 
 -   Developing Web UI with Lit and Shoelace
 -   Implementing a canvas component
 -   Implementing a zoom toolbar component
 
-## Lesson 8 - Optimize performance
+## Lesson 8 - Optimize performance [🔗](https://infinitecanvas.cc/guide/lesson-008)
 
 -   What is a draw call
 -   Reducing draw calls with culling
 -   Reducing draw calls by combining batches
 -   Using spatial indexing to improve pickup efficiency
 
-## Lesson 9 - Draw ellipse and rectangle
+<img src="./screenshots/lesson8.png" width="300" alt="Lesson 8">
+
+## Lesson 9 - Draw ellipse and rectangle [🔗](https://infinitecanvas.cc/guide/lesson-009)
 
 -   How to derive the SDF representation of an ellipse or rounded rectangle
 -   Render drop-shadow and inner shadow for SDF
 -   How to determine if a point is inside an ellipse or rounded rectangle
+
+<img src="./screenshots/lesson9.png" width="300" alt="Lesson 9 - drop shadow">
+<img src="./screenshots/lesson9-2.png" width="300" alt="Lesson 9 - inner shadow">
+
+## Lesson 10 - Import and export images [🔗](https://infinitecanvas.cc/guide/lesson-010)
+
+-   How to export the canvas to PNG, JPG and SVG
 
 [infinitecanvas]: https://infinitecanvas.tools/
 [Figma]: https://madebyevan.com/figma/building-a-professional-design-tool-on-the-web/

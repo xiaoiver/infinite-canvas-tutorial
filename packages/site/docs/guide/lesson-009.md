@@ -7,7 +7,7 @@ outline: deep
 In this lesson, you will learn the following:
 
 -   Derive the SDF representations for ellipses and rounded rectangles
--   Add shadows to rounded rectangles
+-   Add drop and inner shadows to rounded rectangles and other SDFs
 -   Determine whether any point is inside an ellipse or a rounded rectangle
 
 In [Lesson 2], we used SDFs to draw circles, and it is easy to extend this to ellipses and rectangles. [2D distance functions] provide more SDF expressions for 2D graphics:

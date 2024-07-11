@@ -70,6 +70,8 @@ pnpm run dev
 -   变换。让图形支持平移、缩放、旋转、斜切变换。
 -   场景图。
 
+<img src="./screenshots/lesson3.png" width="300" alt="Lesson 3">
+
 ## 课程 4 - 相机 [🔗](https://infinitecanvas.cc/zh/guide/lesson-004)
 
 -   相机是什么？
@@ -81,6 +83,8 @@ pnpm run dev
 
 -   绘制直线网格。使用 Line Geometry 或者屏幕空间技术。
 -   绘制点网格。
+
+<img src="./screenshots/lesson5.png" width="300" alt="Lesson 5">
 
 ## 课程 6 - 事件系统 [🔗](https://infinitecanvas.cc/zh/guide/lesson-006)
 
@@ -102,11 +106,20 @@ pnpm run dev
 -   使用合批减少 draw call
 -   使用空间索引提升拾取效率
 
+<img src="./screenshots/lesson8.png" width="300" alt="Lesson 8">
+
 ## 课程 9 - 绘制椭圆和矩形 [🔗](https://infinitecanvas.cc/zh/guide/lesson-009)
 
 -   推导椭圆和圆角矩形的 SDF 表示
 -   为 SDF 增加外阴影和内阴影
 -   如何判定任意点是否在椭圆或圆角矩形内
+
+<img src="./screenshots/lesson9.png" width="300" alt="Lesson 9 - drop shadow">
+<img src="./screenshots/lesson9-2.png" width="300" alt="Lesson 9 - inner shadow">
+
+## 课程 10 - 图片导入和导出 [🔗](https://infinitecanvas.cc/zh/guide/lesson-010)
+
+-   如何将画布导出成 PNG，JPG，SVG 等格式的图片
 
 [infinitecanvas]: https://infinitecanvas.tools/
 [Figma]: https://madebyevan.com/figma/building-a-professional-design-tool-on-the-web/
