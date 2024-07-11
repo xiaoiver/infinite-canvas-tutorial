@@ -14,6 +14,8 @@ layout(location = 0) in vec2 a_FragCoord;
   layout(location = 3) in vec4 a_StrokeColor;
   layout(location = 4) in vec4 a_ZIndexStrokeWidth;
   layout(location = 5) in vec4 a_Opacity;
+  layout(location = 6) in vec4 a_InnerShadowColor;
+  layout(location = 7) in vec4 a_InnerShadow;
 #else
   layout(std140) uniform ShapeUniforms {
     mat3 u_ModelMatrix;
@@ -22,6 +24,8 @@ layout(location = 0) in vec2 a_FragCoord;
     vec4 u_StrokeColor;
     vec4 u_ZIndexStrokeWidth;
     vec4 u_Opacity;
+    vec4 u_InnerShadowColor;
+    vec4 u_InnerShadow;
   };
 #endif
 
@@ -32,6 +36,8 @@ out vec2 v_FragCoord;
   out float v_StrokeWidth;
   out vec4 v_Opacity;
   out float v_CornerRadius;
+  out vec4 v_InnerShadowColor;
+  out vec4 v_InnerShadow;
 #else
 #endif
 out vec2 v_Radius;
@@ -59,6 +65,8 @@ void main() {
     v_StrokeWidth = strokeWidth;
     v_Opacity = a_Opacity;
     v_CornerRadius = a_ZIndexStrokeWidth.z;
+    v_InnerShadowColor = a_InnerShadowColor;
+    v_InnerShadow = a_InnerShadow;
   #else
     model = u_ModelMatrix;
     position = u_PositionSize.xy;
@@ -91,6 +99,8 @@ export const frag = /* wgsl */ `
     vec4 u_StrokeColor;
     vec4 u_ZIndexStrokeWidth;
     vec4 u_Opacity;
+    vec4 u_InnerShadowColor;
+    vec4 u_InnerShadow;
   };
 #endif
 
@@ -103,6 +113,8 @@ in vec2 v_FragCoord;
   in float v_StrokeWidth;
   in vec4 v_Opacity;
   in float v_CornerRadius;
+  in vec4 v_InnerShadowColor;
+  in vec4 v_InnerShadow;
 #else
 #endif
 in vec2 v_Radius;
@@ -151,6 +163,23 @@ vec4 mix_border_inside(vec4 border, vec4 inside, float distance) {
   return mix(border, inside, clamp(1.0 - distance, 0.0, 1.0) * antialias(distance));
 }
 
+float sigmoid(float t) {
+  return 1.0 / (1.0 + exp(-t));
+}
+
+float make_shadow(vec2 pos, vec2 halfSize, float cornerRd, float blurRd, float distMul, float shape) {
+  float distance;
+  if (shape < 0.5) {
+    distance = sdf_circle(pos, halfSize.x);
+  } else if (shape < 1.5) {
+    distance = sdf_ellipse(pos, halfSize);
+  } else if (shape < 2.5) {
+    distance = sdf_rounded_box(pos, halfSize, cornerRd + blurRd);
+  }
+  float dist = sigmoid(distMul * distance / blurRd);
+  return clamp(dist, 0.0, 1.0);
+}
+
 void main() {
   float strokeWidth;
   vec4 fillColor;
@@ -160,6 +189,8 @@ void main() {
   float strokeOpacity;
   float shape;
   float cornerRadius;
+  vec4 innerShadowColor;
+  vec4 innerShadow;
   
   #ifdef USE_INSTANCES
     fillColor = v_FillColor;
@@ -170,6 +201,8 @@ void main() {
     strokeOpacity = v_Opacity.z;
     shape = v_Opacity.w;
     cornerRadius = v_CornerRadius;
+    innerShadowColor = v_InnerShadowColor;
+    innerShadow = v_InnerShadow;
   #else
     fillColor = u_FillColor;
     strokeColor = u_StrokeColor;
@@ -179,6 +212,8 @@ void main() {
     strokeOpacity = u_Opacity.z;
     shape = u_Opacity.w;
     cornerRadius = u_ZIndexStrokeWidth.z;
+    innerShadowColor = u_InnerShadowColor;
+    innerShadow = u_InnerShadow;
   #endif
 
   float distance;
@@ -202,6 +237,18 @@ void main() {
     color = mix_border_inside(strokeColor, color, distance + strokeWidth / 2.0);
   }
   outputColor = color;
+
+  float innerShadowBlurRadius = innerShadow.z / 2.0;
+  if (innerShadowBlurRadius > 0.0) {
+    vec2 shadowOffset = -innerShadow.xy;
+    float blurRadius = innerShadow.z;
+    float distMul = -1.0;
+    float lowerShadow = make_shadow(v_FragCoord + shadowOffset, v_Radius, cornerRadius, blurRadius, distMul, shape);
+
+    vec3 lowerShadowColor = innerShadowColor.rgb * innerShadowColor.a;
+    outputColor = over(vec4(color.xyz, 1.0), vec4(lowerShadowColor, 1.0 - lowerShadow));
+    outputColor = over(outputColor, vec4(color.xyz, clamp(distance, 0.0, 1.0)));
+  }
 
   float antialiasedBlur = -fwidth(length(v_FragCoord));
   float opacity_t = clamp(distance / antialiasedBlur, 0.0, 1.0);

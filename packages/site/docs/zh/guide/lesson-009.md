@@ -154,7 +154,7 @@ call(() => {
 });
 ```
 
-### 增加阴影 {#drop-shadow}
+### 增加外阴影 {#drop-shadow}
 
 提起阴影，你可能听说过 CSS 中的 [box-shadow] 和 `filter: drop-shadow()`。下图来自 [Drop-Shadow: The Underrated CSS Filter] 一文，直观展示了两者的区别：
 
@@ -168,6 +168,8 @@ rect.dropShadowOffsetX = 10;
 rect.dropShadowOffsetY = 10;
 rect.dropShadowBlurRadius = 5;
 ```
+
+![Drop shadow in Figma](/figma-drop-shadow.png)
 
 接下来我们着手使用 WebGL / WebGPU 为 2D 图形绘制阴影。通常会使用后处理中的高斯模糊，例如 Pixi.js 的 [DropShadowFilter]。2D 高斯模糊效果可以分解成水平和垂直两次 1D 效果从而独立进行，但卷积操作还是需要对相邻像素点（取决于卷积核的大小）进行采样。
 
@@ -199,7 +201,7 @@ e =2.03380×10^{−4}
 }
 $$
 
-下面的实现来自 [Zed Blade WGSL]，我们将其用 GLSL 简单改写下：
+下面的实现来自 [Zed Blade WGSL]，我们将其用 GLSL 简单改写下。[Blurred rounded rectangles] 提供了另一个版本的 erf 实现：
 
 ```glsl
 vec2 erf(vec2 x) {
@@ -256,7 +258,7 @@ for (int i = 0; i < 4; i++) {
 }
 ```
 
-在实现中，对于每个矩形都需要单独绘制阴影，这会打破之前合批的效果。原因是我们必须严格按照绘制次序执行，甚至每次重绘前都需要重新排序。下面的代码来自 [Fast Rounded Rectangle Shadows]：
+在实现中，对于每个矩形都需要单独绘制阴影，这会打破之前合批的效果。原因是我们必须严格按照绘制次序执行，甚至每次重绘前都需要重新排序。下面的代码来自 [Fast Rounded Rectangle Shadows]，在绘制之前需要按预先设置的深度为所有矩形排序，然后依次绘制阴影和本体：
 
 ```ts
 render() {
@@ -269,7 +271,7 @@ render() {
 }
 ```
 
-以下面的两个矩形为例，绘制次序为：绿色矩形的阴影，绿色矩形，红色矩形阴影，红色矩形。
+以下面的两个矩形为例，绘制次序为：绿色矩形的阴影，绿色矩形，红色矩形阴影，红色矩形。如果按照之前的思路，把两个阴影和两个矩形本体分别合并成两批绘制，就无法让红色矩形的阴影投射在绿色矩形上。因此在使用时，我们需要为带阴影的矩形设置 `batchable = false`
 
 ```js eval code=false
 $icCanvas3 = call(() => {
@@ -329,7 +331,19 @@ call(() => {
 });
 ```
 
-基于这种方法，还可以实现一些有趣的效果，详见：[Shape Lens Blur Effect with SDFs and WebGL]
+还有一点需要注意，由于阴影模糊半径的存在，需要让矩形在原有尺寸上外扩一圈，这里设置为 `3 * dropShadowBlurRadius`
+
+```glsl
+float margin = 3.0 * dropShadow.z;
+origin += dropShadow.xy;
+v_Origin = origin; // 原始顶点
+v_Size = size; // 原始尺寸
+
+origin -= margin;
+size += 2.0 * margin;
+vec2 center = origin + size / 2.0;
+v_Point = center + a_FragCoord * (size / 2.0);
+```
 
 最后阴影也会影响 `RenderBounds` 的计算，否则当矩形主体在视口之外，但阴影在视口之内时会被错误地剔除：
 
@@ -344,9 +358,115 @@ this.renderBounds.addBounds(
 );
 ```
 
-### 为其他 SDF 绘制阴影 {#other-sdf}
+基于这种方法，还可以实现一些有趣的效果，详见：[Shape Lens Blur Effect with SDFs and WebGL]
 
-但显然上面的方法只适用于圆角矩形，是否有针对圆、椭圆以及其他 SDF 表示更通用的方法呢？[Blurred rounded rectangles] 一文给出了解决方案。
+但显然上面的方法只适用于圆角矩形，是否有针对圆、椭圆以及其他 SDF 表示更通用的方法呢？Shader toy 上有一个例子：[Drop shadow of rounded rect]，有趣的是，根据这个例子衍生的另一个示例可以进行外阴影和内阴影的实现。下面我们着重介绍内阴影的实现。
+
+### 增加内阴影 {#inner-shadow}
+
+下图为 Figma 的内阴影效果，常用于 Button 这样的 UI 组件。
+
+![Inner shadow in Figma](/figma-inner-shadow.png)
+
+让我们增加如下属性：
+
+```ts
+rect.innerShadowColor = 'black';
+rect.innerShadowOffsetX = 10;
+rect.innerShadowOffsetY = 10;
+rect.innerShadowBlurRadius = 5;
+```
+
+参考 Shader toy 上的例子：[Inner shadow of rounded rect] 我们同样为目前的三个图形分别增加阴影绘制逻辑：
+
+```glsl
+float make_shadow(vec2 pos, vec2 halfSize, float cornerRd, float blurRd, float distMul, float shape) {
+  float distance;
+  if (shape < 0.5) {
+    distance = sdf_circle(pos, halfSize.x);
+  } else if (shape < 1.5) {
+    distance = sdf_ellipse(pos, halfSize);
+  } else if (shape < 2.5) {
+    distance = sdf_rounded_box(pos, halfSize, cornerRd + blurRd);
+  }
+  float dist = sigmoid(distMul * distance / blurRd);
+  return clamp(dist, 0.0, 1.0);
+}
+```
+
+```js eval code=false
+$icCanvas4 = call(() => {
+    return document.createElement('ic-canvas-lesson9');
+});
+```
+
+```js eval code=false inspector=false
+call(() => {
+    const { Canvas, Rect, Circle, Ellipse } = Lesson9;
+
+    const stats = new Stats();
+    stats.showPanel(0);
+    const $stats = stats.dom;
+    $stats.style.position = 'absolute';
+    $stats.style.left = '0px';
+    $stats.style.top = '0px';
+
+    $icCanvas4.parentElement.style.position = 'relative';
+    $icCanvas4.parentElement.appendChild($stats);
+
+    $icCanvas4.addEventListener('ic-ready', (e) => {
+        const canvas = e.detail;
+        for (let i = 0; i < 10; i++) {
+            const fill = `rgb(${Math.floor(Math.random() * 255)},${Math.floor(
+                Math.random() * 255,
+            )},${Math.floor(Math.random() * 255)})`;
+
+            const rect = new Rect({
+                x: Math.random() * 1000,
+                y: Math.random() * 1000,
+                fill,
+                cornerRadius: 50,
+                innerShadowColor: 'black',
+                innerShadowOffsetX: Math.random() * 20 - 10,
+                innerShadowOffsetY: Math.random() * 20 - 10,
+                innerShadowBlurRadius: Math.random() * 10,
+            });
+            rect.width = 200;
+            rect.height = 100;
+            canvas.appendChild(rect);
+
+            const circle = new Circle({
+                cx: Math.random() * 1000,
+                cy: Math.random() * 1000,
+                r: 100,
+                fill,
+                innerShadowColor: 'black',
+                innerShadowOffsetX: Math.random() * 20 - 10,
+                innerShadowOffsetY: Math.random() * 20 - 10,
+                innerShadowBlurRadius: Math.random() * 10,
+            });
+            canvas.appendChild(circle);
+
+            const ellipse = new Ellipse({
+                cx: Math.random() * 1000,
+                cy: Math.random() * 1000,
+                rx: 100,
+                ry: 50,
+                fill,
+                innerShadowColor: 'blue',
+                innerShadowOffsetX: Math.random() * 20 - 10,
+                innerShadowOffsetY: Math.random() * 20 - 10,
+                innerShadowBlurRadius: Math.random() * 10,
+            });
+            canvas.appendChild(ellipse);
+        }
+    });
+
+    $icCanvas4.addEventListener('ic-frame', (e) => {
+        stats.update();
+    });
+});
+```
 
 ## 椭圆 {#ellipse}
 
@@ -689,6 +809,7 @@ function isPointInRoundedRectangle(
 -   [Distance from a Point to an Ellipse, an Ellipsoid, or a
     Hyperellipsoid]
 -   [Fast Rounded Rectangle Shadows]
+-   [Blurred rounded rectangles]
 
 [课程 2]: /zh/guide/lesson-002
 [2D distance functions]: https://iquilezles.org/articles/distfunctions2d/
@@ -718,3 +839,5 @@ function isPointInRoundedRectangle(
 [blade]: https://github.com/kvark/blade
 [Drop-Shadow: The Underrated CSS Filter]: https://css-irl.info/drop-shadow-the-underrated-css-filter/
 [tailwindcss - Drop Shadow]: https://tailwindcss.com/docs/drop-shadow
+[Drop shadow of rounded rect]: https://www.shadertoy.com/view/NtVSW1
+[Inner shadow of rounded rect]: https://www.shadertoy.com/view/mssGzn

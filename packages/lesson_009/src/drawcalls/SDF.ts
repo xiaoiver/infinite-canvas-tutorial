@@ -52,7 +52,7 @@ export class SDF extends Drawcall {
       }
 
       this.#instancedBuffer = this.device.createBuffer({
-        viewOrSize: Float32Array.BYTES_PER_ELEMENT * 20 * this.shapes.length,
+        viewOrSize: Float32Array.BYTES_PER_ELEMENT * 28 * this.shapes.length,
         usage: BufferUsage.VERTEX,
         hint: BufferFrequencyHint.DYNAMIC,
       });
@@ -105,7 +105,7 @@ export class SDF extends Drawcall {
     if (this.instanced) {
       vertexBufferDescriptors.push(
         {
-          arrayStride: 4 * 20,
+          arrayStride: 4 * 28,
           stepMode: VertexStepMode.INSTANCE,
           attributes: [
             {
@@ -131,6 +131,16 @@ export class SDF extends Drawcall {
             {
               shaderLocation: 5, // a_Opacity
               offset: 4 * 16,
+              format: Format.F32_RGBA,
+            },
+            {
+              shaderLocation: 6, // a_InnerShadowColor
+              offset: 4 * 20,
+              format: Format.F32_RGBA,
+            },
+            {
+              shaderLocation: 7, // a_InnerShadow
+              offset: 4 * 24,
               format: Format.F32_RGBA,
             },
           ],
@@ -165,7 +175,8 @@ export class SDF extends Drawcall {
       });
       if (!this.#uniformBuffer) {
         this.#uniformBuffer = this.device.createBuffer({
-          viewOrSize: Float32Array.BYTES_PER_ELEMENT * (16 + 4 + 4 + 4 + 4),
+          viewOrSize:
+            Float32Array.BYTES_PER_ELEMENT * (16 + 4 + 4 + 4 + 4 + 4 + 4),
           usage: BufferUsage.UNIFORM,
           hint: BufferFrequencyHint.DYNAMIC,
         });
@@ -312,6 +323,10 @@ export class SDF extends Drawcall {
       opacity,
       fillOpacity,
       strokeOpacity,
+      innerShadowColorRGB: { r: isr, g: isg, b: isb, opacity: iso },
+      innerShadowOffsetX,
+      innerShadowOffsetY,
+      innerShadowBlurRadius,
     } = shape;
 
     let size: [number, number, number, number];
@@ -350,6 +365,14 @@ export class SDF extends Drawcall {
       fillOpacity,
       strokeOpacity,
       type,
+      isr / 255,
+      isg / 255,
+      isb / 255,
+      iso,
+      innerShadowOffsetX,
+      innerShadowOffsetY,
+      innerShadowBlurRadius,
+      0,
     ];
   }
 }

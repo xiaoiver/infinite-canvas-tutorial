@@ -154,7 +154,7 @@ call(() => {
 });
 ```
 
-### Add Shadows {#drop-shadow}
+### Add Drop Shadow {#drop-shadow}
 
 When it comes to shadows, you may have heard of [box-shadow] and `filter: drop-shadow()` in CSS. The following figure is from the article [Drop-Shadow: The Underrated CSS Filter], which intuitively shows the difference between the two:
 
@@ -168,6 +168,8 @@ rect.dropShadowOffsetX = 10;
 rect.dropShadowOffsetY = 10;
 rect.dropShadowBlurRadius = 5;
 ```
+
+![Drop shadow in Figma](/figma-drop-shadow.png)
 
 Next, we will use WebGL / WebGPU to draw shadows for 2D graphics. The usual approach is to use Gaussian blur in post-processing, such as Pixi.js's [DropShadowFilter]. The 2D Gaussian blur effect can be decomposed into two 1D effects for horizontal and vertical processing, but the convolution operation still requires sampling of adjacent pixel points (depending on the size of the convolution kernel).
 
@@ -199,7 +201,7 @@ e =2.03380×10^{−4}
 }
 $$
 
-The following implementation is from [Zed Blade WGSL], which we have rewritten in GLSL:
+The following implementation is from [Zed Blade WGSL], which we have rewritten in GLSL. [Blurred rounded rectangles] also gives another verion of erf.
 
 ```glsl
 vec2 erf(vec2 x) {
@@ -256,7 +258,7 @@ for (int i = 0; i < 4; i++) {
 }
 ```
 
-In the implementation, the shadows need to be drawn individually for each rectangle, which breaks the effect of the previous combined batch. The reason for this is that we have to do it in a strict drawing order, even reordering before each repaint. The following code comes from this article: [Fast Rounded Rectangle Shadows].
+In the implementation, the shadows need to be drawn individually for each rectangle, which breaks the effect of the previous combined batch. The reason for this is that we have to do it in a strict drawing order, even reordering before each repaint. The following code comes from this article: [Fast Rounded Rectangle Shadows]. Before drawing you need to sort all rectangles by a pre-set depth and then draw the shadows and body in turn:
 
 ```ts
 render() {
@@ -269,7 +271,7 @@ render() {
 }
 ```
 
-As an example, the following two rectangles are drawn in the following order: green rectangle shadow, green rectangle, red rectangle shadow, red rectangle.
+As an example, the following two rectangles are drawn in the following order: green rectangle shadow, green rectangle, red rectangle shadow, red rectangle. If we follow the previous idea of merging the two shadows and the two rectangle bodies into two separate batches of drawings, we won't be able to get the shadows of the red rectangles to cast on the green rectangles. So when using it, we need to set `batchable = false` for the rectangles with shadows
 
 ```js eval code=false
 $icCanvas3 = call(() => {
@@ -329,7 +331,19 @@ call(() => {
 });
 ```
 
-Based on this approach, some interesting effects can also be realized, see: [Shape Lens Blur Effect with SDFs and WebGL].
+One more thing to note is that due to the shadow blur radius, you need to make the rectangle flare out a circle from its original size, which is here set to `3 * dropShadowBlurRadius`.
+
+```glsl
+float margin = 3.0 * dropShadow.z;
+origin += dropShadow.xy;
+v_Origin = origin;
+v_Size = size;
+
+origin -= margin;
+size += 2.0 * margin;
+vec2 center = origin + size / 2.0;
+v_Point = center + a_FragCoord * (size / 2.0);
+```
 
 Finally shadows also affect the `RenderBounds` calculation, otherwise rectangles will be incorrectly rejected when their body is outside the viewport but their shadows are inside:
 
@@ -344,9 +358,115 @@ this.renderBounds.addBounds(
 );
 ```
 
-### Shadow for other SDFs {#other-sdf}
+Based on this approach, some interesting effects can also be realized, see: [Shape Lens Blur Effect with SDFs and WebGL].
 
-But obviously the above method only works for rounded rectangles, is there a more general method for circles, ellipses and other SDF representations? The article [Blurred rounded rectangles] provides a solution.
+Obviously the above method only works for rounded rectangles, but is there a more general method for circles, ellipses, and other SDF representations? There is an example on Shader toy: [Drop shadow of rounded rect], and interestingly, there is another example based on this example that allows for both outer and inner shadow implementations. Below we focus on the inner shadow implementation.
+
+### Add Inner Shadow {#inner-shadow}
+
+The image below shows the inner shadow effect of Figma, which is often used in UI components like Button.
+
+![Inner shadow in Figma](/figma-inner-shadow.png)
+
+Let's add the following attribute:
+
+```ts
+rect.innerShadowColor = 'black';
+rect.innerShadowOffsetX = 10;
+rect.innerShadowOffsetY = 10;
+rect.innerShadowBlurRadius = 5;
+```
+
+Referring to the example on Shader toy: [Inner shadow of rounded rect] we similarly add shadow drawing logic for each of the three current shapes:
+
+```glsl
+float make_shadow(vec2 pos, vec2 halfSize, float cornerRd, float blurRd, float distMul, float shape) {
+  float distance;
+  if (shape < 0.5) {
+    distance = sdf_circle(pos, halfSize.x);
+  } else if (shape < 1.5) {
+    distance = sdf_ellipse(pos, halfSize);
+  } else if (shape < 2.5) {
+    distance = sdf_rounded_box(pos, halfSize, cornerRd + blurRd);
+  }
+  float dist = sigmoid(distMul * distance / blurRd);
+  return clamp(dist, 0.0, 1.0);
+}
+```
+
+```js eval code=false
+$icCanvas4 = call(() => {
+    return document.createElement('ic-canvas-lesson9');
+});
+```
+
+```js eval code=false inspector=false
+call(() => {
+    const { Canvas, Rect, Circle, Ellipse } = Lesson9;
+
+    const stats = new Stats();
+    stats.showPanel(0);
+    const $stats = stats.dom;
+    $stats.style.position = 'absolute';
+    $stats.style.left = '0px';
+    $stats.style.top = '0px';
+
+    $icCanvas4.parentElement.style.position = 'relative';
+    $icCanvas4.parentElement.appendChild($stats);
+
+    $icCanvas4.addEventListener('ic-ready', (e) => {
+        const canvas = e.detail;
+        for (let i = 0; i < 10; i++) {
+            const fill = `rgb(${Math.floor(Math.random() * 255)},${Math.floor(
+                Math.random() * 255,
+            )},${Math.floor(Math.random() * 255)})`;
+
+            const rect = new Rect({
+                x: Math.random() * 1000,
+                y: Math.random() * 1000,
+                fill,
+                cornerRadius: 50,
+                innerShadowColor: 'black',
+                innerShadowOffsetX: Math.random() * 20 - 10,
+                innerShadowOffsetY: Math.random() * 20 - 10,
+                innerShadowBlurRadius: Math.random() * 10,
+            });
+            rect.width = 200;
+            rect.height = 100;
+            canvas.appendChild(rect);
+
+            const circle = new Circle({
+                cx: Math.random() * 1000,
+                cy: Math.random() * 1000,
+                r: 100,
+                fill,
+                innerShadowColor: 'black',
+                innerShadowOffsetX: Math.random() * 20 - 10,
+                innerShadowOffsetY: Math.random() * 20 - 10,
+                innerShadowBlurRadius: Math.random() * 10,
+            });
+            canvas.appendChild(circle);
+
+            const ellipse = new Ellipse({
+                cx: Math.random() * 1000,
+                cy: Math.random() * 1000,
+                rx: 100,
+                ry: 50,
+                fill,
+                innerShadowColor: 'blue',
+                innerShadowOffsetX: Math.random() * 20 - 10,
+                innerShadowOffsetY: Math.random() * 20 - 10,
+                innerShadowBlurRadius: Math.random() * 10,
+            });
+            canvas.appendChild(ellipse);
+        }
+    });
+
+    $icCanvas4.addEventListener('ic-frame', (e) => {
+        stats.update();
+    });
+});
+```
 
 ## Ellipse {#ellipse}
 
@@ -645,7 +765,7 @@ function isPointInRoundedRectangle(
     y2: number,
     r: number,
 ) {
-    // 判断点是否在矩形的四个角的圆角内
+    // Determine if a point is inside the corners of a rectangle.
     function isInsideCorner(
         x: number,
         y: number,
@@ -659,25 +779,25 @@ function isPointInRoundedRectangle(
         return distance <= r;
     }
 
-    // 判断点是否在圆角矩形内
+    // Determine if a point is inside a rounded rectangle
     if (x >= x1 && x <= x2 && y >= y1 && y <= y2) {
-        // 点在矩形内部
+        // Points inside the rectangle
         if (
-            isInsideCorner(x, y, x1 + r, y1 + r, r) || // 左上角
-            isInsideCorner(x, y, x2 - r, y1 + r, r) || // 右上角
-            isInsideCorner(x, y, x2 - r, y2 - r, r) || // 右下角
-            isInsideCorner(x, y, x1 + r, y2 - r, r) // 左下角
+            isInsideCorner(x, y, x1 + r, y1 + r, r) || // top-left
+            isInsideCorner(x, y, x2 - r, y1 + r, r) || // top-right
+            isInsideCorner(x, y, x2 - r, y2 - r, r) || // bottom-right
+            isInsideCorner(x, y, x1 + r, y2 - r, r) // bottom-left
         ) {
-            return true; // 点在圆角内
+            return true; // Points inside the corner
         }
         return !(
             x <= x1 + r ||
-            x >= x2 - r || // 点在矩形的非圆角边界上
+            x >= x2 - r || // The point is on the non-circular boundary of the rectangle
             y <= y1 + r ||
             y >= y2 - r
         );
     }
-    return false; // 点不在矩形内
+    return false; // Points outside the rectangle
 }
 ```
 
@@ -687,6 +807,7 @@ function isPointInRoundedRectangle(
 -   [Distance from a Point to an Ellipse, an Ellipsoid, or a
     Hyperellipsoid]
 -   [Fast Rounded Rectangle Shadows]
+-   [Blurred rounded rectangles]
 
 [Lesson 2]: /guide/lesson-002
 [2D distance functions]: https://iquilezles.org/articles/distfunctions2d/
@@ -716,3 +837,5 @@ function isPointInRoundedRectangle(
 [blade]: https://github.com/kvark/blade
 [Drop-Shadow: The Underrated CSS Filter]: https://css-irl.info/drop-shadow-the-underrated-css-filter/
 [tailwindcss - Drop Shadow]: https://tailwindcss.com/docs/drop-shadow
+[Drop shadow of rounded rect]: https://www.shadertoy.com/view/NtVSW1
+[Inner shadow of rounded rect]: https://www.shadertoy.com/view/mssGzn

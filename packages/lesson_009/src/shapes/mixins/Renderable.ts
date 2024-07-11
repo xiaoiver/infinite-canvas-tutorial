@@ -76,6 +76,54 @@ export interface IRenderable {
 
   fillRGB: d3.RGBColor;
   strokeRGB: d3.RGBColor;
+
+  /**
+   * Specifies color for the shadow.
+   * @see https://developer.mozilla.org/en-US/docs/Web/CSS/filter-function/drop-shadow#color
+   */
+  dropShadowColor: string;
+  dropShadowColorRGB: d3.RGBColor;
+
+  /**
+   * Horizontal offset
+   * @see https://developer.mozilla.org/en-US/docs/Web/CSS/filter-function/drop-shadow
+   */
+  dropShadowOffsetX: number;
+
+  /**
+   * Vertical offset
+   * @see https://developer.mozilla.org/en-US/docs/Web/CSS/filter-function/drop-shadow
+   */
+  dropShadowOffsetY: number;
+
+  /**
+   * The larger this value, the bigger the blur, so the shadow becomes bigger and lighter.
+   * Negative values are not allowed. If not specified, it will be set to `0`.
+   * @see https://developer.mozilla.org/en-US/docs/Web/CSS/filter-function/drop-shadow
+   */
+  dropShadowBlurRadius: number;
+
+  /**
+   * Specifies color for the inner shadow.
+   */
+  innerShadowColor: string;
+  innerShadowColorRGB: d3.RGBColor;
+
+  /**
+   * Horizontal offset
+   */
+  innerShadowOffsetX: number;
+
+  /**
+   * Vertical offset
+   */
+  innerShadowOffsetY: number;
+
+  /**
+   * The larger this value, the bigger the blur, so the shadow becomes bigger and lighter.
+   * Negative values are not allowed. If not specified, it will be set to `0`.
+   */
+  innerShadowBlurRadius: number;
 }
 
 export function Renderable<TBase extends GConstructor>(Base: TBase) {
@@ -101,6 +149,11 @@ export function Renderable<TBase extends GConstructor>(Base: TBase) {
     #opacity: number;
     #fillOpacity: number;
     #strokeOpacity: number;
+    #innerShadowColor: string;
+    #innerShadowColorRGB: d3.RGBColor;
+    #innerShadowOffsetX: number;
+    #innerShadowOffsetY: number;
+    #innerShadowBlurRadius: number;
 
     constructor(
       attributes: Partial<
@@ -116,6 +169,10 @@ export function Renderable<TBase extends GConstructor>(Base: TBase) {
           | 'batchable'
           | 'visible'
           | 'strokeWidth'
+          | 'innerShadowColor'
+          | 'innerShadowOffsetX'
+          | 'innerShadowOffsetY'
+          | 'innerShadowBlurRadius'
         >
       > = {},
     ) {
@@ -132,6 +189,10 @@ export function Renderable<TBase extends GConstructor>(Base: TBase) {
         opacity,
         fillOpacity,
         strokeOpacity,
+        innerShadowColor,
+        innerShadowOffsetX,
+        innerShadowOffsetY,
+        innerShadowBlurRadius,
       } = attributes;
 
       this.renderable = renderable ?? true;
@@ -144,6 +205,10 @@ export function Renderable<TBase extends GConstructor>(Base: TBase) {
       this.opacity = opacity ?? 1;
       this.fillOpacity = fillOpacity ?? 1;
       this.strokeOpacity = strokeOpacity ?? 1;
+      this.innerShadowColor = innerShadowColor ?? 'black';
+      this.innerShadowOffsetX = innerShadowOffsetX ?? 0;
+      this.innerShadowOffsetY = innerShadowOffsetY ?? 0;
+      this.innerShadowBlurRadius = innerShadowBlurRadius ?? 0;
     }
 
     get fill() {
@@ -216,6 +281,51 @@ export function Renderable<TBase extends GConstructor>(Base: TBase) {
     set strokeOpacity(strokeOpacity: number) {
       if (this.#strokeOpacity !== strokeOpacity) {
         this.#strokeOpacity = strokeOpacity;
+        this.renderDirtyFlag = true;
+      }
+    }
+
+    get innerShadowColor() {
+      return this.#innerShadowColor;
+    }
+    set innerShadowColor(innerShadowColor: string) {
+      if (this.#innerShadowColor !== innerShadowColor) {
+        this.#innerShadowColor = innerShadowColor;
+        this.#innerShadowColorRGB = d3.rgb(innerShadowColor);
+        this.renderDirtyFlag = true;
+      }
+    }
+
+    get innerShadowColorRGB() {
+      return this.#innerShadowColorRGB;
+    }
+
+    get innerShadowOffsetX() {
+      return this.#innerShadowOffsetX;
+    }
+    set innerShadowOffsetX(innerShadowOffsetX: number) {
+      if (this.#innerShadowOffsetX !== innerShadowOffsetX) {
+        this.#innerShadowOffsetX = innerShadowOffsetX;
+        this.renderDirtyFlag = true;
+      }
+    }
+
+    get innerShadowOffsetY() {
+      return this.#innerShadowOffsetY;
+    }
+    set innerShadowOffsetY(innerShadowOffsetY: number) {
+      if (this.#innerShadowOffsetY !== innerShadowOffsetY) {
+        this.#innerShadowOffsetY = innerShadowOffsetY;
+        this.renderDirtyFlag = true;
+      }
+    }
+
+    get innerShadowBlurRadius() {
+      return this.#innerShadowBlurRadius;
+    }
+    set innerShadowBlurRadius(innerShadowBlurRadius: number) {
+      if (this.#innerShadowBlurRadius !== innerShadowBlurRadius) {
+        this.#innerShadowBlurRadius = innerShadowBlurRadius;
         this.renderDirtyFlag = true;
       }
     }

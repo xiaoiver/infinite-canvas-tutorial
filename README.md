@@ -103,7 +103,7 @@ pnpm run dev
 ## Lesson 9 - Draw ellipse and rectangle
 
 -   How to derive the SDF representation of an ellipse or rounded rectangle
--   Render drop-shadow for rounded rectangle
+-   Render drop-shadow and inner shadow for SDF
 -   How to determine if a point is inside an ellipse or rounded rectangle
 
 [infinitecanvas]: https://infinitecanvas.tools/

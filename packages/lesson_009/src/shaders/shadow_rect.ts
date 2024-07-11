@@ -116,6 +116,14 @@ vec2 erf(vec2 x) {
   return s - s / (x * x);
 }
 
+// @see https://raphlinus.github.io/graphics/2020/04/21/blurred-rounded-rects.html
+// vec2 erf7(vec2 x) {
+//   x = x * sqrt(2. * PI);
+//   vec2 xx = x * x;
+//   x = x + (0.24295 + (0.03395 + 0.0104 * xx) * xx) * (x * xx);
+//   return x / sqrt(1.0 + x * x);
+// }
+
 float rect_shadow(vec2 pixel_position, vec2 origin, vec2 size, float sigma) {
   vec2 bottom_right = origin + size;
   vec2 x_distance = vec2(pixel_position.x - origin.x, pixel_position.x - bottom_right.x);
