@@ -23,6 +23,7 @@ import {
   getGlobalThis,
   traverse,
 } from './utils';
+import { DataURLOptions } from './ImageExporter';
 
 export interface CanvasConfig {
   canvas: HTMLCanvasElement;
@@ -224,6 +225,14 @@ export class Canvas {
 
   getDOM() {
     return this.#pluginContext.canvas;
+  }
+
+  getDPR() {
+    return this.#pluginContext.devicePixelRatio;
+  }
+
+  async toDataURL(options: Partial<DataURLOptions> = {}) {
+    return this.#rendererPlugin.toDataURL(options);
   }
 
   appendChild(shape: Shape) {

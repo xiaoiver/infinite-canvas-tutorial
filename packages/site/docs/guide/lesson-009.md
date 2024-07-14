@@ -377,7 +377,7 @@ rect.innerShadowOffsetY = 10;
 rect.innerShadowBlurRadius = 5;
 ```
 
-Referring to the example on Shader toy: [Inner shadow of rounded rect] we similarly add shadow drawing logic for each of the three current shapes:
+Referring to the example on Shader toy: [Inner shadow of rounded rect] we similarly add shadow drawing logic for each of the three current shapes. We use `sigmoid` here for smoothing purpose:
 
 ```glsl
 float make_shadow(vec2 pos, vec2 halfSize, float cornerRd, float blurRd, float distMul, float shape) {

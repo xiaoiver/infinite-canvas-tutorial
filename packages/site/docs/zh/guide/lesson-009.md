@@ -377,7 +377,7 @@ rect.innerShadowOffsetY = 10;
 rect.innerShadowBlurRadius = 5;
 ```
 
-参考 Shader toy 上的例子：[Inner shadow of rounded rect] 我们同样为目前的三个图形分别增加阴影绘制逻辑：
+参考 Shader toy 上的例子：[Inner shadow of rounded rect] 我们同样为目前的三个图形分别增加阴影绘制逻辑，使用 `sigmoid` 将输入值在 `[0, 1]` 间进行平滑处理：
 
 ```glsl
 float make_shadow(vec2 pos, vec2 halfSize, float cornerRd, float blurRd, float distMul, float shape) {

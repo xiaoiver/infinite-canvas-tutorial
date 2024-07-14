@@ -28,7 +28,7 @@ export const zh = defineConfig({
             items: [
               {
                 text: '什么是无限画布？',
-                link: '/zh/guide/what-is-an-infinite-canvas',
+                link: 'what-is-an-infinite-canvas',
               },
             ],
           },
@@ -44,6 +44,7 @@ export const zh = defineConfig({
               { text: '课程7 - UI 组件', link: 'lesson-007' },
               { text: '课程8 - 性能优化', link: 'lesson-008' },
               { text: '课程9 - 绘制椭圆和矩形', link: 'lesson-009' },
+              { text: '课程10 - 图片导入导出', link: 'lesson-010' },
             ],
           },
         ],

@@ -19,6 +19,7 @@ import type { Plugin, PluginContext } from './interfaces';
 import { Grid } from '../shapes';
 import { paddingMat3 } from '../utils';
 import { BatchManager } from '../drawcalls/BatchManager';
+import { DataURLOptions } from '../ImageExporter';
 
 export enum CheckboardStyle {
   NONE,
@@ -39,6 +40,11 @@ export class Renderer implements Plugin {
 
   #batchManager: BatchManager;
   #zIndexCounter = 1;
+
+  #enableCapture: boolean;
+  #captureOptions: Partial<DataURLOptions>;
+  #capturePromise: Promise<string> | undefined;
+  #resolveCapturePromise: (dataURL: string) => void;
 
   apply(context: PluginContext) {
     const {
@@ -197,6 +203,18 @@ export class Renderer implements Plugin {
       this.#batchManager.flush(this.#renderPass, this.#uniformBuffer);
       this.#device.submitPass(this.#renderPass);
       this.#device.endFrame();
+
+      // capture here since we don't preserve drawing buffer
+      if (this.#enableCapture && this.#resolveCapturePromise) {
+        const { type, encoderOptions } = this.#captureOptions;
+        const dataURL = (
+          this.#swapChain.getCanvas() as HTMLCanvasElement
+        ).toDataURL(type, encoderOptions);
+        this.#resolveCapturePromise(dataURL);
+        this.#enableCapture = false;
+        this.#captureOptions = undefined;
+        this.#resolveCapturePromise = undefined;
+      }
     });
 
     hooks.render.tap((shape) => {
@@ -207,5 +225,17 @@ export class Renderer implements Plugin {
 
   setCheckboardStyle(style: CheckboardStyle) {
     this.#checkboardStyle = style;
+  }
+
+  async toDataURL(options: Partial<DataURLOptions>) {
+    // trigger re-render
+    this.#enableCapture = true;
+    this.#captureOptions = options;
+    this.#capturePromise = new Promise((resolve) => {
+      this.#resolveCapturePromise = (dataURL: string) => {
+        resolve(dataURL);
+      };
+    });
+    return this.#capturePromise;
   }
 }

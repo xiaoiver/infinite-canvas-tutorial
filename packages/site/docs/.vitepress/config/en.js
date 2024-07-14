@@ -56,6 +56,10 @@ export const en = defineConfig({
                 text: 'Lesson 009 - Draw ellipse and rectangle',
                 link: 'lesson-009',
               },
+              { 
+                text: 'Lesson 010 - Import and export images',
+                link: 'lesson-010'
+              },
             ],
           },
         ],
