@@ -157,7 +157,7 @@ call(() => {
 });
 ```
 
-现在让我们来回答为何 `toCanvas` 方法要设计成异步。由于 WebGL / WebGPU 使用 [SwapChain] 双缓冲机制，在创建上下文时，[preserveDrawingBuffer] 的默认值为 `false`，因此需要确保调用 `toDataURL` 时渲染没有被清除（例如调用 `gl.clear()`），否则就会得到一张空白图片。我们在 `endFrame` 钩子中添加如下逻辑，一旦接收到导出命令，就立刻在当前帧结束前保存画布内容，以防下一帧到来时被清空，这会导致该行为变成异步。
+现在让我们来回答为何 `toCanvas` 方法要设计成异步。由于 WebGL / WebGPU 使用 [SwapChain] 双缓冲机制，在创建上下文时，[preserveDrawingBuffer] 的默认值为 `false`，因此需要确保调用 `toDataURL` 时渲染没有被清除（例如调用 `gl.clear()`），否则就会得到一张空白图片。我们在[插件系统]的 `endFrame` 钩子中添加如下逻辑，一旦接收到导出命令，就立刻在当前帧结束前保存画布内容，以防下一帧到来时被清空，这会导致该行为变成异步。
 
 ```ts
 hooks.endFrame.tap(() => {
@@ -177,13 +177,49 @@ hooks.endFrame.tap(() => {
 });
 ```
 
+暂时我们没有使用到裁剪以及水印等后续加工相关的功能。由于实现类似 Figma 的“切片”功能需要配合框选交互，后续实现时会一同介绍。现在让我们回到另一种特殊格式的图片。
+
 ### 导出 SVG
 
-有时我们想导出矢量图。
+相比位图，矢量图的优势体现在：
+
+-   无限缩放不失真。这意味着它们可以被无限放大或缩小而不会失去清晰度，非常适合需要多种分辨率的场合。
+-   可编辑性。SVG 是文本文件，可以使用任何文本编辑器进行编辑，便于修改图形的属性和样式。
+-   对于复杂图形具有更小的文件大小。
+
+因此设计工具一定都会提供对于这种格式的转换支持。对于我们的无限画布，可以将问题转换成：如何将场景图序列化。当然可以不局限于 SVG 格式，JSON 也可以一并支持。
+
+从场景图的根节点开始遍历，将每个节点格式化：
+
+```ts
+function serializeNode(node: Shape): SerializedNode {
+    const data = { type: typeOfShape(node) };
+    data.children = node.children.map(serializeNode);
+    return data;
+}
+```
+
+为画布增加序列化和反序列化方法：
+
+```ts
+toJSON() {
+  return JSON.stringify(serializeNode(this.#root));
+}
+fromJSON(json: string) {
+  const data = JSON.parse(json);
+  this.#root = deserializeNode(data) as Group;
+}
+```
+
+当然事件监听器是无法被序列化的。
 
 ### 导出 PDF
 
+## 渲染图片
+
 ## Enhanced SVG: Stroke alignment
+
+最后我们来引入一个有趣的话题。
 
 `opacity` `stroke-opacity` 和 `fill-opacity` 的区别：
 
@@ -205,3 +241,4 @@ Figma 中的 Stroke 取值包括 `Center / Inside / Outside`
 [DataURI]: https://developer.mozilla.org/zh-CN/docs/Web/HTTP/Basics_of_HTTP/Data_URLs
 [SwapChain]: /zh/guide/lesson-001#swapchain
 [使用 Lit 和 Shoelace 开发 Web UI]: /zh/guide/lesson-007
+[插件系统]: /zh/guide/lesson-001#plugin-based-architecture

@@ -20,7 +20,9 @@ import {
   AsyncParallelHook,
   SyncHook,
   SyncWaterfallHook,
+  deserializeNode,
   getGlobalThis,
+  serializeNode,
   traverse,
 } from './utils';
 import { DataURLOptions } from './ImageExporter';
@@ -348,5 +350,14 @@ export class Canvas {
       zoom: findZoomFloor(camera.zoom),
     });
     camera.gotoLandmark(landmark, { duration: 300, easing: 'ease' });
+  }
+
+  toJSON() {
+    return JSON.stringify(serializeNode(this.#root));
+  }
+
+  fromJSON(json: string) {
+    const data = JSON.parse(json);
+    this.#root = deserializeNode(data) as Group;
   }
 }

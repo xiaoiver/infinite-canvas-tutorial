@@ -36,6 +36,7 @@ export class Exporter extends LitElement {
           const canvas = await this.exporter.toCanvas();
           dataURL = canvas.toDataURL('image/jpeg');
         } else if (selectedItem.value === 'download-image-svg') {
+          dataURL = this.exporter.toSVGDataURL();
         }
 
         if (dataURL) {

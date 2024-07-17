@@ -1,5 +1,6 @@
 import { Rectangle } from '@pixi/math';
 import { Canvas } from './Canvas';
+import { createSVGElement, serializeNode } from './utils';
 
 export type DataURLType =
   | 'image/png'
@@ -95,20 +96,31 @@ export class ImageExporter {
     return canvas;
   }
 
-  // private isSVG() {
-  //   // return (
-  //   //   isBrowser &&
-  //   //   this.options.canvas.getContextService().getDomElement() instanceof
-  //   //     SVGSVGElement
-  //   // );
-  //   return false;
-  // }
+  toSVGDataURL() {
+    const { canvas } = this.options;
+    const { width, height } = canvas.getDOM();
 
-  // async toSVGDataURL() {
-  //   if (this.isSVG()) {
-  //     return this.toDataURL();
-  //   }
-  // }
+    console.log(serializeNode(canvas.root));
+
+    const $namespace = createSVGElement('svg');
+    $namespace.setAttribute('width', `${width}`);
+    $namespace.setAttribute('height', `${height}`);
+
+    const svgDocType = document.implementation.createDocumentType(
+      'svg',
+      '-//W3C//DTD SVG 1.1//EN',
+      'http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd',
+    );
+    const svgDoc = document.implementation.createDocument(
+      'http://www.w3.org/2000/svg',
+      'svg',
+      svgDocType,
+    );
+    svgDoc.replaceChild($namespace, svgDoc.documentElement);
+    return `data:image/svg+xml;charset=utf8,${encodeURIComponent(
+      new XMLSerializer().serializeToString(svgDoc),
+    )}`;
+  }
 
   downloadImage(options: DownloadImageOptions) {
     // retrieve context at runtime
