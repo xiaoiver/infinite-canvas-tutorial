@@ -1,5 +1,7 @@
 import { Transform } from '@pixi/math';
 import { Circle, Ellipse, Group, Rect, Shape } from '../shapes';
+import { createSVGElement } from './browser';
+import { camelToKebabCase } from './lang';
 
 type SerializedTransform = {
   position: {
@@ -52,14 +54,16 @@ const rectAttributes = [
   'dropShadowBlurRadius',
 ] as const;
 
-type CommonAttributeName = (typeof commonAttributes &
-  typeof renderableAttributes)[number];
+type CommonAttributeName = (
+  | typeof commonAttributes
+  | typeof renderableAttributes
+)[number];
 type CircleAttributeName = (typeof circleAttributes)[number];
 type EllipseAttributeName = (typeof ellipseAttributes)[number];
 type RectAttributeName = (typeof rectAttributes)[number];
 
 interface SerializedNode {
-  type: string;
+  type: 'g' | 'circle' | 'ellipse' | 'rect';
   attributes?: Record<CommonAttributeName, Shape[CommonAttributeName]> &
     Record<'transform', SerializedTransform> &
     Partial<Record<CircleAttributeName, Circle[CircleAttributeName]>> &
@@ -109,7 +113,9 @@ export function deserializeNode(data: SerializedNode): Shape {
   shape.transform.pivot.set(transform.pivot.x, transform.pivot.y);
 
   if (children && children.length > 0) {
-    shape.children = children.map(deserializeNode);
+    children.map(deserializeNode).forEach((child) => {
+      shape.appendChild(child);
+    });
   }
   return shape;
 }
@@ -150,4 +156,50 @@ export function serializeTransform(transform: Transform): SerializedTransform {
       y: transform.pivot.y,
     },
   };
+}
+
+export function toSVGElement(node: SerializedNode) {
+  const { type, attributes, children } = node;
+  const element = createSVGElement(type);
+  const {
+    transform,
+    visible,
+    cullable,
+    renderable,
+    batchable,
+    innerShadowBlurRadius,
+    innerShadowColor,
+    innerShadowOffsetX,
+    innerShadowOffsetY,
+    ...rest
+  } = attributes;
+  Object.entries(rest).forEach(([key, value]) => {
+    element.setAttribute(camelToKebabCase(key), `${value}`);
+  });
+
+  let $parentGroup = element;
+  if (children && children.length > 0) {
+    if (type !== 'g') {
+      $parentGroup = createSVGElement('g');
+      $parentGroup.appendChild(element);
+    }
+  }
+
+  // @see https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/visibility
+  $parentGroup.setAttribute('visibility', visible ? 'visible' : 'hidden');
+
+  $parentGroup.setAttribute(
+    'transform',
+    `matrix(${transform.scale.x},${transform.skew.x},${transform.skew.y},${transform.scale.y},${transform.position.x},${transform.position.y})`,
+  );
+  $parentGroup.setAttribute(
+    'transform-origin',
+    `${transform.pivot.x} ${transform.pivot.y}`,
+  );
+
+  children.map(toSVGElement).forEach((child) => {
+    $parentGroup.appendChild(child);
+  });
+
+  return element;
 }

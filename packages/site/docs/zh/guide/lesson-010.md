@@ -6,17 +6,17 @@ outline: deep
 
 图片导入导出在无限画布中是一个非常重要的功能，通过图片产物可以和其他工具打通。因此虽然目前我们的画布绘制能力还很有限，但不妨提前考虑和图片相关的问题。在这节课中你将学习到以下内容：
 
--   将画布内容导出成 PNG，JPEG 和 SVG 格式的图片
+-   将画布内容导出成 PNG，JPEG 和 SVG 格式的图片，并支持 PDF
+-   导入图片到画布中
 -   拓展 SVG 的能力，以 stroke 为例
--   导入图片
 
-## 导出图片
+## 导出图片 {#export-image}
 
 首先我们来看如何将画布内容导出成图片。[Export from Figma] 一文介绍了在 Figma 中如何通过切片工具将画布内容导出成包括 PNG 在内的多种格式图片。
 
 ![export from figma](https://help.figma.com/hc/article_attachments/24423129974679)
 
-一些图表库也提供了保存内容到图片的功能，下图来自 Highcharts，可以看到也提供了多种格式图片的导出功能，点击后会立刻触发浏览器的下载行为：
+一些基于 Canvas2D 实现的图表库也提供了保存内容到图片的功能，下图来自 Highcharts，可以看到也提供了多种格式图片的导出功能，点击后会立刻触发浏览器的下载行为：
 
 <img alt="exporter in highcharts" src="https://user-images.githubusercontent.com/3608471/174998577-df1c54e9-d981-4d82-a4aa-7f0bedfb11a1.png" width="300" />
 
@@ -46,7 +46,7 @@ exporter.downloadImage({
 
 但针对不同格式的图片略有差别，下面我们先介绍 PNG / JPEG 格式图片的导出方式。
 
-### 导出 PNG / JPEG
+### 导出 PNG / JPEG {#to-raster-image}
 
 [HTMLCanvasElement.toDataURL()] 可以获取画布内容对应的图片 [DataURI]，通过 `type` 参数可以指定图片格式，支持 PNG / JPEG 和 WebP。
 
@@ -111,7 +111,7 @@ $icCanvas = call(() => {
 
 ```js eval code=false inspector=false
 call(() => {
-    const { Canvas, Rect } = Lesson10;
+    const { Canvas, Circle } = Lesson10;
 
     const stats = new Stats();
     stats.showPanel(0);
@@ -126,27 +126,23 @@ call(() => {
     $icCanvas.addEventListener('ic-ready', (e) => {
         const canvas = e.detail;
 
-        for (let i = 0; i < 1000; i++) {
+        for (let i = 0; i < 100; i++) {
             const fill = `rgb(${Math.floor(Math.random() * 255)},${Math.floor(
                 Math.random() * 255,
             )},${Math.floor(Math.random() * 255)})`;
-            const rect = new Rect({
-                x: Math.random() * 1000,
-                y: Math.random() * 1000,
+            const circle = new Circle({
+                cx: Math.random() * 600,
+                cy: Math.random() * 400,
+                r: Math.random() * 40,
                 fill,
-                cornerRadius: 10,
             });
-            // rect.x = Math.random() * 1000;
-            // rect.y = Math.random() * 1000;
-            rect.width = Math.random() * 40;
-            rect.height = Math.random() * 40;
-            canvas.appendChild(rect);
+            canvas.appendChild(circle);
 
-            rect.addEventListener('pointerenter', () => {
-                rect.fill = 'red';
+            circle.addEventListener('pointerenter', () => {
+                circle.fill = 'red';
             });
-            rect.addEventListener('pointerleave', () => {
-                rect.fill = fill;
+            circle.addEventListener('pointerleave', () => {
+                circle.fill = fill;
             });
         }
     });
@@ -177,9 +173,9 @@ hooks.endFrame.tap(() => {
 });
 ```
 
-暂时我们没有使用到裁剪以及水印等后续加工相关的功能。由于实现类似 Figma 的“切片”功能需要配合框选交互，后续实现时会一同介绍。现在让我们回到另一种特殊格式的图片。
+另外可以选择导出图片是否包含 [网格]。暂时我们没有使用到裁剪以及水印等后续加工相关的功能。由于实现类似 Figma 的“切片”功能需要配合框选交互，后续实现时会一同介绍。现在让我们回到另一种特殊格式的图片。
 
-### 导出 SVG
+### 导出 SVG {#to-vector-image}
 
 相比位图，矢量图的优势体现在：
 
@@ -187,33 +183,113 @@ hooks.endFrame.tap(() => {
 -   可编辑性。SVG 是文本文件，可以使用任何文本编辑器进行编辑，便于修改图形的属性和样式。
 -   对于复杂图形具有更小的文件大小。
 
-因此设计工具一定都会提供对于这种格式的转换支持。对于我们的无限画布，可以将问题转换成：如何将场景图序列化。当然可以不局限于 SVG 格式，JSON 也可以一并支持。
+因此设计工具一定都会提供对于这种格式的转换支持。对于我们的无限画布，可以将问题转换成：**如何将场景图序列化**，包括其中每一个节点的绘制属性、变换等。至于序列化的格式，除了 JSON，由于我们的 2D 图形的绘制属性设计本身就大量参考 SVG 实现，因此导出成 SVG 就十分自然了。
 
-从场景图的根节点开始遍历，将每个节点格式化：
+有趣的是，在 Three.js 中也提供了 [toJSON] 对场景的当前状态（包括对象、变换、材质等）保存成 [JSON-Object-Scene-format-4]。甚至还包括一个 [SVGRenderer] 能在有限条件下（无复杂 shading、阴影）尽可能渲染 3D 图形。
+
+从场景图的根节点开始遍历，递归对子元素调用。对于 `transform` 这样拥有复杂结构值（`position/scale/rotation`）的属性需要进一步处理：
 
 ```ts
 function serializeNode(node: Shape): SerializedNode {
-    const data = { type: typeOfShape(node) };
+    const [type, attributes] = typeofShape(node);
+    const data: SerializedNode = {
+        type,
+        attributes,
+    };
+    data.attributes.transform = serializeTransform(node.transform);
     data.children = node.children.map(serializeNode);
     return data;
 }
 ```
 
-为画布增加序列化和反序列化方法：
+以下面的 Circle 为例，我们得到了它的序列化对象：
 
-```ts
-toJSON() {
-  return JSON.stringify(serializeNode(this.#root));
-}
-fromJSON(json: string) {
-  const data = JSON.parse(json);
-  this.#root = deserializeNode(data) as Group;
-}
+```js eval code=true
+serializedCircle = call(() => {
+    const { Circle, serializeNode } = Lesson10;
+    const circle = new Circle({
+        cx: 100,
+        cy: 100,
+        r: 50,
+        fill: 'red',
+    });
+    circle.transform.position.x = 100;
+    return serializeNode(circle);
+});
 ```
 
-当然事件监听器是无法被序列化的。
+通过反序列化方法就可以将它导入画布，`deserializeNode` 根据序列化节点的 `type` 属性创建对应图形，为绘图属性赋值：
 
-### 导出 PDF
+```js eval code=false inspector=false
+canvas2 = (async () => {
+    const { Canvas } = Lesson10;
+
+    const canvas = await Utils.createCanvas(Canvas, 200, 200);
+
+    let id;
+    const animate = () => {
+        canvas.render();
+        id = requestAnimationFrame(animate);
+    };
+    animate();
+
+    unsubscribe(() => {
+        cancelAnimationFrame(id);
+        canvas.destroy();
+    });
+
+    return canvas;
+})();
+```
+
+```js eval code=true
+call(() => {
+    const { deserializeNode } = Lesson10;
+    const circle = deserializeNode(serializedCircle);
+    canvas2.root.appendChild(circle);
+    return canvas2.getDOM();
+});
+```
+
+整个画布的序列化和反序列化方法只要对根节点应用即可，当然事件监听器是无法被序列化的：
+
+```ts
+const json = JSON.stringify(serializeNode(canvas.root)); // {}
+canvas.root = deserializeNode(JSON.parse(json)) as Group;
+```
+
+此时将序列化后的节点转换为 [SVG Element] 就很容易了，大部分属性例如 `fill / stroke / opacity` 都是 SVG 的同名属性，因此可以直接使用 [setAttribute] 进行赋值，但仍有一些特殊的属性需要特殊处理，例如：
+
+-   `transform` 需要将对象中的 `position / rotation / scale` 转换成 `matrix()`
+-   `transform-origin` 对应 `transform` 中的 `pivot` 属性
+-   `innerShadow` 并不存在 SVG 同名属性，需要使用 filter 实现。可参考 [Creating inner shadow in svg]
+
+下面的例子展示了一个序列化后的圆转换成 `<circle>` 的效果，为了能在 HTML 页面中展示需要嵌入 [\<svg\>] 中，它的尺寸和画布保持一致：
+
+```js eval code=true
+call(() => {
+    const { toSVGElement } = Lesson10;
+
+    const $circle = toSVGElement(serializedCircle);
+    const $svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    $svg.setAttribute('width', '200');
+    $svg.setAttribute('height', '200');
+    $svg.appendChild($circle);
+
+    return $svg;
+});
+```
+
+最后还有一点需要注意，在我们的场景图中任意图形都可以添加子节点，但 SVG 中只有 `<g>` 才可以添加子元素，`<circle>` 是无法拥有子元素的。解决办法也很简单，对于拥有子节点的非 Group 元素，生成 SVG 时在外面套一个 `<g>`，将原本应用在本身的 `transform` 应用在它上面。假设后续我们支持了渲染文本，一个拥有文本子节点的 Circle 对应的 SVG 如下：
+
+```svg
+<g transform="matrix(1,0,0,0,1,0)">
+    <circle cx="100" cy="100" r="100" fill="red" />
+    <text />
+</g>
+```
+
+### 导出 PDF {#to-pdf}
 
 ## 渲染图片
 
@@ -242,3 +318,12 @@ Figma 中的 Stroke 取值包括 `Center / Inside / Outside`
 [SwapChain]: /zh/guide/lesson-001#swapchain
 [使用 Lit 和 Shoelace 开发 Web UI]: /zh/guide/lesson-007
 [插件系统]: /zh/guide/lesson-001#plugin-based-architecture
+[SVGRenderer]: https://threejs.org/docs/#examples/en/renderers/SVGRenderer
+[toJSON]: https://threejs.org/docs/#api/en/core/Object3D.toJSON
+[JSON-Object-Scene-format-4]: https://github.com/mrdoob/three.js/wiki/JSON-Object-Scene-format-4
+[网格]: /zh/guide/lesson-005
+[SVG Element]: https://developer.mozilla.org/en-US/docs/Web/SVG/Element
+[\<svg\>]: https://developer.mozilla.org/en-US/docs/Web/SVG/Element/svg
+[setAttribute]: https://developer.mozilla.org/en-US/docs/Web/API/Element/setAttribute
+[Creating inner shadow in svg]: https://stackoverflow.com/questions/69799051/creating-inner-shadow-in-svg
+[jsPDF]: https://github.com/parallax/jsPDF

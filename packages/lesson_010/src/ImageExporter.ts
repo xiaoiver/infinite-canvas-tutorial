@@ -1,6 +1,6 @@
 import { Rectangle } from '@pixi/math';
 import { Canvas } from './Canvas';
-import { createSVGElement, serializeNode } from './utils';
+import { createSVGElement, serializeNode, toSVGElement } from './utils';
 
 export type DataURLType =
   | 'image/png'
@@ -100,11 +100,10 @@ export class ImageExporter {
     const { canvas } = this.options;
     const { width, height } = canvas.getDOM();
 
-    console.log(serializeNode(canvas.root));
-
     const $namespace = createSVGElement('svg');
     $namespace.setAttribute('width', `${width}`);
     $namespace.setAttribute('height', `${height}`);
+    $namespace.appendChild(toSVGElement(serializeNode(canvas.root)));
 
     const svgDocType = document.implementation.createDocumentType(
       'svg',

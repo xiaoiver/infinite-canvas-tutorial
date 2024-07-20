@@ -29,12 +29,14 @@ export class Exporter extends LitElement {
       this.addEventListener('sl-select', async (event: MouseEvent) => {
         const selectedItem = (event.detail as any).item;
         let dataURL: string;
-        if (selectedItem.value === 'download-image-png') {
+        if (
+          selectedItem.value === 'download-image-png' ||
+          selectedItem.value === 'download-image-jpeg'
+        ) {
           const canvas = await this.exporter.toCanvas();
-          dataURL = canvas.toDataURL();
-        } else if (selectedItem.value === 'download-image-jpeg') {
-          const canvas = await this.exporter.toCanvas();
-          dataURL = canvas.toDataURL('image/jpeg');
+          dataURL = canvas.toDataURL(
+            `image/${selectedItem.value.split('-').reverse()[0]}`,
+          ); // png / jpeg
         } else if (selectedItem.value === 'download-image-svg') {
           dataURL = this.exporter.toSVGDataURL();
         }
