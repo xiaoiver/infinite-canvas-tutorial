@@ -40,8 +40,12 @@ export interface IRenderable {
   /**
    * It's a presentation attribute that defines the color used to paint the element.
    * @see https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/fill
+   *
+   * Enhanced with the following features:
+   * * base64 image is also supported.
+   * * HTMLImageElement is also supported.
    */
-  fill: string;
+  fill: string | HTMLImageElement;
 
   /**
    * It is a presentation attribute defining the color used to paint the outline of the shape.
@@ -141,7 +145,7 @@ export function Renderable<TBase extends GConstructor>(Base: TBase) {
     boundsDirtyFlag = true;
     globalRenderOrder: number;
 
-    #fill: string;
+    #fill: string | HTMLImageElement;
     #fillRGB: d3.RGBColor;
     #stroke: string;
     #strokeRGB: d3.RGBColor;
@@ -214,10 +218,19 @@ export function Renderable<TBase extends GConstructor>(Base: TBase) {
     get fill() {
       return this.#fill;
     }
-    set fill(fill: string) {
+    set fill(fill: string | HTMLImageElement) {
       if (this.#fill !== fill) {
         this.#fill = fill;
-        this.#fillRGB = d3.rgb(fill);
+
+        if (fill instanceof HTMLImageElement) {
+          if (!fill.complete) {
+            fill.onload = () => {
+              this.renderDirtyFlag = true;
+            };
+          }
+        } else {
+          this.#fillRGB = d3.rgb(fill);
+        }
         this.renderDirtyFlag = true;
       }
     }

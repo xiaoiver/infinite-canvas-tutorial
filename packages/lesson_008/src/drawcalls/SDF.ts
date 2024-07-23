@@ -79,12 +79,19 @@ export class SDF extends Drawcall {
       this.#inputLayout.destroy();
       this.#pipeline.destroy();
     }
+
+    const diagnosticDerivativeUniformityHeader =
+      this.device.queryVendorInfo().platformString === 'WebGPU'
+        ? 'diagnostic(off,derivative_uniformity);'
+        : '';
+
     this.#program = this.device.createProgram({
       vertex: {
         glsl: defines + vert,
       },
       fragment: {
         glsl: defines + frag,
+        postprocess: (fs) => diagnosticDerivativeUniformityHeader + fs,
       },
     });
 

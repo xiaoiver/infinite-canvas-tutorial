@@ -290,8 +290,14 @@ importers:
         specifier: ^1.6.12
         version: 1.6.12
       '@lit/context':
-        specifier: latest
+        specifier: ^1.1.2
         version: 1.1.2
+      '@loaders.gl/core':
+        specifier: ^4.2.2
+        version: 4.2.2
+      '@loaders.gl/images':
+        specifier: ^4.2.2
+        version: 4.2.2(@loaders.gl/core@4.2.2)
       '@pixi/math':
         specifier: ^7.4.2
         version: 7.4.2
@@ -784,6 +790,29 @@ packages:
   '@lit/reactive-element@2.0.4':
     resolution: {integrity: sha512-GFn91inaUa2oHLak8awSIigYz0cU0Payr1rcFsrkf5OJ5eSPxElyZfKh0f2p9FsTiZWXQdWGJeXZICEfXXYSXQ==}
 
+  '@loaders.gl/core@4.2.2':
+    resolution: {integrity: sha512-d3YElSsqL29MaiOwzGB97v994SPotbTvJnooCqoQsYGoYYrECdIetv1/zlfDsh5UB2Wl/NaUMJrzyOqlLmDz5Q==}
+
+  '@loaders.gl/images@4.2.2':
+    resolution: {integrity: sha512-R53rkexvVT0i4YXt++r8gLq3reB6kWTLvdJL81J3R4YJbM5+kNSe40jJOA94LFYlsTN+oirF4lkLTe5YXGZPYQ==}
+    peerDependencies:
+      '@loaders.gl/core': ^4.0.0
+
+  '@loaders.gl/loader-utils@4.2.2':
+    resolution: {integrity: sha512-5udJQhFx1KNIcRBYkFMi8QZitAsK+m3PkZ9GejM8VpOSsJUHD2Yal3wBHOPTRsOjQ0zXG/nqM7BHOojjeetNTg==}
+    peerDependencies:
+      '@loaders.gl/core': ^4.0.0
+
+  '@loaders.gl/schema@4.2.2':
+    resolution: {integrity: sha512-vrQ6vlGWWptJXDP1DrL5x/j70xmyt2l36QZcGyDYptrohTGvQLc3yrOEHuD5v96fXX5WR619pT3zSYhuf1FnIg==}
+    peerDependencies:
+      '@loaders.gl/core': ^4.0.0
+
+  '@loaders.gl/worker-utils@4.2.2':
+    resolution: {integrity: sha512-7Ad83VS/PmS0T3LXo+LB6cq5oHhAUW3GvYWizm4OfeuBDQRtYK7iRehgC13/BomkNtWIn0y7iAphlQMVrNdvhQ==}
+    peerDependencies:
+      '@loaders.gl/core': ^4.0.0
+
   '@nodelib/fs.scandir@2.1.5':
     resolution: {integrity: sha512-vq24Bq3ym5HEQm2NKCr3yXDwjc7vTsEThRDnkp2DK9p1uqLR+DHurm/NOTo0KG7HYHU7eppKZj3MyqYuMBf62g==}
     engines: {node: '>= 8'}
@@ -805,6 +834,15 @@ packages:
 
   '@pixi/math@7.4.2':
     resolution: {integrity: sha512-7jHmCQoYk6e0rfSKjdNFOPl0wCcdgoraxgteXJTTHv3r0bMNx2pHD9FJ0VvocEUG7XHfj55O3+u7yItOAx0JaQ==}
+
+  '@probe.gl/env@4.0.9':
+    resolution: {integrity: sha512-AOmVMD0/j78mX+k4+qX7ZhE0sY9H+EaJgIO6trik0BwV6VcrwxTGCGFAeuRsIGhETDnye06tkLXccYatYxAYwQ==}
+
+  '@probe.gl/log@4.0.9':
+    resolution: {integrity: sha512-ebuZaodSRE9aC+3bVC7cKRHT8garXeT1jTbj1R5tQRqQYc9iGeT3iemVOHx5bN9Q6gAs/0j54iPI+1DvWMAW4A==}
+
+  '@probe.gl/stats@4.0.9':
+    resolution: {integrity: sha512-Q9Xt/sJUQaMsbjRKjOscv2t7wXIymTrOEJ4a3da4FTCn7bkKvcdxdyFAQySCrtPxE+YZ5I5lXpWPgv9BwmpE1g==}
 
   '@rollup/rollup-android-arm-eabi@4.16.4':
     resolution: {integrity: sha512-GkhjAaQ8oUTOKE4g4gsZ0u8K/IHU1+2WQSgS1TwTcYvL+sjbaQjNHFXbOJ6kgqGHIO1DfUhI/Sphi9GkRT9K+Q==}
@@ -910,6 +948,9 @@ packages:
 
   '@types/estree@1.0.5':
     resolution: {integrity: sha512-/kYRxGDLWzHOB7q+wtSUQlFrtcdUccpfy+X+9iMBpHK8QLLhx2wIPYuS5DYtR9Wa/YlZAbIovy7qVdB1Aq6Lyw==}
+
+  '@types/geojson@7946.0.14':
+    resolution: {integrity: sha512-WCfD5Ht3ZesJUsONdhvm84dmzWOiOzOAqOncN0++w0lBw1o8OuDNJF2McvvCef/yBqb/HYRahp1BYtODFQ8bRg==}
 
   '@types/gl-matrix@3.2.0':
     resolution: {integrity: sha512-CY4JAtSOGQX7rVgqVuOk7ZfaLv8VeadDMPj3smMOy8Hp/YiHONa3Mr0mEUgbo0eEwV7+Owpf6BwspcA7hv4NXg==}
@@ -3337,6 +3378,34 @@ snapshots:
     dependencies:
       '@lit-labs/ssr-dom-shim': 1.2.0
 
+  '@loaders.gl/core@4.2.2':
+    dependencies:
+      '@loaders.gl/loader-utils': 4.2.2(@loaders.gl/core@4.2.2)
+      '@loaders.gl/schema': 4.2.2(@loaders.gl/core@4.2.2)
+      '@loaders.gl/worker-utils': 4.2.2(@loaders.gl/core@4.2.2)
+      '@probe.gl/log': 4.0.9
+
+  '@loaders.gl/images@4.2.2(@loaders.gl/core@4.2.2)':
+    dependencies:
+      '@loaders.gl/core': 4.2.2
+      '@loaders.gl/loader-utils': 4.2.2(@loaders.gl/core@4.2.2)
+
+  '@loaders.gl/loader-utils@4.2.2(@loaders.gl/core@4.2.2)':
+    dependencies:
+      '@loaders.gl/core': 4.2.2
+      '@loaders.gl/schema': 4.2.2(@loaders.gl/core@4.2.2)
+      '@loaders.gl/worker-utils': 4.2.2(@loaders.gl/core@4.2.2)
+      '@probe.gl/stats': 4.0.9
+
+  '@loaders.gl/schema@4.2.2(@loaders.gl/core@4.2.2)':
+    dependencies:
+      '@loaders.gl/core': 4.2.2
+      '@types/geojson': 7946.0.14
+
+  '@loaders.gl/worker-utils@4.2.2(@loaders.gl/core@4.2.2)':
+    dependencies:
+      '@loaders.gl/core': 4.2.2
+
   '@nodelib/fs.scandir@2.1.5':
     dependencies:
       '@nodelib/fs.stat': 2.0.5
@@ -3359,6 +3428,14 @@ snapshots:
       isoformat: 0.2.1
 
   '@pixi/math@7.4.2': {}
+
+  '@probe.gl/env@4.0.9': {}
+
+  '@probe.gl/log@4.0.9':
+    dependencies:
+      '@probe.gl/env': 4.0.9
+
+  '@probe.gl/stats@4.0.9': {}
 
   '@rollup/rollup-android-arm-eabi@4.16.4':
     optional: true
@@ -3435,6 +3512,8 @@ snapshots:
   '@types/d3-color@3.1.0': {}
 
   '@types/estree@1.0.5': {}
+
+  '@types/geojson@7946.0.14': {}
 
   '@types/gl-matrix@3.2.0':
     dependencies:

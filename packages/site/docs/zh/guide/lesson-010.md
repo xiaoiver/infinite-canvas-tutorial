@@ -7,10 +7,10 @@ outline: deep
 图片导入导出在无限画布中是一个非常重要的功能，通过图片产物可以和其他工具打通。因此虽然目前我们的画布绘制能力还很有限，但不妨提前考虑和图片相关的问题。在这节课中你将学习到以下内容：
 
 -   将画布内容导出成 PNG，JPEG 和 SVG 格式的图片，并支持 PDF
--   导入图片到画布中
+-   在画布中渲染图片
 -   拓展 SVG 的能力，以 stroke 为例
 
-## 导出图片 {#export-image}
+## 将画布内容导出成图片 {#export-image}
 
 首先我们来看如何将画布内容导出成图片。[Export from Figma] 一文介绍了在 Figma 中如何通过切片工具将画布内容导出成包括 PNG 在内的多种格式图片。
 
@@ -282,7 +282,7 @@ call(() => {
 
 最后还有一点需要注意，在我们的场景图中任意图形都可以添加子节点，但 SVG 中只有 `<g>` 才可以添加子元素，`<circle>` 是无法拥有子元素的。解决办法也很简单，对于拥有子节点的非 Group 元素，生成 SVG 时在外面套一个 `<g>`，将原本应用在本身的 `transform` 应用在它上面。假设后续我们支持了渲染文本，一个拥有文本子节点的 Circle 对应的 SVG 如下：
 
-```svg
+```html
 <g transform="matrix(1,0,0,0,1,0)">
     <circle cx="100" cy="100" r="100" fill="red" />
     <text />
@@ -291,11 +291,98 @@ call(() => {
 
 ### 导出 PDF {#to-pdf}
 
-## 渲染图片
+现在像素和矢量图都有了，如果还想导出成 PDF 可以使用 [jsPDF]，它提供了添加图片的 API，限于篇幅这里就不介绍了。
 
-## Enhanced SVG: Stroke alignment
+下面让我们来看另一个话题，如何在画布中渲染一张图片。
 
-最后我们来引入一个有趣的话题。
+## 在画布中渲染图片 {#render-image}
+
+在 WebGL / WebGPU 中通常需要加载图片并将其作为纹理使用，由于加载不同类型的资源是一个复杂的异步过程，大部分渲染引擎都会提供一个资源加载器。通常还会支持除不同类型图片之外的其他数据类型，例如音频、JSON、glTF 等。下面是 [PIXI Assets] 的使用例子：
+
+```ts
+import { Sprite, Assets } from 'pixi.js';
+// load the texture we need
+const texture = await Assets.load('bunny.png');
+
+// This creates a texture from a 'bunny.png' image
+const bunny = new Sprite(texture);
+```
+
+那么如何实现一个资源加载器呢？
+
+### 图片加载器 {#image-loader}
+
+[loaders.gl] 针对不同类型的资源提供了一系列加载器，例如：
+
+-   可视化应用中常用的 JSON、CSV、GeoJSON、地理信息瓦片等
+-   3D 模型格式例如 glTF 等
+-   各种压缩纹理格式，使用 [CompressedTextureLoader] 在 WebWorker 中进行加载解析
+
+这些加载器为上层应用的开发提供了极大便利，我们可以直接使用 [ImageLoader]，它支持这些图片格式：PNG, JPEG, GIF, WEBP, AVIF, BMP, SVG。使用方式如下，这里也能看出 [loaders.gl] 的设计思路，`@loaders.gl/core` 保证了 API 调用方式的统一以及不同类型加载器的可扩展性：
+
+```ts
+import { ImageLoader } from '@loaders.gl/images';
+import { load } from '@loaders.gl/core';
+
+const image = await load(url, ImageLoader, options);
+```
+
+### API 设计 {#image-api}
+
+回到我们的 API 设计部分，我们当然可以仿照之前的 Circle / Ellipse / Rect 为图片新增一种图形，对应 SVG 的 [\<image\>]：
+
+```ts
+const image = new Image({
+    x: 0,
+    y: 0,
+    width: 100,
+    height: 100,
+    src: 'data:image...',
+});
+```
+
+但仔细想想 Image 应该拥有 Rect 的全部能力，例如描边、圆角、阴影等等。有趣的是在 Figma 中如果我们选择向画布中插入一张原尺寸 1920 \* 1920 的图片并导出成 SVG，会得到一个 `<rect>` 元素，它的结构如下（省略部分属性值），`fill` 属性引用了一个 [\<pattern\>]，间接使用了图片平铺填充：
+
+```html
+<svg>
+    <rect width="500" height="500" fill="url(#pattern0_2442_3)" />
+    <defs>
+        <pattern id="pattern0_2442_3">
+            <use xlink:href="#image0_2442_3"
+            <!-- 0.000520833 = 1 / 1920 -->
+            transform="matrix(0.000520833 0 0 0.000527058 0 -0.0059761)" />
+        </pattern>
+        <image
+            id="image0_2442_3"
+            width="1920"
+            height="1920"
+            xlink:href="data:image/png;base64,iVBO..."
+        />
+    </defs>
+</svg>
+```
+
+这给了我们一点启发，图片没必要以图形的形式单独存在，只要其他图形的 `fill` 属性支持贴图就好了，这样 Circle / Rect 等都可以使用图片作为填充。试想我们需要实现一个带描边的圆形图标需求，按照原本的设计需要一个 Image 图形搭配类似 [\<clipPath\>] 才能实现，现在只需要在已有 Circle 图形上填充图片：
+
+```ts
+circle.fill = image;
+circle.stroke = 'black';
+```
+
+### 实现 {#implementation}
+
+因此第一步
+
+```ts
+export interface IRenderable {
+    fill: string; // [!code --]
+    fill: string | HTMLImageElement; // [!code ++]
+}
+```
+
+## 增强 SVG: Stroke alignment {#stroke-alignment}
+
+最后我们来引入一个有趣的话题。我们可以实现目前 SVG 规范还不支持的特性。
 
 `opacity` `stroke-opacity` 和 `fill-opacity` 的区别：
 
@@ -324,6 +411,13 @@ Figma 中的 Stroke 取值包括 `Center / Inside / Outside`
 [网格]: /zh/guide/lesson-005
 [SVG Element]: https://developer.mozilla.org/en-US/docs/Web/SVG/Element
 [\<svg\>]: https://developer.mozilla.org/en-US/docs/Web/SVG/Element/svg
+[\<image\>]: https://developer.mozilla.org/en-US/docs/Web/SVG/Element/image
+[\<pattern\>]: https://developer.mozilla.org/en-US/docs/Web/SVG/Element/pattern
+[\<clipPath\>]: https://developer.mozilla.org/en-US/docs/Web/SVG/Element/clipPath
 [setAttribute]: https://developer.mozilla.org/en-US/docs/Web/API/Element/setAttribute
 [Creating inner shadow in svg]: https://stackoverflow.com/questions/69799051/creating-inner-shadow-in-svg
 [jsPDF]: https://github.com/parallax/jsPDF
+[loaders.gl]: https://github.com/visgl/loaders.gl
+[ImageLoader]: https://loaders.gl/docs/modules/images/api-reference/image-loader
+[CompressedTextureLoader]: https://loaders.gl/docs/modules/textures/api-reference/compressed-texture-loader
+[PIXI Assets]: https://pixijs.download/release/docs/assets.html

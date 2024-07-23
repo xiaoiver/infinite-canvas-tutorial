@@ -98,7 +98,7 @@ float sdf_rounded_box(vec2 p, vec2 b, float r) {
 }
 ```
 
-Referencing Figma's naming, we use `cornerRadius`, but SDF alone cannot achieve the `smoothing` effect, see [Adjust corner radius and smoothing] for details. In addition, it is also possible to support different corner radii for each corner, refer to [Zed Blade WGSL], which is a Shader written by Zed based on [blade] renderer, using WGSL syntax.
+Referencing Figma's naming, we use `cornerRadius`, but SDF alone cannot achieve the `smoothing` effect, see [Adjust corner radius and smoothing] and [Desperately seeking squircles] for details. In addition, it is also possible to support different corner radii for each corner, refer to [Zed Blade WGSL], which is a Shader written by Zed based on [blade] renderer, using WGSL syntax.
 
 ```js eval code=false
 $icCanvas2 = call(() => {
@@ -808,6 +808,7 @@ function isPointInRoundedRectangle(
     Hyperellipsoid]
 -   [Fast Rounded Rectangle Shadows]
 -   [Blurred rounded rectangles]
+-   [Desperately seeking squircles]
 
 [Lesson 2]: /guide/lesson-002
 [2D distance functions]: https://iquilezles.org/articles/distfunctions2d/
@@ -839,3 +840,4 @@ function isPointInRoundedRectangle(
 [tailwindcss - Drop Shadow]: https://tailwindcss.com/docs/drop-shadow
 [Drop shadow of rounded rect]: https://www.shadertoy.com/view/NtVSW1
 [Inner shadow of rounded rect]: https://www.shadertoy.com/view/mssGzn
+[Desperately seeking squircles]: https://www.figma.com/blog/desperately-seeking-squircles/

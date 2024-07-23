@@ -98,7 +98,7 @@ float sdf_rounded_box(vec2 p, vec2 b, float r) {
 }
 ```
 
-参考 Figma 的命名我们使用 `cornerRadius`，但仅凭 SDF 无法实现 `smoothing` 效果，详见 [Adjust corner radius and smoothing]。另外也可以支持四个角不同的圆角半径，可以参考 [Zed Blade WGSL]，这是 Zed 基于 [blade] 渲染器编写的 Shader，使用 WGSL 语法。
+参考 Figma 的命名我们使用 `cornerRadius`，但仅凭 SDF 无法实现 `smoothing` 效果，详见 [Adjust corner radius and smoothing] 和 [Desperately seeking squircles]。另外也可以支持四个角不同的圆角半径，可以参考 [Zed Blade WGSL]，这是 Zed 基于 [blade] 渲染器编写的 Shader，使用 WGSL 语法。
 
 ```js eval code=false
 $icCanvas2 = call(() => {
@@ -810,6 +810,7 @@ function isPointInRoundedRectangle(
     Hyperellipsoid]
 -   [Fast Rounded Rectangle Shadows]
 -   [Blurred rounded rectangles]
+-   [Desperately seeking squircles]
 
 [课程 2]: /zh/guide/lesson-002
 [2D distance functions]: https://iquilezles.org/articles/distfunctions2d/
@@ -841,3 +842,4 @@ function isPointInRoundedRectangle(
 [tailwindcss - Drop Shadow]: https://tailwindcss.com/docs/drop-shadow
 [Drop shadow of rounded rect]: https://www.shadertoy.com/view/NtVSW1
 [Inner shadow of rounded rect]: https://www.shadertoy.com/view/mssGzn
+[Desperately seeking squircles]: https://www.figma.com/blog/desperately-seeking-squircles/
