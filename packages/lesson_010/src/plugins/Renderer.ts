@@ -185,7 +185,14 @@ export class Renderer implements Plugin {
       });
 
       this.#renderPass.setViewport(0, 0, width, height);
-      this.#grid.render(this.#device, this.#renderPass, this.#uniformBuffer);
+
+      if (
+        !this.#enableCapture ||
+        (this.#enableCapture && this.#captureOptions.grids)
+      ) {
+        this.#grid.render(this.#device, this.#renderPass, this.#uniformBuffer);
+      }
+
       this.#batchManager.clear();
       this.#zIndexCounter = 1;
     });

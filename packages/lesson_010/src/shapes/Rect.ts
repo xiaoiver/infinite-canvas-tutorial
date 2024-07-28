@@ -1,5 +1,10 @@
 import * as d3 from 'd3-color';
-import { Shape, ShapeAttributes, isFillOrStrokeAffected } from './Shape';
+import {
+  Shape,
+  ShapeAttributes,
+  isFillOrStrokeAffected,
+  strokeOffset,
+} from './Shape';
 import { AABB } from './AABB';
 
 export interface RectAttributes extends ShapeAttributes {
@@ -200,8 +205,9 @@ export class Rect extends Shape implements RectAttributes {
   }
 
   containsPoint(xx: number, yy: number) {
-    const { x, y, width, height, strokeWidth, cornerRadius } = this;
-    const halfLineWidth = strokeWidth / 2;
+    const { x, y, width, height, strokeWidth, strokeAlignment, cornerRadius } =
+      this;
+    const offset = strokeOffset(strokeAlignment, strokeWidth);
     const [hasFill, hasStroke] = isFillOrStrokeAffected(
       this.pointerEvents,
       this.dropShadowColor,
@@ -212,10 +218,10 @@ export class Rect extends Shape implements RectAttributes {
       return isPointInRoundedRectangle(
         xx,
         yy,
-        x - halfLineWidth,
-        y - halfLineWidth,
-        x + width + halfLineWidth,
-        y + height + halfLineWidth,
+        x - offset,
+        y - offset,
+        x + width + offset,
+        y + height + offset,
         cornerRadius,
       );
     }
@@ -231,23 +237,24 @@ export class Rect extends Shape implements RectAttributes {
       );
     }
     if (hasStroke) {
+      const inner = offset - strokeWidth;
       return (
         !isPointInRoundedRectangle(
           xx,
           yy,
-          x + halfLineWidth,
-          y + halfLineWidth,
-          x + width - halfLineWidth,
-          y + height - halfLineWidth,
+          x - inner,
+          y - inner,
+          x + width + inner,
+          y + height + inner,
           cornerRadius,
         ) &&
         isPointInRoundedRectangle(
           xx,
           yy,
-          x - halfLineWidth,
-          y - halfLineWidth,
-          x + width + halfLineWidth,
-          y + height + halfLineWidth,
+          x - offset,
+          y - offset,
+          x + width + offset,
+          y + height + offset,
           cornerRadius,
         )
       );
@@ -258,22 +265,23 @@ export class Rect extends Shape implements RectAttributes {
   getRenderBounds() {
     if (this.renderBoundsDirtyFlag) {
       const {
-        strokeWidth,
         x,
         y,
         width,
         height,
+        strokeWidth,
+        strokeAlignment,
         dropShadowOffsetX,
         dropShadowOffsetY,
         dropShadowBlurRadius,
       } = this;
-      const halfLineWidth = strokeWidth / 2;
+      const offset = strokeOffset(strokeAlignment, strokeWidth);
       this.renderBoundsDirtyFlag = false;
       this.renderBounds = new AABB(
-        x - halfLineWidth,
-        y - halfLineWidth,
-        x + width + halfLineWidth,
-        y + height + halfLineWidth,
+        x - offset,
+        y - offset,
+        x + width + offset,
+        y + height + offset,
       );
       this.renderBounds.addBounds(
         new AABB(

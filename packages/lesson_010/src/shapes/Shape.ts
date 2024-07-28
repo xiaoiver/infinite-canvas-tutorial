@@ -180,9 +180,22 @@ function updateTransformBackwards(target: Shape, parentTransform: Matrix) {
   return parentTransform;
 }
 
+export function strokeOffset(
+  strokeAlignment: 'center' | 'inner' | 'outer',
+  strokeWidth: number,
+) {
+  if (strokeAlignment === 'center') {
+    return strokeWidth / 2;
+  } else if (strokeAlignment === 'inner') {
+    return 0;
+  } else if (strokeAlignment === 'outer') {
+    return strokeWidth;
+  }
+}
+
 export function isFillOrStrokeAffected(
   pointerEvents: PointerEvents,
-  fill: string,
+  fill: string | TexImageSource,
   stroke: string,
 ): [boolean, boolean] {
   let hasFill = false;

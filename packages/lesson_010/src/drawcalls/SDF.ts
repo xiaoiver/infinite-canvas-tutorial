@@ -13,15 +13,25 @@ import {
   VertexStepMode,
   Program,
   CompareFunction,
+  TextureUsage,
+  BindingsDescriptor,
+  AddressMode,
+  FilterMode,
+  MipmapFilterMode,
+  TransparentBlack,
 } from '@antv/g-device-api';
 import { Circle, Ellipse, Rect, Shape } from '../shapes';
 import { Drawcall, ZINDEX_FACTOR } from './Drawcall';
 import { vert, frag } from '../shaders/sdf';
-import { paddingMat3 } from '../utils';
+import { isImageBitmapOrCanvases, isString, paddingMat3 } from '../utils';
+
+const strokeAlignmentMap = {
+  center: 0,
+  inner: 1,
+  outer: 2,
+} as const;
 
 export class SDF extends Drawcall {
-  // protected maxInstances = 5000;
-
   #program: Program;
   #fragUnitBuffer: Buffer;
   #instancedBuffer: Buffer;
@@ -31,6 +41,10 @@ export class SDF extends Drawcall {
   #pipeline: RenderPipeline;
   #inputLayout: InputLayout;
   #bindings: Bindings;
+
+  validate(shape: Shape) {
+    return super.validate(shape);
+  }
 
   createGeometry(): void {
     if (!this.#fragUnitBuffer) {
@@ -85,7 +99,7 @@ export class SDF extends Drawcall {
         ? 'diagnostic(off,derivative_uniformity);'
         : '';
 
-    this.#program = this.device.createProgram({
+    this.#program = this.renderCache.createProgram({
       vertex: {
         glsl: defines + vert,
       },
@@ -169,13 +183,13 @@ export class SDF extends Drawcall {
           ],
         },
       );
-      this.#inputLayout = this.device.createInputLayout({
+      this.#inputLayout = this.renderCache.createInputLayout({
         vertexBufferDescriptors,
         indexBufferFormat: Format.U32_R,
         program: this.#program,
       });
     } else {
-      this.#inputLayout = this.device.createInputLayout({
+      this.#inputLayout = this.renderCache.createInputLayout({
         vertexBufferDescriptors,
         indexBufferFormat: Format.U32_R,
         program: this.#program,
@@ -190,7 +204,7 @@ export class SDF extends Drawcall {
       }
     }
 
-    this.#pipeline = this.device.createRenderPipeline({
+    this.#pipeline = this.renderCache.createRenderPipeline({
       inputLayout: this.#inputLayout,
       program: this.#program,
       colorAttachmentFormats: [Format.U8_RGBA_RT],
@@ -211,33 +225,61 @@ export class SDF extends Drawcall {
             },
           },
         ],
+        blendConstant: TransparentBlack,
         depthWrite: true,
         depthCompare: CompareFunction.GREATER,
+        stencilWrite: false,
+        stencilFront: {
+          compare: CompareFunction.ALWAYS,
+        },
+        stencilBack: {
+          compare: CompareFunction.ALWAYS,
+        },
       },
     });
 
-    if (this.instanced) {
-      this.#bindings = this.device.createBindings({
-        pipeline: this.#pipeline,
-        uniformBufferBindings: [
-          {
-            buffer: uniformBuffer,
-          },
-        ],
-      });
-    } else {
-      this.#bindings = this.device.createBindings({
-        pipeline: this.#pipeline,
-        uniformBufferBindings: [
-          {
-            buffer: uniformBuffer,
-          },
-          {
-            buffer: this.#uniformBuffer,
-          },
-        ],
+    const bindings: BindingsDescriptor = {
+      pipeline: this.#pipeline,
+      uniformBufferBindings: [
+        {
+          buffer: uniformBuffer,
+        },
+      ],
+    };
+    if (!this.instanced) {
+      bindings.uniformBufferBindings.push({
+        buffer: this.#uniformBuffer,
       });
     }
+
+    const { fill } = this.shapes[0];
+    // TODO: Canvas Gradient
+    if (!isString(fill) && isImageBitmapOrCanvases(fill)) {
+      const texture = this.device.createTexture({
+        format: Format.U8_RGBA_NORM,
+        width: fill.width,
+        height: fill.height,
+        usage: TextureUsage.SAMPLED,
+      });
+      texture.setImageData([fill]);
+      const sampler = this.renderCache.createSampler({
+        addressModeU: AddressMode.CLAMP_TO_EDGE,
+        addressModeV: AddressMode.CLAMP_TO_EDGE,
+        minFilter: FilterMode.POINT,
+        magFilter: FilterMode.BILINEAR,
+        mipmapFilter: MipmapFilterMode.LINEAR,
+        lodMinClamp: 0,
+        lodMaxClamp: 0,
+      });
+      bindings.samplerBindings = [
+        {
+          texture,
+          sampler,
+        },
+      ];
+    }
+
+    this.#bindings = this.renderCache.createBindings(bindings);
   }
 
   render(renderPass: RenderPass) {
@@ -324,9 +366,10 @@ export class SDF extends Drawcall {
 
   private generateBuffer(shape: Shape) {
     const {
-      fillRGB: { r: fr, g: fg, b: fb, opacity: fo },
+      fillRGB,
       strokeRGB: { r: sr, g: sg, b: sb, opacity: so },
       strokeWidth,
+      strokeAlignment,
       opacity,
       fillOpacity,
       strokeOpacity,
@@ -354,6 +397,8 @@ export class SDF extends Drawcall {
       cornerRadius = r;
     }
 
+    const { r: fr, g: fg, b: fb, opacity: fo } = fillRGB || {};
+
     return [
       ...size,
       fr / 255,
@@ -367,7 +412,7 @@ export class SDF extends Drawcall {
       shape.globalRenderOrder / ZINDEX_FACTOR,
       strokeWidth,
       cornerRadius,
-      0,
+      strokeAlignmentMap[strokeAlignment],
       opacity,
       fillOpacity,
       strokeOpacity,
@@ -379,7 +424,7 @@ export class SDF extends Drawcall {
       innerShadowOffsetX,
       innerShadowOffsetY,
       innerShadowBlurRadius,
-      0,
+      fillRGB ? 0 : 1,
     ];
   }
 }

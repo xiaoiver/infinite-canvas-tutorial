@@ -1,6 +1,7 @@
 import { Buffer, Device, RenderPass } from '@antv/g-device-api';
 import { Drawcall, SDF, ShadowRect } from '.';
 import { Circle, Ellipse, Rect, type Shape } from '../shapes';
+import { RenderCache } from '../utils/render-cache';
 
 /**
  * Since a shape may have multiple drawcalls, we need to cache them and maintain an 1-to-many relationship.
@@ -31,13 +32,21 @@ export class BatchManager {
 
   #instancesCache = new WeakMap<typeof Shape, Drawcall[][]>();
 
-  constructor(private device: Device) {}
+  #renderCache: RenderCache;
+
+  constructor(private device: Device) {
+    this.#renderCache = new RenderCache(device);
+  }
 
   private createDrawcalls(shape: Shape, instanced = false) {
     return SHAPE_DRAWCALL_CTORS.get(shape.constructor as typeof Shape)?.map(
       (DrawcallCtor) => {
         // @ts-ignore
-        const drawcall = new DrawcallCtor(this.device, instanced);
+        const drawcall = new DrawcallCtor(
+          this.device,
+          this.#renderCache,
+          instanced,
+        );
         drawcall.add(shape);
         return drawcall;
       },
@@ -65,7 +74,7 @@ export class BatchManager {
       }
 
       existed = instancedDrawcalls.find((drawcalls) =>
-        drawcalls.every((drawcall) => drawcall.validate()),
+        drawcalls.every((drawcall) => drawcall.validate(shape)),
       );
 
       if (!existed) {
@@ -128,6 +137,7 @@ export class BatchManager {
         drawcall.destroy();
       });
     }
+    this.#renderCache.destroy();
   }
 
   clear() {

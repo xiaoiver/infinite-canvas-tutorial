@@ -1,6 +1,7 @@
 import * as d3 from 'd3-color';
 import { AABB } from '../AABB';
 import { GConstructor } from '.';
+import { isString } from '../../utils';
 
 export interface IRenderable {
   /**
@@ -45,7 +46,7 @@ export interface IRenderable {
    * * base64 image is also supported.
    * * HTMLImageElement is also supported.
    */
-  fill: string | HTMLImageElement;
+  fill: string | TexImageSource;
 
   /**
    * It is a presentation attribute defining the color used to paint the outline of the shape.
@@ -58,6 +59,16 @@ export interface IRenderable {
    * @see https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/stroke-width
    */
   strokeWidth: number;
+
+  /**
+   * This property allows to align a stroke along the outline of the current object.
+   * @see https://www.w3.org/TR/svg-strokes/#SpecifyingStrokeAlignment
+   *
+   * * `center`: This value indicates that the stroke for each subpath is positioned along the outline of the current stroke. The extends of the stroke increase to both sides of the outline accordingly dependent on the `stroke-width`.
+   * * `inner`: This value indicates that the stroke area is defined by the outline of each subpath of the current object and the computed value of the `stroke-width` property as offset orthogonal from the outline into the fill area of each subpath. The `stroke-linejoin` property must be ignored.
+   * * `outer`: This value indicates that the stroke area is defined by the outline of each subpath of the current object and the computed value of the `stroke-width` property as offset orthogonal from the outline away from the fill area of each subpath.
+   */
+  strokeAlignment: 'center' | 'inner' | 'outer';
 
   /**
    * It specifies the transparency of an object or of a group of objects,
@@ -145,11 +156,12 @@ export function Renderable<TBase extends GConstructor>(Base: TBase) {
     boundsDirtyFlag = true;
     globalRenderOrder: number;
 
-    #fill: string | HTMLImageElement;
+    #fill: string | TexImageSource;
     #fillRGB: d3.RGBColor;
     #stroke: string;
     #strokeRGB: d3.RGBColor;
     #strokeWidth: number;
+    #strokeAlignment: 'center' | 'inner' | 'outer';
     #opacity: number;
     #fillOpacity: number;
     #strokeOpacity: number;
@@ -173,6 +185,7 @@ export function Renderable<TBase extends GConstructor>(Base: TBase) {
           | 'batchable'
           | 'visible'
           | 'strokeWidth'
+          | 'strokeAlignment'
           | 'innerShadowColor'
           | 'innerShadowOffsetX'
           | 'innerShadowOffsetY'
@@ -190,6 +203,7 @@ export function Renderable<TBase extends GConstructor>(Base: TBase) {
         fill,
         stroke,
         strokeWidth,
+        strokeAlignment,
         opacity,
         fillOpacity,
         strokeOpacity,
@@ -206,6 +220,7 @@ export function Renderable<TBase extends GConstructor>(Base: TBase) {
       this.fill = fill ?? 'black';
       this.stroke = stroke ?? 'black';
       this.strokeWidth = strokeWidth ?? 0;
+      this.strokeAlignment = strokeAlignment ?? 'center';
       this.opacity = opacity ?? 1;
       this.fillOpacity = fillOpacity ?? 1;
       this.strokeOpacity = strokeOpacity ?? 1;
@@ -218,18 +233,18 @@ export function Renderable<TBase extends GConstructor>(Base: TBase) {
     get fill() {
       return this.#fill;
     }
-    set fill(fill: string | HTMLImageElement) {
+    set fill(fill: string | TexImageSource) {
       if (this.#fill !== fill) {
         this.#fill = fill;
 
-        if (fill instanceof HTMLImageElement) {
-          if (!fill.complete) {
-            fill.onload = () => {
-              this.renderDirtyFlag = true;
-            };
-          }
-        } else {
+        if (isString(fill)) {
           this.#fillRGB = d3.rgb(fill);
+        } else {
+          // if (!fill.complete) {
+          //   fill.onload = () => {
+          //     this.renderDirtyFlag = true;
+          //   };
+          // }
         }
         this.renderDirtyFlag = true;
       }
@@ -265,10 +280,19 @@ export function Renderable<TBase extends GConstructor>(Base: TBase) {
       }
     }
 
+    get strokeAlignment() {
+      return this.#strokeAlignment;
+    }
+    set strokeAlignment(strokeAlignment: 'center' | 'inner' | 'outer') {
+      if (this.#strokeAlignment !== strokeAlignment) {
+        this.#strokeAlignment = strokeAlignment;
+        this.renderDirtyFlag = true;
+      }
+    }
+
     get opacity() {
       return this.#opacity;
     }
-
     set opacity(opacity: number) {
       if (this.#opacity !== opacity) {
         this.#opacity = opacity;
@@ -279,7 +303,6 @@ export function Renderable<TBase extends GConstructor>(Base: TBase) {
     get fillOpacity() {
       return this.#fillOpacity;
     }
-
     set fillOpacity(fillOpacity: number) {
       if (this.#fillOpacity !== fillOpacity) {
         this.#fillOpacity = fillOpacity;
@@ -290,7 +313,6 @@ export function Renderable<TBase extends GConstructor>(Base: TBase) {
     get strokeOpacity() {
       return this.#strokeOpacity;
     }
-
     set strokeOpacity(strokeOpacity: number) {
       if (this.#strokeOpacity !== strokeOpacity) {
         this.#strokeOpacity = strokeOpacity;

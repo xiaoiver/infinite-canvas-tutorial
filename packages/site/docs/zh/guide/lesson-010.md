@@ -6,9 +6,9 @@ outline: deep
 
 图片导入导出在无限画布中是一个非常重要的功能，通过图片产物可以和其他工具打通。因此虽然目前我们的画布绘制能力还很有限，但不妨提前考虑和图片相关的问题。在这节课中你将学习到以下内容：
 
--   将画布内容导出成 PNG，JPEG 和 SVG 格式的图片，并支持 PDF
+-   将画布内容导出成 PNG，JPEG 和 SVG 格式的图片
 -   在画布中渲染图片
--   拓展 SVG 的能力，以 stroke 为例
+-   拓展 SVG 的能力，以 `stroke-aligment` 为例
 
 ## 将画布内容导出成图片 {#export-image}
 
@@ -64,6 +64,7 @@ console.log(dataURL);
 toCanvas(options: Partial<CanvasOptions> = {}): Promise<HTMLCanvasElement>;
 
 interface CanvasOptions {
+  grid: boolean;
   clippingRegion: Rectangle;
   beforeDrawImage: (context: CanvasRenderingContext2D) => void;
   afterDrawImage: (context: CanvasRenderingContext2D) => void;
@@ -72,6 +73,7 @@ interface CanvasOptions {
 
 各配置项含义如下：
 
+-   `grid` 是否包含网格
 -   `clippingRegion` 画布裁剪区域，用矩形表示
 -   `beforeDrawImage` 在绘制画布内容前调用，适合绘制背景颜色
 -   `afterDrawImage` 在绘制画布内容后调用，适合绘制水印
@@ -263,6 +265,7 @@ canvas.root = deserializeNode(JSON.parse(json)) as Group;
 -   `transform` 需要将对象中的 `position / rotation / scale` 转换成 `matrix()`
 -   `transform-origin` 对应 `transform` 中的 `pivot` 属性
 -   `innerShadow` 并不存在 SVG 同名属性，需要使用 filter 实现。可参考 [Creating inner shadow in svg]
+-   `outerShadow` 同上
 
 下面的例子展示了一个序列化后的圆转换成 `<circle>` 的效果，为了能在 HTML 页面中展示需要嵌入 [\<svg\>] 中，它的尺寸和画布保持一致：
 
@@ -280,7 +283,7 @@ call(() => {
 });
 ```
 
-最后还有一点需要注意，在我们的场景图中任意图形都可以添加子节点，但 SVG 中只有 `<g>` 才可以添加子元素，`<circle>` 是无法拥有子元素的。解决办法也很简单，对于拥有子节点的非 Group 元素，生成 SVG 时在外面套一个 `<g>`，将原本应用在本身的 `transform` 应用在它上面。假设后续我们支持了渲染文本，一个拥有文本子节点的 Circle 对应的 SVG 如下：
+还有一点需要注意，在我们的场景图中任意图形都可以添加子节点，但 SVG 中只有 `<g>` 才可以添加子元素，除此之外例如 `<circle>` 是无法拥有子元素的。解决办法也很简单，对于拥有子节点的非 Group 元素，生成 SVG 时在外面套一个 `<g>`，将原本应用在本身的 `transform` 应用在它上面。假设后续我们支持了渲染文本，一个拥有文本子节点的 Circle 对应的 SVG 如下：
 
 ```html
 <g transform="matrix(1,0,0,0,1,0)">
@@ -288,6 +291,8 @@ call(() => {
     <text />
 </g>
 ```
+
+最后来看如何实现网格的导出，参考 [How to draw grid using HTML5 and canvas or SVG]
 
 ### 导出 PDF {#to-pdf}
 
@@ -371,12 +376,73 @@ circle.stroke = 'black';
 
 ### 实现 {#implementation}
 
-因此第一步
+因此第一步我们将 `fill` 支持的类型从颜色字符串扩展到更多纹理来源：
 
 ```ts
 export interface IRenderable {
     fill: string; // [!code --]
-    fill: string | HTMLImageElement; // [!code ++]
+    fill: string | TexImageSource; // [!code ++]
+}
+
+type TexImageSource =
+    | ImageBitmap
+    | ImageData
+    | HTMLImageElement
+    | HTMLCanvasElement
+    | HTMLVideoElement
+    | OffscreenCanvas
+    | VideoFrame;
+```
+
+在顶点数据中需要一个字段表示是否使用了纹理，如果使用就对纹理进行采样，这里的 `SAMPLER_2D()` 并非标准 GLSL 语法，而是我们自定义的标记，用于在 Shader 编译阶段替换成 GLSL100 / GLSL300 / WGSL 的采样语法。另外，目前纹理是上传的图片，后续还可以支持使用 Canvas2D API 创建的渐变例如 [createLinearGradient]：
+
+```glsl
+in vec2 v_Uv;
+uniform sampler2D u_Texture;
+
+if (useFillImage) {
+    fillColor = texture(SAMPLER_2D(u_Texture), v_Uv);
+}
+```
+
+使用了 `uniform` 会打破我们之前的合批处理逻辑。[Inside PixiJS: Batch Rendering System] 一文介绍了 Pixi.js 的 BatchRenderer 实现逻辑，从下面运行时编译的 Shader 模版可以看出，最大可以同时支持一组 `%count%` 个采样器，每个实例通过顶点数据 `aTextureId` 在采样器组中进行选择。
+
+```glsl
+// Shader template in Pixi.js BatchRenderer
+// vert
+attribute int aTextureId;
+varying int vTextureId;
+vTextureId = aTextureId;
+
+// frag
+uniform sampler2D uSamplers[%count%];
+varying int vTextureId;
+```
+
+### 增加缓存 {#render-cache}
+
+之前我们一直没有考虑类似 Program、Bindings、Sampler 等这些 GPU 对象的缓存问题。为此我们增加一个资源缓存管理器以实现复用，依据资源类型分别实现命中逻辑。以 Sampler 为例，当 `SamplerDescriptor` 中的属性完全一致时就会命中缓存，比较逻辑在 `samplerDescriptorEquals` 中。
+
+```ts
+import { samplerDescriptorEquals } from '@antv/g-device-api';
+
+export class RenderCache {
+    device: Device;
+    private samplerCache = new HashMap<SamplerDescriptor, Sampler>(
+        samplerDescriptorEquals,
+        nullHashFunc,
+    );
+
+    createSampler(descriptor: SamplerDescriptor): Sampler {
+        // 优先从缓存中取
+        let sampler = this.samplerCache.get(descriptor);
+        if (sampler === null) {
+            // 未命中，创建并添加缓存
+            sampler = this.device.createSampler(descriptor);
+            this.samplerCache.add(descriptor, sampler);
+        }
+        return sampler;
+    }
 }
 ```
 
@@ -384,18 +450,169 @@ export interface IRenderable {
 
 最后我们来引入一个有趣的话题。我们可以实现目前 SVG 规范还不支持的特性。
 
-`opacity` `stroke-opacity` 和 `fill-opacity` 的区别：
+先来感受下 SVG 中 `opacity` `stroke-opacity` 和 `fill-opacity` 的区别。下图左边的圆应用了 `opacity="0.5"`，右边应用了 ` fill-opacity="0.5" stroke-opacity="0.5"`。可以看出 stroke 描边有一半在圆内，一半在圆外：
 
 <svg viewBox="0 0 400 100" xmlns="http://www.w3.org/2000/svg">
   <circle cx="50" cy="50" r="40" fill="red" stroke="black" stroke-width="20" opacity="0.5" />
   <circle cx="150" cy="50" r="40" fill="red" stroke="black" stroke-width="20" fill-opacity="0.5" stroke-opacity="0.5" />
 </svg>
 
-[How to simulate stroke-align (stroke-alignment) in SVG]
+在 Figma 中对应的 Stroke 位置的取值为 `Center`，其他可选值包括 `Inside` 和 `Outside`，下图分别展示了这三种取值的效果。在 SVG 中名为 `stroke-alignment`，但目前停留在草案阶段，详见 [Specifying stroke alignment]。
 
-Figma 中的 Stroke 取值包括 `Center / Inside / Outside`
+![Stroke align in Figma](/figma-stroke-align.png)
 
-![Stroke center in Figma](/figma-stroke-center.png)
+我们为所有图形增加 `strokeAlignment` 属性：
+
+```ts
+export interface IRenderable {
+    strokeAlignment: 'center' | 'inner' | 'outer'; // [!code ++]
+}
+```
+
+### 渲染部分实现 {#stroke-alignment-rendering}
+
+在 Shader 部分的实现只需要区分这三种取值，按不同方式混合填充和描边色：
+
+```glsl
+if (strokeAlignment < 0.5) { // center
+    d1 = distance + strokeWidth;
+    d2 = distance + strokeWidth / 2.0;
+    color = mix_border_inside(over(fillColor, strokeColor), fillColor, d1);
+    color = mix_border_inside(strokeColor, color, d2);
+} else if (strokeAlignment < 1.5) { // inner
+    d1 = distance + strokeWidth;
+    d2 = distance;
+    color = mix_border_inside(over(fillColor, strokeColor), fillColor, d1);
+    color = mix_border_inside(strokeColor, color, d2);
+} else if (strokeAlignment < 2.5) { // outer
+    d2 = distance + strokeWidth;
+    color = mix_border_inside(strokeColor, color, d2); // No need to use fillColor at all
+}
+```
+
+下面是我们的实现效果，可以看出渲染效果和 Figma 一致：
+
+```js eval code=false
+$icCanvas2 = call(() => {
+    return document.createElement('ic-canvas-lesson10');
+});
+```
+
+```js eval code=false inspector=false
+call(() => {
+    const { Canvas, Circle } = Lesson10;
+
+    const stats = new Stats();
+    stats.showPanel(0);
+    const $stats = stats.dom;
+    $stats.style.position = 'absolute';
+    $stats.style.left = '0px';
+    $stats.style.top = '0px';
+
+    $icCanvas2.parentElement.style.position = 'relative';
+    $icCanvas2.parentElement.appendChild($stats);
+
+    $icCanvas2.addEventListener('ic-ready', (e) => {
+        const canvas = e.detail;
+
+        const circle1 = new Circle({
+            cx: 200,
+            cy: 200,
+            r: 50,
+            fill: '#F67676',
+            stroke: 'black',
+            strokeWidth: 20,
+            strokeOpacity: 0.5,
+            strokeAlignment: 'inner',
+        });
+        canvas.appendChild(circle1);
+
+        const circle2 = new Circle({
+            cx: 320,
+            cy: 200,
+            r: 50,
+            fill: '#F67676',
+            stroke: 'black',
+            strokeWidth: 20,
+            strokeOpacity: 0.5,
+        });
+        canvas.appendChild(circle2);
+
+        const circle3 = new Circle({
+            cx: 460,
+            cy: 200,
+            r: 50,
+            fill: '#F67676',
+            stroke: 'black',
+            strokeWidth: 20,
+            strokeOpacity: 0.5,
+            strokeAlignment: 'outer',
+        });
+        canvas.appendChild(circle3);
+    });
+
+    $icCanvas2.addEventListener('ic-frame', (e) => {
+        stats.update();
+    });
+});
+```
+
+在计算渲染包围盒和拾取判定时，也需要考虑该属性。下面的函数反映了不同取值下，描边应该从图形本身向外延伸多少距离。
+
+```ts
+function strokeOffset(
+    strokeAlignment: 'center' | 'inner' | 'outer',
+    strokeWidth: number,
+) {
+    if (strokeAlignment === 'center') {
+        return strokeWidth / 2;
+    } else if (strokeAlignment === 'inner') {
+        return 0;
+    } else if (strokeAlignment === 'outer') {
+        return strokeWidth;
+    }
+}
+```
+
+### 导出 SVG 部分实现 {#stroke-alignment-export-svg}
+
+正如前文提到的那样，SVG 目前还不支持 `stroke-alignment`，因此目前只能通过 hack 手段模拟。如果图形比较简单，完全可以分两次绘制填充和描边。下面为 Figma 对 `stroke-alignment: 'inner'` 的导出结果，也采用了这种方式：
+
+```html
+<circle cx="200" cy="200" r="200" fill="#F67676" />
+<circle
+    cx="200"
+    cy="200"
+    r="160"
+    stroke="black"
+    stroke-opacity="0.5"
+    stroke-width="100"
+/>
+```
+
+<div style="display:flex;justify-content:center;align-items:center;">
+    <svg width="100" height="100" viewBox="0 0 443 443" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="221.5" cy="221.5" r="221.5" fill="#F67676"/>
+    <circle cx="221.5" cy="221.5" r="171.5" stroke="black" stroke-opacity="0.5" stroke-width="100"/>
+    </svg>
+    <svg width="120" height="120" viewBox="0 0 643 643" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="321.5" cy="321.5" r="221.5" fill="#F67676"/>
+    <circle cx="321.5" cy="321.5" r="271.5" stroke="black" stroke-opacity="0.5" stroke-width="100"/>
+    </svg>
+</div>
+
+除此之外，Figma 官网文档在 [StrokeAlign in Figma widget] 一文中还给出了另一种思路，不需要创建两个同类元素。[How to simulate stroke-align (stroke-alignment) in SVG] 尝试了这一思路，放大描边宽度至原来的两倍，配合 clipPath 和 mask 将多余部分剔除掉：
+
+> Inside and outside stroke are actually implemented by doubling the stroke weight and masking the stroke by the fill. This means inside-aligned stroke will never draw strokes outside the fill and outside-aligned stroke will never draw strokes inside the fill.
+
+出于实现简单考虑，我们选择第一种方式，创建两个同类元素分别绘制填充和描边，可以在上面的示例中尝试导出 SVG。
+
+## 扩展阅读 {#extended-reading}
+
+-   [Export from Figma]
+-   [Specifying stroke alignment]
+-   [How to simulate stroke-align (stroke-alignment) in SVG]
+-   [Creating inner shadow in svg]
 
 [Export from Figma]: https://help.figma.com/hc/en-us/articles/360040028114-Export-from-Figma#h_01GWB002EPWMFSXKAEC62GS605
 [How to simulate stroke-align (stroke-alignment) in SVG]: https://stackoverflow.com/questions/74958705/how-to-simulate-stroke-align-stroke-alignment-in-svg
@@ -421,3 +638,8 @@ Figma 中的 Stroke 取值包括 `Center / Inside / Outside`
 [ImageLoader]: https://loaders.gl/docs/modules/images/api-reference/image-loader
 [CompressedTextureLoader]: https://loaders.gl/docs/modules/textures/api-reference/compressed-texture-loader
 [PIXI Assets]: https://pixijs.download/release/docs/assets.html
+[Specifying stroke alignment]: https://www.w3.org/TR/svg-strokes/#SpecifyingStrokeAlignment
+[StrokeAlign in Figma widget]: https://www.figma.com/widget-docs/api/component-SVG/#strokealign
+[createLinearGradient]: https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/createLinearGradient
+[Inside PixiJS: Batch Rendering System]: https://medium.com/swlh/inside-pixijs-batch-rendering-system-fad1b466c420
+[How to draw grid using HTML5 and canvas or SVG]: https://stackoverflow.com/questions/14208673/how-to-draw-grid-using-html5-and-canvas-or-svg

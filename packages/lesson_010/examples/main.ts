@@ -1,4 +1,6 @@
 import { Canvas, Circle } from '../src';
+import { ImageLoader } from '@loaders.gl/images';
+import { load } from '@loaders.gl/core';
 
 const $canvas = document.getElementById('canvas') as HTMLCanvasElement;
 const resize = (width: number, height: number) => {
@@ -14,37 +16,80 @@ resize(window.innerWidth, window.innerHeight);
 
 const canvas = await new Canvas({
   canvas: $canvas,
-  renderer: 'webgpu',
-  shaderCompilerPath:
-    'https://unpkg.com/@antv/g-device-api@1.6.8/dist/pkg/glsl_wgsl_compiler_bg.wasm',
+  // renderer: 'webgpu',
+  // shaderCompilerPath:
+  //   'https://unpkg.com/@antv/g-device-api@1.6.8/dist/pkg/glsl_wgsl_compiler_bg.wasm',
 }).initialized;
 
-for (let i = 0; i < 1; i++) {
-  const fill = `rgb(${Math.floor(Math.random() * 255)},${Math.floor(
-    Math.random() * 255,
-  )},${Math.floor(Math.random() * 255)})`;
-  const circle = new Circle({
-    // cx: Math.random() * 1000,
-    // cy: Math.random() * 1000,
-    // r: Math.random() * 20,
-    cx: 300,
-    cy: 300,
-    r: 50,
-    fill: 'red',
-    // stroke: 'black',
-    // strokeWidth: 20,
-    opacity: 0.5,
-    // strokeOpacity: 0.5,
-  });
-  canvas.appendChild(circle);
+const image = (await load(
+  'https://infinitecanvas.cc/canvas.png',
+  // 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAUAAAAFCAYAAACNbyblAAAADElEQVQImWNgoBMAAABpAAFEI8ARAAAAAElFTkSuQmCC',
+  ImageLoader,
+)) as ImageBitmap;
+const circle4 = new Circle({
+  cx: 100,
+  cy: 100,
+  r: 50,
+  fill: image,
+  stroke: 'black',
+  strokeWidth: 20,
+  strokeOpacity: 0.5,
+});
+canvas.appendChild(circle4);
 
-  // circle.addEventListener('pointerenter', () => {
-  //   circle.fill = 'red';
-  // });
-  // circle.addEventListener('pointerleave', () => {
-  //   circle.fill = fill;
-  // });
-}
+const circle = new Circle({
+  cx: 300,
+  cy: 300,
+  r: 50,
+  fill: '#F67676',
+  stroke: 'black',
+  strokeWidth: 20,
+  strokeOpacity: 0.5,
+});
+canvas.appendChild(circle);
+circle.addEventListener('pointerenter', () => {
+  circle.fill = 'green';
+});
+circle.addEventListener('pointerleave', () => {
+  circle.fill = '#F67676';
+});
+
+const circle2 = new Circle({
+  cx: 200,
+  cy: 300,
+  r: 50,
+  fill: '#F67676',
+  stroke: 'black',
+  strokeWidth: 20,
+  strokeOpacity: 0.5,
+  strokeAlignment: 'inner',
+});
+canvas.appendChild(circle2);
+circle2.addEventListener('pointerenter', () => {
+  circle2.fill = 'green';
+});
+circle2.addEventListener('pointerleave', () => {
+  circle2.fill = '#F67676';
+});
+
+const circle3 = new Circle({
+  cx: 100,
+  cy: 300,
+  r: 50,
+  fill: '#F67676',
+  stroke: 'black',
+  strokeWidth: 20,
+  strokeOpacity: 0.5,
+  strokeAlignment: 'outer',
+  pointerEvents: 'stroke',
+});
+canvas.appendChild(circle3);
+circle3.addEventListener('pointerenter', () => {
+  circle3.stroke = 'green';
+});
+circle3.addEventListener('pointerleave', () => {
+  circle3.stroke = 'black';
+});
 
 const animate = () => {
   canvas.render();

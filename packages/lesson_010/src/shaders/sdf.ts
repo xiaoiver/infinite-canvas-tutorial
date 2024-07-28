@@ -36,11 +36,13 @@ out vec2 v_FragCoord;
   out float v_StrokeWidth;
   out vec4 v_Opacity;
   out float v_CornerRadius;
+  out float v_StrokeAlignment;
   out vec4 v_InnerShadowColor;
   out vec4 v_InnerShadow;
 #else
 #endif
 out vec2 v_Radius;
+out vec2 v_Uv;
 
 void main() {
   mat3 model;
@@ -50,6 +52,7 @@ void main() {
   vec4 strokeColor;
   float zIndex;
   float strokeWidth;
+  float strokeAlignment;
 
   #ifdef USE_INSTANCES
     model = mat3(a_Abcd.x, a_Abcd.y, 0, a_Abcd.z, a_Abcd.w, 0, a_Txty.x, a_Txty.y, 1);
@@ -59,12 +62,14 @@ void main() {
     strokeColor = a_StrokeColor;
     zIndex = a_ZIndexStrokeWidth.x;
     strokeWidth = a_ZIndexStrokeWidth.y;
+    strokeAlignment = a_ZIndexStrokeWidth.w;
 
     v_FillColor = fillColor;
     v_StrokeColor = strokeColor;
     v_StrokeWidth = strokeWidth;
     v_Opacity = a_Opacity;
     v_CornerRadius = a_ZIndexStrokeWidth.z;
+    v_StrokeAlignment = a_ZIndexStrokeWidth.w;
     v_InnerShadowColor = a_InnerShadowColor;
     v_InnerShadow = a_InnerShadow;
   #else
@@ -75,12 +80,23 @@ void main() {
     strokeColor = u_StrokeColor;
     zIndex = u_ZIndexStrokeWidth.x;
     strokeWidth = u_ZIndexStrokeWidth.y;
+    strokeAlignment = u_ZIndexStrokeWidth.w;
   #endif
 
-  vec2 radius = size + vec2(strokeWidth / 2.0);
+  float strokeOffset;
+  if (strokeAlignment < 0.5) {
+    strokeOffset = strokeWidth / 2.0;
+  } else if (strokeAlignment < 1.5) {
+    strokeOffset = 0.0;
+  } else if (strokeAlignment < 2.5) {
+    strokeOffset = strokeWidth;
+  }
+
+  vec2 radius = size + vec2(strokeOffset);
 
   v_FragCoord = vec2(a_FragCoord * radius);
   v_Radius = radius;
+  v_Uv = (a_FragCoord + 1.0) / 2.0;
 
   gl_Position = vec4((u_ProjectionMatrix 
     * u_ViewMatrix
@@ -113,11 +129,15 @@ in vec2 v_FragCoord;
   in float v_StrokeWidth;
   in vec4 v_Opacity;
   in float v_CornerRadius;
+  in float v_StrokeAlignment;
   in vec4 v_InnerShadowColor;
   in vec4 v_InnerShadow;
 #else
 #endif
 in vec2 v_Radius;
+
+in vec2 v_Uv;
+uniform sampler2D u_Texture;
 
 float epsilon = 0.000001;
 
@@ -191,6 +211,7 @@ void main() {
   float cornerRadius;
   vec4 innerShadowColor;
   vec4 innerShadow;
+  float strokeAlignment;
   
   #ifdef USE_INSTANCES
     fillColor = v_FillColor;
@@ -201,6 +222,7 @@ void main() {
     strokeOpacity = v_Opacity.z;
     shape = v_Opacity.w;
     cornerRadius = v_CornerRadius;
+    strokeAlignment = v_StrokeAlignment;
     innerShadowColor = v_InnerShadowColor;
     innerShadow = v_InnerShadow;
   #else
@@ -212,9 +234,15 @@ void main() {
     strokeOpacity = u_Opacity.z;
     shape = u_Opacity.w;
     cornerRadius = u_ZIndexStrokeWidth.z;
+    strokeAlignment = u_ZIndexStrokeWidth.w;
     innerShadowColor = u_InnerShadowColor;
     innerShadow = u_InnerShadow;
   #endif
+
+  bool useFillImage = innerShadow.w > 0.5;
+  if (useFillImage) {
+    fillColor = texture(SAMPLER_2D(u_Texture), v_Uv);
+  }
 
   float distance;
   // 'circle', 'ellipse', 'rect'
@@ -233,8 +261,22 @@ void main() {
 
   vec4 color = fillColor;
   if (strokeWidth > 0.0) {
-    color = mix_border_inside(over(fillColor, strokeColor), fillColor, distance + strokeWidth);
-    color = mix_border_inside(strokeColor, color, distance + strokeWidth / 2.0);
+    float d1;
+    float d2;
+    if (strokeAlignment < 0.5) {
+      d1 = distance + strokeWidth;
+      d2 = distance + strokeWidth / 2.0;
+      color = mix_border_inside(over(fillColor, strokeColor), fillColor, d1);
+      color = mix_border_inside(strokeColor, color, d2);
+    } else if (strokeAlignment < 1.5) {
+      d1 = distance + strokeWidth;
+      d2 = distance;
+      color = mix_border_inside(over(fillColor, strokeColor), fillColor, d1);
+      color = mix_border_inside(strokeColor, color, d2);
+    } else if (strokeAlignment < 2.5) {
+      d2 = distance + strokeWidth;
+      color = mix_border_inside(strokeColor, color, d2);
+    }
   }
   outputColor = color;
 
@@ -254,7 +296,6 @@ void main() {
   float opacity_t = clamp(distance / antialiasedBlur, 0.0, 1.0);
   outputColor.a *= clamp(1.0 - distance, 0.0, 1.0) * opacity * opacity_t;
 
-  // TODO: antialiasing
   if (outputColor.a < epsilon)
     discard;
 }

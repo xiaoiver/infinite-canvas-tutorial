@@ -1,4 +1,9 @@
-import { Shape, ShapeAttributes, isFillOrStrokeAffected } from './Shape';
+import {
+  Shape,
+  ShapeAttributes,
+  isFillOrStrokeAffected,
+  strokeOffset,
+} from './Shape';
 import { AABB } from './AABB';
 
 export interface EllipseAttributes extends ShapeAttributes {
@@ -95,23 +100,26 @@ export class Ellipse extends Shape implements EllipseAttributes {
   }
 
   containsPoint(x: number, y: number) {
-    const { cx, cy, rx, ry, strokeWidth } = this;
+    const {
+      cx,
+      cy,
+      rx,
+      ry,
+      strokeWidth,
+      strokeAlignment,
+      pointerEvents,
+      fill,
+      stroke,
+    } = this;
+    const offset = strokeOffset(strokeAlignment, strokeWidth);
 
-    const halfLineWidth = strokeWidth / 2;
     const [hasFill, hasStroke] = isFillOrStrokeAffected(
-      this.pointerEvents,
-      this.fill,
-      this.stroke,
+      pointerEvents,
+      fill,
+      stroke,
     );
     if (hasFill && hasStroke) {
-      return isPointInEllipse(
-        x,
-        y,
-        cx,
-        cy,
-        rx + halfLineWidth,
-        ry + halfLineWidth,
-      );
+      return isPointInEllipse(x, y, cx, cy, rx + offset, ry + offset);
     }
     if (hasFill) {
       return isPointInEllipse(x, y, cx, cy, rx, ry);
@@ -123,10 +131,9 @@ export class Ellipse extends Shape implements EllipseAttributes {
           y,
           cx,
           cy,
-          rx - halfLineWidth,
-          ry - halfLineWidth,
-        ) &&
-        isPointInEllipse(x, y, cx, cy, rx + halfLineWidth, ry + halfLineWidth)
+          rx + offset - strokeWidth,
+          ry + offset - strokeWidth,
+        ) && isPointInEllipse(x, y, cx, cy, rx + offset, ry + offset)
       );
     }
     return false;
@@ -134,14 +141,14 @@ export class Ellipse extends Shape implements EllipseAttributes {
 
   getRenderBounds() {
     if (this.renderBoundsDirtyFlag) {
-      const { strokeWidth, cx, cy, rx, ry } = this;
-      const halfLineWidth = strokeWidth / 2;
+      const { strokeWidth, strokeAlignment, cx, cy, rx, ry } = this;
+      const offset = strokeOffset(strokeAlignment, strokeWidth);
       this.renderBoundsDirtyFlag = false;
       this.renderBounds = new AABB(
-        cx - rx - halfLineWidth,
-        cy - ry - halfLineWidth,
-        cx + rx + halfLineWidth,
-        cy + ry + halfLineWidth,
+        cx - rx - offset,
+        cy - ry - offset,
+        cx + rx + offset,
+        cy + ry + offset,
       );
     }
     return this.renderBounds;

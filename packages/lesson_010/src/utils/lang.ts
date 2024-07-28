@@ -6,6 +6,7 @@ export const isBoolean = (arg): arg is boolean => arg === !!arg;
 export const isFunction = (val): val is Function => typeof val === 'function';
 export const isUndefined = (val): val is undefined => val === undefined;
 export const isNil = (val): val is null | undefined => val == null;
+export const isString = (a): a is string => typeof a === 'string';
 export function camelToKebabCase(str: string) {
   return str.replace(/[A-Z]/g, (match) => `-${match.toLowerCase()}`);
 }

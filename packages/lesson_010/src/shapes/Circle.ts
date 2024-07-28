@@ -1,4 +1,9 @@
-import { Shape, ShapeAttributes, isFillOrStrokeAffected } from './Shape';
+import {
+  Shape,
+  ShapeAttributes,
+  isFillOrStrokeAffected,
+  strokeOffset,
+} from './Shape';
 import { distanceBetweenPoints } from '../utils';
 import { AABB } from './AABB';
 
@@ -75,21 +80,31 @@ export class Circle extends Shape implements CircleAttributes {
   }
 
   containsPoint(x: number, y: number) {
-    const halfLineWidth = this.strokeWidth / 2;
-    const absDistance = distanceBetweenPoints(this.#cx, this.#cy, x, y);
+    const {
+      strokeWidth,
+      strokeAlignment,
+      cx,
+      cy,
+      r,
+      pointerEvents,
+      fill,
+      stroke,
+    } = this;
+
+    const absDistance = distanceBetweenPoints(cx, cy, x, y);
 
     const [hasFill, hasStroke] = isFillOrStrokeAffected(
-      this.pointerEvents,
-      this.fill,
-      this.stroke,
+      pointerEvents,
+      fill,
+      stroke,
     );
     if (hasFill) {
-      return absDistance <= this.#r;
+      return absDistance <= r;
     }
     if (hasStroke) {
+      const offset = strokeOffset(strokeAlignment, strokeWidth);
       return (
-        absDistance >= this.#r - halfLineWidth &&
-        absDistance <= this.#r + halfLineWidth
+        absDistance >= r + offset - strokeWidth && absDistance <= r + offset
       );
     }
     return false;
@@ -97,13 +112,14 @@ export class Circle extends Shape implements CircleAttributes {
 
   getRenderBounds() {
     if (this.renderBoundsDirtyFlag) {
-      const halfLineWidth = this.strokeWidth / 2;
+      const { strokeWidth, strokeAlignment, cx, cy, r } = this;
+      const offset = strokeOffset(strokeAlignment, strokeWidth);
       this.renderBoundsDirtyFlag = false;
       this.renderBounds = new AABB(
-        this.#cx - this.#r - halfLineWidth,
-        this.#cy - this.#r - halfLineWidth,
-        this.#cx + this.#r + halfLineWidth,
-        this.#cy + this.#r + halfLineWidth,
+        cx - r - offset,
+        cy - r - offset,
+        cx + r + offset,
+        cy + r + offset,
       );
     }
     return this.renderBounds;

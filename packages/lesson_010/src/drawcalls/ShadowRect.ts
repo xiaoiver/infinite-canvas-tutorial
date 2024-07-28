@@ -13,6 +13,7 @@ import {
   VertexStepMode,
   Program,
   CompareFunction,
+  TransparentBlack,
 } from '@antv/g-device-api';
 import { Rect } from '../shapes';
 import { Drawcall, ZINDEX_FACTOR } from './Drawcall';
@@ -77,7 +78,7 @@ export class ShadowRect extends Drawcall {
       this.#inputLayout.destroy();
       this.#pipeline.destroy();
     }
-    this.#program = this.device.createProgram({
+    this.#program = this.renderCache.createProgram({
       vertex: {
         glsl: defines + vert,
       },
@@ -145,13 +146,13 @@ export class ShadowRect extends Drawcall {
           ],
         },
       );
-      this.#inputLayout = this.device.createInputLayout({
+      this.#inputLayout = this.renderCache.createInputLayout({
         vertexBufferDescriptors,
         indexBufferFormat: Format.U32_R,
         program: this.#program,
       });
     } else {
-      this.#inputLayout = this.device.createInputLayout({
+      this.#inputLayout = this.renderCache.createInputLayout({
         vertexBufferDescriptors,
         indexBufferFormat: Format.U32_R,
         program: this.#program,
@@ -165,7 +166,7 @@ export class ShadowRect extends Drawcall {
       }
     }
 
-    this.#pipeline = this.device.createRenderPipeline({
+    this.#pipeline = this.renderCache.createRenderPipeline({
       inputLayout: this.#inputLayout,
       program: this.#program,
       colorAttachmentFormats: [Format.U8_RGBA_RT],
@@ -186,13 +187,21 @@ export class ShadowRect extends Drawcall {
             },
           },
         ],
+        blendConstant: TransparentBlack,
         depthWrite: false,
         depthCompare: CompareFunction.GREATER,
+        stencilWrite: false,
+        stencilFront: {
+          compare: CompareFunction.ALWAYS,
+        },
+        stencilBack: {
+          compare: CompareFunction.ALWAYS,
+        },
       },
     });
 
     if (this.instanced) {
-      this.#bindings = this.device.createBindings({
+      this.#bindings = this.renderCache.createBindings({
         pipeline: this.#pipeline,
         uniformBufferBindings: [
           {

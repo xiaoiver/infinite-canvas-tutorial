@@ -21,6 +21,7 @@ export interface DataURLOptions {
    * The image quality between 0 and 1 for image/jpeg and image/webp.
    */
   encoderOptions: number;
+  grids: boolean;
 }
 
 export interface DownloadImageOptions {
@@ -29,9 +30,14 @@ export interface DownloadImageOptions {
 }
 
 export interface CanvasOptions {
+  grids: boolean;
   clippingRegion: Rectangle;
   beforeDrawImage: (context: CanvasRenderingContext2D) => void;
   afterDrawImage: (context: CanvasRenderingContext2D) => void;
+}
+
+export interface SVGOptions {
+  grids: boolean;
 }
 
 export interface ImageExporterOptions {
@@ -96,13 +102,58 @@ export class ImageExporter {
     return canvas;
   }
 
-  toSVGDataURL() {
+  toSVGDataURL(options: Partial<SVGOptions> = {}) {
+    const { grids } = options;
     const { canvas } = this.options;
     const { width, height } = canvas.getDOM();
 
     const $namespace = createSVGElement('svg');
     $namespace.setAttribute('width', `${width}`);
     $namespace.setAttribute('height', `${height}`);
+
+    if (grids) {
+      const $defs = createSVGElement('defs');
+      const $pattern = createSVGElement('pattern');
+      $pattern.setAttribute('id', 'smallGrid');
+      $pattern.setAttribute('width', '10');
+      $pattern.setAttribute('height', '10');
+      $pattern.setAttribute('patternUnits', 'userSpaceOnUse');
+      const $path = createSVGElement('path');
+      $path.setAttribute('d', 'M 10 0 L 0 0 0 10');
+      $path.setAttribute('fill', 'none');
+      $path.setAttribute('stroke', 'rgba(221,221,221,1)');
+      $path.setAttribute('stroke-width', '0.5');
+      $pattern.appendChild($path);
+
+      const $pattern2 = createSVGElement('pattern');
+      $pattern2.setAttribute('id', 'grid');
+      $pattern2.setAttribute('width', '100');
+      $pattern2.setAttribute('height', '100');
+      $pattern2.setAttribute('patternUnits', 'userSpaceOnUse');
+      const $rect = createSVGElement('rect');
+      $rect.setAttribute('width', '100');
+      $rect.setAttribute('height', '100');
+      $rect.setAttribute('fill', 'url(#smallGrid)');
+      $pattern2.appendChild($rect);
+
+      const $path2 = createSVGElement('path');
+      $path2.setAttribute('d', 'M 100 0 L 0 0 0 100');
+      $path2.setAttribute('fill', 'none');
+      $path2.setAttribute('stroke', 'rgba(221,221,221,1)');
+      $path2.setAttribute('stroke-width', '1');
+      $pattern2.appendChild($path2);
+
+      $defs.appendChild($pattern);
+      $defs.appendChild($pattern2);
+      $namespace.appendChild($defs);
+
+      const $rect2 = createSVGElement('rect');
+      $rect2.setAttribute('width', '100%');
+      $rect2.setAttribute('height', '100%');
+      $rect2.setAttribute('fill', 'url(#grid)');
+      $namespace.appendChild($rect2);
+    }
+
     $namespace.appendChild(toSVGElement(serializeNode(canvas.root)));
 
     const svgDocType = document.implementation.createDocumentType(

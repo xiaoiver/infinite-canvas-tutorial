@@ -31,6 +31,7 @@ const renderableAttributes = [
   'fill',
   'stroke',
   'strokeWidth',
+  'strokeAlignment',
   'opacity',
   'fillOpacity',
   'strokeOpacity',
@@ -63,12 +64,13 @@ type EllipseAttributeName = (typeof ellipseAttributes)[number];
 type RectAttributeName = (typeof rectAttributes)[number];
 
 interface SerializedNode {
+  uid: number;
   type: 'g' | 'circle' | 'ellipse' | 'rect';
-  attributes?: Record<CommonAttributeName, Shape[CommonAttributeName]> &
+  attributes?: Pick<Shape, CommonAttributeName> &
     Record<'transform', SerializedTransform> &
-    Partial<Record<CircleAttributeName, Circle[CircleAttributeName]>> &
-    Partial<Record<EllipseAttributeName, Ellipse[EllipseAttributeName]>> &
-    Partial<Record<RectAttributeName, Rect[RectAttributeName]>>;
+    Partial<Pick<Circle, CircleAttributeName>> &
+    Partial<Pick<Ellipse, EllipseAttributeName>> &
+    Partial<Pick<Rect, RectAttributeName>>;
   children?: SerializedNode[];
 }
 
@@ -122,18 +124,19 @@ export function deserializeNode(data: SerializedNode): Shape {
 
 export function serializeNode(node: Shape): SerializedNode {
   const [type, attributes] = typeofShape(node);
-  const data: SerializedNode = {
+  const serialized: SerializedNode = {
+    uid: node.uid,
     type,
     attributes: [...commonAttributes, ...attributes].reduce((prev, cur) => {
       prev[cur] = node[cur];
       return prev;
-    }, {} as Record<CommonAttributeName, Shape[CommonAttributeName]> & Record<'transform', SerializedTransform>),
+    }, {}),
   };
 
-  data.attributes.transform = serializeTransform(node.transform);
-  data.children = node.children.map(serializeNode);
+  serialized.attributes.transform = serializeTransform(node.transform);
+  serialized.children = node.children.map(serializeNode);
 
-  return data;
+  return serialized;
 }
 
 export function serializeTransform(transform: Transform): SerializedTransform {
@@ -158,6 +161,185 @@ export function serializeTransform(transform: Transform): SerializedTransform {
   };
 }
 
+/**
+ * @see https://stackoverflow.com/questions/74958705/how-to-simulate-stroke-align-stroke-alignment-in-svg
+ * @example
+ * ```html
+ * <g transform="matrix()">
+ *  <circle /> <!-- fill -->
+ *  <circle /> <!-- stroke -->
+ * </g>
+ * ```
+ */
+function exportInnerOrOuterStrokeAlignment(
+  node: SerializedNode,
+  element: SVGElement,
+  $g: SVGElement,
+) {
+  const { type, attributes } = node;
+  const $stroke = element.cloneNode() as SVGElement;
+  element.setAttribute('stroke', 'none');
+  $stroke.setAttribute('fill', 'none');
+
+  const { strokeWidth, strokeAlignment } = attributes;
+  const innerStrokeAlignment = strokeAlignment === 'inner';
+  const halfStrokeWidth = strokeWidth / 2;
+
+  if (type === 'circle') {
+    const { r } = attributes;
+    const offset = innerStrokeAlignment ? -halfStrokeWidth : halfStrokeWidth;
+    $stroke.setAttribute('r', `${r + offset}`);
+  } else if (type === 'ellipse') {
+    const { rx, ry } = attributes;
+    const offset = innerStrokeAlignment ? -halfStrokeWidth : halfStrokeWidth;
+    $stroke.setAttribute('rx', `${rx + offset}`);
+    $stroke.setAttribute('ry', `${ry + offset}`);
+  } else if (type === 'rect') {
+    const { x, y, width, height, strokeWidth } = attributes;
+    $stroke.setAttribute(
+      'x',
+      `${x + (innerStrokeAlignment ? halfStrokeWidth : -halfStrokeWidth)}`,
+    );
+    $stroke.setAttribute(
+      'y',
+      `${y + (innerStrokeAlignment ? halfStrokeWidth : -halfStrokeWidth)}`,
+    );
+    $stroke.setAttribute(
+      'width',
+      `${width + (innerStrokeAlignment ? -strokeWidth : strokeWidth)}`,
+    );
+    $stroke.setAttribute(
+      'height',
+      `${height + (innerStrokeAlignment ? -strokeWidth : strokeWidth)}`,
+    );
+  }
+
+  $g.appendChild($stroke);
+}
+
+/**
+ * Use filter to create inner shadow.
+ * @see https://stackoverflow.com/questions/69799051/creating-inner-shadow-in-svg
+ * @example
+ * ```html
+ * <g filter="url(#filter)">
+ *   <defs>
+ *     <filter id="filter">
+ *       <feOffset dx="10" dy="10"/>
+ *     </filter>
+ *   </defs>
+ *   <circle />
+ * </g>
+ * ```
+ */
+export function exportInnerShadow(
+  node: SerializedNode,
+  element: SVGElement,
+  $g: SVGElement,
+) {
+  const {
+    uid,
+    type,
+    attributes: {
+      innerShadowOffsetX,
+      innerShadowOffsetY,
+      innerShadowBlurRadius,
+      // innerShadowColor,
+      r,
+      rx,
+      ry,
+      width,
+      height,
+    },
+  } = node;
+
+  const $defs = createSVGElement('defs');
+  const $filter = createSVGElement('filter');
+  $filter.id = `filter_${uid}`;
+
+  let filterW = 0;
+  let filterH = 0;
+  if (type === 'circle') {
+    filterW = r * 2 + innerShadowOffsetX;
+    filterH = r * 2 + innerShadowOffsetY;
+  } else if (type === 'ellipse') {
+    filterW = rx * 2 + innerShadowOffsetX;
+    filterH = ry * 2 + innerShadowOffsetY;
+  } else if (type === 'rect') {
+    filterW = width + innerShadowOffsetX;
+    filterH = height + innerShadowOffsetY;
+  }
+  $filter.setAttribute('x', '0');
+  $filter.setAttribute('y', '0');
+  $filter.setAttribute('width', `${filterW}`);
+  $filter.setAttribute('height', `${filterH}`);
+  $filter.setAttribute('filterUnits', 'userSpaceOnUse');
+  $filter.setAttribute('color-interpolation-filters', 'sRGB');
+
+  const $feFlood = createSVGElement('feFlood');
+  $feFlood.setAttribute('flood-opacity', '0');
+  $feFlood.setAttribute('result', 'BackgroundImageFix');
+  $filter.appendChild($feFlood);
+
+  const $feBlend = createSVGElement('feBlend');
+  $feBlend.setAttribute('mode', 'normal');
+  $feBlend.setAttribute('in', 'SourceGraphic');
+  $feBlend.setAttribute('in2', 'BackgroundImageFix');
+  $feBlend.setAttribute('result', 'shape');
+  $filter.appendChild($feBlend);
+
+  // <feColorMatrix xmlns="http://www.w3.org/2000/svg" in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/>
+  const $feColorMatrix = createSVGElement('feColorMatrix');
+  $feColorMatrix.setAttribute('in', 'SourceAlpha');
+  $feColorMatrix.setAttribute('type', 'matrix');
+  $feColorMatrix.setAttribute('values', '');
+  $feColorMatrix.setAttribute('result', 'hardAlpha');
+  $filter.appendChild($feColorMatrix);
+
+  // <feMorphology xmlns="http://www.w3.org/2000/svg" radius="8" operator="dilate" in="SourceAlpha" result="effect1_innerShadow_2429_2"/>
+  const $feMorphology = createSVGElement('feMorphology');
+  $feMorphology.setAttribute('radius', '8');
+  $feMorphology.setAttribute('operator', 'dilate');
+  $feMorphology.setAttribute('in', 'SourceAlpha');
+  $feMorphology.setAttribute('result', 'effect1_innerShadow_2429_2');
+  $filter.appendChild($feMorphology);
+
+  const $feOffset = createSVGElement('feOffset');
+  $feOffset.setAttribute('dx', `${innerShadowOffsetX}`);
+  $feOffset.setAttribute('dy', `${innerShadowOffsetY}`);
+  $filter.appendChild($feOffset);
+
+  const $feGaussianBlur = createSVGElement('feGaussianBlur');
+  $feGaussianBlur.setAttribute('stdDeviation', `${innerShadowBlurRadius / 2}`);
+  $filter.appendChild($feGaussianBlur);
+
+  // <feComposite xmlns="http://www.w3.org/2000/svg" in2="hardAlpha" operator="arithmetic" k2="-1" k3="1"/>
+  const $feComposite = createSVGElement('feComposite');
+  $feComposite.setAttribute('in2', 'hardAlpha');
+  $feComposite.setAttribute('operator', 'arithmetic');
+  $feComposite.setAttribute('k2', '-1');
+  $feComposite.setAttribute('k3', '1');
+  $filter.appendChild($feComposite);
+
+  // <feColorMatrix xmlns="http://www.w3.org/2000/svg" type="matrix" values="0 0 0 0 0.0470588 0 0 0 0 0.0470588 0 0 0 0 0.0509804 0 0 0 1 0"/>
+  const $feColorMatrix2 = createSVGElement('feColorMatrix');
+  $feColorMatrix2.setAttribute('type', 'matrix');
+  $feColorMatrix2.setAttribute('values', '');
+  $filter.appendChild($feColorMatrix2);
+
+  // <feBlend xmlns="http://www.w3.org/2000/svg" mode="normal" in2="shape" result="effect1_innerShadow_2429_2"/>
+  const $feBlend2 = createSVGElement('feBlend');
+  $feBlend2.setAttribute('mode', 'normal');
+  $feBlend2.setAttribute('in2', 'shape');
+  $feBlend2.setAttribute('result', 'effect1_innerShadow_2429_2');
+  $filter.appendChild($feBlend2);
+
+  $defs.appendChild($filter);
+
+  $g.appendChild($defs);
+  $g.setAttribute('filter', `url(#${$filter.id})`);
+}
+
 export function toSVGElement(node: SerializedNode) {
   const { type, attributes, children } = node;
   const element = createSVGElement(type);
@@ -171,35 +353,87 @@ export function toSVGElement(node: SerializedNode) {
     innerShadowColor,
     innerShadowOffsetX,
     innerShadowOffsetY,
+    strokeAlignment,
     ...rest
   } = attributes;
   Object.entries(rest).forEach(([key, value]) => {
     element.setAttribute(camelToKebabCase(key), `${value}`);
   });
 
-  let $parentGroup = element;
-  if (children && children.length > 0) {
-    if (type !== 'g') {
-      $parentGroup = createSVGElement('g');
-      $parentGroup.appendChild(element);
-    }
+  // TODO: outerShadow in Rect
+
+  const innerStrokeAlignment = strokeAlignment === 'inner';
+  const outerStrokeAlignment = strokeAlignment === 'outer';
+  const innerOrOuterStrokeAlignment =
+    innerStrokeAlignment || outerStrokeAlignment;
+
+  /**
+   * In the vast majority of cases, it is the element itself.
+   *
+   * Here's 3 examples where it's not the element itself but a <g> element as its parent.
+   * @example
+   *
+   * When the element has children.
+   * ```html
+   * <g transform="matrix()">
+   *  <circle />
+   *  <text /> <!-- child #1 -->
+   *  <text /> <!-- child #2 -->
+   * </g>
+   * ```
+   *
+   * When strokeAlignment is 'inner' or 'outer'.
+   * ```html
+   * <g transform="matrix()">
+   *  <circle /> <!-- fill -->
+   *  <circle /> <!-- stroke -->
+   * </g>
+   * ```
+   *
+   * `innerShadow` is implemented as a filter effect.
+   * ```html
+   * <g filter="url(#filter)">
+   *   <defs>
+   *     <filter id="filter" />
+   *   </defs>
+   *   <circle />
+   * </g>
+   * ```
+   */
+  let $g: SVGElement;
+  if (
+    (children && children.length > 0 && type !== 'g') ||
+    innerOrOuterStrokeAlignment ||
+    innerShadowBlurRadius > 0
+  ) {
+    $g = createSVGElement('g');
+    $g.appendChild(element);
   }
 
-  // @see https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/visibility
-  $parentGroup.setAttribute('visibility', visible ? 'visible' : 'hidden');
+  if (innerOrOuterStrokeAlignment) {
+    exportInnerOrOuterStrokeAlignment(node, element, $g);
+  }
+  if (innerShadowBlurRadius > 0) {
+    exportInnerShadow(node, element, $g);
+  }
 
-  $parentGroup.setAttribute(
+  $g = $g || element;
+
+  // @see https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/visibility
+  $g.setAttribute('visibility', visible ? 'visible' : 'hidden');
+
+  $g.setAttribute(
     'transform',
     `matrix(${transform.scale.x},${transform.skew.x},${transform.skew.y},${transform.scale.y},${transform.position.x},${transform.position.y})`,
   );
-  $parentGroup.setAttribute(
+  $g.setAttribute(
     'transform-origin',
     `${transform.pivot.x} ${transform.pivot.y}`,
   );
 
   children.map(toSVGElement).forEach((child) => {
-    $parentGroup.appendChild(child);
+    $g.appendChild(child);
   });
 
-  return element;
+  return $g;
 }

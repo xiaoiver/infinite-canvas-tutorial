@@ -113,9 +113,6 @@ importers:
       '@types/d3-color':
         specifier: ^3.1.0
         version: 3.1.0
-      '@types/gl-matrix':
-        specifier: ^3.2.0
-        version: 3.2.0
 
   packages/lesson_005:
     dependencies:
@@ -138,9 +135,6 @@ importers:
       '@types/d3-color':
         specifier: ^3.1.0
         version: 3.1.0
-      '@types/gl-matrix':
-        specifier: ^3.2.0
-        version: 3.2.0
 
   packages/lesson_006:
     dependencies:
@@ -166,9 +160,6 @@ importers:
       '@types/d3-color':
         specifier: ^3.1.0
         version: 3.1.0
-      '@types/gl-matrix':
-        specifier: ^3.2.0
-        version: 3.2.0
 
   packages/lesson_007:
     dependencies:
@@ -176,8 +167,11 @@ importers:
         specifier: ^1.6.12
         version: 1.6.12
       '@lit/context':
-        specifier: latest
-        version: 1.1.1
+        specifier: ^1.1.2
+        version: 1.1.2
+      '@lit/task':
+        specifier: ^1.0.1
+        version: 1.0.1
       '@pixi/math':
         specifier: ^7.4.2
         version: 7.4.2
@@ -200,9 +194,6 @@ importers:
       '@types/d3-color':
         specifier: ^3.1.0
         version: 3.1.0
-      '@types/gl-matrix':
-        specifier: ^3.2.0
-        version: 3.2.0
 
   packages/lesson_008:
     dependencies:
@@ -210,8 +201,11 @@ importers:
         specifier: ^1.6.12
         version: 1.6.12
       '@lit/context':
-        specifier: latest
-        version: 1.1.1
+        specifier: ^1.1.2
+        version: 1.1.2
+      '@lit/task':
+        specifier: ^1.0.1
+        version: 1.0.1
       '@pixi/math':
         specifier: ^7.4.2
         version: 7.4.2
@@ -237,9 +231,6 @@ importers:
       '@types/d3-color':
         specifier: ^3.1.0
         version: 3.1.0
-      '@types/gl-matrix':
-        specifier: ^3.2.0
-        version: 3.2.0
       '@types/rbush':
         specifier: ^3.0.0
         version: 3.0.0
@@ -250,8 +241,11 @@ importers:
         specifier: ^1.6.12
         version: 1.6.12
       '@lit/context':
-        specifier: latest
+        specifier: ^1.1.2
         version: 1.1.2
+      '@lit/task':
+        specifier: ^1.0.1
+        version: 1.0.1
       '@pixi/math':
         specifier: ^7.4.2
         version: 7.4.2
@@ -277,9 +271,6 @@ importers:
       '@types/d3-color':
         specifier: ^3.1.0
         version: 3.1.0
-      '@types/gl-matrix':
-        specifier: ^3.2.0
-        version: 3.2.0
       '@types/rbush':
         specifier: ^3.0.0
         version: 3.0.0
@@ -292,12 +283,9 @@ importers:
       '@lit/context':
         specifier: ^1.1.2
         version: 1.1.2
-      '@loaders.gl/core':
-        specifier: ^4.2.2
-        version: 4.2.2
-      '@loaders.gl/images':
-        specifier: ^4.2.2
-        version: 4.2.2(@loaders.gl/core@4.2.2)
+      '@lit/task':
+        specifier: ^1.0.1
+        version: 1.0.1
       '@pixi/math':
         specifier: ^7.4.2
         version: 7.4.2
@@ -320,12 +308,15 @@ importers:
         specifier: ^3.0.1
         version: 3.0.1
     devDependencies:
+      '@loaders.gl/core':
+        specifier: ^4.2.2
+        version: 4.2.2
+      '@loaders.gl/images':
+        specifier: ^4.2.2
+        version: 4.2.2(@loaders.gl/core@4.2.2)
       '@types/d3-color':
         specifier: ^3.1.0
         version: 3.1.0
-      '@types/gl-matrix':
-        specifier: ^3.2.0
-        version: 3.2.0
       '@types/rbush':
         specifier: ^3.0.0
         version: 3.0.0
@@ -778,9 +769,6 @@ packages:
   '@lit-labs/ssr-dom-shim@1.2.0':
     resolution: {integrity: sha512-yWJKmpGE6lUURKAaIltoPIE/wrbY3TEkqQt+X0m+7fQNnAv0keydnYvbiJFP1PnMhizmIWRWOG5KLhYyc/xl+g==}
 
-  '@lit/context@1.1.1':
-    resolution: {integrity: sha512-q/Rw7oWSJidUP43f/RUPwqZ6f5VlY8HzinTWxL/gW1Hvm2S5q2hZvV+qM8WFcC+oLNNknc3JKsd5TwxLk1hbdg==}
-
   '@lit/context@1.1.2':
     resolution: {integrity: sha512-S0nw2C6Tkm7fVX5TGYqeROGD+Z9Coa2iFpW+ysYBDH3YvCqOY3wVQvSgwbaliLJkjTnSEYCBe9qFqKV8WUFpVw==}
 
@@ -789,6 +777,9 @@ packages:
 
   '@lit/reactive-element@2.0.4':
     resolution: {integrity: sha512-GFn91inaUa2oHLak8awSIigYz0cU0Payr1rcFsrkf5OJ5eSPxElyZfKh0f2p9FsTiZWXQdWGJeXZICEfXXYSXQ==}
+
+  '@lit/task@1.0.1':
+    resolution: {integrity: sha512-fVLDtmwCau8NywnFIXaJxsCZjzaIxnVq+cFRKYC1Y4tA4/0rMTvF6DLZZ2JE51BwzOluaKtgJX8x1QDsQtAaIw==}
 
   '@loaders.gl/core@4.2.2':
     resolution: {integrity: sha512-d3YElSsqL29MaiOwzGB97v994SPotbTvJnooCqoQsYGoYYrECdIetv1/zlfDsh5UB2Wl/NaUMJrzyOqlLmDz5Q==}
@@ -951,10 +942,6 @@ packages:
 
   '@types/geojson@7946.0.14':
     resolution: {integrity: sha512-WCfD5Ht3ZesJUsONdhvm84dmzWOiOzOAqOncN0++w0lBw1o8OuDNJF2McvvCef/yBqb/HYRahp1BYtODFQ8bRg==}
-
-  '@types/gl-matrix@3.2.0':
-    resolution: {integrity: sha512-CY4JAtSOGQX7rVgqVuOk7ZfaLv8VeadDMPj3smMOy8Hp/YiHONa3Mr0mEUgbo0eEwV7+Owpf6BwspcA7hv4NXg==}
-    deprecated: This is a stub types definition. gl-matrix provides its own type definitions, so you do not need this installed.
 
   '@types/json-schema@7.0.15':
     resolution: {integrity: sha512-5+fP8P8MFNC+AyZCDxrB2pkZFPGzqQWUzpSeuuVLvm8VMcorNYavBqoFcxK8bQz4Qsbn4oUEEem4wDLfcysGHA==}
@@ -3362,10 +3349,6 @@ snapshots:
 
   '@lit-labs/ssr-dom-shim@1.2.0': {}
 
-  '@lit/context@1.1.1':
-    dependencies:
-      '@lit/reactive-element': 2.0.4
-
   '@lit/context@1.1.2':
     dependencies:
       '@lit/reactive-element': 2.0.4
@@ -3377,6 +3360,10 @@ snapshots:
   '@lit/reactive-element@2.0.4':
     dependencies:
       '@lit-labs/ssr-dom-shim': 1.2.0
+
+  '@lit/task@1.0.1':
+    dependencies:
+      '@lit/reactive-element': 2.0.4
 
   '@loaders.gl/core@4.2.2':
     dependencies:
@@ -3514,10 +3501,6 @@ snapshots:
   '@types/estree@1.0.5': {}
 
   '@types/geojson@7946.0.14': {}
-
-  '@types/gl-matrix@3.2.0':
-    dependencies:
-      gl-matrix: 3.4.3
 
   '@types/json-schema@7.0.15': {}
 
