@@ -27,10 +27,17 @@ export interface IRenderable {
 
   /**
    * The bounding box of the render.
+   * e.g. Stroke / Shadow included.
    */
   renderBounds: AABB;
-
   renderBoundsDirtyFlag: boolean;
+
+  /**
+   * The bounding box of the geometry.
+   * e.g. Stroke excluded.
+   */
+  geometryBounds: AABB;
+  geometryBoundsDirtyFlag: boolean;
 
   /**
    * Account for its children.
@@ -152,6 +159,8 @@ export function Renderable<TBase extends GConstructor>(Base: TBase) {
     renderDirtyFlag = true;
     renderBounds: AABB;
     renderBoundsDirtyFlag = true;
+    geometryBounds: AABB;
+    geometryBoundsDirtyFlag = true;
     bounds: AABB;
     boundsDirtyFlag = true;
     globalRenderOrder: number;

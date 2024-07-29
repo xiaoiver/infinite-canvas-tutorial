@@ -2,7 +2,7 @@
 outline: deep
 ---
 
-# 课程 10 - Tiled based rendering
+# 课程 15 - Tiled based rendering
 
 [What does Tile based rendering mean?]
 

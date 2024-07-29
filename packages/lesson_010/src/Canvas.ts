@@ -243,8 +243,11 @@ export class Canvas {
     return this.#root.removeChild(shape);
   }
 
-  setCheckboardStyle(style: CheckboardStyle) {
-    this.#rendererPlugin.setCheckboardStyle(style);
+  set checkboardStyle(style: CheckboardStyle) {
+    this.#rendererPlugin.checkboardStyle = style;
+  }
+  get checkboardStyle() {
+    return this.#rendererPlugin.checkboardStyle;
   }
 
   elementsFromBBox(

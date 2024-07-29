@@ -188,7 +188,7 @@ export class Renderer implements Plugin {
 
       if (
         !this.#enableCapture ||
-        (this.#enableCapture && this.#captureOptions.grids)
+        (this.#enableCapture && this.#captureOptions.grid)
       ) {
         this.#grid.render(this.#device, this.#renderPass, this.#uniformBuffer);
       }
@@ -230,7 +230,11 @@ export class Renderer implements Plugin {
     });
   }
 
-  setCheckboardStyle(style: CheckboardStyle) {
+  get checkboardStyle() {
+    return this.#checkboardStyle;
+  }
+
+  set checkboardStyle(style: CheckboardStyle) {
     this.#checkboardStyle = style;
   }
 

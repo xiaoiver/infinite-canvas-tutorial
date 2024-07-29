@@ -96,7 +96,7 @@ void main() {
 
   v_FragCoord = vec2(a_FragCoord * radius);
   v_Radius = radius;
-  v_Uv = (a_FragCoord + 1.0) / 2.0;
+  v_Uv = (a_FragCoord * radius / size + 1.0) / 2.0;
 
   gl_Position = vec4((u_ProjectionMatrix 
     * u_ViewMatrix

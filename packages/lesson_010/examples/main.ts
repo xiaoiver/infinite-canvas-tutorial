@@ -37,6 +37,30 @@ const circle4 = new Circle({
 });
 canvas.appendChild(circle4);
 
+const circle5 = new Circle({
+  cx: 200,
+  cy: 100,
+  r: 50,
+  fill: image,
+  stroke: 'black',
+  strokeWidth: 20,
+  strokeOpacity: 0.5,
+  strokeAlignment: 'inner',
+});
+canvas.appendChild(circle5);
+
+const circle6 = new Circle({
+  cx: 300,
+  cy: 100,
+  r: 50,
+  fill: image,
+  stroke: 'black',
+  strokeWidth: 20,
+  strokeOpacity: 0.5,
+  strokeAlignment: 'outer',
+});
+canvas.appendChild(circle6);
+
 const circle = new Circle({
   cx: 300,
   cy: 300,

@@ -10,3 +10,8 @@ export const isString = (a): a is string => typeof a === 'string';
 export function camelToKebabCase(str: string) {
   return str.replace(/[A-Z]/g, (match) => `-${match.toLowerCase()}`);
 }
+const dataUrlRegex =
+  /^data:([a-z]+\/[a-z0-9\-\+]+)?(;charset=[a-z0-9\-]+)?(;base64)?,[a-z0-9\!\$&',\(\)\*\+,;=\-\._\~:@\/\?%\s]*$/i;
+export function isDataUrl(url: string) {
+  return dataUrlRegex.test(url);
+}

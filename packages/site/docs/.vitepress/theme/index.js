@@ -5,6 +5,8 @@ import './custom.css';
 import Layout from 'genji-theme-vitepress';
 import { h } from 'vue';
 import Stats from 'stats.js';
+import { ImageLoader } from '@loaders.gl/images';
+import { load } from '@loaders.gl/core';
 import * as Lesson1 from '@infinite-canvas-tutorial/lesson1';
 import * as Lesson2 from '@infinite-canvas-tutorial/lesson2';
 import * as Lesson3 from '@infinite-canvas-tutorial/lesson3';
@@ -48,6 +50,8 @@ const Utils = {
     $canvas.style.touchAction = 'none';
     canvas.resize(width, height);
   },
+
+  loadImage: async (src) => load(src, ImageLoader),
 };
 
 const props = {

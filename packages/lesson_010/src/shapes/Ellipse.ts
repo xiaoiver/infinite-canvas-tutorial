@@ -59,6 +59,7 @@ export class Ellipse extends Shape implements EllipseAttributes {
     if (this.#cx !== cx) {
       this.#cx = cx;
       this.renderDirtyFlag = true;
+      this.geometryBoundsDirtyFlag = true;
       this.renderBoundsDirtyFlag = true;
     }
   }
@@ -71,6 +72,7 @@ export class Ellipse extends Shape implements EllipseAttributes {
     if (this.#cy !== cy) {
       this.#cy = cy;
       this.renderDirtyFlag = true;
+      this.geometryBoundsDirtyFlag = true;
       this.renderBoundsDirtyFlag = true;
     }
   }
@@ -83,6 +85,7 @@ export class Ellipse extends Shape implements EllipseAttributes {
     if (this.#rx !== rx) {
       this.#rx = rx;
       this.renderDirtyFlag = true;
+      this.geometryBoundsDirtyFlag = true;
       this.renderBoundsDirtyFlag = true;
     }
   }
@@ -95,6 +98,7 @@ export class Ellipse extends Shape implements EllipseAttributes {
     if (this.#ry !== ry) {
       this.#ry = ry;
       this.renderDirtyFlag = true;
+      this.geometryBoundsDirtyFlag = true;
       this.renderBoundsDirtyFlag = true;
     }
   }
@@ -137,6 +141,15 @@ export class Ellipse extends Shape implements EllipseAttributes {
       );
     }
     return false;
+  }
+
+  getGeometryBounds() {
+    if (this.geometryBoundsDirtyFlag) {
+      const { cx, cy, rx, ry } = this;
+      this.geometryBoundsDirtyFlag = false;
+      this.geometryBounds = new AABB(cx - rx, cy - ry, cx + rx, cy + ry);
+    }
+    return this.geometryBounds;
   }
 
   getRenderBounds() {

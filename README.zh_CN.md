@@ -119,7 +119,9 @@ pnpm run dev
 
 ## 课程 10 - 图片导入和导出 [🔗](https://infinitecanvas.cc/zh/guide/lesson-010)
 
--   如何将画布导出成 PNG，JPG，SVG 等格式的图片
+-   将画布内容导出成 PNG，JPEG 和 SVG 格式的图片
+-   在画布中渲染图片
+-   拓展 SVG 的能力，以 `stroke-aligment` 为例
 
 [infinitecanvas]: https://infinitecanvas.tools/
 [Figma]: https://madebyevan.com/figma/building-a-professional-design-tool-on-the-web/

@@ -82,6 +82,7 @@ function Shapable<TBase extends GConstructor<Shape>>(Base: TBase) {
     }
 
     abstract containsPoint(x: number, y: number): boolean;
+    abstract getGeometryBounds(): AABB;
     abstract getRenderBounds(): AABB;
 
     appendChild(child: Shape) {

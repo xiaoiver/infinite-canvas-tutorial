@@ -1,7 +1,7 @@
 import { Transform } from '@pixi/math';
 import { Circle, Ellipse, Group, Rect, Shape } from '../shapes';
 import { createSVGElement } from './browser';
-import { camelToKebabCase } from './lang';
+import { camelToKebabCase, isDataUrl, isString } from './lang';
 
 type SerializedTransform = {
   position: {
@@ -108,6 +108,8 @@ export function deserializeNode(data: SerializedNode): Shape {
   const { transform, ...rest } = attributes;
   Object.assign(shape, rest);
 
+  // TODO: create from DataURL
+
   shape.transform.position.set(transform.position.x, transform.position.y);
   shape.transform.scale.set(transform.scale.x, transform.scale.y);
   shape.transform.skew.set(transform.skew.x, transform.skew.y);
@@ -132,6 +134,11 @@ export function serializeNode(node: Shape): SerializedNode {
       return prev;
     }, {}),
   };
+
+  const { fill } = serialized.attributes;
+  if (fill && !isString(fill)) {
+    serialized.attributes.fill = imageBitmapToURL(fill as ImageBitmap);
+  }
 
   serialized.attributes.transform = serializeTransform(node.transform);
   serialized.children = node.children.map(serializeNode);
@@ -340,6 +347,31 @@ export function exportInnerShadow(
   $g.setAttribute('filter', `url(#${$filter.id})`);
 }
 
+export function exportFillImage(
+  node: SerializedNode,
+  element: SVGElement,
+  $g: SVGElement,
+) {
+  const $defs = createSVGElement('defs');
+  const $pattern = createSVGElement('pattern');
+  $pattern.id = `image-fill_${node.uid}`;
+  $pattern.setAttribute('patternUnits', 'objectBoundingBox');
+  $pattern.setAttribute('width', '1');
+  $pattern.setAttribute('height', '1');
+  const $image = createSVGElement('image');
+  $image.setAttribute('href', node.attributes.fill as string);
+  $image.setAttribute('x', '0');
+  $image.setAttribute('y', '0');
+  // TODO: use geometry bounds of shape.
+  $image.setAttribute('height', '200');
+  $image.setAttribute('width', '200');
+  $pattern.appendChild($image);
+  $defs.appendChild($pattern);
+  $g.appendChild($defs);
+
+  element.setAttribute('fill', `url(#${$pattern.id})`);
+}
+
 export function toSVGElement(node: SerializedNode) {
   const { type, attributes, children } = node;
   const element = createSVGElement(type);
@@ -366,6 +398,7 @@ export function toSVGElement(node: SerializedNode) {
   const outerStrokeAlignment = strokeAlignment === 'outer';
   const innerOrOuterStrokeAlignment =
     innerStrokeAlignment || outerStrokeAlignment;
+  const hasFillImage = rest.fill && isDataUrl(rest.fill as string);
 
   /**
    * In the vast majority of cases, it is the element itself.
@@ -404,7 +437,8 @@ export function toSVGElement(node: SerializedNode) {
   if (
     (children && children.length > 0 && type !== 'g') ||
     innerOrOuterStrokeAlignment ||
-    innerShadowBlurRadius > 0
+    innerShadowBlurRadius > 0 ||
+    hasFillImage
   ) {
     $g = createSVGElement('g');
     $g.appendChild(element);
@@ -415,6 +449,10 @@ export function toSVGElement(node: SerializedNode) {
   }
   if (innerShadowBlurRadius > 0) {
     exportInnerShadow(node, element, $g);
+  }
+  // avoid `fill="[object ImageBitmap]"`
+  if (hasFillImage) {
+    exportFillImage(node, element, $g);
   }
 
   $g = $g || element;
@@ -436,4 +474,25 @@ export function toSVGElement(node: SerializedNode) {
   });
 
   return $g;
+}
+
+/**
+ * We can't use bitmaprenderer since the ImageBitmap has been rendered in Texture.
+ *
+ * Error message: `The input ImageBitmap has been detached`
+ * @see https://stackoverflow.com/questions/52959839/convert-imagebitmap-to-blob
+ */
+export function imageBitmapToURL(bmp: ImageBitmap) {
+  const canvas = document.createElement('canvas');
+  // resize it to the size of our ImageBitmap
+  canvas.width = bmp.width;
+  canvas.height = bmp.height;
+
+  // We get the 2d drawing context and draw the image in the top left
+  canvas.getContext('2d').drawImage(bmp, 0, 0);
+  // get a bitmaprenderer context
+  // const ctx = canvas.getContext('bitmaprenderer');
+  // ctx.transferFromImageBitmap(bmp);
+  // const blob = await new Promise<Blob>((res) => canvas.toBlob(res));
+  return canvas.toDataURL();
 }

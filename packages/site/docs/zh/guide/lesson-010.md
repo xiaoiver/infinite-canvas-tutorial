@@ -10,7 +10,7 @@ outline: deep
 -   在画布中渲染图片
 -   拓展 SVG 的能力，以 `stroke-aligment` 为例
 
-## 将画布内容导出成图片 {#export-image}
+## 将画布内容导出成图片 {#export-canvas-to-image}
 
 首先我们来看如何将画布内容导出成图片。[Export from Figma] 一文介绍了在 Figma 中如何通过切片工具将画布内容导出成包括 PNG 在内的多种格式图片。
 
@@ -262,7 +262,7 @@ canvas.root = deserializeNode(JSON.parse(json)) as Group;
 
 此时将序列化后的节点转换为 [SVG Element] 就很容易了，大部分属性例如 `fill / stroke / opacity` 都是 SVG 的同名属性，因此可以直接使用 [setAttribute] 进行赋值，但仍有一些特殊的属性需要特殊处理，例如：
 
--   `transform` 需要将对象中的 `position / rotation / scale` 转换成 `matrix()`
+-   `transform` 我们使用了 `@pixi/math` 中的 `Transform` 对象，需要它的 `position / rotation / scale` 转换成 `matrix()`
 -   `transform-origin` 对应 `transform` 中的 `pivot` 属性
 -   `innerShadow` 并不存在 SVG 同名属性，需要使用 filter 实现。可参考 [Creating inner shadow in svg]
 -   `outerShadow` 同上
@@ -283,6 +283,8 @@ call(() => {
 });
 ```
 
+#### 场景图 {#scene-graph}
+
 还有一点需要注意，在我们的场景图中任意图形都可以添加子节点，但 SVG 中只有 `<g>` 才可以添加子元素，除此之外例如 `<circle>` 是无法拥有子元素的。解决办法也很简单，对于拥有子节点的非 Group 元素，生成 SVG 时在外面套一个 `<g>`，将原本应用在本身的 `transform` 应用在它上面。假设后续我们支持了渲染文本，一个拥有文本子节点的 Circle 对应的 SVG 如下：
 
 ```html
@@ -292,7 +294,82 @@ call(() => {
 </g>
 ```
 
-最后来看如何实现网格的导出，参考 [How to draw grid using HTML5 and canvas or SVG]
+#### 绘制网格 {#export-grid}
+
+最后来看如何使用 SVG 实现网格。参考 [How to draw grid using HTML5 and canvas or SVG]，我们使用 `<pattern>` 平铺实现：对于直线网格使用一大一小两组；对于圆点网格分别在“砖块”的四个角上各放置一个圆形：
+
+<svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <pattern id="small-grid" width="10" height="10" patternUnits="userSpaceOnUse">
+      <path d="M 10 0 L 0 0 0 10" fill="none" stroke="rgba(221,221,221,1)" stroke-width="1"/>
+    </pattern>
+    <pattern id="grid" width="100" height="100" patternUnits="userSpaceOnUse">
+      <rect width="100" height="100" fill="url(#small-grid)"/>
+      <path d="M 100 0 L 0 0 0 100" fill="none" stroke="rgba(221,221,221,1)" stroke-width="2"/>
+    </pattern>
+  </defs>
+  <rect width="100%" height="100%" fill="url(#grid)" />
+</svg>
+
+<svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <circle id="dot-tl" cx="0" cy="0" r="2" fill="rgba(221,221,221,1)" />
+    <circle id="dot-br" cx="20" cy="20" r="2" fill="rgba(221,221,221,1)" />
+    <circle id="dot-bl" cx="0" cy="20" r="2" fill="rgba(221,221,221,1)" />
+    <circle id="dot-tr" cx="20" cy="0" r="2" fill="rgba(221,221,221,1)" />
+  </defs>
+  <pattern id="dots-grid" patternUnits="userSpaceOnUse" width="20" height="20">
+    <use xlink:href="#dot-tl" />
+    <use xlink:href="#dot-tr" />
+    <use xlink:href="#dot-bl" />
+    <use xlink:href="#dot-br" />
+  </pattern>
+  <rect width="100%" height="100%" fill="url(#dots-grid)" />
+</svg>
+
+然后在绘制网格逻辑处加入判断：非截图模式下保持不变，截图模式下仅当开启包含网格选项时才绘制：
+
+```ts
+hooks.beginFrame.tap(() => {
+    if (
+        !this.#enableCapture ||
+        (this.#enableCapture && this.#captureOptions.grid)
+    ) {
+        this.#grid.render(this.#device, this.#renderPass, this.#uniformBuffer);
+    }
+});
+```
+
+#### 导出作为填充的图片 {#export-image-as-fill-value}
+
+虽然我们还没有介绍填充图片的实现，但如果直接将 `fill` 属性的 Image 值序列化将得到如下结果：
+
+```html
+<circle fill="[object ImageBitmap]" />
+```
+
+这显然是无法正常展示的，我们需要将 Image 对象序列化成 DataURL，只要将图片绘制到 Canvas 中，就可以利用上一节我们介绍过的 `toDataURL` 方法。参考 [Convert ImageBitmap to Blob]，我首先尝试了 [ImageBitmapRenderingContext]，ImageBitmap 可以在不阻塞主线程的情况下异步解码图像，这有助于提高应用的性能和响应性。
+
+```ts
+async function imageBitmapToURL(bmp: ImageBitmap) {
+    const canvas = document.createElement('canvas');
+    // resize it to the size of our ImageBitmap
+    canvas.width = bmp.width;
+    canvas.height = bmp.height;
+    // get a bitmaprenderer context
+    const ctx = canvas.getContext('bitmaprenderer');
+    ctx.transferFromImageBitmap(bmp);
+    const blob = await new Promise<Blob>((res) => canvas.toBlob(res));
+    return canvas.toDataURL();
+}
+```
+
+但很不幸我们得到了如下报错。由于我们已经使用了这个 ImageBitmap 创建了纹理，就无法再将它的控制权转移给新的 Canvas 了。
+
+> [!CAUTION]
+> The input ImageBitmap has been detached
+
+因此我们只能使用常规的 `drawImage` 方式绘制。
 
 ### 导出 PDF {#to-pdf}
 
@@ -331,6 +408,8 @@ import { load } from '@loaders.gl/core';
 
 const image = await load(url, ImageLoader, options);
 ```
+
+值得一提的是我们并不会将它内置，因此需要画布使用者确保资源已经加载完毕再使用。
 
 ### API 设计 {#image-api}
 
@@ -397,6 +476,11 @@ type TexImageSource =
 在顶点数据中需要一个字段表示是否使用了纹理，如果使用就对纹理进行采样，这里的 `SAMPLER_2D()` 并非标准 GLSL 语法，而是我们自定义的标记，用于在 Shader 编译阶段替换成 GLSL100 / GLSL300 / WGSL 的采样语法。另外，目前纹理是上传的图片，后续还可以支持使用 Canvas2D API 创建的渐变例如 [createLinearGradient]：
 
 ```glsl
+// vert
+out vec2 v_Uv;
+v_Uv = (a_FragCoord * radius / size + 1.0) / 2.0;
+
+// frag
 in vec2 v_Uv;
 uniform sampler2D u_Texture;
 
@@ -417,6 +501,82 @@ vTextureId = aTextureId;
 // frag
 uniform sampler2D uSamplers[%count%];
 varying int vTextureId;
+```
+
+简单起见，我们将合批逻辑简化为：
+
+1. `fill` 取值为颜色字符串与 Image 的无法合批
+2. `fill` 取值为不同 Image 的无法合批
+
+因此下面的三个 Circle 会在同一批绘制。
+
+```js eval code=false
+$icCanvas3 = call(() => {
+    return document.createElement('ic-canvas-lesson10');
+});
+```
+
+```js eval code=false inspector=false
+call(() => {
+    const { Canvas, Circle } = Lesson10;
+
+    const stats = new Stats();
+    stats.showPanel(0);
+    const $stats = stats.dom;
+    $stats.style.position = 'absolute';
+    $stats.style.left = '0px';
+    $stats.style.top = '0px';
+
+    $icCanvas3.parentElement.style.position = 'relative';
+    $icCanvas3.parentElement.appendChild($stats);
+
+    $icCanvas3.addEventListener('ic-ready', async (e) => {
+        const image = await Utils.loadImage(
+            'https://infinitecanvas.cc/canvas.png',
+        );
+
+        const canvas = e.detail;
+
+        const circle1 = new Circle({
+            cx: 200,
+            cy: 200,
+            r: 50,
+            fill: image,
+            stroke: 'black',
+            strokeWidth: 20,
+            strokeOpacity: 0.5,
+            strokeAlignment: 'inner',
+        });
+        canvas.appendChild(circle1);
+
+        const circle2 = new Circle({
+            cx: 320,
+            cy: 200,
+            r: 50,
+            fill: image,
+            stroke: 'black',
+            strokeWidth: 20,
+            strokeOpacity: 0.5,
+        });
+        canvas.appendChild(circle2);
+
+        const circle3 = new Circle({
+            cx: 460,
+            cy: 200,
+            r: 50,
+            fill: image,
+            stroke: 'black',
+            strokeWidth: 20,
+            strokeOpacity: 0.5,
+            strokeAlignment: 'outer',
+        });
+        canvas.appendChild(circle3);
+    });
+
+    $icCanvas3.addEventListener('ic-frame', (e) => {
+        stats.update();
+    });
+});
 ```
 
 ### 增加缓存 {#render-cache}
@@ -643,3 +803,5 @@ function strokeOffset(
 [createLinearGradient]: https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/createLinearGradient
 [Inside PixiJS: Batch Rendering System]: https://medium.com/swlh/inside-pixijs-batch-rendering-system-fad1b466c420
 [How to draw grid using HTML5 and canvas or SVG]: https://stackoverflow.com/questions/14208673/how-to-draw-grid-using-html5-and-canvas-or-svg
+[Convert ImageBitmap to Blob]: https://stackoverflow.com/questions/52959839/convert-imagebitmap-to-blob
+[ImageBitmapRenderingContext]: https://developer.mozilla.org/en-US/docs/Web/API/ImageBitmapRenderingContext

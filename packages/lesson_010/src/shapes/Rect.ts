@@ -112,6 +112,7 @@ export class Rect extends Shape implements RectAttributes {
     if (this.#x !== x) {
       this.#x = x;
       this.renderDirtyFlag = true;
+      this.geometryBoundsDirtyFlag = true;
       this.renderBoundsDirtyFlag = true;
     }
   }
@@ -123,6 +124,7 @@ export class Rect extends Shape implements RectAttributes {
     if (this.#y !== y) {
       this.#y = y;
       this.renderDirtyFlag = true;
+      this.geometryBoundsDirtyFlag = true;
       this.renderBoundsDirtyFlag = true;
     }
   }
@@ -134,6 +136,7 @@ export class Rect extends Shape implements RectAttributes {
     if (this.#width !== width) {
       this.#width = width;
       this.renderDirtyFlag = true;
+      this.geometryBoundsDirtyFlag = true;
       this.renderBoundsDirtyFlag = true;
     }
   }
@@ -145,6 +148,7 @@ export class Rect extends Shape implements RectAttributes {
     if (this.#height !== height) {
       this.#height = height;
       this.renderDirtyFlag = true;
+      this.geometryBoundsDirtyFlag = true;
       this.renderBoundsDirtyFlag = true;
     }
   }
@@ -260,6 +264,15 @@ export class Rect extends Shape implements RectAttributes {
       );
     }
     return false;
+  }
+
+  getGeometryBounds() {
+    if (this.geometryBoundsDirtyFlag) {
+      const { x, y, width, height } = this;
+      this.geometryBoundsDirtyFlag = false;
+      this.geometryBounds = new AABB(x, y, x + width, y + height);
+    }
+    return this.geometryBounds;
   }
 
   getRenderBounds() {

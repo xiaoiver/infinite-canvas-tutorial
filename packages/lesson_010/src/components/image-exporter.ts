@@ -29,35 +29,34 @@ export class Exporter extends LitElement {
   canvas: Canvas;
 
   @state()
-  grids = false;
+  grid = false;
 
-  private exporter: ImageExporter;
-
-  private handleInputChange(event: any) {
-    this.grids = !this.grids;
+  private handleInputChange() {
+    this.grid = !this.grid;
   }
 
   connectedCallback() {
     super.connectedCallback();
-    this.exporter = new ImageExporter({ canvas: this.canvas });
+    const exporter = new ImageExporter({ canvas: this.canvas });
 
     this.addEventListener('sl-select', async (event: MouseEvent) => {
       const selectedItem = (event.detail as any).item;
+
       let dataURL: string;
       if (
         selectedItem.value === 'download-image-png' ||
         selectedItem.value === 'download-image-jpeg'
       ) {
-        const canvas = await this.exporter.toCanvas({ grids: this.grids });
+        const canvas = await exporter.toCanvas({ grid: this.grid });
         dataURL = canvas.toDataURL(
           `image/${selectedItem.value.split('-').reverse()[0]}`,
         ); // png / jpeg
       } else if (selectedItem.value === 'download-image-svg') {
-        dataURL = this.exporter.toSVGDataURL({ grids: this.grids });
+        dataURL = exporter.toSVGDataURL({ grid: this.grid });
       }
 
       if (dataURL) {
-        this.exporter.downloadImage({
+        exporter.downloadImage({
           dataURL,
           name: 'infinite-canvas-screenshot',
         });
@@ -75,7 +74,7 @@ export class Exporter extends LitElement {
       <sl-menu>
         <sl-switch
           size="small"
-          .checked=${this.grids}
+          .checked=${this.grid}
           @sl-input=${this.handleInputChange}
           >Grids included</sl-switch
         >

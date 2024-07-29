@@ -43,7 +43,27 @@ export class SDF extends Drawcall {
   #bindings: Bindings;
 
   validate(shape: Shape) {
-    return super.validate(shape);
+    const result = super.validate(shape);
+    if (!result) {
+      return false;
+    }
+
+    if (this.shapes.length === 0) {
+      return true;
+    }
+
+    const isInstanceFillImage = isString(this.shapes[0].fill);
+    const isShapeFillImage = isString(shape.fill);
+
+    if (isInstanceFillImage !== isShapeFillImage) {
+      return false;
+    }
+
+    if (isInstanceFillImage && isShapeFillImage) {
+      return this.shapes[0].fill === shape.fill;
+    }
+
+    return true;
   }
 
   createGeometry(): void {
