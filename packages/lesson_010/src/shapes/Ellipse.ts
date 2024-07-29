@@ -40,6 +40,13 @@ export class Ellipse extends Shape implements EllipseAttributes {
   #rx: number;
   #ry: number;
 
+  static getGeometryBounds(
+    attributes: Partial<Pick<EllipseAttributes, 'cx' | 'cy' | 'rx' | 'ry'>>,
+  ) {
+    const { cx, cy, rx, ry } = attributes;
+    return new AABB(cx - rx, cy - ry, cx + rx, cy + ry);
+  }
+
   constructor(attributes: Partial<EllipseAttributes> = {}) {
     super(attributes);
 
@@ -145,9 +152,8 @@ export class Ellipse extends Shape implements EllipseAttributes {
 
   getGeometryBounds() {
     if (this.geometryBoundsDirtyFlag) {
-      const { cx, cy, rx, ry } = this;
       this.geometryBoundsDirtyFlag = false;
-      this.geometryBounds = new AABB(cx - rx, cy - ry, cx + rx, cy + ry);
+      this.geometryBounds = Ellipse.getGeometryBounds(this);
     }
     return this.geometryBounds;
   }

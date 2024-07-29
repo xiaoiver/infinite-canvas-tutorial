@@ -39,6 +39,8 @@
     "@antv/g-device-api": "^1.6.12",
     "@lit/context": "^1.1.2",
     "@lit/task": "^1.0.1",
+    "@loaders.gl/core": "^4.2.2",
+    "@loaders.gl/images": "^4.2.2",
     "@pixi/math": "^7.4.2",
     "bezier-easing": "^2.1.0",
     "d3-color": "^3.1.0",

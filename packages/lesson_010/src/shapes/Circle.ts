@@ -33,6 +33,13 @@ export class Circle extends Shape implements CircleAttributes {
   #cy: number;
   #r: number;
 
+  static getGeometryBounds(
+    attributes: Partial<Pick<CircleAttributes, 'cx' | 'cy' | 'r'>>,
+  ) {
+    const { cx, cy, r } = attributes;
+    return new AABB(cx - r, cy - r, cx + r, cy + r);
+  }
+
   constructor(attributes: Partial<CircleAttributes> = {}) {
     super(attributes);
 
@@ -115,9 +122,8 @@ export class Circle extends Shape implements CircleAttributes {
 
   getGeometryBounds() {
     if (this.geometryBoundsDirtyFlag) {
-      const { cx, cy, r } = this;
       this.geometryBoundsDirtyFlag = false;
-      this.geometryBounds = new AABB(cx - r, cy - r, cx + r, cy + r);
+      this.geometryBounds = Circle.getGeometryBounds(this);
     }
     return this.geometryBounds;
   }

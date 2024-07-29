@@ -79,6 +79,13 @@ export class Rect extends Shape implements RectAttributes {
   #dropShadowOffsetY: number;
   #dropShadowBlurRadius: number;
 
+  static getGeometryBounds(
+    attributes: Partial<Pick<RectAttributes, 'x' | 'y' | 'width' | 'height'>>,
+  ) {
+    const { x, y, width, height } = attributes;
+    return new AABB(x, y, x + width, y + height);
+  }
+
   constructor(attributes: Partial<RectAttributes> = {}) {
     super(attributes);
 
@@ -268,9 +275,8 @@ export class Rect extends Shape implements RectAttributes {
 
   getGeometryBounds() {
     if (this.geometryBoundsDirtyFlag) {
-      const { x, y, width, height } = this;
       this.geometryBoundsDirtyFlag = false;
-      this.geometryBounds = new AABB(x, y, x + width, y + height);
+      this.geometryBounds = Rect.getGeometryBounds(this);
     }
     return this.geometryBounds;
   }

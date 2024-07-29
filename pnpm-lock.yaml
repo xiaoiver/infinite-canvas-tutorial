@@ -286,6 +286,12 @@ importers:
       '@lit/task':
         specifier: ^1.0.1
         version: 1.0.1
+      '@loaders.gl/core':
+        specifier: ^4.2.2
+        version: 4.2.2
+      '@loaders.gl/images':
+        specifier: ^4.2.2
+        version: 4.2.2(@loaders.gl/core@4.2.2)
       '@pixi/math':
         specifier: ^7.4.2
         version: 7.4.2
@@ -308,12 +314,6 @@ importers:
         specifier: ^3.0.1
         version: 3.0.1
     devDependencies:
-      '@loaders.gl/core':
-        specifier: ^4.2.2
-        version: 4.2.2
-      '@loaders.gl/images':
-        specifier: ^4.2.2
-        version: 4.2.2(@loaders.gl/core@4.2.2)
       '@types/d3-color':
         specifier: ^3.1.0
         version: 3.1.0

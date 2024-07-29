@@ -1,5 +1,7 @@
 import { Transform } from '@pixi/math';
-import { Circle, Ellipse, Group, Rect, Shape } from '../shapes';
+import { ImageLoader } from '@loaders.gl/images';
+import { load } from '@loaders.gl/core';
+import { AABB, Circle, Ellipse, Group, Rect, Shape } from '../shapes';
 import { createSVGElement } from './browser';
 import { camelToKebabCase, isDataUrl, isString } from './lang';
 
@@ -92,7 +94,7 @@ export function typeofShape(
   }
 }
 
-export function deserializeNode(data: SerializedNode): Shape {
+export async function deserializeNode(data: SerializedNode) {
   const { type, attributes, children } = data;
   let shape: Shape;
   if (type === 'g') {
@@ -108,18 +110,25 @@ export function deserializeNode(data: SerializedNode): Shape {
   const { transform, ...rest } = attributes;
   Object.assign(shape, rest);
 
-  // TODO: create from DataURL
+  // create Image from DataURL
+  const { fill } = rest;
+  if (fill && isString(fill) && isDataUrl(fill)) {
+    shape.fill = (await load(fill, ImageLoader)) as ImageBitmap;
+  }
 
-  shape.transform.position.set(transform.position.x, transform.position.y);
-  shape.transform.scale.set(transform.scale.x, transform.scale.y);
-  shape.transform.skew.set(transform.skew.x, transform.skew.y);
-  shape.transform.rotation = transform.rotation;
-  shape.transform.pivot.set(transform.pivot.x, transform.pivot.y);
+  const { position, scale, skew, rotation, pivot } = transform;
+  shape.transform.position.set(position.x, position.y);
+  shape.transform.scale.set(scale.x, scale.y);
+  shape.transform.skew.set(skew.x, skew.y);
+  shape.transform.rotation = rotation;
+  shape.transform.pivot.set(pivot.x, pivot.y);
 
   if (children && children.length > 0) {
-    children.map(deserializeNode).forEach((child) => {
-      shape.appendChild(child);
-    });
+    await Promise.all(
+      children.map(async (child) => {
+        shape.appendChild(await deserializeNode(child));
+      }),
+    );
   }
   return shape;
 }
@@ -362,9 +371,17 @@ export function exportFillImage(
   $image.setAttribute('href', node.attributes.fill as string);
   $image.setAttribute('x', '0');
   $image.setAttribute('y', '0');
-  // TODO: use geometry bounds of shape.
-  $image.setAttribute('height', '200');
-  $image.setAttribute('width', '200');
+  // use geometry bounds of shape.
+  let bounds: AABB;
+  if (node.type === 'circle') {
+    bounds = Circle.getGeometryBounds(node.attributes);
+  } else if (node.type === 'ellipse') {
+    bounds = Ellipse.getGeometryBounds(node.attributes);
+  } else if (node.type === 'rect') {
+    bounds = Rect.getGeometryBounds(node.attributes);
+  }
+  $image.setAttribute('width', `${bounds.maxX - bounds.minX}`);
+  $image.setAttribute('height', `${bounds.maxY - bounds.minY}`);
   $pattern.appendChild($image);
   $defs.appendChild($pattern);
   $g.appendChild($defs);
@@ -398,7 +415,7 @@ export function toSVGElement(node: SerializedNode) {
   const outerStrokeAlignment = strokeAlignment === 'outer';
   const innerOrOuterStrokeAlignment =
     innerStrokeAlignment || outerStrokeAlignment;
-  const hasFillImage = rest.fill && isDataUrl(rest.fill as string);
+  const hasFillImage = rest.fill && isString(rest.fill) && isDataUrl(rest.fill);
 
   /**
    * In the vast majority of cases, it is the element itself.
