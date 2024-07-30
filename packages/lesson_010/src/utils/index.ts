@@ -3,6 +3,7 @@ export * from './browser';
 export * from './traverse';
 export * from './matrix';
 export * from './easing';
+export * from './converter';
 export * from './lang';
 export * from './uid';
 export * from './serialize';

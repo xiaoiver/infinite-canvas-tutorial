@@ -1,7 +1,7 @@
 import _gl from 'gl';
 import { getCanvas } from '../utils';
 import '../useSnapshotMatchers';
-import { Canvas, Circle } from '../../packages/core';
+import { Canvas, Circle } from '../../packages/core/lib';
 
 describe('Circle', () => {
   it('should render correctly.', async () => {
