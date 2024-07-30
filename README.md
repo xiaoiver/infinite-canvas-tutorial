@@ -117,7 +117,11 @@ pnpm run dev
 
 ## Lesson 10 - Import and export images [🔗](https://infinitecanvas.cc/guide/lesson-010)
 
--   How to export the canvas to PNG, JPG and SVG
+-   Exporting canvas content to PNG, JPEG and SVG formats
+-   Rendering images in the canvas
+-   Extending the capabilities of SVG, using `stroke-aligment` as an example.
+
+<img src="./screenshots/lesson10.png" width="300" alt="Lesson 10 - import and export images">
 
 [infinitecanvas]: https://infinitecanvas.tools/
 [Figma]: https://madebyevan.com/figma/building-a-professional-design-tool-on-the-web/

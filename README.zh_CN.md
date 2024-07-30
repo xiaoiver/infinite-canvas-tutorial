@@ -123,6 +123,8 @@ pnpm run dev
 -   在画布中渲染图片
 -   拓展 SVG 的能力，以 `stroke-aligment` 为例
 
+<img src="./screenshots/lesson10.png" width="300" alt="Lesson 10 - import and export images">
+
 [infinitecanvas]: https://infinitecanvas.tools/
 [Figma]: https://madebyevan.com/figma/building-a-professional-design-tool-on-the-web/
 [Modyfi]: https://digest.browsertech.com/archive/browsertech-digest-how-modyfi-is-building-with/
