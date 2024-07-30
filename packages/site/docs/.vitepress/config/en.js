@@ -60,6 +60,7 @@ export const en = defineConfig({
                 text: 'Lesson 010 - Import and export images',
                 link: 'lesson-010'
               },
+              { text: 'Lesson 011 - Test and server-side rendering', link: 'lesson-011' },
             ],
           },
         ],

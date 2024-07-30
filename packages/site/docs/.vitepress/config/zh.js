@@ -45,6 +45,7 @@ export const zh = defineConfig({
               { text: '课程8 - 性能优化', link: 'lesson-008' },
               { text: '课程9 - 绘制椭圆和矩形', link: 'lesson-009' },
               { text: '课程10 - 图片导入导出', link: 'lesson-010' },
+              { text: '课程11 - 测试与服务端渲染', link: 'lesson-011' },
             ],
           },
         ],

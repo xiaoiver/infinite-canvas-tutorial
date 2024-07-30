@@ -1,0 +1,25 @@
+import _gl from 'gl';
+import { getCanvas } from '../utils';
+import '../useSnapshotMatchers';
+import { Canvas, Circle } from '../../packages/core';
+
+describe('Circle', () => {
+  it('should render correctly.', async () => {
+    const $canvas = getCanvas(100, 100);
+
+    const canvas = await new Canvas({
+      canvas: $canvas,
+    }).initialized;
+    const circle = new Circle({
+      cx: 50,
+      cy: 50,
+      r: 50,
+      fill: '#F67676',
+    });
+    canvas.appendChild(circle);
+
+    const dir = `${__dirname}/snapshots`;
+
+    expect($canvas.getContext('webgl1')).toMatchWebGLSnapshot(dir, 'circle');
+  });
+});
