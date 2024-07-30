@@ -1,5 +1,8 @@
 # An Infinite Canvas Tutorial
 
+[![Build Status](https://github.com/xiaoiver/infinite-canvas-tutorial/actions/workflows/test.yml/badge.svg)](https://github.com/xiaoiver/infinite-canvas-tutorial/actions/workflows/test.yml)
+[![Coverage Status](https://coveralls.io/repos/github/xiaoiver/infinite-canvas-tutorial/badge.svg)](https://coveralls.io/github/xiaoiver/infinite-canvas-tutorial?branch=master)
+
 What is an Infinite Canvas? The term "infinite" in [infinitecanvas] is described as follows:
 
 -   High scalability. Users can freely organize content structures in a non-linear fashion.

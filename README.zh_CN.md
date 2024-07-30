@@ -1,5 +1,8 @@
 # 一个无限画布教程
 
+[![Build Status](https://github.com/xiaoiver/infinite-canvas-tutorial/actions/workflows/test.yml/badge.svg)](https://github.com/xiaoiver/infinite-canvas-tutorial/actions/workflows/test.yml)
+[![Coverage Status](https://coveralls.io/repos/github/xiaoiver/infinite-canvas-tutorial/badge.svg)](https://coveralls.io/github/xiaoiver/infinite-canvas-tutorial?branch=master)
+
 什么是无限画布？[infinitecanvas] 对“无限”的描述如下：
 
 -   高扩展性。用户可以以非线形的形式自由组织内容结构。
