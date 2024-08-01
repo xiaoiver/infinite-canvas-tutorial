@@ -42,6 +42,11 @@ export class SDF extends Drawcall {
   #inputLayout: InputLayout;
   #bindings: Bindings;
 
+  get useFillImage() {
+    const { fill } = this.shapes[0];
+    return !isString(fill) && isImageBitmapOrCanvases(fill);
+  }
+
   validate(shape: Shape) {
     const result = super.validate(shape);
     if (!result) {
@@ -106,6 +111,9 @@ export class SDF extends Drawcall {
     let defines = '';
     if (this.instanced) {
       defines += '#define USE_INSTANCES\n';
+    }
+    if (this.useFillImage) {
+      defines += '#define USE_FILLIMAGE\n';
     }
 
     if (this.#program) {
@@ -267,14 +275,14 @@ export class SDF extends Drawcall {
       ],
     };
     if (!this.instanced) {
-      bindings.uniformBufferBindings.push({
+      bindings.uniformBufferBindings!.push({
         buffer: this.#uniformBuffer,
       });
     }
 
-    const { fill } = this.shapes[0];
     // TODO: Canvas Gradient
-    if (!isString(fill) && isImageBitmapOrCanvases(fill)) {
+    if (this.useFillImage) {
+      const fill = this.shapes[0].fill as ImageBitmap;
       const texture = this.device.createTexture({
         format: Format.U8_RGBA_NORM,
         width: fill.width,
@@ -399,8 +407,8 @@ export class SDF extends Drawcall {
       innerShadowBlurRadius,
     } = shape;
 
-    let size: [number, number, number, number];
-    let type: number;
+    let size: [number, number, number, number] = [0, 0, 0, 0];
+    let type: number = 0;
     let cornerRadius = 0;
     if (shape instanceof Circle) {
       const { cx, cy, r } = shape;

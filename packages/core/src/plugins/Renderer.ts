@@ -1,9 +1,10 @@
+import * as d3 from 'd3-color';
 import {
   BufferFrequencyHint,
   BufferUsage,
   Format,
   TextureUsage,
-  TransparentWhite,
+  TransparentBlack,
   WebGLDeviceContribution,
   WebGPUDeviceContribution,
 } from '@antv/g-device-api';
@@ -19,7 +20,7 @@ import type { Plugin, PluginContext } from './interfaces';
 import { Grid } from '../shapes';
 import { paddingMat3 } from '../utils';
 import { BatchManager } from '../drawcalls/BatchManager';
-import { DataURLOptions } from '../ImageExporter';
+import type { DataURLOptions } from '../ImageExporter';
 
 export enum CheckboardStyle {
   NONE,
@@ -42,9 +43,9 @@ export class Renderer implements Plugin {
   #zIndexCounter = 1;
 
   #enableCapture: boolean;
-  #captureOptions: Partial<DataURLOptions>;
-  #capturePromise: Promise<string> | undefined;
-  #resolveCapturePromise: (dataURL: string) => void;
+  #captureOptions?: Partial<DataURLOptions>;
+  #capturePromise?: Promise<string>;
+  #resolveCapturePromise?: (dataURL: string) => void;
 
   apply(context: PluginContext) {
     const {
@@ -54,7 +55,26 @@ export class Renderer implements Plugin {
       shaderCompilerPath,
       devicePixelRatio,
       camera,
+      backgroundColor,
+      gridColor,
     } = context;
+
+    const {
+      r: br,
+      g: bg,
+      b: bb,
+      opacity: bo,
+    } = backgroundColor
+      ? d3.rgb(backgroundColor)
+      : { r: 0.986 * 255, g: 0.986 * 255, b: 0.986 * 255, opacity: 1 };
+    const {
+      r: gr,
+      g: gg,
+      b: gb,
+      opacity: go,
+    } = gridColor
+      ? d3.rgb(gridColor)
+      : { r: 0.87 * 255, g: 0.87 * 255, b: 0.87 * 255, opacity: 1 };
 
     hooks.initAsync.tapPromise(async () => {
       let deviceContribution: DeviceContribution;
@@ -62,7 +82,7 @@ export class Renderer implements Plugin {
         deviceContribution = new WebGLDeviceContribution({
           targets: ['webgl2', 'webgl1'],
           antialias: true,
-          shaderDebug: true,
+          shaderDebug: false,
           trackResources: true,
           onContextCreationError: () => {},
           onContextLost: () => {},
@@ -105,6 +125,14 @@ export class Renderer implements Plugin {
           ...paddingMat3(camera.projectionMatrix),
           ...paddingMat3(camera.viewMatrix),
           ...paddingMat3(camera.viewProjectionMatrixInv),
+          br / 255,
+          bg / 255,
+          bb / 255,
+          bo,
+          gr / 255,
+          gg / 255,
+          gb / 255,
+          go,
           camera.zoom,
           this.#checkboardStyle,
           0,
@@ -166,6 +194,14 @@ export class Renderer implements Plugin {
             ...paddingMat3(camera.projectionMatrix),
             ...paddingMat3(camera.viewMatrix),
             ...paddingMat3(camera.viewProjectionMatrixInv),
+            br / 255,
+            bg / 255,
+            bb / 255,
+            bo,
+            gr / 255,
+            gg / 255,
+            gb / 255,
+            go,
             camera.zoom,
             this.#checkboardStyle,
             0,
@@ -179,7 +215,7 @@ export class Renderer implements Plugin {
       this.#renderPass = this.#device.createRenderPass({
         colorAttachment: [this.#renderTarget],
         colorResolveTo: [onscreenTexture],
-        colorClearColor: [TransparentWhite],
+        colorClearColor: [TransparentBlack],
         depthStencilAttachment: this.#depthRenderTarget,
         depthClearValue: 1,
       });
@@ -188,7 +224,7 @@ export class Renderer implements Plugin {
 
       if (
         !this.#enableCapture ||
-        (this.#enableCapture && this.#captureOptions.grid)
+        (this.#enableCapture && this.#captureOptions?.grid)
       ) {
         this.#grid.render(this.#device, this.#renderPass, this.#uniformBuffer);
       }
@@ -213,7 +249,7 @@ export class Renderer implements Plugin {
 
       // capture here since we don't preserve drawing buffer
       if (this.#enableCapture && this.#resolveCapturePromise) {
-        const { type, encoderOptions } = this.#captureOptions;
+        const { type, encoderOptions } = this.#captureOptions || {};
         const dataURL = (
           this.#swapChain.getCanvas() as HTMLCanvasElement
         ).toDataURL(type, encoderOptions);

@@ -42,7 +42,10 @@ out vec2 v_FragCoord;
 #else
 #endif
 out vec2 v_Radius;
-out vec2 v_Uv;
+
+#ifdef USE_FILLIMAGE
+  out vec2 v_Uv;
+#endif
 
 void main() {
   mat3 model;
@@ -96,7 +99,10 @@ void main() {
 
   v_FragCoord = vec2(a_FragCoord * radius);
   v_Radius = radius;
-  v_Uv = (a_FragCoord * radius / size + 1.0) / 2.0;
+
+  #ifdef USE_FILLIMAGE
+    v_Uv = (a_FragCoord * radius / size + 1.0) / 2.0;
+  #endif
 
   gl_Position = vec4((u_ProjectionMatrix 
     * u_ViewMatrix
@@ -136,8 +142,10 @@ in vec2 v_FragCoord;
 #endif
 in vec2 v_Radius;
 
-in vec2 v_Uv;
-uniform sampler2D u_Texture;
+#ifdef USE_FILLIMAGE
+  in vec2 v_Uv;
+  uniform sampler2D u_Texture;
+#endif
 
 float epsilon = 0.000001;
 
@@ -239,10 +247,12 @@ void main() {
     innerShadow = u_InnerShadow;
   #endif
 
-  bool useFillImage = innerShadow.w > 0.5;
-  if (useFillImage) {
-    fillColor = texture(SAMPLER_2D(u_Texture), v_Uv);
-  }
+  #ifdef USE_FILLIMAGE
+    bool useFillImage = innerShadow.w > 0.5;
+    if (useFillImage) {
+      fillColor = texture(SAMPLER_2D(u_Texture), v_Uv);
+    }
+  #endif
 
   float distance;
   // 'circle', 'ellipse', 'rect'

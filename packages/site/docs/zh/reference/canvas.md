@@ -6,10 +6,12 @@ outline: deep
 
 ```ts
 export interface CanvasConfig {
-  canvas: HTMLCanvasElement;
-  renderer?: 'webgl' | 'webgpu';
-  shaderCompilerPath?: string;
-  devicePixelRatio?: number;
+    canvas: HTMLCanvasElement;
+    renderer?: 'webgl' | 'webgpu';
+    shaderCompilerPath?: string;
+    devicePixelRatio?: number;
+    backgroundColor?: string;
+    gridColor?: string;
 }
 ```
 
@@ -19,8 +21,8 @@ export interface CanvasConfig {
 
 ```ts
 const animate = () => {
-  canvas.render();
-  requestAnimationFrame(animate);
+    canvas.render();
+    requestAnimationFrame(animate);
 };
 animate();
 ```
@@ -69,4 +71,8 @@ canvas.removeChild(circle);
 
 ## zoomOut
 
-## setCheckboardStyle
+## checkboardStyle
+
+```ts
+canvas.checkboardStyle = CheckboardStyle.DOTS;
+```

@@ -21,6 +21,7 @@ import {
   SyncHook,
   SyncWaterfallHook,
   getGlobalThis,
+  isBrowser,
   traverse,
 } from './utils';
 import { DataURLOptions } from './ImageExporter';
@@ -30,6 +31,8 @@ export interface CanvasConfig {
   renderer?: 'webgl' | 'webgpu';
   shaderCompilerPath?: string;
   devicePixelRatio?: number;
+  backgroundColor?: string;
+  gridColor?: string;
 }
 
 export class Canvas {
@@ -63,9 +66,11 @@ export class Canvas {
       renderer = 'webgl',
       shaderCompilerPath = '',
       devicePixelRatio,
+      backgroundColor,
+      gridColor,
     } = config;
     const globalThis = getGlobalThis();
-    const dpr = devicePixelRatio ?? globalThis.devicePixelRatio;
+    const dpr = (devicePixelRatio ?? globalThis.devicePixelRatio) || 1;
     const supportsPointerEvents = !!globalThis.PointerEvent;
     const supportsTouchEvents = 'ontouchstart' in globalThis;
 
@@ -83,6 +88,8 @@ export class Canvas {
       renderer,
       shaderCompilerPath,
       devicePixelRatio: dpr,
+      backgroundColor,
+      gridColor,
       supportsPointerEvents,
       supportsTouchEvents,
       hooks: {
@@ -124,22 +131,24 @@ export class Canvas {
     this.#rendererPlugin = new Renderer();
     this.#eventPlugin = new Event();
     const plugins = [
-      new DOMEventListener(),
+      isBrowser ? new DOMEventListener() : undefined,
       this.#eventPlugin,
       new Picker(),
       new CameraControl(),
       new Culling(),
       this.#rendererPlugin,
-      new Dragndrop({
-        dragstartTimeThreshold: 100,
-        dragstartDistanceThreshold: 10,
-      }),
+      isBrowser
+        ? new Dragndrop({
+            dragstartTimeThreshold: 100,
+            dragstartDistanceThreshold: 10,
+          })
+        : undefined,
     ];
 
     this.#instancePromise = (async () => {
       const { hooks } = this.#pluginContext;
       plugins.forEach((plugin) => {
-        plugin.apply(this.#pluginContext);
+        plugin?.apply(this.#pluginContext);
       });
       hooks.init.call();
       await hooks.initAsync.promise();

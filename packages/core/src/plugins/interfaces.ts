@@ -80,6 +80,14 @@ export interface PluginContext {
    * @see https://developer.mozilla.org/en-US/docs/Web/API/Window/devicePixelRatio
    */
   devicePixelRatio: number;
+  /**
+   * Background color of page.
+   */
+  backgroundColor?: string;
+  /**
+   * Color of grid.
+   */
+  gridColor?: string;
   hooks: Hooks;
   camera: Camera;
   root: Group;

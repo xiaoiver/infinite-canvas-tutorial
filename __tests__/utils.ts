@@ -10,7 +10,8 @@ export function getCanvas(width = 100, height = 100) {
   let gl = _gl(width, height, {
     antialias: false,
     preserveDrawingBuffer: true,
-    stencil: true,
+    stencil: false,
+    premultipliedAlpha: false,
   });
 
   const mockedCanvas: HTMLCanvasElement = {
@@ -24,6 +25,7 @@ export function getCanvas(width = 100, height = 100) {
       // @see https://developer.mozilla.org/zh-CN/docs/Web/API/HTMLCanvasElement/getContext
       return gl;
     },
+    addEventListener: () => {},
   };
 
   return mockedCanvas;

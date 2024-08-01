@@ -8,7 +8,7 @@ outline: deep
 
 -   基于 Jest 的测试环境搭建，包含本地和 CI 环境
 -   使用单元测试提升代码覆盖率
--   基于 headless-gl 的服务端渲染与截图测试
+-   基于 headless-gl 的服务端渲染与视觉回归测试
 -   E2E UI 测试
 
 ## 配置基础环境
@@ -21,7 +21,7 @@ outline: deep
 }
 ```
 
-在 Github workflow 中执行测试命令 `pnpm cov`，前面的 `xvfb-run` 命令等介绍到服务端渲染时再介绍：
+在 GitHub workflow 中执行测试命令 `pnpm cov`，前面的 `xvfb-run` 命令等介绍到服务端渲染时再介绍：
 
 ```yaml
 - name: Cov
@@ -81,9 +81,11 @@ All files                     |   14.21 |    10.44 |    8.18 |   14.29 |
   Circle.ts                   |     100 |      100 |     100 |     100 |
 ```
 
-## 截图测试 {#visualization-testing}
+## 视觉回归测试 {#visual-regression-testing}
 
-对于渲染引擎来说，相比单元测试，截图测试更容易验证渲染结果的正确性。一旦生成了基准图片，后续只需要与它进行像素级对比，可以大大减少手动断言的编写。[pixelmatch] 可以很方便地进行图片 diff：
+在测试领域，"golden image"（黄金图像）是一个术语，用于描述一组测试用例中的标准或参考图像。这个术语通常用于视觉回归测试（Visual Regression Testing），这是一种自动化测试方法，通过比较应用程序或网站的屏幕截图与一组预先定义的参考图像来检测视觉变化。
+
+对于渲染引擎来说，相比单元测试，它更容易验证渲染结果的正确性，可以大大减少手动断言的编写。[pixelmatch] 可以很方便地进行图片比对，高亮展示差异部分：
 
 ![pixelmatch](/pixelmatch.png)
 
@@ -102,7 +104,7 @@ All files                     |   14.21 |    10.44 |    8.18 |   14.29 |
 -   [Three.js Puppeteer]
 -   Babylon.js 之前使用 Jest + Puppeteer，目前已经换成了 Playwright，详见：[Move visualization testing to playwright]
 -   luma.gl 使用 headless-gl。详见：[Register devices]
--   plot 使用 mocha + JSDOM https://github.com/observablehq/plot/blob/main/test/jsdom.js
+-   plot 使用 [mocha + JSDOM]
 
 我们分别探索一下这两种方案。
 
@@ -110,13 +112,87 @@ All files                     |   14.21 |    10.44 |    8.18 |   14.29 |
 
 虽然基于 headless-gl 实现的服务端渲染方案仅支持 WebGL1。但服务端渲染也有其适合的场景：
 
--   弱交互
+-   弱交互甚至是无需交互的场景
 -   对实时性要求不高，可以离线生成无运行时性能问题
 -   产物为像素图或矢量图，可跨端展示
 
-需要保证运行时代码能运行在 Node.js 环境
+要支持服务端渲染，需要保证我们的代码能运行在 Node.js 环境，那代码中对于 DOM API 的调用应该如何处理呢？第一种思路是根据环境判断，例如只有在浏览器环境下才注册事件监听器，调用 `addEventListener()` 方法：
+
+```ts{2}
+const plugins = [
+    isBrowser ? new DOMEventListener() : undefined,
+    //...
+];
+```
+
+另一种思路可以参考 [d3-selector]，我们注意到它并没有假定全局变量 `document` 的存在，而是选择从上下文中获取，这样上层就有机会传入类似 `jsdom` 这样的 DOM API 纯 JS 实现，也就能在服务端运行了。
+
+```ts{3}
+function creatorInherit(name) {
+  return function() {
+    var document = this.ownerDocument,
+        uri = this.namespaceURI;
+    return uri === xhtml && document.documentElement.namespaceURI === xhtml
+        ? document.createElement(name)
+        : document.createElementNS(uri, name);
+  };
+}
+```
+
+同样的思路在 [react-reconciler] 中也能见到，不同运行环境例如 DOM、Canvas、控制台等只需要实现配置中约定的接口：
+
+> A "host config" is an object that you need to provide, and that describes how to make something happen in the "host" environment (e.g. DOM, canvas, console, or whatever your rendering target is). It looks like this:
+
+```ts
+const HostConfig = {
+    createInstance(type, props) {
+        // e.g. DOM renderer returns a DOM node
+    },
+    // ...
+    appendChild(parent, child) {
+        // e.g. DOM renderer would call .appendChild() here
+    },
+    // ...
+};
+```
+
+Vite 的 [Environment API] 也尝试解决类似的问题：
+
+> The changes started by the Runtime API are now prompting a complete review of the way Vite handles environments (client, SSR, workerd, etc).
+
+回到我们的场景。
 
 ### 在 WebWorker 中运行 {#rendering-in-webworker}
+
+除了服务端，WebWorker 也算是一种特殊的运行时环境。在 WebWorker 中运行渲染代码可以避免阻塞主线程。
+
+[Can I use OffscreenCanvas?]
+
+```ts
+if ('OffscreenCanvas' in window && 'transferControlToOffscreen' in canvas) {
+    // Ok to use offscreen canvas
+}
+```
+
+主线程代码如下。使用 [transferControlToOffscreen] 将 Canvas 的控制权由主线程交给 WebWorker 线程。通常我们会通过 postMessage 的第一个参数向 WebWorker 传参，但由于 OffscreenCanvas 是 Transferable 的，因此这里需要使用到第二个参数：
+
+```ts
+// create a canvas in main thread
+const $canvas = document.createElement('canvas') as HTMLCanvasElement;
+$canvas.height = 500;
+$canvas.width = 500;
+document.getElementById('container').appendChild($canvas);
+// transfer canvas to worker
+const offscreen = $canvas.transferControlToOffscreen();
+```
+
+WebWorker 代码如下，也可以使用 rAF：
+
+```ts
+const canvas = await new Canvas({
+    canvas: offscreenCanvas, // 使用主线程 transfer 过来的 OffscreenCanvas
+}).initialized;
+```
 
 ### 无头浏览器 {#headless-browser}
 
@@ -124,7 +200,7 @@ All files                     |   14.21 |    10.44 |    8.18 |   14.29 |
 -   官方直接提供了 toHaveScreenshot 这样的断言，内置像素级对比，失败后在 report 中展示 diff
 -   支持 [sharding] 在 CI 上支持多机器并行，每个机器又可以开启多线程。例如我们使用 4 个机器，每个机器开 10 个 worker 并行：
 
-但它在本地生成的截图常常和 CI 环境存在细微差异。使用 CI 环境而非本地生成的基准图片来保证一致性。上传 Github workflow artifacts 就可以获取 CI 环境的截图，下载到本地作为基准图片。
+但它在本地生成的截图常常和 CI 环境存在细微差异。使用 CI 环境而非本地生成的基准图片来保证一致性。上传 GitHub workflow artifacts 就可以获取 CI 环境的截图，下载到本地作为基准图片。
 
 ```ts
 // Playwright 截图
@@ -135,7 +211,8 @@ expect(buffer).toMatchCanvasSnapshot(dir, key, { maxError });
 
 ## E2E UI 测试
 
-[Lit Testing]
+-   如何测试 UI [Lit Testing]
+-   如何测试事件响应
 
 [node-canvas]: https://github.com/Automattic/node-canvas
 [headless-gl]: https://github.com/stackgl/headless-gl
@@ -149,3 +226,9 @@ expect(buffer).toMatchCanvasSnapshot(dir, key, { maxError });
 [Register devices]: https://github.com/visgl/luma.gl/blob/master/modules/test-utils/src/register-devices.ts#L7
 [pixelmatch]: https://github.com/mapbox/pixelmatch
 [sharding]: https://playwright.dev/docs/test-sharding
+[d3-selector]: https://github.com/d3/d3-selection/blob/main/src/creator.js#L6
+[mocha + JSDOM]: https://github.com/observablehq/plot/blob/main/test/jsdom.js
+[Can I use OffscreenCanvas?]: https://caniuse.com/#feat=offscreencanvas
+[react-reconciler]: https://www.npmjs.com/package/react-reconciler
+[Environment API]: https://github.com/vitejs/vite/discussions/16358
+[transferControlToOffscreen]: https://developer.mozilla.org/en-US/docs/Web/API/HTMLCanvasElement/transferControlToOffscreen
