@@ -49,9 +49,11 @@ module.exports = {
 };
 ```
 
+测试环境准备完毕，现在可以开始编写第一个测试用例了。
+
 ## 单元测试
 
-首先来看最容易实现的单元测试，它适合测试与渲染无关的功能，例设置图形属性，计算包围盒大小，拾取判定，各种工具方法等等。
+首先来看最容易实现的单元测试，它适合测试与渲染无关的功能，例如设置图形属性，计算包围盒大小，拾取判定，各种工具方法等等。
 
 ```ts
 // __tests__/unit/circle.spec.ts
@@ -162,38 +164,6 @@ Vite 的 [Environment API] 也尝试解决类似的问题：
 
 回到我们的场景。
 
-### 在 WebWorker 中运行 {#rendering-in-webworker}
-
-除了服务端，WebWorker 也算是一种特殊的运行时环境。在 WebWorker 中运行渲染代码可以避免阻塞主线程。
-
-[Can I use OffscreenCanvas?]
-
-```ts
-if ('OffscreenCanvas' in window && 'transferControlToOffscreen' in canvas) {
-    // Ok to use offscreen canvas
-}
-```
-
-主线程代码如下。使用 [transferControlToOffscreen] 将 Canvas 的控制权由主线程交给 WebWorker 线程。通常我们会通过 postMessage 的第一个参数向 WebWorker 传参，但由于 OffscreenCanvas 是 Transferable 的，因此这里需要使用到第二个参数：
-
-```ts
-// create a canvas in main thread
-const $canvas = document.createElement('canvas') as HTMLCanvasElement;
-$canvas.height = 500;
-$canvas.width = 500;
-document.getElementById('container').appendChild($canvas);
-// transfer canvas to worker
-const offscreen = $canvas.transferControlToOffscreen();
-```
-
-WebWorker 代码如下，也可以使用 rAF：
-
-```ts
-const canvas = await new Canvas({
-    canvas: offscreenCanvas, // 使用主线程 transfer 过来的 OffscreenCanvas
-}).initialized;
-```
-
 ### 无头浏览器 {#headless-browser}
 
 -   使用最新的 Chrome 可以支持 WebGL 1/2 甚至 WebGPU
@@ -208,6 +178,89 @@ const buffer = await page.locator('canvas').screenshot();
 // 断言截图是否与基准图片一致
 expect(buffer).toMatchCanvasSnapshot(dir, key, { maxError });
 ```
+
+## 在 WebWorker 中运行 {#rendering-in-webworker}
+
+除了服务端，WebWorker 也算是一种特殊的运行时环境。在 WebWorker 中运行渲染代码可以避免阻塞主线程，提高性能。
+
+### OffscreenCanvas
+
+首先需要确保运行环境支持 OffscreenCanvas，参考 [Can I use OffscreenCanvas?]：
+
+```ts
+if ('OffscreenCanvas' in window && 'transferFromImageBitmap' in ctx) {
+    // Ok to use offscreen canvas
+}
+```
+
+然后需要让我们的画布支持从 OffscreenCanvas 创建：
+
+```ts
+export interface CanvasConfig {
+    canvas: HTMLCanvasElement; // [!code --]
+    canvas: HTMLCanvasElement | OffscreenCanvas; // [!code ++]
+}
+```
+
+主线程代码如下：
+
+1. 首先创建一个 OffscreenCanvas，大小和主画布一致
+2. 创建一个 WebWorker，监听事件并获取事件对象中的 ImageBitmap，直接绘制在主画布上
+    > To display the ImageBitmap, you can use an ImageBitmapRenderingContext context, which can be created by calling canvas.getContext("bitmaprenderer") on a (visible) canvas element. This context only provides functionality to replace the canvas's contents with the given ImageBitmap.
+3. 通常我们会通过 [postMessage] 的第一个参数向 WebWorker 传参，但由于 OffscreenCanvas 是 [Transferable] 的，因此这里需要使用到第二个参数
+
+```ts
+import Worker from './worker.js?worker&inline';
+
+// 1.
+const offscreenCanvas = new OffscreenCanvas(
+    mainCanvas.width,
+    mainCanvas.height,
+);
+
+// 2.
+worker = new Worker();
+worker.onmessage = function (event) {
+    if (event.data instanceof ImageBitmap) {
+        const mainCtx = mainCanvas.getContext('bitmaprenderer');
+        mainCtx.transferFromImageBitmap(event.data);
+    }
+};
+
+// 3.
+worker.postMessage({ offscreenCanvas, devicePixelRatio }, [offscreenCanvas]);
+```
+
+WebWorker 代码如下：
+
+1. 从事件对象中获取主线程传递过来的 OffscreenCanvas
+2. 使用 OffscreenCanvas 创建画布，并设置 devicePixelRatio
+3. 将渲染结果转换为 ImageBitmap 并发送到主线程
+
+```ts
+// worker.js
+self.onmessage = function (event) {
+    // 1.
+    const { offscreenCanvas, devicePixelRatio } = event.data;
+
+    (async () => {
+        // 2.
+        const canvas = await new Canvas({
+            canvas: offscreenCanvas,
+            devicePixelRatio,
+        }).initialized;
+        canvas.render();
+
+        // 3.
+        const imageBitmap = offscreenCanvas.transferToImageBitmap();
+        self.postMessage(imageBitmap);
+    })();
+};
+```
+
+### 交互事件
+
+如何处理交互事件。
 
 ## E2E UI 测试
 
@@ -231,4 +284,5 @@ expect(buffer).toMatchCanvasSnapshot(dir, key, { maxError });
 [Can I use OffscreenCanvas?]: https://caniuse.com/#feat=offscreencanvas
 [react-reconciler]: https://www.npmjs.com/package/react-reconciler
 [Environment API]: https://github.com/vitejs/vite/discussions/16358
-[transferControlToOffscreen]: https://developer.mozilla.org/en-US/docs/Web/API/HTMLCanvasElement/transferControlToOffscreen
+[Transferable]: https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API/Transferable_objects
+[postMessage]: https://developer.mozilla.org/en-US/docs/Web/API/Window/postMessage

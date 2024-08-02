@@ -96,7 +96,9 @@ export class Renderer implements Plugin {
       }
 
       const { width, height } = canvas;
-      const swapChain = await deviceContribution.createSwapChain(canvas);
+      const swapChain = await deviceContribution.createSwapChain(
+        canvas as HTMLCanvasElement,
+      );
       swapChain.configureSwapChain(width, height);
 
       this.#swapChain = swapChain;

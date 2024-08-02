@@ -42,7 +42,7 @@ export class DOMEventListener implements Plugin {
       hooks.pointerCancel.call(ev);
     };
 
-    const onPointerWheel = (ev: InteractivePointerEvent) => {
+    const onPointerWheel = (ev: WheelEvent) => {
       hooks.pointerWheel.call(ev);
     };
 
@@ -97,37 +97,39 @@ export class DOMEventListener implements Plugin {
       globalThis.removeEventListener('mouseup', onPointerUp, true);
     };
 
-    hooks.init.tap(() => {
-      if (supportsPointerEvents) {
-        addPointerEventListener(canvas);
-      } else {
-        addMouseEventListener(canvas);
+    if (canvas instanceof HTMLCanvasElement) {
+      hooks.init.tap(() => {
+        if (supportsPointerEvents) {
+          addPointerEventListener(canvas);
+        } else {
+          addMouseEventListener(canvas);
 
-        if (supportsTouchEvents) {
-          addTouchEventListener(canvas);
+          if (supportsTouchEvents) {
+            addTouchEventListener(canvas);
+          }
         }
-      }
 
-      // use passive event listeners
-      // @see https://zhuanlan.zhihu.com/p/24555031
-      canvas.addEventListener('wheel', onPointerWheel, {
-        // passive: true,
-        capture: true,
+        // use passive event listeners
+        // @see https://zhuanlan.zhihu.com/p/24555031
+        canvas.addEventListener('wheel', onPointerWheel, {
+          // passive: true,
+          capture: true,
+        });
       });
-    });
 
-    hooks.destroy.tap(() => {
-      if (supportsPointerEvents) {
-        removePointerEventListener(canvas);
-      } else {
-        removeMouseEventListener(canvas);
+      hooks.destroy.tap(() => {
+        if (supportsPointerEvents) {
+          removePointerEventListener(canvas);
+        } else {
+          removeMouseEventListener(canvas);
 
-        if (supportsTouchEvents) {
-          removeTouchEventListener(canvas);
+          if (supportsTouchEvents) {
+            removeTouchEventListener(canvas);
+          }
         }
-      }
 
-      canvas.removeEventListener('wheel', onPointerWheel, true);
-    });
+        canvas.removeEventListener('wheel', onPointerWheel, true);
+      });
+    }
   }
 }

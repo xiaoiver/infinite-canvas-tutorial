@@ -4,6 +4,7 @@ import { Camera } from '../Camera';
 import { type Group, Shape, RBushNodeAABB } from '../shapes';
 import { AsyncParallelHook, SyncHook, SyncWaterfallHook } from '../utils';
 import type { InteractivePointerEvent } from './DOMEventListener';
+import { CanvasConfig } from '../Canvas';
 
 export interface Hooks {
   /**
@@ -37,7 +38,7 @@ export interface Hooks {
   pointerMove: SyncHook<[InteractivePointerEvent]>;
   pointerOut: SyncHook<[InteractivePointerEvent]>;
   pointerOver: SyncHook<[InteractivePointerEvent]>;
-  pointerWheel: SyncHook<[InteractivePointerEvent]>;
+  pointerWheel: SyncHook<[WheelEvent]>;
   pointerCancel: SyncHook<[InteractivePointerEvent]>;
   pickSync: SyncWaterfallHook<[PickingResult], PickingResult>;
   cameraChange: SyncHook<[]>;
@@ -55,10 +56,8 @@ export interface PickingResult {
   topmost?: boolean;
 }
 
-export interface PluginContext {
-  canvas: HTMLCanvasElement;
-  renderer: 'webgl' | 'webgpu';
-  shaderCompilerPath: string;
+export interface PluginContext extends CanvasConfig {
+  devicePixelRatio: number;
   /**
    * Contains the global this value.
    * @see https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/globalThis
@@ -74,20 +73,6 @@ export interface PluginContext {
    * @see https://www.w3.org/TR/touch-events/
    */
   supportsTouchEvents: boolean;
-  /**
-   * Returns the ratio of the resolution in physical pixels to the resolution
-   * in CSS pixels for the current display device.
-   * @see https://developer.mozilla.org/en-US/docs/Web/API/Window/devicePixelRatio
-   */
-  devicePixelRatio: number;
-  /**
-   * Background color of page.
-   */
-  backgroundColor?: string;
-  /**
-   * Color of grid.
-   */
-  gridColor?: string;
   hooks: Hooks;
   camera: Camera;
   root: Group;

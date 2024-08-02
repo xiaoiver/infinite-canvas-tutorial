@@ -95,6 +95,10 @@ export const zh = defineConfig({
                 text: '为圆角矩形添加阴影',
                 link: 'rounded-rectangle-shadow',
               },
+              {
+                text: '在 WebWorker 中渲染画布',
+                link: 'webworker',
+              },
             ],
           },
         ],

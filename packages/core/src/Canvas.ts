@@ -25,14 +25,34 @@ import {
   traverse,
 } from './utils';
 import { DataURLOptions } from './ImageExporter';
+import { Cursor } from './events';
 
 export interface CanvasConfig {
-  canvas: HTMLCanvasElement;
+  canvas: HTMLCanvasElement | OffscreenCanvas;
   renderer?: 'webgl' | 'webgpu';
   shaderCompilerPath?: string;
+  /**
+   * Returns the ratio of the resolution in physical pixels to the resolution
+   * in CSS pixels for the current display device.
+   * @see https://developer.mozilla.org/en-US/docs/Web/API/Window/devicePixelRatio
+   */
   devicePixelRatio?: number;
+  /**
+   * Background color of page.
+   */
   backgroundColor?: string;
+  /**
+   * Color of grid.
+   */
   gridColor?: string;
+  /**
+   * There is no `getBoundingClientRect` method in WebWorker.
+   */
+  getBoundingClientRect?: () => DOMRect;
+  /**
+   * There is no `style.cursor = 'pointer'` in WebWorker.
+   */
+  setCursor?: (cursor: Cursor | string) => void;
 }
 
 export class Canvas {
@@ -68,6 +88,8 @@ export class Canvas {
       devicePixelRatio,
       backgroundColor,
       gridColor,
+      getBoundingClientRect,
+      setCursor,
     } = config;
     const globalThis = getGlobalThis();
     const dpr = (devicePixelRatio ?? globalThis.devicePixelRatio) || 1;
@@ -92,6 +114,12 @@ export class Canvas {
       gridColor,
       supportsPointerEvents,
       supportsTouchEvents,
+      getBoundingClientRect:
+        getBoundingClientRect ??
+        (canvas as HTMLCanvasElement).getBoundingClientRect,
+      setCursor:
+        setCursor ??
+        ((cursor) => ((canvas as HTMLCanvasElement).style.cursor = cursor)),
       hooks: {
         init: new SyncHook<[]>(),
         initAsync: new AsyncParallelHook<[]>(),
@@ -109,7 +137,7 @@ export class Canvas {
         pointerMove: new SyncHook<[InteractivePointerEvent]>(),
         pointerOut: new SyncHook<[InteractivePointerEvent]>(),
         pointerOver: new SyncHook<[InteractivePointerEvent]>(),
-        pointerWheel: new SyncHook<[InteractivePointerEvent]>(),
+        pointerWheel: new SyncHook<[WheelEvent]>(),
         pointerCancel: new SyncHook<[InteractivePointerEvent]>(),
         pickSync: new SyncWaterfallHook(),
         cameraChange: new SyncHook<[]>(),
@@ -331,12 +359,12 @@ export class Canvas {
   }
 
   client2Viewport({ x, y }: IPointData): IPointData {
-    const { left, top } = this.#pluginContext.canvas.getBoundingClientRect();
+    const { left, top } = this.#pluginContext.getBoundingClientRect!();
     return { x: x - left, y: y - top };
   }
 
   viewport2Client({ x, y }: IPointData): IPointData {
-    const { left, top } = this.#pluginContext.canvas.getBoundingClientRect();
+    const { left, top } = this.#pluginContext.getBoundingClientRect!();
     return { x: x + left, y: y + top };
   }
 

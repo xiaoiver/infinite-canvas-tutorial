@@ -113,6 +113,10 @@ export const en = defineConfig({
                 text: 'Render a rounded rect with shadow',
                 link: 'rounded-rectangle-shadow',
               },
+              {
+                text: 'Render canvas in WebWorker',
+                link: 'webworker',
+              },
             ],
           },
         ],

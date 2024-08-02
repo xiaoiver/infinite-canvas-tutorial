@@ -50,13 +50,13 @@ export class CameraControl implements Plugin {
       e: FederatedPointerEvent | FederatedWheelEvent,
     ): vec2 {
       // get canvas relative css position
-      const rect = canvas.getBoundingClientRect();
+      const rect = (canvas as HTMLCanvasElement).getBoundingClientRect();
       const cssX = e.nativeEvent.clientX - rect.left;
       const cssY = e.nativeEvent.clientY - rect.top;
 
       // get normalized 0 to 1 position across and down canvas
-      const normalizedX = cssX / canvas.clientWidth;
-      const normalizedY = cssY / canvas.clientHeight;
+      const normalizedX = cssX / (canvas as HTMLCanvasElement).clientWidth;
+      const normalizedY = cssY / (canvas as HTMLCanvasElement).clientHeight;
 
       // convert to clip space
       const clipX = normalizedX * 2 - 1;

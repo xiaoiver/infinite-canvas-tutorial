@@ -390,6 +390,9 @@ importers:
 
   packages/site:
     dependencies:
+      '@infinite-canvas-tutorial/core':
+        specifier: workspace:*
+        version: link:../core
       '@infinite-canvas-tutorial/lesson1':
         specifier: workspace:*
         version: link:../lesson_001
@@ -420,6 +423,9 @@ importers:
       '@infinite-canvas-tutorial/lesson9':
         specifier: workspace:*
         version: link:../lesson_009
+      '@infinite-canvas-tutorial/ui':
+        specifier: workspace:*
+        version: link:../ui
       '@loaders.gl/core':
         specifier: ^4.2.2
         version: 4.2.2
