@@ -181,14 +181,19 @@ expect(buffer).toMatchCanvasSnapshot(dir, key, { maxError });
 
 ## 在 WebWorker 中运行 {#rendering-in-webworker}
 
-除了服务端，WebWorker 也算是一种特殊的运行时环境。在 WebWorker 中运行渲染代码可以避免阻塞主线程，提高性能。
+除了服务端，WebWorker 也算是一种特殊的运行时环境。在 WebWorker 中运行渲染代码可以避免阻塞主线程，提高性能。知名渲染引擎都会提供使用案例：
 
-### OffscreenCanvas
+-   [Three.js OffscreenCanvas]
+-   [Babylon.js OffscreenCanvas]
+
+[WebWorker 示例]
+
+### 创建 OffscreenCanvas
 
 首先需要确保运行环境支持 OffscreenCanvas，参考 [Can I use OffscreenCanvas?]：
 
 ```ts
-if ('OffscreenCanvas' in window && 'transferFromImageBitmap' in ctx) {
+if ('OffscreenCanvas' in window && 'transferControlToOffscreen' in mainCanvas) {
     // Ok to use offscreen canvas
 }
 ```
@@ -205,62 +210,125 @@ export interface CanvasConfig {
 主线程代码如下：
 
 1. 首先创建一个 OffscreenCanvas，大小和主画布一致
-2. 创建一个 WebWorker，监听事件并获取事件对象中的 ImageBitmap，直接绘制在主画布上
-    > To display the ImageBitmap, you can use an ImageBitmapRenderingContext context, which can be created by calling canvas.getContext("bitmaprenderer") on a (visible) canvas element. This context only provides functionality to replace the canvas's contents with the given ImageBitmap.
+2. 创建一个 WebWorker，监听后续传递过来的消息，例如设置鼠标样式等
 3. 通常我们会通过 [postMessage] 的第一个参数向 WebWorker 传参，但由于 OffscreenCanvas 是 [Transferable] 的，因此这里需要使用到第二个参数
 
 ```ts
 import Worker from './worker.js?worker&inline';
 
 // 1.
-const offscreenCanvas = new OffscreenCanvas(
-    mainCanvas.width,
-    mainCanvas.height,
-);
+const offscreenCanvas = mainCanvas.transferControlToOffscreen();
 
 // 2.
 worker = new Worker();
 worker.onmessage = function (event) {
-    if (event.data instanceof ImageBitmap) {
-        const mainCtx = mainCanvas.getContext('bitmaprenderer');
-        mainCtx.transferFromImageBitmap(event.data);
-    }
+    // TODO: Handle message from WebWorker later.
 };
 
 // 3.
-worker.postMessage({ offscreenCanvas, devicePixelRatio }, [offscreenCanvas]);
+worker.postMessage(
+    {
+        type: 'init',
+        offscreenCanvas,
+        devicePixelRatio,
+        boundingClientRect: mainCanvas.getBoundingClientRect(),
+    },
+    [offscreenCanvas],
+);
 ```
 
 WebWorker 代码如下：
 
 1. 从事件对象中获取主线程传递过来的 OffscreenCanvas
 2. 使用 OffscreenCanvas 创建画布，并设置 devicePixelRatio
-3. 将渲染结果转换为 ImageBitmap 并发送到主线程
+3. 创建 [渲染循环]，正常创建图形并添加到画布中
 
 ```ts
 // worker.js
 self.onmessage = function (event) {
-    // 1.
-    const { offscreenCanvas, devicePixelRatio } = event.data;
+    const { type } = event.data;
+    if (type === 'init') {
+        // 1.
+        const { offscreenCanvas, devicePixelRatio } = event.data;
 
-    (async () => {
-        // 2.
-        const canvas = await new Canvas({
-            canvas: offscreenCanvas,
-            devicePixelRatio,
-        }).initialized;
-        canvas.render();
+        (async () => {
+            // 2.
+            const canvas = await new Canvas({
+                canvas: offscreenCanvas,
+                devicePixelRatio,
+            }).initialized;
 
-        // 3.
-        const imageBitmap = offscreenCanvas.transferToImageBitmap();
-        self.postMessage(imageBitmap);
-    })();
+            // 3.
+            const animate = () => {
+                canvas.render();
+                self.requestAnimationFrame(animate);
+            };
+            animate();
+        })();
+    }
+    // ...Handel other messages.
 };
 ```
 
+在实际使用中，不可避免地需要手动处理主线程和 WebWorker 间的通信，例如：
+
+1. 交互事件。[事件系统]依赖 DOM API，但 WebWorker 中无法使用，因此需要监听主线程画布的交互事件并通知 WebWorker。
+2. 画布尺寸改变。同上。
+3. 设置主画布鼠标样式。
+
 ### 交互事件
 
-如何处理交互事件。
+以 `pointerdown` 事件为例，我们在主画布上监听它，由于原生 Event 不是 [Transferable] 的，因此需要将它序列化后传递给 WebWorker：
+
+```ts
+mainCanvas.addEventListener(
+    'pointerdown',
+    (e) => {
+        worker.postMessage({
+            type: 'event',
+            name: 'pointerdown',
+            event: clonePointerEvent(e), // 简单拷贝事件对象上的常用属性
+        });
+    },
+    true,
+);
+```
+
+在 WebWorker 中接收到该类消息后，直接触发对应的 Hook：
+
+```ts
+self.onmessage = function (event) {
+    const { type } = event.data;
+    if (type === 'event') {
+        const { name, event: ev } = event.data;
+        if (name === 'pointerdown') {
+            canvas.pluginContext.hooks.pointerDown.call(ev);
+        }
+    }
+};
+```
+
+画布尺寸改变同理。
+
+### 设置鼠标样式
+
+渲染过程中 WebWorker 也需要向主线程传递消息，例如拾取到图形时设置鼠标样式：
+
+```ts
+setCursor: (cursor) => {
+    self.postMessage({ type: 'cursor', cursor });
+},
+```
+
+主线程接收到消息后：
+
+```ts
+worker.onmessage = function (event) {
+    if (event.data.type === 'cursor') {
+        mainCanvas.style.cursor = event.data.cursor;
+    }
+};
+```
 
 ## E2E UI 测试
 
@@ -286,3 +354,8 @@ self.onmessage = function (event) {
 [Environment API]: https://github.com/vitejs/vite/discussions/16358
 [Transferable]: https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API/Transferable_objects
 [postMessage]: https://developer.mozilla.org/en-US/docs/Web/API/Window/postMessage
+[Three.js OffscreenCanvas]: https://threejs.org/examples/webgl_worker_offscreencanvas.html
+[Babylon.js OffscreenCanvas]: https://doc.babylonjs.com/features/featuresDeepDive/scene/offscreenCanvas
+[渲染循环]: /zh/guide/lesson-001#design-the-canvas-api
+[事件系统]: /zh/guide/lesson-006
+[WebWorker 示例]: /zh/example/webworker

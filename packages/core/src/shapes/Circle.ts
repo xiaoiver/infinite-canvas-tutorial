@@ -36,7 +36,7 @@ export class Circle extends Shape implements CircleAttributes {
   static getGeometryBounds(
     attributes: Partial<Pick<CircleAttributes, 'cx' | 'cy' | 'r'>>,
   ) {
-    const { cx, cy, r } = attributes;
+    const { cx = 0, cy = 0, r = 0 } = attributes;
     return new AABB(cx - r, cy - r, cx + r, cy + r);
   }
 
@@ -102,17 +102,20 @@ export class Circle extends Shape implements CircleAttributes {
     } = this;
 
     const absDistance = distanceBetweenPoints(cx, cy, x, y);
+    const offset = strokeOffset(strokeAlignment, strokeWidth);
 
     const [hasFill, hasStroke] = isFillOrStrokeAffected(
       pointerEvents,
       fill,
       stroke,
     );
+    if (hasFill && hasStroke) {
+      return absDistance <= r + offset;
+    }
     if (hasFill) {
       return absDistance <= r;
     }
     if (hasStroke) {
-      const offset = strokeOffset(strokeAlignment, strokeWidth);
       return (
         absDistance >= r + offset - strokeWidth && absDistance <= r + offset
       );

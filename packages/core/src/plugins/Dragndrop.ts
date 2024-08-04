@@ -1,6 +1,6 @@
 import { FederatedEventTarget, FederatedPointerEvent } from '../events';
 import { Shape } from '../shapes';
-import { distanceBetweenPoints, isUndefined } from '../utils';
+import { distanceBetweenPoints } from '../utils';
 import type { Plugin, PluginContext } from './interfaces';
 
 function closest(
@@ -9,8 +9,8 @@ function closest(
 ): FederatedEventTarget | null {
   do {
     if (el && selector(el)) return el;
-    el = isUndefined(el!.parent) ? null : el!.parent;
-  } while (el !== undefined);
+    el = el?.parent;
+  } while (el !== undefined && el !== null);
   return null;
 }
 

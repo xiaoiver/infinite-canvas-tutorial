@@ -165,12 +165,10 @@ export class Canvas {
       new CameraControl(),
       new Culling(),
       this.#rendererPlugin,
-      isBrowser
-        ? new Dragndrop({
-            dragstartTimeThreshold: 100,
-            dragstartDistanceThreshold: 10,
-          })
-        : undefined,
+      new Dragndrop({
+        dragstartTimeThreshold: 100,
+        dragstartDistanceThreshold: 10,
+      }),
     ];
 
     this.#instancePromise = (async () => {

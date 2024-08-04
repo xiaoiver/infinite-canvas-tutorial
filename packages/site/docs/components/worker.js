@@ -1,19 +1,28 @@
 import { Canvas, Circle } from '@infinite-canvas-tutorial/core';
 
 let canvas;
-async function init(offscreenCanvas, devicePixelRatio) {
+async function init(data) {
+  const { offscreenCanvas, devicePixelRatio, boundingClientRect } = data;
   canvas = await new Canvas({
     canvas: offscreenCanvas,
     devicePixelRatio,
-    getBoundingClientRect: () => ({top: 0, left: 0}),
-    setCursor: () => {},
+    getBoundingClientRect: () => boundingClientRect,
+    setCursor: (cursor) => {
+      // eslint-disable-next-line no-undef
+      self.postMessage({ type: 'cursor', cursor });
+    },
   }).initialized;
 
   const circle = new Circle({
     cx: 100,
     cy: 100,
     r: 100,
-    fill: 'red'
+    stroke: 'black',
+    strokeWidth: 20,
+    strokeOpacity: 0.5,
+    fill: 'red',
+    cursor: 'pointer',
+    pointerEvents: 'stroke'
   });
 
   canvas.appendChild(circle);
@@ -25,17 +34,14 @@ async function init(offscreenCanvas, devicePixelRatio) {
     circle.fill = 'red';
   });
 
-  // const animate = () => {
-  canvas.render();
-  
-  // 将渲染结果转换为ImageBitmap并发送到主线程
-  const imageBitmap = offscreenCanvas.transferToImageBitmap();
-  // eslint-disable-next-line no-undef
-  self.postMessage(imageBitmap);
-
-  //   requestAnimationFrame(animate);
-  // };
-  // animate();
+  const animate = () => {
+    canvas.render();
+    // eslint-disable-next-line no-undef
+    self.postMessage({ type: 'frame' });
+    // eslint-disable-next-line no-undef
+    self.requestAnimationFrame(animate);
+  };
+  animate();
 }
 
 // eslint-disable-next-line no-undef
@@ -43,8 +49,10 @@ self.onmessage = function(event) {
   const { type } = event.data;
 
   if (type === 'init') {
-    const { offscreenCanvas, devicePixelRatio } = event.data;
-    init(offscreenCanvas, devicePixelRatio);
+    init(event.data);
+  } else if (type === 'resize') {
+    const { width, height } = event.data;
+    canvas.resize(width, height);
   } else if (type === 'event') {
     const { name, event: ev, offscreenCanvas } = event.data;
     ev.target = offscreenCanvas;
@@ -63,6 +71,10 @@ self.onmessage = function(event) {
       canvas.pluginContext.hooks.pointerOver.call(ev);
     } else if (name === 'pointerup') {
       canvas.pluginContext.hooks.pointerUp.call(ev);
+    }  else if (name === 'pointercanel') {
+      canvas.pluginContext.hooks.pointerCancel.call(ev);
+    } else if (name === 'wheel') {
+      canvas.pluginContext.hooks.pointerWheel.call(ev);
     }
   }
 };

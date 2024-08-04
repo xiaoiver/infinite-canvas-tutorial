@@ -82,7 +82,7 @@ export class Rect extends Shape implements RectAttributes {
   static getGeometryBounds(
     attributes: Partial<Pick<RectAttributes, 'x' | 'y' | 'width' | 'height'>>,
   ) {
-    const { x, y, width, height } = attributes;
+    const { x = 0, y = 0, width = 0, height = 0 } = attributes;
     return new AABB(x, y, x + width, y + height);
   }
 
