@@ -41,6 +41,24 @@ export interface ITransformable {
    */
   get scale(): ObservablePoint;
   set scale(value: IPointData);
+
+  /**
+   * The pivot for the object in radians.
+   */
+  get pivot(): ObservablePoint;
+  set pivot(value: IPointData);
+
+  /**
+   * The skew factor for the object in radians.
+   */
+  get skew(): ObservablePoint;
+  set skew(value: IPointData);
+
+  get rotation(): number;
+  set rotation(value: number);
+
+  get angle(): number;
+  set angle(value: number);
 }
 
 export type TransformableCtor = GConstructor<ITransformable>;

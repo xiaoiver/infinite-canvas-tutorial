@@ -144,9 +144,13 @@ export class BatchManager {
     this.#drawcallsToFlush = [];
   }
 
-  flush(renderPass: RenderPass, uniformBuffer: Buffer) {
+  flush(
+    renderPass: RenderPass,
+    uniformBuffer: Buffer,
+    uniformLegacyObject: Record<string, unknown>,
+  ) {
     this.#drawcallsToFlush.forEach((drawcall) => {
-      drawcall.submit(renderPass, uniformBuffer);
+      drawcall.submit(renderPass, uniformBuffer, uniformLegacyObject);
     });
   }
 

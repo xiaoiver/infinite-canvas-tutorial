@@ -1,5 +1,20 @@
 import _gl from 'gl';
 
+var lastTime = 0;
+export const requestAnimationFrame = function (callback) {
+  var currTime = new Date().getTime();
+  var timeToCall = Math.max(0, 16 - (currTime - lastTime));
+  var id = setTimeout(function () {
+    callback(currTime + timeToCall);
+  }, timeToCall);
+  lastTime = currTime + timeToCall;
+  return id;
+};
+
+export const cancelAnimationFrame = function (id) {
+  clearTimeout(id);
+};
+
 export function sleep(n: number) {
   return new Promise((resolve) => {
     setTimeout(resolve, n);
@@ -10,8 +25,7 @@ export function getCanvas(width = 100, height = 100) {
   let gl = _gl(width, height, {
     antialias: false,
     preserveDrawingBuffer: true,
-    stencil: false,
-    premultipliedAlpha: false,
+    stencil: true,
   });
 
   const mockedCanvas: HTMLCanvasElement = {

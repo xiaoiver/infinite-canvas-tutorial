@@ -19,11 +19,17 @@ import {
   FilterMode,
   MipmapFilterMode,
   TransparentBlack,
+  Texture,
 } from '@antv/g-device-api';
 import { Circle, Ellipse, Rect, Shape } from '../shapes';
 import { Drawcall, ZINDEX_FACTOR } from './Drawcall';
 import { vert, frag } from '../shaders/sdf';
-import { isImageBitmapOrCanvases, isString, paddingMat3 } from '../utils';
+import {
+  // isBrowser,
+  // isImageBitmapOrCanvases,
+  isString,
+  paddingMat3,
+} from '../utils';
 
 const strokeAlignmentMap = {
   center: 0,
@@ -41,10 +47,12 @@ export class SDF extends Drawcall {
   #pipeline: RenderPipeline;
   #inputLayout: InputLayout;
   #bindings: Bindings;
+  #texture: Texture;
 
   get useFillImage() {
     const { fill } = this.shapes[0];
-    return !isString(fill) && isImageBitmapOrCanvases(fill);
+    return !isString(fill);
+    // && (isBrowser ? isImageBitmapOrCanvases(fill) : true)
   }
 
   validate(shape: Shape) {
@@ -290,6 +298,7 @@ export class SDF extends Drawcall {
         usage: TextureUsage.SAMPLED,
       });
       texture.setImageData([fill]);
+      this.#texture = texture;
       const sampler = this.renderCache.createSampler({
         addressModeU: AddressMode.CLAMP_TO_EDGE,
         addressModeV: AddressMode.CLAMP_TO_EDGE,
@@ -310,7 +319,7 @@ export class SDF extends Drawcall {
     this.#bindings = this.renderCache.createBindings(bindings);
   }
 
-  render(renderPass: RenderPass) {
+  render(renderPass: RenderPass, uniformLegacyObject: Record<string, unknown>) {
     if (
       this.shapes.some((shape) => shape.renderDirtyFlag) ||
       this.geometryDirty
@@ -336,7 +345,8 @@ export class SDF extends Drawcall {
 
         const instancedData: number[] = [];
         this.shapes.forEach((shape) => {
-          instancedData.push(...this.generateBuffer(shape));
+          const [buffer] = this.generateBuffer(shape);
+          instancedData.push(...buffer);
         });
         this.#instancedBuffer.setSubData(
           0,
@@ -344,15 +354,22 @@ export class SDF extends Drawcall {
         );
       } else {
         const { worldTransform } = this.shapes[0];
+        const [buffer, legacyObject] = this.generateBuffer(this.shapes[0]);
+        const u_ModelMatrix = worldTransform.toArray(true);
         this.#uniformBuffer.setSubData(
           0,
           new Uint8Array(
-            new Float32Array([
-              ...paddingMat3(worldTransform.toArray(true)),
-              ...this.generateBuffer(this.shapes[0]),
-            ]).buffer,
+            new Float32Array([...paddingMat3(u_ModelMatrix), ...buffer]).buffer,
           ),
         );
+        const uniformLegacyObject: Record<string, unknown> = {
+          u_ModelMatrix,
+          ...legacyObject,
+        };
+        if (this.useFillImage) {
+          uniformLegacyObject.u_FillImage = this.#texture;
+        }
+        this.#program.setUniformsLegacy(uniformLegacyObject);
       }
     }
 
@@ -370,6 +387,7 @@ export class SDF extends Drawcall {
       );
     }
 
+    this.#program.setUniformsLegacy(uniformLegacyObject);
     renderPass.setPipeline(this.#pipeline);
     renderPass.setVertexInput(this.#inputLayout, buffers, {
       buffer: this.#indexBuffer,
@@ -380,19 +398,16 @@ export class SDF extends Drawcall {
 
   destroy(): void {
     if (this.#program) {
-      this.#program.destroy();
       this.#instancedMatrixBuffer?.destroy();
       this.#instancedBuffer?.destroy();
       this.#fragUnitBuffer?.destroy();
       this.#indexBuffer?.destroy();
       this.#uniformBuffer?.destroy();
-      this.#pipeline?.destroy();
-      this.#inputLayout?.destroy();
-      this.#bindings?.destroy();
+      this.#texture?.destroy();
     }
   }
 
-  private generateBuffer(shape: Shape) {
+  private generateBuffer(shape: Shape): [number[], Record<string, unknown>] {
     const {
       fillRGB,
       strokeRGB: { r: sr, g: sg, b: sb, opacity: so },
@@ -427,32 +442,43 @@ export class SDF extends Drawcall {
 
     const { r: fr, g: fg, b: fb, opacity: fo } = fillRGB || {};
 
-    return [
-      ...size,
-      fr / 255,
-      fg / 255,
-      fb / 255,
-      fo,
-      sr / 255,
-      sg / 255,
-      sb / 255,
-      so,
+    const u_PositionSize = size;
+    const u_FillColor = [fr / 255, fg / 255, fb / 255, fo];
+    const u_StrokeColor = [sr / 255, sg / 255, sb / 255, so];
+    const u_ZIndexStrokeWidth = [
       shape.globalRenderOrder / ZINDEX_FACTOR,
       strokeWidth,
       cornerRadius,
       strokeAlignmentMap[strokeAlignment],
-      opacity,
-      fillOpacity,
-      strokeOpacity,
-      type,
-      isr / 255,
-      isg / 255,
-      isb / 255,
-      iso,
+    ];
+    const u_Opacity = [opacity, fillOpacity, strokeOpacity, type];
+    const u_InnerShadowColor = [isr / 255, isg / 255, isb / 255, iso];
+    const u_InnerShadow = [
       innerShadowOffsetX,
       innerShadowOffsetY,
       innerShadowBlurRadius,
       fillRGB ? 0 : 1,
+    ];
+
+    return [
+      [
+        ...u_PositionSize,
+        ...u_FillColor,
+        ...u_StrokeColor,
+        ...u_ZIndexStrokeWidth,
+        ...u_Opacity,
+        ...u_InnerShadowColor,
+        ...u_InnerShadow,
+      ],
+      {
+        u_PositionSize,
+        u_FillColor,
+        u_StrokeColor,
+        u_ZIndexStrokeWidth,
+        u_Opacity,
+        u_InnerShadowColor,
+        u_InnerShadow,
+      },
     ];
   }
 }

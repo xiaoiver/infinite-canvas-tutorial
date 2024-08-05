@@ -28,7 +28,12 @@ export class Grid {
     this.#vertices.appendFloat(x).appendFloat(y);
   }
 
-  render(device: Device, renderPass: RenderPass, uniformBuffer: Buffer) {
+  render(
+    device: Device,
+    renderPass: RenderPass,
+    uniformBuffer: Buffer,
+    uniformLegacyObject: Record<string, unknown>,
+  ) {
     if (!this.#program) {
       this.#program = device.createProgram({
         vertex: {
@@ -91,6 +96,7 @@ export class Grid {
       });
     }
 
+    this.#program.setUniformsLegacy(uniformLegacyObject);
     renderPass.setBindings(this.#bindings);
     renderPass.setPipeline(this.#pipeline);
     renderPass.setVertexInput(
@@ -106,10 +112,10 @@ export class Grid {
   }
 
   destroy(): void {
-    this.#program.destroy();
-    this.#buffer.destroy();
-    this.#pipeline.destroy();
-    this.#inputLayout.destroy();
-    this.#bindings.destroy();
+    this.#program?.destroy();
+    this.#buffer?.destroy();
+    this.#pipeline?.destroy();
+    this.#inputLayout?.destroy();
+    this.#bindings?.destroy();
   }
 }

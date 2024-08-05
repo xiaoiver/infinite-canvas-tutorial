@@ -8,7 +8,6 @@ import {
   isNil,
   camelToKebabCase,
   kebabToCamelCase,
-  createVec3,
 } from '../../packages/core/src/utils';
 
 describe('Utils', () => {

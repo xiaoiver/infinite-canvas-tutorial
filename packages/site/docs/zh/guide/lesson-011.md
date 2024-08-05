@@ -266,7 +266,7 @@ self.onmessage = function (event) {
             animate();
         })();
     }
-    // ...Handel other messages.
+    // ...Handle other messages.
 };
 ```
 

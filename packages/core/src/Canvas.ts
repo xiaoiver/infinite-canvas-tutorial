@@ -116,7 +116,7 @@ export class Canvas {
       supportsTouchEvents,
       getBoundingClientRect:
         getBoundingClientRect ??
-        (canvas as HTMLCanvasElement).getBoundingClientRect,
+        (() => (canvas as HTMLCanvasElement).getBoundingClientRect()),
       setCursor:
         setCursor ??
         ((cursor) => ((canvas as HTMLCanvasElement).style.cursor = cursor)),
@@ -271,10 +271,12 @@ export class Canvas {
   }
 
   appendChild(shape: Shape) {
+    this.#renderDirtyFlag = true;
     this.#root.appendChild(shape);
   }
 
   removeChild(shape: Shape) {
+    this.#renderDirtyFlag = true;
     return this.#root.removeChild(shape);
   }
 
@@ -366,25 +368,31 @@ export class Canvas {
     return { x: x + left, y: y + top };
   }
 
-  zoomIn() {
+  zoomIn(
+    rAF?: (callback: FrameRequestCallback) => number,
+    cAF?: (handle: number) => void,
+  ) {
     const { camera } = this;
-    camera.cancelLandmarkAnimation();
+    camera.cancelLandmarkAnimation(cAF);
     const landmark = camera.createLandmark({
       viewportX: camera.width / 2,
       viewportY: camera.height / 2,
       zoom: findZoomCeil(camera.zoom),
     });
-    camera.gotoLandmark(landmark, { duration: 300, easing: 'ease' });
+    camera.gotoLandmark(landmark, { duration: 300, easing: 'ease' }, rAF);
   }
 
-  zoomOut() {
+  zoomOut(
+    rAF?: (callback: FrameRequestCallback) => number,
+    cAF?: (handle: number) => void,
+  ) {
     const { camera } = this;
-    camera.cancelLandmarkAnimation();
+    camera.cancelLandmarkAnimation(cAF);
     const landmark = camera.createLandmark({
       viewportX: camera.width / 2,
       viewportY: camera.height / 2,
       zoom: findZoomFloor(camera.zoom),
     });
-    camera.gotoLandmark(landmark, { duration: 300, easing: 'ease' });
+    camera.gotoLandmark(landmark, { duration: 300, easing: 'ease' }, rAF);
   }
 }

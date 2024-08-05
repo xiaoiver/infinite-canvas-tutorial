@@ -3,6 +3,7 @@ const esm = ['d3-*']
   .join('|');
 
 module.exports = {
+  testEnvironment: 'jsdom',
   testTimeout: 100000,
   testMatch: ['<rootDir>/__tests__/**/*/*.spec.+(ts|tsx|js)'],
   preset: 'ts-jest',

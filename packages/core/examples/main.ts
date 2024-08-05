@@ -1,4 +1,4 @@
-import { Canvas, Circle } from '../src';
+import { Canvas, Circle, Rect } from '../src';
 import { ImageLoader } from '@loaders.gl/images';
 import { load } from '@loaders.gl/core';
 
@@ -16,112 +16,132 @@ resize(window.innerWidth, window.innerHeight);
 
 const canvas = await new Canvas({
   canvas: $canvas,
-  backgroundColor: 'gray',
-  gridColor: 'white',
+  // backgroundColor: 'red',
+  // gridColor: 'white',
   // renderer: 'webgpu',
   // shaderCompilerPath:
   //   'https://unpkg.com/@antv/g-device-api@1.6.8/dist/pkg/glsl_wgsl_compiler_bg.wasm',
 }).initialized;
 
-const image = (await load(
-  // 'https://infinitecanvas.cc/canvas.png',
-  'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAUAAAAFCAYAAACNbyblAAAADElEQVQImWNgoBMAAABpAAFEI8ARAAAAAElFTkSuQmCC',
-  ImageLoader,
-)) as ImageBitmap;
-const circle4 = new Circle({
-  cx: 100,
-  cy: 100,
-  r: 50,
-  fill: image,
-  stroke: 'black',
-  strokeWidth: 20,
-  strokeOpacity: 0.5,
+const rect = new Rect({
+  x: 50,
+  y: 50,
+  width: 100,
+  height: 100,
+  fill: 'black',
+  dropShadowBlurRadius: 10,
+  dropShadowColor: 'black',
+  dropShadowOffsetX: 10,
+  dropShadowOffsetY: 10,
 });
-canvas.appendChild(circle4);
+canvas.appendChild(rect);
 
-const circle5 = new Circle({
-  cx: 200,
-  cy: 100,
-  r: 50,
-  fill: image,
-  stroke: 'black',
-  strokeWidth: 20,
-  strokeOpacity: 0.5,
-  strokeAlignment: 'inner',
-});
-canvas.appendChild(circle5);
+setTimeout(() => {
+  canvas.removeChild(rect);
+  console.log(canvas);
+}, 2000);
 
-const circle6 = new Circle({
-  cx: 300,
-  cy: 100,
-  r: 50,
-  fill: image,
-  stroke: 'black',
-  strokeWidth: 20,
-  strokeOpacity: 0.5,
-  strokeAlignment: 'outer',
-});
-canvas.appendChild(circle6);
+// const image = (await load(
+//   // 'https://infinitecanvas.cc/canvas.png',
+//   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAUAAAAFCAYAAACNbyblAAAADElEQVQImWNgoBMAAABpAAFEI8ARAAAAAElFTkSuQmCC',
+//   ImageLoader,
+// )) as ImageBitmap;
+// const circle4 = new Circle({
+//   cx: 100,
+//   cy: 100,
+//   r: 50,
+//   fill: image,
+//   stroke: 'black',
+//   strokeWidth: 20,
+//   strokeOpacity: 0.5,
+// });
+// canvas.appendChild(circle4);
 
-const circle = new Circle({
-  cx: 300,
-  cy: 300,
-  r: 50,
-  fill: '#F67676',
-  stroke: 'black',
-  strokeWidth: 20,
-  strokeOpacity: 0.5,
-});
-canvas.appendChild(circle);
-circle.addEventListener('pointerenter', () => {
-  circle.fill = 'green';
-});
-circle.addEventListener('pointerleave', () => {
-  circle.fill = '#F67676';
-});
+// const circle5 = new Circle({
+//   cx: 200,
+//   cy: 100,
+//   r: 50,
+//   fill: image,
+//   stroke: 'black',
+//   strokeWidth: 20,
+//   strokeOpacity: 0.5,
+//   strokeAlignment: 'inner',
+// });
+// canvas.appendChild(circle5);
 
-const circle2 = new Circle({
-  cx: 200,
-  cy: 300,
-  r: 50,
-  fill: '#F67676',
-  stroke: 'black',
-  strokeWidth: 20,
-  strokeOpacity: 0.5,
-  strokeAlignment: 'inner',
-});
-canvas.appendChild(circle2);
-circle2.addEventListener('pointerenter', () => {
-  circle2.fill = 'green';
-});
-circle2.addEventListener('pointerleave', () => {
-  circle2.fill = '#F67676';
-});
+// const circle6 = new Circle({
+//   cx: 300,
+//   cy: 100,
+//   r: 50,
+//   fill: image,
+//   stroke: 'black',
+//   strokeWidth: 20,
+//   strokeOpacity: 0.5,
+//   strokeAlignment: 'outer',
+// });
+// canvas.appendChild(circle6);
 
-const circle3 = new Circle({
-  cx: 100,
-  cy: 300,
-  r: 50,
-  fill: '#F67676',
-  stroke: 'black',
-  strokeWidth: 20,
-  strokeOpacity: 0.5,
-  strokeAlignment: 'outer',
-  pointerEvents: 'stroke',
-});
-canvas.appendChild(circle3);
-circle3.addEventListener('pointerenter', () => {
-  circle3.stroke = 'green';
-});
-circle3.addEventListener('pointerleave', () => {
-  circle3.stroke = 'black';
-});
+// const circle = new Circle({
+//   cx: 300,
+//   cy: 300,
+//   r: 50,
+//   fill: '#F67676',
+//   stroke: 'black',
+//   strokeWidth: 20,
+//   strokeOpacity: 0.5,
+// });
+// canvas.appendChild(circle);
+// circle.addEventListener('pointerenter', () => {
+//   circle.fill = 'green';
+// });
+// circle.addEventListener('pointerleave', () => {
+//   circle.fill = '#F67676';
+// });
+
+// const circle2 = new Circle({
+//   cx: 200,
+//   cy: 300,
+//   r: 50,
+//   fill: '#F67676',
+//   stroke: 'black',
+//   strokeWidth: 20,
+//   strokeOpacity: 0.5,
+//   strokeAlignment: 'inner',
+// });
+// canvas.appendChild(circle2);
+// circle2.addEventListener('pointerenter', () => {
+//   circle2.fill = 'green';
+// });
+// circle2.addEventListener('pointerleave', () => {
+//   circle2.fill = '#F67676';
+// });
+
+// const circle3 = new Circle({
+//   cx: 100,
+//   cy: 300,
+//   r: 50,
+//   fill: '#F67676',
+//   stroke: 'black',
+//   strokeWidth: 20,
+//   strokeOpacity: 0.5,
+//   strokeAlignment: 'outer',
+//   pointerEvents: 'stroke',
+// });
+// canvas.appendChild(circle3);
+// circle3.addEventListener('pointerenter', () => {
+//   circle3.stroke = 'green';
+// });
+// circle3.addEventListener('pointerleave', () => {
+//   circle3.stroke = 'black';
+// });
 
 const animate = () => {
   canvas.render();
   requestAnimationFrame(animate);
 };
 animate();
+
+// canvas.destroy();
 
 window.addEventListener('resize', () => {
   resize(window.innerWidth, window.innerHeight);

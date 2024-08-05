@@ -224,7 +224,7 @@ export class ShadowRect extends Drawcall {
     }
   }
 
-  render(renderPass: RenderPass) {
+  render(renderPass: RenderPass, uniformLegacyObject: Record<string, unknown>) {
     if (
       this.shapes.some((shape) => shape.renderDirtyFlag) ||
       this.geometryDirty
@@ -250,7 +250,8 @@ export class ShadowRect extends Drawcall {
 
         const instancedData: number[] = [];
         this.shapes.forEach((shape: Rect) => {
-          instancedData.push(...this.generateBuffer(shape));
+          const [buffer] = this.generateBuffer(shape);
+          instancedData.push(...buffer);
         });
         this.#instancedBuffer.setSubData(
           0,
@@ -258,15 +259,22 @@ export class ShadowRect extends Drawcall {
         );
       } else {
         const { worldTransform } = this.shapes[0];
+        const [buffer, legacyObject] = this.generateBuffer(
+          this.shapes[0] as Rect,
+        );
+        const u_ModelMatrix = worldTransform.toArray(true);
         this.#uniformBuffer.setSubData(
           0,
           new Uint8Array(
-            new Float32Array([
-              ...paddingMat3(worldTransform.toArray(true)),
-              ...this.generateBuffer(this.shapes[0] as Rect),
-            ]).buffer,
+            new Float32Array([...paddingMat3(u_ModelMatrix), ...buffer]).buffer,
           ),
         );
+
+        const uniformLegacyObject: Record<string, unknown> = {
+          u_ModelMatrix,
+          ...legacyObject,
+        };
+        this.#program.setUniformsLegacy(uniformLegacyObject);
       }
     }
 
@@ -284,6 +292,7 @@ export class ShadowRect extends Drawcall {
       );
     }
 
+    this.#program.setUniformsLegacy(uniformLegacyObject);
     renderPass.setPipeline(this.#pipeline);
     renderPass.setVertexInput(this.#inputLayout, buffers, {
       buffer: this.#indexBuffer,
@@ -306,7 +315,7 @@ export class ShadowRect extends Drawcall {
     }
   }
 
-  private generateBuffer(shape: Rect) {
+  private generateBuffer(shape: Rect): [number[], Record<string, unknown>] {
     const {
       x,
       y,
@@ -320,23 +329,34 @@ export class ShadowRect extends Drawcall {
       dropShadowBlurRadius,
     } = shape;
 
-    return [
-      x,
-      y,
-      width,
-      height,
+    const u_PositionSize = [x, y, width, height];
+    const u_ZIndexStrokeWidth = [
       shape.globalRenderOrder / ZINDEX_FACTOR,
       strokeWidth,
       cornerRadius,
       0,
-      r / 255,
-      g / 255,
-      b / 255,
-      opacity,
+    ];
+    const u_DropShadowColor = [r / 255, g / 255, b / 255, opacity];
+    const u_DropShadow = [
       dropShadowOffsetX,
       dropShadowOffsetY,
       dropShadowBlurRadius,
       0,
+    ];
+
+    return [
+      [
+        ...u_PositionSize,
+        ...u_ZIndexStrokeWidth,
+        ...u_DropShadowColor,
+        ...u_DropShadow,
+      ],
+      {
+        u_PositionSize,
+        u_ZIndexStrokeWidth,
+        u_DropShadowColor,
+        u_DropShadow,
+      },
     ];
   }
 }

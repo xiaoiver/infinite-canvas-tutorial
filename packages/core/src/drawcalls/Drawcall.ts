@@ -24,14 +24,21 @@ export abstract class Drawcall {
 
   abstract createGeometry(): void;
   abstract createMaterial(uniformBuffer: Buffer): void;
-  abstract render(renderPass: RenderPass): void;
+  abstract render(
+    renderPass: RenderPass,
+    uniformLegacyObject: Record<string, unknown>,
+  ): void;
   abstract destroy(): void;
 
   validate(_: Shape) {
     return this.count() <= this.maxInstances - 1;
   }
 
-  submit(renderPass: RenderPass, uniformBuffer: Buffer) {
+  submit(
+    renderPass: RenderPass,
+    uniformBuffer: Buffer,
+    uniformLegacyObject: Record<string, unknown>,
+  ) {
     if (this.geometryDirty) {
       this.createGeometry();
     }
@@ -40,7 +47,7 @@ export abstract class Drawcall {
       this.createMaterial(uniformBuffer);
     }
 
-    this.render(renderPass);
+    this.render(renderPass, uniformLegacyObject);
 
     if (this.geometryDirty) {
       this.geometryDirty = false;

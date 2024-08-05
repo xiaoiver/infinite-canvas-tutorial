@@ -9,7 +9,7 @@ coverage
 cache
 
 # tests
-__tests__/integration/**/*-diff.png
-__tests__/integration/**/*-actual.png
+__tests__/ssr/**/*-diff.png
+__tests__/ssr/**/*-actual.png
 test-results
 playwright-report

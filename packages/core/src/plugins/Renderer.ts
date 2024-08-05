@@ -34,8 +34,18 @@ export class Renderer implements Plugin {
   #renderTarget: RenderTarget;
   #depthRenderTarget: RenderTarget;
   #renderPass: RenderPass;
+  /**
+   * Used in WebGL2 & WebGPU.
+   */
   #uniformBuffer: Buffer;
+  /**
+   * Used in WebGL1.
+   */
+  #uniformLegacyObject: Record<string, unknown>;
 
+  /**
+   * @see https://infinitecanvas.cc/guide/lesson-005
+   */
   #checkboardStyle: CheckboardStyle = CheckboardStyle.GRID;
   #grid: Grid;
 
@@ -76,6 +86,39 @@ export class Renderer implements Plugin {
       ? d3.rgb(gridColor)
       : { r: 0.87 * 255, g: 0.87 * 255, b: 0.87 * 255, opacity: 1 };
 
+    const updateUniform = (): [Float32Array, Record<string, unknown>] => {
+      const u_ProjectionMatrix = camera.projectionMatrix;
+      const u_ViewMatrix = camera.viewMatrix;
+      const u_ViewProjectionInvMatrix = camera.viewProjectionMatrixInv;
+      const u_BackgroundColor = [br / 255, bg / 255, bb / 255, bo];
+      const u_GridColor = [gr / 255, gg / 255, gb / 255, go];
+      const u_ZoomScale = camera.zoom;
+      const u_CheckboardStyle = this.#checkboardStyle;
+
+      const buffer = new Float32Array([
+        ...paddingMat3(u_ProjectionMatrix),
+        ...paddingMat3(u_ViewMatrix),
+        ...paddingMat3(u_ViewProjectionInvMatrix),
+        ...u_BackgroundColor,
+        ...u_GridColor,
+        u_ZoomScale,
+        u_CheckboardStyle,
+        0,
+        0,
+      ]);
+      const legacyObject = {
+        u_ProjectionMatrix,
+        u_ViewMatrix,
+        u_ViewProjectionInvMatrix,
+        u_BackgroundColor,
+        u_GridColor,
+        u_ZoomScale,
+        u_CheckboardStyle,
+      };
+
+      return [buffer, legacyObject];
+    };
+
     hooks.initAsync.tapPromise(async () => {
       let deviceContribution: DeviceContribution;
       if (renderer === 'webgl') {
@@ -83,7 +126,7 @@ export class Renderer implements Plugin {
           targets: ['webgl2', 'webgl1'],
           antialias: true,
           shaderDebug: false,
-          trackResources: true,
+          trackResources: false,
           onContextCreationError: () => {},
           onContextLost: () => {},
           onContextRestored(e) {},
@@ -122,27 +165,13 @@ export class Renderer implements Plugin {
         }),
       );
 
+      const [buffer, legacyObject] = updateUniform();
       this.#uniformBuffer = this.#device.createBuffer({
-        viewOrSize: new Float32Array([
-          ...paddingMat3(camera.projectionMatrix),
-          ...paddingMat3(camera.viewMatrix),
-          ...paddingMat3(camera.viewProjectionMatrixInv),
-          br / 255,
-          bg / 255,
-          bb / 255,
-          bo,
-          gr / 255,
-          gg / 255,
-          gb / 255,
-          go,
-          camera.zoom,
-          this.#checkboardStyle,
-          0,
-          0,
-        ]),
+        viewOrSize: buffer,
         usage: BufferUsage.UNIFORM,
         hint: BufferFrequencyHint.DYNAMIC,
       });
+      this.#uniformLegacyObject = legacyObject;
 
       this.#grid = new Grid();
     });
@@ -189,28 +218,9 @@ export class Renderer implements Plugin {
       const { width, height } = this.#swapChain.getCanvas();
       const onscreenTexture = this.#swapChain.getOnscreenTexture();
 
-      this.#uniformBuffer.setSubData(
-        0,
-        new Uint8Array(
-          new Float32Array([
-            ...paddingMat3(camera.projectionMatrix),
-            ...paddingMat3(camera.viewMatrix),
-            ...paddingMat3(camera.viewProjectionMatrixInv),
-            br / 255,
-            bg / 255,
-            bb / 255,
-            bo,
-            gr / 255,
-            gg / 255,
-            gb / 255,
-            go,
-            camera.zoom,
-            this.#checkboardStyle,
-            0,
-            0,
-          ]).buffer,
-        ),
-      );
+      const [buffer, legacyObject] = updateUniform();
+      this.#uniformBuffer.setSubData(0, new Uint8Array(buffer.buffer));
+      this.#uniformLegacyObject = legacyObject;
 
       this.#device.beginFrame();
 
@@ -228,7 +238,12 @@ export class Renderer implements Plugin {
         !this.#enableCapture ||
         (this.#enableCapture && this.#captureOptions?.grid)
       ) {
-        this.#grid.render(this.#device, this.#renderPass, this.#uniformBuffer);
+        this.#grid.render(
+          this.#device,
+          this.#renderPass,
+          this.#uniformBuffer,
+          this.#uniformLegacyObject,
+        );
       }
 
       this.#batchManager.clear();
@@ -245,7 +260,11 @@ export class Renderer implements Plugin {
         }
       });
 
-      this.#batchManager.flush(this.#renderPass, this.#uniformBuffer);
+      this.#batchManager.flush(
+        this.#renderPass,
+        this.#uniformBuffer,
+        this.#uniformLegacyObject,
+      );
       this.#device.submitPass(this.#renderPass);
       this.#device.endFrame();
 
