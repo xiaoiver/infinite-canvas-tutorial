@@ -1,0 +1,15 @@
+<circle
+  xmlns="http://www.w3.org/2000/svg"
+  fill="#F67676"
+  stroke="black"
+  stroke-width="0"
+  opacity="1"
+  fill-opacity="1"
+  stroke-opacity="1"
+  cx="50"
+  cy="50"
+  r="50"
+  visibility="visible"
+  transform="matrix(1,0,0,1,0,0)"
+  transform-origin="0 0"
+/>

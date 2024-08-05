@@ -35,7 +35,6 @@ export class CameraControl implements Plugin {
       root,
       devicePixelRatio,
       api: { client2Viewport },
-      getBoundingClientRect,
     } = context;
 
     root.draggable = true;
@@ -52,7 +51,7 @@ export class CameraControl implements Plugin {
       e: FederatedPointerEvent | FederatedWheelEvent,
     ): vec2 {
       // get canvas relative css position
-      const rect = getBoundingClientRect!();
+      const rect = (canvas as HTMLCanvasElement).getBoundingClientRect();
       const cssX = e.nativeEvent.clientX - rect.left;
       const cssY = e.nativeEvent.clientY - rect.top;
 

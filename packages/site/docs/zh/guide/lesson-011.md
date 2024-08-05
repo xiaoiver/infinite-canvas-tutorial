@@ -162,7 +162,36 @@ Vite 的 [Environment API] 也尝试解决类似的问题：
 
 > The changes started by the Runtime API are now prompting a complete review of the way Vite handles environments (client, SSR, workerd, etc).
 
-回到我们的场景。
+回到我们的场景，需要提供以下配置项供 Node.js 环境使用：
+
+```ts
+export interface CanvasConfig {
+    /**
+     * @see https://developer.mozilla.org/en-US/docs/Web/API/Window/devicePixelRatio
+     */
+    devicePixelRatio?: number;
+    /**
+     * @see https://developer.mozilla.org/en-US/docs/Web/API/Window/document
+     */
+    document?: Document;
+    /**
+     * There is no `style.cursor = 'pointer'` in WebWorker.
+     */
+    setCursor?: (cursor: Cursor | string) => void;
+}
+```
+
+使用 JSDOM 可以模拟类似 `MouseEvent` 这样的交互事件，创建后直接触发对应 Hook：
+
+```ts
+const window = new JSDOM().window;
+
+const pointerdownEvent = new window.MouseEvent('pointerdown', {
+    clientX: 100,
+    clientY: 100,
+});
+canvas.pluginContext.hooks.pointerDown.call(pointerdownEvent);
+```
 
 ### 无头浏览器 {#headless-browser}
 

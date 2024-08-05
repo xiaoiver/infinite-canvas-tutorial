@@ -26,20 +26,20 @@ describe('Canvas API', () => {
 
   it('should convert client & viewport coordinates correctly.', async () => {
     const $canvas = getCanvas(200, 200);
+    $canvas.getBoundingClientRect = () => ({
+      x: 50,
+      y: 50,
+      top: 50,
+      left: 50,
+      width: 100,
+      height: 100,
+      bottom: 150,
+      right: 150,
+      toJSON: () => {},
+    });
 
     const canvas = await new Canvas({
       canvas: $canvas,
-      getBoundingClientRect: () => ({
-        x: 50,
-        y: 50,
-        top: 50,
-        left: 50,
-        width: 100,
-        height: 100,
-        bottom: 150,
-        right: 150,
-        toJSON: () => {},
-      }),
     }).initialized;
 
     expect(canvas.client2Viewport({ x: 50, y: 50 })).toEqual({ x: 0, y: 0 });

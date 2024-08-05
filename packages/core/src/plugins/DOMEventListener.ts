@@ -47,7 +47,7 @@ export class DOMEventListener implements Plugin {
     };
 
     const addPointerEventListener = ($el: HTMLCanvasElement) => {
-      globalThis.document.addEventListener('pointermove', onPointerMove, true);
+      globalThis.addEventListener('pointermove', onPointerMove, true);
       $el.addEventListener('pointerdown', onPointerDown, true);
       $el.addEventListener('pointerleave', onPointerOut, true);
       $el.addEventListener('pointerover', onPointerOver, true);
@@ -63,7 +63,7 @@ export class DOMEventListener implements Plugin {
     };
 
     const addMouseEventListener = ($el: HTMLCanvasElement) => {
-      globalThis.document.addEventListener('mousemove', onPointerMove, true);
+      globalThis.addEventListener('mousemove', onPointerMove, true);
       $el.addEventListener('mousedown', onPointerDown, true);
       $el.addEventListener('mouseout', onPointerOut, true);
       $el.addEventListener('mouseover', onPointerOver, true);
@@ -71,11 +71,7 @@ export class DOMEventListener implements Plugin {
     };
 
     const removePointerEventListener = ($el: HTMLCanvasElement) => {
-      globalThis.document.removeEventListener(
-        'pointermove',
-        onPointerMove,
-        true,
-      );
+      globalThis.removeEventListener('pointermove', onPointerMove, true);
       $el.removeEventListener('pointerdown', onPointerDown, true);
       $el.removeEventListener('pointerleave', onPointerOut, true);
       $el.removeEventListener('pointerover', onPointerOver, true);
@@ -90,22 +86,22 @@ export class DOMEventListener implements Plugin {
     };
 
     const removeMouseEventListener = ($el: HTMLCanvasElement) => {
-      globalThis.document.removeEventListener('mousemove', onPointerMove, true);
+      globalThis.removeEventListener('mousemove', onPointerMove, true);
       $el.removeEventListener('mousedown', onPointerDown, true);
       $el.removeEventListener('mouseout', onPointerOut, true);
       $el.removeEventListener('mouseover', onPointerOver, true);
       globalThis.removeEventListener('mouseup', onPointerUp, true);
     };
 
-    if (canvas instanceof HTMLCanvasElement) {
+    if ('addEventListener' in globalThis) {
       hooks.init.tap(() => {
         if (supportsPointerEvents) {
-          addPointerEventListener(canvas);
+          addPointerEventListener(canvas as HTMLCanvasElement);
         } else {
-          addMouseEventListener(canvas);
+          addMouseEventListener(canvas as HTMLCanvasElement);
 
           if (supportsTouchEvents) {
-            addTouchEventListener(canvas);
+            addTouchEventListener(canvas as HTMLCanvasElement);
           }
         }
 
@@ -119,12 +115,12 @@ export class DOMEventListener implements Plugin {
 
       hooks.destroy.tap(() => {
         if (supportsPointerEvents) {
-          removePointerEventListener(canvas);
+          removePointerEventListener(canvas as HTMLCanvasElement);
         } else {
-          removeMouseEventListener(canvas);
+          removeMouseEventListener(canvas as HTMLCanvasElement);
 
           if (supportsTouchEvents) {
-            removeTouchEventListener(canvas);
+            removeTouchEventListener(canvas as HTMLCanvasElement);
           }
         }
 

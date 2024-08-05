@@ -22,12 +22,13 @@ export function isImageBitmapOrCanvases(
   data: TexImageSource,
 ): data is ImageBitmap | HTMLCanvasElement | OffscreenCanvas {
   return (
-    data instanceof ImageBitmap ||
-    data instanceof HTMLCanvasElement ||
-    data instanceof OffscreenCanvas
+    isBrowser &&
+    (data instanceof ImageBitmap ||
+      data instanceof HTMLCanvasElement ||
+      data instanceof OffscreenCanvas)
   );
 }
 
 export function isVideo(data: TexImageSource): data is HTMLVideoElement {
-  return data instanceof HTMLVideoElement;
+  return isBrowser && data instanceof HTMLVideoElement;
 }

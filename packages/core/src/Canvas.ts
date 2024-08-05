@@ -21,7 +21,6 @@ import {
   SyncHook,
   SyncWaterfallHook,
   getGlobalThis,
-  isBrowser,
   traverse,
 } from './utils';
 import { DataURLOptions } from './ImageExporter';
@@ -38,6 +37,11 @@ export interface CanvasConfig {
    */
   devicePixelRatio?: number;
   /**
+   * A reference to the document contained in the window, e.g. JSDOM.
+   * @see https://developer.mozilla.org/en-US/docs/Web/API/Window/document
+   */
+  document?: Document;
+  /**
    * Background color of page.
    */
   backgroundColor?: string;
@@ -45,10 +49,6 @@ export interface CanvasConfig {
    * Color of grid.
    */
   gridColor?: string;
-  /**
-   * There is no `getBoundingClientRect` method in WebWorker.
-   */
-  getBoundingClientRect?: () => DOMRect;
   /**
    * There is no `style.cursor = 'pointer'` in WebWorker.
    */
@@ -88,7 +88,6 @@ export class Canvas {
       devicePixelRatio,
       backgroundColor,
       gridColor,
-      getBoundingClientRect,
       setCursor,
     } = config;
     const globalThis = getGlobalThis();
@@ -114,9 +113,6 @@ export class Canvas {
       gridColor,
       supportsPointerEvents,
       supportsTouchEvents,
-      getBoundingClientRect:
-        getBoundingClientRect ??
-        (() => (canvas as HTMLCanvasElement).getBoundingClientRect()),
       setCursor:
         setCursor ??
         ((cursor) => ((canvas as HTMLCanvasElement).style.cursor = cursor)),
@@ -159,7 +155,7 @@ export class Canvas {
     this.#rendererPlugin = new Renderer();
     this.#eventPlugin = new Event();
     const plugins = [
-      isBrowser ? new DOMEventListener() : undefined,
+      new DOMEventListener(),
       this.#eventPlugin,
       new Picker(),
       new CameraControl(),
@@ -359,12 +355,16 @@ export class Canvas {
   }
 
   client2Viewport({ x, y }: IPointData): IPointData {
-    const { left, top } = this.#pluginContext.getBoundingClientRect!();
+    const { left, top } = (
+      this.#pluginContext.canvas as HTMLCanvasElement
+    ).getBoundingClientRect();
     return { x: x - left, y: y - top };
   }
 
   viewport2Client({ x, y }: IPointData): IPointData {
-    const { left, top } = this.#pluginContext.getBoundingClientRect!();
+    const { left, top } = (
+      this.#pluginContext.canvas as HTMLCanvasElement
+    ).getBoundingClientRect();
     return { x: x + left, y: y + top };
   }
 

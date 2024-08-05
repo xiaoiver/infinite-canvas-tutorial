@@ -6,8 +6,11 @@ import {
   isDataUrl,
   isUndefined,
   isNil,
+  isVideo,
+  isImageBitmapOrCanvases,
   camelToKebabCase,
   kebabToCamelCase,
+  Converter,
 } from '../../packages/core/src/utils';
 
 describe('Utils', () => {
@@ -58,6 +61,16 @@ describe('Utils', () => {
       ).toBe(true);
     });
 
+    it('should check if a value isVideo correctly.', () => {
+      // @ts-expect-error
+      expect(isVideo({})).toBe(false);
+    });
+
+    it('should check if a value isImageBitmapOrCanvases correctly.', () => {
+      // @ts-expect-error
+      expect(isImageBitmapOrCanvases({})).toBe(false);
+    });
+
     it('should convert camelToKebabCase correctly.', () => {
       expect(camelToKebabCase('fillOpacity')).toBe('fill-opacity');
       expect(camelToKebabCase('fill-opacity')).toBe('fill-opacity');
@@ -68,4 +81,6 @@ describe('Utils', () => {
       expect(kebabToCamelCase('fill-opacity')).toBe('fillOpacity');
     });
   });
+
+  describe('Converter', () => {});
 });

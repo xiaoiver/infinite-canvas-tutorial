@@ -24,9 +24,9 @@ export class AABB {
     this.maxY = maxY;
   }
 
-  isEmpty() {
-    return this.minX > this.maxX || this.minY > this.maxY;
-  }
+  // isEmpty() {
+  //   return this.minX > this.maxX || this.minY > this.maxY;
+  // }
 
   clear() {
     this.minX = Infinity;
@@ -37,13 +37,13 @@ export class AABB {
     return this;
   }
 
-  containsPoint(x: number, y: number): boolean {
-    if (this.minX <= x && this.minY <= y && this.maxX >= x && this.maxY >= y) {
-      return true;
-    }
+  // containsPoint(x: number, y: number): boolean {
+  //   if (this.minX <= x && this.minY <= y && this.maxX >= x && this.maxY >= y) {
+  //     return true;
+  //   }
 
-    return false;
-  }
+  //   return false;
+  // }
 
   addBounds(bounds: AABB, matrix?: Matrix) {
     this.addFrame(bounds.minX, bounds.minY, bounds.maxX, bounds.maxY, matrix);

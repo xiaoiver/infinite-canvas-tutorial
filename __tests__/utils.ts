@@ -1,4 +1,5 @@
 import _gl from 'gl';
+import { JSDOM } from 'jsdom';
 
 var lastTime = 0;
 export const requestAnimationFrame = function (callback) {
@@ -43,4 +44,40 @@ export function getCanvas(width = 100, height = 100) {
   };
 
   return mockedCanvas;
+}
+
+export function createMouseEvent(type: string, options: any = {}) {
+  const window = new JSDOM().window;
+  return new (window as any).MouseEvent(type, {
+    altKey: false,
+    bubbles: true,
+    button: 0,
+    buttons: 1,
+    cancelable: true,
+    clientX: 0,
+    clientY: 0,
+    composed: true,
+    ctrlKey: false,
+    detail: 0,
+    height: 1,
+    isPrimary: true,
+    metaKey: false,
+    movementX: 0,
+    movementY: 0,
+    pointerId: 1,
+    pointerType: 'mouse',
+    pressure: 0.5,
+    relatedTarget: null,
+    screenX: 0,
+    screenY: 0,
+    shiftKey: false,
+    tangentialPressure: 0,
+    tiltX: 0,
+    tiltY: 0,
+    twist: 0,
+    view: window,
+    which: 1,
+    width: 1,
+    ...options,
+  });
 }

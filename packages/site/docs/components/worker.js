@@ -3,10 +3,10 @@ import { Canvas, Circle } from '@infinite-canvas-tutorial/core';
 let canvas;
 async function init(data) {
   const { offscreenCanvas, devicePixelRatio, boundingClientRect } = data;
+  offscreenCanvas.getBoundingClientRect = () => boundingClientRect;
   canvas = await new Canvas({
     canvas: offscreenCanvas,
     devicePixelRatio,
-    getBoundingClientRect: () => boundingClientRect,
     setCursor: (cursor) => {
       // eslint-disable-next-line no-undef
       self.postMessage({ type: 'cursor', cursor });

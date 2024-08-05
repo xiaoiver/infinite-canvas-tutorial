@@ -13,8 +13,8 @@ export function uid(name: UIDNames = 'default'): number {
 }
 
 /** Resets the next unique identifier to 0. This is used for some tests, dont touch or things WILL explode :) */
-export function resetUids(): void {
-  for (const key in uidCache) {
-    delete uidCache[key];
-  }
-}
+// export function resetUids(): void {
+//   for (const key in uidCache) {
+//     delete uidCache[key];
+//   }
+// }

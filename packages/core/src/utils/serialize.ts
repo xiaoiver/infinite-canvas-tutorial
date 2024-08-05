@@ -196,6 +196,7 @@ function exportInnerOrOuterStrokeAlignment(
   node: SerializedNode,
   element: SVGElement,
   $g: SVGElement,
+  doc: Document,
 ) {
   const { type, attributes } = node;
   const $stroke = element.cloneNode() as SVGElement;
@@ -257,6 +258,7 @@ export function exportInnerShadow(
   node: SerializedNode,
   element: SVGElement,
   $g: SVGElement,
+  doc: Document,
 ) {
   const {
     uid,
@@ -274,8 +276,8 @@ export function exportInnerShadow(
     },
   } = node;
 
-  const $defs = createSVGElement('defs');
-  const $filter = createSVGElement('filter');
+  const $defs = createSVGElement('defs', doc);
+  const $filter = createSVGElement('filter', doc);
   $filter.id = `filter_${uid}`;
 
   let filterW = 0;
@@ -297,12 +299,12 @@ export function exportInnerShadow(
   $filter.setAttribute('filterUnits', 'userSpaceOnUse');
   $filter.setAttribute('color-interpolation-filters', 'sRGB');
 
-  const $feFlood = createSVGElement('feFlood');
+  const $feFlood = createSVGElement('feFlood', doc);
   $feFlood.setAttribute('flood-opacity', '0');
   $feFlood.setAttribute('result', 'BackgroundImageFix');
   $filter.appendChild($feFlood);
 
-  const $feBlend = createSVGElement('feBlend');
+  const $feBlend = createSVGElement('feBlend', doc);
   $feBlend.setAttribute('mode', 'normal');
   $feBlend.setAttribute('in', 'SourceGraphic');
   $feBlend.setAttribute('in2', 'BackgroundImageFix');
@@ -310,7 +312,7 @@ export function exportInnerShadow(
   $filter.appendChild($feBlend);
 
   // <feColorMatrix xmlns="http://www.w3.org/2000/svg" in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/>
-  const $feColorMatrix = createSVGElement('feColorMatrix');
+  const $feColorMatrix = createSVGElement('feColorMatrix', doc);
   $feColorMatrix.setAttribute('in', 'SourceAlpha');
   $feColorMatrix.setAttribute('type', 'matrix');
   $feColorMatrix.setAttribute('values', '');
@@ -318,24 +320,24 @@ export function exportInnerShadow(
   $filter.appendChild($feColorMatrix);
 
   // <feMorphology xmlns="http://www.w3.org/2000/svg" radius="8" operator="dilate" in="SourceAlpha" result="effect1_innerShadow_2429_2"/>
-  const $feMorphology = createSVGElement('feMorphology');
+  const $feMorphology = createSVGElement('feMorphology', doc);
   $feMorphology.setAttribute('radius', '8');
   $feMorphology.setAttribute('operator', 'dilate');
   $feMorphology.setAttribute('in', 'SourceAlpha');
   $feMorphology.setAttribute('result', 'effect1_innerShadow_2429_2');
   $filter.appendChild($feMorphology);
 
-  const $feOffset = createSVGElement('feOffset');
+  const $feOffset = createSVGElement('feOffset', doc);
   $feOffset.setAttribute('dx', `${innerShadowOffsetX}`);
   $feOffset.setAttribute('dy', `${innerShadowOffsetY}`);
   $filter.appendChild($feOffset);
 
-  const $feGaussianBlur = createSVGElement('feGaussianBlur');
+  const $feGaussianBlur = createSVGElement('feGaussianBlur', doc);
   $feGaussianBlur.setAttribute('stdDeviation', `${innerShadowBlurRadius / 2}`);
   $filter.appendChild($feGaussianBlur);
 
   // <feComposite xmlns="http://www.w3.org/2000/svg" in2="hardAlpha" operator="arithmetic" k2="-1" k3="1"/>
-  const $feComposite = createSVGElement('feComposite');
+  const $feComposite = createSVGElement('feComposite', doc);
   $feComposite.setAttribute('in2', 'hardAlpha');
   $feComposite.setAttribute('operator', 'arithmetic');
   $feComposite.setAttribute('k2', '-1');
@@ -343,13 +345,13 @@ export function exportInnerShadow(
   $filter.appendChild($feComposite);
 
   // <feColorMatrix xmlns="http://www.w3.org/2000/svg" type="matrix" values="0 0 0 0 0.0470588 0 0 0 0 0.0470588 0 0 0 0 0.0509804 0 0 0 1 0"/>
-  const $feColorMatrix2 = createSVGElement('feColorMatrix');
+  const $feColorMatrix2 = createSVGElement('feColorMatrix', doc);
   $feColorMatrix2.setAttribute('type', 'matrix');
   $feColorMatrix2.setAttribute('values', '');
   $filter.appendChild($feColorMatrix2);
 
   // <feBlend xmlns="http://www.w3.org/2000/svg" mode="normal" in2="shape" result="effect1_innerShadow_2429_2"/>
-  const $feBlend2 = createSVGElement('feBlend');
+  const $feBlend2 = createSVGElement('feBlend', doc);
   $feBlend2.setAttribute('mode', 'normal');
   $feBlend2.setAttribute('in2', 'shape');
   $feBlend2.setAttribute('result', 'effect1_innerShadow_2429_2');
@@ -365,14 +367,15 @@ export function exportFillImage(
   node: SerializedNode,
   element: SVGElement,
   $g: SVGElement,
+  doc: Document,
 ) {
-  const $defs = createSVGElement('defs');
-  const $pattern = createSVGElement('pattern');
+  const $defs = createSVGElement('defs', doc);
+  const $pattern = createSVGElement('pattern', doc);
   $pattern.id = `image-fill_${node.uid}`;
   $pattern.setAttribute('patternUnits', 'objectBoundingBox');
   $pattern.setAttribute('width', '1');
   $pattern.setAttribute('height', '1');
-  const $image = createSVGElement('image');
+  const $image = createSVGElement('image', doc);
   $image.setAttribute('href', node.attributes.fill as string);
   $image.setAttribute('x', '0');
   $image.setAttribute('y', '0');
@@ -394,9 +397,9 @@ export function exportFillImage(
   element.setAttribute('fill', `url(#${$pattern.id})`);
 }
 
-export function toSVGElement(node: SerializedNode) {
+export function toSVGElement(node: SerializedNode, doc?: Document) {
   const { type, attributes, children } = node;
-  const element = createSVGElement(type);
+  const element = createSVGElement(type, doc);
   const {
     transform,
     visible,
@@ -462,19 +465,19 @@ export function toSVGElement(node: SerializedNode) {
     innerShadowBlurRadius > 0 ||
     hasFillImage
   ) {
-    $g = createSVGElement('g');
+    $g = createSVGElement('g', doc);
     $g.appendChild(element);
   }
 
   if (innerOrOuterStrokeAlignment) {
-    exportInnerOrOuterStrokeAlignment(node, element, $g);
+    exportInnerOrOuterStrokeAlignment(node, element, $g, doc);
   }
   if (innerShadowBlurRadius > 0) {
-    exportInnerShadow(node, element, $g);
+    exportInnerShadow(node, element, $g, doc);
   }
   // avoid `fill="[object ImageBitmap]"`
   if (hasFillImage) {
-    exportFillImage(node, element, $g);
+    exportFillImage(node, element, $g, doc);
   }
 
   $g = $g || element;
@@ -491,9 +494,11 @@ export function toSVGElement(node: SerializedNode) {
     `${transform.pivot.x} ${transform.pivot.y}`,
   );
 
-  children.map(toSVGElement).forEach((child) => {
-    $g.appendChild(child);
-  });
+  children
+    .map((child) => toSVGElement(child, doc))
+    .forEach((child) => {
+      $g.appendChild(child);
+    });
 
   return $g;
 }
