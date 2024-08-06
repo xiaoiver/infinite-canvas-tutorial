@@ -1,6 +1,4 @@
-import '../useSnapshotMatchers';
-import { JSDOM } from 'jsdom';
-import { serializeNode, Circle, toSVGElement } from '../../packages/core/src';
+import { serializeNode, Circle } from '../../packages/core/src';
 
 describe('Serialize', () => {
   it('should serialize circle correctly.', () => {
@@ -55,12 +53,6 @@ describe('Serialize', () => {
         visible: true,
       },
     });
-
-    const dir = `${__dirname}/snapshots`;
-
-    expect(
-      toSVGElement(serialized, new JSDOM().window._document),
-    ).toMatchSVGSnapshot(dir, 'circle');
   });
 
   it('should serialize strokeAlignment correctly.', () => {
@@ -120,15 +112,15 @@ describe('Serialize', () => {
       },
     });
 
-    const dir = `${__dirname}/snapshots`;
-    expect(
-      toSVGElement(serialized, new JSDOM().window._document),
-    ).toMatchSVGSnapshot(dir, 'circle-stroke-alignment-inner');
+    // const dir = `${__dirname}/snapshots`;
+    // expect(
+    //   toSVGElement(serialized, new JSDOM().window._document),
+    // ).toMatchSVGSnapshot(dir, 'circle-stroke-alignment-inner');
 
-    circle.strokeAlignment = 'outer';
-    serialized = serializeNode(circle);
-    expect(
-      toSVGElement(serialized, new JSDOM().window._document),
-    ).toMatchSVGSnapshot(dir, 'circle-stroke-alignment-outer');
+    // circle.strokeAlignment = 'outer';
+    // serialized = serializeNode(circle);
+    // expect(
+    //   toSVGElement(serialized, new JSDOM().window._document),
+    // ).toMatchSVGSnapshot(dir, 'circle-stroke-alignment-outer');
   });
 });

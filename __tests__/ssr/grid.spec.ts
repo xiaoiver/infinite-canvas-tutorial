@@ -1,63 +1,61 @@
 import _gl from 'gl';
+import { JSDOM } from 'jsdom';
+import xmlserializer from 'xmlserializer';
 import { getCanvas } from '../utils';
 import '../useSnapshotMatchers';
-import { Canvas } from '../../packages/core/src';
+import { Canvas, ImageExporter } from '../../packages/core/src';
 import { CheckboardStyle } from '../../packages/core/src/plugins';
 
-describe('Grid', () => {
-  it('should render lines grid correctly.', async () => {
-    const $canvas = getCanvas(200, 200);
+const dir = `${__dirname}/snapshots`;
+let $canvas: HTMLCanvasElement;
+let canvas: Canvas;
+let exporter: ImageExporter;
 
-    const canvas = await new Canvas({
+describe('Grid', () => {
+  beforeEach(async () => {
+    $canvas = getCanvas(200, 200);
+    canvas = await new Canvas({
       canvas: $canvas,
       backgroundColor: 'white',
       gridColor: 'gray',
     }).initialized;
-    canvas.render();
+    exporter = new ImageExporter({
+      canvas,
+      document: new JSDOM().window._document,
+      xmlserializer,
+    });
+  });
 
-    const dir = `${__dirname}/snapshots`;
+  afterEach(() => {
+    canvas.destroy();
+  });
+
+  it('should render lines grid correctly.', async () => {
+    canvas.render();
 
     expect($canvas.getContext('webgl1')).toMatchWebGLSnapshot(
       dir,
       'grid-lines',
     );
-
-    canvas.destroy();
+    expect(exporter.toSVG({ grid: true })).toMatchSVGSnapshot(
+      dir,
+      'grid-lines',
+    );
   });
 
   it('should render dots grid correctly.', async () => {
-    const $canvas = getCanvas(200, 200);
-
-    const canvas = await new Canvas({
-      canvas: $canvas,
-      backgroundColor: 'white',
-      gridColor: 'gray',
-    }).initialized;
     canvas.checkboardStyle = CheckboardStyle.DOTS;
     canvas.render();
 
-    const dir = `${__dirname}/snapshots`;
-
     expect($canvas.getContext('webgl1')).toMatchWebGLSnapshot(dir, 'grid-dots');
-
-    canvas.destroy();
+    expect(exporter.toSVG({ grid: true })).toMatchSVGSnapshot(dir, 'grid-dots');
   });
 
   it('should render none grid correctly.', async () => {
-    const $canvas = getCanvas(200, 200);
-
-    const canvas = await new Canvas({
-      canvas: $canvas,
-      backgroundColor: 'white',
-      gridColor: 'gray',
-    }).initialized;
     canvas.checkboardStyle = CheckboardStyle.NONE;
     canvas.render();
 
-    const dir = `${__dirname}/snapshots`;
-
     expect($canvas.getContext('webgl1')).toMatchWebGLSnapshot(dir, 'grid-none');
-
-    canvas.destroy();
+    expect(exporter.toSVG({ grid: true })).toMatchSVGSnapshot(dir, 'grid-none');
   });
 });

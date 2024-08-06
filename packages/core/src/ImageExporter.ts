@@ -105,9 +105,9 @@ export class ImageExporter {
     return canvas;
   }
 
-  toSVGDataURL(options: Partial<SVGOptions> = {}) {
+  toSVG(options: Partial<SVGOptions> = {}) {
     const { grid } = options;
-    const { canvas, document: doc, xmlserializer } = this.options;
+    const { canvas, document: doc } = this.options;
     const { width, height } = canvas.getDOM();
 
     const $namespace = createSVGElement('svg', doc);
@@ -123,7 +123,13 @@ export class ImageExporter {
     }
 
     $namespace.appendChild(toSVGElement(serializeNode(canvas.root), doc));
+    return $namespace;
+  }
 
+  toSVGDataURL(options: Partial<SVGOptions> = {}) {
+    const { document: doc, xmlserializer } = this.options;
+
+    const $namespace = this.toSVG(options);
     const svgDocType = (doc || document).implementation.createDocumentType(
       'svg',
       '-//W3C//DTD SVG 1.1//EN',

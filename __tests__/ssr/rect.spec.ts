@@ -1,15 +1,33 @@
 import _gl from 'gl';
+import { JSDOM } from 'jsdom';
+import xmlserializer from 'xmlserializer';
 import { getCanvas } from '../utils';
 import '../useSnapshotMatchers';
-import { Canvas, Rect } from '../../packages/core/src';
+import { Canvas, ImageExporter, Rect } from '../../packages/core/src';
+
+const dir = `${__dirname}/snapshots`;
+let $canvas: HTMLCanvasElement;
+let canvas: Canvas;
+let exporter: ImageExporter;
 
 describe('Rect', () => {
-  it('should render a simple rect correctly.', async () => {
-    const $canvas = getCanvas(200, 200);
-
-    const canvas = await new Canvas({
+  beforeEach(async () => {
+    $canvas = getCanvas(200, 200);
+    canvas = await new Canvas({
       canvas: $canvas,
     }).initialized;
+    exporter = new ImageExporter({
+      canvas,
+      document: new JSDOM().window._document,
+      xmlserializer,
+    });
+  });
+
+  afterEach(() => {
+    canvas.destroy();
+  });
+
+  it('should render a simple rect correctly.', async () => {
     const rect = new Rect({
       x: 50,
       y: 50,
@@ -20,20 +38,11 @@ describe('Rect', () => {
     canvas.appendChild(rect);
     canvas.render();
 
-    const dir = `${__dirname}/snapshots`;
-
     expect($canvas.getContext('webgl1')).toMatchWebGLSnapshot(dir, 'rect');
-
-    canvas.destroy();
+    expect(exporter.toSVG({ grid: true })).toMatchSVGSnapshot(dir, 'rect');
   });
 
   it('should render a rect with drop shadow correctly.', async () => {
-    const $canvas = getCanvas(200, 200);
-
-    const canvas = await new Canvas({
-      canvas: $canvas,
-    }).initialized;
-
     const rect = new Rect({
       x: 50,
       y: 50,
@@ -74,13 +83,9 @@ describe('Rect', () => {
 
     canvas.render();
 
-    const dir = `${__dirname}/snapshots`;
-
     expect($canvas.getContext('webgl1')).toMatchWebGLSnapshot(
       dir,
       'rect-dropshadow',
     );
-
-    canvas.destroy();
   });
 });
