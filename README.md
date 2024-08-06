@@ -1,7 +1,7 @@
 # An Infinite Canvas Tutorial
 
 [![Build Status](https://github.com/xiaoiver/infinite-canvas-tutorial/actions/workflows/test.yml/badge.svg)](https://github.com/xiaoiver/infinite-canvas-tutorial/actions/workflows/test.yml)
-[![Coverage Status](https://coveralls.io/repos/github/xiaoiver/infinite-canvas-tutorial/badge.svg)](https://coveralls.io/github/xiaoiver/infinite-canvas-tutorial?branch=master)
+[![Coverage Status](https://coveralls.io/repos/github/xiaoiver/infinite-canvas-tutorial/badge.svg?branch=master)](https://coveralls.io/github/xiaoiver/infinite-canvas-tutorial?branch=master)
 
 What is an Infinite Canvas? The term "infinite" in [infinitecanvas] is described as follows:
 
@@ -125,6 +125,13 @@ pnpm run dev
 -   Extending the capabilities of SVG, using `stroke-aligment` as an example.
 
 <img src="./screenshots/lesson10.png" width="300" alt="Lesson 10 - import and export images">
+
+## Lesson 11 - Test and server-side rendering [🔗](https://infinitecanvas.cc/guide/lesson-011)
+
+-   Jest-based test environment setup, including local and CI environments
+-   Using unit tests to improve code coverage
+-   Server-side rendering and visual regression testing based on headless-gl.
+-   E2E UI testing
 
 [infinitecanvas]: https://infinitecanvas.tools/
 [Figma]: https://madebyevan.com/figma/building-a-professional-design-tool-on-the-web/

@@ -117,6 +117,10 @@ export const en = defineConfig({
                 text: 'Render canvas in WebWorker',
                 link: 'webworker',
               },
+              {
+                text: 'Export canvas content as image',
+                link: 'exporter',
+              },
             ],
           },
         ],

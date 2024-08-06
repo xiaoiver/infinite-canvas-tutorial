@@ -35,4 +35,12 @@ export default defineConfig({
       },
     },
   },
+  vite: {
+    build: {
+      chunkSizeWarningLimit: 800,
+    },
+    ssr: {
+      noExternal: ["@antv/g-device-api"]
+    },
+  }
 });

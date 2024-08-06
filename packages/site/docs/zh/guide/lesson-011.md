@@ -239,10 +239,11 @@ export interface CanvasConfig {
 主线程代码如下：
 
 1. 首先创建一个 OffscreenCanvas，大小和主画布一致
-2. 创建一个 WebWorker，监听后续传递过来的消息，例如设置鼠标样式等
+2. 创建一个 WebWorker，这里使用 Vite 提供的方式。监听后续传递过来的消息，例如设置鼠标样式等
 3. 通常我们会通过 [postMessage] 的第一个参数向 WebWorker 传参，但由于 OffscreenCanvas 是 [Transferable] 的，因此这里需要使用到第二个参数
 
 ```ts
+// @see https://vitejs.dev/guide/features.html#import-with-query-suffixes
 import Worker from './worker.js?worker&inline';
 
 // 1.

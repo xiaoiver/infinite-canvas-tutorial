@@ -99,6 +99,10 @@ export const zh = defineConfig({
                 text: '在 WebWorker 中渲染画布',
                 link: 'webworker',
               },
+              {
+                text: '将画布内容导出成图片',
+                link: 'exporter',
+              },
             ],
           },
         ],

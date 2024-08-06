@@ -1,6 +1,7 @@
 <script setup>
 import { onMounted, onUnmounted, ref } from 'vue';
 import Stats from 'stats.js';
+// @see https://vitejs.dev/guide/features.html#import-with-query-suffixes
 import Worker from './worker.js?worker&inline';
 
 const canvasRef = ref(null);
@@ -57,6 +58,9 @@ onMounted(() => {
       const offscreenCanvas = mainCanvas.transferControlToOffscreen();
 
       // Create a new worker
+      // const workerUrl = new URL('./worker.js', import.meta.url).href;
+      // worker = new Worker(workerUrl, { type: 'module' });
+
       worker = new Worker();
       worker.onmessage = function (event) {
         if (event.data.type === 'cursor') {

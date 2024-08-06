@@ -1,7 +1,7 @@
 # 一个无限画布教程
 
 [![Build Status](https://github.com/xiaoiver/infinite-canvas-tutorial/actions/workflows/test.yml/badge.svg)](https://github.com/xiaoiver/infinite-canvas-tutorial/actions/workflows/test.yml)
-[![Coverage Status](https://coveralls.io/repos/github/xiaoiver/infinite-canvas-tutorial/badge.svg)](https://coveralls.io/github/xiaoiver/infinite-canvas-tutorial?branch=master)
+[![Coverage Status](https://coveralls.io/repos/github/xiaoiver/infinite-canvas-tutorial/badge.svg?branch=master)](https://coveralls.io/github/xiaoiver/infinite-canvas-tutorial?branch=master)
 
 什么是无限画布？[infinitecanvas] 对“无限”的描述如下：
 
@@ -127,6 +127,13 @@ pnpm run dev
 -   拓展 SVG 的能力，以 `stroke-aligment` 为例
 
 <img src="./screenshots/lesson10.png" width="300" alt="Lesson 10 - import and export images">
+
+## 课程 11 - 测试与服务端渲染 [🔗](https://infinitecanvas.cc/zh/guide/lesson-011)
+
+-   基于 Jest 的测试环境搭建，包含本地和 CI 环境
+-   使用单元测试提升代码覆盖率
+-   基于 headless-gl 的服务端渲染与视觉回归测试
+-   E2E UI 测试
 
 [infinitecanvas]: https://infinitecanvas.tools/
 [Figma]: https://madebyevan.com/figma/building-a-professional-design-tool-on-the-web/
