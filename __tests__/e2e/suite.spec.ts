@@ -5,7 +5,7 @@ test.beforeEach(async ({ page }, testInfo) => {
 });
 
 test.describe('E2E Suite', () => {
-  ['circle'].forEach((name) => {
+  ['circle', 'ellipse'].forEach((name) => {
     test(name, async ({ page, context }) => {
       //   const createReadyPromise = async (context: BrowserContext) => {
       let resolveReadyPromise: () => void;

@@ -1,4 +1,4 @@
-import { Canvas } from '../../../packages/core';
+import { Canvas } from '../../../packages/core/src';
 
 export async function initExample(
   $container: HTMLElement,

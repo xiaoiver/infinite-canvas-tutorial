@@ -14,7 +14,6 @@ import {
   Program,
   CompareFunction,
   TransparentBlack,
-  // StencilOp,
 } from '@antv/g-device-api';
 import { Rect } from '../shapes';
 import { Drawcall, ZINDEX_FACTOR } from './Drawcall';
@@ -191,15 +190,13 @@ export class ShadowRect extends Drawcall {
         blendConstant: TransparentBlack,
         depthWrite: false,
         depthCompare: CompareFunction.GREATER,
-        // stencilWrite: false,
-        // stencilFront: {
-        //   compare: CompareFunction.ALWAYS,
-        //   passOp: StencilOp.KEEP,
-        // },
-        // stencilBack: {
-        //   compare: CompareFunction.ALWAYS,
-        //   passOp: StencilOp.KEEP,
-        // },
+        stencilWrite: false,
+        stencilFront: {
+          compare: CompareFunction.ALWAYS,
+        },
+        stencilBack: {
+          compare: CompareFunction.ALWAYS,
+        },
       },
     });
 

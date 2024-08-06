@@ -1,68 +1,74 @@
-import { Canvas, Circle } from '../../../../packages/core/src';
+import { Canvas, Ellipse } from '../../../../packages/core/src';
 
 export async function render(canvas: Canvas, $canvas: HTMLCanvasElement) {
-  const circle1 = new Circle({
+  const ellipse1 = new Ellipse({
     cx: 100,
     cy: 100,
-    r: 50,
+    rx: 50,
+    ry: 30,
     fill: 'black',
   });
-  canvas.appendChild(circle1);
+  canvas.appendChild(ellipse1);
 
-  const circle2 = new Circle({
+  const ellipse2 = new Ellipse({
     cx: 200,
     cy: 100,
-    r: 50,
+    rx: 50,
+    ry: 30,
     fill: 'black',
     opacity: 0.5,
   });
-  canvas.appendChild(circle2);
+  canvas.appendChild(ellipse2);
 
-  const circle3 = new Circle({
+  const ellipse3 = new Ellipse({
     cx: 300,
     cy: 100,
-    r: 50,
+    rx: 50,
+    ry: 30,
     fill: 'black',
     stroke: 'red',
     strokeWidth: 20,
     strokeOpacity: 0.5,
   });
-  canvas.appendChild(circle3);
+  canvas.appendChild(ellipse3);
 
-  const circle4 = new Circle({
+  const ellipse4 = new Ellipse({
     cx: 100,
     cy: 200,
-    r: 50,
+    rx: 50,
+    ry: 30,
     fill: 'transparent',
     stroke: 'red',
     strokeWidth: 20,
     strokeOpacity: 0.5,
   });
-  canvas.appendChild(circle4);
+  canvas.appendChild(ellipse4);
 
-  const circle5 = new Circle({
+  const ellipse5 = new Ellipse({
     cx: 200,
     cy: 200,
-    r: 50,
+    rx: 50,
+    ry: 30,
     fill: 'black',
     stroke: 'red',
     strokeWidth: 20,
     strokeOpacity: 0.5,
     strokeAlignment: 'inner',
   });
-  canvas.appendChild(circle5);
+  canvas.appendChild(ellipse5);
 
-  const circle6 = new Circle({
+  const ellipse6 = new Ellipse({
     cx: 300,
     cy: 200,
-    r: 50,
+    rx: 50,
+    ry: 30,
     fill: 'black',
     stroke: 'red',
     strokeWidth: 20,
     strokeOpacity: 0.5,
     strokeAlignment: 'outer',
   });
-  canvas.appendChild(circle6);
+  canvas.appendChild(ellipse6);
 
   canvas.render();
 }
