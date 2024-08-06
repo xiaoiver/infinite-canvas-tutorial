@@ -32,6 +32,14 @@ describe('Serialize', () => {
         strokeOpacity: 1,
         strokeWidth: 0,
         transform: {
+          matrix: {
+            a: 1,
+            b: 0,
+            c: 0,
+            d: 1,
+            tx: 0,
+            ty: 0,
+          },
           pivot: {
             x: 0,
             y: 0,
@@ -90,6 +98,14 @@ describe('Serialize', () => {
         strokeOpacity: 0.5,
         strokeWidth: 20,
         transform: {
+          matrix: {
+            a: 1,
+            b: 0,
+            c: 0,
+            d: 1,
+            tx: 0,
+            ty: 0,
+          },
           pivot: {
             x: 0,
             y: 0,
@@ -111,16 +127,5 @@ describe('Serialize', () => {
         visible: true,
       },
     });
-
-    // const dir = `${__dirname}/snapshots`;
-    // expect(
-    //   toSVGElement(serialized, new JSDOM().window._document),
-    // ).toMatchSVGSnapshot(dir, 'circle-stroke-alignment-inner');
-
-    // circle.strokeAlignment = 'outer';
-    // serialized = serializeNode(circle);
-    // expect(
-    //   toSVGElement(serialized, new JSDOM().window._document),
-    // ).toMatchSVGSnapshot(dir, 'circle-stroke-alignment-outer');
   });
 });

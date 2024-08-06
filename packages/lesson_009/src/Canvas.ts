@@ -168,10 +168,11 @@ export class Canvas {
     traverse(this.#root, (shape) => {
       this.#shapesCurrentFrame.add(shape);
 
-      if (
-        shape.transformDirtyFlag ||
-        (shape.renderable && shape.renderDirtyFlag)
-      ) {
+      if (shape.transformDirtyFlag) {
+        shape.renderDirtyFlag = true;
+      }
+
+      if (shape.renderable && shape.renderDirtyFlag) {
         modified.push(shape);
         this.#renderDirtyFlag = true;
       }

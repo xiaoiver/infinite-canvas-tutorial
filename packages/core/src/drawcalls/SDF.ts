@@ -65,8 +65,8 @@ export class SDF extends Drawcall {
       return true;
     }
 
-    const isInstanceFillImage = isString(this.shapes[0].fill);
-    const isShapeFillImage = isString(shape.fill);
+    const isInstanceFillImage = !isString(this.shapes[0].fill);
+    const isShapeFillImage = !isString(shape.fill);
 
     if (isInstanceFillImage !== isShapeFillImage) {
       return false;

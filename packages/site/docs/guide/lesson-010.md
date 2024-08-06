@@ -302,6 +302,8 @@ Note that this conversion is not fully reversible, for example, in the [StrokeAl
 
 ![import an exported ellipse in Figma](/import-exported-ellipse.png)
 
+[@pixi-essentials/svg] also wants to convert SVGElement to shapes in Pixi.js.
+
 #### SceneGraph in SVG {#scene-graph-in-svg}
 
 Another thing to note is that while any graph in our scene graph can have child nodes, only `<g>` can have children in SVG, and other than that, e.g. `<circle>` cannot have children. The solution is simple: for non-Group elements that have children, generate the SVG with a `<g>` outside it, and apply the `transform` that would have been applied to it. Assuming we have support for rendering text in the future, the SVG for a Circle with text children would look like this:
@@ -834,3 +836,4 @@ With the richness of the canvas functionality, it is necessary to introduce test
 [How to draw grid using HTML5 and canvas or SVG]: https://stackoverflow.com/questions/14208673/how-to-draw-grid-using-html5-and-canvas-or-svg
 [Convert ImageBitmap to Blob]: https://stackoverflow.com/questions/52959839/convert-imagebitmap-to-blob
 [ImageBitmapRenderingContext]: https://developer.mozilla.org/en-US/docs/Web/API/ImageBitmapRenderingContext
+[@pixi-essentials/svg]: https://github.com/ShukantPal/pixi-essentials/tree/master/packages/svg

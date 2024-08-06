@@ -171,15 +171,105 @@ export interface CanvasConfig {
      */
     devicePixelRatio?: number;
     /**
-     * @see https://developer.mozilla.org/en-US/docs/Web/API/Window/document
-     */
-    document?: Document;
-    /**
      * There is no `style.cursor = 'pointer'` in WebWorker.
      */
     setCursor?: (cursor: Cursor | string) => void;
 }
 ```
+
+#### 生成 PNG {#ssr-png}
+
+使用 [headless-gl] 可以创建一个 WebGLRenderingContext 并封装成一个类 HTMLCanvasElement 对象。稍后使用它就可以正常创建画布了：
+
+```ts
+export function getCanvas(width = 100, height = 100) {
+    let gl = _gl(width, height, {
+        antialias: false,
+        preserveDrawingBuffer: true,
+        stencil: true,
+    });
+
+    const mockedCanvas: HTMLCanvasElement = {
+        width,
+        height,
+        getContext: () => {
+            gl.canvas = mockedCanvas;
+            return gl;
+        },
+        addEventListener: () => {},
+    };
+
+    return mockedCanvas;
+}
+```
+
+拿到 WebGLRenderingContext 后，就可以调用 [readPixels] 获取指定区域内的像素值，随后写入 PNG 中就得到了基准图片。
+
+```ts
+async function writePNG(gl: WebGLRenderingContext, path: string) {
+    const width = gl.canvas.width;
+    const height = gl.canvas.height;
+
+    const pixels = new Uint8Array(width * height * 4);
+    gl.readPixels(0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+
+    await createPNGFromRawdata(path, width, height, pixels);
+}
+```
+
+每次运行测试时就可以通过 [pixelmatch] 对比基准图片和本次测试生成的图片，同时将差异部分也写入文件便于查看。这里使用 Jest 提供的自定义断言扩展：
+
+```ts
+// useSnapshotMatchers.ts
+// @see https://jestjs.io/docs/26.x/expect#expectextendmatchers
+expect.extend({
+    toMatchWebGLSnapshot,
+    toMatchSVGSnapshot,
+});
+
+// Diff with golden image in test case.
+expect($canvas.getContext()).toMatchWebGLSnapshot(dir, 'rect');
+```
+
+完整代码详见：[toMatchWebGLSnapshot.ts]
+
+#### 生成 SVG {#ssr-svg}
+
+为了测试我们的图片导出功能，我们需要为 ImageExporter 提供 [jsdom] 和 [xmlserializer] 作为浏览器环境的替代品。前者用来在 Node.js 环境中创建 SVGElement，后者用来将其序列化成字符串：
+
+```ts{6,7}
+import xmlserializer from 'xmlserializer';
+import { JSDOM } from 'jsdom';
+
+const exporter = new ImageExporter({
+    canvas,
+    document: new JSDOM().window._document,
+    xmlserializer,
+});
+```
+
+得到 SVGElement 的字符串就可以写入文件了，写入之前我们还可以用 prettier 格式化一下便于阅读：
+
+```ts
+import xmlserializer from 'xmlserializer';
+import { format } from 'prettier';
+
+export function toMatchSVGSnapshot(
+    dom: SVGElement | null,
+    dir: string,
+    name: string,
+    options: ToMatchSVGSnapshotOptions = {},
+) {
+    let actual = dom
+      ? format(xmlserializer.serializeToString(dom), {
+          parser: 'babel',
+        })
+}
+```
+
+完整代码详见：[toMatchSVGSnapshot.ts]
+
+#### 测试交互 {#how-to-mock-event}
 
 使用 JSDOM 可以模拟类似 `MouseEvent` 这样的交互事件，创建后直接触发对应 Hook：
 
@@ -193,13 +283,30 @@ const pointerdownEvent = new window.MouseEvent('pointerdown', {
 canvas.pluginContext.hooks.pointerDown.call(pointerdownEvent);
 ```
 
+#### CI 环境配置 {#ssr-ci}
+
+[headless-gl] 在 CI 环境运行需要进行一些额外的依赖安装，详见 [How can I use headless-gl with a continuous integration service?]
+
+```yaml
+- name: Install headless-gl dependencies
+    run: |
+        sudo apt-get update
+        sudo apt-get install -y mesa-utils xvfb libgl1-mesa-dri libglapi-mesa libosmesa6
+
+- name: Cov
+    run: |
+        xvfb-run -s "-ac -screen 0 1280x1024x16" pnpm cov
+```
+
+完整代码详见：[github workflows - test]
+
 ### 无头浏览器 {#headless-browser}
+
+尽管服务端渲染很好，但无头浏览器方案在测试中还是有其不可替代的优势，以 Playwright 为例：
 
 -   使用最新的 Chrome 可以支持 WebGL 1/2 甚至 WebGPU
 -   官方直接提供了 toHaveScreenshot 这样的断言，内置像素级对比，失败后在 report 中展示 diff
--   支持 [sharding] 在 CI 上支持多机器并行，每个机器又可以开启多线程。例如我们使用 4 个机器，每个机器开 10 个 worker 并行：
-
-但它在本地生成的截图常常和 CI 环境存在细微差异。使用 CI 环境而非本地生成的基准图片来保证一致性。上传 GitHub workflow artifacts 就可以获取 CI 环境的截图，下载到本地作为基准图片。
+-   支持 [sharding] 在 CI 上支持多机器并行，每个机器又可以开启多线程。例如我们使用 4 个机器，每个机器开 10 个 worker 并行
 
 ```ts
 // Playwright 截图
@@ -207,6 +314,8 @@ const buffer = await page.locator('canvas').screenshot();
 // 断言截图是否与基准图片一致
 expect(buffer).toMatchCanvasSnapshot(dir, key, { maxError });
 ```
+
+但它在本地生成的截图常常和 CI 环境存在细微差异。使用 CI 环境而非本地生成的基准图片来保证一致性。上传 GitHub workflow artifacts 就可以获取 CI 环境的截图，下载到本地作为基准图片。
 
 ## 在 WebWorker 中运行 {#rendering-in-webworker}
 
@@ -360,10 +469,9 @@ worker.onmessage = function (event) {
 };
 ```
 
-## E2E UI 测试
+## E2E UI 测试 {#e2e}
 
 -   如何测试 UI [Lit Testing]
--   如何测试事件响应
 
 [node-canvas]: https://github.com/Automattic/node-canvas
 [headless-gl]: https://github.com/stackgl/headless-gl
@@ -389,3 +497,9 @@ worker.onmessage = function (event) {
 [渲染循环]: /zh/guide/lesson-001#design-the-canvas-api
 [事件系统]: /zh/guide/lesson-006
 [WebWorker 示例]: /zh/example/webworker
+[readPixels]: https://developer.mozilla.org/en-US/docs/Web/API/WebGLRenderingContext/readPixels
+[toMatchWebGLSnapshot.ts]: https://github.com/xiaoiver/infinite-canvas-tutorial/blob/master/__tests__/toMatchWebGLSnapshot.ts
+[toMatchSVGSnapshot.ts]: https://github.com/xiaoiver/infinite-canvas-tutorial/blob/master/__tests__/toMatchSVGSnapshot.ts
+[xmlserializer]: https://www.npmjs.com/package/xmlserializer
+[github workflows - test]: https://github.com/xiaoiver/infinite-canvas-tutorial/blob/master/.github/workflows/test.yml
+[How can I use headless-gl with a continuous integration service?]: https://github.com/stackgl/headless-gl?tab=readme-ov-file#how-can-i-use-headless-gl-with-a-continuous-integration-service

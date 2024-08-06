@@ -26,65 +26,42 @@
   <rect width="100%" height="100%" fill="url(#grid)" />
   <g visibility="hidden" transform="matrix(1,0,0,1,0,0)">
     <g visibility="visible" transform="matrix(1,0,0,1,0,0)">
-      <circle
-        fill="red"
-        stroke="none"
-        stroke-width="20"
-        opacity="1"
-        fill-opacity="1"
-        stroke-opacity="0.5"
-        cx="50"
-        cy="50"
-        r="50"
-      />
-      <circle
-        fill="none"
+      <rect
+        fill="black"
         stroke="black"
-        stroke-width="20"
+        stroke-width="0"
         opacity="1"
         fill-opacity="1"
-        stroke-opacity="0.5"
-        cx="50"
-        cy="50"
-        r="40"
+        stroke-opacity="1"
+        x="50"
+        y="50"
+        width="100"
+        height="100"
+        corner-radius="0"
+        drop-shadow-color="black"
+        drop-shadow-offset-x="0"
+        drop-shadow-offset-y="0"
+        drop-shadow-blur-radius="0"
+      />
+      <rect
+        fill="red"
+        stroke="black"
+        stroke-width="0"
+        opacity="1"
+        fill-opacity="1"
+        stroke-opacity="1"
+        x="100"
+        y="100"
+        width="50"
+        height="50"
+        corner-radius="0"
+        drop-shadow-color="black"
+        drop-shadow-offset-x="0"
+        drop-shadow-offset-y="0"
+        drop-shadow-blur-radius="0"
+        visibility="visible"
+        transform="matrix(1,0,0,1,0,0)"
       />
     </g>
-    <g visibility="visible" transform="matrix(1,0,0,1,0,0)">
-      <circle
-        fill="red"
-        stroke="none"
-        stroke-width="20"
-        opacity="1"
-        fill-opacity="1"
-        stroke-opacity="0.5"
-        cx="150"
-        cy="50"
-        r="50"
-      />
-      <circle
-        fill="none"
-        stroke="black"
-        stroke-width="20"
-        opacity="1"
-        fill-opacity="1"
-        stroke-opacity="0.5"
-        cx="150"
-        cy="50"
-        r="60"
-      />
-    </g>
-    <circle
-      fill="red"
-      stroke="black"
-      stroke-width="20"
-      opacity="1"
-      fill-opacity="1"
-      stroke-opacity="0.5"
-      cx="50"
-      cy="150"
-      r="50"
-      visibility="visible"
-      transform="matrix(1,0,0,1,0,0)"
-    />
   </g>
 </svg>

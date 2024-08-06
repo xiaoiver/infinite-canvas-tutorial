@@ -277,7 +277,10 @@ export abstract class Shape
   }
 
   get transformDirtyFlag() {
-    return this.transform['_localID'] !== this.transform['_currentLocalID'];
+    return (
+      this.transform['_localID'] !== this.transform['_currentLocalID'] ||
+      this.transform['_parentID'] !== this.parent?.transform['_worldID']
+    );
   }
 
   appendChild(child: Shape) {

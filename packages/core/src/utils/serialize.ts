@@ -11,6 +11,14 @@ import {
 } from './lang';
 
 type SerializedTransform = {
+  matrix: {
+    a: number;
+    b: number;
+    c: number;
+    d: number;
+    tx: number;
+    ty: number;
+  };
   position: {
     x: number;
     y: number;
@@ -161,7 +169,10 @@ export function serializeNode(node: Shape): SerializedNode {
 }
 
 export function serializeTransform(transform: Transform): SerializedTransform {
+  const { a, b, c, d, tx, ty } = transform.localTransform;
+
   return {
+    matrix: { a, b, c, d, tx, ty },
     position: {
       x: transform.position.x,
       y: transform.position.y,
@@ -485,14 +496,8 @@ export function toSVGElement(node: SerializedNode, doc?: Document) {
   // @see https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/visibility
   $g.setAttribute('visibility', visible ? 'visible' : 'hidden');
 
-  $g.setAttribute(
-    'transform',
-    `matrix(${transform.scale.x},${transform.skew.x},${transform.skew.y},${transform.scale.y},${transform.position.x},${transform.position.y})`,
-  );
-  $g.setAttribute(
-    'transform-origin',
-    `${transform.pivot.x} ${transform.pivot.y}`,
-  );
+  const { a, b, c, d, tx, ty } = transform.matrix;
+  $g.setAttribute('transform', `matrix(${a},${b},${c},${d},${tx},${ty})`);
 
   children
     .map((child) => toSVGElement(child, doc))
@@ -507,6 +512,8 @@ export function toSVGElement(node: SerializedNode, doc?: Document) {
  * Note that this conversion is not fully reversible.
  * For example, in the StrokeAlignment implementation, one Circle corresponds to two <circle>s.
  * The same is true in Figma.
+ *
+ * @see https://github.com/ShukantPal/pixi-essentials/blob/master/packages/svg
  */
 export function fromSVGElement(element: SVGElement, uid = 0): SerializedNode {
   const type = element.tagName.toLowerCase() as SerializedNode['type'];

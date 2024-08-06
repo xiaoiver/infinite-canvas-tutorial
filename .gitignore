@@ -11,5 +11,6 @@ cache
 # tests
 __tests__/ssr/**/*-diff.png
 __tests__/ssr/**/*-actual.png
+__tests__/ssr/**/*-actual.svg
 test-results
 playwright-report

@@ -134,7 +134,11 @@ export function Transformable<TBase extends GConstructor>(Base: TBase) {
     }
 
     get transformDirtyFlag() {
-      return this.transform['_localID'] !== this.transform['_currentLocalID'];
+      return (
+        this.transform['_localID'] !== this.transform['_currentLocalID'] ||
+        (this.parent &&
+          this.transform['_parentID'] !== this.parent.transform['_worldID'])
+      );
     }
   };
 }

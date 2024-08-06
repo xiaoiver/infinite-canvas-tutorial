@@ -6,65 +6,65 @@ outline: deep
 
 In the last lesson we drew a circle, in this lesson you will learn the following:
 
-- Transformations. Make shapes support pan, zoom, rotate, and skew transformations.
-- Scene graph.
+-   Transformations. Make shapes support pan, zoom, rotate, and skew transformations.
+-   Scene graph.
 
 Finally, we will use the above features to realize a simple model of the Solar System.
 
 ```js eval code=false
 (async () => {
-  const { Canvas, Circle, Group } = Lesson3;
-  const canvas = await Utils.createCanvas(Canvas, 400, 400);
+    const { Canvas, Circle, Group } = Lesson3;
+    const canvas = await Utils.createCanvas(Canvas, 400, 400);
 
-  const solarSystem = new Group();
-  const earthOrbit = new Group();
-  const moonOrbit = new Group();
+    const solarSystem = new Group();
+    const earthOrbit = new Group();
+    const moonOrbit = new Group();
 
-  const sun = new Circle({
-    cx: 0,
-    cy: 0,
-    r: 100,
-    fill: 'red',
-  });
-  const earth = new Circle({
-    cx: 0,
-    cy: 0,
-    r: 50,
-    fill: 'blue',
-  });
-  const moon = new Circle({
-    cx: 0,
-    cy: 0,
-    r: 25,
-    fill: 'yellow',
-  });
-  solarSystem.appendChild(sun);
-  solarSystem.appendChild(earthOrbit);
-  earthOrbit.appendChild(earth);
-  earthOrbit.appendChild(moonOrbit);
-  moonOrbit.appendChild(moon);
+    const sun = new Circle({
+        cx: 0,
+        cy: 0,
+        r: 100,
+        fill: 'red',
+    });
+    const earth = new Circle({
+        cx: 0,
+        cy: 0,
+        r: 50,
+        fill: 'blue',
+    });
+    const moon = new Circle({
+        cx: 0,
+        cy: 0,
+        r: 25,
+        fill: 'yellow',
+    });
+    solarSystem.appendChild(sun);
+    solarSystem.appendChild(earthOrbit);
+    earthOrbit.appendChild(earth);
+    earthOrbit.appendChild(moonOrbit);
+    moonOrbit.appendChild(moon);
 
-  solarSystem.position.x = 200;
-  solarSystem.position.y = 200;
-  earthOrbit.position.x = 100;
-  moonOrbit.position.x = 100;
+    solarSystem.position.x = 200;
+    solarSystem.position.y = 200;
+    earthOrbit.position.x = 100;
+    moonOrbit.position.x = 100;
 
-  canvas.appendChild(solarSystem);
+    canvas.appendChild(solarSystem);
 
-  let id;
-  const animate = () => {
-    solarSystem.rotation += 0.01;
-    earthOrbit.rotation += 0.02;
-    canvas.render();
-    id = requestAnimationFrame(animate);
-  };
-  animate();
+    let id;
+    const animate = () => {
+        solarSystem.rotation += 0.01;
+        earthOrbit.rotation += 0.02;
+        canvas.render();
+        id = requestAnimationFrame(animate);
+    };
+    animate();
 
-  unsubscribe(() => {
-    cancelAnimationFrame(id);
-    canvas.destroy();
-  });
-  return canvas.getDOM();
+    unsubscribe(() => {
+        cancelAnimationFrame(id);
+        canvas.destroy();
+    });
+    return canvas.getDOM();
 })();
 ```
 
@@ -85,7 +85,7 @@ We add a `transform` attribute to our graph base class directly using [@pixi/mat
 import { Transform } from '@pixi/math';
 
 export abstract class Shape {
-  transform = new Transform();
+    transform = new Transform();
 }
 ```
 
@@ -112,12 +112,12 @@ We add methods for transformations in local and world coordinate systems to the 
 
 ```ts
 export abstract class Shape {
-  get localTransform(): Matrix {
-    return this.transform.localTransform;
-  }
-  get worldTransform(): Matrix {
-    return this.transform.worldTransform;
-  }
+    get localTransform(): Matrix {
+        return this.transform.localTransform;
+    }
+    get worldTransform(): Matrix {
+        return this.transform.worldTransform;
+    }
 }
 ```
 
@@ -143,9 +143,9 @@ Naturally, we create a `Float32Array` of length 9 (a matrix of 3 \* 3) directly:
 
 ```ts
 this.#uniformBuffer = device.createBuffer({
-  viewOrSize: Float32Array.BYTES_PER_ELEMENT * 9, // mat3
-  usage: BufferUsage.UNIFORM,
-  hint: BufferFrequencyHint.DYNAMIC,
+    viewOrSize: Float32Array.BYTES_PER_ELEMENT * 9, // mat3
+    usage: BufferUsage.UNIFORM,
+    hint: BufferFrequencyHint.DYNAMIC,
 });
 ```
 
@@ -163,8 +163,8 @@ So what is alignment? Let's take `vec3` as an example, which is `4 * 3` Bytes lo
 
 ```ts
 this.#uniformBuffer = device.createBuffer({
-  viewOrSize: Float32Array.BYTES_PER_ELEMENT * 12, // mat3
-  usage: BufferUsage.UNIFORM,
+    viewOrSize: Float32Array.BYTES_PER_ELEMENT * 12, // mat3
+    usage: BufferUsage.UNIFORM,
 });
 ```
 
@@ -181,23 +181,23 @@ We need to manually add padding when writing data:
 const PADDING = 0;
 const { a, b, c, d, tx, ty } = this.worldTransform;
 this.#uniformBuffer.setSubData(
-  0,
-  new Uint8Array(
-    new Float32Array([
-      a,
-      b,
-      0,
-      PADDING,
-      c,
-      d,
-      0,
-      PADDING,
-      tx,
-      ty,
-      1,
-      PADDING,
-    ]).buffer,
-  ),
+    0,
+    new Uint8Array(
+        new Float32Array([
+            a,
+            b,
+            0,
+            PADDING,
+            c,
+            d,
+            0,
+            PADDING,
+            tx,
+            ty,
+            1,
+            PADDING,
+        ]).buffer,
+    ),
 );
 ```
 
@@ -223,26 +223,26 @@ Let's add translation APIs such as translation, rotation and zoom to the graphic
 
 ```ts
 export abstract class Shape {
-  get position(): ObservablePoint {
-    return this.transform.position;
-  }
-  set position(value: IPointData) {
-    this.transform.position.copyFrom(value);
-  }
+    get position(): ObservablePoint {
+        return this.transform.position;
+    }
+    set position(value: IPointData) {
+        this.transform.position.copyFrom(value);
+    }
 
-  get x(): number {
-    return this.position.x;
-  }
-  set x(value: number) {
-    this.transform.position.x = value;
-  }
+    get x(): number {
+        return this.position.x;
+    }
+    set x(value: number) {
+        this.transform.position.x = value;
+    }
 
-  get y(): number {
-    return this.position.y;
-  }
-  set y(value: number) {
-    this.transform.position.y = value;
-  }
+    get y(): number {
+        return this.position.y;
+    }
+    set y(value: number) {
+        this.transform.position.y = value;
+    }
 }
 ```
 
@@ -250,13 +250,13 @@ Usage is consistent with PIXI.js:
 
 ```js eval code=false
 circle = call(() => {
-  const { Circle } = Lesson3;
-  return new Circle({
-    cx: 100,
-    cy: 100,
-    r: 50,
-    fill: 'red',
-  });
+    const { Circle } = Lesson3;
+    return new Circle({
+        cx: 100,
+        cy: 100,
+        r: 50,
+        fill: 'red',
+    });
 });
 ```
 
@@ -270,67 +270,77 @@ positionY = Inputs.range([0, 100], { label: 'position.y', value: 0, step: 1 });
 
 ```js eval
 call(() => {
-  circle.position.x = positionX;
-  circle.position.y = positionY;
+    circle.position.x = positionX;
+    circle.position.y = positionY;
 });
 ```
 
 ```js eval code=false
 (async () => {
-  const { Canvas } = Lesson3;
-  const canvas = await Utils.createCanvas(Canvas, 200, 200);
-  canvas.appendChild(circle);
+    const { Canvas } = Lesson3;
+    const canvas = await Utils.createCanvas(Canvas, 200, 200);
+    canvas.appendChild(circle);
 
-  let id;
-  const animate = () => {
-    canvas.render();
-    id = requestAnimationFrame(animate);
-  };
-  animate();
+    let id;
+    const animate = () => {
+        canvas.render();
+        id = requestAnimationFrame(animate);
+    };
+    animate();
 
-  unsubscribe(() => {
-    cancelAnimationFrame(id);
-    canvas.destroy();
-  });
-  return canvas.getDOM();
+    unsubscribe(() => {
+        cancelAnimationFrame(id);
+        canvas.destroy();
+    });
+    return canvas.getDOM();
 })();
 ```
 
-### Rotation
+### Pivot {#pivot}
 
-Rotation, scaling, and skew require that the transform center be specified, similar to `transform-origin` in CSS:
+Rotation, scaling, and skew require that the transform center be specified. In Pixi.js we call it `pivot`. It is not the same as `transform-origin` in CSS, see: [PixiJS Positioning].
+
+<img src="https://aphgames.io/img/docs/tutorials/02-pixi/pos_single_rot_1.svg" alt="rotation is around the origin/pivot, which is by default in the top-left corner" width="100%"/>
+
+`pivot` also affects the offset of the location of the object.
+
+<img src="https://aphgames.io/img/docs/tutorials/02-pixi/pos_single_2.svg" alt="pivot also affects the offset of the location of the object" width="100%"/>
 
 ```ts
 export abstract class Shape {
-  get pivot(): ObservablePoint {
-    return this.transform.pivot;
-  }
-  set pivot(value: IPointData) {
-    this.transform.pivot.copyFrom(value);
-  }
+    get pivot(): ObservablePoint {
+        return this.transform.pivot;
+    }
+    set pivot(value: IPointData) {
+        this.transform.pivot.copyFrom(value);
+    }
 }
 ```
 
+### Rotation {#rotation}
+
 ```ts
 export abstract class Shape {
-  get rotation(): number {
-    return this.transform.rotation;
-  }
-  set rotation(value: number) {
-    this.transform.rotation = value;
-  }
+    get rotation(): number {
+        return this.transform.rotation;
+    }
+    set rotation(value: number) {
+        this.transform.rotation = value;
+    }
 }
 ```
 
 ```js eval code=false
 circle2 = call(() => {
-  const { Circle } = Lesson3;
-  return new Circle({
-    cx: 0,
-    cy: 0,
-    r: 50,
-    fill: 'red',
-  });
+    const { Circle } = Lesson3;
+    const circle = new Circle({
+        cx: 0,
+        cy: 0,
+        r: 50,
+        fill: 'red',
+    });
+    circle.position = { x: 100, y: 100 };
+    return circle;
 });
 ```
 
@@ -344,30 +354,30 @@ pivotY = Inputs.range([0, 100], { label: 'pivot.y', value: 0, step: 1 });
 
 ```js eval
 call(() => {
-  circle2.pivot.x = pivotX;
-  circle2.pivot.y = pivotY;
+    circle2.pivot.x = pivotX;
+    circle2.pivot.y = pivotY;
 });
 ```
 
 ```js eval code=false
 (async () => {
-  const { Canvas } = Lesson3;
-  const canvas = await Utils.createCanvas(Canvas, 200, 200);
-  canvas.appendChild(circle2);
+    const { Canvas } = Lesson3;
+    const canvas = await Utils.createCanvas(Canvas, 200, 200);
+    canvas.appendChild(circle2);
 
-  let id;
-  const animate = () => {
-    circle2.rotation += 0.01;
-    canvas.render();
-    id = requestAnimationFrame(animate);
-  };
-  animate();
+    let id;
+    const animate = () => {
+        circle2.rotation += 0.01;
+        canvas.render();
+        id = requestAnimationFrame(animate);
+    };
+    animate();
 
-  unsubscribe(() => {
-    cancelAnimationFrame(id);
-    canvas.destroy();
-  });
-  return canvas.getDOM();
+    unsubscribe(() => {
+        cancelAnimationFrame(id);
+        canvas.destroy();
+    });
+    return canvas.getDOM();
 })();
 ```
 
@@ -375,24 +385,24 @@ call(() => {
 
 ```ts
 export abstract class Shape {
-  get scale(): ObservablePoint {
-    return this.transform.scale;
-  }
-  set scale(value: IPointData) {
-    this.transform.scale.copyFrom(value);
-  }
+    get scale(): ObservablePoint {
+        return this.transform.scale;
+    }
+    set scale(value: IPointData) {
+        this.transform.scale.copyFrom(value);
+    }
 }
 ```
 
 ```js eval code=false
 circle3 = call(() => {
-  const { Circle } = Lesson3;
-  return new Circle({
-    cx: 0,
-    cy: 0,
-    r: 50,
-    fill: 'red',
-  });
+    const { Circle } = Lesson3;
+    return new Circle({
+        cx: 0,
+        cy: 0,
+        r: 50,
+        fill: 'red',
+    });
 });
 ```
 
@@ -414,33 +424,33 @@ scaleY = Inputs.range([0, 5], { label: 'scale.y', value: 1, step: 0.1 });
 
 ```js eval
 call(() => {
-  circle3.pivot.x = pivotX2;
-  circle3.pivot.y = pivotY2;
-  circle3.scale.x = scaleX;
-  circle3.scale.y = scaleY;
-  circle3.position.x = 100;
-  circle3.position.y = 100;
+    circle3.pivot.x = pivotX2;
+    circle3.pivot.y = pivotY2;
+    circle3.scale.x = scaleX;
+    circle3.scale.y = scaleY;
+    circle3.position.x = 100;
+    circle3.position.y = 100;
 });
 ```
 
 ```js eval code=false
 (async () => {
-  const { Canvas } = Lesson3;
-  const canvas = await Utils.createCanvas(Canvas, 200, 200);
-  canvas.appendChild(circle3);
+    const { Canvas } = Lesson3;
+    const canvas = await Utils.createCanvas(Canvas, 200, 200);
+    canvas.appendChild(circle3);
 
-  let id;
-  const animate = () => {
-    canvas.render();
-    id = requestAnimationFrame(animate);
-  };
-  animate();
+    let id;
+    const animate = () => {
+        canvas.render();
+        id = requestAnimationFrame(animate);
+    };
+    animate();
 
-  unsubscribe(() => {
-    cancelAnimationFrame(id);
-    canvas.destroy();
-  });
-  return canvas.getDOM();
+    unsubscribe(() => {
+        cancelAnimationFrame(id);
+        canvas.destroy();
+    });
+    return canvas.getDOM();
 })();
 ```
 
@@ -448,12 +458,12 @@ call(() => {
 
 ```ts
 export abstract class Shape {
-  get skew(): ObservablePoint {
-    return this.transform.skew;
-  }
-  set skew(value: IPointData) {
-    this.transform.skew.copyFrom(value);
-  }
+    get skew(): ObservablePoint {
+        return this.transform.skew;
+    }
+    set skew(value: IPointData) {
+        this.transform.skew.copyFrom(value);
+    }
 }
 ```
 
@@ -492,22 +502,22 @@ const earthOrbit = new Group();
 const moonOrbit = new Group();
 
 const sun = new Circle({
-  cx: 0,
-  cy: 0,
-  r: 100,
-  fill: 'red',
+    cx: 0,
+    cy: 0,
+    r: 100,
+    fill: 'red',
 });
 const earth = new Circle({
-  cx: 0,
-  cy: 0,
-  r: 50,
-  fill: 'blue',
+    cx: 0,
+    cy: 0,
+    r: 50,
+    fill: 'blue',
 });
 const moon = new Circle({
-  cx: 0,
-  cy: 0,
-  r: 25,
-  fill: 'yellow',
+    cx: 0,
+    cy: 0,
+    r: 25,
+    fill: 'yellow',
 });
 solarSystem.appendChild(sun);
 solarSystem.appendChild(earthOrbit);
@@ -522,8 +532,8 @@ Add `parent` and `children` properties for graphics:
 
 ```ts
 export abstract class Shape {
-  parent: Shape;
-  readonly children: Shape[] = [];
+    parent: Shape;
+    readonly children: Shape[] = [];
 }
 ```
 
@@ -550,10 +560,10 @@ With the hierarchy in place, we can traverse the entire scene graph using recurs
 
 ```ts
 export function traverse(shape: Shape, callback: (shape: Shape) => void) {
-  callback(shape);
-  shape.children.forEach((child) => {
-    traverse(child, callback);
-  });
+    callback(shape);
+    shape.children.forEach((child) => {
+        traverse(child, callback);
+    });
 }
 ```
 
@@ -637,9 +647,9 @@ This pattern is also used in PIXI.js for operations with high overhead such as c
 
 ## Extended reading
 
-- [Scene Graph - LearnOpenGL]
-- [Inside PixiJS: Display objects and their hierarchy]
-- [Understanding 3D matrix transforms]
+-   [Scene Graph - LearnOpenGL]
+-   [Inside PixiJS: Display objects and their hierarchy]
+-   [Understanding 3D matrix transforms]
 
 [CSS Transform]: https://developer.mozilla.org/en-US/docs/Web/CSS/transform
 [Transformations - LearnOpenGL]: https://learnopengl.com/Getting-started/Transformations
@@ -656,3 +666,4 @@ This pattern is also used in PIXI.js for operations with high overhead such as c
 [bevy]: https://bevyengine.org/
 [Inside PixiJS: Display objects and their hierarchy]: https://medium.com/swlh/inside-pixijs-display-objects-and-their-hierarchy-2deef1c01b6e
 [Understanding 3D matrix transforms]: https://medium.com/swlh/understanding-3d-matrix-transforms-with-pixijs-c76da3f8bd8
+[PixiJS Positioning]: https://aphgames.io/docs/learning/tutorials/pixi_positions

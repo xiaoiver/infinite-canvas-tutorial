@@ -87,9 +87,13 @@ export class Canvas {
       hooks: {
         init: new SyncHook<[]>(),
         initAsync: new AsyncParallelHook<[]>(),
-        beginFrame: new SyncHook<[{ all: Shape[], modified: Shape[], removed: Shape[] }]>(),
+        beginFrame: new SyncHook<
+          [{ all: Shape[]; modified: Shape[]; removed: Shape[] }]
+        >(),
         render: new SyncHook<[Shape]>(),
-        endFrame: new SyncHook<[{ all: Shape[]; modified: Shape[]; removed: Shape[] }]>(),
+        endFrame: new SyncHook<
+          [{ all: Shape[]; modified: Shape[]; removed: Shape[] }]
+        >(),
         destroy: new SyncHook<[]>(),
         resize: new SyncHook<[number, number]>(),
         pointerDown: new SyncHook<[InteractivePointerEvent]>(),
@@ -164,10 +168,14 @@ export class Canvas {
     traverse(this.#root, (shape) => {
       this.#shapesCurrentFrame.add(shape);
 
-      if (shape.transformDirtyFlag || (shape.renderable && shape.renderDirtyFlag)) {
+      if (shape.transformDirtyFlag) {
+        shape.renderDirtyFlag = true;
+      }
+
+      if (shape.renderable && shape.renderDirtyFlag) {
         modified.push(shape);
         this.#renderDirtyFlag = true;
-      }      
+      }
 
       shape.transform.updateTransform(
         shape.parent ? shape.parent.transform : IDENTITY_TRANSFORM,

@@ -23,23 +23,41 @@ const canvas = await new Canvas({
   //   'https://unpkg.com/@antv/g-device-api@1.6.8/dist/pkg/glsl_wgsl_compiler_bg.wasm',
 }).initialized;
 
-const rect = new Rect({
+const origin = new Rect({
   x: 50,
   y: 50,
   width: 100,
   height: 100,
-  fill: 'black',
-  dropShadowBlurRadius: 10,
-  dropShadowColor: 'black',
-  dropShadowOffsetX: 10,
-  dropShadowOffsetY: 10,
+  fill: 'green',
 });
-canvas.appendChild(rect);
+canvas.appendChild(origin);
 
-setTimeout(() => {
-  canvas.removeChild(rect);
-  console.log(canvas);
-}, 2000);
+const parent = new Rect({
+  width: 100,
+  height: 100,
+  fill: 'black',
+});
+parent.position = { x: 50, y: 50 };
+canvas.appendChild(parent);
+
+const child = new Rect({
+  width: 50,
+  height: 50,
+  fill: 'red',
+});
+child.position = { x: 50, y: 50 };
+parent.appendChild(child);
+
+parent.position.x += 50;
+parent.position.y += 50;
+canvas.render();
+
+parent.pivot = { x: 50, y: 50 };
+parent.rotation = Math.PI / 4;
+parent.scale.x = 0.5;
+parent.scale.y = 0.5;
+
+canvas.render();
 
 // const image = (await load(
 //   // 'https://infinitecanvas.cc/canvas.png',
@@ -135,11 +153,11 @@ setTimeout(() => {
 //   circle3.stroke = 'black';
 // });
 
-const animate = () => {
-  canvas.render();
-  requestAnimationFrame(animate);
-};
-animate();
+// const animate = () => {
+//   canvas.render();
+//   requestAnimationFrame(animate);
+// };
+// animate();
 
 // canvas.destroy();
 

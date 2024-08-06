@@ -24,7 +24,7 @@
     </pattern>
   </defs>
   <rect width="100%" height="100%" fill="url(#grid)" />
-  <g visibility="hidden" transform="matrix(1,0,0,1,0,0)" transform-origin="0 0">
+  <g visibility="hidden" transform="matrix(1,0,0,1,0,0)">
     <rect
       fill="black"
       stroke="black"
@@ -43,7 +43,6 @@
       drop-shadow-blur-radius="0"
       visibility="visible"
       transform="matrix(1,0,0,1,0,0)"
-      transform-origin="0 0"
     />
   </g>
 </svg>

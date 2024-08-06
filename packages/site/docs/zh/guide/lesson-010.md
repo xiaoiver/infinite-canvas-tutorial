@@ -306,6 +306,8 @@ export function fromSVGElement(element: SVGElement): SerializedNode;
 
 ![import an exported ellipse in Figma](/import-exported-ellipse.png)
 
+有趣的是，[@pixi-essentials/svg] 也试图将 SVG 元素转换成 Pixi.js 中的图形并绘制。
+
 #### SVG 中的场景图 {#scene-graph-in-svg}
 
 还有一点需要注意，在我们的场景图中任意图形都可以添加子节点，但 SVG 中只有 `<g>` 才可以添加子元素，除此之外例如 `<circle>` 是无法拥有子元素的。解决办法也很简单，对于拥有子节点的非 Group 元素，生成 SVG 时在外面套一个 `<g>`，将原本应用在本身的 `transform` 应用在它上面。假设后续我们支持了渲染文本，一个拥有文本子节点的 Circle 对应的 SVG 如下：
@@ -843,3 +845,4 @@ function strokeOffset(
 [How to draw grid using HTML5 and canvas or SVG]: https://stackoverflow.com/questions/14208673/how-to-draw-grid-using-html5-and-canvas-or-svg
 [Convert ImageBitmap to Blob]: https://stackoverflow.com/questions/52959839/convert-imagebitmap-to-blob
 [ImageBitmapRenderingContext]: https://developer.mozilla.org/en-US/docs/Web/API/ImageBitmapRenderingContext
+[@pixi-essentials/svg]: https://github.com/ShukantPal/pixi-essentials/tree/master/packages/svg

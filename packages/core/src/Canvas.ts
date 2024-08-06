@@ -37,11 +37,6 @@ export interface CanvasConfig {
    */
   devicePixelRatio?: number;
   /**
-   * A reference to the document contained in the window, e.g. JSDOM.
-   * @see https://developer.mozilla.org/en-US/docs/Web/API/Window/document
-   */
-  document?: Document;
-  /**
    * Background color of page.
    */
   backgroundColor?: string;
@@ -200,10 +195,11 @@ export class Canvas {
     traverse(this.#root, (shape) => {
       this.#shapesCurrentFrame.add(shape);
 
-      if (
-        shape.transformDirtyFlag ||
-        (shape.renderable && shape.renderDirtyFlag)
-      ) {
+      if (shape.transformDirtyFlag) {
+        shape.renderDirtyFlag = true;
+      }
+
+      if (shape.renderable && shape.renderDirtyFlag) {
         modified.push(shape);
         this.#renderDirtyFlag = true;
       }
