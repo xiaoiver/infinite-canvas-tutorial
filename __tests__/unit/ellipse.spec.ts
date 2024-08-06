@@ -49,12 +49,12 @@ describe('Ellipse', () => {
     expect(ellipse.containsPoint(50, 50)).toBe(false);
 
     ellipse.pointerEvents = 'stroke';
-    // expect(ellipse.containsPoint(50, 6)).toBe(false);
-    // expect(ellipse.containsPoint(50, 5)).toBe(true);
-    // expect(ellipse.containsPoint(50, -5)).toBe(true);
-    // expect(ellipse.containsPoint(50, -6)).toBe(false);
-    // expect(ellipse.containsPoint(100, 50)).toBe(true);
-    // expect(ellipse.containsPoint(50, 50)).toBe(false);
+    expect(ellipse.containsPoint(50, 6)).toBe(false);
+    expect(ellipse.containsPoint(50, 5)).toBe(false);
+    expect(ellipse.containsPoint(50, -5)).toBe(true);
+    expect(ellipse.containsPoint(50, -6)).toBe(false);
+    expect(ellipse.containsPoint(100, 50)).toBe(true);
+    expect(ellipse.containsPoint(50, 50)).toBe(false);
 
     ellipse.pointerEvents = 'fill';
     expect(ellipse.containsPoint(50, -5)).toBe(false);
@@ -82,6 +82,12 @@ describe('Ellipse', () => {
     expect(bounds.minY).toEqual(0);
     expect(bounds.maxX).toEqual(100);
     expect(bounds.maxY).toEqual(100);
+
+    bounds = Ellipse.getGeometryBounds({});
+    expect(bounds.minX).toEqual(0);
+    expect(bounds.minY).toEqual(0);
+    expect(bounds.maxX).toEqual(0);
+    expect(bounds.maxY).toEqual(0);
 
     bounds = ellipse.getRenderBounds();
     expect(bounds.minX).toEqual(-5);

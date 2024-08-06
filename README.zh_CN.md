@@ -134,6 +134,7 @@ pnpm run dev
 -   使用单元测试提升代码覆盖率
 -   基于 headless-gl 的服务端渲染与视觉回归测试
 -   E2E UI 测试
+-   在 WebWorker 中渲染画布
 
 [infinitecanvas]: https://infinitecanvas.tools/
 [Figma]: https://madebyevan.com/figma/building-a-professional-design-tool-on-the-web/

@@ -78,6 +78,12 @@ describe('Circle', () => {
     expect(bounds.maxX).toEqual(100);
     expect(bounds.maxY).toEqual(100);
 
+    bounds = Circle.getGeometryBounds({});
+    expect(bounds.minX).toEqual(0);
+    expect(bounds.minY).toEqual(0);
+    expect(bounds.maxX).toEqual(0);
+    expect(bounds.maxY).toEqual(0);
+
     bounds = circle.getRenderBounds();
     expect(bounds.minX).toEqual(-5);
     expect(bounds.minY).toEqual(-5);

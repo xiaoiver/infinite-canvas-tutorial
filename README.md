@@ -122,7 +122,7 @@ pnpm run dev
 
 -   Exporting canvas content to PNG, JPEG and SVG formats
 -   Rendering images in the canvas
--   Extending the capabilities of SVG, using `stroke-aligment` as an example.
+-   Extending the capabilities of SVG, using `stroke-aligment` as an example
 
 <img src="./screenshots/lesson10.png" width="300" alt="Lesson 10 - import and export images">
 
@@ -130,8 +130,9 @@ pnpm run dev
 
 -   Jest-based test environment setup, including local and CI environments
 -   Using unit tests to improve code coverage
--   Server-side rendering and visual regression testing based on headless-gl.
+-   Server-side rendering and visual regression testing based on headless-gl
 -   E2E UI testing
+-   Render in WebWorker
 
 [infinitecanvas]: https://infinitecanvas.tools/
 [Figma]: https://madebyevan.com/figma/building-a-professional-design-tool-on-the-web/

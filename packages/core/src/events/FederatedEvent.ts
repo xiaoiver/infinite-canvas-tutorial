@@ -149,14 +149,6 @@ export class FederatedEvent<N extends UIEvent | PixiTouch = UIEvent | PixiTouch>
     this.manager = manager;
   }
 
-  /**
-   * Fallback for the deprecated @code{InteractionEvent.data}.
-   * @deprecated since 7.0.0
-   */
-  get data(): this {
-    return this;
-  }
-
   /** The propagation path for this event. Alias for {@link EventBoundary.propagationPath}. */
   composedPath(): FederatedEventTarget[] {
     // Find the propagation path if it isn't cached or if the target has changed since since

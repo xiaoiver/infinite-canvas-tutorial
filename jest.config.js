@@ -4,7 +4,7 @@ const esm = ['d3-*']
 
 module.exports = {
   testTimeout: 100000,
-  testMatch: ['<rootDir>/__tests__/**/*/*.spec.+(ts|tsx|js)'],
+  testMatch: ['<rootDir>/__tests__/**/*/*.spec.+(ts|tsx|js)', '!**/e2e/*.spec.+(ts|tsx|js)'],
   preset: 'ts-jest',
   moduleFileExtensions: ['ts', 'tsx', 'js', 'json'],
   modulePathIgnorePatterns: ['dist'],

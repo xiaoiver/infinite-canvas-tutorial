@@ -98,6 +98,12 @@ describe('Rect', () => {
     expect(bounds.maxX).toEqual(100);
     expect(bounds.maxY).toEqual(100);
 
+    bounds = Rect.getGeometryBounds({});
+    expect(bounds.minX).toEqual(0);
+    expect(bounds.minY).toEqual(0);
+    expect(bounds.maxX).toEqual(0);
+    expect(bounds.maxY).toEqual(0);
+
     bounds = rect.getRenderBounds();
     expect(bounds.minX).toEqual(45);
     expect(bounds.minY).toEqual(45);

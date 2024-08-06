@@ -10,8 +10,9 @@ outline: deep
 -   使用单元测试提升代码覆盖率
 -   基于 headless-gl 的服务端渲染与视觉回归测试
 -   E2E UI 测试
+-   在 WebWorker 中渲染画布
 
-## 配置基础环境
+## 配置基础环境 {#jest-configuration}
 
 在测试框架上我们选择 Jest，在 `package.json` 中加入测试命令，统计代码覆盖率：
 
@@ -51,7 +52,7 @@ module.exports = {
 
 测试环境准备完毕，现在可以开始编写第一个测试用例了。
 
-## 单元测试
+## 单元测试 {#unit-test}
 
 首先来看最容易实现的单元测试，它适合测试与渲染无关的功能，例如设置图形属性，计算包围盒大小，拾取判定，各种工具方法等等。
 
@@ -250,7 +251,7 @@ const exporter = new ImageExporter({
 
 得到 SVGElement 的字符串就可以写入文件了，写入之前我们还可以用 prettier 格式化一下便于阅读：
 
-```ts
+```ts{11}
 import xmlserializer from 'xmlserializer';
 import { format } from 'prettier';
 
@@ -271,7 +272,7 @@ export function toMatchSVGSnapshot(
 
 #### 测试交互 {#how-to-mock-event}
 
-使用 JSDOM 可以模拟类似 `MouseEvent` 这样的交互事件，创建后直接触发对应 Hook：
+使用 JSDOM 可以模拟类似 `MouseEvent` 这样的交互事件，创建后直接触发对应 Hook，这样可以绕过需要通过 DOM API 监听事件的限制：
 
 ```ts
 const window = new JSDOM().window;
@@ -281,6 +282,24 @@ const pointerdownEvent = new window.MouseEvent('pointerdown', {
     clientY: 100,
 });
 canvas.pluginContext.hooks.pointerDown.call(pointerdownEvent);
+```
+
+这样也很容易模拟类似拖拽这样的组合事件。下面的测试用例展示了对于 [拖拽插件] 判定阈值的测试。我们模拟了一组连续的 `pointerdown` `pointermove` 和 `pointerup` 事件，但由于相邻事件间隔太短并且距离过近，将不会触发 `dragstart` 事件：
+
+```ts
+const dragstartHandler = jest.fn();
+
+canvas.root.addEventListener('dragstart', dragstartHandler);
+canvas.pluginContext.hooks.pointerDown.call(
+    createMouseEvent('pointerdown', { clientX: 100, clientY: 100 }),
+);
+canvas.pluginContext.hooks.pointerMove.call(
+    createMouseEvent('pointermove', { clientX: 101, clientY: 101 }),
+);
+canvas.pluginContext.hooks.pointerUp.call(
+    createMouseEvent('pointerup', { clientX: 101, clientY: 101 }),
+);
+expect(dragstartHandler).not.toBeCalled();
 ```
 
 #### CI 环境配置 {#ssr-ci}
@@ -306,16 +325,57 @@ canvas.pluginContext.hooks.pointerDown.call(pointerdownEvent);
 
 -   使用最新的 Chrome 可以支持 WebGL 1/2 甚至 WebGPU
 -   官方直接提供了 toHaveScreenshot 这样的断言，内置像素级对比，失败后在 report 中展示 diff
--   支持 [sharding] 在 CI 上支持多机器并行，每个机器又可以开启多线程。例如我们使用 4 个机器，每个机器开 10 个 worker 并行
+-   支持 [sharding] 在 CI 上支持多机器并行
 
-```ts
-// Playwright 截图
-const buffer = await page.locator('canvas').screenshot();
-// 断言截图是否与基准图片一致
-expect(buffer).toMatchCanvasSnapshot(dir, key, { maxError });
+#### 启动开发服务器 {#run-webserver}
+
+Playwright 浏览器需要访问部署在开发服务器上的测试用例，我们选择 Vite 作为测试用服务器：
+
+```ts{6}
+import { devices, defineConfig } from '@playwright/test';
+
+export default defineConfig({
+    // Run your local dev server before starting the tests
+    webServer: {
+        command: 'npm run dev:e2e', // vite dev
+        url: 'http://localhost:8080',
+        reuseExistingServer: !process.env.CI,
+        stdout: 'ignore',
+        stderr: 'pipe',
+    },
+});
 ```
 
-但它在本地生成的截图常常和 CI 环境存在细微差异。使用 CI 环境而非本地生成的基准图片来保证一致性。上传 GitHub workflow artifacts 就可以获取 CI 环境的截图，下载到本地作为基准图片。
+#### 访问测试用例 {#browse-testcase}
+
+启动服务器后访问测试用例对应的 URL：
+
+```ts
+test(name, async ({ page, context }) => {
+    const url = `./infinitecanvas/?name=${name}`;
+    await page.goto(url);
+    await readyPromise;
+
+    await expect(page.locator('canvas')).toHaveScreenshot(`${name}.png`);
+});
+```
+
+在实际使用中，我发现在本地生成的截图常常和 CI 环境存在细微差异。此时可以使用 CI 环境而非本地生成的基准图片来保证一致性。上传 GitHub workflow artifacts 就可以获取 CI 环境的截图，下载到本地作为基准图片。
+
+#### CI 环境配置 {#e2e-ci}
+
+之前提到过，[sharding] 在 CI 上支持多机器并行，每个机器又可以开启多线程。例如我们使用 4 个机器，每个机器开 10 个 worker 并行
+
+```yaml
+jobs:
+    e2e:
+        timeout-minutes: 60
+        runs-on: ubuntu-latest
+        strategy:
+            fail-fast: false
+            matrix:
+                shard: [1/4, 2/4, 3/4, 4/4]
+```
 
 ## 在 WebWorker 中运行 {#rendering-in-webworker}
 
@@ -326,7 +386,7 @@ expect(buffer).toMatchCanvasSnapshot(dir, key, { maxError });
 
 [WebWorker 示例]
 
-### 创建 OffscreenCanvas
+### 创建 OffscreenCanvas {#offscreen-canvas}
 
 首先需要确保运行环境支持 OffscreenCanvas，参考 [Can I use OffscreenCanvas?]：
 
@@ -415,7 +475,7 @@ self.onmessage = function (event) {
 2. 画布尺寸改变。同上。
 3. 设置主画布鼠标样式。
 
-### 交互事件
+### 交互事件 {#events-in-webworker}
 
 以 `pointerdown` 事件为例，我们在主画布上监听它，由于原生 Event 不是 [Transferable] 的，因此需要将它序列化后传递给 WebWorker：
 
@@ -449,9 +509,12 @@ self.onmessage = function (event) {
 
 画布尺寸改变同理。
 
-### 设置鼠标样式
+### 设置鼠标样式 {#set-cursor}
 
-渲染过程中 WebWorker 也需要向主线程传递消息，例如拾取到图形时设置鼠标样式：
+渲染过程中 WebWorker 也需要向主线程传递消息，例如：
+
+-   每一帧通知主线程渲染完毕，传递实际渲染图形、被剔除图形数量等统计数据
+-   拾取到图形时设置鼠标样式
 
 ```ts
 setCursor: (cursor) => {
@@ -459,7 +522,7 @@ setCursor: (cursor) => {
 },
 ```
 
-主线程接收到消息后：
+主线程接收到消息后设置画布鼠标样式：
 
 ```ts
 worker.onmessage = function (event) {
@@ -469,7 +532,7 @@ worker.onmessage = function (event) {
 };
 ```
 
-## E2E UI 测试 {#e2e}
+## E2E UI 测试 {#e2e-test}
 
 -   如何测试 UI [Lit Testing]
 
@@ -503,3 +566,4 @@ worker.onmessage = function (event) {
 [xmlserializer]: https://www.npmjs.com/package/xmlserializer
 [github workflows - test]: https://github.com/xiaoiver/infinite-canvas-tutorial/blob/master/.github/workflows/test.yml
 [How can I use headless-gl with a continuous integration service?]: https://github.com/stackgl/headless-gl?tab=readme-ov-file#how-can-i-use-headless-gl-with-a-continuous-integration-service
+[拖拽插件]: /zh/guide/lesson-006#dragndrop-plugin

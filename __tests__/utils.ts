@@ -41,6 +41,7 @@ export function getCanvas(width = 100, height = 100) {
       return gl;
     },
     addEventListener: () => {},
+    removeEventListener: () => {},
   };
 
   return mockedCanvas;

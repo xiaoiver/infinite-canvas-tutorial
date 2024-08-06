@@ -20,6 +20,7 @@ import {
   MipmapFilterMode,
   TransparentBlack,
   Texture,
+  // StencilOp,
 } from '@antv/g-device-api';
 import { Circle, Ellipse, Rect, Shape } from '../shapes';
 import { Drawcall, ZINDEX_FACTOR } from './Drawcall';
@@ -264,13 +265,15 @@ export class SDF extends Drawcall {
         blendConstant: TransparentBlack,
         depthWrite: true,
         depthCompare: CompareFunction.GREATER,
-        stencilWrite: false,
-        stencilFront: {
-          compare: CompareFunction.ALWAYS,
-        },
-        stencilBack: {
-          compare: CompareFunction.ALWAYS,
-        },
+        // stencilWrite: false,
+        // stencilFront: {
+        //   compare: CompareFunction.ALWAYS,
+        //   passOp: StencilOp.KEEP,
+        // },
+        // stencilBack: {
+        //   compare: CompareFunction.ALWAYS,
+        //   passOp: StencilOp.KEEP,
+        // },
       },
     });
 
