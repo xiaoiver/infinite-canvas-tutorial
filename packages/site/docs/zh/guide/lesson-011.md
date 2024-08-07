@@ -360,11 +360,15 @@ test(name, async ({ page, context }) => {
 });
 ```
 
+生成的测试报告中会直观展示本次结果与基准图片间的对比：
+
+![Playwright image diff](/playwright-image-diff.png)
+
 在实际使用中，我发现在本地生成的截图常常和 CI 环境存在细微差异。此时可以使用 CI 环境而非本地生成的基准图片来保证一致性。上传 GitHub workflow artifacts 就可以获取 CI 环境的截图，下载到本地作为基准图片。
 
 #### CI 环境配置 {#e2e-ci}
 
-之前提到过，[sharding] 在 CI 上支持多机器并行，每个机器又可以开启多线程。例如我们使用 4 个机器，每个机器开 10 个 worker 并行
+之前提到过，[sharding] 在 CI 上支持多机器并行，每个机器又可以开启多线程。例如我们使用 4 个机器，每个机器开 10 个 worker 并行，最后将 report 合并成一份。
 
 ```yaml
 jobs:
@@ -377,6 +381,10 @@ jobs:
                 shard: [1/4, 2/4, 3/4, 4/4]
 ```
 
+运行效果如下：<https://github.com/xiaoiver/infinite-canvas-tutorial/actions/runs/10276761126>
+
+![Playwright sharding](/playwright-sharding.png)
+
 ## 在 WebWorker 中运行 {#rendering-in-webworker}
 
 除了服务端，WebWorker 也算是一种特殊的运行时环境。在 WebWorker 中运行渲染代码可以避免阻塞主线程，提高性能。知名渲染引擎都会提供使用案例：
@@ -384,7 +392,7 @@ jobs:
 -   [Three.js OffscreenCanvas]
 -   [Babylon.js OffscreenCanvas]
 
-[WebWorker 示例]
+在我们的 [WebWorker 示例] 中，由于主线程并不忙碌因此体现不出它的优势。但还是可以体验画布交互例如缩放、平移和旋转相机、拾取图形等功能。
 
 ### 创建 OffscreenCanvas {#offscreen-canvas}
 
@@ -407,7 +415,7 @@ export interface CanvasConfig {
 
 主线程代码如下：
 
-1. 首先创建一个 OffscreenCanvas，大小和主画布一致
+1. 首先通过 [transferControlToOffscreen] 将主画布的控制权转移到 OffscreenCanvas 中
 2. 创建一个 WebWorker，这里使用 Vite 提供的方式。监听后续传递过来的消息，例如设置鼠标样式等
 3. 通常我们会通过 [postMessage] 的第一个参数向 WebWorker 传参，但由于 OffscreenCanvas 是 [Transferable] 的，因此这里需要使用到第二个参数
 
@@ -532,6 +540,8 @@ worker.onmessage = function (event) {
 };
 ```
 
+总之在 WebWorker 中渲染画布需要额外处理和主线程间的通信，交互事件、样式、UI 组件都需要设计对应的事件。
+
 ## E2E UI 测试 {#e2e-test}
 
 -   如何测试 UI [Lit Testing]
@@ -557,6 +567,7 @@ worker.onmessage = function (event) {
 [postMessage]: https://developer.mozilla.org/en-US/docs/Web/API/Window/postMessage
 [Three.js OffscreenCanvas]: https://threejs.org/examples/webgl_worker_offscreencanvas.html
 [Babylon.js OffscreenCanvas]: https://doc.babylonjs.com/features/featuresDeepDive/scene/offscreenCanvas
+[transferControlToOffscreen]: https://developer.mozilla.org/en-US/docs/Web/API/HTMLCanvasElement/transferControlToOffscreen
 [渲染循环]: /zh/guide/lesson-001#design-the-canvas-api
 [事件系统]: /zh/guide/lesson-006
 [WebWorker 示例]: /zh/example/webworker

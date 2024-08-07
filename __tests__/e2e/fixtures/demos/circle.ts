@@ -33,7 +33,7 @@ export async function render(canvas: Canvas, $canvas: HTMLCanvasElement) {
     cx: 100,
     cy: 200,
     r: 50,
-    fill: 'transparent',
+    fill: 'black',
     stroke: 'red',
     strokeWidth: 20,
     strokeOpacity: 0.5,
