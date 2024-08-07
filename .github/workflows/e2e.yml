@@ -12,17 +12,20 @@ jobs:
         shard: [1/4, 2/4, 3/4, 4/4]
     steps:
       - uses: actions/checkout@v3
+      - uses: pnpm/action-setup@v2
+        with:
+          version: 7
       - uses: actions/setup-node@v3
         with:
           node-version: 18
       - name: Install dependencies
-        run: npm install
+        run: pnpm install
 
       - name: Install Playwright browsers
-        run: npx playwright install --with-deps
+        run: pnpm exec playwright install --with-deps
 
       - name: Run Playwright tests
-        run: npx playwright test --shard ${{ matrix.shard }}
+        run: pnpm exec playwright test --shard ${{ matrix.shard }}
 
       - name: Upload blob report to GitHub Actions Artifacts
         if: always()
@@ -40,11 +43,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+      - uses: pnpm/action-setup@v2
+        with:
+          version: 7
       - uses: actions/setup-node@v3
         with:
           node-version: 18
       - name: Install dependencies
-        run: npm install
+        run: pnpm install
 
       - name: Download blob reports from GitHub Actions Artifacts
         uses: actions/download-artifact@v3
@@ -53,7 +59,7 @@ jobs:
           path: all-blob-reports
 
       - name: Merge into HTML Report
-        run: npx playwright merge-reports --reporter html ./all-blob-reports
+        run: pnpm exec playwright merge-reports --reporter html ./all-blob-reports
 
       - name: Upload HTML report
         uses: actions/upload-artifact@v3
