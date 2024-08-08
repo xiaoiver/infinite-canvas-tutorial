@@ -588,7 +588,12 @@ worker.onmessage = function (event) {
 };
 ```
 
-总之在 WebWorker 中渲染画布需要额外处理和主线程间的通信，交互事件、样式、UI 组件都需要设计对应的事件。
+总之在 WebWorker 中渲染画布需要额外处理和主线程间的通信，交互事件、样式、UI 组件都需要设计对应的事件。我想这也是大多数 Web 3D 渲染引擎只提供简单示例或指引的原因吧。
+
+## 扩展阅读 {#extended-reading}
+
+-   [How can I use headless-gl with a continuous integration service?]
+-   [Playwright Components (experimental)]
 
 [node-canvas]: https://github.com/Automattic/node-canvas
 [headless-gl]: https://github.com/stackgl/headless-gl
