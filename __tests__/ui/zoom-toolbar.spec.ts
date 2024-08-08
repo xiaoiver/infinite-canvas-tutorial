@@ -1,8 +1,8 @@
 import { test, expect } from '@sand4rt/experimental-ct-web';
-import { ZoomToolbar } from '../../packages/ui/src';
+import { Button } from '../../packages/ui/src';
 
 test('render props', async ({ mount }) => {
-  const component = await mount(ZoomToolbar, {
+  const component = await mount(Button, {
     props: {
       title: 'Submit',
     },

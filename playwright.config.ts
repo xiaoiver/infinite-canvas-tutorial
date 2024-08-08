@@ -24,7 +24,12 @@ export default defineConfig({
         headless: true,
         screenshot: 'on',
         launchOptions: {
-          args: ['--headless', '--no-sandbox', '--use-angle=gl'],
+          args: [
+            '--headless',
+            '--no-sandbox',
+            '--use-angle=gl',
+            '--enable-unsafe-webgpu',
+          ],
         },
       },
     },

@@ -1,4 +1,4 @@
-name: e2e
+name: e2e for visual regression
 
 on: ['push']
 
