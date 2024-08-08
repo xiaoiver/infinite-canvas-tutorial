@@ -17,9 +17,18 @@ importers:
       '@commitlint/config-conventional':
         specifier: 18.0.0
         version: 18.0.0
+      '@loaders.gl/core':
+        specifier: ^4.2.2
+        version: 4.2.2
+      '@loaders.gl/images':
+        specifier: ^4.2.2
+        version: 4.2.2(@loaders.gl/core@4.2.2)
       '@playwright/test':
-        specifier: ^1.39.0
-        version: 1.45.3
+        specifier: ^1.46.0
+        version: 1.46.0
+      '@sand4rt/experimental-ct-web':
+        specifier: ^1.46.0
+        version: 1.46.0(@types/node@20.12.7)
       '@types/gl':
         specifier: ^6.0.2
         version: 6.0.5
@@ -1192,8 +1201,12 @@ packages:
   '@pixi/math@7.4.2':
     resolution: {integrity: sha512-7jHmCQoYk6e0rfSKjdNFOPl0wCcdgoraxgteXJTTHv3r0bMNx2pHD9FJ0VvocEUG7XHfj55O3+u7yItOAx0JaQ==}
 
-  '@playwright/test@1.45.3':
-    resolution: {integrity: sha512-UKF4XsBfy+u3MFWEH44hva1Q8Da28G6RFtR2+5saw+jgAFQV5yYnB1fu68Mz7fO+5GJF3wgwAIs0UelU8TxFrA==}
+  '@playwright/experimental-ct-core@1.46.0':
+    resolution: {integrity: sha512-4bHw+P0ub0A/B6tbiqLQFwvaR+wsH5fE2yt1rxWg/dtE8uGhqEeAav9TX7j4PmILM86R3Le21h94wdDIHyeJBA==}
+    engines: {node: '>=18'}
+
+  '@playwright/test@1.46.0':
+    resolution: {integrity: sha512-/QYft5VArOrGRP5pgkrfKksqsKA6CEFyGQ/gjNe6q0y4tZ1aaPfq4gIjudr1s3D+pXyrPRdsy4opKDrjBabE5w==}
     engines: {node: '>=18'}
     hasBin: true
 
@@ -1285,6 +1298,11 @@ packages:
     resolution: {integrity: sha512-YunpoOAyGLDseanENHmbFvQSfVL5BxW3k7hhy0eN4rb3gS/ct75dVD0EXOWIqFT/nE8XYW6LP6vz6ctKRi0k9A==}
     cpu: [x64]
     os: [win32]
+
+  '@sand4rt/experimental-ct-web@1.46.0':
+    resolution: {integrity: sha512-xwupJFlYTNmFpTzUEaSpu2PERbDxmB+EeF3cklS4+2mOVKyvSLjnU/L/g68Ffs6gXd4Hk8Vi5joobbNjNH9h4g==}
+    engines: {node: '>=18'}
+    hasBin: true
 
   '@shikijs/core@1.2.0':
     resolution: {integrity: sha512-OlFvx+nyr5C8zpcMBnSGir0YPD6K11uYhouqhNmm1qLiis4GA7SsGtu07r9gKS9omks8RtQqHrJL4S+lqWK01A==}
@@ -3705,13 +3723,13 @@ packages:
     resolution: {integrity: sha512-HRDzbaKjC+AOWVXxAU/x54COGeIv9eb+6CkDSQoNTt4XyWoIJvuPsXizxu/Fr23EiekbtZwmh1IcIG/l/a10GQ==}
     engines: {node: '>=8'}
 
-  playwright-core@1.45.3:
-    resolution: {integrity: sha512-+ym0jNbcjikaOwwSZycFbwkWgfruWvYlJfThKYAlImbxUgdWFO2oW70ojPm4OpE4t6TAo2FY/smM+hpVTtkhDA==}
+  playwright-core@1.46.0:
+    resolution: {integrity: sha512-9Y/d5UIwuJk8t3+lhmMSAJyNP1BUC/DqP3cQJDQQL/oWqAiuPTLgy7Q5dzglmTLwcBRdetzgNM/gni7ckfTr6A==}
     engines: {node: '>=18'}
     hasBin: true
 
-  playwright@1.45.3:
-    resolution: {integrity: sha512-QhVaS+lpluxCaioejDZ95l4Y4jSFCsBvl2UZkpeXlzxmqS+aABr5c82YmfMHrL6x27nvrvykJAFpkzT2eWdJww==}
+  playwright@1.46.0:
+    resolution: {integrity: sha512-XYJ5WvfefWONh1uPAUAi0H2xXV5S3vrtcnXe6uAOgdGi3aSpqOSXX08IAjXW34xitfuOJsvXU5anXZxPSEQiJw==}
     engines: {node: '>=18'}
     hasBin: true
 
@@ -5468,9 +5486,23 @@ snapshots:
 
   '@pixi/math@7.4.2': {}
 
-  '@playwright/test@1.45.3':
+  '@playwright/experimental-ct-core@1.46.0(@types/node@20.12.7)':
     dependencies:
-      playwright: 1.45.3
+      playwright: 1.46.0
+      playwright-core: 1.46.0
+      vite: 5.2.10(@types/node@20.12.7)
+    transitivePeerDependencies:
+      - '@types/node'
+      - less
+      - lightningcss
+      - sass
+      - stylus
+      - sugarss
+      - terser
+
+  '@playwright/test@1.46.0':
+    dependencies:
+      playwright: 1.46.0
 
   '@probe.gl/env@4.0.9': {}
 
@@ -5527,6 +5559,18 @@ snapshots:
 
   '@rollup/rollup-win32-x64-msvc@4.16.4':
     optional: true
+
+  '@sand4rt/experimental-ct-web@1.46.0(@types/node@20.12.7)':
+    dependencies:
+      '@playwright/experimental-ct-core': 1.46.0(@types/node@20.12.7)
+    transitivePeerDependencies:
+      - '@types/node'
+      - less
+      - lightningcss
+      - sass
+      - stylus
+      - sugarss
+      - terser
 
   '@shikijs/core@1.2.0': {}
 
@@ -8410,11 +8454,11 @@ snapshots:
     dependencies:
       find-up: 4.1.0
 
-  playwright-core@1.45.3: {}
+  playwright-core@1.46.0: {}
 
-  playwright@1.45.3:
+  playwright@1.46.0:
     dependencies:
-      playwright-core: 1.45.3
+      playwright-core: 1.46.0
     optionalDependencies:
       fsevents: 2.3.2
 

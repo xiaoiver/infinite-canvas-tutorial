@@ -8,9 +8,13 @@ outline: deep
 
 -   基于 Jest 的测试环境搭建，包含本地和 CI 环境
 -   使用单元测试提升代码覆盖率
--   基于 headless-gl 的服务端渲染与视觉回归测试
--   E2E UI 测试
+-   视觉回归测试
+    -   基于 headless-gl 的 WebGL1 服务端渲染方案
+    -   基于 Playwright 的 WebGL2 / WebGPU 端到端测试方案
+-   Web Component 测试
 -   在 WebWorker 中渲染画布
+
+以上所有工程相关代码都可以在我们项目的 [\_\_tests\_\_] 文件夹下找到。
 
 ## 配置基础环境 {#jest-configuration}
 
@@ -83,6 +87,8 @@ All files                     |   14.21 |    10.44 |    8.18 |   14.29 |
  src/shapes                   |   26.81 |    22.64 |   21.62 |   28.15 |
   Circle.ts                   |     100 |      100 |     100 |     100 |
 ```
+
+但是单元测试也有它的局限性，毕竟它只针对代码的一小部分，无法保证整个系统作为一个整体正常运行。例如我们也许可以判断一个圆画的是否正确，但如果是 100 个呢？写测试断言的时间和难度都会大大增加。
 
 ## 视觉回归测试 {#visual-regression-testing}
 
@@ -324,7 +330,7 @@ expect(dragstartHandler).not.toBeCalled();
 尽管服务端渲染很好，但无头浏览器方案在测试中还是有其不可替代的优势，以 Playwright 为例：
 
 -   使用最新的 Chrome 可以支持 WebGL 1/2 甚至 WebGPU
--   官方直接提供了 toHaveScreenshot 这样的断言，内置像素级对比，失败后在 report 中展示 diff
+-   官方直接提供了 toHaveScreenshot 这样的断言，内置像素级对比，失败后在 report 中展示 diff，详见：[Visual comparisons]
 -   支持 [sharding] 在 CI 上支持多机器并行
 
 #### 启动开发服务器 {#run-webserver}
@@ -366,6 +372,24 @@ test(name, async ({ page, context }) => {
 
 在实际使用中，我发现在本地生成的截图常常和 CI 环境存在细微差异。此时可以使用 CI 环境而非本地生成的基准图片来保证一致性。上传 GitHub workflow artifacts 就可以获取 CI 环境的截图，下载到本地作为基准图片。
 
+#### WebGL2 & WebGPU {#webgl2-webgpu}
+
+相比基于 [headless-gl] 服务端渲染的方案，端到端测试方案的最大优势就在于支持 WebGL2 和 WebGPU。我们可以只编写一套测试案例，根据 URL 中的渲染器配置项创建画布，分别生成 WebGL2 和 WebGPU 下的基准图片。
+
+```ts
+['webgl', 'webgpu'].forEach((renderer) => {
+    test(`${name} with ${renderer}`, async ({ page, context }) => {
+        const url = `./infinitecanvas/?name=${name}`; // [!code --]
+        const url = `./infinitecanvas/?name=${name}&renderer=${renderer}`; // [!code ++]
+        await page.goto(url);
+        await expect(page.locator('canvas')).toHaveScreenshot([
+            renderer,
+            `${name}.png`,
+        ]);
+    });
+});
+```
+
 #### CI 环境配置 {#e2e-ci}
 
 之前提到过，[sharding] 在 CI 上支持多机器并行，每个机器又可以开启多线程。例如我们使用 4 个机器，每个机器开 10 个 worker 并行，最后将 report 合并成一份。
@@ -381,9 +405,33 @@ jobs:
                 shard: [1/4, 2/4, 3/4, 4/4]
 ```
 
-运行效果如下：<https://github.com/xiaoiver/infinite-canvas-tutorial/actions/runs/10276761126>
+运行效果如下，详见：[E2E action]
 
 ![Playwright sharding](/playwright-sharding.png)
+
+## E2E 测试 {#e2e-test}
+
+[Playwright Components (experimental)] 支持对 React、Svelte、Vue 等 UI 框架进行组件粒度的测试。相比正常使用 `@playwright/test` 编写测试用例时，参数对象中增加了一个 `mount` 方法：
+
+```ts{3}
+import { test, expect } from '@playwright/experimental-ct-react';
+
+test('should work', async ({ mount }) => {
+  const component = await mount(<HelloWorld msg="greetings" />);
+  await expect(component).toContainText('Greetings');
+});
+```
+
+[Lit Testing] 中推荐的测试框架并不包含 Playwright，但我们可以使用社区中的 [Playwright Web component testing] 测试我们的 [Web Components]。
+
+```ts
+import { defineConfig } from '@playwright/test'; // [!code --]
+import { defineConfig } from '@sand4rt/experimental-ct-web'; // [!code ++]
+
+export default defineConfig({});
+```
+
+### 测试 Web Component
 
 ## 在 WebWorker 中运行 {#rendering-in-webworker}
 
@@ -542,10 +590,6 @@ worker.onmessage = function (event) {
 
 总之在 WebWorker 中渲染画布需要额外处理和主线程间的通信，交互事件、样式、UI 组件都需要设计对应的事件。
 
-## E2E UI 测试 {#e2e-test}
-
--   如何测试 UI [Lit Testing]
-
 [node-canvas]: https://github.com/Automattic/node-canvas
 [headless-gl]: https://github.com/stackgl/headless-gl
 [jsdom]: https://github.com/jsdom/jsdom
@@ -578,3 +622,9 @@ worker.onmessage = function (event) {
 [github workflows - test]: https://github.com/xiaoiver/infinite-canvas-tutorial/blob/master/.github/workflows/test.yml
 [How can I use headless-gl with a continuous integration service?]: https://github.com/stackgl/headless-gl?tab=readme-ov-file#how-can-i-use-headless-gl-with-a-continuous-integration-service
 [拖拽插件]: /zh/guide/lesson-006#dragndrop-plugin
+[E2E action]: https://github.com/xiaoiver/infinite-canvas-tutorial/actions/runs/10282078732
+[\_\_tests\_\_]: https://github.com/xiaoiver/infinite-canvas-tutorial/tree/master/__tests__
+[Visual comparisons]: https://playwright.dev/docs/test-snapshots
+[Playwright Web component testing]: https://github.com/sand4rt/playwright-ct-web
+[Playwright Components (experimental)]: https://playwright.dev/docs/test-components
+[Web Components]: /zh/guide/lesson-007

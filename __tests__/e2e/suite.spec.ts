@@ -5,25 +5,36 @@ test.beforeEach(async ({ page }, testInfo) => {
 });
 
 test.describe('E2E Suite', () => {
-  ['circle', 'ellipse'].forEach((name) => {
-    test(name, async ({ page, context }) => {
-      //   const createReadyPromise = async (context: BrowserContext) => {
-      let resolveReadyPromise: () => void;
-      const readyPromise = new Promise((resolve) => {
-        resolveReadyPromise = () => {
-          resolve(this);
-        };
+  [
+    'grid_lines',
+    'grid_dots',
+    'circle',
+    'ellipse',
+    'rect',
+    'drop-shadow',
+  ].forEach((name) => {
+    ['webgl', 'webgpu'].forEach((renderer) => {
+      test(`${name} with ${renderer}`, async ({ page, context }) => {
+        let resolveReadyPromise: () => void;
+        const readyPromise = new Promise((resolve) => {
+          resolveReadyPromise = () => {
+            resolve(this);
+          };
+        });
+
+        await context.exposeFunction('screenshot', async () => {
+          resolveReadyPromise();
+        });
+
+        const url = `./infinitecanvas/?name=${name}&renderer=${renderer}`;
+        await page.goto(url);
+        await readyPromise;
+
+        await expect(page.locator('canvas')).toHaveScreenshot([
+          renderer,
+          `${name}.png`,
+        ]);
       });
-
-      await context.exposeFunction('screenshot', async () => {
-        resolveReadyPromise();
-      });
-
-      const url = `./infinitecanvas/?name=${name}`;
-      await page.goto(url);
-      await readyPromise;
-
-      await expect(page.locator('canvas')).toHaveScreenshot(`${name}.png`);
     });
   });
 });

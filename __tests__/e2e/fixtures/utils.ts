@@ -2,7 +2,7 @@ import { Canvas } from '../../../packages/core/src';
 
 export async function initExample(
   $container: HTMLElement,
-  render: (canvas: Canvas, $canvas: HTMLCanvasElement) => Promise<() => void>,
+  render: (canvas: Canvas) => Promise<() => void>,
   renderer: 'webgl' | 'webgpu' = 'webgl',
 ) {
   const $canvas = document.createElement('canvas');
@@ -18,7 +18,7 @@ export async function initExample(
     shaderCompilerPath: '/infinitecanvas/glsl_wgsl_compiler_bg.wasm',
   }).initialized;
 
-  await render(canvas, $canvas);
+  await render(canvas);
 
   return () => {
     canvas.destroy();

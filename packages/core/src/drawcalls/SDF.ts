@@ -20,6 +20,7 @@ import {
   MipmapFilterMode,
   TransparentBlack,
   Texture,
+  StencilOp,
 } from '@antv/g-device-api';
 import { Circle, Ellipse, Rect, Shape } from '../shapes';
 import { Drawcall, ZINDEX_FACTOR } from './Drawcall';
@@ -132,7 +133,7 @@ export class SDF extends Drawcall {
 
     const diagnosticDerivativeUniformityHeader =
       this.device.queryVendorInfo().platformString === 'WebGPU'
-        ? 'diagnostic(off,derivative_uniformity);'
+        ? 'diagnostic(off,derivative_uniformity);\n'
         : '';
 
     this.#program = this.renderCache.createProgram({
@@ -267,12 +268,19 @@ export class SDF extends Drawcall {
         stencilWrite: false,
         stencilFront: {
           compare: CompareFunction.ALWAYS,
+          passOp: StencilOp.KEEP,
+          failOp: StencilOp.KEEP,
+          depthFailOp: StencilOp.KEEP,
         },
         stencilBack: {
           compare: CompareFunction.ALWAYS,
+          passOp: StencilOp.KEEP,
+          failOp: StencilOp.KEEP,
+          depthFailOp: StencilOp.KEEP,
         },
       },
     });
+    this.device.setResourceName(this.#pipeline, 'SDFPipeline');
 
     const bindings: BindingsDescriptor = {
       pipeline: this.#pipeline,

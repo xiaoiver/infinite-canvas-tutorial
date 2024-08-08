@@ -19,6 +19,11 @@ options.forEach((d) => select.append(d));
 const initialValue = new URL(location as any).searchParams.get(
   'name',
 ) as string;
+const renderer =
+  (new URL(location as any).searchParams.get('renderer') as
+    | 'webgl'
+    | 'webgpu'
+    | undefined) || 'webgl';
 if (demos[initialValue]) select.value = initialValue;
 
 const $container = document.getElementById('container')!;
@@ -33,7 +38,7 @@ async function render() {
   $container.innerHTML = '';
 
   const demo = demos[select.value];
-  callback = await initExample($container, demo);
+  callback = await initExample($container, demo, renderer);
 
   // @ts-ignore
   if (window.screenshot) {
@@ -44,6 +49,6 @@ async function render() {
 
 function onChange() {
   const { value } = select;
-  history.pushState({ value }, '', `?name=${value}`);
+  history.pushState({ value }, '', `?name=${value}&renderer=${renderer}`);
   render();
 }

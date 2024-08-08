@@ -39,18 +39,25 @@ export class BatchManager {
   }
 
   private createDrawcalls(shape: Shape, instanced = false) {
-    return SHAPE_DRAWCALL_CTORS.get(shape.constructor as typeof Shape)?.map(
-      (DrawcallCtor) => {
-        // @ts-ignore
-        const drawcall = new DrawcallCtor(
-          this.device,
-          this.#renderCache,
-          instanced,
-        );
-        drawcall.add(shape);
-        return drawcall;
-      },
-    );
+    return SHAPE_DRAWCALL_CTORS.get(shape.constructor as typeof Shape)
+      ?.map((DrawcallCtor) => {
+        if (
+          // @ts-ignore
+          !DrawcallCtor.check ||
+          // @ts-ignore
+          (DrawcallCtor.check && DrawcallCtor.check(shape))
+        ) {
+          // @ts-ignore
+          const drawcall = new DrawcallCtor(
+            this.device,
+            this.#renderCache,
+            instanced,
+          );
+          drawcall.add(shape);
+          return drawcall;
+        }
+      })
+      .filter((drawcall) => !!drawcall);
   }
 
   private getOrCreateNonBatchableDrawcalls(shape: Shape) {

@@ -184,12 +184,6 @@ export class RenderCache {
     let bindings = this.bindingsCache.get(descriptor);
     if (bindings === null) {
       const descriptorCopy = bindingsDescriptorCopy(descriptor);
-
-      descriptorCopy.uniformBufferBindings =
-        descriptorCopy.uniformBufferBindings?.filter(
-          ({ size }) => size && size > 0,
-        );
-
       bindings = this.device.createBindings(descriptorCopy);
       this.bindingsCache.add(descriptorCopy, bindings);
     }

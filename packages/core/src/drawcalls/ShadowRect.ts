@@ -14,13 +14,18 @@ import {
   Program,
   CompareFunction,
   TransparentBlack,
+  StencilOp,
 } from '@antv/g-device-api';
-import { Rect } from '../shapes';
+import { Rect, Shape } from '../shapes';
 import { Drawcall, ZINDEX_FACTOR } from './Drawcall';
 import { vert, frag } from '../shaders/shadow_rect';
 import { paddingMat3 } from '../utils';
 
 export class ShadowRect extends Drawcall {
+  static check(shape: Shape) {
+    return shape instanceof Rect && shape.dropShadowBlurRadius > 0;
+  }
+
   #program: Program;
   #fragUnitBuffer: Buffer;
   #instancedBuffer: Buffer;
@@ -193,9 +198,15 @@ export class ShadowRect extends Drawcall {
         stencilWrite: false,
         stencilFront: {
           compare: CompareFunction.ALWAYS,
+          passOp: StencilOp.KEEP,
+          failOp: StencilOp.KEEP,
+          depthFailOp: StencilOp.KEEP,
         },
         stencilBack: {
           compare: CompareFunction.ALWAYS,
+          passOp: StencilOp.KEEP,
+          failOp: StencilOp.KEEP,
+          depthFailOp: StencilOp.KEEP,
         },
       },
     });

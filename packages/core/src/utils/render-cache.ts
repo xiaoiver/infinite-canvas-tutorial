@@ -89,6 +89,9 @@ function renderPipelineDescriptorHash(a: RenderPipelineDescriptor): number {
 
 function bindingsDescriptorHash(a: BindingsDescriptor): number {
   let hash = 0;
+  if (a.pipeline) {
+    hash = hashCodeNumberUpdate(hash, a.pipeline.id);
+  }
   if (a.samplerBindings) {
     for (let i = 0; i < a.samplerBindings.length; i++) {
       const binding = a.samplerBindings[i];
@@ -184,12 +187,6 @@ export class RenderCache {
     let bindings = this.bindingsCache.get(descriptor);
     if (bindings === null) {
       const descriptorCopy = bindingsDescriptorCopy(descriptor);
-
-      descriptorCopy.uniformBufferBindings =
-        descriptorCopy.uniformBufferBindings?.filter(
-          ({ size }) => size && size > 0,
-        );
-
       bindings = this.device.createBindings(descriptorCopy);
       this.bindingsCache.add(descriptorCopy, bindings);
     }

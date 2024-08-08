@@ -37,5 +37,5 @@ export default defineConfig({
     stdout: 'ignore',
     stderr: 'pipe',
   },
-  snapshotPathTemplate: '{testDir}/__screenshots__/{arg}{ext}',
+  snapshotPathTemplate: '{testDir}/snapshots/{arg}{ext}',
 });

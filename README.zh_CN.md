@@ -132,8 +132,10 @@ pnpm run dev
 
 -   基于 Jest 的测试环境搭建，包含本地和 CI 环境
 -   使用单元测试提升代码覆盖率
--   基于 headless-gl 的服务端渲染与视觉回归测试
--   E2E UI 测试
+-   视觉回归测试
+    -   基于 headless-gl 的 WebGL1 服务端渲染方案
+    -   基于 Playwright 的 WebGL2 / WebGPU 端到端测试方案
+-   Web Component 测试
 -   在 WebWorker 中渲染画布
 
 [infinitecanvas]: https://infinitecanvas.tools/
