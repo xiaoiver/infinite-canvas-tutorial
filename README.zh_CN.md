@@ -48,7 +48,7 @@
 pnpm i
 ```
 
-进入课程目录后，运行 [vite]
+进入课程目录后，启动 Vite 开发服务器
 
 ```bash
 cd packages/lesson_001

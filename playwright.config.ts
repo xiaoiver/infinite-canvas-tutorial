@@ -21,11 +21,16 @@ export default defineConfig({
       name: 'chromium',
       use: {
         ...devices['Desktop Chrome'],
-        channel: 'chrome',
+        channel: 'chrome-canary',
         headless: true,
         screenshot: 'on',
         launchOptions: {
-          args: ['--use-angle=default', '--headless', '--no-sandbox'],
+          args: [
+            '--use-gl=egl',
+            '--ignore-gpu-blocklist',
+            '--use-gl=angle',
+            '--enable-unsafe-webgpu',
+          ],
         },
       },
     },

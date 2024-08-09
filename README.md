@@ -45,7 +45,7 @@ The course project uses pnpm workspace, so you need to install pnpm first.
 pnpm i
 ```
 
-After entering the course directory, run [vite]:
+After entering the course directory, run Vite devserver:
 
 ```bash
 cd packages/lesson_001
