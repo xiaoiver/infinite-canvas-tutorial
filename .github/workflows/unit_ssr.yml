@@ -3,7 +3,7 @@ name: unit
 on: [push]
 
 jobs:
-  unit & ssr for visual regression:
+  unit-ssr-for-visual-regression:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
