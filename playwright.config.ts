@@ -1,4 +1,4 @@
-import { devices, defineConfig } from '@playwright/test';
+import { defineConfig } from '@playwright/test';
 
 export default defineConfig({
   testDir: './__tests__/e2e',
@@ -20,18 +20,18 @@ export default defineConfig({
     {
       name: 'chromium',
       use: {
-        ...devices['Desktop Chrome'],
+        // ...devices['Desktop Chrome'],
         channel: 'chrome',
         headless: true,
         screenshot: 'on',
-        launchOptions: {
-          args: [
-            '--use-gl=egl',
-            '--ignore-gpu-blocklist',
-            '--use-gl=angle',
-            '--enable-unsafe-webgpu',
-          ],
-        },
+        // launchOptions: {
+        //   args: [
+        //     '--use-gl=egl',
+        //     '--ignore-gpu-blocklist',
+        //     '--use-gl=angle',
+        //     '--enable-unsafe-webgpu',
+        //   ],
+        // },
       },
     },
   ],
