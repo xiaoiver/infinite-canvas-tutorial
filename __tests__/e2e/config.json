@@ -1,0 +1,20 @@
+[
+  {
+    "name": "circle"
+  },
+  {
+    "name": "ellipse"
+  },
+  {
+    "name": "rect"
+  },
+  {
+    "name": "drop-shadow"
+  },
+  {
+    "name": "grid_lines"
+  },
+  {
+    "name": "grid_dots"
+  }
+]

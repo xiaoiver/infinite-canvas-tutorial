@@ -1,4 +1,4 @@
-import { defineConfig } from '@playwright/test';
+import { devices, defineConfig } from '@playwright/test';
 
 export default defineConfig({
   testDir: './__tests__/e2e',
@@ -18,13 +18,14 @@ export default defineConfig({
   },
   projects: [
     {
-      name: 'chromium',
+      name: 'webgl2',
+      testMatch: '**/*webgl2.test.ts',
       use: {
-        // ...devices['Desktop Chrome'],
-        channel: 'chrome',
+        ...devices['Desktop Chrome'],
         headless: true,
-        screenshot: 'on',
         // launchOptions: {
+        //     args
+        // },
         //   args: [
         //     '--use-gl=egl',
         //     '--ignore-gpu-blocklist',
@@ -32,6 +33,15 @@ export default defineConfig({
         //     '--enable-unsafe-webgpu',
         //   ],
         // },
+      },
+    },
+    {
+      name: 'webgpu',
+      testMatch: '**/*webgpu.test.ts',
+      use: {
+        // use real chrome (not chromium) for webgpu tests
+        channel: 'chrome',
+        headless: true,
       },
     },
   ],
