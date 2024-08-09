@@ -4,6 +4,7 @@ on: [push]
 
 jobs:
   component-testing-webcomponents:
+    name: Component Testing WebComponents
     timeout-minutes: 60
     runs-on: ubuntu-latest
     steps:

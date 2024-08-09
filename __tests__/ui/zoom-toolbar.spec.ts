@@ -7,5 +7,6 @@ test('should display zoom correctly.', async ({ mount }) => {
       zoom: 100,
     },
   });
+  await expect(component.locator('[label="Zoom toolbar"]')).toBeVisible();
   await expect(component).toContainText('100%');
 });
