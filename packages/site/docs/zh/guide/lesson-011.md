@@ -11,7 +11,8 @@ outline: deep
 -   视觉回归测试
     -   基于 headless-gl 的 WebGL1 服务端渲染方案
     -   基于 Playwright 的 WebGL2 / WebGPU 端到端测试方案
--   Web Component 测试
+-   E2E 测试
+-   浏览器兼容性测试
 -   在 WebWorker 中渲染画布
 
 以上所有工程相关代码都可以在我们项目的 [\_\_tests\_\_] 文件夹下找到。
@@ -370,7 +371,10 @@ test(name, async ({ page, context }) => {
 
 ![Playwright image diff](/playwright-image-diff.png)
 
-在实际使用中，我发现在本地生成的截图常常和 CI 环境存在细微差异。此时可以使用 CI 环境而非本地生成的基准图片来保证一致性。上传 GitHub workflow artifacts 就可以获取 CI 环境的截图，下载到本地作为基准图片。
+在实际使用中，我发现在本地生成的截图常常和 CI 环境存在细微差异。例如下图左侧为我的本地环境生成的截图，右侧为 CI 环境生成的，一些矩形有怪异的斜线。
+此时可以使用 CI 环境而非本地生成的基准图片来保证一致性。上传 GitHub workflow artifacts 就可以获取 CI 环境的截图，下载到本地作为基准图片。
+
+![Diff between local and CI environments](/playwright-local-vs-ci.png)
 
 #### WebGL2 & WebGPU {#webgl2-webgpu}
 
@@ -431,7 +435,13 @@ import { defineConfig } from '@sand4rt/experimental-ct-web'; // [!code ++]
 export default defineConfig({});
 ```
 
-### 测试 Web Component
+### 测试 Web Component {#webcomponent-test}
+
+## 浏览器兼容性测试 {#browser-compatibility-test}
+
+BrowserStack 是一个云测试平台，它提供了一系列工具和服务，用于在不同的浏览器、操作系统、设备和真实环境中测试 Web 和移动应用程序。BrowserStack 允许开发者和 QA（质量保证）团队在各种配置上测试他们的应用程序，以确保兼容性、性能和用户体验。
+
+Babylon.js 在兼容性测试中就使用了 [browserstack-local]。
 
 ## 在 WebWorker 中运行 {#rendering-in-webworker}
 
@@ -633,3 +643,4 @@ worker.onmessage = function (event) {
 [Playwright Web component testing]: https://github.com/sand4rt/playwright-ct-web
 [Playwright Components (experimental)]: https://playwright.dev/docs/test-components
 [Web Components]: /zh/guide/lesson-007
+[browserstack-local]: https://github.com/browserstack/browserstack-local-nodejs

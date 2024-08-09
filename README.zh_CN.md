@@ -135,7 +135,8 @@ pnpm run dev
 -   视觉回归测试
     -   基于 headless-gl 的 WebGL1 服务端渲染方案
     -   基于 Playwright 的 WebGL2 / WebGPU 端到端测试方案
--   Web Component 测试
+-   E2E 测试
+-   浏览器兼容性测试
 -   在 WebWorker 中渲染画布
 
 [infinitecanvas]: https://infinitecanvas.tools/

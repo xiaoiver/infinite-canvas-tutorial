@@ -130,8 +130,11 @@ pnpm run dev
 
 -   Jest-based test environment setup, including local and CI environments
 -   Using unit tests to improve code coverage
--   Server-side rendering and visual regression testing based on headless-gl
+-   Visual regression testing
+    -   Server-side rendering based on headless-gl, targets WebGL1
+    -   E2E testing base on Playwright, targets WebGL2 & WebGPU
 -   E2E UI testing
+-   Browser Compatibility Test based on BrowserStack
 -   Render in WebWorker
 
 [infinitecanvas]: https://infinitecanvas.tools/
