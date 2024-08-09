@@ -435,7 +435,25 @@ import { defineConfig } from '@sand4rt/experimental-ct-web'; // [!code ++]
 export default defineConfig({});
 ```
 
+下面就可以针对我们的 Web Component 组件编写测试了。
+
 ### 测试 Web Component {#webcomponent-test}
+
+以相机缩放工具栏组件为例，我们可以测试 `zoom` 属性是否被正确展示：
+
+```ts
+import { test, expect } from '@sand4rt/experimental-ct-web';
+import { ZoomToolbar } from '../../packages/ui/src';
+
+test('should display zoom correctly.', async ({ mount }) => {
+    const component = await mount(ZoomToolbar, {
+        props: {
+            zoom: 100,
+        },
+    });
+    await expect(component).toContainText('100%');
+});
+```
 
 ## 浏览器兼容性测试 {#browser-compatibility-test}
 

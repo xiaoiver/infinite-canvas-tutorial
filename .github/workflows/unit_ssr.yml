@@ -1,10 +1,9 @@
-name: unit & ssr for visual regression
+name: unit
 
 on: [push]
 
 jobs:
-  unit_ssr:
-    name: unit_ssr
+  unit & ssr for visual regression:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3

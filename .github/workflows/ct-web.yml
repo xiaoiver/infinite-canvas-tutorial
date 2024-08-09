@@ -1,9 +1,9 @@
-name: component testing webcomponents
+name: e2e
 
 on: ['push']
 
 jobs:
-  e2e:
+  component testing webcomponents:
     timeout-minutes: 60
     runs-on: ubuntu-latest
     steps:
@@ -19,6 +19,9 @@ jobs:
 
       - name: Install Playwright browsers
         run: pnpm exec playwright install --with-deps
+
+      - name: Build
+        run: pnpm build
 
       - name: Run Playwright tests
         run: pnpm test:ui

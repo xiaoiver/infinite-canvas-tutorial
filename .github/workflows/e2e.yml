@@ -1,9 +1,8 @@
-name: e2e for visual regression
-
+name: e2e
 on: ['push']
 
 jobs:
-  e2e:
+  e2e for visual regression:
     timeout-minutes: 60
     runs-on: ubuntu-latest
     strategy:
