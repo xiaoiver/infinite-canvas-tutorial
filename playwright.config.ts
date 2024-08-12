@@ -22,28 +22,14 @@ export default defineConfig({
       testMatch: '**/*webgl2.test.ts',
       use: {
         ...devices['Desktop Chrome'],
+        channel: 'chrome',
         headless: true,
-        // launchOptions: {
-        //     args
-        // },
-        //   args: [
-        //     '--use-gl=egl',
-        //     '--ignore-gpu-blocklist',
-        //     '--use-gl=angle',
-        //     '--enable-unsafe-webgpu',
-        //   ],
-        // },
+        screenshot: 'on',
+        launchOptions: {
+          args: ['--use-angle=default', '--headless', '--no-sandbox'],
+        },
       },
     },
-    // {
-    //   name: 'webgpu',
-    //   testMatch: '**/*webgpu.test.ts',
-    //   use: {
-    //     // use real chrome (not chromium) for webgpu tests
-    //     channel: 'chrome',
-    //     headless: true,
-    //   },
-    // },
   ],
   // Run your local dev server before starting the tests
   webServer: {

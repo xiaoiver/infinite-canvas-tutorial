@@ -26,7 +26,7 @@ jobs:
         run: pnpm exec playwright install --with-deps
 
       - name: Run Playwright tests
-        run: xvfb-run -s "-ac -screen 0 1280x1024x16" pnpm test:e2e --shard ${{ matrix.shard }}
+        run: pnpm exec playwright test --shard ${{ matrix.shard }}
 
       - name: Upload blob report to GitHub Actions Artifacts
         if: always()
