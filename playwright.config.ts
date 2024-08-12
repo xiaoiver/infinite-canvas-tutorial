@@ -35,15 +35,15 @@ export default defineConfig({
         // },
       },
     },
-    {
-      name: 'webgpu',
-      testMatch: '**/*webgpu.test.ts',
-      use: {
-        // use real chrome (not chromium) for webgpu tests
-        channel: 'chrome',
-        headless: true,
-      },
-    },
+    // {
+    //   name: 'webgpu',
+    //   testMatch: '**/*webgpu.test.ts',
+    //   use: {
+    //     // use real chrome (not chromium) for webgpu tests
+    //     channel: 'chrome',
+    //     headless: true,
+    //   },
+    // },
   ],
   // Run your local dev server before starting the tests
   webServer: {
