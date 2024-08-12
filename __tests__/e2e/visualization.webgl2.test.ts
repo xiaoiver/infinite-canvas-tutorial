@@ -1,13 +1,20 @@
 import { test, expect } from '@playwright/test';
-import tests from './config.json';
+
+const renderer = 'webgl2';
 
 test.beforeEach(async ({ page }, testInfo) => {
   testInfo.setTimeout(testInfo.timeout + 160000);
 });
 
-test.describe('Visual Regression WebGL2', () => {
-  tests.forEach(({ name }) => {
-    const renderer = 'webgl2';
+test.describe('E2E Suite', () => {
+  [
+    'grid_lines',
+    'grid_dots',
+    'circle',
+    'ellipse',
+    'rect',
+    'drop-shadow',
+  ].forEach((name) => {
     test(`${name} with ${renderer}`, async ({ page, context }) => {
       let resolveReadyPromise: () => void;
       const readyPromise = new Promise((resolve) => {
