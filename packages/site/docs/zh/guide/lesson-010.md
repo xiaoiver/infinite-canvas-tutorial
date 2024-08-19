@@ -8,7 +8,7 @@ outline: deep
 
 -   将画布内容导出成 PNG，JPEG 和 SVG 格式的图片
 -   在画布中渲染图片
--   拓展 SVG 的能力，以 `stroke-aligment` 为例
+-   拓展 SVG 的能力，以 `stroke-alignment` 为例
 
 ## 将画布内容导出成图片 {#export-canvas-to-image}
 
@@ -306,7 +306,7 @@ export function fromSVGElement(element: SVGElement): SerializedNode;
 
 ![import an exported ellipse in Figma](/import-exported-ellipse.png)
 
-有趣的是，[@pixi-essentials/svg] 也试图将 SVG 元素转换成 Pixi.js 中的图形并绘制。
+有趣的是，[@pixi-essentials/svg] 也试图将 SVG 元素转换成 Pixi.js 中的图形并绘制，详见 [Vector rendering of SVG content with PixiJS]。
 
 #### SVG 中的场景图 {#scene-graph-in-svg}
 
@@ -813,6 +813,7 @@ function strokeOffset(
 -   [Specifying stroke alignment]
 -   [How to simulate stroke-align (stroke-alignment) in SVG]
 -   [Creating inner shadow in svg]
+-   [Vector rendering of SVG content with PixiJS]
 
 [Export from Figma]: https://help.figma.com/hc/en-us/articles/360040028114-Export-from-Figma#h_01GWB002EPWMFSXKAEC62GS605
 [How to simulate stroke-align (stroke-alignment) in SVG]: https://stackoverflow.com/questions/74958705/how-to-simulate-stroke-align-stroke-alignment-in-svg
@@ -846,3 +847,4 @@ function strokeOffset(
 [Convert ImageBitmap to Blob]: https://stackoverflow.com/questions/52959839/convert-imagebitmap-to-blob
 [ImageBitmapRenderingContext]: https://developer.mozilla.org/en-US/docs/Web/API/ImageBitmapRenderingContext
 [@pixi-essentials/svg]: https://github.com/ShukantPal/pixi-essentials/tree/master/packages/svg
+[Vector rendering of SVG content with PixiJS]: https://medium.com/javascript-in-plain-english/vector-rendering-of-svg-content-with-pixijs-6f26c91f09ee

@@ -122,7 +122,7 @@ pnpm run dev
 
 -   Exporting canvas content to PNG, JPEG and SVG formats
 -   Rendering images in the canvas
--   Extending the capabilities of SVG, using `stroke-aligment` as an example
+-   Extending the capabilities of SVG, using `stroke-alignment` as an example
 
 <img src="./screenshots/lesson10.png" width="300" alt="Lesson 10 - import and export images">
 
@@ -136,6 +136,8 @@ pnpm run dev
 -   E2E UI testing
 -   Browser Compatibility Test based on BrowserStack
 -   Render in WebWorker
+
+## Lesson 12 - Draw polyline [🔗](https://infinitecanvas.cc/guide/lesson-012)
 
 [infinitecanvas]: https://infinitecanvas.tools/
 [Figma]: https://madebyevan.com/figma/building-a-professional-design-tool-on-the-web/

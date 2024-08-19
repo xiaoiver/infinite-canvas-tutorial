@@ -124,7 +124,7 @@ pnpm run dev
 
 -   将画布内容导出成 PNG，JPEG 和 SVG 格式的图片
 -   在画布中渲染图片
--   拓展 SVG 的能力，以 `stroke-aligment` 为例
+-   拓展 SVG 的能力，以 `stroke-alignment` 为例
 
 <img src="./screenshots/lesson10.png" width="300" alt="Lesson 10 - import and export images">
 
@@ -138,6 +138,8 @@ pnpm run dev
 -   E2E 测试
 -   浏览器兼容性测试
 -   在 WebWorker 中渲染画布
+
+## 课程 12 - 绘制折线 [🔗](https://infinitecanvas.cc/zh/guide/lesson-012)
 
 [infinitecanvas]: https://infinitecanvas.tools/
 [Figma]: https://madebyevan.com/figma/building-a-professional-design-tool-on-the-web/

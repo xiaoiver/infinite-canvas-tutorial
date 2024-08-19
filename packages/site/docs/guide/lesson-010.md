@@ -8,7 +8,7 @@ Image import and export is a very important feature in Infinite Canvas, and thro
 
 -   Exporting canvas content to PNG, JPEG and SVG formats
 -   Rendering images in the canvas
--   Extending the capabilities of SVG, using `stroke-aligment` as an example.
+-   Extending the capabilities of SVG, using `stroke-alignment` as an example.
 
 ## Exporting canvas contents to image {#export-canvas-to-image}
 
@@ -302,7 +302,7 @@ Note that this conversion is not fully reversible, for example, in the [StrokeAl
 
 ![import an exported ellipse in Figma](/import-exported-ellipse.png)
 
-[@pixi-essentials/svg] also wants to convert SVGElement to shapes in Pixi.js.
+[@pixi-essentials/svg] also wants to convert SVGElement to shapes in Pixi.js, see [Vector rendering of SVG content with PixiJS].
 
 #### SceneGraph in SVG {#scene-graph-in-svg}
 
@@ -809,6 +809,7 @@ With the richness of the canvas functionality, it is necessary to introduce test
 -   [Specifying stroke alignment]
 -   [How to simulate stroke-align (stroke-alignment) in SVG]
 -   [Creating inner shadow in svg]
+-   [Vector rendering of SVG content with PixiJS]
 
 [Export from Figma]: https://help.figma.com/hc/en-us/articles/360040028114-Export-from-Figma#h_01GWB002EPWMFSXKAEC62GS605
 [How to simulate stroke-align (stroke-alignment) in SVG]: https://stackoverflow.com/questions/74958705/how-to-simulate-stroke-align-stroke-alignment-in-svg
@@ -837,3 +838,4 @@ With the richness of the canvas functionality, it is necessary to introduce test
 [Convert ImageBitmap to Blob]: https://stackoverflow.com/questions/52959839/convert-imagebitmap-to-blob
 [ImageBitmapRenderingContext]: https://developer.mozilla.org/en-US/docs/Web/API/ImageBitmapRenderingContext
 [@pixi-essentials/svg]: https://github.com/ShukantPal/pixi-essentials/tree/master/packages/svg
+[Vector rendering of SVG content with PixiJS]: https://medium.com/javascript-in-plain-english/vector-rendering-of-svg-content-with-pixijs-6f26c91f09ee

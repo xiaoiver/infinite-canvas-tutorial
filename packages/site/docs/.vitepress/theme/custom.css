@@ -4,6 +4,11 @@ figcaption {
   font-style: italic;
 }
 
+figure img {
+  margin: 0 auto;
+}
+
 .genji-cell {
   z-index: calc(var(--vp-z-index-local-nav) - 1);
 }
+
