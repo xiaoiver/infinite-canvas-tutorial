@@ -27,7 +27,7 @@ WebGL 原生提供的 `gl.LINES` 和 `gl.LINE_STRIP` 在实际场景中往往并
 -   支持相邻线段间的连接形状 [stroke-linejoin] 和端点形状 [stroke-linecap]
 -   支持虚线。[stroke-dashoffset] 和 [stroke-dasharray]
 -   良好的反走样效果
--   支持 instanced 绘制
+-   支持 instanced 绘制，详见之前介绍过的 [instanced drawing]
 
 我们设计的 API 如下：
 
@@ -48,7 +48,7 @@ const line = new Polyline({
 
 先来看第一个问题：如何实现任意数值的 `strokeWidth`。
 
-## 任意线宽 {#stroke-width}
+## 构建 Mesh {#construct-mesh}
 
 下图来自 Pixi.js 在 WebGL meetup 上的分享：[How 2 draw lines in WebGL]。既然原生方法不可用，还是只能回到构建 Mesh 的传统绘制方案。
 
@@ -58,7 +58,7 @@ const line = new Polyline({
 
 ![extrude line](/extrude-line.png)
 
-### 在 CPU 中构建 Mesh {#mesh-on-cpu}
+### 在 CPU 中构建 {#construct-mesh-on-cpu}
 
 线段的拉伸以及 `strokeLinejoin` 和 `strokeLinecap` 的 Mesh 构建可以在 CPU 或 Shader 中完成。按照前者思路的实现包括：
 
@@ -79,7 +79,7 @@ cache.indexBuffer = regl.buffer(
 );
 ```
 
-`strokeLinecap` 和线段需要分成不同 Drawcall 绘制，还是以 [regl-gpu-lines] 的 [instanced] 为例，需要编译两个 Program 并使用 3 个 Drawcall 绘制，其中：
+`strokeLinecap` 和线段需要分成不同 Drawcall 绘制，还是以 [regl-gpu-lines] 的 [instanced example] 为例，需要编译两个 Program 并使用 3 个 Drawcall 绘制，其中：
 
 -   两个端点使用同一个 Program，只是 Uniform `orientation` 不同。顶点数目为 `cap + join`
 -   所有中间的线段使用使用一个 Drawcall 绘制，顶点数目为 `join + join`，instance 数目为线段数目
@@ -92,13 +92,15 @@ const computeCount = isEndpoints
       (props) => [props.joinRes2, props.joinRes2];
 ```
 
-如果存在多条折线，可以进行合并的条件是 `strokeLinecap` `strokeLinejoin` 和线段数量相同。在下图中绘制了 5 个 `instance`：
+如果存在多条折线，可以进行合并的条件是 `strokeLinecap` 和 `strokeLinejoin` 的取值以及线段数量相同。下图展示了绘制了 5 条折线的情况，其中每一条折线的中间线段部分包含 8 个 `instance`，因此 `instance` 总数为 40：
 
-![drawcalls for linecap and segements](/regl-gpu-lines.png)
+![drawcalls for linecap and segments](/regl-gpu-lines.png)
+
+下面让我们仔细分析一下 Vertex Shader 中的处理逻辑。
 
 最后没有进行任何反走样处理。
 
-### 在 Shader 中构建 Mesh {#mesh-on-shader}
+### 在 Shader 中构建 {#construct-mesh-on-shader}
 
 来自 Pixi.js 在 WebGL meetup 上的分享，在 Shader 中构建 Mesh：
 
@@ -108,17 +110,38 @@ const computeCount = isEndpoints
 相比在 CPU 中构建，它的优点包括：
 
 -   只需要一个 Drawcall 绘制 `strokeLinecap` `strokeLineJoin` 和中间线段
--   顶点固定为 9 个
--   当 `strokeLinecap` `strokeLinejoin` 为 `round` 时更平滑
+-   顶点固定为 9 个，其中
+-   当 `strokeLinecap` `strokeLinejoin` 取值为 `round` 时更平滑，原因是在 Fragment Shader 中使用了类似 SDF 绘制圆的方法
 -   良好的反走样效果
 
 ![pack joints into instances](/pack-joints-into-instances.png)
+
+```glsl
+layout(location = ${Location.PREV}) in vec2 a_Prev;
+layout(location = ${Location.POINTA}) in vec2 a_PointA;
+layout(location = ${Location.POINTB}) in vec2 a_PointB;
+layout(location = ${Location.NEXT}) in vec2 a_Next;
+layout(location = ${Location.VERTEX_JOINT}) in float a_VertexJoint;
+layout(location = ${Location.VERTEX_NUM}) in float a_VertexNum;
+```
 
 后续其他特性也会基于这种方案实现。
 
 ## 虚线 {#dash}
 
+### 其他图形上的实现 {#dash-on-other-shapes}
+
+按照 SVG 规范，`stroke-dasharray` 和 `stroke-dashoffset` 这两个属性也可以作用在 Circle / Ellipse / Rect 等其他图形上。因此当这两个属性有合理值时，原本使用 SDF 绘制的描边就得改成使用 Polyline 实现。
+
+## 绘制 Path {#path}
+
+-   [WebGL 3D Geometry - Lathe]
+-   [Fun with WebGL 2.0 : 027 : Bezier Curves in 3D]
+-   [p5js - bezier()]
+
 ## SizeAttenuation {#size-attenuation}
+
+[sizeAttenuation]
 
 ## 退化成直线 {#line}
 
@@ -158,7 +181,12 @@ const computeCount = isEndpoints
 [PathLayer]: https://deck.gl/docs/api-reference/layers/path-layer
 [Drawing Antialiased Lines with OpenGL]: https://blog.mapbox.com/drawing-antialiased-lines-with-opengl-8766f34192dc
 [regl-gpu-lines]: https://github.com/rreusser/regl-gpu-lines
-[instanced]: https://rreusser.github.io/regl-gpu-lines/docs/instanced.html
+[instanced example]: https://rreusser.github.io/regl-gpu-lines/docs/instanced.html
 [Drawing Instanced Lines with regl]: https://observablehq.com/@rreusser/drawing-instanced-lines-with-regl
 [pixijs/graphics-smooth]: https://github.com/pixijs/graphics-smooth
 [How 2 draw lines in WebGL]: https://www.khronos.org/assets/uploads/developers/presentations/Crazy_Panda_How_to_draw_lines_in_WebGL.pdf
+[instanced drawing]: /zh/guide/lesson-008#instanced
+[sizeAttenuation]: https://threejs.org/docs/#api/en/materials/SpriteMaterial.sizeAttenuation
+[WebGL 3D Geometry - Lathe]: https://webglfundamentals.org/webgl/lessons/webgl-3d-geometry-lathe.html
+[Fun with WebGL 2.0 : 027 : Bezier Curves in 3D]: https://www.youtube.com/watch?v=s3k8Od9lZBE
+[p5js - bezier()]: https://p5js.org/reference/p5/bezier/

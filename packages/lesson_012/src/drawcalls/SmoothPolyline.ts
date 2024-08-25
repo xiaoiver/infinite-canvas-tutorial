@@ -21,8 +21,13 @@ import { Drawcall, ZINDEX_FACTOR } from './Drawcall';
 import { vert, frag, Location, JointType } from '../shaders/polyline';
 import { paddingMat3 } from '../utils';
 
+const stridePoints = 2;
+const strideFloats = 3;
+
 export class SmoothPolyline extends Drawcall {
   #program: Program;
+  #vertexNumBuffer: Buffer;
+  #packedBuffer: Buffer;
   #instancedBuffer: Buffer;
   #instancedMatrixBuffer: Buffer;
   #indexBuffer: Buffer;
@@ -32,11 +37,24 @@ export class SmoothPolyline extends Drawcall {
   #bindings: Bindings;
 
   createGeometry(): void {
+    if (this.#vertexNumBuffer) {
+      this.#vertexNumBuffer.destroy();
+    }
+    this.#vertexNumBuffer = this.device.createBuffer({
+      viewOrSize: Float32Array.BYTES_PER_ELEMENT * 9 * this.shapes.length,
+      usage: BufferUsage.VERTEX,
+      hint: BufferFrequencyHint.STATIC,
+    });
+
+    if (this.#packedBuffer) {
+      this.#packedBuffer.destroy();
+      this.#packedBuffer = undefined;
+    }
+
     if (this.instanced) {
       if (this.#instancedBuffer) {
         this.#instancedBuffer.destroy();
       }
-
       this.#instancedBuffer = this.device.createBuffer({
         viewOrSize: Float32Array.BYTES_PER_ELEMENT * 12 * this.shapes.length,
         usage: BufferUsage.VERTEX,
@@ -65,6 +83,7 @@ export class SmoothPolyline extends Drawcall {
       this.#inputLayout.destroy();
       this.#pipeline.destroy();
     }
+
     this.#program = this.renderCache.createProgram({
       vertex: {
         glsl: defines + vert,
@@ -76,36 +95,48 @@ export class SmoothPolyline extends Drawcall {
 
     const vertexBufferDescriptors: InputLayoutBufferDescriptor[] = [
       {
-        arrayStride: 4 * (4 + 4 + 4 + 4),
+        arrayStride: 4 * 1,
         stepMode: VertexStepMode.INSTANCE,
         attributes: [
           {
-            format: Format.F32_RGB,
+            format: Format.F32_R,
+            offset: 4 * 0,
+            shaderLocation: Location.VERTEX_NUM,
+            divisor: 0,
+          },
+        ],
+      },
+      {
+        arrayStride: 4 * (3 + 3 + 3 + 3),
+        stepMode: VertexStepMode.INSTANCE,
+        attributes: [
+          {
+            format: Format.F32_RG,
             offset: 4 * 0,
             shaderLocation: Location.PREV,
             divisor: 1,
           },
           {
-            format: Format.F32_RGB,
-            offset: 4 * 4,
-            shaderLocation: Location.POINT1,
+            format: Format.F32_RG,
+            offset: 4 * 3,
+            shaderLocation: Location.POINTA,
             divisor: 1,
           },
           {
             format: Format.F32_R,
-            offset: 4 * 7,
+            offset: 4 * 5,
             shaderLocation: Location.VERTEX_JOINT,
             divisor: 1,
           },
           {
-            format: Format.F32_RGB,
-            offset: 4 * 8,
-            shaderLocation: Location.POINT2,
+            format: Format.F32_RG,
+            offset: 4 * 6,
+            shaderLocation: Location.POINTB,
             divisor: 1,
           },
           {
-            format: Format.F32_RGB,
-            offset: 4 * 12,
+            format: Format.F32_RG,
+            offset: 4 * 9,
             shaderLocation: Location.NEXT,
             divisor: 1,
           },
@@ -153,17 +184,7 @@ export class SmoothPolyline extends Drawcall {
           ],
         },
       );
-      this.#inputLayout = this.renderCache.createInputLayout({
-        vertexBufferDescriptors,
-        indexBufferFormat: Format.U32_R,
-        program: this.#program,
-      });
     } else {
-      this.#inputLayout = this.renderCache.createInputLayout({
-        vertexBufferDescriptors,
-        indexBufferFormat: Format.U32_R,
-        program: this.#program,
-      });
       if (!this.#uniformBuffer) {
         this.#uniformBuffer = this.device.createBuffer({
           viewOrSize: Float32Array.BYTES_PER_ELEMENT * (16 + 4 + 4 + 4),
@@ -172,6 +193,12 @@ export class SmoothPolyline extends Drawcall {
         });
       }
     }
+
+    this.#inputLayout = this.renderCache.createInputLayout({
+      vertexBufferDescriptors,
+      indexBufferFormat: Format.U32_R,
+      program: this.#program,
+    });
 
     this.#pipeline = this.renderCache.createRenderPipeline({
       inputLayout: this.#inputLayout,
@@ -207,28 +234,23 @@ export class SmoothPolyline extends Drawcall {
       },
     });
 
-    if (this.instanced) {
-      this.#bindings = this.renderCache.createBindings({
-        pipeline: this.#pipeline,
-        uniformBufferBindings: [
-          {
-            buffer: uniformBuffer,
-          },
-        ],
-      });
-    } else {
-      this.#bindings = this.device.createBindings({
-        pipeline: this.#pipeline,
-        uniformBufferBindings: [
-          {
-            buffer: uniformBuffer,
-          },
-          {
-            buffer: this.#uniformBuffer,
-          },
-        ],
-      });
-    }
+    this.#bindings = this.device.createBindings({
+      pipeline: this.#pipeline,
+      uniformBufferBindings: this.instanced
+        ? [
+            {
+              buffer: uniformBuffer,
+            },
+          ]
+        : [
+            {
+              buffer: uniformBuffer,
+            },
+            {
+              buffer: this.#uniformBuffer,
+            },
+          ],
+    });
   }
 
   render(renderPass: RenderPass) {
@@ -244,6 +266,11 @@ export class SmoothPolyline extends Drawcall {
       this.shapes.some((shape) => shape.renderDirtyFlag) ||
       this.geometryDirty
     ) {
+      this.#vertexNumBuffer.setSubData(
+        0,
+        new Uint8Array(new Float32Array([0, 1, 2, 3, 4, 5, 6, 7, 8])),
+      );
+
       if (this.instanced) {
         this.#instancedMatrixBuffer.setSubData(
           0,
@@ -285,7 +312,7 @@ export class SmoothPolyline extends Drawcall {
 
           // Can't use interleaved buffer here, we should spread them like:
           // | prev - pointA - pointB - next |. This will allocate ~4x buffer memory space.
-          for (let i = 0; i < pBuffer.length - 3 * 4; i += 4) {
+          for (let i = 0; i < pBuffer.length - 3 * 3; i += strideFloats) {
             pointsBuffer.push(
               pBuffer[i],
               pBuffer[i + 1],
@@ -299,28 +326,26 @@ export class SmoothPolyline extends Drawcall {
               pBuffer[i + 9],
               pBuffer[i + 10],
               pBuffer[i + 11],
-              pBuffer[i + 12],
-              pBuffer[i + 13],
-              pBuffer[i + 14],
-              pBuffer[i + 15],
             );
           }
+
+          console.log(pBuffer, pointsBuffer);
 
           travelBuffer.push(...tBuffer);
 
           indices.push(
             0 + offset,
-            2 + offset,
             1 + offset,
-            0 + offset,
-            3 + offset,
             2 + offset,
+            0 + offset,
+            2 + offset,
+            3 + offset,
             4 + offset,
-            6 + offset,
             5 + offset,
-            4 + offset,
-            7 + offset,
             6 + offset,
+            4 + offset,
+            6 + offset,
+            7 + offset,
             4 + offset,
             7 + offset,
             8 + offset,
@@ -346,10 +371,29 @@ export class SmoothPolyline extends Drawcall {
       }
     }
 
+    if (!this.#packedBuffer) {
+      this.#packedBuffer = this.device.createBuffer({
+        viewOrSize:
+          Float32Array.BYTES_PER_ELEMENT *
+          12 *
+          this.shapes.length *
+          instancedCount,
+        usage: BufferUsage.VERTEX,
+        hint: BufferFrequencyHint.DYNAMIC,
+      });
+    }
+    this.#packedBuffer.setSubData(
+      0,
+      new Uint8Array(new Float32Array(pointsBuffer).buffer),
+    );
+
     const buffers = [
-      // {
-      //   buffer: this.#fragUnitBuffer,
-      // },
+      {
+        buffer: this.#vertexNumBuffer,
+      },
+      {
+        buffer: this.#packedBuffer,
+      },
     ];
     if (this.instanced) {
       buffers.push(
@@ -379,6 +423,8 @@ export class SmoothPolyline extends Drawcall {
   destroy(): void {
     if (this.#program) {
       this.#program.destroy();
+      this.#vertexNumBuffer?.destroy();
+      this.#packedBuffer?.destroy();
       this.#instancedMatrixBuffer?.destroy();
       this.#instancedBuffer?.destroy();
       this.#indexBuffer?.destroy();
@@ -451,9 +497,6 @@ function getCapType(lineCap: CanvasLineCap) {
   return cap;
 }
 
-const stridePoints = 2;
-const strideFloats = 4;
-
 export function updateBuffer(
   object: Polyline,
   needEarcut = false,
@@ -467,13 +510,13 @@ export function updateBuffer(
   } = object;
 
   const points: number[][] = [];
-  let triangles: number[] = [];
+  const triangles: number[] = [];
 
   const length = polylineControlPoints.length;
-  let startOffsetX = 0;
-  let startOffsetY = 0;
-  let endOffsetX = 0;
-  let endOffsetY = 0;
+  const startOffsetX = 0;
+  const startOffsetY = 0;
+  const endOffsetX = 0;
+  const endOffsetY = 0;
 
   points[0] = polylineControlPoints.reduce((prev, cur, i) => {
     let offsetX = 0;
@@ -527,28 +570,49 @@ export function updateBuffer(
 
       pointsBuffer[j++] = points[i];
       pointsBuffer[j++] = points[i + 1];
-      pointsBuffer[j] = jointType;
-      if (i == 0 && capType !== JointType.CAP_ROUND) {
-        pointsBuffer[j] += capType;
+
+      if (isNaN(points[i]) || isNaN(points[i + 1])) {
+        // find prev non-nan
+        pointsBuffer[j - 2] = (points[i + 2] + points[i - 2]) * 0.5;
+        pointsBuffer[j - 1] = (points[i + 3] + points[i - 1]) * 0.5;
+        pointsBuffer[j] = 0;
+        j++;
+        continue;
       }
-      if (i + stridePoints * 2 >= points.length) {
+
+      pointsBuffer[j] = jointType;
+      if (i == 0) {
+        if (capType !== JointType.CAP_ROUND) {
+          pointsBuffer[j] += capType;
+        }
+      } else {
+        if (isNaN(points[i - 2]) || isNaN(points[i - 1])) {
+          pointsBuffer[j] += JointType.CAP_BUTT;
+        }
+      }
+      if (
+        i + stridePoints * 2 >= points.length ||
+        isNaN(points[i + 4]) ||
+        isNaN(points[i + 5])
+      ) {
         pointsBuffer[j] += endJoint - jointType;
-      } else if (i + stridePoints >= points.length) {
+      } else if (
+        i + stridePoints >= points.length ||
+        isNaN(points[i + 2]) ||
+        isNaN(points[i + 3])
+      ) {
         pointsBuffer[j] = 0;
       }
       j++;
     }
     pointsBuffer[j++] = points[points.length - 4];
     pointsBuffer[j++] = points[points.length - 3];
-    // pointsBuffer[j++] = points[points.length - 4] || zIndex;
     pointsBuffer[j++] = 0;
     pointsBuffer[0] = points[0];
     pointsBuffer[1] = points[1];
-    // pointsBuffer[2] = points[2] || zIndex;
     pointsBuffer[2] = 0;
     pointsBuffer[3] = points[2];
     pointsBuffer[4] = points[3];
-    // pointsBuffer[6] = points[5] || zIndex;
     pointsBuffer[5] = capType === JointType.CAP_ROUND ? capType : 0;
 
     const instancedCount = Math.round(points.length / stridePoints);
