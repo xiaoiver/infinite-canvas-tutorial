@@ -499,7 +499,7 @@ More on the plug-in design pattern:
 [Async Constructor Pattern in JavaScript]: https://qwtel.com/posts/software/async-constructor-pattern/
 [Animation: ready property]: https://developer.mozilla.org/en-US/docs/Web/API/Animation/ready
 [Rendering the scene]: https://threejs.org/docs/index.html#manual/en/introduction/Creating-a-scene
-[Creation of the WebGPU engine is asynchronous]: https://doc.babylonjs.com/setup/support/WebGPU/webGPUBreakingChanges#creation-of-the-webgpu-engine-is-asynchronous
+[Creation of the WebGPU engine is asynchronous]: https://doc.babylonjs.com/setup/support/webGPU/webGPUBreakingChanges#creation-of-the-webgpu-engine-is-asynchronous
 [Spector.js]: https://spector.babylonjs.com/
 [WebGPU Inspector]: https://github.com/brendan-duncan/webgpu_inspector
 [tapable]: https://github.com/webpack/tapable
