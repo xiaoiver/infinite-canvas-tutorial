@@ -267,7 +267,7 @@ export class SmoothPolyline extends Drawcall {
     });
   }
 
-  render(renderPass: RenderPass) {
+  render(renderPass: RenderPass, uniformLegacyObject: Record<string, unknown>) {
     const indices: number[] = [];
     const pointsBuffer: number[] = [];
     const travelBuffer: number[] = [];
@@ -300,7 +300,8 @@ export class SmoothPolyline extends Drawcall {
 
         const instancedData: number[] = [];
         this.shapes.forEach((shape) => {
-          instancedData.push(...this.generateBuffer(shape as Polyline));
+          const [buffer] = this.generateBuffer(shape as Polyline);
+          instancedData.push(...buffer);
         });
         this.#instancedBuffer.setSubData(
           0,
@@ -308,15 +309,21 @@ export class SmoothPolyline extends Drawcall {
         );
       } else {
         const { worldTransform } = this.shapes[0];
+        const [buffer, legacyObject] = this.generateBuffer(
+          this.shapes[0] as Polyline,
+        );
+        const u_ModelMatrix = worldTransform.toArray(true);
         this.#uniformBuffer.setSubData(
           0,
           new Uint8Array(
-            new Float32Array([
-              ...paddingMat3(worldTransform.toArray(true)),
-              ...this.generateBuffer(this.shapes[0] as Polyline),
-            ]).buffer,
+            new Float32Array([...paddingMat3(u_ModelMatrix), ...buffer]).buffer,
           ),
         );
+        const uniformLegacyObject: Record<string, unknown> = {
+          u_ModelMatrix,
+          ...legacyObject,
+        };
+        this.#program.setUniformsLegacy(uniformLegacyObject);
       }
 
       this.#vertexNumBuffer.setSubData(
@@ -372,15 +379,15 @@ export class SmoothPolyline extends Drawcall {
           0 + offset,
           2 + offset,
           3 + offset,
-          // 4 + offset,
-          // 5 + offset,
-          // 6 + offset,
-          // 4 + offset,
-          // 6 + offset,
-          // 7 + offset,
-          // 4 + offset,
-          // 7 + offset,
-          // 8 + offset,
+          4 + offset,
+          5 + offset,
+          6 + offset,
+          4 + offset,
+          6 + offset,
+          7 + offset,
+          4 + offset,
+          7 + offset,
+          8 + offset,
         );
         offset += 9;
       });
@@ -417,6 +424,7 @@ export class SmoothPolyline extends Drawcall {
       });
     }
 
+    this.#program.setUniformsLegacy(uniformLegacyObject);
     renderPass.setPipeline(this.#pipeline);
     renderPass.setVertexInput(this.#inputLayout, buffers, {
       buffer: this.#indexBuffer,
@@ -442,7 +450,7 @@ export class SmoothPolyline extends Drawcall {
     }
   }
 
-  private generateBuffer(shape: Polyline) {
+  private generateBuffer(shape: Polyline): [number[], Record<string, unknown>] {
     const {
       strokeRGB: { r: sr, g: sg, b: sb, opacity: so },
       strokeWidth,
@@ -451,19 +459,22 @@ export class SmoothPolyline extends Drawcall {
       strokeOpacity,
     } = shape;
 
-    return [
-      sr / 255,
-      sg / 255,
-      sb / 255,
-      so,
+    const u_StrokeColor = [sr / 255, sg / 255, sb / 255, so];
+    const u_ZIndexStrokeWidth = [
       shape.globalRenderOrder / ZINDEX_FACTOR,
       strokeWidth,
       0,
       0,
-      opacity,
-      fillOpacity,
-      strokeOpacity,
-      0,
+    ];
+    const u_Opacity = [opacity, fillOpacity, strokeOpacity, 0];
+
+    return [
+      [...u_StrokeColor, ...u_ZIndexStrokeWidth, ...u_Opacity],
+      {
+        u_StrokeColor,
+        u_ZIndexStrokeWidth,
+        u_Opacity,
+      },
     ];
   }
 }

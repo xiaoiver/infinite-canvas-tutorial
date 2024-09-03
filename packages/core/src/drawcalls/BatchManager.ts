@@ -1,6 +1,6 @@
 import { Buffer, Device, RenderPass } from '@antv/g-device-api';
-import { Drawcall, SDF, ShadowRect } from '.';
-import { Circle, Ellipse, Rect, type Shape } from '../shapes';
+import { Drawcall, SDF, ShadowRect, SmoothPolyline } from '.';
+import { Circle, Ellipse, Polyline, Rect, type Shape } from '../shapes';
 import { RenderCache } from '../utils/render-cache';
 
 /**
@@ -16,6 +16,7 @@ const SHAPE_DRAWCALL_CTORS = new WeakMap<typeof Shape, (typeof Drawcall)[]>();
 SHAPE_DRAWCALL_CTORS.set(Circle, [SDF]);
 SHAPE_DRAWCALL_CTORS.set(Ellipse, [SDF]);
 SHAPE_DRAWCALL_CTORS.set(Rect, [ShadowRect, SDF]);
+SHAPE_DRAWCALL_CTORS.set(Polyline, [SmoothPolyline]);
 
 export class BatchManager {
   /**

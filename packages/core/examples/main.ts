@@ -1,6 +1,4 @@
-import { Canvas, Circle, Rect } from '../src';
-import { ImageLoader } from '@loaders.gl/images';
-import { load } from '@loaders.gl/core';
+import { Canvas, Polyline } from '../src';
 
 const $canvas = document.getElementById('canvas') as HTMLCanvasElement;
 const resize = (width: number, height: number) => {
@@ -23,41 +21,19 @@ const canvas = await new Canvas({
   //   'https://unpkg.com/@antv/g-device-api@1.6.8/dist/pkg/glsl_wgsl_compiler_bg.wasm',
 }).initialized;
 
-const origin = new Rect({
-  x: 50,
-  y: 50,
-  width: 100,
-  height: 100,
-  fill: 'green',
+const polyline = new Polyline({
+  points: [
+    [100, 100],
+    [200, 200],
+  ],
+  stroke: '#F67676',
+  strokeWidth: 20,
+  cullable: false,
+  batchable: false,
 });
-canvas.appendChild(origin);
+canvas.appendChild(polyline);
 
-const parent = new Rect({
-  width: 100,
-  height: 100,
-  fill: 'black',
-});
-parent.position = { x: 50, y: 50 };
-canvas.appendChild(parent);
-
-const child = new Rect({
-  width: 50,
-  height: 50,
-  fill: 'red',
-});
-child.position = { x: 50, y: 50 };
-parent.appendChild(child);
-
-parent.position.x += 50;
-parent.position.y += 50;
-canvas.render();
-
-parent.pivot = { x: 50, y: 50 };
-parent.rotation = Math.PI / 4;
-parent.scale.x = 0.5;
-parent.scale.y = 0.5;
-
-canvas.render();
+// canvas.render();
 
 // const image = (await load(
 //   // 'https://infinitecanvas.cc/canvas.png',
@@ -153,11 +129,11 @@ canvas.render();
 //   circle3.stroke = 'black';
 // });
 
-// const animate = () => {
-//   canvas.render();
-//   requestAnimationFrame(animate);
-// };
-// animate();
+const animate = () => {
+  canvas.render();
+  requestAnimationFrame(animate);
+};
+animate();
 
 // canvas.destroy();
 

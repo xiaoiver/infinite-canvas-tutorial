@@ -1,4 +1,4 @@
-import { Canvas, Polyline } from '../src';
+import { Canvas, Polyline, Circle } from '../src';
 
 const $canvas = document.getElementById('canvas') as HTMLCanvasElement;
 const resize = (width: number, height: number) => {
@@ -19,6 +19,16 @@ const canvas = await new Canvas({
   //   'https://unpkg.com/@antv/g-device-api@1.6.8/dist/pkg/glsl_wgsl_compiler_bg.wasm',
 }).initialized;
 
+// const c = new Circle({
+//   cx: 100,
+//   cy: 100,
+//   r: 10,
+//   fill: 'red',
+//   cullable: false,
+//   batchable: false,
+// });
+// canvas.appendChild(c);
+
 const polyline = new Polyline({
   points: [
     [100, 100],
@@ -27,14 +37,15 @@ const polyline = new Polyline({
   stroke: '#F67676',
   strokeWidth: 20,
   cullable: false,
+  batchable: false,
 });
 canvas.appendChild(polyline);
-polyline.addEventListener('pointerenter', () => {
-  polyline.stroke = 'green';
-});
-polyline.addEventListener('pointerleave', () => {
-  polyline.stroke = '#F67676';
-});
+// polyline.addEventListener('pointerenter', () => {
+//   polyline.stroke = 'green';
+// });
+// polyline.addEventListener('pointerleave', () => {
+//   polyline.stroke = '#F67676';
+// });
 
 const animate = () => {
   canvas.render();

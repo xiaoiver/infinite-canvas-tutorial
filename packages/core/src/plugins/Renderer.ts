@@ -125,7 +125,7 @@ export class Renderer implements Plugin {
         deviceContribution = new WebGLDeviceContribution({
           targets: ['webgl2', 'webgl1'],
           antialias: true,
-          shaderDebug: false,
+          shaderDebug: true,
           trackResources: false,
           onContextCreationError: () => {},
           onContextLost: () => {},

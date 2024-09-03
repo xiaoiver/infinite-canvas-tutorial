@@ -110,7 +110,7 @@ const computeCount = isEndpoints
 相比在 CPU 中构建，它的优点包括：
 
 -   只需要一个 Drawcall 绘制 `strokeLinecap` `strokeLineJoin` 和中间线段
--   顶点固定为 9 个，其中
+-   顶点固定为 9 个，其中 1234 号顶点组成的两个三角形用来绘制线段部分，56789 号顶点组成的三个三角形用来绘制接头部分
 -   当 `strokeLinecap` `strokeLinejoin` 取值为 `round` 时更平滑，原因是在 Fragment Shader 中使用了类似 SDF 绘制圆的方法
 -   良好的反走样效果
 
