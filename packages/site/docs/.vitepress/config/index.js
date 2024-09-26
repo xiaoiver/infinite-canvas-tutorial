@@ -2,6 +2,7 @@ import { defineConfig } from 'vitepress';
 import { genjiAttrs } from 'genji-theme-vitepress/config';
 import config from 'genji-theme-vitepress/config';
 import implicitFigures from 'markdown-it-implicit-figures';
+import { RssPlugin } from 'vitepress-plugin-rss';
 import { shared } from './shared';
 import { en } from './en';
 import { zh } from './zh';
@@ -42,5 +43,10 @@ export default defineConfig({
     ssr: {
       noExternal: ["@antv/g-device-api"]
     },
+    plugins: [RssPlugin({
+      title: 'An infinite canvas tutorial',
+      baseUrl: 'https://infinitecanvas.cc',
+      copyright: 'Copyright (c) 2024-present xiaoiver',
+    })]
   }
 });

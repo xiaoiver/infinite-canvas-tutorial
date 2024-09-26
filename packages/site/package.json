@@ -43,6 +43,7 @@
   "devDependencies": {
     "vue": "^3.0.0",
     "vitepress": "^1.0.1",
+    "vitepress-plugin-rss": "^0.2.10",
     "genji-theme-vitepress": "^0.2.1",
     "markdown-it-implicit-figures": "latest",
     "markdown-it-mathjax3": "latest",

@@ -651,7 +651,7 @@ Let's start with the difference between `opacity` `stroke-opacity` and `fill-opa
   <circle cx="150" cy="50" r="40" fill="red" stroke="black" stroke-width="20" fill-opacity="0.5" stroke-opacity="0.5" />
 </svg>
 
-The corresponding Stroke position in Figma is `Center`, and other options include `Inside` and `Outside`, each of which is shown below. In SVG, this is called `stroke-alignment`, but it is currently in draft form, see [Specifying stroke alignment].
+The corresponding Stroke position in Figma is `Center`, and other options include `Inside` and `Outside`, each of which is shown below. In SVG, this is called `stroke-alignment`, but it is currently in draft form, see [Specifying stroke alignment]. Pixi.js also provide [PIXI.LineStyle alignment] in WebGL mode.
 
 ![Stroke align in Figma](/figma-stroke-align.png)
 

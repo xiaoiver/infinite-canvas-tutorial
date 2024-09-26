@@ -50,9 +50,9 @@ const line = new Polyline({
 
 ## 构建 Mesh {#construct-mesh}
 
-下图来自 Pixi.js 在 WebGL meetup 上的分享：[How 2 draw lines in WebGL]。既然原生方法不可用，还是只能回到构建 Mesh 的传统绘制方案。
+下图来自 Pixi.js 在 WebGL meetup 上的分享：[How 2 draw lines in WebGL]，本文会大量引用其中的截图，我会把 PPT 中的页数标注上。既然原生方法不可用，还是只能回到构建 Mesh 的传统绘制方案。
 
-![How to draw line in WebGL](/how-to-draw-line-in-webgl.png)
+![How to draw line in WebGL - page 5](/how-to-draw-line-in-webgl.png)
 
 常用的做法是沿线段法线方向进行拉伸后三角化。下图来自 [Drawing Antialiased Lines with OpenGL]，线段两个端点分别沿红色虚线法向向两侧拉伸，形成 4 个顶点，三角化成 2 个三角形，这样 `strokeWidth` 就可以是任意值了。
 
@@ -114,7 +114,7 @@ const computeCount = isEndpoints
 -   当 `strokeLinecap` `strokeLinejoin` 取值为 `round` 时更平滑，原因是在 Fragment Shader 中使用了类似 SDF 绘制圆的方法
 -   良好的反走样效果
 
-![pack joints into instances](/pack-joints-into-instances.png)
+![pack joints into instances - page 15](/pack-joints-into-instances.png)
 
 ```glsl
 layout(location = ${Location.PREV}) in vec2 a_Prev;
@@ -127,6 +127,127 @@ layout(location = ${Location.VERTEX_NUM}) in float a_VertexNum;
 
 后续其他特性也会基于这种方案实现。
 
+值得注意的是存在一个问题：[WebGPU instancing problem]
+
+## 实现分析 {#implementation}
+
+首先来看如何在线段主体与接头处对顶点进行拉伸。
+
+### 构建顶点 {#construct-vertex}
+
+我们先关注 1 ～ 4 号顶点，即线段的主体部分。考虑该线段与前、后相邻线段呈现的夹角，有以下四种形态 `/-\` `\-/` `/-/` 和 `\-\`：
+
+![extrude along line segment - page 16](/line-vertex-shader.png)
+
+在计算单位法线向量前，先将各个顶点的位置转换到模型坐标系下：
+
+```glsl
+vec2 pointA = (model * vec3(a_PointA, 1.0)).xy;
+vec2 pointB = (model * vec3(a_PointB, 1.0)).xy;
+
+vec2 xBasis = pointB - pointA;
+float len = length(xBasis);
+vec2 forward = xBasis / len;
+vec2 norm = vec2(forward.y, -forward.x);
+
+xBasis2 = next - base;
+float len2 = length(xBasis2);
+vec2 norm2 = vec2(xBasis2.y, -xBasis2.x) / len2;
+float D = norm.x * norm2.y - norm.y * norm2.x;
+```
+
+```glsl
+if (abs(D) < 0.01) {
+  pos = dy * norm;
+} else {
+  if (flag < 0.5 && inner < 0.5) {
+    pos = dy * norm;
+  } else {
+    pos = doBisect(norm, len, norm2, len2, dy, inner);
+  }
+}
+```
+
+接头处的角平分线：
+
+```glsl
+vec2 doBisect(
+  vec2 norm, float len, vec2 norm2, float len2, float dy, float inner
+) {
+  vec2 bisect = (norm + norm2) / 2.0;
+  bisect /= dot(norm, bisect);
+  vec2 shift = dy * bisect;
+  if (inner > 0.5) {
+    if (len < len2) {
+      if (abs(dy * (bisect.x * norm.y - bisect.y * norm.x)) > len) {
+        return dy * norm;
+      }
+    } else {
+      if (abs(dy * (bisect.x * norm2.y - bisect.y * norm2.x)) > len2) {
+        return dy * norm;
+      }
+    }
+  }
+  return dy * bisect;
+}
+```
+
+接下来关注接头处的 5 ~ 9 号顶点：
+
+![extrude along line segment - page 16](/line-vertex-shader2.png)
+
+### 反走样 {#anti-aliasing}
+
+最后我们来看如何对线段边缘进行反走样。之前我们介绍过 [SDF 中的反走样]，这里使用类似思路：
+
+1. 在 Vertex Shader 中计算顶点到线段的垂直单位向量，通过 `varying` 传递给 Fragment Shader 完成自动插值
+2. 插值后的向量不再是单位向量了，计算它的长度就是当前像素点到线段的垂直距离，在 `[0, 1]` 范围内
+3. 利用这个值计算像素点最终的透明度，完成反走样。`smoothstep` 发生在线段边缘，即 `[linewidth - feather, linewidth + feather]` 的区间内。下图来自：[Drawing Antialiased Lines with OpenGL]，具体计算逻辑稍后会详细介绍。
+
+![feather](https://miro.medium.com/v2/resize:fit:818/format:webp/0*EV5FGcUOHAbFFPjy.jpg)
+
+这个 "feather" 取多少合适呢？在之前的 [绘制矩形外阴影] 中，我们在矩形原有尺寸上外扩了 `3 * dropShadowBlurRadius`。下图依然来自 [How 2 draw lines in WebGL]，向外扩展一个像素（从 `w` -> `w+1`）即可。在另一侧的两个顶点（#3 和 #4 号顶点）距离为负：
+
+```glsl
+const float expand = 1.0;
+lineWidth *= 0.5;
+
+float dy = lineWidth + expand; // w + 1
+if (vertexNum >= 1.5) { // Vertex #3 & #4
+  dy = -dy; // -w - 1
+}
+```
+
+从下右图还可以看出，当我们放大来看 Fragment Shader 中的每一个像素，利用这个有向距离 `d` 就可以计算出线段和当前像素的覆盖度（下图三角形的面积），实现反走样效果。
+
+![extend 1 pixel outside](/line-segment-antialias.png)
+
+那么如何利用这个距离计算覆盖度呢？这里需要分成线段主体和接头情况。
+
+首先来看线段主体的情况，它还可以进一步简化成垂直线段的情况，原作者也提供了考虑旋转的计算方式，与简化的估算版本相差不大。利用 `clamp` 计算单边的覆盖度，另外考虑非常小的线宽情况，将右侧减去左侧得到最终的覆盖度，当作最终颜色的透明度系数。
+
+![calculate coverage according to signed distance](/line-segment-antialias2.png)
+
+当然计算线段部分和直线的相交区域是最简单的情况。接头和端点处的处理会非常复杂，以 Miter 接头为例，依然先忽略旋转仅考虑相邻线段垂直的情况（注意下图右侧的红色方框区域），不同于上面线段仅存在 `d` 这一个有向距离的情况，这里出现了 `d1` 和 `d2` 两个有向距离分别代表接头前后两段线段。同样考虑到一个像素区域内非常细的线，此时覆盖面积就是大小两个正方形的面积差（`a2 * b2 - a1 * b1`）：
+
+![calculate coverage on miter joint](/line-segment-antialias3.png)
+
+Bevel 接头的计算方式大致和 Miter 相同（下图中间情况）。`d3` 代表像素点中心到 "bevel line" 的距离，使用它可以计算下图右侧情况的覆盖度。可以取这两种情况的最小值得到近似计算结果。
+
+![calculate coverage on bevel joint](/line-segment-antialias5.png)
+
+![calculate coverage on bevel joint](/line-segment-antialias4.png)
+
+最后来到圆角接头的情况。需要额外从 Vertex Shader 传递圆心到像素点的距离（类似 SDF 绘制圆）`d3`。
+
+![calculate coverage on round joint](/line-segment-antialias6.png)
+
+![calculate coverage on round joint](/line-segment-antialias7.png)
+
+原作者还提供了精确版本的 `pixelLine` 实现，限于篇幅就不展开了。
+
+### 缩放模式 {#scaling-mode}
+
 ## 虚线 {#dash}
 
 ### 其他图形上的实现 {#dash-on-other-shapes}
@@ -134,6 +255,8 @@ layout(location = ${Location.VERTEX_NUM}) in float a_VertexNum;
 按照 SVG 规范，`stroke-dasharray` 和 `stroke-dashoffset` 这两个属性也可以作用在 Circle / Ellipse / Rect 等其他图形上。因此当这两个属性有合理值时，原本使用 SDF 绘制的描边就得改成使用 Polyline 实现。
 
 ## 绘制 Path {#path}
+
+使用折线绘制会存在这样的问题：[Draw arcs, arcs are not smooth ISSUE]
 
 -   [WebGL 3D Geometry - Lathe]
 -   [Fun with WebGL 2.0 : 027 : Bezier Curves in 3D]
@@ -190,3 +313,7 @@ layout(location = ${Location.VERTEX_NUM}) in float a_VertexNum;
 [WebGL 3D Geometry - Lathe]: https://webglfundamentals.org/webgl/lessons/webgl-3d-geometry-lathe.html
 [Fun with WebGL 2.0 : 027 : Bezier Curves in 3D]: https://www.youtube.com/watch?v=s3k8Od9lZBE
 [p5js - bezier()]: https://p5js.org/reference/p5/bezier/
+[SDF 中的反走样]: /zh/guide/lesson-002#antialiasing
+[绘制矩形外阴影]: /zh/guide/lesson-009#drop-shadow
+[WebGPU instancing problem]: https://github.com/pixijs/pixijs/issues/7511#issuecomment-2247464973
+[Draw arcs, arcs are not smooth ISSUE]: https://github.com/pixijs/graphics-smooth/issues/23

@@ -78,6 +78,42 @@ export interface IRenderable {
   strokeAlignment: 'center' | 'inner' | 'outer';
 
   /**
+   * The stroke-linecap attribute is a presentation attribute defining the shape to be used at the end of open subpaths when they are stroked.
+   *
+   * @see https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/stroke-linecap
+   */
+  strokeLinecap: CanvasLineCap;
+
+  /**
+   * The stroke-linejoin attribute is a presentation attribute defining the shape to be used at the corners of paths when they are stroked.
+   *
+   * @see https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/stroke-linejoin
+   */
+  strokeLinejoin: CanvasLineJoin;
+
+  /**
+   * The stroke-miterlimit attribute is a presentation attribute defining a limit on the ratio of the miter length to the stroke-width used to draw a miter join.
+   * When the limit is exceeded, the join is converted from a miter to a bevel.
+   *
+   * @see https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/stroke-miterlimit
+   */
+  strokeMiterlimit: number;
+
+  /**
+   * The stroke-dasharray attribute is a presentation attribute defining the pattern of dashes and gaps used to paint the outline of the shape;
+   *
+   * @see https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/stroke-dasharray
+   */
+  strokeDasharray: number[];
+
+  /**
+   * The stroke-dashoffset attribute is a presentation attribute defining an offset on the rendering of the associated dash array.
+   *
+   * @see https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/stroke-dashoffset
+   */
+  strokeDashoffset: number;
+
+  /**
    * It specifies the transparency of an object or of a group of objects,
    * that is, the degree to which the background behind the element is overlaid.
    * @see https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/opacity
@@ -171,6 +207,11 @@ export function Renderable<TBase extends GConstructor>(Base: TBase) {
     #strokeRGB: d3.RGBColor;
     #strokeWidth: number;
     #strokeAlignment: 'center' | 'inner' | 'outer';
+    #strokeLinecap: CanvasLineCap;
+    #strokeLinejoin: CanvasLineJoin;
+    #strokeMiterlimit: number;
+    #strokeDasharray: number[];
+    #strokeDashoffset: number;
     #opacity: number;
     #fillOpacity: number;
     #strokeOpacity: number;
@@ -195,6 +236,11 @@ export function Renderable<TBase extends GConstructor>(Base: TBase) {
           | 'visible'
           | 'strokeWidth'
           | 'strokeAlignment'
+          | 'strokeLinecap'
+          | 'strokeLinejoin'
+          | 'strokeMiterlimit'
+          | 'strokeDasharray'
+          | 'strokeDashoffset'
           | 'innerShadowColor'
           | 'innerShadowOffsetX'
           | 'innerShadowOffsetY'
@@ -213,6 +259,11 @@ export function Renderable<TBase extends GConstructor>(Base: TBase) {
         stroke,
         strokeWidth,
         strokeAlignment,
+        strokeLinecap,
+        strokeLinejoin,
+        strokeMiterlimit,
+        strokeDasharray,
+        strokeDashoffset,
         opacity,
         fillOpacity,
         strokeOpacity,
@@ -230,6 +281,11 @@ export function Renderable<TBase extends GConstructor>(Base: TBase) {
       this.stroke = stroke ?? 'black';
       this.strokeWidth = strokeWidth ?? 0;
       this.strokeAlignment = strokeAlignment ?? 'center';
+      this.strokeLinecap = strokeLinecap ?? 'butt';
+      this.strokeLinejoin = strokeLinejoin ?? 'miter';
+      this.strokeMiterlimit = strokeMiterlimit ?? 5;
+      this.strokeDasharray = strokeDasharray ?? [];
+      this.strokeDashoffset = strokeDashoffset ?? 0;
       this.opacity = opacity ?? 1;
       this.fillOpacity = fillOpacity ?? 1;
       this.strokeOpacity = strokeOpacity ?? 1;
@@ -295,6 +351,61 @@ export function Renderable<TBase extends GConstructor>(Base: TBase) {
     set strokeAlignment(strokeAlignment: 'center' | 'inner' | 'outer') {
       if (this.#strokeAlignment !== strokeAlignment) {
         this.#strokeAlignment = strokeAlignment;
+        this.renderDirtyFlag = true;
+      }
+    }
+
+    get strokeLinecap() {
+      return this.#strokeLinecap;
+    }
+    set strokeLinecap(strokeLinecap: CanvasLineCap) {
+      if (this.#strokeLinecap !== strokeLinecap) {
+        this.#strokeLinecap = strokeLinecap;
+        this.renderDirtyFlag = true;
+      }
+    }
+
+    get strokeLinejoin() {
+      return this.#strokeLinejoin;
+    }
+    set strokeLinejoin(strokeLinejoin: CanvasLineJoin) {
+      if (this.#strokeLinejoin !== strokeLinejoin) {
+        this.#strokeLinejoin = strokeLinejoin;
+        this.renderDirtyFlag = true;
+      }
+    }
+
+    get strokeMiterlimit() {
+      return this.#strokeMiterlimit;
+    }
+    set strokeMiterlimit(strokeMiterlimit: number) {
+      if (this.#strokeMiterlimit !== strokeMiterlimit) {
+        this.#strokeMiterlimit = strokeMiterlimit;
+        this.renderDirtyFlag = true;
+      }
+    }
+
+    get strokeDasharray() {
+      return this.#strokeDasharray;
+    }
+    set strokeDasharray(strokeDasharray: number[]) {
+      if (
+        !this.#strokeDasharray ||
+        !this.#strokeDasharray.every(
+          (dash, index) => dash === strokeDasharray[index],
+        )
+      ) {
+        this.#strokeDasharray = strokeDasharray;
+        this.renderDirtyFlag = true;
+      }
+    }
+
+    get strokeDashoffset() {
+      return this.#strokeDashoffset;
+    }
+    set strokeDashoffset(strokeDashoffset: number) {
+      if (this.#strokeDashoffset !== strokeDashoffset) {
+        this.#strokeDashoffset = strokeDashoffset;
         this.renderDirtyFlag = true;
       }
     }

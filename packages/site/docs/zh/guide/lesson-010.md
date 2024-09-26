@@ -655,7 +655,7 @@ export class RenderCache {
   <circle cx="150" cy="50" r="40" fill="red" stroke="black" stroke-width="20" fill-opacity="0.5" stroke-opacity="0.5" />
 </svg>
 
-在 Figma 中对应的 Stroke 位置的取值为 `Center`，其他可选值包括 `Inside` 和 `Outside`，下图分别展示了这三种取值的效果。在 SVG 中名为 `stroke-alignment`，但目前停留在草案阶段，详见 [Specifying stroke alignment]。
+在 Figma 中对应的 Stroke 位置的取值为 `Center`，其他可选值包括 `Inside` 和 `Outside`，下图分别展示了这三种取值的效果。在 SVG 中名为 `stroke-alignment`，但目前停留在草案阶段，详见 [Specifying stroke alignment]。Pixi.js 也支持 [PIXI.LineStyle alignment]，虽然仅在 WebGL 模式下。
 
 ![Stroke align in Figma](/figma-stroke-align.png)
 
@@ -848,3 +848,4 @@ function strokeOffset(
 [ImageBitmapRenderingContext]: https://developer.mozilla.org/en-US/docs/Web/API/ImageBitmapRenderingContext
 [@pixi-essentials/svg]: https://github.com/ShukantPal/pixi-essentials/tree/master/packages/svg
 [Vector rendering of SVG content with PixiJS]: https://medium.com/javascript-in-plain-english/vector-rendering-of-svg-content-with-pixijs-6f26c91f09ee
+[PIXI.LineStyle alignment]: https://api.pixijs.io/@pixi/graphics/PIXI/LineStyle.html#alignment
