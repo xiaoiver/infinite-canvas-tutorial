@@ -19,11 +19,18 @@ import {
   FilterMode,
   MipmapFilterMode,
   TransparentBlack,
+  Texture,
+  StencilOp,
 } from '@antv/g-device-api';
 import { Circle, Ellipse, Rect, Shape } from '../shapes';
 import { Drawcall, ZINDEX_FACTOR } from './Drawcall';
 import { vert, frag } from '../shaders/sdf';
-import { isImageBitmapOrCanvases, isString, paddingMat3 } from '../utils';
+import {
+  // isBrowser,
+  // isImageBitmapOrCanvases,
+  isString,
+  paddingMat3,
+} from '../utils';
 
 const strokeAlignmentMap = {
   center: 0,
@@ -41,6 +48,13 @@ export class SDF extends Drawcall {
   #pipeline: RenderPipeline;
   #inputLayout: InputLayout;
   #bindings: Bindings;
+  #texture: Texture;
+
+  get useFillImage() {
+    const { fill } = this.shapes[0];
+    return !isString(fill);
+    // && (isBrowser ? isImageBitmapOrCanvases(fill) : true)
+  }
 
   validate(shape: Shape) {
     const result = super.validate(shape);
@@ -107,6 +121,9 @@ export class SDF extends Drawcall {
     if (this.instanced) {
       defines += '#define USE_INSTANCES\n';
     }
+    if (this.useFillImage) {
+      defines += '#define USE_FILLIMAGE\n';
+    }
 
     if (this.#program) {
       this.#program.destroy();
@@ -116,7 +133,7 @@ export class SDF extends Drawcall {
 
     const diagnosticDerivativeUniformityHeader =
       this.device.queryVendorInfo().platformString === 'WebGPU'
-        ? 'diagnostic(off,derivative_uniformity);'
+        ? 'diagnostic(off,derivative_uniformity);\n'
         : '';
 
     this.#program = this.renderCache.createProgram({
@@ -251,12 +268,19 @@ export class SDF extends Drawcall {
         stencilWrite: false,
         stencilFront: {
           compare: CompareFunction.ALWAYS,
+          passOp: StencilOp.KEEP,
+          failOp: StencilOp.KEEP,
+          depthFailOp: StencilOp.KEEP,
         },
         stencilBack: {
           compare: CompareFunction.ALWAYS,
+          passOp: StencilOp.KEEP,
+          failOp: StencilOp.KEEP,
+          depthFailOp: StencilOp.KEEP,
         },
       },
     });
+    this.device.setResourceName(this.#pipeline, 'SDFPipeline');
 
     const bindings: BindingsDescriptor = {
       pipeline: this.#pipeline,
@@ -267,14 +291,14 @@ export class SDF extends Drawcall {
       ],
     };
     if (!this.instanced) {
-      bindings.uniformBufferBindings.push({
+      bindings.uniformBufferBindings!.push({
         buffer: this.#uniformBuffer,
       });
     }
 
-    const { fill } = this.shapes[0];
     // TODO: Canvas Gradient
-    if (!isString(fill) && isImageBitmapOrCanvases(fill)) {
+    if (this.useFillImage) {
+      const fill = this.shapes[0].fill as ImageBitmap;
       const texture = this.device.createTexture({
         format: Format.U8_RGBA_NORM,
         width: fill.width,
@@ -282,6 +306,7 @@ export class SDF extends Drawcall {
         usage: TextureUsage.SAMPLED,
       });
       texture.setImageData([fill]);
+      this.#texture = texture;
       const sampler = this.renderCache.createSampler({
         addressModeU: AddressMode.CLAMP_TO_EDGE,
         addressModeV: AddressMode.CLAMP_TO_EDGE,
@@ -302,7 +327,7 @@ export class SDF extends Drawcall {
     this.#bindings = this.renderCache.createBindings(bindings);
   }
 
-  render(renderPass: RenderPass) {
+  render(renderPass: RenderPass, uniformLegacyObject: Record<string, unknown>) {
     if (
       this.shapes.some((shape) => shape.renderDirtyFlag) ||
       this.geometryDirty
@@ -328,7 +353,8 @@ export class SDF extends Drawcall {
 
         const instancedData: number[] = [];
         this.shapes.forEach((shape) => {
-          instancedData.push(...this.generateBuffer(shape));
+          const [buffer] = this.generateBuffer(shape);
+          instancedData.push(...buffer);
         });
         this.#instancedBuffer.setSubData(
           0,
@@ -336,15 +362,22 @@ export class SDF extends Drawcall {
         );
       } else {
         const { worldTransform } = this.shapes[0];
+        const [buffer, legacyObject] = this.generateBuffer(this.shapes[0]);
+        const u_ModelMatrix = worldTransform.toArray(true);
         this.#uniformBuffer.setSubData(
           0,
           new Uint8Array(
-            new Float32Array([
-              ...paddingMat3(worldTransform.toArray(true)),
-              ...this.generateBuffer(this.shapes[0]),
-            ]).buffer,
+            new Float32Array([...paddingMat3(u_ModelMatrix), ...buffer]).buffer,
           ),
         );
+        const uniformLegacyObject: Record<string, unknown> = {
+          u_ModelMatrix,
+          ...legacyObject,
+        };
+        if (this.useFillImage) {
+          uniformLegacyObject.u_FillImage = this.#texture;
+        }
+        this.#program.setUniformsLegacy(uniformLegacyObject);
       }
     }
 
@@ -362,6 +395,7 @@ export class SDF extends Drawcall {
       );
     }
 
+    this.#program.setUniformsLegacy(uniformLegacyObject);
     renderPass.setPipeline(this.#pipeline);
     renderPass.setVertexInput(this.#inputLayout, buffers, {
       buffer: this.#indexBuffer,
@@ -372,19 +406,16 @@ export class SDF extends Drawcall {
 
   destroy(): void {
     if (this.#program) {
-      this.#program.destroy();
       this.#instancedMatrixBuffer?.destroy();
       this.#instancedBuffer?.destroy();
       this.#fragUnitBuffer?.destroy();
       this.#indexBuffer?.destroy();
       this.#uniformBuffer?.destroy();
-      this.#pipeline?.destroy();
-      this.#inputLayout?.destroy();
-      this.#bindings?.destroy();
+      this.#texture?.destroy();
     }
   }
 
-  private generateBuffer(shape: Shape) {
+  private generateBuffer(shape: Shape): [number[], Record<string, unknown>] {
     const {
       fillRGB,
       strokeRGB: { r: sr, g: sg, b: sb, opacity: so },
@@ -399,8 +430,8 @@ export class SDF extends Drawcall {
       innerShadowBlurRadius,
     } = shape;
 
-    let size: [number, number, number, number];
-    let type: number;
+    let size: [number, number, number, number] = [0, 0, 0, 0];
+    let type: number = 0;
     let cornerRadius = 0;
     if (shape instanceof Circle) {
       const { cx, cy, r } = shape;
@@ -419,32 +450,43 @@ export class SDF extends Drawcall {
 
     const { r: fr, g: fg, b: fb, opacity: fo } = fillRGB || {};
 
-    return [
-      ...size,
-      fr / 255,
-      fg / 255,
-      fb / 255,
-      fo,
-      sr / 255,
-      sg / 255,
-      sb / 255,
-      so,
+    const u_PositionSize = size;
+    const u_FillColor = [fr / 255, fg / 255, fb / 255, fo];
+    const u_StrokeColor = [sr / 255, sg / 255, sb / 255, so];
+    const u_ZIndexStrokeWidth = [
       shape.globalRenderOrder / ZINDEX_FACTOR,
       strokeWidth,
       cornerRadius,
       strokeAlignmentMap[strokeAlignment],
-      opacity,
-      fillOpacity,
-      strokeOpacity,
-      type,
-      isr / 255,
-      isg / 255,
-      isb / 255,
-      iso,
+    ];
+    const u_Opacity = [opacity, fillOpacity, strokeOpacity, type];
+    const u_InnerShadowColor = [isr / 255, isg / 255, isb / 255, iso];
+    const u_InnerShadow = [
       innerShadowOffsetX,
       innerShadowOffsetY,
       innerShadowBlurRadius,
       fillRGB ? 0 : 1,
+    ];
+
+    return [
+      [
+        ...u_PositionSize,
+        ...u_FillColor,
+        ...u_StrokeColor,
+        ...u_ZIndexStrokeWidth,
+        ...u_Opacity,
+        ...u_InnerShadowColor,
+        ...u_InnerShadow,
+      ],
+      {
+        u_PositionSize,
+        u_FillColor,
+        u_StrokeColor,
+        u_ZIndexStrokeWidth,
+        u_Opacity,
+        u_InnerShadowColor,
+        u_InnerShadow,
+      },
     ];
   }
 }

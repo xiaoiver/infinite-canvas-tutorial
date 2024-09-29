@@ -4,6 +4,89 @@ outline: deep
 
 # 课程 12 - 折线
 
+让我们继续添加基础图形。在这节课中你将学习到以下内容：
+
+-   为什么不直接使用 `gl.LINES`?
+-   在 CPU 或者 Shader 中构建 Mesh
+-   分析 Shader 细节，包括拉伸顶点、接头、反走样、虚线等
+-   如何绘制 Path？
+
+```js eval code=false
+$icCanvas = call(() => {
+    return document.createElement('ic-canvas-lesson12');
+});
+```
+
+```js eval code=false inspector=false
+call(() => {
+    const { Canvas, Polyline } = Lesson12;
+
+    const stats = new Stats();
+    stats.showPanel(0);
+    const $stats = stats.dom;
+    $stats.style.position = 'absolute';
+    $stats.style.left = '0px';
+    $stats.style.top = '0px';
+
+    $icCanvas.parentElement.style.position = 'relative';
+    $icCanvas.parentElement.appendChild($stats);
+
+    $icCanvas.addEventListener('ic-ready', (e) => {
+        const canvas = e.detail;
+
+        const polyline1 = new Polyline({
+            points: [
+                [100, 100],
+                [100, 200],
+                [200, 100],
+            ],
+            stroke: 'red',
+            strokeWidth: 20,
+            strokeAlignment: 'outer',
+            cullable: false,
+            batchable: false,
+        });
+        canvas.appendChild(polyline1);
+
+        // const polyline2 = new Polyline({
+        //     points: [
+        //         [220, 100],
+        //         [220, 200],
+        //         [320, 200],
+        //         [320, 100],
+        //     ],
+        //     stroke: 'red',
+        //     strokeWidth: 20,
+        //     strokeLinecap: 'round',
+        //     strokeLinejoin: 'round',
+        //     // strokeAlignment: 'center',
+        //     cullable: false,
+        //     batchable: false,
+        // });
+        // canvas.appendChild(polyline2);
+
+        // const polyline3 = new Polyline({
+        //     points: [
+        //         [360, 100],
+        //         [360, 200],
+        //         [460, 200],
+        //         [460, 100],
+        //     ],
+        //     stroke: 'red',
+        //     strokeWidth: 20,
+        //     strokeAlignment: 'inner',
+        //     cullable: false,
+        //     batchable: false,
+        // });
+        // canvas.appendChild(polyline3);
+    });
+
+    $icCanvas.addEventListener('ic-frame', (e) => {
+        stats.update();
+    });
+});
+```
+
 ## gl.LINES 的局限性 {#limitation-of-gl-lines}
 
 WebGL 原生提供的 `gl.LINES` 和 `gl.LINE_STRIP` 在实际场景中往往并不好用：
@@ -129,7 +212,7 @@ layout(location = ${Location.VERTEX_NUM}) in float a_VertexNum;
 
 值得注意的是存在一个问题：[WebGPU instancing problem]
 
-## 实现分析 {#implementation}
+## Shader 实现分析 {#shader-implementation}
 
 首先来看如何在线段主体与接头处对顶点进行拉伸。
 
@@ -246,11 +329,98 @@ Bevel 接头的计算方式大致和 Miter 相同（下图中间情况）。`d3`
 
 原作者还提供了精确版本的 `pixelLine` 实现，限于篇幅就不展开了。
 
-### 缩放模式 {#scaling-mode}
+### 支持 stroke-alignment {#stroke-alignment}
 
-## 虚线 {#dash}
+之前我们在使用 SDF 绘制的 Circle、Ellipse、Rect 上实现了：[增强 SVG: Stroke alignment]。现在让我们为折线也加上这个属性。
 
-### 其他图形上的实现 {#dash-on-other-shapes}
+![stroke-alignment - p27](/line-stroke-alignment.png)
+
+将这个属性反映到沿法线拉伸的偏移量上，如果 `strokeAlignment` 取值为 `center` 时偏移量为 `0`：
+
+```glsl
+float shift = strokeWidth * strokeAlignment;
+pointA += norm * shift;
+pointB += norm * shift;
+```
+
+从左往右依次是 `outer` `center` 和 `inner` 的效果：
+
+```js eval code=false
+$icCanvas2 = call(() => {
+    return document.createElement('ic-canvas-lesson12');
+});
+```
+
+```js eval code=false inspector=false
+call(() => {
+    const { Canvas, Polyline } = Lesson12;
+
+    const stats = new Stats();
+    stats.showPanel(0);
+    const $stats = stats.dom;
+    $stats.style.position = 'absolute';
+    $stats.style.left = '0px';
+    $stats.style.top = '0px';
+
+    $icCanvas2.parentElement.style.position = 'relative';
+    $icCanvas2.parentElement.appendChild($stats);
+
+    $icCanvas2.addEventListener('ic-ready', (e) => {
+        const canvas = e.detail;
+
+        const polyline1 = new Polyline({
+            points: [
+                [100, 100],
+                [100, 200],
+                [200, 200],
+                [200, 100],
+            ],
+            stroke: 'red',
+            strokeWidth: 20,
+            strokeAlignment: 'outer',
+            cullable: false,
+            batchable: false,
+        });
+        canvas.appendChild(polyline1);
+
+        const polyline2 = new Polyline({
+            points: [
+                [220, 100],
+                [220, 200],
+                [320, 200],
+                [320, 100],
+            ],
+            stroke: 'red',
+            strokeWidth: 20,
+            // strokeAlignment: 'center',
+            cullable: false,
+            batchable: false,
+        });
+        canvas.appendChild(polyline2);
+
+        const polyline3 = new Polyline({
+            points: [
+                [360, 100],
+                [360, 200],
+                [460, 200],
+                [460, 100],
+            ],
+            stroke: 'red',
+            strokeWidth: 20,
+            strokeAlignment: 'inner',
+            cullable: false,
+            batchable: false,
+        });
+        canvas.appendChild(polyline3);
+    });
+
+    $icCanvas2.addEventListener('ic-frame', (e) => {
+        stats.update();
+    });
+});
+```
+
+### 虚线 {#dash}
 
 按照 SVG 规范，`stroke-dasharray` 和 `stroke-dashoffset` 这两个属性也可以作用在 Circle / Ellipse / Rect 等其他图形上。因此当这两个属性有合理值时，原本使用 SDF 绘制的描边就得改成使用 Polyline 实现。
 
@@ -262,6 +432,10 @@ Bevel 接头的计算方式大致和 Miter 相同（下图中间情况）。`d3`
 -   [Fun with WebGL 2.0 : 027 : Bezier Curves in 3D]
 -   [p5js - bezier()]
 
+至于其他的方式例如 SDF
+
+![SDF line](/sdf-line.png)
+
 ## SizeAttenuation {#size-attenuation}
 
 [sizeAttenuation]
@@ -269,14 +443,6 @@ Bevel 接头的计算方式大致和 Miter 相同（下图中间情况）。`d3`
 ## 退化成直线 {#line}
 
 直线并不需要考虑 `strokeLinejoin`，因此简单很多。
-
-## 其他方式 {#other-solution}
-
-下图来自 Pixi.js 在 WebGL meetup 上的分享：[How 2 draw lines in WebGL]。
-
-![SDF line](/sdf-line.png)
-
-### SDF {#sdf}
 
 ## 计算包围盒 {#geometry-bounds}
 
@@ -317,3 +483,4 @@ Bevel 接头的计算方式大致和 Miter 相同（下图中间情况）。`d3`
 [绘制矩形外阴影]: /zh/guide/lesson-009#drop-shadow
 [WebGPU instancing problem]: https://github.com/pixijs/pixijs/issues/7511#issuecomment-2247464973
 [Draw arcs, arcs are not smooth ISSUE]: https://github.com/pixijs/graphics-smooth/issues/23
+[增强 SVG: Stroke alignment]: /zh/guide/lesson-010#stroke-alignment

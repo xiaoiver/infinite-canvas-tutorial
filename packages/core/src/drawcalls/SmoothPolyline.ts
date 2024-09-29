@@ -24,6 +24,11 @@ import { paddingMat3 } from '../utils';
 
 const stridePoints = 2;
 const strideFloats = 3;
+const strokeAlignmentMap = {
+  inner: 0,
+  center: 0.5,
+  outer: 1,
+} as const;
 
 export class SmoothPolyline extends Drawcall {
   #program: Program;
@@ -42,6 +47,9 @@ export class SmoothPolyline extends Drawcall {
   }
 
   createGeometry(): void {
+    // Don't support instanced rendering for now.
+    this.instanced = false;
+
     if (this.#segmentsBuffer) {
       this.#segmentsBuffer.destroy();
     }
@@ -425,14 +433,16 @@ export class SmoothPolyline extends Drawcall {
       opacity,
       fillOpacity,
       strokeOpacity,
+      strokeAlignment,
+      strokeMiterlimit,
     } = shape;
 
     const u_StrokeColor = [sr / 255, sg / 255, sb / 255, so];
     const u_ZIndexStrokeWidth = [
       shape.globalRenderOrder / ZINDEX_FACTOR,
       strokeWidth,
-      0,
-      0,
+      strokeMiterlimit,
+      strokeAlignmentMap[strokeAlignment],
     ];
     const u_Opacity = [opacity, fillOpacity, strokeOpacity, 0];
 

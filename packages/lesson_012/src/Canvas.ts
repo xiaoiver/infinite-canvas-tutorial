@@ -24,12 +24,30 @@ import {
   traverse,
 } from './utils';
 import { DataURLOptions } from './ImageExporter';
+import { Cursor } from './events';
 
 export interface CanvasConfig {
-  canvas: HTMLCanvasElement;
+  canvas: HTMLCanvasElement | OffscreenCanvas;
   renderer?: 'webgl' | 'webgpu';
   shaderCompilerPath?: string;
+  /**
+   * Returns the ratio of the resolution in physical pixels to the resolution
+   * in CSS pixels for the current display device.
+   * @see https://developer.mozilla.org/en-US/docs/Web/API/Window/devicePixelRatio
+   */
   devicePixelRatio?: number;
+  /**
+   * Background color of page.
+   */
+  backgroundColor?: string;
+  /**
+   * Color of grid.
+   */
+  gridColor?: string;
+  /**
+   * There is no `style.cursor = 'pointer'` in WebWorker.
+   */
+  setCursor?: (cursor: Cursor | string) => void;
 }
 
 export class Canvas {
@@ -63,9 +81,12 @@ export class Canvas {
       renderer = 'webgl',
       shaderCompilerPath = '',
       devicePixelRatio,
+      backgroundColor,
+      gridColor,
+      setCursor,
     } = config;
     const globalThis = getGlobalThis();
-    const dpr = devicePixelRatio ?? globalThis.devicePixelRatio;
+    const dpr = (devicePixelRatio ?? globalThis.devicePixelRatio) || 1;
     const supportsPointerEvents = !!globalThis.PointerEvent;
     const supportsTouchEvents = 'ontouchstart' in globalThis;
 
@@ -83,8 +104,13 @@ export class Canvas {
       renderer,
       shaderCompilerPath,
       devicePixelRatio: dpr,
+      backgroundColor,
+      gridColor,
       supportsPointerEvents,
       supportsTouchEvents,
+      setCursor:
+        setCursor ??
+        ((cursor) => ((canvas as HTMLCanvasElement).style.cursor = cursor)),
       hooks: {
         init: new SyncHook<[]>(),
         initAsync: new AsyncParallelHook<[]>(),
@@ -102,7 +128,7 @@ export class Canvas {
         pointerMove: new SyncHook<[InteractivePointerEvent]>(),
         pointerOut: new SyncHook<[InteractivePointerEvent]>(),
         pointerOver: new SyncHook<[InteractivePointerEvent]>(),
-        pointerWheel: new SyncHook<[InteractivePointerEvent]>(),
+        pointerWheel: new SyncHook<[WheelEvent]>(),
         pointerCancel: new SyncHook<[InteractivePointerEvent]>(),
         pickSync: new SyncWaterfallHook(),
         cameraChange: new SyncHook<[]>(),
@@ -139,7 +165,7 @@ export class Canvas {
     this.#instancePromise = (async () => {
       const { hooks } = this.#pluginContext;
       plugins.forEach((plugin) => {
-        plugin.apply(this.#pluginContext);
+        plugin?.apply(this.#pluginContext);
       });
       hooks.init.call();
       await hooks.initAsync.promise();
@@ -237,10 +263,12 @@ export class Canvas {
   }
 
   appendChild(shape: Shape) {
+    this.#renderDirtyFlag = true;
     this.#root.appendChild(shape);
   }
 
   removeChild(shape: Shape) {
+    this.#renderDirtyFlag = true;
     return this.#root.removeChild(shape);
   }
 
@@ -323,34 +351,44 @@ export class Canvas {
   }
 
   client2Viewport({ x, y }: IPointData): IPointData {
-    const { left, top } = this.#pluginContext.canvas.getBoundingClientRect();
+    const { left, top } = (
+      this.#pluginContext.canvas as HTMLCanvasElement
+    ).getBoundingClientRect();
     return { x: x - left, y: y - top };
   }
 
   viewport2Client({ x, y }: IPointData): IPointData {
-    const { left, top } = this.#pluginContext.canvas.getBoundingClientRect();
+    const { left, top } = (
+      this.#pluginContext.canvas as HTMLCanvasElement
+    ).getBoundingClientRect();
     return { x: x + left, y: y + top };
   }
 
-  zoomIn() {
+  zoomIn(
+    rAF?: (callback: FrameRequestCallback) => number,
+    cAF?: (handle: number) => void,
+  ) {
     const { camera } = this;
-    camera.cancelLandmarkAnimation();
+    camera.cancelLandmarkAnimation(cAF);
     const landmark = camera.createLandmark({
       viewportX: camera.width / 2,
       viewportY: camera.height / 2,
       zoom: findZoomCeil(camera.zoom),
     });
-    camera.gotoLandmark(landmark, { duration: 300, easing: 'ease' });
+    camera.gotoLandmark(landmark, { duration: 300, easing: 'ease' }, rAF);
   }
 
-  zoomOut() {
+  zoomOut(
+    rAF?: (callback: FrameRequestCallback) => number,
+    cAF?: (handle: number) => void,
+  ) {
     const { camera } = this;
-    camera.cancelLandmarkAnimation();
+    camera.cancelLandmarkAnimation(cAF);
     const landmark = camera.createLandmark({
       viewportX: camera.width / 2,
       viewportY: camera.height / 2,
       zoom: findZoomFloor(camera.zoom),
     });
-    camera.gotoLandmark(landmark, { duration: 300, easing: 'ease' });
+    camera.gotoLandmark(landmark, { duration: 300, easing: 'ease' }, rAF);
   }
 }

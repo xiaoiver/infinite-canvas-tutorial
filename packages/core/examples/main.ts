@@ -30,20 +30,37 @@ const canvas = await new Canvas({
 // });
 // canvas.appendChild(c);
 
-const polyline = new Polyline({
+const polyline1 = new Polyline({
   points: [
     [100, 100],
+    [100, 200],
     [200, 200],
     [200, 100],
   ],
-  stroke: '#F67676',
+  stroke: 'red',
   strokeWidth: 20,
-  // strokeLinejoin: 'round',
-  // strokeLinecap: 'round',
+  // strokeAlignment: 'outer',
+  strokeLinejoin: 'round',
   cullable: false,
   batchable: false,
 });
-canvas.appendChild(polyline);
+canvas.appendChild(polyline1);
+
+const polyline2 = new Polyline({
+  points: [
+    [220, 100],
+    [220, 200],
+    [320, 200],
+    [320, 100],
+  ],
+  stroke: 'green',
+  strokeWidth: 20,
+  strokeLinejoin: 'round',
+  // strokeAlignment: 'center',
+  cullable: false,
+  batchable: false,
+});
+canvas.appendChild(polyline2);
 
 // canvas.render();
 

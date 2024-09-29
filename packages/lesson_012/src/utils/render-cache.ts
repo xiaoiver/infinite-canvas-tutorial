@@ -89,6 +89,9 @@ function renderPipelineDescriptorHash(a: RenderPipelineDescriptor): number {
 
 function bindingsDescriptorHash(a: BindingsDescriptor): number {
   let hash = 0;
+  if (a.pipeline) {
+    hash = hashCodeNumberUpdate(hash, a.pipeline.id);
+  }
   if (a.samplerBindings) {
     for (let i = 0; i < a.samplerBindings.length; i++) {
       const binding = a.samplerBindings[i];

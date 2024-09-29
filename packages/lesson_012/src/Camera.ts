@@ -196,6 +196,7 @@ export class Camera {
       onframe: (t: number) => void;
       onfinish: () => void;
     }> = {},
+    rAF?: (callback: FrameRequestCallback) => number,
   ) {
     const {
       easing = 'linear',
@@ -279,16 +280,16 @@ export class Camera {
         if (onframe) {
           onframe(t);
         }
-        this.#landmarkAnimationID = requestAnimationFrame(animate);
+        this.#landmarkAnimationID = (rAF || requestAnimationFrame)(animate);
       }
     };
 
-    requestAnimationFrame(animate);
+    (rAF || requestAnimationFrame)(animate);
   }
 
-  cancelLandmarkAnimation() {
+  cancelLandmarkAnimation(cAF?: (handle: number) => void) {
     if (this.#landmarkAnimationID !== undefined) {
-      cancelAnimationFrame(this.#landmarkAnimationID);
+      (cAF || cancelAnimationFrame)(this.#landmarkAnimationID);
     }
   }
 

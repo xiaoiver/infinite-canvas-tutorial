@@ -43,6 +43,8 @@ export interface SVGOptions {
 
 export interface ImageExporterOptions {
   canvas: Canvas;
+  document?: Document;
+  xmlserializer?: XMLSerializer;
   defaultFilename?: string;
 }
 
@@ -103,44 +105,50 @@ export class ImageExporter {
     return canvas;
   }
 
-  toSVGDataURL(options: Partial<SVGOptions> = {}) {
+  toSVG(options: Partial<SVGOptions> = {}) {
     const { grid } = options;
-    const { canvas } = this.options;
+    const { canvas, document: doc } = this.options;
     const { width, height } = canvas.getDOM();
 
-    const $namespace = createSVGElement('svg');
+    const $namespace = createSVGElement('svg', doc);
     $namespace.setAttribute('width', `${width}`);
     $namespace.setAttribute('height', `${height}`);
 
     if (grid) {
       if (canvas.checkboardStyle === CheckboardStyle.GRID) {
-        this.drawLinesGrid($namespace);
+        this.drawLinesGrid($namespace, doc);
       } else if (canvas.checkboardStyle === CheckboardStyle.DOTS) {
-        this.drawDotsGrid($namespace);
+        this.drawDotsGrid($namespace, doc);
       }
     }
 
-    $namespace.appendChild(toSVGElement(serializeNode(canvas.root)));
+    $namespace.appendChild(toSVGElement(serializeNode(canvas.root), doc));
+    return $namespace;
+  }
 
-    const svgDocType = document.implementation.createDocumentType(
+  toSVGDataURL(options: Partial<SVGOptions> = {}) {
+    const { document: doc, xmlserializer } = this.options;
+
+    const $namespace = this.toSVG(options);
+    const svgDocType = (doc || document).implementation.createDocumentType(
       'svg',
       '-//W3C//DTD SVG 1.1//EN',
       'http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd',
     );
-    const svgDoc = document.implementation.createDocument(
+    const svgDoc = (doc || document).implementation.createDocument(
       'http://www.w3.org/2000/svg',
       'svg',
       svgDocType,
     );
     svgDoc.replaceChild($namespace, svgDoc.documentElement);
     return `data:image/svg+xml;charset=utf8,${encodeURIComponent(
-      new XMLSerializer().serializeToString(svgDoc),
+      (xmlserializer || new XMLSerializer()).serializeToString(svgDoc),
     )}`;
   }
 
   downloadImage(options: DownloadImageOptions) {
     // retrieve context at runtime
-    const { defaultFilename } = this.options;
+    const { defaultFilename, document: doc } = this.options;
     const { dataURL, name = defaultFilename || 'g' } = options;
     const mimeType = dataURL.substring(
       dataURL.indexOf(':') + 1,
@@ -152,7 +160,7 @@ export class ImageExporter {
     const isSVG = dataURL.startsWith('data:image/svg');
     const fileName = `${name}.${isSVG ? 'svg' : suffix}`;
 
-    const link: HTMLAnchorElement = document.createElement('a');
+    const link: HTMLAnchorElement = (doc || document).createElement('a');
 
     if (isSVG) {
       link.addEventListener('click', () => {
@@ -194,7 +202,7 @@ export class ImageExporter {
     if (link.click) {
       link.click();
     } else {
-      const e = document.createEvent('MouseEvents');
+      const e = (doc || document).createEvent('MouseEvents');
       e.initEvent('click', false, false);
       link.dispatchEvent(e);
     }
@@ -216,33 +224,33 @@ export class ImageExporter {
     });
   }
 
-  private drawLinesGrid($namespace: SVGElement) {
-    const $defs = createSVGElement('defs');
+  private drawLinesGrid($namespace: SVGElement, doc?: Document) {
+    const $defs = createSVGElement('defs', doc);
     $namespace.appendChild($defs);
-    const $pattern = createSVGElement('pattern');
+    const $pattern = createSVGElement('pattern', doc);
     $pattern.setAttribute('id', 'small-grid');
     $pattern.setAttribute('width', '10');
     $pattern.setAttribute('height', '10');
     $pattern.setAttribute('patternUnits', 'userSpaceOnUse');
-    const $path = createSVGElement('path');
+    const $path = createSVGElement('path', doc);
     $path.setAttribute('d', 'M 10 0 L 0 0 0 10');
     $path.setAttribute('fill', 'none');
     $path.setAttribute('stroke', 'rgba(221,221,221,1)');
     $path.setAttribute('stroke-width', '1');
     $pattern.appendChild($path);
 
-    const $pattern2 = createSVGElement('pattern');
+    const $pattern2 = createSVGElement('pattern', doc);
     $pattern2.setAttribute('id', 'grid');
     $pattern2.setAttribute('width', '100');
     $pattern2.setAttribute('height', '100');
     $pattern2.setAttribute('patternUnits', 'userSpaceOnUse');
-    const $rect = createSVGElement('rect');
+    const $rect = createSVGElement('rect', doc);
     $rect.setAttribute('width', '100');
     $rect.setAttribute('height', '100');
     $rect.setAttribute('fill', 'url(#small-grid)');
     $pattern2.appendChild($rect);
 
-    const $path2 = createSVGElement('path');
+    const $path2 = createSVGElement('path', doc);
     $path2.setAttribute('d', 'M 100 0 L 0 0 0 100');
     $path2.setAttribute('fill', 'none');
     $path2.setAttribute('stroke', 'rgba(221,221,221,1)');
@@ -252,17 +260,17 @@ export class ImageExporter {
     $defs.appendChild($pattern);
     $defs.appendChild($pattern2);
 
-    const $rect2 = createSVGElement('rect');
+    const $rect2 = createSVGElement('rect', doc);
     $rect2.setAttribute('width', '100%');
     $rect2.setAttribute('height', '100%');
     $rect2.setAttribute('fill', 'url(#grid)');
     $namespace.appendChild($rect2);
   }
 
-  private drawDotsGrid($namespace: SVGElement) {
-    const $defs = createSVGElement('defs');
+  private drawDotsGrid($namespace: SVGElement, doc?: Document) {
+    const $defs = createSVGElement('defs', doc);
     $namespace.appendChild($defs);
-    const $circleTL = createSVGElement('circle');
+    const $circleTL = createSVGElement('circle', doc);
     $circleTL.setAttribute('id', 'dot-tl');
     $circleTL.setAttribute('cx', '0');
     $circleTL.setAttribute('cy', '0');
@@ -285,18 +293,18 @@ export class ImageExporter {
     $defs.appendChild($circleBL);
     $defs.appendChild($circleBR);
 
-    const $pattern = createSVGElement('pattern');
+    const $pattern = createSVGElement('pattern', doc);
     $pattern.setAttribute('id', 'dots-grid');
     $pattern.setAttribute('width', '20');
     $pattern.setAttribute('height', '20');
     $pattern.setAttribute('patternUnits', 'userSpaceOnUse');
-    const $useBL = createSVGElement('use');
+    const $useBL = createSVGElement('use', doc);
     $useBL.setAttribute('xlink:href', '#dot-bl');
-    const $useBR = createSVGElement('use');
+    const $useBR = createSVGElement('use', doc);
     $useBR.setAttribute('xlink:href', '#dot-br');
-    const $useTL = createSVGElement('use');
+    const $useTL = createSVGElement('use', doc);
     $useTL.setAttribute('xlink:href', '#dot-tl');
-    const $useTR = createSVGElement('use');
+    const $useTR = createSVGElement('use', doc);
     $useTR.setAttribute('xlink:href', '#dot-tr');
     $pattern.appendChild($useBL);
     $pattern.appendChild($useBR);
@@ -304,7 +312,7 @@ export class ImageExporter {
     $pattern.appendChild($useTR);
     $defs.appendChild($pattern);
 
-    const $rect = createSVGElement('rect');
+    const $rect = createSVGElement('rect', doc);
     $rect.setAttribute('width', '100%');
     $rect.setAttribute('height', '100%');
     $rect.setAttribute('fill', 'url(#dots-grid)');

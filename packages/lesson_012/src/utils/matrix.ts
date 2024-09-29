@@ -1,18 +1,4 @@
-import { mat3, vec2, vec3, vec4 } from 'gl-matrix';
-
-const isNumber = (a): a is number => typeof a === 'number';
-
-export function createVec3(x: number | vec2 | vec3 | vec4, y = 0, z = 0) {
-  if (Array.isArray(x) && x.length === 3) {
-    return vec3.clone(x);
-  }
-
-  if (isNumber(x)) {
-    return vec3.fromValues(x, y, z);
-  }
-
-  return vec3.fromValues(x[0], x[1] || y, x[2] || z);
-}
+import { mat3 } from 'gl-matrix';
 
 const PADDING = 0;
 /**
@@ -41,6 +27,6 @@ export function distanceBetweenPoints(
   x2: number,
   y2: number,
 ) {
-  var distance = Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2));
+  const distance = Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2));
   return distance;
 }

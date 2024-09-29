@@ -192,6 +192,7 @@ export function strokeOffset(
   } else if (strokeAlignment === 'outer') {
     return strokeWidth;
   }
+  return 0;
 }
 
 export function isFillOrStrokeAffected(

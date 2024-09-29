@@ -1,6 +1,6 @@
 import { Buffer, Device, RenderPass } from '@antv/g-device-api';
 import { Drawcall, SDF, ShadowRect, SmoothPolyline } from '.';
-import { Circle, Ellipse, Rect, Polyline, type Shape } from '../shapes';
+import { Circle, Ellipse, Polyline, Rect, type Shape } from '../shapes';
 import { RenderCache } from '../utils/render-cache';
 
 /**
@@ -40,18 +40,25 @@ export class BatchManager {
   }
 
   private createDrawcalls(shape: Shape, instanced = false) {
-    return SHAPE_DRAWCALL_CTORS.get(shape.constructor as typeof Shape)?.map(
-      (DrawcallCtor) => {
-        // @ts-ignore
-        const drawcall = new DrawcallCtor(
-          this.device,
-          this.#renderCache,
-          instanced,
-        );
-        drawcall.add(shape);
-        return drawcall;
-      },
-    );
+    return SHAPE_DRAWCALL_CTORS.get(shape.constructor as typeof Shape)
+      ?.map((DrawcallCtor) => {
+        if (
+          // @ts-ignore
+          !DrawcallCtor.check ||
+          // @ts-ignore
+          (DrawcallCtor.check && DrawcallCtor.check(shape))
+        ) {
+          // @ts-ignore
+          const drawcall = new DrawcallCtor(
+            this.device,
+            this.#renderCache,
+            instanced,
+          );
+          drawcall.add(shape);
+          return drawcall;
+        }
+      })
+      .filter((drawcall) => !!drawcall);
   }
 
   private getOrCreateNonBatchableDrawcalls(shape: Shape) {
@@ -145,9 +152,13 @@ export class BatchManager {
     this.#drawcallsToFlush = [];
   }
 
-  flush(renderPass: RenderPass, uniformBuffer: Buffer) {
+  flush(
+    renderPass: RenderPass,
+    uniformBuffer: Buffer,
+    uniformLegacyObject: Record<string, unknown>,
+  ) {
     this.#drawcallsToFlush.forEach((drawcall) => {
-      drawcall.submit(renderPass, uniformBuffer);
+      drawcall.submit(renderPass, uniformBuffer, uniformLegacyObject);
     });
   }
 

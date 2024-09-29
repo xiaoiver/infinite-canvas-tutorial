@@ -33,6 +33,7 @@ export class CameraControl implements Plugin {
       canvas,
       camera,
       root,
+      devicePixelRatio,
       api: { client2Viewport },
     } = context;
 
@@ -50,13 +51,19 @@ export class CameraControl implements Plugin {
       e: FederatedPointerEvent | FederatedWheelEvent,
     ): vec2 {
       // get canvas relative css position
-      const rect = canvas.getBoundingClientRect();
+      const rect = (canvas as HTMLCanvasElement).getBoundingClientRect();
       const cssX = e.nativeEvent.clientX - rect.left;
       const cssY = e.nativeEvent.clientY - rect.top;
 
       // get normalized 0 to 1 position across and down canvas
-      const normalizedX = cssX / canvas.clientWidth;
-      const normalizedY = cssY / canvas.clientHeight;
+      const normalizedX =
+        cssX /
+        ((canvas as HTMLCanvasElement).clientWidth ||
+          canvas.width / devicePixelRatio);
+      const normalizedY =
+        cssY /
+        ((canvas as HTMLCanvasElement).clientHeight ||
+          canvas.height / devicePixelRatio);
 
       // convert to clip space
       const clipX = normalizedX * 2 - 1;
@@ -224,13 +231,13 @@ export class CameraControl implements Plugin {
 
         if (last) {
           const point = new Point(
-            first.last.x + (second.last.x - first.last.x) / 2,
-            first.last.y + (second.last.y - first.last.y) / 2,
+            first.last!.x + (second.last!.x - first.last!.x) / 2,
+            first.last!.y + (second.last!.y - first.last!.y) / 2,
           );
 
           const dist = Math.sqrt(
-            Math.pow(second.last.x - first.last.x, 2) +
-              Math.pow(second.last.y - first.last.y, 2),
+            Math.pow(second.last!.x - first.last!.x, 2) +
+              Math.pow(second.last!.y - first.last!.y, 2),
           );
 
           zoomByClientPoint(point, (last / dist - 1) * PINCH_FACTOR);

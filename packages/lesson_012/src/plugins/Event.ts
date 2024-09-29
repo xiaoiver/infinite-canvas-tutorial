@@ -163,7 +163,7 @@ export class Event implements Plugin {
   }
 
   private setCursor(cursor: Cursor | string) {
-    this.#context.canvas.style.cursor = cursor;
+    this.#context.setCursor?.(cursor);
   }
 
   private normalizeToPointerEvent(
@@ -171,7 +171,7 @@ export class Event implements Plugin {
   ): PointerEvent[] {
     const { supportsTouchEvents, supportsPointerEvents } = this.#context;
 
-    const normalizedEvents = [];
+    const normalizedEvents: (PointerEvent | PixiTouch)[] = [];
     if (supportsTouchEvents && event instanceof TouchEvent) {
       for (let i = 0; i < event.changedTouches.length; i++) {
         const touch = event.changedTouches[i] as PixiTouch;
@@ -222,7 +222,7 @@ export class Event implements Plugin {
 
       normalizedEvents.push(tempEvent);
     } else {
-      normalizedEvents.push(event);
+      normalizedEvents.push(event as PointerEvent);
     }
 
     return normalizedEvents as PointerEvent[];

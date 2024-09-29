@@ -41,6 +41,24 @@ export interface ITransformable {
    */
   get scale(): ObservablePoint;
   set scale(value: IPointData);
+
+  /**
+   * The pivot for the object in radians.
+   */
+  get pivot(): ObservablePoint;
+  set pivot(value: IPointData);
+
+  /**
+   * The skew factor for the object in radians.
+   */
+  get skew(): ObservablePoint;
+  set skew(value: IPointData);
+
+  get rotation(): number;
+  set rotation(value: number);
+
+  get angle(): number;
+  set angle(value: number);
 }
 
 export type TransformableCtor = GConstructor<ITransformable>;
@@ -118,7 +136,8 @@ export function Transformable<TBase extends GConstructor>(Base: TBase) {
     get transformDirtyFlag() {
       return (
         this.transform['_localID'] !== this.transform['_currentLocalID'] ||
-        this.transform['_parentID'] !== this.parent?.transform['_worldID']
+        (this.parent &&
+          this.transform['_parentID'] !== this.parent.transform['_worldID'])
       );
     }
   };

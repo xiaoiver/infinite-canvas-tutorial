@@ -15,6 +15,7 @@ import {
   CompareFunction,
   TransparentBlack,
   InputLayoutBufferDescriptor,
+  StencilOp,
 } from '@antv/g-device-api';
 import { Polyline } from '../shapes';
 import { Drawcall, ZINDEX_FACTOR } from './Drawcall';
@@ -23,6 +24,11 @@ import { paddingMat3 } from '../utils';
 
 const stridePoints = 2;
 const strideFloats = 3;
+const strokeAlignmentMap = {
+  inner: 0,
+  center: 0.5,
+  outer: 1,
+} as const;
 
 export class SmoothPolyline extends Drawcall {
   #program: Program;
@@ -36,16 +42,23 @@ export class SmoothPolyline extends Drawcall {
   #inputLayout: InputLayout;
   #bindings: Bindings;
 
-  get divisor() {
+  get instanceCount() {
     return (this.shapes[0] as Polyline).points.length;
   }
 
   createGeometry(): void {
+    // Don't support instanced rendering for now.
+    this.instanced = false;
+
     if (this.#segmentsBuffer) {
       this.#segmentsBuffer.destroy();
     }
     this.#segmentsBuffer = this.device.createBuffer({
-      viewOrSize: Float32Array.BYTES_PER_ELEMENT * 15 * this.shapes.length,
+      viewOrSize:
+        Float32Array.BYTES_PER_ELEMENT *
+        15 *
+        this.instanceCount *
+        this.shapes.length,
       usage: BufferUsage.VERTEX,
       hint: BufferFrequencyHint.DYNAMIC,
     });
@@ -54,7 +67,7 @@ export class SmoothPolyline extends Drawcall {
       this.#vertexNumBuffer.destroy();
     }
     this.#vertexNumBuffer = this.device.createBuffer({
-      viewOrSize: Float32Array.BYTES_PER_ELEMENT * 9 * this.shapes.length,
+      viewOrSize: new Float32Array([0, 1, 2, 3, 4, 5, 6, 7, 8]),
       usage: BufferUsage.VERTEX,
       hint: BufferFrequencyHint.STATIC,
     });
@@ -110,50 +123,43 @@ export class SmoothPolyline extends Drawcall {
             format: Format.F32_RG,
             offset: 4 * 0,
             shaderLocation: Location.PREV,
-            divisor: 1,
           },
           {
             format: Format.F32_RG,
             offset: 4 * 3,
             shaderLocation: Location.POINTA,
-            divisor: 1,
           },
           {
             format: Format.F32_R,
             offset: 4 * 5,
             shaderLocation: Location.VERTEX_JOINT,
-            divisor: 1,
           },
           {
             format: Format.F32_RG,
             offset: 4 * 6,
             shaderLocation: Location.POINTB,
-            divisor: 1,
           },
           {
             format: Format.F32_RG,
             offset: 4 * 9,
             shaderLocation: Location.NEXT,
-            divisor: 1,
           },
         ],
       },
       {
         arrayStride: 4 * 0,
-        stepMode: VertexStepMode.INSTANCE,
+        stepMode: VertexStepMode.VERTEX,
         attributes: [
           {
             format: Format.F32_R,
             offset: 4 * 0,
             shaderLocation: Location.VERTEX_NUM,
-            divisor: 0,
           },
         ],
       },
     ];
 
     if (this.instanced) {
-      const divisor = this.divisor;
       vertexBufferDescriptors.push(
         {
           arrayStride: 4 * 12,
@@ -163,19 +169,16 @@ export class SmoothPolyline extends Drawcall {
               shaderLocation: Location.STROKE_COLOR, // a_StrokeColor
               offset: 4 * 0,
               format: Format.F32_RGBA,
-              divisor,
             },
             {
               shaderLocation: Location.Z_INDEX_STROKE_WIDTH, // a_ZIndexStrokeWidth
               offset: 4 * 4,
               format: Format.F32_RGBA,
-              divisor,
             },
             {
               shaderLocation: Location.OPACITY, // a_Opacity
               offset: 4 * 8,
               format: Format.F32_RGBA,
-              divisor,
             },
           ],
         },
@@ -187,13 +190,11 @@ export class SmoothPolyline extends Drawcall {
               shaderLocation: Location.ABCD,
               offset: 0,
               format: Format.F32_RGBA,
-              divisor,
             },
             {
               shaderLocation: Location.TX_TY,
               offset: 4 * 4,
               format: Format.F32_RG,
-              divisor,
             },
           ],
         },
@@ -241,9 +242,15 @@ export class SmoothPolyline extends Drawcall {
         stencilWrite: false,
         stencilFront: {
           compare: CompareFunction.ALWAYS,
+          passOp: StencilOp.KEEP,
+          failOp: StencilOp.KEEP,
+          depthFailOp: StencilOp.KEEP,
         },
         stencilBack: {
           compare: CompareFunction.ALWAYS,
+          passOp: StencilOp.KEEP,
+          failOp: StencilOp.KEEP,
+          depthFailOp: StencilOp.KEEP,
         },
       },
     });
@@ -267,12 +274,11 @@ export class SmoothPolyline extends Drawcall {
     });
   }
 
-  render(renderPass: RenderPass) {
+  render(renderPass: RenderPass, uniformLegacyObject: Record<string, unknown>) {
     const indices: number[] = [];
     const pointsBuffer: number[] = [];
     const travelBuffer: number[] = [];
     const packedDash: number[] = [];
-    let instancedCount = 0;
     let offset = 0;
 
     if (
@@ -300,7 +306,8 @@ export class SmoothPolyline extends Drawcall {
 
         const instancedData: number[] = [];
         this.shapes.forEach((shape) => {
-          instancedData.push(...this.generateBuffer(shape as Polyline));
+          const [buffer] = this.generateBuffer(shape as Polyline);
+          instancedData.push(...buffer);
         });
         this.#instancedBuffer.setSubData(
           0,
@@ -308,27 +315,28 @@ export class SmoothPolyline extends Drawcall {
         );
       } else {
         const { worldTransform } = this.shapes[0];
+        const [buffer, legacyObject] = this.generateBuffer(
+          this.shapes[0] as Polyline,
+        );
+        const u_ModelMatrix = worldTransform.toArray(true);
         this.#uniformBuffer.setSubData(
           0,
           new Uint8Array(
-            new Float32Array([
-              ...paddingMat3(worldTransform.toArray(true)),
-              ...this.generateBuffer(this.shapes[0] as Polyline),
-            ]).buffer,
+            new Float32Array([...paddingMat3(u_ModelMatrix), ...buffer]).buffer,
           ),
         );
+        const uniformLegacyObject: Record<string, unknown> = {
+          u_ModelMatrix,
+          ...legacyObject,
+        };
+        this.#program.setUniformsLegacy(uniformLegacyObject);
       }
-
-      this.#vertexNumBuffer.setSubData(
-        0,
-        new Uint8Array(new Float32Array([0, 1, 2, 3, 4, 5, 6, 7, 8])),
-      );
 
       this.shapes.forEach((shape: Polyline) => {
         const {
           pointsBuffer: pBuffer,
           travelBuffer: tBuffer,
-          instancedCount: count,
+          // instancedCount: count,
         } = updateBuffer(shape, false);
 
         const { strokeDasharray, strokeDashoffset } = shape;
@@ -340,29 +348,7 @@ export class SmoothPolyline extends Drawcall {
           0,
         );
 
-        instancedCount += count;
-
-        // Can't use interleaved buffer here, we should spread them like:
-        // | prev - pointA - pointB - next |. This will allocate ~4x buffer memory space.
-        // for (let i = 0; i < pBuffer.length - 3 * 3; i += strideFloats) {
-        //   pointsBuffer.push(
-        //     pBuffer[i],
-        //     pBuffer[i + 1],
-        //     pBuffer[i + 2],
-        //     pBuffer[i + 3],
-        //     pBuffer[i + 4],
-        //     pBuffer[i + 5],
-        //     pBuffer[i + 6],
-        //     pBuffer[i + 7],
-        //     pBuffer[i + 8],
-        //     pBuffer[i + 9],
-        //     pBuffer[i + 10],
-        //     pBuffer[i + 11],
-        //   );
-        // }
-
         pointsBuffer.push(...pBuffer);
-
         travelBuffer.push(...tBuffer);
 
         indices.push(
@@ -372,20 +358,19 @@ export class SmoothPolyline extends Drawcall {
           0 + offset,
           2 + offset,
           3 + offset,
-          // 4 + offset,
-          // 5 + offset,
-          // 6 + offset,
-          // 4 + offset,
-          // 6 + offset,
-          // 7 + offset,
-          // 4 + offset,
-          // 7 + offset,
-          // 8 + offset,
+          4 + offset,
+          5 + offset,
+          6 + offset,
+          4 + offset,
+          6 + offset,
+          7 + offset,
+          4 + offset,
+          7 + offset,
+          8 + offset,
         );
         offset += 9;
       });
 
-      console.log(pointsBuffer, indices);
       this.#segmentsBuffer.setSubData(
         0,
         new Uint8Array(new Float32Array(pointsBuffer).buffer),
@@ -417,14 +402,13 @@ export class SmoothPolyline extends Drawcall {
       });
     }
 
+    this.#program.setUniformsLegacy(uniformLegacyObject);
     renderPass.setPipeline(this.#pipeline);
     renderPass.setVertexInput(this.#inputLayout, buffers, {
       buffer: this.#indexBuffer,
     });
     renderPass.setBindings(this.#bindings);
-
-    console.log(this.divisor, instancedCount);
-    renderPass.drawIndexed(15, 2, 0);
+    renderPass.drawIndexed(15, this.instanceCount);
   }
 
   destroy(): void {
@@ -442,28 +426,33 @@ export class SmoothPolyline extends Drawcall {
     }
   }
 
-  private generateBuffer(shape: Polyline) {
+  private generateBuffer(shape: Polyline): [number[], Record<string, unknown>] {
     const {
       strokeRGB: { r: sr, g: sg, b: sb, opacity: so },
       strokeWidth,
       opacity,
       fillOpacity,
       strokeOpacity,
+      strokeAlignment,
+      strokeMiterlimit,
     } = shape;
 
-    return [
-      sr / 255,
-      sg / 255,
-      sb / 255,
-      so,
+    const u_StrokeColor = [sr / 255, sg / 255, sb / 255, so];
+    const u_ZIndexStrokeWidth = [
       shape.globalRenderOrder / ZINDEX_FACTOR,
       strokeWidth,
-      0,
-      0,
-      opacity,
-      fillOpacity,
-      strokeOpacity,
-      0,
+      strokeMiterlimit,
+      strokeAlignmentMap[strokeAlignment],
+    ];
+    const u_Opacity = [opacity, fillOpacity, strokeOpacity, 0];
+
+    return [
+      [...u_StrokeColor, ...u_ZIndexStrokeWidth, ...u_Opacity],
+      {
+        u_StrokeColor,
+        u_ZIndexStrokeWidth,
+        u_Opacity,
+      },
     ];
   }
 }

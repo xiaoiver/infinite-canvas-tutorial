@@ -4,13 +4,13 @@ import { distanceBetweenPoints } from '../utils';
 import type { Plugin, PluginContext } from './interfaces';
 
 function closest(
-  el: FederatedEventTarget,
+  el: FederatedEventTarget | null,
   selector: (shape: FederatedEventTarget) => boolean,
 ): FederatedEventTarget | null {
   do {
     if (el && selector(el)) return el;
-    el = el.parent;
-  } while (el !== undefined);
+    el = el?.parent;
+  } while (el !== undefined && el !== null);
   return null;
 }
 
@@ -66,7 +66,7 @@ export class Dragndrop implements Plugin {
           event.clientY,
         ];
 
-        let currentDroppable = null;
+        let currentDroppable: FederatedEventTarget | null = null;
         let lastDragClientCoordinates = [event.clientX, event.clientY];
 
         const handlePointermove = (event: FederatedPointerEvent) => {

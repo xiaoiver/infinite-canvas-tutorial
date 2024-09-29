@@ -70,14 +70,17 @@ const float CAP_ROUND = 3.0;
 const float CAP_BUTT2 = 4.0;
 
 const float expand = 1.0;
-const float miterLimit = 5.0;
-const float u_Alignment = 0.5;
-const float resolution = 2.0;
 
 out vec4 v_Distance;
 out vec4 v_Arc;
 out float v_Type;
 out float v_ScalingFactor;
+#ifdef USE_INSTANCES
+  out vec4 v_StrokeColor;
+  out vec4 v_Opacity;
+  out float v_StrokeAlignment;
+#else
+#endif
 
 vec2 doBisect(
   vec2 norm, float len, vec2 norm2, float len2, float dy, float inner
@@ -104,18 +107,29 @@ void main() {
   vec4 strokeColor;
   float zIndex;
   float strokeWidth;
+  float strokeMiterlimit;
+  float strokeAlignment;
 
   #ifdef USE_INSTANCES
     model = mat3(a_Abcd.x, a_Abcd.y, 0, a_Abcd.z, a_Abcd.w, 0, a_Txty.x, a_Txty.y, 1);
     strokeColor = a_StrokeColor;
     zIndex = a_ZIndexStrokeWidth.x;
     strokeWidth = a_ZIndexStrokeWidth.y;
+    strokeMiterlimit = a_ZIndexStrokeWidth.z;
+
+    v_StrokeColor = strokeColor;
+    v_Opacity = a_Opacity;
+    v_StrokeAlignment = a_ZIndexStrokeWidth.w;
   #else
     model = u_ModelMatrix;
     strokeColor = u_StrokeColor;
     zIndex = u_ZIndexStrokeWidth.x;
     strokeWidth = u_ZIndexStrokeWidth.y;
+    strokeMiterlimit = u_ZIndexStrokeWidth.z;
+    strokeAlignment = u_ZIndexStrokeWidth.w;
   #endif
+
+  mat3 viewModelMatrix = u_ViewMatrix * model;
 
   vec2 pointA = (model * vec3(a_PointA, 1.0)).xy;
   vec2 pointB = (model * vec3(a_PointB, 1.0)).xy;
@@ -128,20 +142,11 @@ void main() {
   float type = a_VertexJoint;
   float vertexNum = a_VertexNum;
 
-  float lineWidth = strokeWidth;
-  // if (scaleMode > 2.5) {
-  //     lineWidth *= length(translationMatrix * vec3(1.0, 0.0, 0.0));
-  // } else if (scaleMode > 1.5) {
-  //     lineWidth *= length(translationMatrix * vec3(0.0, 1.0, 0.0));
-  // } else if (scaleMode > 0.5) {
-  //     vec2 avgDiag = (translationMatrix * vec3(1.0, 1.0, 0.0)).xy;
-  //     lineWidth *= sqrt(dot(avgDiag, avgDiag) * 0.5);
-  // }
   float capType = floor(type / 32.0);
   type -= capType * 32.0;
   v_Arc = vec4(0.0);
-  lineWidth *= 0.5;
-  // float lineAlignment = 2.0 * u_Alignment - 1.0;
+  strokeWidth *= 0.5;
+  float lineAlignment = 2.0 * strokeAlignment - 1.0;
 
   vec2 pos;
 
@@ -155,7 +160,7 @@ void main() {
   }
 
   if (type >= BEVEL) {
-    float dy = lineWidth + expand;
+    float dy = strokeWidth + expand;
     float inner = 0.0;
     if (vertexNum >= 1.5) {
       dy = -dy;
@@ -188,16 +193,16 @@ void main() {
     }
     norm2 *= sign2;
 
-    // if (abs(lineAlignment) > 0.01) {
-    //   float shift = lineWidth * lineAlignment;
-    //   pointA += norm * shift;
-    //   pointB += norm * shift;
-    //   if (abs(D) < 0.01) {
-    //     base += norm * shift;
-    //   } else {
-    //     base += doBisect(norm, len, norm2, len2, shift, 0.0);
-    //   }
-    // }
+    if (abs(lineAlignment) > 0.01) {
+      float shift = strokeWidth * lineAlignment;
+      pointA += norm * shift;
+      pointB += norm * shift;
+      if (abs(D) < 0.01) {
+        base += norm * shift;
+      } else {
+        base += doBisect(norm, len, norm2, len2, shift, 0.0);
+      }
+    }
 
     float collinear = step(0.0, dot(norm, norm2));
     v_Type = 0.0;
@@ -221,7 +226,7 @@ void main() {
         }
       }
       if (capType >= CAP_BUTT && capType < CAP_ROUND) {
-        float extra = step(CAP_SQUARE, capType) * lineWidth;
+        float extra = step(CAP_SQUARE, capType) * strokeWidth;
         vec2 back = -forward;
         if (vertexNum < 0.5 || vertexNum > 2.5) {
           pos += back * (expand + extra);
@@ -231,7 +236,7 @@ void main() {
         }
       }
       if (type >= JOINT_CAP_BUTT && type < JOINT_CAP_SQUARE + 0.5) {
-        float extra = step(JOINT_CAP_SQUARE, type) * lineWidth;
+        float extra = step(JOINT_CAP_SQUARE, type) * strokeWidth;
         if (vertexNum < 0.5 || vertexNum > 2.5) {
           dy3 = dot(pos + base - pointB, forward) - extra;
         } else {
@@ -264,7 +269,7 @@ void main() {
       dy2 = 0.0;
       v_Arc.y = dy;
       v_Arc.z = 0.0;
-      v_Arc.w = lineWidth;
+      v_Arc.w = strokeWidth;
       v_Type = 3.0;
     } else if (abs(D) < 0.01) {
       pos = dy * norm;
@@ -298,8 +303,8 @@ void main() {
         float sign = step(0.0, dy) * 2.0 - 1.0;
         v_Arc.x = sign * dot(pos, norm3);
         v_Arc.y = pos.x * norm3.y - pos.y * norm3.x;
-        v_Arc.z = dot(norm, norm3) * lineWidth;
-        v_Arc.w = lineWidth;
+        v_Arc.z = dot(norm, norm3) * strokeWidth;
+        v_Arc.w = strokeWidth;
 
         dy = -sign * dot(pos, norm);
         dy2 = -sign * dot(pos, norm2);
@@ -319,7 +324,7 @@ void main() {
           }
           float sign = step(0.0, dy) * 2.0 - 1.0;
           pos = doBisect(norm, len, norm2, len2, dy, 0.0);
-          if (length(pos) > abs(dy) * miterLimit) {
+          if (length(pos) > abs(dy) * strokeMiterlimit) {
             type = BEVEL;
           } else {
             if (vertexNum < 4.5) {
@@ -361,7 +366,7 @@ void main() {
           float sign = step(0.0, dy) * 2.0 - 1.0;
           dy = -sign * dot(pos, norm);
           dy2 = -sign * dot(pos, norm2);
-          dy3 = (-sign * dot(pos, norm3)) + lineWidth;
+          dy3 = (-sign * dot(pos, norm3)) + strokeWidth;
           v_Type = 4.0;
           hit = 1.0;
         }
@@ -372,8 +377,7 @@ void main() {
       }
     }
     pos += base;
-    v_Distance = vec4(dy, dy2, dy3, lineWidth) * resolution;
-    v_Arc = v_Arc * resolution;
+    v_Distance = vec4(dy, dy2, dy3, strokeWidth);
   }
 
   gl_Position = vec4((u_ProjectionMatrix 
@@ -406,6 +410,13 @@ in vec4 v_Arc;
 in float v_Type;
 in float v_ScalingFactor;
 
+#ifdef USE_INSTANCES
+  in vec4 v_StrokeColor;
+  in vec4 v_Opacity;
+  in float v_StrokeAlignment;
+#else
+#endif
+
 float epsilon = 0.000001;
 
 float pixelLine(float x) {
@@ -423,15 +434,30 @@ float pixelLine(float x) {
 // }
 
 void main() {
-  float alpha = 1.0;
-  vec4 strokeColor = vec4(1.0, 0.0, 0.0, 1.0);
-  float opacity = 1.0;
-  float strokeOpacity = 1.0;
+  vec4 strokeColor;
+  float opacity;
+  float strokeOpacity;
+  float strokeAlignment;
 
-  float d1 = v_Distance.x;
-  float d2 = v_Distance.y;
-  float d3 = v_Distance.z;
-  float w = v_Distance.w;
+  #ifdef USE_INSTANCES
+    strokeColor = v_StrokeColor;
+    opacity = v_Opacity.x;
+    strokeOpacity = v_Opacity.z;
+    strokeAlignment = v_StrokeAlignment;
+  #else
+    strokeColor = u_StrokeColor;
+    opacity = u_Opacity.x;
+    strokeOpacity = u_Opacity.z;
+    strokeAlignment = u_ZIndexStrokeWidth.w;
+  #endif
+
+  float alpha = 1.0;
+  float dpr = 2.0;
+
+  float d1 = v_Distance.x * dpr;
+  float d2 = v_Distance.y * dpr;
+  float d3 = v_Distance.z * dpr;
+  float w = v_Distance.w * dpr;
 
   if (v_Type < 0.5) {
     float left = max(d1 - 0.5, -w);

@@ -2,6 +2,11 @@ export const vert = /* wgsl */ `
 layout(std140) uniform SceneUniforms {
   mat3 u_ProjectionMatrix;
   mat3 u_ViewMatrix;
+  mat3 u_ViewProjectionInvMatrix;
+  vec4 u_BackgroundColor;
+  vec4 u_GridColor;
+  float u_ZoomScale;
+  float u_CheckboardStyle;
 };
 
 layout(location = 0) in vec2 a_FragCoord;
@@ -77,6 +82,16 @@ void main() {
 `;
 
 export const frag = /* wgsl */ `
+layout(std140) uniform SceneUniforms {
+  mat3 u_ProjectionMatrix;
+  mat3 u_ViewMatrix;
+  mat3 u_ViewProjectionInvMatrix;
+  vec4 u_BackgroundColor;
+  vec4 u_GridColor;
+  float u_ZoomScale;
+  float u_CheckboardStyle;
+};
+
 #ifdef USE_INSTANCES
 #else
   layout(std140) uniform ShapeUniforms {

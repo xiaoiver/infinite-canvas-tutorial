@@ -43,7 +43,7 @@ export class Ellipse extends Shape implements EllipseAttributes {
   static getGeometryBounds(
     attributes: Partial<Pick<EllipseAttributes, 'cx' | 'cy' | 'rx' | 'ry'>>,
   ) {
-    const { cx, cy, rx, ry } = attributes;
+    const { cx = 0, cy = 0, rx = 0, ry = 0 } = attributes;
     return new AABB(cx - rx, cy - ry, cx + rx, cy + ry);
   }
 

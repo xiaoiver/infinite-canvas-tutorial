@@ -3,6 +3,8 @@ layout(std140) uniform SceneUniforms {
   mat3 u_ProjectionMatrix;
   mat3 u_ViewMatrix;
   mat3 u_ViewProjectionInvMatrix;
+  vec4 u_BackgroundColor;
+  vec4 u_GridColor;
   float u_ZoomScale;
   float u_CheckboardStyle;
 };
@@ -26,6 +28,8 @@ layout(std140) uniform SceneUniforms {
   mat3 u_ProjectionMatrix;
   mat3 u_ViewMatrix;
   mat3 u_ViewProjectionInvMatrix;
+  vec4 u_BackgroundColor;
+  vec4 u_GridColor;
   float u_ZoomScale;
   float u_CheckboardStyle;
 };
@@ -34,8 +38,6 @@ out vec4 outputColor;
 
 in vec2 v_Position;
 
-const vec4 GRID_COLOR = vec4(0.87, 0.87, 0.87, 1.0);
-const vec4 PAGE_COLOR = vec4(0.986, 0.986, 0.986, 1.0);
 const int CHECKERBOARD_STYLE_NONE = 0;
 const int CHECKERBOARD_STYLE_GRID = 1;
 const int CHECKERBOARD_STYLE_DOTS = 2;
@@ -74,7 +76,7 @@ vec4 render_grid_checkerboard(vec2 coord) {
     alpha = smoothstep(1.0, 0.0, length(grid2) - BASE_DOT_SIZE * u_ZoomScale / zoomStep);
   }
 
-  return mix(PAGE_COLOR, GRID_COLOR, alpha);
+  return mix(u_BackgroundColor, u_GridColor, alpha);
 }
 
 void main() {

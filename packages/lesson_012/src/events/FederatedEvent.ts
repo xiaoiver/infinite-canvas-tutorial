@@ -74,7 +74,7 @@ export class FederatedEvent<N extends UIEvent | PixiTouch = UIEvent | PixiTouch>
   returnValue: boolean;
 
   /** @deprecated since 7.0.0 */
-  srcElement: EventTarget;
+  srcElement: EventTarget | null;
 
   /** The event target that this will be dispatched to. */
   target: FederatedEventTarget;
@@ -89,7 +89,7 @@ export class FederatedEvent<N extends UIEvent | PixiTouch = UIEvent | PixiTouch>
   nativeEvent: N;
 
   /** The original event that caused this event, if any. */
-  originalEvent: FederatedEvent<N>;
+  originalEvent: FederatedEvent<N> | null;
 
   /** Flags whether propagation was stopped. */
   propagationStopped = false;
@@ -101,7 +101,7 @@ export class FederatedEvent<N extends UIEvent | PixiTouch = UIEvent | PixiTouch>
   path: FederatedEventTarget[];
 
   /** The {@link EventBoundary} that manages this event. Null for root events. */
-  readonly manager: EventBoundary;
+  readonly manager: EventBoundary | null;
 
   /** Event-specific detail */
   detail: number;
@@ -145,7 +145,7 @@ export class FederatedEvent<N extends UIEvent | PixiTouch = UIEvent | PixiTouch>
    * @param manager - The event boundary which manages this event. Propagation can only occur
    *  within the boundary's jurisdiction.
    */
-  constructor(manager: EventBoundary) {
+  constructor(manager: EventBoundary | null) {
     this.manager = manager;
   }
 
