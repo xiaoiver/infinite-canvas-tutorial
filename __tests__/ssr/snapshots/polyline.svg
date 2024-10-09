@@ -24,5 +24,12 @@
     </pattern>
   </defs>
   <rect width="100%" height="100%" fill="url(#grid)" />
-  <g />
+  <g>
+    <polyline
+      fill="none"
+      stroke="black"
+      stroke-width="20"
+      points="50,50,50,150,150,50"
+    />
+  </g>
 </svg>

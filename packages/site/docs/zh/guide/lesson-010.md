@@ -400,6 +400,30 @@ hooks.beginFrame.tap(() => {
 });
 ```
 
+#### 产物优化 {#svg-optimizer}
+
+如果仔细观察目前的 SVG 产物，会发现其中存在一些冗余的属性，例如 `opacity="1"` 本身就是默认值，没有必要显式出现在产物中。事实上这也是一些 SVG 优化工具例如 [svgo] 使用的手段之一：
+
+> SVG files, especially those exported from vector editors, usually contain a lot of redundant information. This includes editor metadata, comments, hidden elements, **default or suboptimal values**, and other stuff that can be safely removed or converted without impacting rendering.
+
+因此我们需要维护一套默认属性值的映射表，如果属性值恰好等于默认值，就不需要调用 `setAttribute` 设置了：
+
+```ts
+const defaultValues = {
+    opacity: 1,
+    fillOpacity: 1,
+    strokeOpacity: 1,
+    fill: 'black',
+    stroke: 'none',
+};
+
+Object.entries(rest).forEach(([key, value]) => {
+    if (`${value}` !== '' && `${defaultValues[key]}` !== `${value}`) {
+        element.setAttribute(camelToKebabCase(key), `${value}`);
+    }
+});
+```
+
 ### 导出 PDF {#to-pdf}
 
 现在像素和矢量图都有了，如果还想导出成 PDF 可以使用 [jsPDF]，它提供了添加图片的 API，限于篇幅这里就不介绍了。
@@ -849,3 +873,4 @@ function strokeOffset(
 [@pixi-essentials/svg]: https://github.com/ShukantPal/pixi-essentials/tree/master/packages/svg
 [Vector rendering of SVG content with PixiJS]: https://medium.com/javascript-in-plain-english/vector-rendering-of-svg-content-with-pixijs-6f26c91f09ee
 [PIXI.LineStyle alignment]: https://api.pixijs.io/@pixi/graphics/PIXI/LineStyle.html#alignment
+[svgo]: https://github.com/svg/svgo

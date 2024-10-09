@@ -1,4 +1,4 @@
-import { Canvas, Polyline, Circle } from '../src';
+import { Canvas, ImageExporter, Rect, Polyline, Circle } from '../src';
 
 const $canvas = document.getElementById('canvas') as HTMLCanvasElement;
 const resize = (width: number, height: number) => {
@@ -21,46 +21,119 @@ const canvas = await new Canvas({
   //   'https://unpkg.com/@antv/g-device-api@1.6.8/dist/pkg/glsl_wgsl_compiler_bg.wasm',
 }).initialized;
 
-// const c = new Circle({
-//   cx: 100,
-//   cy: 100,
-//   r: 50,
-//   fill: '#F67676',
+const circle5 = new Circle({
+  cx: 200,
+  cy: 100,
+  r: 50,
+  fill: 'red',
+});
+canvas.appendChild(circle5);
+
+canvas.render();
+
+const exporter = new ImageExporter({
+  canvas,
+});
+
+const svg = exporter.toSVG({ grid: true });
+
+// for (let i = 0; i < 1000; i++) {
+//   const fill = `rgb(${Math.floor(Math.random() * 255)},${Math.floor(
+//     Math.random() * 255,
+//   )},${Math.floor(Math.random() * 255)})`;
+//   const rect = new Rect({
+//     x: Math.random() * 1000,
+//     y: Math.random() * 1000,
+//     fill,
+//     strokeWidth: 0,
+//     cornerRadius: 10,
+//   });
+//   // rect.x = Math.random() * 1000;
+//   // rect.y = Math.random() * 1000;
+//   rect.width = Math.random() * 40;
+//   rect.height = Math.random() * 40;
+//   canvas.appendChild(rect);
+
+//   rect.addEventListener('pointerenter', () => {
+//     rect.fill = 'red';
+//   });
+//   rect.addEventListener('pointerleave', () => {
+//     rect.fill = fill;
+//   });
+// }
+
+// const rect = new Rect({
+//   x: 50,
+//   y: 50,
+//   width: 50,
+//   height: 50,
+//   fill: 'black',
+//   strokeWidth: 0,
+//   dropShadowBlurRadius: 10,
+//   dropShadowColor: 'black',
+//   dropShadowOffsetX: 10,
+//   dropShadowOffsetY: 10,
+// });
+// canvas.appendChild(rect);
+
+// const rect2 = new Rect({
+//   x: 100,
+//   y: 100,
+//   width: 50,
+//   height: 50,
+//   fill: 'black',
+//   dropShadowBlurRadius: 10,
+//   dropShadowColor: 'black',
+//   dropShadowOffsetX: 10,
+//   dropShadowOffsetY: 10,
 //   batchable: false,
 // });
-// canvas.appendChild(c);
+// canvas.appendChild(rect2);
 
-const polyline1 = new Polyline({
-  points: [
-    [100, 100],
-    [100, 200],
-    [200, 200],
-    [200, 100],
-  ],
-  stroke: 'red',
-  strokeWidth: 20,
-  // strokeAlignment: 'outer',
-  strokeLinejoin: 'round',
-  cullable: false,
-  batchable: false,
-});
-canvas.appendChild(polyline1);
+// const rect3 = new Rect({
+//   x: 100,
+//   y: 50,
+//   width: 20,
+//   height: 20,
+//   fill: 'black',
+//   dropShadowBlurRadius: 8,
+//   dropShadowColor: 'black',
+// });
+// canvas.appendChild(rect3);
 
-const polyline2 = new Polyline({
-  points: [
-    [220, 100],
-    [220, 200],
-    [320, 200],
-    [320, 100],
-  ],
-  stroke: 'green',
-  strokeWidth: 20,
-  strokeLinejoin: 'round',
-  // strokeAlignment: 'center',
-  cullable: false,
-  batchable: false,
-});
-canvas.appendChild(polyline2);
+canvas.render();
+
+// const polyline1 = new Polyline({
+//   points: [
+//     [100, 100],
+//     // [100, 200],
+//     [200, 200],
+//     [200, 100],
+//   ],
+//   stroke: 'red',
+//   strokeWidth: 20,
+//   // strokeAlignment: 'outer',
+//   strokeLinejoin: 'round',
+//   cullable: false,
+//   batchable: false,
+// });
+// canvas.appendChild(polyline1);
+
+// const polyline2 = new Polyline({
+//   points: [
+//     [220, 100],
+//     [220, 200],
+//     [320, 200],
+//     [320, 100],
+//   ],
+//   stroke: 'green',
+//   strokeWidth: 20,
+//   strokeLinejoin: 'round',
+//   // strokeAlignment: 'center',
+//   cullable: false,
+//   batchable: false,
+// });
+// canvas.appendChild(polyline2);
 
 // canvas.render();
 

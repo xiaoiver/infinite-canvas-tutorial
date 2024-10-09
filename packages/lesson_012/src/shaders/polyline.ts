@@ -70,6 +70,7 @@ const float CAP_ROUND = 3.0;
 const float CAP_BUTT2 = 4.0;
 
 const float expand = 1.0;
+const float dpr = 2.0;
 
 out vec4 v_Distance;
 out vec4 v_Arc;
@@ -377,7 +378,8 @@ void main() {
       }
     }
     pos += base;
-    v_Distance = vec4(dy, dy2, dy3, strokeWidth);
+    v_Distance = vec4(dy, dy2, dy3, strokeWidth) * dpr;
+    v_Arc *= dpr;
   }
 
   gl_Position = vec4((u_ProjectionMatrix 
@@ -452,12 +454,11 @@ void main() {
   #endif
 
   float alpha = 1.0;
-  float dpr = 2.0;
 
-  float d1 = v_Distance.x * dpr;
-  float d2 = v_Distance.y * dpr;
-  float d3 = v_Distance.z * dpr;
-  float w = v_Distance.w * dpr;
+  float d1 = v_Distance.x;
+  float d2 = v_Distance.y;
+  float d3 = v_Distance.z;
+  float w = v_Distance.w;
 
   if (v_Type < 0.5) {
     float left = max(d1 - 0.5, -w);

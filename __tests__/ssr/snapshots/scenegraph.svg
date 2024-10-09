@@ -24,43 +24,16 @@
     </pattern>
   </defs>
   <rect width="100%" height="100%" fill="url(#grid)" />
-  <g visibility="hidden" transform="matrix(1,0,0,1,0,0)">
-    <g visibility="visible" transform="matrix(1,0,0,1,0,0)">
-      <rect
-        fill="black"
-        stroke="black"
-        stroke-width="0"
-        opacity="1"
-        fill-opacity="1"
-        stroke-opacity="1"
-        x="50"
-        y="50"
-        width="100"
-        height="100"
-        corner-radius="0"
-        drop-shadow-color="black"
-        drop-shadow-offset-x="0"
-        drop-shadow-offset-y="0"
-        drop-shadow-blur-radius="0"
-      />
+  <g>
+    <g>
+      <rect x="50" y="50" width="100" height="100" drop-shadow-color="black" />
       <rect
         fill="red"
-        stroke="black"
-        stroke-width="0"
-        opacity="1"
-        fill-opacity="1"
-        stroke-opacity="1"
         x="100"
         y="100"
         width="50"
         height="50"
-        corner-radius="0"
         drop-shadow-color="black"
-        drop-shadow-offset-x="0"
-        drop-shadow-offset-y="0"
-        drop-shadow-blur-radius="0"
-        visibility="visible"
-        transform="matrix(1,0,0,1,0,0)"
       />
     </g>
   </g>

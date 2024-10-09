@@ -25,6 +25,7 @@ describe('Circle', () => {
       opacity: 1,
       r: 0,
     });
+    expect(defaultCircle.visible).toBe(true);
   });
 
   it('should account for pointerEvents when checking containPoints.', () => {

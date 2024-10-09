@@ -396,6 +396,30 @@ hooks.beginFrame.tap(() => {
 });
 ```
 
+#### SVG Optimizer {#svg-optimizer}
+
+If you look closely at current SVG products, you'll see that there are some redundant attributes, such as `opacity=“1”`, which is a default value and doesn't need to be explicitly present in the product. In fact, this is one of the tools used by SVG optimization tools such as [svgo]:
+
+> SVG files, especially those exported from vector editors, usually contain a lot of redundant information. This includes editor metadata, comments, hidden elements, **default or suboptimal values**, and other stuff that can be safely removed or converted without impacting rendering.
+
+So we need to maintain a set of mapping tables for default attribute values, and if the attribute value happens to be equal to the default value, we don't need to call `setAttribute` to set it:
+
+```ts
+const defaultValues = {
+    opacity: 1,
+    fillOpacity: 1,
+    strokeOpacity: 1,
+    fill: 'black',
+    stroke: 'none',
+};
+
+Object.entries(rest).forEach(([key, value]) => {
+    if (`${value}` !== '' && `${defaultValues[key]}` !== `${value}`) {
+        element.setAttribute(camelToKebabCase(key), `${value}`);
+    }
+});
+```
+
 ### Export PDF {#to-pdf}
 
 Now that pixels and vectors are available, if you still want to export to PDF you can use [jsPDF], which provides an API for adding images, which I won't cover here for lack of space.
@@ -839,3 +863,4 @@ With the richness of the canvas functionality, it is necessary to introduce test
 [ImageBitmapRenderingContext]: https://developer.mozilla.org/en-US/docs/Web/API/ImageBitmapRenderingContext
 [@pixi-essentials/svg]: https://github.com/ShukantPal/pixi-essentials/tree/master/packages/svg
 [Vector rendering of SVG content with PixiJS]: https://medium.com/javascript-in-plain-english/vector-rendering-of-svg-content-with-pixijs-6f26c91f09ee
+[svgo]: https://github.com/svg/svgo

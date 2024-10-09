@@ -24,20 +24,7 @@
     </pattern>
   </defs>
   <rect width="100%" height="100%" fill="url(#grid)" />
-  <g visibility="hidden" transform="matrix(1,0,0,1,0,0)">
-    <ellipse
-      fill="black"
-      stroke="black"
-      stroke-width="0"
-      opacity="1"
-      fill-opacity="1"
-      stroke-opacity="1"
-      cx="100"
-      cy="100"
-      rx="50"
-      ry="80"
-      visibility="visible"
-      transform="matrix(1,0,0,1,0,0)"
-    />
+  <g>
+    <ellipse cx="100" cy="100" rx="50" ry="80" />
   </g>
 </svg>

@@ -4,7 +4,7 @@ outline: deep
 
 # 课程 12 - 折线
 
-让我们继续添加基础图形。在这节课中你将学习到以下内容：
+让我们继续添加基础图形：折线。在这节课中你将学习到以下内容：
 
 -   为什么不直接使用 `gl.LINES`?
 -   在 CPU 或者 Shader 中构建 Mesh
@@ -42,43 +42,42 @@ call(() => {
             ],
             stroke: 'red',
             strokeWidth: 20,
-            strokeAlignment: 'outer',
+            fill: 'none',
             cullable: false,
             batchable: false,
         });
         canvas.appendChild(polyline1);
 
-        // const polyline2 = new Polyline({
-        //     points: [
-        //         [220, 100],
-        //         [220, 200],
-        //         [320, 200],
-        //         [320, 100],
-        //     ],
-        //     stroke: 'red',
-        //     strokeWidth: 20,
-        //     strokeLinecap: 'round',
-        //     strokeLinejoin: 'round',
-        //     // strokeAlignment: 'center',
-        //     cullable: false,
-        //     batchable: false,
-        // });
-        // canvas.appendChild(polyline2);
+        const polyline2 = new Polyline({
+            points: [
+                [220, 100],
+                [220, 200],
+                [320, 100],
+            ],
+            stroke: 'red',
+            strokeWidth: 20,
+            strokeLinejoin: 'bevel',
+            fill: 'none',
+            cullable: false,
+            batchable: false,
+        });
+        canvas.appendChild(polyline2);
 
-        // const polyline3 = new Polyline({
-        //     points: [
-        //         [360, 100],
-        //         [360, 200],
-        //         [460, 200],
-        //         [460, 100],
-        //     ],
-        //     stroke: 'red',
-        //     strokeWidth: 20,
-        //     strokeAlignment: 'inner',
-        //     cullable: false,
-        //     batchable: false,
-        // });
-        // canvas.appendChild(polyline3);
+        const polyline3 = new Polyline({
+            points: [
+                [340, 100],
+                [340, 200],
+                [440, 100],
+            ],
+            stroke: 'red',
+            strokeWidth: 20,
+            strokeLinejoin: 'round',
+            strokeLinecap: 'round',
+            fill: 'none',
+            cullable: false,
+            batchable: false,
+        });
+        canvas.appendChild(polyline3);
     });
 
     $icCanvas.addEventListener('ic-frame', (e) => {
@@ -375,13 +374,29 @@ call(() => {
                 [200, 200],
                 [200, 100],
             ],
-            stroke: 'red',
+            stroke: 'black',
             strokeWidth: 20,
             strokeAlignment: 'outer',
+            fill: 'none',
             cullable: false,
             batchable: false,
         });
         canvas.appendChild(polyline1);
+        const polyline4 = new Polyline({
+            points: [
+                [100, 100],
+                [100, 200],
+                [200, 200],
+                [200, 100],
+            ],
+            stroke: 'red',
+            strokeWidth: 2,
+            // strokeAlignment: 'outer',
+            fill: 'none',
+            cullable: false,
+            batchable: false,
+        });
+        canvas.appendChild(polyline4);
 
         const polyline2 = new Polyline({
             points: [
@@ -390,13 +405,28 @@ call(() => {
                 [320, 200],
                 [320, 100],
             ],
-            stroke: 'red',
+            stroke: 'black',
             strokeWidth: 20,
             // strokeAlignment: 'center',
+            fill: 'none',
             cullable: false,
             batchable: false,
         });
         canvas.appendChild(polyline2);
+        const polyline5 = new Polyline({
+            points: [
+                [220, 100],
+                [220, 200],
+                [320, 200],
+                [320, 100],
+            ],
+            stroke: 'red',
+            strokeWidth: 2,
+            fill: 'none',
+            cullable: false,
+            batchable: false,
+        });
+        canvas.appendChild(polyline5);
 
         const polyline3 = new Polyline({
             points: [
@@ -405,13 +435,28 @@ call(() => {
                 [460, 200],
                 [460, 100],
             ],
-            stroke: 'red',
+            stroke: 'black',
             strokeWidth: 20,
             strokeAlignment: 'inner',
+            fill: 'none',
             cullable: false,
             batchable: false,
         });
         canvas.appendChild(polyline3);
+        const polyline6 = new Polyline({
+            points: [
+                [360, 100],
+                [360, 200],
+                [460, 200],
+                [460, 100],
+            ],
+            stroke: 'red',
+            strokeWidth: 2,
+            fill: 'none',
+            cullable: false,
+            batchable: false,
+        });
+        canvas.appendChild(polyline6);
     });
 
     $icCanvas2.addEventListener('ic-frame', (e) => {
