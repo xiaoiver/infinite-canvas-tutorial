@@ -21,13 +21,20 @@ const canvas = await new Canvas({
   //   'https://unpkg.com/@antv/g-device-api@1.6.8/dist/pkg/glsl_wgsl_compiler_bg.wasm',
 }).initialized;
 
-const circle5 = new Circle({
-  cx: 200,
-  cy: 100,
-  r: 50,
-  fill: 'red',
+const polyline1 = new Polyline({
+  points: [
+    [100, 100],
+    [200, 200],
+    [200, 100],
+  ],
+  stroke: 'red',
+  strokeWidth: 20,
+  // strokeAlignment: 'outer',
+  strokeLinejoin: 'round',
+  cullable: false,
+  batchable: false,
 });
-canvas.appendChild(circle5);
+canvas.appendChild(polyline1);
 
 canvas.render();
 
@@ -36,6 +43,8 @@ const exporter = new ImageExporter({
 });
 
 const svg = exporter.toSVG({ grid: true });
+
+console.log(svg);
 
 // for (let i = 0; i < 1000; i++) {
 //   const fill = `rgb(${Math.floor(Math.random() * 255)},${Math.floor(
@@ -101,7 +110,7 @@ const svg = exporter.toSVG({ grid: true });
 // });
 // canvas.appendChild(rect3);
 
-canvas.render();
+// canvas.render();
 
 // const polyline1 = new Polyline({
 //   points: [

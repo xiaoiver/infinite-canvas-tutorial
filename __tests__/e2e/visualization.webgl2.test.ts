@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import tests from './config.json';
 
 const renderer = 'webgl2';
 
@@ -7,14 +8,7 @@ test.beforeEach(async ({ page }, testInfo) => {
 });
 
 test.describe('E2E Suite', () => {
-  [
-    'grid_lines',
-    'grid_dots',
-    'circle',
-    'ellipse',
-    'rect',
-    'drop-shadow',
-  ].forEach((name) => {
+  tests.forEach(({ name }) => {
     test(`${name} with ${renderer}`, async ({ page, context }) => {
       let resolveReadyPromise: () => void;
       const readyPromise = new Promise((resolve) => {
@@ -27,7 +21,7 @@ test.describe('E2E Suite', () => {
         resolveReadyPromise();
       });
 
-      const url = `./infinitecanvas/?name=${name}&renderer=${renderer}`;
+      const url = `./infinitecanvas/?name=${name}&renderer=webgl`;
       await page.goto(url);
       await readyPromise;
 

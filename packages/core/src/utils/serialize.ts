@@ -165,9 +165,13 @@ export async function deserializeNode(data: SerializedNode) {
   Object.assign(shape, rest);
 
   // create Image from DataURL
-  const { fill } = rest;
+  const { fill, points } = rest;
   if (fill && isString(fill) && isDataUrl(fill)) {
     shape.fill = (await load(fill, ImageLoader)) as ImageBitmap;
+  }
+  if (points && isString(points)) {
+    // @ts-ignore
+    (shape as Polyline).points = points.split(' ').map((xy) => xy.split(','));
   }
 
   const { position, scale, skew, rotation, pivot } = transform;
@@ -198,9 +202,16 @@ export function serializeNode(node: Shape): SerializedNode {
     }, {}),
   };
 
-  const { fill } = serialized.attributes;
+  const { fill, points } = serialized.attributes;
   if (fill && !isString(fill)) {
     serialized.attributes.fill = imageBitmapToURL(fill as ImageBitmap);
+  }
+
+  if (points) {
+    // @ts-ignore
+    serialized.attributes.points = points
+      .map(([x, y]) => `${x},${y}`)
+      .join(' ');
   }
 
   serialized.attributes.transform = serializeTransform(node.transform);

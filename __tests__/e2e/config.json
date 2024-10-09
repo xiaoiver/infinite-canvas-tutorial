@@ -12,6 +12,12 @@
     "name": "drop-shadow"
   },
   {
+    "name": "polyline"
+  },
+  {
+    "name": "polyline_stroke_alignment"
+  },
+  {
     "name": "grid_lines"
   },
   {

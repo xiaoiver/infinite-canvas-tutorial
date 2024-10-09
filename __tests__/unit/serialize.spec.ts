@@ -1,4 +1,4 @@
-import { serializeNode, Circle } from '../../packages/core/src';
+import { serializeNode, Circle, Polyline } from '../../packages/core/src';
 
 describe('Serialize', () => {
   it('should serialize circle correctly.', () => {
@@ -106,6 +106,75 @@ describe('Serialize', () => {
         strokeLinejoin: 'miter',
         strokeMiterlimit: 4,
         strokeOpacity: 0.5,
+        strokeWidth: 20,
+        transform: {
+          matrix: {
+            a: 1,
+            b: 0,
+            c: 0,
+            d: 1,
+            tx: 0,
+            ty: 0,
+          },
+          pivot: {
+            x: 0,
+            y: 0,
+          },
+          position: {
+            x: 0,
+            y: 0,
+          },
+          rotation: 0,
+          scale: {
+            x: 1,
+            y: 1,
+          },
+          skew: {
+            x: 0,
+            y: 0,
+          },
+        },
+        visible: true,
+      },
+    });
+  });
+
+  it('should serialize points correctly.', () => {
+    const polyline = new Polyline({
+      points: [
+        [50, 50],
+        [50, 150],
+        [150, 50],
+      ],
+      stroke: 'black',
+      strokeWidth: 20,
+      fill: 'none',
+    });
+    let serialized = serializeNode(polyline);
+    expect(serialized).toEqual({
+      type: 'polyline',
+      children: [],
+      uid: 2,
+      attributes: {
+        batchable: true,
+        cullable: true,
+        fill: 'none',
+        fillOpacity: 1,
+        innerShadowBlurRadius: 0,
+        innerShadowColor: 'black',
+        innerShadowOffsetX: 0,
+        innerShadowOffsetY: 0,
+        opacity: 1,
+        points: '50,50 50,150 150,50',
+        renderable: true,
+        stroke: 'black',
+        strokeAlignment: 'center',
+        strokeDasharray: [],
+        strokeDashoffset: 0,
+        strokeLinecap: 'butt',
+        strokeLinejoin: 'miter',
+        strokeMiterlimit: 4,
+        strokeOpacity: 1,
         strokeWidth: 20,
         transform: {
           matrix: {
