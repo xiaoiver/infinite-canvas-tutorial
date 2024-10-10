@@ -112,4 +112,18 @@ describe('Polyline', () => {
     expect(bounds.maxX).toEqual(110);
     expect(bounds.maxY).toEqual(100);
   });
+
+  it('should calculate shifted points correctly.', () => {
+    const polyline = new Polyline({
+      points: [
+        [0, 0],
+        [100, 0],
+      ],
+      stroke: '#F67676',
+      fill: 'none',
+      strokeWidth: 20,
+    });
+
+    expect(polyline.getTotalLength()).toEqual(100);
+  });
 });

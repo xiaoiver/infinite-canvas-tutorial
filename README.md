@@ -139,6 +139,12 @@ pnpm run dev
 
 ## Lesson 12 - Draw polyline [🔗](https://infinitecanvas.cc/guide/lesson-012)
 
+-   Why not just use `gl.LINES`?
+-   Building Mesh in the CPU or Shader
+-   Building segments, caps and joints, antialiasing, and drawing dashed lines in shader
+
+<img src="./screenshots/lesson12.png" width="300" alt="Lesson 12 - polyline">
+
 [infinitecanvas]: https://infinitecanvas.tools/
 [Figma]: https://madebyevan.com/figma/building-a-professional-design-tool-on-the-web/
 [Modyfi]: https://digest.browsertech.com/archive/browsertech-digest-how-modyfi-is-building-with/

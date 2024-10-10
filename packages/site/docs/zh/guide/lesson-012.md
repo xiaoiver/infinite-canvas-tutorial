@@ -191,10 +191,6 @@ const computeCount = isEndpoints
 
 ![drawcalls for linecap and segments](/regl-gpu-lines.png)
 
-下面让我们仔细分析一下 Vertex Shader 中的处理逻辑。
-
-最后没有进行任何反走样处理。
-
 ### 在 Shader 中构建 {#construct-mesh-on-shader}
 
 来自 Pixi.js 在 WebGL meetup 上的分享，在 Shader 中构建 Mesh：
@@ -220,9 +216,20 @@ layout(location = ${Location.VERTEX_JOINT}) in float a_VertexJoint;
 layout(location = ${Location.VERTEX_NUM}) in float a_VertexNum;
 ```
 
-后续其他特性也会基于这种方案实现。
+值得注意的是，Buffer 中同一块连续数据例如 `x1 y1 t1` 在第一个 instance 中被读取为 `A_0`，在第二个 instance 中被读取为 `Prev_1`，这种 intersect 的排布方式可以最大限度节约顶点数组 buffer。但在 WebGPU 中运行会报错：
 
-值得注意的是存在一个问题：[WebGPU instancing problem]
+> [!WARNING]
+> Attribute offset (12) with format VertexFormat::Float32x2 (size: 8) doesn't fit in the vertex buffer stride (12).
+
+[WebGPU instancing problem] 和 [spec: It is useful to allow GPUVertexBufferLayout.arrayStride to be less than offset + sizeof(attrib.format)] 也提到过这个问题，本质是 WebGPU 存在如下校验规则：
+
+> attrib.offset + byteSize(attrib.format) ≤ descriptor.arrayStride.
+>
+> 4 \* 3 + 4 \* 2 ≤ 4 \* 3 // Oops!
+
+解决办法是
+
+后续其他特性也会基于这种方案实现。
 
 ## Shader 实现分析 {#shader-implementation}
 
@@ -519,7 +526,7 @@ if (u_Dash + u_Gap > 1.0) {
 }
 ```
 
-效果如下，通过实时改变 `stroke-dashoffset` 还可以实现蚂蚁线效果：
+我们还可以实时改变（自增） `stroke-dashoffset` 实现蚂蚁线效果：
 
 ```js eval code=false
 $icCanvas3 = call(() => {
@@ -541,10 +548,11 @@ call(() => {
     $icCanvas3.parentElement.style.position = 'relative';
     $icCanvas3.parentElement.appendChild($stats);
 
+    let polyline1;
     $icCanvas3.addEventListener('ic-ready', (e) => {
         const canvas = e.detail;
 
-        const polyline1 = new Polyline({
+        polyline1 = new Polyline({
             points: [
                 [100, 100],
                 [100, 200],
@@ -593,7 +601,7 @@ call(() => {
 });
 ```
 
-按照 SVG 规范，`stroke-dasharray` 和 `stroke-dashoffset` 这两个属性也可以作用在 Circle / Ellipse / Rect 等其他图形上。因此当这两个属性有合理值时，原本使用 SDF 绘制的描边就得改成使用 Polyline 实现。以 Rect 为例，最多可能需要 3 个 drawcall 绘制：
+按照 SVG 规范，`stroke-dasharray` 和 `stroke-dashoffset` 这两个属性也可以作用在 Circle / Ellipse / Rect 等其他图形上。因此当这两个属性有合理值时，原本使用 SDF 绘制的描边就得改成使用 Polyline 实现。以 Rect 为例，最多可能需要 3 个 drawcall 分别绘制外阴影、矩形主体和虚线描边：
 
 ```ts
 SHAPE_DRAWCALL_CTORS.set(Rect, [ShadowRect, SDF, SmoothPolyline]);
@@ -674,6 +682,7 @@ return new AABB(minX, minY, maxX, maxY);
 [SDF 中的反走样]: /zh/guide/lesson-002#antialiasing
 [绘制矩形外阴影]: /zh/guide/lesson-009#drop-shadow
 [WebGPU instancing problem]: https://github.com/pixijs/pixijs/issues/7511#issuecomment-2247464973
+[spec: It is useful to allow GPUVertexBufferLayout.arrayStride to be less than offset + sizeof(attrib.format)]: https://github.com/gpuweb/gpuweb/issues/2349
 [Draw arcs, arcs are not smooth ISSUE]: https://github.com/pixijs/graphics-smooth/issues/23
 [增强 SVG: Stroke alignment]: /zh/guide/lesson-010#stroke-alignment
 [Calculate bounding box of line with thickness]: https://stackoverflow.com/questions/51210467/calculate-bounding-box-of-line-with-thickness

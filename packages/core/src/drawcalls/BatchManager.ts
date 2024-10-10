@@ -15,7 +15,7 @@ import { RenderCache } from '../utils/render-cache';
 const SHAPE_DRAWCALL_CTORS = new WeakMap<typeof Shape, (typeof Drawcall)[]>();
 SHAPE_DRAWCALL_CTORS.set(Circle, [SDF]);
 SHAPE_DRAWCALL_CTORS.set(Ellipse, [SDF]);
-SHAPE_DRAWCALL_CTORS.set(Rect, [ShadowRect, SDF]);
+SHAPE_DRAWCALL_CTORS.set(Rect, [ShadowRect, SDF, SmoothPolyline]);
 SHAPE_DRAWCALL_CTORS.set(Polyline, [SmoothPolyline]);
 
 export class BatchManager {

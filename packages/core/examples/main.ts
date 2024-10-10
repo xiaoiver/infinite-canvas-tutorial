@@ -16,9 +16,9 @@ const canvas = await new Canvas({
   canvas: $canvas,
   // backgroundColor: 'red',
   // gridColor: 'white',
-  // renderer: 'webgpu',
-  // shaderCompilerPath:
-  //   'https://unpkg.com/@antv/g-device-api@1.6.8/dist/pkg/glsl_wgsl_compiler_bg.wasm',
+  renderer: 'webgpu',
+  shaderCompilerPath:
+    'https://unpkg.com/@antv/g-device-api@1.6.8/dist/pkg/glsl_wgsl_compiler_bg.wasm',
 }).initialized;
 
 const polyline1 = new Polyline({
@@ -36,14 +36,14 @@ const polyline1 = new Polyline({
 });
 canvas.appendChild(polyline1);
 
-canvas.render();
+// canvas.render();
 
-polyline1.addEventListener('pointerenter', () => {
-  polyline1.stroke = 'green';
-});
-polyline1.addEventListener('pointerleave', () => {
-  polyline1.stroke = 'red';
-});
+// polyline1.addEventListener('pointerenter', () => {
+//   polyline1.stroke = 'green';
+// });
+// polyline1.addEventListener('pointerleave', () => {
+//   polyline1.stroke = 'red';
+// });
 
 // const exporter = new ImageExporter({
 //   canvas,
@@ -253,8 +253,6 @@ canvas.render();
 // });
 
 const animate = () => {
-  polyline1.strokeDashoffset += 0.1;
-
   canvas.render();
   requestAnimationFrame(animate);
 };

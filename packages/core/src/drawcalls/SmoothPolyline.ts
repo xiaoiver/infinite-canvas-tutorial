@@ -17,7 +17,7 @@ import {
   InputLayoutBufferDescriptor,
   StencilOp,
 } from '@antv/g-device-api';
-import { Polyline } from '../shapes';
+import { Polyline, Shape } from '../shapes';
 import { Drawcall, ZINDEX_FACTOR } from './Drawcall';
 import { vert, frag, Location, JointType } from '../shaders/polyline';
 import { paddingMat3 } from '../utils';
@@ -31,6 +31,13 @@ const strokeAlignmentMap = {
 } as const;
 
 export class SmoothPolyline extends Drawcall {
+  static check(shape: Shape) {
+    return (
+      shape instanceof Polyline
+      // || (shape instanceof Rect && shape.strokeDasharray.length > 0)
+    );
+  }
+
   #program: Program;
   #vertexNumBuffer: Buffer;
   #travelBuffer: Buffer;
@@ -77,30 +84,10 @@ export class SmoothPolyline extends Drawcall {
       this.#travelBuffer.destroy();
     }
     this.#travelBuffer = this.device.createBuffer({
-      viewOrSize: new Float32Array([0, 1, 2, 3, 4, 5, 6, 7, 8]),
+      viewOrSize: Float32Array.BYTES_PER_ELEMENT * this.instanceCount,
       usage: BufferUsage.VERTEX,
       hint: BufferFrequencyHint.STATIC,
     });
-
-    // if (this.instanced) {
-    //   if (this.#instancedBuffer) {
-    //     this.#instancedBuffer.destroy();
-    //   }
-    //   this.#instancedBuffer = this.device.createBuffer({
-    //     viewOrSize: Float32Array.BYTES_PER_ELEMENT * 12 * this.shapes.length,
-    //     usage: BufferUsage.VERTEX,
-    //     hint: BufferFrequencyHint.DYNAMIC,
-    //   });
-
-    //   if (this.#instancedMatrixBuffer) {
-    //     this.#instancedMatrixBuffer.destroy();
-    //   }
-    //   this.#instancedMatrixBuffer = this.device.createBuffer({
-    //     viewOrSize: Float32Array.BYTES_PER_ELEMENT * 6 * this.shapes.length,
-    //     usage: BufferUsage.VERTEX,
-    //     hint: BufferFrequencyHint.DYNAMIC,
-    //   });
-    // }
   }
 
   createMaterial(uniformBuffer: Buffer): void {
@@ -180,47 +167,6 @@ export class SmoothPolyline extends Drawcall {
       },
     ];
 
-    // if (this.instanced) {
-    //   vertexBufferDescriptors.push(
-    //     {
-    //       arrayStride: 4 * 12,
-    //       stepMode: VertexStepMode.INSTANCE,
-    //       attributes: [
-    //         {
-    //           shaderLocation: Location.STROKE_COLOR, // a_StrokeColor
-    //           offset: 4 * 0,
-    //           format: Format.F32_RGBA,
-    //         },
-    //         {
-    //           shaderLocation: Location.Z_INDEX_STROKE_WIDTH, // a_ZIndexStrokeWidth
-    //           offset: 4 * 4,
-    //           format: Format.F32_RGBA,
-    //         },
-    //         {
-    //           shaderLocation: Location.OPACITY, // a_Opacity
-    //           offset: 4 * 8,
-    //           format: Format.F32_RGBA,
-    //         },
-    //       ],
-    //     },
-    //     {
-    //       arrayStride: 4 * 6,
-    //       stepMode: VertexStepMode.INSTANCE,
-    //       attributes: [
-    //         {
-    //           shaderLocation: Location.ABCD,
-    //           offset: 0,
-    //           format: Format.F32_RGBA,
-    //         },
-    //         {
-    //           shaderLocation: Location.TX_TY,
-    //           offset: 4 * 4,
-    //           format: Format.F32_RG,
-    //         },
-    //       ],
-    //     },
-    //   );
-    // } else {
     if (!this.#uniformBuffer) {
       this.#uniformBuffer = this.device.createBuffer({
         viewOrSize: Float32Array.BYTES_PER_ELEMENT * (16 + 4 + 4 + 4 + 4),
@@ -228,7 +174,6 @@ export class SmoothPolyline extends Drawcall {
         hint: BufferFrequencyHint.DYNAMIC,
       });
     }
-    // }
 
     this.#inputLayout = this.renderCache.createInputLayout({
       vertexBufferDescriptors,
@@ -278,20 +223,14 @@ export class SmoothPolyline extends Drawcall {
 
     this.#bindings = this.device.createBindings({
       pipeline: this.#pipeline,
-      uniformBufferBindings: this.instanced
-        ? [
-            {
-              buffer: uniformBuffer,
-            },
-          ]
-        : [
-            {
-              buffer: uniformBuffer,
-            },
-            {
-              buffer: this.#uniformBuffer,
-            },
-          ],
+      uniformBufferBindings: [
+        {
+          buffer: uniformBuffer,
+        },
+        {
+          buffer: this.#uniformBuffer,
+        },
+      ],
     });
   }
 
@@ -305,35 +244,6 @@ export class SmoothPolyline extends Drawcall {
       this.shapes.some((shape) => shape.renderDirtyFlag) ||
       this.geometryDirty
     ) {
-      // if (this.instanced) {
-      //   this.#instancedMatrixBuffer.setSubData(
-      //     0,
-      //     new Uint8Array(
-      //       new Float32Array(
-      //         this.shapes
-      //           .map((shape) => [
-      //             shape.worldTransform.a,
-      //             shape.worldTransform.b,
-      //             shape.worldTransform.c,
-      //             shape.worldTransform.d,
-      //             shape.worldTransform.tx,
-      //             shape.worldTransform.ty,
-      //           ])
-      //           .flat(),
-      //       ).buffer,
-      //     ),
-      //   );
-
-      //   const instancedData: number[] = [];
-      //   this.shapes.forEach((shape) => {
-      //     const [buffer] = this.generateBuffer(shape as Polyline);
-      //     instancedData.push(...buffer);
-      //   });
-      //   this.#instancedBuffer.setSubData(
-      //     0,
-      //     new Uint8Array(new Float32Array(instancedData).buffer),
-      //   );
-      // } else {
       const { worldTransform } = this.shapes[0];
       const [buffer, legacyObject] = this.generateBuffer(
         this.shapes[0] as Polyline,
@@ -350,7 +260,6 @@ export class SmoothPolyline extends Drawcall {
         ...legacyObject,
       };
       this.#program.setUniformsLegacy(uniformLegacyObject);
-      // }
 
       this.shapes.forEach((shape: Polyline) => {
         const { pointsBuffer: pBuffer, travelBuffer: tBuffer } = updateBuffer(
@@ -403,14 +312,6 @@ export class SmoothPolyline extends Drawcall {
         buffer: this.#travelBuffer,
       },
     ];
-    // if (this.instanced) {
-    //   buffers.push(
-    //     {
-    //       buffer: this.#instancedBuffer,
-    //     },
-    //     { buffer: this.#instancedMatrixBuffer },
-    //   );
-    // }
 
     if (!this.#indexBuffer) {
       this.#indexBuffer = this.device.createBuffer({
@@ -433,6 +334,7 @@ export class SmoothPolyline extends Drawcall {
     if (this.#program) {
       this.#program.destroy();
       this.#vertexNumBuffer?.destroy();
+      this.#travelBuffer?.destroy();
       this.#segmentsBuffer?.destroy();
       this.#instancedMatrixBuffer?.destroy();
       this.#instancedBuffer?.destroy();

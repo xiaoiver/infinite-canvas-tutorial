@@ -96,6 +96,20 @@ export class Polyline extends Shape implements PolylineAttributes {
     return false;
   }
 
+  /**
+   * @see https://developer.mozilla.org/en-US/docs/Web/API/SVGGeometryElement/getTotalLength
+   */
+  getTotalLength() {
+    const { points } = this;
+    let totalLength = 0;
+    for (let i = 0; i < points.length - 1; i++) {
+      const [x1, y1] = points[i];
+      const [x2, y2] = points[i + 1];
+      totalLength += Math.hypot(x2 - x1, y2 - y1);
+    }
+    return totalLength;
+  }
+
   getGeometryBounds() {
     if (this.geometryBoundsDirtyFlag) {
       this.computeShiftedPoints();
