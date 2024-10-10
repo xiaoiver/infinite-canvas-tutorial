@@ -1,4 +1,4 @@
 {
   "app_dir": "/",
-  "start_command": "sudo apt-get update && sudo apt-get install -y mesa-utils xvfb libgl1-mesa-dri libglapi-mesa libosmesa6"
+  "pre_start_command": "apt-get update && apt-get install -y mesa-utils xvfb libgl1-mesa-dri libglapi-mesa libosmesa6"
 }
