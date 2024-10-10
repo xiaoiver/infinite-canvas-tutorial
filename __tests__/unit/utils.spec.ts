@@ -1,3 +1,4 @@
+import { vec2 } from 'gl-matrix';
 import {
   isNumber,
   isObject,
@@ -11,6 +12,8 @@ import {
   camelToKebabCase,
   kebabToCamelCase,
   Converter,
+  pointToLine,
+  bisect,
 } from '../../packages/core/src/utils';
 
 describe('Utils', () => {
@@ -83,4 +86,21 @@ describe('Utils', () => {
   });
 
   describe('Converter', () => {});
+
+  describe('Math', () => {
+    it('should calculate distance from point to line correctly.', () => {
+      expect(pointToLine(0, 0, 100, 100, 50, 50)).toBe(0);
+      expect(pointToLine(0, 0, 0, 0, 100, 0)).toBe(100);
+    });
+
+    it('should calculate bisect correctly.', () => {
+      expect(bisect(vec2.fromValues(1, 0), vec2.fromValues(1, 0), 10)).toEqual(
+        vec2.fromValues(10, 0),
+      );
+
+      expect(bisect(vec2.fromValues(1, 0), vec2.fromValues(0, 1), 10)).toEqual(
+        vec2.fromValues(10, 10),
+      );
+    });
+  });
 });

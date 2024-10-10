@@ -10,6 +10,7 @@ export enum Location {
   NEXT,
   VERTEX_JOINT,
   VERTEX_NUM,
+  TRAVEL,
 }
 
 export enum JointType {
@@ -40,6 +41,7 @@ layout(location = ${Location.POINTB}) in vec2 a_PointB;
 layout(location = ${Location.NEXT}) in vec2 a_Next;
 layout(location = ${Location.VERTEX_JOINT}) in float a_VertexJoint;
 layout(location = ${Location.VERTEX_NUM}) in float a_VertexNum;
+layout(location = ${Location.TRAVEL}) in float a_Travel;
 
 #ifdef USE_INSTANCES
   layout(location = ${Location.ABCD}) in vec4 a_Abcd;
@@ -53,6 +55,7 @@ layout(location = ${Location.VERTEX_NUM}) in float a_VertexNum;
     vec4 u_StrokeColor;
     vec4 u_ZIndexStrokeWidth;
     vec4 u_Opacity;
+    vec4 u_StrokeDash;
   };
 #endif
 
@@ -75,6 +78,7 @@ const float dpr = 2.0;
 out vec4 v_Distance;
 out vec4 v_Arc;
 out float v_Type;
+out float v_Travel;
 out float v_ScalingFactor;
 #ifdef USE_INSTANCES
   out vec4 v_StrokeColor;
@@ -380,7 +384,10 @@ void main() {
     pos += base;
     v_Distance = vec4(dy, dy2, dy3, strokeWidth) * dpr;
     v_Arc *= dpr;
+    v_Travel = a_Travel + dot(pos - pointA, vec2(-norm.y, norm.x));
   }
+
+  v_ScalingFactor = sqrt(model[0][0] * model[0][0] + model[0][1] * model[0][1] + model[0][2] * model[0][2]);
 
   gl_Position = vec4((u_ProjectionMatrix 
     * u_ViewMatrix
@@ -402,6 +409,7 @@ layout(std140) uniform SceneUniforms {
     vec4 u_StrokeColor;
     vec4 u_ZIndexStrokeWidth;
     vec4 u_Opacity;
+    vec4 u_StrokeDash;
   };
 #endif
 
@@ -410,6 +418,7 @@ out vec4 outputColor;
 in vec4 v_Distance;
 in vec4 v_Arc;
 in float v_Type;
+in float v_Travel;
 in float v_ScalingFactor;
 
 #ifdef USE_INSTANCES
@@ -499,6 +508,16 @@ void main() {
     float b2 = pixelLine(d2 + w);
     alpha = a2 * b2 - a1 * b1;
     alpha *= pixelLine(d3);
+  }
+
+  float u_Dash = u_StrokeDash.x;
+  float u_Gap = u_StrokeDash.y;
+  float u_DashOffset = u_StrokeDash.z;
+  if (u_Dash + u_Gap > 1.0) {
+    float travel = mod(v_Travel + u_Gap * v_ScalingFactor * 0.5 + u_DashOffset, u_Dash * v_ScalingFactor + u_Gap * v_ScalingFactor) - (u_Gap * v_ScalingFactor * 0.5);
+    float left = max(travel - 0.5, -0.5);
+    float right = min(travel + 0.5, u_Gap * v_ScalingFactor + 0.5);
+    alpha *= max(0.0, right - left);
   }
 
   outputColor = strokeColor;

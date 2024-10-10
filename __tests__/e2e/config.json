@@ -18,6 +18,9 @@
     "name": "polyline_stroke_alignment"
   },
   {
+    "name": "polyline_stroke_dasharray"
+  },
+  {
     "name": "grid_lines"
   },
   {

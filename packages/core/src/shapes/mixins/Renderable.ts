@@ -362,6 +362,8 @@ export function Renderable<TBase extends GConstructor>(Base: TBase) {
       if (this.#strokeAlignment !== strokeAlignment) {
         this.#strokeAlignment = strokeAlignment;
         this.renderDirtyFlag = true;
+        this.geometryBoundsDirtyFlag = true;
+        this.renderBoundsDirtyFlag = true;
       }
     }
 

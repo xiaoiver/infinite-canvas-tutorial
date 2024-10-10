@@ -127,9 +127,6 @@ export class BatchManager {
       });
       delete this.#batchableDrawcallsCache[shape.uid];
     } else {
-      this.getOrCreateNonBatchableDrawcalls(shape).forEach((drawcall) => {
-        drawcall.destroy();
-      });
       delete this.#nonBatchableDrawcallsCache[shape.uid];
     }
   }

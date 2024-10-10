@@ -6,3 +6,4 @@ export { render as grid_dots } from './grid-dots';
 export { render as drop_shadow } from './drop-shadow';
 export { render as polyline } from './polyline';
 export { render as polyline_stroke_alignment } from './polyline-stroke-alignment';
+export { render as polyline_stroke_dasharray } from './polyline-stroke-dasharray';

@@ -10,7 +10,6 @@ export async function render(canvas: Canvas) {
     stroke: 'red',
     strokeWidth: 20,
     strokeLinejoin: 'round',
-    batchable: false,
   });
   canvas.appendChild(polyline1);
 
@@ -23,7 +22,6 @@ export async function render(canvas: Canvas) {
     stroke: 'red',
     strokeWidth: 20,
     strokeLinejoin: 'bevel',
-    batchable: false,
   });
   canvas.appendChild(polyline2);
 
@@ -36,7 +34,6 @@ export async function render(canvas: Canvas) {
     stroke: 'red',
     strokeWidth: 20,
     strokeLinejoin: 'miter',
-    batchable: false,
   });
   canvas.appendChild(polyline3);
 
@@ -50,7 +47,6 @@ export async function render(canvas: Canvas) {
     strokeWidth: 20,
     strokeLinejoin: 'round',
     strokeLinecap: 'round',
-    batchable: false,
   });
   canvas.appendChild(polyline4);
 
@@ -64,7 +60,6 @@ export async function render(canvas: Canvas) {
     strokeWidth: 20,
     strokeLinejoin: 'round',
     strokeLinecap: 'square',
-    batchable: false,
   });
   canvas.appendChild(polyline5);
 

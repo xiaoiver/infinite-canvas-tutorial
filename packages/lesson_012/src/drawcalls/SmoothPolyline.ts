@@ -33,6 +33,7 @@ const strokeAlignmentMap = {
 export class SmoothPolyline extends Drawcall {
   #program: Program;
   #vertexNumBuffer: Buffer;
+  #travelBuffer: Buffer;
   #segmentsBuffer: Buffer;
   #instancedBuffer: Buffer;
   #instancedMatrixBuffer: Buffer;
@@ -72,25 +73,34 @@ export class SmoothPolyline extends Drawcall {
       hint: BufferFrequencyHint.STATIC,
     });
 
-    if (this.instanced) {
-      if (this.#instancedBuffer) {
-        this.#instancedBuffer.destroy();
-      }
-      this.#instancedBuffer = this.device.createBuffer({
-        viewOrSize: Float32Array.BYTES_PER_ELEMENT * 12 * this.shapes.length,
-        usage: BufferUsage.VERTEX,
-        hint: BufferFrequencyHint.DYNAMIC,
-      });
-
-      if (this.#instancedMatrixBuffer) {
-        this.#instancedMatrixBuffer.destroy();
-      }
-      this.#instancedMatrixBuffer = this.device.createBuffer({
-        viewOrSize: Float32Array.BYTES_PER_ELEMENT * 6 * this.shapes.length,
-        usage: BufferUsage.VERTEX,
-        hint: BufferFrequencyHint.DYNAMIC,
-      });
+    if (this.#travelBuffer) {
+      this.#travelBuffer.destroy();
     }
+    this.#travelBuffer = this.device.createBuffer({
+      viewOrSize: new Float32Array([0, 1, 2, 3, 4, 5, 6, 7, 8]),
+      usage: BufferUsage.VERTEX,
+      hint: BufferFrequencyHint.STATIC,
+    });
+
+    // if (this.instanced) {
+    //   if (this.#instancedBuffer) {
+    //     this.#instancedBuffer.destroy();
+    //   }
+    //   this.#instancedBuffer = this.device.createBuffer({
+    //     viewOrSize: Float32Array.BYTES_PER_ELEMENT * 12 * this.shapes.length,
+    //     usage: BufferUsage.VERTEX,
+    //     hint: BufferFrequencyHint.DYNAMIC,
+    //   });
+
+    //   if (this.#instancedMatrixBuffer) {
+    //     this.#instancedMatrixBuffer.destroy();
+    //   }
+    //   this.#instancedMatrixBuffer = this.device.createBuffer({
+    //     viewOrSize: Float32Array.BYTES_PER_ELEMENT * 6 * this.shapes.length,
+    //     usage: BufferUsage.VERTEX,
+    //     hint: BufferFrequencyHint.DYNAMIC,
+    //   });
+    // }
   }
 
   createMaterial(uniformBuffer: Buffer): void {
@@ -157,57 +167,68 @@ export class SmoothPolyline extends Drawcall {
           },
         ],
       },
+      {
+        arrayStride: 4 * 1,
+        stepMode: VertexStepMode.INSTANCE,
+        attributes: [
+          {
+            format: Format.F32_R,
+            offset: 4 * 0,
+            shaderLocation: Location.TRAVEL,
+          },
+        ],
+      },
     ];
 
-    if (this.instanced) {
-      vertexBufferDescriptors.push(
-        {
-          arrayStride: 4 * 12,
-          stepMode: VertexStepMode.INSTANCE,
-          attributes: [
-            {
-              shaderLocation: Location.STROKE_COLOR, // a_StrokeColor
-              offset: 4 * 0,
-              format: Format.F32_RGBA,
-            },
-            {
-              shaderLocation: Location.Z_INDEX_STROKE_WIDTH, // a_ZIndexStrokeWidth
-              offset: 4 * 4,
-              format: Format.F32_RGBA,
-            },
-            {
-              shaderLocation: Location.OPACITY, // a_Opacity
-              offset: 4 * 8,
-              format: Format.F32_RGBA,
-            },
-          ],
-        },
-        {
-          arrayStride: 4 * 6,
-          stepMode: VertexStepMode.INSTANCE,
-          attributes: [
-            {
-              shaderLocation: Location.ABCD,
-              offset: 0,
-              format: Format.F32_RGBA,
-            },
-            {
-              shaderLocation: Location.TX_TY,
-              offset: 4 * 4,
-              format: Format.F32_RG,
-            },
-          ],
-        },
-      );
-    } else {
-      if (!this.#uniformBuffer) {
-        this.#uniformBuffer = this.device.createBuffer({
-          viewOrSize: Float32Array.BYTES_PER_ELEMENT * (16 + 4 + 4 + 4),
-          usage: BufferUsage.UNIFORM,
-          hint: BufferFrequencyHint.DYNAMIC,
-        });
-      }
+    // if (this.instanced) {
+    //   vertexBufferDescriptors.push(
+    //     {
+    //       arrayStride: 4 * 12,
+    //       stepMode: VertexStepMode.INSTANCE,
+    //       attributes: [
+    //         {
+    //           shaderLocation: Location.STROKE_COLOR, // a_StrokeColor
+    //           offset: 4 * 0,
+    //           format: Format.F32_RGBA,
+    //         },
+    //         {
+    //           shaderLocation: Location.Z_INDEX_STROKE_WIDTH, // a_ZIndexStrokeWidth
+    //           offset: 4 * 4,
+    //           format: Format.F32_RGBA,
+    //         },
+    //         {
+    //           shaderLocation: Location.OPACITY, // a_Opacity
+    //           offset: 4 * 8,
+    //           format: Format.F32_RGBA,
+    //         },
+    //       ],
+    //     },
+    //     {
+    //       arrayStride: 4 * 6,
+    //       stepMode: VertexStepMode.INSTANCE,
+    //       attributes: [
+    //         {
+    //           shaderLocation: Location.ABCD,
+    //           offset: 0,
+    //           format: Format.F32_RGBA,
+    //         },
+    //         {
+    //           shaderLocation: Location.TX_TY,
+    //           offset: 4 * 4,
+    //           format: Format.F32_RG,
+    //         },
+    //       ],
+    //     },
+    //   );
+    // } else {
+    if (!this.#uniformBuffer) {
+      this.#uniformBuffer = this.device.createBuffer({
+        viewOrSize: Float32Array.BYTES_PER_ELEMENT * (16 + 4 + 4 + 4 + 4),
+        usage: BufferUsage.UNIFORM,
+        hint: BufferFrequencyHint.DYNAMIC,
+      });
     }
+    // }
 
     this.#inputLayout = this.renderCache.createInputLayout({
       vertexBufferDescriptors,
@@ -278,74 +299,63 @@ export class SmoothPolyline extends Drawcall {
     const indices: number[] = [];
     const pointsBuffer: number[] = [];
     const travelBuffer: number[] = [];
-    const packedDash: number[] = [];
     let offset = 0;
 
     if (
       this.shapes.some((shape) => shape.renderDirtyFlag) ||
       this.geometryDirty
     ) {
-      if (this.instanced) {
-        this.#instancedMatrixBuffer.setSubData(
-          0,
-          new Uint8Array(
-            new Float32Array(
-              this.shapes
-                .map((shape) => [
-                  shape.worldTransform.a,
-                  shape.worldTransform.b,
-                  shape.worldTransform.c,
-                  shape.worldTransform.d,
-                  shape.worldTransform.tx,
-                  shape.worldTransform.ty,
-                ])
-                .flat(),
-            ).buffer,
-          ),
-        );
+      // if (this.instanced) {
+      //   this.#instancedMatrixBuffer.setSubData(
+      //     0,
+      //     new Uint8Array(
+      //       new Float32Array(
+      //         this.shapes
+      //           .map((shape) => [
+      //             shape.worldTransform.a,
+      //             shape.worldTransform.b,
+      //             shape.worldTransform.c,
+      //             shape.worldTransform.d,
+      //             shape.worldTransform.tx,
+      //             shape.worldTransform.ty,
+      //           ])
+      //           .flat(),
+      //       ).buffer,
+      //     ),
+      //   );
 
-        const instancedData: number[] = [];
-        this.shapes.forEach((shape) => {
-          const [buffer] = this.generateBuffer(shape as Polyline);
-          instancedData.push(...buffer);
-        });
-        this.#instancedBuffer.setSubData(
-          0,
-          new Uint8Array(new Float32Array(instancedData).buffer),
-        );
-      } else {
-        const { worldTransform } = this.shapes[0];
-        const [buffer, legacyObject] = this.generateBuffer(
-          this.shapes[0] as Polyline,
-        );
-        const u_ModelMatrix = worldTransform.toArray(true);
-        this.#uniformBuffer.setSubData(
-          0,
-          new Uint8Array(
-            new Float32Array([...paddingMat3(u_ModelMatrix), ...buffer]).buffer,
-          ),
-        );
-        const uniformLegacyObject: Record<string, unknown> = {
-          u_ModelMatrix,
-          ...legacyObject,
-        };
-        this.#program.setUniformsLegacy(uniformLegacyObject);
-      }
+      //   const instancedData: number[] = [];
+      //   this.shapes.forEach((shape) => {
+      //     const [buffer] = this.generateBuffer(shape as Polyline);
+      //     instancedData.push(...buffer);
+      //   });
+      //   this.#instancedBuffer.setSubData(
+      //     0,
+      //     new Uint8Array(new Float32Array(instancedData).buffer),
+      //   );
+      // } else {
+      const { worldTransform } = this.shapes[0];
+      const [buffer, legacyObject] = this.generateBuffer(
+        this.shapes[0] as Polyline,
+      );
+      const u_ModelMatrix = worldTransform.toArray(true);
+      this.#uniformBuffer.setSubData(
+        0,
+        new Uint8Array(
+          new Float32Array([...paddingMat3(u_ModelMatrix), ...buffer]).buffer,
+        ),
+      );
+      const uniformLegacyObject: Record<string, unknown> = {
+        u_ModelMatrix,
+        ...legacyObject,
+      };
+      this.#program.setUniformsLegacy(uniformLegacyObject);
+      // }
 
       this.shapes.forEach((shape: Polyline) => {
-        const {
-          pointsBuffer: pBuffer,
-          travelBuffer: tBuffer,
-          // instancedCount: count,
-        } = updateBuffer(shape, false);
-
-        const { strokeDasharray, strokeDashoffset } = shape;
-
-        packedDash.push(
-          (strokeDasharray && strokeDasharray[0]) || 0, // DASH
-          (strokeDasharray && strokeDasharray[1]) || 0, // GAP
-          strokeDashoffset || 0,
-          0,
+        const { pointsBuffer: pBuffer, travelBuffer: tBuffer } = updateBuffer(
+          shape,
+          false,
         );
 
         pointsBuffer.push(...pBuffer);
@@ -375,6 +385,11 @@ export class SmoothPolyline extends Drawcall {
         0,
         new Uint8Array(new Float32Array(pointsBuffer).buffer),
       );
+
+      this.#travelBuffer.setSubData(
+        0,
+        new Uint8Array(new Float32Array(travelBuffer).buffer),
+      );
     }
 
     const buffers = [
@@ -384,15 +399,18 @@ export class SmoothPolyline extends Drawcall {
       {
         buffer: this.#vertexNumBuffer,
       },
+      {
+        buffer: this.#travelBuffer,
+      },
     ];
-    if (this.instanced) {
-      buffers.push(
-        {
-          buffer: this.#instancedBuffer,
-        },
-        { buffer: this.#instancedMatrixBuffer },
-      );
-    }
+    // if (this.instanced) {
+    //   buffers.push(
+    //     {
+    //       buffer: this.#instancedBuffer,
+    //     },
+    //     { buffer: this.#instancedMatrixBuffer },
+    //   );
+    // }
 
     if (!this.#indexBuffer) {
       this.#indexBuffer = this.device.createBuffer({
@@ -435,6 +453,8 @@ export class SmoothPolyline extends Drawcall {
       strokeOpacity,
       strokeAlignment,
       strokeMiterlimit,
+      strokeDasharray,
+      strokeDashoffset,
     } = shape;
 
     const u_StrokeColor = [sr / 255, sg / 255, sb / 255, so];
@@ -445,13 +465,20 @@ export class SmoothPolyline extends Drawcall {
       strokeAlignmentMap[strokeAlignment],
     ];
     const u_Opacity = [opacity, fillOpacity, strokeOpacity, 0];
+    const u_StrokeDash = [
+      (strokeDasharray && strokeDasharray[0]) || 0, // DASH
+      (strokeDasharray && strokeDasharray[1]) || 0, // GAP
+      strokeDashoffset || 0,
+      0,
+    ];
 
     return [
-      [...u_StrokeColor, ...u_ZIndexStrokeWidth, ...u_Opacity],
+      [...u_StrokeColor, ...u_ZIndexStrokeWidth, ...u_Opacity, ...u_StrokeDash],
       {
         u_StrokeColor,
         u_ZIndexStrokeWidth,
         u_Opacity,
+        u_StrokeDash,
       },
     ];
   }
@@ -552,7 +579,6 @@ export function updateBuffer(
     const travelBuffer: number[] = [];
     for (let i = 0; i < points.length; i += stridePoints) {
       // calc travel
-      // if (needDash) {
       if (i > 1) {
         dist += Math.sqrt(
           Math.pow(points[i] - points[i - stridePoints], 2) +
@@ -560,9 +586,6 @@ export function updateBuffer(
         );
       }
       travelBuffer.push(dist);
-      // } else {
-      //   travelBuffer.push(0);
-      // }
 
       pointsBuffer[j++] = points[i];
       pointsBuffer[j++] = points[i + 1];

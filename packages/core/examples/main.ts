@@ -24,19 +24,30 @@ const canvas = await new Canvas({
 const polyline1 = new Polyline({
   points: [
     [100, 100],
+    [100, 200],
     [200, 200],
     [200, 100],
   ],
   stroke: 'red',
   strokeWidth: 20,
-  // strokeAlignment: 'outer',
+  strokeAlignment: 'inner',
   strokeLinejoin: 'round',
-  cullable: false,
+  strokeDasharray: [10, 10],
+  strokeDashoffset: 0,
   batchable: false,
 });
 canvas.appendChild(polyline1);
 
+console.log(polyline1);
+
 canvas.render();
+
+polyline1.addEventListener('pointerenter', () => {
+  polyline1.stroke = 'green';
+});
+polyline1.addEventListener('pointerleave', () => {
+  polyline1.stroke = 'red';
+});
 
 const exporter = new ImageExporter({
   canvas,

@@ -12,8 +12,6 @@ export async function render(canvas: Canvas) {
     strokeWidth: 20,
     strokeAlignment: 'outer',
     fill: 'none',
-    cullable: false,
-    batchable: false,
   });
   canvas.appendChild(polyline1);
   const polyline4 = new Polyline({
@@ -25,10 +23,7 @@ export async function render(canvas: Canvas) {
     ],
     stroke: 'red',
     strokeWidth: 2,
-    // strokeAlignment: 'outer',
     fill: 'none',
-    cullable: false,
-    batchable: false,
   });
   canvas.appendChild(polyline4);
 
@@ -41,10 +36,7 @@ export async function render(canvas: Canvas) {
     ],
     stroke: 'black',
     strokeWidth: 20,
-    // strokeAlignment: 'center',
     fill: 'none',
-    cullable: false,
-    batchable: false,
   });
   canvas.appendChild(polyline2);
   const polyline5 = new Polyline({
@@ -57,8 +49,6 @@ export async function render(canvas: Canvas) {
     stroke: 'red',
     strokeWidth: 2,
     fill: 'none',
-    cullable: false,
-    batchable: false,
   });
   canvas.appendChild(polyline5);
 
@@ -73,8 +63,6 @@ export async function render(canvas: Canvas) {
     strokeWidth: 20,
     strokeAlignment: 'inner',
     fill: 'none',
-    cullable: false,
-    batchable: false,
   });
   canvas.appendChild(polyline3);
   const polyline6 = new Polyline({
@@ -87,8 +75,6 @@ export async function render(canvas: Canvas) {
     stroke: 'red',
     strokeWidth: 2,
     fill: 'none',
-    cullable: false,
-    batchable: false,
   });
   canvas.appendChild(polyline6);
 

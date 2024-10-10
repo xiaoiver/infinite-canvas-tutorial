@@ -8,8 +8,10 @@ outline: deep
 
 -   为什么不直接使用 `gl.LINES`?
 -   在 CPU 或者 Shader 中构建 Mesh
--   分析 Shader 细节，包括拉伸顶点、接头、反走样、虚线等
--   如何绘制 Path？
+-   分析 Shader 细节，包括：
+    -   拉伸顶点与接头
+    -   反走样
+    -   绘制虚线
 
 ```js eval code=false
 $icCanvas = call(() => {
@@ -43,8 +45,6 @@ call(() => {
             stroke: 'red',
             strokeWidth: 20,
             fill: 'none',
-            cullable: false,
-            batchable: false,
         });
         canvas.appendChild(polyline1);
 
@@ -58,8 +58,6 @@ call(() => {
             strokeWidth: 20,
             strokeLinejoin: 'bevel',
             fill: 'none',
-            cullable: false,
-            batchable: false,
         });
         canvas.appendChild(polyline2);
 
@@ -74,10 +72,25 @@ call(() => {
             strokeLinejoin: 'round',
             strokeLinecap: 'round',
             fill: 'none',
-            cullable: false,
-            batchable: false,
         });
         canvas.appendChild(polyline3);
+
+        const polyline4 = new Polyline({
+            points: [
+                [100, 300],
+                [200, 300],
+                [300, 210],
+                [400, 300],
+                [500, 300],
+            ],
+            stroke: 'red',
+            strokeWidth: 20,
+            strokeLinejoin: 'round',
+            strokeLinecap: 'round',
+            strokeDasharray: [10, 5],
+            fill: 'none',
+        });
+        canvas.appendChild(polyline4);
     });
 
     $icCanvas.addEventListener('ic-frame', (e) => {
@@ -330,11 +343,11 @@ Bevel 接头的计算方式大致和 Miter 相同（下图中间情况）。`d3`
 
 ### 支持 stroke-alignment {#stroke-alignment}
 
-之前我们在使用 SDF 绘制的 Circle、Ellipse、Rect 上实现了：[增强 SVG: Stroke alignment]。现在让我们为折线也加上这个属性。
+之前我们在使用 SDF 绘制的 Circle、Ellipse、Rect 上实现了：[增强 SVG: Stroke alignment]。现在让我们为折线也加上这个属性。下图来自 Pixi.js 中的 `lineStyle.alignment` 效果，红色线条表示折线的几何位置，根据取值不同在它上下浮动：
 
 ![stroke-alignment - p27](/line-stroke-alignment.png)
 
-将这个属性反映到沿法线拉伸的偏移量上，如果 `strokeAlignment` 取值为 `center` 时偏移量为 `0`：
+在 Shader 中我们将这个属性反映到沿法线拉伸的偏移量上，如果 `strokeAlignment` 取值为 `center` 时偏移量为 `0`：
 
 ```glsl
 float shift = strokeWidth * strokeAlignment;
@@ -378,8 +391,7 @@ call(() => {
             strokeWidth: 20,
             strokeAlignment: 'outer',
             fill: 'none',
-            cullable: false,
-            batchable: false,
+            cursor: 'pointer',
         });
         canvas.appendChild(polyline1);
         const polyline4 = new Polyline({
@@ -393,8 +405,6 @@ call(() => {
             strokeWidth: 2,
             // strokeAlignment: 'outer',
             fill: 'none',
-            cullable: false,
-            batchable: false,
         });
         canvas.appendChild(polyline4);
 
@@ -407,10 +417,8 @@ call(() => {
             ],
             stroke: 'black',
             strokeWidth: 20,
-            // strokeAlignment: 'center',
+            cursor: 'pointer',
             fill: 'none',
-            cullable: false,
-            batchable: false,
         });
         canvas.appendChild(polyline2);
         const polyline5 = new Polyline({
@@ -423,8 +431,6 @@ call(() => {
             stroke: 'red',
             strokeWidth: 2,
             fill: 'none',
-            cullable: false,
-            batchable: false,
         });
         canvas.appendChild(polyline5);
 
@@ -439,8 +445,7 @@ call(() => {
             strokeWidth: 20,
             strokeAlignment: 'inner',
             fill: 'none',
-            cullable: false,
-            batchable: false,
+            cursor: 'pointer',
         });
         canvas.appendChild(polyline3);
         const polyline6 = new Polyline({
@@ -453,10 +458,27 @@ call(() => {
             stroke: 'red',
             strokeWidth: 2,
             fill: 'none',
-            cullable: false,
-            batchable: false,
         });
         canvas.appendChild(polyline6);
+
+        polyline1.addEventListener('pointerenter', () => {
+            polyline1.stroke = 'green';
+        });
+        polyline1.addEventListener('pointerleave', () => {
+            polyline1.stroke = 'black';
+        });
+        polyline2.addEventListener('pointerenter', () => {
+            polyline2.stroke = 'green';
+        });
+        polyline2.addEventListener('pointerleave', () => {
+            polyline2.stroke = 'black';
+        });
+        polyline3.addEventListener('pointerenter', () => {
+            polyline3.stroke = 'green';
+        });
+        polyline3.addEventListener('pointerleave', () => {
+            polyline3.stroke = 'black';
+        });
     });
 
     $icCanvas2.addEventListener('ic-frame', (e) => {
@@ -465,11 +487,141 @@ call(() => {
 });
 ```
 
+最后还有两点需要注意：
+
+1. 由于 `stroke-alignment` 并非 SVG 标准属性，因此在导出成 SVG 时需要重新计算 `points`，和 Shader 中沿法线、角平分线拉伸逻辑一致，限于篇幅就不展开了
+2. 拾取判定方法即 `containsPoint` 同样需要依据 `points` 计算偏移后的顶点。可以在上面的例子中尝试将鼠标移入移出改变折线的颜色
+
 ### 虚线 {#dash}
+
+首先计算每个顶点从起点处经过的距离，以 `[[0, 0], [100, 0], [200, 0]]` 的折线为例，三个 instance 的 `a_Travel` 的值依次为 `[0, 100, 200]`。在 Vertex Shader 中计算拉伸后顶点经过的距离：
+
+```glsl
+layout(location = ${Location.TRAVEL}) in float a_Travel;
+out float v_Travel;
+
+v_Travel = a_Travel + dot(pos - pointA, vec2(-norm.y, norm.x));
+```
+
+在 Fragment Shader 中，将 `stroke-dasharray` 和 `stroke-dashoffset` 的值传入，和 SVG 标准不同，我们暂时仅支持长度为 2 的 `stroke-dasharray`，即 `[10, 5, 2]` 这样的虚线暂不支持。
+
+```glsl
+in float v_Travel;
+
+float u_Dash = u_StrokeDash.x;
+float u_Gap = u_StrokeDash.y;
+float u_DashOffset = u_StrokeDash.z;
+if (u_Dash + u_Gap > 1.0) {
+  float travel = mod(v_Travel + u_Gap * 0.5 + u_DashOffset, u_Dash + u_Gap) - (u_Gap * 0.5);
+  float left = max(travel - 0.5, -0.5);
+  float right = min(travel + 0.5, u_Gap + 0.5);
+  alpha *= max(0.0, right - left);
+}
+```
+
+效果如下：
+
+```js eval code=false
+$icCanvas3 = call(() => {
+    return document.createElement('ic-canvas-lesson12');
+});
+```
+
+```js eval code=false inspector=false
+call(() => {
+    const { Canvas, Polyline } = Lesson12;
+
+    const stats = new Stats();
+    stats.showPanel(0);
+    const $stats = stats.dom;
+    $stats.style.position = 'absolute';
+    $stats.style.left = '0px';
+    $stats.style.top = '0px';
+
+    $icCanvas3.parentElement.style.position = 'relative';
+    $icCanvas3.parentElement.appendChild($stats);
+
+    $icCanvas3.addEventListener('ic-ready', (e) => {
+        const canvas = e.detail;
+
+        const polyline1 = new Polyline({
+            points: [
+                [100, 100],
+                [100, 200],
+                [200, 200],
+                [200, 100],
+            ],
+            stroke: 'black',
+            strokeWidth: 20,
+            strokeDasharray: [10, 10],
+            strokeDashoffset: 0,
+            fill: 'none',
+            cursor: 'pointer',
+        });
+        canvas.appendChild(polyline1);
+
+        const polyline2 = new Polyline({
+            points: [
+                [300, 100],
+                [300, 200],
+                [500, 200],
+                [500, 100],
+            ],
+            stroke: 'black',
+            strokeWidth: 10,
+            strokeDasharray: [2, 10],
+            strokeDashoffset: 0,
+            strokeLinecap: 'round',
+            strokeLinejoin: 'round',
+            fill: 'none',
+            cursor: 'pointer',
+        });
+        canvas.appendChild(polyline2);
+
+        polyline1.addEventListener('pointerenter', () => {
+            polyline1.stroke = 'green';
+        });
+        polyline1.addEventListener('pointerleave', () => {
+            polyline1.stroke = 'black';
+        });
+    });
+
+    $icCanvas3.addEventListener('ic-frame', (e) => {
+        stats.update();
+    });
+});
+```
 
 按照 SVG 规范，`stroke-dasharray` 和 `stroke-dashoffset` 这两个属性也可以作用在 Circle / Ellipse / Rect 等其他图形上。因此当这两个属性有合理值时，原本使用 SDF 绘制的描边就得改成使用 Polyline 实现。
 
-## 绘制 Path {#path}
+#### 笔迹动画效果 {#stroke-animation}
+
+#### 蚂蚁线效果 {#antmarch-animation}
+
+## 计算包围盒 {#geometry-bounds}
+
+先忽略绘制属性，几何包围盒的计算非常简单。只需要找到折线所有顶点中的最小和最大坐标：
+
+```ts
+const minX = Math.min(...points.map((point) => point[0]));
+const maxX = Math.max(...points.map((point) => point[0]));
+const minY = Math.min(...points.map((point) => point[1]));
+const maxY = Math.max(...points.map((point) => point[1]));
+
+return new AABB(minX, minY, maxX, maxY);
+```
+
+一旦涉及到线宽、端点和接头，计算折线的包围盒就会变的比较复杂。如果不需要太精确的结果，可以简单将上述包围盒向外延拓一半的线宽。[Calculate bounding box of line with thickness] 中使用了 Cairo 提供的 [cairo-stroke-extents] 方法，如果线宽为 `0`，它就会退化成 [cairo-path-extents]：
+
+> Computes a bounding box in user coordinates covering the area that would be affected, (the "inked" area)
+
+## 其他问题 {#followup-issues}
+
+### 退化成直线 {#line}
+
+直线并不需要考虑 `strokeLinejoin`，因此简单很多。
+
+### 绘制 Path {#path}
 
 使用折线绘制会存在这样的问题：[Draw arcs, arcs are not smooth ISSUE]
 
@@ -481,15 +633,9 @@ call(() => {
 
 ![SDF line](/sdf-line.png)
 
-## SizeAttenuation {#size-attenuation}
+### SizeAttenuation {#size-attenuation}
 
 [sizeAttenuation]
-
-## 退化成直线 {#line}
-
-直线并不需要考虑 `strokeLinejoin`，因此简单很多。
-
-## 计算包围盒 {#geometry-bounds}
 
 ## 扩展阅读 {#extended-reading}
 
@@ -529,3 +675,6 @@ call(() => {
 [WebGPU instancing problem]: https://github.com/pixijs/pixijs/issues/7511#issuecomment-2247464973
 [Draw arcs, arcs are not smooth ISSUE]: https://github.com/pixijs/graphics-smooth/issues/23
 [增强 SVG: Stroke alignment]: /zh/guide/lesson-010#stroke-alignment
+[Calculate bounding box of line with thickness]: https://stackoverflow.com/questions/51210467/calculate-bounding-box-of-line-with-thickness
+[cairo-stroke-extents]: https://cairographics.org/manual/cairo-cairo-t.html#cairo-stroke-extents
+[cairo-path-extents]: https://cairographics.org/manual/cairo-Paths.html#cairo-path-extents

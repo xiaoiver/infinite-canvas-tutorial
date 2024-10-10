@@ -46,7 +46,7 @@ export interface IRenderable {
   boundsDirtyFlag: boolean;
 
   /**
-   * It's a presentation attribute that defines the color used to paint the element.
+   * It's a presentation attribute that defines the color used to paint the element. Default to `black`.
    * @see https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/fill
    *
    * Enhanced with the following features:
@@ -56,13 +56,13 @@ export interface IRenderable {
   fill: string | TexImageSource;
 
   /**
-   * It is a presentation attribute defining the color used to paint the outline of the shape.
+   * It is a presentation attribute defining the color used to paint the outline of the shape. Default to `none`.
    * @see https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/stroke
    */
   stroke: string;
 
   /**
-   * It is a presentation attribute defining the width of the stroke to be applied to the shape.
+   * It is a presentation attribute defining the width of the stroke to be applied to the shape. Default value is `1`.
    * @see https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/stroke-width
    */
   strokeWidth: number;
@@ -93,7 +93,7 @@ export interface IRenderable {
 
   /**
    * The stroke-miterlimit attribute is a presentation attribute defining a limit on the ratio of the miter length to the stroke-width used to draw a miter join.
-   * When the limit is exceeded, the join is converted from a miter to a bevel.
+   * When the limit is exceeded, the join is converted from a miter to a bevel. Default value is `4`.
    *
    * @see https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/stroke-miterlimit
    */
@@ -101,6 +101,7 @@ export interface IRenderable {
 
   /**
    * The stroke-dasharray attribute is a presentation attribute defining the pattern of dashes and gaps used to paint the outline of the shape;
+   * Default value is `none`.
    *
    * @see https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/stroke-dasharray
    */
@@ -108,6 +109,7 @@ export interface IRenderable {
 
   /**
    * The stroke-dashoffset attribute is a presentation attribute defining an offset on the rendering of the associated dash array.
+   * Default value is `0`.
    *
    * @see https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/stroke-dashoffset
    */
@@ -278,12 +280,12 @@ export function Renderable<TBase extends GConstructor>(Base: TBase) {
       this.cullable = cullable ?? true;
       this.batchable = batchable ?? true;
       this.fill = fill ?? 'black';
-      this.stroke = stroke ?? 'black';
-      this.strokeWidth = strokeWidth ?? 0;
+      this.stroke = stroke ?? 'none';
+      this.strokeWidth = strokeWidth ?? 1;
       this.strokeAlignment = strokeAlignment ?? 'center';
       this.strokeLinecap = strokeLinecap ?? 'butt';
       this.strokeLinejoin = strokeLinejoin ?? 'miter';
-      this.strokeMiterlimit = strokeMiterlimit ?? 5;
+      this.strokeMiterlimit = strokeMiterlimit ?? 4;
       this.strokeDasharray = strokeDasharray ?? [];
       this.strokeDashoffset = strokeDashoffset ?? 0;
       this.opacity = opacity ?? 1;
@@ -303,7 +305,11 @@ export function Renderable<TBase extends GConstructor>(Base: TBase) {
         this.#fill = fill;
 
         if (isString(fill)) {
-          this.#fillRGB = d3.rgb(fill);
+          if (fill === 'none') {
+            this.#fillRGB = d3.rgb(255, 255, 255, 0);
+          } else {
+            this.#fillRGB = d3.rgb(fill);
+          }
         } else {
           // if (!fill.complete) {
           //   fill.onload = () => {
@@ -325,7 +331,11 @@ export function Renderable<TBase extends GConstructor>(Base: TBase) {
     set stroke(stroke: string) {
       if (this.#stroke !== stroke) {
         this.#stroke = stroke;
-        this.#strokeRGB = d3.rgb(stroke);
+        if (stroke === 'none') {
+          this.#strokeRGB = d3.rgb(255, 255, 255, 0);
+        } else {
+          this.#strokeRGB = d3.rgb(stroke);
+        }
         this.renderDirtyFlag = true;
       }
     }
@@ -352,6 +362,8 @@ export function Renderable<TBase extends GConstructor>(Base: TBase) {
       if (this.#strokeAlignment !== strokeAlignment) {
         this.#strokeAlignment = strokeAlignment;
         this.renderDirtyFlag = true;
+        this.geometryBoundsDirtyFlag = true;
+        this.renderBoundsDirtyFlag = true;
       }
     }
 

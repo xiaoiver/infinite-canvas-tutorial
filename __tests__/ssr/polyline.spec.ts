@@ -46,109 +46,136 @@ describe('Polyline', () => {
     expect(exporter.toSVG({ grid: true })).toMatchSVGSnapshot(dir, 'polyline');
   });
 
-  // it('should render a circle with stroke correctly.', async () => {
-  //   const circle = new Circle({
-  //     cx: 100,
-  //     cy: 100,
-  //     r: 50,
-  //     fill: 'black',
-  //     stroke: 'black',
-  //     strokeOpacity: 0.5,
-  //     strokeWidth: 20,
-  //   });
-  //   canvas.appendChild(circle);
-  //   canvas.render();
+  it('should render a polyline with stroke linejoin & linecap correctly.', async () => {
+    const polyline1 = new Polyline({
+      points: [
+        [50, 50],
+        [50, 150],
+        [100, 150],
+        [100, 50],
+      ],
+      stroke: 'black',
+      strokeWidth: 20,
+      strokeLinejoin: 'round',
+      fill: 'none',
+    });
+    canvas.appendChild(polyline1);
 
-  //   expect($canvas.getContext('webgl1')).toMatchWebGLSnapshot(
-  //     dir,
-  //     'circle-stroke',
-  //   );
-  //   expect(exporter.toSVG({ grid: true })).toMatchSVGSnapshot(
-  //     dir,
-  //     'circle-stroke',
-  //   );
-  // });
+    const polyline2 = new Polyline({
+      points: [
+        [120, 50],
+        [120, 150],
+        [170, 150],
+        [170, 50],
+      ],
+      stroke: 'black',
+      strokeWidth: 20,
+      strokeLinejoin: 'round',
+      strokeLinecap: 'round',
+      fill: 'none',
+    });
+    canvas.appendChild(polyline2);
 
-  // it('should render a circle with stroke alignment correctly.', async () => {
-  //   const circle1 = new Circle({
-  //     cx: 50,
-  //     cy: 50,
-  //     r: 50,
-  //     fill: 'red',
-  //     stroke: 'black',
-  //     strokeOpacity: 0.5,
-  //     strokeWidth: 20,
-  //     strokeAlignment: 'inner',
-  //   });
-  //   canvas.appendChild(circle1);
+    canvas.render();
 
-  //   const circle2 = new Circle({
-  //     cx: 150,
-  //     cy: 50,
-  //     r: 50,
-  //     fill: 'red',
-  //     stroke: 'black',
-  //     strokeOpacity: 0.5,
-  //     strokeWidth: 20,
-  //     strokeAlignment: 'outer',
-  //   });
-  //   canvas.appendChild(circle2);
+    expect($canvas.getContext('webgl1')).toMatchWebGLSnapshot(
+      dir,
+      'polyline-stroke-linejoin',
+    );
+    expect(exporter.toSVG({ grid: true })).toMatchSVGSnapshot(
+      dir,
+      'polyline-stroke-linejoin',
+    );
+  });
 
-  //   const circle3 = new Circle({
-  //     cx: 50,
-  //     cy: 150,
-  //     r: 50,
-  //     fill: 'red',
-  //     stroke: 'black',
-  //     strokeOpacity: 0.5,
-  //     strokeWidth: 20,
-  //     strokeAlignment: 'center',
-  //   });
-  //   canvas.appendChild(circle3);
+  it('should render a polyline with stroke alignment correctly.', async () => {
+    const polyline1 = new Polyline({
+      points: [
+        [50, 50],
+        [50, 150],
+        [100, 150],
+        [100, 50],
+      ],
+      stroke: 'black',
+      strokeWidth: 20,
+      strokeAlignment: 'outer',
+      fill: 'none',
+    });
+    canvas.appendChild(polyline1);
+    const polyline4 = new Polyline({
+      points: [
+        [50, 50],
+        [50, 150],
+        [100, 150],
+        [100, 50],
+      ],
+      stroke: 'red',
+      strokeWidth: 2,
+      fill: 'none',
+    });
+    canvas.appendChild(polyline4);
 
-  //   canvas.render();
+    const polyline2 = new Polyline({
+      points: [
+        [120, 50],
+        [120, 150],
+        [170, 150],
+        [170, 50],
+      ],
+      stroke: 'black',
+      strokeWidth: 20,
+      fill: 'none',
+    });
+    canvas.appendChild(polyline2);
+    const polyline5 = new Polyline({
+      points: [
+        [120, 50],
+        [120, 150],
+        [170, 150],
+        [170, 50],
+      ],
+      stroke: 'red',
+      strokeWidth: 2,
+      fill: 'none',
+    });
+    canvas.appendChild(polyline5);
 
-  //   expect($canvas.getContext('webgl1')).toMatchWebGLSnapshot(
-  //     dir,
-  //     'circle-stroke-alignment',
-  //   );
-  //   expect(exporter.toSVG({ grid: true })).toMatchSVGSnapshot(
-  //     dir,
-  //     'circle-stroke-alignment',
-  //   );
-  // });
+    canvas.render();
 
-  // it('should render a circle with image correctly.', async () => {
-  //   // Load local image instead of fetching remote URL.
-  //   // @see https://github.com/stackgl/headless-gl/pull/53/files#diff-55563b6c0b90b80aed19c83df1c51e80fd45d2fbdad6cc047ee86e98f65da3e9R83
-  //   const src = await new Promise((resolve, reject) => {
-  //     getPixels(__dirname + '/canvas.png', function (err, image) {
-  //       if (err) {
-  //         reject('Bad image path');
-  //       } else {
-  //         image.width = image.shape[0];
-  //         image.height = image.shape[1];
-  //         resolve(image);
-  //       }
-  //     });
-  //   });
+    expect($canvas.getContext('webgl1')).toMatchWebGLSnapshot(
+      dir,
+      'polyline-stroke-alignment',
+    );
+    expect(exporter.toSVG({ grid: true })).toMatchSVGSnapshot(
+      dir,
+      'polyline-stroke-alignment',
+    );
+  });
 
-  //   const circle = new Circle({
-  //     cx: 100,
-  //     cy: 100,
-  //     r: 50,
-  //     // @ts-expect-error
-  //     fill: src,
-  //     stroke: 'black',
-  //     strokeOpacity: 0.5,
-  //     strokeWidth: 20,
-  //   });
-  //   canvas.appendChild(circle);
-  //   canvas.render();
+  it('should render a polyline with stroke dasharray correctly.', async () => {
+    const polyline1 = new Polyline({
+      points: [
+        [50, 50],
+        [50, 150],
+        [100, 150],
+        [100, 50],
+      ],
+      stroke: 'black',
+      strokeWidth: 20,
+      strokeDasharray: [10, 10],
+      fill: 'none',
+    });
+    canvas.appendChild(polyline1);
 
-  //   expect($canvas.getContext('webgl1')).toMatchWebGLSnapshot(
-  //     dir,
-  //     'circle-image',
-  //   );
-  // });
+    canvas.render();
+
+    expect($canvas.getContext('webgl1')).toMatchWebGLSnapshot(
+      dir,
+      'polyline-stroke-dasharray',
+    );
+    expect(exporter.toSVG({ grid: true })).toMatchSVGSnapshot(
+      dir,
+      'polyline-stroke-dasharray',
+    );
+  });
 });
