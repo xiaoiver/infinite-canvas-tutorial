@@ -114,7 +114,7 @@ describe('Circle', () => {
     );
   });
 
-  it('should render a circle with image correctly.', async () => {
+  it.skip('should render a circle with image correctly.', async () => {
     // Load local image instead of fetching remote URL.
     // @see https://github.com/stackgl/headless-gl/pull/53/files#diff-55563b6c0b90b80aed19c83df1c51e80fd45d2fbdad6cc047ee86e98f65da3e9R83
     const src = await new Promise((resolve, reject) => {

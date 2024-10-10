@@ -519,7 +519,7 @@ if (u_Dash + u_Gap > 1.0) {
 }
 ```
 
-效果如下：
+效果如下，通过实时改变 `stroke-dashoffset` 还可以实现蚂蚁线效果：
 
 ```js eval code=false
 $icCanvas3 = call(() => {
@@ -588,15 +588,16 @@ call(() => {
 
     $icCanvas3.addEventListener('ic-frame', (e) => {
         stats.update();
+        polyline1.strokeDashoffset += 0.1;
     });
 });
 ```
 
-按照 SVG 规范，`stroke-dasharray` 和 `stroke-dashoffset` 这两个属性也可以作用在 Circle / Ellipse / Rect 等其他图形上。因此当这两个属性有合理值时，原本使用 SDF 绘制的描边就得改成使用 Polyline 实现。
+按照 SVG 规范，`stroke-dasharray` 和 `stroke-dashoffset` 这两个属性也可以作用在 Circle / Ellipse / Rect 等其他图形上。因此当这两个属性有合理值时，原本使用 SDF 绘制的描边就得改成使用 Polyline 实现。以 Rect 为例，最多可能需要 3 个 drawcall 绘制：
 
-#### 笔迹动画效果 {#stroke-animation}
-
-#### 蚂蚁线效果 {#antmarch-animation}
+```ts
+SHAPE_DRAWCALL_CTORS.set(Rect, [ShadowRect, SDF, SmoothPolyline]);
+```
 
 ## 计算包围盒 {#geometry-bounds}
 

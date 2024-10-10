@@ -30,15 +30,11 @@ const polyline1 = new Polyline({
   ],
   stroke: 'red',
   strokeWidth: 20,
-  strokeAlignment: 'inner',
   strokeLinejoin: 'round',
   strokeDasharray: [10, 10],
   strokeDashoffset: 0,
-  batchable: false,
 });
 canvas.appendChild(polyline1);
-
-console.log(polyline1);
 
 canvas.render();
 
@@ -49,13 +45,13 @@ polyline1.addEventListener('pointerleave', () => {
   polyline1.stroke = 'red';
 });
 
-const exporter = new ImageExporter({
-  canvas,
-});
+// const exporter = new ImageExporter({
+//   canvas,
+// });
 
-const svg = exporter.toSVG({ grid: true });
+// const svg = exporter.toSVG({ grid: true });
 
-console.log(svg);
+// console.log(svg);
 
 // for (let i = 0; i < 1000; i++) {
 //   const fill = `rgb(${Math.floor(Math.random() * 255)},${Math.floor(
@@ -88,11 +84,16 @@ console.log(svg);
 //   width: 50,
 //   height: 50,
 //   fill: 'black',
-//   strokeWidth: 0,
 //   dropShadowBlurRadius: 10,
 //   dropShadowColor: 'black',
 //   dropShadowOffsetX: 10,
 //   dropShadowOffsetY: 10,
+//   stroke: 'red',
+//   strokeWidth: 10,
+//   strokeAlignment: 'inner',
+//   strokeLinejoin: 'round',
+//   strokeDasharray: [10, 10],
+//   strokeDashoffset: 0,
 // });
 // canvas.appendChild(rect);
 
@@ -121,7 +122,7 @@ console.log(svg);
 // });
 // canvas.appendChild(rect3);
 
-// canvas.render();
+canvas.render();
 
 // const polyline1 = new Polyline({
 //   points: [
@@ -252,6 +253,8 @@ console.log(svg);
 // });
 
 const animate = () => {
+  polyline1.strokeDashoffset += 0.1;
+
   canvas.render();
   requestAnimationFrame(animate);
 };
