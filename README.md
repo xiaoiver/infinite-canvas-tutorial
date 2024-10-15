@@ -142,6 +142,7 @@ pnpm run dev
 -   Why not just use `gl.LINES`?
 -   Building Mesh in the CPU or Shader
 -   Building segments, caps and joints, antialiasing, and drawing dashed lines in shader
+-   How to calculate its bounding box?
 
 <img src="./screenshots/lesson12.png" width="300" alt="Lesson 12 - polyline">
 

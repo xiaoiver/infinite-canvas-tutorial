@@ -383,6 +383,8 @@ Finally, let's look at how to implement a grid using SVG. Referring to [How to d
   <rect width="100%" height="100%" fill="url(#dots-grid)" />
 </svg>
 
+Another interesting implementation is through the `stroke-dasharray` of `<line>`, which uses fewer SVG elements than the massively repeated `<circle>`, see [Dot Grid With pattern].
+
 Then add a judgment at the draw grid logic: it stays the same in non-screenshot mode, and draws in screenshot mode only when the include grid option is turned on:
 
 ```ts
@@ -864,3 +866,4 @@ With the richness of the canvas functionality, it is necessary to introduce test
 [@pixi-essentials/svg]: https://github.com/ShukantPal/pixi-essentials/tree/master/packages/svg
 [Vector rendering of SVG content with PixiJS]: https://medium.com/javascript-in-plain-english/vector-rendering-of-svg-content-with-pixijs-6f26c91f09ee
 [svgo]: https://github.com/svg/svgo
+[Dot Grid With pattern]: https://www.smashingmagazine.com/2024/09/svg-coding-examples-recipes-writing-vectors-by-hand/#dot-grid-with-pattern

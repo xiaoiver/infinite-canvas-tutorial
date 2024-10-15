@@ -50,6 +50,13 @@ export class SDF extends Drawcall {
   #bindings: Bindings;
   #texture: Texture;
 
+  static useDash(shape: Shape) {
+    const { strokeDasharray } = shape;
+    return (
+      strokeDasharray.length > 0 && strokeDasharray.some((dash) => dash > 0)
+    );
+  }
+
   get useFillImage() {
     const { fill } = this.shapes[0];
     return !isString(fill);
@@ -75,6 +82,10 @@ export class SDF extends Drawcall {
 
     if (isInstanceFillImage && isShapeFillImage) {
       return this.shapes[0].fill === shape.fill;
+    }
+
+    if (SDF.useDash(shape) !== SDF.useDash(this.shapes[0])) {
+      return false;
     }
 
     return true;
@@ -455,7 +466,7 @@ export class SDF extends Drawcall {
     const u_StrokeColor = [sr / 255, sg / 255, sb / 255, so];
     const u_ZIndexStrokeWidth = [
       shape.globalRenderOrder / ZINDEX_FACTOR,
-      strokeWidth,
+      SDF.useDash(shape) ? 0 : strokeWidth,
       cornerRadius,
       strokeAlignmentMap[strokeAlignment],
     ];

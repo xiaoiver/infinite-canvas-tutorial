@@ -9,14 +9,35 @@ export interface IRenderable {
    */
   renderable: boolean;
 
+  /**
+   * Whether this object is visible.
+   */
   visible: boolean;
 
+  /**
+   * Whether this object is cullable.
+   */
   cullable: boolean;
 
+  /**
+   * Whether this object is batchable.
+   */
   batchable: boolean;
 
+  /**
+   * Whether this object is culled.
+   */
   culled: boolean;
 
+  /**
+   * Whether the size of the shape is attenuated by the camera zoom. Default is `true`.
+   * @see https://threejs.org/docs/#api/en/materials/SpriteMaterial.sizeAttenuation
+   */
+  sizeAttenuation: boolean;
+
+  /**
+   * The global render order of the object.
+   */
   globalRenderOrder: number;
 
   /**
@@ -194,6 +215,7 @@ export function Renderable<TBase extends GConstructor>(Base: TBase) {
     cullable: boolean;
     culled: boolean;
     batchable: boolean;
+    sizeAttenuation: boolean;
     renderDirtyFlag = true;
     renderBounds: AABB;
     renderBoundsDirtyFlag = true;
@@ -235,6 +257,7 @@ export function Renderable<TBase extends GConstructor>(Base: TBase) {
           | 'renderable'
           | 'cullable'
           | 'batchable'
+          | 'sizeAttenuation'
           | 'visible'
           | 'strokeWidth'
           | 'strokeAlignment'
@@ -257,6 +280,7 @@ export function Renderable<TBase extends GConstructor>(Base: TBase) {
         visible,
         cullable,
         batchable,
+        sizeAttenuation,
         fill,
         stroke,
         strokeWidth,
@@ -279,6 +303,7 @@ export function Renderable<TBase extends GConstructor>(Base: TBase) {
       this.visible = visible ?? true;
       this.cullable = cullable ?? true;
       this.batchable = batchable ?? true;
+      this.sizeAttenuation = sizeAttenuation ?? true;
       this.fill = fill ?? 'black';
       this.stroke = stroke ?? 'none';
       this.strokeWidth = strokeWidth ?? 1;
@@ -374,6 +399,7 @@ export function Renderable<TBase extends GConstructor>(Base: TBase) {
       if (this.#strokeLinecap !== strokeLinecap) {
         this.#strokeLinecap = strokeLinecap;
         this.renderDirtyFlag = true;
+        this.renderBoundsDirtyFlag = true;
       }
     }
 
@@ -384,6 +410,7 @@ export function Renderable<TBase extends GConstructor>(Base: TBase) {
       if (this.#strokeLinejoin !== strokeLinejoin) {
         this.#strokeLinejoin = strokeLinejoin;
         this.renderDirtyFlag = true;
+        this.renderBoundsDirtyFlag = true;
       }
     }
 

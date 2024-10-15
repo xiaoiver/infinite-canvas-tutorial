@@ -41,4 +41,30 @@ describe('Ellipse', () => {
     expect($canvas.getContext('webgl1')).toMatchWebGLSnapshot(dir, 'ellipse');
     expect(exporter.toSVG({ grid: true })).toMatchSVGSnapshot(dir, 'ellipse');
   });
+
+  it('should render a ellipse with stroke dasharray correctly.', async () => {
+    const ellipse = new Ellipse({
+      cx: 100,
+      cy: 100,
+      rx: 100,
+      ry: 50,
+      fill: 'red',
+      stroke: 'black',
+      strokeOpacity: 0.5,
+      strokeWidth: 20,
+      strokeDasharray: [5, 5],
+    });
+    canvas.appendChild(ellipse);
+
+    canvas.render();
+
+    expect($canvas.getContext('webgl1')).toMatchWebGLSnapshot(
+      dir,
+      'ellipse-stroke-dasharray',
+    );
+    expect(exporter.toSVG({ grid: true })).toMatchSVGSnapshot(
+      dir,
+      'ellipse-stroke-dasharray',
+    );
+  });
 });

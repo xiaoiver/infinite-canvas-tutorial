@@ -111,6 +111,37 @@ describe('Polyline', () => {
     expect(bounds.minY).toEqual(-10);
     expect(bounds.maxX).toEqual(110);
     expect(bounds.maxY).toEqual(100);
+
+    /**
+     * linecap = 'square'
+     */
+    polyline.strokeAlignment = 'center';
+    polyline.strokeLinecap = 'square';
+    bounds = polyline.getGeometryBounds();
+    expect(bounds.minX).toEqual(0);
+    expect(bounds.minY).toEqual(0);
+    expect(bounds.maxX).toEqual(100);
+    expect(bounds.maxY).toEqual(100);
+    bounds = polyline.getRenderBounds();
+    expect(bounds.minX).toBeCloseTo(-14.142135623730951);
+    expect(bounds.minY).toBeCloseTo(-14.142135623730951);
+    expect(bounds.maxX).toBeCloseTo(114.14213562373095);
+    expect(bounds.maxY).toBeCloseTo(114.14213562373095);
+
+    /**
+     * linecap = 'round'
+     */
+    polyline.strokeLinecap = 'round';
+    bounds = polyline.getGeometryBounds();
+    expect(bounds.minX).toEqual(0);
+    expect(bounds.minY).toEqual(0);
+    expect(bounds.maxX).toEqual(100);
+    expect(bounds.maxY).toEqual(100);
+    bounds = polyline.getRenderBounds();
+    expect(bounds.minX).toEqual(-10);
+    expect(bounds.minY).toEqual(-10);
+    expect(bounds.maxX).toEqual(110);
+    expect(bounds.maxY).toEqual(110);
   });
 
   it('should calculate shifted points correctly.', () => {

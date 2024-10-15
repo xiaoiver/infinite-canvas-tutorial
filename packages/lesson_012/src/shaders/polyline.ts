@@ -59,14 +59,14 @@ layout(location = ${Location.TRAVEL}) in float a_Travel;
   };
 #endif
 
-const float FILL = 1.0;
-const float BEVEL = 4.0;
-const float MITER = 8.0;
-const float ROUND = 12.0;
-const float JOINT_CAP_BUTT = 16.0;
-const float JOINT_CAP_SQUARE = 18.0;
-const float JOINT_CAP_ROUND = 20.0;
-const float FILL_EXPAND = 24.0;
+const float FILL = ${JointType.FILL}.0;
+const float BEVEL = ${JointType.JOINT_BEVEL}.0;
+const float MITER = ${JointType.JOINT_MITER}.0;
+const float ROUND = ${JointType.JOINT_ROUND}.0;
+const float JOINT_CAP_BUTT = ${JointType.JOINT_CAP_BUTT}.0;
+const float JOINT_CAP_SQUARE = ${JointType.JOINT_CAP_SQUARE}.0;
+const float JOINT_CAP_ROUND = ${JointType.JOINT_CAP_ROUND}.0;
+const float FILL_EXPAND = ${JointType.FILL_EXPAND}.0;
 const float CAP_BUTT = 1.0;
 const float CAP_SQUARE = 2.0;
 const float CAP_ROUND = 3.0;
@@ -114,6 +114,7 @@ void main() {
   float strokeWidth;
   float strokeMiterlimit;
   float strokeAlignment;
+  float sizeAttenuation;
 
   #ifdef USE_INSTANCES
     model = mat3(a_Abcd.x, a_Abcd.y, 0, a_Abcd.z, a_Abcd.w, 0, a_Txty.x, a_Txty.y, 1);
@@ -121,6 +122,7 @@ void main() {
     zIndex = a_ZIndexStrokeWidth.x;
     strokeWidth = a_ZIndexStrokeWidth.y;
     strokeMiterlimit = a_ZIndexStrokeWidth.z;
+    sizeAttenuation = a_Opacity.w;
 
     v_StrokeColor = strokeColor;
     v_Opacity = a_Opacity;
@@ -132,6 +134,7 @@ void main() {
     strokeWidth = u_ZIndexStrokeWidth.y;
     strokeMiterlimit = u_ZIndexStrokeWidth.z;
     strokeAlignment = u_ZIndexStrokeWidth.w;
+    sizeAttenuation = u_Opacity.w;
   #endif
 
   mat3 viewModelMatrix = u_ViewMatrix * model;
@@ -151,7 +154,7 @@ void main() {
   type -= capType * 32.0;
   v_Arc = vec4(0.0);
   strokeWidth *= 0.5;
-  float lineAlignment = 2.0 * strokeAlignment - 1.0;
+  float strokeAlignmentFactor = 2.0 * strokeAlignment - 1.0;
 
   vec2 pos;
 
@@ -198,8 +201,8 @@ void main() {
     }
     norm2 *= sign2;
 
-    if (abs(lineAlignment) > 0.01) {
-      float shift = strokeWidth * lineAlignment;
+    if (abs(strokeAlignmentFactor) > 0.01) {
+      float shift = strokeWidth * strokeAlignmentFactor;
       pointA += norm * shift;
       pointB += norm * shift;
       if (abs(D) < 0.01) {
@@ -387,7 +390,8 @@ void main() {
     v_Travel = a_Travel + dot(pos - pointA, vec2(-norm.y, norm.x));
   }
 
-  v_ScalingFactor = sqrt(model[0][0] * model[0][0] + model[0][1] * model[0][1] + model[0][2] * model[0][2]);
+  // v_ScalingFactor = sqrt(model[0][0] * model[0][0] + model[0][1] * model[0][1] + model[0][2] * model[0][2]);
+  v_ScalingFactor = 1.0;
 
   gl_Position = vec4((u_ProjectionMatrix 
     * u_ViewMatrix
@@ -429,6 +433,10 @@ in float v_ScalingFactor;
 #endif
 
 float epsilon = 0.000001;
+
+float antialias(float distance) {
+  return clamp(distance / fwidth(distance), 0.0, 1.0);
+}
 
 float pixelLine(float x) {
   return clamp(x + 0.5, 0.0, 1.0);
@@ -476,14 +484,17 @@ void main() {
     float far = min(d2 + 0.5, 0.0);
     float top = d3 - 0.5;
     float bottom = min(d3 + 0.5, 0.0);
-    alpha = max(right - left, 0.0) * max(bottom - top, 0.0) * max(far - near, 0.0);
+    alpha = max(antialias(right - left), 0.0) * max(bottom - top, 0.0) * max(far - near, 0.0);
   } else if (v_Type < 1.5) {
     float a1 = pixelLine(d1 - w);
     float a2 = pixelLine(d1 + w);
     float b1 = pixelLine(d2 - w);
     float b2 = pixelLine(d2 + w);
+
+    float left = max(d1 - 0.5, -w);
+    float right = min(d1 + 0.5, w);
     
-    alpha = a2 * b2 - a1 * b1;
+    alpha = antialias(a2 * b2 - a1 * b1);
   } else if (v_Type < 2.5) {
     alpha *= max(min(d1 + 0.5, 1.0), 0.0);
     alpha *= max(min(d2 + 0.5, 1.0), 0.0);
@@ -506,7 +517,7 @@ void main() {
     float a2 = pixelLine(d1 + w);
     float b1 = pixelLine(d2 - w);
     float b2 = pixelLine(d2 + w);
-    alpha = a2 * b2 - a1 * b1;
+    alpha = antialias(a2 * b2 - a1 * b1);
     alpha *= pixelLine(d3);
   }
 
@@ -517,7 +528,7 @@ void main() {
     float travel = mod(v_Travel + u_Gap * v_ScalingFactor * 0.5 + u_DashOffset, u_Dash * v_ScalingFactor + u_Gap * v_ScalingFactor) - (u_Gap * v_ScalingFactor * 0.5);
     float left = max(travel - 0.5, -0.5);
     float right = min(travel + 0.5, u_Gap * v_ScalingFactor + 0.5);
-    alpha *= max(0.0, right - left);
+    alpha *= antialias(max(0.0, right - left));
   }
 
   outputColor = strokeColor;

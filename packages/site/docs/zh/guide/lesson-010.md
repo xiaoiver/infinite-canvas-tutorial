@@ -387,7 +387,9 @@ async function imageBitmapToURL(bmp: ImageBitmap) {
   <rect width="100%" height="100%" fill="url(#dots-grid)" />
 </svg>
 
-然后在绘制网格逻辑处加入判断：非截图模式下保持不变，截图模式下仅当开启包含网格选项时才绘制：
+另一种有趣的实现通过 `<line>` 的 `stroke-dasharray` 实现，相比大量重复的 `<circle>` 使用更少的 SVG 元素，详见：[Dot Grid With pattern]。
+
+最后在绘制网格逻辑处加入判断：非截图模式下保持不变，截图模式下仅当开启包含网格选项时才绘制：
 
 ```ts
 hooks.beginFrame.tap(() => {
@@ -874,3 +876,4 @@ function strokeOffset(
 [Vector rendering of SVG content with PixiJS]: https://medium.com/javascript-in-plain-english/vector-rendering-of-svg-content-with-pixijs-6f26c91f09ee
 [PIXI.LineStyle alignment]: https://api.pixijs.io/@pixi/graphics/PIXI/LineStyle.html#alignment
 [svgo]: https://github.com/svg/svgo
+[Dot Grid With pattern]: https://www.smashingmagazine.com/2024/09/svg-coding-examples-recipes-writing-vectors-by-hand/#dot-grid-with-pattern

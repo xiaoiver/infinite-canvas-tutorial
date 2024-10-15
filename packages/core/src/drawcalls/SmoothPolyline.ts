@@ -17,11 +17,13 @@ import {
   InputLayoutBufferDescriptor,
   StencilOp,
 } from '@antv/g-device-api';
-import { Polyline, Shape } from '../shapes';
+import { Circle, Ellipse, Polyline, Rect, Shape } from '../shapes';
 import { Drawcall, ZINDEX_FACTOR } from './Drawcall';
 import { vert, frag, Location, JointType } from '../shaders/polyline';
 import { paddingMat3 } from '../utils';
 
+const epsilon = 1e-5;
+const circleEllipsePointsNum = 64;
 const stridePoints = 2;
 const strideFloats = 3;
 const strokeAlignmentMap = {
@@ -33,9 +35,17 @@ const strokeAlignmentMap = {
 export class SmoothPolyline extends Drawcall {
   static check(shape: Shape) {
     return (
-      shape instanceof Polyline
-      // || (shape instanceof Rect && shape.strokeDasharray.length > 0)
+      shape instanceof Polyline ||
+      ((shape instanceof Rect ||
+        shape instanceof Circle ||
+        shape instanceof Ellipse) &&
+        shape.strokeDasharray.length > 0 &&
+        shape.strokeDasharray.some((dash) => dash > 0))
     );
+  }
+
+  validate(shape: Shape) {
+    return false;
   }
 
   #program: Program;
@@ -51,7 +61,16 @@ export class SmoothPolyline extends Drawcall {
   #bindings: Bindings;
 
   get instanceCount() {
-    return (this.shapes[0] as Polyline).points.length;
+    if (this.shapes[0] instanceof Polyline) {
+      return this.shapes[0].points.length;
+    } else if (this.shapes[0] instanceof Rect) {
+      return 6;
+    } else if (
+      this.shapes[0] instanceof Circle ||
+      this.shapes[0] instanceof Ellipse
+    ) {
+      return circleEllipsePointsNum + 1;
+    }
   }
 
   createGeometry(): void {
@@ -357,16 +376,23 @@ export class SmoothPolyline extends Drawcall {
       strokeMiterlimit,
       strokeDasharray,
       strokeDashoffset,
+      sizeAttenuation,
     } = shape;
 
     const u_StrokeColor = [sr / 255, sg / 255, sb / 255, so];
     const u_ZIndexStrokeWidth = [
-      shape.globalRenderOrder / ZINDEX_FACTOR,
+      // Polyline should render after SDF
+      (shape.globalRenderOrder + 0.1) / ZINDEX_FACTOR,
       strokeWidth,
       strokeMiterlimit,
       strokeAlignmentMap[strokeAlignment],
     ];
-    const u_Opacity = [opacity, fillOpacity, strokeOpacity, 0];
+    const u_Opacity = [
+      opacity,
+      fillOpacity,
+      strokeOpacity,
+      sizeAttenuation ? 1 : 0,
+    ];
     const u_StrokeDash = [
       (strokeDasharray && strokeDasharray[0]) || 0, // DASH
       (strokeDasharray && strokeDasharray[1]) || 0, // GAP
@@ -423,40 +449,51 @@ function getCapType(lineCap: CanvasLineCap) {
 }
 
 export function updateBuffer(
-  object: Polyline,
+  object: Shape,
   needEarcut = false,
   segmentNum?: number,
-  subPathIndex = 0,
 ) {
-  const {
-    strokeLinecap: lineCap,
-    strokeLinejoin: lineJoin,
-    points: polylineControlPoints,
-  } = object;
+  const { strokeLinecap: lineCap, strokeLinejoin: lineJoin } = object;
 
-  const points: number[][] = [];
+  let points: number[] = [];
   const triangles: number[] = [];
 
-  const length = polylineControlPoints.length;
-  const startOffsetX = 0;
-  const startOffsetY = 0;
-  const endOffsetX = 0;
-  const endOffsetY = 0;
-
-  points[0] = polylineControlPoints.reduce((prev, cur, i) => {
-    let offsetX = 0;
-    let offsetY = 0;
-    if (i === 0) {
-      offsetX = startOffsetX;
-      offsetY = startOffsetY;
-    } else if (i === length - 1) {
-      offsetX = endOffsetX;
-      offsetY = endOffsetY;
+  if (object instanceof Polyline) {
+    points = object.points.reduce((prev, cur) => {
+      prev.push(cur[0], cur[1]);
+      return prev;
+    }, [] as number[]);
+  } else if (object instanceof Rect) {
+    const { x, y, width, height } = object;
+    points = [
+      x,
+      y,
+      x + width,
+      y,
+      x + width,
+      y + height,
+      x,
+      y + height,
+      x,
+      y,
+      x + epsilon,
+      y,
+    ];
+  } else if (object instanceof Circle) {
+    const { cx, cy, r } = object;
+    for (let i = 0; i < circleEllipsePointsNum; i++) {
+      const angle = (i / circleEllipsePointsNum) * Math.PI * 2;
+      points.push(cx + r * Math.cos(angle), cy + r * Math.sin(angle));
     }
-
-    prev.push(cur[0] + offsetX, cur[1] + offsetY);
-    return prev;
-  }, [] as number[]);
+    points.push(cx + r, cy);
+  } else if (object instanceof Ellipse) {
+    const { cx, cy, rx, ry } = object;
+    for (let i = 0; i < circleEllipsePointsNum; i++) {
+      const angle = (i / circleEllipsePointsNum) * Math.PI * 2;
+      points.push(cx + rx * Math.cos(angle), cy + ry * Math.sin(angle));
+    }
+    points.push(cx + rx, cy);
+  }
 
   const jointType = getJointType(lineJoin);
   const capType = getCapType(lineCap);
@@ -471,78 +508,74 @@ export function updateBuffer(
     endJoint = JointType.JOINT_CAP_SQUARE;
   }
 
-  const subPath = points[subPathIndex];
-  {
-    const points = subPath;
-    let j = (Math.round(0 / stridePoints) + 2) * strideFloats;
-    // const needDash = !isNil(lineDash);
-    let dist = 0;
-    const pointsBuffer: number[] = [];
-    const travelBuffer: number[] = [];
-    for (let i = 0; i < points.length; i += stridePoints) {
-      // calc travel
-      if (i > 1) {
-        dist += Math.sqrt(
-          Math.pow(points[i] - points[i - stridePoints], 2) +
-            Math.pow(points[i + 1] - points[i + 1 - stridePoints], 2),
-        );
-      }
-      travelBuffer.push(dist);
-
-      pointsBuffer[j++] = points[i];
-      pointsBuffer[j++] = points[i + 1];
-
-      if (isNaN(points[i]) || isNaN(points[i + 1])) {
-        // find prev non-nan
-        pointsBuffer[j - 2] = (points[i + 2] + points[i - 2]) * 0.5;
-        pointsBuffer[j - 1] = (points[i + 3] + points[i - 1]) * 0.5;
-        pointsBuffer[j] = 0;
-        j++;
-        continue;
-      }
-
-      pointsBuffer[j] = jointType;
-      if (i == 0) {
-        if (capType !== JointType.CAP_ROUND) {
-          pointsBuffer[j] += capType;
-        }
-      } else {
-        if (isNaN(points[i - 2]) || isNaN(points[i - 1])) {
-          pointsBuffer[j] += JointType.CAP_BUTT;
-        }
-      }
-      if (
-        i + stridePoints * 2 >= points.length ||
-        isNaN(points[i + 4]) ||
-        isNaN(points[i + 5])
-      ) {
-        pointsBuffer[j] += endJoint - jointType;
-      } else if (
-        i + stridePoints >= points.length ||
-        isNaN(points[i + 2]) ||
-        isNaN(points[i + 3])
-      ) {
-        pointsBuffer[j] = 0;
-      }
-      j++;
+  let j = (Math.round(0 / stridePoints) + 2) * strideFloats;
+  // const needDash = !isNil(lineDash);
+  let dist = 0;
+  const pointsBuffer: number[] = [];
+  const travelBuffer: number[] = [];
+  for (let i = 0; i < points.length; i += stridePoints) {
+    // calc travel
+    if (i > 1) {
+      dist += Math.sqrt(
+        Math.pow(points[i] - points[i - stridePoints], 2) +
+          Math.pow(points[i + 1] - points[i + 1 - stridePoints], 2),
+      );
     }
-    pointsBuffer[j++] = points[points.length - 4];
-    pointsBuffer[j++] = points[points.length - 3];
-    pointsBuffer[j++] = 0;
-    pointsBuffer[0] = points[0];
-    pointsBuffer[1] = points[1];
-    pointsBuffer[2] = 0;
-    pointsBuffer[3] = points[2];
-    pointsBuffer[4] = points[3];
-    pointsBuffer[5] = capType === JointType.CAP_ROUND ? capType : 0;
+    travelBuffer.push(dist);
 
-    const instancedCount = Math.round(points.length / stridePoints);
+    pointsBuffer[j++] = points[i];
+    pointsBuffer[j++] = points[i + 1];
 
-    return {
-      pointsBuffer,
-      travelBuffer,
-      triangles,
-      instancedCount,
-    };
+    if (isNaN(points[i]) || isNaN(points[i + 1])) {
+      // find prev non-nan
+      pointsBuffer[j - 2] = (points[i + 2] + points[i - 2]) * 0.5;
+      pointsBuffer[j - 1] = (points[i + 3] + points[i - 1]) * 0.5;
+      pointsBuffer[j] = 0;
+      j++;
+      continue;
+    }
+
+    pointsBuffer[j] = jointType;
+    if (i == 0) {
+      if (capType !== JointType.CAP_ROUND) {
+        pointsBuffer[j] += capType;
+      }
+    } else {
+      if (isNaN(points[i - 2]) || isNaN(points[i - 1])) {
+        pointsBuffer[j] += JointType.CAP_BUTT;
+      }
+    }
+    if (
+      i + stridePoints * 2 >= points.length ||
+      isNaN(points[i + 4]) ||
+      isNaN(points[i + 5])
+    ) {
+      pointsBuffer[j] += endJoint - jointType;
+    } else if (
+      i + stridePoints >= points.length ||
+      isNaN(points[i + 2]) ||
+      isNaN(points[i + 3])
+    ) {
+      pointsBuffer[j] = 0;
+    }
+    j++;
   }
+  pointsBuffer[j++] = points[points.length - 4];
+  pointsBuffer[j++] = points[points.length - 3];
+  pointsBuffer[j++] = 0;
+  pointsBuffer[0] = points[0];
+  pointsBuffer[1] = points[1];
+  pointsBuffer[2] = 0;
+  pointsBuffer[3] = points[2];
+  pointsBuffer[4] = points[3];
+  pointsBuffer[5] = capType === JointType.CAP_ROUND ? capType : 0;
+
+  const instancedCount = Math.round(points.length / stridePoints);
+
+  return {
+    pointsBuffer,
+    travelBuffer,
+    triangles,
+    instancedCount,
+  };
 }

@@ -126,14 +126,31 @@ export class Polyline extends Shape implements PolylineAttributes {
     if (this.renderBoundsDirtyFlag) {
       this.renderBoundsDirtyFlag = false;
 
-      const { strokeWidth } = this;
-      const halfWidth = strokeWidth / 2;
+      const { strokeWidth, strokeLinecap, strokeLinejoin, strokeMiterlimit } =
+        this;
+
+      let style_expansion = 0.5;
+      if (strokeLinecap === 'square') {
+        style_expansion = Math.SQRT1_2;
+      }
+
+      const stroke_is_rectilinear = true;
+      if (
+        strokeLinejoin === 'miter' &&
+        style_expansion < Math.SQRT2 * strokeMiterlimit &&
+        !stroke_is_rectilinear
+      ) {
+        style_expansion = Math.SQRT2 * strokeMiterlimit;
+      }
+
+      style_expansion *= strokeWidth;
+
       const { minX, minY, maxX, maxY } = this.getGeometryBounds();
       this.renderBounds = new AABB(
-        minX - halfWidth,
-        minY - halfWidth,
-        maxX + halfWidth,
-        maxY + halfWidth,
+        minX - style_expansion,
+        minY - style_expansion,
+        maxX + style_expansion,
+        maxY + style_expansion,
       );
     }
     return this.renderBounds;

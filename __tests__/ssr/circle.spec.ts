@@ -114,6 +114,31 @@ describe('Circle', () => {
     );
   });
 
+  it('should render a circle with stroke dasharray correctly.', async () => {
+    const circle1 = new Circle({
+      cx: 50,
+      cy: 50,
+      r: 50,
+      fill: 'red',
+      stroke: 'black',
+      strokeOpacity: 0.5,
+      strokeWidth: 20,
+      strokeDasharray: [5, 5],
+    });
+    canvas.appendChild(circle1);
+
+    canvas.render();
+
+    expect($canvas.getContext('webgl1')).toMatchWebGLSnapshot(
+      dir,
+      'circle-stroke-dasharray',
+    );
+    expect(exporter.toSVG({ grid: true })).toMatchSVGSnapshot(
+      dir,
+      'circle-stroke-dasharray',
+    );
+  });
+
   it.skip('should render a circle with image correctly.', async () => {
     // Load local image instead of fetching remote URL.
     // @see https://github.com/stackgl/headless-gl/pull/53/files#diff-55563b6c0b90b80aed19c83df1c51e80fd45d2fbdad6cc047ee86e98f65da3e9R83

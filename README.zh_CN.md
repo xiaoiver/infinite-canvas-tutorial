@@ -146,6 +146,7 @@ pnpm run dev
 -   为什么不直接使用 `gl.LINES`?
 -   在 CPU 或者 Shader 中构建 Mesh
 -   在 Shader 中构建顶点与接头、反走样、绘制虚线
+-   如何计算折线的包围盒？
 
 <img src="./screenshots/lesson12.png" width="300" alt="Lesson 12 - polyline">
 

@@ -88,4 +88,30 @@ describe('Rect', () => {
       'rect-dropshadow',
     );
   });
+
+  it('should render a rect with stroke dasharray correctly.', async () => {
+    const rect = new Rect({
+      x: 50,
+      y: 50,
+      width: 100,
+      height: 50,
+      fill: 'red',
+      stroke: 'black',
+      strokeOpacity: 0.5,
+      strokeWidth: 20,
+      strokeDasharray: [5, 5],
+    });
+    canvas.appendChild(rect);
+
+    canvas.render();
+
+    expect($canvas.getContext('webgl1')).toMatchWebGLSnapshot(
+      dir,
+      'rect-stroke-dasharray',
+    );
+    expect(exporter.toSVG({ grid: true })).toMatchSVGSnapshot(
+      dir,
+      'rect-stroke-dasharray',
+    );
+  });
 });

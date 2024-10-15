@@ -1,7 +1,16 @@
 import { Transform } from '@pixi/math';
 import { ImageLoader } from '@loaders.gl/images';
 import { load } from '@loaders.gl/core';
-import { AABB, Circle, Ellipse, Group, Rect, Shape } from '../shapes';
+import {
+  AABB,
+  Circle,
+  Ellipse,
+  Group,
+  Polyline,
+  Rect,
+  Shape,
+  shiftPoints,
+} from '../shapes';
 import { createSVGElement } from './browser';
 import {
   camelToKebabCase,
@@ -38,15 +47,19 @@ type SerializedTransform = {
   };
 };
 
-const commonAttributes = ['renderable'] as const;
+const commonAttributes = ['renderable', 'visible'] as const;
 const renderableAttributes = [
-  'visible',
   'cullable',
   'batchable',
   'fill',
   'stroke',
   'strokeWidth',
   'strokeAlignment',
+  'strokeLinecap',
+  'strokeLinejoin',
+  'strokeMiterlimit',
+  'strokeDasharray',
+  'strokeDashoffset',
   'opacity',
   'fillOpacity',
   'strokeOpacity',
@@ -69,6 +82,36 @@ const rectAttributes = [
   'dropShadowOffsetY',
   'dropShadowBlurRadius',
 ] as const;
+const polylineAttributes = ['points'] as const;
+
+/**
+ * No need to output default value in SVG Element.
+ */
+const defaultValues = {
+  opacity: 1,
+  fillOpacity: 1,
+  strokeOpacity: 1,
+  fill: 'black',
+  stroke: 'none',
+  strokeWidth: 1,
+  strokeLinecap: 'butt',
+  strokeLinejoin: 'miter',
+  strokeAlignment: 'center',
+  strokeMiterlimit: 4,
+  strokeDasharray: 'none',
+  strokeDashoffset: 0,
+  innerShadowBlurRadius: 0,
+  innerShadowColor: 'none',
+  innerShadowOffsetX: 0,
+  innerShadowOffsetY: 0,
+  visibility: 'visible',
+  transform: 'matrix(1,0,0,1,0,0)',
+  cornerRadius: 0,
+  dropShadowColor: 'none',
+  dropShadowOffsetX: 0,
+  dropShadowOffsetY: 0,
+  dropShadowBlurRadius: 0,
+};
 
 type CommonAttributeName = (
   | typeof commonAttributes
@@ -77,15 +120,17 @@ type CommonAttributeName = (
 type CircleAttributeName = (typeof circleAttributes)[number];
 type EllipseAttributeName = (typeof ellipseAttributes)[number];
 type RectAttributeName = (typeof rectAttributes)[number];
+type PolylineAttributeName = (typeof polylineAttributes)[number];
 
 interface SerializedNode {
   uid: number;
-  type: 'g' | 'circle' | 'ellipse' | 'rect';
+  type: 'g' | 'circle' | 'ellipse' | 'rect' | 'polyline';
   attributes?: Pick<Shape, CommonAttributeName> &
     Record<'transform', SerializedTransform> &
     Partial<Pick<Circle, CircleAttributeName>> &
     Partial<Pick<Ellipse, EllipseAttributeName>> &
-    Partial<Pick<Rect, RectAttributeName>>;
+    Partial<Pick<Rect, RectAttributeName>> &
+    Partial<Pick<Polyline, PolylineAttributeName>>;
   children?: SerializedNode[];
 }
 
@@ -95,7 +140,8 @@ export function typeofShape(
   | ['g', typeof commonAttributes]
   | ['circle', ...(typeof circleAttributes & typeof renderableAttributes)]
   | ['ellipse', ...(typeof ellipseAttributes & typeof renderableAttributes)]
-  | ['rect', ...(typeof rectAttributes & typeof renderableAttributes)] {
+  | ['rect', ...(typeof rectAttributes & typeof renderableAttributes)]
+  | ['polyline', ...(typeof polylineAttributes & typeof renderableAttributes)] {
   if (shape instanceof Group) {
     return ['g', commonAttributes];
   } else if (shape instanceof Circle) {
@@ -104,6 +150,8 @@ export function typeofShape(
     return ['ellipse', [...renderableAttributes, ...ellipseAttributes]];
   } else if (shape instanceof Rect) {
     return ['rect', [...renderableAttributes, ...rectAttributes]];
+  } else if (shape instanceof Polyline) {
+    return ['polyline', [...renderableAttributes, ...polylineAttributes]];
   }
 }
 
@@ -118,15 +166,26 @@ export async function deserializeNode(data: SerializedNode) {
     shape = new Ellipse();
   } else if (type === 'rect') {
     shape = new Rect();
+  } else if (type === 'polyline') {
+    shape = new Polyline();
   }
 
   const { transform, ...rest } = attributes;
   Object.assign(shape, rest);
 
   // create Image from DataURL
-  const { fill } = rest;
+  const { fill, points, strokeDasharray } = rest;
   if (fill && isString(fill) && isDataUrl(fill)) {
     shape.fill = (await load(fill, ImageLoader)) as ImageBitmap;
+  }
+  if (points && isString(points)) {
+    // @ts-ignore
+    (shape as Polyline).points = points
+      .split(' ')
+      .map((xy) => xy.split(',').map(Number));
+  }
+  if (strokeDasharray && isString(strokeDasharray)) {
+    shape.strokeDasharray = strokeDasharray.split(' ').map(Number);
   }
 
   const { position, scale, skew, rotation, pivot } = transform;
@@ -157,9 +216,20 @@ export function serializeNode(node: Shape): SerializedNode {
     }, {}),
   };
 
-  const { fill } = serialized.attributes;
+  const { fill, points, strokeDasharray } = serialized.attributes;
   if (fill && !isString(fill)) {
     serialized.attributes.fill = imageBitmapToURL(fill as ImageBitmap);
+  }
+
+  if (points) {
+    // @ts-ignore
+    serialized.attributes.points = points
+      .map(([x, y]) => `${x},${y}`)
+      .join(' ');
+  }
+  if (strokeDasharray) {
+    // @ts-ignore
+    serialized.attributes.strokeDasharray = strokeDasharray.join(' ');
   }
 
   serialized.attributes.transform = serializeTransform(node.transform);
@@ -210,44 +280,64 @@ function exportInnerOrOuterStrokeAlignment(
   doc: Document,
 ) {
   const { type, attributes } = node;
-  const $stroke = element.cloneNode() as SVGElement;
-  element.setAttribute('stroke', 'none');
-  $stroke.setAttribute('fill', 'none');
-
   const { strokeWidth, strokeAlignment } = attributes;
   const innerStrokeAlignment = strokeAlignment === 'inner';
   const halfStrokeWidth = strokeWidth / 2;
 
-  if (type === 'circle') {
-    const { r } = attributes;
-    const offset = innerStrokeAlignment ? -halfStrokeWidth : halfStrokeWidth;
-    $stroke.setAttribute('r', `${r + offset}`);
-  } else if (type === 'ellipse') {
-    const { rx, ry } = attributes;
-    const offset = innerStrokeAlignment ? -halfStrokeWidth : halfStrokeWidth;
-    $stroke.setAttribute('rx', `${rx + offset}`);
-    $stroke.setAttribute('ry', `${ry + offset}`);
-  } else if (type === 'rect') {
-    const { x, y, width, height, strokeWidth } = attributes;
-    $stroke.setAttribute(
-      'x',
-      `${x + (innerStrokeAlignment ? halfStrokeWidth : -halfStrokeWidth)}`,
-    );
-    $stroke.setAttribute(
-      'y',
-      `${y + (innerStrokeAlignment ? halfStrokeWidth : -halfStrokeWidth)}`,
-    );
-    $stroke.setAttribute(
-      'width',
-      `${width + (innerStrokeAlignment ? -strokeWidth : strokeWidth)}`,
-    );
-    $stroke.setAttribute(
-      'height',
-      `${height + (innerStrokeAlignment ? -strokeWidth : strokeWidth)}`,
-    );
-  }
+  if (type === 'polyline') {
+    const { points: pointsStr } = attributes;
 
-  $g.appendChild($stroke);
+    const points = pointsStr
+      // @ts-ignore
+      .split(' ')
+      .map((xy) => xy.split(',').map(Number)) as [number, number][];
+
+    const shiftedPoints = shiftPoints(
+      points,
+      innerStrokeAlignment,
+      strokeWidth,
+    );
+
+    element.setAttribute(
+      'points',
+      shiftedPoints.map((point) => point.join(',')).join(' '),
+    );
+  } else {
+    const $stroke = element.cloneNode() as SVGElement;
+    element.setAttribute('stroke', 'none');
+    $stroke.setAttribute('fill', 'none');
+
+    if (type === 'circle') {
+      const { r } = attributes;
+      const offset = innerStrokeAlignment ? -halfStrokeWidth : halfStrokeWidth;
+      $stroke.setAttribute('r', `${r + offset}`);
+    } else if (type === 'ellipse') {
+      const { rx, ry } = attributes;
+      const offset = innerStrokeAlignment ? -halfStrokeWidth : halfStrokeWidth;
+      $stroke.setAttribute('rx', `${rx + offset}`);
+      $stroke.setAttribute('ry', `${ry + offset}`);
+    } else if (type === 'rect') {
+      const { x, y, width, height, strokeWidth } = attributes;
+      $stroke.setAttribute(
+        'x',
+        `${x + (innerStrokeAlignment ? halfStrokeWidth : -halfStrokeWidth)}`,
+      );
+      $stroke.setAttribute(
+        'y',
+        `${y + (innerStrokeAlignment ? halfStrokeWidth : -halfStrokeWidth)}`,
+      );
+      $stroke.setAttribute(
+        'width',
+        `${width + (innerStrokeAlignment ? -strokeWidth : strokeWidth)}`,
+      );
+      $stroke.setAttribute(
+        'height',
+        `${height + (innerStrokeAlignment ? -strokeWidth : strokeWidth)}`,
+      );
+    }
+
+    $g.appendChild($stroke);
+  }
 }
 
 /**
@@ -425,7 +515,9 @@ export function toSVGElement(node: SerializedNode, doc?: Document) {
     ...rest
   } = attributes;
   Object.entries(rest).forEach(([key, value]) => {
-    element.setAttribute(camelToKebabCase(key), `${value}`);
+    if (`${value}` !== '' && `${defaultValues[key]}` !== `${value}`) {
+      element.setAttribute(camelToKebabCase(key), `${value}`);
+    }
   });
 
   // TODO: outerShadow in Rect
@@ -472,7 +564,7 @@ export function toSVGElement(node: SerializedNode, doc?: Document) {
   let $g: SVGElement;
   if (
     (children && children.length > 0 && type !== 'g') ||
-    innerOrOuterStrokeAlignment ||
+    (innerOrOuterStrokeAlignment && type !== 'polyline') ||
     innerShadowBlurRadius > 0 ||
     hasFillImage
   ) {
@@ -493,11 +585,15 @@ export function toSVGElement(node: SerializedNode, doc?: Document) {
 
   $g = $g || element;
 
-  // @see https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/visibility
-  $g.setAttribute('visibility', visible ? 'visible' : 'hidden');
+  if (visible === false) {
+    // @see https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/visibility
+    $g.setAttribute('visibility', 'hidden');
+  }
 
   const { a, b, c, d, tx, ty } = transform.matrix;
-  $g.setAttribute('transform', `matrix(${a},${b},${c},${d},${tx},${ty})`);
+  if (a !== 1 || b !== 0 || c !== 0 || d !== 1 || tx !== 0 || ty !== 0) {
+    $g.setAttribute('transform', `matrix(${a},${b},${c},${d},${tx},${ty})`);
+  }
 
   children
     .map((child) => toSVGElement(child, doc))

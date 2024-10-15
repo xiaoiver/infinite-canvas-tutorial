@@ -2,7 +2,7 @@
 outline: deep
 ---
 
-# 课程 12 - 折线
+# Lesson 12 - Drawing Polyline
 
 让我们继续添加基础图形：折线。在这节课中你将学习到以下内容：
 
