@@ -1,4 +1,5 @@
 ---
+publish: false
 ---
 
 参考 <a href="/zh/guide/lesson-009">渲染矩形和椭圆</a>

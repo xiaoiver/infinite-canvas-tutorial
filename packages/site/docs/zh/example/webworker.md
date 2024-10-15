@@ -1,4 +1,5 @@
 ---
+publish: false
 ---
 
 <a href="/zh/guide/lesson-011#rendering-in-webworker">在 WebWorker 中渲染</a>

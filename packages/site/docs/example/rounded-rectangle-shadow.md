@@ -1,4 +1,5 @@
 ---
+publish: false
 ---
 
 <a href="/guide/lesson-009">Render a rounded rect with shadow</a>

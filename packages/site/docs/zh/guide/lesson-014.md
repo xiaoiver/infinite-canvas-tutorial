@@ -1,5 +1,6 @@
 ---
 outline: deep
+publish: false
 ---
 
 # 课程 12 - Vector Networks

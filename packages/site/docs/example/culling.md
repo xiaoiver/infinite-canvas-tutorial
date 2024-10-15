@@ -1,4 +1,5 @@
 ---
+publish: false
 ---
 
 We can reduce the number of draw calls with culling, see:

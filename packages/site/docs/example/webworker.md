@@ -1,4 +1,5 @@
 ---
+publish: false
 ---
 
 <a href="/guide/lesson-011#rendering-in-webworker">Rendering in WebWorker</a>

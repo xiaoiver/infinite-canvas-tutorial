@@ -1,4 +1,5 @@
 ---
+publish: false
 ---
 
 <script setup>
