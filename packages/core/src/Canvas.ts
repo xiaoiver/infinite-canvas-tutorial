@@ -196,6 +196,8 @@ export class Canvas {
       this.#shapesCurrentFrame.add(shape);
 
       if (shape.transformDirtyFlag) {
+        // FIXME: affect children cascade
+        shape.boundsDirtyFlag = true;
         shape.renderDirtyFlag = true;
       }
 

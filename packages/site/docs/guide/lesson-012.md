@@ -2,7 +2,7 @@
 outline: deep
 ---
 
-# Lesson 12 - Drawing Polyline
+# 课程 12 - 折线
 
 让我们继续添加基础图形：折线。在这节课中你将学习到以下内容：
 
@@ -937,19 +937,7 @@ _cairo_path_fixed_stroke_extents (const cairo_path_fixed_t *path,
 }
 ```
 
-## 其他问题 {#followup-issues}
-
-至此，我们完成了折线的基础绘制工作，最后让我们来看一下其他相关问题，限于篇幅有些问题等到后续课程中再详细展开。
-
-### SizeAttenuation {#size-attenuation}
-
-在一些场景中，我们不希望图形随相机缩放改变大小，例如 Figma 中选中图形后展示的包围盒线框以及下方的尺寸标签：
-
-![size attenuation](/size-attenuation.gif)
-
-这在 Three.js 中称作：[sizeAttenuation]，在 Perspective 投影模式下，Sprite 随相机深度变大而变小。
-
-### 性能测试 {#perf}
+## 性能测试 {#perf}
 
 来测试一下性能，展示了若干条各包含 20000 个点的折线：
 
@@ -1021,10 +1009,24 @@ call(() => {
 });
 ```
 
-看似还不错，但仔细考虑后仍存在以下问题：
+看似还不错，但仔细考虑后仍存在以下问题，不妨作为后续的改进方向：
 
 -   由于每个 Instance 使用了 15 个顶点，Buffer 又存在大小限制，因此单根折线中包含的顶点数目实际是有限的
--   多根折线合并问题
+-   目前一根折线对应一个 Drawcall，如果存在大量同类重复的折线呢？[regl-gpu-lines] 提供了两种思路：
+    -   一个 Drawcall 也可以绘制多条折线，使用 `[NaN, NaN]` 表示断点，示例：[Multiple lines]
+    -   如果多条折线顶点数据都相同，只有偏移量差异，此时可以把每条折线都当作一个 Instance，当然每条折线内部的顶点就需要展开了，示例：[Fake instancing]
+
+## 其他问题 {#followup-issues}
+
+至此，我们完成了折线的基础绘制工作，最后让我们来看一下其他相关问题，限于篇幅有些问题等到后续课程中再详细展开。
+
+### SizeAttenuation {#size-attenuation}
+
+在一些场景中，我们不希望图形随相机缩放改变大小，例如 Figma 中选中图形后展示的包围盒线框以及下方的尺寸标签：
+
+![size attenuation in Figma](/size-attenuation.gif)
+
+这在 Three.js 中称作：[sizeAttenuation]，在 Perspective 投影模式下，Sprite 随相机深度变大而变小。等后续我们实现选中 UI 的时候再来实现。
 
 ### Line Path 和 Polygon {#line-path-polygon}
 
@@ -1097,3 +1099,5 @@ call(() => {
 [Cairo - Fix for round joins]: https://gitlab.freedesktop.org/cairo/cairo/-/merge_requests/372#note_1698225
 [Pure WebGL Dashed Line]: https://webgl2fundamentals.org/webgl/lessons/webgl-qna-pure-webgl-dashed-line.html
 [How to animate along an SVG path at the same time the path animates?]: https://benfrain.com/how-to-animate-along-an-svg-path-at-the-same-time-the-path-animates/
+[Fake instancing]: https://rreusser.github.io/regl-gpu-lines/docs/instanced.html
+[Multiple lines]: https://rreusser.github.io/regl-gpu-lines/docs/multiple.html

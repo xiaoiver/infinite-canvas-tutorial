@@ -47,6 +47,11 @@ export default defineConfig({
       title: 'An infinite canvas tutorial',
       baseUrl: 'https://infinitecanvas.cc',
       copyright: 'Copyright (c) 2024-present xiaoiver',
+      author: {
+        name: 'xiaoiver',
+        email: 'pyqiverson@gmail.com',
+        link: 'https://github.com/xiaoiver'
+      },
     })]
   }
 });

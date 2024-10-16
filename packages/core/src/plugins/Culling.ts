@@ -4,7 +4,6 @@ import { AABB, RBushNodeAABB } from '../shapes';
 export class Culling implements Plugin {
   #context: PluginContext;
   #viewport = new AABB();
-  
 
   apply(context: PluginContext) {
     const { hooks, rBushRoot } = context;

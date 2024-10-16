@@ -60,6 +60,7 @@ export class Circle extends Shape implements CircleAttributes {
       this.renderDirtyFlag = true;
       this.geometryBoundsDirtyFlag = true;
       this.renderBoundsDirtyFlag = true;
+      this.boundsDirtyFlag = true;
     }
   }
 
@@ -73,6 +74,7 @@ export class Circle extends Shape implements CircleAttributes {
       this.renderDirtyFlag = true;
       this.geometryBoundsDirtyFlag = true;
       this.renderBoundsDirtyFlag = true;
+      this.boundsDirtyFlag = true;
     }
   }
 
@@ -86,6 +88,7 @@ export class Circle extends Shape implements CircleAttributes {
       this.renderDirtyFlag = true;
       this.geometryBoundsDirtyFlag = true;
       this.renderBoundsDirtyFlag = true;
+      this.boundsDirtyFlag = true;
     }
   }
 

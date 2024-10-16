@@ -66,6 +66,7 @@ export class Polyline extends Shape implements PolylineAttributes {
       this.renderDirtyFlag = true;
       this.geometryBoundsDirtyFlag = true;
       this.renderBoundsDirtyFlag = true;
+      this.boundsDirtyFlag = true;
     }
   }
 

@@ -1,4 +1,4 @@
-import { Group } from '../../packages/core/src';
+import { Group, Rect } from '../../packages/core/src';
 
 describe('Transformable mixin', () => {
   it('should transform correctly.', () => {
@@ -44,5 +44,40 @@ describe('Transformable mixin', () => {
       tx: 0,
       ty: 0,
     });
+  });
+
+  it('should calculate bounds with transform correctly.', () => {
+    const rect = new Rect({
+      x: 100,
+      y: 100,
+      width: 100,
+      height: 100,
+    });
+    let bounds = rect.getBounds();
+    expect(bounds.minX).toEqual(99.5);
+    expect(bounds.minY).toEqual(99.5);
+    expect(bounds.maxX).toEqual(200.5);
+    expect(bounds.maxY).toEqual(200.5);
+
+    rect.position.x = 100;
+    bounds = rect.getBounds();
+    expect(bounds.minX).toEqual(199.5);
+    expect(bounds.minY).toEqual(99.5);
+    expect(bounds.maxX).toEqual(300.5);
+    expect(bounds.maxY).toEqual(200.5);
+
+    rect.position.x = 0;
+    bounds = rect.getBounds();
+    expect(bounds.minX).toEqual(99.5);
+    expect(bounds.minY).toEqual(99.5);
+    expect(bounds.maxX).toEqual(200.5);
+    expect(bounds.maxY).toEqual(200.5);
+
+    rect.scale.x = 2;
+    bounds = rect.getBounds();
+    expect(bounds.minX).toEqual(199);
+    expect(bounds.minY).toEqual(99.5);
+    expect(bounds.maxX).toEqual(401);
+    expect(bounds.maxY).toEqual(200.5);
   });
 });

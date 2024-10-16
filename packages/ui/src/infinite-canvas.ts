@@ -96,7 +96,11 @@ export class InfiniteCanvas extends LitElement {
         this.zoom = Math.round(this.#canvas.camera.zoom * 100);
       });
 
-      this.dispatchEvent(new CustomEvent('ic-ready', { detail: this.#canvas }));
+      setTimeout(() => {
+        this.dispatchEvent(
+          new CustomEvent('ic-ready', { detail: this.#canvas }),
+        );
+      }, 10);
 
       const animate = (time?: DOMHighResTimeStamp) => {
         this.dispatchEvent(new CustomEvent('ic-frame', { detail: time }));

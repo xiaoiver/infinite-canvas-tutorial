@@ -9,11 +9,16 @@ publish: false
 
 [Excalidraw HistoryEntry]
 
+## Local-first {#local-first}
+
+[The past, present, and future of local-first]
+
 ## CRDT {#crdt}
 
 提到协同算法
 
 [Loro Excalidraw Example]
+[automerge wasm]
 
 ## 扩展阅读 {#extended-reading}
 
@@ -34,3 +39,5 @@ publish: false
 [5000x faster CRDTs: An Adventure in Optimization](https://josephg.com/blog/crdts-go-brrr/)
 [Loro Excalidraw Example](https://github.com/loro-dev/loro-excalidraw)
 [Excalidraw HistoryEntry](https://github.com/excalidraw/excalidraw/blob/master/packages/excalidraw/history.ts#L160-L164)
+[automerge wasm](https://automerge.org/blog/2024/08/23/wasm-packaging/)
+[The past, present, and future of local-first](https://speakerdeck.com/ept/the-past-present-and-future-of-local-first)

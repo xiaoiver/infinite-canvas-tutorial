@@ -68,6 +68,7 @@ export class Ellipse extends Shape implements EllipseAttributes {
       this.renderDirtyFlag = true;
       this.geometryBoundsDirtyFlag = true;
       this.renderBoundsDirtyFlag = true;
+      this.boundsDirtyFlag = true;
     }
   }
 
@@ -81,6 +82,7 @@ export class Ellipse extends Shape implements EllipseAttributes {
       this.renderDirtyFlag = true;
       this.geometryBoundsDirtyFlag = true;
       this.renderBoundsDirtyFlag = true;
+      this.boundsDirtyFlag = true;
     }
   }
 
@@ -94,6 +96,7 @@ export class Ellipse extends Shape implements EllipseAttributes {
       this.renderDirtyFlag = true;
       this.geometryBoundsDirtyFlag = true;
       this.renderBoundsDirtyFlag = true;
+      this.boundsDirtyFlag = true;
     }
   }
 
@@ -107,6 +110,7 @@ export class Ellipse extends Shape implements EllipseAttributes {
       this.renderDirtyFlag = true;
       this.geometryBoundsDirtyFlag = true;
       this.renderBoundsDirtyFlag = true;
+      this.boundsDirtyFlag = true;
     }
   }
 

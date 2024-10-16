@@ -12,3 +12,7 @@ figure img {
   z-index: calc(var(--vp-z-index-local-nav) - 1);
 }
 
+.lil-gui {
+  position: absolute;
+  bottom: 0;
+}

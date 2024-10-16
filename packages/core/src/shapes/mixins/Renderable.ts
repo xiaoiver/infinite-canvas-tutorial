@@ -429,7 +429,7 @@ export function Renderable<TBase extends GConstructor>(Base: TBase) {
     }
     set strokeDasharray(strokeDasharray: number[]) {
       if (
-        !this.#strokeDasharray ||
+        !this.#strokeDasharray?.length ||
         !this.#strokeDasharray.every(
           (dash, index) => dash === strokeDasharray[index],
         )
