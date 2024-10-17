@@ -146,8 +146,8 @@ SVG 并不不存在同名属性，可选值包括 `center` `inner` 和 `outer`�
 
 参考：[fill for polyline]
 
-[stroke-linecap]: (https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/stroke-linecap)
-[stroke-linejoin]: (https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/stroke-linejoin)
+[stroke-linecap]: https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/stroke-linecap
+[stroke-linejoin]: https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/stroke-linejoin
 [stroke-miterlimit]: https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/stroke-miterlimit
 [stroke-dashoffset]: https://developer.mozilla.org/zh-CN/docs/Web/SVG/Attribute/stroke-dashoffset
 [stroke-dasharray]: https://developer.mozilla.org/zh-CN/docs/Web/SVG/Attribute/stroke-dasharray

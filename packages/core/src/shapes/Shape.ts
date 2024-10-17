@@ -110,7 +110,7 @@ function Shapable<TBase extends GConstructor<Shape>>(Base: TBase) {
     }
 
     getBounds(skipUpdateTransform?: boolean) {
-      if (!this.boundsDirtyFlag) {
+      if (!this.boundsDirtyFlag && !this.transformDirtyFlag) {
         return this.bounds;
       }
 
