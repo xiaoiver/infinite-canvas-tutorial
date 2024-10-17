@@ -2,17 +2,17 @@
 outline: deep
 ---
 
-# 课程 12 - 折线
+# Lesson 12 - Polylines
 
-让我们继续添加基础图形：折线。在这节课中你将学习到以下内容：
+Let's continue adding basic shapes: polylines. In this lesson, you will learn the following:
 
--   为什么不直接使用 `gl.LINES`?
--   在 CPU 或者 Shader 中构建 Mesh
--   分析 Shader 细节，包括：
-    -   拉伸顶点与接头
-    -   反走样
-    -   绘制虚线
--   如何计算折线的包围盒？
+-   Why not use `gl.LINES` directly?
+-   Building Mesh in CPU or Shader
+-   Analyzing Shader details, including:
+    -   Stretching vertices and joints
+    -   Anti-aliasing
+    -   Drawing dashed lines
+-   How to calculate the bounding box of a polyline?
 
 ```js eval code=false
 $icCanvas = call(() => {
@@ -117,32 +117,30 @@ call(() => {
 });
 ```
 
-## gl.LINES 的局限性 {#limitation-of-gl-lines}
+## Limitations of gl.LINES {#limitation-of-gl-lines}
 
-WebGL 原生提供的 `gl.LINES` 和 `gl.LINE_STRIP` 在实际场景中往往并不好用：
+The `gl.LINES` and `gl.LINE_STRIP` provided by WebGL are often not very practical in real scenarios:
 
--   不支持宽度。如果我们尝试使用 [lineWidth]，常见浏览器例如 Chrome 会抛出警告：
+-   Do not support width. If we try to use [lineWidth], common browsers such as Chrome will throw a warning:
 
 > [!WARNING]
 > As of January 2017 most implementations of WebGL only support a minimum of 1 and a maximum of 1 as the technology they are based on has these same limits.
 
--   无法定义相邻线段间的连接形状 [lineJoin] 和端点形状 [lineCap]
--   默认实现存在明显的锯齿，需要额外反走样
+-   Unable to define the connection shape between adjacent line segments [lineJoin] and the shape of the endpoints [lineCap]
+-   The default implementation has noticeable jaggies, requiring additional anti-aliasing
 
-![aliased lines](/aliased-lines.png)
+It should be noted that the solution in [Lesson 5 - Line Grid] is not suitable for drawing arbitrary line segments; it can't even define the two endpoints of a line segment arbitrarily. In addition, the biggest difference between line segments and polylines is the treatment at the joints, for which deck.gl provides [LineLayer] and [PathLayer] respectively.
 
-需要注意的是，在 [课程 5 - 直线网格] 中的方案并不适合绘制任意线段，它甚至无法任意定义线段的两个端点。另外线段和折线的最大区别在于对于接头处的处理，deck.gl 就分别提供了 [LineLayer] 和 [PathLayer]。
+Now let's clarify the features we want to implement for polylines:
 
-现在让我们明确一下希望实现的折线相关特性：
+-   Support for arbitrary line widths
+-   Support for defining an arbitrary number of endpoints. Similar to the SVG [points] attribute.
+-   Support for connection shapes between adjacent line segments [stroke-linejoin] and endpoint shapes [stroke-linecap]
+-   Support for dashed lines. [stroke-dashoffset] and [stroke-dasharray]
+-   Good anti-aliasing effect
+-   Support for instanced drawing, see the previously introduced [instanced drawing]
 
--   支持任意线宽
--   支持定义任意数量的端点。类似 SVG 的 [points] 属性。
--   支持相邻线段间的连接形状 [stroke-linejoin] 和端点形状 [stroke-linecap]
--   支持虚线。[stroke-dashoffset] 和 [stroke-dasharray]
--   良好的反走样效果
--   支持 instanced 绘制，详见之前介绍过的 [instanced drawing]
-
-我们设计的 API 如下：
+Our designed API is as follows:
 
 ```ts
 const line = new Polyline({
@@ -159,21 +157,21 @@ const line = new Polyline({
 });
 ```
 
-先来看第一个问题：如何实现任意数值的 `strokeWidth`。
+Let's first look at the first question: how to implement arbitrary values of `strokeWidth`.
 
-## 构建 Mesh {#construct-mesh}
+## Building Mesh {#construct-mesh}
 
-下图来自 Pixi.js 在 WebGL meetup 上的分享：[How 2 draw lines in WebGL]，本文会大量引用其中的截图，我会把 PPT 中的页数标注上。既然原生方法不可用，还是只能回到构建 Mesh 的传统绘制方案。
+The following image comes from the WebGL meetup shared by Pixi.js: [How 2 draw lines in WebGL]. This article will heavily reference screenshots from it, and I will label the page numbers in the PPT. Since native methods are not available, we can only return to the traditional drawing scheme of building Mesh.
 
 ![How to draw line in WebGL - page 5](/how-to-draw-line-in-webgl.png)
 
-常用的做法是沿线段法线方向进行拉伸后三角化。下图来自 [Drawing Antialiased Lines with OpenGL]，线段两个端点分别沿红色虚线法向向两侧拉伸，形成 4 个顶点，三角化成 2 个三角形，这样 `strokeWidth` 就可以是任意值了。
+The common practice is to stretch and triangulate in the direction of the normal of the line segment. The following image comes from [Drawing Antialiased Lines with OpenGL]. The two endpoints of the line segment are stretched to both sides along the red dashed line normal, forming 4 vertices, triangulated into 2 triangles, so `strokeWidth` can be any value.
 
 ![extrude line](/extrude-line.png)
 
-### 在 CPU 中构建 {#construct-mesh-on-cpu}
+### Building on CPU {#construct-mesh-on-cpu}
 
-线段的拉伸以及 `strokeLinejoin` 和 `strokeLinecap` 的 Mesh 构建可以在 CPU 或 Shader 中完成。按照前者思路的实现包括：
+The stretching of the line segment and the Mesh construction of `strokeLinejoin` and `strokeLinecap` can be done in the CPU or Shader. Implementations following the former approach include:
 
 -   [Instanced Line Rendering Part I]
 -   [Instanced Line Rendering Part II]
@@ -183,7 +181,7 @@ const line = new Polyline({
 
 ![segment instance, lineCap and lineJoin meshes](https://rreusser.github.io/regl-gpu-lines/docs/debug.png)
 
-可以看出在 `strokeLinejoin` 和 `strokeLinecap` 取值为 `round` 的情况下，为了让圆角看起来平滑，构建 Mesh 需要最多的顶点数。在 [regl-gpu-lines] 中，每一段至多需要 `32 * 4 + 6 = 134` 个顶点：
+It can be seen that when `strokeLinejoin` and `strokeLinecap` take the value of `round`, in order to make the rounded corners look smooth, the Mesh construction requires the most vertices. In [regl-gpu-lines], each segment requires up to `32 * 4 + 6 = 134` vertices:
 
 ```ts
 // @see https://github.com/rreusser/regl-gpu-lines/blob/main/src/index.js#L81
@@ -192,10 +190,10 @@ cache.indexBuffer = regl.buffer(
 );
 ```
 
-`strokeLinecap` 和线段需要分成不同 Drawcall 绘制，还是以 [regl-gpu-lines] 的 [instanced example] 为例，需要编译两个 Program 并使用 3 个 Drawcall 绘制，其中：
+`strokeLinecap` and line segments need to be drawn in different Drawcall, still taking the [instanced example] of [regl-gpu-lines] as an example, it requires compiling two Programs and using 3 Drawcall to draw, among which:
 
--   两个端点使用同一个 Program，只是 Uniform `orientation` 不同。顶点数目为 `cap + join`
--   所有中间的线段使用使用一个 Drawcall 绘制，顶点数目为 `join + join`，instance 数目为线段数目
+-   The two endpoints use the same Program, but the Uniform `orientation` is different. The number of vertices is `cap + join`
+-   All middle line segments are drawn using one Drawcall, the number of vertices is `join + join`, and the number of instances is the number of line segments
 
 ```ts
 const computeCount = isEndpoints
@@ -205,23 +203,23 @@ const computeCount = isEndpoints
       (props) => [props.joinRes2, props.joinRes2];
 ```
 
-如果存在多条折线，可以进行合并的条件是 `strokeLinecap` 和 `strokeLinejoin` 的取值以及线段数量相同。下图展示了绘制了 5 条折线的情况，其中每一条折线的中间线段部分包含 8 个 `instance`，因此 `instance` 总数为 40：
+If there are multiple polylines, the conditions for merging are the same values of `strokeLinecap` and `strokeLinejoin` and the number of line segments. The following figure shows the situation of drawing 5 polylines, among which each polyline's middle segment part contains 8 `instance`, so the total number of `instance` is 40:
 
 ![drawcalls for linecap and segments](/regl-gpu-lines.png)
 
-### 在 Shader 中构建 {#construct-mesh-on-shader}
+### Building in Shader {#construct-mesh-on-shader}
 
-来自 Pixi.js 在 WebGL meetup 上的分享，在 Shader 中构建 Mesh：
+From the WebGL meetup shared by Pixi.js, building Mesh in Shader:
 
 -   [How 2 draw lines in WebGL]
 -   [pixijs/graphics-smooth]
 
-相比在 CPU 中构建，它的优点包括：
+Compared with building on the CPU, its advantages include:
 
--   只需要一个 Drawcall 绘制 `strokeLinecap` `strokeLineJoin` 和中间线段
--   顶点固定为 9 个，其中 1234 号顶点组成的两个三角形用来绘制线段部分，56789 号顶点组成的三个三角形用来绘制接头部分
--   当 `strokeLinecap` `strokeLinejoin` 取值为 `round` 时更平滑，原因是在 Fragment Shader 中使用了类似 SDF 绘制圆的方法
--   良好的反走样效果
+-   Only one Drawcall is needed to draw `strokeLinecap` `strokeLineJoin` and the middle segment
+-   The vertices are fixed at 9, where vertices 1234 form two triangles for drawing the line segment part, and vertices 56789 form three triangles for drawing the joint part
+-   When `strokeLinecap` `strokeLinejoin` take the value of `round`, it is smoother because a method similar to SDF drawing circles is used in the Fragment Shader
+-   Good anti-aliasing effect
 
 ![pack joints into instances - page 15](/pack-joints-into-instances.png)
 
@@ -234,7 +232,7 @@ layout(location = ${Location.VERTEX_JOINT}) in float a_VertexJoint;
 layout(location = ${Location.VERTEX_NUM}) in float a_VertexNum;
 ```
 
-Buffer 排布格式如下，每个 Stride 大小为 `4 * 3`。Buffer 中同一块连续数据例如 `x1 y1 t1` 在第一个 instance 中被读取为 `A_0`，在第二个 instance 中被读取为 `Prev_1`，这种 intersect 的排布方式可以最大限度节约 Buffer 大小：
+The Buffer layout is as follows, with each Stride size being `4 * 3`. In the Buffer, the same continuous data such as `x1 y1 t1` is read as `A_0` in the first instance, and as `Prev_1` in the second instance. This intersecting layout can save the maximum amount of Buffer size:
 
 ```ts
 const vertexBufferDescriptors: InputLayoutBufferDescriptor[] = [
@@ -272,32 +270,32 @@ const vertexBufferDescriptors: InputLayoutBufferDescriptor[] = [
 ];
 ```
 
-但很不幸，如果我们切换到 WebGPU 渲染器下会得到如下报错：
+Unfortunately, if we switch to the WebGPU renderer, we will get the following error:
 
 > [!WARNING]
 > Attribute offset (12) with format VertexFormat::Float32x2 (size: 8) doesn't fit in the vertex buffer stride (12).
 
-原因是是 WebGPU 针对 VertexBufferLayout 存在如下校验规则，而我们的 arrayStride 为 `4 * 3`。[WebGPU instancing problem] 和 [spec: It is useful to allow GPUVertexBufferLayout.arrayStride to be less than offset + sizeof(attrib.format)] 也提及了这一点。
+The reason is that WebGPU has the following verification rule for VertexBufferLayout, and our arrayStride is `4 * 3`. [WebGPU instancing problem] and [spec: It is useful to allow GPUVertexBufferLayout.arrayStride to be less than offset + sizeof(attrib.format)] also mention this.
 
 > attrib.offset + byteSize(attrib.format) ≤ descriptor.arrayStride.
 >
-> 4 \* 3 + 4 \* 2 ≤ 4 \* 3 // Oops!
+> 4 _3 + 4_ 2 ≤ 4 \* 3 // Oops!
 
-因此我们不得不重新改变 Buffer 的排布方式。
+Therefore, we have to change the layout of the Buffer.
 
-后续其他特性也会基于这种方案实现。
+Other features will also be implemented based on this scheme later.
 
-## Shader 实现分析 {#shader-implementation}
+## Shader Implementation Analysis {#shader-implementation}
 
-首先来看如何在线段主体与接头处对顶点进行拉伸。
+First, let's see how to stretch vertices at the main body and joints of the line segment.
 
-### 构建顶点 {#construct-vertex}
+### Building Vertices {#construct-vertex}
 
-我们先关注 1 ～ 4 号顶点，即线段的主体部分。考虑该线段与前、后相邻线段呈现的夹角，有以下四种形态 `/-\` `\-/` `/-/` 和 `\-\`：
+Let's focus on vertices 1 to 4, that is, the main part of the line segment. Considering the angle at which the line segment and its adjacent line segments present, there are the following four forms `/-\` `\-/` `/-/` and `\-\`:
 
 ![extrude along line segment - page 16](/line-vertex-shader.png)
 
-在计算单位法线向量前，先将各个顶点的位置转换到模型坐标系下：
+Before calculating the unit normal vector, convert the position of each vertex to the model coordinate system:
 
 ```glsl
 vec2 pointA = (model * vec3(a_PointA, 1.0)).xy;
@@ -326,7 +324,7 @@ if (abs(D) < 0.01) {
 }
 ```
 
-接头处的角平分线：
+The angle bisector at the joint:
 
 ```glsl
 vec2 doBisect(
@@ -350,27 +348,27 @@ vec2 doBisect(
 }
 ```
 
-接下来关注接头处的 5 ~ 9 号顶点：
+Next, focus on the 5th to 9th vertices at the joint:
 
 ![extrude along line segment - page 16](/line-vertex-shader2.png)
 
-### 圆角接头
+### Rounded Joints
 
-值得一提的是，在 Cairo 中采用 round 还是 bevel 接头需要根据 `arc height` 判断，下图来自：[Cairo - Fix for round joins]
+It is worth mentioning that in Cairo, whether to use round or bevel joints needs to be determined based on `arc height`. The following figure comes from: [Cairo - Fix for round joins]
 
 ![Cairo - Fix for round joins](https://gitlab.freedesktop.org/-/project/956/uploads/b53d20cf0156e48b4a9766f6c5ff5cff/round_join.png)
 
-### 反走样 {#anti-aliasing}
+### Anti-aliasing {#anti-aliasing}
 
-最后我们来看如何对线段边缘进行反走样。之前我们介绍过 [SDF 中的反走样]，这里使用类似思路：
+Finally, let's see how to anti-alias the edges of the line segment. We have introduced [anti-aliasing in SDF] before, and here we use a similar approach:
 
-1. 在 Vertex Shader 中计算顶点到线段的垂直单位向量，通过 `varying` 传递给 Fragment Shader 完成自动插值
-2. 插值后的向量不再是单位向量了，计算它的长度就是当前像素点到线段的垂直距离，在 `[0, 1]` 范围内
-3. 利用这个值计算像素点最终的透明度，完成反走样。`smoothstep` 发生在线段边缘，即 `[linewidth - feather, linewidth + feather]` 的区间内。下图来自：[Drawing Antialiased Lines with OpenGL]，具体计算逻辑稍后会详细介绍。
+1. Calculate the vertical unit vector from the vertex to the line segment in the Vertex Shader and pass it to the Fragment Shader through `varying` for automatic interpolation
+2. The interpolated vector is no longer a unit vector. Calculate its length, which is the perpendicular distance from the current pixel point to the line segment, within the range `[0, 1]`
+3. Use this value to calculate the final transparency of the pixel point, completing anti-aliasing. `smoothstep` occurs at the edge of the line segment, that is, within the interval `[linewidth - feather, linewidth + feather]`. The following figure comes from: [Drawing Antialiased Lines with OpenGL], and the specific calculation logic will be introduced later.
 
 ![feather](https://miro.medium.com/v2/resize:fit:818/format:webp/0*EV5FGcUOHAbFFPjy.jpg)
 
-这个 "feather" 取多少合适呢？在之前的 [绘制矩形外阴影] 中，我们在矩形原有尺寸上外扩了 `3 * dropShadowBlurRadius`。下图依然来自 [How 2 draw lines in WebGL]，向外扩展一个像素（从 `w` -> `w+1`）即可。在另一侧的两个顶点（#3 和 #4 号顶点）距离为负：
+How much should this "feather" be? In the previous [drawing rectangle outer shadow], we expanded the original size of the rectangle by `3 * dropShadowBlurRadius`. The following figure still comes from [How 2 draw lines in WebGL], expanding one pixel outward (from `w` -> `w+1`) is enough. At the other side, the distance of the two vertices (#3 and #4 vertices) is negative:
 
 ```glsl
 const float expand = 1.0;
@@ -382,41 +380,41 @@ if (vertexNum >= 1.5) { // Vertex #3 & #4
 }
 ```
 
-从下右图还可以看出，当我们放大来看 Fragment Shader 中的每一个像素，利用这个有向距离 `d` 就可以计算出线段和当前像素的覆盖度（下图三角形的面积），实现反走样效果。
+From the bottom right figure, it can also be seen that when we zoom in to look at every pixel in the Fragment Shader, using this directed distance `d`, we can calculate the coverage of the line segment and the current pixel (the area of the triangle in the following figure), achieving an anti-aliasing effect.
 
 ![extend 1 pixel outside](/line-segment-antialias.png)
 
-那么如何利用这个距离计算覆盖度呢？这里需要分成线段主体和接头情况。
+So how to use this distance to calculate coverage? This needs to be divided into the main body of the line segment and the joint situation.
 
-首先来看线段主体的情况，它还可以进一步简化成垂直线段的情况，原作者也提供了考虑旋转的计算方式，与简化的估算版本相差不大。利用 `clamp` 计算单边的覆盖度，另外考虑非常小的线宽情况，将右侧减去左侧得到最终的覆盖度，当作最终颜色的透明度系数。
+First, let's look at the situation of the main body of the line segment, which can be further simplified into the case of a vertical line segment. The original author also provided a calculation method considering rotation, which is not much different from the simplified estimation version. Use `clamp` to calculate the coverage on one side, and also consider the case of a very thin line width, subtract the left side from the right side to get the final coverage, as the transparency coefficient of the final color.
 
 ![calculate coverage according to signed distance](/line-segment-antialias2.png)
 
-当然计算线段部分和直线的相交区域是最简单的情况。接头和端点处的处理会非常复杂，以 Miter 接头为例，依然先忽略旋转仅考虑相邻线段垂直的情况（注意下图右侧的红色方框区域），不同于上面线段仅存在 `d` 这一个有向距离的情况，这里出现了 `d1` 和 `d2` 两个有向距离分别代表接头前后两段线段。同样考虑到一个像素区域内非常细的线，此时覆盖面积就是大小两个正方形的面积差（`a2 * b2 - a1 * b1`）：
+Of course, calculating the intersection area between the line segment part and the straight line is the simplest case. The treatment at the joints and endpoints will be very complex. Taking the Miter joint as an example, still ignore the rotation and only consider the case where the adjacent line segments are perpendicular (note the red box area on the right side of the following figure). Unlike the line segment above, which only has one directed distance `d`, here there are two directed distances `d1` and `d2` representing the front and back two line segments at the joint. Similarly, considering a very thin line within a pixel area, the coverage area is the area difference between the two squares (`a2 * b2 - a1 * b1`):
 
 ![calculate coverage on miter joint](/line-segment-antialias3.png)
 
-Bevel 接头的计算方式大致和 Miter 相同（下图中间情况）。`d3` 代表像素点中心到 "bevel line" 的距离，使用它可以计算下图右侧情况的覆盖度。可以取这两种情况的最小值得到近似计算结果。
+The calculation method for the Bevel joint is roughly the same as the Miter (the middle situation in the following figure). `d3` represents the distance from the center of the pixel to the "bevel line", and it can be used to calculate the coverage on the right side of the following figure. You can take the minimum value of these two situations to get an approximate calculation result.
 
 ![calculate coverage on bevel joint](/line-segment-antialias5.png)
 
 ![calculate coverage on bevel joint](/line-segment-antialias4.png)
 
-最后来到圆角接头的情况。需要额外从 Vertex Shader 传递圆心到像素点的距离（类似 SDF 绘制圆）`d3`。
+Finally, let's come to the case of rounded joints. It requires an additional distance `d3` from the center of the circle to the pixel point (similar to SDF drawing circles) passed from the Vertex Shader.
 
 ![calculate coverage on round joint](/line-segment-antialias6.png)
 
 ![calculate coverage on round joint](/line-segment-antialias7.png)
 
-原作者还提供了精确版本的 `pixelLine` 实现，限于篇幅就不展开了。
+The original author also provided an exact version of `pixelLine` implementation, which will not be expanded due to space limitations.
 
-### 支持 stroke-alignment {#stroke-alignment}
+### Support for stroke-alignment {#stroke-alignment}
 
-之前我们在使用 SDF 绘制的 Circle、Ellipse、Rect 上实现了：[增强 SVG: Stroke alignment]。现在让我们为折线也加上这个属性。下图来自 Pixi.js 中的 `lineStyle.alignment` 效果，红色线条表示折线的几何位置，根据取值不同在它上下浮动：
+We previously implemented [Enhanced SVG: Stroke alignment] on Circle, Ellipse, and Rect drawn with SDF. Now let's add this attribute to polylines. The following figure comes from the `lineStyle.alignment` effect in Pixi.js, where the red line represents the geometric position of the polyline, and it floats up and down according to different values:
 
 ![stroke-alignment - p27](/line-stroke-alignment.png)
 
-在 Shader 中我们将这个属性反映到沿法线拉伸的偏移量上，如果 `strokeAlignment` 取值为 `center` 时偏移量为 `0`：
+In the Shader, we reflect this attribute in the offset along the normal stretch. If the `strokeAlignment` takes the value of `center`, the offset is `0`:
 
 ```glsl
 float shift = strokeWidth * strokeAlignment;
@@ -424,7 +422,7 @@ pointA += norm * shift;
 pointB += norm * shift;
 ```
 
-从左往右依次是 `outer` `center` 和 `inner` 的效果：
+From left to right are the effects of `outer`, `center`, and `inner`:
 
 ```js eval code=false
 $icCanvas2 = call(() => {
@@ -556,14 +554,14 @@ call(() => {
 });
 ```
 
-最后还有两点需要注意：
+Finally, there are two points to note:
 
-1. 由于 `stroke-alignment` 并非 SVG 标准属性，因此在导出成 SVG 时需要重新计算 `points`，和 Shader 中沿法线、角平分线拉伸逻辑一致，限于篇幅就不展开了
-2. 拾取判定方法即 `containsPoint` 同样需要依据 `points` 计算偏移后的顶点。可以在上面的例子中尝试将鼠标移入移出改变折线的颜色
+1. Since `stroke-alignment` is not a standard SVG attribute, it is necessary to recalculate `points` when exporting to SVG, which is consistent with the logic of stretching along the normal and angle bisector in the Shader, which will not be expanded due to space limitations
+2. The picking determination method, that is, `containsPoint`, also needs to be calculated based on the offset vertices of `points`. You can try to change the color of the polyline by moving the mouse in and out of the above example
 
-### 虚线 {#dash}
+### Dashed Lines {#dash}
 
-首先计算每个顶点从起点处经过的距离，以 `[[0, 0], [100, 0], [200, 0]]` 的折线为例，三个 instance 的 `a_Travel` 的值依次为 `[0, 100, 200]`。在 Vertex Shader 中计算拉伸后顶点经过的距离：
+First, calculate the distance each vertex has traveled from the starting point. Taking the polyline of `[[0, 0], [100, 0], [200, 0]]` as an example, the `a_Travel` values of the three instances are `[0, 100, 200]`. Calculate the stretched vertex distance in the Vertex Shader:
 
 ```glsl
 layout(location = ${Location.TRAVEL}) in float a_Travel;
@@ -572,7 +570,7 @@ out float v_Travel;
 v_Travel = a_Travel + dot(pos - pointA, vec2(-norm.y, norm.x));
 ```
 
-在 Fragment Shader 中，将 `stroke-dasharray` 和 `stroke-dashoffset` 的值传入，和 SVG 标准不同，我们暂时仅支持长度为 2 的 `stroke-dasharray`，即 `[10, 5, 2]` 这样的虚线暂不支持。
+In the Fragment Shader, pass in the values of `stroke-dasharray` and `stroke-dashoffset`. Different from the SVG standard, we only support `stroke-dasharray` of length 2 for the time being, that is, dashed lines like `[10, 5, 2]` are not supported.
 
 ```glsl
 in float v_Travel;
@@ -588,7 +586,7 @@ if (u_Dash + u_Gap > 1.0) {
 }
 ```
 
-我们还可以实时改变（自增） `stroke-dashoffset` 实现蚂蚁线效果。通常这类动画效果会通过 SVG 同名属性实现，详见：[How to animate along an SVG path at the same time the path animates?]
+We can also change (increment) `stroke-dashoffset` in real-time to achieve an ant line effect. Such animation effects are usually implemented through the SVG attribute of the same name, see: [How to animate along an SVG path at the same time the path animates?]
 
 ```js eval code=false
 $icCanvas3 = call(() => {
@@ -663,15 +661,15 @@ call(() => {
 });
 ```
 
-另一种实现方式使用 `fract()`，详见：[Pure WebGL Dashed Line]。
+Another implementation method uses `fract()`, see: [Pure WebGL Dashed Line].
 
-按照 SVG 规范，`stroke-dasharray` 和 `stroke-dashoffset` 这两个属性也可以作用在 Circle / Ellipse / Rect 等其他图形上。因此当这两个属性有合理值时，原本使用 SDF 绘制的描边就得改成使用 Polyline 实现。以 Rect 为例，最多可能需要 3 个 drawcall 分别绘制外阴影、矩形主体和虚线描边：
+According to the SVG specification, the attributes `stroke-dasharray` and `stroke-dashoffset` can also be applied to other shapes such as Circle / Ellipse / Rect. Therefore, when these two attributes have reasonable values, the outline drawn with SDF originally needs to be changed to Polyline implementation. Taking Rect as an example, up to 3 drawcalls may be needed to draw the outer shadow, the main body of the rectangle, and the dashed outline:
 
 ```ts
 SHAPE_DRAWCALL_CTORS.set(Rect, [ShadowRect, SDF, SmoothPolyline]);
 ```
 
-以 Rect 为例，我们需要根据 `x / y / width / height` 属性人为构造一条折线，其中包含 6 个顶点。值得注意的是，前 5 个其实已经可以完成闭合，但我们额外增加一个 `[x + epsilon, y]` 用来完成最后的 `strokeLinejoin`。Circle 和 Ellipse 同理，只不过为了保证平滑多增加一些采样点（这里我们使用 `64`）：
+Taking Rect as an example, we need to artificially construct a polyline based on the `x / y / width / height` attributes, which includes 6 vertices. It is worth noting that the first 5 can actually complete the closure, but we add an extra `[x + epsilon, y]` to complete the final `strokeLinejoin`. Circle and Ellipse are similar, only adding more sampling points to ensure smoothness (here we use `64`):
 
 ```ts
 if (object instanceof Polyline) {
@@ -796,11 +794,11 @@ call(() => {
 });
 ```
 
-## 计算包围盒 {#geometry-bounds}
+## Calculating the Bounding Box {#geometry-bounds}
 
-让我们从渲染中暂时跳出，做一些几何运算。正如之前的课程中介绍的，在拾取和剔除中都需要计算包围盒。
+Let's temporarily step out of rendering and do some geometric calculations. As introduced in previous lessons, bounding boxes need to be calculated in both picking and culling.
 
-先忽略绘制属性例如线宽，几何包围盒的计算非常简单。只需要找到折线所有顶点中的最小和最大坐标：
+Ignoring drawing attributes such as line width, the calculation of the geometric bounding box is very simple. Just find the minimum and maximum coordinates of all vertices of the polyline:
 
 ```ts
 const minX = Math.min(...points.map((point) => point[0]));
@@ -811,11 +809,11 @@ const maxY = Math.max(...points.map((point) => point[1]));
 return new AABB(minX, minY, maxX, maxY);
 ```
 
-一旦涉及到线宽、端点和接头，计算折线的包围盒就会变的比较复杂。如果不需要太精确的结果，可以简单将上述包围盒向外延拓一半的线宽。[Calculate bounding box of line with thickness] 中使用了 Cairo 提供的 [cairo-stroke-extents] 方法，如果线宽为 `0`，它就会退化成 [cairo-path-extents]：
+Once line width, endpoints, and joints are involved, calculating the bounding box of a polyline becomes more complex. If a precise result is not required, you can simply extend the aforementioned bounding box outward by half the line width. [Calculate bounding box of line with thickness] uses the [cairo-stroke-extents] method provided by Cairo. If the line width is `0`, it will degrade into [cairo-path-extents]:
 
 > Computes a bounding box in user coordinates covering the area that would be affected, (the "inked" area)
 
-继续深入查看 Cairo 源码可以发现针对 stroke 包围盒它也提供了两种方法（这里省略了大量参数），前者使用估计方法因此速度较快，后者会考虑端点、接头的具体形态完成精确计算：
+Continuing to delve into the Cairo source code, it can be found that for stroke bounding boxes, it also provides two methods (omitting a large number of parameters here), the former uses an estimation method and is therefore faster, while the latter will consider the specific shapes of endpoints and joints for precise calculation:
 
 ```c
 cairo_private void
@@ -825,9 +823,9 @@ cairo_private cairo_status_t
 _cairo_path_fixed_stroke_extents ();
 ```
 
-### 快速估计 {#approximate-stroke-extents}
+### Quick Estimation {#approximate-stroke-extents}
 
-这种估计是指在几何包围盒基础上沿水平和垂直方向各向外拓展一定距离：`style_expansion * strokeWidth`。
+This estimation refers to expanding a certain distance outward along the horizontal and vertical directions on the basis of the geometric bounding box: `style_expansion * strokeWidth`.
 
 ```c
 /*
@@ -857,7 +855,7 @@ _cairo_stroke_style_max_distance_from_path (const cairo_stroke_style_t *style,
 }
 ```
 
-考虑 `stroke-linecap="square"` 的情况，下图展示了在最理想的情况下 `style_expansion` 等于 `0.5`，即从红色本体向外延展 `0.5 * strokeWidth`，黑色区域就是该 `<polyline>` 的包围盒。
+Considering the case of `stroke-linecap="square"`, the following figure shows that in the most ideal situation, `style_expansion` equals `0.5`, that is, extending `0.5 * strokeWidth` from the red body, and the black area is the bounding box of the `<polyline>`.
 
 <svg xmlns="http://www.w3.org/2000/svg" width="400" height="30">
   <g>
@@ -877,7 +875,7 @@ _cairo_stroke_style_max_distance_from_path (const cairo_stroke_style_t *style,
   </g>
 </svg>
 
-但如果折线略微倾斜 45 度，此时向外延展的距离为 `sqrt(2) / 2 * strokeWidth`：
+But if the polyline is slightly tilted at 45 degrees, the distance extended outward at this time is `sqrt(2) / 2 * strokeWidth`:
 
 <svg xmlns="http://www.w3.org/2000/svg" width="240" height="240">
   <g>
@@ -903,11 +901,11 @@ _cairo_stroke_style_max_distance_from_path (const cairo_stroke_style_t *style,
   </g>
 </svg>
 
-同理还需要考虑 `stroke-linejoin="miter"` 的情况。可见这种估计方法并不会精确考虑每一个顶点、接头的情况，仅仅作出最乐观的估计，保证包围盒一定能容纳折线。
+Similarly, the case of `stroke-linejoin="miter"` also needs to be considered. It can be seen that this estimation method will not precisely consider every vertex and joint, but only make the most optimistic estimate to ensure that the bounding box can accommodate the polyline.
 
-### 精确计算 {#stroke-extents}
+### Precise Calculation {#stroke-extents}
 
-如果确实想精确计算呢？Cairo 的思路是先转换成 Polygon，再计算它的包围盒：
+If you really want to calculate precisely? Cairo's idea is to first convert it into a Polygon, and then calculate its bounding box:
 
 ![stroke extents](/polyline-extents.png)
 
@@ -937,9 +935,9 @@ _cairo_path_fixed_stroke_extents (const cairo_path_fixed_t *path,
 }
 ```
 
-## 性能测试 {#perf}
+## Performance Testing {#perf}
 
-来测试一下性能，展示了若干条各包含 20000 个点的折线：
+Let's test the performance, showing several polylines each containing 20,000 points:
 
 ```js eval code=false
 $icCanvas4 = call(() => {
@@ -1009,38 +1007,38 @@ call(() => {
 });
 ```
 
-看似还不错，但仔细考虑后仍存在以下问题，不妨作为后续的改进方向：
+It seems not bad, but after careful consideration, there are still the following issues, which can be considered as future improvement directions:
 
--   由于每个 Instance 使用了 15 个顶点，Buffer 又存在大小限制，因此单根折线中包含的顶点数目实际是有限的
--   目前一根折线对应一个 Drawcall，如果存在大量同类重复的折线呢？[regl-gpu-lines] 提供了两种思路：
-    -   一个 Drawcall 也可以绘制多条折线，使用 `[NaN, NaN]` 表示断点，示例：[Multiple lines]
-    -   如果多条折线顶点数据都相同，只有偏移量差异，此时可以把每条折线都当作一个 Instance，当然每条折线内部的顶点就需要展开了，示例：[Fake instancing]
+-   Due to the fact that each Instance uses 15 vertices, and the Buffer has a size limit, the actual number of vertices contained in a single polyline is limited
+-   Currently, one polyline corresponds to one Drawcall. What if there are a large number of similar repeated polylines? [regl-gpu-lines] provides two ideas:
+    -   One Drawcall can also draw multiple polylines, using `[NaN, NaN]` to indicate breakpoints, example: [Multiple lines]
+    -   If the vertex data of multiple polylines is the same, and only the offset is different, then each polyline can be regarded as an Instance. Of course, the vertices inside each polyline need to be expanded, example: [Fake instancing]
 
-## 其他问题 {#followup-issues}
+## Other Issues {#followup-issues}
 
-至此，我们完成了折线的基础绘制工作，最后让我们来看一下其他相关问题，限于篇幅有些问题等到后续课程中再详细展开。
+So far, we have completed the basic drawing work of polylines. Finally, let's take a look at other related issues. Due to space limitations, some issues will be detailed in future lessons.
 
 ### SizeAttenuation {#size-attenuation}
 
-在一些场景中，我们不希望图形随相机缩放改变大小，例如 Figma 中选中图形后展示的包围盒线框以及下方的尺寸标签：
+In some scenarios, we do not want the graphics to change size with the camera zoom, such as the bounding box wireframe and the size labels below it when selecting a shape in Figma:
 
 ![size attenuation in Figma](/size-attenuation.gif)
 
-这在 Three.js 中称作：[sizeAttenuation]，在 Perspective 投影模式下，Sprite 随相机深度变大而变小。等后续我们实现选中 UI 的时候再来实现。
+This is called `sizeAttenuation` in Three.js. In Perspective projection mode, Sprites become smaller as the camera depth increases. We will implement this later when we implement the selected UI.
 
-### Line Path 和 Polygon {#line-path-polygon}
+### Line Path and Polygon {#line-path-polygon}
 
-在 SVG 中还存在 `<line>` `<path>` 和 `<polygon>` 这三种元素，其中：
+In SVG, there are still three elements: `<line>` `<path>` and `<polygon>`, among which:
 
--   `<line>` 并不需要考虑 `strokeLinejoin`，因此可以简化顶点使用的数量
--   `<polygon>` 的填充部分可以使用一些三角化算法例如 earcut 后绘制，描边部分和折线完全相同
--   `<path>` 也可以采用类似 `<rect>` `<circle>` 的方式，在路径上进行采样，最终使用折线绘制，但会存在这样的问题：[Draw arcs, arcs are not smooth ISSUE]
+-   `<line>` does not need to consider `strokeLinejoin`, so the number of vertices used can be simplified
+-   The filling part of `<polygon>` can be drawn after triangulation using some algorithms such as earcut, and the outline part is exactly the same as the polyline
+-   `<path>` can also be sampled on the path in a similar way to `<rect>` `<circle>`, and finally drawn with polylines, but there will be such a problem: [Draw arcs, arcs are not smooth ISSUE]
 
-如果使用 SDF 绘制，在 Fragment Shader 中需要做更多的数学运算，存在一些性能问题：
+If SDF drawing is used, more mathematical calculations are required in the Fragment Shader, which has some performance issues:
 
 ![SDF path](/sdf-line.png)
 
-因此对于 Path 常规的方式还是三角化，无论是 2D 还是 3D：
+Therefore, the conventional way for Path is still triangulation, whether it is 2D or 3D:
 
 -   [Rendering SVG Paths in WebGL]
 -   [Shaping Curves with Parametric Equations]
@@ -1049,9 +1047,9 @@ call(() => {
 -   [p5js - bezier()]
 -   [GPU-accelerated Path Rendering]
 
-在下一节课中我们会详细介绍如何绘制它们。
+We will introduce in detail how to draw them in the next lesson.
 
-## 扩展阅读 {#extended-reading}
+## Extended Reading {#extended-reading}
 
 -   [How 2 draw lines in WebGL]
 -   [regl-gpu-lines]
@@ -1060,7 +1058,7 @@ call(() => {
 -   [Instanced Line Rendering Part II]
 -   [pixijs/graphics-smooth]
 
-[课程 5 - 直线网格]: /zh/guide/lesson-005#lines-grid
+[Lesson 5 - Line Grid]: /guide/lesson-005#lines-grid
 [lineJoin]: https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/lineJoin
 [lineCap]: https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/lineCap
 [lineWidth]: https://developer.mozilla.org/en-US/docs/Web/API/WebGLRenderingContext/lineWidth
@@ -1079,17 +1077,16 @@ call(() => {
 [Drawing Instanced Lines with regl]: https://observablehq.com/@rreusser/drawing-instanced-lines-with-regl
 [pixijs/graphics-smooth]: https://github.com/pixijs/graphics-smooth
 [How 2 draw lines in WebGL]: https://www.khronos.org/assets/uploads/developers/presentations/Crazy_Panda_How_to_draw_lines_in_WebGL.pdf
-[instanced drawing]: /zh/guide/lesson-008#instanced
-[sizeAttenuation]: https://threejs.org/docs/#api/en/materials/SpriteMaterial.sizeAttenuation
+[instanced drawing]: /guide/lesson-008#instanced
 [WebGL 3D Geometry - Lathe]: https://webglfundamentals.org/webgl/lessons/webgl-3d-geometry-lathe.html
 [Fun with WebGL 2.0 : 027 : Bezier Curves in 3D]: https://www.youtube.com/watch?v=s3k8Od9lZBE
 [p5js - bezier()]: https://p5js.org/reference/p5/bezier/
-[SDF 中的反走样]: /zh/guide/lesson-002#antialiasing
-[绘制矩形外阴影]: /zh/guide/lesson-009#drop-shadow
+[Anti-aliasing in SDF]: /guide/lesson-002#antialiasing
+[Drawing rectangle outer shadow]: /guide/lesson-009#drop-shadow
 [WebGPU instancing problem]: https://github.com/pixijs/pixijs/issues/7511#issuecomment-2247464973
 [spec: It is useful to allow GPUVertexBufferLayout.arrayStride to be less than offset + sizeof(attrib.format)]: https://github.com/gpuweb/gpuweb/issues/2349
 [Draw arcs, arcs are not smooth ISSUE]: https://github.com/pixijs/graphics-smooth/issues/23
-[增强 SVG: Stroke alignment]: /zh/guide/lesson-010#stroke-alignment
+[Enhanced SVG: Stroke alignment]: /guide/lesson-010#stroke-alignment
 [Calculate bounding box of line with thickness]: https://stackoverflow.com/questions/51210467/calculate-bounding-box-of-line-with-thickness
 [cairo-stroke-extents]: https://cairographics.org/manual/cairo-cairo-t.html#cairo-stroke-extents
 [cairo-path-extents]: https://cairographics.org/manual/cairo-Paths.html#cairo-path-extents
