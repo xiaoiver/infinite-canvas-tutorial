@@ -22,7 +22,7 @@ import { Drawcall, ZINDEX_FACTOR } from './Drawcall';
 import { vert, frag, Location, JointType } from '../shaders/polyline';
 import { paddingMat3 } from '../utils';
 
-const epsilon = 1e-5;
+const epsilon = 1e-4;
 const circleEllipsePointsNum = 64;
 const stridePoints = 2;
 const strideFloats = 3;
@@ -192,25 +192,8 @@ export class SmoothPolyline extends Drawcall {
           },
         ],
       },
-      //     {
-      //       format: Format.F32_R,
-      //       offset: 4 * 5,
-      //       shaderLocation: Location.VERTEX_JOINT,
-      //     },
-      //     {
-      //       format: Format.F32_RG,
-      //       offset: 4 * 6,
-      //       shaderLocation: Location.POINTB,
-      //     },
-      //     {
-      //       format: Format.F32_RG,
-      //       offset: 4 * 9,
-      //       shaderLocation: Location.NEXT,
-      //     },
-      //   ],
-      // },
       {
-        arrayStride: 4 * 0,
+        arrayStride: 4 * 1,
         stepMode: VertexStepMode.VERTEX,
         attributes: [
           {
@@ -258,7 +241,7 @@ export class SmoothPolyline extends Drawcall {
             channelWriteMask: ChannelWriteMask.ALL,
             rgbBlendState: {
               blendMode: BlendMode.ADD,
-              blendSrcFactor: BlendFactor.ONE,
+              blendSrcFactor: BlendFactor.SRC_ALPHA,
               blendDstFactor: BlendFactor.ONE_MINUS_SRC_ALPHA,
             },
             alphaBlendState: {

@@ -1,9 +1,4 @@
 export enum Location {
-  ABCD,
-  TX_TY,
-  STROKE_COLOR,
-  Z_INDEX_STROKE_WIDTH,
-  OPACITY,
   PREV,
   POINTA,
   POINTB,
@@ -43,21 +38,13 @@ layout(location = ${Location.VERTEX_JOINT}) in float a_VertexJoint;
 layout(location = ${Location.VERTEX_NUM}) in float a_VertexNum;
 layout(location = ${Location.TRAVEL}) in float a_Travel;
 
-#ifdef USE_INSTANCES
-  layout(location = ${Location.ABCD}) in vec4 a_Abcd;
-  layout(location = ${Location.TX_TY}) in vec2 a_Txty;
-  layout(location = ${Location.STROKE_COLOR}) in vec4 a_StrokeColor;
-  layout(location = ${Location.Z_INDEX_STROKE_WIDTH}) in vec4 a_ZIndexStrokeWidth;
-  layout(location = ${Location.OPACITY}) in vec4 a_Opacity;
-#else
-  layout(std140) uniform ShapeUniforms {
-    mat3 u_ModelMatrix;
-    vec4 u_StrokeColor;
-    vec4 u_ZIndexStrokeWidth;
-    vec4 u_Opacity;
-    vec4 u_StrokeDash;
-  };
-#endif
+layout(std140) uniform ShapeUniforms {
+  mat3 u_ModelMatrix;
+  vec4 u_StrokeColor;
+  vec4 u_ZIndexStrokeWidth;
+  vec4 u_Opacity;
+  vec4 u_StrokeDash;
+};
 
 const float FILL = ${JointType.FILL}.0;
 const float BEVEL = ${JointType.JOINT_BEVEL}.0;
@@ -108,34 +95,13 @@ vec2 doBisect(
 }
 
 void main() {
-  mat3 model;
-  vec4 strokeColor;
-  float zIndex;
-  float strokeWidth;
-  float strokeMiterlimit;
-  float strokeAlignment;
-  float sizeAttenuation;
-
-  #ifdef USE_INSTANCES
-    model = mat3(a_Abcd.x, a_Abcd.y, 0, a_Abcd.z, a_Abcd.w, 0, a_Txty.x, a_Txty.y, 1);
-    strokeColor = a_StrokeColor;
-    zIndex = a_ZIndexStrokeWidth.x;
-    strokeWidth = a_ZIndexStrokeWidth.y;
-    strokeMiterlimit = a_ZIndexStrokeWidth.z;
-    sizeAttenuation = a_Opacity.w;
-
-    v_StrokeColor = strokeColor;
-    v_Opacity = a_Opacity;
-    v_StrokeAlignment = a_ZIndexStrokeWidth.w;
-  #else
-    model = u_ModelMatrix;
-    strokeColor = u_StrokeColor;
-    zIndex = u_ZIndexStrokeWidth.x;
-    strokeWidth = u_ZIndexStrokeWidth.y;
-    strokeMiterlimit = u_ZIndexStrokeWidth.z;
-    strokeAlignment = u_ZIndexStrokeWidth.w;
-    sizeAttenuation = u_Opacity.w;
-  #endif
+  mat3 model = u_ModelMatrix;
+  vec4 strokeColor = u_StrokeColor;
+  float zIndex = u_ZIndexStrokeWidth.x;
+  float strokeWidth = u_ZIndexStrokeWidth.y;
+  float strokeMiterlimit = u_ZIndexStrokeWidth.z;
+  float strokeAlignment = u_ZIndexStrokeWidth.w;
+  float sizeAttenuation = u_Opacity.w;
 
   mat3 viewModelMatrix = u_ViewMatrix * model;
 
@@ -406,16 +372,13 @@ layout(std140) uniform SceneUniforms {
   mat3 u_ViewMatrix;
 };
 
-#ifdef USE_INSTANCES
-#else
-  layout(std140) uniform ShapeUniforms {
-    mat3 u_ModelMatrix;
-    vec4 u_StrokeColor;
-    vec4 u_ZIndexStrokeWidth;
-    vec4 u_Opacity;
-    vec4 u_StrokeDash;
-  };
-#endif
+layout(std140) uniform ShapeUniforms {
+  mat3 u_ModelMatrix;
+  vec4 u_StrokeColor;
+  vec4 u_ZIndexStrokeWidth;
+  vec4 u_Opacity;
+  vec4 u_StrokeDash;
+};
 
 out vec4 outputColor;
 
@@ -424,13 +387,6 @@ in vec4 v_Arc;
 in float v_Type;
 in float v_Travel;
 in float v_ScalingFactor;
-
-#ifdef USE_INSTANCES
-  in vec4 v_StrokeColor;
-  in vec4 v_Opacity;
-  in float v_StrokeAlignment;
-#else
-#endif
 
 float epsilon = 0.000001;
 
@@ -453,23 +409,10 @@ float pixelLine(float x) {
 // }
 
 void main() {
-  vec4 strokeColor;
-  float opacity;
-  float strokeOpacity;
-  float strokeAlignment;
-
-  #ifdef USE_INSTANCES
-    strokeColor = v_StrokeColor;
-    opacity = v_Opacity.x;
-    strokeOpacity = v_Opacity.z;
-    strokeAlignment = v_StrokeAlignment;
-  #else
-    strokeColor = u_StrokeColor;
-    opacity = u_Opacity.x;
-    strokeOpacity = u_Opacity.z;
-    strokeAlignment = u_ZIndexStrokeWidth.w;
-  #endif
-
+  vec4 strokeColor = u_StrokeColor;
+  float opacity = u_Opacity.x;
+  float strokeOpacity = u_Opacity.z;
+  float strokeAlignment = u_ZIndexStrokeWidth.w;
   float alpha = 1.0;
 
   float d1 = v_Distance.x;

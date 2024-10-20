@@ -22,7 +22,7 @@ import { Drawcall, ZINDEX_FACTOR } from './Drawcall';
 import { vert, frag, Location, JointType } from '../shaders/polyline';
 import { paddingMat3 } from '../utils';
 
-const epsilon = 1e-5;
+const epsilon = 1e-4;
 const circleEllipsePointsNum = 64;
 const stridePoints = 2;
 const strideFloats = 3;
@@ -121,12 +121,18 @@ export class SmoothPolyline extends Drawcall {
       this.#pipeline.destroy();
     }
 
+    const diagnosticDerivativeUniformityHeader =
+      this.device.queryVendorInfo().platformString === 'WebGPU'
+        ? 'diagnostic(off,derivative_uniformity);\n'
+        : '';
+
     this.#program = this.renderCache.createProgram({
       vertex: {
         glsl: defines + vert,
       },
       fragment: {
         glsl: defines + frag,
+        postprocess: (fs) => diagnosticDerivativeUniformityHeader + fs,
       },
     });
 
@@ -140,30 +146,54 @@ export class SmoothPolyline extends Drawcall {
             offset: 4 * 0,
             shaderLocation: Location.PREV,
           },
+        ],
+      },
+      {
+        arrayStride: 4 * 3,
+        stepMode: VertexStepMode.INSTANCE,
+        attributes: [
           {
             format: Format.F32_RG,
-            offset: 4 * 3,
+            offset: 4 * 0,
             shaderLocation: Location.POINTA,
           },
+        ],
+      },
+      {
+        arrayStride: 4 * 3,
+        stepMode: VertexStepMode.INSTANCE,
+        attributes: [
           {
             format: Format.F32_R,
-            offset: 4 * 5,
+            offset: 4 * 0,
             shaderLocation: Location.VERTEX_JOINT,
           },
+        ],
+      },
+      {
+        arrayStride: 4 * 3,
+        stepMode: VertexStepMode.INSTANCE,
+        attributes: [
           {
             format: Format.F32_RG,
-            offset: 4 * 6,
+            offset: 4 * 0,
             shaderLocation: Location.POINTB,
           },
+        ],
+      },
+      {
+        arrayStride: 4 * 3,
+        stepMode: VertexStepMode.INSTANCE,
+        attributes: [
           {
             format: Format.F32_RG,
-            offset: 4 * 9,
+            offset: 4 * 0,
             shaderLocation: Location.NEXT,
           },
         ],
       },
       {
-        arrayStride: 4 * 0,
+        arrayStride: 4 * 1,
         stepMode: VertexStepMode.VERTEX,
         attributes: [
           {
@@ -211,7 +241,7 @@ export class SmoothPolyline extends Drawcall {
             channelWriteMask: ChannelWriteMask.ALL,
             rgbBlendState: {
               blendMode: BlendMode.ADD,
-              blendSrcFactor: BlendFactor.ONE,
+              blendSrcFactor: BlendFactor.SRC_ALPHA,
               blendDstFactor: BlendFactor.ONE_MINUS_SRC_ALPHA,
             },
             alphaBlendState: {
@@ -323,6 +353,22 @@ export class SmoothPolyline extends Drawcall {
     const buffers = [
       {
         buffer: this.#segmentsBuffer,
+      },
+      {
+        buffer: this.#segmentsBuffer,
+        offset: 4 * 3,
+      },
+      {
+        buffer: this.#segmentsBuffer,
+        offset: 4 * 5,
+      },
+      {
+        buffer: this.#segmentsBuffer,
+        offset: 4 * 6,
+      },
+      {
+        buffer: this.#segmentsBuffer,
+        offset: 4 * 9,
       },
       {
         buffer: this.#vertexNumBuffer,

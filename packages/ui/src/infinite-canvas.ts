@@ -96,6 +96,7 @@ export class InfiniteCanvas extends LitElement {
         this.zoom = Math.round(this.#canvas.camera.zoom * 100);
       });
 
+      // FIXME: Hack to make sure the canvas is ready for Genji.
       setTimeout(() => {
         this.dispatchEvent(
           new CustomEvent('ic-ready', { detail: this.#canvas }),
@@ -123,6 +124,7 @@ export class InfiniteCanvas extends LitElement {
         <sl-resize-observer>
           ${$canvas}
           <ic-zoom-toolbar zoom=${this.zoom}></ic-zoom-toolbar>
+          <ic-pen-toolbar></ic-pen-toolbar>
           <ic-exporter></ic-exporter>
         </sl-resize-observer>
       `,

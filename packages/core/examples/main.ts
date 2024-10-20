@@ -15,30 +15,29 @@ resize(window.innerWidth, window.innerHeight);
 const canvas = await new Canvas({
   canvas: $canvas,
   // renderer: 'webgpu',
-  // shaderCompilerPath:
-  //   'https://unpkg.com/@antv/g-device-api@1.6.8/dist/pkg/glsl_wgsl_compiler_bg.wasm',
+  // shaderCompilerPath: '/glsl_wgsl_compiler_bg.wasm',
 }).initialized;
 
 // const polyline1 = new Polyline({
 //   points: [
-//     [100, 100],
-//     [100, 200],
-//     [200, 200],
-//     [200, 100],
+//     [256, 100],
+//     [356, 100],
+//     [356, 200],
+//     [256, 200],
+//     [256, 100],
+//     [256, 100.1],
 //   ],
 //   stroke: 'red',
 //   strokeWidth: 20,
-//   // strokeLinejoin: 'round',
-//   // strokeDasharray: [10, 10],
+//   strokeLinejoin: 'round',
+//   // strokeLinecap: 'square',
+//   strokeDasharray: [5, 5],
 //   // strokeDashoffset: 0,
 //   // sizeAttenuation: false,
 // });
 // canvas.appendChild(polyline1);
 
 // polyline1.strokeDasharray = [10, 10];
-
-// canvas.render();
-
 // polyline1.addEventListener('pointerenter', () => {
 //   polyline1.stroke = 'green';
 // });
@@ -54,56 +53,37 @@ const canvas = await new Canvas({
 
 // console.log(svg);
 
-// const rect = new Rect({
-//   x: 50,
-//   y: 50,
-//   width: 50,
-//   height: 50,
-//   fill: 'black',
-//   fillOpacity: 0.5,
-//   dropShadowBlurRadius: 10,
-//   dropShadowColor: 'black',
-//   dropShadowOffsetX: 10,
-//   dropShadowOffsetY: 10,
-//   stroke: 'red',
-//   strokeWidth: 10,
-//   // strokeAlignment: 'inner',
-//   strokeDasharray: [5, 5],
-//   strokeDashoffset: 0,
-// });
-// rect.strokeDasharray = [5, 5];
-// canvas.appendChild(rect);
-
-// const rect2 = new Rect({
-//   x: 150,
-//   y: 50,
-//   width: 50,
-//   height: 50,
-//   fill: 'black',
-//   fillOpacity: 0.5,
-//   stroke: 'red',
-//   strokeWidth: 10,
-//   dropShadowBlurRadius: 10,
-//   dropShadowColor: 'black',
-//   dropShadowOffsetX: 10,
-//   dropShadowOffsetY: 10,
-// });
-// canvas.appendChild(rect2);
-
-const circle = new Circle({
-  cx: 350,
-  cy: 100,
-  r: 50,
+const rect2 = new Rect({
+  x: 256,
+  y: 100,
+  width: 100,
+  height: 100,
   fill: 'black',
-  stroke: 'red',
-  strokeWidth: 20,
   fillOpacity: 0.5,
+  stroke: 'red',
+  strokeWidth: 10,
+  dropShadowBlurRadius: 10,
+  dropShadowColor: 'black',
+  dropShadowOffsetX: 10,
+  dropShadowOffsetY: 10,
+  strokeDasharray: [5, 5],
 });
+canvas.appendChild(rect2);
 
-setTimeout(() => {
-  circle.strokeDasharray = [5, 5];
-}, 1000);
-canvas.appendChild(circle);
+// const circle = new Circle({
+//   cx: 350,
+//   cy: 100,
+//   r: 50,
+//   fill: 'black',
+//   stroke: 'red',
+//   strokeWidth: 20,
+//   fillOpacity: 0.5,
+// });
+
+// setTimeout(() => {
+//   circle.strokeDasharray = [5, 5];
+// }, 1000);
+// canvas.appendChild(circle);
 
 // const ellipse = new Ellipse({
 //   cx: 350,

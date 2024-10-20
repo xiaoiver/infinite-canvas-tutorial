@@ -281,7 +281,66 @@ The reason is that WebGPU has the following verification rule for VertexBufferLa
 >
 > 4 _3 + 4_ 2 ≤ 4 \* 3 // Oops!
 
-Therefore, we have to change the layout of the Buffer.
+Therefore, we have to change the layout of the Buffer. First, in the Layout, we split the layout from one Buffer containing multiple Attributes to multiple Buffers, each containing only one Attribute:
+
+```ts
+const vertexBufferDescriptors: InputLayoutBufferDescriptor[] = [
+    {
+        arrayStride: 4 * 3,
+        stepMode: VertexStepMode.INSTANCE,
+        attributes: [
+            {
+                format: Format.F32_RG,
+                offset: 4 * 0,
+                shaderLocation: Location.PREV,
+            },
+        ],
+    },
+    {
+        arrayStride: 4 * 3,
+        stepMode: VertexStepMode.INSTANCE,
+        attributes: [
+            {
+                format: Format.F32_RG,
+                offset: 4 * 0,
+                shaderLocation: Location.POINTA,
+            },
+        ],
+    },
+    // Omit VERTEX_JOINT
+    // Omit POINTB
+    // Omit NEXT
+];
+```
+
+Although split into multiple BufferLayout declarations, the actual reference is to the same Buffer, only the corresponding Attribute is read via `offset`, see details: [Offset in bytes into buffer where the vertex data begins]。
+
+```ts
+const buffers = [
+    {
+        buffer: this.#segmentsBuffer, // PREV
+    },
+    {
+        buffer: this.#segmentsBuffer, // POINTA
+        offset: 4 * 3,
+    },
+    {
+        buffer: this.#segmentsBuffer, // VERTEX_JOINT
+        offset: 4 * 5,
+    },
+    {
+        buffer: this.#segmentsBuffer, // POINTB
+        offset: 4 * 6,
+    },
+    {
+        buffer: this.#segmentsBuffer, // NEXT
+        offset: 4 * 9,
+    },
+];
+renderPass.setVertexInput(this.#inputLayout, buffers, {
+    buffer: this.#indexBuffer,
+});
+```
 
 Other features will also be implemented based on this scheme later.
 
@@ -289,7 +348,7 @@ Other features will also be implemented based on this scheme later.
 
 First, let's see how to stretch vertices at the main body and joints of the line segment.
 
-### Building Vertices {#construct-vertex}
+### Extrude segment {#extrude-segment}
 
 Let's focus on vertices 1 to 4, that is, the main part of the line segment. Considering the angle at which the line segment and its adjacent line segments present, there are the following four forms `/-\` `\-/` `/-/` and `\-\`:
 
@@ -312,47 +371,48 @@ vec2 norm2 = vec2(xBasis2.y, -xBasis2.x) / len2;
 float D = norm.x * norm2.y - norm.y * norm2.x;
 ```
 
-```glsl
-if (abs(D) < 0.01) {
-  pos = dy * norm;
-} else {
-  if (flag < 0.5 && inner < 0.5) {
-    pos = dy * norm;
-  } else {
-    pos = doBisect(norm, len, norm2, len2, dy, inner);
-  }
-}
-```
-
-The angle bisector at the joint:
+In the first form, for example, vertices 1 and 2 are stretched outward along the normal, and vertices 3 and 4 are stretched inward along the angle bisectors (`doBisect()`) of the joints:
 
 ```glsl
-vec2 doBisect(
-  vec2 norm, float len, vec2 norm2, float len2, float dy, float inner
-) {
-  vec2 bisect = (norm + norm2) / 2.0;
-  bisect /= dot(norm, bisect);
-  vec2 shift = dy * bisect;
-  if (inner > 0.5) {
-    if (len < len2) {
-      if (abs(dy * (bisect.x * norm.y - bisect.y * norm.x)) > len) {
-        return dy * norm;
-      }
+if (vertexNum < 3.5) { // Vertex #1 ~ 4
+    if (abs(D) < 0.01) {
+        pos = dy * norm;
     } else {
-      if (abs(dy * (bisect.x * norm2.y - bisect.y * norm2.x)) > len2) {
-        return dy * norm;
-      }
+        if (flag < 0.5 && inner < 0.5) { // Vertex #1, 2
+            pos = dy * norm;
+        } else { // Vertex #3, 4
+            pos = doBisect(norm, len, norm2, len2, dy, inner);
+        }
     }
-  }
-  return dy * bisect;
 }
 ```
 
-Next, focus on the 5th to 9th vertices at the joint:
+### Extrude linejoin {#extrude-linejoin}
+
+Next, we focus on vertices 5~9 at the joint, the stretching direction and distance varies according to the shape of the joint, the original author's implementation is very complex, in which `bevel` and `round` share the same stretching method, and the latter in the Fragment Shader and then through the SDF to complete the rounded corners of the drawing.
 
 ![extrude along line segment - page 16](/line-vertex-shader2.png)
 
-### Rounded Joints
+Let's start our analysis with the simplest `miter`, which by definition converts to `bevel` if `strokeMiterlimit` is exceeded.
+
+```glsl
+if (length(pos) > abs(dy) * strokeMiterlimit) {
+    type = BEVEL;
+} else {
+    if (vertexNum < 4.5) {
+        dy = -dy;
+        pos = doBisect(norm, len, norm2, len2, dy, 1.0);
+    } else if (vertexNum < 5.5) {
+        pos = dy * norm;
+    } else if (vertexNum > 6.5) {
+        pos = dy * norm2;
+    }
+    v_Type = 1.0;
+    dy = -sign * dot(pos, norm);
+    dy2 = -sign * dot(pos, norm2);
+    hit = 1.0;
+}
+```
 
 It is worth mentioning that in Cairo, whether to use round or bevel joints needs to be determined based on `arc height`. The following figure comes from: [Cairo - Fix for round joins]
 
@@ -1098,3 +1158,4 @@ We will introduce in detail how to draw them in the next lesson.
 [How to animate along an SVG path at the same time the path animates?]: https://benfrain.com/how-to-animate-along-an-svg-path-at-the-same-time-the-path-animates/
 [Fake instancing]: https://rreusser.github.io/regl-gpu-lines/docs/instanced.html
 [Multiple lines]: https://rreusser.github.io/regl-gpu-lines/docs/multiple.html
+[Offset in bytes into buffer where the vertex data begins]: https://www.w3.org/TR/webgpu/#dom-gpurendercommandsmixin-setvertexbuffer-slot-buffer-offset-size-offset

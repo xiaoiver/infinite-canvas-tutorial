@@ -283,15 +283,74 @@ const vertexBufferDescriptors: InputLayoutBufferDescriptor[] = [
 >
 > 4 \* 3 + 4 \* 2 ≤ 4 \* 3 // Oops!
 
-因此我们不得不重新改变 Buffer 的排布方式。
+因此我们不得不重新改变 Buffer 的排布方式。首先在 Layout 中从一个 Buffer 包含多个 Attribute 的排布拆分成多个 Buffer，每个 Buffer 中仅包含一个 Attribute：
 
-后续其他特性也会基于这种方案实现。
+```ts
+const vertexBufferDescriptors: InputLayoutBufferDescriptor[] = [
+    {
+        arrayStride: 4 * 3,
+        stepMode: VertexStepMode.INSTANCE,
+        attributes: [
+            {
+                format: Format.F32_RG,
+                offset: 4 * 0,
+                shaderLocation: Location.PREV,
+            },
+        ],
+    },
+    {
+        arrayStride: 4 * 3,
+        stepMode: VertexStepMode.INSTANCE,
+        attributes: [
+            {
+                format: Format.F32_RG,
+                offset: 4 * 0,
+                shaderLocation: Location.POINTA,
+            },
+        ],
+    },
+    // 省略 VERTEX_JOINT
+    // 省略 POINTB
+    // 省略 NEXT
+];
+```
+
+虽然拆分成了多个 BufferLayout 声明，但实际引用的还是同一份 Buffer，只是通过 `offset` 读取到对应的 Attribute，详见：[Offset in bytes into buffer where the vertex data begins]。
+
+```ts
+const buffers = [
+    {
+        buffer: this.#segmentsBuffer, // PREV
+    },
+    {
+        buffer: this.#segmentsBuffer, // POINTA
+        offset: 4 * 3,
+    },
+    {
+        buffer: this.#segmentsBuffer, // VERTEX_JOINT
+        offset: 4 * 5,
+    },
+    {
+        buffer: this.#segmentsBuffer, // POINTB
+        offset: 4 * 6,
+    },
+    {
+        buffer: this.#segmentsBuffer, // NEXT
+        offset: 4 * 9,
+    },
+];
+renderPass.setVertexInput(this.#inputLayout, buffers, {
+    buffer: this.#indexBuffer,
+});
+```
+
+至此我们就完成了 Mesh 的构建，后续其他特性也会基于这种方案实现。
 
 ## Shader 实现分析 {#shader-implementation}
 
 首先来看如何在线段主体与接头处对顶点进行拉伸。
 
-### 构建顶点 {#construct-vertex}
+### 线段主体拉伸 {#extrude-segment}
 
 我们先关注 1 ～ 4 号顶点，即线段的主体部分。考虑该线段与前、后相邻线段呈现的夹角，有以下四种形态 `/-\` `\-/` `/-/` 和 `\-\`：
 
@@ -314,47 +373,48 @@ vec2 norm2 = vec2(xBasis2.y, -xBasis2.x) / len2;
 float D = norm.x * norm2.y - norm.y * norm2.x;
 ```
 
-```glsl
-if (abs(D) < 0.01) {
-  pos = dy * norm;
-} else {
-  if (flag < 0.5 && inner < 0.5) {
-    pos = dy * norm;
-  } else {
-    pos = doBisect(norm, len, norm2, len2, dy, inner);
-  }
-}
-```
-
-接头处的角平分线：
+以第一种形态为例，1、2 号顶点沿法线向外拉伸，3、4 号顶点沿接头处的角平分线（`doBisect()`）向内拉伸：
 
 ```glsl
-vec2 doBisect(
-  vec2 norm, float len, vec2 norm2, float len2, float dy, float inner
-) {
-  vec2 bisect = (norm + norm2) / 2.0;
-  bisect /= dot(norm, bisect);
-  vec2 shift = dy * bisect;
-  if (inner > 0.5) {
-    if (len < len2) {
-      if (abs(dy * (bisect.x * norm.y - bisect.y * norm.x)) > len) {
-        return dy * norm;
-      }
+if (vertexNum < 3.5) { // Vertex #1 ~ 4
+    if (abs(D) < 0.01) {
+        pos = dy * norm;
     } else {
-      if (abs(dy * (bisect.x * norm2.y - bisect.y * norm2.x)) > len2) {
-        return dy * norm;
-      }
+        if (flag < 0.5 && inner < 0.5) { // Vertex #1, 2
+            pos = dy * norm;
+        } else { // Vertex #3, 4
+            pos = doBisect(norm, len, norm2, len2, dy, inner);
+        }
     }
-  }
-  return dy * bisect;
 }
 ```
 
-接下来关注接头处的 5 ~ 9 号顶点：
+### 接头拉伸 {#extrude-linejoin}
+
+接下来关注接头处的 5 ~ 9 号顶点，依据接头形态不同拉伸方向和距离都有变化，原作者实现非常复杂，其中 `bevel` 和 `round` 共用一种拉伸方式，后者在 Fragment Shader 中再通过 SDF 完成圆角的绘制。
 
 ![extrude along line segment - page 16](/line-vertex-shader2.png)
 
-### 圆角接头
+我们就以最简单的 `miter` 展开分析，根据定义，如果超过 `strokeMiterlimit` 就转换成 `bevel`。
+
+```glsl
+if (length(pos) > abs(dy) * strokeMiterlimit) {
+    type = BEVEL;
+} else {
+    if (vertexNum < 4.5) {
+        dy = -dy;
+        pos = doBisect(norm, len, norm2, len2, dy, 1.0);
+    } else if (vertexNum < 5.5) {
+        pos = dy * norm;
+    } else if (vertexNum > 6.5) {
+        pos = dy * norm2;
+    }
+    v_Type = 1.0;
+    dy = -sign * dot(pos, norm);
+    dy2 = -sign * dot(pos, norm2);
+    hit = 1.0;
+}
+```
 
 值得一提的是，在 Cairo 中采用 round 还是 bevel 接头需要根据 `arc height` 判断，下图来自：[Cairo - Fix for round joins]
 
@@ -1101,3 +1161,4 @@ call(() => {
 [How to animate along an SVG path at the same time the path animates?]: https://benfrain.com/how-to-animate-along-an-svg-path-at-the-same-time-the-path-animates/
 [Fake instancing]: https://rreusser.github.io/regl-gpu-lines/docs/instanced.html
 [Multiple lines]: https://rreusser.github.io/regl-gpu-lines/docs/multiple.html
+[Offset in bytes into buffer where the vertex data begins]: https://www.w3.org/TR/webgpu/#dom-gpurendercommandsmixin-setvertexbuffer-slot-buffer-offset-size-offset

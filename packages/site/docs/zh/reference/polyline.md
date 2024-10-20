@@ -146,6 +146,8 @@ SVG 并不不存在同名属性，可选值包括 `center` `inner` 和 `outer`�
 
 参考：[fill for polyline]
 
+## [WIP] sizeAttenuation
+
 [stroke-linecap]: https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/stroke-linecap
 [stroke-linejoin]: https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/stroke-linejoin
 [stroke-miterlimit]: https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/stroke-miterlimit
