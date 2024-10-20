@@ -1096,19 +1096,6 @@ call(() => {
 -   `<polygon>` 的填充部分可以使用一些三角化算法例如 earcut 后绘制，描边部分和折线完全相同
 -   `<path>` 也可以采用类似 `<rect>` `<circle>` 的方式，在路径上进行采样，最终使用折线绘制，但会存在这样的问题：[Draw arcs, arcs are not smooth ISSUE]
 
-如果使用 SDF 绘制，在 Fragment Shader 中需要做更多的数学运算，存在一些性能问题：
-
-![SDF path](/sdf-line.png)
-
-因此对于 Path 常规的方式还是三角化，无论是 2D 还是 3D：
-
--   [Rendering SVG Paths in WebGL]
--   [Shaping Curves with Parametric Equations]
--   [WebGL 3D Geometry - Lathe]
--   [Fun with WebGL 2.0 : 027 : Bezier Curves in 3D]
--   [p5js - bezier()]
--   [GPU-accelerated Path Rendering]
-
 在下一节课中我们会详细介绍如何绘制它们。
 
 ## 扩展阅读 {#extended-reading}
@@ -1141,9 +1128,6 @@ call(() => {
 [How 2 draw lines in WebGL]: https://www.khronos.org/assets/uploads/developers/presentations/Crazy_Panda_How_to_draw_lines_in_WebGL.pdf
 [instanced drawing]: /zh/guide/lesson-008#instanced
 [sizeAttenuation]: https://threejs.org/docs/#api/en/materials/SpriteMaterial.sizeAttenuation
-[WebGL 3D Geometry - Lathe]: https://webglfundamentals.org/webgl/lessons/webgl-3d-geometry-lathe.html
-[Fun with WebGL 2.0 : 027 : Bezier Curves in 3D]: https://www.youtube.com/watch?v=s3k8Od9lZBE
-[p5js - bezier()]: https://p5js.org/reference/p5/bezier/
 [SDF 中的反走样]: /zh/guide/lesson-002#antialiasing
 [绘制矩形外阴影]: /zh/guide/lesson-009#drop-shadow
 [WebGPU instancing problem]: https://github.com/pixijs/pixijs/issues/7511#issuecomment-2247464973
@@ -1153,9 +1137,6 @@ call(() => {
 [Calculate bounding box of line with thickness]: https://stackoverflow.com/questions/51210467/calculate-bounding-box-of-line-with-thickness
 [cairo-stroke-extents]: https://cairographics.org/manual/cairo-cairo-t.html#cairo-stroke-extents
 [cairo-path-extents]: https://cairographics.org/manual/cairo-Paths.html#cairo-path-extents
-[Shaping Curves with Parametric Equations]: https://mattdesl.svbtle.com/shaping-curves-with-parametric-equations
-[Rendering SVG Paths in WebGL]: https://css-tricks.com/rendering-svg-paths-in-webgl/
-[GPU-accelerated Path Rendering]: https://developer.download.nvidia.com/devzone/devcenter/gamegraphics/files/opengl/gpupathrender.pdf
 [Cairo - Fix for round joins]: https://gitlab.freedesktop.org/cairo/cairo/-/merge_requests/372#note_1698225
 [Pure WebGL Dashed Line]: https://webgl2fundamentals.org/webgl/lessons/webgl-qna-pure-webgl-dashed-line.html
 [How to animate along an SVG path at the same time the path animates?]: https://benfrain.com/how-to-animate-along-an-svg-path-at-the-same-time-the-path-animates/

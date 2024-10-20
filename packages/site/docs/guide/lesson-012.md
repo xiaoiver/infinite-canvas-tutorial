@@ -1094,19 +1094,6 @@ In SVG, there are still three elements: `<line>` `<path>` and `<polygon>`, among
 -   The filling part of `<polygon>` can be drawn after triangulation using some algorithms such as earcut, and the outline part is exactly the same as the polyline
 -   `<path>` can also be sampled on the path in a similar way to `<rect>` `<circle>`, and finally drawn with polylines, but there will be such a problem: [Draw arcs, arcs are not smooth ISSUE]
 
-If SDF drawing is used, more mathematical calculations are required in the Fragment Shader, which has some performance issues:
-
-![SDF path](/sdf-line.png)
-
-Therefore, the conventional way for Path is still triangulation, whether it is 2D or 3D:
-
--   [Rendering SVG Paths in WebGL]
--   [Shaping Curves with Parametric Equations]
--   [WebGL 3D Geometry - Lathe]
--   [Fun with WebGL 2.0 : 027 : Bezier Curves in 3D]
--   [p5js - bezier()]
--   [GPU-accelerated Path Rendering]
-
 We will introduce in detail how to draw them in the next lesson.
 
 ## Extended Reading {#extended-reading}
@@ -1138,9 +1125,6 @@ We will introduce in detail how to draw them in the next lesson.
 [pixijs/graphics-smooth]: https://github.com/pixijs/graphics-smooth
 [How 2 draw lines in WebGL]: https://www.khronos.org/assets/uploads/developers/presentations/Crazy_Panda_How_to_draw_lines_in_WebGL.pdf
 [instanced drawing]: /guide/lesson-008#instanced
-[WebGL 3D Geometry - Lathe]: https://webglfundamentals.org/webgl/lessons/webgl-3d-geometry-lathe.html
-[Fun with WebGL 2.0 : 027 : Bezier Curves in 3D]: https://www.youtube.com/watch?v=s3k8Od9lZBE
-[p5js - bezier()]: https://p5js.org/reference/p5/bezier/
 [Anti-aliasing in SDF]: /guide/lesson-002#antialiasing
 [Drawing rectangle outer shadow]: /guide/lesson-009#drop-shadow
 [WebGPU instancing problem]: https://github.com/pixijs/pixijs/issues/7511#issuecomment-2247464973
@@ -1150,9 +1134,6 @@ We will introduce in detail how to draw them in the next lesson.
 [Calculate bounding box of line with thickness]: https://stackoverflow.com/questions/51210467/calculate-bounding-box-of-line-with-thickness
 [cairo-stroke-extents]: https://cairographics.org/manual/cairo-cairo-t.html#cairo-stroke-extents
 [cairo-path-extents]: https://cairographics.org/manual/cairo-Paths.html#cairo-path-extents
-[Shaping Curves with Parametric Equations]: https://mattdesl.svbtle.com/shaping-curves-with-parametric-equations
-[Rendering SVG Paths in WebGL]: https://css-tricks.com/rendering-svg-paths-in-webgl/
-[GPU-accelerated Path Rendering]: https://developer.download.nvidia.com/devzone/devcenter/gamegraphics/files/opengl/gpupathrender.pdf
 [Cairo - Fix for round joins]: https://gitlab.freedesktop.org/cairo/cairo/-/merge_requests/372#note_1698225
 [Pure WebGL Dashed Line]: https://webgl2fundamentals.org/webgl/lessons/webgl-qna-pure-webgl-dashed-line.html
 [How to animate along an SVG path at the same time the path animates?]: https://benfrain.com/how-to-animate-along-an-svg-path-at-the-same-time-the-path-animates/

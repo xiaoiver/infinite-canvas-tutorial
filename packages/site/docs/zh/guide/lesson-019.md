@@ -3,7 +3,7 @@ outline: deep
 publish: false
 ---
 
-# 课程 14 - Vector Networks
+# 课程 19 - Vector Networks
 
 在这节课中你将学习到以下内容：
 
