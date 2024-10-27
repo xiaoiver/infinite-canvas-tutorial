@@ -4,6 +4,7 @@ import { search } from './zh';
 // https://vitepress.dev/reference/site-config
 export const shared = defineConfig({
   themeConfig: {
+    lastUpdated: true,
     socialLinks: [
       {
         icon: 'github',

@@ -14,6 +14,8 @@ import {
   Converter,
   pointToLine,
   bisect,
+  parsePath,
+  LineCurve,
 } from '../../packages/core/src/utils';
 
 describe('Utils', () => {
@@ -103,4 +105,33 @@ describe('Utils', () => {
       );
     });
   });
+
+  describe('Curve', () => {
+    it('LineCurve', () => {
+      const curve = new LineCurve(
+        vec2.fromValues(0, 0),
+        vec2.fromValues(120, 0),
+      );
+      expect(curve.getLength()).toBe(120);
+      expect(curve.getPoint(0)).toEqual(vec2.fromValues(0, 0));
+      expect(curve.getPoint(1)).toEqual(vec2.fromValues(120, 0));
+
+      expect(curve.getPointAt(0)).toEqual(vec2.fromValues(0, 0));
+      expect(curve.getPointAt(1)).toEqual(vec2.fromValues(120, 0));
+
+      expect(curve.getPoints().length).toEqual(6);
+      expect(curve.getPoints()[0]).toEqual(vec2.fromValues(0, 0));
+      expect(curve.getPoints()[1]).toEqual(vec2.fromValues(24, 0));
+      expect(curve.getPoints()[5]).toEqual(vec2.fromValues(120, 0));
+    });
+  });
+
+  // describe('Parse Path', () => {
+  //   it('should parse line correctly.', () => {
+  //     const path = parsePath('M 100 100 L 100 100');
+  //     expect(path.currentPath?.type).toEqual(LineCurve.TYPE);
+  //     expect(path.subPaths.length).toEqual(1);
+  //     // expect((path.subPaths[0].curves[0] as LineCurve).toEqual(1);
+  //   });
+  // });
 });

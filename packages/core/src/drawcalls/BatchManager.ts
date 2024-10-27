@@ -1,6 +1,6 @@
 import { Buffer, Device, RenderPass } from '@antv/g-device-api';
-import { Drawcall, SDF, ShadowRect, SmoothPolyline } from '.';
-import { Circle, Ellipse, Polyline, Rect, type Shape } from '../shapes';
+import { Drawcall, SDF, SDFPath, ShadowRect, SmoothPolyline } from '.';
+import { Circle, Ellipse, Path, Polyline, Rect, type Shape } from '../shapes';
 import { RenderCache } from '../utils/render-cache';
 
 /**
@@ -17,6 +17,7 @@ SHAPE_DRAWCALL_CTORS.set(Circle, [SDF, SmoothPolyline]);
 SHAPE_DRAWCALL_CTORS.set(Ellipse, [SDF, SmoothPolyline]);
 SHAPE_DRAWCALL_CTORS.set(Rect, [ShadowRect, SDF, SmoothPolyline]);
 SHAPE_DRAWCALL_CTORS.set(Polyline, [SmoothPolyline]);
+SHAPE_DRAWCALL_CTORS.set(Path, [SDFPath]);
 
 export class BatchManager {
   /**

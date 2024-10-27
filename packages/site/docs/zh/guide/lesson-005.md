@@ -136,7 +136,7 @@ hooks.beginFrame.tap(() => {
 });
 ```
 
-### Line Geometry
+### Line Geometry {#line-geometry}
 
 最容易想到的思路是类似 [GridHelper - Three.js] 这样，根据网格尺寸创建一组线段：
 
@@ -281,7 +281,7 @@ this.#inputLayout = device.createInputLayout({
 
 在这种方法中，画布尺寸越大、网格密度越高所需的顶点就越多，有没有办法使用更少的顶点实现呢？既然网格永远填充整个屏幕，那是否可以在屏幕空间完成呢？
 
-### Fragment Shader
+### Patterns in fragment shader {patterns-in-fragment-shader}
 
 正如 [Building Flexible and Powerful Cross-Sections with GridPaper and WebGL] 一文所说：
 
@@ -347,6 +347,16 @@ vec2 size = scale_grid_size(u_ZoomScale);
 float gridSize1 = size.x;
 float gridSize2 = gridSize1 / 5.0;
 ```
+
+### 纹理贴图 {#texture-based}
+
+[The Best Darn Grid Shader (Yet)] 一文介绍了另一种基于纹理贴图的方案。特别是当我们希望线条本身也拥有透视效果时，该方案效果要好于屏幕空间的定宽网格。例如下图中右侧存在的明显“摩尔纹”现象，而左侧较远处的线条颜色也会变细、变暗。
+
+![texture grid vs line grid](https://miro.medium.com/v2/resize:fit:1360/format:webp/1*P4a5_Z1u5WXOQWpVglPb2g.png)
+
+原文中作者对定宽网格进行了一系列改进，实现了透视效果，缓解了“摩尔纹”现象等，在 Shadertoy 上的示例如下：
+
+<iframe width="640" height="360" frameborder="0" src="https://www.shadertoy.com/embed/mdVfWw?gui=true&t=10&paused=true&muted=false" allowfullscreen></iframe>
 
 ## 圆点网格 {#dots-grid}
 
@@ -418,9 +428,14 @@ else {
 rgb = mix(rgb, gridColor, gridWeight);
 ```
 
+## wireframe {#wireframe}
+
+绘制 wireframe 也使用类似技术，我们可以用于针对复杂 Geometry 的 Debug，例如后续介绍的[折线]。
+
 ## 扩展阅读 {#extended-reading}
 
 -   [thetamath]
+-   [The Best Darn Grid Shader (Yet)]
 -   [WebGL 绘制网格]
 -   [如何使用 WebGL 绘制平面网格线]
 
@@ -434,3 +449,5 @@ rgb = mix(rgb, gridColor, gridWeight);
 [vertexAttribPointer]: https://developer.mozilla.org/en-US/docs/Web/API/WebGLRenderingContext/vertexAttribPointer
 [the book of shaders - Patterns]: https://thebookofshaders.com/09/?lan=ch
 [Anti-Aliased Grid Shader]: https://madebyevan.com/shaders/grid/
+[The Best Darn Grid Shader (Yet)]: https://bgolus.medium.com/the-best-darn-grid-shader-yet-727f9278b9d8
+[折线]: /zh/guide/lesson-012

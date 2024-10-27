@@ -16,7 +16,9 @@ In this lesson, you will learn the following:
 
 ## Web UI with Lit and Shoelace
 
-When choosing a component library, I didn't want it to be tied to a specific framework implementation. Web components is a good choice, and [Lit] provides reactive state, scoped styles, and a declarative template system to make the development process easier. [Shoelace] is an UI library based on [Lit]. Using them, we can make our canvas components framework-agnostic by supporting React, Vue, and Angular at the same time.
+When choosing a component library, I didn't want it to be tied to a specific framework implementation, see [Web Components are not Framework Components — and That’s Okay]. Web components is a good choice, and [Lit] provides reactive state, scoped styles, and a declarative template system to make the development process easier. [Shoelace] is an UI library based on [Lit]. Using them, we can make our canvas components framework-agnostic by supporting React, Vue, and Angular at the same time. It's worth noting that the [spectrum-web-components] component library used by Photoshop Web is also based on Lit, see: [Photoshop is now on the web!]
+
+> Photoshop is part of Adobe’s broader Creative Cloud ecosystem. Using a standardized Web Components strategy built on Lit allows UI consistency across applications.
 
 Since this tutorial static site is written using [VitePress], [Vue instructions] is used in the example pages, but no Vue syntax will be used in the components.
 
@@ -276,3 +278,6 @@ We won't go into the details of the UI implementation later.
 [Lit Context]: https://lit.dev/docs/data/context/
 [Async Tasks]: https://lit.dev/docs/data/task/#overview
 [\<Suspense\>]: https://react.dev/reference/react/Suspense
+[Web Components are not Framework Components — and That’s Okay]: https://lea.verou.me/blog/2024/wcs-vs-frameworks/
+[Photoshop is now on the web!]: https://medium.com/@addyosmani/photoshop-is-now-on-the-web-38d70954365a
+[spectrum-web-components]: https://opensource.adobe.com/spectrum-web-components/

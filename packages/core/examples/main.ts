@@ -1,4 +1,12 @@
-import { Canvas, ImageExporter, Rect, Polyline, Circle, Ellipse } from '../src';
+import {
+  Canvas,
+  ImageExporter,
+  Rect,
+  Polyline,
+  Path,
+  Circle,
+  Ellipse,
+} from '../src';
 
 const $canvas = document.getElementById('canvas') as HTMLCanvasElement;
 const resize = (width: number, height: number) => {
@@ -17,6 +25,49 @@ const canvas = await new Canvas({
   // renderer: 'webgpu',
   // shaderCompilerPath: '/glsl_wgsl_compiler_bg.wasm',
 }).initialized;
+
+const svg = {
+  circle: 'M40,0A40,40 0 1,1 0,-40A40,40 0 0,1 40,0Z',
+  triangle: `M${[0, 1, 2]
+    .map(
+      (i) =>
+        `${Math.sin((i / 3) * 2 * Math.PI)},${-Math.cos(
+          (i / 3) * 2 * Math.PI,
+        )}`,
+    )
+    .join('L')}Z`,
+  square: `M1,1L-1,1L-1,-1L1,-1Z`,
+  pentagon: `M${[0, 1, 2, 3, 4]
+    .map(
+      (i) =>
+        `${Math.sin((i / 5) * 2 * Math.PI)},${-Math.cos(
+          (i / 5) * 2 * Math.PI,
+        )}`,
+    )
+    .join('L')}Z`,
+  hexagon: `M${[0, 1, 2, 3, 4, 5]
+    .map(
+      (i) =>
+        `${Math.sin((i / 6) * 2 * Math.PI)},${-Math.cos(
+          (i / 6) * 2 * Math.PI,
+        )}`,
+    )
+    .join('L')}Z`,
+  star: `M${[0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+    .map(
+      (i) =>
+        `${Math.sin((i / 10) * 2 * Math.PI) * (i % 2 === 1 ? 0.5 : 1)},${
+          -Math.cos((i / 10) * 2 * Math.PI) * (i % 2 === 1 ? 0.5 : 1)
+        }`,
+    )
+    .join('L')}Z`,
+  plus: `M4,1L1,1L1,4L-1,4L-1,1L-4,1L-4,-1L-1,-1L-1,-4L1,-4L1,-1L4,-1Z`,
+};
+
+const path = new Path({
+  d: svg.hexagon,
+});
+canvas.appendChild(path);
 
 // const polyline1 = new Polyline({
 //   points: [
@@ -53,22 +104,22 @@ const canvas = await new Canvas({
 
 // console.log(svg);
 
-const rect2 = new Rect({
-  x: 256,
-  y: 100,
-  width: 100,
-  height: 100,
-  fill: 'black',
-  fillOpacity: 0.5,
-  stroke: 'red',
-  strokeWidth: 10,
-  dropShadowBlurRadius: 10,
-  dropShadowColor: 'black',
-  dropShadowOffsetX: 10,
-  dropShadowOffsetY: 10,
-  strokeDasharray: [5, 5],
-});
-canvas.appendChild(rect2);
+// const rect2 = new Rect({
+//   x: 256,
+//   y: 100,
+//   width: 100,
+//   height: 100,
+//   fill: 'black',
+//   fillOpacity: 0.5,
+//   stroke: 'red',
+//   strokeWidth: 10,
+//   dropShadowBlurRadius: 10,
+//   dropShadowColor: 'black',
+//   dropShadowOffsetX: 10,
+//   dropShadowOffsetY: 10,
+//   strokeDasharray: [5, 5],
+// });
+// canvas.appendChild(rect2);
 
 // const circle = new Circle({
 //   cx: 350,

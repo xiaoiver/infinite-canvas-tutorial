@@ -168,6 +168,10 @@ this.#uniformBuffer = device.createBuffer({
 });
 ```
 
+[wgsl-offset-computer] 是一个非常好用的在线工具，通过可视化方式帮助理解对齐规则：
+
+![struct: ShapeUniforms](/wgsl-offset-computer.png)
+
 在写入数据时我们需要手动添加 padding：
 
 ```bash
@@ -675,3 +679,4 @@ appendChild(child: Shape) {
 [Inside PixiJS: Display objects and their hierarchy]: https://medium.com/swlh/inside-pixijs-display-objects-and-their-hierarchy-2deef1c01b6e
 [Understanding 3D matrix transforms]: https://medium.com/swlh/understanding-3d-matrix-transforms-with-pixijs-c76da3f8bd8
 [PixiJS Positioning]: https://aphgames.io/docs/learning/tutorials/pixi_positions
+[wgsl-offset-computer]: https://webgpufundamentals.org/webgpu/lessons/resources/wgsl-offset-computer.html#x=5d00000100b900000000000000003d888b0237284d3025f2381bcb288a92bedb79fca10c66815376fc2bf5fb30136b32803636d8a0cd1920b3c155315e5767b430151489cee2b64fbf433be601ac37b5c8a93419775b8ee51571e13b44c1d867e61e8a28bd0e628b80f99570f9d3feafad585f4517807268a20c783cb178401ab49f2e3742419fe1157f8f92396145394a631090a0189fffdc5e4000

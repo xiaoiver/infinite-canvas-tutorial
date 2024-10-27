@@ -118,7 +118,7 @@ Miro supports switching between lines and dots:
 
 Let's start with lines grid.
 
-## Lines grid
+## Lines grid {#lines-grid}
 
 Firstly, the grid should not be part of the scene graph. We do not want the grid to scale up and down as the canvas is zoomed. However, we do want it to have a fade-in and fade-out effect as zooming occurs. Therefore, we first render the grid in the `beginFrame` hook, passing in necessary information from the scene, such as the camera:
 
@@ -136,7 +136,7 @@ hooks.beginFrame.tap(() => {
 });
 ```
 
-### Line Geometry
+### Line Geometry {#line-geometry}
 
 The most straightforward approach is similar to [GridHelper - Three.js], where a set of lines is created based on the grid size:
 
@@ -281,7 +281,7 @@ Let's try it out:
 
 In this method, the larger the canvas size and the higher the grid density, the more vertices are needed. Is there a way to achieve this with fewer vertices? Since the grid always fills the entire screen, can it be accomplished in screen space?
 
-### Fragment Shader
+### Patterns in fragment shader {#patterns-in-fragment-shader}
 
 Just as [Building Flexible and Powerful Cross-Sections with GridPaper and WebGL] says：
 
@@ -347,6 +347,16 @@ vec2 size = scale_grid_size(u_ZoomScale);
 float gridSize1 = size.x;
 float gridSize2 = gridSize1 / 5.0;
 ```
+
+### Texture-based grid {#texture-based}
+
+[The Best Darn Grid Shader (Yet)] describes another texture based scheme. Especially when we want the lines themselves to have perspective, this scheme works better than a fixed-width grid in screen space. For example, in the image below, there is a clear “moiré” phenomenon on the right side, while the color of the lines farther to the left will be thinner and darker.
+
+![texture grid vs line grid](https://miro.medium.com/v2/resize:fit:1360/format:webp/1*P4a5_Z1u5WXOQWpVglPb2g.png)
+
+In the original article, the author made a number of improvements to the perspective thickness, alleviate the “moire” patterns, etc. Examples on Shadertoy are shown below:
+
+<iframe width="640" height="360" frameborder="0" src="https://www.shadertoy.com/embed/mdVfWw?gui=true&t=10&paused=true&muted=false" allowfullscreen></iframe>
 
 ## Dots grid
 
@@ -423,6 +433,7 @@ rgb = mix(rgb, gridColor, gridWeight);
 ## Extended reading
 
 -   [thetamath]
+-   [The Best Darn Grid Shader (Yet)]
 -   [WebGL 绘制网格]
 -   [如何使用 WebGL 绘制平面网格线]
 
@@ -436,3 +447,4 @@ rgb = mix(rgb, gridColor, gridWeight);
 [vertexAttribPointer]: https://developer.mozilla.org/en-US/docs/Web/API/WebGLRenderingContext/vertexAttribPointer
 [the book of shaders - Patterns]: https://thebookofshaders.com/09/?lan=ch
 [Anti-Aliased Grid Shader]: https://madebyevan.com/shaders/grid/
+[The Best Darn Grid Shader (Yet)]: https://bgolus.medium.com/the-best-darn-grid-shader-yet-727f9278b9d8

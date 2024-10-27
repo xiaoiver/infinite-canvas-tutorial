@@ -8,3 +8,4 @@ export * from './converter';
 export * from './lang';
 export * from './uid';
 export * from './serialize';
+export * from './curve';

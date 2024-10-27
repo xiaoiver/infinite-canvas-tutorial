@@ -16,7 +16,9 @@ outline: deep
 
 ## 使用 Lit 和 Shoelace 开发 Web UI {#web-ui-with-lit-and-shoelace}
 
-在选择组件库时，我不希望它绑定在某个具体的框架实现上 [Web Components are not Framework Components — and That’s Okay]。Web components 是不错的选择，[Lit] 为它添加了响应式状态、声明式模版、模块化样式等特性，让开发过程变得更便捷。[Shoelace] 是一个基于 [Lit] 开发的组件库。使用它们可以让我们的画布组件同时支持 React、Vue 和 Angular，做到真正的框架无关。
+在选择组件库时，我不希望它绑定在某个具体的框架实现上 [Web Components are not Framework Components — and That’s Okay]。Web components 是不错的选择，[Lit] 为它添加了响应式状态、声明式模版、模块化样式等特性，让开发过程变得更便捷。[Shoelace] 是一个基于 [Lit] 开发的组件库。使用它们可以让我们的画布组件同时支持 React、Vue 和 Angular，做到真正的框架无关。值得一提的是 Photoshop Web 使用的 [spectrum-web-components] 组件库也是基于 Lit 编写的，详见：[Photoshop is now on the web!]
+
+> Photoshop is part of Adobe’s broader Creative Cloud ecosystem. Using a standardized Web Components strategy built on Lit allows UI consistency across applications.
 
 由于本教程静态站点使用 [VitePress] 编写，因此在示例页面中使用了 [Vue 的接入方式]，但组件中不会使用到 Vue 的语法。
 
@@ -278,3 +280,5 @@ this.#canvas.camera.onchange = () => {
 [Async Tasks]: https://lit.dev/docs/data/task/#overview
 [\<Suspense\>]: https://react.dev/reference/react/Suspense
 [Web Components are not Framework Components — and That’s Okay]: https://lea.verou.me/blog/2024/wcs-vs-frameworks/
+[Photoshop is now on the web!]: https://medium.com/@addyosmani/photoshop-is-now-on-the-web-38d70954365a
+[spectrum-web-components]: https://opensource.adobe.com/spectrum-web-components/

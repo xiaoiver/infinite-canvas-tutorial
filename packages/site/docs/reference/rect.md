@@ -153,6 +153,22 @@ call(() => {
 
 外阴影模糊半径，它的值越大，阴影就越大并越淡。默认值为 `0`。
 
+## innerShadowColor
+
+内阴影颜色。默认值为 `black`。
+
+## innerShadowOffsetX
+
+内阴影在 X 轴方向的偏移量。默认值为 `0`。
+
+## innerShadowOffsetY
+
+内阴影在 X 轴方向的偏移量。默认值为 `0`。
+
+## innerShadowBlurRadius
+
+内阴影模糊半径，它的值越大，阴影就越大并越淡。默认值为 `0`。
+
 [rect]: https://developer.mozilla.org/en-US/docs/Web/SVG/Element/rect
 [rx]: https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/rx
 [ry]: https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/ry
