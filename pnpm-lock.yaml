@@ -131,6 +131,9 @@ importers:
       d3-color:
         specifier: ^3.1.0
         version: 3.1.0
+      earcut:
+        specifier: ^3.0.0
+        version: 3.0.0
       eventemitter3:
         specifier: ^5.0.1
         version: 5.0.1
@@ -147,6 +150,9 @@ importers:
       '@types/d3-color':
         specifier: ^3.1.0
         version: 3.1.0
+      '@types/earcut':
+        specifier: ^2.1.4
+        version: 2.1.4
       '@types/rbush':
         specifier: ^3.0.0
         version: 3.0.0
@@ -1418,6 +1424,9 @@ packages:
   '@types/d3-color@3.1.0':
     resolution: {integrity: sha512-HKuicPHJuvPgCD+np6Se9MQvS6OCbJmOjGvylzMJRlDwUXjKTTXs6Pwgk79O09Vj/ho3u1ofXnhFOaEWWPrlwA==}
 
+  '@types/earcut@2.1.4':
+    resolution: {integrity: sha512-qp3m9PPz4gULB9MhjGID7wpo3gJ4bTGXm7ltNDsmOvsPduTeHp8wSW9YckBj3mljeOh4F0m2z/0JKAALRKbmLQ==}
+
   '@types/estree@1.0.5':
     resolution: {integrity: sha512-/kYRxGDLWzHOB7q+wtSUQlFrtcdUccpfy+X+9iMBpHK8QLLhx2wIPYuS5DYtR9Wa/YlZAbIovy7qVdB1Aq6Lyw==}
 
@@ -2246,6 +2255,9 @@ packages:
 
   draw-svg-path@1.0.0:
     resolution: {integrity: sha512-P8j3IHxcgRMcY6sDzr0QvJDLzBnJJqpTG33UZ2Pvp8rw0apCHhJCWqYprqrXjrgHnJ6tuhP1iTJSAodPDHxwkg==}
+
+  earcut@3.0.0:
+    resolution: {integrity: sha512-41Fs7Q/PLq1SDbqjsgcY7GA42T0jvaCNGXgGtsNdvg+Yv8eIu06bxv4/PoREkZ9nMDNwnUSG9OFB9+yv8eKhDg==}
 
   ecc-jsbn@0.1.2:
     resolution: {integrity: sha512-eh9O+hwRHNbG4BLTjEl3nw044CkGm5X6LoaCf7LPp7UU8Qrt47JYNi6nPX8xjW97TKGKm1ouctg0QSpZe9qrnw==}
@@ -5779,6 +5791,8 @@ snapshots:
 
   '@types/d3-color@3.1.0': {}
 
+  '@types/earcut@2.1.4': {}
+
   '@types/estree@1.0.5': {}
 
   '@types/geojson@7946.0.14': {}
@@ -6706,6 +6720,8 @@ snapshots:
     dependencies:
       abs-svg-path: 0.1.1
       normalize-svg-path: 0.1.0
+
+  earcut@3.0.0: {}
 
   ecc-jsbn@0.1.2:
     dependencies:

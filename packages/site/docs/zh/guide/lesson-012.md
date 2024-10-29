@@ -965,6 +965,91 @@ _cairo_stroke_style_max_distance_from_path (const cairo_stroke_style_t *style,
 
 同理还需要考虑 `stroke-linejoin="miter"` 的情况。可见这种估计方法并不会精确考虑每一个顶点、接头的情况，仅仅作出最乐观的估计，保证包围盒一定能容纳折线。
 
+下面我们将折线的包围盒实时绘制出来，从左至右分别展示了 `strokeLinecap` 的不同取值：
+
+```js eval code=false
+$icCanvas6 = call(() => {
+    return document.createElement('ic-canvas-lesson12');
+});
+```
+
+```js eval code=false inspector=false
+call(() => {
+    const { Canvas, Polyline, Rect } = Lesson12;
+
+    const stats = new Stats();
+    stats.showPanel(0);
+    const $stats = stats.dom;
+    $stats.style.position = 'absolute';
+    $stats.style.left = '0px';
+    $stats.style.top = '0px';
+
+    $icCanvas6.parentElement.style.position = 'relative';
+    $icCanvas6.parentElement.appendChild($stats);
+
+    function drawBounds(canvas, polyline) {
+        const { minX, minY, maxX, maxY } = polyline.getBounds();
+        const bounds = new Rect({
+            x: minX,
+            y: minY,
+            stroke: 'red',
+            fill: 'none',
+        });
+        bounds.width = maxX - minX;
+        bounds.height = maxY - minY;
+        canvas.appendChild(bounds);
+    }
+
+    $icCanvas6.addEventListener('ic-ready', (e) => {
+        const canvas = e.detail;
+        const polyline1 = new Polyline({
+            points: [
+                [100, 100],
+                [200, 200],
+            ],
+            stroke: 'black',
+            strokeWidth: 20,
+            fill: 'none',
+            cursor: 'pointer',
+        });
+        canvas.appendChild(polyline1);
+        drawBounds(canvas, polyline1);
+
+        const polyline2 = new Polyline({
+            points: [
+                [300, 100],
+                [400, 200],
+            ],
+            stroke: 'black',
+            strokeWidth: 20,
+            strokeLinecap: 'round',
+            fill: 'none',
+            cursor: 'pointer',
+        });
+        canvas.appendChild(polyline2);
+        drawBounds(canvas, polyline2);
+
+        const polyline3 = new Polyline({
+            points: [
+                [500, 100],
+                [600, 200],
+            ],
+            stroke: 'black',
+            strokeWidth: 20,
+            strokeLinecap: 'square',
+            fill: 'none',
+            cursor: 'pointer',
+        });
+        canvas.appendChild(polyline3);
+        drawBounds(canvas, polyline3);
+    });
+
+    $icCanvas6.addEventListener('ic-frame', (e) => {
+        stats.update();
+    });
+});
+```
+
 ### 精确计算 {#stroke-extents}
 
 如果确实想精确计算呢？Cairo 的思路是先转换成 Polygon，再计算它的包围盒：

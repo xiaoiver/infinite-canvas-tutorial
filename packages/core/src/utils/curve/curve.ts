@@ -4,7 +4,6 @@ import { vec2 } from 'gl-matrix';
  * @see https://github.com/mrdoob/three.js/blob/dev/src/extras/core/Curve.js
  */
 export abstract class Curve {
-  type = 'Curve';
   arcLengthDivisions = 200;
 
   protected needsUpdate = true;

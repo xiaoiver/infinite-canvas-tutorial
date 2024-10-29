@@ -6,6 +6,7 @@ import {
   Path,
   Circle,
   Ellipse,
+  parsePath,
 } from '../src';
 
 const $canvas = document.getElementById('canvas') as HTMLCanvasElement;
@@ -65,9 +66,11 @@ const svg = {
 };
 
 const path = new Path({
-  d: svg.hexagon,
+  d: 'M 100 100 L 200 200 L 300 100 Z',
 });
 canvas.appendChild(path);
+
+// console.log(parsePath(svg.circle).subPaths[0].getPoints());
 
 // const polyline1 = new Polyline({
 //   points: [

@@ -63,6 +63,10 @@ export class SDF extends Drawcall {
     // && (isBrowser ? isImageBitmapOrCanvases(fill) : true)
   }
 
+  // get useWireframe() {
+  //   return this.shapes[0].wireframe;
+  // }
+
   validate(shape: Shape) {
     const result = super.validate(shape);
     if (!result) {
@@ -87,6 +91,10 @@ export class SDF extends Drawcall {
     if (SDF.useDash(shape) !== SDF.useDash(this.shapes[0])) {
       return false;
     }
+
+    // if (this.shapes[0].wireframe !== shape.wireframe) {
+    //   return false;
+    // }
 
     return true;
   }
@@ -135,6 +143,9 @@ export class SDF extends Drawcall {
     if (this.useFillImage) {
       defines += '#define USE_FILLIMAGE\n';
     }
+    // if (this.useWireframe) {
+    //   defines += '#define USE_WIREFRAME\n';
+    // }
 
     if (this.#program) {
       this.#program.destroy();
@@ -500,4 +511,83 @@ export class SDF extends Drawcall {
       },
     ];
   }
+
+  // private generateWireframe() {
+  //   // need generate barycentric coordinates
+  //   const { indices } = geometry;
+  //   const indiceNum = geometry.indices.length;
+  //   const originalVertexBuffers = geometry.vertices.map((buffer) => {
+  //     // @ts-ignore
+  //     return buffer.slice();
+  //   }) as ArrayBufferView[];
+  //   for (
+  //     let i = VertexAttributeBufferIndex.PICKING_COLOR;
+  //     i < geometry.vertexBuffers.length;
+  //     i++
+  //   ) {
+  //     const { arrayStride } =
+  //       geometry.inputLayoutDescriptor.vertexBufferDescriptors[i];
+  //     geometry.vertices[i] = new Float32Array((arrayStride / 4) * indiceNum);
+  //   }
+  //   // reallocate attribute data
+  //   let cursor = 0;
+  //   const uniqueIndices = new Uint32Array(indiceNum);
+  //   for (let i = 0; i < indiceNum; i++) {
+  //     const ii = indices[i];
+  //     for (let j = 1; j < geometry.vertices.length; j++) {
+  //       const { arrayStride } =
+  //         geometry.inputLayoutDescriptor.vertexBufferDescriptors[j];
+  //       const size = arrayStride / 4;
+  //       for (let k = 0; k < size; k++) {
+  //         geometry.vertices[j][cursor * size + k] =
+  //           originalVertexBuffers[j][ii * size + k];
+  //       }
+  //     }
+  //     uniqueIndices[i] = cursor;
+  //     cursor++;
+  //   }
+  //   for (
+  //     let i = VertexAttributeBufferIndex.PICKING_COLOR + 1;
+  //     i < geometry.vertexBuffers.length;
+  //     i++
+  //   ) {
+  //     // if (i === 3) {
+  //     //   continue;
+  //     // }
+  //     const { stepMode, arrayStride } =
+  //       geometry.inputLayoutDescriptor.vertexBufferDescriptors[i];
+  //     const descriptor =
+  //       geometry.inputLayoutDescriptor.vertexBufferDescriptors[i].attributes[0];
+  //     if (descriptor) {
+  //       const {
+  //         shaderLocation: location,
+  //         offset: bufferByteOffset,
+  //         format,
+  //         divisor,
+  //       } = descriptor;
+  //       geometry.setVertexBuffer({
+  //         bufferIndex: i,
+  //         byteStride: arrayStride,
+  //         stepMode,
+  //         attributes: [
+  //           {
+  //             format,
+  //             bufferByteOffset,
+  //             location,
+  //             divisor,
+  //           },
+  //         ],
+  //         data: geometry.vertices[i],
+  //       });
+  //     }
+  //   }
+  //   // create barycentric attributes
+  //   const barycentricBuffer = new Float32Array(indiceNum * 3);
+  //   for (let i = 0; i < indiceNum; ) {
+  //     for (let j = 0; j < 3; j++) {
+  //       const ii = uniqueIndices[i++];
+  //       barycentricBuffer[ii * 3 + j] = 1;
+  //     }
+  //   }
+  // }
 }

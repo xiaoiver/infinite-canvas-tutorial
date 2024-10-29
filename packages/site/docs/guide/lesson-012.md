@@ -963,6 +963,91 @@ But if the polyline is slightly tilted at 45 degrees, the distance extended outw
 
 Similarly, the case of `stroke-linejoin="miter"` also needs to be considered. It can be seen that this estimation method will not precisely consider every vertex and joint, but only make the most optimistic estimate to ensure that the bounding box can accommodate the polyline.
 
+Below we draw the bounding box of the polyline in real time, showing the different values of `strokeLinecap` from left to right:
+
+```js eval code=false
+$icCanvas6 = call(() => {
+    return document.createElement('ic-canvas-lesson12');
+});
+```
+
+```js eval code=false inspector=false
+call(() => {
+    const { Canvas, Polyline, Rect } = Lesson12;
+
+    const stats = new Stats();
+    stats.showPanel(0);
+    const $stats = stats.dom;
+    $stats.style.position = 'absolute';
+    $stats.style.left = '0px';
+    $stats.style.top = '0px';
+
+    $icCanvas6.parentElement.style.position = 'relative';
+    $icCanvas6.parentElement.appendChild($stats);
+
+    function drawBounds(canvas, polyline) {
+        const { minX, minY, maxX, maxY } = polyline.getBounds();
+        const bounds = new Rect({
+            x: minX,
+            y: minY,
+            stroke: 'red',
+            fill: 'none',
+        });
+        bounds.width = maxX - minX;
+        bounds.height = maxY - minY;
+        canvas.appendChild(bounds);
+    }
+
+    $icCanvas6.addEventListener('ic-ready', (e) => {
+        const canvas = e.detail;
+        const polyline1 = new Polyline({
+            points: [
+                [100, 100],
+                [200, 200],
+            ],
+            stroke: 'black',
+            strokeWidth: 20,
+            fill: 'none',
+            cursor: 'pointer',
+        });
+        canvas.appendChild(polyline1);
+        drawBounds(canvas, polyline1);
+
+        const polyline2 = new Polyline({
+            points: [
+                [300, 100],
+                [400, 200],
+            ],
+            stroke: 'black',
+            strokeWidth: 20,
+            strokeLinecap: 'round',
+            fill: 'none',
+            cursor: 'pointer',
+        });
+        canvas.appendChild(polyline2);
+        drawBounds(canvas, polyline2);
+
+        const polyline3 = new Polyline({
+            points: [
+                [500, 100],
+                [600, 200],
+            ],
+            stroke: 'black',
+            strokeWidth: 20,
+            strokeLinecap: 'square',
+            fill: 'none',
+            cursor: 'pointer',
+        });
+        canvas.appendChild(polyline3);
+        drawBounds(canvas, polyline3);
+    });
+
+    $icCanvas6.addEventListener('ic-frame', (e) => {
+        stats.update();
+    });
+});
+```
+
 ### Precise Calculation {#stroke-extents}
 
 If you really want to calculate precisely? Cairo's idea is to first convert it into a Polygon, and then calculate its bounding box:

@@ -2,11 +2,8 @@ import { vec2 } from 'gl-matrix';
 import { Curve } from './curve';
 
 export class LineCurve extends Curve {
-  static TYPE = 'LineCurve';
-
   constructor(private v1 = vec2.create(), private v2 = vec2.create()) {
     super();
-    this.type = LineCurve.TYPE;
 
     this.v1 = v1;
     this.v2 = v2;

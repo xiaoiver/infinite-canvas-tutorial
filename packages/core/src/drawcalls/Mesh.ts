@@ -13,28 +13,16 @@ import {
   VertexStepMode,
   Program,
   CompareFunction,
-  TextureUsage,
   BindingsDescriptor,
-  AddressMode,
-  FilterMode,
-  MipmapFilterMode,
   TransparentBlack,
   Texture,
   StencilOp,
-  // makeTextureDescriptor2D,
 } from '@antv/g-device-api';
 import { Path } from '../shapes';
 import { Drawcall, ZINDEX_FACTOR } from './Drawcall';
 import { vert, frag } from '../shaders/sdf_path';
-import {
-  // isBrowser,
-  // isImageBitmapOrCanvases,
-  isString,
-  paddingMat3,
-} from '../utils';
-import pathSDF from 'svg-path-sdf';
-
-const sdfDimension = 200;
+import { isString, paddingMat3, parsePath } from '../utils';
+import earcut from 'earcut';
 
 const strokeAlignmentMap = {
   center: 0,
@@ -42,7 +30,7 @@ const strokeAlignmentMap = {
   outer: 2,
 } as const;
 
-export class SDFPath extends Drawcall {
+export class Mesh extends Drawcall {
   #program: Program;
   #fragUnitBuffer: Buffer;
   #instancedBuffer: Buffer;
@@ -94,6 +82,17 @@ export class SDFPath extends Drawcall {
   }
 
   createGeometry(): void {
+    const { d } = this.shapes[0] as Path;
+    const { subPaths } = parsePath(d);
+    const points = subPaths
+      .map((subPath) =>
+        subPath.getPoints().map((point) => [point[0], point[1]]),
+      )
+      .flat(2);
+    const triangles = earcut(points);
+
+    console.log(triangles);
+
     if (!this.#fragUnitBuffer) {
       this.#fragUnitBuffer = this.device.createBuffer({
         viewOrSize: new Float32Array([-1, -1, 1, -1, 1, 1, -1, 1]),
@@ -307,50 +306,6 @@ export class SDFPath extends Drawcall {
       });
     }
 
-    // TODO: Canvas Gradient
-    const { d } = this.shapes[0] as Path;
-    const sdf = pathSDF(d, { width: sdfDimension, height: sdfDimension });
-
-    console.log(sdf);
-
-    // Convert single-channel float to RGBA uint8
-    const data = new Uint8ClampedArray(sdf.length * 4);
-    for (let i = 0; i < sdf.length; i++) {
-      data[4 * i + 0] = sdf[i] * 255;
-      data[4 * i + 1] = sdf[i] * 255;
-      data[4 * i + 2] = sdf[i] * 255;
-      data[4 * i + 3] = 255;
-    }
-
-    const texture = this.device.createTexture({
-      // ...makeTextureDescriptor2D(Format.ALPHA, sdfDimension, sdfDimension, 1),
-      // pixelStore: {
-      //   unpackFlipY: false,
-      //   unpackAlignment: 1,
-      // },
-      format: Format.U8_RGBA_NORM,
-      width: sdfDimension,
-      height: sdfDimension,
-      usage: TextureUsage.SAMPLED,
-    });
-    texture.setImageData([data]);
-    this.#texture = texture;
-    const sampler = this.renderCache.createSampler({
-      addressModeU: AddressMode.CLAMP_TO_EDGE,
-      addressModeV: AddressMode.CLAMP_TO_EDGE,
-      minFilter: FilterMode.POINT,
-      magFilter: FilterMode.BILINEAR,
-      mipmapFilter: MipmapFilterMode.LINEAR,
-      lodMinClamp: 0,
-      lodMaxClamp: 0,
-    });
-    bindings.samplerBindings = [
-      {
-        texture,
-        sampler,
-      },
-    ];
-
     this.#bindings = this.renderCache.createBindings(bindings);
   }
 
@@ -470,7 +425,7 @@ export class SDFPath extends Drawcall {
     const u_StrokeColor = [sr / 255, sg / 255, sb / 255, so];
     const u_ZIndexStrokeWidth = [
       shape.globalRenderOrder / ZINDEX_FACTOR,
-      SDFPath.useDash(shape) ? 0 : strokeWidth,
+      Mesh.useDash(shape) ? 0 : strokeWidth,
       cornerRadius,
       strokeAlignmentMap[strokeAlignment],
     ];

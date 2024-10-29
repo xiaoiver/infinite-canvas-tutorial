@@ -67,6 +67,12 @@ export interface IRenderable {
   boundsDirtyFlag: boolean;
 
   /**
+   * Render geometry as wireframe.
+   * @see https://threejs.org/docs/#api/en/materials/MeshStandardMaterial.wireframe
+   */
+  wireframe: boolean;
+
+  /**
    * It's a presentation attribute that defines the color used to paint the element. Default to `black`.
    * @see https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/fill
    *
@@ -257,6 +263,7 @@ export function Renderable<TBase extends GConstructor>(Base: TBase) {
           | 'renderable'
           | 'cullable'
           | 'batchable'
+          | 'wireframe'
           | 'sizeAttenuation'
           | 'visible'
           | 'strokeWidth'
@@ -281,6 +288,7 @@ export function Renderable<TBase extends GConstructor>(Base: TBase) {
         cullable,
         batchable,
         sizeAttenuation,
+        wireframe,
         fill,
         stroke,
         strokeWidth,
@@ -304,6 +312,7 @@ export function Renderable<TBase extends GConstructor>(Base: TBase) {
       this.cullable = cullable ?? true;
       this.batchable = batchable ?? true;
       this.sizeAttenuation = sizeAttenuation ?? true;
+      this.wireframe = wireframe ?? false;
       this.fill = fill ?? 'black';
       this.stroke = stroke ?? 'none';
       this.strokeWidth = strokeWidth ?? 1;

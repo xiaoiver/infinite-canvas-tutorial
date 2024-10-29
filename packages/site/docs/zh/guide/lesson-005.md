@@ -8,6 +8,7 @@ outline: deep
 
 -   绘制直线网格。使用 Line Geometry 或者屏幕空间技术。
 -   绘制点网格。
+-   为 Geometry 绘制 wireframe。
 
 ```js eval code=false
 $button = call(() => {
@@ -428,9 +429,56 @@ else {
 rgb = mix(rgb, gridColor, gridWeight);
 ```
 
-## wireframe {#wireframe}
+## 绘制 wireframe {#wireframe}
 
-绘制 wireframe 也使用类似技术，我们可以用于针对复杂 Geometry 的 Debug，例如后续介绍的[折线]。
+绘制 wireframe 也使用了类似技术，我们可以将它用于针对复杂 Geometry 的 Debug，例如后续介绍的[折线]。
+
+思路其实十分简单，我们想在光栅化时给每个三角形描边，那么就需要知道当前 fragment 距离三角形的三边各有多远，一旦小于边框的宽度，我们就给当前 fragment 着上边框的颜色。所以问题的关键就是如何计算 fragment 距离三角形三边的距离。我们可以使用重心坐标，由于只关心当前 fragment 所在的三角形，以三个顶点构建重心坐标系，利用 fragment shader 的插值就能得到当前 fragment 对应的重心坐标。
+
+其实在光栅化过程中，渲染管线也正是利用重心坐标作为权重来决定 fragment 的颜色，如下图所示，可以继续阅读 scratchapixel 上关于光栅化具体实现的文章：[Rasterization]。
+
+![barycentric](https://www.scratchapixel.com/images/rasterization/barycentric2.png)
+
+下面来看具体实现。首先给顶点传入重心坐标，我们需要保证三角形三个顶点坐标值分别是 `(1,0,0)` `(0,1,0)` 和 `(0,0,1)`。如果在绘制时使用的是 `gl.drawArrays()`，那只需要简单的按顺序依次传入三个顶点坐标，重复多次（三角形个数）就行了，我们以一个简单平面（两个三角形组成）为例：
+
+```glsl
+layout(location = BARYCENTRIC) in vec3 a_Barycentric;
+out vec3 v_Barycentric;
+
+void main() {
+  v_Barycentric = a_Barycentric;
+}
+```
+
+然后在 fragment shader 中，当重心坐标任意一个分量小于边框宽度阈值，就可以当作边框绘制。这里用到了 glsl 内置函数 `any()` 和 `lessThan()`：
+
+```glsl
+in vec3 v_Barycentric;
+void main() {
+  // 小于边框宽度
+  if (any(lessThan(v_Barycentric, vec3(0.1)))) {
+    // 边框颜色
+    gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0);
+  } else {
+    // 填充背景颜色
+    gl_FragColor = vec4(0.5, 0.5, 0.5, 1.0);
+  }
+}
+```
+
+和之前绘制直线网格同理，我们希望线宽不要随着相机缩放而改变，应当保持定宽，因此继续使用 `fwidth()`
+
+```glsl
+float edgeFactor() {
+  vec3 d = fwidth(v_Barycentric);
+  vec3 a3 = smoothstep(vec3(0.0), d * u_WireframeLineWidth, v_Barycentric);
+  return min(min(a3.x, a3.y), a3.z);
+}
+```
+
+之前的例子中我们在绘制时使用了 `gl.drawArrays()`，但如果使用的是更节省 Buffer 空间的 `gl.drawElements()`，也就是共享部分顶点（例如平面仅使用 4 个而非 6 个顶点），就不能简单根据顶点顺序，得依照顶点索引分配重心坐标了。但不是所有分配方式都这么简单，比如 Stack Overflow 上的这个问题：[Issue with Barycentric coordinates when using shared vertices]，会发现 `?` 处无法分配。根本原因其实是在共享顶点的情况下，一旦给一个三角形分配好了重心坐标，与之共享一边的下一个三角形的剩余一个顶点坐标实际也已经确定了：
+
+![there's no barycentric coordinate for the question mark](https://pica.zhimg.com/v2-30c2f4ab848d5f0cfcf8f6934b030298_b.jpg)
 
 ## 扩展阅读 {#extended-reading}
 
@@ -451,3 +499,5 @@ rgb = mix(rgb, gridColor, gridWeight);
 [Anti-Aliased Grid Shader]: https://madebyevan.com/shaders/grid/
 [The Best Darn Grid Shader (Yet)]: https://bgolus.medium.com/the-best-darn-grid-shader-yet-727f9278b9d8
 [折线]: /zh/guide/lesson-012
+[Rasterization]: https://www.scratchapixel.com/lessons/3d-basic-rendering/rasterization-practical-implementation/rasterization-stage.html
+[Issue with Barycentric coordinates when using shared vertices]: https://stackoverflow.com/questions/24839857/wireframe-shader-issue-with-barycentric-coordinates-when-using-shared-vertices

@@ -1,6 +1,7 @@
 import { vec2 } from 'gl-matrix';
 import { Curve } from './curve';
 import { LineCurve } from './line-curve';
+import { EllipseCurve } from './ellipse-curve';
 
 /**
  * @see https://github.com/mrdoob/three.js/blob/dev/src/extras/core/CurvePath.js
@@ -97,22 +98,21 @@ export class CurvePath extends Curve {
   }
 
   getPoints(divisions = 12) {
-    const points = [];
+    const points: vec2[] = [];
     let last: vec2;
 
     for (let i = 0, curves = this.curves; i < curves.length; i++) {
       const curve = curves[i];
-      // @ts-ignore
-      const resolution = curve.isEllipseCurve
-        ? divisions * 2
-        : curve.type === LineCurve.TYPE
-        ? //  || curve.isLineCurve3
-          1
-        : // @ts-ignore
-        curve.isSplineCurve
-        ? // @ts-ignore
-          divisions * curve.points.length
-        : divisions;
+      const resolution =
+        curve instanceof EllipseCurve
+          ? divisions * 2
+          : curve instanceof LineCurve
+          ? 1
+          : // @ts-ignore
+          curve.isSplineCurve
+          ? // @ts-ignore
+            divisions * curve.points.length
+          : divisions;
 
       const pts = curve.getPoints(resolution);
 
@@ -129,7 +129,7 @@ export class CurvePath extends Curve {
     if (
       this.autoClose &&
       points.length > 1 &&
-      !points[points.length - 1].equals(points[0])
+      !vec2.equals(points[points.length - 1], points[0])
     ) {
       points.push(points[0]);
     }

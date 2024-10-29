@@ -3,15 +3,12 @@ import { Curve } from './curve';
 import { QuadraticBezier } from './interpolations';
 
 export class QuadraticBezierCurve extends Curve {
-  static TYPE = 'QuadraticBezierCurve';
-
   constructor(
     private v0 = vec2.create(),
     private v1 = vec2.create(),
     private v2 = vec2.create(),
   ) {
     super();
-    this.type = QuadraticBezierCurve.TYPE;
 
     this.v0 = v0;
     this.v1 = v1;

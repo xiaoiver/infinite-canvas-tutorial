@@ -3,8 +3,6 @@ import { Curve } from './curve';
 import { CubicBezier } from './interpolations';
 
 export class CubicBezierCurve extends Curve {
-  static TYPE = 'CubicBezierCurve';
-
   constructor(
     private v0 = vec2.create(),
     private v1 = vec2.create(),
@@ -12,7 +10,6 @@ export class CubicBezierCurve extends Curve {
     private v3 = vec2.create(),
   ) {
     super();
-    this.type = CubicBezierCurve.TYPE;
 
     this.v0 = v0;
     this.v1 = v1;

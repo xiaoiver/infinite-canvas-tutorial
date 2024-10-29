@@ -1,7 +1,8 @@
 import { Buffer, Device, RenderPass } from '@antv/g-device-api';
-import { Drawcall, SDF, SDFPath, ShadowRect, SmoothPolyline } from '.';
+import { Drawcall, SDF, ShadowRect, SmoothPolyline } from '.';
 import { Circle, Ellipse, Path, Polyline, Rect, type Shape } from '../shapes';
 import { RenderCache } from '../utils/render-cache';
+import { Mesh } from './Mesh';
 
 /**
  * Since a shape may have multiple drawcalls, we need to cache them and maintain an 1-to-many relationship.
@@ -10,14 +11,15 @@ import { RenderCache } from '../utils/render-cache';
  * - A SDF drawcall to draw the fill.
  * - A Path drawcall to draw the dashed stroke.
  *
- * e.g. 2 drawcalls for a Rect with drop shadow.
+ * e.g. 3 drawcalls for a Rect with drop shadow.
  */
 const SHAPE_DRAWCALL_CTORS = new WeakMap<typeof Shape, (typeof Drawcall)[]>();
 SHAPE_DRAWCALL_CTORS.set(Circle, [SDF, SmoothPolyline]);
 SHAPE_DRAWCALL_CTORS.set(Ellipse, [SDF, SmoothPolyline]);
 SHAPE_DRAWCALL_CTORS.set(Rect, [ShadowRect, SDF, SmoothPolyline]);
 SHAPE_DRAWCALL_CTORS.set(Polyline, [SmoothPolyline]);
-SHAPE_DRAWCALL_CTORS.set(Path, [SDFPath]);
+// SHAPE_DRAWCALL_CTORS.set(Path, [SDFPath]);
+SHAPE_DRAWCALL_CTORS.set(Path, [Mesh]);
 
 export class BatchManager {
   /**

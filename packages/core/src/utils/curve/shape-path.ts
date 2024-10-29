@@ -3,7 +3,6 @@ import { Path } from './path';
 import { path2Absolute } from '@antv/util';
 
 export class ShapePath {
-  type = 'ShapePath';
   currentPath: Path | null;
   subPaths: Path[];
 

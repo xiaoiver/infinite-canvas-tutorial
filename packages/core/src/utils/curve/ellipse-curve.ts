@@ -2,7 +2,6 @@ import { vec2 } from 'gl-matrix';
 import { Curve } from './curve';
 
 export class EllipseCurve extends Curve {
-  static TYPE = 'LineCurve';
   aX: number;
   aY: number;
   xRadius: number;
@@ -23,8 +22,6 @@ export class EllipseCurve extends Curve {
     aRotation = 0,
   ) {
     super();
-
-    this.type = EllipseCurve.TYPE;
 
     this.aX = aX;
     this.aY = aY;

@@ -43,6 +43,7 @@
     "@pixi/math": "^7.4.2",
     "bezier-easing": "^2.1.0",
     "d3-color": "^3.1.0",
+    "earcut": "^3.0.0",
     "eventemitter3": "^5.0.1",
     "gl-matrix": "^3.4.3",
     "rbush": "^3.0.1",
@@ -50,6 +51,7 @@
   },
   "devDependencies": {
     "@types/d3-color": "^3.1.0",
+    "@types/earcut": "^2.1.4",
     "@types/rbush": "^3.0.0"
   }
 }
