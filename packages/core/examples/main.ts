@@ -8,6 +8,7 @@ import {
   Ellipse,
   parsePath,
 } from '../src';
+import { CheckboardStyle } from '../src/plugins';
 
 const $canvas = document.getElementById('canvas') as HTMLCanvasElement;
 const resize = (width: number, height: number) => {
@@ -66,9 +67,19 @@ const svg = {
 };
 
 const path = new Path({
-  d: 'M 100 100 L 200 200 L 300 100 Z',
+  d: svg.circle,
+  fill: 'black',
+  opacity: 0.5,
 });
 canvas.appendChild(path);
+
+const path2 = new Path({
+  d: svg.circle,
+  fill: 'black',
+  opacity: 0.5,
+});
+path2.position.x = 100;
+canvas.appendChild(path2);
 
 // console.log(parsePath(svg.circle).subPaths[0].getPoints());
 

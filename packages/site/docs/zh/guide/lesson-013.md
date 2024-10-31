@@ -59,7 +59,7 @@ var data = bitmapSdf(ctx);
 
 当然 Path2D 是浏览器环境才原生支持的 API，如果想在服务端渲染中使用，需要使用 polyfill，详见：[Support Path2D API]。
 
-## 使用网格绘制 {#mesh}
+## 使用网格绘制填充区域 {#use-mesh-draw-fill}
 
 因此对于 Path 常规的方式还是三角化，无论是 2D 还是 3D。下面的示例来自：[SVG loader in three.js]。首先将 SVG 文本转换成一组 `ShapePath`，然后创建一组 `ShapeGeometry` 并渲染：
 
@@ -86,7 +86,7 @@ Pixi.js 使用了 [earcut] 进行多边形的三角化。其他三角化库还�
 
 ### 转换成绝对路径 {#convert-to-absolute-commands}
 
-SVG 路径命令包含绝对和相对两种，例如：`M 100 100 L 200 100` 和 `M 100 100 l 100 0` 是等价的。为了便于后续处理，我们先将相对命令都转换成绝对命令。Canvas2D API 也采用这种风格，类似 [lineTo]，我们参考 Three.js 的 [ShapePath] 实现，它实现了一系列 Canvas2DRenderingContext 的方法例如 `moveTo / lineTo / bezierCurveTo` 等等：
+SVG 路径命令包含绝对和相对两种，例如：`M 100 100 L 200 100` 和 `M 100 100 l 100 0` 是等价的。为了便于后续处理，我们先将相对命令都转换成绝对命令。Canvas2D API 也采用这种风格，类似 [lineTo]，我们参考 Three.js 的 [ShapePath] 实现，它实现了一系列 [CanvasRenderingContext2D] 的方法例如 `moveTo / lineTo / bezierCurveTo` 等等：
 
 ```ts
 import { path2Absolute } from '@antv/util';
@@ -106,9 +106,36 @@ commands.forEach((command) => {
 });
 ```
 
+下面我们简单介绍下 [ShapePath] 提供的方法，它包含一组 subPath 对应路径定义中的多条命令。以 `moveTo` 和 `lineTo` 为例，前者会创建一条新的 subPath 并设置起点，后者完成到下一个点的连线。
+
+```ts
+export class ShapePath {
+    currentPath: Path | null;
+    subPaths: Path[];
+
+    moveTo(x: number, y: number) {
+        this.currentPath = new Path();
+        this.subPaths.push(this.currentPath);
+        this.currentPath.moveTo(x, y);
+        return this;
+    }
+
+    lineTo(x: number, y: number) {
+        this.currentPath.lineTo(x, y);
+        return this;
+    }
+}
+```
+
+下面来看每一个 subPath 的结构。
+
+```ts
+export class Path extends CurvePath {}
+```
+
 ### 在曲线上采样 {#sample-along-path}
 
-针对直线、贝塞尔曲线进行不同精度的采样：
+针对直线、贝塞尔曲线进行不同精度的采样。这也很好理解：对于贝塞尔曲线，只有增加更多的采样点才能让折线看起来更平滑；对于直线没必要额外增加任何采样点。
 
 ```ts
 export class CurvePath extends Curve {
@@ -119,11 +146,33 @@ export class CurvePath extends Curve {
                 : curve instanceof LineCurve
                 ? 1
                 : divisions;
+        const pts = curve.getPoints(resolution);
+    }
+}
+```
+
+以三阶贝塞尔曲线为例，给定归一化后的 `t`，采样点就可以通过其定义得到 [Bézier_curve]：
+
+```ts
+export class CubicBezierCurve extends Curve {
+    getPoint(t: number) {
+        const point = vec2.create();
+        const { v0, v1, v2, v3 } = this;
+
+        vec2.set(
+            point,
+            CubicBezier(t, v0[0], v1[0], v2[0], v3[0]),
+            CubicBezier(t, v0[1], v1[1], v2[1], v3[1]),
+        );
+
+        return point;
     }
 }
 ```
 
 ### 使用 earcut 三角化 {#triangulation}
+
+现在我们已经有了所有 subPath 上的采样点，就可以使用 [earcut] 完成三角化，输入采样点坐标得到索引数组：
 
 ```ts
 const { d } = path;
@@ -133,6 +182,71 @@ const points = subPaths
     .flat(2); // [100, 100, 200, 200, 300, 100, 100, 100]
 const triangles = earcut(points); // [1, 3, 2]
 ```
+
+这样我们就可以使用 `gl.drawElements()` 或者 `passEncoder.drawIndexed()` 完成绘制了。下图中左侧 Path 定义如下，和右侧使用 SDF 绘制的 Circle 对比后可以看出边缘其实并不平滑，在相机放大后更为明显：
+
+```ts
+const path = new Path({
+    d: 'M40,0A40,40 0 1,1 0,-40A40,40 0 0,1 40,0Z',
+    fill: 'black',
+    opacity: 0.5,
+});
+```
+
+```js eval code=false
+$icCanvas = call(() => {
+    return document.createElement('ic-canvas-lesson13');
+});
+```
+
+```js eval code=false inspector=false
+call(() => {
+    const { Canvas, Path, Circle } = Lesson13;
+
+    const stats = new Stats();
+    stats.showPanel(0);
+    const $stats = stats.dom;
+    $stats.style.position = 'absolute';
+    $stats.style.left = '0px';
+    $stats.style.top = '0px';
+
+    $icCanvas.parentElement.style.position = 'relative';
+    $icCanvas.parentElement.appendChild($stats);
+
+    $icCanvas.addEventListener('ic-ready', (e) => {
+        const canvas = e.detail;
+        canvas.camera.zoom = 2;
+
+        const path = new Path({
+            d: 'M40,0A40,40 0 1,1 0,-40A40,40 0 0,1 40,0Z',
+            fill: 'black',
+            opacity: 0.5,
+        });
+        path.position.x = 100;
+        path.position.y = 100;
+        canvas.appendChild(path);
+
+        const circle = new Circle({
+            cx: 0,
+            cy: 0,
+            r: 40,
+            fill: 'black',
+            opacity: 0.5,
+        });
+        circle.position.x = 200;
+        circle.position.y = 100;
+        canvas.appendChild(circle);
+    });
+
+    $icCanvas.addEventListener('ic-frame', (e) => {
+        stats.update();
+    });
+});
+```
+
+### holes {#holes}
+
+值得注意的是
 
 ## 手绘风格 {#sketchy}
 
@@ -171,3 +285,5 @@ const triangles = earcut(points); // [1, 3, 2]
 [Support Path2D API]: https://github.com/Automattic/node-canvas/issues/1116
 [tiny-sdf]: https://github.com/mapbox/tiny-sdf
 [ShapePath]: https://github.com/mrdoob/three.js/blob/dev/src/extras/core/ShapePath.js
+[CanvasRenderingContext2D]: https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D
+[Bézier_curve]: https://en.wikipedia.org/wiki/B%C3%A9zier_curve

@@ -13,16 +13,24 @@ import {
   VertexStepMode,
   Program,
   CompareFunction,
+  TextureUsage,
   BindingsDescriptor,
+  AddressMode,
+  FilterMode,
+  MipmapFilterMode,
   TransparentBlack,
   Texture,
   StencilOp,
 } from '@antv/g-device-api';
-import { Path } from '../shapes';
+import { Circle, Ellipse, Rect, Shape } from '../shapes';
 import { Drawcall, ZINDEX_FACTOR } from './Drawcall';
-import { vert, frag } from '../shaders/mesh';
-import { isString, paddingMat3 } from '../utils';
-import earcut from 'earcut';
+import { vert, frag } from '../shaders/sdf';
+import {
+  // isBrowser,
+  // isImageBitmapOrCanvases,
+  isString,
+  paddingMat3,
+} from '../utils';
 
 const strokeAlignmentMap = {
   center: 0,
@@ -30,9 +38,9 @@ const strokeAlignmentMap = {
   outer: 2,
 } as const;
 
-export class Mesh extends Drawcall {
+export class SDF extends Drawcall {
   #program: Program;
-  #pointsBuffer: Buffer;
+  #fragUnitBuffer: Buffer;
   #instancedBuffer: Buffer;
   #instancedMatrixBuffer: Buffer;
   #indexBuffer: Buffer;
@@ -42,17 +50,20 @@ export class Mesh extends Drawcall {
   #bindings: Bindings;
   #texture: Texture;
 
-  points: number[];
-  triangles: number[];
-
-  static useDash(shape: Path) {
+  static useDash(shape: Shape) {
     const { strokeDasharray } = shape;
     return (
       strokeDasharray.length > 0 && strokeDasharray.some((dash) => dash > 0)
     );
   }
 
-  validate(shape: Path) {
+  get useFillImage() {
+    const { fill } = this.shapes[0];
+    return !isString(fill);
+    // && (isBrowser ? isImageBitmapOrCanvases(fill) : true)
+  }
+
+  validate(shape: Shape) {
     const result = super.validate(shape);
     if (!result) {
       return false;
@@ -60,10 +71,6 @@ export class Mesh extends Drawcall {
 
     if (this.shapes.length === 0) {
       return true;
-    }
-
-    if ((this.shapes[0] as Path).d !== (shape as Path).d) {
-      return false;
     }
 
     const isInstanceFillImage = !isString(this.shapes[0].fill);
@@ -77,31 +84,22 @@ export class Mesh extends Drawcall {
       return this.shapes[0].fill === shape.fill;
     }
 
-    // if (SDFPath.useDash(shape) !== SDFPath.useDash(this.shapes[0])) {
-    //   return false;
-    // }
+    if (SDF.useDash(shape) !== SDF.useDash(this.shapes[0])) {
+      return false;
+    }
 
     return true;
   }
 
   createGeometry(): void {
-    const points = (this.shapes[0] as Path).points.flat(2);
-
-    const triangles = earcut(points);
-    this.points = points;
-    this.triangles = triangles;
-
-    if (!this.#pointsBuffer) {
-      this.#pointsBuffer = this.device.createBuffer({
-        viewOrSize: new Float32Array(points),
+    if (!this.#fragUnitBuffer) {
+      this.#fragUnitBuffer = this.device.createBuffer({
+        viewOrSize: new Float32Array([-1, -1, 1, -1, 1, 1, -1, 1]),
         usage: BufferUsage.VERTEX,
         hint: BufferFrequencyHint.STATIC,
       });
-    }
-
-    if (!this.#indexBuffer) {
       this.#indexBuffer = this.device.createBuffer({
-        viewOrSize: new Uint32Array(triangles),
+        viewOrSize: new Uint32Array([0, 1, 2, 0, 2, 3]),
         usage: BufferUsage.INDEX,
         hint: BufferFrequencyHint.STATIC,
       });
@@ -134,6 +132,9 @@ export class Mesh extends Drawcall {
     if (this.instanced) {
       defines += '#define USE_INSTANCES\n';
     }
+    if (this.useFillImage) {
+      defines += '#define USE_FILLIMAGE\n';
+    }
 
     if (this.#program) {
       this.#program.destroy();
@@ -162,7 +163,7 @@ export class Mesh extends Drawcall {
         stepMode: VertexStepMode.VERTEX,
         attributes: [
           {
-            shaderLocation: 1, // a_Position
+            shaderLocation: 0, // a_FragCoord
             offset: 0,
             format: Format.F32_RG,
           },
@@ -173,37 +174,42 @@ export class Mesh extends Drawcall {
     if (this.instanced) {
       vertexBufferDescriptors.push(
         {
-          arrayStride: 4 * 24,
+          arrayStride: 4 * 28,
           stepMode: VertexStepMode.INSTANCE,
           attributes: [
             {
-              shaderLocation: 2, // a_FillColor
-              offset: 4 * 0,
+              shaderLocation: 1, // a_PositionSize
+              offset: 0,
               format: Format.F32_RGBA,
             },
             {
-              shaderLocation: 3, // a_StrokeColor
+              shaderLocation: 2, // a_FillColor
               offset: 4 * 4,
               format: Format.F32_RGBA,
             },
             {
-              shaderLocation: 4, // a_ZIndexStrokeWidth
+              shaderLocation: 3, // a_StrokeColor
               offset: 4 * 8,
               format: Format.F32_RGBA,
             },
             {
-              shaderLocation: 5, // a_Opacity
+              shaderLocation: 4, // a_ZIndexStrokeWidth
               offset: 4 * 12,
               format: Format.F32_RGBA,
             },
             {
-              shaderLocation: 6, // a_InnerShadowColor
+              shaderLocation: 5, // a_Opacity
               offset: 4 * 16,
               format: Format.F32_RGBA,
             },
             {
-              shaderLocation: 7, // a_InnerShadow
+              shaderLocation: 6, // a_InnerShadowColor
               offset: 4 * 20,
+              format: Format.F32_RGBA,
+            },
+            {
+              shaderLocation: 7, // a_InnerShadow
+              offset: 4 * 24,
               format: Format.F32_RGBA,
             },
           ],
@@ -238,7 +244,8 @@ export class Mesh extends Drawcall {
       });
       if (!this.#uniformBuffer) {
         this.#uniformBuffer = this.device.createBuffer({
-          viewOrSize: Float32Array.BYTES_PER_ELEMENT * (16 + 4 + 4 + 4 + 4 + 4),
+          viewOrSize:
+            Float32Array.BYTES_PER_ELEMENT * (16 + 4 + 4 + 4 + 4 + 4 + 4),
           usage: BufferUsage.UNIFORM,
           hint: BufferFrequencyHint.DYNAMIC,
         });
@@ -284,7 +291,7 @@ export class Mesh extends Drawcall {
         },
       },
     });
-    this.device.setResourceName(this.#pipeline, 'MeshPipeline');
+    this.device.setResourceName(this.#pipeline, 'SDFPipeline');
 
     const bindings: BindingsDescriptor = {
       pipeline: this.#pipeline,
@@ -298,6 +305,34 @@ export class Mesh extends Drawcall {
       bindings.uniformBufferBindings!.push({
         buffer: this.#uniformBuffer,
       });
+    }
+
+    // TODO: Canvas Gradient
+    if (this.useFillImage) {
+      const fill = this.shapes[0].fill as ImageBitmap;
+      const texture = this.device.createTexture({
+        format: Format.U8_RGBA_NORM,
+        width: fill.width,
+        height: fill.height,
+        usage: TextureUsage.SAMPLED,
+      });
+      texture.setImageData([fill]);
+      this.#texture = texture;
+      const sampler = this.renderCache.createSampler({
+        addressModeU: AddressMode.CLAMP_TO_EDGE,
+        addressModeV: AddressMode.CLAMP_TO_EDGE,
+        minFilter: FilterMode.POINT,
+        magFilter: FilterMode.BILINEAR,
+        mipmapFilter: MipmapFilterMode.LINEAR,
+        lodMinClamp: 0,
+        lodMaxClamp: 0,
+      });
+      bindings.samplerBindings = [
+        {
+          texture,
+          sampler,
+        },
+      ];
     }
 
     this.#bindings = this.renderCache.createBindings(bindings);
@@ -329,7 +364,7 @@ export class Mesh extends Drawcall {
 
         const instancedData: number[] = [];
         this.shapes.forEach((shape) => {
-          const [buffer] = this.generateBuffer(shape as Path);
+          const [buffer] = this.generateBuffer(shape);
           instancedData.push(...buffer);
         });
         this.#instancedBuffer.setSubData(
@@ -338,9 +373,7 @@ export class Mesh extends Drawcall {
         );
       } else {
         const { worldTransform } = this.shapes[0];
-        const [buffer, legacyObject] = this.generateBuffer(
-          this.shapes[0] as Path,
-        );
+        const [buffer, legacyObject] = this.generateBuffer(this.shapes[0]);
         const u_ModelMatrix = worldTransform.toArray(true);
         this.#uniformBuffer.setSubData(
           0,
@@ -352,14 +385,16 @@ export class Mesh extends Drawcall {
           u_ModelMatrix,
           ...legacyObject,
         };
-        uniformLegacyObject.u_FillImage = this.#texture;
+        if (this.useFillImage) {
+          uniformLegacyObject.u_FillImage = this.#texture;
+        }
         this.#program.setUniformsLegacy(uniformLegacyObject);
       }
     }
 
     const buffers = [
       {
-        buffer: this.#pointsBuffer,
+        buffer: this.#fragUnitBuffer,
       },
     ];
     if (this.instanced) {
@@ -377,20 +412,21 @@ export class Mesh extends Drawcall {
       buffer: this.#indexBuffer,
     });
     renderPass.setBindings(this.#bindings);
-    renderPass.drawIndexed(this.triangles.length, this.shapes.length);
+    renderPass.drawIndexed(6, this.shapes.length);
   }
 
   destroy(): void {
     if (this.#program) {
       this.#instancedMatrixBuffer?.destroy();
       this.#instancedBuffer?.destroy();
+      this.#fragUnitBuffer?.destroy();
       this.#indexBuffer?.destroy();
       this.#uniformBuffer?.destroy();
       this.#texture?.destroy();
     }
   }
 
-  private generateBuffer(shape: Path): [number[], Record<string, unknown>] {
+  private generateBuffer(shape: Shape): [number[], Record<string, unknown>] {
     const {
       fillRGB,
       strokeRGB: { r: sr, g: sg, b: sb, opacity: so },
@@ -405,17 +441,36 @@ export class Mesh extends Drawcall {
       innerShadowBlurRadius,
     } = shape;
 
+    let size: [number, number, number, number] = [0, 0, 0, 0];
+    let type: number = 0;
+    let cornerRadius = 0;
+    if (shape instanceof Circle) {
+      const { cx, cy, r } = shape;
+      size = [cx, cy, r, r];
+      type = 0;
+    } else if (shape instanceof Ellipse) {
+      const { cx, cy, rx, ry } = shape;
+      size = [cx, cy, rx, ry];
+      type = 1;
+    } else if (shape instanceof Rect) {
+      const { x, y, width, height, cornerRadius: r } = shape;
+      size = [x + width / 2, y + height / 2, width / 2, height / 2];
+      type = 2;
+      cornerRadius = r;
+    }
+
     const { r: fr, g: fg, b: fb, opacity: fo } = fillRGB || {};
 
+    const u_PositionSize = size;
     const u_FillColor = [fr / 255, fg / 255, fb / 255, fo];
     const u_StrokeColor = [sr / 255, sg / 255, sb / 255, so];
     const u_ZIndexStrokeWidth = [
       shape.globalRenderOrder / ZINDEX_FACTOR,
-      Mesh.useDash(shape) ? 0 : strokeWidth,
-      0,
+      SDF.useDash(shape) ? 0 : strokeWidth,
+      cornerRadius,
       strokeAlignmentMap[strokeAlignment],
     ];
-    const u_Opacity = [opacity, fillOpacity, strokeOpacity, 0];
+    const u_Opacity = [opacity, fillOpacity, strokeOpacity, type];
     const u_InnerShadowColor = [isr / 255, isg / 255, isb / 255, iso];
     const u_InnerShadow = [
       innerShadowOffsetX,
@@ -426,6 +481,7 @@ export class Mesh extends Drawcall {
 
     return [
       [
+        ...u_PositionSize,
         ...u_FillColor,
         ...u_StrokeColor,
         ...u_ZIndexStrokeWidth,
@@ -434,6 +490,7 @@ export class Mesh extends Drawcall {
         ...u_InnerShadow,
       ],
       {
+        u_PositionSize,
         u_FillColor,
         u_StrokeColor,
         u_ZIndexStrokeWidth,
