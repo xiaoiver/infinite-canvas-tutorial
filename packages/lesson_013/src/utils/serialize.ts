@@ -7,6 +7,7 @@ import {
   Ellipse,
   Group,
   Polyline,
+  Path,
   Rect,
   Shape,
   shiftPoints,
@@ -83,6 +84,7 @@ const rectAttributes = [
   'dropShadowBlurRadius',
 ] as const;
 const polylineAttributes = ['points'] as const;
+const pathAttributes = ['d'] as const;
 
 /**
  * No need to output default value in SVG Element.
@@ -121,16 +123,18 @@ type CircleAttributeName = (typeof circleAttributes)[number];
 type EllipseAttributeName = (typeof ellipseAttributes)[number];
 type RectAttributeName = (typeof rectAttributes)[number];
 type PolylineAttributeName = (typeof polylineAttributes)[number];
+type PathAttributeName = (typeof pathAttributes)[number];
 
 interface SerializedNode {
   uid: number;
-  type: 'g' | 'circle' | 'ellipse' | 'rect' | 'polyline';
+  type: 'g' | 'circle' | 'ellipse' | 'rect' | 'polyline' | 'path';
   attributes?: Pick<Shape, CommonAttributeName> &
     Record<'transform', SerializedTransform> &
     Partial<Pick<Circle, CircleAttributeName>> &
     Partial<Pick<Ellipse, EllipseAttributeName>> &
     Partial<Pick<Rect, RectAttributeName>> &
-    Partial<Pick<Polyline, PolylineAttributeName>>;
+    Partial<Pick<Polyline, PolylineAttributeName>> &
+    Partial<Pick<Path, PathAttributeName>>;
   children?: SerializedNode[];
 }
 
@@ -141,7 +145,8 @@ export function typeofShape(
   | ['circle', ...(typeof circleAttributes & typeof renderableAttributes)]
   | ['ellipse', ...(typeof ellipseAttributes & typeof renderableAttributes)]
   | ['rect', ...(typeof rectAttributes & typeof renderableAttributes)]
-  | ['polyline', ...(typeof polylineAttributes & typeof renderableAttributes)] {
+  | ['polyline', ...(typeof polylineAttributes & typeof renderableAttributes)]
+  | ['path', ...(typeof pathAttributes & typeof renderableAttributes)] {
   if (shape instanceof Group) {
     return ['g', commonAttributes];
   } else if (shape instanceof Circle) {
@@ -152,6 +157,8 @@ export function typeofShape(
     return ['rect', [...renderableAttributes, ...rectAttributes]];
   } else if (shape instanceof Polyline) {
     return ['polyline', [...renderableAttributes, ...polylineAttributes]];
+  } else if (shape instanceof Path) {
+    return ['path', [...renderableAttributes, ...pathAttributes]];
   }
 }
 
@@ -168,6 +175,8 @@ export async function deserializeNode(data: SerializedNode) {
     shape = new Rect();
   } else if (type === 'polyline') {
     shape = new Polyline();
+  } else if (type === 'path') {
+    shape = new Path();
   }
 
   const { transform, ...rest } = attributes;

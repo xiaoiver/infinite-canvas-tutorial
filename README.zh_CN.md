@@ -141,14 +141,18 @@ pnpm run dev
 
 ## 课程 12 - 绘制折线 [🔗](https://infinitecanvas.cc/zh/guide/lesson-012)
 
-让我们继续添加基础图形：折线。在这节课中你将学习到以下内容：
-
 -   为什么不直接使用 `gl.LINES`?
 -   在 CPU 或者 Shader 中构建 Mesh
 -   在 Shader 中构建顶点与接头、反走样、绘制虚线
 -   如何计算折线的包围盒？
 
 <img src="./screenshots/lesson12.png" width="300" alt="Lesson 12 - polyline">
+
+## 课程 13 - 绘制 Path 与手绘风格 [🔗](https://infinitecanvas.cc/zh/guide/lesson-013)
+
+-   尝试使用 SDF 绘制
+-   通过三角化绘制填充部分
+-   实现一些手绘风格图形
 
 [infinitecanvas]: https://infinitecanvas.tools/
 [Figma]: https://madebyevan.com/figma/building-a-professional-design-tool-on-the-web/
