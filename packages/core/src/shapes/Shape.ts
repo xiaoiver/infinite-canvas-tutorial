@@ -224,6 +224,10 @@ export function isFillOrStrokeAffected(
   return [hasFill, hasStroke];
 }
 
+export function hasValidStroke(stroke: string, strokeWidth: number) {
+  return !!stroke && strokeWidth > 0;
+}
+
 export interface RBushNodeAABB {
   shape: Shape;
   minX: number;

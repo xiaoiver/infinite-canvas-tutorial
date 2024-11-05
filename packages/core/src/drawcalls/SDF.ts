@@ -24,7 +24,7 @@ import {
 } from '@antv/g-device-api';
 import { Circle, Ellipse, Rect, Shape } from '../shapes';
 import { Drawcall, ZINDEX_FACTOR } from './Drawcall';
-import { vert, frag } from '../shaders/sdf';
+import { vert, frag, Location } from '../shaders/sdf';
 import {
   // isBrowser,
   // isImageBitmapOrCanvases,
@@ -39,6 +39,8 @@ const strokeAlignmentMap = {
 } as const;
 
 export class SDF extends Drawcall {
+  // protected maxInstances: number = 1000;
+
   #program: Program;
   #fragUnitBuffer: Buffer;
   #instancedBuffer: Buffer;
@@ -174,7 +176,7 @@ export class SDF extends Drawcall {
         stepMode: VertexStepMode.VERTEX,
         attributes: [
           {
-            shaderLocation: 0, // a_FragCoord
+            shaderLocation: Location.FRAG_COORD, // a_FragCoord
             offset: 0,
             format: Format.F32_RG,
           },
@@ -189,37 +191,37 @@ export class SDF extends Drawcall {
           stepMode: VertexStepMode.INSTANCE,
           attributes: [
             {
-              shaderLocation: 1, // a_PositionSize
+              shaderLocation: Location.POSITION_SIZE, // a_PositionSize
               offset: 0,
               format: Format.F32_RGBA,
             },
             {
-              shaderLocation: 2, // a_FillColor
+              shaderLocation: Location.FILL_COLOR, // a_FillColor
               offset: 4 * 4,
               format: Format.F32_RGBA,
             },
             {
-              shaderLocation: 3, // a_StrokeColor
+              shaderLocation: Location.STROKE_COLOR, // a_StrokeColor
               offset: 4 * 8,
               format: Format.F32_RGBA,
             },
             {
-              shaderLocation: 4, // a_ZIndexStrokeWidth
+              shaderLocation: Location.ZINDEX_STROKE_WIDTH, // a_ZIndexStrokeWidth
               offset: 4 * 12,
               format: Format.F32_RGBA,
             },
             {
-              shaderLocation: 5, // a_Opacity
+              shaderLocation: Location.OPACITY, // a_Opacity
               offset: 4 * 16,
               format: Format.F32_RGBA,
             },
             {
-              shaderLocation: 6, // a_InnerShadowColor
+              shaderLocation: Location.INNER_SHADOW_COLOR, // a_InnerShadowColor
               offset: 4 * 20,
               format: Format.F32_RGBA,
             },
             {
-              shaderLocation: 7, // a_InnerShadow
+              shaderLocation: Location.INNER_SHADOW, // a_InnerShadow
               offset: 4 * 24,
               format: Format.F32_RGBA,
             },
@@ -230,12 +232,12 @@ export class SDF extends Drawcall {
           stepMode: VertexStepMode.INSTANCE,
           attributes: [
             {
-              shaderLocation: 14,
+              shaderLocation: Location.ABCD,
               offset: 0,
               format: Format.F32_RGBA,
             },
             {
-              shaderLocation: 15,
+              shaderLocation: Location.TXTY,
               offset: 4 * 4,
               format: Format.F32_RG,
             },

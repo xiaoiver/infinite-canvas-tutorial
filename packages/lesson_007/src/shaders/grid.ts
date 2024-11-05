@@ -71,7 +71,7 @@ vec4 render_grid_checkerboard(vec2 coord) {
     }
   } else if (checkboardStyle == CHECKERBOARD_STYLE_DOTS) {
     vec2 grid2 = abs(fract(coord / gridSize2 - 0.5) - 0.5) / fwidth(coord) * gridSize2;
-    alpha = smoothstep(1.0, 0.0, length(grid2) - BASE_DOT_SIZE * u_ZoomScale / zoomStep);
+    alpha = 1.0 - smoothstep(0.0, 1.0, length(grid2) - BASE_DOT_SIZE * u_ZoomScale / zoomStep);
   }
 
   return mix(PAGE_COLOR, GRID_COLOR, alpha);

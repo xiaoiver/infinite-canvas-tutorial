@@ -364,7 +364,7 @@ For a dot grid, we still opt to handle it within the Fragment Shader in screen s
 
 ```glsl
 vec2 grid2 = abs(fract(coord / gridSize2 - 0.5) - 0.5) / fwidth(coord) * gridSize2;
-alpha = smoothstep(1.0, 0.0, length(grid2) - BASE_DOT_SIZE * u_ZoomScale / zoomStep);
+alpha = 1.0 - smoothstep(0.0, 1.0, length(grid2) - BASE_DOT_SIZE * u_ZoomScale / zoomStep);
 ```
 
 To support switching between straight line grids and dot grids, we can introduce a new uniform variable to differentiate the grid styles.
@@ -397,6 +397,10 @@ vec4 render_grid_checkerboard(vec2 coord) {
 ```
 
 You can go back to the example at the beginning of the page and switch between different grid styles.
+
+Finally an interesting example incorporating mouse interaction is provided: [How to Code a Subtle Shader Background Effect with React Three Fiber]
+
+<video autoplay="" controls="" loop="" muted="" src="https://codrops-1f606.kxcdn.com/codrops/wp-content/uploads/2024/10/shaderbackground.mp4?x39556" playsinline=""></video>
 
 ## Adjusting Brightness
 
@@ -436,6 +440,7 @@ rgb = mix(rgb, gridColor, gridWeight);
 -   [The Best Darn Grid Shader (Yet)]
 -   [WebGL 绘制网格]
 -   [如何使用 WebGL 绘制平面网格线]
+-   [How to Code a Subtle Shader Background Effect with React Three Fiber]
 
 [thetamath]: http://thetamath.com/app/y=x%5E(3)-x
 [GridHelper - Three.js]: https://threejs.org/docs/#api/en/helpers/GridHelper
@@ -448,3 +453,4 @@ rgb = mix(rgb, gridColor, gridWeight);
 [the book of shaders - Patterns]: https://thebookofshaders.com/09/?lan=ch
 [Anti-Aliased Grid Shader]: https://madebyevan.com/shaders/grid/
 [The Best Darn Grid Shader (Yet)]: https://bgolus.medium.com/the-best-darn-grid-shader-yet-727f9278b9d8
+[How to Code a Subtle Shader Background Effect with React Three Fiber]: https://tympanus.net/codrops/2024/10/31/how-to-code-a-subtle-shader-background-effect-with-react-three-fiber/

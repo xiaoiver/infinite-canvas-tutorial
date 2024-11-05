@@ -18,6 +18,10 @@ head:
 -   通过三角化绘制填充部分
 -   实现一些手绘风格图形
 
+## 一些基础概念 {#basic-concepts}
+
+### 与 Polyline 的区别 {#diff-with-polyline}
+
 首先来明确一下 SVG 中对于 [Paths] 的定义，尤其是它和 `<polyline>` 的区别，来自 MDN：
 
 > The \<path\> element is the most powerful element in the SVG library of basic shapes. It can be used to create lines, curves, arcs, and more.
@@ -29,6 +33,12 @@ head:
 ![polyline - not smooth arc](https://user-images.githubusercontent.com/89827437/191234694-5d5637f8-c59a-42a7-84ce-c319c470629f.png)
 
 但反过来使用 Path 却可以通过类似 `d="M 100 100 L 200 200 L 200 100"` 实现折线。
+
+### 子路径 {#subpath}
+
+除了简单的路径例如一条线、一段曲线，单个 `<path>` 也可以包含一系列的线或者曲线，也可以称作子路径（subpath）。
+
+每个子路径都以一个移动到（moveto）命令开始，通常是 M 或 m，这告诉绘图工具移动到坐标系中的一个新位置，而不会画线。随后可以跟随一系列的绘制命令，比如线段（L 或 l）、水平线段（H 或 h）、垂直线段（V 或 v）、曲线（C、S、Q、T 等）和弧线（A 或 a）。
 
 ## 使用 SDF 绘制 {#sdf-path}
 
@@ -59,7 +69,7 @@ var data = bitmapSdf(ctx);
 
 当然 Path2D 是浏览器环境才原生支持的 API，如果想在服务端渲染中使用，需要使用 polyfill，详见：[Support Path2D API]。
 
-## 使用网格绘制填充区域 {#use-mesh-draw-fill}
+## 使用网格绘制 {#use-mesh}
 
 因此对于 Path 常规的方式还是三角化，无论是 2D 还是 3D。下面的示例来自：[SVG loader in three.js]。首先将 SVG 文本转换成一组 `ShapePath`，然后创建一组 `ShapeGeometry` 并渲染：
 
@@ -82,7 +92,8 @@ Pixi.js 使用了 [earcut] 进行多边形的三角化。其他三角化库还�
 
 -   将路径定义规范到绝对命令
 -   在曲线上采样
--   使用 earcut 三角化
+-   使用 Polyline 绘制描边
+-   使用 earcut 三角化，绘制填充
 
 ### 转换成绝对路径 {#convert-to-absolute-commands}
 
@@ -170,9 +181,26 @@ export class CubicBezierCurve extends Curve {
 }
 ```
 
+这里有一个圆形 Path 的例子，采样后的顶点列表如下：
+
+```js eval
+points = call(() => {
+    const { Path } = Lesson13;
+    return new Path({
+        d: 'M40,0A40,40 0 1,1 0,-40A40,40 0 0,1 40,0Z',
+        fill: 'black',
+        opacity: 0.5,
+    }).points;
+});
+```
+
+### 使用 Polyline 绘制描边 {#use-polyline-to-draw-stroke}
+
+现在我们已经有了所有 subPath 上的采样点，可以分别绘制描边和填充，前者可以使用上一节课实现的 Polyline，每一个 subPath 对应一个 drawcall。
+
 ### 使用 earcut 三角化 {#triangulation}
 
-现在我们已经有了所有 subPath 上的采样点，就可以使用 [earcut] 完成三角化，输入采样点坐标得到索引数组：
+使用 [earcut] 完成三角化，输入采样点坐标得到索引数组：
 
 ```ts
 const { d } = path;
@@ -247,6 +275,45 @@ call(() => {
 ### holes {#holes}
 
 值得注意的是
+
+```js eval code=false
+$icCanvas2 = call(() => {
+    return document.createElement('ic-canvas-lesson13');
+});
+```
+
+```js eval code=false inspector=false
+call(() => {
+    const { Canvas, Path, Circle } = Lesson13;
+
+    const stats = new Stats();
+    stats.showPanel(0);
+    const $stats = stats.dom;
+    $stats.style.position = 'absolute';
+    $stats.style.left = '0px';
+    $stats.style.top = '0px';
+
+    $icCanvas2.parentElement.style.position = 'relative';
+    $icCanvas2.parentElement.appendChild($stats);
+
+    $icCanvas2.addEventListener('ic-ready', (e) => {
+        const canvas = e.detail;
+
+        const ring = new Path({
+            d: 'M 50 10 A 40 40 0 1 0 50 90 A 40 40 0 1 0 50 10 Z M 50 30 A 20 20 0 1 1 50 70 A 20 20 0 1 1 50 30 Z',
+            fill: 'black',
+            opacity: 0.5,
+        });
+        ring.position.x = 100;
+        ring.position.y = 100;
+        canvas.appendChild(ring);
+    });
+
+    $icCanvas2.addEventListener('ic-frame', (e) => {
+        stats.update();
+    });
+});
+```
 
 ## 手绘风格 {#sketchy}
 

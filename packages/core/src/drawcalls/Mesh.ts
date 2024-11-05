@@ -20,7 +20,7 @@ import {
 } from '@antv/g-device-api';
 import { Path } from '../shapes';
 import { Drawcall, ZINDEX_FACTOR } from './Drawcall';
-import { vert, frag } from '../shaders/mesh';
+import { vert, frag, Location } from '../shaders/mesh';
 import { isString, paddingMat3 } from '../utils';
 import earcut from 'earcut';
 
@@ -162,7 +162,7 @@ export class Mesh extends Drawcall {
         stepMode: VertexStepMode.VERTEX,
         attributes: [
           {
-            shaderLocation: 1, // a_Position
+            shaderLocation: Location.POSITION, // a_Position
             offset: 0,
             format: Format.F32_RG,
           },
@@ -173,37 +173,27 @@ export class Mesh extends Drawcall {
     if (this.instanced) {
       vertexBufferDescriptors.push(
         {
-          arrayStride: 4 * 24,
+          arrayStride: 4 * 16,
           stepMode: VertexStepMode.INSTANCE,
           attributes: [
             {
-              shaderLocation: 2, // a_FillColor
+              shaderLocation: Location.FILL_COLOR, // a_FillColor
               offset: 4 * 0,
               format: Format.F32_RGBA,
             },
             {
-              shaderLocation: 3, // a_StrokeColor
+              shaderLocation: Location.STROKE_COLOR, // a_StrokeColor
               offset: 4 * 4,
               format: Format.F32_RGBA,
             },
             {
-              shaderLocation: 4, // a_ZIndexStrokeWidth
+              shaderLocation: Location.ZINDEX_STROKE_WIDTH, // a_ZIndexStrokeWidth
               offset: 4 * 8,
               format: Format.F32_RGBA,
             },
             {
-              shaderLocation: 5, // a_Opacity
+              shaderLocation: Location.OPACITY, // a_Opacity
               offset: 4 * 12,
-              format: Format.F32_RGBA,
-            },
-            {
-              shaderLocation: 6, // a_InnerShadowColor
-              offset: 4 * 16,
-              format: Format.F32_RGBA,
-            },
-            {
-              shaderLocation: 7, // a_InnerShadow
-              offset: 4 * 20,
               format: Format.F32_RGBA,
             },
           ],
@@ -213,12 +203,12 @@ export class Mesh extends Drawcall {
           stepMode: VertexStepMode.INSTANCE,
           attributes: [
             {
-              shaderLocation: 14,
+              shaderLocation: Location.ABCD,
               offset: 0,
               format: Format.F32_RGBA,
             },
             {
-              shaderLocation: 15,
+              shaderLocation: Location.TXTY,
               offset: 4 * 4,
               format: Format.F32_RG,
             },
@@ -399,10 +389,6 @@ export class Mesh extends Drawcall {
       opacity,
       fillOpacity,
       strokeOpacity,
-      innerShadowColorRGB: { r: isr, g: isg, b: isb, opacity: iso },
-      innerShadowOffsetX,
-      innerShadowOffsetY,
-      innerShadowBlurRadius,
     } = shape;
 
     const { r: fr, g: fg, b: fb, opacity: fo } = fillRGB || {};
@@ -416,30 +402,14 @@ export class Mesh extends Drawcall {
       strokeAlignmentMap[strokeAlignment],
     ];
     const u_Opacity = [opacity, fillOpacity, strokeOpacity, 0];
-    const u_InnerShadowColor = [isr / 255, isg / 255, isb / 255, iso];
-    const u_InnerShadow = [
-      innerShadowOffsetX,
-      innerShadowOffsetY,
-      innerShadowBlurRadius,
-      fillRGB ? 0 : 1,
-    ];
 
     return [
-      [
-        ...u_FillColor,
-        ...u_StrokeColor,
-        ...u_ZIndexStrokeWidth,
-        ...u_Opacity,
-        ...u_InnerShadowColor,
-        ...u_InnerShadow,
-      ],
+      [...u_FillColor, ...u_StrokeColor, ...u_ZIndexStrokeWidth, ...u_Opacity],
       {
         u_FillColor,
         u_StrokeColor,
         u_ZIndexStrokeWidth,
         u_Opacity,
-        u_InnerShadowColor,
-        u_InnerShadow,
       },
     ];
   }

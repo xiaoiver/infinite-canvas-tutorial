@@ -18,7 +18,7 @@ import {
 } from '@antv/g-device-api';
 import { Rect, Shape } from '../shapes';
 import { Drawcall, ZINDEX_FACTOR } from './Drawcall';
-import { vert, frag } from '../shaders/shadow_rect';
+import { vert, frag, Location } from '../shaders/shadow_rect';
 import { paddingMat3 } from '../utils';
 
 export class ShadowRect extends Drawcall {
@@ -98,7 +98,7 @@ export class ShadowRect extends Drawcall {
         stepMode: VertexStepMode.VERTEX,
         attributes: [
           {
-            shaderLocation: 0, // a_FragCoord
+            shaderLocation: Location.FRAG_COORD, // a_FragCoord
             offset: 0,
             format: Format.F32_RG,
           },
@@ -113,22 +113,22 @@ export class ShadowRect extends Drawcall {
           stepMode: VertexStepMode.INSTANCE,
           attributes: [
             {
-              shaderLocation: 1, // a_PositionSize
+              shaderLocation: Location.POSITION_SIZE, // a_PositionSize
               offset: 0,
               format: Format.F32_RGBA,
             },
             {
-              shaderLocation: 4, // a_ZIndexStrokeWidth
+              shaderLocation: Location.ZINDEX_STROKE_WIDTH, // a_ZIndexStrokeWidth
               offset: 4 * 4,
               format: Format.F32_RGBA,
             },
             {
-              shaderLocation: 5, // a_DropShadowColor
+              shaderLocation: Location.DROP_SHADOW_COLOR, // a_DropShadowColor
               offset: 4 * 8,
               format: Format.F32_RGBA,
             },
             {
-              shaderLocation: 6, // a_DropShadow
+              shaderLocation: Location.DROP_SHADOW, // a_DropShadow
               offset: 4 * 12,
               format: Format.F32_RGBA,
             },
@@ -139,12 +139,12 @@ export class ShadowRect extends Drawcall {
           stepMode: VertexStepMode.INSTANCE,
           attributes: [
             {
-              shaderLocation: 14,
+              shaderLocation: Location.ABCD,
               offset: 0,
               format: Format.F32_RGBA,
             },
             {
-              shaderLocation: 15,
+              shaderLocation: Location.TXTY,
               offset: 4 * 4,
               format: Format.F32_RG,
             },

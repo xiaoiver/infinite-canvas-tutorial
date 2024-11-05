@@ -1,3 +1,13 @@
+export enum Location {
+  FRAG_COORD,
+  ABCD,
+  TXTY,
+  POSITION_SIZE,
+  ZINDEX_STROKE_WIDTH,
+  DROP_SHADOW_COLOR,
+  DROP_SHADOW,
+}
+
 export const vert = /* wgsl */ `
 layout(std140) uniform SceneUniforms {
   mat3 u_ProjectionMatrix;
@@ -9,15 +19,15 @@ layout(std140) uniform SceneUniforms {
   float u_CheckboardStyle;
 };
 
-layout(location = 0) in vec2 a_FragCoord;
+layout(location = ${Location.FRAG_COORD}) in vec2 a_FragCoord;
 
 #ifdef USE_INSTANCES
-  layout(location = 14) in vec4 a_Abcd;
-  layout(location = 15) in vec2 a_Txty;
-  layout(location = 1) in vec4 a_PositionSize;
-  layout(location = 4) in vec4 a_ZIndexStrokeWidth;
-  layout(location = 5) in vec4 a_DropShadowColor;
-  layout(location = 6) in vec4 a_DropShadow;
+  layout(location = ${Location.ABCD}) in vec4 a_Abcd;
+  layout(location = ${Location.TXTY}) in vec2 a_Txty;
+  layout(location = ${Location.POSITION_SIZE}) in vec4 a_PositionSize;
+  layout(location = ${Location.ZINDEX_STROKE_WIDTH}) in vec4 a_ZIndexStrokeWidth;
+  layout(location = ${Location.DROP_SHADOW_COLOR}) in vec4 a_DropShadowColor;
+  layout(location = ${Location.DROP_SHADOW}) in vec4 a_DropShadow;
 #else
   layout(std140) uniform ShapeUniforms {
     mat3 u_ModelMatrix;

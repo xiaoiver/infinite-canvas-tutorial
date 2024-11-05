@@ -108,6 +108,10 @@ export const zh = defineConfig({
                 text: '将画布内容导出成图片',
                 link: 'exporter',
               },
+              {
+                text: 'wikipedia 数据集可视化',
+                link: 'wikipedia-datamap',
+              }
             ],
           },
         ],

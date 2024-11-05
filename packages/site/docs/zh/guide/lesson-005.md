@@ -365,7 +365,7 @@ float gridSize2 = gridSize1 / 5.0;
 
 ```glsl
 vec2 grid2 = abs(fract(coord / gridSize2 - 0.5) - 0.5) / fwidth(coord) * gridSize2;
-alpha = smoothstep(1.0, 0.0, length(grid2) - BASE_DOT_SIZE * u_ZoomScale / zoomStep);
+alpha = 1.0 - smoothstep(0.0, 1.0, length(grid2) - BASE_DOT_SIZE * u_ZoomScale / zoomStep);
 ```
 
 为了支持在直线、圆点网格间切换，我们增加一个新的 Uniform 用来区分不同的网格样式：
@@ -398,6 +398,10 @@ vec4 render_grid_checkerboard(vec2 coord) {
 ```
 
 可以回到页面开头的例子，在不同网格间进行切换。
+
+最后提供一个结合鼠标交互的有趣例子：[How to Code a Subtle Shader Background Effect with React Three Fiber]
+
+<video autoplay="" controls="" loop="" muted="" src="https://codrops-1f606.kxcdn.com/codrops/wp-content/uploads/2024/10/shaderbackground.mp4?x39556" playsinline=""></video>
 
 ## 调整亮度 {#adjusting-brightness}
 
@@ -486,6 +490,7 @@ float edgeFactor() {
 -   [The Best Darn Grid Shader (Yet)]
 -   [WebGL 绘制网格]
 -   [如何使用 WebGL 绘制平面网格线]
+-   [How to Code a Subtle Shader Background Effect with React Three Fiber]
 
 [thetamath]: http://thetamath.com/app/y=x%5E(3)-x
 [GridHelper - Three.js]: https://threejs.org/docs/#api/en/helpers/GridHelper
@@ -501,3 +506,4 @@ float edgeFactor() {
 [折线]: /zh/guide/lesson-012
 [Rasterization]: https://www.scratchapixel.com/lessons/3d-basic-rendering/rasterization-practical-implementation/rasterization-stage.html
 [Issue with Barycentric coordinates when using shared vertices]: https://stackoverflow.com/questions/24839857/wireframe-shader-issue-with-barycentric-coordinates-when-using-shared-vertices
+[How to Code a Subtle Shader Background Effect with React Three Fiber]: https://tympanus.net/codrops/2024/10/31/how-to-code-a-subtle-shader-background-effect-with-react-three-fiber/

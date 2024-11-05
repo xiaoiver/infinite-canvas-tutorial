@@ -1,3 +1,13 @@
+export enum Location {
+  POSITION,
+  ABCD,
+  TXTY,
+  FILL_COLOR,
+  STROKE_COLOR,
+  ZINDEX_STROKE_WIDTH,
+  OPACITY,
+}
+
 export const vert = /* wgsl */ `
 layout(std140) uniform SceneUniforms {
   mat3 u_ProjectionMatrix;
@@ -9,16 +19,14 @@ layout(std140) uniform SceneUniforms {
   float u_CheckboardStyle;
 };
 
-layout(location = 1) in vec2 a_Position;
+layout(location = ${Location.POSITION}) in vec2 a_Position;
 #ifdef USE_INSTANCES
-  layout(location = 14) in vec4 a_Abcd;
-  layout(location = 15) in vec2 a_Txty;
-  layout(location = 2) in vec4 a_FillColor;
-  layout(location = 3) in vec4 a_StrokeColor;
-  layout(location = 4) in vec4 a_ZIndexStrokeWidth;
-  layout(location = 5) in vec4 a_Opacity;
-  layout(location = 6) in vec4 a_InnerShadowColor;
-  layout(location = 7) in vec4 a_InnerShadow;
+  layout(location = ${Location.ABCD}) in vec4 a_Abcd;
+  layout(location = ${Location.TXTY}) in vec2 a_Txty;
+  layout(location = ${Location.FILL_COLOR}) in vec4 a_FillColor;
+  layout(location = ${Location.STROKE_COLOR}) in vec4 a_StrokeColor;
+  layout(location = ${Location.ZINDEX_STROKE_WIDTH}) in vec4 a_ZIndexStrokeWidth;
+  layout(location = ${Location.OPACITY}) in vec4 a_Opacity;
 #else
   layout(std140) uniform ShapeUniforms {
     mat3 u_ModelMatrix;
@@ -26,8 +34,6 @@ layout(location = 1) in vec2 a_Position;
     vec4 u_StrokeColor;
     vec4 u_ZIndexStrokeWidth;
     vec4 u_Opacity;
-    vec4 u_InnerShadowColor;
-    vec4 u_InnerShadow;
   };
 #endif
 
@@ -38,8 +44,6 @@ layout(location = 1) in vec2 a_Position;
   out vec4 v_Opacity;
   out float v_CornerRadius;
   out float v_StrokeAlignment;
-  out vec4 v_InnerShadowColor;
-  out vec4 v_InnerShadow;
 #else
 #endif
 
@@ -65,8 +69,6 @@ void main() {
     v_Opacity = a_Opacity;
     v_CornerRadius = a_ZIndexStrokeWidth.z;
     v_StrokeAlignment = a_ZIndexStrokeWidth.w;
-    v_InnerShadowColor = a_InnerShadowColor;
-    v_InnerShadow = a_InnerShadow;
   #else
     model = u_ModelMatrix;
     fillColor = u_FillColor;
@@ -102,8 +104,6 @@ layout(std140) uniform SceneUniforms {
     vec4 u_StrokeColor;
     vec4 u_ZIndexStrokeWidth;
     vec4 u_Opacity;
-    vec4 u_InnerShadowColor;
-    vec4 u_InnerShadow;
   };
 #endif
 
@@ -116,8 +116,6 @@ out vec4 outputColor;
   in vec4 v_Opacity;
   in float v_CornerRadius;
   in float v_StrokeAlignment;
-  in vec4 v_InnerShadowColor;
-  in vec4 v_InnerShadow;
 #else
 #endif
 
@@ -131,8 +129,6 @@ void main() {
   float fillOpacity;
   float strokeOpacity;
   float cornerRadius;
-  vec4 innerShadowColor;
-  vec4 innerShadow;
   float strokeAlignment;
   
   #ifdef USE_INSTANCES
@@ -144,8 +140,6 @@ void main() {
     strokeOpacity = v_Opacity.z;
     cornerRadius = v_CornerRadius;
     strokeAlignment = v_StrokeAlignment;
-    innerShadowColor = v_InnerShadowColor;
-    innerShadow = v_InnerShadow;
   #else
     fillColor = u_FillColor;
     strokeColor = u_StrokeColor;
@@ -155,8 +149,6 @@ void main() {
     strokeOpacity = u_Opacity.z;
     cornerRadius = u_ZIndexStrokeWidth.z;
     strokeAlignment = u_ZIndexStrokeWidth.w;
-    innerShadowColor = u_InnerShadowColor;
-    innerShadow = u_InnerShadow;
   #endif
 
   // based on the target alpha compositing mode.

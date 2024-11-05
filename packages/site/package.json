@@ -26,6 +26,7 @@
     "@shoelace-style/shoelace": "^2.0.0",
     "@loaders.gl/core": "^4.2.2",
     "@loaders.gl/images": "^4.2.2",
+    "@loaders.gl/arrow": "^4.2.2",
     "@infinite-canvas-tutorial/core": "workspace:*",
     "@infinite-canvas-tutorial/ui": "workspace:*",
     "@infinite-canvas-tutorial/lesson1": "workspace:*",

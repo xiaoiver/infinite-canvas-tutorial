@@ -10,6 +10,7 @@ outline: deep
 -   使用剔除减少 draw call
 -   使用合批减少 draw call
 -   使用空间索引提升拾取效率
+-   基于 GPU 的颜色拾取
 
 性能优化是一个复杂而长期的任务，我倾向于在项目早期就开始关注。之前我们学习了如何使用 SDF 绘制圆，现在让我们来做一下性能测试，绘制 1000 个圆 FPS 约为 35：
 
@@ -429,6 +430,18 @@ $icCanvas3 = call(() => {
 });
 ```
 
+```js eval code=false
+$total2 = call(() => {
+    return document.createElement('div');
+});
+```
+
+```js eval code=false
+$culled2 = call(() => {
+    return document.createElement('div');
+});
+```
+
 ```js eval code=false inspector=false
 call(() => {
     const { Canvas, Circle } = Lesson8;
@@ -465,9 +478,20 @@ call(() => {
 
     $icCanvas3.addEventListener('ic-frame', (e) => {
         stats.update();
+        const total = circles.length;
+        const culled = circles.filter((circle) => circle.culled).length;
+
+        $total2.innerHTML = `total: ${total}`;
+        $culled2.innerHTML = `culled: ${culled}`;
     });
 });
 ```
+
+### 选择性开启剔除 {#disable-culling}
+
+开启剔除会带来，在某些场景下反而会增大性能开销。
+
+[Wikipedia Datamap]
 
 ## 优化拾取性能 {#optimizing-picking-perf}
 
@@ -563,6 +587,10 @@ export class Picker implements Plugin {
 
 ![pick perf with rbush](/pick-rbush-perf.png)
 
+### GPU 拾取 {#color-based}
+
+在之前的[拾取]一节中，我们提到了基于数学方法之外的另一种拾取方案：基于 GPU 的颜色拾取。在 deck.gl 中称作 [Color Picking]。
+
 ## 扩展阅读 {#extended-reading}
 
 -   [Inside PixiJS: Batch Rendering System]
@@ -594,3 +622,6 @@ export class Picker implements Plugin {
 [The Depth Texture | WebGPU]: https://carmencincotti.com/2022-06-13/webgpu-the-depth-texture/
 [拾取插件]: /zh/guide/lesson-006#picking-plugin
 [search]: https://github.com/mourner/rbush?tab=readme-ov-file#search
+[拾取]: /zh/guide/lesson-006#picking
+[Color Picking]: https://deck.gl/docs/developer-guide/custom-layers/picking
+[Wikipedia Datamap]: /zh/example/wikipedia-datamap

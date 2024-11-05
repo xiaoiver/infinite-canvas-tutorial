@@ -10,6 +10,7 @@ In this lesson you will learn the following:
 -   Reducing draw calls with culling
 -   Reducing draw calls by combining batches
 -   Using spatial indexing to improve pickup efficiency
+-   GPU-based color picking
 
 Performance optimization is a complex and long-term task that I tend to focus on early in a project. Earlier we learned how to draw circles using SDF, now let's do a performance test and draw 1000 circles with an FPS of about 35:
 
@@ -79,7 +80,7 @@ These draw commands are called Draw calls, and the following graphic from [Draw 
 
 ![CPU GPU draw calls](https://miro.medium.com/v2/resize:fit:1400/format:webp/1*EEqn28cbO11QXkyqcoaO7g.jpeg)
 
-那么如何减少 Draw call 呢？通常有两种思路：
+So how to reduce Draw call? There are usually two ways of thinking:
 
 -   Viewport culling.
 -   Draw call batching.
@@ -429,6 +430,18 @@ $icCanvas3 = call(() => {
 });
 ```
 
+```js eval code=false
+$total2 = call(() => {
+    return document.createElement('div');
+});
+```
+
+```js eval code=false
+$culled2 = call(() => {
+    return document.createElement('div');
+});
+```
+
 ```js eval code=false inspector=false
 call(() => {
     const { Canvas, Circle } = Lesson8;
@@ -465,9 +478,20 @@ call(() => {
 
     $icCanvas3.addEventListener('ic-frame', (e) => {
         stats.update();
+        const total = circles.length;
+        const culled = circles.filter((circle) => circle.culled).length;
+
+        $total2.innerHTML = `total: ${total}`;
+        $culled2.innerHTML = `culled: ${culled}`;
     });
 });
 ```
+
+### 选择性开启剔除 {#disable-culling}
+
+开启剔除会带来，在某些场景下反而会增大性能开销。
+
+[Wikipedia Datamap]
 
 ## Optimizing picking performance {#optimizing-picking-perf}
 
@@ -563,6 +587,10 @@ Let's re-measure that, 20,000 Circle picking time becomes 0.088ms, an improvemen
 
 ![pick perf with rbush](/pick-rbush-perf.png)
 
+### GPU-based color picking {#color-picking}
+
+In the previous section [Picking], we mentioned an alternative to mathematical-based picking: GPU-based color picking. This is called [Color Picking] in deck.gl.
+
 ## Extended reading {#extended-reading}
 
 -   [Inside PixiJS: Batch Rendering System]
@@ -594,3 +622,6 @@ Let's re-measure that, 20,000 Circle picking time becomes 0.088ms, an improvemen
 [The Depth Texture | WebGPU]: https://carmencincotti.com/2022-06-13/webgpu-the-depth-texture/
 [picking plugin]: /guide/lesson-006#picking-plugin
 [search]: https://github.com/mourner/rbush?tab=readme-ov-file#search
+[Picking]: /guide/lesson-006#picking
+[Color Picking]: https://deck.gl/docs/developer-guide/custom-layers/picking
+[Wikipedia Datamap]: /example/wikipedia-datamap

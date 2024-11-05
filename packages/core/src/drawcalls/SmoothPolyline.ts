@@ -17,7 +17,15 @@ import {
   InputLayoutBufferDescriptor,
   StencilOp,
 } from '@antv/g-device-api';
-import { Circle, Ellipse, Polyline, Rect, Shape } from '../shapes';
+import {
+  Circle,
+  Ellipse,
+  Path,
+  Polyline,
+  Rect,
+  Shape,
+  hasValidStroke,
+} from '../shapes';
 import { Drawcall, ZINDEX_FACTOR } from './Drawcall';
 import { vert, frag, Location, JointType } from '../shaders/polyline';
 import { paddingMat3 } from '../utils';
@@ -40,7 +48,8 @@ export class SmoothPolyline extends Drawcall {
         shape instanceof Circle ||
         shape instanceof Ellipse) &&
         shape.strokeDasharray.length > 0 &&
-        shape.strokeDasharray.some((dash) => dash > 0))
+        shape.strokeDasharray.some((dash) => dash > 0)) ||
+      (shape instanceof Path && hasValidStroke(shape.stroke, shape.strokeWidth))
     );
   }
 
@@ -61,14 +70,14 @@ export class SmoothPolyline extends Drawcall {
   #bindings: Bindings;
 
   get instanceCount() {
-    if (this.shapes[0] instanceof Polyline) {
-      return this.shapes[0].points.length;
-    } else if (this.shapes[0] instanceof Rect) {
+    const instance = this.shapes[0];
+    if (instance instanceof Polyline) {
+      return instance.points.length;
+    } else if (instance instanceof Path) {
+      return instance.points.flat(1).length;
+    } else if (instance instanceof Rect) {
       return 6;
-    } else if (
-      this.shapes[0] instanceof Circle ||
-      this.shapes[0] instanceof Ellipse
-    ) {
+    } else if (instance instanceof Circle || instance instanceof Ellipse) {
       return circleEllipsePointsNum + 1;
     }
   }
@@ -509,6 +518,8 @@ export function updateBuffer(
       prev.push(cur[0], cur[1]);
       return prev;
     }, [] as number[]);
+  } else if (object instanceof Path) {
+    points = object.points.flat(2);
   } else if (object instanceof Rect) {
     const { x, y, width, height } = object;
     points = [
