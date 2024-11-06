@@ -46,7 +46,13 @@ export class AABB {
   // }
 
   addBounds(bounds: AABB, matrix?: Matrix) {
-    this.addFrame(bounds.minX, bounds.minY, bounds.maxX, bounds.maxY, matrix);
+    this.addFrame(
+      bounds.minX,
+      bounds.minY,
+      bounds.maxX,
+      bounds.maxY,
+      matrix || this.matrix,
+    );
   }
 
   addFrame(

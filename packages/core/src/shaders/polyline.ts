@@ -102,8 +102,6 @@ void main() {
   float strokeAlignment = u_ZIndexStrokeWidth.w;
   float sizeAttenuation = u_Opacity.w;
 
-  mat3 viewModelMatrix = u_ViewMatrix * model;
-
   vec2 pointA = (model * vec3(a_PointA, 1.0)).xy;
   vec2 pointB = (model * vec3(a_PointB, 1.0)).xy;
 
@@ -360,7 +358,6 @@ void main() {
 
   gl_Position = vec4((u_ProjectionMatrix 
     * u_ViewMatrix
-    * model 
     * vec3(pos, 1)).xy, zIndex, 1);
 }
 `;

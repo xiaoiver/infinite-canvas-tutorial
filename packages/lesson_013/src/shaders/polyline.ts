@@ -361,7 +361,6 @@ void main() {
 
   gl_Position = vec4((u_ProjectionMatrix 
     * u_ViewMatrix
-    * model 
     * vec3(pos, 1)).xy, zIndex, 1);
 }
 `;

@@ -272,9 +272,11 @@ call(() => {
 });
 ```
 
+我发现很多 2D 渲染引擎例如 [vello] 都会使用 [Ghostscript Tiger.svg] 来测试对于 Path 的渲染。
+
 ### holes {#holes}
 
-值得注意的是
+如何在
 
 ```js eval code=false
 $icCanvas2 = call(() => {
@@ -354,3 +356,5 @@ call(() => {
 [ShapePath]: https://github.com/mrdoob/three.js/blob/dev/src/extras/core/ShapePath.js
 [CanvasRenderingContext2D]: https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D
 [Bézier_curve]: https://en.wikipedia.org/wiki/B%C3%A9zier_curve
+[Ghostscript Tiger.svg]: https://en.m.wikipedia.org/wiki/File:Ghostscript_Tiger.svg
+[vello]: https://github.com/linebender/vello

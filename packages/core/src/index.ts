@@ -8,4 +8,5 @@ export {
   deserializeNode,
   toSVGElement,
   parsePath,
+  fromSVGElement,
 } from './utils';

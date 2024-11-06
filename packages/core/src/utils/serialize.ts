@@ -197,12 +197,14 @@ export async function deserializeNode(data: SerializedNode) {
     shape.strokeDasharray = strokeDasharray.split(' ').map(Number);
   }
 
-  const { position, scale, skew, rotation, pivot } = transform;
-  shape.transform.position.set(position.x, position.y);
-  shape.transform.scale.set(scale.x, scale.y);
-  shape.transform.skew.set(skew.x, skew.y);
-  shape.transform.rotation = rotation;
-  shape.transform.pivot.set(pivot.x, pivot.y);
+  if (transform) {
+    const { position, scale, skew, rotation, pivot } = transform;
+    shape.transform.position.set(position.x, position.y);
+    shape.transform.scale.set(scale.x, scale.y);
+    shape.transform.skew.set(skew.x, skew.y);
+    shape.transform.rotation = rotation;
+    shape.transform.pivot.set(pivot.x, pivot.y);
+  }
 
   if (children && children.length > 0) {
     await Promise.all(
