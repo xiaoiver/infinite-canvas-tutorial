@@ -15,7 +15,7 @@ head:
 在上一节课中我们介绍了折线的绘制方法，Path 的描边部分理论上可以通过采样转换成折线的绘制，[p5js - bezierDetail()] 就是这么做的，如果要实现平滑的效果就需要增加采样点。但填充部分仍需要实现。在本节课中我们将介绍：
 
 -   尝试使用 SDF 绘制
--   通过三角化绘制填充部分
+-   通过三角化后的网格绘制填充部分，使用折线绘制描边部分
 -   实现一些手绘风格图形
 
 ```js eval code=false
@@ -26,7 +26,8 @@ $icCanvas = call(() => {
 
 ```js eval code=false inspector=false
 call(() => {
-    const { Canvas, Path } = Lesson13;
+    const { Canvas, Path, deserializeNode, fromSVGElement, TesselationMethod } =
+        Lesson13;
 
     const stats = new Stats();
     stats.showPanel(0);
@@ -40,14 +41,34 @@ call(() => {
 
     $icCanvas.addEventListener('ic-ready', (e) => {
         const canvas = e.detail;
-        // const camera = new Path({
-        //     points: data,
-        //     stroke: 'black',
-        //     strokeWidth: 2,
-        //     fill: 'none',
-        //     cursor: 'pointer',
-        // });
-        // canvas.appendChild(camera);
+
+        fetch(
+            '/Ghostscript_Tiger.svg',
+            // '/photo-camera.svg',
+        ).then(async (res) => {
+            const svg = await res.text();
+            const $container = document.createElement('div');
+            $container.innerHTML = svg;
+            const $svg = $container.children[0];
+            for (const child of $svg.children) {
+                const group = await deserializeNode(fromSVGElement(child));
+                group.children.forEach((path) => {
+                    path.cullable = false;
+                });
+                group.position.x = 100;
+                group.position.y = 75;
+                canvas.appendChild(group);
+
+                const group2 = await deserializeNode(fromSVGElement(child));
+                group2.children.forEach((path) => {
+                    path.tessellationMethod = TesselationMethod.LIBTESS;
+                    path.cullable = false;
+                });
+                group2.position.x = 300;
+                group2.position.y = 75;
+                canvas.appendChild(group2);
+            }
+        });
     });
 
     $icCanvas.addEventListener('ic-frame', (e) => {
@@ -131,7 +152,7 @@ Pixi.js 使用了 [earcut] 进行多边形的三角化。其他三角化库还�
 -   将路径定义规范到绝对命令
 -   在曲线上采样
 -   使用 Polyline 绘制描边
--   使用 earcut 三角化，绘制填充
+-   使用 earcut 和 libtess 三角化，绘制填充
 
 ### 转换成绝对路径 {#convert-to-absolute-commands}
 
@@ -182,7 +203,7 @@ export class ShapePath {
 export class Path extends CurvePath {}
 ```
 
-### 在曲线上采样 {#sample-along-path}
+### 在曲线上采样 {#sample-on-curve}
 
 针对直线、贝塞尔曲线进行不同精度的采样。这也很好理解：对于贝塞尔曲线，只有增加更多的采样点才能让折线看起来更平滑；对于直线没必要额外增加任何采样点。
 
@@ -234,7 +255,11 @@ points = call(() => {
 
 ### 使用 Polyline 绘制描边 {#use-polyline-to-draw-stroke}
 
-现在我们已经有了所有 subPath 上的采样点，可以分别绘制描边和填充，前者可以使用上一节课实现的 Polyline，每一个 subPath 对应一个 drawcall。
+现在我们已经有了所有 subPath 上的采样点，可以分别绘制填充和描边。前者我们马上就会介绍到，而后者可以直接使用上一节课实现的 Polyline，[包含多段的折线]刚好可以支持一系列的 subPath。
+
+```ts
+SHAPE_DRAWCALL_CTORS.set(Path, [Mesh, SmoothPolyline]);
+```
 
 ### 使用 earcut 三角化 {#earcut}
 
@@ -265,7 +290,7 @@ const path = new Path({
 ```
 
 ```js eval code=false
-$icCanvas = call(() => {
+$icCanvas2 = call(() => {
     return document.createElement('ic-canvas-lesson13');
 });
 ```
@@ -281,10 +306,10 @@ call(() => {
     $stats.style.left = '0px';
     $stats.style.top = '0px';
 
-    $icCanvas.parentElement.style.position = 'relative';
-    $icCanvas.parentElement.appendChild($stats);
+    $icCanvas2.parentElement.style.position = 'relative';
+    $icCanvas2.parentElement.appendChild($stats);
 
-    $icCanvas.addEventListener('ic-ready', (e) => {
+    $icCanvas2.addEventListener('ic-ready', (e) => {
         const canvas = e.detail;
         canvas.camera.zoom = 2;
 
@@ -309,56 +334,31 @@ call(() => {
         canvas.appendChild(circle);
     });
 
-    $icCanvas.addEventListener('ic-frame', (e) => {
-        stats.update();
-    });
-});
-```
-
-我发现很多 2D 渲染引擎例如 [vello] 都会使用 [Ghostscript Tiger.svg] 来测试对于 Path 的渲染。
-
-### 其他三角化方案 {#other-tesselation-techniques}
-
-[Polygon Tesselation] 中对比了 earcut 和 [libtess.js]
-
-<!-- ```js eval code=false
-$icCanvas2 = call(() => {
-    return document.createElement('ic-canvas-lesson13');
-});
-```
-
-```js eval code=false inspector=false
-call(() => {
-    const { Canvas, Path, Circle } = Lesson13;
-
-    const stats = new Stats();
-    stats.showPanel(0);
-    const $stats = stats.dom;
-    $stats.style.position = 'absolute';
-    $stats.style.left = '0px';
-    $stats.style.top = '0px';
-
-    $icCanvas2.parentElement.style.position = 'relative';
-    $icCanvas2.parentElement.appendChild($stats);
-
-    $icCanvas2.addEventListener('ic-ready', (e) => {
-        const canvas = e.detail;
-
-        const ring = new Path({
-            d: 'M 50 10 A 40 40 0 1 0 50 90 A 40 40 0 1 0 50 10 Z M 50 30 A 20 20 0 1 1 50 70 A 20 20 0 1 1 50 30 Z',
-            fill: 'black',
-            opacity: 0.5,
-        });
-        ring.position.x = 100;
-        ring.position.y = 100;
-        canvas.appendChild(ring);
-    });
-
     $icCanvas2.addEventListener('ic-frame', (e) => {
         stats.update();
     });
 });
-``` -->
+```
+
+我发现很多 2D 渲染引擎例如 [vello] 都会使用 [Ghostscript Tiger.svg] 来测试对于 Path 的渲染效果，在本文开头的示例中就可以看到。但如果和原始 SVG 仔细对比（还记得我们实现的导出功能吗？它就在画布右上角），会发现缺失了一些部分。
+
+### 其他三角化方案 {#other-tesselation-techniques}
+
+[Polygon Tesselation] 中对比了 earcut 和 [libtess.js] 的效果。与 earcut 返回索引数组不同，libtess.js 返回的是顶点数组，具体使用方式可以参考代码仓库的示例。这意味着我们需要手动生成索引数组，当然这非常简单：由于不需要考虑顶点的复用，使用一个从 `0` 开始的递增数组即可。
+
+```ts
+export function triangulate(contours: [number, number][][]) {
+    tessy.gluTessNormal(0, 0, 1);
+
+    const triangleVerts = [];
+    tessy.gluTessBeginPolygon(triangleVerts);
+    // Omit...
+    return triangleVerts;
+}
+
+triangulate(points); // [100, 0, 0, 100, 0, 0, 0, 100, 100, 0, 100, 100]
+// indices: [0, 1, 2, 3, 4, 5]
+```
 
 ## 手绘风格 {#sketchy}
 
@@ -402,3 +402,4 @@ call(() => {
 [Ghostscript Tiger.svg]: https://en.m.wikipedia.org/wiki/File:Ghostscript_Tiger.svg
 [vello]: https://github.com/linebender/vello
 [Polygon Tesselation]: https://andrewmarsh.com/software/tesselation-web/
+[包含多段的折线]: /zh/guide/lesson-012#polyline-with-multiple-segments

@@ -126,6 +126,10 @@ export const en = defineConfig({
                 text: 'Export canvas content as image',
                 link: 'exporter',
               },
+              {
+                text: 'Wikipedia Datamap',
+                link: 'wikipedia-datamap',
+              }
             ],
           },
         ],

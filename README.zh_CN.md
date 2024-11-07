@@ -151,8 +151,10 @@ pnpm run dev
 ## 课程 13 - 绘制 Path 与手绘风格 [🔗](https://infinitecanvas.cc/zh/guide/lesson-013)
 
 -   尝试使用 SDF 绘制
--   通过三角化绘制填充部分
+-   通过三角化绘制填充部分，使用折线绘制描边部分
 -   实现一些手绘风格图形
+
+<img src="./screenshots/lesson13.png" width="300" alt="Lesson 13 - path">
 
 [infinitecanvas]: https://infinitecanvas.tools/
 [Figma]: https://madebyevan.com/figma/building-a-professional-design-tool-on-the-web/

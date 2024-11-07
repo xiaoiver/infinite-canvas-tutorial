@@ -18,10 +18,10 @@ import {
   Texture,
   StencilOp,
 } from '@antv/g-device-api';
-import { Path } from '../shapes';
+import { Path, TesselationMethod } from '../shapes';
 import { Drawcall, ZINDEX_FACTOR } from './Drawcall';
 import { vert, frag, Location } from '../shaders/mesh';
-import { isString, paddingMat3 } from '../utils';
+import { isString, paddingMat3, triangulate } from '../utils';
 import earcut, { flatten } from 'earcut';
 
 const strokeAlignmentMap = {
@@ -77,28 +77,34 @@ export class Mesh extends Drawcall {
       return this.shapes[0].fill === shape.fill;
     }
 
-    // if (SDFPath.useDash(shape) !== SDFPath.useDash(this.shapes[0])) {
-    //   return false;
-    // }
-
     return true;
   }
 
   createGeometry(): void {
-    const points = (this.shapes[0] as Path).points.flat(2);
-    const { vertices, holes, dimensions } = flatten(
-      (this.shapes[0] as Path).points,
-    );
-    const indices = earcut(vertices, holes, dimensions);
-    // const err = deviation(vertices, holes, dimensions, indices);
-    // console.log(triangulate((this.shapes[0] as Path).points));
+    // Don't support instanced rendering for now.
+    this.instanced = false;
+    const path = this.shapes[0] as Path;
+    const rawPoints = path.points;
 
-    this.points = points;
-    this.indices = indices;
+    const points = rawPoints.flat(2);
+
+    if (path.tessellationMethod === TesselationMethod.EARCUT) {
+      const { vertices, holes, dimensions } = flatten(rawPoints);
+      const indices = earcut(vertices, holes, dimensions);
+      this.indices = indices;
+      this.points = points;
+      // const err = deviation(vertices, holes, dimensions, indices);
+    } else if (path.tessellationMethod === TesselationMethod.LIBTESS) {
+      const newPoints = triangulate(rawPoints);
+      this.indices = new Array(newPoints.length / 2)
+        .fill(undefined)
+        .map((_, i) => i);
+      this.points = newPoints;
+    }
 
     if (!this.#pointsBuffer) {
       this.#pointsBuffer = this.device.createBuffer({
-        viewOrSize: new Float32Array(points),
+        viewOrSize: new Float32Array(this.points),
         usage: BufferUsage.VERTEX,
         hint: BufferFrequencyHint.STATIC,
       });
@@ -106,39 +112,15 @@ export class Mesh extends Drawcall {
 
     if (!this.#indexBuffer) {
       this.#indexBuffer = this.device.createBuffer({
-        viewOrSize: new Uint32Array(indices),
+        viewOrSize: new Uint32Array(this.indices),
         usage: BufferUsage.INDEX,
         hint: BufferFrequencyHint.STATIC,
-      });
-    }
-
-    if (this.instanced) {
-      if (this.#instancedBuffer) {
-        this.#instancedBuffer.destroy();
-      }
-
-      this.#instancedBuffer = this.device.createBuffer({
-        viewOrSize: Float32Array.BYTES_PER_ELEMENT * 28 * this.shapes.length,
-        usage: BufferUsage.VERTEX,
-        hint: BufferFrequencyHint.DYNAMIC,
-      });
-
-      if (this.#instancedMatrixBuffer) {
-        this.#instancedMatrixBuffer.destroy();
-      }
-      this.#instancedMatrixBuffer = this.device.createBuffer({
-        viewOrSize: Float32Array.BYTES_PER_ELEMENT * 6 * this.shapes.length,
-        usage: BufferUsage.VERTEX,
-        hint: BufferFrequencyHint.DYNAMIC,
       });
     }
   }
 
   createMaterial(uniformBuffer: Buffer): void {
-    let defines = '';
-    if (this.instanced) {
-      defines += '#define USE_INSTANCES\n';
-    }
+    const defines = '';
 
     if (this.#program) {
       this.#program.destroy();
@@ -175,69 +157,17 @@ export class Mesh extends Drawcall {
       },
     ];
 
-    if (this.instanced) {
-      vertexBufferDescriptors.push(
-        {
-          arrayStride: 4 * 16,
-          stepMode: VertexStepMode.INSTANCE,
-          attributes: [
-            {
-              shaderLocation: Location.FILL_COLOR, // a_FillColor
-              offset: 4 * 0,
-              format: Format.F32_RGBA,
-            },
-            {
-              shaderLocation: Location.STROKE_COLOR, // a_StrokeColor
-              offset: 4 * 4,
-              format: Format.F32_RGBA,
-            },
-            {
-              shaderLocation: Location.ZINDEX_STROKE_WIDTH, // a_ZIndexStrokeWidth
-              offset: 4 * 8,
-              format: Format.F32_RGBA,
-            },
-            {
-              shaderLocation: Location.OPACITY, // a_Opacity
-              offset: 4 * 12,
-              format: Format.F32_RGBA,
-            },
-          ],
-        },
-        {
-          arrayStride: 4 * 6,
-          stepMode: VertexStepMode.INSTANCE,
-          attributes: [
-            {
-              shaderLocation: Location.ABCD,
-              offset: 0,
-              format: Format.F32_RGBA,
-            },
-            {
-              shaderLocation: Location.TXTY,
-              offset: 4 * 4,
-              format: Format.F32_RG,
-            },
-          ],
-        },
-      );
-      this.#inputLayout = this.renderCache.createInputLayout({
-        vertexBufferDescriptors,
-        indexBufferFormat: Format.U32_R,
-        program: this.#program,
+    this.#inputLayout = this.renderCache.createInputLayout({
+      vertexBufferDescriptors,
+      indexBufferFormat: Format.U32_R,
+      program: this.#program,
+    });
+    if (!this.#uniformBuffer) {
+      this.#uniformBuffer = this.device.createBuffer({
+        viewOrSize: Float32Array.BYTES_PER_ELEMENT * (16 + 4 + 4 + 4 + 4 + 4),
+        usage: BufferUsage.UNIFORM,
+        hint: BufferFrequencyHint.DYNAMIC,
       });
-    } else {
-      this.#inputLayout = this.renderCache.createInputLayout({
-        vertexBufferDescriptors,
-        indexBufferFormat: Format.U32_R,
-        program: this.#program,
-      });
-      if (!this.#uniformBuffer) {
-        this.#uniformBuffer = this.device.createBuffer({
-          viewOrSize: Float32Array.BYTES_PER_ELEMENT * (16 + 4 + 4 + 4 + 4 + 4),
-          usage: BufferUsage.UNIFORM,
-          hint: BufferFrequencyHint.DYNAMIC,
-        });
-      }
     }
 
     this.#pipeline = this.renderCache.createRenderPipeline({
@@ -287,13 +217,11 @@ export class Mesh extends Drawcall {
         {
           buffer: uniformBuffer,
         },
+        {
+          buffer: this.#uniformBuffer,
+        },
       ],
     };
-    if (!this.instanced) {
-      bindings.uniformBufferBindings!.push({
-        buffer: this.#uniformBuffer,
-      });
-    }
 
     this.#bindings = this.renderCache.createBindings(bindings);
   }
@@ -303,53 +231,23 @@ export class Mesh extends Drawcall {
       this.shapes.some((shape) => shape.renderDirtyFlag) ||
       this.geometryDirty
     ) {
-      if (this.instanced) {
-        this.#instancedMatrixBuffer.setSubData(
-          0,
-          new Uint8Array(
-            new Float32Array(
-              this.shapes
-                .map((shape) => [
-                  shape.worldTransform.a,
-                  shape.worldTransform.b,
-                  shape.worldTransform.c,
-                  shape.worldTransform.d,
-                  shape.worldTransform.tx,
-                  shape.worldTransform.ty,
-                ])
-                .flat(),
-            ).buffer,
-          ),
-        );
-
-        const instancedData: number[] = [];
-        this.shapes.forEach((shape) => {
-          const [buffer] = this.generateBuffer(shape as Path);
-          instancedData.push(...buffer);
-        });
-        this.#instancedBuffer.setSubData(
-          0,
-          new Uint8Array(new Float32Array(instancedData).buffer),
-        );
-      } else {
-        const { worldTransform } = this.shapes[0];
-        const [buffer, legacyObject] = this.generateBuffer(
-          this.shapes[0] as Path,
-        );
-        const u_ModelMatrix = worldTransform.toArray(true);
-        this.#uniformBuffer.setSubData(
-          0,
-          new Uint8Array(
-            new Float32Array([...paddingMat3(u_ModelMatrix), ...buffer]).buffer,
-          ),
-        );
-        const uniformLegacyObject: Record<string, unknown> = {
-          u_ModelMatrix,
-          ...legacyObject,
-        };
-        uniformLegacyObject.u_FillImage = this.#texture;
-        this.#program.setUniformsLegacy(uniformLegacyObject);
-      }
+      const { worldTransform } = this.shapes[0];
+      const [buffer, legacyObject] = this.generateBuffer(
+        this.shapes[0] as Path,
+      );
+      const u_ModelMatrix = worldTransform.toArray(true);
+      this.#uniformBuffer.setSubData(
+        0,
+        new Uint8Array(
+          new Float32Array([...paddingMat3(u_ModelMatrix), ...buffer]).buffer,
+        ),
+      );
+      const uniformLegacyObject: Record<string, unknown> = {
+        u_ModelMatrix,
+        ...legacyObject,
+      };
+      uniformLegacyObject.u_FillImage = this.#texture;
+      this.#program.setUniformsLegacy(uniformLegacyObject);
     }
 
     const buffers = [
@@ -357,14 +255,6 @@ export class Mesh extends Drawcall {
         buffer: this.#pointsBuffer,
       },
     ];
-    if (this.instanced) {
-      buffers.push(
-        {
-          buffer: this.#instancedBuffer,
-        },
-        { buffer: this.#instancedMatrixBuffer },
-      );
-    }
 
     this.#program.setUniformsLegacy(uniformLegacyObject);
     renderPass.setPipeline(this.#pipeline);

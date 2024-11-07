@@ -146,6 +146,14 @@ pnpm run dev
 
 <img src="./screenshots/lesson12.png" width="300" alt="Lesson 12 - polyline">
 
+## Lesson 13 - Draw Path and sketchy [🔗](https://infinitecanvas.cc/guide/lesson-013)
+
+-   Experimenting with SDF
+-   Trying to draw fills using some triangulating methods and strokes using polylines.
+-   Draw some hand-drawn shapes
+
+<img src="./screenshots/lesson13.png" width="300" alt="Lesson 13 - path">
+
 [infinitecanvas]: https://infinitecanvas.tools/
 [Figma]: https://madebyevan.com/figma/building-a-professional-design-tool-on-the-web/
 [Modyfi]: https://digest.browsertech.com/archive/browsertech-digest-how-modyfi-is-building-with/

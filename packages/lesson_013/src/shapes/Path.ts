@@ -2,6 +2,11 @@ import { Shape, ShapeAttributes } from './Shape';
 import { AABB } from './AABB';
 import { parsePath } from '../utils';
 
+export enum TesselationMethod {
+  EARCUT,
+  LIBTESS,
+}
+
 export interface PathAttributes extends ShapeAttributes {
   /**
    * Defines a path to be drawn.
@@ -9,11 +14,17 @@ export interface PathAttributes extends ShapeAttributes {
    * @see https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/d
    */
   d: string;
+
+  /**
+   * The tesselation method to use for rendering the path.
+   */
+  tessellationMethod?: TesselationMethod;
 }
 
 export class Path extends Shape implements PathAttributes {
   #d: string;
   points: [number, number][][] = [];
+  tessellationMethod: TesselationMethod;
 
   static getGeometryBounds(
     attributes: Partial<
@@ -43,6 +54,7 @@ export class Path extends Shape implements PathAttributes {
     const { d } = attributes;
 
     this.d = d;
+    this.tessellationMethod = TesselationMethod.EARCUT;
   }
 
   get d() {

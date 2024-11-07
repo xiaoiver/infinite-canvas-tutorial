@@ -1,4 +1,15 @@
-import { Canvas, Path, fromSVGElement, deserializeNode } from '../src';
+import {
+  Canvas,
+  ImageExporter,
+  Rect,
+  Polyline,
+  Path,
+  Circle,
+  Ellipse,
+  parsePath,
+  fromSVGElement,
+  deserializeNode,
+} from '../src';
 
 const $canvas = document.getElementById('canvas') as HTMLCanvasElement;
 const resize = (width: number, height: number) => {
@@ -17,6 +28,57 @@ const canvas = await new Canvas({
   // renderer: 'webgpu',
   // shaderCompilerPath: '/glsl_wgsl_compiler_bg.wasm',
 }).initialized;
+
+// const polyline1 = new Polyline({
+//   points: [
+//     [50, 50],
+//     [50, 150],
+//     [100, 150],
+//     [100, 50],
+//   ],
+//   stroke: 'black',
+//   strokeWidth: 10,
+//   strokeAlignment: 'outer',
+//   fill: 'none',
+// });
+// canvas.appendChild(polyline1);
+// const polyline4 = new Polyline({
+//   points: [
+//     [50, 50],
+//     [50, 150],
+//     [100, 150],
+//     [100, 50],
+//   ],
+//   stroke: 'red',
+//   strokeWidth: 2,
+//   fill: 'none',
+// });
+// canvas.appendChild(polyline4);
+
+// const polyline2 = new Polyline({
+//   points: [
+//     [120, 50],
+//     [120, 150],
+//     [170, 150],
+//     [170, 50],
+//   ],
+//   stroke: 'black',
+//   strokeWidth: 20,
+//   fill: 'none',
+// });
+// canvas.appendChild(polyline2);
+// const polyline5 = new Polyline({
+//   points: [
+//     [120, 50],
+//     [120, 150],
+//     [170, 150],
+//     [170, 50],
+//   ],
+//   stroke: 'red',
+//   strokeWidth: 2,
+//   fill: 'none',
+// });
+// canvas.appendChild(polyline5);
 
 fetch(
   '/Ghostscript_Tiger.svg',
@@ -40,14 +102,14 @@ fetch(
 //   // d: 'M 10 10 L 90 10 L 90 90 L 10 90 Z M 0 0 L 0 100 L 100 100 L 100 0 Z',
 //   // d: 'M 10 10 L 90 10 L 90 90 L 10 90 Z M 0 0 L 100 0 L 100 100 L 0 100 Z',
 //   // d: 'M 0 0 L 100 0 L 100 100 L 0 100 Z',
-//   // d: 'M255.4,130.8c-53.8,0-97.6,43.8-97.6,97.6s43.8,97.6,97.6,97.6c53.8,0,97.6-43.8,97.6-97.6    C352.9,174.6,309.1,130.8,255.4,130.8z M255.4,303.7c-41.5,0-75.3-33.8-75.3-75.3s33.8-75.3,75.3-75.3s75.3,33.8,75.3,75.3    C330.7,269.9,296.9,303.7,255.4,303.7z',
+//   d: 'M255.4,130.8c-53.8,0-97.6,43.8-97.6,97.6s43.8,97.6,97.6,97.6c53.8,0,97.6-43.8,97.6-97.6    C352.9,174.6,309.1,130.8,255.4,130.8z M255.4,303.7c-41.5,0-75.3-33.8-75.3-75.3s33.8-75.3,75.3-75.3s75.3,33.8,75.3,75.3    C330.7,269.9,296.9,303.7,255.4,303.7z',
 //   fill: 'black',
 //   // opacity: 0.5,
-//   strokeWidth: 2,
+//   // strokeWidth: 10,
 //   stroke: 'red',
 // });
-// // ring.position.x = 200;
-// // ring.position.y = 200;
+// ring.position.x = 200;
+// ring.position.y = 200;
 // canvas.appendChild(ring);
 
 canvas.render();
