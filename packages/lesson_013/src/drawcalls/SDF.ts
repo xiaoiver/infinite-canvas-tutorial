@@ -24,7 +24,7 @@ import {
 } from '@antv/g-device-api';
 import { Circle, Ellipse, Rect, Shape } from '../shapes';
 import { Drawcall, ZINDEX_FACTOR } from './Drawcall';
-import { vert, frag } from '../shaders/sdf';
+import { vert, frag, Location } from '../shaders/sdf';
 import {
   // isBrowser,
   // isImageBitmapOrCanvases,
@@ -39,6 +39,8 @@ const strokeAlignmentMap = {
 } as const;
 
 export class SDF extends Drawcall {
+  // protected maxInstances: number = 1000;
+
   #program: Program;
   #fragUnitBuffer: Buffer;
   #instancedBuffer: Buffer;
@@ -62,6 +64,10 @@ export class SDF extends Drawcall {
     return !isString(fill);
     // && (isBrowser ? isImageBitmapOrCanvases(fill) : true)
   }
+
+  // get useWireframe() {
+  //   return this.shapes[0].wireframe;
+  // }
 
   validate(shape: Shape) {
     const result = super.validate(shape);
@@ -87,6 +93,10 @@ export class SDF extends Drawcall {
     if (SDF.useDash(shape) !== SDF.useDash(this.shapes[0])) {
       return false;
     }
+
+    // if (this.shapes[0].wireframe !== shape.wireframe) {
+    //   return false;
+    // }
 
     return true;
   }
@@ -135,6 +145,9 @@ export class SDF extends Drawcall {
     if (this.useFillImage) {
       defines += '#define USE_FILLIMAGE\n';
     }
+    // if (this.useWireframe) {
+    //   defines += '#define USE_WIREFRAME\n';
+    // }
 
     if (this.#program) {
       this.#program.destroy();
@@ -163,7 +176,7 @@ export class SDF extends Drawcall {
         stepMode: VertexStepMode.VERTEX,
         attributes: [
           {
-            shaderLocation: 0, // a_FragCoord
+            shaderLocation: Location.FRAG_COORD, // a_FragCoord
             offset: 0,
             format: Format.F32_RG,
           },
@@ -178,37 +191,37 @@ export class SDF extends Drawcall {
           stepMode: VertexStepMode.INSTANCE,
           attributes: [
             {
-              shaderLocation: 1, // a_PositionSize
+              shaderLocation: Location.POSITION_SIZE, // a_PositionSize
               offset: 0,
               format: Format.F32_RGBA,
             },
             {
-              shaderLocation: 2, // a_FillColor
+              shaderLocation: Location.FILL_COLOR, // a_FillColor
               offset: 4 * 4,
               format: Format.F32_RGBA,
             },
             {
-              shaderLocation: 3, // a_StrokeColor
+              shaderLocation: Location.STROKE_COLOR, // a_StrokeColor
               offset: 4 * 8,
               format: Format.F32_RGBA,
             },
             {
-              shaderLocation: 4, // a_ZIndexStrokeWidth
+              shaderLocation: Location.ZINDEX_STROKE_WIDTH, // a_ZIndexStrokeWidth
               offset: 4 * 12,
               format: Format.F32_RGBA,
             },
             {
-              shaderLocation: 5, // a_Opacity
+              shaderLocation: Location.OPACITY, // a_Opacity
               offset: 4 * 16,
               format: Format.F32_RGBA,
             },
             {
-              shaderLocation: 6, // a_InnerShadowColor
+              shaderLocation: Location.INNER_SHADOW_COLOR, // a_InnerShadowColor
               offset: 4 * 20,
               format: Format.F32_RGBA,
             },
             {
-              shaderLocation: 7, // a_InnerShadow
+              shaderLocation: Location.INNER_SHADOW, // a_InnerShadow
               offset: 4 * 24,
               format: Format.F32_RGBA,
             },
@@ -219,12 +232,12 @@ export class SDF extends Drawcall {
           stepMode: VertexStepMode.INSTANCE,
           attributes: [
             {
-              shaderLocation: 14,
+              shaderLocation: Location.ABCD,
               offset: 0,
               format: Format.F32_RGBA,
             },
             {
-              shaderLocation: 15,
+              shaderLocation: Location.TXTY,
               offset: 4 * 4,
               format: Format.F32_RG,
             },
@@ -500,4 +513,83 @@ export class SDF extends Drawcall {
       },
     ];
   }
+
+  // private generateWireframe() {
+  //   // need generate barycentric coordinates
+  //   const { indices } = geometry;
+  //   const indiceNum = geometry.indices.length;
+  //   const originalVertexBuffers = geometry.vertices.map((buffer) => {
+  //     // @ts-ignore
+  //     return buffer.slice();
+  //   }) as ArrayBufferView[];
+  //   for (
+  //     let i = VertexAttributeBufferIndex.PICKING_COLOR;
+  //     i < geometry.vertexBuffers.length;
+  //     i++
+  //   ) {
+  //     const { arrayStride } =
+  //       geometry.inputLayoutDescriptor.vertexBufferDescriptors[i];
+  //     geometry.vertices[i] = new Float32Array((arrayStride / 4) * indiceNum);
+  //   }
+  //   // reallocate attribute data
+  //   let cursor = 0;
+  //   const uniqueIndices = new Uint32Array(indiceNum);
+  //   for (let i = 0; i < indiceNum; i++) {
+  //     const ii = indices[i];
+  //     for (let j = 1; j < geometry.vertices.length; j++) {
+  //       const { arrayStride } =
+  //         geometry.inputLayoutDescriptor.vertexBufferDescriptors[j];
+  //       const size = arrayStride / 4;
+  //       for (let k = 0; k < size; k++) {
+  //         geometry.vertices[j][cursor * size + k] =
+  //           originalVertexBuffers[j][ii * size + k];
+  //       }
+  //     }
+  //     uniqueIndices[i] = cursor;
+  //     cursor++;
+  //   }
+  //   for (
+  //     let i = VertexAttributeBufferIndex.PICKING_COLOR + 1;
+  //     i < geometry.vertexBuffers.length;
+  //     i++
+  //   ) {
+  //     // if (i === 3) {
+  //     //   continue;
+  //     // }
+  //     const { stepMode, arrayStride } =
+  //       geometry.inputLayoutDescriptor.vertexBufferDescriptors[i];
+  //     const descriptor =
+  //       geometry.inputLayoutDescriptor.vertexBufferDescriptors[i].attributes[0];
+  //     if (descriptor) {
+  //       const {
+  //         shaderLocation: location,
+  //         offset: bufferByteOffset,
+  //         format,
+  //         divisor,
+  //       } = descriptor;
+  //       geometry.setVertexBuffer({
+  //         bufferIndex: i,
+  //         byteStride: arrayStride,
+  //         stepMode,
+  //         attributes: [
+  //           {
+  //             format,
+  //             bufferByteOffset,
+  //             location,
+  //             divisor,
+  //           },
+  //         ],
+  //         data: geometry.vertices[i],
+  //       });
+  //     }
+  //   }
+  //   // create barycentric attributes
+  //   const barycentricBuffer = new Float32Array(indiceNum * 3);
+  //   for (let i = 0; i < indiceNum; ) {
+  //     for (let j = 0; j < 3; j++) {
+  //       const ii = uniqueIndices[i++];
+  //       barycentricBuffer[ii * 3 + j] = 1;
+  //     }
+  //   }
+  // }
 }

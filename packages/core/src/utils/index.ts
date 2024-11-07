@@ -9,3 +9,4 @@ export * from './lang';
 export * from './uid';
 export * from './serialize';
 export * from './curve';
+export * from './tessy';

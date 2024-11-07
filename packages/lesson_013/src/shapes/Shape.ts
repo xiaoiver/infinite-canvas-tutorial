@@ -110,7 +110,7 @@ function Shapable<TBase extends GConstructor<Shape>>(Base: TBase) {
     }
 
     getBounds(skipUpdateTransform?: boolean) {
-      if (!this.boundsDirtyFlag) {
+      if (!this.boundsDirtyFlag && !this.transformDirtyFlag) {
         return this.bounds;
       }
 
@@ -222,6 +222,10 @@ export function isFillOrStrokeAffected(
   }
 
   return [hasFill, hasStroke];
+}
+
+export function hasValidStroke(stroke: string, strokeWidth: number) {
+  return !!stroke && strokeWidth > 0;
 }
 
 export interface RBushNodeAABB {

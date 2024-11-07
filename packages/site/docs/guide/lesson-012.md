@@ -1159,6 +1159,137 @@ It seems not bad, but after careful consideration, there are still the following
     -   One Drawcall can also draw multiple polylines, using `[NaN, NaN]` to indicate breakpoints, example: [Multiple lines]
     -   If the vertex data of multiple polylines is the same, and only the offset is different, then each polyline can be regarded as an Instance. Of course, the vertices inside each polyline need to be expanded, example: [Fake instancing]
 
+Below we continue to optimize along the above lines.
+
+### Polyline with multiple segments {#polyline-with-multiple-segments}
+
+Along the lines of the previous optimization to reduce the number of Drawcalls, we can splice multiple folds together, but of course we need to use some kind of separator, cf. [regl-gpu-lines] we use `[NaN, NaN]` And we'll soon use it when drawing paths later: a path may contain several subpaths!
+
+```bash
+Polyline1: [[0, 0], [100, 100]]
+Polyline2: [[100, 0], [200, 100]]
+MultiPolyline: [[0, 0], [100, 100], [NaN, NaN], [100, 0], [200, 100]]
+```
+
+After splitting by separator, the vertex array is still constructed for each segment in the same way as above:
+
+```ts
+const subPaths = [];
+let lastNaNIndex = 0;
+for (let i = 0; i < points.length; i += stridePoints) {
+    if (isNaN(points[i]) || isNaN(points[i + 1])) {
+        subPaths.push(points.slice(lastNaNIndex, i));
+        lastNaNIndex = i + 2;
+    }
+}
+subPaths.push(points.slice(lastNaNIndex));
+subPaths.forEach((points) => {
+    // Omit constructing each segments
+});
+```
+
+The effect is as follows, with the following notes:
+
+-   Since the multiple fold lines are merged into one, the pickup will also follow a whole. Try hovering the mouse over the three sets of lines below.
+-   When exporting to SVG, it is no longer possible to export directly to the corresponding `<polyline>` element.
+
+```js eval code=false
+$icCanvas7 = call(() => {
+    return document.createElement('ic-canvas-lesson12');
+});
+```
+
+```js eval code=false inspector=false
+call(() => {
+    const { Canvas, Polyline } = Lesson12;
+
+    const stats = new Stats();
+    stats.showPanel(0);
+    const $stats = stats.dom;
+    $stats.style.position = 'absolute';
+    $stats.style.left = '0px';
+    $stats.style.top = '0px';
+
+    $icCanvas7.parentElement.style.position = 'relative';
+    $icCanvas7.parentElement.appendChild($stats);
+
+    $icCanvas7.addEventListener('ic-ready', (e) => {
+        const canvas = e.detail;
+        const data = new Array(200).fill(undefined).map((_, i) => [
+            [Math.random() * 200, Math.random() * 200],
+            [Math.random() * 200, Math.random() * 200],
+            [NaN, NaN],
+        ]);
+        const polyline = new Polyline({
+            points: data.flat(1),
+            stroke: 'black',
+            strokeWidth: 2,
+            strokeLinecap: 'round',
+            cursor: 'pointer',
+        });
+        canvas.appendChild(polyline);
+        polyline.addEventListener(
+            'pointerenter',
+            () => (polyline.stroke = 'red'),
+        );
+        polyline.addEventListener(
+            'pointerleave',
+            () => (polyline.stroke = 'black'),
+        );
+
+        const data2 = new Array(200).fill(undefined).map((_, i) => [
+            [Math.random() * 200 + 200, Math.random() * 200],
+            [Math.random() * 200 + 200, Math.random() * 200],
+            [NaN, NaN],
+        ]);
+        const polyline2 = new Polyline({
+            points: data2.flat(1),
+            stroke: 'black',
+            strokeWidth: 2,
+            strokeLinecap: 'round',
+            cursor: 'pointer',
+        });
+        canvas.appendChild(polyline2);
+        polyline2.addEventListener(
+            'pointerenter',
+            () => (polyline2.stroke = 'green'),
+        );
+        polyline2.addEventListener(
+            'pointerleave',
+            () => (polyline2.stroke = 'black'),
+        );
+
+        const data3 = new Array(200).fill(undefined).map((_, i) => [
+            [Math.random() * 200 + 400, Math.random() * 200],
+            [Math.random() * 200 + 400, Math.random() * 200],
+            [NaN, NaN],
+        ]);
+        const polyline3 = new Polyline({
+            points: data3.flat(1),
+            stroke: 'black',
+            strokeWidth: 2,
+            strokeLinecap: 'round',
+            cursor: 'pointer',
+        });
+        canvas.appendChild(polyline3);
+        polyline3.addEventListener(
+            'pointerenter',
+            () => (polyline3.stroke = 'blue'),
+        );
+        polyline3.addEventListener(
+            'pointerleave',
+            () => (polyline3.stroke = 'black'),
+        );
+    });
+
+    $icCanvas7.addEventListener('ic-frame', (e) => {
+        stats.update();
+    });
+});
+```
+
+### [WIP] Merge similar polylines {#merge-similar-polylines}
+
 ## Other Issues {#followup-issues}
 
 So far, we have completed the basic drawing work of polylines. Finally, let's take a look at other related issues. Due to space limitations, some issues will be detailed in future lessons.

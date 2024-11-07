@@ -22,7 +22,7 @@ import { Path } from '../shapes';
 import { Drawcall, ZINDEX_FACTOR } from './Drawcall';
 import { vert, frag, Location } from '../shaders/mesh';
 import { isString, paddingMat3 } from '../utils';
-import earcut from 'earcut';
+import earcut, { flatten } from 'earcut';
 
 const strokeAlignmentMap = {
   center: 0,
@@ -43,7 +43,7 @@ export class Mesh extends Drawcall {
   #texture: Texture;
 
   points: number[];
-  triangles: number[];
+  indices: number[];
 
   static useDash(shape: Path) {
     const { strokeDasharray } = shape;
@@ -86,10 +86,15 @@ export class Mesh extends Drawcall {
 
   createGeometry(): void {
     const points = (this.shapes[0] as Path).points.flat(2);
+    const { vertices, holes, dimensions } = flatten(
+      (this.shapes[0] as Path).points,
+    );
+    const indices = earcut(vertices, holes, dimensions);
+    // const err = deviation(vertices, holes, dimensions, indices);
+    // console.log(triangulate((this.shapes[0] as Path).points));
 
-    const triangles = earcut(points);
     this.points = points;
-    this.triangles = triangles;
+    this.indices = indices;
 
     if (!this.#pointsBuffer) {
       this.#pointsBuffer = this.device.createBuffer({
@@ -101,7 +106,7 @@ export class Mesh extends Drawcall {
 
     if (!this.#indexBuffer) {
       this.#indexBuffer = this.device.createBuffer({
-        viewOrSize: new Uint32Array(triangles),
+        viewOrSize: new Uint32Array(indices),
         usage: BufferUsage.INDEX,
         hint: BufferFrequencyHint.STATIC,
       });
@@ -367,7 +372,7 @@ export class Mesh extends Drawcall {
       buffer: this.#indexBuffer,
     });
     renderPass.setBindings(this.#bindings);
-    renderPass.drawIndexed(this.triangles.length, this.shapes.length);
+    renderPass.drawIndexed(this.indices.length, this.shapes.length);
   }
 
   destroy(): void {

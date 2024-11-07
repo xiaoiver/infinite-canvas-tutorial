@@ -60,15 +60,17 @@ export class SmoothPolyline extends Drawcall {
   #inputLayout: InputLayout;
   #bindings: Bindings;
 
+  indices: number[] = [];
+  pointsBuffer: number[] = [];
+  travelBuffer: number[] = [];
+
   get instanceCount() {
-    if (this.shapes[0] instanceof Polyline) {
-      return this.shapes[0].points.length;
-    } else if (this.shapes[0] instanceof Rect) {
+    const instance = this.shapes[0];
+    if (instance instanceof Polyline) {
+      return this.pointsBuffer.length / strideFloats - 3;
+    } else if (instance instanceof Rect) {
       return 6;
-    } else if (
-      this.shapes[0] instanceof Circle ||
-      this.shapes[0] instanceof Ellipse
-    ) {
+    } else if (instance instanceof Circle || instance instanceof Ellipse) {
       return circleEllipsePointsNum + 1;
     }
   }
@@ -76,6 +78,42 @@ export class SmoothPolyline extends Drawcall {
   createGeometry(): void {
     // Don't support instanced rendering for now.
     this.instanced = false;
+
+    const indices: number[] = [];
+    const pointsBuffer: number[] = [];
+    const travelBuffer: number[] = [];
+    let offset = 0;
+    this.shapes.forEach((shape: Polyline) => {
+      const { pointsBuffer: pBuffer, travelBuffer: tBuffer } = updateBuffer(
+        shape,
+        false,
+      );
+
+      pointsBuffer.push(...pBuffer);
+      travelBuffer.push(...tBuffer);
+
+      indices.push(
+        0 + offset,
+        1 + offset,
+        2 + offset,
+        0 + offset,
+        2 + offset,
+        3 + offset,
+        4 + offset,
+        5 + offset,
+        6 + offset,
+        4 + offset,
+        6 + offset,
+        7 + offset,
+        4 + offset,
+        7 + offset,
+        8 + offset,
+      );
+      offset += 9;
+    });
+    this.indices = indices;
+    this.pointsBuffer = pointsBuffer;
+    this.travelBuffer = travelBuffer;
 
     if (this.#segmentsBuffer) {
       this.#segmentsBuffer.destroy();
@@ -241,7 +279,7 @@ export class SmoothPolyline extends Drawcall {
             channelWriteMask: ChannelWriteMask.ALL,
             rgbBlendState: {
               blendMode: BlendMode.ADD,
-              blendSrcFactor: BlendFactor.SRC_ALPHA,
+              blendSrcFactor: BlendFactor.ONE,
               blendDstFactor: BlendFactor.ONE_MINUS_SRC_ALPHA,
             },
             alphaBlendState: {
@@ -284,11 +322,6 @@ export class SmoothPolyline extends Drawcall {
   }
 
   render(renderPass: RenderPass, uniformLegacyObject: Record<string, unknown>) {
-    const indices: number[] = [];
-    const pointsBuffer: number[] = [];
-    const travelBuffer: number[] = [];
-    let offset = 0;
-
     if (
       this.shapes.some((shape) => shape.renderDirtyFlag) ||
       this.geometryDirty
@@ -310,43 +343,14 @@ export class SmoothPolyline extends Drawcall {
       };
       this.#program.setUniformsLegacy(uniformLegacyObject);
 
-      this.shapes.forEach((shape: Polyline) => {
-        const { pointsBuffer: pBuffer, travelBuffer: tBuffer } = updateBuffer(
-          shape,
-          false,
-        );
-
-        pointsBuffer.push(...pBuffer);
-        travelBuffer.push(...tBuffer);
-
-        indices.push(
-          0 + offset,
-          1 + offset,
-          2 + offset,
-          0 + offset,
-          2 + offset,
-          3 + offset,
-          4 + offset,
-          5 + offset,
-          6 + offset,
-          4 + offset,
-          6 + offset,
-          7 + offset,
-          4 + offset,
-          7 + offset,
-          8 + offset,
-        );
-        offset += 9;
-      });
-
       this.#segmentsBuffer.setSubData(
         0,
-        new Uint8Array(new Float32Array(pointsBuffer).buffer),
+        new Uint8Array(new Float32Array(this.pointsBuffer).buffer),
       );
 
       this.#travelBuffer.setSubData(
         0,
-        new Uint8Array(new Float32Array(travelBuffer).buffer),
+        new Uint8Array(new Float32Array(this.travelBuffer).buffer),
       );
     }
 
@@ -380,7 +384,7 @@ export class SmoothPolyline extends Drawcall {
 
     if (!this.#indexBuffer) {
       this.#indexBuffer = this.device.createBuffer({
-        viewOrSize: new Uint32Array(indices),
+        viewOrSize: new Uint32Array(this.indices),
         usage: BufferUsage.INDEX,
         hint: BufferFrequencyHint.STATIC,
       });
@@ -502,7 +506,7 @@ export function updateBuffer(
   const { strokeLinecap: lineCap, strokeLinejoin: lineJoin } = object;
 
   let points: number[] = [];
-  const triangles: number[] = [];
+  // const triangles: number[] = [];
 
   if (object instanceof Polyline) {
     points = object.points.reduce((prev, cur) => {
@@ -554,74 +558,81 @@ export function updateBuffer(
     endJoint = JointType.JOINT_CAP_SQUARE;
   }
 
-  let j = (Math.round(0 / stridePoints) + 2) * strideFloats;
-  // const needDash = !isNil(lineDash);
-  let dist = 0;
-  const pointsBuffer: number[] = [];
-  const travelBuffer: number[] = [];
+  // Split subpath by [NaN, NaN]
+  const subPaths = [];
+  let lastNaNIndex = 0;
   for (let i = 0; i < points.length; i += stridePoints) {
-    // calc travel
-    if (i > 1) {
-      dist += Math.sqrt(
-        Math.pow(points[i] - points[i - stridePoints], 2) +
-          Math.pow(points[i + 1] - points[i + 1 - stridePoints], 2),
-      );
-    }
-    travelBuffer.push(dist);
-
-    pointsBuffer[j++] = points[i];
-    pointsBuffer[j++] = points[i + 1];
-
     if (isNaN(points[i]) || isNaN(points[i + 1])) {
-      // find prev non-nan
-      pointsBuffer[j - 2] = (points[i + 2] + points[i - 2]) * 0.5;
-      pointsBuffer[j - 1] = (points[i + 3] + points[i - 1]) * 0.5;
-      pointsBuffer[j] = 0;
-      j++;
-      continue;
+      subPaths.push(points.slice(lastNaNIndex, i));
+      lastNaNIndex = i + 2;
     }
-
-    pointsBuffer[j] = jointType;
-    if (i == 0) {
-      if (capType !== JointType.CAP_ROUND) {
-        pointsBuffer[j] += capType;
-      }
-    } else {
-      if (isNaN(points[i - 2]) || isNaN(points[i - 1])) {
-        pointsBuffer[j] += JointType.CAP_BUTT;
-      }
-    }
-    if (
-      i + stridePoints * 2 >= points.length ||
-      isNaN(points[i + 4]) ||
-      isNaN(points[i + 5])
-    ) {
-      pointsBuffer[j] += endJoint - jointType;
-    } else if (
-      i + stridePoints >= points.length ||
-      isNaN(points[i + 2]) ||
-      isNaN(points[i + 3])
-    ) {
-      pointsBuffer[j] = 0;
-    }
-    j++;
   }
-  pointsBuffer[j++] = points[points.length - 4];
-  pointsBuffer[j++] = points[points.length - 3];
-  pointsBuffer[j++] = 0;
-  pointsBuffer[0] = points[0];
-  pointsBuffer[1] = points[1];
-  pointsBuffer[2] = 0;
-  pointsBuffer[3] = points[2];
-  pointsBuffer[4] = points[3];
-  pointsBuffer[5] = capType === JointType.CAP_ROUND ? capType : 0;
+  subPaths.push(points.slice(lastNaNIndex));
 
-  const instancedCount = Math.round(points.length / stridePoints);
+  const pointsBufferTotal: number[] = [];
+  const travelBufferTotal: number[] = [];
+  // let instancedCount = 0;
+  subPaths.forEach((points) => {
+    const pointsBuffer: number[] = [];
+    const travelBuffer: number[] = [];
+    let j = (Math.round(0 / stridePoints) + 2) * strideFloats;
+    let dist = 0;
+
+    for (let i = 0; i < points.length; i += stridePoints) {
+      // calc travel
+      if (i > 1) {
+        dist += Math.sqrt(
+          Math.pow(points[i] - points[i - stridePoints], 2) +
+            Math.pow(points[i + 1] - points[i + 1 - stridePoints], 2),
+        );
+      }
+      travelBuffer.push(dist);
+
+      pointsBuffer[j++] = points[i];
+      pointsBuffer[j++] = points[i + 1];
+      pointsBuffer[j] = jointType;
+      if (i == 0) {
+        if (capType !== JointType.CAP_ROUND) {
+          pointsBuffer[j] += capType;
+        }
+      } else {
+        if (isNaN(points[i - 2]) || isNaN(points[i - 1])) {
+          pointsBuffer[j] += JointType.CAP_BUTT;
+        }
+      }
+      if (
+        i + stridePoints * 2 >= points.length ||
+        isNaN(points[i + 4]) ||
+        isNaN(points[i + 5])
+      ) {
+        pointsBuffer[j] += endJoint - jointType;
+      } else if (
+        i + stridePoints >= points.length ||
+        isNaN(points[i + 2]) ||
+        isNaN(points[i + 3])
+      ) {
+        pointsBuffer[j] = 0;
+      }
+      j++;
+    }
+    pointsBuffer[j++] = points[points.length - 4];
+    pointsBuffer[j++] = points[points.length - 3];
+    pointsBuffer[j++] = 0;
+    pointsBuffer[0] = points[0];
+    pointsBuffer[1] = points[1];
+    pointsBuffer[2] = 0;
+    pointsBuffer[3] = points[2];
+    pointsBuffer[4] = points[3];
+    pointsBuffer[5] = capType === JointType.CAP_ROUND ? capType : 0;
+
+    // instancedCount += Math.round(points.length / stridePoints);
+
+    pointsBufferTotal.push(...pointsBuffer);
+    travelBufferTotal.push(...travelBuffer);
+  });
 
   return {
-    pointsBuffer,
-    travelBuffer,
-    triangles,
-    instancedCount,
+    pointsBuffer: pointsBufferTotal,
+    travelBuffer: travelBufferTotal,
   };
 }

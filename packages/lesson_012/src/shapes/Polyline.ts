@@ -32,10 +32,18 @@ export class Polyline extends Shape implements PolylineAttributes {
     }
 
     // FIXME: account for strokeLinejoin & strokeLinecap
-    const minX = Math.min(...points.map((point) => point[0]));
-    const maxX = Math.max(...points.map((point) => point[0]));
-    const minY = Math.min(...points.map((point) => point[1]));
-    const maxY = Math.max(...points.map((point) => point[1]));
+    const minX = Math.min(
+      ...points.map((point) => (isNaN(point[0]) ? Infinity : point[0])),
+    );
+    const maxX = Math.max(
+      ...points.map((point) => (isNaN(point[0]) ? -Infinity : point[0])),
+    );
+    const minY = Math.min(
+      ...points.map((point) => (isNaN(point[1]) ? Infinity : point[1])),
+    );
+    const maxY = Math.max(
+      ...points.map((point) => (isNaN(point[1]) ? -Infinity : point[1])),
+    );
 
     return new AABB(minX, minY, maxX, maxY);
   }
@@ -66,6 +74,7 @@ export class Polyline extends Shape implements PolylineAttributes {
       this.renderDirtyFlag = true;
       this.geometryBoundsDirtyFlag = true;
       this.renderBoundsDirtyFlag = true;
+      this.boundsDirtyFlag = true;
     }
   }
 

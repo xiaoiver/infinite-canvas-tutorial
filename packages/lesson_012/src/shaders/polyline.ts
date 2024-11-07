@@ -79,7 +79,6 @@ vec2 doBisect(
 ) {
   vec2 bisect = (norm + norm2) / 2.0;
   bisect /= dot(norm, bisect);
-  vec2 shift = dy * bisect;
   if (inner > 0.5) {
     if (len < len2) {
       if (abs(dy * (bisect.x * norm.y - bisect.y * norm.x)) > len) {
@@ -102,8 +101,6 @@ void main() {
   float strokeMiterlimit = u_ZIndexStrokeWidth.z;
   float strokeAlignment = u_ZIndexStrokeWidth.w;
   float sizeAttenuation = u_Opacity.w;
-
-  mat3 viewModelMatrix = u_ViewMatrix * model;
 
   vec2 pointA = (model * vec3(a_PointA, 1.0)).xy;
   vec2 pointB = (model * vec3(a_PointB, 1.0)).xy;

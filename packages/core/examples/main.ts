@@ -29,114 +29,88 @@ const canvas = await new Canvas({
   // shaderCompilerPath: '/glsl_wgsl_compiler_bg.wasm',
 }).initialized;
 
-// const svg = {
-//   circle: 'M40,0A40,40 0 1,1 0,-40A40,40 0 0,1 40,0Z',
-//   triangle: `M${[0, 1, 2]
-//     .map(
-//       (i) =>
-//         `${Math.sin((i / 3) * 2 * Math.PI)},${-Math.cos(
-//           (i / 3) * 2 * Math.PI,
-//         )}`,
-//     )
-//     .join('L')}Z`,
-//   square: `M1,1L-1,1L-1,-1L1,-1Z`,
-//   pentagon: `M${[0, 1, 2, 3, 4]
-//     .map(
-//       (i) =>
-//         `${Math.sin((i / 5) * 2 * Math.PI)},${-Math.cos(
-//           (i / 5) * 2 * Math.PI,
-//         )}`,
-//     )
-//     .join('L')}Z`,
-//   hexagon: `M${[0, 1, 2, 3, 4, 5]
-//     .map(
-//       (i) =>
-//         `${Math.sin((i / 6) * 2 * Math.PI)},${-Math.cos(
-//           (i / 6) * 2 * Math.PI,
-//         )}`,
-//     )
-//     .join('L')}Z`,
-//   star: `M${[0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
-//     .map(
-//       (i) =>
-//         `${Math.sin((i / 10) * 2 * Math.PI) * (i % 2 === 1 ? 0.5 : 1)},${
-//           -Math.cos((i / 10) * 2 * Math.PI) * (i % 2 === 1 ? 0.5 : 1)
-//         }`,
-//     )
-//     .join('L')}Z`,
-//   plus: `M4,1L1,1L1,4L-1,4L-1,1L-4,1L-4,-1L-1,-1L-1,-4L1,-4L1,-1L4,-1Z`,
-// };
-
-// const rect = new Rect({
-//   x: 0,
-//   y: 0,
-//   width: 100,
-//   height: 100,
-//   fill: 'red',
+// const polyline1 = new Polyline({
+//   points: [
+//     [50, 50],
+//     [50, 150],
+//     [100, 150],
+//     [100, 50],
+//   ],
 //   stroke: 'black',
-//   strokeWidth: 2,
+//   strokeWidth: 10,
+//   strokeAlignment: 'outer',
+//   fill: 'none',
 // });
-// canvas.appendChild(rect);
-// rect.position.x = 100;
-// rect.position.y = 100;
+// canvas.appendChild(polyline1);
+// const polyline4 = new Polyline({
+//   points: [
+//     [50, 50],
+//     [50, 150],
+//     [100, 150],
+//     [100, 50],
+//   ],
+//   stroke: 'red',
+//   strokeWidth: 2,
+//   fill: 'none',
+// });
+// canvas.appendChild(polyline4);
 
-const polyline = new Polyline({
-  points: [
-    [10, 10],
-    [90, 10],
-    [90, 90],
-    [10, 90],
-    [10, 10],
-    [NaN, NaN],
-    [0, 0],
-    [0, 100],
-    [100, 100],
-    [100, 0],
-    [0, 0],
-  ],
-  // points: [
-  //   [10, 10],
-  //   [100, 0],
-  //   [NaN, NaN],
-  //   [100, 100],
-  //   [200, 100],
-  // ],
-  stroke: 'black',
-  strokeWidth: 8,
-  strokeLinecap: 'round',
-  fill: 'none',
-});
-canvas.appendChild(polyline);
-polyline.position.x = 100;
-polyline.position.y = 100;
+// const polyline2 = new Polyline({
+//   points: [
+//     [120, 50],
+//     [120, 150],
+//     [170, 150],
+//     [170, 50],
+//   ],
+//   stroke: 'black',
+//   strokeWidth: 20,
+//   fill: 'none',
+// });
+// canvas.appendChild(polyline2);
+// const polyline5 = new Polyline({
+//   points: [
+//     [120, 50],
+//     [120, 150],
+//     [170, 150],
+//     [170, 50],
+//   ],
+//   stroke: 'red',
+//   strokeWidth: 2,
+//   fill: 'none',
+// });
+// canvas.appendChild(polyline5);
 
-fetch('/Ghostscript_Tiger.svg').then(async (res) => {
+fetch(
+  '/Ghostscript_Tiger.svg',
+  // '/photo-camera.svg',
+).then(async (res) => {
   const svg = await res.text();
 
   const $container = document.createElement('div');
   $container.innerHTML = svg;
 
-  const group = await deserializeNode(
-    fromSVGElement($container.children[0].children[0] as SVGElement),
-  );
-  console.log(group);
+  const $svg = $container.children[0];
 
-  canvas.appendChild(group);
+  for (const child of $svg.children) {
+    const group = await deserializeNode(fromSVGElement(child as SVGElement));
+    canvas.appendChild(group);
+  }
 });
 
-const ring = new Path({
-  // d: 'M 50 10 A 40 40 0 1 0 50 90 A 40 40 0 1 0 50 10 Z M 50 30 A 20 20 0 1 1 50 70 A 20 20 0 1 1 50 30 Z',
-  d: 'M 10 10 L 90 10 L 90 90 L 10 90 Z M 0 0 L 0 100 L 100 100 L 100 0 Z',
-  // d: 'M 0 0 L 100 0 L 100 100 L 0 100 Z',
-  fill: 'black',
-  // opacity: 0.5,
-  // strokeWidth: 10,
-  stroke: 'red',
-  batchable: false,
-});
-ring.position.x = 200;
-ring.position.y = 200;
-canvas.appendChild(ring);
+// const ring = new Path({
+//   // d: 'M 50 10 A 40 40 0 1 0 50 90 A 40 40 0 1 0 50 10 Z M 50 30 A 20 20 0 1 1 50 70 A 20 20 0 1 1 50 30 Z',
+//   // d: 'M 10 10 L 90 10 L 90 90 L 10 90 Z M 0 0 L 0 100 L 100 100 L 100 0 Z',
+//   // d: 'M 10 10 L 90 10 L 90 90 L 10 90 Z M 0 0 L 100 0 L 100 100 L 0 100 Z',
+//   // d: 'M 0 0 L 100 0 L 100 100 L 0 100 Z',
+//   d: 'M255.4,130.8c-53.8,0-97.6,43.8-97.6,97.6s43.8,97.6,97.6,97.6c53.8,0,97.6-43.8,97.6-97.6    C352.9,174.6,309.1,130.8,255.4,130.8z M255.4,303.7c-41.5,0-75.3-33.8-75.3-75.3s33.8-75.3,75.3-75.3s75.3,33.8,75.3,75.3    C330.7,269.9,296.9,303.7,255.4,303.7z',
+//   fill: 'black',
+//   // opacity: 0.5,
+//   // strokeWidth: 10,
+//   stroke: 'red',
+// });
+// ring.position.x = 200;
+// ring.position.y = 200;
+// canvas.appendChild(ring);
 
 canvas.render();
 

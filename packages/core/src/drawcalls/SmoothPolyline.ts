@@ -76,7 +76,7 @@ export class SmoothPolyline extends Drawcall {
   get instanceCount() {
     const instance = this.shapes[0];
     if (instance instanceof Polyline || instance instanceof Path) {
-      return this.pointsBuffer.length / strideFloats;
+      return this.pointsBuffer.length / strideFloats - 3;
     } else if (instance instanceof Rect) {
       return 6;
     } else if (instance instanceof Circle || instance instanceof Ellipse) {

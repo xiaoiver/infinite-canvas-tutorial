@@ -19,7 +19,7 @@ SHAPE_DRAWCALL_CTORS.set(Ellipse, [SDF, SmoothPolyline]);
 SHAPE_DRAWCALL_CTORS.set(Rect, [ShadowRect, SDF, SmoothPolyline]);
 SHAPE_DRAWCALL_CTORS.set(Polyline, [SmoothPolyline]);
 // SHAPE_DRAWCALL_CTORS.set(Path, [SDFPath]);
-SHAPE_DRAWCALL_CTORS.set(Path, [Mesh]);
+SHAPE_DRAWCALL_CTORS.set(Path, [Mesh, SmoothPolyline]);
 
 export class BatchManager {
   /**

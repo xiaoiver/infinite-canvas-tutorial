@@ -4,6 +4,6 @@ export * from './Circle';
 export * from './Ellipse';
 export * from './Rect';
 export * from './Polyline';
+export * from './Path';
 export * from './Grid';
 export * from './Group';
-export * from './Path';

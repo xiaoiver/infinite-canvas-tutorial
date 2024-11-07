@@ -1154,12 +1154,143 @@ call(() => {
 });
 ```
 
-看似还不错，但仔细考虑后仍存在以下问题，不妨作为后续的改进方向：
+看似还不错，但仔细考虑后仍存在以下问题，可以作为后续的改进方向：
 
 -   由于每个 Instance 使用了 15 个顶点，Buffer 又存在大小限制，因此单根折线中包含的顶点数目实际是有限的
 -   目前一根折线对应一个 Drawcall，如果存在大量同类重复的折线呢？[regl-gpu-lines] 提供了两种思路：
     -   一个 Drawcall 也可以绘制多条折线，使用 `[NaN, NaN]` 表示断点，示例：[Multiple lines]
     -   如果多条折线顶点数据都相同，只有偏移量差异，此时可以把每条折线都当作一个 Instance，当然每条折线内部的顶点就需要展开了，示例：[Fake instancing]
+
+下面我们按照以上思路继续优化。
+
+### 包含多段的折线 {#polyline-with-multiple-segments}
+
+按照之前减少 Drawcall 数量的优化思路，我们可以将多段折线拼接在一起，当然需要使用某种分隔符，参考 [regl-gpu-lines] 我们使用 `[NaN, NaN]`。并且我们很快就会在后续绘制路径时使用它：一条路径中可能包含多条子路径。
+
+```bash
+Polyline1: [[0, 0], [100, 100]]
+Polyline2: [[100, 0], [200, 100]]
+MultiPolyline: [[0, 0], [100, 100], [NaN, NaN], [100, 0], [200, 100]]
+```
+
+按照分隔符拆分后，针对每一段依然按照上述方式构建顶点数组：
+
+```ts
+const subPaths = [];
+let lastNaNIndex = 0;
+for (let i = 0; i < points.length; i += stridePoints) {
+    if (isNaN(points[i]) || isNaN(points[i + 1])) {
+        subPaths.push(points.slice(lastNaNIndex, i));
+        lastNaNIndex = i + 2;
+    }
+}
+subPaths.push(points.slice(lastNaNIndex));
+subPaths.forEach((points) => {
+    // 同样的构建顶点数组逻辑
+});
+```
+
+效果如下，有以下注意点：
+
+-   由于多段折线合并成了一条，拾取也会按照一个整体进行。可以尝试将鼠标悬停在下面的三组折线上
+-   导出成 SVG 时，无法再直接导出成对应的 `<polyline>` 元素
+
+```js eval code=false
+$icCanvas7 = call(() => {
+    return document.createElement('ic-canvas-lesson12');
+});
+```
+
+```js eval code=false inspector=false
+call(() => {
+    const { Canvas, Polyline } = Lesson12;
+
+    const stats = new Stats();
+    stats.showPanel(0);
+    const $stats = stats.dom;
+    $stats.style.position = 'absolute';
+    $stats.style.left = '0px';
+    $stats.style.top = '0px';
+
+    $icCanvas7.parentElement.style.position = 'relative';
+    $icCanvas7.parentElement.appendChild($stats);
+
+    $icCanvas7.addEventListener('ic-ready', (e) => {
+        const canvas = e.detail;
+        const data = new Array(200).fill(undefined).map((_, i) => [
+            [Math.random() * 200, Math.random() * 200],
+            [Math.random() * 200, Math.random() * 200],
+            [NaN, NaN],
+        ]);
+        const polyline = new Polyline({
+            points: data.flat(1),
+            stroke: 'black',
+            strokeWidth: 2,
+            strokeLinecap: 'round',
+            cursor: 'pointer',
+        });
+        canvas.appendChild(polyline);
+        polyline.addEventListener(
+            'pointerenter',
+            () => (polyline.stroke = 'red'),
+        );
+        polyline.addEventListener(
+            'pointerleave',
+            () => (polyline.stroke = 'black'),
+        );
+
+        const data2 = new Array(200).fill(undefined).map((_, i) => [
+            [Math.random() * 200 + 200, Math.random() * 200],
+            [Math.random() * 200 + 200, Math.random() * 200],
+            [NaN, NaN],
+        ]);
+        const polyline2 = new Polyline({
+            points: data2.flat(1),
+            stroke: 'black',
+            strokeWidth: 2,
+            strokeLinecap: 'round',
+            cursor: 'pointer',
+        });
+        canvas.appendChild(polyline2);
+        polyline2.addEventListener(
+            'pointerenter',
+            () => (polyline2.stroke = 'green'),
+        );
+        polyline2.addEventListener(
+            'pointerleave',
+            () => (polyline2.stroke = 'black'),
+        );
+
+        const data3 = new Array(200).fill(undefined).map((_, i) => [
+            [Math.random() * 200 + 400, Math.random() * 200],
+            [Math.random() * 200 + 400, Math.random() * 200],
+            [NaN, NaN],
+        ]);
+        const polyline3 = new Polyline({
+            points: data3.flat(1),
+            stroke: 'black',
+            strokeWidth: 2,
+            strokeLinecap: 'round',
+            cursor: 'pointer',
+        });
+        canvas.appendChild(polyline3);
+        polyline3.addEventListener(
+            'pointerenter',
+            () => (polyline3.stroke = 'blue'),
+        );
+        polyline3.addEventListener(
+            'pointerleave',
+            () => (polyline3.stroke = 'black'),
+        );
+    });
+
+    $icCanvas7.addEventListener('ic-frame', (e) => {
+        stats.update();
+    });
+});
+```
+
+### [WIP] 合并同类折线 {#merge-similar-polylines}
 
 ## 其他问题 {#followup-issues}
 

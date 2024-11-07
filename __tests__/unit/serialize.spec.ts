@@ -1,4 +1,9 @@
-import { serializeNode, Circle, Polyline } from '../../packages/core/src';
+import {
+  serializeNode,
+  Circle,
+  Polyline,
+  parseTransform,
+} from '../../packages/core/src';
 
 describe('Serialize', () => {
   it('should serialize circle correctly.', () => {
@@ -206,5 +211,10 @@ describe('Serialize', () => {
         visible: true,
       },
     });
+  });
+
+  it('should parse transform correctly.', () => {
+    const parsed = parseTransform('translate(10, 20)');
+    expect(parsed.position).toEqual({ x: 10, y: 20 });
   });
 });

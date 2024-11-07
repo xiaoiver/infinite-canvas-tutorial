@@ -1,3 +1,16 @@
+export enum Location {
+  FRAG_COORD,
+  ABCD,
+  TXTY,
+  POSITION_SIZE,
+  FILL_COLOR,
+  STROKE_COLOR,
+  ZINDEX_STROKE_WIDTH,
+  OPACITY,
+  INNER_SHADOW_COLOR,
+  INNER_SHADOW,
+}
+
 export const vert = /* wgsl */ `
 layout(std140) uniform SceneUniforms {
   mat3 u_ProjectionMatrix;
@@ -9,18 +22,18 @@ layout(std140) uniform SceneUniforms {
   float u_CheckboardStyle;
 };
 
-layout(location = 0) in vec2 a_FragCoord;
+layout(location = ${Location.FRAG_COORD}) in vec2 a_FragCoord;
 
 #ifdef USE_INSTANCES
-  layout(location = 14) in vec4 a_Abcd;
-  layout(location = 15) in vec2 a_Txty;
-  layout(location = 1) in vec4 a_PositionSize;
-  layout(location = 2) in vec4 a_FillColor;
-  layout(location = 3) in vec4 a_StrokeColor;
-  layout(location = 4) in vec4 a_ZIndexStrokeWidth;
-  layout(location = 5) in vec4 a_Opacity;
-  layout(location = 6) in vec4 a_InnerShadowColor;
-  layout(location = 7) in vec4 a_InnerShadow;
+  layout(location = ${Location.ABCD}) in vec4 a_Abcd;
+  layout(location = ${Location.TXTY}) in vec2 a_Txty;
+  layout(location = ${Location.POSITION_SIZE}) in vec4 a_PositionSize;
+  layout(location = ${Location.FILL_COLOR}) in vec4 a_FillColor;
+  layout(location = ${Location.STROKE_COLOR}) in vec4 a_StrokeColor;
+  layout(location = ${Location.ZINDEX_STROKE_WIDTH}) in vec4 a_ZIndexStrokeWidth;
+  layout(location = ${Location.OPACITY}) in vec4 a_Opacity;
+  layout(location = ${Location.INNER_SHADOW_COLOR}) in vec4 a_InnerShadowColor;
+  layout(location = ${Location.INNER_SHADOW}) in vec4 a_InnerShadow;
 #else
   layout(std140) uniform ShapeUniforms {
     mat3 u_ModelMatrix;
@@ -285,23 +298,21 @@ void main() {
   strokeColor.a *= strokeOpacity;
 
   vec4 color = fillColor;
-  if (strokeWidth > 0.0) {
-    float d1;
-    float d2;
-    if (strokeAlignment < 0.5) {
-      d1 = distance + strokeWidth;
-      d2 = distance + strokeWidth / 2.0;
-      color = mix_border_inside(over(fillColor, strokeColor), fillColor, d1);
-      color = mix_border_inside(strokeColor, color, d2);
-    } else if (strokeAlignment < 1.5) {
-      d1 = distance + strokeWidth;
-      d2 = distance;
-      color = mix_border_inside(over(fillColor, strokeColor), fillColor, d1);
-      color = mix_border_inside(strokeColor, color, d2);
-    } else if (strokeAlignment < 2.5) {
-      d2 = distance + strokeWidth;
-      color = mix_border_inside(strokeColor, color, d2);
-    }
+  float d1;
+  float d2;
+  if (strokeAlignment < 0.5) {
+    d1 = distance + strokeWidth;
+    d2 = distance + strokeWidth / 2.0;
+    color = mix_border_inside(over(fillColor, strokeColor), fillColor, d1);
+    color = mix_border_inside(strokeColor, color, d2);
+  } else if (strokeAlignment < 1.5) {
+    d1 = distance + strokeWidth;
+    d2 = distance;
+    color = mix_border_inside(over(fillColor, strokeColor), fillColor, d1);
+    color = mix_border_inside(strokeColor, color, d2);
+  } else if (strokeAlignment < 2.5) {
+    d2 = distance + strokeWidth;
+    color = mix_border_inside(strokeColor, color, d2);
   }
   outputColor = color;
 

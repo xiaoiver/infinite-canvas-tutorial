@@ -18,6 +18,44 @@ head:
 -   通过三角化绘制填充部分
 -   实现一些手绘风格图形
 
+```js eval code=false
+$icCanvas = call(() => {
+    return document.createElement('ic-canvas-lesson13');
+});
+```
+
+```js eval code=false inspector=false
+call(() => {
+    const { Canvas, Path } = Lesson13;
+
+    const stats = new Stats();
+    stats.showPanel(0);
+    const $stats = stats.dom;
+    $stats.style.position = 'absolute';
+    $stats.style.left = '0px';
+    $stats.style.top = '0px';
+
+    $icCanvas.parentElement.style.position = 'relative';
+    $icCanvas.parentElement.appendChild($stats);
+
+    $icCanvas.addEventListener('ic-ready', (e) => {
+        const canvas = e.detail;
+        // const camera = new Path({
+        //     points: data,
+        //     stroke: 'black',
+        //     strokeWidth: 2,
+        //     fill: 'none',
+        //     cursor: 'pointer',
+        // });
+        // canvas.appendChild(camera);
+    });
+
+    $icCanvas.addEventListener('ic-frame', (e) => {
+        stats.update();
+    });
+});
+```
+
 ## 一些基础概念 {#basic-concepts}
 
 ### 与 Polyline 的区别 {#diff-with-polyline}
@@ -198,17 +236,22 @@ points = call(() => {
 
 现在我们已经有了所有 subPath 上的采样点，可以分别绘制描边和填充，前者可以使用上一节课实现的 Polyline，每一个 subPath 对应一个 drawcall。
 
-### 使用 earcut 三角化 {#triangulation}
+### 使用 earcut 三角化 {#earcut}
 
-使用 [earcut] 完成三角化，输入采样点坐标得到索引数组：
+使用 [earcut] 完成三角化，输入采样点坐标得到索引数组，甚至还可以计算误差。稍后在与其他三角化方式对比时可以看到，earcut 大幅提升了计算速度但损失一定的精确性：
 
 ```ts
+import earcut, { flatten, deviation } from 'earcut';
+
 const { d } = path;
 const { subPaths } = parsePath(d);
 const points = subPaths
     .map((subPath) => subPath.getPoints().map((point) => [point[0], point[1]]))
     .flat(2); // [100, 100, 200, 200, 300, 100, 100, 100]
-const triangles = earcut(points); // [1, 3, 2]
+
+const { vertices, holes, dimensions } = flatten(points);
+const indices = earcut(vertices, holes, dimensions); // [1, 3, 2]
+const err = deviation(vertices, holes, dimensions, indices); // 0
 ```
 
 这样我们就可以使用 `gl.drawElements()` 或者 `passEncoder.drawIndexed()` 完成绘制了。下图中左侧 Path 定义如下，和右侧使用 SDF 绘制的 Circle 对比后可以看出边缘其实并不平滑，在相机放大后更为明显：
@@ -274,11 +317,11 @@ call(() => {
 
 我发现很多 2D 渲染引擎例如 [vello] 都会使用 [Ghostscript Tiger.svg] 来测试对于 Path 的渲染。
 
-### holes {#holes}
+### 其他三角化方案 {#other-tesselation-techniques}
 
-如何在
+[Polygon Tesselation] 中对比了 earcut 和 [libtess.js]
 
-```js eval code=false
+<!-- ```js eval code=false
 $icCanvas2 = call(() => {
     return document.createElement('ic-canvas-lesson13');
 });
@@ -315,7 +358,7 @@ call(() => {
         stats.update();
     });
 });
-```
+``` -->
 
 ## 手绘风格 {#sketchy}
 
@@ -358,3 +401,4 @@ call(() => {
 [Bézier_curve]: https://en.wikipedia.org/wiki/B%C3%A9zier_curve
 [Ghostscript Tiger.svg]: https://en.m.wikipedia.org/wiki/File:Ghostscript_Tiger.svg
 [vello]: https://github.com/linebender/vello
+[Polygon Tesselation]: https://andrewmarsh.com/software/tesselation-web/

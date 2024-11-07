@@ -9,4 +9,5 @@ export {
   toSVGElement,
   parsePath,
   fromSVGElement,
+  parseTransform,
 } from './utils';

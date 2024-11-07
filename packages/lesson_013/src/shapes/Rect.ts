@@ -121,6 +121,7 @@ export class Rect extends Shape implements RectAttributes {
       this.renderDirtyFlag = true;
       this.geometryBoundsDirtyFlag = true;
       this.renderBoundsDirtyFlag = true;
+      this.boundsDirtyFlag = true;
     }
   }
 
@@ -133,6 +134,7 @@ export class Rect extends Shape implements RectAttributes {
       this.renderDirtyFlag = true;
       this.geometryBoundsDirtyFlag = true;
       this.renderBoundsDirtyFlag = true;
+      this.boundsDirtyFlag = true;
     }
   }
 
@@ -145,6 +147,7 @@ export class Rect extends Shape implements RectAttributes {
       this.renderDirtyFlag = true;
       this.geometryBoundsDirtyFlag = true;
       this.renderBoundsDirtyFlag = true;
+      this.boundsDirtyFlag = true;
     }
   }
 
@@ -157,6 +160,7 @@ export class Rect extends Shape implements RectAttributes {
       this.renderDirtyFlag = true;
       this.geometryBoundsDirtyFlag = true;
       this.renderBoundsDirtyFlag = true;
+      this.boundsDirtyFlag = true;
     }
   }
 

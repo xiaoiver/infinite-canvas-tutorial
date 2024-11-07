@@ -627,12 +627,21 @@ export function fromSVGElement(element: SVGElement, uid = 0): SerializedNode {
   const attributes = Array.from(element.attributes).reduce((prev, attr) => {
     const attributeName = kebabToCamelCase(attr.name);
 
-    // TODO: convert value to Number
-
+    let value: string | number | SerializedTransform = attr.value;
     if (attributeName === 'transform') {
+      value = parseTransform(value);
+    } else if (
+      attributeName === 'opacity' ||
+      attributeName === 'fillOpacity' ||
+      attributeName === 'strokeOpacity' ||
+      attributeName === 'strokeWidth' ||
+      attributeName === 'strokeMiterlimit' ||
+      attributeName === 'strokeDashoffset'
+    ) {
+      value = Number(value);
     }
 
-    prev[attributeName] = attr.value;
+    prev[attributeName] = value;
     return prev;
   }, {} as SerializedNode['attributes']);
 
@@ -667,4 +676,60 @@ export function imageBitmapToURL(bmp: ImageBitmap) {
   // ctx.transferFromImageBitmap(bmp);
   // const blob = await new Promise<Blob>((res) => canvas.toBlob(res));
   return canvas.toDataURL();
+}
+
+// TODO: translateX translateY rotateX rotateY
+export function parseTransform(transformStr: string): SerializedTransform {
+  const transform: SerializedTransform = {
+    matrix: { a: 1, b: 0, c: 0, d: 1, tx: 0, ty: 0 },
+    position: { x: 0, y: 0 },
+    scale: { x: 1, y: 1 },
+    skew: { x: 0, y: 0 },
+    rotation: 0,
+    pivot: { x: 0, y: 0 },
+  };
+
+  const translateRegex = /translate\(([^,]+),([^,]+)\)/;
+  const rotateRegex = /rotate\(([^,]+)\)/;
+  const scaleRegex = /scale\(([^,]+)(?:,([^,]+))?\)/;
+  const skewRegex = /skew\(([^,]+),([^,]+)\)/;
+  const matrixRegex =
+    /matrix\(([^,]+),([^,]+),([^,]+),([^,]+),([^,]+),([^,]+)\)/;
+
+  const translateMatch = transformStr.match(translateRegex);
+  if (translateMatch) {
+    transform.position.x = parseFloat(translateMatch[1]);
+    transform.position.y = parseFloat(translateMatch[2]);
+  }
+
+  const rotateMatch = transformStr.match(rotateRegex);
+  if (rotateMatch) {
+    transform.rotation = parseFloat(rotateMatch[1]);
+  }
+
+  const scaleMatch = transformStr.match(scaleRegex);
+  if (scaleMatch) {
+    transform.scale.x = parseFloat(scaleMatch[1]);
+    if (scaleMatch[2]) {
+      transform.scale.y = parseFloat(scaleMatch[2]);
+    }
+  }
+
+  const skewMatch = transformStr.match(skewRegex);
+  if (skewMatch) {
+    transform.skew.x = parseFloat(skewMatch[1]);
+    transform.skew.y = parseFloat(skewMatch[2]);
+  }
+
+  const matrixMatch = transformStr.match(matrixRegex);
+  if (matrixMatch) {
+    transform.matrix.a = parseFloat(matrixMatch[1]);
+    transform.matrix.b = parseFloat(matrixMatch[2]);
+    transform.matrix.c = parseFloat(matrixMatch[3]);
+    transform.matrix.d = parseFloat(matrixMatch[4]);
+    transform.matrix.tx = parseFloat(matrixMatch[5]);
+    transform.matrix.ty = parseFloat(matrixMatch[6]);
+  }
+
+  return transform;
 }
