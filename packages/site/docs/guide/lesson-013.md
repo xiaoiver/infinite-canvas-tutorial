@@ -143,10 +143,6 @@ for (const shape of shapes) {
 }
 ```
 
-Pixi.js uses [earcut] for triangulation of polygons. Other triangulation libraries include [cdt2d] and [libtess.js], the latter of which is less powerful but more accurate, especially for paths with a lot of `holes` and self-intersections. As [earcut] mentions in their documentation, see: [Ability to substitute earcut for libtess.js for a given Graphics object]：
-
-> If you want to get correct triangulation even on very bad data with lots of self-intersections and earcut is not precise enough, take a look at libtess.js.
-
 Let's implement our own version below:
 
 -   Normalize path definitions to absolute commands
@@ -344,6 +340,10 @@ I've found that many 2D rendering engines such as [vello] use [Ghostscript Tiger
 
 ### Other triangulation techniques {#other-tesselation-techniques}
 
+Pixi.js uses [earcut] for triangulation of polygons. Other triangulation libraries include [cdt2d] and [libtess.js], the latter of which is less powerful but more accurate, especially for paths with a lot of `holes` and self-intersections. As [earcut] mentions in their documentation, see: [Ability to substitute earcut for libtess.js for a given Graphics object]：
+
+> If you want to get correct triangulation even on very bad data with lots of self-intersections and earcut is not precise enough, take a look at libtess.js.
+
 The effect of earcut and [libtess.js] is compared in [Polygon Tesselation]. Unlike earcut, which returns an array of indices, libtess.js returns an array of vertices, as shown in the example in the repository. This means that we need to generate the index array manually, but of course this is very simple: since we don't need to think about reusing vertices, we can just use an incremental array starting from `0`.
 
 ```ts
@@ -358,6 +358,18 @@ export function triangulate(contours: [number, number][][]) {
 
 triangulate(points); // [100, 0, 0, 100, 0, 0, 0, 100, 100, 0, 100, 100]
 // indices: [0, 1, 2, 3, 4, 5]
+```
+
+You can go back to the “two tigers” example at the beginning of the article and compare it to the one generated with earcut on the left and libtess.js on the right. We've added a `tessellationMethod` attribute to Path to switch between the two methods of triangulation:
+
+```ts
+export enum TesselationMethod {
+    EARCUT,
+    LIBTESS,
+}
+export interface PathAttributes extends ShapeAttributes {
+    tessellationMethod?: TesselationMethod;
+}
 ```
 
 ## Hand-drawn style drawing {#sketchy}

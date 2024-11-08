@@ -1160,6 +1160,7 @@ call(() => {
 -   目前一根折线对应一个 Drawcall，如果存在大量同类重复的折线呢？[regl-gpu-lines] 提供了两种思路：
     -   一个 Drawcall 也可以绘制多条折线，使用 `[NaN, NaN]` 表示断点，示例：[Multiple lines]
     -   如果多条折线顶点数据都相同，只有偏移量差异，此时可以把每条折线都当作一个 Instance，当然每条折线内部的顶点就需要展开了，示例：[Fake instancing]
+-   根据当前相机缩放等级简化顶点
 
 下面我们按照以上思路继续优化。
 
@@ -1292,6 +1293,23 @@ call(() => {
 
 ### [WIP] 合并同类折线 {#merge-similar-polylines}
 
+### [WIP] 顶点简化 {#simplify-polyline}
+
+对于包含大量顶点的折线（以及后续的 Path 和 Polygon），一个很重要的优化手段就是根据当前的缩放等级进行简化，尽可能减少渲染数据量。简化的依据有二：
+
+-   太短的线段 和 太小的多边形 都可以直接过滤掉
+-   一根折线中对整体形状影响较小的顶点可以过滤掉
+
+线段顶点简化的基础算法是 [Ramer–Douglas–Peucker algorithm]，思路如下：
+
+-   首先保留 Polyline 的首尾两个顶点并连线
+-   找到剩余顶点中距离这条线段最远的顶点，保留该距离
+-   如果该距离小于阈值，丢弃
+-   如果该距离大于阈值，保留。并和首尾两个端点分割成两个子线段
+-   分治法处理两个子线段，回到 1
+
+我们可以使用基于该算法封装好的 [simplify-js]。
+
 ## 其他问题 {#followup-issues}
 
 至此，我们完成了折线的基础绘制工作，最后让我们来看一下其他相关问题，限于篇幅有些问题等到后续课程中再详细展开。
@@ -1359,3 +1377,5 @@ call(() => {
 [Fake instancing]: https://rreusser.github.io/regl-gpu-lines/docs/instanced.html
 [Multiple lines]: https://rreusser.github.io/regl-gpu-lines/docs/multiple.html
 [Offset in bytes into buffer where the vertex data begins]: https://www.w3.org/TR/webgpu/#dom-gpurendercommandsmixin-setvertexbuffer-slot-buffer-offset-size-offset
+[simplify-js]: https://github.com/mourner/simplify-js
+[Ramer–Douglas–Peucker algorithm]: https://en.wikipedia.org/wiki/Ramer%E2%80%93Douglas%E2%80%93Peucker_algorithm

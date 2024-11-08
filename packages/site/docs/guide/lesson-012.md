@@ -159,7 +159,7 @@ const line = new Polyline({
 
 Let's first look at the first question: how to implement arbitrary values of `strokeWidth`.
 
-## Building Mesh {#construct-mesh}
+## Building mesh {#construct-mesh}
 
 The following image comes from the WebGL meetup shared by Pixi.js: [How 2 draw lines in WebGL]. This article will heavily reference screenshots from it, and I will label the page numbers in the PPT. Since native methods are not available, we can only return to the traditional drawing scheme of building Mesh.
 
@@ -207,7 +207,7 @@ If there are multiple polylines, the conditions for merging are the same values 
 
 ![drawcalls for linecap and segments](/regl-gpu-lines.png)
 
-### Building in Shader {#construct-mesh-on-shader}
+### Building in shader {#construct-mesh-on-shader}
 
 From the WebGL meetup shared by Pixi.js, building Mesh in Shader:
 
@@ -344,7 +344,7 @@ renderPass.setVertexInput(this.#inputLayout, buffers, {
 
 Other features will also be implemented based on this scheme later.
 
-## Shader Implementation Analysis {#shader-implementation}
+## Shader implementation analysis {#shader-implementation}
 
 First, let's see how to stretch vertices at the main body and joints of the line segment.
 
@@ -619,7 +619,7 @@ Finally, there are two points to note:
 1. Since `stroke-alignment` is not a standard SVG attribute, it is necessary to recalculate `points` when exporting to SVG, which is consistent with the logic of stretching along the normal and angle bisector in the Shader, which will not be expanded due to space limitations
 2. The picking determination method, that is, `containsPoint`, also needs to be calculated based on the offset vertices of `points`. You can try to change the color of the polyline by moving the mouse in and out of the above example
 
-### Dashed Lines {#dash}
+### Dashed lines {#dash}
 
 First, calculate the distance each vertex has traveled from the starting point. Taking the polyline of `[[0, 0], [100, 0], [200, 0]]` as an example, the `a_Travel` values of the three instances are `[0, 100, 200]`. Calculate the stretched vertex distance in the Vertex Shader:
 
@@ -854,7 +854,7 @@ call(() => {
 });
 ```
 
-## Calculating the Bounding Box {#geometry-bounds}
+## Calculating the bounding box {#geometry-bounds}
 
 Let's temporarily step out of rendering and do some geometric calculations. As introduced in previous lessons, bounding boxes need to be calculated in both picking and culling.
 
@@ -1048,7 +1048,7 @@ call(() => {
 });
 ```
 
-### Precise Calculation {#stroke-extents}
+### Precise calculation {#stroke-extents}
 
 If you really want to calculate precisely? Cairo's idea is to first convert it into a Polygon, and then calculate its bounding box:
 
@@ -1080,7 +1080,7 @@ _cairo_path_fixed_stroke_extents (const cairo_path_fixed_t *path,
 }
 ```
 
-## Performance Testing {#perf}
+## Performance testing {#perf}
 
 Let's test the performance, showing several polylines each containing 20,000 points:
 
@@ -1158,6 +1158,7 @@ It seems not bad, but after careful consideration, there are still the following
 -   Currently, one polyline corresponds to one Drawcall. What if there are a large number of similar repeated polylines? [regl-gpu-lines] provides two ideas:
     -   One Drawcall can also draw multiple polylines, using `[NaN, NaN]` to indicate breakpoints, example: [Multiple lines]
     -   If the vertex data of multiple polylines is the same, and only the offset is different, then each polyline can be regarded as an Instance. Of course, the vertices inside each polyline need to be expanded, example: [Fake instancing]
+-   Simplify vertices based on current camera zoom level
 
 Below we continue to optimize along the above lines.
 
@@ -1289,6 +1290,23 @@ call(() => {
 ```
 
 ### [WIP] Merge similar polylines {#merge-similar-polylines}
+
+### [WIP] Simplify polyline {#simplify-polyline}
+
+For polylines (and subsequently Paths and Polygons) that contain a large number of vertices, an important optimization is to simplify them according to the current zoom level, reducing the amount of rendered data as much as possible. The basis for simplification is twofold:
+
+-   Segments that are too short and polygons that are too small can be filtered out.
+-   Vertices in a polyline that have little impact on the overall shape can be filtered out.
+
+The basic algorithm for segment vertex simplification is the Ramer-Douglas-Peucker algorithm, which works as follows:
+
+-   First keep the first and last vertices of the polyline and connect them.
+-   Find the furthest vertex from the segment among the remaining vertices, and keep that distance.
+-   If the distance is less than a threshold, discard it.
+-   If the distance is greater than the threshold, keep it. If the distance is less than the threshold, discard it. If the distance is greater than the threshold, keep it.
+-   The partitioning method handles the two sub-segments, going back to 1.
+
+We can use [simplify-js], which is based on this algorithm.
 
 ## Other Issues {#followup-issues}
 

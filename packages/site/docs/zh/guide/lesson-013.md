@@ -143,10 +143,6 @@ for (const shape of shapes) {
 }
 ```
 
-Pixi.js 使用了 [earcut] 进行多边形的三角化。其他三角化库还有 [cdt2d] 和 [libtess.js]，后者虽然性能不佳，但胜在精确性，尤其是针对包含大量 `holes` 以及自我交叠的路径。正如 [earcut] 在其文档中提到的，详见 [Ability to substitute earcut for libtess.js for a given Graphics object]：
-
-> If you want to get correct triangulation even on very bad data with lots of self-intersections and earcut is not precise enough, take a look at libtess.js.
-
 下面让我们来实现自己的版本：
 
 -   将路径定义规范到绝对命令
@@ -344,7 +340,11 @@ call(() => {
 
 ### 其他三角化方案 {#other-tesselation-techniques}
 
-[Polygon Tesselation] 中对比了 earcut 和 [libtess.js] 的效果。与 earcut 返回索引数组不同，libtess.js 返回的是顶点数组，具体使用方式可以参考代码仓库的示例。这意味着我们需要手动生成索引数组，当然这非常简单：由于不需要考虑顶点的复用，使用一个从 `0` 开始的递增数组即可。
+Pixi.js 使用了 [earcut] 进行多边形的三角化。其他三角化库还有 [cdt2d] 和 [libtess.js]，后者虽然性能不佳，但胜在精确性，尤其是针对包含大量 `holes` 以及自我交叠的路径。正如 [earcut] 在其文档中提到的，详见 [Ability to substitute earcut for libtess.js for a given Graphics object]：
+
+> If you want to get correct triangulation even on very bad data with lots of self-intersections and earcut is not precise enough, take a look at libtess.js.
+
+[Polygon Tesselation] 中也对比了 earcut 和 [libtess.js] 的效果。与 earcut 返回索引数组不同，libtess.js 返回的是顶点数组，具体使用方式可以参考代码仓库的示例。这意味着我们需要手动生成索引数组，当然这非常简单：由于不需要考虑顶点的复用，使用一个从 `0` 开始的递增数组即可。
 
 ```ts
 export function triangulate(contours: [number, number][][]) {
@@ -358,6 +358,18 @@ export function triangulate(contours: [number, number][][]) {
 
 triangulate(points); // [100, 0, 0, 100, 0, 0, 0, 100, 100, 0, 100, 100]
 // indices: [0, 1, 2, 3, 4, 5]
+```
+
+可以回到文章开头的“两只老虎”示例对比查看，左侧是使用 earcut 生成的，右侧是 libtess.js 生成的。我们为 Path 添加了一个 `tessellationMethod` 属性用来在两种三角化方式间切换：
+
+```ts
+export enum TesselationMethod {
+    EARCUT,
+    LIBTESS,
+}
+export interface PathAttributes extends ShapeAttributes {
+    tessellationMethod?: TesselationMethod;
+}
 ```
 
 ## 手绘风格 {#sketchy}
