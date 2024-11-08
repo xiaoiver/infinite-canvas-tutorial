@@ -1,4 +1,10 @@
 import { Canvas, Path, fromSVGElement, deserializeNode } from '../src';
+import rough from 'roughjs';
+
+const generator = rough.generator();
+const rect = generator.rectangle(0, 0, 100, 100);
+
+console.log(rect);
 
 const $canvas = document.getElementById('canvas') as HTMLCanvasElement;
 const resize = (width: number, height: number) => {

@@ -48,6 +48,7 @@
     "gl-matrix": "^3.4.3",
     "libtess": "^1.2.2",
     "rbush": "^3.0.1",
+    "roughjs": "^4.6.6",
     "svg-path-sdf": "^1.1.3"
   },
   "devDependencies": {

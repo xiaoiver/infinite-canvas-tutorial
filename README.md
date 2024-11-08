@@ -87,7 +87,7 @@ pnpm run dev
 
 <img src="./screenshots/lesson5.png" width="300" alt="Lesson 5">
 
-## Lesson 6 - Event System [🔗](https://infinitecanvas.cc/guide/lesson-006)
+## Lesson 6 - Event system [🔗](https://infinitecanvas.cc/guide/lesson-006)
 
 -   Implement an event system compatible with DOM Event API.
 -   How to pick a circle.
@@ -146,7 +146,7 @@ pnpm run dev
 
 <img src="./screenshots/lesson12.png" width="300" alt="Lesson 12 - polyline">
 
-## Lesson 13 - Draw Path and sketchy [🔗](https://infinitecanvas.cc/guide/lesson-013)
+## Lesson 13 - Draw path and hand-drawn shapes [🔗](https://infinitecanvas.cc/guide/lesson-013)
 
 -   Experimenting with SDF
 -   Trying to draw fills using some triangulating methods and strokes using polylines.

@@ -372,11 +372,18 @@ export interface PathAttributes extends ShapeAttributes {
 }
 ```
 
-## 手绘风格 {#sketchy}
+## [WIP] 手绘风格 {#sketchy}
 
 [excalidraw] 使用了 [rough] 进行手绘风格的绘制。
 
 ![rough.js](https://camo.githubusercontent.com/5d90838c20ae2cab9f295e3dd812800285c42e82d04787883c9d5acecaec85ed/68747470733a2f2f726f7567686a732e636f6d2f696d616765732f6361705f64656d6f2e706e67)
+
+我们使用 [RoughGenerator]，因为并不需要 rough 默认提供的基于 Canvas2D 或 SVG 的实际绘制功能。
+
+```ts
+const generator = rough.generator();
+const rect = generator.rectangle(0, 0, 100, 100);
+```
 
 ## 扩展阅读 {#extended-reading}
 
@@ -415,3 +422,4 @@ export interface PathAttributes extends ShapeAttributes {
 [vello]: https://github.com/linebender/vello
 [Polygon Tesselation]: https://andrewmarsh.com/software/tesselation-web/
 [包含多段的折线]: /zh/guide/lesson-012#polyline-with-multiple-segments
+[RoughGenerator]: https://github.com/rough-stuff/rough/wiki/RoughGenerator
