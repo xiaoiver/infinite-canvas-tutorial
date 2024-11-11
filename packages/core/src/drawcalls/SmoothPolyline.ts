@@ -23,6 +23,7 @@ import {
   Path,
   Polyline,
   Rect,
+  RoughCircle,
   RoughRect,
   Shape,
   hasValidStroke,
@@ -45,6 +46,7 @@ export class SmoothPolyline extends Drawcall {
   static check(shape: Shape) {
     return (
       shape instanceof Polyline ||
+      shape instanceof RoughCircle ||
       shape instanceof RoughRect ||
       ((shape instanceof Rect ||
         shape instanceof Circle ||
@@ -80,6 +82,7 @@ export class SmoothPolyline extends Drawcall {
     if (
       instance instanceof Polyline ||
       instance instanceof Path ||
+      instance instanceof RoughCircle ||
       instance instanceof RoughRect
     ) {
       return this.pointsBuffer.length / strideFloats - 3;
@@ -101,7 +104,8 @@ export class SmoothPolyline extends Drawcall {
     this.shapes.forEach((shape: Polyline) => {
       const { pointsBuffer: pBuffer, travelBuffer: tBuffer } = updateBuffer(
         shape,
-        this.index === 3,
+        (shape instanceof RoughCircle && this.index === 2) ||
+          (shape instanceof RoughRect && this.index === 3),
       );
 
       pointsBuffer.push(...pBuffer);
@@ -475,7 +479,10 @@ export class SmoothPolyline extends Drawcall {
       0,
     ];
 
-    if (instance instanceof RoughRect && this.index === 2) {
+    if (
+      (instance instanceof RoughCircle && this.index === 1) ||
+      (instance instanceof RoughRect && this.index === 2)
+    ) {
       u_StrokeColor = [fr / 255, fg / 255, fb / 255, fo];
       u_Opacity[2] = fillOpacity;
     }
@@ -534,7 +541,7 @@ export function updateBuffer(object: Shape, useRoughStroke = true) {
   let points: number[] = [];
   // const triangles: number[] = [];
 
-  if (object instanceof RoughRect) {
+  if (object instanceof RoughCircle || object instanceof RoughRect) {
     const { strokePoints, fillPoints } = object;
     points = (useRoughStroke ? strokePoints : fillPoints)
       .map((subPathPoints, i) => {

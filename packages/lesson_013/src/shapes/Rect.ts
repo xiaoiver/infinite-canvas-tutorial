@@ -85,6 +85,8 @@ export function RectWrapper<TBase extends GConstructor>(Base: TBase) {
     #dropShadowOffsetY: number;
     #dropShadowBlurRadius: number;
 
+    onGeometryChanged?: () => void;
+
     static getGeometryBounds(
       attributes: Partial<Pick<RectAttributes, 'x' | 'y' | 'width' | 'height'>>,
     ) {
@@ -128,6 +130,7 @@ export function RectWrapper<TBase extends GConstructor>(Base: TBase) {
         this.geometryBoundsDirtyFlag = true;
         this.renderBoundsDirtyFlag = true;
         this.boundsDirtyFlag = true;
+        this.onGeometryChanged?.();
       }
     }
 
@@ -141,6 +144,7 @@ export function RectWrapper<TBase extends GConstructor>(Base: TBase) {
         this.geometryBoundsDirtyFlag = true;
         this.renderBoundsDirtyFlag = true;
         this.boundsDirtyFlag = true;
+        this.onGeometryChanged?.();
       }
     }
 
@@ -154,6 +158,7 @@ export function RectWrapper<TBase extends GConstructor>(Base: TBase) {
         this.geometryBoundsDirtyFlag = true;
         this.renderBoundsDirtyFlag = true;
         this.boundsDirtyFlag = true;
+        this.onGeometryChanged?.();
       }
     }
 
@@ -167,6 +172,7 @@ export function RectWrapper<TBase extends GConstructor>(Base: TBase) {
         this.geometryBoundsDirtyFlag = true;
         this.renderBoundsDirtyFlag = true;
         this.boundsDirtyFlag = true;
+        this.onGeometryChanged?.();
       }
     }
 

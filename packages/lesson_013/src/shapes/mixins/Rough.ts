@@ -1,6 +1,6 @@
 import { Drawable, Options } from 'roughjs/bin/core';
 import { GConstructor } from '.';
-import { parsePath } from '../../utils';
+import { filterUndefined, parsePath } from '../../utils';
 
 export interface IRough
   extends Omit<Options, 'stroke' | 'fill' | 'strokeWidth'> {
@@ -137,6 +137,29 @@ export function Rough<TBase extends GConstructor>(Base: TBase) {
         this.geometryDirtyFlag = true;
         this.generate();
       }
+    }
+
+    get roughOptions(): Options {
+      const {
+        fill,
+        stroke,
+        strokeWidth,
+        seed,
+        bowing,
+        roughness,
+        fillStyle,
+        fillWeight,
+      } = this;
+      return filterUndefined({
+        fill: fill as string,
+        stroke,
+        strokeWidth,
+        seed,
+        bowing,
+        roughness,
+        fillStyle,
+        fillWeight,
+      });
     }
 
     /**

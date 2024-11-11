@@ -18,7 +18,7 @@ import {
   Texture,
   StencilOp,
 } from '@antv/g-device-api';
-import { Path, RoughRect, TesselationMethod } from '../shapes';
+import { Path, RoughCircle, RoughRect, TesselationMethod } from '../shapes';
 import { Drawcall, ZINDEX_FACTOR } from './Drawcall';
 import { vert, frag, Location } from '../shaders/mesh';
 import { isString, paddingMat3, triangulate } from '../utils';
@@ -91,7 +91,10 @@ export class Mesh extends Drawcall {
     if (instance instanceof Path) {
       rawPoints = instance.points;
       tessellationMethod = instance.tessellationMethod;
-    } else if (instance instanceof RoughRect) {
+    } else if (
+      instance instanceof RoughCircle ||
+      instance instanceof RoughRect
+    ) {
       rawPoints = instance.fillPathPoints;
       tessellationMethod = TesselationMethod.EARCUT;
     }

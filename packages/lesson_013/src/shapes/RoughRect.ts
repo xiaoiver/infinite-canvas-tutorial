@@ -1,5 +1,5 @@
 import { RectWrapper, RectAttributes } from './Rect';
-import { filterUndefined, generator } from '../utils';
+import { generator } from '../utils';
 import { IRough, Rough } from './mixins/Rough';
 import { Shape } from './Shape';
 
@@ -10,39 +10,17 @@ export interface RoughRectAttributes extends RectAttributes, IRough {}
 export class RoughRect extends Rough(RectWrapper(Shape)) {
   constructor(attributes: Partial<RoughRectAttributes> = {}) {
     super(attributes);
+
+    // x / y / width / height also regenerates the drawable
+    this.onGeometryChanged = () => {
+      this.geometryDirtyFlag = true;
+      this.generate();
+    };
   }
 
   generateDrawable() {
-    const {
-      x,
-      y,
-      width,
-      height,
-      fill,
-      stroke,
-      strokeWidth,
-      seed,
-      bowing,
-      roughness,
-      fillStyle,
-      fillWeight,
-    } = this;
+    const { x, y, width, height } = this;
 
-    return generator.rectangle(
-      x,
-      y,
-      width,
-      height,
-      filterUndefined({
-        fill: fill as string,
-        stroke,
-        strokeWidth,
-        seed,
-        bowing,
-        roughness,
-        fillStyle,
-        fillWeight,
-      }),
-    );
+    return generator.rectangle(x, y, width, height, this.roughOptions);
   }
 }

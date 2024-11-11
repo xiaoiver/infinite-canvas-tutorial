@@ -26,8 +26,15 @@ $icCanvas = call(() => {
 
 ```js eval code=false inspector=false
 call(() => {
-    const { Canvas, Path, deserializeNode, fromSVGElement, TesselationMethod } =
-        Lesson13;
+    const {
+        Canvas,
+        Path,
+        RoughCircle,
+        RoughRect,
+        deserializeNode,
+        fromSVGElement,
+        TesselationMethod,
+    } = Lesson13;
 
     const stats = new Stats();
     stats.showPanel(0);
@@ -41,6 +48,29 @@ call(() => {
 
     $icCanvas.addEventListener('ic-ready', (e) => {
         const canvas = e.detail;
+
+        const circle = new RoughCircle({
+            cx: 600,
+            cy: 100,
+            r: 50,
+            fill: 'black',
+            strokeWidth: 2,
+            stroke: 'red',
+            fillStyle: 'zigzag',
+        });
+        canvas.appendChild(circle);
+
+        const rect = new RoughRect({
+            x: 550,
+            y: 200,
+            fill: 'black',
+            strokeWidth: 2,
+            stroke: 'red',
+            fillStyle: 'dots',
+        });
+        rect.width = 100;
+        rect.height = 50;
+        canvas.appendChild(rect);
 
         fetch(
             '/Ghostscript_Tiger.svg',
@@ -376,7 +406,7 @@ export interface PathAttributes extends ShapeAttributes {
 
 包围盒可以沿用上一节课针对折线的估计方式。
 
-## 手绘风格 {#hand-drawn-style}
+## 手绘风格 {#hand-drawn-style-drawing}
 
 [excalidraw] 使用了 [rough] 进行手绘风格的绘制。我们并不需要 rough 默认提供的基于 Canvas2D 或 SVG 的实际绘制功能，使因此使用 [RoughGenerator] 是更好的选择。
 
@@ -487,7 +517,7 @@ $icCanvas3 = call(() => {
 
 ```js eval code=false inspector=false
 call(() => {
-    const { Canvas, RoughRect } = Lesson13;
+    const { Canvas, RoughCircle } = Lesson13;
 
     const stats = new Stats();
     stats.showPanel(0);
@@ -499,23 +529,86 @@ call(() => {
     $icCanvas3.parentElement.style.position = 'relative';
     $icCanvas3.parentElement.appendChild($stats);
 
-    const rect1 = new RoughRect({
-        x: 0,
-        y: 0,
+    const circle1 = new RoughCircle({
+        cx: 100,
+        cy: 100,
+        r: 50,
         fill: 'black',
         strokeWidth: 2,
         stroke: 'red',
-        seed: 1,
-        roughness: 1,
         fillStyle: 'dots',
     });
-    rect1.width = 100;
-    rect1.height = 100;
+
+    const circle2 = new RoughCircle({
+        cx: 200,
+        cy: 100,
+        r: 50,
+        fill: 'black',
+        strokeWidth: 2,
+        stroke: 'red',
+        fillStyle: 'hachure',
+    });
+
+    const circle3 = new RoughCircle({
+        cx: 300,
+        cy: 100,
+        r: 50,
+        fill: 'black',
+        strokeWidth: 2,
+        stroke: 'red',
+        fillStyle: 'zigzag',
+    });
+
+    const circle4 = new RoughCircle({
+        cx: 400,
+        cy: 100,
+        r: 50,
+        fill: 'black',
+        strokeWidth: 2,
+        stroke: 'red',
+        fillStyle: 'cross-hatch',
+    });
+
+    const circle5 = new RoughCircle({
+        cx: 500,
+        cy: 100,
+        r: 50,
+        fill: 'black',
+        strokeWidth: 2,
+        stroke: 'red',
+        fillStyle: 'solid',
+    });
+
+    const circle6 = new RoughCircle({
+        cx: 100,
+        cy: 200,
+        r: 50,
+        fill: 'black',
+        strokeWidth: 2,
+        stroke: 'red',
+        fillStyle: 'dashed',
+    });
+
+    const circle7 = new RoughCircle({
+        cx: 200,
+        cy: 200,
+        r: 50,
+        fill: 'black',
+        strokeWidth: 2,
+        stroke: 'red',
+        fillStyle: 'zigzag-line',
+    });
 
     $icCanvas3.addEventListener('ic-ready', (e) => {
         const canvas = e.detail;
 
-        canvas.appendChild(rect1);
+        canvas.appendChild(circle1);
+        canvas.appendChild(circle2);
+        canvas.appendChild(circle3);
+        canvas.appendChild(circle4);
+        canvas.appendChild(circle5);
+        canvas.appendChild(circle6);
+        canvas.appendChild(circle7);
     });
 
     $icCanvas3.addEventListener('ic-frame', (e) => {

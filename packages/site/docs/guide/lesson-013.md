@@ -26,8 +26,15 @@ $icCanvas = call(() => {
 
 ```js eval code=false inspector=false
 call(() => {
-    const { Canvas, Path, deserializeNode, fromSVGElement, TesselationMethod } =
-        Lesson13;
+    const {
+        Canvas,
+        Path,
+        RoughCircle,
+        RoughRect,
+        deserializeNode,
+        fromSVGElement,
+        TesselationMethod,
+    } = Lesson13;
 
     const stats = new Stats();
     stats.showPanel(0);
@@ -41,6 +48,29 @@ call(() => {
 
     $icCanvas.addEventListener('ic-ready', (e) => {
         const canvas = e.detail;
+
+        const circle = new RoughCircle({
+            cx: 600,
+            cy: 100,
+            r: 50,
+            fill: 'black',
+            strokeWidth: 2,
+            stroke: 'red',
+            fillStyle: 'zigzag',
+        });
+        canvas.appendChild(circle);
+
+        const rect = new RoughRect({
+            x: 550,
+            y: 200,
+            fill: 'black',
+            strokeWidth: 2,
+            stroke: 'red',
+            fillStyle: 'dots',
+        });
+        rect.width = 100;
+        rect.height = 50;
+        canvas.appendChild(rect);
 
         fetch(
             '/Ghostscript_Tiger.svg',
@@ -372,11 +402,215 @@ export interface PathAttributes extends ShapeAttributes {
 }
 ```
 
-## Hand-drawn style drawing {#sketchy}
+## Hand-drawn style drawing {#hand-drawn-style-drawing}
 
-[excalidraw] uses [rough] for hand-drawn style drawing.
+[excalidraw] uses [rough] for hand-drawn style drawing. We don't need the actual Canvas2D or SVG based drawing functionality that rough provides by default, so using [RoughGenerator] is a better choice.
 
 ![rough.js](https://camo.githubusercontent.com/5d90838c20ae2cab9f295e3dd812800285c42e82d04787883c9d5acecaec85ed/68747470733a2f2f726f7567686a732e636f6d2f696d616765732f6361705f64656d6f2e706e67)
+
+### Generate hand-drawn path definitions {#generate-rough-path-definitions}
+
+RoughGenerator provides generation methods for common shapes, using rectangles as an example:
+
+```ts
+const generator = rough.generator();
+const rect = generator.rectangle(0, 0, 100, 100);
+```
+
+It generates a set of subPath-like structures for us based on the input parameters, called OpSet, which contains the `move` `lineTo` and `bcurveTo` operators. We can easily convert this to a command with an absolute path, then sample it and continue drawing with Polyline!
+
+```ts
+import { AbsoluteArray } from '@antv/util';
+import { OpSet } from 'roughjs/bin/core';
+
+export function opSet2Absolute(set: OpSet) {
+    const array = [];
+    set.ops.forEach(({ op, data }) => {
+        if (op === 'move') {
+            array.push(['M', data[0], data[1]]);
+        } else if (op === 'lineTo') {
+            array.push(['L', data[0], data[1]]);
+        } else if (op === 'bcurveTo') {
+            array.push([
+                'C',
+                data[0],
+                data[1],
+                data[2],
+                data[3],
+                data[4],
+                data[5],
+            ]);
+        }
+    });
+    return array as AbsoluteArray;
+}
+```
+
+### Rough Mixin {rough-mixin}
+
+We would like to reuse the non-hand-drawn version for these functions of the envelope box calculation and pickup for the following reasons:
+
+-   This stylized rendering should only affect the rendering effect, it does not change its physical properties.
+-   A hand-drawn graphic actually consists of several sets of Paths, so it is a waste of performance to calculate the bounding box exactly.
+-   When picking up, it should be taken as a whole, and judging by the Paths will give wrong results, e.g. if the mouse is hovering inside the graphic, but is in the empty space between the lines, and thus is not inside the graphic.
+    So we create a new Mixin with all the parameters supported by rough such as `seed` `roughness` etc. and redraw it as soon as these parameters change:
+
+```ts
+import { Drawable, Options } from 'roughjs/bin/core';
+import { GConstructor } from '.';
+import { parsePath } from '../../utils';
+
+export interface IRough
+    extends Omit<Options, 'stroke' | 'fill' | 'strokeWidth'> {
+    /**
+     * @see https://github.com/rough-stuff/rough/wiki#roughness
+     */
+    roughness: Options['roughness'];
+}
+export function Rough<TBase extends GConstructor>(Base: TBase) {
+    abstract class Rough extends Base implements IRough {
+        get roughness() {
+            return this.#roughness;
+        }
+        set roughness(roughness: number) {
+            if (this.#roughness !== roughness) {
+                this.#roughness = roughness;
+                this.renderDirtyFlag = true;
+                this.generate();
+            }
+        }
+    }
+}
+```
+
+This way we can get hand-drawn effects by wrapping our already supported shapes in it. The way to use it is as follows, taking RoughRect as an example, which inherits from Rect:
+
+```ts
+import { RectWrapper, RectAttributes } from './Rect';
+
+export class RoughRect extends Rough(RectWrapper(Shape)) {}
+```
+
+### fillStyle solid {#fill-style-solid}
+
+To support the `fillStyle = 'solid'` case:
+
+```ts
+SHAPE_DRAWCALL_CTORS.set(RoughRect, [
+    ShadowRect,
+    Mesh, // fillStyle === 'solid' // [!code ++]
+    SmoothPolyline, // fill
+    SmoothPolyline, // stroke
+]);
+```
+
+```js eval code=false
+$icCanvas3 = call(() => {
+    return document.createElement('ic-canvas-lesson13');
+});
+```
+
+```js eval code=false inspector=false
+call(() => {
+    const { Canvas, RoughCircle } = Lesson13;
+
+    const stats = new Stats();
+    stats.showPanel(0);
+    const $stats = stats.dom;
+    $stats.style.position = 'absolute';
+    $stats.style.left = '0px';
+    $stats.style.top = '0px';
+
+    $icCanvas3.parentElement.style.position = 'relative';
+    $icCanvas3.parentElement.appendChild($stats);
+
+    const circle1 = new RoughCircle({
+        cx: 100,
+        cy: 100,
+        r: 50,
+        fill: 'black',
+        strokeWidth: 2,
+        stroke: 'red',
+        fillStyle: 'dots',
+    });
+
+    const circle2 = new RoughCircle({
+        cx: 200,
+        cy: 100,
+        r: 50,
+        fill: 'black',
+        strokeWidth: 2,
+        stroke: 'red',
+        fillStyle: 'hachure',
+    });
+
+    const circle3 = new RoughCircle({
+        cx: 300,
+        cy: 100,
+        r: 50,
+        fill: 'black',
+        strokeWidth: 2,
+        stroke: 'red',
+        fillStyle: 'zigzag',
+    });
+
+    const circle4 = new RoughCircle({
+        cx: 400,
+        cy: 100,
+        r: 50,
+        fill: 'black',
+        strokeWidth: 2,
+        stroke: 'red',
+        fillStyle: 'cross-hatch',
+    });
+
+    const circle5 = new RoughCircle({
+        cx: 500,
+        cy: 100,
+        r: 50,
+        fill: 'black',
+        strokeWidth: 2,
+        stroke: 'red',
+        fillStyle: 'solid',
+    });
+
+    const circle6 = new RoughCircle({
+        cx: 100,
+        cy: 200,
+        r: 50,
+        fill: 'black',
+        strokeWidth: 2,
+        stroke: 'red',
+        fillStyle: 'dashed',
+    });
+
+    const circle7 = new RoughCircle({
+        cx: 200,
+        cy: 200,
+        r: 50,
+        fill: 'black',
+        strokeWidth: 2,
+        stroke: 'red',
+        fillStyle: 'zigzag-line',
+    });
+
+    $icCanvas3.addEventListener('ic-ready', (e) => {
+        const canvas = e.detail;
+
+        canvas.appendChild(circle1);
+        canvas.appendChild(circle2);
+        canvas.appendChild(circle3);
+        canvas.appendChild(circle4);
+        canvas.appendChild(circle5);
+        canvas.appendChild(circle6);
+        canvas.appendChild(circle7);
+    });
+
+    $icCanvas3.addEventListener('ic-frame', (e) => {
+        stats.update();
+    });
+});
+```
 
 ## Extended reading {#extended-reading}
 
