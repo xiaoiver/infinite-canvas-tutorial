@@ -26,6 +26,8 @@ export class Path extends Shape implements PathAttributes {
   points: [number, number][][] = [];
   tessellationMethod: TesselationMethod;
 
+  batchable = false;
+
   static getGeometryBounds(
     attributes: Partial<
       Pick<PathAttributes, 'd'> & { points: [number, number][][] }
@@ -37,13 +39,13 @@ export class Path extends Shape implements PathAttributes {
       return new AABB(0, 0, 0, 0);
     }
 
-    const flatedPoints = points.flat();
+    const flattedPoints = points.flat();
 
     // FIXME: account for strokeLinejoin & strokeLinecap
-    const minX = Math.min(...flatedPoints.map((point) => point[0]));
-    const maxX = Math.max(...flatedPoints.map((point) => point[0]));
-    const minY = Math.min(...flatedPoints.map((point) => point[1]));
-    const maxY = Math.max(...flatedPoints.map((point) => point[1]));
+    const minX = Math.min(...flattedPoints.map((point) => point[0]));
+    const maxX = Math.max(...flattedPoints.map((point) => point[0]));
+    const minY = Math.min(...flattedPoints.map((point) => point[1]));
+    const maxY = Math.max(...flattedPoints.map((point) => point[1]));
 
     return new AABB(minX, minY, maxX, maxY);
   }

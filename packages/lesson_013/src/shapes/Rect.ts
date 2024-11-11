@@ -6,6 +6,7 @@ import {
   strokeOffset,
 } from './Shape';
 import { AABB } from './AABB';
+import { GConstructor } from './mixins';
 
 export interface RectAttributes extends ShapeAttributes {
   /**
@@ -67,226 +68,164 @@ export interface RectAttributes extends ShapeAttributes {
   dropShadowBlurRadius: number;
 }
 
-export class Rect extends Shape implements RectAttributes {
-  #x: number;
-  #y: number;
-  #width: number;
-  #height: number;
-  #cornerRadius: number;
-  #dropShadowColor: string;
-  #dropShadowColorRGB: d3.RGBColor;
-  #dropShadowOffsetX: number;
-  #dropShadowOffsetY: number;
-  #dropShadowBlurRadius: number;
+// @ts-ignore
+// eslint-disable-next-line @typescript-eslint/no-redeclare
+export class Rect extends RectWrapper(Shape) {}
+export function RectWrapper<TBase extends GConstructor>(Base: TBase) {
+  // @ts-expect-error - Mixin class
+  return class RectWrapper extends Base implements RectAttributes {
+    #x: number;
+    #y: number;
+    #width: number;
+    #height: number;
+    #cornerRadius: number;
+    #dropShadowColor: string;
+    #dropShadowColorRGB: d3.RGBColor;
+    #dropShadowOffsetX: number;
+    #dropShadowOffsetY: number;
+    #dropShadowBlurRadius: number;
 
-  static getGeometryBounds(
-    attributes: Partial<Pick<RectAttributes, 'x' | 'y' | 'width' | 'height'>>,
-  ) {
-    const { x = 0, y = 0, width = 0, height = 0 } = attributes;
-    return new AABB(x, y, x + width, y + height);
-  }
-
-  constructor(attributes: Partial<RectAttributes> = {}) {
-    super(attributes);
-
-    const {
-      x,
-      y,
-      width,
-      height,
-      cornerRadius,
-      dropShadowColor,
-      dropShadowOffsetX,
-      dropShadowOffsetY,
-      dropShadowBlurRadius,
-    } = attributes;
-
-    this.x = x ?? 0;
-    this.y = y ?? 0;
-    this.width = width ?? 0;
-    this.height = height ?? 0;
-    this.cornerRadius = cornerRadius ?? 0;
-    this.dropShadowColor = dropShadowColor ?? 'black';
-    this.dropShadowOffsetX = dropShadowOffsetX ?? 0;
-    this.dropShadowOffsetY = dropShadowOffsetY ?? 0;
-    this.dropShadowBlurRadius = dropShadowBlurRadius ?? 0;
-  }
-
-  get x() {
-    return this.#x;
-  }
-  set x(x: number) {
-    if (this.#x !== x) {
-      this.#x = x;
-      this.renderDirtyFlag = true;
-      this.geometryBoundsDirtyFlag = true;
-      this.renderBoundsDirtyFlag = true;
-      this.boundsDirtyFlag = true;
+    static getGeometryBounds(
+      attributes: Partial<Pick<RectAttributes, 'x' | 'y' | 'width' | 'height'>>,
+    ) {
+      const { x = 0, y = 0, width = 0, height = 0 } = attributes;
+      return new AABB(x, y, x + width, y + height);
     }
-  }
 
-  get y() {
-    return this.#y;
-  }
-  set y(y: number) {
-    if (this.#y !== y) {
-      this.#y = y;
-      this.renderDirtyFlag = true;
-      this.geometryBoundsDirtyFlag = true;
-      this.renderBoundsDirtyFlag = true;
-      this.boundsDirtyFlag = true;
-    }
-  }
+    constructor(attributes: Partial<RectAttributes> = {}) {
+      super(attributes);
 
-  get width() {
-    return this.#width;
-  }
-  set width(width: number) {
-    if (this.#width !== width) {
-      this.#width = width;
-      this.renderDirtyFlag = true;
-      this.geometryBoundsDirtyFlag = true;
-      this.renderBoundsDirtyFlag = true;
-      this.boundsDirtyFlag = true;
-    }
-  }
-
-  get height() {
-    return this.#height;
-  }
-  set height(height: number) {
-    if (this.#height !== height) {
-      this.#height = height;
-      this.renderDirtyFlag = true;
-      this.geometryBoundsDirtyFlag = true;
-      this.renderBoundsDirtyFlag = true;
-      this.boundsDirtyFlag = true;
-    }
-  }
-
-  get cornerRadius() {
-    return this.#cornerRadius;
-  }
-  set cornerRadius(cornerRadius: number) {
-    if (this.#cornerRadius !== cornerRadius) {
-      this.#cornerRadius = cornerRadius;
-      this.renderDirtyFlag = true;
-    }
-  }
-
-  get dropShadowColor() {
-    return this.#dropShadowColor;
-  }
-  set dropShadowColor(dropShadowColor: string) {
-    if (this.#dropShadowColor !== dropShadowColor) {
-      this.#dropShadowColor = dropShadowColor;
-      this.#dropShadowColorRGB = d3.rgb(dropShadowColor);
-      this.renderDirtyFlag = true;
-    }
-  }
-
-  get dropShadowColorRGB() {
-    return this.#dropShadowColorRGB;
-  }
-
-  get dropShadowOffsetX() {
-    return this.#dropShadowOffsetX;
-  }
-  set dropShadowOffsetX(dropShadowOffsetX: number) {
-    if (this.#dropShadowOffsetX !== dropShadowOffsetX) {
-      this.#dropShadowOffsetX = dropShadowOffsetX;
-      this.renderDirtyFlag = true;
-    }
-  }
-
-  get dropShadowOffsetY() {
-    return this.#dropShadowOffsetY;
-  }
-  set dropShadowOffsetY(dropShadowOffsetY: number) {
-    if (this.#dropShadowOffsetY !== dropShadowOffsetY) {
-      this.#dropShadowOffsetY = dropShadowOffsetY;
-      this.renderDirtyFlag = true;
-    }
-  }
-
-  get dropShadowBlurRadius() {
-    return this.#dropShadowBlurRadius;
-  }
-  set dropShadowBlurRadius(dropShadowBlurRadius: number) {
-    if (this.#dropShadowBlurRadius !== dropShadowBlurRadius) {
-      this.#dropShadowBlurRadius = dropShadowBlurRadius;
-      this.renderDirtyFlag = true;
-    }
-  }
-
-  containsPoint(xx: number, yy: number) {
-    const { x, y, width, height, strokeWidth, strokeAlignment, cornerRadius } =
-      this;
-    const offset = strokeOffset(strokeAlignment, strokeWidth);
-    const [hasFill, hasStroke] = isFillOrStrokeAffected(
-      this.pointerEvents,
-      this.dropShadowColor,
-      this.stroke,
-    );
-
-    if (hasFill && hasStroke) {
-      return isPointInRoundedRectangle(
-        xx,
-        yy,
-        x - offset,
-        y - offset,
-        x + width + offset,
-        y + height + offset,
-        cornerRadius,
-      );
-    }
-    if (hasFill) {
-      return isPointInRoundedRectangle(
-        xx,
-        yy,
+      const {
         x,
         y,
-        x + width,
-        y + height,
+        width,
+        height,
         cornerRadius,
-      );
-    }
-    if (hasStroke) {
-      const inner = offset - strokeWidth;
-      return (
-        !isPointInRoundedRectangle(
-          xx,
-          yy,
-          x - inner,
-          y - inner,
-          x + width + inner,
-          y + height + inner,
-          cornerRadius,
-        ) &&
-        isPointInRoundedRectangle(
-          xx,
-          yy,
-          x - offset,
-          y - offset,
-          x + width + offset,
-          y + height + offset,
-          cornerRadius,
-        )
-      );
-    }
-    return false;
-  }
+        dropShadowColor,
+        dropShadowOffsetX,
+        dropShadowOffsetY,
+        dropShadowBlurRadius,
+      } = attributes;
 
-  getGeometryBounds() {
-    if (this.geometryBoundsDirtyFlag) {
-      this.geometryBoundsDirtyFlag = false;
-      this.geometryBounds = Rect.getGeometryBounds(this);
+      this.x = x ?? 0;
+      this.y = y ?? 0;
+      this.width = width ?? 0;
+      this.height = height ?? 0;
+      this.cornerRadius = cornerRadius ?? 0;
+      this.dropShadowColor = dropShadowColor ?? 'black';
+      this.dropShadowOffsetX = dropShadowOffsetX ?? 0;
+      this.dropShadowOffsetY = dropShadowOffsetY ?? 0;
+      this.dropShadowBlurRadius = dropShadowBlurRadius ?? 0;
     }
-    return this.geometryBounds;
-  }
 
-  getRenderBounds() {
-    if (this.renderBoundsDirtyFlag) {
+    get x() {
+      return this.#x;
+    }
+    set x(x: number) {
+      if (this.#x !== x) {
+        this.#x = x;
+        this.renderDirtyFlag = true;
+        this.geometryBoundsDirtyFlag = true;
+        this.renderBoundsDirtyFlag = true;
+        this.boundsDirtyFlag = true;
+      }
+    }
+
+    get y() {
+      return this.#y;
+    }
+    set y(y: number) {
+      if (this.#y !== y) {
+        this.#y = y;
+        this.renderDirtyFlag = true;
+        this.geometryBoundsDirtyFlag = true;
+        this.renderBoundsDirtyFlag = true;
+        this.boundsDirtyFlag = true;
+      }
+    }
+
+    get width() {
+      return this.#width;
+    }
+    set width(width: number) {
+      if (this.#width !== width) {
+        this.#width = width;
+        this.renderDirtyFlag = true;
+        this.geometryBoundsDirtyFlag = true;
+        this.renderBoundsDirtyFlag = true;
+        this.boundsDirtyFlag = true;
+      }
+    }
+
+    get height() {
+      return this.#height;
+    }
+    set height(height: number) {
+      if (this.#height !== height) {
+        this.#height = height;
+        this.renderDirtyFlag = true;
+        this.geometryBoundsDirtyFlag = true;
+        this.renderBoundsDirtyFlag = true;
+        this.boundsDirtyFlag = true;
+      }
+    }
+
+    get cornerRadius() {
+      return this.#cornerRadius;
+    }
+    set cornerRadius(cornerRadius: number) {
+      if (this.#cornerRadius !== cornerRadius) {
+        this.#cornerRadius = cornerRadius;
+        this.renderDirtyFlag = true;
+      }
+    }
+
+    get dropShadowColor() {
+      return this.#dropShadowColor;
+    }
+    set dropShadowColor(dropShadowColor: string) {
+      if (this.#dropShadowColor !== dropShadowColor) {
+        this.#dropShadowColor = dropShadowColor;
+        this.#dropShadowColorRGB = d3.rgb(dropShadowColor);
+        this.renderDirtyFlag = true;
+      }
+    }
+
+    get dropShadowColorRGB() {
+      return this.#dropShadowColorRGB;
+    }
+
+    get dropShadowOffsetX() {
+      return this.#dropShadowOffsetX;
+    }
+    set dropShadowOffsetX(dropShadowOffsetX: number) {
+      if (this.#dropShadowOffsetX !== dropShadowOffsetX) {
+        this.#dropShadowOffsetX = dropShadowOffsetX;
+        this.renderDirtyFlag = true;
+      }
+    }
+
+    get dropShadowOffsetY() {
+      return this.#dropShadowOffsetY;
+    }
+    set dropShadowOffsetY(dropShadowOffsetY: number) {
+      if (this.#dropShadowOffsetY !== dropShadowOffsetY) {
+        this.#dropShadowOffsetY = dropShadowOffsetY;
+        this.renderDirtyFlag = true;
+      }
+    }
+
+    get dropShadowBlurRadius() {
+      return this.#dropShadowBlurRadius;
+    }
+    set dropShadowBlurRadius(dropShadowBlurRadius: number) {
+      if (this.#dropShadowBlurRadius !== dropShadowBlurRadius) {
+        this.#dropShadowBlurRadius = dropShadowBlurRadius;
+        this.renderDirtyFlag = true;
+      }
+    }
+
+    containsPoint(xx: number, yy: number) {
       const {
         x,
         y,
@@ -294,29 +233,104 @@ export class Rect extends Shape implements RectAttributes {
         height,
         strokeWidth,
         strokeAlignment,
-        dropShadowOffsetX,
-        dropShadowOffsetY,
-        dropShadowBlurRadius,
+        cornerRadius,
       } = this;
       const offset = strokeOffset(strokeAlignment, strokeWidth);
-      this.renderBoundsDirtyFlag = false;
-      this.renderBounds = new AABB(
-        x - offset,
-        y - offset,
-        x + width + offset,
-        y + height + offset,
+      const [hasFill, hasStroke] = isFillOrStrokeAffected(
+        this.pointerEvents,
+        this.dropShadowColor,
+        this.stroke,
       );
-      this.renderBounds.addBounds(
-        new AABB(
-          x + dropShadowOffsetX - dropShadowBlurRadius,
-          y + dropShadowOffsetY - dropShadowBlurRadius,
-          x + dropShadowOffsetX + width + dropShadowBlurRadius,
-          y + dropShadowOffsetY + height + dropShadowBlurRadius,
-        ),
-      );
+
+      if (hasFill && hasStroke) {
+        return isPointInRoundedRectangle(
+          xx,
+          yy,
+          x - offset,
+          y - offset,
+          x + width + offset,
+          y + height + offset,
+          cornerRadius,
+        );
+      }
+      if (hasFill) {
+        return isPointInRoundedRectangle(
+          xx,
+          yy,
+          x,
+          y,
+          x + width,
+          y + height,
+          cornerRadius,
+        );
+      }
+      if (hasStroke) {
+        const inner = offset - strokeWidth;
+        return (
+          !isPointInRoundedRectangle(
+            xx,
+            yy,
+            x - inner,
+            y - inner,
+            x + width + inner,
+            y + height + inner,
+            cornerRadius,
+          ) &&
+          isPointInRoundedRectangle(
+            xx,
+            yy,
+            x - offset,
+            y - offset,
+            x + width + offset,
+            y + height + offset,
+            cornerRadius,
+          )
+        );
+      }
+      return false;
     }
-    return this.renderBounds;
-  }
+
+    getGeometryBounds() {
+      if (this.geometryBoundsDirtyFlag) {
+        this.geometryBoundsDirtyFlag = false;
+        this.geometryBounds = RectWrapper.getGeometryBounds(this);
+      }
+      return this.geometryBounds;
+    }
+
+    getRenderBounds() {
+      if (this.renderBoundsDirtyFlag) {
+        const {
+          x,
+          y,
+          width,
+          height,
+          strokeWidth,
+          strokeAlignment,
+          dropShadowOffsetX,
+          dropShadowOffsetY,
+          dropShadowBlurRadius,
+        } = this;
+        const offset = strokeOffset(strokeAlignment, strokeWidth);
+        this.renderBoundsDirtyFlag = false;
+        this.renderBounds = new AABB(
+          x - offset,
+          y - offset,
+          x + width + offset,
+          y + height + offset,
+        );
+        this.renderBounds.addBounds(
+          new AABB(
+            x + dropShadowOffsetX - dropShadowBlurRadius,
+            y + dropShadowOffsetY - dropShadowBlurRadius,
+            x + dropShadowOffsetX + width + dropShadowBlurRadius,
+            y + dropShadowOffsetY + height + dropShadowBlurRadius,
+          ),
+        );
+      }
+      return this.renderBounds;
+    }
+  };
 }
 
 function isPointInRoundedRectangle(

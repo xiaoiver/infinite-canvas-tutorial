@@ -23,6 +23,7 @@ import {
   Path,
   Polyline,
   Rect,
+  RoughRect,
   Shape,
   hasValidStroke,
 } from '../shapes';
@@ -44,6 +45,7 @@ export class SmoothPolyline extends Drawcall {
   static check(shape: Shape) {
     return (
       shape instanceof Polyline ||
+      shape instanceof RoughRect ||
       ((shape instanceof Rect ||
         shape instanceof Circle ||
         shape instanceof Ellipse) &&
@@ -75,7 +77,11 @@ export class SmoothPolyline extends Drawcall {
 
   get instanceCount() {
     const instance = this.shapes[0];
-    if (instance instanceof Polyline || instance instanceof Path) {
+    if (
+      instance instanceof Polyline ||
+      instance instanceof Path ||
+      instance instanceof RoughRect
+    ) {
       return this.pointsBuffer.length / strideFloats - 3;
     } else if (instance instanceof Rect) {
       return 6;
@@ -95,7 +101,7 @@ export class SmoothPolyline extends Drawcall {
     this.shapes.forEach((shape: Polyline) => {
       const { pointsBuffer: pBuffer, travelBuffer: tBuffer } = updateBuffer(
         shape,
-        false,
+        this.index === 3,
       );
 
       pointsBuffer.push(...pBuffer);
@@ -123,6 +129,10 @@ export class SmoothPolyline extends Drawcall {
     this.indices = indices;
     this.pointsBuffer = pointsBuffer;
     this.travelBuffer = travelBuffer;
+
+    if (this.instanceCount <= 0) {
+      return;
+    }
 
     if (this.#segmentsBuffer) {
       this.#segmentsBuffer.destroy();
@@ -331,6 +341,10 @@ export class SmoothPolyline extends Drawcall {
   }
 
   render(renderPass: RenderPass, uniformLegacyObject: Record<string, unknown>) {
+    if (this.instanceCount <= 0) {
+      return;
+    }
+
     if (
       this.shapes.some((shape) => shape.renderDirtyFlag) ||
       this.geometryDirty
@@ -426,6 +440,7 @@ export class SmoothPolyline extends Drawcall {
 
   private generateBuffer(shape: Polyline): [number[], Record<string, unknown>] {
     const {
+      fillRGB: { r: fr, g: fg, b: fb, opacity: fo },
       strokeRGB: { r: sr, g: sg, b: sb, opacity: so },
       strokeWidth,
       opacity,
@@ -438,7 +453,8 @@ export class SmoothPolyline extends Drawcall {
       sizeAttenuation,
     } = shape;
 
-    const u_StrokeColor = [sr / 255, sg / 255, sb / 255, so];
+    const instance = this.shapes[0];
+    let u_StrokeColor = [sr / 255, sg / 255, sb / 255, so];
     const u_ZIndexStrokeWidth = [
       // Polyline should render after SDF
       (shape.globalRenderOrder + 0.1) / ZINDEX_FACTOR,
@@ -458,6 +474,11 @@ export class SmoothPolyline extends Drawcall {
       strokeDashoffset || 0,
       0,
     ];
+
+    if (instance instanceof RoughRect && this.index === 2) {
+      u_StrokeColor = [fr / 255, fg / 255, fb / 255, fo];
+      u_Opacity[2] = fillOpacity;
+    }
 
     return [
       [...u_StrokeColor, ...u_ZIndexStrokeWidth, ...u_Opacity, ...u_StrokeDash],
@@ -507,17 +528,22 @@ function getCapType(lineCap: CanvasLineCap) {
   return cap;
 }
 
-export function updateBuffer(
-  object: Shape,
-  needEarcut = false,
-  segmentNum?: number,
-) {
+export function updateBuffer(object: Shape, useRoughStroke = true) {
   const { strokeLinecap: lineCap, strokeLinejoin: lineJoin } = object;
 
   let points: number[] = [];
   // const triangles: number[] = [];
 
-  if (object instanceof Polyline) {
+  if (object instanceof RoughRect) {
+    const { strokePoints, fillPoints } = object;
+    points = (useRoughStroke ? strokePoints : fillPoints)
+      .map((subPathPoints, i) => {
+        return [...subPathPoints].concat(
+          i !== strokePoints.length - 1 ? [NaN, NaN] : [],
+        );
+      })
+      .flat(2);
+  } else if (object instanceof Polyline) {
     points = object.points.reduce((prev, cur) => {
       prev.push(cur[0], cur[1]);
       return prev;

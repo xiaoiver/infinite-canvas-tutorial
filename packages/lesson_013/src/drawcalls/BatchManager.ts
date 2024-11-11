@@ -1,6 +1,14 @@
 import { Buffer, Device, RenderPass } from '@antv/g-device-api';
 import { Drawcall, SDF, ShadowRect, SmoothPolyline } from '.';
-import { Circle, Ellipse, Path, Polyline, Rect, type Shape } from '../shapes';
+import {
+  Circle,
+  Ellipse,
+  Path,
+  Polyline,
+  Rect,
+  RoughRect,
+  type Shape,
+} from '../shapes';
 import { RenderCache } from '../utils/render-cache';
 import { Mesh } from './Mesh';
 
@@ -20,6 +28,13 @@ SHAPE_DRAWCALL_CTORS.set(Rect, [ShadowRect, SDF, SmoothPolyline]);
 SHAPE_DRAWCALL_CTORS.set(Polyline, [SmoothPolyline]);
 // SHAPE_DRAWCALL_CTORS.set(Path, [SDFPath]);
 SHAPE_DRAWCALL_CTORS.set(Path, [Mesh, SmoothPolyline]);
+// @ts-expect-error Property 'getGeometryBounds' is missing in type 'RoughRect'
+SHAPE_DRAWCALL_CTORS.set(RoughRect, [
+  ShadowRect,
+  Mesh, // fillStyle === 'solid'
+  SmoothPolyline, // fill
+  SmoothPolyline, // stroke
+]);
 
 export class BatchManager {
   /**
@@ -44,7 +59,7 @@ export class BatchManager {
 
   private createDrawcalls(shape: Shape, instanced = false) {
     return SHAPE_DRAWCALL_CTORS.get(shape.constructor as typeof Shape)
-      ?.map((DrawcallCtor) => {
+      ?.map((DrawcallCtor, index) => {
         if (
           // @ts-ignore
           !DrawcallCtor.check ||
@@ -56,6 +71,7 @@ export class BatchManager {
             this.device,
             this.#renderCache,
             instanced,
+            index,
           );
           drawcall.add(shape);
           return drawcall;

@@ -372,17 +372,156 @@ export interface PathAttributes extends ShapeAttributes {
 }
 ```
 
-## [WIP] 手绘风格 {#sketchy}
+## 包围盒 & 拾取 {#bounding-box-picking}
 
-[excalidraw] 使用了 [rough] 进行手绘风格的绘制。
+包围盒可以沿用上一节课针对折线的估计方式。
+
+## 手绘风格 {#hand-drawn-style}
+
+[excalidraw] 使用了 [rough] 进行手绘风格的绘制。我们并不需要 rough 默认提供的基于 Canvas2D 或 SVG 的实际绘制功能，使因此使用 [RoughGenerator] 是更好的选择。
 
 ![rough.js](https://camo.githubusercontent.com/5d90838c20ae2cab9f295e3dd812800285c42e82d04787883c9d5acecaec85ed/68747470733a2f2f726f7567686a732e636f6d2f696d616765732f6361705f64656d6f2e706e67)
 
-我们使用 [RoughGenerator]，因为并不需要 rough 默认提供的基于 Canvas2D 或 SVG 的实际绘制功能。
+### 生成手绘路径定义 {#generate-rough-path-definitions}
+
+RoughGenerator 为常见图形提供了生成方法，以矩形为例：
 
 ```ts
 const generator = rough.generator();
 const rect = generator.rectangle(0, 0, 100, 100);
+```
+
+它能根据输入参数为我们生成一组类似 subPath 的结构，rough 称作 OpSet，它包含 `move` `lineTo` 和 `bcurveTo` 三种操作符。我们可以很容易地将它转换成包含绝对路径的命令，随后进行采样就可以继续使用 Polyline 绘制了。
+
+```ts
+import { AbsoluteArray } from '@antv/util';
+import { OpSet } from 'roughjs/bin/core';
+
+export function opSet2Absolute(set: OpSet) {
+    const array = [];
+    set.ops.forEach(({ op, data }) => {
+        if (op === 'move') {
+            array.push(['M', data[0], data[1]]);
+        } else if (op === 'lineTo') {
+            array.push(['L', data[0], data[1]]);
+        } else if (op === 'bcurveTo') {
+            array.push([
+                'C',
+                data[0],
+                data[1],
+                data[2],
+                data[3],
+                data[4],
+                data[5],
+            ]);
+        }
+    });
+    return array as AbsoluteArray;
+}
+```
+
+### Rough Mixin {rough-mixin}
+
+在包围盒计算、拾取这些功能上我们希望复用非手绘版本，理由如下：
+
+-   这种风格化渲染仅应当影响渲染效果，并不改变它的物理属性
+-   手绘图形实际由若干组 Path 组成，精确计算包围盒反而是种性能浪费
+-   在拾取时应当作为一个整体，按 Path 判断反而会获得错误的效果，例如鼠标明明悬停在图形内部，但却因为处在线条之间的空白处从而导致判定不在图形内
+
+因此我们创建一个新的 Mixin，它包含 rough 支持的全部参数例如 `seed` `roughness` 等等，当这些参数发生改变立刻执行重绘：
+
+```ts
+import { Drawable, Options } from 'roughjs/bin/core';
+import { GConstructor } from '.';
+import { parsePath } from '../../utils';
+
+export interface IRough
+    extends Omit<Options, 'stroke' | 'fill' | 'strokeWidth'> {
+    /**
+     * @see https://github.com/rough-stuff/rough/wiki#roughness
+     */
+    roughness: Options['roughness'];
+}
+export function Rough<TBase extends GConstructor>(Base: TBase) {
+    abstract class Rough extends Base implements IRough {
+        get roughness() {
+            return this.#roughness;
+        }
+        set roughness(roughness: number) {
+            if (this.#roughness !== roughness) {
+                this.#roughness = roughness;
+                this.renderDirtyFlag = true;
+                this.generate();
+            }
+        }
+    }
+}
+```
+
+这样我们已经支持的图形只需要用它包装一下即可获得手绘效果。使用方式如下，以 RoughRect 为例，它继承自 Rect：
+
+```ts
+import { RectWrapper, RectAttributes } from './Rect';
+
+export class RoughRect extends Rough(RectWrapper(Shape)) {}
+```
+
+### fillStyle solid {#fill-style-solid}
+
+为了支持 `fillStyle = 'solid'` 的情况：
+
+```ts
+SHAPE_DRAWCALL_CTORS.set(RoughRect, [
+    ShadowRect,
+    Mesh, // fillStyle === 'solid' // [!code ++]
+    SmoothPolyline, // fill
+    SmoothPolyline, // stroke
+]);
+```
+
+```js eval code=false
+$icCanvas3 = call(() => {
+    return document.createElement('ic-canvas-lesson13');
+});
+```
+
+```js eval code=false inspector=false
+call(() => {
+    const { Canvas, RoughRect } = Lesson13;
+
+    const stats = new Stats();
+    stats.showPanel(0);
+    const $stats = stats.dom;
+    $stats.style.position = 'absolute';
+    $stats.style.left = '0px';
+    $stats.style.top = '0px';
+
+    $icCanvas3.parentElement.style.position = 'relative';
+    $icCanvas3.parentElement.appendChild($stats);
+
+    const rect1 = new RoughRect({
+        x: 0,
+        y: 0,
+        fill: 'black',
+        strokeWidth: 2,
+        stroke: 'red',
+        seed: 1,
+        roughness: 1,
+        fillStyle: 'dots',
+    });
+    rect1.width = 100;
+    rect1.height = 100;
+
+    $icCanvas3.addEventListener('ic-ready', (e) => {
+        const canvas = e.detail;
+
+        canvas.appendChild(rect1);
+    });
+
+    $icCanvas3.addEventListener('ic-frame', (e) => {
+        stats.update();
+    });
+});
 ```
 
 ## 扩展阅读 {#extended-reading}

@@ -11,6 +11,7 @@ import {
   Rect,
   Shape,
   shiftPoints,
+  RoughRect,
 } from '../shapes';
 import { createSVGElement } from './browser';
 import {
@@ -127,7 +128,14 @@ type PathAttributeName = (typeof pathAttributes)[number];
 
 interface SerializedNode {
   uid: number;
-  type: 'g' | 'circle' | 'ellipse' | 'rect' | 'polyline' | 'path';
+  type:
+    | 'g'
+    | 'circle'
+    | 'ellipse'
+    | 'rect'
+    | 'polyline'
+    | 'path'
+    | 'rough-rect';
   attributes?: Pick<Shape, CommonAttributeName> &
     Record<'transform', SerializedTransform> &
     Partial<Pick<Circle, CircleAttributeName>> &
@@ -145,6 +153,7 @@ export function typeofShape(
   | ['circle', ...(typeof circleAttributes & typeof renderableAttributes)]
   | ['ellipse', ...(typeof ellipseAttributes & typeof renderableAttributes)]
   | ['rect', ...(typeof rectAttributes & typeof renderableAttributes)]
+  | ['rough-rect', ...(typeof rectAttributes & typeof renderableAttributes)]
   | ['polyline', ...(typeof polylineAttributes & typeof renderableAttributes)]
   | ['path', ...(typeof pathAttributes & typeof renderableAttributes)] {
   if (shape instanceof Group) {
@@ -159,6 +168,8 @@ export function typeofShape(
     return ['polyline', [...renderableAttributes, ...polylineAttributes]];
   } else if (shape instanceof Path) {
     return ['path', [...renderableAttributes, ...pathAttributes]];
+  } else if (shape instanceof RoughRect) {
+    return ['rough-rect', [...renderableAttributes, ...rectAttributes]];
   }
 }
 
@@ -177,6 +188,8 @@ export async function deserializeNode(data: SerializedNode) {
     shape = new Polyline();
   } else if (type === 'path') {
     shape = new Path();
+  } else if (type === 'rough-rect') {
+    shape = new RoughRect();
   }
 
   const { transform, ...rest } = attributes;

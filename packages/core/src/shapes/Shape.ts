@@ -40,6 +40,10 @@ export interface Shape
    */
   children: Shape[];
 
+  geometryDirtyFlag: boolean;
+
+  materialDirtyFlag: boolean;
+
   /**
    * Hit testing.
    */
@@ -76,6 +80,9 @@ function Shapable<TBase extends GConstructor<Shape>>(Base: TBase) {
     parent?: Shape;
 
     readonly children: Shape[] = [];
+
+    geometryDirtyFlag = true;
+    materialDirtyFlag = true;
 
     constructor(attributes: Partial<ShapeAttributes> = {}) {
       super(attributes);

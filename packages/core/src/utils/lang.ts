@@ -18,3 +18,8 @@ const dataUrlRegex =
 export function isDataUrl(url: string) {
   return dataUrlRegex.test(url);
 }
+export function filterUndefined(obj: object) {
+  return Object.fromEntries(
+    Object.entries(obj).filter(([key, value]) => value !== undefined),
+  );
+}

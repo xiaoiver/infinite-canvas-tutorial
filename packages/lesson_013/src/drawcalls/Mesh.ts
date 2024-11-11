@@ -18,7 +18,7 @@ import {
   Texture,
   StencilOp,
 } from '@antv/g-device-api';
-import { Path, TesselationMethod } from '../shapes';
+import { Path, RoughRect, TesselationMethod } from '../shapes';
 import { Drawcall, ZINDEX_FACTOR } from './Drawcall';
 import { vert, frag, Location } from '../shaders/mesh';
 import { isString, paddingMat3, triangulate } from '../utils';
@@ -42,8 +42,8 @@ export class Mesh extends Drawcall {
   #bindings: Bindings;
   #texture: Texture;
 
-  points: number[];
-  indices: number[];
+  points: number[] = [];
+  indices: number[] = [];
 
   static useDash(shape: Path) {
     const { strokeDasharray } = shape;
@@ -83,18 +83,32 @@ export class Mesh extends Drawcall {
   createGeometry(): void {
     // Don't support instanced rendering for now.
     this.instanced = false;
-    const path = this.shapes[0] as Path;
-    const rawPoints = path.points;
+    const instance = this.shapes[0];
+
+    let rawPoints: [number, number][][];
+    let tessellationMethod: TesselationMethod;
+
+    if (instance instanceof Path) {
+      rawPoints = instance.points;
+      tessellationMethod = instance.tessellationMethod;
+    } else if (instance instanceof RoughRect) {
+      rawPoints = instance.fillPathPoints;
+      tessellationMethod = TesselationMethod.EARCUT;
+    }
 
     const points = rawPoints.flat(2);
 
-    if (path.tessellationMethod === TesselationMethod.EARCUT) {
+    if (points.length === 0) {
+      return;
+    }
+
+    if (tessellationMethod === TesselationMethod.EARCUT) {
       const { vertices, holes, dimensions } = flatten(rawPoints);
       const indices = earcut(vertices, holes, dimensions);
       this.indices = indices;
       this.points = points;
       // const err = deviation(vertices, holes, dimensions, indices);
-    } else if (path.tessellationMethod === TesselationMethod.LIBTESS) {
+    } else if (tessellationMethod === TesselationMethod.LIBTESS) {
       const newPoints = triangulate(rawPoints);
       this.indices = new Array(newPoints.length / 2)
         .fill(undefined)
@@ -120,6 +134,10 @@ export class Mesh extends Drawcall {
   }
 
   createMaterial(uniformBuffer: Buffer): void {
+    if (this.points.length === 0) {
+      return;
+    }
+
     const defines = '';
 
     if (this.#program) {
@@ -227,6 +245,10 @@ export class Mesh extends Drawcall {
   }
 
   render(renderPass: RenderPass, uniformLegacyObject: Record<string, unknown>) {
+    if (this.points.length === 0) {
+      return;
+    }
+
     if (
       this.shapes.some((shape) => shape.renderDirtyFlag) ||
       this.geometryDirty

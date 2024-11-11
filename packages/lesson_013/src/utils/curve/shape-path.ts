@@ -1,6 +1,9 @@
 import { vec2 } from 'gl-matrix';
 import { Path } from './path';
 import { path2Absolute } from '@antv/util';
+import { OpSet } from 'roughjs/bin/core';
+import { isString } from '../lang';
+import { opSet2Absolute } from '../rough';
 
 export class ShapePath {
   currentPath: Path | null;
@@ -45,7 +48,7 @@ export class ShapePath {
   }
 }
 
-export function parsePath(d: string) {
+export function parsePath(d: string | OpSet) {
   const path = new ShapePath();
 
   const point = vec2.create();
@@ -55,7 +58,7 @@ export function parsePath(d: string) {
   let isFirstPoint = true;
   let doSetFirstPoint = false;
 
-  const commands = path2Absolute(d);
+  const commands = isString(d) ? path2Absolute(d) : opSet2Absolute(d);
 
   commands.forEach((command) => {
     const type = command[0];

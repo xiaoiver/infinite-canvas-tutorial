@@ -20,6 +20,7 @@ export abstract class Drawcall {
     protected device: Device,
     protected renderCache: RenderCache,
     protected instanced: boolean,
+    protected index: number,
   ) {}
 
   abstract createGeometry(): void;
@@ -39,8 +40,18 @@ export abstract class Drawcall {
     uniformBuffer: Buffer,
     uniformLegacyObject: Record<string, unknown>,
   ) {
+    if (this.shapes.some((shape) => shape.geometryDirtyFlag)) {
+      this.shapes.forEach((shape) => (shape.geometryDirtyFlag = false));
+      this.geometryDirty = true;
+    }
+
     if (this.geometryDirty) {
       this.createGeometry();
+    }
+
+    if (this.shapes.some((shape) => shape.materialDirtyFlag)) {
+      this.shapes.forEach((shape) => (shape.materialDirtyFlag = false));
+      this.materialDirty = true;
     }
 
     if (this.materialDirty) {

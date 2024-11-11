@@ -129,6 +129,10 @@ export const en = defineConfig({
               {
                 text: 'Wikipedia Datamap',
                 link: 'wikipedia-datamap',
+              },
+              {
+                text: 'Rough shapes',
+                link: 'rough',
               }
             ],
           },

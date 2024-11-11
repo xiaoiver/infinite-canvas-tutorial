@@ -15,6 +15,7 @@ publish: false
 -   [Text Visualization Browser]
 -   [Rive Text Overview]
 -   [Material Design on the GPU]
+-   [Texture-less Text Rendering]
 
 [Easy Scalable Text Rendering on the GPU]: https://medium.com/@evanwallace/easy-scalable-text-rendering-on-the-gpu-c3f4d782c5ac
 [use.gpu glyph]: https://gitlab.com/unconed/use.gpu/-/tree/master/packages/glyph
@@ -22,3 +23,4 @@ publish: false
 [State of Text Rendering 2024]: https://behdad.org/text2024/
 [Rive Text Overview]: https://rive.app/community/doc/text-overview/docSfhykWoWu
 [Material Design on the GPU]: https://mattdesl.svbtle.com/material-design-on-the-gpu
+[Texture-less Text Rendering]: https://poniesandlight.co.uk/reflect/debug_print_text/
