@@ -2,7 +2,10 @@ import {
   Canvas,
   Rect,
   RoughCircle,
+  RoughEllipse,
   RoughRect,
+  RoughPolyline,
+  RoughPath,
   Path,
   fromSVGElement,
   deserializeNode,
@@ -39,6 +42,21 @@ const circle = new RoughCircle({
 });
 canvas.appendChild(circle);
 
+const ellipse = new RoughEllipse({
+  cx: 0,
+  cy: 0,
+  rx: 50,
+  ry: 20,
+  fill: 'black',
+  strokeWidth: 2,
+  stroke: 'red',
+  seed: 1,
+  roughness: 1,
+  fillStyle: 'dots',
+});
+canvas.appendChild(ellipse);
+ellipse.position.x = 200;
+
 const rect = new RoughRect({
   x: 0,
   y: 0,
@@ -50,6 +68,7 @@ const rect = new RoughRect({
   seed: 1,
   roughness: 1,
   fillStyle: 'dots',
+  opacity: 0.5,
 });
 rect.position.x = 200;
 rect.position.y = 200;
@@ -61,6 +80,28 @@ rect.addEventListener('pointerenter', () => {
 rect.addEventListener('pointerleave', () => {
   rect.fill = 'black';
 });
+
+const polyline = new RoughPolyline({
+  points: [
+    [0, 0],
+    [100, 0],
+    [100, 100],
+    [0, 100],
+    [0, 0],
+  ],
+  strokeWidth: 2,
+  stroke: 'red',
+});
+canvas.appendChild(polyline);
+polyline.position.x = 400;
+
+const path = new RoughPath({
+  d: 'M10 80 Q 95 10 180 80',
+  fill: 'none',
+  strokeWidth: 2,
+  stroke: 'red',
+});
+canvas.appendChild(path);
 
 // setTimeout(() => {
 //   ring.seed = 1000;

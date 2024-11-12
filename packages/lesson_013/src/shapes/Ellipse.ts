@@ -5,6 +5,7 @@ import {
   strokeOffset,
 } from './Shape';
 import { AABB } from './AABB';
+import { GConstructor } from './mixins';
 
 export interface EllipseAttributes extends ShapeAttributes {
   /**
@@ -34,148 +35,160 @@ export interface EllipseAttributes extends ShapeAttributes {
   ry: number;
 }
 
-export class Ellipse extends Shape implements EllipseAttributes {
-  #cx: number;
-  #cy: number;
-  #rx: number;
-  #ry: number;
+// @ts-ignore
+// eslint-disable-next-line @typescript-eslint/no-redeclare
+export class Ellipse extends EllipseWrapper(Shape) {}
+export function EllipseWrapper<TBase extends GConstructor>(Base: TBase) {
+  // @ts-expect-error - Mixin class
+  return class EllipseWrapper extends Base implements EllipseAttributes {
+    #cx: number;
+    #cy: number;
+    #rx: number;
+    #ry: number;
 
-  static getGeometryBounds(
-    attributes: Partial<Pick<EllipseAttributes, 'cx' | 'cy' | 'rx' | 'ry'>>,
-  ) {
-    const { cx = 0, cy = 0, rx = 0, ry = 0 } = attributes;
-    return new AABB(cx - rx, cy - ry, cx + rx, cy + ry);
-  }
+    onGeometryChanged?: () => void;
 
-  constructor(attributes: Partial<EllipseAttributes> = {}) {
-    super(attributes);
-
-    const { cx, cy, rx, ry } = attributes;
-
-    this.cx = cx ?? 0;
-    this.cy = cy ?? 0;
-    this.rx = rx ?? ry ?? 0;
-    this.ry = ry ?? rx ?? 0;
-  }
-
-  get cx() {
-    return this.#cx;
-  }
-
-  set cx(cx: number) {
-    if (this.#cx !== cx) {
-      this.#cx = cx;
-      this.renderDirtyFlag = true;
-      this.geometryBoundsDirtyFlag = true;
-      this.renderBoundsDirtyFlag = true;
-      this.boundsDirtyFlag = true;
+    static getGeometryBounds(
+      attributes: Partial<Pick<EllipseAttributes, 'cx' | 'cy' | 'rx' | 'ry'>>,
+    ) {
+      const { cx = 0, cy = 0, rx = 0, ry = 0 } = attributes;
+      return new AABB(cx - rx, cy - ry, cx + rx, cy + ry);
     }
-  }
 
-  get cy() {
-    return this.#cy;
-  }
+    constructor(attributes: Partial<EllipseAttributes> = {}) {
+      super(attributes);
 
-  set cy(cy: number) {
-    if (this.#cy !== cy) {
-      this.#cy = cy;
-      this.renderDirtyFlag = true;
-      this.geometryBoundsDirtyFlag = true;
-      this.renderBoundsDirtyFlag = true;
-      this.boundsDirtyFlag = true;
+      const { cx, cy, rx, ry } = attributes;
+
+      this.cx = cx ?? 0;
+      this.cy = cy ?? 0;
+      this.rx = rx ?? ry ?? 0;
+      this.ry = ry ?? rx ?? 0;
     }
-  }
 
-  get rx() {
-    return this.#rx;
-  }
-
-  set rx(rx: number) {
-    if (this.#rx !== rx) {
-      this.#rx = rx;
-      this.renderDirtyFlag = true;
-      this.geometryBoundsDirtyFlag = true;
-      this.renderBoundsDirtyFlag = true;
-      this.boundsDirtyFlag = true;
+    get cx() {
+      return this.#cx;
     }
-  }
 
-  get ry() {
-    return this.#ry;
-  }
-
-  set ry(ry: number) {
-    if (this.#ry !== ry) {
-      this.#ry = ry;
-      this.renderDirtyFlag = true;
-      this.geometryBoundsDirtyFlag = true;
-      this.renderBoundsDirtyFlag = true;
-      this.boundsDirtyFlag = true;
+    set cx(cx: number) {
+      if (this.#cx !== cx) {
+        this.#cx = cx;
+        this.renderDirtyFlag = true;
+        this.geometryBoundsDirtyFlag = true;
+        this.renderBoundsDirtyFlag = true;
+        this.boundsDirtyFlag = true;
+        this.onGeometryChanged?.();
+      }
     }
-  }
 
-  containsPoint(x: number, y: number) {
-    const {
-      cx,
-      cy,
-      rx,
-      ry,
-      strokeWidth,
-      strokeAlignment,
-      pointerEvents,
-      fill,
-      stroke,
-    } = this;
-    const offset = strokeOffset(strokeAlignment, strokeWidth);
+    get cy() {
+      return this.#cy;
+    }
 
-    const [hasFill, hasStroke] = isFillOrStrokeAffected(
-      pointerEvents,
-      fill,
-      stroke,
-    );
-    if (hasFill && hasStroke) {
-      return isPointInEllipse(x, y, cx, cy, rx + offset, ry + offset);
+    set cy(cy: number) {
+      if (this.#cy !== cy) {
+        this.#cy = cy;
+        this.renderDirtyFlag = true;
+        this.geometryBoundsDirtyFlag = true;
+        this.renderBoundsDirtyFlag = true;
+        this.boundsDirtyFlag = true;
+        this.onGeometryChanged?.();
+      }
     }
-    if (hasFill) {
-      return isPointInEllipse(x, y, cx, cy, rx, ry);
-    }
-    if (hasStroke) {
-      return (
-        !isPointInEllipse(
-          x,
-          y,
-          cx,
-          cy,
-          rx + offset - strokeWidth,
-          ry + offset - strokeWidth,
-        ) && isPointInEllipse(x, y, cx, cy, rx + offset, ry + offset)
-      );
-    }
-    return false;
-  }
 
-  getGeometryBounds() {
-    if (this.geometryBoundsDirtyFlag) {
-      this.geometryBoundsDirtyFlag = false;
-      this.geometryBounds = Ellipse.getGeometryBounds(this);
+    get rx() {
+      return this.#rx;
     }
-    return this.geometryBounds;
-  }
 
-  getRenderBounds() {
-    if (this.renderBoundsDirtyFlag) {
-      const { strokeWidth, strokeAlignment, cx, cy, rx, ry } = this;
+    set rx(rx: number) {
+      if (this.#rx !== rx) {
+        this.#rx = rx;
+        this.renderDirtyFlag = true;
+        this.geometryBoundsDirtyFlag = true;
+        this.renderBoundsDirtyFlag = true;
+        this.boundsDirtyFlag = true;
+        this.onGeometryChanged?.();
+      }
+    }
+
+    get ry() {
+      return this.#ry;
+    }
+
+    set ry(ry: number) {
+      if (this.#ry !== ry) {
+        this.#ry = ry;
+        this.renderDirtyFlag = true;
+        this.geometryBoundsDirtyFlag = true;
+        this.renderBoundsDirtyFlag = true;
+        this.boundsDirtyFlag = true;
+        this.onGeometryChanged?.();
+      }
+    }
+
+    containsPoint(x: number, y: number) {
+      const {
+        cx,
+        cy,
+        rx,
+        ry,
+        strokeWidth,
+        strokeAlignment,
+        pointerEvents,
+        fill,
+        stroke,
+      } = this;
       const offset = strokeOffset(strokeAlignment, strokeWidth);
-      this.renderBoundsDirtyFlag = false;
-      this.renderBounds = new AABB(
-        cx - rx - offset,
-        cy - ry - offset,
-        cx + rx + offset,
-        cy + ry + offset,
+
+      const [hasFill, hasStroke] = isFillOrStrokeAffected(
+        pointerEvents,
+        fill,
+        stroke,
       );
+      if (hasFill && hasStroke) {
+        return isPointInEllipse(x, y, cx, cy, rx + offset, ry + offset);
+      }
+      if (hasFill) {
+        return isPointInEllipse(x, y, cx, cy, rx, ry);
+      }
+      if (hasStroke) {
+        return (
+          !isPointInEllipse(
+            x,
+            y,
+            cx,
+            cy,
+            rx + offset - strokeWidth,
+            ry + offset - strokeWidth,
+          ) && isPointInEllipse(x, y, cx, cy, rx + offset, ry + offset)
+        );
+      }
+      return false;
     }
-    return this.renderBounds;
-  }
+
+    getGeometryBounds() {
+      if (this.geometryBoundsDirtyFlag) {
+        this.geometryBoundsDirtyFlag = false;
+        this.geometryBounds = Ellipse.getGeometryBounds(this);
+      }
+      return this.geometryBounds;
+    }
+
+    getRenderBounds() {
+      if (this.renderBoundsDirtyFlag) {
+        const { strokeWidth, strokeAlignment, cx, cy, rx, ry } = this;
+        const offset = strokeOffset(strokeAlignment, strokeWidth);
+        this.renderBoundsDirtyFlag = false;
+        this.renderBounds = new AABB(
+          cx - rx - offset,
+          cy - ry - offset,
+          cx + rx + offset,
+          cy + ry + offset,
+        );
+      }
+      return this.renderBounds;
+    }
+  };
 }
 
 function isPointInEllipse(

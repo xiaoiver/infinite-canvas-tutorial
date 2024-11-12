@@ -7,6 +7,9 @@ import {
   Polyline,
   Rect,
   RoughCircle,
+  RoughEllipse,
+  RoughPath,
+  RoughPolyline,
   RoughRect,
   type Shape,
 } from '../shapes';
@@ -35,9 +38,23 @@ SHAPE_DRAWCALL_CTORS.set(RoughCircle, [
   SmoothPolyline, // fill
   SmoothPolyline, // stroke
 ]);
+// @ts-expect-error Property 'getGeometryBounds' is missing in type 'RoughEllipse'
+SHAPE_DRAWCALL_CTORS.set(RoughEllipse, [
+  Mesh, // fillStyle === 'solid'
+  SmoothPolyline, // fill
+  SmoothPolyline, // stroke
+]);
 // @ts-expect-error Property 'getGeometryBounds' is missing in type 'RoughRect'
 SHAPE_DRAWCALL_CTORS.set(RoughRect, [
   ShadowRect,
+  Mesh, // fillStyle === 'solid'
+  SmoothPolyline, // fill
+  SmoothPolyline, // stroke
+]);
+// @ts-expect-error Property 'getGeometryBounds' is missing in type 'RoughPolyline'
+SHAPE_DRAWCALL_CTORS.set(RoughPolyline, [SmoothPolyline]);
+// @ts-expect-error Property 'getGeometryBounds' is missing in type 'RoughPath'
+SHAPE_DRAWCALL_CTORS.set(RoughPath, [
   Mesh, // fillStyle === 'solid'
   SmoothPolyline, // fill
   SmoothPolyline, // stroke

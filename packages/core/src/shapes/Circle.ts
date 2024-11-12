@@ -39,6 +39,8 @@ export function CircleWrapper<TBase extends GConstructor>(Base: TBase) {
     #cy: number;
     #r: number;
 
+    onGeometryChanged?: () => void;
+
     static getGeometryBounds(
       attributes: Partial<Pick<CircleAttributes, 'cx' | 'cy' | 'r'>>,
     ) {
@@ -67,6 +69,7 @@ export function CircleWrapper<TBase extends GConstructor>(Base: TBase) {
         this.geometryBoundsDirtyFlag = true;
         this.renderBoundsDirtyFlag = true;
         this.boundsDirtyFlag = true;
+        this.onGeometryChanged?.();
       }
     }
 
@@ -81,6 +84,7 @@ export function CircleWrapper<TBase extends GConstructor>(Base: TBase) {
         this.geometryBoundsDirtyFlag = true;
         this.renderBoundsDirtyFlag = true;
         this.boundsDirtyFlag = true;
+        this.onGeometryChanged?.();
       }
     }
 
@@ -95,6 +99,7 @@ export function CircleWrapper<TBase extends GConstructor>(Base: TBase) {
         this.geometryBoundsDirtyFlag = true;
         this.renderBoundsDirtyFlag = true;
         this.boundsDirtyFlag = true;
+        this.onGeometryChanged?.();
       }
     }
 

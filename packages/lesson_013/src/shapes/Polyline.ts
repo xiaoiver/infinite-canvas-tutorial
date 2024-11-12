@@ -2,6 +2,7 @@ import { Shape, ShapeAttributes, isFillOrStrokeAffected } from './Shape';
 import { AABB } from './AABB';
 import { bisect, pointToLine } from '../utils/math';
 import { vec2 } from 'gl-matrix';
+import { GConstructor } from './mixins';
 
 export interface PolylineAttributes extends ShapeAttributes {
   /**
@@ -12,158 +13,167 @@ export interface PolylineAttributes extends ShapeAttributes {
   points: [number, number][];
 }
 
-export class Polyline extends Shape implements PolylineAttributes {
-  #points: [number, number][];
+// @ts-ignore
+// eslint-disable-next-line @typescript-eslint/no-redeclare
+export class Polyline extends PolylineWrapper(Shape) {}
+export function PolylineWrapper<TBase extends GConstructor>(Base: TBase) {
+  // @ts-expect-error - Mixin class
+  return class PolylineWrapper extends Base implements PolylineAttributes {
+    #points: [number, number][];
 
-  /**
-   * strokeAlignment will affect points' position
-   */
-  #shiftedPoints: [number, number][] = [];
+    /**
+     * strokeAlignment will affect points' position
+     */
+    #shiftedPoints: [number, number][] = [];
 
-  batchable = false;
+    batchable = false;
 
-  static getGeometryBounds(
-    attributes: Partial<Pick<PolylineAttributes, 'points'>>,
-  ) {
-    const { points } = attributes;
+    onGeometryChanged?: () => void;
 
-    if (!points || points.length < 2) {
-      return new AABB(0, 0, 0, 0);
-    }
-
-    // FIXME: account for strokeLinejoin & strokeLinecap
-    const minX = Math.min(
-      ...points.map((point) => (isNaN(point[0]) ? Infinity : point[0])),
-    );
-    const maxX = Math.max(
-      ...points.map((point) => (isNaN(point[0]) ? -Infinity : point[0])),
-    );
-    const minY = Math.min(
-      ...points.map((point) => (isNaN(point[1]) ? Infinity : point[1])),
-    );
-    const maxY = Math.max(
-      ...points.map((point) => (isNaN(point[1]) ? -Infinity : point[1])),
-    );
-
-    return new AABB(minX, minY, maxX, maxY);
-  }
-
-  constructor(attributes: Partial<PolylineAttributes> = {}) {
-    super(attributes);
-
-    const { points } = attributes;
-
-    this.points = points ?? [
-      [0, 0],
-      [0, 0],
-    ];
-  }
-
-  get points() {
-    return this.#points;
-  }
-  set points(points: [number, number][]) {
-    if (
-      !this.#points ||
-      !this.#points.every(
-        (point, index) =>
-          point[0] === points[index][0] && point[1] === points[index][1],
-      )
+    static getGeometryBounds(
+      attributes: Partial<Pick<PolylineAttributes, 'points'>>,
     ) {
-      this.#points = points;
-      this.renderDirtyFlag = true;
-      this.geometryBoundsDirtyFlag = true;
-      this.renderBoundsDirtyFlag = true;
-      this.boundsDirtyFlag = true;
-    }
-  }
+      const { points } = attributes;
 
-  private computeShiftedPoints() {
-    const { strokeWidth, strokeAlignment } = this;
-    this.#shiftedPoints =
-      strokeAlignment === 'center'
-        ? this.#points
-        : shiftPoints(this.#points, strokeAlignment === 'inner', strokeWidth);
-  }
-
-  containsPoint(x: number, y: number) {
-    const { strokeWidth } = this;
-
-    // trigger recalculating shifted points
-    this.getGeometryBounds();
-
-    const [, hasStroke] = isFillOrStrokeAffected(
-      this.pointerEvents,
-      this.dropShadowColor,
-      this.stroke,
-    );
-
-    if (hasStroke) {
-      return inPolyline(this.#shiftedPoints, strokeWidth, x, y);
-    }
-
-    return false;
-  }
-
-  /**
-   * @see https://developer.mozilla.org/en-US/docs/Web/API/SVGGeometryElement/getTotalLength
-   */
-  getTotalLength() {
-    const { points } = this;
-    let totalLength = 0;
-    for (let i = 0; i < points.length - 1; i++) {
-      const [x1, y1] = points[i];
-      const [x2, y2] = points[i + 1];
-      totalLength += Math.hypot(x2 - x1, y2 - y1);
-    }
-    return totalLength;
-  }
-
-  getGeometryBounds() {
-    if (this.geometryBoundsDirtyFlag) {
-      this.computeShiftedPoints();
-      this.geometryBoundsDirtyFlag = false;
-      this.geometryBounds = Polyline.getGeometryBounds({
-        ...this,
-        points: this.#shiftedPoints,
-      });
-    }
-    return this.geometryBounds;
-  }
-
-  getRenderBounds() {
-    if (this.renderBoundsDirtyFlag) {
-      this.renderBoundsDirtyFlag = false;
-
-      const { strokeWidth, strokeLinecap, strokeLinejoin, strokeMiterlimit } =
-        this;
-
-      let style_expansion = 0.5;
-      if (strokeLinecap === 'square') {
-        style_expansion = Math.SQRT1_2;
+      if (!points || points.length < 2) {
+        return new AABB(0, 0, 0, 0);
       }
 
-      const stroke_is_rectilinear = true;
-      if (
-        strokeLinejoin === 'miter' &&
-        style_expansion < Math.SQRT2 * strokeMiterlimit &&
-        !stroke_is_rectilinear
-      ) {
-        style_expansion = Math.SQRT2 * strokeMiterlimit;
-      }
-
-      style_expansion *= strokeWidth;
-
-      const { minX, minY, maxX, maxY } = this.getGeometryBounds();
-      this.renderBounds = new AABB(
-        minX - style_expansion,
-        minY - style_expansion,
-        maxX + style_expansion,
-        maxY + style_expansion,
+      // FIXME: account for strokeLinejoin & strokeLinecap
+      const minX = Math.min(
+        ...points.map((point) => (isNaN(point[0]) ? Infinity : point[0])),
       );
+      const maxX = Math.max(
+        ...points.map((point) => (isNaN(point[0]) ? -Infinity : point[0])),
+      );
+      const minY = Math.min(
+        ...points.map((point) => (isNaN(point[1]) ? Infinity : point[1])),
+      );
+      const maxY = Math.max(
+        ...points.map((point) => (isNaN(point[1]) ? -Infinity : point[1])),
+      );
+
+      return new AABB(minX, minY, maxX, maxY);
     }
-    return this.renderBounds;
-  }
+
+    constructor(attributes: Partial<PolylineAttributes> = {}) {
+      super(attributes);
+
+      const { points } = attributes;
+
+      this.points = points ?? [
+        [0, 0],
+        [0, 0],
+      ];
+    }
+
+    get points() {
+      return this.#points;
+    }
+    set points(points: [number, number][]) {
+      if (
+        !this.#points ||
+        !this.#points.every(
+          (point, index) =>
+            point[0] === points[index][0] && point[1] === points[index][1],
+        )
+      ) {
+        this.#points = points;
+        this.renderDirtyFlag = true;
+        this.geometryBoundsDirtyFlag = true;
+        this.renderBoundsDirtyFlag = true;
+        this.boundsDirtyFlag = true;
+        this.onGeometryChanged?.();
+      }
+    }
+
+    computeShiftedPoints() {
+      const { strokeWidth, strokeAlignment } = this;
+      this.#shiftedPoints =
+        strokeAlignment === 'center'
+          ? this.#points
+          : shiftPoints(this.#points, strokeAlignment === 'inner', strokeWidth);
+    }
+
+    containsPoint(x: number, y: number) {
+      const { strokeWidth } = this;
+
+      // trigger recalculating shifted points
+      this.getGeometryBounds();
+
+      const [, hasStroke] = isFillOrStrokeAffected(
+        this.pointerEvents,
+        this.dropShadowColor,
+        this.stroke,
+      );
+
+      if (hasStroke) {
+        return inPolyline(this.#shiftedPoints, strokeWidth, x, y);
+      }
+
+      return false;
+    }
+
+    /**
+     * @see https://developer.mozilla.org/en-US/docs/Web/API/SVGGeometryElement/getTotalLength
+     */
+    getTotalLength() {
+      const { points } = this;
+      let totalLength = 0;
+      for (let i = 0; i < points.length - 1; i++) {
+        const [x1, y1] = points[i];
+        const [x2, y2] = points[i + 1];
+        totalLength += Math.hypot(x2 - x1, y2 - y1);
+      }
+      return totalLength;
+    }
+
+    getGeometryBounds() {
+      if (this.geometryBoundsDirtyFlag) {
+        this.computeShiftedPoints();
+        this.geometryBoundsDirtyFlag = false;
+        this.geometryBounds = Polyline.getGeometryBounds({
+          ...this,
+          points: this.#shiftedPoints,
+        });
+      }
+      return this.geometryBounds;
+    }
+
+    getRenderBounds() {
+      if (this.renderBoundsDirtyFlag) {
+        this.renderBoundsDirtyFlag = false;
+
+        const { strokeWidth, strokeLinecap, strokeLinejoin, strokeMiterlimit } =
+          this;
+
+        let style_expansion = 0.5;
+        if (strokeLinecap === 'square') {
+          style_expansion = Math.SQRT1_2;
+        }
+
+        const stroke_is_rectilinear = true;
+        if (
+          strokeLinejoin === 'miter' &&
+          style_expansion < Math.SQRT2 * strokeMiterlimit &&
+          !stroke_is_rectilinear
+        ) {
+          style_expansion = Math.SQRT2 * strokeMiterlimit;
+        }
+
+        style_expansion *= strokeWidth;
+
+        const { minX, minY, maxX, maxY } = this.getGeometryBounds();
+        this.renderBounds = new AABB(
+          minX - style_expansion,
+          minY - style_expansion,
+          maxX + style_expansion,
+          maxY + style_expansion,
+        );
+      }
+      return this.renderBounds;
+    }
+  };
 }
 
 export function inLine(

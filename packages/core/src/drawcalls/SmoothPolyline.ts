@@ -24,9 +24,12 @@ import {
   Polyline,
   Rect,
   RoughCircle,
+  RoughEllipse,
   RoughRect,
+  RoughPolyline,
   Shape,
   hasValidStroke,
+  RoughPath,
 } from '../shapes';
 import { Drawcall, ZINDEX_FACTOR } from './Drawcall';
 import { vert, frag, Location, JointType } from '../shaders/polyline';
@@ -47,7 +50,10 @@ export class SmoothPolyline extends Drawcall {
     return (
       shape instanceof Polyline ||
       shape instanceof RoughCircle ||
+      shape instanceof RoughEllipse ||
       shape instanceof RoughRect ||
+      shape instanceof RoughPolyline ||
+      shape instanceof RoughPath ||
       ((shape instanceof Rect ||
         shape instanceof Circle ||
         shape instanceof Ellipse) &&
@@ -83,7 +89,10 @@ export class SmoothPolyline extends Drawcall {
       instance instanceof Polyline ||
       instance instanceof Path ||
       instance instanceof RoughCircle ||
-      instance instanceof RoughRect
+      instance instanceof RoughEllipse ||
+      instance instanceof RoughRect ||
+      instance instanceof RoughPolyline ||
+      instance instanceof RoughPath
     ) {
       return this.pointsBuffer.length / strideFloats - 3;
     } else if (instance instanceof Rect) {
@@ -104,8 +113,12 @@ export class SmoothPolyline extends Drawcall {
     this.shapes.forEach((shape: Polyline) => {
       const { pointsBuffer: pBuffer, travelBuffer: tBuffer } = updateBuffer(
         shape,
-        (shape instanceof RoughCircle && this.index === 2) ||
-          (shape instanceof RoughRect && this.index === 3),
+        ((shape instanceof RoughCircle ||
+          shape instanceof RoughEllipse ||
+          shape instanceof RoughPath) &&
+          this.index === 2) ||
+          (shape instanceof RoughRect && this.index === 3) ||
+          shape instanceof RoughPolyline,
       );
 
       pointsBuffer.push(...pBuffer);
@@ -480,8 +493,12 @@ export class SmoothPolyline extends Drawcall {
     ];
 
     if (
-      (instance instanceof RoughCircle && this.index === 1) ||
-      (instance instanceof RoughRect && this.index === 2)
+      ((instance instanceof RoughCircle ||
+        instance instanceof RoughEllipse ||
+        instance instanceof RoughPath) &&
+        this.index === 1) ||
+      (instance instanceof RoughRect && this.index === 2) ||
+      instance instanceof RoughPolyline
     ) {
       u_StrokeColor = [fr / 255, fg / 255, fb / 255, fo];
       u_Opacity[2] = fillOpacity;
@@ -541,7 +558,13 @@ export function updateBuffer(object: Shape, useRoughStroke = true) {
   let points: number[] = [];
   // const triangles: number[] = [];
 
-  if (object instanceof RoughCircle || object instanceof RoughRect) {
+  if (
+    object instanceof RoughCircle ||
+    object instanceof RoughEllipse ||
+    object instanceof RoughRect ||
+    object instanceof RoughPolyline ||
+    object instanceof RoughPath
+  ) {
     const { strokePoints, fillPoints } = object;
     points = (useRoughStroke ? strokePoints : fillPoints)
       .map((subPathPoints, i) => {

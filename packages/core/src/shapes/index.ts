@@ -8,4 +8,7 @@ export * from './Path';
 export * from './Grid';
 export * from './Group';
 export * from './RoughCircle';
+export * from './RoughEllipse';
 export * from './RoughRect';
+export * from './RoughPolyline';
+export * from './RoughPath';
