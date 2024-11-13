@@ -97,11 +97,18 @@ polyline.position.x = 400;
 
 const path = new RoughPath({
   d: 'M10 80 Q 95 10 180 80',
-  fill: 'none',
+  // fill: 'none',
   strokeWidth: 2,
   stroke: 'red',
+  cursor: 'pointer',
 });
 canvas.appendChild(path);
+path.addEventListener('pointerenter', () => {
+  path.fill = 'blue';
+});
+path.addEventListener('pointerleave', () => {
+  path.fill = 'black';
+});
 
 // setTimeout(() => {
 //   ring.seed = 1000;

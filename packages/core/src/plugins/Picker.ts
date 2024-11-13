@@ -1,16 +1,31 @@
 import { Point } from '@pixi/math';
 import type { Shape } from '../shapes';
 import type { PickingResult, Plugin, PluginContext } from './interfaces';
+import { isBrowser } from '../utils';
 
 const tempLocalPosition = new Point();
 
 export class Picker implements Plugin {
+  private ctx: OffscreenCanvasRenderingContext2D | CanvasRenderingContext2D;
+
   apply(context: PluginContext) {
     const {
       hooks,
       root,
       api: { elementsFromBBox },
     } = context;
+
+    let canvas: OffscreenCanvas | HTMLCanvasElement;
+    if (isBrowser) {
+      try {
+        canvas = new OffscreenCanvas(1, 1);
+      } catch {
+        canvas = document.createElement('canvas');
+      }
+    }
+    if (canvas) {
+      this.ctx = canvas.getContext('2d');
+    }
 
     hooks.pickSync.tap((result: PickingResult) => {
       const {
@@ -37,7 +52,7 @@ export class Picker implements Plugin {
         return shape.hitArea.contains(x, y);
       }
 
-      return shape.containsPoint(x, y);
+      return shape.containsPoint(x, y, this.ctx);
     }
 
     return false;

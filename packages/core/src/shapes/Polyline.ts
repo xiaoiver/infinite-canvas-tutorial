@@ -96,16 +96,12 @@ export function PolylineWrapper<TBase extends GConstructor>(Base: TBase) {
     }
 
     containsPoint(x: number, y: number) {
-      const { strokeWidth } = this;
+      const { strokeWidth, pointerEvents, fill, stroke } = this;
 
       // trigger recalculating shifted points
       this.getGeometryBounds();
 
-      const [, hasStroke] = isFillOrStrokeAffected(
-        this.pointerEvents,
-        this.dropShadowColor,
-        this.stroke,
-      );
+      const [, hasStroke] = isFillOrStrokeAffected(pointerEvents, fill, stroke);
 
       if (hasStroke) {
         return inPolyline(this.#shiftedPoints, strokeWidth, x, y);
@@ -263,7 +259,6 @@ export function inPolyline(
   lineWidth: number,
   x: number,
   y: number,
-  // isClose: boolean,
 ) {
   const count = points.length;
   if (count < 2) {
@@ -279,14 +274,6 @@ export function inPolyline(
       return true;
     }
   }
-
-  // if (isClose) {
-  //   const first = points[0];
-  //   const last = points[count - 1];
-  //   if (inLine(first[0], first[1], last[0], last[1], lineWidth, x, y)) {
-  //     return true;
-  //   }
-  // }
 
   return false;
 }

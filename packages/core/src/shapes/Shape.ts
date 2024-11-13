@@ -47,7 +47,11 @@ export interface Shape
   /**
    * Hit testing.
    */
-  containsPoint(x: number, y: number): boolean;
+  containsPoint(
+    x: number,
+    y: number,
+    ctx?: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D,
+  ): boolean;
 
   getBounds(): AABB;
   getRenderBounds(): AABB;

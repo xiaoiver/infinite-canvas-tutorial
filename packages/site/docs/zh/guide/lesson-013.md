@@ -402,9 +402,46 @@ export interface PathAttributes extends ShapeAttributes {
 }
 ```
 
-## 包围盒 & 拾取 {#bounding-box-picking}
+## 包围盒与拾取 {#bounding-box-picking}
 
-包围盒可以沿用上一节课针对折线的估计方式。
+包围盒可以沿用上一节课针对折线的估计方式。我们重点关注如何判定点是否在 Path 内的实现。
+
+### 使用原生方法 {#native-methods}
+
+CanvasRenderingContext2D 提供了 [isPointInPath] 和 [isPointInStroke] 这两个开箱即用的方法，配合我们之前介绍过的 [Path2D] 可以很容易地进行判定。
+
+```ts
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+const isPointInPath = ctx.isPointInPath(new Path2D(d), x, y);
+```
+
+之前我们介绍过 [OffscreenCanvas]，对于拾取判定这种与主线程渲染任务无关的计算，特别适合交给它完成。在 [PickingPlugin] 中我们完成初始化，随后传入 `containsPoint` 中供具体图形按需调用：
+
+```ts
+export class Picker implements Plugin {
+    private ctx: OffscreenCanvasRenderingContext2D | CanvasRenderingContext2D;
+
+    private hitTest(shape: Shape, wx: number, wy: number): boolean {
+        if (shape.hitArea || shape.renderable) {
+            shape.worldTransform.applyInverse(
+                { x: wx, y: wy },
+                tempLocalPosition,
+            );
+            const { x, y } = tempLocalPosition;
+
+            return shape.containsPoint(x, y); // [!code --]
+            return shape.containsPoint(x, y, this.ctx); // [!code ++]
+        }
+
+        return false;
+    }
+}
+```
+
+### 几何方法 {#geometry-method}
+
+针对 Path 的每一个 subPath 都可以进行它与点位置关系的几何运算。例如 Pixi.js 就实现了 [GraphicsContext - containsPoint]，感兴趣可以深入阅读。
 
 ## 手绘风格 {#hand-drawn-style-drawing}
 
@@ -617,6 +654,10 @@ call(() => {
 });
 ```
 
+### 导出 SVG {#export-svg}
+
+可以看出 rough 生成的图形都是由一组 Path 组成。因此在导出成 SVG 时需要使用 `<path>`
+
 ## 扩展阅读 {#extended-reading}
 
 -   [Rendering SVG Paths in WebGL]
@@ -655,3 +696,8 @@ call(() => {
 [Polygon Tesselation]: https://andrewmarsh.com/software/tesselation-web/
 [包含多段的折线]: /zh/guide/lesson-012#polyline-with-multiple-segments
 [RoughGenerator]: https://github.com/rough-stuff/rough/wiki/RoughGenerator
+[isPointInPath]: https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/isPointInPath
+[isPointInStroke]: https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/isPointInStroke
+[GraphicsContext - containsPoint]: https://github.com/pixijs/pixijs/blob/dev/src/scene/graphics/shared/GraphicsContext.ts#L1072
+[OffscreenCanvas]: /zh/guide/lesson-011#offscreen-canvas
+[PickingPlugin]: /zh/guide/lesson-006#picking-plugin

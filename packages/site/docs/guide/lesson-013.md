@@ -402,6 +402,47 @@ export interface PathAttributes extends ShapeAttributes {
 }
 ```
 
+## Bounding box and picking {#bounding-box-picking}
+
+The bounding box can be estimated in the same way as in the previous lesson for polyline. We focus on the implementation of how to determine if a point is inside a Path.
+
+### Use native methods {#native-methods}
+
+CanvasRenderingContext2D provides two out-of-the-box methods, [isPointInPath] and [isPointInStroke], which can be easily used in conjunction with [Path2D], which we introduced earlier.
+
+```ts
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+const isPointInPath = ctx.isPointInPath(new Path2D(d), x, y);
+```
+
+We introduced [OffscreenCanvas] earlier, and it's particularly good for calculations like picking decisions that are unrelated to the main thread's rendering task. We do the initialization in [PickingPlugin], and then pass in `containsPoint` to be called on demand for specific graphics:
+
+```ts
+export class Picker implements Plugin {
+    private ctx: OffscreenCanvasRenderingContext2D | CanvasRenderingContext2D;
+
+    private hitTest(shape: Shape, wx: number, wy: number): boolean {
+        if (shape.hitArea || shape.renderable) {
+            shape.worldTransform.applyInverse(
+                { x: wx, y: wy },
+                tempLocalPosition,
+            );
+            const { x, y } = tempLocalPosition;
+
+            return shape.containsPoint(x, y); // [!code --]
+            return shape.containsPoint(x, y, this.ctx); // [!code ++]
+        }
+
+        return false;
+    }
+}
+```
+
+### Geometry method {#geometry-method}
+
+Each subPath of a Path can perform geometric operations on its position in relation to a point. For example, Pixi.js implements [GraphicsContext - containsPoint], read more about it.
+
 ## Hand-drawn style drawing {#hand-drawn-style-drawing}
 
 [excalidraw] uses [rough] for hand-drawn style drawing. We don't need the actual Canvas2D or SVG based drawing functionality that rough provides by default, so using [RoughGenerator] is a better choice.
@@ -649,3 +690,9 @@ call(() => {
 [vello]: https://github.com/linebender/vello
 [Polygon Tesselation]: https://andrewmarsh.com/software/tesselation-web/
 [polyline with multiple segments]: /guide/lesson-012#polyline-with-multiple-segments
+[RoughGenerator]: https://github.com/rough-stuff/rough/wiki/RoughGenerator
+[isPointInPath]: https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/isPointInPath
+[isPointInStroke]: https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/isPointInStroke
+[GraphicsContext - containsPoint]: https://github.com/pixijs/pixijs/blob/dev/src/scene/graphics/shared/GraphicsContext.ts#L1072
+[OffscreenCanvas]: /guide/lesson-011#offscreen-canvas
+[PickingPlugin]: /guide/lesson-006#picking-plugin

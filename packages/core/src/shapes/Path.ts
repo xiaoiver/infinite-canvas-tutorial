@@ -1,4 +1,4 @@
-import { Shape, ShapeAttributes } from './Shape';
+import { Shape, ShapeAttributes, isFillOrStrokeAffected } from './Shape';
 import { AABB } from './AABB';
 import { parsePath } from '../utils';
 import { GConstructor } from './mixins';
@@ -87,37 +87,35 @@ export function PathWrapper<TBase extends GConstructor>(Base: TBase) {
       }
     }
 
-    containsPoint(x: number, y: number) {
-      // const { strokeWidth } = this;
+    containsPoint(
+      x: number,
+      y: number,
+      ctx?: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D,
+    ) {
+      const { d, pointerEvents, fill, stroke } = this;
+      if (!ctx || !d) {
+        return false;
+      }
 
-      // trigger recalculating shifted points
       this.getGeometryBounds();
 
-      // const [, hasStroke] = isFillOrStrokeAffected(
-      //   this.pointerEvents,
-      //   this.dropShadowColor,
-      //   this.stroke,
-      // );
+      const [hasFill, hasStroke] = isFillOrStrokeAffected(
+        pointerEvents,
+        fill,
+        stroke,
+      );
 
-      // if (hasStroke) {
-      //   return inPath(this.#shiftedPoints, strokeWidth, x, y);
-      // }
-
-      return false;
+      if (hasStroke && !hasFill) {
+        return ctx.isPointInStroke(new Path2D(d), x, y);
+      } else {
+        return ctx.isPointInPath(new Path2D(d), x, y);
+      }
     }
 
     /**
      * @see https://developer.mozilla.org/en-US/docs/Web/API/SVGGeometryElement/getTotalLength
      */
     getTotalLength() {
-      // const { points } = this;
-      // let totalLength = 0;
-      // for (let i = 0; i < points.length - 1; i++) {
-      //   const [x1, y1] = points[i];
-      //   const [x2, y2] = points[i + 1];
-      //   totalLength += Math.hypot(x2 - x1, y2 - y1);
-      // }
-      // return totalLength;
       return 0;
     }
 

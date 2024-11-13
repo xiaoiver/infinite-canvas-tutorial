@@ -240,12 +240,15 @@ export function RectWrapper<TBase extends GConstructor>(Base: TBase) {
         strokeWidth,
         strokeAlignment,
         cornerRadius,
+        pointerEvents,
+        stroke,
+        fill,
       } = this;
       const offset = strokeOffset(strokeAlignment, strokeWidth);
       const [hasFill, hasStroke] = isFillOrStrokeAffected(
-        this.pointerEvents,
-        this.dropShadowColor,
-        this.stroke,
+        pointerEvents,
+        fill,
+        stroke,
       );
 
       if (hasFill && hasStroke) {
