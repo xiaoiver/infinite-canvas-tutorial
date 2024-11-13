@@ -124,7 +124,7 @@ export class InfiniteCanvas extends LitElement {
         <sl-resize-observer>
           ${$canvas}
           <ic-zoom-toolbar zoom=${this.zoom}></ic-zoom-toolbar>
-          <ic-pen-toolbar></ic-pen-toolbar>
+          <ic-mode-toolbar></ic-mode-toolbar>
           <ic-exporter></ic-exporter>
         </sl-resize-observer>
       `,

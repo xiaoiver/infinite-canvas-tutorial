@@ -24,7 +24,9 @@ export class Picker implements Plugin {
       }
     }
     if (canvas) {
-      this.ctx = canvas.getContext('2d');
+      this.ctx = canvas.getContext('2d') as
+        | OffscreenCanvasRenderingContext2D
+        | CanvasRenderingContext2D;
     }
 
     hooks.pickSync.tap((result: PickingResult) => {

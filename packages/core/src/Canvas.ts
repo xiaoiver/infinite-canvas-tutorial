@@ -26,6 +26,11 @@ import {
 import { DataURLOptions } from './ImageExporter';
 import { Cursor } from './events';
 
+export enum CanvasMode {
+  SELECT,
+  HAND,
+}
+
 export interface CanvasConfig {
   canvas: HTMLCanvasElement | OffscreenCanvas;
   renderer?: 'webgl' | 'webgpu';
@@ -74,6 +79,8 @@ export class Canvas {
   #renderDirtyFlag = true;
   #shapesLastFrame = new Set<Shape>();
   #shapesCurrentFrame = new Set<Shape>();
+
+  #mode: CanvasMode = CanvasMode.HAND;
 
   constructor(config: CanvasConfig) {
     const {
@@ -279,6 +286,13 @@ export class Canvas {
   }
   get checkboardStyle() {
     return this.#rendererPlugin.checkboardStyle;
+  }
+
+  get mode() {
+    return this.#mode;
+  }
+  set mode(mode: CanvasMode) {
+    this.#mode = mode;
   }
 
   elementsFromBBox(

@@ -2,15 +2,15 @@ import { html, css, LitElement } from 'lit';
 import { customElement } from 'lit/decorators.js';
 import { consume } from '@lit/context';
 import { canvasContext } from './context';
-import type { Canvas } from '@infinite-canvas-tutorial/core';
+import { CanvasMode, type Canvas } from '@infinite-canvas-tutorial/core';
 
-@customElement('ic-pen-toolbar')
-export class PenToolbar extends LitElement {
+@customElement('ic-mode-toolbar')
+export class ModeToolbar extends LitElement {
   static styles = css`
     :host {
       position: absolute;
       left: 50%;
-      bottom: 16px;
+      top: 16px;
       transform: translateX(-50%);
       box-shadow: var(--sl-shadow-medium);
       background: white;
@@ -28,14 +28,31 @@ export class PenToolbar extends LitElement {
   @consume({ context: canvasContext, subscribe: true })
   canvas: Canvas;
 
+  private setHandMode() {
+    // TODO: change canvas cursor to grab
+    this.canvas.mode = CanvasMode.HAND;
+  }
+
+  private setSelectMode() {
+    this.canvas.mode = CanvasMode.SELECT;
+  }
+
   render() {
     return html`
       <sl-button-group label="Zoom toolbar">
-        <sl-tooltip content="Zoom out">
-          <sl-icon-button name="dash-lg" label="Zoom out"></sl-icon-button>
+        <sl-tooltip content="Move">
+          <sl-icon-button
+            name="arrows-move"
+            label="Move"
+            @click="${this.setHandMode}"
+          ></sl-icon-button>
         </sl-tooltip>
-        <sl-tooltip content="Zoom in">
-          <sl-icon-button name="plus-lg" label="Zoom in"></sl-icon-button>
+        <sl-tooltip content="Select">
+          <sl-icon-button
+            name="cursor"
+            label="Select"
+            @click="${this.setSelectMode}"
+          ></sl-icon-button>
         </sl-tooltip>
       </sl-button-group>
     `;
@@ -44,6 +61,6 @@ export class PenToolbar extends LitElement {
 
 declare global {
   interface HTMLElementTagNameMap {
-    'ic-pen-toolbar': PenToolbar;
+    'ic-mode-toolbar': ModeToolbar;
   }
 }
