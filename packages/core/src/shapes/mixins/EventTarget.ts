@@ -21,7 +21,7 @@ export class EventTarget extends EventEmitter implements FederatedEventTarget {
 
     const { cursor, hitArea, pointerEvents, draggable, droppable } = attributes;
 
-    this.cursor = cursor ?? 'default';
+    this.cursor = cursor;
     this.hitArea = hitArea;
     this.pointerEvents = pointerEvents ?? 'auto';
     this.draggable = draggable ?? false;

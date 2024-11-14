@@ -54,6 +54,7 @@ export interface Shape
   ): boolean;
 
   getBounds(): AABB;
+  getGeometryBounds(): AABB;
   getRenderBounds(): AABB;
 
   /**

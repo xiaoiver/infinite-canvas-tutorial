@@ -32,28 +32,23 @@ SHAPE_DRAWCALL_CTORS.set(Rect, [ShadowRect, SDF, SmoothPolyline]);
 SHAPE_DRAWCALL_CTORS.set(Polyline, [SmoothPolyline]);
 // SHAPE_DRAWCALL_CTORS.set(Path, [SDFPath]);
 SHAPE_DRAWCALL_CTORS.set(Path, [Mesh, SmoothPolyline]);
-// @ts-expect-error Property 'getGeometryBounds' is missing in type 'RoughCircle'
 SHAPE_DRAWCALL_CTORS.set(RoughCircle, [
   Mesh, // fillStyle === 'solid'
   SmoothPolyline, // fill
   SmoothPolyline, // stroke
 ]);
-// @ts-expect-error Property 'getGeometryBounds' is missing in type 'RoughEllipse'
 SHAPE_DRAWCALL_CTORS.set(RoughEllipse, [
   Mesh, // fillStyle === 'solid'
   SmoothPolyline, // fill
   SmoothPolyline, // stroke
 ]);
-// @ts-expect-error Property 'getGeometryBounds' is missing in type 'RoughRect'
 SHAPE_DRAWCALL_CTORS.set(RoughRect, [
   ShadowRect,
   Mesh, // fillStyle === 'solid'
   SmoothPolyline, // fill
   SmoothPolyline, // stroke
 ]);
-// @ts-expect-error Property 'getGeometryBounds' is missing in type 'RoughPolyline'
 SHAPE_DRAWCALL_CTORS.set(RoughPolyline, [SmoothPolyline]);
-// @ts-expect-error Property 'getGeometryBounds' is missing in type 'RoughPath'
 SHAPE_DRAWCALL_CTORS.set(RoughPath, [
   Mesh, // fillStyle === 'solid'
   SmoothPolyline, // fill

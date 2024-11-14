@@ -156,6 +156,10 @@ pnpm run dev
 
 <img src="./screenshots/lesson13.png" width="300" alt="Lesson 13 - path">
 
+## 课程 14 - 画布模式 [🔗](https://infinitecanvas.cc/zh/guide/lesson-014)
+
+-   增加画布模式，支持移动、选取、添加图形等。
+
 [infinitecanvas]: https://infinitecanvas.tools/
 [Figma]: https://madebyevan.com/figma/building-a-professional-design-tool-on-the-web/
 [Modyfi]: https://digest.browsertech.com/archive/browsertech-digest-how-modyfi-is-building-with/

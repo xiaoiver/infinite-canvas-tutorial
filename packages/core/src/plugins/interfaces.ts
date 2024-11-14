@@ -4,7 +4,7 @@ import { Camera } from '../Camera';
 import { type Group, Shape, RBushNodeAABB } from '../shapes';
 import { AsyncParallelHook, SyncHook, SyncWaterfallHook } from '../utils';
 import type { InteractivePointerEvent } from './DOMEventListener';
-import { CanvasConfig } from '../Canvas';
+import { CanvasConfig, CanvasMode } from '../Canvas';
 
 export interface Hooks {
   /**
@@ -90,6 +90,7 @@ export interface PluginContext extends CanvasConfig {
     viewport2Client({ x, y }: IPointData): IPointData;
     viewport2Canvas({ x, y }: IPointData): IPointData;
     canvas2Viewport({ x, y }: IPointData): IPointData;
+    getCanvasMode(): CanvasMode;
   };
 }
 

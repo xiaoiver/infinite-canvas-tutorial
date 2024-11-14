@@ -149,10 +149,14 @@ pnpm run dev
 ## Lesson 13 - Draw path and hand-drawn shapes [🔗](https://infinitecanvas.cc/guide/lesson-013)
 
 -   Experimenting with SDF
--   Trying to draw fills using some triangulating methods and strokes using polylines.
+-   Trying to draw fills using some triangulating methods and strokes using polylines
 -   Draw some hand-drawn shapes
 
 <img src="./screenshots/lesson13.png" width="300" alt="Lesson 13 - path">
+
+## Lesson 14 - Canvas mode [🔗](https://infinitecanvas.cc/guide/lesson-014)
+
+-   Add more canvas modes, e.g. move, select and shapes
 
 [infinitecanvas]: https://infinitecanvas.tools/
 [Figma]: https://madebyevan.com/figma/building-a-professional-design-tool-on-the-web/

@@ -2,7 +2,7 @@ import { html, css, LitElement } from 'lit';
 import { ContextProvider } from '@lit/context';
 import { Task } from '@lit/task';
 import { customElement, property, state } from 'lit/decorators.js';
-import { Canvas } from '@infinite-canvas-tutorial/core';
+import { Canvas, CanvasMode } from '@infinite-canvas-tutorial/core';
 import { canvasContext } from './context';
 
 async function checkWebGPUSupport() {
@@ -43,6 +43,9 @@ export class InfiniteCanvas extends LitElement {
   @state()
   zoom = 100;
 
+  @state()
+  mode = CanvasMode.HAND;
+
   #provider = new ContextProvider(this, { context: canvasContext });
 
   #canvas: Canvas;
@@ -74,6 +77,11 @@ export class InfiniteCanvas extends LitElement {
       $canvas.height = height * dpr;
       this.#canvas?.resize(width, height);
     }
+  }
+
+  private modeChangedHandler(e: CustomEvent) {
+    this.mode = e.detail.mode;
+    this.#canvas.mode = e.detail.mode;
   }
 
   private initCanvas = new Task(this, {
@@ -124,7 +132,10 @@ export class InfiniteCanvas extends LitElement {
         <sl-resize-observer>
           ${$canvas}
           <ic-zoom-toolbar zoom=${this.zoom}></ic-zoom-toolbar>
-          <ic-mode-toolbar></ic-mode-toolbar>
+          <ic-mode-toolbar
+            mode=${this.mode}
+            @modechanged=${this.modeChangedHandler}
+          ></ic-mode-toolbar>
           <ic-exporter></ic-exporter>
         </sl-resize-observer>
       `,

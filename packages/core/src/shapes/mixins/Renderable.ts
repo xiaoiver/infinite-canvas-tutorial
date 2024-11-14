@@ -25,6 +25,11 @@ export interface IRenderable {
   batchable: boolean;
 
   /**
+   * Whether this object is selectable.
+   */
+  selectable: boolean;
+
+  /**
    * Whether this object is culled.
    */
   culled: boolean;
@@ -217,10 +222,10 @@ export function Renderable<TBase extends GConstructor>(Base: TBase) {
   // @ts-ignore
   return class Renderable extends Base implements IRenderable {
     renderable: boolean;
-    visible: boolean;
     cullable: boolean;
     culled: boolean;
     batchable: boolean;
+    selectable: boolean;
     sizeAttenuation: boolean;
     renderDirtyFlag = true;
     renderBounds: AABB;
@@ -231,6 +236,7 @@ export function Renderable<TBase extends GConstructor>(Base: TBase) {
     boundsDirtyFlag = true;
     globalRenderOrder: number;
 
+    #visible: boolean;
     #fill: string | TexImageSource;
     #fillRGB: d3.RGBColor;
     #stroke: string;
@@ -263,6 +269,7 @@ export function Renderable<TBase extends GConstructor>(Base: TBase) {
           | 'renderable'
           | 'cullable'
           | 'batchable'
+          | 'selectable'
           | 'wireframe'
           | 'sizeAttenuation'
           | 'visible'
@@ -287,6 +294,7 @@ export function Renderable<TBase extends GConstructor>(Base: TBase) {
         visible,
         cullable,
         batchable,
+        selectable,
         sizeAttenuation,
         wireframe,
         fill,
@@ -311,6 +319,7 @@ export function Renderable<TBase extends GConstructor>(Base: TBase) {
       this.visible = visible ?? true;
       this.cullable = cullable ?? true;
       this.batchable = batchable ?? true;
+      this.selectable = selectable ?? true;
       this.sizeAttenuation = sizeAttenuation ?? true;
       this.wireframe = wireframe ?? false;
       this.fill = fill ?? 'black';
@@ -329,6 +338,16 @@ export function Renderable<TBase extends GConstructor>(Base: TBase) {
       this.innerShadowOffsetX = innerShadowOffsetX ?? 0;
       this.innerShadowOffsetY = innerShadowOffsetY ?? 0;
       this.innerShadowBlurRadius = innerShadowBlurRadius ?? 0;
+    }
+
+    get visible() {
+      return this.#visible;
+    }
+    set visible(visible: boolean) {
+      if (this.#visible !== visible) {
+        this.#visible = visible;
+        this.renderDirtyFlag = true;
+      }
     }
 
     get fill() {

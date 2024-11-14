@@ -14,6 +14,7 @@ import {
   Dragndrop,
   findZoomCeil,
   findZoomFloor,
+  Selector,
 } from './plugins';
 import { Group, IDENTITY_TRANSFORM, RBushNodeAABB, Shape } from './shapes';
 import {
@@ -25,10 +26,11 @@ import {
 } from './utils';
 import { DataURLOptions } from './ImageExporter';
 import { Cursor } from './events';
+import { isNull } from '@antv/util';
 
 export enum CanvasMode {
-  SELECT,
-  HAND,
+  SELECT = 'select',
+  HAND = 'hand',
 }
 
 export interface CanvasConfig {
@@ -53,6 +55,10 @@ export interface CanvasConfig {
    * There is no `style.cursor = 'pointer'` in WebWorker.
    */
   setCursor?: (cursor: Cursor | string) => void;
+  /**
+   * Default to `CanvasMode.HAND`.
+   */
+  mode?: CanvasMode;
 }
 
 export class Canvas {
@@ -91,6 +97,7 @@ export class Canvas {
       backgroundColor,
       gridColor,
       setCursor,
+      mode,
     } = config;
     const globalThis = getGlobalThis();
     const dpr = (devicePixelRatio ?? globalThis.devicePixelRatio) || 1;
@@ -117,7 +124,16 @@ export class Canvas {
       supportsTouchEvents,
       setCursor:
         setCursor ??
-        ((cursor) => ((canvas as HTMLCanvasElement).style.cursor = cursor)),
+        ((cursor) => {
+          if (isNull(cursor)) {
+            if (this.mode === CanvasMode.HAND) {
+              cursor = 'grab';
+            } else if (this.mode === CanvasMode.SELECT) {
+              cursor = 'default';
+            }
+          }
+          (canvas as HTMLCanvasElement).style.cursor = cursor;
+        }),
       hooks: {
         init: new SyncHook<[]>(),
         initAsync: new AsyncParallelHook<[]>(),
@@ -151,9 +167,11 @@ export class Canvas {
         viewport2Canvas: camera.viewport2Canvas.bind(camera),
         viewport2Client: this.viewport2Client.bind(this),
         canvas2Viewport: camera.canvas2Viewport.bind(camera),
+        getCanvasMode: () => this.#mode,
       },
     };
 
+    this.mode = mode ?? CanvasMode.HAND;
     this.#rendererPlugin = new Renderer();
     this.#eventPlugin = new Event();
     const plugins = [
@@ -161,6 +179,7 @@ export class Canvas {
       this.#eventPlugin,
       new Picker(),
       new CameraControl(),
+      new Selector(),
       new Culling(),
       this.#rendererPlugin,
       new Dragndrop({
@@ -293,6 +312,7 @@ export class Canvas {
   }
   set mode(mode: CanvasMode) {
     this.#mode = mode;
+    this.#pluginContext.setCursor(null);
   }
 
   elementsFromBBox(

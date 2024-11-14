@@ -2,6 +2,7 @@ import { mat3, vec2 } from 'gl-matrix';
 import { IPointData, Point } from '@pixi/math';
 import type { Plugin, PluginContext } from './interfaces';
 import type { FederatedPointerEvent, FederatedWheelEvent } from '../events';
+import { CanvasMode } from '../Canvas';
 
 const MIN_ZOOM = 0.02;
 const MAX_ZOOM = 4;
@@ -34,7 +35,8 @@ export class CameraControl implements Plugin {
       camera,
       root,
       devicePixelRatio,
-      api: { client2Viewport },
+      api: { client2Viewport, getCanvasMode },
+      setCursor,
     } = context;
 
     root.draggable = true;
@@ -110,20 +112,25 @@ export class CameraControl implements Plugin {
         return;
       }
 
-      rotate = e.shiftKey;
-      mat3.copy(
-        startInvertViewProjectionMatrix,
-        camera.viewProjectionMatrixInv,
-      );
-      startCameraX = camera.x;
-      startCameraY = camera.y;
-      startCameraRotation = camera.rotation;
-      vec2.transformMat3(
-        startPos,
-        getClipSpaceMousePosition(e),
-        startInvertViewProjectionMatrix,
-      );
-      startMousePos = [e.nativeEvent.clientX, e.nativeEvent.clientY];
+      const mode = getCanvasMode();
+      if (mode === CanvasMode.HAND) {
+        setCursor('grabbing');
+
+        rotate = e.shiftKey;
+        mat3.copy(
+          startInvertViewProjectionMatrix,
+          camera.viewProjectionMatrixInv,
+        );
+        startCameraX = camera.x;
+        startCameraY = camera.y;
+        startCameraRotation = camera.rotation;
+        vec2.transformMat3(
+          startPos,
+          getClipSpaceMousePosition(e),
+          startInvertViewProjectionMatrix,
+        );
+        startMousePos = [e.nativeEvent.clientX, e.nativeEvent.clientY];
+      }
     });
 
     root.addEventListener('drag', (e: FederatedPointerEvent) => {
@@ -131,10 +138,15 @@ export class CameraControl implements Plugin {
         return;
       }
 
-      if (rotate) {
-        rotateCamera(e);
-      } else {
-        moveCamera(e);
+      const mode = getCanvasMode();
+      if (mode === CanvasMode.HAND) {
+        setCursor('grabbing');
+
+        if (rotate) {
+          rotateCamera(e);
+        } else {
+          moveCamera(e);
+        }
       }
     });
 
@@ -142,7 +154,13 @@ export class CameraControl implements Plugin {
       if (this.#isPinch) {
         return;
       }
-      rotate = false;
+
+      const mode = getCanvasMode();
+      if (mode === CanvasMode.HAND) {
+        setCursor('grab');
+
+        rotate = false;
+      }
     });
 
     const zoomByClientPoint = (client: IPointData, dist: number) => {
@@ -167,10 +185,16 @@ export class CameraControl implements Plugin {
     root.addEventListener('wheel', (e: FederatedWheelEvent) => {
       e.preventDefault();
 
-      zoomByClientPoint(
-        { x: e.nativeEvent.clientX, y: e.nativeEvent.clientY },
-        e.deltaY,
-      );
+      if (e.metaKey || e.ctrlKey) {
+        zoomByClientPoint(
+          { x: e.nativeEvent.clientX, y: e.nativeEvent.clientY },
+          e.deltaY,
+        );
+      } else {
+        // TODO: account for rotation
+        camera.x += e.deltaX / camera.zoom;
+        camera.y += e.deltaY / camera.zoom;
+      }
     });
 
     const down = (event: FederatedPointerEvent) => {
