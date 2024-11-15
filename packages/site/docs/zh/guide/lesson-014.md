@@ -111,7 +111,11 @@ root.addEventListener('wheel', (e: FederatedWheelEvent) => {
 
 ### 通过 wheel 缩放画布 {#zoom-with-wheel}
 
-当然缩放行为依旧需要保留，当按下 `Command` 或者 `Control` 时触发：
+当然缩放行为依旧需要保留，当按下 `Command` 或者 `Control` 时触发。如果你开启了 Mac 触控板的 `pinch to zoom` 功能，触发的 `wheel` 事件会自动带上 `ctrlKey`，详见：[Catching Mac trackpad zoom]：
+
+![zoom in mac trackpad](/mac-trackpad-zoom.gif)
+
+这样我们就能很轻松地区分 `wheel` 事件在缩放和平移这两种场景了：
 
 ```ts
 root.addEventListener('wheel', (e: FederatedWheelEvent) => {
@@ -129,7 +133,7 @@ root.addEventListener('wheel', (e: FederatedWheelEvent) => {
 });
 ```
 
-Excalidraw 还支持了按住 `Shift` 进行水平滚动画布，但我们的画布该行为对应的是旋转操作。
+值得一提的是，Excalidraw 还支持了按住 `Shift` 进行水平滚动画布。但此前我们已经为画布的该行为分配了旋转操作了，这里就不再实现了。
 
 ## 选择模式 {#select-mode}
 
@@ -153,3 +157,4 @@ Excalidraw 还支持了按住 `Shift` 进行水平滚动画布，但我们的画
 [clsx]: https://github.com/lukeed/clsx
 [handleCanvasPanUsingWheelOrSpaceDrag]: https://github.com/excalidraw/excalidraw/blob/57cf577376e283beae08eb46192cfea7caa48d0c/packages/excalidraw/components/App.tsx#L6561
 [Element: wheel event]: https://developer.mozilla.org/en-US/docs/Web/API/Element/wheel_event
+[Catching Mac trackpad zoom]: https://stackoverflow.com/a/28685082/4639324
