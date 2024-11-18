@@ -5,7 +5,7 @@ export function traverse(
   callback: (shape: Shape) => boolean | void,
 ) {
   if (!callback(shape)) {
-    shape.children.forEach((child) => {
+    (shape.sorted || shape.children).forEach((child) => {
       traverse(child, callback);
     });
   }

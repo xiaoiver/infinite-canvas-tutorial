@@ -40,6 +40,8 @@ export interface Shape
    */
   children: Shape[];
 
+  sorted: Shape[];
+
   geometryDirtyFlag: boolean;
 
   materialDirtyFlag: boolean;
@@ -238,6 +240,19 @@ export function isFillOrStrokeAffected(
 
 export function hasValidStroke(stroke: string, strokeWidth: number) {
   return !!stroke && strokeWidth > 0;
+}
+
+export function sortByZIndex(a: Shape, b: Shape) {
+  const zIndex1 = a.zIndex ?? 0;
+  const zIndex2 = b.zIndex ?? 0;
+  if (zIndex1 === zIndex2) {
+    const parent = a.parent;
+    if (parent) {
+      const children = parent.children || [];
+      return children.indexOf(a) - children.indexOf(b);
+    }
+  }
+  return zIndex1 - zIndex2;
 }
 
 export interface RBushNodeAABB {

@@ -5,7 +5,13 @@ publish: false
 
 # 课程 14 - 画布模式与辅助 UI
 
-之前我们使用 Web Components 实现了一些包括相机缩放、图片下载在内的 [画布 UI 组件]。在本节课中我们将继续增加。
+之前我们使用 Web Components 实现了一些包括相机缩放、图片下载在内的 [画布 UI 组件]。在本节课中我们将通过组件把更多画布能力暴露出来：
+
+-   在手型模式下移动、旋转、缩放画布
+-   在选择模式下单选、多选、移动图形
+-   在绘制模式下向画布中添加图形
+
+## 画布模式 {#canvas-mode}
 
 无限画布通常都支持很多模式，例如选择模式、手型模式、记号笔模式等等，可以参考 [Excalidraw ToolType] 和 [rnote]。
 
@@ -30,11 +36,11 @@ class Canvas {
 }
 ```
 
-下面让我们来实现一个新的 UI 组件。
+下面让我们来实现一个新的 UI 组件在这些模式间切换。
 
 ## 模式选择工具条 {#mode-toolbar}
 
-使用 Lit 提供的 [Dynamic classes and styles]，我们可以实现类似 [clsx] 的效果，即根据条件生成 `className`。这里我们用来实现选中模式下的高亮样式：
+使用 Lit 提供的 [Dynamic classes and styles]，我们可以实现类似 [clsx] 的效果（如果你在项目中使用过 [tailwindcss] 一定不会陌生），对 `className` 进行管理，例如根据条件生成。这里我们用来实现选中模式下的高亮样式：
 
 ```ts
 @customElement('ic-mode-toolbar')
@@ -62,6 +68,8 @@ export class ModeToolbar extends LitElement {
     }
 }
 ```
+
+另外，为了减少模版代码量，我们使用了 Lit 提供的 [Built-in directives - map]
 
 ## 手型模式 {#hand-mode}
 
@@ -115,7 +123,7 @@ root.addEventListener('wheel', (e: FederatedWheelEvent) => {
 
 ![zoom in mac trackpad](/mac-trackpad-zoom.gif)
 
-这样我们就能很轻松地区分 `wheel` 事件在缩放和平移这两种场景了：
+这样我们就能很轻松地区分 `wheel` 事件在缩放和平移场景下对应的不同行为了：
 
 ```ts
 root.addEventListener('wheel', (e: FederatedWheelEvent) => {
@@ -137,11 +145,98 @@ root.addEventListener('wheel', (e: FederatedWheelEvent) => {
 
 ## 选择模式 {#select-mode}
 
-而在选择模式下随用户拖拽展示选区，稍后我们将实现它。
+在选择模式下，用户可以通过点击选中画布中的图形。在选中状态下，原图形上会覆盖一个辅助 UI，它通常由蒙层和若干锚点组成。在蒙层上拖拽可以移动图形，在锚点上拖拽可以沿各方向改变图形大小，我们还将在顶部图形之外增加一个锚点用于旋转。
 
 ![Anchor positioning diagram with physical properties](https://developer.chrome.com/blog/anchor-positioning-api/image/anchor-diagram-1.png)
 
+既然是蒙层，就需要展示在所有图形之上，这就涉及到展示次序的用法了：
+
+```ts
+mask.zIndex = 999;
+```
+
+下面让我们来实现它吧。
+
+### 实现 z-index {#z-index}
+
+在 CSS [z-index] 中，数值的大小只有在同一个 [Stacking context] 下才有意义。例如下图中虽然 `DIV #4` 的 `z-index` 大于 `DIV #1`，但由于它处在 `DIV #3` 的上下文中，在渲染次序上还是在更下面：
+
+![Understanding z-index](https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_positioned_layout/Understanding_z-index/Stacking_context/understanding_zindex_04.png)
+
+由于排序是一个非常消耗性能的操作，因此我们为 Shape 增加一个 `sortDirtyFlag` 属性，每当 `zIndex` 改变时就将父节点的该属性置为 `true`
+
+```ts
+class Renderable {
+    get zIndex() {
+        return this.#zIndex;
+    }
+    set zIndex(zIndex: number) {
+        if (this.#zIndex !== zIndex) {
+            this.#zIndex = zIndex;
+            this.parent.sortDirtyFlag = true; // [!code ++]
+            this.renderDirtyFlag = true;
+        }
+    }
+}
+```
+
+然后在渲染循环的每个 tick 中进行脏检查，如有需要才进行排序。另外我们不希望直接改变 `children`，而是使用 `sorted` 存储排序结果：
+
+```ts
+traverse(this.#root, (shape) => {
+    if (shape.sortDirtyFlag) {
+        shape.sorted = shape.children.slice().sort(sortByZIndex);
+        shape.sortDirtyFlag = false;
+    }
+    // Omit rendering each shape.
+});
+```
+
 ### 点击选择图形 {#select-shape}
+
+我们实现 Selector 插件：
+
+```ts
+export class Selector implements Plugin {}
+```
+
+监听 `click` 事件后我们需要处理以下几种情况：
+
+-   点击画布空白处，取消当前选中的图形
+-   点击图形展示选中状态的 UI。如果之前已经选中过其他图形，先取消选中
+-   按住 `Shift` 进入多选模式
+
+```ts
+const handleClick = (e: FederatedPointerEvent) => {
+    const mode = getCanvasMode();
+    if (mode !== CanvasMode.SELECT) {
+        return;
+    }
+
+    const selected = e.target as Shape;
+
+    if (selected === root) {
+        if (!e.shiftKey) {
+            this.deselectAllShapes();
+            this.#selected = [];
+        }
+    } else if (selected.selectable) {
+        if (!e.shiftKey) {
+            this.deselectAllShapes();
+        }
+        this.selectShape(selected);
+    } else if (e.shiftKey) {
+        // Multi select
+    }
+};
+root.addEventListener('click', handleClick);
+```
+
+### 多选 {#multi-select}
+
+按住 `Shift` 可以进行多选。
+
+### 拖拽移动图形 {#dragndrop}
 
 ## 扩展阅读 {#extended-reading}
 
@@ -153,8 +248,12 @@ root.addEventListener('wheel', (e: FederatedWheelEvent) => {
 [Excalidraw ToolType]: https://github.com/excalidraw/excalidraw/blob/master/packages/excalidraw/types.ts#L120-L135
 [rnote]: https://github.com/flxzt/rnote
 [Dynamic classes and styles]: https://lit.dev/docs/components/styles/#dynamic-classes-and-styles
+[Built-in directives - map]: https://lit.dev/docs/templates/directives/#map
 [CameraControlPlugin]: /zh/guide/lesson-004#implement-a-plugin
 [clsx]: https://github.com/lukeed/clsx
+[tailwindcss]: https://tailwindcss.com/
 [handleCanvasPanUsingWheelOrSpaceDrag]: https://github.com/excalidraw/excalidraw/blob/57cf577376e283beae08eb46192cfea7caa48d0c/packages/excalidraw/components/App.tsx#L6561
 [Element: wheel event]: https://developer.mozilla.org/en-US/docs/Web/API/Element/wheel_event
 [Catching Mac trackpad zoom]: https://stackoverflow.com/a/28685082/4639324
+[z-index]: https://developer.mozilla.org/en-US/docs/Web/CSS/z-index
+[Stacking context]: https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_positioned_layout/Understanding_z-index/Stacking_context

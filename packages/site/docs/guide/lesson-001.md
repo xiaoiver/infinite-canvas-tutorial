@@ -6,10 +6,10 @@ outline: deep
 
 In this lesson you will learn the following:
 
-- Hardware abstraction layers(HAL) based on WebGL1/2 and WebGPUs
-- Designing our Canvas API
-- Implementing a simple plug-in system
-- Implementing a rendering plugin based on the HAL
+-   Hardware abstraction layers(HAL) based on WebGL1/2 and WebGPUs
+-   Designing our Canvas API
+-   Implementing a simple plug-in system
+-   Implementing a rendering plugin based on the HAL
 
 When you start the project you will see an empty canvas and you can change the aspect or switch between WebGL and WebGPU renderers.
 
@@ -27,37 +27,37 @@ renderer = Inputs.select(['webgl', 'webgpu'], { label: 'renderer' });
 
 ```js eval code=false
 (async () => {
-  const { Canvas } = Lesson1;
+    const { Canvas } = Lesson1;
 
-  const $canvas = document.createElement('canvas');
-  $canvas.style.outline = 'none';
-  $canvas.style.padding = '0px';
-  $canvas.style.margin = '0px';
-  $canvas.style.border = '1px solid black';
+    const $canvas = document.createElement('canvas');
+    $canvas.style.outline = 'none';
+    $canvas.style.padding = '0px';
+    $canvas.style.margin = '0px';
+    $canvas.style.border = '1px solid black';
 
-  const canvas = await new Canvas({
-    canvas: $canvas,
-    renderer,
-    shaderCompilerPath:
-      'https://unpkg.com/@antv/g-device-api@1.6.8/dist/pkg/glsl_wgsl_compiler_bg.wasm',
-  }).initialized;
+    const canvas = await new Canvas({
+        canvas: $canvas,
+        renderer,
+        shaderCompilerPath:
+            'https://unpkg.com/@antv/g-device-api@1.6.8/dist/pkg/glsl_wgsl_compiler_bg.wasm',
+    }).initialized;
 
-  const resize = (width, height) => {
-    const scale = window.devicePixelRatio;
-    $canvas.width = Math.floor(width * scale);
-    $canvas.height = Math.floor(height * scale);
-    $canvas.style.width = `${width}px`;
-    $canvas.style.height = `${height}px`;
-    canvas.resize(width, height);
-  };
-  resize(width, height);
+    const resize = (width, height) => {
+        const scale = window.devicePixelRatio;
+        $canvas.width = Math.floor(width * scale);
+        $canvas.height = Math.floor(height * scale);
+        $canvas.style.width = `${width}px`;
+        $canvas.style.height = `${height}px`;
+        canvas.resize(width, height);
+    };
+    resize(width, height);
 
-  const animate = () => {
-    canvas.render();
-    requestAnimationFrame(animate);
-  };
-  animate();
-  return $canvas;
+    const animate = () => {
+        canvas.render();
+        requestAnimationFrame(animate);
+    };
+    animate();
+    return $canvas;
 })();
 ```
 
@@ -65,11 +65,11 @@ renderer = Inputs.select(['webgl', 'webgpu'], { label: 'renderer' });
 
 I want the canvas to use more low-level rendering APIs like WebGL and WebGPU, the successor to WebGL, which has a lot of feature enhancements, see [From WebGL to WebGPU]:
 
-- The underlying is based on a new generation of native GPU APIs, including Direct3D12 / Metal / Vulkan and more.
-- Stateless API, no more unmanageable global state.
-- Compute Shader support.
-- There is no longer a limit to the number of contexts created per `<canvas>`.
-- Developer experience improvements. Includes friendlier error messages and custom labels for GPU objects.
+-   The underlying is based on a new generation of native GPU APIs, including Direct3D12 / Metal / Vulkan and more.
+-   Stateless API, no more unmanageable global state.
+-   Compute Shader support.
+-   There is no longer a limit to the number of contexts created per `<canvas>`.
+-   Developer experience improvements. Includes friendlier error messages and custom labels for GPU objects.
 
 The WebGPU ecosystem now extends into JavaScript, C++, and Rust, and a number of web-side rendering engines (e.g. Three.js, Babylon.js) are in the process of, or have completed, accessing it. A special mention goes to [wgpu], which in addition to the game engine [bevy], has also been used in production by web-based creative design tools like [Modyfi], and has performed very well. The image below is from: [WebGPU Ecosystem]
 
@@ -111,19 +111,19 @@ Well, enough about the hardware abstraction layer, if you are interested in the 
 
 Finally we get to the design part of our canvas API. The simple usage we're looking forward to is as follows:
 
-- Pass in an HTMLCanvasElement `<canvas>` to do the work of creating and initializing the canvas, including the creation of the Device (an abstract instance of the GPU) using the hardware abstraction layer.
-- Create a rendering loop that keeps calling the canvas rendering methods.
-- Support for resizing the canvas, e.g. in response to the `resize` event.
-- Destroy itself at proper time.
+-   Pass in an HTMLCanvasElement `<canvas>` to do the work of creating and initializing the canvas, including the creation of the Device (an abstract instance of the GPU) using the hardware abstraction layer.
+-   Create a rendering loop that keeps calling the canvas rendering methods.
+-   Support for resizing the canvas, e.g. in response to the `resize` event.
+-   Destroy itself at proper time.
 
 ```ts
 const canvas = new Canvas({
-  canvas: $canvas,
+    canvas: $canvas,
 });
 
 const animate = () => {
-  requestAnimationFrame(animate);
-  canvas.render();
+    requestAnimationFrame(animate);
+    canvas.render();
 };
 animate();
 
@@ -137,10 +137,10 @@ It looks like a very simple interface definition, but let's not rush to implemen
 
 ```ts
 interface Canvas {
-  constructor(config: { canvas: HTMLCanvasElement });
-  render(): void;
-  destroy(): void;
-  resize(width: number, height: number): void;
+    constructor(config: { canvas: HTMLCanvasElement });
+    render(): void;
+    destroy(): void;
+    resize(width: number, height: number): void;
 }
 ```
 
@@ -161,17 +161,17 @@ Therefore, when using the hardware abstraction layer we mentioned in the previou
 
 ```ts
 import {
-  WebGLDeviceContribution,
-  WebGPUDeviceContribution,
+    WebGLDeviceContribution,
+    WebGPUDeviceContribution,
 } from '@antv/g-device-api';
 
 // create a device in WebGL
 const deviceContribution = new WebGLDeviceContribution({
-  targets: ['webgl2', 'webgl1'],
+    targets: ['webgl2', 'webgl1'],
 });
 // create a device in WebGPU
 const deviceContribution = new WebGPUDeviceContribution({
-  shaderCompilerPath: '/glsl_wgsl_compiler_bg.wasm',
+    shaderCompilerPath: '/glsl_wgsl_compiler_bg.wasm',
 });
 // here's the asynchronous process
 const swapChain = await deviceContribution.createSwapChain($canvas);
@@ -205,10 +205,10 @@ In the implementation, we use a private variable to hold the Promise, and the ge
 
 ```ts
 export class Canvas {
-  #instancePromise: Promise<this>;
-  get initialized() {
-    return this.#instancePromise.then(() => this);
-  }
+    #instancePromise: Promise<this>;
+    get initialized() {
+        return this.#instancePromise.then(() => this);
+    }
 }
 ```
 
@@ -237,30 +237,30 @@ destroy() {
 }
 ```
 
-A plugin-based architecture is a common design pattern that can be seen in Webpack, VSCode, and even Chrome. It has the following characteristics:
+A plugin-based architecture is a common design pattern that can be seen in webpack, VS Code, and even Chrome. It has the following characteristics:
 
-- Modularity. Each plugin is responsible for an independent part, with reduced coupling between them, making maintenance easier.
-- Extensibility. Plugins can be dynamically loaded and unloaded at runtime without affecting the structure of the core module, achieving dynamic expansion capabilities of the application.
+-   Modularity. Each plugin is responsible for an independent part, with reduced coupling between them, making maintenance easier.
+-   Extensibility. Plugins can be dynamically loaded and unloaded at runtime without affecting the structure of the core module, achieving dynamic expansion capabilities of the application.
 
 This architecture typically consists of the following parts:
 
-- The main application. It provides the functionality to register plugins, calls plugins to execute at the appropriate stage, and provides the context needed for plugin execution.
-- The plugin interface. It serves as a bridge between the main application and the plugins.
-- The plugin collection. A set of independently executable modules, each plugin adheres to the principle of separation of duties, containing only the minimum required functionality.
+-   The main application. It provides the functionality to register plugins, calls plugins to execute at the appropriate stage, and provides the context needed for plugin execution.
+-   The plugin interface. It serves as a bridge between the main application and the plugins.
+-   The plugin collection. A set of independently executable modules, each plugin adheres to the principle of separation of duties, containing only the minimum required functionality.
 
-How does the main application invoke plugin execution? Let's take a look at the approach of Webpack first:
+How does the main application invoke plugin execution? Let's take a look at the approach of webpack first:
 
-- In the main application, a series of hooks are defined. These hooks can be synchronous or asynchronous, and can be serial or parallel. If they are synchronous and serial, they are similar to the common event listeners we are familiar with. In the example below, `run` is a synchronous serial hook.
-- Each plugin listens to the lifecycle events it cares about when it registers. In the example below, `apply` will be called during registration.
-- The main application triggers the hooks."
+-   In the main application, a series of hooks are defined. These hooks can be synchronous or asynchronous, and can be serial or parallel. If they are synchronous and serial, they are similar to the common event listeners we are familiar with. In the example below, `run` is a synchronous serial hook.
+-   Each plugin listens to the lifecycle events it cares about when it registers. In the example below, `apply` will be called during registration.
+-   The main application triggers the hooks."
 
 ```ts
 class ConsoleLogOnBuildWebpackPlugin {
-  apply(compiler) {
-    compiler.hooks.run.tap(pluginName, (compilation) => {
-      console.log('webpack starting...');
-    });
-  }
+    apply(compiler) {
+        compiler.hooks.run.tap(pluginName, (compilation) => {
+            console.log('webpack starting...');
+        });
+    }
 }
 ```
 
@@ -268,18 +268,18 @@ webpack implements the [tapable] toolkit to provide these capabilities, and also
 
 ```ts
 export class SyncHook<T> {
-  #callbacks: ((...args: AsArray<T>) => void)[] = [];
+    #callbacks: ((...args: AsArray<T>) => void)[] = [];
 
-  tap(fn: (...args: AsArray<T>) => void) {
-    this.#callbacks.push(fn);
-  }
+    tap(fn: (...args: AsArray<T>) => void) {
+        this.#callbacks.push(fn);
+    }
 
-  call(...argsArr: AsArray<T>): void {
-    this.#callbacks.forEach(function (callback) {
-      /* eslint-disable-next-line prefer-spread */
-      callback.apply(void 0, argsArr);
-    });
-  }
+    call(...argsArr: AsArray<T>): void {
+        this.#callbacks.forEach(function (callback) {
+            /* eslint-disable-next-line prefer-spread */
+            callback.apply(void 0, argsArr);
+        });
+    }
 }
 ```
 
@@ -287,12 +287,12 @@ We define the following hooks, with names that visually reflect which phase of t
 
 ```ts
 export interface Hooks {
-  init: SyncHook<[]>;
-  initAsync: AsyncParallelHook<[]>;
-  destroy: SyncHook<[]>;
-  resize: SyncHook<[number, number]>; // When height or width changed.
-  beginFrame: SyncHook<[]>;
-  endFrame: SyncHook<[]>;
+    init: SyncHook<[]>;
+    initAsync: AsyncParallelHook<[]>;
+    destroy: SyncHook<[]>;
+    resize: SyncHook<[number, number]>; // When height or width changed.
+    beginFrame: SyncHook<[]>;
+    endFrame: SyncHook<[]>;
 }
 ```
 
@@ -300,11 +300,11 @@ The plugin context containing these hooks is passed in during the plugin registr
 
 ```ts
 export interface PluginContext {
-  hooks: Hooks;
-  canvas: HTMLCanvasElement;
+    hooks: Hooks;
+    canvas: HTMLCanvasElement;
 }
 export interface Plugin {
-  apply: (context: PluginContext) => void;
+    apply: (context: PluginContext) => void;
 }
 ```
 
@@ -414,9 +414,9 @@ hooks.resize.tap((width, height) => {
 
 So how do we get [devicePixelRatio]? Of course we can use `window.devicePixelRatio` to get it, which is fine in most cases. But what if there is no `window` object in the running environment? For example:
 
-- Node.js server-side rendering. For example, using [headless-gl]
-- Rendering in a WebWorker, using [OffscreenCanvas].
-- Non-standard browser environments such as applets
+-   Node.js server-side rendering. For example, using [headless-gl]
+-   Rendering in a WebWorker, using [OffscreenCanvas].
+-   Non-standard browser environments such as applets
 
 So it's better to support passing in the canvas when it's created and trying to get it from [globalThis] when it's not. We modify the constructor parameters of the Canvas as follows:
 
@@ -436,15 +436,15 @@ Other hooks are implemented as follows:
 
 ```ts
 hooks.destroy.tap(() => {
-  this.#device.destroy();
+    this.#device.destroy();
 });
 
 hooks.beginFrame.tap(() => {
-  this.#device.beginFrame();
+    this.#device.beginFrame();
 });
 
 hooks.endFrame.tap(() => {
-  this.#device.endFrame();
+    this.#device.endFrame();
 });
 ```
 
@@ -481,12 +481,13 @@ Open WebGPU Inspector to see the current GPU objects we've created and the comma
 
 If you have no basic knowledge of WebGL at all, you can try to learn it first:
 
-- [WebGL Fundamentals]
-- [WebGPU Fundamentals]
+-   [WebGL Fundamentals]
+-   [WebGPU Fundamentals]
 
 More on the plug-in design pattern:
 
-- [Intro to Plugin Oriented Programming]
+-   [Intro to Plugin Oriented Programming]
+-   [Introducing: Penpot Plugin System]
 
 [WebGPU Ecosystem]: https://developer.chrome.com/blog/webgpu-ecosystem/
 [From WebGL to WebGPU]: https://developer.chrome.com/blog/from-webgl-to-webgpu
@@ -499,7 +500,7 @@ More on the plug-in design pattern:
 [Async Constructor Pattern in JavaScript]: https://qwtel.com/posts/software/async-constructor-pattern/
 [Animation: ready property]: https://developer.mozilla.org/en-US/docs/Web/API/Animation/ready
 [Rendering the scene]: https://threejs.org/docs/index.html#manual/en/introduction/Creating-a-scene
-[Creation of the WebGPU engine is asynchronous]: https://doc.babylonjs.com/setup/support/webGPU/webGPUBreakingChanges#creation-of-the-webgpu-engine-is-asynchronous
+[Creation of the WebGPU engine is asynchronous]: https://doc.babylonjs.com/setup/support/WebGPU/webGPUBreakingChanges#creation-of-the-webgpu-engine-is-asynchronous
 [Spector.js]: https://spector.babylonjs.com/
 [WebGPU Inspector]: https://github.com/brendan-duncan/webgpu_inspector
 [tapable]: https://github.com/webpack/tapable
@@ -515,3 +516,4 @@ More on the plug-in design pattern:
 [Surface]: https://docs.rs/wgpu/latest/wgpu/struct.Surface.html
 [GPUCanvasContext]: https://gpuweb.github.io/gpuweb/#canvas-context
 [Canvas Context and Swap Chain]: https://carmencincotti.com/2022-12-19/how-to-render-a-webgpu-triangle-series-part-three-video/#bonus-content-swap-chain
+[Introducing: Penpot Plugin System]: https://www.smashingmagazine.com/2024/11/open-source-meets-design-tooling-penpot/

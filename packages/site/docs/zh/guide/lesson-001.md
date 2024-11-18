@@ -487,6 +487,7 @@ const canvas = await new Canvas({
 更多关于插件设计模式的介绍：
 
 -   [Intro to Plugin Oriented Programming]
+-   [Introducing: Penpot Plugin System]
 
 [WebGPU Ecosystem]: https://developer.chrome.com/blog/webgpu-ecosystem/
 [From WebGL to WebGPU]: https://developer.chrome.com/blog/from-webgl-to-webgpu
@@ -515,3 +516,4 @@ const canvas = await new Canvas({
 [Surface]: https://docs.rs/wgpu/latest/wgpu/struct.Surface.html
 [GPUCanvasContext]: https://gpuweb.github.io/gpuweb/#canvas-context
 [Canvas Context and Swap Chain]: https://carmencincotti.com/2022-12-19/how-to-render-a-webgpu-triangle-series-part-three-video/#bonus-content-swap-chain
+[Introducing: Penpot Plugin System]: https://www.smashingmagazine.com/2024/11/open-source-meets-design-tooling-penpot/

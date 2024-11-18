@@ -48,7 +48,7 @@ export const zh = defineConfig({
               { text: '课程11 - 测试与服务端渲染', link: 'lesson-011' },
               { text: '课程12 - 绘制折线', link: 'lesson-012' },
               { text: '课程13 - 绘制 Path 和手绘风格', link: 'lesson-013' },
-              { text: '课程14 - 辅助 UI', link: 'lesson-014' },
+              { text: '课程14 - 画布模式与辅助 UI', link: 'lesson-014' },
             ],
           },
         ],

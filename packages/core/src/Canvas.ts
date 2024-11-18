@@ -16,7 +16,13 @@ import {
   findZoomFloor,
   Selector,
 } from './plugins';
-import { Group, IDENTITY_TRANSFORM, RBushNodeAABB, Shape } from './shapes';
+import {
+  Group,
+  IDENTITY_TRANSFORM,
+  RBushNodeAABB,
+  Shape,
+  sortByZIndex,
+} from './shapes';
 import {
   AsyncParallelHook,
   SyncHook,
@@ -219,6 +225,11 @@ export class Canvas {
     const modified: Shape[] = [];
     // Dirty check first.
     traverse(this.#root, (shape) => {
+      if (shape.sortDirtyFlag) {
+        shape.sorted = shape.children.slice().sort(sortByZIndex);
+        shape.sortDirtyFlag = false;
+      }
+
       this.#shapesCurrentFrame.add(shape);
 
       if (shape.transformDirtyFlag) {
