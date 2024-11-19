@@ -109,5 +109,12 @@ describe('Rough Rect', () => {
     expect(bounds.minY).toEqual(45);
     expect(bounds.maxX).toEqual(105);
     expect(bounds.maxY).toEqual(105);
+
+    rect.x = 100;
+    bounds = rect.getGeometryBounds();
+    expect(bounds.minX).toEqual(100);
+    expect(bounds.minY).toEqual(50);
+    expect(bounds.maxX).toEqual(150);
+    expect(bounds.maxY).toEqual(100);
   });
 });

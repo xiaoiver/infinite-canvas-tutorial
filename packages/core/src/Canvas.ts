@@ -131,6 +131,10 @@ export class Canvas {
       setCursor:
         setCursor ??
         ((cursor) => {
+          if (!(canvas as HTMLCanvasElement).style) {
+            return;
+          }
+
           if (isNull(cursor)) {
             if (this.mode === CanvasMode.HAND) {
               cursor = 'grab';

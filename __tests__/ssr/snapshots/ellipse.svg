@@ -26,5 +26,6 @@
   <rect width="100%" height="100%" fill="url(#grid)" />
   <g>
     <ellipse cx="100" cy="100" rx="50" ry="80" />
+    <g />
   </g>
 </svg>

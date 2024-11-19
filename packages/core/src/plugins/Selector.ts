@@ -12,7 +12,9 @@ export class Selector implements Plugin {
   /**
    * the topmost operation layer, which will be appended to documentElement directly
    */
-  #activeSelectableLayer = new Group();
+  #activeSelectableLayer = new Group({
+    zIndex: Number.MAX_SAFE_INTEGER,
+  });
 
   apply(context: PluginContext) {
     const {

@@ -40,5 +40,6 @@
       stroke-linejoin="round"
       points="120,50 120,150 170,150 170,50"
     />
+    <g />
   </g>
 </svg>

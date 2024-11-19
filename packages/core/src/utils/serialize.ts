@@ -10,8 +10,8 @@ import {
   Path,
   Rect,
   Shape,
-  shiftPoints,
   RoughRect,
+  shiftPoints,
 } from '../shapes';
 import { createSVGElement } from './browser';
 import {
@@ -49,7 +49,7 @@ type SerializedTransform = {
   };
 };
 
-const commonAttributes = ['renderable', 'visible'] as const;
+const commonAttributes = ['renderable', 'visible', 'zIndex'] as const;
 const renderableAttributes = [
   'cullable',
   'batchable',
@@ -536,6 +536,7 @@ export function toSVGElement(node: SerializedNode, doc?: Document) {
     innerShadowOffsetX,
     innerShadowOffsetY,
     strokeAlignment,
+    zIndex,
     ...rest
   } = attributes;
   Object.entries(rest).forEach(([key, value]) => {
@@ -619,7 +620,8 @@ export function toSVGElement(node: SerializedNode, doc?: Document) {
     $g.setAttribute('transform', `matrix(${a},${b},${c},${d},${tx},${ty})`);
   }
 
-  children
+  [...children]
+    .sort(sortByZIndex)
     .map((child) => toSVGElement(child, doc))
     .forEach((child) => {
       $g.appendChild(child);
@@ -745,4 +747,10 @@ export function parseTransform(transformStr: string): SerializedTransform {
   }
 
   return transform;
+}
+
+function sortByZIndex(a: SerializedNode, b: SerializedNode) {
+  const zIndex1 = a.attributes.zIndex ?? 0;
+  const zIndex2 = b.attributes.zIndex ?? 0;
+  return zIndex1 - zIndex2;
 }

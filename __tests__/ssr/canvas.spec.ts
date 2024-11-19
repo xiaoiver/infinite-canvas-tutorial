@@ -64,7 +64,7 @@ describe('Canvas API', () => {
     });
     canvas.appendChild(circle);
     canvas.render();
-    expect(canvas.elementFromPoint(100, 100)).toBe(circle);
+    expect(canvas.elementFromPoint(100, 100)).toEqual(circle);
     expect(canvas.elementsFromPoint(100, 100)).toEqual([circle, canvas.root]);
     expect(canvas.elementsFromBBox(100, 100, 100, 100)).toEqual([circle]);
 

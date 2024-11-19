@@ -1,8 +1,8 @@
-import { Path } from '../../packages/core/src';
+import { RoughPath } from '../../packages/core/src';
 
-describe('Path', () => {
+describe('RoughPath', () => {
   it('should get/set attributes correctly.', () => {
-    const path = new Path({
+    const path = new RoughPath({
       d: 'M 0 0 L 100 0 L 100 100 L 0 100 Z',
       fill: '#F67676',
     });
@@ -21,7 +21,7 @@ describe('Path', () => {
   });
 
   it('should calculate geometry & render bounds correctly.', () => {
-    const path = new Path({
+    const path = new RoughPath({
       d: 'M 0 0 L 100 0 L 100 100 L 0 100 Z',
       fill: '#F67676',
     });
@@ -31,7 +31,7 @@ describe('Path', () => {
     expect(bounds.maxX).toEqual(100);
     expect(bounds.maxY).toEqual(100);
 
-    bounds = Path.getGeometryBounds({});
+    bounds = RoughPath.getGeometryBounds({});
     expect(bounds.minX).toEqual(0);
     expect(bounds.minY).toEqual(0);
     expect(bounds.maxX).toEqual(0);

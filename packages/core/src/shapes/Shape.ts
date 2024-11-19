@@ -1,5 +1,5 @@
 import { Transform, Matrix } from '@pixi/math';
-import { uid } from '../utils';
+import { isUndefined, uid } from '../utils';
 import {
   FederatedEventTarget,
   FederatedOptions,
@@ -9,6 +9,7 @@ import { AABB } from './AABB';
 import { EventTarget } from './mixins/EventTarget';
 import { IRenderable, Renderable } from './mixins/Renderable';
 import { ITransformable, Transformable } from './mixins/Transformable';
+import { ISortable, Sortable } from './mixins/Sortable';
 import { GConstructor } from './mixins';
 
 export const IDENTITY_TRANSFORM = new Transform();
@@ -17,12 +18,14 @@ const pooledMatrix = new Matrix();
 export interface ShapeAttributes
   extends FederatedOptions,
     IRenderable,
-    ITransformable {}
+    ITransformable,
+    ISortable {}
 
 export interface Shape
   extends FederatedEventTarget,
     IRenderable,
-    ITransformable {
+    ITransformable,
+    ISortable {
   /**
    * Unique ID
    */
@@ -74,7 +77,7 @@ export interface Shape
 
 // @ts-ignore
 // eslint-disable-next-line @typescript-eslint/no-redeclare
-export const Shape = Shapable(Renderable(Transformable(EventTarget)));
+export const Shape = Shapable(Renderable(Sortable(Transformable(EventTarget))));
 
 function Shapable<TBase extends GConstructor<Shape>>(Base: TBase) {
   // @ts-ignore
@@ -108,6 +111,10 @@ function Shapable<TBase extends GConstructor<Shape>>(Base: TBase) {
       child.transform._parentID = -1;
       this.children.push(child);
 
+      if (!isUndefined(child.zIndex)) {
+        this.sortDirtyFlag = true;
+      }
+
       return child;
     }
 
@@ -119,6 +126,17 @@ function Shapable<TBase extends GConstructor<Shape>>(Base: TBase) {
       child.parent = undefined;
       child.transform._parentID = -1;
       this.children.splice(index, 1);
+
+      if (this.sorted?.length) {
+        const index = this.sorted.indexOf(child);
+        if (index !== -1) {
+          this.sorted.splice(index, 1);
+        }
+      }
+
+      if (!isUndefined(child.zIndex)) {
+        this.sortDirtyFlag = true;
+      }
 
       return child;
     }

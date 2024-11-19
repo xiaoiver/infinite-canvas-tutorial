@@ -45,11 +45,6 @@ export interface IRenderable {
    */
   globalRenderOrder: number;
 
-  /**
-   * @see https://developer.mozilla.org/en-US/docs/Web/CSS/z-index
-   */
-  zIndex: number;
-
   sortDirtyFlag: boolean;
 
   /**
@@ -244,7 +239,6 @@ export function Renderable<TBase extends GConstructor>(Base: TBase) {
     globalRenderOrder: number;
     sortDirtyFlag = false;
 
-    #zIndex: number;
     #visible: boolean;
     #fill: string | TexImageSource;
     #fillRGB: d3.RGBColor;
@@ -275,7 +269,6 @@ export function Renderable<TBase extends GConstructor>(Base: TBase) {
           | 'strokeOpacity'
           | 'opacity'
           | 'fillOpacity'
-          | 'zIndex'
           | 'renderable'
           | 'cullable'
           | 'batchable'
@@ -306,7 +299,6 @@ export function Renderable<TBase extends GConstructor>(Base: TBase) {
         batchable,
         selectable,
         sizeAttenuation,
-        zIndex,
         wireframe,
         fill,
         stroke,
@@ -333,7 +325,6 @@ export function Renderable<TBase extends GConstructor>(Base: TBase) {
       this.selectable = selectable ?? true;
       this.sizeAttenuation = sizeAttenuation ?? true;
       this.wireframe = wireframe ?? false;
-      this.zIndex = zIndex ?? undefined;
       this.fill = fill ?? 'black';
       this.stroke = stroke ?? 'none';
       this.strokeWidth = strokeWidth ?? 1;
@@ -560,17 +551,6 @@ export function Renderable<TBase extends GConstructor>(Base: TBase) {
     set innerShadowBlurRadius(innerShadowBlurRadius: number) {
       if (this.#innerShadowBlurRadius !== innerShadowBlurRadius) {
         this.#innerShadowBlurRadius = innerShadowBlurRadius;
-        this.renderDirtyFlag = true;
-      }
-    }
-
-    get zIndex() {
-      return this.#zIndex;
-    }
-    set zIndex(zIndex: number) {
-      if (this.#zIndex !== zIndex) {
-        this.#zIndex = zIndex;
-        this.parent.sortDirtyFlag = true;
         this.renderDirtyFlag = true;
       }
     }

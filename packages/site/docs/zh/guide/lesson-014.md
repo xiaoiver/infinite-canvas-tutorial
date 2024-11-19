@@ -149,7 +149,7 @@ root.addEventListener('wheel', (e: FederatedWheelEvent) => {
 
 ![Anchor positioning diagram with physical properties](https://developer.chrome.com/blog/anchor-positioning-api/image/anchor-diagram-1.png)
 
-既然是蒙层，就需要展示在所有图形之上，这就涉及到展示次序的用法了：
+既然是蒙层，就需要展示在所有图形之上，这就涉及到展示次序的用法了，通过 `z-index` 控制：
 
 ```ts
 mask.zIndex = 999;
@@ -166,30 +166,93 @@ mask.zIndex = 999;
 由于排序是一个非常消耗性能的操作，因此我们为 Shape 增加一个 `sortDirtyFlag` 属性，每当 `zIndex` 改变时就将父节点的该属性置为 `true`
 
 ```ts
-class Renderable {
+class Sortable {
     get zIndex() {
         return this.#zIndex;
     }
     set zIndex(zIndex: number) {
         if (this.#zIndex !== zIndex) {
             this.#zIndex = zIndex;
-            this.parent.sortDirtyFlag = true; // [!code ++]
             this.renderDirtyFlag = true;
+            if (this.parent) {
+                this.parent.sortDirtyFlag = true; // [!code ++]
+            }
         }
     }
 }
 ```
 
-然后在渲染循环的每个 tick 中进行脏检查，如有需要才进行排序。另外我们不希望直接改变 `children`，而是使用 `sorted` 存储排序结果：
+在 `appendChild` 和 `removeChild` 时也需要考虑：
+
+```ts
+class Shapable {
+    appendChild(child: Shape) {
+        if (child.parent) {
+            child.parent.removeChild(child);
+        }
+
+        child.parent = this;
+        child.transform._parentID = -1;
+        this.children.push(child);
+
+        if (!isUndefined(child.zIndex)) {
+            this.sortDirtyFlag = true; // [!code ++]
+        }
+
+        return child;
+    }
+}
+```
+
+然后在渲染循环的每个 tick 中进行脏检查，如有需要才进行排序。另外我们不希望直接改变 `children`，而是使用 `sorted` 存储排序结果，毕竟 `z-index` 只应当影响渲染次序而非场景图中的实际顺序：
 
 ```ts
 traverse(this.#root, (shape) => {
     if (shape.sortDirtyFlag) {
-        shape.sorted = shape.children.slice().sort(sortByZIndex);
-        shape.sortDirtyFlag = false;
+        shape.sorted = shape.children.slice().sort(sortByZIndex); // [!code ++]
+        shape.sortDirtyFlag = false; // [!code ++]
     }
     // Omit rendering each shape.
 });
+```
+
+`sortByZIndex` 的实现如下，如果设置了 `zIndex` 就按降序排列，否则就保持在父节点中的原始顺序，这里也能看出我们不改变 `children` 的意义，它保留了默认情况下的排序依据：
+
+```ts
+export function sortByZIndex(a: Shape, b: Shape) {
+    const zIndex1 = a.zIndex ?? 0;
+    const zIndex2 = b.zIndex ?? 0;
+    if (zIndex1 === zIndex2) {
+        const parent = a.parent;
+        if (parent) {
+            const children = parent.children || [];
+            return children.indexOf(a) - children.indexOf(b);
+        }
+    }
+    return zIndex1 - zIndex2;
+}
+```
+
+### SVG 中的 z-index {#z-index-in-svg}
+
+当导出为 SVG 时，不能直接将 `z-index` 映射到元素属性，原因是 SVG 是按元素出现在文档中的顺序渲染的，详见：[How to use z-index in svg elements?]
+
+> In SVG, z-index is defined by the order the element appears in the document.
+
+因此在导出时我们需要进行额外的排序工作，对 `SerializedNode` 的排序实现几乎和 `Shape` 相同，这里就不再展示了：
+
+```ts
+export function toSVGElement(node: SerializedNode, doc?: Document) {
+    // Omit handling other attributes.
+    [...children]
+        .sort(sortByZIndex) // [!code ++]
+        .map((child) => toSVGElement(child, doc))
+        .forEach((child) => {
+            $g.appendChild(child);
+        });
+
+    return $g;
+}
 ```
 
 ### 点击选择图形 {#select-shape}
@@ -257,3 +320,4 @@ root.addEventListener('click', handleClick);
 [Catching Mac trackpad zoom]: https://stackoverflow.com/a/28685082/4639324
 [z-index]: https://developer.mozilla.org/en-US/docs/Web/CSS/z-index
 [Stacking context]: https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_positioned_layout/Understanding_z-index/Stacking_context
+[How to use z-index in svg elements?]: https://stackoverflow.com/questions/17786618/how-to-use-z-index-in-svg-elements

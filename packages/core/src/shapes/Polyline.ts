@@ -140,22 +140,21 @@ export function PolylineWrapper<TBase extends GConstructor>(Base: TBase) {
       if (this.renderBoundsDirtyFlag) {
         this.renderBoundsDirtyFlag = false;
 
-        const { strokeWidth, strokeLinecap, strokeLinejoin, strokeMiterlimit } =
-          this;
+        const { strokeWidth, strokeLinecap } = this;
 
         let style_expansion = 0.5;
         if (strokeLinecap === 'square') {
           style_expansion = Math.SQRT1_2;
         }
 
-        const stroke_is_rectilinear = true;
-        if (
-          strokeLinejoin === 'miter' &&
-          style_expansion < Math.SQRT2 * strokeMiterlimit &&
-          !stroke_is_rectilinear
-        ) {
-          style_expansion = Math.SQRT2 * strokeMiterlimit;
-        }
+        // const stroke_is_rectilinear = true;
+        // if (
+        //   strokeLinejoin === 'miter' &&
+        //   style_expansion < Math.SQRT2 * strokeMiterlimit &&
+        //   !stroke_is_rectilinear
+        // ) {
+        //   style_expansion = Math.SQRT2 * strokeMiterlimit;
+        // }
 
         style_expansion *= strokeWidth;
 
@@ -260,11 +259,7 @@ export function inPolyline(
   x: number,
   y: number,
 ) {
-  const count = points.length;
-  if (count < 2) {
-    return false;
-  }
-  for (let i = 0; i < count - 1; i++) {
+  for (let i = 0; i < points.length - 1; i++) {
     const x1 = points[i][0];
     const y1 = points[i][1];
     const x2 = points[i + 1][0];
