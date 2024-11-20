@@ -190,6 +190,7 @@ export async function deserializeNode(data: SerializedNode) {
     shape = new Path();
   } else if (type === 'rough-rect') {
     shape = new RoughRect();
+    // TODO: implement with path
   }
 
   const { transform, ...rest } = attributes;
@@ -611,15 +612,16 @@ export function toSVGElement(node: SerializedNode, doc?: Document) {
   if (hasFillImage) {
     exportFillImage(node, element, $g, doc);
   }
-  if (cornerRadius) {
-    // TODO: implement cornerRadius
-  }
 
   $g = $g || element;
 
   if (visible === false) {
     // @see https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/visibility
     $g.setAttribute('visibility', 'hidden');
+  }
+  if (cornerRadius) {
+    $g.setAttribute('rx', `${cornerRadius}`);
+    $g.setAttribute('ry', `${cornerRadius}`);
   }
 
   const { a, b, c, d, tx, ty } = transform.matrix;

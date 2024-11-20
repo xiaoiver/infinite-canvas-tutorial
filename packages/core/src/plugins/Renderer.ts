@@ -126,7 +126,7 @@ export class Renderer implements Plugin {
           targets: ['webgl2', 'webgl1'],
           antialias: true,
           shaderDebug: true,
-          trackResources: true,
+          trackResources: false,
           onContextCreationError: () => {},
           onContextLost: () => {},
           onContextRestored(e) {},

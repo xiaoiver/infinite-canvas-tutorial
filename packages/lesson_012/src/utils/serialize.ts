@@ -524,6 +524,7 @@ export function toSVGElement(node: SerializedNode, doc?: Document) {
     dropShadowOffsetY,
     dropShadowBlurRadius,
     strokeAlignment,
+    cornerRadius,
     ...rest
   } = attributes;
   Object.entries(rest).forEach(([key, value]) => {
@@ -600,6 +601,10 @@ export function toSVGElement(node: SerializedNode, doc?: Document) {
   if (visible === false) {
     // @see https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/visibility
     $g.setAttribute('visibility', 'hidden');
+  }
+  if (cornerRadius) {
+    $g.setAttribute('rx', `${cornerRadius}`);
+    $g.setAttribute('ry', `${cornerRadius}`);
   }
 
   const { a, b, c, d, tx, ty } = transform.matrix;
