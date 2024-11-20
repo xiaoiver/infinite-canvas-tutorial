@@ -28,26 +28,31 @@ resize(window.innerWidth, window.innerHeight);
 
 const canvas = await new Canvas({
   canvas: $canvas,
-  // renderer: 'webgpu',
-  // shaderCompilerPath: '/glsl_wgsl_compiler_bg.wasm',
+  renderer: 'webgpu',
+  shaderCompilerPath: '/glsl_wgsl_compiler_bg.wasm',
 }).initialized;
 
-const circle1 = new Circle({
-  cx: 0,
-  cy: 0,
-  r: 50,
+const rect1 = new Rect({
+  x: 0,
+  y: 0,
+  width: 100,
+  height: 100,
   fill: 'red',
-  // zIndex: 999,
+  innerShadowBlurRadius: 10,
+  innerShadowColor: 'black',
+  dropShadowColor: 'black',
+  dropShadowBlurRadius: 10,
 });
-canvas.appendChild(circle1);
+canvas.appendChild(rect1);
+canvas.render();
 
-const animate = () => {
-  canvas.render();
-  requestAnimationFrame(animate);
-};
-animate();
+console.log(toSVGElement(serializeNode(rect1)));
 
-// canvas.destroy();
+// const animate = () => {
+//   canvas.render();
+//   requestAnimationFrame(animate);
+// };
+// animate();
 
 window.addEventListener('resize', () => {
   resize(window.innerWidth, window.innerHeight);

@@ -349,6 +349,7 @@ export function Renderable<TBase extends GConstructor>(Base: TBase) {
     set visible(visible: boolean) {
       if (this.#visible !== visible) {
         this.#visible = visible;
+        this.boundsDirtyFlag = true;
         this.renderDirtyFlag = true;
       }
     }

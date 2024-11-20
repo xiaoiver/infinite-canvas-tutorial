@@ -25,17 +25,9 @@
   </defs>
   <rect width="100%" height="100%" fill="url(#grid)" />
   <g>
-    <g transform="matrix(0.7071067811865476,0.7071067811865475,-0.7071067811865475,0.7071067811865476,49.99999999999999,-20.710678118654755)">
-      <rect x="0" y="0" width="100" height="100" />
-      <rect
-        fill="red"
-        x="0"
-        y="0"
-        width="50"
-        height="50"
-        transform="matrix(1,0,0,1,50,50)"
-      />
-    </g>
+    <rect fill="red" x="0" y="0" width="100" height="100" visibility="hidden" />
+    <rect fill="green" x="50" y="50" width="100" height="100" />
+    <rect fill="blue" x="100" y="100" width="100" height="100" />
     <g />
   </g>
 </svg>

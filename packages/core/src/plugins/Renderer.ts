@@ -126,7 +126,7 @@ export class Renderer implements Plugin {
           targets: ['webgl2', 'webgl1'],
           antialias: true,
           shaderDebug: true,
-          trackResources: false,
+          trackResources: true,
           onContextCreationError: () => {},
           onContextLost: () => {},
           onContextRestored(e) {},
@@ -250,7 +250,7 @@ export class Renderer implements Plugin {
       this.#zIndexCounter = 1;
     });
 
-    hooks.endFrame.tap(({ all, removed }) => {
+    hooks.endFrame.tap(({ all, modified, removed }) => {
       // Use Set difference is much faster.
       // @see https://stackoverflow.com/questions/1723168/what-is-the-fastest-or-most-elegant-way-to-compute-a-set-difference-using-javasc
       // @see https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Set/difference

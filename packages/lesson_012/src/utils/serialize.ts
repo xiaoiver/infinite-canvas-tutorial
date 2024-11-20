@@ -124,7 +124,14 @@ type PolylineAttributeName = (typeof polylineAttributes)[number];
 
 interface SerializedNode {
   uid: number;
-  type: 'g' | 'circle' | 'ellipse' | 'rect' | 'polyline';
+  type:
+    | 'g'
+    | 'circle'
+    | 'ellipse'
+    | 'rect'
+    | 'polyline'
+    | 'path'
+    | 'rough-rect';
   attributes?: Pick<Shape, CommonAttributeName> &
     Record<'transform', SerializedTransform> &
     Partial<Pick<Circle, CircleAttributeName>> &
@@ -188,12 +195,14 @@ export async function deserializeNode(data: SerializedNode) {
     shape.strokeDasharray = strokeDasharray.split(' ').map(Number);
   }
 
-  const { position, scale, skew, rotation, pivot } = transform;
-  shape.transform.position.set(position.x, position.y);
-  shape.transform.scale.set(scale.x, scale.y);
-  shape.transform.skew.set(skew.x, skew.y);
-  shape.transform.rotation = rotation;
-  shape.transform.pivot.set(pivot.x, pivot.y);
+  if (transform) {
+    const { position, scale, skew, rotation, pivot } = transform;
+    shape.transform.position.set(position.x, position.y);
+    shape.transform.scale.set(scale.x, scale.y);
+    shape.transform.skew.set(skew.x, skew.y);
+    shape.transform.rotation = rotation;
+    shape.transform.pivot.set(pivot.x, pivot.y);
+  }
 
   if (children && children.length > 0) {
     await Promise.all(
@@ -363,105 +372,104 @@ export function exportInnerShadow(
 ) {
   const {
     uid,
-    type,
     attributes: {
       innerShadowOffsetX,
       innerShadowOffsetY,
       innerShadowBlurRadius,
-      // innerShadowColor,
-      r,
-      rx,
-      ry,
-      width,
-      height,
+      innerShadowColor,
     },
   } = node;
 
   const $defs = createSVGElement('defs', doc);
   const $filter = createSVGElement('filter', doc);
-  $filter.id = `filter_${uid}`;
+  $filter.id = `filter_inner_shadow_${uid}`;
 
-  let filterW = 0;
-  let filterH = 0;
-  if (type === 'circle') {
-    filterW = r * 2 + innerShadowOffsetX;
-    filterH = r * 2 + innerShadowOffsetY;
-  } else if (type === 'ellipse') {
-    filterW = rx * 2 + innerShadowOffsetX;
-    filterH = ry * 2 + innerShadowOffsetY;
-  } else if (type === 'rect') {
-    filterW = width + innerShadowOffsetX;
-    filterH = height + innerShadowOffsetY;
-  }
-  $filter.setAttribute('x', '0');
-  $filter.setAttribute('y', '0');
-  $filter.setAttribute('width', `${filterW}`);
-  $filter.setAttribute('height', `${filterH}`);
-  $filter.setAttribute('filterUnits', 'userSpaceOnUse');
-  $filter.setAttribute('color-interpolation-filters', 'sRGB');
-
-  const $feFlood = createSVGElement('feFlood', doc);
-  $feFlood.setAttribute('flood-opacity', '0');
-  $feFlood.setAttribute('result', 'BackgroundImageFix');
-  $filter.appendChild($feFlood);
-
-  const $feBlend = createSVGElement('feBlend', doc);
-  $feBlend.setAttribute('mode', 'normal');
-  $feBlend.setAttribute('in', 'SourceGraphic');
-  $feBlend.setAttribute('in2', 'BackgroundImageFix');
-  $feBlend.setAttribute('result', 'shape');
-  $filter.appendChild($feBlend);
-
-  // <feColorMatrix xmlns="http://www.w3.org/2000/svg" in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/>
-  const $feColorMatrix = createSVGElement('feColorMatrix', doc);
-  $feColorMatrix.setAttribute('in', 'SourceAlpha');
-  $feColorMatrix.setAttribute('type', 'matrix');
-  $feColorMatrix.setAttribute('values', '');
-  $feColorMatrix.setAttribute('result', 'hardAlpha');
-  $filter.appendChild($feColorMatrix);
-
-  // <feMorphology xmlns="http://www.w3.org/2000/svg" radius="8" operator="dilate" in="SourceAlpha" result="effect1_innerShadow_2429_2"/>
-  const $feMorphology = createSVGElement('feMorphology', doc);
-  $feMorphology.setAttribute('radius', '8');
-  $feMorphology.setAttribute('operator', 'dilate');
-  $feMorphology.setAttribute('in', 'SourceAlpha');
-  $feMorphology.setAttribute('result', 'effect1_innerShadow_2429_2');
-  $filter.appendChild($feMorphology);
-
-  const $feOffset = createSVGElement('feOffset', doc);
-  $feOffset.setAttribute('dx', `${innerShadowOffsetX}`);
-  $feOffset.setAttribute('dy', `${innerShadowOffsetY}`);
-  $filter.appendChild($feOffset);
+  const $feComponentTransfer = createSVGElement('feComponentTransfer', doc);
+  $feComponentTransfer.setAttribute('in', 'SourceAlpha');
+  const $feFuncA = createSVGElement('feFuncA', doc);
+  $feFuncA.setAttribute('type', 'table');
+  $feFuncA.setAttribute('tableValues', '1 0');
+  $feComponentTransfer.appendChild($feFuncA);
+  $filter.appendChild($feComponentTransfer);
 
   const $feGaussianBlur = createSVGElement('feGaussianBlur', doc);
-  $feGaussianBlur.setAttribute('stdDeviation', `${innerShadowBlurRadius / 2}`);
+  $feGaussianBlur.setAttribute(
+    'stdDeviation',
+    `${(innerShadowBlurRadius || 0) / 4}`,
+  );
   $filter.appendChild($feGaussianBlur);
 
-  // <feComposite xmlns="http://www.w3.org/2000/svg" in2="hardAlpha" operator="arithmetic" k2="-1" k3="1"/>
+  const $feOffset = createSVGElement('feOffset', doc);
+  $feOffset.setAttribute('dx', `${(innerShadowOffsetX || 0) / 2}`);
+  $feOffset.setAttribute('dy', `${(innerShadowOffsetY || 0) / 2}`);
+  $feOffset.setAttribute('result', 'offsetblur');
+  $filter.appendChild($feOffset);
+
+  const $feFlood = createSVGElement('feFlood', doc);
+  $feFlood.setAttribute('flood-color', innerShadowColor);
+  $feFlood.setAttribute('result', 'color');
+  $filter.appendChild($feFlood);
+
   const $feComposite = createSVGElement('feComposite', doc);
-  $feComposite.setAttribute('in2', 'hardAlpha');
-  $feComposite.setAttribute('operator', 'arithmetic');
-  $feComposite.setAttribute('k2', '-1');
-  $feComposite.setAttribute('k3', '1');
+  $feComposite.setAttribute('in2', 'offsetblur');
+  $feComposite.setAttribute('operator', 'in');
   $filter.appendChild($feComposite);
 
-  // <feColorMatrix xmlns="http://www.w3.org/2000/svg" type="matrix" values="0 0 0 0 0.0470588 0 0 0 0 0.0470588 0 0 0 0 0.0509804 0 0 0 1 0"/>
-  const $feColorMatrix2 = createSVGElement('feColorMatrix', doc);
-  $feColorMatrix2.setAttribute('type', 'matrix');
-  $feColorMatrix2.setAttribute('values', '');
-  $filter.appendChild($feColorMatrix2);
+  const $feComposite2 = createSVGElement('feComposite', doc);
+  $feComposite2.setAttribute('in2', 'SourceAlpha');
+  $feComposite2.setAttribute('operator', 'in');
+  $filter.appendChild($feComposite2);
 
-  // <feBlend xmlns="http://www.w3.org/2000/svg" mode="normal" in2="shape" result="effect1_innerShadow_2429_2"/>
-  const $feBlend2 = createSVGElement('feBlend', doc);
-  $feBlend2.setAttribute('mode', 'normal');
-  $feBlend2.setAttribute('in2', 'shape');
-  $feBlend2.setAttribute('result', 'effect1_innerShadow_2429_2');
-  $filter.appendChild($feBlend2);
+  const $feMerge = createSVGElement('feMerge', doc);
+  $filter.appendChild($feMerge);
+  const $feMergeNode = createSVGElement('feMergeNode', doc);
+  $feMergeNode.setAttribute('in', 'SourceGraphic');
+  const $feMergeNode2 = createSVGElement('feMergeNode', doc);
+  $feMerge.appendChild($feMergeNode);
+  $feMerge.appendChild($feMergeNode2);
 
   $defs.appendChild($filter);
 
-  $g.appendChild($defs);
-  $g.setAttribute('filter', `url(#${$filter.id})`);
+  element.appendChild($defs);
+  const existedFilter = element.getAttribute('filter') || '';
+  element.setAttribute('filter', `${existedFilter} url(#${$filter.id})`.trim());
+}
+
+export function exportDropShadow(
+  node: SerializedNode,
+  element: SVGElement,
+  $g: SVGElement,
+  doc: Document,
+) {
+  const {
+    uid,
+    attributes: {
+      dropShadowBlurRadius,
+      dropShadowColor,
+      dropShadowOffsetX,
+      dropShadowOffsetY,
+    },
+  } = node;
+
+  const $defs = createSVGElement('defs', doc);
+  const $filter = createSVGElement('filter', doc);
+  $filter.id = `filter_drop_shadow_${uid}`;
+
+  const $feDropShadow = createSVGElement('feDropShadow', doc);
+  $feDropShadow.setAttribute('dx', `${(dropShadowOffsetX || 0) / 2}`);
+  $feDropShadow.setAttribute('dy', `${(dropShadowOffsetY || 0) / 2}`);
+  $feDropShadow.setAttribute(
+    'stdDeviation',
+    `${(dropShadowBlurRadius || 0) / 4}`,
+  );
+  $feDropShadow.setAttribute('flood-color', dropShadowColor);
+  $filter.appendChild($feDropShadow);
+
+  $defs.appendChild($filter);
+
+  element.appendChild($defs);
+  const existedFilter = element.getAttribute('filter') || '';
+  element.setAttribute('filter', `${existedFilter} url(#${$filter.id})`.trim());
 }
 
 export function exportFillImage(
@@ -507,10 +515,14 @@ export function toSVGElement(node: SerializedNode, doc?: Document) {
     cullable,
     renderable,
     batchable,
-    innerShadowBlurRadius,
     innerShadowColor,
     innerShadowOffsetX,
     innerShadowOffsetY,
+    innerShadowBlurRadius,
+    dropShadowColor,
+    dropShadowOffsetX,
+    dropShadowOffsetY,
+    dropShadowBlurRadius,
     strokeAlignment,
     ...rest
   } = attributes;
@@ -519,8 +531,6 @@ export function toSVGElement(node: SerializedNode, doc?: Document) {
       element.setAttribute(camelToKebabCase(key), `${value}`);
     }
   });
-
-  // TODO: outerShadow in Rect
 
   const innerStrokeAlignment = strokeAlignment === 'inner';
   const outerStrokeAlignment = strokeAlignment === 'outer';
@@ -565,7 +575,6 @@ export function toSVGElement(node: SerializedNode, doc?: Document) {
   if (
     (children && children.length > 0 && type !== 'g') ||
     (innerOrOuterStrokeAlignment && type !== 'polyline') ||
-    innerShadowBlurRadius > 0 ||
     hasFillImage
   ) {
     $g = createSVGElement('g', doc);
@@ -577,6 +586,9 @@ export function toSVGElement(node: SerializedNode, doc?: Document) {
   }
   if (innerShadowBlurRadius > 0) {
     exportInnerShadow(node, element, $g, doc);
+  }
+  if (dropShadowBlurRadius > 0) {
+    exportDropShadow(node, element, $g, doc);
   }
   // avoid `fill="[object ImageBitmap]"`
   if (hasFillImage) {
@@ -595,7 +607,7 @@ export function toSVGElement(node: SerializedNode, doc?: Document) {
     $g.setAttribute('transform', `matrix(${a},${b},${c},${d},${tx},${ty})`);
   }
 
-  children
+  [...children]
     .map((child) => toSVGElement(child, doc))
     .forEach((child) => {
       $g.appendChild(child);
@@ -616,12 +628,21 @@ export function fromSVGElement(element: SVGElement, uid = 0): SerializedNode {
   const attributes = Array.from(element.attributes).reduce((prev, attr) => {
     const attributeName = kebabToCamelCase(attr.name);
 
-    // TODO: convert value to Number
-
+    let value: string | number | SerializedTransform = attr.value;
     if (attributeName === 'transform') {
+      value = parseTransform(value);
+    } else if (
+      attributeName === 'opacity' ||
+      attributeName === 'fillOpacity' ||
+      attributeName === 'strokeOpacity' ||
+      attributeName === 'strokeWidth' ||
+      attributeName === 'strokeMiterlimit' ||
+      attributeName === 'strokeDashoffset'
+    ) {
+      value = Number(value);
     }
 
-    prev[attributeName] = attr.value;
+    prev[attributeName] = value;
     return prev;
   }, {} as SerializedNode['attributes']);
 
@@ -656,4 +677,60 @@ export function imageBitmapToURL(bmp: ImageBitmap) {
   // ctx.transferFromImageBitmap(bmp);
   // const blob = await new Promise<Blob>((res) => canvas.toBlob(res));
   return canvas.toDataURL();
+}
+
+// TODO: translateX translateY rotateX rotateY
+export function parseTransform(transformStr: string): SerializedTransform {
+  const transform: SerializedTransform = {
+    matrix: { a: 1, b: 0, c: 0, d: 1, tx: 0, ty: 0 },
+    position: { x: 0, y: 0 },
+    scale: { x: 1, y: 1 },
+    skew: { x: 0, y: 0 },
+    rotation: 0,
+    pivot: { x: 0, y: 0 },
+  };
+
+  const translateRegex = /translate\(([^,]+),([^,]+)\)/;
+  const rotateRegex = /rotate\(([^,]+)\)/;
+  const scaleRegex = /scale\(([^,]+)(?:,([^,]+))?\)/;
+  const skewRegex = /skew\(([^,]+),([^,]+)\)/;
+  const matrixRegex =
+    /matrix\(([^,]+),([^,]+),([^,]+),([^,]+),([^,]+),([^,]+)\)/;
+
+  const translateMatch = transformStr.match(translateRegex);
+  if (translateMatch) {
+    transform.position.x = parseFloat(translateMatch[1]);
+    transform.position.y = parseFloat(translateMatch[2]);
+  }
+
+  const rotateMatch = transformStr.match(rotateRegex);
+  if (rotateMatch) {
+    transform.rotation = parseFloat(rotateMatch[1]);
+  }
+
+  const scaleMatch = transformStr.match(scaleRegex);
+  if (scaleMatch) {
+    transform.scale.x = parseFloat(scaleMatch[1]);
+    if (scaleMatch[2]) {
+      transform.scale.y = parseFloat(scaleMatch[2]);
+    }
+  }
+
+  const skewMatch = transformStr.match(skewRegex);
+  if (skewMatch) {
+    transform.skew.x = parseFloat(skewMatch[1]);
+    transform.skew.y = parseFloat(skewMatch[2]);
+  }
+
+  const matrixMatch = transformStr.match(matrixRegex);
+  if (matrixMatch) {
+    transform.matrix.a = parseFloat(matrixMatch[1]);
+    transform.matrix.b = parseFloat(matrixMatch[2]);
+    transform.matrix.c = parseFloat(matrixMatch[3]);
+    transform.matrix.d = parseFloat(matrixMatch[4]);
+    transform.matrix.tx = parseFloat(matrixMatch[5]);
+    transform.matrix.ty = parseFloat(matrixMatch[6]);
+  }
+
+  return transform;
 }

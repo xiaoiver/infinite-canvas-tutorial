@@ -76,27 +76,33 @@ export class BatchManager {
     this.#renderCache = new RenderCache(device);
   }
 
-  private createDrawcalls(shape: Shape, instanced = false) {
+  private collectDrawcallCtors(shape: Shape) {
     return SHAPE_DRAWCALL_CTORS.get(shape.constructor as typeof Shape)
-      ?.map((DrawcallCtor, index) => {
+      ?.map((DrawcallCtor) => {
         if (
           // @ts-ignore
           !DrawcallCtor.check ||
           // @ts-ignore
           (DrawcallCtor.check && DrawcallCtor.check(shape))
         ) {
-          // @ts-ignore
-          const drawcall = new DrawcallCtor(
-            this.device,
-            this.#renderCache,
-            instanced,
-            index,
-          );
-          drawcall.add(shape);
-          return drawcall;
+          return DrawcallCtor;
         }
       })
-      .filter((drawcall) => !!drawcall);
+      .filter((drawcallCtor) => !!drawcallCtor);
+  }
+
+  private createDrawcalls(shape: Shape, instanced = false) {
+    return this.collectDrawcallCtors(shape).map((DrawcallCtor, index) => {
+      // @ts-ignore
+      const drawcall = new DrawcallCtor(
+        this.device,
+        this.#renderCache,
+        instanced,
+        index,
+      );
+      drawcall.add(shape);
+      return drawcall;
+    });
   }
 
   private getOrCreateNonBatchableDrawcalls(shape: Shape) {
@@ -119,8 +125,11 @@ export class BatchManager {
         instancedDrawcalls = [];
       }
 
-      existed = instancedDrawcalls.find((drawcalls) =>
-        drawcalls.every((drawcall) => drawcall.validate(shape)),
+      const ctors = this.collectDrawcallCtors(shape);
+      existed = instancedDrawcalls.find(
+        (drawcalls) =>
+          drawcalls.length === ctors.length &&
+          drawcalls.every((drawcall) => drawcall.validate(shape)),
       );
 
       if (!existed) {
@@ -172,12 +181,16 @@ export class BatchManager {
   destroy() {
     for (const key in this.#nonBatchableDrawcallsCache) {
       this.#nonBatchableDrawcallsCache[key].forEach((drawcall) => {
-        drawcall.destroy();
+        if (!drawcall.destroyed) {
+          drawcall.destroy();
+        }
       });
     }
     for (const key in this.#batchableDrawcallsCache) {
       this.#batchableDrawcallsCache[key].forEach((drawcall) => {
-        drawcall.destroy();
+        if (!drawcall.destroyed) {
+          drawcall.destroy();
+        }
       });
     }
     this.#renderCache.destroy();

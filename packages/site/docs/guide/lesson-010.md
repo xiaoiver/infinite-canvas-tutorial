@@ -315,9 +315,72 @@ Another thing to note is that while any graph in our scene graph can have child 
 </g>
 ```
 
-#### inner & outerShadow {#export-inner-outer-shadow}
+#### Export inner & outerShadow {#export-inner-outer-shadow}
 
-[Creating inner shadow in svg]
+Referring to [Adding Shadows to SVG Icons With CSS and SVG Filters], we use [filter primitive] to realize inner and outer shadows. Example of outer shadows:
+
+```ts
+const $feDropShadow = createSVGElement('feDropShadow', doc);
+$feDropShadow.setAttribute('dx', `${(dropShadowOffsetX || 0) / 2}`);
+$feDropShadow.setAttribute('dy', `${(dropShadowOffsetY || 0) / 2}`);
+$feDropShadow.setAttribute(
+    'stdDeviation',
+    `${(dropShadowBlurRadius || 0) / 4}`,
+);
+$feDropShadow.setAttribute('flood-color', dropShadowColor);
+$filter.appendChild($feDropShadow);
+```
+
+The inner shadows are a bit more complicated, so I won't expand on that for the sake of space. You can download the SVG to see it in the example below:
+
+```js eval code=false
+$icCanvas4 = call(() => {
+    return document.createElement('ic-canvas-lesson10');
+});
+```
+
+```js eval code=false inspector=false
+call(() => {
+    const { Canvas, Rect } = Lesson10;
+
+    const stats = new Stats();
+    stats.showPanel(0);
+    const $stats = stats.dom;
+    $stats.style.position = 'absolute';
+    $stats.style.left = '0px';
+    $stats.style.top = '0px';
+
+    $icCanvas4.parentElement.style.position = 'relative';
+    $icCanvas4.parentElement.appendChild($stats);
+
+    $icCanvas4.addEventListener('ic-ready', (e) => {
+        const canvas = e.detail;
+
+        const rect = new Rect({
+            x: 50,
+            y: 50,
+            fill: 'green',
+            cornerRadius: 50,
+            batchable: false,
+            innerShadowColor: 'black',
+            innerShadowOffsetX: 10,
+            innerShadowOffsetY: 10,
+            innerShadowBlurRadius: 10,
+            dropShadowColor: 'black',
+            dropShadowOffsetX: 10,
+            dropShadowOffsetY: 10,
+            dropShadowBlurRadius: 10,
+        });
+        rect.width = 400;
+        rect.height = 100;
+        canvas.appendChild(rect);
+    });
+
+    $icCanvas4.addEventListener('ic-frame', (e) => {
+        stats.update();
+    });
+});
+```
 
 #### Export image as value of fill {#export-image-as-fill-value}
 
@@ -834,7 +897,6 @@ With the richness of the canvas functionality, it is necessary to introduce test
 -   [Export from Figma]
 -   [Specifying stroke alignment]
 -   [How to simulate stroke-align (stroke-alignment) in SVG]
--   [Creating inner shadow in svg]
 -   [Vector rendering of SVG content with PixiJS]
 
 [Export from Figma]: https://help.figma.com/hc/en-us/articles/360040028114-Export-from-Figma#h_01GWB002EPWMFSXKAEC62GS605
@@ -852,7 +914,6 @@ With the richness of the canvas functionality, it is necessary to introduce test
 [SVG Element]: https://developer.mozilla.org/en-US/docs/Web/SVG/Element
 [\<svg\>]: https://developer.mozilla.org/en-US/docs/Web/SVG/Element/svg
 [setAttribute]: https://developer.mozilla.org/en-US/docs/Web/API/Element/setAttribute
-[Creating inner shadow in svg]: https://stackoverflow.com/questions/69799051/creating-inner-shadow-in-svg
 [jsPDF]: https://github.com/parallax/jsPDF
 [loaders.gl]: https://github.com/visgl/loaders.gl
 [ImageLoader]: https://loaders.gl/docs/modules/images/api-reference/image-loader
@@ -867,3 +928,5 @@ With the richness of the canvas functionality, it is necessary to introduce test
 [Vector rendering of SVG content with PixiJS]: https://medium.com/javascript-in-plain-english/vector-rendering-of-svg-content-with-pixijs-6f26c91f09ee
 [svgo]: https://github.com/svg/svgo
 [Dot Grid With pattern]: https://www.smashingmagazine.com/2024/09/svg-coding-examples-recipes-writing-vectors-by-hand/#dot-grid-with-pattern
+[Adding Shadows to SVG Icons With CSS and SVG Filters]: https://css-tricks.com/adding-shadows-to-svg-icons-with-css-and-svg-filters/
+[filter primitive]: https://developer.mozilla.org/en-US/docs/Web/SVG/Element#filter_primitive_elements

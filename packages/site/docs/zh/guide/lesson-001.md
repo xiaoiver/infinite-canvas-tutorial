@@ -131,7 +131,7 @@ canvas.resize(500, 500);
 canvas.destroy();
 ```
 
-其中渲染循环的用法在渲染引擎中十分常见，例如 Three.js 中的 [Rendering the scene]。
+其中渲染循环的用法在渲染引擎中十分常见，例如 Three.js 中的 [Rendering the scene]。关于使用 `requestAnimationFrame` 而非 `setTimeout` 的原因详见：[Performant Game Loops in JavaScript]。
 
 看起来接口定义非常简单，但我们先不急着实现，因为这里存在一个异步初始化问题。
 
@@ -517,3 +517,4 @@ const canvas = await new Canvas({
 [GPUCanvasContext]: https://gpuweb.github.io/gpuweb/#canvas-context
 [Canvas Context and Swap Chain]: https://carmencincotti.com/2022-12-19/how-to-render-a-webgpu-triangle-series-part-three-video/#bonus-content-swap-chain
 [Introducing: Penpot Plugin System]: https://www.smashingmagazine.com/2024/11/open-source-meets-design-tooling-penpot/
+[Performant Game Loops in JavaScript]: https://www.aleksandrhovhannisyan.com/blog/javascript-game-loop/

@@ -136,12 +136,6 @@ export class SDFPath extends Drawcall {
     }
     defines += '#define USE_FILLIMAGE\n';
 
-    if (this.#program) {
-      this.#program.destroy();
-      this.#inputLayout.destroy();
-      this.#pipeline.destroy();
-    }
-
     const diagnosticDerivativeUniformityHeader =
       this.device.queryVendorInfo().platformString === 'WebGPU'
         ? 'diagnostic(off,derivative_uniformity);\n'
@@ -432,6 +426,7 @@ export class SDFPath extends Drawcall {
   }
 
   destroy(): void {
+    super.destroy();
     if (this.#program) {
       this.#instancedMatrixBuffer?.destroy();
       this.#instancedBuffer?.destroy();

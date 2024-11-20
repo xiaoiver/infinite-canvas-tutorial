@@ -321,7 +321,70 @@ export function fromSVGElement(element: SVGElement): SerializedNode;
 
 #### inner & outerShadow {#export-inner-outer-shadow}
 
-参考 [Creating inner shadow in svg]
+参考 [Adding Shadows to SVG Icons With CSS and SVG Filters]，我们使用 [filter primitive] 实现内外阴影。以外阴影为例：
+
+```ts
+const $feDropShadow = createSVGElement('feDropShadow', doc);
+$feDropShadow.setAttribute('dx', `${(dropShadowOffsetX || 0) / 2}`);
+$feDropShadow.setAttribute('dy', `${(dropShadowOffsetY || 0) / 2}`);
+$feDropShadow.setAttribute(
+    'stdDeviation',
+    `${(dropShadowBlurRadius || 0) / 4}`,
+);
+$feDropShadow.setAttribute('flood-color', dropShadowColor);
+$filter.appendChild($feDropShadow);
+```
+
+内阴影要复杂一些，限于篇幅就不展开了。可以在下面的示例中下载 SVG 查看：
+
+```js eval code=false
+$icCanvas4 = call(() => {
+    return document.createElement('ic-canvas-lesson10');
+});
+```
+
+```js eval code=false inspector=false
+call(() => {
+    const { Canvas, Rect } = Lesson10;
+
+    const stats = new Stats();
+    stats.showPanel(0);
+    const $stats = stats.dom;
+    $stats.style.position = 'absolute';
+    $stats.style.left = '0px';
+    $stats.style.top = '0px';
+
+    $icCanvas4.parentElement.style.position = 'relative';
+    $icCanvas4.parentElement.appendChild($stats);
+
+    $icCanvas4.addEventListener('ic-ready', (e) => {
+        const canvas = e.detail;
+
+        const rect = new Rect({
+            x: 50,
+            y: 50,
+            fill: 'green',
+            cornerRadius: 50,
+            batchable: false,
+            innerShadowColor: 'black',
+            innerShadowOffsetX: 10,
+            innerShadowOffsetY: 10,
+            innerShadowBlurRadius: 10,
+            dropShadowColor: 'black',
+            dropShadowOffsetX: 10,
+            dropShadowOffsetY: 10,
+            dropShadowBlurRadius: 10,
+        });
+        rect.width = 400;
+        rect.height = 100;
+        canvas.appendChild(rect);
+    });
+
+    $icCanvas4.addEventListener('ic-frame', (e) => {
+        stats.update();
+    });
+});
+```
 
 #### 导出作为填充的图片 {#export-image-as-fill-value}
 
@@ -838,7 +901,7 @@ function strokeOffset(
 -   [Export from Figma]
 -   [Specifying stroke alignment]
 -   [How to simulate stroke-align (stroke-alignment) in SVG]
--   [Creating inner shadow in svg]
+-   [Adding Shadows to SVG Icons With CSS and SVG Filters]
 -   [Vector rendering of SVG content with PixiJS]
 
 [Export from Figma]: https://help.figma.com/hc/en-us/articles/360040028114-Export-from-Figma#h_01GWB002EPWMFSXKAEC62GS605
@@ -859,7 +922,6 @@ function strokeOffset(
 [\<pattern\>]: https://developer.mozilla.org/en-US/docs/Web/SVG/Element/pattern
 [\<clipPath\>]: https://developer.mozilla.org/en-US/docs/Web/SVG/Element/clipPath
 [setAttribute]: https://developer.mozilla.org/en-US/docs/Web/API/Element/setAttribute
-[Creating inner shadow in svg]: https://stackoverflow.com/questions/69799051/creating-inner-shadow-in-svg
 [jsPDF]: https://github.com/parallax/jsPDF
 [loaders.gl]: https://github.com/visgl/loaders.gl
 [ImageLoader]: https://loaders.gl/docs/modules/images/api-reference/image-loader
@@ -877,3 +939,5 @@ function strokeOffset(
 [PIXI.LineStyle alignment]: https://api.pixijs.io/@pixi/graphics/PIXI/LineStyle.html#alignment
 [svgo]: https://github.com/svg/svgo
 [Dot Grid With pattern]: https://www.smashingmagazine.com/2024/09/svg-coding-examples-recipes-writing-vectors-by-hand/#dot-grid-with-pattern
+[Adding Shadows to SVG Icons With CSS and SVG Filters]: https://css-tricks.com/adding-shadows-to-svg-icons-with-css-and-svg-filters/
+[filter primitive]: https://developer.mozilla.org/en-US/docs/Web/SVG/Element#filter_primitive_elements

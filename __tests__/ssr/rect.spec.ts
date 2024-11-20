@@ -42,13 +42,64 @@ describe('Rect', () => {
     expect(exporter.toSVG({ grid: true })).toMatchSVGSnapshot(dir, 'rect');
   });
 
+  it('should render a rect with inner shadow correctly.', async () => {
+    const rect = new Rect({
+      x: 50,
+      y: 50,
+      width: 50,
+      height: 50,
+      fill: 'white',
+      innerShadowBlurRadius: 10,
+      innerShadowColor: 'black',
+      innerShadowOffsetX: 10,
+      innerShadowOffsetY: 10,
+    });
+    canvas.appendChild(rect);
+
+    const rect2 = new Rect({
+      x: 100,
+      y: 100,
+      width: 50,
+      height: 50,
+      fill: 'white',
+      innerShadowBlurRadius: 10,
+      innerShadowColor: 'black',
+      innerShadowOffsetX: 10,
+      innerShadowOffsetY: 10,
+      batchable: false,
+    });
+    canvas.appendChild(rect2);
+
+    const rect3 = new Rect({
+      x: 100,
+      y: 50,
+      width: 20,
+      height: 20,
+      fill: 'white',
+      innerShadowBlurRadius: 8,
+      innerShadowColor: 'black',
+    });
+    canvas.appendChild(rect3);
+
+    canvas.render();
+
+    expect($canvas.getContext('webgl1')).toMatchWebGLSnapshot(
+      dir,
+      'rect-innershadow',
+    );
+    expect(exporter.toSVG({ grid: true })).toMatchSVGSnapshot(
+      dir,
+      'rect-innershadow',
+    );
+  });
+
   it('should render a rect with drop shadow correctly.', async () => {
     const rect = new Rect({
       x: 50,
       y: 50,
       width: 50,
       height: 50,
-      fill: 'black',
+      fill: 'white',
       dropShadowBlurRadius: 10,
       dropShadowColor: 'black',
       dropShadowOffsetX: 10,
@@ -61,7 +112,7 @@ describe('Rect', () => {
       y: 100,
       width: 50,
       height: 50,
-      fill: 'black',
+      fill: 'white',
       dropShadowBlurRadius: 10,
       dropShadowColor: 'black',
       dropShadowOffsetX: 10,
@@ -75,7 +126,7 @@ describe('Rect', () => {
       y: 50,
       width: 20,
       height: 20,
-      fill: 'black',
+      fill: 'white',
       dropShadowBlurRadius: 8,
       dropShadowColor: 'black',
     });
@@ -84,6 +135,10 @@ describe('Rect', () => {
     canvas.render();
 
     expect($canvas.getContext('webgl1')).toMatchWebGLSnapshot(
+      dir,
+      'rect-dropshadow',
+    );
+    expect(exporter.toSVG({ grid: true })).toMatchSVGSnapshot(
       dir,
       'rect-dropshadow',
     );

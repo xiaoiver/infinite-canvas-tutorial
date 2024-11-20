@@ -131,7 +131,7 @@ canvas.resize(500, 500);
 canvas.destroy();
 ```
 
-The use of render loops is very common in rendering engines such as [Rendering the scene] in Three.js.
+The use of render loops is very common in rendering engines such as [Rendering the scene] in Three.js. See [Performant Game Loops in JavaScript] for more information on why `requestAnimationFrame` is used instead of `setTimeout`.
 
 It looks like a very simple interface definition, but let's not rush to implement it yet, because there is an asynchronous initialization problem here.
 
@@ -517,3 +517,4 @@ More on the plug-in design pattern:
 [GPUCanvasContext]: https://gpuweb.github.io/gpuweb/#canvas-context
 [Canvas Context and Swap Chain]: https://carmencincotti.com/2022-12-19/how-to-render-a-webgpu-triangle-series-part-three-video/#bonus-content-swap-chain
 [Introducing: Penpot Plugin System]: https://www.smashingmagazine.com/2024/11/open-source-meets-design-tooling-penpot/
+[Performant Game Loops in JavaScript]: https://www.aleksandrhovhannisyan.com/blog/javascript-game-loop/
