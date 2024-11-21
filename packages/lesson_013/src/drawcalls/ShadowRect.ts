@@ -78,11 +78,6 @@ export class ShadowRect extends Drawcall {
       defines += '#define USE_INSTANCES\n';
     }
 
-    if (this.#program) {
-      this.#program.destroy();
-      this.#inputLayout.destroy();
-      this.#pipeline.destroy();
-    }
     this.#program = this.renderCache.createProgram({
       vertex: {
         glsl: defines + vert,
@@ -313,16 +308,13 @@ export class ShadowRect extends Drawcall {
   }
 
   destroy(): void {
+    super.destroy();
     if (this.#program) {
-      this.#program.destroy();
       this.#instancedMatrixBuffer?.destroy();
       this.#instancedBuffer?.destroy();
       this.#fragUnitBuffer?.destroy();
       this.#indexBuffer?.destroy();
       this.#uniformBuffer?.destroy();
-      this.#pipeline?.destroy();
-      this.#inputLayout?.destroy();
-      this.#bindings?.destroy();
     }
   }
 

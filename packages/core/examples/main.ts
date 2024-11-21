@@ -32,16 +32,16 @@ const canvas = await new Canvas({
   shaderCompilerPath: '/glsl_wgsl_compiler_bg.wasm',
 }).initialized;
 
-const rect1 = new Rect({
-  x: 0,
-  y: 0,
-  width: 100,
-  height: 100,
-  fill: 'red',
-  innerShadowBlurRadius: 10,
-  innerShadowColor: 'black',
-  dropShadowColor: 'black',
-  dropShadowBlurRadius: 10,
+const rect1 = new RoughPolyline({
+  points: [
+    [50, 50],
+    [50, 150],
+    [150, 50],
+  ],
+  stroke: 'black',
+  strokeWidth: 2,
+  roughness: 2,
+  // fill: 'none',
 });
 canvas.appendChild(rect1);
 canvas.render();

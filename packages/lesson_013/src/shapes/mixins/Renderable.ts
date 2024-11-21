@@ -25,6 +25,11 @@ export interface IRenderable {
   batchable: boolean;
 
   /**
+   * Whether this object is selectable.
+   */
+  selectable: boolean;
+
+  /**
    * Whether this object is culled.
    */
   culled: boolean;
@@ -39,6 +44,8 @@ export interface IRenderable {
    * The global render order of the object.
    */
   globalRenderOrder: number;
+
+  sortDirtyFlag: boolean;
 
   /**
    * Avoid unnecessary work like updating Buffer by deferring it until needed.
@@ -65,6 +72,12 @@ export interface IRenderable {
    */
   bounds: AABB;
   boundsDirtyFlag: boolean;
+
+  /**
+   * Render geometry as wireframe.
+   * @see https://threejs.org/docs/#api/en/materials/MeshStandardMaterial.wireframe
+   */
+  wireframe: boolean;
 
   /**
    * It's a presentation attribute that defines the color used to paint the element. Default to `black`.
@@ -211,10 +224,10 @@ export function Renderable<TBase extends GConstructor>(Base: TBase) {
   // @ts-ignore
   return class Renderable extends Base implements IRenderable {
     renderable: boolean;
-    visible: boolean;
     cullable: boolean;
     culled: boolean;
     batchable: boolean;
+    selectable: boolean;
     sizeAttenuation: boolean;
     renderDirtyFlag = true;
     renderBounds: AABB;
@@ -224,7 +237,9 @@ export function Renderable<TBase extends GConstructor>(Base: TBase) {
     bounds: AABB;
     boundsDirtyFlag = true;
     globalRenderOrder: number;
+    sortDirtyFlag = false;
 
+    #visible: boolean;
     #fill: string | TexImageSource;
     #fillRGB: d3.RGBColor;
     #stroke: string;
@@ -257,6 +272,8 @@ export function Renderable<TBase extends GConstructor>(Base: TBase) {
           | 'renderable'
           | 'cullable'
           | 'batchable'
+          | 'selectable'
+          | 'wireframe'
           | 'sizeAttenuation'
           | 'visible'
           | 'strokeWidth'
@@ -280,7 +297,9 @@ export function Renderable<TBase extends GConstructor>(Base: TBase) {
         visible,
         cullable,
         batchable,
+        selectable,
         sizeAttenuation,
+        wireframe,
         fill,
         stroke,
         strokeWidth,
@@ -303,7 +322,9 @@ export function Renderable<TBase extends GConstructor>(Base: TBase) {
       this.visible = visible ?? true;
       this.cullable = cullable ?? true;
       this.batchable = batchable ?? true;
+      this.selectable = selectable ?? true;
       this.sizeAttenuation = sizeAttenuation ?? true;
+      this.wireframe = wireframe ?? false;
       this.fill = fill ?? 'black';
       this.stroke = stroke ?? 'none';
       this.strokeWidth = strokeWidth ?? 1;
@@ -320,6 +341,17 @@ export function Renderable<TBase extends GConstructor>(Base: TBase) {
       this.innerShadowOffsetX = innerShadowOffsetX ?? 0;
       this.innerShadowOffsetY = innerShadowOffsetY ?? 0;
       this.innerShadowBlurRadius = innerShadowBlurRadius ?? 0;
+    }
+
+    get visible() {
+      return this.#visible;
+    }
+    set visible(visible: boolean) {
+      if (this.#visible !== visible) {
+        this.#visible = visible;
+        this.boundsDirtyFlag = true;
+        this.renderDirtyFlag = true;
+      }
     }
 
     get fill() {
@@ -429,7 +461,7 @@ export function Renderable<TBase extends GConstructor>(Base: TBase) {
     }
     set strokeDasharray(strokeDasharray: number[]) {
       if (
-        !this.#strokeDasharray ||
+        !this.#strokeDasharray?.length ||
         !this.#strokeDasharray.every(
           (dash, index) => dash === strokeDasharray[index],
         )

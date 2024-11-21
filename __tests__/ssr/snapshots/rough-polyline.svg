@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200">
+  <defs>
+    <pattern
+      id="small-grid"
+      width="10"
+      height="10"
+      patternUnits="userSpaceOnUse"
+    >
+      <path
+        d="M 10 0 L 0 0 0 10"
+        fill="none"
+        stroke="rgba(221,221,221,1)"
+        stroke-width="1"
+      />
+    </pattern>
+    <pattern id="grid" width="100" height="100" patternUnits="userSpaceOnUse">
+      <rect width="100" height="100" fill="url(#small-grid)" />
+      <path
+        d="M 100 0 L 0 0 0 100"
+        fill="none"
+        stroke="rgba(221,221,221,1)"
+        stroke-width="2"
+      />
+    </pattern>
+  </defs>
+  <rect width="100%" height="100%" fill="url(#grid)" />
+  <g>
+    <g>
+      <path
+        d="M50.86 50.96C48.85 71.16 48.61 88.27 49.21 150.39M49.35 50.26C50.21 72.95 49.86 94.51 49.42 150.75M51.54 148.25C73.31 129.25 95.75 104.63 151.39 49.13M50.3 149.2C76.77 122.89 102.63 96.94 150.41 50.35"
+        stroke="black"
+        fill="none"
+      />
+    </g>
+    <g />
+  </g>
+</svg>

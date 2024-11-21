@@ -189,12 +189,6 @@ export class SmoothPolyline extends Drawcall {
       defines += '#define USE_INSTANCES\n';
     }
 
-    if (this.#program) {
-      this.#program.destroy();
-      this.#inputLayout.destroy();
-      this.#pipeline.destroy();
-    }
-
     const diagnosticDerivativeUniformityHeader =
       this.device.queryVendorInfo().platformString === 'WebGPU'
         ? 'diagnostic(off,derivative_uniformity);\n'
@@ -440,8 +434,8 @@ export class SmoothPolyline extends Drawcall {
   }
 
   destroy(): void {
+    super.destroy();
     if (this.#program) {
-      this.#program.destroy();
       this.#vertexNumBuffer?.destroy();
       this.#travelBuffer?.destroy();
       this.#segmentsBuffer?.destroy();
@@ -449,9 +443,6 @@ export class SmoothPolyline extends Drawcall {
       this.#instancedBuffer?.destroy();
       this.#indexBuffer?.destroy();
       this.#uniformBuffer?.destroy();
-      this.#pipeline?.destroy();
-      this.#inputLayout?.destroy();
-      this.#bindings?.destroy();
     }
   }
 
@@ -497,8 +488,7 @@ export class SmoothPolyline extends Drawcall {
         instance instanceof RoughEllipse ||
         instance instanceof RoughPath) &&
         this.index === 1) ||
-      (instance instanceof RoughRect && this.index === 2) ||
-      instance instanceof RoughPolyline
+      (instance instanceof RoughRect && this.index === 2)
     ) {
       u_StrokeColor = [fr / 255, fg / 255, fb / 255, fo];
       u_Opacity[2] = fillOpacity;

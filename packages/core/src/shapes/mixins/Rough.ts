@@ -140,6 +140,7 @@ export function Rough<TBase extends GConstructor>(Base: TBase) {
     strokePoints: [number, number][][] = [];
     fillPoints: [number, number][][] = [];
     fillPathPoints: [number, number][][] = [];
+    drawableSets: Drawable['sets'];
 
     #roughness: IRough['roughness'];
     #bowing: IRough['bowing'];
@@ -484,11 +485,12 @@ export function Rough<TBase extends GConstructor>(Base: TBase) {
     generate() {
       const drawable = this.generateDrawable();
 
+      this.drawableSets = drawable.sets;
       this.strokePoints = [];
       this.fillPoints = [];
       this.fillPathPoints = [];
 
-      drawable.sets.forEach((set) => {
+      this.drawableSets.forEach((set) => {
         const { subPaths } = parsePath(set);
         const points = subPaths.map((subPath) =>
           subPath

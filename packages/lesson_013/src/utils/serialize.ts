@@ -1,4 +1,5 @@
 import { Transform } from '@pixi/math';
+import { path2String } from '@antv/util';
 import { ImageLoader } from '@loaders.gl/images';
 import { load } from '@loaders.gl/core';
 import {
@@ -12,14 +13,22 @@ import {
   Shape,
   RoughRect,
   shiftPoints,
+  RoughCircle,
+  RoughEllipse,
+  RoughPolyline,
+  RoughPath,
 } from '../shapes';
 import { createSVGElement } from './browser';
 import {
   camelToKebabCase,
   isDataUrl,
   isString,
+  isUndefined,
   kebabToCamelCase,
 } from './lang';
+import { IRough } from '../shapes/mixins/Rough';
+import { Drawable } from 'roughjs/bin/core';
+import { opSet2Absolute } from './rough';
 
 type SerializedTransform = {
   matrix: {
@@ -69,6 +78,27 @@ const renderableAttributes = [
   'innerShadowOffsetX',
   'innerShadowOffsetY',
   'innerShadowBlurRadius',
+] as const;
+const roughAttributes = [
+  'drawableSets',
+  'seed',
+  'roughness',
+  'bowing',
+  'fillStyle',
+  'fillWeight',
+  'hachureAngle',
+  'hachureGap',
+  'curveStepCount',
+  'simplification',
+  'curveFitting',
+  'fillLineDash',
+  'fillLineDashOffset',
+  'disableMultiStroke',
+  'disableMultiStrokeFill',
+  'dashOffset',
+  'dashGap',
+  'zigzagOffset',
+  'preserveVertices',
 ] as const;
 
 const circleAttributes = ['cx', 'cy', 'r'] as const;
@@ -135,14 +165,19 @@ interface SerializedNode {
     | 'rect'
     | 'polyline'
     | 'path'
-    | 'rough-rect';
+    | 'rough-circle'
+    | 'rough-ellipse'
+    | 'rough-rect'
+    | 'rough-polyline'
+    | 'rough-path';
   attributes?: Pick<Shape, CommonAttributeName> &
     Record<'transform', SerializedTransform> &
     Partial<Pick<Circle, CircleAttributeName>> &
     Partial<Pick<Ellipse, EllipseAttributeName>> &
     Partial<Pick<Rect, RectAttributeName>> &
     Partial<Pick<Polyline, PolylineAttributeName>> &
-    Partial<Pick<Path, PathAttributeName>>;
+    Partial<Pick<Path, PathAttributeName>> &
+    Partial<IRough & { drawableSets: Drawable['sets'] }>;
   children?: SerializedNode[];
 }
 
@@ -153,8 +188,18 @@ export function typeofShape(
   | ['circle', ...(typeof circleAttributes & typeof renderableAttributes)]
   | ['ellipse', ...(typeof ellipseAttributes & typeof renderableAttributes)]
   | ['rect', ...(typeof rectAttributes & typeof renderableAttributes)]
-  | ['rough-rect', ...(typeof rectAttributes & typeof renderableAttributes)]
   | ['polyline', ...(typeof polylineAttributes & typeof renderableAttributes)]
+  | ['rough-circle', ...(typeof circleAttributes & typeof renderableAttributes)]
+  | [
+      'rough-ellipse',
+      ...(typeof ellipseAttributes & typeof renderableAttributes),
+    ]
+  | ['rough-rect', ...(typeof rectAttributes & typeof renderableAttributes)]
+  | [
+      'rough-polyline',
+      ...(typeof polylineAttributes & typeof renderableAttributes),
+    ]
+  | ['rough-path', ...(typeof pathAttributes & typeof renderableAttributes)]
   | ['path', ...(typeof pathAttributes & typeof renderableAttributes)] {
   if (shape instanceof Group) {
     return ['g', commonAttributes];
@@ -168,8 +213,31 @@ export function typeofShape(
     return ['polyline', [...renderableAttributes, ...polylineAttributes]];
   } else if (shape instanceof Path) {
     return ['path', [...renderableAttributes, ...pathAttributes]];
+  } else if (shape instanceof RoughCircle) {
+    return [
+      'rough-circle',
+      [...renderableAttributes, ...circleAttributes, ...roughAttributes],
+    ];
+  } else if (shape instanceof RoughEllipse) {
+    return [
+      'rough-ellipse',
+      [...renderableAttributes, ...ellipseAttributes, ...roughAttributes],
+    ];
   } else if (shape instanceof RoughRect) {
-    return ['rough-rect', [...renderableAttributes, ...rectAttributes]];
+    return [
+      'rough-rect',
+      [...renderableAttributes, ...rectAttributes, ...roughAttributes],
+    ];
+  } else if (shape instanceof RoughPolyline) {
+    return [
+      'rough-polyline',
+      [...renderableAttributes, ...polylineAttributes, ...roughAttributes],
+    ];
+  } else if (shape instanceof RoughPath) {
+    return [
+      'rough-path',
+      [...renderableAttributes, ...pathAttributes, ...roughAttributes],
+    ];
   }
 }
 
@@ -188,8 +256,17 @@ export async function deserializeNode(data: SerializedNode) {
     shape = new Polyline();
   } else if (type === 'path') {
     shape = new Path();
+  } else if (type === 'rough-circle') {
+    shape = new RoughCircle();
+    // TODO: implement with path
+  } else if (type === 'rough-ellipse') {
+    shape = new RoughEllipse();
   } else if (type === 'rough-rect') {
     shape = new RoughRect();
+  } else if (type === 'rough-polyline') {
+    shape = new RoughPolyline();
+  } else if (type === 'rough-path') {
+    shape = new RoughPath();
   }
 
   const { transform, ...rest } = attributes;
@@ -235,7 +312,9 @@ export function serializeNode(node: Shape): SerializedNode {
     uid: node.uid,
     type,
     attributes: [...commonAttributes, ...attributes].reduce((prev, cur) => {
-      prev[cur] = node[cur];
+      if (!isUndefined(node[cur])) {
+        prev[cur] = node[cur];
+      }
       return prev;
     }, {}),
   };
@@ -521,9 +600,41 @@ export function exportFillImage(
   element.setAttribute('fill', `url(#${$pattern.id})`);
 }
 
+export function exportRough(
+  node: SerializedNode,
+  $g: SVGElement,
+  doc: Document,
+) {
+  const {
+    attributes: { drawableSets, stroke, fill },
+  } = node;
+
+  drawableSets.forEach((drawableSet) => {
+    const { type } = drawableSet;
+    const commands = opSet2Absolute(drawableSet);
+    const d = path2String(commands, 2);
+    const $path = createSVGElement('path', doc);
+    $path.setAttribute('d', d);
+    $g.appendChild($path);
+    if (type === 'fillSketch') {
+      $path.setAttribute('stroke', fill as string);
+      $path.setAttribute('fill', 'none');
+    } else if (type === 'path') {
+      $path.setAttribute('stroke', stroke as string);
+      $path.setAttribute('fill', 'none');
+    } else if (type === 'fillPath') {
+      $path.setAttribute('fill', fill as string);
+      $path.setAttribute('stroke', 'none');
+    }
+  });
+}
+
 export function toSVGElement(node: SerializedNode, doc?: Document) {
   const { type, attributes, children } = node;
-  const element = createSVGElement(type, doc);
+
+  const isRough = type.startsWith('rough-');
+
+  const element = !isRough && createSVGElement(type, doc);
   const {
     transform,
     visible,
@@ -542,11 +653,14 @@ export function toSVGElement(node: SerializedNode, doc?: Document) {
     cornerRadius,
     ...rest
   } = attributes;
-  Object.entries(rest).forEach(([key, value]) => {
-    if (`${value}` !== '' && `${defaultValues[key]}` !== `${value}`) {
-      element.setAttribute(camelToKebabCase(key), `${value}`);
-    }
-  });
+
+  if (element) {
+    Object.entries(rest).forEach(([key, value]) => {
+      if (`${value}` !== '' && `${defaultValues[key]}` !== `${value}`) {
+        element.setAttribute(camelToKebabCase(key), `${value}`);
+      }
+    });
+  }
 
   const innerStrokeAlignment = strokeAlignment === 'inner';
   const outerStrokeAlignment = strokeAlignment === 'outer';
@@ -591,10 +705,13 @@ export function toSVGElement(node: SerializedNode, doc?: Document) {
   if (
     (children && children.length > 0 && type !== 'g') ||
     (innerOrOuterStrokeAlignment && type !== 'polyline') ||
+    isRough ||
     hasFillImage
   ) {
     $g = createSVGElement('g', doc);
-    $g.appendChild(element);
+    if (element) {
+      $g.appendChild(element);
+    }
   }
 
   if (innerOrOuterStrokeAlignment) {
@@ -620,6 +737,9 @@ export function toSVGElement(node: SerializedNode, doc?: Document) {
   if (cornerRadius) {
     $g.setAttribute('rx', `${cornerRadius}`);
     $g.setAttribute('ry', `${cornerRadius}`);
+  }
+  if (isRough) {
+    exportRough(node, $g, doc);
   }
 
   const { a, b, c, d, tx, ty } = transform.matrix;

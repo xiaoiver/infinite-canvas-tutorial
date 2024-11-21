@@ -656,7 +656,32 @@ call(() => {
 
 ### 导出 SVG {#export-svg}
 
-可以看出 rough 生成的图形都是由一组 Path 组成。因此在导出成 SVG 时需要使用 `<path>`
+可以看出 rough 生成的图形都是由一组 Path 组成。因此在导出成 SVG 时需要使用 `<path>`。可以在上面的示例中尝试导出：
+
+```ts
+export function exportRough(
+    node: SerializedNode,
+    $g: SVGElement,
+    doc: Document,
+) {
+    const {
+        attributes: { drawableSets, stroke, fill },
+    } = node;
+
+    drawableSets.forEach((drawableSet) => {
+        const { type } = drawableSet;
+        const commands = opSet2Absolute(drawableSet);
+        const d = path2String(commands, 2); // retain two decimal places
+        const $path = createSVGElement('path', doc);
+        $path.setAttribute('d', d);
+        $g.appendChild($path);
+        if (type === 'fillSketch') {
+            $path.setAttribute('stroke', fill as string);
+            $path.setAttribute('fill', 'none');
+        }
+    });
+}
+```
 
 ## 扩展阅读 {#extended-reading}
 

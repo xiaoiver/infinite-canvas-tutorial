@@ -1,5 +1,6 @@
 {
   "html.customData": [
     "./node_modules/.pnpm/@shoelace-style+shoelace@2.0.0/node_modules/@shoelace-style/shoelace/dist/vscode.html-custom-data.json"
-  ]
+  ],
+  "svg.preview.background": "white"
 }

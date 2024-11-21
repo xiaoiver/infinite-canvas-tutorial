@@ -488,8 +488,7 @@ export class SmoothPolyline extends Drawcall {
         instance instanceof RoughEllipse ||
         instance instanceof RoughPath) &&
         this.index === 1) ||
-      (instance instanceof RoughRect && this.index === 2) ||
-      instance instanceof RoughPolyline
+      (instance instanceof RoughRect && this.index === 2)
     ) {
       u_StrokeColor = [fr / 255, fg / 255, fb / 255, fo];
       u_Opacity[2] = fillOpacity;

@@ -1,11 +1,14 @@
 import { Buffer, Device, RenderPass } from '@antv/g-device-api';
 import { Shape } from '../shapes';
 import { RenderCache } from '../utils/render-cache';
+import { uid } from '../utils';
 
 // TODO: Use a more efficient way to manage Z index.
 export const ZINDEX_FACTOR = 100000;
 
 export abstract class Drawcall {
+  uid = uid();
+
   protected shapes: Shape[] = [];
 
   /**
@@ -15,6 +18,7 @@ export abstract class Drawcall {
 
   protected geometryDirty = true;
   protected materialDirty = true;
+  destroyed = false;
 
   constructor(
     protected device: Device,
@@ -29,7 +33,10 @@ export abstract class Drawcall {
     renderPass: RenderPass,
     uniformLegacyObject: Record<string, unknown>,
   ): void;
-  abstract destroy(): void;
+
+  destroy() {
+    this.destroyed = true;
+  }
 
   validate(_: Shape) {
     return this.count() <= this.maxInstances - 1;
