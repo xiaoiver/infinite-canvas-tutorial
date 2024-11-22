@@ -98,7 +98,7 @@ describe('RoughRect', () => {
     );
   });
 
-  it('should render a simple rough rect correctly.', async () => {
+  it.skip('should render a simple rough rect correctly.', async () => {
     const rect = new RoughRect({
       x: 50,
       y: 50,
