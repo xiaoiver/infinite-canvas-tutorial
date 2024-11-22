@@ -42,3 +42,13 @@ jobs:
         uses: coverallsapp/github-action@master
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload blob report to GitHub Actions Artifacts
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: snapshots
+          path: |
+            __tests__/ssr/snapshots/**/*-actual.svg
+            __tests__/ssr/snapshots/**/*-actual.png
+          retention-days: 1
