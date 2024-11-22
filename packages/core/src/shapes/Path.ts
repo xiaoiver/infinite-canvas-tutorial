@@ -34,6 +34,8 @@ export function PathWrapper<TBase extends GConstructor>(Base: TBase) {
 
     batchable = false;
 
+    onGeometryChanged?: () => void;
+
     static getGeometryBounds(
       attributes: Partial<
         Pick<PathAttributes, 'd'> & { points: [number, number][][] }
@@ -84,6 +86,7 @@ export function PathWrapper<TBase extends GConstructor>(Base: TBase) {
         this.geometryBoundsDirtyFlag = true;
         this.renderBoundsDirtyFlag = true;
         this.boundsDirtyFlag = true;
+        this.onGeometryChanged?.();
       }
     }
 

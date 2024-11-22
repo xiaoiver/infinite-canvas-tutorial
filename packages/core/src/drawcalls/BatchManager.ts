@@ -205,6 +205,36 @@ export class BatchManager {
     uniformBuffer: Buffer,
     uniformLegacyObject: Record<string, unknown>,
   ) {
+    const geometryDirtyDrawcalls = [];
+    const materialDirtyDrawcalls = [];
+    const geometryDirtyShapes = [];
+    const materialDirtyShapes = [];
+    this.#drawcallsToFlush.forEach((drawcall) => {
+      drawcall.shapes.forEach((shape) => {
+        if (shape.geometryDirtyFlag) {
+          geometryDirtyShapes.push(shape);
+          geometryDirtyDrawcalls.push(drawcall);
+        }
+        if (shape.materialDirtyFlag) {
+          materialDirtyShapes.push(shape);
+          materialDirtyDrawcalls.push(drawcall);
+        }
+      });
+    });
+
+    geometryDirtyDrawcalls.forEach(
+      (drawcall) => (drawcall.geometryDirty = true),
+    );
+    materialDirtyDrawcalls.forEach(
+      (drawcall) => (drawcall.materialDirty = true),
+    );
+    geometryDirtyShapes.forEach((shape) => {
+      if (shape.geometryDirtyFlag) {
+        shape.preCreateGeometry?.();
+        shape.geometryDirtyFlag = false;
+      }
+    });
+    materialDirtyShapes.forEach((shape) => (shape.materialDirtyFlag = false));
     this.#drawcallsToFlush.forEach((drawcall) => {
       drawcall.submit(renderPass, uniformBuffer, uniformLegacyObject);
     });

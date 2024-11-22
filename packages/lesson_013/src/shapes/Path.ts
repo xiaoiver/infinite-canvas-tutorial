@@ -34,6 +34,8 @@ export function PathWrapper<TBase extends GConstructor>(Base: TBase) {
 
     batchable = false;
 
+    onGeometryChanged?: () => void;
+
     static getGeometryBounds(
       attributes: Partial<
         Pick<PathAttributes, 'd'> & { points: [number, number][][] }
@@ -84,6 +86,7 @@ export function PathWrapper<TBase extends GConstructor>(Base: TBase) {
         this.geometryBoundsDirtyFlag = true;
         this.renderBoundsDirtyFlag = true;
         this.boundsDirtyFlag = true;
+        this.onGeometryChanged?.();
       }
     }
 
@@ -131,22 +134,21 @@ export function PathWrapper<TBase extends GConstructor>(Base: TBase) {
       if (this.renderBoundsDirtyFlag) {
         this.renderBoundsDirtyFlag = false;
 
-        const { strokeWidth, strokeLinecap, strokeLinejoin, strokeMiterlimit } =
-          this;
+        const { strokeWidth, strokeLinecap } = this;
 
         let style_expansion = 0.5;
         if (strokeLinecap === 'square') {
           style_expansion = Math.SQRT1_2;
         }
 
-        const stroke_is_rectilinear = true;
-        if (
-          strokeLinejoin === 'miter' &&
-          style_expansion < Math.SQRT2 * strokeMiterlimit &&
-          !stroke_is_rectilinear
-        ) {
-          style_expansion = Math.SQRT2 * strokeMiterlimit;
-        }
+        // const stroke_is_rectilinear = true;
+        // if (
+        //   strokeLinejoin === 'miter' &&
+        //   style_expansion < Math.SQRT2 * strokeMiterlimit &&
+        //   !stroke_is_rectilinear
+        // ) {
+        //   style_expansion = Math.SQRT2 * strokeMiterlimit;
+        // }
 
         style_expansion *= strokeWidth;
 

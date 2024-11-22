@@ -722,7 +722,8 @@ export function toSVGElement(node: SerializedNode, doc?: Document) {
     exportInnerShadow(node, element, $g, doc);
   }
   if (dropShadowBlurRadius > 0) {
-    exportDropShadow(node, element, $g, doc);
+    // RoughRect has no element, use $g instead.
+    exportDropShadow(node, element || $g, $g, doc);
   }
   // avoid `fill="[object ImageBitmap]"`
   if (hasFillImage) {

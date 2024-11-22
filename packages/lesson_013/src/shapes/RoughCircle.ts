@@ -14,7 +14,6 @@ export class RoughCircle extends Rough(CircleWrapper(Shape)) {
     // cx / cy / r also regenerates the drawable
     this.onGeometryChanged = () => {
       this.geometryDirtyFlag = true;
-      this.generate();
     };
   }
 

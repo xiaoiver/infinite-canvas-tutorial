@@ -117,7 +117,7 @@ export class SmoothPolyline extends Drawcall {
           shape instanceof RoughEllipse ||
           shape instanceof RoughPath) &&
           this.index === 2) ||
-          (shape instanceof RoughRect && this.index === 3) ||
+          (shape instanceof RoughRect && this.index !== 2) ||
           shape instanceof RoughPolyline,
       );
 

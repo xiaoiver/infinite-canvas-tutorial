@@ -50,6 +50,11 @@ export interface Shape
   materialDirtyFlag: boolean;
 
   /**
+   * After `geometryDirtyFlag` enabled, the preCreateGeometry method is called on the next .
+   */
+  preCreateGeometry?(): void;
+
+  /**
    * Hit testing.
    */
   containsPoint(
@@ -111,7 +116,7 @@ function Shapable<TBase extends GConstructor<Shape>>(Base: TBase) {
       child.transform._parentID = -1;
       this.children.push(child);
 
-      if (!isUndefined(child.zIndex)) {
+      if (this.sorted?.length || !isUndefined(child.zIndex)) {
         this.sortDirtyFlag = true;
       }
 
@@ -132,9 +137,7 @@ function Shapable<TBase extends GConstructor<Shape>>(Base: TBase) {
         if (index !== -1) {
           this.sorted.splice(index, 1);
         }
-      }
-
-      if (!isUndefined(child.zIndex)) {
+      } else if (!isUndefined(child.zIndex)) {
         this.sortDirtyFlag = true;
       }
 

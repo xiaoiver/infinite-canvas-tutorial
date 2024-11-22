@@ -14,7 +14,6 @@ export class RoughRect extends Rough(RectWrapper(Shape)) {
     // x / y / width / height also regenerates the drawable
     this.onGeometryChanged = () => {
       this.geometryDirtyFlag = true;
-      this.generate();
     };
   }
 

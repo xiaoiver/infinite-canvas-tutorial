@@ -14,7 +14,6 @@ export class RoughPolyline extends Rough(PolylineWrapper(Shape)) {
     // points also regenerates the drawable
     this.onGeometryChanged = () => {
       this.geometryDirtyFlag = true;
-      this.generate();
     };
   }
 

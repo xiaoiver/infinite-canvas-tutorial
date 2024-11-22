@@ -1,3 +1,4 @@
+import { set } from '@antv/util';
 import {
   Canvas,
   Circle,
@@ -32,21 +33,18 @@ const canvas = await new Canvas({
   shaderCompilerPath: '/glsl_wgsl_compiler_bg.wasm',
 }).initialized;
 
-const rect1 = new RoughPolyline({
-  points: [
-    [50, 50],
-    [50, 150],
-    [150, 50],
-  ],
-  stroke: 'black',
-  strokeWidth: 2,
-  roughness: 2,
-  // fill: 'none',
+const rect = new RoughRect({
+  x: 50,
+  y: 50,
+  width: 100,
+  height: 100,
+  fill: 'black',
+  // fillStyle: 'dots',
 });
-canvas.appendChild(rect1);
+canvas.appendChild(rect);
 canvas.render();
 
-console.log(toSVGElement(serializeNode(rect1)));
+// console.log(toSVGElement(serializeNode(rect1)));
 
 // const animate = () => {
 //   canvas.render();

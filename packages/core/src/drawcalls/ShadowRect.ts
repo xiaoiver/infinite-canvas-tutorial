@@ -16,14 +16,17 @@ import {
   TransparentBlack,
   StencilOp,
 } from '@antv/g-device-api';
-import { Rect, Shape } from '../shapes';
+import { Rect, RoughRect, Shape } from '../shapes';
 import { Drawcall, ZINDEX_FACTOR } from './Drawcall';
 import { vert, frag, Location } from '../shaders/shadow_rect';
 import { paddingMat3 } from '../utils';
 
 export class ShadowRect extends Drawcall {
   static check(shape: Shape) {
-    return shape instanceof Rect && shape.dropShadowBlurRadius > 0;
+    return (
+      (shape instanceof Rect || shape instanceof RoughRect) &&
+      shape.dropShadowBlurRadius > 0
+    );
   }
 
   #program: Program;

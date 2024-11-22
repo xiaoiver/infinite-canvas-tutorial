@@ -14,7 +14,6 @@ export class RoughEllipse extends Rough(EllipseWrapper(Shape)) {
     // cx / cy / rx / ry also regenerates the drawable
     this.onGeometryChanged = () => {
       this.geometryDirtyFlag = true;
-      this.generate();
     };
   }
 

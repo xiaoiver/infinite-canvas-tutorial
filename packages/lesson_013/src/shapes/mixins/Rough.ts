@@ -204,7 +204,8 @@ export function Rough<TBase extends GConstructor>(Base: TBase) {
       this.#fillLineDash = fillLineDash;
       this.#fillLineDashOffset = fillLineDashOffset;
 
-      this.generate();
+      this.preCreateGeometry?.();
+      this.geometryDirtyFlag = false;
     }
 
     get seed() {
@@ -215,7 +216,6 @@ export function Rough<TBase extends GConstructor>(Base: TBase) {
         this.#seed = seed;
         this.renderDirtyFlag = true;
         this.geometryDirtyFlag = true;
-        this.generate();
       }
     }
 
@@ -227,7 +227,6 @@ export function Rough<TBase extends GConstructor>(Base: TBase) {
         this.#roughness = roughness;
         this.renderDirtyFlag = true;
         this.geometryDirtyFlag = true;
-        this.generate();
       }
     }
 
@@ -239,7 +238,6 @@ export function Rough<TBase extends GConstructor>(Base: TBase) {
         this.#bowing = bowing;
         this.renderDirtyFlag = true;
         this.geometryDirtyFlag = true;
-        this.generate();
       }
     }
 
@@ -251,7 +249,6 @@ export function Rough<TBase extends GConstructor>(Base: TBase) {
         this.#fillStyle = fillStyle;
         this.renderDirtyFlag = true;
         this.geometryDirtyFlag = true;
-        this.generate();
       }
     }
 
@@ -263,7 +260,6 @@ export function Rough<TBase extends GConstructor>(Base: TBase) {
         this.#fillWeight = fillWeight;
         this.renderDirtyFlag = true;
         this.geometryDirtyFlag = true;
-        this.generate();
       }
     }
 
@@ -275,7 +271,6 @@ export function Rough<TBase extends GConstructor>(Base: TBase) {
         this.#hachureAngle = hachureAngle;
         this.renderDirtyFlag = true;
         this.geometryDirtyFlag = true;
-        this.generate();
       }
     }
 
@@ -287,7 +282,6 @@ export function Rough<TBase extends GConstructor>(Base: TBase) {
         this.#hachureGap = hachureGap;
         this.renderDirtyFlag = true;
         this.geometryDirtyFlag = true;
-        this.generate();
       }
     }
 
@@ -299,7 +293,6 @@ export function Rough<TBase extends GConstructor>(Base: TBase) {
         this.#curveStepCount = curveStepCount;
         this.renderDirtyFlag = true;
         this.geometryDirtyFlag = true;
-        this.generate();
       }
     }
 
@@ -311,7 +304,6 @@ export function Rough<TBase extends GConstructor>(Base: TBase) {
         this.#curveFitting = curveFitting;
         this.renderDirtyFlag = true;
         this.geometryDirtyFlag = true;
-        this.generate();
       }
     }
 
@@ -323,7 +315,6 @@ export function Rough<TBase extends GConstructor>(Base: TBase) {
         this.#disableMultiStroke = disableMultiStroke;
         this.renderDirtyFlag = true;
         this.geometryDirtyFlag = true;
-        this.generate();
       }
     }
 
@@ -335,7 +326,6 @@ export function Rough<TBase extends GConstructor>(Base: TBase) {
         this.#disableMultiStrokeFill = disableMultiStrokeFill;
         this.renderDirtyFlag = true;
         this.geometryDirtyFlag = true;
-        this.generate();
       }
     }
 
@@ -347,7 +337,6 @@ export function Rough<TBase extends GConstructor>(Base: TBase) {
         this.#simplification = simplification;
         this.renderDirtyFlag = true;
         this.geometryDirtyFlag = true;
-        this.generate();
       }
     }
 
@@ -359,7 +348,6 @@ export function Rough<TBase extends GConstructor>(Base: TBase) {
         this.#dashOffset = dashOffset;
         this.renderDirtyFlag = true;
         this.geometryDirtyFlag = true;
-        this.generate();
       }
     }
 
@@ -371,7 +359,6 @@ export function Rough<TBase extends GConstructor>(Base: TBase) {
         this.#dashGap = dashGap;
         this.renderDirtyFlag = true;
         this.geometryDirtyFlag = true;
-        this.generate();
       }
     }
 
@@ -383,7 +370,6 @@ export function Rough<TBase extends GConstructor>(Base: TBase) {
         this.#zigzagOffset = zigzagOffset;
         this.renderDirtyFlag = true;
         this.geometryDirtyFlag = true;
-        this.generate();
       }
     }
 
@@ -395,7 +381,6 @@ export function Rough<TBase extends GConstructor>(Base: TBase) {
         this.#preserveVertices = preserveVertices;
         this.renderDirtyFlag = true;
         this.geometryDirtyFlag = true;
-        this.generate();
       }
     }
 
@@ -410,7 +395,6 @@ export function Rough<TBase extends GConstructor>(Base: TBase) {
         this.#fillLineDash = fillLineDash;
         this.renderDirtyFlag = true;
         this.geometryDirtyFlag = true;
-        this.generate();
       }
     }
 
@@ -422,7 +406,6 @@ export function Rough<TBase extends GConstructor>(Base: TBase) {
         this.#fillLineDashOffset = fillLineDashOffset;
         this.renderDirtyFlag = true;
         this.geometryDirtyFlag = true;
-        this.generate();
       }
     }
 
@@ -479,10 +462,7 @@ export function Rough<TBase extends GConstructor>(Base: TBase) {
       });
     }
 
-    /**
-     * generate rough shape
-     */
-    generate() {
+    preCreateGeometry() {
       const drawable = this.generateDrawable();
 
       this.drawableSets = drawable.sets;

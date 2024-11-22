@@ -9,15 +9,15 @@ export const ZINDEX_FACTOR = 100000;
 export abstract class Drawcall {
   uid = uid();
 
-  protected shapes: Shape[] = [];
+  shapes: Shape[] = [];
 
   /**
    * Create a new batch if the number of instances exceeds.
    */
   protected maxInstances = Infinity;
 
-  protected geometryDirty = true;
-  protected materialDirty = true;
+  geometryDirty = true;
+  materialDirty = true;
   destroyed = false;
 
   constructor(
@@ -47,18 +47,8 @@ export abstract class Drawcall {
     uniformBuffer: Buffer,
     uniformLegacyObject: Record<string, unknown>,
   ) {
-    if (this.shapes.some((shape) => shape.geometryDirtyFlag)) {
-      this.shapes.forEach((shape) => (shape.geometryDirtyFlag = false));
-      this.geometryDirty = true;
-    }
-
     if (this.geometryDirty) {
       this.createGeometry();
-    }
-
-    if (this.shapes.some((shape) => shape.materialDirtyFlag)) {
-      this.shapes.forEach((shape) => (shape.materialDirtyFlag = false));
-      this.materialDirty = true;
     }
 
     if (this.materialDirty) {

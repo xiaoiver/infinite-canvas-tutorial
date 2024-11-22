@@ -32,28 +32,23 @@ SHAPE_DRAWCALL_CTORS.set(Rect, [ShadowRect, SDF, SmoothPolyline]);
 SHAPE_DRAWCALL_CTORS.set(Polyline, [SmoothPolyline]);
 // SHAPE_DRAWCALL_CTORS.set(Path, [SDFPath]);
 SHAPE_DRAWCALL_CTORS.set(Path, [Mesh, SmoothPolyline]);
-// @ts-expect-error RoughCircle is not a constructor
 SHAPE_DRAWCALL_CTORS.set(RoughCircle, [
   Mesh, // fillStyle === 'solid'
   SmoothPolyline, // fill
   SmoothPolyline, // stroke
 ]);
-// @ts-expect-error RoughCircle is not a constructor
 SHAPE_DRAWCALL_CTORS.set(RoughEllipse, [
   Mesh, // fillStyle === 'solid'
   SmoothPolyline, // fill
   SmoothPolyline, // stroke
 ]);
-// @ts-expect-error RoughCircle is not a constructor
 SHAPE_DRAWCALL_CTORS.set(RoughRect, [
   ShadowRect,
   Mesh, // fillStyle === 'solid'
   SmoothPolyline, // fill
   SmoothPolyline, // stroke
 ]);
-// @ts-expect-error RoughCircle is not a constructor
 SHAPE_DRAWCALL_CTORS.set(RoughPolyline, [SmoothPolyline]);
-// @ts-expect-error RoughCircle is not a constructor
 SHAPE_DRAWCALL_CTORS.set(RoughPath, [
   Mesh, // fillStyle === 'solid'
   SmoothPolyline, // fill
@@ -210,6 +205,36 @@ export class BatchManager {
     uniformBuffer: Buffer,
     uniformLegacyObject: Record<string, unknown>,
   ) {
+    const geometryDirtyDrawcalls = [];
+    const materialDirtyDrawcalls = [];
+    const geometryDirtyShapes = [];
+    const materialDirtyShapes = [];
+    this.#drawcallsToFlush.forEach((drawcall) => {
+      drawcall.shapes.forEach((shape) => {
+        if (shape.geometryDirtyFlag) {
+          geometryDirtyShapes.push(shape);
+          geometryDirtyDrawcalls.push(drawcall);
+        }
+        if (shape.materialDirtyFlag) {
+          materialDirtyShapes.push(shape);
+          materialDirtyDrawcalls.push(drawcall);
+        }
+      });
+    });
+
+    geometryDirtyDrawcalls.forEach(
+      (drawcall) => (drawcall.geometryDirty = true),
+    );
+    materialDirtyDrawcalls.forEach(
+      (drawcall) => (drawcall.materialDirty = true),
+    );
+    geometryDirtyShapes.forEach((shape) => {
+      if (shape.geometryDirtyFlag) {
+        shape.preCreateGeometry?.();
+        shape.geometryDirtyFlag = false;
+      }
+    });
+    materialDirtyShapes.forEach((shape) => (shape.materialDirtyFlag = false));
     this.#drawcallsToFlush.forEach((drawcall) => {
       drawcall.submit(renderPass, uniformBuffer, uniformLegacyObject);
     });

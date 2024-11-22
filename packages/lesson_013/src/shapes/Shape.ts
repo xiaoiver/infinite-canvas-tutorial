@@ -45,6 +45,11 @@ export interface Shape
   materialDirtyFlag: boolean;
 
   /**
+   * After `geometryDirtyFlag` enabled, the preCreateGeometry method is called on the next .
+   */
+  preCreateGeometry?(): void;
+
+  /**
    * Hit testing.
    */
   containsPoint(
@@ -54,6 +59,7 @@ export interface Shape
   ): boolean;
 
   getBounds(): AABB;
+  getGeometryBounds(): AABB;
   getRenderBounds(): AABB;
 
   /**

@@ -10,9 +10,12 @@ export interface RoughPathAttributes extends PathAttributes, IRough {}
 export class RoughPath extends Rough(PathWrapper(Shape)) {
   constructor(attributes: Partial<RoughPathAttributes> = {}) {
     super(attributes);
-  }
 
-  // TODO: points also regenerates the drawable
+    // d also regenerates the drawable
+    this.onGeometryChanged = () => {
+      this.geometryDirtyFlag = true;
+    };
+  }
 
   generateDrawable() {
     const { d } = this;
