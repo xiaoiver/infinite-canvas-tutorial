@@ -299,6 +299,8 @@ root.addEventListener('click', handleClick);
 
 按住 `Shift` 可以进行多选。
 
+### 合并选中成组 {#group-selection}
+
 ### 拖拽移动图形 {#dragndrop}
 
 ## 扩展阅读 {#extended-reading}
