@@ -80,6 +80,16 @@ export class FederatedPointerEvent
    */
   preventClick: boolean;
 
+  /**
+   * @see https://developer.mozilla.org/en-US/docs/Web/API/PointerEvent/altitudeAngle
+   */
+  altitudeAngle: number;
+
+  /**
+   * @see https://developer.mozilla.org/en-US/docs/Web/API/PointerEvent/azimuthAngle
+   */
+  azimuthAngle: number;
+
   // Only included for completeness for now
   getCoalescedEvents(): PointerEvent[] {
     if (
