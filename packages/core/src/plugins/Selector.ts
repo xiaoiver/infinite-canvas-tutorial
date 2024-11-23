@@ -7,7 +7,6 @@ import { Plugin, PluginContext } from './interfaces';
 export class Selector implements Plugin {
   #selected: Shape[] = [];
   #selectableMap: Record<string, AbstractSelectable> = {};
-  #enableContinuousBrush = true;
 
   /**
    * the topmost operation layer, which will be appended to documentElement directly
@@ -31,7 +30,7 @@ export class Selector implements Plugin {
       const selected = e.target as Shape;
 
       if (selected === root) {
-        if (!e.shiftKey || (e.shiftKey && !this.#enableContinuousBrush)) {
+        if (!e.shiftKey) {
           this.deselectAllShapes();
           this.#selected = [];
         }

@@ -242,7 +242,7 @@ export class Canvas {
         shape.renderDirtyFlag = true;
       }
 
-      if (shape.renderable && shape.renderDirtyFlag) {
+      if (shape.renderDirtyFlag) {
         modified.push(shape);
         this.#renderDirtyFlag = true;
       }

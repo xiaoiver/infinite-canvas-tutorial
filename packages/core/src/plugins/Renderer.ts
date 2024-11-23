@@ -282,8 +282,10 @@ export class Renderer implements Plugin {
     });
 
     hooks.render.tap((shape) => {
-      shape.globalRenderOrder = this.#zIndexCounter++;
-      this.#batchManager.add(shape);
+      if (shape.renderable) {
+        shape.globalRenderOrder = this.#zIndexCounter++;
+        this.#batchManager.add(shape);
+      }
     });
   }
 
