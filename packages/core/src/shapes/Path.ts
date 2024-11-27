@@ -86,6 +86,7 @@ export function PathWrapper<TBase extends GConstructor>(Base: TBase) {
         this.geometryBoundsDirtyFlag = true;
         this.renderBoundsDirtyFlag = true;
         this.boundsDirtyFlag = true;
+        this.geometryDirtyFlag = true;
         this.onGeometryChanged?.();
       }
     }

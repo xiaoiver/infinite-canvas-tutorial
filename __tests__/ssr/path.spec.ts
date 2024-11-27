@@ -39,4 +39,25 @@ describe('Path', () => {
     expect($canvas.getContext('webgl1')).toMatchWebGLSnapshot(dir, 'path');
     expect(exporter.toSVG({ grid: true })).toMatchSVGSnapshot(dir, 'path');
   });
+
+  it('should rerender correctly when d is changed.', async () => {
+    const path = new Path({
+      d: 'M 0 0 L 100 0 L 100 100 L 0 100 Z',
+      fill: '#F67676',
+    });
+    canvas.appendChild(path);
+    canvas.render();
+
+    path.d = 'M 0 0 L 50 0 L 100 100 Z';
+    canvas.render();
+
+    expect($canvas.getContext('webgl1')).toMatchWebGLSnapshot(
+      dir,
+      'path-d-changed',
+    );
+    expect(exporter.toSVG({ grid: true })).toMatchSVGSnapshot(
+      dir,
+      'path-d-changed',
+    );
+  });
 });

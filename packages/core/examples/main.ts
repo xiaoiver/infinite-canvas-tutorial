@@ -79,6 +79,14 @@ canvas.render();
 //   // sizeAttenuation: true,
 // });
 // canvas.appendChild(polyline);
+// canvas.render();
+
+// polyline.points = [
+//   [100, 0],
+//   [200, 100],
+//   [300, 0],
+// ];
+// canvas.render();
 
 // const polyline2 = new Polyline({
 //   points: [

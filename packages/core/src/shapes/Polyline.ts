@@ -73,6 +73,7 @@ export function PolylineWrapper<TBase extends GConstructor>(Base: TBase) {
     set points(points: [number, number][]) {
       if (
         !this.#points ||
+        this.#points.length !== points.length ||
         !this.#points.every(
           (point, index) =>
             point[0] === points[index][0] && point[1] === points[index][1],
@@ -83,6 +84,7 @@ export function PolylineWrapper<TBase extends GConstructor>(Base: TBase) {
         this.geometryBoundsDirtyFlag = true;
         this.renderBoundsDirtyFlag = true;
         this.boundsDirtyFlag = true;
+        this.geometryDirtyFlag = true;
         this.onGeometryChanged?.();
       }
     }

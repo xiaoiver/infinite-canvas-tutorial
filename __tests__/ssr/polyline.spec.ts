@@ -193,4 +193,36 @@ describe('Polyline', () => {
       'polyline-stroke-dasharray',
     );
   });
+
+  it('should rerender correctly when points is changed.', async () => {
+    const polyline1 = new Polyline({
+      points: [
+        [50, 50],
+        [50, 150],
+        [100, 150],
+        [100, 50],
+      ],
+      stroke: 'black',
+      strokeWidth: 20,
+      strokeDasharray: [10, 10],
+      fill: 'none',
+    });
+    canvas.appendChild(polyline1);
+    canvas.render();
+
+    polyline1.points = [
+      [50, 50],
+      [50, 150],
+    ];
+    canvas.render();
+
+    expect($canvas.getContext('webgl1')).toMatchWebGLSnapshot(
+      dir,
+      'polyline-points-changed',
+    );
+    expect(exporter.toSVG({ grid: true })).toMatchSVGSnapshot(
+      dir,
+      'polyline-points-changed',
+    );
+  });
 });

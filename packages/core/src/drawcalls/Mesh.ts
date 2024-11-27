@@ -128,21 +128,23 @@ export class Mesh extends Drawcall {
       this.points = newPoints;
     }
 
-    if (!this.#pointsBuffer) {
-      this.#pointsBuffer = this.device.createBuffer({
-        viewOrSize: new Float32Array(this.points),
-        usage: BufferUsage.VERTEX,
-        hint: BufferFrequencyHint.STATIC,
-      });
+    if (this.#pointsBuffer) {
+      this.#pointsBuffer.destroy();
     }
+    this.#pointsBuffer = this.device.createBuffer({
+      viewOrSize: new Float32Array(this.points),
+      usage: BufferUsage.VERTEX,
+      hint: BufferFrequencyHint.STATIC,
+    });
 
-    if (!this.#indexBuffer) {
-      this.#indexBuffer = this.device.createBuffer({
-        viewOrSize: new Uint32Array(this.indices),
-        usage: BufferUsage.INDEX,
-        hint: BufferFrequencyHint.STATIC,
-      });
+    if (this.#indexBuffer) {
+      this.#indexBuffer.destroy();
     }
+    this.#indexBuffer = this.device.createBuffer({
+      viewOrSize: new Uint32Array(this.indices),
+      usage: BufferUsage.INDEX,
+      hint: BufferFrequencyHint.STATIC,
+    });
   }
 
   createMaterial(uniformBuffer: Buffer): void {
