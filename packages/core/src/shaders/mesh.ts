@@ -29,18 +29,24 @@ void main() {
   float zIndex;
   float strokeWidth;
   float strokeAlignment;
-
+  float sizeAttenuation;
   model = u_ModelMatrix;
   fillColor = u_FillColor;
   strokeColor = u_StrokeColor;
   zIndex = u_ZIndexStrokeWidth.x;
   strokeWidth = u_ZIndexStrokeWidth.y;
   strokeAlignment = u_ZIndexStrokeWidth.w;
+  sizeAttenuation = u_Opacity.w;
+
+  float scale = 1.0;
+  if (sizeAttenuation > 0.5) {
+    scale = 1.0 / u_ZoomScale;
+  }
 
   gl_Position = vec4((u_ProjectionMatrix 
     * u_ViewMatrix
     * model 
-    * vec3(a_Position, 1)).xy, zIndex, 1);
+    * vec3(a_Position * scale, 1)).xy, zIndex, 1);
 }
 `;
 

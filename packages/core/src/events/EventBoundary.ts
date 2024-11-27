@@ -89,7 +89,7 @@ export class EventBoundary {
   dispatch: EventEmitter = new EventEmitter();
 
   /** The cursor preferred by the event targets underneath this boundary. */
-  cursor: Cursor | string;
+  cursor: Cursor;
 
   /**
    * This flag would emit `pointermove`, `touchmove`, and `mousemove` events on all Containers.
@@ -383,6 +383,7 @@ export class EventBoundary {
     }
 
     const e = this.createPointerEvent(from);
+    if (e.pointerType === 'mouse') this.cursor = e.target?.cursor;
 
     this.dispatchEvent(e, 'pointerdown');
 
@@ -683,6 +684,7 @@ export class EventBoundary {
     const e = this.createPointerEvent(from);
 
     this.dispatchEvent(e, 'pointerup');
+    if (e.pointerType === 'mouse') this.cursor = e.target?.cursor;
 
     if (e.pointerType === 'touch') {
       this.dispatchEvent(e, 'touchend');

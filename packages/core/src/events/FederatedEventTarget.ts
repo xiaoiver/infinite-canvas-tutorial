@@ -80,7 +80,7 @@ export interface FederatedOptions {
    * It sets the mouse cursor, if any, to show when the mouse pointer is over an element.
    * @see https://developer.mozilla.org/en-US/docs/Web/CSS/cursor
    */
-  cursor: Cursor | string;
+  cursor: Cursor;
 
   /**
    * Interaction shape. Children will be hit first, then this shape will be checked.
@@ -110,10 +110,10 @@ export interface FederatedEventTarget
     FederatedOptions {
   pointerEvents: PointerEvents;
   hitArea: Rectangle;
-  cursor: Cursor | string;
+  cursor: Cursor;
   draggable: boolean;
   droppable: boolean;
-  
+
   /** The parent of this event target. */
   readonly parent?: FederatedEventTarget;
 

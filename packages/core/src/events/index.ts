@@ -4,3 +4,4 @@ export * from './FederatedPointerEvent';
 export * from './FederatedWheelEvent';
 export * from './FederatedEventTarget';
 export * from './EventBoundary';
+export * from './CustomEvent';

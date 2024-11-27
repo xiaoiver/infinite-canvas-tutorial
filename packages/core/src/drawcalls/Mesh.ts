@@ -313,6 +313,7 @@ export class Mesh extends Drawcall {
       opacity,
       fillOpacity,
       strokeOpacity,
+      sizeAttenuation,
     } = shape;
 
     const { r: fr, g: fg, b: fb, opacity: fo } = fillRGB || {};
@@ -325,7 +326,12 @@ export class Mesh extends Drawcall {
       0,
       strokeAlignmentMap[strokeAlignment],
     ];
-    const u_Opacity = [opacity, fillOpacity, strokeOpacity, 0];
+    const u_Opacity = [
+      opacity,
+      fillOpacity,
+      strokeOpacity,
+      sizeAttenuation ? 1 : 0,
+    ];
 
     return [
       [...u_FillColor, ...u_StrokeColor, ...u_ZIndexStrokeWidth, ...u_Opacity],

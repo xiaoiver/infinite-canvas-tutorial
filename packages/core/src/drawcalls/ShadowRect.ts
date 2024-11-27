@@ -333,6 +333,7 @@ export class ShadowRect extends Drawcall {
       dropShadowOffsetX,
       dropShadowOffsetY,
       dropShadowBlurRadius,
+      sizeAttenuation,
     } = shape;
 
     const u_PositionSize = [x, y, width, height];
@@ -340,7 +341,7 @@ export class ShadowRect extends Drawcall {
       shape.globalRenderOrder / ZINDEX_FACTOR,
       strokeWidth,
       cornerRadius,
-      0,
+      sizeAttenuation ? 1 : 0,
     ];
     const u_DropShadowColor = [r / 255, g / 255, b / 255, opacity];
     const u_DropShadow = [

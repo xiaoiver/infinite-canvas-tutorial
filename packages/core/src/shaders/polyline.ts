@@ -28,6 +28,12 @@ export const vert = /* wgsl */ `
 layout(std140) uniform SceneUniforms {
   mat3 u_ProjectionMatrix;
   mat3 u_ViewMatrix;
+  mat3 u_ViewProjectionInvMatrix;
+  vec4 u_BackgroundColor;
+  vec4 u_GridColor;
+  float u_ZoomScale;
+  float u_CheckboardStyle;
+  vec2 u_Viewport;
 };
 
 layout(location = ${Location.PREV}) in vec2 a_Prev;
@@ -93,6 +99,10 @@ vec2 doBisect(
   return dy * bisect;
 }
 
+// vec2 clip2ScreenSpace(vec4 clip) {
+//   return u_Viewport * (0.5 * clip.xy / clip.w + 0.5);
+// }
+
 void main() {
   mat3 model = u_ModelMatrix;
   vec4 strokeColor = u_StrokeColor;
@@ -100,10 +110,30 @@ void main() {
   float strokeWidth = u_ZIndexStrokeWidth.y;
   float strokeMiterlimit = u_ZIndexStrokeWidth.z;
   float strokeAlignment = u_ZIndexStrokeWidth.w;
-  float sizeAttenuation = u_Opacity.w;
+  bool sizeAttenuation = u_Opacity.w > 0.5;
 
-  vec2 pointA = (model * vec3(a_PointA, 1.0)).xy;
-  vec2 pointB = (model * vec3(a_PointB, 1.0)).xy;
+  if (sizeAttenuation) {
+    strokeWidth /= u_ZoomScale;
+  }
+
+  vec2 pointA;
+  vec2 pointB;
+  // vec4 clip0 = vec4((u_ProjectionMatrix 
+  //   * u_ViewMatrix
+  //   * model
+  //   * vec3(a_PointA, 1)).xy, zIndex, 1);;
+  // vec4 clip1 = vec4((u_ProjectionMatrix 
+  //   * u_ViewMatrix
+  //   * model
+  //   * vec3(a_PointB, 1)).xy, zIndex, 1);;
+
+  // if (sizeAttenuation) {
+  //   pointA = clip2ScreenSpace(clip0);
+  //   pointB = clip2ScreenSpace(clip1);
+  // } else {
+    pointA = (model * vec3(a_PointA, 1.0)).xy;
+    pointB = (model * vec3(a_PointB, 1.0)).xy;
+  // }
 
   vec2 xBasis = pointB - pointA;
   float len = length(xBasis);
@@ -142,12 +172,28 @@ void main() {
     float flag = 0.0;
     float sign2 = 1.0;
     if (vertexNum < 0.5 || vertexNum > 2.5 && vertexNum < 3.5) {
-      next = (model * vec3(a_Prev, 1.0)).xy;
+      // if (sizeAttenuation) {
+      //   next = clip2ScreenSpace(vec4((u_ProjectionMatrix 
+      //     * u_ViewMatrix
+      //     * model
+      //     * vec3(a_Prev, 1)).xy, zIndex, 1));
+      // } else {
+        next = (model * vec3(a_Prev, 1.0)).xy;
+      // }
+
       base = pointA;
       flag = type - floor(type / 2.0) * 2.0;
       sign2 = -1.0;
     } else {
-      next = (model * vec3(a_Next, 1.0)).xy;
+      // if (sizeAttenuation) {
+      //   next = clip2ScreenSpace(vec4((u_ProjectionMatrix 
+      //     * u_ViewMatrix
+      //     * model
+      //     * vec3(a_Next, 1)).xy, zIndex, 1));
+      // } else {
+        next = (model * vec3(a_Next, 1.0)).xy;
+      // }
+
       base = pointB;
       if (type >= MITER && type < MITER + 3.5) {
         flag = step(MITER + 1.5, type);
@@ -356,9 +402,14 @@ void main() {
   // v_ScalingFactor = sqrt(model[0][0] * model[0][0] + model[0][1] * model[0][1] + model[0][2] * model[0][2]);
   v_ScalingFactor = 1.0;
 
-  gl_Position = vec4((u_ProjectionMatrix 
-    * u_ViewMatrix
-    * vec3(pos, 1)).xy, zIndex, 1);
+  // if (sizeAttenuation) {
+  //   vec4 clip = mix(clip0, clip1, 0.5);
+  //   gl_Position = vec4(clip.w * (2.0 * pos / u_Viewport - 1.0), clip.z, clip.w);
+  // } else {
+    gl_Position = vec4((u_ProjectionMatrix 
+      * u_ViewMatrix
+      * vec3(pos, 1)).xy, zIndex, 1);
+  // }
 }
 `;
 
@@ -366,6 +417,12 @@ export const frag = /* wgsl */ `
 layout(std140) uniform SceneUniforms {
   mat3 u_ProjectionMatrix;
   mat3 u_ViewMatrix;
+  mat3 u_ViewProjectionInvMatrix;
+  vec4 u_BackgroundColor;
+  vec4 u_GridColor;
+  float u_ZoomScale;
+  float u_CheckboardStyle;
+  vec2 u_Viewport;
 };
 
 layout(std140) uniform ShapeUniforms {

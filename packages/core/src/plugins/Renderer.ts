@@ -94,6 +94,7 @@ export class Renderer implements Plugin {
       const u_GridColor = [gr / 255, gg / 255, gb / 255, go];
       const u_ZoomScale = camera.zoom;
       const u_CheckboardStyle = this.#checkboardStyle;
+      const u_Viewport = [canvas.width, canvas.height];
 
       const buffer = new Float32Array([
         ...paddingMat3(u_ProjectionMatrix),
@@ -103,8 +104,7 @@ export class Renderer implements Plugin {
         ...u_GridColor,
         u_ZoomScale,
         u_CheckboardStyle,
-        0,
-        0,
+        ...u_Viewport,
       ]);
       const legacyObject = {
         u_ProjectionMatrix,
@@ -114,6 +114,7 @@ export class Renderer implements Plugin {
         u_GridColor,
         u_ZoomScale,
         u_CheckboardStyle,
+        u_Viewport,
       };
 
       return [buffer, legacyObject];

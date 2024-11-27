@@ -477,7 +477,7 @@ export abstract class Shape {
 }
 ```
 
-## SceneGraph
+## SceneGraph {#scene-graph}
 
 [SceneGraph] 是组织和管理二维/三维虚拟场景的一种数据结构，是一个有向无环图。场景图提供了两大能力：
 
@@ -659,6 +659,7 @@ appendChild(child: Shape) {
 
 ## 扩展阅读 {#extended-reading}
 
+-   [Scene Graph in Pixi.js]
 -   [Scene Graph - LearnOpenGL]
 -   [Inside PixiJS: Display objects and their hierarchy]
 -   [Understanding 3D matrix transforms]
@@ -680,3 +681,4 @@ appendChild(child: Shape) {
 [Understanding 3D matrix transforms]: https://medium.com/swlh/understanding-3d-matrix-transforms-with-pixijs-c76da3f8bd8
 [PixiJS Positioning]: https://aphgames.io/docs/learning/tutorials/pixi_positions
 [wgsl-offset-computer]: https://webgpufundamentals.org/webgpu/lessons/resources/wgsl-offset-computer.html#x=5d00000100b900000000000000003d888b0237284d3025f2381bcb288a92bedb79fca10c66815376fc2bf5fb30136b32803636d8a0cd1920b3c155315e5767b430151489cee2b64fbf433be601ac37b5c8a93419775b8ee51571e13b44c1d867e61e8a28bd0e628b80f99570f9d3feafad585f4517807268a20c783cb178401ab49f2e3742419fe1157f8f92396145394a631090a0189fffdc5e4000
+[Scene Graph in Pixi.js]: https://pixijs.com/8.x/guides/basics/scene-graph

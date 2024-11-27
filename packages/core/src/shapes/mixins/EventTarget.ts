@@ -11,7 +11,7 @@ import { isBoolean, isFunction, isObject } from '../../utils';
 
 export class EventTarget extends EventEmitter implements FederatedEventTarget {
   pointerEvents: PointerEvents;
-  cursor: Cursor | string;
+  cursor: Cursor;
   hitArea: Rectangle | undefined;
   draggable: boolean;
   droppable: boolean;

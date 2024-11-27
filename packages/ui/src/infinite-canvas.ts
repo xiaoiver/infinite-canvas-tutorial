@@ -40,11 +40,16 @@ export class InfiniteCanvas extends LitElement {
   shaderCompilerPath =
     'https://unpkg.com/@antv/g-device-api@1.6.8/dist/pkg/glsl_wgsl_compiler_bg.wasm';
 
+  @property()
   @state()
   zoom = 100;
 
+  @property()
   @state()
   mode = CanvasMode.HAND;
+
+  @property({ type: Array })
+  modes = [CanvasMode.HAND, CanvasMode.SELECT, CanvasMode.DRAW_RECT];
 
   #provider = new ContextProvider(this, { context: canvasContext });
 
@@ -100,16 +105,18 @@ export class InfiniteCanvas extends LitElement {
 
       this.#provider.setValue(this.#canvas);
 
+      this.#canvas.mode = this.mode;
+
+      // Initialize camera zoom.
+      this.#canvas.camera.zoom = this.zoom / 100;
       this.#canvas.pluginContext.hooks.cameraChange.tap(() => {
         this.zoom = Math.round(this.#canvas.camera.zoom * 100);
       });
 
       // FIXME: Hack to make sure the canvas is ready for Genji.
-      setTimeout(() => {
-        this.dispatchEvent(
-          new CustomEvent('ic-ready', { detail: this.#canvas }),
-        );
-      }, 10);
+      // setTimeout(() => {
+      this.dispatchEvent(new CustomEvent('ic-ready', { detail: this.#canvas }));
+      // }, 10);
 
       const animate = (time?: DOMHighResTimeStamp) => {
         this.dispatchEvent(new CustomEvent('ic-frame', { detail: time }));
@@ -134,6 +141,7 @@ export class InfiniteCanvas extends LitElement {
           <ic-zoom-toolbar zoom=${this.zoom}></ic-zoom-toolbar>
           <ic-mode-toolbar
             mode=${this.mode}
+            modes=${JSON.stringify(this.modes)}
             @modechanged=${this.modeChangedHandler}
           ></ic-mode-toolbar>
           <ic-exporter></ic-exporter>

@@ -1,6 +1,6 @@
 # An Infinite Canvas Tutorial
 
-[![Build Status](https://github.com/xiaoiver/infinite-canvas-tutorial/actions/workflows/test.yml/badge.svg)](https://github.com/xiaoiver/infinite-canvas-tutorial/actions/workflows/test.yml)
+[![Build Status](https://github.com/xiaoiver/infinite-canvas-tutorial/actions/workflows/unit-ssr.yml/badge.svg)](https://github.com/xiaoiver/infinite-canvas-tutorial/actions/workflows/unit-ssr.yml)
 [![Coverage Status](https://coveralls.io/repos/github/xiaoiver/infinite-canvas-tutorial/badge.svg?branch=master)](https://coveralls.io/github/xiaoiver/infinite-canvas-tutorial?branch=master)
 
 What is an Infinite Canvas? The term "infinite" in [infinitecanvas] is described as follows:

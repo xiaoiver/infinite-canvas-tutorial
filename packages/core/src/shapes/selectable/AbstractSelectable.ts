@@ -1,5 +1,35 @@
+import { Selector } from '../../plugins';
 import { Group } from '../Group';
 import { Shape, ShapeAttributes } from '../Shape';
+
+/**
+ * fire custom event on target
+ * @see http://fabricjs.com/docs/fabric.Object.html
+ */
+export enum SelectableEvent {
+  SELECTED = 'selected',
+  DESELECTED = 'deselected',
+
+  /**
+   * resized or definition changed
+   */
+  MODIFIED = 'modified',
+
+  /**
+   * dragend
+   */
+  MOVED = 'moved',
+
+  /**
+   * dragging
+   */
+  MOVING = 'moving',
+
+  /**
+   * deleted
+   */
+  DELETED = 'deleted',
+}
 
 export interface AbstractSelectableAttribtues extends ShapeAttributes {
   target: Shape;
@@ -21,6 +51,7 @@ export interface AbstractSelectableAttribtues extends ShapeAttributes {
 
 export abstract class AbstractSelectable extends Group {
   protected target: Shape;
+  plugin: Selector;
 
   #maskFill: string;
   #maskFillOpacity: number;
@@ -58,7 +89,7 @@ export abstract class AbstractSelectable extends Group {
     } = attributes;
 
     this.target = target;
-    this.maskFill = maskFill ?? 'none';
+    this.maskFill = maskFill ?? 'transparent';
     this.maskFillOpacity = maskFillOpacity ?? 1.0;
     this.maskStroke = maskStroke ?? 'black';
     this.maskStrokeOpacity = maskStrokeOpacity ?? 1.0;
@@ -66,7 +97,7 @@ export abstract class AbstractSelectable extends Group {
     this.maskOpacity = maskOpacity ?? 1.0;
     this.anchorSize = anchorSize ?? 4;
     this.anchorStroke = anchorStroke ?? 'black';
-    this.anchorFill = anchorFill ?? 'none';
+    this.anchorFill = anchorFill ?? 'transparent';
     this.anchorFillOpacity = anchorFillOpacity ?? 1;
     this.anchorStrokeOpacity = anchorStrokeOpacity ?? 1;
     this.anchorStrokeWidth = anchorStrokeWidth ?? 1;
@@ -76,6 +107,10 @@ export abstract class AbstractSelectable extends Group {
   }
 
   protected abstract init(): void;
+
+  abstract triggerMovingEvent(dx: number, dy: number): void;
+
+  abstract triggerMovedEvent(): void;
 
   get anchorSize() {
     return this.#anchorSize;

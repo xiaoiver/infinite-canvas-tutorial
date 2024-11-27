@@ -54,6 +54,7 @@ void main() {
   vec2 size;
   float zIndex;
   vec4 dropShadow;
+  float sizeAttenuation;
 
   #ifdef USE_INSTANCES
     model = mat3(a_Abcd.x, a_Abcd.y, 0, a_Abcd.z, a_Abcd.w, 0, a_Txty.x, a_Txty.y, 1);
@@ -61,6 +62,7 @@ void main() {
     size = a_PositionSize.zw;
     zIndex = a_ZIndexStrokeWidth.x;
     dropShadow = a_DropShadow;
+    sizeAttenuation = a_ZIndexStrokeWidth.w;
     v_CornerRadius = a_ZIndexStrokeWidth.z;
     v_DropShadowColor = a_DropShadowColor;
     v_DropShadow = dropShadow;
@@ -70,7 +72,13 @@ void main() {
     size = u_PositionSize.zw;
     zIndex = u_ZIndexStrokeWidth.x;
     dropShadow = u_DropShadow;
+    sizeAttenuation = u_ZIndexStrokeWidth.w;
   #endif
+
+  float scale = 1.0;
+  if (sizeAttenuation > 0.5) {
+    scale = 1.0 / u_ZoomScale;
+  }
 
   // Set the bounds of the shadow and adjust its size based on the shadow's
   // spread radius to achieve the spreading effect
@@ -87,7 +95,7 @@ void main() {
   gl_Position = vec4((u_ProjectionMatrix 
     * u_ViewMatrix
     * model 
-    * vec3(v_Point, 1)).xy, zIndex, 1);
+    * vec3(center + a_FragCoord * (size / 2.0) * scale, 1)).xy, zIndex, 1);
 }
 `;
 

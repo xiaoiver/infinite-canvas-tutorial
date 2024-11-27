@@ -3,6 +3,7 @@ import {
   Group,
   Circle,
   Rect,
+  Polyline,
   RoughCircle,
   RoughEllipse,
   RoughRect,
@@ -29,36 +30,68 @@ resize(window.innerWidth, window.innerHeight);
 
 const canvas = await new Canvas({
   canvas: $canvas,
-  renderer: 'webgpu',
-  shaderCompilerPath: '/glsl_wgsl_compiler_bg.wasm',
+  // renderer: 'webgpu',
+  // shaderCompilerPath: '/glsl_wgsl_compiler_bg.wasm',
 }).initialized;
 
-const group = new Group();
-const rect1 = new Rect({
-  x: 0,
-  y: 0,
-  width: 100,
-  height: 100,
-  fill: 'red',
-  visible: false,
+// const circle = new Circle({
+//   cx: 100,
+//   cy: 100,
+//   r: 50,
+//   fill: 'red',
+//   stroke: 'black',
+//   strokeWidth: 20,
+//   sizeAttenuation: true,
+// });
+// canvas.appendChild(circle);
+
+// const shadowedRect = new Rect({
+//   x: 200,
+//   y: 200,
+//   width: 100,
+//   height: 100,
+//   dropShadowBlurRadius: 10,
+//   dropShadowColor: 'black',
+//   sizeAttenuation: true,
+// });
+// canvas.appendChild(shadowedRect);
+
+const path = new Path({
+  d: 'M 0 0 L 100 0 L 100 100 L 0 100 Z',
+  fill: 'black',
+  sizeAttenuation: true,
 });
-group.appendChild(rect1);
-const rect2 = new Rect({
-  x: 50,
-  y: 50,
-  width: 100,
-  height: 100,
-  fill: 'green',
-});
-group.appendChild(rect2);
-canvas.appendChild(group);
-group.visible = false;
+canvas.appendChild(path);
 canvas.render();
 
-setTimeout(() => {
-  group.visible = true;
-  canvas.render();
-}, 2000);
+path.d = 'M 100 0 L 200 0 L 200 100 L 100 100 Z';
+path.fill = 'red';
+canvas.render();
+
+// const polyline = new Polyline({
+//   points: [
+//     [0, 0],
+//     [100, 100],
+//     [200, 0],
+//   ],
+//   stroke: 'black',
+//   strokeWidth: 20,
+//   // sizeAttenuation: true,
+// });
+// canvas.appendChild(polyline);
+
+// const polyline2 = new Polyline({
+//   points: [
+//     [0, 0],
+//     [100, 100],
+//     [200, 0],
+//   ],
+//   stroke: 'black',
+//   strokeWidth: 20,
+//   sizeAttenuation: true,
+// });
+// canvas.appendChild(polyline2);
+// polyline2.position.x = 200;
 
 // console.log(toSVGElement(serializeNode(rect1)));
 

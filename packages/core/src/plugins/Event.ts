@@ -26,6 +26,10 @@ export class Event implements Plugin {
   #rootBoundary: EventBoundary;
   #context: PluginContext;
 
+  get rootBoundary() {
+    return this.#rootBoundary;
+  }
+
   apply(context: PluginContext) {
     const { hooks, root } = context;
     this.#context = context;
@@ -162,7 +166,7 @@ export class Event implements Plugin {
     event.relatedTarget = null;
   }
 
-  private setCursor(cursor: Cursor | string) {
+  private setCursor(cursor: Cursor) {
     this.#context.setCursor?.(cursor);
   }
 

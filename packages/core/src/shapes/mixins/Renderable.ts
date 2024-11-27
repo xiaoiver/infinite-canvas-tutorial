@@ -323,7 +323,7 @@ export function Renderable<TBase extends GConstructor>(Base: TBase) {
       this.cullable = cullable ?? true;
       this.batchable = batchable ?? true;
       this.selectable = selectable ?? true;
-      this.sizeAttenuation = sizeAttenuation ?? true;
+      this.sizeAttenuation = sizeAttenuation ?? false;
       this.wireframe = wireframe ?? false;
       this.fill = fill ?? 'black';
       this.stroke = stroke ?? 'none';

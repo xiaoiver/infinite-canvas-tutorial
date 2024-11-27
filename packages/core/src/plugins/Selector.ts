@@ -1,7 +1,18 @@
 import { CanvasMode } from '../Canvas';
-import { FederatedPointerEvent } from '../events';
-import { Group, Shape } from '../shapes';
-import { AbstractSelectable, SelectableRect } from '../shapes/selectable';
+import { CustomEvent, FederatedPointerEvent } from '../events';
+import {
+  Circle,
+  Ellipse,
+  Group,
+  RoughCircle,
+  RoughEllipse,
+  Shape,
+} from '../shapes';
+import {
+  AbstractSelectable,
+  SelectableEvent,
+  SelectableRect,
+} from '../shapes/selectable';
 import { Plugin, PluginContext } from './interfaces';
 
 export class Selector implements Plugin {
@@ -15,11 +26,17 @@ export class Selector implements Plugin {
     zIndex: Number.MAX_SAFE_INTEGER,
   });
 
+  movingEvent: CustomEvent;
+  movedEvent: CustomEvent;
+
   apply(context: PluginContext) {
     const {
       root,
-      api: { getCanvasMode },
+      api: { getCanvasMode, createCustomEvent },
     } = context;
+
+    this.movingEvent = createCustomEvent(SelectableEvent.MOVING);
+    this.movedEvent = createCustomEvent(SelectableEvent.MOVED);
 
     const handleClick = (e: FederatedPointerEvent) => {
       const mode = getCanvasMode();
@@ -54,19 +71,53 @@ export class Selector implements Plugin {
       }
     };
 
+    const handleMovingTarget = (e: CustomEvent) => {
+      const target = e.target as Shape;
+      // @ts-expect-error - CustomEventInit is not defined
+      const { dx, dy } = e.detail;
+      target.position.x += dx;
+      target.position.y += dy;
+    };
+
+    const handleMovedTarget = (e: CustomEvent) => {
+      const target = e.target as Shape;
+      if (
+        target instanceof Circle ||
+        target instanceof Ellipse ||
+        target instanceof RoughCircle ||
+        target instanceof RoughEllipse
+      ) {
+        const { x: cx, y: cy } = target.worldTransform.apply({
+          x: target.cx,
+          y: target.cy,
+        });
+
+        target.cx = cx;
+        target.cy = cy;
+        target.position.x = 0;
+        target.position.y = 0;
+      }
+    };
+
     root.addEventListener('click', handleClick);
+    root.addEventListener(SelectableEvent.MOVING, handleMovingTarget);
+    root.addEventListener(SelectableEvent.MOVED, handleMovedTarget);
 
     root.appendChild(this.#activeSelectableLayer);
   }
 
-  private getOrCreateSelectable(shape: Shape): AbstractSelectable {
+  get selected() {
+    return this.#selected;
+  }
+
+  getOrCreateSelectable(shape: Shape): AbstractSelectable {
     if (!this.#selectableMap[shape.uid]) {
       const created = new SelectableRect({
         target: shape,
       });
 
       if (created) {
-        // created.plugin = this;
+        created.plugin = this;
         this.#selectableMap[shape.uid] = created;
         this.#activeSelectableLayer.appendChild(created);
       }
@@ -79,7 +130,7 @@ export class Selector implements Plugin {
     return this.#selectableMap[shape.uid];
   }
 
-  private selectShape(shape: Shape) {
+  selectShape(shape: Shape) {
     const selectable = this.getOrCreateSelectable(shape);
     if (selectable && this.#selected.indexOf(shape) === -1) {
       selectable.visible = true;
@@ -87,7 +138,7 @@ export class Selector implements Plugin {
     }
   }
 
-  private deselectShape(shape: Shape) {
+  deselectShape(shape: Shape) {
     const index = this.#selected.indexOf(shape);
     if (index > -1) {
       const selectable = this.getOrCreateSelectable(
@@ -105,7 +156,7 @@ export class Selector implements Plugin {
     }
   }
 
-  private deselectAllShapes() {
+  deselectAllShapes() {
     [...this.#selected].forEach((target) => {
       this.deselectShape(target);
     });

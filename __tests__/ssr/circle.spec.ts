@@ -172,4 +172,28 @@ describe('Circle', () => {
       'circle-image',
     );
   });
+
+  it('should render a circle with sizeAttenuation correctly.', async () => {
+    const circle1 = new Circle({
+      cx: 50,
+      cy: 50,
+      r: 50,
+      fill: 'red',
+      stroke: 'black',
+      sizeAttenuation: true,
+    });
+    canvas.appendChild(circle1);
+
+    canvas.camera.zoom = 2;
+    canvas.render();
+
+    expect($canvas.getContext('webgl1')).toMatchWebGLSnapshot(
+      dir,
+      'circle-size-attenuation',
+    );
+    expect(exporter.toSVG({ grid: true })).toMatchSVGSnapshot(
+      dir,
+      'circle-size-attenuation',
+    );
+  });
 });

@@ -6,6 +6,11 @@ import { consume } from '@lit/context';
 import { canvasContext } from './context';
 import { CanvasMode, type Canvas } from '@infinite-canvas-tutorial/core';
 
+const MODE_LIST = [
+  { name: CanvasMode.HAND, label: 'Move', icon: 'arrows-move' },
+  { name: CanvasMode.SELECT, label: 'Select', icon: 'cursor' },
+  { name: CanvasMode.DRAW_RECT, label: 'Draw rectangle', icon: 'square' },
+];
 @customElement('ic-mode-toolbar')
 export class ModeToolbar extends LitElement {
   static styles = css`
@@ -37,6 +42,9 @@ export class ModeToolbar extends LitElement {
   @property()
   mode: CanvasMode;
 
+  @property({ type: Array })
+  modes: CanvasMode[];
+
   private changeCanvasMode(mode: CanvasMode) {
     const detail = { mode };
     const event = new CustomEvent('modechanged', {
@@ -49,13 +57,12 @@ export class ModeToolbar extends LitElement {
   }
 
   render() {
-    const items = [
-      { name: CanvasMode.HAND, label: 'Move', icon: 'arrows-move' },
-      { name: CanvasMode.SELECT, label: 'Select', icon: 'cursor' },
-    ];
+    const modes = this.modes.map((name) =>
+      MODE_LIST.find((item) => item.name === name),
+    );
     return html`
       <sl-button-group label="Zoom toolbar">
-        ${map(items, ({ name, label, icon }) => {
+        ${map(modes, ({ name, label, icon }) => {
           const classes = { active: this.mode === name };
           return html`<sl-tooltip content=${label}>
             <sl-icon-button

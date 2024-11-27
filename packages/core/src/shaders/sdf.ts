@@ -12,6 +12,8 @@ export enum Location {
 }
 
 export const vert = /* wgsl */ `
+#define SHIFT_RIGHT23 1.0 / 8388608.0
+
 layout(std140) uniform SceneUniforms {
   mat3 u_ProjectionMatrix;
   mat3 u_ViewMatrix;
@@ -74,6 +76,7 @@ void main() {
   float zIndex;
   float strokeWidth;
   float strokeAlignment;
+  float shapeSizeAttenuation;
 
   #ifdef USE_INSTANCES
     model = mat3(a_Abcd.x, a_Abcd.y, 0, a_Abcd.z, a_Abcd.w, 0, a_Txty.x, a_Txty.y, 1);
@@ -84,6 +87,7 @@ void main() {
     zIndex = a_ZIndexStrokeWidth.x;
     strokeWidth = a_ZIndexStrokeWidth.y;
     strokeAlignment = a_ZIndexStrokeWidth.w;
+    shapeSizeAttenuation = a_Opacity.w;
 
     v_FillColor = fillColor;
     v_StrokeColor = strokeColor;
@@ -102,6 +106,7 @@ void main() {
     zIndex = u_ZIndexStrokeWidth.x;
     strokeWidth = u_ZIndexStrokeWidth.y;
     strokeAlignment = u_ZIndexStrokeWidth.w;
+    shapeSizeAttenuation = u_Opacity.w;
   #endif
 
   float strokeOffset;
@@ -114,6 +119,12 @@ void main() {
   }
 
   vec2 radius = size + vec2(strokeOffset);
+  float compressed = shapeSizeAttenuation;
+  float sizeAttenuation = floor(compressed * SHIFT_RIGHT23);
+  float scale = 1.0;
+  if (sizeAttenuation > 0.5) {
+    scale = 1.0 / u_ZoomScale;
+  }
 
   v_FragCoord = vec2(a_FragCoord * radius);
   v_Radius = radius;
@@ -125,11 +136,14 @@ void main() {
   gl_Position = vec4((u_ProjectionMatrix 
     * u_ViewMatrix
     * model 
-    * vec3(position + v_FragCoord, 1)).xy, zIndex, 1);
+    * vec3(position + v_FragCoord * scale, 1)).xy, zIndex, 1);
 }
 `;
 
 export const frag = /* wgsl */ `
+#define SHIFT_RIGHT23 1.0 / 8388608.0
+#define SHIFT_LEFT23 8388608.0
+
 layout(std140) uniform SceneUniforms {
   mat3 u_ProjectionMatrix;
   mat3 u_ViewMatrix;
@@ -243,7 +257,7 @@ void main() {
   float opacity;
   float fillOpacity;
   float strokeOpacity;
-  float shape;
+  float shapeSizeAttenuation;
   float cornerRadius;
   vec4 innerShadowColor;
   vec4 innerShadow;
@@ -256,7 +270,7 @@ void main() {
     opacity = v_Opacity.x;
     fillOpacity = v_Opacity.y;
     strokeOpacity = v_Opacity.z;
-    shape = v_Opacity.w;
+    shapeSizeAttenuation = v_Opacity.w;
     cornerRadius = v_CornerRadius;
     strokeAlignment = v_StrokeAlignment;
     innerShadowColor = v_InnerShadowColor;
@@ -268,7 +282,7 @@ void main() {
     opacity = u_Opacity.x;
     fillOpacity = u_Opacity.y;
     strokeOpacity = u_Opacity.z;
-    shape = u_Opacity.w;
+    shapeSizeAttenuation = u_Opacity.w;
     cornerRadius = u_ZIndexStrokeWidth.z;
     strokeAlignment = u_ZIndexStrokeWidth.w;
     innerShadowColor = u_InnerShadowColor;
@@ -281,6 +295,11 @@ void main() {
       fillColor = texture(SAMPLER_2D(u_Texture), v_Uv);
     }
   #endif
+
+  float compressed = shapeSizeAttenuation;
+  float sizeAttenuation = floor(compressed * SHIFT_RIGHT23);
+  compressed -= sizeAttenuation * SHIFT_LEFT23;
+  float shape = compressed;
 
   float distance;
   // 'circle', 'ellipse', 'rect'

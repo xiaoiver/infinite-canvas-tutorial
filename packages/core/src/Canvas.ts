@@ -31,12 +31,12 @@ import {
   traverse,
 } from './utils';
 import { DataURLOptions } from './ImageExporter';
-import { Cursor } from './events';
-import { isNull } from '@antv/util';
+import { Cursor, CustomEvent } from './events';
 
 export enum CanvasMode {
   SELECT = 'select',
   HAND = 'hand',
+  DRAW_RECT = 'draw-rect',
 }
 
 export interface CanvasConfig {
@@ -60,7 +60,7 @@ export interface CanvasConfig {
   /**
    * There is no `style.cursor = 'pointer'` in WebWorker.
    */
-  setCursor?: (cursor: Cursor | string) => void;
+  setCursor?: (cursor: Cursor) => void;
   /**
    * Default to `CanvasMode.HAND`.
    */
@@ -77,6 +77,7 @@ export class Canvas {
 
   #rendererPlugin: Renderer;
   #eventPlugin: Event;
+  #selectorPlugin: Selector;
 
   #root = new Group();
   get root() {
@@ -92,7 +93,7 @@ export class Canvas {
   #shapesLastFrame = new Set<Shape>();
   #shapesCurrentFrame = new Set<Shape>();
 
-  #mode: CanvasMode = CanvasMode.HAND;
+  #mode: CanvasMode;
 
   constructor(config: CanvasConfig) {
     const {
@@ -135,13 +136,7 @@ export class Canvas {
             return;
           }
 
-          if (isNull(cursor)) {
-            if (this.mode === CanvasMode.HAND) {
-              cursor = 'grab';
-            } else if (this.mode === CanvasMode.SELECT) {
-              cursor = 'default';
-            }
-          }
+          this.root.cursor = cursor;
           (canvas as HTMLCanvasElement).style.cursor = cursor;
         }),
       hooks: {
@@ -177,6 +172,7 @@ export class Canvas {
         viewport2Canvas: camera.viewport2Canvas.bind(camera),
         viewport2Client: this.viewport2Client.bind(this),
         canvas2Viewport: camera.canvas2Viewport.bind(camera),
+        createCustomEvent: this.createCustomEvent.bind(this),
         getCanvasMode: () => this.#mode,
       },
     };
@@ -184,12 +180,13 @@ export class Canvas {
     this.mode = mode ?? CanvasMode.HAND;
     this.#rendererPlugin = new Renderer();
     this.#eventPlugin = new Event();
+    this.#selectorPlugin = new Selector();
     const plugins = [
       new DOMEventListener(),
       this.#eventPlugin,
       new Picker(),
       new CameraControl(),
-      new Selector(),
+      this.#selectorPlugin,
       new Culling(),
       this.#rendererPlugin,
       new Dragndrop({
@@ -326,8 +323,31 @@ export class Canvas {
     return this.#mode;
   }
   set mode(mode: CanvasMode) {
-    this.#mode = mode;
-    this.#pluginContext.setCursor(null);
+    if (this.#mode !== mode) {
+      let cursor: Cursor;
+      if (mode === CanvasMode.HAND) {
+        cursor = 'grab';
+      } else if (mode === CanvasMode.SELECT) {
+        cursor = 'default';
+      } else if (mode === CanvasMode.DRAW_RECT) {
+        cursor = 'crosshair';
+      }
+
+      if (this.#mode === CanvasMode.SELECT) {
+        this.#selectorPlugin.deselectAllShapes();
+      }
+
+      this.#mode = mode;
+      this.#pluginContext.setCursor(cursor);
+    }
+  }
+
+  selectShape(shape: Shape) {
+    this.#selectorPlugin.selectShape(shape);
+  }
+
+  deselectShape(shape: Shape) {
+    this.#selectorPlugin.deselectShape(shape);
   }
 
   elementsFromBBox(
@@ -341,7 +361,20 @@ export class Canvas {
 
     const hitTestList: Shape[] = [];
     rBushNodes.forEach(({ shape }) => {
-      const { pointerEvents = 'auto' } = shape;
+      const { pointerEvents = 'auto', visible, culled } = shape;
+
+      let visibleCascaded = visible;
+      if (visibleCascaded) {
+        // Find the first ancestor shape that is invisible.
+        let parent = shape.parent;
+        while (parent) {
+          if (!parent.visible) {
+            visibleCascaded = false;
+            break;
+          }
+          parent = parent.parent;
+        }
+      }
 
       // account for `visibility`
       // @see https://developer.mozilla.org/en-US/docs/Web/CSS/pointer-events
@@ -354,9 +387,9 @@ export class Canvas {
       ].includes(pointerEvents);
 
       if (
-        (!isVisibilityAffected || (isVisibilityAffected && shape.visible)) &&
-        !shape.culled &&
-        shape.pointerEvents !== 'none'
+        (!isVisibilityAffected || (isVisibilityAffected && visibleCascaded)) &&
+        !culled &&
+        pointerEvents !== 'none'
       ) {
         hitTestList.push(shape);
       }
@@ -441,5 +474,10 @@ export class Canvas {
       zoom: findZoomFloor(camera.zoom),
     });
     camera.gotoLandmark(landmark, { duration: 300, easing: 'ease' }, rAF);
+  }
+
+  createCustomEvent(eventName: string, object?: object) {
+    const manager = this.#eventPlugin.rootBoundary;
+    return new CustomEvent(manager, eventName, object);
   }
 }
