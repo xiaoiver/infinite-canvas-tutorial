@@ -466,8 +466,8 @@ call(() => {
         const canvas = e.detail;
 
         const ellipse = new RoughEllipse({
-            cx: 0,
-            cy: 0,
+            cx: 200,
+            cy: 100,
             rx: 50,
             ry: 50,
             fill: 'black',
@@ -490,9 +490,63 @@ call(() => {
 
 按住 `Shift` 可以进行多选。
 
-### 合并选中成组 {#group-selection}
+### 拖拽移动图形 {#dragndrop-move}
 
-### 拖拽移动图形 {#dragndrop}
+HTML 原生是支持拖拽的，当然我们使用更底层的事件例如 `pointermove / up / down` 也是可以实现的，详见：[Drag'n'Drop with mouse events]，我们的实现也借鉴了这篇文章的思路。在 `dragstart` 事件中记录下鼠标在画布上的偏移量，注意这里使用的是 `screen` 坐标系，因为要考虑到相机缩放的情况：
+
+```ts
+let shiftX = 0;
+let shiftY = 0;
+this.addEventListener('dragstart', (e: FederatedPointerEvent) => {
+    const target = e.target as Shape;
+    if (target === this.mask) {
+        shiftX = e.screen.x;
+        shiftY = e.screen.y;
+    }
+});
+```
+
+在 `drag` 事件中根据该偏移量调整蒙层位置，使用 `position` 属性不必修改 mask 的路径定义，反映到底层渲染中只有 `u_ModelMatrix` 会发生改变：
+
+```ts
+const moveAt = (canvasX: number, canvasY: number) => {
+    const { x, y } = this.mask.position;
+    const dx = canvasX - shiftX - x;
+    const dy = canvasY - shiftY - y;
+
+    this.mask.position.x += dx;
+    this.mask.position.y += dy;
+};
+
+this.addEventListener('drag', (e: FederatedPointerEvent) => {
+    const target = e.target as Shape;
+    const { x, y } = e.screen;
+
+    if (target === this.mask) {
+        moveAt(x, y);
+    }
+});
+```
+
+在 `dragend` 事件中，将蒙层位置同步到图形上，此时才会修改蒙层的路径：
+
+```ts
+this.addEventListener('dragend', (e: FederatedEvent) => {
+    const target = e.target as Shape;
+    if (target === this.mask) {
+        this.tlAnchor.cx += this.mask.position.x;
+        this.tlAnchor.cy += this.mask.position.y;
+
+        const { cx: tlCx, cy: tlCy } = this.tlAnchor;
+
+        this.mask.position.x = 0;
+        this.mask.position.y = 0;
+        this.mask.d = `M${tlCx} ${tlCy}L${trCx} ${trCy}L${brCx} ${brCy}L${blCx} ${blCy}Z`;
+    }
+});
+```
+
+### 合并选中成组 {#group-selection}
 
 ## 绘制模式 {#draw-mode}
 
@@ -500,6 +554,7 @@ call(() => {
 
 -   [Excalidraw ToolType]
 -   [Introducing the CSS anchor positioning API]
+-   [Drag'n'Drop with mouse events]
 
 [画布 UI 组件]: /zh/guide/lesson-007
 [Introducing the CSS anchor positioning API]: https://developer.chrome.com/blog/anchor-positioning-api
@@ -520,3 +575,4 @@ call(() => {
 [Scalars]: https://www.khronos.org/opengl/wiki/Data_Type_(GLSL)#Scalars
 [Single-precision floating-point format]: https://en.wikipedia.org/wiki/Single-precision_floating-point_format
 [Graphics Tech in Cesium - Vertex Compression]: https://cesium.com/blog/2015/05/18/vertex-compression/
+[Drag'n'Drop with mouse events]: https://javascript.info/mouse-drag-and-drop

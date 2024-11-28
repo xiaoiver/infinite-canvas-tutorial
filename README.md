@@ -52,6 +52,14 @@ cd packages/lesson_001
 pnpm run dev
 ```
 
+Or you can run the site locally:
+
+```bash
+pnpm run build
+cd packages/site
+pnpm run dev
+```
+
 ## Lesson 1 - Initialize canvas [🔗](https://infinitecanvas.cc/guide/lesson-001)
 
 -   A hardware abstraction layer based on WebGL1/2 and WebGPU.
@@ -156,6 +164,7 @@ pnpm run dev
 
 ## Lesson 14 - Canvas mode [🔗](https://infinitecanvas.cc/guide/lesson-014)
 
+-   Implement `zIndex` and `sizeAttenuation`
 -   Add more canvas modes, e.g. move, select and shapes
 
 [infinitecanvas]: https://infinitecanvas.tools/

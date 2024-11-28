@@ -99,9 +99,14 @@ export class Selector implements Plugin {
       }
     };
 
+    const handleResizedTarget = (e: CustomEvent) => {
+      // const target = e.target as Shape;
+    };
+
     root.addEventListener('click', handleClick);
     root.addEventListener(SelectableEvent.MOVING, handleMovingTarget);
     root.addEventListener(SelectableEvent.MOVED, handleMovedTarget);
+    root.addEventListener(SelectableEvent.RESIZED, handleResizedTarget);
 
     root.appendChild(this.#activeSelectableLayer);
   }

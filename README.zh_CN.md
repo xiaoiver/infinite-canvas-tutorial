@@ -55,6 +55,14 @@ cd packages/lesson_001
 pnpm run dev
 ```
 
+或者你也可以本地运行这个教程站点
+
+```bash
+pnpm run build
+cd packages/site
+pnpm run dev
+```
+
 ## 课程 1 - 初始化画布 [🔗](https://infinitecanvas.cc/zh/guide/lesson-001)
 
 -   基于 WebGL1/2 和 WebGPU 的硬件抽象层
@@ -158,6 +166,7 @@ pnpm run dev
 
 ## 课程 14 - 画布模式 [🔗](https://infinitecanvas.cc/zh/guide/lesson-014)
 
+-   实现 `zIndex` 和 `sizeAttenuation`
 -   增加画布模式，支持移动、选取、添加图形等。
 
 [infinitecanvas]: https://infinitecanvas.tools/

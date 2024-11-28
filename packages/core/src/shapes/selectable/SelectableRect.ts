@@ -117,20 +117,15 @@ export class SelectableRect extends AbstractSelectable {
       });
 
       // move mask
-      this.mask.position.x += dx;
-      this.mask.position.y += dy;
+      this.mask.position.x = canvasX - shiftX;
+      this.mask.position.y = canvasY - shiftY;
     };
 
     this.addEventListener('dragstart', (e: FederatedPointerEvent) => {
       const target = e.target as Shape;
-
       if (target === this.mask) {
-        const { x, y } = this.mask.position;
-
-        shiftX = e.screen.x - x;
-        shiftY = e.screen.y - y;
-
-        moveAt(e.screen.x, e.screen.y);
+        shiftX = e.screen.x;
+        shiftY = e.screen.y;
       }
     });
 
@@ -146,7 +141,15 @@ export class SelectableRect extends AbstractSelectable {
         target === this.blAnchor ||
         target === this.brAnchor
       ) {
+        // TODO: account for target's rotation
         if (target === this.tlAnchor) {
+          const { cx: brCx, cy: brCy } = this.brAnchor;
+          this.tlAnchor.cx = x;
+          this.tlAnchor.cy = y;
+          this.trAnchor.cx = brCx;
+          this.trAnchor.cy = y;
+          this.blAnchor.cx = x;
+          this.blAnchor.cy = brCy;
         } else if (target === this.trAnchor) {
           const { cx: blCx, cy: blCy } = this.blAnchor;
           this.trAnchor.cx = x;
@@ -155,23 +158,25 @@ export class SelectableRect extends AbstractSelectable {
           this.tlAnchor.cy = y;
           this.brAnchor.cx = x;
           this.brAnchor.cy = blCy;
-          this.mask;
         } else if (target === this.blAnchor) {
+          const { cx: trCx, cy: trCy } = this.trAnchor;
+          this.blAnchor.cx = x;
+          this.blAnchor.cy = y;
+          this.brAnchor.cx = trCx;
+          this.brAnchor.cy = y;
+          this.tlAnchor.cx = x;
+          this.tlAnchor.cy = trCy;
         } else if (target === this.brAnchor) {
+          const { cx: tlCx, cy: tlCy } = this.tlAnchor;
+          this.brAnchor.cx = x;
+          this.brAnchor.cy = y;
+          this.blAnchor.cx = tlCx;
+          this.blAnchor.cy = y;
+          this.trAnchor.cx = x;
+          this.trAnchor.cy = tlCy;
         }
-        //   // resize mask
-        //   this.mask.d = `M${maskX} ${maskY}L${maskX + maskWidth} ${maskY}L${
-        //     maskX + maskWidth
-        //   } ${maskY + maskHeight}L${maskX} ${maskY + maskHeight}Z`;
-        //   // re-position anchors
-        //   this.tlAnchor.cx = maskX;
-        //   this.tlAnchor.cy = maskY;
-        //   this.trAnchor.cx = maskX + maskWidth;
-        //   this.trAnchor.cy = maskY;
-        //   this.blAnchor.cx = maskX;
-        //   this.blAnchor.cy = maskY + maskHeight;
-        //   this.brAnchor.cx = maskX + maskWidth;
-        //   this.brAnchor.cy = maskY + maskHeight;
+
+        this.mask.d = `M${this.tlAnchor.cx} ${this.tlAnchor.cy}L${this.trAnchor.cx} ${this.trAnchor.cy}L${this.brAnchor.cx} ${this.brAnchor.cy}L${this.blAnchor.cx} ${this.blAnchor.cy}Z`;
       }
     });
 
@@ -198,28 +203,9 @@ export class SelectableRect extends AbstractSelectable {
         const { cx: brCx, cy: brCy } = this.brAnchor;
         const { cx: blCx, cy: blCy } = this.blAnchor;
 
-        console.log(tlCx, tlCy, trCx, trCy, brCx, brCy, blCx, blCy);
-        console.log(this.mask.position.x, this.mask.position.y);
-
         this.mask.position.x = 0;
         this.mask.position.y = 0;
         this.mask.d = `M${tlCx} ${tlCy}L${trCx} ${trCy}L${brCx} ${brCy}L${blCx} ${blCy}Z`;
-      } else if (
-        target === this.tlAnchor ||
-        target === this.trAnchor ||
-        target === this.blAnchor ||
-        target === this.brAnchor
-      ) {
-        // targetObject.dispatchEvent(
-        //   new CustomEvent(SelectableEvent.MODIFIED, {
-        //     rect: {
-        //       x: maskX,
-        //       y: maskY,
-        //       width: maskWidth,
-        //       height: maskHeight,
-        //     },
-        //   }),
-        // );
       }
     });
   }

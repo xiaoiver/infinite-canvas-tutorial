@@ -11,9 +11,9 @@ export enum SelectableEvent {
   DESELECTED = 'deselected',
 
   /**
-   * resized or definition changed
+   * resized
    */
-  MODIFIED = 'modified',
+  RESIZED = 'resized',
 
   /**
    * dragend
