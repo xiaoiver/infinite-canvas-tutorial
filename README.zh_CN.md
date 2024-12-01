@@ -36,8 +36,6 @@
 -   手绘风格可以使用 [rough-rs]。
 -   [y-crdt] 是 [Yjs] 的 Rust 实现。
 
-![rust stack](/images/rust.png)
-
 让我们开始吧！
 
 ## 开始
@@ -168,6 +166,8 @@ pnpm run dev
 
 -   实现 `zIndex` 和 `sizeAttenuation`
 -   增加画布模式，支持移动、选取、添加图形等。
+
+<img src="./screenshots/lesson14.png" width="300" alt="Lesson 14 - canvas mode">
 
 [infinitecanvas]: https://infinitecanvas.tools/
 [Figma]: https://madebyevan.com/figma/building-a-professional-design-tool-on-the-web/

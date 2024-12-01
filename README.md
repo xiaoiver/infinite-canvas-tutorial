@@ -167,6 +167,8 @@ pnpm run dev
 -   Implement `zIndex` and `sizeAttenuation`
 -   Add more canvas modes, e.g. move, select and shapes
 
+<img src="./screenshots/lesson14.png" width="300" alt="Lesson 14 - canvas mode">
+
 [infinitecanvas]: https://infinitecanvas.tools/
 [Figma]: https://madebyevan.com/figma/building-a-professional-design-tool-on-the-web/
 [Modyfi]: https://digest.browsertech.com/archive/browsertech-digest-how-modyfi-is-building-with/
