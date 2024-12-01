@@ -145,6 +145,7 @@ export class InfiniteCanvas extends LitElement {
             @modechanged=${this.modeChangedHandler}
           ></ic-mode-toolbar>
           <ic-exporter></ic-exporter>
+          <ic-property-drawer></ic-property-drawer>
         </sl-resize-observer>
       `,
       error: (e: Error) => html`<sl-alert variant="danger" open>

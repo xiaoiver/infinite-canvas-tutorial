@@ -14,9 +14,9 @@ publish: false
 
 在实现画布模式之前，我们需要做一些准备工作，支持 `zIndex` 和 `sizeAttenuation` 这两个绘图属性。
 
-## 实现 z-index {#z-index}
+## 实现 zIndex {#z-index}
 
-选中图形后展示的蒙层需要展示在所有图形之上，这就涉及到展示次序的用法了，可以通过 `z-index` 控制：
+选中图形后展示的蒙层需要展示在所有图形之上，这就涉及到展示次序的用法了，可以通过 `zIndex` 控制：
 
 ```ts
 mask.zIndex = 999;
@@ -186,7 +186,16 @@ export function toSVGElement(node: SerializedNode, doc?: Document) {
 
 ## 实现 sizeAttenuation {#size-attenuation}
 
-之前我们提到过 [折线的 sizeAttenuation]，在选中图形后展示蒙层和锚点时，我们不希望它们随相机缩放改变大小。
+之前我们提到过 [折线的 sizeAttenuation]，在选中图形后展示蒙层和锚点时，我们不希望它们随相机缩放改变大小。例如在 excalidraw 中，辅助类 UI 例如拖拽把手（handle）的线宽就会根据缩放等级调整，这里使用的是 Canvas2D API：
+
+```ts
+const renderTransformHandles = (): void => {
+    context.save();
+    context.lineWidth = 1 / appState.zoom.value; // [!code ++]
+};
+```
+
+当然我们已经将 `u_ZoomScale` 传入了 Shader 中进行调整。
 
 ### 顶点压缩 {#vertex-compression}
 
@@ -457,7 +466,7 @@ call(() => {
     // $icCanvas.setAttribute('zoom', '200');
     $icCanvas.setAttribute('mode', CanvasMode.SELECT);
     $icCanvas.style.width = '100%';
-    $icCanvas.style.height = '250px';
+    $icCanvas.style.height = '500px';
 
     $icCanvas.parentElement.style.position = 'relative';
     $icCanvas.parentElement.appendChild($stats);
@@ -546,6 +555,10 @@ this.addEventListener('dragend', (e: FederatedEvent) => {
 });
 ```
 
+### 展示属性面板 {#property-panel}
+
+[Drawer - Contained to an Element]
+
 ### 合并选中成组 {#group-selection}
 
 ## 绘制模式 {#draw-mode}
@@ -576,3 +589,4 @@ this.addEventListener('dragend', (e: FederatedEvent) => {
 [Single-precision floating-point format]: https://en.wikipedia.org/wiki/Single-precision_floating-point_format
 [Graphics Tech in Cesium - Vertex Compression]: https://cesium.com/blog/2015/05/18/vertex-compression/
 [Drag'n'Drop with mouse events]: https://javascript.info/mouse-drag-and-drop
+[Drawer - Contained to an Element]: https://shoelace.style/components/drawer#contained-to-an-element

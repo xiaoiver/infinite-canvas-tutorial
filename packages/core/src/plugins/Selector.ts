@@ -18,6 +18,7 @@ import { Plugin, PluginContext } from './interfaces';
 export class Selector implements Plugin {
   #selected: Shape[] = [];
   #selectableMap: Record<string, AbstractSelectable> = {};
+  #context: PluginContext;
 
   /**
    * the topmost operation layer, which will be appended to documentElement directly
@@ -34,6 +35,8 @@ export class Selector implements Plugin {
       root,
       api: { getCanvasMode, createCustomEvent },
     } = context;
+
+    this.#context = context;
 
     this.movingEvent = createCustomEvent(SelectableEvent.MOVING);
     this.movedEvent = createCustomEvent(SelectableEvent.MOVED);
@@ -141,6 +144,13 @@ export class Selector implements Plugin {
       selectable.visible = true;
       this.#selected.push(shape);
     }
+
+    const {
+      root,
+      api: { createCustomEvent },
+    } = this.#context;
+
+    root.dispatchEvent(createCustomEvent('selected', shape));
   }
 
   deselectShape(shape: Shape) {
@@ -158,6 +168,12 @@ export class Selector implements Plugin {
         selectable.visible = false;
       }
       this.#selected.splice(index, 1);
+
+      const {
+        root,
+        api: { createCustomEvent },
+      } = this.#context;
+      root.dispatchEvent(createCustomEvent('deselected', shape));
     }
   }
 
