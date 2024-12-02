@@ -9,7 +9,7 @@ publish: false
 
 -   实现 `zIndex` 和 `sizeAttenuation` 绘图属性
 -   在手型模式下移动、旋转、缩放画布
--   在选择模式下单选、多选、移动图形
+-   在选择模式下单选、多选、移动图形，展示图形属性面板
 -   在绘制模式下向画布中添加图形
 
 在实现画布模式之前，我们需要做一些准备工作，支持 `zIndex` 和 `sizeAttenuation` 这两个绘图属性。
@@ -466,7 +466,7 @@ call(() => {
     // $icCanvas.setAttribute('zoom', '200');
     $icCanvas.setAttribute('mode', CanvasMode.SELECT);
     $icCanvas.style.width = '100%';
-    $icCanvas.style.height = '500px';
+    $icCanvas.style.height = '200px';
 
     $icCanvas.parentElement.style.position = 'relative';
     $icCanvas.parentElement.appendChild($stats);
@@ -486,7 +486,9 @@ call(() => {
         });
         canvas.appendChild(ellipse);
 
+        // setTimeout(() => {
         canvas.selectShape(ellipse);
+        // }, 1000);
     });
 
     $icCanvas.addEventListener('ic-frame', (e) => {
@@ -557,7 +559,24 @@ this.addEventListener('dragend', (e: FederatedEvent) => {
 
 ### 展示属性面板 {#property-panel}
 
-[Drawer - Contained to an Element]
+选中图形时，我们希望展示图形对应的属性面板，详见 [Drawer - Contained to an Element]，这里就不展开了。以 `stroke` 属性为例，我们进行双向绑定，监听当前选中的图形，在用户手动修改后，将新值同步到图形上：
+
+```html
+<sl-color-picker
+    hoist
+    size="small"
+    value="${this.shape?.stroke}"
+    @sl-input="${this.handleStrokeChange}"
+    opacity
+></sl-color-picker>
+```
+
+需要注意的是，对于颜色我们希望将透明度分离出来，因此需要使用 [sl-color-picker] 的 `getFormattedValue` 方法获取颜色值，随后使用 `d3-color` 库进行解析，分别赋值给 `stroke` 和 `strokeOpacity`：
+
+```ts
+const strokeAndOpacity = (e.target as any).getFormattedValue('rgba') as string;
+const { rgb, opacity } = rgbaToRgbAndOpacity(strokeAndOpacity); // with d3-color
+```
 
 ### 合并选中成组 {#group-selection}
 
@@ -590,3 +609,4 @@ this.addEventListener('dragend', (e: FederatedEvent) => {
 [Graphics Tech in Cesium - Vertex Compression]: https://cesium.com/blog/2015/05/18/vertex-compression/
 [Drag'n'Drop with mouse events]: https://javascript.info/mouse-drag-and-drop
 [Drawer - Contained to an Element]: https://shoelace.style/components/drawer#contained-to-an-element
+[sl-color-picker]: https://shoelace.style/components/color-picker

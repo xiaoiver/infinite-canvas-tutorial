@@ -10,6 +10,8 @@ export enum SelectableEvent {
   SELECTED = 'selected',
   DESELECTED = 'deselected',
 
+  RESIZING = 'resizing',
+
   /**
    * resized
    */

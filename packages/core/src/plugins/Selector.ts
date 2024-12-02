@@ -29,6 +29,8 @@ export class Selector implements Plugin {
 
   movingEvent: CustomEvent;
   movedEvent: CustomEvent;
+  resizingEvent: CustomEvent;
+  resizedEvent: CustomEvent;
 
   apply(context: PluginContext) {
     const {
@@ -40,6 +42,8 @@ export class Selector implements Plugin {
 
     this.movingEvent = createCustomEvent(SelectableEvent.MOVING);
     this.movedEvent = createCustomEvent(SelectableEvent.MOVED);
+    this.resizingEvent = createCustomEvent(SelectableEvent.RESIZING);
+    this.resizedEvent = createCustomEvent(SelectableEvent.RESIZED);
 
     const handleClick = (e: FederatedPointerEvent) => {
       const mode = getCanvasMode();
@@ -102,13 +106,48 @@ export class Selector implements Plugin {
       }
     };
 
+    const handleResizingTarget = (e: CustomEvent) => {
+      const target = e.target as Shape;
+      // @ts-expect-error - CustomEventInit is not defined
+      const { tlX, tlY, brX, brY } = e.detail;
+      const width = brX - tlX;
+      const height = brY - tlY;
+
+      if (target instanceof Circle || target instanceof RoughCircle) {
+        target.cx = tlX + width / 2;
+        target.cy = tlY + height / 2;
+        target.r = width / 2;
+      } else if (target instanceof Ellipse || target instanceof RoughEllipse) {
+        target.cx = tlX + width / 2;
+        target.cy = tlY + height / 2;
+        target.rx = width / 2;
+        target.ry = height / 2;
+      }
+    };
+
     const handleResizedTarget = (e: CustomEvent) => {
-      // const target = e.target as Shape;
+      const target = e.target as Shape;
+      // @ts-expect-error - CustomEventInit is not defined
+      const { tlX, tlY, brX, brY } = e.detail;
+      const width = brX - tlX;
+      const height = brY - tlY;
+
+      if (target instanceof Circle || target instanceof RoughCircle) {
+        target.cx = tlX + width / 2;
+        target.cy = tlY + height / 2;
+        target.r = width / 2;
+      } else if (target instanceof Ellipse || target instanceof RoughEllipse) {
+        target.cx = tlX + width / 2;
+        target.cy = tlY + height / 2;
+        target.rx = width / 2;
+        target.ry = height / 2;
+      }
     };
 
     root.addEventListener('click', handleClick);
     root.addEventListener(SelectableEvent.MOVING, handleMovingTarget);
     root.addEventListener(SelectableEvent.MOVED, handleMovedTarget);
+    root.addEventListener(SelectableEvent.RESIZING, handleResizingTarget);
     root.addEventListener(SelectableEvent.RESIZED, handleResizedTarget);
 
     root.appendChild(this.#activeSelectableLayer);
@@ -143,14 +182,13 @@ export class Selector implements Plugin {
     if (selectable && this.#selected.indexOf(shape) === -1) {
       selectable.visible = true;
       this.#selected.push(shape);
+
+      const {
+        root,
+        api: { createCustomEvent },
+      } = this.#context;
+      root.dispatchEvent(createCustomEvent('selected', shape));
     }
-
-    const {
-      root,
-      api: { createCustomEvent },
-    } = this.#context;
-
-    root.dispatchEvent(createCustomEvent('selected', shape));
   }
 
   deselectShape(shape: Shape) {

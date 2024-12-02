@@ -35,6 +35,7 @@ export class SelectableRect extends AbstractSelectable {
       cullable: false,
       draggable: true,
       sizeAttenuation: true,
+      selectable: false,
     });
     this.appendChild(this.mask);
 
@@ -50,6 +51,7 @@ export class SelectableRect extends AbstractSelectable {
       opacity: this.anchorOpacity,
       batchable: false,
       cullable: false,
+      selectable: false,
     };
 
     this.tlAnchor = new Circle({
@@ -143,40 +145,45 @@ export class SelectableRect extends AbstractSelectable {
       ) {
         // TODO: account for target's rotation
         if (target === this.tlAnchor) {
-          const { cx: brCx, cy: brCy } = this.brAnchor;
-          this.tlAnchor.cx = x;
-          this.tlAnchor.cy = y;
-          this.trAnchor.cx = brCx;
-          this.trAnchor.cy = y;
-          this.blAnchor.cx = x;
-          this.blAnchor.cy = brCy;
+          this.tlAnchor.position.x = x - this.tlAnchor.cx;
+          this.tlAnchor.position.y = y - this.tlAnchor.cy;
+          this.trAnchor.position.y = this.tlAnchor.position.y;
+          this.blAnchor.position.x = this.tlAnchor.position.x;
         } else if (target === this.trAnchor) {
-          const { cx: blCx, cy: blCy } = this.blAnchor;
-          this.trAnchor.cx = x;
-          this.trAnchor.cy = y;
-          this.tlAnchor.cx = blCx;
-          this.tlAnchor.cy = y;
-          this.brAnchor.cx = x;
-          this.brAnchor.cy = blCy;
+          this.trAnchor.position.x = x - this.trAnchor.cx;
+          this.trAnchor.position.y = y - this.trAnchor.cy;
+          this.tlAnchor.position.y = y - this.tlAnchor.cy;
+          this.brAnchor.position.x = x - this.brAnchor.cx;
         } else if (target === this.blAnchor) {
-          const { cx: trCx, cy: trCy } = this.trAnchor;
-          this.blAnchor.cx = x;
-          this.blAnchor.cy = y;
-          this.brAnchor.cx = trCx;
-          this.brAnchor.cy = y;
-          this.tlAnchor.cx = x;
-          this.tlAnchor.cy = trCy;
+          this.blAnchor.position.x = x - this.blAnchor.cx;
+          this.blAnchor.position.y = y - this.blAnchor.cy;
+          this.brAnchor.position.y = y - this.brAnchor.cy;
+          this.tlAnchor.position.x = x - this.tlAnchor.cx;
         } else if (target === this.brAnchor) {
-          const { cx: tlCx, cy: tlCy } = this.tlAnchor;
-          this.brAnchor.cx = x;
-          this.brAnchor.cy = y;
-          this.blAnchor.cx = tlCx;
-          this.blAnchor.cy = y;
-          this.trAnchor.cx = x;
-          this.trAnchor.cy = tlCy;
+          this.brAnchor.position.x = x - this.brAnchor.cx;
+          this.brAnchor.position.y = y - this.brAnchor.cy;
+          this.blAnchor.position.y = y - this.blAnchor.cy;
+          this.trAnchor.position.x = x - this.trAnchor.cx;
         }
 
-        this.mask.d = `M${this.tlAnchor.cx} ${this.tlAnchor.cy}L${this.trAnchor.cx} ${this.trAnchor.cy}L${this.brAnchor.cx} ${this.brAnchor.cy}L${this.blAnchor.cx} ${this.blAnchor.cy}Z`;
+        this.mask.d = `M${this.tlAnchor.cx + this.tlAnchor.position.x} ${
+          this.tlAnchor.cy + this.tlAnchor.position.y
+        }L${this.trAnchor.cx + this.trAnchor.position.x} ${
+          this.trAnchor.cy + this.trAnchor.position.y
+        }L${this.brAnchor.cx + this.brAnchor.position.x} ${
+          this.brAnchor.cy + this.brAnchor.position.y
+        }L${this.blAnchor.cx + this.blAnchor.position.x} ${
+          this.blAnchor.cy + this.blAnchor.position.y
+        }Z`;
+
+        // @ts-expect-error - CustomEventInit is not defined
+        this.plugin.resizingEvent.detail = {
+          tlX: this.tlAnchor.cx + this.tlAnchor.position.x,
+          tlY: this.tlAnchor.cy + this.tlAnchor.position.y,
+          brX: this.brAnchor.cx + this.brAnchor.position.x,
+          brY: this.brAnchor.cy + this.brAnchor.position.y,
+        };
+        this.target.dispatchEvent(this.plugin.resizingEvent);
       }
     });
 
@@ -198,15 +205,51 @@ export class SelectableRect extends AbstractSelectable {
         this.brAnchor.cx += this.mask.position.x;
         this.brAnchor.cy += this.mask.position.y;
 
-        const { cx: tlCx, cy: tlCy } = this.tlAnchor;
-        const { cx: trCx, cy: trCy } = this.trAnchor;
-        const { cx: brCx, cy: brCy } = this.brAnchor;
-        const { cx: blCx, cy: blCy } = this.blAnchor;
-
         this.mask.position.x = 0;
         this.mask.position.y = 0;
-        this.mask.d = `M${tlCx} ${tlCy}L${trCx} ${trCy}L${brCx} ${brCy}L${blCx} ${blCy}Z`;
+
+        this.target.dispatchEvent(this.plugin.movedEvent);
+      } else if (
+        target === this.tlAnchor ||
+        target === this.trAnchor ||
+        target === this.blAnchor ||
+        target === this.brAnchor
+      ) {
+        this.tlAnchor.cx = this.tlAnchor.position.x + this.tlAnchor.cx;
+        this.tlAnchor.cy = this.tlAnchor.position.y + this.tlAnchor.cy;
+        this.tlAnchor.position.x = 0;
+        this.tlAnchor.position.y = 0;
+
+        this.trAnchor.cx = this.trAnchor.position.x + this.trAnchor.cx;
+        this.trAnchor.cy = this.trAnchor.position.y + this.trAnchor.cy;
+        this.trAnchor.position.x = 0;
+        this.trAnchor.position.y = 0;
+
+        this.blAnchor.cx = this.blAnchor.position.x + this.blAnchor.cx;
+        this.blAnchor.cy = this.blAnchor.position.y + this.blAnchor.cy;
+        this.blAnchor.position.x = 0;
+        this.blAnchor.position.y = 0;
+
+        this.brAnchor.cx = this.brAnchor.position.x + this.brAnchor.cx;
+        this.brAnchor.cy = this.brAnchor.position.y + this.brAnchor.cy;
+        this.brAnchor.position.x = 0;
+        this.brAnchor.position.y = 0;
+
+        // @ts-expect-error - CustomEventInit is not defined
+        this.plugin.resizedEvent.detail = {
+          tlX: this.tlAnchor.cx,
+          tlY: this.tlAnchor.cy,
+          brX: this.brAnchor.cx,
+          brY: this.brAnchor.cy,
+        };
+        this.target.dispatchEvent(this.plugin.resizedEvent);
       }
+
+      const { cx: tlCx, cy: tlCy } = this.tlAnchor;
+      const { cx: trCx, cy: trCy } = this.trAnchor;
+      const { cx: brCx, cy: brCy } = this.brAnchor;
+      const { cx: blCx, cy: blCy } = this.blAnchor;
+      this.mask.d = `M${tlCx} ${tlCy}L${trCx} ${trCy}L${brCx} ${brCy}L${blCx} ${blCy}Z`;
     });
   }
 }
