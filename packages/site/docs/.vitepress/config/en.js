@@ -63,6 +63,8 @@ export const en = defineConfig({
               { text: 'Lesson 011 - Test and server-side rendering', link: 'lesson-011' },
               { text: 'Lesson 012 - Draw polyline', link: 'lesson-012' },
               { text: 'Lesson 013 - Draw path and sketchy style', link: 'lesson-013' },
+              { text: 'Lesson 014 - Canvas mode and auxiliary UI', link: 'lesson-014' },
+              { text: 'Lesson 015 - Text rendering', link: 'lesson-015' },
             ],
           },
         ],

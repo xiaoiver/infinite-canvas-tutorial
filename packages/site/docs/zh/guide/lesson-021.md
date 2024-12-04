@@ -12,4 +12,7 @@ publish: false
 -   <https://github.com/pmndrs/react-three-flex/>
 -   <https://github.com/fireveined/pixi-flex-layout/>
 
+[Simplifying WebGL: Building an Effective Layout Engine]
+
 [Yoga]: https://yogalayout.com/
+[Simplifying WebGL: Building an Effective Layout Engine]: https://blog.certa.dev/building-a-layout-engine-for-webgl

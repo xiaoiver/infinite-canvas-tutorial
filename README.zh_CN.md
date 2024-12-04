@@ -165,7 +165,7 @@ pnpm run dev
 ## 课程 14 - 画布模式 [🔗](https://infinitecanvas.cc/zh/guide/lesson-014)
 
 -   实现 `zIndex` 和 `sizeAttenuation`
--   增加画布模式，支持移动、选取、添加图形等。
+-   增加手型和选择画布模式。
 
 <img src="./screenshots/lesson14.png" width="300" alt="Lesson 14 - canvas mode">
 

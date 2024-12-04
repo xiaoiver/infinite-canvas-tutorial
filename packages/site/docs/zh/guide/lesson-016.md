@@ -3,28 +3,14 @@ outline: deep
 publish: false
 ---
 
-# 课程 16 - 文本
+# 课程 15 - Tiled based rendering
 
-在这节课中你将学习到以下内容：
+-   [What does Tile based rendering mean?]
+-   [Motiff]
+-   [Pushing the limit with tilemap rendering]
+-   [tile rendering in path tracer]
 
-## 扩展阅读 {#extended-reading}
-
--   [State of Text Rendering 2024]
--   [use.gpu glyph]
--   [Easy Scalable Text Rendering on the GPU]
--   [Text Visualization Browser]
--   [Rive Text Overview]
--   [Material Design on the GPU]
--   [Texture-less Text Rendering]
--   [Text layout is a loose hierarchy of segmentation]
--   [End-To-End Tour of Text Layout/Rendering]
-
-[Easy Scalable Text Rendering on the GPU]: https://medium.com/@evanwallace/easy-scalable-text-rendering-on-the-gpu-c3f4d782c5ac
-[use.gpu glyph]: https://gitlab.com/unconed/use.gpu/-/tree/master/packages/glyph
-[Text Visualization Browser]: https://textvis.lnu.se
-[State of Text Rendering 2024]: https://behdad.org/text2024/
-[Rive Text Overview]: https://rive.app/community/doc/text-overview/docSfhykWoWu
-[Material Design on the GPU]: https://mattdesl.svbtle.com/material-design-on-the-gpu
-[Texture-less Text Rendering]: https://poniesandlight.co.uk/reflect/debug_print_text/
-[Text layout is a loose hierarchy of segmentation]: https://raphlinus.github.io/text/2020/10/26/text-layout.html
-[End-To-End Tour of Text Layout/Rendering]: https://litherum.blogspot.com/2015/02/end-to-end-tour-of-text-rendering.html
+[What does Tile based rendering mean?]: https://stackoverflow.com/questions/69956923/what-does-tile-based-rendering-mean
+[Motiff]: https://www.motiff.com/blog/performance-magic-behind-motiff
+[Pushing the limit with tilemap rendering]: https://www.teamflowhq.com/dev/pushing-the-limit-with-tilemap-rendering
+[tile rendering in path tracer]: https://github.com/knightcrawler25/GLSL-PathTracer/blob/291c1fdc3f97b2a2602c946b41cecca9c3092af7/src/shaders/tile.glsl#L43

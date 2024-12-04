@@ -162,10 +162,10 @@ pnpm run dev
 
 <img src="./screenshots/lesson13.png" width="300" alt="Lesson 13 - path">
 
-## Lesson 14 - Canvas mode [🔗](https://infinitecanvas.cc/guide/lesson-014)
+## Lesson 14 - Canvas mode and auxiliary UI [🔗](https://infinitecanvas.cc/guide/lesson-014)
 
 -   Implement `zIndex` and `sizeAttenuation`
--   Add more canvas modes, e.g. move, select and shapes
+-   Add more canvas modes, e.g. move and select and shapes
 
 <img src="./screenshots/lesson14.png" width="300" alt="Lesson 14 - canvas mode">
 

@@ -3,29 +3,29 @@ outline: deep
 publish: false
 ---
 
-# 课程 14 - 画布模式与辅助 UI
+# Lesson 14 - Canvas mode and auxiliary UI
 
-之前我们使用 Web Components 实现了一些包括相机缩放、图片下载在内的 [画布 UI 组件]。在本节课中我们将通过组件把更多画布能力暴露出来，另外还将实现一些新的绘图属性：
+Previously, we implemented some canvas UI components using Web Components, including camera zooming and image downloading. In this lesson, we will expose more canvas capabilities through components and implement some new drawing properties:
 
--   实现 `zIndex` 和 `sizeAttenuation` 绘图属性
--   在手型模式下移动、旋转、缩放画布
--   在选择模式下单选、拖拽移动图形，并展示图形属性面板
+-   Implement `zIndex` and `sizeAttenuation` drawing properties
+-   Move, rotate, and scale the canvas in hand mode
+-   Select, drag, and move shapes in selection mode, and display the shape property panel
 
-在实现画布模式之前，我们需要做一些准备工作，支持 `zIndex` 和 `sizeAttenuation` 这两个绘图属性。
+Before implementing canvas modes, we need to do some preparatory work to support the `zIndex` and `sizeAttenuation` drawing properties.
 
-## 实现 zIndex {#z-index}
+## Implementing zIndex {#z-index}
 
-选中图形后展示的蒙层需要展示在所有图形之上，这就涉及到展示次序的用法了，可以通过 `zIndex` 控制：
+The mask layer displayed after selecting a shape needs to be displayed above all shapes, which involves the use of display order, controlled by `zIndex`:
 
 ```ts
 mask.zIndex = 999;
 ```
 
-在 CSS [z-index] 中，数值的大小只有在同一个 [Stacking context] 下才有意义。例如下图中虽然 `DIV #4` 的 `z-index` 大于 `DIV #1`，但由于它处在 `DIV #3` 的上下文中，在渲染次序上还是在更下面：
+In CSS [z-index], the value only makes sense within the same [Stacking context]. For example, in the figure below, although `DIV #4` has a higher `z-index` than `DIV #1`, it is still rendered lower due to being in the context of `DIV #3`:
 
 ![Understanding z-index](https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_positioned_layout/Understanding_z-index/Stacking_context/understanding_zindex_04.png)
 
-由于排序是一个非常消耗性能的操作，因此我们为 Shape 增加一个 `sortDirtyFlag` 属性，每当 `zIndex` 改变时就将父节点的该属性置为 `true`
+Since sorting is a very performance-consuming operation, we add a `sortDirtyFlag` property to Shape, which is set to `true` whenever `zIndex` changes:
 
 ```ts
 class Sortable {
@@ -44,7 +44,7 @@ class Sortable {
 }
 ```
 
-在 `appendChild` 和 `removeChild` 时也需要考虑：
+We also need to consider this when `appendChild` and `removeChild`:
 
 ```ts
 class Shapable {
@@ -66,7 +66,7 @@ class Shapable {
 }
 ```
 
-然后在渲染循环的每个 tick 中进行脏检查，如有需要才进行排序。另外我们不希望直接改变 `children`，而是使用 `sorted` 存储排序结果，毕竟 `z-index` 只应当影响渲染次序而非场景图中的实际顺序：
+Then, in each tick of the rendering loop, perform a dirty check and sort if necessary. We also do not want to directly change `children`, but use `sorted` to store the sorting results, after all, `z-index` should only affect the rendering order, not the actual order in the scene graph:
 
 ```ts
 traverse(this.#root, (shape) => {
@@ -78,7 +78,7 @@ traverse(this.#root, (shape) => {
 });
 ```
 
-`sortByZIndex` 的实现如下，如果设置了 `zIndex` 就按降序排列，否则就保持在父节点中的原始顺序，这里也能看出我们不改变 `children` 的意义，它保留了默认情况下的排序依据：
+The implementation of `sortByZIndex` is as follows: if `zIndex` is set, sort in descending order, otherwise maintain the original order in the parent node. This also shows why we do not change `children`, it retains the default sorting basis:
 
 ```ts
 export function sortByZIndex(a: Shape, b: Shape) {
@@ -163,11 +163,11 @@ call(() => {
 });
 ```
 
-当导出为 SVG 时，不能直接将 `z-index` 映射到元素属性，原因是 SVG 是按元素出现在文档中的顺序渲染的，详见：[How to use z-index in svg elements?]
+When exporting to SVG, `z-index` cannot be directly mapped to element properties because SVG is rendered based on the order in which elements appear in the document, see: [How to use z-index in svg elements?]
 
 > In SVG, z-index is defined by the order the element appears in the document.
 
-因此在导出时我们需要进行额外的排序工作，对 `SerializedNode` 的排序实现几乎和 `Shape` 相同，这里就不再展示了：
+Therefore, we need to perform additional sorting work when exporting, and the sorting implementation for `SerializedNode` is almost the same as for `Shape`, which is not shown here:
 
 ```ts
 export function toSVGElement(node: SerializedNode, doc?: Document) {
@@ -183,9 +183,9 @@ export function toSVGElement(node: SerializedNode, doc?: Document) {
 }
 ```
 
-## 实现 sizeAttenuation {#size-attenuation}
+## Implementing sizeAttenuation {#size-attenuation}
 
-之前我们提到过 [折线的 sizeAttenuation]，在选中图形后展示蒙层和锚点时，我们不希望它们随相机缩放改变大小。例如在 excalidraw 中，辅助类 UI 例如拖拽把手（handle）的线宽就会根据缩放等级调整，这里使用的是 Canvas2D API：
+We previously mentioned [sizeAttenuation of polylines], when displaying a mask layer and anchor points after selecting a shape, we do not want them to change size with camera zooming. For example, in excalidraw, auxiliary UIs such as drag handles (handle) adjust the line width according to the zoom level, using the Canvas2D API:
 
 ```ts
 const renderTransformHandles = (): void => {
@@ -194,17 +194,17 @@ const renderTransformHandles = (): void => {
 };
 ```
 
-当然我们已经将 `u_ZoomScale` 传入了 Shader 中进行调整。
+Of course, we have already passed `u_ZoomScale` into the Shader for adjustment.
 
-### 顶点压缩 {#vertex-compression}
+### Vertex compression {#vertex-compression}
 
-类似 `sizeAttenuation` 这样只有 0 和 1 的标志位，可以采用顶点压缩技术。简而言之，我们尽量利用 vec4 存储这些顶点数据并采用一定的压缩技术，可以减少 CPU 侧向 GPU 侧传递数据的时间并节省大量 GPU 内存。另外，OpenGL 支持的 attribute 数目也是有上限的。压缩方案也很简单，在 CPU 侧 JS 中压缩，在 vertex shader 中解压。在 mapbox 和 Cesium 中都有应用，详见：[Graphics Tech in Cesium - Vertex Compression]。下面我们来看如何将两个数值压缩到一个 `float` 中：
+For flag bits like `sizeAttenuation` that only have 0 and 1, vertex compression technology can be used. In short, we try to use vec4 to store these vertex data and use certain compression techniques, which can reduce the time it takes to transfer data from the CPU side to the GPU side and save a lot of GPU memory. In addition, there is an upper limit to the number of attributes supported by OpenGL. The compression scheme is also very simple, compress in JS on the CPU side, and decompress in the vertex shader. It is applied in both mapbox and Cesium, see: [Graphics Tech in Cesium - Vertex Compression]. Let's see how to compress two values into one `float` below:
 
-GLSL 中 float 是单精度浮点数 [Scalars]，即 IEEE-754 [Single-precision floating-point format]
+In GLSL, float is a single-precision floating-point number [Scalars], that is, IEEE-754 [Single-precision floating-point format]
 
 ![binary32 bits layout](https://picx.zhimg.com/v2-05e8c5427795ebe84919ceef053adaad_1440w.png)
 
-我们可以将 `sizeAttenuation` 和 `type` 压缩到一个 `float` 中，其中 `sizeAttenuation` 占 1 位，`type` 占 23 位。
+We can compress `sizeAttenuation` and `type` into one `float`, where `sizeAttenuation` occupies 1 bit, and `type` occupies 23 bits.
 
 ```ts
 const LEFT_SHIFT23 = 8388608.0;
@@ -214,7 +214,7 @@ const u_Opacity = [opacity, fillOpacity, strokeOpacity, type]; // [!code --]
 const u_Opacity = [opacity, fillOpacity, strokeOpacity, compressed]; // [!code ++]
 ```
 
-在 shader 中 decode 时也要注意和 encode 顺序保持一致：
+When decoding in the shader, it is also necessary to maintain the same order as encoding:
 
 ```glsl
 #define SHIFT_RIGHT23 1.0 / 8388608.0
@@ -231,7 +231,7 @@ compressed -= sizeAttenuation * SHIFT_LEFT23;
 float type = compressed;
 ```
 
-得到 `sizeAttenuation` 后，在 vertex shader 中使用它调整顶点坐标，以 SDF 的实现为例：
+After obtaining `sizeAttenuation`, use it in the vertex shader to adjust the vertex coordinates, taking the SDF implementation as an example:
 
 ```glsl
 float scale = 1.0;
@@ -245,17 +245,17 @@ gl_Position = vec4((u_ProjectionMatrix
     * vec3(position + v_FragCoord * scale, 1)).xy, zIndex, 1); // [!code ++]
 ```
 
-### 导出 SVG {#export-svg}
+### Exporting SVG {#export-svg}
 
-由于该属性与相机缩放相关，因此在导出 SVG 时需要额外处理，暂不支持。
+Since this property is related to camera zooming, additional processing is required when exporting SVG, which is not supported for now.
 
-## 画布模式 {#canvas-mode}
+## Canvas mode {#canvas-mode}
 
-无限画布通常都支持很多模式，例如选择模式、手型模式、记号笔模式等等，可以参考 [Excalidraw ToolType] 和 [rnote]。
+Infinite canvases usually support many modes, such as selection mode, hand mode, pen mode, etc., you can refer to [Excalidraw ToolType] and [rnote].
 
-而不同模式下同样的交互动作对应不同的操作。例如选择模式下，在画布上拖拽对应框选操作；在手型模式下会拖拽整个画布；记号笔模式下则是自由绘制笔迹。
+The same interaction action corresponds to different operations under different modes. For example, dragging on the canvas corresponds to the selection operation in selection mode; in hand mode, it drags the entire canvas; in pen mode, it is free drawing of pen traces.
 
-首先让我们为画布增加选择和手型模式，未来可以继续扩展：
+First, let's add selection and hand modes to the canvas, which can be expanded in the future:
 
 ```ts
 export enum CanvasMode {
@@ -275,11 +275,11 @@ class Canvas {
 }
 ```
 
-下面让我们来实现一个新的 UI 组件在这些模式间切换。
+Let's implement a new UI component to switch between these modes.
 
-## 模式选择工具条 {#mode-toolbar}
+## Mode selection toolbar {#mode-toolbar}
 
-使用 Lit 提供的 [Dynamic classes and styles]，我们可以实现类似 [clsx] 的效果（如果你在项目中使用过 [tailwindcss] 一定不会陌生），对 `className` 进行管理，例如根据条件生成。这里我们用来实现选中模式下的高亮样式：
+Using Lit's [Dynamic classes and styles], we can achieve an effect similar to [clsx] (if you have used [tailwindcss] in your project, you will definitely be familiar with it), managing `className`, such as generating based on conditions. Here we use it to implement the highlighted style under the selected mode:
 
 ```ts
 @customElement('ic-mode-toolbar')
@@ -313,7 +313,7 @@ export class ModeToolbar extends LitElement {
 }
 ```
 
-另外，为了减少模版代码量，我们使用了 Lit 提供的 [Built-in directives - map]。效果如下：
+In addition, to reduce the amount of template code, we used Lit's [Built-in directives - map]. The effect is as follows:
 
 ```js eval code=false
 call(() => {
@@ -324,9 +324,9 @@ call(() => {
 });
 ```
 
-## 手型模式 {#hand-mode}
+## Hand mode {#hand-mode}
 
-顾名思义，在该模式下用户只能对画布整体进行平移、旋转和缩放操作。之前我们已经实现了 [CameraControlPlugin]，现在让我们与画布模式结合一下，在手型模式下和原来行为一致，即移动或者旋转画布。只是在拖拽开始时以及过程中将鼠标样式修改为 `grab` 和 `grabbing`：
+As the name suggests, in this mode, users can only pan, rotate, and zoom the entire canvas. We have previously implemented [CameraControlPlugin], now let's combine it with the canvas mode, and in hand mode, the behavior is consistent with the original, that is, moving or rotating the canvas. It's just that at the start of the drag and during the process, the mouse style is changed to `grab` and `grabbing`:
 
 ```ts
 export class CameraControl implements Plugin {
@@ -347,13 +347,13 @@ export class CameraControl implements Plugin {
 }
 ```
 
-### 通过 wheel 移动画布 {#pan-with-wheel}
+### Panning the canvas with wheel {#pan-with-wheel}
 
-之前我一直错误地将 `wheel` 和滚动行为或者说 `scroll` 事件搞混。以下是 MDN 对于 [Element: wheel event] 的说明：
+I have always mistakenly confused `wheel` with scrolling behavior or the `scroll` event. Here is MDN's explanation for [Element: wheel event]:
 
 > A wheel event doesn't necessarily dispatch a scroll event. For example, the element may be unscrollable at all. Zooming actions using the wheel or trackpad also fire wheel events.
 
-在使用 Figma 和 Excalidraw 的过程中，我发现除了拖拽，使用 wheel 也能快捷地完成画布平移操作。在 Excalidraw 中还支持在其他画布模式下按住 `Space` 拖拽，详见：[handleCanvasPanUsingWheelOrSpaceDrag]。因此我们先修改下原本的缩放逻辑：
+During the use of Figma and Excalidraw, I found that in addition to dragging, using the wheel can also quickly complete the canvas panning operation. In Excalidraw, it also supports holding down `Space` to drag in other canvas modes, see: [handleCanvasPanUsingWheelOrSpaceDrag]. Therefore, let's modify the original zoom logic first:
 
 ```ts
 root.addEventListener('wheel', (e: FederatedWheelEvent) => {
@@ -368,15 +368,15 @@ root.addEventListener('wheel', (e: FederatedWheelEvent) => {
 });
 ```
 
-值得注意的是每次移动的距离需要考虑相机当前的缩放等级，在放大时每次应当移动更小的距离。
+It is worth noting that the distance moved each time needs to consider the current zoom level of the camera, and the distance moved each time should be smaller when zoomed in.
 
-### 通过 wheel 缩放画布 {#zoom-with-wheel}
+### Zooming the canvas with wheel {#zoom-with-wheel}
 
-当然缩放行为依旧需要保留，当按下 `Command` 或者 `Control` 时触发。如果你开启了 Mac 触控板的 `pinch to zoom` 功能，触发的 `wheel` 事件会自动带上 `ctrlKey`，详见：[Catching Mac trackpad zoom]：
+Of course, the zoom behavior still needs to be retained, triggered when `Command` or `Control` is pressed. If you have enabled the `pinch to zoom` function on the Mac trackpad, the `wheel` event triggered will automatically carry the `ctrlKey`, see: [Catching Mac trackpad zoom]:
 
 ![zoom in mac trackpad](/mac-trackpad-zoom.gif)
 
-这样我们就能很轻松地区分 `wheel` 事件在缩放和平移场景下对应的不同行为了：
+In this way, we can easily distinguish the different behaviors corresponding to the `wheel` event in the zoom and pan scenarios:
 
 ```ts
 root.addEventListener('wheel', (e: FederatedWheelEvent) => {
@@ -394,17 +394,17 @@ root.addEventListener('wheel', (e: FederatedWheelEvent) => {
 });
 ```
 
-值得一提的是，Excalidraw 还支持了按住 `Shift` 进行水平滚动画布。但此前我们已经为画布的该行为分配了旋转操作了，这里就不再实现了。
+It is worth mentioning that Excalidraw also supports holding down `Shift` to horizontally scroll the canvas. However, we have already assigned the rotation operation to this behavior of the canvas, so it will not be implemented here.
 
-## 选择模式 {#select-mode}
+## Selection mode {#select-mode}
 
-在选择模式下，用户可以通过点击选中画布中的图形。在选中状态下，原图形上会覆盖一个辅助 UI，它通常由蒙层和若干锚点组成。在蒙层上拖拽可以移动图形，在锚点上拖拽可以沿各方向改变图形大小，我们还将在顶部图形之外增加一个锚点用于旋转。
+In selection mode, users can select shapes on the canvas by clicking. In the selected state, a helper UI will be overlaid on the original shape, which usually consists of a mask layer and several anchor points. Dragging on the mask layer can move the shape, and dragging on the anchor points can change the shape size in various directions. We will also add an anchor point outside the top shape for rotation.
 
 ![Anchor positioning diagram with physical properties](https://developer.chrome.com/blog/anchor-positioning-api/image/anchor-diagram-1.png)
 
-### 点击选择图形 {#select-shape}
+### Clicking to select shapes {#select-shape}
 
-下面我们来实现 Selector 插件，以下接口也会暴露给 Canvas：
+Let's implement the Selector plugin below, and the following interface will also be exposed to Canvas:
 
 ```ts
 export class Selector implements Plugin {
@@ -413,11 +413,11 @@ export class Selector implements Plugin {
 }
 ```
 
-在该插件监听 `click` 事件后，我们需要处理以下几种情况：
+After listening to the `click` event in this plugin, we need to handle the following situations:
 
--   点击图形展示选中状态的 UI。如果之前已经选中过其他图形，先取消选中
--   点击画布空白处，取消当前选中的图形
--   按住 `Shift` 进入多选模式
+-   Clicking on a shape displays the UI in the selected state. If other shapes have been selected before, first cancel the selection.
+-   Clicking on a blank area of the canvas cancels the currently selected shape.
+-   Holding down `Shift` enters multi-select mode.
 
 ```ts
 const handleClick = (e: FederatedPointerEvent) => {
@@ -496,9 +496,9 @@ call(() => {
 });
 ```
 
-### 拖拽移动图形 {#dragndrop-move}
+### Dragging to move shapes {#dragndrop-move}
 
-HTML 原生是支持拖拽的，当然我们使用更底层的事件例如 `pointermove / up / down` 也是可以实现的，详见：[Drag'n'Drop with mouse events]，我们的实现也借鉴了这篇文章的思路。在 `dragstart` 事件中记录下鼠标在画布上的偏移量，注意这里使用的是 `screen` 坐标系，因为要考虑到相机缩放的情况：
+HTML natively supports dragging, of course, we can also implement it using lower-level events such as `pointermove / up / down`, see: [Drag'n'Drop with mouse events], our implementation also draws on the ideas in this article. In the `dragstart` event, record the offset of the mouse on the canvas, note that here we use the `screen` coordinate system because the camera zoom needs to be considered:
 
 ```ts
 let shiftX = 0;
@@ -512,7 +512,7 @@ this.addEventListener('dragstart', (e: FederatedPointerEvent) => {
 });
 ```
 
-在 `drag` 事件中根据该偏移量调整蒙层位置，使用 `position` 属性不必修改 mask 的路径定义，反映到底层渲染中只有 `u_ModelMatrix` 会发生改变：
+In the `drag` event, adjust the mask layer position according to the offset, using the `position` property does not need to modify the mask path definition, reflecting in the underlying rendering only `u_ModelMatrix` will change:
 
 ```ts
 const moveAt = (canvasX: number, canvasY: number) => {
@@ -534,7 +534,7 @@ this.addEventListener('drag', (e: FederatedPointerEvent) => {
 });
 ```
 
-在 `dragend` 事件中，将蒙层位置同步到图形上，此时才会修改蒙层的路径：
+In the `dragend` event, synchronize the mask layer position to the shape, at this time the mask path will be modified:
 
 ```ts
 this.addEventListener('dragend', (e: FederatedEvent) => {
@@ -552,9 +552,9 @@ this.addEventListener('dragend', (e: FederatedEvent) => {
 });
 ```
 
-### 展示属性面板 {#property-panel}
+### Displaying the property panel {#property-panel}
 
-选中图形时，我们希望展示图形对应的属性面板，详见 [Drawer - Contained to an Element]，这里就不展开了。以 `stroke` 属性为例，我们进行双向绑定，监听当前选中的图形，在用户手动修改后，将新值同步到图形上：
+When a shape is selected, we want to display the property panel corresponding to the shape, see [Drawer - Contained to an Element], which will not be expanded here. Taking the `stroke` property as an example, we perform two-way binding, listening to the currently selected shape, and after the user manually modifies it, synchronize the new value to the shape:
 
 ```html
 <sl-color-picker
@@ -566,28 +566,27 @@ this.addEventListener('dragend', (e: FederatedEvent) => {
 ></sl-color-picker>
 ```
 
-需要注意的是，对于颜色我们希望将透明度分离出来，因此需要使用 [sl-color-picker] 的 `getFormattedValue` 方法获取颜色值，随后使用 `d3-color` 库进行解析，分别赋值给 `stroke` 和 `strokeOpacity`：
+It should be noted that for colors, we want to separate the transparency, so we need to use the `getFormattedValue` method of [sl-color-picker] to get the color value, and then use the `d3-color` library to parse it, and assign values to `stroke` and `strokeOpacity` respectively:
 
 ```ts
 const strokeAndOpacity = (e.target as any).getFormattedValue('rgba') as string;
 const { rgb, opacity } = rgbaToRgbAndOpacity(strokeAndOpacity); // with d3-color
 ```
 
-当然，选择模式下还有很多功能需要实现，例如合并选中成组、旋转图形等，后续课程中我们会继续完善。另外绘制模式下我们希望支持绘制矩形、直线、多边形等，这些我们也会在后续课程中实现。
+Of course, there are many functions that need to be implemented under the selection mode, such as merging selections into groups, rotating shapes, etc., which we will continue to improve in subsequent courses. In addition, under the drawing mode, we hope to support drawing rectangles, lines, polygons, etc., which we will also implement in subsequent courses.
 
-## 扩展阅读 {#extended-reading}
+## Extended reading {#extended-reading}
 
 -   [Excalidraw ToolType]
 -   [Introducing the CSS anchor positioning API]
 -   [Drag'n'Drop with mouse events]
 
-[画布 UI 组件]: /zh/guide/lesson-007
 [Introducing the CSS anchor positioning API]: https://developer.chrome.com/blog/anchor-positioning-api
 [Excalidraw ToolType]: https://github.com/excalidraw/excalidraw/blob/master/packages/excalidraw/types.ts#L120-L135
 [rnote]: https://github.com/flxzt/rnote
 [Dynamic classes and styles]: https://lit.dev/docs/components/styles/#dynamic-classes-and-styles
 [Built-in directives - map]: https://lit.dev/docs/templates/directives/#map
-[CameraControlPlugin]: /zh/guide/lesson-004#implement-a-plugin
+[CameraControlPlugin]: /guide/lesson-004#implement-a-plugin
 [clsx]: https://github.com/lukeed/clsx
 [tailwindcss]: https://tailwindcss.com/
 [handleCanvasPanUsingWheelOrSpaceDrag]: https://github.com/excalidraw/excalidraw/blob/57cf577376e283beae08eb46192cfea7caa48d0c/packages/excalidraw/components/App.tsx#L6561
@@ -596,7 +595,6 @@ const { rgb, opacity } = rgbaToRgbAndOpacity(strokeAndOpacity); // with d3-color
 [z-index]: https://developer.mozilla.org/en-US/docs/Web/CSS/z-index
 [Stacking context]: https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_positioned_layout/Understanding_z-index/Stacking_context
 [How to use z-index in svg elements?]: https://stackoverflow.com/questions/17786618/how-to-use-z-index-in-svg-elements
-[折线的 sizeAttenuation]: /zh/guide/lesson-012#size-attenuation
 [Scalars]: https://www.khronos.org/opengl/wiki/Data_Type_(GLSL)#Scalars
 [Single-precision floating-point format]: https://en.wikipedia.org/wiki/Single-precision_floating-point_format
 [Graphics Tech in Cesium - Vertex Compression]: https://cesium.com/blog/2015/05/18/vertex-compression/
