@@ -11,3 +11,4 @@ export * from './serialize';
 export * from './curve';
 export * from './tessy';
 export * from './rough';
+export * from './font';

@@ -42,6 +42,7 @@
     "@loaders.gl/images": "^4.2.2",
     "@pixi/math": "^7.4.2",
     "bezier-easing": "^2.1.0",
+    "bidi-js": "^1.0.3",
     "d3-color": "^3.1.0",
     "earcut": "^3.0.0",
     "eventemitter3": "^5.0.1",
