@@ -11,6 +11,7 @@ publish: false
 
 -   什么是 TextMetrics，如何在服务端和浏览器端获取
 -   什么是 Shaping
+-   分段与自动换行、BiDi 和 cluster
 -   如何生成 SDF atlas 并使用它绘制
 -   如何处理 emoji
 
@@ -138,92 +139,18 @@ if (fontProperties.fontSize === 0) {
 
 ### letterSpacing
 
-[letterSpacing]
-
-### cluster
-
-[grapheme-splitter]
+Canvas 2D API 提供了 [letterSpacing]，可以用来调整字符之间的间距。在度量文本前我们设置它：
 
 ```ts
-var splitter = new GraphemeSplitter();
-// plain latin alphabet - nothing spectacular
-splitter.splitGraphemes('abcd'); // returns ["a", "b", "c", "d"]
-// two-char emojis and six-char combined emoji
-splitter.splitGraphemes('🌷🎁💩😜👍🏳️‍🌈'); // returns ["🌷","🎁","💩","😜","👍","🏳️‍🌈"]
+measureText(
+    text: string,
+    letterSpacing: number, // [!code ++]
+    context: ICanvasRenderingContext2D
+) {
+    context.letterSpacing = `${letterSpacing}px`; // [!code ++]
+    // 省略度量过程
+}
 ```
-
-### 处理换行 {#line-breaking}
-
-换行需要考虑很多情况，例如：
-
--   遇到了显式换行符
--   自动换行，同时让每一行尽可能保持接近的长度，详见：[Beautifying map labels with better line breaking]
-
-[mapbox-gl-js shaping.ts]
-
-```ts
-export type Shaping = {
-    positionedLines: Array<PositionedLine>;
-    top: number;
-    bottom: number;
-    left: number;
-    right: number;
-    writingMode: 1 | 2;
-    text: string;
-    iconsInText: boolean;
-    verticalizable: boolean;
-    hasBaseline: boolean;
-};
-
-export type PositionedLine = {
-    positionedGlyphs: Array<PositionedGlyph>;
-    lineOffset: number;
-};
-
-export type PositionedGlyph = {
-    glyph: number;
-    imageName: string | null;
-    x: number;
-    y: number;
-    vertical: boolean;
-    scale: number;
-    fontStack: string;
-    sectionIndex: number;
-    metrics: GlyphMetrics;
-    rect: GlyphRect | null;
-    localGlyph?: boolean;
-};
-```
-
-### BiDi
-
-::: info Bidi
-support for handling text containing a mixture of left to right (English) and right to left (Arabic or Hebrew) data.
-:::
-
-下图来自 [Text layout is a loose hierarchy of segmentation]
-
-![layout pyramid](https://raphlinus.github.io/assets/layout_pyramid.svg)
-
-[Improving Arabic and Hebrew text in map labels]
-
-[What HarfBuzz doesn't do]
-
-> HarfBuzz won't help you with bidirectionality.
-
-[Text layout is a loose hierarchy of segmentation]
-
-> At this point, we have a run of constant style, font, direction, and script. It is ready for shaping. Shaping is a complicated process that converts a string (sequence of Unicode code points) into positioned glyphs. For the purpose of this blog post, we can generally treat it as a black box. Fortunately, a very high quality open source implementation exists, in the form of [Harfbuzz].
-
-[bidi-js]
-
-[mapbox-gl-rtl-text]
-
-### text-align
-
-[text-align]
-
-![text-align](/text-align.png)
 
 ### font-kerning
 
@@ -239,6 +166,94 @@ const unkernedWidth =
 const kernedWidth = tinySdf.ctx.measureText('AV').width;
 const kerning = kernedWidth - unkernedWidth; // a negative value indicates you should adjust the SDFs closer together by that much
 ```
+
+## Paragraph layout
+
+单个字符组合在一起形成了句子，句子又组成了段落。下图来自 [Text layout is a loose hierarchy of segmentation]，自底向上展示了文本布局的层次结构。
+
+![layout pyramid](https://raphlinus.github.io/assets/layout_pyramid.svg)
+
+Canvas 2D API 在文本绘制上并没有提供 paragraph 相关的能力，只有最基础的 [Drawing text] 功能。基于 Skia 实现的 CanvasKit 在此基础上进行了扩展，额外提供了 `drawParagraph` 方法，详见：[CanvasKit Text Shaping]
+
+> One of the biggest features that CanvasKit offers over the HTML Canvas API is **paragraph shaping**.
+
+```ts
+const paragraph = builder.build();
+paragraph.layout(290); // width in pixels to use when wrapping text
+canvas.drawParagraph(paragraph, 10, 10);
+```
+
+我们先从分段开始实现。
+
+### 分段 {#paragraph-segmentation}
+
+最简单的分段依据就是显式换行符。
+
+```ts
+const newlines: number[] = [
+    0x000a, // line feed
+    0x000d, // carriage return
+];
+```
+
+另外也需要考虑自动换行的情况。同时让每一行尽可能保持接近的长度，详见：[Beautifying map labels with better line breaking]
+
+```ts
+const breakingSpaces: number[] = [
+    0x0009, // character tabulation
+    0x0020, // space
+    0x2000, // en quad
+    0x2001, // em quad
+    0x2002, // en space
+    0x2003, // em space
+    0x2004, // three-per-em space
+    0x2005, // four-per-em space
+    0x2006, // six-per-em space
+    0x2008, // punctuation space
+    0x2009, // thin space
+    0x200a, // hair space
+    0x205f, // medium mathematical space
+    0x3000, // ideographic space
+];
+```
+
+### BiDi
+
+::: info Bidi
+support for handling text containing a mixture of left to right (English) and right to left (Arabic or Hebrew) data.
+:::
+
+[Improving Arabic and Hebrew text in map labels]
+
+[What HarfBuzz doesn't do]
+
+> HarfBuzz won't help you with bidirectionality.
+
+[Text layout is a loose hierarchy of segmentation]
+
+> At this point, we have a run of constant style, font, direction, and script. It is ready for shaping. Shaping is a complicated process that converts a string (sequence of Unicode code points) into positioned glyphs. For the purpose of this blog post, we can generally treat it as a black box. Fortunately, a very high quality open source implementation exists, in the form of [Harfbuzz].
+
+[bidi-js]
+
+[mapbox-gl-rtl-text]
+
+### cluster
+
+[grapheme-splitter]
+
+```ts
+var splitter = new GraphemeSplitter();
+// plain latin alphabet - nothing spectacular
+splitter.splitGraphemes('abcd'); // returns ["a", "b", "c", "d"]
+// two-char emojis and six-char combined emoji
+splitter.splitGraphemes('🌷🎁💩😜👍🏳️‍🌈'); // returns ["🌷","🎁","💩","😜","👍","🏳️‍🌈"]
+```
+
+### text-align
+
+[text-align]
+
+![text-align](/text-align.png)
 
 ## 绘制 {#rendering}
 
@@ -305,6 +320,42 @@ float dist = texture2D(u_SDFMap, v_UV).a;
 
 [EmojiEngine]
 
+[mapbox-gl-js shaping.ts]
+
+```ts
+export type Shaping = {
+    positionedLines: Array<PositionedLine>;
+    top: number;
+    bottom: number;
+    left: number;
+    right: number;
+    writingMode: 1 | 2;
+    text: string;
+    iconsInText: boolean;
+    verticalizable: boolean;
+    hasBaseline: boolean;
+};
+
+export type PositionedLine = {
+    positionedGlyphs: Array<PositionedGlyph>;
+    lineOffset: number;
+};
+
+export type PositionedGlyph = {
+    glyph: number;
+    imageName: string | null;
+    x: number;
+    y: number;
+    vertical: boolean;
+    scale: number;
+    fontStack: string;
+    sectionIndex: number;
+    metrics: GlyphMetrics;
+    rect: GlyphRect | null;
+    localGlyph?: boolean;
+};
+```
+
 ## 扩展阅读 {#extended-reading}
 
 -   [State of Text Rendering 2024]
@@ -359,3 +410,4 @@ float dist = texture2D(u_SDFMap, v_UV).a;
 [PIXI.TextMetrics]: https://api.pixijs.io/@pixi/text/PIXI/TextMetrics.html
 [letterSpacing]: https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/letterSpacing
 [grapheme-splitter]: https://github.com/orling/grapheme-splitter
+[CanvasKit Text Shaping]: https://skia.org/docs/user/modules/quickstart/#text-shaping

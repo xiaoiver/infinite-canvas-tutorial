@@ -32,3 +32,20 @@ export function isImageBitmapOrCanvases(
 export function isVideo(data: TexImageSource): data is HTMLVideoElement {
   return isBrowser && data instanceof HTMLVideoElement;
 }
+
+export function createOffscreenCanvas(): OffscreenCanvas | HTMLCanvasElement {
+  let canvas: OffscreenCanvas | HTMLCanvasElement;
+  if (isBrowser) {
+    try {
+      canvas = new OffscreenCanvas(1, 1);
+    } catch {
+      canvas = document.createElement('canvas');
+    }
+  }
+  if (canvas) {
+    this.ctx = canvas.getContext('2d') as
+      | OffscreenCanvasRenderingContext2D
+      | CanvasRenderingContext2D;
+  }
+  return canvas;
+}

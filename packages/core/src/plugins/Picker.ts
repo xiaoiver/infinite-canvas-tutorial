@@ -1,7 +1,7 @@
 import { Point } from '@pixi/math';
 import type { Shape } from '../shapes';
 import type { PickingResult, Plugin, PluginContext } from './interfaces';
-import { isBrowser } from '../utils';
+import { createOffscreenCanvas } from '../utils/browser';
 
 const tempLocalPosition = new Point();
 
@@ -15,14 +15,7 @@ export class Picker implements Plugin {
       api: { elementsFromBBox },
     } = context;
 
-    let canvas: OffscreenCanvas | HTMLCanvasElement;
-    if (isBrowser) {
-      try {
-        canvas = new OffscreenCanvas(1, 1);
-      } catch {
-        canvas = document.createElement('canvas');
-      }
-    }
+    const canvas = createOffscreenCanvas();
     if (canvas) {
       this.ctx = canvas.getContext('2d') as
         | OffscreenCanvasRenderingContext2D
