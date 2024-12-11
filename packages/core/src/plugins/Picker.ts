@@ -6,7 +6,7 @@ import { createOffscreenCanvas } from '../utils/browser';
 const tempLocalPosition = new Point();
 
 export class Picker implements Plugin {
-  private ctx: OffscreenCanvasRenderingContext2D | CanvasRenderingContext2D;
+  #ctx: OffscreenCanvasRenderingContext2D | CanvasRenderingContext2D;
 
   apply(context: PluginContext) {
     const {
@@ -17,7 +17,7 @@ export class Picker implements Plugin {
 
     const canvas = createOffscreenCanvas();
     if (canvas) {
-      this.ctx = canvas.getContext('2d') as
+      this.#ctx = canvas.getContext('2d') as
         | OffscreenCanvasRenderingContext2D
         | CanvasRenderingContext2D;
     }
@@ -47,7 +47,7 @@ export class Picker implements Plugin {
         return shape.hitArea.contains(x, y);
       }
 
-      return shape.containsPoint(x, y, this.ctx);
+      return shape.containsPoint(x, y, this.#ctx);
     }
 
     return false;

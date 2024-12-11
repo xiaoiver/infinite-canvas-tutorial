@@ -169,6 +169,14 @@ pnpm run dev
 
 <img src="./screenshots/lesson14.png" width="300" alt="Lesson 14 - canvas mode">
 
+## 课程 15 - 绘制文本 [🔗](https://infinitecanvas.cc/zh/guide/lesson-015)
+
+-   什么是 TextMetrics，如何在服务端和浏览器端获取
+-   什么是 Shaping
+-   处理段落。分段与自动换行、BiDi 和 cluster
+-   如何生成 SDF atlas 并使用它绘制
+-   如何处理 emoji
+
 [infinitecanvas]: https://infinitecanvas.tools/
 [Figma]: https://madebyevan.com/figma/building-a-professional-design-tool-on-the-web/
 [Modyfi]: https://digest.browsertech.com/archive/browsertech-digest-how-modyfi-is-building-with/

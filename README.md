@@ -169,6 +169,14 @@ pnpm run dev
 
 <img src="./screenshots/lesson14.png" width="300" alt="Lesson 14 - canvas mode">
 
+## Lesson 15 - Draw text [🔗](https://infinitecanvas.cc/guide/lesson-015)
+
+-   What's TextMetrics and how to get it in server and browser side
+-   What's shaping
+-   Paragraph layout, wordbreak, BiDi and cluster
+-   How to generate SDF atlas and use it to draw
+-   How to handle emoji
+
 [infinitecanvas]: https://infinitecanvas.tools/
 [Figma]: https://madebyevan.com/figma/building-a-professional-design-tool-on-the-web/
 [Modyfi]: https://digest.browsertech.com/archive/browsertech-digest-how-modyfi-is-building-with/

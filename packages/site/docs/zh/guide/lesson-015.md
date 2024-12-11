@@ -217,6 +217,10 @@ const breakingSpaces: number[] = [
 ];
 ```
 
+在 CJK 中部分字符不能出现在行首，部分不能出现在行尾。例如在中文里大部分标点符号不能出现在行首，具体规则详见：[Line breaking rules in East Asian languages]。[pixi-cjk] 处理了这些情况：
+
+![pixi-cjk](https://github.com/huang-yuwei/pixi-cjk/raw/main/docs/screenshot.png)
+
 ### BiDi
 
 ::: info Bidi
@@ -238,6 +242,10 @@ support for handling text containing a mixture of left to right (English) and ri
 [mapbox-gl-rtl-text]
 
 ### cluster
+
+并不是所有字符都是由单一字符组成，[clusters] 是 HarfBuzz 中用于处理复合字符的术语。
+
+> In text shaping, a cluster is a sequence of characters that needs to be treated as a single, indivisible unit.
 
 [grapheme-splitter]
 
@@ -411,3 +419,6 @@ export type PositionedGlyph = {
 [letterSpacing]: https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/letterSpacing
 [grapheme-splitter]: https://github.com/orling/grapheme-splitter
 [CanvasKit Text Shaping]: https://skia.org/docs/user/modules/quickstart/#text-shaping
+[pixi-cjk]: https://github.com/huang-yuwei/pixi-cjk
+[Line breaking rules in East Asian languages]: https://en.wikipedia.org/wiki/Line_breaking_rules_in_East_Asian_languages
+[clusters]: https://harfbuzz.github.io/clusters.html

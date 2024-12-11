@@ -42,10 +42,5 @@ export function createOffscreenCanvas(): OffscreenCanvas | HTMLCanvasElement {
       canvas = document.createElement('canvas');
     }
   }
-  if (canvas) {
-    this.ctx = canvas.getContext('2d') as
-      | OffscreenCanvasRenderingContext2D
-      | CanvasRenderingContext2D;
-  }
   return canvas;
 }

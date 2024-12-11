@@ -1,4 +1,4 @@
-// import bidiFactory from 'bidi-js';
+import bidiFactory from 'bidi-js';
 import { Rectangle } from '@pixi/math';
 import { TextAttributes, TextStyleWhiteSpace } from '../shapes';
 import { createOffscreenCanvas } from './browser';
@@ -21,8 +21,6 @@ type TextMetrics = {
   lineMetrics: Rectangle[];
 };
 // type TextSegment = { text: string; direction: 'ltr' | 'rtl' };
-
-// const bidi = bidiFactory();
 
 const METRICS_STRING = '|ÉqÅ';
 const BASELINE_SYMBOL = 'M';
@@ -75,6 +73,7 @@ export class CanvasTextMetrics {
   #fonts: Record<string, FontProperties>;
   #canvas: OffscreenCanvas | HTMLCanvasElement;
   #context: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
+  #bidi = bidiFactory();
 
   constructor() {
     const canvas = createOffscreenCanvas();
