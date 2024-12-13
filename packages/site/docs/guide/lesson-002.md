@@ -660,6 +660,7 @@ In the subsequent introduction to scene graphs, we will also apply the dirty fla
 -   [distfunctions]
 -   [Leveraging Rust and the GPU to render user interfaces at 120 FPS]
 -   [Sub-pixel Distance Transform - High quality font rendering for WebGPU]
+-   [AAA - Analytical Anti-Aliasing]
 
 [Node API appendChild]: https://developer.mozilla.org/en-US/docs/Web/API/Node/appendChild
 [GPURenderPassEncoder]: https://developer.mozilla.org/en-US/docs/Web/API/GPURenderPassEncoder
@@ -682,3 +683,4 @@ In the subsequent introduction to scene graphs, we will also apply the dirty fla
 [Sub-pixel Distance Transform - High quality font rendering for WebGPU]: https://acko.net/blog/subpixel-distance-transform/
 [A trip through the Graphics Pipeline 2011, part 8]: https://fgiesen.wordpress.com/2011/07/10/a-trip-through-the-graphics-pipeline-2011-part-8/
 [Discarding fragments]: https://learnopengl.com/Advanced-OpenGL/Blending
+[AAA - Analytical Anti-Aliasing]: https://blog.frost.kiwi/analytical-anti-aliasing

@@ -1,9 +1,22 @@
+import { AABB } from './AABB';
 import { GConstructor } from './mixins';
 import { Shape, ShapeAttributes } from './Shape';
 
 export type TextStyleWhiteSpace = 'normal' | 'pre' | 'pre-line';
 
 export interface TextAttributes extends ShapeAttributes {
+  /**
+   * The x-axis coordinate of the point at which to begin drawing the text, in pixels.
+   * @see https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/fillText#x
+   */
+  x: number;
+
+  /**
+   * The y-axis coordinate of the point at which to begin drawing the text, in pixels.
+   * @see https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/fillText#y
+   */
+  y: number;
+
   /**
    * Specifies a prioritized list of one or more font family names and/or generic family names for the selected element.
    * e.g. `'Arial, Helvetica, sans-serif'`
@@ -104,6 +117,8 @@ export class Text extends TextWrapper(Shape) {}
 export function TextWrapper<TBase extends GConstructor>(Base: TBase) {
   // @ts-expect-error - Mixin class
   return class TextWrapper extends Base implements TextAttributes {
+    #x: number;
+    #y: number;
     #fontFamily: string;
     #fontSize: number | string;
     #fontWeight: number;
@@ -120,10 +135,17 @@ export function TextWrapper<TBase extends GConstructor>(Base: TBase) {
     #textAlign: CanvasTextAlign;
     #textBaseline: CanvasTextBaseline;
 
+    static getGeometryBounds(attributes: Partial<TextAttributes>) {
+      const { x, y } = attributes;
+      return new AABB(x, y, 0, 0);
+    }
+
     constructor(attributes: Partial<TextAttributes> = {}) {
       super(attributes);
 
       const {
+        x,
+        y,
         fontFamily,
         fontVariant,
         fontSize,
@@ -141,6 +163,8 @@ export function TextWrapper<TBase extends GConstructor>(Base: TBase) {
         leading,
       } = attributes;
 
+      this.#x = x ?? 0;
+      this.#y = y ?? 0;
       this.fontFamily = fontFamily ?? 'sans-serif';
       this.fontSize = fontSize ?? 12;
       this.fontWeight = fontWeight ?? 400;
@@ -158,12 +182,63 @@ export function TextWrapper<TBase extends GConstructor>(Base: TBase) {
       this.leading = leading ?? 0;
     }
 
+    containsPoint(x: number, y: number) {
+      return false;
+    }
+
+    getGeometryBounds() {
+      if (this.geometryBoundsDirtyFlag) {
+        this.geometryBoundsDirtyFlag = false;
+        this.geometryBounds = TextWrapper.getGeometryBounds(this);
+      }
+      return this.geometryBounds;
+    }
+
+    getRenderBounds() {
+      if (this.renderBoundsDirtyFlag) {
+        const { x, y } = this;
+        this.renderBoundsDirtyFlag = false;
+        this.renderBounds = new AABB(x, y, 0, 0);
+      }
+      return this.renderBounds;
+    }
+
+    get x() {
+      return this.#x;
+    }
+    set x(value: number) {
+      if (this.#x !== value) {
+        this.#x = value;
+        this.renderDirtyFlag = true;
+        this.geometryBoundsDirtyFlag = true;
+        this.renderBoundsDirtyFlag = true;
+        this.boundsDirtyFlag = true;
+      }
+    }
+
+    get y() {
+      return this.#y;
+    }
+    set y(value: number) {
+      if (this.#y !== value) {
+        this.#y = value;
+        this.renderDirtyFlag = true;
+        this.geometryBoundsDirtyFlag = true;
+        this.renderBoundsDirtyFlag = true;
+        this.boundsDirtyFlag = true;
+      }
+    }
+
     get fontFamily() {
       return this.#fontFamily;
     }
     set fontFamily(value: string) {
       if (this.#fontFamily !== value) {
         this.#fontFamily = value;
+        this.renderDirtyFlag = true;
+        this.geometryBoundsDirtyFlag = true;
+        this.renderBoundsDirtyFlag = true;
+        this.boundsDirtyFlag = true;
       }
     }
 
@@ -173,6 +248,10 @@ export function TextWrapper<TBase extends GConstructor>(Base: TBase) {
     set fontSize(value: number | string) {
       if (this.#fontSize !== value) {
         this.#fontSize = value;
+        this.renderDirtyFlag = true;
+        this.geometryBoundsDirtyFlag = true;
+        this.renderBoundsDirtyFlag = true;
+        this.boundsDirtyFlag = true;
       }
     }
 
@@ -182,6 +261,10 @@ export function TextWrapper<TBase extends GConstructor>(Base: TBase) {
     set fontWeight(value: number) {
       if (this.#fontWeight !== value) {
         this.#fontWeight = value;
+        this.renderDirtyFlag = true;
+        this.geometryBoundsDirtyFlag = true;
+        this.renderBoundsDirtyFlag = true;
+        this.boundsDirtyFlag = true;
       }
     }
 
@@ -191,6 +274,10 @@ export function TextWrapper<TBase extends GConstructor>(Base: TBase) {
     set fontStyle(value: string) {
       if (this.#fontStyle !== value) {
         this.#fontStyle = value;
+        this.renderDirtyFlag = true;
+        this.geometryBoundsDirtyFlag = true;
+        this.renderBoundsDirtyFlag = true;
+        this.boundsDirtyFlag = true;
       }
     }
 
@@ -200,6 +287,10 @@ export function TextWrapper<TBase extends GConstructor>(Base: TBase) {
     set fontVariant(value: string) {
       if (this.#fontVariant !== value) {
         this.#fontVariant = value;
+        this.renderDirtyFlag = true;
+        this.geometryBoundsDirtyFlag = true;
+        this.renderBoundsDirtyFlag = true;
+        this.boundsDirtyFlag = true;
       }
     }
 
@@ -209,6 +300,10 @@ export function TextWrapper<TBase extends GConstructor>(Base: TBase) {
     set letterSpacing(value: number) {
       if (this.#letterSpacing !== value) {
         this.#letterSpacing = value;
+        this.renderDirtyFlag = true;
+        this.geometryBoundsDirtyFlag = true;
+        this.renderBoundsDirtyFlag = true;
+        this.boundsDirtyFlag = true;
       }
     }
 
@@ -218,6 +313,10 @@ export function TextWrapper<TBase extends GConstructor>(Base: TBase) {
     set whiteSpace(value: TextStyleWhiteSpace) {
       if (this.#whiteSpace !== value) {
         this.#whiteSpace = value;
+        this.renderDirtyFlag = true;
+        this.geometryBoundsDirtyFlag = true;
+        this.renderBoundsDirtyFlag = true;
+        this.boundsDirtyFlag = true;
       }
     }
 
@@ -227,6 +326,10 @@ export function TextWrapper<TBase extends GConstructor>(Base: TBase) {
     set wordWrap(value: boolean) {
       if (this.#wordWrap !== value) {
         this.#wordWrap = value;
+        this.renderDirtyFlag = true;
+        this.geometryBoundsDirtyFlag = true;
+        this.renderBoundsDirtyFlag = true;
+        this.boundsDirtyFlag = true;
       }
     }
 
@@ -236,6 +339,10 @@ export function TextWrapper<TBase extends GConstructor>(Base: TBase) {
     set wordWrapWidth(value: number) {
       if (this.#wordWrapWidth !== value) {
         this.#wordWrapWidth = value;
+        this.renderDirtyFlag = true;
+        this.geometryBoundsDirtyFlag = true;
+        this.renderBoundsDirtyFlag = true;
+        this.boundsDirtyFlag = true;
       }
     }
 
@@ -245,6 +352,10 @@ export function TextWrapper<TBase extends GConstructor>(Base: TBase) {
     set textOverflow(value: 'ellipsis' | 'clip' | string) {
       if (this.#textOverflow !== value) {
         this.#textOverflow = value;
+        this.renderDirtyFlag = true;
+        this.geometryBoundsDirtyFlag = true;
+        this.renderBoundsDirtyFlag = true;
+        this.boundsDirtyFlag = true;
       }
     }
 
@@ -254,6 +365,10 @@ export function TextWrapper<TBase extends GConstructor>(Base: TBase) {
     set maxLines(value: number) {
       if (this.#maxLines !== value) {
         this.#maxLines = value;
+        this.renderDirtyFlag = true;
+        this.geometryBoundsDirtyFlag = true;
+        this.renderBoundsDirtyFlag = true;
+        this.boundsDirtyFlag = true;
       }
     }
 
@@ -263,6 +378,10 @@ export function TextWrapper<TBase extends GConstructor>(Base: TBase) {
     set lineHeight(value: number) {
       if (this.#lineHeight !== value) {
         this.#lineHeight = value;
+        this.renderDirtyFlag = true;
+        this.geometryBoundsDirtyFlag = true;
+        this.renderBoundsDirtyFlag = true;
+        this.boundsDirtyFlag = true;
       }
     }
 
@@ -272,6 +391,10 @@ export function TextWrapper<TBase extends GConstructor>(Base: TBase) {
     set leading(value: number) {
       if (this.#leading !== value) {
         this.#leading = value;
+        this.renderDirtyFlag = true;
+        this.geometryBoundsDirtyFlag = true;
+        this.renderBoundsDirtyFlag = true;
+        this.boundsDirtyFlag = true;
       }
     }
 
@@ -281,6 +404,10 @@ export function TextWrapper<TBase extends GConstructor>(Base: TBase) {
     set textAlign(value: CanvasTextAlign) {
       if (this.#textAlign !== value) {
         this.#textAlign = value;
+        this.renderDirtyFlag = true;
+        this.geometryBoundsDirtyFlag = true;
+        this.renderBoundsDirtyFlag = true;
+        this.boundsDirtyFlag = true;
       }
     }
 
@@ -290,6 +417,10 @@ export function TextWrapper<TBase extends GConstructor>(Base: TBase) {
     set textBaseline(value: CanvasTextBaseline) {
       if (this.#textBaseline !== value) {
         this.#textBaseline = value;
+        this.renderDirtyFlag = true;
+        this.geometryBoundsDirtyFlag = true;
+        this.renderBoundsDirtyFlag = true;
+        this.boundsDirtyFlag = true;
       }
     }
   };

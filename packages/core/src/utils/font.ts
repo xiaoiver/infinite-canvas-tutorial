@@ -69,13 +69,22 @@ const regexCannotEnd = new RegExp(
   `${regexCannotEndZhCn.source}|${regexCannotEndZhTw.source}|${regexCannotEndJaJp.source}|${regexCannotEndKoKr.source}`,
 );
 
+const intlGraphemeSegmenter = (s: string) => {
+  if (typeof Intl?.Segmenter === 'function') {
+    const segmenter = new Intl.Segmenter();
+    return [...segmenter.segment(s)].map((x) => x.segment);
+  }
+  return [...s];
+};
+
 export class CanvasTextMetrics {
   #fonts: Record<string, FontProperties>;
   #canvas: OffscreenCanvas | HTMLCanvasElement;
   #context: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
+  #graphemeSegmenter: (s: string) => string[];
   #bidi = bidiFactory();
 
-  constructor() {
+  constructor(graphemeSegmenter: (s: string) => string[]) {
     const canvas = createOffscreenCanvas();
     if (canvas) {
       this.#canvas = canvas;
@@ -83,6 +92,8 @@ export class CanvasTextMetrics {
         | OffscreenCanvasRenderingContext2D
         | CanvasRenderingContext2D;
     }
+
+    this.#graphemeSegmenter = graphemeSegmenter ?? intlGraphemeSegmenter;
   }
 
   measureText(text: string, style: Partial<TextAttributes>): TextMetrics {
@@ -95,6 +106,9 @@ export class CanvasTextMetrics {
       leading,
     } = style;
     let { lineHeight } = style;
+
+    // TODO: use cache based on stylekey
+
     const font = fontStringFromTextStyle(style);
     const fontProperties = this.measureFont(font);
     // fallback in case UA disallow canvas data extraction
@@ -110,10 +124,7 @@ export class CanvasTextMetrics {
     const lineWidths = new Array<number>(lines.length);
     let maxLineWidth = 0;
     for (let i = 0; i < lines.length; i++) {
-      // char width + letterSpacing
-      const lineWidth =
-        this.#context.measureText(lines[i]).width +
-        (lines[i].length - 1) * letterSpacing;
+      const lineWidth = this.measureTextInternal(lines[i], letterSpacing);
       lineWidths[i] = lineWidth;
       maxLineWidth = Math.max(maxLineWidth, lineWidth);
     }
@@ -474,6 +485,32 @@ export class CanvasTextMetrics {
       cache[key] = width;
     }
     return width;
+  }
+
+  private measureTextInternal(text: string, letterSpacing: number) {
+    this.#context.letterSpacing = `${letterSpacing}px`;
+
+    const metrics = this.#context.measureText(text);
+    let metricWidth = metrics.width;
+    const actualBoundingBoxLeft = -metrics.actualBoundingBoxLeft;
+    const actualBoundingBoxRight = metrics.actualBoundingBoxRight;
+    let boundsWidth = actualBoundingBoxRight - actualBoundingBoxLeft;
+
+    if (metricWidth > 0) {
+      // if (useExperimentalLetterSpacing) {
+      metricWidth -= letterSpacing;
+      boundsWidth -= letterSpacing;
+      // } else {
+      //   const val =
+      //     (this.#graphemeSegmenter(text).length - 1) *
+      //     letterSpacing;
+
+      //   metricWidth += val;
+      //   boundsWidth += val;
+      // }
+    }
+
+    return Math.max(metricWidth, boundsWidth);
   }
 }
 

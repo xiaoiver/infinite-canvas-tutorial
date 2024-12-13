@@ -5,6 +5,8 @@ publish: false
 
 # 课程 21 - Flex layout
 
+## Yoga
+
 支持 [Yoga] 排版引擎，使用 yoga-layout-prebuilt
 
 参考以下实现：
@@ -16,6 +18,11 @@ publish: false
 
 [troika-flex-layout]
 
+## taffy
+
+[taffy]
+
 [Yoga]: https://yogalayout.com/
+[taffy]: https://github.com/DioxusLabs/taffy
 [Simplifying WebGL: Building an Effective Layout Engine]: https://blog.certa.dev/building-a-layout-engine-for-webgl
 [troika-flex-layout]: https://github.com/protectwise/troika/blob/main/packages/troika-flex-layout/

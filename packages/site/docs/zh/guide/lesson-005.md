@@ -491,6 +491,7 @@ float edgeFactor() {
 -   [WebGL 绘制网格]
 -   [如何使用 WebGL 绘制平面网格线]
 -   [How to Code a Subtle Shader Background Effect with React Three Fiber]
+-   [Love, derivatives and loops]
 
 [thetamath]: http://thetamath.com/app/y=x%5E(3)-x
 [GridHelper - Three.js]: https://threejs.org/docs/#api/en/helpers/GridHelper
@@ -507,3 +508,4 @@ float edgeFactor() {
 [Rasterization]: https://www.scratchapixel.com/lessons/3d-basic-rendering/rasterization-practical-implementation/rasterization-stage.html
 [Issue with Barycentric coordinates when using shared vertices]: https://stackoverflow.com/questions/24839857/wireframe-shader-issue-with-barycentric-coordinates-when-using-shared-vertices
 [How to Code a Subtle Shader Background Effect with React Three Fiber]: https://tympanus.net/codrops/2024/10/31/how-to-code-a-subtle-shader-background-effect-with-react-three-fiber/
+[Love, derivatives and loops]: https://medium.com/@akella/love-derivatives-and-loops-f4a0da6e2458

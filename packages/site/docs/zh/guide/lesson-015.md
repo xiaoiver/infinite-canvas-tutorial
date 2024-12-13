@@ -11,7 +11,7 @@ publish: false
 
 -   什么是 TextMetrics，如何在服务端和浏览器端获取
 -   什么是 Shaping
--   分段与自动换行、BiDi 和 cluster
+-   分段与自动换行、BiDi 和复合字符
 -   如何生成 SDF atlas 并使用它绘制
 -   如何处理 emoji
 
@@ -154,11 +154,9 @@ measureText(
 
 ### font-kerning
 
-[font-kerning]
+如果我们想获取 [font-kerning]，可以参考 <https://github.com/mapbox/tiny-sdf/issues/6#issuecomment-1532395796> 给出的方式：
 
 ![font-kerning](https://developer.mozilla.org/en-US/docs/Web/CSS/font-kerning/font-kerning.png)
-
-<https://github.com/mapbox/tiny-sdf/issues/6#issuecomment-1532395796>
 
 ```ts
 const unkernedWidth =
@@ -223,31 +221,31 @@ const breakingSpaces: number[] = [
 
 ### BiDi
 
-::: info Bidi
-support for handling text containing a mixture of left to right (English) and right to left (Arabic or Hebrew) data.
-:::
-
-[Improving Arabic and Hebrew text in map labels]
-
-[What HarfBuzz doesn't do]
+HarfBuzz 也不会处理 [BiDi]，详见 [What HarfBuzz doesn't do]：
 
 > HarfBuzz won't help you with bidirectionality.
 
-[Text layout is a loose hierarchy of segmentation]
+::: info BiDi
+support for handling text containing a mixture of left to right (English) and right to left (Arabic or Hebrew) data.
+:::
 
-> At this point, we have a run of constant style, font, direction, and script. It is ready for shaping. Shaping is a complicated process that converts a string (sequence of Unicode code points) into positioned glyphs. For the purpose of this blog post, we can generally treat it as a black box. Fortunately, a very high quality open source implementation exists, in the form of [Harfbuzz].
+在浏览器端我们可以使用 [bidi-js]。或者像 [mapbox-gl-rtl-text] 自行实现，详见：[Improving Arabic and Hebrew text in map labels]。
 
-[bidi-js]
+### 复合字符 {#cluster}
 
-[mapbox-gl-rtl-text]
-
-### cluster
-
-并不是所有字符都是由单一字符组成，[clusters] 是 HarfBuzz 中用于处理复合字符的术语。
+并不是所有字符都是由单一字符组成，[clusters] 是 HarfBuzz 中用于处理复合字符的术语
 
 > In text shaping, a cluster is a sequence of characters that needs to be treated as a single, indivisible unit.
 
-[grapheme-splitter]
+例如 emoji 就是，如果我们按照单一字符处理（例如使用 `split('')`），无论是度量还是稍后的绘制都会出现错误截断的情况：
+
+```ts
+'🌹'.length; // 2
+'🌹'[0]; // '\uD83C'
+'🌹'[1]; //'\uDF39'
+```
+
+在浏览器端我们可以使用 [grapheme-splitter] 这样的库，用法如下：
 
 ```ts
 var splitter = new GraphemeSplitter();
@@ -257,11 +255,36 @@ splitter.splitGraphemes('abcd'); // returns ["a", "b", "c", "d"]
 splitter.splitGraphemes('🌷🎁💩😜👍🏳️‍🌈'); // returns ["🌷","🎁","💩","😜","👍","🏳️‍🌈"]
 ```
 
+但它的大小（压缩后仍有 22kB）不可忽视，详见 [BundlePhobia grapheme-splitter]。因此在 Pixi.js 中默认使用浏览器自带的 [Intl.Segmenter] 来处理复合字符，该特性大部分现代浏览器都已经支持：
+
+```ts
+// @see https://github.com/pixijs/pixijs/blob/dev/src/scene/text/canvas/CanvasTextMetrics.ts#L121C19-L131C10
+const graphemeSegmenter: (s: string) => string[] = (() => {
+    if (typeof (Intl as IIntl)?.Segmenter === 'function') {
+        const segmenter = new (Intl as IIntl).Segmenter();
+
+        return (s: string) => [...segmenter.segment(s)].map((x) => x.segment);
+    }
+
+    return (s: string) => [...s];
+})();
+```
+
 ### text-align
 
-[text-align]
+实现[text-align]
 
 ![text-align](/text-align.png)
+
+```ts
+let offsetX = 0;
+// handle horizontal text align
+if (textAlign === 'center') {
+    offsetX -= width / 2;
+} else if (textAlign === 'right' || textAlign === 'end') {
+    offsetX -= width;
+}
+```
 
 ## 绘制 {#rendering}
 
@@ -364,6 +387,12 @@ export type PositionedGlyph = {
 };
 ```
 
+## 装饰线 {#text-decoration}
+
+[text-decoration]
+
+## 阴影 {#dropshadow}
+
 ## 扩展阅读 {#extended-reading}
 
 -   [State of Text Rendering 2024]
@@ -402,6 +431,7 @@ export type PositionedGlyph = {
 [Drawing Text with Signed Distance Fields in Mapbox GL]: https://blog.mapbox.com/drawing-text-with-signed-distance-fields-in-mapbox-gl-b0933af6f817
 [font hinting]: http://en.wikipedia.org/wiki/Font_hinting
 [potpack]: https://github.com/mapbox/potpack
+[BiDi]: https://en.wikipedia.org/wiki/Bidirectional_text
 [bidi-js]: https://github.com/lojjic/bidi-js
 [mapbox-gl-rtl-text]: https://github.com/mapbox/mapbox-gl-rtl-text
 [Approaches to robust realtime text rendering in threejs (and WebGL in general)]: https://github.com/harfbuzz/harfbuzzjs/discussions/30
@@ -418,7 +448,10 @@ export type PositionedGlyph = {
 [PIXI.TextMetrics]: https://api.pixijs.io/@pixi/text/PIXI/TextMetrics.html
 [letterSpacing]: https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/letterSpacing
 [grapheme-splitter]: https://github.com/orling/grapheme-splitter
+[BundlePhobia grapheme-splitter]: https://bundlephobia.com/package/grapheme-splitter@1.0.4
 [CanvasKit Text Shaping]: https://skia.org/docs/user/modules/quickstart/#text-shaping
 [pixi-cjk]: https://github.com/huang-yuwei/pixi-cjk
 [Line breaking rules in East Asian languages]: https://en.wikipedia.org/wiki/Line_breaking_rules_in_East_Asian_languages
 [clusters]: https://harfbuzz.github.io/clusters.html
+[Intl.Segmenter]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Intl/Segmenter
+[text-decoration]: https://developer.mozilla.org/en-US/docs/Web/CSS/text-decoration

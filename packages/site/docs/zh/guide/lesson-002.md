@@ -518,6 +518,8 @@ float alpha = clamp(-distance / fwidth(-distance), 0.0, 1.0);
 })();
 ```
 
+详见：[AAA - Analytical Anti-Aliasing]
+
 ## 脏检查 {#dirty-flag}
 
 之前我们把填充色、圆心等样式属性都写入了顶点数组中，因此当我们想修改颜色时，也需要重新修改 Buffer 中的数据。对于下面例子中的连续修改场景，如果每次修改属性都立即调用底层 API，将造成大量不必要的开销。
@@ -638,6 +640,7 @@ circle = (() => {
 -   [distfunctions]
 -   [Leveraging Rust and the GPU to render user interfaces at 120 FPS]
 -   [Sub-pixel Distance Transform - High quality font rendering for WebGPU]
+-   [AAA - Analytical Anti-Aliasing]
 
 [Node API appendChild]: https://developer.mozilla.org/en-US/docs/Web/API/Node/appendChild
 [GPURenderPassEncoder]: https://developer.mozilla.org/en-US/docs/Web/API/GPURenderPassEncoder
@@ -661,3 +664,4 @@ circle = (() => {
 [Sub-pixel Distance Transform - High quality font rendering for WebGPU]: https://acko.net/blog/subpixel-distance-transform/
 [A trip through the Graphics Pipeline 2011, part 8]: https://fgiesen.wordpress.com/2011/07/10/a-trip-through-the-graphics-pipeline-2011-part-8/
 [Discarding fragments]: https://learnopengl.com/Advanced-OpenGL/Blending
+[AAA - Analytical Anti-Aliasing]: https://blog.frost.kiwi/analytical-anti-aliasing
