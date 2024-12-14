@@ -1,3 +1,4 @@
+import { canvasTextMetrics, TextMetrics } from '../utils';
 import { AABB } from './AABB';
 import { GConstructor } from './mixins';
 import { Shape, ShapeAttributes } from './Shape';
@@ -16,6 +17,11 @@ export interface TextAttributes extends ShapeAttributes {
    * @see https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/fillText#y
    */
   y: number;
+
+  /**
+   * The text content.
+   */
+  content: string;
 
   /**
    * Specifies a prioritized list of one or more font family names and/or generic family names for the selected element.
@@ -117,8 +123,10 @@ export class Text extends TextWrapper(Shape) {}
 export function TextWrapper<TBase extends GConstructor>(Base: TBase) {
   // @ts-expect-error - Mixin class
   return class TextWrapper extends Base implements TextAttributes {
+    #metrics: TextMetrics;
     #x: number;
     #y: number;
+    #content: string;
     #fontFamily: string;
     #fontSize: number | string;
     #fontWeight: number;
@@ -135,9 +143,40 @@ export function TextWrapper<TBase extends GConstructor>(Base: TBase) {
     #textAlign: CanvasTextAlign;
     #textBaseline: CanvasTextBaseline;
 
-    static getGeometryBounds(attributes: Partial<TextAttributes>) {
-      const { x, y } = attributes;
-      return new AABB(x, y, 0, 0);
+    static getGeometryBounds(
+      attributes: Partial<TextAttributes> & { metrics: TextMetrics },
+    ) {
+      const { x, y, textAlign, metrics } = attributes;
+      const { width, height } = metrics;
+
+      const hwidth = width / 2;
+      // const hheight = height / 2;
+
+      // default 'left'
+      let lineXOffset = x;
+      if (textAlign === 'center') {
+        lineXOffset += -hwidth;
+      } else if (textAlign === 'right' || textAlign === 'end') {
+        lineXOffset += -hwidth * 2;
+      }
+
+      const lineYOffset = y;
+      // if (textBaseline === 'middle') {
+      //   lineYOffset += hheight;
+      // } else if (textBaseline === 'top' || textBaseline === 'hanging') {
+      //   lineYOffset += hheight * 2;
+      // } else if (textBaseline === 'alphabetic') {
+      //   // alphabetic has been removed in the latest version, will be treated as bottom
+      // } else if (textBaseline === 'bottom' || textBaseline === 'ideographic') {
+      //   lineYOffset += 0;
+      // }
+
+      return new AABB(
+        lineXOffset,
+        lineYOffset,
+        lineXOffset + width,
+        lineYOffset + height,
+      );
     }
 
     constructor(attributes: Partial<TextAttributes> = {}) {
@@ -146,6 +185,7 @@ export function TextWrapper<TBase extends GConstructor>(Base: TBase) {
       const {
         x,
         y,
+        content,
         fontFamily,
         fontVariant,
         fontSize,
@@ -165,6 +205,7 @@ export function TextWrapper<TBase extends GConstructor>(Base: TBase) {
 
       this.#x = x ?? 0;
       this.#y = y ?? 0;
+      this.#content = content ?? '';
       this.fontFamily = fontFamily ?? 'sans-serif';
       this.fontSize = fontSize ?? 12;
       this.fontWeight = fontWeight ?? 400;
@@ -175,7 +216,7 @@ export function TextWrapper<TBase extends GConstructor>(Base: TBase) {
       this.wordWrap = wordWrap ?? false;
       this.wordWrapWidth = wordWrapWidth ?? 0;
       this.textOverflow = textOverflow ?? 'ellipsis';
-      this.textAlign = textAlign ?? 'left';
+      this.textAlign = textAlign ?? 'start';
       this.textBaseline = textBaseline ?? 'alphabetic';
       this.maxLines = maxLines ?? Infinity;
       this.lineHeight = lineHeight ?? 0;
@@ -203,6 +244,14 @@ export function TextWrapper<TBase extends GConstructor>(Base: TBase) {
       return this.renderBounds;
     }
 
+    get metrics() {
+      if (this.renderDirtyFlag) {
+        this.#metrics = canvasTextMetrics.measureText(this.content, this);
+      }
+
+      return this.#metrics;
+    }
+
     get x() {
       return this.#x;
     }
@@ -222,6 +271,19 @@ export function TextWrapper<TBase extends GConstructor>(Base: TBase) {
     set y(value: number) {
       if (this.#y !== value) {
         this.#y = value;
+        this.renderDirtyFlag = true;
+        this.geometryBoundsDirtyFlag = true;
+        this.renderBoundsDirtyFlag = true;
+        this.boundsDirtyFlag = true;
+      }
+    }
+
+    get content() {
+      return this.#content;
+    }
+    set content(value: string) {
+      if (this.#content !== value) {
+        this.#content = value;
         this.renderDirtyFlag = true;
         this.geometryBoundsDirtyFlag = true;
         this.renderBoundsDirtyFlag = true;

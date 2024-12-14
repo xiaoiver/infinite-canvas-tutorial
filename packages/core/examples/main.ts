@@ -10,6 +10,7 @@ import {
   RoughPolyline,
   RoughPath,
   Path,
+  Text,
   fromSVGElement,
   deserializeNode,
   serializeNode,
@@ -34,80 +35,33 @@ const canvas = await new Canvas({
   // shaderCompilerPath: '/glsl_wgsl_compiler_bg.wasm',
 }).initialized;
 
-// const circle = new Circle({
-//   cx: 100,
-//   cy: 100,
-//   r: 50,
-//   fill: 'red',
-//   stroke: 'black',
-//   strokeWidth: 20,
-//   sizeAttenuation: true,
-// });
-// canvas.appendChild(circle);
-
-// const shadowedRect = new Rect({
-//   x: 200,
-//   y: 200,
-//   width: 100,
-//   height: 100,
-//   dropShadowBlurRadius: 10,
-//   dropShadowColor: 'black',
-//   sizeAttenuation: true,
-// });
-// canvas.appendChild(shadowedRect);
-
-const path = new Path({
-  d: 'M 0 0 L 100 0 L 100 100 L 0 100 Z',
-  fill: 'black',
-  sizeAttenuation: true,
+const circle = new Circle({
+  cx: 50,
+  cy: 50,
+  r: 10,
+  fill: '#F67676',
 });
-canvas.appendChild(path);
+canvas.appendChild(circle);
+
+const text = new Text({
+  x: 50,
+  y: 50,
+  content: 'Hello, world!\n你好世界',
+  fontSize: 20,
+  fill: '#F67676',
+});
+canvas.appendChild(text);
+
+const bounds = text.getGeometryBounds();
+console.log(bounds);
+
 canvas.render();
 
-path.d = 'M 100 0 L 200 0 L 200 100 L 100 100 Z';
-path.fill = 'red';
-canvas.render();
-
-// const polyline = new Polyline({
-//   points: [
-//     [0, 0],
-//     [100, 100],
-//     [200, 0],
-//   ],
-//   stroke: 'black',
-//   strokeWidth: 20,
-//   // sizeAttenuation: true,
-// });
-// canvas.appendChild(polyline);
-// canvas.render();
-
-// polyline.points = [
-//   [100, 0],
-//   [200, 100],
-//   [300, 0],
-// ];
-// canvas.render();
-
-// const polyline2 = new Polyline({
-//   points: [
-//     [0, 0],
-//     [100, 100],
-//     [200, 0],
-//   ],
-//   stroke: 'black',
-//   strokeWidth: 20,
-//   sizeAttenuation: true,
-// });
-// canvas.appendChild(polyline2);
-// polyline2.position.x = 200;
-
-// console.log(toSVGElement(serializeNode(rect1)));
-
-// const animate = () => {
-//   canvas.render();
-//   requestAnimationFrame(animate);
-// };
-// animate();
+const animate = () => {
+  canvas.render();
+  requestAnimationFrame(animate);
+};
+animate();
 
 window.addEventListener('resize', () => {
   resize(window.innerWidth, window.innerHeight);

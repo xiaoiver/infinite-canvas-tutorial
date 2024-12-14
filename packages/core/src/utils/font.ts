@@ -9,7 +9,7 @@ type FontProperties = {
   fontSize: number;
 };
 type CharacterWidthCache = Record<string, number>;
-type TextMetrics = {
+export type TextMetrics = {
   font: string;
   width: number;
   height: number;
@@ -78,13 +78,13 @@ const intlGraphemeSegmenter = (s: string) => {
 };
 
 export class CanvasTextMetrics {
-  #fonts: Record<string, FontProperties>;
+  #fonts: Record<string, FontProperties> = {};
   #canvas: OffscreenCanvas | HTMLCanvasElement;
   #context: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
   #graphemeSegmenter: (s: string) => string[];
   #bidi = bidiFactory();
 
-  constructor(graphemeSegmenter: (s: string) => string[]) {
+  constructor(graphemeSegmenter?: (s: string) => string[]) {
     const canvas = createOffscreenCanvas();
     if (canvas) {
       this.#canvas = canvas;
@@ -94,6 +94,10 @@ export class CanvasTextMetrics {
     }
 
     this.#graphemeSegmenter = graphemeSegmenter ?? intlGraphemeSegmenter;
+  }
+
+  getCanvas() {
+    return this.#canvas;
   }
 
   measureText(text: string, style: Partial<TextAttributes>): TextMetrics {
@@ -563,3 +567,5 @@ export function fontStringFromTextStyle(
     style.fontWeight
   } ${fontSizeString} ${(fontFamilies as string[]).join(',')}`;
 }
+
+export const canvasTextMetrics = new CanvasTextMetrics();

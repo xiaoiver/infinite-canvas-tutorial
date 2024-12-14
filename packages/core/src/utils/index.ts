@@ -12,3 +12,4 @@ export * from './curve';
 export * from './tessy';
 export * from './rough';
 export * from './font';
+export * from './glyph';

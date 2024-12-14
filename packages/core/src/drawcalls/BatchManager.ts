@@ -11,10 +11,12 @@ import {
   RoughPath,
   RoughPolyline,
   RoughRect,
+  Text,
   type Shape,
 } from '../shapes';
 import { RenderCache } from '../utils/render-cache';
 import { Mesh } from './Mesh';
+import { SDFText } from './SDFText';
 
 /**
  * Since a shape may have multiple drawcalls, we need to cache them and maintain an 1-to-many relationship.
@@ -54,6 +56,7 @@ SHAPE_DRAWCALL_CTORS.set(RoughPath, [
   SmoothPolyline, // fill
   SmoothPolyline, // stroke
 ]);
+SHAPE_DRAWCALL_CTORS.set(Text, [SDFText]);
 
 export class BatchManager {
   /**
