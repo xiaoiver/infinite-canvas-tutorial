@@ -44,6 +44,7 @@ call(() => {
         RoughRect,
         RoughPolyline,
         RoughPath,
+        Text,
         deserializeNode,
         fromSVGElement,
         TesselationMethod,
@@ -204,6 +205,14 @@ call(() => {
                 canvas.appendChild(group);
             }
         });
+
+        const text = new Text({
+            x: 300,
+            y: 500,
+            content: 'Hello, world!',
+            fontSize: 20,
+        });
+        canvas.appendChild(text);
     });
 
     $icCanvas.addEventListener('ic-frame', (e) => {

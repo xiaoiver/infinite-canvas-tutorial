@@ -52,7 +52,7 @@ export class TinySDF {
 
     const ctx = $offscreenCanvas.getContext('2d', {
       willReadFrequently: true,
-    });
+    }) as CanvasRenderingContext2D;
     this.ctx = ctx;
     ctx.font = `${fontStyle} ${fontWeight} ${fontSize}px ${fontFamily}`;
 
