@@ -300,7 +300,18 @@ if (textAlign === 'center') {
 
 ![glyph atlas](https://miro.medium.com/v2/resize:fit:1400/format:webp/0*POsS7DlWOnqaJXI_.jpg)
 
-但这种非矢量方式的问题是放大后字符会很模糊。目前主流基于 SDF 方案的思路来自 Valve 的论文，在缩放后依然保持清晰，但存在的问题是边缘处不够锐利，不过在可视化场景下容忍度较高，并且也可以通过 msdf 等方法进行一些优化。另外 SDF 也无法支持 [font hinting]。先来看单个字符的 SDF 生成情况。
+但这种非矢量方式的问题是放大后字符会很模糊，下图来自 [Distance field fonts]
+
+![distance field font remains crisp](https://libgdx.com/assets/wiki/images/distance-field-fonts.png)
+
+目前主流基于 SDF 方案的思路来自 Valve 的论文 [Improved Alpha-Tested Magnification for Vector Textures and Special Effects]，该方案优点包括：
+
+-   在缩放后依然保持清晰
+-   很容易实现反走样、Halo、阴影等特性
+
+但存在的问题是边缘处不够锐利，不过在可视化场景下容忍度较高，并且也可以通过 msdf 等方法进行一些优化。另外 SDF 也无法支持 [font hinting]。
+
+先来看单个字符的 SDF 生成情况。
 
 ### SDF 生成 {#generate-sdf}
 
@@ -316,36 +327,150 @@ if (textAlign === 'center') {
 | Soft effects:  | -                                                                                                                  | -                                                                                                                  | Yes                                                                                                          | -                                                                                                             | -                                                                                                             | Yes                                                                                                            |
 | Hard effects:  | -                                                                                                                  | -                                                                                                                  | -                                                                                                            | Yes                                                                                                           | Yes                                                                                                           | Yes                                                                                                            |
 
-如果允许离线生成，可以使用 [msdf-atlas-gen] 或者 [node-fontnik]（mapbox 使用它在服务端生成 protocol buffer 编码后的 SDF）。但考虑到 CJK 字符，在运行时生成可以用 [tinysdf](https://github.com/mapbox/tiny-sdf) ，使用方式如下，将字体相关的属性传入，得到。
+如果允许离线生成，可以使用 [msdf-atlas-gen] 或者 [node-fontnik]（mapbox 使用它在服务端生成 protocol buffer 编码后的 SDF）。但考虑到 CJK 字符，在运行时生成可以用 [tiny-sdf] ，使用方式如下，将字体相关的属性传入后得到像素数据。
 
 ```ts
 const tinySdf = new TinySDF({
     fontSize: 24,
     fontFamily: 'sans-serif',
 });
-const glyph = tinySdf.draw('泽'); //
+const glyph = tinySdf.draw('泽'); // 包含像素数据、宽高、字符 metrics 等
 ```
 
-它使用浏览器 Canvas2D API 获取像素数据后生成，
+下面我们简单分析一下它的生成原理。首先它使用浏览器 Canvas2D API 获取像素数据，但在写入时留有 buffer 的余量，这是考虑到 Halo 的实现。
 
-### Glyph atlas
+```ts
+const size = (this.size = fontSize + buffer * 4);
+```
 
-单个 SDF 需要合并成一个大图后续以纹理形式传入，合并算法使用 [potpack] 尽可能得到近似方形的结果。
+最暴力的遍历方法 $O(n^2)$ 肯定是不能接受的，一张 300K 的图片就意味着需要 900 亿次对距离的运算，我们需要高效的 $O(n)$ 的算法才能在运行时完成。
 
-![sdf texture](https://miro.medium.com/v2/resize:fit:1024/format:webp/0*YcJm5NJXJCIO20ds.png)
+对于二维网格，距离场中的“距离”为欧式距离，因此 EDT（Euclidean Distance Transform）定义如下。其中 $(x',y')$ 为构成形状的点集
+，而 $f(x, y)$ 为 sampled function。在网格中如果 $(x,y) \in P$ 则 $f(x, y) = 0$，否则为 $\infty$：
 
-需要注意，这个 Atlas 包含了场景中使用的所有字体下的所有文本，因此当 `fontFamily/Weight` 改变、旧文本变更、新文本加入时都需要重新生成，但字号改变不应该重新生成。因此为了避免重新生成过于频繁，对于每一种字体，默认为 32-128 的常用字符生成。该纹理只需要使用一个通道即可，使用 `gl.ALPHA` 格式。在 Shader 中从 alpha 通道取有向距离：
+$$ \mathcal{D}_f(x,y) = \min_{x',y'} \left( (x - x')^2 + (y - y')^2 + f(x', y') \right) $$
+
+其中第一部分与 $y'$ 无关，可以展开成两趟一维的 DT 计算，其中第一趟固定 $x'$：
+
+$$
+\begin{align*}
+\mathcal{D}_f(x,y) &= \min_{x'} \left( (x - x')^2 + \min_{y'} \left( (y - y')^2 + f(x', y') \right) \right), \\
+&= \min_{x'} \left( (x - x')^2 + \mathcal{D}_{f_{|x'}}(y) \right),
+\end{align*}
+$$
+
+因此我们只需要考虑一维的距离平方：
+
+$$ \mathcal{D}_f(p) = \min_{q \in \mathcal{G}} \left( (p - q)^2 + f(q) \right) $$
+
+如果从几何角度来理解上述一维距离平方场计算公式，其实是一组抛物线，每个抛物线最低点为 $(q, f(q))$，下图来自原论文 [Distance Transforms of Sampled Functions]：
+
+![distance transform of sampled functions](/dt-sampled-functions.png)
+
+因此这组抛物线的下界，即下图中的实线部分就代表了 EDT 的计算结果：
+
+![EDT](https://pica.zhimg.com/v2-2dd0b94f2de83162f314300b933a3708_1440w.jpg)
+
+为了找出这个下界，我们需要计算任意两个抛物线的交点横坐标，例如对于 $(x=r, x=q)$ 这两根抛物线，交点横坐标 $s$ 为：
+
+$$ s = \frac{(f(r) + r^2) - (f(q) + q^2)}{2r - 2q} $$
+
+现在我们有了计算 EDT 1D 的预备知识，按照从左往右的顺序，将下界最右侧的抛物线序号保存在 $v[]$ 中。下界中每一段抛物线的边界保存在 $z[]$ 中。这样计算下一段抛物线 $x=q$ 时，只需要与 $v[k]$ 抛物线求交，交点横坐标与 $z[k]$ 的位置关系只有如下两种：
+
+![The two possible cases considered by the algorithm when adding the parabola from q to the
+lower envelope constructed so far.](/dt-2-possible-cases.png)
+
+完整算法如下，[tiny-sdf] 实现了上述算法（EDT 1D），连变量名都是一致的：
+
+![One-dimensional distance transform under the squared Euclidean distance](/dt-euclidean-distance.png)
+
+对于 2D EDT 的计算正如我们本节开头介绍的，分解成两趟 1D 距离平方，最后开方得到结果。这里也能直接看出对于 `height * width` 尺寸的网格，复杂度为 $O(n)$：
+
+```ts
+// @see https://github.com/mapbox/tiny-sdf/blob/main/index.js#L110
+function edt(data, width, height, f, d, v, z) {
+    // Pass 1
+    for (var x = 0; x < width; x++) {
+        for (var y = 0; y < height; y++) {
+            f[y] = data[y * width + x];
+        }
+        // 固定 x 计算 1D 距离平方
+        edt1d(f, d, v, z, height);
+        for (y = 0; y < height; y++) {
+            data[y * width + x] = d[y];
+        }
+    }
+    // Pass 2
+    for (y = 0; y < height; y++) {
+        for (x = 0; x < width; x++) {
+            f[x] = data[y * width + x];
+        }
+        edt1d(f, d, v, z, width);
+        for (x = 0; x < width; x++) {
+            // 开方得到欧式距离
+            data[y * width + x] = Math.sqrt(d[x]);
+        }
+    }
+}
+```
+
+解决了单个字符的 SDF 生成问题，下一步我们将以合理的布局将所有字符的 SDF 合并成一个大图，后续以纹理形式传入 Shader 中消费。
+
+### Glyph atlas {#glyph-atlas}
+
+单个 SDF 需要合并成一个大图后续以纹理形式传入，类似 CSS Sprite。这类问题称作：[Bin packing problem]，将一个个小箱子装入一个大箱子，合理利用空间减少空隙。我们选择 [potpack]，该算法能尽可能得到近似方形的结果，缺点是生成布局后不许允许修改，只能重新生成。
+
+![glyph atlas with potpack](https://miro.medium.com/v2/resize:fit:1024/format:webp/0*YcJm5NJXJCIO20ds.png)
+
+需要注意，这个 Atlas 包含了场景中使用的所有字体下的所有文本，因此当 `fontFamily/Weight` 改变、旧文本变更、新文本加入时都需要重新生成，但字号改变不应该重新生成。因此为了避免重新生成过于频繁，对于每一种字体，默认为 32-128 的常用字符生成。
+
+该纹理只需要使用一个通道即可，如果是 WebGL 下可以使用 `gl.ALPHA` 格式，但是 WebGPU 中并没有对应的格式。因此我们使用 `Format.U8_R_NORM` 格式，在 WebGL 中为 `gl.LUMINANCE`，在 WebGPU 中为 [r8unorm]。
+
+```ts
+this.glyphAtlasTexture = device.createTexture({
+    ...makeTextureDescriptor2D(Format.U8_R_NORM, atlasWidth, atlasHeight, 1),
+    pixelStore: {
+        unpackFlipY: false,
+        unpackAlignment: 1,
+    },
+});
+```
+
+然后在 Shader 中从 `r` 通道取得有向距离：
 
 ```glsl
-uniform sampler2D u_SDFMap; // atlas
-varying vec2 v_UV; // 纹理映射
+uniform sampler2D u_SDFMap; // glyph atlas
+varying vec2 v_UV;
 
-float dist = texture2D(u_SDFMap, v_UV).a;
+float dist = texture2D(u_SDFMap, v_UV).r;
 ```
 
-### Generate quads
+以上就是 fragment shader 中的绘制逻辑，接下来让我们看看传入 vertex shader 中的单个字符的位置该如何计算。
 
-> The process of going from a shaping to GL buffers is pretty straightforward. It’s just a matter of taking each rectangular glyph from the shaping and turning it into two triangles (called a “quad”). We apply transforms like text rotation here, but essentially the way to think of it is just a translation between different in memory-representations of the same data.
+### Generate quads {#generate-quads}
+
+首先，我们需要将每个矩形字形从字形数据转换为两个三角形（称为“quad”）：
+
+![A string of text as a textured triangle mesh.](/glyph-quad.png)
+
+简化后，`SymbolQuad` 的定义如下：
+
+```ts
+// @see https://github.com/mapbox/mapbox-gl-js/blob/main/src/symbol/quads.ts#L42
+export type SymbolQuad = {
+    tl: Point;
+    tr: Point;
+    bl: Point;
+    br: Point;
+    tex: {
+        x: number;
+        y: number;
+        w: number;
+        h: number;
+    };
+    glyphOffset: [number, number];
+};
+```
 
 ## emoji
 
@@ -393,9 +518,37 @@ export type PositionedGlyph = {
 
 ## 阴影 {#dropshadow}
 
+## MSDF {#msdf}
+
+在使用低分辨率的距离场重建时，字符的拐角处过于平滑不能保持原有的尖锐效果。现在我们来解决这个问题。
+
+![sdf vs msdf](/msdf-vs-sdf.png)
+
+距离场是可以进行集合运算的。下图来自 [Shape Decomposition for Multi-channel Distance Fields]，我们将两个距离场分别存储在位图的两个分量（R、G）中，在重建时，虽然这两个距离场转角是平滑的，但是进行求交就能得到锐利的还原效果：
+
+![A possible decomposition of the shape into a union of two round shapes.](/msdf.png)
+
+分解算法可以参考原论文 [Shape Decomposition for Multi-channel Distance Fields] 中 4.4 节：Direct multi-channel distance field construction。在实际使用时，作者提供了 [msdfgen]，可以看出 MSDF 在低分辨率效果明显更好，甚至优于更高分辨率的 SDF。
+
+在重建时使用 median：
+
+```glsl
+// https://github.com/Jam3/three-bmfont-text/blob/master/shaders/msdf.js
+
+float median(float r, float g, float b) {
+  return max(min(r, g), min(max(r, g), b));
+}
+vec3 sample = texture2D(map, vUv).rgb;
+float sigDist = median(sample.r, sample.g, sample.b) - 0.5;
+```
+
+-   [msdf-bmfont-xml]
+-   [pixi-msdf-text]
+
 ## 扩展阅读 {#extended-reading}
 
 -   [State of Text Rendering 2024]
+-   [Signed Distance Field Fonts - basics]
 -   [Approaches to robust realtime text rendering in threejs (and WebGL in general)]
 -   [Easy Scalable Text Rendering on the GPU]
 -   [Text Visualization Browser]
@@ -440,6 +593,7 @@ export type PositionedGlyph = {
 [Meaning of top, ascent, baseline, descent, bottom, and leading in Android's FontMetrics]: https://stackoverflow.com/questions/27631736/meaning-of-top-ascent-baseline-descent-bottom-and-leading-in-androids-font
 [node-fontnik]: https://github.com/mapbox/node-fontnik
 [opentype.js]: https://github.com/opentypejs/opentype.js
+[msdfgen]: https://github.com/Chlumsky/msdfgen
 [msdf-atlas-gen]: https://github.com/Chlumsky/msdf-atlas-gen?tab=readme-ov-file#atlas-types
 [measureText]: https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/measureText
 [font-kerning]: https://developer.mozilla.org/en-US/docs/Web/CSS/font-kerning
@@ -455,3 +609,13 @@ export type PositionedGlyph = {
 [clusters]: https://harfbuzz.github.io/clusters.html
 [Intl.Segmenter]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Intl/Segmenter
 [text-decoration]: https://developer.mozilla.org/en-US/docs/Web/CSS/text-decoration
+[Improved Alpha-Tested Magnification for Vector Textures and Special Effects]: https://steamcdn-a.akamaihd.net/apps/valve/2007/SIGGRAPH2007_AlphaTestedMagnification.pdf
+[Signed Distance Field Fonts - basics]: https://www.redblobgames.com/x/2403-distance-field-fonts/
+[Bin packing problem]: https://en.wikipedia.org/wiki/Bin_packing_problem
+[msdf-bmfont-xml]: https://github.com/soimy/msdf-bmfont-xml
+[pixi-msdf-text]: https://github.com/soimy/pixi-msdf-text
+[Distance field fonts]: https://libgdx.com/wiki/graphics/2d/fonts/distance-field-fonts
+[Distance Transforms of Sampled Functions]: https://cs.brown.edu/people/pfelzens/papers/dt-final.pdf
+[tiny-sdf]: https://github.com/mapbox/tiny-sdf
+[r8unorm]: https://gpuweb.github.io/gpuweb/#dom-gputextureformat-r8unorm
+[Shape Decomposition for Multi-channel Distance Fields]: https://dspace.cvut.cz/bitstream/handle/10467/62770/F8-DP-2015-Chlumsky-Viktor-thesis.pdf

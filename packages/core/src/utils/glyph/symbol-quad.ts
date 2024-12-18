@@ -46,6 +46,12 @@ export function getGlyphQuads(
 
     const builtInOffset = [positionedGlyph.x + halfAdvance, positionedGlyph.y];
 
+    const pixelRatio = 1;
+    const paddedWidth =
+      (rect.w * positionedGlyph.scale) / (pixelRatio * SDF_SCALE);
+    const paddedHeight =
+      (rect.h * positionedGlyph.scale) / (pixelRatio * SDF_SCALE);
+
     const x1 =
       (glyph.metrics.left - rectBuffer) * positionedGlyph.scale -
       halfAdvance +
@@ -53,8 +59,8 @@ export function getGlyphQuads(
     const y1 =
       (-glyph.metrics.top - rectBuffer) * positionedGlyph.scale +
       builtInOffset[1];
-    const x2 = x1 + (rect.w * positionedGlyph.scale) / SDF_SCALE;
-    const y2 = y1 + (rect.h * positionedGlyph.scale) / SDF_SCALE;
+    const x2 = x1 + paddedWidth;
+    const y2 = y1 + paddedHeight;
 
     const tl = { x: x1, y: y1 };
     const tr = { x: x2, y: y1 };

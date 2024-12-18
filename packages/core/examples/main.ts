@@ -38,7 +38,7 @@ const canvas = await new Canvas({
 const circle = new Circle({
   cx: 50,
   cy: 50,
-  r: 10,
+  r: 4,
   fill: '#F67676',
 });
 canvas.appendChild(circle);
@@ -46,7 +46,7 @@ canvas.appendChild(circle);
 const text = new Text({
   x: 50,
   y: 50,
-  content: 'Hello, world!\n你好世界',
+  content: 'Hello, world!\n你好世界\n你好世界\n你好世界\n你好世界',
   fontSize: 20,
   fill: '#F67676',
 });

@@ -3,11 +3,6 @@ import { Rectangle } from '@pixi/math';
 import { TextAttributes, TextStyleWhiteSpace } from '../shapes';
 import { createOffscreenCanvas } from './browser';
 
-type FontProperties = {
-  ascent: number;
-  descent: number;
-  fontSize: number;
-};
 type CharacterWidthCache = Record<string, number>;
 export type TextMetrics = {
   font: string;
@@ -17,7 +12,7 @@ export type TextMetrics = {
   lineWidths: number[];
   lineHeight: number;
   maxLineWidth: number;
-  fontProperties: FontProperties;
+  fontMetrics: globalThis.TextMetrics & { fontSize: number };
   lineMetrics: Rectangle[];
 };
 // type TextSegment = { text: string; direction: 'ltr' | 'rtl' };
@@ -78,7 +73,7 @@ const intlGraphemeSegmenter = (s: string) => {
 };
 
 export class CanvasTextMetrics {
-  #fonts: Record<string, FontProperties> = {};
+  #fonts: Record<string, globalThis.TextMetrics & { fontSize: number }> = {};
   #canvas: OffscreenCanvas | HTMLCanvasElement;
   #context: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
   #graphemeSegmenter: (s: string) => string[];
@@ -114,11 +109,10 @@ export class CanvasTextMetrics {
     // TODO: use cache based on stylekey
 
     const font = fontStringFromTextStyle(style);
-    const fontProperties = this.measureFont(font);
+    const fontMetrics = this.measureFont(font);
     // fallback in case UA disallow canvas data extraction
-    if (fontProperties.fontSize === 0) {
-      fontProperties.fontSize = style.fontSize as number;
-      fontProperties.ascent = style.fontSize as number;
+    if (fontMetrics.fontSize === 0) {
+      fontMetrics.fontSize = style.fontSize as number;
     }
 
     this.#context.font = font;
@@ -133,9 +127,9 @@ export class CanvasTextMetrics {
       maxLineWidth = Math.max(maxLineWidth, lineWidth);
     }
     const width = maxLineWidth + strokeWidth;
-    lineHeight = lineHeight || fontProperties.fontSize + strokeWidth;
+    lineHeight = lineHeight || fontMetrics.fontSize + strokeWidth;
     const height =
-      Math.max(lineHeight, fontProperties.fontSize + strokeWidth) +
+      Math.max(lineHeight, fontMetrics.fontSize + strokeWidth) +
       (lines.length - 1) * (lineHeight + leading);
     lineHeight += leading;
 
@@ -161,7 +155,7 @@ export class CanvasTextMetrics {
       lineWidths,
       lineHeight,
       maxLineWidth,
-      fontProperties,
+      fontMetrics,
       lineMetrics: lineWidths.map((width, i) => {
         let offsetX = 0;
         // handle horizontal text align
@@ -238,13 +232,35 @@ export class CanvasTextMetrics {
     }
 
     this.#context.font = font;
-    const metrics = this.#context.measureText(METRICS_STRING + BASELINE_SYMBOL);
+    const {
+      actualBoundingBoxAscent,
+      actualBoundingBoxDescent,
+      actualBoundingBoxLeft,
+      actualBoundingBoxRight,
+      alphabeticBaseline,
+      fontBoundingBoxAscent,
+      fontBoundingBoxDescent,
+      hangingBaseline,
+      ideographicBaseline,
+      width,
+      emHeightAscent,
+      emHeightDescent,
+    } = this.#context.measureText(METRICS_STRING + BASELINE_SYMBOL);
 
-    const properties: FontProperties = {
-      ascent: metrics.actualBoundingBoxAscent,
-      descent: metrics.actualBoundingBoxDescent,
-      fontSize:
-        metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent,
+    const properties: globalThis.TextMetrics & { fontSize: number } = {
+      actualBoundingBoxAscent,
+      actualBoundingBoxDescent,
+      actualBoundingBoxLeft,
+      actualBoundingBoxRight,
+      alphabeticBaseline,
+      fontBoundingBoxAscent,
+      fontBoundingBoxDescent,
+      hangingBaseline,
+      ideographicBaseline,
+      emHeightAscent,
+      emHeightDescent,
+      width,
+      fontSize: actualBoundingBoxAscent + actualBoundingBoxDescent,
     };
 
     this.#fonts[font] = properties;

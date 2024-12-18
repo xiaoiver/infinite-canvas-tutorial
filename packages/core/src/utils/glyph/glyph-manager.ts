@@ -4,10 +4,10 @@
 
 import type { Device, Texture } from '@antv/g-device-api';
 import { Format, makeTextureDescriptor2D } from '@antv/g-device-api';
-import { TinySDF } from './tiny-sdf';
+import TinySDF from '@mapbox/tiny-sdf';
 import type { StyleGlyph } from './alpha-image';
 import { AlphaImage } from './alpha-image';
-import GlyphAtlas from './glyph-atlas';
+import { GlyphAtlas } from './glyph-atlas';
 
 export type PositionedGlyph = {
   glyph: number; // charCode
@@ -38,7 +38,7 @@ export type PositionedGlyph = {
   use an SDF_SCALE of 1.75, you could manually set localGlyphAdding to 2 and
   buffer to 5.
 */
-export const SDF_SCALE = 2;
+export const SDF_SCALE = 1;
 export const BASE_FONT_WIDTH = 24 * SDF_SCALE;
 export const BASE_FONT_BUFFER = 3 * SDF_SCALE;
 export const radius = 8 * SDF_SCALE;
@@ -91,6 +91,7 @@ export class GlyphManager {
     letterSpacing: number,
     offsetX: number,
     offsetY: number,
+    fontMetrics: globalThis.TextMetrics & { fontSize: number },
   ): PositionedGlyph[] {
     const positionedGlyphs: PositionedGlyph[] = [];
 
@@ -114,10 +115,12 @@ export class GlyphManager {
         const glyph = positions && positions[charCode];
 
         if (glyph) {
+          const glyphOffset = -fontMetrics.fontBoundingBoxAscent;
+
           positionedGlyphs.push({
             glyph: charCode,
             x,
-            y,
+            y: y + glyphOffset,
             scale: 1,
             fontStack,
           });
@@ -138,7 +141,6 @@ export class GlyphManager {
   }
 
   generateAtlas(
-    canvas: HTMLCanvasElement | OffscreenCanvas,
     fontStack = '',
     fontFamily: string,
     fontWeight: string,
@@ -163,7 +165,6 @@ export class GlyphManager {
       const glyphMap = newChars
         .map((char) => {
           return this.generateSDF(
-            canvas,
             fontStack,
             fontFamily,
             fontWeight,
@@ -193,7 +194,14 @@ export class GlyphManager {
       }
 
       this.glyphAtlasTexture = device.createTexture({
-        ...makeTextureDescriptor2D(Format.ALPHA, atlasWidth, atlasHeight, 1),
+        ...makeTextureDescriptor2D(
+          device.queryVendorInfo().platformString === 'WebGPU'
+            ? Format.U8_R_NORM
+            : Format.U8_LUMINANCE,
+          atlasWidth,
+          atlasHeight,
+          1,
+        ),
         pixelStore: {
           unpackFlipY: false,
           unpackAlignment: 1,
@@ -204,7 +212,6 @@ export class GlyphManager {
   }
 
   private generateSDF(
-    canvas: HTMLCanvasElement | OffscreenCanvas,
     fontStack = '',
     fontFamily: string,
     fontWeight: string,
@@ -214,18 +221,14 @@ export class GlyphManager {
     const charCode = char.charCodeAt(0);
     let sdfGenerator = this.sdfGeneratorCache[fontStack];
     if (!sdfGenerator) {
-      sdfGenerator = this.sdfGeneratorCache[fontStack] = new TinySDF(
-        {
-          fontSize: BASE_FONT_WIDTH,
-          fontFamily,
-          fontWeight,
-          fontStyle,
-          buffer: BASE_FONT_BUFFER,
-          radius,
-          // cutoff,
-        },
-        canvas,
-      );
+      sdfGenerator = this.sdfGeneratorCache[fontStack] = new TinySDF({
+        fontSize: BASE_FONT_WIDTH,
+        fontFamily,
+        fontWeight,
+        fontStyle,
+        buffer: BASE_FONT_BUFFER,
+        radius,
+      });
     }
 
     if (!this.textMetricsCache[fontStack]) {
@@ -252,7 +255,17 @@ export class GlyphManager {
       glyphAdvance,
     } = sdfGenerator.draw(char);
 
-    const baselineAdjustment = 27;
+    // console.log(
+    //   width,
+    //   height,
+    //   glyphWidth,
+    //   glyphHeight,
+    //   glyphLeft,
+    //   glyphTop,
+    //   glyphAdvance,
+    // );
+
+    // const baselineAdjustment = 27;
 
     return {
       id: charCode,
@@ -274,7 +287,7 @@ export class GlyphManager {
         width: glyphWidth / SDF_SCALE,
         height: glyphHeight / SDF_SCALE,
         left: glyphLeft / SDF_SCALE,
-        top: glyphTop / SDF_SCALE - baselineAdjustment,
+        top: glyphTop / SDF_SCALE,
         advance: glyphAdvance / SDF_SCALE,
       },
     };

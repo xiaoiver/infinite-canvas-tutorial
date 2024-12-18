@@ -64,11 +64,10 @@ export class SDFText extends Drawcall {
       .shapes[0] as Text;
 
     // scale current font size to base(24)
-    const fontScale = BASE_FONT_WIDTH / metrics.fontProperties.fontSize;
+    const fontScale = BASE_FONT_WIDTH / metrics.fontMetrics.fontSize;
     const allText = this.shapes.map((text: Text) => text.content).join('');
 
     this.#glyphManager.generateAtlas(
-      canvasTextMetrics.getCanvas(),
       metrics.font,
       fontFamily,
       fontWeight.toString(),
@@ -358,7 +357,7 @@ export class SDFText extends Drawcall {
     const u_ZIndexStrokeWidth = [
       shape.globalRenderOrder / ZINDEX_FACTOR,
       strokeWidth,
-      metrics.fontProperties.fontSize,
+      metrics.fontMetrics.fontSize,
       0,
     ];
 
@@ -423,6 +422,7 @@ export class SDFText extends Drawcall {
       letterSpacing,
       offsetX,
       offsetY,
+      canvasTextMetrics.measureFont(fontStack),
     );
 
     // 计算每个独立字符相对于锚点的位置信息

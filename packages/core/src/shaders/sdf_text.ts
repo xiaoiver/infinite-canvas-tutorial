@@ -88,7 +88,7 @@ export const frag = /* wgsl */ `
     float strokeOpacity = u_Opacity.z;
     float shapeSizeAttenuation = u_Opacity.w;
   
-    float dist = texture(SAMPLER_2D(u_Texture), v_Uv).a;
+    float dist = texture(SAMPLER_2D(u_Texture), v_Uv).r;
   
     float u_FontSize = 24.0;
 
