@@ -92,6 +92,7 @@ pnpm run dev
 
 -   Drawing straight lines using Line Geometry or screen-space techniques.
 -   Drawing dots grid.
+-   Drawing wireframe.
 
 <img src="./screenshots/lesson5.png" width="300" alt="Lesson 5">
 

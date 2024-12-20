@@ -1,5 +1,13 @@
+import {
+  vert as wireframe_vert,
+  vert_declaration as wireframe_vert_declaration,
+  frag as wireframe_frag,
+  frag_declaration as wireframe_frag_declaration,
+} from './wireframe';
+
 export enum Location {
   FRAG_COORD,
+  BARYCENTRIC,
   ABCD,
   TXTY,
   POSITION_SIZE,
@@ -25,6 +33,7 @@ layout(std140) uniform SceneUniforms {
 };
 
 layout(location = ${Location.FRAG_COORD}) in vec2 a_FragCoord;
+${wireframe_vert_declaration}
 
 #ifdef USE_INSTANCES
   layout(location = ${Location.ABCD}) in vec4 a_Abcd;
@@ -68,6 +77,8 @@ out vec2 v_Radius;
 #endif
 
 void main() {
+  ${wireframe_vert}
+
   mat3 model;
   vec2 position;
   vec2 size;
@@ -171,6 +182,8 @@ layout(std140) uniform SceneUniforms {
 out vec4 outputColor;
 
 in vec2 v_FragCoord;
+${wireframe_frag_declaration}
+
 #ifdef USE_INSTANCES
   in vec4 v_FillColor;
   in vec4 v_StrokeColor;
@@ -346,6 +359,8 @@ void main() {
     outputColor = over(vec4(color.xyz, 1.0), vec4(lowerShadowColor, 1.0 - lowerShadow));
     outputColor = over(outputColor, vec4(color.xyz, clamp(distance, 0.0, 1.0)));
   }
+
+  ${wireframe_frag}
 
   float antialiasedBlur = -fwidth(length(v_FragCoord));
   float opacity_t = clamp(distance / antialiasedBlur, 0.0, 1.0);

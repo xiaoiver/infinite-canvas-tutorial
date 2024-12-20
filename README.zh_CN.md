@@ -76,22 +76,23 @@ pnpm run dev
 
 ## 课程 3 - 变换和场景图 [🔗](https://infinitecanvas.cc/zh/guide/lesson-003)
 
--   变换。让图形支持平移、缩放、旋转、斜切变换。
--   场景图。
+-   变换。让图形支持平移、缩放、旋转、斜切变换
+-   实现场景图
 
 <img src="./screenshots/lesson3.png" width="300" alt="Lesson 3">
 
 ## 课程 4 - 相机 [🔗](https://infinitecanvas.cc/zh/guide/lesson-004)
 
--   相机是什么？
--   投影变换。
--   相机变换。通过一个插件实现平移、旋转和缩放功能。
--   相机动画。平滑过渡到任意相机状态。
+-   相机是什么
+-   投影变换
+-   相机变换。通过一个插件实现平移、旋转和缩放功能
+-   相机动画。平滑过渡到任意相机状态
 
 ## 课程 5 - 绘制网格 [🔗](https://infinitecanvas.cc/zh/guide/lesson-005)
 
--   绘制直线网格。使用 Line Geometry 或者屏幕空间技术。
--   绘制点网格。
+-   绘制直线网格。使用 Line Geometry 或者屏幕空间技术
+-   绘制点网格
+-   绘制 wireframe
 
 <img src="./screenshots/lesson5.png" width="300" alt="Lesson 5">
 

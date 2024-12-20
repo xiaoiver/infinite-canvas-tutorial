@@ -83,12 +83,8 @@ export class SDFText extends Drawcall {
     let indicesOff = 0;
 
     this.shapes.forEach((object: Text) => {
-      const { metrics, letterSpacing, dx = 0, dy = 0 } = object;
+      const { metrics, letterSpacing } = object;
       const { font, lines, height, lineHeight } = metrics;
-
-      // account for dx & dy
-      const offsetX = dx;
-      const offsetY = dy;
 
       // if (textBaseline === 'alphabetic') {
       //   textBaseline = 'bottom';
@@ -105,6 +101,7 @@ export class SDFText extends Drawcall {
       } else if (textBaseline === 'ideographic') {
         linePositionY += -height;
       }
+      console.log(linePositionY);
 
       const {
         indicesOffset,
@@ -116,8 +113,6 @@ export class SDFText extends Drawcall {
         lines,
         fontStack: font,
         lineHeight: fontScale * lineHeight,
-        offsetX: fontScale * offsetX,
-        offsetY: fontScale * (linePositionY + offsetY),
         letterSpacing: fontScale * letterSpacing,
         indicesOffset: indicesOff,
       });
@@ -394,8 +389,6 @@ export class SDFText extends Drawcall {
     fontStack,
     lineHeight,
     letterSpacing,
-    offsetX,
-    offsetY,
     indicesOffset,
   }: {
     object: Text;
@@ -403,8 +396,6 @@ export class SDFText extends Drawcall {
     fontStack: string;
     lineHeight: number;
     letterSpacing: number;
-    offsetX: number;
-    offsetY: number;
     indicesOffset: number;
   }) {
     const { textAlign = 'start', x = 0, y = 0 } = object;
@@ -420,8 +411,6 @@ export class SDFText extends Drawcall {
       lineHeight,
       textAlign,
       letterSpacing,
-      offsetX,
-      offsetY,
       canvasTextMetrics.measureFont(fontStack),
     );
 

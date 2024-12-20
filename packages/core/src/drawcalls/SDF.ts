@@ -41,10 +41,13 @@ const strokeAlignmentMap = {
 export class SDF extends Drawcall {
   // protected maxInstances: number = 1000;
 
+  wireframe: boolean = false;
+
   #program: Program;
   #fragUnitBuffer: Buffer;
   #instancedBuffer: Buffer;
   #instancedMatrixBuffer: Buffer;
+  #barycentricBuffer: Buffer;
   #indexBuffer: Buffer;
   #uniformBuffer: Buffer;
   #pipeline: RenderPipeline;
@@ -135,6 +138,25 @@ export class SDF extends Drawcall {
         hint: BufferFrequencyHint.DYNAMIC,
       });
     }
+
+    if (this.wireframe) {
+      const indiceNum = 6;
+      const uniqueIndices = new Uint32Array(indiceNum);
+      // create barycentric attributes
+      const barycentricBuffer = new Float32Array(indiceNum * 3);
+      for (let i = 0; i < indiceNum; ) {
+        for (let j = 0; j < 3; j++) {
+          const ii = uniqueIndices[i++];
+          barycentricBuffer[ii * 3 + j] = 1;
+        }
+      }
+
+      this.#barycentricBuffer = this.device.createBuffer({
+        viewOrSize: Float32Array.BYTES_PER_ELEMENT * 4 * this.shapes.length,
+        usage: BufferUsage.VERTEX,
+        hint: BufferFrequencyHint.DYNAMIC,
+      });
+    }
   }
 
   createMaterial(uniformBuffer: Buffer): void {
@@ -177,6 +199,20 @@ export class SDF extends Drawcall {
         ],
       },
     ];
+
+    if (this.wireframe) {
+      vertexBufferDescriptors.push({
+        arrayStride: 4 * 3,
+        stepMode: VertexStepMode.VERTEX,
+        attributes: [
+          {
+            shaderLocation: Location.BARYCENTRIC, // a_Barycentric
+            offset: 0,
+            format: Format.F32_RGB,
+          },
+        ],
+      });
+    }
 
     if (this.instanced) {
       vertexBufferDescriptors.push(
@@ -404,6 +440,11 @@ export class SDF extends Drawcall {
         buffer: this.#fragUnitBuffer,
       },
     ];
+    if (this.wireframe) {
+      buffers.push({
+        buffer: this.#barycentricBuffer,
+      });
+    }
     if (this.instanced) {
       buffers.push(
         {
@@ -428,6 +469,7 @@ export class SDF extends Drawcall {
       this.#instancedMatrixBuffer?.destroy();
       this.#instancedBuffer?.destroy();
       this.#fragUnitBuffer?.destroy();
+      this.#barycentricBuffer?.destroy();
       this.#indexBuffer?.destroy();
       this.#uniformBuffer?.destroy();
       this.#texture?.destroy();

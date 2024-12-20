@@ -13,6 +13,8 @@ publish: false
 
 [The past, present, and future of local-first]
 
+[TipTap offline support]
+
 ## CRDT {#crdt}
 
 提到协同算法
@@ -29,6 +31,7 @@ publish: false
 -   [Local-first software - You own your data, in spite of the cloud]
 -   [I was wrong. CRDTs are the future]
 -   [5000x faster CRDTs: An Adventure in Optimization]
+-   [TipTap offline support]
 
 [Movable tree CRDTs and Loro's implementation](https://news.ycombinator.com/item?id=41099901)
 [CRDTs: The Hard Parts](https://www.youtube.com/watch?v=x7drE24geUw)
@@ -41,3 +44,4 @@ publish: false
 [Excalidraw HistoryEntry](https://github.com/excalidraw/excalidraw/blob/master/packages/excalidraw/history.ts#L160-L164)
 [automerge wasm](https://automerge.org/blog/2024/08/23/wasm-packaging/)
 [The past, present, and future of local-first](https://speakerdeck.com/ept/the-past-present-and-future-of-local-first)
+[TipTap offline support]: <https://tiptap.dev/docs/guides/offline-support>

@@ -1,4 +1,4 @@
-const esm = ['d3-*', 'earcut']
+const esm = ['d3-*', 'earcut', 'potpack', '@mapbox']
   .map((d) => `_${d}|${d}`)
   .join('|');
 

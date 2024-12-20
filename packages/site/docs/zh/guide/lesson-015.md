@@ -449,27 +449,82 @@ float dist = texture2D(u_SDFMap, v_UV).r;
 
 ### Generate quads {#generate-quads}
 
-首先，我们需要将每个矩形字形从字形数据转换为两个三角形（称为“quad”）：
+首先，我们需要将每个矩形字形从字形数据转换为两个三角形（称为“quad”），包含四个顶点：
 
 ![A string of text as a textured triangle mesh.](/glyph-quad.png)
 
-简化后，`SymbolQuad` 的定义如下：
+简化后的字形数据 `SymbolQuad` 定义如下：
 
 ```ts
 // @see https://github.com/mapbox/mapbox-gl-js/blob/main/src/symbol/quads.ts#L42
 export type SymbolQuad = {
-    tl: Point;
+    tl: Point; // 局部坐标下四个顶点的坐标
     tr: Point;
     bl: Point;
     br: Point;
     tex: {
-        x: number;
+        x: number; // 纹理坐标
         y: number;
         w: number;
         h: number;
     };
-    glyphOffset: [number, number];
 };
+```
+
+针对每一个字形数据，拆分成四个顶点，其中 uv 和 offset 合并在一个 stride 中，随后在 vertex shader 中通过 `a_UvOffset` 访问：
+
+```ts
+glyphQuads.forEach((quad) => {
+    charUVOffsetBuffer.push(quad.tex.x, quad.tex.y, quad.tl.x, quad.tl.y);
+    charUVOffsetBuffer.push(
+        quad.tex.x + quad.tex.w,
+        quad.tex.y,
+        quad.tr.x,
+        quad.tr.y,
+    );
+    charUVOffsetBuffer.push(
+        quad.tex.x + quad.tex.w,
+        quad.tex.y + quad.tex.h,
+        quad.br.x,
+        quad.br.y,
+    );
+    charUVOffsetBuffer.push(
+        quad.tex.x,
+        quad.tex.y + quad.tex.h,
+        quad.bl.x,
+        quad.bl.y,
+    );
+    charPositionsBuffer.push(x, y, x, y, x, y, x, y);
+
+    indexBuffer.push(0 + i, 2 + i, 1 + i);
+    indexBuffer.push(2 + i, 0 + i, 3 + i);
+    i += 4;
+});
+```
+
+在 vertex shader 中，将 uv 除以纹理尺寸得到纹理坐标传入 fragment shader 中用来对 glyph atlas 采样。同时，将 offset 乘以字体缩放比例，得到相对于锚点的偏移量，最后将位置加上偏移量，得到最终的顶点位置：
+
+```glsl
+v_Uv = a_UvOffset.xy / u_AtlasSize;
+
+vec2 offset = a_UvOffset.zw * fontScale;
+gl_Position = vec4((u_ProjectionMatrix
+    * u_ViewMatrix
+    * u_ModelMatrix
+    * vec3(a_Position + offset, 1)).xy, zIndex, 1);
+```
+
+最后我们来看如何计算得到字形数据。在上一节的分段完成后，我们得到了多行的字符串数组 `lines`。
+
+```ts
+layout(
+    lines: string[], // after paragraph segmentation
+    fontStack: string,
+    lineHeight: number,
+    textAlign: CanvasTextAlign,
+    letterSpacing: number,
+    fontMetrics: globalThis.TextMetrics & { fontSize: number },
+): PositionedGlyph[] {}
 ```
 
 ## emoji

@@ -394,7 +394,7 @@ root.addEventListener('wheel', (e: FederatedWheelEvent) => {
 });
 ```
 
-值得一提的是，Excalidraw 还支持了按住 `Shift` 进行水平滚动画布。但此前我们已经为画布的该行为分配了旋转操作了，这里就不再实现了。
+值得一提的是，Excalidraw 还支持了按住 <kbd>Shift</kbd> 进行水平滚动画布。但此前我们已经为画布的该行为分配了旋转操作了，这里就不再实现了。
 
 ## 选择模式 {#select-mode}
 
@@ -417,7 +417,7 @@ export class Selector implements Plugin {
 
 -   点击图形展示选中状态的 UI。如果之前已经选中过其他图形，先取消选中
 -   点击画布空白处，取消当前选中的图形
--   按住 `Shift` 进入多选模式
+-   按住 <kbd>Shift</kbd> 进入多选模式
 
 ```ts
 const handleClick = (e: FederatedPointerEvent) => {

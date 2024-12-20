@@ -87,19 +87,16 @@ export class GlyphManager {
     lines: string[],
     fontStack: string,
     lineHeight: number,
-    textAlign: CanvasTextAlign | 'middle',
+    textAlign: CanvasTextAlign,
     letterSpacing: number,
-    offsetX: number,
-    offsetY: number,
     fontMetrics: globalThis.TextMetrics & { fontSize: number },
   ): PositionedGlyph[] {
     const positionedGlyphs: PositionedGlyph[] = [];
 
-    let x = offsetX;
-    let y = offsetY;
+    let x = 0;
+    let y = 0;
 
     const justify =
-      // eslint-disable-next-line no-nested-ternary
       textAlign === 'right' || textAlign === 'end'
         ? 1
         : textAlign === 'left' || textAlign === 'start'

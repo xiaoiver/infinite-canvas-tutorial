@@ -394,7 +394,7 @@ root.addEventListener('wheel', (e: FederatedWheelEvent) => {
 });
 ```
 
-It is worth mentioning that Excalidraw also supports holding down `Shift` to horizontally scroll the canvas. However, we have already assigned the rotation operation to this behavior of the canvas, so it will not be implemented here.
+It is worth mentioning that Excalidraw also supports holding down <kbd>Shift</kbd> to horizontally scroll the canvas. However, we have already assigned the rotation operation to this behavior of the canvas, so it will not be implemented here.
 
 ## Selection mode {#select-mode}
 
@@ -417,7 +417,7 @@ After listening to the `click` event in this plugin, we need to handle the follo
 
 -   Clicking on a shape displays the UI in the selected state. If other shapes have been selected before, first cancel the selection.
 -   Clicking on a blank area of the canvas cancels the currently selected shape.
--   Holding down `Shift` enters multi-select mode.
+-   Holding down <kbd>Shift</kbd> enters multi-select mode.
 
 ```ts
 const handleClick = (e: FederatedPointerEvent) => {

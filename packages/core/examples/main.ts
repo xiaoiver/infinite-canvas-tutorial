@@ -43,17 +43,17 @@ const circle = new Circle({
 });
 canvas.appendChild(circle);
 
-const text = new Text({
-  x: 50,
-  y: 50,
-  content: 'Hello, world!\n你好世界\n你好世界\n你好世界\n你好世界',
-  fontSize: 20,
-  fill: '#F67676',
-});
-canvas.appendChild(text);
+// const text = new Text({
+//   x: 50,
+//   y: 50,
+//   content: 'Hello, world!\n你好世界\n你好世界\n你好世界\n你好世界',
+//   fontSize: 20,
+//   fill: '#F67676',
+// });
+// canvas.appendChild(text);
 
-const bounds = text.getGeometryBounds();
-console.log(bounds);
+// const bounds = text.getGeometryBounds();
+// console.log(bounds);
 
 canvas.render();
 

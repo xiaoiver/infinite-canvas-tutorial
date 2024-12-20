@@ -488,6 +488,7 @@ More on the plug-in design pattern:
 
 -   [Intro to Plugin Oriented Programming]
 -   [Introducing: Penpot Plugin System]
+-   [Extensions in Tiptap]
 
 [WebGPU Ecosystem]: https://developer.chrome.com/blog/webgpu-ecosystem/
 [From WebGL to WebGPU]: https://developer.chrome.com/blog/from-webgl-to-webgpu
@@ -518,3 +519,4 @@ More on the plug-in design pattern:
 [Canvas Context and Swap Chain]: https://carmencincotti.com/2022-12-19/how-to-render-a-webgpu-triangle-series-part-three-video/#bonus-content-swap-chain
 [Introducing: Penpot Plugin System]: https://www.smashingmagazine.com/2024/11/open-source-meets-design-tooling-penpot/
 [Performant Game Loops in JavaScript]: https://www.aleksandrhovhannisyan.com/blog/javascript-game-loop/
+[Extensions in Tiptap]: https://tiptap.dev/docs/editor/core-concepts/extensions#what-are-extensions

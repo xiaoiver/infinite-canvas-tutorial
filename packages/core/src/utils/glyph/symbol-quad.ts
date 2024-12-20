@@ -14,7 +14,6 @@ export type SymbolQuad = {
     w: number;
     h: number;
   };
-  glyphOffset: [number, number];
 };
 
 /**
@@ -42,8 +41,6 @@ export function getGlyphQuads(
 
     const halfAdvance = (glyph.metrics.advance * positionedGlyph.scale) / 2;
 
-    const glyphOffset: [number, number] = [0, 0];
-
     const builtInOffset = [positionedGlyph.x + halfAdvance, positionedGlyph.y];
 
     const pixelRatio = 1;
@@ -67,7 +64,7 @@ export function getGlyphQuads(
     const bl = { x: x1, y: y2 };
     const br = { x: x2, y: y2 };
 
-    quads.push({ tl, tr, bl, br, tex: rect, glyphOffset });
+    quads.push({ tl, tr, bl, br, tex: rect });
   }
 
   return quads;
