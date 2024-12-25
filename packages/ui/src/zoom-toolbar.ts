@@ -8,9 +8,6 @@ import type { Canvas } from '@infinite-canvas-tutorial/core';
 export class ZoomToolbar extends LitElement {
   static styles = css`
     :host {
-      position: absolute;
-      right: 16px;
-      bottom: 16px;
       box-shadow: var(--sl-shadow-medium);
       background: white;
     }

@@ -113,7 +113,15 @@ export const zh = defineConfig({
               {
                 text: 'wikipedia 数据集可视化',
                 link: 'wikipedia-datamap',
-              }
+              },
+              {
+                text: '手绘图形',
+                link: 'rough',
+              },
+              {
+                text: '绘制网格',
+                link: 'wireframe',
+              },
             ],
           },
         ],

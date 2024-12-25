@@ -1,6 +1,5 @@
 import {
   type RenderPass,
-  Bindings,
   Buffer,
   BufferFrequencyHint,
   BufferUsage,
@@ -8,10 +7,7 @@ import {
   BlendFactor,
   ChannelWriteMask,
   Format,
-  InputLayout,
-  RenderPipeline,
   VertexStepMode,
-  Program,
   CompareFunction,
   BindingsDescriptor,
   TransparentBlack,
@@ -38,19 +34,10 @@ const strokeAlignmentMap = {
 } as const;
 
 export class Mesh extends Drawcall {
-  #program: Program;
-  #pointsBuffer: Buffer;
-  #instancedBuffer: Buffer;
-  #instancedMatrixBuffer: Buffer;
-  #indexBuffer: Buffer;
   #uniformBuffer: Buffer;
-  #pipeline: RenderPipeline;
-  #inputLayout: InputLayout;
-  #bindings: Bindings;
   #texture: Texture;
 
   points: number[] = [];
-  indices: number[] = [];
 
   static useDash(shape: Path) {
     const { strokeDasharray } = shape;
@@ -117,59 +104,37 @@ export class Mesh extends Drawcall {
     if (tessellationMethod === TesselationMethod.EARCUT) {
       const { vertices, holes, dimensions } = flatten(rawPoints);
       const indices = earcut(vertices, holes, dimensions);
-      this.indices = indices;
+      this.indexBufferData = new Uint32Array(indices);
       this.points = points;
       // const err = deviation(vertices, holes, dimensions, indices);
     } else if (tessellationMethod === TesselationMethod.LIBTESS) {
       const newPoints = triangulate(rawPoints);
-      this.indices = new Array(newPoints.length / 2)
-        .fill(undefined)
-        .map((_, i) => i);
+      this.indexBufferData = new Uint32Array(
+        new Array(newPoints.length / 2).fill(undefined).map((_, i) => i),
+      );
       this.points = newPoints;
     }
 
-    if (this.#pointsBuffer) {
-      this.#pointsBuffer.destroy();
+    if (this.vertexBuffers[0]) {
+      this.vertexBuffers[0].destroy();
     }
-    this.#pointsBuffer = this.device.createBuffer({
-      viewOrSize: new Float32Array(this.points),
+    this.vertexBufferDatas[0] = new Float32Array(this.points);
+    this.vertexBuffers[0] = this.device.createBuffer({
+      viewOrSize: this.vertexBufferDatas[0],
       usage: BufferUsage.VERTEX,
       hint: BufferFrequencyHint.STATIC,
     });
 
-    if (this.#indexBuffer) {
-      this.#indexBuffer.destroy();
+    if (this.indexBuffer) {
+      this.indexBuffer.destroy();
     }
-    this.#indexBuffer = this.device.createBuffer({
-      viewOrSize: new Uint32Array(this.indices),
+    this.indexBuffer = this.device.createBuffer({
+      viewOrSize: this.indexBufferData,
       usage: BufferUsage.INDEX,
       hint: BufferFrequencyHint.STATIC,
     });
-  }
 
-  createMaterial(uniformBuffer: Buffer): void {
-    if (this.points.length === 0) {
-      return;
-    }
-
-    const defines = '';
-
-    const diagnosticDerivativeUniformityHeader =
-      this.device.queryVendorInfo().platformString === 'WebGPU'
-        ? 'diagnostic(off,derivative_uniformity);\n'
-        : '';
-
-    this.#program = this.renderCache.createProgram({
-      vertex: {
-        glsl: defines + vert,
-      },
-      fragment: {
-        glsl: defines + frag,
-        postprocess: (fs) => diagnosticDerivativeUniformityHeader + fs,
-      },
-    });
-
-    const vertexBufferDescriptors = [
+    this.vertexBufferDescriptors = [
       {
         arrayStride: 4 * 2,
         stepMode: VertexStepMode.VERTEX,
@@ -182,11 +147,40 @@ export class Mesh extends Drawcall {
         ],
       },
     ];
+  }
 
-    this.#inputLayout = this.renderCache.createInputLayout({
-      vertexBufferDescriptors,
+  createMaterial(uniformBuffer: Buffer): void {
+    if (this.points.length === 0) {
+      return;
+    }
+
+    let defines = '';
+    if (this.useFillImage) {
+      defines += '#define USE_FILLIMAGE\n';
+    }
+    if (this.useWireframe) {
+      defines += '#define USE_WIREFRAME\n';
+    }
+
+    const diagnosticDerivativeUniformityHeader =
+      this.device.queryVendorInfo().platformString === 'WebGPU'
+        ? 'diagnostic(off,derivative_uniformity);\n'
+        : '';
+
+    this.program = this.renderCache.createProgram({
+      vertex: {
+        glsl: defines + vert,
+      },
+      fragment: {
+        glsl: defines + frag,
+        postprocess: (fs) => diagnosticDerivativeUniformityHeader + fs,
+      },
+    });
+
+    this.inputLayout = this.renderCache.createInputLayout({
+      vertexBufferDescriptors: this.vertexBufferDescriptors,
       indexBufferFormat: Format.U32_R,
-      program: this.#program,
+      program: this.program,
     });
     if (!this.#uniformBuffer) {
       this.#uniformBuffer = this.device.createBuffer({
@@ -196,9 +190,9 @@ export class Mesh extends Drawcall {
       });
     }
 
-    this.#pipeline = this.renderCache.createRenderPipeline({
-      inputLayout: this.#inputLayout,
-      program: this.#program,
+    this.pipeline = this.renderCache.createRenderPipeline({
+      inputLayout: this.inputLayout,
+      program: this.program,
       colorAttachmentFormats: [Format.U8_RGBA_RT],
       depthStencilAttachmentFormat: Format.D24_S8,
       megaStateDescriptor: {
@@ -235,10 +229,10 @@ export class Mesh extends Drawcall {
         },
       },
     });
-    this.device.setResourceName(this.#pipeline, 'MeshPipeline');
+    this.device.setResourceName(this.pipeline, 'MeshPipeline');
 
     const bindings: BindingsDescriptor = {
-      pipeline: this.#pipeline,
+      pipeline: this.pipeline,
       uniformBufferBindings: [
         {
           buffer: uniformBuffer,
@@ -249,7 +243,7 @@ export class Mesh extends Drawcall {
       ],
     };
 
-    this.#bindings = this.renderCache.createBindings(bindings);
+    this.bindings = this.renderCache.createBindings(bindings);
   }
 
   render(renderPass: RenderPass, uniformLegacyObject: Record<string, unknown>) {
@@ -276,31 +270,32 @@ export class Mesh extends Drawcall {
         u_ModelMatrix,
         ...legacyObject,
       };
-      uniformLegacyObject.u_FillImage = this.#texture;
-      this.#program.setUniformsLegacy(uniformLegacyObject);
+      if (this.useFillImage) {
+        uniformLegacyObject.u_FillImage = this.#texture;
+      }
+      this.program.setUniformsLegacy(uniformLegacyObject);
+
+      if (this.useWireframe) {
+        this.generateWireframe();
+      }
     }
 
-    const buffers = [
+    this.program.setUniformsLegacy(uniformLegacyObject);
+    renderPass.setPipeline(this.pipeline);
+    renderPass.setVertexInput(
+      this.inputLayout,
+      this.vertexBuffers.map((buffer) => ({ buffer })),
       {
-        buffer: this.#pointsBuffer,
+        buffer: this.indexBuffer,
       },
-    ];
-
-    this.#program.setUniformsLegacy(uniformLegacyObject);
-    renderPass.setPipeline(this.#pipeline);
-    renderPass.setVertexInput(this.#inputLayout, buffers, {
-      buffer: this.#indexBuffer,
-    });
-    renderPass.setBindings(this.#bindings);
-    renderPass.drawIndexed(this.indices.length, this.shapes.length);
+    );
+    renderPass.setBindings(this.bindings);
+    renderPass.drawIndexed(this.indexBufferData.length, this.shapes.length);
   }
 
   destroy(): void {
     super.destroy();
-    if (this.#program) {
-      this.#instancedMatrixBuffer?.destroy();
-      this.#instancedBuffer?.destroy();
-      this.#indexBuffer?.destroy();
+    if (this.program) {
       this.#uniformBuffer?.destroy();
       this.#texture?.destroy();
     }

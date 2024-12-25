@@ -8,6 +8,7 @@ In this lesson, you will learn about the following:
 
 -   Drawing straight lines using Line Geometry or screen-space techniques.
 -   Drawing dots grid.
+-   Drawing wireframe for Geometry.
 
 ```js eval code=false
 $button = call(() => {
@@ -434,6 +435,89 @@ else {
 rgb = mix(rgb, gridColor, gridWeight);
 ```
 
+## Draw wireframe {#wireframe}
+
+Draw wireframe also uses similar techniques, which can be used for debugging complex Geometry, such as [Draw polyline].
+
+### Barycentric coordinates {#barycentric-coordinates}
+
+The idea is actually quite simple. We want to draw wireframe on each triangle during rasterization, so we need to know how far the current fragment is from the three sides of the triangle. Once it is less than the width of the border, we will color the current fragment with the border color. So the key is how to calculate the distance of the fragment from the three sides of the triangle. We can use barycentric coordinates. Since we only care about the triangle where the current fragment is located, we can use the barycentric coordinates of the three vertices to build a barycentric coordinate system, and then use the interpolation of the fragment shader to get the barycentric coordinates of the current fragment.
+
+In fact, the rendering pipeline also uses barycentric coordinates as weights to determine the color of the fragment, as shown in the figure below. You can continue to read the article on rasterization implementation on scratchapixel: [Rasterization].
+
+![barycentric](https://www.scratchapixel.com/images/rasterization/barycentric2.png)
+
+Let's look at the specific implementation. First, pass in the barycentric coordinates to the vertices. We need to ensure that the coordinates of the three vertices of the triangle are `(1,0,0)`, `(0,1,0)`, and `(0,0,1)`. If you are using `gl.drawArrays()` during drawing, you only need to pass in the coordinates of the three vertices in order, and repeat them multiple times (the number of triangles), for example:
+
+```glsl
+layout(location = BARYCENTRIC) in vec3 a_Barycentric;
+out vec3 v_Barycentric;
+
+void main() {
+  v_Barycentric = a_Barycentric;
+}
+```
+
+Then in the fragment shader, when any component of the barycentric coordinates is less than the threshold of the border width, it can be considered as a border. Here, the built-in glsl function `any()` and `lessThan()` are used:
+
+```glsl
+in vec3 v_Barycentric;
+void main() {
+  // less than border width
+  if (any(lessThan(v_Barycentric, vec3(0.1)))) {
+    // border color
+    gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0);
+  } else {
+    // fill background color
+    gl_FragColor = vec4(0.5, 0.5, 0.5, 1.0);
+  }
+}
+```
+
+And like the previous example of drawing straight line grids, we want the line width to remain constant regardless of the camera zoom, so we continue to use `fwidth()`:
+
+```glsl
+float edgeFactor() {
+  vec3 d = fwidth(v_Barycentric);
+  vec3 a3 = smoothstep(vec3(0.0), d * u_WireframeLineWidth, v_Barycentric);
+  return min(min(a3.x, a3.y), a3.z);
+}
+```
+
+### Reallocate vertex data {#reallocate-vertex-data}
+
+In the previous example, we used `gl.drawArrays()` during drawing, but if we use `gl.drawElements()` which is more space efficient, that is, sharing some vertices (for example, a plane only uses 4 rather than 6 vertices), we cannot simply allocate barycentric coordinates based on the vertex order, but need to allocate them based on the vertex index. However, not all allocation methods are this simple. For example, the problem on Stack Overflow: [Issue with Barycentric coordinates when using shared vertices], you will find that the `?` cannot be allocated. The fundamental reason is that in the case of shared vertices, once the barycentric coordinates are allocated for one triangle, the remaining one vertex coordinate of the next triangle sharing the same side is actually already determined:
+
+![there's no barycentric coordinate for the question mark](https://pica.zhimg.com/v2-30c2f4ab848d5f0cfcf8f6934b030298_b.jpg)
+
+Therefore, when wireframe is enabled, the reused indices need to be expanded. For example, the original 6 vertices using 4 indices `[0, 1, 2, 0, 2, 3]` will be expanded to `[0, 1, 2, 3, 4, 5]`, and the data in the vertex array needs to be reallocated.
+
+```ts
+let cursor = 0;
+const uniqueIndices = new Uint32Array(indiceNum); // 重新分配索引
+for (let i = 0; i < indiceNum; i++) {
+    const ii = this.#indexBufferData[i];
+    for (let j = 0; j < bufferDatas.length; j++) {
+        const { arrayStride } = this.#vertexBufferDescriptors[j];
+        const size = arrayStride / 4;
+        for (let k = 0; k < size; k++) {
+            bufferDatas[j][cursor * size + k] =
+                originalVertexBuffers[j][ii * size + k]; // 重新分配顶点数据
+        }
+    }
+    uniqueIndices[i] = cursor;
+    cursor++;
+}
+```
+
+The effect is as follows, and more drawing methods for graphics will be introduced later.
+
+<script setup>
+import Wireframe from '../components/Wireframe.vue'
+</script>
+
+<Wireframe />
+
 ## Extended reading
 
 -   [thetamath]
@@ -454,5 +538,8 @@ rgb = mix(rgb, gridColor, gridWeight);
 [the book of shaders - Patterns]: https://thebookofshaders.com/09/?lan=ch
 [Anti-Aliased Grid Shader]: https://madebyevan.com/shaders/grid/
 [The Best Darn Grid Shader (Yet)]: https://bgolus.medium.com/the-best-darn-grid-shader-yet-727f9278b9d8
+[Draw polyline]: /guide/lesson-012
+[Rasterization]: https://www.scratchapixel.com/lessons/3d-basic-rendering/rasterization-practical-implementation/rasterization-stage.html
+[Issue with Barycentric coordinates when using shared vertices]: https://stackoverflow.com/questions/24839857/wireframe-shader-issue-with-barycentric-coordinates-when-using-shared-vertices
 [How to Code a Subtle Shader Background Effect with React Three Fiber]: https://tympanus.net/codrops/2024/10/31/how-to-code-a-subtle-shader-background-effect-with-react-three-fiber/
 [Love, derivatives and loops]: https://medium.com/@akella/love-derivatives-and-loops-f4a0da6e2458

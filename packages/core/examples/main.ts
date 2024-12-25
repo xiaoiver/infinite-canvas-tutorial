@@ -35,13 +35,63 @@ const canvas = await new Canvas({
   // shaderCompilerPath: '/glsl_wgsl_compiler_bg.wasm',
 }).initialized;
 
-const circle = new Circle({
-  cx: 50,
-  cy: 50,
-  r: 4,
-  fill: '#F67676',
-});
-canvas.appendChild(circle);
+for (let i = 0; i < 2; i++) {
+  const circle = new Circle({
+    cx: i * 100,
+    cy: i * 100,
+    r: 50,
+    fill: `rgb(${Math.floor(Math.random() * 255)},${Math.floor(
+      Math.random() * 255,
+    )},${Math.floor(Math.random() * 255)})`,
+    batchable: true,
+    wireframe: true,
+    stroke: 'black',
+    strokeWidth: 10,
+    strokeOpacity: 0.5,
+  });
+  canvas.appendChild(circle);
+}
+
+// const rect = new Rect({
+//   x: 300,
+//   y: 100,
+//   width: 100,
+//   height: 100,
+//   fill: '#F67676',
+//   // stroke: 'black',
+//   // strokeWidth: 10,
+//   dropShadowBlurRadius: 10,
+//   dropShadowColor: 'rgba(0, 0, 0, 0.5)',
+//   dropShadowOffsetX: 10,
+//   dropShadowOffsetY: 10,
+//   // batchable: false,
+//   wireframe: true,
+// });
+// canvas.appendChild(rect);
+
+// const path = new Path({
+//   d: 'M 100 100 L 200 200 L 300 100 L 400 200 L 500 100 Z',
+//   fill: '#F67676',
+//   batchable: false,
+//   wireframe: true,
+// });
+// canvas.appendChild(path);
+
+// const polyline = new Polyline({
+//   points: [
+//     [100, 100],
+//     [200, 200],
+//     [300, 100],
+//   ],
+//   stroke: '#F67676',
+//   strokeWidth: 20,
+//   strokeLinecap: 'round',
+//   strokeLinejoin: 'round',
+//   // bowing: 2,
+//   // roughness: 4,
+//   wireframe: true,
+// });
+// canvas.appendChild(polyline);
 
 // const text = new Text({
 //   x: 50,

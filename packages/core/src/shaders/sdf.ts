@@ -3,20 +3,21 @@ import {
   vert_declaration as wireframe_vert_declaration,
   frag as wireframe_frag,
   frag_declaration as wireframe_frag_declaration,
+  Location as WireframeLocation,
 } from './wireframe';
 
 export enum Location {
-  FRAG_COORD,
-  BARYCENTRIC,
-  ABCD,
-  TXTY,
-  POSITION_SIZE,
-  FILL_COLOR,
-  STROKE_COLOR,
-  ZINDEX_STROKE_WIDTH,
-  OPACITY,
-  INNER_SHADOW_COLOR,
-  INNER_SHADOW,
+  BARYCENTRIC = WireframeLocation.BARYCENTRIC,
+  FRAG_COORD = 1,
+  ABCD = 2,
+  TXTY = 3,
+  POSITION_SIZE = 4,
+  FILL_COLOR = 5,
+  STROKE_COLOR = 6,
+  ZINDEX_STROKE_WIDTH = 7,
+  OPACITY = 8,
+  INNER_SHADOW_COLOR = 9,
+  INNER_SHADOW = 10,
 }
 
 export const vert = /* wgsl */ `
@@ -32,8 +33,8 @@ layout(std140) uniform SceneUniforms {
   float u_CheckboardStyle;
 };
 
-layout(location = ${Location.FRAG_COORD}) in vec2 a_FragCoord;
 ${wireframe_vert_declaration}
+layout(location = ${Location.FRAG_COORD}) in vec2 a_FragCoord;
 
 #ifdef USE_INSTANCES
   layout(location = ${Location.ABCD}) in vec4 a_Abcd;
@@ -181,8 +182,8 @@ layout(std140) uniform SceneUniforms {
 
 out vec4 outputColor;
 
-in vec2 v_FragCoord;
 ${wireframe_frag_declaration}
+in vec2 v_FragCoord;
 
 #ifdef USE_INSTANCES
   in vec4 v_FillColor;
@@ -360,11 +361,11 @@ void main() {
     outputColor = over(outputColor, vec4(color.xyz, clamp(distance, 0.0, 1.0)));
   }
 
-  ${wireframe_frag}
-
   float antialiasedBlur = -fwidth(length(v_FragCoord));
   float opacity_t = clamp(distance / antialiasedBlur, 0.0, 1.0);
   outputColor.a *= clamp(1.0 - distance, 0.0, 1.0) * opacity * opacity_t;
+
+  ${wireframe_frag}
 
   if (outputColor.a < epsilon)
     discard;

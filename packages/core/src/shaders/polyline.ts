@@ -1,11 +1,20 @@
+import {
+  vert as wireframe_vert,
+  vert_declaration as wireframe_vert_declaration,
+  frag as wireframe_frag,
+  frag_declaration as wireframe_frag_declaration,
+  Location as WireframeLocation,
+} from './wireframe';
+
 export enum Location {
-  PREV,
-  POINTA,
-  POINTB,
-  NEXT,
-  VERTEX_JOINT,
-  VERTEX_NUM,
-  TRAVEL,
+  BARYCENTRIC = WireframeLocation.BARYCENTRIC,
+  PREV = 1,
+  POINTA = 2,
+  POINTB = 3,
+  NEXT = 4,
+  VERTEX_JOINT = 5,
+  VERTEX_NUM = 6,
+  TRAVEL = 7,
 }
 
 export enum JointType {
@@ -36,6 +45,7 @@ layout(std140) uniform SceneUniforms {
   vec2 u_Viewport;
 };
 
+${wireframe_vert_declaration}
 layout(location = ${Location.PREV}) in vec2 a_Prev;
 layout(location = ${Location.POINTA}) in vec2 a_PointA;
 layout(location = ${Location.POINTB}) in vec2 a_PointB;
@@ -104,6 +114,8 @@ vec2 doBisect(
 // }
 
 void main() {
+  ${wireframe_vert}
+
   mat3 model = u_ModelMatrix;
   vec4 strokeColor = u_StrokeColor;
   float zIndex = u_ZIndexStrokeWidth.x;
@@ -435,6 +447,7 @@ layout(std140) uniform ShapeUniforms {
 
 out vec4 outputColor;
 
+${wireframe_frag_declaration}
 in vec4 v_Distance;
 in vec4 v_Arc;
 in float v_Type;
@@ -529,6 +542,9 @@ void main() {
 
   outputColor = strokeColor;
   outputColor.a *= alpha * opacity * strokeOpacity;
+
+  ${wireframe_frag}
+  
   if (outputColor.a < epsilon) {
     discard;
   }

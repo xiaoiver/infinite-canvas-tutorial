@@ -15,10 +15,6 @@ const MODE_LIST = [
 export class ModeToolbar extends LitElement {
   static styles = css`
     :host {
-      position: absolute;
-      left: 50%;
-      top: 16px;
-      transform: translateX(-50%);
       box-shadow: var(--sl-shadow-medium);
       background: white;
     }

@@ -9,9 +9,6 @@ import { ImageExporter } from '@infinite-canvas-tutorial/core';
 export class Exporter extends LitElement {
   static styles = css`
     :host {
-      position: absolute;
-      right: 16px;
-      top: 16px;
       box-shadow: var(--sl-shadow-medium);
       background: white;
     }

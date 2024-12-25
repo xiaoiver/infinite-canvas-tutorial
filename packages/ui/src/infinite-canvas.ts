@@ -23,6 +23,25 @@ export class InfiniteCanvas extends LitElement {
       position: relative;
     }
 
+    :host ic-exporter {
+      position: absolute;
+      right: 16px;
+      top: 16px;
+    }
+
+    :host ic-mode-toolbar {
+      position: absolute;
+      left: 50%;
+      top: 16px;
+      transform: translateX(-50%);
+    }
+
+    :host ic-zoom-toolbar {
+      position: absolute;
+      right: 16px;
+      bottom: 16px;
+    }
+
     canvas {
       width: 100%;
       height: 100%;

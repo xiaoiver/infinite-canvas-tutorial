@@ -1,11 +1,20 @@
+import {
+  vert as wireframe_vert,
+  vert_declaration as wireframe_vert_declaration,
+  frag as wireframe_frag,
+  frag_declaration as wireframe_frag_declaration,
+  Location as WireframeLocation,
+} from './wireframe';
+
 export enum Location {
-  FRAG_COORD,
-  ABCD,
-  TXTY,
-  POSITION_SIZE,
-  ZINDEX_STROKE_WIDTH,
-  DROP_SHADOW_COLOR,
-  DROP_SHADOW,
+  BARYCENTRIC = WireframeLocation.BARYCENTRIC,
+  FRAG_COORD = 1,
+  ABCD = 2,
+  TXTY = 3,
+  POSITION_SIZE = 4,
+  ZINDEX_STROKE_WIDTH = 5,
+  DROP_SHADOW_COLOR = 6,
+  DROP_SHADOW = 7,
 }
 
 export const vert = /* wgsl */ `
@@ -19,6 +28,7 @@ layout(std140) uniform SceneUniforms {
   float u_CheckboardStyle;
 };
 
+${wireframe_vert_declaration}
 layout(location = ${Location.FRAG_COORD}) in vec2 a_FragCoord;
 
 #ifdef USE_INSTANCES
@@ -49,6 +59,8 @@ out vec2 v_Size;
 out vec2 v_Point;
 
 void main() {
+  ${wireframe_vert}
+
   mat3 model;
   vec2 origin;
   vec2 size;
@@ -123,6 +135,7 @@ layout(std140) uniform SceneUniforms {
 
 out vec4 outputColor;
 
+${wireframe_frag_declaration}
 in vec2 v_Origin;
 #ifdef USE_INSTANCES
   in float v_CornerRadius;
@@ -220,6 +233,8 @@ void main() {
 
     outputColor = dropShadowColor;
     outputColor.a = alpha;
+
+    ${wireframe_frag}
   } else {
     discard;
   }

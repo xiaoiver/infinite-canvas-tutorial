@@ -27,7 +27,7 @@ onMounted(() => {
     stroke: 'blue',
     bowing: 1,
     roughness: 1,
-    // fillStyle: 'cross-hatch',
+    fillStyle: 'hachure',
   });
 
   $canvas.addEventListener('ic-ready', (e) => {
@@ -45,12 +45,24 @@ onMounted(() => {
   const config = {
     roughness: 1,
     bowing: 1,
+    fillStyle: 'hachure',
   };
   gui.add(config, 'bowing', 0, 5, 0.5).onChange((bowing) => {
     rect.bowing = bowing;
   });
   gui.add(config, 'roughness', 0, 5, 0.5).onChange((roughness) => {
     rect.roughness = roughness;
+  });
+  gui.add(config, 'fillStyle', [
+    'hachure',
+    'solid',
+    'zigzag',
+    'cross-hatch',
+    'dots',
+    'dashed',
+    'zigzag-line',
+  ]).onChange((fillStyle) => {
+    rect.fillStyle = fillStyle;
   });
 });
 </script>

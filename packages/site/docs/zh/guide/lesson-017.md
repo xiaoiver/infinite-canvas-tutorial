@@ -22,6 +22,14 @@ publish: false
 [Loro Excalidraw Example]
 [automerge wasm]
 
+系列教程：
+
+-   [An Interactive Intro to CRDTs]
+-   [Building a Collaborative Pixel Art Editor with CRDTs]
+-   [Making CRDTs 98% More Efficient]
+
+### 数据结构设计
+
 ## 扩展阅读 {#extended-reading}
 
 -   [Movable tree CRDTs and Loro's implementation]
@@ -32,6 +40,9 @@ publish: false
 -   [I was wrong. CRDTs are the future]
 -   [5000x faster CRDTs: An Adventure in Optimization]
 -   [TipTap offline support]
+-   [An Interactive Intro to CRDTs]
+-   [Building a Collaborative Pixel Art Editor with CRDTs]
+-   [Making CRDTs 98% More Efficient]
 
 [Movable tree CRDTs and Loro's implementation](https://news.ycombinator.com/item?id=41099901)
 [CRDTs: The Hard Parts](https://www.youtube.com/watch?v=x7drE24geUw)
@@ -45,3 +56,6 @@ publish: false
 [automerge wasm](https://automerge.org/blog/2024/08/23/wasm-packaging/)
 [The past, present, and future of local-first](https://speakerdeck.com/ept/the-past-present-and-future-of-local-first)
 [TipTap offline support]: <https://tiptap.dev/docs/guides/offline-support>
+[An Interactive Intro to CRDTs]: <https://jakelazaroff.com/words/an-interactive-intro-to-crdts/>
+[Building a Collaborative Pixel Art Editor with CRDTs]: <https://jakelazaroff.com/words/building-a-collaborative-pixel-art-editor-with-crdts/>
+[Making CRDTs 98% More Efficient]: <https://jakelazaroff.com/words/making-crdts-98-percent-more-efficient/>

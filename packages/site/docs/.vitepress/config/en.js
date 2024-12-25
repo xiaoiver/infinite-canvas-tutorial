@@ -135,7 +135,11 @@ export const en = defineConfig({
               {
                 text: 'Rough shapes',
                 link: 'rough',
-              }
+              },
+              {
+                text: 'Wireframe',
+                link: 'wireframe',
+              },
             ],
           },
         ],

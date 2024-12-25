@@ -1,6 +1,5 @@
 import {
   type RenderPass,
-  Bindings,
   Buffer,
   BufferFrequencyHint,
   BufferUsage,
@@ -8,10 +7,7 @@ import {
   BlendFactor,
   ChannelWriteMask,
   Format,
-  InputLayout,
-  RenderPipeline,
   VertexStepMode,
-  Program,
   CompareFunction,
   TextureUsage,
   BindingsDescriptor,
@@ -25,12 +21,7 @@ import {
 import { Circle, Ellipse, Rect, Shape } from '../shapes';
 import { Drawcall, ZINDEX_FACTOR } from './Drawcall';
 import { vert, frag, Location } from '../shaders/sdf';
-import {
-  // isBrowser,
-  // isImageBitmapOrCanvases,
-  isString,
-  paddingMat3,
-} from '../utils';
+import { isString, paddingMat3 } from '../utils';
 
 const strokeAlignmentMap = {
   center: 0,
@@ -41,18 +32,7 @@ const strokeAlignmentMap = {
 export class SDF extends Drawcall {
   // protected maxInstances: number = 1000;
 
-  wireframe: boolean = false;
-
-  #program: Program;
-  #fragUnitBuffer: Buffer;
-  #instancedBuffer: Buffer;
-  #instancedMatrixBuffer: Buffer;
-  #barycentricBuffer: Buffer;
-  #indexBuffer: Buffer;
   #uniformBuffer: Buffer;
-  #pipeline: RenderPipeline;
-  #inputLayout: InputLayout;
-  #bindings: Bindings;
   #texture: Texture;
 
   static useDash(shape: Shape) {
@@ -61,16 +41,6 @@ export class SDF extends Drawcall {
       strokeDasharray.length > 0 && strokeDasharray.some((dash) => dash > 0)
     );
   }
-
-  get useFillImage() {
-    const { fill } = this.shapes[0];
-    return !isString(fill);
-    // && (isBrowser ? isImageBitmapOrCanvases(fill) : true)
-  }
-
-  // get useWireframe() {
-  //   return this.shapes[0].wireframe;
-  // }
 
   validate(shape: Shape) {
     const result = super.validate(shape);
@@ -97,96 +67,54 @@ export class SDF extends Drawcall {
       return false;
     }
 
-    // if (this.shapes[0].wireframe !== shape.wireframe) {
-    //   return false;
-    // }
-
     return true;
   }
 
   createGeometry(): void {
-    if (!this.#fragUnitBuffer) {
-      this.#fragUnitBuffer = this.device.createBuffer({
-        viewOrSize: new Float32Array([-1, -1, 1, -1, 1, 1, -1, 1]),
-        usage: BufferUsage.VERTEX,
-        hint: BufferFrequencyHint.STATIC,
-      });
-      this.#indexBuffer = this.device.createBuffer({
-        viewOrSize: new Uint32Array([0, 1, 2, 0, 2, 3]),
+    if (!this.indexBuffer) {
+      this.indexBufferData = new Uint32Array([0, 1, 2, 0, 2, 3]);
+      this.indexBuffer = this.device.createBuffer({
+        viewOrSize: this.indexBufferData,
         usage: BufferUsage.INDEX,
         hint: BufferFrequencyHint.STATIC,
       });
+
+      this.vertexBufferDatas[0] = new Float32Array([
+        -1, -1, 1, -1, 1, 1, -1, 1,
+      ]);
+      this.vertexBuffers[0] = this.device.createBuffer({
+        viewOrSize: this.vertexBufferDatas[0],
+        usage: BufferUsage.VERTEX,
+        hint: BufferFrequencyHint.STATIC,
+      });
     }
 
     if (this.instanced) {
-      if (this.#instancedBuffer) {
-        this.#instancedBuffer.destroy();
+      if (this.vertexBuffers[1]) {
+        this.vertexBuffers[1].destroy();
+        this.vertexBuffers[2].destroy();
       }
 
-      this.#instancedBuffer = this.device.createBuffer({
-        viewOrSize: Float32Array.BYTES_PER_ELEMENT * 28 * this.shapes.length,
+      this.vertexBufferDatas[1] = new Float32Array(
+        new Array(28 * this.shapes.length).fill(0),
+      );
+      this.vertexBuffers[1] = this.device.createBuffer({
+        viewOrSize: this.vertexBufferDatas[1],
         usage: BufferUsage.VERTEX,
         hint: BufferFrequencyHint.DYNAMIC,
       });
 
-      if (this.#instancedMatrixBuffer) {
-        this.#instancedMatrixBuffer.destroy();
-      }
-      this.#instancedMatrixBuffer = this.device.createBuffer({
-        viewOrSize: Float32Array.BYTES_PER_ELEMENT * 6 * this.shapes.length,
+      this.vertexBufferDatas[2] = new Float32Array(
+        new Array(6 * this.shapes.length).fill(0),
+      );
+      this.vertexBuffers[2] = this.device.createBuffer({
+        viewOrSize: this.vertexBufferDatas[2],
         usage: BufferUsage.VERTEX,
         hint: BufferFrequencyHint.DYNAMIC,
       });
     }
 
-    if (this.wireframe) {
-      const indiceNum = 6;
-      const uniqueIndices = new Uint32Array(indiceNum);
-      // create barycentric attributes
-      const barycentricBuffer = new Float32Array(indiceNum * 3);
-      for (let i = 0; i < indiceNum; ) {
-        for (let j = 0; j < 3; j++) {
-          const ii = uniqueIndices[i++];
-          barycentricBuffer[ii * 3 + j] = 1;
-        }
-      }
-
-      this.#barycentricBuffer = this.device.createBuffer({
-        viewOrSize: Float32Array.BYTES_PER_ELEMENT * 4 * this.shapes.length,
-        usage: BufferUsage.VERTEX,
-        hint: BufferFrequencyHint.DYNAMIC,
-      });
-    }
-  }
-
-  createMaterial(uniformBuffer: Buffer): void {
-    let defines = '';
-    if (this.instanced) {
-      defines += '#define USE_INSTANCES\n';
-    }
-    if (this.useFillImage) {
-      defines += '#define USE_FILLIMAGE\n';
-    }
-    // if (this.useWireframe) {
-    //   defines += '#define USE_WIREFRAME\n';
-    // }
-
-    const diagnosticDerivativeUniformityHeader =
-      this.device.queryVendorInfo().platformString === 'WebGPU'
-        ? 'diagnostic(off,derivative_uniformity);\n'
-        : '';
-
-    this.#program = this.renderCache.createProgram({
-      vertex: {
-        glsl: defines + vert,
-      },
-      fragment: {
-        glsl: defines + frag,
-        postprocess: (fs) => diagnosticDerivativeUniformityHeader + fs,
-      },
-    });
-
-    const vertexBufferDescriptors = [
+    this.vertexBufferDescriptors = [
       {
         arrayStride: 4 * 2,
         stepMode: VertexStepMode.VERTEX,
@@ -200,22 +128,8 @@ export class SDF extends Drawcall {
       },
     ];
 
-    if (this.wireframe) {
-      vertexBufferDescriptors.push({
-        arrayStride: 4 * 3,
-        stepMode: VertexStepMode.VERTEX,
-        attributes: [
-          {
-            shaderLocation: Location.BARYCENTRIC, // a_Barycentric
-            offset: 0,
-            format: Format.F32_RGB,
-          },
-        ],
-      });
-    }
-
     if (this.instanced) {
-      vertexBufferDescriptors.push(
+      this.vertexBufferDescriptors.push(
         {
           arrayStride: 4 * 28,
           stepMode: VertexStepMode.INSTANCE,
@@ -274,30 +188,54 @@ export class SDF extends Drawcall {
           ],
         },
       );
-      this.#inputLayout = this.renderCache.createInputLayout({
-        vertexBufferDescriptors,
-        indexBufferFormat: Format.U32_R,
-        program: this.#program,
-      });
-    } else {
-      this.#inputLayout = this.renderCache.createInputLayout({
-        vertexBufferDescriptors,
-        indexBufferFormat: Format.U32_R,
-        program: this.#program,
-      });
-      if (!this.#uniformBuffer) {
-        this.#uniformBuffer = this.device.createBuffer({
-          viewOrSize:
-            Float32Array.BYTES_PER_ELEMENT * (16 + 4 + 4 + 4 + 4 + 4 + 4),
-          usage: BufferUsage.UNIFORM,
-          hint: BufferFrequencyHint.DYNAMIC,
-        });
-      }
+    }
+  }
+
+  createMaterial(uniformBuffer: Buffer): void {
+    let defines = '';
+    if (this.instanced) {
+      defines += '#define USE_INSTANCES\n';
+    }
+    if (this.useFillImage) {
+      defines += '#define USE_FILLIMAGE\n';
+    }
+    if (this.useWireframe) {
+      defines += '#define USE_WIREFRAME\n';
     }
 
-    this.#pipeline = this.renderCache.createRenderPipeline({
-      inputLayout: this.#inputLayout,
-      program: this.#program,
+    const diagnosticDerivativeUniformityHeader =
+      this.device.queryVendorInfo().platformString === 'WebGPU'
+        ? 'diagnostic(off,derivative_uniformity);\n'
+        : '';
+
+    this.program = this.renderCache.createProgram({
+      vertex: {
+        glsl: defines + vert,
+      },
+      fragment: {
+        glsl: defines + frag,
+        postprocess: (fs) => diagnosticDerivativeUniformityHeader + fs,
+      },
+    });
+
+    this.inputLayout = this.renderCache.createInputLayout({
+      vertexBufferDescriptors: this.vertexBufferDescriptors,
+      indexBufferFormat: Format.U32_R,
+      program: this.program,
+    });
+
+    if (!this.instanced && !this.#uniformBuffer) {
+      this.#uniformBuffer = this.device.createBuffer({
+        viewOrSize:
+          Float32Array.BYTES_PER_ELEMENT * (16 + 4 + 4 + 4 + 4 + 4 + 4),
+        usage: BufferUsage.UNIFORM,
+        hint: BufferFrequencyHint.DYNAMIC,
+      });
+    }
+
+    this.pipeline = this.renderCache.createRenderPipeline({
+      inputLayout: this.inputLayout,
+      program: this.program,
       colorAttachmentFormats: [Format.U8_RGBA_RT],
       depthStencilAttachmentFormat: Format.D24_S8,
       megaStateDescriptor: {
@@ -334,10 +272,10 @@ export class SDF extends Drawcall {
         },
       },
     });
-    this.device.setResourceName(this.#pipeline, 'SDFPipeline');
+    this.device.setResourceName(this.pipeline, 'SDFPipeline');
 
     const bindings: BindingsDescriptor = {
-      pipeline: this.#pipeline,
+      pipeline: this.pipeline,
       uniformBufferBindings: [
         {
           buffer: uniformBuffer,
@@ -378,7 +316,7 @@ export class SDF extends Drawcall {
       ];
     }
 
-    this.#bindings = this.renderCache.createBindings(bindings);
+    this.bindings = this.renderCache.createBindings(bindings);
   }
 
   render(renderPass: RenderPass, uniformLegacyObject: Record<string, unknown>) {
@@ -387,32 +325,32 @@ export class SDF extends Drawcall {
       this.geometryDirty
     ) {
       if (this.instanced) {
-        this.#instancedMatrixBuffer.setSubData(
-          0,
-          new Uint8Array(
-            new Float32Array(
-              this.shapes
-                .map((shape) => [
-                  shape.worldTransform.a,
-                  shape.worldTransform.b,
-                  shape.worldTransform.c,
-                  shape.worldTransform.d,
-                  shape.worldTransform.tx,
-                  shape.worldTransform.ty,
-                ])
-                .flat(),
-            ).buffer,
-          ),
-        );
-
         const instancedData: number[] = [];
         this.shapes.forEach((shape) => {
           const [buffer] = this.generateBuffer(shape);
           instancedData.push(...buffer);
         });
-        this.#instancedBuffer.setSubData(
+        this.vertexBufferDatas[1] = new Float32Array(instancedData);
+        this.vertexBuffers[1].setSubData(
           0,
-          new Uint8Array(new Float32Array(instancedData).buffer),
+          new Uint8Array(this.vertexBufferDatas[1].buffer),
+        );
+
+        this.vertexBufferDatas[2] = new Float32Array(
+          this.shapes
+            .map((shape) => [
+              shape.worldTransform.a,
+              shape.worldTransform.b,
+              shape.worldTransform.c,
+              shape.worldTransform.d,
+              shape.worldTransform.tx,
+              shape.worldTransform.ty,
+            ])
+            .flat(),
+        );
+        this.vertexBuffers[2].setSubData(
+          0,
+          new Uint8Array(this.vertexBufferDatas[2].buffer),
         );
       } else {
         const { worldTransform } = this.shapes[0];
@@ -431,46 +369,41 @@ export class SDF extends Drawcall {
         if (this.useFillImage) {
           uniformLegacyObject.u_FillImage = this.#texture;
         }
-        this.#program.setUniformsLegacy(uniformLegacyObject);
+        this.program.setUniformsLegacy(uniformLegacyObject);
+      }
+
+      if (this.useWireframe) {
+        this.generateWireframe();
+
+        if (this.instanced) {
+          this.vertexBuffers[1].setSubData(
+            0,
+            new Uint8Array(this.vertexBufferDatas[1].buffer),
+          );
+          this.vertexBuffers[2].setSubData(
+            0,
+            new Uint8Array(this.vertexBufferDatas[2].buffer),
+          );
+        }
       }
     }
 
-    const buffers = [
+    this.program.setUniformsLegacy(uniformLegacyObject);
+    renderPass.setPipeline(this.pipeline);
+    renderPass.setVertexInput(
+      this.inputLayout,
+      this.vertexBuffers.map((buffer) => ({ buffer })),
       {
-        buffer: this.#fragUnitBuffer,
+        buffer: this.indexBuffer,
       },
-    ];
-    if (this.wireframe) {
-      buffers.push({
-        buffer: this.#barycentricBuffer,
-      });
-    }
-    if (this.instanced) {
-      buffers.push(
-        {
-          buffer: this.#instancedBuffer,
-        },
-        { buffer: this.#instancedMatrixBuffer },
-      );
-    }
-
-    this.#program.setUniformsLegacy(uniformLegacyObject);
-    renderPass.setPipeline(this.#pipeline);
-    renderPass.setVertexInput(this.#inputLayout, buffers, {
-      buffer: this.#indexBuffer,
-    });
-    renderPass.setBindings(this.#bindings);
+    );
+    renderPass.setBindings(this.bindings);
     renderPass.drawIndexed(6, this.shapes.length);
   }
 
   destroy(): void {
     super.destroy();
-    if (this.#program) {
-      this.#instancedMatrixBuffer?.destroy();
-      this.#instancedBuffer?.destroy();
-      this.#fragUnitBuffer?.destroy();
-      this.#barycentricBuffer?.destroy();
-      this.#indexBuffer?.destroy();
+    if (this.program) {
       this.#uniformBuffer?.destroy();
       this.#texture?.destroy();
     }
@@ -554,83 +487,4 @@ export class SDF extends Drawcall {
       },
     ];
   }
-
-  // private generateWireframe() {
-  //   // need generate barycentric coordinates
-  //   const { indices } = geometry;
-  //   const indiceNum = geometry.indices.length;
-  //   const originalVertexBuffers = geometry.vertices.map((buffer) => {
-  //     // @ts-ignore
-  //     return buffer.slice();
-  //   }) as ArrayBufferView[];
-  //   for (
-  //     let i = VertexAttributeBufferIndex.PICKING_COLOR;
-  //     i < geometry.vertexBuffers.length;
-  //     i++
-  //   ) {
-  //     const { arrayStride } =
-  //       geometry.inputLayoutDescriptor.vertexBufferDescriptors[i];
-  //     geometry.vertices[i] = new Float32Array((arrayStride / 4) * indiceNum);
-  //   }
-  //   // reallocate attribute data
-  //   let cursor = 0;
-  //   const uniqueIndices = new Uint32Array(indiceNum);
-  //   for (let i = 0; i < indiceNum; i++) {
-  //     const ii = indices[i];
-  //     for (let j = 1; j < geometry.vertices.length; j++) {
-  //       const { arrayStride } =
-  //         geometry.inputLayoutDescriptor.vertexBufferDescriptors[j];
-  //       const size = arrayStride / 4;
-  //       for (let k = 0; k < size; k++) {
-  //         geometry.vertices[j][cursor * size + k] =
-  //           originalVertexBuffers[j][ii * size + k];
-  //       }
-  //     }
-  //     uniqueIndices[i] = cursor;
-  //     cursor++;
-  //   }
-  //   for (
-  //     let i = VertexAttributeBufferIndex.PICKING_COLOR + 1;
-  //     i < geometry.vertexBuffers.length;
-  //     i++
-  //   ) {
-  //     // if (i === 3) {
-  //     //   continue;
-  //     // }
-  //     const { stepMode, arrayStride } =
-  //       geometry.inputLayoutDescriptor.vertexBufferDescriptors[i];
-  //     const descriptor =
-  //       geometry.inputLayoutDescriptor.vertexBufferDescriptors[i].attributes[0];
-  //     if (descriptor) {
-  //       const {
-  //         shaderLocation: location,
-  //         offset: bufferByteOffset,
-  //         format,
-  //         divisor,
-  //       } = descriptor;
-  //       geometry.setVertexBuffer({
-  //         bufferIndex: i,
-  //         byteStride: arrayStride,
-  //         stepMode,
-  //         attributes: [
-  //           {
-  //             format,
-  //             bufferByteOffset,
-  //             location,
-  //             divisor,
-  //           },
-  //         ],
-  //         data: geometry.vertices[i],
-  //       });
-  //     }
-  //   }
-  //   // create barycentric attributes
-  //   const barycentricBuffer = new Float32Array(indiceNum * 3);
-  //   for (let i = 0; i < indiceNum; ) {
-  //     for (let j = 0; j < 3; j++) {
-  //       const ii = uniqueIndices[i++];
-  //       barycentricBuffer[ii * 3 + j] = 1;
-  //     }
-  //   }
-  // }
 }

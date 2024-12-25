@@ -437,6 +437,8 @@ rgb = mix(rgb, gridColor, gridWeight);
 
 绘制 wireframe 也使用了类似技术，我们可以将它用于针对复杂 Geometry 的 Debug，例如后续介绍的[折线]。
 
+### 重心坐标 {#barycentric-coordinates}
+
 思路其实十分简单，我们想在光栅化时给每个三角形描边，那么就需要知道当前 fragment 距离三角形的三边各有多远，一旦小于边框的宽度，我们就给当前 fragment 着上边框的颜色。所以问题的关键就是如何计算 fragment 距离三角形三边的距离。我们可以使用重心坐标，由于只关心当前 fragment 所在的三角形，以三个顶点构建重心坐标系，利用 fragment shader 的插值就能得到当前 fragment 对应的重心坐标。
 
 其实在光栅化过程中，渲染管线也正是利用重心坐标作为权重来决定 fragment 的颜色，如下图所示，可以继续阅读 scratchapixel 上关于光栅化具体实现的文章：[Rasterization]。
@@ -480,9 +482,39 @@ float edgeFactor() {
 }
 ```
 
+### 重新分配顶点数据 {#reallocate-vertex-data}
+
 之前的例子中我们在绘制时使用了 `gl.drawArrays()`，但如果使用的是更节省 Buffer 空间的 `gl.drawElements()`，也就是共享部分顶点（例如平面仅使用 4 个而非 6 个顶点），就不能简单根据顶点顺序，得依照顶点索引分配重心坐标了。但不是所有分配方式都这么简单，比如 Stack Overflow 上的这个问题：[Issue with Barycentric coordinates when using shared vertices]，会发现 `?` 处无法分配。根本原因其实是在共享顶点的情况下，一旦给一个三角形分配好了重心坐标，与之共享一边的下一个三角形的剩余一个顶点坐标实际也已经确定了：
 
 ![there's no barycentric coordinate for the question mark](https://pica.zhimg.com/v2-30c2f4ab848d5f0cfcf8f6934b030298_b.jpg)
+
+因此开启 wireframe 时，需要展开被复用的索引。以 SDF 为例，原本的 6 个顶点使用的 4 个索引 `[0, 1, 2, 0, 2, 3]` 将被展开为 `[0, 1, 2, 3, 4, 5]`，同时顶点数组中的数据需要重新分配。
+
+```ts
+let cursor = 0;
+const uniqueIndices = new Uint32Array(indiceNum); // 重新分配索引
+for (let i = 0; i < indiceNum; i++) {
+    const ii = this.#indexBufferData[i];
+    for (let j = 0; j < bufferDatas.length; j++) {
+        const { arrayStride } = this.#vertexBufferDescriptors[j];
+        const size = arrayStride / 4;
+        for (let k = 0; k < size; k++) {
+            bufferDatas[j][cursor * size + k] =
+                originalVertexBuffers[j][ii * size + k]; // 重新分配顶点数据
+        }
+    }
+    uniqueIndices[i] = cursor;
+    cursor++;
+}
+```
+
+效果如下，更多图形的绘制方法后续我们会详细介绍。
+
+<script setup>
+import Wireframe from '../../components/Wireframe.vue'
+</script>
+
+<Wireframe />
 
 ## 扩展阅读 {#extended-reading}
 

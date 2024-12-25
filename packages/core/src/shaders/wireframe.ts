@@ -1,3 +1,7 @@
+export enum Location {
+  BARYCENTRIC = 0,
+}
+
 export const vert = /* wgsl */ `
 #ifdef USE_WIREFRAME
   v_Barycentric = a_Barycentric;
@@ -6,7 +10,7 @@ export const vert = /* wgsl */ `
 
 export const vert_declaration = /* wgsl */ `
 #ifdef USE_WIREFRAME
-  layout(location = BARYCENTRIC) in vec3 a_Barycentric;
+  layout(location = ${Location.BARYCENTRIC}) in vec3 a_Barycentric;
   out vec3 v_Barycentric;
 #endif
 `;
@@ -14,8 +18,11 @@ export const vert_declaration = /* wgsl */ `
 export const frag = /* wgsl */ `
 #ifdef USE_WIREFRAME
   vec3 u_WireframeLineColor = vec3(0.0, 0.0, 0.0);
-  vec3 color = mix(outputColor.xyz, u_WireframeLineColor, (1.0 - edgeFactor()));
-  outputColor.xyz = color;
+
+  outputColor.xyz = mix(outputColor.xyz, u_WireframeLineColor, (1.0 - edgeFactor()));
+  if (any(lessThan(v_Barycentric, vec3(0.01)))) {
+    outputColor.a = 0.95;
+  }
 #endif
 `;
 

@@ -1,6 +1,5 @@
 import {
   type RenderPass,
-  Bindings,
   Buffer,
   BufferFrequencyHint,
   BufferUsage,
@@ -8,13 +7,9 @@ import {
   BlendFactor,
   ChannelWriteMask,
   Format,
-  InputLayout,
-  RenderPipeline,
   VertexStepMode,
-  Program,
   CompareFunction,
   TransparentBlack,
-  InputLayoutBufferDescriptor,
   StencilOp,
 } from '@antv/g-device-api';
 import {
@@ -67,19 +62,11 @@ export class SmoothPolyline extends Drawcall {
     return false;
   }
 
-  #program: Program;
   #vertexNumBuffer: Buffer;
   #travelBuffer: Buffer;
   #segmentsBuffer: Buffer;
-  #instancedBuffer: Buffer;
-  #instancedMatrixBuffer: Buffer;
-  #indexBuffer: Buffer;
   #uniformBuffer: Buffer;
-  #pipeline: RenderPipeline;
-  #inputLayout: InputLayout;
-  #bindings: Bindings;
 
-  indices: number[] = [];
   pointsBuffer: number[] = [];
   travelBuffer: number[] = [];
 
@@ -143,7 +130,7 @@ export class SmoothPolyline extends Drawcall {
       );
       offset += 9;
     });
-    this.indices = indices;
+    this.indexBufferData = new Uint32Array(indices);
     this.pointsBuffer = pointsBuffer;
     this.travelBuffer = travelBuffer;
 
@@ -181,30 +168,38 @@ export class SmoothPolyline extends Drawcall {
       usage: BufferUsage.VERTEX,
       hint: BufferFrequencyHint.STATIC,
     });
-  }
 
-  createMaterial(uniformBuffer: Buffer): void {
-    let defines = '';
-    if (this.instanced) {
-      defines += '#define USE_INSTANCES\n';
-    }
+    this.#segmentsBuffer.setSubData(
+      0,
+      new Uint8Array(new Float32Array(this.pointsBuffer).buffer),
+    );
 
-    const diagnosticDerivativeUniformityHeader =
-      this.device.queryVendorInfo().platformString === 'WebGPU'
-        ? 'diagnostic(off,derivative_uniformity);\n'
-        : '';
+    this.#travelBuffer.setSubData(
+      0,
+      new Uint8Array(new Float32Array(this.travelBuffer).buffer),
+    );
 
-    this.#program = this.renderCache.createProgram({
-      vertex: {
-        glsl: defines + vert,
-      },
-      fragment: {
-        glsl: defines + frag,
-        postprocess: (fs) => diagnosticDerivativeUniformityHeader + fs,
-      },
-    });
+    this.vertexBufferOffsets = [0, 4 * 3, 4 * 5, 4 * 6, 4 * 9, 0, 0];
+    this.vertexBuffers = [
+      this.#segmentsBuffer,
+      this.#segmentsBuffer,
+      this.#segmentsBuffer,
+      this.#segmentsBuffer,
+      this.#segmentsBuffer,
+      this.#vertexNumBuffer,
+      this.#travelBuffer,
+    ];
+    this.vertexBufferDatas = [
+      new Float32Array(this.pointsBuffer),
+      new Float32Array(this.pointsBuffer),
+      new Float32Array(this.pointsBuffer),
+      new Float32Array(this.pointsBuffer),
+      new Float32Array(this.pointsBuffer),
+      new Float32Array([0, 1, 2, 3, 4, 5, 6, 7, 8]),
+      new Float32Array(this.travelBuffer),
+    ];
 
-    const vertexBufferDescriptors: InputLayoutBufferDescriptor[] = [
+    this.vertexBufferDescriptors = [
       {
         arrayStride: 4 * 3,
         stepMode: VertexStepMode.INSTANCE,
@@ -284,6 +279,40 @@ export class SmoothPolyline extends Drawcall {
       },
     ];
 
+    if (!this.indexBuffer) {
+      this.indexBuffer = this.device.createBuffer({
+        viewOrSize: this.indexBufferData,
+        usage: BufferUsage.INDEX,
+        hint: BufferFrequencyHint.STATIC,
+      });
+    }
+  }
+
+  createMaterial(uniformBuffer: Buffer): void {
+    if (this.instanceCount <= 0) {
+      return;
+    }
+
+    let defines = '';
+    if (this.useWireframe) {
+      defines += '#define USE_WIREFRAME\n';
+    }
+
+    const diagnosticDerivativeUniformityHeader =
+      this.device.queryVendorInfo().platformString === 'WebGPU'
+        ? 'diagnostic(off,derivative_uniformity);\n'
+        : '';
+
+    this.program = this.renderCache.createProgram({
+      vertex: {
+        glsl: defines + vert,
+      },
+      fragment: {
+        glsl: defines + frag,
+        postprocess: (fs) => diagnosticDerivativeUniformityHeader + fs,
+      },
+    });
+
     if (!this.#uniformBuffer) {
       this.#uniformBuffer = this.device.createBuffer({
         viewOrSize: Float32Array.BYTES_PER_ELEMENT * (16 + 4 + 4 + 4 + 4),
@@ -292,15 +321,15 @@ export class SmoothPolyline extends Drawcall {
       });
     }
 
-    this.#inputLayout = this.renderCache.createInputLayout({
-      vertexBufferDescriptors,
+    this.inputLayout = this.renderCache.createInputLayout({
+      vertexBufferDescriptors: this.vertexBufferDescriptors,
       indexBufferFormat: Format.U32_R,
-      program: this.#program,
+      program: this.program,
     });
 
-    this.#pipeline = this.renderCache.createRenderPipeline({
-      inputLayout: this.#inputLayout,
-      program: this.#program,
+    this.pipeline = this.renderCache.createRenderPipeline({
+      inputLayout: this.inputLayout,
+      program: this.program,
       colorAttachmentFormats: [Format.U8_RGBA_RT],
       depthStencilAttachmentFormat: Format.D24_S8,
       megaStateDescriptor: {
@@ -338,8 +367,8 @@ export class SmoothPolyline extends Drawcall {
       },
     });
 
-    this.#bindings = this.device.createBindings({
-      pipeline: this.#pipeline,
+    this.bindings = this.device.createBindings({
+      pipeline: this.pipeline,
       uniformBufferBindings: [
         {
           buffer: uniformBuffer,
@@ -375,73 +404,32 @@ export class SmoothPolyline extends Drawcall {
         u_ModelMatrix,
         ...legacyObject,
       };
-      this.#program.setUniformsLegacy(uniformLegacyObject);
+      this.program.setUniformsLegacy(uniformLegacyObject);
 
-      this.#segmentsBuffer.setSubData(
-        0,
-        new Uint8Array(new Float32Array(this.pointsBuffer).buffer),
-      );
-
-      this.#travelBuffer.setSubData(
-        0,
-        new Uint8Array(new Float32Array(this.travelBuffer).buffer),
-      );
+      if (this.useWireframe) {
+        this.generateWireframe();
+      }
     }
 
-    const buffers = [
+    this.program.setUniformsLegacy(uniformLegacyObject);
+    renderPass.setPipeline(this.pipeline);
+    renderPass.setVertexInput(
+      this.inputLayout,
+      this.vertexBuffers.map((buffer, index) => ({
+        buffer,
+        offset: this.vertexBufferOffsets[index],
+      })),
       {
-        buffer: this.#segmentsBuffer,
+        buffer: this.indexBuffer,
       },
-      {
-        buffer: this.#segmentsBuffer,
-        offset: 4 * 3,
-      },
-      {
-        buffer: this.#segmentsBuffer,
-        offset: 4 * 5,
-      },
-      {
-        buffer: this.#segmentsBuffer,
-        offset: 4 * 6,
-      },
-      {
-        buffer: this.#segmentsBuffer,
-        offset: 4 * 9,
-      },
-      {
-        buffer: this.#vertexNumBuffer,
-      },
-      {
-        buffer: this.#travelBuffer,
-      },
-    ];
-
-    if (!this.#indexBuffer) {
-      this.#indexBuffer = this.device.createBuffer({
-        viewOrSize: new Uint32Array(this.indices),
-        usage: BufferUsage.INDEX,
-        hint: BufferFrequencyHint.STATIC,
-      });
-    }
-
-    this.#program.setUniformsLegacy(uniformLegacyObject);
-    renderPass.setPipeline(this.#pipeline);
-    renderPass.setVertexInput(this.#inputLayout, buffers, {
-      buffer: this.#indexBuffer,
-    });
-    renderPass.setBindings(this.#bindings);
+    );
+    renderPass.setBindings(this.bindings);
     renderPass.drawIndexed(15, this.instanceCount);
   }
 
   destroy(): void {
     super.destroy();
-    if (this.#program) {
-      this.#vertexNumBuffer?.destroy();
-      this.#travelBuffer?.destroy();
-      this.#segmentsBuffer?.destroy();
-      this.#instancedMatrixBuffer?.destroy();
-      this.#instancedBuffer?.destroy();
-      this.#indexBuffer?.destroy();
+    if (this.program) {
       this.#uniformBuffer?.destroy();
     }
   }

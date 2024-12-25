@@ -1,5 +1,14 @@
+import {
+  vert as wireframe_vert,
+  vert_declaration as wireframe_vert_declaration,
+  frag as wireframe_frag,
+  frag_declaration as wireframe_frag_declaration,
+  Location as WireframeLocation,
+} from './wireframe';
+
 export enum Location {
-  POSITION,
+  BARYCENTRIC = WireframeLocation.BARYCENTRIC,
+  POSITION = 1,
 }
 
 export const vert = /* wgsl */ `
@@ -13,7 +22,9 @@ layout(std140) uniform SceneUniforms {
   float u_CheckboardStyle;
 };
 
+${wireframe_vert_declaration}
 layout(location = ${Location.POSITION}) in vec2 a_Position;
+
 layout(std140) uniform ShapeUniforms {
   mat3 u_ModelMatrix;
   vec4 u_FillColor;
@@ -23,6 +34,8 @@ layout(std140) uniform ShapeUniforms {
 };
 
 void main() {
+  ${wireframe_vert}
+
   mat3 model;
   vec4 fillColor;
   vec4 strokeColor;
@@ -69,6 +82,8 @@ layout(std140) uniform ShapeUniforms {
   vec4 u_Opacity;
 };
 
+${wireframe_frag_declaration}
+
 out vec4 outputColor;
 
 float epsilon = 0.000001;
@@ -98,6 +113,8 @@ void main() {
   
   outputColor = fillColor;
   outputColor.a *= opacity;
+
+  ${wireframe_frag}
 
   if (outputColor.a < epsilon)
     discard;

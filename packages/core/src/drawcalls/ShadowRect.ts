@@ -1,6 +1,5 @@
 import {
   type RenderPass,
-  Bindings,
   Buffer,
   BufferFrequencyHint,
   BufferUsage,
@@ -8,10 +7,7 @@ import {
   BlendFactor,
   ChannelWriteMask,
   Format,
-  InputLayout,
-  RenderPipeline,
   VertexStepMode,
-  Program,
   CompareFunction,
   TransparentBlack,
   StencilOp,
@@ -29,68 +25,52 @@ export class ShadowRect extends Drawcall {
     );
   }
 
-  #program: Program;
-  #fragUnitBuffer: Buffer;
-  #instancedBuffer: Buffer;
-  #instancedMatrixBuffer: Buffer;
-  #indexBuffer: Buffer;
   #uniformBuffer: Buffer;
-  #pipeline: RenderPipeline;
-  #inputLayout: InputLayout;
-  #bindings: Bindings;
 
   createGeometry(): void {
-    if (!this.#fragUnitBuffer) {
-      this.#fragUnitBuffer = this.device.createBuffer({
-        viewOrSize: new Float32Array([-1, -1, 1, -1, 1, 1, -1, 1]),
-        usage: BufferUsage.VERTEX,
-        hint: BufferFrequencyHint.STATIC,
-      });
-      this.#indexBuffer = this.device.createBuffer({
-        viewOrSize: new Uint32Array([0, 1, 2, 0, 2, 3]),
+    if (!this.indexBuffer) {
+      this.indexBufferData = new Uint32Array([0, 1, 2, 0, 2, 3]);
+      this.indexBuffer = this.device.createBuffer({
+        viewOrSize: this.indexBufferData,
         usage: BufferUsage.INDEX,
         hint: BufferFrequencyHint.STATIC,
       });
+      this.vertexBufferDatas[0] = new Float32Array([
+        -1, -1, 1, -1, 1, 1, -1, 1,
+      ]);
+      this.vertexBuffers[0] = this.device.createBuffer({
+        viewOrSize: this.vertexBufferDatas[0],
+        usage: BufferUsage.VERTEX,
+        hint: BufferFrequencyHint.STATIC,
+      });
     }
 
     if (this.instanced) {
-      if (this.#instancedBuffer) {
-        this.#instancedBuffer.destroy();
+      if (this.vertexBuffers[1]) {
+        this.vertexBuffers[1].destroy();
+        this.vertexBuffers[2].destroy();
       }
 
-      this.#instancedBuffer = this.device.createBuffer({
-        viewOrSize: Float32Array.BYTES_PER_ELEMENT * 16 * this.shapes.length,
+      this.vertexBufferDatas[1] = new Float32Array(
+        new Array(16 * this.shapes.length).fill(0),
+      );
+      this.vertexBuffers[1] = this.device.createBuffer({
+        viewOrSize: this.vertexBufferDatas[1],
         usage: BufferUsage.VERTEX,
         hint: BufferFrequencyHint.DYNAMIC,
       });
 
-      if (this.#instancedMatrixBuffer) {
-        this.#instancedMatrixBuffer.destroy();
-      }
-      this.#instancedMatrixBuffer = this.device.createBuffer({
-        viewOrSize: Float32Array.BYTES_PER_ELEMENT * 6 * this.shapes.length,
+      this.vertexBufferDatas[2] = new Float32Array(
+        new Array(6 * this.shapes.length).fill(0),
+      );
+      this.vertexBuffers[2] = this.device.createBuffer({
+        viewOrSize: this.vertexBufferDatas[2],
         usage: BufferUsage.VERTEX,
         hint: BufferFrequencyHint.DYNAMIC,
       });
     }
-  }
 
-  createMaterial(uniformBuffer: Buffer): void {
-    let defines = '';
-    if (this.instanced) {
-      defines += '#define USE_INSTANCES\n';
-    }
-
-    this.#program = this.renderCache.createProgram({
-      vertex: {
-        glsl: defines + vert,
-      },
-      fragment: {
-        glsl: defines + frag,
-      },
-    });
-
-    const vertexBufferDescriptors = [
+    this.vertexBufferDescriptors = [
       {
         arrayStride: 4 * 2,
         stepMode: VertexStepMode.VERTEX,
@@ -105,7 +85,7 @@ export class ShadowRect extends Drawcall {
     ];
 
     if (this.instanced) {
-      vertexBufferDescriptors.push(
+      this.vertexBufferDescriptors.push(
         {
           arrayStride: 4 * 16,
           stepMode: VertexStepMode.INSTANCE,
@@ -149,29 +129,41 @@ export class ShadowRect extends Drawcall {
           ],
         },
       );
-      this.#inputLayout = this.renderCache.createInputLayout({
-        vertexBufferDescriptors,
-        indexBufferFormat: Format.U32_R,
-        program: this.#program,
-      });
-    } else {
-      this.#inputLayout = this.renderCache.createInputLayout({
-        vertexBufferDescriptors,
-        indexBufferFormat: Format.U32_R,
-        program: this.#program,
-      });
-      if (!this.#uniformBuffer) {
-        this.#uniformBuffer = this.device.createBuffer({
-          viewOrSize: Float32Array.BYTES_PER_ELEMENT * (16 + 4 + 4 + 4),
-          usage: BufferUsage.UNIFORM,
-          hint: BufferFrequencyHint.DYNAMIC,
-        });
-      }
+    }
+  }
+
+  createMaterial(uniformBuffer: Buffer): void {
+    let defines = '';
+    if (this.instanced) {
+      defines += '#define USE_INSTANCES\n';
     }
 
-    this.#pipeline = this.renderCache.createRenderPipeline({
-      inputLayout: this.#inputLayout,
-      program: this.#program,
+    this.program = this.renderCache.createProgram({
+      vertex: {
+        glsl: defines + vert,
+      },
+      fragment: {
+        glsl: defines + frag,
+      },
+    });
+
+    if (!this.instanced && !this.#uniformBuffer) {
+      this.#uniformBuffer = this.device.createBuffer({
+        viewOrSize: Float32Array.BYTES_PER_ELEMENT * (16 + 4 + 4 + 4),
+        usage: BufferUsage.UNIFORM,
+        hint: BufferFrequencyHint.DYNAMIC,
+      });
+    }
+
+    this.inputLayout = this.renderCache.createInputLayout({
+      vertexBufferDescriptors: this.vertexBufferDescriptors,
+      indexBufferFormat: Format.U32_R,
+      program: this.program,
+    });
+
+    this.pipeline = this.renderCache.createRenderPipeline({
+      inputLayout: this.inputLayout,
+      program: this.program,
       colorAttachmentFormats: [Format.U8_RGBA_RT],
       depthStencilAttachmentFormat: Format.D24_S8,
       megaStateDescriptor: {
@@ -210,8 +202,8 @@ export class ShadowRect extends Drawcall {
     });
 
     if (this.instanced) {
-      this.#bindings = this.renderCache.createBindings({
-        pipeline: this.#pipeline,
+      this.bindings = this.renderCache.createBindings({
+        pipeline: this.pipeline,
         uniformBufferBindings: [
           {
             buffer: uniformBuffer,
@@ -219,8 +211,8 @@ export class ShadowRect extends Drawcall {
         ],
       });
     } else {
-      this.#bindings = this.device.createBindings({
-        pipeline: this.#pipeline,
+      this.bindings = this.device.createBindings({
+        pipeline: this.pipeline,
         uniformBufferBindings: [
           {
             buffer: uniformBuffer,
@@ -239,32 +231,32 @@ export class ShadowRect extends Drawcall {
       this.geometryDirty
     ) {
       if (this.instanced) {
-        this.#instancedMatrixBuffer.setSubData(
-          0,
-          new Uint8Array(
-            new Float32Array(
-              this.shapes
-                .map((shape) => [
-                  shape.worldTransform.a,
-                  shape.worldTransform.b,
-                  shape.worldTransform.c,
-                  shape.worldTransform.d,
-                  shape.worldTransform.tx,
-                  shape.worldTransform.ty,
-                ])
-                .flat(),
-            ).buffer,
-          ),
-        );
-
         const instancedData: number[] = [];
-        this.shapes.forEach((shape: Rect) => {
-          const [buffer] = this.generateBuffer(shape);
+        this.shapes.forEach((shape) => {
+          const [buffer] = this.generateBuffer(shape as Rect);
           instancedData.push(...buffer);
         });
-        this.#instancedBuffer.setSubData(
+        this.vertexBufferDatas[1] = new Float32Array(instancedData);
+        this.vertexBuffers[1].setSubData(
           0,
-          new Uint8Array(new Float32Array(instancedData).buffer),
+          new Uint8Array(this.vertexBufferDatas[1].buffer),
+        );
+
+        this.vertexBufferDatas[2] = new Float32Array(
+          this.shapes
+            .map((shape) => [
+              shape.worldTransform.a,
+              shape.worldTransform.b,
+              shape.worldTransform.c,
+              shape.worldTransform.d,
+              shape.worldTransform.tx,
+              shape.worldTransform.ty,
+            ])
+            .flat(),
+        );
+        this.vertexBuffers[2].setSubData(
+          0,
+          new Uint8Array(this.vertexBufferDatas[2].buffer),
         );
       } else {
         const { worldTransform } = this.shapes[0];
@@ -283,40 +275,41 @@ export class ShadowRect extends Drawcall {
           u_ModelMatrix,
           ...legacyObject,
         };
-        this.#program.setUniformsLegacy(uniformLegacyObject);
+        this.program.setUniformsLegacy(uniformLegacyObject);
+      }
+
+      if (this.useWireframe) {
+        this.generateWireframe();
+
+        if (this.instanced) {
+          this.vertexBuffers[1].setSubData(
+            0,
+            new Uint8Array(this.vertexBufferDatas[1].buffer),
+          );
+          this.vertexBuffers[2].setSubData(
+            0,
+            new Uint8Array(this.vertexBufferDatas[2].buffer),
+          );
+        }
       }
     }
 
-    const buffers = [
+    this.program.setUniformsLegacy(uniformLegacyObject);
+    renderPass.setPipeline(this.pipeline);
+    renderPass.setVertexInput(
+      this.inputLayout,
+      this.vertexBuffers.map((buffer) => ({ buffer })),
       {
-        buffer: this.#fragUnitBuffer,
+        buffer: this.indexBuffer,
       },
-    ];
-    if (this.instanced) {
-      buffers.push(
-        {
-          buffer: this.#instancedBuffer,
-        },
-        { buffer: this.#instancedMatrixBuffer },
-      );
-    }
-
-    this.#program.setUniformsLegacy(uniformLegacyObject);
-    renderPass.setPipeline(this.#pipeline);
-    renderPass.setVertexInput(this.#inputLayout, buffers, {
-      buffer: this.#indexBuffer,
-    });
-    renderPass.setBindings(this.#bindings);
+    );
+    renderPass.setBindings(this.bindings);
     renderPass.drawIndexed(6, this.shapes.length);
   }
 
   destroy(): void {
     super.destroy();
-    if (this.#program) {
-      this.#instancedMatrixBuffer?.destroy();
-      this.#instancedBuffer?.destroy();
-      this.#fragUnitBuffer?.destroy();
-      this.#indexBuffer?.destroy();
+    if (this.program) {
       this.#uniformBuffer?.destroy();
     }
   }

@@ -92,9 +92,10 @@ pnpm run dev
 
 -   绘制直线网格。使用 Line Geometry 或者屏幕空间技术
 -   绘制点网格
--   绘制 wireframe
+-   为 Geometry 绘制 wireframe
 
-<img src="./screenshots/lesson5.png" width="300" alt="Lesson 5">
+<img src="./screenshots/lesson5.png" width="300" alt="Lesson 5 grids">
+<img src="./screenshots/lesson5-2.png" width="300" alt="Lesson 5 wireframe">
 
 ## 课程 6 - 事件系统 [🔗](https://infinitecanvas.cc/zh/guide/lesson-006)
 
