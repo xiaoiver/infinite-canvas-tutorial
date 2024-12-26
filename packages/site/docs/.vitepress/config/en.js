@@ -140,6 +140,10 @@ export const en = defineConfig({
                 text: 'Wireframe',
                 link: 'wireframe',
               },
+              {
+                text: 'Text',
+                link: 'text',
+              },
             ],
           },
         ],

@@ -105,6 +105,7 @@ export class GlyphManager {
 
     lines.forEach((line) => {
       const lineStartIndex = positionedGlyphs.length;
+      // TODO: Grapheme splitter
       Array.from(line).forEach((char) => {
         // fontStack
         const positions = this.glyphMap[fontStack];
@@ -112,8 +113,8 @@ export class GlyphManager {
         const glyph = positions && positions[charCode];
 
         if (glyph) {
-          const glyphOffset = -fontMetrics.fontBoundingBoxAscent;
-
+          // TODO: 需要根据 baseline 调整
+          const glyphOffset = 0;
           positionedGlyphs.push({
             glyph: charCode,
             x,
@@ -252,18 +253,6 @@ export class GlyphManager {
       glyphAdvance,
     } = sdfGenerator.draw(char);
 
-    // console.log(
-    //   width,
-    //   height,
-    //   glyphWidth,
-    //   glyphHeight,
-    //   glyphLeft,
-    //   glyphTop,
-    //   glyphAdvance,
-    // );
-
-    // const baselineAdjustment = 27;
-
     return {
       id: charCode,
       // 在 canvas 中绘制字符，使用 Uint8Array 存储 30*30 sdf 数据
@@ -275,12 +264,6 @@ export class GlyphManager {
         data,
       ),
       metrics: {
-        // width: glyphWidth,
-        // height: glyphHeight,
-        // left: glyphLeft,
-        // top: glyphTop - BASE_FONT_WIDTH + BASE_FONT_BUFFER,
-        // advance: glyphAdvance,
-
         width: glyphWidth / SDF_SCALE,
         height: glyphHeight / SDF_SCALE,
         left: glyphLeft / SDF_SCALE,

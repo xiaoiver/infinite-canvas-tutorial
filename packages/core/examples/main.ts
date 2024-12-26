@@ -93,19 +93,49 @@ const canvas = await new Canvas({
 // });
 // canvas.appendChild(polyline);
 
+const anchor = new Circle({
+  cx: 50,
+  cy: 50,
+  r: 4,
+  fill: '#F67676',
+});
+canvas.appendChild(anchor);
+
+const baseline = new Polyline({
+  points: [
+    [-100, 50],
+    [500, 50],
+  ],
+  stroke: '#F67676',
+  strokeWidth: 1,
+});
+canvas.appendChild(baseline);
+
 const text = new Text({
   x: 50,
   y: 50,
-  content: 'Hello, world!',
-  fontSize: 20,
+  content: 'Hello, world! \n你好世界',
+  fontSize: 40,
   fill: '#F67676',
   wireframe: true,
+  textAlign: 'right',
   // letterSpacing: 10,
 });
 canvas.appendChild(text);
 
-// const bounds = text.getGeometryBounds();
-// console.log(bounds);
+const bounds = text.getBounds();
+console.log(bounds);
+
+const rect = new Rect({
+  x: bounds.minX,
+  y: bounds.minY,
+  width: bounds.maxX - bounds.minX,
+  height: bounds.maxY - bounds.minY,
+  fill: 'none',
+  stroke: 'blue',
+  strokeWidth: 1,
+});
+canvas.appendChild(rect);
 
 canvas.render();
 

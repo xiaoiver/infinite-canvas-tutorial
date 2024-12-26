@@ -20,6 +20,7 @@ async function checkWebGPUSupport() {
 export class InfiniteCanvas extends LitElement {
   static styles = css`
     :host {
+      display: block;
       position: relative;
     }
 

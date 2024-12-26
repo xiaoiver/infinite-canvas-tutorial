@@ -122,6 +122,10 @@ export const zh = defineConfig({
                 text: '绘制网格',
                 link: 'wireframe',
               },
+              {
+                text: '绘制文本',
+                link: 'text',
+              },
             ],
           },
         ],

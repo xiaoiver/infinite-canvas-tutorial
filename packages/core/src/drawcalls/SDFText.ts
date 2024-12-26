@@ -70,24 +70,24 @@ export class SDFText extends Drawcall {
 
     this.shapes.forEach((object: Text) => {
       const { metrics, letterSpacing } = object;
-      const { font, lines, height, lineHeight } = metrics;
+      const { font, lines, lineHeight, fontMetrics } = metrics;
 
       // if (textBaseline === 'alphabetic') {
       //   textBaseline = 'bottom';
       // }
 
-      let linePositionY = 0;
+      const linePositionY = 0;
       // handle vertical text baseline
-      if (textBaseline === 'middle') {
-        linePositionY += -height / 2;
-      } else if (textBaseline === 'bottom') {
-        linePositionY += -height;
-      } else if (textBaseline === 'top' || textBaseline === 'hanging') {
-        linePositionY += 0;
-      } else if (textBaseline === 'ideographic') {
-        linePositionY += -height;
-      }
-      console.log(linePositionY);
+      // if (textBaseline === 'middle') {
+      //   linePositionY += -height / 2;
+      // } else if (textBaseline === 'bottom' || textBaseline === 'alphabetic') {
+      //   linePositionY += -height;
+      // } else if (textBaseline === 'top' || textBaseline === 'hanging') {
+      //   linePositionY += 0;
+      // } else if (textBaseline === 'ideographic') {
+      //   linePositionY += -height;
+      // }
+      console.log(textBaseline, linePositionY, fontMetrics);
 
       const {
         indicesOffset,

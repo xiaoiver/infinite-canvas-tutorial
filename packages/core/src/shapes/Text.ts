@@ -1,7 +1,7 @@
 import { canvasTextMetrics, TextMetrics } from '../utils';
 import { AABB } from './AABB';
 import { GConstructor } from './mixins';
-import { Shape, ShapeAttributes } from './Shape';
+import { Shape, ShapeAttributes, strokeOffset } from './Shape';
 
 export type TextStyleWhiteSpace = 'normal' | 'pre' | 'pre-line';
 
@@ -224,7 +224,8 @@ export function TextWrapper<TBase extends GConstructor>(Base: TBase) {
     }
 
     containsPoint(x: number, y: number) {
-      return false;
+      const { minX, minY, maxX, maxY } = this.getGeometryBounds();
+      return x >= minX && x <= maxX && y >= minY && y <= maxY;
     }
 
     getGeometryBounds() {
@@ -237,9 +238,17 @@ export function TextWrapper<TBase extends GConstructor>(Base: TBase) {
 
     getRenderBounds() {
       if (this.renderBoundsDirtyFlag) {
-        const { x, y } = this;
+        const { strokeWidth, strokeAlignment } = this;
+        const offset = strokeOffset(strokeAlignment, strokeWidth);
+
         this.renderBoundsDirtyFlag = false;
-        this.renderBounds = new AABB(x, y, 0, 0);
+        const { minX, minY, maxX, maxY } = this.getGeometryBounds();
+        this.renderBounds = new AABB(
+          minX - offset,
+          minY - offset,
+          maxX + offset,
+          maxY + offset,
+        );
       }
       return this.renderBounds;
     }

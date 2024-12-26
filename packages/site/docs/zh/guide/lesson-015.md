@@ -152,6 +152,8 @@ measureText(
 }
 ```
 
+后续在安排每个字符的位置时也需要考虑，我们将在 [Generate quads](#generate-quads) 中介绍。
+
 ### font-kerning
 
 如果我们想获取 [font-kerning]，可以参考 <https://github.com/mapbox/tiny-sdf/issues/6#issuecomment-1532395796> 给出的方式：
@@ -514,10 +516,10 @@ gl_Position = vec4((u_ProjectionMatrix
     * vec3(a_Position + offset, 1)).xy, zIndex, 1);
 ```
 
-最后我们来看如何计算得到字形数据。在上一节的分段完成后，我们得到了多行的字符串数组 `lines`。
+最后我们来看如何计算得到字形数据。在上一节的分段完成后，我们得到了多行的字符串数组 `lines`，结合 `textAlign` `letterSpacing` 和 `fontMetrics` 计算每个字符相对于锚点的位置信息。
 
 ```ts
-layout(
+function layout(
     lines: string[], // after paragraph segmentation
     fontStack: string,
     lineHeight: number,
@@ -527,45 +529,21 @@ layout(
 ): PositionedGlyph[] {}
 ```
 
+这里我们参考 [mapbox-gl-js shaping.ts] 的实现：
+
+```ts
+export type PositionedGlyph = {
+    glyph: number; // charCode
+    x: number;
+    y: number;
+    scale: number; // 根据缩放等级计算的缩放比例
+    fontStack: string;
+};
+```
+
 ## emoji
 
 [EmojiEngine]
-
-[mapbox-gl-js shaping.ts]
-
-```ts
-export type Shaping = {
-    positionedLines: Array<PositionedLine>;
-    top: number;
-    bottom: number;
-    left: number;
-    right: number;
-    writingMode: 1 | 2;
-    text: string;
-    iconsInText: boolean;
-    verticalizable: boolean;
-    hasBaseline: boolean;
-};
-
-export type PositionedLine = {
-    positionedGlyphs: Array<PositionedGlyph>;
-    lineOffset: number;
-};
-
-export type PositionedGlyph = {
-    glyph: number;
-    imageName: string | null;
-    x: number;
-    y: number;
-    vertical: boolean;
-    scale: number;
-    fontStack: string;
-    sectionIndex: number;
-    metrics: GlyphMetrics;
-    rect: GlyphRect | null;
-    localGlyph?: boolean;
-};
-```
 
 ## 装饰线 {#text-decoration}
 
