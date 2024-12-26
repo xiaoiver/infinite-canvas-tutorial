@@ -31,26 +31,26 @@ resize(window.innerWidth, window.innerHeight);
 
 const canvas = await new Canvas({
   canvas: $canvas,
-  // renderer: 'webgpu',
-  // shaderCompilerPath: '/glsl_wgsl_compiler_bg.wasm',
+  renderer: 'webgpu',
+  shaderCompilerPath: '/glsl_wgsl_compiler_bg.wasm',
 }).initialized;
 
-for (let i = 0; i < 2; i++) {
-  const circle = new Circle({
-    cx: i * 100,
-    cy: i * 100,
-    r: 50,
-    fill: `rgb(${Math.floor(Math.random() * 255)},${Math.floor(
-      Math.random() * 255,
-    )},${Math.floor(Math.random() * 255)})`,
-    batchable: true,
-    wireframe: true,
-    stroke: 'black',
-    strokeWidth: 10,
-    strokeOpacity: 0.5,
-  });
-  canvas.appendChild(circle);
-}
+// for (let i = 0; i < 2; i++) {
+//   const circle = new Circle({
+//     cx: i * 100,
+//     cy: i * 100,
+//     r: 50,
+//     fill: `rgb(${Math.floor(Math.random() * 255)},${Math.floor(
+//       Math.random() * 255,
+//     )},${Math.floor(Math.random() * 255)})`,
+//     batchable: true,
+//     wireframe: true,
+//     stroke: 'black',
+//     strokeWidth: 10,
+//     strokeOpacity: 0.5,
+//   });
+//   canvas.appendChild(circle);
+// }
 
 // const rect = new Rect({
 //   x: 300,
@@ -93,14 +93,16 @@ for (let i = 0; i < 2; i++) {
 // });
 // canvas.appendChild(polyline);
 
-// const text = new Text({
-//   x: 50,
-//   y: 50,
-//   content: 'Hello, world!\n你好世界\n你好世界\n你好世界\n你好世界',
-//   fontSize: 20,
-//   fill: '#F67676',
-// });
-// canvas.appendChild(text);
+const text = new Text({
+  x: 50,
+  y: 50,
+  content: 'Hello, world!',
+  fontSize: 20,
+  fill: '#F67676',
+  wireframe: true,
+  // letterSpacing: 10,
+});
+canvas.appendChild(text);
 
 // const bounds = text.getGeometryBounds();
 // console.log(bounds);

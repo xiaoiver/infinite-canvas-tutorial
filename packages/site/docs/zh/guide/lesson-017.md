@@ -28,6 +28,14 @@ publish: false
 -   [Building a Collaborative Pixel Art Editor with CRDTs]
 -   [Making CRDTs 98% More Efficient]
 
+```ts
+interface CRDT<T, S> {
+    value: T;
+    state: S;
+    merge(state: S): void;
+}
+```
+
 ### 数据结构设计
 
 ## 扩展阅读 {#extended-reading}

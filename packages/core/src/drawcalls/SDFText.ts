@@ -1,6 +1,5 @@
 import {
   type RenderPass,
-  Bindings,
   Buffer,
   BufferFrequencyHint,
   BufferUsage,
@@ -8,10 +7,7 @@ import {
   BlendFactor,
   ChannelWriteMask,
   Format,
-  InputLayout,
-  RenderPipeline,
   VertexStepMode,
-  Program,
   CompareFunction,
   BindingsDescriptor,
   AddressMode,
@@ -34,17 +30,8 @@ import {
 
 export class SDFText extends Drawcall {
   #glyphManager = new GlyphManager();
-  #program: Program;
-  #positionBuffer: Buffer;
-  #uvOffsetBuffer: Buffer;
-  #indexBuffer: Buffer;
   #uniformBuffer: Buffer;
-  #pipeline: RenderPipeline;
-  #inputLayout: InputLayout;
-  #bindings: Bindings;
   #texture: Texture;
-
-  #indices: number[] = [];
 
   validate(shape: Shape) {
     const result = super.validate(shape);
@@ -77,7 +64,6 @@ export class SDFText extends Drawcall {
     );
 
     const indices: number[] = [];
-    this.#indices = indices;
     const positions: number[] = [];
     const uvOffsets: number[] = [];
     let indicesOff = 0;
@@ -123,49 +109,38 @@ export class SDFText extends Drawcall {
       indices.push(...indexBuffer);
     });
 
-    this.#positionBuffer = this.device.createBuffer({
-      viewOrSize: new Float32Array(positions),
+    this.indexBufferData = new Uint32Array(indices);
+
+    if (this.vertexBuffers[0]) {
+      this.vertexBuffers[0].destroy();
+    }
+    this.vertexBufferDatas[0] = new Float32Array(positions);
+    this.vertexBuffers[0] = this.device.createBuffer({
+      viewOrSize: this.vertexBufferDatas[0],
       usage: BufferUsage.VERTEX,
       hint: BufferFrequencyHint.STATIC,
     });
-    this.#uvOffsetBuffer = this.device.createBuffer({
-      viewOrSize: new Float32Array(uvOffsets),
+
+    if (this.vertexBuffers[1]) {
+      this.vertexBuffers[1].destroy();
+    }
+    this.vertexBufferDatas[1] = new Float32Array(uvOffsets);
+    this.vertexBuffers[1] = this.device.createBuffer({
+      viewOrSize: this.vertexBufferDatas[1],
       usage: BufferUsage.VERTEX,
       hint: BufferFrequencyHint.STATIC,
     });
-    this.#indexBuffer = this.device.createBuffer({
-      viewOrSize: new Uint32Array(indices),
+
+    if (this.indexBuffer) {
+      this.indexBuffer.destroy();
+    }
+    this.indexBuffer = this.device.createBuffer({
+      viewOrSize: this.indexBufferData,
       usage: BufferUsage.INDEX,
       hint: BufferFrequencyHint.STATIC,
     });
-  }
 
-  createMaterial(uniformBuffer: Buffer): void {
-    const glyphAtlasTexture = this.#glyphManager.getAtlasTexture();
-
-    this.device.setResourceName(glyphAtlasTexture, 'SDFText Texture');
-
-    let defines = '';
-    if (this.instanced) {
-      defines += '#define USE_INSTANCES\n';
-    }
-
-    const diagnosticDerivativeUniformityHeader =
-      this.device.queryVendorInfo().platformString === 'WebGPU'
-        ? 'diagnostic(off,derivative_uniformity);\n'
-        : '';
-
-    this.#program = this.renderCache.createProgram({
-      vertex: {
-        glsl: defines + vert,
-      },
-      fragment: {
-        glsl: defines + frag,
-        postprocess: (fs) => diagnosticDerivativeUniformityHeader + fs,
-      },
-    });
-
-    const vertexBufferDescriptors = [
+    this.vertexBufferDescriptors = [
       {
         arrayStride: 4 * 2,
         stepMode: VertexStepMode.VERTEX,
@@ -189,12 +164,15 @@ export class SDFText extends Drawcall {
         ],
       },
     ];
+  }
 
-    this.#inputLayout = this.renderCache.createInputLayout({
-      vertexBufferDescriptors,
-      indexBufferFormat: Format.U32_R,
-      program: this.#program,
-    });
+  createMaterial(defines: string, uniformBuffer: Buffer): void {
+    const glyphAtlasTexture = this.#glyphManager.getAtlasTexture();
+
+    this.device.setResourceName(glyphAtlasTexture, 'SDFText Texture');
+
+    this.createProgram(vert, frag, defines);
+
     if (!this.#uniformBuffer) {
       this.#uniformBuffer = this.device.createBuffer({
         viewOrSize:
@@ -204,9 +182,9 @@ export class SDFText extends Drawcall {
       });
     }
 
-    this.#pipeline = this.renderCache.createRenderPipeline({
-      inputLayout: this.#inputLayout,
-      program: this.#program,
+    this.pipeline = this.renderCache.createRenderPipeline({
+      inputLayout: this.inputLayout,
+      program: this.program,
       colorAttachmentFormats: [Format.U8_RGBA_RT],
       depthStencilAttachmentFormat: Format.D24_S8,
       megaStateDescriptor: {
@@ -243,7 +221,7 @@ export class SDFText extends Drawcall {
         },
       },
     });
-    this.device.setResourceName(this.#pipeline, 'SDFTextPipeline');
+    this.device.setResourceName(this.pipeline, 'SDFTextPipeline');
 
     const sampler = this.renderCache.createSampler({
       addressModeU: AddressMode.CLAMP_TO_EDGE,
@@ -256,7 +234,7 @@ export class SDFText extends Drawcall {
     });
 
     const bindings: BindingsDescriptor = {
-      pipeline: this.#pipeline,
+      pipeline: this.pipeline,
       uniformBufferBindings: [
         {
           buffer: uniformBuffer,
@@ -273,7 +251,7 @@ export class SDFText extends Drawcall {
       ],
     };
 
-    this.#bindings = this.renderCache.createBindings(bindings);
+    this.bindings = this.renderCache.createBindings(bindings);
   }
 
   render(renderPass: RenderPass, uniformLegacyObject: Record<string, unknown>) {
@@ -296,33 +274,29 @@ export class SDFText extends Drawcall {
         u_ModelMatrix,
         ...legacyObject,
       };
-      this.#program.setUniformsLegacy(uniformLegacyObject);
+      this.program.setUniformsLegacy(uniformLegacyObject);
+
+      if (this.useWireframe) {
+        this.generateWireframe();
+      }
     }
 
-    const buffers = [
-      {
-        buffer: this.#positionBuffer,
-      },
-      {
-        buffer: this.#uvOffsetBuffer,
-      },
-    ];
-
-    this.#program.setUniformsLegacy(uniformLegacyObject);
-    renderPass.setPipeline(this.#pipeline);
-    renderPass.setVertexInput(this.#inputLayout, buffers, {
-      buffer: this.#indexBuffer,
+    this.program.setUniformsLegacy(uniformLegacyObject);
+    renderPass.setPipeline(this.pipeline);
+    const vertexBuffers = this.vertexBuffers.map((buffer) => ({ buffer }));
+    if (this.useWireframe) {
+      vertexBuffers.push({ buffer: this.barycentricBuffer });
+    }
+    renderPass.setVertexInput(this.inputLayout, vertexBuffers, {
+      buffer: this.indexBuffer,
     });
-    renderPass.setBindings(this.#bindings);
-    renderPass.drawIndexed(this.#indices.length);
+    renderPass.setBindings(this.bindings);
+    renderPass.drawIndexed(this.indexBufferData.length);
   }
 
   destroy(): void {
     super.destroy();
-    if (this.#program) {
-      this.#positionBuffer?.destroy();
-      this.#uvOffsetBuffer?.destroy();
-      this.#indexBuffer?.destroy();
+    if (this.program) {
       this.#uniformBuffer?.destroy();
       this.#texture?.destroy();
     }

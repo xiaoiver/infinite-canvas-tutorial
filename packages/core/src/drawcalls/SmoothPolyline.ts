@@ -288,30 +288,12 @@ export class SmoothPolyline extends Drawcall {
     }
   }
 
-  createMaterial(uniformBuffer: Buffer): void {
+  createMaterial(defines: string, uniformBuffer: Buffer): void {
     if (this.instanceCount <= 0) {
       return;
     }
 
-    let defines = '';
-    if (this.useWireframe) {
-      defines += '#define USE_WIREFRAME\n';
-    }
-
-    const diagnosticDerivativeUniformityHeader =
-      this.device.queryVendorInfo().platformString === 'WebGPU'
-        ? 'diagnostic(off,derivative_uniformity);\n'
-        : '';
-
-    this.program = this.renderCache.createProgram({
-      vertex: {
-        glsl: defines + vert,
-      },
-      fragment: {
-        glsl: defines + frag,
-        postprocess: (fs) => diagnosticDerivativeUniformityHeader + fs,
-      },
-    });
+    this.createProgram(vert, frag, defines);
 
     if (!this.#uniformBuffer) {
       this.#uniformBuffer = this.device.createBuffer({
@@ -413,16 +395,16 @@ export class SmoothPolyline extends Drawcall {
 
     this.program.setUniformsLegacy(uniformLegacyObject);
     renderPass.setPipeline(this.pipeline);
-    renderPass.setVertexInput(
-      this.inputLayout,
-      this.vertexBuffers.map((buffer, index) => ({
-        buffer,
-        offset: this.vertexBufferOffsets[index],
-      })),
-      {
-        buffer: this.indexBuffer,
-      },
-    );
+    const vertexBuffers = this.vertexBuffers.map((buffer, index) => ({
+      buffer,
+      offset: this.vertexBufferOffsets[index],
+    }));
+    if (this.useWireframe) {
+      vertexBuffers.push({ buffer: this.barycentricBuffer, offset: 0 });
+    }
+    renderPass.setVertexInput(this.inputLayout, vertexBuffers, {
+      buffer: this.indexBuffer,
+    });
     renderPass.setBindings(this.bindings);
     renderPass.drawIndexed(15, this.instanceCount);
   }

@@ -470,7 +470,7 @@ float alpha = clamp(-distance / 0.01, 0.0, 1.0);
 })();
 ```
 
-### fwidth
+### Screen space derivatives
 
 在 [Using fwidth for distance based anti-aliasing] 一文中介绍了使用 `fwidth` 对 SDF 进行反走样的方法。那什么是 `fwidth` 呢？
 
@@ -482,11 +482,23 @@ float alpha = clamp(-distance / 0.01, 0.0, 1.0);
 
 ![uv fwidth](https://pic2.zhimg.com/80/v2-0f2d0605965ab352aec8826d0eed02dd_1440w.webp)
 
-因此便于开发者获取该像素点针对某个值的变化剧烈程度，OpenGL / WebGL 和 WebGPU 都提供了以下方法：
+因此便于开发者获取该像素点针对某个值的变化剧烈程度，OpenGL / WebGL 和 WebGPU 都提供了以下方法。但 WebGL1 下需要开启 `GL_OES_standard_derivatives` 扩展，WebGL2 和 WebGPU 则不需要：
 
 -   `dFdx` 计算屏幕水平方向上，一像素跨度内参数属性值改变了多少
 -   `dFdy` 计算屏幕垂直方向上，一像素跨度内参数属性值改变了多少
 -   `fwidth` 计算 `abs(dFdx) + abs(dFdy)`
+
+因此我们有两种方式计算一个像素内参数的变化程度，两者是否有区别呢？
+
+```glsl
+pixelSize = fwidth(dist);
+/* or */
+pixelSize = length(vec2(dFdx(dist), dFdy(dist)));
+```
+
+[AAA - Analytical Anti-Aliasing] 一文指出，`fwidth` 的开销相比 `length` 要小，虽然存在对角线方向的轻微偏差，但在我们的场景下几乎可以忽略不计。
+
+> Fast LAA has a slight bias in the diagonal directions, making circular shapes appear ever so slightly rhombous and have a slightly sharper curvature in the orthogonal directions, especially when small. Sometimes the edges in the diagonals are slightly fuzzy as well.
 
 我们把 SDF 计算得到的距离传入，计算得到它的变化程度最终反映在透明度上。
 

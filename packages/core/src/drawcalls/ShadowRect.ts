@@ -28,22 +28,24 @@ export class ShadowRect extends Drawcall {
   #uniformBuffer: Buffer;
 
   createGeometry(): void {
-    if (!this.indexBuffer) {
-      this.indexBufferData = new Uint32Array([0, 1, 2, 0, 2, 3]);
-      this.indexBuffer = this.device.createBuffer({
-        viewOrSize: this.indexBufferData,
-        usage: BufferUsage.INDEX,
-        hint: BufferFrequencyHint.STATIC,
-      });
-      this.vertexBufferDatas[0] = new Float32Array([
-        -1, -1, 1, -1, 1, 1, -1, 1,
-      ]);
-      this.vertexBuffers[0] = this.device.createBuffer({
-        viewOrSize: this.vertexBufferDatas[0],
-        usage: BufferUsage.VERTEX,
-        hint: BufferFrequencyHint.STATIC,
-      });
+    this.indexBufferData = new Uint32Array([0, 1, 2, 0, 2, 3]);
+    if (this.indexBuffer) {
+      this.indexBuffer.destroy();
     }
+    this.indexBuffer = this.device.createBuffer({
+      viewOrSize: this.indexBufferData,
+      usage: BufferUsage.INDEX,
+      hint: BufferFrequencyHint.STATIC,
+    });
+    this.vertexBufferDatas[0] = new Float32Array([-1, -1, 1, -1, 1, 1, -1, 1]);
+    if (this.vertexBuffers[0]) {
+      this.vertexBuffers[0].destroy();
+    }
+    this.vertexBuffers[0] = this.device.createBuffer({
+      viewOrSize: this.vertexBufferDatas[0],
+      usage: BufferUsage.VERTEX,
+      hint: BufferFrequencyHint.STATIC,
+    });
 
     if (this.instanced) {
       if (this.vertexBuffers[1]) {
@@ -132,20 +134,8 @@ export class ShadowRect extends Drawcall {
     }
   }
 
-  createMaterial(uniformBuffer: Buffer): void {
-    let defines = '';
-    if (this.instanced) {
-      defines += '#define USE_INSTANCES\n';
-    }
-
-    this.program = this.renderCache.createProgram({
-      vertex: {
-        glsl: defines + vert,
-      },
-      fragment: {
-        glsl: defines + frag,
-      },
-    });
+  createMaterial(defines: string, uniformBuffer: Buffer): void {
+    this.createProgram(vert, frag, defines);
 
     if (!this.instanced && !this.#uniformBuffer) {
       this.#uniformBuffer = this.device.createBuffer({
@@ -296,13 +286,13 @@ export class ShadowRect extends Drawcall {
 
     this.program.setUniformsLegacy(uniformLegacyObject);
     renderPass.setPipeline(this.pipeline);
-    renderPass.setVertexInput(
-      this.inputLayout,
-      this.vertexBuffers.map((buffer) => ({ buffer })),
-      {
-        buffer: this.indexBuffer,
-      },
-    );
+    const vertexBuffers = this.vertexBuffers.map((buffer) => ({ buffer }));
+    if (this.useWireframe) {
+      vertexBuffers.push({ buffer: this.barycentricBuffer });
+    }
+    renderPass.setVertexInput(this.inputLayout, vertexBuffers, {
+      buffer: this.indexBuffer,
+    });
     renderPass.setBindings(this.bindings);
     renderPass.drawIndexed(6, this.shapes.length);
   }

@@ -149,39 +149,12 @@ export class Mesh extends Drawcall {
     ];
   }
 
-  createMaterial(uniformBuffer: Buffer): void {
+  createMaterial(defines: string, uniformBuffer: Buffer): void {
     if (this.points.length === 0) {
       return;
     }
 
-    let defines = '';
-    if (this.useFillImage) {
-      defines += '#define USE_FILLIMAGE\n';
-    }
-    if (this.useWireframe) {
-      defines += '#define USE_WIREFRAME\n';
-    }
-
-    const diagnosticDerivativeUniformityHeader =
-      this.device.queryVendorInfo().platformString === 'WebGPU'
-        ? 'diagnostic(off,derivative_uniformity);\n'
-        : '';
-
-    this.program = this.renderCache.createProgram({
-      vertex: {
-        glsl: defines + vert,
-      },
-      fragment: {
-        glsl: defines + frag,
-        postprocess: (fs) => diagnosticDerivativeUniformityHeader + fs,
-      },
-    });
-
-    this.inputLayout = this.renderCache.createInputLayout({
-      vertexBufferDescriptors: this.vertexBufferDescriptors,
-      indexBufferFormat: Format.U32_R,
-      program: this.program,
-    });
+    this.createProgram(vert, frag, defines);
     if (!this.#uniformBuffer) {
       this.#uniformBuffer = this.device.createBuffer({
         viewOrSize: Float32Array.BYTES_PER_ELEMENT * (16 + 4 + 4 + 4 + 4 + 4),
@@ -282,13 +255,13 @@ export class Mesh extends Drawcall {
 
     this.program.setUniformsLegacy(uniformLegacyObject);
     renderPass.setPipeline(this.pipeline);
-    renderPass.setVertexInput(
-      this.inputLayout,
-      this.vertexBuffers.map((buffer) => ({ buffer })),
-      {
-        buffer: this.indexBuffer,
-      },
-    );
+    const vertexBuffers = this.vertexBuffers.map((buffer) => ({ buffer }));
+    if (this.useWireframe) {
+      vertexBuffers.push({ buffer: this.barycentricBuffer });
+    }
+    renderPass.setVertexInput(this.inputLayout, vertexBuffers, {
+      buffer: this.indexBuffer,
+    });
     renderPass.setBindings(this.bindings);
     renderPass.drawIndexed(this.indexBufferData.length, this.shapes.length);
   }

@@ -486,23 +486,35 @@ float alpha = clamp(-distance / 0.01, 0.0, 1.0);
 })();
 ```
 
-### fwidth
+### Screen space derivatives
 
 Using `fwidth` for distance based anti-aliasing is described in [Using fwidth for distance based anti-aliasing]. What is `fwidth`?
 
 [What are screen space derivatives and when would I use them?] and [What is fwidth and how does it work?] describe the concepts and calculations of the method in detail. In a nutshell, the Fragment shader processes a 2x2 quad at a time instead of a single pixel point. the GPU's reasoning for doing this is as follows from the [A trip through the Graphics Pipeline 2011, part 8]:
 
-> Also, this is a good point to explain why we’re dealing with quads of 2×2 pixels and not individual pixels. The big reason is derivatives. Texture samplers depend on screen-space derivatives of texture coordinates to do their mip-map selection and filtering (as we saw back in part 4); and, as of shader model 3.0 and later, the same machinery is directly available to pixel shaders in the form of derivative instructions.
+> Also, this is a good point to explain why we're dealing with quads of 2×2 pixels and not individual pixels. The big reason is derivatives. Texture samplers depend on screen-space derivatives of texture coordinates to do their mip-map selection and filtering (as we saw back in part 4); and, as of shader model 3.0 and later, the same machinery is directly available to pixel shaders in the form of derivative instructions.
 
 Here's a look at how the partial derivatives are calculated in each 2x2 quad, e.g. for uv:
 
 ![uv fwidth](https://pic2.zhimg.com/80/v2-0f2d0605965ab352aec8826d0eed02dd_1440w.webp)
 
-To make it easier for developers to get a sense of how drastically the pixel has changed for a given value, both OpenGL / WebGL and WebGPU provide the following methods:
+To make it easier for developers to get a sense of how drastically the pixel has changed for a given value, both OpenGL / WebGL and WebGPU provide the following methods. But WebGL1 requires enabling the `GL_OES_standard_derivatives` extension, while WebGL2 and WebGPU do not:
 
 -   `dFdx` Calculates how much the value of a parameter attribute has changed over the span of one pixel in the horizontal direction of the screen.
 -   `dFdy` Calculates how much the value of a parameter attribute has changed over a one-pixel span in the vertical direction of the screen.
 -   `fwidth` calculates `abs(dFdx) + abs(dFdy)
+
+Therefore, we have two ways to calculate how much a parameter changes within a pixel - are there any differences between them?
+
+```glsl
+pixelSize = fwidth(dist);
+/* or */
+pixelSize = length(vec2(dFdx(dist), dFdy(dist)));
+```
+
+[AAA - Analytical Anti-Aliasing] 一文指出，`fwidth` 的开销相比 `length` 要小，虽然存在对角线方向的轻微偏差，但在我们的场景下几乎可以忽略不计。
+
+> Fast LAA has a slight bias in the diagonal directions, making circular shapes appear ever so slightly rhombous and have a slightly sharper curvature in the orthogonal directions, especially when small. Sometimes the edges in the diagonals are slightly fuzzy as well.
 
 We pass in the distance from the SDF calculation and calculate how much it has changed to be reflected in the transparency.
 

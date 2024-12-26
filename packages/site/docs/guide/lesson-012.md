@@ -1298,7 +1298,7 @@ For polylines (and subsequently Paths and Polygons) that contain a large number 
 -   Segments that are too short and polygons that are too small can be filtered out.
 -   Vertices in a polyline that have little impact on the overall shape can be filtered out.
 
-The basic algorithm for segment vertex simplification is the Ramer-Douglas-Peucker algorithm, which works as follows:
+The basic algorithm for segment vertex simplification is the [Ramer–Douglas–Peucker algorithm], which works as follows:
 
 -   First keep the first and last vertices of the polyline and connect them.
 -   Find the furthest vertex from the segment among the remaining vertices, and keep that distance.
@@ -1374,3 +1374,5 @@ We will introduce in detail how to draw them in the next lesson.
 [Fake instancing]: https://rreusser.github.io/regl-gpu-lines/docs/instanced.html
 [Multiple lines]: https://rreusser.github.io/regl-gpu-lines/docs/multiple.html
 [Offset in bytes into buffer where the vertex data begins]: https://www.w3.org/TR/webgpu/#dom-gpurendercommandsmixin-setvertexbuffer-slot-buffer-offset-size-offset
+[simplify-js]: https://github.com/mourner/simplify-js
+[Ramer–Douglas–Peucker algorithm]: https://en.wikipedia.org/wiki/Ramer%E2%80%93Douglas%E2%80%93Peucker_algorithm

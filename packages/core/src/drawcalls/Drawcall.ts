@@ -45,9 +45,20 @@ export abstract class Drawcall {
   protected vertexBuffers: Buffer[] = [];
   protected vertexBufferDatas: Float32Array[] = [];
   protected vertexBufferOffsets: number[] = [];
-
   protected vertexBufferDescriptors: InputLayoutBufferDescriptor[];
-  protected barycentricBufferIndex = -1;
+
+  protected barycentricBuffer: Buffer;
+  protected barycentricBufferDescriptor: InputLayoutBufferDescriptor = {
+    arrayStride: 4 * 3,
+    stepMode: VertexStepMode.VERTEX,
+    attributes: [
+      {
+        shaderLocation: Location.BARYCENTRIC, // a_Barycentric
+        offset: 0,
+        format: Format.F32_RGB,
+      },
+    ],
+  };
 
   constructor(
     protected device: Device,
@@ -57,7 +68,7 @@ export abstract class Drawcall {
   ) {}
 
   abstract createGeometry(): void;
-  abstract createMaterial(uniformBuffer: Buffer): void;
+  abstract createMaterial(define: string, uniformBuffer: Buffer): void;
   abstract render(
     renderPass: RenderPass,
     uniformLegacyObject: Record<string, unknown>,
@@ -89,14 +100,20 @@ export abstract class Drawcall {
   ) {
     if (this.geometryDirty) {
       this.createGeometry();
-
-      if (this.useWireframe) {
-        this.generateWireframeVertexBufferDescriptors();
-      }
     }
 
     if (this.materialDirty) {
-      this.createMaterial(uniformBuffer);
+      let defines = '';
+      if (this.instanced) {
+        defines += '#define USE_INSTANCES\n';
+      }
+      if (this.useFillImage) {
+        defines += '#define USE_FILLIMAGE\n';
+      }
+      if (this.useWireframe) {
+        defines += '#define USE_WIREFRAME\n';
+      }
+      this.createMaterial(defines, uniformBuffer);
     }
 
     this.render(renderPass, uniformLegacyObject);
@@ -139,26 +156,31 @@ export abstract class Drawcall {
     // && (isBrowser ? isImageBitmapOrCanvases(fill) : true)
   }
 
-  protected generateWireframeVertexBufferDescriptors() {
-    const barycentricBufferDescriptor = {
-      arrayStride: 4 * 3,
-      stepMode: VertexStepMode.VERTEX,
-      attributes: [
-        {
-          shaderLocation: Location.BARYCENTRIC, // a_Barycentric
-          offset: 0,
-          format: Format.F32_RGB,
-        },
-      ],
-    };
+  protected createProgram(vert: string, frag: string, defines: string) {
+    const diagnosticDerivativeUniformityHeader =
+      this.device.queryVendorInfo().platformString === 'WebGPU'
+        ? 'diagnostic(off,derivative_uniformity);\n'
+        : '';
 
-    if (this.barycentricBufferIndex === -1) {
-      this.vertexBufferDescriptors.push(barycentricBufferDescriptor);
-      this.barycentricBufferIndex = this.vertexBufferDescriptors.length - 1;
-    } else {
-      this.vertexBufferDescriptors[this.barycentricBufferIndex] =
-        barycentricBufferDescriptor;
+    this.program = this.renderCache.createProgram({
+      vertex: {
+        glsl: defines + vert,
+      },
+      fragment: {
+        glsl: defines + frag,
+        postprocess: (fs) => diagnosticDerivativeUniformityHeader + fs,
+      },
+    });
+
+    const vertexBufferDescriptors = this.vertexBufferDescriptors;
+    if (this.useWireframe) {
+      vertexBufferDescriptors.push(this.barycentricBufferDescriptor);
     }
+    this.inputLayout = this.renderCache.createInputLayout({
+      vertexBufferDescriptors,
+      indexBufferFormat: Format.U32_R,
+      program: this.program,
+    });
   }
 
   protected generateWireframe() {
@@ -168,10 +190,6 @@ export abstract class Drawcall {
     });
 
     for (let i = 0; i < this.vertexBufferDatas.length; i++) {
-      if (i === this.barycentricBufferIndex) {
-        continue;
-      }
-
       const { arrayStride, stepMode } = this.vertexBufferDescriptors[i];
       if (stepMode === VertexStepMode.VERTEX) {
         this.vertexBufferDatas[i] = new Float32Array(
@@ -188,10 +206,6 @@ export abstract class Drawcall {
     for (let i = 0; i < indiceNum; i++) {
       const ii = this.indexBufferData[i];
       for (let j = 0; j < this.vertexBufferDatas.length; j++) {
-        if (j === this.barycentricBufferIndex) {
-          continue;
-        }
-
         const { arrayStride, stepMode } = this.vertexBufferDescriptors[j];
 
         if (stepMode === VertexStepMode.VERTEX) {
@@ -207,10 +221,6 @@ export abstract class Drawcall {
     }
 
     for (let i = 0; i < this.vertexBuffers.length; i++) {
-      if (i === this.barycentricBufferIndex) {
-        continue;
-      }
-
       this.vertexBuffers[i].destroy();
       this.vertexBuffers[i] = this.device.createBuffer({
         viewOrSize: this.vertexBufferDatas[i],
@@ -228,7 +238,7 @@ export abstract class Drawcall {
       }
     }
 
-    const barycentricBuffer = this.device.createBuffer({
+    this.barycentricBuffer = this.device.createBuffer({
       viewOrSize: barycentricBufferData,
       usage: BufferUsage.VERTEX,
       hint: BufferFrequencyHint.DYNAMIC,
@@ -242,18 +252,5 @@ export abstract class Drawcall {
       usage: BufferUsage.INDEX,
       hint: BufferFrequencyHint.STATIC,
     });
-
-    if (this.barycentricBufferIndex === -1) {
-      this.barycentricBufferIndex = this.vertexBufferDescriptors.length - 1;
-      this.vertexBuffers.push(barycentricBuffer);
-      this.vertexBufferDatas.push(barycentricBufferData);
-    } else {
-      this.vertexBuffers[this.barycentricBufferIndex]?.destroy();
-      this.vertexBuffers[this.barycentricBufferIndex] = barycentricBuffer;
-      this.vertexBufferDatas[this.barycentricBufferIndex] =
-        barycentricBufferData;
-    }
-
-    console.log(originalVertexBuffers, this.vertexBufferDatas);
   }
 }
