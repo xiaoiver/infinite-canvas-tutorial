@@ -31,8 +31,8 @@ resize(window.innerWidth, window.innerHeight);
 
 const canvas = await new Canvas({
   canvas: $canvas,
-  renderer: 'webgpu',
-  shaderCompilerPath: '/glsl_wgsl_compiler_bg.wasm',
+  // renderer: 'webgpu',
+  // shaderCompilerPath: '/glsl_wgsl_compiler_bg.wasm',
 }).initialized;
 
 // for (let i = 0; i < 2; i++) {
@@ -114,11 +114,11 @@ canvas.appendChild(baseline);
 const text = new Text({
   x: 50,
   y: 50,
-  content: 'Hello, world! \n你好世界',
-  fontSize: 40,
+  content: '国',
+  fontSize: 48,
   fill: '#F67676',
   wireframe: true,
-  textAlign: 'right',
+  // textAlign: 'right',
   // letterSpacing: 10,
 });
 canvas.appendChild(text);

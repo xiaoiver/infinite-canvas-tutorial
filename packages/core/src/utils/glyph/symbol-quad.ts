@@ -1,4 +1,4 @@
-import type { GlyphPosition } from './glyph-atlas';
+import { glyphPadding, type GlyphPosition } from './glyph-atlas';
 import type { Point } from './alpha-image';
 import type { PositionedGlyph } from './glyph-manager';
 import { BASE_FONT_BUFFER, SDF_SCALE } from './glyph-manager';
@@ -21,7 +21,7 @@ export type SymbolQuad = {
  */
 export function getGlyphQuads(
   positionedGlyphs: PositionedGlyph[],
-  positions: Record<string, Record<number, GlyphPosition>>,
+  positions: Record<string, Record<string, GlyphPosition>>,
 ): SymbolQuad[] {
   const quads: SymbolQuad[] = [];
 
@@ -35,8 +35,6 @@ export function getGlyphQuads(
     if (!rect) continue;
 
     // The rects have an addditional buffer that is not included in their size.
-    const glyphPadding = 1.0;
-    // const glyphPadding = 0.0;
     const rectBuffer = BASE_FONT_BUFFER / SDF_SCALE + glyphPadding;
 
     const halfAdvance = (glyph.metrics.advance * positionedGlyph.scale) / 2;

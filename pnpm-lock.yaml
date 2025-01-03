@@ -122,9 +122,6 @@ importers:
       '@loaders.gl/images':
         specifier: ^4.2.2
         version: 4.2.2(@loaders.gl/core@4.2.2)
-      '@mapbox/tiny-sdf':
-        specifier: ^2.0.6
-        version: 2.0.6
       '@pixi/math':
         specifier: ^7.4.2
         version: 7.4.2
@@ -1358,9 +1355,6 @@ packages:
 
   '@mapbox/point-geometry@0.1.0':
     resolution: {integrity: sha512-6j56HdLTwWGO0fJPlrZtdU/B13q8Uwmo18Ck2GnGgN9PCFyKTZ3UbXeEdRFh18i9XQ92eH2VdtpJHpBD3aripQ==}
-
-  '@mapbox/tiny-sdf@2.0.6':
-    resolution: {integrity: sha512-qMqa27TLw+ZQz5Jk+RcwZGH7BQf5G/TrutJhspsca/3SHwmgKQ1iq+d3Jxz5oysPVYTGP6aXxCo5Lk9Er6YBAA==}
 
   '@mapbox/vector-tile@1.3.1':
     resolution: {integrity: sha512-MCEddb8u44/xfQ3oD+Srl/tNcQoqTw3goGk2oLsrFxOTc3dUp+kAnby3PvAeeBYSMSjSPD1nd1AJA6W49WnoUw==}
@@ -5857,8 +5851,6 @@ snapshots:
       '@loaders.gl/core': 4.2.2
 
   '@mapbox/point-geometry@0.1.0': {}
-
-  '@mapbox/tiny-sdf@2.0.6': {}
 
   '@mapbox/vector-tile@1.3.1':
     dependencies:

@@ -91,6 +91,10 @@ export class CanvasTextMetrics {
     this.#graphemeSegmenter = graphemeSegmenter ?? intlGraphemeSegmenter;
   }
 
+  get graphemeSegmenter() {
+    return this.#graphemeSegmenter;
+  }
+
   getCanvas() {
     return this.#canvas;
   }
@@ -516,18 +520,19 @@ export class CanvasTextMetrics {
     const actualBoundingBoxRight = metrics.actualBoundingBoxRight;
     let boundsWidth = actualBoundingBoxRight - actualBoundingBoxLeft;
 
-    if (metricWidth > 0) {
-      // if (useExperimentalLetterSpacing) {
-      metricWidth -= letterSpacing;
-      boundsWidth -= letterSpacing;
-      // } else {
-      //   const val =
-      //     (this.#graphemeSegmenter(text).length - 1) *
-      //     letterSpacing;
+    console.log(
+      text,
+      metricWidth,
+      boundsWidth,
+      this.#context.font,
+      letterSpacing,
+    );
 
-      //   metricWidth += val;
-      //   boundsWidth += val;
-      // }
+    if (metricWidth > 0) {
+      const val = (this.#graphemeSegmenter(text).length - 1) * letterSpacing;
+
+      metricWidth += val;
+      boundsWidth += val;
     }
 
     return Math.max(metricWidth, boundsWidth);

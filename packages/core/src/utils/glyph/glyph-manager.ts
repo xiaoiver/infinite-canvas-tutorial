@@ -4,13 +4,14 @@
 
 import type { Device, Texture } from '@antv/g-device-api';
 import { Format, makeTextureDescriptor2D } from '@antv/g-device-api';
-import TinySDF from '@mapbox/tiny-sdf';
 import type { StyleGlyph } from './alpha-image';
-import { AlphaImage } from './alpha-image';
+import { RGBAImage } from './alpha-image';
 import { GlyphAtlas } from './glyph-atlas';
+import { canvasTextMetrics } from '../font';
+import { TinySDF } from './tiny-sdf';
 
 export type PositionedGlyph = {
-  glyph: number; // charCode
+  glyph: string; // charCode
   x: number;
   y: number;
   scale: number; // 根据缩放等级计算的缩放比例
@@ -60,7 +61,7 @@ export class GlyphManager {
   private textMetricsCache: Record<string, Record<string, number>> = {};
 
   private glyphAtlas: GlyphAtlas;
-  private glyphMap: Record<string, Record<number, StyleGlyph>> = {};
+  private glyphMap: Record<string, Record<string, StyleGlyph>> = {};
   private glyphAtlasTexture: Texture;
 
   constructor() {}
@@ -89,7 +90,6 @@ export class GlyphManager {
     lineHeight: number,
     textAlign: CanvasTextAlign,
     letterSpacing: number,
-    fontMetrics: globalThis.TextMetrics & { fontSize: number },
   ): PositionedGlyph[] {
     const positionedGlyphs: PositionedGlyph[] = [];
 
@@ -105,18 +105,16 @@ export class GlyphManager {
 
     lines.forEach((line) => {
       const lineStartIndex = positionedGlyphs.length;
-      // TODO: Grapheme splitter
-      Array.from(line).forEach((char) => {
+
+      canvasTextMetrics.graphemeSegmenter(line).forEach((char) => {
         // fontStack
         const positions = this.glyphMap[fontStack];
-        const charCode = char.charCodeAt(0);
-        const glyph = positions && positions[charCode];
+        const glyph = positions && positions[char];
 
         if (glyph) {
-          // TODO: 需要根据 baseline 调整
           const glyphOffset = 0;
           positionedGlyphs.push({
-            glyph: charCode,
+            glyph: char,
             x,
             y: y + glyphOffset,
             scale: 1,
@@ -152,12 +150,13 @@ export class GlyphManager {
     }
 
     const existedChars = Object.keys(this.glyphMap[fontStack] || {});
-    // TODO: grapheme cluster
-    Array.from(new Set(text.split(''))).forEach((char) => {
-      if (existedChars.indexOf(char.charCodeAt(0).toString()) === -1) {
-        newChars.push(char);
-      }
-    });
+    Array.from(new Set(canvasTextMetrics.graphemeSegmenter(text))).forEach(
+      (char) => {
+        if (existedChars.indexOf(char) === -1) {
+          newChars.push(char);
+        }
+      },
+    );
 
     if (newChars.length) {
       const glyphMap = newChars
@@ -171,11 +170,11 @@ export class GlyphManager {
           );
         })
         .reduce((prev, cur) => {
-          // @ts-ignore
           prev[cur.id] = cur;
           return prev;
         }, {}) as StyleGlyph;
 
+      // @ts-ignore
       this.glyphMap[fontStack] = {
         ...this.glyphMap[fontStack],
         ...glyphMap,
@@ -193,17 +192,15 @@ export class GlyphManager {
 
       this.glyphAtlasTexture = device.createTexture({
         ...makeTextureDescriptor2D(
-          device.queryVendorInfo().platformString === 'WebGPU'
-            ? Format.U8_R_NORM
-            : Format.U8_LUMINANCE,
+          Format.U8_RGBA_NORM,
           atlasWidth,
           atlasHeight,
           1,
         ),
-        pixelStore: {
-          unpackFlipY: false,
-          unpackAlignment: 1,
-        },
+        // pixelStore: {
+        //   unpackFlipY: false,
+        //   unpackAlignment: 4,
+        // },
       });
       this.glyphAtlasTexture.setImageData([data]);
     }
@@ -216,7 +213,6 @@ export class GlyphManager {
     fontStyle: string,
     char: string,
   ): StyleGlyph {
-    const charCode = char.charCodeAt(0);
     let sdfGenerator = this.sdfGeneratorCache[fontStack];
     if (!sdfGenerator) {
       sdfGenerator = this.sdfGeneratorCache[fontStack] = new TinySDF({
@@ -254,9 +250,9 @@ export class GlyphManager {
     } = sdfGenerator.draw(char);
 
     return {
-      id: charCode,
+      id: char,
       // 在 canvas 中绘制字符，使用 Uint8Array 存储 30*30 sdf 数据
-      bitmap: new AlphaImage(
+      bitmap: new RGBAImage(
         {
           width,
           height,

@@ -150,7 +150,6 @@ export function TextWrapper<TBase extends GConstructor>(Base: TBase) {
       const { width, height } = metrics;
 
       const hwidth = width / 2;
-      // const hheight = height / 2;
 
       // default 'left'
       let lineXOffset = x;
@@ -160,16 +159,14 @@ export function TextWrapper<TBase extends GConstructor>(Base: TBase) {
         lineXOffset += -hwidth * 2;
       }
 
-      const lineYOffset = y;
-      // if (textBaseline === 'middle') {
-      //   lineYOffset += hheight;
-      // } else if (textBaseline === 'top' || textBaseline === 'hanging') {
-      //   lineYOffset += hheight * 2;
-      // } else if (textBaseline === 'alphabetic') {
-      //   // alphabetic has been removed in the latest version, will be treated as bottom
-      // } else if (textBaseline === 'bottom' || textBaseline === 'ideographic') {
-      //   lineYOffset += 0;
-      // }
+      let lineYOffset = y;
+      if (metrics.fontMetrics) {
+        if (metrics.fontMetrics.fontBoundingBoxAscent) {
+          lineYOffset -= metrics.fontMetrics.fontBoundingBoxAscent;
+        } else {
+          // TODO: approximate the ascent
+        }
+      }
 
       return new AABB(
         lineXOffset,

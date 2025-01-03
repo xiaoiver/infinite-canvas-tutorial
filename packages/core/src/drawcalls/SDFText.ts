@@ -22,10 +22,10 @@ import { Drawcall, ZINDEX_FACTOR } from './Drawcall';
 import { vert, frag, Location } from '../shaders/sdf_text';
 import {
   BASE_FONT_WIDTH,
-  canvasTextMetrics,
   GlyphManager,
   paddingMat3,
   getGlyphQuads,
+  SDF_SCALE,
 } from '../utils';
 
 export class SDFText extends Drawcall {
@@ -47,7 +47,7 @@ export class SDFText extends Drawcall {
   }
 
   createGeometry(): void {
-    const { metrics, fontFamily, fontWeight, fontStyle, textBaseline } = this
+    const { metrics, fontFamily, fontWeight, fontStyle } = this
       .shapes[0] as Text;
 
     // scale current font size to base(24)
@@ -70,13 +70,9 @@ export class SDFText extends Drawcall {
 
     this.shapes.forEach((object: Text) => {
       const { metrics, letterSpacing } = object;
-      const { font, lines, lineHeight, fontMetrics } = metrics;
+      const { font, lines, lineHeight } = metrics;
 
-      // if (textBaseline === 'alphabetic') {
-      //   textBaseline = 'bottom';
-      // }
-
-      const linePositionY = 0;
+      // const linePositionY = 0;
       // handle vertical text baseline
       // if (textBaseline === 'middle') {
       //   linePositionY += -height / 2;
@@ -87,7 +83,6 @@ export class SDFText extends Drawcall {
       // } else if (textBaseline === 'ideographic') {
       //   linePositionY += -height;
       // }
-      console.log(textBaseline, linePositionY, fontMetrics);
 
       const {
         indicesOffset,
@@ -98,7 +93,7 @@ export class SDFText extends Drawcall {
         object,
         lines,
         fontStack: font,
-        lineHeight: fontScale * lineHeight,
+        lineHeight: (fontScale * lineHeight) / SDF_SCALE,
         letterSpacing: fontScale * letterSpacing,
         indicesOffset: indicesOff,
       });
@@ -385,7 +380,6 @@ export class SDFText extends Drawcall {
       lineHeight,
       textAlign,
       letterSpacing,
-      canvasTextMetrics.measureFont(fontStack),
     );
 
     // 计算每个独立字符相对于锚点的位置信息

@@ -101,11 +101,11 @@ void main() {
   float strokeOpacity = u_Opacity.z;
   float shapeSizeAttenuation = u_Opacity.w;
 
-  float dist = texture(SAMPLER_2D(u_Texture), v_Uv).r;
+  float dist = texture(SAMPLER_2D(u_Texture), v_Uv).a;
 
-  float u_FontSize = 24.0;
+  float fontSize = u_ZIndexStrokeWidth.z;
 
-  float fontScale = u_FontSize / 24.0;
+  float fontScale = fontSize / 24.0;
   lowp float buff = (256.0 - 64.0) / 256.0;
   // float opacity = u_FillOpacity;
   // if (u_HasStroke > 0.5 && u_StrokeWidth > 0.0) {

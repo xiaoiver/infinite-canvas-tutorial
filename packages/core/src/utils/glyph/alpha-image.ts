@@ -9,8 +9,8 @@ export type GlyphMetrics = {
 };
 
 export type StyleGlyph = {
-  id: number;
-  bitmap: AlphaImage;
+  id: string;
+  bitmap: RGBAImage;
   metrics: GlyphMetrics;
 };
 
@@ -41,29 +41,29 @@ function createImage(
   return image;
 }
 
-function resizeImage(image: any, { width, height }: Size, channels: number) {
-  if (width === image.width && height === image.height) {
-    return;
-  }
+// function resizeImage(image: any, { width, height }: Size, channels: number) {
+//   if (width === image.width && height === image.height) {
+//     return;
+//   }
 
-  const newImage = createImage({}, { width, height }, channels);
+//   const newImage = createImage({}, { width, height }, channels);
 
-  copyImage(
-    image,
-    newImage,
-    { x: 0, y: 0 },
-    { x: 0, y: 0 },
-    {
-      width: Math.min(image.width, width),
-      height: Math.min(image.height, height),
-    },
-    channels,
-  );
+//   copyImage(
+//     image,
+//     newImage,
+//     { x: 0, y: 0 },
+//     { x: 0, y: 0 },
+//     {
+//       width: Math.min(image.width, width),
+//       height: Math.min(image.height, height),
+//     },
+//     channels,
+//   );
 
-  image.width = width;
-  image.height = height;
-  image.data = newImage.data;
-}
+//   image.width = width;
+//   image.height = height;
+//   image.data = newImage.data;
+// }
 
 function copyImage(
   srcImg: any,
@@ -109,33 +109,53 @@ function copyImage(
   return dstImg;
 }
 
-export class AlphaImage {
+// export class AlphaImage {
+//   width: number;
+//   height: number;
+//   data: Uint8Array | Uint8ClampedArray;
+
+//   constructor(size: Size, data?: Uint8Array | Uint8ClampedArray) {
+//     createImage(this, size, 1, data);
+//   }
+
+//   resize(size: Size) {
+//     resizeImage(this, size, 1);
+//   }
+
+//   clone() {
+//     return new AlphaImage(
+//       { width: this.width, height: this.height },
+//       new Uint8Array(this.data),
+//     );
+//   }
+
+//   static copy(
+//     srcImg: AlphaImage,
+//     dstImg: AlphaImage,
+//     srcPt: Point,
+//     dstPt: Point,
+//     size: Size,
+//   ) {
+//     copyImage(srcImg, dstImg, srcPt, dstPt, size, 1);
+//   }
+// }
+
+export class RGBAImage {
   width: number;
   height: number;
   data: Uint8Array | Uint8ClampedArray;
 
   constructor(size: Size, data?: Uint8Array | Uint8ClampedArray) {
-    createImage(this, size, 1, data);
-  }
-
-  resize(size: Size) {
-    resizeImage(this, size, 1);
-  }
-
-  clone() {
-    return new AlphaImage(
-      { width: this.width, height: this.height },
-      new Uint8Array(this.data),
-    );
+    createImage(this, size, 4, data);
   }
 
   static copy(
-    srcImg: AlphaImage,
-    dstImg: AlphaImage,
+    srcImg: RGBAImage,
+    dstImg: RGBAImage,
     srcPt: Point,
     dstPt: Point,
     size: Size,
   ) {
-    copyImage(srcImg, dstImg, srcPt, dstPt, size, 1);
+    copyImage(srcImg, dstImg, srcPt, dstPt, size, 4);
   }
 }

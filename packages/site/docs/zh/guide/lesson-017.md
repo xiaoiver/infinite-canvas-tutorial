@@ -36,6 +36,12 @@ interface CRDT<T, S> {
 }
 ```
 
+### Y.js
+
+<https://tiptap.dev/docs/collaboration/getting-started/overview#about-yjs>
+
+> As a CRDT, Y.js ensures that the sequence of changes does not impact the final state of the document, similar to how Git operates with commits. This guarantees that all copies of the data remain consistent across different environments.
+
 ### 数据结构设计
 
 ## 扩展阅读 {#extended-reading}

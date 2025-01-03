@@ -1,16 +1,16 @@
 import potpack from 'potpack';
 import type { GlyphMetrics, StyleGlyph } from './alpha-image';
-import { AlphaImage } from './alpha-image';
+import { RGBAImage } from './alpha-image';
 import { SDF_SCALE } from './glyph-manager';
 
-const glyphPadding = 1;
-/*
-    The glyph padding is just to prevent sampling errors at the boundaries between
-    glyphs in the atlas texture, and for that purpose there's no need to make it
-    bigger with high-res SDFs. However, layout is done based on the glyph size
-    including this padding, so scaling this padding is the easiest way to keep
-    layout exactly the same as the SDF_SCALE changes.
-*/
+export const glyphPadding = 1;
+/**
+ * The glyph padding is just to prevent sampling errors at the boundaries between
+ * glyphs in the atlas texture, and for that purpose there's no need to make it
+ * bigger with high-res SDFs. However, layout is done based on the glyph size
+ * including this padding, so scaling this padding is the easiest way to keep
+ * layout exactly the same as the SDF_SCALE changes.
+ */
 const padding = glyphPadding * SDF_SCALE;
 
 type Rect = {
@@ -25,7 +25,7 @@ export type GlyphPosition = {
   metrics: GlyphMetrics;
 };
 
-export type GlyphPositions = Record<string, Record<number, GlyphPosition>>;
+export type GlyphPositions = Record<string, Record<string, GlyphPosition>>;
 
 /**
  * Merge SDFs into a large squared atlas with `potpack`,
@@ -34,10 +34,10 @@ export type GlyphPositions = Record<string, Record<number, GlyphPosition>>;
  * @see https://doc.babylonjs.com/advanced_topics/webGL2#power-of-two-textures
  */
 export class GlyphAtlas {
-  image: AlphaImage;
+  image: RGBAImage;
   positions: GlyphPositions;
 
-  constructor(stacks: Record<string, Record<number, StyleGlyph>>) {
+  constructor(stacks: Record<string, Record<string, StyleGlyph>>) {
     const positions = {};
     const bins: {
       x: number;
@@ -51,7 +51,7 @@ export class GlyphAtlas {
       const stackPositions = (positions[stack] = {});
 
       for (const id in glyphs) {
-        const src = glyphs[+id];
+        const src = glyphs[id];
         if (!src || src.bitmap.width === 0 || src.bitmap.height === 0) continue;
 
         const bin = {
@@ -66,17 +66,17 @@ export class GlyphAtlas {
     }
 
     const { w, h } = potpack(bins);
-    const image = new AlphaImage({ width: w || 1, height: h || 1 });
+    const image = new RGBAImage({ width: w || 1, height: h || 1 });
 
     for (const stack in stacks) {
       const glyphs = stacks[stack];
 
       for (const id in glyphs) {
-        const src = glyphs[+id];
+        const src = glyphs[id];
         if (!src || src.bitmap.width === 0 || src.bitmap.height === 0) continue;
 
         const bin = positions[stack][id].rect;
-        AlphaImage.copy(
+        RGBAImage.copy(
           src.bitmap,
           image,
           { x: 0, y: 0 },

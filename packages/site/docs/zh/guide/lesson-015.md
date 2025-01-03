@@ -154,19 +154,6 @@ measureText(
 
 后续在安排每个字符的位置时也需要考虑，我们将在 [Generate quads](#generate-quads) 中介绍。
 
-### font-kerning
-
-如果我们想获取 [font-kerning]，可以参考 <https://github.com/mapbox/tiny-sdf/issues/6#issuecomment-1532395796> 给出的方式：
-
-![font-kerning](https://developer.mozilla.org/en-US/docs/Web/CSS/font-kerning/font-kerning.png)
-
-```ts
-const unkernedWidth =
-    tinySdf.ctx.measureText('A').width + tinySdf.ctx.measureText('V').width;
-const kernedWidth = tinySdf.ctx.measureText('AV').width;
-const kerning = kernedWidth - unkernedWidth; // a negative value indicates you should adjust the SDFs closer together by that much
-```
-
 ## Paragraph layout
 
 单个字符组合在一起形成了句子，句子又组成了段落。下图来自 [Text layout is a loose hierarchy of segmentation]，自底向上展示了文本布局的层次结构。
@@ -221,7 +208,7 @@ const breakingSpaces: number[] = [
 
 ![pixi-cjk](https://github.com/huang-yuwei/pixi-cjk/raw/main/docs/screenshot.png)
 
-### BiDi
+### BiDi {#bidi}
 
 HarfBuzz 也不会处理 [BiDi]，详见 [What HarfBuzz doesn't do]：
 
@@ -272,21 +259,24 @@ const graphemeSegmenter: (s: string) => string[] = (() => {
 })();
 ```
 
-### text-align
+我们也采用这种方案，在后续为字符生成 SDF 时会用到。
 
-实现[text-align]
+### text-align {#text-align}
+
+实现 [text-align] 很简单：
 
 ![text-align](/text-align.png)
 
 ```ts
 let offsetX = 0;
-// handle horizontal text align
 if (textAlign === 'center') {
     offsetX -= width / 2;
 } else if (textAlign === 'right' || textAlign === 'end') {
     offsetX -= width;
 }
 ```
+
+但想实现垂直对齐就没这么简单了，[text-baseline] 仅针对单行文本，很多场景下我们希望整个段落居中。后续当我们讨论 flex layout 时会介绍。
 
 ## 绘制 {#rendering}
 
@@ -339,7 +329,7 @@ const tinySdf = new TinySDF({
 const glyph = tinySdf.draw('泽'); // 包含像素数据、宽高、字符 metrics 等
 ```
 
-下面我们简单分析一下它的生成原理。首先它使用浏览器 Canvas2D API 获取像素数据，但在写入时留有 buffer 的余量，这是考虑到 Halo 的实现。
+下面我们简单分析一下它的生成原理。首先它使用浏览器 Canvas2D API [getImageData] 获取像素数据，但在写入时留有 buffer 的余量，这是考虑到 Halo 的实现。
 
 ```ts
 const size = (this.size = fontSize + buffer * 4);
@@ -382,11 +372,65 @@ $$ s = \frac{(f(r) + r^2) - (f(q) + q^2)}{2r - 2q} $$
 ![The two possible cases considered by the algorithm when adding the parabola from q to the
 lower envelope constructed so far.](/dt-2-possible-cases.png)
 
-完整算法如下，[tiny-sdf] 实现了上述算法（EDT 1D），连变量名都是一致的：
+完整算法如下，[tiny-sdf] 实现了它（EDT 1D），连变量名都是一致的：
 
 ![One-dimensional distance transform under the squared Euclidean distance](/dt-euclidean-distance.png)
 
-对于 2D EDT 的计算正如我们本节开头介绍的，分解成两趟 1D 距离平方，最后开方得到结果。这里也能直接看出对于 `height * width` 尺寸的网格，复杂度为 $O(n)$：
+[Sub-pixel Distance Transform] 一文详细介绍了该算法的思路，分别计算内外两个距离场，最后合并：
+
+> To make a signed distance field, you do this for both the inside and outside separately, and then combine the two as inside – outside or vice versa.
+
+它从最基础的 1D 开始，先假设我们的输入只有黑白两色，即上面提到的 Hard mask，先计算外距离场：
+
+![pixels row](https://acko.net/files/gpubox/image/pixels-row.png)
+
+$$ O = [\infty, \infty, \infty, 0, 0, 0, 0, 0, \infty, 0, 0, 0, \infty, \infty, \infty] $$
+$$ P = [3, 2, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 2, 3] $$
+
+接着计算内距离场，`I` 反转下 `O`：
+
+$$ I = [0, 0, 0, \infty, \infty, \infty, \infty, \infty, 0, \infty, \infty, \infty, 0, 0, 0] $$
+$$ N = [0, 0, 0, 1, 2, 3, 2, 1, 0, 1, 2, 1, 0, 0, 0] $$
+
+最后合并，使用外距离场减去内距离场：
+
+$$ P - N = [3, 2, 1,-1,-2,-3,-2,-1, 1,-1,-2,-1, 1, 2, 3] $$
+
+在 [tiny-sdf] 的实现中，以上过程对应当 `a` 为 `1` 时的处理逻辑：
+
+```ts
+// @see https://github.com/mapbox/tiny-sdf/blob/main/index.js#L85
+gridOuter.fill(INF, 0, len);
+gridInner.fill(0, 0, len);
+
+for (let y = 0; y < glyphHeight; y++) {
+    for (let x = 0; x < glyphWidth; x++) {
+        if (a === 1) {
+            // fully drawn pixels
+            gridOuter[j] = 0;
+            gridInner[j] = INF;
+        } else {
+        }
+    }
+}
+
+edt(outer, 0, 0, wp, hp, wp, this.f, this.z, this.v);
+edt(inner, pad, pad, w, h, wp, this.f, this.z, this.v);
+
+for (let i = 0; i < np; i++) {
+    const d = Math.sqrt(outer[i]) - Math.sqrt(inner[i]);
+    out[i] = Math.max(
+        0,
+        Math.min(255, Math.round(255 - 255 * (d / this.radius + this.cutoff))),
+    );
+}
+```
+
+对于 2D EDT 的计算正如我们本节开头介绍的，分解成两趟 1D 距离平方，最后开方得到结果。类似后处理中的高斯模糊效果：
+
+> Like a Fourier Transform, you can apply it to 2D images by applying it horizontally on each row X, then vertically on each column Y (or vice versa).
+
+这里也能直接看出对于 `height * width` 尺寸的网格，复杂度为 $O(n)$：
 
 ```ts
 // @see https://github.com/mapbox/tiny-sdf/blob/main/index.js#L110
@@ -541,17 +585,49 @@ export type PositionedGlyph = {
 };
 ```
 
-## emoji
+```ts
+lines.forEach((line) => {
+    const lineStartIndex = positionedGlyphs.length;
 
-[EmojiEngine]
+    canvasTextMetrics.graphemeSegmenter(line).forEach((char) => {});
+});
+```
 
-## 装饰线 {#text-decoration}
+## 效果改进 {#improvements}
 
-[text-decoration]
+目前渲染的文本在放大时会存在明显的“人工痕迹”，一个很明显的原因是生成 SDF 的分辨率，在 Mapbox 目前的实现中，使用了 `SDF_SCALE` 来控制它，越高的分辨率生成的 SDF 就越精细，但同时也带来了性能的下降。
 
-## 阴影 {#dropshadow}
+<https://github.com/mapbox/mapbox-gl-js/blob/main/src/render/glyph_manager.ts#L34>
 
-## MSDF {#msdf}
+> The choice of SDF_SCALE is a trade-off between performance and quality.
+> Glyph generation time grows quadratically with the the scale, while quality
+> improvements drop off rapidly when the scale is higher than the pixel ratio
+> of the device. The scale of 2 buys noticeable improvements on HDPI screens
+> at acceptable cost.
+
+### Sub-pixel Distance Transform {#sub-pixel-distance-transform}
+
+[Sub-pixel Distance Transform] 一文指出 [tiny-sdf] 的实现存在问题，并给出了改进后的实现。
+
+首先我们使用 Canvas 生成的不是只有黑白两色的 Hard mask，而是灰度图：
+
+![pixels row grey](https://acko.net/files/gpubox/image/pixels-row-grey.png)
+
+在 [tiny-sdf] 的实现中，当 `a` 不为 1 时，它是这么处理的：
+
+```ts
+// @see https://github.com/mapbox/tiny-sdf/blob/main/index.js#L89
+if (a === 1) {
+} else {
+    const d = 0.5 - a; // aliased pixels
+    gridOuter[j] = d > 0 ? d * d : 0;
+    gridInner[j] = d < 0 ? d * d : 0;
+}
+```
+
+![tiny-sdf vs use.gpu](https://acko.net/files/gpubox/image/glyph-xy-compare-t@2x.png)
+
+### MSDF {#msdf}
 
 在使用低分辨率的距离场重建时，字符的拐角处过于平滑不能保持原有的尖锐效果。现在我们来解决这个问题。
 
@@ -577,6 +653,10 @@ float sigDist = median(sample.r, sample.g, sample.b) - 0.5;
 
 -   [msdf-bmfont-xml]
 -   [pixi-msdf-text]
+
+## emoji
+
+一些绘制 emoji 的实现，例如 [EmojiEngine] 都是采用贴图方式。
 
 ## 扩展阅读 {#extended-reading}
 
@@ -629,7 +709,6 @@ float sigDist = median(sample.r, sample.g, sample.b) - 0.5;
 [msdfgen]: https://github.com/Chlumsky/msdfgen
 [msdf-atlas-gen]: https://github.com/Chlumsky/msdf-atlas-gen?tab=readme-ov-file#atlas-types
 [measureText]: https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/measureText
-[font-kerning]: https://developer.mozilla.org/en-US/docs/Web/CSS/font-kerning
 [text-baseline]: https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/textBaseline
 [text-align]: https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/textAlign
 [PIXI.TextMetrics]: https://api.pixijs.io/@pixi/text/PIXI/TextMetrics.html
@@ -641,7 +720,6 @@ float sigDist = median(sample.r, sample.g, sample.b) - 0.5;
 [Line breaking rules in East Asian languages]: https://en.wikipedia.org/wiki/Line_breaking_rules_in_East_Asian_languages
 [clusters]: https://harfbuzz.github.io/clusters.html
 [Intl.Segmenter]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Intl/Segmenter
-[text-decoration]: https://developer.mozilla.org/en-US/docs/Web/CSS/text-decoration
 [Improved Alpha-Tested Magnification for Vector Textures and Special Effects]: https://steamcdn-a.akamaihd.net/apps/valve/2007/SIGGRAPH2007_AlphaTestedMagnification.pdf
 [Signed Distance Field Fonts - basics]: https://www.redblobgames.com/x/2403-distance-field-fonts/
 [Bin packing problem]: https://en.wikipedia.org/wiki/Bin_packing_problem
@@ -652,3 +730,5 @@ float sigDist = median(sample.r, sample.g, sample.b) - 0.5;
 [tiny-sdf]: https://github.com/mapbox/tiny-sdf
 [r8unorm]: https://gpuweb.github.io/gpuweb/#dom-gputextureformat-r8unorm
 [Shape Decomposition for Multi-channel Distance Fields]: https://dspace.cvut.cz/bitstream/handle/10467/62770/F8-DP-2015-Chlumsky-Viktor-thesis.pdf
+[Sub-pixel Distance Transform]: https://acko.net/blog/subpixel-distance-transform
+[getImageData]: https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/getImageData

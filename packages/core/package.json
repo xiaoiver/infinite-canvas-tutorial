@@ -40,7 +40,6 @@
     "@antv/util": "^3.3.10",
     "@loaders.gl/core": "^4.2.2",
     "@loaders.gl/images": "^4.2.2",
-    "@mapbox/tiny-sdf": "^2.0.6",
     "@pixi/math": "^7.4.2",
     "bezier-easing": "^2.1.0",
     "bidi-js": "^1.0.3",
