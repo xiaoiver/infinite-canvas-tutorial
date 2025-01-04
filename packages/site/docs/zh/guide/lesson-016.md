@@ -62,6 +62,8 @@ const kerning = kernedWidth - unkernedWidth; // a negative value indicates you s
 
 ## 文本选中 {#text-selection}
 
+## 加载字体 {#load-font}
+
 ## 扩展阅读 {#extended-reading}
 
 [font-kerning]: https://developer.mozilla.org/en-US/docs/Web/CSS/font-kerning

@@ -114,7 +114,7 @@ canvas.appendChild(baseline);
 const text = new Text({
   x: 50,
   y: 50,
-  content: '国',
+  content: 'Hello, world!\n你好，世界',
   fontSize: 48,
   fill: '#F67676',
   wireframe: true,

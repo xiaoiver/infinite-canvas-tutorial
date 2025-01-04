@@ -308,7 +308,7 @@ export class SDFText extends Drawcall {
       fillOpacity,
       strokeOpacity,
       sizeAttenuation,
-      metrics,
+      fontSize,
     } = shape;
 
     const glyphAtlas = this.#glyphManager.getAtlas();
@@ -321,7 +321,7 @@ export class SDFText extends Drawcall {
     const u_ZIndexStrokeWidth = [
       shape.globalRenderOrder / ZINDEX_FACTOR,
       strokeWidth,
-      metrics.fontMetrics.fontSize,
+      fontSize as number,
       0,
     ];
 

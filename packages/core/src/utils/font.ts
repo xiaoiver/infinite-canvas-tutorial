@@ -520,14 +520,6 @@ export class CanvasTextMetrics {
     const actualBoundingBoxRight = metrics.actualBoundingBoxRight;
     let boundsWidth = actualBoundingBoxRight - actualBoundingBoxLeft;
 
-    console.log(
-      text,
-      metricWidth,
-      boundsWidth,
-      this.#context.font,
-      letterSpacing,
-    );
-
     if (metricWidth > 0) {
       const val = (this.#graphemeSegmenter(text).length - 1) * letterSpacing;
 

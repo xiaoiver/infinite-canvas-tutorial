@@ -179,6 +179,8 @@ pnpm run dev
 -   How to generate SDF atlas and use it to draw
 -   How to handle emoji
 
+<img src="./screenshots/lesson15.png" width="300" alt="Lesson 15 - text">
+
 [infinitecanvas]: https://infinitecanvas.tools/
 [Figma]: https://madebyevan.com/figma/building-a-professional-design-tool-on-the-web/
 [Modyfi]: https://digest.browsertech.com/archive/browsertech-digest-how-modyfi-is-building-with/
