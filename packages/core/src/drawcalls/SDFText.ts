@@ -47,8 +47,12 @@ export class SDFText extends Drawcall {
   }
 
   createGeometry(): void {
-    const { metrics, fontFamily, fontWeight, fontStyle } = this
+    const { metrics, fontFamily, fontWeight, fontStyle, bitmapFont } = this
       .shapes[0] as Text;
+
+    if (bitmapFont) {
+      bitmapFont.init(this.device);
+    }
 
     // scale current font size to base(24)
     const fontScale = BASE_FONT_WIDTH / metrics.fontMetrics.fontSize;

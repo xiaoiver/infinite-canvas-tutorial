@@ -602,6 +602,14 @@ The text rendered currently has obvious "artificial traces" when enlarged, one o
 > of the device. The scale of 2 buys noticeable improvements on HDPI screens
 > at acceptable cost.
 
+The following image shows the comparison effect when zoomed in with `SDF_SCALE` values of 1 and 4:
+
+|          SDF_SCALE = 1           |          SDF_SCALE = 4           |
+| :------------------------------: | :------------------------------: |
+| ![sdf scale 1](/sdf-scale-1.png) | ![sdf scale 4](/sdf-scale-4.png) |
+
+But first, let's not adjust the SDF resolution. The current implementation of [tiny-sdf] still has problems.
+
 ### Sub-pixel Distance Transform {#sub-pixel-distance-transform}
 
 [Sub-pixel Distance Transform] points out that there are problems with the implementation of [tiny-sdf], and provides an improved implementation.

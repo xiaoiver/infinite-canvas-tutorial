@@ -10,4 +10,5 @@ export {
   parsePath,
   fromSVGElement,
   parseTransform,
+  loadBitmapFont,
 } from './utils';

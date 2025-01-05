@@ -39,7 +39,7 @@ export type PositionedGlyph = {
   use an SDF_SCALE of 1.75, you could manually set localGlyphAdding to 2 and
   buffer to 5.
 */
-export const SDF_SCALE = 1;
+export const SDF_SCALE = 4;
 export const BASE_FONT_WIDTH = 24 * SDF_SCALE;
 export const BASE_FONT_BUFFER = 3 * SDF_SCALE;
 export const radius = 8 * SDF_SCALE;

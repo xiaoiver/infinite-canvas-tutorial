@@ -13,3 +13,4 @@ export * from './tessy';
 export * from './rough';
 export * from './font';
 export * from './glyph';
+export * from './bitmap-font';

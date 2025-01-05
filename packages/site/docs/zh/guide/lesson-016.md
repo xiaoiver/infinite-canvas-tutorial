@@ -20,6 +20,8 @@ publish: false
 
 [text-decoration]: https://developer.mozilla.org/en-US/docs/Web/CSS/text-decoration
 
+Pixi.js 提供了 [DropShadowFilter] 来实现阴影效果。
+
 ## 文本跟随路径 {#text-along-path}
 
 在 Figma 社区中，很多用户都在期待这个特性，例如：[Make text follow a path or a circle]

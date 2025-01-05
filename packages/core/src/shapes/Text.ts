@@ -1,4 +1,5 @@
 import { canvasTextMetrics, TextMetrics } from '../utils';
+import { BitmapFont } from '../utils/bitmap-font/BitmapFont';
 import { AABB } from './AABB';
 import { GConstructor } from './mixins';
 import { Shape, ShapeAttributes, strokeOffset } from './Shape';
@@ -115,6 +116,13 @@ export interface TextAttributes extends ShapeAttributes {
    * Sets the distance between lines in px.
    */
   leading: number;
+
+  /**
+   * MSDF
+   * @see https://github.com/soimy/msdf-bmfont-xml
+   * @see https://pixijs.com/8.x/examples/text/bitmap-text
+   */
+  bitmapFont: BitmapFont;
 }
 
 // @ts-ignore
@@ -142,7 +150,7 @@ export function TextWrapper<TBase extends GConstructor>(Base: TBase) {
     #leading: number;
     #textAlign: CanvasTextAlign;
     #textBaseline: CanvasTextBaseline;
-
+    #bitmapFont: BitmapFont;
     static getGeometryBounds(
       attributes: Partial<TextAttributes> & { metrics: TextMetrics },
     ) {
@@ -198,6 +206,7 @@ export function TextWrapper<TBase extends GConstructor>(Base: TBase) {
         maxLines,
         lineHeight,
         leading,
+        bitmapFont,
       } = attributes;
 
       this.#x = x ?? 0;
@@ -218,6 +227,7 @@ export function TextWrapper<TBase extends GConstructor>(Base: TBase) {
       this.maxLines = maxLines ?? Infinity;
       this.lineHeight = lineHeight ?? 0;
       this.leading = leading ?? 0;
+      this.bitmapFont = bitmapFont ?? null;
     }
 
     containsPoint(x: number, y: number) {

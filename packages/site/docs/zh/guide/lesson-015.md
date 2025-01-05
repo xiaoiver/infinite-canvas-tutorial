@@ -605,6 +605,14 @@ lines.forEach((line) => {
 > of the device. The scale of 2 buys noticeable improvements on HDPI screens
 > at acceptable cost.
 
+下图展示了 `SDF_SCALE` 为 1 和 4 时，放大后的对比效果：
+
+|          SDF_SCALE = 1           |          SDF_SCALE = 4           |
+| :------------------------------: | :------------------------------: |
+| ![sdf scale 1](/sdf-scale-1.png) | ![sdf scale 4](/sdf-scale-4.png) |
+
+但先别急着调整 SDF 的分辨率，目前 [tiny-sdf] 的实现还存在问题。
+
 ### Sub-pixel Distance Transform {#sub-pixel-distance-transform}
 
 [Sub-pixel Distance Transform] 一文指出 [tiny-sdf] 的实现存在问题，并给出了改进后的实现。
@@ -629,7 +637,7 @@ if (a === 1) {
 
 ### MSDF {#msdf}
 
-在使用低分辨率的距离场重建时，字符的拐角处过于平滑不能保持原有的尖锐效果。现在我们来解决这个问题。
+在使用低分辨率的距离场重建时，字符的拐角处过于平滑不能保持原有的尖锐效果。现在我们来解决这个问题，正如前文提到的那样，适合预生成字符集的场景。
 
 ![sdf vs msdf](/msdf-vs-sdf.png)
 
@@ -651,10 +659,13 @@ vec3 sample = texture2D(map, vUv).rgb;
 float sigDist = median(sample.r, sample.g, sample.b) - 0.5;
 ```
 
--   [msdf-bmfont-xml]
--   [pixi-msdf-text]
+[msdf-bmfont-xml] 在生成 MSDF 的同时，还会生成一个 `fnt` 文件，里面包含了每个字符的布局信息用于后续绘制。[pixi-msdf-text] 是一个使用 Pixi.js 绘制的完整例子，其中使用了 [BitmapFontLoader] 来加载 `fnt` 文件。
 
-## emoji
+### Material Design on the GPU {#material-design-on-the-gpu}
+
+[Material Design on the GPU]
+
+### emoji 实现 {#emoji-implementation}
 
 一些绘制 emoji 的实现，例如 [EmojiEngine] 都是采用贴图方式。
 
@@ -732,3 +743,4 @@ float sigDist = median(sample.r, sample.g, sample.b) - 0.5;
 [Shape Decomposition for Multi-channel Distance Fields]: https://dspace.cvut.cz/bitstream/handle/10467/62770/F8-DP-2015-Chlumsky-Viktor-thesis.pdf
 [Sub-pixel Distance Transform]: https://acko.net/blog/subpixel-distance-transform
 [getImageData]: https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/getImageData
+[BitmapFontLoader]: https://api.pixijs.io/@pixi/text-bitmap/PIXI/BitmapFontLoader.html

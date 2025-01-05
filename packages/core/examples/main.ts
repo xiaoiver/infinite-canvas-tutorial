@@ -15,6 +15,7 @@ import {
   deserializeNode,
   serializeNode,
   toSVGElement,
+  loadBitmapFont,
 } from '../src';
 
 const $canvas = document.getElementById('canvas') as HTMLCanvasElement;
@@ -34,6 +35,26 @@ const canvas = await new Canvas({
   // renderer: 'webgpu',
   // shaderCompilerPath: '/glsl_wgsl_compiler_bg.wasm',
 }).initialized;
+
+(async () => {
+  const res = await fetch('./DimboR.fnt');
+  const font = await loadBitmapFont.parse(await res.text());
+  console.log(font);
+
+  const text = new Text({
+    x: 150,
+    y: 150,
+    content: 'Hello, world',
+    fontSize: 48,
+    fill: '#F67676',
+    fontFamily: 'DimboR',
+    bitmapFont: font,
+    // wireframe: true,
+    // textAlign: 'right',
+    // letterSpacing: 10,
+  });
+  canvas.appendChild(text);
+})();
 
 // for (let i = 0; i < 2; i++) {
 //   const circle = new Circle({
@@ -117,25 +138,25 @@ const text = new Text({
   content: 'Hello, world!\n你好，世界',
   fontSize: 48,
   fill: '#F67676',
-  wireframe: true,
+  // wireframe: true,
   // textAlign: 'right',
   // letterSpacing: 10,
 });
 canvas.appendChild(text);
 
-const bounds = text.getBounds();
-console.log(bounds);
+// const bounds = text.getBounds();
+// console.log(bounds);
 
-const rect = new Rect({
-  x: bounds.minX,
-  y: bounds.minY,
-  width: bounds.maxX - bounds.minX,
-  height: bounds.maxY - bounds.minY,
-  fill: 'none',
-  stroke: 'blue',
-  strokeWidth: 1,
-});
-canvas.appendChild(rect);
+// const rect = new Rect({
+//   x: bounds.minX,
+//   y: bounds.minY,
+//   width: bounds.maxX - bounds.minX,
+//   height: bounds.maxY - bounds.minY,
+//   fill: 'none',
+//   stroke: 'blue',
+//   strokeWidth: 1,
+// });
+// canvas.appendChild(rect);
 
 canvas.render();
 
