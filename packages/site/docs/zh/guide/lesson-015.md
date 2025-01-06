@@ -661,6 +661,8 @@ float sigDist = median(sample.r, sample.g, sample.b) - 0.5;
 
 [msdf-bmfont-xml] 在生成 MSDF 的同时，还会生成一个 `fnt` 文件，里面包含了每个字符的布局信息用于后续绘制。[pixi-msdf-text] 是一个使用 Pixi.js 绘制的完整例子，其中使用了 [BitmapFontLoader] 来加载 `fnt` 文件。
 
+[MSDF font generator]
+
 ### Material Design on the GPU {#material-design-on-the-gpu}
 
 [Material Design on the GPU]
@@ -682,7 +684,6 @@ float sigDist = median(sample.r, sample.g, sample.b) - 0.5;
 -   [Text layout is a loose hierarchy of segmentation]
 -   [End-To-End Tour of Text Layout/Rendering]
 -   [Text rendering in mapbox]
--   [Texture-less Text Rendering]
 
 [Drawing text]: https://developer.mozilla.org/en-US/docs/Web/API/Canvas_API/Tutorial/Drawing_text
 [FreeType]: https://freetype.org/
@@ -744,3 +745,4 @@ float sigDist = median(sample.r, sample.g, sample.b) - 0.5;
 [Sub-pixel Distance Transform]: https://acko.net/blog/subpixel-distance-transform
 [getImageData]: https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/getImageData
 [BitmapFontLoader]: https://api.pixijs.io/@pixi/text-bitmap/PIXI/BitmapFontLoader.html
+[MSDF font generator]: https://msdf-bmfont.donmccurdy.com/

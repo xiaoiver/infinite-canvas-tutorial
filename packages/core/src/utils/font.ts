@@ -2,6 +2,7 @@ import bidiFactory from 'bidi-js';
 import { Rectangle } from '@pixi/math';
 import { TextAttributes, TextStyleWhiteSpace } from '../shapes';
 import { createOffscreenCanvas } from './browser';
+import { BitmapFont } from './bitmap-font';
 
 type CharacterWidthCache = Record<string, number>;
 export type TextMetrics = {
@@ -99,6 +100,20 @@ export class CanvasTextMetrics {
     return this.#canvas;
   }
 
+  private measureBitmapFont(bitmapFont: BitmapFont, fontSize: number) {
+    const { fontMetrics, lineHeight } = bitmapFont;
+    const scale = fontSize / fontMetrics.fontSize;
+    return {
+      scale,
+      lineHeight: lineHeight * scale,
+      fontMetrics: {
+        actualBoundingBoxAscent: fontMetrics.ascent * scale,
+        actualBoundingBoxDescent: fontMetrics.descent * scale,
+        fontSize,
+      } as globalThis.TextMetrics & { fontSize: number },
+    };
+  }
+
   measureText(text: string, style: Partial<TextAttributes>): TextMetrics {
     const {
       wordWrap,
@@ -107,26 +122,41 @@ export class CanvasTextMetrics {
       textBaseline,
       strokeWidth,
       leading,
+      bitmapFont,
     } = style;
-    let { lineHeight } = style;
 
-    // TODO: use cache based on stylekey
+    let lineHeight = style.lineHeight;
+    let font: string;
+    let fontMetrics: globalThis.TextMetrics & { fontSize: number };
 
-    const font = fontStringFromTextStyle(style);
-    const fontMetrics = this.measureFont(font);
+    if (bitmapFont) {
+      const textMetrics = this.measureBitmapFont(
+        bitmapFont,
+        style.fontSize as number,
+      );
+      lineHeight = textMetrics.lineHeight;
+      fontMetrics = textMetrics.fontMetrics;
+    } else {
+      font = fontStringFromTextStyle(bitmapFont ?? style);
+      fontMetrics = this.measureFont(font);
+      this.#context.font = font;
+    }
+
     // fallback in case UA disallow canvas data extraction
     if (fontMetrics.fontSize === 0) {
       fontMetrics.fontSize = style.fontSize as number;
     }
-
-    this.#context.font = font;
 
     const outputText = wordWrap ? this.wordWrap(text, style) : text;
     const lines = outputText.split(/(?:\r\n|\r|\n)/);
     const lineWidths = new Array<number>(lines.length);
     let maxLineWidth = 0;
     for (let i = 0; i < lines.length; i++) {
-      const lineWidth = this.measureTextInternal(lines[i], letterSpacing);
+      const lineWidth = this.measureTextInternal(
+        lines[i],
+        letterSpacing,
+        bitmapFont,
+      );
       lineWidths[i] = lineWidth;
       maxLineWidth = Math.max(maxLineWidth, lineWidth);
     }
@@ -280,7 +310,7 @@ export class CanvasTextMetrics {
       willReadFrequently: true,
     });
 
-    const { letterSpacing, textOverflow, maxLines } = style;
+    const { letterSpacing, textOverflow, maxLines, bitmapFont } = style;
 
     // How to handle whitespaces
     // const collapseSpaces = this.collapseSpaces(whiteSpace);
@@ -315,6 +345,7 @@ export class CanvasTextMetrics {
         letterSpacing,
         cache,
         context as CanvasRenderingContext2D,
+        bitmapFont,
       );
     };
     const ellipsisWidth = Array.from(ellipsis).reduce((prev, cur) => {
@@ -501,27 +532,45 @@ export class CanvasTextMetrics {
     letterSpacing: number,
     cache: CharacterWidthCache,
     context: CanvasRenderingContext2D,
+    bitmapFont: BitmapFont,
   ): number {
     let width = cache[key];
     if (typeof width !== 'number') {
       const spacing = key.length * letterSpacing;
-      width = context.measureText(key).width + spacing;
+      width =
+        (bitmapFont
+          ? bitmapFont.chars[key]?.xAdvance || 0
+          : context.measureText(key).width) + spacing;
       cache[key] = width;
     }
     return width;
   }
 
-  private measureTextInternal(text: string, letterSpacing: number) {
-    this.#context.letterSpacing = `${letterSpacing}px`;
+  private measureTextInternal(
+    text: string,
+    letterSpacing: number,
+    bitmapFont: BitmapFont,
+  ) {
+    const segments = this.#graphemeSegmenter(text);
 
-    const metrics = this.#context.measureText(text);
-    let metricWidth = metrics.width;
-    const actualBoundingBoxLeft = -metrics.actualBoundingBoxLeft;
-    const actualBoundingBoxRight = metrics.actualBoundingBoxRight;
-    let boundsWidth = actualBoundingBoxRight - actualBoundingBoxLeft;
+    let metricWidth: number;
+    let boundsWidth: number;
+    if (bitmapFont) {
+      metricWidth = segments.reduce((sum, char) => {
+        return sum + (bitmapFont.chars[char]?.xAdvance || 0);
+      }, 0);
+    } else {
+      this.#context.letterSpacing = `${letterSpacing}px`;
+
+      const metrics = this.#context.measureText(text);
+      metricWidth = metrics.width;
+      const actualBoundingBoxLeft = -metrics.actualBoundingBoxLeft;
+      const actualBoundingBoxRight = metrics.actualBoundingBoxRight;
+      boundsWidth = actualBoundingBoxRight - actualBoundingBoxLeft;
+    }
 
     if (metricWidth > 0) {
-      const val = (this.#graphemeSegmenter(text).length - 1) * letterSpacing;
+      const val = (segments.length - 1) * letterSpacing;
 
       metricWidth += val;
       boundsWidth += val;

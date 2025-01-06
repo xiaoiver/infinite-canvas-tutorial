@@ -11,35 +11,13 @@ export interface BitmapFontOptions {
 export class BitmapFont extends AbstractBitmapFont<BitmapFont> {
   constructor(private options: BitmapFontOptions) {
     super();
-  }
 
-  init(device: Device) {
-    const { images, data } = this.options;
-
-    const textures = images.map((image) => {
-      const texture = device.createTexture({
-        format: Format.U8_RGBA_NORM,
-        width: image.width,
-        height: image.height,
-        usage: TextureUsage.SAMPLED,
-      });
-      texture.setImageData([image]);
-      return texture;
-    });
-
-    Object.keys(data.pages).forEach((key: string) => {
-      const pageData = data.pages[parseInt(key, 10)];
-
-      const texture = textures[pageData.id];
-
-      this.pages.push({ texture });
-    });
+    const { data } = this.options;
 
     Object.keys(data.chars).forEach((key: string) => {
       const charData = data.chars[key];
-      const texture = textures[charData.page];
 
-      const frameReal = new Rectangle(
+      const tex = new Rectangle(
         // charData.x + textureFrame.x,
         // charData.y + textureFrame.y,
         charData.x,
@@ -48,16 +26,13 @@ export class BitmapFont extends AbstractBitmapFont<BitmapFont> {
         charData.height,
       );
 
-      // @ts-ignore frame is not a property of Texture
-      texture.frame = frameReal;
-
       this.chars[key] = {
         id: key.codePointAt(0),
         xOffset: charData.xOffset,
         yOffset: charData.yOffset,
         xAdvance: charData.xAdvance,
         kerning: charData.kerning ?? {},
-        texture,
+        tex,
       };
     });
 
@@ -81,6 +56,37 @@ export class BitmapFont extends AbstractBitmapFont<BitmapFont> {
         type: 'none',
         range: 0,
       };
+  }
+
+  createTexture(device: Device) {
+    const { images, data } = this.options;
+
+    const textures = images.map((image) => {
+      const texture = device.createTexture({
+        format: Format.U8_RGBA_NORM,
+        width: image.width,
+        height: image.height,
+        usage: TextureUsage.SAMPLED,
+      });
+      texture.setImageData([image]);
+      return {
+        texture,
+        width: image.width,
+        height: image.height,
+      };
+    });
+
+    Object.keys(data.pages).forEach((key: string) => {
+      const pageData = data.pages[parseInt(key, 10)];
+      const { texture, width, height } = textures[pageData.id];
+      this.pages.push({ texture, width, height });
+    });
+
+    Object.keys(data.chars).forEach((key: string) => {
+      const charData = data.chars[key];
+      const { texture } = textures[charData.page];
+      this.chars[key].texture = texture;
+    });
   }
 
   public override destroy(): void {

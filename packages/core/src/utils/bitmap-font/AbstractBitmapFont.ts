@@ -1,4 +1,5 @@
 import { Texture } from '@antv/g-device-api';
+import { Rectangle } from '@pixi/math';
 import EventEmitter from 'eventemitter3';
 
 /** @memberof text */
@@ -15,6 +16,7 @@ export interface CharData {
   kerning: Record<string, number>;
   /** The texture of the character. */
   texture?: Texture;
+  tex: Rectangle;
 }
 
 /**
@@ -110,7 +112,8 @@ export abstract class AbstractBitmapFont<FontType>
     range: 0,
   };
   /** The map of base page textures (i.e., sheets of glyphs). */
-  public readonly pages: { texture: Texture }[] = [];
+  public readonly pages: { texture: Texture; width: number; height: number }[] =
+    [];
   /** should the fill for this font be applied as a tint to the text. */
   public applyFillAsTint = true;
 

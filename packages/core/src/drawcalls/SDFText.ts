@@ -26,6 +26,8 @@ import {
   paddingMat3,
   getGlyphQuads,
   SDF_SCALE,
+  BitmapFont,
+  SymbolQuad,
 } from '../utils';
 
 export class SDFText extends Drawcall {
@@ -43,37 +45,49 @@ export class SDFText extends Drawcall {
       return true;
     }
 
+    if (this.hash(this.shapes[0] as Text) !== this.hash(shape as Text)) {
+      return false;
+    }
+
     return true;
   }
 
+  private hash(shape: Text) {
+    const { metrics, bitmapFont } = shape as Text;
+    return `${metrics?.font}-${bitmapFont?.fontFamily}`;
+  }
+
+  private get useBitmapFont() {
+    return !!(this.shapes[0] as Text)?.bitmapFont;
+  }
+
   createGeometry(): void {
-    const { metrics, fontFamily, fontWeight, fontStyle, bitmapFont } = this
+    const { metrics, fontFamily, fontWeight, fontStyle } = this
       .shapes[0] as Text;
-
-    if (bitmapFont) {
-      bitmapFont.init(this.device);
-    }
-
-    // scale current font size to base(24)
-    const fontScale = BASE_FONT_WIDTH / metrics.fontMetrics.fontSize;
-    const allText = this.shapes.map((text: Text) => text.content).join('');
-
-    this.#glyphManager.generateAtlas(
-      metrics.font,
-      fontFamily,
-      fontWeight.toString(),
-      fontStyle,
-      allText,
-      this.device,
-    );
 
     const indices: number[] = [];
     const positions: number[] = [];
     const uvOffsets: number[] = [];
     let indicesOff = 0;
+    let fontScale = 1;
+
+    if (this.useBitmapFont) {
+    } else {
+      // scale current font size to base(24)
+      fontScale = BASE_FONT_WIDTH / metrics.fontMetrics.fontSize;
+      const allText = this.shapes.map((text: Text) => text.content).join('');
+      this.#glyphManager.generateAtlas(
+        metrics.font,
+        fontFamily,
+        fontWeight.toString(),
+        fontStyle,
+        allText,
+        this.device,
+      );
+    }
 
     this.shapes.forEach((object: Text) => {
-      const { metrics, letterSpacing } = object;
+      const { metrics, letterSpacing, bitmapFont } = object;
       const { font, lines, lineHeight } = metrics;
 
       // const linePositionY = 0;
@@ -100,6 +114,7 @@ export class SDFText extends Drawcall {
         lineHeight: (fontScale * lineHeight) / SDF_SCALE,
         letterSpacing: fontScale * letterSpacing,
         indicesOffset: indicesOff,
+        bitmapFont,
       });
       indicesOff = indicesOffset;
 
@@ -166,7 +181,14 @@ export class SDFText extends Drawcall {
   }
 
   createMaterial(defines: string, uniformBuffer: Buffer): void {
-    const glyphAtlasTexture = this.#glyphManager.getAtlasTexture();
+    let glyphAtlasTexture: Texture;
+    if (this.useBitmapFont) {
+      const { bitmapFont } = this.shapes[0] as Text;
+      bitmapFont.createTexture(this.device);
+      glyphAtlasTexture = bitmapFont.pages[0].texture;
+    } else {
+      glyphAtlasTexture = this.#glyphManager.getAtlasTexture();
+    }
 
     this.device.setResourceName(glyphAtlasTexture, 'SDFText Texture');
 
@@ -259,8 +281,12 @@ export class SDFText extends Drawcall {
       this.geometryDirty
     ) {
       const { worldTransform } = this.shapes[0];
+
       const [buffer, legacyObject] = this.generateBuffer(
         this.shapes[0] as Text,
+        this.useBitmapFont
+          ? (this.shapes[0] as Text).bitmapFont.pages[0]
+          : this.#glyphManager.getAtlas().image,
       );
       const u_ModelMatrix = worldTransform.toArray(true);
       this.#uniformBuffer.setSubData(
@@ -303,7 +329,10 @@ export class SDFText extends Drawcall {
     this.#glyphManager.destroy();
   }
 
-  private generateBuffer(shape: Text): [number[], Record<string, unknown>] {
+  private generateBuffer(
+    shape: Text,
+    image: { width: number; height: number },
+  ): [number[], Record<string, unknown>] {
     const {
       fillRGB,
       strokeRGB: { r: sr, g: sg, b: sb, opacity: so },
@@ -315,8 +344,7 @@ export class SDFText extends Drawcall {
       fontSize,
     } = shape;
 
-    const glyphAtlas = this.#glyphManager.getAtlas();
-    const { width: atlasWidth, height: atlasHeight } = glyphAtlas.image;
+    const { width: atlasWidth, height: atlasHeight } = image;
 
     const { r: fr, g: fg, b: fb, opacity: fo } = fillRGB || {};
 
@@ -363,6 +391,7 @@ export class SDFText extends Drawcall {
     lineHeight,
     letterSpacing,
     indicesOffset,
+    bitmapFont,
   }: {
     object: Text;
     lines: string[];
@@ -370,6 +399,7 @@ export class SDFText extends Drawcall {
     lineHeight: number;
     letterSpacing: number;
     indicesOffset: number;
+    bitmapFont: BitmapFont;
   }) {
     const { textAlign = 'start', x = 0, y = 0 } = object;
 
@@ -377,18 +407,52 @@ export class SDFText extends Drawcall {
     const charPositionsBuffer: number[] = [];
     const indexBuffer: number[] = [];
 
+    let glyphQuads: SymbolQuad[] = [];
     let i = indicesOffset;
-    const positionedGlyphs = this.#glyphManager.layout(
-      lines,
-      fontStack,
-      lineHeight,
-      textAlign,
-      letterSpacing,
-    );
 
-    // 计算每个独立字符相对于锚点的位置信息
-    const glyphAtlas = this.#glyphManager.getAtlas();
-    const glyphQuads = getGlyphQuads(positionedGlyphs, glyphAtlas.positions);
+    if (bitmapFont) {
+      lines.forEach((line) => {
+        line.split('').forEach((char) => {
+          const quad = bitmapFont.chars[char];
+          glyphQuads.push({
+            tex: {
+              x: quad.tex.x,
+              y: quad.tex.y,
+              w: quad.tex.width,
+              h: quad.tex.height,
+            },
+            tl: {
+              x: quad.xOffset,
+              y: quad.yOffset,
+            },
+            tr: {
+              x: quad.xOffset + quad.tex.width,
+              y: quad.yOffset,
+            },
+            bl: {
+              x: quad.xOffset,
+              y: quad.yOffset + quad.tex.height,
+            },
+            br: {
+              x: quad.xOffset + quad.tex.width,
+              y: quad.yOffset + quad.tex.height,
+            },
+          });
+        });
+      });
+    } else {
+      const positionedGlyphs = this.#glyphManager.layout(
+        lines,
+        fontStack,
+        lineHeight,
+        textAlign,
+        letterSpacing,
+      );
+
+      // 计算每个独立字符相对于锚点的位置信息
+      const glyphAtlas = this.#glyphManager.getAtlas();
+      glyphQuads = getGlyphQuads(positionedGlyphs, glyphAtlas.positions);
+    }
 
     glyphQuads.forEach((quad) => {
       // interleaved uv & offsets

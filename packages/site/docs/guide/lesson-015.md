@@ -676,7 +676,6 @@ Some implementations for drawing emoji, such as [EmojiEngine], use a texture-bas
 -   [Text layout is a loose hierarchy of segmentation]
 -   [End-To-End Tour of Text Layout/Rendering]
 -   [Text rendering in mapbox]
--   [Texture-less Text Rendering]
 
 [Drawing text]: https://developer.mozilla.org/en-US/docs/Web/API/Canvas_API/Tutorial/Drawing_text
 [FreeType]: https://freetype.org/

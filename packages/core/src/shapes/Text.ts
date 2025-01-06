@@ -150,7 +150,7 @@ export function TextWrapper<TBase extends GConstructor>(Base: TBase) {
     #leading: number;
     #textAlign: CanvasTextAlign;
     #textBaseline: CanvasTextBaseline;
-    #bitmapFont: BitmapFont;
+    bitmapFont: BitmapFont;
     static getGeometryBounds(
       attributes: Partial<TextAttributes> & { metrics: TextMetrics },
     ) {

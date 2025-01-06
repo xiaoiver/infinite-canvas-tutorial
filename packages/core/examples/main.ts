@@ -40,7 +40,6 @@ const canvas = await new Canvas({
   const res = await fetch('./DimboR.fnt');
   const font = await loadBitmapFont.parse(await res.text());
   console.log(font);
-
   const text = new Text({
     x: 150,
     y: 150,
@@ -114,35 +113,35 @@ const canvas = await new Canvas({
 // });
 // canvas.appendChild(polyline);
 
-const anchor = new Circle({
-  cx: 50,
-  cy: 50,
-  r: 4,
-  fill: '#F67676',
-});
-canvas.appendChild(anchor);
+// const anchor = new Circle({
+//   cx: 50,
+//   cy: 50,
+//   r: 4,
+//   fill: '#F67676',
+// });
+// canvas.appendChild(anchor);
 
-const baseline = new Polyline({
-  points: [
-    [-100, 50],
-    [500, 50],
-  ],
-  stroke: '#F67676',
-  strokeWidth: 1,
-});
-canvas.appendChild(baseline);
+// const baseline = new Polyline({
+//   points: [
+//     [-100, 50],
+//     [500, 50],
+//   ],
+//   stroke: '#F67676',
+//   strokeWidth: 1,
+// });
+// canvas.appendChild(baseline);
 
-const text = new Text({
-  x: 50,
-  y: 50,
-  content: 'Hello, world!\n你好，世界',
-  fontSize: 48,
-  fill: '#F67676',
-  // wireframe: true,
-  // textAlign: 'right',
-  // letterSpacing: 10,
-});
-canvas.appendChild(text);
+// const text = new Text({
+//   x: 50,
+//   y: 50,
+//   content: 'Hello, world!\n你好，世界',
+//   fontSize: 48,
+//   fill: '#F67676',
+//   // wireframe: true,
+//   // textAlign: 'right',
+//   // letterSpacing: 10,
+// });
+// canvas.appendChild(text);
 
 // const bounds = text.getBounds();
 // console.log(bounds);
