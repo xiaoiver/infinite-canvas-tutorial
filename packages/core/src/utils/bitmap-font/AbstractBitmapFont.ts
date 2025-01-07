@@ -1,5 +1,4 @@
 import { Texture } from '@antv/g-device-api';
-import { Rectangle } from '@pixi/math';
 import EventEmitter from 'eventemitter3';
 
 /** @memberof text */
@@ -16,7 +15,12 @@ export interface CharData {
   kerning: Record<string, number>;
   /** The texture of the character. */
   texture?: Texture;
-  tex: Rectangle;
+  rect: {
+    x: number;
+    y: number;
+    w: number;
+    h: number;
+  };
 }
 
 /**

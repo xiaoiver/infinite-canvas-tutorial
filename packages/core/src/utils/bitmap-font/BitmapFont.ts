@@ -1,4 +1,3 @@
-import { Rectangle } from '@pixi/math';
 import { AbstractBitmapFont } from './AbstractBitmapFont';
 import { BitmapFontData } from './bitmap-font-text-parser';
 import { Device, Format, TextureUsage } from '@antv/g-device-api';
@@ -17,14 +16,14 @@ export class BitmapFont extends AbstractBitmapFont<BitmapFont> {
     Object.keys(data.chars).forEach((key: string) => {
       const charData = data.chars[key];
 
-      const tex = new Rectangle(
+      const rect = {
         // charData.x + textureFrame.x,
         // charData.y + textureFrame.y,
-        charData.x,
-        charData.y,
-        charData.width,
-        charData.height,
-      );
+        x: charData.x,
+        y: charData.y,
+        w: charData.width,
+        h: charData.height,
+      };
 
       this.chars[key] = {
         id: key.codePointAt(0),
@@ -32,7 +31,7 @@ export class BitmapFont extends AbstractBitmapFont<BitmapFont> {
         yOffset: charData.yOffset,
         xAdvance: charData.xAdvance,
         kerning: charData.kerning ?? {},
-        tex,
+        rect,
       };
     });
 

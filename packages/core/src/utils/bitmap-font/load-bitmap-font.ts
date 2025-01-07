@@ -3,6 +3,7 @@ import { ImageLoader } from '@loaders.gl/images';
 import { BitmapFont } from './BitmapFont';
 import { bitmapFontTextParser } from './bitmap-font-text-parser';
 import { bitmapFontXMLStringParser } from './bitmap-font-xml-string-parser';
+import { bitmapFontJSONParser } from './bitmap-font-json-parser';
 
 const validExtensions = ['.xml', '.fnt'];
 
@@ -12,7 +13,9 @@ export const loadBitmapFont = {
   },
 
   async parse(asset: string): Promise<BitmapFont> {
-    const bitmapFontData = bitmapFontTextParser.test(asset)
+    const bitmapFontData = bitmapFontJSONParser.test(asset)
+      ? bitmapFontJSONParser.parse(asset)
+      : bitmapFontTextParser.test(asset)
       ? bitmapFontTextParser.parse(asset)
       : bitmapFontXMLStringParser.parse(asset);
 

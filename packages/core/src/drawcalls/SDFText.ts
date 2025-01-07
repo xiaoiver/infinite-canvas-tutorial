@@ -27,7 +27,7 @@ import {
   getGlyphQuads,
   SDF_SCALE,
   BitmapFont,
-  SymbolQuad,
+  GlyphPositions,
 } from '../utils';
 
 export class SDFText extends Drawcall {
@@ -71,8 +71,7 @@ export class SDFText extends Drawcall {
     let indicesOff = 0;
     let fontScale = 1;
 
-    if (this.useBitmapFont) {
-    } else {
+    if (!this.useBitmapFont) {
       // scale current font size to base(24)
       fontScale = BASE_FONT_WIDTH / metrics.fontMetrics.fontSize;
       const allText = this.shapes.map((text: Text) => text.content).join('');
@@ -186,6 +185,8 @@ export class SDFText extends Drawcall {
       const { bitmapFont } = this.shapes[0] as Text;
       bitmapFont.createTexture(this.device);
       glyphAtlasTexture = bitmapFont.pages[0].texture;
+
+      defines += '#define USE_MSDF\n';
     } else {
       glyphAtlasTexture = this.#glyphManager.getAtlasTexture();
     }
@@ -407,80 +408,69 @@ export class SDFText extends Drawcall {
     const charPositionsBuffer: number[] = [];
     const indexBuffer: number[] = [];
 
-    let glyphQuads: SymbolQuad[] = [];
     let i = indicesOffset;
 
-    if (bitmapFont) {
-      lines.forEach((line) => {
-        line.split('').forEach((char) => {
-          const quad = bitmapFont.chars[char];
-          glyphQuads.push({
-            tex: {
-              x: quad.tex.x,
-              y: quad.tex.y,
-              w: quad.tex.width,
-              h: quad.tex.height,
-            },
-            tl: {
-              x: quad.xOffset,
-              y: quad.yOffset,
-            },
-            tr: {
-              x: quad.xOffset + quad.tex.width,
-              y: quad.yOffset,
-            },
-            bl: {
-              x: quad.xOffset,
-              y: quad.yOffset + quad.tex.height,
-            },
-            br: {
-              x: quad.xOffset + quad.tex.width,
-              y: quad.yOffset + quad.tex.height,
-            },
-          });
-        });
-      });
-    } else {
-      const positionedGlyphs = this.#glyphManager.layout(
-        lines,
-        fontStack,
-        lineHeight,
-        textAlign,
-        letterSpacing,
-      );
+    const positionedGlyphs = this.#glyphManager.layout(
+      lines,
+      fontStack,
+      lineHeight,
+      textAlign,
+      letterSpacing,
+      bitmapFont,
+    );
 
-      // 计算每个独立字符相对于锚点的位置信息
-      const glyphAtlas = this.#glyphManager.getAtlas();
-      glyphQuads = getGlyphQuads(positionedGlyphs, glyphAtlas.positions);
+    let positions: GlyphPositions;
+    if (bitmapFont) {
+      positions = {
+        [fontStack]: Object.keys(bitmapFont.chars).reduce((acc, char) => {
+          const { xAdvance } = bitmapFont.chars[char];
+          acc[char] = {
+            rect: bitmapFont.chars[char].rect,
+            metrics: {
+              width: xAdvance,
+              height: bitmapFont.lineHeight,
+              left: 0,
+              top: 0,
+              advance: xAdvance,
+            },
+          };
+          return acc;
+        }, {}),
+      };
+    } else {
+      // calculate position information for each individual character relative to the anchor point
+      positions = this.#glyphManager.getAtlas().positions;
     }
 
-    glyphQuads.forEach((quad) => {
-      // interleaved uv & offsets
-      charUVOffsetBuffer.push(quad.tex.x, quad.tex.y, quad.tl.x, quad.tl.y);
-      charUVOffsetBuffer.push(
-        quad.tex.x + quad.tex.w,
-        quad.tex.y,
-        quad.tr.x,
-        quad.tr.y,
-      );
-      charUVOffsetBuffer.push(
-        quad.tex.x + quad.tex.w,
-        quad.tex.y + quad.tex.h,
-        quad.br.x,
-        quad.br.y,
-      );
-      charUVOffsetBuffer.push(
-        quad.tex.x,
-        quad.tex.y + quad.tex.h,
-        quad.bl.x,
-        quad.bl.y,
-      );
-      charPositionsBuffer.push(x, y, x, y, x, y, x, y);
+    getGlyphQuads(positionedGlyphs, positions, this.useBitmapFont).forEach(
+      (quad) => {
+        // interleaved uv & offsets
+        charUVOffsetBuffer.push(quad.tex.x, quad.tex.y, quad.tl.x, quad.tl.y);
+        charUVOffsetBuffer.push(
+          quad.tex.x + quad.tex.w,
+          quad.tex.y,
+          quad.tr.x,
+          quad.tr.y,
+        );
+        charUVOffsetBuffer.push(
+          quad.tex.x + quad.tex.w,
+          quad.tex.y + quad.tex.h,
+          quad.br.x,
+          quad.br.y,
+        );
+        charUVOffsetBuffer.push(
+          quad.tex.x,
+          quad.tex.y + quad.tex.h,
+          quad.bl.x,
+          quad.bl.y,
+        );
+        charPositionsBuffer.push(x, y, x, y, x, y, x, y);
 
-      indexBuffer.push(0 + i, 2 + i, 1 + i);
-      indexBuffer.push(2 + i, 0 + i, 3 + i);
-      i += 4;
-    });
+        indexBuffer.push(0 + i, 2 + i, 1 + i);
+        indexBuffer.push(2 + i, 0 + i, 3 + i);
+        i += 4;
+      },
+    );
 
     return {
       indexBuffer,

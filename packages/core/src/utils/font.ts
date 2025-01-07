@@ -559,6 +559,7 @@ export class CanvasTextMetrics {
       metricWidth = segments.reduce((sum, char) => {
         return sum + (bitmapFont.chars[char]?.xAdvance || 0);
       }, 0);
+      boundsWidth = metricWidth;
     } else {
       this.#context.letterSpacing = `${letterSpacing}px`;
 

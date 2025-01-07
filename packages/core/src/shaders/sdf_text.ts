@@ -88,6 +88,10 @@ ${wireframe_frag_declaration}
 in vec2 v_Uv;
 uniform sampler2D u_Texture;
 
+float median(float r, float g, float b) {
+  return max(min(r, g), min(max(r, g), b));
+}
+
 float epsilon = 0.000001;
 
 #define SDF_PX 8.0
@@ -101,7 +105,12 @@ void main() {
   float strokeOpacity = u_Opacity.z;
   float shapeSizeAttenuation = u_Opacity.w;
 
-  float dist = texture(SAMPLER_2D(u_Texture), v_Uv).a;
+  #ifdef USE_MSDF
+    vec3 s = texture(SAMPLER_2D(u_Texture), v_Uv).rgb;
+    float dist = median(s.r, s.g, s.b);
+  #else
+    float dist = texture(SAMPLER_2D(u_Texture), v_Uv).a;
+  #endif
 
   float fontSize = u_ZIndexStrokeWidth.z;
 

@@ -647,21 +647,20 @@ if (a === 1) {
 
 分解算法可以参考原论文 [Shape Decomposition for Multi-channel Distance Fields] 中 4.4 节：Direct multi-channel distance field construction。在实际使用时，作者提供了 [msdfgen]，可以看出 MSDF 在低分辨率效果明显更好，甚至优于更高分辨率的 SDF。
 
-在重建时使用 median：
+在生成工具方面，在线可以使用 [MSDF font generator]，CLI 工具包括 [msdf-bmfont-xml]。这些工具在生成 MSDF atlas 的同时，还会生成一个 `fnt` 或者 `json` 文件，里面包含了每个字符的布局信息用于后续绘制。[pixi-msdf-text] 是一个使用 Pixi.js 绘制的完整例子，其中使用了 [BitmapFontLoader] 来加载 `fnt` 文件，我们的项目也参考了它的实现。
+
+在 Fragment Shader 中重建时使用 median：
 
 ```glsl
-// https://github.com/Jam3/three-bmfont-text/blob/master/shaders/msdf.js
-
 float median(float r, float g, float b) {
   return max(min(r, g), min(max(r, g), b));
 }
-vec3 sample = texture2D(map, vUv).rgb;
-float sigDist = median(sample.r, sample.g, sample.b) - 0.5;
+
+#ifdef USE_MSDF
+    vec3 s = texture(SAMPLER_2D(u_Texture), v_Uv).rgb;
+    float dist = median(s.r, s.g, s.b);
+#else
 ```
-
-[msdf-bmfont-xml] 在生成 MSDF 的同时，还会生成一个 `fnt` 文件，里面包含了每个字符的布局信息用于后续绘制。[pixi-msdf-text] 是一个使用 Pixi.js 绘制的完整例子，其中使用了 [BitmapFontLoader] 来加载 `fnt` 文件。
-
-[MSDF font generator]
 
 ### Material Design on the GPU {#material-design-on-the-gpu}
 

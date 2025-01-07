@@ -9,6 +9,7 @@ import { RGBAImage } from './alpha-image';
 import { GlyphAtlas } from './glyph-atlas';
 import { canvasTextMetrics } from '../font';
 import { TinySDF } from './tiny-sdf';
+import { BitmapFont } from '../bitmap-font/BitmapFont';
 
 export type PositionedGlyph = {
   glyph: string; // charCode
@@ -90,6 +91,7 @@ export class GlyphManager {
     lineHeight: number,
     textAlign: CanvasTextAlign,
     letterSpacing: number,
+    bitmapFont?: BitmapFont,
   ): PositionedGlyph[] {
     const positionedGlyphs: PositionedGlyph[] = [];
 
@@ -107,21 +109,27 @@ export class GlyphManager {
       const lineStartIndex = positionedGlyphs.length;
 
       canvasTextMetrics.graphemeSegmenter(line).forEach((char) => {
-        // fontStack
-        const positions = this.glyphMap[fontStack];
-        const glyph = positions && positions[char];
-
-        if (glyph) {
-          const glyphOffset = 0;
-          positionedGlyphs.push({
-            glyph: char,
-            x,
-            y: y + glyphOffset,
-            scale: 1,
-            fontStack,
-          });
-          x += glyph.metrics.advance + letterSpacing;
+        let advance: number;
+        let glyphOffset = 0;
+        const scale = 1;
+        if (bitmapFont) {
+          const charData = bitmapFont.chars[char];
+          advance = charData.xAdvance;
+          glyphOffset = charData.yOffset;
+        } else {
+          const positions = this.glyphMap[fontStack];
+          const glyph = positions && positions[char];
+          advance = glyph.metrics.advance;
         }
+
+        positionedGlyphs.push({
+          glyph: char,
+          x,
+          y: y + glyphOffset,
+          scale,
+          fontStack,
+        });
+        x += advance + letterSpacing;
       });
 
       const lineWidth = x - letterSpacing;

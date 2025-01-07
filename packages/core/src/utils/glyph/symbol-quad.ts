@@ -22,6 +22,7 @@ export type SymbolQuad = {
 export function getGlyphQuads(
   positionedGlyphs: PositionedGlyph[],
   positions: Record<string, Record<string, GlyphPosition>>,
+  useMSDF: boolean,
 ): SymbolQuad[] {
   const quads: SymbolQuad[] = [];
 
@@ -35,7 +36,9 @@ export function getGlyphQuads(
     if (!rect) continue;
 
     // The rects have an addditional buffer that is not included in their size.
-    const rectBuffer = BASE_FONT_BUFFER / SDF_SCALE + glyphPadding;
+    const rectBuffer = useMSDF
+      ? 0
+      : BASE_FONT_BUFFER / SDF_SCALE + glyphPadding;
 
     const halfAdvance = (glyph.metrics.advance * positionedGlyph.scale) / 2;
 
