@@ -144,6 +144,10 @@ export const en = defineConfig({
                 text: 'Text',
                 link: 'text',
               },
+              {
+                text: 'Use Bitmap Font to draw text',
+                link: 'bitmap-font',
+              },
             ],
           },
         ],

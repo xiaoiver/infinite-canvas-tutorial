@@ -126,6 +126,10 @@ export const zh = defineConfig({
                 text: '绘制文本',
                 link: 'text',
               },
+              {
+                text: '使用 Bitmap Font 绘制文本',
+                link: 'bitmap-font',
+              },
             ],
           },
         ],

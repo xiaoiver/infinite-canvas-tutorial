@@ -38,7 +38,8 @@ const canvas = await new Canvas({
 
 (async () => {
   // const res = await fetch('./DimboR.fnt');
-  const res = await fetch('./msdf-sans-serif.json');
+  // const res = await fetch('./msdf-sans-serif.json');
+  const res = await fetch('./desyrel.xml');
   const font = await loadBitmapFont.parse(await res.text());
   console.log(font);
   const text = new Text({
@@ -47,7 +48,7 @@ const canvas = await new Canvas({
     content: 'Hello, world',
     fontSize: 48,
     fill: '#F67676',
-    fontFamily: 'sans-serif',
+    fontFamily: 'Desyrel',
     bitmapFont: font,
     // wireframe: true,
     // textAlign: 'right',

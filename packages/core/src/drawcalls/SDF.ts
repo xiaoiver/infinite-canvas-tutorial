@@ -98,7 +98,7 @@ export class SDF extends Drawcall {
       }
 
       this.vertexBufferDatas[1] = new Float32Array(
-        new Array(28 * this.shapes.length).fill(0),
+        new Array(32 * this.shapes.length).fill(0),
       );
       this.vertexBuffers[1] = this.device.createBuffer({
         viewOrSize: this.vertexBufferDatas[1],
@@ -133,42 +133,47 @@ export class SDF extends Drawcall {
     if (this.instanced) {
       this.vertexBufferDescriptors.push(
         {
-          arrayStride: 4 * 28,
+          arrayStride: 4 * 32,
           stepMode: VertexStepMode.INSTANCE,
           attributes: [
             {
-              shaderLocation: Location.POSITION_SIZE, // a_PositionSize
+              shaderLocation: Location.POSITION, // a_Position
               offset: 0,
               format: Format.F32_RGBA,
             },
             {
-              shaderLocation: Location.FILL_COLOR, // a_FillColor
+              shaderLocation: Location.SIZE, // a_Size
               offset: 4 * 4,
               format: Format.F32_RGBA,
             },
             {
-              shaderLocation: Location.STROKE_COLOR, // a_StrokeColor
+              shaderLocation: Location.FILL_COLOR, // a_FillColor
               offset: 4 * 8,
               format: Format.F32_RGBA,
             },
             {
-              shaderLocation: Location.ZINDEX_STROKE_WIDTH, // a_ZIndexStrokeWidth
+              shaderLocation: Location.STROKE_COLOR, // a_StrokeColor
               offset: 4 * 12,
               format: Format.F32_RGBA,
             },
             {
-              shaderLocation: Location.OPACITY, // a_Opacity
+              shaderLocation: Location.ZINDEX_STROKE_WIDTH, // a_ZIndexStrokeWidth
               offset: 4 * 16,
               format: Format.F32_RGBA,
             },
             {
-              shaderLocation: Location.INNER_SHADOW_COLOR, // a_InnerShadowColor
+              shaderLocation: Location.OPACITY, // a_Opacity
               offset: 4 * 20,
               format: Format.F32_RGBA,
             },
             {
-              shaderLocation: Location.INNER_SHADOW, // a_InnerShadow
+              shaderLocation: Location.INNER_SHADOW_COLOR, // a_InnerShadowColor
               offset: 4 * 24,
+              format: Format.F32_RGBA,
+            },
+            {
+              shaderLocation: Location.INNER_SHADOW, // a_InnerShadow
+              offset: 4 * 28,
               format: Format.F32_RGBA,
             },
           ],
@@ -298,8 +303,8 @@ export class SDF extends Drawcall {
     ) {
       if (this.instanced) {
         const instancedData: number[] = [];
-        this.shapes.forEach((shape) => {
-          const [buffer] = this.generateBuffer(shape);
+        this.shapes.forEach((shape, i, total) => {
+          const [buffer] = this.generateBuffer(shape, i, total.length);
           instancedData.push(...buffer);
         });
         this.vertexBufferDatas[1] = new Float32Array(instancedData);
@@ -326,7 +331,11 @@ export class SDF extends Drawcall {
         );
       } else {
         const { worldTransform } = this.shapes[0];
-        const [buffer, legacyObject] = this.generateBuffer(this.shapes[0]);
+        const [buffer, legacyObject] = this.generateBuffer(
+          this.shapes[0],
+          0,
+          1,
+        );
         const u_ModelMatrix = worldTransform.toArray(true);
         this.#uniformBuffer.setSubData(
           0,
@@ -382,7 +391,11 @@ export class SDF extends Drawcall {
     }
   }
 
-  private generateBuffer(shape: Shape): [number[], Record<string, unknown>] {
+  private generateBuffer(
+    shape: Shape,
+    index: number,
+    total: number,
+  ): [number[], Record<string, unknown>] {
     const {
       fillRGB,
       strokeRGB: { r: sr, g: sg, b: sb, opacity: so },
@@ -398,27 +411,34 @@ export class SDF extends Drawcall {
       sizeAttenuation,
     } = shape;
 
+    let position: [number, number, number, number] = [0, 0, 0, 0];
     let size: [number, number, number, number] = [0, 0, 0, 0];
     let type: number = 0;
     let cornerRadius = 0;
+    const zIndex =
+      (shape.globalRenderOrder + (1 / total) * index) / ZINDEX_FACTOR;
     if (shape instanceof Circle) {
       const { cx, cy, r } = shape;
-      size = [cx, cy, r, r];
+      position = [cx, cy, zIndex, 0];
+      size = [r, r, 0, 0];
       type = 0;
     } else if (shape instanceof Ellipse) {
       const { cx, cy, rx, ry } = shape;
-      size = [cx, cy, rx, ry];
+      position = [cx, cy, zIndex, 0];
+      size = [rx, ry, 0, 0];
       type = 1;
     } else if (shape instanceof Rect) {
       const { x, y, width, height, cornerRadius: r } = shape;
-      size = [x + width / 2, y + height / 2, width / 2, height / 2];
+      position = [x + width / 2, y + height / 2, zIndex, 0];
+      size = [width / 2, height / 2, 0, 0];
       type = 2;
       cornerRadius = r;
     }
 
     const { r: fr, g: fg, b: fb, opacity: fo } = fillRGB || {};
 
-    const u_PositionSize = size;
+    const u_Position = position;
+    const u_Size = size;
     const u_FillColor = [fr / 255, fg / 255, fb / 255, fo];
     const u_StrokeColor = [sr / 255, sg / 255, sb / 255, so];
     const u_ZIndexStrokeWidth = [
@@ -441,7 +461,8 @@ export class SDF extends Drawcall {
 
     return [
       [
-        ...u_PositionSize,
+        ...u_Position,
+        ...u_Size,
         ...u_FillColor,
         ...u_StrokeColor,
         ...u_ZIndexStrokeWidth,
@@ -450,7 +471,8 @@ export class SDF extends Drawcall {
         ...u_InnerShadow,
       ],
       {
-        u_PositionSize,
+        u_Position,
+        u_Size,
         u_FillColor,
         u_StrokeColor,
         u_ZIndexStrokeWidth,

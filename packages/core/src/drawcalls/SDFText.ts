@@ -155,13 +155,13 @@ export class SDFText extends Drawcall {
 
     this.vertexBufferDescriptors = [
       {
-        arrayStride: 4 * 2,
+        arrayStride: 4 * 3,
         stepMode: VertexStepMode.VERTEX,
         attributes: [
           {
             shaderLocation: Location.POSITION, // a_Position
             offset: 0,
-            format: Format.F32_RG,
+            format: Format.F32_RGB,
           },
         ],
       },
@@ -186,8 +186,16 @@ export class SDFText extends Drawcall {
       bitmapFont.createTexture(this.device);
       glyphAtlasTexture = bitmapFont.pages[0].texture;
 
-      defines += '#define USE_MSDF\n';
+      const { distanceField } = bitmapFont;
+      if (distanceField.type === 'msdf') {
+        defines += '#define USE_MSDF\n';
+      } else if (distanceField.type === 'sdf') {
+        defines += '#define USE_SDF\n';
+      } else {
+        defines += '#define USE_SDF_NONE\n';
+      }
     } else {
+      defines += '#define USE_SDF\n';
       glyphAtlasTexture = this.#glyphManager.getAtlasTexture();
     }
 
@@ -351,6 +359,7 @@ export class SDFText extends Drawcall {
 
     const u_FillColor = [fr / 255, fg / 255, fb / 255, fo];
     const u_StrokeColor = [sr / 255, sg / 255, sb / 255, so];
+
     const u_ZIndexStrokeWidth = [
       shape.globalRenderOrder / ZINDEX_FACTOR,
       strokeWidth,
@@ -443,7 +452,7 @@ export class SDFText extends Drawcall {
     }
 
     getGlyphQuads(positionedGlyphs, positions, this.useBitmapFont).forEach(
-      (quad) => {
+      (quad, index, total) => {
         // interleaved uv & offsets
         charUVOffsetBuffer.push(quad.tex.x, quad.tex.y, quad.tl.x, quad.tl.y);
         charUVOffsetBuffer.push(
@@ -464,7 +473,24 @@ export class SDFText extends Drawcall {
           quad.bl.x,
           quad.bl.y,
         );
-        charPositionsBuffer.push(x, y, x, y, x, y, x, y);
+
+        const zIndex =
+          (object.globalRenderOrder + (1 / total.length) * index) /
+          ZINDEX_FACTOR;
+        charPositionsBuffer.push(
+          x,
+          y,
+          zIndex,
+          x,
+          y,
+          zIndex,
+          x,
+          y,
+          zIndex,
+          x,
+          y,
+          zIndex,
+        );
 
         indexBuffer.push(0 + i, 2 + i, 1 + i);
         indexBuffer.push(2 + i, 0 + i, 3 + i);

@@ -11,13 +11,14 @@ export enum Location {
   FRAG_COORD = 1,
   ABCD = 2,
   TXTY = 3,
-  POSITION_SIZE = 4,
-  FILL_COLOR = 5,
-  STROKE_COLOR = 6,
-  ZINDEX_STROKE_WIDTH = 7,
-  OPACITY = 8,
-  INNER_SHADOW_COLOR = 9,
-  INNER_SHADOW = 10,
+  POSITION = 4,
+  SIZE = 5,
+  FILL_COLOR = 6,
+  STROKE_COLOR = 7,
+  ZINDEX_STROKE_WIDTH = 8,
+  OPACITY = 9,
+  INNER_SHADOW_COLOR = 10,
+  INNER_SHADOW = 11,
 }
 
 export const vert = /* wgsl */ `
@@ -39,7 +40,8 @@ layout(location = ${Location.FRAG_COORD}) in vec2 a_FragCoord;
 #ifdef USE_INSTANCES
   layout(location = ${Location.ABCD}) in vec4 a_Abcd;
   layout(location = ${Location.TXTY}) in vec2 a_Txty;
-  layout(location = ${Location.POSITION_SIZE}) in vec4 a_PositionSize;
+  layout(location = ${Location.POSITION}) in vec4 a_Position;
+  layout(location = ${Location.SIZE}) in vec4 a_Size;
   layout(location = ${Location.FILL_COLOR}) in vec4 a_FillColor;
   layout(location = ${Location.STROKE_COLOR}) in vec4 a_StrokeColor;
   layout(location = ${Location.ZINDEX_STROKE_WIDTH}) in vec4 a_ZIndexStrokeWidth;
@@ -49,7 +51,8 @@ layout(location = ${Location.FRAG_COORD}) in vec2 a_FragCoord;
 #else
   layout(std140) uniform ShapeUniforms {
     mat3 u_ModelMatrix;
-    vec4 u_PositionSize;
+    vec4 u_Position;
+    vec4 u_Size;
     vec4 u_FillColor;
     vec4 u_StrokeColor;
     vec4 u_ZIndexStrokeWidth;
@@ -81,7 +84,7 @@ void main() {
   ${wireframe_vert}
 
   mat3 model;
-  vec2 position;
+  vec3 position;
   vec2 size;
   vec4 fillColor;
   vec4 strokeColor;
@@ -92,8 +95,8 @@ void main() {
 
   #ifdef USE_INSTANCES
     model = mat3(a_Abcd.x, a_Abcd.y, 0, a_Abcd.z, a_Abcd.w, 0, a_Txty.x, a_Txty.y, 1);
-    position = a_PositionSize.xy;
-    size = a_PositionSize.zw;
+    position = a_Position.xyz;
+    size = a_Size.xy;
     fillColor = a_FillColor;
     strokeColor = a_StrokeColor;
     zIndex = a_ZIndexStrokeWidth.x;
@@ -111,8 +114,8 @@ void main() {
     v_InnerShadow = a_InnerShadow;
   #else
     model = u_ModelMatrix;
-    position = u_PositionSize.xy;
-    size = u_PositionSize.zw;
+    position = u_Position.xyz;
+    size = u_Size.xy;
     fillColor = u_FillColor;
     strokeColor = u_StrokeColor;
     zIndex = u_ZIndexStrokeWidth.x;
@@ -148,7 +151,7 @@ void main() {
   gl_Position = vec4((u_ProjectionMatrix 
     * u_ViewMatrix
     * model 
-    * vec3(position + v_FragCoord * scale, 1)).xy, zIndex, 1);
+    * vec3(position.xy + v_FragCoord * scale, 1)).xy, position.z, 1);
 }
 `;
 

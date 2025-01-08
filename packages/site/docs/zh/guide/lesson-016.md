@@ -22,6 +22,15 @@ publish: false
 
 Pixi.js 提供了 [DropShadowFilter] 来实现阴影效果。
 
+```glsl
+// @see https://github.com/soimy/pixi-msdf-text/blob/master/src/msdf.frag#L49
+vec3 shadowSample = texture2D(uSampler, vTextureCoord - shadowOffset).rgb;
+float shadowDist = median(shadowSample.r, shadowSample.g, shadowSample.b);
+float distAlpha = smoothstep(0.5 - shadowSmoothing, 0.5 + shadowSmoothing, shadowDist);
+vec4 shadow = vec4(shadowColor, shadowAlpha * distAlpha);
+gl_FragColor = mix(shadow, text, text.a);
+```
+
 ## 文本跟随路径 {#text-along-path}
 
 在 Figma 社区中，很多用户都在期待这个特性，例如：[Make text follow a path or a circle]
@@ -60,6 +69,15 @@ const unkernedWidth =
     tinySdf.ctx.measureText('A').width + tinySdf.ctx.measureText('V').width;
 const kernedWidth = tinySdf.ctx.measureText('AV').width;
 const kerning = kernedWidth - unkernedWidth; // a negative value indicates you should adjust the SDFs closer together by that much
+```
+
+<https://pixijs.com/assets/bitmap-font/desyrel.xml>
+
+```xml
+<kernings count="1816">
+    <kerning first="102" second="102" amount="2" />
+    <kerning first="102" second="106" amount="-2" />
+</kernings>
 ```
 
 ## 文本选中 {#text-selection}

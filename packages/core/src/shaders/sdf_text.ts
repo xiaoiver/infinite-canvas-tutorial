@@ -33,7 +33,7 @@ layout(std140) uniform ShapeUniforms {
 };
 
 ${wireframe_vert_declaration}
-layout(location = ${Location.POSITION}) in vec2 a_Position;
+layout(location = ${Location.POSITION}) in vec3 a_Position;
 layout(location = ${Location.UV_OFFSET}) in vec4 a_UvOffset;
 
 out vec2 v_Uv;
@@ -58,7 +58,7 @@ void main() {
   gl_Position = vec4((u_ProjectionMatrix 
     * u_ViewMatrix
     * u_ModelMatrix 
-    * vec3(a_Position + offset, 1)).xy, zIndex, 1);
+    * vec3(a_Position.xy + offset, 1)).xy, a_Position.z, 1);
 }
 `;
 
@@ -104,31 +104,38 @@ void main() {
   float fillOpacity = u_Opacity.y;
   float strokeOpacity = u_Opacity.z;
   float shapeSizeAttenuation = u_Opacity.w;
-
-  #ifdef USE_MSDF
-    vec3 s = texture(SAMPLER_2D(u_Texture), v_Uv).rgb;
-    float dist = median(s.r, s.g, s.b);
-  #else
-    float dist = texture(SAMPLER_2D(u_Texture), v_Uv).a;
-  #endif
-
-  float fontSize = u_ZIndexStrokeWidth.z;
-
-  float fontScale = fontSize / 24.0;
-  lowp float buff = (256.0 - 64.0) / 256.0;
-  // float opacity = u_FillOpacity;
-  // if (u_HasStroke > 0.5 && u_StrokeWidth > 0.0) {
-  //   color = u_StrokeColor;
-  //   buff = (6.0 - u_StrokeWidth / fontScale / 2.0) / SDF_PX;
-  //   opacity = u_StrokeOpacity;
-  // }
-
-  highp float gamma_scaled = fwidth(dist);
-  highp float alpha = smoothstep(buff - gamma_scaled, buff + gamma_scaled, dist);
-
-  opacity *= alpha;
   
-  outputColor = fillColor;
+  #ifdef USE_SDF_NONE
+    outputColor = texture(SAMPLER_2D(u_Texture), v_Uv);
+  #else
+    float dist;
+    #ifdef USE_SDF
+      dist = texture(SAMPLER_2D(u_Texture), v_Uv).a;
+    #endif
+
+    #ifdef USE_MSDF
+      vec3 s = texture(SAMPLER_2D(u_Texture), v_Uv).rgb;
+      dist = median(s.r, s.g, s.b);
+    #endif
+
+    float fontSize = u_ZIndexStrokeWidth.z;
+
+    float fontScale = fontSize / 24.0;
+    lowp float buff = (256.0 - 64.0) / 256.0;
+    // float opacity = u_FillOpacity;
+    // if (u_HasStroke > 0.5 && u_StrokeWidth > 0.0) {
+    //   color = u_StrokeColor;
+    //   buff = (6.0 - u_StrokeWidth / fontScale / 2.0) / SDF_PX;
+    //   opacity = u_StrokeOpacity;
+    // }
+
+    highp float gamma_scaled = fwidth(dist);
+    highp float alpha = smoothstep(buff - gamma_scaled, buff + gamma_scaled, dist);
+    opacity *= alpha;
+
+    outputColor = fillColor;
+  #endif
+  
   outputColor.a *= opacity;
 
   ${wireframe_frag}

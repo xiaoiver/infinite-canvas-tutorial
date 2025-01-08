@@ -5,6 +5,8 @@ publish: false
 
 # 课程 17 - 协同
 
+在本课程中，我们将探讨如何实现多人协同编辑功能。我们会介绍几个核心概念和技术，包括历史记录、本地优先（Local-first）以及 CRDT。
+
 ## 历史记录 {#history}
 
 [Excalidraw HistoryEntry]
