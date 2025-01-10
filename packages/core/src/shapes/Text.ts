@@ -123,6 +123,11 @@ export interface TextAttributes extends ShapeAttributes {
    * @see https://pixijs.com/8.x/examples/text/bitmap-text
    */
   bitmapFont: BitmapFont;
+
+  /**
+   * Whether to use kerning in bitmap font. Default is `true`.
+   */
+  bitmapFontKerning: boolean;
 }
 
 // @ts-ignore
@@ -151,6 +156,7 @@ export function TextWrapper<TBase extends GConstructor>(Base: TBase) {
     #textAlign: CanvasTextAlign;
     #textBaseline: CanvasTextBaseline;
     bitmapFont: BitmapFont;
+    bitmapFontKerning: boolean;
     static getGeometryBounds(
       attributes: Partial<TextAttributes> & { metrics: TextMetrics },
     ) {
@@ -207,6 +213,7 @@ export function TextWrapper<TBase extends GConstructor>(Base: TBase) {
         lineHeight,
         leading,
         bitmapFont,
+        bitmapFontKerning,
       } = attributes;
 
       this.#x = x ?? 0;
@@ -228,6 +235,7 @@ export function TextWrapper<TBase extends GConstructor>(Base: TBase) {
       this.lineHeight = lineHeight ?? 0;
       this.leading = leading ?? 0;
       this.bitmapFont = bitmapFont ?? null;
+      this.bitmapFontKerning = bitmapFontKerning ?? true;
     }
 
     containsPoint(x: number, y: number) {

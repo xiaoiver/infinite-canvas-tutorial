@@ -2,7 +2,7 @@
 publish: false
 ---
 
-<https://pixijs.com/8.x/examples/text/bitmap-text>
+移植自：<https://pixijs.com/8.x/examples/text/bitmap-text>
 
 ```ts
 import { Text, loadBitmapFont } from '@infinite-canvas-tutorial/core';
@@ -20,6 +20,8 @@ const text = new Text({
 });
 canvas.appendChild(text);
 ```
+
+可以通过 `bitmapFontKerning` 来控制是否开启 kerning
 
 <script setup>
 import BitmapFont from '../../components/BitmapFont.vue'

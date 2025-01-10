@@ -2,7 +2,7 @@
 publish: false
 ---
 
-<https://pixijs.com/8.x/examples/text/bitmap-text>
+Ported from <https://pixijs.com/8.x/examples/text/bitmap-text>
 
 ```ts
 import { Text, loadBitmapFont } from '@infinite-canvas-tutorial/core';
@@ -20,6 +20,8 @@ const text = new Text({
 });
 canvas.appendChild(text);
 ```
+
+You can toggle with `bitmapFontKerning` to see the difference.
 
 <script setup>
 import BitmapFont from '../components/BitmapFont.vue'

@@ -58,35 +58,12 @@ canvas.drawTextBlob(textblob, 0, 0, textPaint);
 
 ![Map Label Placement in Mapbox GL](https://miro.medium.com/v2/resize:fit:480/format:webp/0*qVAASwC-tjIXnjax.gif)
 
-## font-kerning
-
-如果我们想获取 [font-kerning]，可以参考 <https://github.com/mapbox/tiny-sdf/issues/6#issuecomment-1532395796> 给出的方式：
-
-![font-kerning](https://developer.mozilla.org/en-US/docs/Web/CSS/font-kerning/font-kerning.png)
-
-```ts
-const unkernedWidth =
-    tinySdf.ctx.measureText('A').width + tinySdf.ctx.measureText('V').width;
-const kernedWidth = tinySdf.ctx.measureText('AV').width;
-const kerning = kernedWidth - unkernedWidth; // a negative value indicates you should adjust the SDFs closer together by that much
-```
-
-<https://pixijs.com/assets/bitmap-font/desyrel.xml>
-
-```xml
-<kernings count="1816">
-    <kerning first="102" second="102" amount="2" />
-    <kerning first="102" second="106" amount="-2" />
-</kernings>
-```
-
 ## 文本选中 {#text-selection}
 
 ## 加载字体 {#load-font}
 
 ## 扩展阅读 {#extended-reading}
 
-[font-kerning]: https://developer.mozilla.org/en-US/docs/Web/CSS/font-kerning
 [Make text follow a path or a circle]: https://forum.figma.com/t/make-text-follow-a-path-or-a-circle/23476/34
 [Curved Text Along a Path]: https://css-tricks.com/snippets/svg/curved-text-along-path/
 [Draw text along a path]: https://fiddle.skia.org/c/@Canvas_drawTextRSXform

@@ -62,18 +62,21 @@ export class SDFText extends Drawcall {
   }
 
   createGeometry(): void {
-    const { metrics, fontFamily, fontWeight, fontStyle } = this
+    const { metrics, fontFamily, fontWeight, fontStyle, bitmapFont } = this
       .shapes[0] as Text;
 
     const indices: number[] = [];
     const positions: number[] = [];
     const uvOffsets: number[] = [];
     let indicesOff = 0;
-    let fontScale = 1;
+    let fontScale: number;
 
-    if (!this.useBitmapFont) {
+    if (this.useBitmapFont) {
+      fontScale =
+        metrics.fontMetrics.fontSize / bitmapFont.baseMeasurementFontSize;
+    } else {
       // scale current font size to base(24)
-      fontScale = BASE_FONT_WIDTH / metrics.fontMetrics.fontSize;
+      fontScale = metrics.fontMetrics.fontSize / BASE_FONT_WIDTH;
       const allText = this.shapes.map((text: Text) => text.content).join('');
       this.#glyphManager.generateAtlas(
         metrics.font,
@@ -110,10 +113,11 @@ export class SDFText extends Drawcall {
         object,
         lines,
         fontStack: font,
-        lineHeight: (fontScale * lineHeight) / SDF_SCALE,
-        letterSpacing: fontScale * letterSpacing,
+        lineHeight: lineHeight / SDF_SCALE,
+        letterSpacing: letterSpacing,
         indicesOffset: indicesOff,
         bitmapFont,
+        fontScale,
       });
       indicesOff = indicesOffset;
 
@@ -402,6 +406,7 @@ export class SDFText extends Drawcall {
     letterSpacing,
     indicesOffset,
     bitmapFont,
+    fontScale,
   }: {
     object: Text;
     lines: string[];
@@ -410,8 +415,9 @@ export class SDFText extends Drawcall {
     letterSpacing: number;
     indicesOffset: number;
     bitmapFont: BitmapFont;
+    fontScale: number;
   }) {
-    const { textAlign = 'start', x = 0, y = 0 } = object;
+    const { textAlign = 'start', x = 0, y = 0, bitmapFontKerning } = object;
 
     const charUVOffsetBuffer: number[] = [];
     const charPositionsBuffer: number[] = [];
@@ -426,20 +432,22 @@ export class SDFText extends Drawcall {
       textAlign,
       letterSpacing,
       bitmapFont,
+      fontScale,
+      bitmapFontKerning,
     );
 
     let positions: GlyphPositions;
     if (bitmapFont) {
       positions = {
         [fontStack]: Object.keys(bitmapFont.chars).reduce((acc, char) => {
-          const { xAdvance } = bitmapFont.chars[char];
+          const { xAdvance, xOffset, yOffset, rect } = bitmapFont.chars[char];
           acc[char] = {
-            rect: bitmapFont.chars[char].rect,
+            rect,
             metrics: {
               width: xAdvance,
               height: bitmapFont.lineHeight,
-              left: 0,
-              top: 0,
+              left: xOffset,
+              top: -yOffset,
               advance: xAdvance,
             },
           };

@@ -3,6 +3,11 @@ outline: deep
 publish: false
 ---
 
+<script setup>
+import MSDFText from '../../components/MSDFText.vue';
+import BitmapFont from '../../components/BitmapFont.vue';
+</script>
+
 # 课程 15 - 文本渲染
 
 文本渲染是一个非常复杂的过程，[State of Text Rendering 2024] 中给出了非常详细的介绍，强烈推荐你阅读这篇综述文章。
@@ -649,7 +654,7 @@ if (a === 1) {
 
 在生成工具方面，在线可以使用 [MSDF font generator]，CLI 工具包括 [msdf-bmfont-xml]。这些工具在生成 MSDF atlas 的同时，还会生成一个 `fnt` 或者 `json` 文件，里面包含了每个字符的布局信息用于后续绘制。[pixi-msdf-text] 是一个使用 Pixi.js 绘制的完整例子，其中使用了 [BitmapFontLoader] 来加载 `fnt` 文件，我们的项目也参考了它的实现。
 
-在 Fragment Shader 中重建时使用 median：
+在 Fragment Shader 中重建时使用 `median`：
 
 ```glsl
 float median(float r, float g, float b) {
@@ -662,13 +667,43 @@ float median(float r, float g, float b) {
 #else
 ```
 
+<MSDFText />
+
+### font-kerning {#font-kerning}
+
+在预生成的 Bitmap font 中可以包含 `kernings`，它可以调整固定顺序的前后两个字符之间的间距。
+
+以 <https://pixijs.com/assets/bitmap-font/desyrel.xml> 为例：
+
+```xml
+<kernings count="1816">
+    <kerning first="102" second="102" amount="2" />
+    <kerning first="102" second="106" amount="-2" />
+</kernings>
+```
+
+在计算包围盒与布局时都需要考虑。下面的例子展示了考虑前后的对比效果：
+
+<BitmapFont />
+
+在运行时如果我们想获取 [font-kerning]，可以参考 <https://github.com/mapbox/tiny-sdf/issues/6#issuecomment-1532395796> 给出的方式：
+
+![font-kerning](https://developer.mozilla.org/en-US/docs/Web/CSS/font-kerning/font-kerning.png)
+
+```ts
+const unkernedWidth =
+    tinySdf.ctx.measureText('A').width + tinySdf.ctx.measureText('V').width;
+const kernedWidth = tinySdf.ctx.measureText('AV').width;
+const kerning = kernedWidth - unkernedWidth; // a negative value indicates you should adjust the SDFs closer together by that much
+```
+
+### emoji {#emoji}
+
+一些绘制 emoji 的实现，例如 [EmojiEngine] 都是采用贴图方式。
+
 ### Material Design on the GPU {#material-design-on-the-gpu}
 
 [Material Design on the GPU]
-
-### emoji 实现 {#emoji-implementation}
-
-一些绘制 emoji 的实现，例如 [EmojiEngine] 都是采用贴图方式。
 
 ## 扩展阅读 {#extended-reading}
 
@@ -745,3 +780,4 @@ float median(float r, float g, float b) {
 [getImageData]: https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/getImageData
 [BitmapFontLoader]: https://api.pixijs.io/@pixi/text-bitmap/PIXI/BitmapFontLoader.html
 [MSDF font generator]: https://msdf-bmfont.donmccurdy.com/
+[font-kerning]: https://developer.mozilla.org/en-US/docs/Web/CSS/font-kerning

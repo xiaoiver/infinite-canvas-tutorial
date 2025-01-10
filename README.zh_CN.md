@@ -177,6 +177,7 @@ pnpm run dev
 -   什么是 Shaping
 -   处理段落。分段与自动换行、BiDi 和 cluster
 -   如何生成 SDF atlas 并使用它绘制
+-   如何使用 MSDF 提升文本渲染质量
 -   如何处理 emoji
 
 <img src="./screenshots/lesson15.png" width="300" alt="Lesson 15 - text">

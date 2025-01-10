@@ -23,45 +23,18 @@ onMounted(() => {
   $canvas.addEventListener('ic-ready', async (e) => {
     canvas = e.detail;
 
-    const res = await window.fetch('/desyrel.xml');
+    const res = await window.fetch('/msdf-sans-serif.json');
     const font = await loadBitmapFont.parse(await res.text());
 
     {
       const text = new Text({
         x: 50,
         y: 50,
-        content: 'Hello, world',
-        fontSize: 55,
+        content: 'Hello, world!',
+        fontSize: 45,
         fill: '#F67676',
-        fontFamily: 'Desyrel',
+        fontFamily: 'sans-serif',
         bitmapFont: font,
-      });
-      canvas.appendChild(text);
-
-      const bounds = text.getBounds();
-
-      const rect = new Rect({
-        x: bounds.minX,
-        y: bounds.minY,
-        width: bounds.maxX - bounds.minX,
-        height: bounds.maxY - bounds.minY,
-        fill: 'none',
-        stroke: 'blue',
-        strokeWidth: 1,
-      });
-      canvas.appendChild(rect);
-    }
-
-    {
-      const text = new Text({
-        x: 50,
-        y: 150,
-        content: 'Hello, world',
-        fontSize: 55,
-        fill: '#F67676',
-        fontFamily: 'Desyrel',
-        bitmapFont: font,
-        bitmapFontKerning: false,
       });
       canvas.appendChild(text);
 

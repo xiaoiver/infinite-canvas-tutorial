@@ -92,6 +92,8 @@ export class GlyphManager {
     textAlign: CanvasTextAlign,
     letterSpacing: number,
     bitmapFont?: BitmapFont,
+    scale?: number,
+    bitmapFontKerning?: boolean,
   ): PositionedGlyph[] {
     const positionedGlyphs: PositionedGlyph[] = [];
 
@@ -108,14 +110,18 @@ export class GlyphManager {
     lines.forEach((line) => {
       const lineStartIndex = positionedGlyphs.length;
 
+      let previousChar: string;
       canvasTextMetrics.graphemeSegmenter(line).forEach((char) => {
         let advance: number;
-        let glyphOffset = 0;
-        const scale = 1;
+        let kerning = 0;
         if (bitmapFont) {
           const charData = bitmapFont.chars[char];
           advance = charData.xAdvance;
-          glyphOffset = charData.yOffset;
+          kerning =
+            (bitmapFontKerning &&
+              previousChar &&
+              charData.kerning[previousChar]) ||
+            0;
         } else {
           const positions = this.glyphMap[fontStack];
           const glyph = positions && positions[char];
@@ -124,12 +130,14 @@ export class GlyphManager {
 
         positionedGlyphs.push({
           glyph: char,
-          x,
-          y: y + glyphOffset,
+          x: x,
+          y: y,
           scale,
           fontStack,
         });
-        x += advance + letterSpacing;
+        x += (advance + kerning) * scale + letterSpacing;
+
+        previousChar = char;
       });
 
       const lineWidth = x - letterSpacing;

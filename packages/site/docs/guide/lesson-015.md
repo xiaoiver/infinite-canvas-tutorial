@@ -3,6 +3,11 @@ outline: deep
 publish: false
 ---
 
+<script setup>
+import MSDFText from '../components/MSDFText.vue';
+import BitmapFont from '../components/BitmapFont.vue';
+</script>
+
 # Lesson 15 - Text Rendering
 
 Text rendering is a highly complex process, and the [State of Text Rendering 2024] provides a very detailed introduction, which is highly recommended for reading.
@@ -644,24 +649,58 @@ The distance field can be subjected to set operations. The following image is fr
 
 The decomposition algorithm can refer to the original paper [Shape Decomposition for Multi-channel Distance Fields] in section 4.4: Direct multi-channel distance field construction. In actual use, the author provides [msdfgen], it can be seen that MSDF has a much better effect at low resolution, even better than higher resolution SDF.
 
-When reconstructing, use median:
+In terms of generating tools, online tools include [MSDF font generator], and CLI tools include [msdf-bmfont-xml]. These tools generate an MSDF atlas at the same time, and also generate an `fnt` or `json` file, which contains the layout information of each character for subsequent drawing. [pixi-msdf-text] is a complete example using Pixi.js, which uses [BitmapFontLoader] to load the `fnt` file, and our project also references its implementation.
+
+When reconstructing with `median` in the Fragment Shader:
 
 ```glsl
-// https://github.com/Jam3/three-bmfont-text/blob/master/shaders/msdf.js
-
 float median(float r, float g, float b) {
   return max(min(r, g), min(max(r, g), b));
 }
-vec3 sample = texture2D(map, vUv).rgb;
-float sigDist = median(sample.r, sample.g, sample.b) - 0.5;
+
+#ifdef USE_MSDF
+    vec3 s = texture(SAMPLER_2D(u_Texture), v_Uv).rgb;
+    float dist = median(s.r, s.g, s.b);
+#else
 ```
 
--   [msdf-bmfont-xml]
--   [pixi-msdf-text]
+<MSDFText />
 
-## Emoji
+### font-kerning {#font-kerning}
+
+In pre-generated Bitmap fonts, `kernings` can be included, which can adjust the spacing between two characters in a fixed sequence.
+
+For example <https://pixijs.com/assets/bitmap-font/desyrel.xml>
+
+```xml
+<kernings count="1816">
+    <kerning first="102" second="102" amount="2" />
+    <kerning first="102" second="106" amount="-2" />
+</kernings>
+```
+
+Both bounding box calculation and layout need to take it into account. The following example shows the differences:
+
+<BitmapFont />
+
+In runtime, if we want to get [font-kerning], we can refer to the way given by <https://github.com/mapbox/tiny-sdf/issues/6#issuecomment-1532395796>:
+
+![font-kerning](https://developer.mozilla.org/en-US/docs/Web/CSS/font-kerning/font-kerning.png)
+
+```ts
+const unkernedWidth =
+    tinySdf.ctx.measureText('A').width + tinySdf.ctx.measureText('V').width;
+const kernedWidth = tinySdf.ctx.measureText('AV').width;
+const kerning = kernedWidth - unkernedWidth; // a negative value indicates you should adjust the SDFs closer together by that much
+```
+
+## emoji {#emoji}
 
 Some implementations for drawing emoji, such as [EmojiEngine], use a texture-based approach.
+
+### Material Design on the GPU {#material-design-on-the-gpu}
+
+[Material Design on the GPU]
 
 ## Extended reading {#extended-reading}
 
@@ -736,3 +775,6 @@ Some implementations for drawing emoji, such as [EmojiEngine], use a texture-bas
 [Shape Decomposition for Multi-channel Distance Fields]: https://dspace.cvut.cz/bitstream/handle/10467/62770/F8-DP-2015-Chlumsky-Viktor-thesis.pdf
 [Sub-pixel Distance Transform]: https://acko.net/blog/subpixel-distance-transform
 [getImageData]: https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/getImageData
+[BitmapFontLoader]: https://api.pixijs.io/@pixi/text-bitmap/PIXI/BitmapFontLoader.html
+[MSDF font generator]: https://msdf-bmfont.donmccurdy.com/
+[font-kerning]: https://developer.mozilla.org/en-US/docs/Web/CSS/font-kerning

@@ -48,6 +48,7 @@ call(() => {
         deserializeNode,
         fromSVGElement,
         TesselationMethod,
+        loadBitmapFont,
     } = Core;
 
     const stats = new Stats();
@@ -206,6 +207,7 @@ call(() => {
             }
         });
 
+        // SDF
         const text = new Text({
             x: 300,
             y: 500,
@@ -213,6 +215,36 @@ call(() => {
             fontSize: 20,
         });
         canvas.appendChild(text);
+
+        // MSDF
+        fetch('/msdf-sans-serif.json').then(async (res) => {
+            const font = await loadBitmapFont.parse(await res.text());
+            const text = new Text({
+                x: 300,
+                y: 550,
+                content: 'Hello, world!',
+                fontSize: 45,
+                fill: '#F67676',
+                fontFamily: 'sans-serif',
+                bitmapFont: font,
+            });
+            canvas.appendChild(text);
+        });
+
+        // Bitmap font
+        fetch('/desyrel.xml').then(async (res) => {
+            const font = await loadBitmapFont.parse(await res.text());
+            const text = new Text({
+                x: 300,
+                y: 500,
+                content: 'Hello, world',
+                fontSize: 55,
+                fill: '#F67676',
+                fontFamily: 'Desyrel',
+                bitmapFont: font,
+            });
+            canvas.appendChild(text);
+        });
     });
 
     $icCanvas.addEventListener('ic-frame', (e) => {

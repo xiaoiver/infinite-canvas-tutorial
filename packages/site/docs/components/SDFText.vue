@@ -1,7 +1,7 @@
 <script setup>
 import { Text } from '@infinite-canvas-tutorial/core';
 import '@infinite-canvas-tutorial/ui';
-import { onMounted } from 'vue';
+import { useTemplateRef, onMounted } from 'vue';
 import Stats from 'stats.js';
 
 let canvas;
@@ -13,8 +13,10 @@ $stats.style.position = 'absolute';
 $stats.style.left = '0px';
 $stats.style.top = '0px';
 
+const canvasRef = useTemplateRef('canvas');
+
 onMounted(() => {
-  const $canvas = document.querySelector('ic-canvas');
+  const $canvas = canvasRef.value;
 
   $canvas.parentElement.appendChild($stats);
 
@@ -51,6 +53,6 @@ onMounted(() => {
 
 <template>
   <div style="position: relative">
-    <ic-canvas></ic-canvas>
+    <ic-canvas ref="canvas"></ic-canvas>
   </div>
 </template>

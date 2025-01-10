@@ -52,8 +52,7 @@ void main() {
   }
 
   v_Uv = a_UvOffset.xy / u_AtlasSize;
-  float fontScale = fontSize / 24.;
-  vec2 offset = a_UvOffset.zw * fontScale;
+  vec2 offset = a_UvOffset.zw;
 
   gl_Position = vec4((u_ProjectionMatrix 
     * u_ViewMatrix
@@ -120,8 +119,12 @@ void main() {
 
     float fontSize = u_ZIndexStrokeWidth.z;
 
-    float fontScale = fontSize / 24.0;
     lowp float buff = (256.0 - 64.0) / 256.0;
+
+    #ifdef USE_MSDF
+      buff = 0.5;
+    #endif
+
     // float opacity = u_FillOpacity;
     // if (u_HasStroke > 0.5 && u_StrokeWidth > 0.0) {
     //   color = u_StrokeColor;

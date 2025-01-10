@@ -123,12 +123,16 @@ export const zh = defineConfig({
                 link: 'wireframe',
               },
               {
-                text: '绘制文本',
-                link: 'text',
+                text: '使用 SDF 绘制文本',
+                link: 'sdf-text',
               },
               {
                 text: '使用 Bitmap Font 绘制文本',
                 link: 'bitmap-font',
+              },
+              {
+                text: '使用 MSDF 绘制文本',
+                link: 'msdf-text',
               },
             ],
           },

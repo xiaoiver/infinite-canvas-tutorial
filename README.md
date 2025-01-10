@@ -177,6 +177,7 @@ pnpm run dev
 -   What's shaping
 -   Paragraph layout, wordbreak, BiDi and cluster
 -   How to generate SDF atlas and use it to draw
+-   How to use MSDF to improve text rendering quality
 -   How to handle emoji
 
 <img src="./screenshots/lesson15.png" width="300" alt="Lesson 15 - text">

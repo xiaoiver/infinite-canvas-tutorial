@@ -102,7 +102,7 @@ export class CanvasTextMetrics {
 
   private measureBitmapFont(bitmapFont: BitmapFont, fontSize: number) {
     const { fontMetrics, lineHeight } = bitmapFont;
-    const scale = fontSize / fontMetrics.fontSize;
+    const scale = fontSize / bitmapFont.baseMeasurementFontSize;
     return {
       scale,
       lineHeight: lineHeight * scale,
@@ -123,11 +123,13 @@ export class CanvasTextMetrics {
       strokeWidth,
       leading,
       bitmapFont,
+      bitmapFontKerning,
     } = style;
 
     let lineHeight = style.lineHeight;
-    let font: string;
+    const font = fontStringFromTextStyle(style);
     let fontMetrics: globalThis.TextMetrics & { fontSize: number };
+    let scale = 1;
 
     if (bitmapFont) {
       const textMetrics = this.measureBitmapFont(
@@ -136,18 +138,20 @@ export class CanvasTextMetrics {
       );
       lineHeight = textMetrics.lineHeight;
       fontMetrics = textMetrics.fontMetrics;
+      scale = textMetrics.scale;
     } else {
-      font = fontStringFromTextStyle(bitmapFont ?? style);
       fontMetrics = this.measureFont(font);
       this.#context.font = font;
     }
+
+    lineHeight *= scale;
 
     // fallback in case UA disallow canvas data extraction
     if (fontMetrics.fontSize === 0) {
       fontMetrics.fontSize = style.fontSize as number;
     }
 
-    const outputText = wordWrap ? this.wordWrap(text, style) : text;
+    const outputText = wordWrap ? this.wordWrap(text, style, scale) : text;
     const lines = outputText.split(/(?:\r\n|\r|\n)/);
     const lineWidths = new Array<number>(lines.length);
     let maxLineWidth = 0;
@@ -156,6 +160,8 @@ export class CanvasTextMetrics {
         lines[i],
         letterSpacing,
         bitmapFont,
+        bitmapFontKerning,
+        scale,
       );
       lineWidths[i] = lineWidth;
       maxLineWidth = Math.max(maxLineWidth, lineWidth);
@@ -305,7 +311,7 @@ export class CanvasTextMetrics {
   /**
    * @see https://github.com/pixijs/pixijs/blob/dev/src/scene/text/canvas/CanvasTextMetrics.ts#L369
    */
-  wordWrap(text: string, style: Partial<TextAttributes>) {
+  wordWrap(text: string, style: Partial<TextAttributes>, scale: number) {
     const context = this.#canvas.getContext('2d', {
       willReadFrequently: true,
     });
@@ -346,6 +352,7 @@ export class CanvasTextMetrics {
         cache,
         context as CanvasRenderingContext2D,
         bitmapFont,
+        scale,
       );
     };
     const ellipsisWidth = Array.from(ellipsis).reduce((prev, cur) => {
@@ -533,6 +540,7 @@ export class CanvasTextMetrics {
     cache: CharacterWidthCache,
     context: CanvasRenderingContext2D,
     bitmapFont: BitmapFont,
+    scale: number,
   ): number {
     let width = cache[key];
     if (typeof width !== 'number') {
@@ -540,7 +548,9 @@ export class CanvasTextMetrics {
       width =
         (bitmapFont
           ? bitmapFont.chars[key]?.xAdvance || 0
-          : context.measureText(key).width) + spacing;
+          : context.measureText(key).width) *
+          scale +
+        spacing;
       cache[key] = width;
     }
     return width;
@@ -550,14 +560,25 @@ export class CanvasTextMetrics {
     text: string,
     letterSpacing: number,
     bitmapFont: BitmapFont,
+    bitmapFontKerning: boolean,
+    scale: number,
   ) {
     const segments = this.#graphemeSegmenter(text);
 
     let metricWidth: number;
     let boundsWidth: number;
+    let previousChar: string;
     if (bitmapFont) {
       metricWidth = segments.reduce((sum, char) => {
-        return sum + (bitmapFont.chars[char]?.xAdvance || 0);
+        const advance = bitmapFont.chars[char]?.xAdvance;
+        const kerning =
+          (bitmapFontKerning &&
+            previousChar &&
+            bitmapFont.chars[char]?.kerning[previousChar]) ||
+          0;
+
+        previousChar = char;
+        return sum + ((advance + kerning) * scale || 0);
       }, 0);
       boundsWidth = metricWidth;
     } else {

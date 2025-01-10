@@ -141,12 +141,16 @@ export const en = defineConfig({
                 link: 'wireframe',
               },
               {
-                text: 'Text',
-                link: 'text',
+                text: 'Use SDF to draw text',
+                link: 'sdf-text',
               },
               {
                 text: 'Use Bitmap Font to draw text',
                 link: 'bitmap-font',
+              },
+              {
+                text: 'Use MSDF to draw text',
+                link: 'msdf-text',
               },
             ],
           },
