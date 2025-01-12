@@ -664,6 +664,8 @@ float median(float r, float g, float b) {
 #else
 ```
 
+In the example below, you can see that the characters remain sharp even when zoomed in:
+
 <MSDFText />
 
 ### font-kerning {#font-kerning}
@@ -696,11 +698,9 @@ const kerning = kernedWidth - unkernedWidth; // a negative value indicates you s
 
 ## emoji {#emoji}
 
-Some implementations for drawing emoji, such as [EmojiEngine], use a texture-based approach.
+In some emoji rendering implementations, such as [EmojiEngine], a pre-generated emoji atlas approach is used. However, this approach not only has texture size limitations but also cannot maintain the platform-specific emoji appearance across different platforms. Therefore, similar to SDF, we want to generate emojis on-demand at runtime on the current platform.
 
-### Material Design on the GPU {#material-design-on-the-gpu}
-
-[Material Design on the GPU]
+The biggest difference between this approach and SDF is that we cannot only preserve the alpha channel, but need to retain all three RGB channels for subsequent distance field reconstruction.
 
 ## Extended reading {#extended-reading}
 
@@ -710,7 +710,6 @@ Some implementations for drawing emoji, such as [EmojiEngine], use a texture-bas
 -   [Easy Scalable Text Rendering on the GPU]
 -   [Text Visualization Browser]
 -   [Rive Text Overview]
--   [Material Design on the GPU]
 -   [Texture-less Text Rendering]
 -   [Text layout is a loose hierarchy of segmentation]
 -   [End-To-End Tour of Text Layout/Rendering]
@@ -724,7 +723,6 @@ Some implementations for drawing emoji, such as [EmojiEngine], use a texture-bas
 [Text Visualization Browser]: https://textvis.lnu.se
 [State of Text Rendering 2024]: https://behdad.org/text2024/
 [Rive Text Overview]: https://rive.app/community/doc/text-overview/docSfhykWoWu
-[Material Design on the GPU]: https://mattdesl.svbtle.com/material-design-on-the-gpu
 [Texture-less Text Rendering]: https://poniesandlight.co.uk/reflect/debug_print_text/
 [Text layout is a loose hierarchy of segmentation]: https://raphlinus.github.io/text/2020/10/26/text-layout.html
 [End-To-End Tour of Text Layout/Rendering]: https://litherum.blogspot.com/2015/02/end-to-end-tour-of-text-rendering.html

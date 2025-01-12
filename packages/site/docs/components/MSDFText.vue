@@ -28,8 +28,8 @@ onMounted(() => {
 
     {
       const text = new Text({
-        x: 50,
-        y: 50,
+        x: 10,
+        y: 10,
         content: 'Hello, world!',
         fontSize: 45,
         fill: '#F67676',
@@ -60,7 +60,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <div style="position: relative">
-    <ic-canvas ref="canvas"></ic-canvas>
+  <div style="position: relative;">
+    <ic-canvas ref="canvas" style="height: 200px" zoom="250"></ic-canvas>
   </div>
 </template>

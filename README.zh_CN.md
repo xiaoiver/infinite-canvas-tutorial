@@ -174,7 +174,7 @@ pnpm run dev
 ## 课程 15 - 绘制文本 [🔗](https://infinitecanvas.cc/zh/guide/lesson-015)
 
 -   什么是 TextMetrics，如何在服务端和浏览器端获取
--   什么是 Shaping
+-   什么是 Shaping？实现 letterSpacing 与 kerning
 -   处理段落。分段与自动换行、BiDi 和 cluster
 -   如何生成 SDF atlas 并使用它绘制
 -   如何使用 MSDF 提升文本渲染质量

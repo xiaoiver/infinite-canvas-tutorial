@@ -174,7 +174,7 @@ pnpm run dev
 ## Lesson 15 - Draw text [🔗](https://infinitecanvas.cc/guide/lesson-015)
 
 -   What's TextMetrics and how to get it in server and browser side
--   What's shaping
+-   What's shaping? Implement letterSpacing and kerning
 -   Paragraph layout, wordbreak, BiDi and cluster
 -   How to generate SDF atlas and use it to draw
 -   How to use MSDF to improve text rendering quality

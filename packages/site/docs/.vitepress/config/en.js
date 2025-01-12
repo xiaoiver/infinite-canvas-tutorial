@@ -152,6 +152,10 @@ export const en = defineConfig({
                 text: 'Use MSDF to draw text',
                 link: 'msdf-text',
               },
+              {
+                text: 'Draw emoji',
+                link: 'emoji',
+              },
             ],
           },
         ],

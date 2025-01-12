@@ -62,8 +62,8 @@ export class SDFText extends Drawcall {
   }
 
   createGeometry(): void {
-    const { metrics, fontFamily, fontWeight, fontStyle, bitmapFont } = this
-      .shapes[0] as Text;
+    const { metrics, fontFamily, fontWeight, fontStyle, bitmapFont, esdt } =
+      this.shapes[0] as Text;
 
     const indices: number[] = [];
     const positions: number[] = [];
@@ -85,6 +85,7 @@ export class SDFText extends Drawcall {
         fontStyle,
         allText,
         this.device,
+        esdt,
       );
     }
 

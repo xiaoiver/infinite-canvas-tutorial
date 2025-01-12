@@ -667,6 +667,8 @@ float median(float r, float g, float b) {
 #else
 ```
 
+在下面的例子中，可以看出字符在放大后边缘依然锐利：
+
 <MSDFText />
 
 ### font-kerning {#font-kerning}
@@ -699,11 +701,9 @@ const kerning = kernedWidth - unkernedWidth; // a negative value indicates you s
 
 ### emoji {#emoji}
 
-一些绘制 emoji 的实现，例如 [EmojiEngine] 都是采用贴图方式。
+在一些绘制 emoji 的实现中，例如 [EmojiEngine] 采用的是预生成 emoji atlas 的方式，但这样做的问题除了纹理大小，也无法保持不同平台上 emoji 展示各异的效果。因此我们希望和 SDF 一样，在当前平台的运行时按需生成。
 
-### Material Design on the GPU {#material-design-on-the-gpu}
-
-[Material Design on the GPU]
+这种做法和 SDF 最大的不同是，不能仅仅保留 alpha 通道，而是需要保留 RGB 三个通道，用于后续的距离场重建。
 
 ## 扩展阅读 {#extended-reading}
 
@@ -713,7 +713,6 @@ const kerning = kernedWidth - unkernedWidth; // a negative value indicates you s
 -   [Easy Scalable Text Rendering on the GPU]
 -   [Text Visualization Browser]
 -   [Rive Text Overview]
--   [Material Design on the GPU]
 -   [Texture-less Text Rendering]
 -   [Text layout is a loose hierarchy of segmentation]
 -   [End-To-End Tour of Text Layout/Rendering]
@@ -727,7 +726,6 @@ const kerning = kernedWidth - unkernedWidth; // a negative value indicates you s
 [Text Visualization Browser]: https://textvis.lnu.se
 [State of Text Rendering 2024]: https://behdad.org/text2024/
 [Rive Text Overview]: https://rive.app/community/doc/text-overview/docSfhykWoWu
-[Material Design on the GPU]: https://mattdesl.svbtle.com/material-design-on-the-gpu
 [Texture-less Text Rendering]: https://poniesandlight.co.uk/reflect/debug_print_text/
 [Text layout is a loose hierarchy of segmentation]: https://raphlinus.github.io/text/2020/10/26/text-layout.html
 [End-To-End Tour of Text Layout/Rendering]: https://litherum.blogspot.com/2015/02/end-to-end-tour-of-text-rendering.html

@@ -12,6 +12,10 @@ publish: false
 -   文本选中
 -   文本跟随路径
 
+## Material Design on the GPU {#material-design-on-the-gpu}
+
+[Material Design on the GPU]
+
 ## 装饰线 {#text-decoration}
 
 [text-decoration]
@@ -64,6 +68,14 @@ canvas.drawTextBlob(textblob, 0, 0, textPaint);
 
 ## 扩展阅读 {#extended-reading}
 
+-   [Material Design on the GPU]
+-   [Make text follow a path or a circle]
+-   [Curved Text Along a Path]
+-   [Draw text along a path]
+-   [textPath]
+-   [Map Label Placement in Mapbox GL]
+
+[Material Design on the GPU]: https://mattdesl.svbtle.com/material-design-on-the-gpu
 [Make text follow a path or a circle]: https://forum.figma.com/t/make-text-follow-a-path-or-a-circle/23476/34
 [Curved Text Along a Path]: https://css-tricks.com/snippets/svg/curved-text-along-path/
 [Draw text along a path]: https://fiddle.skia.org/c/@Canvas_drawTextRSXform

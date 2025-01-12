@@ -108,22 +108,20 @@ void main() {
     outputColor = texture(SAMPLER_2D(u_Texture), v_Uv);
   #else
     float dist;
+    lowp float buff;
     #ifdef USE_SDF
+      // fillColor = texture(SAMPLER_2D(u_Texture), v_Uv);
       dist = texture(SAMPLER_2D(u_Texture), v_Uv).a;
+      buff = (256.0 - 64.0) / 256.0;
     #endif
 
     #ifdef USE_MSDF
       vec3 s = texture(SAMPLER_2D(u_Texture), v_Uv).rgb;
       dist = median(s.r, s.g, s.b);
+      buff = 0.5;
     #endif
 
     float fontSize = u_ZIndexStrokeWidth.z;
-
-    lowp float buff = (256.0 - 64.0) / 256.0;
-
-    #ifdef USE_MSDF
-      buff = 0.5;
-    #endif
 
     // float opacity = u_FillOpacity;
     // if (u_HasStroke > 0.5 && u_StrokeWidth > 0.0) {

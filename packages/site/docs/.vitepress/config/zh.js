@@ -134,6 +134,10 @@ export const zh = defineConfig({
                 text: '使用 MSDF 绘制文本',
                 link: 'msdf-text',
               },
+              {
+                text: '绘制表情符号',
+                link: 'emoji',
+              },
             ],
           },
         ],

@@ -159,6 +159,7 @@ export class GlyphManager {
     fontStyle = '',
     text: string,
     device: Device,
+    esdt: boolean,
   ) {
     let newChars: string[] = [];
     if (!this.glyphMap[fontStack]) {
@@ -183,6 +184,7 @@ export class GlyphManager {
             fontWeight,
             fontStyle,
             char,
+            esdt,
           );
         })
         .reduce((prev, cur) => {
@@ -228,6 +230,7 @@ export class GlyphManager {
     fontWeight: string,
     fontStyle: string,
     char: string,
+    esdt: boolean,
   ): StyleGlyph {
     let sdfGenerator = this.sdfGeneratorCache[fontStack];
     if (!sdfGenerator) {
@@ -263,7 +266,7 @@ export class GlyphManager {
       glyphLeft,
       glyphTop,
       glyphAdvance,
-    } = sdfGenerator.draw(char);
+    } = sdfGenerator.draw(char, esdt);
 
     return {
       id: char,

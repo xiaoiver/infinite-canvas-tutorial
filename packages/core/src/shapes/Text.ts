@@ -128,6 +128,11 @@ export interface TextAttributes extends ShapeAttributes {
    * Whether to use kerning in bitmap font. Default is `true`.
    */
   bitmapFontKerning: boolean;
+
+  /**
+   * Whether to use esdt SDF generation. Default is `true`.
+   */
+  esdt: boolean;
 }
 
 // @ts-ignore
@@ -157,6 +162,7 @@ export function TextWrapper<TBase extends GConstructor>(Base: TBase) {
     #textBaseline: CanvasTextBaseline;
     bitmapFont: BitmapFont;
     bitmapFontKerning: boolean;
+    esdt: boolean;
     static getGeometryBounds(
       attributes: Partial<TextAttributes> & { metrics: TextMetrics },
     ) {
@@ -214,6 +220,7 @@ export function TextWrapper<TBase extends GConstructor>(Base: TBase) {
         leading,
         bitmapFont,
         bitmapFontKerning,
+        esdt,
       } = attributes;
 
       this.#x = x ?? 0;
@@ -236,6 +243,7 @@ export function TextWrapper<TBase extends GConstructor>(Base: TBase) {
       this.leading = leading ?? 0;
       this.bitmapFont = bitmapFont ?? null;
       this.bitmapFontKerning = bitmapFontKerning ?? true;
+      this.esdt = esdt ?? true;
     }
 
     containsPoint(x: number, y: number) {
