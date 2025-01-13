@@ -7,6 +7,7 @@ publish: false
 import MSDFText from '../../components/MSDFText.vue';
 import BitmapFont from '../../components/BitmapFont.vue';
 import Emoji from '../../components/Emoji.vue';
+import Bidi from '../../components/Bidi.vue';
 </script>
 
 # 课程 15 - 文本渲染
@@ -224,7 +225,27 @@ HarfBuzz 也不会处理 [BiDi]，详见 [What HarfBuzz doesn't do]：
 support for handling text containing a mixture of left to right (English) and right to left (Arabic or Hebrew) data.
 :::
 
-在浏览器端我们可以使用 [bidi-js]。或者像 [mapbox-gl-rtl-text] 自行实现，详见：[Improving Arabic and Hebrew text in map labels]。
+比如这段 LTR 和 RTL 混排的内容 `ABCאבגDEF`，需要手动改变 RTL 的顺序才能展示正确的效果：
+
+```ts
+'ABCאבגDEF'.split(''); // ['A', 'B', 'C', 'ג' ,'ב' ,'א', 'D', 'E', 'F']
+```
+
+在浏览器端这个问题并不容易解决，例如 Pixi.js 至今也没有解决，详见：[BiDi in Pixi.js]。[mapbox-gl-rtl-text] 则选择自行实现，详见：[Improving Arabic and Hebrew text in map labels]。目前我们可以使用 [bidi-js]，遇到 RTL 字符时，需要手动反转：
+
+```ts
+import bidiFactory from 'bidi-js';
+
+this.#bidi = bidiFactory();
+const embeddingLevels = this.#bidi.getEmbeddingLevels(text);
+let bidiChars = '';
+for (const segment of segmentStack[0]!) {
+    const { text, direction } = segment;
+    bidiChars += direction === 'ltr' ? text : text.split('').reverse().join('');
+}
+```
+
+<Bidi />
 
 ### 复合字符 {#cluster}
 
@@ -794,3 +815,4 @@ this.glyphAtlasTexture = device.createTexture({
 [BitmapFontLoader]: https://api.pixijs.io/@pixi/text-bitmap/PIXI/BitmapFontLoader.html
 [MSDF font generator]: https://msdf-bmfont.donmccurdy.com/
 [font-kerning]: https://developer.mozilla.org/en-US/docs/Web/CSS/font-kerning
+[BiDi in Pixi.js]: https://github.com/pixijs/pixijs/issues/4482

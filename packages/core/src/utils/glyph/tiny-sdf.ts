@@ -99,7 +99,7 @@ export class TinySDF {
 
     ctx.textBaseline = 'alphabetic';
     ctx.textAlign = 'left'; // Necessary so that RTL text doesn't have different alignment
-    ctx.fillStyle = fill;
+    ctx.fillStyle = fill; // If plain text mixed with emoji, we should use fill color instead of 'black'
   }
 
   _createCanvas(size: number) {

@@ -175,10 +175,15 @@ pnpm run dev
 
 -   什么是 TextMetrics，如何在服务端和浏览器端获取
 -   什么是 Shaping？实现 letterSpacing 与 kerning
--   处理段落。分段与自动换行、BiDi 和 cluster
+-   处理段落
+    -   分段与自动换行
+    -   支持 BiDi
+    -   处理复合字符
+    -   支持 text-align
 -   如何生成 SDF atlas 并使用它绘制
--   如何使用 MSDF 提升文本渲染质量
--   如何处理 emoji
+-   如何使用 ESDT 和 MSDF 提升文本渲染质量
+-   如何绘制 Bitmap 格式的字体
+-   如何绘制 emoji
 
 <img src="./screenshots/lesson15.png" width="300" alt="Lesson 15 - text">
 

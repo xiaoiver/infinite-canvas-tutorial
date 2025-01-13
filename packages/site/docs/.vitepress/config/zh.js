@@ -138,6 +138,10 @@ export const zh = defineConfig({
                 text: '绘制表情符号',
                 link: 'emoji',
               },
+              {
+                text: '绘制双向文字',
+                link: 'bidi',
+              },
             ],
           },
         ],

@@ -175,10 +175,15 @@ pnpm run dev
 
 -   What's TextMetrics and how to get it in server and browser side
 -   What's shaping? Implement letterSpacing and kerning
--   Paragraph layout, wordbreak, BiDi and cluster
+-   Paragraph layout
+    -   Auto wordbreak
+    -   BiDi
+    -   Handle clusters
+    -   Support text-align
 -   How to generate SDF atlas and use it to draw
--   How to use MSDF to improve text rendering quality
--   How to handle emoji
+-   How to use ESDT and MSDF to improve text rendering quality
+-   How to draw bitmap font
+-   How to draw emoji
 
 <img src="./screenshots/lesson15.png" width="300" alt="Lesson 15 - text">
 

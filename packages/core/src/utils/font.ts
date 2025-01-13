@@ -16,7 +16,7 @@ export type TextMetrics = {
   fontMetrics: globalThis.TextMetrics & { fontSize: number };
   lineMetrics: Rectangle[];
 };
-// type TextSegment = { text: string; direction: 'ltr' | 'rtl' };
+type TextSegment = { text: string; direction: 'ltr' | 'rtl' };
 
 const METRICS_STRING = '|ÉqÅ';
 const BASELINE_SYMBOL = 'M';
@@ -79,6 +79,7 @@ export class CanvasTextMetrics {
   #context: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
   #graphemeSegmenter: (s: string) => string[];
   #bidi = bidiFactory();
+  #bidiCache: Record<string, string> = {};
 
   constructor(graphemeSegmenter?: (s: string) => string[]) {
     const canvas = createOffscreenCanvas();
@@ -115,6 +116,66 @@ export class CanvasTextMetrics {
   }
 
   measureText(text: string, style: Partial<TextAttributes>): TextMetrics {
+    if (!this.#bidiCache[text]) {
+      // @see https://github.com/beanandbean/font-mesh-pipeline/blob/main/packages/harfbuzz-modern-wrapper/src/harfbuzz.ts#L50
+      const segmentStack = [new Array<TextSegment>()];
+
+      const reduceStack = (stack: TextSegment[][], target: number) => {
+        const validatedTarget = target < 0 ? 0 : target;
+        while (stack.length > validatedTarget + 1) {
+          const current = stack.pop()!;
+          stack[stack.length - 1]!.push(...current.reverse());
+        }
+      };
+      const pushInStack = (
+        stack: TextSegment[][],
+        text: string,
+        level: number,
+      ) => {
+        if (level + 1 > stack.length) {
+          stack.push(
+            ...Array.from(
+              { length: level + 1 - stack.length },
+              () => new Array<TextSegment>(),
+            ),
+          );
+        } else {
+          reduceStack(stack, level);
+        }
+        stack[level]!.push({
+          text,
+          direction: level % 2 === 0 ? 'ltr' : 'rtl',
+        });
+      };
+
+      const embeddingLevels = this.#bidi.getEmbeddingLevels(text);
+      const iter = embeddingLevels.levels.entries();
+      const first = iter.next();
+      if (!first.done) {
+        let [prevIndex, prevLevel] = first.value;
+        for (const [i, level] of iter) {
+          if (level !== prevLevel) {
+            pushInStack(segmentStack, text.slice(prevIndex, i), prevLevel);
+            prevIndex = i;
+            prevLevel = level;
+          }
+        }
+        pushInStack(segmentStack, text.slice(prevIndex), prevLevel);
+        reduceStack(segmentStack, 0);
+      }
+
+      let bidiChars = '';
+      for (const segment of segmentStack[0]!) {
+        const { text, direction } = segment;
+        bidiChars +=
+          direction === 'ltr' ? text : text.split('').reverse().join('');
+      }
+
+      this.#bidiCache[text] = bidiChars;
+    }
+
+    style.bidiChars = this.#bidiCache[text];
+
     const {
       wordWrap,
       letterSpacing,
@@ -124,6 +185,8 @@ export class CanvasTextMetrics {
       leading,
       bitmapFont,
       bitmapFontKerning,
+      bidiChars,
+      fontSize,
     } = style;
 
     let lineHeight = style.lineHeight;
@@ -148,10 +211,12 @@ export class CanvasTextMetrics {
 
     // fallback in case UA disallow canvas data extraction
     if (fontMetrics.fontSize === 0) {
-      fontMetrics.fontSize = style.fontSize as number;
+      fontMetrics.fontSize = fontSize as number;
     }
 
-    const outputText = wordWrap ? this.wordWrap(text, style, scale) : text;
+    const outputText = wordWrap
+      ? this.wordWrap(bidiChars, style, scale)
+      : bidiChars;
     const lines = outputText.split(/(?:\r\n|\r|\n)/);
     const lineWidths = new Array<number>(lines.length);
     let maxLineWidth = 0;
@@ -213,57 +278,6 @@ export class CanvasTextMetrics {
         );
       }),
     };
-
-    // const segmentStack = [new Array<TextSegment>()];
-
-    // const reduceStack = (stack: TextSegment[][], target: number) => {
-    //   const validatedTarget = target < 0 ? 0 : target;
-    //   while (stack.length > validatedTarget + 1) {
-    //     const current = stack.pop()!;
-    //     stack[stack.length - 1]!.push(...current.reverse());
-    //   }
-    // };
-    // const pushInStack = (
-    //   stack: TextSegment[][],
-    //   text: string,
-    //   level: number,
-    // ) => {
-    //   if (level + 1 > stack.length) {
-    //     stack.push(
-    //       ...Array.from(
-    //         { length: level + 1 - stack.length },
-    //         () => new Array<TextSegment>(),
-    //       ),
-    //     );
-    //   } else {
-    //     reduceStack(stack, level);
-    //   }
-    //   stack[level]!.push({ text, direction: level % 2 === 0 ? 'ltr' : 'rtl' });
-    // };
-
-    // const embeddingLevels = bidi.getEmbeddingLevels(text);
-    // const iter = embeddingLevels.levels.entries();
-    // const first = iter.next();
-    // if (!first.done) {
-    //   let [prevIndex, prevLevel] = first.value;
-    //   for (const [i, level] of iter) {
-    //     if (level !== prevLevel) {
-    //       pushInStack(segmentStack, text.slice(prevIndex, i), prevLevel);
-    //       prevIndex = i;
-    //       prevLevel = level;
-    //     }
-    //   }
-    //   pushInStack(segmentStack, text.slice(prevIndex), prevLevel);
-    //   reduceStack(segmentStack, 0);
-    // }
-
-    // const base = { x: 0, y: 0 };
-    // const glyphs = new Array<{
-    //   id: number;
-    //   base: { x: number; y: number };
-    // }>();
-    // for (const segment of segmentStack[0]!) {
-    // }
   }
 
   measureFont(font: string) {

@@ -133,6 +133,8 @@ export interface TextAttributes extends ShapeAttributes {
    * Whether to use esdt SDF generation. Default is `true`.
    */
   esdt: boolean;
+
+  bidiChars: string;
 }
 
 // @ts-ignore
@@ -163,6 +165,7 @@ export function TextWrapper<TBase extends GConstructor>(Base: TBase) {
     bitmapFont: BitmapFont;
     bitmapFontKerning: boolean;
     esdt: boolean;
+    bidiChars: string;
     static getGeometryBounds(
       attributes: Partial<TextAttributes> & { metrics: TextMetrics },
     ) {

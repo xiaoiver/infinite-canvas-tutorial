@@ -156,6 +156,10 @@ export const en = defineConfig({
                 text: 'Draw emoji',
                 link: 'emoji',
               },
+              {
+                text: 'Draw bidirectional text',
+                link: 'bidi',
+              },
             ],
           },
         ],

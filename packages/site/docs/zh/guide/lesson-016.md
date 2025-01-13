@@ -22,6 +22,8 @@ publish: false
 
 使用 Figma 的导出 SVG 功能可以发现，它的文本是使用 Path 渲染的。
 
+我发现 [font-mesh-pipeline] 这个项目的思路很有趣，它使用 harfbuzz WASM 生成矢量化字体，然后使用 GPU 绘制。
+
 ## Material Design on the GPU {#material-design-on-the-gpu}
 
 [Material Design on the GPU]
@@ -91,3 +93,4 @@ canvas.drawTextBlob(textblob, 0, 0, textPaint);
 [Draw text along a path]: https://fiddle.skia.org/c/@Canvas_drawTextRSXform
 [textPath]: https://developer.mozilla.org/en-US/docs/Web/SVG/Element/textPath
 [Map Label Placement in Mapbox GL]: https://blog.mapbox.com/map-label-placement-in-mapbox-gl-c6f843a7caaa
+[font-mesh-pipeline]: https://github.com/beanandbean/font-mesh-pipeline
