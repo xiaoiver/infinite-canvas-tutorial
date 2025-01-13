@@ -4,6 +4,7 @@ import {
   Polyline,
   Path,
   parseTransform,
+  Text,
 } from '../../packages/core/src';
 
 describe('Serialize', () => {
@@ -275,6 +276,83 @@ describe('Serialize', () => {
           },
         },
         visible: true,
+      },
+    });
+  });
+
+  it('should serialize content correctly.', () => {
+    const text = new Text({
+      content: 'Hello, World!',
+      fontFamily: 'sans-serif',
+      fontSize: 30,
+      fill: '#F67676',
+    });
+    let serialized = serializeNode(text);
+    expect(serialized).toEqual({
+      type: 'text',
+      children: [],
+      uid: 4,
+      attributes: {
+        batchable: true,
+        cullable: true,
+        fill: '#F67676',
+        fillOpacity: 1,
+        innerShadowBlurRadius: 0,
+        innerShadowColor: 'black',
+        innerShadowOffsetX: 0,
+        innerShadowOffsetY: 0,
+        letterSpacing: 0,
+        lineHeight: 0,
+        opacity: 1,
+        content: 'Hello, World!',
+        fontSize: 30,
+        fontFamily: 'sans-serif',
+        fontStyle: 'normal',
+        fontVariant: 'normal',
+        fontWeight: 400,
+        renderable: true,
+        stroke: 'none',
+        strokeAlignment: 'center',
+        strokeDasharray: '',
+        strokeDashoffset: 0,
+        strokeLinecap: 'butt',
+        strokeLinejoin: 'miter',
+        strokeMiterlimit: 4,
+        strokeOpacity: 1,
+        strokeWidth: 1,
+        transform: {
+          matrix: {
+            a: 1,
+            b: 0,
+            c: 0,
+            d: 1,
+            tx: 0,
+            ty: 0,
+          },
+          pivot: {
+            x: 0,
+            y: 0,
+          },
+          position: {
+            x: 0,
+            y: 0,
+          },
+          rotation: 0,
+          scale: {
+            x: 1,
+            y: 1,
+          },
+          skew: {
+            x: 0,
+            y: 0,
+          },
+        },
+        visible: true,
+        whiteSpace: 'normal',
+        wordWrap: false,
+        wordWrapWidth: 0,
+        x: 0,
+        y: 0,
       },
     });
   });

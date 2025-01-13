@@ -6,6 +6,7 @@ publish: false
 <script setup>
 import MSDFText from '../components/MSDFText.vue';
 import BitmapFont from '../components/BitmapFont.vue';
+import Emoji from '../components/Emoji.vue';
 </script>
 
 # Lesson 15 - Text Rendering
@@ -701,6 +702,8 @@ const kerning = kernedWidth - unkernedWidth; // a negative value indicates you s
 In some emoji rendering implementations, such as [EmojiEngine], a pre-generated emoji atlas approach is used. However, this approach not only has texture size limitations but also cannot maintain the platform-specific emoji appearance across different platforms. Therefore, similar to SDF, we want to generate emojis on-demand at runtime on the current platform.
 
 The biggest difference between this approach and SDF is that we cannot only preserve the alpha channel, but need to retain all three RGB channels for subsequent distance field reconstruction.
+
+<Emoji />
 
 ## Extended reading {#extended-reading}
 

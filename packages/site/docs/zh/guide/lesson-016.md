@@ -12,6 +12,16 @@ publish: false
 -   文本选中
 -   文本跟随路径
 
+## 输入框 {#textarea}
+
+目前我们只实现了文本的绘制，实际在应用中，文本输入框是必不可少的。下图来自 Figma
+
+![textarea in figma](/textarea-in-figma.png)
+
+## 使用 Path 渲染文本
+
+使用 Figma 的导出 SVG 功能可以发现，它的文本是使用 Path 渲染的。
+
 ## Material Design on the GPU {#material-design-on-the-gpu}
 
 [Material Design on the GPU]

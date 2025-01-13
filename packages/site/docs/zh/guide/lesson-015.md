@@ -6,6 +6,7 @@ publish: false
 <script setup>
 import MSDFText from '../../components/MSDFText.vue';
 import BitmapFont from '../../components/BitmapFont.vue';
+import Emoji from '../../components/Emoji.vue';
 </script>
 
 # 课程 15 - 文本渲染
@@ -704,6 +705,20 @@ const kerning = kernedWidth - unkernedWidth; // a negative value indicates you s
 在一些绘制 emoji 的实现中，例如 [EmojiEngine] 采用的是预生成 emoji atlas 的方式，但这样做的问题除了纹理大小，也无法保持不同平台上 emoji 展示各异的效果。因此我们希望和 SDF 一样，在当前平台的运行时按需生成。
 
 这种做法和 SDF 最大的不同是，不能仅仅保留 alpha 通道，而是需要保留 RGB 三个通道，用于后续的距离场重建。
+
+```ts
+this.glyphAtlasTexture = device.createTexture({
+    ...makeTextureDescriptor2D(
+        Format.U8_R_NORM, // [!code --]
+        Format.U8_RGBA_NORM, // [!code ++]
+        atlasWidth,
+        atlasHeight,
+        1,
+    ),
+});
+```
+
+<Emoji />
 
 ## 扩展阅读 {#extended-reading}
 

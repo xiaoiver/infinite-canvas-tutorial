@@ -18,6 +18,8 @@ const canvasRef = useTemplateRef('canvas');
 onMounted(() => {
   const $canvas = canvasRef.value;
 
+  if (!$canvas) return;
+
   $canvas.parentElement.appendChild($stats);
 
   $canvas.addEventListener('ic-ready', (e) => {

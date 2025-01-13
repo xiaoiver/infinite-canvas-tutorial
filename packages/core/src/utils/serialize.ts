@@ -10,6 +10,7 @@ import {
   Polyline,
   Path,
   Rect,
+  Text,
   Shape,
   RoughRect,
   shiftPoints,
@@ -29,6 +30,7 @@ import {
 import { IRough } from '../shapes/mixins/Rough';
 import { Drawable } from 'roughjs/bin/core';
 import { opSet2Absolute } from './rough';
+import { fontStringFromTextStyle } from './font';
 
 type SerializedTransform = {
   matrix: {
@@ -116,6 +118,21 @@ const rectAttributes = [
 ] as const;
 const polylineAttributes = ['points'] as const;
 const pathAttributes = ['d'] as const;
+const textAttributes = [
+  'x',
+  'y',
+  'content',
+  'fontFamily',
+  'fontSize',
+  'fontWeight',
+  'fontStyle',
+  'fontVariant',
+  'letterSpacing',
+  'lineHeight',
+  'whiteSpace',
+  'wordWrap',
+  'wordWrapWidth',
+] as const;
 
 /**
  * No need to output default value in SVG Element.
@@ -155,6 +172,7 @@ type EllipseAttributeName = (typeof ellipseAttributes)[number];
 type RectAttributeName = (typeof rectAttributes)[number];
 type PolylineAttributeName = (typeof polylineAttributes)[number];
 type PathAttributeName = (typeof pathAttributes)[number];
+type TextAttributeName = (typeof textAttributes)[number];
 
 interface SerializedNode {
   uid: number;
@@ -165,6 +183,7 @@ interface SerializedNode {
     | 'rect'
     | 'polyline'
     | 'path'
+    | 'text'
     | 'rough-circle'
     | 'rough-ellipse'
     | 'rough-rect'
@@ -177,6 +196,7 @@ interface SerializedNode {
     Partial<Pick<Rect, RectAttributeName>> &
     Partial<Pick<Polyline, PolylineAttributeName>> &
     Partial<Pick<Path, PathAttributeName>> &
+    Partial<Pick<Text, TextAttributeName>> &
     Partial<IRough & { drawableSets: Drawable['sets'] }>;
   children?: SerializedNode[];
 }
@@ -200,7 +220,8 @@ export function typeofShape(
       ...(typeof polylineAttributes & typeof renderableAttributes),
     ]
   | ['rough-path', ...(typeof pathAttributes & typeof renderableAttributes)]
-  | ['path', ...(typeof pathAttributes & typeof renderableAttributes)] {
+  | ['path', ...(typeof pathAttributes & typeof renderableAttributes)]
+  | ['text', ...(typeof textAttributes & typeof renderableAttributes)] {
   if (shape instanceof Group) {
     return ['g', commonAttributes];
   } else if (shape instanceof Circle) {
@@ -213,6 +234,8 @@ export function typeofShape(
     return ['polyline', [...renderableAttributes, ...polylineAttributes]];
   } else if (shape instanceof Path) {
     return ['path', [...renderableAttributes, ...pathAttributes]];
+  } else if (shape instanceof Text) {
+    return ['text', [...renderableAttributes, ...textAttributes]];
   } else if (shape instanceof RoughCircle) {
     return [
       'rough-circle',
@@ -256,6 +279,8 @@ export async function deserializeNode(data: SerializedNode) {
     shape = new Polyline();
   } else if (type === 'path') {
     shape = new Path();
+  } else if (type === 'text') {
+    shape = new Text();
   } else if (type === 'rough-circle') {
     shape = new RoughCircle();
     // TODO: implement with path
@@ -600,6 +625,45 @@ export function exportFillImage(
   element.setAttribute('fill', `url(#${$pattern.id})`);
 }
 
+/**
+ * use <text> and <tspan> to render text.
+ * @see https://developer.mozilla.org/en-US/docs/Web/SVG/Element/text#example
+ */
+export function exportText(
+  node: SerializedNode,
+  $g: SVGElement,
+  doc: Document,
+) {
+  const {
+    content,
+    fontFamily,
+    fontSize,
+    fontWeight,
+    fontStyle,
+    fontVariant,
+    fill,
+  } = node.attributes;
+  $g.textContent = content;
+
+  let styleCSSText = '';
+  const fontStyleString = fontStringFromTextStyle({
+    fontFamily,
+    fontSize,
+    fontWeight,
+    fontStyle,
+    fontVariant,
+  });
+  if (fontStyleString) {
+    styleCSSText += `font: ${fontStyleString};`;
+  }
+  if (fill) {
+    styleCSSText += `fill: ${fill as string};`;
+  }
+  if (styleCSSText) {
+    $g.setAttribute('style', styleCSSText);
+  }
+}
+
 export function exportRough(
   node: SerializedNode,
   $g: SVGElement,
@@ -652,6 +716,17 @@ export function toSVGElement(node: SerializedNode, doc?: Document) {
     strokeAlignment,
     cornerRadius,
     zIndex,
+    fontFamily,
+    fontSize,
+    fontWeight,
+    fontStyle,
+    fontVariant,
+    content,
+    letterSpacing,
+    lineHeight,
+    whiteSpace,
+    wordWrap,
+    wordWrapWidth,
     ...rest
   } = attributes;
 
@@ -742,6 +817,9 @@ export function toSVGElement(node: SerializedNode, doc?: Document) {
   }
   if (isRough) {
     exportRough(node, $g, doc);
+  }
+  if (content) {
+    exportText(node, $g, doc);
   }
 
   const { a, b, c, d, tx, ty } = transform.matrix;
