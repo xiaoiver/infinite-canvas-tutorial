@@ -46,9 +46,11 @@ export function getGlyphQuads(
 
     const pixelRatio = 1;
     const paddedWidth =
-      (rect.w * positionedGlyph.scale) / (pixelRatio * SDF_SCALE);
+      (rect.w * positionedGlyph.scale) /
+      (pixelRatio * (useMSDF ? 1 : SDF_SCALE));
     const paddedHeight =
-      (rect.h * positionedGlyph.scale) / (pixelRatio * SDF_SCALE);
+      (rect.h * positionedGlyph.scale) /
+      (pixelRatio * (useMSDF ? 1 : SDF_SCALE));
 
     const x1 =
       (glyph.metrics.left - rectBuffer) * positionedGlyph.scale -

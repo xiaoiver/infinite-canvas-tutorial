@@ -81,6 +81,7 @@ export class TinySDF {
     fontFamily = 'sans-serif',
     fontWeight = 'normal',
     fontStyle = 'normal',
+    fill = 'black',
   } = {}) {
     this.buffer = buffer;
     this.cutoff = cutoff;
@@ -98,7 +99,7 @@ export class TinySDF {
 
     ctx.textBaseline = 'alphabetic';
     ctx.textAlign = 'left'; // Necessary so that RTL text doesn't have different alignment
-    ctx.fillStyle = 'black';
+    ctx.fillStyle = fill;
   }
 
   _createCanvas(size: number) {
@@ -107,7 +108,7 @@ export class TinySDF {
     return canvas;
   }
 
-  draw(char: string, esdt = false) {
+  draw(char: string, esdt = false, color = false) {
     const {
       width: glyphAdvance,
       actualBoundingBoxAscent,
@@ -161,7 +162,7 @@ export class TinySDF {
     if (esdt) {
       ({ data, width, height } = glyphToESDT(
         imageData.data,
-        null,
+        color ? imageData.data : null,
         w,
         h,
         pad,
@@ -257,6 +258,8 @@ export const edt = (
 // Helpers
 export const isBlack = (x: number) => !x;
 export const isWhite = (x: number) => x === 1;
+// export const isBlack = (x: number) => x === 1;
+// export const isWhite = (x: number) => !x;
 export const isSolid = (x: number) => !(x && 1 - x);
 
 export const sqr = (x: number) => x * x;

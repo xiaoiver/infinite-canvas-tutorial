@@ -1,7 +1,7 @@
 <script setup>
 import { Text, Rect, loadBitmapFont } from '@infinite-canvas-tutorial/core';
 import '@infinite-canvas-tutorial/ui';
-import { useTemplateRef, onMounted } from 'vue';
+import { ref, onMounted } from 'vue';
 import Stats from 'stats.js';
 
 let canvas;
@@ -13,10 +13,10 @@ $stats.style.position = 'absolute';
 $stats.style.left = '0px';
 $stats.style.top = '0px';
 
-const canvasRef = useTemplateRef('canvas');
+const wrapper = ref(null);
 
 onMounted(() => {
-  const $canvas = canvasRef.value;
+  const $canvas = wrapper.value;
 
   if (!$canvas) return;
 
@@ -63,6 +63,6 @@ onMounted(() => {
 
 <template>
   <div style="position: relative;">
-    <ic-canvas ref="canvas" style="height: 200px" zoom="250"></ic-canvas>
+    <ic-canvas ref="wrapper" style="height: 200px" zoom="250"></ic-canvas>
   </div>
 </template>

@@ -43,7 +43,7 @@ export type PositionedGlyph = {
 export const SDF_SCALE = 1;
 export const BASE_FONT_WIDTH = 24 * SDF_SCALE;
 export const BASE_FONT_BUFFER = 3 * SDF_SCALE;
-export const radius = 8 * SDF_SCALE;
+export const RADIUS = 8 * SDF_SCALE;
 
 export function getDefaultCharacterSet(): string[] {
   const charSet = [];
@@ -53,13 +53,8 @@ export function getDefaultCharacterSet(): string[] {
   return charSet;
 }
 
-/**
- * TODO: use one atlas for all fontstacks, each fontstack has one texture now
- */
 export class GlyphManager {
   private sdfGeneratorCache: Record<string, TinySDF> = {};
-
-  private textMetricsCache: Record<string, Record<string, number>> = {};
 
   private glyphAtlas: GlyphAtlas;
   private glyphMap: Record<string, Record<string, StyleGlyph>> = {};
@@ -160,6 +155,7 @@ export class GlyphManager {
     text: string,
     device: Device,
     esdt: boolean,
+    fill: string,
   ) {
     let newChars: string[] = [];
     if (!this.glyphMap[fontStack]) {
@@ -185,6 +181,7 @@ export class GlyphManager {
             fontStyle,
             char,
             esdt,
+            fill,
           );
         })
         .reduce((prev, cur) => {
@@ -231,29 +228,19 @@ export class GlyphManager {
     fontStyle: string,
     char: string,
     esdt: boolean,
+    fill: string,
   ): StyleGlyph {
-    let sdfGenerator = this.sdfGeneratorCache[fontStack];
+    let sdfGenerator = this.sdfGeneratorCache[fontStack + fill];
     if (!sdfGenerator) {
-      sdfGenerator = this.sdfGeneratorCache[fontStack] = new TinySDF({
+      sdfGenerator = this.sdfGeneratorCache[fontStack + fill] = new TinySDF({
         fontSize: BASE_FONT_WIDTH,
         fontFamily,
         fontWeight,
         fontStyle,
         buffer: BASE_FONT_BUFFER,
-        radius,
+        radius: RADIUS,
+        fill,
       });
-    }
-
-    if (!this.textMetricsCache[fontStack]) {
-      this.textMetricsCache[fontStack] = {};
-    }
-
-    if (!this.textMetricsCache[fontStack][char]) {
-      // 使用 mapbox/tiny-sdf 中的 context
-      // @see https://stackoverflow.com/questions/46126565/how-to-get-font-glyphs-metrics-details-in-javascript
-      this.textMetricsCache[fontStack][char] =
-        // @ts-ignore
-        sdfGenerator.ctx.measureText(char).width;
     }
 
     // use sdf 2.x @see https://github.com/mapbox/tiny-sdf
@@ -266,7 +253,7 @@ export class GlyphManager {
       glyphLeft,
       glyphTop,
       glyphAdvance,
-    } = sdfGenerator.draw(char, esdt);
+    } = sdfGenerator.draw(char, esdt, !!fill);
 
     return {
       id: char,

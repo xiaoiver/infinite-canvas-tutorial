@@ -28,6 +28,7 @@ import {
   SDF_SCALE,
   BitmapFont,
   GlyphPositions,
+  containsEmoji,
 } from '../utils';
 
 export class SDFText extends Drawcall {
@@ -62,8 +63,18 @@ export class SDFText extends Drawcall {
   }
 
   createGeometry(): void {
-    const { metrics, fontFamily, fontWeight, fontStyle, bitmapFont, esdt } =
-      this.shapes[0] as Text;
+    const {
+      metrics,
+      fontFamily,
+      fontWeight,
+      fontStyle,
+      bitmapFont,
+      esdt,
+      content,
+      fill,
+    } = this.shapes[0] as Text;
+
+    const hasEmoji = containsEmoji(content);
 
     const indices: number[] = [];
     const positions: number[] = [];
@@ -86,6 +97,7 @@ export class SDFText extends Drawcall {
         allText,
         this.device,
         esdt,
+        hasEmoji ? (fill as string) : '',
       );
     }
 
@@ -201,6 +213,13 @@ export class SDFText extends Drawcall {
       }
     } else {
       defines += '#define USE_SDF\n';
+
+      const { content } = this.shapes[0] as Text;
+      const hasEmoji = containsEmoji(content);
+      if (hasEmoji) {
+        defines += '#define USE_EMOJI\n';
+      }
+
       glyphAtlasTexture = this.#glyphManager.getAtlasTexture();
     }
 

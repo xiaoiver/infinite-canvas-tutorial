@@ -31,7 +31,9 @@ export const paintIntoStage = (
   inner.fill(0, 0, np);
 
   // const getData = (x: number, y: number) => data[y * w + x] ?? 0;
-  const getData = (x: number, y: number) => data[4 * (y * w + x) + 3] ?? 0;
+  // const getData = (x: number, y: number) => data[4 * (y * w + x) + 3] ?? 0;
+  const getData = (x: number, y: number) =>
+    (data[4 * (y * w + x) + 3] ?? 0) / 255;
 
   for (let y = 0; y < h; y++) {
     for (let x = 0; x < w; x++) {
@@ -39,7 +41,7 @@ export const paintIntoStage = (
       if (!a) continue;
 
       const i = (y + pad) * wp + x + pad;
-      if (a >= 254) {
+      if (a >= 254 / 255) {
         // Fix for bad rasterizer rounding
         data[4 * (y * w + x) + 3] = 255;
 
@@ -417,7 +419,7 @@ export const relaxSubpixelOffsets = (
 // Paint original color data into final RGBA (emoji)
 export const paintIntoRGB = (
   image: Uint8Array,
-  color: Uint8Array | number[],
+  color: Uint8ClampedArray,
   xs: Float32Array,
   ys: Float32Array,
   w: number,
@@ -590,7 +592,7 @@ export const esdt = (
 // Convert grayscale or color glyph to SDF using subpixel distance transform
 export const glyphToESDT = (
   data: Uint8ClampedArray,
-  color: Uint8Array | null,
+  color: Uint8ClampedArray | null,
   w: number,
   h: number,
   pad: number = 4,

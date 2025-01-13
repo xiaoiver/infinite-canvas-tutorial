@@ -110,7 +110,9 @@ void main() {
     float dist;
     lowp float buff;
     #ifdef USE_SDF
-      // fillColor = texture(SAMPLER_2D(u_Texture), v_Uv);
+      #ifdef USE_EMOJI
+        fillColor = texture(SAMPLER_2D(u_Texture), v_Uv);
+      #endif
       dist = texture(SAMPLER_2D(u_Texture), v_Uv).a;
       buff = (256.0 - 64.0) / 256.0;
     #endif
@@ -132,6 +134,7 @@ void main() {
 
     highp float gamma_scaled = fwidth(dist);
     highp float alpha = smoothstep(buff - gamma_scaled, buff + gamma_scaled, dist);
+    // alpha = dist;
     opacity *= alpha;
 
     outputColor = fillColor;

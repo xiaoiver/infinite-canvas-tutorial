@@ -1,16 +1,16 @@
 <script setup>
 import { Circle } from '@infinite-canvas-tutorial/core';
 import '@infinite-canvas-tutorial/ui';
-import { useTemplateRef, onMounted } from 'vue';
+import { ref, onMounted } from 'vue';
 import { load } from '@loaders.gl/core';
 import { ArrowLoader } from '@loaders.gl/arrow';
 
 let canvas;
 
-const canvasRef = useTemplateRef('canvas');
+const wrapper = ref(null);
 
 onMounted(() => {
-  const $canvas = canvasRef.value;
+  const $canvas = wrapper.value;
 
   if (!$canvas) return;
 
@@ -40,5 +40,5 @@ onMounted(() => {
 </script>
 
 <template>
-  <ic-canvas ref="canvas"></ic-canvas>
+  <ic-canvas ref="wrapper"></ic-canvas>
 </template>
