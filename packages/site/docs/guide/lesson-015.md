@@ -718,7 +718,7 @@ const kernedWidth = tinySdf.ctx.measureText('AV').width;
 const kerning = kernedWidth - unkernedWidth; // a negative value indicates you should adjust the SDFs closer together by that much
 ```
 
-## emoji {#emoji}
+### emoji {#emoji}
 
 In some emoji rendering implementations, such as [EmojiEngine], a pre-generated emoji atlas approach is used. However, this approach not only has texture size limitations but also cannot maintain the platform-specific emoji appearance across different platforms. Therefore, similar to SDF, we want to generate emojis on-demand at runtime on the current platform.
 

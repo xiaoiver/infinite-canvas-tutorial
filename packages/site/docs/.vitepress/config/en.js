@@ -65,6 +65,7 @@ export const en = defineConfig({
               { text: 'Lesson 013 - Draw path and sketchy style', link: 'lesson-013' },
               { text: 'Lesson 014 - Canvas mode and auxiliary UI', link: 'lesson-014' },
               { text: 'Lesson 015 - Text rendering', link: 'lesson-015' },
+              { text: 'Lesson 016 - Text advanced features', link: 'lesson-016' },
             ],
           },
         ],

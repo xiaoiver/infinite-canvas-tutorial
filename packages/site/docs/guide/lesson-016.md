@@ -3,18 +3,30 @@ outline: deep
 publish: false
 ---
 
-# 课程 16 - 文本的高级特性
+# 课程 16 - 绘制文本高级特性
 
-在上一节课中，我们介绍了基于 SDF 的文本渲染的原理，另外也提到过 CanvasKit 相比 Canvas 提供的文本高级绘制特性。
-在本节课中，我们首先会来看看 SDF 之外的绘制方式，然后将讨论并尝试实现这些特性：装饰线、阴影、文本跟随路径，最后文本不光要能渲染，也要有良好的交互，我们讲讨论输入框、文本选中以及 A11y 这些话题。
+在上一节课中，我们介绍了文本渲染的原理，其中提到过 CanvasKit 相比 Canvas 提供了文本的一些高级绘制特性。本节课我们就将讨论这些特性：
 
-首先我们来看看除了 SDF 之外，还有哪些文本渲染方式。
+-   装饰线
+-   阴影
+-   文本选中
+-   文本跟随路径
 
 ## 使用 Path 渲染文本
 
 使用 Figma 的导出 SVG 功能可以发现，它的文本是使用 Path 渲染的。
 
 我发现 [font-mesh-pipeline] 这个项目的思路很有趣，它使用 harfbuzz WASM 生成矢量化字体，然后使用 GPU 绘制。
+
+## 输入框 {#textarea}
+
+目前我们只实现了文本的绘制，实际在应用中，文本输入框是必不可少的。下图来自 Figma
+
+![textarea in figma](/textarea-in-figma.png)
+
+## Material Design on the GPU {#material-design-on-the-gpu}
+
+[Material Design on the GPU]
 
 ## 装饰线 {#text-decoration}
 
@@ -62,23 +74,9 @@ canvas.drawTextBlob(textblob, 0, 0, textPaint);
 
 ![Map Label Placement in Mapbox GL](https://miro.medium.com/v2/resize:fit:480/format:webp/0*qVAASwC-tjIXnjax.gif)
 
-## 更友好的交互方式 {#more-friendly-interaction}
+## 文本选中 {#text-selection}
 
-### 输入框 {#textarea}
-
-目前我们只实现了文本的绘制，实际在应用中，文本输入框是必不可少的。下图来自 Figma
-
-![textarea in figma](/textarea-in-figma.png)
-
-### 文本选中 {#text-selection}
-
-## 特殊效果 {#special-effects}
-
-### 加载字体 {#load-font}
-
-### Material Design on the GPU {#material-design-on-the-gpu}
-
-[Material Design on the GPU]
+## 加载字体 {#load-font}
 
 ## 扩展阅读 {#extended-reading}
 

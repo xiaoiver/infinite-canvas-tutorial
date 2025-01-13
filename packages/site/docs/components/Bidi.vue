@@ -39,7 +39,7 @@ onMounted(() => {
             y: 150,
             content: 'سلام',
             fontSize: 30,
-            fill: '#F67676',
+            fill: 'green',
         });
         canvas.appendChild(text2);
     });

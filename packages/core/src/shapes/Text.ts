@@ -134,6 +134,9 @@ export interface TextAttributes extends ShapeAttributes {
    */
   esdt: boolean;
 
+  /**
+   * BiDi chars after doing metrics.
+   */
   bidiChars: string;
 }
 
@@ -166,6 +169,9 @@ export function TextWrapper<TBase extends GConstructor>(Base: TBase) {
     bitmapFontKerning: boolean;
     esdt: boolean;
     bidiChars: string;
+
+    batchable = false;
+
     static getGeometryBounds(
       attributes: Partial<TextAttributes> & { metrics: TextMetrics },
     ) {

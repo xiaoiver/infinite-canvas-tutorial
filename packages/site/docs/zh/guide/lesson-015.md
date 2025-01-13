@@ -10,7 +10,7 @@ import Emoji from '../../components/Emoji.vue';
 import Bidi from '../../components/Bidi.vue';
 </script>
 
-# 课程 15 - 文本渲染
+# 课程 15 - 绘制文本
 
 文本渲染是一个非常复杂的过程，[State of Text Rendering 2024] 中给出了非常详细的介绍，强烈推荐你阅读这篇综述文章。
 
