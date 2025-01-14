@@ -143,6 +143,10 @@ export const zh = defineConfig({
                 text: '绘制双向文字',
                 link: 'bidi',
               },
+              {
+                text: '使用 HarfBuzz',
+                link: 'harfbuzz',
+              },
             ],
           },
         ],

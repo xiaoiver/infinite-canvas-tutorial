@@ -25,7 +25,7 @@ onMounted(() => {
   $canvas.addEventListener('ic-ready', async (e) => {
     canvas = e.detail;
 
-    const res = await window.fetch('/msdf-sans-serif.json');
+    const res = await window.fetch('/fonts/msdf-sans-serif.json');
     const font = await loadBitmapFont.parse(await res.text());
 
     {

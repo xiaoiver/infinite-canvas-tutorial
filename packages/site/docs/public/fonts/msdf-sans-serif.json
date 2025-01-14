@@ -1,5 +1,7 @@
 {
-  "pages": ["/msdf-atlas-sans-serif.png"],
+  "pages": [
+    "/fonts/msdf-atlas-sans-serif.png"
+  ],
   "chars": [
     {
       "id": 40,
@@ -1513,8 +1515,16 @@
     "stretchH": 100,
     "smooth": 1,
     "aa": 1,
-    "padding": [2, 2, 2, 2],
-    "spacing": [0, 0]
+    "padding": [
+      2,
+      2,
+      2,
+      2
+    ],
+    "spacing": [
+      0,
+      0
+    ]
   },
   "common": {
     "lineHeight": 45,

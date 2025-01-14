@@ -25,7 +25,7 @@ onMounted(() => {
   $canvas.addEventListener('ic-ready', async (e) => {
     canvas = e.detail;
 
-    const res = await window.fetch('/desyrel.xml');
+    const res = await window.fetch('/fonts/desyrel.xml');
     const font = await loadBitmapFont.parse(await res.text());
 
     {

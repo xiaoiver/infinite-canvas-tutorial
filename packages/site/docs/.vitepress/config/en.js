@@ -161,6 +161,10 @@ export const en = defineConfig({
                 text: 'Draw bidirectional text',
                 link: 'bidi',
               },
+              {
+                text: 'Shaping with HarfBuzz',
+                link: 'harfbuzz',
+              },
             ],
           },
         ],

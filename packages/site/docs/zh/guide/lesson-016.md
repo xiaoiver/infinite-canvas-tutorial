@@ -5,16 +5,38 @@ publish: false
 
 # 课程 16 - 文本的高级特性
 
-在上一节课中，我们介绍了基于 SDF 的文本渲染的原理，另外也提到过 CanvasKit 相比 Canvas 提供的文本高级绘制特性。
+在上一节课中，我们介绍了基于 SDF 的文本渲染的原理，也尝试使用了 ESDT 和 MSDF 提升渲染质量，另外也提到过 CanvasKit 相比 Canvas 提供的文本高级绘制特性。
+
 在本节课中，我们首先会来看看 SDF 之外的绘制方式，然后将讨论并尝试实现这些特性：装饰线、阴影、文本跟随路径，最后文本不光要能渲染，也要有良好的交互，我们讲讨论输入框、文本选中以及 A11y 这些话题。
 
 首先我们来看看除了 SDF 之外，还有哪些文本渲染方式。
 
-## 使用 Path 渲染文本
+## 使用贝塞尔曲线渲染文本 {#render-text-with-bezier-curve}
 
-使用 Figma 的导出 SVG 功能可以发现，它的文本是使用 Path 渲染的。
+使用 Figma 的导出 SVG 功能可以发现，它的文本也是使用 Path 渲染的。如果不考虑渲染性能和 CJK 字符，使用贝塞尔曲线渲染文本确实是不错的选择。为了得到字符的矢量信息，在浏览器环境可以使用：
 
-我发现 [font-mesh-pipeline] 这个项目的思路很有趣，它使用 harfbuzz WASM 生成矢量化字体，然后使用 GPU 绘制。
+-   [opentype.js]
+-   use-gpu 使用的是基于 [ab-glyph](https://github.com/alexheretic/ab-glyph) 封装的 [use-gpu-text]
+-   越来越多的应用使用 [harfbuzzjs]，详见：[State of Text Rendering 2024]。[font-mesh-pipeline] 是一个简单的示例
+
+### opentype.js
+
+```ts
+opentype.load('fonts/Roboto-Black.ttf', function (err, font) {
+    const path = font.getPath('Hello, World!', 0, 0, 32); // x, y, fontSize
+});
+```
+
+### harfbuzzjs
+
+```ts
+import init from 'harfbuzzjs/hb.wasm?init';
+import hbjs, { HBBlob, HBFace, HBFont, HBHandle } from 'harfbuzzjs/hbjs.js';
+
+init().then((instance) => {
+    const hb = hbjs(instance);
+});
+```
 
 ## 装饰线 {#text-decoration}
 
@@ -96,3 +118,7 @@ canvas.drawTextBlob(textblob, 0, 0, textPaint);
 [textPath]: https://developer.mozilla.org/en-US/docs/Web/SVG/Element/textPath
 [Map Label Placement in Mapbox GL]: https://blog.mapbox.com/map-label-placement-in-mapbox-gl-c6f843a7caaa
 [font-mesh-pipeline]: https://github.com/beanandbean/font-mesh-pipeline
+[opentype.js]: https://github.com/opentypejs/opentype.js
+[use-gpu-text]: https://gitlab.com/unconed/use.gpu/-/tree/master/rust/use-gpu-text
+[harfbuzzjs]: https://github.com/harfbuzz/harfbuzzjs
+[State of Text Rendering 2024]: https://behdad.org/text2024/

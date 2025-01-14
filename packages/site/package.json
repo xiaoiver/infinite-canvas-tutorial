@@ -50,6 +50,8 @@
     "markdown-it-implicit-figures": "latest",
     "markdown-it-mathjax3": "latest",
     "stats.js": "^0.17.0",
-    "lil-gui": "^0.19.2"
+    "lil-gui": "^0.19.2",
+    "opentype.js": "^1.3.4",
+    "harfbuzzjs": "^0.3.1"
   }
 }
