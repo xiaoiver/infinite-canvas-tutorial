@@ -43,7 +43,11 @@ export default defineConfig({
       chunkSizeWarningLimit: 800,
     },
     ssr: {
-      noExternal: ['@antv/g-device-api', 'ant-design-vue'],
+      noExternal: [
+        '@antv/g-device-api',
+        'ant-design-vue',
+        '@ant-design/icons-vue',
+      ],
     },
     plugins: [
       VueMacros({

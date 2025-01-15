@@ -56,16 +56,28 @@ export const en = defineConfig({
                 text: 'Lesson 009 - Draw ellipse and rectangle',
                 link: 'lesson-009',
               },
-              { 
+              {
                 text: 'Lesson 010 - Import and export images',
-                link: 'lesson-010'
+                link: 'lesson-010',
               },
-              { text: 'Lesson 011 - Test and server-side rendering', link: 'lesson-011' },
+              {
+                text: 'Lesson 011 - Test and server-side rendering',
+                link: 'lesson-011',
+              },
               { text: 'Lesson 012 - Draw polyline', link: 'lesson-012' },
-              { text: 'Lesson 013 - Draw path and sketchy style', link: 'lesson-013' },
-              { text: 'Lesson 014 - Canvas mode and auxiliary UI', link: 'lesson-014' },
+              {
+                text: 'Lesson 013 - Draw path and sketchy style',
+                link: 'lesson-013',
+              },
+              {
+                text: 'Lesson 014 - Canvas mode and auxiliary UI',
+                link: 'lesson-014',
+              },
               { text: 'Lesson 015 - Text rendering', link: 'lesson-015' },
-              { text: 'Lesson 016 - Text advanced features', link: 'lesson-016' },
+              {
+                text: 'Lesson 016 - Text advanced features',
+                link: 'lesson-016',
+              },
             ],
           },
         ],
@@ -100,6 +112,7 @@ export const en = defineConfig({
           {
             text: 'Example',
             items: [
+              { text: 'WebGPU', link: 'webgpu' },
               { text: 'A polar system', link: 'solar-system' },
               {
                 text: 'Reduce draw calls with culling',

@@ -85,6 +85,7 @@ export const zh = defineConfig({
           {
             text: '案例',
             items: [
+              { text: '使用 WebGPU', link: 'webgpu' },
               { text: '一个太阳系模型', link: 'solar-system' },
               { text: '通过剔除减少 draw call', link: 'culling' },
               {
