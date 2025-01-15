@@ -188,6 +188,8 @@ pnpm run dev
 <img src="./screenshots/lesson15.png" width="300" alt="Lesson 15 - text">
 <img src="./screenshots/lesson15-2.png" width="300" alt="Lesson 15 - text">
 
+## 课程 16 - 文本的高级特性 [🔗](https://infinitecanvas.cc/zh/guide/lesson-016)
+
 [infinitecanvas]: https://infinitecanvas.tools/
 [Figma]: https://madebyevan.com/figma/building-a-professional-design-tool-on-the-web/
 [Modyfi]: https://digest.browsertech.com/archive/browsertech-digest-how-modyfi-is-building-with/

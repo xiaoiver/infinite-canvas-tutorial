@@ -293,7 +293,7 @@ describe('Serialize', () => {
       children: [],
       uid: 4,
       attributes: {
-        batchable: true,
+        batchable: false,
         cullable: true,
         fill: '#F67676',
         fillOpacity: 1,

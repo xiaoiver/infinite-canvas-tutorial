@@ -112,6 +112,10 @@ export const zh = defineConfig({
                 link: 'exporter',
               },
               {
+                text: '导入 SVG',
+                link: 'import-svg',
+              },
+              {
                 text: 'wikipedia 数据集可视化',
                 link: 'wikipedia-datamap',
               },
@@ -144,8 +148,16 @@ export const zh = defineConfig({
                 link: 'bidi',
               },
               {
-                text: '使用 HarfBuzz',
+                text: '使用 HarfBuzz 进行 Shaping',
                 link: 'harfbuzz',
+              },
+              {
+                text: '使用 Opentype.js 进行 Shaping',
+                link: 'opentype',
+              },
+              {
+                text: '加载 Web 字体',
+                link: 'web-font-loader',
               },
             ],
           },

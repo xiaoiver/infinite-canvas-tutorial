@@ -3,6 +3,10 @@ outline: deep
 publish: false
 ---
 
+<script setup>
+import WebFontLoader from '../../components/WebFontLoader.vue';
+</script>
+
 # 课程 16 - 文本的高级特性
 
 在上一节课中，我们介绍了基于 SDF 的文本渲染的原理，也尝试使用了 ESDT 和 MSDF 提升渲染质量，另外也提到过 CanvasKit 相比 Canvas 提供的文本高级绘制特性。
@@ -84,6 +88,11 @@ canvas.drawTextBlob(textblob, 0, 0, textPaint);
 
 ![Map Label Placement in Mapbox GL](https://miro.medium.com/v2/resize:fit:480/format:webp/0*qVAASwC-tjIXnjax.gif)
 
+## TeX math rendering {#tex-math-rendering}
+
+-   https://github.com/KaTeX/KaTeX
+-   https://motioncanvas.io/docs/Latex
+
 ## 更友好的交互方式 {#more-friendly-interaction}
 
 ### 输入框 {#textarea}
@@ -96,7 +105,30 @@ canvas.drawTextBlob(textblob, 0, 0, textPaint);
 
 ## 特殊效果 {#special-effects}
 
-### 加载字体 {#load-font}
+### 加载 Web 字体 {#load-web-font}
+
+[webfontloader]
+
+```ts
+import WebFont from 'webfontloader';
+WebFont.load({
+    google: {
+        families: ['Gaegu'],
+    },
+    active: () => {
+        const text = new Text({
+            x: 150,
+            y: 150,
+            content: 'Hello, world',
+            fontFamily: 'Gaegu',
+            fontSize: 55,
+            fill: '#F67676',
+        });
+    },
+});
+```
+
+<WebFontLoader />
 
 ### Material Design on the GPU {#material-design-on-the-gpu}
 
@@ -122,3 +154,4 @@ canvas.drawTextBlob(textblob, 0, 0, textPaint);
 [use-gpu-text]: https://gitlab.com/unconed/use.gpu/-/tree/master/rust/use-gpu-text
 [harfbuzzjs]: https://github.com/harfbuzz/harfbuzzjs
 [State of Text Rendering 2024]: https://behdad.org/text2024/
+[webfontloader]: https://github.com/typekit/webfontloader

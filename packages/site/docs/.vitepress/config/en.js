@@ -130,6 +130,10 @@ export const en = defineConfig({
                 link: 'exporter',
               },
               {
+                text: 'Import SVG',
+                link: 'import-svg',
+              },
+              {
                 text: 'Wikipedia Datamap',
                 link: 'wikipedia-datamap',
               },
@@ -164,6 +168,14 @@ export const en = defineConfig({
               {
                 text: 'Shaping with HarfBuzz',
                 link: 'harfbuzz',
+              },
+              {
+                text: 'Shaping with Opentype.js',
+                link: 'opentype',
+              },
+              {
+                text: 'Load web font',
+                link: 'web-font-loader',
               },
             ],
           },

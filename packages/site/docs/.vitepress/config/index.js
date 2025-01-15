@@ -1,4 +1,6 @@
 import { defineConfig } from 'vitepress';
+import vueJsx from '@vitejs/plugin-vue-jsx';
+import VueMacros from 'unplugin-vue-macros/vite';
 import { genjiAttrs } from 'genji-theme-vitepress/config';
 import config from 'genji-theme-vitepress/config';
 import implicitFigures from 'markdown-it-implicit-figures';
@@ -16,7 +18,7 @@ export default defineConfig({
       });
       md.use(genjiAttrs);
     },
-    math: true
+    math: true,
   },
   cleanUrls: true,
   extends: config,
@@ -41,17 +43,24 @@ export default defineConfig({
       chunkSizeWarningLimit: 800,
     },
     ssr: {
-      noExternal: ["@antv/g-device-api"]
+      noExternal: ['@antv/g-device-api', 'ant-design-vue'],
     },
-    plugins: [RssPlugin({
-      title: 'An infinite canvas tutorial',
-      baseUrl: 'https://infinitecanvas.cc',
-      copyright: 'Copyright (c) 2024-present xiaoiver',
-      author: {
-        name: 'xiaoiver',
-        email: 'pyqiverson@gmail.com',
-        link: 'https://github.com/xiaoiver'
-      },
-    })]
-  }
+    plugins: [
+      VueMacros({
+        plugins: {
+          vueJsx: vueJsx(),
+        },
+      }),
+      RssPlugin({
+        title: 'An infinite canvas tutorial',
+        baseUrl: 'https://infinitecanvas.cc',
+        copyright: 'Copyright (c) 2024-present xiaoiver',
+        author: {
+          name: 'xiaoiver',
+          email: 'pyqiverson@gmail.com',
+          link: 'https://github.com/xiaoiver',
+        },
+      }),
+    ],
+  },
 });

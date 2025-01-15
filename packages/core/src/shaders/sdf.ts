@@ -173,7 +173,8 @@ layout(std140) uniform SceneUniforms {
 #else
   layout(std140) uniform ShapeUniforms {
     mat3 u_ModelMatrix;
-    vec4 u_PositionSize;
+    vec4 u_Position;
+    vec4 u_Size;
     vec4 u_FillColor;
     vec4 u_StrokeColor;
     vec4 u_ZIndexStrokeWidth;

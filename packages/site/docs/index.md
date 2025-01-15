@@ -217,7 +217,7 @@ call(() => {
         canvas.appendChild(text);
 
         // MSDF
-        fetch('/msdf-sans-serif.json').then(async (res) => {
+        fetch('/fonts/msdf-sans-serif.json').then(async (res) => {
             const font = await loadBitmapFont.parse(await res.text());
             const text = new Text({
                 x: 300,
@@ -232,7 +232,7 @@ call(() => {
         });
 
         // Bitmap font
-        fetch('/desyrel.xml').then(async (res) => {
+        fetch('/fonts/desyrel.xml').then(async (res) => {
             const font = await loadBitmapFont.parse(await res.text());
             const text = new Text({
                 x: 300,

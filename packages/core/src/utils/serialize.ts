@@ -319,6 +319,8 @@ export async function deserializeNode(data: SerializedNode) {
     shape.transform.skew.set(skew.x, skew.y);
     shape.transform.rotation = rotation;
     shape.transform.pivot.set(pivot.x, pivot.y);
+
+    console.log(shape);
   }
 
   if (children && children.length > 0) {
@@ -845,35 +847,78 @@ export function toSVGElement(node: SerializedNode, doc?: Document) {
  * @see https://github.com/ShukantPal/pixi-essentials/blob/master/packages/svg
  */
 export function fromSVGElement(element: SVGElement, uid = 0): SerializedNode {
-  const type = element.tagName.toLowerCase() as SerializedNode['type'];
+  let type = element.tagName.toLowerCase();
+
   const attributes = Array.from(element.attributes).reduce((prev, attr) => {
-    const attributeName = kebabToCamelCase(attr.name);
+    let attributeName = kebabToCamelCase(attr.name);
 
     let value: string | number | SerializedTransform = attr.value;
     if (attributeName === 'transform') {
       value = parseTransform(value);
     } else if (
+      type === 'rect' &&
+      (attributeName === 'rx' || attributeName === 'ry')
+    ) {
+      attributeName = 'radius';
+      value = Number(value);
+    } else if (
+      attributeName === 'cx' ||
+      attributeName === 'cy' ||
+      attributeName === 'x' ||
+      attributeName === 'y' ||
+      attributeName === 'rx' ||
+      attributeName === 'ry' ||
+      attributeName === 'r' ||
+      attributeName === 'width' ||
+      attributeName === 'height' ||
       attributeName === 'opacity' ||
       attributeName === 'fillOpacity' ||
       attributeName === 'strokeOpacity' ||
       attributeName === 'strokeWidth' ||
       attributeName === 'strokeMiterlimit' ||
-      attributeName === 'strokeDashoffset'
+      attributeName === 'strokeDashoffset' ||
+      attributeName === 'fontSize'
     ) {
       value = Number(value);
+    } else if (attributeName === 'textAnchor') {
+      attributeName = 'textAlign';
+      if (value === 'middle') {
+        value = 'center';
+      }
     }
 
     prev[attributeName] = value;
     return prev;
   }, {} as SerializedNode['attributes']);
 
-  const children = Array.from(element.children).map((e: SVGElement) =>
-    fromSVGElement(e, uid++),
-  );
+  if (type === 'text') {
+    attributes.content = element.textContent;
+  } else if (type === 'line') {
+    type = 'polyline';
+    // @ts-ignore
+    attributes.points = `${attributes.x1},${attributes.y1} ${attributes.x2},${attributes.y2}`;
+    // @ts-ignore
+    delete attributes.x1;
+    // @ts-ignore
+    delete attributes.y1;
+    // @ts-ignore
+    delete attributes.x2;
+    // @ts-ignore
+    delete attributes.y2;
+  }
+
+  const children = Array.from(element.children)
+    .map((e: SVGElement) => {
+      if (e.tagName.toLowerCase() === 'tspan') {
+        return;
+      }
+      return fromSVGElement(e, uid++);
+    })
+    .filter(Boolean);
 
   return {
     uid,
-    type,
+    type: type as SerializedNode['type'],
     attributes,
     children,
   };

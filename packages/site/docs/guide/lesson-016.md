@@ -3,6 +3,10 @@ outline: deep
 publish: false
 ---
 
+<script setup>
+import WebFontLoader from '../components/WebFontLoader.vue';
+</script>
+
 # 课程 16 - 绘制文本高级特性
 
 在上一节课中，我们介绍了文本渲染的原理，其中提到过 CanvasKit 相比 Canvas 提供了文本的一些高级绘制特性。本节课我们就将讨论这些特性：
@@ -76,7 +80,9 @@ canvas.drawTextBlob(textblob, 0, 0, textPaint);
 
 ## 文本选中 {#text-selection}
 
-## 加载字体 {#load-font}
+## 加载 Web 字体 {#load-web-font}
+
+<WebFontLoader />
 
 ## 扩展阅读 {#extended-reading}
 

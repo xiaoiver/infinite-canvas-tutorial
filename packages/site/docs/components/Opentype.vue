@@ -1,5 +1,5 @@
 <script setup>
-import { Text } from '@infinite-canvas-tutorial/core';
+import { Path, TesselationMethod } from '@infinite-canvas-tutorial/core';
 import '@infinite-canvas-tutorial/ui';
 import { ref, onMounted } from 'vue';
 import Stats from 'stats.js';
@@ -26,18 +26,29 @@ onMounted(() => {
     $canvas.addEventListener('ic-ready', async(e) => {
         canvas = e.detail;
 
-        const buffer = window.fetch('/fonts/NotoSans-Regular.ttf').then(res => res.arrayBuffer());
-        const font = opentype.parse(await buffer);
-        console.log(font);
+        const buffer = await (await window.fetch('/fonts/NotoSans-Regular.ttf')).arrayBuffer();
+        const font = opentype.parse(buffer);
 
-        // const text = new Text({
-        //     x: 50,
-        //     y: 100,
-        //     content: 'Hello, world! \n🌹🌍🌞🌛',
-        //     fontSize: 30,
-        //     fill: '#F67676',
-        // });
-        // canvas.appendChild(text);
+        let d = '';
+        font.getPath('H', 100, 100, 32).commands.forEach((command) => {
+            if (command.type === 'M' || command.type === 'L') {
+                d += command.type + ' ' + command.x.toFixed(3) + ' ' + command.y.toFixed(3);
+            } else if (command.type === 'C') {
+                d += 'C ' + command.x1.toFixed(3) + ' ' + command.y1.toFixed(3) + ' ' + command.x2.toFixed(3) + ' ' + command.y2.toFixed(3) + ' ' + command.x.toFixed(3) + ' ' + command.y.toFixed(3);
+            } else if (command.type === 'Q') {
+                d += 'Q ' + command.x1.toFixed(3) + ' ' + command.y1.toFixed(3) + ' ' + command.x.toFixed(3) + ' ' + command.y.toFixed(3);
+            } else if (command.type === 'Z') {
+                d += 'Z ';
+            }
+        });
+        // console.log(d);
+
+        const path = new Path({
+            d,
+            fill: '#F67676',
+            tessellationMethod: TesselationMethod.LIBTESS,
+        });
+        canvas.appendChild(path);
     });
 
     $canvas.addEventListener('ic-frame', (e) => {

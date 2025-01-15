@@ -52,6 +52,12 @@
     "stats.js": "^0.17.0",
     "lil-gui": "^0.19.2",
     "opentype.js": "^1.3.4",
-    "harfbuzzjs": "^0.3.1"
+    "harfbuzzjs": "^0.3.1",
+    "webfontloader": "^1.6.28",
+    "ant-design-vue": "^4.2.6",
+    "ant-design-x-vue": "^0.0.11",
+    "unplugin-vue-macros": "^2.13.8",
+    "@vitejs/plugin-vue-jsx": "^4.1.1",
+    "@ant-design/icons-vue": "^7.0.1"
   }
 }

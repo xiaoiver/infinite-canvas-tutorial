@@ -1,12 +1,17 @@
 <script setup>
-import { Text } from '@infinite-canvas-tutorial/core';
+import { Path } from '@infinite-canvas-tutorial/core';
 import '@infinite-canvas-tutorial/ui';
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, onUnmounted } from 'vue';
 import Stats from 'stats.js';
 import init from "harfbuzzjs/hb.wasm?init";
-import hbjs, { HBBlob, HBFace, HBFont, HBHandle } from "harfbuzzjs/hbjs.js";
+import hbjs from "harfbuzzjs/hbjs.js";
 
 let canvas;
+let hb;
+let blob;
+let face;
+let font;
+let buffer;
 
 const stats = new Stats();
 stats.showPanel(0);
@@ -28,29 +33,64 @@ onMounted(() => {
         canvas = e.detail;
 
         const instance = await init();
-        const hb = hbjs(instance);
+        hb = hbjs(instance);
 
         const data = await (await window.fetch('/fonts/NotoSans-Regular.ttf')).arrayBuffer();
 
-        const blob = hb.createBlob(data);
-        const face = hb.createFace(blob, 0);
-        const font = hb.createFont(face);
+        blob = hb.createBlob(data);
+        face = hb.createFace(blob, 0);
+        font = hb.createFont(face);
+        font.setScale(32, 32);
+        font.setVariations({ wdth: 200, wght: 700 });
 
-        console.log(font);
+        buffer = hb.createBuffer();
+        buffer.addText('H');
+        buffer.guessSegmentProperties();
+        // TODO: use BiDi
+        // buffer.setDirection(segment.direction);
 
-        // const text = new Text({
-        //     x: 50,
-        //     y: 100,
-        //     content: 'Hello, world! \n🌹🌍🌞🌛',
-        //     fontSize: 30,
-        //     fill: '#F67676',
-        // });
-        // canvas.appendChild(text);
+        hb.shape(font, buffer);
+        const result = buffer.json(font);
+        buffer.destroy();
+
+        const base = { x: 0, y: 0 };
+        const glyphs = new Array();
+        for (const glyph of result) {
+            glyphs.push({
+                id: glyph.g,
+                base: { x: base.x + glyph.dx, y: base.y + glyph.dy },
+            });
+            base.x += glyph.ax;
+            base.y += glyph.ay;
+        }
+
+        const bounds = { width: base.x, height: face.upem };
+
+        window.console.log(glyphs, bounds);
+
+        result.forEach(function (x) {
+            const d = font.glyphToPath(x.g);
+            const path = new Path({
+                d,
+                fill: '#F67676',
+            });
+            canvas.appendChild(path);
+
+            path.position.x = 100;
+            path.position.y = 100;
+        });
     });
 
     $canvas.addEventListener('ic-frame', (e) => {
         stats.update();
     });
+});
+
+onUnmounted(() => {
+    blob?.destroy();
+    face?.destroy();
+    font?.destroy();
+    buffer?.destroy();
 });
 </script>
 
