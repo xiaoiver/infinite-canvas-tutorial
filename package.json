@@ -79,5 +79,10 @@
     "extends": [
       "@commitlint/config-conventional"
     ]
+  },
+  "pnpm": {
+    "overrides": {
+      "esbuild": "0.23.1"
+    }
   }
 }
