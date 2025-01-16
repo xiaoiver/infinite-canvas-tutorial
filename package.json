@@ -41,6 +41,7 @@
     "@types/pngjs": "^6.0.1",
     "@typescript-eslint/eslint-plugin": "^6.21.0",
     "@typescript-eslint/parser": "^6.21.0",
+    "@vue-macros/eslint-config": "^0.7.1",
     "case-police": "^0.5.14",
     "eslint": "^7.32.0",
     "eslint-plugin-jest": "24.3.6",

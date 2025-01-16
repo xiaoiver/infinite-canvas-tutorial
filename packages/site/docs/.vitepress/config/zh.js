@@ -160,6 +160,14 @@ export const zh = defineConfig({
                 text: '加载 Web 字体',
                 link: 'web-font-loader',
               },
+              {
+                text: '勾股定理',
+                link: 'pythagorean-theorem',
+              },
+              {
+                text: 'Web Animations API',
+                link: 'web-animations-api',
+              },
             ],
           },
         ],

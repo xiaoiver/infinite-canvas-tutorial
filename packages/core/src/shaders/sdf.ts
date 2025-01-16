@@ -371,6 +371,8 @@ void main() {
 
   ${wireframe_frag}
 
+  // outputColor = vec4(1.0, 0.0, 0.0, 1.0);
+
   if (outputColor.a < epsilon)
     discard;
 }

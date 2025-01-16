@@ -139,7 +139,7 @@ export class ShadowRect extends Drawcall {
 
     if (!this.instanced && !this.#uniformBuffer) {
       this.#uniformBuffer = this.device.createBuffer({
-        viewOrSize: Float32Array.BYTES_PER_ELEMENT * (16 + 4 + 4 + 4),
+        viewOrSize: Float32Array.BYTES_PER_ELEMENT * (16 + 4 * 4),
         usage: BufferUsage.UNIFORM,
         hint: BufferFrequencyHint.DYNAMIC,
       });

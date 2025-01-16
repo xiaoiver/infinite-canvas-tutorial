@@ -58,6 +58,8 @@
     "ant-design-x-vue": "^0.0.11",
     "unplugin-vue-macros": "^2.13.8",
     "@vitejs/plugin-vue-jsx": "^4.1.1",
-    "@ant-design/icons-vue": "^7.0.1"
+    "@ant-design/icons-vue": "^7.0.1",
+    "@anthropic-ai/sdk": "^0.33.1",
+    "motion": "^11.18.0"
   }
 }

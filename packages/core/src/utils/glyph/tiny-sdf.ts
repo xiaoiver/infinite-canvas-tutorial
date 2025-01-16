@@ -136,15 +136,20 @@ export class TinySDF {
     );
 
     if (w === 0 || h === 0) {
+      const width = w + 2 * this.buffer;
+      const height = h + 2 * this.buffer;
+
+      const len = Math.max(width * height, 0);
+      const data = new Uint8ClampedArray(len * 4);
       return {
-        data: new Uint8Array(0),
-        width: 0,
-        height: 0,
-        glyphWidth: 0,
-        glyphHeight: 0,
-        glyphTop: 0,
-        glyphLeft: 0,
-        glyphAdvance: 0,
+        data,
+        width,
+        height,
+        glyphWidth: w,
+        glyphHeight: h,
+        glyphTop,
+        glyphLeft,
+        glyphAdvance,
       };
     }
 

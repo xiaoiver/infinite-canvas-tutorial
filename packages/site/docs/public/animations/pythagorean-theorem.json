@@ -1,0 +1,431 @@
+{
+    "name": "Proving the Pythagorean Theorem",
+    "steps": [
+        {
+            "title": "Construct a Right Triangle",
+            "graphics": [
+                {
+                    "type": "line",
+                    "id": "sideA",
+                    "attributes": {
+                        "x1": 50,
+                        "y1": 200,
+                        "x2": 50,
+                        "y2": 100,
+                        "stroke": "black",
+                        "stroke-width": 2
+                    }
+                },
+                {
+                    "type": "line",
+                    "id": "sideB",
+                    "attributes": {
+                        "x1": 50,
+                        "y1": 200,
+                        "x2": 200,
+                        "y2": 200,
+                        "stroke": "black",
+                        "stroke-width": 2
+                    }
+                },
+                {
+                    "type": "line",
+                    "id": "hypotenuse",
+                    "attributes": {
+                        "x1": 50,
+                        "y1": 100,
+                        "x2": 200,
+                        "y2": 200,
+                        "stroke": "black",
+                        "stroke-width": 2
+                    }
+                },
+                {
+                    "type": "text",
+                    "id": "labelA",
+                    "attributes": {
+                        "x": 40,
+                        "y": 150,
+                        "font-size": "16",
+                        "fill": "black"
+                    },
+                    "text": "a"
+                },
+                {
+                    "type": "text",
+                    "id": "labelB",
+                    "attributes": {
+                        "x": 125,
+                        "y": 210,
+                        "font-size": "16",
+                        "fill": "black"
+                    },
+                    "text": "b"
+                },
+                {
+                    "type": "text",
+                    "id": "labelC",
+                    "attributes": {
+                        "x": 130,
+                        "y": 150,
+                        "font-size": "16",
+                        "fill": "black"
+                    },
+                    "text": "c"
+                }
+            ],
+            "animations": [
+                {
+                    "target": "#sideA",
+                    "keyframes": [
+                        {
+                            "opacity": 0
+                        }
+                    ],
+                    "options": {
+                        "duration": 500,
+                        "easing": "ease-out"
+                    }
+                },
+                {
+                    "target": "#sideA",
+                    "keyframes": [
+                        {
+                            "opacity": 1,
+                            "offset": 0.5
+                        }
+                    ],
+                    "options": {
+                        "duration": 500,
+                        "easing": "ease-out"
+                    }
+                },
+                {
+                    "target": "#sideB",
+                    "keyframes": [
+                        {
+                            "opacity": 0
+                        }
+                    ],
+                    "options": {
+                        "duration": 500,
+                        "easing": "ease-out"
+                    }
+                },
+                {
+                    "target": "#sideB",
+                    "keyframes": [
+                        {
+                            "opacity": 1,
+                            "offset": 0.5
+                        }
+                    ],
+                    "options": {
+                        "duration": 500,
+                        "easing": "ease-out"
+                    }
+                },
+                {
+                    "target": "#hypotenuse",
+                    "keyframes": [
+                        {
+                            "opacity": 0
+                        }
+                    ],
+                    "options": {
+                        "duration": 500,
+                        "easing": "ease-out"
+                    }
+                },
+                {
+                    "target": "#hypotenuse",
+                    "keyframes": [
+                        {
+                            "opacity": 1,
+                            "offset": 0.5
+                        }
+                    ],
+                    "options": {
+                        "duration": 500,
+                        "easing": "ease-out"
+                    }
+                }
+            ]
+        },
+        {
+            "title": "Square on Side A",
+            "graphics": [
+                {
+                    "type": "rect",
+                    "id": "squareA",
+                    "attributes": {
+                        "x": 0,
+                        "y": 100,
+                        "width": 100,
+                        "height": 100,
+                        "fill": "lightblue",
+                        "stroke": "black",
+                        "stroke-width": 2
+                    }
+                },
+                {
+                    "type": "text",
+                    "id": "areaA",
+                    "attributes": {
+                        "x": 50,
+                        "y": 150,
+                        "font-size": "16",
+                        "fill": "black",
+                        "text-anchor": "middle"
+                    },
+                    "text": "a²"
+                }
+            ],
+            "animations": [
+                {
+                    "target": "#squareA",
+                    "keyframes": [
+                        {
+                            "transform": "scale(0, 0)"
+                        }
+                    ],
+                    "options": {
+                        "duration": 1000,
+                        "easing": "ease-out"
+                    }
+                },
+                {
+                    "target": "#squareA",
+                    "keyframes": [
+                        {
+                            "transform": "scale(1, 1)",
+                            "offset": 0.5
+                        }
+                    ],
+                    "options": {
+                        "duration": 1000,
+                        "easing": "ease-out"
+                    }
+                }
+            ]
+        },
+        {
+            "title": "Square on Side B",
+            "graphics": [
+                {
+                    "type": "rect",
+                    "id": "squareB",
+                    "attributes": {
+                        "x": 50,
+                        "y": 200,
+                        "width": 150,
+                        "height": 150,
+                        "fill": "lightgreen",
+                        "stroke": "black",
+                        "stroke-width": 2
+                    }
+                },
+                {
+                    "type": "text",
+                    "id": "areaB",
+                    "attributes": {
+                        "x": 125,
+                        "y": 275,
+                        "font-size": "16",
+                        "fill": "black",
+                        "text-anchor": "middle"
+                    },
+                    "text": "b²"
+                }
+            ],
+            "animations": [
+                {
+                    "target": "#squareB",
+                    "keyframes": [
+                        {
+                            "transform": "scale(0, 0)"
+                        }
+                    ],
+                    "options": {
+                        "duration": 1000,
+                        "easing": "ease-out"
+                    }
+                },
+                {
+                    "target": "#squareB",
+                    "keyframes": [
+                        {
+                            "transform": "scale(1, 1)",
+                            "offset": 0.5
+                        }
+                    ],
+                    "options": {
+                        "duration": 1000,
+                        "easing": "ease-out"
+                    }
+                }
+            ]
+        },
+        {
+            "title": "Square on Hypotenuse C",
+            "graphics": [
+                {
+                    "type": "rect",
+                    "id": "squareC",
+                    "attributes": {
+                        "x": 50,
+                        "y": 100,
+                        "width": 150,
+                        "height": 150,
+                        "fill": "lightcoral",
+                        "stroke": "black",
+                        "stroke-width": 2
+                    }
+                },
+                {
+                    "type": "text",
+                    "id": "areaC",
+                    "attributes": {
+                        "x": 125,
+                        "y": 175,
+                        "font-size": "16",
+                        "fill": "black",
+                        "text-anchor": "middle"
+                    },
+                    "text": "c²"
+                }
+            ],
+            "animations": [
+                {
+                    "target": "#squareC",
+                    "keyframes": [
+                        {
+                            "transform": "scale(0, 0)"
+                        }
+                    ],
+                    "options": {
+                        "duration": 1000,
+                        "easing": "ease-out"
+                    }
+                },
+                {
+                    "target": "#squareC",
+                    "keyframes": [
+                        {
+                            "transform": "scale(1, 1)",
+                            "offset": 0.5
+                        }
+                    ],
+                    "options": {
+                        "duration": 1000,
+                        "easing": "ease-out"
+                    }
+                }
+            ]
+        },
+        {
+            "title": "Rearrange Squares to Form a Larger Square",
+            "graphics": [
+                {
+                    "type": "rect",
+                    "id": "largeSquare",
+                    "attributes": {
+                        "x": 250,
+                        "y": 100,
+                        "width": 200,
+                        "height": 200,
+                        "fill": "none",
+                        "stroke": "black",
+                        "stroke-width": 2
+                    }
+                },
+                {
+                    "type": "polygon",
+                    "id": "triangleInsideLargeSquare",
+                    "attributes": {
+                        "points": "250,200 350,200 350,300",
+                        "fill": "none",
+                        "stroke": "black",
+                        "stroke-width": 2
+                    }
+                },
+                {
+                    "type": "rect",
+                    "id": "smallSquaresInLargeSquare",
+                    "attributes": {
+                        "x": 250,
+                        "y": 100,
+                        "width": 100,
+                        "height": 100,
+                        "fill": "lightblue",
+                        "stroke": "black",
+                        "stroke-width": 2
+                    }
+                },
+                {
+                    "type": "rect",
+                    "id": "smallSquaresInLargeSquare2",
+                    "attributes": {
+                        "x": 350,
+                        "y": 200,
+                        "width": 100,
+                        "height": 100,
+                        "fill": "lightgreen",
+                        "stroke": "black",
+                        "stroke-width": 2
+                    }
+                },
+                {
+                    "type": "text",
+                    "id": "areaSum",
+                    "attributes": {
+                        "x": 350,
+                        "y": 150,
+                        "font-size": "16",
+                        "fill": "black",
+                        "text-anchor": "middle"
+                    },
+                    "text": "a² + b² = c²"
+                }
+            ],
+            "animations": [
+                {
+                    "target": "#squareA",
+                    "keyframes": [
+                        {
+                            "transform": "translate(200, 0)"
+                        }
+                    ],
+                    "options": {
+                        "duration": 1000,
+                        "easing": "ease-out"
+                    }
+                },
+                {
+                    "target": "#squareB",
+                    "keyframes": [
+                        {
+                            "transform": "translate(150, 100)"
+                        }
+                    ],
+                    "options": {
+                        "duration": 1000,
+                        "easing": "ease-out"
+                    }
+                },
+                {
+                    "target": "#squareC",
+                    "keyframes": [
+                        {
+                            "transform": "translate(200, 0) scale(0.66, 0.66)"
+                        }
+                    ],
+                    "options": {
+                        "duration": 1000,
+                        "easing": "ease-out"
+                    }
+                }
+            ]
+        }
+    ]
+}

@@ -190,6 +190,14 @@ export const en = defineConfig({
                 text: 'Load web font',
                 link: 'web-font-loader',
               },
+              {
+                text: 'Pythagorean theorem',
+                link: 'pythagorean-theorem',
+              },
+              {
+                text: 'Web Animations API',
+                link: 'web-animations-api',
+              },
             ],
           },
         ],

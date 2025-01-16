@@ -6,6 +6,8 @@ publish: false
 import Opentype from '../../components/Opentype.vue'
 </script>
 
+[使用 Opentype.js 进行 Shaping](/zh/guide/lesson-016#opentype-js)
+
 <Opentype />
 
 Opentype.js 中可以获取文本的矢量路径 [path-commands]，我们就可以使用 Path 来绘制：

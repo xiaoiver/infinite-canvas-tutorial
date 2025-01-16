@@ -6,6 +6,8 @@ publish: false
 import Harfbuzz from '../../components/Harfbuzz.vue'
 </script>
 
+[使用 Harfbuzz.js 进行 Shaping](/zh/guide/lesson-016#harfbuzzjs)
+
 <Harfbuzz />
 
 首先初始化 harfbuzzjs WASM，这里使用 Vite 的 `?init` 语法。然后加载字体文件，并创建 `font` 对象。

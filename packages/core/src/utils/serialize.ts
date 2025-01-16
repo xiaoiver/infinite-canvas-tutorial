@@ -265,7 +265,8 @@ export function typeofShape(
 }
 
 export async function deserializeNode(data: SerializedNode) {
-  const { type, attributes, children } = data;
+  // @ts-ignore
+  const { type, attributes, children, text } = data;
   let shape: Shape;
   if (type === 'g') {
     shape = new Group();
@@ -277,10 +278,47 @@ export async function deserializeNode(data: SerializedNode) {
     shape = new Rect();
   } else if (type === 'polyline') {
     shape = new Polyline();
+    // @ts-ignore
+  } else if (type === 'line') {
+    shape = new Polyline();
+    attributes.points = [
+      // @ts-ignore
+      [attributes.x1, attributes.y1],
+      // @ts-ignore
+      [attributes.x2, attributes.y2],
+    ];
+    // @ts-ignore
+    delete attributes.x1;
+    // @ts-ignore
+    delete attributes.y1;
+    // @ts-ignore
+    delete attributes.x2;
+    // @ts-ignore
+    delete attributes.y2;
+    // @ts-ignore
+  } else if (type === 'polygon') {
+    shape = new Path();
+    // attributes.points: "0,150 100,150 100,50"
+    // convert to d attribute
+    // @ts-ignore
+    attributes.d = (attributes.points as string)
+      .split(' ')
+      .map((xy, i, points) => {
+        const [x, y] = xy.split(',').map(Number);
+        const command = i === 0 ? 'M' : 'L';
+        if (i === points.length - 1) {
+          return `${command} ${x},${y} Z`;
+        }
+        return `${command} ${x},${y}`;
+      })
+      .join(' ');
+    delete attributes.points;
   } else if (type === 'path') {
     shape = new Path();
   } else if (type === 'text') {
     shape = new Text();
+    // @ts-ignore
+    attributes.content = text;
   } else if (type === 'rough-circle') {
     shape = new RoughCircle();
     // TODO: implement with path
@@ -294,7 +332,7 @@ export async function deserializeNode(data: SerializedNode) {
     shape = new RoughPath();
   }
 
-  const { transform, ...rest } = attributes;
+  let { transform, ...rest } = attributes;
   Object.assign(shape, rest);
 
   // create Image from DataURL
@@ -313,14 +351,16 @@ export async function deserializeNode(data: SerializedNode) {
   }
 
   if (transform) {
+    if (isString(transform)) {
+      transform = parseTransform(transform);
+    }
+
     const { position, scale, skew, rotation, pivot } = transform;
     shape.transform.position.set(position.x, position.y);
     shape.transform.scale.set(scale.x, scale.y);
     shape.transform.skew.set(skew.x, skew.y);
     shape.transform.rotation = rotation;
     shape.transform.pivot.set(pivot.x, pivot.y);
-
-    console.log(shape);
   }
 
   if (children && children.length > 0) {
@@ -879,7 +919,8 @@ export function fromSVGElement(element: SVGElement, uid = 0): SerializedNode {
       attributeName === 'strokeDashoffset' ||
       attributeName === 'fontSize'
     ) {
-      value = Number(value);
+      // remove 'px' suffix
+      value = Number(value.replace('px', ''));
     } else if (attributeName === 'textAnchor') {
       attributeName = 'textAlign';
       if (value === 'middle') {

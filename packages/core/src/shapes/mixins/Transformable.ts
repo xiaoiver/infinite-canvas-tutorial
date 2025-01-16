@@ -34,6 +34,12 @@ export interface ITransformable {
   get position(): ObservablePoint;
   set position(value: IPointData);
 
+  get translateX(): number;
+  set translateX(value: number);
+
+  get translateY(): number;
+  set translateY(value: number);
+
   /**
    * The scale factors of this object along the local coordinate axes.
    *
@@ -41,6 +47,12 @@ export interface ITransformable {
    */
   get scale(): ObservablePoint;
   set scale(value: IPointData);
+
+  get scaleX(): number;
+  set scaleX(value: number);
+
+  get scaleY(): number;
+  set scaleY(value: number);
 
   /**
    * The pivot for the object in radians.
@@ -81,11 +93,39 @@ export function Transformable<TBase extends GConstructor>(Base: TBase) {
       this.transform.position.copyFrom(value);
     }
 
+    get translateX(): number {
+      return this.transform.position.x;
+    }
+    set translateX(value: number) {
+      this.transform.position.x = value;
+    }
+
+    get translateY(): number {
+      return this.transform.position.y;
+    }
+    set translateY(value: number) {
+      this.transform.position.y = value;
+    }
+
     get scale(): ObservablePoint {
       return this.transform.scale;
     }
     set scale(value: IPointData) {
       this.transform.scale.copyFrom(value);
+    }
+
+    get scaleX(): number {
+      return this.transform.scale.x;
+    }
+    set scaleX(value: number) {
+      this.transform.scale.x = value;
+    }
+
+    get scaleY(): number {
+      return this.transform.scale.y;
+    }
+    set scaleY(value: number) {
+      this.transform.scale.y = value;
     }
 
     /**

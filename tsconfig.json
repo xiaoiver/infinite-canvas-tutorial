@@ -15,7 +15,8 @@
     "skipLibCheck": true,
     "sourceRoot": "src",
     "baseUrl": "src",
-    "resolveJsonModule": true
+    "resolveJsonModule": true,
+    "types": ["unplugin-vue-macros/macros-global"]
   },
   "include": ["src/**/*"]
 }

@@ -1,5 +1,9 @@
 module.exports = {
-  extends: ['eslint:recommended', 'plugin:@typescript-eslint/recommended'],
+  extends: [
+    'eslint:recommended',
+    'plugin:@typescript-eslint/recommended',
+    '@vue-macros/eslint-config',
+  ],
 
   parser: 'vue-eslint-parser',
   parserOptions: {

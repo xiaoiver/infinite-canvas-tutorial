@@ -203,8 +203,7 @@ export class SDF extends Drawcall {
 
     if (!this.instanced && !this.#uniformBuffer) {
       this.#uniformBuffer = this.device.createBuffer({
-        viewOrSize:
-          Float32Array.BYTES_PER_ELEMENT * (16 + 4 + 4 + 4 + 4 + 4 + 4),
+        viewOrSize: Float32Array.BYTES_PER_ELEMENT * (16 + 4 * 8),
         usage: BufferUsage.UNIFORM,
         hint: BufferFrequencyHint.DYNAMIC,
       });
