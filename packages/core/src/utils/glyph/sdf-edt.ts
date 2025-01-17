@@ -1,7 +1,7 @@
 import { edt, getSDFStage, glyphToRGBA, INF, SDFStage } from './tiny-sdf';
 
 // Paint glyph data into stage
-export const paintIntoStage = (
+const paintIntoStage = (
   stage: SDFStage,
   data: Uint8ClampedArray,
   w: number,

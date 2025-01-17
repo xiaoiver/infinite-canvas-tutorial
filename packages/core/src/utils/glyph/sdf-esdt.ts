@@ -14,7 +14,7 @@ import {
 } from './tiny-sdf';
 
 // Paint alpha channel into SDF stage
-export const paintIntoStage = (
+const paintIntoStage = (
   stage: SDFStage,
   data: Uint8ClampedArray,
   w: number,

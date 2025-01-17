@@ -8,11 +8,7 @@ import WebGPU from '../../components/WebGPU.vue'
 
 <WebGPU />
 
-```html
-<ic-canvas renderer="webgpu" shaderCompilerPath="/xxx/xx"></ic-canvas>
-```
-
-通过 `renderer="webgpu"` 启用 WebGPU。
+默认使用 WebGL 2/1 渲染，通过 `renderer="webgpu"` 启用 WebGPU。
 
 ```html
 <ic-canvas renderer="webgpu"></ic-canvas>

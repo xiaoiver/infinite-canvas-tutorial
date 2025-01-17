@@ -10,7 +10,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [1/4, 2/4, 3/4, 4/4]
+        shardIndex: [1, 2, 3, 4]
+        shardTotal: [4]
     steps:
       - uses: actions/checkout@v3
       - uses: pnpm/action-setup@v2
@@ -26,13 +27,13 @@ jobs:
         run: pnpm exec playwright install --with-deps
 
       - name: Run Playwright tests
-        run: pnpm exec playwright test --shard ${{ matrix.shard }}
+        run: pnpm exec playwright test --shard=${{ matrix.shardIndex }}/${{ matrix.shardTotal }}
 
       - name: Upload blob report to GitHub Actions Artifacts
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: all-blob-reports-${{ matrix.shard }}
+          name: all-blob-reports-${{ matrix.shardIndex }}
           path: blob-report
           retention-days: 1
 

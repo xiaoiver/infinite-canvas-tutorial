@@ -16,6 +16,7 @@ import {
   bisect,
   parsePath,
   LineCurve,
+  containsEmoji,
 } from '../../packages/core/src/utils';
 
 describe('Utils', () => {
@@ -134,4 +135,11 @@ describe('Utils', () => {
   //     // expect((path.subPaths[0].curves[0] as LineCurve).toEqual(1);
   //   });
   // });
+
+  describe('Emoji', () => {
+    it('should check if a value containsEmoji correctly.', () => {
+      expect(containsEmoji('Hello, world!')).toBe(false);
+      expect(containsEmoji('Hello, 😊!')).toBe(true);
+    });
+  });
 });
