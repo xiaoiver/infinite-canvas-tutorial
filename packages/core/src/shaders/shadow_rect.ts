@@ -95,13 +95,19 @@ void main() {
   // Set the bounds of the shadow and adjust its size based on the shadow's
   // spread radius to achieve the spreading effect
   float margin = 3.0 * dropShadow.z;
-  origin += dropShadow.xy;
-  v_Origin = origin;
+
+  vec2 center = origin + size / 2.0;
+  vec2 sizeSign = sign(size);
+  size = abs(size);
+
+  // Recalculate the origin since the size could be negative
+  origin = center - size / 2.0 + dropShadow.xy * sizeSign;
   v_Size = size;
+  v_Origin = origin;
 
   origin -= margin;
   size += 2.0 * margin;
-  vec2 center = origin + size / 2.0;
+  
   v_Point = center + a_FragCoord * (size / 2.0);
 
   gl_Position = vec4((u_ProjectionMatrix 

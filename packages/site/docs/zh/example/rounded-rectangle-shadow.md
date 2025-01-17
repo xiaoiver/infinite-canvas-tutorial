@@ -42,7 +42,7 @@ cornerRadius = Inputs.range([5, 30], {
 
 ```js eval code=false inspector=false
 rect = (() => {
-    const { Rect } = Lesson9;
+    const { Rect } = Core;
     const rect = new Rect({
         x: 100,
         y: 100,
@@ -68,7 +68,7 @@ rect = (() => {
 
 ```js eval code=false
 (async () => {
-    const { Canvas } = Lesson9;
+    const { Canvas } = Core;
 
     const canvas = await Utils.createCanvas(Canvas, 200, 200);
 

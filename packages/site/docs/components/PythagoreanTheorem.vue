@@ -89,6 +89,7 @@ defineOptions({ name: 'PythagoreanTheorem' });
 
 const wrapper = ref<HTMLDivElement | null>(null);
 let canvas: Canvas | null = null;
+const layer = new Group();
 
 onMounted(() => {
   const $canvas = wrapper.value;
@@ -96,8 +97,19 @@ onMounted(() => {
     return;
   }
 
+  import('webfontloader').then((module) => {
+    const WebFont = module.default;
+    WebFont.load({
+      google: {
+        families: ['Gaegu'],
+      },
+    });
+  });
+
   $canvas.addEventListener('ic-ready', async (e) => {
     canvas = (e as any).detail as Canvas;
+
+    canvas?.appendChild(layer);
     const camera = canvas.camera;
 
     const landmark = camera.createLandmark({
@@ -122,6 +134,10 @@ const Demo = () => {
   const handleSendUserMessage = async (userMessage: string) => {
     loading.value = true;
 
+    layer.children.forEach((child) => {
+      layer?.removeChild(child);
+    });
+
     // TODO: Let user provide their own Anthropic API key
     // const anthropic = new Anthropic({
     //   apiKey: 'my_api_key', // defaults to process.env["ANTHROPIC_API_KEY"]
@@ -144,20 +160,22 @@ const Demo = () => {
       y: -100,
       content: 'Pythagorean Theorem',
       fontSize: 24,
+      fontFamily: 'Gaegu',
       fill: 'black',
       esdt: false
     });
-    canvas.appendChild(name);
+    layer.appendChild(name);
 
     const description = new Text({
       x: 0,
       y: -70,
       content: data.description,
       fontSize: 20,
+      fontFamily: 'Gaegu',
       fill: 'black',
       esdt: false
     });
-    canvas.appendChild(description);
+    layer.appendChild(description);
 
     let previousCaption: Text | null = null;
     for (const { title, graphics, animations } of data.steps) {
@@ -174,11 +192,12 @@ const Demo = () => {
         x: 0,
         y: -20,
         content: title,
+        fontFamily: 'Gaegu',
         fontSize: 16,
         fill: 'black',
         esdt: false
       });
-      canvas.appendChild(caption);
+      layer.appendChild(caption);
       previousCaption = caption;
       await animate(caption, {
         opacity: [0, 1]
@@ -189,19 +208,20 @@ const Demo = () => {
 
       const root = new Group();
       for (const graphic of graphics) {
-        // if (graphic.type === 'rect') {
-        //   graphic.type = 'rough-rect';
-        //   graphic.roughness = 3;
-        // }
+        if (graphic.type === 'rect') {
+          graphic.type = 'rough-rect';
+          graphic.roughness = 3;
+        }
 
         const node = await deserializeNode(graphic);
         node.batchable = false;
         node.cullable = false;
+        node.fontFamily = 'Gaegu';
 
         graphicsMap.set(graphic.id, node);
-        root.appendChild(node);
+        layer.appendChild(node);
       }
-      canvas.appendChild(root);
+      layer.appendChild(root);
 
       for (const animation of animations) {
         const { target, keyframes, options } = convertAnimationToMotion(animation);
@@ -211,8 +231,6 @@ const Demo = () => {
         await sleep(1);
       }
     }
-
-   
   }
 
   return (<div>

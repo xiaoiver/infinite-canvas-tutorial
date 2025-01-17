@@ -332,7 +332,8 @@ export async function deserializeNode(data: SerializedNode) {
     shape = new RoughPath();
   }
 
-  let { transform, ...rest } = attributes;
+  let { transform } = attributes;
+  const { transform: _, ...rest } = attributes;
   Object.assign(shape, rest);
 
   // create Image from DataURL
@@ -605,6 +606,8 @@ export function exportDropShadow(
   const {
     uid,
     attributes: {
+      width,
+      height,
       dropShadowBlurRadius,
       dropShadowColor,
       dropShadowOffsetX,
@@ -617,8 +620,14 @@ export function exportDropShadow(
   $filter.id = `filter_drop_shadow_${uid}`;
 
   const $feDropShadow = createSVGElement('feDropShadow', doc);
-  $feDropShadow.setAttribute('dx', `${(dropShadowOffsetX || 0) / 2}`);
-  $feDropShadow.setAttribute('dy', `${(dropShadowOffsetY || 0) / 2}`);
+  $feDropShadow.setAttribute(
+    'dx',
+    `${((dropShadowOffsetX || 0) / 2) * Math.sign(width)}`,
+  );
+  $feDropShadow.setAttribute(
+    'dy',
+    `${((dropShadowOffsetY || 0) / 2) * Math.sign(height)}`,
+  );
   $feDropShadow.setAttribute(
     'stdDeviation',
     `${(dropShadowBlurRadius || 0) / 4}`,
@@ -778,6 +787,21 @@ export function toSVGElement(node: SerializedNode, doc?: Document) {
         element.setAttribute(camelToKebabCase(key), `${value}`);
       }
     });
+  }
+
+  // Handle negative size of rect.
+  if (type === 'rect') {
+    const { width, height, x, y } = attributes;
+    if (width < 0 || height < 0) {
+      const x1 = x;
+      const y1 = y;
+      const x2 = x + width;
+      const y2 = y + height;
+      element.setAttribute('x', `${Math.min(x1, x2)}`);
+      element.setAttribute('y', `${Math.min(y1, y2)}`);
+      element.setAttribute('width', `${Math.abs(width)}`);
+      element.setAttribute('height', `${Math.abs(height)}`);
+    }
   }
 
   const innerStrokeAlignment = strokeAlignment === 'inner';

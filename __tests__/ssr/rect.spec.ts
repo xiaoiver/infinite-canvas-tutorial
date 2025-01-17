@@ -191,4 +191,50 @@ describe('Rect', () => {
       'rect-rounded',
     );
   });
+
+  it('should render a rect with negative size correctly.', async () => {
+    const rect = new Rect({
+      x: 100,
+      y: 100,
+      width: -100,
+      height: -100,
+      fill: 'black',
+    });
+    canvas.appendChild(rect);
+    canvas.render();
+
+    expect($canvas.getContext('webgl1')).toMatchWebGLSnapshot(
+      dir,
+      'rect-negative-size',
+    );
+    expect(exporter.toSVG({ grid: true })).toMatchSVGSnapshot(
+      dir,
+      'rect-negative-size',
+    );
+  });
+
+  it('should render a rect with negative size and drop shadow correctly.', async () => {
+    const rect = new Rect({
+      x: 100,
+      y: 100,
+      width: -50,
+      height: -50,
+      fill: 'white',
+      dropShadowBlurRadius: 10,
+      dropShadowColor: 'black',
+      dropShadowOffsetX: 10,
+      dropShadowOffsetY: 10,
+    });
+    canvas.appendChild(rect);
+    canvas.render();
+
+    expect($canvas.getContext('webgl1')).toMatchWebGLSnapshot(
+      dir,
+      'rect-negative-size-dropshadow',
+    );
+    expect(exporter.toSVG({ grid: true })).toMatchSVGSnapshot(
+      dir,
+      'rect-negative-size-dropshadow',
+    );
+  });
 });
