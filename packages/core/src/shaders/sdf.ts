@@ -142,7 +142,7 @@ void main() {
   }
 
   v_FragCoord = vec2(a_FragCoord * radius);
-  v_Radius = radius;
+  v_Radius = abs(radius);
 
   #ifdef USE_FILLIMAGE
     v_Uv = (a_FragCoord * radius / size + 1.0) / 2.0;
@@ -370,8 +370,6 @@ void main() {
   outputColor.a *= clamp(1.0 - distance, 0.0, 1.0) * opacity * opacity_t;
 
   ${wireframe_frag}
-
-  // outputColor = vec4(1.0, 0.0, 0.0, 1.0);
 
   if (outputColor.a < epsilon)
     discard;

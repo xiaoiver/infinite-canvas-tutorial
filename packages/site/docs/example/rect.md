@@ -14,11 +14,11 @@ y = Inputs.range([50, 300], { label: 'y', value: 100, step: 1 });
 ```
 
 ```js eval code=false
-width = Inputs.range([50, 300], { label: 'width', value: 100, step: 1 });
+width = Inputs.range([-300, 300], { label: 'width', value: 100, step: 1 });
 ```
 
 ```js eval code=false
-height = Inputs.range([50, 300], { label: 'height', value: 100, step: 1 });
+height = Inputs.range([-300, 300], { label: 'height', value: 100, step: 1 });
 ```
 
 ```js eval code=false
@@ -35,7 +35,7 @@ fill = Inputs.color({ label: 'fill', value: '#ff0000' });
 
 ```js eval code=false inspector=false
 rect = (() => {
-    const { Rect } = Lesson9;
+    const { Rect } = Core;
     const rect = new Rect({
         x: 100,
         y: 100,
@@ -43,6 +43,7 @@ rect = (() => {
         height: 100,
         cornerRadius: 10,
         fill: 'red',
+        batchable: false,
     });
     return rect;
 })();
@@ -61,7 +62,7 @@ rect = (() => {
 
 ```js eval code=false
 (async () => {
-    const { Canvas } = Lesson9;
+    const { Canvas } = Core;
 
     const canvas = await Utils.createCanvas(Canvas, 200, 200);
 

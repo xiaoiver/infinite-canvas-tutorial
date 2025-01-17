@@ -23,6 +23,7 @@ export interface RectAttributes extends ShapeAttributes {
 
   /**
    * The width attribute defines the horizontal length of an element in the user coordinate system.
+   * Negative values are allowed.
    * @see https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/width
    *
    */
@@ -30,6 +31,7 @@ export interface RectAttributes extends ShapeAttributes {
 
   /**
    * The height attribute defines the vertical length of an element in the user coordinate system.
+   * Negative values are allowed.
    * @see https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/height
    *
    */
@@ -91,7 +93,12 @@ export function RectWrapper<TBase extends GConstructor>(Base: TBase) {
       attributes: Partial<Pick<RectAttributes, 'x' | 'y' | 'width' | 'height'>>,
     ) {
       const { x = 0, y = 0, width = 0, height = 0 } = attributes;
-      return new AABB(x, y, x + width, y + height);
+      return new AABB(
+        Math.min(x, x + width),
+        Math.min(y, y + height),
+        Math.max(x, x + width),
+        Math.max(y, y + height),
+      );
     }
 
     constructor(attributes: Partial<RectAttributes> = {}) {
@@ -251,27 +258,24 @@ export function RectWrapper<TBase extends GConstructor>(Base: TBase) {
         stroke,
       );
 
+      const x1 = Math.min(x, x + width);
+      const y1 = Math.min(y, y + height);
+      const x2 = Math.max(x, x + width);
+      const y2 = Math.max(y, y + height);
+
       if (hasFill && hasStroke) {
         return isPointInRoundedRectangle(
           xx,
           yy,
-          x - offset,
-          y - offset,
-          x + width + offset,
-          y + height + offset,
+          x1 - offset,
+          y1 - offset,
+          x2 + offset,
+          y2 + offset,
           cornerRadius,
         );
       }
       if (hasFill) {
-        return isPointInRoundedRectangle(
-          xx,
-          yy,
-          x,
-          y,
-          x + width,
-          y + height,
-          cornerRadius,
-        );
+        return isPointInRoundedRectangle(xx, yy, x1, y1, x2, y2, cornerRadius);
       }
       if (hasStroke) {
         const inner = offset - strokeWidth;
@@ -279,19 +283,19 @@ export function RectWrapper<TBase extends GConstructor>(Base: TBase) {
           !isPointInRoundedRectangle(
             xx,
             yy,
-            x - inner,
-            y - inner,
-            x + width + inner,
-            y + height + inner,
+            x1 - inner,
+            y1 - inner,
+            x2 + inner,
+            y2 + inner,
             cornerRadius,
           ) &&
           isPointInRoundedRectangle(
             xx,
             yy,
-            x - offset,
-            y - offset,
-            x + width + offset,
-            y + height + offset,
+            x1 - offset,
+            y1 - offset,
+            x2 + offset,
+            y2 + offset,
             cornerRadius,
           )
         );

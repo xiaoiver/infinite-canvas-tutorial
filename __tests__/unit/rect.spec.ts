@@ -110,4 +110,24 @@ describe('Rect', () => {
     expect(bounds.maxX).toEqual(105);
     expect(bounds.maxY).toEqual(105);
   });
+
+  it('should allow negative width/height', () => {
+    const rect = new Rect({
+      x: 100,
+      y: 100,
+      width: -100,
+      height: -100,
+    });
+    expect(rect.width).toBe(-100);
+    expect(rect.height).toBe(-100);
+
+    let bounds = rect.getGeometryBounds();
+    expect(bounds.minX).toEqual(0);
+    expect(bounds.minY).toEqual(0);
+    expect(bounds.maxX).toEqual(100);
+    expect(bounds.maxY).toEqual(100);
+
+    expect(rect.containsPoint(50, 50)).toBe(true);
+    expect(rect.containsPoint(150, 150)).toBe(false);
+  });
 });
