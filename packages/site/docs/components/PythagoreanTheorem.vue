@@ -77,6 +77,7 @@ function convertAnimationToMotion(animation: any) {
 
   // motion use seconds instead of milliseconds
   options.duration = options.duration / 1000;
+  options.fill = 'both';
 
   return {
     target,
@@ -157,7 +158,7 @@ const Demo = () => {
 
     const name = new Text({
       x: 0,
-      y: -100,
+      y: -80,
       content: 'Pythagorean Theorem',
       fontSize: 24,
       fontFamily: 'Gaegu',
@@ -168,7 +169,7 @@ const Demo = () => {
 
     const description = new Text({
       x: 0,
-      y: -70,
+      y: -50,
       content: data.description,
       fontSize: 20,
       fontFamily: 'Gaegu',

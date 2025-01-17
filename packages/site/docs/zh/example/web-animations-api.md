@@ -6,7 +6,7 @@ publish: false
 import WebAnimationsAPI from '../../components/WebAnimationsAPI.vue'
 </script>
 
-Motion 尽可能兼容了 Web Animations API，详见：[Improvements to Web Animations API]
+Motion 尽可能兼容了 Web Animations API 并做了很多增强，例如支持 spring 动画，详见：[Improvements to Web Animations API]
 
 ```ts
 import { animate } from 'motion';
@@ -25,6 +25,8 @@ await animate(
 
 但和 Web Animations API 还是有一些区别，例如：
 
--   `duration` 使用秒而非毫秒
+-   `duration` 和 `delay`使用秒而非毫秒
+-   `iterations` -> `repeat`
+-   `direction` -> `repeatType`
 
 [Improvements to Web Animations API]: https://motion.dev/docs/improvements-to-the-web-animations-api-dx

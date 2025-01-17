@@ -25,6 +25,6 @@ await animate(
 
 But there are some differences, for example:
 
--   `duration` uses seconds instead of milliseconds
-
-[Improvements to Web Animations API]: https://motion.dev/docs/improvements-to-the-web-animations-api-dx
+-   `duration`, `delay` uses seconds instead of milliseconds
+-   `iterations` -> `repeat`
+-   `direction` -> `repeatType`
