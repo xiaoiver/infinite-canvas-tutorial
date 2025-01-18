@@ -90,20 +90,30 @@ onMounted(() => {
   }
 
   $canvas.addEventListener('ic-ready', async (e) => {
-    canvas = (e as any).detail as Canvas;
+    import('webfontloader').then((module) => {
+      const WebFont = module.default;
+      WebFont.load({
+        google: {
+          families: ['Gaegu'],
+        },
+        active: () => {
+          canvas = (e as any).detail as Canvas;
 
-    canvas?.appendChild(layer);
-    const camera = canvas.camera;
+          canvas?.appendChild(layer);
+          const camera = canvas.camera;
 
-    const landmark = camera.createLandmark({
-      x: -200,
-      y: -200,
-      zoom: 1,
-      rotation: 0,
-    });
-    camera.gotoLandmark(landmark, {
-      duration: 0,
-      easing: 'ease',
+          const landmark = camera.createLandmark({
+            x: -200,
+            y: -200,
+            zoom: 1,
+            rotation: 0,
+          });
+          camera.gotoLandmark(landmark, {
+            duration: 0,
+            easing: 'ease',
+          });
+        },
+      });
     });
   });
 });
