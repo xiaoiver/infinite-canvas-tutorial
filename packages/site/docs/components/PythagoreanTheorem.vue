@@ -5,19 +5,19 @@ import { BulbOutlined } from '@ant-design/icons-vue';
 import { ref, onMounted } from 'vue';
 import { Canvas, Group, Text, deserializeNode, parseTransform } from '@infinite-canvas-tutorial/core';
 import { animate } from "motion";
-import Anthropic from '@anthropic-ai/sdk';
+// import Anthropic from '@anthropic-ai/sdk';
 
-const items: PromptsProps['items'] = [
-  {
-    key: '0',
-    icon: <BulbOutlined style={{ color: '#964B00' }} />,
-    description: 'How to prove the Pythagorean Theorem using geometric methods?',
-    disabled: false,
-  },
-];
+import('webfontloader').then((module) => {
+  const WebFont = module.default;
+  WebFont.load({
+    google: {
+      families: ['Gaegu'],
+    },
+  });
+});
 
 function sleep(s: number) {
-  return new Promise(resolve => setTimeout(resolve, s * 1000));
+  return new Promise(resolve => window.setTimeout(resolve, s * 1000));
 }
 
 function convertAnimationToMotion(animation: any) {
@@ -98,15 +98,6 @@ onMounted(() => {
     return;
   }
 
-  import('webfontloader').then((module) => {
-    const WebFont = module.default;
-    WebFont.load({
-      google: {
-        families: ['Gaegu'],
-      },
-    });
-  });
-
   $canvas.addEventListener('ic-ready', async (e) => {
     canvas = (e as any).detail as Canvas;
 
@@ -127,6 +118,15 @@ onMounted(() => {
 });
 
 const Demo = () => {
+  const items: PromptsProps['items'] = [
+    {
+      key: '0',
+      icon: <BulbOutlined style={{ color: '#964B00' }} />,
+      description: 'How to prove the Pythagorean Theorem using geometric methods?',
+      disabled: false,
+    },
+  ];
+
   const value = ref('');
   const loading = ref<boolean>(false);
 
@@ -151,7 +151,7 @@ const Demo = () => {
     // });
 
     // Use mock data for now
-    const data = await (await fetch('/animations/pythagorean-theorem.json')).json();
+    const data = await (await window.fetch('/animations/pythagorean-theorem.json')).json();
     loading.value = false;
 
     const graphicsMap = new Map<string, any>();
@@ -262,9 +262,7 @@ const Demo = () => {
 defineRender(() => {
   return (
     <App>
-      <ClientOnly>
-        <Demo />
-      </ClientOnly>
+      <Demo />
     </App>
   );
 });
