@@ -31,9 +31,9 @@ const paintIntoStage = (
   inner.fill(0, 0, np);
 
   // const getData = (x: number, y: number) => data[y * w + x] ?? 0;
-  // const getData = (x: number, y: number) => data[4 * (y * w + x) + 3] ?? 0;
-  const getData = (x: number, y: number) =>
-    (data[4 * (y * w + x) + 3] ?? 0) / 255;
+  const getData = (x: number, y: number) => data[4 * (y * w + x) + 3] ?? 0;
+  // const getData = (x: number, y: number) =>
+  //   (data[4 * (y * w + x) + 3] ?? 0) / 255;
 
   for (let y = 0; y < h; y++) {
     for (let x = 0; x < w; x++) {
@@ -41,7 +41,7 @@ const paintIntoStage = (
       if (!a) continue;
 
       const i = (y + pad) * wp + x + pad;
-      if (a >= 254 / 255) {
+      if (a >= 254) {
         // Fix for bad rasterizer rounding
         data[4 * (y * w + x) + 3] = 255;
 

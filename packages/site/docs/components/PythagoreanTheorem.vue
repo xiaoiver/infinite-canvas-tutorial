@@ -262,7 +262,9 @@ const Demo = () => {
 defineRender(() => {
   return (
     <App>
-      <Demo />
+      <ClientOnly>
+        <Demo />
+      </ClientOnly>
     </App>
   );
 });
