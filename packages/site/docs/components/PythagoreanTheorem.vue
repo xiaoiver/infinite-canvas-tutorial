@@ -7,15 +7,6 @@ import { Canvas, Group, Text, deserializeNode, parseTransform } from '@infinite-
 import { animate } from "motion";
 // import Anthropic from '@anthropic-ai/sdk';
 
-import('webfontloader').then((module) => {
-  const WebFont = module.default;
-  WebFont.load({
-    google: {
-      families: ['Gaegu'],
-    },
-  });
-});
-
 function sleep(s: number) {
   return new Promise(resolve => window.setTimeout(resolve, s * 1000));
 }
