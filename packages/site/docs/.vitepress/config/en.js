@@ -102,6 +102,8 @@ export const en = defineConfig({
               { text: 'Ellipse', link: 'ellipse' },
               { text: 'Rect', link: 'rect' },
               { text: 'Polyline', link: 'polyline' },
+              { text: 'Path', link: 'path' },
+              { text: 'Text', link: 'text' },
             ],
           },
         ],

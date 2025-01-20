@@ -5,7 +5,7 @@ publish: false
 
 # Polyline
 
-参考 SVG [polyline]。
+See SVG [polyline].
 
 ```ts
 const polyline = new Polyline({
@@ -58,7 +58,7 @@ call(() => {
         strokeDashoffset: 0,
         strokeAlignment: 'center',
         stroke: '#ff0000',
-        strokeWidth: 1,
+        strokeWidth: 20,
         strokeOpacity: 1,
     };
     gui.add(config, 'strokeAlignment', ['center', 'inner', 'outer']).onChange(
@@ -110,45 +110,45 @@ call(() => {
 
 ## points
 
-一组顶点坐标，形如 `[number, number][]`
+An array of vertex coordinates in the form of `[number, number][]`
 
 [polyline]: https://developer.mozilla.org/en-US/docs/Web/SVG/Element/polyline
 
 ## strokeAlignment
 
-SVG 并不不存在同名属性，可选值包括 `center` `inner` 和 `outer`。默认值为 `center`。
+Unlike SVG, this property has no equivalent. Possible values include `center`, `inner` and `outer`. Default value is `center`.
 
 ## strokeLinecap
 
-描边端点样式，参考：[stroke-linecap]，可选值为 `butt` `square` 和 `round`。默认值为 `butt`。
+The style of line endings, refer to [stroke-linecap]. Possible values are `butt`, `square` and `round`. Default value is `butt`.
 
 ## strokeLinejoin
 
-描边接头样式，参考：[stroke-linejoin]，可选值为 `miter` `bevel` 和 `round`。默认值为 `miter`。
+The style of corners where lines meet, refer to [stroke-linejoin]. Possible values are `miter`, `bevel` and `round`. Default value is `miter`.
 
 ## strokeMiterlimit
 
-参考：[stroke-miterlimit]
+Refer to [stroke-miterlimit]
 
-> 如果两条线交汇在一起形成一个尖角，而且属性 `stroke-linejoin` 指定了 `miter`，斜接有可能扩展到远远超过出路径轮廓线的线宽。属性 `stroke-miterlimit` 对斜接长度和 `stroke-width` 的比率强加了一个极限。当极限到达时，交汇处由斜接变成倒角。
+> When two lines meet at a sharp angle and miter joins have been specified for `stroke-linejoin`, the miter length can exceed the `stroke-width` by a large amount. The `stroke-miterlimit` imposes a limit on the ratio of the miter length to the `stroke-width`. When the limit is reached, the join is converted from a miter to a bevel.
 
-默认值为 `4`。
+Default value is `4`.
 
 ## strokeDasharray
 
-定义了描边的虚线段和间隙的排列形式，参考：[stroke-dasharray]，但暂时只支持包含两个值 `[number, number]` 的形式。默认值为 `[]`。
+Defines the pattern of dashes and gaps used to paint the stroke, refer to [stroke-dasharray]. Currently only supports the format of `[number, number]`. Default value is `[]`.
 
 ## strokeDashoffset
 
-定义了虚线与路径起点之间的偏移量，参考：[stroke-dashoffset]。默认值为 `0`。
+Defines the offset from the start of the path for the dash pattern, refer to [stroke-dashoffset]. Default value is `0`.
 
 ## [WIP] fill
 
-参考：[fill for polyline]
+Refer to: [fill for polyline]
 
 [stroke-linecap]: https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/stroke-linecap
 [stroke-linejoin]: https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/stroke-linejoin
 [stroke-miterlimit]: https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/stroke-miterlimit
-[stroke-dashoffset]: https://developer.mozilla.org/zh-CN/docs/Web/SVG/Attribute/stroke-dashoffset
-[stroke-dasharray]: https://developer.mozilla.org/zh-CN/docs/Web/SVG/Attribute/stroke-dasharray
+[stroke-dashoffset]: https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/stroke-dashoffset
+[stroke-dasharray]: https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/stroke-dasharray
 [fill for polyline]: https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/fill#polyline

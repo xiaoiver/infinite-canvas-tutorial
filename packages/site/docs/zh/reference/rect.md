@@ -48,8 +48,8 @@ call(() => {
         const config = {
             x: 400,
             y: 100,
-            width: 100,
-            height: 100,
+            // width: 100,
+            // height: 100,
             fill: '#ff0000',
             fillOpacity: 1,
             stroke: '#00000',
@@ -67,12 +67,12 @@ call(() => {
         gui.add(config, 'y', 100, 300, 1).onChange((y) => {
             rect.y = y;
         });
-        gui.add(config, 'width', 50, 300, 1).onChange((width) => {
-            rect.width = width;
-        });
-        gui.add(config, 'height', 50, 300, 1).onChange((height) => {
-            rect.height = height;
-        });
+        // gui.add(config, 'width', 50, 300, 1).onChange((width) => {
+        //     rect.width = width;
+        // });
+        // gui.add(config, 'height', 50, 300, 1).onChange((height) => {
+        //     rect.height = height;
+        // });
         gui.add(config, 'cornerRadius', 0, 10, 1).onChange((cornerRadius) => {
             rect.cornerRadius = cornerRadius;
         });

@@ -5,7 +5,7 @@ publish: false
 
 # Ellipse
 
-参考 SVG [ellipse]。
+See SVG [ellipse].
 
 ```ts
 const ellipse = new Ellipse({ cx: 200, cy: 100, rx: 50, ry: 100 });
@@ -90,18 +90,18 @@ call(() => {
 
 ## cx
 
-圆心在 X 轴上的坐标。默认值为 `0`。
+The X-axis coordinate of the ellipse's center. Default value is `0`.
 
 ## cy
 
-圆心在 Y 轴上的坐标。默认值为 `0`。
+The Y-axis coordinate of the ellipse's center. Default value is `0`.
 
 ## rx
 
-X 轴半径。默认值为 `0`。
+The radius along the X-axis. Default value is `0`.
 
 ## ry
 
-Y 轴半径。默认值为 `0`。
+The radius along the Y-axis. Default value is `0`.
 
 [ellipse]: https://developer.mozilla.org/en-US/docs/Web/SVG/Element/ellipse

@@ -32,33 +32,24 @@ export function getGlyphQuads(
     const glyph = glyphPositions && glyphPositions[positionedGlyph.glyph];
     if (!glyph) continue;
 
-    const { rect } = glyph;
+    const { rect, metrics } = glyph;
     if (!rect) continue;
+
+    const { x, y, scale } = positionedGlyph;
 
     // The rects have an addditional buffer that is not included in their size.
     const rectBuffer = useMSDF
       ? 0
       : BASE_FONT_BUFFER / SDF_SCALE + glyphPadding;
 
-    const halfAdvance = (glyph.metrics.advance * positionedGlyph.scale) / 2;
-
-    const builtInOffset = [positionedGlyph.x + halfAdvance, positionedGlyph.y];
-
     const pixelRatio = 1;
     const paddedWidth =
-      (rect.w * positionedGlyph.scale) /
-      (pixelRatio * (useMSDF ? 1 : SDF_SCALE));
+      (rect.w * scale) / (pixelRatio * (useMSDF ? 1 : SDF_SCALE));
     const paddedHeight =
-      (rect.h * positionedGlyph.scale) /
-      (pixelRatio * (useMSDF ? 1 : SDF_SCALE));
+      (rect.h * scale) / (pixelRatio * (useMSDF ? 1 : SDF_SCALE));
 
-    const x1 =
-      (glyph.metrics.left - rectBuffer) * positionedGlyph.scale -
-      halfAdvance +
-      builtInOffset[0];
-    const y1 =
-      (-glyph.metrics.top - rectBuffer) * positionedGlyph.scale +
-      builtInOffset[1];
+    const x1 = (metrics.left - rectBuffer) * positionedGlyph.scale + x;
+    const y1 = (-metrics.top - rectBuffer) * positionedGlyph.scale + y;
     const x2 = x1 + paddedWidth;
     const y2 = y1 + paddedHeight;
 

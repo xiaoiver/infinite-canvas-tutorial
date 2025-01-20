@@ -5,7 +5,7 @@ publish: false
 
 # Circle
 
-参考 SVG [circle]。
+See SVG [circle].
 
 ```ts
 const circle = new Circle({
@@ -113,28 +113,28 @@ call(() => {
 
 ## cx
 
-圆心在 X 轴上的坐标。默认值为 `0`。
+The X-axis coordinate of the circle's center. Default value is `0`.
 
 ## cy
 
-圆心在 Y 轴上的坐标。默认值为 `0`。
+The Y-axis coordinate of the circle's center. Default value is `0`.
 
 ## r
 
-半径。默认值为 `0`。
+Radius. Default value is `0`.
 
 ## strokeAlignment
 
-SVG 并不不存在同名属性，可选值包括 `center` `inner` 和 `outer`。默认值为 `center`。
+Unlike SVG, this property has no equivalent. Possible values include `center`, `inner` and `outer`. Default value is `center`.
 
 ## strokeDasharray
 
-定义了描边的虚线段和间隙的排列形式，参考：[stroke-dasharray]，但暂时只支持包含两个值 `[number, number]` 的形式。默认值为 `[]`。
+Defines the pattern of dashes and gaps used to paint the stroke, refer to [stroke-dasharray]. Currently only supports the format of `[number, number]`. Default value is `[]`.
 
 ## strokeDashoffset
 
-定义了虚线与路径起点之间的偏移量，参考：[stroke-dashoffset]。默认值为 `0`。
+Defines the offset from the start of the path for the dash pattern, refer to [stroke-dashoffset]. Default value is `0`.
 
 [circle]: https://developer.mozilla.org/en-US/docs/Web/SVG/Element/circle
-[stroke-dashoffset]: https://developer.mozilla.org/zh-CN/docs/Web/SVG/Attribute/stroke-dashoffset
-[stroke-dasharray]: https://developer.mozilla.org/zh-CN/docs/Web/SVG/Attribute/stroke-dasharray
+[stroke-dashoffset]: https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/stroke-dashoffset
+[stroke-dasharray]: https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/stroke-dasharray

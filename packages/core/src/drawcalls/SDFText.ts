@@ -87,7 +87,7 @@ export class SDFText extends Drawcall {
         metrics.fontMetrics.fontSize / bitmapFont.baseMeasurementFontSize;
     } else {
       // scale current font size to base(24)
-      fontScale = metrics.fontMetrics.fontSize / BASE_FONT_WIDTH;
+      fontScale = metrics.fontMetrics.fontSize / (BASE_FONT_WIDTH / SDF_SCALE);
       const allText = this.shapes.map((text: Text) => text.bidiChars).join('');
       this.#glyphManager.generateAtlas(
         metrics.font,
@@ -126,7 +126,7 @@ export class SDFText extends Drawcall {
         object,
         lines,
         fontStack: font,
-        lineHeight: lineHeight / SDF_SCALE,
+        lineHeight,
         letterSpacing: letterSpacing,
         indicesOffset: indicesOff,
         bitmapFont,

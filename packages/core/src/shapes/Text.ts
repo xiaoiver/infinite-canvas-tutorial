@@ -342,6 +342,8 @@ export function TextWrapper<TBase extends GConstructor>(Base: TBase) {
         this.geometryBoundsDirtyFlag = true;
         this.renderBoundsDirtyFlag = true;
         this.boundsDirtyFlag = true;
+        this.geometryDirtyFlag = true;
+        this.materialDirtyFlag = true;
       }
     }
 
@@ -355,6 +357,8 @@ export function TextWrapper<TBase extends GConstructor>(Base: TBase) {
         this.geometryBoundsDirtyFlag = true;
         this.renderBoundsDirtyFlag = true;
         this.boundsDirtyFlag = true;
+        this.geometryDirtyFlag = true;
+        this.materialDirtyFlag = true;
       }
     }
 
@@ -368,6 +372,8 @@ export function TextWrapper<TBase extends GConstructor>(Base: TBase) {
         this.geometryBoundsDirtyFlag = true;
         this.renderBoundsDirtyFlag = true;
         this.boundsDirtyFlag = true;
+        this.geometryDirtyFlag = true;
+        this.materialDirtyFlag = true;
       }
     }
 
@@ -381,6 +387,8 @@ export function TextWrapper<TBase extends GConstructor>(Base: TBase) {
         this.geometryBoundsDirtyFlag = true;
         this.renderBoundsDirtyFlag = true;
         this.boundsDirtyFlag = true;
+        this.geometryDirtyFlag = true;
+        this.materialDirtyFlag = true;
       }
     }
 
@@ -394,6 +402,8 @@ export function TextWrapper<TBase extends GConstructor>(Base: TBase) {
         this.geometryBoundsDirtyFlag = true;
         this.renderBoundsDirtyFlag = true;
         this.boundsDirtyFlag = true;
+        this.geometryDirtyFlag = true;
+        this.materialDirtyFlag = true;
       }
     }
 
@@ -407,6 +417,8 @@ export function TextWrapper<TBase extends GConstructor>(Base: TBase) {
         this.geometryBoundsDirtyFlag = true;
         this.renderBoundsDirtyFlag = true;
         this.boundsDirtyFlag = true;
+        this.geometryDirtyFlag = true;
+        this.materialDirtyFlag = true;
       }
     }
 
@@ -511,6 +523,8 @@ export function TextWrapper<TBase extends GConstructor>(Base: TBase) {
         this.geometryBoundsDirtyFlag = true;
         this.renderBoundsDirtyFlag = true;
         this.boundsDirtyFlag = true;
+        this.geometryDirtyFlag = true;
+        this.materialDirtyFlag = true;
       }
     }
 
@@ -524,6 +538,8 @@ export function TextWrapper<TBase extends GConstructor>(Base: TBase) {
         this.geometryBoundsDirtyFlag = true;
         this.renderBoundsDirtyFlag = true;
         this.boundsDirtyFlag = true;
+        this.geometryDirtyFlag = true;
+        this.materialDirtyFlag = true;
       }
     }
   };

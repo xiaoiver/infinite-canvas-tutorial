@@ -3,13 +3,13 @@ outline: deep
 publish: false
 ---
 
-# 图形基类
+# Base Shape Class
 
-Shape 是所有图形的基类，提供了以下通用属性和方法。
+Shape is the base class for all shapes, providing the following common properties and methods.
 
 ## Transform
 
-提供以下变换，包括平移、缩放、旋转和斜切。
+Provides the following transformations, including translation, scaling, rotation and skewing.
 
 ```js eval code=false
 $icCanvas = call(() => {
@@ -93,7 +93,7 @@ call(() => {
 
 ### position
 
-对图形应用平移变换，或者获取平移的值。
+Apply translation transform to the shape, or get the translation value.
 
 ```ts
 circle.position.x = 100;
@@ -103,7 +103,7 @@ circle.position; // { x: 100, y: 100 }
 
 ### scale
 
-对图形应用缩放变换，或者获取缩放的值。
+Apply scaling transform to the shape, or get the scale value.
 
 ```ts
 circle.scale.x = 2;
@@ -113,7 +113,7 @@ circle.scale; // { x: 2, y: 0.5 }
 
 ### rotation
 
-对图形应用旋转变换，或者获取旋转的弧度值。
+Apply rotation transform to the shape, or get the rotation value in radians.
 
 ```ts
 circle.rotation = Math.PI / 2;
@@ -122,7 +122,7 @@ circle.rotation; // Math.PI / 2;
 
 ### angle
 
-对图形应用旋转变换，或者获取旋转的角度值。
+Apply rotation transform to the shape, or get the rotation value in degrees.
 
 ```ts
 circle.angle = 90;
@@ -131,10 +131,10 @@ circle.angle; // 90;
 
 ### skew
 
-对图形应用倾斜变换，参考 CSS [skew]：
+Apply skew transform to the shape, refer to CSS [skew]:
 
--   `x` 表示用于沿横坐标扭曲元素的角度
--   `y` 表示用于沿纵坐标扭曲元素的角度
+-   `x` represents the angle to skew the element along the x-axis
+-   `y` represents the angle to skew the element along the y-axis
 
 ```ts
 circle.skew.x = 10;
@@ -144,7 +144,7 @@ circle.skew; // { x: 10, y: 0 }
 
 ### pivot
 
-设置或获取缩放和旋转中心，类似 CSS 中的 [transform-origin]，默认值为 `[0, 0]`：
+Set or get the center point for scaling and rotation, similar to CSS [transform-origin], default value is `[0, 0]`:
 
 ```ts
 circle.pivot.x = 100;
@@ -154,7 +154,7 @@ circle.pivot; // { x: 100, y: 100 }
 
 ### localTransform
 
-`只读` 获取局部坐标系下的 Matrix
+`readonly` Get the Matrix in local coordinate system
 
 ```ts
 circle.localTransform; // Matrix {a, b, c, d, tx, ty}
@@ -162,13 +162,13 @@ circle.localTransform; // Matrix {a, b, c, d, tx, ty}
 
 ### worldTransform
 
-`只读` 获取世界坐标系下的 Matrix
+`readonly` Get the Matrix in world coordinate system
 
 ```ts
 circle.localTransform; //  Matrix {a, b, c, d, tx, ty}
 ```
 
-## 样式属性
+## Style Properties
 
 ```js eval code=false
 $icCanvas2 = call(() => {
@@ -254,7 +254,7 @@ call(() => {
 
 ### fill
 
-填充色，参考 SVG [fill]。可以使用 [d3-color] 支持的字符串。
+Fill color, refer to SVG [fill]. Can use strings supported by [d3-color].
 
 ```ts
 circle.fill = 'rgb(255, 255, 0)';
@@ -263,7 +263,7 @@ circle.fill = 'steelblue';
 
 ### stroke
 
-描边色，参考 SVG [stroke]。可以使用 [d3-color] 支持的字符串。默认值为 `none`。
+Stroke color, refer to SVG [stroke]. Can use strings supported by [d3-color]. Default value is `none`.
 
 ```ts
 circle.stroke = 'rgb(255, 255, 0)';
@@ -272,7 +272,7 @@ circle.stroke = 'steelblue';
 
 ### strokeWidth
 
-线宽，参考 SVG [stroke-width]。默认值为 `1`。
+Line width, refer to SVG [stroke-width]. Default value is `1`.
 
 ```ts
 circle.strokeWidth = 1;
@@ -280,7 +280,7 @@ circle.strokeWidth = 1;
 
 ### opacity
 
-整体透明度，参考 SVG [opacity]。默认值为 `1`。
+Overall opacity, refer to SVG [opacity]. Default value is `1`.
 
 ```ts
 circle.opacity = 0.5;
@@ -288,7 +288,7 @@ circle.opacity = 0.5;
 
 ### fillOpacity
 
-填充色的不透明度，参考 SVG [fill-opacity]。默认值为 `1`。
+Fill opacity, refer to SVG [fill-opacity]. Default value is `1`.
 
 ```ts
 circle.fillOpacity = 0.5;
@@ -296,7 +296,7 @@ circle.fillOpacity = 0.5;
 
 ### strokeOpacity
 
-描边色的不透明度，参考 SVG [stroke-opacity]。默认值为 `1`。
+Stroke opacity, refer to SVG [stroke-opacity]. Default value is `1`.
 
 ```ts
 circle.fillOpacity = 0.5;
@@ -304,7 +304,7 @@ circle.fillOpacity = 0.5;
 
 ### cursor
 
-当鼠标悬停在图形上时，我们可以改变它的样式，通过修改容器的 CSS 样式实现。支持的值可以参考 [cursor]。
+When hovering over the shape, we can change its style by modifying the container's CSS style. Supported values can be found at [cursor].
 
 ```ts
 circle.cursor = 'pointer';
@@ -312,7 +312,7 @@ circle.cursor = 'pointer';
 
 ### pointerEvents
 
-设置图形如何响应交互事件，可参考 [pointer-events]。例如让图形完全不响应事件：
+Set how the shape responds to interaction events, refer to [pointer-events]. For example, to make the shape completely unresponsive to events:
 
 ```ts
 circle.pointerEvents = 'none';
@@ -320,31 +320,37 @@ circle.pointerEvents = 'none';
 
 ### cullable
 
-是否支持被剔除，默认值为 `true`。
+Whether the shape can be culled, default value is `true`.
 
 ### visible
 
-是否可见，默认值为 `true`。
+Whether the shape is visible, default value is `true`.
 
 ### draggable
 
+Whether the shape can be dragged.
+
 ### droppable
+
+Whether the shape can be dropped onto.
 
 ### batchable
 
-## 场景图
+Whether the shape can be batched for rendering.
+
+## Scene Graph
 
 ### parent
 
-`只读` 获取父节点。
+`readonly` Get the parent node.
 
 ### children
 
-`只读` 获取子节点列表。
+`readonly` Get the list of child nodes.
 
 ### appendChild
 
-添加子元素。
+Add a child element.
 
 ```ts
 circle.appendChild(child);
@@ -352,7 +358,7 @@ circle.appendChild(child);
 
 ### removeChild
 
-删除子元素。
+Remove a child element.
 
 ```ts
 circle.removeChild(child);
@@ -360,7 +366,7 @@ circle.removeChild(child);
 
 ### getBounds
 
-获取世界坐标系下的包围盒。
+Get the bounding box in world coordinates.
 
 ```ts
 circle.getBounds(); // AABB {}
@@ -368,17 +374,17 @@ circle.getBounds(); // AABB {}
 
 ### containsPoint
 
-判断点是否在图形内。
+Check if a point is inside the shape.
 
 ```ts
 circle.containsPoint(0, 0); // false
 ```
 
-## 事件
+## Events
 
 ### addEventListener
 
-在图形上注册事件监听器，参考 [addEventListener]：
+Register an event listener on the shape, refer to [addEventListener]:
 
 ```ts
 circle.addEventListener('pointerdown', (e) => {});
@@ -386,7 +392,7 @@ circle.addEventListener('pointerdown', (e) => {});
 
 ### removeEventListener
 
-从图形上删除已注册的事件监听器，参考 [removeEventListener]：
+Remove a registered event listener from the shape, refer to [removeEventListener]:
 
 ```ts
 circle.removeEventListener('pointerdown', handler);
@@ -394,7 +400,7 @@ circle.removeEventListener('pointerdown', handler);
 
 ### dispatchEvent
 
-向图形派发事件，参考 [dispatchEvent]：
+Dispatch an event to the shape, refer to [dispatchEvent]:
 
 ```ts
 circle.dispatchEvent(new FederatedEvent());

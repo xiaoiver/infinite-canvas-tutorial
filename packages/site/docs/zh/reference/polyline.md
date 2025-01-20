@@ -58,7 +58,7 @@ call(() => {
         strokeDashoffset: 0,
         strokeAlignment: 'center',
         stroke: '#ff0000',
-        strokeWidth: 1,
+        strokeWidth: 20,
         strokeOpacity: 1,
     };
     gui.add(config, 'strokeAlignment', ['center', 'inner', 'outer']).onChange(
