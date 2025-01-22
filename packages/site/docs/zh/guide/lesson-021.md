@@ -11,6 +11,7 @@ publish: false
 
 参考以下实现：
 
+-   [yoga-wasm-web] 的[示例](https://github.com/DioxusLabs/taffy/pull/394#issuecomment-1476430705)
 -   <https://github.com/pmndrs/react-three-flex/>
 -   <https://github.com/fireveined/pixi-flex-layout/>
 
@@ -36,3 +37,4 @@ publish: false
 [troika-flex-layout]: https://github.com/protectwise/troika/blob/main/packages/troika-flex-layout/
 [clay]: https://github.com/nicbarker/clay
 [Motion Canvas Layouts]: https://motioncanvas.io/docs/layouts
+[yoga-wasm-web]: https://github.com/shuding/yoga-wasm-web

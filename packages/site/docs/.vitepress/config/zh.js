@@ -131,6 +131,10 @@ export const zh = defineConfig({
                 link: 'wireframe',
               },
               {
+                text: '绘制 Path 中的孔洞',
+                link: 'holes',
+              },
+              {
                 text: '使用 SDF 绘制文本',
                 link: 'sdf-text',
               },
@@ -157,6 +161,10 @@ export const zh = defineConfig({
               {
                 text: '使用 Opentype.js 进行 Shaping',
                 link: 'opentype',
+              },
+              {
+                text: '文本基线',
+                link: 'text-baseline',
               },
               {
                 text: '加载 Web 字体',

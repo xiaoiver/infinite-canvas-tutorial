@@ -247,6 +247,16 @@ for (const segment of segmentStack[0]!) {
 
 <Bidi />
 
+解决了 BiDi，下面还需要解决复合字符的问题。下面的例子来自 [cosmic-text](https://github.com/pop-os/cosmic-text/blob/166b59f560c551dab391a864f7c1f503c1e18446/examples/editor-test/src/main.rs#L97-L101)，一个用 Rust 实现的多行文本处理库。
+
+```rust
+for line in BidiParagraphs::new(&text) {
+    for grapheme in line.graphemes(true) {
+        for c in grapheme.chars() {}
+    }
+}
+```
+
 ### 复合字符 {#cluster}
 
 并不是所有字符都是由单一字符组成，[clusters] 是 HarfBuzz 中用于处理复合字符的术语

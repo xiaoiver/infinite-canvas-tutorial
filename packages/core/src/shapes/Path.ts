@@ -34,8 +34,6 @@ export function PathWrapper<TBase extends GConstructor>(Base: TBase) {
 
     batchable = false;
 
-    onGeometryChanged?: () => void;
-
     static getGeometryBounds(
       attributes: Partial<
         Pick<PathAttributes, 'd'> & { points: [number, number][][] }
@@ -61,10 +59,10 @@ export function PathWrapper<TBase extends GConstructor>(Base: TBase) {
     constructor(attributes: Partial<PathAttributes> = {}) {
       super(attributes);
 
-      const { d } = attributes;
+      const { d, tessellationMethod } = attributes;
 
       this.d = d;
-      this.tessellationMethod = TesselationMethod.EARCUT;
+      this.tessellationMethod = tessellationMethod ?? TesselationMethod.EARCUT;
     }
 
     get d() {
@@ -87,7 +85,6 @@ export function PathWrapper<TBase extends GConstructor>(Base: TBase) {
         this.renderBoundsDirtyFlag = true;
         this.boundsDirtyFlag = true;
         this.geometryDirtyFlag = true;
-        this.onGeometryChanged?.();
       }
     }
 

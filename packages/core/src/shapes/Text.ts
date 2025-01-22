@@ -1,4 +1,8 @@
-import { canvasTextMetrics, TextMetrics } from '../utils';
+import {
+  canvasTextMetrics,
+  TextMetrics,
+  yOffsetFromTextBaseline,
+} from '../utils';
 import { BitmapFont } from '../utils/bitmap-font/BitmapFont';
 import { AABB } from './AABB';
 import { GConstructor } from './mixins';
@@ -175,7 +179,7 @@ export function TextWrapper<TBase extends GConstructor>(Base: TBase) {
     static getGeometryBounds(
       attributes: Partial<TextAttributes> & { metrics: TextMetrics },
     ) {
-      const { x, y, textAlign, metrics } = attributes;
+      const { x, y, textAlign, textBaseline, metrics } = attributes;
       const { width, height } = metrics;
 
       const hwidth = width / 2;
@@ -190,11 +194,10 @@ export function TextWrapper<TBase extends GConstructor>(Base: TBase) {
 
       let lineYOffset = y;
       if (metrics.fontMetrics) {
-        if (metrics.fontMetrics.fontBoundingBoxAscent) {
-          lineYOffset -= metrics.fontMetrics.fontBoundingBoxAscent;
-        } else {
-          // TODO: approximate the ascent
-        }
+        lineYOffset += yOffsetFromTextBaseline(
+          textBaseline,
+          metrics.fontMetrics,
+        );
       }
 
       return new AABB(

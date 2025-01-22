@@ -46,8 +46,6 @@ export function EllipseWrapper<TBase extends GConstructor>(Base: TBase) {
     #rx: number;
     #ry: number;
 
-    onGeometryChanged?: () => void;
-
     static getGeometryBounds(
       attributes: Partial<Pick<EllipseAttributes, 'cx' | 'cy' | 'rx' | 'ry'>>,
     ) {
@@ -77,7 +75,7 @@ export function EllipseWrapper<TBase extends GConstructor>(Base: TBase) {
         this.geometryBoundsDirtyFlag = true;
         this.renderBoundsDirtyFlag = true;
         this.boundsDirtyFlag = true;
-        this.onGeometryChanged?.();
+        this.geometryDirtyFlag = true;
       }
     }
 
@@ -92,7 +90,7 @@ export function EllipseWrapper<TBase extends GConstructor>(Base: TBase) {
         this.geometryBoundsDirtyFlag = true;
         this.renderBoundsDirtyFlag = true;
         this.boundsDirtyFlag = true;
-        this.onGeometryChanged?.();
+        this.geometryDirtyFlag = true;
       }
     }
 
@@ -107,7 +105,7 @@ export function EllipseWrapper<TBase extends GConstructor>(Base: TBase) {
         this.geometryBoundsDirtyFlag = true;
         this.renderBoundsDirtyFlag = true;
         this.boundsDirtyFlag = true;
-        this.onGeometryChanged?.();
+        this.geometryDirtyFlag = true;
       }
     }
 
@@ -122,7 +120,7 @@ export function EllipseWrapper<TBase extends GConstructor>(Base: TBase) {
         this.geometryBoundsDirtyFlag = true;
         this.renderBoundsDirtyFlag = true;
         this.boundsDirtyFlag = true;
-        this.onGeometryChanged?.();
+        this.geometryDirtyFlag = true;
       }
     }
 

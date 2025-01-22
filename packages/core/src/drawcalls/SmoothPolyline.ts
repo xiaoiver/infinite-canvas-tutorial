@@ -58,7 +58,7 @@ export class SmoothPolyline extends Drawcall {
     );
   }
 
-  validate(shape: Shape) {
+  validate(_: Shape) {
     return false;
   }
 
@@ -67,6 +67,7 @@ export class SmoothPolyline extends Drawcall {
   #segmentsBuffer: Buffer;
   #uniformBuffer: Buffer;
 
+  instanced = false;
   pointsBuffer: number[] = [];
   travelBuffer: number[] = [];
 
@@ -90,9 +91,6 @@ export class SmoothPolyline extends Drawcall {
   }
 
   createGeometry(): void {
-    // Don't support instanced rendering for now.
-    this.instanced = false;
-
     const indices: number[] = [];
     const pointsBuffer: number[] = [];
     const travelBuffer: number[] = [];
@@ -604,22 +602,36 @@ export function updateBuffer(object: Shape, useRoughStroke = true) {
 
   const pointsBufferTotal: number[] = [];
   const travelBufferTotal: number[] = [];
-  // let instancedCount = 0;
+
   subPaths.forEach((points) => {
     const pointsBuffer: number[] = [];
     const travelBuffer: number[] = [];
     let j = (Math.round(0 / stridePoints) + 2) * strideFloats;
     let dist = 0;
 
+    // Account for Z command in path
+    let zCommand = false;
+    if (
+      points.length >= 6 &&
+      points[0] === points[points.length - 2] &&
+      points[1] === points[points.length - 1]
+    ) {
+      const dir = [points[2] - points[0], points[3] - points[1]];
+      points.push(points[0] + epsilon * dir[0], points[1] + epsilon * dir[1]);
+      zCommand = true;
+    }
+
     for (let i = 0; i < points.length; i += stridePoints) {
       // calc travel
       if (i > 1) {
-        dist += Math.sqrt(
-          Math.pow(points[i] - points[i - stridePoints], 2) +
-            Math.pow(points[i + 1] - points[i + 1 - stridePoints], 2),
-        );
+        if (!(zCommand && i >= points.length - stridePoints)) {
+          dist += Math.sqrt(
+            Math.pow(points[i] - points[i - stridePoints], 2) +
+              Math.pow(points[i + 1] - points[i + 1 - stridePoints], 2),
+          );
+          travelBuffer.push(dist);
+        }
       }
-      travelBuffer.push(dist);
 
       pointsBuffer[j++] = points[i];
       pointsBuffer[j++] = points[i + 1];

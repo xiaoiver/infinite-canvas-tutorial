@@ -10,11 +10,6 @@ export interface RoughPolylineAttributes extends PolylineAttributes, IRough {}
 export class RoughPolyline extends Rough(PolylineWrapper(Shape)) {
   constructor(attributes: Partial<RoughPolylineAttributes> = {}) {
     super(attributes);
-
-    // points also regenerates the drawable
-    this.onGeometryChanged = () => {
-      this.geometryDirtyFlag = true;
-    };
   }
 
   generateDrawable() {

@@ -247,6 +247,16 @@ for (const segment of segmentStack[0]!) {
 
 <Bidi />
 
+After solving BiDi, we now need to address the issue of compound characters. The following example comes from [cosmic-text](https://github.com/pop-os/cosmic-text/blob/166b59f560c551dab391a864f7c1f503c1e18446/examples/editor-test/src/main.rs#L97-L101), a multi-line text processing library implemented in Rust.
+
+```rust
+for line in BidiParagraphs::new(&text) {
+    for grapheme in line.graphemes(true) {
+        for c in grapheme.chars() {}
+    }
+}
+```
+
 ### Composite characters {#cluster}
 
 Not all characters are composed of a single character, [clusters] is the term used by HarfBuzz to handle composite characters

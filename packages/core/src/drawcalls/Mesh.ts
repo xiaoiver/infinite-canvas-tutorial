@@ -13,6 +13,7 @@ import {
   TransparentBlack,
   Texture,
   StencilOp,
+  PrimitiveTopology,
 } from '@antv/g-device-api';
 import {
   Path,
@@ -24,8 +25,8 @@ import {
 } from '../shapes';
 import { Drawcall, ZINDEX_FACTOR } from './Drawcall';
 import { vert, frag, Location } from '../shaders/mesh';
-import { isString, paddingMat3, triangulate } from '../utils';
-import earcut, { flatten } from 'earcut';
+import { isClockWise, isString, paddingMat3, triangulate } from '../utils';
+import earcut from 'earcut';
 
 const strokeAlignmentMap = {
   center: 0,
@@ -38,6 +39,8 @@ export class Mesh extends Drawcall {
   #texture: Texture;
 
   points: number[] = [];
+
+  instanced = false;
 
   static useDash(shape: Path) {
     const { strokeDasharray } = shape;
@@ -75,8 +78,6 @@ export class Mesh extends Drawcall {
   }
 
   createGeometry(): void {
-    // Don't support instanced rendering for now.
-    this.instanced = false;
     const instance = this.shapes[0];
 
     let rawPoints: [number, number][][];
@@ -102,8 +103,38 @@ export class Mesh extends Drawcall {
     }
 
     if (tessellationMethod === TesselationMethod.EARCUT) {
-      const { vertices, holes, dimensions } = flatten(rawPoints);
-      const indices = earcut(vertices, holes, dimensions);
+      let holes = [];
+      let contours = [];
+      const indices = [];
+      let indexOffset = 0;
+
+      let firstClockWise = isClockWise(rawPoints[0]);
+
+      rawPoints.forEach((points) => {
+        const isHole = isClockWise(points) !== firstClockWise;
+        if (isHole) {
+          holes.push(contours.length);
+        } else {
+          firstClockWise = isClockWise(points);
+
+          if (holes.length > 0) {
+            indices.push(
+              ...earcut(contours.flat(), holes).map((i) => i + indexOffset),
+            );
+            indexOffset += contours.length;
+            holes = [];
+            contours = [];
+          }
+        }
+        contours.push(...points);
+      });
+
+      if (contours.length) {
+        indices.push(
+          ...earcut(contours.flat(), holes).map((i) => i + indexOffset),
+        );
+      }
+
       this.indexBufferData = new Uint32Array(indices);
       this.points = points;
       // const err = deviation(vertices, holes, dimensions, indices);
@@ -168,6 +199,7 @@ export class Mesh extends Drawcall {
       program: this.program,
       colorAttachmentFormats: [Format.U8_RGBA_RT],
       depthStencilAttachmentFormat: Format.D24_S8,
+      topology: PrimitiveTopology.TRIANGLES,
       megaStateDescriptor: {
         attachmentsState: [
           {

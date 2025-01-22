@@ -17,6 +17,7 @@ import {
   parsePath,
   LineCurve,
   containsEmoji,
+  isClockWise,
 } from '../../packages/core/src/utils';
 
 describe('Utils', () => {
@@ -140,6 +141,27 @@ describe('Utils', () => {
     it('should check if a value containsEmoji correctly.', () => {
       expect(containsEmoji('Hello, world!')).toBe(false);
       expect(containsEmoji('Hello, 😊!')).toBe(true);
+    });
+  });
+
+  describe('isClockWise', () => {
+    it('should check if a value isClockWise correctly.', () => {
+      expect(
+        isClockWise([
+          [0, 0],
+          [100, 0],
+          [100, 100],
+          [0, 100],
+        ]),
+      ).toBe(true);
+      expect(
+        isClockWise([
+          [0, 0],
+          [0, 100],
+          [100, 100],
+          [100, 0],
+        ]),
+      ).toBe(false);
     });
   });
 });

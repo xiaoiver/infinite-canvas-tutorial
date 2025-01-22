@@ -10,6 +10,10 @@ head:
         content: webgl webgpu infinite-canvas path-rendering
 ---
 
+<script setup>
+import Holes from '../components/Holes.vue';
+</script>
+
 # Lesson 13 - Drawing a Path & Hand Drawn Styles
 
 In the previous lesson we introduced the drawing of a polyline, the stroke part of a Path can theoretically be converted to a polyline by sampling, [p5js - bezierDetail()] does this, but for a smooth effect you need to add more sampling points. But the fill part still needs to be implemented. We'll cover that in this lesson:
@@ -402,6 +406,18 @@ export interface PathAttributes extends ShapeAttributes {
 }
 ```
 
+### Draw holes {#draw-holes}
+
+In SVG, holes can be defined with a different clockwise direction than the outline. For example, in the path below, the outline is clockwise `M0 0 L100 0 L100 100 L0 100 Z`, and the two subsequent holes are counterclockwise:
+
+```bash
+M0 0 L100 0 L100 100 L0 100 Z M50 50 L50 75 L75 75 L75 50 Z M25 25 L25
+```
+
+You can also reverse the clockwise direction in your definition, for example: [Draw a hollow circle in SVG]. The key is that the hole's direction should be opposite to the outline's direction.
+
+<Holes />
+
 ## Bounding box and picking {#bounding-box-picking}
 
 The bounding box can be estimated in the same way as in the previous lesson for polyline. We focus on the implementation of how to determine if a point is inside a Path.
@@ -725,3 +741,4 @@ export function exportRough(
 [GraphicsContext - containsPoint]: https://github.com/pixijs/pixijs/blob/dev/src/scene/graphics/shared/GraphicsContext.ts#L1072
 [OffscreenCanvas]: /guide/lesson-011#offscreen-canvas
 [PickingPlugin]: /guide/lesson-006#picking-plugin
+[Draw a hollow circle in SVG]: https://stackoverflow.com/questions/8193675/draw-a-hollow-circle-in-svg

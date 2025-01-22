@@ -10,11 +10,6 @@ export interface RoughEllipseAttributes extends EllipseAttributes, IRough {}
 export class RoughEllipse extends Rough(EllipseWrapper(Shape)) {
   constructor(attributes: Partial<RoughEllipseAttributes> = {}) {
     super(attributes);
-
-    // cx / cy / rx / ry also regenerates the drawable
-    this.onGeometryChanged = () => {
-      this.geometryDirtyFlag = true;
-    };
   }
 
   generateDrawable() {

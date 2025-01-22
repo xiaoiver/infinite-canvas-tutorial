@@ -161,6 +161,10 @@ export const en = defineConfig({
                 link: 'wireframe',
               },
               {
+                text: 'Draw holes in Path',
+                link: 'holes',
+              },
+              {
                 text: 'Use SDF to draw text',
                 link: 'sdf-text',
               },
@@ -187,6 +191,10 @@ export const en = defineConfig({
               {
                 text: 'Shaping with Opentype.js',
                 link: 'opentype',
+              },
+              {
+                text: 'Text Baseline',
+                link: 'text-baseline',
               },
               {
                 text: 'Load web font',

@@ -20,7 +20,7 @@ onMounted(() => {
         const font = opentype.parse(buffer);
 
         let d = '';
-        font.getPath('H', 100, 100, 32).commands.forEach((command) => {
+        font.getPath('Hello, world!', 100, 100, 32).commands.forEach((command) => {
             if (command.type === 'M' || command.type === 'L') {
                 d += command.type + ' ' + command.x.toFixed(3) + ' ' + command.y.toFixed(3);
             } else if (command.type === 'C') {
@@ -31,12 +31,12 @@ onMounted(() => {
                 d += 'Z ';
             }
         });
-        // console.log(d);
 
         const path = new Path({
             d,
             fill: '#F67676',
-            tessellationMethod: TesselationMethod.LIBTESS,
+            tessellationMethod: TesselationMethod.EARCUT,
+            // wireframe: true,
         });
         canvas.appendChild(path);
     });

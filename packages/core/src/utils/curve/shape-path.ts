@@ -378,3 +378,25 @@ function svgAngle(ux: number, uy: number, vx: number, vy: number) {
   if (ux * vy - uy * vx < 0) ang = -ang;
   return ang;
 }
+
+/**
+ * @see https://github.com/mrdoob/three.js/blob/dev/src/extras/ShapeUtils.js#L7
+ */
+export function area(contour: [number, number][]) {
+  const n = contour.length;
+  let a = 0.0;
+
+  for (let p = n - 1, q = 0; q < n; p = q++) {
+    a += contour[p][0] * contour[q][1] - contour[q][0] * contour[p][1];
+  }
+
+  return a * 0.5;
+}
+
+/**
+ * Use canvas coordinate system, the area is positive if the points are clockwise.
+ * @see https://github.com/mrdoob/three.js/blob/dev/src/extras/ShapeUtils.js#L22C9-L26C3
+ */
+export function isClockWise(pts: [number, number][]) {
+  return area(pts) > 0;
+}

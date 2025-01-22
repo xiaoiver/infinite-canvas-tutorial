@@ -5,6 +5,8 @@ publish: false
 
 <script setup>
 import WebFontLoader from '../../components/WebFontLoader.vue';
+import Opentype from '../../components/Opentype.vue';
+import Harfbuzz from '../../components/Harfbuzz.vue';
 </script>
 
 # 课程 16 - 文本的高级特性
@@ -21,17 +23,24 @@ import WebFontLoader from '../../components/WebFontLoader.vue';
 
 -   [opentype.js]
 -   use-gpu 使用的是基于 [ab-glyph](https://github.com/alexheretic/ab-glyph) 封装的 [use-gpu-text]
--   越来越多的应用使用 [harfbuzzjs]，详见：[State of Text Rendering 2024]。[font-mesh-pipeline] 是一个简单的示例
+-   越来越多的应用使用 [harfbuzzjs]，详见：[State of Text Rendering 2024]。例如 [font-mesh-pipeline] 就是一个简单的示例
 
-### opentype.js
+下面我们展示使用 opentype.js 和 harfbuzzjs 渲染文本的示例，他们都支持 `ttf` 格式的字体文件。
+
+### opentype.js {#opentypejs}
+
+opentype.js 提供了 `getPath` 方法，给定文本内容、位置和字体大小，就可以完成 Shaping 并获取 SVG commands。
 
 ```ts
 opentype.load('fonts/Roboto-Black.ttf', function (err, font) {
     const path = font.getPath('Hello, World!', 0, 0, 32); // x, y, fontSize
+    // convert to svg path definition
 });
 ```
 
-### harfbuzzjs
+<Opentype />
+
+### harfbuzzjs {#harfbuzzjs}
 
 ```ts
 import init from 'harfbuzzjs/hb.wasm?init';
@@ -41,6 +50,15 @@ init().then((instance) => {
     const hb = hbjs(instance);
 });
 ```
+
+<Harfbuzz />
+
+## TeX math rendering {#tex-math-rendering}
+
+我们可以使用 [MathJax] 来渲染 TeX 数学公式，将公式转换为 SVG 后，再使用 Path 渲染。参考 Motion 的做法：[mathjax.document]
+
+-   <https://github.com/KaTeX/KaTeX>
+-   <https://motioncanvas.io/docs/LaTeX>
 
 ## 装饰线 {#text-decoration}
 
@@ -88,11 +106,6 @@ canvas.drawTextBlob(textblob, 0, 0, textPaint);
 
 ![Map Label Placement in Mapbox GL](https://miro.medium.com/v2/resize:fit:480/format:webp/0*qVAASwC-tjIXnjax.gif)
 
-## TeX math rendering {#tex-math-rendering}
-
--   https://github.com/KaTeX/KaTeX
--   https://motioncanvas.io/docs/Latex
-
 ## 更友好的交互方式 {#more-friendly-interaction}
 
 ### 输入框 {#textarea}
@@ -107,20 +120,20 @@ canvas.drawTextBlob(textblob, 0, 0, textPaint);
 
 ### 加载 Web 字体 {#load-web-font}
 
-[webfontloader]
+对于使用 Canvas2D API 生成 SDF 的方案，只需要使用 [webfontloader] 先加载字体，再使用 `fontFamily` 指定字体即可。
 
 ```ts
 import WebFont from 'webfontloader';
 WebFont.load({
     google: {
-        families: ['Gaegu'],
+        families: ['Gaegu'], // 指定字体
     },
     active: () => {
         const text = new Text({
             x: 150,
             y: 150,
             content: 'Hello, world',
-            fontFamily: 'Gaegu',
+            fontFamily: 'Gaegu', // 指定字体
             fontSize: 55,
             fill: '#F67676',
         });
@@ -155,3 +168,6 @@ WebFont.load({
 [harfbuzzjs]: https://github.com/harfbuzz/harfbuzzjs
 [State of Text Rendering 2024]: https://behdad.org/text2024/
 [webfontloader]: https://github.com/typekit/webfontloader
+[DropShadowFilter]: https://pixijs.io/filters/docs/DropShadowFilter.html
+[MathJax]: https://github.com/mathjax/MathJax-src
+[mathjax.document]: https://github.com/motion-canvas/motion-canvas/blob/13c9de85280cc1b893a178b9d6eecd8d639fd7bb/packages/2d/src/lib/components/LaTeX.ts#L228

@@ -81,11 +81,13 @@ export class GlyphManager {
     bitmapFont?: BitmapFont,
     scale?: number,
     bitmapFontKerning?: boolean,
+    dx?: number,
+    dy?: number,
   ): PositionedGlyph[] {
     const positionedGlyphs: PositionedGlyph[] = [];
 
-    let x = 0;
-    let y = 0;
+    let x = dx ?? 0;
+    let y = dy ?? 0;
 
     const justify =
       textAlign === 'right' || textAlign === 'end'

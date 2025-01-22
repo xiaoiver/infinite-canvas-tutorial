@@ -10,11 +10,6 @@ export interface RoughRectAttributes extends RectAttributes, IRough {}
 export class RoughRect extends Rough(RectWrapper(Shape)) {
   constructor(attributes: Partial<RoughRectAttributes> = {}) {
     super(attributes);
-
-    // x / y / width / height also regenerates the drawable
-    this.onGeometryChanged = () => {
-      this.geometryDirtyFlag = true;
-    };
   }
 
   generateDrawable() {

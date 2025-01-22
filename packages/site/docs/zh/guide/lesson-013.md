@@ -10,6 +10,10 @@ head:
         content: webgl webgpu infinite-canvas path-rendering
 ---
 
+<script setup>
+import Holes from '../../components/Holes.vue';
+</script>
+
 # 课程 13 - 绘制 Path & 手绘风格
 
 在上一节课中我们介绍了折线的绘制方法，Path 的描边部分理论上可以通过采样转换成折线的绘制，[p5js - bezierDetail()] 就是这么做的，如果要实现平滑的效果就需要增加采样点。但填充部分仍需要实现。在本节课中我们将介绍：
@@ -402,6 +406,18 @@ export interface PathAttributes extends ShapeAttributes {
 }
 ```
 
+### 绘制孔洞 {#draw-holes}
+
+在 SVG 中可以这样定义孔洞，与轮廓的时针方向不同。比如下面路径中的轮廓为顺时针 `M0 0 L100 0 L100 100 L0 100 Z`，后续的两个孔洞就是逆时针方向：
+
+```bash
+M0 0 L100 0 L100 100 L0 100 Z M50 50 L50 75 L75 75 L75 50 Z M25 25 L25
+```
+
+当然也可以将时针方向反过来定义，例如：[Draw a hollow circle in SVG]，总之孔洞的时针方向与轮廓相反即可。
+
+<Holes />
+
 ## 包围盒与拾取 {#bounding-box-picking}
 
 包围盒可以沿用上一节课针对折线的估计方式。我们重点关注如何判定点是否在 Path 内的实现。
@@ -726,3 +742,4 @@ export function exportRough(
 [GraphicsContext - containsPoint]: https://github.com/pixijs/pixijs/blob/dev/src/scene/graphics/shared/GraphicsContext.ts#L1072
 [OffscreenCanvas]: /zh/guide/lesson-011#offscreen-canvas
 [PickingPlugin]: /zh/guide/lesson-006#picking-plugin
+[Draw a hollow circle in SVG]: https://stackoverflow.com/questions/8193675/draw-a-hollow-circle-in-svg

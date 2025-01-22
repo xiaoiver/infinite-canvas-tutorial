@@ -10,11 +10,6 @@ export interface RoughCircleAttributes extends CircleAttributes, IRough {}
 export class RoughCircle extends Rough(CircleWrapper(Shape)) {
   constructor(attributes: Partial<RoughCircleAttributes> = {}) {
     super(attributes);
-
-    // cx / cy / r also regenerates the drawable
-    this.onGeometryChanged = () => {
-      this.geometryDirtyFlag = true;
-    };
   }
 
   generateDrawable() {

@@ -29,6 +29,7 @@ import {
   BitmapFont,
   GlyphPositions,
   containsEmoji,
+  // yOffsetFromTextBaseline,
 } from '../utils';
 
 export class SDFText extends Drawcall {
@@ -437,13 +438,24 @@ export class SDFText extends Drawcall {
     bitmapFont: BitmapFont;
     fontScale: number;
   }) {
-    const { textAlign = 'start', x = 0, y = 0, bitmapFontKerning } = object;
+    const {
+      textAlign,
+      // textBaseline,
+      x = 0,
+      y = 0,
+      bitmapFontKerning,
+      // metrics,
+    } = object;
 
     const charUVOffsetBuffer: number[] = [];
     const charPositionsBuffer: number[] = [];
     const indexBuffer: number[] = [];
 
     let i = indicesOffset;
+
+    // const dy =
+    //   yOffsetFromTextBaseline(textBaseline, metrics.fontMetrics) +
+    //   metrics.fontMetrics.fontBoundingBoxAscent;
 
     const positionedGlyphs = this.#glyphManager.layout(
       lines,
@@ -454,6 +466,8 @@ export class SDFText extends Drawcall {
       bitmapFont,
       fontScale,
       bitmapFontKerning,
+      0,
+      0,
     );
 
     let positions: GlyphPositions;

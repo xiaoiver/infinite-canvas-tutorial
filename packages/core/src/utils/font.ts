@@ -231,6 +231,14 @@ export class CanvasTextMetrics {
       lineWidths[i] = lineWidth;
       maxLineWidth = Math.max(maxLineWidth, lineWidth);
     }
+
+    // const {
+    //   fontBoundingBoxAscent,
+    //   fontBoundingBoxDescent,
+    //   hangingBaseline,
+    //   ideographicBaseline,
+    // } = fontMetrics;
+
     const width = maxLineWidth + strokeWidth;
     lineHeight = lineHeight || fontMetrics.fontSize + strokeWidth;
     const height =
@@ -664,6 +672,33 @@ export function fontStringFromTextStyle(
   return `${style.fontStyle} ${style.fontVariant} ${
     style.fontWeight
   } ${fontSizeString} ${(fontFamilies as string[]).join(',')}`;
+}
+
+export function yOffsetFromTextBaseline(
+  textBaseline: CanvasTextBaseline,
+  fontMetrics: globalThis.TextMetrics & { fontSize: number },
+) {
+  let offset = 0;
+  const {
+    fontBoundingBoxAscent = 0,
+    fontBoundingBoxDescent = 0,
+    hangingBaseline = 0,
+    ideographicBaseline = 0,
+  } = fontMetrics;
+  if (textBaseline === 'alphabetic') {
+    offset -= fontBoundingBoxAscent;
+  } else if (textBaseline === 'middle') {
+    offset -= (fontBoundingBoxAscent + fontBoundingBoxDescent) / 2;
+  } else if (textBaseline === 'hanging') {
+    offset -= hangingBaseline;
+  } else if (textBaseline === 'ideographic') {
+    offset -= ideographicBaseline;
+  } else if (textBaseline === 'bottom') {
+    offset -= fontBoundingBoxAscent + fontBoundingBoxDescent;
+  } else if (textBaseline === 'top') {
+    offset = 0;
+  }
+  return offset;
 }
 
 export const canvasTextMetrics = new CanvasTextMetrics();
