@@ -190,6 +190,13 @@ pnpm run dev
 
 ## 课程 16 - 文本的高级特性 [🔗](https://infinitecanvas.cc/zh/guide/lesson-016)
 
+-   使用贝塞尔曲线渲染文本，使用 OpenType 和 Harfbuzz 进行字形处理
+-   渲染 TeX 公式
+-   文本装饰和阴影
+-   使用 Web Font Loader 加载 Web 字体
+
+<img src="./screenshots/lesson16.png" width="300" alt="Lesson 16 - text">
+
 [infinitecanvas]: https://infinitecanvas.tools/
 [Figma]: https://madebyevan.com/figma/building-a-professional-design-tool-on-the-web/
 [Modyfi]: https://digest.browsertech.com/archive/browsertech-digest-how-modyfi-is-building-with/

@@ -190,6 +190,13 @@ pnpm run dev
 
 ## Lesson 16 - Advanced text features [🔗](https://infinitecanvas.cc/guide/lesson-016)
 
+-   Using Bezier curves to render text, shaping with OpenType and Harfbuzz
+-   Render TeX math
+-   Text decoration and dropshadow
+-   Load web font with web font loader
+
+<img src="./screenshots/lesson16.png" width="300" alt="Lesson 16 - text">
+
 [infinitecanvas]: https://infinitecanvas.tools/
 [Figma]: https://madebyevan.com/figma/building-a-professional-design-tool-on-the-web/
 [Modyfi]: https://digest.browsertech.com/archive/browsertech-digest-how-modyfi-is-building-with/

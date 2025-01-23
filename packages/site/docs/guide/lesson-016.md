@@ -5,42 +5,88 @@ publish: false
 
 <script setup>
 import WebFontLoader from '../components/WebFontLoader.vue';
+import Opentype from '../components/Opentype.vue';
+import Harfbuzz from '../components/Harfbuzz.vue';
+import TeXMath from '../components/TeXMath.vue';
 </script>
 
-# 课程 16 - 绘制文本高级特性
+# Lesson 16 - Advanced Text Features
 
-在上一节课中，我们介绍了文本渲染的原理，其中提到过 CanvasKit 相比 Canvas 提供了文本的一些高级绘制特性。本节课我们就将讨论这些特性：
+In the previous lesson, we introduced the principles of SDF-based text rendering, experimented with ESDT and MSDF to improve rendering quality, and mentioned the advanced text rendering features that CanvasKit provides compared to Canvas.
 
--   装饰线
--   阴影
--   文本选中
--   文本跟随路径
+In this lesson, we'll first look at rendering methods beyond SDF, then discuss and try to implement features like: decorative lines, shadows, text following paths. Finally, text should not only be renderable but also have good interaction - we'll discuss topics like input boxes, text selection, and A11y.
 
-## 使用 Path 渲染文本
+Let's first look at what text rendering methods are available besides SDF.
 
-使用 Figma 的导出 SVG 功能可以发现，它的文本是使用 Path 渲染的。
+## Rendering Text with Bezier Curves {#render-text-with-bezier-curve}
 
-我发现 [font-mesh-pipeline] 这个项目的思路很有趣，它使用 harfbuzz WASM 生成矢量化字体，然后使用 GPU 绘制。
+Using Figma's SVG export feature, you can see that its text is also rendered using Paths. If we don't consider rendering performance and CJK characters, using Bezier curves to render text is indeed a good choice. To obtain vector information for characters in a browser environment, we can use:
 
-## 输入框 {#textarea}
+-   [opentype.js]
+-   use-gpu uses [use-gpu-text] which is wrapped based on [ab-glyph](https://github.com/alexheretic/ab-glyph)
+-   More and more applications are using [harfbuzzjs], see: [State of Text Rendering 2024]. For example, [font-mesh-pipeline] is a simple demonstration
 
-目前我们只实现了文本的绘制，实际在应用中，文本输入框是必不可少的。下图来自 Figma
+Below we'll show examples of rendering text using opentype.js and harfbuzzjs, both of which support the `ttf` font format.
 
-![textarea in figma](/textarea-in-figma.png)
+### opentype.js {#opentypejs}
 
-## Material Design on the GPU {#material-design-on-the-gpu}
+opentype.js provides a `getPath` method that completes Shaping and obtains SVG commands given text content, position, and font size.
 
-[Material Design on the GPU]
+```ts
+opentype.load('fonts/Roboto-Black.ttf', function (err, font) {
+    const path = font.getPath('Hello, World!', 0, 0, 32); // x, y, fontSize
+    // convert to svg path definition
+});
+```
 
-## 装饰线 {#text-decoration}
+<Opentype />
+
+### harfbuzzjs {#harfbuzzjs}
+
+```ts
+import init from 'harfbuzzjs/hb.wasm?init';
+import hbjs, { HBBlob, HBFace, HBFont, HBHandle } from 'harfbuzzjs/hbjs.js';
+
+init().then((instance) => {
+    const hb = hbjs(instance);
+});
+```
+
+<Harfbuzz />
+
+## TeX math rendering {#tex-math-rendering}
+
+We can use [MathJax] to render TeX mathematical formulas, convert them to SVG, and then render them using Path. Here we follow the approach from [LaTeX in motion-canvas] to get SVGElement:
+
+```ts
+const JaxDocument = mathjax.document('', {
+    InputJax: new TeX({ packages: AllPackages }),
+    OutputJax: new SVG({ fontCache: 'local' }),
+});
+
+const svg = Adaptor.innerHTML(JaxDocument.convert(formula));
+const parser = new DOMParser();
+const doc = parser.parseFromString(svg, 'image/svg+xml');
+const $svg = doc.documentElement;
+```
+
+Then use the method introduced in [Lesson 10 - From SVGElement to Serialized Node] to convert SVGElement to graphics and add them to the canvas.
+
+```ts
+const root = await deserializeNode(fromSVGElement($svg));
+```
+
+<TeXMath />
+
+## Text Decoration {#text-decoration}
 
 [text-decoration]
 
-## 阴影 {#dropshadow}
+## Shadows {#dropshadow}
 
 [text-decoration]: https://developer.mozilla.org/en-US/docs/Web/CSS/text-decoration
 
-Pixi.js 提供了 [DropShadowFilter] 来实现阴影效果。
+Pixi.js provides [DropShadowFilter] to implement shadow effects.
 
 ```glsl
 // @see https://github.com/soimy/pixi-msdf-text/blob/master/src/msdf.frag#L49
@@ -51,11 +97,11 @@ vec4 shadow = vec4(shadowColor, shadowAlpha * distAlpha);
 gl_FragColor = mix(shadow, text, text.a);
 ```
 
-## 文本跟随路径 {#text-along-path}
+## Text Along Path {#text-along-path}
 
-在 Figma 社区中，很多用户都在期待这个特性，例如：[Make text follow a path or a circle]
+In the Figma community, many users are looking forward to this feature, for example: [Make text follow a path or a circle]
 
-在 SVG 中可以通过 [textPath] 实现，详见：[Curved Text Along a Path]
+In SVG, this can be achieved through [textPath], see: [Curved Text Along a Path]
 
 ```html
 <path
@@ -67,24 +113,59 @@ gl_FragColor = mix(shadow, text, text.a);
 </text>
 ```
 
-Skia 提供了 `MakeOnPath` 方法，详见 [Draw text along a path]：
+Skia provides the `MakeOnPath` method, see [Draw text along a path]:
 
 ```ts
 const textblob = CanvasKit.TextBlob.MakeOnPath(text, skPath, skFont);
 canvas.drawTextBlob(textblob, 0, 0, textPaint);
 ```
 
-在 Mapbox 中沿道路河流放置 label 是很常见的场景，详见 [Map Label Placement in Mapbox GL]
+In Mapbox, placing labels along roads and rivers is a common scenario, see [Map Label Placement in Mapbox GL]
 
 ![Map Label Placement in Mapbox GL](https://miro.medium.com/v2/resize:fit:480/format:webp/0*qVAASwC-tjIXnjax.gif)
 
-## 文本选中 {#text-selection}
+## More Friendly Interaction {#more-friendly-interaction}
 
-## 加载 Web 字体 {#load-web-font}
+### Text Input {#textarea}
+
+Currently, we've only implemented text rendering, but in actual applications, text input boxes are essential. The image below is from Figma
+
+![textarea in figma](/textarea-in-figma.png)
+
+### Text Selection {#text-selection}
+
+## Special Effects {#special-effects}
+
+### Loading Web Fonts {#load-web-font}
+
+For solutions using Canvas2D API to generate SDF, just use [webfontloader] to load fonts first, then specify the font using `fontFamily`.
+
+```ts
+import WebFont from 'webfontloader';
+WebFont.load({
+    google: {
+        families: ['Gaegu'], // specify font
+    },
+    active: () => {
+        const text = new Text({
+            x: 150,
+            y: 150,
+            content: 'Hello, world',
+            fontFamily: 'Gaegu', // specify font
+            fontSize: 55,
+            fill: '#F67676',
+        });
+    },
+});
+```
 
 <WebFontLoader />
 
-## 扩展阅读 {#extended-reading}
+### Material Design on the GPU {#material-design-on-the-gpu}
+
+[Material Design on the GPU]
+
+## Extended Reading {#extended-reading}
 
 -   [Material Design on the GPU]
 -   [Make text follow a path or a circle]
@@ -100,3 +181,12 @@ canvas.drawTextBlob(textblob, 0, 0, textPaint);
 [textPath]: https://developer.mozilla.org/en-US/docs/Web/SVG/Element/textPath
 [Map Label Placement in Mapbox GL]: https://blog.mapbox.com/map-label-placement-in-mapbox-gl-c6f843a7caaa
 [font-mesh-pipeline]: https://github.com/beanandbean/font-mesh-pipeline
+[opentype.js]: https://github.com/opentypejs/opentype.js
+[use-gpu-text]: https://gitlab.com/unconed/use.gpu/-/tree/master/rust/use-gpu-text
+[harfbuzzjs]: https://github.com/harfbuzz/harfbuzzjs
+[State of Text Rendering 2024]: https://behdad.org/text2024/
+[webfontloader]: https://github.com/typekit/webfontloader
+[DropShadowFilter]: https://pixijs.io/filters/docs/DropShadowFilter.html
+[MathJax]: https://github.com/mathjax/MathJax-src
+[LaTeX in motion-canvas]: https://github.com/motion-canvas/motion-canvas/issues/190
+[Lesson 10 - From SVGElement to Serialized Node]: /guide/lesson-010#svgelement-to-serialized-node

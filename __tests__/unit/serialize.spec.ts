@@ -5,7 +5,9 @@ import {
   Path,
   parseTransform,
   Text,
+  fromSVGElement,
 } from '../../packages/core/src';
+import { JSDOM } from 'jsdom';
 
 describe('Serialize', () => {
   it('should serialize circle correctly.', () => {
@@ -360,5 +362,129 @@ describe('Serialize', () => {
   it('should parse transform correctly.', () => {
     const parsed = parseTransform('translate(10, 20)');
     expect(parsed.position).toEqual({ x: 10, y: 20 });
+
+    const parsed2 = parseTransform('translate(10, 20) scale(2, 2)');
+    expect(parsed2.position).toEqual({ x: 10, y: 20 });
+    expect(parsed2.scale).toEqual({ x: 2, y: 2 });
+
+    const parsed3 = parseTransform('translate(10, 20) rotate(90)');
+    expect(parsed3.position).toEqual({ x: 10, y: 20 });
+    expect(parsed3.rotation).toEqual(90);
+
+    const parsed4 = parseTransform('translate(10, 20) skew(10, 20)');
+    expect(parsed4.position).toEqual({ x: 10, y: 20 });
+    expect(parsed4.skew).toEqual({ x: 10, y: 20 });
+
+    const parsed5 = parseTransform('translate(10, 20) scale(2, 2) rotate(90)');
+    expect(parsed5.position).toEqual({ x: 10, y: 20 });
+    expect(parsed5.scale).toEqual({ x: 2, y: 2 });
+    expect(parsed5.rotation).toEqual(90);
+
+    const parsed6 = parseTransform('scale(0.75)');
+    expect(parsed6.scale).toEqual({ x: 0.75, y: 0.75 });
+
+    const parsed7 = parseTransform('scaleX(0.75)');
+    expect(parsed7.scale).toEqual({ x: 0.75, y: 1 });
+
+    const parsed8 = parseTransform('scaleY(0.75)');
+    expect(parsed8.scale).toEqual({ x: 1, y: 0.75 });
+
+    const parsed9 = parseTransform('skew(10, 20)');
+    expect(parsed9.skew).toEqual({ x: 10, y: 20 });
+
+    const parsed10 = parseTransform('skewX(10)');
+    expect(parsed10.skew).toEqual({ x: 10, y: 0 });
+
+    const parsed11 = parseTransform('skewY(20)');
+    expect(parsed11.skew).toEqual({ x: 0, y: 20 });
+
+    const parsed12 = parseTransform('matrix(1, 2, 3, 4, 5, 6)');
+    expect(parsed12.matrix).toEqual({
+      a: 1,
+      b: 2,
+      c: 3,
+      d: 4,
+      tx: 5,
+      ty: 6,
+    });
+
+    // translateX
+    const parsed13 = parseTransform('translateX(10)');
+    expect(parsed13.position).toEqual({ x: 10, y: 0 });
+
+    // translateY
+    const parsed14 = parseTransform('translateY(20)');
+    expect(parsed14.position).toEqual({ x: 0, y: 20 });
+  });
+
+  it('should parse SVGSVGElement correctly.', () => {
+    const dom = new JSDOM(
+      `<svg width="100" height="100"><circle cx="50" cy="50" r="50" fill="red" /></svg>`,
+    );
+
+    const serialized = fromSVGElement(
+      (dom.window.document.firstChild as Element)?.querySelector(
+        'svg',
+      ) as SVGElement,
+    );
+    expect(serialized).toEqual({
+      type: 'g',
+      attributes: {
+        height: 100,
+        width: 100,
+      },
+      children: [
+        {
+          type: 'circle',
+          children: [],
+          uid: 0,
+          attributes: {
+            cx: 50,
+            cy: 50,
+            r: 50,
+            fill: 'red',
+          },
+        },
+      ],
+      uid: 1,
+    });
+  });
+
+  it('should parse SVGDefsElement & SVGUseElement correctly.', () => {
+    const dom = new JSDOM(`
+<svg width="100" height="100">
+  <defs>
+    <circle id="circle" cx="50" cy="50" r="50" fill="red" />
+  </defs>
+  <use xlink:href="#circle" />
+</svg>`);
+
+    const serialized = fromSVGElement(
+      (dom.window.document.firstChild as Element)?.querySelector(
+        'svg',
+      ) as SVGElement,
+    );
+    expect(serialized).toEqual({
+      type: 'g',
+      attributes: {
+        height: 100,
+        width: 100,
+      },
+      children: [
+        {
+          type: 'circle',
+          children: [],
+          uid: 1,
+          attributes: {
+            cx: 50,
+            cy: 50,
+            r: 50,
+            fill: 'red',
+            id: 'circle',
+          },
+        },
+      ],
+      uid: 2,
+    });
   });
 });

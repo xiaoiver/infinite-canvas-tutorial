@@ -205,6 +205,10 @@ export const en = defineConfig({
                 link: 'pythagorean-theorem',
               },
               {
+                text: 'Render TeX math',
+                link: 'tex-math',
+              },
+              {
                 text: 'Web Animations API',
                 link: 'web-animations-api',
               },

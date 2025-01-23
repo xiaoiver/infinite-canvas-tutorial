@@ -175,6 +175,10 @@ export const zh = defineConfig({
                 link: 'pythagorean-theorem',
               },
               {
+                text: '渲染 TeX 公式',
+                link: 'tex-math',
+              },
+              {
                 text: 'Web Animations API',
                 link: 'web-animations-api',
               },

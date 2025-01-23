@@ -910,8 +910,30 @@ export function toSVGElement(node: SerializedNode, doc?: Document) {
  *
  * @see https://github.com/ShukantPal/pixi-essentials/blob/master/packages/svg
  */
-export function fromSVGElement(element: SVGElement, uid = 0): SerializedNode {
+export function fromSVGElement(
+  element: SVGElement,
+  uid = 0,
+  defsChildren: SVGElement[] = [],
+): SerializedNode {
   let type = element.tagName.toLowerCase();
+
+  if (type === 'svg') {
+    type = 'g';
+  } else if (type === 'defs') {
+    defsChildren.push(...(Array.from(element.childNodes) as SVGElement[]));
+    return;
+  } else if (type === 'use') {
+    const href = element.getAttribute('xlink:href');
+    if (href) {
+      const def = defsChildren.find((d) => d.id === href.replace('#', ''));
+      if (def) {
+        return fromSVGElement(def, uid, defsChildren);
+      }
+    }
+    return;
+  } else if (type === 'tspan') {
+    return;
+  }
 
   const attributes = Array.from(element.attributes).reduce((prev, attr) => {
     let attributeName = kebabToCamelCase(attr.name);
@@ -973,12 +995,7 @@ export function fromSVGElement(element: SVGElement, uid = 0): SerializedNode {
   }
 
   const children = Array.from(element.children)
-    .map((e: SVGElement) => {
-      if (e.tagName.toLowerCase() === 'tspan') {
-        return;
-      }
-      return fromSVGElement(e, uid++);
-    })
+    .map((e: SVGElement) => fromSVGElement(e, uid++, defsChildren))
     .filter(Boolean);
 
   return {
@@ -1010,7 +1027,6 @@ export function imageBitmapToURL(bmp: ImageBitmap) {
   return canvas.toDataURL();
 }
 
-// TODO: translateX translateY rotateX rotateY
 export function parseTransform(transformStr: string): SerializedTransform {
   const transform: SerializedTransform = {
     matrix: { a: 1, b: 0, c: 0, d: 1, tx: 0, ty: 0 },
@@ -1022,16 +1038,35 @@ export function parseTransform(transformStr: string): SerializedTransform {
   };
 
   const translateRegex = /translate\(([^,]+),([^,]+)\)/;
+  const translateXRegex = /translateX\(([^,\)]+)\)/;
+  const translateYRegex = /translateY\(([^,\)]+)\)/;
   const rotateRegex = /rotate\(([^,]+)\)/;
-  const scaleRegex = /scale\(([^,]+)(?:,([^,]+))?\)/;
+  const scaleRegex = /scale\(([^,\)]+)(?:,([^,\)]+))?\)/;
+  const scaleXRegex = /scaleX\(([^,\)]+)\)/;
+  const scaleYRegex = /scaleY\(([^,\)]+)\)/;
   const skewRegex = /skew\(([^,]+),([^,]+)\)/;
+  const skewXRegex = /skewX\(([^,\)]+)\)/;
+  const skewYRegex = /skewY\(([^,\)]+)\)/;
   const matrixRegex =
     /matrix\(([^,]+),([^,]+),([^,]+),([^,]+),([^,]+),([^,]+)\)/;
 
+  // 解析 translate(x,y)
   const translateMatch = transformStr.match(translateRegex);
   if (translateMatch) {
     transform.position.x = parseFloat(translateMatch[1]);
     transform.position.y = parseFloat(translateMatch[2]);
+  }
+
+  // 解析 translateX(x)
+  const translateXMatch = transformStr.match(translateXRegex);
+  if (translateXMatch) {
+    transform.position.x = parseFloat(translateXMatch[1]);
+  }
+
+  // 解析 translateY(y)
+  const translateYMatch = transformStr.match(translateYRegex);
+  if (translateYMatch) {
+    transform.position.y = parseFloat(translateYMatch[1]);
   }
 
   const rotateMatch = transformStr.match(rotateRegex);
@@ -1041,16 +1076,35 @@ export function parseTransform(transformStr: string): SerializedTransform {
 
   const scaleMatch = transformStr.match(scaleRegex);
   if (scaleMatch) {
-    transform.scale.x = parseFloat(scaleMatch[1]);
-    if (scaleMatch[2]) {
-      transform.scale.y = parseFloat(scaleMatch[2]);
-    }
+    const x = parseFloat(scaleMatch[1]);
+    transform.scale.x = x;
+    transform.scale.y = scaleMatch[2] ? parseFloat(scaleMatch[2]) : x;
+  }
+
+  const scaleXMatch = transformStr.match(scaleXRegex);
+  if (scaleXMatch) {
+    transform.scale.x = parseFloat(scaleXMatch[1]);
+  }
+
+  const scaleYMatch = transformStr.match(scaleYRegex);
+  if (scaleYMatch) {
+    transform.scale.y = parseFloat(scaleYMatch[1]);
   }
 
   const skewMatch = transformStr.match(skewRegex);
   if (skewMatch) {
     transform.skew.x = parseFloat(skewMatch[1]);
     transform.skew.y = parseFloat(skewMatch[2]);
+  }
+
+  const skewXMatch = transformStr.match(skewXRegex);
+  if (skewXMatch) {
+    transform.skew.x = parseFloat(skewXMatch[1]);
+  }
+
+  const skewYMatch = transformStr.match(skewYRegex);
+  if (skewYMatch) {
+    transform.skew.y = parseFloat(skewYMatch[1]);
   }
 
   const matrixMatch = transformStr.match(matrixRegex);

@@ -7,6 +7,7 @@ publish: false
 import WebFontLoader from '../../components/WebFontLoader.vue';
 import Opentype from '../../components/Opentype.vue';
 import Harfbuzz from '../../components/Harfbuzz.vue';
+import TeXMath from '../../components/TeXMath.vue';
 </script>
 
 # 课程 16 - 文本的高级特性
@@ -55,10 +56,27 @@ init().then((instance) => {
 
 ## TeX math rendering {#tex-math-rendering}
 
-我们可以使用 [MathJax] 来渲染 TeX 数学公式，将公式转换为 SVG 后，再使用 Path 渲染。参考 Motion 的做法：[mathjax.document]
+我们可以使用 [MathJax] 来渲染 TeX 数学公式，将公式转换为 SVG 后，再使用 Path 渲染。这里我们参考 [LaTeX in motion-canvas] 的做法，得到 SVGElement：
 
--   <https://github.com/KaTeX/KaTeX>
--   <https://motioncanvas.io/docs/LaTeX>
+```ts
+const JaxDocument = mathjax.document('', {
+    InputJax: new TeX({ packages: AllPackages }),
+    OutputJax: new SVG({ fontCache: 'local' }),
+});
+
+const svg = Adaptor.innerHTML(JaxDocument.convert(formula));
+const parser = new DOMParser();
+const doc = parser.parseFromString(svg, 'image/svg+xml');
+const $svg = doc.documentElement;
+```
+
+再使用 [课程 10 - 从 SVGElement 到序列化节点] 中介绍的方法将 SVGElement 转换为图形，添加到画布中。
+
+```ts
+const root = await deserializeNode(fromSVGElement($svg));
+```
+
+<TeXMath />
 
 ## 装饰线 {#text-decoration}
 
@@ -170,4 +188,5 @@ WebFont.load({
 [webfontloader]: https://github.com/typekit/webfontloader
 [DropShadowFilter]: https://pixijs.io/filters/docs/DropShadowFilter.html
 [MathJax]: https://github.com/mathjax/MathJax-src
-[mathjax.document]: https://github.com/motion-canvas/motion-canvas/blob/13c9de85280cc1b893a178b9d6eecd8d639fd7bb/packages/2d/src/lib/components/LaTeX.ts#L228
+[LaTeX in motion-canvas]: https://github.com/motion-canvas/motion-canvas/issues/190
+[课程 10 - 从 SVGElement 到序列化节点]: /zh/guide/lesson-010#svgelement-to-serialized-node
