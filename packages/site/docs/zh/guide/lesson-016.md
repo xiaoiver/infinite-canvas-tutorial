@@ -30,7 +30,7 @@ import TeXMath from '../../components/TeXMath.vue';
 
 ### opentype.js {#opentypejs}
 
-opentype.js 提供了 `getPath` 方法，给定文本内容、位置和字体大小，就可以完成 Shaping 并获取 SVG commands。
+opentype.js 提供了 `getPath` 方法，给定文本内容、位置和字体大小，就可以完成 Shaping 并获取 SVG [path-commands]，其中包含 `M`、`L`、`C`、`Q`、`Z` 命令，我们将它转换为 Path 的 `d` 属性。
 
 ```ts
 opentype.load('fonts/Roboto-Black.ttf', function (err, font) {
@@ -43,12 +43,46 @@ opentype.load('fonts/Roboto-Black.ttf', function (err, font) {
 
 ### harfbuzzjs {#harfbuzzjs}
 
+首先初始化 harfbuzzjs WASM，这里使用 Vite 的 ?init 语法。然后加载字体文件，并创建 font 对象。
+
 ```ts
 import init from 'harfbuzzjs/hb.wasm?init';
-import hbjs, { HBBlob, HBFace, HBFont, HBHandle } from 'harfbuzzjs/hbjs.js';
+import hbjs from 'harfbuzzjs/hbjs.js';
 
-init().then((instance) => {
-    const hb = hbjs(instance);
+const instance = await init();
+hb = hbjs(instance);
+
+const data = await (
+    await window.fetch('/fonts/NotoSans-Regular.ttf')
+).arrayBuffer();
+blob = hb.createBlob(data);
+face = hb.createFace(blob, 0);
+font = hb.createFont(face);
+font.setScale(32, 32); // 设置字体大小
+```
+
+然后创建一个 buffer 对象，并添加文本内容。我们之前提过 harfbuzz 并不处理 BiDi，因此这里需要手动设置文本方向。最后调用 hb.shape 方法进行 Shaping 计算。
+
+```ts
+buffer = hb.createBuffer();
+buffer.addText('Hello, world!');
+buffer.guessSegmentProperties();
+// TODO: use BiDi
+// buffer.setDirection(segment.direction);
+
+hb.shape(font, buffer);
+const result = buffer.json(font);
+```
+
+此时我们就得到字形数据了，随后可以使用 Path 绘制
+
+```ts
+result.forEach(function (x) {
+    const d = font.glyphToPath(x.g);
+    const path = new Path({
+        d,
+        fill: '#F67676',
+    });
 });
 ```
 
@@ -190,3 +224,4 @@ WebFont.load({
 [MathJax]: https://github.com/mathjax/MathJax-src
 [LaTeX in motion-canvas]: https://github.com/motion-canvas/motion-canvas/issues/190
 [课程 10 - 从 SVGElement 到序列化节点]: /zh/guide/lesson-010#svgelement-to-serialized-node
+[path-commands]: https://github.com/opentypejs/opentype.js?tab=readme-ov-file#path-commands

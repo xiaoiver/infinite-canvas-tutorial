@@ -169,6 +169,10 @@ export const en = defineConfig({
                 link: 'holes',
               },
               {
+                text: 'Fill rule',
+                link: 'fill-rule',
+              },
+              {
                 text: 'Use SDF to draw text',
                 link: 'sdf-text',
               },

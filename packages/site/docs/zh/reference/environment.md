@@ -100,10 +100,21 @@ setCursor: (canvas: Canvas, cursor: Cursor) => void;
 
 ## splitGraphemes
 
-将字符串分割成单个字符，考虑复合字符。在浏览器和 WebWorker 中使用 [Intl.Segmenter]，在 Node.js 中可以使用 [grapheme-splitter]。
+将字符串分割成单个字符，考虑复合字符。在浏览器和 WebWorker 中使用 [Intl.Segmenter]
 
 ```ts
 splitGraphemes: (s: string) => string[];
+```
+
+在 Node.js 中可以使用 [grapheme-splitter]。
+
+```ts
+import GraphemeSplitter from 'grapheme-splitter';
+
+splitGraphemes: (s: string) => {
+    const splitter = new GraphemeSplitter();
+    return splitter.splitGraphemes(s);
+},
 ```
 
 ## requestAnimationFrame

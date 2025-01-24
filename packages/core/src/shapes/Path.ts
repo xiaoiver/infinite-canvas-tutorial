@@ -17,6 +17,12 @@ export interface PathAttributes extends ShapeAttributes {
   d: string;
 
   /**
+   * The fill rule to use for rendering the path.
+   * @see https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/fill-rule
+   */
+  fillRule?: CanvasFillRule;
+
+  /**
    * The tesselation method to use for rendering the path.
    */
   tessellationMethod?: TesselationMethod;
@@ -59,10 +65,11 @@ export function PathWrapper<TBase extends GConstructor>(Base: TBase) {
     constructor(attributes: Partial<PathAttributes> = {}) {
       super(attributes);
 
-      const { d, tessellationMethod } = attributes;
+      const { d, tessellationMethod, fillRule } = attributes;
 
       this.d = d;
       this.tessellationMethod = tessellationMethod ?? TesselationMethod.EARCUT;
+      this.fillRule = fillRule ?? 'nonzero';
     }
 
     get d() {

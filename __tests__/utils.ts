@@ -2,6 +2,7 @@ import _gl from 'gl';
 import { createCanvas } from 'canvas';
 import { JSDOM } from 'jsdom';
 import { XMLSerializer } from '@xmldom/xmldom';
+import GraphemeSplitter from 'grapheme-splitter';
 import { Adapter } from '../packages/core/src/environment';
 
 export function sleep(n: number) {
@@ -84,7 +85,10 @@ export const NodeJSAdapter: Adapter = {
   getXMLSerializer: () => new XMLSerializer(),
   getDOMParser: () => null,
   setCursor: () => {},
-  splitGraphemes: (s: string) => [...s],
+  splitGraphemes: (s: string) => {
+    const splitter = new GraphemeSplitter();
+    return splitter.splitGraphemes(s);
+  },
   requestAnimationFrame: (callback: FrameRequestCallback) => {
     const currTime = new Date().getTime();
     const timeToCall = Math.max(0, 16 - (currTime - lastTime));

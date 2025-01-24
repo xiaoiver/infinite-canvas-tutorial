@@ -160,6 +160,9 @@ pnpm run dev
 
 -   尝试使用 SDF 绘制
 -   通过三角化绘制填充部分，使用折线绘制描边部分
+    -   支持 earcut 和 libtess.js 两种三角化方案
+    -   正确处理路径中的孔洞
+    -   支持 `fillRule` 属性
 -   实现一些手绘风格图形
 
 <img src="./screenshots/lesson13.png" width="300" alt="Lesson 13 - path">

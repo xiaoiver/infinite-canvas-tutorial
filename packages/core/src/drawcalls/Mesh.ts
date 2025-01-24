@@ -139,7 +139,7 @@ export class Mesh extends Drawcall {
       this.points = points;
       // const err = deviation(vertices, holes, dimensions, indices);
     } else if (tessellationMethod === TesselationMethod.LIBTESS) {
-      const newPoints = triangulate(rawPoints);
+      const newPoints = triangulate(rawPoints, (instance as Path).fillRule);
       this.indexBufferData = new Uint32Array(
         new Array(newPoints.length / 2).fill(undefined).map((_, i) => i),
       );

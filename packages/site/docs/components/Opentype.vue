@@ -2,9 +2,17 @@
 import { Path, TesselationMethod } from '@infinite-canvas-tutorial/core';
 import '@infinite-canvas-tutorial/ui';
 import { ref, onMounted } from 'vue';
+import Stats from 'stats.js';
 import opentype from 'opentype.js';
 
 let canvas;
+
+const stats = new Stats();
+stats.showPanel(0);
+const $stats = stats.dom;
+$stats.style.position = 'absolute';
+$stats.style.left = '0px';
+$stats.style.top = '0px';
 
 const wrapper = ref(null);
 
@@ -12,6 +20,8 @@ onMounted(() => {
     const $canvas = wrapper.value;
 
     if (!$canvas) return;
+
+    $canvas.parentElement.appendChild($stats);
 
     $canvas.addEventListener('ic-ready', async(e) => {
         canvas = e.detail;
@@ -35,10 +45,13 @@ onMounted(() => {
         const path = new Path({
             d,
             fill: '#F67676',
-            tessellationMethod: TesselationMethod.EARCUT,
-            // wireframe: true,
+            tessellationMethod: TesselationMethod.LIBTESS,
         });
         canvas.appendChild(path);
+    });
+
+    $canvas.addEventListener('ic-frame', (e) => {
+        stats.update();
     });
 });
 </script>

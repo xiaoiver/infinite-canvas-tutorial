@@ -1,15 +1,8 @@
 /**
  * @see https://github.com/brendankenny/libtess.js/blob/gh-pages/examples/osm/triangulate.js
+ * @see https://github.com/ShukantPal/pixi-essentials/blob/049c67d0126ca771e026a04702a63fee1ce25d16/packages/svg/src/utils/buildPath.ts#L12
  */
 import libtess from 'libtess';
-
-const tessy = new libtess.GluTesselator();
-// tessy.gluTessProperty(libtess.gluEnum.GLU_TESS_WINDING_RULE, libtess.windingRule.GLU_TESS_WINDING_POSITIVE);
-tessy.gluTessCallback(libtess.gluEnum.GLU_TESS_VERTEX_DATA, vertexCallback);
-tessy.gluTessCallback(libtess.gluEnum.GLU_TESS_BEGIN, begincallback);
-tessy.gluTessCallback(libtess.gluEnum.GLU_TESS_ERROR, errorcallback);
-tessy.gluTessCallback(libtess.gluEnum.GLU_TESS_COMBINE, combinecallback);
-tessy.gluTessCallback(libtess.gluEnum.GLU_TESS_EDGE_FLAG, edgeCallback);
 
 // function called for each vertex of tesselator output
 function vertexCallback(data, polyVertArray) {
@@ -36,7 +29,23 @@ function edgeCallback(flag) {
   // console.log('edge flag: ' + flag);
 }
 
-export function triangulate(contours: [number, number][][]) {
+export function triangulate(
+  contours: [number, number][][],
+  fillRule: CanvasFillRule,
+) {
+  const tessy = new libtess.GluTesselator();
+  tessy.gluTessProperty(
+    libtess.gluEnum.GLU_TESS_WINDING_RULE,
+    fillRule === 'evenodd'
+      ? libtess.windingRule.GLU_TESS_WINDING_ODD
+      : libtess.windingRule.GLU_TESS_WINDING_NONZERO,
+  );
+  tessy.gluTessCallback(libtess.gluEnum.GLU_TESS_VERTEX_DATA, vertexCallback);
+  tessy.gluTessCallback(libtess.gluEnum.GLU_TESS_BEGIN, begincallback);
+  tessy.gluTessCallback(libtess.gluEnum.GLU_TESS_ERROR, errorcallback);
+  tessy.gluTessCallback(libtess.gluEnum.GLU_TESS_COMBINE, combinecallback);
+  tessy.gluTessCallback(libtess.gluEnum.GLU_TESS_EDGE_FLAG, edgeCallback);
+
   // libtess will take 3d verts and flatten to a plane for tesselation
   // since only doing 2d tesselation here, provide z=1 normal to skip
   // iterating over verts only to get the same answer.

@@ -234,6 +234,7 @@ describe('Serialize', () => {
         cullable: true,
         fill: 'none',
         fillOpacity: 1,
+        fillRule: 'nonzero',
         innerShadowBlurRadius: 0,
         innerShadowColor: 'black',
         innerShadowOffsetX: 0,

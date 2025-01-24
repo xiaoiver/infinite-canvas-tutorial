@@ -100,4 +100,24 @@ describe('Path', () => {
       'path-holes-libtess',
     );
   });
+
+  it('should render fill-rule correctly.', async () => {
+    const path = new Path({
+      d: 'M50 0 L21 90 L98 35 L2 35 L79 90 Z',
+      fill: '#F67676',
+      fillRule: 'evenodd',
+      tessellationMethod: TesselationMethod.LIBTESS,
+    });
+    canvas.appendChild(path);
+    canvas.render();
+
+    expect($canvas.getContext('webgl1')).toMatchWebGLSnapshot(
+      dir,
+      'path-fill-rule-evenodd',
+    );
+    expect(exporter.toSVG({ grid: true })).toMatchSVGSnapshot(
+      dir,
+      'path-fill-rule-evenodd',
+    );
+  });
 });

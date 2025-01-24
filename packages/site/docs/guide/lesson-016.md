@@ -30,7 +30,7 @@ Below we'll show examples of rendering text using opentype.js and harfbuzzjs, bo
 
 ### opentype.js {#opentypejs}
 
-opentype.js provides a `getPath` method that completes Shaping and obtains SVG commands given text content, position, and font size.
+opentype.js provides the `getPath` method, which completes Shaping and obtains SVG [path-commands] given text content, position, and font size.
 
 ```ts
 opentype.load('fonts/Roboto-Black.ttf', function (err, font) {
@@ -43,12 +43,46 @@ opentype.load('fonts/Roboto-Black.ttf', function (err, font) {
 
 ### harfbuzzjs {#harfbuzzjs}
 
+First initialize harfbuzzjs WASM using Vite's ?init syntax. Then load the font file and create a font object.
+
 ```ts
 import init from 'harfbuzzjs/hb.wasm?init';
-import hbjs, { HBBlob, HBFace, HBFont, HBHandle } from 'harfbuzzjs/hbjs.js';
+import hbjs from 'harfbuzzjs/hbjs.js';
 
-init().then((instance) => {
-    const hb = hbjs(instance);
+const instance = await init();
+hb = hbjs(instance);
+
+const data = await (
+    await window.fetch('/fonts/NotoSans-Regular.ttf')
+).arrayBuffer();
+blob = hb.createBlob(data);
+face = hb.createFace(blob, 0);
+font = hb.createFont(face);
+font.setScale(32, 32); // Set font size
+```
+
+Then create a buffer object and add text content. As mentioned before, harfbuzz doesn't handle BiDi, so we need to manually set the text direction. Finally, call hb.shape method to perform Shaping calculation.
+
+```ts
+buffer = hb.createBuffer();
+buffer.addText('Hello, world!');
+buffer.guessSegmentProperties();
+// TODO: use BiDi
+// buffer.setDirection(segment.direction);
+
+hb.shape(font, buffer);
+const result = buffer.json(font);
+```
+
+Now we have the glyph data, and we can use Path to draw it
+
+```ts
+result.forEach(function (x) {
+    const d = font.glyphToPath(x.g);
+    const path = new Path({
+        d,
+        fill: '#F67676',
+    });
 });
 ```
 

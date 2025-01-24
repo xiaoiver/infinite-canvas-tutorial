@@ -117,7 +117,7 @@ const rectAttributes = [
   'dropShadowBlurRadius',
 ] as const;
 const polylineAttributes = ['points'] as const;
-const pathAttributes = ['d'] as const;
+const pathAttributes = ['d', 'fillRule'] as const;
 const textAttributes = [
   'x',
   'y',
@@ -161,6 +161,7 @@ const defaultValues = {
   dropShadowOffsetX: 0,
   dropShadowOffsetY: 0,
   dropShadowBlurRadius: 0,
+  fillRule: 'nonzero',
 };
 
 type CommonAttributeName = (

@@ -12,6 +12,7 @@ head:
 
 <script setup>
 import Holes from '../components/Holes.vue';
+import FillRule from '../components/FillRule.vue';
 </script>
 
 # Lesson 13 - Drawing a Path & Hand Drawn Styles
@@ -418,6 +419,27 @@ You can also reverse the clockwise direction in your definition, for example: [D
 
 <Holes />
 
+### Fill rule {#fill-rule}
+
+The [fill-rule] in SVG is used to determine the fill area of a Path. In the example below, the left one uses nonzero rule, while the right one uses evenodd rule.
+
+<FillRule />
+
+Taking a point in the center hollow area as an example, the ray intersects with the shape an even number of times, therefore it is determined to be outside the shape and does not need to be filled. See details at [how does fill-rule="evenodd" work on a star SVG]。
+
+![fill-rule evenodd](/fill-rule-evenodd.png)
+
+Since earcut doesn't support self-intersecting paths, we use libtess.js for path triangulation.
+
+```ts
+tessy.gluTessProperty(
+    libtess.gluEnum.GLU_TESS_WINDING_RULE,
+    fillRule === 'evenodd'
+        ? libtess.windingRule.GLU_TESS_WINDING_ODD
+        : libtess.windingRule.GLU_TESS_WINDING_NONZERO,
+);
+```
+
 ## Bounding box and picking {#bounding-box-picking}
 
 The bounding box can be estimated in the same way as in the previous lesson for polyline. We focus on the implementation of how to determine if a point is inside a Path.
@@ -742,3 +764,5 @@ export function exportRough(
 [OffscreenCanvas]: /guide/lesson-011#offscreen-canvas
 [PickingPlugin]: /guide/lesson-006#picking-plugin
 [Draw a hollow circle in SVG]: https://stackoverflow.com/questions/8193675/draw-a-hollow-circle-in-svg
+[fill-rule]: https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/fill-rule
+[how does fill-rule="evenodd" work on a star SVG]: https://stackoverflow.com/a/46145333/4639324

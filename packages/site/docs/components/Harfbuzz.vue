@@ -1,5 +1,5 @@
 <script setup>
-import { Path } from '@infinite-canvas-tutorial/core';
+import { Path, Group } from '@infinite-canvas-tutorial/core';
 import '@infinite-canvas-tutorial/ui';
 import { ref, onMounted, onUnmounted } from 'vue';
 import Stats from 'stats.js';
@@ -44,17 +44,17 @@ onMounted(() => {
         font.setVariations({ wdth: 200, wght: 700 });
 
         buffer = hb.createBuffer();
-        buffer.addText('H');
+        buffer.addText('Hello, world!');
         buffer.guessSegmentProperties();
         // TODO: use BiDi
-        // buffer.setDirection(segment.direction);
+        // buffer.setDirection(hb.Direction.RTL);
 
         hb.shape(font, buffer);
         const result = buffer.json(font);
         buffer.destroy();
 
         const base = { x: 0, y: 0 };
-        const glyphs = new Array();
+        const glyphs = [];
         for (const glyph of result) {
             glyphs.push({
                 id: glyph.g,
@@ -64,20 +64,26 @@ onMounted(() => {
             base.y += glyph.ay;
         }
 
-        const bounds = { width: base.x, height: face.upem };
+        const root = new Group();
+        root.position.x = 100;
+        root.position.y = 100;
+        canvas.appendChild(root);
 
-        window.console.log(glyphs, bounds);
-
-        result.forEach(function (x) {
+        result.forEach(function (x, i) {
             const d = font.glyphToPath(x.g);
             const path = new Path({
                 d,
                 fill: '#F67676',
+                cullable: false,
             });
-            canvas.appendChild(path);
+            root.appendChild(path);
 
-            path.position.x = 100;
-            path.position.y = 100;
+            const glyph = glyphs[i];
+
+            path.position.x = glyph.base.x;
+            path.position.y = glyph.base.y;
+            path.scale.x = 1;
+            path.scale.y = -1;
         });
     });
 

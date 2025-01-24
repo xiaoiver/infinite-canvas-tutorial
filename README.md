@@ -160,6 +160,9 @@ pnpm run dev
 
 -   Experimenting with SDF
 -   Trying to draw fills using some triangulating methods and strokes using polylines
+    -   Support earcut and libtess.js two triangulation schemes
+    -   Handle holes in the path correctly
+    -   Support `fillRule` property
 -   Draw some hand-drawn shapes
 
 <img src="./screenshots/lesson13.png" width="300" alt="Lesson 13 - path">

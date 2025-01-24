@@ -139,6 +139,10 @@ export const zh = defineConfig({
                 link: 'holes',
               },
               {
+                text: '填充规则',
+                link: 'fill-rule',
+              },
+              {
                 text: '使用 SDF 绘制文本',
                 link: 'sdf-text',
               },

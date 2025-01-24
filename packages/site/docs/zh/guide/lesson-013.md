@@ -12,6 +12,7 @@ head:
 
 <script setup>
 import Holes from '../../components/Holes.vue';
+import FillRule from '../../components/FillRule.vue';
 </script>
 
 # 课程 13 - 绘制 Path & 手绘风格
@@ -418,6 +419,27 @@ M0 0 L100 0 L100 100 L0 100 Z M50 50 L50 75 L75 75 L75 50 Z M25 25 L25
 
 <Holes />
 
+### 填充规则 {#fill-rule}
+
+SVG 中的 [fill-rule] 用来判定 Path 的填充区域，下面的例子中左边是 `nonzero`，右边是 `evenodd`。
+
+<FillRule />
+
+以中心挖空区域中的点为例，作射线与图形的交点为偶数，因此判定为图形外部，无需填充。详见 [how does fill-rule="evenodd" work on a star SVG]。
+
+![fill-rule evenodd](/fill-rule-evenodd.png)
+
+由于 earcut 不支持自相交路径，我们使用 libtess.js 来三角化路径。
+
+```ts
+tessy.gluTessProperty(
+    libtess.gluEnum.GLU_TESS_WINDING_RULE,
+    fillRule === 'evenodd'
+        ? libtess.windingRule.GLU_TESS_WINDING_ODD
+        : libtess.windingRule.GLU_TESS_WINDING_NONZERO,
+);
+```
+
 ## 包围盒与拾取 {#bounding-box-picking}
 
 包围盒可以沿用上一节课针对折线的估计方式。我们重点关注如何判定点是否在 Path 内的实现。
@@ -743,3 +765,5 @@ export function exportRough(
 [OffscreenCanvas]: /zh/guide/lesson-011#offscreen-canvas
 [PickingPlugin]: /zh/guide/lesson-006#picking-plugin
 [Draw a hollow circle in SVG]: https://stackoverflow.com/questions/8193675/draw-a-hollow-circle-in-svg
+[fill-rule]: https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/fill-rule
+[how does fill-rule="evenodd" work on a star SVG]: https://stackoverflow.com/a/46145333/4639324

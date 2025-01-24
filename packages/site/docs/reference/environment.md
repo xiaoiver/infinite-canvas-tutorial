@@ -116,6 +116,15 @@ splitGraphemes: (s: string) => string[];
 -   In browser and WebWorker environments: uses [Intl.Segmenter]
 -   In Node.js environment: can use [grapheme-splitter]
 
+```ts
+import GraphemeSplitter from 'grapheme-splitter';
+
+splitGraphemes: (s: string) => {
+    const splitter = new GraphemeSplitter();
+    return splitter.splitGraphemes(s);
+},
+```
+
 ## requestAnimationFrame
 
 Used for camera animations.
