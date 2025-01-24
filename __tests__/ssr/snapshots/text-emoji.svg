@@ -25,17 +25,13 @@
   </defs>
   <rect width="100%" height="100%" fill="url(#grid)" />
   <g>
-    <g transform="matrix(1,0,0,1,50,50)">
-      <rect x="0" y="0" width="100" height="100" />
-      <rect
-        fill="red"
-        x="0"
-        y="0"
-        width="50"
-        height="50"
-        transform="matrix(1,0,0,1,50,50)"
-      />
-    </g>
+    <text
+      x="20"
+      y="35"
+      style="font: normal normal 400 40px sans-serif;fill: black;"
+    >
+      🐱🌞🌛
+    </text>
     <g />
   </g>
 </svg>

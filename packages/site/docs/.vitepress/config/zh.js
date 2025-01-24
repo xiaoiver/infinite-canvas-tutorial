@@ -59,6 +59,10 @@ export const zh = defineConfig({
         base: '/zh/reference/',
         items: [
           {
+            text: '环境适配器',
+            link: 'environment',
+          },
+          {
             text: '画布',
             link: 'canvas',
           },

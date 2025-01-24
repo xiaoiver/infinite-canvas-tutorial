@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200">
+<svg width="200" height="200" xmlns="http://www.w3.org/2000/svg">
   <defs>
     <circle id="dot-tl" cx="0" cy="0" r="2" fill="rgba(221,221,221,1)" />
     <circle id="dot-tr" cx="20" cy="0" r="2" fill="rgba(221,221,221,1)" />

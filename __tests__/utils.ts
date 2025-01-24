@@ -1,23 +1,8 @@
 import _gl from 'gl';
 import { createCanvas } from 'canvas';
 import { JSDOM } from 'jsdom';
-import xmlserializer from 'xmlserializer';
+import { XMLSerializer } from '@xmldom/xmldom';
 import { Adapter } from '../packages/core/src/environment';
-
-var lastTime = 0;
-export const requestAnimationFrame = function (callback) {
-  var currTime = new Date().getTime();
-  var timeToCall = Math.max(0, 16 - (currTime - lastTime));
-  var id = setTimeout(function () {
-    callback(currTime + timeToCall);
-  }, timeToCall);
-  lastTime = currTime + timeToCall;
-  return id;
-};
-
-export const cancelAnimationFrame = function (id) {
-  clearTimeout(id);
-};
 
 export function sleep(n: number) {
   return new Promise((resolve) => {
@@ -90,16 +75,26 @@ export function createMouseEvent(type: string, options: any = {}) {
   });
 }
 
+let lastTime = 0;
 export const NodeJSAdapter: Adapter = {
   createCanvas: (width?: number, height?: number) =>
     getCanvas(width ?? 0, height ?? 0),
   getDocument: () => new JSDOM().window._document,
-  fetch: (url: RequestInfo, options?: RequestInit) => fetch(url, options),
-  getXMLSerializer: () => xmlserializer,
-  parseXML: (xml: string) => {
-    const parser = new DOMParser();
-    return parser.parseFromString(xml, 'text/xml');
-  },
+  // @ts-expect-error compatible with @xmldom/xmldom
+  getXMLSerializer: () => new XMLSerializer(),
+  getDOMParser: () => null,
   setCursor: () => {},
-  graphemeSegmenter: (s: string) => [...s],
+  splitGraphemes: (s: string) => [...s],
+  requestAnimationFrame: (callback: FrameRequestCallback) => {
+    const currTime = new Date().getTime();
+    const timeToCall = Math.max(0, 16 - (currTime - lastTime));
+    const id = setTimeout(function () {
+      callback(currTime + timeToCall);
+    }, timeToCall);
+    lastTime = currTime + timeToCall;
+    return id as unknown as number;
+  },
+  cancelAnimationFrame: (id: number) => {
+    clearTimeout(id);
+  },
 };

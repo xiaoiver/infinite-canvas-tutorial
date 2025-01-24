@@ -101,7 +101,7 @@ export class GlyphManager {
 
       let previousChar: string;
       DOMAdapter.get()
-        .graphemeSegmenter(line)
+        .splitGraphemes(line)
         .forEach((char) => {
           let advance: number;
           let kerning = 0;
@@ -159,7 +159,7 @@ export class GlyphManager {
     }
 
     const existedChars = Object.keys(this.glyphMap[fontStack] || {});
-    Array.from(new Set(DOMAdapter.get().graphemeSegmenter(text))).forEach(
+    Array.from(new Set(DOMAdapter.get().splitGraphemes(text))).forEach(
       (char) => {
         if (existedChars.indexOf(char) === -1) {
           newChars.push(char);

@@ -1,8 +1,7 @@
 import * as path from 'path';
 import * as fs from 'fs';
-import xmlserializer from 'xmlserializer';
 import { format } from 'prettier';
-
+import { XMLSerializer } from '@xmldom/xmldom';
 export type ToMatchSVGSnapshotOptions = {
   fileFormat?: string;
 };
@@ -24,7 +23,8 @@ export function toMatchSVGSnapshot(
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 
     actual = dom
-      ? format(xmlserializer.serializeToString(dom), {
+      ? // @ts-expect-error compatible with @xmldom/xmldom
+        format(new XMLSerializer().serializeToString(dom), {
           parser: 'babel',
         })
       : 'null';

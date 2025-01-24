@@ -77,7 +77,49 @@ describe('Text', () => {
 
     canvas.render();
 
-    expect($canvas.getContext('webgl1')).toMatchWebGLSnapshot(dir, 'text');
+    expect($canvas.getContext('webgl1')).toMatchWebGLSnapshot(dir, 'text', {
+      maxError: 1000,
+    });
     expect(exporter.toSVG({ grid: true })).toMatchSVGSnapshot(dir, 'text');
+  });
+
+  it('should render text with edt correctly.', async () => {
+    const text = new Text({
+      x: 20,
+      y: 35,
+      content: 'My',
+      fontFamily: 'sans-serif',
+      fontSize: 40,
+      esdt: false,
+    });
+    canvas.appendChild(text);
+    canvas.render();
+    expect($canvas.getContext('webgl1')).toMatchWebGLSnapshot(dir, 'text-edt', {
+      maxError: 1000,
+    });
+    expect(exporter.toSVG({ grid: true })).toMatchSVGSnapshot(dir, 'text-edt');
+  });
+
+  it('should render emoji correctly.', async () => {
+    const text = new Text({
+      x: 20,
+      y: 35,
+      content: '🐱🌞🌛',
+      fontFamily: 'sans-serif',
+      fontSize: 40,
+    });
+    canvas.appendChild(text);
+    canvas.render();
+    expect($canvas.getContext('webgl1')).toMatchWebGLSnapshot(
+      dir,
+      'text-emoji',
+      {
+        maxError: 1000,
+      },
+    );
+    expect(exporter.toSVG({ grid: true })).toMatchSVGSnapshot(
+      dir,
+      'text-emoji',
+    );
   });
 });

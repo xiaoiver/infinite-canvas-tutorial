@@ -437,32 +437,26 @@ export class Canvas {
     return { x: x + left, y: y + top };
   }
 
-  zoomIn(
-    rAF?: (callback: FrameRequestCallback) => number,
-    cAF?: (handle: number) => void,
-  ) {
+  zoomIn() {
     const { camera } = this;
-    camera.cancelLandmarkAnimation(cAF);
+    camera.cancelLandmarkAnimation();
     const landmark = camera.createLandmark({
       viewportX: camera.width / 2,
       viewportY: camera.height / 2,
       zoom: findZoomCeil(camera.zoom),
     });
-    camera.gotoLandmark(landmark, { duration: 300, easing: 'ease' }, rAF);
+    camera.gotoLandmark(landmark, { duration: 300, easing: 'ease' });
   }
 
-  zoomOut(
-    rAF?: (callback: FrameRequestCallback) => number,
-    cAF?: (handle: number) => void,
-  ) {
+  zoomOut() {
     const { camera } = this;
-    camera.cancelLandmarkAnimation(cAF);
+    camera.cancelLandmarkAnimation();
     const landmark = camera.createLandmark({
       viewportX: camera.width / 2,
       viewportY: camera.height / 2,
       zoom: findZoomFloor(camera.zoom),
     });
-    camera.gotoLandmark(landmark, { duration: 300, easing: 'ease' }, rAF);
+    camera.gotoLandmark(landmark, { duration: 300, easing: 'ease' });
   }
 
   createCustomEvent(eventName: string, object?: object) {

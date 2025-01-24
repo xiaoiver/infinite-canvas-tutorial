@@ -86,6 +86,10 @@ export const en = defineConfig({
         base: '/reference/',
         items: [
           {
+            text: 'Environment adapter',
+            link: 'environment',
+          },
+          {
             text: 'Canvas',
             link: 'canvas',
           },

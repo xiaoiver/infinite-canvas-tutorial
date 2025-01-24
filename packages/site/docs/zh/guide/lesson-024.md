@@ -3,7 +3,7 @@ outline: deep
 publish: false
 ---
 
-# 课程 15 - Tiled based rendering
+# 课程 24 - Tiled based rendering
 
 -   [What does Tile based rendering mean?]
 -   [Motiff]

@@ -1,5 +1,7 @@
-import { Camera } from '../../packages/core/src';
-import { cancelAnimationFrame, requestAnimationFrame, sleep } from '../utils';
+import { Camera, DOMAdapter } from '../../packages/core/src';
+import { NodeJSAdapter, sleep } from '../utils';
+
+DOMAdapter.set(NodeJSAdapter);
 
 describe('Camera', () => {
   it('should init and reprojection correctly.', () => {
@@ -62,21 +64,16 @@ describe('Camera', () => {
       rotation: 0,
     });
 
-    camera.gotoLandmark(
-      landmark,
-      {
-        onfinish: () => {
-          expect(landmark).toEqual({
-            x: 0,
-            y: 0,
-            zoom: 2,
-            rotation: 0,
-          });
-        },
+    camera.gotoLandmark(landmark, {
+      onfinish: () => {
+        expect(landmark).toEqual({
+          x: 0,
+          y: 0,
+          zoom: 2,
+          rotation: 0,
+        });
       },
-      // @ts-expect-error NodeJS.Timeout
-      requestAnimationFrame,
-    );
+    });
 
     await sleep(1000);
 
@@ -94,10 +91,8 @@ describe('Camera', () => {
           expect(camera.zoom).toBe(2);
         },
       },
-      // @ts-expect-error NodeJS.Timeout
-      requestAnimationFrame,
     );
-    camera.cancelLandmarkAnimation(cancelAnimationFrame);
+    camera.cancelLandmarkAnimation();
 
     // Use viewportX and viewportY.
     camera.gotoLandmark({ viewportX: 50, viewportY: 50 }, { duration: 0 });
@@ -113,8 +108,6 @@ describe('Camera', () => {
           expect(camera.zoom).toBeGreaterThan(1);
         },
       },
-      // @ts-expect-error NodeJS.Timeout
-      requestAnimationFrame,
     );
     await sleep(1000);
   });

@@ -285,7 +285,7 @@ splitter.splitGraphemes('🌷🎁💩😜👍🏳️‍🌈'); // returns ["🌷
 
 ```ts
 // @see https://github.com/pixijs/pixijs/blob/dev/src/scene/text/canvas/CanvasTextMetrics.ts#L121C19-L131C10
-const graphemeSegmenter: (s: string) => string[] = (() => {
+const splitGraphemes: (s: string) => string[] = (() => {
     if (typeof (Intl as IIntl)?.Segmenter === 'function') {
         const segmenter = new (Intl as IIntl).Segmenter();
 
@@ -626,7 +626,7 @@ export type PositionedGlyph = {
 lines.forEach((line) => {
     const lineStartIndex = positionedGlyphs.length;
 
-    canvasTextMetrics.graphemeSegmenter(line).forEach((char) => {});
+    canvasTextMetrics.splitGraphemes(line).forEach((char) => {});
 });
 ```
 

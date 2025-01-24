@@ -48,6 +48,7 @@ interface CRDT<T, S> {
 
 ## 扩展阅读 {#extended-reading}
 
+-   [Learn Yjs]
 -   [Movable tree CRDTs and Loro's implementation]
 -   [CRDTs: The Hard Parts]
 -   [Peritext - A CRDT for Rich-Text Collaboration]
@@ -75,3 +76,4 @@ interface CRDT<T, S> {
 [An Interactive Intro to CRDTs]: <https://jakelazaroff.com/words/an-interactive-intro-to-crdts/>
 [Building a Collaborative Pixel Art Editor with CRDTs]: <https://jakelazaroff.com/words/building-a-collaborative-pixel-art-editor-with-crdts/>
 [Making CRDTs 98% More Efficient]: <https://jakelazaroff.com/words/making-crdts-98-percent-more-efficient/>
+[Learn Yjs]: <https://learn.yjs.dev/>

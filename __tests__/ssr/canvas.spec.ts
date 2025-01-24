@@ -1,5 +1,5 @@
 import _gl from 'gl';
-import { sleep, requestAnimationFrame, cancelAnimationFrame } from '../utils';
+import { sleep } from '../utils';
 import '../useSnapshotMatchers';
 import { Canvas, Circle, DOMAdapter } from '../../packages/core/src';
 import { CheckboardStyle } from '../../packages/core/src/plugins';
@@ -45,10 +45,8 @@ describe('Canvas API', () => {
   });
 
   it('should zoomIn / Out correctly.', async () => {
-    // @ts-expect-error
-    canvas.zoomIn(requestAnimationFrame, cancelAnimationFrame);
-    // @ts-expect-error
-    canvas.zoomOut(requestAnimationFrame, cancelAnimationFrame);
+    canvas.zoomIn();
+    canvas.zoomOut();
 
     await sleep(1000);
   });

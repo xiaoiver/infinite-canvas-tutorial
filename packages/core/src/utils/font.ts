@@ -570,7 +570,7 @@ export class CanvasTextMetrics {
     bitmapFontKerning: boolean,
     scale: number,
   ) {
-    const segments = DOMAdapter.get().graphemeSegmenter(text);
+    const segments = DOMAdapter.get().splitGraphemes(text);
 
     let metricWidth: number;
     let boundsWidth: number;

@@ -8,11 +8,12 @@ export interface Adapter {
     height?: number,
   ) => HTMLCanvasElement | OffscreenCanvas;
   getDocument: () => Document;
-  fetch: (url: RequestInfo, options?: RequestInit) => Promise<Response>;
   getXMLSerializer: () => XMLSerializer | null;
-  parseXML: (xml: string) => Document | null;
+  getDOMParser: () => DOMParser | null;
   setCursor: (canvas: Canvas, cursor: Cursor) => void;
-  graphemeSegmenter: (s: string) => string[];
+  splitGraphemes: (s: string) => string[];
+  requestAnimationFrame: (callback: FrameRequestCallback) => number;
+  cancelAnimationFrame: (handle: number) => void;
 }
 
 let currentAdapter: Adapter = BrowserAdapter;

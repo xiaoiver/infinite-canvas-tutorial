@@ -12,13 +12,8 @@ export const BrowserAdapter: Adapter = {
     return canvas;
   },
   getDocument: () => document,
-  fetch: (url: RequestInfo, options?: RequestInit) => fetch(url, options),
   getXMLSerializer: () => new XMLSerializer(),
-  parseXML: (xml: string) => {
-    const parser = new DOMParser();
-
-    return parser.parseFromString(xml, 'text/xml');
-  },
+  getDOMParser: () => new DOMParser(),
   setCursor: (canvas: Canvas, cursor: Cursor) => {
     const $canvas = canvas.getDOM() as HTMLCanvasElement;
     if (!$canvas.style) {
@@ -28,11 +23,14 @@ export const BrowserAdapter: Adapter = {
     canvas.root.cursor = cursor;
     $canvas.style.cursor = cursor;
   },
-  graphemeSegmenter: (s: string) => {
+  splitGraphemes: (s: string) => {
     if (typeof Intl?.Segmenter === 'function') {
       const segmenter = new Intl.Segmenter();
       return [...segmenter.segment(s)].map((x) => x.segment);
     }
     return [...s];
   },
+  requestAnimationFrame: (callback: FrameRequestCallback) =>
+    requestAnimationFrame(callback),
+  cancelAnimationFrame: (id: number) => cancelAnimationFrame(id),
 };

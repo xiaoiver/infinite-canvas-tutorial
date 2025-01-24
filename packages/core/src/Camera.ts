@@ -2,6 +2,7 @@ import { ClipSpaceNearZ } from '@antv/g-device-api';
 import { mat3, vec2 } from 'gl-matrix';
 import { EASING_FUNCTION } from './utils';
 import type { IPointData } from '@pixi/math';
+import { DOMAdapter } from './environment';
 
 const EPSILON = 0.0001;
 
@@ -196,7 +197,6 @@ export class Camera {
       onframe: (t: number) => void;
       onfinish: () => void;
     }> = {},
-    rAF?: (callback: FrameRequestCallback) => number,
   ) {
     const {
       easing = 'linear',
@@ -280,16 +280,17 @@ export class Camera {
         if (onframe) {
           onframe(t);
         }
-        this.#landmarkAnimationID = (rAF || requestAnimationFrame)(animate);
+        this.#landmarkAnimationID =
+          DOMAdapter.get().requestAnimationFrame(animate);
       }
     };
 
-    (rAF || requestAnimationFrame)(animate);
+    DOMAdapter.get().requestAnimationFrame(animate);
   }
 
-  cancelLandmarkAnimation(cAF?: (handle: number) => void) {
+  cancelLandmarkAnimation() {
     if (this.#landmarkAnimationID !== undefined) {
-      (cAF || cancelAnimationFrame)(this.#landmarkAnimationID);
+      DOMAdapter.get().cancelAnimationFrame(this.#landmarkAnimationID);
     }
   }
 

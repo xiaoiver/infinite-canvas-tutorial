@@ -53,6 +53,9 @@ importers:
       '@vue-macros/eslint-config':
         specifier: ^0.7.1
         version: 0.7.1(eslint@7.32.0)
+      '@xmldom/xmldom':
+        specifier: ^0.9.7
+        version: 0.9.7
       canvas:
         specifier: ^3.1.0
         version: 3.1.0
@@ -71,6 +74,9 @@ importers:
       gl:
         specifier: ^6.0.2
         version: 6.0.2
+      grapheme-splitter:
+        specifier: ^1.0.4
+        version: 1.0.4
       husky:
         specifier: ^7.0.4
         version: 7.0.4
@@ -113,9 +119,6 @@ importers:
       vue-eslint-parser:
         specifier: ^9.4.2
         version: 9.4.2(eslint@7.32.0)
-      xmlserializer:
-        specifier: ^0.6.1
-        version: 0.6.1
 
   packages/core:
     dependencies:
@@ -134,9 +137,6 @@ importers:
       '@pixi/math':
         specifier: ^7.4.2
         version: 7.4.2
-      '@xmldom/xmldom':
-        specifier: ^0.9.7
-        version: 0.9.7
       bezier-easing:
         specifier: ^2.1.0
         version: 2.1.0
@@ -3663,6 +3663,9 @@ packages:
   graceful-fs@4.2.11:
     resolution: {integrity: sha512-RbJ5/jmFcNNCcDV5o9eTnBLJ/HszWV0P73bc+Ff4nS/rJj+YaS6IGyiOL0VoBYX+l1Wrl3k63h/KrH+nhJ0XvQ==}
 
+  grapheme-splitter@1.0.4:
+    resolution: {integrity: sha512-bzh50DW9kTPM00T8y4o8vQg89Di9oLJVLW/KaOGIXJWP/iqCN6WKYkbNOF04vFLJhwcpYUh9ydh/+5vpOqV4YQ==}
+
   graphemer@1.4.0:
     resolution: {integrity: sha512-EtKwoO6kxCL9WO5xipiHTZlSzBm7WLT627TqC/uVRd0HKmq8NXyebnNYxDoBi7wt8eTWrUrKXCOVaFq9x1kgag==}
 
@@ -6068,9 +6071,6 @@ packages:
   xmldom-sre@0.1.31:
     resolution: {integrity: sha512-f9s+fUkX04BxQf+7mMWAp5zk61pciie+fFLC9hX9UVvCeJQfNHRHXpeo5MPcR0EUf57PYLdt+ZO4f3Ipk2oZUw==}
     engines: {node: '>=0.1'}
-
-  xmlserializer@0.6.1:
-    resolution: {integrity: sha512-FNb0eEqqUUbnuvxuHqNuKH8qCGKqxu+558Zi8UzOoQk8Z9LdvpONK+v7m3gpKVHrk5Aq+0nNLsKxu/6OYh7Umw==}
 
   xtend@4.0.2:
     resolution: {integrity: sha512-LKYU1iAXJXUgAXn9URjiu+MWhyUXHsvfp7mcuYm9dSUKK0/CjtrUwFAxD82/mCWbtLsGjFIad0wIsod4zrTAEQ==}
@@ -9707,6 +9707,8 @@ snapshots:
 
   graceful-fs@4.2.11: {}
 
+  grapheme-splitter@1.0.4: {}
+
   graphemer@1.4.0: {}
 
   gray-matter@4.0.3:
@@ -12411,8 +12413,6 @@ snapshots:
   xmlchars@2.2.0: {}
 
   xmldom-sre@0.1.31: {}
-
-  xmlserializer@0.6.1: {}
 
   xtend@4.0.2: {}
 
