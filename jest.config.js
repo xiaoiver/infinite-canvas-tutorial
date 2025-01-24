@@ -7,14 +7,12 @@ module.exports = {
   testMatch: [
     '<rootDir>/__tests__/**/*/*.spec.+(ts|tsx|js)',
     '!**/e2e/*.spec.+(ts|tsx|js)',
-    '!**/ui/*.spec.+(ts|tsx|js)'
+    '!**/ui/*.spec.+(ts|tsx|js)',
   ],
   preset: 'ts-jest',
   moduleFileExtensions: ['ts', 'tsx', 'js', 'json'],
   modulePathIgnorePatterns: ['dist'],
-  collectCoverageFrom: [
-    'packages/core/src/**/*.ts',
-  ],
+  collectCoverageFrom: ['packages/core/src/**/*.ts'],
   transform: {
     '^.+\\.[tj]s$': [
       'ts-jest',

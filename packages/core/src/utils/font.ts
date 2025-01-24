@@ -1,8 +1,8 @@
 import bidiFactory from 'bidi-js';
 import { Rectangle } from '@pixi/math';
 import { TextAttributes, TextStyleWhiteSpace } from '../shapes';
-import { createOffscreenCanvas } from './browser';
 import { BitmapFont } from './bitmap-font';
+import { DOMAdapter } from '../environment/adapter';
 
 type CharacterWidthCache = Record<string, number>;
 export type TextMetrics = {
@@ -65,36 +65,21 @@ const regexCannotEnd = new RegExp(
   `${regexCannotEndZhCn.source}|${regexCannotEndZhTw.source}|${regexCannotEndJaJp.source}|${regexCannotEndKoKr.source}`,
 );
 
-const intlGraphemeSegmenter = (s: string) => {
-  if (typeof Intl?.Segmenter === 'function') {
-    const segmenter = new Intl.Segmenter();
-    return [...segmenter.segment(s)].map((x) => x.segment);
-  }
-  return [...s];
-};
-
 export class CanvasTextMetrics {
   #fonts: Record<string, globalThis.TextMetrics & { fontSize: number }> = {};
   #canvas: OffscreenCanvas | HTMLCanvasElement;
   #context: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
-  #graphemeSegmenter: (s: string) => string[];
   #bidi = bidiFactory();
   #bidiCache: Record<string, string> = {};
 
-  constructor(graphemeSegmenter?: (s: string) => string[]) {
-    const canvas = createOffscreenCanvas();
+  constructor() {
+    const canvas = DOMAdapter.get().createCanvas(1, 1);
     if (canvas) {
       this.#canvas = canvas;
       this.#context = canvas.getContext('2d') as
         | OffscreenCanvasRenderingContext2D
         | CanvasRenderingContext2D;
     }
-
-    this.#graphemeSegmenter = graphemeSegmenter ?? intlGraphemeSegmenter;
-  }
-
-  get graphemeSegmenter() {
-    return this.#graphemeSegmenter;
   }
 
   getCanvas() {
@@ -585,7 +570,7 @@ export class CanvasTextMetrics {
     bitmapFontKerning: boolean,
     scale: number,
   ) {
-    const segments = this.#graphemeSegmenter(text);
+    const segments = DOMAdapter.get().graphemeSegmenter(text);
 
     let metricWidth: number;
     let boundsWidth: number;
@@ -701,4 +686,10 @@ export function yOffsetFromTextBaseline(
   return offset;
 }
 
-export const canvasTextMetrics = new CanvasTextMetrics();
+let canvasTextMetrics: CanvasTextMetrics;
+export function getOrCreateCanvasTextMetrics() {
+  if (!canvasTextMetrics) {
+    canvasTextMetrics = new CanvasTextMetrics();
+  }
+  return canvasTextMetrics;
+}

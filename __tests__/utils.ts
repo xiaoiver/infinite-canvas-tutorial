@@ -1,5 +1,8 @@
 import _gl from 'gl';
+import { createCanvas } from 'canvas';
 import { JSDOM } from 'jsdom';
+import xmlserializer from 'xmlserializer';
+import { Adapter } from '../packages/core/src/environment';
 
 var lastTime = 0;
 export const requestAnimationFrame = function (callback) {
@@ -29,16 +32,20 @@ export function getCanvas(width = 100, height = 100) {
     stencil: true,
   });
 
+  const canvas = createCanvas(width, height);
+
   const mockedCanvas: HTMLCanvasElement = {
     width,
     height,
     // @ts-ignore
-    getContext: () => {
-      // @ts-ignore
-      gl.canvas = mockedCanvas;
-      // 模拟 DOM API，返回小程序 context，它应当和 CanvasRenderingContext2D 一致
-      // @see https://developer.mozilla.org/zh-CN/docs/Web/API/HTMLCanvasElement/getContext
-      return gl;
+    getContext: (contextId: string) => {
+      if (contextId === '2d') {
+        return canvas.getContext('2d');
+      } else {
+        // @ts-ignore
+        gl.canvas = mockedCanvas;
+        return gl;
+      }
     },
     addEventListener: () => {},
     removeEventListener: () => {},
@@ -82,3 +89,17 @@ export function createMouseEvent(type: string, options: any = {}) {
     ...options,
   });
 }
+
+export const NodeJSAdapter: Adapter = {
+  createCanvas: (width?: number, height?: number) =>
+    getCanvas(width ?? 0, height ?? 0),
+  getDocument: () => new JSDOM().window._document,
+  fetch: (url: RequestInfo, options?: RequestInit) => fetch(url, options),
+  getXMLSerializer: () => xmlserializer,
+  parseXML: (xml: string) => {
+    const parser = new DOMParser();
+    return parser.parseFromString(xml, 'text/xml');
+  },
+  setCursor: () => {},
+  graphemeSegmenter: (s: string) => [...s],
+};

@@ -7,9 +7,9 @@ import { Format, makeTextureDescriptor2D } from '@antv/g-device-api';
 import type { StyleGlyph } from './alpha-image';
 import { RGBAImage } from './alpha-image';
 import { GlyphAtlas } from './glyph-atlas';
-import { canvasTextMetrics } from '../font';
 import { TinySDF } from './tiny-sdf';
 import { BitmapFont } from '../bitmap-font/BitmapFont';
+import { DOMAdapter } from '../../environment';
 
 export type PositionedGlyph = {
   glyph: string;
@@ -100,34 +100,36 @@ export class GlyphManager {
       const lineStartIndex = positionedGlyphs.length;
 
       let previousChar: string;
-      canvasTextMetrics.graphemeSegmenter(line).forEach((char) => {
-        let advance: number;
-        let kerning = 0;
-        if (bitmapFont) {
-          const charData = bitmapFont.chars[char];
-          advance = charData.xAdvance;
-          kerning =
-            (bitmapFontKerning &&
-              previousChar &&
-              charData.kerning[previousChar]) ||
-            0;
-        } else {
-          const positions = this.glyphMap[fontStack];
-          const glyph = positions && positions[char];
-          advance = glyph.metrics.advance;
-        }
+      DOMAdapter.get()
+        .graphemeSegmenter(line)
+        .forEach((char) => {
+          let advance: number;
+          let kerning = 0;
+          if (bitmapFont) {
+            const charData = bitmapFont.chars[char];
+            advance = charData.xAdvance;
+            kerning =
+              (bitmapFontKerning &&
+                previousChar &&
+                charData.kerning[previousChar]) ||
+              0;
+          } else {
+            const positions = this.glyphMap[fontStack];
+            const glyph = positions && positions[char];
+            advance = glyph.metrics.advance;
+          }
 
-        positionedGlyphs.push({
-          glyph: char,
-          x: x,
-          y: y,
-          scale,
-          fontStack,
+          positionedGlyphs.push({
+            glyph: char,
+            x: x,
+            y: y,
+            scale,
+            fontStack,
+          });
+          x += (advance + kerning) * scale + letterSpacing;
+
+          previousChar = char;
         });
-        x += (advance + kerning) * scale + letterSpacing;
-
-        previousChar = char;
-      });
 
       const lineWidth = x - letterSpacing;
       for (let i = lineStartIndex; i < positionedGlyphs.length; i++) {
@@ -157,7 +159,7 @@ export class GlyphManager {
     }
 
     const existedChars = Object.keys(this.glyphMap[fontStack] || {});
-    Array.from(new Set(canvasTextMetrics.graphemeSegmenter(text))).forEach(
+    Array.from(new Set(DOMAdapter.get().graphemeSegmenter(text))).forEach(
       (char) => {
         if (existedChars.indexOf(char) === -1) {
           newChars.push(char);

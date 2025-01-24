@@ -5,7 +5,7 @@ import { type Group, Shape, RBushNodeAABB } from '../shapes';
 import { AsyncParallelHook, SyncHook, SyncWaterfallHook } from '../utils';
 import type { InteractivePointerEvent } from './DOMEventListener';
 import { CanvasConfig, CanvasMode } from '../Canvas';
-import { CustomEvent } from '../events';
+import { Cursor, CustomEvent } from '../events';
 
 export interface Hooks {
   /**
@@ -79,6 +79,7 @@ export interface PluginContext extends CanvasConfig {
   root: Group;
   rBushRoot: RBush<RBushNodeAABB>;
   api: {
+    setCursor: (cursor: Cursor) => void;
     elementsFromPoint(x: number, y: number): Shape[];
     elementFromPoint(x: number, y: number): Shape;
     elementsFromBBox(

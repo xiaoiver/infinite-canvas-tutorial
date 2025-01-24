@@ -167,7 +167,7 @@ export class Event implements Plugin {
   }
 
   private setCursor(cursor: Cursor) {
-    this.#context.setCursor?.(cursor);
+    this.#context.api.setCursor?.(cursor);
   }
 
   private normalizeToPointerEvent(

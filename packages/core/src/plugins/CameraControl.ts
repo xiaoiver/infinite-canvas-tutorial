@@ -35,8 +35,7 @@ export class CameraControl implements Plugin {
       camera,
       root,
       devicePixelRatio,
-      api: { client2Viewport, getCanvasMode },
-      setCursor,
+      api: { client2Viewport, getCanvasMode, setCursor },
     } = context;
 
     root.draggable = true;

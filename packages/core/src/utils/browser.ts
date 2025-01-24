@@ -1,3 +1,5 @@
+import { DOMAdapter } from '../environment/adapter';
+
 export const isBrowser =
   typeof window !== 'undefined' && typeof window.document !== 'undefined';
 
@@ -14,8 +16,10 @@ export const getGlobalThis = (): typeof globalThis => {
   // if (typeof this !== 'undefined') return this;
 };
 
-export function createSVGElement(type: string, doc?: Document): SVGElement {
-  return (doc || document).createElementNS('http://www.w3.org/2000/svg', type);
+export function createSVGElement(type: string): SVGElement {
+  return DOMAdapter.get()
+    .getDocument()
+    .createElementNS('http://www.w3.org/2000/svg', type);
 }
 
 export function isImageBitmapOrCanvases(
@@ -31,16 +35,4 @@ export function isImageBitmapOrCanvases(
 
 export function isVideo(data: TexImageSource): data is HTMLVideoElement {
   return isBrowser && data instanceof HTMLVideoElement;
-}
-
-export function createOffscreenCanvas(): OffscreenCanvas | HTMLCanvasElement {
-  let canvas: OffscreenCanvas | HTMLCanvasElement;
-  if (isBrowser) {
-    try {
-      canvas = new OffscreenCanvas(1, 1);
-    } catch {
-      canvas = document.createElement('canvas');
-    }
-  }
-  return canvas;
 }

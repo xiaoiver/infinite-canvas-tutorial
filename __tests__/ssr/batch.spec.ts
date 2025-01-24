@@ -1,11 +1,16 @@
 import _gl from 'gl';
-import { getCanvas } from '../utils';
 import '../useSnapshotMatchers';
-import { Canvas, Circle } from '../../packages/core/src';
+import { Canvas, Circle, DOMAdapter } from '../../packages/core/src';
+import { NodeJSAdapter } from '../utils';
+
+DOMAdapter.set(NodeJSAdapter);
 
 describe('Batch Rendering', () => {
   it('should render a batchable and anon-batchable circle separately.', async () => {
-    const $canvas = getCanvas(200, 200);
+    const $canvas = DOMAdapter.get().createCanvas(
+      200,
+      200,
+    ) as HTMLCanvasElement;
 
     const canvas = await new Canvas({
       canvas: $canvas,

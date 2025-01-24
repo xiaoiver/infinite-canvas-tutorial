@@ -32,6 +32,7 @@ import {
 } from './utils';
 import { DataURLOptions } from './ImageExporter';
 import { Cursor, CustomEvent } from './events';
+import { DOMAdapter } from './environment/adapter';
 
 export enum CanvasMode {
   SELECT = 'select',
@@ -57,10 +58,6 @@ export interface CanvasConfig {
    * Color of grid.
    */
   gridColor?: string;
-  /**
-   * There is no `style.cursor = 'pointer'` in WebWorker.
-   */
-  setCursor?: (cursor: Cursor) => void;
   /**
    * Default to `CanvasMode.HAND`.
    */
@@ -103,7 +100,6 @@ export class Canvas {
       devicePixelRatio,
       backgroundColor,
       gridColor,
-      setCursor,
       mode,
     } = config;
     const globalThis = getGlobalThis();
@@ -129,16 +125,6 @@ export class Canvas {
       gridColor,
       supportsPointerEvents,
       supportsTouchEvents,
-      setCursor:
-        setCursor ??
-        ((cursor) => {
-          if (!(canvas as HTMLCanvasElement).style) {
-            return;
-          }
-
-          this.root.cursor = cursor;
-          (canvas as HTMLCanvasElement).style.cursor = cursor;
-        }),
       hooks: {
         init: new SyncHook<[]>(),
         initAsync: new AsyncParallelHook<[]>(),
@@ -174,6 +160,9 @@ export class Canvas {
         canvas2Viewport: camera.canvas2Viewport.bind(camera),
         createCustomEvent: this.createCustomEvent.bind(this),
         getCanvasMode: () => this.#mode,
+        setCursor: (cursor: Cursor) => {
+          DOMAdapter.get().setCursor(this, cursor);
+        },
       },
     };
 
@@ -338,7 +327,7 @@ export class Canvas {
       }
 
       this.#mode = mode;
-      this.#pluginContext.setCursor(cursor);
+      DOMAdapter.get().setCursor(this, cursor);
     }
   }
 

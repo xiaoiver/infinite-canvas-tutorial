@@ -3,6 +3,7 @@
  * @see https://gitlab.com/unconed/use.gpu/-/blob/master/packages/glyph/src/sdf.ts
  * @see https://acko.net/blog/subpixel-distance-transform/
  */
+import { DOMAdapter } from '../../environment';
 import { glyphToEDT } from './sdf-edt';
 import { glyphToESDT } from './sdf-esdt';
 
@@ -91,21 +92,15 @@ export class TinySDF {
     // for "halo", and account for some glyphs possibly being larger than their font size
     const size = (this.size = fontSize + buffer * 4);
 
-    const canvas = this._createCanvas(size);
+    const canvas = DOMAdapter.get().createCanvas(size, size);
     const ctx = (this.ctx = canvas.getContext('2d', {
       willReadFrequently: true,
-    }));
+    }) as CanvasRenderingContext2D);
     ctx.font = `${fontStyle} ${fontWeight} ${fontSize}px ${fontFamily}`;
 
     ctx.textBaseline = 'alphabetic';
     ctx.textAlign = 'left'; // Necessary so that RTL text doesn't have different alignment
     ctx.fillStyle = fill; // If plain text mixed with emoji, we should use fill color instead of 'black'
-  }
-
-  _createCanvas(size: number) {
-    const canvas = document.createElement('canvas');
-    canvas.width = canvas.height = size;
-    return canvas;
   }
 
   draw(char: string, esdt = false, color = false) {

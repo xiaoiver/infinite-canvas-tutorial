@@ -53,6 +53,9 @@ importers:
       '@vue-macros/eslint-config':
         specifier: ^0.7.1
         version: 0.7.1(eslint@7.32.0)
+      canvas:
+        specifier: ^3.1.0
+        version: 3.1.0
       case-police:
         specifier: ^0.5.14
         version: 0.5.14
@@ -76,7 +79,7 @@ importers:
         version: 29.7.0(@types/node@20.12.7)
       jsdom:
         specifier: ^19.0.0
-        version: 19.0.0
+        version: 19.0.0(canvas@3.1.0)
       lint-staged:
         specifier: ^10.5.4
         version: 10.5.4
@@ -131,6 +134,9 @@ importers:
       '@pixi/math':
         specifier: ^7.4.2
         version: 7.4.2
+      '@xmldom/xmldom':
+        specifier: ^0.9.7
+        version: 0.9.7
       bezier-easing:
         specifier: ^2.1.0
         version: 2.1.0
@@ -2446,6 +2452,10 @@ packages:
   '@webgpu/types@0.1.40':
     resolution: {integrity: sha512-/BBkHLS6/eQjyWhY2H7Dx5DHcVrS2ICj9owvSRdgtQT6KcafLZA86tPze0xAOsd4FbsYKCUBUQyNi87q7gV7kw==}
 
+  '@xmldom/xmldom@0.9.7':
+    resolution: {integrity: sha512-syvR8iIJjpTZ/stv7l89UAViwGFh6lbheeOaqSxkYx9YNmIVvPTRH+CT/fpykFtUx5N+8eSMDRvggF9J8GEPzQ==}
+    engines: {node: '>=14.6'}
+
   JSONStream@1.3.5:
     resolution: {integrity: sha512-E+iruNOY8VV9s4JEbe1aNEm6MiszPRr/UfcHMz0TQh1BXSxHK+ASV1R6W4HpjBhSeS+54PIsAMCBmwD06LLsqQ==}
     hasBin: true
@@ -2757,6 +2767,10 @@ packages:
 
   caniuse-lite@1.0.30001692:
     resolution: {integrity: sha512-A95VKan0kdtrsnMubMKxEKUKImOPSuCpYgxSQBo036P5YYgVIcOYJEgt/txJWqObiRQeISNCfef9nvlQ0vbV7A==}
+
+  canvas@3.1.0:
+    resolution: {integrity: sha512-tTj3CqqukVJ9NgSahykNwtGda7V33VLObwrHfzT0vqJXu7J4d4C/7kQQW3fOEGDfZZoILPut5H00gOjyttPGyg==}
+    engines: {node: ^18.12.0 || >= 20.9.0}
 
   case-police@0.5.14:
     resolution: {integrity: sha512-+m4+xJJlqkA6nVYATw+Y2/STB58H5EI9eTUYdMB+okP34wuHe6xrZYVosiZanS5qrYQwVW2/9znT5VRFis5D8w==}
@@ -4678,6 +4692,9 @@ packages:
   node-abi@3.68.0:
     resolution: {integrity: sha512-7vbj10trelExNjFSBm5kTvZXXa7pZyKWx9RCKIyqe6I9Ev3IzGpQoqBP3a+cOdxY+pWj6VkP28n/2wWysBHD/A==}
     engines: {node: '>=10'}
+
+  node-addon-api@7.1.1:
+    resolution: {integrity: sha512-5m3bsyrjFWE1xf7nz7YXdN4udnVtXK6/Yfgn5qnahL6bCkf2yKt4k3nuTKAtT4r3IG8JNR2ncsIMdZuAzJjHQQ==}
 
   node-bitmap@0.0.1:
     resolution: {integrity: sha512-Jx5lPaaLdIaOsj2mVLWMWulXF6GQVdyLvNSxmiYCvZ8Ma2hfKX0POoR2kgKOqz+oFsRreq0yYZjQ2wjE9VNzCA==}
@@ -8255,6 +8272,8 @@ snapshots:
 
   '@webgpu/types@0.1.40': {}
 
+  '@xmldom/xmldom@0.9.7': {}
+
   JSONStream@1.3.5:
     dependencies:
       jsonparse: 1.3.1
@@ -8650,6 +8669,11 @@ snapshots:
   caniuse-lite@1.0.30001644: {}
 
   caniuse-lite@1.0.30001692: {}
+
+  canvas@3.1.0:
+    dependencies:
+      node-addon-api: 7.1.1
+      prebuild-install: 7.1.2
 
   case-police@0.5.14: {}
 
@@ -10378,7 +10402,7 @@ snapshots:
 
   jsbn@1.1.0: {}
 
-  jsdom@19.0.0:
+  jsdom@19.0.0(canvas@3.1.0):
     dependencies:
       abab: 2.0.6
       acorn: 8.11.3
@@ -10407,6 +10431,8 @@ snapshots:
       whatwg-url: 10.0.0
       ws: 8.18.0
       xml-name-validator: 4.0.0
+    optionalDependencies:
+      canvas: 3.1.0
     transitivePeerDependencies:
       - bufferutil
       - supports-color
@@ -10892,6 +10918,8 @@ snapshots:
   node-abi@3.68.0:
     dependencies:
       semver: 7.6.0
+
+  node-addon-api@7.1.1: {}
 
   node-bitmap@0.0.1: {}
 

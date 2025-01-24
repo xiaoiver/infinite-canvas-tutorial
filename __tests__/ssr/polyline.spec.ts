@@ -1,26 +1,28 @@
 import _gl from 'gl';
-import { JSDOM } from 'jsdom';
-import xmlserializer from 'xmlserializer';
-// import getPixels from 'get-pixels';
-import { getCanvas } from '../utils';
 import '../useSnapshotMatchers';
-import { Canvas, ImageExporter, Polyline } from '../../packages/core/src';
+import {
+  Canvas,
+  DOMAdapter,
+  ImageExporter,
+  Polyline,
+} from '../../packages/core/src';
+import { NodeJSAdapter } from '../utils';
 
 const dir = `${__dirname}/snapshots`;
 let $canvas: HTMLCanvasElement;
 let canvas: Canvas;
 let exporter: ImageExporter;
 
+DOMAdapter.set(NodeJSAdapter);
+
 describe('Polyline', () => {
   beforeEach(async () => {
-    $canvas = getCanvas(200, 200);
+    $canvas = DOMAdapter.get().createCanvas(200, 200) as HTMLCanvasElement;
     canvas = await new Canvas({
       canvas: $canvas,
     }).initialized;
     exporter = new ImageExporter({
       canvas,
-      document: new JSDOM().window._document,
-      xmlserializer,
     });
   });
 

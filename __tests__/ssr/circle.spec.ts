@@ -1,10 +1,15 @@
 import _gl from 'gl';
-import { JSDOM } from 'jsdom';
-import xmlserializer from 'xmlserializer';
 import getPixels from 'get-pixels';
-import { getCanvas } from '../utils';
 import '../useSnapshotMatchers';
-import { Canvas, Circle, ImageExporter } from '../../packages/core/src';
+import {
+  Canvas,
+  Circle,
+  ImageExporter,
+  DOMAdapter,
+} from '../../packages/core/src';
+import { NodeJSAdapter } from '../utils';
+
+DOMAdapter.set(NodeJSAdapter);
 
 const dir = `${__dirname}/snapshots`;
 let $canvas: HTMLCanvasElement;
@@ -13,14 +18,12 @@ let exporter: ImageExporter;
 
 describe('Circle', () => {
   beforeEach(async () => {
-    $canvas = getCanvas(200, 200);
+    $canvas = DOMAdapter.get().createCanvas(200, 200) as HTMLCanvasElement;
     canvas = await new Canvas({
       canvas: $canvas,
     }).initialized;
     exporter = new ImageExporter({
       canvas,
-      document: new JSDOM().window._document,
-      xmlserializer,
     });
   });
 

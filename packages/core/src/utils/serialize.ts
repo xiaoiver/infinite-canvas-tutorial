@@ -448,7 +448,6 @@ function exportInnerOrOuterStrokeAlignment(
   node: SerializedNode,
   element: SVGElement,
   $g: SVGElement,
-  doc: Document,
 ) {
   const { type, attributes } = node;
   const { strokeWidth, strokeAlignment } = attributes;
@@ -530,7 +529,6 @@ export function exportInnerShadow(
   node: SerializedNode,
   element: SVGElement,
   $g: SVGElement,
-  doc: Document,
 ) {
   const {
     uid,
@@ -542,51 +540,51 @@ export function exportInnerShadow(
     },
   } = node;
 
-  const $defs = createSVGElement('defs', doc);
-  const $filter = createSVGElement('filter', doc);
+  const $defs = createSVGElement('defs');
+  const $filter = createSVGElement('filter');
   $filter.id = `filter_inner_shadow_${uid}`;
 
-  const $feComponentTransfer = createSVGElement('feComponentTransfer', doc);
+  const $feComponentTransfer = createSVGElement('feComponentTransfer');
   $feComponentTransfer.setAttribute('in', 'SourceAlpha');
-  const $feFuncA = createSVGElement('feFuncA', doc);
+  const $feFuncA = createSVGElement('feFuncA');
   $feFuncA.setAttribute('type', 'table');
   $feFuncA.setAttribute('tableValues', '1 0');
   $feComponentTransfer.appendChild($feFuncA);
   $filter.appendChild($feComponentTransfer);
 
-  const $feGaussianBlur = createSVGElement('feGaussianBlur', doc);
+  const $feGaussianBlur = createSVGElement('feGaussianBlur');
   $feGaussianBlur.setAttribute(
     'stdDeviation',
     `${(innerShadowBlurRadius || 0) / 4}`,
   );
   $filter.appendChild($feGaussianBlur);
 
-  const $feOffset = createSVGElement('feOffset', doc);
+  const $feOffset = createSVGElement('feOffset');
   $feOffset.setAttribute('dx', `${(innerShadowOffsetX || 0) / 2}`);
   $feOffset.setAttribute('dy', `${(innerShadowOffsetY || 0) / 2}`);
   $feOffset.setAttribute('result', 'offsetblur');
   $filter.appendChild($feOffset);
 
-  const $feFlood = createSVGElement('feFlood', doc);
+  const $feFlood = createSVGElement('feFlood');
   $feFlood.setAttribute('flood-color', innerShadowColor);
   $feFlood.setAttribute('result', 'color');
   $filter.appendChild($feFlood);
 
-  const $feComposite = createSVGElement('feComposite', doc);
+  const $feComposite = createSVGElement('feComposite');
   $feComposite.setAttribute('in2', 'offsetblur');
   $feComposite.setAttribute('operator', 'in');
   $filter.appendChild($feComposite);
 
-  const $feComposite2 = createSVGElement('feComposite', doc);
+  const $feComposite2 = createSVGElement('feComposite');
   $feComposite2.setAttribute('in2', 'SourceAlpha');
   $feComposite2.setAttribute('operator', 'in');
   $filter.appendChild($feComposite2);
 
-  const $feMerge = createSVGElement('feMerge', doc);
+  const $feMerge = createSVGElement('feMerge');
   $filter.appendChild($feMerge);
-  const $feMergeNode = createSVGElement('feMergeNode', doc);
+  const $feMergeNode = createSVGElement('feMergeNode');
   $feMergeNode.setAttribute('in', 'SourceGraphic');
-  const $feMergeNode2 = createSVGElement('feMergeNode', doc);
+  const $feMergeNode2 = createSVGElement('feMergeNode');
   $feMerge.appendChild($feMergeNode);
   $feMerge.appendChild($feMergeNode2);
 
@@ -601,7 +599,6 @@ export function exportDropShadow(
   node: SerializedNode,
   element: SVGElement,
   $g: SVGElement,
-  doc: Document,
 ) {
   const {
     uid,
@@ -615,11 +612,11 @@ export function exportDropShadow(
     },
   } = node;
 
-  const $defs = createSVGElement('defs', doc);
-  const $filter = createSVGElement('filter', doc);
+  const $defs = createSVGElement('defs');
+  const $filter = createSVGElement('filter');
   $filter.id = `filter_drop_shadow_${uid}`;
 
-  const $feDropShadow = createSVGElement('feDropShadow', doc);
+  const $feDropShadow = createSVGElement('feDropShadow');
   $feDropShadow.setAttribute(
     'dx',
     `${((dropShadowOffsetX || 0) / 2) * Math.sign(width)}`,
@@ -646,15 +643,14 @@ export function exportFillImage(
   node: SerializedNode,
   element: SVGElement,
   $g: SVGElement,
-  doc: Document,
 ) {
-  const $defs = createSVGElement('defs', doc);
-  const $pattern = createSVGElement('pattern', doc);
+  const $defs = createSVGElement('defs');
+  const $pattern = createSVGElement('pattern');
   $pattern.id = `image-fill_${node.uid}`;
   $pattern.setAttribute('patternUnits', 'objectBoundingBox');
   $pattern.setAttribute('width', '1');
   $pattern.setAttribute('height', '1');
-  const $image = createSVGElement('image', doc);
+  const $image = createSVGElement('image');
   $image.setAttribute('href', node.attributes.fill as string);
   $image.setAttribute('x', '0');
   $image.setAttribute('y', '0');
@@ -680,11 +676,7 @@ export function exportFillImage(
  * use <text> and <tspan> to render text.
  * @see https://developer.mozilla.org/en-US/docs/Web/SVG/Element/text#example
  */
-export function exportText(
-  node: SerializedNode,
-  $g: SVGElement,
-  doc: Document,
-) {
+export function exportText(node: SerializedNode, $g: SVGElement) {
   const {
     content,
     fontFamily,
@@ -715,11 +707,7 @@ export function exportText(
   }
 }
 
-export function exportRough(
-  node: SerializedNode,
-  $g: SVGElement,
-  doc: Document,
-) {
+export function exportRough(node: SerializedNode, $g: SVGElement) {
   const {
     attributes: { drawableSets, stroke, fill },
   } = node;
@@ -728,7 +716,7 @@ export function exportRough(
     const { type } = drawableSet;
     const commands = opSet2Absolute(drawableSet);
     const d = path2String(commands, 2);
-    const $path = createSVGElement('path', doc);
+    const $path = createSVGElement('path');
     $path.setAttribute('d', d);
     $g.appendChild($path);
     if (type === 'fillSketch') {
@@ -744,12 +732,12 @@ export function exportRough(
   });
 }
 
-export function toSVGElement(node: SerializedNode, doc?: Document) {
+export function toSVGElement(node: SerializedNode) {
   const { type, attributes, children } = node;
 
   const isRough = type.startsWith('rough-');
 
-  const element = !isRough && createSVGElement(type, doc);
+  const element = !isRough && createSVGElement(type);
   const {
     transform,
     visible,
@@ -850,25 +838,25 @@ export function toSVGElement(node: SerializedNode, doc?: Document) {
     isRough ||
     hasFillImage
   ) {
-    $g = createSVGElement('g', doc);
+    $g = createSVGElement('g');
     if (element) {
       $g.appendChild(element);
     }
   }
 
   if (innerOrOuterStrokeAlignment) {
-    exportInnerOrOuterStrokeAlignment(node, element, $g, doc);
+    exportInnerOrOuterStrokeAlignment(node, element, $g);
   }
   if (innerShadowBlurRadius > 0) {
-    exportInnerShadow(node, element, $g, doc);
+    exportInnerShadow(node, element, $g);
   }
   if (dropShadowBlurRadius > 0) {
     // RoughRect has no element, use $g instead.
-    exportDropShadow(node, element || $g, $g, doc);
+    exportDropShadow(node, element || $g, $g);
   }
   // avoid `fill="[object ImageBitmap]"`
   if (hasFillImage) {
-    exportFillImage(node, element, $g, doc);
+    exportFillImage(node, element, $g);
   }
 
   $g = $g || element;
@@ -882,10 +870,10 @@ export function toSVGElement(node: SerializedNode, doc?: Document) {
     $g.setAttribute('ry', `${cornerRadius}`);
   }
   if (isRough) {
-    exportRough(node, $g, doc);
+    exportRough(node, $g);
   }
   if (content) {
-    exportText(node, $g, doc);
+    exportText(node, $g);
   }
 
   const { a, b, c, d, tx, ty } = transform.matrix;
@@ -895,7 +883,7 @@ export function toSVGElement(node: SerializedNode, doc?: Document) {
 
   [...children]
     .sort(sortByZIndex)
-    .map((child) => toSVGElement(child, doc))
+    .map((child) => toSVGElement(child))
     .forEach((child) => {
       $g.appendChild(child);
     });

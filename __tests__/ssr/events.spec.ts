@@ -1,15 +1,17 @@
 import _gl from 'gl';
-import { createMouseEvent, getCanvas, sleep } from '../utils';
+import { createMouseEvent, NodeJSAdapter, sleep } from '../utils';
 import '../useSnapshotMatchers';
-import { Canvas, Circle } from '../../packages/core/src';
+import { Canvas, Circle, DOMAdapter } from '../../packages/core/src';
 
 const dir = `${__dirname}/snapshots`;
 let $canvas: HTMLCanvasElement;
 let canvas: Canvas;
 
+DOMAdapter.set(NodeJSAdapter);
+
 describe('Events', () => {
   beforeEach(async () => {
-    $canvas = getCanvas(200, 200);
+    $canvas = DOMAdapter.get().createCanvas(200, 200) as HTMLCanvasElement;
     $canvas.getBoundingClientRect = () => ({
       x: 0,
       y: 0,
@@ -23,7 +25,6 @@ describe('Events', () => {
     });
     canvas = await new Canvas({
       canvas: $canvas,
-      setCursor: () => {},
     }).initialized;
   });
 
@@ -102,14 +103,12 @@ describe('Events', () => {
 
     canvas = await new Canvas({
       canvas: $canvas,
-      setCursor: () => {},
     }).initialized;
     canvas.destroy();
 
     globalThis.PointerEvent = jest.fn();
     canvas = await new Canvas({
       canvas: $canvas,
-      setCursor: () => {},
     }).initialized;
     canvas.destroy();
 
@@ -118,7 +117,6 @@ describe('Events', () => {
     globalThis.ontouchstart = jest.fn();
     canvas = await new Canvas({
       canvas: $canvas,
-      setCursor: () => {},
     }).initialized;
     delete globalThis.ontouchstart;
   });

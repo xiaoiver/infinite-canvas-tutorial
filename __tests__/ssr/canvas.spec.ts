@@ -1,20 +1,18 @@
 import _gl from 'gl';
-import {
-  getCanvas,
-  sleep,
-  requestAnimationFrame,
-  cancelAnimationFrame,
-} from '../utils';
+import { sleep, requestAnimationFrame, cancelAnimationFrame } from '../utils';
 import '../useSnapshotMatchers';
-import { Canvas, Circle } from '../../packages/core/src';
+import { Canvas, Circle, DOMAdapter } from '../../packages/core/src';
 import { CheckboardStyle } from '../../packages/core/src/plugins';
+import { NodeJSAdapter } from '../utils';
 
 let $canvas: HTMLCanvasElement;
 let canvas: Canvas;
 
+DOMAdapter.set(NodeJSAdapter);
+
 describe('Canvas API', () => {
   beforeEach(async () => {
-    $canvas = getCanvas(200, 200);
+    $canvas = DOMAdapter.get().createCanvas(200, 200) as HTMLCanvasElement;
     canvas = await new Canvas({
       canvas: $canvas,
     }).initialized;

@@ -1,5 +1,5 @@
 import {
-  canvasTextMetrics,
+  getOrCreateCanvasTextMetrics,
   TextMetrics,
   yOffsetFromTextBaseline,
 } from '../utils';
@@ -290,7 +290,10 @@ export function TextWrapper<TBase extends GConstructor>(Base: TBase) {
 
     get metrics() {
       if (this.renderDirtyFlag) {
-        this.#metrics = canvasTextMetrics.measureText(this.content, this);
+        this.#metrics = getOrCreateCanvasTextMetrics().measureText(
+          this.content,
+          this,
+        );
       }
 
       return this.#metrics;

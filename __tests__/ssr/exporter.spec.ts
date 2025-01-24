@@ -1,21 +1,19 @@
 import _gl from 'gl';
-import { getCanvas } from '../utils';
+import { NodeJSAdapter } from '../utils';
 import '../useSnapshotMatchers';
-import { Canvas, ImageExporter } from '../../packages/core/src';
-import { JSDOM } from 'jsdom';
-import xmlserializer from 'xmlserializer';
+import { Canvas, ImageExporter, DOMAdapter } from '../../packages/core/src';
 import { CheckboardStyle } from '../../packages/core/src/plugins';
+
+DOMAdapter.set(NodeJSAdapter);
 
 describe('Image Exporter', () => {
   it('should export empty canvas correctly.', async () => {
     const canvas = await new Canvas({
-      canvas: getCanvas(200, 200),
+      canvas: DOMAdapter.get().createCanvas(200, 200) as HTMLCanvasElement,
     }).initialized;
 
     const exporter = new ImageExporter({
       canvas,
-      document: new JSDOM().window._document,
-      xmlserializer,
       defaultFilename: 'test',
     });
 

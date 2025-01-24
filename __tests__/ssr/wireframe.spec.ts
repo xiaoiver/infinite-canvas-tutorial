@@ -1,15 +1,17 @@
 import _gl from 'gl';
-import { getCanvas } from '../utils';
+import { NodeJSAdapter } from '../utils';
 import '../useSnapshotMatchers';
-import { Canvas, Circle } from '../../packages/core/src';
+import { Canvas, Circle, DOMAdapter } from '../../packages/core/src';
 
 const dir = `${__dirname}/snapshots`;
 let $canvas: HTMLCanvasElement;
 let canvas: Canvas;
 
+DOMAdapter.set(NodeJSAdapter);
+
 describe('Wireframe', () => {
   beforeEach(async () => {
-    $canvas = getCanvas(200, 200);
+    $canvas = DOMAdapter.get().createCanvas(200, 200) as HTMLCanvasElement;
     canvas = await new Canvas({
       canvas: $canvas,
     }).initialized;

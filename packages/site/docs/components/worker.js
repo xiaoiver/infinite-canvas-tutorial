@@ -1,4 +1,19 @@
-import { Canvas, Circle } from '@infinite-canvas-tutorial/core';
+import {
+  Canvas,
+  Circle,
+  Rect,
+  Text,
+  DOMAdapter,
+  WebWorkerAdapter,
+} from '@infinite-canvas-tutorial/core';
+
+DOMAdapter.set({
+  ...WebWorkerAdapter,
+  setCursor: (cursor) => {
+    // eslint-disable-next-line no-undef
+    self.postMessage({ type: 'cursor', cursor });
+  },
+});
 
 let canvas;
 async function init(data) {
@@ -7,10 +22,6 @@ async function init(data) {
   canvas = await new Canvas({
     canvas: offscreenCanvas,
     devicePixelRatio,
-    setCursor: (cursor) => {
-      // eslint-disable-next-line no-undef
-      self.postMessage({ type: 'cursor', cursor });
-    },
   }).initialized;
 
   const circle = new Circle({
@@ -22,17 +33,39 @@ async function init(data) {
     strokeOpacity: 0.5,
     fill: 'red',
     cursor: 'pointer',
-    pointerEvents: 'stroke'
+    pointerEvents: 'stroke',
   });
-
   canvas.appendChild(circle);
-
   circle.addEventListener('pointerenter', () => {
     circle.fill = 'green';
   });
   circle.addEventListener('pointerleave', () => {
     circle.fill = 'red';
   });
+
+  const rect = new Rect({
+    x: 300,
+    y: 100,
+    width: 100,
+    height: 100,
+    fill: 'blue',
+    cornerRadius: 10,
+    dropShadowBlurRadius: 10,
+    dropShadowOffsetX: 10,
+    dropShadowOffsetY: 10,
+    dropShadowColor: 'rgba(0, 0, 0, 0.5)',
+  });
+  canvas.appendChild(rect);
+
+  const text = new Text({
+    x: 100,
+    y: 300,
+    content: 'Hello, World!\n🌞🌛🌹ñ',
+    fontFamily: 'Arial',
+    fontSize: 32,
+    fill: 'black',
+  });
+  canvas.appendChild(text);
 
   const animate = () => {
     canvas.render();
@@ -45,7 +78,7 @@ async function init(data) {
 }
 
 // eslint-disable-next-line no-undef
-self.onmessage = function(event) {
+self.onmessage = function (event) {
   const { type } = event.data;
 
   if (type === 'init') {
@@ -60,7 +93,7 @@ self.onmessage = function(event) {
     ev.composedPath = () => {
       return [offscreenCanvas];
     };
-  
+
     if (name === 'pointermove') {
       canvas.pluginContext.hooks.pointerMove.call(ev);
     } else if (name === 'pointerdown') {
@@ -71,7 +104,7 @@ self.onmessage = function(event) {
       canvas.pluginContext.hooks.pointerOver.call(ev);
     } else if (name === 'pointerup') {
       canvas.pluginContext.hooks.pointerUp.call(ev);
-    }  else if (name === 'pointercanel') {
+    } else if (name === 'pointercanel') {
       canvas.pluginContext.hooks.pointerCancel.call(ev);
     } else if (name === 'wheel') {
       canvas.pluginContext.hooks.pointerWheel.call(ev);
