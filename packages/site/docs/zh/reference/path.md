@@ -3,6 +3,11 @@ outline: deep
 publish: false
 ---
 
+<script setup>
+import Holes from '../../components/Holes.vue';
+import FillRule from '../../components/FillRule.vue';
+</script>
+
 # Path
 
 参考 SVG [path].
@@ -122,5 +127,31 @@ export enum TesselationMethod {
 
 `TesselationMethod.LIBTESS` 虽然性能不佳，但精确性更高，详见 [Lesson 013](/zh/guide/lesson-013#other-tesselation-techniques)。
 
+## fillRule {#fill-rule}
+
+SVG 中的 [fill-rule] 用来判定 Path 的填充区域，默认值为 `"nonzero"`。
+
+```ts
+type CanvasFillRule = 'evenodd' | 'nonzero';
+```
+
+下面的例子中左边是 `nonzero`，右边是 `evenodd`。另外由于 earcut 不支持自相交路径，我们使用 `TesselationMethod.LIBTESS` 来三角化路径。
+
+<FillRule />
+
+## 如何表示孔洞 {#holes}
+
+在 SVG 中可以这样定义孔洞，与轮廓的时针方向不同。比如下面路径中的轮廓为顺时针 `M0 0 L100 0 L100 100 L0 100 Z`，后续的两个孔洞就是逆时针方向：
+
+```bash
+M0 0 L100 0 L100 100 L0 100 Z M50 50 L50 75 L75 75 L75 50 Z M25 25 L25
+```
+
+当然也可以将时针方向反过来定义，例如：[Draw a hollow circle in SVG]，总之孔洞的时针方向与轮廓相反即可。
+
+<Holes />
+
 [path]: https://developer.mozilla.org/en-US/docs/Web/SVG/Element/path
 [d]: https://developer.mozilla.org/zh-CN/docs/Web/SVG/Attribute/d
+[fill-rule]: https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/fill-rule
+[Draw a hollow circle in SVG]: https://stackoverflow.com/questions/8193675/draw-a-hollow-circle-in-svg

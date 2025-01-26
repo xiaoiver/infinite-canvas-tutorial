@@ -122,5 +122,31 @@ export enum TesselationMethod {
 
 While `TesselationMethod.LIBTESS` has lower performance, it provides better accuracy. See [Lesson 013](/guide/lesson-013#other-tesselation-techniques) for details.
 
+## fillRule {#fill-rule}
+
+The SVG [fill-rule] determines the fill area of the Path, with a default value of `"nonzero"`.
+
+```ts
+type CanvasFillRule = 'evenodd' | 'nonzero';
+```
+
+In the example below, the left side uses `nonzero` and the right side uses `evenodd`. Additionally, since earcut doesn't support self-intersecting paths, we use `TesselationMethod.LIBTESS` for path triangulation.
+
+<FillRule />
+
+## How to Define Holes {#holes}
+
+In SVG, holes can be defined by using the opposite winding direction compared to the outline. For example, in the path below, the outline is clockwise `M0 0 L100 0 L100 100 L0 100 Z`, while the two subsequent holes are counterclockwise:
+
+```bash
+M0 0 L100 0 L100 100 L0 100 Z M50 50 L50 75 L75 75 L75 50 Z M25 25 L25
+```
+
+Alternatively, the winding direction can be reversed, such as in [Draw a hollow circle in SVG], as long as the winding direction of the hole is opposite to that of the outline.
+
+<Holes />
+
 [path]: https://developer.mozilla.org/en-US/docs/Web/SVG/Element/path
-[d]: https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/d
+[d]: https://developer.mozilla.org/zh-CN/docs/Web/SVG/Attribute/d
+[fill-rule]: https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/fill-rule
+[Draw a hollow circle in SVG]: https://stackoverflow.com/questions/8193675/draw-a-hollow-circle-in-svg
