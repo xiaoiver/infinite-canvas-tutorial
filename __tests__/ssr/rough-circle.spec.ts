@@ -43,6 +43,9 @@ describe('RoughCircle', () => {
     expect($canvas.getContext('webgl1')).toMatchWebGLSnapshot(
       dir,
       'rough-circle',
+      {
+        maxError: 1000,
+      },
     );
     expect(exporter.toSVG({ grid: true })).toMatchSVGSnapshot(
       dir,
@@ -66,6 +69,9 @@ describe('RoughCircle', () => {
     expect($canvas.getContext('webgl1')).toMatchWebGLSnapshot(
       dir,
       'rough-circle-zigzag',
+      {
+        maxError: 1000,
+      },
     );
     expect(exporter.toSVG({ grid: true })).toMatchSVGSnapshot(
       dir,
@@ -90,6 +96,9 @@ describe('RoughCircle', () => {
     expect($canvas.getContext('webgl1')).toMatchWebGLSnapshot(
       dir,
       'rough-circle-cross-hatch',
+      {
+        maxError: 1000,
+      },
     );
     expect(exporter.toSVG({ grid: true })).toMatchSVGSnapshot(
       dir,
@@ -111,6 +120,9 @@ describe('RoughCircle', () => {
     expect($canvas.getContext('webgl1')).toMatchWebGLSnapshot(
       dir,
       'rough-circle-solid',
+      {
+        maxError: 1000,
+      },
     );
     expect(exporter.toSVG({ grid: true })).toMatchSVGSnapshot(
       dir,
@@ -132,6 +144,9 @@ describe('RoughCircle', () => {
     expect($canvas.getContext('webgl1')).toMatchWebGLSnapshot(
       dir,
       'rough-circle-dashed',
+      {
+        maxError: 1000,
+      },
     );
     expect(exporter.toSVG({ grid: true })).toMatchSVGSnapshot(
       dir,

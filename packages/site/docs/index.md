@@ -207,6 +207,22 @@ call(() => {
             }
         });
 
+        // evenodd fill rule
+        const star = new Path({
+            d: 'M150 0 L121 90 L198 35 L102 35 L179 90 Z',
+            fill: '#F67676',
+            fillRule: 'evenodd',
+            tessellationMethod: TesselationMethod.LIBTESS, // instead of earcut
+        });
+        canvas.appendChild(star);
+
+        // holes
+        const ring = new Path({
+            d: 'M 50 10 A 40 40 0 1 0 50 90 A 40 40 0 1 0 50 10 Z M 50 30 A 20 20 0 1 1 50 70 A 20 20 0 1 1 50 30 Z',
+            fill: '#F67676',
+        });
+        canvas.appendChild(ring);
+
         // SDF
         const text = new Text({
             x: 300,

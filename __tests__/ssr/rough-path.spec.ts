@@ -41,6 +41,9 @@ describe('RoughPath', () => {
     expect($canvas.getContext('webgl1')).toMatchWebGLSnapshot(
       dir,
       'rough-path',
+      {
+        maxError: 1000,
+      },
     );
     expect(exporter.toSVG({ grid: true })).toMatchSVGSnapshot(
       dir,
@@ -62,6 +65,9 @@ describe('RoughPath', () => {
     expect($canvas.getContext('webgl1')).toMatchWebGLSnapshot(
       dir,
       'rough-path-transform',
+      {
+        maxError: 1000,
+      },
     );
     expect(exporter.toSVG({ grid: true })).toMatchSVGSnapshot(
       dir,

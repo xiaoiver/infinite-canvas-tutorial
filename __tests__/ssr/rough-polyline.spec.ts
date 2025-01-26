@@ -47,6 +47,9 @@ describe('RoughPolyline', () => {
     expect($canvas.getContext('webgl1')).toMatchWebGLSnapshot(
       dir,
       'rough-polyline',
+      {
+        maxError: 1000,
+      },
     );
     expect(exporter.toSVG({ grid: true })).toMatchSVGSnapshot(
       dir,

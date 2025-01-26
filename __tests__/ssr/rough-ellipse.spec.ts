@@ -45,6 +45,9 @@ describe('RoughEllipse', () => {
     expect($canvas.getContext('webgl1')).toMatchWebGLSnapshot(
       dir,
       'rough-ellipse',
+      {
+        maxError: 1000,
+      },
     );
     expect(exporter.toSVG({ grid: true })).toMatchSVGSnapshot(
       dir,

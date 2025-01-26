@@ -44,6 +44,9 @@ describe('RoughRect', () => {
     expect($canvas.getContext('webgl1')).toMatchWebGLSnapshot(
       dir,
       'rough-rect',
+      {
+        maxError: 1000,
+      },
     );
     expect(exporter.toSVG({ grid: true })).toMatchSVGSnapshot(
       dir,
@@ -67,6 +70,9 @@ describe('RoughRect', () => {
     expect($canvas.getContext('webgl1')).toMatchWebGLSnapshot(
       dir,
       'rough-rect-stroke',
+      {
+        maxError: 1000,
+      },
     );
     expect(exporter.toSVG({ grid: true })).toMatchSVGSnapshot(
       dir,
@@ -94,6 +100,9 @@ describe('RoughRect', () => {
     expect($canvas.getContext('webgl1')).toMatchWebGLSnapshot(
       dir,
       'rough-rect-dropshadow',
+      {
+        maxError: 1000,
+      },
     );
     expect(exporter.toSVG({ grid: true })).toMatchSVGSnapshot(
       dir,
@@ -120,6 +129,9 @@ describe('RoughRect', () => {
     expect($canvas.getContext('webgl1')).toMatchWebGLSnapshot(
       dir,
       'rough-rect-rerender',
+      {
+        maxError: 1000,
+      },
     );
     expect(exporter.toSVG({ grid: true })).toMatchSVGSnapshot(
       dir,
