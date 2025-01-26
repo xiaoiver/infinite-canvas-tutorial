@@ -28,7 +28,7 @@ jobs:
       - name: Install headless-gl dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y mesa-utils xvfb libgl1-mesa-dri libglapi-mesa libosmesa6
+          sudo apt-get install -y vulkan-tools mesa-utils xvfb libgl1-mesa-dri libglapi-mesa libosmesa6
 
       - name: Install dependencies
         run: pnpm install
@@ -51,4 +51,5 @@ jobs:
           path: |
             __tests__/ssr/snapshots/**/*-actual.svg
             __tests__/ssr/snapshots/**/*-actual.png
+            __tests__/ssr/snapshots/**/*-diff.png
           retention-days: 1
