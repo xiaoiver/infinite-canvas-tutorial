@@ -162,9 +162,25 @@ canvas.drawTextBlob(textblob, 0, 0, textPaint);
 
 ### 输入框 {#textarea}
 
-目前我们只实现了文本的绘制，实际在应用中，文本输入框是必不可少的。下图来自 Figma
+目前我们只实现了文本的绘制，实际在应用中，文本输入框是必不可少的。下图来自 Figma，可以看到使用了原生的 `<textarea>` 元素定位在画布上，当双击 Text 时，会展示输入框：
 
 ![textarea in figma](/textarea-in-figma.png)
+
+在 excalidraw 中也采用了这种方式：<https://github.com/excalidraw/excalidraw/blob/master/packages/excalidraw/element/textWysiwyg.tsx#L728>
+
+我们也增加一个 `<ic-textarea>` 元素：
+
+```ts
+@customElement('ic-textarea')
+export class Textarea extends LitElement {
+    @query('textarea')
+    editable: HTMLTextAreaElement;
+
+    render() {
+        return html`<textarea></textarea>`;
+    }
+}
+```
 
 ### 文本选中 {#text-selection}
 

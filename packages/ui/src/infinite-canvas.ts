@@ -166,6 +166,7 @@ export class InfiniteCanvas extends LitElement {
           ></ic-mode-toolbar>
           <ic-exporter></ic-exporter>
           <ic-property-drawer></ic-property-drawer>
+          <ic-textarea></ic-textarea>
         </sl-resize-observer>
       `,
       error: (e: Error) => html`<sl-alert variant="danger" open>

@@ -78,6 +78,7 @@ export const en = defineConfig({
                 text: 'Lesson 016 - Text advanced features',
                 link: 'lesson-016',
               },
+              { text: 'Lesson 017 - Collaborative', link: 'lesson-017' },
             ],
           },
         ],

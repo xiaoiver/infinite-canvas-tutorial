@@ -51,6 +51,7 @@ export const zh = defineConfig({
               { text: '课程14 - 画布模式与辅助 UI', link: 'lesson-014' },
               { text: '课程15 - 绘制文本', link: 'lesson-015' },
               { text: '课程16 - 文本的高级特性', link: 'lesson-016' },
+              { text: '课程17 - 协同', link: 'lesson-017' },
             ],
           },
         ],
