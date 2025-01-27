@@ -46,6 +46,8 @@ interface CRDT<T, S> {
 
 ### 数据结构设计
 
+参考 [dgmjs-plugin-yjs]
+
 ## 扩展阅读 {#extended-reading}
 
 -   [Learn Yjs]
@@ -60,6 +62,7 @@ interface CRDT<T, S> {
 -   [An Interactive Intro to CRDTs]
 -   [Building a Collaborative Pixel Art Editor with CRDTs]
 -   [Making CRDTs 98% More Efficient]
+-   [dgmjs-plugin-yjs]
 
 [Movable tree CRDTs and Loro's implementation]: https://news.ycombinator.com/item?id=41099901
 [CRDTs: The Hard Parts]: https://www.youtube.com/watch?v=x7drE24geUw
@@ -77,3 +80,4 @@ interface CRDT<T, S> {
 [Building a Collaborative Pixel Art Editor with CRDTs]: https://jakelazaroff.com/words/building-a-collaborative-pixel-art-editor-with-crdts/
 [Making CRDTs 98% More Efficient]: https://jakelazaroff.com/words/making-crdts-98-percent-more-efficient/
 [Learn Yjs]: https://learn.yjs.dev/
+[dgmjs-plugin-yjs]: https://github.com/dgmjs/dgmjs/tree/main/packages/dgmjs-plugin-yjs

@@ -602,9 +602,6 @@ importers:
       '@loaders.gl/images':
         specifier: ^4.2.2
         version: 4.2.2(@loaders.gl/core@4.2.2)
-      '@shoelace-style/shoelace':
-        specifier: ^2.0.0
-        version: 2.0.0
     devDependencies:
       '@ant-design/icons-vue':
         specifier: ^7.0.1
@@ -675,6 +672,9 @@ importers:
       '@lit/task':
         specifier: ^1.0.1
         version: 1.0.1
+      '@shoelace-style/shoelace':
+        specifier: ^2.0.0
+        version: 2.0.0
       d3-color:
         specifier: ^3.1.0
         version: 3.1.0

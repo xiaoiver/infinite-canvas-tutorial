@@ -99,6 +99,14 @@ export const en = defineConfig({
             link: 'camera',
           },
           {
+            text: 'UI',
+            link: 'ui',
+          },
+          {
+            text: 'Image exporter',
+            link: 'image-exporter',
+          },
+          {
             text: 'Shape',
             items: [
               { text: 'Shape', link: 'shape' },

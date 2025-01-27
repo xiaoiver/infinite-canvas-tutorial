@@ -19,6 +19,11 @@ import {
   type Canvas,
 } from '@infinite-canvas-tutorial/core';
 
+import '@shoelace-style/shoelace/dist/components/drawer/drawer.js';
+import '@shoelace-style/shoelace/dist/components/color-picker/color-picker.js';
+import '@shoelace-style/shoelace/dist/components/range/range.js';
+import '@shoelace-style/shoelace/dist/components/divider/divider.js';
+
 const shapeNames = new WeakMap();
 shapeNames.set(Circle, 'Circle');
 shapeNames.set(Ellipse, 'Ellipse');

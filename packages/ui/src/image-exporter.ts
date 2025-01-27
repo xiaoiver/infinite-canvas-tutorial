@@ -5,6 +5,12 @@ import { canvasContext } from './context';
 import type { Canvas } from '@infinite-canvas-tutorial/core';
 import { ImageExporter } from '@infinite-canvas-tutorial/core';
 
+import '@shoelace-style/shoelace/dist/components/dropdown/dropdown.js';
+import '@shoelace-style/shoelace/dist/components/menu/menu.js';
+import '@shoelace-style/shoelace/dist/components/menu-item/menu-item.js';
+import '@shoelace-style/shoelace/dist/components/switch/switch.js';
+import '@shoelace-style/shoelace/dist/components/icon-button/icon-button.js';
+
 @customElement('ic-exporter')
 export class Exporter extends LitElement {
   static styles = css`

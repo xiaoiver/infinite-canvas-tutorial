@@ -4,6 +4,10 @@ import { consume } from '@lit/context';
 import { canvasContext } from './context';
 import type { Canvas } from '@infinite-canvas-tutorial/core';
 
+import '@shoelace-style/shoelace/dist/components/button-group/button-group.js';
+import '@shoelace-style/shoelace/dist/components/tooltip/tooltip.js';
+import '@shoelace-style/shoelace/dist/components/icon-button/icon-button.js';
+
 @customElement('ic-zoom-toolbar')
 export class ZoomToolbar extends LitElement {
   static styles = css`

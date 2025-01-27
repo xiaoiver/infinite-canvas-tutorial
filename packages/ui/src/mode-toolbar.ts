@@ -6,6 +6,10 @@ import { consume } from '@lit/context';
 import { canvasContext } from './context';
 import { CanvasMode, type Canvas } from '@infinite-canvas-tutorial/core';
 
+import '@shoelace-style/shoelace/dist/components/button-group/button-group.js';
+import '@shoelace-style/shoelace/dist/components/tooltip/tooltip.js';
+import '@shoelace-style/shoelace/dist/components/icon-button/icon-button.js';
+
 const MODE_LIST = [
   { name: CanvasMode.HAND, label: 'Move', icon: 'arrows-move' },
   { name: CanvasMode.SELECT, label: 'Select', icon: 'cursor' },

@@ -3,11 +3,20 @@ outline: deep
 publish: false
 ---
 
+从 `@infinite-canvas-tutorial/core` 中导入 `Canvas` 类。
+
+```ts
+import { Canvas } from '@infinite-canvas-tutorial/core';
+const canvas = new Canvas({});
+```
+
 ## constructor
+
+Canvas 的构造函数参数：
 
 ```ts
 export interface CanvasConfig {
-    canvas: HTMLCanvasElement;
+    canvas: HTMLCanvasElement | OffscreenCanvas;
     renderer?: 'webgl' | 'webgpu';
     shaderCompilerPath?: string;
     devicePixelRatio?: number;
@@ -15,6 +24,10 @@ export interface CanvasConfig {
     gridColor?: string;
 }
 ```
+
+## canvas
+
+在浏览器环境传入 `HTMLCanvasElement`，在 WebWorker 环境传入 `OffscreenCanvas`，在 Node.js 环境可以使用 `node-canvas`。
 
 ## render
 

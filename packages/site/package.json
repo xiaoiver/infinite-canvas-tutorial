@@ -23,7 +23,6 @@
     "preview": "vitepress preview docs"
   },
   "dependencies": {
-    "@shoelace-style/shoelace": "^2.0.0",
     "@loaders.gl/core": "^4.2.2",
     "@loaders.gl/images": "^4.2.2",
     "@loaders.gl/arrow": "^4.2.2",

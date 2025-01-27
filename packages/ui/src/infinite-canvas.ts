@@ -4,6 +4,17 @@ import { Task } from '@lit/task';
 import { customElement, property, state } from 'lit/decorators.js';
 import { Canvas, CanvasMode } from '@infinite-canvas-tutorial/core';
 import { canvasContext } from './context';
+import { setBasePath } from '@shoelace-style/shoelace/dist/utilities/base-path.js';
+
+import '@shoelace-style/shoelace/dist/components/spinner/spinner.js';
+import '@shoelace-style/shoelace/dist/components/icon/icon.js';
+import '@shoelace-style/shoelace/dist/components/resize-observer/resize-observer.js';
+import '@shoelace-style/shoelace/dist/components/alert/alert.js';
+/**
+ * @see https://shoelace.style/getting-started/themes
+ */
+import '@shoelace-style/shoelace/dist/themes/light.css';
+import '@shoelace-style/shoelace/dist/themes/dark.css';
 
 async function checkWebGPUSupport() {
   if ('gpu' in navigator) {
@@ -61,6 +72,10 @@ export class InfiniteCanvas extends LitElement {
     'https://unpkg.com/@antv/g-device-api@1.6.8/dist/pkg/glsl_wgsl_compiler_bg.wasm';
 
   @property()
+  shoelaceBasePath =
+    'https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.19.1/cdn';
+
+  @property()
   @state()
   zoom = 100;
 
@@ -114,6 +129,8 @@ export class InfiniteCanvas extends LitElement {
       if (renderer === 'webgpu') {
         await checkWebGPUSupport();
       }
+
+      setBasePath(this.shoelaceBasePath);
 
       const canvas = document.createElement('canvas');
 

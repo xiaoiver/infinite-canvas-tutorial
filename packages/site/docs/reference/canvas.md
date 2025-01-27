@@ -3,11 +3,18 @@ outline: deep
 publish: false
 ---
 
+Import the `Canvas` class from `@infinite-canvas-tutorial/core`.
+
+```ts
+import { Canvas } from '@infinite-canvas-tutorial/core';
+const canvas = new Canvas({});
+```
+
 ## constructor
 
 ```ts
 export interface CanvasConfig {
-    canvas: HTMLCanvasElement;
+    canvas: HTMLCanvasElement | OffscreenCanvas;
     renderer?: 'webgl' | 'webgpu';
     shaderCompilerPath?: string;
     devicePixelRatio?: number;
@@ -15,6 +22,10 @@ export interface CanvasConfig {
     gridColor?: string;
 }
 ```
+
+## canvas
+
+In the browser environment, pass in `HTMLCanvasElement`, in the WebWorker environment, pass in `OffscreenCanvas`, and in the Node.js environment, you can use `node-canvas`.
 
 ## render
 
