@@ -3,12 +3,12 @@ publish: false
 ---
 
 <script setup>
-import TextDropshadow from '../../components/TextDropshadow.vue'
+import TextDropShadow from '../../components/TextDropShadow.vue'
 </script>
 
 在 SDF 纹理采样时使用偏移量实现阴影效果，可以参考：[Pixi.js DropShadow Filter]
 
-<TextDropshadow />
+<TextDropShadow />
 
 ```ts
 const text = new Text({

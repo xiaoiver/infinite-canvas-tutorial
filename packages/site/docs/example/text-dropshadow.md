@@ -3,12 +3,12 @@ publish: false
 ---
 
 <script setup>
-import TextDropshadow from '../components/TextDropshadow.vue'
+import TextDropShadow from '../components/TextDropShadow.vue'
 </script>
 
 Use offset when sampling SDF texture to implement drop shadow effect, see [Pixi.js DropShadow Filter].
 
-<TextDropshadow />
+<TextDropShadow />
 
 ```ts
 const text = new Text({
