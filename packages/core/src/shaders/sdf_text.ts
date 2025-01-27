@@ -29,6 +29,8 @@ layout(std140) uniform ShapeUniforms {
   vec4 u_StrokeColor;
   vec4 u_ZIndexStrokeWidth;
   vec4 u_Opacity;
+  vec4 u_DropShadowColor;
+  vec4 u_DropShadow;
   vec2 u_AtlasSize;
 };
 
@@ -78,6 +80,8 @@ layout(std140) uniform ShapeUniforms {
   vec4 u_StrokeColor;
   vec4 u_ZIndexStrokeWidth;
   vec4 u_Opacity;
+  vec4 u_DropShadowColor;
+  vec4 u_DropShadow;
   vec2 u_AtlasSize;
 };
 
@@ -87,11 +91,11 @@ ${wireframe_frag_declaration}
 in vec2 v_Uv;
 uniform sampler2D u_Texture;
 
+float epsilon = 0.000001;
+
 float median(float r, float g, float b) {
   return max(min(r, g), min(max(r, g), b));
 }
-
-float epsilon = 0.000001;
 
 #define SDF_PX 8.0
 
@@ -103,24 +107,39 @@ void main() {
   float fillOpacity = u_Opacity.y;
   float strokeOpacity = u_Opacity.z;
   float shapeSizeAttenuation = u_Opacity.w;
+  vec4 dropShadow = u_DropShadow;
+  vec4 dropShadowColor = u_DropShadowColor;
+  float shadowDist;
+  float shadowBlurRadius = u_DropShadow.z;
   
   #ifdef USE_SDF_NONE
     outputColor = texture(SAMPLER_2D(u_Texture), v_Uv);
   #else
     float dist;
     lowp float buff;
+    vec2 shadowOffset = u_DropShadow.xy / u_AtlasSize;
+
     #ifdef USE_SDF
       #ifdef USE_EMOJI
         fillColor = texture(SAMPLER_2D(u_Texture), v_Uv);
       #endif
       dist = texture(SAMPLER_2D(u_Texture), v_Uv).a;
       buff = (256.0 - 64.0) / 256.0;
+
+      #ifdef USE_SHADOW
+        shadowDist = texture(SAMPLER_2D(u_Texture), v_Uv - shadowOffset).a;
+      #endif
     #endif
 
     #ifdef USE_MSDF
       vec3 s = texture(SAMPLER_2D(u_Texture), v_Uv).rgb;
       dist = median(s.r, s.g, s.b);
       buff = 0.5;
+
+      #ifdef USE_SHADOW
+        vec3 shadowSample = texture(SAMPLER_2D(u_Texture), v_Uv - shadowOffset).rgb;
+        shadowDist = median(shadowSample.r, shadowSample.g, shadowSample.b);
+      #endif
     #endif
 
     float fontSize = u_ZIndexStrokeWidth.z;
@@ -141,6 +160,13 @@ void main() {
   #endif
   
   outputColor.a *= opacity;
+
+  #ifdef USE_SHADOW 
+    gamma_scaled = fwidth(shadowDist) * 128.0 / shadowBlurRadius;
+    alpha = smoothstep(buff - gamma_scaled, buff + gamma_scaled, shadowDist);
+    dropShadowColor.a *= alpha;
+    outputColor = mix(dropShadowColor, outputColor, outputColor.a);
+  #endif
 
   ${wireframe_frag}
 

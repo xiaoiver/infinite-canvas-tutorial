@@ -118,17 +118,28 @@ const root = await deserializeNode(fromSVGElement($svg));
 
 ## 阴影 {#dropshadow}
 
-[text-decoration]: https://developer.mozilla.org/en-US/docs/Web/CSS/text-decoration
+Canvas2D 提供了 [shadowBlur] 属性，CanvasKit 在增强的段落样式中提供了 `shadows` 属性。
 
-Pixi.js 提供了 [DropShadowFilter] 来实现阴影效果。
+```ts
+const paraStyle = new CanvasKit.ParagraphStyle({
+    textStyle: {
+        shadows: (shadows || []).map(({ color, offset, blurRadius }) => {
+            return {
+                color: color2CanvaskitColor(CanvasKit, color),
+                offset,
+                blurRadius,
+            };
+        }),
+    },
+});
+```
+
+Pixi.js 提供了 [DropShadowFilter] 来实现阴影效果，但我们可以不使用后处理手段，而是直接在 SDF 中实现阴影效果。使用 `shadowOffset` 和 `shadowBlurRadius` 来控制采样 SDF 纹理的偏移和模糊程度。
 
 ```glsl
-// @see https://github.com/soimy/pixi-msdf-text/blob/master/src/msdf.frag#L49
-vec3 shadowSample = texture2D(uSampler, vTextureCoord - shadowOffset).rgb;
-float shadowDist = median(shadowSample.r, shadowSample.g, shadowSample.b);
-float distAlpha = smoothstep(0.5 - shadowSmoothing, 0.5 + shadowSmoothing, shadowDist);
-vec4 shadow = vec4(shadowColor, shadowAlpha * distAlpha);
-gl_FragColor = mix(shadow, text, text.a);
+float shadowDist = texture(SAMPLER_2D(u_Texture), v_Uv - shadowOffset).a;
+dropShadowColor.a *= smoothstep(0.5 - shadowSmoothing, 0.5 + shadowSmoothing, shadowDist);
+outputColor = mix(dropShadowColor, outputColor, outputColor.a);
 ```
 
 ## 文本跟随路径 {#text-along-path}
@@ -241,3 +252,5 @@ WebFont.load({
 [LaTeX in motion-canvas]: https://github.com/motion-canvas/motion-canvas/issues/190
 [课程 10 - 从 SVGElement 到序列化节点]: /zh/guide/lesson-010#svgelement-to-serialized-node
 [path-commands]: https://github.com/opentypejs/opentype.js?tab=readme-ov-file#path-commands
+[shadowBlur]: https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/shadowBlur
+[text-decoration]: https://developer.mozilla.org/en-US/docs/Web/CSS/text-decoration

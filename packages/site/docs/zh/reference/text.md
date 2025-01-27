@@ -195,6 +195,22 @@ type CanvasTextBaseline =
 
 获取处理后的双向文本，只读。示例：[绘制双向文字](/zh/example/bidi)
 
+## dropShadowColor
+
+外阴影颜色。参考：[CSS drop-shadow]。默认值为 `black`。
+
+## dropShadowOffsetX
+
+外阴影在 X 轴方向的偏移量。默认值为 `0`。
+
+## dropShadowOffsetY
+
+外阴影在 Y 轴方向的偏移量。默认值为 `0`。
+
+## dropShadowBlurRadius
+
+外阴影模糊半径，它的值越大，阴影就越大并越淡。默认值为 `0`。
+
 [text]: https://developer.mozilla.org/en-US/docs/Web/SVG/Element/text
 [x]: https://developer.mozilla.org/zh-CN/docs/Web/SVG/Attribute/x
 [y]: https://developer.mozilla.org/zh-CN/docs/Web/SVG/Attribute/y
@@ -208,3 +224,4 @@ type CanvasTextBaseline =
 [textAlign]: https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/text-align
 [textBaseline]: https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/text-baseline
 [leading]: https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/leading
+[CSS drop-shadow]: https://developer.mozilla.org/en-US/docs/Web/CSS/filter-function/drop-shadow

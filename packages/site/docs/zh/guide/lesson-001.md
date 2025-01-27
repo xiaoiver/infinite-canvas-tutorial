@@ -131,7 +131,7 @@ canvas.resize(500, 500);
 canvas.destroy();
 ```
 
-其中渲染循环的用法在渲染引擎中十分常见，例如 Three.js 中的 [Rendering the scene]。关于使用 `requestAnimationFrame` 而非 `setTimeout` 的原因详见：[Performant Game Loops in JavaScript]。
+其中渲染循环的用法在渲染引擎中十分常见，例如 Three.js 中的 [Rendering the scene]，再比如 CanvasKit 中的 [Basic draw loop]。关于使用 `requestAnimationFrame` 而非 `setTimeout` 的原因详见：[Performant Game Loops in JavaScript]。
 
 看起来接口定义非常简单，但我们先不急着实现，因为这里存在一个异步初始化问题。
 
@@ -520,3 +520,4 @@ const canvas = await new Canvas({
 [Introducing: Penpot Plugin System]: https://www.smashingmagazine.com/2024/11/open-source-meets-design-tooling-penpot/
 [Performant Game Loops in JavaScript]: https://www.aleksandrhovhannisyan.com/blog/javascript-game-loop/
 [Extensions in Tiptap]: https://tiptap.dev/docs/editor/core-concepts/extensions#what-are-extensions
+[Basic draw loop]: https://skia.org/docs/user/modules/quickstart/#basic-draw-loop

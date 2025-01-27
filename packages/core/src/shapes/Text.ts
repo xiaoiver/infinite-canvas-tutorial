@@ -1,3 +1,4 @@
+import * as d3 from 'd3-color';
 import {
   getOrCreateCanvasTextMetrics,
   TextMetrics,
@@ -142,6 +143,31 @@ export interface TextAttributes extends ShapeAttributes {
    * BiDi chars after doing metrics.
    */
   bidiChars: string;
+
+  /**
+   * Specifies color for the shadow.
+   * @see https://developer.mozilla.org/en-US/docs/Web/CSS/filter-function/drop-shadow#color
+   */
+  dropShadowColor: string;
+
+  /**
+   * Horizontal offset
+   * @see https://developer.mozilla.org/en-US/docs/Web/CSS/filter-function/drop-shadow
+   */
+  dropShadowOffsetX: number;
+
+  /**
+   * Vertical offset
+   * @see https://developer.mozilla.org/en-US/docs/Web/CSS/filter-function/drop-shadow
+   */
+  dropShadowOffsetY: number;
+
+  /**
+   * The larger this value, the bigger the blur, so the shadow becomes bigger and lighter.
+   * Negative values are not allowed. If not specified, it will be set to `0`.
+   * @see https://developer.mozilla.org/en-US/docs/Web/CSS/filter-function/drop-shadow
+   */
+  dropShadowBlurRadius: number;
 }
 
 // @ts-ignore
@@ -169,6 +195,12 @@ export function TextWrapper<TBase extends GConstructor>(Base: TBase) {
     #leading: number;
     #textAlign: CanvasTextAlign;
     #textBaseline: CanvasTextBaseline;
+    #dropShadowColor: string;
+    #dropShadowColorRGB: d3.RGBColor;
+    #dropShadowOffsetX: number;
+    #dropShadowOffsetY: number;
+    #dropShadowBlurRadius: number;
+
     bitmapFont: BitmapFont;
     bitmapFontKerning: boolean;
     esdt: boolean;
@@ -233,6 +265,10 @@ export function TextWrapper<TBase extends GConstructor>(Base: TBase) {
         bitmapFont,
         bitmapFontKerning,
         esdt,
+        dropShadowColor,
+        dropShadowOffsetX,
+        dropShadowOffsetY,
+        dropShadowBlurRadius,
       } = attributes;
 
       this.#x = x ?? 0;
@@ -256,6 +292,10 @@ export function TextWrapper<TBase extends GConstructor>(Base: TBase) {
       this.bitmapFont = bitmapFont ?? null;
       this.bitmapFontKerning = bitmapFontKerning ?? true;
       this.esdt = esdt ?? true;
+      this.dropShadowColor = dropShadowColor ?? 'black';
+      this.dropShadowOffsetX = dropShadowOffsetX ?? 0;
+      this.dropShadowOffsetY = dropShadowOffsetY ?? 0;
+      this.dropShadowBlurRadius = dropShadowBlurRadius ?? 0;
     }
 
     containsPoint(x: number, y: number) {
@@ -273,7 +313,13 @@ export function TextWrapper<TBase extends GConstructor>(Base: TBase) {
 
     getRenderBounds() {
       if (this.renderBoundsDirtyFlag) {
-        const { strokeWidth, strokeAlignment } = this;
+        const {
+          strokeWidth,
+          strokeAlignment,
+          dropShadowOffsetX,
+          dropShadowOffsetY,
+          dropShadowBlurRadius,
+        } = this;
         const offset = strokeOffset(strokeAlignment, strokeWidth);
 
         this.renderBoundsDirtyFlag = false;
@@ -283,6 +329,14 @@ export function TextWrapper<TBase extends GConstructor>(Base: TBase) {
           minY - offset,
           maxX + offset,
           maxY + offset,
+        );
+        this.renderBounds.addBounds(
+          new AABB(
+            minX + dropShadowOffsetX - dropShadowBlurRadius,
+            minY + dropShadowOffsetY - dropShadowBlurRadius,
+            maxX + dropShadowOffsetX + dropShadowBlurRadius,
+            maxY + dropShadowOffsetY + dropShadowBlurRadius,
+          ),
         );
       }
       return this.renderBounds;
@@ -546,6 +600,51 @@ export function TextWrapper<TBase extends GConstructor>(Base: TBase) {
         this.boundsDirtyFlag = true;
         this.geometryDirtyFlag = true;
         this.materialDirtyFlag = true;
+      }
+    }
+
+    get dropShadowColor() {
+      return this.#dropShadowColor;
+    }
+    set dropShadowColor(dropShadowColor: string) {
+      if (this.#dropShadowColor !== dropShadowColor) {
+        this.#dropShadowColor = dropShadowColor;
+        this.#dropShadowColorRGB = d3.rgb(dropShadowColor);
+        this.renderDirtyFlag = true;
+      }
+    }
+
+    get dropShadowColorRGB() {
+      return this.#dropShadowColorRGB;
+    }
+
+    get dropShadowOffsetX() {
+      return this.#dropShadowOffsetX;
+    }
+    set dropShadowOffsetX(dropShadowOffsetX: number) {
+      if (this.#dropShadowOffsetX !== dropShadowOffsetX) {
+        this.#dropShadowOffsetX = dropShadowOffsetX;
+        this.renderDirtyFlag = true;
+      }
+    }
+
+    get dropShadowOffsetY() {
+      return this.#dropShadowOffsetY;
+    }
+    set dropShadowOffsetY(dropShadowOffsetY: number) {
+      if (this.#dropShadowOffsetY !== dropShadowOffsetY) {
+        this.#dropShadowOffsetY = dropShadowOffsetY;
+        this.renderDirtyFlag = true;
+      }
+    }
+
+    get dropShadowBlurRadius() {
+      return this.#dropShadowBlurRadius;
+    }
+    set dropShadowBlurRadius(dropShadowBlurRadius: number) {
+      if (this.#dropShadowBlurRadius !== dropShadowBlurRadius) {
+        this.#dropShadowBlurRadius = dropShadowBlurRadius;
+        this.renderDirtyFlag = true;
       }
     }
   };

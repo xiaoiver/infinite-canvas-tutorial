@@ -195,6 +195,22 @@ Whether to enable ESDT generation for text, otherwise use EDT. The former has le
 
 Get the processed bidirectional text, readonly. Example: [Drawing Bidirectional Text](/example/bidi)
 
+## dropShadowColor
+
+Drop shadow color. Reference: [CSS drop-shadow]. Default value is `black`.
+
+## dropShadowOffsetX
+
+Drop shadow offset along the X-axis. Default value is `0`.
+
+## dropShadowOffsetY
+
+Drop shadow offset along the Y-axis. Default value is `0`.
+
+## dropShadowBlurRadius
+
+Drop shadow blur radius. The larger the value, the bigger and more diffused the shadow becomes. Default value is `0`.
+
 [text]: https://developer.mozilla.org/en-US/docs/Web/SVG/Element/text
 [x]: https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/x
 [y]: https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/y
@@ -208,3 +224,4 @@ Get the processed bidirectional text, readonly. Example: [Drawing Bidirectional 
 [textAlign]: https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/text-align
 [textBaseline]: https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/text-baseline
 [leading]: https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/leading
+[CSS drop-shadow]: https://developer.mozilla.org/en-US/docs/Web/CSS/filter-function/drop-shadow

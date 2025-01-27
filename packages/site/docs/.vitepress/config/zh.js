@@ -176,6 +176,10 @@ export const zh = defineConfig({
                 link: 'text-baseline',
               },
               {
+                text: '文本阴影',
+                link: 'text-dropshadow',
+              },
+              {
                 text: '加载 Web 字体',
                 link: 'web-font-loader',
               },

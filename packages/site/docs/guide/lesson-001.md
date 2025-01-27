@@ -131,7 +131,7 @@ canvas.resize(500, 500);
 canvas.destroy();
 ```
 
-The use of render loops is very common in rendering engines such as [Rendering the scene] in Three.js. See [Performant Game Loops in JavaScript] for more information on why `requestAnimationFrame` is used instead of `setTimeout`.
+The use of render loops is very common in rendering engines such as [Rendering the scene] in Three.js and [Basic draw loop] in CanvasKit. See [Performant Game Loops in JavaScript] for more information on why `requestAnimationFrame` is used instead of `setTimeout`.
 
 It looks like a very simple interface definition, but let's not rush to implement it yet, because there is an asynchronous initialization problem here.
 
@@ -520,3 +520,4 @@ More on the plug-in design pattern:
 [Introducing: Penpot Plugin System]: https://www.smashingmagazine.com/2024/11/open-source-meets-design-tooling-penpot/
 [Performant Game Loops in JavaScript]: https://www.aleksandrhovhannisyan.com/blog/javascript-game-loop/
 [Extensions in Tiptap]: https://tiptap.dev/docs/editor/core-concepts/extensions#what-are-extensions
+[Basic draw loop]: https://skia.org/docs/user/modules/quickstart/#basic-draw-loop

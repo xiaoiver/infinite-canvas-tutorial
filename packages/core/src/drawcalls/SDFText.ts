@@ -55,8 +55,8 @@ export class SDFText extends Drawcall {
   }
 
   private hash(shape: Text) {
-    const { metrics, bitmapFont } = shape as Text;
-    return `${metrics?.font}-${bitmapFont?.fontFamily}`;
+    const { metrics, bitmapFont, dropShadowBlurRadius } = shape as Text;
+    return `${metrics?.font}-${bitmapFont?.fontFamily}-${dropShadowBlurRadius}`;
   }
 
   private get useBitmapFont() {
@@ -198,6 +198,8 @@ export class SDFText extends Drawcall {
   }
 
   createMaterial(defines: string, uniformBuffer: Buffer): void {
+    const { content, dropShadowBlurRadius } = this.shapes[0] as Text;
+
     let glyphAtlasTexture: Texture;
     if (this.useBitmapFont) {
       const { bitmapFont } = this.shapes[0] as Text;
@@ -214,14 +216,16 @@ export class SDFText extends Drawcall {
       }
     } else {
       defines += '#define USE_SDF\n';
-
-      const { content } = this.shapes[0] as Text;
       const hasEmoji = containsEmoji(content);
       if (hasEmoji) {
         defines += '#define USE_EMOJI\n';
       }
 
       glyphAtlasTexture = this.#glyphManager.getAtlasTexture();
+    }
+
+    if (dropShadowBlurRadius > 0) {
+      defines += '#define USE_SHADOW\n';
     }
 
     this.device.setResourceName(glyphAtlasTexture, 'SDFText Texture');
@@ -231,7 +235,7 @@ export class SDFText extends Drawcall {
     if (!this.#uniformBuffer) {
       this.#uniformBuffer = this.device.createBuffer({
         viewOrSize:
-          Float32Array.BYTES_PER_ELEMENT * (16 + 4 + 4 + 4 + 4 + 4 + 4),
+          Float32Array.BYTES_PER_ELEMENT * (16 + 4 + 4 + 4 + 4 + 4 + 4 + 4 + 4),
         usage: BufferUsage.UNIFORM,
         hint: BufferFrequencyHint.DYNAMIC,
       });
@@ -376,6 +380,10 @@ export class SDFText extends Drawcall {
       strokeOpacity,
       sizeAttenuation,
       fontSize,
+      dropShadowColorRGB: { r: dsR, g: dsG, b: dsB, opacity: dsO },
+      dropShadowOffsetX,
+      dropShadowOffsetY,
+      dropShadowBlurRadius,
     } = shape;
 
     const { width: atlasWidth, height: atlasHeight } = image;
@@ -399,6 +407,14 @@ export class SDFText extends Drawcall {
       sizeAttenuation ? 1 : 0,
     ];
 
+    const u_DropShadowColor = [dsR / 255, dsG / 255, dsB / 255, dsO];
+    const u_DropShadow = [
+      dropShadowOffsetX,
+      dropShadowOffsetY,
+      dropShadowBlurRadius,
+      0,
+    ];
+
     const u_AtlasSize = [atlasWidth, atlasHeight];
 
     return [
@@ -407,6 +423,8 @@ export class SDFText extends Drawcall {
         ...u_StrokeColor,
         ...u_ZIndexStrokeWidth,
         ...u_Opacity,
+        ...u_DropShadowColor,
+        ...u_DropShadow,
         ...u_AtlasSize,
       ],
       {
@@ -414,6 +432,8 @@ export class SDFText extends Drawcall {
         u_StrokeColor,
         u_ZIndexStrokeWidth,
         u_Opacity,
+        u_DropShadowColor,
+        u_DropShadow,
         u_AtlasSize,
       },
     ];

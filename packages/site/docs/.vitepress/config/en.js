@@ -206,6 +206,10 @@ export const en = defineConfig({
                 link: 'text-baseline',
               },
               {
+                text: 'Text DropShadow',
+                link: 'text-dropshadow',
+              },
+              {
                 text: 'Load web font',
                 link: 'web-font-loader',
               },
