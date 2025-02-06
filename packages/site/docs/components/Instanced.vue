@@ -1,5 +1,5 @@
 <script setup>
-import { Circle } from '@infinite-canvas-tutorial/lesson8';
+import { Circle } from '@infinite-canvas-tutorial/core';
 import { onMounted, ref } from 'vue';
 import Stats from 'stats.js';
 
@@ -14,6 +14,8 @@ const $stats = stats.dom;
 $stats.style.position = 'absolute';
 $stats.style.left = '0px';
 $stats.style.top = '0px';
+
+const wrapper = ref(null);
 
 const add500Circles = () => {
   for (let i = 0; i < 500; i++) {
@@ -32,7 +34,10 @@ const add500Circles = () => {
 };
 
 onMounted(() => {
-  const $canvas = document.querySelector('ic-canvas-lesson8');
+  import('@infinite-canvas-tutorial/ui');
+  const $canvas = wrapper.value;
+
+  if (!$canvas) return;
 
   $canvas.parentElement.appendChild($stats);
 
@@ -56,6 +61,6 @@ onMounted(() => {
   &nbsp;
   <sl-button size="small" @click="add500Circles">Add 500 circles</sl-button>
   <div style="position: relative">
-    <ic-canvas-lesson8></ic-canvas-lesson8>
+      <ic-canvas ref="wrapper" style="height: 400px"></ic-canvas>
   </div>
 </template>

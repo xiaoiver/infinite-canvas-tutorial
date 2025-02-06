@@ -1,6 +1,5 @@
 <script setup>
 import { Circle, Ellipse, Rect, Polyline, Path } from '@infinite-canvas-tutorial/core';
-import '@infinite-canvas-tutorial/ui';
 import { onMounted } from 'vue';
 import Stats from 'stats.js';
 
@@ -14,6 +13,8 @@ $stats.style.left = '0px';
 $stats.style.top = '0px';
 
 onMounted(() => {
+  import('@infinite-canvas-tutorial/ui');
+
   const $canvas = document.querySelector('ic-canvas');
 
   $canvas.parentElement.appendChild($stats);

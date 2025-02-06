@@ -8,7 +8,7 @@ import { ImageLoader } from '@loaders.gl/images';
 import { load } from '@loaders.gl/core';
 import GUI from 'lil-gui';
 import * as Core from '@infinite-canvas-tutorial/core';
-import * as UI from '@infinite-canvas-tutorial/ui';
+// import * as UI from '@infinite-canvas-tutorial/ui';
 import * as Lesson1 from '@infinite-canvas-tutorial/lesson1';
 import * as Lesson2 from '@infinite-canvas-tutorial/lesson2';
 import * as Lesson3 from '@infinite-canvas-tutorial/lesson3';
@@ -76,7 +76,7 @@ const props = {
     Utils,
     Stats,
     Core,
-    UI,
+    // UI,
     GUI,
   },
 };
@@ -84,4 +84,17 @@ const props = {
 export default {
   extends: DefaultTheme,
   Layout: () => h(Layout, props),
+  async enhanceApp({ app }) {
+    // @see https://vitepress.dev/guide/ssr-compat#conditional-import
+    if (!import.meta.env.SSR) {
+      // @see https://shoelace.style/tutorials/integrating-with-nextjs/#defining-custom-elements
+      const { setBasePath } = await import(
+        '@shoelace-style/shoelace/dist/utilities/base-path'
+      );
+      setBasePath(
+        'https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.19.1/cdn',
+      );
+      await import('@shoelace-style/shoelace');
+    }
+  },
 };

@@ -1,6 +1,5 @@
 <script setup>
 import { Text, Rect } from '@infinite-canvas-tutorial/core';
-import '@infinite-canvas-tutorial/ui';
 import { ref, onMounted } from 'vue';
 
 let canvas;
@@ -8,6 +7,8 @@ let canvas;
 const wrapper = ref(null);
 
 onMounted(() => {
+  import('@infinite-canvas-tutorial/ui');
+
   const $canvas = wrapper.value;
 
   if (!$canvas) return;

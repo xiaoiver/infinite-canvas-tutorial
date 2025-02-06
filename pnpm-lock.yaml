@@ -609,6 +609,9 @@ importers:
       '@anthropic-ai/sdk':
         specifier: ^0.33.1
         version: 0.33.1(encoding@0.1.13)
+      '@shoelace-style/shoelace':
+        specifier: ^2.0.0
+        version: 2.0.0
       '@vitejs/plugin-vue-jsx':
         specifier: ^4.1.1
         version: 4.1.1(vite@5.4.11(@types/node@20.17.6))(vue@3.5.13(typescript@5.4.5))

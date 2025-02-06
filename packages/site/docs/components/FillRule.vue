@@ -1,6 +1,5 @@
 <script setup>
 import { Path, TesselationMethod } from '@infinite-canvas-tutorial/core';
-import '@infinite-canvas-tutorial/ui';
 import { ref, onMounted } from 'vue';
 import Stats from 'stats.js';
 
@@ -16,6 +15,8 @@ $stats.style.top = '0px';
 const wrapper = ref(null);
 
 onMounted(() => {
+  import('@infinite-canvas-tutorial/ui');
+
   const $canvas = wrapper.value;
 
   if (!$canvas) return;

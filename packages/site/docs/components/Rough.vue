@@ -1,6 +1,5 @@
 <script setup>
 import { RoughRect } from '@infinite-canvas-tutorial/core';
-import '@infinite-canvas-tutorial/ui';
 import { onMounted } from 'vue';
 import Stats from 'stats.js';
 import GUI from 'lil-gui';
@@ -13,6 +12,8 @@ $stats.style.left = '0px';
 $stats.style.top = '0px';
 
 onMounted(() => {
+  import('@infinite-canvas-tutorial/ui');
+
   const $canvas = document.querySelector('ic-canvas');
   let canvas;
 

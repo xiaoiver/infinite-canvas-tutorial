@@ -59,6 +59,7 @@
     "@vitejs/plugin-vue-jsx": "^4.1.1",
     "@ant-design/icons-vue": "^7.0.1",
     "@anthropic-ai/sdk": "^0.33.1",
+    "@shoelace-style/shoelace": "^2.0.0",
     "motion": "^11.18.0",
     "mathjax-full": "^3.2.2"
   }

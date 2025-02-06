@@ -12,6 +12,8 @@ const loading = ref(false);
 let canvas = null;
 
 onMounted(() => {
+  import('@infinite-canvas-tutorial/ui');
+
   const stats = new Stats();
   stats.showPanel(0);
   const $stats = stats.dom;

@@ -1,6 +1,5 @@
 <script setup>
 import { Circle } from '@infinite-canvas-tutorial/core';
-import '@infinite-canvas-tutorial/ui';
 import { ref, onMounted } from 'vue';
 import { load } from '@loaders.gl/core';
 import { ArrowLoader } from '@loaders.gl/arrow';
@@ -10,6 +9,8 @@ let canvas;
 const wrapper = ref(null);
 
 onMounted(() => {
+  import('@infinite-canvas-tutorial/ui');
+
   const $canvas = wrapper.value;
 
   if (!$canvas) return;

@@ -1,14 +1,20 @@
-<script setup lang="tsx">
-import { App } from 'ant-design-vue';
-import { ref, onMounted } from 'vue';
+<script setup>
 import { Group, deserializeNode, fromSVGElement, TesselationMethod } from '@infinite-canvas-tutorial/core';
+import { ref, onMounted } from 'vue';
+import Stats from 'stats.js';
 
-defineOptions({ name: 'WebGPU' });
+let canvas;
+
+const stats = new Stats();
+stats.showPanel(0);
+const $stats = stats.dom;
+$stats.style.position = 'absolute';
+$stats.style.left = '0px';
+$stats.style.top = '0px';
 
 const wrapper = ref(null);
-let canvas = null;
 
-const renderSVG = async (svg: string, x: number, y: number) => {
+const renderSVG = async (svg, x, y) => {
   const $container = document.createElement('div');
   $container.innerHTML = svg;
   const $svg = $container.children[0];
@@ -31,6 +37,7 @@ const renderSVG = async (svg: string, x: number, y: number) => {
 };
 
 onMounted(() => {
+  import('@infinite-canvas-tutorial/ui');
   const $canvas = wrapper.value;
   if (!$canvas) {
     return;
@@ -46,21 +53,15 @@ onMounted(() => {
         renderSVG(svg, 80, 80);
     });
   });
-});
 
-const Demo = () => {
-  return (<div>
-    <div style="position: relative">
-      <ic-canvas renderer="webgpu" ref={wrapper} style="height: 400px"></ic-canvas>
-    </div>
-  </div>);
-};
-
-defineRender(() => {
-  return (
-    <App>
-      <Demo />
-    </App>
-  );
+  $canvas.addEventListener('ic-frame', (e) => {
+    stats.update();
+  });
 });
 </script>
+
+<template>
+  <div style="position: relative">
+      <ic-canvas ref="wrapper" style="height: 200px"></ic-canvas>
+  </div>
+</template>

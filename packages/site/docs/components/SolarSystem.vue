@@ -1,14 +1,31 @@
 <script setup>
-import { Group, Circle } from '@infinite-canvas-tutorial/lesson7';
-import { onMounted } from 'vue';
+import { Group, Circle } from '@infinite-canvas-tutorial/core';
+import { onMounted, ref } from 'vue';
+import Stats from 'stats.js';
+
+let canvas;
+
+const stats = new Stats();
+stats.showPanel(0);
+const $stats = stats.dom;
+$stats.style.position = 'absolute';
+$stats.style.left = '0px';
+$stats.style.top = '0px';
+
+const wrapper = ref(null);
 
 onMounted(() => {
-  const $canvas = document.querySelector('ic-canvas-lesson7');
+  import('@infinite-canvas-tutorial/ui');
+  const $canvas = wrapper.value;
+
+  if (!$canvas) return;
 
   let solarSystem;
   let earthOrbit;
+  $canvas.parentElement.appendChild($stats);
+
   $canvas.addEventListener('ic-ready', (e) => {
-    const canvas = e.detail;
+    canvas = e.detail;
 
     solarSystem = new Group();
     earthOrbit = new Group();
@@ -48,10 +65,14 @@ onMounted(() => {
   $canvas.addEventListener('ic-frame', (e) => {
     solarSystem.rotation += 0.01;
     earthOrbit.rotation += 0.02;
+
+    stats.update();
   });
 });
 </script>
 
 <template>
-  <ic-canvas-lesson7></ic-canvas-lesson7>
+  <div style="position: relative">
+      <ic-canvas ref="wrapper" style="height: 400px"></ic-canvas>
+  </div>
 </template>
