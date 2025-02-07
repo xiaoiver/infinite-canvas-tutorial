@@ -18,14 +18,66 @@ export interface CanvasConfig {
     renderer?: 'webgl' | 'webgpu';
     shaderCompilerPath?: string;
     devicePixelRatio?: number;
-    backgroundColor?: string;
-    gridColor?: string;
+    theme?: Theme;
+    themeColors?: {
+        [Theme.LIGHT]: {
+            background: string;
+            grid: string;
+        };
+        [Theme.DARK]: {
+            background: string;
+            grid: string;
+        };
+    };
+    checkboardStyle?: CheckboardStyle;
+    mode?: CanvasMode;
 }
 ```
 
-## canvas
+### canvas
 
-In the browser environment, pass in `HTMLCanvasElement`, in the WebWorker environment, pass in `OffscreenCanvas`, and in the Node.js environment, you can use `node-canvas`.
+Pass in `HTMLCanvasElement` in the browser environment, `OffscreenCanvas` in the WebWorker environment, and `node-canvas` in the Node.js environment.
+
+### renderer
+
+Set the renderer, optional values are `webgl` and `webgpu`, default value is `webgl`.
+
+### shaderCompilerPath
+
+Set the WebGPU shader compiler path, default value is `https://unpkg.com/@antv/g-device-api@1.6.8/dist/pkg/glsl_wgsl_compiler_bg.wasm`.
+
+### devicePixelRatio
+
+Set the device pixel ratio, default value is `window.devicePixelRatio`.
+
+### theme
+
+Set the theme, optional values are `Theme.LIGHT` and `Theme.DARK`, default value is `Theme.LIGHT`.
+
+### themeColors
+
+Set the theme colors, default value is
+
+```js
+{
+    [Theme.LIGHT]: {
+        background: '#fbfbfb',
+        grid: '#dedede',
+    },
+    [Theme.DARK]: {
+        background: '#121212',
+        grid: '#242424',
+    },
+}
+```
+
+### checkboardStyle
+
+Set the grid style, optional values are `CheckboardStyle.NONE`、`CheckboardStyle.GRID` and `CheckboardStyle.DOTS`, default value is `CheckboardStyle.GRID`.
+
+### mode
+
+Set the canvas mode, optional values are `CanvasMode.HAND` and `CanvasMode.SELECT`, default value is `CanvasMode.HAND`.
 
 ## render
 
@@ -131,6 +183,14 @@ export enum CheckboardStyle {
 }
 
 canvas.checkboardStyle = CheckboardStyle.DOTS;
+```
+
+## theme
+
+Gets or sets the canvas theme, default value is `Theme.LIGHT`.
+
+```ts
+canvas.theme = Theme.DARK;
 ```
 
 ## getDOM

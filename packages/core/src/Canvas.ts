@@ -15,6 +15,7 @@ import {
   findZoomCeil,
   findZoomFloor,
   Selector,
+  Theme,
 } from './plugins';
 import {
   Group,
@@ -51,17 +52,37 @@ export interface CanvasConfig {
    */
   devicePixelRatio?: number;
   /**
-   * Background color of page.
-   */
-  backgroundColor?: string;
-  /**
-   * Color of grid.
-   */
-  gridColor?: string;
-  /**
    * Default to `CanvasMode.HAND`.
    */
   mode?: CanvasMode;
+  /**
+   * Checkboard style.
+   */
+  checkboardStyle?: CheckboardStyle;
+  /**
+   * Theme.
+   */
+  theme?: Theme;
+  /**
+   * Theme colors.
+   * @see https://github.com/dgmjs/dgmjs/blob/main/packages/core/src/colors.ts#L130
+   */
+  themeColors?: {
+    [Theme.LIGHT]: {
+      /**
+       * Background color of page.
+       */
+      background: string;
+      /**
+       * Color of grid.
+       */
+      grid: string;
+    };
+    [Theme.DARK]: {
+      background: string;
+      grid: string;
+    };
+  };
 }
 
 export class Canvas {
@@ -98,9 +119,19 @@ export class Canvas {
       renderer = 'webgl',
       shaderCompilerPath = '',
       devicePixelRatio,
-      backgroundColor,
-      gridColor,
-      mode,
+      mode = CanvasMode.HAND,
+      checkboardStyle = CheckboardStyle.GRID,
+      theme = Theme.LIGHT,
+      themeColors = {
+        [Theme.LIGHT]: {
+          background: '#fbfbfb',
+          grid: '#dedede',
+        },
+        [Theme.DARK]: {
+          background: '#121212',
+          grid: '#242424',
+        },
+      },
     } = config;
     const globalThis = getGlobalThis();
     const dpr = (devicePixelRatio ?? globalThis.devicePixelRatio) || 1;
@@ -121,8 +152,7 @@ export class Canvas {
       renderer,
       shaderCompilerPath,
       devicePixelRatio: dpr,
-      backgroundColor,
-      gridColor,
+      themeColors,
       supportsPointerEvents,
       supportsTouchEvents,
       hooks: {
@@ -166,10 +196,14 @@ export class Canvas {
       },
     };
 
-    this.mode = mode ?? CanvasMode.HAND;
     this.#rendererPlugin = new Renderer();
     this.#eventPlugin = new Event();
     this.#selectorPlugin = new Selector();
+
+    this.theme = theme;
+    this.checkboardStyle = checkboardStyle;
+    this.mode = mode;
+
     const plugins = [
       new DOMEventListener(),
       this.#eventPlugin,
@@ -301,11 +335,20 @@ export class Canvas {
     return this.#root.removeChild(shape);
   }
 
-  set checkboardStyle(style: CheckboardStyle) {
-    this.#rendererPlugin.checkboardStyle = style;
-  }
   get checkboardStyle() {
     return this.#rendererPlugin.checkboardStyle;
+  }
+  set checkboardStyle(style: CheckboardStyle) {
+    this.#renderDirtyFlag = true;
+    this.#rendererPlugin.checkboardStyle = style;
+  }
+
+  get theme() {
+    return this.#rendererPlugin.theme;
+  }
+  set theme(theme: Theme) {
+    this.#renderDirtyFlag = true;
+    this.#rendererPlugin.theme = theme;
   }
 
   get mode() {

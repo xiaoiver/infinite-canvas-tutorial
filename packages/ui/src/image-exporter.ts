@@ -16,11 +16,12 @@ export class Exporter extends LitElement {
   static styles = css`
     :host {
       box-shadow: var(--sl-shadow-medium);
-      background: white;
+      background: var(--sl-panel-background-color);
     }
 
     sl-switch {
       margin-left: 24px;
+      color: var(--sl-color-neutral-700);
     }
 
     sl-menu-item::part(base) {

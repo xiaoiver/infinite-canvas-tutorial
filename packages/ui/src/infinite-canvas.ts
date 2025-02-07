@@ -2,7 +2,7 @@ import { html, css, LitElement } from 'lit';
 import { ContextProvider } from '@lit/context';
 import { Task } from '@lit/task';
 import { customElement, property, state } from 'lit/decorators.js';
-import { Canvas, CanvasMode } from '@infinite-canvas-tutorial/core';
+import { Canvas, CanvasMode, Theme } from '@infinite-canvas-tutorial/core';
 import { canvasContext } from './context';
 import { setBasePath } from '@shoelace-style/shoelace/dist/utilities/base-path.js';
 
@@ -33,6 +33,12 @@ export class InfiniteCanvas extends LitElement {
     :host {
       display: block;
       position: relative;
+    }
+
+    :host ic-dark-mode {
+      position: absolute;
+      right: 52px;
+      top: 16px;
     }
 
     :host ic-exporter {
@@ -66,6 +72,9 @@ export class InfiniteCanvas extends LitElement {
 
   @property()
   renderer = 'webgl';
+
+  @property()
+  theme: 'dark' | 'light' = 'light';
 
   @property()
   shaderCompilerPath =
@@ -124,6 +133,17 @@ export class InfiniteCanvas extends LitElement {
     this.#canvas.mode = e.detail.mode;
   }
 
+  private themeChangedHandler(e: CustomEvent) {
+    this.theme = e.detail.isDark ? 'dark' : 'light';
+    this.#canvas.theme = this.theme === 'dark' ? Theme.DARK : Theme.LIGHT;
+
+    this.classList.toggle('sl-theme-dark', this.theme === 'dark');
+
+    this.dispatchEvent(
+      new CustomEvent('ic-theme-changed', { detail: this.theme }),
+    );
+  }
+
   private initCanvas = new Task(this, {
     task: async ([renderer, shaderCompilerPath]) => {
       if (renderer === 'webgpu') {
@@ -138,12 +158,14 @@ export class InfiniteCanvas extends LitElement {
         canvas,
         renderer,
         shaderCompilerPath,
+        theme: this.theme === 'dark' ? Theme.DARK : Theme.LIGHT,
       }).initialized;
 
       this.#provider.setValue(this.#canvas);
 
-      this.#canvas.mode = this.mode;
+      this.classList.toggle('sl-theme-dark', this.theme === 'dark');
 
+      this.#canvas.mode = this.mode;
       // Initialize camera zoom.
       this.#canvas.camera.zoom = this.zoom / 100;
       this.#canvas.pluginContext.hooks.cameraChange.tap(() => {
@@ -181,6 +203,10 @@ export class InfiniteCanvas extends LitElement {
             modes=${JSON.stringify(this.modes)}
             @modechanged=${this.modeChangedHandler}
           ></ic-mode-toolbar>
+          <ic-dark-mode
+            is-dark=${this.theme === 'dark'}
+            @themechanged=${this.themeChangedHandler}
+          ></ic-dark-mode>
           <ic-exporter></ic-exporter>
           <ic-property-drawer></ic-property-drawer>
           <ic-textarea></ic-textarea>

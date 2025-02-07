@@ -8,7 +8,6 @@ import { ImageLoader } from '@loaders.gl/images';
 import { load } from '@loaders.gl/core';
 import GUI from 'lil-gui';
 import * as Core from '@infinite-canvas-tutorial/core';
-// import * as UI from '@infinite-canvas-tutorial/ui';
 import * as Lesson1 from '@infinite-canvas-tutorial/lesson1';
 import * as Lesson2 from '@infinite-canvas-tutorial/lesson2';
 import * as Lesson3 from '@infinite-canvas-tutorial/lesson3';
@@ -76,7 +75,6 @@ const props = {
     Utils,
     Stats,
     Core,
-    // UI,
     GUI,
   },
 };

@@ -28,6 +28,11 @@ export enum CheckboardStyle {
   DOTS,
 }
 
+export enum Theme {
+  LIGHT,
+  DARK,
+}
+
 export class Renderer implements Plugin {
   #swapChain: SwapChain;
   #device: Device;
@@ -47,6 +52,9 @@ export class Renderer implements Plugin {
    * @see https://infinitecanvas.cc/guide/lesson-005
    */
   #checkboardStyle: CheckboardStyle = CheckboardStyle.GRID;
+
+  #theme: Theme = Theme.LIGHT;
+
   #grid: Grid;
 
   #batchManager: BatchManager;
@@ -65,28 +73,16 @@ export class Renderer implements Plugin {
       shaderCompilerPath,
       devicePixelRatio,
       camera,
-      backgroundColor,
-      gridColor,
+      themeColors,
     } = context;
 
-    const {
-      r: br,
-      g: bg,
-      b: bb,
-      opacity: bo,
-    } = backgroundColor
-      ? d3.rgb(backgroundColor)
-      : { r: 0.986 * 255, g: 0.986 * 255, b: 0.986 * 255, opacity: 1 };
-    const {
-      r: gr,
-      g: gg,
-      b: gb,
-      opacity: go,
-    } = gridColor
-      ? d3.rgb(gridColor)
-      : { r: 0.87 * 255, g: 0.87 * 255, b: 0.87 * 255, opacity: 1 };
-
     const updateUniform = (): [Float32Array, Record<string, unknown>] => {
+      const backgroundColor = themeColors[this.#theme].background;
+      const gridColor = themeColors[this.#theme].grid;
+
+      const { r: br, g: bg, b: bb, opacity: bo } = d3.rgb(backgroundColor);
+      const { r: gr, g: gg, b: gb, opacity: go } = d3.rgb(gridColor);
+
       const u_ProjectionMatrix = camera.projectionMatrix;
       const u_ViewMatrix = camera.viewMatrix;
       const u_ViewProjectionInvMatrix = camera.viewProjectionMatrixInv;
@@ -296,6 +292,14 @@ export class Renderer implements Plugin {
 
   set checkboardStyle(style: CheckboardStyle) {
     this.#checkboardStyle = style;
+  }
+
+  get theme() {
+    return this.#theme;
+  }
+
+  set theme(theme: Theme) {
+    this.#theme = theme;
   }
 
   async toDataURL(options: Partial<DataURLOptions>) {

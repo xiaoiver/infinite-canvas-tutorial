@@ -2,7 +2,7 @@ import _gl from 'gl';
 import { NodeJSAdapter } from '../utils';
 import '../useSnapshotMatchers';
 import { Canvas, DOMAdapter, ImageExporter } from '../../packages/core/src';
-import { CheckboardStyle } from '../../packages/core/src/plugins';
+import { CheckboardStyle, Theme } from '../../packages/core/src/plugins';
 
 const dir = `${__dirname}/snapshots`;
 let $canvas: HTMLCanvasElement;
@@ -16,8 +16,16 @@ describe('Grid', () => {
     $canvas = DOMAdapter.get().createCanvas(200, 200) as HTMLCanvasElement;
     canvas = await new Canvas({
       canvas: $canvas,
-      backgroundColor: 'white',
-      gridColor: 'gray',
+      themeColors: {
+        [Theme.LIGHT]: {
+          background: 'white',
+          grid: 'gray',
+        },
+        [Theme.DARK]: {
+          background: 'black',
+          grid: 'gray',
+        },
+      },
     }).initialized;
     exporter = new ImageExporter({
       canvas,

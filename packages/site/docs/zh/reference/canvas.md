@@ -20,14 +20,66 @@ export interface CanvasConfig {
     renderer?: 'webgl' | 'webgpu';
     shaderCompilerPath?: string;
     devicePixelRatio?: number;
-    backgroundColor?: string;
-    gridColor?: string;
+    theme?: Theme;
+    themeColors?: {
+        [Theme.LIGHT]: {
+            background: string;
+            grid: string;
+        };
+        [Theme.DARK]: {
+            background: string;
+            grid: string;
+        };
+    };
+    checkboardStyle?: CheckboardStyle;
+    mode?: CanvasMode;
 }
 ```
 
-## canvas
+### canvas
 
 在浏览器环境传入 `HTMLCanvasElement`，在 WebWorker 环境传入 `OffscreenCanvas`，在 Node.js 环境可以使用 `node-canvas`。
+
+### renderer
+
+指定渲染器，可选值为 `webgl` 和 `webgpu`，默认值为 `webgl`。
+
+### shaderCompilerPath
+
+指定 WebGPU 着色器编译器路径，默认值为 `https://unpkg.com/@antv/g-device-api@1.6.8/dist/pkg/glsl_wgsl_compiler_bg.wasm`。
+
+### devicePixelRatio
+
+指定设备像素比，默认值为 `window.devicePixelRatio`。
+
+### theme
+
+指定明暗主题，可选值为 `Theme.LIGHT` 和 `Theme.DARK`，默认值为 `Theme.LIGHT`。
+
+### themeColors
+
+指定主题颜色，默认值为
+
+```js
+{
+    [Theme.LIGHT]: {
+        background: '#fbfbfb',
+        grid: '#dedede',
+    },
+    [Theme.DARK]: {
+        background: '#121212',
+        grid: '#242424',
+    },
+}
+```
+
+### checkboardStyle
+
+指定网格样式，可选值为 `CheckboardStyle.NONE`、`CheckboardStyle.GRID` 和 `CheckboardStyle.DOTS`，默认值为 `CheckboardStyle.GRID`。
+
+### mode
+
+指定画布模式，可选值为 `CanvasMode.HAND` 和 `CanvasMode.SELECT`，默认值为 `CanvasMode.HAND`。
 
 ## render
 
@@ -133,6 +185,14 @@ export enum CheckboardStyle {
 }
 
 canvas.checkboardStyle = CheckboardStyle.DOTS;
+```
+
+## theme
+
+获取或者设置画布主题，默认值为 `Theme.LIGHT`。
+
+```ts
+canvas.theme = Theme.DARK;
 ```
 
 ## getDOM

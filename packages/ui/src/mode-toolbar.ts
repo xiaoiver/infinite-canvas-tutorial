@@ -20,7 +20,7 @@ export class ModeToolbar extends LitElement {
   static styles = css`
     :host {
       box-shadow: var(--sl-shadow-medium);
-      background: white;
+      background: var(--sl-panel-background-color);
     }
 
     span {
