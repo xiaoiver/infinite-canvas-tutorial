@@ -27,7 +27,7 @@ export const glyphToRGBA = (
   return { data: out, width: wp, height: hp };
 };
 
-export const INF = 1e20;
+export const INF = 1e10;
 
 export type SDFStage = {
   outer: Float32Array;
@@ -160,8 +160,12 @@ export class TinySDF {
     let height: number;
 
     if (esdt) {
+      const alpha = new Uint8ClampedArray(imageData.data.length / 4);
+      for (let i = 0; i < imageData.data.length; i += 4) {
+        alpha[i / 4] = imageData.data[i + 3];
+      }
       ({ data, width, height } = glyphToESDT(
-        imageData.data,
+        alpha,
         color ? imageData.data : null,
         w,
         h,
@@ -258,8 +262,6 @@ export const edt = (
 // Helpers
 export const isBlack = (x: number) => !x;
 export const isWhite = (x: number) => x === 1;
-// export const isBlack = (x: number) => x === 1;
-// export const isWhite = (x: number) => !x;
 export const isSolid = (x: number) => !(x && 1 - x);
 
 export const sqr = (x: number) => x * x;

@@ -33,7 +33,6 @@ onMounted(() => {
       fontSize: 30,
       fill: '#F67676',
       wireframe: true,
-      // textAlign: 'right',
     });
     canvas.appendChild(text);
 

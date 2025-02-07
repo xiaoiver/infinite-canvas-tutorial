@@ -8,6 +8,7 @@ import WebFontLoader from '../components/WebFontLoader.vue';
 import Opentype from '../components/Opentype.vue';
 import Harfbuzz from '../components/Harfbuzz.vue';
 import TeXMath from '../components/TeXMath.vue';
+import TextDropShadow from '../components/TextDropShadow.vue';
 </script>
 
 # Lesson 16 - Advanced Text Features
@@ -130,6 +131,8 @@ float distAlpha = smoothstep(0.5 - shadowSmoothing, 0.5 + shadowSmoothing, shado
 vec4 shadow = vec4(shadowColor, shadowAlpha * distAlpha);
 gl_FragColor = mix(shadow, text, text.a);
 ```
+
+<TextDropShadow />
 
 ## Text Along Path {#text-along-path}
 

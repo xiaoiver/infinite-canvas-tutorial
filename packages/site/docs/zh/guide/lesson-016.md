@@ -8,6 +8,7 @@ import WebFontLoader from '../../components/WebFontLoader.vue';
 import Opentype from '../../components/Opentype.vue';
 import Harfbuzz from '../../components/Harfbuzz.vue';
 import TeXMath from '../../components/TeXMath.vue';
+import TextDropShadow from '../../components/TextDropShadow.vue';
 </script>
 
 # 课程 16 - 文本的高级特性
@@ -141,6 +142,8 @@ float shadowDist = texture(SAMPLER_2D(u_Texture), v_Uv - shadowOffset).a;
 dropShadowColor.a *= smoothstep(0.5 - shadowSmoothing, 0.5 + shadowSmoothing, shadowDist);
 outputColor = mix(dropShadowColor, outputColor, outputColor.a);
 ```
+
+<TextDropShadow />
 
 ## 文本跟随路径 {#text-along-path}
 

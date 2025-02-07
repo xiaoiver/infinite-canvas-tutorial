@@ -153,7 +153,6 @@ void main() {
 
     highp float gamma_scaled = fwidth(dist);
     highp float alpha = smoothstep(buff - gamma_scaled, buff + gamma_scaled, dist);
-    // alpha = dist;
     opacity *= alpha;
 
     outputColor = fillColor;
@@ -162,7 +161,8 @@ void main() {
   outputColor.a *= opacity;
 
   #ifdef USE_SHADOW 
-    gamma_scaled = fwidth(shadowDist) * 128.0 / shadowBlurRadius;
+    // gamma_scaled = fwidth(shadowDist) * 128.0 / shadowBlurRadius;
+    gamma_scaled = shadowBlurRadius / 128.0;
     alpha = smoothstep(buff - gamma_scaled, buff + gamma_scaled, shadowDist);
     dropShadowColor.a *= alpha;
     outputColor = mix(dropShadowColor, outputColor, outputColor.a);

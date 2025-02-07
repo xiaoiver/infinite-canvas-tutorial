@@ -30,23 +30,21 @@ const paintIntoStage = (
   outer.fill(INF, 0, np);
   inner.fill(0, 0, np);
 
-  // const getData = (x: number, y: number) => data[y * w + x] ?? 0;
-  const getData = (x: number, y: number) =>
-    (data[4 * (y * w + x) + 3] ?? 0) / 255;
+  const getData = (x: number, y: number) => data[y * w + x] ?? 0;
 
   for (let y = 0; y < h; y++) {
     for (let x = 0; x < w; x++) {
       const a = getData(x, y);
       if (!a) continue;
-      const i = (y + pad) * wp + x + pad;
 
-      if (a >= 254 / 255) {
+      const i = (y + pad) * wp + x + pad;
+      if (a >= 254) {
         // Fix for bad rasterizer rounding
-        data[4 * (y * w + x) + 3] = 255;
+        data[y * w + x] = 255;
 
         outer[i] = 0;
         inner[i] = INF;
-      } else if (a > 0) {
+      } else {
         outer[i] = 0;
         inner[i] = 0;
       }
@@ -66,9 +64,7 @@ export const paintIntoDistanceField = (
 ) => {
   const wp = w + pad * 2;
 
-  // const getData = (x: number, y: number) => (data[y * w + x] ?? 0) / 255;
-  const getData = (x: number, y: number) =>
-    (data[4 * (y * w + x) + 3] ?? 0) / 255;
+  const getData = (x: number, y: number) => (data[y * w + x] ?? 0) / 255;
 
   for (let y = 0; y < h; y++) {
     for (let x = 0; x < w; x++) {
@@ -106,12 +102,8 @@ export const paintSubpixelOffsets = (
   xi.fill(0, 0, np);
   yi.fill(0, 0, np);
 
-  // const getData = (x: number, y: number) =>
-  //   x >= 0 && x < w && y >= 0 && y < h ? (data[y * w + x] ?? 0) / 255 : 0;
   const getData = (x: number, y: number) =>
-    x >= 0 && x < w && y >= 0 && y < h
-      ? (data[4 * (y * w + x) + 3] ?? 0) / 255
-      : 0;
+    x >= 0 && x < w && y >= 0 && y < h ? (data[y * w + x] ?? 0) / 255 : 0;
 
   // Make vector from pixel center to nearest boundary
   for (let y = 0; y < h; y++) {
@@ -588,6 +580,24 @@ export const esdt = (
       esdt1d(mask, xs, ys, y * w, 1, w, f, z, b, t, v);
 };
 
+// Helper for testing
+export const resolveSDF = (
+  xo: Float32Array | number[],
+  yo: Float32Array | number[],
+  xi: Float32Array | number[],
+  yi: Float32Array | number[],
+) => {
+  const np = xo.length;
+  const out = [] as number[];
+  for (let i = 0; i < np; ++i) {
+    const outer = Math.max(0, Math.sqrt(sqr(xo[i]) + sqr(yo[i])) - 0.5);
+    const inner = Math.max(0, Math.sqrt(sqr(xi[i]) + sqr(yi[i])) - 0.5);
+    const d = outer >= inner ? outer : -inner;
+    out[i] = d;
+  }
+  return out;
+};
+
 // Convert grayscale or color glyph to SDF using subpixel distance transform
 export const glyphToESDT = (
   data: Uint8ClampedArray,
@@ -599,7 +609,11 @@ export const glyphToESDT = (
   cutoff: number = 0.25,
   preprocess: boolean = false,
   postprocess: boolean = false,
-) => {
+): {
+  data: Uint8Array;
+  width: number;
+  height: number;
+} => {
   const wp = w + pad * 2;
   const hp = h + pad * 2;
   const np = wp * hp;
