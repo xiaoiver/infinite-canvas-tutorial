@@ -7,28 +7,27 @@ publish: false
 
 在本课程中，我们将探讨如何实现多人协同编辑功能。我们会介绍几个核心概念和技术，包括历史记录、本地优先（Local-first）以及 CRDT。
 
-## 历史记录 {#history}
-
-[Excalidraw HistoryEntry]
-
-## Local-first {#local-first}
-
-[The past, present, and future of local-first]
-
-[TipTap offline support]
-
 ## CRDT {#crdt}
 
-提到协同算法
+什么是 CRDT 呢？下面的介绍来自 [What are CRDTs]，Google Docs / Figma / Tiptap 的协同功能都是基于它实现的，这篇文章还详细对比了 CRDT 和 OT 的特点：
 
-[Loro Excalidraw Example]
-[automerge wasm]
+> CRDT (conflict-free replicated data type) is a data structure that can be replicated across multiple computers in a network, where replicas can be updated independently and in parallel, without the need for coordination between replicas, and with a guarantee that no conflicts will occur.
 
-系列教程：
+下图来自 [What are CRDTs]，它展示了 CAP 定理下，CRDT 不提供“完美的一致性”，而是最终的一致性。虽然无法保证实时一致，但当两个节点同步消息时，会恢复到一致性状态。
+
+![CRDT satisfies A + P + Eventual Consistency; a good tradeoff under CAP](https://loro.dev/_next/image?url=%2F_next%2Fstatic%2Fmedia%2Fa4858e2a50bc1a2d79722060156e89b0cac5815cf25e8c67e409aa0926280cef.6a607785.png&w=3840&q=75)
+
+### CRDT 的两种类型 {#two-types-of-crdts}
+
+CRDT 有两种类型：Op-based 和 State-based。前者的原理是，如果两个用户执行相同的操作序列，则文档的最终状态也应相同。为此，每个用户保存了对数据（操作）执行的所有操作，并将这些操作与其他用户同步，以确保最终状态。而后者需要在节点间传递整个状态。看上去前者需要传递的数据量更少，毕竟只是操作的描述，但这要求前者保证消息的传递顺序。
+
+现在让我们通过下面这个系列教程来了解 State-based CRDT：
 
 -   [An Interactive Intro to CRDTs]
 -   [Building a Collaborative Pixel Art Editor with CRDTs]
 -   [Making CRDTs 98% More Efficient]
+
+教程给出了一个 CRDT 的通用数据结构，它包括一个必须满足结合律、交换律和幂等性的合并函数：
 
 ```ts
 interface CRDT<T, S> {
@@ -38,15 +37,31 @@ interface CRDT<T, S> {
 }
 ```
 
-### Y.js
+### Local first {#local-first}
+
+最后 Local first 这种软件开发和数据管理的理念也可以基于 CRDT 实现。
+
+-   [The past, present, and future of local-first]
+-   [TipTap offline support]
+
+## Y.js
 
 <https://tiptap.dev/docs/collaboration/getting-started/overview#about-yjs>
 
 > As a CRDT, Y.js ensures that the sequence of changes does not impact the final state of the document, similar to how Git operates with commits. This guarantees that all copies of the data remain consistent across different environments.
 
-### 数据结构设计
+## 数据结构设计
 
 参考 [dgmjs-plugin-yjs]
+
+## 历史记录 {#history}
+
+[Excalidraw HistoryEntry]
+
+提到协同算法
+
+-   [Loro Excalidraw Example]
+-   [automerge wasm]
 
 ## 扩展阅读 {#extended-reading}
 
@@ -64,6 +79,7 @@ interface CRDT<T, S> {
 -   [Making CRDTs 98% More Efficient]
 -   [dgmjs-plugin-yjs]
 
+[What are CRDTs]: https://loro.dev/docs/concepts/crdt
 [Movable tree CRDTs and Loro's implementation]: https://news.ycombinator.com/item?id=41099901
 [CRDTs: The Hard Parts]: https://www.youtube.com/watch?v=x7drE24geUw
 [Peritext - A CRDT for Rich-Text Collaboration]: https://www.inkandswitch.com/peritext/

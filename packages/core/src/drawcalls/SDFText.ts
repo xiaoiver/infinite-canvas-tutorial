@@ -29,7 +29,7 @@ import {
   BitmapFont,
   GlyphPositions,
   containsEmoji,
-  // yOffsetFromTextBaseline,
+  yOffsetFromTextBaseline,
 } from '../utils';
 
 export class SDFText extends Drawcall {
@@ -106,18 +106,6 @@ export class SDFText extends Drawcall {
     this.shapes.forEach((object: Text) => {
       const { metrics, letterSpacing, bitmapFont } = object;
       const { font, lines, lineHeight } = metrics;
-
-      // const linePositionY = 0;
-      // handle vertical text baseline
-      // if (textBaseline === 'middle') {
-      //   linePositionY += -height / 2;
-      // } else if (textBaseline === 'bottom' || textBaseline === 'alphabetic') {
-      //   linePositionY += -height;
-      // } else if (textBaseline === 'top' || textBaseline === 'hanging') {
-      //   linePositionY += 0;
-      // } else if (textBaseline === 'ideographic') {
-      //   linePositionY += -height;
-      // }
 
       const {
         indicesOffset,
@@ -461,11 +449,11 @@ export class SDFText extends Drawcall {
   }) {
     const {
       textAlign,
-      // textBaseline,
+      textBaseline,
       x = 0,
       y = 0,
       bitmapFontKerning,
-      // metrics,
+      metrics,
     } = object;
 
     const charUVOffsetBuffer: number[] = [];
@@ -474,9 +462,9 @@ export class SDFText extends Drawcall {
 
     let i = indicesOffset;
 
-    // const dy =
-    //   yOffsetFromTextBaseline(textBaseline, metrics.fontMetrics) +
-    //   metrics.fontMetrics.fontBoundingBoxAscent;
+    const dy =
+      yOffsetFromTextBaseline(textBaseline, metrics.fontMetrics) +
+        metrics.fontMetrics.fontBoundingBoxAscent || 0;
 
     const positionedGlyphs = this.#glyphManager.layout(
       lines,
@@ -488,7 +476,7 @@ export class SDFText extends Drawcall {
       fontScale,
       bitmapFontKerning,
       0,
-      0,
+      dy,
     );
 
     let positions: GlyphPositions;
