@@ -1,3 +1,4 @@
+import { ink } from './chunks/ink';
 import {
   vert as wireframe_vert,
   vert_declaration as wireframe_vert_declaration,
@@ -144,15 +145,116 @@ void main() {
 
     float fontSize = u_ZIndexStrokeWidth.z;
 
-    // float opacity = u_FillOpacity;
-    // if (u_HasStroke > 0.5 && u_StrokeWidth > 0.0) {
-    //   color = u_StrokeColor;
-    //   buff = (6.0 - u_StrokeWidth / fontScale / 2.0) / SDF_PX;
-    //   opacity = u_StrokeOpacity;
-    // }
-
     highp float gamma_scaled = fwidth(dist);
     highp float alpha = smoothstep(buff - gamma_scaled, buff + gamma_scaled, dist);
+    opacity *= alpha;
+
+    outputColor = fillColor;
+  #endif
+  
+  outputColor.a *= opacity;
+
+  #ifdef USE_SHADOW 
+    // gamma_scaled = fwidth(shadowDist) * 128.0 / shadowBlurRadius;
+    gamma_scaled = shadowBlurRadius / 128.0;
+    alpha = smoothstep(buff - gamma_scaled, buff + gamma_scaled, shadowDist);
+    dropShadowColor.a *= alpha;
+    outputColor = mix(dropShadowColor, outputColor, outputColor.a);
+  #endif
+
+  ${wireframe_frag}
+
+  if (outputColor.a < epsilon)
+    discard;
+}
+`;
+
+export const physical_frag = /* wgsl */ `  
+layout(std140) uniform SceneUniforms {
+  mat3 u_ProjectionMatrix;
+  mat3 u_ViewMatrix;
+  mat3 u_ViewProjectionInvMatrix;
+  vec4 u_BackgroundColor;
+  vec4 u_GridColor;
+  float u_ZoomScale;
+  float u_CheckboardStyle;
+};
+
+layout(std140) uniform ShapeUniforms {
+  mat3 u_ModelMatrix;
+  vec4 u_FillColor;
+  vec4 u_StrokeColor;
+  vec4 u_ZIndexStrokeWidth;
+  vec4 u_Opacity;
+  vec4 u_DropShadowColor;
+  vec4 u_DropShadow;
+  vec2 u_AtlasSize;
+};
+
+out vec4 outputColor;
+
+${wireframe_frag_declaration}
+in vec2 v_Uv;
+uniform sampler2D u_Texture;
+
+float epsilon = 0.000001;
+
+float median(float r, float g, float b) {
+  return max(min(r, g), min(max(r, g), b));
+}
+
+${ink}
+
+#define SDF_PX 8.0
+
+void main() {
+  float strokeWidth = u_ZIndexStrokeWidth.y;
+  vec4 fillColor = u_FillColor;
+  vec4 strokeColor = u_StrokeColor;
+  float opacity = u_Opacity.x;
+  float fillOpacity = u_Opacity.y;
+  float strokeOpacity = u_Opacity.z;
+  float shapeSizeAttenuation = u_Opacity.w;
+  vec4 dropShadow = u_DropShadow;
+  vec4 dropShadowColor = u_DropShadowColor;
+  float shadowDist;
+  float shadowBlurRadius = u_DropShadow.z;
+  
+  #ifdef USE_SDF_NONE
+    outputColor = texture(SAMPLER_2D(u_Texture), v_Uv);
+  #else
+    float dist;
+    lowp float buff;
+    vec2 shadowOffset = u_DropShadow.xy / u_AtlasSize;
+
+    #ifdef USE_SDF
+      #ifdef USE_EMOJI
+        fillColor = texture(SAMPLER_2D(u_Texture), v_Uv);
+      #endif
+      dist = texture(SAMPLER_2D(u_Texture), v_Uv).a;
+      buff = (256.0 - 64.0) / 256.0;
+
+      #ifdef USE_SHADOW
+        shadowDist = texture(SAMPLER_2D(u_Texture), v_Uv - shadowOffset).a;
+      #endif
+    #endif
+
+    #ifdef USE_MSDF
+      vec3 s = texture(SAMPLER_2D(u_Texture), v_Uv).rgb;
+      dist = median(s.r, s.g, s.b);
+      buff = 0.5;
+
+      #ifdef USE_SHADOW
+        vec3 shadowSample = texture(SAMPLER_2D(u_Texture), v_Uv - shadowOffset).rgb;
+        shadowDist = median(shadowSample.r, shadowSample.g, shadowSample.b);
+      #endif
+    #endif
+
+    float fontSize = u_ZIndexStrokeWidth.z;
+
+    highp float gamma_scaled;
+    highp float alpha = ink(dist - 0.2, v_Uv);
+    
     opacity *= alpha;
 
     outputColor = fillColor;

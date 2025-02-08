@@ -168,6 +168,11 @@ export interface TextAttributes extends ShapeAttributes {
    * @see https://developer.mozilla.org/en-US/docs/Web/CSS/filter-function/drop-shadow
    */
   dropShadowBlurRadius: number;
+
+  /**
+   * @see https://mattdesl.svbtle.com/material-design-on-the-gpu
+   */
+  physical: boolean;
 }
 
 // @ts-ignore
@@ -204,6 +209,7 @@ export function TextWrapper<TBase extends GConstructor>(Base: TBase) {
     bitmapFont: BitmapFont;
     bitmapFontKerning: boolean;
     esdt: boolean;
+    physical: boolean;
     bidiChars: string;
 
     batchable = false;
@@ -265,6 +271,7 @@ export function TextWrapper<TBase extends GConstructor>(Base: TBase) {
         bitmapFont,
         bitmapFontKerning,
         esdt,
+        physical,
         dropShadowColor,
         dropShadowOffsetX,
         dropShadowOffsetY,
@@ -292,6 +299,7 @@ export function TextWrapper<TBase extends GConstructor>(Base: TBase) {
       this.bitmapFont = bitmapFont ?? null;
       this.bitmapFontKerning = bitmapFontKerning ?? true;
       this.esdt = esdt ?? true;
+      this.physical = physical ?? false;
       this.dropShadowColor = dropShadowColor ?? 'black';
       this.dropShadowOffsetX = dropShadowOffsetX ?? 0;
       this.dropShadowOffsetY = dropShadowOffsetY ?? 0;

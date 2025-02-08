@@ -9,6 +9,7 @@ import Opentype from '../../components/Opentype.vue';
 import Harfbuzz from '../../components/Harfbuzz.vue';
 import TeXMath from '../../components/TeXMath.vue';
 import TextDropShadow from '../../components/TextDropShadow.vue';
+import PhysicalText from '../../components/PhysicalText.vue';
 </script>
 
 # 课程 16 - 文本的高级特性
@@ -89,7 +90,7 @@ result.forEach(function (x) {
 
 <Harfbuzz />
 
-## TeX math rendering {#tex-math-rendering}
+### TeX math rendering {#tex-math-rendering}
 
 我们可以使用 [MathJax] 来渲染 TeX 数学公式，将公式转换为 SVG 后，再使用 Path 渲染。这里我们参考 [LaTeX in motion-canvas] 的做法，得到 SVGElement：
 
@@ -227,7 +228,22 @@ WebFont.load({
 
 ### Material Design on the GPU {#material-design-on-the-gpu}
 
-[Material Design on the GPU]
+[Material Design on the GPU] 中介绍了一种基于 SDF 文字的材质效果，使用法线贴图配合光照实现墨迹在纸张表面的晕染效果。我们不用考虑光照，直接使用 simplex noise 来实现，叠加多个吸收效果：
+
+```js
+import { simplex_2d } from './simplex-2d';
+import { aastep } from './aastep';
+export const absorb = /* wgsl */ `
+  ${aastep}
+  ${simplex_2d}
+  float absorb(float sdf, vec2 uv, float scale, float falloff) {
+    float distort = sdf + snoise(uv * scale) * falloff;
+    return aastep(0.5, distort);
+  }
+`;
+```
+
+<PhysicalText />
 
 ## 扩展阅读 {#extended-reading}
 

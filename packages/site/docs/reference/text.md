@@ -13,6 +13,7 @@ See SVG [text], supporting features like Bitmap Font, MSDF, Emoji, and bidirecti
 -   [Drawing Bidirectional Text](/example/bidi)
 -   [Drawing with HarfBuzz](/example/harfbuzz)
 -   [Drawing with Opentype.js](/example/opentype)
+-   [Physical Text](/example/physical-text)
 
 ```ts
 const text = new Text({
@@ -210,6 +211,10 @@ Drop shadow offset along the Y-axis. Default value is `0`.
 ## dropShadowBlurRadius
 
 Drop shadow blur radius. The larger the value, the bigger and more diffused the shadow becomes. Default value is `0`.
+
+## physical
+
+Whether to enable physical text, see [Physical Text](/example/physical-text).
 
 [text]: https://developer.mozilla.org/en-US/docs/Web/SVG/Element/text
 [x]: https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/x

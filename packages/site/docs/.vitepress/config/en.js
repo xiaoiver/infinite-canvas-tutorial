@@ -162,7 +162,7 @@ export const en = defineConfig({
                 link: 'import-svg',
               },
               {
-                text: 'Wikipedia Datamap',
+                text: 'Wikipedia datamap',
                 link: 'wikipedia-datamap',
               },
               {
@@ -210,12 +210,16 @@ export const en = defineConfig({
                 link: 'opentype',
               },
               {
-                text: 'Text Baseline',
+                text: 'Text baseline',
                 link: 'text-baseline',
               },
               {
-                text: 'Text DropShadow',
+                text: 'Text drop shadow',
                 link: 'text-dropshadow',
+              },
+              {
+                text: 'Physical text',
+                link: 'physical-text',
               },
               {
                 text: 'Load web font',

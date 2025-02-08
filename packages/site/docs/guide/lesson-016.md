@@ -9,6 +9,7 @@ import Opentype from '../components/Opentype.vue';
 import Harfbuzz from '../components/Harfbuzz.vue';
 import TeXMath from '../components/TeXMath.vue';
 import TextDropShadow from '../components/TextDropShadow.vue';
+import PhysicalText from '../components/PhysicalText.vue';
 </script>
 
 # Lesson 16 - Advanced Text Features
@@ -89,7 +90,7 @@ result.forEach(function (x) {
 
 <Harfbuzz />
 
-## TeX math rendering {#tex-math-rendering}
+### TeX math rendering {#tex-math-rendering}
 
 We can use [MathJax] to render TeX mathematical formulas, convert them to SVG, and then render them using Path. Here we follow the approach from [LaTeX in motion-canvas] to get SVGElement:
 
@@ -200,7 +201,22 @@ WebFont.load({
 
 ### Material Design on the GPU {#material-design-on-the-gpu}
 
-[Material Design on the GPU]
+[Material Design on the GPU] introduce a material effect based on SDF text, using normal maps and lighting to simulate ink spreading on paper. We don't need to consider lighting, just use simplex noise to implement it, and add multiple absorption effects:
+
+```js
+import { simplex_2d } from './simplex-2d';
+import { aastep } from './aastep';
+export const absorb = /* wgsl */ `
+  ${aastep}
+  ${simplex_2d}
+  float absorb(float sdf, vec2 uv, float scale, float falloff) {
+    float distort = sdf + snoise(uv * scale) * falloff;
+    return aastep(0.5, distort);
+  }
+`;
+```
+
+<PhysicalText />
 
 ## Extended Reading {#extended-reading}
 

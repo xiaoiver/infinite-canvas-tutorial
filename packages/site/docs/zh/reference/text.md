@@ -13,6 +13,7 @@ publish: false
 -   [绘制双向文字](/zh/example/bidi)
 -   [使用 HarfBuzz 绘制](/zh/example/harfbuzz)
 -   [使用 Opentype.js 绘制](/zh/example/opentype)
+-   [Physical Text](/zh/example/physical-text)
 
 ```ts
 const text = new Text({
@@ -210,6 +211,10 @@ type CanvasTextBaseline =
 ## dropShadowBlurRadius
 
 外阴影模糊半径，它的值越大，阴影就越大并越淡。默认值为 `0`。
+
+## physical
+
+是否启用物理文本，参考 [Physical Text](/example/physical-text)。
 
 [text]: https://developer.mozilla.org/en-US/docs/Web/SVG/Element/text
 [x]: https://developer.mozilla.org/zh-CN/docs/Web/SVG/Attribute/x

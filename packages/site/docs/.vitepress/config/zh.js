@@ -188,6 +188,10 @@ export const zh = defineConfig({
                 link: 'text-dropshadow',
               },
               {
+                text: '晕染效果的文本',
+                link: 'physical-text',
+              },
+              {
                 text: '加载 Web 字体',
                 link: 'web-font-loader',
               },

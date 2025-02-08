@@ -199,6 +199,7 @@ pnpm run dev
 -   使用 Web Font Loader 加载 Web 字体
 
 <img src="./screenshots/lesson16.png" width="300" alt="Lesson 16 - text">
+<img src="./screenshots/lesson16-2.png" width="300" alt="Lesson 16 - physical text">
 
 [infinitecanvas]: https://infinitecanvas.tools/
 [Figma]: https://madebyevan.com/figma/building-a-professional-design-tool-on-the-web/

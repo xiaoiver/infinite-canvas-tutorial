@@ -19,7 +19,7 @@ import {
 } from '@antv/g-device-api';
 import { Shape, Text } from '../shapes';
 import { Drawcall, ZINDEX_FACTOR } from './Drawcall';
-import { vert, frag, Location } from '../shaders/sdf_text';
+import { vert, frag, physical_frag, Location } from '../shaders/sdf_text';
 import {
   BASE_FONT_WIDTH,
   GlyphManager,
@@ -55,8 +55,9 @@ export class SDFText extends Drawcall {
   }
 
   private hash(shape: Text) {
-    const { metrics, bitmapFont, dropShadowBlurRadius } = shape as Text;
-    return `${metrics?.font}-${bitmapFont?.fontFamily}-${dropShadowBlurRadius}`;
+    const { metrics, bitmapFont, physical, dropShadowBlurRadius } =
+      shape as Text;
+    return `${metrics?.font}-${bitmapFont?.fontFamily}-${physical}-${dropShadowBlurRadius}`;
   }
 
   private get useBitmapFont() {
@@ -198,7 +199,7 @@ export class SDFText extends Drawcall {
   }
 
   createMaterial(defines: string, uniformBuffer: Buffer): void {
-    const { content, dropShadowBlurRadius } = this.shapes[0] as Text;
+    const { content, dropShadowBlurRadius, physical } = this.shapes[0] as Text;
 
     let glyphAtlasTexture: Texture;
     if (this.useBitmapFont) {
@@ -230,7 +231,7 @@ export class SDFText extends Drawcall {
 
     this.device.setResourceName(glyphAtlasTexture, 'SDFText Texture');
 
-    this.createProgram(vert, frag, defines);
+    this.createProgram(vert, physical ? physical_frag : frag, defines);
 
     if (!this.#uniformBuffer) {
       this.#uniformBuffer = this.device.createBuffer({
