@@ -19,7 +19,7 @@ publish: false
 
 ### CRDT 的两种类型 {#two-types-of-crdts}
 
-CRDT 有两种类型：Op-based 和 State-based。前者的原理是，如果两个用户执行相同的操作序列，则文档的最终状态也应相同。为此，每个用户保存了对数据（操作）执行的所有操作，并将这些操作与其他用户同步，以确保最终状态。而后者需要在节点间传递整个状态。看上去前者需要传递的数据量更少，毕竟只是操作的描述，但这要求前者保证消息的传递顺序。
+CRDT 有两种类型：Op-based 和 State-based。前者的原理是，如果两个用户执行相同的操作序列，则文档的最终状态也应相同。为此，每个用户保存了对数据（操作）执行的所有操作，并将这些操作与其他用户同步，以确保最终状态。而后者需要在节点间传递整个状态。看上去前者需要传递的数据量更少更节省带宽，毕竟只是操作的描述，但这要求前者通过复杂实现保证幂等的操作和处理操作的顺序问题，相对来说后者的实现会更简单。
 
 现在让我们通过下面这个系列教程来了解 State-based CRDT：
 
@@ -27,7 +27,7 @@ CRDT 有两种类型：Op-based 和 State-based。前者的原理是，如果两
 -   [Building a Collaborative Pixel Art Editor with CRDTs]
 -   [Making CRDTs 98% More Efficient]
 
-教程给出了一个 CRDT 的通用数据结构，它包括一个必须满足结合律、交换律和幂等性的合并函数：
+教程给出了一个 CRDT 的通用数据结构，它包括一个必须满足结合律、交换律和幂等性的合并函数。这个合并函数可以是一个 Last Write Wins Register，每次对比自身和输入数据的时间戳，如果输入数据的时间戳更大，则更新自身数据：
 
 ```ts
 interface CRDT<T, S> {
@@ -37,14 +37,21 @@ interface CRDT<T, S> {
 }
 ```
 
-### Local first {#local-first}
+### Local-first 软件 {#local-first-software}
 
-最后 Local first 这种软件开发和数据管理的理念也可以基于 CRDT 实现。
+[Local-first software - You own your data, in spite of the cloud]
 
--   [The past, present, and future of local-first]
+> In this article we propose “local-first software”: a set of principles for software that enables both collaboration and ownership for users. Local-first ideals include the ability to work offline and collaborate across multiple devices, while also improving the security, privacy, long-term preservation, and user control of data.
+
+下图来自 [The past, present, and future of local-first]，可以看出 Local first 这种软件开发和数据管理的理念也可以基于 CRDT 实现。
+
+![History of local-first](/local-first-history.png)
+
 -   [TipTap offline support]
 
-## Y.js
+### CRDT 的实现 {#implementation-of-crdts}
+
+现在来看 CRDT 的实现
 
 <https://tiptap.dev/docs/collaboration/getting-started/overview#about-yjs>
 
@@ -53,6 +60,8 @@ interface CRDT<T, S> {
 ## 数据结构设计
 
 参考 [dgmjs-plugin-yjs]
+
+[Designing Data Structures for Collaborative Apps]
 
 ## 历史记录 {#history}
 
@@ -97,3 +106,4 @@ interface CRDT<T, S> {
 [Making CRDTs 98% More Efficient]: https://jakelazaroff.com/words/making-crdts-98-percent-more-efficient/
 [Learn Yjs]: https://learn.yjs.dev/
 [dgmjs-plugin-yjs]: https://github.com/dgmjs/dgmjs/tree/main/packages/dgmjs-plugin-yjs
+[Designing Data Structures for Collaborative Apps]: https://mattweidner.com/2022/02/10/collaborative-data-design.html

@@ -175,7 +175,7 @@ type PolylineAttributeName = (typeof polylineAttributes)[number];
 type PathAttributeName = (typeof pathAttributes)[number];
 type TextAttributeName = (typeof textAttributes)[number];
 
-interface SerializedNode {
+export interface SerializedNode {
   uid: number;
   type:
     | 'g'
