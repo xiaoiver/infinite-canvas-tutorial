@@ -39,9 +39,14 @@ shapeNames.set(RoughPath, 'RoughPath');
 @customElement('ic-property-drawer')
 export class PropertyDrawer extends LitElement {
   static styles = css`
+    .drawer-contained {
+      color: var(--sl-color-neutral-600);
+    }
+
     .group {
       display: flex;
       gap: 8px;
+      color: var(--sl-color-neutral-600);
     }
 
     .group-item {
@@ -65,6 +70,7 @@ export class PropertyDrawer extends LitElement {
     sl-range::part(form-control-label) {
       margin-right: 8px;
       font-size: var(--sl-input-label-font-size-small);
+      color: var(--sl-color-neutral-600);
     }
   `;
 
