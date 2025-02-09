@@ -76,7 +76,9 @@ export class Renderer implements Plugin {
       themeColors,
     } = context;
 
-    const updateUniform = (): [Float32Array, Record<string, unknown>] => {
+    const updateUniform = (
+      shouldRenderGrid: boolean,
+    ): [Float32Array, Record<string, unknown>] => {
       const backgroundColor = themeColors[this.#theme].background;
       const gridColor = themeColors[this.#theme].grid;
 
@@ -89,7 +91,7 @@ export class Renderer implements Plugin {
       const u_BackgroundColor = [br / 255, bg / 255, bb / 255, bo];
       const u_GridColor = [gr / 255, gg / 255, gb / 255, go];
       const u_ZoomScale = camera.zoom;
-      const u_CheckboardStyle = this.#checkboardStyle;
+      const u_CheckboardStyle = shouldRenderGrid ? this.#checkboardStyle : 0;
       const u_Viewport = [canvas.width, canvas.height];
 
       const buffer = new Float32Array([
@@ -162,7 +164,7 @@ export class Renderer implements Plugin {
         }),
       );
 
-      const [buffer, legacyObject] = updateUniform();
+      const [buffer, legacyObject] = updateUniform(true);
       this.#uniformBuffer = this.#device.createBuffer({
         viewOrSize: buffer,
         usage: BufferUsage.UNIFORM,
@@ -215,7 +217,11 @@ export class Renderer implements Plugin {
       const { width, height } = this.#swapChain.getCanvas();
       const onscreenTexture = this.#swapChain.getOnscreenTexture();
 
-      const [buffer, legacyObject] = updateUniform();
+      const shouldRenderGrid =
+        !this.#enableCapture ||
+        (this.#enableCapture && this.#captureOptions?.grid);
+
+      const [buffer, legacyObject] = updateUniform(shouldRenderGrid);
       this.#uniformBuffer.setSubData(0, new Uint8Array(buffer.buffer));
       this.#uniformLegacyObject = legacyObject;
 
@@ -231,17 +237,12 @@ export class Renderer implements Plugin {
 
       this.#renderPass.setViewport(0, 0, width, height);
 
-      if (
-        !this.#enableCapture ||
-        (this.#enableCapture && this.#captureOptions?.grid)
-      ) {
-        this.#grid.render(
-          this.#device,
-          this.#renderPass,
-          this.#uniformBuffer,
-          this.#uniformLegacyObject,
-        );
-      }
+      this.#grid.render(
+        this.#device,
+        this.#renderPass,
+        this.#uniformBuffer,
+        this.#uniformLegacyObject,
+      );
 
       this.#batchManager.clear();
       this.#zIndexCounter = 1;
@@ -302,8 +303,7 @@ export class Renderer implements Plugin {
     this.#theme = theme;
   }
 
-  async toDataURL(options: Partial<DataURLOptions>) {
-    // trigger re-render
+  async toDataURL(options: Partial<DataURLOptions>, callback: () => void) {
     this.#enableCapture = true;
     this.#captureOptions = options;
     this.#capturePromise = new Promise((resolve) => {
@@ -311,6 +311,10 @@ export class Renderer implements Plugin {
         resolve(dataURL);
       };
     });
+
+    // trigger re-render here
+    callback();
+
     return this.#capturePromise;
   }
 }

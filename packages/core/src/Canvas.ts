@@ -332,7 +332,17 @@ export class Canvas {
   }
 
   async toDataURL(options: Partial<DataURLOptions> = {}) {
-    return this.#rendererPlugin.toDataURL(options);
+    const dataURL = await this.#rendererPlugin.toDataURL(options, () => {
+      this.#renderDirtyFlag = true;
+      this.render();
+    });
+
+    if (!options.grid) {
+      this.#renderDirtyFlag = true;
+      this.render();
+    }
+
+    return dataURL;
   }
 
   appendChild(shape: Shape) {
