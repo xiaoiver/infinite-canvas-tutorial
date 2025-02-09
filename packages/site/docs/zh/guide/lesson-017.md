@@ -57,15 +57,27 @@ interface CRDT<T, S> {
 
 > As a CRDT, Y.js ensures that the sequence of changes does not impact the final state of the document, similar to how Git operates with commits. This guarantees that all copies of the data remain consistent across different environments.
 
+## 历史记录 {#history}
+
+参考 [Excalidraw HistoryEntry]，我们增加一个 History 类，用于管理撤销和重做。
+
+```ts
+export class History {
+    #undoStack: HistoryStack = [];
+    #redoStack: HistoryStack = [];
+
+    clear() {
+        this.#undoStack.length = 0;
+        this.#redoStack.length = 0;
+    }
+}
+```
+
 ## 数据结构设计
 
 参考 [dgmjs-plugin-yjs]
 
 [Designing Data Structures for Collaborative Apps]
-
-## 历史记录 {#history}
-
-[Excalidraw HistoryEntry]
 
 提到协同算法
 

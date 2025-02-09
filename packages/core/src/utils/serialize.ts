@@ -31,6 +31,7 @@ import { IRough } from '../shapes/mixins/Rough';
 import { Drawable } from 'roughjs/bin/core';
 import { opSet2Absolute } from './rough';
 import { fontStringFromTextStyle } from './font';
+import { randomInteger } from './math';
 
 type SerializedTransform = {
   matrix: {
@@ -177,6 +178,10 @@ type TextAttributeName = (typeof textAttributes)[number];
 
 export interface SerializedNode {
   uid: number;
+  version?: number;
+  versionNonce?: number;
+  updated?: number;
+  isDeleted?: boolean;
   type:
     | 'g'
     | 'circle'
@@ -1114,3 +1119,41 @@ function sortByZIndex(a: SerializedNode, b: SerializedNode) {
   const zIndex2 = b.attributes.zIndex ?? 0;
   return zIndex1 - zIndex2;
 }
+
+export function deepClone(node: SerializedNode) {
+  return JSON.parse(JSON.stringify(node));
+}
+
+export const newElementWith = <TElement extends SerializedNode>(
+  element: TElement,
+  updates: Partial<TElement>,
+  /** pass `true` to always regenerate */
+  force = false,
+): TElement => {
+  let didChange = false;
+  for (const key in updates) {
+    const value = (updates as any)[key];
+    if (typeof value !== 'undefined') {
+      if (
+        (element as any)[key] === value &&
+        // if object, always update because its attrs could have changed
+        (typeof value !== 'object' || value === null)
+      ) {
+        continue;
+      }
+      didChange = true;
+    }
+  }
+
+  if (!didChange && !force) {
+    return element;
+  }
+
+  return {
+    ...element,
+    ...updates,
+    updated: Date.now(),
+    version: element.version + 1,
+    versionNonce: randomInteger(),
+  };
+};

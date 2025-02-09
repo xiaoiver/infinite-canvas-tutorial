@@ -32,6 +32,29 @@ export interface Shape
   uid: number;
 
   /**
+   * Integer that is sequentially incremented on each change.
+   * Used to reconcile elements during collaboration or when saving to server.
+   * @see https://github.com/excalidraw/excalidraw/blob/9e49c9254b4740613917cdcff5651d3e2b0c9d7e/packages/excalidraw/element/types.ts#L56C3-L62C24
+   *
+   * Get updated when mutated.
+   * @see https://github.com/excalidraw/excalidraw/blob/9e49c9254b4740613917cdcff5651d3e2b0c9d7e/packages/excalidraw/element/mutateElement.ts#L139-L140
+   */
+  version: number;
+
+  /**
+   * Random integer that is regenerated on each change.
+   * Used for deterministic reconciliation of updates during collaboration,
+   * in case the versions (see above) are identical. */
+  versionNonce: number;
+
+  /**
+   * The timestamp of the last update.
+   */
+  updated: number;
+
+  isDeleted: boolean;
+
+  /**
    * The read-only property returns the parent of the specified node in scenegraph.
    * @see https://developer.mozilla.org/en-US/docs/Web/API/Node/parentNode
    */

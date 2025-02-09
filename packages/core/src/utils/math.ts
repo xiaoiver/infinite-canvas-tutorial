@@ -1,3 +1,4 @@
+import { Random } from 'roughjs/bin/math';
 import { vec2 } from 'gl-matrix';
 
 export function pointToLine(
@@ -27,3 +28,6 @@ export function bisect(norm: vec2, norm2: vec2, dy: number) {
   vec2.scale(bisect, bisect, 1 / vec2.dot(norm, bisect));
   return vec2.scale(bisect, bisect, dy);
 }
+
+const random = new Random(Date.now());
+export const randomInteger = () => Math.floor(random.next() * 2 ** 31);

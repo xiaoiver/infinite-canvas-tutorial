@@ -85,6 +85,16 @@ export interface CanvasConfig {
   };
 }
 
+export interface AppState {
+  mode: CanvasMode;
+  zoom: number;
+}
+
+export const getDefaultAppState = (): AppState => ({
+  mode: CanvasMode.HAND,
+  zoom: 1,
+});
+
 export class Canvas {
   #instancePromise: Promise<this>;
 

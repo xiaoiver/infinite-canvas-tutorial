@@ -4,6 +4,7 @@ export * from './shapes';
 export { Rectangle } from '@pixi/math';
 export * from './ImageExporter';
 export * from './environment';
+export * from './history';
 export { CheckboardStyle, Theme } from './plugins';
 export {
   serializeNode,
@@ -13,4 +14,5 @@ export {
   fromSVGElement,
   parseTransform,
   loadBitmapFont,
+  deepClone,
 } from './utils';

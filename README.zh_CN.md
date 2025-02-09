@@ -196,10 +196,16 @@ pnpm run dev
 -   使用贝塞尔曲线渲染文本，使用 OpenType 和 Harfbuzz 进行字形处理
 -   渲染 TeX 公式
 -   文本装饰和阴影
+-   带有晕染效果的文本渲染
 -   使用 Web Font Loader 加载 Web 字体
 
 <img src="./screenshots/lesson16.png" width="300" alt="Lesson 16 - text">
 <img src="./screenshots/lesson16-2.png" width="300" alt="Lesson 16 - physical text">
+
+## 课程 17 - 历史记录与协同 [🔗](https://infinitecanvas.cc/zh/guide/lesson-017)
+
+-   实现简单的历史记录功能，包含撤销和重做
+-   通过 CRDT 实现协同
 
 [infinitecanvas]: https://infinitecanvas.tools/
 [Figma]: https://madebyevan.com/figma/building-a-professional-design-tool-on-the-web/

@@ -6,6 +6,7 @@ import {
   parseTransform,
   Text,
   fromSVGElement,
+  deepClone,
 } from '../../packages/core/src';
 import { JSDOM } from 'jsdom';
 
@@ -487,5 +488,17 @@ describe('Serialize', () => {
       ],
       uid: 2,
     });
+  });
+
+  it('should clone node correctly.', () => {
+    const circle = new Circle({
+      cx: 50,
+      cy: 50,
+      r: 50,
+      fill: '#F67676',
+    });
+    let serialized = serializeNode(circle);
+    const cloned = deepClone(serialized);
+    expect(cloned).toEqual(serialized);
   });
 });

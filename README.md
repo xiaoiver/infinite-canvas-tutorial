@@ -196,10 +196,16 @@ pnpm run dev
 -   Using Bezier curves to render text, shaping with OpenType and Harfbuzz
 -   Render TeX math
 -   Text decoration and dropshadow
+-   Physical text rendering
 -   Load web font with web font loader
 
 <img src="./screenshots/lesson16.png" width="300" alt="Lesson 16 - text">
 <img src="./screenshots/lesson16-2.png" width="300" alt="Lesson 16 - physical text">
+
+## Lesson 17 - History and Collaboration [🔗](https://infinitecanvas.cc/guide/lesson-017)
+
+-   Implement a simple history system, including undo and redo
+-   Implement collaboration through CRDT
 
 [infinitecanvas]: https://infinitecanvas.tools/
 [Figma]: https://madebyevan.com/figma/building-a-professional-design-tool-on-the-web/
