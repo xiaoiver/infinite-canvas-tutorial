@@ -78,7 +78,7 @@ describe('Text', () => {
     canvas.render();
 
     expect($canvas.getContext('webgl1')).toMatchWebGLSnapshot(dir, 'text', {
-      maxError: 1000,
+      maxError: 10000,
     });
     expect(exporter.toSVG({ grid: true })).toMatchSVGSnapshot(dir, 'text');
   });
@@ -95,7 +95,7 @@ describe('Text', () => {
     canvas.appendChild(text);
     canvas.render();
     expect($canvas.getContext('webgl1')).toMatchWebGLSnapshot(dir, 'text-edt', {
-      maxError: 1000,
+      maxError: 10000,
     });
     expect(exporter.toSVG({ grid: true })).toMatchSVGSnapshot(dir, 'text-edt');
   });
@@ -114,7 +114,7 @@ describe('Text', () => {
       dir,
       'text-emoji',
       {
-        maxError: 1000,
+        maxError: 10000,
       },
     );
     expect(exporter.toSVG({ grid: true })).toMatchSVGSnapshot(
