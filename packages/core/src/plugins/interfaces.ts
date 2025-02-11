@@ -6,6 +6,7 @@ import { AsyncParallelHook, SyncHook, SyncWaterfallHook } from '../utils';
 import type { InteractivePointerEvent } from './DOMEventListener';
 import { CanvasConfig, CanvasMode } from '../Canvas';
 import { Cursor, CustomEvent } from '../events';
+import { Theme } from './Renderer';
 
 export interface Hooks {
   /**
@@ -93,6 +94,7 @@ export interface PluginContext extends CanvasConfig {
     viewport2Canvas({ x, y }: IPointData): IPointData;
     canvas2Viewport({ x, y }: IPointData): IPointData;
     getCanvasMode(): CanvasMode;
+    getTheme(): Theme;
     createCustomEvent(eventName: string, object?: object): CustomEvent;
   };
 }

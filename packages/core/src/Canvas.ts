@@ -16,6 +16,8 @@ import {
   findZoomFloor,
   Selector,
   Theme,
+  SelectorPluginOptions,
+  DragndropPluginOptions,
 } from './plugins';
 import {
   Group,
@@ -41,9 +43,38 @@ export enum CanvasMode {
   DRAW_RECT = 'draw-rect',
 }
 
+interface ThemeColors {
+  /**
+   * Background color of page.
+   */
+  background: string;
+  /**
+   * Color of grid.
+   */
+  grid: string;
+  /**
+   * Fill color of the selection brush.
+   */
+  selectionBrushFill: string;
+  /**
+   * Stroke color of the selection brush.
+   */
+  selectionBrushStroke: string;
+}
+
 export interface CanvasConfig {
+  /**
+   * The canvas element. Pass in HTMLCanvasElement in the browser environment, OffscreenCanvas in the WebWorker environment,
+   * and node-canvas in the Node.js environment.
+   */
   canvas: HTMLCanvasElement | OffscreenCanvas;
+  /**
+   * Set the renderer, optional values are webgl and webgpu, default value is webgl.
+   */
   renderer?: 'webgl' | 'webgpu';
+  /**
+   * Set the WebGPU shader compiler path.
+   */
   shaderCompilerPath?: string;
   /**
    * Returns the ratio of the resolution in physical pixels to the resolution
@@ -67,22 +98,14 @@ export interface CanvasConfig {
    * Theme colors.
    * @see https://github.com/dgmjs/dgmjs/blob/main/packages/core/src/colors.ts#L130
    */
-  themeColors?: {
-    [Theme.LIGHT]: {
-      /**
-       * Background color of page.
-       */
-      background: string;
-      /**
-       * Color of grid.
-       */
-      grid: string;
-    };
-    [Theme.DARK]: {
-      background: string;
-      grid: string;
-    };
-  };
+  themeColors?: Partial<{
+    [Theme.LIGHT]: Partial<ThemeColors>;
+    [Theme.DARK]: Partial<ThemeColors>;
+  }>;
+  plugins?: Partial<{
+    selector: Partial<SelectorPluginOptions>;
+    dragndrop: Partial<DragndropPluginOptions>;
+  }>;
 }
 
 export interface AppState {
@@ -136,12 +159,17 @@ export class Canvas {
         [Theme.LIGHT]: {
           background: '#fbfbfb',
           grid: '#dedede',
+          selectionBrushFill: '#dedede',
+          selectionBrushStroke: '#dedede',
         },
         [Theme.DARK]: {
           background: '#121212',
           grid: '#242424',
+          selectionBrushFill: '#242424',
+          selectionBrushStroke: '#242424',
         },
       },
+      plugins: pluginsOptions,
     } = config;
     const globalThis = getGlobalThis();
     const dpr = (devicePixelRatio ?? globalThis.devicePixelRatio) || 1;
@@ -200,6 +228,7 @@ export class Canvas {
         canvas2Viewport: camera.canvas2Viewport.bind(camera),
         createCustomEvent: this.createCustomEvent.bind(this),
         getCanvasMode: () => this.#mode,
+        getTheme: () => this.theme,
         setCursor: (cursor: Cursor) => {
           DOMAdapter.get().setCursor(this, cursor);
         },
@@ -208,7 +237,13 @@ export class Canvas {
 
     this.#rendererPlugin = new Renderer();
     this.#eventPlugin = new Event();
-    this.#selectorPlugin = new Selector();
+    this.#selectorPlugin = new Selector({
+      selectionBrushSortMode: 'directional',
+      selectionBrushStyle: {
+        strokeWidth: 1,
+      },
+      ...pluginsOptions?.selector,
+    });
 
     this.theme = theme;
     this.checkboardStyle = checkboardStyle;
@@ -223,8 +258,10 @@ export class Canvas {
       new Culling(),
       this.#rendererPlugin,
       new Dragndrop({
+        overlap: 'pointer',
         dragstartTimeThreshold: 100,
         dragstartDistanceThreshold: 10,
+        ...pluginsOptions?.dragndrop,
       }),
     ];
 

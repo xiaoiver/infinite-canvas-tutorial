@@ -237,6 +237,10 @@ export const en = defineConfig({
                 text: 'Web Animations API',
                 link: 'web-animations-api',
               },
+              {
+                text: 'Select canvas mode',
+                link: 'canvas-mode-select',
+              },
             ],
           },
         ],

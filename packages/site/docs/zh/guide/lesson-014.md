@@ -3,13 +3,17 @@ outline: deep
 publish: false
 ---
 
+<script setup>
+import SelectCanvasMode from '../../components/SelectCanvasMode.vue';
+</script>
+
 # 课程 14 - 画布模式与辅助 UI
 
 之前我们使用 Web Components 实现了一些包括相机缩放、图片下载在内的 [画布 UI 组件]。在本节课中我们将通过组件把更多画布能力暴露出来，另外还将实现一些新的绘图属性：
 
 -   实现 `zIndex` 和 `sizeAttenuation` 绘图属性
 -   在手型模式下移动、旋转、缩放画布
--   在选择模式下单选、拖拽移动图形，并展示图形属性面板
+-   在选择模式下单选、框选、拖拽移动图形，并展示图形属性面板
 
 在实现画布模式之前，我们需要做一些准备工作，支持 `zIndex` 和 `sizeAttenuation` 这两个绘图属性。
 
@@ -445,56 +449,9 @@ const handleClick = (e: FederatedPointerEvent) => {
 root.addEventListener('click', handleClick);
 ```
 
-```js eval code=false
-$icCanvas = call(() => {
-    return document.createElement('ic-canvas');
-});
-```
+<SelectCanvasMode />
 
-```js eval code=false inspector=false
-call(() => {
-    const { Canvas, CanvasMode, RoughEllipse } = Core;
-
-    const stats = new Stats();
-    stats.showPanel(0);
-    const $stats = stats.dom;
-    $stats.style.position = 'absolute';
-    $stats.style.left = '0px';
-    $stats.style.top = '0px';
-
-    // $icCanvas.setAttribute('zoom', '200');
-    $icCanvas.setAttribute('mode', CanvasMode.SELECT);
-    $icCanvas.style.width = '100%';
-    $icCanvas.style.height = '200px';
-
-    $icCanvas.parentElement.style.position = 'relative';
-    $icCanvas.parentElement.appendChild($stats);
-
-    $icCanvas.addEventListener('ic-ready', (e) => {
-        const canvas = e.detail;
-
-        const ellipse = new RoughEllipse({
-            cx: 200,
-            cy: 100,
-            rx: 50,
-            ry: 50,
-            fill: 'black',
-            strokeWidth: 2,
-            stroke: 'red',
-            fillStyle: 'zigzag',
-        });
-        canvas.appendChild(ellipse);
-
-        // setTimeout(() => {
-        canvas.selectShape(ellipse);
-        // }, 1000);
-    });
-
-    $icCanvas.addEventListener('ic-frame', (e) => {
-        stats.update();
-    });
-});
-```
+### 框选图形 {#selection-brush}
 
 ### 拖拽移动图形 {#dragndrop-move}
 

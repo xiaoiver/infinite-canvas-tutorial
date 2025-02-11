@@ -33,6 +33,10 @@ export interface CanvasConfig {
     };
     checkboardStyle?: CheckboardStyle;
     mode?: CanvasMode;
+    plugins?: Partial<{
+        selector: Partial<SelectorPluginOptions>;
+        dragndrop: Partial<DragndropPluginOptions>;
+    }>;
 }
 ```
 
@@ -80,6 +84,25 @@ export interface CanvasConfig {
 ### mode
 
 指定画布模式，可选值为 `CanvasMode.HAND` 和 `CanvasMode.SELECT`，默认值为 `CanvasMode.HAND`。
+
+### plugins
+
+内置插件的配置。
+
+#### dragndrop
+
+-   `overlap` 如何判定拖拽元素是否在目标元素上，取值包括：
+    -   `pointer` – 拖拽元素的指针必须位于目标元素上 (默认)
+    -   `center` – 拖拽元素的中心必须位于目标元素上
+-   `dragstartTimeThreshold` 触发 `dragstart` 事件的阈值，单位为毫秒。
+-   `dragstartDistanceThreshold` 触发 `dragstart` 事件的阈值，单位为像素。
+
+#### selector
+
+-   `selectionBrushSortMode` 框选元素的排序方式，取值包括：
+    -   `directional` – 按照框选方向排序
+    -   `behavior` – 按照框选行为排序
+-   `selectionBrushStyle` 框选元素的样式，由于使用 [Path] 绘制，因此支持所有 [Path] 的样式，除了 [d]。
 
 ## render
 
@@ -246,3 +269,5 @@ export interface DataURLOptions {
 [HTMLCanvasElement.toDataURL]: https://developer.mozilla.org/en-US/docs/Web/API/HTMLCanvasElement/toDataURL
 [Document.elementsFromPoint]: https://developer.mozilla.org/zh-CN/docs/Web/API/Document/elementsFromPoint
 [Document.elementFromPoint]: https://developer.mozilla.org/zh-CN/docs/Web/API/Document/elementFromPoint
+[Path]: /zh/reference/path
+[d]: /zh/reference/path#d

@@ -79,6 +79,25 @@ Set the grid style, optional values are `CheckboardStyle.NONE`、`CheckboardStyl
 
 Set the canvas mode, optional values are `CanvasMode.HAND` and `CanvasMode.SELECT`, default value is `CanvasMode.HAND`.
 
+### plugins
+
+内置插件的配置。
+
+#### dragndrop
+
+-   `overlap` How drops are checked for.
+    -   `pointer` – the pointer must be over the dropzone (default)
+    -   `center` – the draggable element’s center must be over the dropzone
+-   `dragstartTimeThreshold` `number` Threshold for triggering `dragstart` event in milliseconds.
+-   `dragstartDistanceThreshold` `number` Threshold for triggering `dragstart` event in pixels.
+
+#### selector
+
+-   `selectionBrushSortMode` How to sort selected shapes.
+    -   `directional` – Sort by direction
+    -   `behavior` – Sort by behavior
+-   `selectionBrushStyle` Style of the selection brush. Any style except [d] that can be applied to a [Path].
+
 ## render
 
 Creates an animation loop for rendering the canvas.
@@ -244,3 +263,5 @@ export interface DataURLOptions {
 [HTMLCanvasElement.toDataURL]: https://developer.mozilla.org/en-US/docs/Web/API/HTMLCanvasElement/toDataURL
 [Document.elementsFromPoint]: https://developer.mozilla.org/zh-CN/docs/Web/API/Document/elementsFromPoint
 [Document.elementFromPoint]: https://developer.mozilla.org/zh-CN/docs/Web/API/Document/elementFromPoint
+[Path]: /reference/path
+[d]: /reference/path#d

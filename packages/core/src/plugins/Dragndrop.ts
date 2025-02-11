@@ -37,13 +37,8 @@ export interface DragndropPluginOptions {
 export class Dragndrop implements Plugin {
   #options: DragndropPluginOptions;
 
-  constructor(options: Partial<DragndropPluginOptions> = {}) {
-    this.#options = {
-      overlap: 'pointer',
-      dragstartTimeThreshold: 0,
-      dragstartDistanceThreshold: 0,
-      ...options,
-    };
+  constructor(options: DragndropPluginOptions) {
+    this.#options = options;
   }
 
   apply(context: PluginContext) {

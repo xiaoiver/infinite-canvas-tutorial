@@ -207,6 +207,10 @@ export const zh = defineConfig({
                 text: 'Web Animations API',
                 link: 'web-animations-api',
               },
+              {
+                text: '选择画布模式',
+                link: 'canvas-mode-select',
+              },
             ],
           },
         ],

@@ -2,7 +2,7 @@ const uidCache: Record<string, number> = {
   default: -1,
 };
 
-type UIDNames = 'default';
+type UIDNames = 'default' | 'pen';
 
 export function uid(name: UIDNames = 'default'): number {
   if (uidCache[name] === undefined) {

@@ -9,16 +9,43 @@ import {
   Shape,
 } from '../shapes';
 import {
+  getBBoxFromState,
+  PenEvent,
+  PenState,
+} from '../shapes/pen/AbstractPen';
+import { RectPen, RectPenStyle } from '../shapes/pen/RectPen';
+import {
   AbstractSelectable,
   SelectableEvent,
   SelectableRect,
 } from '../shapes/selectable';
 import { Plugin, PluginContext } from './interfaces';
 
+export interface SelectorPluginOptions {
+  /**
+   * How to sort selected shapes.
+   * - `directional` – Sort by direction
+   * - `behavior` – Sort by behavior
+   */
+  selectionBrushSortMode: 'directional' | 'behavior';
+
+  /**
+   * Style of the selection brush. Any style except `d` that can be applied to a Path.
+   */
+  selectionBrushStyle: RectPenStyle;
+}
+
 export class Selector implements Plugin {
+  #options: SelectorPluginOptions;
+
   #selected: Shape[] = [];
   #selectableMap: Record<string, AbstractSelectable> = {};
   #context: PluginContext;
+
+  /**
+   * Brush for multi-selection.
+   */
+  #selectionBrush: RectPen;
 
   /**
    * the topmost operation layer, which will be appended to documentElement directly
@@ -27,30 +54,56 @@ export class Selector implements Plugin {
     zIndex: Number.MAX_SAFE_INTEGER,
   });
 
+  #shapeSelected = false;
+
   movingEvent: CustomEvent;
   movedEvent: CustomEvent;
   resizingEvent: CustomEvent;
   resizedEvent: CustomEvent;
 
+  constructor(options: SelectorPluginOptions) {
+    this.#options = options;
+  }
+
   apply(context: PluginContext) {
     const {
       root,
-      api: { getCanvasMode, createCustomEvent },
+      api: { createCustomEvent, getCanvasMode },
     } = context;
 
-    this.#context = context;
+    function inSelectCanvasMode(fn: (e: FederatedPointerEvent) => void) {
+      return (e: FederatedPointerEvent) => {
+        const mode = getCanvasMode();
+        if (mode !== CanvasMode.SELECT) {
+          return;
+        }
+        fn(e);
+      };
+    }
 
+    this.#context = context;
+    this.#selectionBrush = new RectPen(
+      context.api,
+      this.#activeSelectableLayer,
+    );
     this.movingEvent = createCustomEvent(SelectableEvent.MOVING);
     this.movedEvent = createCustomEvent(SelectableEvent.MOVED);
     this.resizingEvent = createCustomEvent(SelectableEvent.RESIZING);
     this.resizedEvent = createCustomEvent(SelectableEvent.RESIZED);
+    root.appendChild(this.#activeSelectableLayer);
 
-    const handleClick = (e: FederatedPointerEvent) => {
-      const mode = getCanvasMode();
-      if (mode !== CanvasMode.SELECT) {
-        return;
-      }
+    this.bindSelectableEvents(inSelectCanvasMode);
+    this.bindSelectionBrush(inSelectCanvasMode);
+  }
 
+  private bindSelectableEvents(
+    inSelectCanvasMode: (
+      fn: (e: FederatedPointerEvent) => void,
+    ) => (e: FederatedPointerEvent) => void,
+  ) {
+    const { root } = this.#context;
+
+    const handleClick = inSelectCanvasMode((e: FederatedPointerEvent) => {
       const selected = e.target as Shape;
 
       if (selected === root) {
@@ -76,7 +129,7 @@ export class Selector implements Plugin {
         //   }
         // }
       }
-    };
+    });
 
     const handleMovingTarget = (e: CustomEvent) => {
       const target = e.target as Shape;
@@ -144,13 +197,220 @@ export class Selector implements Plugin {
       }
     };
 
-    root.addEventListener('click', handleClick);
+    root.addEventListener('pointerdown', handleClick);
     root.addEventListener(SelectableEvent.MOVING, handleMovingTarget);
     root.addEventListener(SelectableEvent.MOVED, handleMovedTarget);
     root.addEventListener(SelectableEvent.RESIZING, handleResizingTarget);
     root.addEventListener(SelectableEvent.RESIZED, handleResizedTarget);
+  }
 
-    root.appendChild(this.#activeSelectableLayer);
+  private bindSelectionBrush(
+    inSelectCanvasMode: (
+      fn: (e: FederatedPointerEvent) => void,
+    ) => (e: FederatedPointerEvent) => void,
+  ) {
+    const { root, api, themeColors } = this.#context;
+    const { selectionBrushSortMode, selectionBrushStyle } = this.#options;
+    let selectedStack: Shape[][] = [];
+
+    const regionQuery = (region: {
+      minX: number;
+      minY: number;
+      maxX: number;
+      maxY: number;
+    }) => {
+      return api
+        .elementsFromBBox(region.minX, region.minY, region.maxX, region.maxY)
+        .filter((intersection) => {
+          if (!intersection.selectable) {
+            return false;
+          }
+          const { minX, minY, maxX, maxY } = intersection.getBounds();
+          const isTotallyContains =
+            region.minX < minX &&
+            region.minY < minY &&
+            region.maxX > maxX &&
+            region.maxY > maxY;
+
+          return isTotallyContains;
+        });
+    };
+
+    const isSameStackItem = (a: Shape[], b: Shape[]) => {
+      if (a.length === 0 && b.length === 0) {
+        return true;
+      }
+
+      if (a.length !== b.length) {
+        return false;
+      }
+
+      return a.every((o, i) => o === b[i]);
+    };
+
+    const sortSelectedStack = (stack: Shape[][]) => {
+      for (let i = 0; i < stack.length; i++) {
+        const prev = stack[i - 1];
+        if (prev) {
+          stack[i].sort((a, b) => {
+            const indexA = prev.indexOf(a);
+            const indexB = prev.indexOf(b);
+            return (
+              (indexA === -1 ? Infinity : indexA) -
+              (indexB === -1 ? Infinity : indexB)
+            );
+          });
+        }
+      }
+    };
+
+    const handleMouseDown = inSelectCanvasMode((e: FederatedPointerEvent) => {
+      if (e.button === 0) {
+        this.#selectionBrush?.onMouseDown(e);
+      }
+    });
+    const handleMouseMove = inSelectCanvasMode((e: FederatedPointerEvent) => {
+      this.#selectionBrush?.onMouseMove(e);
+    });
+    const handleMouseUp = inSelectCanvasMode((e: FederatedPointerEvent) => {
+      if (e.button === 0) {
+        this.#selectionBrush?.onMouseUp(e);
+      }
+    });
+
+    root.addEventListener('pointerdown', handleMouseDown);
+    root.addEventListener('pointermove', handleMouseMove);
+    root.addEventListener('pointerup', handleMouseUp);
+
+    const onStart = (state: PenState) => {
+      selectedStack = [];
+      const { selectionBrushFill, selectionBrushStroke } =
+        themeColors[api.getTheme()];
+      this.#selectionBrush.render(state, {
+        ...selectionBrushStyle,
+        fill: selectionBrushFill,
+        stroke: selectionBrushStroke,
+        fillOpacity: 0.5,
+      });
+    };
+
+    const onMove = (state: PenState) => {
+      const { selectionBrushFill, selectionBrushStroke } =
+        themeColors[api.getTheme()];
+      this.#selectionBrush.render(state, {
+        ...selectionBrushStyle,
+        fill: selectionBrushFill,
+        stroke: selectionBrushStroke,
+        fillOpacity: 0.5,
+      });
+    };
+
+    const onModify = (state: PenState) => {
+      if (selectionBrushSortMode === 'behavior') {
+        const region = getBBoxFromState(state);
+        const selected = regionQuery(region);
+        const last = selectedStack[selectedStack.length - 1];
+        if (!last || !isSameStackItem(selected, last)) {
+          selectedStack.push(selected);
+        }
+      }
+      const { selectionBrushFill, selectionBrushStroke } =
+        themeColors[api.getTheme()];
+      this.#selectionBrush.render(state, {
+        ...selectionBrushStyle,
+        fill: selectionBrushFill,
+        stroke: selectionBrushStroke,
+        fillOpacity: 0.5,
+      });
+    };
+
+    const onComplete = (state: PenState) => {
+      this.#selectionBrush.hide();
+
+      if (selectionBrushSortMode === 'behavior') {
+        sortSelectedStack(selectedStack);
+        selectedStack[selectedStack.length - 1].forEach((selected) => {
+          this.selectShape(selected);
+        });
+      } else if (selectionBrushSortMode === 'directional') {
+        const region = getBBoxFromState(state);
+
+        const { start, end } = this.#selectionBrush;
+
+        // Direction of region, horizontal or vertical?
+        const direction =
+          region.maxX - region.minX > region.maxY - region.minY ? 'h' : 'v';
+        let sortDirection: 'lr' | 'rl' | 'tb' | 'bt';
+        if (start.canvas.x < end.canvas.x && start.canvas.y < end.canvas.y) {
+          if (direction === 'h') {
+            sortDirection = 'lr';
+          } else {
+            sortDirection = 'tb';
+          }
+        } else if (
+          start.canvas.x > end.canvas.x &&
+          start.canvas.y > end.canvas.y
+        ) {
+          if (direction === 'h') {
+            sortDirection = 'rl';
+          } else {
+            sortDirection = 'bt';
+          }
+        } else if (
+          start.canvas.x < end.canvas.x &&
+          start.canvas.y > end.canvas.y
+        ) {
+          if (direction === 'h') {
+            sortDirection = 'lr';
+          } else {
+            sortDirection = 'bt';
+          }
+        } else if (
+          start.canvas.x > end.canvas.x &&
+          start.canvas.y < end.canvas.y
+        ) {
+          if (direction === 'h') {
+            sortDirection = 'rl';
+          } else {
+            sortDirection = 'tb';
+          }
+        }
+
+        regionQuery(region)
+          .sort((a, b) => {
+            const bboxA = a.getBounds();
+            const bboxB = b.getBounds();
+            if (sortDirection === 'lr') {
+              return bboxA.minX - bboxB.minX;
+            }
+            if (sortDirection === 'rl') {
+              return bboxB.maxX - bboxA.maxX;
+            }
+            if (sortDirection === 'tb') {
+              return bboxA.minY - bboxB.minY;
+            }
+            if (sortDirection === 'bt') {
+              return bboxB.maxY - bboxA.maxY;
+            }
+
+            return null;
+          })
+          .filter((item) => item !== null)
+          .forEach((selected) => {
+            this.selectShape(selected);
+          });
+      }
+    };
+
+    const onCancel = () => {
+      this.#selectionBrush.hide();
+    };
+
+    this.#selectionBrush.on(PenEvent.START, onStart);
+    this.#selectionBrush.on(PenEvent.MODIFIED, onModify);
+    this.#selectionBrush.on(PenEvent.MOVE, onMove);
+    this.#selectionBrush.on(PenEvent.COMPLETE, onComplete);
+    this.#selectionBrush.on(PenEvent.CANCEL, onCancel);
   }
 
   get selected() {

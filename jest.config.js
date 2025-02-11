@@ -8,6 +8,7 @@ module.exports = {
     '<rootDir>/__tests__/**/*/*.spec.+(ts|tsx|js)',
     '!**/e2e/*.spec.+(ts|tsx|js)',
     '!**/ui/*.spec.+(ts|tsx|js)',
+    // '**/ssr/selector.spec.+(ts|tsx|js)',
   ],
   preset: 'ts-jest',
   moduleFileExtensions: ['ts', 'tsx', 'js', 'json'],

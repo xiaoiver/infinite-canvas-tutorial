@@ -111,16 +111,20 @@ export class ImageExporter {
     const { grid } = options;
     const { canvas } = this.options;
     const { width, height } = canvas.getDOM();
+    const { grid: gridColor, background: backgroundColor } =
+      canvas.pluginContext.themeColors[canvas.theme];
 
     const $namespace = createSVGElement('svg');
     $namespace.setAttribute('width', `${width}`);
     $namespace.setAttribute('height', `${height}`);
+    // @see https://www.geeksforgeeks.org/how-to-set-the-svg-background-color/
+    $namespace.setAttribute('style', `background-color: ${backgroundColor}`);
 
     if (grid) {
       if (canvas.checkboardStyle === CheckboardStyle.GRID) {
-        this.drawLinesGrid($namespace);
+        this.drawLinesGrid($namespace, gridColor);
       } else if (canvas.checkboardStyle === CheckboardStyle.DOTS) {
-        this.drawDotsGrid($namespace);
+        this.drawDotsGrid($namespace, gridColor);
       }
     }
 
@@ -230,7 +234,7 @@ export class ImageExporter {
     });
   }
 
-  private drawLinesGrid($namespace: SVGElement) {
+  private drawLinesGrid($namespace: SVGElement, gridColor: string) {
     const $defs = createSVGElement('defs');
     $namespace.appendChild($defs);
     const $pattern = createSVGElement('pattern');
@@ -241,7 +245,8 @@ export class ImageExporter {
     const $path = createSVGElement('path');
     $path.setAttribute('d', 'M 10 0 L 0 0 0 10');
     $path.setAttribute('fill', 'none');
-    $path.setAttribute('stroke', 'rgba(221,221,221,1)');
+
+    $path.setAttribute('stroke', gridColor);
     $path.setAttribute('stroke-width', '1');
     $pattern.appendChild($path);
 
@@ -259,7 +264,7 @@ export class ImageExporter {
     const $path2 = createSVGElement('path');
     $path2.setAttribute('d', 'M 100 0 L 0 0 0 100');
     $path2.setAttribute('fill', 'none');
-    $path2.setAttribute('stroke', 'rgba(221,221,221,1)');
+    $path2.setAttribute('stroke', gridColor);
     $path2.setAttribute('stroke-width', '2');
     $pattern2.appendChild($path2);
 
@@ -273,7 +278,7 @@ export class ImageExporter {
     $namespace.appendChild($rect2);
   }
 
-  private drawDotsGrid($namespace: SVGElement) {
+  private drawDotsGrid($namespace: SVGElement, gridColor: string) {
     const $defs = createSVGElement('defs');
     $namespace.appendChild($defs);
     const $circleTL = createSVGElement('circle');
@@ -281,7 +286,7 @@ export class ImageExporter {
     $circleTL.setAttribute('cx', '0');
     $circleTL.setAttribute('cy', '0');
     $circleTL.setAttribute('r', '2');
-    $circleTL.setAttribute('fill', 'rgba(221,221,221,1)');
+    $circleTL.setAttribute('fill', gridColor);
 
     const $circleTR = $circleTL.cloneNode() as SVGCircleElement;
     const $circleBL = $circleTL.cloneNode() as SVGCircleElement;

@@ -1,4 +1,9 @@
-<svg width="200" height="200" xmlns="http://www.w3.org/2000/svg">
+<svg
+  width="200"
+  height="200"
+  style="background-color: #fbfbfb"
+  xmlns="http://www.w3.org/2000/svg"
+>
   <defs>
     <pattern
       id="small-grid"
@@ -9,7 +14,7 @@
       <path
         d="M 10 0 L 0 0 0 10"
         fill="none"
-        stroke="rgba(221,221,221,1)"
+        stroke="#dedede"
         stroke-width="1"
       />
     </pattern>
@@ -18,7 +23,7 @@
       <path
         d="M 100 0 L 0 0 0 100"
         fill="none"
-        stroke="rgba(221,221,221,1)"
+        stroke="#dedede"
         stroke-width="2"
       />
     </pattern>

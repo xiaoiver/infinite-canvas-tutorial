@@ -64,4 +64,32 @@ describe('Grid', () => {
     expect($canvas.getContext('webgl1')).toMatchWebGLSnapshot(dir, 'grid-none');
     expect(exporter.toSVG({ grid: true })).toMatchSVGSnapshot(dir, 'grid-none');
   });
+
+  it('should render grid under dark theme correctly.', async () => {
+    canvas.destroy();
+    canvas = await new Canvas({
+      canvas: $canvas,
+      theme: Theme.DARK,
+      themeColors: {
+        [Theme.LIGHT]: {
+          background: 'white',
+          grid: 'gray',
+        },
+        [Theme.DARK]: {
+          background: 'black',
+          grid: 'gray',
+        },
+      },
+    }).initialized;
+
+    canvas.render();
+    expect($canvas.getContext('webgl1')).toMatchWebGLSnapshot(
+      dir,
+      'grid-dark-theme',
+    );
+    expect(exporter.toSVG({ grid: true })).toMatchSVGSnapshot(
+      dir,
+      'grid-dark-theme',
+    );
+  });
 });
