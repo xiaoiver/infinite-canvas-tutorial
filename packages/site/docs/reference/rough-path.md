@@ -8,15 +8,15 @@ import Holes from '../components/Holes.vue';
 import FillRule from '../components/FillRule.vue';
 </script>
 
-# Path
+# RoughPath
 
 See SVG [path].
 
 ```ts
-const path = new Path({
+const path = new RoughPath({
     d: 'M 100 100 L 200 200 L 300 100 Z',
     stroke: 'red',
-    strokeWidth: 20,
+    strokeWidth: 10,
     fill: 'blue',
 });
 ```
@@ -29,11 +29,11 @@ $icCanvas = call(() => {
 
 ```js eval code=false
 path = call(() => {
-    const { Canvas, Path } = Core;
-    const path = new Path({
+    const { Canvas, RoughPath } = Core;
+    const path = new RoughPath({
         d: 'M 100 100 L 200 200 L 300 100 Z',
         stroke: 'red',
-        strokeWidth: 20,
+        strokeWidth: 10,
         fill: 'blue',
     });
     path.position.x = 250;
@@ -56,7 +56,7 @@ call(() => {
         strokeDashoffset: 0,
         strokeAlignment: 'center',
         stroke: '#ff0000',
-        strokeWidth: 20,
+        strokeWidth: 10,
         strokeOpacity: 1,
         fill: '#0000ff',
     };

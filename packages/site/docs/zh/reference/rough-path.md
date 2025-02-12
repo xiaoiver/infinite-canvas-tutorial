@@ -4,19 +4,19 @@ publish: false
 ---
 
 <script setup>
-import Holes from '../components/Holes.vue';
-import FillRule from '../components/FillRule.vue';
+import Holes from '../../components/Holes.vue';
+import FillRule from '../../components/FillRule.vue';
 </script>
 
-# Path
+# RoughPath
 
-See SVG [path].
+参考 SVG [path].
 
 ```ts
-const path = new Path({
+const path = new RoughPath({
     d: 'M 100 100 L 200 200 L 300 100 Z',
     stroke: 'red',
-    strokeWidth: 20,
+    strokeWidth: 10,
     fill: 'blue',
 });
 ```
@@ -29,11 +29,11 @@ $icCanvas = call(() => {
 
 ```js eval code=false
 path = call(() => {
-    const { Canvas, Path } = Core;
-    const path = new Path({
+    const { Canvas, RoughPath } = Core;
+    const path = new RoughPath({
         d: 'M 100 100 L 200 200 L 300 100 Z',
         stroke: 'red',
-        strokeWidth: 20,
+        strokeWidth: 10,
         fill: 'blue',
     });
     path.position.x = 250;
@@ -56,7 +56,7 @@ call(() => {
         strokeDashoffset: 0,
         strokeAlignment: 'center',
         stroke: '#ff0000',
-        strokeWidth: 20,
+        strokeWidth: 10,
         strokeOpacity: 1,
         fill: '#0000ff',
     };
@@ -112,11 +112,11 @@ call(() => {
 
 ## d {#d}
 
-Refer to SVG [d] attribute, which is a string containing a sequence of path commands that define the path to be drawn.
+参考 SVG [d] 属性，它是一个包含一组路径命令的字符串，用于定义要绘制的路径。
 
 ## tessellationMethod {#tessellation-method}
 
-Tessellation method, default value is `TesselationMethod.EARCUT`.
+三角化方法，默认值为 `TesselationMethod.EARCUT`。
 
 ```ts
 export enum TesselationMethod {
@@ -125,29 +125,29 @@ export enum TesselationMethod {
 }
 ```
 
-While `TesselationMethod.LIBTESS` has lower performance, it provides better accuracy. See [Lesson 013](/guide/lesson-013#other-tesselation-techniques) for details.
+`TesselationMethod.LIBTESS` 虽然性能不佳，但精确性更高，详见 [Lesson 013](/zh/guide/lesson-013#other-tesselation-techniques)。
 
 ## fillRule {#fill-rule}
 
-The SVG [fill-rule] determines the fill area of the Path, with a default value of `"nonzero"`.
+SVG 中的 [fill-rule] 用来判定 Path 的填充区域，默认值为 `"nonzero"`。
 
 ```ts
 type CanvasFillRule = 'evenodd' | 'nonzero';
 ```
 
-In the example below, the left side uses `nonzero` and the right side uses `evenodd`. Additionally, since earcut doesn't support self-intersecting paths, we use `TesselationMethod.LIBTESS` for path triangulation.
+下面的例子中左边是 `nonzero`，右边是 `evenodd`。另外由于 earcut 不支持自相交路径，我们使用 `TesselationMethod.LIBTESS` 来三角化路径。
 
 <FillRule />
 
-## How to Define Holes {#holes}
+## 如何表示孔洞 {#holes}
 
-In SVG, holes can be defined by using the opposite winding direction compared to the outline. For example, in the path below, the outline is clockwise `M0 0 L100 0 L100 100 L0 100 Z`, while the two subsequent holes are counterclockwise:
+在 SVG 中可以这样定义孔洞，与轮廓的时针方向不同。比如下面路径中的轮廓为顺时针 `M0 0 L100 0 L100 100 L0 100 Z`，后续的两个孔洞就是逆时针方向：
 
 ```bash
 M0 0 L100 0 L100 100 L0 100 Z M50 50 L50 75 L75 75 L75 50 Z M25 25 L25
 ```
 
-Alternatively, the winding direction can be reversed, such as in [Draw a hollow circle in SVG], as long as the winding direction of the hole is opposite to that of the outline.
+当然也可以将时针方向反过来定义，例如：[Draw a hollow circle in SVG]，总之孔洞的时针方向与轮廓相反即可。
 
 <Holes />
 
