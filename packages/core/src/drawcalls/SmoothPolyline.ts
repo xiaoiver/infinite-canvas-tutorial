@@ -605,7 +605,7 @@ export function updateBuffer(object: Shape, useRoughStroke = true) {
 
   subPaths.forEach((points) => {
     const pointsBuffer: number[] = [];
-    const travelBuffer: number[] = [];
+    const travelBuffer: number[] = [0];
     let j = (Math.round(0 / stridePoints) + 2) * strideFloats;
     let dist = 0;
 

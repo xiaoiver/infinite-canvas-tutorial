@@ -2,6 +2,10 @@
 outline: deep
 ---
 
+<script setup>
+import Wireframe from '../components/Wireframe.vue';
+</script>
+
 # Lesson 12 - Polylines
 
 Let's continue adding basic shapes: polylines. In this lesson, you will learn the following:
@@ -343,6 +347,8 @@ renderPass.setVertexInput(this.#inputLayout, buffers, {
 ```
 
 Other features will also be implemented based on this scheme later.
+
+<Wireframe />
 
 ## Shader implementation analysis {#shader-implementation}
 

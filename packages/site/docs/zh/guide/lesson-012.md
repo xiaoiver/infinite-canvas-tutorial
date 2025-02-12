@@ -2,6 +2,10 @@
 outline: deep
 ---
 
+<script setup>
+import Wireframe from '../../components/Wireframe.vue';
+</script>
+
 # 课程 12 - 折线
 
 让我们继续添加基础图形：折线。在这节课中你将学习到以下内容：
@@ -344,7 +348,9 @@ renderPass.setVertexInput(this.#inputLayout, buffers, {
 });
 ```
 
-至此我们就完成了 Mesh 的构建，后续其他特性也会基于这种方案实现。
+至此我们就完成了 Mesh 的构建，后续其他特性也会基于这种方案实现。在下面的例子中我们展示了 Wireframe：
+
+<Wireframe />
 
 ## Shader 实现分析 {#shader-implementation}
 
