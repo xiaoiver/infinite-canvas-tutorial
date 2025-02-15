@@ -48,6 +48,7 @@ interface CRDT<T, S> {
 ![History of local-first](/local-first-history.png)
 
 -   [TipTap offline support]
+-   [The Full Spectrum of Collaboration]
 
 ### CRDT 的实现 {#implementation-of-crdts}
 
@@ -99,6 +100,7 @@ export class History {
 -   [Building a Collaborative Pixel Art Editor with CRDTs]
 -   [Making CRDTs 98% More Efficient]
 -   [dgmjs-plugin-yjs]
+-   [The Full Spectrum of Collaboration]
 
 [What are CRDTs]: https://loro.dev/docs/concepts/crdt
 [Movable tree CRDTs and Loro's implementation]: https://news.ycombinator.com/item?id=41099901
@@ -119,3 +121,4 @@ export class History {
 [Learn Yjs]: https://learn.yjs.dev/
 [dgmjs-plugin-yjs]: https://github.com/dgmjs/dgmjs/tree/main/packages/dgmjs-plugin-yjs
 [Designing Data Structures for Collaborative Apps]: https://mattweidner.com/2022/02/10/collaborative-data-design.html
+[The Full Spectrum of Collaboration]: https://zed.dev/blog/full-spectrum-of-collaboration

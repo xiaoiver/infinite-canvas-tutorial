@@ -13,3 +13,4 @@ export * from './RoughEllipse';
 export * from './RoughRect';
 export * from './RoughPolyline';
 export * from './RoughPath';
+export * from './Custom';

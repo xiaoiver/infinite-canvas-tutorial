@@ -303,6 +303,10 @@ export class Renderer implements Plugin {
     this.#theme = theme;
   }
 
+  get device() {
+    return this.#device;
+  }
+
   async toDataURL(options: Partial<DataURLOptions>, callback: () => void) {
     this.#enableCapture = true;
     this.#captureOptions = options;

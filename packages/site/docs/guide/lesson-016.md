@@ -120,9 +120,7 @@ const root = await deserializeNode(fromSVGElement($svg));
 
 ## Shadows {#dropshadow}
 
-[text-decoration]: https://developer.mozilla.org/en-US/docs/Web/CSS/text-decoration
-
-Pixi.js provides [DropShadowFilter] to implement shadow effects.
+Pixi.js provides [DropShadowFilter], but we can implement it directly in SDF without using post-processing. Use `shadowOffset` and `shadowBlurRadius` to control the offset and blurring of the SDF texture.
 
 ```glsl
 // @see https://github.com/soimy/pixi-msdf-text/blob/master/src/msdf.frag#L49
@@ -243,3 +241,6 @@ export const absorb = /* wgsl */ `
 [MathJax]: https://github.com/mathjax/MathJax-src
 [LaTeX in motion-canvas]: https://github.com/motion-canvas/motion-canvas/issues/190
 [Lesson 10 - From SVGElement to Serialized Node]: /guide/lesson-010#svgelement-to-serialized-node
+[path-commands]: https://github.com/opentypejs/opentype.js?tab=readme-ov-file#path-commands
+[shadowBlur]: https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/shadowBlur
+[text-decoration]: https://developer.mozilla.org/en-US/docs/Web/CSS/text-decoration

@@ -15,6 +15,12 @@ hero:
         - theme: alt
           text: Example
           link: /example/solar-system
+        - theme: alt
+          text: Reference
+          link: /reference/canvas
+        - theme: alt
+          text: Experiment
+          link: /experiment/particles
 
 features:
     - title: High-Performance Rendering

@@ -17,6 +17,11 @@ export const zh = defineConfig({
         link: '/zh/reference/canvas',
         activeMatch: '/zh/reference/',
       },
+      {
+        text: '实验',
+        link: '/zh/experiment/particles',
+        activeMatch: '/zh/experiment/',
+      },
     ],
 
     sidebar: {
@@ -219,6 +224,10 @@ export const zh = defineConfig({
             ],
           },
         ],
+      },
+      '/zh/experiment/': {
+        base: '/zh/experiment/',
+        items: [{ text: '使用 WebGPU 绘制粒子', link: 'particles' }],
       },
     },
 

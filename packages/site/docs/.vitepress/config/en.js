@@ -17,6 +17,11 @@ export const en = defineConfig({
         link: '/reference/canvas',
         activeMatch: '/reference/',
       },
+      {
+        text: 'Experiment',
+        link: '/experiment/particles',
+        activeMatch: '/experiment/',
+      },
     ],
 
     sidebar: {
@@ -249,6 +254,10 @@ export const en = defineConfig({
             ],
           },
         ],
+      },
+      '/experiment/': {
+        base: '/experiment/',
+        items: [{ text: 'Use WebGPU to draw particles', link: 'particles' }],
       },
     },
 

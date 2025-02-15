@@ -1,7 +1,14 @@
 import { Buffer, Device, RenderPass } from '@antv/g-device-api';
-import { Drawcall, SDF, ShadowRect, SmoothPolyline } from '.';
+import {
+  Drawcall,
+  SDF,
+  ShadowRect,
+  SmoothPolyline,
+  Custom as CustomDrawcall,
+} from '.';
 import {
   Circle,
+  Custom,
   Ellipse,
   Path,
   Polyline,
@@ -57,6 +64,7 @@ SHAPE_DRAWCALL_CTORS.set(RoughPath, [
   SmoothPolyline, // stroke
 ]);
 SHAPE_DRAWCALL_CTORS.set(Text, [SDFText]);
+SHAPE_DRAWCALL_CTORS.set(Custom, [CustomDrawcall]);
 
 export class BatchManager {
   /**

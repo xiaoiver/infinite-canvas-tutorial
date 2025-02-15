@@ -15,6 +15,12 @@ hero:
         - theme: alt
           text: 示例
           link: /zh/example/solar-system
+        - theme: alt
+          text: 文档
+          link: /zh/reference/canvas
+        - theme: alt
+          text: 实验
+          link: /zh/experiment/particles
 
 features:
     - title: 高性能渲染

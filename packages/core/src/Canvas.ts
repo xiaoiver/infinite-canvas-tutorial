@@ -368,6 +368,10 @@ export class Canvas {
     return this.#pluginContext.devicePixelRatio;
   }
 
+  getDevice() {
+    return this.#rendererPlugin.device;
+  }
+
   async toDataURL(options: Partial<DataURLOptions> = {}) {
     const dataURL = await this.#rendererPlugin.toDataURL(options, () => {
       this.#renderDirtyFlag = true;
