@@ -146,7 +146,7 @@ interface Canvas {
 
 ### Asynchronous initialization
 
-This is also a significant difference between WebGPU and WebGL. In WebGL, obtaining the context is a synchronous process, whereas obtaining a Device in WebGL is asynchronous:
+This is also a significant difference between WebGPU and WebGL. In WebGL, obtaining the context is a synchronous process, whereas obtaining a Device in WebGPU is asynchronous:
 
 ```ts
 // create a context in WebGL
