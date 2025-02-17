@@ -125,6 +125,10 @@ export class InfiniteCanvas extends LitElement {
       $canvas.width = width * dpr;
       $canvas.height = height * dpr;
       this.#canvas?.resize(width, height);
+
+      this.dispatchEvent(
+        new CustomEvent('ic-resized', { detail: { width, height } }),
+      );
     }
   }
 

@@ -7,10 +7,10 @@ import {
   Format,
   RenderPipeline,
   RenderTarget,
-  SwapChain,
   Texture,
   TextureDimension,
   TextureUsage,
+  TransparentWhite,
 } from '@antv/g-device-api';
 import {
   camera,
@@ -28,7 +28,6 @@ import { avg, max } from '../utils';
 export class GPUParticle implements Effect {
   protected canvas: Canvas;
   protected device: Device;
-  protected swapChain: SwapChain;
   protected renderTarget: RenderTarget;
   protected timeBuffer: Buffer;
   protected mouseBuffer: Buffer;
@@ -113,14 +112,13 @@ export class GPUParticle implements Effect {
     this.inited = true;
 
     this.custom = new Custom({
-      render: (renderPass, uniformLegacyObject) => {
+      render: (_, uniformLegacyObject) => {
         if (!this.inited || !this.#buffer) {
           return;
         }
 
         const {
           device,
-          swapChain,
           timeBuffer,
           mouseBuffer,
           canvas,
@@ -128,18 +126,17 @@ export class GPUParticle implements Effect {
           blitBindings,
         } = this;
         const $canvas = canvas.getDOM() as HTMLCanvasElement;
-        // if (this.resized) {
-        //   swapChain.configureSwapChain($canvas.width, $canvas.height);
-        //   if (this.renderTarget) {
-        //     this.renderTarget.destroy();
-        //     this.renderTarget = device.createRenderTarget({
-        //       format: Format.U8_RGBA_RT,
-        //       width: $canvas.width,
-        //       height: $canvas.height,
-        //     });
-        //     this.resized = false;
-        //   }
-        // }
+        if (this.resized) {
+          if (this.renderTarget) {
+            this.renderTarget.destroy();
+            this.renderTarget = device.createRenderTarget({
+              format: Format.U8_RGBA_RT,
+              width: $canvas.width,
+              height: $canvas.height,
+            });
+            this.resized = false;
+          }
+        }
 
         const lowerHalfArray = this.#buffer.slice(
           0,
@@ -184,10 +181,20 @@ export class GPUParticle implements Effect {
           overallAvg,
         });
 
+        const renderPass = device.createRenderPass({
+          colorAttachment: [this.renderTarget],
+          colorResolveTo: [null],
+          colorClearColor: [TransparentWhite],
+          colorStore: [true],
+          depthStencilAttachment: null,
+          depthStencilResolveTo: null,
+        });
+
         renderPass.setPipeline(blitPipeline);
         renderPass.setBindings(blitBindings);
         renderPass.setViewport(0, 0, $canvas.width, $canvas.height);
         renderPass.draw(3);
+        device.submitPass(renderPass);
       },
     });
     canvas.appendChild(this.custom);

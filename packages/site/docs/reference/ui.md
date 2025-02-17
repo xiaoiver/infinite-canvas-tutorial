@@ -83,3 +83,4 @@ In addition to the `ic-ready` event, `<ic-canvas>` also supports the following e
 -   `ic-theme-changed`：Triggered when the theme changes, with the current theme as the parameter.
     [Resize Observer]: https://shoelace.style/components/resize-observer
     [canvas instance]: /reference/canvas
+-   `ic-resized`：Triggered when the canvas size changes, with the current width and height as the parameter.

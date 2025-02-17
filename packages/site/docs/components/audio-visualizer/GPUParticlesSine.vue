@@ -41,6 +41,10 @@ onMounted(() => {
     $canvas.addEventListener('ic-frame', (e) => {
         stats.update();
     });
+
+    $canvas.addEventListener('ic-resized', (e) => {
+        effect.resize(e.detail.width, e.detail.height);
+    });
 });
 
 const handleUpload = (file: File) => {

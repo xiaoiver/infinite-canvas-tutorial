@@ -237,6 +237,14 @@ const dom = canvas.getDOM(); // 返回 HTMLCanvasElement
 const dpr = canvas.getDPR(); // 2
 ```
 
+## getDevice
+
+获取画布设备，随后使用它的 API 创建各种底层 GPU 对象，参考：[Device]。
+
+```ts
+const device = canvas.getDevice();
+```
+
 ## toDataURL
 
 返回画布导出图片的 DataURL，参考：[HTMLCanvasElement.toDataURL]。
@@ -271,3 +279,4 @@ export interface DataURLOptions {
 [Document.elementFromPoint]: https://developer.mozilla.org/zh-CN/docs/Web/API/Document/elementFromPoint
 [Path]: /zh/reference/path
 [d]: /zh/reference/path#d
+[Device]: https://github.com/antvis/g-device-api

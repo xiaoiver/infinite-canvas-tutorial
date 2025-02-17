@@ -2,6 +2,7 @@ import * as d3 from 'd3-color';
 import { AABB } from '../AABB';
 import { GConstructor } from '.';
 import { isString } from '../../utils';
+import { Texture } from '@antv/g-device-api';
 
 export interface IRenderable {
   /**
@@ -87,7 +88,7 @@ export interface IRenderable {
    * * base64 image is also supported.
    * * HTMLImageElement is also supported.
    */
-  fill: string | TexImageSource;
+  fill: string | TexImageSource | Texture;
 
   /**
    * It is a presentation attribute defining the color used to paint the outline of the shape. Default to `none`.
@@ -240,7 +241,7 @@ export function Renderable<TBase extends GConstructor>(Base: TBase) {
     sortDirtyFlag = false;
 
     #visible: boolean;
-    #fill: string | TexImageSource;
+    #fill: string | TexImageSource | Texture;
     #fillRGB: d3.RGBColor;
     #stroke: string;
     #strokeRGB: d3.RGBColor;
@@ -357,7 +358,7 @@ export function Renderable<TBase extends GConstructor>(Base: TBase) {
     get fill() {
       return this.#fill;
     }
-    set fill(fill: string | TexImageSource) {
+    set fill(fill: string | TexImageSource | Texture) {
       if (this.#fill !== fill) {
         this.#fill = fill;
 

@@ -231,6 +231,14 @@ Gets the device pixel ratio of the canvas.
 const dpr = canvas.getDPR(); // 2
 ```
 
+## getDevice
+
+Gets the canvas device, then use its API to create various low-level GPU objects, reference: [Device].
+
+```ts
+const device = canvas.getDevice();
+```
+
 ## toDataURL
 
 Returns a DataURL of the exported canvas image, reference: [HTMLCanvasElement.toDataURL].
@@ -265,3 +273,4 @@ export interface DataURLOptions {
 [Document.elementFromPoint]: https://developer.mozilla.org/zh-CN/docs/Web/API/Document/elementFromPoint
 [Path]: /reference/path
 [d]: /reference/path#d
+[Device]: https://github.com/antvis/g-device-api

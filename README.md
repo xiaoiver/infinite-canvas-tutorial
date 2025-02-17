@@ -207,6 +207,11 @@ pnpm run dev
 -   Implement a simple history system, including undo and redo
 -   Implement collaboration through CRDT
 
+## Lesson 18 - Gradient and Pattern [🔗](https://infinitecanvas.cc/guide/lesson-018)
+
+-   Using CanvasGradient to implement gradient
+-   Using Shader to implement gradient
+
 [infinitecanvas]: https://infinitecanvas.tools/
 [Figma]: https://madebyevan.com/figma/building-a-professional-design-tool-on-the-web/
 [Modyfi]: https://digest.browsertech.com/archive/browsertech-digest-how-modyfi-is-building-with/

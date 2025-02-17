@@ -81,6 +81,7 @@ $canvas.addEventListener('ic-ready', (e) => {
 
 -   `ic-frame`：每帧触发一次，参数为当前时间戳。
 -   `ic-theme-changed`：主题改变时触发，参数为当前主题，取值为 `light` 或 `dark`。
+-   `ic-resized`：画布大小改变时触发，参数为当前画布的宽度和高度。
 
 [Resize Observer]: https://shoelace.style/components/resize-observer
 [画布实例]: /zh/reference/canvas

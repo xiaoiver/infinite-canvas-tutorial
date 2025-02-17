@@ -207,6 +207,11 @@ pnpm run dev
 -   实现简单的历史记录功能，包含撤销和重做
 -   通过 CRDT 实现协同
 
+## 课程 18 - 渐变和重复图案 [🔗](https://infinitecanvas.cc/zh/guide/lesson-018)
+
+-   使用 CanvasGradient 实现渐变
+-   使用 Shader 实现渐变
+
 [infinitecanvas]: https://infinitecanvas.tools/
 [Figma]: https://madebyevan.com/figma/building-a-professional-design-tool-on-the-web/
 [Modyfi]: https://digest.browsertech.com/archive/browsertech-digest-how-modyfi-is-building-with/

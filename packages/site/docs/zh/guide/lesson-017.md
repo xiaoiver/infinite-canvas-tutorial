@@ -27,7 +27,7 @@ CRDT 有两种类型：Op-based 和 State-based。前者的原理是，如果两
 -   [Building a Collaborative Pixel Art Editor with CRDTs]
 -   [Making CRDTs 98% More Efficient]
 
-教程给出了一个 CRDT 的通用数据结构，它包括一个必须满足结合律、交换律和幂等性的合并函数。这个合并函数可以是一个 Last Write Wins Register，每次对比自身和输入数据的时间戳，如果输入数据的时间戳更大，则更新自身数据：
+教程给出了一个 CRDT 的通用数据结构，它包括一个必须满足结合律、交换律和幂等性的合并函数。这个合并函数可以是一个 Last-Writer Wins Register，每次对比自身和输入数据的时间戳，如果输入数据的时间戳更大，则更新自身数据：
 
 ```ts
 interface CRDT<T, S> {
@@ -36,6 +36,8 @@ interface CRDT<T, S> {
     merge(state: S): void;
 }
 ```
+
+键值对形式的样式表就很适合使用 LWW Register，例如 Quill 编辑器的 `{bold: true}` 样式，详见：[Designing Data Structures for Collaborative Apps]，我们实现的图形样式同理。
 
 ### Local-first 软件 {#local-first-software}
 
@@ -47,16 +49,25 @@ interface CRDT<T, S> {
 
 ![History of local-first](/local-first-history.png)
 
--   [TipTap offline support]
--   [The Full Spectrum of Collaboration]
+[How Figma’s multiplayer technology works]
+
+> Figma lets you go offline for an arbitrary amount of time and continue editing. When you come back online, the client downloads a fresh copy of the document, reapplies any offline edits on top of this latest state, and then continues syncing updates over a new WebSocket connection.
+
+富文本编辑器和代码编辑器也都支持，详见 [TipTap offline support] 和 [The Full Spectrum of Collaboration]。
 
 ### CRDT 的实现 {#implementation-of-crdts}
 
-现在来看 CRDT 的实现
-
-<https://tiptap.dev/docs/collaboration/getting-started/overview#about-yjs>
+Y.js 及其他语言的移植版本无疑是最著名的 CRDT 实现，下文来自 <https://tiptap.dev/docs/collaboration/getting-started/overview#about-yjs>
 
 > As a CRDT, Y.js ensures that the sequence of changes does not impact the final state of the document, similar to how Git operates with commits. This guarantees that all copies of the data remain consistent across different environments.
+
+由于不涉及协同状态下文本或者富文本的合并，我们只需要用到简单的数据结构存储画布的状态，例如 [Y.Map]。其他 CRDT 实现也都提供了类似的 API，例如：
+
+-   Liveblocks 提供了 `LiveObject/List/Map`，详见：[Data Structures in Liveblocks]
+-   Automerge 提供了 [Simple Values]，支持 JSON 中的全部合法类型，甚至还包括 `Date`
+-   Loro 也提供了 [Map]
+
+下面我们参考 [Loro Excalidraw Example] 和 [dgmjs-plugin-yjs] 来实现简单的画布协同编辑效果。
 
 ## 历史记录 {#history}
 
@@ -74,33 +85,14 @@ export class History {
 }
 ```
 
-## 数据结构设计
-
-参考 [dgmjs-plugin-yjs]
-
-[Designing Data Structures for Collaborative Apps]
-
-提到协同算法
-
--   [Loro Excalidraw Example]
--   [automerge wasm]
-
 ## 扩展阅读 {#extended-reading}
 
+-   [How Figma’s multiplayer technology works]
+-   [The Full Spectrum of Collaboration]
 -   [Learn Yjs]
 -   [Movable tree CRDTs and Loro's implementation]
 -   [CRDTs: The Hard Parts]
--   [Peritext - A CRDT for Rich-Text Collaboration]
--   [Collaborative Text Editing with Eg-Walker]
--   [Local-first software - You own your data, in spite of the cloud]
--   [I was wrong. CRDTs are the future]
--   [5000x faster CRDTs: An Adventure in Optimization]
--   [TipTap offline support]
 -   [An Interactive Intro to CRDTs]
--   [Building a Collaborative Pixel Art Editor with CRDTs]
--   [Making CRDTs 98% More Efficient]
--   [dgmjs-plugin-yjs]
--   [The Full Spectrum of Collaboration]
 
 [What are CRDTs]: https://loro.dev/docs/concepts/crdt
 [Movable tree CRDTs and Loro's implementation]: https://news.ycombinator.com/item?id=41099901
@@ -122,3 +114,9 @@ export class History {
 [dgmjs-plugin-yjs]: https://github.com/dgmjs/dgmjs/tree/main/packages/dgmjs-plugin-yjs
 [Designing Data Structures for Collaborative Apps]: https://mattweidner.com/2022/02/10/collaborative-data-design.html
 [The Full Spectrum of Collaboration]: https://zed.dev/blog/full-spectrum-of-collaboration
+[Collaborative Whiteboard Example in Liveblocks]: https://liveblocks.io/examples/collaborative-whiteboard
+[Data Structures in Liveblocks]: https://liveblocks.io/docs/api-reference/liveblocks-client#Data-structures
+[Y.Map]: https://docs.yjs.dev/api/shared-types/y.map
+[Simple Values]: https://automerge.org/docs/documents/values/
+[Map]: https://loro.dev/docs/tutorial/map
+[How Figma’s multiplayer technology works]: https://www.figma.com/blog/how-figmas-multiplayer-technology-works/

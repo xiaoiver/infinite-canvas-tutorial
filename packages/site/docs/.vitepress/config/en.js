@@ -83,7 +83,8 @@ export const en = defineConfig({
                 text: 'Lesson 016 - Text advanced features',
                 link: 'lesson-016',
               },
-              { text: 'Lesson 017 - Collaborative', link: 'lesson-017' },
+              { text: 'Lesson 017 - Collaboration', link: 'lesson-017' },
+              { text: 'Lesson 018 - Gradient and Pattern', link: 'lesson-018' },
             ],
           },
         ],
@@ -257,7 +258,10 @@ export const en = defineConfig({
       },
       '/experiment/': {
         base: '/experiment/',
-        items: [{ text: 'Use WebGPU to draw particles', link: 'particles' }],
+        items: [
+          { text: 'Use WebGPU to draw particles', link: 'particles' },
+          { text: 'Gradient', link: 'gradient' },
+        ],
       },
     },
 

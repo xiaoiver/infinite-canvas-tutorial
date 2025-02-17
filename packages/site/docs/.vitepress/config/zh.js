@@ -57,6 +57,7 @@ export const zh = defineConfig({
               { text: '课程15 - 绘制文本', link: 'lesson-015' },
               { text: '课程16 - 文本的高级特性', link: 'lesson-016' },
               { text: '课程17 - 协同', link: 'lesson-017' },
+              { text: '课程18 - 渐变和重复图案', link: 'lesson-018' },
             ],
           },
         ],
@@ -227,7 +228,10 @@ export const zh = defineConfig({
       },
       '/zh/experiment/': {
         base: '/zh/experiment/',
-        items: [{ text: '使用 WebGPU 绘制粒子', link: 'particles' }],
+        items: [
+          { text: '使用 WebGPU 绘制粒子', link: 'particles' },
+          { text: '渐变', link: 'gradient' },
+        ],
       },
     },
 

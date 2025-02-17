@@ -21,7 +21,7 @@ import {
 import { Circle, Ellipse, Rect, Shape } from '../shapes';
 import { Drawcall, ZINDEX_FACTOR } from './Drawcall';
 import { vert, frag, Location } from '../shaders/sdf';
-import { isString, paddingMat3 } from '../utils';
+import { isImageBitmapOrCanvases, isString, paddingMat3 } from '../utils';
 
 const strokeAlignmentMap = {
   center: 0,
@@ -267,14 +267,19 @@ export class SDF extends Drawcall {
     // TODO: Canvas Gradient
     if (this.useFillImage) {
       const fill = this.shapes[0].fill as ImageBitmap;
-      const texture = this.device.createTexture({
-        format: Format.U8_RGBA_NORM,
-        width: fill.width,
-        height: fill.height,
-        usage: TextureUsage.SAMPLED,
-      });
-      texture.setImageData([fill]);
-      this.#texture = texture;
+      if (isImageBitmapOrCanvases(fill)) {
+        const texture = this.device.createTexture({
+          format: Format.U8_RGBA_NORM,
+          width: fill.width,
+          height: fill.height,
+          usage: TextureUsage.SAMPLED,
+        });
+        texture.setImageData([fill]);
+        this.#texture = texture;
+      } else {
+        this.#texture = fill as Texture;
+      }
+
       const sampler = this.renderCache.createSampler({
         addressModeU: AddressMode.CLAMP_TO_EDGE,
         addressModeV: AddressMode.CLAMP_TO_EDGE,
@@ -286,7 +291,7 @@ export class SDF extends Drawcall {
       });
       bindings.samplerBindings = [
         {
-          texture,
+          texture: this.#texture,
           sampler,
         },
       ];
