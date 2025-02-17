@@ -113,7 +113,7 @@ render() {
 }
 ```
 
-In the render plugin a `RenderPass` is created before the start of each frame, which is encapsulated in the hardware abstraction layer. there is no such concept in WebGL, but in WebGPU [beginRenderPass] returns [GPURenderPassEncoder], which records a series of commands, including `draw`, as we will see later in the `render` hook. commands, as we'll see later in the `render` hook. When creating `RenderPass` we provide the following parameters:
+In the render plugin a `RenderPass` is created before the start of each frame, which is encapsulated in the hardware abstraction layer. there is no such concept in WebGL, but in WebGPU [beginRenderPass] returns [GPURenderPassEncoder], which records a series of commands, including `draw` commands, as we'll see later in the `render` hook. When creating `RenderPass` we provide the following parameters:
 
 -   `colorAttachment`
 -   `colorResolveTo`
