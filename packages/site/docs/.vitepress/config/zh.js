@@ -222,6 +222,10 @@ export const zh = defineConfig({
                 text: '选择画布模式',
                 link: 'canvas-mode-select',
               },
+              {
+                text: '声明式渐变',
+                link: 'declarative-gradient',
+              },
             ],
           },
         ],

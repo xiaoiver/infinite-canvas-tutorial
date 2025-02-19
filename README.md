@@ -109,6 +109,7 @@ pnpm run dev
 -   Developing Web UI with Lit and Shoelace
 -   Implementing a canvas component
 -   Implementing a zoom toolbar component
+-   Implementing a dark theme
 
 ## Lesson 8 - Optimize performance [🔗](https://infinitecanvas.cc/guide/lesson-008)
 

@@ -16,7 +16,7 @@ In this lesson, you will learn the following:
 
 ## Web UI with Lit and Shoelace
 
-When choosing a component library, I didn't want it to be tied to a specific framework implementation, see [Web Components are not Framework Components — and That’s Okay]. Web components is a good choice, and [Lit] provides reactive state, scoped styles, and a declarative template system to make the development process easier. [Shoelace] is an UI library based on [Lit]. Using them, we can make our canvas components framework-agnostic by supporting React, Vue, and Angular at the same time. It's worth noting that the [spectrum-web-components] component library used by Photoshop Web is also based on Lit, see: [Photoshop is now on the web!]
+When choosing a component library, I didn't want it to be tied to a specific framework implementation, see [Web Components are not Framework Components — and That’s Okay]. Web components is a good choice, and [Lit] provides reactive state, scoped styles, and a declarative template system to make the development process easier. [Shoelace] is an UI library based on [Lit], [Web Awesome] is the fancy pants new name for it. Using them, we can make our canvas components framework-agnostic by supporting React, Vue, and Angular at the same time. It's worth noting that the [spectrum-web-components] component library used by Photoshop Web is also based on Lit, see: [Photoshop is now on the web!]
 
 > Photoshop is part of Adobe’s broader Creative Cloud ecosystem. Using a standardized Web Components strategy built on Lit allows UI consistency across applications.
 
@@ -264,6 +264,62 @@ this.#canvas.camera.onchange = () => {
 };
 ```
 
+## Theme {#theme}
+
+Theme needs to be applied to UI components and the canvas. Let's start with the former.
+
+### UI components {#theme-in-ui}
+
+Shoelace provides [Themes] functionality, which can be easily switched. First, import the style sheets for the two themes:
+
+```ts
+import '@shoelace-style/shoelace/dist/themes/light.css';
+import '@shoelace-style/shoelace/dist/themes/dark.css';
+```
+
+When switching to the dark theme, simply add an identifier class to the root element:
+
+```ts
+this.classList.toggle('sl-theme-dark', this.theme === 'dark');
+```
+
+Finally, when writing component styles, use CSS variables instead of fixed values, so that they can be automatically applied when switching themes:
+
+```ts
+:host {
+    background: var(--sl-panel-background-color);
+}
+```
+
+### Canvas background and grid {#theme-in-canvas}
+
+The background and [Grid] of the canvas also need to be associated with the theme color. Reference [Theme colors in DGM.js], we support passing in the color values for the light and dark themes when creating the canvas:
+
+```ts
+enum Theme {
+    LIGHT,
+    DARK,
+}
+
+interface ThemeColors {
+    background: string;
+    grid: string;
+}
+
+interface CanvasConfig {
+    themeColors?: Partial<{
+        [Theme.LIGHT]: Partial<ThemeColors>; // [!code ++]
+        [Theme.DARK]: Partial<ThemeColors>; // [!code ++]
+    }>; // [!code ++]
+}
+```
+
+Support switching at runtime:
+
+```ts
+canvas.theme = Theme.DARK;
+```
+
 We won't go into the details of the UI implementation later.
 
 [Shoelace]: https://shoelace.style/
@@ -281,3 +337,7 @@ We won't go into the details of the UI implementation later.
 [Web Components are not Framework Components — and That’s Okay]: https://lea.verou.me/blog/2024/wcs-vs-frameworks/
 [Photoshop is now on the web!]: https://medium.com/@addyosmani/photoshop-is-now-on-the-web-38d70954365a
 [spectrum-web-components]: https://opensource.adobe.com/spectrum-web-components/
+[Web Awesome]: https://www.kickstarter.com/projects/fontawesome/web-awesome
+[Themes]: https://shoelace.style/getting-started/themes
+[Grid]: /guide/lesson-005
+[Theme colors in DGM.js]: https://dgmjs.dev/api-core/variables/themecolors

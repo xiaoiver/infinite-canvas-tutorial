@@ -4,8 +4,10 @@ import {
   Circle,
   Ellipse,
   Group,
+  Rect,
   RoughCircle,
   RoughEllipse,
+  RoughRect,
   Shape,
 } from '../shapes';
 import {
@@ -175,6 +177,11 @@ export class Selector implements Plugin {
         target.cy = tlY + height / 2;
         target.rx = width / 2;
         target.ry = height / 2;
+      } else if (target instanceof Rect || target instanceof RoughRect) {
+        target.x = tlX;
+        target.y = tlY;
+        target.width = width;
+        target.height = height;
       }
     };
 
@@ -194,6 +201,11 @@ export class Selector implements Plugin {
         target.cy = tlY + height / 2;
         target.rx = width / 2;
         target.ry = height / 2;
+      } else if (target instanceof Rect || target instanceof RoughRect) {
+        target.x = tlX;
+        target.y = tlY;
+        target.width = width;
+        target.height = height;
       }
     };
 

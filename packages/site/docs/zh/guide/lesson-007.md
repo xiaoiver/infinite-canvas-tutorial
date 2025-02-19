@@ -9,6 +9,7 @@ outline: deep
 -   使用 Lit 和 Shoelace 开发 Web UI
 -   实现画布组件，监听页面宽高变换
 -   实现缩放组件
+-   实现明暗主题
 
 <div style="width: 100%; height: 200px;">
   <ic-canvas-lesson7 />
@@ -16,7 +17,7 @@ outline: deep
 
 ## 使用 Lit 和 Shoelace 开发 Web UI {#web-ui-with-lit-and-shoelace}
 
-在选择组件库时，我不希望它绑定在某个具体的框架实现上 [Web Components are not Framework Components — and That’s Okay]。Web components 是不错的选择，[Lit] 为它添加了响应式状态、声明式模版、模块化样式等特性，让开发过程变得更便捷。[Shoelace] 是一个基于 [Lit] 开发的组件库。使用它们可以让我们的画布组件同时支持 React、Vue 和 Angular，做到真正的框架无关。值得一提的是 Photoshop Web 使用的 [spectrum-web-components] 组件库也是基于 Lit 编写的，详见：[Photoshop is now on the web!]
+在选择组件库时，我不希望它绑定在某个具体的框架实现上 [Web Components are not Framework Components — and That’s Okay]。Web components 是不错的选择，[Lit] 为它添加了响应式状态、声明式模版、模块化样式等特性，让开发过程变得更便捷。[Shoelace] 是一个基于 [Lit] 开发的组件库，[Web Awesome] 是它的后继者。使用它们可以让我们的画布组件同时支持 React、Vue 和 Angular，做到真正的框架无关。值得一提的是 Photoshop Web 使用的 [spectrum-web-components] 组件库也是基于 Lit 编写的，详见：[Photoshop is now on the web!]
 
 > Photoshop is part of Adobe’s broader Creative Cloud ecosystem. Using a standardized Web Components strategy built on Lit allows UI consistency across applications.
 
@@ -265,6 +266,62 @@ this.#canvas.camera.onchange = () => {
 };
 ```
 
+## 明暗主题 {#theme}
+
+明暗主题需要应用在 UI 组件和画布上，我们先来看前者的实现。
+
+### UI 组件 {#theme-in-ui}
+
+Shoelace 提供了 [Themes] 功能，可以很方便地切换主题。首先引入两个主题的样式表：
+
+```ts
+import '@shoelace-style/shoelace/dist/themes/light.css';
+import '@shoelace-style/shoelace/dist/themes/dark.css';
+```
+
+当切换到暗色主题时，只需要在根元素上增加标识类名即可：
+
+```ts
+this.classList.toggle('sl-theme-dark', this.theme === 'dark');
+```
+
+最后在编写组件样式时，应该使用 CSS 变量而不是固定值，这样才能在切换主题时自动应用：
+
+```ts
+:host {
+    background: var(--sl-panel-background-color);
+}
+```
+
+### 画布组件 {#theme-in-canvas}
+
+画布的背景和 [Grid] 也需要关联上主题颜色。参考 [Theme colors in DGM.js]，我们支持在创建画布时传入明暗主题的颜色值：
+
+```ts
+enum Theme {
+    LIGHT,
+    DARK,
+}
+
+interface ThemeColors {
+    background: string;
+    grid: string;
+}
+
+interface CanvasConfig {
+    themeColors?: Partial<{
+        [Theme.LIGHT]: Partial<ThemeColors>; // [!code ++]
+        [Theme.DARK]: Partial<ThemeColors>; // [!code ++]
+    }>; // [!code ++]
+}
+```
+
+在运行时支持切换：
+
+```ts
+canvas.theme = Theme.DARK;
+```
+
 后续我们就不再详细介绍 UI 部分的实现了。
 
 [Shoelace]: https://shoelace.style/
@@ -282,3 +339,7 @@ this.#canvas.camera.onchange = () => {
 [Web Components are not Framework Components — and That’s Okay]: https://lea.verou.me/blog/2024/wcs-vs-frameworks/
 [Photoshop is now on the web!]: https://medium.com/@addyosmani/photoshop-is-now-on-the-web-38d70954365a
 [spectrum-web-components]: https://opensource.adobe.com/spectrum-web-components/
+[Web Awesome]: https://www.kickstarter.com/projects/fontawesome/web-awesome
+[Themes]: https://shoelace.style/getting-started/themes
+[Grid]: /zh/guide/lesson-005
+[Theme colors in DGM.js]: https://dgmjs.dev/api-core/variables/themecolors

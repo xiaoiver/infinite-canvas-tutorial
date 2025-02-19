@@ -32,6 +32,7 @@ import { Drawable } from 'roughjs/bin/core';
 import { opSet2Absolute } from './rough';
 import { fontStringFromTextStyle } from './font';
 import { randomInteger } from './math';
+import { isGradient } from './gradient';
 
 type SerializedTransform = {
   matrix: {
@@ -645,6 +646,12 @@ export function exportDropShadow(
   element.setAttribute('filter', `${existedFilter} url(#${$filter.id})`.trim());
 }
 
+export function exportFillGradientOrPattern(
+  node: SerializedNode,
+  element: SVGElement,
+  $g: SVGElement,
+) {}
+
 export function exportFillImage(
   node: SerializedNode,
   element: SVGElement,
@@ -803,6 +810,8 @@ export function toSVGElement(node: SerializedNode) {
   const innerOrOuterStrokeAlignment =
     innerStrokeAlignment || outerStrokeAlignment;
   const hasFillImage = rest.fill && isString(rest.fill) && isDataUrl(rest.fill);
+  const hasFillGradient =
+    rest.fill && isString(rest.fill) && isGradient(rest.fill);
 
   /**
    * In the vast majority of cases, it is the element itself.
@@ -842,7 +851,8 @@ export function toSVGElement(node: SerializedNode) {
     (children && children.length > 0 && type !== 'g') ||
     (innerOrOuterStrokeAlignment && type !== 'polyline') ||
     isRough ||
-    hasFillImage
+    hasFillImage ||
+    hasFillGradient
   ) {
     $g = createSVGElement('g');
     if (element) {
@@ -863,6 +873,9 @@ export function toSVGElement(node: SerializedNode) {
   // avoid `fill="[object ImageBitmap]"`
   if (hasFillImage) {
     exportFillImage(node, element, $g);
+  }
+  if (hasFillGradient) {
+    exportFillGradientOrPattern(node, element, $g);
   }
 
   $g = $g || element;

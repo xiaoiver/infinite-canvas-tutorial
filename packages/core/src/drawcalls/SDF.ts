@@ -264,17 +264,34 @@ export class SDF extends Drawcall {
       });
     }
 
-    // TODO: Canvas Gradient
     if (this.useFillImage) {
-      const fill = this.shapes[0].fill as ImageBitmap;
-      if (isImageBitmapOrCanvases(fill)) {
+      const fill = this.shapes[0].fill;
+      if (isString(fill)) {
+        const { minX, minY, maxX, maxY } = this.shapes[0].getGeometryBounds();
+        const canvas = this.texturePool.getOrCreateGradient({
+          gradients: this.shapes[0].fillGradient,
+          min: [minX, minY],
+          width: maxX - minX,
+          height: maxY - minY,
+        });
         const texture = this.device.createTexture({
           format: Format.U8_RGBA_NORM,
-          width: fill.width,
-          height: fill.height,
+          width: 128,
+          height: 128,
           usage: TextureUsage.SAMPLED,
         });
-        texture.setImageData([fill]);
+        texture.setImageData([canvas]);
+        this.#texture = texture;
+
+        console.log(canvas);
+      } else if (isImageBitmapOrCanvases(fill as ImageBitmap)) {
+        const texture = this.device.createTexture({
+          format: Format.U8_RGBA_NORM,
+          width: (fill as ImageBitmap).width,
+          height: (fill as ImageBitmap).height,
+          usage: TextureUsage.SAMPLED,
+        });
+        texture.setImageData([fill as ImageBitmap]);
         this.#texture = texture;
       } else {
         this.#texture = fill as Texture;

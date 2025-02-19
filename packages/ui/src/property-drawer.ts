@@ -144,6 +144,18 @@ export class PropertyDrawer extends LitElement {
       (this.shape as Ellipse).ry = r;
     }
   }
+  private handleWidthChange(e: CustomEvent) {
+    const width = (e.target as any).value;
+    if (this.shape) {
+      (this.shape as Rect).width = width;
+    }
+  }
+  private handleHeightChange(e: CustomEvent) {
+    const height = (e.target as any).value;
+    if (this.shape) {
+      (this.shape as Rect).height = height;
+    }
+  }
 
   render() {
     const shapeName = shapeNames.get(this.shape?.constructor) || 'Shape';
@@ -196,6 +208,35 @@ export class PropertyDrawer extends LitElement {
         label="ry"
         value=${(this.shape as Ellipse)?.ry}
         @sl-input=${this.handleRyChange}
+      ></sl-input>`;
+
+    const rect = html` <div class="group">
+        <sl-input
+          size="small"
+          type="number"
+          label="x"
+          value=${(this.shape as Rect)?.x}
+        ></sl-input>
+        <sl-input
+          size="small"
+          type="number"
+          label="y"
+          value=${(this.shape as Rect)?.y}
+        ></sl-input>
+      </div>
+      <sl-input
+        size="small"
+        type="number"
+        label="width"
+        value=${(this.shape as Rect)?.width}
+        @sl-input=${this.handleWidthChange}
+      ></sl-input>
+      <sl-input
+        size="small"
+        type="number"
+        label="height"
+        value=${(this.shape as Rect)?.height}
+        @sl-input=${this.handleHeightChange}
       ></sl-input>`;
 
     return html`
@@ -252,6 +293,8 @@ export class PropertyDrawer extends LitElement {
           ['RoughCircle', () => circle],
           ['Ellipse', () => ellipse],
           ['RoughEllipse', () => ellipse],
+          ['Rect', () => rect],
+          ['RoughRect', () => rect],
         ])}
         <sl-divider></sl-divider>
       </sl-drawer>

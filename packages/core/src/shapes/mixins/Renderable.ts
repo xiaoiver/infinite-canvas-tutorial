@@ -1,7 +1,7 @@
 import * as d3 from 'd3-color';
 import { AABB } from '../AABB';
 import { GConstructor } from '.';
-import { isString } from '../../utils';
+import { gradient, isString, LinearGradient } from '../../utils';
 import { Texture } from '@antv/g-device-api';
 
 export interface IRenderable {
@@ -170,6 +170,7 @@ export interface IRenderable {
   strokeOpacity: number;
 
   fillRGB: d3.RGBColor;
+  fillGradient: LinearGradient[];
   strokeRGB: d3.RGBColor;
 
   /**
@@ -243,6 +244,7 @@ export function Renderable<TBase extends GConstructor>(Base: TBase) {
     #visible: boolean;
     #fill: string | TexImageSource | Texture;
     #fillRGB: d3.RGBColor;
+    #fillGradient: LinearGradient[];
     #stroke: string;
     #strokeRGB: d3.RGBColor;
     #strokeWidth: number;
@@ -363,17 +365,18 @@ export function Renderable<TBase extends GConstructor>(Base: TBase) {
         this.#fill = fill;
 
         if (isString(fill)) {
+          this.#fillRGB = undefined;
+          this.#fillGradient = undefined;
+
           if (fill === 'none') {
             this.#fillRGB = d3.rgb(255, 255, 255, 0);
           } else {
-            this.#fillRGB = d3.rgb(fill);
+            this.#fillGradient = gradient(fill);
+
+            if (!this.#fillGradient) {
+              this.#fillRGB = d3.rgb(fill);
+            }
           }
-        } else {
-          // if (!fill.complete) {
-          //   fill.onload = () => {
-          //     this.renderDirtyFlag = true;
-          //   };
-          // }
         }
         this.renderDirtyFlag = true;
       }
@@ -381,6 +384,10 @@ export function Renderable<TBase extends GConstructor>(Base: TBase) {
 
     get fillRGB() {
       return this.#fillRGB;
+    }
+
+    get fillGradient() {
+      return this.#fillGradient;
     }
 
     get stroke() {

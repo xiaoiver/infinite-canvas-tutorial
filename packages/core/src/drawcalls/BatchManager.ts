@@ -24,6 +24,7 @@ import {
 import { RenderCache } from '../utils/render-cache';
 import { Mesh } from './Mesh';
 import { SDFText } from './SDFText';
+import { TexturePool } from '../TexturePool';
 
 /**
  * Since a shape may have multiple drawcalls, we need to cache them and maintain an 1-to-many relationship.
@@ -83,8 +84,11 @@ export class BatchManager {
 
   #renderCache: RenderCache;
 
+  #texturePool: TexturePool;
+
   constructor(private device: Device) {
     this.#renderCache = new RenderCache(device);
+    this.#texturePool = new TexturePool();
   }
 
   private collectDrawcallCtors(shape: Shape) {
@@ -108,6 +112,7 @@ export class BatchManager {
       const drawcall = new DrawcallCtor(
         this.device,
         this.#renderCache,
+        this.#texturePool,
         instanced,
         index,
       );

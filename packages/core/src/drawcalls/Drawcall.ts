@@ -16,6 +16,7 @@ import { Shape } from '../shapes';
 import { RenderCache } from '../utils/render-cache';
 import { isString, uid } from '../utils';
 import { Location } from '../shaders/wireframe';
+import { TexturePool } from '../TexturePool';
 
 // TODO: Use a more efficient way to manage Z index.
 export const ZINDEX_FACTOR = 100000;
@@ -63,6 +64,7 @@ export abstract class Drawcall {
   constructor(
     protected device: Device,
     protected renderCache: RenderCache,
+    protected texturePool: TexturePool,
     protected instanced: boolean,
     protected index: number,
   ) {}
@@ -151,9 +153,8 @@ export abstract class Drawcall {
   }
 
   protected get useFillImage() {
-    const { fill } = this.shapes[0];
-    return !isString(fill);
-    // && (isBrowser ? isImageBitmapOrCanvases(fill) : true)
+    const { fill, fillGradient } = this.shapes[0];
+    return !isString(fill) || fillGradient;
   }
 
   protected createProgram(vert: string, frag: string, defines: string) {

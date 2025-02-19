@@ -252,6 +252,10 @@ export const en = defineConfig({
                 text: 'Select canvas mode',
                 link: 'canvas-mode-select',
               },
+              {
+                text: 'Declarative gradient',
+                link: 'declarative-gradient',
+              },
             ],
           },
         ],
