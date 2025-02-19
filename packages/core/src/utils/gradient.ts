@@ -3,7 +3,7 @@
  * @see https://github.com/rafaelcaricio/gradient-parser
  */
 
-import { isNil } from '@antv/util';
+import { distanceSquareRoot, isNil } from '@antv/util';
 import { DEG_TO_RAD } from '@pixi/math';
 
 export interface LinearGradientNode {
@@ -541,57 +541,63 @@ export function computeLinearGradient(
   return { x1, y1, x2, y2 };
 }
 
-// export function computeRadialGradient(
-//   min: [number, number],
-//   width: number,
-//   height: number,
-//   cx: CSSUnitValue,
-//   cy: CSSUnitValue,
-//   size?: CSSUnitValue | CSSKeywordValue,
-// ) {
-//   // 'px'
-//   let x = cx.value;
-//   let y = cy.value;
+export function computeRadialGradient(
+  min: [number, number],
+  width: number,
+  height: number,
+  cx: {
+    type: string;
+    value: number;
+  },
+  cy: {
+    type: string;
+    value: number;
+  },
+  size?: {
+    type: string;
+    value: number | string;
+  },
+) {
+  // 'px'
+  let x = cx.value;
+  let y = cy.value;
 
-//   // TODO: 'em'
+  // '%'
+  if (cx.type === '%') {
+    x = (cx.value / 100) * width;
+  }
+  if (cy.type === '%') {
+    y = (cy.value / 100) * height;
+  }
 
-//   // '%'
-//   if (cx.unit === UnitType.kPercentage) {
-//     x = (cx.value / 100) * width;
-//   }
-//   if (cy.unit === UnitType.kPercentage) {
-//     y = (cy.value / 100) * height;
-//   }
+  // default to farthest-side
+  let r = Math.max(
+    distanceSquareRoot([0, 0], [x, y]),
+    distanceSquareRoot([0, height], [x, y]),
+    distanceSquareRoot([width, height], [x, y]),
+    distanceSquareRoot([width, 0], [x, y]),
+  );
+  if (size) {
+    if (size.type === 'extent-keyword') {
+      if (size.value === 'closest-side') {
+        r = Math.min(x, width - x, y, height - y);
+      } else if (size.value === 'farthest-side') {
+        r = Math.max(x, width - x, y, height - y);
+      } else if (size.value === 'closest-corner') {
+        r = Math.min(
+          distanceSquareRoot([0, 0], [x, y]),
+          distanceSquareRoot([0, height], [x, y]),
+          distanceSquareRoot([width, height], [x, y]),
+          distanceSquareRoot([width, 0], [x, y]),
+        );
+      }
+    } else {
+      r = Number(size.value);
+    }
+  }
 
-//   // default to farthest-side
-//   let r = Math.max(
-//     distanceSquareRoot([0, 0], [x, y]),
-//     distanceSquareRoot([0, height], [x, y]),
-//     distanceSquareRoot([width, height], [x, y]),
-//     distanceSquareRoot([width, 0], [x, y]),
-//   );
-//   if (size) {
-//     if (size instanceof CSSUnitValue) {
-//       r = size.value;
-//     } else if (size instanceof CSSKeywordValue) {
-//       // @see https://developer.mozilla.org/zh-CN/docs/Web/CSS/CSS_Images/Using_CSS_gradients#example_closest-side_for_circles
-//       if (size.value === 'closest-side') {
-//         r = Math.min(x, width - x, y, height - y);
-//       } else if (size.value === 'farthest-side') {
-//         r = Math.max(x, width - x, y, height - y);
-//       } else if (size.value === 'closest-corner') {
-//         r = Math.min(
-//           distanceSquareRoot([0, 0], [x, y]),
-//           distanceSquareRoot([0, height], [x, y]),
-//           distanceSquareRoot([width, height], [x, y]),
-//           distanceSquareRoot([width, 0], [x, y]),
-//         );
-//       }
-//     }
-//   }
-
-//   return { x: x + min[0], y: y + min[1], r };
-// }
+  return { x: x + min[0], y: y + min[1], r };
+}
 
 function spaceColorStops(colorStops: ColorStop[]) {
   const { length } = colorStops;
@@ -653,6 +659,63 @@ function angleToDeg(orientation: DirectionalNode | AngularNode) {
   return angle;
 }
 
+function positonToCSSUnitValue(position: PositionNode) {
+  let cx = 50;
+  let cy = 50;
+  let unitX = '%';
+  let unitY = '%';
+  if (position?.type === 'position') {
+    const { x, y } = position.value;
+    if (x?.type === 'position-keyword') {
+      if (x.value === 'left') {
+        cx = 0;
+      } else if (x.value === 'center') {
+        cx = 50;
+      } else if (x.value === 'right') {
+        cx = 100;
+      } else if (x.value === 'top') {
+        cy = 0;
+      } else if (x.value === 'bottom') {
+        cy = 100;
+      }
+    }
+
+    if (y?.type === 'position-keyword') {
+      if (y.value === 'left') {
+        cx = 0;
+      } else if (y.value === 'center') {
+        cy = 50;
+      } else if (y.value === 'right') {
+        cx = 100;
+      } else if (y.value === 'top') {
+        cy = 0;
+      } else if (y.value === 'bottom') {
+        cy = 100;
+      }
+    }
+
+    if (x?.type === 'px' || x?.type === '%' || x?.type === 'em') {
+      unitX = x?.type;
+      cx = Number(x.value);
+    }
+    if (y?.type === 'px' || y?.type === '%' || y?.type === 'em') {
+      unitY = y?.type;
+      cy = Number(y.value);
+    }
+  }
+
+  return {
+    cx: {
+      value: cx,
+      type: unitX,
+    },
+    cy: {
+      value: cy,
+      type: unitY,
+    },
+  };
+}
+
 export interface LinearGradient {
   type: 'linear-gradient';
   angle: number;
@@ -665,14 +728,42 @@ export interface LinearGradient {
   }[];
 }
 
+export interface RadialGradient {
+  type: 'radial-gradient';
+  cx: {
+    value: number;
+    type: string;
+  };
+  cy: {
+    value: number;
+    type: string;
+  };
+  size?: {
+    value: number | string;
+    type: string;
+  };
+  steps: {
+    offset: {
+      type: string;
+      value: number;
+    };
+    color: string;
+  }[];
+}
+
+export type Gradient = LinearGradient | RadialGradient;
+
 export function isGradient(colorStr: string) {
   return colorStr.indexOf('linear') > -1 || colorStr.indexOf('radial') > -1;
 }
 
-export function gradient(colorStr: string): LinearGradient[] {
+export function gradient(colorStr: string): Gradient[] {
   if (isGradient(colorStr)) {
     const ast = parseGradient(colorStr);
-    return ast.map(({ type, orientation, colorStops }) => {
+    return ast.map((node) => {
+      const { type, colorStops } = node;
+      let { orientation } = node;
+
       spaceColorStops(colorStops);
       const steps = colorStops.map((colorStop) => {
         return {
@@ -691,43 +782,44 @@ export function gradient(colorStr: string): LinearGradient[] {
             : 0,
           steps,
         };
+      } else if (type === 'radial-gradient') {
+        if (!orientation) {
+          orientation = [
+            {
+              type: 'shape',
+              value: 'circle',
+            },
+          ];
+        }
+        if (
+          orientation[0].type === 'shape' &&
+          orientation[0].value === 'circle'
+        ) {
+          const { cx, cy } = positonToCSSUnitValue(orientation[0].at);
+          let size: {
+            value: number | string;
+            type: string;
+          };
+          if (orientation[0].style) {
+            const { type, value } = orientation[0].style;
+            size = {
+              value,
+              type,
+            };
+          }
+          return {
+            type,
+            cx,
+            cy,
+            size,
+            steps,
+          };
+        }
+        // TODO: support ellipse shape
+      } else if (type === 'repeating-linear-gradient') {
+        console.log(node);
       }
-      // if (type === 'radial-gradient') {
-      //   if (!orientation) {
-      //     orientation = [
-      //       {
-      //         type: 'shape',
-      //         value: 'circle',
-      //       },
-      //     ];
-      //   }
-      //   if (
-      //     orientation[0].type === 'shape' &&
-      //     orientation[0].value === 'circle'
-      //   ) {
-      //     const { cx, cy } = positonToCSSUnitValue(orientation[0].at);
-      //     let size: CSSUnitValue | CSSKeywordValue;
-      //     if (orientation[0].style) {
-      //       const { type, value } = orientation[0].style;
-
-      //       if (type === 'extent-keyword') {
-      //         size = getOrCreateKeyword(value);
-      //       } else {
-      //         size = getOrCreateUnitValue(value, type);
-      //       }
-      //     }
-      //     return new CSSGradientValue(GradientType.RadialGradient, {
-      //       cx,
-      //       cy,
-      //       size,
-      //       steps,
-      //     });
-      //   }
-      //   // TODO: support ellipse shape
-      //   // TODO: repeating-linear-gradient & repeating-radial-gradient
-      //   // } else if (type === 'repeating-linear-gradient') {
-      //   // } else if (type === 'repeating-radial-gradient') {
-      // }
+      // TODO: repeating-radial-gradient
 
       return undefined;
     });

@@ -213,6 +213,8 @@ pnpm run dev
 -   Using CanvasGradient to implement gradient
 -   Using Shader to implement gradient
 
+<img src="./screenshots/lesson18.png" width="300" alt="Lesson 18 - gradient">
+
 [infinitecanvas]: https://infinitecanvas.tools/
 [Figma]: https://madebyevan.com/figma/building-a-professional-design-tool-on-the-web/
 [Modyfi]: https://digest.browsertech.com/archive/browsertech-digest-how-modyfi-is-building-with/

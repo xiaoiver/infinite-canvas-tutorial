@@ -210,6 +210,7 @@ export class BatchManager {
       });
     }
     this.#renderCache.destroy();
+    this.#texturePool.destroy();
   }
 
   clear() {

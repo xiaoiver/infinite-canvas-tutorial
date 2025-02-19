@@ -5,6 +5,7 @@ publish: false
 
 <script setup>
 import Gradient from '../../components/Gradient.vue';
+import DeclarativeGradient from '../../components/DeclarativeGradient.vue';
 </script>
 
 # 课程 18 - 渐变和重复图案
@@ -66,12 +67,14 @@ rect.fill = 'radial-gradient(circle at center, red 0, blue, green 100%)';
 
 常见的渐变类型包括：
 
--   [linear-gradient]
--   [radial-gradient]
--   [repeating-linear-gradient]
--   [repeating-radial-gradient]
--   [conic-gradient]
+-   [linear-gradient] CSS 和 Canvas 支持
+-   [radial-gradient] CSS 和 Canvas 支持
+-   [conic-gradient] CSS 和 Canvas 支持
+-   [repeating-linear-gradient] CSS 支持
+-   [repeating-radial-gradient] CSS 支持
 -   [sweep-gradient] CanvasKit / Skia 中支持
+
+<DeclarativeGradient />
 
 ### 使用 Mesh 实现 {#mesh-gradient}
 

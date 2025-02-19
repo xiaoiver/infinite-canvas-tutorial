@@ -1,7 +1,7 @@
 import * as d3 from 'd3-color';
 import { AABB } from '../AABB';
 import { GConstructor } from '.';
-import { gradient, isString, LinearGradient } from '../../utils';
+import { Gradient, gradient, isString } from '../../utils';
 import { Texture } from '@antv/g-device-api';
 
 export interface IRenderable {
@@ -170,7 +170,7 @@ export interface IRenderable {
   strokeOpacity: number;
 
   fillRGB: d3.RGBColor;
-  fillGradient: LinearGradient[];
+  fillGradient: Gradient[];
   strokeRGB: d3.RGBColor;
 
   /**
@@ -244,7 +244,7 @@ export function Renderable<TBase extends GConstructor>(Base: TBase) {
     #visible: boolean;
     #fill: string | TexImageSource | Texture;
     #fillRGB: d3.RGBColor;
-    #fillGradient: LinearGradient[];
+    #fillGradient: Gradient[];
     #stroke: string;
     #strokeRGB: d3.RGBColor;
     #strokeWidth: number;

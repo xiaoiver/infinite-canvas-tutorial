@@ -32,7 +32,14 @@ import { Drawable } from 'roughjs/bin/core';
 import { opSet2Absolute } from './rough';
 import { fontStringFromTextStyle } from './font';
 import { randomInteger } from './math';
-import { isGradient } from './gradient';
+import {
+  computeLinearGradient,
+  computeRadialGradient,
+  Gradient,
+  gradient,
+  isGradient,
+} from './gradient';
+import { generateGradientKey } from '../TexturePool';
 
 type SerializedTransform = {
   matrix: {
@@ -646,11 +653,187 @@ export function exportDropShadow(
   element.setAttribute('filter', `${existedFilter} url(#${$filter.id})`.trim());
 }
 
+function createOrUpdateGradient(
+  node: SerializedNode,
+  $def: SVGDefsElement,
+  gradient: Gradient,
+) {
+  const bounds = calcGeometryBounds(node);
+  const min = [bounds.minX, bounds.minY] as [number, number];
+  const width = bounds.maxX - bounds.minX;
+  const height = bounds.maxY - bounds.minY;
+
+  const gradientId = generateGradientKey({
+    ...gradient,
+    min,
+    width,
+    height,
+  });
+  let $existed = $def.querySelector(`#${gradientId}`);
+
+  if (!$existed) {
+    // <linearGradient> <radialGradient>
+    // @see https://developer.mozilla.org/zh-CN/docs/Web/SVG/Element/linearGradient
+    // @see https://developer.mozilla.org/zh-CN/docs/Web/SVG/Element/radialGradient
+    $existed = createSVGElement(
+      gradient.type === 'linear-gradient' ? 'linearGradient' : 'radialGradient',
+    );
+    // @see https://github.com/antvis/g/issues/1025
+    $existed.setAttribute('gradientUnits', 'userSpaceOnUse');
+    // add stops
+    let innerHTML = '';
+    gradient.steps
+      // sort by offset @see https://github.com/antvis/G/issues/1171
+      .sort((a, b) => a.offset.value - b.offset.value)
+      .forEach(({ offset, color }) => {
+        // TODO: support absolute unit like `px`
+        innerHTML += `<stop offset="${
+          offset.value / 100
+        }" stop-color="${color}"></stop>`;
+      });
+    $existed.innerHTML = innerHTML;
+    $existed.id = gradientId;
+    $def.appendChild($existed);
+  }
+
+  if (gradient.type === 'linear-gradient') {
+    const { angle } = gradient;
+    const { x1, y1, x2, y2 } = computeLinearGradient(
+      [min[0], min[1]],
+      width,
+      height,
+      angle,
+    );
+
+    $existed.setAttribute('x1', `${x1}`);
+    $existed.setAttribute('y1', `${y1}`);
+    $existed.setAttribute('x2', `${x2}`);
+    $existed.setAttribute('y2', `${y2}`);
+  } else if (gradient.type === 'radial-gradient') {
+    const { cx, cy, size } = gradient;
+    const { x, y, r } = computeRadialGradient(
+      [min[0], min[1]],
+      width,
+      height,
+      cx,
+      cy,
+      size,
+    );
+
+    $existed.setAttribute('cx', `${x}`);
+    $existed.setAttribute('cy', `${y}`);
+    $existed.setAttribute('r', `${r}`);
+  }
+
+  return gradientId;
+}
+
+function createOrUpdateMultiGradient(
+  node: SerializedNode,
+  $def: SVGDefsElement,
+  gradients: Gradient[],
+) {
+  const filterId = `filter-${node.uid}-gradient`;
+  let $existed = $def.querySelector(`#${filterId}`);
+  if (!$existed) {
+    $existed = createSVGElement('filter') as SVGFilterElement;
+    $existed.setAttribute('filterUnits', 'userSpaceOnUse');
+    // @see https://github.com/antvis/g/issues/1025
+    $existed.setAttribute('x', '0%');
+    $existed.setAttribute('y', '0%');
+    $existed.setAttribute('width', '100%');
+    $existed.setAttribute('height', '100%');
+
+    $existed.id = filterId;
+
+    $def.appendChild($existed);
+  }
+
+  /**
+   * <rect id="wave-rect" x="0" y="0" width="100%" height="100%" fill="url(#wave)"></rect>
+   * <filter id="blend-it" x="0%" y="0%" width="100%" height="100%">
+        <feImage xlink:href="#wave-rect" result="myWave" x="100" y="100"/>
+        <feImage xlink:href="#ry-rect" result="myRY"  x="100" y="100"/>
+        <feBlend in="myWave" in2="myRY" mode="multiply" result="blendedGrad"/>
+        <feComposite in="blendedGrad" in2="SourceGraphic" operator="in"/>
+    </filter>
+   */
+
+  let blended = 0;
+  gradients.forEach((gradient, i) => {
+    const gradientId = createOrUpdateGradient(node, $def, gradient);
+
+    const rectId = `${gradientId}_rect`;
+    const $rect = createSVGElement('rect') as SVGRectElement;
+    $rect.setAttribute('x', '0');
+    $rect.setAttribute('y', '0');
+    $rect.setAttribute('width', '100%');
+    $rect.setAttribute('height', '100%');
+    $rect.setAttribute('fill', `url(#${gradientId})`);
+    $rect.id = rectId;
+    $def.appendChild($rect);
+
+    const $feImage = createSVGElement('feImage') as SVGFEImageElement;
+    $feImage.setAttribute('href', `#${rectId}`);
+    $feImage.setAttribute('result', `${filterId}-${i}`);
+    $existed.appendChild($feImage);
+
+    if (i > 0) {
+      const $feBlend = createSVGElement('feBlend') as SVGFEBlendElement;
+      $feBlend.setAttribute(
+        'in',
+        i === 1 ? `${filterId}-${i - 1}` : `${filterId}-blended-${blended - 1}`,
+      );
+      $feBlend.setAttribute('in2', `${filterId}-${i}`);
+      $feBlend.setAttribute('result', `${filterId}-blended-${blended++}`);
+      // @see https://developer.mozilla.org/zh-CN/docs/Web/CSS/blend-mode
+      $feBlend.setAttribute('mode', 'multiply');
+      $existed.appendChild($feBlend);
+    }
+  });
+
+  const $feComposite = createSVGElement('feComposite') as SVGFECompositeElement;
+  $feComposite.setAttribute('in', `${filterId}-blended-${blended}`);
+  $feComposite.setAttribute('in2', 'SourceGraphic');
+  $feComposite.setAttribute('operator', 'in');
+  $existed.appendChild($feComposite);
+
+  return filterId;
+}
+
 export function exportFillGradientOrPattern(
   node: SerializedNode,
-  element: SVGElement,
+  $el: SVGElement,
   $g: SVGElement,
-) {}
+) {
+  const $defs = createSVGElement('defs') as SVGDefsElement;
+  $g.appendChild($defs);
+
+  const fill = node.attributes.fill;
+  const gradients = gradient(fill as string);
+
+  if (gradients.length === 1) {
+    const gradientId = createOrUpdateGradient(node, $defs, gradients[0]);
+    $el?.setAttribute('fill', `url(#${gradientId})`);
+  } else {
+    // @see https://stackoverflow.com/questions/20671502/can-i-blend-gradients-in-svg
+    const filterId = createOrUpdateMultiGradient(node, $defs, gradients);
+    $el?.setAttribute('filter', `url(#${filterId})`);
+    $el?.setAttribute('fill', 'black');
+  }
+}
+
+function calcGeometryBounds(node: SerializedNode) {
+  let bounds: AABB;
+  if (node.type === 'circle') {
+    bounds = Circle.getGeometryBounds(node.attributes);
+  } else if (node.type === 'ellipse') {
+    bounds = Ellipse.getGeometryBounds(node.attributes);
+  } else if (node.type === 'rect') {
+    bounds = Rect.getGeometryBounds(node.attributes);
+  }
+  return bounds;
+}
 
 export function exportFillImage(
   node: SerializedNode,
@@ -668,14 +851,7 @@ export function exportFillImage(
   $image.setAttribute('x', '0');
   $image.setAttribute('y', '0');
   // use geometry bounds of shape.
-  let bounds: AABB;
-  if (node.type === 'circle') {
-    bounds = Circle.getGeometryBounds(node.attributes);
-  } else if (node.type === 'ellipse') {
-    bounds = Ellipse.getGeometryBounds(node.attributes);
-  } else if (node.type === 'rect') {
-    bounds = Rect.getGeometryBounds(node.attributes);
-  }
+  const bounds = calcGeometryBounds(node);
   $image.setAttribute('width', `${bounds.maxX - bounds.minX}`);
   $image.setAttribute('height', `${bounds.maxY - bounds.minY}`);
   $pattern.appendChild($image);

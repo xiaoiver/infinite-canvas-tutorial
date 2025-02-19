@@ -34,6 +34,35 @@ onMounted(() => {
       fill: 'linear-gradient(to right, red, blue)',
     });
     canvas.appendChild(rect);
+
+    const rect2 = new Rect({
+      x: 250,
+      y: 100,
+      width: 100,
+      height: 100,
+      fill: 'radial-gradient(circle at center, red, blue, green 100%)',
+    });
+    canvas.appendChild(rect2);
+
+    const rect3 = new Rect({
+      x: 400,
+      y: 100,
+      width: 200,
+      height: 100,
+      fill: `linear-gradient(217deg, rgba(255,0,0,.8), rgba(255,0,0,0) 70.71%),
+              linear-gradient(127deg, rgba(0,255,0,.8), rgba(0,255,0,0) 70.71%),
+              linear-gradient(336deg, rgba(0,0,255,.8), rgba(0,0,255,0) 70.71%)`,
+    });
+    canvas.appendChild(rect3);
+
+    // const rect4 = new Rect({
+    //   x: 100,
+    //   y: 250,
+    //   width: 100,
+    //   height: 100,
+    //   fill: 'repeating-linear-gradient(45deg, blue, red)',
+    // });
+    // canvas.appendChild(rect4);
   });
 
   $canvas.addEventListener('ic-frame', (e) => {

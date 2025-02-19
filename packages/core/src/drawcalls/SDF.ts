@@ -54,12 +54,20 @@ export class SDF extends Drawcall {
 
     const isInstanceFillImage = !isString(this.shapes[0].fill);
     const isShapeFillImage = !isString(shape.fill);
-
+    const isInstanceFillGradient = this.shapes[0].fillGradient?.length > 0;
+    const isShapeFillGradient = shape.fillGradient?.length > 0;
     if (isInstanceFillImage !== isShapeFillImage) {
       return false;
     }
 
-    if (isInstanceFillImage && isShapeFillImage) {
+    if (isInstanceFillGradient !== isShapeFillGradient) {
+      return false;
+    }
+
+    if (
+      (isInstanceFillImage && isShapeFillImage) ||
+      (isInstanceFillGradient && isShapeFillGradient)
+    ) {
       return this.shapes[0].fill === shape.fill;
     }
 
@@ -282,8 +290,6 @@ export class SDF extends Drawcall {
         });
         texture.setImageData([canvas]);
         this.#texture = texture;
-
-        console.log(canvas);
       } else if (isImageBitmapOrCanvases(fill as ImageBitmap)) {
         const texture = this.device.createTexture({
           format: Format.U8_RGBA_NORM,
