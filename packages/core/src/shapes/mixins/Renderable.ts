@@ -1,7 +1,7 @@
 import * as d3 from 'd3-color';
 import { AABB } from '../AABB';
 import { GConstructor } from '.';
-import { Gradient, gradient, isString } from '../../utils';
+import { Gradient, parseGradient, isString } from '../../utils';
 import { Texture } from '@antv/g-device-api';
 
 export interface IRenderable {
@@ -371,7 +371,7 @@ export function Renderable<TBase extends GConstructor>(Base: TBase) {
           if (fill === 'none') {
             this.#fillRGB = d3.rgb(255, 255, 255, 0);
           } else {
-            this.#fillGradient = gradient(fill);
+            this.#fillGradient = parseGradient(fill);
 
             if (!this.#fillGradient) {
               this.#fillRGB = d3.rgb(fill);

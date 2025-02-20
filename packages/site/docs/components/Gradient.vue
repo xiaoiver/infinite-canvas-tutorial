@@ -9,9 +9,8 @@ function generateColorRamp(colorRamp) {
   let ctx = canvas.getContext('2d');
   canvas.width = 256;
   canvas.height = 1;
-  let data = undefined;
 
-  const gradient = ctx.createLinearGradient(0, 0, 256, 1);
+  const gradient = ctx.createLinearGradient(0, 0, 256, 0);
 
   const min = colorRamp.positions[0];
   const max = colorRamp.positions[colorRamp.positions.length - 1];
@@ -21,11 +20,7 @@ function generateColorRamp(colorRamp) {
   }
   ctx.fillStyle = gradient;
   ctx.fillRect(0, 0, 256, 1);
-
-  data = new Uint8ClampedArray(ctx.getImageData(0, 0, 256, 1).data);
-  canvas = null;
-  ctx = null;
-  return { data, width: 256, height: 1 };
+  return { data: canvas, width: 256, height: 1 };
 }
 
 let canvas;

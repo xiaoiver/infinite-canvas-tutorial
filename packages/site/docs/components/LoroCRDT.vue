@@ -1,17 +1,38 @@
-<script setup>
+<script setup lang="ts">
 /**
  * @see https://github.com/loro-dev/loro-excalidraw
  */
 
-import { Text } from '@infinite-canvas-tutorial/core';
+import { Canvas, Group, Circle, serializeNode, SerializedNode } from '@infinite-canvas-tutorial/core';
 import { ref, onMounted, onUnmounted } from 'vue';
 import Stats from 'stats.js';
+import { LoroDoc, LoroTree, LoroTreeNode } from 'loro-crdt';
 
-let canvas;
-let channel;
-let doc;
-let tree;
-let lastVersion;
+function convertSceneGraphToLoroTree(sceenGraph: Group, doc: LoroDoc) {
+  const tree = doc.getTree("scene-graph");
+
+  const traverse = (node: SerializedNode, loroNode: LoroTreeNode) => {
+    const loroChildNode = loroNode.createNode();
+
+    loroChildNode.data.set('uid', node.uid);
+    loroChildNode.data.set('type', node.type);
+    loroChildNode.data.set('attributes', node.attributes);
+
+    node.children?.forEach((child) => {
+      traverse(child, loroChildNode);
+    });
+  };
+
+  traverse(serializeNode(sceenGraph), tree.createNode());  
+
+  return tree;
+}
+
+let canvas: Canvas;
+let channel: BroadcastChannel;
+let doc: LoroDoc;
+let tree: LoroTree;
+let lastVersion: number;
 
 const stats = new Stats();
 stats.showPanel(0);
@@ -20,7 +41,7 @@ $stats.style.position = 'absolute';
 $stats.style.left = '0px';
 $stats.style.top = '0px';
 
-const wrapper = ref(null);
+const wrapper = ref<HTMLDivElement | null>(null);
 
 onMounted(() => {
   import('@infinite-canvas-tutorial/ui');
@@ -29,59 +50,44 @@ onMounted(() => {
 
   if (!$canvas) return;
 
-  import('loro-crdt').then(({ LoroDoc }) => {
-    doc = new LoroDoc();
-    tree = doc.getTree("scene-graph");
+  channel = new BroadcastChannel('loro-crdt');
+  channel.onmessage = (e) => {
+    const bytes = new Uint8Array(e.data);
+    try {
+      doc.import(bytes);
+    } catch (e) {}
+  };
 
-    console.log(doc, tree);
-  });
+  doc = new LoroDoc();
 
-  // doc = new LoroDoc();
-  // tree = doc.getTree("scene-graph");
-
-  // let root = tree.createNode();
-
-  // doc.subscribe((e) => {
-  //   const version = Object.fromEntries(doc.version().toJSON());
-  //   let vv = "";
-  //   for (const [k, v] of Object.entries(version)) {
-  //     vv += `${k.toString().slice(0, 4)}:${v} `;
-  //   }
-
-  //   if (e.by === "local") {
-  //     const bytes = doc.export({ mode: "update", from: lastVersion });
-  //     lastVersion = doc.version();
-  //     channel.postMessage(bytes);
-  //   }
-
-  //   if (e.by !== "local") {
-  //     canvas.updateScene({ elements: docElements.toJSON() });
-  //   }
-  // });
-
-  // channel = new BroadcastChannel("loro-crdt");
-  // channel.onmessage = (e) => {
-  //   const bytes = new Uint8Array(e.data);
-  //   try {
-  //     doc.import(bytes);
-  //   } catch (e) {
-  //     localStorage.clear();
-  //     location.reload();
-  //   }
-  // };
-
-  $canvas.parentElement.appendChild($stats);
-  $canvas.addEventListener('ic-ready', (e) => {
+  $canvas.parentElement?.appendChild($stats);
+  // @ts-ignore
+  $canvas.addEventListener('ic-ready', (e: CustomEvent<Canvas>) => {
     canvas = e.detail;
+
+    const circle = new Circle({
+      cx: 100,
+      cy: 100,
+      r: 50,
+      fill: 'red',
+    });
+    canvas.appendChild(circle);
+
+    convertSceneGraphToLoroTree(canvas.root, doc);
+
+    console.log(doc.toJSON());
   });
-  $canvas.addEventListener('ic-frame', (e) => {
+  $canvas.addEventListener('ic-frame', () => {
     stats.update();
+  });
+  $canvas.addEventListener('ic-changed', () => {
+    // console.log(doc.export({ mode: 'update' }));
   });
 });
 
-// onUnmounted(() => {
-//   channel.close();
-// });
+onUnmounted(() => {
+  channel?.close();
+});
 </script>
 
 <template>

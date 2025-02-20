@@ -106,6 +106,7 @@ export class PropertyDrawer extends LitElement {
     if (this.shape) {
       this.shape.stroke = rgb;
       this.shape.strokeOpacity = opacity;
+      this.dispatchEvent(new CustomEvent('ic-changed'));
     }
   }
 
@@ -116,6 +117,7 @@ export class PropertyDrawer extends LitElement {
     if (this.shape) {
       this.shape.fill = rgb;
       this.shape.fillOpacity = opacity;
+      this.dispatchEvent(new CustomEvent('ic-changed'));
     }
   }
 
@@ -123,6 +125,7 @@ export class PropertyDrawer extends LitElement {
     const opacity = (e.target as any).value;
     if (this.shape) {
       this.shape.opacity = opacity;
+      this.dispatchEvent(new CustomEvent('ic-changed'));
     }
   }
 

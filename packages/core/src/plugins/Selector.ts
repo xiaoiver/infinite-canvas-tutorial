@@ -56,8 +56,6 @@ export class Selector implements Plugin {
     zIndex: Number.MAX_SAFE_INTEGER,
   });
 
-  #shapeSelected = false;
-
   movingEvent: CustomEvent;
   movedEvent: CustomEvent;
   resizingEvent: CustomEvent;

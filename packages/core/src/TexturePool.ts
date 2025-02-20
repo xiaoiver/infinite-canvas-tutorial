@@ -1,7 +1,9 @@
 import { DOMAdapter } from './environment';
 import {
+  computeConicGradient,
   computeLinearGradient,
   computeRadialGradient,
+  ConicGradient,
   Gradient,
   hashCode,
   LinearGradient,
@@ -55,7 +57,8 @@ export class TexturePool {
   }
 
   private getOrCreateGradientInternal(
-    params: (LinearGradient | RadialGradient) & GradientExtraParams,
+    params: (LinearGradient | RadialGradient | ConicGradient) &
+      GradientExtraParams,
   ) {
     const key = generateGradientKey(params);
     const { type, steps, min, width, height } = params;
@@ -86,6 +89,10 @@ export class TexturePool {
       );
       // @see https://developer.mozilla.org/zh-CN/docs/Web/API/CanvasRenderingContext2D/createRadialGradient
       gradient = this.#ctx.createRadialGradient(x, y, 0, x, y, r);
+    } else if (type === 'conic-gradient') {
+      const { cx, cy, angle } = params;
+      const { x, y } = computeConicGradient(min, width, height, cx, cy);
+      gradient = this.#ctx.createConicGradient(angle, x, y);
     }
 
     if (gradient) {

@@ -36,7 +36,7 @@ import {
   computeLinearGradient,
   computeRadialGradient,
   Gradient,
-  gradient,
+  parseGradient,
   isGradient,
 } from './gradient';
 import { generateGradientKey } from '../TexturePool';
@@ -810,7 +810,7 @@ export function exportFillGradientOrPattern(
   $g.appendChild($defs);
 
   const fill = node.attributes.fill;
-  const gradients = gradient(fill as string);
+  const gradients = parseGradient(fill as string);
 
   if (gradients.length === 1) {
     const gradientId = createOrUpdateGradient(node, $defs, gradients[0]);

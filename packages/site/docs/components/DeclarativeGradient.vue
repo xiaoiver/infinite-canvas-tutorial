@@ -55,14 +55,14 @@ onMounted(() => {
     });
     canvas.appendChild(rect3);
 
-    // const rect4 = new Rect({
-    //   x: 100,
-    //   y: 250,
-    //   width: 100,
-    //   height: 100,
-    //   fill: 'repeating-linear-gradient(45deg, blue, red)',
-    // });
-    // canvas.appendChild(rect4);
+    const rect4 = new Rect({
+      x: 100,
+      y: 250,
+      width: 100,
+      height: 100,
+      fill: 'conic-gradient(#eee, black, #eee)',
+    });
+    canvas.appendChild(rect4);
   });
 
   $canvas.addEventListener('ic-frame', (e) => {

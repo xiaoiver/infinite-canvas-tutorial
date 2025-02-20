@@ -18,7 +18,7 @@ import {
   LineCurve,
   containsEmoji,
   isClockWise,
-  parseGradient,
+  parseGradientAST,
 } from '../../packages/core/src/utils';
 
 describe('Utils', () => {
@@ -168,7 +168,7 @@ describe('Utils', () => {
 
   describe('Gradient parser', () => {
     it('should parse linear-gradient correctly', () => {
-      let ast = parseGradient('linear-gradient(#e66465, #9198e5)');
+      let ast = parseGradientAST('linear-gradient(#e66465, #9198e5)');
       expect(ast).toStrictEqual([
         {
           colorStops: [
@@ -181,7 +181,7 @@ describe('Utils', () => {
       ]);
 
       // angular
-      ast = parseGradient('linear-gradient(0deg, blue, green 40%, red)');
+      ast = parseGradientAST('linear-gradient(0deg, blue, green 40%, red)');
       expect(ast).toStrictEqual([
         {
           colorStops: [
@@ -199,7 +199,7 @@ describe('Utils', () => {
       ]);
 
       // directional
-      ast = parseGradient('linear-gradient(to right, blue, green 40%, red)');
+      ast = parseGradientAST('linear-gradient(to right, blue, green 40%, red)');
       expect(ast).toStrictEqual([
         {
           colorStops: [
@@ -218,7 +218,7 @@ describe('Utils', () => {
 
       // multiple gradients
       ast =
-        parseGradient(`linear-gradient(217deg, rgba(255,0,0,.8), rgba(255,0,0,0) 70.71%),
+        parseGradientAST(`linear-gradient(217deg, rgba(255,0,0,.8), rgba(255,0,0,0) 70.71%),
     linear-gradient(127deg, rgba(0,255,0,.8), rgba(0,255,0,0) 70.71%),
     linear-gradient(336deg, rgba(0,0,255,.8), rgba(0,0,255,0) 70.71%)`);
       expect(ast).toStrictEqual([
@@ -262,7 +262,7 @@ describe('Utils', () => {
     });
 
     it('should parse radial-gradient correctly', () => {
-      let ast = parseGradient(
+      let ast = parseGradientAST(
         'radial-gradient(circle at center, red, blue, green 100%)',
       );
       expect(ast).toStrictEqual([
@@ -294,7 +294,7 @@ describe('Utils', () => {
         },
       ]);
 
-      ast = parseGradient('radial-gradient(red, blue, green)');
+      ast = parseGradientAST('radial-gradient(red, blue, green)');
       expect(ast).toStrictEqual([
         {
           colorStops: [
@@ -308,7 +308,7 @@ describe('Utils', () => {
       ]);
 
       // multiple radial gradients
-      ast = parseGradient(
+      ast = parseGradientAST(
         'radial-gradient(red, blue, green), radial-gradient(red, blue, green)',
       );
       expect(ast).toStrictEqual([
@@ -333,21 +333,19 @@ describe('Utils', () => {
       ]);
     });
 
-    // it('should parse conic-gradient correctly', () => {
-    //   let ast = parseGradient('conic-gradient(red 0deg, blue, green)');
-    //   expect(ast).toBe(0);
-
-    //   [
-    //     {
-    //       colorStops: [
-    //         { length: undefined, type: 'literal', value: 'red' },
-    //         { length: undefined, type: 'literal', value: 'blue' },
-    //         { length: undefined, type: 'literal', value: 'green' },
-    //       ],
-    //       orientation: undefined,
-    //       type: 'conic-gradient',
-    //     },
-    //   ];
-    // });
+    it('should parse conic-gradient correctly', () => {
+      let ast = parseGradientAST('conic-gradient(red, blue, green)');
+      expect(ast).toStrictEqual([
+        {
+          colorStops: [
+            { length: undefined, type: 'literal', value: 'red' },
+            { length: undefined, type: 'literal', value: 'blue' },
+            { length: undefined, type: 'literal', value: 'green' },
+          ],
+          orientation: undefined,
+          type: 'conic-gradient',
+        },
+      ]);
+    });
   });
 });

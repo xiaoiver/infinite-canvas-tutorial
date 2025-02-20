@@ -13,6 +13,8 @@ export {
   parsePath,
   fromSVGElement,
   parseTransform,
+  parseGradient,
   loadBitmapFont,
   deepClone,
 } from './utils';
+export { type SerializedNode } from './utils';

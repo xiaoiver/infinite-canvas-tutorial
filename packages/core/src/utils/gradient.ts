@@ -26,6 +26,14 @@ export interface RadialGradientNode {
   colorStops: ColorStop[];
 }
 
+export interface ConicGradientNode {
+  type: 'conic-gradient';
+  orientation?:
+    | (ShapeNode | DefaultRadialNode | ExtentKeywordNode)[]
+    | undefined;
+  colorStops: ColorStop[];
+}
+
 export interface RepeatingRadialGradientNode {
   type: 'repeating-radial-gradient';
   orientation?:
@@ -144,7 +152,8 @@ export type GradientNode =
   | LinearGradientNode
   | RepeatingLinearGradientNode
   | RadialGradientNode
-  | RepeatingRadialGradientNode;
+  | RepeatingRadialGradientNode
+  | ConicGradientNode;
 
 export function colorStopToString(colorStop: ColorStop) {
   const { type, value } = colorStop;
@@ -160,7 +169,7 @@ export function colorStopToString(colorStop: ColorStop) {
   return `rgba(${value.join(',')})`;
 }
 
-export const parseGradient = (function () {
+export const parseGradientAST = (function () {
   const tokens = {
     linearGradient: /^(linear\-gradient)/i,
     repeatingLinearGradient: /^(repeating\-linear\-gradient)/i,
@@ -541,6 +550,34 @@ export function computeLinearGradient(
   return { x1, y1, x2, y2 };
 }
 
+export function computeConicGradient(
+  min: [number, number],
+  width: number,
+  height: number,
+  cx: {
+    type: string;
+    value: number;
+  },
+  cy: {
+    type: string;
+    value: number;
+  },
+) {
+  // 'px'
+  let x = cx.value;
+  let y = cy.value;
+
+  // '%'
+  if (cx.type === '%') {
+    x = (cx.value / 100) * width;
+  }
+  if (cy.type === '%') {
+    y = (cy.value / 100) * height;
+  }
+
+  return { x: x + min[0], y: y + min[1] };
+}
+
 export function computeRadialGradient(
   min: [number, number],
   width: number,
@@ -751,15 +788,39 @@ export interface RadialGradient {
   }[];
 }
 
-export type Gradient = LinearGradient | RadialGradient;
-
-export function isGradient(colorStr: string) {
-  return colorStr.indexOf('linear') > -1 || colorStr.indexOf('radial') > -1;
+export interface ConicGradient {
+  type: 'conic-gradient';
+  cx: {
+    value: number;
+    type: string;
+  };
+  cy: {
+    value: number;
+    type: string;
+  };
+  angle: number;
+  steps: {
+    offset: {
+      type: string;
+      value: number;
+    };
+    color: string;
+  }[];
 }
 
-export function gradient(colorStr: string): Gradient[] {
+export type Gradient = LinearGradient | RadialGradient | ConicGradient;
+
+export function isGradient(colorStr: string) {
+  return (
+    colorStr.indexOf('linear') > -1 ||
+    colorStr.indexOf('radial') > -1 ||
+    colorStr.indexOf('conic') > -1
+  );
+}
+
+export function parseGradient(colorStr: string): Gradient[] {
   if (isGradient(colorStr)) {
-    const ast = parseGradient(colorStr);
+    const ast = parseGradientAST(colorStr);
     return ast.map((node) => {
       const { type, colorStops } = node;
       let { orientation } = node;
@@ -816,8 +877,32 @@ export function gradient(colorStr: string): Gradient[] {
           };
         }
         // TODO: support ellipse shape
-      } else if (type === 'repeating-linear-gradient') {
-        console.log(node);
+      } else if (type === 'conic-gradient') {
+        if (!orientation) {
+          orientation = [
+            {
+              type: 'shape',
+              value: 'circle',
+            },
+          ];
+        }
+        if (
+          orientation[0].type === 'shape' &&
+          orientation[0].value === 'circle'
+        ) {
+          const { cx, cy } = positonToCSSUnitValue(orientation[0].at);
+          return {
+            type,
+            cx,
+            cy,
+            angle: orientation
+              ? angleToDeg(orientation as DirectionalNode | AngularNode)
+              : 0,
+            steps,
+          };
+        }
+        // } else if (type === 'repeating-linear-gradient') {
+        //   console.log(node);
       }
       // TODO: repeating-radial-gradient
 
