@@ -164,6 +164,8 @@ function computeLinearGradient(
 
 ## 渐变编辑面板 {#gradient-editor}
 
+![Figma gradient panel](/figma-gradient-panel.png)
+
 ## 实现重复图案 {#pattern}
 
 <https://developer.mozilla.org/zh-CN/docs/Web/API/CanvasRenderingContext2D/createPattern#%E5%8F%82%E6%95%B0>

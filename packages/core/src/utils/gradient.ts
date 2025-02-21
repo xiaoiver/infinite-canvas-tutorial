@@ -818,6 +818,10 @@ export function isGradient(colorStr: string) {
   );
 }
 
+export function isImageDataURI(colorStr: string) {
+  return colorStr.indexOf('data:image') > -1;
+}
+
 export function parseGradient(colorStr: string): Gradient[] {
   if (isGradient(colorStr)) {
     const ast = parseGradientAST(colorStr);
