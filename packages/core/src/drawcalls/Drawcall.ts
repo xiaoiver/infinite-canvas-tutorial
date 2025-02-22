@@ -14,7 +14,7 @@ import {
 } from '@antv/g-device-api';
 import { Shape } from '../shapes';
 import { RenderCache } from '../utils/render-cache';
-import { isString, uid } from '../utils';
+import { uid } from '../utils';
 import { Location } from '../shaders/wireframe';
 import { TexturePool } from '../TexturePool';
 
@@ -153,8 +153,7 @@ export abstract class Drawcall {
   }
 
   protected get useFillImage() {
-    const { fill, fillGradient } = this.shapes[0];
-    return !isString(fill) || fillGradient;
+    return this.shapes[0].useFillImage;
   }
 
   protected createProgram(vert: string, frag: string, defines: string) {

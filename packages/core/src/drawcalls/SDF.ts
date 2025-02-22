@@ -274,6 +274,11 @@ export class SDF extends Drawcall {
 
     if (this.useFillImage) {
       const fill = this.shapes[0].fill;
+
+      if (this.bindings) {
+        this.bindings.destroy();
+      }
+
       if (isString(fill)) {
         const { minX, minY, maxX, maxY } = this.shapes[0].getGeometryBounds();
         const canvas = this.texturePool.getOrCreateGradient({
@@ -483,7 +488,7 @@ export class SDF extends Drawcall {
       innerShadowOffsetX,
       innerShadowOffsetY,
       innerShadowBlurRadius,
-      fillRGB ? 0 : 1,
+      0,
     ];
 
     return [

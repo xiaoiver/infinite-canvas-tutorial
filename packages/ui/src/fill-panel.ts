@@ -1,5 +1,7 @@
 import { html, css, LitElement } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
+import { load } from '@loaders.gl/core';
+import { ImageLoader } from '@loaders.gl/images';
 
 import '@shoelace-style/shoelace/dist/components/radio-group/radio-group.js';
 import '@shoelace-style/shoelace/dist/components/radio-button/radio-button.js';
@@ -42,13 +44,15 @@ export class FillPanel extends LitElement {
   private handleImageChange(e: CustomEvent) {
     const { dataURI, opacity } = e.detail;
 
-    const event = new CustomEvent('fillchanged', {
-      detail: { fill: dataURI, fillOpacity: opacity },
-      bubbles: true,
-      composed: true,
-      cancelable: true,
+    load(dataURI, ImageLoader).then((image) => {
+      const event = new CustomEvent('fillchanged', {
+        detail: { fill: image, fillOpacity: opacity },
+        bubbles: true,
+        composed: true,
+        cancelable: true,
+      });
+      this.dispatchEvent(event);
     });
-    this.dispatchEvent(event);
   }
 
   private handleFillTypeChange(e: CustomEvent) {

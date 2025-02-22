@@ -9,3 +9,4 @@ export * from './fill-panel';
 export * from './input-solid';
 export * from './input-image';
 export * from './input-gradient';
+export * from './input-range';

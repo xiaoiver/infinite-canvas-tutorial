@@ -308,10 +308,7 @@ void main() {
   #endif
 
   #ifdef USE_FILLIMAGE
-    bool useFillImage = innerShadow.w > 0.5;
-    if (useFillImage) {
-      fillColor = texture(SAMPLER_2D(u_Texture), v_Uv);
-    }
+    fillColor = texture(SAMPLER_2D(u_Texture), v_Uv);
   #endif
 
   float compressed = shapeSizeAttenuation;

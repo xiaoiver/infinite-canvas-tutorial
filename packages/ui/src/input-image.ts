@@ -34,6 +34,7 @@ export class InputImage extends LitElement {
       width: 100%;
       height: 100%;
       object-fit: contain;
+      margin-top: 8px;
     }
 
     sl-range::part(form-control) {
@@ -92,15 +93,14 @@ export class InputImage extends LitElement {
       <input type="file" accept="image/*" @change=${this.handleInput} />
       ${this.dataURI ? html`<img src=${this.dataURI} />` : ''}
       <sl-divider></sl-divider>
-      <sl-range
-        step="0.1"
+      <ic-input-range
+        label="Opacity"
         min="0"
         max="1"
+        step="0.1"
         value=${this.opacity}
         @sl-input=${this.handleOpacityChange}
-      >
-        <span slot="label">Opacity</span>
-      </sl-range>
+      ></ic-input-range>
     `;
   }
 }

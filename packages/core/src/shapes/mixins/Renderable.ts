@@ -1,7 +1,7 @@
 import * as d3 from 'd3-color';
 import { AABB } from '../AABB';
 import { GConstructor } from '.';
-import { Gradient, parseGradient, isString } from '../../utils';
+import { Gradient, parseGradient, isString, isGradient } from '../../utils';
 import { Texture } from '@antv/g-device-api';
 
 export interface IRenderable {
@@ -171,6 +171,7 @@ export interface IRenderable {
 
   fillRGB: d3.RGBColor;
   fillGradient: Gradient[];
+  useFillImage: boolean;
   strokeRGB: d3.RGBColor;
 
   /**
@@ -245,6 +246,7 @@ export function Renderable<TBase extends GConstructor>(Base: TBase) {
     #fill: string | TexImageSource | Texture;
     #fillRGB: d3.RGBColor;
     #fillGradient: Gradient[];
+    #useFillImage: boolean;
     #stroke: string;
     #strokeRGB: d3.RGBColor;
     #strokeWidth: number;
@@ -362,22 +364,30 @@ export function Renderable<TBase extends GConstructor>(Base: TBase) {
     }
     set fill(fill: string | TexImageSource | Texture) {
       if (this.#fill !== fill) {
-        this.#fill = fill;
-
+        let useFillImage = false;
         if (isString(fill)) {
           this.#fillRGB = undefined;
           this.#fillGradient = undefined;
 
           if (fill === 'none') {
             this.#fillRGB = d3.rgb(255, 255, 255, 0);
-          } else {
+          } else if (isGradient(fill)) {
             this.#fillGradient = parseGradient(fill);
-
-            if (!this.#fillGradient) {
-              this.#fillRGB = d3.rgb(fill);
-            }
+            useFillImage = true;
+          } else {
+            this.#fillRGB = d3.rgb(fill);
           }
+        } else {
+          useFillImage = true;
         }
+
+        if (useFillImage || useFillImage !== this.#useFillImage) {
+          // Need recompile program since #define USE_FILLIMAGE is changed.
+          this.materialDirtyFlag = true;
+        }
+
+        this.#fill = fill;
+        this.#useFillImage = useFillImage;
         this.renderDirtyFlag = true;
       }
     }
@@ -388,6 +398,10 @@ export function Renderable<TBase extends GConstructor>(Base: TBase) {
 
     get fillGradient() {
       return this.#fillGradient;
+    }
+
+    get useFillImage() {
+      return this.#useFillImage;
     }
 
     get stroke() {
