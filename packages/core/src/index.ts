@@ -17,6 +17,5 @@ export {
   loadBitmapFont,
   deepClone,
   isGradient,
-  isImageDataURI,
 } from './utils';
 export { type SerializedNode } from './utils';

@@ -6,7 +6,7 @@ export * from './property-drawer';
 export * from './textarea';
 export * from './dark-mode';
 export * from './fill-panel';
+export * from './stroke-panel';
 export * from './input-solid';
 export * from './input-image';
 export * from './input-gradient';
-export * from './input-range';

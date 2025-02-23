@@ -3,7 +3,7 @@
  * @see https://github.com/rafaelcaricio/gradient-parser
  */
 
-import { distanceSquareRoot, isNil } from '@antv/util';
+import { distanceSquareRoot, isNil, isString } from '@antv/util';
 import { DEG_TO_RAD } from '@pixi/math';
 
 export interface LinearGradientNode {
@@ -812,18 +812,15 @@ export type Gradient = LinearGradient | RadialGradient | ConicGradient;
 
 export function isGradient(colorStr: string) {
   return (
-    colorStr.indexOf('linear') > -1 ||
-    colorStr.indexOf('radial') > -1 ||
-    colorStr.indexOf('conic') > -1
+    isString(colorStr) &&
+    (colorStr.indexOf('linear') > -1 ||
+      colorStr.indexOf('radial') > -1 ||
+      colorStr.indexOf('conic') > -1)
   );
 }
 
-export function isImageDataURI(colorStr: string) {
-  return colorStr.indexOf('data:image') > -1;
-}
-
 export function parseGradient(colorStr: string): Gradient[] {
-  if (isGradient(colorStr)) {
+  if (colorStr && isGradient(colorStr)) {
     const ast = parseGradientAST(colorStr);
     return ast.map((node) => {
       const { type, colorStops } = node;

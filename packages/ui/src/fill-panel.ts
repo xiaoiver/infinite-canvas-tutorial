@@ -5,20 +5,17 @@ import { ImageLoader } from '@loaders.gl/images';
 
 import '@shoelace-style/shoelace/dist/components/radio-group/radio-group.js';
 import '@shoelace-style/shoelace/dist/components/radio-button/radio-button.js';
+import { panelStyles } from './styles';
 
 @customElement('ic-fill-panel')
 export class FillPanel extends LitElement {
-  static styles = css`
-    sl-radio-group::part(form-control) {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    .fill-panel-content {
-      padding-top: 8px;
-    }
-  `;
+  static styles = [
+    panelStyles,
+    css`
+      .fill-panel-content {
+      }
+    `,
+  ];
 
   @property()
   fill: string;
@@ -28,7 +25,7 @@ export class FillPanel extends LitElement {
 
   @property()
   @state()
-  type: 'solid' | 'gradient' | 'image';
+  type: 'solid' | 'gradient' | 'image' | 'none';
 
   private handleSolidChange(e: CustomEvent) {
     const { rgb, opacity } = e.detail;
@@ -61,19 +58,20 @@ export class FillPanel extends LitElement {
 
   render() {
     return html`
-      <sl-radio-group
-        name="fill"
-        value=${this.type}
-        @sl-change=${this.handleFillTypeChange}
-      >
-        <sl-radio-button size="small" value="solid">Solid</sl-radio-button>
-        <sl-radio-button size="small" value="gradient"
-          >Gradient</sl-radio-button
-        >
-        <sl-radio-button size="small" value="image">Image</sl-radio-button>
-      </sl-radio-group>
-
       <div class="fill-panel-content">
+        <sl-radio-group
+          name="fill"
+          label="Color"
+          value=${this.type}
+          @sl-change=${this.handleFillTypeChange}
+        >
+          <sl-radio-button size="small" value="solid">Solid</sl-radio-button>
+          <sl-radio-button size="small" value="gradient"
+            >Gradient</sl-radio-button
+          >
+          <sl-radio-button size="small" value="image">Image</sl-radio-button>
+          <sl-radio-button size="small" value="none">None</sl-radio-button>
+        </sl-radio-group>
         ${this.type === 'solid'
           ? html`
               <ic-input-solid

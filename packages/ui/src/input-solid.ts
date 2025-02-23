@@ -1,4 +1,4 @@
-import { html, LitElement } from 'lit';
+import { css, html, LitElement } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
 import { rgbAndOpacityToRgba, rgbaToRgbAndOpacity } from './utils';
 
@@ -6,6 +6,18 @@ import '@shoelace-style/shoelace/dist/components/color-picker/color-picker.js';
 
 @customElement('ic-input-solid')
 export class InputSolid extends LitElement {
+  static styles = css`
+    :host {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    label {
+      font-size: var(--sl-font-size-small);
+    }
+  `;
+
   @property()
   rgb: string;
 
@@ -28,15 +40,16 @@ export class InputSolid extends LitElement {
 
   render() {
     return html`
+      <label>Select a color</label>
       <sl-color-picker
-        inline
+        hoist
         size="small"
         value=${rgbAndOpacityToRgba(this.rgb, this.opacity)}
         @sl-input=${this.handleColorChange}
         opacity
-        label="Select a color"
         swatches="#d0021b; #f5a623; #f8e71c; #8b572a; #7ed321; #417505; #bd10e0; #9013fe; #4a90e2; #50e3c2; #b8e986; #000; #444; #888; #ccc; #fff;"
-      ></sl-color-picker>
+      >
+      </sl-color-picker>
     `;
   }
 }

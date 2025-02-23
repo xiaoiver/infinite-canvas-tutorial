@@ -17,9 +17,7 @@ import {
   RoughPath,
   type Canvas,
   isGradient,
-  isImageDataURI,
 } from '@infinite-canvas-tutorial/core';
-import { rgbAndOpacityToRgba, rgbaToRgbAndOpacity } from './utils';
 
 import '@shoelace-style/shoelace/dist/components/drawer/drawer.js';
 import '@shoelace-style/shoelace/dist/components/range/range.js';
@@ -106,7 +104,37 @@ export class PropertyDrawer extends LitElement {
   fillOpacity: number;
 
   @state()
-  fillType: 'solid' | 'gradient' | 'image';
+  fillType: 'solid' | 'gradient' | 'image' | 'none';
+
+  @state()
+  stroke: string;
+
+  @state()
+  strokeOpacity: number;
+
+  @state()
+  strokeWidth: number;
+
+  @state()
+  strokeStyle: 'solid' | 'dash';
+
+  @state()
+  strokeDashoffset: number;
+
+  @state()
+  strokeGap: number;
+
+  @state()
+  strokeDash: number;
+
+  @state()
+  strokeAlignment: 'inner' | 'center' | 'outer';
+
+  @state()
+  strokeLinejoin: 'miter' | 'round' | 'bevel';
+
+  @state()
+  strokeType: 'solid' | 'none';
 
   #shape: Shape;
 
@@ -119,11 +147,29 @@ export class PropertyDrawer extends LitElement {
       this.#shape = shape;
       this.fill = shape.fill as string;
       this.fillOpacity = shape.fillOpacity;
-      this.fillType = isGradient(this.fill)
-        ? 'gradient'
-        : isImageDataURI(this.fill)
-        ? 'image'
-        : 'solid';
+      this.fillType =
+        this.fill === 'none'
+          ? 'none'
+          : isGradient(this.fill)
+          ? 'gradient'
+          : typeof this.fill === 'string'
+          ? 'solid'
+          : 'image';
+
+      this.stroke = shape.stroke as string;
+      this.strokeOpacity = shape.strokeOpacity;
+      this.strokeWidth = shape.strokeWidth;
+      this.strokeType = this.stroke === 'none' ? 'none' : 'solid';
+      this.strokeAlignment = shape.strokeAlignment;
+      this.strokeLinejoin = shape.strokeLinejoin;
+      this.strokeStyle =
+        shape.strokeDasharray && shape.strokeDasharray.length
+          ? 'dash'
+          : 'solid';
+      this.strokeDashoffset = shape.strokeDashoffset;
+      this.strokeDash = shape.strokeDasharray?.[0] || 0;
+      this.strokeGap = shape.strokeDasharray?.[1] || 0;
+
       // @ts-ignore
       $drawer.show();
     });
@@ -148,20 +194,66 @@ export class PropertyDrawer extends LitElement {
   }
 
   private handleStrokeChange(e: CustomEvent) {
-    const { rgb, opacity } = rgbaToRgbAndOpacity(
-      (e.target as any).getFormattedValue('rgba') as string,
-    );
+    const { stroke, strokeOpacity } = e.detail;
+    this.stroke = stroke;
+    this.strokeOpacity = strokeOpacity;
     if (this.#shape) {
-      this.#shape.stroke = rgb;
-      this.#shape.strokeOpacity = opacity;
+      this.#shape.stroke = stroke;
+      this.#shape.strokeOpacity = strokeOpacity;
       this.dispatchEvent(new CustomEvent('ic-changed'));
     }
   }
 
-  private handleOpacityChange(e: CustomEvent) {
-    const opacity = (e.target as any).value;
+  private handleStrokeWidthChange(e: CustomEvent) {
+    const { strokeWidth } = e.detail;
+    this.strokeWidth = strokeWidth;
     if (this.#shape) {
-      this.#shape.opacity = opacity;
+      this.#shape.strokeWidth = strokeWidth;
+      this.dispatchEvent(new CustomEvent('ic-changed'));
+    }
+  }
+
+  private handleStrokeAlignmentChange(e: CustomEvent) {
+    const { strokeAlignment } = e.detail;
+    this.strokeAlignment = strokeAlignment;
+    if (this.#shape) {
+      this.#shape.strokeAlignment = strokeAlignment;
+      this.dispatchEvent(new CustomEvent('ic-changed'));
+    }
+  }
+
+  private handleStrokeLinejoinChange(e: CustomEvent) {
+    const { strokeLinejoin } = e.detail;
+    this.strokeLinejoin = strokeLinejoin;
+    if (this.#shape) {
+      this.#shape.strokeLinejoin = strokeLinejoin;
+      this.dispatchEvent(new CustomEvent('ic-changed'));
+    }
+  }
+
+  private handleStrokeDashChange(e: CustomEvent) {
+    const { strokeDash } = e.detail;
+    this.strokeDash = strokeDash;
+    if (this.#shape) {
+      this.#shape.strokeDasharray = [strokeDash, this.strokeGap];
+      this.dispatchEvent(new CustomEvent('ic-changed'));
+    }
+  }
+
+  private handleStrokeGapChange(e: CustomEvent) {
+    const { strokeGap } = e.detail;
+    this.strokeGap = strokeGap;
+    if (this.#shape) {
+      this.#shape.strokeDasharray = [this.strokeDash, strokeGap];
+      this.dispatchEvent(new CustomEvent('ic-changed'));
+    }
+  }
+
+  private handleStrokeDashoffsetChange(e: CustomEvent) {
+    const { strokeDashoffset } = e.detail;
+    this.strokeDashoffset = strokeDashoffset;
+    if (this.#shape) {
+      this.#shape.strokeDashoffset = strokeDashoffset;
       this.dispatchEvent(new CustomEvent('ic-changed'));
     }
   }
@@ -290,31 +382,25 @@ export class PropertyDrawer extends LitElement {
           ></ic-fill-panel>
         </sl-details>
         <sl-details summary="Stroke">
-          <div class="group">
-            <div class="group-item">
-              <sl-color-picker
-                hoist
-                size="small"
-                value=${rgbAndOpacityToRgba(
-                  this.#shape?.stroke,
-                  this.#shape?.strokeOpacity,
-                )}
-                @sl-input=${this.handleStrokeChange}
-                opacity
-                label="Select a color"
-                swatches="#d0021b; #f5a623; #f8e71c; #8b572a; #7ed321; #417505; #bd10e0; #9013fe; #4a90e2; #50e3c2; #b8e986; #000; #444; #888; #ccc; #fff;"
-              ></sl-color-picker>
-            </div>
-          </div>
-          <sl-range
-            step="0.1"
-            min="0"
-            max="1"
-            value=${this.#shape?.opacity}
-            @sl-input=${this.handleOpacityChange}
-          >
-            <span slot="label">Opacity</span>
-          </sl-range>
+          <ic-stroke-panel
+            type=${this.strokeType}
+            stroke=${this.stroke}
+            strokeOpacity=${this.strokeOpacity}
+            strokeWidth=${this.strokeWidth}
+            strokeAlignment=${this.strokeAlignment}
+            strokeLinejoin=${this.strokeLinejoin}
+            strokeStyle=${this.strokeStyle}
+            strokeDash=${this.strokeDash}
+            strokeGap=${this.strokeGap}
+            strokeDashoffset=${this.strokeDashoffset}
+            @strokechanged=${this.handleStrokeChange}
+            @strokewidthchanged=${this.handleStrokeWidthChange}
+            @strokealignmentchanged=${this.handleStrokeAlignmentChange}
+            @strokelinejoinchanged=${this.handleStrokeLinejoinChange}
+            @strokedashchanged=${this.handleStrokeDashChange}
+            @strokestrokegapchanged=${this.handleStrokeGapChange}
+            @strokedashoffsetchanged=${this.handleStrokeDashoffsetChange}
+          ></ic-stroke-panel>
         </sl-details>
         <sl-divider></sl-divider>
         ${choose(shapeName, [
