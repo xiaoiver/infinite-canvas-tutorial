@@ -1,17 +1,18 @@
 <script setup lang="tsx">
 import { CloudUploadOutlined } from '@ant-design/icons-vue';
 import { App, Button, Flex, Upload, message } from 'ant-design-vue';
+import { Canvas, Rect } from '@infinite-canvas-tutorial/core';
 import { Audio, Sine } from './index';
 import { ref, onMounted } from 'vue';
 import Stats from 'stats.js';
 
 defineOptions({ name: 'GPU Particles' });
 
-const wrapper = ref(null);
+const wrapper = ref<HTMLCanvasElement | null>(null);
 const loading = ref(false);
-let canvas = null;
-let audio = null;
-let effect = null;
+let canvas: Canvas | null = null;
+let audio: Audio | null = null;
+let effect: Sine | null = null;
 
 onMounted(() => {
     import('@infinite-canvas-tutorial/ui');
@@ -27,15 +28,27 @@ onMounted(() => {
 
     if (!$canvas) return;
 
-    $canvas.parentElement.appendChild($stats);
+    $canvas.parentElement?.appendChild($stats);
 
     $canvas.addEventListener('ic-ready', (e) => {
-        canvas = e.detail;
+        canvas = (e as any).detail as Canvas;
 
-        effect = new Sine();
-        audio = new Audio({ canvas });
-        audio.effect(effect);
-        audio.play();
+        setTimeout(() => {
+          effect = new Sine();
+          audio = new Audio({ canvas });
+          audio.effect(effect);
+          audio.play();
+
+          const texture = effect.getTexture();        
+          const rect = new Rect({
+            x: 100,
+            y: 100,
+            width: 200,
+            height: 200,
+            fill: texture,
+          });
+          canvas.appendChild(rect);
+        }, 300);
     });
 
     $canvas.addEventListener('ic-frame', (e) => {
@@ -43,7 +56,7 @@ onMounted(() => {
     });
 
     $canvas.addEventListener('ic-resized', (e) => {
-        effect.resize(e.detail.width, e.detail.height);
+        effect?.resize(e.detail.width, e.detail.height);
     });
 });
 

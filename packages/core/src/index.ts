@@ -18,4 +18,4 @@ export {
   deepClone,
   isGradient,
 } from './utils';
-export { type SerializedNode } from './utils';
+export { type SerializedNode, type Gradient } from './utils';

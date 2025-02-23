@@ -213,7 +213,7 @@ export function createBlitPipelineAndBindings(device: Device, screen: Texture) {
   const renderPipeline = device.createRenderPipeline({
     inputLayout: null,
     program: renderProgram,
-    colorAttachmentFormats: [Format.U8_RGBA_RT],
+    colorAttachmentFormats: [Format.U8_RGBA_NORM],
   });
   const showResultBindings = device.createBindings({
     pipeline: renderPipeline,

@@ -32,6 +32,7 @@ export class GPUParticle implements Effect {
   protected timeBuffer: Buffer;
   protected mouseBuffer: Buffer;
   protected screen: Texture;
+  protected texture: Texture;
   protected custom: Custom;
   private blitPipeline: RenderPipeline;
   private blitBindings: Bindings;
@@ -81,11 +82,14 @@ export class GPUParticle implements Effect {
     registerShaderModule(device, math);
     registerShaderModule(device, camera);
 
-    const renderTarget = device.createRenderTarget({
-      format: Format.U8_RGBA_RT,
+    const texture = device.createTexture({
+      format: Format.U8_RGBA_NORM,
       width: $canvas.width,
       height: $canvas.height,
+      dimension: TextureDimension.TEXTURE_2D,
+      usage: TextureUsage.RENDER_TARGET,
     });
+    const renderTarget = device.createRenderTargetFromTexture(texture);
 
     const timeBuffer = device.createBuffer({
       viewOrSize: 2 * Float32Array.BYTES_PER_ELEMENT,
@@ -106,12 +110,14 @@ export class GPUParticle implements Effect {
     this.blitPipeline = blitPipeline;
     this.blitBindings = blitBindings;
     this.renderTarget = renderTarget;
+    this.texture = texture;
 
     this.registerShaderModule();
 
     this.inited = true;
 
     this.custom = new Custom({
+      cullable: false,
       render: (_, uniformLegacyObject) => {
         if (!this.inited || !this.#buffer) {
           return;
@@ -128,12 +134,19 @@ export class GPUParticle implements Effect {
         const $canvas = canvas.getDOM() as HTMLCanvasElement;
         if (this.resized) {
           if (this.renderTarget) {
+            this.texture.destroy();
             this.renderTarget.destroy();
-            this.renderTarget = device.createRenderTarget({
-              format: Format.U8_RGBA_RT,
+
+            this.texture = device.createTexture({
+              format: Format.U8_RGBA_NORM,
               width: $canvas.width,
               height: $canvas.height,
+              dimension: TextureDimension.TEXTURE_2D,
+              usage: TextureUsage.RENDER_TARGET,
             });
+            this.renderTarget = device.createRenderTargetFromTexture(
+              this.texture,
+            );
             this.resized = false;
           }
         }
@@ -211,28 +224,16 @@ export class GPUParticle implements Effect {
 
   protected compute(buffer: {}) {}
 
+  getTexture() {
+    return this.texture;
+  }
+
   frame(frame: number, elapsed: number, mouse: any, buffer: Uint8Array) {
+    this.custom.renderDirtyFlag = true;
     this.#frame = frame;
     this.#elapsed = elapsed;
     this.#mouse = mouse;
     this.#buffer = buffer;
-    /**
-     * An application should call getCurrentTexture() in the same task that renders to the canvas texture.
-     * Otherwise, the texture could get destroyed by these steps before the application is finished rendering to it.
-     */
-    // const onscreenTexture = swapChain.getOnscreenTexture();
-    // const renderPass = device.createRenderPass({
-    //   colorAttachment: [this.renderTarget],
-    //   // colorResolveTo: [onscreenTexture],
-    //   colorResolveTo: [null],
-    //   colorClearColor: [TransparentWhite],
-    // });
-    // renderPass.setPipeline(blitPipeline);
-    // renderPass.setBindings(blitBindings);
-    // renderPass.setViewport(0, 0, $canvas.width, $canvas.height);
-    // renderPass.draw(3);
-
-    // device.submitPass(renderPass);
   }
 
   destroy() {
