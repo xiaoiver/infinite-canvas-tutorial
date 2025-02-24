@@ -99,7 +99,7 @@ When we say "the moon revolves around the earth", we are actually ignoring objec
 
 The concepts of local and world coordinate systems can be used in both 2D and 3D worlds. The image below from [playcanvas] shows the world coordinate system on the left, and you can see that the axes are always the same. The right side shows the local coordinate system of the cube, whose axes change as the object is transformed (in this case rotated), so if at this point this rotated object undergoes a translation in the positive direction of the X-axis (in red), it may run off the ground.
 
-![local space and world space](https://gw.alipayobjects.com/mdn/rms_6ae20b/afts/img/A*kgaHRIYex8MAAAAAAAAAAAAAARQnAQ)
+![world space (left) and local space (right)](https://gw.alipayobjects.com/mdn/rms_6ae20b/afts/img/A*kgaHRIYex8MAAAAAAAAAAAAAARQnAQ)
 
 The world coordinate system is shared by all nodes in the scene graph, so it has a fixed origin `(0, 0)`, and the orientation of the XYZ axes (XY axes in the 2D scene) are fixed, even if the box in the scene rotates itself, the world coordinate system will not change for it. But for its own local coordinate system, its origin is no longer `(0, 0)` but the position of the object itself, and the axes naturally change, as the name suggests, it is associated with the object itself.
 
