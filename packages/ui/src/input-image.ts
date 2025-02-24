@@ -10,10 +10,19 @@ export class InputImage extends LitElement {
   static styles = [
     panelStyles,
     css`
+      :host {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+
       input[type='file'] {
+        width: 102px;
+
         &::file-selector-button {
+          width: 102px;
+          margin-right: 0;
           cursor: pointer;
-          margin-right: 1em;
           font-family: var(--sl-input-font-family);
           font-size: var(--sl-font-size-small);
           height: var(--sl-input-height-small);
@@ -36,11 +45,20 @@ export class InputImage extends LitElement {
         width: 100%;
         height: 100%;
         object-fit: contain;
-        margin-top: 8px;
       }
 
       sl-divider {
         margin: 8px 0;
+      }
+
+      div {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+
+        label {
+          font-size: var(--sl-font-size-small);
+        }
       }
     `,
   ];
@@ -48,10 +66,11 @@ export class InputImage extends LitElement {
   @property()
   opacity: number;
 
+  @property()
   @state()
   dataURI: string;
 
-  handleInput(e: Event) {
+  private handleInput(e: Event) {
     const files = (e.target as HTMLInputElement).files;
 
     const reader = new FileReader();
@@ -69,7 +88,7 @@ export class InputImage extends LitElement {
     reader.readAsDataURL(files[0]);
   }
 
-  handleOpacityChange(e: CustomEvent) {
+  private handleOpacityChange(e: CustomEvent) {
     const opacity = (e.target as any).value;
     const event = new CustomEvent('filechanged', {
       detail: { dataURI: this.dataURI, opacity },
@@ -82,8 +101,18 @@ export class InputImage extends LitElement {
 
   render() {
     return html`
-      <input type="file" accept="image/*" @change=${this.handleInput} />
-      ${this.dataURI ? html`<img src=${this.dataURI} />` : ''}
+      <div>
+        <label for="source">Source</label>
+        <input
+          name="source"
+          type="file"
+          accept="image/*"
+          @change=${this.handleInput}
+        />
+      </div>
+      ${this.dataURI && this.dataURI.startsWith('data:')
+        ? html`<img src=${this.dataURI} />`
+        : ''}
       <sl-input
         type="number"
         label="Opacity"

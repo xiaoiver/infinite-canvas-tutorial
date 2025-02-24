@@ -1,3 +1,5 @@
+import { color } from 'd3-color';
+
 // @see https://youmightnotneed.com/lodash
 
 export const isNumber = (a): a is number => typeof a === 'number';
@@ -7,6 +9,11 @@ export const isFunction = (val): val is Function => typeof val === 'function';
 export const isUndefined = (val): val is undefined => val === undefined;
 export const isNil = (val): val is null | undefined => val == null;
 export const isString = (a): a is string => typeof a === 'string';
+export const isColor = (value: any): boolean => {
+  if (!isString(value)) return false;
+  return color(value) !== null;
+};
+
 export function camelToKebabCase(str: string) {
   return str.replace(/[A-Z]/g, (match) => `-${match.toLowerCase()}`);
 }

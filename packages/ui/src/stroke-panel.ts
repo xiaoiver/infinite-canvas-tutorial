@@ -23,10 +23,10 @@ export class StrokePanel extends LitElement {
   @property()
   stroke: string;
 
-  @property()
+  @property({ type: Number })
   strokeOpacity: number;
 
-  @property()
+  @property({ type: Number })
   strokeWidth: number;
 
   @property()
@@ -35,22 +35,34 @@ export class StrokePanel extends LitElement {
   @property()
   strokeLinejoin: 'miter' | 'round' | 'bevel';
 
-  @property()
+  @property({ type: Number })
   strokeDash: number;
 
-  @property()
+  @property({ type: Number })
   strokeGap: number;
 
-  @property()
+  @property({ type: Number })
   strokeDashOffset: number;
 
-  @property()
+  @state()
+  strokeStyle: 'solid' | 'dash';
+
   @state()
   type: 'solid' | 'none';
 
-  @property()
-  @state()
-  strokeStyle: 'solid' | 'dash' = 'solid';
+  updated(changedProperties: Map<string, unknown>) {
+    if (changedProperties.has('stroke')) {
+      this.type = this.stroke === 'none' ? 'none' : 'solid';
+    }
+
+    if (
+      changedProperties.has('strokeDash') ||
+      changedProperties.has('strokeGap')
+    ) {
+      this.strokeStyle =
+        this.strokeDash > 0 && this.strokeGap > 0 ? 'dash' : 'solid';
+    }
+  }
 
   private handleStrokeChange(e: CustomEvent) {
     const { rgb, opacity } = e.detail;
@@ -65,17 +77,41 @@ export class StrokePanel extends LitElement {
 
   private handleTypeChange(e: CustomEvent) {
     this.type = (e.target as any).value;
+
+    if (this.type === 'none') {
+      const event = new CustomEvent('strokechanged', {
+        detail: { stroke: 'none', strokeOpacity: 1 },
+        bubbles: true,
+        composed: true,
+        cancelable: true,
+      });
+      this.dispatchEvent(event);
+    }
   }
 
   private handleStrokeStyleChange(e: CustomEvent) {
     this.strokeStyle = (e.target as any).value;
-    // const event = new CustomEvent('strokewidthchanged', {
-    //   detail: { strokeWidth },
-    //   bubbles: true,
-    //   composed: true,
-    //   cancelable: true,
-    // });
-    // this.dispatchEvent(event);
+
+    if (this.strokeStyle === 'solid') {
+      {
+        const event = new CustomEvent('strokedashchanged', {
+          detail: { strokeDash: 0 },
+          bubbles: true,
+          composed: true,
+          cancelable: true,
+        });
+        this.dispatchEvent(event);
+      }
+      {
+        const event = new CustomEvent('strokegapchanged', {
+          detail: { strokeGap: 0 },
+          bubbles: true,
+          composed: true,
+          cancelable: true,
+        });
+        this.dispatchEvent(event);
+      }
+    }
   }
 
   private handleStrokeWidthChange(e: CustomEvent) {

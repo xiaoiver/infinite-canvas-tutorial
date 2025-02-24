@@ -10,11 +10,16 @@ export class InputSolid extends LitElement {
     :host {
       display: flex;
       align-items: center;
+      justify-content: end;
       gap: 8px;
     }
 
     label {
       font-size: var(--sl-font-size-small);
+    }
+
+    sl-color-picker {
+      height: 30px;
     }
   `;
 

@@ -17,5 +17,7 @@ export {
   loadBitmapFont,
   deepClone,
   isGradient,
+  isColor,
+  isString,
 } from './utils';
 export { type SerializedNode, type Gradient } from './utils';

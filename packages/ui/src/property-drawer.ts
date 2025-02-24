@@ -16,7 +16,6 @@ import {
   RoughPolyline,
   RoughPath,
   type Canvas,
-  isGradient,
 } from '@infinite-canvas-tutorial/core';
 
 import '@shoelace-style/shoelace/dist/components/drawer/drawer.js';
@@ -98,13 +97,10 @@ export class PropertyDrawer extends LitElement {
   canvas: Canvas;
 
   @state()
-  fill: string;
+  fill: string | ImageBitmap;
 
   @state()
   fillOpacity: number;
-
-  @state()
-  fillType: 'solid' | 'gradient' | 'image' | 'none';
 
   @state()
   stroke: string;
@@ -114,9 +110,6 @@ export class PropertyDrawer extends LitElement {
 
   @state()
   strokeWidth: number;
-
-  @state()
-  strokeStyle: 'solid' | 'dash';
 
   @state()
   strokeDashoffset: number;
@@ -133,9 +126,6 @@ export class PropertyDrawer extends LitElement {
   @state()
   strokeLinejoin: 'miter' | 'round' | 'bevel';
 
-  @state()
-  strokeType: 'solid' | 'none';
-
   #shape: Shape;
 
   connectedCallback() {
@@ -145,27 +135,24 @@ export class PropertyDrawer extends LitElement {
       const $drawer = this.shadowRoot!.querySelector('sl-drawer');
       const shape = e.detail as Shape;
       this.#shape = shape;
-      this.fill = shape.fill as string;
-      this.fillOpacity = shape.fillOpacity;
-      this.fillType =
-        this.fill === 'none'
-          ? 'none'
-          : isGradient(this.fill)
-          ? 'gradient'
-          : typeof this.fill === 'string'
-          ? 'solid'
-          : 'image';
 
+      if (shape.fill instanceof ImageBitmap) {
+        const canvas = document.createElement('canvas');
+        canvas.width = shape.fill.width;
+        canvas.height = shape.fill.height;
+        const ctx = canvas.getContext('2d');
+        ctx?.drawImage(shape.fill, 0, 0);
+        this.fill = canvas.toDataURL();
+      } else {
+        this.fill = shape.fill as string;
+      }
+
+      this.fillOpacity = shape.fillOpacity;
       this.stroke = shape.stroke as string;
       this.strokeOpacity = shape.strokeOpacity;
       this.strokeWidth = shape.strokeWidth;
-      this.strokeType = this.stroke === 'none' ? 'none' : 'solid';
       this.strokeAlignment = shape.strokeAlignment;
       this.strokeLinejoin = shape.strokeLinejoin;
-      this.strokeStyle =
-        shape.strokeDasharray && shape.strokeDasharray.length
-          ? 'dash'
-          : 'solid';
       this.strokeDashoffset = shape.strokeDashoffset;
       this.strokeDash = shape.strokeDasharray?.[0] || 0;
       this.strokeGap = shape.strokeDasharray?.[1] || 0;
@@ -183,14 +170,13 @@ export class PropertyDrawer extends LitElement {
   }
 
   private handleFillChange(e: CustomEvent) {
-    const { fill, fillOpacity } = e.detail;
+    const { fill, fillOpacity, fillImage } = e.detail;
+
     this.fill = fill;
     this.fillOpacity = fillOpacity;
-    if (this.#shape) {
-      this.#shape.fill = fill;
-      this.#shape.fillOpacity = fillOpacity;
-      this.dispatchEvent(new CustomEvent('ic-changed'));
-    }
+    this.#shape.fill = fillImage || fill;
+    this.#shape.fillOpacity = fillOpacity;
+    this.dispatchEvent(new CustomEvent('ic-changed'));
   }
 
   private handleStrokeChange(e: CustomEvent) {
@@ -375,7 +361,6 @@ export class PropertyDrawer extends LitElement {
       <sl-drawer label=${shapeName} contained style="--size: 320px;">
         <sl-details summary="Fill">
           <ic-fill-panel
-            type=${this.fillType}
             fill=${this.fill}
             fillOpacity=${this.fillOpacity}
             @fillchanged=${this.handleFillChange}
@@ -383,13 +368,11 @@ export class PropertyDrawer extends LitElement {
         </sl-details>
         <sl-details summary="Stroke">
           <ic-stroke-panel
-            type=${this.strokeType}
             stroke=${this.stroke}
             strokeOpacity=${this.strokeOpacity}
             strokeWidth=${this.strokeWidth}
             strokeAlignment=${this.strokeAlignment}
             strokeLinejoin=${this.strokeLinejoin}
-            strokeStyle=${this.strokeStyle}
             strokeDash=${this.strokeDash}
             strokeGap=${this.strokeGap}
             strokeDashoffset=${this.strokeDashoffset}
