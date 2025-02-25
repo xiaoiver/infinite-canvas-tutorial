@@ -214,7 +214,7 @@ gl_Position = vec4(clipSpace * vec2(1, -1), 0.0, 1.0);
 
 ### 处理颜色值 {#processing-color-values}
 
-不同于 Canvas 或者 SVG，字符串形式的颜色值是无法直接在 WebGL 或者 WebGPU 中使用的，好在 [d3-color] 可以帮助我们转换成 `{ r, g, b, opacity }` 格式，后续可以直接以 `vec4` 或压缩形式传入 `attribute` 中。最后，我们暂时只支持 RGB 空间的颜色值，这意味着 [hsl] 等形式暂不可用：
+不同于 Canvas 或者 SVG，字符串形式的颜色值是无法直接在 WebGL 或者 WebGPU 中使用的，好在 [d3-color] 可以帮助我们转换成 `{ r, g, b, opacity }` 格式，后续可以直接以 `vec4` 或压缩形式传入 `attribute` 中。最后，我们暂时只支持 RGB 空间的颜色值，这意味着 [hsl]，[oklch] 等形式暂不可用：
 
 ```ts
 import * as d3 from 'd3-color';
@@ -679,3 +679,4 @@ circle = (() => {
 [Discarding fragments]: https://learnopengl.com/Advanced-OpenGL/Blending
 [AAA - Analytical Anti-Aliasing]: https://blog.frost.kiwi/analytical-anti-aliasing
 [Learn Shader Programming with Rick and Morty]: https://danielchasehooper.com/posts/code-animated-rick/
+[oklch]: https://github.com/d3/d3-color/issues/87

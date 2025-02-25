@@ -5,6 +5,7 @@ publish: false
 
 <script setup>
 import Gradient from '../../components/Gradient.vue';
+import MeshGradient from '../../components/MeshGradient.vue';
 import DeclarativeGradient from '../../components/DeclarativeGradient.vue';
 </script>
 
@@ -93,16 +94,30 @@ radialGradient = call(() => {
 });
 ```
 
-常见的渐变类型包括：
+常见的渐变类型有以下几种，我们暂时支持前三种：
 
 -   [linear-gradient] CSS 和 Canvas 支持
 -   [radial-gradient] CSS 和 Canvas 支持
 -   [conic-gradient] CSS 和 Canvas 支持
--   [repeating-linear-gradient] CSS 支持，[How to make a repeating CanvasGradient]
+-   [repeating-linear-gradient] CSS 支持，使用 Canvas 也可以 hack 实现，详见 [How to make a repeating CanvasGradient]
 -   [repeating-radial-gradient] CSS 支持
 -   [sweep-gradient] CanvasKit / Skia 中支持
 
 <DeclarativeGradient />
+
+另外我们支持叠加多个渐变，例如：
+
+```ts
+rect.fill = `linear-gradient(217deg, rgba(255,0,0,.8), rgba(255,0,0,0) 70.71%),
+    linear-gradient(127deg, rgba(0,255,0,.8), rgba(0,255,0,0) 70.71%),
+    linear-gradient(336deg, rgba(0,0,255,.8), rgba(0,0,255,0) 70.71%)`;
+```
+
+### 渐变编辑面板 {#gradient-editor}
+
+参考 Figma 的渐变编辑面板，我们也实现了一套类似的编辑器，你可以在上面的例子中选中图形后触发编辑面板。
+
+![Figma gradient panel](/figma-gradient-panel.png)
 
 ## 使用 Mesh 实现渐变 {#mesh-gradient}
 
@@ -112,11 +127,13 @@ radialGradient = call(() => {
 -   [Mesh Gradient plugin for Figma]
 -   [Photo gradient plugin for Figma]
 
-我们参考一些开源的实现，有的是在 Vertex Shader 中，我们选择后者：
+我们参考一些开源的实现，有的是在 Vertex Shader 中实现，有的是在 Fragment Shader 中实现，我们选择后者：
 
 -   [meshgradient]
 -   [Mesh gradient generator]
 -   [react-mesh-gradient]
+
+<MeshGradient />
 
 ### Warping {#warping}
 
@@ -161,10 +178,6 @@ function computeLinearGradient(
 ### 多个渐变叠加 {#multiple-gradient-overlay}
 
 对于多个渐变叠加的情况，在 Canvas API 可以多次设置 `fillStyle` 叠加绘制。而在声明式的 SVG 中，可以使用多个 `<feBlend>` 实现。
-
-## 渐变编辑面板 {#gradient-editor}
-
-![Figma gradient panel](/figma-gradient-panel.png)
 
 ## 实现重复图案 {#pattern}
 

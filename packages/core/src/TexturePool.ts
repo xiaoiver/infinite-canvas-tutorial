@@ -130,5 +130,12 @@ export function generateGradientKey(
         Number(size?.value || 0),
       )}-${suffix}`,
     )}`;
+  } else if (type === 'conic-gradient') {
+    const { cx, cy, angle } = params;
+    return `${type}-${hashCode(
+      `${Math.round(cx.value)}-${Math.round(cy.value)}-${Math.round(
+        angle || 0,
+      )}-${suffix}`,
+    )}`;
   }
 }

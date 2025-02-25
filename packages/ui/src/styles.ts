@@ -2,7 +2,7 @@ import { css } from 'lit';
 
 export const panelStyles = css`
   sl-input::part(input) {
-    width: 100px;
+    width: 64px;
   }
   sl-input::part(form-control) {
     display: flex;
@@ -32,5 +32,13 @@ export const panelStyles = css`
   }
   sl-radio-group::part(form-control-label) {
     font-size: var(--sl-font-size-small);
+  }
+
+  sl-color-picker {
+    height: 30px;
+  }
+
+  sl-divider {
+    margin: 4px 0;
   }
 `;

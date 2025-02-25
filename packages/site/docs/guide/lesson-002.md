@@ -212,7 +212,7 @@ gl_Position = vec4(clipSpace * vec2(1, -1), 0.0, 1.0);
 
 ### Processing color values
 
-Unlike Canvas or SVG, color values in string form can't be used directly in WebGL or WebGPU, but [d3-color] can be converted to `{ r, g, b, opacity }` format, which can then be passed directly into `attribute` as `vec4` or compressed. Finally, we only support RGB-space color values for now, which means that [hsl] and the like are not available:
+Unlike Canvas or SVG, color values in string form can't be used directly in WebGL or WebGPU, but [d3-color] can be converted to `{ r, g, b, opacity }` format, which can then be passed directly into `attribute` as `vec4` or compressed. Finally, we only support RGB-space color values for now, which means that [hsl] and [oklch] are not available:
 
 ```ts
 import * as d3 from 'd3-color';
@@ -698,3 +698,4 @@ In the subsequent introduction to scene graphs, we will also apply the dirty fla
 [Discarding fragments]: https://learnopengl.com/Advanced-OpenGL/Blending
 [AAA - Analytical Anti-Aliasing]: https://blog.frost.kiwi/analytical-anti-aliasing
 [Learn Shader Programming with Rick and Morty]: https://danielchasehooper.com/posts/code-animated-rick/
+[oklch]: https://github.com/d3/d3-color/issues/87

@@ -265,6 +265,7 @@ export const en = defineConfig({
         items: [
           { text: 'Use WebGPU to draw particles', link: 'particles' },
           { text: 'Gradient', link: 'gradient' },
+          { text: 'Mesh Gradient', link: 'mesh-gradient' },
         ],
       },
     },

@@ -235,6 +235,7 @@ export const zh = defineConfig({
         items: [
           { text: '使用 WebGPU 绘制粒子', link: 'particles' },
           { text: '渐变', link: 'gradient' },
+          { text: '网格渐变', link: 'mesh-gradient' },
         ],
       },
     },

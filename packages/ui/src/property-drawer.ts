@@ -10,6 +10,7 @@ import {
   Rect,
   Polyline,
   Path,
+  Text,
   RoughCircle,
   RoughEllipse,
   RoughRect,
@@ -29,6 +30,7 @@ shapeNames.set(Ellipse, 'Ellipse');
 shapeNames.set(Rect, 'Rect');
 shapeNames.set(Polyline, 'Polyline');
 shapeNames.set(Path, 'Path');
+shapeNames.set(Text, 'Text');
 shapeNames.set(RoughCircle, 'RoughCircle');
 shapeNames.set(RoughEllipse, 'RoughEllipse');
 shapeNames.set(RoughRect, 'RoughRect');
