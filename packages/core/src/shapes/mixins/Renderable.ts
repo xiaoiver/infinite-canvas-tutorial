@@ -375,7 +375,7 @@ export function Renderable<TBase extends GConstructor>(Base: TBase) {
             this.#fillGradient = parseGradient(fill);
             useFillImage = true;
           } else {
-            this.#fillRGB = d3.rgb(fill);
+            this.#fillRGB = d3.color(fill).rgb();
           }
         } else {
           useFillImage = true;
@@ -413,7 +413,7 @@ export function Renderable<TBase extends GConstructor>(Base: TBase) {
         if (stroke === 'none') {
           this.#strokeRGB = d3.rgb(255, 255, 255, 0);
         } else {
-          this.#strokeRGB = d3.rgb(stroke);
+          this.#strokeRGB = d3.color(stroke).rgb();
         }
         this.renderDirtyFlag = true;
       }
@@ -539,7 +539,7 @@ export function Renderable<TBase extends GConstructor>(Base: TBase) {
     set innerShadowColor(innerShadowColor: string) {
       if (this.#innerShadowColor !== innerShadowColor) {
         this.#innerShadowColor = innerShadowColor;
-        this.#innerShadowColorRGB = d3.rgb(innerShadowColor);
+        this.#innerShadowColorRGB = d3.color(innerShadowColor).rgb();
         this.renderDirtyFlag = true;
       }
     }

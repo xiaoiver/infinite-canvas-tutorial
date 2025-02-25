@@ -82,8 +82,13 @@ export class Renderer implements Plugin {
       const backgroundColor = themeColors[this.#theme].background;
       const gridColor = themeColors[this.#theme].grid;
 
-      const { r: br, g: bg, b: bb, opacity: bo } = d3.rgb(backgroundColor);
-      const { r: gr, g: gg, b: gb, opacity: go } = d3.rgb(gridColor);
+      const {
+        r: br,
+        g: bg,
+        b: bb,
+        opacity: bo,
+      } = d3.color(backgroundColor).rgb();
+      const { r: gr, g: gg, b: gb, opacity: go } = d3.color(gridColor).rgb();
 
       const u_ProjectionMatrix = camera.projectionMatrix;
       const u_ViewMatrix = camera.viewMatrix;

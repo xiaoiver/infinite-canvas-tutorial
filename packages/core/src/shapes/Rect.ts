@@ -197,7 +197,7 @@ export function RectWrapper<TBase extends GConstructor>(Base: TBase) {
     set dropShadowColor(dropShadowColor: string) {
       if (this.#dropShadowColor !== dropShadowColor) {
         this.#dropShadowColor = dropShadowColor;
-        this.#dropShadowColorRGB = d3.rgb(dropShadowColor);
+        this.#dropShadowColorRGB = d3.color(dropShadowColor).rgb();
         this.renderDirtyFlag = true;
       }
     }
