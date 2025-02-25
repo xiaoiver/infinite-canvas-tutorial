@@ -1,12 +1,12 @@
 <svg width="307" height="200" viewBox="0 0 307 200" fill="none" xmlns="http://www.w3.org/2000/svg">
     <title>Flags SDK works with any provider</title>
-    <path d="M138.5 111L78 111C66.9543 111 58 119.96 58 131.006C58 145.763 58 156 58 156" stroke="var(--ds-teal-600)"
+    <path d="M138.5 111L78 111C66.9543 111 58 119.96 58 131.006C58 145.763 58 156 58 156" stroke="rgb(0 227 196)"
         stroke-width="2"></path>
-    <path d="M170 111L230 111C241.046 111 250 119.96 250 131.006C250 145.763 250 156 250 156"
-        stroke="var(--ds-blue-700)" stroke-width="2"></path>
+    <path d="M170 111L230 111C241.046 111 250 119.96 250 131.006C250 145.763 250 156 250 156" stroke="rgb(0 107 255)"
+        stroke-width="2"></path>
     <path
         d="M154 74L154 95C154 103.837 161.163 111 170 111V111C178.837 111 186 118.168 186 127.005C186 143.881 186 156 186 156"
-        stroke="var(--ds-red-700)" stroke-width="2"></path>
+        stroke="rgb(252 1 53)" stroke-width="2"></path>
     <path
         d="M154 74L154 95C154 103.837 146.837 111 138 111V111C129.163 111 122 118.168 122 127.005C122 143.881 122 156 122 156"
         stroke="var(--ds-amber-700)" stroke-width="2"></path>

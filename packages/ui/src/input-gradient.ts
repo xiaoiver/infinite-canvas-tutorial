@@ -189,7 +189,7 @@ export class InputGradient extends LitElement {
   private handleAngleChange(index: number, e: CustomEvent) {
     const angle = (e.target as any).value;
     if (this.gradients[index].type === 'linear-gradient') {
-      this.gradients[index].angle = angle;
+      (this.gradients[index] as any).angle = angle;
       this.requestUpdate();
       this.triggerGradientChangeEvent();
     }

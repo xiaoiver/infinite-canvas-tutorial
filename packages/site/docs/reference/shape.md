@@ -254,12 +254,20 @@ call(() => {
 
 ### fill
 
-Fill color, refer to SVG [fill]. Can use strings supported by [d3-color].
+Fill color, refer to SVG [fill].
 
 ```ts
 circle.fill = 'rgb(255, 255, 0)';
 circle.fill = 'steelblue';
 ```
+
+Supported types:
+
+-   `'none'`
+-   [d3-color] supported strings. Does not support some CSS Color Module Level 4 syntax, such as `rgb(255 255 0)` or `oklch()`.
+-   CSS gradient strings, currently supports the following types: [linear-gradient], [radial-gradient], [conic-gradient]. See example: [Declarative Gradient].
+-   `ImageBitmap` see [createImageBitmap]
+-   `Texture` see [Create Texture with Device API]
 
 ### stroke
 
@@ -412,7 +420,7 @@ circle.dispatchEvent(new FederatedEvent());
 [opacity]: https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/opacity
 [fill-opacity]: https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/fill-opacity
 [stroke-opacity]: https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/stroke-opacity
-[d3-color]: https://github.com/d3/d3-color
+[d3-color]: https://d3js.org/d3-color#color
 [cursor]: https://developer.mozilla.org/en-US/docs/Web/CSS/cursor
 [pointer-events]: https://developer.mozilla.org/en-US/docs/Web/CSS/pointer-events
 [skew]: https://developer.mozilla.org/en-US/docs/Web/CSS/transform-function/skew
@@ -420,3 +428,9 @@ circle.dispatchEvent(new FederatedEvent());
 [addEventListener]: https://developer.mozilla.org/en-US/docs/Web/API/EventTarget/addEventListener
 [removeEventListener]: https://developer.mozilla.org/en-US/docs/Web/API/EventTarget/removeEventListener
 [dispatchEvent]: https://developer.mozilla.org/en-US/docs/Web/API/EventTarget/dispatchEvent
+[Create Texture with Device API]: /experiment/gradient
+[Declarative Gradient]: /example/declarative-gradient
+[createImageBitmap]: https://developer.mozilla.org/en-US/docs/Web/API/Window/createImageBitmap
+[linear-gradient]: https://developer.mozilla.org/en-US/docs/Web/CSS/gradient/linear-gradient
+[radial-gradient]: https://developer.mozilla.org/en-US/docs/Web/CSS/gradient/radial-gradient
+[conic-gradient]: https://developer.mozilla.org/en-US/docs/Web/CSS/gradient/conic-gradient

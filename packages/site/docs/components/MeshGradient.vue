@@ -36,14 +36,14 @@ onMounted(() => {
     // });
     // texture.setImageData([ramp.data]);
 
-    // const rect = new Rect({
-    //   x: 150,
-    //   y: 50,
-    //   width: 100,
-    //   height: 100,
-    //   fill: texture,
-    // });
-    // canvas.appendChild(rect);
+    const rect = new Rect({
+      x: 150,
+      y: 50,
+      width: 100,
+      height: 100,
+      fill: 'hsl(214.82,100%,50%)'
+    });
+    canvas.appendChild(rect);
   });
 
   $canvas.addEventListener('ic-frame', (e) => {

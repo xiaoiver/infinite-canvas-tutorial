@@ -254,16 +254,24 @@ call(() => {
 
 ### fill
 
-填充色，参考 SVG [fill]。可以使用 [d3-color] 支持的字符串。
+填充色，参考 SVG [fill]，用法如下：
 
 ```ts
 circle.fill = 'rgb(255, 255, 0)';
 circle.fill = 'steelblue';
 ```
 
+支持以下类型：
+
+-   `'none'` 表示不填充
+-   [d3-color] 支持的字符串。暂不支持部分 CSS Color Module Level 4 语法，例如 `rgb(255 255 0)` 或者 `oklch()` 颜色空间。
+-   CSS 渐变字符串，目前支持以下类型：[linear-gradient]、[radial-gradient]、[conic-gradient]。可参考示例：[声明式渐变]。
+-   `ImageBitmap` 使用 [createImageBitmap] 创建的对象。
+-   `Texture` 使用命令式创建一个纹理传入。可参考示例：[使用 Device API 创建 Texture]
+
 ### stroke
 
-描边色，参考 SVG [stroke]。可以使用 [d3-color] 支持的字符串。默认值为 `none`。
+描边色，参考 SVG [stroke]。可以使用 [d3-color] 支持的字符串。默认值为 `'none'`。
 
 ```ts
 circle.stroke = 'rgb(255, 255, 0)';
@@ -406,7 +414,7 @@ circle.dispatchEvent(new FederatedEvent());
 [opacity]: https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/opacity
 [fill-opacity]: https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/fill-opacity
 [stroke-opacity]: https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/stroke-opacity
-[d3-color]: https://github.com/d3/d3-color
+[d3-color]: https://d3js.org/d3-color#color
 [cursor]: https://developer.mozilla.org/en-US/docs/Web/CSS/cursor
 [pointer-events]: https://developer.mozilla.org/en-US/docs/Web/CSS/pointer-events
 [skew]: https://developer.mozilla.org/en-US/docs/Web/CSS/transform-function/skew
@@ -414,3 +422,9 @@ circle.dispatchEvent(new FederatedEvent());
 [addEventListener]: https://developer.mozilla.org/en-US/docs/Web/API/EventTarget/addEventListener
 [removeEventListener]: https://developer.mozilla.org/en-US/docs/Web/API/EventTarget/removeEventListener
 [dispatchEvent]: https://developer.mozilla.org/en-US/docs/Web/API/EventTarget/dispatchEvent
+[使用 Device API 创建 Texture]: /zh/experiment/gradient
+[声明式渐变]: /zh/example/declarative-gradient
+[createImageBitmap]: https://developer.mozilla.org/zh-CN/docs/Web/API/Window/createImageBitmap
+[linear-gradient]: https://developer.mozilla.org/zh-CN/docs/Web/CSS/gradient/linear-gradient
+[radial-gradient]: https://developer.mozilla.org/zh-CN/docs/Web/CSS/gradient/radial-gradient
+[conic-gradient]: https://developer.mozilla.org/zh-CN/docs/Web/CSS/gradient/conic-gradient
