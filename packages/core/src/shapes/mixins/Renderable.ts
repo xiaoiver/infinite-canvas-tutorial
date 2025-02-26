@@ -1,4 +1,4 @@
-import * as d3 from 'd3-color';
+import { rgb, color, type RGBColor } from 'd3-color';
 import { AABB } from '../AABB';
 import { GConstructor } from '.';
 import { Gradient, parseGradient, isString, isGradient } from '../../utils';
@@ -169,17 +169,17 @@ export interface IRenderable {
    */
   strokeOpacity: number;
 
-  fillRGB: d3.RGBColor;
+  fillRGB: RGBColor;
   fillGradient: Gradient[];
   useFillImage: boolean;
-  strokeRGB: d3.RGBColor;
+  strokeRGB: RGBColor;
 
   /**
    * Specifies color for the shadow.
    * @see https://developer.mozilla.org/en-US/docs/Web/CSS/filter-function/drop-shadow#color
    */
   dropShadowColor: string;
-  dropShadowColorRGB: d3.RGBColor;
+  dropShadowColorRGB: RGBColor;
 
   /**
    * Horizontal offset
@@ -204,7 +204,7 @@ export interface IRenderable {
    * Specifies color for the inner shadow.
    */
   innerShadowColor: string;
-  innerShadowColorRGB: d3.RGBColor;
+  innerShadowColorRGB: RGBColor;
 
   /**
    * Horizontal offset
@@ -244,11 +244,11 @@ export function Renderable<TBase extends GConstructor>(Base: TBase) {
 
     #visible: boolean;
     #fill: string | TexImageSource | Texture;
-    #fillRGB: d3.RGBColor;
+    #fillRGB: RGBColor;
     #fillGradient: Gradient[];
     #useFillImage: boolean;
     #stroke: string;
-    #strokeRGB: d3.RGBColor;
+    #strokeRGB: RGBColor;
     #strokeWidth: number;
     #strokeAlignment: 'center' | 'inner' | 'outer';
     #strokeLinecap: CanvasLineCap;
@@ -260,7 +260,7 @@ export function Renderable<TBase extends GConstructor>(Base: TBase) {
     #fillOpacity: number;
     #strokeOpacity: number;
     #innerShadowColor: string;
-    #innerShadowColorRGB: d3.RGBColor;
+    #innerShadowColorRGB: RGBColor;
     #innerShadowOffsetX: number;
     #innerShadowOffsetY: number;
     #innerShadowBlurRadius: number;
@@ -370,12 +370,12 @@ export function Renderable<TBase extends GConstructor>(Base: TBase) {
           this.#fillGradient = undefined;
 
           if (fill === 'none') {
-            this.#fillRGB = d3.rgb(255, 255, 255, 0);
+            this.#fillRGB = rgb(255, 255, 255, 0);
           } else if (isGradient(fill)) {
             this.#fillGradient = parseGradient(fill);
             useFillImage = true;
           } else {
-            this.#fillRGB = d3.color(fill).rgb();
+            this.#fillRGB = color(fill)?.rgb() || rgb(0, 0, 0, 1);
           }
         } else {
           useFillImage = true;
@@ -411,9 +411,9 @@ export function Renderable<TBase extends GConstructor>(Base: TBase) {
       if (this.#stroke !== stroke) {
         this.#stroke = stroke;
         if (stroke === 'none') {
-          this.#strokeRGB = d3.rgb(255, 255, 255, 0);
+          this.#strokeRGB = rgb(255, 255, 255, 0);
         } else {
-          this.#strokeRGB = d3.color(stroke).rgb();
+          this.#strokeRGB = color(stroke)?.rgb() || rgb(0, 0, 0, 1);
         }
         this.renderDirtyFlag = true;
       }
@@ -539,7 +539,8 @@ export function Renderable<TBase extends GConstructor>(Base: TBase) {
     set innerShadowColor(innerShadowColor: string) {
       if (this.#innerShadowColor !== innerShadowColor) {
         this.#innerShadowColor = innerShadowColor;
-        this.#innerShadowColorRGB = d3.color(innerShadowColor).rgb();
+        this.#innerShadowColorRGB =
+          color(innerShadowColor)?.rgb() || rgb(0, 0, 0, 1);
         this.renderDirtyFlag = true;
       }
     }

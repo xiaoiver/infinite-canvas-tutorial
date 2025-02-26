@@ -361,7 +361,7 @@ export class PropertyDrawer extends LitElement {
 
     return html`
       <sl-drawer label=${shapeName} contained style="--size: 320px;">
-        <sl-details summary="Fill">
+        <sl-details summary="Fill" open>
           <ic-fill-panel
             fill=${this.fill}
             fillOpacity=${this.fillOpacity}

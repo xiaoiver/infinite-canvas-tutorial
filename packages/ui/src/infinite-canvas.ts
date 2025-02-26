@@ -71,7 +71,7 @@ export class InfiniteCanvas extends LitElement {
   `;
 
   @property()
-  renderer = 'webgl';
+  renderer: 'webgl' | 'webgpu' = 'webgl';
 
   @property()
   theme: 'dark' | 'light' = 'light';
@@ -191,8 +191,7 @@ export class InfiniteCanvas extends LitElement {
 
       return this.#canvas.getDOM();
     },
-    args: () =>
-      [this.renderer as 'webgl' | 'webgpu', this.shaderCompilerPath] as const,
+    args: () => [this.renderer, this.shaderCompilerPath] as const,
   });
 
   render() {
@@ -216,11 +215,14 @@ export class InfiniteCanvas extends LitElement {
           <ic-textarea></ic-textarea>
         </sl-resize-observer>
       `,
-      error: (e: Error) => html`<sl-alert variant="danger" open>
-        <sl-icon slot="icon" name="exclamation-octagon"></sl-icon>
-        <strong>Initialize canvas failed</strong><br />
-        ${e.message}
-      </sl-alert>`,
+      error: (e: Error) => {
+        console.error(e);
+        return html`<sl-alert variant="danger" open>
+          <sl-icon slot="icon" name="exclamation-octagon"></sl-icon>
+          <strong>Initialize canvas failed</strong><br />
+          ${e.message}
+        </sl-alert>`;
+      },
     });
   }
 }

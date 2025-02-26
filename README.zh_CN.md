@@ -216,6 +216,7 @@ pnpm run dev
 
 <img src="./screenshots/lesson18.png" width="300" alt="Lesson 18 - gradient">
 <img src="./screenshots/lesson18-2.png" width="300" alt="Lesson 18 - gradient">
+<img src="./screenshots/lesson18-3.png" width="300" alt="Lesson 18 - gradient">
 
 [infinitecanvas]: https://infinitecanvas.tools/
 [Figma]: https://madebyevan.com/figma/building-a-professional-design-tool-on-the-web/

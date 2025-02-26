@@ -135,6 +135,28 @@ rect.fill = `linear-gradient(217deg, rgba(255,0,0,.8), rgba(255,0,0,0) 70.71%),
 
 <MeshGradient />
 
+由于需要兼顾 WebGL1 的 GLSL100 语法，需要避免使用 `switch`，否则会得到类似的报错：
+
+> [!CAUTION]
+> ERROR: 0:78: 'switch' : Illegal use of reserved word
+
+另外在 `for` 循环中也无法将 Uniform 当作 `index` 的终止条件：
+
+> [!CAUTION]
+> ERROR: 0:87: 'i' : Loop index cannot be compared with non-constant expression
+
+因此我们只能使用类似 Three.js chunks 中处理光源的代码，用常量 `MAX_POINTS` 来限制循环次数：
+
+```glsl
+#define MAX_POINTS 10
+
+for (int i = 0; i < MAX_POINTS; i++) {
+    if (i < int(u_PointsNum)) {
+        // ...
+    }
+}
+```
+
 ### Warping {#warping}
 
 -   [Inigo Quilez's Domain Warping]

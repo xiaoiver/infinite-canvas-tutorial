@@ -2,14 +2,14 @@
 import { CloudUploadOutlined } from '@ant-design/icons-vue';
 import { App, Button, Flex, Upload, message } from 'ant-design-vue';
 import { ref, onMounted } from 'vue';
-import { Group, deserializeNode, fromSVGElement, TesselationMethod } from '@infinite-canvas-tutorial/core';
+import { Canvas, Group, Path, deserializeNode, fromSVGElement, TesselationMethod } from '@infinite-canvas-tutorial/core';
 import Stats from 'stats.js';
 
 defineOptions({ name: 'Import SVG' });
 
-const wrapper = ref(null);
+const wrapper = ref<HTMLDivElement | null>(null);
 const loading = ref(false);
-let canvas = null;
+let canvas: Canvas | null = null;
 
 onMounted(() => {
   import('@infinite-canvas-tutorial/ui');
@@ -26,10 +26,10 @@ onMounted(() => {
     return;
   }
   
-  $canvas.parentElement.appendChild($stats);
+  $canvas.parentElement?.appendChild($stats);
 
   $canvas.addEventListener('ic-ready', (e) => {
-    canvas = e.detail;
+    canvas = (e as any).detail;
 
     fetch(
         '/Ghostscript_Tiger.svg',
@@ -51,16 +51,16 @@ const renderSVG = async (svg: string, x: number, y: number) => {
   
   const root = new Group();
   for (const child of $svg.children) {
-    const group = await deserializeNode(fromSVGElement(child));
+    const group = await deserializeNode(fromSVGElement(child as SVGElement));
     group.children.forEach((path) => {
-        path.tessellationMethod = TesselationMethod.LIBTESS;
-        path.cullable = false;
+      (path as Path).tessellationMethod = TesselationMethod.LIBTESS;
+      path.cullable = false;
     });
    
     root.appendChild(group);
   }
 
-  canvas.appendChild(root);
+  canvas?.appendChild(root);
 
   root.position.x = x;
   root.position.y = y;

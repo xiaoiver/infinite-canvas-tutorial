@@ -1,4 +1,4 @@
-import * as d3 from 'd3-color';
+import { rgb, color } from 'd3-color';
 import {
   BufferFrequencyHint,
   BufferUsage,
@@ -87,8 +87,13 @@ export class Renderer implements Plugin {
         g: bg,
         b: bb,
         opacity: bo,
-      } = d3.color(backgroundColor).rgb();
-      const { r: gr, g: gg, b: gb, opacity: go } = d3.color(gridColor).rgb();
+      } = color(backgroundColor)?.rgb() || rgb(0, 0, 0, 1);
+      const {
+        r: gr,
+        g: gg,
+        b: gb,
+        opacity: go,
+      } = color(gridColor)?.rgb() || rgb(0, 0, 0, 1);
 
       const u_ProjectionMatrix = camera.projectionMatrix;
       const u_ViewMatrix = camera.viewMatrix;
