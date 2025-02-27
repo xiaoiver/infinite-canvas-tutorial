@@ -6,6 +6,7 @@ settings:
 
 overrides:
   esbuild: 0.23.1
+  playwright: 1.49.1
 
 importers:
 
@@ -5070,8 +5071,13 @@ packages:
     engines: {node: '>=18'}
     hasBin: true
 
-  playwright@1.46.0:
-    resolution: {integrity: sha512-XYJ5WvfefWONh1uPAUAi0H2xXV5S3vrtcnXe6uAOgdGi3aSpqOSXX08IAjXW34xitfuOJsvXU5anXZxPSEQiJw==}
+  playwright-core@1.49.1:
+    resolution: {integrity: sha512-BzmpVcs4kE2CH15rWfzpjzVGhWERJfmnXmniSyKeRZUs9Ws65m+RGIi7mjJK/euCegfn3i7jvqWeWyHe9y3Vgg==}
+    engines: {node: '>=18'}
+    hasBin: true
+
+  playwright@1.49.1:
+    resolution: {integrity: sha512-VYL8zLoNTBxVOrJBbDuRgDWa3i+mfQgDTrL8Ah9QXZ7ax4Dsj0MSq5bYgytRnDVVe+njoKnfsYkH3HzqVj5UZA==}
     engines: {node: '>=18'}
     hasBin: true
 
@@ -7454,7 +7460,7 @@ snapshots:
 
   '@playwright/experimental-ct-core@1.46.0(@types/node@20.12.7)':
     dependencies:
-      playwright: 1.46.0
+      playwright: 1.49.1
       playwright-core: 1.46.0
       vite: 5.2.10(@types/node@20.12.7)
     transitivePeerDependencies:
@@ -7468,7 +7474,7 @@ snapshots:
 
   '@playwright/test@1.46.0':
     dependencies:
-      playwright: 1.46.0
+      playwright: 1.49.1
 
   '@polka/url@1.0.0-next.28': {}
 
@@ -11368,9 +11374,11 @@ snapshots:
 
   playwright-core@1.46.0: {}
 
-  playwright@1.46.0:
+  playwright-core@1.49.1: {}
+
+  playwright@1.49.1:
     dependencies:
-      playwright-core: 1.46.0
+      playwright-core: 1.49.1
     optionalDependencies:
       fsevents: 2.3.2
 
