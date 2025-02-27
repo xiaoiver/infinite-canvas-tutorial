@@ -184,6 +184,7 @@ export class StrokePanel extends LitElement {
     return html`
       <div class="stroke-panel-content">
         <sl-radio-group
+          size="small"
           name="stroke"
           label="Color"
           value=${this.type}
@@ -234,6 +235,7 @@ export class StrokePanel extends LitElement {
           <sl-option value="bevel">bevel</sl-option>
         </sl-select>
         <sl-radio-group
+          size="small"
           label="Style"
           name="style"
           value=${this.strokeStyle}

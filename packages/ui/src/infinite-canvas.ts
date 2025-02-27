@@ -148,6 +148,14 @@ export class InfiniteCanvas extends LitElement {
     );
   }
 
+  private zoomInHandler() {
+    this.#canvas.zoomIn();
+  }
+
+  private zoomOutHandler() {
+    this.#canvas.zoomOut();
+  }
+
   private initCanvas = new Task(this, {
     task: async ([renderer, shaderCompilerPath]) => {
       if (renderer === 'webgpu') {
@@ -200,7 +208,11 @@ export class InfiniteCanvas extends LitElement {
       complete: ($canvas) => html`
         <sl-resize-observer>
           ${$canvas}
-          <ic-zoom-toolbar zoom=${this.zoom}></ic-zoom-toolbar>
+          <ic-zoom-toolbar
+            zoom=${this.zoom}
+            @zoomin=${this.zoomInHandler}
+            @zoomout=${this.zoomOutHandler}
+          ></ic-zoom-toolbar>
           <ic-mode-toolbar
             mode=${this.mode}
             modes=${JSON.stringify(this.modes)}

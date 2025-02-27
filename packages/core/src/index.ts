@@ -17,6 +17,7 @@ export {
   loadBitmapFont,
   deepClone,
   isGradient,
+  isPattern,
   isColor,
   isString,
 } from './utils';

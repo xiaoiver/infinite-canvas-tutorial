@@ -222,6 +222,10 @@ export const zh = defineConfig({
                 text: '声明式渐变',
                 link: 'declarative-gradient',
               },
+              {
+                text: '重复图案',
+                link: 'pattern',
+              },
             ],
           },
         ],

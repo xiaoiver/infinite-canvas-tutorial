@@ -19,7 +19,7 @@ import {
   RoughPolyline,
   RoughPath,
 } from '../shapes';
-import { createSVGElement } from './browser';
+import { createSVGElement, isBrowser } from './browser';
 import {
   camelToKebabCase,
   isDataUrl,
@@ -39,7 +39,10 @@ import {
   parseGradient,
   isGradient,
 } from './gradient';
-import { generateGradientKey } from '../TexturePool';
+import { generateGradientKey, generatePatternKey } from '../TexturePool';
+import { DOMAdapter } from '..';
+import { Pattern, isPattern } from './pattern';
+import { formatTransform } from './matrix';
 
 type SerializedTransform = {
   matrix: {
@@ -355,6 +358,17 @@ export async function deserializeNode(data: SerializedNode) {
   if (fill && isString(fill) && isDataUrl(fill)) {
     shape.fill = (await load(fill, ImageLoader)) as ImageBitmap;
   }
+  if (
+    fill &&
+    isPattern(fill) &&
+    isString(fill.image) &&
+    isDataUrl(fill.image)
+  ) {
+    (fill as Pattern).image = (await load(
+      fill.image,
+      ImageLoader,
+    )) as ImageBitmap;
+  }
   if (points && isString(points)) {
     // @ts-ignore
     (shape as Polyline).points = points
@@ -403,7 +417,15 @@ export function serializeNode(node: Shape): SerializedNode {
 
   const { fill, points, strokeDasharray } = serialized.attributes;
   if (fill && !isString(fill)) {
-    serialized.attributes.fill = imageBitmapToURL(fill as ImageBitmap);
+    if (isPattern(fill)) {
+      if (!isString(fill.image)) {
+        (serialized.attributes.fill as Pattern).image = imageBitmapToURL(
+          fill.image as ImageBitmap,
+        );
+      }
+    } else {
+      serialized.attributes.fill = imageBitmapToURL(fill as ImageBitmap);
+    }
   }
 
   if (points) {
@@ -653,6 +675,112 @@ export function exportDropShadow(
   element.setAttribute('filter', `${existedFilter} url(#${$filter.id})`.trim());
 }
 
+function create$Pattern(
+  node: SerializedNode,
+  $def: SVGDefsElement,
+  pattern: Pattern,
+  patternId: string,
+  width: number,
+  height: number,
+) {
+  const { repetition, transform } = pattern;
+
+  // @see https://developer.mozilla.org/zh-CN/docs/Web/SVG/Element/pattern
+  const $pattern = createSVGElement('pattern') as SVGPatternElement;
+  if (transform) {
+    $pattern.setAttribute('patternTransform', formatTransform(transform));
+  }
+  $pattern.setAttribute('patternUnits', 'userSpaceOnUse');
+
+  $pattern.id = patternId;
+  $def.appendChild($pattern);
+
+  const { minX, minY, maxX, maxY } = calcGeometryBounds(node);
+  $pattern.setAttribute('x', `${minX}`);
+  $pattern.setAttribute('y', `${minY}`);
+
+  // There is no equivalent to CSS no-repeat for SVG patterns
+  // @see https://stackoverflow.com/a/33481956
+  let patternWidth = width;
+  let patternHeight = height;
+  if (repetition === 'repeat-x') {
+    patternHeight = maxY - minY;
+  } else if (repetition === 'repeat-y') {
+    patternWidth = maxX - minX;
+  } else if (repetition === 'no-repeat') {
+    patternWidth = maxX - minX;
+    patternHeight = maxY - minY;
+  }
+  $pattern.setAttribute('width', `${patternWidth}`);
+  $pattern.setAttribute('height', `${patternHeight}`);
+
+  return $pattern;
+}
+
+function createOrUpdatePattern(
+  node: SerializedNode,
+  $def: SVGDefsElement,
+  pattern: Pattern,
+) {
+  const patternId = generatePatternKey({ pattern });
+  const $existed = $def.querySelector(`#${patternId}`);
+  if (!$existed) {
+    const { image } = pattern;
+
+    let imageURL = '';
+    if (isString(image)) {
+      imageURL = image;
+    } else if (isBrowser) {
+      if (image instanceof HTMLImageElement) {
+        imageURL = image.src;
+      } else if (image instanceof HTMLCanvasElement) {
+        imageURL = image.toDataURL();
+      } else if (image instanceof HTMLVideoElement) {
+        // won't support
+      }
+    }
+
+    if (imageURL) {
+      const $image = createSVGElement('image');
+      // use href instead of xlink:href
+      // @see https://stackoverflow.com/a/13379007
+      $image.setAttribute('href', imageURL);
+
+      const img = DOMAdapter.get().createImage();
+
+      if (!imageURL.match(/^data:/i)) {
+        img.crossOrigin = 'Anonymous';
+        $image.setAttribute('crossorigin', 'anonymous');
+      }
+      img.src = imageURL;
+      const onload = function () {
+        const $pattern = create$Pattern(
+          node,
+          $def,
+          pattern,
+          patternId,
+          img.width,
+          img.height,
+        );
+
+        $def.appendChild($pattern);
+        $pattern.appendChild($image);
+
+        $image.setAttribute('x', '0');
+        $image.setAttribute('y', '0');
+        $image.setAttribute('width', `${img.width}`);
+        $image.setAttribute('height', `${img.height}`);
+      };
+      if (img.complete) {
+        onload();
+      } else {
+        img.onload = onload;
+      }
+    }
+  }
+  return patternId;
+}
+
 function createOrUpdateGradient(
   node: SerializedNode,
   $def: SVGDefsElement,
@@ -810,16 +938,21 @@ export function exportFillGradientOrPattern(
   $g.appendChild($defs);
 
   const fill = node.attributes.fill;
-  const gradients = parseGradient(fill as string);
 
-  if (gradients.length === 1) {
-    const gradientId = createOrUpdateGradient(node, $defs, gradients[0]);
-    $el?.setAttribute('fill', `url(#${gradientId})`);
+  if (isPattern(fill)) {
+    const patternId = createOrUpdatePattern(node, $defs, fill);
+    $el?.setAttribute('fill', `url(#${patternId})`);
   } else {
-    // @see https://stackoverflow.com/questions/20671502/can-i-blend-gradients-in-svg
-    const filterId = createOrUpdateMultiGradient(node, $defs, gradients);
-    $el?.setAttribute('filter', `url(#${filterId})`);
-    $el?.setAttribute('fill', 'black');
+    const gradients = parseGradient(fill as string);
+    if (gradients.length === 1) {
+      const gradientId = createOrUpdateGradient(node, $defs, gradients[0]);
+      $el?.setAttribute('fill', `url(#${gradientId})`);
+    } else {
+      // @see https://stackoverflow.com/questions/20671502/can-i-blend-gradients-in-svg
+      const filterId = createOrUpdateMultiGradient(node, $defs, gradients);
+      $el?.setAttribute('filter', `url(#${filterId})`);
+      $el?.setAttribute('fill', 'black');
+    }
   }
 }
 
@@ -831,6 +964,11 @@ function calcGeometryBounds(node: SerializedNode) {
     bounds = Ellipse.getGeometryBounds(node.attributes);
   } else if (node.type === 'rect') {
     bounds = Rect.getGeometryBounds(node.attributes);
+  } else if (node.type === 'polyline') {
+    bounds = Polyline.getGeometryBounds(node.attributes);
+  } else if (node.type === 'path') {
+    // @ts-expect-error
+    bounds = Path.getGeometryBounds(node.attributes);
   }
   return bounds;
 }

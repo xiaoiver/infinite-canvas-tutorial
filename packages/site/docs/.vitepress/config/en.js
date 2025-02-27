@@ -252,6 +252,10 @@ export const en = defineConfig({
                 text: 'Declarative gradient',
                 link: 'declarative-gradient',
               },
+              {
+                text: 'Pattern',
+                link: 'pattern',
+              },
             ],
           },
         ],

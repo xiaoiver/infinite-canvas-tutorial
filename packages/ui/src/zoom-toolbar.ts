@@ -1,8 +1,5 @@
 import { html, css, LitElement } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
-import { consume } from '@lit/context';
-import { canvasContext } from './context';
-import type { Canvas } from '@infinite-canvas-tutorial/core';
 
 import '@shoelace-style/shoelace/dist/components/button-group/button-group.js';
 import '@shoelace-style/shoelace/dist/components/tooltip/tooltip.js';
@@ -25,18 +22,25 @@ export class ZoomToolbar extends LitElement {
     }
   `;
 
-  @consume({ context: canvasContext, subscribe: true })
-  canvas: Canvas;
-
   @property()
   zoom = 100;
 
   private zoomOut() {
-    this.canvas.zoomOut();
+    const event = new CustomEvent('zoomout', {
+      bubbles: true,
+      composed: true,
+      cancelable: true,
+    });
+    this.dispatchEvent(event);
   }
 
   private zoomIn() {
-    this.canvas.zoomIn();
+    const event = new CustomEvent('zoomin', {
+      bubbles: true,
+      composed: true,
+      cancelable: true,
+    });
+    this.dispatchEvent(event);
   }
 
   render() {
@@ -46,7 +50,7 @@ export class ZoomToolbar extends LitElement {
           <sl-icon-button
             name="dash-lg"
             label="Zoom out"
-            @click="${this.zoomOut}"
+            @click=${this.zoomOut}
           ></sl-icon-button>
         </sl-tooltip>
         <span>${this.zoom}%</span>
@@ -54,7 +58,7 @@ export class ZoomToolbar extends LitElement {
           <sl-icon-button
             name="plus-lg"
             label="Zoom in"
-            @click="${this.zoomIn}"
+            @click=${this.zoomIn}
           ></sl-icon-button>
         </sl-tooltip>
       </sl-button-group>

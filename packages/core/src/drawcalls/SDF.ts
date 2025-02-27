@@ -21,7 +21,12 @@ import {
 import { Circle, Ellipse, Rect, Shape } from '../shapes';
 import { Drawcall, ZINDEX_FACTOR } from './Drawcall';
 import { vert, frag, Location } from '../shaders/sdf';
-import { isImageBitmapOrCanvases, isString, paddingMat3 } from '../utils';
+import {
+  isImageBitmapOrCanvases,
+  isPattern,
+  isString,
+  paddingMat3,
+} from '../utils';
 
 const strokeAlignmentMap = {
   center: 0,
@@ -279,14 +284,23 @@ export class SDF extends Drawcall {
         this.bindings.destroy();
       }
 
-      if (isString(fill)) {
+      if (isString(fill) || isPattern(fill)) {
         const { minX, minY, maxX, maxY } = this.shapes[0].getGeometryBounds();
-        const canvas = this.texturePool.getOrCreateGradient({
-          gradients: this.shapes[0].fillGradient,
-          min: [minX, minY],
-          width: maxX - minX,
-          height: maxY - minY,
-        });
+        const width = maxX - minX;
+        const height = maxY - minY;
+
+        const canvas = isPattern(fill)
+          ? this.texturePool.getOrCreatePattern({
+              pattern: fill,
+              width,
+              height,
+            })
+          : this.texturePool.getOrCreateGradient({
+              gradients: this.shapes[0].fillGradient,
+              min: [minX, minY],
+              width,
+              height,
+            });
         const texture = this.device.createTexture({
           format: Format.U8_RGBA_NORM,
           width: 128,

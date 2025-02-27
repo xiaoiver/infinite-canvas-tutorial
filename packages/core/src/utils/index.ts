@@ -16,3 +16,4 @@ export * from './glyph';
 export * from './bitmap-font';
 export * from './emoji';
 export * from './gradient';
+export * from './pattern';

@@ -7,15 +7,12 @@ import '@shoelace-style/shoelace/dist/components/color-picker/color-picker.js';
 @customElement('ic-input-solid')
 export class InputSolid extends LitElement {
   static styles = css`
-    :host {
+    label {
+      font-size: var(--sl-font-size-small);
       display: flex;
       align-items: center;
       justify-content: end;
       gap: 8px;
-    }
-
-    label {
-      font-size: var(--sl-font-size-small);
     }
 
     sl-color-picker {
@@ -45,16 +42,18 @@ export class InputSolid extends LitElement {
 
   render() {
     return html`
-      <label>Select a color</label>
-      <sl-color-picker
-        hoist
-        size="small"
-        value=${rgbAndOpacityToRgba(this.rgb, this.opacity)}
-        @sl-input=${this.handleColorChange}
-        opacity
-        swatches="#d0021b; #f5a623; #f8e71c; #8b572a; #7ed321; #417505; #bd10e0; #9013fe; #4a90e2; #50e3c2; #b8e986; #000; #444; #888; #ccc; #fff;"
-      >
-      </sl-color-picker>
+      <label>
+        Select a color
+        <sl-color-picker
+          hoist
+          size="small"
+          value=${rgbAndOpacityToRgba(this.rgb, this.opacity)}
+          @sl-input=${this.handleColorChange}
+          opacity
+          swatches="#d0021b; #f5a623; #f8e71c; #8b572a; #7ed321; #417505; #bd10e0; #9013fe; #4a90e2; #50e3c2; #b8e986; #000; #444; #888; #ccc; #fff;"
+        >
+        </sl-color-picker>
+      </label>
     `;
   }
 }

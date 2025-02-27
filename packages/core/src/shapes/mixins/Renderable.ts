@@ -1,7 +1,13 @@
 import { rgb, color, type RGBColor } from 'd3-color';
 import { AABB } from '../AABB';
 import { GConstructor } from '.';
-import { Gradient, parseGradient, isString, isGradient } from '../../utils';
+import {
+  Gradient,
+  parseGradient,
+  isString,
+  isGradient,
+  Pattern,
+} from '../../utils';
 import { Texture } from '@antv/g-device-api';
 
 export interface IRenderable {
@@ -87,8 +93,9 @@ export interface IRenderable {
    * Enhanced with the following features:
    * * base64 image is also supported.
    * * HTMLImageElement is also supported.
+   * * Pattern is also supported.
    */
-  fill: string | TexImageSource | Texture;
+  fill: string | TexImageSource | Texture | Pattern;
 
   /**
    * It is a presentation attribute defining the color used to paint the outline of the shape. Default to `none`.
@@ -243,7 +250,7 @@ export function Renderable<TBase extends GConstructor>(Base: TBase) {
     sortDirtyFlag = false;
 
     #visible: boolean;
-    #fill: string | TexImageSource | Texture;
+    #fill: string | TexImageSource | Texture | Pattern;
     #fillRGB: RGBColor;
     #fillGradient: Gradient[];
     #useFillImage: boolean;
@@ -362,7 +369,7 @@ export function Renderable<TBase extends GConstructor>(Base: TBase) {
     get fill() {
       return this.#fill;
     }
-    set fill(fill: string | TexImageSource | Texture) {
+    set fill(fill: string | TexImageSource | Texture | Pattern) {
       if (this.#fill !== fill) {
         let useFillImage = false;
         if (isString(fill)) {

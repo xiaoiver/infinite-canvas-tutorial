@@ -5,6 +5,9 @@ import { Adapter } from './adapter';
 export const WebWorkerAdapter: Adapter = {
   createCanvas: (width?: number, height?: number) =>
     new OffscreenCanvas(width ?? 0, height ?? 0),
+  createImage: () => {
+    return new Image();
+  },
   getDocument: () => null,
   /**
    * @see https://stackoverflow.com/questions/33641622/dom-manipulation-inside-web-worker

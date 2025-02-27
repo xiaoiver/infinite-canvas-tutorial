@@ -11,6 +11,9 @@ export const BrowserAdapter: Adapter = {
 
     return canvas;
   },
+  createImage: () => {
+    return new Image();
+  },
   getDocument: () => document,
   getXMLSerializer: () => new XMLSerializer(),
   getDOMParser: () => new DOMParser(),

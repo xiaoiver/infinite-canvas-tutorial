@@ -6,7 +6,9 @@ import {
   ConicGradient,
   Gradient,
   hashCode,
+  isString,
   LinearGradient,
+  Pattern,
   RadialGradient,
 } from './utils';
 
@@ -20,6 +22,7 @@ export class TexturePool {
   #canvas: HTMLCanvasElement | OffscreenCanvas;
   #ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
   #gradientCache: Record<string, CanvasGradient> = {};
+  #patternCache: Record<string, CanvasPattern> = {};
 
   constructor() {
     this.#canvas = DOMAdapter.get().createCanvas(128, 128);
@@ -30,6 +33,54 @@ export class TexturePool {
 
   destroy() {
     this.#gradientCache = {};
+    this.#patternCache = {};
+  }
+
+  getOrCreatePattern(params: {
+    pattern: Pattern;
+    width: number;
+    height: number;
+  }) {
+    const { pattern, width, height } = params;
+    const { image, repetition } = pattern;
+
+    this.#canvas.width = width;
+    this.#canvas.height = height;
+
+    // TODO: load image
+    if (isString(image)) {
+      return this.#canvas;
+    }
+
+    let canvasPattern: CanvasPattern | null = null;
+    const key = generatePatternKey(params);
+    if (this.#patternCache[key]) {
+      canvasPattern = this.#patternCache[key];
+    } else {
+      canvasPattern = image && this.#ctx.createPattern(image, repetition);
+      this.#patternCache[key] = canvasPattern;
+
+      // @see https://developer.mozilla.org/en-US/docs/Web/API/CanvasPattern/setTransform
+      // if (transform) {
+      //   const mat = parsedTransformToMat4(
+      //     parseTransform(transform),
+      //     new DisplayObject({}),
+      //   );
+      //   canvasPattern.setTransform({
+      //     a: mat[0],
+      //     b: mat[1],
+      //     c: mat[4],
+      //     d: mat[5],
+      //     e: mat[12],
+      //     f: mat[13],
+      //   });
+      // }
+    }
+
+    this.#ctx.fillStyle = canvasPattern;
+    this.#ctx.fillRect(0, 0, width, height);
+
+    return this.#canvas;
   }
 
   getOrCreateGradient(
@@ -138,4 +189,9 @@ export function generateGradientKey(
       )}-${suffix}`,
     )}`;
   }
+}
+
+export function generatePatternKey(params: { pattern: Pattern }): string {
+  const { image, repetition, transform } = params.pattern;
+  return `pattern-${hashCode(`${image}-${repetition}-${transform}`)}`;
 }

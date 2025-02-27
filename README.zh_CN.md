@@ -211,8 +211,11 @@ pnpm run dev
 ## 课程 18 - 渐变和重复图案 [🔗](https://infinitecanvas.cc/zh/guide/lesson-018)
 
 -   使用 CanvasGradient 实现渐变
--   使用 Shader 实现渐变
--   使用 Shoelace 实现渐变配置面板
+    -   命令式。使用 Device API
+    -   声明式。支持 CSS 渐变语法：`linear-gradient`、`radial-gradient`、`conic-gradient`
+    -   使用 Shoelace 实现渐变配置面板
+-   使用 Shader 实现 Mesh 渐变
+-   导出 SVG
 
 <img src="./screenshots/lesson18.png" width="300" alt="Lesson 18 - gradient">
 <img src="./screenshots/lesson18-2.png" width="300" alt="Lesson 18 - gradient">

@@ -97,6 +97,7 @@ export class FillPanel extends LitElement {
     return html`
       <div class="fill-panel-content">
         <sl-radio-group
+          size="small"
           name="fill"
           label="Color"
           value=${this.type}
