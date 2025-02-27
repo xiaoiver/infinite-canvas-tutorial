@@ -207,10 +207,6 @@ export const zh = defineConfig({
                 link: 'web-font-loader',
               },
               {
-                text: '勾股定理',
-                link: 'pythagorean-theorem',
-              },
-              {
                 text: '渲染 TeX 公式',
                 link: 'tex-math',
               },
@@ -234,8 +230,12 @@ export const zh = defineConfig({
         base: '/zh/experiment/',
         items: [
           { text: '使用 WebGPU 绘制粒子', link: 'particles' },
-          { text: '渐变', link: 'gradient' },
-          { text: '网格渐变', link: 'mesh-gradient' },
+          { text: '命令式创建渐变', link: 'gradient' },
+          { text: '网格渐变生成器', link: 'mesh-gradient' },
+          {
+            text: '勾股定理',
+            link: 'pythagorean-theorem',
+          },
         ],
       },
     },

@@ -237,10 +237,6 @@ export const en = defineConfig({
                 link: 'web-font-loader',
               },
               {
-                text: 'Pythagorean theorem',
-                link: 'pythagorean-theorem',
-              },
-              {
                 text: 'Render TeX math',
                 link: 'tex-math',
               },
@@ -264,8 +260,12 @@ export const en = defineConfig({
         base: '/experiment/',
         items: [
           { text: 'Use WebGPU to draw particles', link: 'particles' },
-          { text: 'Gradient', link: 'gradient' },
+          { text: 'Programmatic Gradient', link: 'gradient' },
           { text: 'Mesh Gradient', link: 'mesh-gradient' },
+          {
+            text: 'Pythagorean theorem',
+            link: 'pythagorean-theorem',
+          },
         ],
       },
     },

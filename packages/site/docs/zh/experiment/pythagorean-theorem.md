@@ -31,7 +31,7 @@ import PythagoreanTheorem from '../../components/PythagoreanTheorem.vue'
 -   利用 LLM 分步骤（Chain-of-Thought (CoT)）解释数学问题，生成便于可视化叙事的动画脚本
 -   使用基于 WebGL / WebGPU 实现的无限画布渲染动画脚本，支持以下特性：
     -   常见 2D / 3D 图形。几何场景下常用的 Axis、Grid 等
-    -   [LaTex](/zh/guide/lesson-016#tex-math-rendering) 数学公式需要
+    -   [LaTeX](/zh/guide/lesson-016#tex-math-rendering) 数学公式需要
     -   [相机动画](/zh/guide/lesson-004#camera-animation) 可视化叙事需要
 -   可交互编辑（自然语言界面（NLI）+ GUI）。例如使用属性面板修改图形样式，使用时间轴修改动画参数等
 -   导出 Gif / Lottie / Rive / Video 等其他格式
