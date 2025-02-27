@@ -236,6 +236,9 @@ export const zh = defineConfig({
           { text: '使用 WebGPU 绘制粒子', link: 'particles' },
           { text: '命令式创建渐变', link: 'gradient' },
           { text: '网格渐变生成器', link: 'mesh-gradient' },
+          { text: 'Voronoi', link: 'voronoi' },
+          { text: '分形布朗运动', link: 'fractal-brownian-motion' },
+          { text: '域变形', link: 'domain-warping' },
           {
             text: '勾股定理',
             link: 'pythagorean-theorem',

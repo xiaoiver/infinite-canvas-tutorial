@@ -266,6 +266,9 @@ export const en = defineConfig({
           { text: 'Use WebGPU to draw particles', link: 'particles' },
           { text: 'Programmatic Gradient', link: 'gradient' },
           { text: 'Mesh Gradient', link: 'mesh-gradient' },
+          { text: 'Voronoi', link: 'voronoi' },
+          { text: 'Fractal Brownian Motion', link: 'fractal-brownian-motion' },
+          { text: 'Domain Warping', link: 'domain-warping' },
           {
             text: 'Pythagorean theorem',
             link: 'pythagorean-theorem',

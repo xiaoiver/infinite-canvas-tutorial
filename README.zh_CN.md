@@ -217,7 +217,7 @@ pnpm run dev
 -   使用 Shader 实现 Mesh 渐变
     -   模拟随机
     -   Value Noise 和 Gradient Noise
-    -   Voronoi、FBM 和 Warping
+    -   Voronoi、FBM 和 Domain Warping
 -   导出 SVG
 -   使用 CanvasPattern 实现重复图案
 

@@ -217,7 +217,7 @@ pnpm run dev
 -   Use Shader to implement Mesh Gradient
     -   Simulate random
     -   Value Noise and Gradient Noise
-    -   Voronoi, FBM and Warping
+    -   Voronoi, FBM and Domain Warping
 -   Export SVG
 -   Use CanvasPattern to implement repeating patterns
 

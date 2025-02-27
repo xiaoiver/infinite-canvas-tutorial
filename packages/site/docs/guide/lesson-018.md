@@ -8,6 +8,9 @@ import Gradient from '../components/Gradient.vue';
 import MeshGradient from '../components/MeshGradient.vue';
 import DeclarativeGradient from '../components/DeclarativeGradient.vue';
 import Pattern from '../components/Pattern.vue';
+import Voronoi from '../components/Voronoi.vue';
+import FractalBrownianMotion from '../components/FractalBrownianMotion.vue';
+import DomainWarping from '../components/DomainWarping.vue';
 </script>
 
 # Lesson 18 - Gradient and Pattern
@@ -21,7 +24,7 @@ In this lesson, we'll explore how to implement gradients and repeating patterns.
 -   Use Shader to implement Mesh Gradient
     -   Simulate random
     -   Value Noise and Gradient Noise
-    -   Voronoi, FBM and Warping
+    -   Voronoi, FBM and Domain Warping
 -   Export SVG
 -   Use CanvasPattern to implement repeating patterns
 
@@ -301,6 +304,8 @@ for (int y= -1; y <= 1; y++) {
 color += m_dist;
 ```
 
+<Voronoi />
+
 ### FBM {#fbm}
 
 > By superimposing noise in a loop (the number of loops is octaves, and each loop is an octave), and increasing the frequency by a certain multiple (lacunarity, gap), and reducing the amplitude of the noise by a certain ratio (gain), the final result will have better details. This technique is called "fractal Brownian Motion" (fBM), or "fractal noise".
@@ -319,6 +324,21 @@ for (int i = 0; i < octaves; i++) {
  amplitude *= gain;
 }
 ```
+
+<FractalBrownianMotion />
+
+### Domain Warping {#domain-warping}
+
+Call `fbm` recursively:
+
+```glsl
+f(p) = fbm( p + fbm( p + fbm( p ) ) )
+```
+
+-   [Inigo Quilez's Domain Warping]
+-   [Mike Bostock's Domain Warping]
+
+<DomainWarping />
 
 ## Exporting Gradients to SVG {#export-gradient-to-svg}
 
@@ -370,6 +390,8 @@ The string-based `transform` needs to be parsed into `mat3`, and then passed to 
 [meshgradient]: https://meshgradient.com/
 [Mesh gradient generator]: https://kevingrajeda.github.io/meshGradient/
 [react-mesh-gradient]: https://github.com/JohnnyLeek1/React-Mesh-Gradient
+[Inigo Quilez's Domain Warping]: https://iquilezles.org/articles/warp/
+[Mike Bostock's Domain Warping]: https://observablehq.com/@mbostock/domain-warping
 [linearGradient]: https://developer.mozilla.org/en-US/docs/Web/SVG/Element/linearGradient
 [radialGradient]: https://developer.mozilla.org/en-US/docs/Web/SVG/Element/radialGradient
 [createLinearGradient]: https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/createLinearGradient

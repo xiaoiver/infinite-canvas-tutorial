@@ -8,6 +8,9 @@ import Gradient from '../../components/Gradient.vue';
 import MeshGradient from '../../components/MeshGradient.vue';
 import DeclarativeGradient from '../../components/DeclarativeGradient.vue';
 import Pattern from '../../components/Pattern.vue';
+import Voronoi from '../../components/Voronoi.vue';
+import FractalBrownianMotion from '../../components/FractalBrownianMotion.vue';
+import DomainWarping from '../../components/DomainWarping.vue';
 </script>
 
 # 课程 18 - 渐变和重复图案
@@ -21,7 +24,7 @@ import Pattern from '../../components/Pattern.vue';
 -   使用 Shader 实现 Mesh 渐变
     -   模拟随机
     -   Value Noise 和 Gradient Noise
-    -   Voronoi、FBM 和 Warping
+    -   Voronoi、FBM 和 Domain Warping
 -   导出 SVG
 -   使用 CanvasPattern 实现重复图案
 
@@ -301,6 +304,8 @@ for (int y= -1; y <= 1; y++) {
 color += m_dist;
 ```
 
+<Voronoi />
+
 ### FBM {#fbm}
 
 > 通过在循环（循环次数为 octaves，一次循环为一个八度）中叠加噪声，并以一定的倍数（lacunarity，间隙度）连续升高频率，同时以一定的比例（gain，增益）降低 噪声 的振幅，最终的结果会有更好的细节。这项技术叫“分形布朗运动（fractal Brownian Motion）”（fBM），或者“分形噪声（fractal noise）”
@@ -320,10 +325,20 @@ for (int i = 0; i < octaves; i++) {
 }
 ```
 
-### Warping {#warping}
+<FractalBrownianMotion />
+
+### Domain Warping {#domain-warping}
+
+大致思想是递归调用 `fbm`：
+
+```glsl
+f(p) = fbm( p + fbm( p + fbm( p ) ) )
+```
 
 -   [Inigo Quilez's Domain Warping]
 -   [Mike Bostock's Domain Warping]
+
+<DomainWarping />
 
 ## 导出渐变成 SVG {#export-gradient-to-svg}
 
