@@ -210,12 +210,16 @@ pnpm run dev
 
 ## Lesson 18 - Gradient and Pattern [🔗](https://infinitecanvas.cc/guide/lesson-018)
 
--   Using CanvasGradient to implement gradient
-    -   Programmatic style. Using Device API
-    -   Declarative style. Support CSS gradient syntax: `linear-gradient`、`radial-gradient`、`conic-gradient`
-    -   Using Shoelace to implement gradient configuration panel
--   Using Mesh Shader to implement gradient
+-   Use CanvasGradient to implement gradients
+    -   Imperative. Create textures using the Device API
+    -   Declarative. Supports CSS gradient syntax: `linear-gradient`, `radial-gradient`, `conic-gradient`
+    -   Use Shoelace to implement gradient configuration panel
+-   Use Shader to implement Mesh Gradient
+    -   Simulate random
+    -   Value Noise and Gradient Noise
+    -   Voronoi, FBM and Warping
 -   Export SVG
+-   Use CanvasPattern to implement repeating patterns
 
 <img src="./screenshots/lesson18.png" width="300" alt="Lesson 18 - gradient">
 <img src="./screenshots/lesson18-2.png" width="300" alt="Lesson 18 - gradient">

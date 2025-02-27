@@ -45,18 +45,7 @@ export function PathWrapper<TBase extends GConstructor>(Base: TBase) {
         Pick<PathAttributes, 'd'> & { points?: [number, number][][] }
       >,
     ) {
-      const { d } = attributes;
-      let { points } = attributes;
-
-      if (!points) {
-        const { subPaths } = parsePath(d);
-        points = subPaths.map((subPath) =>
-          subPath
-            .getPoints()
-            .map((point) => [point[0], point[1]] as [number, number]),
-        );
-      }
-
+      const { d, points } = attributes;
       if (!d) {
         return new AABB(0, 0, 0, 0);
       }
