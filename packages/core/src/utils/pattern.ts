@@ -5,6 +5,8 @@ export interface Pattern {
   image: string | CanvasImageSource;
   repetition?: 'repeat' | 'repeat-x' | 'repeat-y' | 'no-repeat';
   transform?: string;
+  width?: number;
+  height?: number;
 }
 
 export function isPattern(object: any): object is Pattern {

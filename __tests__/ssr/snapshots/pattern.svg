@@ -1,0 +1,62 @@
+<svg
+  width="200"
+  height="200"
+  style="background-color: #fbfbfb"
+  xmlns="http://www.w3.org/2000/svg"
+>
+  <defs>
+    <pattern
+      id="small-grid"
+      width="10"
+      height="10"
+      patternUnits="userSpaceOnUse"
+    >
+      <path
+        d="M 10 0 L 0 0 0 10"
+        fill="none"
+        stroke="#dedede"
+        stroke-width="1"
+      />
+    </pattern>
+    <pattern id="grid" width="100" height="100" patternUnits="userSpaceOnUse">
+      <rect width="100" height="100" fill="url(#small-grid)" />
+      <path
+        d="M 100 0 L 0 0 0 100"
+        fill="none"
+        stroke="#dedede"
+        stroke-width="2"
+      />
+    </pattern>
+  </defs>
+  <rect width="100%" height="100%" fill="url(#grid)" />
+  <g>
+    <g>
+      <rect
+        fill="url(#pattern--1732626661)"
+        x="50"
+        y="50"
+        width="100"
+        height="100"
+      />
+      <defs>
+        <pattern
+          patternUnits="userSpaceOnUse"
+          id="pattern--1732626661"
+          x="50"
+          y="50"
+          width="50"
+          height="50"
+        >
+          <image
+            href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADIAAAAyCAYAAAAeP4ixAAAABmJLR0QA/wD/AP+gvaeTAAAAb0lEQVRoge3YUQ0AIQwE0QVLiDpNiEITp6Jk0swzsJn0r2PtdVPsfGdUb8zqgVcMoTGExhAaQ2gMoTGExhAaQ2gMoTGExhCaNiHlj7MkefEEbHMRQ2gMoTGExhAaQ2gMoTGExhAaQ2gMoTGEpk3ID00fBmENmxeJAAAAAElFTkSuQmCC"
+            x="0"
+            y="0"
+            width="50"
+            height="50"
+          />
+        </pattern>
+      </defs>
+    </g>
+    <g />
+  </g>
+</svg>

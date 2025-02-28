@@ -43,6 +43,7 @@ import { generateGradientKey, generatePatternKey } from '../TexturePool';
 import { DOMAdapter } from '..';
 import { Pattern, isPattern } from './pattern';
 import { formatTransform } from './matrix';
+import { Texture } from '@antv/g-device-api';
 
 type SerializedTransform = {
   matrix: {
@@ -417,14 +418,22 @@ export function serializeNode(node: Shape): SerializedNode {
 
   const { fill, points, strokeDasharray } = serialized.attributes;
   if (fill && !isString(fill)) {
+    // Convert ImageBitmap in `fill` or `fill.image` in Pattern to DataURL
     if (isPattern(fill)) {
       if (!isString(fill.image)) {
-        (serialized.attributes.fill as Pattern).image = imageBitmapToURL(
-          fill.image as ImageBitmap,
-        );
+        (serialized.attributes.fill as Pattern).width = (
+          fill.image as ImageBitmap
+        ).width;
+        (serialized.attributes.fill as Pattern).height = (
+          fill.image as ImageBitmap
+        ).height;
+        (serialized.attributes.fill as Pattern).image =
+          serializeCanvasImageSource(fill.image);
       }
     } else {
-      serialized.attributes.fill = imageBitmapToURL(fill as ImageBitmap);
+      serialized.attributes.fill = serializeCanvasImageSource(
+        fill as CanvasImageSource,
+      );
     }
   }
 
@@ -443,6 +452,45 @@ export function serializeNode(node: Shape): SerializedNode {
   serialized.children = node.children.map(serializeNode);
 
   return serialized;
+}
+
+function serializeImage(source: ImageBitmap): string {
+  /**
+   * We can't use bitmaprenderer since the ImageBitmap has been rendered in Texture.
+   *
+   * Error message: `The input ImageBitmap has been detached`
+   * @see https://stackoverflow.com/questions/52959839/convert-imagebitmap-to-blob
+   */
+  const canvas = DOMAdapter.get().createCanvas(
+    source.width,
+    source.height,
+  ) as HTMLCanvasElement;
+
+  // We get the 2d drawing context and draw the image in the top left
+  canvas.getContext('2d').drawImage(source, 0, 0);
+  // get a bitmaprenderer context
+  // const ctx = canvas.getContext('bitmaprenderer');
+  // ctx.transferFromImageBitmap(bmp);
+  // const blob = await new Promise<Blob>((res) => canvas.toBlob(res));
+  return canvas.toDataURL();
+}
+
+export function serializeCanvasImageSource(
+  source: CanvasImageSource | Texture,
+): string {
+  if (isBrowser) {
+    if (source instanceof ImageBitmap) {
+      return serializeImage(source);
+    } else if (source instanceof HTMLImageElement) {
+      return source.src;
+    } else if (source instanceof HTMLCanvasElement) {
+      return source.toDataURL();
+    } else if (source instanceof HTMLVideoElement) {
+      // won't support
+    }
+  } else {
+    return serializeImage(source as ImageBitmap);
+  }
 }
 
 export function serializeTransform(transform: Transform): SerializedTransform {
@@ -680,10 +728,8 @@ function create$Pattern(
   $def: SVGDefsElement,
   pattern: Pattern,
   patternId: string,
-  width: number,
-  height: number,
 ) {
-  const { repetition, transform } = pattern;
+  const { repetition, transform, width, height } = pattern;
 
   // @see https://developer.mozilla.org/zh-CN/docs/Web/SVG/Element/pattern
   const $pattern = createSVGElement('pattern') as SVGPatternElement;
@@ -722,60 +768,29 @@ function createOrUpdatePattern(
   $def: SVGDefsElement,
   pattern: Pattern,
 ) {
+  const bounds = calcGeometryBounds(node);
+  const width = bounds.maxX - bounds.minX;
+  const height = bounds.maxY - bounds.minY;
+
   const patternId = generatePatternKey({ pattern });
   const $existed = $def.querySelector(`#${patternId}`);
   if (!$existed) {
-    const { image } = pattern;
-
-    let imageURL = '';
-    if (isString(image)) {
-      imageURL = image;
-    } else if (isBrowser) {
-      if (image instanceof HTMLImageElement) {
-        imageURL = image.src;
-      } else if (image instanceof HTMLCanvasElement) {
-        imageURL = image.toDataURL();
-      } else if (image instanceof HTMLVideoElement) {
-        // won't support
-      }
-    }
-
+    const imageURL = pattern.image as string;
     if (imageURL) {
       const $image = createSVGElement('image');
       // use href instead of xlink:href
       // @see https://stackoverflow.com/a/13379007
       $image.setAttribute('href', imageURL);
 
-      const img = DOMAdapter.get().createImage();
+      const $pattern = create$Pattern(node, $def, pattern, patternId);
 
-      if (!imageURL.match(/^data:/i)) {
-        img.crossOrigin = 'Anonymous';
-        $image.setAttribute('crossorigin', 'anonymous');
-      }
-      img.src = imageURL;
-      const onload = function () {
-        const $pattern = create$Pattern(
-          node,
-          $def,
-          pattern,
-          patternId,
-          img.width,
-          img.height,
-        );
+      $def.appendChild($pattern);
+      $pattern.appendChild($image);
 
-        $def.appendChild($pattern);
-        $pattern.appendChild($image);
-
-        $image.setAttribute('x', '0');
-        $image.setAttribute('y', '0');
-        $image.setAttribute('width', `${img.width}`);
-        $image.setAttribute('height', `${img.height}`);
-      };
-      if (img.complete) {
-        onload();
-      } else {
-        img.onload = onload;
-      }
+      $image.setAttribute('x', '0');
+      $image.setAttribute('y', '0');
+      $image.setAttribute('width', `${pattern.width || width}`);
+      $image.setAttribute('height', `${pattern.height || height}`);
     }
   }
   return patternId;
@@ -1126,6 +1141,7 @@ export function toSVGElement(node: SerializedNode) {
   const hasFillImage = rest.fill && isString(rest.fill) && isDataUrl(rest.fill);
   const hasFillGradient =
     rest.fill && isString(rest.fill) && isGradient(rest.fill);
+  const hasFillPattern = rest.fill && isPattern(rest.fill);
 
   /**
    * In the vast majority of cases, it is the element itself.
@@ -1166,7 +1182,8 @@ export function toSVGElement(node: SerializedNode) {
     (innerOrOuterStrokeAlignment && type !== 'polyline') ||
     isRough ||
     hasFillImage ||
-    hasFillGradient
+    hasFillGradient ||
+    hasFillPattern
   ) {
     $g = createSVGElement('g');
     if (element) {
@@ -1188,7 +1205,7 @@ export function toSVGElement(node: SerializedNode) {
   if (hasFillImage) {
     exportFillImage(node, element, $g);
   }
-  if (hasFillGradient) {
+  if (hasFillGradient || hasFillPattern) {
     exportFillGradientOrPattern(node, element, $g);
   }
 
@@ -1325,27 +1342,6 @@ export function fromSVGElement(
     attributes,
     children,
   };
-}
-
-/**
- * We can't use bitmaprenderer since the ImageBitmap has been rendered in Texture.
- *
- * Error message: `The input ImageBitmap has been detached`
- * @see https://stackoverflow.com/questions/52959839/convert-imagebitmap-to-blob
- */
-export function imageBitmapToURL(bmp: ImageBitmap) {
-  const canvas = document.createElement('canvas');
-  // resize it to the size of our ImageBitmap
-  canvas.width = bmp.width;
-  canvas.height = bmp.height;
-
-  // We get the 2d drawing context and draw the image in the top left
-  canvas.getContext('2d').drawImage(bmp, 0, 0);
-  // get a bitmaprenderer context
-  // const ctx = canvas.getContext('bitmaprenderer');
-  // ctx.transferFromImageBitmap(bmp);
-  // const blob = await new Promise<Blob>((res) => canvas.toBlob(res));
-  return canvas.toDataURL();
 }
 
 export function parseTransform(transformStr: string): SerializedTransform {

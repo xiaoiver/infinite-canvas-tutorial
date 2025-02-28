@@ -141,6 +141,7 @@ rect.fill = `linear-gradient(217deg, rgba(255,0,0,.8), rgba(255,0,0,0) 70.71%),
 -   [Mesh gradients plugin for Sketch]
 -   [Mesh Gradient plugin for Figma]
 -   [Photo gradient plugin for Figma]
+-   [Noise & Texture plugin for Figma]
 
 我们参考一些开源的实现，有的是在 Vertex Shader 中实现，有的是在 Fragment Shader 中实现，我们选择后者：
 
@@ -200,7 +201,7 @@ float random (vec2 st) {
 
 在网上搜索一番后，找到了这个回答 [What's the origin of this GLSL rand() one-liner?]。大概是说最早来自一篇论文，也没有解释选择这三个 Magic Number 的理由。总之生成的效果是很好的，类似黑白电视机的“雪花屏”。可以在上面的例子中将 `NoiseRatio` 调大看到这个效果。
 
-### Value Noise {#value-noise}
+### Value noise {#value-noise}
 
 使用我们定义的 `random` 函数，结合 `floor` 可以得到阶梯状的函数。
 
@@ -252,7 +253,7 @@ float noise (in vec2 st) {
 
 <iframe width="640" height="360" frameborder="0" src="https://www.shadertoy.com/embed/lsf3WH?gui=true&t=10&paused=true&muted=false" allowfullscreen></iframe>
 
-### Gradient Noise {#gradient-noise}
+### Gradient noise {#gradient-noise}
 
 > 在 1985 年 Ken Perlin 开发了另一种 noise 算法 Gradient Noise。Ken 解决了如何插入随机的 gradients（梯度、渐变）而不是一个固定值。这些梯度值来自于一个二维的随机函数，返回一个方向（vec2 格式的向量），而不仅是一个值（float 格式）。
 
@@ -276,7 +277,7 @@ float noise( in vec2 st ) {
 
 具体实现可以参考：[2d-snoise-clear]，也有 3D 版本。
 
-### Voronoi {#voronoi}
+### Voronoi noise {#voronoi-noise}
 
 之前我们在「绘制 Pattern」中已经学到了如何划分空间到一个个小的网格区域。我们可以为每个网格生成一个随机的特征点，对于某一个网格内的 fragment，只需要计算与他所在网格相邻的 8 个网格中特征点的最小距离，这就大大减少了运算量。这就是 Steven Worley 的论文中的主要思想。
 
@@ -306,9 +307,17 @@ color += m_dist;
 
 <Voronoi />
 
-### FBM {#fbm}
+基于此思路实现的 voronoi noise 可以查看 [lygia/generative] 了解更多细节。
+
+### fBM {#fbm}
+
+来自 [Inigo Quilez's fBM]，这里的 `noise` 可以使用上面介绍的 value noise，gradient noise 等：
 
 > 通过在循环（循环次数为 octaves，一次循环为一个八度）中叠加噪声，并以一定的倍数（lacunarity，间隙度）连续升高频率，同时以一定的比例（gain，增益）降低 噪声 的振幅，最终的结果会有更好的细节。这项技术叫“分形布朗运动（fractal Brownian Motion）”（fBM），或者“分形噪声（fractal noise）”
+
+原文也详细介绍了 `gain = 0.5`，即 `H = 1` 取值的原因。`H` 反映了曲线的“自相似性”，在程序化生成中用来模拟自然界中云、山峰、海洋等形状：
+
+$$ G=2^{-H} $$
 
 ```glsl
 const int octaves = 6;
@@ -327,16 +336,13 @@ for (int i = 0; i < octaves; i++) {
 
 <FractalBrownianMotion />
 
-### Domain Warping {#domain-warping}
-
-大致思想是递归调用 `fbm`：
+来自 [Inigo Quilez's Domain Warping] 和 [Mike Bostock's Domain Warping]。大致思想是递归调用 `fbm`：
 
 ```glsl
-f(p) = fbm( p + fbm( p + fbm( p ) ) )
+f(p) = fbm( p )
+f(p) = fbm( p + fbm( p ) )
+f(p) = fbm( p + fbm( p + fbm( p )) )
 ```
-
--   [Inigo Quilez's Domain Warping]
--   [Mike Bostock's Domain Warping]
 
 <DomainWarping />
 
@@ -387,9 +393,11 @@ rect.fill = {
 [Mesh gradients plugin for Sketch]: https://www.meshgradients.com/
 [Mesh Gradient plugin for Figma]: https://www.figma.com/community/plugin/958202093377483021/mesh-gradient
 [Photo gradient plugin for Figma]: https://www.figma.com/community/plugin/1438020299097238961/photo-gradient
+[Noise & Texture plugin for Figma]: https://www.figma.com/community/plugin/1138854718618193875
 [meshgradient]: https://meshgradient.com/
 [Mesh gradient generator]: https://kevingrajeda.github.io/meshGradient/
 [react-mesh-gradient]: https://github.com/JohnnyLeek1/React-Mesh-Gradient
+[Inigo Quilez's fBM]: https://iquilezles.org/articles/fbm/
 [Inigo Quilez's Domain Warping]: https://iquilezles.org/articles/warp/
 [Mike Bostock's Domain Warping]: https://observablehq.com/@mbostock/domain-warping
 [linearGradient]: https://developer.mozilla.org/zh-CN/docs/Web/SVG/Element/linearGradient
@@ -403,3 +411,4 @@ rect.fill = {
 [What's the origin of this GLSL rand() one-liner?]: https://stackoverflow.com/questions/12964279/whats-the-origin-of-this-glsl-rand-one-liner
 [The book of shaders - 生成设计]: https://thebookofshaders.com/10/
 [2d-snoise-clear]: https://thebookofshaders.com/edit.php#11/2d-snoise-clear.frag
+[lygia/generative]: https://lygia.xyz/generative

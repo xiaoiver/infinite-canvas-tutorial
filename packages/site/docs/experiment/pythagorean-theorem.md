@@ -6,7 +6,8 @@ publish: false
 import PythagoreanTheorem from '../components/PythagoreanTheorem.vue'
 </script>
 
-[The Pythagorean Theorem and Its Geometric Proof]
+-   [TheoremExplainAgent: Towards Multimodal Explanations for LLM Theorem Understanding]
+-   [The Pythagorean Theorem and Its Geometric Proof]
 
 <PythagoreanTheorem />
 
@@ -49,3 +50,4 @@ Current implementation completion is relatively low:
 [Pythagoras' Theorem | Maths made Beautiful]: https://www.youtube.com/watch?v=l4FC6mIRyNQ
 [How I animate 3Blue1Brown | A Manim demo with Ben Sparks]: https://www.youtube.com/watch?v=rbu7Zu5X1zI
 [The Pythagorean Theorem and Its Geometric Proof]: https://omerseyfeddinkoc.medium.com/the-pythagorean-theorem-and-its-geometric-proof-41188a7b5fac
+[TheoremExplainAgent: Towards Multimodal Explanations for LLM Theorem Understanding]: https://tiger-ai-lab.github.io/TheoremExplainAgent/

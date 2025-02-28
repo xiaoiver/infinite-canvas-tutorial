@@ -21,18 +21,3 @@ export function createSVGElement(type: string): SVGElement {
     .getDocument()
     .createElementNS('http://www.w3.org/2000/svg', type);
 }
-
-export function isImageBitmapOrCanvases(
-  data: TexImageSource,
-): data is ImageBitmap | HTMLCanvasElement | OffscreenCanvas {
-  return (
-    isBrowser &&
-    (data instanceof ImageBitmap ||
-      data instanceof HTMLCanvasElement ||
-      data instanceof OffscreenCanvas)
-  );
-}
-
-export function isVideo(data: TexImageSource): data is HTMLVideoElement {
-  return isBrowser && data instanceof HTMLVideoElement;
-}

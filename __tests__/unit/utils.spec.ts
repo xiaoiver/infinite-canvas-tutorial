@@ -7,8 +7,6 @@ import {
   isDataUrl,
   isUndefined,
   isNil,
-  isVideo,
-  isImageBitmapOrCanvases,
   camelToKebabCase,
   kebabToCamelCase,
   Converter,
@@ -67,16 +65,6 @@ describe('Utils', () => {
           'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAUAAAAFCAYAAACNbyblAAAAHElEQVQI12P4//8/w38GIAXDIBKE0DHxgljNBAAO9TXL0Y4OHwAAAABJRU5ErkJggg==',
         ),
       ).toBe(true);
-    });
-
-    it('should check if a value isVideo correctly.', () => {
-      // @ts-expect-error
-      expect(isVideo({})).toBe(false);
-    });
-
-    it('should check if a value isImageBitmapOrCanvases correctly.', () => {
-      // @ts-expect-error
-      expect(isImageBitmapOrCanvases({})).toBe(false);
     });
 
     it('should convert camelToKebabCase correctly.', () => {

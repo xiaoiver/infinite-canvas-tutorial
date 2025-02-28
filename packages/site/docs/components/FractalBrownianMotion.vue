@@ -145,14 +145,13 @@ onMounted(() => {
       y: 50,
       width: 300,
       height: 300,
-      fill: texture
+      fill: { texture }
     });
     canvas.appendChild(rect);
 
     render = () => {
       updateUniforms();
       renderToTexture();
-      rect.fill = texture;
       rect.renderDirtyFlag = true;
     };
 

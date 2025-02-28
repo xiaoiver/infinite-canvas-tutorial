@@ -21,12 +21,7 @@ import {
 import { Circle, Ellipse, Rect, Shape } from '../shapes';
 import { Drawcall, ZINDEX_FACTOR } from './Drawcall';
 import { vert, frag, Location } from '../shaders/sdf';
-import {
-  isImageBitmapOrCanvases,
-  isPattern,
-  isString,
-  paddingMat3,
-} from '../utils';
+import { isPattern, isString, paddingMat3 } from '../utils';
 
 const strokeAlignmentMap = {
   center: 0,
@@ -309,7 +304,9 @@ export class SDF extends Drawcall {
         });
         texture.setImageData([canvas]);
         this.#texture = texture;
-      } else if (isImageBitmapOrCanvases(fill as ImageBitmap)) {
+      } else if ((fill as { texture: Texture }).texture) {
+        this.#texture = (fill as { texture: Texture }).texture;
+      } else {
         const texture = this.device.createTexture({
           format: Format.U8_RGBA_NORM,
           width: (fill as ImageBitmap).width,
@@ -318,8 +315,6 @@ export class SDF extends Drawcall {
         });
         texture.setImageData([fill as ImageBitmap]);
         this.#texture = texture;
-      } else {
-        this.#texture = fill as Texture;
       }
 
       const sampler = this.renderCache.createSampler({
@@ -433,7 +428,7 @@ export class SDF extends Drawcall {
     super.destroy();
     if (this.program) {
       this.#uniformBuffer?.destroy();
-      this.#texture?.destroy();
+      this.#texture?.destroy?.();
     }
   }
 

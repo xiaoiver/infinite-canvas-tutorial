@@ -95,7 +95,7 @@ export interface IRenderable {
    * * HTMLImageElement is also supported.
    * * Pattern is also supported.
    */
-  fill: string | TexImageSource | Texture | Pattern;
+  fill: string | TexImageSource | { texture: Texture } | Pattern;
 
   /**
    * It is a presentation attribute defining the color used to paint the outline of the shape. Default to `none`.
@@ -250,7 +250,7 @@ export function Renderable<TBase extends GConstructor>(Base: TBase) {
     sortDirtyFlag = false;
 
     #visible: boolean;
-    #fill: string | TexImageSource | Texture | Pattern;
+    #fill: string | TexImageSource | { texture: Texture } | Pattern;
     #fillRGB: RGBColor;
     #fillGradient: Gradient[];
     #useFillImage: boolean;
@@ -369,7 +369,7 @@ export function Renderable<TBase extends GConstructor>(Base: TBase) {
     get fill() {
       return this.#fill;
     }
-    set fill(fill: string | TexImageSource | Texture | Pattern) {
+    set fill(fill: string | TexImageSource | { texture: Texture } | Pattern) {
       if (this.#fill !== fill) {
         let useFillImage = false;
         if (isString(fill)) {

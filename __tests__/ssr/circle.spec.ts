@@ -1,5 +1,4 @@
 import _gl from 'gl';
-import getPixels from 'get-pixels';
 import '../useSnapshotMatchers';
 import {
   Canvas,
@@ -7,7 +6,8 @@ import {
   ImageExporter,
   DOMAdapter,
 } from '../../packages/core/src';
-import { NodeJSAdapter } from '../utils';
+import { loadImage as loadImageCanvas } from 'canvas';
+import { loadImage, NodeJSAdapter } from '../utils';
 
 DOMAdapter.set(NodeJSAdapter);
 
@@ -142,21 +142,8 @@ describe('Circle', () => {
     );
   });
 
-  it.skip('should render a circle with image correctly.', async () => {
-    // Load local image instead of fetching remote URL.
-    // @see https://github.com/stackgl/headless-gl/pull/53/files#diff-55563b6c0b90b80aed19c83df1c51e80fd45d2fbdad6cc047ee86e98f65da3e9R83
-    const src = await new Promise((resolve, reject) => {
-      getPixels(__dirname + '/canvas.png', function (err, image) {
-        if (err) {
-          reject('Bad image path');
-        } else {
-          image.width = image.shape[0];
-          image.height = image.shape[1];
-          resolve(image);
-        }
-      });
-    });
-
+  it('should render a circle with image correctly.', async () => {
+    const src = await loadImage(__dirname + '/canvas.png');
     const circle = new Circle({
       cx: 100,
       cy: 100,
@@ -171,6 +158,25 @@ describe('Circle', () => {
     canvas.render();
 
     expect($canvas.getContext('webgl1')).toMatchWebGLSnapshot(
+      dir,
+      'circle-image',
+    );
+  });
+
+  it('should render a circle with image correctly.', async () => {
+    const src = await loadImageCanvas(__dirname + '/canvas.png');
+    const circle = new Circle({
+      cx: 100,
+      cy: 100,
+      r: 50,
+      // @ts-expect-error
+      fill: src,
+      stroke: 'black',
+      strokeOpacity: 0.5,
+      strokeWidth: 20,
+    });
+    canvas.appendChild(circle);
+    expect(exporter.toSVG({ grid: true })).toMatchSVGSnapshot(
       dir,
       'circle-image',
     );

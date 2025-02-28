@@ -71,4 +71,27 @@ describe('Gradient', () => {
       'radial-gradient',
     );
   });
+
+  // node-canvas does not support conic gradient for now.
+  // @see https://github.com/Automattic/node-canvas/issues/2422
+  it.skip('should render conic gradient correctly.', async () => {
+    const rect = new Rect({
+      x: 50,
+      y: 50,
+      width: 100,
+      height: 100,
+      fill: 'conic-gradient(red, blue, gree)',
+    });
+    canvas.appendChild(rect);
+    canvas.render();
+
+    expect($canvas.getContext('webgl1')).toMatchWebGLSnapshot(
+      dir,
+      'conic-gradient',
+    );
+    expect(exporter.toSVG({ grid: true })).toMatchSVGSnapshot(
+      dir,
+      'conic-gradient',
+    );
+  });
 });

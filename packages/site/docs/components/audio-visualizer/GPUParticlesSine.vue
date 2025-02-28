@@ -45,7 +45,7 @@ onMounted(() => {
             y: 100,
             width: 200,
             height: 200,
-            fill: texture,
+            fill: { texture },
           });
           canvas.appendChild(rect);
         }, 300);

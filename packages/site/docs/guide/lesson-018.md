@@ -141,6 +141,7 @@ The gradients implemented based on Canvas and SVG have limited expressiveness an
 -   [Mesh gradients plugin for Sketch]
 -   [Mesh Gradient plugin for Figma]
 -   [Photo gradient plugin for Figma]
+-   [Noise & Texture plugin for Figma]
 
 We referenced some open-source implementations, some implemented in Vertex Shader, others in Fragment Shader. We chose the latter:
 
@@ -200,7 +201,7 @@ float random (vec2 st) {
 
 After searching online, we found this answer [What's the origin of this GLSL rand() one-liner?]。It's said that it originally came from a paper, and there's no explanation for why the three Magic Numbers are chosen. Anyway, the generated effect is good, similar to the "snow screen" of a black and white TV. You can see this effect by increasing the `NoiseRatio` in the example above.
 
-### Value Noise {#value-noise}
+### Value noise {#value-noise}
 
 Using our defined `random` function, and `floor`, we can get a step-like function.
 
@@ -252,7 +253,7 @@ The above method of generating noise is interpolation between random values, so 
 
 <iframe width="640" height="360" frameborder="0" src="https://www.shadertoy.com/embed/lsf3WH?gui=true&t=10&paused=true&muted=false" allowfullscreen></iframe>
 
-### Gradient Noise {#gradient-noise}
+### Gradient noise {#gradient-noise}
 
 > In 1985, Ken Perlin developed another noise algorithm called Gradient Noise. Ken solved how to insert random gradients (gradients, gradients) instead of a fixed value. These gradient values come from a two-dimensional random function, which returns a direction (a vector in vec2 format) instead of a single value (float format).
 
@@ -276,7 +277,7 @@ float noise( in vec2 st ) {
 
 The specific implementation can be found in: [2d-snoise-clear], and there's also a 3D version.
 
-### Voronoi {#voronoi}
+### Voronoi noise {#voronoi-noise}
 
 We already learned how to divide space into small grid areas in the "Drawing Pattern" section. We can generate a random feature point for each grid, and for a fragment within a grid, we only need to calculate the minimum distance to the feature points in the 8 adjacent grids, which greatly reduces the amount of computation. This is the main idea of Steven Worley's paper.
 
@@ -306,9 +307,17 @@ color += m_dist;
 
 <Voronoi />
 
-### FBM {#fbm}
+The voronoi noise implementation based on this idea can be found in [lygia/generative].
 
-> By superimposing noise in a loop (the number of loops is octaves, and each loop is an octave), and increasing the frequency by a certain multiple (lacunarity, gap), and reducing the amplitude of the noise by a certain ratio (gain), the final result will have better details. This technique is called "fractal Brownian Motion" (fBM), or "fractal noise".
+### fBM {#fbm}
+
+See [Inigo Quilez's fBM], the `noise` can be value noise or gradient noise:
+
+> So we are going to use some standard fBM (Fractional Brownian Motion) which is a simple sum of noise waves with increasing frequencies and decreasing amplitudes.
+
+The original text also explains in detail the reason for using `gain = 0.5`, which corresponds to `H = 1`. `H` reflects the "self-similarity" of the curve, used in procedural generation to simulate natural shapes like clouds, mountains, and oceans:
+
+$$ G=2^{-H} $$
 
 ```glsl
 const int octaves = 6;
@@ -327,16 +336,13 @@ for (int i = 0; i < octaves; i++) {
 
 <FractalBrownianMotion />
 
-### Domain Warping {#domain-warping}
-
-Call `fbm` recursively:
+See [Inigo Quilez's Domain Warping] and [Mike Bostock's Domain Warping]. Call `fbm` recursively:
 
 ```glsl
-f(p) = fbm( p + fbm( p + fbm( p ) ) )
+f(p) = fbm( p )
+f(p) = fbm( p + fbm( p ) )
+f(p) = fbm( p + fbm( p + fbm( p )) )
 ```
-
--   [Inigo Quilez's Domain Warping]
--   [Mike Bostock's Domain Warping]
 
 <DomainWarping />
 
@@ -387,9 +393,11 @@ The string-based `transform` needs to be parsed into `mat3`, and then passed to 
 [Mesh gradients plugin for Sketch]: https://www.meshgradients.com/
 [Mesh Gradient plugin for Figma]: https://www.figma.com/community/plugin/958202093377483021/mesh-gradient
 [Photo gradient plugin for Figma]: https://www.figma.com/community/plugin/1438020299097238961/photo-gradient
+[Noise & Texture plugin for Figma]: https://www.figma.com/community/plugin/1138854718618193875
 [meshgradient]: https://meshgradient.com/
 [Mesh gradient generator]: https://kevingrajeda.github.io/meshGradient/
 [react-mesh-gradient]: https://github.com/JohnnyLeek1/React-Mesh-Gradient
+[Inigo Quilez's fBM]: https://iquilezles.org/articles/fbm/
 [Inigo Quilez's Domain Warping]: https://iquilezles.org/articles/warp/
 [Mike Bostock's Domain Warping]: https://observablehq.com/@mbostock/domain-warping
 [linearGradient]: https://developer.mozilla.org/en-US/docs/Web/SVG/Element/linearGradient
@@ -403,3 +411,4 @@ The string-based `transform` needs to be parsed into `mat3`, and then passed to 
 [What's the origin of this GLSL rand() one-liner?]: https://stackoverflow.com/questions/12964279/whats-the-origin-of-this-glsl-rand-one-liner
 [The Book of Shaders - Generative Design]: https://thebookofshaders.com/10/
 [2d-snoise-clear]: https://thebookofshaders.com/edit.php#11/2d-snoise-clear.frag
+[lygia/generative]: https://lygia.xyz/generative
