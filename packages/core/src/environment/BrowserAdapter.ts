@@ -11,6 +11,7 @@ export const BrowserAdapter: Adapter = {
 
     return canvas;
   },
+  createTexImageSource: (canvas: HTMLCanvasElement | OffscreenCanvas) => canvas,
   getDocument: () => document,
   getXMLSerializer: () => new XMLSerializer(),
   getDOMParser: () => new DOMParser(),

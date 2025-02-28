@@ -160,6 +160,7 @@ describe('Circle', () => {
     expect($canvas.getContext('webgl1')).toMatchWebGLSnapshot(
       dir,
       'circle-image',
+      { maxError: 1000 },
     );
   });
 

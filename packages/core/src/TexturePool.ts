@@ -80,7 +80,7 @@ export class TexturePool {
     this.#ctx.fillStyle = canvasPattern;
     this.#ctx.fillRect(0, 0, width, height);
 
-    return this.#canvas;
+    return DOMAdapter.get().createTexImageSource(this.#canvas);
   }
 
   getOrCreateGradient(
@@ -104,7 +104,7 @@ export class TexturePool {
       this.#ctx.fillRect(0, 0, width, height);
     });
 
-    return this.#canvas;
+    return DOMAdapter.get().createTexImageSource(this.#canvas);
   }
 
   private getOrCreateGradientInternal(
@@ -193,5 +193,6 @@ export function generateGradientKey(
 
 export function generatePatternKey(params: { pattern: Pattern }): string {
   const { image, repetition, transform } = params.pattern;
+  // TODO: when image is not string
   return `pattern-${hashCode(`${image}-${repetition}-${transform}`)}`;
 }

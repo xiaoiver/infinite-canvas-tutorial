@@ -4,6 +4,7 @@ import getPixels from 'get-pixels';
 import { JSDOM } from 'jsdom';
 import { XMLSerializer } from '@xmldom/xmldom';
 import GraphemeSplitter from 'grapheme-splitter';
+import parsePNG from 'pngparse-sync';
 import { Adapter } from '../packages/core/src/environment';
 
 export function sleep(n: number) {
@@ -54,6 +55,8 @@ export function getCanvas(width = 100, height = 100) {
     removeEventListener: () => {},
     // @ts-ignore
     toDataURL: (...args) => canvas.toDataURL(...args),
+    // @ts-ignore
+    toBuffer: (...args) => canvas.toBuffer(...args),
   };
 
   return mockedCanvas;
@@ -99,6 +102,12 @@ let lastTime = 0;
 export const NodeJSAdapter: Adapter = {
   createCanvas: (width?: number, height?: number) =>
     getCanvas(width ?? 0, height ?? 0),
+  createTexImageSource: (canvas) => {
+    // convert Image in node-canvas to ImageData in headless-gl
+    const buffer = canvas.toBuffer();
+    const png = parsePNG(buffer);
+    return png.data;
+  },
   getDocument: () => new JSDOM().window._document,
   // @ts-expect-error compatible with @xmldom/xmldom
   getXMLSerializer: () => new XMLSerializer(),

@@ -7,6 +7,9 @@ export interface Adapter {
     width?: number,
     height?: number,
   ) => HTMLCanvasElement | OffscreenCanvas;
+  createTexImageSource: (
+    canvas: HTMLCanvasElement | OffscreenCanvas,
+  ) => TexImageSource;
   getDocument: () => Document;
   getXMLSerializer: () => XMLSerializer | null;
   getDOMParser: () => DOMParser | null;
