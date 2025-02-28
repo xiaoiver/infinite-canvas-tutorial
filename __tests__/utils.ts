@@ -104,6 +104,7 @@ export const NodeJSAdapter: Adapter = {
     getCanvas(width ?? 0, height ?? 0),
   createTexImageSource: (canvas) => {
     // convert Image in node-canvas to ImageData in headless-gl
+    // @ts-ignore
     const buffer = canvas.toBuffer();
     const png = parsePNG(buffer);
     return png.data;

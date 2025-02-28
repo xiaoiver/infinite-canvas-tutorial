@@ -4,6 +4,7 @@ import { format } from 'prettier';
 import { XMLSerializer } from '@xmldom/xmldom';
 export type ToMatchSVGSnapshotOptions = {
   fileFormat?: string;
+  ignore?: boolean;
 };
 
 // @see https://jestjs.io/docs/26.x/expect#expectextendmatchers
@@ -13,7 +14,15 @@ export function toMatchSVGSnapshot(
   name: string,
   options: ToMatchSVGSnapshotOptions = {},
 ): { message: () => string; pass: boolean } {
-  const { fileFormat = 'svg' } = options;
+  const { fileFormat = 'svg', ignore } = options;
+
+  if (ignore) {
+    return {
+      message: () => `match ${namePath}`,
+      pass: true,
+    };
+  }
+
   const namePath = path.join(dir, name);
   const actualPath = path.join(dir, `${name}-actual.${fileFormat}`);
   const expectedPath = path.join(dir, `${name}.${fileFormat}`);

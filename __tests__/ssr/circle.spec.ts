@@ -177,9 +177,13 @@ describe('Circle', () => {
       strokeWidth: 20,
     });
     canvas.appendChild(circle);
+
+    // Seeing different results of .toDataURL()
+    // @see https://github.com/Automattic/node-canvas/issues/2224
     expect(exporter.toSVG({ grid: true })).toMatchSVGSnapshot(
       dir,
       'circle-image',
+      { ignore: true },
     );
   });
 
