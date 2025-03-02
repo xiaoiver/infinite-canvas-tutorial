@@ -126,8 +126,9 @@ pnpm run dev
 -   Render drop-shadow and inner shadow for SDF
 -   How to determine if a point is inside an ellipse or rounded rectangle
 
-<img src="./screenshots/lesson9.png" width="300" alt="Lesson 9 - drop shadow">
-<img src="./screenshots/lesson9-2.png" width="300" alt="Lesson 9 - inner shadow">
+|                Drop Shadow                |                 Inner Shadow                 |
+| :---------------------------------------: | :------------------------------------------: |
+| ![Drop Shadow](./screenshots/lesson9.png) | ![Inner Shadow](./screenshots/lesson9-2.png) |
 
 ## Lesson 10 - Import and export images [🔗](https://infinitecanvas.cc/guide/lesson-010)
 

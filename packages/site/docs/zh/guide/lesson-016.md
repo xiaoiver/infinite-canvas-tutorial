@@ -173,6 +173,8 @@ canvas.drawTextBlob(textblob, 0, 0, textPaint);
 
 ![Map Label Placement in Mapbox GL](https://miro.medium.com/v2/resize:fit:480/format:webp/0*qVAASwC-tjIXnjax.gif)
 
+Kittl 提供了 [Easily Type Text On Any Path] 工具，可以方便的将文本放置在路径上。
+
 ## 更友好的交互方式 {#more-friendly-interaction}
 
 ### 输入框 {#textarea}
@@ -273,3 +275,4 @@ export const absorb = /* wgsl */ `
 [path-commands]: https://github.com/opentypejs/opentype.js?tab=readme-ov-file#path-commands
 [shadowBlur]: https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/shadowBlur
 [text-decoration]: https://developer.mozilla.org/en-US/docs/Web/CSS/text-decoration
+[Easily Type Text On Any Path]: https://www.kittl.com/article/easily-type-text-on-any-path

@@ -243,6 +243,7 @@ export const zh = defineConfig({
             text: '勾股定理',
             link: 'pythagorean-theorem',
           },
+          { text: 'Recraft', link: 'recraft' },
         ],
       },
     },

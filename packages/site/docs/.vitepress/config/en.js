@@ -273,6 +273,7 @@ export const en = defineConfig({
             text: 'Pythagorean theorem',
             link: 'pythagorean-theorem',
           },
+          { text: 'Recraft', link: 'recraft' },
         ],
       },
     },

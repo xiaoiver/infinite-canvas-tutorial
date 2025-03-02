@@ -75,7 +75,7 @@ const texture = device.createTexture({
 texture.setImageData([ramp.data]); // 将之前创建的 <canvas> 数据传给纹理
 
 // 3. 将纹理对象传给图形的 `fill` 属性
-rect.fill = texture;
+rect.fill = { texture };
 ```
 
 <Gradient />
@@ -346,20 +346,6 @@ f(p) = fbm( p + fbm( p + fbm( p )) )
 
 <DomainWarping />
 
-## 导出渐变成 SVG {#export-gradient-to-svg}
-
-### 线性渐变 {#linear-gradient}
-
-SVG 提供了 [linearGradient] 和 [radialGradient]，但支持的属性和 [CanvasGradient] 很不一样。
-
-### 圆锥渐变 {#conic-gradient}
-
-参考 [SVG angular gradient] 可以近似实现这种效果。而 [CSS conic-gradient() polyfill] 的思路是使用 Canvas 渲染后导出 dataURL，再用 `<image>` 引用。
-
-### 多个渐变叠加 {#multiple-gradient-overlay}
-
-对于多个渐变叠加的情况，在 Canvas API 可以多次设置 `fillStyle` 叠加绘制。而在声明式的 SVG 中，可以使用多个 `<feBlend>` 实现。
-
 ## 实现重复图案 {#pattern}
 
 我们可以使用 Canvas API 提供的 [createPattern] 创建，支持如下语法：
@@ -380,6 +366,24 @@ rect.fill = {
 其中字符串形式的 `transform` 需要解析成 `mat3`，后续才能传递给 [setTransform]。
 
 <Pattern />
+
+## 导出成 SVG {#export-to-svg}
+
+最后我们来看看如何将渐变和重复图案导出成 SVG。
+
+### 线性渐变 {#export-linear-gradient-to-svg}
+
+SVG 提供了 [linearGradient] 和 [radialGradient]，但支持的属性和 [CanvasGradient] 很不一样，因此在最终效果上会有所不同。你可以在上面的例子中导出 SVG 查看效果。
+
+### 圆锥渐变 {#export-conic-gradient-to-svg}
+
+参考 [SVG angular gradient] 可以近似实现这种效果。而 [CSS conic-gradient() polyfill] 的思路是使用 Canvas 渲染后导出 dataURL，再用 `<image>` 引用。
+
+### 多个渐变叠加 {#multiple-gradient-overlay}
+
+对于多个渐变叠加的情况，在 Canvas API 可以多次设置 `fillStyle` 叠加绘制。而在声明式的 SVG 中，可以使用多个 `<feBlend>` 实现。
+
+### 重复图案 {#export-pattern-to-svg}
 
 [CanvasGradient]: https://developer.mozilla.org/en-US/docs/Web/API/CanvasGradient
 [Device]: /zh/reference/canvas#getdevice

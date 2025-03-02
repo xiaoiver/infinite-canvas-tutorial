@@ -75,7 +75,7 @@ const texture = device.createTexture({
 texture.setImageData([ramp.data]); // Pass the previously created <canvas> data to texture
 
 // 3. Pass the texture object to the shape's `fill` property
-rect.fill = texture;
+rect.fill = { texture };
 ```
 
 <Gradient />

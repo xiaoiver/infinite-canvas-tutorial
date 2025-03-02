@@ -160,6 +160,8 @@ In Mapbox, placing labels along roads and rivers is a common scenario, see [Map 
 
 ![Map Label Placement in Mapbox GL](https://miro.medium.com/v2/resize:fit:480/format:webp/0*qVAASwC-tjIXnjax.gif)
 
+Kittl provides a [Easily Type Text On Any Path] tool.
+
 ## More Friendly Interaction {#more-friendly-interaction}
 
 ### Text Input {#textarea}
@@ -244,3 +246,4 @@ export const absorb = /* wgsl */ `
 [path-commands]: https://github.com/opentypejs/opentype.js?tab=readme-ov-file#path-commands
 [shadowBlur]: https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/shadowBlur
 [text-decoration]: https://developer.mozilla.org/en-US/docs/Web/CSS/text-decoration
+[Easily Type Text On Any Path]: https://www.kittl.com/article/easily-type-text-on-any-path

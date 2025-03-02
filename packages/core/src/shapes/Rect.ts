@@ -1,4 +1,4 @@
-import { rgb, color, type RGBColor } from 'd3-color';
+import * as d3 from 'd3-color';
 import {
   Shape,
   ShapeAttributes,
@@ -82,7 +82,7 @@ export function RectWrapper<TBase extends GConstructor>(Base: TBase) {
     #height: number;
     #cornerRadius: number;
     #dropShadowColor: string;
-    #dropShadowColorRGB: RGBColor;
+    #dropShadowColorRGB: d3.RGBColor;
     #dropShadowOffsetX: number;
     #dropShadowOffsetY: number;
     #dropShadowBlurRadius: number;
@@ -198,7 +198,7 @@ export function RectWrapper<TBase extends GConstructor>(Base: TBase) {
       if (this.#dropShadowColor !== dropShadowColor) {
         this.#dropShadowColor = dropShadowColor;
         this.#dropShadowColorRGB =
-          color(dropShadowColor)?.rgb() || rgb(0, 0, 0, 1);
+          d3.rgb(dropShadowColor)?.rgb() || d3.rgb(0, 0, 0, 1);
         this.renderDirtyFlag = true;
       }
     }

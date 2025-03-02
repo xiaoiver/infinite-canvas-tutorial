@@ -31,8 +31,8 @@ describe('Pattern', () => {
     canvas.destroy();
   });
 
-  it.skip('should render pattern correctly.', async () => {
-    const image = await loadImage(__dirname + '/pattern.png');
+  it('should render pattern correctly.', async () => {
+    const image = await loadImageCanvas(__dirname + '/pattern.png');
 
     const rect = new Rect({
       x: 50,
@@ -68,4 +68,6 @@ describe('Pattern', () => {
     canvas.appendChild(rect);
     expect(exporter.toSVG({ grid: true })).toMatchSVGSnapshot(dir, 'pattern');
   });
+
+  // TODO: transform
 });

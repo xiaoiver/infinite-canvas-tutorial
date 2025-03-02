@@ -126,8 +126,9 @@ pnpm run dev
 -   为 SDF 增加外阴影和内阴影
 -   如何判定任意点是否在椭圆或圆角矩形内
 
-<img src="./screenshots/lesson9.png" width="300" alt="Lesson 9 - drop shadow">
-<img src="./screenshots/lesson9-2.png" width="300" alt="Lesson 9 - inner shadow">
+|                Drop Shadow                |                 Inner Shadow                 |
+| :---------------------------------------: | :------------------------------------------: |
+| ![Drop Shadow](./screenshots/lesson9.png) | ![Inner Shadow](./screenshots/lesson9-2.png) |
 
 ## 课程 10 - 图片导入和导出 [🔗](https://infinitecanvas.cc/zh/guide/lesson-010)
 

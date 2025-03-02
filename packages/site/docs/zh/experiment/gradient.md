@@ -37,7 +37,7 @@ const texture = device.createTexture({
 texture.setImageData([ramp.data]);
 
 // 3. 将纹理对象传给图形的 `fill` 属性
-rect.fill = texture;
+rect.fill = { texture };
 ```
 
 [CanvasGradient]: https://developer.mozilla.org/en-US/docs/Web/API/CanvasGradient

@@ -37,7 +37,7 @@ const texture = device.createTexture({
 texture.setImageData([ramp.data]);
 
 // 3. Pass the texture object to the `fill` property of the graphic
-rect.fill = texture;
+rect.fill = { texture };
 ```
 
 [CanvasGradient]: https://developer.mozilla.org/en-US/docs/Web/API/CanvasGradient
