@@ -7,3 +7,4 @@ export * from './Picker';
 export * from './Dragndrop';
 export * from './Culling';
 export * from './Selector';
+export * from './Painter';

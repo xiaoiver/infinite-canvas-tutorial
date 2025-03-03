@@ -45,6 +45,11 @@ export class PropertyDrawer extends LitElement {
     }
     sl-drawer::part(title) {
       padding: 0 8px;
+      display: flex;
+      align-items: center;
+    }
+    sl-drawer::part(header) {
+      padding: 4px 0;
     }
     sl-drawer::part(header-actions) {
       padding: 0 8px;

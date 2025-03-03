@@ -182,6 +182,70 @@ importers:
         specifier: ^3.0.0
         version: 3.0.0
 
+  packages/ecs:
+    dependencies:
+      '@antv/g-device-api':
+        specifier: ^1.6.12
+        version: 1.6.13
+      '@antv/util':
+        specifier: ^3.3.10
+        version: 3.3.10
+      '@loaders.gl/core':
+        specifier: ^4.2.2
+        version: 4.3.3
+      '@loaders.gl/images':
+        specifier: ^4.2.2
+        version: 4.3.3(@loaders.gl/core@4.3.3)
+      '@pixi/math':
+        specifier: ^7.4.2
+        version: 7.4.2
+      bezier-easing:
+        specifier: ^2.1.0
+        version: 2.1.0
+      bidi-js:
+        specifier: ^1.0.3
+        version: 1.0.3
+      d3-color:
+        specifier: ^3.1.0
+        version: 3.1.0
+      directed:
+        specifier: ^0.1.6
+        version: 0.1.6
+      earcut:
+        specifier: ^3.0.0
+        version: 3.0.0
+      eventemitter3:
+        specifier: ^5.0.1
+        version: 5.0.1
+      gl-matrix:
+        specifier: ^3.4.3
+        version: 3.4.3
+      koota:
+        specifier: ^0.2.2
+        version: 0.2.2
+      libtess:
+        specifier: ^1.2.2
+        version: 1.2.2
+      potpack:
+        specifier: ^2.0.0
+        version: 2.0.0
+      rbush:
+        specifier: ^3.0.1
+        version: 3.0.1
+      roughjs:
+        specifier: ^4.6.6
+        version: 4.6.6
+    devDependencies:
+      '@types/d3-color':
+        specifier: ^3.1.0
+        version: 3.1.0
+      '@types/earcut':
+        specifier: ^2.1.4
+        version: 2.1.4
+      '@types/rbush':
+        specifier: ^3.0.0
+        version: 3.0.0
+
   packages/lesson_001:
     dependencies:
       '@antv/g-device-api':
@@ -3167,6 +3231,17 @@ packages:
     resolution: {integrity: sha512-WkrWp9GR4KXfKGYzOLmTuGVi1UWFfws377n9cc55/tb6DuqyF6pcQ5AbiHEshaDpY9v6oaSr2XCDidGmMwdzIA==}
     engines: {node: '>=8'}
 
+  directed@0.1.6:
+    resolution: {integrity: sha512-nF5Zm9Fdanolvvg/pohiuOfchRe5563LCVxFMekwwLz5vciRiK9Ej8B3JbKPGUsDeY5znStFPzSpZv3BtTwIoQ==}
+    peerDependencies:
+      '@types/react': '>=18.0.0'
+      react: '>=18.0.0'
+    peerDependenciesMeta:
+      '@types/react':
+        optional: true
+      react:
+        optional: true
+
   doctrine@3.0.0:
     resolution: {integrity: sha512-yS+Q5i3hBf7GBkd4KG8a7eBNNWNGLTaEwwYWUijIYM7zrlYDM0BFXHjjPWlWZ1Rg7UaddZeIDmi9jF3HmqiQ2w==}
     engines: {node: '>=6.0.0'}
@@ -4352,6 +4427,17 @@ packages:
   kleur@3.0.3:
     resolution: {integrity: sha512-eTIzlVOSUR+JxdDFepEYcBMtZ9Qqdef+rnzWdRZuMbOywu5tO2w2N7rqjoANZ5k9vywhL6Br1VRjUIgTQx4E8w==}
     engines: {node: '>=6'}
+
+  koota@0.2.2:
+    resolution: {integrity: sha512-c2nwfxkql0Y+vN7wFSTiwqZ1zBSSIicryX1nAa+QEzrO7KDAklZb9+Y3BibRnDBOroZVjzemdwura7TcIHV/Sw==}
+    peerDependencies:
+      '@types/react': '>=18.0.0'
+      react: '>=18.0.0'
+    peerDependenciesMeta:
+      '@types/react':
+        optional: true
+      react:
+        optional: true
 
   leven@3.1.0:
     resolution: {integrity: sha512-qsda+H8jTaUaN/x5vzW2rzc+8Rw4TAQ/4KjB46IwK5VH+IlVeeeje/EoZRpiXvIqjFgK84QffqPztGI3VBLG1A==}
@@ -9129,6 +9215,8 @@ snapshots:
     dependencies:
       path-type: 4.0.0
 
+  directed@0.1.6: {}
+
   doctrine@3.0.0:
     dependencies:
       esutils: 2.0.3
@@ -10671,6 +10759,8 @@ snapshots:
   kind-of@6.0.3: {}
 
   kleur@3.0.3: {}
+
+  koota@0.2.2: {}
 
   leven@3.1.0: {}
 

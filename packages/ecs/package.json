@@ -1,5 +1,5 @@
 {
-  "name": "@infinite-canvas-tutorial/core",
+  "name": "@infinite-canvas-tutorial/ecs",
   "description": "An infinite canvas tutorial",
   "main": "lib/index.js",
   "module": "esm/index.js",
@@ -44,9 +44,11 @@
     "bezier-easing": "^2.1.0",
     "bidi-js": "^1.0.3",
     "d3-color": "^3.1.0",
+    "directed": "^0.1.6",
     "earcut": "^3.0.0",
     "eventemitter3": "^5.0.1",
     "gl-matrix": "^3.4.3",
+    "koota": "^0.2.2",
     "libtess": "^1.2.2",
     "potpack": "^2.0.0",
     "rbush": "^3.0.1",

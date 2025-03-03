@@ -3,7 +3,7 @@ import { customElement, property, state } from 'lit/decorators.js';
 import { load } from '@loaders.gl/core';
 import { ImageLoader } from '@loaders.gl/images';
 
-import { isColor, isGradient } from '@infinite-canvas-tutorial/core';
+import { isColor, isGradient, isPattern } from '@infinite-canvas-tutorial/core';
 import '@shoelace-style/shoelace/dist/components/radio-group/radio-group.js';
 import '@shoelace-style/shoelace/dist/components/radio-button/radio-button.js';
 import { panelStyles } from './styles';
@@ -28,7 +28,7 @@ export class FillPanel extends LitElement {
   fillOpacity: number;
 
   @state()
-  type: 'solid' | 'gradient' | 'image' | 'none';
+  type: 'solid' | 'gradient' | 'image' | 'none' | 'pattern';
 
   updated(changedProperties: Map<string, unknown>) {
     if (changedProperties.has('fill')) {
@@ -39,6 +39,8 @@ export class FillPanel extends LitElement {
           ? 'gradient'
           : isColor(this.fill)
           ? 'solid'
+          : isPattern(this.fill)
+          ? 'pattern'
           : 'image';
     }
   }
@@ -96,20 +98,21 @@ export class FillPanel extends LitElement {
   render() {
     return html`
       <div class="fill-panel-content">
-        <sl-radio-group
-          size="small"
+        <sl-select
           name="fill"
           label="Color"
+          size="small"
+          placeholder="center"
+          hoist
           value=${this.type}
           @sl-change=${this.handleFillTypeChange}
         >
-          <sl-radio-button size="small" value="solid">Solid</sl-radio-button>
-          <sl-radio-button size="small" value="gradient"
-            >Gradient</sl-radio-button
-          >
-          <sl-radio-button size="small" value="image">Image</sl-radio-button>
-          <sl-radio-button size="small" value="none">None</sl-radio-button>
-        </sl-radio-group>
+          <sl-option value="solid">Solid</sl-option>
+          <sl-option value="gradient">Gradient</sl-option>
+          <sl-option value="image">Image</sl-option>
+          <sl-option value="pattern">Pattern</sl-option>
+          <sl-option value="none">None</sl-option>
+        </sl-select>
         ${this.type === 'solid'
           ? html`
               <ic-input-solid

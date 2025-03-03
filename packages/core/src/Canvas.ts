@@ -18,6 +18,7 @@ import {
   Theme,
   SelectorPluginOptions,
   DragndropPluginOptions,
+  Painter,
 } from './plugins';
 import {
   Group,
@@ -129,6 +130,7 @@ export class Canvas {
   #rendererPlugin: Renderer;
   #eventPlugin: Event;
   #selectorPlugin: Selector;
+  #painterPlugin: Painter;
 
   #root = new Group();
   get root() {
@@ -244,6 +246,7 @@ export class Canvas {
       },
       ...pluginsOptions?.selector,
     });
+    this.#painterPlugin = new Painter({});
 
     this.theme = theme;
     this.checkboardStyle = checkboardStyle;
@@ -255,6 +258,7 @@ export class Canvas {
       new Picker(),
       new CameraControl(),
       this.#selectorPlugin,
+      this.#painterPlugin,
       new Culling(),
       this.#rendererPlugin,
       new Dragndrop({

@@ -275,7 +275,7 @@ export class Selector implements Plugin {
     };
 
     const handleMouseDown = inSelectCanvasMode((e: FederatedPointerEvent) => {
-      if (e.button === 0) {
+      if (e.button === 0 && this.selected.length === 0) {
         this.#selectionBrush?.onMouseDown(e);
       }
     });
@@ -283,7 +283,7 @@ export class Selector implements Plugin {
       this.#selectionBrush?.onMouseMove(e);
     });
     const handleMouseUp = inSelectCanvasMode((e: FederatedPointerEvent) => {
-      if (e.button === 0) {
+      if (e.button === 0 && this.selected.length === 0) {
         this.#selectionBrush?.onMouseUp(e);
       }
     });
