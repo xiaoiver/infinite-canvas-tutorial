@@ -36,10 +36,10 @@
       y="50"
       width="50"
       height="50"
-      filter="url(#filter_drop_shadow_35)"
+      filter="url(#filter_drop_shadow_42)"
     >
       <defs>
-        <filter id="filter_drop_shadow_35">
+        <filter id="filter_drop_shadow_42">
           <feDropShadow
             dx="-5"
             dy="-5"
@@ -49,6 +49,5 @@
         </filter>
       </defs>
     </rect>
-    <g />
   </g>
 </svg>

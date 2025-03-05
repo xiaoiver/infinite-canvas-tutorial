@@ -30,9 +30,9 @@
   </defs>
   <rect width="100%" height="100%" fill="url(#grid)" />
   <g>
-    <g filter="url(#filter_drop_shadow_14)">
+    <g filter="url(#filter_drop_shadow_17)">
       <defs>
-        <filter id="filter_drop_shadow_14">
+        <filter id="filter_drop_shadow_17">
           <feDropShadow dx="2.5" dy="2.5" stdDeviation="1" flood-color="blue" />
         </filter>
       </defs>
@@ -47,6 +47,5 @@
         fill="none"
       />
     </g>
-    <g />
   </g>
 </svg>

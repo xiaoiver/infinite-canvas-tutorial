@@ -73,7 +73,12 @@ type SerializedTransform = {
   };
 };
 
-const commonAttributes = ['renderable', 'visible', 'zIndex'] as const;
+const commonAttributes = [
+  'renderable',
+  'serializable',
+  'visible',
+  'zIndex',
+] as const;
 const renderableAttributes = [
   'cullable',
   'batchable',
@@ -403,8 +408,9 @@ export async function deserializeNode(data: SerializedNode) {
   return shape;
 }
 
-export function serializeNode(node: Shape): SerializedNode {
+export function serializeNode(node: Shape): SerializedNode | undefined {
   const [type, attributes] = typeofShape(node);
+
   const serialized: SerializedNode = {
     uid: node.uid,
     type,
@@ -415,6 +421,11 @@ export function serializeNode(node: Shape): SerializedNode {
       return prev;
     }, {}),
   };
+
+  if (!serialized.attributes.serializable) {
+    return;
+  }
+  delete serialized.attributes.serializable;
 
   const { fill, points, strokeDasharray } = serialized.attributes;
   if (fill && !isString(fill)) {
@@ -449,7 +460,9 @@ export function serializeNode(node: Shape): SerializedNode {
   }
 
   serialized.attributes.transform = serializeTransform(node.transform);
-  serialized.children = node.children.map(serializeNode);
+  serialized.children = node.children
+    .filter((child) => child.serializable)
+    .map(serializeNode);
 
   return serialized;
 }
@@ -1074,7 +1087,10 @@ export function exportRough(node: SerializedNode, $g: SVGElement) {
   });
 }
 
-export function toSVGElement(node: SerializedNode) {
+export function toSVGElement(node?: SerializedNode) {
+  if (!node) {
+    return;
+  }
   const { type, attributes, children } = node;
 
   const isRough = type.startsWith('rough-');

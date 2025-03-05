@@ -36,10 +36,10 @@
       y="50"
       width="50"
       height="50"
-      filter="url(#filter_inner_shadow_6)"
+      filter="url(#filter_inner_shadow_8)"
     >
       <defs>
-        <filter id="filter_inner_shadow_6">
+        <filter id="filter_inner_shadow_8">
           <feComponentTransfer in="SourceAlpha">
             <feFuncA type="table" tableValues="1 0" />
           </feComponentTransfer>
@@ -61,10 +61,10 @@
       y="100"
       width="50"
       height="50"
-      filter="url(#filter_inner_shadow_7)"
+      filter="url(#filter_inner_shadow_9)"
     >
       <defs>
-        <filter id="filter_inner_shadow_7">
+        <filter id="filter_inner_shadow_9">
           <feComponentTransfer in="SourceAlpha">
             <feFuncA type="table" tableValues="1 0" />
           </feComponentTransfer>
@@ -86,10 +86,10 @@
       y="50"
       width="20"
       height="20"
-      filter="url(#filter_inner_shadow_8)"
+      filter="url(#filter_inner_shadow_10)"
     >
       <defs>
-        <filter id="filter_inner_shadow_8">
+        <filter id="filter_inner_shadow_10">
           <feComponentTransfer in="SourceAlpha">
             <feFuncA type="table" tableValues="1 0" />
           </feComponentTransfer>
@@ -105,6 +105,5 @@
         </filter>
       </defs>
     </rect>
-    <g />
   </g>
 </svg>

@@ -1,6 +1,6 @@
 import { CanvasMode } from '../Canvas';
-import { FederatedPointerEvent } from '../events';
-import { Group } from '../shapes';
+import { FederatedPointerEvent, CustomEvent } from '../events';
+import { Group, Path, Shape } from '../shapes';
 import { RectPen } from '../shapes/pen';
 import { AbstractPen, PenEvent, PenState } from '../shapes/pen/AbstractPen';
 import { Plugin, PluginContext } from './interfaces';
@@ -18,7 +18,17 @@ export class Painter implements Plugin {
    */
   #activePenLayer = new Group({
     zIndex: Number.MAX_SAFE_INTEGER,
+    serializable: false,
   });
+
+  #startEvent: CustomEvent;
+  #moveEvent: CustomEvent;
+  #modifiedEvent: CustomEvent;
+  #completeEvent: CustomEvent;
+  #cancelEvent: CustomEvent;
+
+  register: () => void;
+  unregister: () => void;
 
   constructor(options: PainterPluginOptions) {
     this.#options = options;
@@ -27,13 +37,21 @@ export class Painter implements Plugin {
   apply(context: PluginContext) {
     const {
       root,
-      api: { getCanvasMode },
+      api: { getCanvasMode, createCustomEvent },
       hooks,
     } = context;
     this.#context = context;
     root.appendChild(this.#activePenLayer);
 
-    function inPainterCanvasMode(fn: (e: FederatedPointerEvent) => void) {
+    this.#startEvent = createCustomEvent(PenEvent.START);
+    this.#moveEvent = createCustomEvent(PenEvent.MOVE);
+    this.#modifiedEvent = createCustomEvent(PenEvent.MODIFIED);
+    this.#completeEvent = createCustomEvent(PenEvent.COMPLETE);
+    this.#cancelEvent = createCustomEvent(PenEvent.CANCEL);
+
+    function inPainterCanvasMode(
+      fn: (e: FederatedPointerEvent | KeyboardEvent) => void,
+    ) {
       return (e: FederatedPointerEvent) => {
         const mode = getCanvasMode();
         if (mode !== CanvasMode.DRAW_RECT) {
@@ -71,70 +89,106 @@ export class Painter implements Plugin {
       }
     });
 
-    hooks.init.tap(() => {
+    const handleKeyDown = inPainterCanvasMode((e: KeyboardEvent) => {
+      this.#pen.onKeyDown(e);
+    });
+
+    this.register = () => {
       root.addEventListener('click', handleClick);
       root.addEventListener('pointerdown', handlePointerDown);
       root.addEventListener('pointermove', handlePointerMove);
       root.addEventListener('pointerup', handlePointerUp);
+      window.addEventListener('keydown', handleKeyDown);
+    };
 
-      // canvas.document.addEventListener('pointerenter', handleCanvasEnter);
-      // canvas.document.addEventListener('pointerleave', handleCanvasLeave);
-      // window.addEventListener('keydown', handleKeyDown);
-    });
-
-    hooks.destroy.tap(() => {
+    this.unregister = () => {
       root.removeEventListener('click', handleClick);
       root.removeEventListener('pointerdown', handlePointerDown);
       root.removeEventListener('pointermove', handlePointerMove);
       root.removeEventListener('pointerup', handlePointerUp);
+      window.removeEventListener('keydown', handleKeyDown);
+    };
 
-      // canvas.document.removeEventListener('pointerenter', handleCanvasEnter);
-      // canvas.document.removeEventListener('pointerleave', handleCanvasLeave);
-      // window.removeEventListener('keydown', handleKeyDown);
+    hooks.modeChange.tap((prev, next) => {
+      if (prev === CanvasMode.DRAW_RECT) {
+        this.unregister();
+        this.#pen.destroy?.();
+        this.#pen = undefined;
+      }
+      if (next === CanvasMode.DRAW_RECT) {
+        this.register();
+        this.setPen(next);
+      }
     });
   }
 
-  setPen(mode: CanvasMode) {
-    if (this.#pen) {
-      this.#pen.destroy();
-    }
+  private setPen(mode: CanvasMode) {
+    const { root } = this.#context;
 
     if (mode === CanvasMode.DRAW_RECT) {
       this.#pen = new RectPen(this.#context.api, this.#activePenLayer);
     }
 
+    let toPaint: Shape;
+
     const onStart = (state: PenState) => {
       this.renderPen(state);
+      // @ts-expect-error - CustomEventInit is not defined
+      this.#startEvent.detail = state;
+      root.dispatchEvent(this.#startEvent);
+
+      if (mode === CanvasMode.DRAW_RECT) {
+        toPaint = new Path({
+          d: `M${state.points[0].x},${state.points[0].y}L${state.points[1].x},${state.points[1].y}L${state.points[2].x},${state.points[2].y}L${state.points[3].x},${state.points[3].y}Z`,
+          fill: 'transparent',
+          stroke: 'black',
+          selectable: true,
+        });
+      }
+      this.#activePenLayer.appendChild(toPaint);
     };
 
     const onMove = (state: PenState) => {
       this.renderPen(state);
+      // @ts-expect-error - CustomEventInit is not defined
+      this.#moveEvent.detail = state;
+      root.dispatchEvent(this.#moveEvent);
     };
 
-    const onModify = (state: PenState) => {
+    const onModified = (state: PenState) => {
       this.renderPen(state);
+      // @ts-expect-error - CustomEventInit is not defined
+      this.#modifiedEvent.detail = state;
+      root.dispatchEvent(this.#modifiedEvent);
+
+      if (mode === CanvasMode.DRAW_RECT) {
+        (
+          toPaint as Path
+        ).d = `M${state.points[0].x},${state.points[0].y}L${state.points[1].x},${state.points[1].y}L${state.points[2].x},${state.points[2].y}L${state.points[3].x},${state.points[3].y}Z`;
+      }
     };
 
     const onComplete = (state: PenState) => {
       this.hidePen(state);
+      // @ts-expect-error - CustomEventInit is not defined
+      this.#completeEvent.detail = state;
+      root.dispatchEvent(this.#completeEvent);
     };
 
     const onCancel = (state: PenState) => {
       this.hidePen(state);
+      // @ts-expect-error - CustomEventInit is not defined
+      this.#cancelEvent.detail = state;
+      root.dispatchEvent(this.#cancelEvent);
+
+      this.#activePenLayer.removeChild(toPaint);
     };
 
     this.#pen.on(PenEvent.START, onStart);
-    this.#pen.on(PenEvent.MODIFIED, onModify);
+    this.#pen.on(PenEvent.MODIFIED, onModified);
     this.#pen.on(PenEvent.MOVE, onMove);
     this.#pen.on(PenEvent.COMPLETE, onComplete);
     this.#pen.on(PenEvent.CANCEL, onCancel);
-
-    this.#context.api.setCursor('crosshair');
-  }
-
-  clearPen() {
-    this.#pen = undefined;
-    this.#context.api.setCursor('default');
   }
 
   private hidePen(state: PenState) {
@@ -143,9 +197,9 @@ export class Painter implements Plugin {
 
   private renderPen(state: PenState) {
     this.#pen.render(state, {
-      fill: 'black',
+      fill: 'none',
       stroke: 'black',
-      fillOpacity: 0.5,
+      sizeAttenuation: true,
     });
   }
 }

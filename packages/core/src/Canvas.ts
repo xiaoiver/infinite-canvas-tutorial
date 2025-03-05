@@ -216,6 +216,7 @@ export class Canvas {
         pointerCancel: new SyncHook<[InteractivePointerEvent]>(),
         pickSync: new SyncWaterfallHook(),
         cameraChange: new SyncHook<[]>(),
+        modeChange: new SyncHook<[CanvasMode, CanvasMode]>(),
       },
       camera,
       root: this.#root,
@@ -250,7 +251,6 @@ export class Canvas {
 
     this.theme = theme;
     this.checkboardStyle = checkboardStyle;
-    this.mode = mode;
 
     const plugins = [
       new DOMEventListener(),
@@ -278,6 +278,8 @@ export class Canvas {
       await hooks.initAsync.promise();
       return this;
     })();
+
+    this.mode = mode;
   }
 
   get initialized() {
@@ -421,6 +423,8 @@ export class Canvas {
   }
   set mode(mode: CanvasMode) {
     if (this.#mode !== mode) {
+      this.#pluginContext.hooks.modeChange.call(this.#mode, mode);
+      this.#mode = mode;
       let cursor: Cursor;
       if (mode === CanvasMode.HAND) {
         cursor = 'grab';
@@ -429,12 +433,6 @@ export class Canvas {
       } else if (mode === CanvasMode.DRAW_RECT) {
         cursor = 'crosshair';
       }
-
-      if (this.#mode === CanvasMode.SELECT) {
-        this.#selectorPlugin.deselectAllShapes();
-      }
-
-      this.#mode = mode;
       DOMAdapter.get().setCursor(this, cursor);
     }
   }

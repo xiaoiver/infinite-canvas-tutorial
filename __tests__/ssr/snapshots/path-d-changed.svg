@@ -31,6 +31,5 @@
   <rect width="100%" height="100%" fill="url(#grid)" />
   <g>
     <path fill="#F67676" d="M 0 0 L 50 0 L 100 100 Z" />
-    <g />
   </g>
 </svg>

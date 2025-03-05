@@ -44,6 +44,7 @@ export interface Hooks {
   pointerCancel: SyncHook<[InteractivePointerEvent]>;
   pickSync: SyncWaterfallHook<[PickingResult], PickingResult>;
   cameraChange: SyncHook<[]>;
+  modeChange: SyncHook<[CanvasMode, CanvasMode]>;
 }
 
 export interface PickingResult {

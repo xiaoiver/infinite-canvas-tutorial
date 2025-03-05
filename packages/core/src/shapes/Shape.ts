@@ -255,7 +255,7 @@ export function strokeOffset(
 
 export function isFillOrStrokeAffected(
   pointerEvents: PointerEvents,
-  fill: string | TexImageSource,
+  fill: string | CanvasImageSource,
   stroke: string,
 ): [boolean, boolean] {
   let hasFill = false;

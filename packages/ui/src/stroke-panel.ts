@@ -60,7 +60,7 @@ export class StrokePanel extends LitElement {
       changedProperties.has('strokeGap')
     ) {
       this.strokeStyle =
-        this.strokeDash > 0 && this.strokeGap > 0 ? 'dash' : 'solid';
+        this.strokeDash > 0 || this.strokeGap > 0 ? 'dash' : 'solid';
     }
   }
 
@@ -160,7 +160,7 @@ export class StrokePanel extends LitElement {
 
   private handleStrokeGapChange(e: CustomEvent) {
     const strokeGap = (e.target as any).value;
-    const event = new CustomEvent('strokestrokegapchanged', {
+    const event = new CustomEvent('strokegapchanged', {
       detail: { strokeGap },
       bubbles: true,
       composed: true,

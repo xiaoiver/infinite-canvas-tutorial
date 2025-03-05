@@ -139,9 +139,6 @@ export class RectPen extends AbstractPen {
   }
 
   destroy() {
-    if (this.#rect) {
-      this.#rect.destroy();
-      this.#rect = undefined;
-    }
+    this.#rect = undefined;
   }
 }

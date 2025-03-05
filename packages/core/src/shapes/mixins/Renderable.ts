@@ -17,6 +17,11 @@ export interface IRenderable {
   renderable: boolean;
 
   /**
+   * Whether this object is serializable.
+   */
+  serializable: boolean;
+
+  /**
    * Whether this object is visible.
    */
   visible: boolean;
@@ -234,6 +239,7 @@ export function Renderable<TBase extends GConstructor>(Base: TBase) {
   // @ts-ignore
   return class Renderable extends Base implements IRenderable {
     renderable: boolean;
+    serializable: boolean;
     cullable: boolean;
     culled: boolean;
     batchable: boolean;
@@ -282,6 +288,7 @@ export function Renderable<TBase extends GConstructor>(Base: TBase) {
           | 'opacity'
           | 'fillOpacity'
           | 'renderable'
+          | 'serializable'
           | 'cullable'
           | 'batchable'
           | 'selectable'
@@ -306,6 +313,7 @@ export function Renderable<TBase extends GConstructor>(Base: TBase) {
 
       const {
         renderable,
+        serializable,
         visible,
         cullable,
         batchable,
@@ -331,6 +339,7 @@ export function Renderable<TBase extends GConstructor>(Base: TBase) {
       } = attributes;
 
       this.renderable = renderable ?? true;
+      this.serializable = serializable ?? true;
       this.visible = visible ?? true;
       this.cullable = cullable ?? true;
       this.batchable = batchable ?? true;

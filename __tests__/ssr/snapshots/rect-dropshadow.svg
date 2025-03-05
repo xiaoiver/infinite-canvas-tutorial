@@ -36,10 +36,10 @@
       y="50"
       width="50"
       height="50"
-      filter="url(#filter_drop_shadow_13)"
+      filter="url(#filter_drop_shadow_16)"
     >
       <defs>
-        <filter id="filter_drop_shadow_13">
+        <filter id="filter_drop_shadow_16">
           <feDropShadow dx="5" dy="5" stdDeviation="2.5" flood-color="black" />
         </filter>
       </defs>
@@ -50,10 +50,10 @@
       y="100"
       width="50"
       height="50"
-      filter="url(#filter_drop_shadow_14)"
+      filter="url(#filter_drop_shadow_17)"
     >
       <defs>
-        <filter id="filter_drop_shadow_14">
+        <filter id="filter_drop_shadow_17">
           <feDropShadow dx="5" dy="5" stdDeviation="2.5" flood-color="black" />
         </filter>
       </defs>
@@ -64,14 +64,13 @@
       y="50"
       width="20"
       height="20"
-      filter="url(#filter_drop_shadow_15)"
+      filter="url(#filter_drop_shadow_18)"
     >
       <defs>
-        <filter id="filter_drop_shadow_15">
+        <filter id="filter_drop_shadow_18">
           <feDropShadow dx="0" dy="0" stdDeviation="2" flood-color="black" />
         </filter>
       </defs>
     </rect>
-    <g />
   </g>
 </svg>

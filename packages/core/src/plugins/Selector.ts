@@ -54,12 +54,16 @@ export class Selector implements Plugin {
    */
   #activeSelectableLayer = new Group({
     zIndex: Number.MAX_SAFE_INTEGER,
+    serializable: false,
   });
 
   movingEvent: CustomEvent;
   movedEvent: CustomEvent;
   resizingEvent: CustomEvent;
   resizedEvent: CustomEvent;
+
+  register: () => void;
+  unregister: () => void;
 
   constructor(options: SelectorPluginOptions) {
     this.#options = options;
@@ -69,6 +73,7 @@ export class Selector implements Plugin {
     const {
       root,
       api: { createCustomEvent, getCanvasMode },
+      hooks,
     } = context;
 
     function inSelectCanvasMode(fn: (e: FederatedPointerEvent) => void) {
@@ -92,8 +97,28 @@ export class Selector implements Plugin {
     this.resizedEvent = createCustomEvent(SelectableEvent.RESIZED);
     root.appendChild(this.#activeSelectableLayer);
 
-    this.bindSelectableEvents(inSelectCanvasMode);
-    this.bindSelectionBrush(inSelectCanvasMode);
+    this.register = () => {
+      const unbindSelectableEvents =
+        this.bindSelectableEvents(inSelectCanvasMode);
+      const unbindSelectionBrush = this.bindSelectionBrush(inSelectCanvasMode);
+
+      this.unregister = () => {
+        unbindSelectableEvents();
+        unbindSelectionBrush();
+        this.deselectAllShapes();
+        this.#selected = [];
+        this.#selectableMap = {};
+      };
+    };
+
+    hooks.modeChange.tap((prev, next) => {
+      if (prev === CanvasMode.SELECT) {
+        this.unregister();
+      }
+      if (next === CanvasMode.SELECT) {
+        this.register();
+      }
+    });
   }
 
   private bindSelectableEvents(
@@ -212,6 +237,14 @@ export class Selector implements Plugin {
     root.addEventListener(SelectableEvent.MOVED, handleMovedTarget);
     root.addEventListener(SelectableEvent.RESIZING, handleResizingTarget);
     root.addEventListener(SelectableEvent.RESIZED, handleResizedTarget);
+
+    return () => {
+      root.removeEventListener('pointerdown', handleClick);
+      root.removeEventListener(SelectableEvent.MOVING, handleMovingTarget);
+      root.removeEventListener(SelectableEvent.MOVED, handleMovedTarget);
+      root.removeEventListener(SelectableEvent.RESIZING, handleResizingTarget);
+      root.removeEventListener(SelectableEvent.RESIZED, handleResizedTarget);
+    };
   }
 
   private bindSelectionBrush(
@@ -421,6 +454,18 @@ export class Selector implements Plugin {
     this.#selectionBrush.on(PenEvent.MOVE, onMove);
     this.#selectionBrush.on(PenEvent.COMPLETE, onComplete);
     this.#selectionBrush.on(PenEvent.CANCEL, onCancel);
+
+    return () => {
+      this.#selectionBrush.off(PenEvent.START, onStart);
+      this.#selectionBrush.off(PenEvent.MODIFIED, onModify);
+      this.#selectionBrush.off(PenEvent.MOVE, onMove);
+      this.#selectionBrush.off(PenEvent.COMPLETE, onComplete);
+      this.#selectionBrush.off(PenEvent.CANCEL, onCancel);
+
+      root.removeEventListener('pointerdown', handleMouseDown);
+      root.removeEventListener('pointermove', handleMouseMove);
+      root.removeEventListener('pointerup', handleMouseUp);
+    };
   }
 
   get selected() {

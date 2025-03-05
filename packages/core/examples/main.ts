@@ -16,6 +16,7 @@ import {
   serializeNode,
   toSVGElement,
   loadBitmapFont,
+  CanvasMode,
 } from '../src';
 
 const $canvas = document.getElementById('canvas') as HTMLCanvasElement;
@@ -32,44 +33,45 @@ resize(window.innerWidth, window.innerHeight);
 
 const canvas = await new Canvas({
   canvas: $canvas,
+  mode: CanvasMode.SELECT,
   // renderer: 'webgpu',
   // shaderCompilerPath: '/glsl_wgsl_compiler_bg.wasm',
 }).initialized;
 
-(async () => {
-  // const res = await fetch('./DimboR.fnt');
-  // const res = await fetch('./msdf-sans-serif.json');
-  const res = await fetch('./desyrel.xml');
-  const font = await loadBitmapFont.parse(await res.text());
-  console.log(font);
-  const text = new Text({
-    x: 50,
-    y: 50,
-    content: 'Hello, world',
-    fontSize: 48,
-    fill: '#F67676',
-    fontFamily: 'Desyrel',
-    bitmapFont: font,
-    // wireframe: true,
-    // textAlign: 'right',
-    // letterSpacing: 10,
-  });
-  canvas.appendChild(text);
+// (async () => {
+//   // const res = await fetch('./DimboR.fnt');
+//   // const res = await fetch('./msdf-sans-serif.json');
+//   const res = await fetch('./desyrel.xml');
+//   const font = await loadBitmapFont.parse(await res.text());
+//   console.log(font);
+//   const text = new Text({
+//     x: 50,
+//     y: 50,
+//     content: 'Hello, world',
+//     fontSize: 48,
+//     fill: '#F67676',
+//     fontFamily: 'Desyrel',
+//     bitmapFont: font,
+//     // wireframe: true,
+//     // textAlign: 'right',
+//     // letterSpacing: 10,
+//   });
+//   canvas.appendChild(text);
 
-  const bounds = text.getBounds();
-  console.log(bounds);
+//   const bounds = text.getBounds();
+//   console.log(bounds);
 
-  const rect = new Rect({
-    x: bounds.minX,
-    y: bounds.minY,
-    width: bounds.maxX - bounds.minX,
-    height: bounds.maxY - bounds.minY,
-    fill: 'none',
-    stroke: 'blue',
-    strokeWidth: 1,
-  });
-  canvas.appendChild(rect);
-})();
+//   const rect = new Rect({
+//     x: bounds.minX,
+//     y: bounds.minY,
+//     width: bounds.maxX - bounds.minX,
+//     height: bounds.maxY - bounds.minY,
+//     fill: 'none',
+//     stroke: 'blue',
+//     strokeWidth: 1,
+//   });
+//   canvas.appendChild(rect);
+// })();
 
 // for (let i = 0; i < 2; i++) {
 //   const circle = new Circle({
@@ -88,22 +90,22 @@ const canvas = await new Canvas({
 //   canvas.appendChild(circle);
 // }
 
-// const rect = new Rect({
-//   x: 300,
-//   y: 100,
-//   width: 100,
-//   height: 100,
-//   fill: '#F67676',
-//   // stroke: 'black',
-//   // strokeWidth: 10,
-//   dropShadowBlurRadius: 10,
-//   dropShadowColor: 'rgba(0, 0, 0, 0.5)',
-//   dropShadowOffsetX: 10,
-//   dropShadowOffsetY: 10,
-//   // batchable: false,
-//   wireframe: true,
-// });
-// canvas.appendChild(rect);
+const rect = new Rect({
+  x: 300,
+  y: 100,
+  width: 100,
+  height: 100,
+  fill: '#F67676',
+  // stroke: 'black',
+  // strokeWidth: 10,
+  // dropShadowBlurRadius: 10,
+  // dropShadowColor: 'rgba(0, 0, 0, 0.5)',
+  // dropShadowOffsetX: 10,
+  // dropShadowOffsetY: 10,
+  // batchable: false,
+  // wireframe: true,
+});
+canvas.appendChild(rect);
 
 // const path = new Path({
 //   d: 'M 100 100 L 200 200 L 300 100 L 400 200 L 500 100 Z',
@@ -147,34 +149,34 @@ const canvas = await new Canvas({
 // });
 // canvas.appendChild(baseline);
 
-const text = new Text({
-  x: 50,
-  y: 250,
-  content: 'Hello, world',
-  fontSize: 48,
-  fontFamily: 'sans-serif',
-  fill: '#F67676',
-  // wireframe: true,
-  // textAlign: 'right',
-  // letterSpacing: 10,
-});
-canvas.appendChild(text);
+// const text = new Text({
+//   x: 50,
+//   y: 250,
+//   content: 'Hello, world',
+//   fontSize: 48,
+//   fontFamily: 'sans-serif',
+//   fill: '#F67676',
+//   // wireframe: true,
+//   // textAlign: 'right',
+//   // letterSpacing: 10,
+// });
+// canvas.appendChild(text);
 
-const bounds = text.getBounds();
-console.log(bounds);
+// const bounds = text.getBounds();
+// console.log(bounds);
 
-const rect = new Rect({
-  x: bounds.minX,
-  y: bounds.minY,
-  width: bounds.maxX - bounds.minX,
-  height: bounds.maxY - bounds.minY,
-  fill: 'none',
-  stroke: 'blue',
-  strokeWidth: 1,
-});
-canvas.appendChild(rect);
+// const rect = new Rect({
+//   x: bounds.minX,
+//   y: bounds.minY,
+//   width: bounds.maxX - bounds.minX,
+//   height: bounds.maxY - bounds.minY,
+//   fill: 'none',
+//   stroke: 'blue',
+//   strokeWidth: 1,
+// });
+// canvas.appendChild(rect);
 
-canvas.render();
+// canvas.render();
 
 const animate = () => {
   canvas.render();

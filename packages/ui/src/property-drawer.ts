@@ -388,7 +388,7 @@ export class PropertyDrawer extends LitElement {
             @strokealignmentchanged=${this.handleStrokeAlignmentChange}
             @strokelinejoinchanged=${this.handleStrokeLinejoinChange}
             @strokedashchanged=${this.handleStrokeDashChange}
-            @strokestrokegapchanged=${this.handleStrokeGapChange}
+            @strokegapchanged=${this.handleStrokeGapChange}
             @strokedashoffsetchanged=${this.handleStrokeDashoffsetChange}
           ></ic-stroke-panel>
         </sl-details>
