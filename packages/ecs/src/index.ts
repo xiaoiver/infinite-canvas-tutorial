@@ -1,3 +1,28 @@
+import {
+  HierarchyPlugin,
+  PluginType,
+  RendererPlugin,
+  TransformPlugin,
+} from './plugins';
+
 export * from './App';
-export * from './Commands';
+export * from './commands/Commands';
 export * from './components';
+export * from './plugins';
+export * from './systems';
+
+export {
+  component,
+  field,
+  Type,
+  World,
+  System,
+  system,
+  type Entity,
+} from '@lastolivegames/becsy';
+
+export const DefaultPlugins: PluginType[] = [
+  HierarchyPlugin,
+  TransformPlugin,
+  RendererPlugin,
+];

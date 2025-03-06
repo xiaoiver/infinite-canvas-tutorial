@@ -1,4 +1,4 @@
-import { trait } from 'koota';
+import { field, component } from '@lastolivegames/becsy';
 
 export enum CanvasMode {
   SELECT = 'select',
@@ -36,71 +36,55 @@ interface ThemeColors {
   selectionBrushStroke: string;
 }
 
-export interface CanvasConfig {
+@component
+export class AppConfig {
   /**
    * The canvas element. Pass in HTMLCanvasElement in the browser environment, OffscreenCanvas in the WebWorker environment,
    * and node-canvas in the Node.js environment.
    */
-  canvas: HTMLCanvasElement | OffscreenCanvas;
+  @field.object declare canvas: HTMLCanvasElement | OffscreenCanvas;
   /**
    * Set the renderer, optional values are webgl and webgpu, default value is webgl.
    */
-  renderer?: 'webgl' | 'webgpu';
+  @field.staticString(['webgl', 'webgpu']) declare renderer: 'webgl' | 'webgpu';
   /**
    * Set the WebGPU shader compiler path.
    */
-  shaderCompilerPath?: string;
+  @field.object declare shaderCompilerPath: string;
   /**
    * Returns the ratio of the resolution in physical pixels to the resolution
    * in CSS pixels for the current display device.
    * @see https://developer.mozilla.org/en-US/docs/Web/API/Window/devicePixelRatio
    */
-  devicePixelRatio?: number;
+  @field.float32 declare devicePixelRatio: number;
   /**
    * Checkboard style.
    */
-  checkboardStyle?: CheckboardStyle;
+  @field.staticString([
+    CheckboardStyle.NONE,
+    CheckboardStyle.GRID,
+    CheckboardStyle.DOTS,
+  ])
+  declare checkboardStyle: CheckboardStyle;
   /**
    * Default to `CanvasMode.HAND`.
    */
-  mode?: CanvasMode;
+  @field.staticString([
+    CanvasMode.SELECT,
+    CanvasMode.HAND,
+    CanvasMode.DRAW_RECT,
+  ])
+  declare mode: CanvasMode;
   /**
    * Theme.
    */
-  theme?: Theme;
+  @field.staticString([Theme.LIGHT, Theme.DARK]) declare theme: Theme;
   /**
    * Theme colors.
    * @see https://github.com/dgmjs/dgmjs/blob/main/packages/core/src/colors.ts#L130
    */
-  themeColors?: Partial<{
+  @field.object declare themeColors: Partial<{
     [Theme.LIGHT]: Partial<ThemeColors>;
     [Theme.DARK]: Partial<ThemeColors>;
   }>;
 }
-
-export const DEFAULT_APP_CONFIG: CanvasConfig = {
-  canvas: undefined,
-  renderer: 'webgl',
-  shaderCompilerPath: '',
-  devicePixelRatio: 1,
-  mode: CanvasMode.HAND,
-  checkboardStyle: CheckboardStyle.GRID,
-  theme: Theme.LIGHT,
-  themeColors: {
-    [Theme.LIGHT]: {
-      background: '#fbfbfb',
-      grid: '#dedede',
-      selectionBrushFill: '#dedede',
-      selectionBrushStroke: '#dedede',
-    },
-    [Theme.DARK]: {
-      background: '#121212',
-      grid: '#242424',
-      selectionBrushFill: '#242424',
-      selectionBrushStroke: '#242424',
-    },
-  },
-};
-
-// @ts-expect-error
-export const AppConfig = trait<CanvasConfig>(DEFAULT_APP_CONFIG);

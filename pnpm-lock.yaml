@@ -190,6 +190,9 @@ importers:
       '@antv/util':
         specifier: ^3.3.10
         version: 3.3.10
+      '@lastolivegames/becsy':
+        specifier: ^0.16.0
+        version: 0.16.0
       '@loaders.gl/core':
         specifier: ^4.2.2
         version: 4.3.3
@@ -208,9 +211,6 @@ importers:
       d3-color:
         specifier: ^3.1.0
         version: 3.1.0
-      directed:
-        specifier: ^0.1.6
-        version: 0.1.6
       earcut:
         specifier: ^3.0.0
         version: 3.0.0
@@ -220,9 +220,6 @@ importers:
       gl-matrix:
         specifier: ^3.4.3
         version: 3.4.3
-      koota:
-        specifier: ^0.2.2
-        version: 0.2.2
       libtess:
         specifier: ^1.2.2
         version: 1.2.2
@@ -1554,6 +1551,10 @@ packages:
 
   '@jridgewell/trace-mapping@0.3.25':
     resolution: {integrity: sha512-vNk6aEwybGtawWmy/PzwnGDOjCkLWSD2wqvjGGAgOAwCGWySYXfYoxt00IJkTF+8Lb57DwOb3Aa0o9CApepiYQ==}
+
+  '@lastolivegames/becsy@0.16.0':
+    resolution: {integrity: sha512-Co14Gvi2ZIfVmVFOkvJY39oVUuDD0eq+WW7Q7l61TjCgfXjOu9MOMqJxJuZw+bYkWJ34BcT9CGULTrY0NF7dGA==}
+    engines: {node: '>=12'}
 
   '@lit-labs/react@1.2.1':
     resolution: {integrity: sha512-DiZdJYFU0tBbdQkfwwRSwYyI/mcWkg3sWesKRsHUd4G+NekTmmeq9fzsurvcKTNVa0comNljwtg4Hvi1ds3V+A==}
@@ -3231,17 +3232,6 @@ packages:
     resolution: {integrity: sha512-WkrWp9GR4KXfKGYzOLmTuGVi1UWFfws377n9cc55/tb6DuqyF6pcQ5AbiHEshaDpY9v6oaSr2XCDidGmMwdzIA==}
     engines: {node: '>=8'}
 
-  directed@0.1.6:
-    resolution: {integrity: sha512-nF5Zm9Fdanolvvg/pohiuOfchRe5563LCVxFMekwwLz5vciRiK9Ej8B3JbKPGUsDeY5znStFPzSpZv3BtTwIoQ==}
-    peerDependencies:
-      '@types/react': '>=18.0.0'
-      react: '>=18.0.0'
-    peerDependenciesMeta:
-      '@types/react':
-        optional: true
-      react:
-        optional: true
-
   doctrine@3.0.0:
     resolution: {integrity: sha512-yS+Q5i3hBf7GBkd4KG8a7eBNNWNGLTaEwwYWUijIYM7zrlYDM0BFXHjjPWlWZ1Rg7UaddZeIDmi9jF3HmqiQ2w==}
     engines: {node: '>=6.0.0'}
@@ -4427,17 +4417,6 @@ packages:
   kleur@3.0.3:
     resolution: {integrity: sha512-eTIzlVOSUR+JxdDFepEYcBMtZ9Qqdef+rnzWdRZuMbOywu5tO2w2N7rqjoANZ5k9vywhL6Br1VRjUIgTQx4E8w==}
     engines: {node: '>=6'}
-
-  koota@0.2.2:
-    resolution: {integrity: sha512-c2nwfxkql0Y+vN7wFSTiwqZ1zBSSIicryX1nAa+QEzrO7KDAklZb9+Y3BibRnDBOroZVjzemdwura7TcIHV/Sw==}
-    peerDependencies:
-      '@types/react': '>=18.0.0'
-      react: '>=18.0.0'
-    peerDependenciesMeta:
-      '@types/react':
-        optional: true
-      react:
-        optional: true
 
   leven@3.1.0:
     resolution: {integrity: sha512-qsda+H8jTaUaN/x5vzW2rzc+8Rw4TAQ/4KjB46IwK5VH+IlVeeeje/EoZRpiXvIqjFgK84QffqPztGI3VBLG1A==}
@@ -7294,6 +7273,8 @@ snapshots:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.4.15
 
+  '@lastolivegames/becsy@0.16.0': {}
+
   '@lit-labs/react@1.2.1': {}
 
   '@lit-labs/ssr-dom-shim@1.2.0': {}
@@ -9215,8 +9196,6 @@ snapshots:
     dependencies:
       path-type: 4.0.0
 
-  directed@0.1.6: {}
-
   doctrine@3.0.0:
     dependencies:
       esutils: 2.0.3
@@ -10759,8 +10738,6 @@ snapshots:
   kind-of@6.0.3: {}
 
   kleur@3.0.3: {}
-
-  koota@0.2.2: {}
 
   leven@3.1.0: {}
 

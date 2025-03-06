@@ -1,35 +1,107 @@
-import { Entity } from 'koota';
-import { Transform as PixiTransform } from '@pixi/math';
-import { Transform } from '../components';
-import { Commands } from '../Commands';
-import { ChildOf } from '../Command';
+import { Entity, system, System } from '@lastolivegames/becsy';
+import { Children, GlobalTransform, Parent, Transform } from '../components';
+import { Mat3 } from '../components/math/Mat3';
 
-export const IDENTITY_TRANSFORM = new PixiTransform();
+/**
+ * Update {@link GlobalTransform} component of entities that aren't in the hierarchy
+ * Third party plugins should ensure that this is used in concert with {@link PropagateTransforms}.
+ */
+export class SyncSimpleTransforms extends System {
+  queries = this.query(
+    (q) =>
+      q.addedOrChanged
+        .with(Transform)
+        .but.without(Parent, Children)
+        .trackWrites.using(GlobalTransform).write,
+  );
 
-const updateHierarchy = (
-  commands: Commands,
-  parent: Entity,
-  transform = IDENTITY_TRANSFORM,
-) => {
-  parent.get(Transform)?.updateTransform(transform);
-  console.log(`Entity ${parent} changed`);
+  root = this.query(
+    (q) =>
+      q.addedOrChanged
+        .with(Transform, Parent)
+        .without(Children)
+        .trackWrites.using(GlobalTransform).write,
+  );
 
-  commands.world.query(ChildOf(parent)).updateEach((_, child) => {
-    updateHierarchy(commands, child, parent.get(Transform));
-  });
-};
+  orphaned = this.query(
+    (q) => q.removed.with(Parent).using(GlobalTransform).write,
+  );
 
-export const TransformSystem = ({ commands }: { commands: Commands }) => {
-  commands.world.onAdd([Transform], (entity) => {
-    entity.get(Transform)?.updateTransform(IDENTITY_TRANSFORM);
-    console.log(`Entity ${entity} added`);
-  });
+  private syncTransform(
+    entity: Entity,
+    checkGlobalTransform: boolean = true,
+  ): void {
+    const transform = entity.read(Transform);
+    if (checkGlobalTransform && !entity.has(GlobalTransform)) {
+      entity.add(GlobalTransform, new GlobalTransform());
+    }
+    const globalTransform = entity.write(GlobalTransform);
+    globalTransform.from(transform);
+  }
 
-  commands.world.onChange(Transform, (parent) => {
-    updateHierarchy(commands, parent);
-  });
+  execute(): void {
+    // Update changed entities.
+    this.queries.addedOrChanged.forEach((entity) => {
+      this.syncTransform(entity);
+    });
 
-  commands.world.onRemove([Transform], (entity) => {
-    console.log(`Entity ${entity} removed`);
-  });
-};
+    this.root.addedOrChanged.forEach((entity) => {
+      this.syncTransform(entity);
+    });
+
+    // Update orphaned entities.
+    this.orphaned.removed.forEach((entity) => {
+      this.syncTransform(entity, false);
+    });
+  }
+}
+
+/**
+ * Update {@link GlobalTransform} component of entities based on entity hierarchy and {@link Transform} components.
+ * Use `after` constraints here to ensure that the {@link SyncSimpleTransforms} system has run first.
+ * @see https://lastolivegames.github.io/becsy/guide/architecture/systems#execution-order
+ */
+@system((s) => s.after(SyncSimpleTransforms))
+export class PropagateTransforms extends System {
+  queries = this.query(
+    (q) =>
+      q.addedOrChanged
+        .with(Transform, Parent)
+        .trackWrites.using(GlobalTransform).write,
+  );
+
+  execute(): void {
+    this.queries.addedOrChanged.forEach((entity) => {
+      const worldTransform = entity.read(GlobalTransform);
+
+      console.log('parent', entity.__id, worldTransform.matrix.m00);
+
+      entity.read(Parent).children.forEach((child) => {
+        const localTransform = child.read(Transform);
+
+        if (!child.has(GlobalTransform)) {
+          child.add(GlobalTransform, new GlobalTransform());
+        }
+
+        const result = worldTransform.matrix.mul_mat3(
+          Mat3.from_scale_angle_translation(
+            localTransform.scale,
+            localTransform.rotation,
+            localTransform.translation,
+          ),
+        );
+
+        // console.log(worldTransform.matrix.m00, localTransform.scale.x, result);
+        child.write(GlobalTransform).matrix = result;
+
+        console.log(
+          'child',
+          child.__id,
+          'scaleX',
+          child.read(GlobalTransform).matrix.m00,
+          result,
+        );
+      });
+    });
+  }
+}

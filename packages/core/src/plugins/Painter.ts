@@ -143,9 +143,10 @@ export class Painter implements Plugin {
           fill: 'transparent',
           stroke: 'black',
           selectable: true,
+          sizeAttenuation: true,
         });
       }
-      this.#activePenLayer.appendChild(toPaint);
+      root.appendChild(toPaint);
     };
 
     const onMove = (state: PenState) => {
@@ -181,7 +182,7 @@ export class Painter implements Plugin {
       this.#cancelEvent.detail = state;
       root.dispatchEvent(this.#cancelEvent);
 
-      this.#activePenLayer.removeChild(toPaint);
+      root.removeChild(toPaint);
     };
 
     this.#pen.on(PenEvent.START, onStart);

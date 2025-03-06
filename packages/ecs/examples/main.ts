@@ -1,4 +1,15 @@
-import { App, Commands, Transform } from '../src';
+import {
+  App,
+  Entity,
+  Commands,
+  System,
+  StartUp,
+  Transform,
+  Parent,
+  Children,
+  DefaultPlugins,
+  GlobalTransform,
+} from '../src';
 
 const $canvas = document.getElementById('canvas') as HTMLCanvasElement;
 const resize = (width: number, height: number) => {
@@ -12,38 +23,45 @@ const resize = (width: number, height: number) => {
 };
 resize(window.innerWidth, window.innerHeight);
 
-let started = false;
+let parent_entity: Entity;
+let child_entity: Entity;
+let grandchild_entity: Entity;
+
+class StartUpSystem extends System {
+  commands = new Commands(this);
+
+  q = this.query(
+    (q) => q.using(Parent, Children, Transform, GlobalTransform).write,
+  );
+  q2 = this.query((q) => q.current.with(Parent).read);
+
+  initialize(): void {
+    const parent = this.commands.spawn(new Transform());
+    const child = this.commands.spawn(new Transform());
+    parent.addChild(child.id());
+
+    const grandchild = this.commands.spawn(new Transform());
+    child.addChild(grandchild.id());
+
+    parent_entity = parent.id().hold();
+    child_entity = child.id().hold();
+    grandchild_entity = grandchild.id().hold();
+    this.commands.execute();
+
+    parent_entity.write(Transform).scale.x = 2;
+    child_entity.write(Transform).scale.x = 3;
+  }
+
+  execute(): void {
+    // expect(parent_entity?.read(Parent).children).toBe([child_entity]);
+  }
+}
 
 const app = new App({
   canvas: $canvas,
 })
-  .addSystems(({ commands }) => {
-    if (started) return;
-    started = true;
-
-    const parent = commands.spawn(Transform);
-    const child = commands.spawn(Transform);
-    const grandChild = commands.spawn(Transform);
-    parent.appendChild(child);
-    child.appendChild(grandChild);
-
-    commands.execute();
-
-    parent.id().set(Transform, (transform) => {
-      transform.position.set(100, 100);
-      return transform;
-    });
-
-    console.log(parent.id().get(Transform)?.worldTransform);
-    console.log(child.id().get(Transform)?.worldTransform);
-    console.log(grandChild.id().get(Transform)?.worldTransform);
-    child.id().set(Transform, (transform) => {
-      transform.position.set(200, 200);
-      return transform;
-    });
-
-    child.removeChild(grandChild);
-  })
+  .addPlugins(...DefaultPlugins)
+  .addSystems(StartUp, StartUpSystem)
   .run();
 
 // window.addEventListener('resize', () => {

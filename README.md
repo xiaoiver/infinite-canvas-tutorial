@@ -94,8 +94,9 @@ pnpm run dev
 -   Drawing dots grid.
 -   Drawing wireframe for Geometry.
 
-<img src="./screenshots/lesson5.png" width="300" alt="Lesson 5 grids">
-<img src="./screenshots/lesson5-2.png" width="300" alt="Lesson 5 wireframe">
+|                Grid                |                 Wireframe                 |
+| :--------------------------------: | :---------------------------------------: |
+| ![Grid](./screenshots/lesson5.png) | ![Wireframe](./screenshots/lesson5-2.png) |
 
 ## Lesson 6 - Event system [🔗](https://infinitecanvas.cc/guide/lesson-006)
 
@@ -167,7 +168,9 @@ pnpm run dev
     -   Support `fillRule` property
 -   Draw some hand-drawn shapes
 
-<img src="./screenshots/lesson13.png" width="300" alt="Lesson 13 - path">
+|                Path and rough shapes                 |                 Fill rule                  |
+| :--------------------------------------------------: | :----------------------------------------: |
+| ![Path and rough shapes](./screenshots/lesson13.png) | ![Fill rule](./screenshots/lesson13-2.png) |
 
 ## Lesson 14 - Canvas mode and auxiliary UI [🔗](https://infinitecanvas.cc/guide/lesson-014)
 

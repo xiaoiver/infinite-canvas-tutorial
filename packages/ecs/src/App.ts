@@ -1,70 +1,235 @@
-import { createWorld } from 'koota';
-import { Runnable, Schedule } from 'directed';
-import { DOMAdapter } from './environment';
-import { Commands } from './Commands';
-import { TransformSystem } from './systems/Transform';
-import { RendererSystem } from './systems/Renderer';
 import {
-  AppConfig,
-  CanvasConfig,
-  DEFAULT_APP_CONFIG,
-} from './components/AppConfig';
+  system,
+  System,
+  SystemType,
+  World,
+  SystemGroup,
+} from '@lastolivegames/becsy';
+import { PluginType } from './plugins';
+import { AppConfig, CanvasMode, CheckboardStyle, Theme } from './components';
+import {
+  First,
+  Last,
+  PostStartup,
+  PostUpdate,
+  PreStartUp,
+  PreUpdate,
+  StartUp,
+  Update,
+} from './systems';
+// import { EventCtor, Events, EventsReader } from './Events';
+import { Resource } from './Resource';
+import { DOMAdapter } from './environment';
 
 /**
- * @example
- * ```ts
- * const app = new App();
- * app.run();
- * ```
+ * @see https://bevy-cheatbook.github.io/programming/app-builder.html
  */
 export class App {
-  #world = createWorld();
-  #schedule = new Schedule<{ commands: Commands; delta: number }>();
+  /**
+   * The main ECS [`World`] of the [`App`].
+   * This stores and provides access to all the main data of the application.
+   * The systems of the [`App`] will run using this [`World`].
+   */
+  world: World;
 
+  #config: Partial<AppConfig>;
+
+  /**
+   * All the plugins registered.
+   */
+  #plugins: PluginType[] = [];
+
+  /**
+   * All the systems registered.
+   */
+  #systems: [SystemGroup, SystemType<any>][] = [];
+
+  // private updateEventsSystemCounter = 0;
+  #resources = new WeakMap<any, Resource>();
   #rafId: number;
 
-  #running = false;
-
-  constructor(config: CanvasConfig) {
-    // @see https://github.com/pmndrs/koota?tab=readme-ov-file#world-traits
-    this.#world.add(
-      AppConfig({
-        ...DEFAULT_APP_CONFIG,
-        ...config,
-      }),
-    );
-
-    this.#schedule.add(TransformSystem);
-    this.#schedule.add(RendererSystem);
+  constructor(config?: Partial<AppConfig>) {
+    this.#config = config;
   }
 
-  addSystems(...systems: Runnable<{ commands: Commands; delta: number }>[]) {
-    this.#schedule.add(systems);
+  /**
+   * @example
+   * new App()
+   *   .addPlugin(P1)
+   */
+  addPlugin(plugin: PluginType) {
+    this.#plugins.push(plugin);
     return this;
   }
 
-  run() {
-    if (this.#running) return;
+  /**
+   * @example
+   * new App()
+   *   .addPlugins(P1, P2)
+   */
+  addPlugins(...plugins: PluginType[]) {
+    plugins.forEach((plugin) => {
+      this.addPlugin(plugin);
+    });
+    return this;
+  }
 
-    this.#running = true;
+  /**
+   * Setup the application to manage events of type `T`.
+   *
+   * This is done by adding a [`Resource`] of type [`Events::<T>`],
+   * and inserting an [`event_update_system`] into [`First`].
+   *
+   * See [`Events`] for defining events.
+   *
+   * @example
+   * app.add_event(MyEvent);
+   */
+  // add_event<E>(eventCtor: EventCtor<E>) {
+  //   const events = new Events<E>();
+  //   const reader = new EventsReader(events, events.get_reader());
+  //   this.init_resource(eventCtor, reader);
 
-    this.#schedule.build();
+  //   class UpdateEvents extends System {
+  //     execute(): void {
+  //       if (
+  //         events.events_a.events.length !== 0 ||
+  //         events.events_b.events.length !== 0
+  //       ) {
+  //         events.update();
+  //       }
+  //     }
+  //   }
+  //   Object.defineProperty(UpdateEvents, 'name', {
+  //     value: `_UpdateEventsSystem${this.updateEventsSystemCounter++}`,
+  //   });
 
-    const commands = new Commands(this.#world);
+  //   this.add_systems(First, UpdateEvents);
+  //   return this;
+  // }
 
-    const tick: FrameRequestCallback = (time: number) => {
-      this.#schedule.run({ commands, delta: time });
+  /**
+   * Adds a system to the given schedule in this app's [`Schedules`].
+   * @example
+   * new App()
+   *   .addSystems(StartUp, S1, S2);
+   */
+  addSystems(group: SystemGroup, ...systems: SystemType<any>[]) {
+    this.#systems.push(
+      ...systems.map((s) => [group, s] as [SystemGroup, SystemType<any>]),
+    );
+    return this;
+  }
+
+  /**
+   * Initialize a [`Resource`] with standard starting values by adding it to the [`World`].
+   */
+  initResource<K, R extends Resource>(key: K, resource: R) {
+    this.#resources.set(key, resource);
+    return this;
+  }
+
+  getResource<K, R extends Resource>(key: K): R {
+    return this.#resources.get(key) as R;
+  }
+
+  /**
+   * Start the app and run all systems.
+   */
+  async run() {
+    const {
+      canvas,
+      renderer,
+      shaderCompilerPath,
+      devicePixelRatio,
+      mode,
+      checkboardStyle,
+      theme,
+      themeColors,
+    } = this.#config;
+    const resources = this.#resources;
+
+    // Create a global init system.
+    @system(PreStartUp)
+    class Init extends System {
+      config = this.singleton.write(AppConfig);
+      initialize(): void {
+        this.config.canvas = canvas;
+        this.config.renderer = renderer || 'webgl';
+        this.config.shaderCompilerPath = shaderCompilerPath || '';
+        this.config.devicePixelRatio = devicePixelRatio || 1;
+        this.config.mode = mode || CanvasMode.HAND;
+        this.config.checkboardStyle = checkboardStyle || CheckboardStyle.GRID;
+        this.config.theme = theme || Theme.LIGHT;
+        this.config.themeColors = themeColors || {
+          [Theme.LIGHT]: {
+            background: '#fbfbfb',
+            grid: '#dedede',
+            selectionBrushFill: '#dedede',
+            selectionBrushStroke: '#dedede',
+          },
+          [Theme.DARK]: {
+            background: '#121212',
+            grid: '#242424',
+            selectionBrushFill: '#242424',
+            selectionBrushStroke: '#242424',
+          },
+        };
+        // this.config.resources = resources;
+      }
+    }
+
+    @system(PreStartUp)
+    class PreStartUpPlaceHolder extends System {}
+    @system(StartUp)
+    class StartUpPlaceHolder extends System {}
+    @system(PostStartup)
+    class PostStartUpPlaceHolder extends System {}
+    @system(PreUpdate)
+    class PreUpdatePlaceHolder extends System {}
+    @system(Update)
+    class UpdatePlaceHolder extends System {}
+    @system(PostUpdate)
+    class PostUpdatePlaceHolder extends System {}
+    @system(First)
+    class FirstPlaceHolder extends System {}
+    @system(Last)
+    class LastPlaceHolder extends System {}
+
+    // Build all plugins.
+    await Promise.all(this.#plugins.map((plugin) => new plugin().build(this)));
+
+    this.#systems.forEach(([group, s], i) => {
+      // @see https://github.com/LastOliveGames/becsy/blob/main/tests/query.test.ts#L22C3-L22C58
+      // @ts-ignore
+      // if (import.meta.env.PROD) {
+      // Object.defineProperty(s, 'name', { value: `_System${i}` });
+      // }
+      system(group)(s);
+    });
+
+    // Create world.
+    // All systems will be instantiated and initialized before the returned promise resolves.
+    this.world = await World.create({
+      // Multithreading is not supported yet.
+      threads: 1,
+    });
+
+    const tick = async () => {
+      await this.world.execute();
       this.#rafId = DOMAdapter.get().requestAnimationFrame(tick);
     };
     this.#rafId = DOMAdapter.get().requestAnimationFrame(tick);
+
+    return this;
   }
 
   /**
    * Exit the app.
    * @see https://bevy-cheatbook.github.io/programming/app-builder.html#quitting-the-app
    */
-  exit() {
+  async exit() {
     DOMAdapter.get().cancelAnimationFrame(this.#rafId);
-    this.#world.destroy();
+    await this.world.terminate();
   }
 }

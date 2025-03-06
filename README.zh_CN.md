@@ -94,8 +94,9 @@ pnpm run dev
 -   绘制点网格
 -   为 Geometry 绘制 wireframe
 
-<img src="./screenshots/lesson5.png" width="300" alt="Lesson 5 grids">
-<img src="./screenshots/lesson5-2.png" width="300" alt="Lesson 5 wireframe">
+|                Grid                |                 Wireframe                 |
+| :--------------------------------: | :---------------------------------------: |
+| ![Grid](./screenshots/lesson5.png) | ![Wireframe](./screenshots/lesson5-2.png) |
 
 ## 课程 6 - 事件系统 [🔗](https://infinitecanvas.cc/zh/guide/lesson-006)
 
@@ -167,7 +168,9 @@ pnpm run dev
     -   支持 `fillRule` 属性
 -   实现一些手绘风格图形
 
-<img src="./screenshots/lesson13.png" width="300" alt="Lesson 13 - path">
+|                Path and rough shapes                 |                 Fill rule                  |
+| :--------------------------------------------------: | :----------------------------------------: |
+| ![Path and rough shapes](./screenshots/lesson13.png) | ![Fill rule](./screenshots/lesson13-2.png) |
 
 ## 课程 14 - 画布模式 [🔗](https://infinitecanvas.cc/zh/guide/lesson-014)
 
