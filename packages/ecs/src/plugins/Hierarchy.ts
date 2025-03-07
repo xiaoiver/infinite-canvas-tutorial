@@ -25,10 +25,8 @@ export enum HierarchyEvent {
   CHILD_MOVED,
 }
 
-export class HierarchyPlugin implements Plugin {
-  build(app: App) {
-    component(Parent);
-    component(Children);
-    // app.addEvent(HierarchyEvent);
-  }
-}
+export const HierarchyPlugin: Plugin = (app: App) => {
+  component(Parent);
+  component(Children);
+  // app.addEvent(HierarchyEvent);
+};

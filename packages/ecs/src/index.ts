@@ -1,8 +1,9 @@
 import {
+  Plugin,
   HierarchyPlugin,
-  PluginType,
   RendererPlugin,
   TransformPlugin,
+  CameraPlugin,
 } from './plugins';
 
 export * from './App';
@@ -21,8 +22,9 @@ export {
   type Entity,
 } from '@lastolivegames/becsy';
 
-export const DefaultPlugins: PluginType[] = [
+export const DefaultPlugins: Plugin[] = [
   HierarchyPlugin,
   TransformPlugin,
   RendererPlugin,
+  CameraPlugin,
 ];

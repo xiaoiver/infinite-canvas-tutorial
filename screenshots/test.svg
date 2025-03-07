@@ -1,0 +1,79 @@
+<svg width="800" height="400" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+        <linearGradient id="gradient" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" style="stop-color: #ff7e5f; stop-opacity: 1" />
+            <stop offset="100%" style="stop-color: #feb47b; stop-opacity: 1" />
+        </linearGradient>
+    </defs>
+    <rect width="800" height="400" fill="url(#gradient)" />
+    <text x="50%" y="50%" font-family="Arial, Helvetica, sans-serif" font-size="36" fill="#ffffff" text-anchor="middle"
+        dominant-baseline="middle">
+        "Established and aspiring writers alike just want things that will help make the very weird thing they do —
+        sitting alone and writing words — that much easier and more pleasant."
+    </text>
+    <text x="50%" y="75%" font-family="Arial, Helvetica, sans-serif" font-size="20" fill="#ffffff" text-anchor="middle"
+        dominant-baseline="middle">
+        — Scott Lamb, Best gifts for writers, according to the Medium community
+    </text>
+</svg>
+
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="600" viewBox="0 0 800 600">
+    <defs>
+        <linearGradient id="bg-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" style="stop-color:#2c3e50;stop-opacity:1" />
+            <stop offset="100%" style="stop-color:#3498db;stop-opacity:1" />
+        </linearGradient>
+    </defs>
+
+    <rect width="100%" height="100%" fill="url(#bg-gradient)" />
+
+    <text x="400" y="200" font-family="Arial, sans-serif" font-size="24" fill="#ecf0f1" text-anchor="middle">
+        "Writers are great, sure, but can I be honest?
+    </text>
+    <text x="400" y="240" font-family="Arial, sans-serif" font-size="24" fill="#ecf0f1" text-anchor="middle">
+        We're a little much sometimes. Exacting.
+    </text>
+    <text x="400" y="280" font-family="Arial, sans-serif" font-size="24" fill="#ecf0f1" text-anchor="middle">
+        Set in our ways. We are opinionated,
+    </text>
+    <text x="400" y="320" font-family="Arial, sans-serif" font-size="24" fill="#ecf0f1" text-anchor="middle">
+        often about the tiniest details."
+    </text>
+
+    <text x="400" y="400" font-family="Arial, sans-serif" font-size="18" fill="#bdc3c7" text-anchor="middle">
+        Scott Lamb
+    </text>
+
+    <text x="400" y="430" font-family="Arial, sans-serif" font-size="16" fill="#bdc3c7" text-anchor="middle">
+        Best gifts for writers, according to the Medium community
+    </text>
+</svg>
+
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="400" viewBox="0 0 800 400">
+    <defs>
+        <linearGradient id="bg-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" style="stop-color:#2c3e50;stop-opacity:1" />
+            <stop offset="100%" style="stop-color:#3498db;stop-opacity:1" />
+        </linearGradient>
+    </defs>
+
+    <rect width="100%" height="100%" fill="url(#bg-gradient)" />
+
+    <text x="400" y="100" font-family="Arial, sans-serif" font-size="24" fill="#ecf0f1" text-anchor="middle">
+        "Writers are great, sure, but can I be honest?
+    </text>
+    <text x="400" y="140" font-family="Arial, sans-serif" font-size="24" fill="#ecf0f1" text-anchor="middle">
+        We're a little much sometimes. Exacting. Set in our ways.
+    </text>
+    <text x="400" y="180" font-family="Arial, sans-serif" font-size="24" fill="#ecf0f1" text-anchor="middle">
+        We are opinionated, often about the tiniest details."
+    </text>
+
+    <text x="400" y="340" font-family="Arial, sans-serif" font-size="18" fill="#bdc3c7" text-anchor="middle">
+        Scott Lamb
+    </text>
+
+    <text x="400" y="370" font-family="Arial, sans-serif" font-size="16" fill="#bdc3c7" text-anchor="middle">
+        Best gifts for writers, according to the Medium community
+    </text>
+</svg>

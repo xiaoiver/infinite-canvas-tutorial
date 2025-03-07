@@ -6,20 +6,13 @@ import { App } from '../App';
  * @see https://bevy-cheatbook.github.io/programming/plugins.html
  *
  * @example
- * class MyPlugin implements Plugin {
- *   build(app: App) {
- *     app.add_systems(HelloWorld);
- *   }
+ * const MyPlugin = (app: App) => {
+ *   app.add_systems(HelloWorld);
  * }
  */
-export interface Plugin {
-  build(app: App): Promise<void> | void;
-}
-
-export interface PluginType<P extends Plugin = Plugin> {
-  new (): P;
-}
+export type Plugin = (app: App) => Promise<void> | void;
 
 export * from './Hierarchy';
 export * from './Transform';
 export * from './Renderer';
+export * from './Camera';

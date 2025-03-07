@@ -74,8 +74,6 @@ export class PropagateTransforms extends System {
     this.queries.addedOrChanged.forEach((entity) => {
       const worldTransform = entity.read(GlobalTransform);
 
-      console.log('parent', entity.__id, worldTransform.matrix.m00);
-
       entity.read(Parent).children.forEach((child) => {
         const localTransform = child.read(Transform);
 
@@ -83,23 +81,12 @@ export class PropagateTransforms extends System {
           child.add(GlobalTransform, new GlobalTransform());
         }
 
-        const result = worldTransform.matrix.mul_mat3(
+        child.write(GlobalTransform).matrix = worldTransform.matrix.mul_mat3(
           Mat3.from_scale_angle_translation(
             localTransform.scale,
             localTransform.rotation,
             localTransform.translation,
           ),
-        );
-
-        // console.log(worldTransform.matrix.m00, localTransform.scale.x, result);
-        child.write(GlobalTransform).matrix = result;
-
-        console.log(
-          'child',
-          child.__id,
-          'scaleX',
-          child.read(GlobalTransform).matrix.m00,
-          result,
         );
       });
     });

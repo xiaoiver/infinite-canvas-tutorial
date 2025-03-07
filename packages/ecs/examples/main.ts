@@ -50,6 +50,7 @@ class StartUpSystem extends System {
 
     parent_entity.write(Transform).scale.x = 2;
     child_entity.write(Transform).scale.x = 3;
+    grandchild_entity.write(Transform).scale.x = 4;
   }
 
   execute(): void {

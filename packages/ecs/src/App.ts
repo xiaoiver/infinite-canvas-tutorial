@@ -5,7 +5,7 @@ import {
   World,
   SystemGroup,
 } from '@lastolivegames/becsy';
-import { PluginType } from './plugins';
+import { Plugin } from './plugins';
 import { AppConfig, CanvasMode, CheckboardStyle, Theme } from './components';
 import {
   First,
@@ -37,7 +37,7 @@ export class App {
   /**
    * All the plugins registered.
    */
-  #plugins: PluginType[] = [];
+  #plugins: Plugin[] = [];
 
   /**
    * All the systems registered.
@@ -57,7 +57,7 @@ export class App {
    * new App()
    *   .addPlugin(P1)
    */
-  addPlugin(plugin: PluginType) {
+  addPlugin(plugin: Plugin) {
     this.#plugins.push(plugin);
     return this;
   }
@@ -67,7 +67,7 @@ export class App {
    * new App()
    *   .addPlugins(P1, P2)
    */
-  addPlugins(...plugins: PluginType[]) {
+  addPlugins(...plugins: Plugin[]) {
     plugins.forEach((plugin) => {
       this.addPlugin(plugin);
     });
@@ -197,7 +197,7 @@ export class App {
     class LastPlaceHolder extends System {}
 
     // Build all plugins.
-    await Promise.all(this.#plugins.map((plugin) => new plugin().build(this)));
+    await Promise.all(this.#plugins.map((plugin) => plugin(this)));
 
     this.#systems.forEach(([group, s], i) => {
       // @see https://github.com/LastOliveGames/becsy/blob/main/tests/query.test.ts#L22C3-L22C58
