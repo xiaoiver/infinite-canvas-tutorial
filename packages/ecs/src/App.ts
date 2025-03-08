@@ -151,7 +151,7 @@ export class App {
 
     // Create a global init system.
     @system(PreStartUp)
-    class Init extends System {
+    class InitAppConfig extends System {
       config = this.singleton.write(AppConfig);
       initialize(): void {
         this.config.canvas = canvas;

@@ -4,14 +4,9 @@
 // import { component } from '@lastolivegames/becsy';
 import { App } from '../App';
 import { Plugin } from './';
-import { PreStartUp, RenderResource } from '../systems';
+import { PreStartUp, Last, RenderResource, MeshPipeline } from '../systems';
 
 export const RendererPlugin: Plugin = (app: App) => {
-  // component(Mesh);
-  // component(Material);
-
   app.addSystems(PreStartUp, RenderResource);
-  // app.addSystems(PreUpdate, PrepareViewUniforms);
-  // app.add_systems(Update, ExtractMeshes);
-  // app.addSystems(Last, MeshPipeline);
+  app.addSystems(Last, MeshPipeline);
 };

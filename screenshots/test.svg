@@ -77,3 +77,28 @@
         Best gifts for writers, according to the Medium community
     </text>
 </svg>
+
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="600" viewBox="0 0 800 600">
+    <defs>
+        <linearGradient id="bg-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" style="stop-color:#2c3e50;stop-opacity:1" />
+            <stop offset="100%" style="stop-color:#3498db;stop-opacity:1" />
+        </linearGradient>
+    </defs>
+
+    <rect width="100%" height="100%" fill="url(#bg-gradient)" />
+
+    <text x="400" y="200" font-family="Arial, sans-serif" font-size="24" fill="#ecf0f1" text-anchor="middle">
+        "Writers are great, sure, but can I be honest?
+    </text>
+    <text x="400" y="240" font-family="Arial, sans-serif" font-size="24" fill="#ecf0f1" text-anchor="middle">
+        We're a little much sometimes."
+    </text>
+
+    <text x="400" y="320" font-family="Arial, sans-serif" font-size="18" fill="#bdc3c7" text-anchor="middle"
+        font-style="italic">
+        - From "Best Gifts for Writers in 2024"
+    </text>
+
+    <path d="M200,400 Q400,300 600,400" fill="none" stroke="#e74c3c" stroke-width="3" />
+</svg>

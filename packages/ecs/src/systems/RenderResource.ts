@@ -20,10 +20,6 @@ export class RenderResource extends System {
    */
   private readonly appConfig = this.singleton.read(AppConfig); // can't use # field here
 
-  private appConfigs = this.query(
-    (q) => q.addedOrChanged.with(AppConfig).trackWrites,
-  );
-
   /**
    * Device represents a "virtual GPU".
    */
