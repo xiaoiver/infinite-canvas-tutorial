@@ -231,6 +231,11 @@ pnpm run dev
 
 <img src="./screenshots/lesson18-2.png" width="300" alt="Lesson 18 - gradient">
 
+## 课程 19 - ECS 架构 [🔗](https://infinitecanvas.cc/zh/guide/lesson-019)
+
+-   什么是 ECS 架构
+-   使用 ECS 架构重构应用
+
 [infinitecanvas]: https://infinitecanvas.tools/
 [Figma]: https://madebyevan.com/figma/building-a-professional-design-tool-on-the-web/
 [Modyfi]: https://digest.browsertech.com/archive/browsertech-digest-how-modyfi-is-building-with/

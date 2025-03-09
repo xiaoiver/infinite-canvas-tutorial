@@ -6,7 +6,14 @@ import {
   SystemGroup,
 } from '@lastolivegames/becsy';
 import { Plugin } from './plugins';
-import { AppConfig, CanvasMode, CheckboardStyle, Theme } from './components';
+import {
+  CanvasConfig,
+  CanvasMode,
+  CheckboardStyle,
+  Grid,
+  Theme,
+  ThemeMode,
+} from './components';
 import {
   First,
   Last,
@@ -32,8 +39,6 @@ export class App {
    */
   world: World;
 
-  #config: Partial<AppConfig>;
-
   /**
    * All the plugins registered.
    */
@@ -47,10 +52,6 @@ export class App {
   // private updateEventsSystemCounter = 0;
   #resources = new WeakMap<any, Resource>();
   #rafId: number;
-
-  constructor(config?: Partial<AppConfig>) {
-    this.#config = config;
-  }
 
   /**
    * @example
@@ -137,46 +138,42 @@ export class App {
    * Start the app and run all systems.
    */
   async run() {
-    const {
-      canvas,
-      renderer,
-      shaderCompilerPath,
-      devicePixelRatio,
-      mode,
-      checkboardStyle,
-      theme,
-      themeColors,
-    } = this.#config;
     const resources = this.#resources;
 
     // Create a global init system.
     @system(PreStartUp)
     class InitAppConfig extends System {
-      config = this.singleton.write(AppConfig);
-      initialize(): void {
-        this.config.canvas = canvas;
-        this.config.renderer = renderer || 'webgl';
-        this.config.shaderCompilerPath = shaderCompilerPath || '';
-        this.config.devicePixelRatio = devicePixelRatio || 1;
-        this.config.mode = mode || CanvasMode.HAND;
-        this.config.checkboardStyle = checkboardStyle || CheckboardStyle.GRID;
-        this.config.theme = theme || Theme.LIGHT;
-        this.config.themeColors = themeColors || {
-          [Theme.LIGHT]: {
-            background: '#fbfbfb',
-            grid: '#dedede',
-            selectionBrushFill: '#dedede',
-            selectionBrushStroke: '#dedede',
+      constructor() {
+        super();
+        this.singleton.write(CanvasConfig, {
+          renderer: 'webgl',
+          shaderCompilerPath: '',
+          devicePixelRatio: 1,
+          mode: CanvasMode.HAND,
+        });
+        this.singleton.write(Grid, {
+          checkboardStyle: CheckboardStyle.GRID,
+        });
+        this.singleton.write(Theme, {
+          mode: ThemeMode.LIGHT,
+          colors: {
+            [ThemeMode.LIGHT]: {
+              background: '#fbfbfb',
+              grid: '#dedede',
+              selectionBrushFill: '#dedede',
+              selectionBrushStroke: '#dedede',
+            },
+            [ThemeMode.DARK]: {
+              background: '#121212',
+              grid: '#242424',
+              selectionBrushFill: '#242424',
+              selectionBrushStroke: '#242424',
+            },
           },
-          [Theme.DARK]: {
-            background: '#121212',
-            grid: '#242424',
-            selectionBrushFill: '#242424',
-            selectionBrushStroke: '#242424',
-          },
-        };
-        // this.config.resources = resources;
+        });
       }
+
+      async prepare() {}
     }
 
     @system(PreStartUp)

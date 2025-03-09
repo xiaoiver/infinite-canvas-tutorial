@@ -12,7 +12,7 @@ import { v2Type, Vec2 } from '../math/Vec2';
  *
  * // Set the transform
  * entity.set(Transform, (transform) => {
- *   transform.position.set(100, 100);
+ *   transform.translation.x = 100;
  *   return transform;
  * });
  * ```

@@ -231,6 +231,11 @@ pnpm run dev
 
 <img src="./screenshots/lesson18-2.png" width="300" alt="Lesson 18 - gradient">
 
+## Lesson 19 - ECS architecture [🔗](https://infinitecanvas.cc/guide/lesson-019)
+
+-   What is ECS architecture
+-   Using ECS architecture to refactor the application
+
 [infinitecanvas]: https://infinitecanvas.tools/
 [Figma]: https://madebyevan.com/figma/building-a-professional-design-tool-on-the-web/
 [Modyfi]: https://digest.browsertech.com/archive/browsertech-digest-how-modyfi-is-building-with/

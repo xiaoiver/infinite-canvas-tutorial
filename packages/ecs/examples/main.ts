@@ -10,6 +10,9 @@ import {
   DefaultPlugins,
   GlobalTransform,
   Camera,
+  Grid,
+  Theme,
+  CanvasConfig,
 } from '../src';
 
 const $canvas = document.getElementById('canvas') as HTMLCanvasElement;
@@ -32,11 +35,22 @@ class StartUpSystem extends System {
   commands = new Commands(this);
 
   q = this.query(
-    (q) => q.using(Camera, Parent, Children, Transform, GlobalTransform).write,
+    (q) =>
+      q.using(
+        CanvasConfig,
+        // Theme,
+        // Grid,
+        Camera,
+        Parent,
+        Children,
+        Transform,
+        GlobalTransform,
+      ).write,
   );
   q2 = this.query((q) => q.current.with(Parent).read);
 
   initialize(): void {
+    this.singleton.write(CanvasConfig).canvas = $canvas;
     const camera = this.commands.spawn(new Camera());
 
     const parent = this.commands.spawn(new Transform());
@@ -61,9 +75,7 @@ class StartUpSystem extends System {
   }
 }
 
-const app = new App({
-  canvas: $canvas,
-})
+const app = new App()
   .addPlugins(...DefaultPlugins)
   .addSystems(StartUp, StartUpSystem)
   .run();
