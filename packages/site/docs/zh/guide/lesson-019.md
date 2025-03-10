@@ -25,13 +25,24 @@ const shape = world.spawn(Renderable, Sortable, Transformable);
 > -   Greater flexibility when defining objects by mixing and matching reusable parts.
 > -   Eliminates the problems of long inheritance chains with complex interwoven functionality.
 
-值得一提的是，A-Frame 是一个很有名的 Three.js 框架。ECS 在游戏引擎中使用的更广泛，例如 [ECS for Unity] 和我们重点参考的 [Bevy ECS]。
+值得一提的是，A-Frame 是一个很有名的 Three.js 框架，它的声明式 ECS 用法令人印象深刻。
+而在游戏引擎中，ECS 使用的更广泛，例如 [ECS for Unity] 以及我们在实现中重点参考的 [Bevy ECS]。
 
 ## 什么是 ECS 架构 {#what-is-ecs}
 
-[Bevy ECS]
+[ecs-faq] 整合了 ECS 的常见问题、资源以及各个语言的实现，非常值得一看。这里我们引用 [Bevy ECS] 中的介绍：
 
 > All app logic in Bevy uses the Entity Component System paradigm, which is often shortened to ECS. ECS is a software pattern that involves breaking your program up into **Entities**, **Components**, and **Systems**. Entities are unique "things" that are assigned groups of Components, which are then processed using Systems.
+
+下图来自 [ECSY Architecture]，形象地展示了各部分的关系：
+
+![ECSY Architecture](https://ecsyjs.github.io/ecsy/docs/manual/images/ECSY%20Architecture.svg)
+
+[Composition over inheritance]
+
+```rs
+commands.spawn(new Person(), new Name("John"));
+```
 
 ```ts
 new App()
@@ -47,6 +58,8 @@ new App()
 > One of Bevy's core principles is modularity. All Bevy engine features are implemented as plugins---collections of code that modify an App.
 
 ## 前端 ECS 实现 {#ecs-implementation-in-frontend}
+
+下面我们来看在前端有没有开箱即用的 ECS 实现。
 
 -   [Becsy]
 -   [koota]
@@ -92,10 +105,12 @@ Becsy 提供了 [coroutines] 来响应事件。
 [Bevy Plugins]: https://bevyengine.org/learn/quick-start/getting-started/plugins/
 [Becsy]: https://lastolivegames.github.io/becsy/
 [koota]: https://github.com/pmndrs/koota
-[r3f-koota-starter]: https://github.com/Ctrlmonster/r3f-koota-starter
 [coroutines]: https://lastolivegames.github.io/becsy/guide/architecture/systems#coroutines
 [window-resizing]: https://bevyengine.org/examples/window/window-resizing/
 [Bevy Events]: https://bevy-cheatbook.github.io/programming/events.html
 [Entity-Component-System in A-Frame]: https://aframe.io/docs/1.7.0/introduction/entity-component-system.html
 [TypeScript Mixins]: https://www.typescriptlang.org/docs/handbook/mixins.html
 [ECS for Unity]: https://unity.com/ecs
+[Composition over inheritance]: https://en.wikipedia.org/wiki/Composition_over_inheritance
+[ecs-faq]: https://github.com/SanderMertens/ecs-faq
+[ECSY Architecture]: https://ecsyjs.github.io/ecsy/docs/#/manual/Architecture?id=overview
