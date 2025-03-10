@@ -58,6 +58,7 @@ export const zh = defineConfig({
               { text: '课程16 - 文本的高级特性', link: 'lesson-016' },
               { text: '课程17 - 协同', link: 'lesson-017' },
               { text: '课程18 - 渐变和重复图案', link: 'lesson-018' },
+              { text: '课程19 - 使用 ECS 重构', link: 'lesson-019' },
             ],
           },
         ],

@@ -1,4 +1,4 @@
-import { component, field } from '@lastolivegames/becsy';
+import { component, field, Type } from '@lastolivegames/becsy';
 
 export enum CheckboardStyle {
   NONE = 'none',
@@ -11,10 +11,13 @@ export class Grid {
   /**
    * Checkboard style.
    */
-  @field.staticString([
-    CheckboardStyle.NONE,
-    CheckboardStyle.GRID,
-    CheckboardStyle.DOTS,
-  ])
+  @field({
+    type: Type.staticString([
+      CheckboardStyle.NONE,
+      CheckboardStyle.GRID,
+      CheckboardStyle.DOTS,
+    ]),
+    default: CheckboardStyle.GRID,
+  })
   declare checkboardStyle: CheckboardStyle;
 }

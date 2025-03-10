@@ -1,4 +1,4 @@
-import { component, field } from '@lastolivegames/becsy';
+import { component, field, Type } from '@lastolivegames/becsy';
 
 export enum ThemeMode {
   LIGHT = 'light',
@@ -29,13 +29,34 @@ export class Theme {
   /**
    * Theme.
    */
-  @field.staticString([ThemeMode.LIGHT, ThemeMode.DARK])
+  @field({
+    type: Type.staticString([ThemeMode.LIGHT, ThemeMode.DARK]),
+    default: ThemeMode.LIGHT,
+  })
   declare mode: ThemeMode;
+
   /**
    * Theme colors.
    * @see https://github.com/dgmjs/dgmjs/blob/main/packages/core/src/colors.ts#L130
    */
-  @field.object declare colors: Partial<{
+  @field({
+    type: Type.object,
+    default: {
+      [ThemeMode.LIGHT]: {
+        background: '#fbfbfb',
+        grid: '#dedede',
+        selectionBrushFill: '#dedede',
+        selectionBrushStroke: '#dedede',
+      },
+      [ThemeMode.DARK]: {
+        background: '#121212',
+        grid: '#242424',
+        selectionBrushFill: '#242424',
+        selectionBrushStroke: '#242424',
+      },
+    },
+  })
+  declare colors: Partial<{
     [ThemeMode.LIGHT]: Partial<ThemeColors>;
     [ThemeMode.DARK]: Partial<ThemeColors>;
   }>;

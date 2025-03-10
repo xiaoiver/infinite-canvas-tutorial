@@ -13,6 +13,8 @@ import {
   Grid,
   Theme,
   CanvasConfig,
+  PreStartUp,
+  WindowResized,
 } from '../src';
 
 const $canvas = document.getElementById('canvas') as HTMLCanvasElement;
@@ -45,6 +47,7 @@ class StartUpSystem extends System {
         Children,
         Transform,
         GlobalTransform,
+        WindowResized,
       ).write,
   );
   q2 = this.query((q) => q.current.with(Parent).read);
@@ -68,6 +71,15 @@ class StartUpSystem extends System {
     parent_entity.write(Transform).scale.x = 2;
     child_entity.write(Transform).scale.x = 3;
     grandchild_entity.write(Transform).scale.x = 4;
+
+    window.addEventListener('resize', () => {
+      resize(window.innerWidth, window.innerHeight);
+
+      // this.commands.spawn(new WindowResized({
+      //   width: window.innerWidth,
+      //   height: window.innerHeight,
+      // }));
+    });
   }
 
   execute(): void {
@@ -77,10 +89,5 @@ class StartUpSystem extends System {
 
 const app = new App()
   .addPlugins(...DefaultPlugins)
-  .addSystems(StartUp, StartUpSystem)
+  .addSystems(PreStartUp, StartUpSystem)
   .run();
-
-// window.addEventListener('resize', () => {
-//   resize(window.innerWidth, window.innerHeight);
-//   canvas.resize(window.innerWidth, window.innerHeight);
-// });

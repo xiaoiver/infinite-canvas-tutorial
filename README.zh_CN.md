@@ -231,7 +231,7 @@ pnpm run dev
 
 <img src="./screenshots/lesson18-2.png" width="300" alt="Lesson 18 - gradient">
 
-## 课程 19 - ECS 架构 [🔗](https://infinitecanvas.cc/zh/guide/lesson-019)
+## 课程 19 - 使用 ECS 重构 [🔗](https://infinitecanvas.cc/zh/guide/lesson-019)
 
 -   什么是 ECS 架构
 -   使用 ECS 架构重构应用

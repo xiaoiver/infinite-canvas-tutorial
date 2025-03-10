@@ -1,8 +1,5 @@
 import * as d3 from 'd3-color';
 import { System } from '@lastolivegames/becsy';
-import { RenderResource } from './RenderResource';
-import { PrepareViewUniforms } from './PrepareViewUniforms';
-import { CheckboardStyle, Grid, Theme } from '../components';
 import {
   Buffer,
   BufferFrequencyHint,
@@ -10,10 +7,14 @@ import {
   RenderPass,
   TransparentBlack,
 } from '@antv/g-device-api';
+import { SetupDevice } from './SetupDevice';
+import { PrepareViewUniforms } from './PrepareViewUniforms';
+import { CheckboardStyle, Grid, Theme } from '../components';
 import { paddingMat3 } from '../utils';
+import { GridRenderer } from './GridRenderer';
 
 export class MeshPipeline extends System {
-  private rendererResource = this.attach(RenderResource);
+  private rendererResource = this.attach(SetupDevice);
   private prepareViewUniforms = this.attach(PrepareViewUniforms);
 
   theme = this.singleton.read(Theme);
@@ -32,6 +33,8 @@ export class MeshPipeline extends System {
    */
   #uniformLegacyObject: Record<string, unknown>;
 
+  #gridRenderer: GridRenderer;
+
   initialize() {
     const { device } = this.rendererResource;
     const [buffer, legacyObject] = this.updateUniform(true);
@@ -41,6 +44,8 @@ export class MeshPipeline extends System {
       hint: BufferFrequencyHint.DYNAMIC,
     });
     this.#uniformLegacyObject = legacyObject;
+
+    this.#gridRenderer = new GridRenderer();
   }
 
   execute() {
@@ -70,12 +75,12 @@ export class MeshPipeline extends System {
 
     this.#renderPass.setViewport(0, 0, width, height);
 
-    // this.#grid.render(
-    //   this.#device,
-    //   this.#renderPass,
-    //   this.#uniformBuffer,
-    //   this.#uniformLegacyObject,
-    // );
+    this.#gridRenderer.render(
+      device,
+      this.#renderPass,
+      this.#uniformBuffer,
+      this.#uniformLegacyObject,
+    );
 
     device.submitPass(this.#renderPass);
     device.endFrame();
@@ -89,7 +94,9 @@ export class MeshPipeline extends System {
     });
   }
 
-  finalize() {}
+  finalize() {
+    this.#gridRenderer.destroy();
+  }
 
   private updateUniform(
     shouldRenderGrid: boolean,

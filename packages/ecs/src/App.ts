@@ -140,42 +140,6 @@ export class App {
   async run() {
     const resources = this.#resources;
 
-    // Create a global init system.
-    @system(PreStartUp)
-    class InitAppConfig extends System {
-      constructor() {
-        super();
-        this.singleton.write(CanvasConfig, {
-          renderer: 'webgl',
-          shaderCompilerPath: '',
-          devicePixelRatio: 1,
-          mode: CanvasMode.HAND,
-        });
-        this.singleton.write(Grid, {
-          checkboardStyle: CheckboardStyle.GRID,
-        });
-        this.singleton.write(Theme, {
-          mode: ThemeMode.LIGHT,
-          colors: {
-            [ThemeMode.LIGHT]: {
-              background: '#fbfbfb',
-              grid: '#dedede',
-              selectionBrushFill: '#dedede',
-              selectionBrushStroke: '#dedede',
-            },
-            [ThemeMode.DARK]: {
-              background: '#121212',
-              grid: '#242424',
-              selectionBrushFill: '#242424',
-              selectionBrushStroke: '#242424',
-            },
-          },
-        });
-      }
-
-      async prepare() {}
-    }
-
     @system(PreStartUp)
     class PreStartUpPlaceHolder extends System {}
     @system(StartUp)

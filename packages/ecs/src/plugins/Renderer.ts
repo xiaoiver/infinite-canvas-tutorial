@@ -3,15 +3,9 @@
  */
 import { App } from '../App';
 import { Plugin } from './';
-import {
-  Last,
-  RenderResource,
-  MeshPipeline,
-  PostStartup,
-  GridPipeline,
-} from '../systems';
+import { SetupDevice, MeshPipeline, StartUp, PostUpdate } from '../systems';
 
 export const RendererPlugin: Plugin = (app: App) => {
-  app.addSystems(PostStartup, RenderResource);
-  app.addSystems(Last, GridPipeline, MeshPipeline);
+  app.addSystems(StartUp, SetupDevice);
+  app.addSystems(PostUpdate, MeshPipeline);
 };

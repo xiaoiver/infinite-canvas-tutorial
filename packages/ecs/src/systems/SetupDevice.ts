@@ -9,13 +9,17 @@ import {
   WebGLDeviceContribution,
   WebGPUDeviceContribution,
 } from '@antv/g-device-api';
-import { CanvasConfig } from '../components';
+import { CanvasConfig, WindowResized } from '../components';
 
-export class RenderResource extends System {
+export class SetupDevice extends System {
   /**
    * Global app config.
    */
-  // private readonly canvasConfig = this.singleton.read(CanvasConfig); // can't use # field here
+  private readonly canvasConfig = this.singleton.read(CanvasConfig); // can't use # field here
+
+  private windowResizedQuery = this.query(
+    (q) => q.addedOrChanged.with(WindowResized).trackWrites,
+  );
 
   /**
    * Device represents a "virtual GPU".
@@ -26,8 +30,7 @@ export class RenderResource extends System {
   depthRenderTarget: RenderTarget;
 
   async prepare() {
-    const { canvas, renderer, shaderCompilerPath } =
-      this.singleton.read(CanvasConfig);
+    const { canvas, renderer, shaderCompilerPath } = this.canvasConfig;
 
     let deviceContribution: DeviceContribution;
     if (renderer === 'webgl') {
@@ -71,6 +74,39 @@ export class RenderResource extends System {
         usage: TextureUsage.RENDER_TARGET,
       }),
     );
+  }
+
+  execute() {
+    const { devicePixelRatio } = this.canvasConfig;
+
+    this.windowResizedQuery.addedOrChanged.forEach((entity) => {
+      const { width, height } = entity.read(WindowResized);
+      this.swapChain.configureSwapChain(
+        width * devicePixelRatio,
+        height * devicePixelRatio,
+      );
+
+      if (this.renderTarget) {
+        this.renderTarget.destroy();
+        this.renderTarget = this.device.createRenderTargetFromTexture(
+          this.device.createTexture({
+            format: Format.U8_RGBA_RT,
+            width: width * devicePixelRatio,
+            height: height * devicePixelRatio,
+            usage: TextureUsage.RENDER_TARGET,
+          }),
+        );
+        this.depthRenderTarget.destroy();
+        this.depthRenderTarget = this.device.createRenderTargetFromTexture(
+          this.device.createTexture({
+            format: Format.D24_S8,
+            width: width * devicePixelRatio,
+            height: height * devicePixelRatio,
+            usage: TextureUsage.RENDER_TARGET,
+          }),
+        );
+      }
+    });
   }
 
   finalize(): void {

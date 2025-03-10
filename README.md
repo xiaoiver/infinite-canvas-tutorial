@@ -231,7 +231,7 @@ pnpm run dev
 
 <img src="./screenshots/lesson18-2.png" width="300" alt="Lesson 18 - gradient">
 
-## Lesson 19 - ECS architecture [🔗](https://infinitecanvas.cc/guide/lesson-019)
+## Lesson 19 - Refactor with ECS [🔗](https://infinitecanvas.cc/guide/lesson-019)
 
 -   What is ECS architecture
 -   Using ECS architecture to refactor the application

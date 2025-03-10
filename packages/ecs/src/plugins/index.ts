@@ -16,3 +16,4 @@ export * from './Hierarchy';
 export * from './Transform';
 export * from './Renderer';
 export * from './Camera';
+export * from './Event';
