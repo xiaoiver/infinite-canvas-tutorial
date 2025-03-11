@@ -14,12 +14,13 @@ export * from './plugins';
 export * from './systems';
 
 export {
+  co,
   component,
+  system,
   field,
   Type,
   World,
   System,
-  system,
   type Entity,
 } from '@lastolivegames/becsy';
 

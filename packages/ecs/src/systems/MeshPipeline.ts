@@ -85,6 +85,8 @@ export class MeshPipeline extends System {
     device.submitPass(this.#renderPass);
     device.endFrame();
 
+    console.log('render', width, height);
+
     this.theme_query.addedOrChanged.forEach((entity) => {
       console.log('theme added or changed', this.theme.mode);
     });

@@ -16,10 +16,11 @@ export class SetupDevice extends System {
    * Global app config.
    */
   private readonly canvasConfig = this.singleton.read(CanvasConfig); // can't use # field here
+  private readonly windowResized = this.singleton.read(WindowResized);
 
-  private windowResizedQuery = this.query(
-    (q) => q.addedOrChanged.with(WindowResized).trackWrites,
-  );
+  // private windowResizedQuery = this.query(
+  //   (q) => q.changed.with(WindowResized).trackWrites,
+  // );
 
   /**
    * Device represents a "virtual GPU".
@@ -78,9 +79,11 @@ export class SetupDevice extends System {
 
   execute() {
     const { devicePixelRatio } = this.canvasConfig;
+    const { width, height } = this.windowResized;
 
-    this.windowResizedQuery.addedOrChanged.forEach((entity) => {
-      const { width, height } = entity.read(WindowResized);
+    if (width > 0 && height > 0) {
+      console.log('window resized', width, height);
+
       this.swapChain.configureSwapChain(
         width * devicePixelRatio,
         height * devicePixelRatio,
@@ -106,7 +109,7 @@ export class SetupDevice extends System {
           }),
         );
       }
-    });
+    }
   }
 
   finalize(): void {

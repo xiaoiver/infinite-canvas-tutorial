@@ -1,4 +1,5 @@
 import {
+  co,
   App,
   Entity,
   Commands,
@@ -34,7 +35,9 @@ let child_entity: Entity;
 let grandchild_entity: Entity;
 
 class StartUpSystem extends System {
-  commands = new Commands(this);
+  private readonly commands = new Commands(this);
+
+  private windowResized = this.singleton.write(WindowResized);
 
   q = this.query(
     (q) =>
@@ -47,10 +50,18 @@ class StartUpSystem extends System {
         Children,
         Transform,
         GlobalTransform,
-        WindowResized,
       ).write,
   );
   q2 = this.query((q) => q.current.with(Parent).read);
+
+  @co private *writeWindowResized(width: number, height: number): Generator {
+    this.windowResized.width = width;
+    this.windowResized.height = height;
+    yield co.waitForFrames(1);
+    this.windowResized.width = 0;
+    this.windowResized.height = 0;
+    yield;
+  }
 
   initialize(): void {
     this.singleton.write(CanvasConfig).canvas = $canvas;
@@ -75,10 +86,12 @@ class StartUpSystem extends System {
     window.addEventListener('resize', () => {
       resize(window.innerWidth, window.innerHeight);
 
-      // this.commands.spawn(new WindowResized({
+      this.writeWindowResized(window.innerWidth, window.innerHeight);
+
+      // Object.assign(this.singleton.write(WindowResized), {
       //   width: window.innerWidth,
       //   height: window.innerHeight,
-      // }));
+      // });
     });
   }
 
