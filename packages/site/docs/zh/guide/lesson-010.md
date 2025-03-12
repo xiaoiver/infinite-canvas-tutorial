@@ -192,6 +192,8 @@ hooks.endFrame.tap(() => {
 
 #### 从图形到序列化节点 {#shape-to-serialized-node}
 
+很多白板工具也都提供了自定义的图形序列化格式，例如：[JSON objects in tldraw] 和 [JSON schema in excalidraw]。
+
 从场景图的根节点开始遍历，递归对子元素调用。对于 `transform` 这样拥有复杂结构值（`position/scale/rotation`）的属性需要进一步处理：
 
 ```ts
@@ -941,3 +943,5 @@ function strokeOffset(
 [Dot Grid With pattern]: https://www.smashingmagazine.com/2024/09/svg-coding-examples-recipes-writing-vectors-by-hand/#dot-grid-with-pattern
 [Adding Shadows to SVG Icons With CSS and SVG Filters]: https://css-tricks.com/adding-shadows-to-svg-icons-with-css-and-svg-filters/
 [filter primitive]: https://developer.mozilla.org/en-US/docs/Web/SVG/Element#filter_primitive_elements
+[JSON objects in tldraw]: https://tldraw.dev/docs/shapes#The-shape-object
+[JSON schema in excalidraw]: https://docs.excalidraw.com/docs/codebase/json-schema

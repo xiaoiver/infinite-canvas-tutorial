@@ -6,7 +6,9 @@ export class AddChild implements Command {
   constructor(public parent: Entity, public child: Entity) {}
 
   apply(system: System) {
-    this.parent.add(Parent);
+    if (!this.parent.has(Parent)) {
+      this.parent.add(Parent);
+    }
     // @see https://lastolivegames.github.io/becsy/guide/architecture/components.html#referencing-entities
     this.child.add(Children, {
       parent: this.parent,

@@ -7,3 +7,6 @@ export * from './Event';
 export * from './WindowResized';
 export * from './transform';
 export * from './hierarchy';
+export * from './renderable';
+export * from './math';
+export * from './geometry';

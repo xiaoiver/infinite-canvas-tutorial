@@ -1,14 +1,21 @@
+import EventEmitter from 'eventemitter3';
+import { isBoolean, isFunction, isObject } from '@antv/util';
 import { ComponentType, Entity } from '@lastolivegames/becsy';
 import { AddChild } from './AddChild';
 import { Insert } from './Insert';
+import { RemoveChild } from './RemoveChild';
 import { Commands } from './Commands';
 import { Bundle } from '../components';
+import { FederatedEventTarget } from '../events/FederatedEventTarget';
+import { FederatedEvent } from '../events';
 
 /**
  * A list of commands that will be run to modify an [entity](crate::entity).
  */
-export class EntityCommands {
-  constructor(public entity: Entity, public commands: Commands) {}
+export class EntityCommands extends EventEmitter {
+  constructor(public entity: Entity, public commands: Commands) {
+    super();
+  }
 
   /**
    * Returns the [`Entity`] id of the entity.
@@ -57,18 +64,70 @@ export class EntityCommands {
    * that parent's [`Children`] component will have those children removed from its list.
    * Removing all children from a parent causes its [`Children`] component to be removed from the entity.
    */
-  addChild(child: Entity) {
-    let parent = this.id();
-    if (child === parent) {
-      throw new Error('Cannot add entity as a child of itself.');
-    }
-
-    this.commands.add(new AddChild(parent, child));
-
+  appendChild(child: Entity) {
+    this.commands.add(new AddChild(this.id(), child));
     return this;
   }
 
-  removeChildren(...children: Entity[]) {
+  removeChild(child: Entity) {
+    this.commands.add(new RemoveChild(this.id(), child));
     return this;
+  }
+
+  addEventListener(
+    type: string,
+    listener: EventListenerOrEventListenerObject,
+    options?: boolean | AddEventListenerOptions,
+  ) {
+    const capture =
+      (isBoolean(options) && options) || (isObject(options) && options.capture);
+    const signal = isObject(options) ? options.signal : undefined;
+    const once = isObject(options) && options.once;
+    const context = isFunction(listener) ? undefined : listener;
+
+    type = capture ? `${type}capture` : type;
+    const listenerFn = isFunction(listener) ? listener : listener.handleEvent;
+
+    if (signal) {
+      signal.addEventListener('abort', () => {
+        this.off(type, listenerFn, context);
+      });
+    }
+
+    if (once) {
+      this.once(type, listenerFn, context);
+    } else {
+      this.on(type, listenerFn, context);
+    }
+  }
+
+  removeEventListener(
+    type: string,
+    listener: EventListenerOrEventListenerObject,
+    options?: boolean | EventListenerOptions,
+  ) {
+    const capture =
+      (isBoolean(options) && options) || (isObject(options) && options.capture);
+    const context = isFunction(listener) ? undefined : listener;
+
+    type = capture ? `${type}capture` : type;
+    listener = isFunction(listener) ? listener : listener?.handleEvent;
+
+    this.off(type, listener, context);
+  }
+
+  dispatchEvent(e: Event) {
+    if (!(e instanceof FederatedEvent)) {
+      throw new Error(
+        'Container cannot propagate events outside of the Federated Events API',
+      );
+    }
+
+    e.defaultPrevented = false;
+    e.path = [];
+    e.target = this as unknown as FederatedEventTarget;
+    e.manager.dispatchEvent(e);
+
+    return !e.defaultPrevented;
   }
 }

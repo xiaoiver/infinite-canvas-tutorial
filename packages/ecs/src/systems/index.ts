@@ -6,3 +6,4 @@ export * from './MeshPipeline';
 export * from './EventWriter';
 export * from './EventReader';
 export * from './CameraControl';
+export * from './BatchManager';

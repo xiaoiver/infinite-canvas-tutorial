@@ -8,13 +8,10 @@ import { v2Type, Vec2 } from '../math/Vec2';
  * @example
  * ```ts
  * // Get the transform
- * const transform = entity.get(Transform);
+ * const transform = entity.read(Transform);
  *
  * // Set the transform
- * entity.set(Transform, (transform) => {
- *   transform.translation.x = 100;
- *   return transform;
- * });
+ * entity.write(Transform).translation.x = 100;
  * ```
  */
 export class Transform {
@@ -32,16 +29,18 @@ export class Transform {
   @field.float32 declare rotation: number;
 
   constructor(
-    translation: Vec2 = Vec2.ZERO,
-    scale: Vec2 = Vec2.ONE,
-    rotation: number = 0,
+    props?: Partial<{
+      translation: Vec2;
+      scale: Vec2;
+      rotation: number;
+    }>,
   ) {
-    this.translation = translation;
-    this.scale = scale;
-    this.rotation = rotation;
+    this.translation = props?.translation ?? Vec2.ZERO;
+    this.scale = props?.scale ?? Vec2.ONE;
+    this.rotation = props?.rotation ?? 0;
   }
 
   static fromTranslation(translation: Vec2) {
-    return new Transform(translation, Vec2.ONE, 0);
+    return new Transform({ translation, scale: Vec2.ONE, rotation: 0 });
   }
 }

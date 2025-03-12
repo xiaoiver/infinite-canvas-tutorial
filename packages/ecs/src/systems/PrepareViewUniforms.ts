@@ -7,15 +7,14 @@ import { mat3 } from 'gl-matrix';
  */
 export class PrepareViewUniforms extends System {
   private readonly canvasConfig = this.singleton.read(CanvasConfig);
-  private readonly windowResized = this.singleton.read(WindowResized);
 
-  private readonly cameras = this.query(
+  private readonly camera = this.query(
     (q) => q.addedOrChanged.with(Camera).trackWrites.using(Camera).write,
   );
 
-  // private readonly windowResizedQuery = this.query(
-  //   (q) => q.changed.with(WindowResized).trackWrites,
-  // );
+  private readonly windowResized = this.query(
+    (q) => q.changed.with(WindowResized).trackWrites,
+  );
 
   /**
    * Matrix in world space.
@@ -60,11 +59,9 @@ export class PrepareViewUniforms extends System {
   }
 
   execute(): void {
-    const {
-      canvas: { width, height },
-    } = this.canvasConfig;
+    const { width, height } = this.canvasConfig;
 
-    this.cameras.addedOrChanged.forEach((entity) => {
+    this.camera.addedOrChanged.forEach((entity) => {
       const { x, y, rotation, zoom } = entity.read(Camera);
       this.x = x || 0;
       this.y = y || 0;
@@ -75,15 +72,13 @@ export class PrepareViewUniforms extends System {
       this.updateMatrix();
     });
 
-    {
-      const { width, height } = this.windowResized;
-      if (width > 0 && height > 0) {
-        this.projection(width, height);
-      }
-    }
+    this.windowResized.changed.forEach((entity) => {
+      const { width, height } = entity.read(WindowResized);
+      this.projection(width, height);
+    });
   }
 
-  projection(width: number, height: number) {
+  private projection(width: number, height: number) {
     mat3.projection(this.#projectionMatrix, width, height);
     this.updateViewProjectionMatrix();
   }

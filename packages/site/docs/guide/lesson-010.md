@@ -188,6 +188,8 @@ Interestingly, Three.js also provides [toJSON] to save the current state of the 
 
 #### Shape to SerializedNode {#shape-to-serialized-node}
 
+Many whiteboard tools also provide custom graphic serialization formats, such as [JSON objects in tldraw] and [JSON schema in excalidraw].
+
 Traversed from the root node of the scene graph, recursively called on child elements. Attributes such as `transform` with complex structural values (`position/scale/rotation`) require further processing:
 
 ```ts
@@ -930,3 +932,5 @@ With the richness of the canvas functionality, it is necessary to introduce test
 [Dot Grid With pattern]: https://www.smashingmagazine.com/2024/09/svg-coding-examples-recipes-writing-vectors-by-hand/#dot-grid-with-pattern
 [Adding Shadows to SVG Icons With CSS and SVG Filters]: https://css-tricks.com/adding-shadows-to-svg-icons-with-css-and-svg-filters/
 [filter primitive]: https://developer.mozilla.org/en-US/docs/Web/SVG/Element#filter_primitive_elements
+[JSON objects in tldraw]: https://tldraw.dev/docs/shapes#The-shape-object
+[JSON schema in excalidraw]: https://docs.excalidraw.com/docs/codebase/json-schema

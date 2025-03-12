@@ -15,6 +15,16 @@ export class CanvasConfig {
   @field.object declare canvas: HTMLCanvasElement | OffscreenCanvas;
 
   /**
+   * The width of the canvas.
+   */
+  @field({ type: Type.float32, default: 0 }) declare width: number;
+
+  /**
+   * The height of the canvas.
+   */
+  @field({ type: Type.float32, default: 0 }) declare height: number;
+
+  /**
    * Set the renderer, optional values are webgl and webgpu, default value is webgl.
    */
   @field({ type: Type.staticString(['webgl', 'webgpu']), default: 'webgl' })

@@ -9,19 +9,37 @@ import {
 } from '@antv/g-device-api';
 import { SetupDevice } from './SetupDevice';
 import { PrepareViewUniforms } from './PrepareViewUniforms';
-import { CheckboardStyle, Grid, Theme } from '../components';
+import {
+  CheckboardStyle,
+  Circle,
+  FillSolid,
+  GlobalTransform,
+  Grid,
+  InnerShadow,
+  Opacity,
+  Renderable,
+  Stroke,
+  Theme,
+  WindowResized,
+} from '../components';
 import { paddingMat3 } from '../utils';
 import { GridRenderer } from './GridRenderer';
+import { BatchManager } from './BatchManager';
 
 export class MeshPipeline extends System {
   private rendererResource = this.attach(SetupDevice);
   private prepareViewUniforms = this.attach(PrepareViewUniforms);
+  private batchManager = this.attach(BatchManager);
 
-  theme = this.singleton.read(Theme);
-  grid = this.singleton.read(Grid);
+  private readonly theme = this.singleton.read(Theme);
+  private readonly grid = this.singleton.read(Grid);
 
-  grid_query = this.query((q) => q.addedOrChanged.with(Grid).trackWrites);
-  theme_query = this.query((q) => q.addedOrChanged.with(Theme).trackWrites);
+  private windowResized = this.query(
+    (q) => q.changed.with(WindowResized).trackWrites,
+  );
+
+  private grids = this.query((q) => q.addedOrChanged.with(Grid).trackWrites);
+  private themes = this.query((q) => q.addedOrChanged.with(Theme).trackWrites);
 
   #renderPass: RenderPass;
   /**
@@ -34,6 +52,21 @@ export class MeshPipeline extends System {
   #uniformLegacyObject: Record<string, unknown>;
 
   #gridRenderer: GridRenderer;
+
+  constructor() {
+    super();
+    this.query(
+      (q) =>
+        q.current.with(
+          Circle,
+          GlobalTransform,
+          FillSolid,
+          Opacity,
+          Stroke,
+          InnerShadow,
+        ).read,
+    );
+  }
 
   initialize() {
     const { device } = this.rendererResource;
@@ -48,7 +81,7 @@ export class MeshPipeline extends System {
     this.#gridRenderer = new GridRenderer();
   }
 
-  execute() {
+  private renderFrame() {
     const { swapChain, device, renderTarget, depthRenderTarget } =
       this.rendererResource;
     const { width, height } = swapChain.getCanvas();
@@ -82,18 +115,37 @@ export class MeshPipeline extends System {
       this.#uniformLegacyObject,
     );
 
+    this.batchManager.flush(
+      this.#renderPass,
+      this.#uniformBuffer,
+      this.#uniformLegacyObject,
+    );
+    // this.batchManager.clear();
+
     device.submitPass(this.#renderPass);
     device.endFrame();
+  }
 
-    console.log('render', width, height);
+  execute() {
+    let needRender = false;
+    this.windowResized.changed.forEach((entity) => {
+      needRender = true;
 
-    this.theme_query.addedOrChanged.forEach((entity) => {
+      console.log('window resized');
+    });
+    this.themes.addedOrChanged.forEach((entity) => {
       console.log('theme added or changed', this.theme.mode);
+      needRender = true;
+    });
+    this.grids.addedOrChanged.forEach((entity) => {
+      console.log('grid added or changed', this.theme.mode);
+      needRender = true;
     });
 
-    this.grid_query.addedOrChanged.forEach((entity) => {
-      console.log('grid added or changed', this.theme.mode);
-    });
+    // if (needRender) {
+    console.log('render');
+    this.renderFrame();
+    // }
   }
 
   finalize() {
