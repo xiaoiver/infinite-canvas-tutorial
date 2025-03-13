@@ -1,4 +1,4 @@
-import type { Shape } from '../shapes';
+// import type { Shape } from '../shapes';
 import type { FederatedEventTarget } from './FederatedEventTarget';
 
 /**
@@ -53,4 +53,4 @@ export type EmitterListeners = Record<
   EmitterListener | EmitterListener[]
 >;
 
-export type Picker = (x: number, y: number) => Shape | null;
+export type Picker = (x: number, y: number) => any | null;
