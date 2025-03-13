@@ -64,13 +64,13 @@ export class EntityCommands extends EventEmitter {
    * that parent's [`Children`] component will have those children removed from its list.
    * Removing all children from a parent causes its [`Children`] component to be removed from the entity.
    */
-  appendChild(child: Entity) {
-    this.commands.add(new AddChild(this.id(), child));
+  appendChild(child: EntityCommands) {
+    this.commands.add(new AddChild(this.id(), child.id()));
     return this;
   }
 
-  removeChild(child: Entity) {
-    this.commands.add(new RemoveChild(this.id(), child));
+  removeChild(child: EntityCommands) {
+    this.commands.add(new RemoveChild(this.id(), child.id()));
     return this;
   }
 

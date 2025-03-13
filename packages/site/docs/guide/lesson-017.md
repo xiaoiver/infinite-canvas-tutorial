@@ -13,7 +13,7 @@ import FractalBrownianMotion from '../components/FractalBrownianMotion.vue';
 import DomainWarping from '../components/DomainWarping.vue';
 </script>
 
-# Lesson 17 - Gradient and Pattern
+# Lesson 17 - Gradient and pattern
 
 In this lesson, we'll explore how to implement gradients and repeating patterns.
 

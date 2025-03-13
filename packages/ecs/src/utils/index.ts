@@ -6,3 +6,7 @@ export * from './pattern';
 export * from './render-cache';
 export * from './uid';
 export * from './color';
+export * from './style';
+export * from './rough';
+export * from './curve';
+export * from './tessy';

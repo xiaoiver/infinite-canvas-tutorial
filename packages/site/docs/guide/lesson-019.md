@@ -7,7 +7,7 @@ publish: false
 import LoroCRDT from '../components/LoroCRDT.vue';
 </script>
 
-# Lesson 19 - History and Collaboration
+# Lesson 19 - History and collaboration
 
 In this lesson, we'll explore how to implement multi-user collaborative editing functionality. We'll introduce several core concepts and technologies, including history records, Local-first, and CRDT.
 

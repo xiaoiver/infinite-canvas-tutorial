@@ -12,11 +12,17 @@ import {
   VertexStepMode,
   Format,
 } from '@antv/g-device-api';
-import { RenderCache } from '../utils';
-import { uid } from '../utils';
+import { Entity } from '@lastolivegames/becsy';
+import { RenderCache, uid } from '../utils';
 import { Location } from '../shaders/wireframe';
 import { TexturePool } from '../resources';
-import { Entity } from '@lastolivegames/becsy';
+import {
+  FillGradient,
+  FillImage,
+  FillPattern,
+  FillTexture,
+  Wireframe,
+} from '../components';
 
 // TODO: Use a more efficient way to manage Z index.
 export const ZINDEX_FACTOR = 100000;
@@ -88,9 +94,13 @@ export abstract class Drawcall {
   }
 
   validate(shape: Entity) {
-    // if (this.shapes[0]?.wireframe !== shape.wireframe) {
-    //   return false;
-    // }
+    if (
+      (this.shapes[0]?.has(Wireframe) &&
+        this.shapes[0]?.read(Wireframe).enabled) !==
+      (shape.has(Wireframe) && shape.read(Wireframe).enabled)
+    ) {
+      return false;
+    }
 
     return this.count() <= this.maxInstances - 1;
   }
@@ -149,13 +159,18 @@ export abstract class Drawcall {
   }
 
   protected get useWireframe() {
-    // return this.shapes[0]?.wireframe;
-    return false;
+    return (
+      this.shapes[0]?.has(Wireframe) && this.shapes[0]?.read(Wireframe).enabled
+    );
   }
 
   protected get useFillImage() {
-    // return this.shapes[0].useFillImage;
-    return false;
+    return this.shapes[0]?.hasSomeOf(
+      FillImage,
+      FillTexture,
+      FillGradient,
+      FillPattern,
+    );
   }
 
   protected createProgram(vert: string, frag: string, defines: string) {

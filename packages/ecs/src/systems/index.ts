@@ -7,3 +7,6 @@ export * from './EventWriter';
 export * from './EventReader';
 export * from './CameraControl';
 export * from './BatchManager';
+export * from './Sort';
+export * from './ComputePoints';
+export * from './ComputeRough';

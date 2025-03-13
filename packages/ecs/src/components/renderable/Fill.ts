@@ -1,12 +1,7 @@
 import { component, field, Type, World } from '@lastolivegames/becsy';
 
 import { Texture } from '@antv/g-device-api';
-import {
-  type Gradient,
-  type Pattern,
-  parseGradient,
-  isGradient,
-} from '../../utils';
+import { type Pattern } from '../../utils';
 
 /**
  * @see https://lastolivegames.github.io/becsy/guide/architecture/components#components
@@ -27,30 +22,70 @@ class FillSolid {
    */
   @field({ type: Type.dynamicString(20), default: 'black' })
   declare value: string;
+
+  constructor(value?: string) {
+    this.value = value;
+  }
 }
 
 export
 @component(fillEnum)
 class FillGradient {
   @field.dynamicString(100) declare value: string;
+  constructor(value?: string) {
+    this.value = value;
+  }
 }
 
+/**
+ * A pattern using the specified image and repetition.
+ * @see https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/createPattern
+ */
 export
 @component(fillEnum)
 class FillPattern {
-  @field.object declare value: Pattern;
+  /**
+   * An image to be used as the pattern's image.
+   *
+   */
+  @field.object declare image: string | CanvasImageSource;
+
+  /**
+   * A string indicating how to repeat the pattern's image.
+   */
+  @field.object declare repetition:
+    | 'repeat'
+    | 'repeat-x'
+    | 'repeat-y'
+    | 'no-repeat';
+
+  /**
+   * Uses a DOMMatrix object as the pattern's transformation matrix and invokes it on the pattern.
+   * @see https://developer.mozilla.org/en-US/docs/Web/API/CanvasPattern/setTransform
+   */
+  @field.object declare transform: string;
+
+  constructor(value?: Pattern) {
+    this.image = value?.image;
+    this.repetition = value?.repetition;
+    this.transform = value?.transform;
+  }
 }
 
 export
 @component(fillEnum)
 class FillTexture {
-  @field.object declare value: { texture: Texture };
+  @field.object declare value: Texture;
+
+  constructor(value?: Texture) {
+    this.value = value;
+  }
 }
 
 export
 @component(fillEnum)
 class FillImage {
-  @field.object declare value: TexImageSource;
+  @field.object declare src: TexImageSource;
 
   /**
    * @see https://developer.mozilla.org/zh-CN/docs/Web/CSS/object-fit
@@ -61,4 +96,9 @@ class FillImage {
     default: 'contain',
   })
   declare objectFit: 'contain' | 'cover' | 'fill' | 'none' | 'scale-down';
+
+  constructor(value?: Partial<FillImage>) {
+    this.src = value?.src;
+    this.objectFit = value?.objectFit;
+  }
 }

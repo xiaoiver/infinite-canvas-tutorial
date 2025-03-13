@@ -13,6 +13,7 @@ import {
   Grid,
   Theme,
   ThemeMode,
+  WindowResized,
 } from './components';
 import {
   First,
@@ -141,7 +142,12 @@ export class App {
     const resources = this.#resources;
 
     @system(PreStartUp)
-    class PreStartUpPlaceHolder extends System {}
+    class PreStartUpPlaceHolder extends System {
+      constructor() {
+        super();
+        this.singleton.read(WindowResized);
+      }
+    }
     @system(StartUp)
     class StartUpPlaceHolder extends System {}
     @system(PostStartup)

@@ -9,7 +9,8 @@ export class Stroke {
    * Default to `none`.
    * @see https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/stroke
    */
-  @field.object declare stroke: string;
+  @field({ type: Type.dynamicString(20), default: 'none' })
+  declare stroke: string;
 
   /**
    * It is a presentation attribute defining the width of the stroke to be applied to the shape.
@@ -17,7 +18,7 @@ export class Stroke {
    * Default value is `1`.
    * @see https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/stroke-width
    */
-  @field({ type: Type.float32, default: 1 }) declare strokeWidth: number;
+  @field({ type: Type.float32, default: 1 }) declare width: number;
 
   /**
    * This property allows to align a stroke along the outline of the current object.
@@ -34,7 +35,7 @@ export class Stroke {
     type: Type.staticString(['center', 'inner', 'outer']),
     default: 'center',
   })
-  declare strokeAlignment: 'center' | 'inner' | 'outer';
+  declare alignment: 'center' | 'inner' | 'outer';
 
   /**
    * The stroke-linecap attribute is a presentation attribute defining the shape to be used at the end of open subpaths when they are stroked.
@@ -46,7 +47,7 @@ export class Stroke {
     type: Type.staticString(['butt', 'round', 'square']),
     default: 'butt',
   })
-  declare strokeLinecap: CanvasLineCap;
+  declare linecap: CanvasLineCap;
 
   /**
    * The stroke-linejoin attribute is a presentation attribute defining the shape to be used at the corners of paths when they are stroked.
@@ -58,7 +59,7 @@ export class Stroke {
     type: Type.staticString(['miter', 'round', 'bevel']),
     default: 'miter',
   })
-  declare strokeLinejoin: CanvasLineJoin;
+  declare linejoin: CanvasLineJoin;
 
   /**
    * The stroke-miterlimit attribute is a presentation attribute defining a limit on the ratio of the miter length to the stroke-width used to draw a miter join.
@@ -67,7 +68,7 @@ export class Stroke {
    * Default value is `4`.
    * @see https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/stroke-miterlimit
    */
-  @field({ type: Type.float32, default: 4 }) declare strokeMiterlimit: number;
+  @field({ type: Type.float32, default: 4 }) declare miterlimit: number;
 
   /**
    * The stroke-dasharray attribute is a presentation attribute defining the pattern of dashes and gaps used to paint the outline of the shape;
@@ -76,8 +77,8 @@ export class Stroke {
    *
    * @see https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/stroke-dasharray
    */
-  @field({ type: Type.vector(Type.float32, 2) })
-  declare strokeDasharray: number[];
+  @field({ type: Type.vector(Type.float32, 2), default: [0, 0] })
+  declare dasharray: [number, number];
 
   /**
    * The stroke-dashoffset attribute is a presentation attribute defining an offset on the rendering of the associated dash array.
@@ -86,5 +87,16 @@ export class Stroke {
    *
    * @see https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/stroke-dashoffset
    */
-  @field({ type: Type.float32, default: 0 }) declare strokeDashoffset: number;
+  @field({ type: Type.float32, default: 0 }) declare dashoffset: number;
+
+  constructor(props?: Partial<Stroke>) {
+    this.stroke = props?.stroke;
+    this.width = props?.width;
+    this.alignment = props?.alignment;
+    this.linecap = props?.linecap;
+    this.linejoin = props?.linejoin;
+    this.miterlimit = props?.miterlimit;
+    this.dasharray = props?.dasharray;
+    this.dashoffset = props?.dashoffset;
+  }
 }

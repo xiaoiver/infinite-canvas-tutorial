@@ -26,10 +26,15 @@ import { vert, frag, Location } from '../shaders/sdf';
 import { isPattern, paddingMat3, parseColor } from '../utils';
 import {
   Circle,
+  Ellipse,
+  FillGradient,
+  FillImage,
   FillSolid,
+  GlobalRenderOrder,
   GlobalTransform,
   InnerShadow,
   Opacity,
+  Rect,
   Stroke,
 } from '../components';
 import { mat3 } from 'gl-matrix';
@@ -47,12 +52,10 @@ export class SDF extends Drawcall {
   #texture: Texture;
 
   static useDash(shape: Entity) {
-    const { strokeDasharray } = shape.has(Stroke)
+    const { dasharray } = shape.has(Stroke)
       ? shape.read(Stroke)
-      : { strokeDasharray: [] };
-    return (
-      strokeDasharray.length > 0 && strokeDasharray.some((dash) => dash > 0)
-    );
+      : { dasharray: [0, 0] };
+    return dasharray[0] > 0 && dasharray[1] > 0;
   }
 
   validate(shape: Entity) {
@@ -65,24 +68,25 @@ export class SDF extends Drawcall {
       return true;
     }
 
-    // const isInstanceFillImage = !isString(this.shapes[0].fill);
-    // const isShapeFillImage = !isString(shape.fill);
-    // const isInstanceFillGradient = this.shapes[0].fillGradient?.length > 0;
-    // const isShapeFillGradient = shape.fillGradient?.length > 0;
-    // if (isInstanceFillImage !== isShapeFillImage) {
-    //   return false;
-    // }
+    const isInstanceFillImage = this.shapes[0].has(FillImage);
+    const isShapeFillImage = shape.has(FillImage);
+    if (isInstanceFillImage !== isShapeFillImage) {
+      return false;
+    }
 
-    // if (isInstanceFillGradient !== isShapeFillGradient) {
-    //   return false;
-    // }
+    const isInstanceFillGradient = this.shapes[0].has(FillGradient);
+    const isShapeFillGradient = shape.has(FillGradient);
+    if (isInstanceFillGradient !== isShapeFillGradient) {
+      return false;
+    }
 
-    // if (
-    //   (isInstanceFillImage && isShapeFillImage) ||
-    //   (isInstanceFillGradient && isShapeFillGradient)
-    // ) {
-    //   return this.shapes[0].fill === shape.fill;
-    // }
+    if (isInstanceFillImage && isShapeFillImage) {
+      return this.shapes[0].read(FillImage).src === shape.read(FillImage).src;
+    }
+
+    if (isInstanceFillGradient && isShapeFillGradient) {
+      return this.shapes[0].read(FillGradient) === shape.read(FillGradient);
+    }
 
     if (SDF.useDash(shape) !== SDF.useDash(this.shapes[0])) {
       return false;
@@ -351,8 +355,6 @@ export class SDF extends Drawcall {
   }
 
   render(renderPass: RenderPass, uniformLegacyObject: Record<string, unknown>) {
-    console.log(this.uid);
-
     // if (
     //   this.shapes.some((shape) => shape.renderDirtyFlag) ||
     //   this.geometryDirty
@@ -464,7 +466,9 @@ export class SDF extends Drawcall {
   ): [number[], Record<string, unknown>] {
     // TODO
     const sizeAttenuation = 0;
-    const globalRenderOrder = 1.0;
+    const globalRenderOrder = shape.has(GlobalRenderOrder)
+      ? shape.read(GlobalRenderOrder).value
+      : 0;
 
     let position: [number, number, number, number] = [0, 0, 0, 0];
     let size: [number, number, number, number] = [0, 0, 0, 0];
@@ -476,17 +480,17 @@ export class SDF extends Drawcall {
       position = [cx, cy, zIndex, 0];
       size = [r, r, 0, 0];
       type = 0;
-      // } else if (shape instanceof Ellipse) {
-      //   const { cx, cy, rx, ry } = shape;
-      //   position = [cx, cy, zIndex, 0];
-      //   size = [rx, ry, 0, 0];
-      //   type = 1;
-      // } else if (shape instanceof Rect) {
-      //   const { x, y, width, height, cornerRadius: r } = shape;
-      //   position = [x + width / 2, y + height / 2, zIndex, 0];
-      //   size = [width / 2, height / 2, 0, 0];
-      //   type = 2;
-      //   cornerRadius = r;
+    } else if (shape.has(Ellipse)) {
+      const { cx, cy, rx, ry } = shape.read(Ellipse);
+      position = [cx, cy, zIndex, 0];
+      size = [rx, ry, 0, 0];
+      type = 1;
+    } else if (shape.has(Rect)) {
+      const { x, y, width, height, cornerRadius: r } = shape.read(Rect);
+      position = [x + width / 2, y + height / 2, zIndex, 0];
+      size = [width / 2, height / 2, 0, 0];
+      type = 2;
+      cornerRadius = r;
     }
 
     const { value: fill } = shape.has(FillSolid)
@@ -498,9 +502,9 @@ export class SDF extends Drawcall {
       ? shape.read(Opacity)
       : { opacity: 1, strokeOpacity: 1, fillOpacity: 1 };
 
-    const { stroke, strokeWidth, strokeAlignment } = shape.has(Stroke)
+    const { stroke, width, alignment } = shape.has(Stroke)
       ? shape.read(Stroke)
-      : { stroke: null, strokeWidth: 0, strokeAlignment: 'center' };
+      : { stroke: null, width: 0, alignment: 'center' };
     const {
       innerShadowColor,
       innerShadowOffsetX,
@@ -528,9 +532,9 @@ export class SDF extends Drawcall {
     const u_StrokeColor = [sr / 255, sg / 255, sb / 255, so];
     const u_ZIndexStrokeWidth = [
       globalRenderOrder / ZINDEX_FACTOR,
-      SDF.useDash(shape) ? 0 : strokeWidth,
+      SDF.useDash(shape) ? 0 : width,
       cornerRadius,
-      strokeAlignmentMap[strokeAlignment],
+      strokeAlignmentMap[alignment],
     ];
 
     const LEFT_SHIFT23 = 8388608.0;

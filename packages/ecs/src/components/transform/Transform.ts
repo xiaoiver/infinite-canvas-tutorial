@@ -30,17 +30,21 @@ export class Transform {
 
   constructor(
     props?: Partial<{
-      translation: Vec2;
-      scale: Vec2;
+      translation: { x: number; y: number };
+      scale: { x: number; y: number };
       rotation: number;
     }>,
   ) {
-    this.translation = props?.translation ?? Vec2.ZERO;
-    this.scale = props?.scale ?? Vec2.ONE;
+    this.translation = props?.translation
+      ? new Vec2(props.translation.x ?? 0, props.translation.y ?? 0)
+      : Vec2.ZERO;
+    this.scale = props?.scale
+      ? new Vec2(props.scale.x ?? 1, props.scale.y ?? 1)
+      : Vec2.ONE;
     this.rotation = props?.rotation ?? 0;
   }
 
-  static fromTranslation(translation: Vec2) {
-    return new Transform({ translation, scale: Vec2.ONE, rotation: 0 });
-  }
+  // static fromTranslation(translation: Vec2) {
+  //   return new Transform({ translation, scale: Vec2.ONE, rotation: 0 });
+  // }
 }

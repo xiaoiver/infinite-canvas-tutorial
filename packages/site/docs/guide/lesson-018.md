@@ -3,7 +3,7 @@ outline: deep
 publish: false
 ---
 
-# Lesson 18 - Refactoring with ECS
+# Lesson 18 - Refactor with ECS
 
 I've decided to refactor at this point.
 

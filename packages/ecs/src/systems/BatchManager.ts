@@ -3,35 +3,31 @@ import { Entity, System } from '@lastolivegames/becsy';
 import {
   Drawcall,
   SDF,
-  // ShadowRect,
-  // SmoothPolyline,
+  ShadowRect,
+  SmoothPolyline,
+  Mesh,
   // Custom as CustomDrawcall,
 } from '../drawcalls';
 import {
+  Children,
   Circle,
+  ComputedPoints,
+  ComputedRough,
+  DropShadow,
+  Ellipse,
   FillSolid,
   GlobalTransform,
   InnerShadow,
   Opacity,
+  Parent,
+  Path,
+  Polyline,
+  Rect,
   Renderable,
+  Rough,
   Stroke,
 } from '../components';
 import { SetupDevice } from './SetupDevice';
-// import {
-//   Circle,
-//   Custom,
-//   Ellipse,
-//   Path,
-//   Polyline,
-//   Rect,
-//   RoughCircle,
-//   RoughEllipse,
-//   RoughPath,
-//   RoughPolyline,
-//   RoughRect,
-//   Text,
-//   type Shape,
-// } from '../shapes';
 
 /**
  * Since a shape may have multiple drawcalls, we need to cache them and maintain an 1-to-many relationship.
@@ -44,18 +40,17 @@ import { SetupDevice } from './SetupDevice';
  */
 function getDrawcallCtors(shape: Entity) {
   const SHAPE_DRAWCALL_CTORS: (typeof Drawcall)[] = [];
-  if (shape.has(Circle)) {
-    SHAPE_DRAWCALL_CTORS.push(SDF);
+  if (shape.has(Circle) || shape.has(Ellipse)) {
+    SHAPE_DRAWCALL_CTORS.push(SDF, SmoothPolyline);
+  } else if (shape.has(Rect)) {
+    SHAPE_DRAWCALL_CTORS.push(ShadowRect, SDF, SmoothPolyline);
+  } else if (shape.has(Polyline)) {
+    SHAPE_DRAWCALL_CTORS.push(SmoothPolyline);
+  } else if (shape.has(Path)) {
+    SHAPE_DRAWCALL_CTORS.push(Mesh, SmoothPolyline);
   }
   return SHAPE_DRAWCALL_CTORS;
 }
-// const SHAPE_DRAWCALL_CTORS = new WeakMap<typeof Shape, (typeof Drawcall)[]>();
-// SHAPE_DRAWCALL_CTORS.set(Circle, [SDF]);
-// SHAPE_DRAWCALL_CTORS.set(Ellipse, [SDF, SmoothPolyline]);
-// SHAPE_DRAWCALL_CTORS.set(Rect, [ShadowRect, SDF, SmoothPolyline]);
-// SHAPE_DRAWCALL_CTORS.set(Polyline, [SmoothPolyline]);
-// // SHAPE_DRAWCALL_CTORS.set(Path, [SDFPath]);
-// SHAPE_DRAWCALL_CTORS.set(Path, [Mesh, SmoothPolyline]);
 // SHAPE_DRAWCALL_CTORS.set(RoughCircle, [
 //   Mesh, // fillStyle === 'solid'
 //   SmoothPolyline, // fill
@@ -94,12 +89,22 @@ export class BatchManager extends System {
 
   #batchableDrawcallsCache: Record<number, Drawcall[]> = Object.create(null);
 
-  #instancesCache: WeakMap<typeof Circle, Drawcall[][]> = new WeakMap();
+  #instancesCache: WeakMap<
+    | typeof Circle
+    | typeof Ellipse
+    | typeof Rect
+    | typeof Polyline
+    | typeof Path,
+    Drawcall[][]
+  > = new WeakMap();
 
   renderResource = this.attach(SetupDevice);
 
   renderables = this.query(
-    (q) => q.addedOrChanged.with(Renderable).withAny(Circle).trackWrites,
+    (q) =>
+      q.addedOrChanged.and.removed
+        .with(Renderable)
+        .withAny(Circle, Ellipse, Rect, Polyline, Path).trackWrites,
   );
 
   constructor() {
@@ -108,11 +113,19 @@ export class BatchManager extends System {
       (q) =>
         q.current.with(
           Circle,
+          Ellipse,
+          Rect,
+          Polyline,
+          Path,
+          ComputedPoints,
           GlobalTransform,
           FillSolid,
           Opacity,
           Stroke,
           InnerShadow,
+          DropShadow,
+          Rough,
+          ComputedRough,
         ).read,
     );
   }
@@ -120,8 +133,10 @@ export class BatchManager extends System {
   execute(): void {
     this.renderables.addedOrChanged.forEach((entity) => {
       this.add(entity);
+    });
 
-      console.log('add drawcall');
+    this.renderables.removed.forEach((entity) => {
+      this.remove(entity);
     });
   }
 
@@ -169,7 +184,17 @@ export class BatchManager extends System {
     let existed: Drawcall[] | undefined =
       this.#batchableDrawcallsCache[shape.__id];
     if (!existed) {
-      const geometryCtor = shape.has(Circle) ? Circle : undefined;
+      const geometryCtor = shape.has(Circle)
+        ? Circle
+        : shape.has(Ellipse)
+        ? Ellipse
+        : shape.has(Rect)
+        ? Rect
+        : shape.has(Polyline)
+        ? Polyline
+        : shape.has(Path)
+        ? Path
+        : undefined;
 
       let instancedDrawcalls = this.#instancesCache.get(geometryCtor);
       if (!instancedDrawcalls) {

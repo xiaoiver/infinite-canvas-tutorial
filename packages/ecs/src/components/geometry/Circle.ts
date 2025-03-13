@@ -28,8 +28,8 @@ export class Circle {
   @field({ type: Type.float32, default: 0 }) declare r: number;
 
   constructor(props?: Partial<Circle>) {
-    this.cx = props?.cx ?? 0;
-    this.cy = props?.cy ?? 0;
-    this.r = props?.r ?? 0;
+    this.cx = props?.cx;
+    this.cy = props?.cy;
+    this.r = props?.r;
   }
 }

@@ -5,7 +5,8 @@ export class DropShadow {
    * Specifies color for the shadow.
    * @see https://developer.mozilla.org/en-US/docs/Web/CSS/filter-function/drop-shadow#color
    */
-  @field.dynamicString(20) declare dropShadowColor: string;
+  @field({ type: Type.dynamicString(20), default: 'black' })
+  declare dropShadowColor: string;
   // dropShadowColorRGB: d3.RGBColor;
 
   /**
@@ -31,4 +32,11 @@ export class DropShadow {
    */
   @field({ type: Type.float32, default: 0 })
   declare dropShadowBlurRadius: number;
+
+  constructor(props?: Partial<DropShadow>) {
+    this.dropShadowColor = props?.dropShadowColor;
+    this.dropShadowBlurRadius = props?.dropShadowBlurRadius;
+    this.dropShadowOffsetX = props?.dropShadowOffsetX;
+    this.dropShadowOffsetY = props?.dropShadowOffsetY;
+  }
 }

@@ -11,16 +11,28 @@ import { SetupDevice } from './SetupDevice';
 import { PrepareViewUniforms } from './PrepareViewUniforms';
 import {
   CheckboardStyle,
+  Children,
   Circle,
+  ComputedPoints,
+  ComputedRough,
+  DropShadow,
+  Ellipse,
   FillSolid,
+  GlobalRenderOrder,
   GlobalTransform,
   Grid,
   InnerShadow,
   Opacity,
+  Parent,
+  Path,
+  Polyline,
+  Rect,
   Renderable,
+  Rough,
   Stroke,
   Theme,
   WindowResized,
+  Wireframe,
 } from '../components';
 import { paddingMat3 } from '../utils';
 import { GridRenderer } from './GridRenderer';
@@ -59,11 +71,21 @@ export class MeshPipeline extends System {
       (q) =>
         q.current.with(
           Circle,
+          Ellipse,
+          Rect,
+          Polyline,
+          Path,
+          ComputedPoints,
           GlobalTransform,
           FillSolid,
           Opacity,
           Stroke,
           InnerShadow,
+          DropShadow,
+          Wireframe,
+          GlobalRenderOrder,
+          Rough,
+          ComputedRough,
         ).read,
     );
   }
@@ -120,7 +142,6 @@ export class MeshPipeline extends System {
       this.#uniformBuffer,
       this.#uniformLegacyObject,
     );
-    // this.batchManager.clear();
 
     device.submitPass(this.#renderPass);
     device.endFrame();
@@ -142,13 +163,14 @@ export class MeshPipeline extends System {
       needRender = true;
     });
 
-    // if (needRender) {
-    console.log('render');
-    this.renderFrame();
-    // }
+    if (needRender) {
+      console.log('render');
+      this.renderFrame();
+    }
   }
 
   finalize() {
+    this.batchManager.clear();
     this.#gridRenderer.destroy();
   }
 
