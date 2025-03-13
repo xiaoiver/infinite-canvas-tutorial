@@ -222,9 +222,9 @@ pnpm run dev
 
 |                Linear, Radial, Conic Gradient                 |                 Mesh Gradient                  |
 | :-----------------------------------------------------------: | :--------------------------------------------: |
-| ![Linear, Radial, Conic Gradient](./screenshots/lesson18.png) | ![Mesh Gradient](./screenshots/lesson18-3.png) |
+| ![Linear, Radial, Conic Gradient](./screenshots/lesson17.png) | ![Mesh Gradient](./screenshots/lesson17-3.png) |
 
-<img src="./screenshots/lesson18-2.png" width="300" alt="Lesson 18 - gradient">
+<img src="./screenshots/lesson17-2.png" width="300" alt="Lesson 17 - gradient">
 
 ## 课程 18 - 使用 ECS 重构 [🔗](https://infinitecanvas.cc/zh/guide/lesson-018)
 

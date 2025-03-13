@@ -222,7 +222,7 @@ pnpm run dev
 
 |                Linear, Radial, Conic Gradient                 |                 Mesh Gradient                  |
 | :-----------------------------------------------------------: | :--------------------------------------------: |
-| ![Linear, Radial, Conic Gradient](./screenshots/lesson18.png) | ![Mesh Gradient](./screenshots/lesson18-3.png) |
+| ![Linear, Radial, Conic Gradient](./screenshots/lesson17.png) | ![Mesh Gradient](./screenshots/lesson17-3.png) |
 
 <img src="./screenshots/lesson17-2.png" width="300" alt="Lesson 17 - gradient">
 
