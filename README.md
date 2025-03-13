@@ -207,12 +207,7 @@ pnpm run dev
 <img src="./screenshots/lesson16.png" width="300" alt="Lesson 16 - text">
 <img src="./screenshots/lesson16-2.png" width="300" alt="Lesson 16 - physical text">
 
-## Lesson 17 - History and Collaboration [🔗](https://infinitecanvas.cc/guide/lesson-017)
-
--   Implement a simple history system, including undo and redo
--   Implement collaboration through CRDT
-
-## Lesson 18 - Gradient and Pattern [🔗](https://infinitecanvas.cc/guide/lesson-018)
+## Lesson 17 - Gradient and Pattern [🔗](https://infinitecanvas.cc/guide/lesson-017)
 
 -   Use CanvasGradient to implement gradients
     -   Imperative. Create textures using the Device API
@@ -229,12 +224,17 @@ pnpm run dev
 | :-----------------------------------------------------------: | :--------------------------------------------: |
 | ![Linear, Radial, Conic Gradient](./screenshots/lesson18.png) | ![Mesh Gradient](./screenshots/lesson18-3.png) |
 
-<img src="./screenshots/lesson18-2.png" width="300" alt="Lesson 18 - gradient">
+<img src="./screenshots/lesson17-2.png" width="300" alt="Lesson 17 - gradient">
 
-## Lesson 19 - Refactor with ECS [🔗](https://infinitecanvas.cc/guide/lesson-019)
+## Lesson 18 - Refactor with ECS [🔗](https://infinitecanvas.cc/guide/lesson-018)
 
 -   What is ECS architecture
 -   Using ECS architecture to refactor the application
+
+## Lesson 19 - History and Collaboration [🔗](https://infinitecanvas.cc/guide/lesson-019)
+
+-   Implement a simple history system, including undo and redo
+-   Implement collaboration through CRDT
 
 [infinitecanvas]: https://infinitecanvas.tools/
 [Figma]: https://madebyevan.com/figma/building-a-professional-design-tool-on-the-web/

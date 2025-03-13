@@ -207,12 +207,7 @@ pnpm run dev
 <img src="./screenshots/lesson16.png" width="300" alt="Lesson 16 - text">
 <img src="./screenshots/lesson16-2.png" width="300" alt="Lesson 16 - physical text">
 
-## 课程 17 - 历史记录与协同 [🔗](https://infinitecanvas.cc/zh/guide/lesson-017)
-
--   实现简单的历史记录功能，包含撤销和重做
--   通过 CRDT 实现协同
-
-## 课程 18 - 渐变和重复图案 [🔗](https://infinitecanvas.cc/zh/guide/lesson-018)
+## 课程 17 - 渐变和重复图案 [🔗](https://infinitecanvas.cc/zh/guide/lesson-017)
 
 -   使用 CanvasGradient 实现渐变
     -   命令式。使用 Device API 创建纹理
@@ -231,10 +226,15 @@ pnpm run dev
 
 <img src="./screenshots/lesson18-2.png" width="300" alt="Lesson 18 - gradient">
 
-## 课程 19 - 使用 ECS 重构 [🔗](https://infinitecanvas.cc/zh/guide/lesson-019)
+## 课程 18 - 使用 ECS 重构 [🔗](https://infinitecanvas.cc/zh/guide/lesson-018)
 
 -   什么是 ECS 架构
 -   使用 ECS 架构重构应用
+
+## 课程 19 - 历史记录与协同 [🔗](https://infinitecanvas.cc/zh/guide/lesson-019)
+
+-   实现简单的历史记录功能，包含撤销和重做
+-   通过 CRDT 实现协同
 
 [infinitecanvas]: https://infinitecanvas.tools/
 [Figma]: https://madebyevan.com/figma/building-a-professional-design-tool-on-the-web/

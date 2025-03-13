@@ -4,203 +4,411 @@ publish: false
 ---
 
 <script setup>
-import LoroCRDT from '../components/LoroCRDT.vue';
+import Gradient from '../components/Gradient.vue';
+import MeshGradient from '../components/MeshGradient.vue';
+import DeclarativeGradient from '../components/DeclarativeGradient.vue';
+import Pattern from '../components/Pattern.vue';
+import Voronoi from '../components/Voronoi.vue';
+import FractalBrownianMotion from '../components/FractalBrownianMotion.vue';
+import DomainWarping from '../components/DomainWarping.vue';
 </script>
 
-# Lesson 17 - Collaboration
+# Lesson 17 - Gradient and Pattern
 
-In this lesson, we'll explore how to implement multi-user collaborative editing functionality. We'll introduce several core concepts and technologies, including history records, Local-first, and CRDT.
+In this lesson, we'll explore how to implement gradients and repeating patterns.
 
-## CRDT {#crdt}
+-   Use CanvasGradient to implement gradients
+    -   Imperative. Create textures using the Device API
+    -   Declarative. Supports CSS gradient syntax: `linear-gradient`, `radial-gradient`, `conic-gradient`
+    -   Use Shoelace to implement gradient configuration panel
+-   Use Shader to implement Mesh Gradient
+    -   Simulate random
+    -   Value Noise and Gradient Noise
+    -   Voronoi, FBM and Domain Warping
+-   Export SVG
+-   Use CanvasPattern to implement repeating patterns
 
-What is CRDT? The following introduction comes from [What are CRDTs]. The collaborative features of Google Docs / Figma / Tiptap are all implemented based on it. This article also compares the characteristics of CRDT and OT in detail:
+## Use CanvasGradient {#canvas-gradient}
 
-> CRDT (conflict-free replicated data type) is a data structure that can be replicated across multiple computers in a network, where replicas can be updated independently and in parallel, without the need for coordination between replicas, and with a guarantee that no conflicts will occur.
+We can use the [CanvasGradient] API to create various gradient effects, which can then be consumed as textures. We'll introduce both imperative and declarative implementations.
 
-The following image from [What are CRDTs] shows that under the CAP theorem, CRDT doesn't provide "perfect consistency" but eventual consistency. Although real-time consistency cannot be guaranteed, when two nodes synchronize messages, they will return to a consistent state.
+### Creating Gradient Textures Imperatively {#create-gradient-texture}
 
-![CRDT satisfies A + P + Eventual Consistency; a good tradeoff under CAP](https://loro.dev/_next/image?url=%2F_next%2Fstatic%2Fmedia%2Fa4858e2a50bc1a2d79722060156e89b0cac5815cf25e8c67e409aa0926280cef.6a607785.png&w=3840&q=75)
-
-[How Figma's multiplayer technology works] explains why Figma didn't choose OT like Google Docs.
-
-> It's also worth noting that Figma's data structure isn't a single CRDT. Instead it's inspired by multiple separate CRDTs and uses them in combination to create the final data structure that represents a Figma document (described below).
-
-### Two Types of CRDTs {#two-types-of-crdts}
-
-There are two types of CRDTs: Op-based and State-based. The principle of the former is that if two users execute the same sequence of operations, the final state of the document should also be the same. To achieve this, each user maintains all operations executed on the data and synchronizes these operations with other users to ensure the final state. The latter requires transferring the entire state between nodes. While the former appears to require less bandwidth as it only transmits operation descriptions, it requires complex implementation to ensure idempotent operations and handle operation order issues. Comparatively, the latter's implementation is simpler.
-
-Now let's understand State-based CRDT through this tutorial series:
-
--   [An Interactive Intro to CRDTs]
--   [Building a Collaborative Pixel Art Editor with CRDTs]
--   [Making CRDTs 98% More Efficient]
-
-The tutorial provides a generic data structure for CRDT that includes a merge function that must satisfy associativity, commutativity, and idempotency. This merge function can be a Last-Writer Wins(LWW) Register, which compares its own timestamp with the input data's timestamp each time, and updates its own data if the input data's timestamp is larger:
+Taking linear gradient as an example, after creating a `<canvas>` and getting its context, [createLinearGradient] requires start and end points that define the gradient's direction. Then add multiple color stops, draw to the `<canvas>`, and use it as a source for creating textures:
 
 ```ts
-interface CRDT<T, S> {
-    value: T;
-    state: S;
-    merge(state: S): void;
-}
+const gradient = ctx.createLinearGradient(0, 0, 1, 0); // x1, y1, x2, y2
+
+gradient.addColorStop(0, 'red');
+gradient.addColorStop(1, 'blue');
+
+ctx.fillStyle = gradient;
+ctx.fillRect(0, 0, 256, 1);
 ```
 
-Key-value style sheets are well-suited for using LWW Register. [Designing Data Structures for Collaborative Apps] introduces the `{bold: true}` style used by the Quill editor.
-
-More helpful for our scenario is [How Figma's multiplayer technology works], where Figma's CTO introduces the DOM-like tree structure (scene graph) used internally. Each object has an ID and a set of property values, which can be seen as a two-level mapping: `Map<ObjectID, Map<Property, Value>>`. Different merge strategies are adopted when handling object properties, object addition/deletion, order, and other issues:
-
--   Modifying the same property of an object. For example, when two users modify the property value of the same text object to AB and BC respectively, Figma won't use a merge algorithm to get ABC as the result, but depends on when the server receives the messages.
--   Object addition/deletion. Creating objects directly uses LWW Register. The difference from the CRDT model is in the behavior when deleting objects - Figma's server doesn't save the properties of deleted objects but lets the client handle storage for potential undo operations.
--   Scene graph structure changes. Child nodes reference parent node IDs through properties, and positions in the node list are implemented using Fractional indexing. The advantage is that changing position only requires updating one value, see: [Realtime editing of ordered sequences]. One defect of this solution, interleaving, is also not considered.
-
-### Local-first Software {#local-first-software}
-
-[Local-first software - You own your data, in spite of the cloud]
-
-> In this article we propose "local-first software": a set of principles for software that enables both collaboration and ownership for users. Local-first ideals include the ability to work offline and collaborate across multiple devices, while also improving the security, privacy, long-term preservation, and user control of data.
-
-The following image from [The past, present, and future of local-first] shows that this software development and data management philosophy of Local first can also be implemented based on CRDT.
-
-![History of local-first](/local-first-history.png)
-
-[How Figma's multiplayer technology works]
-
-> Figma lets you go offline for an arbitrary amount of time and continue editing. When you come back online, the client downloads a fresh copy of the document, reapplies any offline edits on top of this latest state, and then continues syncing updates over a new WebSocket connection.
-
-Rich text editors and code editors also support this, see [TipTap offline support] and [The Full Spectrum of Collaboration].
-
-### Implementation of CRDTs {#implementation-of-crdts}
-
-Y.js and its ports to other languages are undoubtedly the most famous CRDT implementations. The following text is from <https://tiptap.dev/docs/collaboration/getting-started/overview#about-yjs>
-
-> As a CRDT, Y.js ensures that the sequence of changes does not impact the final state of the document, similar to how Git operates with commits. This guarantees that all copies of the data remain consistent across different environments.
-
-Since we don't need to deal with merging text or rich text in collaborative states, we only need simple data structures to store the canvas state, such as [Y.Map]. Other CRDT implementations also provide similar APIs, for example:
-
--   Liveblocks provides `LiveObject/List/Map`, see: [Data Structures in Liveblocks]
--   Automerge provides [Simple Values], supporting all legal types in JSON, even including `Date`
--   Loro also provides [Map]
-
-Now let's refer to [Loro Excalidraw Example] and [dgmjs-plugin-yjs], using [BroadcastChannel]'s feature of supporting communication between multiple tabs under the same origin to simulate the effect of multiple users collaborating.
-
-## Implementation {#implementation}
-
-As mentioned earlier, the scene graph can be viewed as a "movable tree", with possible conflicts including three scenarios: addition, deletion, and movement. [Movable tree CRDTs and Loro's implementation] details Loro's implementation approach for these three scenarios. For instance, when deleting and moving the same node, both results are acceptable, depending on the order in which the server receives the messages. However, some operation scenarios may create cycles after synchronization, such as when two users perform `B -> C` and `C -> B` operations respectively, breaking the tree's structural definition.
-
-![Deletion and Movement of the Same Node](https://loro.dev/_next/image?url=%2F_next%2Fstatic%2Fmedia%2Fmove-delete-dark.17378273.png&w=3840&q=75)
+Create a texture object using the [Device] API, and finally pass it to the shape's `fill` property to complete the drawing.
 
 ```ts
-import { Loro, LoroTree, LoroTreeNode } from 'loro-crdt';
+// 0. Create gradient data
+const ramp = generateColorRamp({
+    colors: [
+        '#FF4818',
+        '#F7B74A',
+        '#FFF598',
+        '#91EABC',
+        '#2EA9A1',
+        '#206C7C',
+    ].reverse(),
+    positions: [0, 0.2, 0.4, 0.6, 0.8, 1.0],
+});
 
-let doc = new Loro();
-let tree: LoroTree = doc.getTree('tree');
-let root: LoroTreeNode = tree.createNode();
+// 1. Get canvas device
+const device = canvas.getDevice();
+
+// 2. Create texture object
+const texture = device.createTexture({
+    format: Format.U8_RGBA_NORM,
+    width: ramp.width,
+    height: ramp.height,
+    usage: TextureUsage.SAMPLED,
+});
+texture.setImageData([ramp.data]); // Pass the previously created <canvas> data to texture
+
+// 3. Pass the texture object to the shape's `fill` property
+rect.fill = { texture };
 ```
 
-<LoroCRDT />
+<Gradient />
 
-<br />
+However, we want to support declarative syntax to improve usability and facilitate serialization.
 
-<LoroCRDT />
+### Declarative CSS Gradient Syntax {#css-gradient-syntax}
 
-### fractional-indexing
-
-[Realtime editing of ordered sequences] introduces how Figma uses [fractional-indexing] to reflect element positions in the scene graph.
-
-![An example sequence of objects being edited](https://cdn.sanity.io/images/599r6htc/regionalized/dc3ac373a86b1d25629d651e2b75100dc3d9fbb9-1400x1144.png?w=804&q=75&fit=max&auto=format&dpr=2)
-
-Excalidraw also uses the same implementation:
+Following CSS gradient syntax, we can use [gradient-parser] to obtain structured results, which can then be used to call APIs like [createLinearGradient]:
 
 ```ts
-// @see https://github.com/excalidraw/excalidraw/blob/9ee0b8ffcbd3664a47748a93262860321a203821/packages/excalidraw/fractionalIndex.ts#L380
-import { generateNKeysBetween } from 'fractional-indexing';
-const fractionalIndices = generateNKeysBetween(
-    elements[lowerBoundIndex]?.index,
-    elements[upperBoundIndex]?.index,
-    indices.length,
-) as FractionalIndex[];
+rect.fill = 'linear-gradient(0deg, blue, green 40%, red)';
+rect.fill = 'radial-gradient(circle at center, red, blue, green 100%)';
 ```
 
-Loro's built-in Tree includes the Fractional Index algorithm, see: [Movable tree CRDTs and Loro's implementation].
+The parsing results are as follows:
 
-> We integrated the Fractional Index algorithm into Loro and combined it with the movable tree, making the child nodes of the movable tree sortable.
-
-### Listen to Scene Graph Changes {#listen-scene-graph-change}
-
-```tsx
-<Excalidraw
-    onChange={(elements) => {
-        const v = getVersion(elements);
-    }}
-/>
+```js eval code=false
+linearGradient = call(() => {
+    const { parseGradient } = Core;
+    return parseGradient('linear-gradient(0deg, blue, green 40%, red)');
+});
 ```
 
-### Apply Scene Graph Changes {#apply-scene-graph-change}
+```js eval code=false
+radialGradient = call(() => {
+    const { parseGradient } = Core;
+    return parseGradient(
+        'radial-gradient(circle at center, red, blue, green 100%)',
+    );
+});
+```
 
-Referring to [Excalidraw updateScene], we can also provide an `updateScene` method to update the scene graph.
+There are several common gradient types, and we currently support the first three:
+
+-   [linear-gradient] Supported by CSS and Canvas
+-   [radial-gradient] Supported by CSS and Canvas
+-   [conic-gradient] Supported by CSS and Canvas
+-   [repeating-linear-gradient] Supported by CSS, can be hacked with Canvas, see [How to make a repeating CanvasGradient]
+-   [repeating-radial-gradient] Supported by CSS
+-   [sweep-gradient] Supported in CanvasKit / Skia
+
+<DeclarativeGradient />
+
+Additionally, we support overlaying multiple gradients, for example:
 
 ```ts
-canvas.updateScene({ elements });
+rect.fill = `linear-gradient(217deg, rgba(255,0,0,.8), rgba(255,0,0,0) 70.71%),
+    linear-gradient(127deg, rgba(0,255,0,.8), rgba(0,255,0,0) 70.71%),
+    linear-gradient(336deg, rgba(0,0,255,.8), rgba(0,0,255,0) 70.71%)`;
 ```
 
-## History {#history}
+### Gradient Editor Panel {#gradient-editor}
 
-Referring to [Excalidraw HistoryEntry], we add a History class to manage undo and redo operations.
+Inspired by Figma's gradient editing panel, we've implemented a similar editor. You can trigger the editing panel by selecting a shape in the example above.
 
-```ts
-export class History {
-    #undoStack: HistoryStack = [];
-    #redoStack: HistoryStack = [];
+![Figma gradient panel](/figma-gradient-panel.png)
 
-    clear() {
-        this.#undoStack.length = 0;
-        this.#redoStack.length = 0;
+## Implementing Gradients with Mesh {#mesh-gradient}
+
+The gradients implemented based on Canvas and SVG have limited expressiveness and cannot display complex effects. Some design tools like Sketch / Figma have many Mesh-based implementations in their communities, such as:
+
+-   [Mesh gradients plugin for Sketch]
+-   [Mesh Gradient plugin for Figma]
+-   [Photo gradient plugin for Figma]
+-   [Noise & Texture plugin for Figma]
+
+We referenced some open-source implementations, some implemented in Vertex Shader, others in Fragment Shader. We chose the latter:
+
+-   [meshgradient]
+-   [Mesh gradient generator]
+-   [react-mesh-gradient]
+
+<MeshGradient />
+
+Due to WebGL1 GLSL100 syntax compatibility, we need to avoid using `switch`, otherwise we'll get errors like:
+
+> [!CAUTION]
+> ERROR: 0:78: 'switch' : Illegal use of reserved word
+
+Also, in `for` loops, we cannot use Uniform as the termination condition for `index`:
+
+> [!CAUTION]
+> ERROR: 0:87: 'i' : Loop index cannot be compared with non-constant expression
+
+Therefore, we can only use constant `MAX_POINTS` to limit loop iterations, similar to Three.js chunks handling light sources:
+
+```glsl
+#define MAX_POINTS 10
+
+for (int i = 0; i < MAX_POINTS; i++) {
+    if (i < int(u_PointsNum)) {
+        // ...
     }
 }
 ```
 
-### Undo and Redo {#undo-and-redo}
+Now let's dive into the details of Shaders. You can refer to [The Book of Shaders - Generative Design] to learn more details.
 
-The last section of [How Figma's multiplayer technology works] introduces Figma's implementation approach:
+### Random {#random}
 
-> This is why in Figma an undo operation modifies redo history at the time of the undo, and likewise a redo operation modifies undo history at the time of the redo.
+To implement noise effects, we need a random function. However, GLSL does not have a built-in `random` function, so we need to simulate this behavior. Since it's a simulation, for the same `random(x)`, we always get the same return value, so it's a pseudo-random number.
 
-## Extended Reading {#extended-reading}
+If we want to get a `random` function that returns a value between 0 and 1, we can use `y = fract(sin(x)*1.0);`, which only retains the decimal part.
 
--   [How Figma's multiplayer technology works]
--   [Movable tree CRDTs and Loro's implementation]
--   [Learn Yjs]
--   [CRDTs: The Hard Parts]
--   [An Interactive Intro to CRDTs]
--   [The Full Spectrum of Collaboration]
+![y = fract(sin(x)*1.0)](https://xiaoiver.github.io/assets/img/resized/480/tbs-rand1.png)
 
-[What are CRDTs]: https://loro.dev/docs/concepts/crdt
-[CRDTs: The Hard Parts]: https://www.youtube.com/watch?v=x7drE24geUw
-[Peritext - A CRDT for Rich-Text Collaboration]: https://www.inkandswitch.com/peritext/
-[Collaborative Text Editing with Eg-Walker]: https://www.youtube.com/watch?v=rjbEG7COj7o
-[Local-first software - You own your data, in spite of the cloud]: https://www.inkandswitch.com/local-first/
-[I was wrong. CRDTs are the future]: https://josephg.com/blog/crdts-are-the-future/
-[5000x faster CRDTs: An Adventure in Optimization]: https://josephg.com/blog/crdts-go-brrr/
-[Loro Excalidraw Example]: https://github.com/loro-dev/loro-excalidraw
-[Excalidraw HistoryEntry]: https://github.com/excalidraw/excalidraw/blob/master/packages/excalidraw/history.ts#L160-L164
-[automerge wasm]: https://automerge.org/blog/2024/08/23/wasm-packaging/
-[The past, present, and future of local-first]: https://speakerdeck.com/ept/the-past-present-and-future-of-local-first
-[TipTap offline support]: https://tiptap.dev/docs/guides/offline-support
-[An Interactive Intro to CRDTs]: https://jakelazaroff.com/words/an-interactive-intro-to-crdts/
-[Building a Collaborative Pixel Art Editor with CRDTs]: https://jakelazaroff.com/words/building-a-collaborative-pixel-art-editor-with-crdts/
-[Making CRDTs 98% More Efficient]: https://jakelazaroff.com/words/making-crdts-98-percent-more-efficient/
-[Learn Yjs]: https://learn.yjs.dev/
-[dgmjs-plugin-yjs]: https://github.com/dgmjs/dgmjs/tree/main/packages/dgmjs-plugin-yjs
-[Designing Data Structures for Collaborative Apps]: https://mattweidner.com/2022/02/10/collaborative-data-design.html
-[The Full Spectrum of Collaboration]: https://zed.dev/blog/full-spectrum-of-collaboration
-[Collaborative Whiteboard Example in Liveblocks]: https://liveblocks.io/examples/collaborative-whiteboard
-[Data Structures in Liveblocks]: https://liveblocks.io/docs/api-reference/liveblocks-client#Data-structures
-[Y.Map]: https://docs.yjs.dev/api/shared-types/y.map
-[Simple Values]: https://automerge.org/docs/documents/values/
-[Map]: https://loro.dev/docs/tutorial/map
-[How Figma's multiplayer technology works]: https://www.figma.com/blog/how-figmas-multiplayer-technology-works/
-[Realtime editing of ordered sequences]: https://www.figma.com/blog/realtime-editing-of-ordered-sequences/#fractional-indexing
-[BroadcastChannel]: https://developer.mozilla.org/en-US/docs/Web/API/BroadcastChannel
-[Excalidraw updateScene]: https://docs.excalidraw.com/docs/@excalidraw/excalidraw/api/props/excalidraw-api#updatescene
-[fractional-indexing]: https://github.com/rocicorp/fractional-indexing
-[Movable tree CRDTs and Loro's implementation]: https://loro.dev/blog/movable-tree
+Observing this function, we can find that if we reduce the period to be extremely short, the values corresponding to the same x can be considered approximately random (pseudo-random). The specific method is to increase the coefficient, for example `y = fract(sin(x)*10.0);`.
+
+![y = fract(sin(x)*10.0)](https://xiaoiver.github.io/assets/img/resized/480/tbs-rand2.png)
+
+Further increasing to 100000, we can no longer distinguish the waveform of `sin`. It's important to note again that unlike `Math.random()` in JS, this method is deterministic random, and its essence is actually a hash function.
+
+We need to apply the `random` function to a 2D scene, where the input changes from a single `x` to an `xy` coordinate. We need to map the 2D vector to a single value. The book of shaders uses the `dot` built-in function to multiply a specific vector, but it doesn't explain why.
+
+```glsl
+float random (vec2 st) {
+    return fract(sin(
+        dot(st.xy,vec2(12.9898,78.233)))*
+        43758.5453123);
+}
+```
+
+After searching online, we found this answer [What's the origin of this GLSL rand() one-liner?]。It's said that it originally came from a paper, and there's no explanation for why the three Magic Numbers are chosen. Anyway, the generated effect is good, similar to the "snow screen" of a black and white TV. You can see this effect by increasing the `NoiseRatio` in the example above.
+
+### Value noise {#value-noise}
+
+Using our defined `random` function, and `floor`, we can get a step-like function.
+
+```glsl
+float i = floor(x);
+y = random(i);
+```
+
+![step](https://xiaoiver.github.io/assets/img/webgl/tbs-noise1.png)
+
+If we want to interpolate between adjacent "steps", we can use a linear function or a smooth interpolation function `smoothstep`:
+
+```glsl
+float i = floor(x);
+float f = fract(x);
+y = mix(rand(i), rand(i + 1.0), f);
+// y = mix(rand(i), rand(i + 1.0), smoothstep(0.,1.,f));
+```
+
+![smoothstep](https://xiaoiver.github.io/assets/img/webgl/tbs-noise2.png)
+
+In one dimension, we chose `i+1`, and in two dimensions, we can choose the 4 adjacent points. The corresponding mixing function also needs to be modified. The mixing function in the original text is the expanded form, which is a bit difficult to understand, but the benefit is that it calls `mix` twice less.
+
+```glsl
+float noise (in vec2 st) {
+    vec2 i = floor(st);
+    vec2 f = fract(st);
+
+    // Four corners in 2D of a tile
+    float a = random(i);
+    float b = random(i + vec2(1.0, 0.0));
+    float c = random(i + vec2(0.0, 1.0));
+    float d = random(i + vec2(1.0, 1.0));
+
+    vec2 u = smoothstep(0.,1.,f);
+
+    // Mix 4 coorners percentages
+    return mix(a, b, u.x) +
+            (c - a)* u.y * (1.0 - u.x) +
+            (d - b) * u.x * u.y;
+
+    // It's actually the expanded form below
+    return mix( mix( a, b , u.x),
+                mix( c, d, u.x), u.y);
+}
+```
+
+The above method of generating noise is interpolation between random values, so it's called "value noise". Carefully observing it, we can find that this method generates results with obvious blocky traces, such as the left part in the example below.
+
+<iframe width="640" height="360" frameborder="0" src="https://www.shadertoy.com/embed/lsf3WH?gui=true&t=10&paused=true&muted=false" allowfullscreen></iframe>
+
+### Gradient noise {#gradient-noise}
+
+> In 1985, Ken Perlin developed another noise algorithm called Gradient Noise. Ken solved how to insert random gradients (gradients, gradients) instead of a fixed value. These gradient values come from a two-dimensional random function, which returns a direction (a vector in vec2 format) instead of a single value (float format).
+
+The specific algorithm is as follows, and the biggest difference from value noise is the use of `dot` to interpolate the four directions:
+
+```glsl
+float noise( in vec2 st ) {
+    vec2 i = floor(st);
+    vec2 f = fract(st);
+
+ vec2 u = smoothstep(0., 1., f);
+
+    return mix( mix( dot( random( i + vec2(0.0,0.0) ), f - vec2(0.0,0.0) ),
+                     dot( random( i + vec2(1.0,0.0) ), f - vec2(1.0,0.0) ), u.x),
+                mix( dot( random( i + vec2(0.0,1.0) ), f - vec2(0.0,1.0) ),
+                     dot( random( i + vec2(1.0,1.0) ), f - vec2(1.0,1.0) ), u.x), u.y);
+}
+```
+
+> For Ken Perlin, the success of his algorithm was far from enough. He felt it could be better. At the Siggraph in 2001, he showed "simplex noise".
+
+The specific implementation can be found in: [2d-snoise-clear], and there's also a 3D version.
+
+### Voronoi noise {#voronoi-noise}
+
+We already learned how to divide space into small grid areas in the "Drawing Pattern" section. We can generate a random feature point for each grid, and for a fragment within a grid, we only need to calculate the minimum distance to the feature points in the 8 adjacent grids, which greatly reduces the amount of computation. This is the main idea of Steven Worley's paper.
+
+The random feature points use the `random` method we learned earlier, since it's deterministic random, the feature points within each grid are fixed.
+
+```glsl
+// Divide the grid
+vec2 i_st = floor(st);
+vec2 f_st = fract(st);
+float m_dist = 1.;
+// 8 directions
+for (int y= -1; y <= 1; y++) {
+    for (int x= -1; x <= 1; x++) {
+        // Current adjacent grid
+        vec2 neighbor = vec2(float(x),float(y));
+        // Feature point in adjacent grid
+        vec2 point = random2(i_st + neighbor);
+        // Distance from fragment to feature point
+        vec2 diff = neighbor + point - f_st;
+        float dist = length(diff);
+        // Save the minimum value
+        m_dist = min(m_dist, dist);
+    }
+}
+color += m_dist;
+```
+
+<Voronoi />
+
+The voronoi noise implementation based on this idea can be found in [lygia/generative].
+
+### fBM {#fbm}
+
+See [Inigo Quilez's fBM], the `noise` can be value noise or gradient noise:
+
+> So we are going to use some standard fBM (Fractional Brownian Motion) which is a simple sum of noise waves with increasing frequencies and decreasing amplitudes.
+
+The original text also explains in detail the reason for using `gain = 0.5`, which corresponds to `H = 1`. `H` reflects the "self-similarity" of the curve, used in procedural generation to simulate natural shapes like clouds, mountains, and oceans:
+
+$$ G=2^{-H} $$
+
+```glsl
+const int octaves = 6;
+float lacunarity = 2.0;
+float gain = 0.5;
+
+float amplitude = 0.5;
+float frequency = 1.;
+
+for (int i = 0; i < octaves; i++) {
+ y += amplitude * noise(frequency*x);
+ frequency *= lacunarity;
+ amplitude *= gain;
+}
+```
+
+<FractalBrownianMotion />
+
+See [Inigo Quilez's Domain Warping] and [Mike Bostock's Domain Warping]. Call `fbm` recursively:
+
+```glsl
+f(p) = fbm( p )
+f(p) = fbm( p + fbm( p ) )
+f(p) = fbm( p + fbm( p + fbm( p )) )
+```
+
+<DomainWarping />
+
+## Exporting Gradients to SVG {#export-gradient-to-svg}
+
+### Linear Gradient {#linear-gradient}
+
+SVG provides [linearGradient] and [radialGradient], but their supported attributes are quite different from [CanvasGradient].
+
+### Conic Gradient {#conic-gradient}
+
+Refer to [SVG angular gradient] for an approximate implementation. The [CSS conic-gradient() polyfill] approach is to render using Canvas and export as dataURL, then reference it with `<image>`.
+
+### Multiple Gradient Overlay {#multiple-gradient-overlay}
+
+For multiple gradient overlays, in Canvas API, you can set `fillStyle` multiple times for overlaying. In declarative SVG, you can use multiple `<feBlend>` to achieve this.
+
+## Implementing Patterns {#pattern}
+
+We can use Canvas API's [createPattern] to create patterns, supporting the following syntax:
+
+```ts
+export interface Pattern {
+    image: string | CanvasImageSource;
+    repetition?: 'repeat' | 'repeat-x' | 'repeat-y' | 'no-repeat';
+    transform?: string;
+}
+
+rect.fill = {
+    image,
+    repetition: 'repeat',
+};
+```
+
+The string-based `transform` needs to be parsed into `mat3`, and then passed to [setTransform].
+
+<Pattern />
+
+[CanvasGradient]: https://developer.mozilla.org/en-US/docs/Web/API/CanvasGradient
+[Device]: /reference/canvas#getdevice
+[linear-gradient]: https://developer.mozilla.org/en-US/docs/Web/CSS/gradient/linear-gradient
+[radial-gradient]: https://developer.mozilla.org/en-US/docs/Web/CSS/gradient/radial-gradient
+[repeating-linear-gradient]: https://developer.mozilla.org/en-US/docs/Web/CSS/gradient/repeating-linear-gradient
+[repeating-radial-gradient]: https://developer.mozilla.org/en-US/docs/Web/CSS/gradient/repeating-radial-gradient
+[conic-gradient]: https://developer.mozilla.org/en-US/docs/Web/CSS/gradient/conic-gradient
+[sweep-gradient]: https://stackoverflow.com/questions/44912075/sweep-gradient-what-it-is-and-its-examples
+[gradient-parser]: https://github.com/rafaelcaricio/gradient-parser
+[Mesh gradients plugin for Sketch]: https://www.meshgradients.com/
+[Mesh Gradient plugin for Figma]: https://www.figma.com/community/plugin/958202093377483021/mesh-gradient
+[Photo gradient plugin for Figma]: https://www.figma.com/community/plugin/1438020299097238961/photo-gradient
+[Noise & Texture plugin for Figma]: https://www.figma.com/community/plugin/1138854718618193875
+[meshgradient]: https://meshgradient.com/
+[Mesh gradient generator]: https://kevingrajeda.github.io/meshGradient/
+[react-mesh-gradient]: https://github.com/JohnnyLeek1/React-Mesh-Gradient
+[Inigo Quilez's fBM]: https://iquilezles.org/articles/fbm/
+[Inigo Quilez's Domain Warping]: https://iquilezles.org/articles/warp/
+[Mike Bostock's Domain Warping]: https://observablehq.com/@mbostock/domain-warping
+[linearGradient]: https://developer.mozilla.org/en-US/docs/Web/SVG/Element/linearGradient
+[radialGradient]: https://developer.mozilla.org/en-US/docs/Web/SVG/Element/radialGradient
+[createLinearGradient]: https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/createLinearGradient
+[SVG angular gradient]: https://stackoverflow.com/questions/2465405/svg-angular-gradient
+[How to make a repeating CanvasGradient]: https://stackoverflow.com/questions/56398519/how-to-make-a-repeating-canvasgradient
+[CSS conic-gradient() polyfill]: https://projects.verou.me/conic-gradient/
+[createPattern]: https://developer.mozilla.org/zh-CN/docs/Web/API/CanvasRenderingContext2D/createPattern
+[setTransform]: https://developer.mozilla.org/zh-CN/docs/Web/API/CanvasPattern/setTransform
+[What's the origin of this GLSL rand() one-liner?]: https://stackoverflow.com/questions/12964279/whats-the-origin-of-this-glsl-rand-one-liner
+[The Book of Shaders - Generative Design]: https://thebookofshaders.com/10/
+[2d-snoise-clear]: https://thebookofshaders.com/edit.php#11/2d-snoise-clear.frag
+[lygia/generative]: https://lygia.xyz/generative

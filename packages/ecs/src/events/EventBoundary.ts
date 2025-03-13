@@ -2,7 +2,7 @@ import EventEmitter from 'eventemitter3';
 import { FederatedMouseEvent } from './FederatedMouseEvent';
 import { FederatedPointerEvent } from './FederatedPointerEvent';
 import { FederatedWheelEvent } from './FederatedWheelEvent';
-import type { Shape } from '../shapes/Shape';
+// import type { any } from '../shapes/any';
 import type {
   EmitterListeners,
   Picker,
@@ -75,7 +75,7 @@ export class EventBoundary {
    * The root event-target residing below the event boundary.
    * All events are dispatched trickling down and bubbling up to this `rootTarget`.
    */
-  rootTarget: Shape;
+  rootTarget: any;
 
   /**
    * Emits events after they were dispatched into the scene graph.
@@ -144,7 +144,7 @@ export class EventBoundary {
   /**
    * @param rootTarget - The holder of the event boundary.
    */
-  constructor(rootTarget?: Shape) {
+  constructor(rootTarget?: any) {
     this.rootTarget = rootTarget;
 
     // this.hitTestFn = this.hitTestFn.bind(this);
@@ -237,7 +237,7 @@ export class EventBoundary {
    * @param x - The x coordinate of the event.
    * @param y - The y coordinate of the event.
    */
-  hitTest(x: number, y: number): Shape {
+  hitTest(x: number, y: number): any {
     return this.#pickHandler(x, y);
   }
 
