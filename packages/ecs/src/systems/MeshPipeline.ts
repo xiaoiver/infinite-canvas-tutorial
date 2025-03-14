@@ -11,24 +11,21 @@ import { SetupDevice } from './SetupDevice';
 import { PrepareViewUniforms } from './PrepareViewUniforms';
 import {
   CheckboardStyle,
-  Children,
   Circle,
   ComputedPoints,
   ComputedRough,
   ComputedTextMetrics,
   DropShadow,
   Ellipse,
-  FillSolid,
+  fillEnum,
   GlobalRenderOrder,
   GlobalTransform,
   Grid,
   InnerShadow,
   Opacity,
-  Parent,
   Path,
   Polyline,
   Rect,
-  Renderable,
   Rough,
   Stroke,
   Text,
@@ -47,13 +44,32 @@ export class MeshPipeline extends System {
 
   private readonly theme = this.singleton.read(Theme);
   private readonly grid = this.singleton.read(Grid);
-
-  private windowResized = this.query(
-    (q) => q.changed.with(WindowResized).trackWrites,
-  );
+  private readonly windowResized = this.singleton.write(WindowResized);
 
   private grids = this.query((q) => q.addedOrChanged.with(Grid).trackWrites);
   private themes = this.query((q) => q.addedOrChanged.with(Theme).trackWrites);
+
+  private fills = this.query(
+    (q) => q.addedChangedOrRemoved.withAny(fillEnum).trackWrites,
+  );
+  private strokes = this.query(
+    (q) => q.addedChangedOrRemoved.with(Stroke).trackWrites,
+  );
+  private opacities = this.query(
+    (q) => q.addedChangedOrRemoved.with(Opacity).trackWrites,
+  );
+  private innerShadows = this.query(
+    (q) => q.addedChangedOrRemoved.with(InnerShadow).trackWrites,
+  );
+  private dropShadows = this.query(
+    (q) => q.addedChangedOrRemoved.with(DropShadow).trackWrites,
+  );
+  private wireframes = this.query(
+    (q) => q.addedChangedOrRemoved.with(Wireframe).trackWrites,
+  );
+  private roughs = this.query(
+    (q) => q.addedChangedOrRemoved.with(Rough).trackWrites,
+  );
 
   #renderPass: RenderPass;
   /**
@@ -79,7 +95,6 @@ export class MeshPipeline extends System {
           Path,
           ComputedPoints,
           GlobalTransform,
-          FillSolid,
           Opacity,
           Stroke,
           InnerShadow,
@@ -153,23 +168,31 @@ export class MeshPipeline extends System {
 
   execute() {
     let needRender = false;
-    this.windowResized.changed.forEach((entity) => {
+    const { width, height } = this.windowResized;
+    if (width > 0 && height > 0) {
       needRender = true;
+    }
 
-      console.log('window resized');
-    });
-    this.themes.addedOrChanged.forEach((entity) => {
-      console.log('theme added or changed', this.theme.mode);
-      needRender = true;
-    });
-    this.grids.addedOrChanged.forEach((entity) => {
-      console.log('grid added or changed', this.theme.mode);
-      needRender = true;
-    });
+    // Style changed.
+    (this.fills.addedChangedOrRemoved.length ||
+      this.strokes.addedChangedOrRemoved.length ||
+      this.opacities.addedChangedOrRemoved.length ||
+      this.innerShadows.addedChangedOrRemoved.length ||
+      this.dropShadows.addedChangedOrRemoved.length ||
+      this.wireframes.addedChangedOrRemoved.length ||
+      this.roughs.addedChangedOrRemoved.length ||
+      this.themes.addedOrChanged.length ||
+      this.grids.addedOrChanged.length) &&
+      (needRender = true);
 
     if (needRender) {
       console.log('render');
       this.renderFrame();
+
+      Object.assign(this.windowResized, {
+        width: 0,
+        height: 0,
+      });
     }
   }
 

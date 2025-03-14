@@ -426,18 +426,24 @@ export class SmoothPolyline extends Drawcall {
       : { value: null };
     const { r: fr, g: fg, b: fb, opacity: fo } = parseColor(fill);
 
-    const { stroke, width, alignment, miterlimit, dasharray, dashoffset } =
-      shape.has(Stroke)
-        ? shape.read(Stroke)
-        : {
-            stroke: null,
-            width: 0,
-            alignment: 'center',
-            miterlimit: 10,
-            dasharray: [],
-            dashoffset: 0,
-          };
-    const { r: sr, g: sg, b: sb, opacity: so } = parseColor(stroke);
+    const {
+      color: strokeColor,
+      width,
+      alignment,
+      miterlimit,
+      dasharray,
+      dashoffset,
+    } = shape.has(Stroke)
+      ? shape.read(Stroke)
+      : {
+          color: null,
+          width: 0,
+          alignment: 'center',
+          miterlimit: 10,
+          dasharray: [],
+          dashoffset: 0,
+        };
+    const { r: sr, g: sg, b: sb, opacity: so } = parseColor(strokeColor);
 
     const { opacity, strokeOpacity, fillOpacity } = shape.has(Opacity)
       ? shape.read(Opacity)

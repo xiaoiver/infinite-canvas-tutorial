@@ -1,5 +1,4 @@
 import { component, field, Type, World } from '@lastolivegames/becsy';
-
 import { Texture } from '@antv/g-device-api';
 import { type Pattern } from '../../utils';
 
@@ -10,7 +9,7 @@ import { type Pattern } from '../../utils';
  * Instead, we recommend naming the sole field value so the code becomes entity.read(Acceleration).value instead.
  */
 
-const fillEnum = World.defineEnum('Fill');
+export const fillEnum = World.defineEnum('Fill');
 export
 @component(fillEnum)
 class FillSolid {

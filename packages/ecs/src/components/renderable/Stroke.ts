@@ -1,6 +1,4 @@
-import { field, Type, World } from '@lastolivegames/becsy';
-
-// const strokeEnum = World.defineEnum('Stroke');
+import { field, Type } from '@lastolivegames/becsy';
 
 export class Stroke {
   /**
@@ -10,7 +8,7 @@ export class Stroke {
    * @see https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/stroke
    */
   @field({ type: Type.dynamicString(20), default: 'none' })
-  declare stroke: string;
+  declare color: string;
 
   /**
    * It is a presentation attribute defining the width of the stroke to be applied to the shape.
@@ -90,7 +88,7 @@ export class Stroke {
   @field({ type: Type.float32, default: 0 }) declare dashoffset: number;
 
   constructor(props?: Partial<Stroke>) {
-    this.stroke = props?.stroke;
+    this.color = props?.color;
     this.width = props?.width;
     this.alignment = props?.alignment;
     this.linecap = props?.linecap;

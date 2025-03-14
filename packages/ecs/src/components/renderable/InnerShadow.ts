@@ -1,5 +1,4 @@
-import { field } from '@lastolivegames/becsy';
-import { Type } from '@lastolivegames/becsy';
+import { field, Type } from '@lastolivegames/becsy';
 
 export class InnerShadow {
   /**

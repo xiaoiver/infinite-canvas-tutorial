@@ -10,7 +10,6 @@ import {
   // Custom as CustomDrawcall,
 } from '../drawcalls';
 import {
-  Children,
   Circle,
   ComputedPoints,
   ComputedRough,
@@ -21,7 +20,6 @@ import {
   GlobalTransform,
   InnerShadow,
   Opacity,
-  Parent,
   Path,
   Polyline,
   Rect,
@@ -29,6 +27,7 @@ import {
   Rough,
   Stroke,
   Text,
+  Wireframe,
 } from '../components';
 import { SetupDevice } from './SetupDevice';
 
@@ -126,6 +125,7 @@ export class BatchManager extends System {
           ComputedPoints,
           GlobalTransform,
           FillSolid,
+          Wireframe,
           Opacity,
           Stroke,
           InnerShadow,

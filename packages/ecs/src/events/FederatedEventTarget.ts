@@ -70,34 +70,30 @@ export type Cursor =
  * @memberof events
  */
 export interface FederatedOptions {
-  /**
-   * It sets under what circumstances (if any) a particular graphic element can become the target of pointer events.
-   * @see https://developer.mozilla.org/en-US/docs/Web/CSS/pointer-events
-   */
-  pointerEvents: PointerEvents;
-
-  /**
-   * It sets the mouse cursor, if any, to show when the mouse pointer is over an element.
-   * @see https://developer.mozilla.org/en-US/docs/Web/CSS/cursor
-   */
-  cursor: Cursor;
-
-  /**
-   * Interaction shape. Children will be hit first, then this shape will be checked.
-   * Setting this will cause this shape to be checked in hit tests rather than the container's bounds.
-   */
-  hitArea: Rectangle | undefined;
-
-  /**
-   * Whether this object is draggable. Used in {@link DragAndDrop} plugin.
-   * @see https://developer.mozilla.org/en-US/docs/Web/HTML/Global_attributes/draggable
-   */
-  draggable: boolean;
-
-  /**
-   * Whether this object is droppable. Used in {@link DragAndDrop} plugin.
-   */
-  droppable: boolean;
+  // /**
+  //  * It sets under what circumstances (if any) a particular graphic element can become the target of pointer events.
+  //  * @see https://developer.mozilla.org/en-US/docs/Web/CSS/pointer-events
+  //  */
+  // pointerEvents: PointerEvents;
+  // /**
+  //  * It sets the mouse cursor, if any, to show when the mouse pointer is over an element.
+  //  * @see https://developer.mozilla.org/en-US/docs/Web/CSS/cursor
+  //  */
+  // cursor: Cursor;
+  // /**
+  //  * Interaction shape. Children will be hit first, then this shape will be checked.
+  //  * Setting this will cause this shape to be checked in hit tests rather than the container's bounds.
+  //  */
+  // hitArea: Rectangle | undefined;
+  // /**
+  //  * Whether this object is draggable. Used in {@link DragAndDrop} plugin.
+  //  * @see https://developer.mozilla.org/en-US/docs/Web/HTML/Global_attributes/draggable
+  //  */
+  // draggable: boolean;
+  // /**
+  //  * Whether this object is droppable. Used in {@link DragAndDrop} plugin.
+  //  */
+  // droppable: boolean;
 }
 
 /**
@@ -108,17 +104,17 @@ export interface FederatedEventTarget
   extends EventEmitter,
     EventTarget,
     FederatedOptions {
-  pointerEvents: PointerEvents;
-  hitArea: Rectangle;
-  cursor: Cursor;
-  draggable: boolean;
-  droppable: boolean;
+  // pointerEvents: PointerEvents;
+  // hitArea: Rectangle;
+  // cursor: Cursor;
+  // draggable: boolean;
+  // droppable: boolean;
 
-  /** The parent of this event target. */
-  readonly parent?: FederatedEventTarget;
+  // /** The parent of this event target. */
+  // readonly parent?: FederatedEventTarget;
 
-  /** The children of this event target. */
-  readonly children?: ReadonlyArray<FederatedEventTarget>;
+  // /** The children of this event target. */
+  // readonly children?: ReadonlyArray<FederatedEventTarget>;
 
   /** Remove all listeners, or those of the specified event. */
   removeAllListeners(event?: string | symbol): this;

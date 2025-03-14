@@ -338,10 +338,14 @@ export class Mesh extends Drawcall {
       ? shape.read(Opacity)
       : { opacity: 1, strokeOpacity: 1, fillOpacity: 1 };
 
-    const { stroke, width, alignment } = shape.has(Stroke)
+    const {
+      color: strokeColor,
+      width,
+      alignment,
+    } = shape.has(Stroke)
       ? shape.read(Stroke)
-      : { stroke: null, width: 0, alignment: 'center' };
-    const { r: sr, g: sg, b: sb, opacity: so } = parseColor(stroke);
+      : { color: null, width: 0, alignment: 'center' };
+    const { r: sr, g: sg, b: sb, opacity: so } = parseColor(strokeColor);
 
     const u_FillColor = [fr / 255, fg / 255, fb / 255, fo];
     const u_StrokeColor = [sr / 255, sg / 255, sb / 255, so];

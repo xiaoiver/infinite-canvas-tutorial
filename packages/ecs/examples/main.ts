@@ -25,6 +25,7 @@ import {
   Path,
   Rough,
   Text,
+  Wireframe,
 } from '../src';
 
 const $canvas = document.getElementById('canvas') as HTMLCanvasElement;
@@ -69,10 +70,9 @@ class StartUpSystem extends System {
         Path,
         Rough,
         Text,
+        Wireframe,
       ).write,
   );
-
-  // w = this.query((q) => q.changed.with(WindowResized).trackWrites);
 
   initialize(): void {
     Object.assign(this.singleton.write(CanvasConfig), {
@@ -81,8 +81,6 @@ class StartUpSystem extends System {
       height: window.innerHeight,
       devicePixelRatio: window.devicePixelRatio,
     });
-
-    const camera = this.commands.spawn(new Camera());
 
     const parent = this.commands.spawn(
       new Transform(),
@@ -95,11 +93,12 @@ class StartUpSystem extends System {
       new Renderable(),
       new FillSolid('green'),
       new Stroke({
-        stroke: 'black',
+        color: 'black',
         width: 10,
         alignment: 'center',
         dasharray: [10, 10],
       }),
+      new Wireframe(true),
       new Circle({ cx: 0, cy: 0, r: 50 }),
     );
     parent.appendChild(child);
@@ -124,7 +123,7 @@ class StartUpSystem extends System {
       }),
       new Renderable(),
       new Stroke({
-        stroke: 'black',
+        color: 'black',
         width: 10,
         alignment: 'center',
         dasharray: [10, 10],
@@ -145,12 +144,12 @@ class StartUpSystem extends System {
       }),
       new Renderable(),
       new Stroke({
-        stroke: 'black',
+        color: 'black',
         width: 10,
         alignment: 'center',
         dasharray: [10, 10],
       }),
-      new FillSolid('blue'),
+      new FillSolid('yellow'),
       new Path({
         d: 'M 0 0 L 100 100 L 200 0 Z',
       }),
@@ -170,7 +169,7 @@ class StartUpSystem extends System {
         offsetY: 10,
       }),
       new Stroke({
-        stroke: 'black',
+        color: 'black',
         width: 10,
       }),
       new Rough(),
@@ -183,7 +182,7 @@ class StartUpSystem extends System {
       new Renderable(),
       new FillSolid('green'),
       new Stroke({
-        stroke: 'black',
+        color: 'black',
         width: 10,
       }),
       new Rough(),
@@ -209,6 +208,7 @@ class StartUpSystem extends System {
     childEntity = child.id().hold();
     grandchildEntity = grandchild.id().hold();
     polylineEntity = polyline.id().hold();
+
     this.commands.execute();
 
     Object.assign(parentEntity.write(Transform), {
@@ -217,7 +217,13 @@ class StartUpSystem extends System {
     childEntity.write(Transform).scale.x = 1;
     grandchildEntity.write(Transform).scale.x = 1;
 
+    parent.addEventListener('pointerdown', (e) => {
+      console.log('pointerdown', e);
+    });
+
     window.addEventListener('resize', () => {
+      // grandchildEntity.write(FillSolid).value = 'orange';
+
       resize(window.innerWidth, window.innerHeight);
 
       Object.assign(this.singleton.write(WindowResized), {
@@ -228,9 +234,6 @@ class StartUpSystem extends System {
   }
 
   execute(): void {
-    // this.w.changed.forEach((entity) => {
-    //   console.log(entity.read(WindowResized));
-    // });
     // expect(parent_entity?.read(Parent).children).toBe([child_entity]);
   }
 }

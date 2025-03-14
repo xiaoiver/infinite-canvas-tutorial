@@ -10,6 +10,9 @@ import type {
 } from './EventBoundaryTypes';
 import type { FederatedEvent } from './FederatedEvent';
 import type { Cursor, FederatedEventTarget } from './FederatedEventTarget';
+import { EntityCommands } from '../commands/EntityCommands';
+import { Children, Parent } from '../components';
+import { Entity } from '@lastolivegames/becsy';
 
 // The maximum iterations used in propagation. This prevent infinite loops.
 const PROPAGATION_LIMIT = 2048;
@@ -213,9 +216,9 @@ export class EventBoundary {
    * @param e - The event to map.
    */
   mapEvent(e: FederatedEvent): void {
-    if (!this.rootTarget) {
-      return;
-    }
+    // if (!this.rootTarget) {
+    //   return;
+    // }
 
     const mappers = this.mappingTable[e.type];
 
@@ -320,21 +323,22 @@ export class EventBoundary {
    * {@code target}. The last element in the path is {@code target}.
    * @param target - The target to find the propagation path to.
    */
-  propagationPath(target: FederatedEventTarget): FederatedEventTarget[] {
+  propagationPath(target: Entity): Entity[] {
     const propagationPath = [target];
+    const targetParent = target.read(Children).parent;
 
     for (
       let i = 0;
-      i < PROPAGATION_LIMIT && target !== this.rootTarget && target.parent;
+      i < PROPAGATION_LIMIT && target !== this.rootTarget && targetParent;
       i++
     ) {
-      if (!target.parent) {
+      if (!targetParent) {
         throw new Error('Cannot find propagation path to disconnected target');
       }
 
-      propagationPath.push(target.parent);
+      propagationPath.push(targetParent);
 
-      target = target.parent;
+      target = targetParent;
     }
 
     propagationPath.reverse();

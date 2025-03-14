@@ -18,18 +18,20 @@ import {
   Texture,
   StencilOp,
 } from '@antv/g-device-api';
-import { isString } from '@antv/util';
+import { mat3 } from 'gl-matrix';
 import { Entity } from '@lastolivegames/becsy';
-import * as d3 from 'd3-color';
 import { Drawcall, ZINDEX_FACTOR } from './Drawcall';
 import { vert, frag, Location } from '../shaders/sdf';
-import { isPattern, paddingMat3, parseColor } from '../utils';
+import { paddingMat3, parseColor, parseGradient } from '../utils';
 import {
   Circle,
+  ComputedBounds,
   Ellipse,
   FillGradient,
   FillImage,
+  FillPattern,
   FillSolid,
+  FillTexture,
   GlobalRenderOrder,
   GlobalTransform,
   InnerShadow,
@@ -37,7 +39,6 @@ import {
   Rect,
   Stroke,
 } from '../components';
-import { mat3 } from 'gl-matrix';
 
 const strokeAlignmentMap = {
   center: 0,
@@ -289,67 +290,69 @@ export class SDF extends Drawcall {
       });
     }
 
-    // if (this.useFillImage) {
-    //   const fill = this.shapes[0].fill;
+    if (this.useFillImage) {
+      if (this.bindings) {
+        this.bindings.destroy();
+      }
 
-    //   if (this.bindings) {
-    //     this.bindings.destroy();
-    //   }
+      const instance = this.shapes[0];
 
-    //   if (isString(fill) || isPattern(fill)) {
-    //     const { minX, minY, maxX, maxY } = this.shapes[0].getGeometryBounds();
-    //     const width = maxX - minX;
-    //     const height = maxY - minY;
+      if (instance.has(FillGradient) || instance.has(FillPattern)) {
+        const { minX, minY, maxX, maxY } =
+          instance.read(ComputedBounds).geometryBounds;
+        const width = maxX - minX;
+        const height = maxY - minY;
 
-    //     const canvas = isPattern(fill)
-    //       ? this.texturePool.getOrCreatePattern({
-    //           pattern: fill,
-    //           width,
-    //           height,
-    //         })
-    //       : this.texturePool.getOrCreateGradient({
-    //           gradients: this.shapes[0].fillGradient,
-    //           min: [minX, minY],
-    //           width,
-    //           height,
-    //         });
-    //     const texture = this.device.createTexture({
-    //       format: Format.U8_RGBA_NORM,
-    //       width: 128,
-    //       height: 128,
-    //       usage: TextureUsage.SAMPLED,
-    //     });
-    //     texture.setImageData([canvas]);
-    //     this.#texture = texture;
-    //   } else if ((fill as { texture: Texture }).texture) {
-    //     this.#texture = (fill as { texture: Texture }).texture;
-    //   } else {
-    //     const texture = this.device.createTexture({
-    //       format: Format.U8_RGBA_NORM,
-    //       width: (fill as ImageBitmap).width,
-    //       height: (fill as ImageBitmap).height,
-    //       usage: TextureUsage.SAMPLED,
-    //     });
-    //     texture.setImageData([fill as ImageBitmap]);
-    //     this.#texture = texture;
-    //   }
+        const canvas = instance.has(FillPattern)
+          ? this.texturePool.getOrCreatePattern({
+              pattern: instance.read(FillPattern),
+              width,
+              height,
+            })
+          : this.texturePool.getOrCreateGradient({
+              gradients: parseGradient(instance.read(FillGradient).value),
+              min: [minX, minY],
+              width,
+              height,
+            });
+        const texture = this.device.createTexture({
+          format: Format.U8_RGBA_NORM,
+          width: 128,
+          height: 128,
+          usage: TextureUsage.SAMPLED,
+        });
+        texture.setImageData([canvas]);
+        this.#texture = texture;
+      } else if (instance.has(FillTexture)) {
+        this.#texture = instance.read(FillTexture).value;
+      } else if (instance.has(FillImage)) {
+        const src = instance.read(FillImage).src as ImageBitmap;
+        const texture = this.device.createTexture({
+          format: Format.U8_RGBA_NORM,
+          width: src.width,
+          height: src.height,
+          usage: TextureUsage.SAMPLED,
+        });
+        texture.setImageData([src]);
+        this.#texture = texture;
+      }
 
-    //   const sampler = this.renderCache.createSampler({
-    //     addressModeU: AddressMode.CLAMP_TO_EDGE,
-    //     addressModeV: AddressMode.CLAMP_TO_EDGE,
-    //     minFilter: FilterMode.POINT,
-    //     magFilter: FilterMode.BILINEAR,
-    //     mipmapFilter: MipmapFilterMode.LINEAR,
-    //     lodMinClamp: 0,
-    //     lodMaxClamp: 0,
-    //   });
-    //   bindings.samplerBindings = [
-    //     {
-    //       texture: this.#texture,
-    //       sampler,
-    //     },
-    //   ];
-    // }
+      const sampler = this.renderCache.createSampler({
+        addressModeU: AddressMode.CLAMP_TO_EDGE,
+        addressModeV: AddressMode.CLAMP_TO_EDGE,
+        minFilter: FilterMode.POINT,
+        magFilter: FilterMode.BILINEAR,
+        mipmapFilter: MipmapFilterMode.LINEAR,
+        lodMinClamp: 0,
+        lodMaxClamp: 0,
+      });
+      bindings.samplerBindings = [
+        {
+          texture: this.#texture,
+          sampler,
+        },
+      ];
+    }
 
     this.bindings = this.renderCache.createBindings(bindings);
   }
@@ -502,10 +505,19 @@ export class SDF extends Drawcall {
       ? shape.read(Opacity)
       : { opacity: 1, strokeOpacity: 1, fillOpacity: 1 };
 
-    const { stroke, width, alignment } = shape.has(Stroke)
+    const {
+      color: strokeColor,
+      width,
+      alignment,
+    } = shape.has(Stroke)
       ? shape.read(Stroke)
-      : { stroke: null, width: 0, alignment: 'center' };
-    const { color, offsetX, offsetY, blurRadius } = shape.has(InnerShadow)
+      : { color: null, width: 0, alignment: 'center' };
+    const {
+      color: innerShadowColor,
+      offsetX,
+      offsetY,
+      blurRadius,
+    } = shape.has(InnerShadow)
       ? shape.read(InnerShadow)
       : {
           color: null,
@@ -513,8 +525,13 @@ export class SDF extends Drawcall {
           offsetY: 0,
           blurRadius: 0,
         };
-    const { r: sr, g: sg, b: sb, opacity: so } = parseColor(stroke);
-    const { r: isr, g: isg, b: isb, opacity: iso } = parseColor(color);
+    const { r: sr, g: sg, b: sb, opacity: so } = parseColor(strokeColor);
+    const {
+      r: isr,
+      g: isg,
+      b: isb,
+      opacity: iso,
+    } = parseColor(innerShadowColor);
 
     const u_Position = position;
     const u_Size = size;

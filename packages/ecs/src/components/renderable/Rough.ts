@@ -191,8 +191,8 @@ export function getRoughOptions(entity: Entity): Options {
     : { value: 'none' };
   const strokeComponent = entity.has(Stroke)
     ? entity.read(Stroke)
-    : { stroke: 'none', width: 0, dasharray: [], dashoffset: 0 };
-  const { stroke, width, dasharray, dashoffset } = strokeComponent;
+    : { color: 'none', width: 0, dasharray: [], dashoffset: 0 };
+  const { color, width, dasharray, dashoffset } = strokeComponent;
   const { value: fill } = fillComponent;
   const {
     seed,
@@ -217,7 +217,7 @@ export function getRoughOptions(entity: Entity): Options {
 
   return filterUndefined({
     fill,
-    stroke,
+    stroke: color,
     strokeWidth: width,
     seed,
     bowing,

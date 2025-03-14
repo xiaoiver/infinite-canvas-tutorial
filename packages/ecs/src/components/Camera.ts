@@ -1,6 +1,7 @@
 // import { ClipSpaceNearZ } from '@antv/g-device-api';
-import { field, Type } from '@lastolivegames/becsy';
+import { component, field, Type } from '@lastolivegames/becsy';
 
+@component
 export class Camera {
   // @field.staticString([ClipSpaceNearZ.NEGATIVE_ONE, ClipSpaceNearZ.ZERO]) declare clipSpaceNearZ: ClipSpaceNearZ;
 

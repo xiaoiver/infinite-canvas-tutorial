@@ -1,19 +1,16 @@
 import { System } from '@lastolivegames/becsy';
-import { CanvasConfig, Camera, WindowResized } from '../components';
 import { mat3 } from 'gl-matrix';
+import { CanvasConfig, Camera, WindowResized } from '../components';
 
 /**
  * Extract matrices from {@link Camera} component.
  */
 export class PrepareViewUniforms extends System {
   private readonly canvasConfig = this.singleton.read(CanvasConfig);
+  private readonly windowResized = this.singleton.read(WindowResized);
 
   private readonly camera = this.query(
     (q) => q.addedOrChanged.with(Camera).trackWrites.using(Camera).write,
-  );
-
-  private readonly windowResized = this.query(
-    (q) => q.changed.with(WindowResized).trackWrites,
   );
 
   /**
@@ -59,9 +56,8 @@ export class PrepareViewUniforms extends System {
   }
 
   execute(): void {
-    const { width, height } = this.canvasConfig;
-
     this.camera.addedOrChanged.forEach((entity) => {
+      const { width, height } = this.canvasConfig;
       const { x, y, rotation, zoom } = entity.read(Camera);
       this.x = x || 0;
       this.y = y || 0;
@@ -70,12 +66,14 @@ export class PrepareViewUniforms extends System {
 
       this.projection(width, height);
       this.updateMatrix();
+
+      console.log('camera...');
     });
 
-    this.windowResized.changed.forEach((entity) => {
-      const { width, height } = entity.read(WindowResized);
+    const { width, height } = this.windowResized;
+    if (width > 0 && height > 0) {
       this.projection(width, height);
-    });
+    }
   }
 
   private projection(width: number, height: number) {

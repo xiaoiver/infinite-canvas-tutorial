@@ -12,7 +12,10 @@ import { FederatedEvent } from '../events';
 /**
  * A list of commands that will be run to modify an [entity](crate::entity).
  */
-export class EntityCommands extends EventEmitter {
+export class EntityCommands
+  extends EventEmitter
+  implements FederatedEventTarget
+{
   constructor(public entity: Entity, public commands: Commands) {
     super();
   }
@@ -125,7 +128,8 @@ export class EntityCommands extends EventEmitter {
 
     e.defaultPrevented = false;
     e.path = [];
-    e.target = this as unknown as FederatedEventTarget;
+    // @ts-ignore
+    e.target = this.entity;
     e.manager.dispatchEvent(e);
 
     return !e.defaultPrevented;

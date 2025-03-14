@@ -1,4 +1,4 @@
-import { component, field } from '@lastolivegames/becsy';
+import { component, field, Type } from '@lastolivegames/becsy';
 
 /**
  * A window event that is sent whenever a window's logical size has changed.
@@ -9,10 +9,15 @@ export class WindowResized {
   /**
    * The new logical width of the window.
    */
-  @field.float32 declare width: number;
+  @field({ type: Type.float32, default: 0 }) declare width: number;
 
   /**
    * The new logical height of the window.
    */
-  @field.float32 declare height: number;
+  @field({ type: Type.float32, default: 0 }) declare height: number;
+
+  constructor(width?: number, height?: number) {
+    this.width = width ?? 0;
+    this.height = height ?? 0;
+  }
 }

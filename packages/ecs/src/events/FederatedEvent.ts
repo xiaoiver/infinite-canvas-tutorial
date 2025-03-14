@@ -1,3 +1,4 @@
+import { Entity } from '@lastolivegames/becsy';
 import { Point } from '@pixi/math';
 import type { EventBoundary } from './EventBoundary';
 import type { FederatedEventTarget } from './FederatedEventTarget';
@@ -56,7 +57,8 @@ export class FederatedEvent<N extends UIEvent | PixiTouch = UIEvent | PixiTouch>
   readonly composed = false;
 
   /** The listeners of the event target that are being notified. */
-  currentTarget: FederatedEventTarget;
+  // @ts-ignore
+  currentTarget: Entity;
 
   /** Flags whether the default response of the user agent was prevent through this event. */
   defaultPrevented = false;
@@ -77,7 +79,8 @@ export class FederatedEvent<N extends UIEvent | PixiTouch = UIEvent | PixiTouch>
   srcElement: EventTarget | null;
 
   /** The event target that this will be dispatched to. */
-  target: FederatedEventTarget;
+  // @ts-ignore
+  target: Entity;
 
   /** The timestamp of when the event was created. */
   timeStamp: number;
@@ -98,7 +101,7 @@ export class FederatedEvent<N extends UIEvent | PixiTouch = UIEvent | PixiTouch>
   propagationImmediatelyStopped = false;
 
   /** The composed path of the event's propagation. The {@code target} is at the end. */
-  path: FederatedEventTarget[];
+  path: Entity[];
 
   /** The {@link EventBoundary} that manages this event. Null for root events. */
   readonly manager: EventBoundary | null;
@@ -150,7 +153,8 @@ export class FederatedEvent<N extends UIEvent | PixiTouch = UIEvent | PixiTouch>
   }
 
   /** The propagation path for this event. Alias for {@link EventBoundary.propagationPath}. */
-  composedPath(): FederatedEventTarget[] {
+  // @ts-ignore
+  composedPath(): Entity[] {
     // Find the propagation path if it isn't cached or if the target has changed since since
     // the last evaluation.
     if (

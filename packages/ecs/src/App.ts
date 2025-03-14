@@ -7,15 +7,6 @@ import {
 } from '@lastolivegames/becsy';
 import { Plugin } from './plugins';
 import {
-  CanvasConfig,
-  CanvasMode,
-  CheckboardStyle,
-  Grid,
-  Theme,
-  ThemeMode,
-  WindowResized,
-} from './components';
-import {
   First,
   Last,
   PostStartup,
@@ -28,6 +19,7 @@ import {
 // import { EventCtor, Events, EventsReader } from './Events';
 import { Resource } from './Resource';
 import { DOMAdapter } from './environment';
+import { Camera, WindowResized } from './components';
 
 /**
  * @see https://bevy-cheatbook.github.io/programming/app-builder.html
@@ -146,6 +138,7 @@ export class App {
       constructor() {
         super();
         this.singleton.read(WindowResized);
+        this.singleton.read(Camera);
       }
     }
     @system(StartUp)

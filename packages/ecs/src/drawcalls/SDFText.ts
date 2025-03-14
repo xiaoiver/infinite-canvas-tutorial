@@ -402,15 +402,25 @@ export class SDFText extends Drawcall {
       ? shape.read(Opacity)
       : { opacity: 1, strokeOpacity: 1, fillOpacity: 1 };
 
-    const { stroke, width } = shape.has(Stroke)
+    const { color: strokeColor, width } = shape.has(Stroke)
       ? shape.read(Stroke)
-      : { stroke: null, width: 0 };
-    const { r: sr, g: sg, b: sb, opacity: so } = parseColor(stroke);
+      : { color: null, width: 0 };
+    const { r: sr, g: sg, b: sb, opacity: so } = parseColor(strokeColor);
 
-    const { color, offsetX, offsetY, blurRadius } = shape.has(DropShadow)
+    const {
+      color: dropShadowColor,
+      offsetX,
+      offsetY,
+      blurRadius,
+    } = shape.has(DropShadow)
       ? shape.read(DropShadow)
       : { color: null, offsetX: 0, offsetY: 0, blurRadius: 0 };
-    const { r: dsR, g: dsG, b: dsB, opacity: dsO } = parseColor(color);
+    const {
+      r: dsR,
+      g: dsG,
+      b: dsB,
+      opacity: dsO,
+    } = parseColor(dropShadowColor);
 
     const { width: atlasWidth, height: atlasHeight } = image;
 

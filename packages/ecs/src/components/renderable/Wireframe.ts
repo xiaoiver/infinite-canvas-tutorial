@@ -7,4 +7,8 @@ import { field, Type } from '@lastolivegames/becsy';
 export class Wireframe {
   @field({ type: Type.boolean, default: false })
   declare enabled: boolean;
+
+  constructor(enabled?: boolean) {
+    this.enabled = enabled ?? false;
+  }
 }
