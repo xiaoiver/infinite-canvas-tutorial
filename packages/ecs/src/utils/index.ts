@@ -10,3 +10,6 @@ export * from './style';
 export * from './rough';
 export * from './curve';
 export * from './tessy';
+export * from './emoji';
+export * from './bitmap-font';
+export * from './glyph';

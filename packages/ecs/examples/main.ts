@@ -24,6 +24,7 @@ import {
   Polyline,
   Path,
   Rough,
+  Text,
 } from '../src';
 
 const $canvas = document.getElementById('canvas') as HTMLCanvasElement;
@@ -67,6 +68,7 @@ class StartUpSystem extends System {
         Polyline,
         Path,
         Rough,
+        Text,
       ).write,
   );
 
@@ -107,10 +109,10 @@ class StartUpSystem extends System {
       new Renderable(),
       new FillSolid('blue'),
       new DropShadow({
-        dropShadowColor: 'rgba(0, 0, 0, 0.5)',
-        dropShadowBlurRadius: 10,
-        dropShadowOffsetX: 10,
-        dropShadowOffsetY: 10,
+        color: 'rgba(0, 0, 0, 0.5)',
+        blurRadius: 10,
+        offsetX: 10,
+        offsetY: 10,
       }),
       new Rect({ x: 0, y: 0, width: 100, height: 100, cornerRadius: 10 }),
     );
@@ -162,10 +164,10 @@ class StartUpSystem extends System {
       new Renderable(),
       new FillSolid('blue'),
       new DropShadow({
-        dropShadowColor: 'rgba(0, 0, 0, 0.5)',
-        dropShadowBlurRadius: 10,
-        dropShadowOffsetX: 10,
-        dropShadowOffsetY: 10,
+        color: 'rgba(0, 0, 0, 0.5)',
+        blurRadius: 10,
+        offsetX: 10,
+        offsetY: 10,
       }),
       new Stroke({
         stroke: 'black',
@@ -175,6 +177,33 @@ class StartUpSystem extends System {
       new Rect({ x: 0, y: 0, width: 100, height: 100, cornerRadius: 10 }),
     );
     child.appendChild(rough);
+
+    const roughCircle = this.commands.spawn(
+      new Transform(),
+      new Renderable(),
+      new FillSolid('green'),
+      new Stroke({
+        stroke: 'black',
+        width: 10,
+      }),
+      new Rough(),
+      new Circle({ cx: 100, cy: 200, r: 50 }),
+    );
+    parent.appendChild(roughCircle);
+
+    const text = this.commands.spawn(
+      new Transform(),
+      new Renderable(),
+      new FillSolid('black'),
+      new Text({
+        x: 100,
+        y: 300,
+        content: 'Hello, world!',
+        fontSize: 24,
+        fontFamily: 'Arial',
+      }),
+    );
+    parent.appendChild(text);
 
     parentEntity = parent.id().hold();
     childEntity = child.id().hold();

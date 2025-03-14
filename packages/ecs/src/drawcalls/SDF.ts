@@ -505,26 +505,16 @@ export class SDF extends Drawcall {
     const { stroke, width, alignment } = shape.has(Stroke)
       ? shape.read(Stroke)
       : { stroke: null, width: 0, alignment: 'center' };
-    const {
-      innerShadowColor,
-      innerShadowOffsetX,
-      innerShadowOffsetY,
-      innerShadowBlurRadius,
-    } = shape.has(InnerShadow)
+    const { color, offsetX, offsetY, blurRadius } = shape.has(InnerShadow)
       ? shape.read(InnerShadow)
       : {
-          innerShadowColor: null,
-          innerShadowOffsetX: 0,
-          innerShadowOffsetY: 0,
-          innerShadowBlurRadius: 0,
+          color: null,
+          offsetX: 0,
+          offsetY: 0,
+          blurRadius: 0,
         };
     const { r: sr, g: sg, b: sb, opacity: so } = parseColor(stroke);
-    const {
-      r: isr,
-      g: isg,
-      b: isb,
-      opacity: iso,
-    } = parseColor(innerShadowColor);
+    const { r: isr, g: isg, b: isb, opacity: iso } = parseColor(color);
 
     const u_Position = position;
     const u_Size = size;
@@ -541,12 +531,7 @@ export class SDF extends Drawcall {
     const compressed = (sizeAttenuation ? 1 : 0) * LEFT_SHIFT23 + type;
     const u_Opacity = [opacity, fillOpacity, strokeOpacity, compressed];
     const u_InnerShadowColor = [isr / 255, isg / 255, isb / 255, iso];
-    const u_InnerShadow = [
-      innerShadowOffsetX,
-      innerShadowOffsetY,
-      innerShadowBlurRadius,
-      0,
-    ];
+    const u_InnerShadow = [offsetX, offsetY, blurRadius, 0];
 
     return [
       [

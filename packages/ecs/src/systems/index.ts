@@ -10,3 +10,6 @@ export * from './BatchManager';
 export * from './Sort';
 export * from './ComputePoints';
 export * from './ComputeRough';
+export * from './ComputeTextMetrics';
+export * from './ComputeBounds';
+export * from './ViewportCulling';

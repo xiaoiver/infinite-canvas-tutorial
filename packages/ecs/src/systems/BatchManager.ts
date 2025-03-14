@@ -1,4 +1,4 @@
-import { Buffer, Device, RenderPass } from '@antv/g-device-api';
+import { Buffer, RenderPass } from '@antv/g-device-api';
 import { Entity, System } from '@lastolivegames/becsy';
 import {
   Drawcall,
@@ -6,6 +6,7 @@ import {
   ShadowRect,
   SmoothPolyline,
   Mesh,
+  SDFText,
   // Custom as CustomDrawcall,
 } from '../drawcalls';
 import {
@@ -13,6 +14,7 @@ import {
   Circle,
   ComputedPoints,
   ComputedRough,
+  ComputedTextMetrics,
   DropShadow,
   Ellipse,
   FillSolid,
@@ -26,6 +28,7 @@ import {
   Renderable,
   Rough,
   Stroke,
+  Text,
 } from '../components';
 import { SetupDevice } from './SetupDevice';
 
@@ -41,39 +44,35 @@ import { SetupDevice } from './SetupDevice';
 function getDrawcallCtors(shape: Entity) {
   const SHAPE_DRAWCALL_CTORS: (typeof Drawcall)[] = [];
   if (shape.has(Circle) || shape.has(Ellipse)) {
-    SHAPE_DRAWCALL_CTORS.push(SDF, SmoothPolyline);
+    if (shape.has(Rough)) {
+      SHAPE_DRAWCALL_CTORS.push(Mesh, SmoothPolyline, SmoothPolyline);
+    } else {
+      SHAPE_DRAWCALL_CTORS.push(SDF, SmoothPolyline);
+    }
   } else if (shape.has(Rect)) {
-    SHAPE_DRAWCALL_CTORS.push(ShadowRect, SDF, SmoothPolyline);
+    if (shape.has(Rough)) {
+      SHAPE_DRAWCALL_CTORS.push(
+        ShadowRect,
+        Mesh,
+        SmoothPolyline,
+        SmoothPolyline,
+      );
+    } else {
+      SHAPE_DRAWCALL_CTORS.push(ShadowRect, SDF, SmoothPolyline);
+    }
   } else if (shape.has(Polyline)) {
     SHAPE_DRAWCALL_CTORS.push(SmoothPolyline);
   } else if (shape.has(Path)) {
-    SHAPE_DRAWCALL_CTORS.push(Mesh, SmoothPolyline);
+    if (shape.has(Rough)) {
+      SHAPE_DRAWCALL_CTORS.push(Mesh, SmoothPolyline, SmoothPolyline);
+    } else {
+      SHAPE_DRAWCALL_CTORS.push(Mesh, SmoothPolyline);
+    }
+  } else if (shape.has(Text)) {
+    SHAPE_DRAWCALL_CTORS.push(SDFText);
   }
   return SHAPE_DRAWCALL_CTORS;
 }
-// SHAPE_DRAWCALL_CTORS.set(RoughCircle, [
-//   Mesh, // fillStyle === 'solid'
-//   SmoothPolyline, // fill
-//   SmoothPolyline, // stroke
-// ]);
-// SHAPE_DRAWCALL_CTORS.set(RoughEllipse, [
-//   Mesh, // fillStyle === 'solid'
-//   SmoothPolyline, // fill
-//   SmoothPolyline, // stroke
-// ]);
-// SHAPE_DRAWCALL_CTORS.set(RoughRect, [
-//   ShadowRect,
-//   Mesh, // fillStyle === 'solid'
-//   SmoothPolyline, // fill
-//   SmoothPolyline, // stroke
-// ]);
-// SHAPE_DRAWCALL_CTORS.set(RoughPolyline, [SmoothPolyline]);
-// SHAPE_DRAWCALL_CTORS.set(RoughPath, [
-//   Mesh, // fillStyle === 'solid'
-//   SmoothPolyline, // fill
-//   SmoothPolyline, // stroke
-// ]);
-// SHAPE_DRAWCALL_CTORS.set(Text, [SDFText]);
 // SHAPE_DRAWCALL_CTORS.set(Custom, [CustomDrawcall]);
 
 export class BatchManager extends System {
@@ -89,14 +88,21 @@ export class BatchManager extends System {
 
   #batchableDrawcallsCache: Record<number, Drawcall[]> = Object.create(null);
 
-  #instancesCache: WeakMap<
-    | typeof Circle
-    | typeof Ellipse
-    | typeof Rect
-    | typeof Polyline
-    | typeof Path,
+  #instancesCache: Record<
+    | 'circle'
+    | 'ellipse'
+    | 'rect'
+    | 'polyline'
+    | 'path'
+    | 'text'
+    | 'rough-circle'
+    | 'rough-ellipse'
+    | 'rough-rect'
+    | 'rough-polyline'
+    | 'rough-path'
+    | 'text',
     Drawcall[][]
-  > = new WeakMap();
+  > = Object.create(null);
 
   renderResource = this.attach(SetupDevice);
 
@@ -104,7 +110,7 @@ export class BatchManager extends System {
     (q) =>
       q.addedOrChanged.and.removed
         .with(Renderable)
-        .withAny(Circle, Ellipse, Rect, Polyline, Path).trackWrites,
+        .withAny(Circle, Ellipse, Rect, Polyline, Path, Text).trackWrites,
   );
 
   constructor() {
@@ -126,6 +132,8 @@ export class BatchManager extends System {
           DropShadow,
           Rough,
           ComputedRough,
+          Text,
+          ComputedTextMetrics,
         ).read,
     );
   }
@@ -185,18 +193,30 @@ export class BatchManager extends System {
       this.#batchableDrawcallsCache[shape.__id];
     if (!existed) {
       const geometryCtor = shape.has(Circle)
-        ? Circle
+        ? shape.has(Rough)
+          ? 'rough-circle'
+          : 'circle'
         : shape.has(Ellipse)
-        ? Ellipse
+        ? shape.has(Rough)
+          ? 'rough-ellipse'
+          : 'ellipse'
         : shape.has(Rect)
-        ? Rect
+        ? shape.has(Rough)
+          ? 'rough-rect'
+          : 'rect'
         : shape.has(Polyline)
-        ? Polyline
+        ? shape.has(Rough)
+          ? 'rough-polyline'
+          : 'polyline'
         : shape.has(Path)
-        ? Path
+        ? shape.has(Rough)
+          ? 'rough-path'
+          : 'path'
+        : shape.has(Text)
+        ? 'text'
         : undefined;
 
-      let instancedDrawcalls = this.#instancesCache.get(geometryCtor);
+      let instancedDrawcalls = this.#instancesCache[geometryCtor];
       if (!instancedDrawcalls) {
         instancedDrawcalls = [];
       }
@@ -211,7 +231,7 @@ export class BatchManager extends System {
       if (!existed) {
         existed = this.createDrawcalls(shape, true) || [];
         instancedDrawcalls.push(existed);
-        this.#instancesCache.set(geometryCtor, instancedDrawcalls);
+        this.#instancesCache[geometryCtor] = instancedDrawcalls;
       }
 
       existed.forEach((drawcall) => {

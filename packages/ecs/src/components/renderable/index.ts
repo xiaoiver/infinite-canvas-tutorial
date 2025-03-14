@@ -8,3 +8,4 @@ export * from './Wireframe';
 export * from './ZIndex';
 export * from './GlobalRenderOrder';
 export * from './Rough';
+export * from './ComputedBounds';

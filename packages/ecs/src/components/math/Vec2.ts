@@ -13,8 +13,13 @@ export class Vec2 {
   static splat(v: number) {
     return new Vec2(v, v);
   }
+  x: number;
+  y: number;
 
-  constructor(public x: number, public y: number) {}
+  constructor(x?: number, y?: number) {
+    this.x = x ?? 0;
+    this.y = y ?? 0;
+  }
 
   to_array() {
     return [this.x, this.y];
@@ -113,4 +118,4 @@ export class Vec2 {
   }
 }
 
-export const v2Type = Type.vector(Type.float32, ['x', 'y'], Vec2 as any);
+export const v2Type = Type.vector(Type.float32, ['x', 'y'], Vec2);

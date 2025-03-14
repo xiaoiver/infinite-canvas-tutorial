@@ -13,6 +13,7 @@ import {
   StencilOp,
 } from '@antv/g-device-api';
 import { Entity } from '@lastolivegames/becsy';
+import { mat3 } from 'gl-matrix';
 import { Drawcall, ZINDEX_FACTOR } from './Drawcall';
 import { vert, frag, Location, JointType } from '../shaders/polyline';
 import { hasValidStroke, paddingMat3, parseColor } from '../utils';
@@ -31,7 +32,6 @@ import {
   Rough,
   Stroke,
 } from '../components';
-import { mat3 } from 'gl-matrix';
 
 const epsilon = 1e-4;
 const circleEllipsePointsNum = 64;
@@ -49,7 +49,7 @@ export class SmoothPolyline extends Drawcall {
       shape.has(Polyline) ||
       (shape.has(Rough) &&
         shape.hasSomeOf(Circle, Ellipse, Rect, Polyline, Path)) ||
-      ((shape.has(Rect) || shape.has(Circle) || shape.has(Ellipse)) &&
+      (shape.hasSomeOf(Rect, Circle, Ellipse) &&
         shape.has(Stroke) &&
         shape.read(Stroke).dasharray[0] > 0 &&
         shape.read(Stroke).dasharray[1] > 0) ||
@@ -93,11 +93,10 @@ export class SmoothPolyline extends Drawcall {
     this.shapes.forEach((shape: Entity) => {
       const { pointsBuffer: pBuffer, travelBuffer: tBuffer } = updateBuffer(
         shape,
-        (shape.has(Rough) &&
-          shape.hasSomeOf(Circle, Ellipse, Path) &&
-          this.index === 2) ||
-          (shape.has(Rect) && this.index !== 2) ||
-          shape.has(Polyline),
+        shape.has(Rough) &&
+          ((shape.hasSomeOf(Circle, Ellipse, Path) && this.index === 2) ||
+            (shape.has(Rect) && this.index !== 2) ||
+            shape.has(Polyline)),
       );
 
       pointsBuffer.push(...pBuffer);
@@ -529,14 +528,13 @@ export function updateBuffer(object: Entity, useRoughStroke = true) {
     : ({ linecap: 'butt', linejoin: 'miter' } as const);
 
   let points: number[] = [];
-  // const triangles: number[] = [];
 
   if (
     object.has(Rough) &&
     object.has(ComputedRough) &&
     object.hasSomeOf(Circle, Ellipse, Rect, Polyline, Path)
   ) {
-    const { strokePoints = [], fillPoints = [] } = object.read(ComputedRough);
+    const { strokePoints, fillPoints } = object.read(ComputedRough);
     points = (useRoughStroke ? strokePoints : fillPoints)
       .map((subPathPoints, i) => {
         return [...subPathPoints].concat(

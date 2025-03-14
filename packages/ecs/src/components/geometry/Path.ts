@@ -44,9 +44,9 @@ export class Path {
   }
 }
 
-/**
- * Sampled points of the path.
- */
 export class ComputedPoints {
+  /**
+   * Sampled points of the path.
+   */
   @field({ type: Type.object }) declare points: [number, number][][];
 }

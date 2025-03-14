@@ -1,22 +1,12 @@
+import { System } from '@lastolivegames/becsy';
 import bidiFactory from 'bidi-js';
+import { ComputedTextMetrics, Text, TextStyleWhiteSpace } from '../components';
+import { DOMAdapter } from '../environment';
+import { BitmapFont } from '../utils';
 import { Rectangle } from '@pixi/math';
-import { TextAttributes, TextStyleWhiteSpace } from '../shapes';
-import { BitmapFont } from './bitmap-font';
-import { DOMAdapter } from '../environment/adapter';
 
-type CharacterWidthCache = Record<string, number>;
-export interface TextMetrics {
-  font: string;
-  width: number;
-  height: number;
-  lines: string[];
-  lineWidths: number[];
-  lineHeight: number;
-  maxLineWidth: number;
-  fontMetrics: globalThis.TextMetrics & { fontSize: number };
-  lineMetrics: Rectangle[];
-}
 type TextSegment = { text: string; direction: 'ltr' | 'rtl' };
+type CharacterWidthCache = Record<string, number>;
 
 const METRICS_STRING = '|ÉqÅ';
 const BASELINE_SYMBOL = 'M';
@@ -65,14 +55,94 @@ const regexCannotEnd = new RegExp(
   `${regexCannotEndZhCn.source}|${regexCannotEndZhTw.source}|${regexCannotEndJaJp.source}|${regexCannotEndKoKr.source}`,
 );
 
-export class CanvasTextMetrics {
-  #fonts: Record<string, globalThis.TextMetrics & { fontSize: number }> = {};
+// @see https://github.com/pixijs/pixijs/blob/dev/src/scene/text/canvas/utils/fontStringFromTextStyle.ts#L17
+const genericFontFamilies = [
+  'serif',
+  'sans-serif',
+  'monospace',
+  'cursive',
+  'fantasy',
+  'system-ui',
+];
+
+/**
+ * Generates a font style string to use for `TextMetrics.measureFont()`.
+ * @param style
+ * @returns Font style string, for passing to `TextMetrics.measureFont()`
+ */
+export function fontStringFromTextStyle(style: Partial<Text>): string {
+  // build canvas api font setting from individual components. Convert a numeric style.fontSize to px
+  const fontSizeString =
+    typeof style.fontSize === 'number' ? `${style.fontSize}px` : style.fontSize;
+
+  // Clean-up fontFamily property by quoting each font name
+  // this will support font names with spaces
+  let fontFamilies: string | string[] = style.fontFamily;
+
+  if (!Array.isArray(style.fontFamily)) {
+    fontFamilies = style.fontFamily.split(',');
+  }
+
+  for (let i = fontFamilies.length - 1; i >= 0; i--) {
+    // Trim any extra white-space
+    let fontFamily = fontFamilies[i].trim();
+
+    // Check if font already contains strings
+    if (
+      !/([\"\'])[^\'\"]+\1/.test(fontFamily) &&
+      !genericFontFamilies.includes(fontFamily)
+    ) {
+      fontFamily = `"${fontFamily}"`;
+    }
+    (fontFamilies as string[])[i] = fontFamily;
+  }
+
+  // eslint-disable-next-line max-len
+  return `${style.fontStyle} ${style.fontVariant} ${
+    style.fontWeight
+  } ${fontSizeString} ${(fontFamilies as string[]).join(',')}`;
+}
+
+export function yOffsetFromTextBaseline(
+  textBaseline: CanvasTextBaseline,
+  fontMetrics: globalThis.TextMetrics & { fontSize: number },
+) {
+  let offset = 0;
+  const {
+    fontBoundingBoxAscent = 0,
+    fontBoundingBoxDescent = 0,
+    hangingBaseline = 0,
+    ideographicBaseline = 0,
+  } = fontMetrics;
+  if (textBaseline === 'alphabetic') {
+    offset -= fontBoundingBoxAscent;
+  } else if (textBaseline === 'middle') {
+    offset -= (fontBoundingBoxAscent + fontBoundingBoxDescent) / 2;
+  } else if (textBaseline === 'hanging') {
+    offset -= hangingBaseline;
+  } else if (textBaseline === 'ideographic') {
+    offset -= ideographicBaseline;
+  } else if (textBaseline === 'bottom') {
+    offset -= fontBoundingBoxAscent + fontBoundingBoxDescent;
+  } else if (textBaseline === 'top') {
+    offset = 0;
+  }
+  return offset;
+}
+
+export class ComputeTextMetrics extends System {
+  texts = this.query((q) => q.addedOrChanged.with(Text).trackWrites);
+
   #canvas: OffscreenCanvas | HTMLCanvasElement;
   #context: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
   #bidi = bidiFactory();
   #bidiCache: Record<string, string> = {};
+  #fonts: Record<string, globalThis.TextMetrics & { fontSize: number }> = {};
 
   constructor() {
+    super();
+    this.query((q) => q.current.with(ComputedTextMetrics).write);
+
     const canvas = DOMAdapter.get().createCanvas(1, 1);
     if (canvas) {
       this.#canvas = canvas;
@@ -82,97 +152,82 @@ export class CanvasTextMetrics {
     }
   }
 
-  getCanvas() {
-    return this.#canvas;
-  }
+  execute() {
+    this.texts.addedOrChanged.forEach((entity) => {
+      const text = entity.read(Text);
+      const bidiChars = this.computeBidi(text.content);
+      const metrics = this.measureText(text);
 
-  private measureBitmapFont(bitmapFont: BitmapFont, fontSize: number) {
-    const { fontMetrics, lineHeight } = bitmapFont;
-    const scale = fontSize / bitmapFont.baseMeasurementFontSize;
-    return {
-      scale,
-      lineHeight: lineHeight * scale,
-      fontMetrics: {
-        actualBoundingBoxAscent: fontMetrics.ascent * scale,
-        actualBoundingBoxDescent: fontMetrics.descent * scale,
-        fontSize,
-      } as globalThis.TextMetrics & { fontSize: number },
-    };
-  }
-
-  measureText(text: string, style: Partial<TextAttributes>): TextMetrics {
-    if (!this.#bidiCache[text]) {
-      // @see https://github.com/beanandbean/font-mesh-pipeline/blob/main/packages/harfbuzz-modern-wrapper/src/harfbuzz.ts#L50
-      const segmentStack = [new Array<TextSegment>()];
-
-      const reduceStack = (stack: TextSegment[][], target: number) => {
-        const validatedTarget = target < 0 ? 0 : target;
-        while (stack.length > validatedTarget + 1) {
-          const current = stack.pop()!;
-          stack[stack.length - 1]!.push(...current.reverse());
-        }
-      };
-      const pushInStack = (
-        stack: TextSegment[][],
-        text: string,
-        level: number,
-      ) => {
-        if (level + 1 > stack.length) {
-          stack.push(
-            ...Array.from(
-              { length: level + 1 - stack.length },
-              () => new Array<TextSegment>(),
-            ),
-          );
-        } else {
-          reduceStack(stack, level);
-        }
-        stack[level]!.push({
-          text,
-          direction: level % 2 === 0 ? 'ltr' : 'rtl',
-        });
-      };
-
-      const embeddingLevels = this.#bidi.getEmbeddingLevels(text);
-      const iter = embeddingLevels.levels.entries();
-      const first = iter.next();
-      if (!first.done) {
-        let [prevIndex, prevLevel] = first.value;
-        for (const [i, level] of iter) {
-          if (level !== prevLevel) {
-            pushInStack(segmentStack, text.slice(prevIndex, i), prevLevel);
-            prevIndex = i;
-            prevLevel = level;
-          }
-        }
-        pushInStack(segmentStack, text.slice(prevIndex), prevLevel);
-        reduceStack(segmentStack, 0);
+      if (!entity.has(ComputedTextMetrics)) {
+        entity.add(ComputedTextMetrics);
       }
 
-      let bidiChars = '';
-      for (const segment of segmentStack[0]!) {
-        const { text, direction } = segment;
-        bidiChars +=
-          direction === 'ltr' ? text : text.split('').reverse().join('');
-      }
+      Object.assign(entity.write(ComputedTextMetrics), {
+        bidiChars,
+        ...metrics,
+      });
+    });
+  }
 
-      this.#bidiCache[text] = bidiChars;
+  private measureFont(font: string) {
+    if (this.#fonts[font]) {
+      return this.#fonts[font];
     }
 
-    style.bidiChars = this.#bidiCache[text];
+    this.#context.font = font;
+    const {
+      actualBoundingBoxAscent,
+      actualBoundingBoxDescent,
+      actualBoundingBoxLeft,
+      actualBoundingBoxRight,
+      alphabeticBaseline,
+      fontBoundingBoxAscent,
+      fontBoundingBoxDescent,
+      hangingBaseline,
+      ideographicBaseline,
+      width,
+      emHeightAscent,
+      emHeightDescent,
+    } = this.#context.measureText(METRICS_STRING + BASELINE_SYMBOL);
+
+    const properties: globalThis.TextMetrics & { fontSize: number } = {
+      actualBoundingBoxAscent,
+      actualBoundingBoxDescent,
+      actualBoundingBoxLeft,
+      actualBoundingBoxRight,
+      alphabeticBaseline,
+      fontBoundingBoxAscent,
+      fontBoundingBoxDescent,
+      hangingBaseline,
+      ideographicBaseline,
+      emHeightAscent,
+      emHeightDescent,
+      width,
+      fontSize: actualBoundingBoxAscent + actualBoundingBoxDescent,
+    };
+
+    this.#fonts[font] = properties;
+
+    return properties;
+  }
+
+  private measureText(style: Partial<Text>): Partial<ComputedTextMetrics> {
+    const { content } = style;
+    const bidiChars = this.#bidiCache[content];
 
     const {
       wordWrap,
       letterSpacing,
       textAlign,
       textBaseline,
-      strokeWidth,
       leading,
       bitmapFont,
       bitmapFontKerning,
-      bidiChars,
       fontSize,
     } = style;
+
+    // TODO: strokeWidth
+    const strokeWidth = 0;
 
     let lineHeight = style.lineHeight;
     const font = fontStringFromTextStyle(style);
@@ -273,52 +328,10 @@ export class CanvasTextMetrics {
     };
   }
 
-  measureFont(font: string) {
-    if (this.#fonts[font]) {
-      return this.#fonts[font];
-    }
-
-    this.#context.font = font;
-    const {
-      actualBoundingBoxAscent,
-      actualBoundingBoxDescent,
-      actualBoundingBoxLeft,
-      actualBoundingBoxRight,
-      alphabeticBaseline,
-      fontBoundingBoxAscent,
-      fontBoundingBoxDescent,
-      hangingBaseline,
-      ideographicBaseline,
-      width,
-      emHeightAscent,
-      emHeightDescent,
-    } = this.#context.measureText(METRICS_STRING + BASELINE_SYMBOL);
-
-    const properties: globalThis.TextMetrics & { fontSize: number } = {
-      actualBoundingBoxAscent,
-      actualBoundingBoxDescent,
-      actualBoundingBoxLeft,
-      actualBoundingBoxRight,
-      alphabeticBaseline,
-      fontBoundingBoxAscent,
-      fontBoundingBoxDescent,
-      hangingBaseline,
-      ideographicBaseline,
-      emHeightAscent,
-      emHeightDescent,
-      width,
-      fontSize: actualBoundingBoxAscent + actualBoundingBoxDescent,
-    };
-
-    this.#fonts[font] = properties;
-
-    return properties;
-  }
-
   /**
    * @see https://github.com/pixijs/pixijs/blob/dev/src/scene/text/canvas/CanvasTextMetrics.ts#L369
    */
-  wordWrap(text: string, style: Partial<TextAttributes>, scale: number) {
+  private wordWrap(text: string, style: Partial<Text>, scale: number) {
     const context = this.#canvas.getContext('2d', {
       willReadFrequently: true,
     });
@@ -456,12 +469,125 @@ export class CanvasTextMetrics {
     return lines.join('\n');
   }
 
-  private collapseSpaces(whiteSpace: TextStyleWhiteSpace) {
-    return whiteSpace === 'normal' || whiteSpace === 'pre-line';
+  private computeBidi(text: string) {
+    if (!this.#bidiCache[text]) {
+      // @see https://github.com/beanandbean/font-mesh-pipeline/blob/main/packages/harfbuzz-modern-wrapper/src/harfbuzz.ts#L50
+      const segmentStack = [new Array<TextSegment>()];
+
+      const reduceStack = (stack: TextSegment[][], target: number) => {
+        const validatedTarget = target < 0 ? 0 : target;
+        while (stack.length > validatedTarget + 1) {
+          const current = stack.pop()!;
+          stack[stack.length - 1]!.push(...current.reverse());
+        }
+      };
+      const pushInStack = (
+        stack: TextSegment[][],
+        text: string,
+        level: number,
+      ) => {
+        if (level + 1 > stack.length) {
+          stack.push(
+            ...Array.from(
+              { length: level + 1 - stack.length },
+              () => new Array<TextSegment>(),
+            ),
+          );
+        } else {
+          reduceStack(stack, level);
+        }
+        stack[level]!.push({
+          text,
+          direction: level % 2 === 0 ? 'ltr' : 'rtl',
+        });
+      };
+
+      const embeddingLevels = this.#bidi.getEmbeddingLevels(text);
+      const iter = embeddingLevels.levels.entries();
+      const first = iter.next();
+      if (!first.done) {
+        let [prevIndex, prevLevel] = first.value;
+        for (const [i, level] of iter) {
+          if (level !== prevLevel) {
+            pushInStack(segmentStack, text.slice(prevIndex, i), prevLevel);
+            prevIndex = i;
+            prevLevel = level;
+          }
+        }
+        pushInStack(segmentStack, text.slice(prevIndex), prevLevel);
+        reduceStack(segmentStack, 0);
+      }
+
+      let bidiChars = '';
+      for (const segment of segmentStack[0]!) {
+        const { text, direction } = segment;
+        bidiChars +=
+          direction === 'ltr' ? text : text.split('').reverse().join('');
+      }
+
+      this.#bidiCache[text] = bidiChars;
+    }
+
+    return this.#bidiCache[text];
   }
 
-  private collapseNewlines(whiteSpace: TextStyleWhiteSpace) {
-    return whiteSpace === 'normal';
+  private measureBitmapFont(bitmapFont: BitmapFont, fontSize: number) {
+    const { fontMetrics, lineHeight } = bitmapFont;
+    const scale = fontSize / bitmapFont.baseMeasurementFontSize;
+    return {
+      scale,
+      lineHeight: lineHeight * scale,
+      fontMetrics: {
+        actualBoundingBoxAscent: fontMetrics.ascent * scale,
+        actualBoundingBoxDescent: fontMetrics.descent * scale,
+        fontSize,
+      } as globalThis.TextMetrics & { fontSize: number },
+    };
+  }
+
+  private measureTextInternal(
+    text: string,
+    letterSpacing: number,
+    bitmapFont: BitmapFont,
+    bitmapFontKerning: boolean,
+    scale: number,
+  ) {
+    const segments = DOMAdapter.get().splitGraphemes(text);
+
+    let metricWidth: number;
+    let boundsWidth: number;
+    let previousChar: string;
+    if (bitmapFont) {
+      metricWidth = segments.reduce((sum, char) => {
+        const advance = bitmapFont.chars[char]?.xAdvance;
+        const kerning =
+          (bitmapFontKerning &&
+            previousChar &&
+            bitmapFont.chars[char]?.kerning[previousChar]) ||
+          0;
+
+        previousChar = char;
+        return sum + ((advance + kerning) * scale || 0);
+      }, 0);
+      boundsWidth = metricWidth;
+    } else {
+      this.#context.letterSpacing = `${letterSpacing}px`;
+
+      const metrics = this.#context.measureText(text);
+      metricWidth = metrics.width;
+      const actualBoundingBoxLeft = -metrics.actualBoundingBoxLeft;
+      const actualBoundingBoxRight = metrics.actualBoundingBoxRight;
+      boundsWidth = actualBoundingBoxRight - actualBoundingBoxLeft;
+    }
+
+    if (metricWidth > 0) {
+      const val = (segments.length - 1) * letterSpacing;
+
+      metricWidth += val;
+      boundsWidth += val;
+    }
+
+    return Math.max(metricWidth, boundsWidth);
   }
 
   private isBreakingSpace(char: string): boolean {
@@ -563,133 +689,11 @@ export class CanvasTextMetrics {
     return width;
   }
 
-  private measureTextInternal(
-    text: string,
-    letterSpacing: number,
-    bitmapFont: BitmapFont,
-    bitmapFontKerning: boolean,
-    scale: number,
-  ) {
-    const segments = DOMAdapter.get().splitGraphemes(text);
-
-    let metricWidth: number;
-    let boundsWidth: number;
-    let previousChar: string;
-    if (bitmapFont) {
-      metricWidth = segments.reduce((sum, char) => {
-        const advance = bitmapFont.chars[char]?.xAdvance;
-        const kerning =
-          (bitmapFontKerning &&
-            previousChar &&
-            bitmapFont.chars[char]?.kerning[previousChar]) ||
-          0;
-
-        previousChar = char;
-        return sum + ((advance + kerning) * scale || 0);
-      }, 0);
-      boundsWidth = metricWidth;
-    } else {
-      this.#context.letterSpacing = `${letterSpacing}px`;
-
-      const metrics = this.#context.measureText(text);
-      metricWidth = metrics.width;
-      const actualBoundingBoxLeft = -metrics.actualBoundingBoxLeft;
-      const actualBoundingBoxRight = metrics.actualBoundingBoxRight;
-      boundsWidth = actualBoundingBoxRight - actualBoundingBoxLeft;
-    }
-
-    if (metricWidth > 0) {
-      const val = (segments.length - 1) * letterSpacing;
-
-      metricWidth += val;
-      boundsWidth += val;
-    }
-
-    return Math.max(metricWidth, boundsWidth);
-  }
-}
-
-// @see https://github.com/pixijs/pixijs/blob/dev/src/scene/text/canvas/utils/fontStringFromTextStyle.ts#L17
-const genericFontFamilies = [
-  'serif',
-  'sans-serif',
-  'monospace',
-  'cursive',
-  'fantasy',
-  'system-ui',
-];
-
-/**
- * Generates a font style string to use for `TextMetrics.measureFont()`.
- * @param style
- * @returns Font style string, for passing to `TextMetrics.measureFont()`
- */
-export function fontStringFromTextStyle(
-  style: Partial<TextAttributes>,
-): string {
-  // build canvas api font setting from individual components. Convert a numeric style.fontSize to px
-  const fontSizeString =
-    typeof style.fontSize === 'number' ? `${style.fontSize}px` : style.fontSize;
-
-  // Clean-up fontFamily property by quoting each font name
-  // this will support font names with spaces
-  let fontFamilies: string | string[] = style.fontFamily;
-
-  if (!Array.isArray(style.fontFamily)) {
-    fontFamilies = style.fontFamily.split(',');
+  private collapseSpaces(whiteSpace: TextStyleWhiteSpace) {
+    return whiteSpace === 'normal' || whiteSpace === 'pre-line';
   }
 
-  for (let i = fontFamilies.length - 1; i >= 0; i--) {
-    // Trim any extra white-space
-    let fontFamily = fontFamilies[i].trim();
-
-    // Check if font already contains strings
-    if (
-      !/([\"\'])[^\'\"]+\1/.test(fontFamily) &&
-      !genericFontFamilies.includes(fontFamily)
-    ) {
-      fontFamily = `"${fontFamily}"`;
-    }
-    (fontFamilies as string[])[i] = fontFamily;
+  private collapseNewlines(whiteSpace: TextStyleWhiteSpace) {
+    return whiteSpace === 'normal';
   }
-
-  // eslint-disable-next-line max-len
-  return `${style.fontStyle} ${style.fontVariant} ${
-    style.fontWeight
-  } ${fontSizeString} ${(fontFamilies as string[]).join(',')}`;
-}
-
-export function yOffsetFromTextBaseline(
-  textBaseline: CanvasTextBaseline,
-  fontMetrics: globalThis.TextMetrics & { fontSize: number },
-) {
-  let offset = 0;
-  const {
-    fontBoundingBoxAscent = 0,
-    fontBoundingBoxDescent = 0,
-    hangingBaseline = 0,
-    ideographicBaseline = 0,
-  } = fontMetrics;
-  if (textBaseline === 'alphabetic') {
-    offset -= fontBoundingBoxAscent;
-  } else if (textBaseline === 'middle') {
-    offset -= (fontBoundingBoxAscent + fontBoundingBoxDescent) / 2;
-  } else if (textBaseline === 'hanging') {
-    offset -= hangingBaseline;
-  } else if (textBaseline === 'ideographic') {
-    offset -= ideographicBaseline;
-  } else if (textBaseline === 'bottom') {
-    offset -= fontBoundingBoxAscent + fontBoundingBoxDescent;
-  } else if (textBaseline === 'top') {
-    offset = 0;
-  }
-  return offset;
-}
-
-let canvasTextMetrics: CanvasTextMetrics;
-export function getOrCreateCanvasTextMetrics() {
-  if (!canvasTextMetrics) {
-    canvasTextMetrics = new CanvasTextMetrics();
-  }
-  return canvasTextMetrics;
 }

@@ -24,13 +24,13 @@ export class ShadowRect extends Drawcall {
   static check(shape: Entity) {
     // return (
     //   (shape instanceof Rect || shape instanceof RoughRect) &&
-    //   shape.dropShadowBlurRadius > 0
+    //   shape.blurRadius > 0
     // );
 
     return (
       shape.has(Rect) &&
       shape.has(DropShadow) &&
-      shape.read(DropShadow).dropShadowBlurRadius > 0
+      shape.read(DropShadow).blurRadius > 0
     );
   }
 
@@ -327,14 +327,9 @@ export class ShadowRect extends Drawcall {
   private generateBuffer(shape: Entity): [number[], Record<string, unknown>] {
     const { x, y, width, height, cornerRadius } = shape.read(Rect);
     const strokeWidth = shape.has(Stroke) ? shape.read(Stroke).width : 0;
-    const {
-      dropShadowColor,
-      dropShadowOffsetX,
-      dropShadowOffsetY,
-      dropShadowBlurRadius,
-    } = shape.read(DropShadow);
+    const { color, offsetX, offsetY, blurRadius } = shape.read(DropShadow);
 
-    const { r, g, b, opacity } = parseColor(dropShadowColor);
+    const { r, g, b, opacity } = parseColor(color);
 
     const sizeAttenuation = 0;
     const globalRenderOrder = shape.has(GlobalRenderOrder)
@@ -349,12 +344,7 @@ export class ShadowRect extends Drawcall {
       sizeAttenuation ? 1 : 0,
     ];
     const u_DropShadowColor = [r / 255, g / 255, b / 255, opacity];
-    const u_DropShadow = [
-      dropShadowOffsetX,
-      dropShadowOffsetY,
-      dropShadowBlurRadius,
-      0,
-    ];
+    const u_DropShadow = [offsetX, offsetY, blurRadius, 0];
 
     return [
       [

@@ -5,21 +5,21 @@ export class InnerShadow {
   /**
    * Specifies color for the inner shadow.
    */
-  @field.dynamicString(20) declare innerShadowColor: string;
+  @field.dynamicString(20) declare color: string;
 
   /**
    * Horizontal offset.
    *
    * Default to `0`.
    */
-  @field({ type: Type.float32, default: 0 }) declare innerShadowOffsetX: number;
+  @field({ type: Type.float32, default: 0 }) declare offsetX: number;
 
   /**
    * Vertical offset.
    *
    * Default to `0`.
    */
-  @field({ type: Type.float32, default: 0 }) declare innerShadowOffsetY: number;
+  @field({ type: Type.float32, default: 0 }) declare offsetY: number;
 
   /**
    * The larger this value, the bigger the blur, so the shadow becomes bigger and lighter.
@@ -28,5 +28,5 @@ export class InnerShadow {
    * Default to `0`.
    */
   @field({ type: Type.float32, default: 0 })
-  declare innerShadowBlurRadius: number;
+  declare blurRadius: number;
 }

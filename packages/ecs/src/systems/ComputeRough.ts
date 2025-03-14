@@ -49,9 +49,9 @@ export class ComputeRough extends System {
       }
 
       const drawableSets = drawable.sets;
-      let strokePoints: [number, number][][];
-      let fillPoints: [number, number][][];
-      let fillPathPoints: [number, number][][];
+      let strokePoints: [number, number][][] = [];
+      let fillPoints: [number, number][][] = [];
+      let fillPathPoints: [number, number][][] = [];
 
       drawableSets.forEach((set) => {
         const { subPaths } = parsePath(set);

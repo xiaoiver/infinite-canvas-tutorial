@@ -15,6 +15,7 @@ import {
   Circle,
   ComputedPoints,
   ComputedRough,
+  ComputedTextMetrics,
   DropShadow,
   Ellipse,
   FillSolid,
@@ -30,6 +31,7 @@ import {
   Renderable,
   Rough,
   Stroke,
+  Text,
   Theme,
   WindowResized,
   Wireframe,
@@ -86,6 +88,8 @@ export class MeshPipeline extends System {
           GlobalRenderOrder,
           Rough,
           ComputedRough,
+          Text,
+          ComputedTextMetrics,
         ).read,
     );
   }

@@ -3,6 +3,8 @@ import { Vec2 } from './Vec2';
 
 /**
  * A 3-dimensional vector.
+ *
+ * @see https://lastolivegames.github.io/becsy/guide/architecture/components#numeric-vectors
  */
 export class Vec3 {
   static ZERO = Vec3.splat(0);
@@ -29,7 +31,15 @@ export class Vec3 {
     return new Vec3(a.x, a.y, a.z);
   }
 
-  constructor(public x: number, public y: number, public z: number) {}
+  x: number;
+  y: number;
+  z: number;
+
+  constructor(x?: number, y?: number, z?: number) {
+    this.x = x ?? 0;
+    this.y = y ?? 0;
+    this.z = z ?? 0;
+  }
 
   /**
    * `[x, y, z]`
@@ -255,4 +265,4 @@ export class Vec3 {
   }
 }
 
-export const v3Type = Type.vector(Type.float32, ['x', 'y', 'z'], Vec3 as any);
+export const v3Type = Type.vector(Type.float32, ['x', 'y', 'z'], Vec3);

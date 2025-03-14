@@ -14,11 +14,16 @@ import {
   PreUpdate,
   ComputePoints,
   ComputeRough,
+  ComputeTextMetrics,
+  ViewportCulling,
+  ComputeBounds,
 } from '../systems';
 import {
   Circle,
+  ComputedBounds,
   ComputedPoints,
   ComputedRough,
+  ComputedTextMetrics,
   DropShadow,
   Ellipse,
   FillGradient,
@@ -35,6 +40,7 @@ import {
   Renderable,
   Rough,
   Stroke,
+  Text,
   Wireframe,
   ZIndex,
 } from '../components';
@@ -67,10 +73,19 @@ export const RendererPlugin: Plugin = (app: App) => {
   component(Rect);
   component(Polyline);
   component(Path);
+  component(Text);
   component(ComputedPoints);
   component(ComputedRough);
+  component(ComputedTextMetrics);
+  component(ComputedBounds);
 
   app.addSystems(StartUp, SetupDevice);
-  app.addSystems(PreUpdate, ComputePoints, ComputeRough);
-  app.addSystems(PostUpdate, Sort, BatchManager, MeshPipeline);
+  app.addSystems(
+    PreUpdate,
+    ComputePoints,
+    ComputeRough,
+    ComputeTextMetrics,
+    ComputeBounds,
+  );
+  app.addSystems(PostUpdate, ViewportCulling, Sort, BatchManager, MeshPipeline);
 };
