@@ -1,5 +1,5 @@
 import { Type } from '@lastolivegames/becsy';
-import { Vec3 } from './Vec3';
+// import { Vec3 } from './Vec3';
 
 /**
  * A 2-dimensional vector.
@@ -21,101 +21,101 @@ export class Vec2 {
     this.y = y ?? 0;
   }
 
-  to_array() {
-    return [this.x, this.y];
-  }
+  // to_array() {
+  //   return [this.x, this.y];
+  // }
 
-  add(rhs: number | Vec2) {
-    if (typeof rhs === 'number') {
-      return new Vec2(this.x + rhs, this.y + rhs);
-    } else {
-      return new Vec2(this.x + rhs.x, this.y + rhs.y);
-    }
-  }
-  add_assign(rhs: number | Vec2) {
-    if (typeof rhs === 'number') {
-      this.x += rhs;
-      this.y += rhs;
-    } else {
-      this.x += rhs.x;
-      this.y += rhs.y;
-    }
-    return this;
-  }
+  // add(rhs: number | Vec2) {
+  //   if (typeof rhs === 'number') {
+  //     return new Vec2(this.x + rhs, this.y + rhs);
+  //   } else {
+  //     return new Vec2(this.x + rhs.x, this.y + rhs.y);
+  //   }
+  // }
+  // add_assign(rhs: number | Vec2) {
+  //   if (typeof rhs === 'number') {
+  //     this.x += rhs;
+  //     this.y += rhs;
+  //   } else {
+  //     this.x += rhs.x;
+  //     this.y += rhs.y;
+  //   }
+  //   return this;
+  // }
 
-  sub(rhs: number | Vec2) {
-    if (typeof rhs === 'number') {
-      return new Vec2(this.x - rhs, this.y - rhs);
-    } else {
-      return new Vec2(this.x - rhs.x, this.y - rhs.y);
-    }
-  }
-  sub_assign(rhs: number | Vec2) {
-    if (typeof rhs === 'number') {
-      this.x -= rhs;
-      this.y -= rhs;
-    } else {
-      this.x -= rhs.x;
-      this.y -= rhs.y;
-    }
-    return this;
-  }
+  // sub(rhs: number | Vec2) {
+  //   if (typeof rhs === 'number') {
+  //     return new Vec2(this.x - rhs, this.y - rhs);
+  //   } else {
+  //     return new Vec2(this.x - rhs.x, this.y - rhs.y);
+  //   }
+  // }
+  // sub_assign(rhs: number | Vec2) {
+  //   if (typeof rhs === 'number') {
+  //     this.x -= rhs;
+  //     this.y -= rhs;
+  //   } else {
+  //     this.x -= rhs.x;
+  //     this.y -= rhs.y;
+  //   }
+  //   return this;
+  // }
 
-  mul(rhs: number | Vec2) {
-    if (typeof rhs === 'number') {
-      return new Vec2(this.x * rhs, this.y * rhs);
-    } else {
-      return new Vec2(this.x * rhs.x, this.y * rhs.y);
-    }
-  }
-  mul_assign(rhs: number | Vec2) {
-    if (typeof rhs === 'number') {
-      this.x *= rhs;
-      this.y *= rhs;
-    } else {
-      this.x *= rhs.x;
-      this.y *= rhs.y;
-    }
-    return this;
-  }
+  // mul(rhs: number | Vec2) {
+  //   if (typeof rhs === 'number') {
+  //     return new Vec2(this.x * rhs, this.y * rhs);
+  //   } else {
+  //     return new Vec2(this.x * rhs.x, this.y * rhs.y);
+  //   }
+  // }
+  // mul_assign(rhs: number | Vec2) {
+  //   if (typeof rhs === 'number') {
+  //     this.x *= rhs;
+  //     this.y *= rhs;
+  //   } else {
+  //     this.x *= rhs.x;
+  //     this.y *= rhs.y;
+  //   }
+  //   return this;
+  // }
 
-  div(rhs: number | Vec2) {
-    if (typeof rhs === 'number') {
-      return new Vec2(this.x / rhs, this.y / rhs);
-    } else {
-      return new Vec2(this.x / rhs.x, this.y / rhs.y);
-    }
-  }
-  div_assign(rhs: number | Vec2) {
-    if (typeof rhs === 'number') {
-      this.x /= rhs;
-      this.y /= rhs;
-    } else {
-      this.x /= rhs.x;
-      this.y /= rhs.y;
-    }
-    return this;
-  }
+  // div(rhs: number | Vec2) {
+  //   if (typeof rhs === 'number') {
+  //     return new Vec2(this.x / rhs, this.y / rhs);
+  //   } else {
+  //     return new Vec2(this.x / rhs.x, this.y / rhs.y);
+  //   }
+  // }
+  // div_assign(rhs: number | Vec2) {
+  //   if (typeof rhs === 'number') {
+  //     this.x /= rhs;
+  //     this.y /= rhs;
+  //   } else {
+  //     this.x /= rhs.x;
+  //     this.y /= rhs.y;
+  //   }
+  //   return this;
+  // }
 
-  eq(rhs: Vec2) {
-    return this.x === rhs.x && this.y === rhs.y;
-  }
+  // eq(rhs: Vec2) {
+  //   return this.x === rhs.x && this.y === rhs.y;
+  // }
 
-  min(rhs: Vec2) {
-    return new Vec2(Math.min(this.x, rhs.x), Math.min(this.y, rhs.y));
-  }
+  // min(rhs: Vec2) {
+  //   return new Vec2(Math.min(this.x, rhs.x), Math.min(this.y, rhs.y));
+  // }
 
-  max(rhs: Vec2) {
-    return new Vec2(Math.max(this.x, rhs.x), Math.max(this.y, rhs.y));
-  }
+  // max(rhs: Vec2) {
+  //   return new Vec2(Math.max(this.x, rhs.x), Math.max(this.y, rhs.y));
+  // }
 
-  ceil() {
-    return new Vec2(Math.ceil(this.x), Math.ceil(this.y));
-  }
+  // ceil() {
+  //   return new Vec2(Math.ceil(this.x), Math.ceil(this.y));
+  // }
 
-  extend(z: number) {
-    return new Vec3(this.x, this.y, z);
-  }
+  // extend(z: number) {
+  //   return new Vec3(this.x, this.y, z);
+  // }
 }
 
 export const v2Type = Type.vector(Type.float32, ['x', 'y'], Vec2);

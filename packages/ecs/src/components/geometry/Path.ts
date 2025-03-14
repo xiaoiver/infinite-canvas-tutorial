@@ -1,4 +1,6 @@
 import { field, Type } from '@lastolivegames/becsy';
+import { AABB } from '../math';
+import { Stroke } from '../renderable';
 
 export enum TesselationMethod {
   EARCUT = 'earcut',
@@ -10,6 +12,56 @@ export enum TesselationMethod {
  * @see https://developer.mozilla.org/en-US/docs/Web/SVG/Element/path
  */
 export class Path {
+  static getGeometryBounds(path: Path, computed: ComputedPoints) {
+    const { d } = path;
+    const { points } = computed;
+    if (!d) {
+      return new AABB(0, 0, 0, 0);
+    }
+
+    const flattedPoints = points.flat();
+
+    // FIXME: account for strokeLinejoin & strokeLinecap
+    const minX = Math.min(...flattedPoints.map((point) => point[0]));
+    const maxX = Math.max(...flattedPoints.map((point) => point[0]));
+    const minY = Math.min(...flattedPoints.map((point) => point[1]));
+    const maxY = Math.max(...flattedPoints.map((point) => point[1]));
+
+    return new AABB(minX, minY, maxX, maxY);
+  }
+
+  static getRenderBounds(
+    path: Path,
+    computed: ComputedPoints,
+    stroke?: Stroke,
+  ) {
+    const { width = 0, linecap = 'butt' } = stroke ?? {};
+
+    let style_expansion = 0.5;
+    if (linecap === 'square') {
+      style_expansion = Math.SQRT1_2;
+    }
+
+    // const stroke_is_rectilinear = true;
+    // if (
+    //   strokeLinejoin === 'miter' &&
+    //   style_expansion < Math.SQRT2 * strokeMiterlimit &&
+    //   !stroke_is_rectilinear
+    // ) {
+    //   style_expansion = Math.SQRT2 * strokeMiterlimit;
+    // }
+
+    style_expansion *= width;
+
+    const { minX, minY, maxX, maxY } = Path.getGeometryBounds(path, computed);
+    return new AABB(
+      minX - style_expansion,
+      minY - style_expansion,
+      maxX + style_expansion,
+      maxY + style_expansion,
+    );
+  }
+
   /**
    * Defines a path to be drawn.
    *
@@ -49,4 +101,9 @@ export class ComputedPoints {
    * Sampled points of the path.
    */
   @field({ type: Type.object }) declare points: [number, number][][];
+
+  /**
+   * Account for stroke alignment.
+   */
+  @field({ type: Type.object }) declare shiftedPoints: [number, number][];
 }

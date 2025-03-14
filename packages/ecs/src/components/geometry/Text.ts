@@ -1,6 +1,9 @@
 import { field, Type } from '@lastolivegames/becsy';
 import { Rectangle } from '@pixi/math';
-import { BitmapFont } from '../../utils';
+import { BitmapFont, strokeOffset } from '../../utils';
+import { yOffsetFromTextBaseline } from '../../systems/ComputeTextMetrics';
+import { AABB } from '../math';
+import { DropShadow, Stroke } from '../renderable';
 
 export type TextStyleWhiteSpace = 'normal' | 'pre' | 'pre-line';
 
@@ -9,6 +12,61 @@ export type TextStyleWhiteSpace = 'normal' | 'pre' | 'pre-line';
  * @see https://developer.mozilla.org/en-US/docs/Web/SVG/Element/text
  */
 export class Text {
+  static getGeometryBounds(text: Text, computed: ComputedTextMetrics) {
+    const { x, y, textAlign, textBaseline } = text;
+    const { width, height, fontMetrics } = computed;
+
+    const hwidth = width / 2;
+
+    // default 'left'
+    let lineXOffset = x;
+    if (textAlign === 'center') {
+      lineXOffset += -hwidth;
+    } else if (textAlign === 'right' || textAlign === 'end') {
+      lineXOffset += -hwidth * 2;
+    }
+
+    let lineYOffset = y;
+    if (fontMetrics) {
+      lineYOffset += yOffsetFromTextBaseline(textBaseline, fontMetrics);
+    }
+
+    return new AABB(
+      lineXOffset,
+      lineYOffset,
+      lineXOffset + width,
+      lineYOffset + height,
+    );
+  }
+
+  static getRenderBounds(
+    text: Text,
+    computed: ComputedTextMetrics,
+    stroke?: Stroke,
+    dropShadow?: DropShadow,
+  ) {
+    const { offsetX = 0, offsetY = 0, blurRadius = 0 } = dropShadow ?? {};
+    const offset = strokeOffset(stroke);
+
+    const { minX, minY, maxX, maxY } = Text.getGeometryBounds(text, computed);
+    const renderBounds = new AABB(
+      minX - offset,
+      minY - offset,
+      maxX + offset,
+      maxY + offset,
+    );
+    renderBounds.addBounds(
+      new AABB(
+        minX + offsetX - blurRadius,
+        minY + offsetY - blurRadius,
+        maxX + offsetX + blurRadius,
+        maxY + offsetY + blurRadius,
+      ),
+    );
+
+    return renderBounds;
+  }
+
   /**
    * The x-axis coordinate of the point at which to begin drawing the text, in pixels.
    * @see https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/fillText#x

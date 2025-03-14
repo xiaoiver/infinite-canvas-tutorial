@@ -1,16 +1,17 @@
 import { Stroke } from '../components';
 import { PointerEvents } from '../events';
 
-export function strokeOffset(
-  strokeAlignment: 'center' | 'inner' | 'outer',
-  strokeWidth: number,
-) {
-  if (strokeAlignment === 'center') {
-    return strokeWidth / 2;
-  } else if (strokeAlignment === 'inner') {
+export function strokeOffset(stroke?: Stroke) {
+  if (!stroke) {
     return 0;
-  } else if (strokeAlignment === 'outer') {
-    return strokeWidth;
+  }
+  const { alignment = 'center', width = 0 } = stroke;
+  if (alignment === 'center') {
+    return width / 2;
+  } else if (alignment === 'inner') {
+    return 0;
+  } else if (alignment === 'outer') {
+    return width;
   }
   return 0;
 }

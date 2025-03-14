@@ -13,3 +13,4 @@ export * from './tessy';
 export * from './emoji';
 export * from './bitmap-font';
 export * from './glyph';
+export * from './math';

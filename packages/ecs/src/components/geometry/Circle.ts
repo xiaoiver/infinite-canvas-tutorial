@@ -1,9 +1,28 @@
 import { field, Type } from '@lastolivegames/becsy';
+import { AABB } from '../math';
+import { strokeOffset } from '../../utils';
+import { Stroke } from '../renderable';
 
 /**
  * @see https://docs.rs/bevy/latest/bevy/math/prelude/struct.Circle.html
  */
 export class Circle {
+  static getGeometryBounds(circle: Circle) {
+    const { cx, cy, r } = circle;
+    return new AABB(cx - r, cy - r, cx + r, cy + r);
+  }
+
+  static getRenderBounds(circle: Circle, stroke?: Stroke) {
+    const { cx, cy, r } = circle;
+    const offset = strokeOffset(stroke);
+    return new AABB(
+      cx - r - offset,
+      cy - r - offset,
+      cx + r + offset,
+      cy + r + offset,
+    );
+  }
+
   /**
    * The cx attribute define the x-axis coordinate of a center point.
    *

@@ -1,10 +1,29 @@
 import { field, Type } from '@lastolivegames/becsy';
+import { AABB } from '../math';
+import { strokeOffset } from '../../utils';
+import { Stroke } from '../renderable';
 
 /**
  * Used to create ellipses based on a center coordinate, and both their x and y radius.
  * @see https://developer.mozilla.org/en-US/docs/Web/SVG/Element/ellipse
  */
 export class Ellipse {
+  static getGeometryBounds(ellipse: Ellipse) {
+    const { cx, cy, rx, ry } = ellipse;
+    return new AABB(cx - rx, cy - ry, cx + rx, cy + ry);
+  }
+
+  static getRenderBounds(ellipse: Ellipse, stroke?: Stroke) {
+    const { cx, cy, rx, ry } = ellipse;
+    const offset = strokeOffset(stroke);
+    return new AABB(
+      cx - rx - offset,
+      cy - ry - offset,
+      cx + rx + offset,
+      cy + ry + offset,
+    );
+  }
+
   /**
    * The cx attribute define the x-axis coordinate of a center point.
    *
