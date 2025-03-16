@@ -1,11 +1,5 @@
 import { System } from '@lastolivegames/becsy';
-import {
-  Children,
-  GlobalRenderOrder,
-  Parent,
-  Renderable,
-  ZIndex,
-} from '../components';
+import { GlobalRenderOrder, Parent, Renderable, ZIndex } from '../components';
 
 /**
  * Sort entities by z-index under context.

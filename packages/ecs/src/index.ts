@@ -27,7 +27,7 @@ export {
 export const DefaultPlugins: Plugin[] = [
   HierarchyPlugin,
   TransformPlugin,
-  RendererPlugin,
   CameraPlugin,
   EventPlugin,
+  RendererPlugin,
 ];

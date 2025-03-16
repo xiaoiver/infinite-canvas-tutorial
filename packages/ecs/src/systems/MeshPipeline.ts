@@ -8,10 +8,11 @@ import {
   TransparentBlack,
 } from '@antv/g-device-api';
 import { SetupDevice } from './SetupDevice';
-import { PrepareViewUniforms } from './PrepareViewUniforms';
 import {
+  Camera,
   CheckboardStyle,
   Circle,
+  ComputedCamera,
   ComputedPoints,
   ComputedRough,
   ComputedTextMetrics,
@@ -39,7 +40,6 @@ import { BatchManager } from './BatchManager';
 
 export class MeshPipeline extends System {
   private rendererResource = this.attach(SetupDevice);
-  private prepareViewUniforms = this.attach(PrepareViewUniforms);
   private batchManager = this.attach(BatchManager);
 
   private readonly theme = this.singleton.read(Theme);
@@ -48,27 +48,22 @@ export class MeshPipeline extends System {
 
   private grids = this.query((q) => q.addedOrChanged.with(Grid).trackWrites);
   private themes = this.query((q) => q.addedOrChanged.with(Theme).trackWrites);
+  private cameras = this.query((q) => q.current.with(Camera).read);
+  private computedCameras = this.query(
+    (q) => q.addedOrChanged.with(ComputedCamera).trackWrites,
+  );
 
-  private fills = this.query(
-    (q) => q.addedChangedOrRemoved.withAny(fillEnum).trackWrites,
-  );
-  private strokes = this.query(
-    (q) => q.addedChangedOrRemoved.with(Stroke).trackWrites,
-  );
-  private opacities = this.query(
-    (q) => q.addedChangedOrRemoved.with(Opacity).trackWrites,
-  );
-  private innerShadows = this.query(
-    (q) => q.addedChangedOrRemoved.with(InnerShadow).trackWrites,
-  );
-  private dropShadows = this.query(
-    (q) => q.addedChangedOrRemoved.with(DropShadow).trackWrites,
-  );
-  private wireframes = this.query(
-    (q) => q.addedChangedOrRemoved.with(Wireframe).trackWrites,
-  );
-  private roughs = this.query(
-    (q) => q.addedChangedOrRemoved.with(Rough).trackWrites,
+  private styles = this.query(
+    (q) =>
+      q.addedChangedOrRemoved.withAny(
+        fillEnum,
+        Stroke,
+        Opacity,
+        InnerShadow,
+        DropShadow,
+        Wireframe,
+        Rough,
+      ).trackWrites,
   );
 
   #renderPass: RenderPass;
@@ -110,19 +105,10 @@ export class MeshPipeline extends System {
   }
 
   initialize() {
-    const { device } = this.rendererResource;
-    const [buffer, legacyObject] = this.updateUniform(true);
-    this.#uniformBuffer = device.createBuffer({
-      viewOrSize: buffer,
-      usage: BufferUsage.UNIFORM,
-      hint: BufferFrequencyHint.DYNAMIC,
-    });
-    this.#uniformLegacyObject = legacyObject;
-
     this.#gridRenderer = new GridRenderer();
   }
 
-  private renderFrame() {
+  private renderFrame(computedCamera: ComputedCamera) {
     const { swapChain, device, renderTarget, depthRenderTarget } =
       this.rendererResource;
     const { width, height } = swapChain.getCanvas();
@@ -133,7 +119,18 @@ export class MeshPipeline extends System {
     //     (this.#enableCapture && this.#captureOptions?.grid);
     const shouldRenderGrid = true;
 
-    const [buffer, legacyObject] = this.updateUniform(shouldRenderGrid);
+    if (!this.#uniformBuffer) {
+      this.#uniformBuffer = device.createBuffer({
+        viewOrSize: (16 * 3 + 4 * 5) * Float32Array.BYTES_PER_ELEMENT,
+        usage: BufferUsage.UNIFORM,
+        hint: BufferFrequencyHint.DYNAMIC,
+      });
+    }
+
+    const [buffer, legacyObject] = this.updateUniform(
+      computedCamera,
+      shouldRenderGrid,
+    );
     this.#uniformBuffer.setSubData(0, new Uint8Array(buffer.buffer));
     this.#uniformLegacyObject = legacyObject;
 
@@ -167,33 +164,30 @@ export class MeshPipeline extends System {
   }
 
   execute() {
-    let needRender = false;
-    const { width, height } = this.windowResized;
-    if (width > 0 && height > 0) {
-      needRender = true;
-    }
+    this.cameras.current.forEach((entity) => {
+      let needRender = true;
+      const { width, height } = this.windowResized;
+      if (width > 0 && height > 0) {
+        needRender = true;
+      }
 
-    // Style changed.
-    (this.fills.addedChangedOrRemoved.length ||
-      this.strokes.addedChangedOrRemoved.length ||
-      this.opacities.addedChangedOrRemoved.length ||
-      this.innerShadows.addedChangedOrRemoved.length ||
-      this.dropShadows.addedChangedOrRemoved.length ||
-      this.wireframes.addedChangedOrRemoved.length ||
-      this.roughs.addedChangedOrRemoved.length ||
-      this.themes.addedOrChanged.length ||
-      this.grids.addedOrChanged.length) &&
-      (needRender = true);
+      // Style changed.
+      (this.computedCameras.addedOrChanged.length ||
+        this.styles.addedChangedOrRemoved.length ||
+        this.themes.addedOrChanged.length ||
+        this.grids.addedOrChanged.length) &&
+        (needRender = true);
 
-    if (needRender) {
-      console.log('render');
-      this.renderFrame();
+      if (needRender) {
+        console.log('render');
+        this.renderFrame(entity.read(ComputedCamera));
 
-      Object.assign(this.windowResized, {
-        width: 0,
-        height: 0,
-      });
-    }
+        Object.assign(this.windowResized, {
+          width: 0,
+          height: 0,
+        });
+      }
+    });
   }
 
   finalize() {
@@ -202,6 +196,7 @@ export class MeshPipeline extends System {
   }
 
   private updateUniform(
+    computedCamera: ComputedCamera,
     shouldRenderGrid: boolean,
   ): [Float32Array, Record<string, unknown>] {
     const { swapChain } = this.rendererResource;
@@ -226,7 +221,7 @@ export class MeshPipeline extends System {
     } = d3.rgb(gridColor)?.rgb() || d3.rgb(0, 0, 0, 1);
 
     const { projectionMatrix, viewMatrix, viewProjectionMatrixInv, zoom } =
-      this.prepareViewUniforms;
+      computedCamera;
 
     const u_ProjectionMatrix = projectionMatrix;
     const u_ViewMatrix = viewMatrix;

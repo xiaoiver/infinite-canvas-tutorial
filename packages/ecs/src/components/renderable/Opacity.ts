@@ -25,4 +25,10 @@ export class Opacity {
    * @see https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/fill-opacity
    */
   @field({ type: Type.float32, default: 1 }) declare fillOpacity: number;
+
+  constructor(props?: Partial<Opacity>) {
+    this.opacity = props?.opacity ?? 1;
+    this.strokeOpacity = props?.strokeOpacity ?? 1;
+    this.fillOpacity = props?.fillOpacity ?? 1;
+  }
 }

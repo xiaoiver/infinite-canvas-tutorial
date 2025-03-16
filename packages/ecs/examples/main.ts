@@ -3,7 +3,6 @@ import {
   Entity,
   Commands,
   System,
-  StartUp,
   Transform,
   Parent,
   Children,
@@ -26,6 +25,7 @@ import {
   Rough,
   Text,
   Wireframe,
+  Opacity,
 } from '../src';
 
 const $canvas = document.getElementById('canvas') as HTMLCanvasElement;
@@ -40,6 +40,7 @@ const resize = (width: number, height: number) => {
 };
 resize(window.innerWidth, window.innerHeight);
 
+let cameraEntity: Entity;
 let parentEntity: Entity;
 let childEntity: Entity;
 let grandchildEntity: Entity;
@@ -53,13 +54,12 @@ class StartUpSystem extends System {
       q.using(
         CanvasConfig,
         WindowResized,
-        // Theme,
-        // Grid,
+        Theme,
+        Grid,
         Camera,
         Parent,
         Children,
         Transform,
-        GlobalTransform,
         Renderable,
         FillSolid,
         Stroke,
@@ -71,6 +71,7 @@ class StartUpSystem extends System {
         Rough,
         Text,
         Wireframe,
+        Opacity,
       ).write,
   );
 
@@ -82,12 +83,18 @@ class StartUpSystem extends System {
       devicePixelRatio: window.devicePixelRatio,
     });
 
+    const camera = this.commands.spawn(new Camera(), new Transform());
+
     const parent = this.commands.spawn(
       new Transform(),
       new Renderable(),
       new FillSolid('red'),
       new Circle({ cx: 0, cy: 0, r: 100 }),
+      new Opacity(),
     );
+
+    camera.appendChild(parent);
+
     const child = this.commands.spawn(
       new Transform(),
       new Renderable(),
@@ -204,6 +211,7 @@ class StartUpSystem extends System {
     );
     parent.appendChild(text);
 
+    cameraEntity = camera.id().hold();
     parentEntity = parent.id().hold();
     childEntity = child.id().hold();
     grandchildEntity = grandchild.id().hold();
@@ -214,16 +222,14 @@ class StartUpSystem extends System {
     Object.assign(parentEntity.write(Transform), {
       translation: { x: 100, y: 100 },
     });
-    childEntity.write(Transform).scale.x = 1;
-    grandchildEntity.write(Transform).scale.x = 1;
+    // childEntity.write(Transform).scale.x = 1;
+    // grandchildEntity.write(Transform).scale.x = 1;
 
-    parent.addEventListener('pointerdown', (e) => {
-      console.log('pointerdown', e);
-    });
+    // parent.addEventListener('pointerdown', (e) => {
+    //   console.log('pointerdown', e);
+    // });
 
     window.addEventListener('resize', () => {
-      // grandchildEntity.write(FillSolid).value = 'orange';
-
       resize(window.innerWidth, window.innerHeight);
 
       Object.assign(this.singleton.write(WindowResized), {
@@ -234,6 +240,16 @@ class StartUpSystem extends System {
   }
 
   execute(): void {
+    // setTimeout(() => {
+    // parentEntity.write(Opacity).opacity = 0.5;
+    // childEntity.write(Stroke).width = 30;
+    // cameraEntity.write(Camera).x = 20;
+    // cameraEntity.write(Transform).translation.x = 100;
+    // cameraEntity.write(Transform).scale.x = 2;
+    // cameraEntity.write(Transform).scale.y = 2;
+    // grandchildEntity.write(Transform).rotation = 20;
+    // grandchildEntity.write(FillSolid).value = 'grey';
+    // }, 1000);
     // expect(parent_entity?.read(Parent).children).toBe([child_entity]);
   }
 }

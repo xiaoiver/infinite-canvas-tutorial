@@ -45,7 +45,7 @@ export class SetupDevice extends System {
     let deviceContribution: DeviceContribution;
     if (renderer === 'webgl') {
       deviceContribution = new WebGLDeviceContribution({
-        targets: ['webgl2', 'webgl1'],
+        targets: ['webgl1'],
         antialias: true,
         shaderDebug: true,
         trackResources: false,

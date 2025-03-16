@@ -1,21 +1,16 @@
 import EventEmitter from 'eventemitter3';
-import { isBoolean, isFunction, isObject } from '@antv/util';
+// import { isBoolean, isFunction, isObject } from '@antv/util';
 import { ComponentType, Entity } from '@lastolivegames/becsy';
 import { AddChild } from './AddChild';
 import { Insert } from './Insert';
 import { RemoveChild } from './RemoveChild';
 import { Commands } from './Commands';
 import { Bundle } from '../components';
-import { FederatedEventTarget } from '../events/FederatedEventTarget';
-import { FederatedEvent } from '../events';
 
 /**
  * A list of commands that will be run to modify an [entity](crate::entity).
  */
-export class EntityCommands
-  extends EventEmitter
-  implements FederatedEventTarget
-{
+export class EntityCommands extends EventEmitter {
   constructor(public entity: Entity, public commands: Commands) {
     super();
   }
@@ -77,61 +72,61 @@ export class EntityCommands
     return this;
   }
 
-  addEventListener(
-    type: string,
-    listener: EventListenerOrEventListenerObject,
-    options?: boolean | AddEventListenerOptions,
-  ) {
-    const capture =
-      (isBoolean(options) && options) || (isObject(options) && options.capture);
-    const signal = isObject(options) ? options.signal : undefined;
-    const once = isObject(options) && options.once;
-    const context = isFunction(listener) ? undefined : listener;
+  // addEventListener(
+  //   type: string,
+  //   listener: EventListenerOrEventListenerObject,
+  //   options?: boolean | AddEventListenerOptions,
+  // ) {
+  //   const capture =
+  //     (isBoolean(options) && options) || (isObject(options) && options.capture);
+  //   const signal = isObject(options) ? options.signal : undefined;
+  //   const once = isObject(options) && options.once;
+  //   const context = isFunction(listener) ? undefined : listener;
 
-    type = capture ? `${type}capture` : type;
-    const listenerFn = isFunction(listener) ? listener : listener.handleEvent;
+  //   type = capture ? `${type}capture` : type;
+  //   const listenerFn = isFunction(listener) ? listener : listener.handleEvent;
 
-    if (signal) {
-      signal.addEventListener('abort', () => {
-        this.off(type, listenerFn, context);
-      });
-    }
+  //   if (signal) {
+  //     signal.addEventListener('abort', () => {
+  //       this.off(type, listenerFn, context);
+  //     });
+  //   }
 
-    if (once) {
-      this.once(type, listenerFn, context);
-    } else {
-      this.on(type, listenerFn, context);
-    }
-  }
+  //   if (once) {
+  //     this.once(type, listenerFn, context);
+  //   } else {
+  //     this.on(type, listenerFn, context);
+  //   }
+  // }
 
-  removeEventListener(
-    type: string,
-    listener: EventListenerOrEventListenerObject,
-    options?: boolean | EventListenerOptions,
-  ) {
-    const capture =
-      (isBoolean(options) && options) || (isObject(options) && options.capture);
-    const context = isFunction(listener) ? undefined : listener;
+  // removeEventListener(
+  //   type: string,
+  //   listener: EventListenerOrEventListenerObject,
+  //   options?: boolean | EventListenerOptions,
+  // ) {
+  //   const capture =
+  //     (isBoolean(options) && options) || (isObject(options) && options.capture);
+  //   const context = isFunction(listener) ? undefined : listener;
 
-    type = capture ? `${type}capture` : type;
-    listener = isFunction(listener) ? listener : listener?.handleEvent;
+  //   type = capture ? `${type}capture` : type;
+  //   listener = isFunction(listener) ? listener : listener?.handleEvent;
 
-    this.off(type, listener, context);
-  }
+  //   this.off(type, listener, context);
+  // }
 
-  dispatchEvent(e: Event) {
-    if (!(e instanceof FederatedEvent)) {
-      throw new Error(
-        'Container cannot propagate events outside of the Federated Events API',
-      );
-    }
+  // dispatchEvent(e: Event) {
+  //   if (!(e instanceof FederatedEvent)) {
+  //     throw new Error(
+  //       'Container cannot propagate events outside of the Federated Events API',
+  //     );
+  //   }
 
-    e.defaultPrevented = false;
-    e.path = [];
-    // @ts-ignore
-    e.target = this.entity;
-    e.manager.dispatchEvent(e);
+  //   e.defaultPrevented = false;
+  //   e.path = [];
+  //   // @ts-ignore
+  //   e.target = this.entity;
+  //   e.manager.dispatchEvent(e);
 
-    return !e.defaultPrevented;
-  }
+  //   return !e.defaultPrevented;
+  // }
 }

@@ -74,11 +74,3 @@ export const PostUpdate = System.group();
  * Runs last in the schedule.
  */
 export const Last = System.group();
-
-PreStartUp.schedule((s) => s.before(StartUp));
-StartUp.schedule((s) => s.before(PostStartup));
-PostStartup.schedule((s) => s.before(First));
-First.schedule((s) => s.before(PreUpdate));
-PreUpdate.schedule((s) => s.before(Update));
-Update.schedule((s) => s.before(PostUpdate));
-PostUpdate.schedule((s) => s.before(Last));

@@ -1,6 +1,12 @@
-import { Entity, system, System } from '@lastolivegames/becsy';
-import { Children, GlobalTransform, Parent, Transform } from '../components';
-import { Mat3 } from '../components/math/Mat3';
+import { Entity, System } from '@lastolivegames/becsy';
+import {
+  Camera,
+  Children,
+  GlobalTransform,
+  Parent,
+  Transform,
+} from '../components';
+import { Mat3 } from '../components';
 
 /**
  * Update {@link GlobalTransform} component of entities that aren't in the hierarchy
@@ -9,23 +15,21 @@ import { Mat3 } from '../components/math/Mat3';
 export class SyncSimpleTransforms extends System {
   queries = this.query(
     (q) =>
-      q.addedOrChanged
-        .with(Transform)
-        .but.without(Parent, Children)
-        .trackWrites.using(GlobalTransform).write,
+      q.addedOrChanged.with(Transform).but.without(Parent, Children)
+        .trackWrites,
   );
 
-  root = this.query(
+  cameras = this.query(
     (q) =>
-      q.addedOrChanged
-        .with(Transform, Parent)
-        .without(Children)
-        .trackWrites.using(GlobalTransform).write,
+      q.addedOrChanged.with(Transform, Parent).without(Children).trackWrites,
   );
 
-  orphaned = this.query(
-    (q) => q.removed.with(Parent).using(GlobalTransform).write,
-  );
+  orphaned = this.query((q) => q.removed.with(Parent));
+
+  constructor() {
+    super();
+    this.query((q) => q.using(GlobalTransform).write);
+  }
 
   private syncTransform(
     entity: Entity,
@@ -40,18 +44,21 @@ export class SyncSimpleTransforms extends System {
   }
 
   execute(): void {
+    this.cameras.addedOrChanged.forEach((entity) => {
+      this.syncTransform(entity);
+      console.log('camera', entity);
+    });
+
     // Update changed entities.
     this.queries.addedOrChanged.forEach((entity) => {
       this.syncTransform(entity);
-    });
-
-    this.root.addedOrChanged.forEach((entity) => {
-      this.syncTransform(entity);
+      console.log('queries', entity);
     });
 
     // Update orphaned entities.
     this.orphaned.removed.forEach((entity) => {
       this.syncTransform(entity, false);
+      console.log('removed', entity);
     });
   }
 }
@@ -61,18 +68,26 @@ export class SyncSimpleTransforms extends System {
  * Use `after` constraints here to ensure that the {@link SyncSimpleTransforms} system has run first.
  * @see https://lastolivegames.github.io/becsy/guide/architecture/systems#execution-order
  */
-@system((s) => s.after(SyncSimpleTransforms))
 export class PropagateTransforms extends System {
   queries = this.query(
     (q) =>
-      q.addedOrChanged
+      q
         .with(Transform, Parent)
-        .trackWrites.using(GlobalTransform).write,
+        .addedOrChanged.trackWrites.using(GlobalTransform).write,
   );
+
+  constructor() {
+    super();
+    this.query((q) => q.using(Camera).read);
+  }
 
   execute(): void {
     this.queries.addedOrChanged.forEach((entity) => {
-      const worldTransform = entity.read(GlobalTransform);
+      // Camera's worldTransform reflects the camera's position in the world.
+      // It is not affected by the hierarchy.
+      const worldTransform = entity.has(Camera)
+        ? new GlobalTransform()
+        : entity.read(GlobalTransform);
 
       entity.read(Parent).children.forEach((child) => {
         const localTransform = child.read(Transform);

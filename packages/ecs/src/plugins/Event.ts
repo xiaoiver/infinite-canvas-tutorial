@@ -1,12 +1,12 @@
 import { component, system } from '@lastolivegames/becsy';
 import { App } from '../App';
 import { Plugin } from '.';
-import { EventReader, EventWriter, PreUpdate } from '../systems';
-import { Event } from '../components';
+import { EventWriter, PreUpdate } from '../systems';
+import { Event, Input, InputPoint } from '../components';
 
 export const EventPlugin: Plugin = (app: App) => {
   component(Event);
-  app.addSystems(PreUpdate, EventWriter, EventReader);
-
-  system((s) => s.inAnyOrderWith(EventReader))(EventWriter);
+  component(Input);
+  component(InputPoint);
+  system(PreUpdate)(EventWriter);
 };

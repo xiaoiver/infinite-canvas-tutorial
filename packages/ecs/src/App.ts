@@ -19,7 +19,7 @@ import {
 // import { EventCtor, Events, EventsReader } from './Events';
 import { Resource } from './Resource';
 import { DOMAdapter } from './environment';
-import { Camera, WindowResized } from './components';
+import { Cursor, WindowResized } from './components';
 
 /**
  * @see https://bevy-cheatbook.github.io/programming/app-builder.html
@@ -133,12 +133,20 @@ export class App {
   async run() {
     const resources = this.#resources;
 
+    PreStartUp.schedule((s) => s.before(StartUp));
+    StartUp.schedule((s) => s.before(PostStartup));
+    PostStartup.schedule((s) => s.before(First));
+    First.schedule((s) => s.before(PreUpdate));
+    PreUpdate.schedule((s) => s.before(Update));
+    Update.schedule((s) => s.before(PostUpdate));
+    PostUpdate.schedule((s) => s.before(Last));
+
     @system(PreStartUp)
     class PreStartUpPlaceHolder extends System {
       constructor() {
         super();
         this.singleton.read(WindowResized);
-        this.singleton.read(Camera);
+        this.singleton.read(Cursor);
       }
     }
     @system(StartUp)
@@ -157,7 +165,9 @@ export class App {
     class LastPlaceHolder extends System {}
 
     // Build all plugins.
-    await Promise.all(this.#plugins.map((plugin) => plugin(this)));
+    for (const plugin of this.#plugins) {
+      await plugin(this);
+    }
 
     this.#systems.forEach(([group, s], i) => {
       // @see https://github.com/LastOliveGames/becsy/blob/main/tests/query.test.ts#L22C3-L22C58

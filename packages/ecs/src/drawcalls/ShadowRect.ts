@@ -224,7 +224,10 @@ export class ShadowRect extends Drawcall {
     }
   }
 
-  render(renderPass: RenderPass, uniformLegacyObject: Record<string, unknown>) {
+  render(
+    renderPass: RenderPass,
+    sceneUniformLegacyObject: Record<string, unknown>,
+  ) {
     // if (
     //   this.shapes.some((shape) => shape.renderDirtyFlag) ||
     //   this.geometryDirty
@@ -304,7 +307,7 @@ export class ShadowRect extends Drawcall {
     }
     // }
 
-    this.program.setUniformsLegacy(uniformLegacyObject);
+    this.program.setUniformsLegacy(sceneUniformLegacyObject);
     renderPass.setPipeline(this.pipeline);
     const vertexBuffers = this.vertexBuffers.map((buffer) => ({ buffer }));
     if (this.useWireframe) {

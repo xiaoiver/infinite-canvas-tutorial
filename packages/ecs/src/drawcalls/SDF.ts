@@ -357,7 +357,10 @@ export class SDF extends Drawcall {
     this.bindings = this.renderCache.createBindings(bindings);
   }
 
-  render(renderPass: RenderPass, uniformLegacyObject: Record<string, unknown>) {
+  render(
+    renderPass: RenderPass,
+    sceneUniformLegacyObject: Record<string, unknown>,
+  ) {
     // if (
     //   this.shapes.some((shape) => shape.renderDirtyFlag) ||
     //   this.geometryDirty
@@ -440,7 +443,7 @@ export class SDF extends Drawcall {
     }
     // }
 
-    this.program.setUniformsLegacy(uniformLegacyObject);
+    this.program.setUniformsLegacy(sceneUniformLegacyObject);
     renderPass.setPipeline(this.pipeline);
 
     const vertexBuffers = this.vertexBuffers.map((buffer) => ({ buffer }));

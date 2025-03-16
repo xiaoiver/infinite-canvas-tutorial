@@ -1,10 +1,7 @@
-// import { ClipSpaceNearZ } from '@antv/g-device-api';
-import { component, field, Type } from '@lastolivegames/becsy';
+import { field, Type } from '@lastolivegames/becsy';
+import { mat3 } from 'gl-matrix';
 
-@component
-export class Camera {
-  // @field.staticString([ClipSpaceNearZ.NEGATIVE_ONE, ClipSpaceNearZ.ZERO]) declare clipSpaceNearZ: ClipSpaceNearZ;
-
+export class ComputedCamera {
   /**
    * x in canvas space
    */
@@ -25,4 +22,12 @@ export class Camera {
    * @see https://threejs.org/docs/#api/en/cameras/OrthographicCamera.zoom
    */
   @field({ type: Type.float32, default: 1 }) declare zoom: number;
+
+  @field({ type: Type.object }) declare projectionMatrix: mat3;
+
+  @field({ type: Type.object }) declare viewMatrix: mat3;
+
+  @field({ type: Type.object }) declare viewProjectionMatrix: mat3;
+
+  @field({ type: Type.object }) declare viewProjectionMatrixInv: mat3;
 }

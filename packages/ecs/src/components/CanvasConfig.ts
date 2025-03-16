@@ -1,6 +1,6 @@
 import { field, component, Type } from '@lastolivegames/becsy';
 
-export enum CanvasMode {
+export enum Pen {
   SELECT = 'select',
   HAND = 'hand',
   DRAW_RECT = 'draw-rect',
@@ -43,15 +43,11 @@ export class CanvasConfig {
   @field({ type: Type.float32, default: 1 }) declare devicePixelRatio: number;
 
   /**
-   * Default to `CanvasMode.HAND`.
+   * Default to `Pen.HAND`.
    */
   @field({
-    type: Type.staticString([
-      CanvasMode.SELECT,
-      CanvasMode.HAND,
-      CanvasMode.DRAW_RECT,
-    ]),
-    default: CanvasMode.HAND,
+    type: Type.staticString([Pen.SELECT, Pen.HAND, Pen.DRAW_RECT]),
+    default: Pen.HAND,
   })
-  declare mode: CanvasMode;
+  declare pen: Pen;
 }

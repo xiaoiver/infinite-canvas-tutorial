@@ -260,7 +260,10 @@ export class Mesh extends Drawcall {
     this.bindings = this.renderCache.createBindings(bindings);
   }
 
-  render(renderPass: RenderPass) {
+  render(
+    renderPass: RenderPass,
+    sceneUniformLegacyObject: Record<string, unknown>,
+  ) {
     if (this.points.length === 0) {
       return;
     }
@@ -302,7 +305,7 @@ export class Mesh extends Drawcall {
     }
     // }
 
-    // this.program.setUniformsLegacy(uniformLegacyObject);
+    this.program.setUniformsLegacy(sceneUniformLegacyObject);
     renderPass.setPipeline(this.pipeline);
     const vertexBuffers = this.vertexBuffers.map((buffer) => ({ buffer }));
     if (this.useWireframe) {

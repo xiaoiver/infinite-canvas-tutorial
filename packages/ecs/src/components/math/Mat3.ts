@@ -1,4 +1,5 @@
 import { Type } from '@lastolivegames/becsy';
+import { mat3 } from 'gl-matrix';
 import { Vec3 } from './Vec3';
 import { Vec2 } from './Vec2';
 
@@ -31,6 +32,10 @@ export class Mat3 {
    * A 3x3 identity matrix, where all diagonal elements are `1`, and all off-diagonal elements are `0`.
    */
   static IDENTITY = Mat3.from_cols(Vec3.X, Vec3.Y, Vec3.Z);
+
+  static fromGLMat3(m: mat3) {
+    return new Mat3(m[0], m[1], m[2], m[3], m[4], m[5], m[6], m[7], m[8]);
+  }
 
   static copy(m: Mat3) {
     const { m00, m01, m02, m10, m11, m12, m20, m21, m22 } = m;

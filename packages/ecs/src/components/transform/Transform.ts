@@ -1,4 +1,4 @@
-import { field } from '@lastolivegames/becsy';
+import { field, Type } from '@lastolivegames/becsy';
 import { v2Type, Vec2 } from '../math/Vec2';
 
 /**
@@ -18,15 +18,15 @@ export class Transform {
   /**
    * Position of the entity. In 2d, the last value of the `Vec3` is used for z-ordering.
    */
-  @field(v2Type) declare translation: Vec2;
+  @field({ type: v2Type, default: Vec2.ZERO }) declare translation: Vec2;
   /**
    * Scale of the entity.
    */
-  @field(v2Type) declare scale: Vec2;
+  @field({ type: v2Type, default: Vec2.ONE }) declare scale: Vec2;
   /**
    * Rotation of the entity.
    */
-  @field.float32 declare rotation: number;
+  @field({ type: Type.float32, default: 0 }) declare rotation: number;
 
   constructor(
     props?: Partial<{

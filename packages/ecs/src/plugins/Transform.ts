@@ -1,4 +1,4 @@
-import { System, component } from '@lastolivegames/becsy';
+import { component, system } from '@lastolivegames/becsy';
 import { App } from '../App';
 import { Plugin } from '.';
 import { Transform, GlobalTransform } from '../components';
@@ -6,22 +6,7 @@ import {
   SyncSimpleTransforms,
   PropagateTransforms,
   PostStartup,
-  PostUpdate,
-  Last,
 } from '../systems';
-
-/**
- * Set enum for the systems relating to transform propagation
- */
-export namespace TransformSystem {
-  /**
-   * Propagates changes in transform to children's [`GlobalTransform`]
-   */
-  export const TransformPropagate = System.group();
-}
-TransformSystem.TransformPropagate.schedule((s) =>
-  s.after(PostUpdate).before(Last),
-);
 
 /**
  * The base plugin for handling {@link Transform} components.
@@ -32,5 +17,6 @@ export const TransformPlugin: Plugin = (app: App) => {
   component(GlobalTransform);
   // component(TransformBundle);
 
-  app.addSystems(PostStartup, SyncSimpleTransforms, PropagateTransforms);
+  system(PostStartup)(SyncSimpleTransforms);
+  system((s) => s.after(SyncSimpleTransforms))(PropagateTransforms);
 };

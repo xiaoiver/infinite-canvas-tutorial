@@ -1,7 +1,7 @@
 import { System } from '@lastolivegames/becsy';
+import { vec2 } from 'gl-matrix';
 import { ComputedPoints, Path, Polyline, Stroke } from '../components';
 import { bisect, parsePath } from '../utils';
-import { vec2 } from 'gl-matrix';
 
 /**
  * Compute the points of the path according to the definition.

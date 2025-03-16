@@ -1,7 +1,7 @@
 /**
  * @see https://docs.rs/bevy/latest/bevy/render/struct.RenderPlugin.html
  */
-import { component } from '@lastolivegames/becsy';
+import { component, system } from '@lastolivegames/becsy';
 import { App } from '../App';
 import { Plugin } from './';
 import {
@@ -17,6 +17,9 @@ import {
   ComputeTextMetrics,
   ViewportCulling,
   ComputeBounds,
+  Last,
+  ComputeCamera,
+  SetCursor,
 } from '../systems';
 import {
   Circle,
@@ -79,13 +82,18 @@ export const RendererPlugin: Plugin = (app: App) => {
   component(ComputedTextMetrics);
   component(ComputedBounds);
 
-  app.addSystems(StartUp, SetupDevice);
-  app.addSystems(
-    PreUpdate,
-    ComputePoints,
-    ComputeRough,
-    ComputeTextMetrics,
-    ComputeBounds,
+  system(StartUp)(SetupDevice);
+
+  system(PreUpdate)(ComputePoints);
+  system(PreUpdate)(ComputeRough);
+  system(PreUpdate)(ComputeTextMetrics);
+  system(PreUpdate)(ComputeBounds);
+
+  system(PostUpdate)(Sort);
+  system(PostUpdate)(BatchManager);
+  system(PostUpdate)(SetCursor);
+
+  system((s) => s.after(ComputeCamera, SetupDevice, BatchManager))(
+    MeshPipeline,
   );
-  app.addSystems(PostUpdate, ViewportCulling, Sort, BatchManager, MeshPipeline);
 };

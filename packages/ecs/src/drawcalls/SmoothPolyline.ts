@@ -353,7 +353,10 @@ export class SmoothPolyline extends Drawcall {
     });
   }
 
-  render(renderPass: RenderPass) {
+  render(
+    renderPass: RenderPass,
+    sceneUniformLegacyObject: Record<string, unknown>,
+  ) {
     if (this.instanceCount <= 0) {
       return;
     }
@@ -392,7 +395,7 @@ export class SmoothPolyline extends Drawcall {
     }
     // }
 
-    // this.program.setUniformsLegacy(uniformLegacyObject);
+    this.program.setUniformsLegacy(sceneUniformLegacyObject);
     renderPass.setPipeline(this.pipeline);
     const vertexBuffers = this.vertexBuffers.map((buffer, index) => ({
       buffer,
