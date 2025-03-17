@@ -7,6 +7,7 @@ import {
   ComputedTextMetrics,
   DropShadow,
   Ellipse,
+  GlobalTransform,
   Path,
   Polyline,
   Rect,
@@ -17,7 +18,10 @@ import {
 
 export class ComputeBounds extends System {
   renderables = this.query(
-    (q) => q.addedOrChanged.with(Renderable).trackWrites,
+    (q) =>
+      q.addedOrChanged
+        .with(Renderable, GlobalTransform)
+        .withAny(Circle, Ellipse, Rect, Polyline, Path, Text).trackWrites,
   );
 
   constructor() {

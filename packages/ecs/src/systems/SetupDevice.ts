@@ -9,7 +9,7 @@ import {
   WebGLDeviceContribution,
   WebGPUDeviceContribution,
 } from '@antv/g-device-api';
-import { CanvasConfig, WindowResized } from '../components';
+import { CanvasConfig } from '../components';
 import { RenderCache } from '../utils';
 import { TexturePool } from '../resources';
 
@@ -18,7 +18,6 @@ export class SetupDevice extends System {
    * Global app config.
    */
   private readonly canvasConfig = this.singleton.read(CanvasConfig); // can't use # field here
-  private readonly windowResized = this.singleton.read(WindowResized);
 
   /**
    * Device represents a "virtual GPU".
@@ -29,6 +28,9 @@ export class SetupDevice extends System {
   depthRenderTarget: RenderTarget;
   renderCache: RenderCache;
   texturePool: TexturePool;
+
+  #prevWidth: number;
+  #prevHeight: number;
 
   async prepare() {
     const {
@@ -41,6 +43,9 @@ export class SetupDevice extends System {
     } = this.canvasConfig;
     const widthDPR = width * devicePixelRatio;
     const heightDPR = height * devicePixelRatio;
+
+    this.#prevWidth = width;
+    this.#prevHeight = height;
 
     let deviceContribution: DeviceContribution;
     if (renderer === 'webgl') {
@@ -73,9 +78,11 @@ export class SetupDevice extends System {
   }
 
   execute() {
-    const { width, height } = this.windowResized;
+    const { width, height } = this.canvasConfig;
+    if (this.#prevWidth !== width || this.#prevHeight !== height) {
+      this.#prevWidth = width;
+      this.#prevHeight = height;
 
-    if (width > 0 && height > 0) {
       const { devicePixelRatio } = this.canvasConfig;
       const widthDPR = width * devicePixelRatio;
       const heightDPR = height * devicePixelRatio;

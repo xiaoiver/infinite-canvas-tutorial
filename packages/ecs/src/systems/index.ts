@@ -13,3 +13,4 @@ export * from './ComputeTextMetrics';
 export * from './ComputeBounds';
 export * from './ViewportCulling';
 export * from './SetCursor';
+export * from './ExportSVG';

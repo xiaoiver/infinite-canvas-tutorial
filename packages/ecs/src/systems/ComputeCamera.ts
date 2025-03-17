@@ -1,19 +1,12 @@
 import { Entity, System } from '@lastolivegames/becsy';
 import { mat3 } from 'gl-matrix';
-import {
-  Camera,
-  CanvasConfig,
-  ComputedCamera,
-  Transform,
-  WindowResized,
-} from '../components';
+import { Camera, CanvasConfig, ComputedCamera, Transform } from '../components';
 
 /**
  * Compute the points of the path according to the definition.
  */
 export class ComputeCamera extends System {
   private readonly canvasConfig = this.singleton.read(CanvasConfig);
-  private readonly windowResized = this.singleton.read(WindowResized);
 
   private readonly cameras = this.query(
     (q) => q.current.addedOrChanged.with(Camera, Transform).trackWrites,
@@ -44,26 +37,31 @@ export class ComputeCamera extends System {
    */
   #viewProjectionMatrixInv = mat3.create();
 
+  #prevWidth: number;
+  #prevHeight: number;
+
   constructor() {
     super();
     this.query((q) => q.using(ComputedCamera).write);
   }
 
   execute(): void {
+    const { width, height } = this.canvasConfig;
+
     this.cameras.addedOrChanged.forEach((entity) => {
-      const { width, height } = this.canvasConfig;
+      this.#prevWidth = width;
+      this.#prevHeight = height;
 
       this.projection(width, height);
       this.updateMatrix(entity.read(Transform));
-
       this.updateComputedCamera(entity);
     });
 
-    const { width, height } = this.windowResized;
-    if (width > 0 && height > 0) {
+    if (this.#prevWidth !== width || this.#prevHeight !== height) {
+      this.#prevWidth = width;
+      this.#prevHeight = height;
       this.cameras.current.forEach((entity) => {
         this.projection(width, height);
-
         this.updateComputedCamera(entity);
       });
     }

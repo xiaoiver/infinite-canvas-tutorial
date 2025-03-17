@@ -301,23 +301,14 @@ export class CameraControl extends System {
         viewProjectionMatrixInv2,
       );
 
-      entity.write(Transform).translation.x += preZoomX - postZoomX;
-      entity.write(Transform).translation.y += preZoomY - postZoomY;
-      entity.write(Transform).rotation = rotation;
-      entity.write(Transform).scale.x = 1 / zoom;
-      entity.write(Transform).scale.y = 1 / zoom;
-
-      // Object.assign(entity.write(Transform), {
-      //   translation: {
-      //     x: x + preZoomX - postZoomX,
-      //     y: y + preZoomY - postZoomY,
-      //   },
-      //   rotation: rotation,
-      //   scale: {
-      //     x: 1 / zoom,
-      //     y: 1 / zoom,
-      //   },
-      // });
+      Object.assign(entity.write(Transform), {
+        translation: {
+          x: x + preZoomX - postZoomX,
+          y: y + preZoomY - postZoomY,
+        },
+        rotation,
+        scale: { x: 1 / zoom, y: 1 / zoom },
+      });
     }
   }
 

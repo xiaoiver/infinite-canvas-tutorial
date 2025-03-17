@@ -1,5 +1,5 @@
 import * as d3 from 'd3-color';
-import { System } from '@lastolivegames/becsy';
+import { co, System } from '@lastolivegames/becsy';
 import {
   Buffer,
   BufferFrequencyHint,
@@ -26,12 +26,13 @@ import {
   Opacity,
   Path,
   Polyline,
+  RasterScreenshotRequest,
   Rect,
   Rough,
+  Screenshot,
   Stroke,
   Text,
   Theme,
-  WindowResized,
   Wireframe,
 } from '../components';
 import { paddingMat3 } from '../utils';
@@ -44,7 +45,10 @@ export class MeshPipeline extends System {
 
   private readonly theme = this.singleton.read(Theme);
   private readonly grid = this.singleton.read(Grid);
-  private readonly windowResized = this.singleton.write(WindowResized);
+  private readonly rasterScreenshotRequest = this.singleton.read(
+    RasterScreenshotRequest,
+  );
+  private readonly screenshot = this.singleton.write(Screenshot);
 
   private grids = this.query((q) => q.addedOrChanged.with(Grid).trackWrites);
   private themes = this.query((q) => q.addedOrChanged.with(Theme).trackWrites);
@@ -108,16 +112,21 @@ export class MeshPipeline extends System {
     this.#gridRenderer = new GridRenderer();
   }
 
+  @co private *setScreenshotTrigger(dataURL: string): Generator {
+    Object.assign(this.screenshot, { dataURL });
+    yield;
+    Object.assign(this.screenshot, { dataURL: '' });
+  }
+
   private renderFrame(computedCamera: ComputedCamera) {
     const { swapChain, device, renderTarget, depthRenderTarget } =
       this.rendererResource;
     const { width, height } = swapChain.getCanvas();
     const onscreenTexture = swapChain.getOnscreenTexture();
 
-    // const shouldRenderGrid =
-    //     !this.#enableCapture ||
-    //     (this.#enableCapture && this.#captureOptions?.grid);
-    const shouldRenderGrid = true;
+    const shouldRenderGrid =
+      !this.rasterScreenshotRequest.enabled ||
+      this.rasterScreenshotRequest.grid;
 
     if (!this.#uniformBuffer) {
       this.#uniformBuffer = device.createBuffer({
@@ -161,15 +170,24 @@ export class MeshPipeline extends System {
 
     device.submitPass(this.#renderPass);
     device.endFrame();
+
+    if (this.rasterScreenshotRequest.enabled) {
+      const { type, encoderOptions } = this.rasterScreenshotRequest;
+      const dataURL = (swapChain.getCanvas() as HTMLCanvasElement).toDataURL(
+        type,
+        encoderOptions,
+      );
+      this.setScreenshotTrigger(dataURL);
+    }
   }
 
   execute() {
+    if (this.rasterScreenshotRequest.enabled) {
+      console.log('raster screenshot');
+    }
+
     this.cameras.current.forEach((entity) => {
       let needRender = true;
-      const { width, height } = this.windowResized;
-      if (width > 0 && height > 0) {
-        needRender = true;
-      }
 
       // Style changed.
       (this.computedCameras.addedOrChanged.length ||
@@ -181,11 +199,6 @@ export class MeshPipeline extends System {
       if (needRender) {
         console.log('render');
         this.renderFrame(entity.read(ComputedCamera));
-
-        Object.assign(this.windowResized, {
-          width: 0,
-          height: 0,
-        });
       }
     });
   }

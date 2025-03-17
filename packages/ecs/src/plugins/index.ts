@@ -10,10 +10,11 @@ import { App } from '../App';
  *   app.add_systems(HelloWorld);
  * }
  */
-export type Plugin = (app: App) => Promise<void> | void;
+export type Plugin = (app: App, ...args: any[]) => Promise<void> | void;
 
 export * from './Hierarchy';
 export * from './Transform';
 export * from './Renderer';
 export * from './Camera';
 export * from './Event';
+export * from './Screenshot';

@@ -5,6 +5,7 @@ import {
   TransformPlugin,
   CameraPlugin,
   EventPlugin,
+  ScreenshotPlugin,
 } from './plugins';
 
 export * from './App';
@@ -12,6 +13,7 @@ export * from './commands/Commands';
 export * from './components';
 export * from './plugins';
 export * from './systems';
+export * from './environment';
 
 export {
   co,
@@ -30,4 +32,5 @@ export const DefaultPlugins: Plugin[] = [
   CameraPlugin,
   EventPlugin,
   RendererPlugin,
+  ScreenshotPlugin,
 ];

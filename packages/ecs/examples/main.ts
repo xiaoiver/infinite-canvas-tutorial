@@ -13,7 +13,6 @@ import {
   Theme,
   CanvasConfig,
   PreStartUp,
-  WindowResized,
   Renderable,
   FillSolid,
   Circle,
@@ -53,7 +52,6 @@ class StartUpSystem extends System {
     (q) =>
       q.using(
         CanvasConfig,
-        WindowResized,
         Theme,
         Grid,
         Camera,
@@ -232,7 +230,7 @@ class StartUpSystem extends System {
     window.addEventListener('resize', () => {
       resize(window.innerWidth, window.innerHeight);
 
-      Object.assign(this.singleton.write(WindowResized), {
+      Object.assign(this.singleton.write(CanvasConfig), {
         width: window.innerWidth,
         height: window.innerHeight,
       });
