@@ -48,7 +48,7 @@ export class InfiniteCanvas extends LitElement {
       top: 16px;
     }
 
-    :host ic-mode-toolbar {
+    :host ic-pen-toolbar {
       position: absolute;
       left: 50%;
       top: 16px;
@@ -91,10 +91,10 @@ export class InfiniteCanvas extends LitElement {
 
   @property()
   @state()
-  mode = Pen.HAND;
+  pen = Pen.HAND;
 
   @property({ type: Array })
-  modes = [Pen.HAND, Pen.SELECT, Pen.DRAW_RECT];
+  pens = [Pen.HAND, Pen.SELECT, Pen.DRAW_RECT];
 
   #app: App;
 
@@ -148,6 +148,14 @@ export class InfiniteCanvas extends LitElement {
         },
       );
 
+      const pen = this.pen;
+      this.addEventListener(
+        Event.PEN_CHANGED,
+        (e: CustomEvent<{ pen: Pen }>) => {
+          this.pen = e.detail.pen;
+        },
+      );
+
       const canvas = document.createElement('canvas');
       this.#app = new App().addPlugins(...DefaultPlugins, [
         UIPlugin,
@@ -157,6 +165,7 @@ export class InfiniteCanvas extends LitElement {
           renderer,
           shaderCompilerPath,
           zoom,
+          pen,
         },
       ]);
 
@@ -176,6 +185,10 @@ export class InfiniteCanvas extends LitElement {
         <sl-resize-observer>
           ${$canvas}
           <ic-zoom-toolbar zoom=${this.zoom}></ic-zoom-toolbar>
+          <ic-pen-toolbar
+            pen=${this.pen}
+            pens=${JSON.stringify(this.pens)}
+          ></ic-pen-toolbar>
           <ic-exporter></ic-exporter>
         </sl-resize-observer>
       `,

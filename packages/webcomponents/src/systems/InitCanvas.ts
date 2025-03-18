@@ -3,6 +3,7 @@ import {
   CanvasConfig,
   Commands,
   ComputedCamera,
+  Pen,
   System,
   Transform,
 } from '@infinite-canvas-tutorial/ecs';
@@ -67,6 +68,13 @@ export class InitCanvasSystem extends System {
         height,
       });
     });
+
+    container.addEventListener(Event.PEN_CHANGED, (e) => {
+      const { pen } = e.detail;
+      Object.assign(this.canvasConfig, {
+        pen,
+      });
+    });
   }
 
   execute(): void {
@@ -83,6 +91,7 @@ export class InitCanvasSystem extends System {
 declare global {
   interface HTMLElementEventMap {
     [Event.ZOOM_CHANGED]: CustomEvent<{ zoom: number }>;
+    [Event.PEN_CHANGED]: CustomEvent<{ pen: Pen }>;
     [Event.RESIZED]: CustomEvent<{ width: number; height: number }>;
   }
 }

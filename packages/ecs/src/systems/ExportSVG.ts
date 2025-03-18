@@ -1,14 +1,36 @@
-import { co, System } from '@lastolivegames/becsy';
+import { co, Entity, System } from '@lastolivegames/becsy';
 import {
+  Camera,
   CanvasConfig,
   CheckboardStyle,
+  Children,
+  Circle,
+  DropShadow,
+  Ellipse,
+  FillGradient,
+  FillImage,
+  FillPattern,
+  FillSolid,
   Grid,
+  InnerShadow,
+  Opacity,
+  Parent,
+  Path,
+  Polyline,
+  Rect,
   Screenshot,
+  Stroke,
+  Text,
   Theme,
+  Transform,
   VectorScreenshotRequest,
 } from '../components';
 import { DOMAdapter } from '../environment';
-import { createSVGElement } from '../utils';
+import {
+  createSVGElement,
+  entityToSerializedNodes,
+  serializeNodesToSVGElements,
+} from '../utils';
 
 interface SVGOptions {
   grid: boolean;
@@ -23,20 +45,51 @@ export class ExportSVG extends System {
   private readonly theme = this.singleton.read(Theme);
   private readonly grid = this.singleton.read(Grid);
 
+  private readonly cameras = this.query((q) => q.current.with(Camera));
+
   @co private *setScreenshotTrigger(dataURL: string): Generator {
     Object.assign(this.screenshot, { dataURL });
     yield;
     Object.assign(this.screenshot, { dataURL: '' });
   }
 
+  constructor() {
+    super();
+    this.query(
+      (q) =>
+        q.using(
+          Parent,
+          Children,
+          Circle,
+          Ellipse,
+          Rect,
+          Polyline,
+          Path,
+          Text,
+          Stroke,
+          Opacity,
+          Transform,
+          FillSolid,
+          FillGradient,
+          FillPattern,
+          FillImage,
+          DropShadow,
+          InnerShadow,
+        ).read,
+    );
+  }
+
   execute(): void {
     if (!this.vectorScreenshotRequest.enabled) return;
 
-    // TODO: serialize scene graph
-    this.setScreenshotTrigger(this.toSVGDataURL(this.vectorScreenshotRequest));
+    this.cameras.current.forEach((entity) => {
+      this.setScreenshotTrigger(
+        this.toSVGDataURL(entity, this.vectorScreenshotRequest),
+      );
+    });
   }
 
-  private toSVG(options: Partial<SVGOptions> = {}) {
+  private toSVG(entity: Entity, options: Partial<SVGOptions> = {}) {
     const { grid } = options;
     const { width, height } = this.canvasConfig;
     const { mode, colors } = this.theme;
@@ -56,12 +109,18 @@ export class ExportSVG extends System {
       }
     }
 
-    // $namespace.appendChild(toSVGElement(serializeNode(canvas.root)));
+    console.log(entityToSerializedNodes(entity));
+
+    serializeNodesToSVGElements(entityToSerializedNodes(entity)).forEach(
+      (element) => {
+        $namespace.appendChild(element);
+      },
+    );
     return $namespace;
   }
 
-  private toSVGDataURL(options: Partial<SVGOptions> = {}) {
-    const $namespace = this.toSVG(options);
+  private toSVGDataURL(entity: Entity, options: Partial<SVGOptions> = {}) {
+    const $namespace = this.toSVG(entity, options);
     const svgDocType = DOMAdapter.get()
       .getDocument()
       .implementation.createDocumentType(

@@ -6,6 +6,7 @@ import {
   CameraPlugin,
   EventPlugin,
   ScreenshotPlugin,
+  PenPlugin,
 } from './plugins';
 
 export * from './App';
@@ -14,6 +15,10 @@ export * from './components';
 export * from './plugins';
 export * from './systems';
 export * from './environment';
+export {
+  svgElementsToSerializedNodes,
+  serializedNodesToEntities,
+} from './utils';
 
 export {
   co,
@@ -33,4 +38,5 @@ export const DefaultPlugins: Plugin[] = [
   EventPlugin,
   RendererPlugin,
   ScreenshotPlugin,
+  PenPlugin,
 ];

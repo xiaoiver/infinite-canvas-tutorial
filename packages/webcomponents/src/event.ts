@@ -6,4 +6,5 @@ export enum Event {
   ZOOM_CHANGED = 'ic-zoom-changed',
   SCREENSHOT_REQUESTED = 'ic-screenshot-requested',
   SCREENSHOT_DOWNLOADED = 'ic-screenshot-downloaded',
+  PEN_CHANGED = 'ic-pen-changed',
 }

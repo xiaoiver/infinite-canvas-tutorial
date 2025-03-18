@@ -86,16 +86,7 @@ export class CameraControl extends System {
         }
       }
       for (const point of this.points.current) {
-        const stroke = point.write(InputPoint);
-        // const start = [stroke.prevPoint[0], stroke.prevPoint[1]] as [
-        //   number,
-        //   number,
-        // ];
-        // const end = [
-        //   Math.round(this.input.pointerWorld[0]),
-        //   Math.round(this.input.pointerWorld[1]),
-        // ] as [number, number];
-        stroke.prevPoint = this.input.pointerWorld;
+        point.write(InputPoint).prevPoint = this.input.pointerWorld;
         if (this.canvasConfig.pen === Pen.HAND) {
           this.cursor.value = 'grabbing';
           if (this.rotate) {

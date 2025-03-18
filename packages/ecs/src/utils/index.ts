@@ -14,3 +14,5 @@ export * from './emoji';
 export * from './bitmap-font';
 export * from './glyph';
 export * from './math';
+export * from './serialize';
+export * from './deserialize';

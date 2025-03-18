@@ -18,3 +18,4 @@ export * from './Renderer';
 export * from './Camera';
 export * from './Event';
 export * from './Screenshot';
+export * from './Pen';

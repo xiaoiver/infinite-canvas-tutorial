@@ -46,6 +46,7 @@ import {
   Text,
   Wireframe,
   ZIndex,
+  Visibility,
 } from '../components';
 
 export const RendererPlugin: Plugin = (app: App) => {
@@ -53,6 +54,7 @@ export const RendererPlugin: Plugin = (app: App) => {
   component(Wireframe);
   component(GlobalRenderOrder);
   component(ZIndex);
+  component(Visibility);
 
   /**
    * Style
