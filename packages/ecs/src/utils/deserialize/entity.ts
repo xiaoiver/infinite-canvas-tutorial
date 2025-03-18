@@ -75,6 +75,8 @@ export function serializedNodesToEntities(
         whiteSpace,
         wordWrap,
         wordWrapWidth,
+        textAlign,
+        textBaseline,
       } = attributes;
       entity.insert(
         new Text({
@@ -91,6 +93,8 @@ export function serializedNodesToEntities(
           whiteSpace,
           wordWrap,
           wordWrapWidth,
+          textAlign,
+          textBaseline,
         }),
       );
     }

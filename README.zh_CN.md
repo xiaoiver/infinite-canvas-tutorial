@@ -3,6 +3,8 @@
 [![Build Status](https://github.com/xiaoiver/infinite-canvas-tutorial/actions/workflows/unit-ssr.yml/badge.svg)](https://github.com/xiaoiver/infinite-canvas-tutorial/actions/workflows/unit-ssr.yml)
 [![Coverage Status](https://coveralls.io/repos/github/xiaoiver/infinite-canvas-tutorial/badge.svg?branch=master)](https://coveralls.io/github/xiaoiver/infinite-canvas-tutorial?branch=master)
 
+> [我在 Gumroad 上的免费课程]，欢迎评分！
+
 什么是无限画布？[infinitecanvas] 对“无限”的描述如下：
 
 -   高扩展性。用户可以以非线形的形式自由组织内容结构。
@@ -256,3 +258,4 @@ pnpm run dev
 [pnpm]: https://pnpm.io/installation
 [pnpm workspace]: https://pnpm.io/workspaces
 [Motiff]: https://www.motiff.com/blog/performance-magic-behind-motiff
+[我在 Gumroad 上的免费课程]: https://pyqiverson.gumroad.com/l/infinitecanvas?a=734684947

@@ -3,6 +3,8 @@
 [![Build Status](https://github.com/xiaoiver/infinite-canvas-tutorial/actions/workflows/unit-ssr.yml/badge.svg)](https://github.com/xiaoiver/infinite-canvas-tutorial/actions/workflows/unit-ssr.yml)
 [![Coverage Status](https://coveralls.io/repos/github/xiaoiver/infinite-canvas-tutorial/badge.svg?branch=master)](https://coveralls.io/github/xiaoiver/infinite-canvas-tutorial?branch=master)
 
+> [My free course in Gumroad]. Feel free to rate!
+
 What is an Infinite Canvas? The term "infinite" in [infinitecanvas] is described as follows:
 
 -   High scalability. Users can freely organize content structures in a non-linear fashion.
@@ -254,3 +256,4 @@ pnpm run dev
 [Yjs]: https://yjs.dev/
 [y-crdt]: https://github.com/y-crdt/y-crdt
 [Motiff]: https://www.motiff.com/blog/performance-magic-behind-motiff
+[My free course in Gumroad]: https://pyqiverson.gumroad.com/l/infinitecanvas?a=734684947

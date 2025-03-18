@@ -97,13 +97,15 @@ export class Text {
    * Sets the size of the font.
    * @see https://developer.mozilla.org/en-US/docs/Web/CSS/font-size
    */
-  @field({ type: Type.float32, default: 12 }) declare fontSize: number | string;
+  @field({ type: Type.object, default: 12 }) declare fontSize: number | string;
 
   /**
    * Specifies the weight of the font.
    * @see https://developer.mozilla.org/en-US/docs/Web/CSS/font-weight
    */
-  @field({ type: Type.float32, default: 400 }) declare fontWeight: number;
+  @field({ type: Type.object, default: 'normal' }) declare fontWeight:
+    | number
+    | string;
 
   /**
    * Sets whether a font should be styled with a normal, italic, or oblique face from its font-family.
