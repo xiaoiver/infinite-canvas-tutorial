@@ -102,27 +102,45 @@ export class ZoomToolbar extends LitElement {
   }
 
   private zoomOut() {
-    const event = new CustomEvent(Event.ZOOM_TO, {
-      detail: {
-        zoom: findZoomFloor(this.appState.zoom),
-      },
-      bubbles: true,
-      composed: true,
-      cancelable: true,
-    });
-    this.dispatchEvent(event);
+    this.dispatchEvent(
+      new CustomEvent(Event.ZOOM_TO, {
+        detail: {
+          zoom: findZoomFloor(this.appState.camera.zoom),
+        },
+        bubbles: true,
+        composed: true,
+        cancelable: true,
+      }),
+    );
+
+    this.dispatchEvent(
+      new CustomEvent(Event.ZOOM_OUT, {
+        bubbles: true,
+        composed: true,
+        cancelable: true,
+      }),
+    );
   }
 
   private zoomIn() {
-    const event = new CustomEvent(Event.ZOOM_TO, {
-      detail: {
-        zoom: findZoomCeil(this.appState.zoom),
-      },
-      bubbles: true,
-      composed: true,
-      cancelable: true,
-    });
-    this.dispatchEvent(event);
+    this.dispatchEvent(
+      new CustomEvent(Event.ZOOM_TO, {
+        detail: {
+          zoom: findZoomCeil(this.appState.camera.zoom),
+        },
+        bubbles: true,
+        composed: true,
+        cancelable: true,
+      }),
+    );
+
+    this.dispatchEvent(
+      new CustomEvent(Event.ZOOM_IN, {
+        bubbles: true,
+        composed: true,
+        cancelable: true,
+      }),
+    );
   }
 
   private zoomTo100() {
@@ -152,7 +170,7 @@ export class ZoomToolbar extends LitElement {
           Zoom level
         </sp-tooltip>
         <span slot="label">
-          <span>${Math.round(this.appState.zoom * 100)}</span>%</span
+          <span>${Math.round(this.appState.camera.zoom * 100)}</span>%</span
         >
         <sp-icon-chevron-down slot="icon" size="l"></sp-icon-chevron-down>
         <sp-menu-item @click=${this.zoomIn}>

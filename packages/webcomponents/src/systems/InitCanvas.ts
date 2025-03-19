@@ -2,7 +2,6 @@ import {
   Camera,
   CanvasConfig,
   Commands,
-  Pen,
   System,
   Transform,
 } from '@infinite-canvas-tutorial/ecs';
@@ -57,17 +56,10 @@ export class InitCanvasSystem extends System {
     });
 
     container.addEventListener(Event.PEN_CHANGED, (e) => {
-      const { pen } = e.detail;
+      const { selected } = e.detail;
       Object.assign(this.canvasConfig, {
-        pen,
+        pen: selected[0],
       });
     });
-  }
-}
-
-declare global {
-  interface HTMLElementEventMap {
-    [Event.PEN_CHANGED]: CustomEvent<{ pen: Pen }>;
-    [Event.RESIZED]: CustomEvent<{ width: number; height: number }>;
   }
 }

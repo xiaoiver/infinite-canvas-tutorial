@@ -1,8 +1,26 @@
 import { createContext } from '@lit/context';
-import { Pen } from '@infinite-canvas-tutorial/ecs';
+import { Pen, Theme } from '@infinite-canvas-tutorial/ecs';
+
+export enum Task {
+  SHOW_LAYERS_PANEL = 'show-layers-panel',
+}
+
+/**
+ * @see https://docs.excalidraw.com/docs/@excalidraw/excalidraw/api/props/initialdata
+ */
 export interface AppState {
-  zoom: number;
-  pen: Pen;
+  theme: Theme;
+  camera: {
+    zoom: number;
+  };
+  penbar: {
+    all: Pen[];
+    selected: Pen[];
+  };
+  taskbar: {
+    all: Task[];
+    selected: Task[];
+  };
 }
 
 export const appStateContext = createContext<AppState>(Symbol('appAtate'));

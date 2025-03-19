@@ -60,10 +60,3 @@ export class ZoomLevelSystem extends System {
     });
   }
 }
-
-declare global {
-  interface HTMLElementEventMap {
-    [Event.ZOOM_CHANGED]: CustomEvent<{ zoom: number }>;
-    [Event.ZOOM_TO]: CustomEvent<{ zoom: number }>;
-  }
-}

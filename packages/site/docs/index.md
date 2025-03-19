@@ -35,6 +35,13 @@ features:
 
 <script setup>
 import WebGL from './components/WebGL.vue'
+import Spectrum from './components/Spectrum.vue'
 </script>
+
+After lesson 17 we use the ECS architecture and spectrum for UI:
+
+<Spectrum />
+
+Our product results prior to lesson 17 were as follows:
 
 <WebGL />

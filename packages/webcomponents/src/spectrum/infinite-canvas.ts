@@ -1,10 +1,15 @@
 import { html, css, LitElement, TemplateResult } from 'lit';
 import { Task } from '@lit/task';
 import { ContextProvider } from '@lit/context';
-import { customElement, property, state } from 'lit/decorators.js';
-import { App, DefaultPlugins, Pen } from '@infinite-canvas-tutorial/ecs';
+import { customElement, property } from 'lit/decorators.js';
+import {
+  App,
+  DefaultPlugins,
+  Pen,
+  ThemeMode,
+} from '@infinite-canvas-tutorial/ecs';
 
-import { appStateContext } from '../context';
+import { AppState, Task as TaskEnum, appStateContext } from '../context';
 import { UIPlugin } from '../plugins';
 import { Event } from '../event';
 import { checkWebGPUSupport } from '../utils';
@@ -29,6 +34,12 @@ export class InfiniteCanvas extends LitElement {
       display: flex;
       justify-content: end;
       align-items: center;
+    }
+
+    ic-spectrum-penbar {
+      position: absolute;
+      top: 48px;
+      left: 0;
     }
 
     ic-spectrum-taskbar {
@@ -56,28 +67,33 @@ export class InfiniteCanvas extends LitElement {
   @property()
   renderer: 'webgl' | 'webgpu' = 'webgl';
 
-  @property()
-  theme: 'dark' | 'light' = 'light';
-
   @property({
     attribute: 'shader-compiler-path',
   })
   shaderCompilerPath =
     'https://unpkg.com/@antv/g-device-api@1.6.8/dist/pkg/glsl_wgsl_compiler_bg.wasm';
 
-  @property({ type: Number })
-  @state()
-  zoom = 1;
-
-  @property()
-  @state()
-  pen = Pen.HAND;
-
-  @property({ type: Array })
-  pens = [Pen.HAND, Pen.SELECT, Pen.DRAW_RECT];
-
-  @state()
-  layersPanelOpen = false;
+  @property({ type: Object })
+  appState: AppState = {
+    theme: {
+      mode: ThemeMode.LIGHT,
+      colors: {
+        [ThemeMode.LIGHT]: {},
+        [ThemeMode.DARK]: {},
+      },
+    },
+    camera: {
+      zoom: 1,
+    },
+    penbar: {
+      all: [Pen.HAND, Pen.SELECT, Pen.DRAW_RECT],
+      selected: [Pen.HAND],
+    },
+    taskbar: {
+      all: [TaskEnum.SHOW_LAYERS_PANEL],
+      selected: [],
+    },
+  };
 
   #app: App;
 
@@ -123,31 +139,37 @@ export class InfiniteCanvas extends LitElement {
         await checkWebGPUSupport();
       }
 
-      this.#provider.setValue({
-        ...this.#provider.value,
-        zoom: this.zoom,
+      this.#provider.setValue(this.appState);
+
+      this.addEventListener(Event.ZOOM_CHANGED, (e: CustomEvent) => {
+        this.#provider.setValue({
+          ...this.#provider.value,
+          camera: {
+            ...this.#provider.value.camera,
+            zoom: e.detail.zoom,
+          },
+        });
       });
 
-      const zoom = this.zoom;
-      this.addEventListener(
-        Event.ZOOM_CHANGED,
-        (e: CustomEvent<{ zoom: number }>) => {
-          this.zoom = e.detail.zoom;
+      this.addEventListener(Event.PEN_CHANGED, (e: CustomEvent) => {
+        this.#provider.setValue({
+          ...this.#provider.value,
+          penbar: {
+            ...this.#provider.value.penbar,
+            selected: e.detail.selected,
+          },
+        });
+      });
 
-          this.#provider.setValue({
-            ...this.#provider.value,
-            zoom: this.zoom,
-          });
-        },
-      );
-
-      const pen = this.pen;
-      this.addEventListener(
-        Event.PEN_CHANGED,
-        (e: CustomEvent<{ pen: Pen }>) => {
-          this.pen = e.detail.pen;
-        },
-      );
+      this.addEventListener(Event.TASK_CHANGED, (e: CustomEvent) => {
+        this.#provider.setValue({
+          ...this.#provider.value,
+          taskbar: {
+            ...this.#provider.value.taskbar,
+            selected: e.detail.selected,
+          },
+        });
+      });
 
       const canvas = document.createElement('canvas');
       this.#app = new App().addPlugins(...DefaultPlugins, [
@@ -157,8 +179,8 @@ export class InfiniteCanvas extends LitElement {
           canvas,
           renderer,
           shaderCompilerPath,
-          zoom,
-          pen,
+          zoom: this.#provider.value.camera.zoom,
+          pen: this.#provider.value.penbar.selected[0],
         },
       ]);
 
@@ -171,15 +193,12 @@ export class InfiniteCanvas extends LitElement {
     args: () => [this.renderer, this.shaderCompilerPath] as const,
   });
 
-  private toggleLayersPanel() {
-    this.layersPanelOpen = !this.layersPanelOpen;
-
-    console.log('toggleLayersPanel', this.layersPanelOpen);
-  }
-
   render() {
     const themeWrapper = (content: string | TemplateResult) =>
-      html`<sp-theme system="spectrum" color="${this.theme}" scale="medium"
+      html`<sp-theme
+        system="spectrum"
+        color="${this.appState.theme.mode}"
+        scale="medium"
         >${typeof content === 'string' ? html`${content}` : content}</sp-theme
       >`;
 
@@ -195,12 +214,9 @@ export class InfiniteCanvas extends LitElement {
       complete: ($canvas) =>
         themeWrapper(
           html`<ic-spectrum-top-navbar></ic-spectrum-top-navbar>
-            <ic-spectrum-taskbar
-              @toggle-layers-panel=${this.toggleLayersPanel}
-            ></ic-spectrum-taskbar>
-            <ic-spectrum-layers-panel
-              open=${this.layersPanelOpen}
-            ></ic-spectrum-layers-panel>
+            <ic-spectrum-penbar></ic-spectrum-penbar>
+            <ic-spectrum-taskbar></ic-spectrum-taskbar>
+            <ic-spectrum-layers-panel></ic-spectrum-layers-panel>
             <sl-resize-observer @sl-resize=${this.resize}>
               ${$canvas}
             </sl-resize-observer>`,

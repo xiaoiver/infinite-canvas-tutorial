@@ -8,15 +8,9 @@ export class TopNavbar extends LitElement {
   static styles = css`
     :host {
       display: flex;
-      background-color: white;
       justify-content: end;
-
       padding: var(--spectrum-global-dimension-size-100);
-
-      filter: drop-shadow(
-        var(--spectrum-drop-shadow-color) 0px var(--spectrum-drop-shadow-y)
-          var(--spectrum-drop-shadow-blur)
-      );
+      background: var(--spectrum-gray-100);
     }
   `;
 
@@ -24,7 +18,7 @@ export class TopNavbar extends LitElement {
   appState: AppState;
 
   render() {
-    return html`<ic-spectrum-zoom-toolbar /> `;
+    return html` <ic-spectrum-zoom-toolbar /> `;
   }
 }
 

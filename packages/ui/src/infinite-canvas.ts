@@ -93,7 +93,7 @@ export class InfiniteCanvas extends LitElement {
   mode = CanvasMode.HAND;
 
   @property({ type: Array })
-  modes = [CanvasMode.HAND, CanvasMode.SELECT, CanvasMode.DRAW_RECT];
+  modes = [CanvasMode.HAND, CanvasMode.SELECT];
 
   #provider = new ContextProvider(this, { context: canvasContext });
 
