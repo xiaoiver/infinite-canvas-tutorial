@@ -2,7 +2,6 @@ import {
   Camera,
   CanvasConfig,
   Commands,
-  ComputedCamera,
   Pen,
   System,
   Transform,
@@ -12,8 +11,6 @@ import { Event } from '../event';
 
 export class InitCanvasSystem extends System {
   private readonly commands = new Commands(this);
-
-  private readonly cameras = this.query((q) => q.current.with(ComputedCamera));
   private readonly canvasConfig = this.singleton.write(CanvasConfig);
 
   container: LitElement;
@@ -22,19 +19,9 @@ export class InitCanvasSystem extends System {
   shaderCompilerPath: string;
   zoom: number;
 
-  #zoomEvent: CustomEvent;
-
   constructor() {
     super();
     this.query((q) => q.using(CanvasConfig, Camera, Transform).write);
-
-    this.#zoomEvent = new CustomEvent(Event.ZOOM_CHANGED, {
-      detail: {
-        zoom: this.zoom,
-      },
-      bubbles: true,
-      composed: true,
-    });
   }
 
   initialize(): void {
@@ -76,21 +63,10 @@ export class InitCanvasSystem extends System {
       });
     });
   }
-
-  execute(): void {
-    this.cameras.current.forEach((camera) => {
-      const { zoom } = camera.read(ComputedCamera);
-      if (zoom !== this.#zoomEvent.detail.zoom) {
-        this.#zoomEvent.detail.zoom = zoom;
-        this.container.dispatchEvent(this.#zoomEvent);
-      }
-    });
-  }
 }
 
 declare global {
   interface HTMLElementEventMap {
-    [Event.ZOOM_CHANGED]: CustomEvent<{ zoom: number }>;
     [Event.PEN_CHANGED]: CustomEvent<{ pen: Pen }>;
     [Event.RESIZED]: CustomEvent<{ width: number; height: number }>;
   }

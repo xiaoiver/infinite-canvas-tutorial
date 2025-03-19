@@ -18,10 +18,13 @@ import {
   Polyline,
   Rect,
   Text,
-} from '../../ecs';
+} from '@infinite-canvas-tutorial/ecs';
 import { Event } from '../src';
+// import '../src/shoelace';
+import '../src/spectrum';
 
-const canvas = document.querySelector('ic-canvas')!;
+// const canvas = document.querySelector('ic-shoelace-canvas')!;
+const canvas = document.querySelector('ic-spectrum-canvas')!;
 
 canvas.addEventListener(Event.READY, (e) => {
   const app = e.detail;

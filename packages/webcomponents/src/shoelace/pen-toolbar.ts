@@ -7,7 +7,7 @@ import '@shoelace-style/shoelace/dist/components/button-group/button-group.js';
 import '@shoelace-style/shoelace/dist/components/tooltip/tooltip.js';
 import '@shoelace-style/shoelace/dist/components/icon-button/icon-button.js';
 import { Pen } from '@infinite-canvas-tutorial/ecs';
-import { Event } from './event';
+import { Event } from '../event';
 
 const PEN_LIST = [
   { name: Pen.HAND, label: 'Move', icon: 'arrows-move' },
@@ -15,7 +15,7 @@ const PEN_LIST = [
   { name: Pen.DRAW_RECT, label: 'Draw rectangle', icon: 'square' },
 ];
 
-@customElement('ic-pen-toolbar')
+@customElement('ic-shoelace-pen-toolbar')
 export class PenToolbar extends LitElement {
   static styles = css`
     :host {
@@ -77,6 +77,6 @@ export class PenToolbar extends LitElement {
 
 declare global {
   interface HTMLElementTagNameMap {
-    'ic-pen-toolbar': PenToolbar;
+    'ic-shoelace-pen-toolbar': PenToolbar;
   }
 }

@@ -1,34 +1,22 @@
-import { html, css, LitElement } from 'lit';
+import { html, css, LitElement, TemplateResult } from 'lit';
 import { Task } from '@lit/task';
+import { ContextProvider } from '@lit/context';
 import { customElement, property, state } from 'lit/decorators.js';
 import { App, DefaultPlugins, Pen } from '@infinite-canvas-tutorial/ecs';
-import { setBasePath } from '@shoelace-style/shoelace/dist/utilities/base-path.js';
 
-import '@shoelace-style/shoelace/dist/components/spinner/spinner.js';
-import '@shoelace-style/shoelace/dist/components/icon/icon.js';
+import { appStateContext } from '../context';
+import { UIPlugin } from '../plugins';
+import { Event } from '../event';
+import { checkWebGPUSupport } from '../utils';
+
 import '@shoelace-style/shoelace/dist/components/resize-observer/resize-observer.js';
-import '@shoelace-style/shoelace/dist/components/alert/alert.js';
-/**
- * @see https://shoelace.style/getting-started/themes
- */
-import '@shoelace-style/shoelace/dist/themes/light.css';
-import '@shoelace-style/shoelace/dist/themes/dark.css';
 
-import { UIPlugin } from './plugins';
-import { Event } from './event';
+import '@spectrum-web-components/theme/sp-theme.js';
+import '@spectrum-web-components/theme/src/themes.js';
+import '@spectrum-web-components/alert-banner/sp-alert-banner.js';
+import '@spectrum-web-components/progress-circle/sp-progress-circle.js';
 
-async function checkWebGPUSupport() {
-  if ('gpu' in navigator) {
-    const gpu = await navigator.gpu.requestAdapter();
-    if (!gpu) {
-      throw new Error('No WebGPU adapter available.');
-    }
-  } else {
-    throw new Error('WebGPU is not supported by the browser.');
-  }
-}
-
-@customElement('ic-canvas')
+@customElement('ic-spectrum-canvas')
 export class InfiniteCanvas extends LitElement {
   static styles = css`
     :host {
@@ -36,29 +24,23 @@ export class InfiniteCanvas extends LitElement {
       position: relative;
     }
 
-    :host ic-dark-mode {
-      position: absolute;
-      right: 52px;
-      top: 16px;
+    sp-top-nav {
+      padding: var(--spectrum-global-dimension-size-100);
+      display: flex;
+      justify-content: end;
+      align-items: center;
     }
 
-    :host ic-exporter {
+    ic-spectrum-taskbar {
       position: absolute;
-      right: 16px;
-      top: 16px;
+      top: 48px;
+      right: 0;
     }
 
-    :host ic-pen-toolbar {
+    ic-spectrum-layers-panel {
       position: absolute;
-      left: 50%;
-      top: 16px;
-      transform: translateX(-50%);
-    }
-
-    :host ic-zoom-toolbar {
-      position: absolute;
-      right: 16px;
-      bottom: 16px;
+      top: 48px;
+      right: 54px;
     }
 
     canvas {
@@ -77,13 +59,11 @@ export class InfiniteCanvas extends LitElement {
   @property()
   theme: 'dark' | 'light' = 'light';
 
-  @property()
+  @property({
+    attribute: 'shader-compiler-path',
+  })
   shaderCompilerPath =
     'https://unpkg.com/@antv/g-device-api@1.6.8/dist/pkg/glsl_wgsl_compiler_bg.wasm';
-
-  @property()
-  shoelaceBasePath =
-    'https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.19.1/cdn';
 
   @property({ type: Number })
   @state()
@@ -96,7 +76,12 @@ export class InfiniteCanvas extends LitElement {
   @property({ type: Array })
   pens = [Pen.HAND, Pen.SELECT, Pen.DRAW_RECT];
 
+  @state()
+  layersPanelOpen = false;
+
   #app: App;
+
+  #provider = new ContextProvider(this, { context: appStateContext });
 
   connectedCallback() {
     super.connectedCallback();
@@ -138,13 +123,21 @@ export class InfiniteCanvas extends LitElement {
         await checkWebGPUSupport();
       }
 
-      setBasePath(this.shoelaceBasePath);
+      this.#provider.setValue({
+        ...this.#provider.value,
+        zoom: this.zoom,
+      });
 
       const zoom = this.zoom;
       this.addEventListener(
         Event.ZOOM_CHANGED,
         (e: CustomEvent<{ zoom: number }>) => {
           this.zoom = e.detail.zoom;
+
+          this.#provider.setValue({
+            ...this.#provider.value,
+            zoom: this.zoom,
+          });
         },
       );
 
@@ -178,27 +171,49 @@ export class InfiniteCanvas extends LitElement {
     args: () => [this.renderer, this.shaderCompilerPath] as const,
   });
 
+  private toggleLayersPanel() {
+    this.layersPanelOpen = !this.layersPanelOpen;
+
+    console.log('toggleLayersPanel', this.layersPanelOpen);
+  }
+
   render() {
+    const themeWrapper = (content: string | TemplateResult) =>
+      html`<sp-theme system="spectrum" color="${this.theme}" scale="medium"
+        >${typeof content === 'string' ? html`${content}` : content}</sp-theme
+      >`;
+
     return this.initCanvas.render({
-      pending: () => html`<sl-spinner></sl-spinner>`,
-      complete: ($canvas) => html`
-        <sl-resize-observer>
-          ${$canvas}
-          <ic-zoom-toolbar zoom=${this.zoom}></ic-zoom-toolbar>
-          <ic-pen-toolbar
-            pen=${this.pen}
-            pens=${JSON.stringify(this.pens)}
-          ></ic-pen-toolbar>
-          <ic-exporter></ic-exporter>
-        </sl-resize-observer>
-      `,
+      pending: () =>
+        themeWrapper(
+          html`<sp-progress-circle
+            label="A small representation of an unclear amount of work"
+            indeterminate
+            size="s"
+          ></sp-progress-circle>`,
+        ),
+      complete: ($canvas) =>
+        themeWrapper(
+          html`<ic-spectrum-top-navbar></ic-spectrum-top-navbar>
+            <ic-spectrum-taskbar
+              @toggle-layers-panel=${this.toggleLayersPanel}
+            ></ic-spectrum-taskbar>
+            <ic-spectrum-layers-panel
+              open=${this.layersPanelOpen}
+            ></ic-spectrum-layers-panel>
+            <sl-resize-observer @sl-resize=${this.resize}>
+              ${$canvas}
+            </sl-resize-observer>`,
+        ),
       error: (e: Error) => {
         console.error(e);
-        return html`<sl-alert variant="danger" open>
-          <sl-icon slot="icon" name="exclamation-octagon"></sl-icon>
-          <strong>Initialize canvas failed</strong><br />
-          ${e.message}
-        </sl-alert>`;
+        return themeWrapper(
+          html`<sp-alert-banner open variant="negative">
+            Initialize canvas failed<br />
+            <strong></strong><br />
+            ${e.message}
+          </sp-alert-banner>`,
+        );
       },
     });
   }
@@ -206,11 +221,6 @@ export class InfiniteCanvas extends LitElement {
 
 declare global {
   interface HTMLElementTagNameMap {
-    'ic-canvas': InfiniteCanvas;
-  }
-
-  interface HTMLElementEventMap {
-    [Event.READY]: CustomEvent<App>;
-    [Event.RESIZED]: CustomEvent<{ width: number; height: number }>;
+    'ic-spectrum-canvas': InfiniteCanvas;
   }
 }

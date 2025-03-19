@@ -4,9 +4,9 @@ import { customElement, property } from 'lit/decorators.js';
 import '@shoelace-style/shoelace/dist/components/button-group/button-group.js';
 import '@shoelace-style/shoelace/dist/components/tooltip/tooltip.js';
 import '@shoelace-style/shoelace/dist/components/icon-button/icon-button.js';
-import { Event } from './event';
+import { Event } from '../event';
 
-@customElement('ic-zoom-toolbar')
+@customElement('ic-shoelace-zoom-toolbar')
 export class ZoomToolbar extends LitElement {
   static styles = css`
     :host {
@@ -69,6 +69,6 @@ export class ZoomToolbar extends LitElement {
 
 declare global {
   interface HTMLElementTagNameMap {
-    'ic-zoom-toolbar': ZoomToolbar;
+    'ic-shoelace-zoom-toolbar': ZoomToolbar;
   }
 }

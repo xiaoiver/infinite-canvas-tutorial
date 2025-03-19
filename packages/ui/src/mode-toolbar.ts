@@ -13,7 +13,7 @@ import '@shoelace-style/shoelace/dist/components/icon-button/icon-button.js';
 const MODE_LIST = [
   { name: CanvasMode.HAND, label: 'Move', icon: 'arrows-move' },
   { name: CanvasMode.SELECT, label: 'Select', icon: 'cursor' },
-  { name: CanvasMode.DRAW_RECT, label: 'Draw rectangle', icon: 'square' },
+  // { name: CanvasMode.DRAW_RECT, label: 'Draw rectangle', icon: 'square' },
 ];
 @customElement('ic-mode-toolbar')
 export class ModeToolbar extends LitElement {

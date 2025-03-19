@@ -36,8 +36,8 @@ export class EventWriter extends System {
 
       if (this.pointerIds.size > 1 || !this.pointerIds.has(e.pointerId)) return;
       const pointerWorld = this.client2Viewport({
-        x: e.offsetX,
-        y: e.offsetY,
+        x: e.clientX,
+        y: e.clientY,
       });
       this.input.pointerWorld = [pointerWorld.x, pointerWorld.y];
     };
@@ -65,8 +65,8 @@ export class EventWriter extends System {
 
       if (this.pointerIds.size === 1) {
         const pointerWorld = this.client2Viewport({
-          x: e.offsetX,
-          y: e.offsetY,
+          x: e.clientX,
+          y: e.clientY,
         });
         this.input.pointerWorld = [pointerWorld.x, pointerWorld.y];
       }
@@ -93,8 +93,8 @@ export class EventWriter extends System {
       }
 
       const pointerWorld = this.client2Viewport({
-        x: e.offsetX,
-        y: e.offsetY,
+        x: e.clientX,
+        y: e.clientY,
       });
       this.input.pointerWorld = [pointerWorld.x, pointerWorld.y];
     };
@@ -209,10 +209,45 @@ export class EventWriter extends System {
     this.#onDestroyCallbacks.forEach((callback) => callback());
   }
 
+  /**
+   * Should account for CSS Transform applied on container.
+   * @see https://github.com/antvis/G/issues/1161
+   * @see https://github.com/antvis/G/issues/1677
+   * @see https://developer.mozilla.org/zh-CN/docs/Web/API/MouseEvent/offsetX
+   */
   client2Viewport({ x, y }: IPointData): IPointData {
-    const { left, top } = (
-      this.canvasConfig.canvas as HTMLCanvasElement
-    ).getBoundingClientRect();
-    return { x: x - left, y: y - top };
+    const { scaleX, scaleY, bbox } = this.getScale();
+    return {
+      x: (x - (bbox?.left || 0)) / scaleX,
+      y: (y - (bbox?.top || 0)) / scaleY,
+    };
+  }
+
+  viewport2Client({ x, y }: IPointData): IPointData {
+    const { scaleX, scaleY, bbox } = this.getScale();
+    return {
+      x: (x + (bbox?.left || 0)) * scaleX,
+      y: (y + (bbox?.top || 0)) * scaleY,
+    };
+  }
+
+  private getScale() {
+    const $el = this.canvasConfig.canvas as HTMLCanvasElement;
+    const bbox = $el.getBoundingClientRect();
+    let scaleX = 1;
+    let scaleY = 1;
+
+    if ($el && bbox) {
+      const { offsetWidth, offsetHeight } = $el;
+      if (offsetWidth && offsetHeight) {
+        scaleX = bbox.width / offsetWidth;
+        scaleY = bbox.height / offsetHeight;
+      }
+    }
+    return {
+      scaleX,
+      scaleY,
+      bbox,
+    };
   }
 }

@@ -1,15 +1,26 @@
 # @infinite-canvas-tutorial/webcomponents
 
-Developing Web UI with [Lit] and [Shoelace], maybe switch to [Web Awesome] in the future.
+Developing Web UI with [Lit], [Shoelace] and [Spectrum], maybe use [Web Awesome] in the future.
 
 For more information, please refer to: [Lesson 7 - Web UI].
 
 ## Getting Started
 
+For now we provide these web components implementations:
+
+-   Shoelace
+-   Spectrum
+
+Take Shoelace as example:
+
+```js
+import '@infinite-canvas-tutorial/webcomponents/shoelace';
+```
+
 Using web components in HTML:
 
 ```html
-<ic-canvas zoom="1" renderer="webgpu"></ic-canvas>
+<ic-shoelace-canvas zoom="1" renderer="webgpu"></ic-shoelace-canvas>
 ```
 
 Listening to [Events](#events) in JS:
@@ -57,5 +68,6 @@ class StartUpSystem extends System {
 
 [Lit]: https://lit.dev/
 [Shoelace]: https://shoelace.style/
+[Spectrum]: https://opensource.adobe.com/spectrum-web-components
 [Web Awesome]: https://www.kickstarter.com/projects/fontawesome/web-awesome
 [Lesson 7 - Web UI]: https://infinitecanvas.cc/guide/lesson-007

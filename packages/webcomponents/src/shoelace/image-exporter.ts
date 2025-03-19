@@ -11,9 +11,9 @@ import '@shoelace-style/shoelace/dist/components/menu/menu.js';
 import '@shoelace-style/shoelace/dist/components/menu-item/menu-item.js';
 import '@shoelace-style/shoelace/dist/components/switch/switch.js';
 import '@shoelace-style/shoelace/dist/components/icon-button/icon-button.js';
-import { Event } from './event';
+import { Event } from '../event';
 
-@customElement('ic-exporter')
+@customElement('ic-shoelace-exporter')
 export class Exporter extends LitElement {
   static styles = css`
     :host {
@@ -98,6 +98,6 @@ export class Exporter extends LitElement {
 
 declare global {
   interface HTMLElementTagNameMap {
-    'ic-exporter': Exporter;
+    'ic-shoelace-exporter': Exporter;
   }
 }

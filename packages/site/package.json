@@ -28,6 +28,8 @@
     "@loaders.gl/arrow": "^4.2.2",
     "@infinite-canvas-tutorial/core": "workspace:*",
     "@infinite-canvas-tutorial/ui": "workspace:*",
+    "@infinite-canvas-tutorial/ecs": "workspace:*",
+    "@infinite-canvas-tutorial/webcomponents": "workspace:*",
     "@infinite-canvas-tutorial/lesson1": "workspace:*",
     "@infinite-canvas-tutorial/lesson2": "workspace:*",
     "@infinite-canvas-tutorial/lesson3": "workspace:*",
