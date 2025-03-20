@@ -1,5 +1,6 @@
 import { System } from '@lastolivegames/becsy';
 import { GlobalRenderOrder, Parent, Renderable, ZIndex } from '../components';
+import { Last, Update } from '..';
 
 /**
  * Sort entities by z-index under context.
@@ -31,6 +32,7 @@ export class Sort extends System {
     super();
     this.query((q) => q.with(GlobalRenderOrder).write);
     this.query((q) => q.current.with(Parent).read);
+    this.schedule((s) => s.after(Update).before(Last));
   }
 
   execute() {

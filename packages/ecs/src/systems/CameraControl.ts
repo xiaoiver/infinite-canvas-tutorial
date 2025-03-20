@@ -11,6 +11,7 @@ import {
   Transform,
   Cursor,
 } from '../components';
+import { ComputeCamera } from './ComputeCamera';
 
 const MIN_ZOOM = 0.02;
 const MAX_ZOOM = 4;
@@ -36,6 +37,11 @@ export class CameraControl extends System {
   private startPos = vec2.create();
   private startMousePos: vec2;
   private rotate = false;
+
+  constructor() {
+    super();
+    this.schedule((s) => s.after(ComputeCamera));
+  }
 
   initialize() {}
 

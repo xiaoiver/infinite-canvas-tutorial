@@ -1,4 +1,4 @@
-import { component, field, Type } from '@lastolivegames/becsy';
+import { field, Type } from '@lastolivegames/becsy';
 
 /**
  * The type of cursor to use when the mouse pointer is hovering over.
@@ -53,7 +53,6 @@ export type CursorValue =
 /**
  * @see https://developer.mozilla.org/en-US/docs/Web/CSS/cursor
  */
-@component
 export class Cursor {
   @field({
     type: Type.staticString([

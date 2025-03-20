@@ -2,6 +2,7 @@ import {
   Camera,
   CanvasConfig,
   Commands,
+  PreStartUp,
   System,
   Transform,
 } from '@infinite-canvas-tutorial/ecs';
@@ -21,6 +22,7 @@ export class InitCanvasSystem extends System {
   constructor() {
     super();
     this.query((q) => q.using(CanvasConfig, Camera, Transform).write);
+    this.schedule((s) => s.before(PreStartUp));
   }
 
   initialize(): void {

@@ -3,6 +3,7 @@ import { Pen, Theme } from '@infinite-canvas-tutorial/ecs';
 
 export enum Task {
   SHOW_LAYERS_PANEL = 'show-layers-panel',
+  SHOW_PROPERTIES_PANEL = 'show-properties-panel',
 }
 
 /**

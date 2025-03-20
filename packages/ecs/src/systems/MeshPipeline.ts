@@ -18,7 +18,11 @@ import {
   ComputedTextMetrics,
   DropShadow,
   Ellipse,
-  fillEnum,
+  FillGradient,
+  FillImage,
+  FillPattern,
+  FillSolid,
+  FillTexture,
   GlobalRenderOrder,
   GlobalTransform,
   Grid,
@@ -38,6 +42,7 @@ import {
 import { paddingMat3 } from '../utils';
 import { GridRenderer } from './GridRenderer';
 import { BatchManager } from './BatchManager';
+import { ComputeCamera } from './ComputeCamera';
 
 export class MeshPipeline extends System {
   private rendererResource = this.attach(SetupDevice);
@@ -60,7 +65,11 @@ export class MeshPipeline extends System {
   private styles = this.query(
     (q) =>
       q.addedChangedOrRemoved.withAny(
-        fillEnum,
+        FillSolid,
+        FillGradient,
+        FillPattern,
+        FillTexture,
+        FillImage,
         Stroke,
         Opacity,
         InnerShadow,
@@ -106,6 +115,8 @@ export class MeshPipeline extends System {
           ComputedTextMetrics,
         ).read,
     );
+
+    this.schedule((s) => s.after(ComputeCamera, SetupDevice, BatchManager));
   }
 
   initialize() {

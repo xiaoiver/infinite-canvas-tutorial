@@ -2,6 +2,9 @@ import { co, System } from '@lastolivegames/becsy';
 import { IPointData } from '@pixi/math';
 import { CanvasConfig, Input } from '../components';
 import { getGlobalThis } from '../utils';
+import { CameraControl } from './CameraControl';
+import { Select } from './Select';
+import { Update, First } from '..';
 
 export class EventWriter extends System {
   private readonly canvasConfig = this.singleton.read(CanvasConfig);
@@ -21,6 +24,13 @@ export class EventWriter extends System {
     Object.assign(this.input, { [triggerKey]: false });
 
     yield;
+  }
+
+  constructor() {
+    super();
+    this.schedule((s) =>
+      s.inAnyOrderWith(CameraControl, Select).before(Update).after(First),
+    );
   }
 
   initialize(): void {

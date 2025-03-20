@@ -30,6 +30,7 @@ import {
   Wireframe,
 } from '../components';
 import { SetupDevice } from './SetupDevice';
+import { Last, Update } from '..';
 
 /**
  * Since a shape may have multiple drawcalls, we need to cache them and maintain an 1-to-many relationship.
@@ -136,6 +137,8 @@ export class BatchManager extends System {
           ComputedTextMetrics,
         ).read,
     );
+
+    this.schedule((s) => s.after(Update).before(Last));
   }
 
   execute(): void {

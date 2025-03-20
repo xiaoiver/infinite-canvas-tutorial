@@ -1,6 +1,7 @@
 import {
   co,
   DOMAdapter,
+  PreStartUp,
   RasterScreenshotRequest,
   Screenshot,
   System,
@@ -19,6 +20,11 @@ export class DownloadScreenshotSystem extends System {
   );
 
   container: LitElement;
+
+  constructor() {
+    super();
+    this.schedule((s) => s.before(PreStartUp));
+  }
 
   initialize(): void {
     this.container.addEventListener(Event.SCREENSHOT_REQUESTED, (e) => {

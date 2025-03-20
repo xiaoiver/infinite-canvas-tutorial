@@ -1,4 +1,4 @@
-import { field, component, Type } from '@lastolivegames/becsy';
+import { field, Type } from '@lastolivegames/becsy';
 
 export enum Pen {
   SELECT = 'select',
@@ -6,7 +6,6 @@ export enum Pen {
   DRAW_RECT = 'draw-rect',
 }
 
-@component
 export class CanvasConfig {
   /**
    * The canvas element. Pass in HTMLCanvasElement in the browser environment, OffscreenCanvas in the WebWorker environment,

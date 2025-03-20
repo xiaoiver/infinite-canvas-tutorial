@@ -1,5 +1,6 @@
 import { System } from '@lastolivegames/becsy';
 import { CanvasConfig, Cursor, CursorValue } from '../components';
+import { Last, Update } from '..';
 
 export class SetCursor extends System {
   private readonly canvasConfig = this.singleton.read(CanvasConfig);
@@ -9,6 +10,11 @@ export class SetCursor extends System {
    * Prevent cursor change when it's the same.
    */
   #prevCursor: CursorValue;
+
+  constructor() {
+    super();
+    this.schedule((s) => s.after(Update).before(Last));
+  }
 
   execute() {
     if (this.cursor.value !== this.#prevCursor) {

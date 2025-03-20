@@ -1,18 +1,8 @@
-import { component, field, Type, World } from '@lastolivegames/becsy';
+import { field, Type } from '@lastolivegames/becsy';
 import { Texture } from '@antv/g-device-api';
 import { type Pattern } from '../../utils';
 
-/**
- * @see https://lastolivegames.github.io/becsy/guide/architecture/components#components
- * For components with a single field it might be tempting to name it the same as the component,
- * but this leads to awkward code when accessing it later, e.g., entity.read(Acceleration).acceleration.
- * Instead, we recommend naming the sole field value so the code becomes entity.read(Acceleration).value instead.
- */
-
-export const fillEnum = World.defineEnum('Fill');
-export
-@component(fillEnum)
-class FillSolid {
+export class FillSolid {
   /**
    * It's a presentation attribute that defines the color used to paint the element.
    *
@@ -27,9 +17,7 @@ class FillSolid {
   }
 }
 
-export
-@component(fillEnum)
-class FillGradient {
+export class FillGradient {
   @field.dynamicString(100) declare value: string;
   constructor(value?: string) {
     this.value = value;
@@ -40,9 +28,7 @@ class FillGradient {
  * A pattern using the specified image and repetition.
  * @see https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/createPattern
  */
-export
-@component(fillEnum)
-class FillPattern {
+export class FillPattern {
   /**
    * An image to be used as the pattern's image.
    *
@@ -71,9 +57,7 @@ class FillPattern {
   }
 }
 
-export
-@component(fillEnum)
-class FillTexture {
+export class FillTexture {
   @field.object declare value: Texture;
 
   constructor(value?: Texture) {
@@ -81,9 +65,7 @@ class FillTexture {
   }
 }
 
-export
-@component(fillEnum)
-class FillImage {
+export class FillImage {
   @field.object declare src: TexImageSource;
 
   /**

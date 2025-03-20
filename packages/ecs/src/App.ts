@@ -1,29 +1,69 @@
-import {
-  system,
-  System,
-  SystemType,
-  World,
-  SystemGroup,
-} from '@lastolivegames/becsy';
+import { System, World } from '@lastolivegames/becsy';
 import { Plugin } from './plugins';
-import {
-  First,
-  Last,
-  PostStartup,
-  PostUpdate,
-  PreStartUp,
-  PreUpdate,
-  StartUp,
-  Update,
-} from './systems';
-// import { Resource } from './Resource';
 import { DOMAdapter } from './environment';
 import {
+  CanvasConfig,
   Cursor,
+  Grid,
   RasterScreenshotRequest,
   Screenshot,
+  Theme,
   VectorScreenshotRequest,
 } from './components';
+
+export class PreStartUp extends System {
+  constructor() {
+    super();
+    this.singleton.read(Cursor);
+    this.singleton.read(RasterScreenshotRequest);
+    this.singleton.read(VectorScreenshotRequest);
+    this.singleton.read(Screenshot);
+  }
+}
+export class StartUp extends System {
+  constructor() {
+    super();
+    this.schedule((s) => s.before(PostStartUp).after(PreStartUp));
+  }
+}
+export class PostStartUp extends System {
+  constructor() {
+    super();
+    this.schedule((s) => s.before(First).after(StartUp));
+  }
+}
+export class First extends System {
+  constructor() {
+    super();
+    this.schedule((s) => s.before(PreUpdate).after(PostStartUp));
+  }
+}
+export class PreUpdate extends System {
+  constructor() {
+    super();
+    this.schedule((s) => s.before(Update).after(First));
+  }
+}
+export class Update extends System {
+  constructor() {
+    super();
+    this.schedule((s) => s.before(PostUpdate).after(PreUpdate));
+  }
+}
+export class PostUpdate extends System {
+  constructor() {
+    super();
+    this.schedule((s) => s.before(Last).after(Update));
+  }
+}
+export class Last extends System {
+  constructor() {
+    super();
+    this.schedule((s) => s.after(PostUpdate));
+  }
+}
+
+let worldCounter = 0;
 
 /**
  * @see https://bevy-cheatbook.github.io/programming/app-builder.html
@@ -36,23 +76,13 @@ export class App {
    */
   world: World;
 
+  worldCounter = worldCounter++;
+
   /**
    * All the plugins registered.
    */
   #plugins: (Plugin | [Plugin, any])[] = [];
 
-  /**
-   * All the systems registered.
-   */
-  #systems: [SystemGroup, SystemType<any>][] = [];
-
-  /**
-   * All the groups registered.
-   */
-  #groups: SystemGroup[] = [];
-
-  // private updateEventsSystemCounter = 0;
-  // #resources = new WeakMap<any, Resource>();
   #rafId: number;
 
   /**
@@ -78,98 +108,106 @@ export class App {
   }
 
   /**
-   * Adds a system to the given schedule in this app's [`Schedules`].
-   * @example
-   * new App()
-   *   .addSystems(StartUp, S1, S2);
-   */
-  addSystems(group: SystemGroup, ...systems: SystemType<any>[]) {
-    this.#systems.push(
-      ...systems.map((s) => [group, s] as [SystemGroup, SystemType<any>]),
-    );
-    return this;
-  }
-
-  addGroup(group: SystemGroup) {
-    this.#groups.push(group);
-    return this;
-  }
-
-  // /**
-  //  * Initialize a [`Resource`] with standard starting values by adding it to the [`World`].
-  //  */
-  // initResource<K, R extends Resource>(key: K, resource: R) {
-  //   this.#resources.set(key, resource);
-  //   return this;
-  // }
-
-  // getResource<K, R extends Resource>(key: K): R {
-  //   return this.#resources.get(key) as R;
-  // }
-
-  /**
    * Start the app and run all systems.
    */
   async run() {
-    // const resources = this.#resources;
+    // /**
+    //  * The schedule that contains the app logic that is evaluated each tick of [`App::update()`].
+    //  *
+    //  * By default, it will run the following schedules in the given order:
+    //  *
+    //  * On the first run of the schedule (and only on the first run), it will run:
+    //  * * [`PreStartup`]
+    //  * * [`Startup`]
+    //  * * [`PostStartup`]
+    //  *
+    //  * Then it will run:
+    //  * * [`First`]
+    //  * * [`PreUpdate`]
+    //  * * [`StateTransition`]
+    //  * * [`RunFixedUpdateLoop`]
+    //  *     * This will run [`FixedUpdate`] zero to many times, based on how much time has elapsed.
+    //  * * [`Update`]
+    //  * * [`PostUpdate`]
+    //  * * [`Last`]
+    //  */
 
-    PreStartUp.schedule((s) => s.before(StartUp));
-    StartUp.schedule((s) => s.before(PostStartup));
-    PostStartup.schedule((s) => s.before(First));
-    First.schedule((s) => s.before(PreUpdate));
-    PreUpdate.schedule((s) => s.before(Update));
-    Update.schedule((s) => s.before(PostUpdate));
-    PostUpdate.schedule((s) => s.before(Last));
+    // /**
+    //  * The schedule that runs before [`Startup`].
+    //  */
+    // const PreStartUp = System.group(PreStartUp);
 
-    @system(PreStartUp)
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    class PreStartUpPlaceHolder extends System {
-      constructor() {
-        super();
-        this.singleton.read(Cursor);
-        this.singleton.read(RasterScreenshotRequest);
-        this.singleton.read(VectorScreenshotRequest);
-        this.singleton.read(Screenshot);
-      }
-    }
-    @system(StartUp)
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    class StartUpPlaceHolder extends System {}
-    @system(PostStartup)
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    class PostStartUpPlaceHolder extends System {}
-    @system(PreUpdate)
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    class PreUpdatePlaceHolder extends System {}
-    @system(Update)
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    class UpdatePlaceHolder extends System {}
-    @system(PostUpdate)
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    class PostUpdatePlaceHolder extends System {}
-    @system(First)
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    class FirstPlaceHolder extends System {}
-    @system(Last)
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    class LastPlaceHolder extends System {}
+    // /**
+    //  * The schedule that runs once when the app starts.
+    //  */
+    // const StartUp = System.group(StartUp);
 
+    // /**
+    //  * The schedule that runs once after [`Startup`].
+    //  */
+    // const PostStartup = System.group(PostStartUp);
+
+    // /**
+    //  * Runs first in the schedule.
+    //  */
+    // const First = System.group(First);
+
+    // /**
+    //  * The schedule that contains logic that must run before [`Update`]. For example, a system that reads raw keyboard
+    //  * input OS events into an `Events` resource. This enables systems in [`Update`] to consume the events from the `Events`
+    //  * resource without actually knowing about (or taking a direct scheduler dependency on) the "os-level keyboard event system".
+    //  *
+    //  * [`PreUpdate`] exists to do "engine/plugin preparation work" that ensures the APIs consumed in [`Update`] are "ready".
+    //  * [`PreUpdate`] abstracts out "pre work implementation details".
+    //  *
+    //  * See the [`Main`] schedule for some details about how schedules are run.
+    //  */
+    // const PreUpdate = System.group(PreUpdate);
+
+    // /**
+    //  * The schedule that contains app logic.
+    //  */
+    // const Update = System.group(Update);
+
+    // /**
+    //  * The schedule that contains logic that must run after [`Update`]. For example, synchronizing "local transforms" in a hierarchy
+    //  * to "global" absolute transforms. This enables the [`PostUpdate`] transform-sync system to react to "local transform" changes in
+    //  * [`Update`] without the [`Update`] systems needing to know about (or add scheduler dependencies for) the "global transform sync system".
+    //  *
+    //  * [`PostUpdate`] exists to do "engine/plugin response work" to things that happened in [`Update`].
+    //  * [`PostUpdate`] abstracts out "implementation details" from users defining systems in [`Update`].
+    //  *
+    //  * See the [`Main`] schedule for some details about how schedules are run.
+    //  */
+    // const PostUpdate = System.group(PostUpdate);
+
+    // /**
+    //  * Runs last in the schedule.
+    //  */
+    // const Last = System.group(Last);
+
+    const allDefs: any[] = [];
     // Build all plugins.
     for (const plugin of this.#plugins) {
       if (Array.isArray(plugin)) {
-        await plugin[0](this, plugin[1]);
+        const pluginDefs = await plugin[0](plugin[1]);
+        if (Array.isArray(pluginDefs)) {
+          allDefs.push(...pluginDefs);
+        }
       } else {
-        await plugin(this);
+        const pluginDefs = await plugin();
+        if (Array.isArray(pluginDefs)) {
+          allDefs.push(...pluginDefs);
+        }
       }
     }
 
-    this.#systems.forEach(([group, s], i) => {
-      // @see https://github.com/LastOliveGames/becsy/blob/main/tests/query.test.ts#L22C3-L22C58
-      // @ts-ignore
-      // if (import.meta.env.PROD) {
-      // Object.defineProperty(s, 'name', { value: `_System${i}` });
-      // }
-      system(group)(s);
+    allDefs.forEach((def, i) => {
+      try {
+        Object.defineProperty(def, 'name', {
+          value: `${worldCounter}-${i}-${def.name}`,
+        });
+      } catch (e) {}
     });
 
     // Create world.
@@ -177,7 +215,21 @@ export class App {
     this.world = await World.create({
       // Multithreading is not supported yet.
       threads: 1,
-      defs: this.#groups,
+      defs: [
+        PreStartUp,
+        StartUp,
+        PostStartUp,
+        First,
+        PreUpdate,
+        Update,
+        PostUpdate,
+        Last,
+        ...allDefs,
+        CanvasConfig,
+        Cursor,
+        Grid,
+        Theme,
+      ],
     });
 
     const tick = async () => {

@@ -4,11 +4,13 @@ import { appStateContext, Task } from '../context';
 import { AppState } from '../context';
 import { consume } from '@lit/context';
 
+import '@spectrum-web-components/accordion/sp-accordion.js';
+import '@spectrum-web-components/accordion/sp-accordion-item.js';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-close.js';
 import { Event } from '../event';
 
-@customElement('ic-spectrum-layers-panel')
-export class LayersPanel extends LitElement {
+@customElement('ic-spectrum-properties-panel')
+export class PropertiesPanel extends LitElement {
   static styles = css`
     section {
       display: flex;
@@ -41,7 +43,7 @@ export class LayersPanel extends LitElement {
       new CustomEvent(Event.TASK_CHANGED, {
         detail: {
           selected: this.appState.taskbar.selected.filter(
-            (task) => task !== Task.SHOW_LAYERS_PANEL,
+            (task) => task !== Task.SHOW_PROPERTIES_PANEL,
           ),
         },
         bubbles: true,
@@ -52,14 +54,17 @@ export class LayersPanel extends LitElement {
   }
 
   render() {
-    return this.appState.taskbar.selected.includes(Task.SHOW_LAYERS_PANEL)
+    return this.appState.taskbar.selected.includes(Task.SHOW_PROPERTIES_PANEL)
       ? html`<section>
           <h4>
-            Layers
+            Properties
             <sp-action-button quiet size="s" @click=${this.handleClose}>
               <sp-icon-close slot="icon"></sp-icon-close>
             </sp-action-button>
           </h4>
+          <sp-accordion allow-multiple size="s">
+            <sp-accordion-item label="Transform"> </sp-accordion-item>
+          </sp-accordion>
         </section>`
       : null;
   }
@@ -67,6 +72,6 @@ export class LayersPanel extends LitElement {
 
 declare global {
   interface HTMLElementTagNameMap {
-    'ic-spectrum-layers-panel': LayersPanel;
+    'ic-spectrum-properties-panel': PropertiesPanel;
   }
 }

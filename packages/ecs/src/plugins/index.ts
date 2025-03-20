@@ -1,5 +1,3 @@
-import { App } from '../App';
-
 /**
  * Plugins are simply collections of things to be added to the App Builder.
  * Think of this as a way to add things to the app from multiple places, like different Rust files/modules or crates.
@@ -10,7 +8,7 @@ import { App } from '../App';
  *   app.add_systems(HelloWorld);
  * }
  */
-export type Plugin = (app: App, ...args: any[]) => Promise<void> | void;
+export type Plugin = (...args: any[]) => Promise<any[]> | any[];
 
 export * from './Hierarchy';
 export * from './Transform';

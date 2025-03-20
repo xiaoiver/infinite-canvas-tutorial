@@ -1,4 +1,6 @@
 import { Entity, System } from '@lastolivegames/becsy';
+import { mat3, vec2 } from 'gl-matrix';
+import { IPointData } from '@pixi/math';
 import {
   Camera,
   CanvasConfig,
@@ -17,9 +19,8 @@ import {
   // Visibility,
 } from '../components';
 import { Commands } from '../commands/Commands';
-import { mat3 } from 'gl-matrix';
-import { vec2 } from 'gl-matrix';
-import { IPointData } from '@pixi/math';
+
+import { CameraControl } from './CameraControl';
 
 export class Select extends System {
   private readonly commands = new Commands(this);
@@ -52,6 +53,8 @@ export class Select extends System {
         ).write,
     );
     this.query((q) => q.using(ComputedCamera).read);
+
+    this.schedule((s) => s.after(CameraControl));
   }
 
   execute() {

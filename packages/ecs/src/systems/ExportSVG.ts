@@ -31,6 +31,7 @@ import {
   entityToSerializedNodes,
   serializeNodesToSVGElements,
 } from '../utils';
+import { MeshPipeline } from './MeshPipeline';
 
 interface SVGOptions {
   grid: boolean;
@@ -77,6 +78,8 @@ export class ExportSVG extends System {
           InnerShadow,
         ).read,
     );
+
+    this.schedule((s) => s.after(MeshPipeline));
   }
 
   execute(): void {

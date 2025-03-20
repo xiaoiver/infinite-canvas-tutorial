@@ -2,6 +2,7 @@ import { System } from '@lastolivegames/becsy';
 import { vec2 } from 'gl-matrix';
 import { ComputedPoints, Path, Polyline, Stroke } from '../components';
 import { bisect, parsePath } from '../utils';
+import { First, Update } from '..';
 
 /**
  * Compute the points of the path according to the definition.
@@ -14,6 +15,8 @@ export class ComputePoints extends System {
     super();
     this.query((q) => q.current.with(ComputedPoints).write);
     this.query((q) => q.using(Stroke).read);
+
+    this.schedule((s) => s.after(First).before(Update));
   }
 
   execute() {

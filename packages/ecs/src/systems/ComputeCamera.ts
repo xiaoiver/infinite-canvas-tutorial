@@ -43,6 +43,7 @@ export class ComputeCamera extends System {
   constructor() {
     super();
     this.query((q) => q.using(ComputedCamera).write);
+    this.schedule((s) => s.afterWritersOf(Camera));
   }
 
   execute(): void {

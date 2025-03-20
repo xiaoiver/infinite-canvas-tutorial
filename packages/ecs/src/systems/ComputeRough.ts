@@ -13,6 +13,7 @@ import {
   Stroke,
 } from '../components';
 import { generator, parsePath } from '../utils';
+import { First, Update } from '..';
 
 export class ComputeRough extends System {
   roughs = this.query((q) => q.addedOrChanged.with(Rough).trackWrites);
@@ -24,6 +25,8 @@ export class ComputeRough extends System {
       (q) =>
         q.using(Circle, Ellipse, Rect, Polyline, Path, FillSolid, Stroke).read,
     );
+
+    this.schedule((s) => s.after(First).before(Update));
   }
 
   execute() {

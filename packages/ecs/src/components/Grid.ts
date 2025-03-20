@@ -1,4 +1,4 @@
-import { component, field, Type } from '@lastolivegames/becsy';
+import { field, Type } from '@lastolivegames/becsy';
 
 export enum CheckboardStyle {
   NONE = 'none',
@@ -6,7 +6,6 @@ export enum CheckboardStyle {
   DOTS = 'dots',
 }
 
-@component
 export class Grid {
   /**
    * Checkboard style.

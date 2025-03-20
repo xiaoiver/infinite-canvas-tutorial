@@ -1,4 +1,4 @@
-import { component, field, Type } from '@lastolivegames/becsy';
+import { field, Type } from '@lastolivegames/becsy';
 
 export enum ThemeMode {
   LIGHT = 'light',
@@ -24,7 +24,6 @@ interface ThemeColors {
   selectionBrushStroke: string;
 }
 
-@component
 export class Theme {
   /**
    * Theme.

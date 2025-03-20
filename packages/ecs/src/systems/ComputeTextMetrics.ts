@@ -4,6 +4,7 @@ import { ComputedTextMetrics, Text, TextStyleWhiteSpace } from '../components';
 import { DOMAdapter } from '../environment';
 import { BitmapFont } from '../utils';
 import { Rectangle } from '@pixi/math';
+import { First, Update } from '..';
 
 type TextSegment = { text: string; direction: 'ltr' | 'rtl' };
 type CharacterWidthCache = Record<string, number>;
@@ -142,6 +143,7 @@ export class ComputeTextMetrics extends System {
   constructor() {
     super();
     this.query((q) => q.current.with(ComputedTextMetrics).write);
+    this.schedule((s) => s.after(First).before(Update));
 
     const canvas = DOMAdapter.get().createCanvas(1, 1);
     if (canvas) {

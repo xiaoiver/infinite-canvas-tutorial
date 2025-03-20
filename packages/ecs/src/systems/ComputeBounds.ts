@@ -15,6 +15,7 @@ import {
   Stroke,
   Text,
 } from '../components';
+import { First, Update } from '..';
 
 export class ComputeBounds extends System {
   renderables = this.query(
@@ -42,6 +43,7 @@ export class ComputeBounds extends System {
           DropShadow,
         ).read,
     );
+    this.schedule((s) => s.after(First).before(Update));
   }
 
   execute() {

@@ -12,7 +12,6 @@ import {
   Grid,
   Theme,
   CanvasConfig,
-  PreStartUp,
   Renderable,
   FillSolid,
   Circle,

@@ -90,7 +90,7 @@ export class InfiniteCanvas extends LitElement {
       selected: [Pen.HAND],
     },
     taskbar: {
-      all: [TaskEnum.SHOW_LAYERS_PANEL],
+      all: [TaskEnum.SHOW_LAYERS_PANEL, TaskEnum.SHOW_PROPERTIES_PANEL],
       selected: [],
     },
   };

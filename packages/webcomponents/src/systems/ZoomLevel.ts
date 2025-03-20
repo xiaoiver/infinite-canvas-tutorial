@@ -23,6 +23,7 @@ export class ZoomLevelSystem extends System {
   constructor() {
     super();
     this.query((q) => q.using(Camera, Transform).write);
+    this.schedule((s) => s.inAnyOrderWithWritersOf(Camera));
   }
 
   initialize() {

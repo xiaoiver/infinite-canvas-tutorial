@@ -12,6 +12,7 @@ import {
 import { CanvasConfig } from '../components';
 import { RenderCache } from '../utils';
 import { TexturePool } from '../resources';
+import { PreStartUp, StartUp } from '..';
 
 export class SetupDevice extends System {
   /**
@@ -31,6 +32,11 @@ export class SetupDevice extends System {
 
   #prevWidth: number;
   #prevHeight: number;
+
+  constructor() {
+    super();
+    this.schedule((s) => s.after(PreStartUp).before(StartUp));
+  }
 
   async prepare() {
     const {

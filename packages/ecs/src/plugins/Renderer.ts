@@ -1,24 +1,16 @@
 /**
  * @see https://docs.rs/bevy/latest/bevy/render/struct.RenderPlugin.html
  */
-import { component, system } from '@lastolivegames/becsy';
-import { App } from '../App';
 import { Plugin } from './';
 import {
   SetupDevice,
   MeshPipeline,
-  StartUp,
-  PostUpdate,
   BatchManager,
   Sort,
-  PreUpdate,
   ComputePoints,
   ComputeRough,
   ComputeTextMetrics,
-  ViewportCulling,
   ComputeBounds,
-  Last,
-  ComputeCamera,
   SetCursor,
 } from '../systems';
 import {
@@ -49,53 +41,55 @@ import {
   Visibility,
 } from '../components';
 
-export const RendererPlugin: Plugin = (app: App) => {
-  component(Renderable);
-  component(Wireframe);
-  component(GlobalRenderOrder);
-  component(ZIndex);
-  component(Visibility);
-
-  /**
-   * Style
-   */
-  component(FillSolid);
-  component(FillGradient);
-  component(FillPattern);
-  component(FillImage);
-  component(FillTexture);
-  component(Stroke);
-  component(Opacity);
-  component(DropShadow);
-  component(InnerShadow);
-  component(Rough);
-
-  /**
-   * Geometry
-   */
-  component(Circle);
-  component(Ellipse);
-  component(Rect);
-  component(Polyline);
-  component(Path);
-  component(Text);
-  component(ComputedPoints);
-  component(ComputedRough);
-  component(ComputedTextMetrics);
-  component(ComputedBounds);
-
-  system(StartUp)(SetupDevice);
-
-  system(PreUpdate)(ComputePoints);
-  system(PreUpdate)(ComputeRough);
-  system(PreUpdate)(ComputeTextMetrics);
-  system(PreUpdate)(ComputeBounds);
-
-  system(PostUpdate)(Sort);
-  system(PostUpdate)(BatchManager);
-  system(PostUpdate)(SetCursor);
-
-  system((s) => s.after(ComputeCamera, SetupDevice, BatchManager))(
+export const RendererPlugin: Plugin = () => {
+  return [
+    /**
+     * Systems
+     */
+    SetupDevice,
+    ComputePoints,
+    ComputeRough,
+    ComputeTextMetrics,
+    ComputeBounds,
+    Sort,
+    BatchManager,
+    SetCursor,
     MeshPipeline,
-  );
+
+    /**
+     * Components
+     */
+    Renderable,
+    Wireframe,
+    GlobalRenderOrder,
+    ZIndex,
+    Visibility,
+    /**
+     * Style
+     */
+    FillSolid,
+    FillGradient,
+    FillPattern,
+    FillImage,
+    FillTexture,
+    Stroke,
+    Opacity,
+    DropShadow,
+    InnerShadow,
+    Rough,
+
+    /**
+     * Geometry
+     */
+    Circle,
+    Ellipse,
+    Rect,
+    Polyline,
+    Path,
+    Text,
+    ComputedPoints,
+    ComputedRough,
+    ComputedTextMetrics,
+    ComputedBounds,
+  ];
 };
