@@ -1,27 +1,31 @@
-import { co, System } from '@lastolivegames/becsy';
+import { co, Entity, System } from '@lastolivegames/becsy';
 import { IPointData } from '@pixi/math';
-import { CanvasConfig, Input } from '../components';
+import { Canvas, Input } from '../components';
 import { getGlobalThis } from '../utils';
 import { CameraControl } from './CameraControl';
 import { Select } from './Select';
 import { Update, First } from '..';
 
 export class EventWriter extends System {
-  private readonly canvasConfig = this.singleton.read(CanvasConfig);
-  private readonly input = this.singleton.write(Input);
+  private readonly canvases = this.query((q) =>
+    q.added.and.removed.with(Canvas),
+  );
 
   private readonly pointerIds = new Set<number>();
 
-  #onDestroyCallbacks: (() => void)[] = [];
+  #onDestroyCallbacks: WeakMap<HTMLCanvasElement, (() => void)[]> =
+    new WeakMap();
 
-  @co private *setInputTrigger(triggerKey: string): Generator {
-    if (!(triggerKey in this.input)) return;
+  @co private *setInputTrigger(entity: Entity, triggerKey: string): Generator {
+    const input = entity.write(Input);
 
-    Object.assign(this.input, { [triggerKey]: true });
+    if (!(triggerKey in input)) return;
+
+    Object.assign(input, { [triggerKey]: true });
 
     yield co.waitForFrames(1);
 
-    Object.assign(this.input, { [triggerKey]: false });
+    Object.assign(input, { [triggerKey]: false });
 
     yield;
   }
@@ -29,33 +33,54 @@ export class EventWriter extends System {
   constructor() {
     super();
     this.schedule((s) =>
-      s.inAnyOrderWith(CameraControl, Select).before(Update).after(First),
+      s.inAnyOrderWith(Select, CameraControl).before(Update).after(First),
     );
+    this.query((q) => q.using(Input).write);
   }
 
-  initialize(): void {
-    const { canvas } = this.canvasConfig;
+  execute(): void {
+    this.canvases.added.forEach((entity) => {
+      this.bindEventListeners(entity);
+    });
+
+    this.canvases.removed.forEach((entity) => {
+      const canvas = entity.read(Canvas);
+      const { element } = canvas;
+
+      this.#onDestroyCallbacks
+        .get(element as HTMLCanvasElement)
+        ?.forEach((callback) => callback());
+    });
+  }
+
+  private bindEventListeners(entity: Entity): void {
+    const canvas = entity.read(Canvas).element as HTMLCanvasElement;
 
     const globalThis = getGlobalThis();
     const supportsPointerEvents = !!globalThis.PointerEvent;
     const supportsTouchEvents = 'ontouchstart' in globalThis;
+
+    const input = entity.hold();
 
     const onPointerMove = (e: PointerEvent) => {
       // @see https://stackoverflow.com/questions/49500339/cant-prevent-touchmove-from-scrolling-window-on-ios
       // ev.preventDefault();
 
       if (this.pointerIds.size > 1 || !this.pointerIds.has(e.pointerId)) return;
-      const pointerWorld = this.client2Viewport({
-        x: e.clientX,
-        y: e.clientY,
-      });
-      this.input.pointerWorld = [pointerWorld.x, pointerWorld.y];
+      const pointerWorld = this.client2Viewport(
+        {
+          x: e.clientX,
+          y: e.clientY,
+        },
+        canvas,
+      );
+      input.write(Input).pointerWorld = [pointerWorld.x, pointerWorld.y];
     };
 
     const onPointerUp = (e: PointerEvent) => {
-      this.setInputTrigger('pointerUpTrigger');
+      // input.write(Input).pointerUpTrigger = true;
+      this.setInputTrigger(input, 'pointerUpTrigger');
       this.pointerIds.delete(e.pointerId);
-      this.input.pointerDown = false;
     };
 
     const onPointerDown = (e: PointerEvent) => {
@@ -66,74 +91,79 @@ export class EventWriter extends System {
       this.pointerIds.add(e.pointerId);
 
       if (this.pointerIds.size > 1) {
-        this.input.pointerDown = false;
         return;
       }
 
-      this.input.pointerDown = true;
-      this.setInputTrigger('pointerDownTrigger');
+      // input.write(Input).pointerDownTrigger = true;
+      this.setInputTrigger(input, 'pointerDownTrigger');
 
       if (this.pointerIds.size === 1) {
-        const pointerWorld = this.client2Viewport({
-          x: e.clientX,
-          y: e.clientY,
-        });
-        this.input.pointerWorld = [pointerWorld.x, pointerWorld.y];
+        const pointerWorld = this.client2Viewport(
+          {
+            x: e.clientX,
+            y: e.clientY,
+          },
+          canvas,
+        );
+        input.write(Input).pointerWorld = [pointerWorld.x, pointerWorld.y];
       }
     };
 
     const onPointerCancel = (e: PointerEvent) => {
       this.pointerIds.delete(e.pointerId);
-      this.input.pointerDown = false;
     };
 
     const onPointerWheel = (e: WheelEvent) => {
       e.preventDefault();
-      this.input.wheelTrigger = true;
-      this.input.deltaX = e.deltaX;
-      this.input.deltaY = e.deltaY;
+      input.write(Input).wheelTrigger = true;
+      input.write(Input).deltaX = e.deltaX;
+      input.write(Input).deltaY = e.deltaY;
+
       if (e.ctrlKey) {
-        this.input.ctrlKey = true;
+        input.write(Input).ctrlKey = true;
       }
       if (e.shiftKey) {
-        this.input.shiftKey = true;
+        input.write(Input).shiftKey = true;
       }
       if (e.metaKey) {
-        this.input.metaKey = true;
+        input.write(Input).metaKey = true;
       }
 
-      const pointerWorld = this.client2Viewport({
-        x: e.clientX,
-        y: e.clientY,
-      });
-      this.input.pointerWorld = [pointerWorld.x, pointerWorld.y];
+      const pointerWorld = this.client2Viewport(
+        {
+          x: e.clientX,
+          y: e.clientY,
+        },
+        canvas,
+      );
+      input.write(Input).pointerWorld = [pointerWorld.x, pointerWorld.y];
     };
 
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Control') {
-        this.input.ctrlKey = true;
+        input.write(Input).ctrlKey = true;
       }
 
       if (e.key === 'Shift') {
-        this.input.shiftKey = true;
+        input.write(Input).shiftKey = true;
       }
 
       if (e.key === 'Meta') {
-        this.input.metaKey = true;
+        input.write(Input).metaKey = true;
       }
     };
 
     const onKeyUp = (e: KeyboardEvent) => {
       if (e.key === 'Control') {
-        this.input.ctrlKey = false;
+        input.write(Input).ctrlKey = false;
       }
 
       if (e.key === 'Shift') {
-        this.input.shiftKey = false;
+        input.write(Input).shiftKey = false;
       }
 
       if (e.key === 'Meta') {
-        this.input.metaKey = false;
+        input.write(Input).metaKey = false;
       }
     };
 
@@ -197,26 +227,24 @@ export class EventWriter extends System {
 
       globalThis.addEventListener('keydown', onKeyDown, true);
       globalThis.addEventListener('keyup', onKeyUp, true);
-      this.#onDestroyCallbacks.push(() => {
-        if (supportsPointerEvents) {
-          removePointerEventListener(canvas as HTMLCanvasElement);
-        } else {
-          removeMouseEventListener(canvas as HTMLCanvasElement);
+      this.#onDestroyCallbacks.set(canvas as HTMLCanvasElement, [
+        () => {
+          if (supportsPointerEvents) {
+            removePointerEventListener(canvas as HTMLCanvasElement);
+          } else {
+            removeMouseEventListener(canvas as HTMLCanvasElement);
 
-          if (supportsTouchEvents) {
-            removeTouchEventListener(canvas as HTMLCanvasElement);
+            if (supportsTouchEvents) {
+              removeTouchEventListener(canvas as HTMLCanvasElement);
+            }
           }
-        }
 
-        canvas.removeEventListener('wheel', onPointerWheel, true);
-        globalThis.removeEventListener('keydown', onKeyDown, true);
-        globalThis.removeEventListener('keyup', onKeyUp, true);
-      });
+          canvas.removeEventListener('wheel', onPointerWheel, true);
+          globalThis.removeEventListener('keydown', onKeyDown, true);
+          globalThis.removeEventListener('keyup', onKeyUp, true);
+        },
+      ]);
     }
-  }
-
-  finalize(): void {
-    this.#onDestroyCallbacks.forEach((callback) => callback());
   }
 
   /**
@@ -225,24 +253,23 @@ export class EventWriter extends System {
    * @see https://github.com/antvis/G/issues/1677
    * @see https://developer.mozilla.org/zh-CN/docs/Web/API/MouseEvent/offsetX
    */
-  client2Viewport({ x, y }: IPointData): IPointData {
-    const { scaleX, scaleY, bbox } = this.getScale();
+  client2Viewport({ x, y }: IPointData, $el: HTMLCanvasElement): IPointData {
+    const { scaleX, scaleY, bbox } = this.getScale($el);
     return {
       x: (x - (bbox?.left || 0)) / scaleX,
       y: (y - (bbox?.top || 0)) / scaleY,
     };
   }
 
-  viewport2Client({ x, y }: IPointData): IPointData {
-    const { scaleX, scaleY, bbox } = this.getScale();
+  viewport2Client({ x, y }: IPointData, $el: HTMLCanvasElement): IPointData {
+    const { scaleX, scaleY, bbox } = this.getScale($el);
     return {
       x: (x + (bbox?.left || 0)) * scaleX,
       y: (y + (bbox?.top || 0)) * scaleY,
     };
   }
 
-  private getScale() {
-    const $el = this.canvasConfig.canvas as HTMLCanvasElement;
+  private getScale($el: HTMLCanvasElement) {
     const bbox = $el.getBoundingClientRect();
     let scaleX = 1;
     let scaleY = 1;

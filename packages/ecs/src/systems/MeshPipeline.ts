@@ -1,16 +1,18 @@
 import * as d3 from 'd3-color';
-import { co, System } from '@lastolivegames/becsy';
+import { co, Entity, System } from '@lastolivegames/becsy';
 import {
   Buffer,
   BufferFrequencyHint,
   BufferUsage,
-  RenderPass,
+  SwapChain,
   TransparentBlack,
 } from '@antv/g-device-api';
 import { SetupDevice } from './SetupDevice';
 import {
   Camera,
+  Canvas,
   CheckboardStyle,
+  Children,
   Circle,
   ComputedCamera,
   ComputedPoints,
@@ -25,6 +27,7 @@ import {
   FillTexture,
   GlobalRenderOrder,
   GlobalTransform,
+  GPUResource,
   Grid,
   InnerShadow,
   Opacity,
@@ -32,6 +35,7 @@ import {
   Polyline,
   RasterScreenshotRequest,
   Rect,
+  Renderable,
   Rough,
   Screenshot,
   Stroke,
@@ -45,9 +49,6 @@ import { BatchManager } from './BatchManager';
 import { ComputeCamera } from './ComputeCamera';
 
 export class MeshPipeline extends System {
-  private rendererResource = this.attach(SetupDevice);
-  private batchManager = this.attach(BatchManager);
-
   private readonly theme = this.singleton.read(Theme);
   private readonly grid = this.singleton.read(Grid);
   private readonly rasterScreenshotRequest = this.singleton.read(
@@ -55,47 +56,62 @@ export class MeshPipeline extends System {
   );
   private readonly screenshot = this.singleton.write(Screenshot);
 
-  private grids = this.query((q) => q.addedOrChanged.with(Grid).trackWrites);
-  private themes = this.query((q) => q.addedOrChanged.with(Theme).trackWrites);
-  private cameras = this.query((q) => q.current.with(Camera).read);
-  private computedCameras = this.query(
-    (q) => q.addedOrChanged.with(ComputedCamera).trackWrites,
-  );
+  // private grids = this.query((q) => q.addedOrChanged.with(Grid).trackWrites);
+  // private themes = this.query((q) => q.addedOrChanged.with(Theme).trackWrites);
 
-  private styles = this.query(
+  private canvases = this.query((q) => q.current.with(Canvas).read);
+
+  private renderables = this.query(
     (q) =>
-      q.addedChangedOrRemoved.withAny(
-        FillSolid,
-        FillGradient,
-        FillPattern,
-        FillTexture,
-        FillImage,
-        Stroke,
-        Opacity,
-        InnerShadow,
-        DropShadow,
-        Wireframe,
-        Rough,
-      ).trackWrites,
+      q.addedOrChanged.and.removed
+        .with(Renderable)
+        .withAny(Circle, Ellipse, Rect, Polyline, Path, Text).trackWrites,
   );
 
-  #renderPass: RenderPass;
-  /**
-   * Used in WebGL2 & WebGPU.
-   */
-  #uniformBuffer: Buffer;
-  /**
-   * Used in WebGL1.
-   */
-  #uniformLegacyObject: Record<string, unknown>;
+  // private styles = this.query(
+  //   (q) =>
+  //     q.addedChangedOrRemoved.withAny(
+  //       FillSolid,
+  //       FillGradient,
+  //       FillPattern,
+  //       FillTexture,
+  //       FillImage,
+  //       Stroke,
+  //       Opacity,
+  //       InnerShadow,
+  //       DropShadow,
+  //       Wireframe,
+  //       Rough,
+  //     ).trackWrites,
+  // );
 
-  #gridRenderer: GridRenderer;
+  gpuResources: Map<
+    Entity['__id'],
+    {
+      uniformBuffer: Buffer;
+      uniformLegacyObject: Record<string, unknown>;
+      gridRenderer: GridRenderer;
+      batchManager: BatchManager;
+    }
+  > = new Map();
+
+  private pendingRenderables: Record<
+    Entity['__id'],
+    {
+      add: Entity[];
+      remove: Entity[];
+    }
+  > = {};
 
   constructor() {
     super();
     this.query(
       (q) =>
         q.current.with(
+          GPUResource,
+          Camera,
+          ComputedCamera,
+          Children,
           Circle,
           Ellipse,
           Rect,
@@ -113,14 +129,15 @@ export class MeshPipeline extends System {
           ComputedRough,
           Text,
           ComputedTextMetrics,
+          FillImage,
+          FillPattern,
+          FillGradient,
+          FillSolid,
+          FillTexture,
         ).read,
     );
 
-    this.schedule((s) => s.after(ComputeCamera, SetupDevice, BatchManager));
-  }
-
-  initialize() {
-    this.#gridRenderer = new GridRenderer();
+    this.schedule((s) => s.after(ComputeCamera, SetupDevice));
   }
 
   @co private *setScreenshotTrigger(dataURL: string): Generator {
@@ -129,9 +146,20 @@ export class MeshPipeline extends System {
     Object.assign(this.screenshot, { dataURL: '' });
   }
 
-  private renderFrame(computedCamera: ComputedCamera) {
-    const { swapChain, device, renderTarget, depthRenderTarget } =
-      this.rendererResource;
+  private renderCamera(camera: Entity, canvas: Entity) {
+    if (!canvas.has(GPUResource)) {
+      return;
+    }
+
+    const {
+      swapChain,
+      device,
+      renderTarget,
+      depthRenderTarget,
+      renderCache,
+      texturePool,
+    } = canvas.read(GPUResource);
+
     const { width, height } = swapChain.getCanvas();
     const onscreenTexture = swapChain.getOnscreenTexture();
 
@@ -139,47 +167,60 @@ export class MeshPipeline extends System {
       !this.rasterScreenshotRequest.enabled ||
       this.rasterScreenshotRequest.grid;
 
-    if (!this.#uniformBuffer) {
-      this.#uniformBuffer = device.createBuffer({
-        viewOrSize: (16 * 3 + 4 * 5) * Float32Array.BYTES_PER_ELEMENT,
-        usage: BufferUsage.UNIFORM,
-        hint: BufferFrequencyHint.DYNAMIC,
+    if (!this.gpuResources.get(camera.__id)) {
+      this.gpuResources.set(camera.__id, {
+        uniformBuffer: device.createBuffer({
+          viewOrSize: (16 * 3 + 4 * 5) * Float32Array.BYTES_PER_ELEMENT,
+          usage: BufferUsage.UNIFORM,
+          hint: BufferFrequencyHint.DYNAMIC,
+        }),
+        uniformLegacyObject: null,
+        gridRenderer: new GridRenderer(),
+        batchManager: new BatchManager(device, renderCache, texturePool),
       });
     }
 
     const [buffer, legacyObject] = this.updateUniform(
-      computedCamera,
+      camera,
       shouldRenderGrid,
+      swapChain,
     );
-    this.#uniformBuffer.setSubData(0, new Uint8Array(buffer.buffer));
-    this.#uniformLegacyObject = legacyObject;
+    this.gpuResources.set(camera.__id, {
+      ...this.gpuResources.get(camera.__id),
+      uniformLegacyObject: legacyObject,
+    });
+
+    const { uniformBuffer, uniformLegacyObject, gridRenderer, batchManager } =
+      this.gpuResources.get(camera.__id);
+
+    uniformBuffer.setSubData(0, new Uint8Array(buffer.buffer));
 
     device.beginFrame();
 
-    this.#renderPass = device.createRenderPass({
+    const renderPass = device.createRenderPass({
       colorAttachment: [renderTarget],
       colorResolveTo: [onscreenTexture],
       colorClearColor: [TransparentBlack],
       depthStencilAttachment: depthRenderTarget,
       depthClearValue: 1,
     });
+    renderPass.setViewport(0, 0, width, height);
 
-    this.#renderPass.setViewport(0, 0, width, height);
+    gridRenderer.render(device, renderPass, uniformBuffer, uniformLegacyObject);
 
-    this.#gridRenderer.render(
-      device,
-      this.#renderPass,
-      this.#uniformBuffer,
-      this.#uniformLegacyObject,
-    );
+    if (this.pendingRenderables[camera.__id]) {
+      this.pendingRenderables[camera.__id].add.forEach((entity) => {
+        batchManager.add(entity);
+      });
+      this.pendingRenderables[camera.__id].remove.forEach((entity) => {
+        batchManager.remove(entity);
+      });
+      delete this.pendingRenderables[camera.__id];
+    }
 
-    this.batchManager.flush(
-      this.#renderPass,
-      this.#uniformBuffer,
-      this.#uniformLegacyObject,
-    );
+    batchManager.flush(renderPass, uniformBuffer, uniformLegacyObject);
 
-    device.submitPass(this.#renderPass);
+    device.submitPass(renderPass);
     device.endFrame();
 
     if (this.rasterScreenshotRequest.enabled) {
@@ -193,37 +234,70 @@ export class MeshPipeline extends System {
   }
 
   execute() {
-    if (this.rasterScreenshotRequest.enabled) {
-      console.log('raster screenshot');
-    }
+    // if (this.rasterScreenshotRequest.enabled) {
+    //   console.log('raster screenshot');
+    // }
+    this.canvases.current.forEach((canvas) => {
+      const { cameras } = canvas.read(Canvas);
+      cameras.forEach((camera) => {
+        this.renderCamera(camera, canvas);
+      });
 
-    this.cameras.current.forEach((entity) => {
-      let needRender = true;
-
+      // let needRender = true;
       // Style changed.
-      (this.computedCameras.addedOrChanged.length ||
-        this.styles.addedChangedOrRemoved.length ||
-        this.themes.addedOrChanged.length ||
-        this.grids.addedOrChanged.length) &&
-        (needRender = true);
+      // (this.computedCameras.addedOrChanged.length ||
+      //   this.styles.addedChangedOrRemoved.length ||
+      //   this.themes.addedOrChanged.length ||
+      //   this.grids.addedOrChanged.length) &&
+      //   (needRender = true);
+    });
 
-      if (needRender) {
-        console.log('render');
-        this.renderFrame(entity.read(ComputedCamera));
+    this.renderables.addedOrChanged.forEach((entity) => {
+      const camera = this.getSceneRoot(entity);
+
+      // The gpu resources is not ready for the camera.
+      if (!this.pendingRenderables[camera.__id]) {
+        this.pendingRenderables[camera.__id] = {
+          add: [],
+          remove: [],
+        };
       }
+      this.pendingRenderables[camera.__id].add.push(entity);
+    });
+
+    this.renderables.removed.forEach((entity) => {
+      const camera = this.getSceneRoot(entity);
+      this.pendingRenderables[camera.__id].remove.push(entity);
     });
   }
 
   finalize() {
-    this.batchManager.clear();
-    this.#gridRenderer.destroy();
+    this.gpuResources.forEach(({ gridRenderer, batchManager }) => {
+      gridRenderer.destroy();
+      batchManager.clear();
+      batchManager.destroy();
+    });
+  }
+
+  private getSceneRoot(entity: Entity): Entity {
+    if (!entity.has(Children)) {
+      return entity;
+    }
+
+    const parent = entity.read(Children).parent;
+    if (parent) {
+      return this.getSceneRoot(parent);
+    }
+    return entity;
   }
 
   private updateUniform(
-    computedCamera: ComputedCamera,
+    entity: Entity,
     shouldRenderGrid: boolean,
+    swapChain: SwapChain,
   ): [Float32Array, Record<string, unknown>] {
-    const { swapChain } = this.rendererResource;
+    const computedCamera = entity.read(ComputedCamera);
+
     const { width, height } = swapChain.getCanvas();
 
     const { mode, colors } = this.theme;

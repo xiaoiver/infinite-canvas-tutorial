@@ -1,4 +1,4 @@
-import { Buffer, RenderPass } from '@antv/g-device-api';
+import { Buffer, Device, RenderPass } from '@antv/g-device-api';
 import { Entity, System } from '@lastolivegames/becsy';
 import {
   Drawcall,
@@ -11,26 +11,16 @@ import {
 } from '../drawcalls';
 import {
   Circle,
-  ComputedPoints,
-  ComputedRough,
-  ComputedTextMetrics,
-  DropShadow,
   Ellipse,
-  FillSolid,
-  GlobalTransform,
-  InnerShadow,
-  Opacity,
   Path,
   Polyline,
   Rect,
   Renderable,
   Rough,
-  Stroke,
   Text,
-  Wireframe,
 } from '../components';
-import { SetupDevice } from './SetupDevice';
-import { Last, Update } from '..';
+import { TexturePool } from '../resources';
+import { RenderCache } from '../utils';
 
 /**
  * Since a shape may have multiple drawcalls, we need to cache them and maintain an 1-to-many relationship.
@@ -75,7 +65,7 @@ function getDrawcallCtors(shape: Entity) {
 }
 // SHAPE_DRAWCALL_CTORS.set(Custom, [CustomDrawcall]);
 
-export class BatchManager extends System {
+export class BatchManager {
   /**
    * Drawcalls to flush in the next frame.
    */
@@ -104,52 +94,21 @@ export class BatchManager extends System {
     Drawcall[][]
   > = Object.create(null);
 
-  renderResource = this.attach(SetupDevice);
+  constructor(
+    private readonly device: Device,
+    private readonly renderCache: RenderCache,
+    private readonly texturePool: TexturePool,
+  ) {}
 
-  renderables = this.query(
-    (q) =>
-      q.addedOrChanged.and.removed
-        .with(Renderable)
-        .withAny(Circle, Ellipse, Rect, Polyline, Path, Text).trackWrites,
-  );
+  // execute(): void {
+  //   this.renderables.addedOrChanged.forEach((entity) => {
+  //     this.add(entity);
+  //   });
 
-  constructor() {
-    super();
-    this.query(
-      (q) =>
-        q.current.with(
-          Circle,
-          Ellipse,
-          Rect,
-          Polyline,
-          Path,
-          ComputedPoints,
-          GlobalTransform,
-          FillSolid,
-          Wireframe,
-          Opacity,
-          Stroke,
-          InnerShadow,
-          DropShadow,
-          Rough,
-          ComputedRough,
-          Text,
-          ComputedTextMetrics,
-        ).read,
-    );
-
-    this.schedule((s) => s.after(Update).before(Last));
-  }
-
-  execute(): void {
-    this.renderables.addedOrChanged.forEach((entity) => {
-      this.add(entity);
-    });
-
-    this.renderables.removed.forEach((entity) => {
-      this.remove(entity);
-    });
-  }
+  //   this.renderables.removed.forEach((entity) => {
+  //     this.remove(entity);
+  //   });
+  // }
 
   private collectDrawcallCtors(shape: Entity) {
     return getDrawcallCtors(shape)
@@ -170,9 +129,9 @@ export class BatchManager extends System {
     return this.collectDrawcallCtors(shape).map((DrawcallCtor, index) => {
       // @ts-ignore
       const drawcall = new DrawcallCtor(
-        this.renderResource.device,
-        this.renderResource.renderCache,
-        this.renderResource.texturePool,
+        this.device,
+        this.renderCache,
+        this.texturePool,
         instanced,
         index,
       ) as Drawcall;

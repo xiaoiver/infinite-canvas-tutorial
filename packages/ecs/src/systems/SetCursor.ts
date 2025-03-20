@@ -1,29 +1,26 @@
 import { System } from '@lastolivegames/becsy';
-import { CanvasConfig, Cursor, CursorValue } from '../components';
+import { Canvas, Cursor } from '../components';
 import { Last, Update } from '..';
 
 export class SetCursor extends System {
-  private readonly canvasConfig = this.singleton.read(CanvasConfig);
-  private readonly cursor = this.singleton.read(Cursor);
-
-  /**
-   * Prevent cursor change when it's the same.
-   */
-  #prevCursor: CursorValue;
+  private readonly cursors = this.query(
+    (q) => q.addedOrChanged.with(Cursor).trackWrites,
+  );
 
   constructor() {
     super();
     this.schedule((s) => s.after(Update).before(Last));
+    this.query((q) => q.using(Canvas).read);
   }
 
   execute() {
-    if (this.cursor.value !== this.#prevCursor) {
-      this.#prevCursor = this.cursor.value;
-      const { canvas } = this.canvasConfig;
+    this.cursors.addedOrChanged.forEach((entity) => {
+      const cursor = entity.read(Cursor);
+      const { element } = entity.read(Canvas);
 
-      if (canvas instanceof HTMLCanvasElement) {
-        canvas.style.cursor = this.cursor.value;
+      if (element instanceof HTMLCanvasElement) {
+        element.style.cursor = cursor.value;
       }
-    }
+    });
   }
 }

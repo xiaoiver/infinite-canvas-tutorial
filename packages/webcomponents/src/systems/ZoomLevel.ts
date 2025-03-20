@@ -2,7 +2,7 @@ import { LitElement } from 'lit';
 import {
   Camera,
   CameraControl,
-  CanvasConfig,
+  Canvas,
   ComputedCamera,
   System,
   Transform,
@@ -15,8 +15,6 @@ export class ZoomLevelSystem extends System {
   #zoomEvent: CustomEvent;
 
   private readonly cameraControl = this.attach(CameraControl);
-
-  private readonly canvasConfig = this.singleton.read(CanvasConfig);
 
   private readonly cameras = this.query((q) => q.current.with(ComputedCamera));
 
@@ -37,11 +35,10 @@ export class ZoomLevelSystem extends System {
 
     this.container.addEventListener(Event.ZOOM_TO, (e) => {
       const { zoom } = e.detail;
-      const { width, height } = this.canvasConfig;
-      this.cameras.current.forEach((camera) => {
-        const { x, y, rotation } = camera.read(ComputedCamera);
 
-        console.log(width / 2, height / 2);
+      this.cameras.current.forEach((camera) => {
+        const { width, height } = camera.read(Camera).canvas.read(Canvas);
+        const { x, y, rotation } = camera.read(ComputedCamera);
 
         this.cameraControl.applyLandmark(
           { zoom, x, y, rotation, viewportX: width / 2, viewportY: height / 2 },

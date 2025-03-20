@@ -1,6 +1,6 @@
 import {
   Camera,
-  CanvasConfig,
+  Canvas,
   Commands,
   PreStartUp,
   System,
@@ -11,34 +11,45 @@ import { Event } from '../event';
 
 export class InitCanvasSystem extends System {
   private readonly commands = new Commands(this);
-  private readonly canvasConfig = this.singleton.write(CanvasConfig);
 
   container: LitElement;
   canvas: HTMLCanvasElement;
-  renderer: string;
+  renderer: 'webgl' | 'webgpu';
   shaderCompilerPath: string;
   zoom: number;
 
   constructor() {
     super();
-    this.query((q) => q.using(CanvasConfig, Camera, Transform).write);
+    this.query((q) => q.using(Canvas, Camera, Transform).write);
     this.schedule((s) => s.before(PreStartUp));
   }
 
   initialize(): void {
-    const { container, canvas, renderer, shaderCompilerPath, zoom } = this;
-
-    Object.assign(this.singleton.write(CanvasConfig), {
-      canvas,
-      width: window.innerWidth,
-      height: window.innerHeight,
-      devicePixelRatio: window.devicePixelRatio,
+    const {
+      container,
+      canvas: $canvas,
       renderer,
       shaderCompilerPath,
-    });
+      zoom,
+    } = this;
+
+    const canvas = this.commands
+      .spawn(
+        new Canvas({
+          element: $canvas,
+          width: window.innerWidth,
+          height: window.innerHeight,
+          devicePixelRatio: window.devicePixelRatio,
+          renderer,
+          shaderCompilerPath,
+        }),
+      )
+      .id();
 
     this.commands.spawn(
-      new Camera(),
+      new Camera({
+        canvas,
+      }),
       new Transform({
         scale: {
           x: 1 / zoom,
@@ -51,7 +62,7 @@ export class InitCanvasSystem extends System {
 
     container.addEventListener(Event.RESIZED, (e) => {
       const { width, height } = e.detail;
-      Object.assign(this.canvasConfig, {
+      Object.assign(canvas.write(Canvas), {
         width,
         height,
       });
@@ -59,7 +70,7 @@ export class InitCanvasSystem extends System {
 
     container.addEventListener(Event.PEN_CHANGED, (e) => {
       const { selected } = e.detail;
-      Object.assign(this.canvasConfig, {
+      Object.assign(canvas.write(Canvas), {
         pen: selected[0],
       });
     });

@@ -11,7 +11,6 @@ import {
   Camera,
   Grid,
   Theme,
-  CanvasConfig,
   Renderable,
   FillSolid,
   Circle,
@@ -24,6 +23,7 @@ import {
   Text,
   Wireframe,
   Opacity,
+  Canvas,
 } from '../src';
 
 const $canvas = document.getElementById('canvas') as HTMLCanvasElement;
@@ -38,11 +38,16 @@ const resize = (width: number, height: number) => {
 };
 resize(window.innerWidth, window.innerHeight);
 
+let canvasEntity: Entity;
 let cameraEntity: Entity;
 let parentEntity: Entity;
 let childEntity: Entity;
 let grandchildEntity: Entity;
 let polylineEntity: Entity;
+
+const MyPlugin = () => {
+  return [StartUpSystem];
+};
 
 class StartUpSystem extends System {
   private readonly commands = new Commands(this);
@@ -50,7 +55,7 @@ class StartUpSystem extends System {
   q = this.query(
     (q) =>
       q.using(
-        CanvasConfig,
+        Canvas,
         Theme,
         Grid,
         Camera,
@@ -73,14 +78,21 @@ class StartUpSystem extends System {
   );
 
   initialize(): void {
-    Object.assign(this.singleton.write(CanvasConfig), {
-      canvas: $canvas,
-      width: window.innerWidth,
-      height: window.innerHeight,
-      devicePixelRatio: window.devicePixelRatio,
-    });
+    const canvas = this.commands.spawn(
+      new Canvas({
+        element: $canvas,
+        width: window.innerWidth,
+        height: window.innerHeight,
+        devicePixelRatio: window.devicePixelRatio,
+      }),
+    );
 
-    const camera = this.commands.spawn(new Camera(), new Transform());
+    const camera = this.commands.spawn(
+      new Camera({
+        canvas: canvas.id(),
+      }),
+      new Transform(),
+    );
 
     const parent = this.commands.spawn(
       new Transform(),
@@ -208,6 +220,7 @@ class StartUpSystem extends System {
     );
     parent.appendChild(text);
 
+    canvasEntity = canvas.id().hold();
     cameraEntity = camera.id().hold();
     parentEntity = parent.id().hold();
     childEntity = child.id().hold();
@@ -229,7 +242,7 @@ class StartUpSystem extends System {
     window.addEventListener('resize', () => {
       resize(window.innerWidth, window.innerHeight);
 
-      Object.assign(this.singleton.write(CanvasConfig), {
+      Object.assign(canvasEntity.write(Canvas), {
         width: window.innerWidth,
         height: window.innerHeight,
       });
@@ -251,7 +264,4 @@ class StartUpSystem extends System {
   }
 }
 
-const app = new App()
-  .addPlugins(...DefaultPlugins)
-  .addSystems(PreStartUp, StartUpSystem)
-  .run();
+const app = new App().addPlugins(...DefaultPlugins, MyPlugin).run();

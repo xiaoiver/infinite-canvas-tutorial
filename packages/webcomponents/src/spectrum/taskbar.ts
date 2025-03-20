@@ -66,7 +66,7 @@ export class Taskbar extends LitElement {
           const { icon, label } = TaskMap[task];
           return html`<sp-action-button value="${task}">
             ${icon}
-            <sp-tooltip self-managed placement="right"> ${label} </sp-tooltip>
+            <sp-tooltip self-managed placement="left"> ${label} </sp-tooltip>
           </sp-action-button>`;
         })}
       </sp-action-group>

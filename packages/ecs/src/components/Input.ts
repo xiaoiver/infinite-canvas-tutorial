@@ -3,8 +3,6 @@ import { field } from '@lastolivegames/becsy';
 export class Input {
   @field.int32.vector(2) declare pointerWorld: [number, number];
 
-  @field.boolean declare pointerDown: boolean;
-
   @field.boolean declare pointerDownTrigger: boolean;
 
   @field.boolean declare pointerUpTrigger: boolean;

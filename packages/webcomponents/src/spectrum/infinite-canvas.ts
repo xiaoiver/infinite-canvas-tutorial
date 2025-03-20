@@ -10,7 +10,6 @@ import {
 } from '@infinite-canvas-tutorial/ecs';
 
 import { AppState, Task as TaskEnum, appStateContext } from '../context';
-import { UIPlugin } from '../plugins';
 import { Event } from '../event';
 import { checkWebGPUSupport } from '../utils';
 
@@ -20,6 +19,8 @@ import '@spectrum-web-components/theme/sp-theme.js';
 import '@spectrum-web-components/theme/src/themes.js';
 import '@spectrum-web-components/alert-banner/sp-alert-banner.js';
 import '@spectrum-web-components/progress-circle/sp-progress-circle.js';
+import { UIPlugin } from '../plugins';
+import { app } from '..';
 
 @customElement('ic-spectrum-canvas')
 export class InfiniteCanvas extends LitElement {
@@ -95,8 +96,6 @@ export class InfiniteCanvas extends LitElement {
     },
   };
 
-  #app: App;
-
   #provider = new ContextProvider(this, { context: appStateContext });
 
   connectedCallback() {
@@ -106,10 +105,6 @@ export class InfiniteCanvas extends LitElement {
 
   disconnectedCallback() {
     this.removeEventListener('sl-resize', this.resize);
-
-    if (this.#app) {
-      this.#app.exit();
-    }
     super.disconnectedCallback();
   }
 
@@ -172,7 +167,7 @@ export class InfiniteCanvas extends LitElement {
       });
 
       const canvas = document.createElement('canvas');
-      this.#app = new App().addPlugins(...DefaultPlugins, [
+      app.addPlugins([
         UIPlugin,
         {
           container: this,
@@ -184,9 +179,7 @@ export class InfiniteCanvas extends LitElement {
         },
       ]);
 
-      this.dispatchEvent(new CustomEvent(Event.READY, { detail: this.#app }));
-
-      await this.#app.run();
+      this.dispatchEvent(new CustomEvent(Event.READY, { detail: canvas }));
 
       return canvas;
     },

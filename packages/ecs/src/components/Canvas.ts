@@ -1,4 +1,4 @@
-import { field, Type } from '@lastolivegames/becsy';
+import { Entity, field, Type } from '@lastolivegames/becsy';
 
 export enum Pen {
   SELECT = 'select',
@@ -6,12 +6,12 @@ export enum Pen {
   DRAW_RECT = 'draw-rect',
 }
 
-export class CanvasConfig {
+export class Canvas {
   /**
    * The canvas element. Pass in HTMLCanvasElement in the browser environment, OffscreenCanvas in the WebWorker environment,
    * and node-canvas in the Node.js environment.
    */
-  @field.object declare canvas: HTMLCanvasElement | OffscreenCanvas;
+  @field.object declare element: HTMLCanvasElement | OffscreenCanvas;
 
   /**
    * The width of the canvas.
@@ -49,4 +49,17 @@ export class CanvasConfig {
     default: Pen.HAND,
   })
   declare pen: Pen;
+
+  /**
+   * TODO: multiple {@link Camera}s
+   * @example
+   *
+   * camera1.write(Camera).target = canvas;
+   * camera2.write(Camera).target = canvas;
+   */
+  @field.backrefs declare cameras: Entity[];
+
+  constructor(canvas?: Partial<Canvas>) {
+    Object.assign(this, canvas);
+  }
 }

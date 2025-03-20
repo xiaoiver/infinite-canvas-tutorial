@@ -1,128 +1,157 @@
-import { System } from '@lastolivegames/becsy';
+import { co, Entity, System } from '@lastolivegames/becsy';
 import {
   Device,
   DeviceContribution,
   Format,
-  RenderTarget,
-  SwapChain,
   TextureUsage,
   WebGLDeviceContribution,
   WebGPUDeviceContribution,
 } from '@antv/g-device-api';
-import { CanvasConfig } from '../components';
+import { Canvas } from '../components';
 import { RenderCache } from '../utils';
 import { TexturePool } from '../resources';
-import { PreStartUp, StartUp } from '..';
+import { GPUResource, PreStartUp, StartUp } from '..';
 
 export class SetupDevice extends System {
-  /**
-   * Global app config.
-   */
-  private readonly canvasConfig = this.singleton.read(CanvasConfig); // can't use # field here
+  private readonly canvases = this.query(
+    (q) => q.added.and.changed.with(Canvas).trackWrites,
+  );
 
-  /**
-   * Device represents a "virtual GPU".
-   */
-  device: Device;
-  swapChain: SwapChain;
-  renderTarget: RenderTarget;
-  depthRenderTarget: RenderTarget;
-  renderCache: RenderCache;
-  texturePool: TexturePool;
-
-  #prevWidth: number;
-  #prevHeight: number;
+  #texturePool: TexturePool;
 
   constructor() {
     super();
     this.schedule((s) => s.after(PreStartUp).before(StartUp));
+    this.query((q) => q.using(GPUResource).write);
+
+    this.#texturePool = new TexturePool();
   }
 
-  async prepare() {
-    const {
-      canvas,
-      renderer,
-      width,
-      height,
-      devicePixelRatio,
-      shaderCompilerPath,
-    } = this.canvasConfig;
-    const widthDPR = width * devicePixelRatio;
-    const heightDPR = height * devicePixelRatio;
-
-    this.#prevWidth = width;
-    this.#prevHeight = height;
-
-    let deviceContribution: DeviceContribution;
-    if (renderer === 'webgl') {
-      deviceContribution = new WebGLDeviceContribution({
-        targets: ['webgl1'],
-        antialias: true,
-        shaderDebug: true,
-        trackResources: false,
-        onContextCreationError: () => {},
-        onContextLost: () => {},
-        onContextRestored(e) {},
-      });
-    } else {
-      deviceContribution = new WebGPUDeviceContribution({
-        shaderCompilerPath,
-        onContextLost: () => {},
-      });
-    }
-
-    this.swapChain = await deviceContribution.createSwapChain(
-      canvas as HTMLCanvasElement,
-    );
-
-    this.swapChain.configureSwapChain(widthDPR, heightDPR);
-    this.device = this.swapChain.getDevice();
-    this.createRenderTarget(widthDPR, heightDPR);
-
-    this.renderCache = new RenderCache(this.device);
-    this.texturePool = new TexturePool();
+  @co private *addGPUResource(
+    canvas: Entity,
+    gpuResource: GPUResource,
+  ): Generator {
+    canvas.add(GPUResource, gpuResource);
+    yield;
   }
 
   execute() {
-    const { width, height } = this.canvasConfig;
-    if (this.#prevWidth !== width || this.#prevHeight !== height) {
-      this.#prevWidth = width;
-      this.#prevHeight = height;
+    this.canvases.added.forEach(async (canvas) => {
+      const {
+        width,
+        height,
+        devicePixelRatio,
+        renderer,
+        shaderCompilerPath,
+        element,
+      } = canvas.read(Canvas);
 
-      const { devicePixelRatio } = this.canvasConfig;
+      const holder = canvas.hold();
+
       const widthDPR = width * devicePixelRatio;
       const heightDPR = height * devicePixelRatio;
-      this.swapChain.configureSwapChain(widthDPR, heightDPR);
-      this.createRenderTarget(widthDPR, heightDPR);
-    }
+
+      let deviceContribution: DeviceContribution;
+      if (renderer === 'webgl') {
+        deviceContribution = new WebGLDeviceContribution({
+          targets: ['webgl1'],
+          antialias: true,
+          shaderDebug: true,
+          trackResources: false,
+          onContextCreationError: () => {},
+          onContextLost: () => {},
+          onContextRestored(e) {},
+        });
+      } else {
+        deviceContribution = new WebGPUDeviceContribution({
+          shaderCompilerPath,
+          onContextLost: () => {},
+        });
+      }
+
+      const swapChain = await deviceContribution.createSwapChain(
+        element as HTMLCanvasElement,
+      );
+
+      swapChain.configureSwapChain(widthDPR, heightDPR);
+      const device = swapChain.getDevice();
+      const [renderTarget, depthRenderTarget] = this.createRenderTarget(
+        device,
+        widthDPR,
+        heightDPR,
+      );
+      const renderCache = new RenderCache(device);
+
+      this.addGPUResource(holder, {
+        device,
+        swapChain,
+        renderTarget,
+        depthRenderTarget,
+        renderCache,
+        texturePool: this.#texturePool,
+      });
+    });
+
+    this.canvases.changed.forEach((canvas) => {
+      const { width, height, devicePixelRatio } = canvas.read(Canvas);
+      const widthDPR = width * devicePixelRatio;
+      const heightDPR = height * devicePixelRatio;
+
+      const {
+        swapChain,
+        device,
+        renderTarget: oldRenderTarget,
+        depthRenderTarget: oldDepthRenderTarget,
+      } = canvas.read(GPUResource);
+      swapChain.configureSwapChain(widthDPR, heightDPR);
+
+      oldRenderTarget.destroy();
+      oldDepthRenderTarget.destroy();
+      const [renderTarget, depthRenderTarget] = this.createRenderTarget(
+        device,
+        widthDPR,
+        heightDPR,
+      );
+
+      Object.assign(canvas.write(GPUResource), {
+        renderTarget,
+        depthRenderTarget,
+      });
+    });
   }
 
   finalize(): void {
-    this.renderCache.destroy();
-    this.texturePool.destroy();
+    this.canvases.current.forEach((canvas) => {
+      const { device, renderTarget, depthRenderTarget, renderCache } =
+        canvas.read(GPUResource);
+      renderCache.destroy();
+      renderTarget.destroy();
+      depthRenderTarget.destroy();
+      device.destroy();
+      device.checkForLeaks();
+    });
 
-    this.device.destroy();
-    this.device.checkForLeaks();
+    this.#texturePool.destroy();
   }
 
-  private createRenderTarget(width: number, height: number) {
-    this.renderTarget?.destroy();
-    this.renderTarget = this.device.createRenderTargetFromTexture(
-      this.device.createTexture({
+  private createRenderTarget(device: Device, width: number, height: number) {
+    const renderTarget = device.createRenderTargetFromTexture(
+      device.createTexture({
         format: Format.U8_RGBA_RT,
         width,
         height,
         usage: TextureUsage.RENDER_TARGET,
       }),
     );
-    this.depthRenderTarget?.destroy();
-    this.depthRenderTarget = this.device.createRenderTargetFromTexture(
-      this.device.createTexture({
+    const depthRenderTarget = device.createRenderTargetFromTexture(
+      device.createTexture({
         format: Format.D24_S8,
         width,
         height,
         usage: TextureUsage.RENDER_TARGET,
       }),
     );
+
+    return [renderTarget, depthRenderTarget];
   }
 }

@@ -2,7 +2,7 @@ import { System, World } from '@lastolivegames/becsy';
 import { Plugin } from './plugins';
 import { DOMAdapter } from './environment';
 import {
-  CanvasConfig,
+  Canvas,
   Cursor,
   Grid,
   RasterScreenshotRequest,
@@ -14,7 +14,6 @@ import {
 export class PreStartUp extends System {
   constructor() {
     super();
-    this.singleton.read(Cursor);
     this.singleton.read(RasterScreenshotRequest);
     this.singleton.read(VectorScreenshotRequest);
     this.singleton.read(Screenshot);
@@ -63,8 +62,6 @@ export class Last extends System {
   }
 }
 
-let worldCounter = 0;
-
 /**
  * @see https://bevy-cheatbook.github.io/programming/app-builder.html
  */
@@ -75,8 +72,6 @@ export class App {
    * The systems of the [`App`] will run using this [`World`].
    */
   world: World;
-
-  worldCounter = worldCounter++;
 
   /**
    * All the plugins registered.
@@ -202,14 +197,6 @@ export class App {
       }
     }
 
-    allDefs.forEach((def, i) => {
-      try {
-        Object.defineProperty(def, 'name', {
-          value: `${worldCounter}-${i}-${def.name}`,
-        });
-      } catch (e) {}
-    });
-
     // Create world.
     // All systems will be instantiated and initialized before the returned promise resolves.
     this.world = await World.create({
@@ -225,7 +212,7 @@ export class App {
         PostUpdate,
         Last,
         ...allDefs,
-        CanvasConfig,
+        Canvas,
         Cursor,
         Grid,
         Theme,

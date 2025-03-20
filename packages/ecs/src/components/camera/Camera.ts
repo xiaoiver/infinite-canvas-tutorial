@@ -1,3 +1,5 @@
+import { Entity, field } from '@lastolivegames/becsy';
+
 /**
  * @see https://bevy-cheatbook.github.io/graphics/camera.html
  * @see https://bevy-cheatbook.github.io/2d/camera.html
@@ -14,5 +16,13 @@
  */
 
 export class Camera {
-  // @field.staticString([ClipSpaceNearZ.NEGATIVE_ONE, ClipSpaceNearZ.ZERO]) declare clipSpaceNearZ: ClipSpaceNearZ;
+  /**
+   * Target
+   * @see https://github.com/bevyengine/bevy/blob/main/examples/window/multiple_windows.rs#L44C17-L44C23
+   */
+  @field.ref declare canvas: Entity;
+
+  constructor(camera?: Partial<Camera>) {
+    Object.assign(this, camera);
+  }
 }

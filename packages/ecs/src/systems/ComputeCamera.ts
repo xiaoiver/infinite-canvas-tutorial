@@ -1,15 +1,17 @@
 import { Entity, System } from '@lastolivegames/becsy';
 import { mat3 } from 'gl-matrix';
-import { Camera, CanvasConfig, ComputedCamera, Transform } from '../components';
+import { Camera, Canvas, ComputedCamera, Transform } from '../components';
 
 /**
  * Compute the points of the path according to the definition.
  */
 export class ComputeCamera extends System {
-  private readonly canvasConfig = this.singleton.read(CanvasConfig);
-
   private readonly cameras = this.query(
     (q) => q.current.addedOrChanged.with(Camera, Transform).trackWrites,
+  );
+
+  private readonly canvases = this.query(
+    (q) => q.changed.with(Canvas).trackWrites,
   );
 
   /**
@@ -37,35 +39,30 @@ export class ComputeCamera extends System {
    */
   #viewProjectionMatrixInv = mat3.create();
 
-  #prevWidth: number;
-  #prevHeight: number;
-
   constructor() {
     super();
-    this.query((q) => q.using(ComputedCamera).write);
+    this.query((q) => q.using(ComputedCamera).write.and.using(Canvas).read);
     this.schedule((s) => s.afterWritersOf(Camera));
   }
 
   execute(): void {
-    const { width, height } = this.canvasConfig;
-
     this.cameras.addedOrChanged.forEach((entity) => {
-      this.#prevWidth = width;
-      this.#prevHeight = height;
+      const camera = entity.read(Camera);
+      const { width, height } = camera.canvas.read(Canvas);
 
       this.projection(width, height);
       this.updateMatrix(entity.read(Transform));
       this.updateComputedCamera(entity);
     });
 
-    if (this.#prevWidth !== width || this.#prevHeight !== height) {
-      this.#prevWidth = width;
-      this.#prevHeight = height;
-      this.cameras.current.forEach((entity) => {
+    this.canvases.changed.forEach((entity) => {
+      const { cameras, width, height } = entity.read(Canvas);
+
+      cameras.forEach((camera) => {
         this.projection(width, height);
-        this.updateComputedCamera(entity);
+        this.updateComputedCamera(camera);
       });
-    }
+    });
   }
 
   private updateComputedCamera(entity: Entity) {

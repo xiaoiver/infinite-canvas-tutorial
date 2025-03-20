@@ -1,4 +1,4 @@
-import { field, Type } from '@lastolivegames/becsy';
+import { Entity, field, Type } from '@lastolivegames/becsy';
 
 /**
  * The type of cursor to use when the mouse pointer is hovering over.
@@ -54,6 +54,8 @@ export type CursorValue =
  * @see https://developer.mozilla.org/en-US/docs/Web/CSS/cursor
  */
 export class Cursor {
+  @field.ref declare canvas: Entity;
+
   @field({
     type: Type.staticString([
       'default',
@@ -96,7 +98,7 @@ export class Cursor {
   })
   declare value: CursorValue;
 
-  constructor(value?: CursorValue) {
-    this.value = value;
+  constructor(value?: Partial<Cursor>) {
+    Object.assign(this, value);
   }
 }

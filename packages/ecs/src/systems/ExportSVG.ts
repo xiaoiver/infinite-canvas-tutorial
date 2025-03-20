@@ -1,7 +1,7 @@
 import { co, Entity, System } from '@lastolivegames/becsy';
 import {
   Camera,
-  CanvasConfig,
+  Canvas,
   CheckboardStyle,
   Children,
   Circle,
@@ -42,7 +42,6 @@ export class ExportSVG extends System {
     VectorScreenshotRequest,
   );
   private readonly screenshot = this.singleton.write(Screenshot);
-  private readonly canvasConfig = this.singleton.read(CanvasConfig);
   private readonly theme = this.singleton.read(Theme);
   private readonly grid = this.singleton.read(Grid);
 
@@ -94,7 +93,8 @@ export class ExportSVG extends System {
 
   private toSVG(entity: Entity, options: Partial<SVGOptions> = {}) {
     const { grid } = options;
-    const { width, height } = this.canvasConfig;
+    const canvas = entity.read(Camera).canvas.read(Canvas);
+    const { width, height } = canvas;
     const { mode, colors } = this.theme;
     const { grid: gridColor, background: backgroundColor } = colors[mode];
 

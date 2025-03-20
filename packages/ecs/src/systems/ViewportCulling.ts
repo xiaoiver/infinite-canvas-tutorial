@@ -1,5 +1,5 @@
 import { System } from '@lastolivegames/becsy';
-import { CanvasConfig, Event, InteractivePointerEvent } from '../components';
+import { Event, InteractivePointerEvent } from '../components';
 import { getGlobalThis } from '../utils';
 
 export class ViewportCulling extends System {

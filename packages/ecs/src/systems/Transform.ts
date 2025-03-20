@@ -48,19 +48,16 @@ export class SyncSimpleTransforms extends System {
   execute(): void {
     this.cameras.addedOrChanged.forEach((entity) => {
       this.syncTransform(entity);
-      console.log('camera', entity);
     });
 
     // Update changed entities.
     this.queries.addedOrChanged.forEach((entity) => {
       this.syncTransform(entity);
-      console.log('queries', entity);
     });
 
     // Update orphaned entities.
     this.orphaned.removed.forEach((entity) => {
       this.syncTransform(entity, false);
-      console.log('removed', entity);
     });
   }
 }
