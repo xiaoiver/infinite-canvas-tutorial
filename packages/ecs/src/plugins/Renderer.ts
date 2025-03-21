@@ -1,7 +1,7 @@
 /**
  * @see https://docs.rs/bevy/latest/bevy/render/struct.RenderPlugin.html
  */
-import { Plugin } from './';
+import { Plugin } from './types';
 import {
   SetupDevice,
   MeshPipeline,

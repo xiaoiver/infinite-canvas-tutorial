@@ -1,4 +1,4 @@
-import { Plugin } from '.';
+import { Plugin } from './types';
 import {
   RasterScreenshotRequest,
   Screenshot,

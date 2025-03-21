@@ -2,7 +2,7 @@
  * @see https://github.com/bevyengine/bevy/blob/latest/crates/bevy_hierarchy
  */
 
-import { Plugin } from './';
+import { Plugin } from './types';
 import { Children, Parent } from '../components';
 
 // /**

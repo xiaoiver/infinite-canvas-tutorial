@@ -1,6 +1,5 @@
 import { field, Type } from '@lastolivegames/becsy';
-import { Mat3 } from '../math/Mat3';
-import { m3Type } from '../..';
+import { m3Type, Mat3 } from '../math/Mat3';
 
 export class ComputedCamera {
   /**

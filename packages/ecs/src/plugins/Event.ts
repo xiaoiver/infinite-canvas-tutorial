@@ -1,4 +1,4 @@
-import { Plugin } from '.';
+import { Plugin } from './types';
 import { EventWriter } from '../systems';
 import { Event, Input, InputPoint } from '../components';
 

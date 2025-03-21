@@ -23,7 +23,6 @@ import {
   DefaultPlugins,
 } from '@infinite-canvas-tutorial/ecs';
 import { UIPlugin } from '@infinite-canvas-tutorial/webcomponents';
-import '@infinite-canvas-tutorial/webcomponents/spectrum';
 import { ref, onMounted, onUnmounted } from 'vue';
 
 const wrapper = ref(null);
@@ -102,15 +101,16 @@ class StartUpSystem extends System {
 }
 
 onMounted(async () => {
-  // import('@infinite-canvas-tutorial/webcomponents/spectrum');
   const canvas = wrapper.value;
   if (!canvas) {
     return;
   }
 
-  app = new App().addPlugins(...DefaultPlugins, UIPlugin, MyPlugin);
-  await app.run();
-  console.log('mounted');
+  import('@infinite-canvas-tutorial/webcomponents/spectrum').then(() => {
+    app = new App().addPlugins(...DefaultPlugins, UIPlugin, MyPlugin);
+    app.run();
+    console.log('mounted');
+  });
 });
 
 onUnmounted(async () => {

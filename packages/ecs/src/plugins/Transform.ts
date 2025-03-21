@@ -1,4 +1,4 @@
-import { Plugin } from '.';
+import { Plugin } from './types';
 import { Transform, GlobalTransform } from '../components';
 import { SyncSimpleTransforms, PropagateTransforms } from '../systems';
 
