@@ -37,6 +37,20 @@ export class Mat3 {
     return new Mat3(m[0], m[1], m[2], m[3], m[4], m[5], m[6], m[7], m[8]);
   }
 
+  static toGLMat3(m: Mat3) {
+    return mat3.fromValues(
+      m.m00,
+      m.m01,
+      m.m02,
+      m.m10,
+      m.m11,
+      m.m12,
+      m.m20,
+      m.m21,
+      m.m22,
+    );
+  }
+
   static copy(m: Mat3) {
     const { m00, m01, m02, m10, m11, m12, m20, m21, m22 } = m;
     return new Mat3(m00, m01, m02, m10, m11, m12, m20, m21, m22);

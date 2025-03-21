@@ -1,6 +1,6 @@
 import { Entity, System } from '@lastolivegames/becsy';
 import { mat3 } from 'gl-matrix';
-import { Camera, Canvas, ComputedCamera, Transform } from '../components';
+import { Camera, Canvas, ComputedCamera, Mat3, Transform } from '../components';
 
 /**
  * Compute the points of the path according to the definition.
@@ -14,31 +14,6 @@ export class ComputeCamera extends System {
     (q) => q.changed.with(Canvas).trackWrites,
   );
 
-  /**
-   * Matrix in world space.
-   */
-  #matrix = mat3.create();
-
-  /**
-   * Projection matrix.
-   */
-  #projectionMatrix = mat3.create();
-
-  /**
-   * Invert matrix in world space.
-   */
-  #viewMatrix = mat3.create();
-
-  /**
-   * projectionMatrix * viewMatrix
-   */
-  #viewProjectionMatrix = mat3.create();
-
-  /**
-   * Invert viewProjectionMatrix.
-   */
-  #viewProjectionMatrixInv = mat3.create();
-
   constructor() {
     super();
     this.query((q) => q.using(ComputedCamera).write.and.using(Canvas).read);
@@ -50,8 +25,8 @@ export class ComputeCamera extends System {
       const camera = entity.read(Camera);
       const { width, height } = camera.canvas.read(Canvas);
 
-      this.projection(width, height);
-      this.updateMatrix(entity.read(Transform));
+      this.projection(entity, width, height);
+      this.updateMatrix(entity);
       this.updateComputedCamera(entity);
     });
 
@@ -59,7 +34,7 @@ export class ComputeCamera extends System {
       const { cameras, width, height } = entity.read(Canvas);
 
       cameras.forEach((camera) => {
-        this.projection(width, height);
+        this.projection(camera, width, height);
         this.updateComputedCamera(camera);
       });
     });
@@ -68,15 +43,7 @@ export class ComputeCamera extends System {
   private updateComputedCamera(entity: Entity) {
     const { translation, rotation, scale } = entity.read(Transform);
 
-    if (!entity.has(ComputedCamera)) {
-      entity.add(ComputedCamera);
-    }
-
     Object.assign(entity.write(ComputedCamera), {
-      projectionMatrix: this.#projectionMatrix,
-      viewMatrix: this.#viewMatrix,
-      viewProjectionMatrix: this.#viewProjectionMatrix,
-      viewProjectionMatrixInv: this.#viewProjectionMatrixInv,
       x: translation.x,
       y: translation.y,
       rotation,
@@ -84,27 +51,48 @@ export class ComputeCamera extends System {
     });
   }
 
-  private projection(width: number, height: number) {
-    mat3.projection(this.#projectionMatrix, width, height);
-    this.updateViewProjectionMatrix();
+  private projection(camera: Entity, width: number, height: number) {
+    if (!camera.has(ComputedCamera)) {
+      camera.add(ComputedCamera);
+    }
+
+    const projectionMatrix = mat3.projection(mat3.create(), width, height);
+    camera.write(ComputedCamera).projectionMatrix =
+      Mat3.fromGLMat3(projectionMatrix);
+
+    this.updateViewProjectionMatrix(camera);
   }
 
-  private updateMatrix(transform: Transform) {
-    const { translation, rotation, scale } = transform;
-    mat3.identity(this.#matrix);
-    mat3.translate(this.#matrix, this.#matrix, [translation.x, translation.y]);
-    mat3.rotate(this.#matrix, this.#matrix, rotation);
-    mat3.scale(this.#matrix, this.#matrix, [scale.x, scale.y]);
-    mat3.invert(this.#viewMatrix, this.#matrix);
-    this.updateViewProjectionMatrix();
+  private updateMatrix(entity: Entity) {
+    const { translation, rotation, scale } = entity.read(Transform);
+
+    const viewMatrix = mat3.create();
+    mat3.identity(viewMatrix);
+    mat3.translate(viewMatrix, viewMatrix, [translation.x, translation.y]);
+    mat3.rotate(viewMatrix, viewMatrix, rotation);
+    mat3.scale(viewMatrix, viewMatrix, [scale.x, scale.y]);
+    mat3.invert(viewMatrix, viewMatrix);
+
+    entity.write(ComputedCamera).viewMatrix = Mat3.fromGLMat3(viewMatrix);
+    this.updateViewProjectionMatrix(entity);
   }
 
-  private updateViewProjectionMatrix() {
-    mat3.multiply(
-      this.#viewProjectionMatrix,
-      this.#projectionMatrix,
-      this.#viewMatrix,
+  private updateViewProjectionMatrix(camera: Entity) {
+    const { projectionMatrix, viewMatrix } = camera.write(ComputedCamera);
+
+    const viewProjectionMatrix = mat3.multiply(
+      mat3.create(),
+      Mat3.toGLMat3(projectionMatrix),
+      Mat3.toGLMat3(viewMatrix),
     );
-    mat3.invert(this.#viewProjectionMatrixInv, this.#viewProjectionMatrix);
+    const viewProjectionMatrixInv = mat3.invert(
+      mat3.create(),
+      viewProjectionMatrix,
+    );
+
+    Object.assign(camera.write(ComputedCamera), {
+      viewProjectionMatrix: Mat3.fromGLMat3(viewProjectionMatrix),
+      viewProjectionMatrixInv: Mat3.fromGLMat3(viewProjectionMatrixInv),
+    });
   }
 }

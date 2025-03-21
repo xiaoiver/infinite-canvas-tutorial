@@ -25,6 +25,7 @@ import {
   FillSolid,
   GlobalRenderOrder,
   GlobalTransform,
+  Mat3,
   Opacity,
   Path,
   Polyline,
@@ -381,7 +382,10 @@ export class SmoothPolyline extends Drawcall {
     this.#uniformBuffer.setSubData(
       0,
       new Uint8Array(
-        new Float32Array([...paddingMat3(u_ModelMatrix), ...buffer]).buffer,
+        new Float32Array([
+          ...paddingMat3(Mat3.fromGLMat3(u_ModelMatrix)),
+          ...buffer,
+        ]).buffer,
       ),
     );
     const uniformLegacyObject: Record<string, unknown> = {

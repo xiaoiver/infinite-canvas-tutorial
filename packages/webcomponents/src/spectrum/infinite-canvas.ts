@@ -3,10 +3,16 @@ import { Task } from '@lit/task';
 import { ContextProvider } from '@lit/context';
 import { customElement, property } from 'lit/decorators.js';
 import {
-  App,
-  DefaultPlugins,
+  Camera,
+  Canvas,
+  Commands,
+  Entity,
   Pen,
+  PreStartUp,
+  system,
+  System,
   ThemeMode,
+  Transform,
 } from '@infinite-canvas-tutorial/ecs';
 
 import { AppState, Task as TaskEnum, appStateContext } from '../context';
@@ -19,8 +25,11 @@ import '@spectrum-web-components/theme/sp-theme.js';
 import '@spectrum-web-components/theme/src/themes.js';
 import '@spectrum-web-components/alert-banner/sp-alert-banner.js';
 import '@spectrum-web-components/progress-circle/sp-progress-circle.js';
-import { UIPlugin } from '../plugins';
-import { app } from '..';
+import { ZoomLevelSystem } from '../systems';
+import { Container } from '../components';
+
+let initCanvasSystemCounter = 0;
+const initCanvasSystemClasses = [];
 
 @customElement('ic-spectrum-canvas')
 export class InfiniteCanvas extends LitElement {
@@ -166,22 +175,94 @@ export class InfiniteCanvas extends LitElement {
         });
       });
 
-      const canvas = document.createElement('canvas');
-      app.addPlugins([
-        UIPlugin,
-        {
-          container: this,
-          canvas,
-          renderer,
-          shaderCompilerPath,
-          zoom: this.#provider.value.camera.zoom,
-          pen: this.#provider.value.penbar.selected[0],
-        },
-      ]);
+      const $canvas = document.createElement('canvas');
+      const {
+        camera: { zoom },
+      } = this.appState;
+      const self = this;
 
-      this.dispatchEvent(new CustomEvent(Event.READY, { detail: canvas }));
+      class InitCanvasSystem extends System {
+        private readonly commands = new Commands(this);
 
-      return canvas;
+        private canvasEntity: Entity;
+
+        constructor() {
+          super();
+          this.query(
+            (q) => q.using(Container, Canvas, Camera, Transform).write,
+          );
+        }
+
+        initialize(): void {
+          const canvas = this.commands
+            .spawn(
+              new Canvas({
+                element: $canvas,
+                width: window.innerWidth,
+                height: window.innerHeight,
+                devicePixelRatio: window.devicePixelRatio,
+                renderer,
+                shaderCompilerPath,
+              }),
+            )
+            .id();
+
+          canvas.add(Container, { element: self });
+
+          this.canvasEntity = canvas.hold();
+
+          this.commands.spawn(
+            new Camera({
+              canvas: this.canvasEntity,
+            }),
+            new Transform({
+              scale: {
+                x: 1 / zoom,
+                y: 1 / zoom,
+              },
+            }),
+          );
+
+          this.commands.execute();
+
+          self.addEventListener(Event.RESIZED, (e) => {
+            const { width, height } = e.detail;
+            Object.assign(this.canvasEntity.write(Canvas), {
+              width,
+              height,
+            });
+          });
+
+          self.addEventListener(Event.PEN_CHANGED, (e) => {
+            const { selected } = e.detail;
+            Object.assign(this.canvasEntity.write(Canvas), {
+              pen: selected[0],
+            });
+          });
+        }
+      }
+
+      Object.defineProperty(InitCanvasSystem, 'name', {
+        value: `InitCanvasSystem${initCanvasSystemCounter++}`,
+      });
+
+      if (initCanvasSystemClasses.length > 0) {
+        system((s) =>
+          s
+            .before(PreStartUp)
+            .beforeWritersOf(Canvas)
+            .after(...initCanvasSystemClasses),
+        )(InitCanvasSystem);
+      } else {
+        system((s) =>
+          s.after(PreStartUp).before(ZoomLevelSystem).beforeWritersOf(Canvas),
+        )(InitCanvasSystem);
+      }
+
+      initCanvasSystemClasses.push(InitCanvasSystem);
+
+      this.dispatchEvent(new CustomEvent(Event.READY, { detail: $canvas }));
+      return $canvas;
     },
     args: () => [this.renderer, this.shaderCompilerPath] as const,
   });

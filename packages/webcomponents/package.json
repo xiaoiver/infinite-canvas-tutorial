@@ -1,6 +1,6 @@
 {
   "name": "@infinite-canvas-tutorial/webcomponents",
-  "version": "0.0.0",
+  "version": "0.0.1-alpha.2",
   "description": "WebComponents UI implementation",
   "main": "lib/index.js",
   "module": "esm/index.js",
@@ -22,6 +22,12 @@
       "require": "./lib/shoelace/index.js"
     }
   },
+  "files": [
+    "package.json",
+    "esm",
+    "lib",
+    "README.md"
+  ],
   "keywords": [
     "whiteboard",
     "infinite canvas",
@@ -72,5 +78,8 @@
   },
   "devDependencies": {
     "@types/d3-color": "^3.1.0"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

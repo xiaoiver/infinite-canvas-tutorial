@@ -1,5 +1,6 @@
 import { field, Type } from '@lastolivegames/becsy';
-import { mat3 } from 'gl-matrix';
+import { Mat3 } from '../math/Mat3';
+import { m3Type } from '../..';
 
 export class ComputedCamera {
   /**
@@ -23,11 +24,27 @@ export class ComputedCamera {
    */
   @field({ type: Type.float32, default: 1 }) declare zoom: number;
 
-  @field({ type: Type.object }) declare projectionMatrix: mat3;
+  /**
+   * Projection matrix.
+   */
+  @field({ type: m3Type, default: Mat3.IDENTITY })
+  declare projectionMatrix: Mat3;
 
-  @field({ type: Type.object }) declare viewMatrix: mat3;
+  /**
+   * Invert matrix in world space.
+   */
+  @field({ type: m3Type, default: Mat3.IDENTITY })
+  declare viewMatrix: Mat3;
 
-  @field({ type: Type.object }) declare viewProjectionMatrix: mat3;
+  /**
+   * projectionMatrix * viewMatrix
+   */
+  @field({ type: m3Type, default: Mat3.IDENTITY })
+  declare viewProjectionMatrix: Mat3;
 
-  @field({ type: Type.object }) declare viewProjectionMatrixInv: mat3;
+  /**
+   * Invert viewProjectionMatrix.
+   */
+  @field({ type: m3Type, default: Mat3.IDENTITY })
+  declare viewProjectionMatrixInv: Mat3;
 }

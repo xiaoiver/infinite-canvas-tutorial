@@ -1,4 +1,6 @@
 import { Entity, field, Type } from '@lastolivegames/becsy';
+import { Camera } from './camera/Camera';
+import { InputPoint } from './Input';
 
 export enum Pen {
   SELECT = 'select',
@@ -54,10 +56,12 @@ export class Canvas {
    * TODO: multiple {@link Camera}s
    * @example
    *
-   * camera1.write(Camera).target = canvas;
-   * camera2.write(Camera).target = canvas;
+   * camera1.write(Camera).canvas = canvas;
+   * camera2.write(Camera).canvas = canvas;
    */
-  @field.backrefs declare cameras: Entity[];
+  @field.backrefs(Camera, 'canvas') declare cameras: Entity[];
+
+  @field.backrefs(InputPoint, 'canvas') declare inputPoints: Entity[];
 
   constructor(canvas?: Partial<Canvas>) {
     Object.assign(this, canvas);

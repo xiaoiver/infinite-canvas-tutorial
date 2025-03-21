@@ -16,7 +16,7 @@ import { mat3 } from 'gl-matrix';
 import { Drawcall, ZINDEX_FACTOR } from './Drawcall';
 import { vert, frag, Location } from '../shaders/shadow_rect';
 import { paddingMat3, parseColor } from '../utils';
-import { DropShadow, GlobalTransform, Rect, Stroke } from '../components';
+import { DropShadow, GlobalTransform, Mat3, Rect, Stroke } from '../components';
 import { Entity } from '@lastolivegames/becsy';
 import { GlobalRenderOrder } from '../components';
 
@@ -280,7 +280,10 @@ export class ShadowRect extends Drawcall {
       this.#uniformBuffer.setSubData(
         0,
         new Uint8Array(
-          new Float32Array([...paddingMat3(u_ModelMatrix), ...buffer]).buffer,
+          new Float32Array([
+            ...paddingMat3(Mat3.fromGLMat3(u_ModelMatrix)),
+            ...buffer,
+          ]).buffer,
         ),
       );
 

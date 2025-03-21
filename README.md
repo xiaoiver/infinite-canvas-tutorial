@@ -24,11 +24,12 @@ As a front-end developer, I am very interested in the rendering technologies inv
 Therefore, in this tutorial, I hope to implement the following features:
 
 -   Use [@antv/g-device-api] as a hardware abstraction layer, supporting WebGL1/2 and WebGPU.
--   Referencing [mapbox] and [Figma], attempt to use tile-based rendering.
+-   Use [Becsy] to implement high-performance, highly scalable systems based on the ECS architecture.
 -   Use SDF (Signed Distance Field) rendering for circles, ellipses, rectangles, etc.
 -   GPU-accelerated text and Bezier curve rendering.
 -   Use [rough.js] to support hand-drawn styles.
 -   Use CRDT (Conflict-free Replicated Data Type) to support collaborative [Yjs].
+-   Referencing [mapbox] and [Figma], attempt to use tile-based rendering.
 
 I hope to rewrite the rendering part of the canvas with Rust in the future, but the current project completion is still relatively low:
 
@@ -231,7 +232,7 @@ pnpm run dev
 ## Lesson 18 - Refactor with ECS [🔗](https://infinitecanvas.cc/guide/lesson-018)
 
 -   What is ECS architecture
--   Using ECS architecture to refactor the application
+-   Using ECS architecture to refactor the application with [Becsy]
 
 ## Lesson 19 - History and Collaboration [🔗](https://infinitecanvas.cc/guide/lesson-019)
 
@@ -257,3 +258,4 @@ pnpm run dev
 [y-crdt]: https://github.com/y-crdt/y-crdt
 [Motiff]: https://www.motiff.com/blog/performance-magic-behind-motiff
 [My free course in Gumroad]: https://pyqiverson.gumroad.com/l/infinitecanvas?a=734684947
+[Becsy]: https://lastolivegames.github.io/becsy/

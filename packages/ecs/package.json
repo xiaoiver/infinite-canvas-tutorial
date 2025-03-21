@@ -1,6 +1,6 @@
 {
   "name": "@infinite-canvas-tutorial/ecs",
-  "version": "0.0.0",
+  "version": "0.0.1-alpha.2",
   "description": "An infinite canvas tutorial",
   "main": "lib/index.js",
   "module": "esm/index.js",
@@ -12,6 +12,13 @@
       "require": "./lib/index.js"
     }
   },
+  "files": [
+    "package.json",
+    "esm",
+    "lib",
+    "types",
+    "README.md"
+  ],
   "keywords": [
     "whiteboard",
     "infinite canvas",
@@ -60,5 +67,8 @@
     "@types/earcut": "^2.1.4",
     "@types/rbush": "^3.0.0",
     "@types/toposort": "^2.0.7"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

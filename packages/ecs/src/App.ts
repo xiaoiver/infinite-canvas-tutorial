@@ -211,11 +211,11 @@ export class App {
         Update,
         PostUpdate,
         Last,
-        ...allDefs,
         Canvas,
         Cursor,
         Grid,
         Theme,
+        ...allDefs,
       ],
     });
 

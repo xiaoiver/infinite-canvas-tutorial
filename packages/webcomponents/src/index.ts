@@ -1,8 +1,3 @@
-import { App } from '@infinite-canvas-tutorial/ecs';
-
-import { DefaultPlugins } from '@infinite-canvas-tutorial/ecs';
-
+export { UIPlugin } from './plugins';
 export * from './event';
 export * from './utils';
-
-export const app = new App().addPlugins(...DefaultPlugins);

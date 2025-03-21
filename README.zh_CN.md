@@ -24,12 +24,13 @@
 
 因此在这个教程中，我希望实现以下特性：
 
--   使用 [@antv/g-device-api] 作为硬件抽象层，支持 WebGL1/2 和 WebGPU。
--   参考 [mapbox] 和 [Figma]，尝试使用 Tile-based 渲染。
--   使用 SDF 渲染圆、椭圆、矩形等。
--   GPU 加速的文本和贝塞尔曲线渲染。
--   使用 [rough.js] 支持手绘风格。
--   使用 CRDT 支持协同 [Yjs]。
+-   使用 [@antv/g-device-api] 作为硬件抽象层，支持 WebGL1/2 和 WebGPU
+-   使用 [Becsy] 实现基于 ECS 架构的高性能、高可扩展性系统
+-   使用 SDF 渲染圆、椭圆、矩形等基础图形
+-   实现 GPU 加速的文本和贝塞尔曲线渲染
+-   使用 [rough.js] 支持手绘风格
+-   使用 CRDT 支持协同 [Yjs]
+-   参考 [mapbox] 和 [Figma]，尝试使用 Tile-based 渲染
 
 未来我希望将画布的渲染部分用 Rust 重写，目前项目的完成度还比较低：
 
@@ -231,7 +232,7 @@ pnpm run dev
 ## 课程 18 - 使用 ECS 重构 [🔗](https://infinitecanvas.cc/zh/guide/lesson-018)
 
 -   什么是 ECS 架构
--   使用 ECS 架构重构应用
+-   使用 [Becsy] 重构应用
 
 ## 课程 19 - 历史记录与协同 [🔗](https://infinitecanvas.cc/zh/guide/lesson-019)
 
@@ -259,3 +260,4 @@ pnpm run dev
 [pnpm workspace]: https://pnpm.io/workspaces
 [Motiff]: https://www.motiff.com/blog/performance-magic-behind-motiff
 [我在 Gumroad 上的免费课程]: https://pyqiverson.gumroad.com/l/infinitecanvas?a=734684947
+[Becsy]: https://lastolivegames.github.io/becsy/

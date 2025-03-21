@@ -85,9 +85,10 @@ export class PropagateTransforms extends System {
     this.queries.addedOrChanged.forEach((entity) => {
       // Camera's worldTransform reflects the camera's position in the world.
       // It is not affected by the hierarchy.
-      const worldTransform = entity.has(Camera)
-        ? new GlobalTransform()
-        : entity.read(GlobalTransform);
+      const worldTransform =
+        entity.has(Camera) || !entity.has(GlobalTransform)
+          ? new GlobalTransform()
+          : entity.read(GlobalTransform);
 
       entity.read(Parent).children.forEach((child) => {
         const localTransform = child.read(Transform);

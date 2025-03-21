@@ -22,7 +22,7 @@ export class SetupDevice extends System {
   constructor() {
     super();
     this.schedule((s) => s.after(PreStartUp).before(StartUp));
-    this.query((q) => q.using(GPUResource).write);
+    this.query((q) => q.using(GPUResource, Canvas).write);
 
     this.#texturePool = new TexturePool();
   }
@@ -93,6 +93,10 @@ export class SetupDevice extends System {
     });
 
     this.canvases.changed.forEach((canvas) => {
+      if (!canvas.has(GPUResource)) {
+        return;
+      }
+
       const { width, height, devicePixelRatio } = canvas.read(Canvas);
       const widthDPR = width * devicePixelRatio;
       const heightDPR = height * devicePixelRatio;

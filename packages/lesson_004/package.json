@@ -1,6 +1,7 @@
 {
   "name": "@infinite-canvas-tutorial/lesson4",
   "description": "An infinite canvas tutorial",
+  "private": true,
   "main": "lib/index.js",
   "module": "esm/index.js",
   "types": "lib/index.d.ts",

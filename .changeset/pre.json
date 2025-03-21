@@ -1,0 +1,9 @@
+{
+  "mode": "pre",
+  "tag": "alpha",
+  "initialVersions": {
+    "@infinite-canvas-tutorial/ecs": "0.0.1-alpha.1",
+    "@infinite-canvas-tutorial/webcomponents": "0.0.1-alpha.1"
+  },
+  "changesets": []
+}

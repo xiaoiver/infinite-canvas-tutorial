@@ -4,14 +4,23 @@ import { Canvas, Input } from '../components';
 import { getGlobalThis } from '../utils';
 import { CameraControl } from './CameraControl';
 import { Select } from './Select';
-import { Update, First } from '..';
+import {
+  Update,
+  First,
+  PreUpdate,
+  ComputedCamera,
+  ComputeCamera,
+  Cursor,
+  Camera,
+  SetupDevice,
+} from '..';
 
 export class EventWriter extends System {
   private readonly canvases = this.query((q) =>
     q.added.and.removed.with(Canvas),
   );
 
-  private readonly pointerIds = new Set<number>();
+  private readonly pointerIds = new Map<number, Set<number>>();
 
   #onDestroyCallbacks: WeakMap<HTMLCanvasElement, (() => void)[]> =
     new WeakMap();
@@ -23,23 +32,32 @@ export class EventWriter extends System {
 
     Object.assign(input, { [triggerKey]: true });
 
-    yield co.waitForFrames(1);
+    yield;
 
-    Object.assign(input, { [triggerKey]: false });
+    {
+      const input = entity.hold().write(Input);
+
+      Object.assign(input, { [triggerKey]: false });
+    }
 
     yield;
   }
 
   constructor() {
     super();
-    this.schedule((s) =>
-      s.inAnyOrderWith(Select, CameraControl).before(Update).after(First),
-    );
-    this.query((q) => q.using(Input).write);
+    this.schedule((s) => s.after(SetupDevice));
+    this.query((q) => q.using(Input, Cursor).write);
   }
 
   execute(): void {
     this.canvases.added.forEach((entity) => {
+      if (!entity.has(Input)) {
+        entity.add(Input);
+      }
+      if (!entity.has(Cursor)) {
+        entity.add(Cursor);
+      }
+
       this.bindEventListeners(entity);
     });
 
@@ -62,11 +80,14 @@ export class EventWriter extends System {
 
     const input = entity.hold();
 
+    this.pointerIds.set(entity.__id, new Set());
+    const pointerIds = this.pointerIds.get(entity.__id);
+
     const onPointerMove = (e: PointerEvent) => {
       // @see https://stackoverflow.com/questions/49500339/cant-prevent-touchmove-from-scrolling-window-on-ios
       // ev.preventDefault();
 
-      if (this.pointerIds.size > 1 || !this.pointerIds.has(e.pointerId)) return;
+      if (pointerIds.size > 1 || !pointerIds.has(e.pointerId)) return;
       const pointerWorld = this.client2Viewport(
         {
           x: e.clientX,
@@ -80,7 +101,7 @@ export class EventWriter extends System {
     const onPointerUp = (e: PointerEvent) => {
       // input.write(Input).pointerUpTrigger = true;
       this.setInputTrigger(input, 'pointerUpTrigger');
-      this.pointerIds.delete(e.pointerId);
+      pointerIds.delete(e.pointerId);
     };
 
     const onPointerDown = (e: PointerEvent) => {
@@ -88,16 +109,16 @@ export class EventWriter extends System {
 
       if (e.pointerType === 'mouse' && !mouseButtons.includes(e.button)) return;
 
-      this.pointerIds.add(e.pointerId);
+      pointerIds.add(e.pointerId);
 
-      if (this.pointerIds.size > 1) {
+      if (pointerIds.size > 1) {
         return;
       }
 
       // input.write(Input).pointerDownTrigger = true;
       this.setInputTrigger(input, 'pointerDownTrigger');
 
-      if (this.pointerIds.size === 1) {
+      if (pointerIds.size === 1) {
         const pointerWorld = this.client2Viewport(
           {
             x: e.clientX,
@@ -110,7 +131,7 @@ export class EventWriter extends System {
     };
 
     const onPointerCancel = (e: PointerEvent) => {
-      this.pointerIds.delete(e.pointerId);
+      pointerIds.delete(e.pointerId);
     };
 
     const onPointerWheel = (e: WheelEvent) => {

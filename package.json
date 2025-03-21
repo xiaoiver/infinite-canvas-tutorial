@@ -28,7 +28,8 @@
     "test:ui": "npx playwright test -c playwright.config.ui.ts",
     "changeset": "changeset",
     "version": "changeset version",
-    "release": "changeset publish --tag latest"
+    "release": "changeset publish --tag latest",
+    "release:alpha": "changeset publish --tag alpha"
   },
   "devDependencies": {
     "@antv/g-device-api": "^1.6.13",

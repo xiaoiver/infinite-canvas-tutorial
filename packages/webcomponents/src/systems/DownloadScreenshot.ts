@@ -19,7 +19,7 @@ export class DownloadScreenshotSystem extends System {
     VectorScreenshotRequest,
   );
 
-  container: LitElement;
+  // container: LitElement;
 
   constructor() {
     super();
@@ -27,28 +27,28 @@ export class DownloadScreenshotSystem extends System {
   }
 
   initialize(): void {
-    this.container.addEventListener(Event.SCREENSHOT_REQUESTED, (e) => {
-      if (e.detail instanceof RasterScreenshotRequest) {
-        Object.assign(this.rasterScreenshotRequest, e.detail);
-        this.setScreenshotTrigger(this.rasterScreenshotRequest);
-      } else if (e.detail instanceof VectorScreenshotRequest) {
-        Object.assign(this.vectorScreenshotRequest, e.detail);
-        this.setScreenshotTrigger(this.vectorScreenshotRequest);
-      }
-    });
+    // this.container.addEventListener(Event.SCREENSHOT_REQUESTED, (e) => {
+    //   if (e.detail instanceof RasterScreenshotRequest) {
+    //     Object.assign(this.rasterScreenshotRequest, e.detail);
+    //     this.setScreenshotTrigger(this.rasterScreenshotRequest);
+    //   } else if (e.detail instanceof VectorScreenshotRequest) {
+    //     Object.assign(this.vectorScreenshotRequest, e.detail);
+    //     this.setScreenshotTrigger(this.vectorScreenshotRequest);
+    //   }
+    // });
   }
 
   execute(): void {
-    if (this.screenshot.dataURL) {
-      this.downloadImage('infinite-canvas-screenshot', this.screenshot.dataURL);
-      this.container.dispatchEvent(
-        new CustomEvent(Event.SCREENSHOT_DOWNLOADED, {
-          detail: {
-            dataURL: this.screenshot.dataURL,
-          },
-        }),
-      );
-    }
+    // if (this.screenshot.dataURL) {
+    //   this.downloadImage('infinite-canvas-screenshot', this.screenshot.dataURL);
+    //   this.container.dispatchEvent(
+    //     new CustomEvent(Event.SCREENSHOT_DOWNLOADED, {
+    //       detail: {
+    //         dataURL: this.screenshot.dataURL,
+    //       },
+    //     }),
+    //   );
+    // }
   }
 
   @co private *setScreenshotTrigger(

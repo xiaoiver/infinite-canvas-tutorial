@@ -1,6 +1,7 @@
 {
   "name": "@infinite-canvas-tutorial/site",
   "description": "An infinite canvas tutorial",
+  "private": true,
   "type": "module",
   "keywords": [
     "whiteboard",

@@ -10,35 +10,40 @@ import {
   ComputedCamera,
   Transform,
   Cursor,
+  ComputedCameraControl,
+  Mat3,
 } from '../components';
 import { ComputeCamera } from './ComputeCamera';
+import { EventWriter } from './EventWriter';
+import { SetupDevice } from './SetupDevice';
 
 const MIN_ZOOM = 0.02;
 const MAX_ZOOM = 4;
 const PINCH_FACTOR = 100;
 
 export class CameraControl extends System {
-  private readonly points = this.query((q) => q.current.with(InputPoint).write);
   private readonly cameras = this.query(
-    (q) =>
-      q.current
-        .with(Camera)
-        .read.and.with(ComputedCamera)
-        .read.and.with(Transform).write,
+    (q) => q.current.with(Camera, ComputedCamera).read,
   );
-
-  private startInvertViewProjectionMatrix = mat3.create();
-  private startCameraX: number;
-  private startCameraY: number;
-  private startCameraRotation: number;
-  private startPos = vec2.create();
-  private startMousePos: vec2;
-  private rotate = false;
 
   constructor() {
     super();
-    this.query((q) => q.using(Canvas).read.and.using(Input, Cursor).write);
-    this.schedule((s) => s.after(ComputeCamera));
+    this.query(
+      (q) =>
+        q
+          .using(Canvas)
+          .read.update.and.using(
+            Input,
+            Cursor,
+            ComputedCameraControl,
+            Transform,
+            InputPoint,
+          )
+          .write.and.using(Input).read,
+    );
+    this.schedule((s) =>
+      s.afterWritersOf(Camera).after(EventWriter, SetupDevice),
+    );
   }
 
   initialize() {}
@@ -46,17 +51,17 @@ export class CameraControl extends System {
   execute() {
     this.cameras.current.forEach((entity) => {
       const camera = entity.read(Camera);
-      const canvas = camera.canvas.read(Canvas);
+      const canvas = camera.canvas.hold();
+      const { pen } = canvas.read(Canvas);
 
-      if (!camera.canvas.has(Input)) {
-        camera.canvas.add(Input);
-      }
-      if (!camera.canvas.has(Cursor)) {
-        camera.canvas.add(Cursor);
+      if (!entity.has(ComputedCameraControl)) {
+        entity.add(ComputedCameraControl);
       }
 
-      const input = camera.canvas.write(Input);
-      const cursor = camera.canvas.write(Cursor);
+      const cameraControl = entity.write(ComputedCameraControl);
+
+      const input = canvas.write(Input);
+      const cursor = canvas.write(Cursor);
 
       const transform = entity.read(Transform);
       const computedCamera = entity.read(ComputedCamera);
@@ -68,44 +73,50 @@ export class CameraControl extends System {
       if (input.pointerDownTrigger) {
         this.createEntity(InputPoint, {
           prevPoint: input.pointerWorld,
+          canvas,
         });
-        if (canvas.pen === Pen.HAND) {
+        if (pen === Pen.HAND) {
           cursor.value = 'grabbing';
 
-          this.rotate = input.shiftKey;
+          cameraControl.rotate = input.shiftKey;
           mat3.copy(
-            this.startInvertViewProjectionMatrix,
-            viewProjectionMatrixInv,
+            cameraControl.startInvertViewProjectionMatrix,
+            Mat3.toGLMat3(viewProjectionMatrixInv),
           );
-          this.startCameraX = x;
-          this.startCameraY = y;
-          this.startCameraRotation = rotation;
+          cameraControl.startCameraX = x;
+          cameraControl.startCameraY = y;
+          cameraControl.startCameraRotation = rotation;
           vec2.transformMat3(
-            this.startPos,
+            cameraControl.startPos,
             this.getClipSpaceMousePosition(entity),
-            this.startInvertViewProjectionMatrix,
+            cameraControl.startInvertViewProjectionMatrix,
           );
-          this.startMousePos = [input.pointerWorld[0], input.pointerWorld[1]];
+          cameraControl.startMousePos = [
+            input.pointerWorld[0],
+            input.pointerWorld[1],
+          ];
         }
       }
-      for (const point of this.points.current) {
+
+      canvas.read(Canvas).inputPoints.forEach((point) => {
         point.write(InputPoint).prevPoint = input.pointerWorld;
-        if (canvas.pen === Pen.HAND) {
+        if (pen === Pen.HAND) {
           cursor.value = 'grabbing';
-          if (this.rotate) {
+          if (cameraControl.rotate) {
             this.rotateCamera(entity);
           } else {
             this.moveCamera(entity);
           }
         }
-      }
+      });
+
       if (input.pointerUpTrigger) {
-        for (const point of this.points.current) {
+        for (const point of canvas.read(Canvas).inputPoints) {
           point.delete();
         }
-        if (canvas.pen === Pen.HAND) {
+        if (pen === Pen.HAND) {
           cursor.value = 'grab';
-          this.rotate = false;
+          cameraControl.rotate = false;
         }
       }
 
@@ -128,50 +139,65 @@ export class CameraControl extends System {
             rotation: rotation,
           });
         }
-
-        input.wheelTrigger = false;
-        input.ctrlKey = false;
-        input.metaKey = false;
-        input.shiftKey = false;
       }
+
+      input.wheelTrigger = false;
+      input.ctrlKey = false;
+      input.metaKey = false;
+      input.shiftKey = false;
     });
   }
 
   private moveCamera(entity: Entity) {
+    const {
+      startInvertViewProjectionMatrix,
+      startPos,
+      startCameraX,
+      startCameraY,
+      startCameraRotation,
+    } = entity.read(ComputedCameraControl);
+
     const pos = vec2.transformMat3(
       vec2.create(),
       this.getClipSpaceMousePosition(entity),
-      this.startInvertViewProjectionMatrix,
+      startInvertViewProjectionMatrix,
     );
 
     const transform = entity.write(Transform);
     Object.assign(transform, {
       translation: {
-        x: this.startCameraX + this.startPos[0] - pos[0],
-        y: this.startCameraY + this.startPos[1] - pos[1],
+        x: startCameraX + startPos[0] - pos[0],
+        y: startCameraY + startPos[1] - pos[1],
       },
-      rotation: this.startCameraRotation,
+      rotation: startCameraRotation,
     });
   }
 
   private rotateCamera(entity: Entity) {
+    const {
+      startPos,
+      startCameraX,
+      startCameraY,
+      startCameraRotation,
+      startMousePos,
+    } = entity.read(ComputedCameraControl);
+
     const transform = entity.write(Transform);
     const input = entity.read(Camera).canvas.read(Input);
 
-    const delta =
-      (input.pointerWorld[0] - this.startMousePos[0]) / PINCH_FACTOR;
+    const delta = (input.pointerWorld[0] - startMousePos[0]) / PINCH_FACTOR;
 
     // compute a matrix to pivot around the camera space startPos
     const camMat = mat3.create();
-    mat3.translate(camMat, camMat, [this.startPos[0], this.startPos[1]]);
+    mat3.translate(camMat, camMat, [startPos[0], startPos[1]]);
     mat3.rotate(camMat, camMat, delta);
-    mat3.translate(camMat, camMat, [-this.startPos[0], -this.startPos[1]]);
+    mat3.translate(camMat, camMat, [-startPos[0], -startPos[1]]);
 
     // multiply in the original camera matrix
     const matrix = this.updateMatrix(
-      this.startCameraX,
-      this.startCameraY,
-      this.startCameraRotation,
+      startCameraX,
+      startCameraY,
+      startCameraRotation,
       1 / transform.scale.x,
     );
     mat3.multiply(camMat, camMat, matrix);
@@ -184,7 +210,7 @@ export class CameraControl extends System {
         x: camMat[6],
         y: camMat[7],
       },
-      rotation: this.startCameraRotation + delta,
+      rotation: startCameraRotation + delta,
     });
   }
 
@@ -278,7 +304,7 @@ export class CameraControl extends System {
           x: viewportX,
           y: viewportY,
         },
-        viewProjectionMatrixInv,
+        Mat3.toGLMat3(viewProjectionMatrixInv),
       );
       preZoomX = canvas.x;
       preZoomY = canvas.y;
@@ -289,7 +315,11 @@ export class CameraControl extends System {
     const viewProjectionMatrixInv2 = mat3.create();
     const matrix = this.updateMatrix(x, y, rotation, zoom);
     mat3.invert(viewMatrix, matrix);
-    mat3.multiply(viewProjectionMatrix, projectionMatrix, viewMatrix);
+    mat3.multiply(
+      viewProjectionMatrix,
+      Mat3.toGLMat3(projectionMatrix),
+      viewMatrix,
+    );
     mat3.invert(viewProjectionMatrixInv2, viewProjectionMatrix);
 
     if (useFixedViewport) {

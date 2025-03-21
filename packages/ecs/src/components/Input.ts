@@ -1,4 +1,4 @@
-import { field } from '@lastolivegames/becsy';
+import { Entity, field } from '@lastolivegames/becsy';
 
 export class Input {
   @field.int32.vector(2) declare pointerWorld: [number, number];
@@ -22,4 +22,9 @@ export class Input {
 
 export class InputPoint {
   @field.int32.vector(2) declare prevPoint: [number, number];
+
+  /**
+   * Canvas target.
+   */
+  @field.ref declare canvas: Entity;
 }
