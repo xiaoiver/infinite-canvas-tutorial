@@ -18,8 +18,7 @@
     <!-- 标题 -->
     <text x="400" y="50" font-family="Arial, sans-serif" font-size="28" font-weight="bold" text-anchor="middle"
         fill="#333">马斯洛需求层次理论</text>
-    <text x="400" y="80" font-family="Arial, sans-serif" font-size="16" text-anchor="middle" fill="#666">Maslow's
-        Hierarchy of Needs</text>
+    <text x="400" y="80" font-family="Arial, sans-serif" font-size="16" text-anchor="middle" fill="#666">Maslow's Hierarchy of Needs</text>
 
     <!-- 金字塔主体 -->
     <!-- 第五层 - 自我实现 -->
@@ -41,24 +40,21 @@
         filter="url(#shadow)" />
     <text x="400" y="320" font-family="Arial, sans-serif" font-size="16" font-weight="bold" text-anchor="middle"
         fill="#fff">社交需求</text>
-    <text x="400" y="340" font-family="Arial, sans-serif" font-size="12" text-anchor="middle" fill="#fff">Love and
-        Belonging</text>
+    <text x="400" y="340" font-family="Arial, sans-serif" font-size="12" text-anchor="middle" fill="#fff">Love and Belonging</text>
 
     <!-- 第二层 - 安全需求 -->
     <polygon points="220,350 580,350 610,430 190,430" fill="#ffeaa7" stroke="#636e72" stroke-width="2"
         filter="url(#shadow)" />
     <text x="400" y="395" font-family="Arial, sans-serif" font-size="16" font-weight="bold" text-anchor="middle"
         fill="#333">安全需求</text>
-    <text x="400" y="415" font-family="Arial, sans-serif" font-size="12" text-anchor="middle" fill="#333">Safety
-        Needs</text>
+    <text x="400" y="415" font-family="Arial, sans-serif" font-size="12" text-anchor="middle" fill="#333">Safety Needs</text>
 
     <!-- 第一层 - 生理需求 -->
     <polygon points="190,430 610,430 640,520 160,520" fill="#fdcb6e" stroke="#636e72" stroke-width="2"
         filter="url(#shadow)" />
     <text x="400" y="480" font-family="Arial, sans-serif" font-size="16" font-weight="bold" text-anchor="middle"
         fill="#333">生理需求</text>
-    <text x="400" y="500" font-family="Arial, sans-serif" font-size="12" text-anchor="middle" fill="#333">Physiological
-        Needs</text>
+    <text x="400" y="500" font-family="Arial, sans-serif" font-size="12" text-anchor="middle" fill="#333">Physiological Needs</text>
 
     <!-- 装饰元素 -->
     <circle cx="400" cy="120" r="15" fill="#e84393" stroke="#fff" stroke-width="2" />

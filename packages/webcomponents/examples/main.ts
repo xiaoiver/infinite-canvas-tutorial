@@ -22,7 +22,7 @@ import {
   CameraControl,
   Select,
   DefaultPlugins,
-} from '@infinite-canvas-tutorial/ecs';
+} from '../../ecs';
 import { Event, UIPlugin } from '../src';
 // import '../src/shoelace';
 // import { InitCanvasSystem } from '../src/systems/InitCanvas';
@@ -31,11 +31,26 @@ import '../src/spectrum';
 // app.run();
 
 {
+  const res = await fetch('/maslow-hierarchy.svg');
+  const svg = await res.text();
+  // TODO: extract semantic groups inside comments
+  const $container = document.createElement('div');
+  $container.innerHTML = svg;
+  const $svg = $container.children[0] as SVGSVGElement;
+
+  const nodes = svgElementsToSerializedNodes(
+    Array.from($svg.children) as SVGElement[],
+    0,
+    [],
+    undefined,
+  );
+  console.log(nodes);
+
   const MyPlugin = () => {
     return [StartUpSystem];
   };
-  // const canvas = document.querySelector('ic-shoelace-canvas')!;
   const canvas = document.querySelector('#canvas1')!;
+  canvas.setAttribute('elements', JSON.stringify(nodes));
 
   // canvas.addEventListener(Event.READY, (e) => {
   //   const canvas = e.detail;
@@ -74,25 +89,7 @@ import '../src/spectrum';
 
     entities: Entity[];
 
-    $svg: SVGSVGElement;
-
-    async prepare() {
-      const res = await fetch('/maslow-hierarchy.svg');
-      const svg = await res.text();
-      // TODO: extract semantic groups inside comments
-      const $container = document.createElement('div');
-      $container.innerHTML = svg;
-      this.$svg = $container.children[0] as SVGSVGElement;
-    }
-
     initialize(): void {
-      const nodes = svgElementsToSerializedNodes(
-        Array.from(this.$svg.children) as SVGElement[],
-        0,
-        [],
-        undefined,
-      );
-      console.log(nodes);
       this.entities = serializedNodesToEntities(nodes, this.commands);
       this.commands.execute();
     }

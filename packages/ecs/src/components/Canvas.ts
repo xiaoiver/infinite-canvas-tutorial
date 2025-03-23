@@ -1,6 +1,11 @@
 import { Entity, field, Type } from '@lastolivegames/becsy';
 import { Camera } from './camera/Camera';
 import { InputPoint } from './Input';
+import {
+  RasterScreenshotRequest,
+  Screenshot,
+  VectorScreenshotRequest,
+} from './Screenshot';
 
 export enum Pen {
   SELECT = 'select',
@@ -62,6 +67,14 @@ export class Canvas {
   @field.backrefs(Camera, 'canvas') declare cameras: Entity[];
 
   @field.backrefs(InputPoint, 'canvas') declare inputPoints: Entity[];
+
+  @field.backrefs(Screenshot, 'canvas') declare screenshots: Entity[];
+
+  @field.backrefs(VectorScreenshotRequest, 'canvas')
+  declare vectorScreenshotRequests: Entity[];
+
+  @field.backrefs(RasterScreenshotRequest, 'canvas')
+  declare rasterScreenshotRequests: Entity[];
 
   constructor(canvas?: Partial<Canvas>) {
     Object.assign(this, canvas);

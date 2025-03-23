@@ -165,7 +165,7 @@ export class ZoomToolbar extends LitElement {
 
   render() {
     return html`
-      <sp-action-menu size="m" label="Zoom level">
+      <sp-action-menu size="m" label="Zoom level" forcePopover>
         <sp-tooltip slot="tooltip" self-managed placement="bottom">
           Zoom level
         </sp-tooltip>

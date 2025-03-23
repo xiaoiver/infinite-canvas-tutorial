@@ -1,4 +1,10 @@
-import { App, Pen } from '@infinite-canvas-tutorial/ecs';
+import {
+  App,
+  Pen,
+  RasterScreenshotRequest,
+  Screenshot,
+  VectorScreenshotRequest,
+} from '@infinite-canvas-tutorial/ecs';
 import { Task } from './context';
 
 export enum Event {
@@ -25,5 +31,9 @@ declare global {
     [Event.ZOOM_CHANGED]: CustomEvent<{ zoom: number }>;
     [Event.PEN_CHANGED]: CustomEvent<{ selected: Pen[] }>;
     [Event.TASK_CHANGED]: CustomEvent<{ selected: Task[] }>;
+    [Event.SCREENSHOT_REQUESTED]: CustomEvent<
+      RasterScreenshotRequest | VectorScreenshotRequest
+    >;
+    [Event.SCREENSHOT_DOWNLOADED]: CustomEvent<Screenshot>;
   }
 }

@@ -1,5 +1,5 @@
 import { createContext } from '@lit/context';
-import { Pen, Theme } from '@infinite-canvas-tutorial/ecs';
+import { SerializedNode, Pen, Theme } from '@infinite-canvas-tutorial/ecs';
 
 export enum Task {
   SHOW_LAYERS_PANEL = 'show-layers-panel',
@@ -25,3 +25,7 @@ export interface AppState {
 }
 
 export const appStateContext = createContext<AppState>(Symbol('appAtate'));
+
+export const elementsContext = createContext<SerializedNode[]>(
+  Symbol('elements'),
+);

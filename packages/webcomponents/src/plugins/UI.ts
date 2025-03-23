@@ -3,5 +3,5 @@ import { DownloadScreenshotSystem, ZoomLevelSystem } from '../systems';
 import { Container } from '../components';
 
 export const UIPlugin: Plugin = () => {
-  return [Container, ZoomLevelSystem];
+  return [Container, ZoomLevelSystem, DownloadScreenshotSystem];
 };

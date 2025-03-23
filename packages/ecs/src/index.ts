@@ -18,6 +18,7 @@ export * from './environment';
 export {
   svgElementsToSerializedNodes,
   serializedNodesToEntities,
+  type SerializedNode,
 } from './utils';
 
 export {

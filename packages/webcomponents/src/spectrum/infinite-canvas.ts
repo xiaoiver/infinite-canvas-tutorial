@@ -9,13 +9,19 @@ import {
   Entity,
   Pen,
   PreStartUp,
+  SerializedNode,
   system,
   System,
   ThemeMode,
   Transform,
 } from '@infinite-canvas-tutorial/ecs';
 
-import { AppState, Task as TaskEnum, appStateContext } from '../context';
+import {
+  AppState,
+  Task as TaskEnum,
+  appStateContext,
+  elementsContext,
+} from '../context';
 import { Event } from '../event';
 import { checkWebGPUSupport } from '../utils';
 
@@ -37,13 +43,6 @@ export class InfiniteCanvas extends LitElement {
     :host {
       display: block;
       position: relative;
-    }
-
-    ic-spectrum-top-navbar {
-      padding: var(--spectrum-global-dimension-size-100);
-      display: flex;
-      justify-content: end;
-      align-items: center;
     }
 
     ic-spectrum-penbar {
@@ -83,7 +82,7 @@ export class InfiniteCanvas extends LitElement {
   shaderCompilerPath =
     'https://unpkg.com/@antv/g-device-api@1.6.8/dist/pkg/glsl_wgsl_compiler_bg.wasm';
 
-  @property({ type: Object })
+  @property({ type: Object, attribute: 'app-state' })
   appState: AppState = {
     theme: {
       mode: ThemeMode.LIGHT,
@@ -105,7 +104,11 @@ export class InfiniteCanvas extends LitElement {
     },
   };
 
-  #provider = new ContextProvider(this, { context: appStateContext });
+  @property({ type: Array })
+  elements: SerializedNode[] = [];
+
+  #appStateProvider = new ContextProvider(this, { context: appStateContext });
+  #elementsProvider = new ContextProvider(this, { context: elementsContext });
 
   private resizeObserver: ResizeObserver;
 
@@ -148,35 +151,36 @@ export class InfiniteCanvas extends LitElement {
         await checkWebGPUSupport();
       }
 
-      this.#provider.setValue(this.appState);
+      this.#appStateProvider.setValue(this.appState);
+      this.#elementsProvider.setValue(this.elements);
 
       const { width, height } = this.getBoundingClientRect();
 
       this.addEventListener(Event.ZOOM_CHANGED, (e: CustomEvent) => {
-        this.#provider.setValue({
-          ...this.#provider.value,
+        this.#appStateProvider.setValue({
+          ...this.#appStateProvider.value,
           camera: {
-            ...this.#provider.value.camera,
+            ...this.#appStateProvider.value.camera,
             zoom: e.detail.zoom,
           },
         });
       });
 
       this.addEventListener(Event.PEN_CHANGED, (e: CustomEvent) => {
-        this.#provider.setValue({
-          ...this.#provider.value,
+        this.#appStateProvider.setValue({
+          ...this.#appStateProvider.value,
           penbar: {
-            ...this.#provider.value.penbar,
+            ...this.#appStateProvider.value.penbar,
             selected: e.detail.selected,
           },
         });
       });
 
       this.addEventListener(Event.TASK_CHANGED, (e: CustomEvent) => {
-        this.#provider.setValue({
-          ...this.#provider.value,
+        this.#appStateProvider.setValue({
+          ...this.#appStateProvider.value,
           taskbar: {
-            ...this.#provider.value.taskbar,
+            ...this.#appStateProvider.value.taskbar,
             selected: e.detail.selected,
           },
         });

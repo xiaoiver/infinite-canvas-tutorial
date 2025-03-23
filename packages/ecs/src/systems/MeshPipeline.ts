@@ -51,10 +51,6 @@ import { ComputeCamera } from './ComputeCamera';
 export class MeshPipeline extends System {
   private readonly theme = this.singleton.read(Theme);
   private readonly grid = this.singleton.read(Grid);
-  private readonly rasterScreenshotRequest = this.singleton.read(
-    RasterScreenshotRequest,
-  );
-  private readonly screenshot = this.singleton.write(Screenshot);
 
   // private grids = this.query((q) => q.addedOrChanged.with(Grid).trackWrites);
   // private themes = this.query((q) => q.addedOrChanged.with(Theme).trackWrites);
@@ -107,43 +103,54 @@ export class MeshPipeline extends System {
     super();
     this.query(
       (q) =>
-        q.current.with(
-          GPUResource,
-          Camera,
-          ComputedCamera,
-          Children,
-          Circle,
-          Ellipse,
-          Rect,
-          Polyline,
-          Path,
-          ComputedPoints,
-          GlobalTransform,
-          Opacity,
-          Stroke,
-          InnerShadow,
-          DropShadow,
-          Wireframe,
-          GlobalRenderOrder,
-          Rough,
-          ComputedRough,
-          Text,
-          ComputedTextMetrics,
-          FillImage,
-          FillPattern,
-          FillGradient,
-          FillSolid,
-          FillTexture,
-        ).read,
+        q.current
+          .with(
+            GPUResource,
+            Camera,
+            ComputedCamera,
+            Children,
+            Circle,
+            Ellipse,
+            Rect,
+            Polyline,
+            Path,
+            ComputedPoints,
+            GlobalTransform,
+            Opacity,
+            Stroke,
+            InnerShadow,
+            DropShadow,
+            Wireframe,
+            GlobalRenderOrder,
+            Rough,
+            ComputedRough,
+            Text,
+            ComputedTextMetrics,
+            FillImage,
+            FillPattern,
+            FillGradient,
+            FillSolid,
+            FillTexture,
+          )
+          .read.and.using(RasterScreenshotRequest, Screenshot).write,
     );
 
     this.schedule((s) => s.after(ComputeCamera, SetupDevice));
   }
 
-  @co private *setScreenshotTrigger(dataURL: string): Generator {
-    Object.assign(this.screenshot, { dataURL });
+  @co private *setScreenshotTrigger(
+    canvas: Entity,
+    dataURL: string,
+  ): Generator {
+    if (!canvas.has(Screenshot)) {
+      canvas.add(Screenshot);
+    }
+
+    const screenshot = canvas.write(Screenshot);
+
+    Object.assign(screenshot, { dataURL });
     yield;
-    Object.assign(this.screenshot, { dataURL: '' });
+    Object.assign(screenshot, { dataURL: '' });
   }
 
   private renderCamera(camera: Entity, canvas: Entity) {
@@ -160,12 +167,16 @@ export class MeshPipeline extends System {
       texturePool,
     } = canvas.read(GPUResource);
 
+    const { enabled, type, encoderOptions, grid } = canvas.has(
+      RasterScreenshotRequest,
+    )
+      ? canvas.read(RasterScreenshotRequest)
+      : { enabled: false, type: 'image/png', encoderOptions: 1, grid: false };
+
     const { width, height } = swapChain.getCanvas();
     const onscreenTexture = swapChain.getOnscreenTexture();
 
-    const shouldRenderGrid =
-      !this.rasterScreenshotRequest.enabled ||
-      this.rasterScreenshotRequest.grid;
+    const shouldRenderGrid = !enabled || grid;
 
     if (!this.gpuResources.get(camera.__id)) {
       this.gpuResources.set(camera.__id, {
@@ -223,20 +234,16 @@ export class MeshPipeline extends System {
     device.submitPass(renderPass);
     device.endFrame();
 
-    if (this.rasterScreenshotRequest.enabled) {
-      const { type, encoderOptions } = this.rasterScreenshotRequest;
+    if (enabled) {
       const dataURL = (swapChain.getCanvas() as HTMLCanvasElement).toDataURL(
         type,
         encoderOptions,
       );
-      this.setScreenshotTrigger(dataURL);
+      this.setScreenshotTrigger(canvas, dataURL);
     }
   }
 
   execute() {
-    // if (this.rasterScreenshotRequest.enabled) {
-    //   console.log('raster screenshot');
-    // }
     this.canvases.current.forEach((canvas) => {
       const { cameras } = canvas.read(Canvas);
       cameras.forEach((camera) => {

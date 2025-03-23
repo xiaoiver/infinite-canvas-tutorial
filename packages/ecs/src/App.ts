@@ -1,24 +1,9 @@
 import { System, World } from '@lastolivegames/becsy';
 import { Plugin } from './plugins';
 import { DOMAdapter } from './environment';
-import {
-  Canvas,
-  Cursor,
-  Grid,
-  RasterScreenshotRequest,
-  Screenshot,
-  Theme,
-  VectorScreenshotRequest,
-} from './components';
+import { Canvas, Cursor, Grid, Theme } from './components';
 
-export class PreStartUp extends System {
-  constructor() {
-    super();
-    this.singleton.read(RasterScreenshotRequest);
-    this.singleton.read(VectorScreenshotRequest);
-    this.singleton.read(Screenshot);
-  }
-}
+export class PreStartUp extends System {}
 export class StartUp extends System {
   constructor() {
     super();

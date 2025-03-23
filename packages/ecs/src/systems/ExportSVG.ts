@@ -38,63 +38,78 @@ interface SVGOptions {
 }
 
 export class ExportSVG extends System {
-  private readonly vectorScreenshotRequest = this.singleton.read(
-    VectorScreenshotRequest,
-  );
-  private readonly screenshot = this.singleton.write(Screenshot);
   private readonly theme = this.singleton.read(Theme);
   private readonly grid = this.singleton.read(Grid);
 
-  private readonly cameras = this.query((q) => q.current.with(Camera));
+  private readonly canvases = this.query((q) => q.current.with(Canvas).read);
 
-  @co private *setScreenshotTrigger(dataURL: string): Generator {
-    Object.assign(this.screenshot, { dataURL });
+  @co private *setScreenshotTrigger(
+    canvas: Entity,
+    dataURL: string,
+  ): Generator {
+    if (!canvas.has(Screenshot)) {
+      canvas.add(Screenshot);
+    }
+
+    const screenshot = canvas.write(Screenshot);
+
+    Object.assign(screenshot, { dataURL });
     yield;
-    Object.assign(this.screenshot, { dataURL: '' });
+    Object.assign(screenshot, { dataURL: '' });
   }
 
   constructor() {
     super();
     this.query(
       (q) =>
-        q.using(
-          Parent,
-          Children,
-          Circle,
-          Ellipse,
-          Rect,
-          Polyline,
-          Path,
-          Text,
-          Stroke,
-          Opacity,
-          Transform,
-          FillSolid,
-          FillGradient,
-          FillPattern,
-          FillImage,
-          DropShadow,
-          InnerShadow,
-        ).read,
+        q
+          .using(
+            Camera,
+            Parent,
+            Children,
+            Circle,
+            Ellipse,
+            Rect,
+            Polyline,
+            Path,
+            Text,
+            Stroke,
+            Opacity,
+            Transform,
+            FillSolid,
+            FillGradient,
+            FillPattern,
+            FillImage,
+            DropShadow,
+            InnerShadow,
+          )
+          .read.and.using(VectorScreenshotRequest, Screenshot).write,
     );
 
     this.schedule((s) => s.after(MeshPipeline));
   }
 
   execute(): void {
-    if (!this.vectorScreenshotRequest.enabled) return;
+    this.canvases.current.forEach((canvas) => {
+      if (!canvas.has(VectorScreenshotRequest)) {
+        return;
+      }
 
-    this.cameras.current.forEach((entity) => {
+      const vectorScreenshotRequest = canvas.read(VectorScreenshotRequest);
+      if (!vectorScreenshotRequest.enabled) {
+        return;
+      }
+
       this.setScreenshotTrigger(
-        this.toSVGDataURL(entity, this.vectorScreenshotRequest),
+        canvas,
+        this.toSVGDataURL(canvas, vectorScreenshotRequest),
       );
     });
   }
 
-  private toSVG(entity: Entity, options: Partial<SVGOptions> = {}) {
+  private toSVG(canvas: Entity, options: Partial<SVGOptions> = {}) {
     const { grid } = options;
-    const canvas = entity.read(Camera).canvas.read(Canvas);
-    const { width, height } = canvas;
+    const { width, height, cameras } = canvas.read(Canvas);
     const { mode, colors } = this.theme;
     const { grid: gridColor, background: backgroundColor } = colors[mode];
 
@@ -112,9 +127,9 @@ export class ExportSVG extends System {
       }
     }
 
-    console.log(entityToSerializedNodes(entity));
+    // console.log(entityToSerializedNodes(entity));
 
-    serializeNodesToSVGElements(entityToSerializedNodes(entity)).forEach(
+    serializeNodesToSVGElements(entityToSerializedNodes(cameras[0])).forEach(
       (element) => {
         $namespace.appendChild(element);
       },

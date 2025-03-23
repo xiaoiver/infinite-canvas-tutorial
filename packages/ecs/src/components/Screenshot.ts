@@ -1,4 +1,4 @@
-import { field, Type } from '@lastolivegames/becsy';
+import { Entity, field, Type } from '@lastolivegames/becsy';
 
 export type DataURLType =
   | 'image/png'
@@ -39,6 +39,11 @@ export class RasterScreenshotRequest {
    * Whether to take a screenshot.
    */
   @field.boolean declare enabled: boolean;
+
+  /**
+   * Canvas target.
+   */
+  @field.ref declare canvas: Entity;
 }
 
 export class VectorScreenshotRequest {
@@ -51,8 +56,18 @@ export class VectorScreenshotRequest {
    * Whether to take a screenshot.
    */
   @field.boolean declare enabled: boolean;
+
+  /**
+   * Canvas target.
+   */
+  @field.ref declare canvas: Entity;
 }
 
 export class Screenshot {
   @field.object declare dataURL: string;
+
+  /**
+   * Canvas target.
+   */
+  @field.ref declare canvas: Entity;
 }

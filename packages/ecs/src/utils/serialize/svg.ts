@@ -76,6 +76,7 @@ export function serializeNodesToSVGElements(
       dropShadowOffsetY,
       dropShadowBlurRadius,
       strokeAlignment,
+      // strokeDasharray,
       cornerRadius,
       zIndex,
       fontFamily,
@@ -89,6 +90,7 @@ export function serializeNodesToSVGElements(
       whiteSpace,
       wordWrap,
       wordWrapWidth,
+      textAlign,
       ...rest
     } = attributes as any;
 
@@ -112,6 +114,20 @@ export function serializeNodesToSVGElements(
         element.setAttribute('height', `${Math.abs(height)}`);
       }
     }
+
+    if (textAlign) {
+      // "center" | "end" | "left" | "right" | "start";
+      // @see https://developer.mozilla.org/en-US/docs/Web/SVG/Reference/Attribute/text-anchor
+      if (textAlign === 'center') {
+        element.setAttribute('text-anchor', 'middle');
+      } else {
+        element.setAttribute('text-anchor', textAlign);
+      }
+    }
+
+    // if (strokeDasharray) {
+    //   element.setAttribute('stroke-dasharray', strokeDasharray.join(','));
+    // }
 
     const innerStrokeAlignment = strokeAlignment === 'inner';
     const outerStrokeAlignment = strokeAlignment === 'outer';

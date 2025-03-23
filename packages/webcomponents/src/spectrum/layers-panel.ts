@@ -1,11 +1,12 @@
 import { html, css, LitElement } from 'lit';
 import { customElement } from 'lit/decorators.js';
-import { appStateContext, Task } from '../context';
+import { appStateContext, elementsContext, Task } from '../context';
 import { AppState } from '../context';
 import { consume } from '@lit/context';
 
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-close.js';
 import { Event } from '../event';
+import { SerializedNode } from '@infinite-canvas-tutorial/ecs';
 
 @customElement('ic-spectrum-layers-panel')
 export class LayersPanel extends LitElement {
@@ -35,6 +36,9 @@ export class LayersPanel extends LitElement {
 
   @consume({ context: appStateContext, subscribe: true })
   appState: AppState;
+
+  @consume({ context: elementsContext, subscribe: true })
+  elements: SerializedNode[];
 
   private handleClose() {
     this.dispatchEvent(
