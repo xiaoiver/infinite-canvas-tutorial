@@ -22,10 +22,10 @@ import {
   Text,
   DefaultPlugins,
 } from '@infinite-canvas-tutorial/ecs';
-import { UIPlugin } from '@infinite-canvas-tutorial/webcomponents';
+import { Event, UIPlugin } from '@infinite-canvas-tutorial/webcomponents';
 import { ref, onMounted, onUnmounted } from 'vue';
 
-const wrapper = ref(null);
+const wrapper = ref < HTMLElement | null > (null);
 let app: App;
 
 const MyPlugin = () => {
@@ -106,6 +106,10 @@ onMounted(async () => {
     return;
   }
 
+  canvas.addEventListener(Event.RESIZED, (e) => {
+    console.log('resized', e.detail);
+  });
+
   import('@infinite-canvas-tutorial/webcomponents/spectrum').then(() => {
     app = new App().addPlugins(...DefaultPlugins, UIPlugin, MyPlugin);
     app.run();
@@ -114,14 +118,20 @@ onMounted(async () => {
 });
 
 onUnmounted(async () => {
+  const canvas = wrapper.value;
+  if (!canvas) {
+    return;
+  }
 
-  await app.exit();
   console.log('unmounted');
+
+  canvas.dispatchEvent(new CustomEvent(Event.DESTROY));
+
 });
 </script>
 
 <template>
-  <div style="position: relative">
-    <ic-spectrum-canvas ref="wrapper"></ic-spectrum-canvas>
+  <div>
+    <ic-spectrum-canvas ref="wrapper" style="width: 100%; height: 400px"></ic-spectrum-canvas>
   </div>
 </template>

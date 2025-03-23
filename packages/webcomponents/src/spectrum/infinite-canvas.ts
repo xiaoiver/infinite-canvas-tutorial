@@ -19,8 +19,6 @@ import { AppState, Task as TaskEnum, appStateContext } from '../context';
 import { Event } from '../event';
 import { checkWebGPUSupport } from '../utils';
 
-import '@shoelace-style/shoelace/dist/components/resize-observer/resize-observer.js';
-
 import '@spectrum-web-components/theme/sp-theme.js';
 import '@spectrum-web-components/theme/src/themes.js';
 import '@spectrum-web-components/alert-banner/sp-alert-banner.js';
@@ -31,6 +29,8 @@ import { Container } from '../components';
 let initCanvasSystemCounter = 0;
 const initCanvasSystemClasses = [];
 
+const TOP_NAVBAR_HEIGHT = 48;
+
 @customElement('ic-spectrum-canvas')
 export class InfiniteCanvas extends LitElement {
   static styles = css`
@@ -39,7 +39,7 @@ export class InfiniteCanvas extends LitElement {
       position: relative;
     }
 
-    sp-top-nav {
+    ic-spectrum-top-navbar {
       padding: var(--spectrum-global-dimension-size-100);
       display: flex;
       justify-content: end;
@@ -107,29 +107,34 @@ export class InfiniteCanvas extends LitElement {
 
   #provider = new ContextProvider(this, { context: appStateContext });
 
+  private resizeObserver: ResizeObserver;
+
   connectedCallback() {
     super.connectedCallback();
-    this.addEventListener('sl-resize', this.resize);
+
+    this.resizeObserver = new ResizeObserver((entries) =>
+      this.handleResize(entries),
+    );
+    this.updateComplete.then(() => this.resizeObserver.observe(this));
   }
 
   disconnectedCallback() {
-    this.removeEventListener('sl-resize', this.resize);
     super.disconnectedCallback();
+    this.resizeObserver?.unobserve(this);
   }
 
-  private resize(event: CustomEvent) {
-    const detail = event.detail as { entries: ResizeObserverEntry[] };
-    const { width, height } = detail.entries[0].contentRect;
+  private handleResize(entries: ResizeObserverEntry[]) {
+    const { width, height } = entries[0].contentRect;
     const dpr = window.devicePixelRatio;
 
     if (width && height) {
       const $canvas = this.shadowRoot?.querySelector('canvas');
       $canvas.width = width * dpr;
-      $canvas.height = height * dpr;
+      $canvas.height = (height - TOP_NAVBAR_HEIGHT) * dpr;
 
       this.dispatchEvent(
         new CustomEvent(Event.RESIZED, {
-          detail: { width, height },
+          detail: { width, height: height - TOP_NAVBAR_HEIGHT },
           bubbles: true,
           composed: true,
         }),
@@ -144,6 +149,8 @@ export class InfiniteCanvas extends LitElement {
       }
 
       this.#provider.setValue(this.appState);
+
+      const { width, height } = this.getBoundingClientRect();
 
       this.addEventListener(Event.ZOOM_CHANGED, (e: CustomEvent) => {
         this.#provider.setValue({
@@ -176,9 +183,13 @@ export class InfiniteCanvas extends LitElement {
       });
 
       const $canvas = document.createElement('canvas');
+      $canvas.style.width = '100%';
+      $canvas.style.height = 'calc(100% - 48px)';
+
       const {
         camera: { zoom },
       } = this.appState;
+      // eslint-disable-next-line @typescript-eslint/no-this-alias
       const self = this;
 
       class InitCanvasSystem extends System {
@@ -198,8 +209,8 @@ export class InfiniteCanvas extends LitElement {
             .spawn(
               new Canvas({
                 element: $canvas,
-                width: window.innerWidth,
-                height: window.innerHeight,
+                width,
+                height: height - TOP_NAVBAR_HEIGHT, // TODO: remove hardcoded top navbar height
                 devicePixelRatio: window.devicePixelRatio,
                 renderer,
                 shaderCompilerPath,
@@ -238,6 +249,10 @@ export class InfiniteCanvas extends LitElement {
             Object.assign(this.canvasEntity.write(Canvas), {
               pen: selected[0],
             });
+          });
+
+          self.addEventListener(Event.DESTROY, (e) => {
+            this.canvasEntity.delete();
           });
         }
       }
@@ -291,9 +306,7 @@ export class InfiniteCanvas extends LitElement {
             <ic-spectrum-penbar></ic-spectrum-penbar>
             <ic-spectrum-taskbar></ic-spectrum-taskbar>
             <ic-spectrum-layers-panel></ic-spectrum-layers-panel>
-            <sl-resize-observer @sl-resize=${this.resize}>
-              ${$canvas}
-            </sl-resize-observer>`,
+            ${$canvas}`,
         ),
       error: (e: Error) => {
         console.error(e);

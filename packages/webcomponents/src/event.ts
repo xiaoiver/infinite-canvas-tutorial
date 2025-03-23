@@ -3,6 +3,7 @@ import { Task } from './context';
 
 export enum Event {
   READY = 'ic-ready',
+  DESTROY = 'ic-destroy',
   RESIZED = 'ic-resized',
   ZOOM_TO = 'ic-zoom-to',
   ZOOM_IN = 'ic-zoom-in',
