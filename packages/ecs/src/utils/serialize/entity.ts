@@ -154,7 +154,7 @@ export function entityToSerializedNodes(entity: Entity): SerializedNode[] {
       strokeLinecap: linecap,
       strokeLinejoin: linejoin,
       strokeMiterlimit: miterlimit,
-      strokeDasharray: dasharray,
+      strokeDasharray: [dasharray[0], dasharray[1]],
       strokeDashoffset: dashoffset,
     });
   }

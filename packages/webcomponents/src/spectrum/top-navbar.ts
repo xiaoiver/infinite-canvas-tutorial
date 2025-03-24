@@ -59,6 +59,8 @@ export class TopNavbar extends LitElement {
     );
   }
 
+  private handleEdit(event: CustomEvent) {}
+
   render() {
     return html`
       <sp-action-menu size="m" label="Main menu" quiet>
@@ -67,8 +69,33 @@ export class TopNavbar extends LitElement {
         </sp-tooltip>
         <sp-icon-show-menu slot="icon" size="l"></sp-icon-show-menu>
         <sp-menu-item>
+          Edit
+          <sp-menu slot="submenu" @change=${this.handleEdit}>
+            <sp-menu-item value="undo">
+              Undo
+              <kbd slot="value">⌘Z</kbd>
+            </sp-menu-item>
+            <sp-menu-item value="redo">
+              Redo
+              <kbd slot="value">⇧⌘Z</kbd>
+            </sp-menu-item>
+            <sp-menu-divider></sp-menu-divider>
+            <sp-menu-item value="cut">
+              Cut
+              <kbd slot="value">⌘X</kbd>
+            </sp-menu-item>
+            <sp-menu-item value="copy">
+              Copy
+              <kbd slot="value">⌘C</kbd>
+            </sp-menu-item>
+            <sp-menu-item value="paste">
+              Paste
+              <kbd slot="value">⌘V</kbd>
+            </sp-menu-item>
+          </sp-menu>
+        </sp-menu-item>
+        <sp-menu-item>
           Export as...
-          <kbd slot="value">⌥⇧⌘W</kbd>
           <sp-menu slot="submenu" @change=${this.handleExport}>
             <sp-menu-item value="svg">SVG</sp-menu-item>
             <sp-menu-item value="png">PNG</sp-menu-item>

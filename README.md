@@ -233,6 +233,9 @@ pnpm run dev
 
 -   What is ECS architecture
 -   Using ECS architecture to refactor the application with [Becsy]
+-   Using [Spectrum] to implement UIs instead of shoelace
+
+<img src="./screenshots/lesson18.png" width="300" alt="Lesson 18 - ecs">
 
 ## Lesson 19 - History and Collaboration [🔗](https://infinitecanvas.cc/guide/lesson-019)
 
@@ -259,3 +262,4 @@ pnpm run dev
 [Motiff]: https://www.motiff.com/blog/performance-magic-behind-motiff
 [My free course in Gumroad]: https://pyqiverson.gumroad.com/l/infinitecanvas?a=734684947
 [Becsy]: https://lastolivegames.github.io/becsy/
+[Spectrum]: https://opensource.adobe.com/spectrum-web-components

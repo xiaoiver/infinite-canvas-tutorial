@@ -233,6 +233,9 @@ pnpm run dev
 
 -   什么是 ECS 架构
 -   使用 [Becsy] 重构应用
+-   使用 [Spectrum] 实现 UI
+
+<img src="./screenshots/lesson18.png" width="300" alt="Lesson 18 - ecs">
 
 ## 课程 19 - 历史记录与协同 [🔗](https://infinitecanvas.cc/zh/guide/lesson-019)
 
@@ -261,3 +264,4 @@ pnpm run dev
 [Motiff]: https://www.motiff.com/blog/performance-magic-behind-motiff
 [我在 Gumroad 上的免费课程]: https://pyqiverson.gumroad.com/l/infinitecanvas?a=734684947
 [Becsy]: https://lastolivegames.github.io/becsy/
+[Spectrum]: https://opensource.adobe.com/spectrum-web-components

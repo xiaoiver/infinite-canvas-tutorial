@@ -41,6 +41,16 @@ const defaultValues = {
   fillRule: 'nonzero',
 };
 
+// @see https://github.com/plouc/nivo/issues/164
+const BASELINE_MAP: Record<string, string> = {
+  top: 'hanging', // Use hanging here.
+  middle: 'central',
+  bottom: 'text-after-edge', // FIXME: It is not a standard property.
+  alphabetic: 'alphabetic',
+  ideographic: 'ideographic',
+  hanging: 'hanging',
+};
+
 export function serializeNodesToSVGElements(
   nodes: SerializedNode[],
 ): SVGElement[] {
@@ -76,7 +86,7 @@ export function serializeNodesToSVGElements(
       dropShadowOffsetY,
       dropShadowBlurRadius,
       strokeAlignment,
-      // strokeDasharray,
+      tessellationMethod,
       cornerRadius,
       zIndex,
       fontFamily,
@@ -91,6 +101,12 @@ export function serializeNodesToSVGElements(
       wordWrap,
       wordWrapWidth,
       textAlign,
+      textBaseline,
+      bitmapFontKerning,
+      physical,
+      esdt,
+      leading,
+      maxLines,
       ...rest
     } = attributes as any;
 
@@ -125,9 +141,9 @@ export function serializeNodesToSVGElements(
       }
     }
 
-    // if (strokeDasharray) {
-    //   element.setAttribute('stroke-dasharray', strokeDasharray.join(','));
-    // }
+    if (textBaseline) {
+      element.setAttribute('dominant-baseline', BASELINE_MAP[textBaseline]);
+    }
 
     const innerStrokeAlignment = strokeAlignment === 'inner';
     const outerStrokeAlignment = strokeAlignment === 'outer';
