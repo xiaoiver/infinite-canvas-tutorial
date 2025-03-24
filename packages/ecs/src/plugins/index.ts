@@ -1,4 +1,5 @@
 export * from './types';
+export * from './Canvas';
 export * from './Hierarchy';
 export * from './Transform';
 export * from './Renderer';

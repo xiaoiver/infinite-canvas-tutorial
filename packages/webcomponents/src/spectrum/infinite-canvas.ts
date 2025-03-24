@@ -5,13 +5,24 @@ import { customElement, property } from 'lit/decorators.js';
 import {
   Camera,
   Canvas,
+  Children,
+  Circle,
   Commands,
-  Entity,
+  Cursor,
+  Ellipse,
+  FillSolid,
+  Parent,
+  Path,
   Pen,
+  Polyline,
   PreStartUp,
+  Rect,
+  Renderable,
   SerializedNode,
+  Stroke,
   system,
   System,
+  Text,
   ThemeMode,
   Transform,
 } from '@infinite-canvas-tutorial/ecs';
@@ -23,14 +34,15 @@ import {
   elementsContext,
 } from '../context';
 import { Event } from '../event';
+import { ZoomLevelSystem } from '../systems';
+import { Container } from '../components';
+import { API } from '../API';
 import { checkWebGPUSupport } from '../utils';
 
 import '@spectrum-web-components/theme/sp-theme.js';
 import '@spectrum-web-components/theme/src/themes.js';
 import '@spectrum-web-components/alert-banner/sp-alert-banner.js';
 import '@spectrum-web-components/progress-circle/sp-progress-circle.js';
-import { ZoomLevelSystem } from '../systems';
-import { Container } from '../components';
 
 let initCanvasSystemCounter = 0;
 const initCanvasSystemClasses = [];
@@ -109,6 +121,7 @@ export class InfiniteCanvas extends LitElement {
 
   #appStateProvider = new ContextProvider(this, { context: appStateContext });
   #elementsProvider = new ContextProvider(this, { context: elementsContext });
+  #api: API;
 
   private resizeObserver: ResizeObserver;
 
@@ -124,6 +137,8 @@ export class InfiniteCanvas extends LitElement {
   disconnectedCallback() {
     super.disconnectedCallback();
     this.resizeObserver?.unobserve(this);
+
+    this.#api?.destroy();
   }
 
   private handleResize(entries: ResizeObserverEntry[]) {
@@ -199,64 +214,60 @@ export class InfiniteCanvas extends LitElement {
       class InitCanvasSystem extends System {
         private readonly commands = new Commands(this);
 
-        private canvasEntity: Entity;
-
         constructor() {
           super();
           this.query(
-            (q) => q.using(Container, Canvas, Camera, Transform).write,
+            (q) =>
+              q.using(
+                Container,
+                Canvas,
+                Camera,
+                Cursor,
+                Transform,
+                Parent,
+                Children,
+                Renderable,
+                FillSolid,
+                Stroke,
+                Circle,
+                Ellipse,
+                Rect,
+                Polyline,
+                Path,
+                Text,
+              ).write,
           );
         }
 
         initialize(): void {
-          const canvas = this.commands
-            .spawn(
-              new Canvas({
-                element: $canvas,
-                width,
-                height: height - TOP_NAVBAR_HEIGHT, // TODO: remove hardcoded top navbar height
-                devicePixelRatio: window.devicePixelRatio,
-                renderer,
-                shaderCompilerPath,
-              }),
-            )
-            .id();
+          self.#api = new API(self, this.commands);
+          self.#api.createCanvas({
+            element: $canvas,
+            width,
+            height: height - TOP_NAVBAR_HEIGHT, // TODO: remove hardcoded top navbar height
+            devicePixelRatio: window.devicePixelRatio,
+            renderer,
+            shaderCompilerPath,
+          });
 
-          canvas.add(Container, { element: self });
-
-          this.canvasEntity = canvas.hold();
-
-          this.commands.spawn(
-            new Camera({
-              canvas: this.canvasEntity,
-            }),
-            new Transform({
-              scale: {
-                x: 1 / zoom,
-                y: 1 / zoom,
-              },
-            }),
-          );
+          self.#api.createCamera({
+            zoom,
+          });
 
           this.commands.execute();
 
+          self.dispatchEvent(
+            new CustomEvent(Event.READY, { detail: self.#api }),
+          );
+
           self.addEventListener(Event.RESIZED, (e) => {
             const { width, height } = e.detail;
-            Object.assign(this.canvasEntity.write(Canvas), {
-              width,
-              height,
-            });
+            self.#api.resizeCanvas(width, height);
           });
 
           self.addEventListener(Event.PEN_CHANGED, (e) => {
             const { selected } = e.detail;
-            Object.assign(this.canvasEntity.write(Canvas), {
-              pen: selected[0],
-            });
-          });
-
-          self.addEventListener(Event.DESTROY, (e) => {
-            this.canvasEntity.delete();
+            self.#api.setPen(selected[0]);
           });
         }
       }
@@ -280,7 +291,6 @@ export class InfiniteCanvas extends LitElement {
 
       initCanvasSystemClasses.push(InitCanvasSystem);
 
-      this.dispatchEvent(new CustomEvent(Event.READY, { detail: $canvas }));
       return $canvas;
     },
     args: () => [this.renderer, this.shaderCompilerPath] as const,

@@ -1,11 +1,11 @@
 import {
-  App,
   Pen,
   RasterScreenshotRequest,
   Screenshot,
   VectorScreenshotRequest,
 } from '@infinite-canvas-tutorial/ecs';
 import { Task } from './context';
+import { API } from './API';
 
 export enum Event {
   READY = 'ic-ready',
@@ -23,7 +23,7 @@ export enum Event {
 
 declare global {
   interface HTMLElementEventMap {
-    [Event.READY]: CustomEvent<App>;
+    [Event.READY]: CustomEvent<API>;
     [Event.RESIZED]: CustomEvent<{ width: number; height: number }>;
     [Event.ZOOM_TO]: CustomEvent<{ zoom: number }>;
     [Event.ZOOM_IN]: CustomEvent<{ zoom: number }>;

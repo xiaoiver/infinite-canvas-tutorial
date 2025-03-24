@@ -24,6 +24,8 @@ import {
   Wireframe,
   Opacity,
   Canvas,
+  system,
+  PreStartUp,
 } from '../src';
 
 const $canvas = document.getElementById('canvas') as HTMLCanvasElement;
@@ -46,7 +48,7 @@ let grandchildEntity: Entity;
 let polylineEntity: Entity;
 
 const MyPlugin = () => {
-  return [StartUpSystem];
+  system(PreStartUp)(StartUpSystem);
 };
 
 class StartUpSystem extends System {

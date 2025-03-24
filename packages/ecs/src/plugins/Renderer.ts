@@ -1,17 +1,21 @@
 /**
  * @see https://docs.rs/bevy/latest/bevy/render/struct.RenderPlugin.html
  */
+import { component, system } from '@lastolivegames/becsy';
 import { Plugin } from './types';
 import {
   SetupDevice,
   MeshPipeline,
-  BatchManager,
   Sort,
   ComputePoints,
   ComputeRough,
   ComputeTextMetrics,
   ComputeBounds,
   SetCursor,
+  PreUpdate,
+  PostUpdate,
+  ComputeCamera,
+  StartUp,
 } from '../systems';
 import {
   Circle,
@@ -43,55 +47,49 @@ import {
 } from '../components';
 
 export const RendererPlugin: Plugin = () => {
-  return [
-    /**
-     * Systems
-     */
-    SetupDevice,
-    ComputePoints,
-    ComputeRough,
-    ComputeTextMetrics,
-    ComputeBounds,
-    Sort,
-    BatchManager,
-    SetCursor,
-    MeshPipeline,
+  /**
+   * Components
+   */
+  component(GPUResource);
+  component(Renderable);
+  component(Wireframe);
+  component(GlobalRenderOrder);
+  component(ZIndex);
+  component(Visibility);
+  /**
+   * Style
+   */
+  component(FillSolid);
+  component(FillGradient);
+  component(FillPattern);
+  component(FillImage);
+  component(FillTexture);
+  component(Stroke);
+  component(Opacity);
+  component(DropShadow);
+  component(InnerShadow);
+  component(Rough);
 
-    /**
-     * Components
-     */
-    GPUResource,
-    Renderable,
-    Wireframe,
-    GlobalRenderOrder,
-    ZIndex,
-    Visibility,
-    /**
-     * Style
-     */
-    FillSolid,
-    FillGradient,
-    FillPattern,
-    FillImage,
-    FillTexture,
-    Stroke,
-    Opacity,
-    DropShadow,
-    InnerShadow,
-    Rough,
+  /**
+   * Geometry
+   */
+  component(Circle);
+  component(Ellipse);
+  component(Rect);
+  component(Polyline);
+  component(Path);
+  component(Text);
+  component(ComputedPoints);
+  component(ComputedRough);
+  component(ComputedTextMetrics);
+  component(ComputedBounds);
 
-    /**
-     * Geometry
-     */
-    Circle,
-    Ellipse,
-    Rect,
-    Polyline,
-    Path,
-    Text,
-    ComputedPoints,
-    ComputedRough,
-    ComputedTextMetrics,
-    ComputedBounds,
-  ];
+  system(StartUp)(SetupDevice);
+  system(PreUpdate)(ComputePoints);
+  system(PreUpdate)(ComputeRough);
+  system(PreUpdate)(ComputeTextMetrics);
+  system(PreUpdate)(ComputeBounds);
+  system(PostUpdate)(Sort);
+  system(PostUpdate)(SetCursor);
+  system((s) => s.after(ComputeCamera, SetupDevice))(MeshPipeline);
 };

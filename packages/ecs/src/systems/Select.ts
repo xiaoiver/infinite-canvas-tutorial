@@ -6,10 +6,7 @@ import {
   Canvas,
   Children,
   ComputedCamera,
-  Cursor,
   FillSolid,
-  Input,
-  InputPoint,
   Parent,
   Pen,
   Rect,
@@ -19,8 +16,6 @@ import {
   // Visibility,
 } from '../components';
 import { Commands } from '../commands/Commands';
-
-import { CameraControl } from './CameraControl';
 
 export class Select extends System {
   private readonly commands = new Commands(this);
@@ -49,8 +44,6 @@ export class Select extends System {
         ).write,
     );
     this.query((q) => q.using(ComputedCamera, Canvas).read);
-
-    this.schedule((s) => s.after(CameraControl));
   }
 
   execute() {

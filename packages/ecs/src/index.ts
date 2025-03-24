@@ -3,6 +3,7 @@ import {
   HierarchyPlugin,
   RendererPlugin,
   TransformPlugin,
+  CanvasPlugin,
   CameraPlugin,
   EventPlugin,
   ScreenshotPlugin,
@@ -35,6 +36,7 @@ export {
 export const DefaultPlugins: Plugin[] = [
   HierarchyPlugin,
   TransformPlugin,
+  CanvasPlugin,
   CameraPlugin,
   EventPlugin,
   RendererPlugin,

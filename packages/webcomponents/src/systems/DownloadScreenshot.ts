@@ -2,7 +2,6 @@ import {
   Canvas,
   co,
   DOMAdapter,
-  PreStartUp,
   RasterScreenshotRequest,
   Screenshot,
   System,
@@ -21,7 +20,6 @@ export class DownloadScreenshotSystem extends System {
   constructor() {
     super();
     this.query((q) => q.using(Container, Screenshot).read);
-    this.schedule((s) => s.before(PreStartUp));
   }
 
   execute(): void {

@@ -8,4 +8,4 @@
  *   app.add_systems(HelloWorld);
  * }
  */
-export type Plugin = (...args: any[]) => Promise<any[]> | any[];
+export type Plugin = (...args: any[]) => Promise<void> | void;

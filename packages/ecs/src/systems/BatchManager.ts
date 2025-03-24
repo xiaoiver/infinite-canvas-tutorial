@@ -1,5 +1,5 @@
 import { Buffer, Device, RenderPass } from '@antv/g-device-api';
-import { Entity, System } from '@lastolivegames/becsy';
+import { Entity } from '@lastolivegames/becsy';
 import {
   Drawcall,
   SDF,

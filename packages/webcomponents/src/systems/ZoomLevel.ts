@@ -3,8 +3,6 @@ import {
   CameraControl,
   Canvas,
   ComputedCamera,
-  Select,
-  SetupDevice,
   System,
   Transform,
 } from '@infinite-canvas-tutorial/ecs';
@@ -27,7 +25,6 @@ export class ZoomLevelSystem extends System {
     this.query(
       (q) => q.using(Camera, Transform).write.and.using(Container).read,
     );
-    this.schedule((s) => s.inAnyOrderWithWritersOf(Camera).after(SetupDevice));
   }
 
   initialize() {

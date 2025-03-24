@@ -1,7 +1,12 @@
+import { component, system } from '@lastolivegames/becsy';
 import { Plugin } from './types';
-import { EventWriter } from '../systems';
+import { EventWriter, SetupDevice } from '../systems';
 import { Event, Input, InputPoint } from '../components';
 
 export const EventPlugin: Plugin = () => {
-  return [Event, Input, InputPoint, EventWriter];
+  component(Event);
+  component(Input);
+  component(InputPoint);
+
+  system((s) => s.after(SetupDevice))(EventWriter);
 };

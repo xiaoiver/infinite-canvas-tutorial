@@ -1,13 +1,20 @@
+import { component, system } from '@lastolivegames/becsy';
 import { Plugin } from './types';
 import { Camera, ComputedCamera, ComputedCameraControl } from '../components';
-import { CameraControl, ComputeCamera } from '../systems';
+import {
+  CameraControl,
+  ComputeCamera,
+  EventWriter,
+  SetupDevice,
+} from '../systems';
 
 export const CameraPlugin: Plugin = () => {
-  return [
-    Camera,
-    ComputedCamera,
-    ComputedCameraControl,
+  component(Camera);
+  component(ComputedCamera);
+  component(ComputedCameraControl);
+
+  system((s) => s.afterWritersOf(Camera).after(EventWriter, SetupDevice))(
     CameraControl,
-    ComputeCamera,
-  ];
+  );
+  system((s) => s.afterWritersOf(Camera))(ComputeCamera);
 };

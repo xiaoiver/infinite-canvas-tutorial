@@ -1,13 +1,12 @@
 import { Entity, System } from '@lastolivegames/becsy';
 import {
+  Mat3,
   Camera,
   Children,
   GlobalTransform,
   Parent,
   Transform,
 } from '../components';
-import { Mat3 } from '../components';
-import { PostStartUp } from '..';
 
 /**
  * Update {@link GlobalTransform} component of entities that aren't in the hierarchy
@@ -30,7 +29,6 @@ export class SyncSimpleTransforms extends System {
   constructor() {
     super();
     this.query((q) => q.using(GlobalTransform).write);
-    this.schedule((s) => s.after(PostStartUp));
   }
 
   private syncTransform(
@@ -78,7 +76,6 @@ export class PropagateTransforms extends System {
   constructor() {
     super();
     this.query((q) => q.using(Camera).read);
-    this.schedule((s) => s.after(SyncSimpleTransforms));
   }
 
   execute(): void {

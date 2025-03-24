@@ -7,7 +7,6 @@ import {
   SwapChain,
   TransparentBlack,
 } from '@antv/g-device-api';
-import { SetupDevice } from './SetupDevice';
 import {
   Camera,
   Canvas,
@@ -46,15 +45,8 @@ import {
 import { paddingMat3 } from '../utils';
 import { GridRenderer } from './GridRenderer';
 import { BatchManager } from './BatchManager';
-import { ComputeCamera } from './ComputeCamera';
 
 export class MeshPipeline extends System {
-  private readonly theme = this.singleton.read(Theme);
-  private readonly grid = this.singleton.read(Grid);
-
-  // private grids = this.query((q) => q.addedOrChanged.with(Grid).trackWrites);
-  // private themes = this.query((q) => q.addedOrChanged.with(Theme).trackWrites);
-
   private canvases = this.query((q) => q.current.with(Canvas).read);
 
   private renderables = this.query(
@@ -105,6 +97,8 @@ export class MeshPipeline extends System {
       (q) =>
         q.current
           .with(
+            Theme,
+            Grid,
             GPUResource,
             Camera,
             ComputedCamera,
@@ -134,8 +128,6 @@ export class MeshPipeline extends System {
           )
           .read.and.using(RasterScreenshotRequest, Screenshot).write,
     );
-
-    this.schedule((s) => s.after(ComputeCamera, SetupDevice));
   }
 
   @co private *setScreenshotTrigger(
@@ -153,7 +145,7 @@ export class MeshPipeline extends System {
     Object.assign(screenshot, { dataURL: '' });
   }
 
-  private renderCamera(camera: Entity, canvas: Entity) {
+  private renderCamera(canvas: Entity, camera: Entity) {
     if (!canvas.has(GPUResource)) {
       return;
     }
@@ -192,6 +184,7 @@ export class MeshPipeline extends System {
     }
 
     const [buffer, legacyObject] = this.updateUniform(
+      canvas,
       camera,
       shouldRenderGrid,
       swapChain,
@@ -247,7 +240,7 @@ export class MeshPipeline extends System {
     this.canvases.current.forEach((canvas) => {
       const { cameras } = canvas.read(Canvas);
       cameras.forEach((camera) => {
-        this.renderCamera(camera, canvas);
+        this.renderCamera(canvas, camera);
       });
 
       // let needRender = true;
@@ -299,15 +292,16 @@ export class MeshPipeline extends System {
   }
 
   private updateUniform(
-    entity: Entity,
+    canvas: Entity,
+    camera: Entity,
     shouldRenderGrid: boolean,
     swapChain: SwapChain,
   ): [Float32Array, Record<string, unknown>] {
-    const computedCamera = entity.read(ComputedCamera);
+    const { mode, colors } = canvas.read(Theme);
+    const { checkboardStyle } = canvas.read(Grid);
+    const computedCamera = camera.read(ComputedCamera);
 
     const { width, height } = swapChain.getCanvas();
-
-    const { mode, colors } = this.theme;
 
     const backgroundColor = colors[mode].background;
     const gridColor = colors[mode].grid;
@@ -339,7 +333,7 @@ export class MeshPipeline extends System {
           CheckboardStyle.NONE,
           CheckboardStyle.GRID,
           CheckboardStyle.DOTS,
-        ].indexOf(this.grid.checkboardStyle)
+        ].indexOf(checkboardStyle)
       : 0;
     const u_Viewport = [width, height];
 

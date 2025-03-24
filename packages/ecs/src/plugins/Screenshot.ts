@@ -1,16 +1,16 @@
+import { system, component } from '@lastolivegames/becsy';
 import { Plugin } from './types';
 import {
   RasterScreenshotRequest,
   Screenshot,
   VectorScreenshotRequest,
 } from '../components';
-import { ExportSVG } from '../systems';
+import { ExportSVG, MeshPipeline } from '../systems';
 
 export const ScreenshotPlugin: Plugin = () => {
-  return [
-    RasterScreenshotRequest,
-    VectorScreenshotRequest,
-    Screenshot,
-    ExportSVG,
-  ];
+  component(RasterScreenshotRequest);
+  component(VectorScreenshotRequest);
+  component(Screenshot);
+
+  system((s) => s.after(MeshPipeline))(ExportSVG);
 };

@@ -2,6 +2,7 @@
  * @see https://github.com/bevyengine/bevy/blob/latest/crates/bevy_hierarchy
  */
 
+import { component } from '@lastolivegames/becsy';
 import { Plugin } from './types';
 import { Children, Parent } from '../components';
 
@@ -24,5 +25,6 @@ import { Children, Parent } from '../components';
 // }
 
 export const HierarchyPlugin: Plugin = () => {
-  return [Parent, Children];
+  component(Parent);
+  component(Children);
 };

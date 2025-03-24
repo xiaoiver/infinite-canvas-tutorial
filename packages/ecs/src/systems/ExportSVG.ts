@@ -31,16 +31,12 @@ import {
   entityToSerializedNodes,
   serializeNodesToSVGElements,
 } from '../utils';
-import { MeshPipeline } from './MeshPipeline';
 
 interface SVGOptions {
   grid: boolean;
 }
 
 export class ExportSVG extends System {
-  private readonly theme = this.singleton.read(Theme);
-  private readonly grid = this.singleton.read(Grid);
-
   private readonly canvases = this.query((q) => q.current.with(Canvas).read);
 
   @co private *setScreenshotTrigger(
@@ -85,8 +81,6 @@ export class ExportSVG extends System {
           )
           .read.and.using(VectorScreenshotRequest, Screenshot).write,
     );
-
-    this.schedule((s) => s.after(MeshPipeline));
   }
 
   execute(): void {
@@ -108,9 +102,10 @@ export class ExportSVG extends System {
   }
 
   private toSVG(canvas: Entity, options: Partial<SVGOptions> = {}) {
-    const { grid } = options;
+    const { grid: gridEnabled } = options;
     const { width, height, cameras } = canvas.read(Canvas);
-    const { mode, colors } = this.theme;
+    const { mode, colors } = canvas.read(Theme);
+    const { checkboardStyle } = canvas.read(Grid);
     const { grid: gridColor, background: backgroundColor } = colors[mode];
 
     const $namespace = createSVGElement('svg');
@@ -119,10 +114,10 @@ export class ExportSVG extends System {
     // @see https://www.geeksforgeeks.org/how-to-set-the-svg-background-color/
     $namespace.setAttribute('style', `background-color: ${backgroundColor}`);
 
-    if (grid) {
-      if (this.grid.checkboardStyle === CheckboardStyle.GRID) {
+    if (gridEnabled) {
+      if (checkboardStyle === CheckboardStyle.GRID) {
         this.drawLinesGrid($namespace, gridColor);
-      } else if (this.grid.checkboardStyle === CheckboardStyle.DOTS) {
+      } else if (checkboardStyle === CheckboardStyle.DOTS) {
         this.drawDotsGrid($namespace, gridColor);
       }
     }

@@ -13,9 +13,6 @@ import {
   ComputedCameraControl,
   Mat3,
 } from '../components';
-import { ComputeCamera } from './ComputeCamera';
-import { EventWriter } from './EventWriter';
-import { SetupDevice } from './SetupDevice';
 
 const MIN_ZOOM = 0.02;
 const MAX_ZOOM = 4;
@@ -40,9 +37,6 @@ export class CameraControl extends System {
             InputPoint,
           )
           .write.and.using(Input).read,
-    );
-    this.schedule((s) =>
-      s.afterWritersOf(Camera).after(EventWriter, SetupDevice),
     );
   }
 

@@ -2,19 +2,12 @@ import { co, Entity, System } from '@lastolivegames/becsy';
 import { IPointData } from '@pixi/math';
 import { Canvas, Input } from '../components';
 import { getGlobalThis } from '../utils';
-import { CameraControl } from './CameraControl';
-import { Select } from './Select';
-import {
-  Update,
-  First,
-  PreUpdate,
-  ComputedCamera,
-  ComputeCamera,
-  Cursor,
-  Camera,
-  SetupDevice,
-} from '..';
+import { Cursor } from '..';
 
+/**
+ * This system will bind event listeners to the canvas.
+ * It will also handle the pointer events and keyboard events.
+ */
 export class EventWriter extends System {
   private readonly canvases = this.query((q) =>
     q.added.and.removed.with(Canvas),
@@ -45,7 +38,6 @@ export class EventWriter extends System {
 
   constructor() {
     super();
-    this.schedule((s) => s.after(SetupDevice));
     this.query((q) => q.using(Input, Cursor).write);
   }
 

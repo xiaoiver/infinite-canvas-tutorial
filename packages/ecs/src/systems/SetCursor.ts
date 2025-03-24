@@ -1,6 +1,5 @@
 import { System } from '@lastolivegames/becsy';
 import { Canvas, Cursor } from '../components';
-import { Last, Update } from '..';
 
 export class SetCursor extends System {
   private readonly cursors = this.query(
@@ -9,7 +8,6 @@ export class SetCursor extends System {
 
   constructor() {
     super();
-    this.schedule((s) => s.after(Update).before(Last));
     this.query((q) => q.using(Canvas).read);
   }
 

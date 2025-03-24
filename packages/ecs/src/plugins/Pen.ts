@@ -1,6 +1,7 @@
+import { system } from '@lastolivegames/becsy';
 import { Plugin } from './types';
-import { Select } from '../systems';
+import { CameraControl, Select } from '../systems';
 
 export const PenPlugin: Plugin = () => {
-  return [Select];
+  system((s) => s.after(CameraControl))(Select);
 };

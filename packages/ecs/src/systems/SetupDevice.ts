@@ -7,22 +7,24 @@ import {
   WebGLDeviceContribution,
   WebGPUDeviceContribution,
 } from '@antv/g-device-api';
-import { Canvas } from '../components';
+import { Canvas, GPUResource, Grid, Theme } from '../components';
 import { RenderCache } from '../utils';
 import { TexturePool } from '../resources';
-import { GPUResource, PreStartUp, StartUp } from '..';
 
+/**
+ * Usually the first built-in system to run.
+ * It will create a new device and swap chain for each canvas.
+ */
 export class SetupDevice extends System {
   private readonly canvases = this.query(
-    (q) => q.added.and.changed.with(Canvas).trackWrites,
+    (q) => q.added.and.changed.and.removed.with(Canvas).trackWrites,
   );
 
   #texturePool: TexturePool;
 
   constructor() {
     super();
-    this.schedule((s) => s.after(PreStartUp).before(StartUp));
-    this.query((q) => q.using(GPUResource, Canvas).write);
+    this.query((q) => q.using(GPUResource, Canvas, Theme, Grid).write);
 
     this.#texturePool = new TexturePool();
   }
@@ -37,6 +39,14 @@ export class SetupDevice extends System {
 
   execute() {
     this.canvases.added.forEach(async (canvas) => {
+      if (!canvas.has(Theme)) {
+        canvas.add(Theme);
+      }
+
+      if (!canvas.has(Grid)) {
+        canvas.add(Grid);
+      }
+
       const {
         width,
         height,
@@ -122,17 +132,15 @@ export class SetupDevice extends System {
         depthRenderTarget,
       });
     });
+
+    this.canvases.removed.forEach((canvas) => {
+      this.destroyCanvas(canvas);
+    });
   }
 
   finalize(): void {
     this.canvases.current.forEach((canvas) => {
-      const { device, renderTarget, depthRenderTarget, renderCache } =
-        canvas.read(GPUResource);
-      renderCache.destroy();
-      renderTarget.destroy();
-      depthRenderTarget.destroy();
-      device.destroy();
-      device.checkForLeaks();
+      this.destroyCanvas(canvas);
     });
 
     this.#texturePool.destroy();
@@ -157,5 +165,15 @@ export class SetupDevice extends System {
     );
 
     return [renderTarget, depthRenderTarget];
+  }
+
+  private destroyCanvas(canvas: Entity) {
+    const { device, renderTarget, depthRenderTarget, renderCache } =
+      canvas.read(GPUResource);
+    renderCache.destroy();
+    renderTarget.destroy();
+    depthRenderTarget.destroy();
+    device.destroy();
+    device.checkForLeaks();
   }
 }
