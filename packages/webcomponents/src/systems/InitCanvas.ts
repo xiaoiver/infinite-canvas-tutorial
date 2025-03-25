@@ -54,6 +54,10 @@ export class InitCanvasSystem extends System {
     if (pendingCanvases.length) {
       pendingCanvases.forEach(({ container, canvas, camera }) => {
         const api = new API(container, this.commands);
+
+        // @ts-ignore
+        container.api = api;
+
         api.createCanvas(canvas);
         api.createCamera(camera);
 

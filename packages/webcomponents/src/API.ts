@@ -11,7 +11,7 @@ import {
   serializedNodesToEntities,
   Transform,
 } from '@infinite-canvas-tutorial/ecs';
-import { LitElement } from 'lit';
+import { type LitElement } from 'lit';
 import { Event } from './event';
 import { Container } from './components';
 
@@ -71,6 +71,14 @@ export class API {
       width,
       height,
     });
+
+    this.element.dispatchEvent(
+      new CustomEvent(Event.RESIZED, {
+        detail: { width, height },
+        bubbles: true,
+        composed: true,
+      }),
+    );
   }
 
   setPen(pen: Pen) {
@@ -128,5 +136,16 @@ export class API {
     });
 
     this.commands.execute();
+
+    this.element.dispatchEvent(
+      new CustomEvent(Event.NODES_UPDATED, {
+        detail: {
+          nodes,
+        },
+        bubbles: true,
+        composed: true,
+        cancelable: true,
+      }),
+    );
   }
 }

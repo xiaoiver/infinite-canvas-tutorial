@@ -14,7 +14,7 @@ import {
   AppState,
   Task as TaskEnum,
   appStateContext,
-  elementsContext,
+  nodesContext,
 } from '../context';
 import { Event } from '../event';
 import { API } from '../API';
@@ -104,11 +104,12 @@ export class InfiniteCanvas extends LitElement {
   };
 
   @property({ type: Array })
-  elements: SerializedNode[] = [];
+  nodes: SerializedNode[] = [];
 
   #appStateProvider = new ContextProvider(this, { context: appStateContext });
-  #elementsProvider = new ContextProvider(this, { context: elementsContext });
-  #api: API;
+  #nodesProvider = new ContextProvider(this, { context: nodesContext });
+
+  api: API;
 
   private resizeObserver: ResizeObserver;
 
@@ -125,7 +126,7 @@ export class InfiniteCanvas extends LitElement {
     super.disconnectedCallback();
     this.resizeObserver?.unobserve(this);
 
-    this.#api?.destroy();
+    this.api?.destroy();
   }
 
   private handleResize(entries: ResizeObserverEntry[]) {
@@ -137,13 +138,7 @@ export class InfiniteCanvas extends LitElement {
       $canvas.width = width * dpr;
       $canvas.height = (height - TOP_NAVBAR_HEIGHT) * dpr;
 
-      this.dispatchEvent(
-        new CustomEvent(Event.RESIZED, {
-          detail: { width, height: height - TOP_NAVBAR_HEIGHT },
-          bubbles: true,
-          composed: true,
-        }),
-      );
+      this.api.resizeCanvas(width, height - TOP_NAVBAR_HEIGHT);
     }
   }
 
@@ -154,7 +149,11 @@ export class InfiniteCanvas extends LitElement {
       }
 
       this.#appStateProvider.setValue(this.appState);
-      this.#elementsProvider.setValue(this.elements);
+      this.#nodesProvider.setValue(this.nodes);
+
+      /**
+       * Update context values
+       */
 
       this.addEventListener(Event.ZOOM_CHANGED, (e: CustomEvent) => {
         this.#appStateProvider.setValue({
@@ -184,6 +183,10 @@ export class InfiniteCanvas extends LitElement {
             selected: e.detail.selected,
           },
         });
+      });
+
+      this.addEventListener(Event.NODES_UPDATED, (e: CustomEvent) => {
+        this.#nodesProvider.setValue(e.detail.nodes);
       });
 
       const $canvas = document.createElement('canvas');

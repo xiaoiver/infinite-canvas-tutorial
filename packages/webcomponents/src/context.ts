@@ -26,6 +26,4 @@ export interface AppState {
 
 export const appStateContext = createContext<AppState>(Symbol('appAtate'));
 
-export const elementsContext = createContext<SerializedNode[]>(
-  Symbol('elements'),
-);
+export const nodesContext = createContext<SerializedNode[]>(Symbol('nodes'));

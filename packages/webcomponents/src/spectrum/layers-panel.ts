@@ -1,13 +1,13 @@
 import { html, css, LitElement } from 'lit';
-import { customElement } from 'lit/decorators.js';
-import { appStateContext, elementsContext, Task } from '../context';
-import { AppState } from '../context';
 import { consume } from '@lit/context';
+import { map } from 'lit/directives/map.js';
+import { customElement } from 'lit/decorators.js';
+import { SerializedNode } from '@infinite-canvas-tutorial/ecs';
+import { appStateContext, nodesContext, Task } from '../context';
+import { AppState } from '../context';
+import { Event } from '../event';
 
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-close.js';
-import { Event } from '../event';
-import { SerializedNode } from '@infinite-canvas-tutorial/ecs';
-
 @customElement('ic-spectrum-layers-panel')
 export class LayersPanel extends LitElement {
   static styles = css`
@@ -32,13 +32,19 @@ export class LayersPanel extends LitElement {
       justify-content: space-between;
       margin: 0;
     }
+
+    .layers-container {
+      height: 300px;
+      overflow: hidden;
+      overflow-y: auto;
+    }
   `;
 
   @consume({ context: appStateContext, subscribe: true })
   appState: AppState;
 
-  @consume({ context: elementsContext, subscribe: true })
-  elements: SerializedNode[];
+  @consume({ context: nodesContext, subscribe: true })
+  nodes: SerializedNode[];
 
   private handleClose() {
     this.dispatchEvent(
@@ -64,6 +70,16 @@ export class LayersPanel extends LitElement {
               <sp-icon-close slot="icon"></sp-icon-close>
             </sp-action-button>
           </h4>
+          <div class="layers-container">
+            ${map(this.nodes, (node) => {
+              // TODO: hierarchy
+              // TODO: virtual scroll for better performance
+              return html`<ic-spectrum-layers-panel-item
+                .node=${node}
+                draggable
+              ></ic-spectrum-layers-panel-item>`;
+            })}
+          </div>
         </section>`
       : null;
   }

@@ -4,12 +4,11 @@ import {
   DefaultPlugins,
   svgElementsToSerializedNodes,
 } from '@infinite-canvas-tutorial/ecs';
-import { Event, UIPlugin, API } from '@infinite-canvas-tutorial/webcomponents';
 import { ref, onMounted, onUnmounted } from 'vue';
 
 const wrapper = ref < HTMLElement | null > (null);
-let api: API | undefined;
-let onReady: ((api: CustomEvent<API>) => void) | undefined;
+let api: any | undefined;
+let onReady: ((api: CustomEvent<any>) => void) | undefined;
 
 onMounted(async () => {
   const canvas = wrapper.value;
@@ -17,7 +16,8 @@ onMounted(async () => {
     return;
   }
 
-  import('@infinite-canvas-tutorial/webcomponents/spectrum');
+  const { Event, UIPlugin } = await import('@infinite-canvas-tutorial/webcomponents');
+  await import('@infinite-canvas-tutorial/webcomponents/spectrum');
 
   const res = await fetch('/maslow-hierarchy.svg');
   const svg = await res.text();
@@ -55,7 +55,7 @@ onUnmounted(async () => {
   }
 
   if (onReady) {
-    canvas.removeEventListener(Event.READY, onReady);
+    // canvas.removeEventListener(Event.READY, onReady);
   }
 
   api?.destroy();

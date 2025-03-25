@@ -2,13 +2,13 @@ import {
   Pen,
   RasterScreenshotRequest,
   Screenshot,
+  SerializedNode,
   VectorScreenshotRequest,
 } from '@infinite-canvas-tutorial/ecs';
 import { Task } from './context';
 import { API } from './API';
 
 export enum Event {
-  INIT_CANVAS = 'ic-init-canvas',
   READY = 'ic-ready',
   DESTROY = 'ic-destroy',
   RESIZED = 'ic-resized',
@@ -20,6 +20,8 @@ export enum Event {
   SCREENSHOT_DOWNLOADED = 'ic-screenshot-downloaded',
   PEN_CHANGED = 'ic-pen-changed',
   TASK_CHANGED = 'ic-task-changed',
+  NODES_UPDATED = 'ic-nodes-updated',
+  VISIBILITY_CHANGED = 'ic-visibility-changed',
 }
 
 declare global {
@@ -36,5 +38,7 @@ declare global {
       RasterScreenshotRequest | VectorScreenshotRequest
     >;
     [Event.SCREENSHOT_DOWNLOADED]: CustomEvent<Screenshot>;
+    [Event.NODES_UPDATED]: CustomEvent<{ nodes: SerializedNode[] }>;
+    [Event.VISIBILITY_CHANGED]: CustomEvent<{ visible: boolean }>;
   }
 }

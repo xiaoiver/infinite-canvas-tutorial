@@ -36,7 +36,7 @@ export interface BaseSerializeNode<
   /**
    * Refer SVG attributes
    */
-  attributes: Partial<Attributes & TransformAttributes>;
+  attributes: Partial<Attributes & TransformAttributes & VisibilityAttributes>;
 }
 
 export type SerializedTransform = {
@@ -69,6 +69,10 @@ export type SerializedTransform = {
 
 export interface TransformAttributes {
   transform: SerializedTransform;
+}
+
+export interface VisibilityAttributes {
+  visible: boolean;
 }
 
 export interface FillAttributes {
