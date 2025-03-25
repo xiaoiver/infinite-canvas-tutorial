@@ -13,6 +13,7 @@ import {
 import {
   AppState,
   Task as TaskEnum,
+  apiContext,
   appStateContext,
   nodesContext,
 } from '../context';
@@ -101,6 +102,9 @@ export class InfiniteCanvas extends LitElement {
       all: [TaskEnum.SHOW_LAYERS_PANEL, TaskEnum.SHOW_PROPERTIES_PANEL],
       selected: [],
     },
+    layers: {
+      selected: [],
+    },
   };
 
   @property({ type: Array })
@@ -108,8 +112,9 @@ export class InfiniteCanvas extends LitElement {
 
   #appStateProvider = new ContextProvider(this, { context: appStateContext });
   #nodesProvider = new ContextProvider(this, { context: nodesContext });
+  #apiProvider = new ContextProvider(this, { context: apiContext });
 
-  api: API;
+  #api: API;
 
   private resizeObserver: ResizeObserver;
 
@@ -126,7 +131,7 @@ export class InfiniteCanvas extends LitElement {
     super.disconnectedCallback();
     this.resizeObserver?.unobserve(this);
 
-    this.api?.destroy();
+    this.#api?.destroy();
   }
 
   private handleResize(entries: ResizeObserverEntry[]) {
@@ -138,7 +143,7 @@ export class InfiniteCanvas extends LitElement {
       $canvas.width = width * dpr;
       $canvas.height = (height - TOP_NAVBAR_HEIGHT) * dpr;
 
-      this.api.resizeCanvas(width, height - TOP_NAVBAR_HEIGHT);
+      this.#api.resizeCanvas(width, height - TOP_NAVBAR_HEIGHT);
     }
   }
 
@@ -154,6 +159,9 @@ export class InfiniteCanvas extends LitElement {
       /**
        * Update context values
        */
+      this.addEventListener(Event.READY, (e: CustomEvent) => {
+        this.#apiProvider.setValue(e.detail);
+      });
 
       this.addEventListener(Event.ZOOM_CHANGED, (e: CustomEvent) => {
         this.#appStateProvider.setValue({
@@ -187,6 +195,16 @@ export class InfiniteCanvas extends LitElement {
 
       this.addEventListener(Event.NODES_UPDATED, (e: CustomEvent) => {
         this.#nodesProvider.setValue(e.detail.nodes);
+      });
+
+      this.addEventListener(Event.SELECTED_NODES_CHANGED, (e: CustomEvent) => {
+        this.#appStateProvider.setValue({
+          ...this.#appStateProvider.value,
+          layers: {
+            ...this.#appStateProvider.value.layers,
+            selected: e.detail.selected,
+          },
+        });
       });
 
       const $canvas = document.createElement('canvas');

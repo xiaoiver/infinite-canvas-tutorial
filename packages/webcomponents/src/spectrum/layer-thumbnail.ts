@@ -34,6 +34,9 @@ export class LayerThumbnail extends LitElement {
   @query('canvas')
   canvas: HTMLCanvasElement;
 
+  @property({ type: Boolean })
+  selected = false;
+
   firstUpdated() {
     const { type, attributes } = this.node;
     if (type === 'text') {
@@ -91,7 +94,7 @@ export class LayerThumbnail extends LitElement {
   }
 
   render() {
-    return html`<sp-thumbnail size="1000">
+    return html`<sp-thumbnail size="1000" ?focused=${this.selected}>
       ${when(
         this.node.type === 'text',
         () => html`<sp-icon-text></sp-icon-text>`,

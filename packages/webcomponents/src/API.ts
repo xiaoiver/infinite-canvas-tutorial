@@ -109,6 +109,19 @@ export class API {
   }
 
   /**
+   * Select nodes.
+   */
+  selectNodes(nodeIds: SerializedNode['id'][]) {
+    // TODO: select nodes in the canvas.
+
+    this.element.dispatchEvent(
+      new CustomEvent(Event.SELECTED_NODES_CHANGED, {
+        detail: { selected: nodeIds },
+      }),
+    );
+  }
+
+  /**
    * Update the scene with new nodes.
    * It will calculate diffs and only update the changed nodes.
    *

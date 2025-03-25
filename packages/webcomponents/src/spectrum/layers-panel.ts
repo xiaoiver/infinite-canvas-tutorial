@@ -3,11 +3,13 @@ import { consume } from '@lit/context';
 import { map } from 'lit/directives/map.js';
 import { customElement } from 'lit/decorators.js';
 import { SerializedNode } from '@infinite-canvas-tutorial/ecs';
-import { appStateContext, nodesContext, Task } from '../context';
+import { apiContext, appStateContext, nodesContext, Task } from '../context';
 import { AppState } from '../context';
 import { Event } from '../event';
+import { API } from '../API';
 
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-close.js';
+import '@spectrum-web-components/overlay/sp-overlay.js';
 @customElement('ic-spectrum-layers-panel')
 export class LayersPanel extends LitElement {
   static styles = css`
@@ -17,7 +19,6 @@ export class LayersPanel extends LitElement {
       background: var(--spectrum-gray-100);
       border-radius: var(--spectrum-corner-radius-200);
 
-      padding: var(--spectrum-global-dimension-size-100);
       margin: 4px;
 
       filter: drop-shadow(
@@ -27,6 +28,7 @@ export class LayersPanel extends LitElement {
     }
 
     h4 {
+      padding: var(--spectrum-global-dimension-size-100);
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -46,6 +48,9 @@ export class LayersPanel extends LitElement {
   @consume({ context: nodesContext, subscribe: true })
   nodes: SerializedNode[];
 
+  @consume({ context: apiContext, subscribe: true })
+  api: API;
+
   private handleClose() {
     this.dispatchEvent(
       new CustomEvent(Event.TASK_CHANGED, {
@@ -61,8 +66,14 @@ export class LayersPanel extends LitElement {
     );
   }
 
+  private handleSelect(id: SerializedNode['id']) {
+    this.api.selectNodes([id]);
+  }
+
   render() {
-    return this.appState.taskbar.selected.includes(Task.SHOW_LAYERS_PANEL)
+    const { layers, taskbar } = this.appState;
+
+    return taskbar.selected.includes(Task.SHOW_LAYERS_PANEL)
       ? html`<section>
           <h4>
             Layers
@@ -77,6 +88,8 @@ export class LayersPanel extends LitElement {
               return html`<ic-spectrum-layers-panel-item
                 .node=${node}
                 draggable
+                @click=${() => this.handleSelect(node.id)}
+                ?selected=${layers.selected.includes(node.id)}
               ></ic-spectrum-layers-panel-item>`;
             })}
           </div>
