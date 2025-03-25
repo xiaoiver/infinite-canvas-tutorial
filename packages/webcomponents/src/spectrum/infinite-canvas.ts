@@ -3,28 +3,11 @@ import { Task } from '@lit/task';
 import { ContextProvider } from '@lit/context';
 import { customElement, property } from 'lit/decorators.js';
 import {
-  Camera,
   Canvas,
-  Children,
-  Circle,
-  Commands,
-  Cursor,
-  Ellipse,
-  FillSolid,
-  Parent,
-  Path,
+  ComputedCamera,
   Pen,
-  Polyline,
-  PreStartUp,
-  Rect,
-  Renderable,
   SerializedNode,
-  Stroke,
-  system,
-  System,
-  Text,
   ThemeMode,
-  Transform,
 } from '@infinite-canvas-tutorial/ecs';
 
 import {
@@ -34,8 +17,6 @@ import {
   elementsContext,
 } from '../context';
 import { Event } from '../event';
-import { ZoomLevelSystem } from '../systems';
-import { Container } from '../components';
 import { API } from '../API';
 import { checkWebGPUSupport } from '../utils';
 
@@ -44,10 +25,16 @@ import '@spectrum-web-components/theme/src/themes.js';
 import '@spectrum-web-components/alert-banner/sp-alert-banner.js';
 import '@spectrum-web-components/progress-circle/sp-progress-circle.js';
 
-let initCanvasSystemCounter = 0;
-const initCanvasSystemClasses = [];
-
 const TOP_NAVBAR_HEIGHT = 48;
+
+/**
+ * Since the canvas is created in the system, we need to store them here for later use.
+ */
+export const pendingCanvases: {
+  container: LitElement;
+  canvas: Partial<Canvas>;
+  camera: Partial<ComputedCamera>;
+}[] = [];
 
 @customElement('ic-spectrum-canvas')
 export class InfiniteCanvas extends LitElement {
@@ -169,8 +156,6 @@ export class InfiniteCanvas extends LitElement {
       this.#appStateProvider.setValue(this.appState);
       this.#elementsProvider.setValue(this.elements);
 
-      const { width, height } = this.getBoundingClientRect();
-
       this.addEventListener(Event.ZOOM_CHANGED, (e: CustomEvent) => {
         this.#appStateProvider.setValue({
           ...this.#appStateProvider.value,
@@ -205,91 +190,25 @@ export class InfiniteCanvas extends LitElement {
       $canvas.style.width = '100%';
       $canvas.style.height = 'calc(100% - 48px)';
 
+      const { width, height } = this.getBoundingClientRect();
       const {
         camera: { zoom },
       } = this.appState;
-      // eslint-disable-next-line @typescript-eslint/no-this-alias
-      const self = this;
 
-      class InitCanvasSystem extends System {
-        private readonly commands = new Commands(this);
-
-        constructor() {
-          super();
-          this.query(
-            (q) =>
-              q.using(
-                Container,
-                Canvas,
-                Camera,
-                Cursor,
-                Transform,
-                Parent,
-                Children,
-                Renderable,
-                FillSolid,
-                Stroke,
-                Circle,
-                Ellipse,
-                Rect,
-                Polyline,
-                Path,
-                Text,
-              ).write,
-          );
-        }
-
-        initialize(): void {
-          self.#api = new API(self, this.commands);
-          self.#api.createCanvas({
-            element: $canvas,
-            width,
-            height: height - TOP_NAVBAR_HEIGHT, // TODO: remove hardcoded top navbar height
-            devicePixelRatio: window.devicePixelRatio,
-            renderer,
-            shaderCompilerPath,
-          });
-
-          self.#api.createCamera({
-            zoom,
-          });
-
-          this.commands.execute();
-
-          self.dispatchEvent(
-            new CustomEvent(Event.READY, { detail: self.#api }),
-          );
-
-          self.addEventListener(Event.RESIZED, (e) => {
-            const { width, height } = e.detail;
-            self.#api.resizeCanvas(width, height);
-          });
-
-          self.addEventListener(Event.PEN_CHANGED, (e) => {
-            const { selected } = e.detail;
-            self.#api.setPen(selected[0]);
-          });
-        }
-      }
-
-      Object.defineProperty(InitCanvasSystem, 'name', {
-        value: `InitCanvasSystem${initCanvasSystemCounter++}`,
+      pendingCanvases.push({
+        container: this,
+        canvas: {
+          element: $canvas,
+          width,
+          height: height - TOP_NAVBAR_HEIGHT,
+          devicePixelRatio: window.devicePixelRatio,
+          renderer,
+          shaderCompilerPath,
+        },
+        camera: {
+          zoom,
+        },
       });
-
-      if (initCanvasSystemClasses.length > 0) {
-        system((s) =>
-          s
-            .before(PreStartUp)
-            .beforeWritersOf(Canvas)
-            .after(...initCanvasSystemClasses),
-        )(InitCanvasSystem);
-      } else {
-        system((s) =>
-          s.after(PreStartUp).before(ZoomLevelSystem).beforeWritersOf(Canvas),
-        )(InitCanvasSystem);
-      }
-
-      initCanvasSystemClasses.push(InitCanvasSystem);
 
       return $canvas;
     },

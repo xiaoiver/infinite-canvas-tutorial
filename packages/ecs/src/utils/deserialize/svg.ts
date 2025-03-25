@@ -142,6 +142,8 @@ export function svgElementsToSerializedNodes(
       defsChildren,
       node.id,
     ).filter(Boolean);
+
+    id += children.length;
     nodes.push(...children);
   }
 

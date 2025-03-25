@@ -54,6 +54,7 @@ export class EventWriter extends System {
     });
 
     this.canvases.removed.forEach((entity) => {
+      this.accessRecentlyDeletedData();
       const canvas = entity.read(Canvas);
       const { element } = canvas;
 

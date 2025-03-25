@@ -8,6 +8,7 @@ import { Task } from './context';
 import { API } from './API';
 
 export enum Event {
+  INIT_CANVAS = 'ic-init-canvas',
   READY = 'ic-ready',
   DESTROY = 'ic-destroy',
   RESIZED = 'ic-resized',

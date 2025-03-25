@@ -63,6 +63,11 @@ cd packages/site
 pnpm run dev
 ```
 
+If you want to use it in your own project, you can refer to:
+
+-   [@infinite-canvas-tutorial/ecs]
+-   [@infinite-canvas-tutorial/webcomponents]
+
 ## Lesson 1 - Initialize canvas [🔗](https://infinitecanvas.cc/guide/lesson-001)
 
 -   A hardware abstraction layer based on WebGL1/2 and WebGPU.
@@ -263,3 +268,5 @@ pnpm run dev
 [My free course in Gumroad]: https://pyqiverson.gumroad.com/l/infinitecanvas?a=734684947
 [Becsy]: https://lastolivegames.github.io/becsy/
 [Spectrum]: https://opensource.adobe.com/spectrum-web-components
+[@infinite-canvas-tutorial/ecs]: https://www.npmjs.com/package/@infinite-canvas-tutorial/ecs
+[@infinite-canvas-tutorial/webcomponents]: https://www.npmjs.com/package/@infinite-canvas-tutorial/webcomponents

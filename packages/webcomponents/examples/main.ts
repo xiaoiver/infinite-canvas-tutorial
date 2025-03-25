@@ -19,12 +19,8 @@ const nodes = svgElementsToSerializedNodes(
 const canvas = document.querySelector<HTMLElement>('#canvas1')!;
 canvas.addEventListener(Event.READY, (e) => {
   const api = e.detail;
-  console.log(api);
-
-  // setTimeout(() => {
   api.updateNodes(nodes);
   api.setCursor('grabbing');
-  // }, 1000);
 });
 
 const app = new App().addPlugins(...DefaultPlugins, UIPlugin);

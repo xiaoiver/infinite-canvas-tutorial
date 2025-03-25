@@ -134,6 +134,7 @@ export class SetupDevice extends System {
     });
 
     this.canvases.removed.forEach((canvas) => {
+      this.accessRecentlyDeletedData();
       this.destroyCanvas(canvas);
     });
   }

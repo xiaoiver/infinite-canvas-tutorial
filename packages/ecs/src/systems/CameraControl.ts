@@ -45,6 +45,11 @@ export class CameraControl extends System {
   execute() {
     this.cameras.current.forEach((entity) => {
       const camera = entity.read(Camera);
+
+      if (!camera.canvas) {
+        return;
+      }
+
       const canvas = camera.canvas.hold();
       const { pen } = canvas.read(Canvas);
 

@@ -22,6 +22,11 @@ export class ComputeCamera extends System {
   execute(): void {
     this.cameras.addedOrChanged.forEach((entity) => {
       const camera = entity.read(Camera);
+
+      if (!camera.canvas) {
+        return;
+      }
+
       const { width, height } = camera.canvas.read(Canvas);
 
       this.projection(entity, width, height);

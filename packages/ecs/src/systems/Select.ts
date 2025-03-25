@@ -50,7 +50,13 @@ export class Select extends System {
     // this.cursor.value = 'default';
 
     this.cameras.current.forEach((entity) => {
-      const canvas = entity.read(Camera).canvas.read(Canvas);
+      const camera = entity.read(Camera);
+
+      if (!camera.canvas) {
+        return;
+      }
+
+      const canvas = camera.canvas.read(Canvas);
 
       if (canvas.pen !== Pen.SELECT) {
         // Hide selection brush

@@ -83,6 +83,10 @@ export class API {
    * @see https://docs.excalidraw.com/docs/@excalidraw/excalidraw/api/props/excalidraw-api#setcursor
    */
   setCursor(cursor: string) {
+    if (!this.#canvasEntity.has(Cursor)) {
+      this.#canvasEntity.add(Cursor);
+    }
+
     Object.assign(this.#canvasEntity.write(Cursor), {
       value: cursor,
     });
@@ -98,13 +102,24 @@ export class API {
 
   /**
    * Update the scene with new nodes.
+   * It will calculate diffs and only update the changed nodes.
+   *
    * @see https://docs.excalidraw.com/docs/@excalidraw/excalidraw/api/props/excalidraw-api#updatescene
    */
   updateNodes(nodes: SerializedNode[]) {
-    const camera = this.#canvasEntity.read(Canvas).cameras[0];
+    const { cameras } = this.#canvasEntity.read(Canvas);
+    if (cameras.length === 0) {
+      throw new Error('No camera found');
+    }
+
+    // TODO: Support multiple cameras.
+    const camera = cameras[0];
     const cameraEntityCommands = this.commands.entity(camera);
 
+    // TODO: Calculate diffs and only update the changed nodes.
     const entities = serializedNodesToEntities(nodes, this.commands);
+
+    this.commands.execute();
 
     entities.forEach((entity) => {
       if (!entity.has(Children)) {

@@ -64,6 +64,11 @@ cd packages/site
 pnpm run dev
 ```
 
+如果想在自己的项目中使用，可以参考：
+
+-   [@infinite-canvas-tutorial/ecs]
+-   [@infinite-canvas-tutorial/webcomponents]
+
 ## 课程 1 - 初始化画布 [🔗](https://infinitecanvas.cc/zh/guide/lesson-001)
 
 -   基于 WebGL1/2 和 WebGPU 的硬件抽象层
@@ -265,3 +270,5 @@ pnpm run dev
 [我在 Gumroad 上的免费课程]: https://pyqiverson.gumroad.com/l/infinitecanvas?a=734684947
 [Becsy]: https://lastolivegames.github.io/becsy/
 [Spectrum]: https://opensource.adobe.com/spectrum-web-components
+[@infinite-canvas-tutorial/ecs]: https://www.npmjs.com/package/@infinite-canvas-tutorial/ecs
+[@infinite-canvas-tutorial/webcomponents]: https://www.npmjs.com/package/@infinite-canvas-tutorial/webcomponents
