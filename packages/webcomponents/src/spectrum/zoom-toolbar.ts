@@ -4,13 +4,6 @@ import { customElement } from 'lit/decorators.js';
 import { Event } from '../event';
 import { AppState, appStateContext } from '../context';
 
-import '@spectrum-web-components/action-menu/sp-action-menu.js';
-import '@spectrum-web-components/menu/sp-menu-item.js';
-import '@spectrum-web-components/menu/sp-menu-divider.js';
-import '@spectrum-web-components/icon/sp-icon.js';
-import '@spectrum-web-components/tooltip/sp-tooltip.js';
-import '@spectrum-web-components/icons-workflow/icons/sp-icon-chevron-down.js';
-
 const ZOOM_STEPS = [
   0.02, 0.05, 0.1, 0.15, 0.2, 0.33, 0.5, 0.75, 1, 1.25, 1.5, 2, 2.5, 3, 4,
 ];
@@ -165,7 +158,7 @@ export class ZoomToolbar extends LitElement {
 
   render() {
     return html`
-      <sp-action-menu size="m" label="Zoom level" forcePopover>
+      <sp-action-menu size="m" label="Zoom level">
         <sp-tooltip slot="tooltip" self-managed placement="bottom">
           Zoom level
         </sp-tooltip>

@@ -40,6 +40,7 @@ import {
   Stroke,
   Text,
   Theme,
+  Visibility,
   Wireframe,
 } from '../components';
 import { paddingMat3 } from '../utils';
@@ -54,6 +55,10 @@ export class MeshPipeline extends System {
       q.addedOrChanged.and.removed
         .with(Renderable)
         .withAny(Circle, Ellipse, Rect, Polyline, Path, Text).trackWrites,
+  );
+
+  private visibilities = this.query(
+    (q) => q.addedOrChanged.with(Visibility).trackWrites,
   );
 
   // private styles = this.query(
@@ -215,9 +220,13 @@ export class MeshPipeline extends System {
     if (this.pendingRenderables[camera.__id]) {
       this.pendingRenderables[camera.__id].add.forEach((entity) => {
         batchManager.add(entity);
+
+        console.log('add', entity.__id);
       });
       this.pendingRenderables[camera.__id].remove.forEach((entity) => {
         batchManager.remove(entity);
+
+        console.log('remove', entity.__id);
       });
       delete this.pendingRenderables[camera.__id];
     }
@@ -268,6 +277,28 @@ export class MeshPipeline extends System {
     this.renderables.removed.forEach((entity) => {
       const camera = this.getSceneRoot(entity);
       this.pendingRenderables[camera.__id].remove.push(entity);
+    });
+
+    this.visibilities.addedOrChanged.forEach((entity) => {
+      const visibility = entity.read(Visibility);
+      if (!entity.has(Renderable)) {
+        return;
+      }
+
+      const camera = this.getSceneRoot(entity);
+
+      if (!this.pendingRenderables[camera.__id]) {
+        this.pendingRenderables[camera.__id] = {
+          add: [],
+          remove: [],
+        };
+      }
+
+      if (visibility.value === 'visible') {
+        this.pendingRenderables[camera.__id].add.push(entity);
+      } else {
+        this.pendingRenderables[camera.__id].remove.push(entity);
+      }
     });
   }
 

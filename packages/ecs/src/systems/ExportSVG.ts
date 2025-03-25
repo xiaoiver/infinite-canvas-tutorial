@@ -60,6 +60,8 @@ export class ExportSVG extends System {
       (q) =>
         q
           .using(
+            Theme,
+            Grid,
             Camera,
             Parent,
             Children,

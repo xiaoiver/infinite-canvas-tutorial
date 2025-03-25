@@ -43,6 +43,7 @@ declare global {
     [Event.VISIBILITY_CHANGED]: CustomEvent<{ visible: boolean }>;
     [Event.SELECTED_NODES_CHANGED]: CustomEvent<{
       selected: SerializedNode['id'][];
+      preserveSelection: boolean;
     }>;
   }
 }

@@ -6,11 +6,6 @@ import { Pen } from '@infinite-canvas-tutorial/ecs';
 import { AppState, appStateContext } from '../context';
 import { Event } from '../event';
 
-import '@spectrum-web-components/action-group/sp-action-group.js';
-import '@spectrum-web-components/icons-workflow/icons/sp-icon-hand.js';
-import '@spectrum-web-components/icons-workflow/icons/sp-icon-select.js';
-import '@spectrum-web-components/icons-workflow/icons/sp-icon-shapes.js';
-
 const PenMap = {
   [Pen.HAND]: {
     icon: html`<sp-icon-hand slot="icon"></sp-icon-hand>`,

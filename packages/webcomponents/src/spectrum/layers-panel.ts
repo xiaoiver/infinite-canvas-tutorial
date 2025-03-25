@@ -7,9 +7,6 @@ import { apiContext, appStateContext, nodesContext, Task } from '../context';
 import { AppState } from '../context';
 import { Event } from '../event';
 import { API } from '../API';
-
-import '@spectrum-web-components/icons-workflow/icons/sp-icon-close.js';
-import '@spectrum-web-components/overlay/sp-overlay.js';
 @customElement('ic-spectrum-layers-panel')
 export class LayersPanel extends LitElement {
   static styles = css`
@@ -66,8 +63,8 @@ export class LayersPanel extends LitElement {
     );
   }
 
-  private handleSelect(id: SerializedNode['id']) {
-    this.api.selectNodes([id]);
+  private handleSelect(e: MouseEvent, id: SerializedNode['id']) {
+    this.api.selectNodes([id], e.shiftKey);
   }
 
   render() {
@@ -88,7 +85,7 @@ export class LayersPanel extends LitElement {
               return html`<ic-spectrum-layers-panel-item
                 .node=${node}
                 draggable
-                @click=${() => this.handleSelect(node.id)}
+                @click=${(e) => this.handleSelect(e, node.id)}
                 ?selected=${layers.selected.includes(node.id)}
               ></ic-spectrum-layers-panel-item>`;
             })}

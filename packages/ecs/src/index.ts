@@ -11,7 +11,7 @@ import {
 } from './plugins';
 
 export * from './App';
-export * from './commands/Commands';
+export * from './commands';
 export * from './components';
 export * from './plugins';
 export * from './systems';

@@ -16,11 +16,11 @@ import {
   System,
   Text,
   Transform,
+  Visibility,
 } from '@infinite-canvas-tutorial/ecs';
 import { Container } from '../components';
 import { Event } from '../event';
-import { API } from '../API';
-import { pendingCanvases } from '../spectrum/infinite-canvas';
+import { API, pendingCanvases } from '../API';
 
 export class InitCanvasSystem extends System {
   private readonly commands = new Commands(this);
@@ -38,6 +38,7 @@ export class InitCanvasSystem extends System {
           Parent,
           Children,
           Renderable,
+          Visibility,
           FillSolid,
           Stroke,
           Circle,

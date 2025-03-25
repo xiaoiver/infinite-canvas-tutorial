@@ -24,6 +24,7 @@ import {
   FillGradient,
   Stroke,
   Opacity,
+  Visibility,
 } from '../../components';
 import { serializeTransform } from './transform';
 
@@ -172,6 +173,11 @@ export function entityToSerializedNodes(entity: Entity): SerializedNode[] {
   if (entity.has(Transform)) {
     attributes.transform = serializeTransform(entity.read(Transform));
   }
+
+  // serialize visibility
+  attributes.visibility = entity.has(Visibility)
+    ? entity.read(Visibility).value
+    : 'visible';
 
   // serialize children
   const nodes: SerializedNode[] = [

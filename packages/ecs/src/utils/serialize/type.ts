@@ -8,6 +8,7 @@ import {
   Rect,
   Stroke,
   Text,
+  Visibility,
 } from '../../components';
 
 /**
@@ -72,7 +73,7 @@ export interface TransformAttributes {
 }
 
 export interface VisibilityAttributes {
-  visible: boolean;
+  visibility: Visibility['value'];
 }
 
 export interface FillAttributes {

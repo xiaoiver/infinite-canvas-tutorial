@@ -4,8 +4,6 @@ import { when } from 'lit/directives/when.js';
 import { query } from 'lit/decorators/query.js';
 import { SerializedNode } from '@infinite-canvas-tutorial/ecs';
 
-import '@spectrum-web-components/textfield/sp-textfield.js';
-
 @customElement('ic-spectrum-layer-name')
 export class LayerName extends LitElement {
   static styles = css`
@@ -16,6 +14,13 @@ export class LayerName extends LitElement {
 
     sp-textfield {
       width: 100%;
+    }
+
+    span {
+      display: -webkit-box;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 2;
+      overflow: hidden;
     }
   `;
 
@@ -41,6 +46,12 @@ export class LayerName extends LitElement {
   }
 
   render() {
+    const { id, type } = this.node;
+    let name = `Layer ${id}`;
+    if (type === 'text') {
+      name = this.node.attributes.content;
+    }
+
     return html`
       ${when(
         this.editing,
@@ -49,10 +60,7 @@ export class LayerName extends LitElement {
           size="s"
           @blur=${this.handleBlur}
         ></sp-textfield>`,
-        () =>
-          html`<span @dblclick=${this.handleDoubleClick}
-            >Layer ${this.node.id}</span
-          >`,
+        () => html`<span @dblclick=${this.handleDoubleClick}>${name}</span>`,
       )}
     `;
   }

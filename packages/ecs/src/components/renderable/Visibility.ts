@@ -7,9 +7,9 @@ import { field, Type } from '@lastolivegames/becsy';
 
 export class Visibility {
   @field({ type: Type.staticString(['inherited', 'hidden', 'visible']) })
-  declare visibility: 'inherited' | 'hidden' | 'visible';
+  declare value: 'inherited' | 'hidden' | 'visible';
 
-  constructor(visibility: 'inherited' | 'hidden' | 'visible' = 'inherited') {
-    this.visibility = visibility;
+  constructor(value: 'inherited' | 'hidden' | 'visible' = 'inherited') {
+    this.value = value;
   }
 }

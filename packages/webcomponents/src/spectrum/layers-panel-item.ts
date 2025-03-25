@@ -1,11 +1,10 @@
 import { html, css, LitElement } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
+import { when } from 'lit/directives/when.js';
+import { consume } from '@lit/context';
 import { SerializedNode } from '@infinite-canvas-tutorial/ecs';
-import { Event } from '../event';
-
-import '@spectrum-web-components/icons-workflow/icons/sp-icon-visibility.js';
-import '@spectrum-web-components/icons-workflow/icons/sp-icon-visibility-off.js';
-import '@spectrum-web-components/icons-workflow/icons/sp-icon-properties.js';
+import { API } from '../API';
+import { apiContext } from '../context';
 
 @customElement('ic-spectrum-layers-panel-item')
 export class LayersPanelItem extends LitElement {
@@ -49,23 +48,25 @@ export class LayersPanelItem extends LitElement {
   @property({ type: Boolean })
   selected = false;
 
+  @consume({ context: apiContext, subscribe: true })
+  api: API;
+
   private handleToggleVisibility() {
-    this.dispatchEvent(
-      new CustomEvent(Event.VISIBILITY_CHANGED, {
-        detail: {
-          // visible: !this.node.visible,
-        },
-        bubbles: true,
-        composed: true,
-        cancelable: true,
-      }),
-    );
+    this.api.toggleVisibility(this.node.id);
   }
 
   render() {
+    const isVisible = this.node.attributes.visibility === 'visible';
     return html`<span>
         <sp-action-button quiet size="s" @click=${this.handleToggleVisibility}>
-          <sp-icon-visibility slot="icon"></sp-icon-visibility>
+          ${when(
+            isVisible,
+            () => html`<sp-icon-visibility slot="icon"></sp-icon-visibility>`,
+            () =>
+              html`<sp-icon-visibility-off
+                slot="icon"
+              ></sp-icon-visibility-off>`,
+          )}
           <sp-tooltip self-managed placement="left"> Hide layer </sp-tooltip>
         </sp-action-button>
         <ic-spectrum-layer-thumbnail

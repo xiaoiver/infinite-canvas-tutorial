@@ -1,12 +1,8 @@
 import { html, css, LitElement } from 'lit';
 import { customElement } from 'lit/decorators.js';
+import { consume } from '@lit/context';
 import { appStateContext, Task } from '../context';
 import { AppState } from '../context';
-import { consume } from '@lit/context';
-
-import '@spectrum-web-components/accordion/sp-accordion.js';
-import '@spectrum-web-components/accordion/sp-accordion-item.js';
-import '@spectrum-web-components/icons-workflow/icons/sp-icon-close.js';
 import { Event } from '../event';
 
 @customElement('ic-spectrum-properties-panel')

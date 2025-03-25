@@ -1,3 +1,4 @@
+import { Visibility } from '../../components';
 import {
   PathSerializedNode,
   PolylineSerializedNode,
@@ -127,6 +128,10 @@ export function svgElementsToSerializedNodes(
       // @ts-ignore
       delete attributes.points;
     }
+
+    // @see https://developer.mozilla.org/en-US/docs/Web/SVG/Reference/Attribute/visibility
+    const visibility = element.getAttribute('visibility') || 'visible';
+    attributes.visibility = visibility as Visibility['value'];
 
     const node = {
       id,

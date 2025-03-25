@@ -14,15 +14,24 @@ import {
   Stroke,
   Text,
   Transform,
+  Visibility,
 } from '../..';
-import { FillAttributes, SerializedNode, StrokeAttributes } from '../serialize';
+import {
+  FillAttributes,
+  SerializedNode,
+  StrokeAttributes,
+  VisibilityAttributes,
+} from '../serialize';
 import { deserializePoints } from './points';
 import { EntityCommands } from '../../commands/EntityCommands';
 
 export function serializedNodesToEntities(
   nodes: SerializedNode[],
   commands: Commands,
-): Entity[] {
+): {
+  entities: Entity[];
+  idEntityMap: Map<number, EntityCommands>;
+} {
   const vertices = nodes.map((node) => node.id);
   const edges = nodes
     .filter((node) => !isNil(node.parentId))
@@ -144,6 +153,9 @@ export function serializedNodesToEntities(
       );
     }
 
+    const { visibility } = attributes as VisibilityAttributes;
+    entity.insert(new Visibility(visibility));
+
     if (parentId) {
       idEntityMap.get(parentId)?.appendChild(entity);
     }
@@ -151,5 +163,5 @@ export function serializedNodesToEntities(
     entities.push(entity.id().hold());
   }
 
-  return entities;
+  return { entities, idEntityMap };
 }

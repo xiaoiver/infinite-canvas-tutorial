@@ -100,16 +100,6 @@ export class BatchManager {
     private readonly texturePool: TexturePool,
   ) {}
 
-  // execute(): void {
-  //   this.renderables.addedOrChanged.forEach((entity) => {
-  //     this.add(entity);
-  //   });
-
-  //   this.renderables.removed.forEach((entity) => {
-  //     this.remove(entity);
-  //   });
-  // }
-
   private collectDrawcallCtors(shape: Entity) {
     return getDrawcallCtors(shape)
       .map((DrawcallCtor) => {

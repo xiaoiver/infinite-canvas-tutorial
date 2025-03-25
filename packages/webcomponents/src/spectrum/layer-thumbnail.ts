@@ -4,9 +4,6 @@ import { query } from 'lit/decorators/query.js';
 import { when } from 'lit/directives/when.js';
 import { SerializedNode } from '@infinite-canvas-tutorial/ecs';
 
-import '@spectrum-web-components/thumbnail/sp-thumbnail.js';
-import '@spectrum-web-components/icons-workflow/icons/sp-icon-text.js';
-
 @customElement('ic-spectrum-layer-thumbnail')
 export class LayerThumbnail extends LitElement {
   static styles = css`

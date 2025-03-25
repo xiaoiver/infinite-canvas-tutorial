@@ -8,8 +8,6 @@ import {
 } from '@infinite-canvas-tutorial/ecs';
 import { AppState, appStateContext } from '../context';
 import { Event } from '../event';
-
-import '@spectrum-web-components/icons-workflow/icons/sp-icon-show-menu.js';
 @customElement('ic-spectrum-top-navbar')
 export class TopNavbar extends LitElement {
   static styles = css`

@@ -10,10 +10,21 @@ import {
   SerializedNode,
   serializedNodesToEntities,
   Transform,
+  Visibility,
+  EntityCommands,
 } from '@infinite-canvas-tutorial/ecs';
 import { type LitElement } from 'lit';
 import { Event } from './event';
 import { Container } from './components';
+
+/**
+ * Since the canvas is created in the system, we need to store them here for later use.
+ */
+export const pendingCanvases: {
+  container: LitElement;
+  canvas: Partial<Canvas>;
+  camera: Partial<ComputedCamera>;
+}[] = [];
 
 /**
  * Expose the API to the outside world.
@@ -22,6 +33,7 @@ import { Container } from './components';
  */
 export class API {
   #canvasEntity: Entity;
+  #idEntityMap: Map<number, EntityCommands>;
 
   constructor(
     private readonly element: LitElement,
@@ -108,15 +120,34 @@ export class API {
     this.element.dispatchEvent(new CustomEvent(Event.DESTROY));
   }
 
+  toggleVisibility(nodeId: SerializedNode['id']) {
+    const entity = this.#idEntityMap.get(nodeId).id();
+
+    const visibility = entity.write(Visibility);
+
+    visibility.value = visibility.value === 'visible' ? 'hidden' : 'visible';
+
+    // this.element.dispatchEvent(
+    //   new CustomEvent(Event.VISIBILITY_CHANGED, {
+    //     detail: {
+    //       // visible: !this.node.visible,
+    //     },
+    //     bubbles: true,
+    //     composed: true,
+    //     cancelable: true,
+    //   }),
+    // );
+  }
+
   /**
    * Select nodes.
    */
-  selectNodes(nodeIds: SerializedNode['id'][]) {
+  selectNodes(nodeIds: SerializedNode['id'][], preserveSelection = false) {
     // TODO: select nodes in the canvas.
 
     this.element.dispatchEvent(
       new CustomEvent(Event.SELECTED_NODES_CHANGED, {
-        detail: { selected: nodeIds },
+        detail: { selected: nodeIds, preserveSelection },
       }),
     );
   }
@@ -138,11 +169,16 @@ export class API {
     const cameraEntityCommands = this.commands.entity(camera);
 
     // TODO: Calculate diffs and only update the changed nodes.
-    const entities = serializedNodesToEntities(nodes, this.commands);
+    const { entities, idEntityMap } = serializedNodesToEntities(
+      nodes,
+      this.commands,
+    );
+    this.#idEntityMap = idEntityMap;
 
     this.commands.execute();
 
     entities.forEach((entity) => {
+      // Append roots to the camera.
       if (!entity.has(Children)) {
         cameraEntityCommands.appendChild(this.commands.entity(entity));
       }

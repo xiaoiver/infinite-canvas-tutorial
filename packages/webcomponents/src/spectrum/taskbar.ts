@@ -5,10 +5,6 @@ import { consume } from '@lit/context';
 import { AppState, appStateContext, Task } from '../context';
 import { Event } from '../event';
 
-import '@spectrum-web-components/action-group/sp-action-group.js';
-import '@spectrum-web-components/icons-workflow/icons/sp-icon-layers.js';
-import '@spectrum-web-components/icons-workflow/icons/sp-icon-properties.js';
-
 const TaskMap = {
   [Task.SHOW_LAYERS_PANEL]: {
     icon: html`<sp-icon-layers slot="icon"></sp-icon-layers>`,

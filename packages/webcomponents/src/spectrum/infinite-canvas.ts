@@ -2,13 +2,7 @@ import { html, css, LitElement, TemplateResult } from 'lit';
 import { Task } from '@lit/task';
 import { ContextProvider } from '@lit/context';
 import { customElement, property } from 'lit/decorators.js';
-import {
-  Canvas,
-  ComputedCamera,
-  Pen,
-  SerializedNode,
-  ThemeMode,
-} from '@infinite-canvas-tutorial/ecs';
+import { Pen, SerializedNode, ThemeMode } from '@infinite-canvas-tutorial/ecs';
 
 import {
   AppState,
@@ -18,24 +12,37 @@ import {
   nodesContext,
 } from '../context';
 import { Event } from '../event';
-import { API } from '../API';
 import { checkWebGPUSupport } from '../utils';
+import { pendingCanvases } from '../API';
 
 import '@spectrum-web-components/theme/sp-theme.js';
 import '@spectrum-web-components/theme/src/themes.js';
+// import '@spectrum-web-components/accordion/sp-accordion.js';
+// import '@spectrum-web-components/accordion/sp-accordion-item.js';
+import '@spectrum-web-components/action-group/sp-action-group.js';
+import '@spectrum-web-components/action-menu/sp-action-menu.js';
 import '@spectrum-web-components/alert-banner/sp-alert-banner.js';
+import '@spectrum-web-components/menu/sp-menu-item.js';
+import '@spectrum-web-components/menu/sp-menu-divider.js';
 import '@spectrum-web-components/progress-circle/sp-progress-circle.js';
+import '@spectrum-web-components/textfield/sp-textfield.js';
+import '@spectrum-web-components/thumbnail/sp-thumbnail.js';
+import '@spectrum-web-components/tooltip/sp-tooltip.js';
+
+import '@spectrum-web-components/icons-workflow/icons/sp-icon-text.js';
+import '@spectrum-web-components/icons-workflow/icons/sp-icon-visibility.js';
+import '@spectrum-web-components/icons-workflow/icons/sp-icon-visibility-off.js';
+import '@spectrum-web-components/icons-workflow/icons/sp-icon-properties.js';
+import '@spectrum-web-components/icons-workflow/icons/sp-icon-close.js';
+import '@spectrum-web-components/icons-workflow/icons/sp-icon-chevron-down.js';
+import '@spectrum-web-components/icons-workflow/icons/sp-icon-layers.js';
+import '@spectrum-web-components/icons-workflow/icons/sp-icon-properties.js';
+import '@spectrum-web-components/icons-workflow/icons/sp-icon-show-menu.js';
+import '@spectrum-web-components/icons-workflow/icons/sp-icon-hand.js';
+import '@spectrum-web-components/icons-workflow/icons/sp-icon-select.js';
+import '@spectrum-web-components/icons-workflow/icons/sp-icon-shapes.js';
 
 const TOP_NAVBAR_HEIGHT = 48;
-
-/**
- * Since the canvas is created in the system, we need to store them here for later use.
- */
-export const pendingCanvases: {
-  container: LitElement;
-  canvas: Partial<Canvas>;
-  camera: Partial<ComputedCamera>;
-}[] = [];
 
 @customElement('ic-spectrum-canvas')
 export class InfiniteCanvas extends LitElement {
@@ -114,8 +121,6 @@ export class InfiniteCanvas extends LitElement {
   #nodesProvider = new ContextProvider(this, { context: nodesContext });
   #apiProvider = new ContextProvider(this, { context: apiContext });
 
-  #api: API;
-
   private resizeObserver: ResizeObserver;
 
   connectedCallback() {
@@ -131,7 +136,7 @@ export class InfiniteCanvas extends LitElement {
     super.disconnectedCallback();
     this.resizeObserver?.unobserve(this);
 
-    this.#api?.destroy();
+    this.#apiProvider.value?.destroy();
   }
 
   private handleResize(entries: ResizeObserverEntry[]) {
@@ -143,7 +148,7 @@ export class InfiniteCanvas extends LitElement {
       $canvas.width = width * dpr;
       $canvas.height = (height - TOP_NAVBAR_HEIGHT) * dpr;
 
-      this.#api.resizeCanvas(width, height - TOP_NAVBAR_HEIGHT);
+      this.#apiProvider.value?.resizeCanvas(width, height - TOP_NAVBAR_HEIGHT);
     }
   }
 
@@ -198,11 +203,14 @@ export class InfiniteCanvas extends LitElement {
       });
 
       this.addEventListener(Event.SELECTED_NODES_CHANGED, (e: CustomEvent) => {
+        const { selected, preserveSelection } = e.detail;
         this.#appStateProvider.setValue({
           ...this.#appStateProvider.value,
           layers: {
             ...this.#appStateProvider.value.layers,
-            selected: e.detail.selected,
+            selected: preserveSelection
+              ? [...this.#appStateProvider.value.layers.selected, ...selected]
+              : selected,
           },
         });
       });
