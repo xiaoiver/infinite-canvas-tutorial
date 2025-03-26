@@ -12,22 +12,23 @@ import {
 } from '../../components';
 
 /**
+ * Refer SVG attribut
  * @see https://github.com/tldraw/tldraw/blob/main/packages/tlschema/src/shapes/TLBaseShape.ts
  * @see https://github.com/excalidraw/excalidraw/blob/master/packages/excalidraw/element/types.ts
  */
-export interface BaseSerializeNode<
-  Type extends string,
-  Attributes extends object,
-> {
+export interface BaseSerializeNode<Type extends string>
+  extends TransformAttributes,
+    VisibilityAttributes,
+    NameAttributes {
   /**
    * Unique identifier
    */
-  id: number;
+  id: string;
 
   /**
    * Parent unique identifier
    */
-  parentId?: number;
+  parentId?: string;
 
   /**
    * Shape type
@@ -35,9 +36,11 @@ export interface BaseSerializeNode<
   type: Type;
 
   /**
-   * Refer SVG attributes
+   * @see https://github.com/excalidraw/excalidraw/issues/1639
    */
-  attributes: Partial<Attributes & TransformAttributes & VisibilityAttributes>;
+  version?: number;
+  versionNonce?: number;
+  isDeleted?: boolean;
 }
 
 export type SerializedTransform = {
@@ -67,6 +70,10 @@ export type SerializedTransform = {
     y: number;
   };
 };
+
+export interface NameAttributes {
+  name: string;
+}
 
 export interface TransformAttributes {
   transform: SerializedTransform;
@@ -108,47 +115,44 @@ export interface DropShadowAttributes {
   dropShadowBlurRadius: DropShadow['blurRadius'];
 }
 
-export interface GSerializedNode extends BaseSerializeNode<'g', {}> {}
+export interface GSerializedNode extends BaseSerializeNode<'g'> {}
 
 export interface CircleSerializedNode
-  extends BaseSerializeNode<
-    'circle',
-    Pick<Circle, 'cx' | 'cy' | 'r'> & FillAttributes & StrokeAttributes
-  > {}
+  extends BaseSerializeNode<'circle'>,
+    Pick<Circle, 'cx' | 'cy' | 'r'>,
+    FillAttributes,
+    StrokeAttributes {}
 
 export interface EllipseSerializedNode
-  extends BaseSerializeNode<
-    'ellipse',
-    Pick<Ellipse, 'cx' | 'cy' | 'rx' | 'ry'> & FillAttributes & StrokeAttributes
-  > {}
+  extends BaseSerializeNode<'ellipse'>,
+    Pick<Ellipse, 'cx' | 'cy' | 'rx' | 'ry'>,
+    FillAttributes,
+    StrokeAttributes {}
 
 export interface RectSerializedNode
-  extends BaseSerializeNode<
-    'rect',
-    Pick<Rect, 'x' | 'y' | 'width' | 'height' | 'cornerRadius'> &
-      FillAttributes &
-      StrokeAttributes &
-      InnerShadowAttributes &
-      DropShadowAttributes
-  > {}
+  extends BaseSerializeNode<'rect'>,
+    Pick<Rect, 'x' | 'y' | 'width' | 'height' | 'cornerRadius'>,
+    FillAttributes,
+    StrokeAttributes,
+    InnerShadowAttributes,
+    DropShadowAttributes {}
 
+interface PolylineAttributes {
+  points: string;
+}
 export interface PolylineSerializedNode
-  extends BaseSerializeNode<
-    'polyline',
-    { points: string } & StrokeAttributes
-  > {}
+  extends BaseSerializeNode<'polyline'>,
+    PolylineAttributes,
+    StrokeAttributes {}
 
 export interface PathSerializedNode
-  extends BaseSerializeNode<
-    'path',
-    Pick<Path, 'd' | 'fillRule' | 'tessellationMethod'> &
-      FillAttributes &
-      StrokeAttributes
-  > {}
+  extends BaseSerializeNode<'path'>,
+    Pick<Path, 'd' | 'fillRule' | 'tessellationMethod'>,
+    FillAttributes,
+    StrokeAttributes {}
 
 export interface TextSerializedNode
-  extends BaseSerializeNode<
-    'text',
+  extends BaseSerializeNode<'text'>,
     Pick<
       Text,
       | 'x'
@@ -173,11 +177,10 @@ export interface TextSerializedNode
       | 'bitmapFontKerning'
       | 'physical'
       | 'esdt'
-    > &
-      FillAttributes &
-      StrokeAttributes &
-      DropShadowAttributes
-  > {}
+    >,
+    FillAttributes,
+    StrokeAttributes,
+    DropShadowAttributes {}
 
 export type SerializedNode =
   | GSerializedNode

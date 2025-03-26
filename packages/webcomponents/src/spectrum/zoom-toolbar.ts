@@ -1,8 +1,8 @@
 import { html, css, LitElement } from 'lit';
 import { consume } from '@lit/context';
 import { customElement } from 'lit/decorators.js';
-import { Event } from '../event';
-import { AppState, appStateContext } from '../context';
+import { apiContext, AppState, appStateContext } from '../context';
+import { API } from '../API';
 
 const ZOOM_STEPS = [
   0.02, 0.05, 0.1, 0.15, 0.2, 0.33, 0.5, 0.75, 1, 1.25, 1.5, 2, 2.5, 3, 4,
@@ -39,6 +39,9 @@ export class ZoomToolbar extends LitElement {
       text-align: center;
     }
   `;
+
+  @consume({ context: apiContext, subscribe: true })
+  api: API;
 
   @consume({ context: appStateContext, subscribe: true })
   appState: AppState;
@@ -95,65 +98,19 @@ export class ZoomToolbar extends LitElement {
   }
 
   private zoomOut() {
-    this.dispatchEvent(
-      new CustomEvent(Event.ZOOM_TO, {
-        detail: {
-          zoom: findZoomFloor(this.appState.camera.zoom),
-        },
-        bubbles: true,
-        composed: true,
-        cancelable: true,
-      }),
-    );
-
-    this.dispatchEvent(
-      new CustomEvent(Event.ZOOM_OUT, {
-        bubbles: true,
-        composed: true,
-        cancelable: true,
-      }),
-    );
+    this.api.zoomTo(findZoomFloor(this.api.appState.cameraZoom));
   }
 
   private zoomIn() {
-    this.dispatchEvent(
-      new CustomEvent(Event.ZOOM_TO, {
-        detail: {
-          zoom: findZoomCeil(this.appState.camera.zoom),
-        },
-        bubbles: true,
-        composed: true,
-        cancelable: true,
-      }),
-    );
-
-    this.dispatchEvent(
-      new CustomEvent(Event.ZOOM_IN, {
-        bubbles: true,
-        composed: true,
-        cancelable: true,
-      }),
-    );
+    this.api.zoomTo(findZoomCeil(this.api.appState.cameraZoom));
   }
 
   private zoomTo100() {
-    const event = new CustomEvent(Event.ZOOM_TO, {
-      detail: { zoom: 1 },
-      bubbles: true,
-      composed: true,
-      cancelable: true,
-    });
-    this.dispatchEvent(event);
+    this.api.zoomTo(1);
   }
 
   private zoomTo200() {
-    const event = new CustomEvent(Event.ZOOM_TO, {
-      detail: { zoom: 2 },
-      bubbles: true,
-      composed: true,
-      cancelable: true,
-    });
-    this.dispatchEvent(event);
+    this.api.zoomTo(2);
   }
 
   render() {
@@ -163,7 +120,7 @@ export class ZoomToolbar extends LitElement {
           Zoom level
         </sp-tooltip>
         <span slot="label">
-          <span>${Math.round(this.appState.camera.zoom * 100)}</span>%</span
+          <span>${Math.round(this.appState.cameraZoom * 100)}</span>%</span
         >
         <sp-icon-chevron-down slot="icon" size="l"></sp-icon-chevron-down>
         <sp-menu-item @click=${this.zoomIn}>

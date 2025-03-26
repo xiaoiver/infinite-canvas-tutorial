@@ -3,8 +3,8 @@ import { customElement } from 'lit/decorators.js';
 import { map } from 'lit/directives/map.js';
 import { consume } from '@lit/context';
 import { Pen } from '@infinite-canvas-tutorial/ecs';
-import { AppState, appStateContext } from '../context';
-import { Event } from '../event';
+import { apiContext, AppState, appStateContext } from '../context';
+import { API } from '../API';
 
 const PenMap = {
   [Pen.HAND]: {
@@ -44,28 +44,25 @@ export class Penbar extends LitElement {
   @consume({ context: appStateContext, subscribe: true })
   appState: AppState;
 
+  @consume({ context: apiContext, subscribe: true })
+  api: API;
+
   private handlePenChanged(e: CustomEvent) {
-    const event = new CustomEvent(Event.PEN_CHANGED, {
-      detail: { selected: (e.target as any).selected },
-      bubbles: true,
-      composed: true,
-      cancelable: true,
-    });
-    this.dispatchEvent(event);
+    this.api.setPen((e.target as any).selected[0]);
   }
 
   render() {
-    const { all, selected } = this.appState.penbar;
+    const { penbarAll, penbarSelected } = this.appState;
     return html`
       <sp-action-group
         vertical
         selects="single"
-        .selected=${selected}
+        .selected=${penbarSelected}
         @change=${this.handlePenChanged}
         emphasized
         quiet
       >
-        ${map(all, (pen) => {
+        ${map(penbarAll, (pen) => {
           const { icon, label } = PenMap[pen];
           return html`<sp-action-button value="${pen}">
             ${icon}

@@ -44,6 +44,7 @@ import {
   ZIndex,
   Visibility,
   GPUResource,
+  Name,
 } from '../components';
 
 export const RendererPlugin: Plugin = () => {
@@ -52,6 +53,7 @@ export const RendererPlugin: Plugin = () => {
    */
   component(GPUResource);
   component(Renderable);
+  component(Name);
   component(Wireframe);
   component(GlobalRenderOrder);
   component(ZIndex);

@@ -220,13 +220,9 @@ export class MeshPipeline extends System {
     if (this.pendingRenderables[camera.__id]) {
       this.pendingRenderables[camera.__id].add.forEach((entity) => {
         batchManager.add(entity);
-
-        console.log('add', entity.__id);
       });
       this.pendingRenderables[camera.__id].remove.forEach((entity) => {
         batchManager.remove(entity);
-
-        console.log('remove', entity.__id);
       });
       delete this.pendingRenderables[camera.__id];
     }

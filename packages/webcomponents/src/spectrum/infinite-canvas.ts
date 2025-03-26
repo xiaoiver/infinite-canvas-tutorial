@@ -2,13 +2,13 @@ import { html, css, LitElement, TemplateResult } from 'lit';
 import { Task } from '@lit/task';
 import { ContextProvider } from '@lit/context';
 import { customElement, property } from 'lit/decorators.js';
-import { Pen, SerializedNode, ThemeMode } from '@infinite-canvas-tutorial/ecs';
+import { SerializedNode } from '@infinite-canvas-tutorial/ecs';
 
 import {
   AppState,
-  Task as TaskEnum,
   apiContext,
   appStateContext,
+  getDefaultAppState,
   nodesContext,
 } from '../context';
 import { Event } from '../event';
@@ -41,6 +41,8 @@ import '@spectrum-web-components/icons-workflow/icons/sp-icon-show-menu.js';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-hand.js';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-select.js';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-shapes.js';
+import '@spectrum-web-components/icons-workflow/icons/sp-icon-undo.js';
+import '@spectrum-web-components/icons-workflow/icons/sp-icon-redo.js';
 
 const TOP_NAVBAR_HEIGHT = 48;
 
@@ -90,29 +92,7 @@ export class InfiniteCanvas extends LitElement {
     'https://unpkg.com/@antv/g-device-api@1.6.8/dist/pkg/glsl_wgsl_compiler_bg.wasm';
 
   @property({ type: Object, attribute: 'app-state' })
-  appState: AppState = {
-    theme: {
-      mode: ThemeMode.LIGHT,
-      colors: {
-        [ThemeMode.LIGHT]: {},
-        [ThemeMode.DARK]: {},
-      },
-    },
-    camera: {
-      zoom: 1,
-    },
-    penbar: {
-      all: [Pen.HAND, Pen.SELECT, Pen.DRAW_RECT],
-      selected: [Pen.HAND],
-    },
-    taskbar: {
-      all: [TaskEnum.SHOW_LAYERS_PANEL, TaskEnum.SHOW_PROPERTIES_PANEL],
-      selected: [],
-    },
-    layers: {
-      selected: [],
-    },
-  };
+  appState: AppState = getDefaultAppState();
 
   @property({ type: Array })
   nodes: SerializedNode[] = [];
@@ -159,59 +139,24 @@ export class InfiniteCanvas extends LitElement {
       }
 
       this.#appStateProvider.setValue(this.appState);
-      this.#nodesProvider.setValue(this.nodes);
 
       /**
        * Update context values
        */
       this.addEventListener(Event.READY, (e: CustomEvent) => {
+        e.detail.getAppState = () => this.#appStateProvider.value;
+        e.detail.setAppState = (appState: AppState) =>
+          this.#appStateProvider.setValue(appState);
+        e.detail.getNodes = () => this.#nodesProvider.value;
+        e.detail.setNodes = (nodes: SerializedNode[]) =>
+          this.#nodesProvider.setValue(nodes);
         this.#apiProvider.setValue(e.detail);
       });
 
       this.addEventListener(Event.ZOOM_CHANGED, (e: CustomEvent) => {
         this.#appStateProvider.setValue({
           ...this.#appStateProvider.value,
-          camera: {
-            ...this.#appStateProvider.value.camera,
-            zoom: e.detail.zoom,
-          },
-        });
-      });
-
-      this.addEventListener(Event.PEN_CHANGED, (e: CustomEvent) => {
-        this.#appStateProvider.setValue({
-          ...this.#appStateProvider.value,
-          penbar: {
-            ...this.#appStateProvider.value.penbar,
-            selected: e.detail.selected,
-          },
-        });
-      });
-
-      this.addEventListener(Event.TASK_CHANGED, (e: CustomEvent) => {
-        this.#appStateProvider.setValue({
-          ...this.#appStateProvider.value,
-          taskbar: {
-            ...this.#appStateProvider.value.taskbar,
-            selected: e.detail.selected,
-          },
-        });
-      });
-
-      this.addEventListener(Event.NODES_UPDATED, (e: CustomEvent) => {
-        this.#nodesProvider.setValue(e.detail.nodes);
-      });
-
-      this.addEventListener(Event.SELECTED_NODES_CHANGED, (e: CustomEvent) => {
-        const { selected, preserveSelection } = e.detail;
-        this.#appStateProvider.setValue({
-          ...this.#appStateProvider.value,
-          layers: {
-            ...this.#appStateProvider.value.layers,
-            selected: preserveSelection
-              ? [...this.#appStateProvider.value.layers.selected, ...selected]
-              : selected,
-          },
+          cameraZoom: e.detail.zoom,
         });
       });
 
@@ -220,9 +165,7 @@ export class InfiniteCanvas extends LitElement {
       $canvas.style.height = 'calc(100% - 48px)';
 
       const { width, height } = this.getBoundingClientRect();
-      const {
-        camera: { zoom },
-      } = this.appState;
+      const { cameraZoom } = this.appState;
 
       pendingCanvases.push({
         container: this,
@@ -235,7 +178,7 @@ export class InfiniteCanvas extends LitElement {
           shaderCompilerPath,
         },
         camera: {
-          zoom,
+          zoom: cameraZoom,
         },
       });
 

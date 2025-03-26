@@ -91,18 +91,15 @@ export function svgElementsToSerializedNodes(
 
       prev[attributeName] = value;
       return prev;
-    }, {} as SerializedNode['attributes']);
+    }, {} as SerializedNode);
 
     if (type === 'text') {
-      (attributes as TextSerializedNode['attributes']).content =
-        element.textContent;
+      (attributes as TextSerializedNode).content = element.textContent;
     } else if (type === 'line') {
       type = 'polyline';
       // @ts-ignore
       const { x1, y1, x2, y2 } = attributes;
-      (
-        attributes as PolylineSerializedNode['attributes']
-      ).points = `${x1},${y1} ${x2},${y2}`;
+      (attributes as PolylineSerializedNode).points = `${x1},${y1} ${x2},${y2}`;
       // @ts-ignore
       delete attributes.x1;
       // @ts-ignore
@@ -124,7 +121,7 @@ export function svgElementsToSerializedNodes(
         }
       });
       d += 'Z';
-      (attributes as PathSerializedNode['attributes']).d = d;
+      (attributes as PathSerializedNode).d = d;
       // @ts-ignore
       delete attributes.points;
     }
@@ -133,11 +130,16 @@ export function svgElementsToSerializedNodes(
     const visibility = element.getAttribute('visibility') || 'visible';
     attributes.visibility = visibility as Visibility['value'];
 
+    attributes.name =
+      element.getAttribute('name') ||
+      (type === 'text' && (attributes as TextSerializedNode).content) ||
+      `Layer ${id}`;
+
     const node = {
-      id,
-      parentId,
+      id: `${id}`,
+      parentId: parentId ? `${parentId}` : undefined,
       type,
-      attributes,
+      ...attributes,
     } as SerializedNode;
     nodes.push(node);
 
@@ -145,7 +147,7 @@ export function svgElementsToSerializedNodes(
       Array.from(element.children) as SVGElement[],
       ++id,
       defsChildren,
-      node.id,
+      Number(node.id),
     ).filter(Boolean);
 
     id += children.length;

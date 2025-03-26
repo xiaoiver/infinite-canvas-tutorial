@@ -40,6 +40,10 @@ export class LayersPanelItem extends LitElement {
         var(--spectrum-alias-background-color-hover-overlay)
       );
     }
+
+    :host([child]) > span {
+      padding-left: 24px;
+    }
   `;
 
   @property()
@@ -52,11 +56,13 @@ export class LayersPanelItem extends LitElement {
   api: API;
 
   private handleToggleVisibility() {
-    this.api.toggleVisibility(this.node.id);
+    this.api.updateNode(this.node, {
+      visibility: this.node.visibility === 'visible' ? 'hidden' : 'visible',
+    });
   }
 
   render() {
-    const isVisible = this.node.attributes.visibility === 'visible';
+    const isVisible = this.node.visibility === 'visible';
     return html`<span>
         <sp-action-button quiet size="s" @click=${this.handleToggleVisibility}>
           ${when(
@@ -76,9 +82,10 @@ export class LayersPanelItem extends LitElement {
       </span>
       <ic-spectrum-layer-name
         .node=${this.node}></ic-spectrum-layer-name>
-      <div class="layer-actions" style="visibility: ${
-        this.selected ? 'visible' : 'hidden'
-      };">
+      <div 
+        class="layer-actions" style="visibility: ${
+          this.selected ? 'visible' : 'hidden'
+        };">
         <sp-action-button quiet size="m">
           <sp-icon-properties slot="icon"></sp-icon-properties>
           <sp-tooltip self-managed placement="bottom">

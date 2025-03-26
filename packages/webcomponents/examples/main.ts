@@ -20,7 +20,6 @@ const canvas = document.querySelector<HTMLElement>('#canvas1')!;
 canvas.addEventListener(Event.READY, (e) => {
   const api = e.detail;
   api.updateNodes(nodes);
-  api.setCursor('grabbing');
 });
 
 const app = new App().addPlugins(...DefaultPlugins, UIPlugin);

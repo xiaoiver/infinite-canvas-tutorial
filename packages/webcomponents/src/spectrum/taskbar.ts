@@ -2,8 +2,8 @@ import { html, css, LitElement } from 'lit';
 import { customElement } from 'lit/decorators.js';
 import { map } from 'lit/directives/map.js';
 import { consume } from '@lit/context';
-import { AppState, appStateContext, Task } from '../context';
-import { Event } from '../event';
+import { apiContext, AppState, appStateContext, Task } from '../context';
+import { API } from '../API';
 
 const TaskMap = {
   [Task.SHOW_LAYERS_PANEL]: {
@@ -38,27 +38,24 @@ export class Taskbar extends LitElement {
   @consume({ context: appStateContext, subscribe: true })
   appState: AppState;
 
+  @consume({ context: apiContext, subscribe: true })
+  api: API;
+
   private handleTaskChanged(e: CustomEvent) {
-    const event = new CustomEvent(Event.TASK_CHANGED, {
-      detail: { selected: (e.target as any).selected },
-      bubbles: true,
-      composed: true,
-      cancelable: true,
-    });
-    this.dispatchEvent(event);
+    this.api.setTaskbars((e.target as any).selected);
   }
 
   render() {
-    const { all, selected } = this.appState.taskbar;
+    const { taskbarAll, taskbarSelected } = this.appState;
     return html`
       <sp-action-group
         vertical
         quiet
         selects="multiple"
-        .selected=${selected}
+        .selected=${taskbarSelected}
         @change=${this.handleTaskChanged}
       >
-        ${map(all, (task) => {
+        ${map(taskbarAll, (task) => {
           const { icon, label } = TaskMap[task];
           return html`<sp-action-button value="${task}">
             ${icon}

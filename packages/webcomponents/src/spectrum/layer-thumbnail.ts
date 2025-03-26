@@ -14,8 +14,6 @@ export class LayerThumbnail extends LitElement {
       display: block;
       width: 52px;
       height: 52px;
-      border: var(--spectrum-border-width-200) solid var(--spectrum-gray-50);
-      border-radius: var(--spectrum-corner-radius-300);
       box-sizing: border-box;
       overflow: hidden;
     }
@@ -35,7 +33,7 @@ export class LayerThumbnail extends LitElement {
   selected = false;
 
   firstUpdated() {
-    const { type, attributes } = this.node;
+    const { type } = this.node;
     if (type === 'text') {
       return;
     }
@@ -48,7 +46,7 @@ export class LayerThumbnail extends LitElement {
     context.scale(0.2, 0.2);
 
     if (type === 'rect') {
-      const { x, y, width, height, fill, stroke, strokeWidth } = attributes;
+      const { x, y, width, height, fill, stroke, strokeWidth } = this.node;
 
       context.fillStyle = fill;
       context.fillRect(x, y, width, height);
@@ -57,7 +55,7 @@ export class LayerThumbnail extends LitElement {
       context.lineWidth = strokeWidth;
       context.strokeRect(x, y, width, height);
     } else if (type === 'circle') {
-      const { cx, cy, r, fill, stroke, strokeWidth } = attributes;
+      const { cx, cy, r, fill, stroke, strokeWidth } = this.node;
 
       context.fillStyle = fill;
       context.beginPath();
@@ -68,7 +66,7 @@ export class LayerThumbnail extends LitElement {
       context.lineWidth = strokeWidth;
       context.stroke();
     } else if (type === 'ellipse') {
-      const { cx, cy, rx, ry, fill, stroke, strokeWidth } = attributes;
+      const { cx, cy, rx, ry, fill, stroke, strokeWidth } = this.node;
 
       context.fillStyle = fill;
       context.beginPath();
@@ -79,7 +77,7 @@ export class LayerThumbnail extends LitElement {
       context.lineWidth = strokeWidth;
       context.stroke();
     } else if (type === 'path') {
-      const { d, fill, stroke, strokeWidth } = attributes;
+      const { d, fill, stroke, strokeWidth } = this.node;
 
       context.fillStyle = fill;
       context.fill(new Path2D(d));

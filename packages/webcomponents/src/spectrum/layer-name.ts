@@ -1,8 +1,11 @@
 import { css, html, LitElement } from 'lit';
+import { consume } from '@lit/context';
 import { customElement, property, state } from 'lit/decorators.js';
 import { when } from 'lit/directives/when.js';
 import { query } from 'lit/decorators/query.js';
 import { SerializedNode } from '@infinite-canvas-tutorial/ecs';
+import { apiContext } from '../context';
+import { API } from '../API';
 
 @customElement('ic-spectrum-layer-name')
 export class LayerName extends LitElement {
@@ -14,9 +17,11 @@ export class LayerName extends LitElement {
 
     sp-textfield {
       width: 100%;
+      margin-top: 4px;
     }
 
     span {
+      width: 100%;
       display: -webkit-box;
       -webkit-box-orient: vertical;
       -webkit-line-clamp: 2;
@@ -33,6 +38,9 @@ export class LayerName extends LitElement {
   @query('sp-textfield')
   textfield: LitElement;
 
+  @consume({ context: apiContext, subscribe: true })
+  api: API;
+
   private handleDoubleClick() {
     this.editing = true;
 
@@ -41,24 +49,32 @@ export class LayerName extends LitElement {
     }, 0);
   }
 
+  private handleKeydown(event: KeyboardEvent) {
+    if (event.key === 'Enter') {
+      this.textfield.blur();
+    }
+  }
+
   private handleBlur() {
     this.editing = false;
+
+    this.api.updateNode(this.node, {
+      name: (this.textfield as any).value,
+    });
   }
 
   render() {
-    const { id, type } = this.node;
-    let name = `Layer ${id}`;
-    if (type === 'text') {
-      name = this.node.attributes.content;
-    }
+    const { name } = this.node;
 
     return html`
       ${when(
         this.editing,
         () => html`<sp-textfield
           quiet
-          size="s"
+          size="m"
           @blur=${this.handleBlur}
+          @keydown=${this.handleKeydown}
+          value=${name}
         ></sp-textfield>`,
         () => html`<span @dblclick=${this.handleDoubleClick}>${name}</span>`,
       )}

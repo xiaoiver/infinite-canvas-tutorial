@@ -13,6 +13,7 @@ import {
   FillSolid,
   Grid,
   InnerShadow,
+  Name,
   Opacity,
   Parent,
   Path,
@@ -24,6 +25,7 @@ import {
   Theme,
   Transform,
   VectorScreenshotRequest,
+  Visibility,
 } from '../components';
 import { DOMAdapter } from '../environment';
 import {
@@ -63,6 +65,7 @@ export class ExportSVG extends System {
             Theme,
             Grid,
             Camera,
+            Name,
             Parent,
             Children,
             Circle,
@@ -80,6 +83,7 @@ export class ExportSVG extends System {
             FillImage,
             DropShadow,
             InnerShadow,
+            Visibility,
           )
           .read.and.using(VectorScreenshotRequest, Screenshot).write,
     );

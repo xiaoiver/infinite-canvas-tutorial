@@ -19,6 +19,7 @@ export * from './environment';
 export {
   svgElementsToSerializedNodes,
   serializedNodesToEntities,
+  randomInteger,
   type SerializedNode,
 } from './utils';
 

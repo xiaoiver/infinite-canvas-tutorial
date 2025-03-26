@@ -25,6 +25,7 @@ import {
   Stroke,
   Opacity,
   Visibility,
+  Name,
 } from '../../components';
 import { serializeTransform } from './transform';
 
@@ -35,11 +36,11 @@ export function entityToSerializedNodes(entity: Entity): SerializedNode[] {
     : undefined;
 
   let type: SerializedNode['type'];
-  let attributes: SerializedNode['attributes'] = {};
+  let attributes: Partial<SerializedNode> = {};
   if (entity.has(Circle)) {
     type = 'circle';
     const { cx, cy, r } = entity.read(Circle);
-    Object.assign(attributes as CircleSerializedNode['attributes'], {
+    Object.assign(attributes as CircleSerializedNode, {
       cx,
       cy,
       r,
@@ -47,7 +48,7 @@ export function entityToSerializedNodes(entity: Entity): SerializedNode[] {
   } else if (entity.has(Ellipse)) {
     type = 'ellipse';
     const { cx, cy, rx, ry } = entity.read(Ellipse);
-    Object.assign(attributes as EllipseSerializedNode['attributes'], {
+    Object.assign(attributes as EllipseSerializedNode, {
       cx,
       cy,
       rx,
@@ -56,7 +57,7 @@ export function entityToSerializedNodes(entity: Entity): SerializedNode[] {
   } else if (entity.has(Rect)) {
     type = 'rect';
     const { x, y, width, height, cornerRadius } = entity.read(Rect);
-    Object.assign(attributes as RectSerializedNode['attributes'], {
+    Object.assign(attributes as RectSerializedNode, {
       x,
       y,
       width,
@@ -66,13 +67,13 @@ export function entityToSerializedNodes(entity: Entity): SerializedNode[] {
   } else if (entity.has(Polyline)) {
     type = 'polyline';
     const { points } = entity.read(Polyline);
-    Object.assign(attributes as PolylineSerializedNode['attributes'], {
+    Object.assign(attributes as PolylineSerializedNode, {
       points,
     });
   } else if (entity.has(Path)) {
     type = 'path';
     const { d, fillRule, tessellationMethod } = entity.read(Path);
-    Object.assign(attributes as PathSerializedNode['attributes'], {
+    Object.assign(attributes as PathSerializedNode, {
       d,
       fillRule,
       tessellationMethod,
@@ -103,7 +104,7 @@ export function entityToSerializedNodes(entity: Entity): SerializedNode[] {
       physical,
       esdt,
     } = entity.read(Text);
-    Object.assign(attributes as TextSerializedNode['attributes'], {
+    Object.assign(attributes as TextSerializedNode, {
       x,
       y,
       content,
@@ -162,7 +163,7 @@ export function entityToSerializedNodes(entity: Entity): SerializedNode[] {
 
   if (entity.has(Opacity)) {
     const { opacity, fillOpacity, strokeOpacity } = entity.read(Opacity);
-    Object.assign(attributes as CircleSerializedNode['attributes'], {
+    Object.assign(attributes as CircleSerializedNode, {
       opacity,
       fillOpacity,
       strokeOpacity,
@@ -174,6 +175,10 @@ export function entityToSerializedNodes(entity: Entity): SerializedNode[] {
     attributes.transform = serializeTransform(entity.read(Transform));
   }
 
+  if (entity.has(Name)) {
+    attributes.name = entity.read(Name).value;
+  }
+
   // serialize visibility
   attributes.visibility = entity.has(Visibility)
     ? entity.read(Visibility).value
@@ -182,11 +187,11 @@ export function entityToSerializedNodes(entity: Entity): SerializedNode[] {
   // serialize children
   const nodes: SerializedNode[] = [
     {
-      id,
-      parentId,
+      id: `${id}`,
+      parentId: parentId ? `${parentId}` : undefined,
       type,
-      attributes,
-    },
+      ...attributes,
+    } as SerializedNode,
   ];
 
   if (entity.has(Parent)) {

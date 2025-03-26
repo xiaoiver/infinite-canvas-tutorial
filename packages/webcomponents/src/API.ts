@@ -11,11 +11,21 @@ import {
   serializedNodesToEntities,
   Transform,
   Visibility,
+  Name,
   EntityCommands,
 } from '@infinite-canvas-tutorial/ecs';
 import { type LitElement } from 'lit';
 import { Event } from './event';
 import { Container } from './components';
+import {
+  AppStateChange,
+  ElementsChange,
+  History,
+  Store,
+  StoreIncrementEvent,
+} from './history';
+import { AppState, getDefaultAppState, Task } from './context';
+import { arrayToMap } from './utils';
 
 /**
  * Since the canvas is created in the system, we need to store them here for later use.
@@ -33,12 +43,32 @@ export const pendingCanvases: {
  */
 export class API {
   #canvasEntity: Entity;
-  #idEntityMap: Map<number, EntityCommands>;
+  #idEntityMap: Map<string, EntityCommands>;
+  #history = new History();
+  #store = new Store();
+
+  appState: AppState;
+  nodes: SerializedNode[];
+
+  /**
+   * Injected from the LitElement's context provider.
+   */
+  getAppState: () => AppState;
+  setAppState: (appState: AppState) => void;
+  getNodes: () => SerializedNode[];
+  setNodes: (nodes: SerializedNode[]) => void;
 
   constructor(
     private readonly element: LitElement,
     private readonly commands: Commands,
-  ) {}
+  ) {
+    this.appState = getDefaultAppState();
+
+    this.#store.onStoreIncrementEmitter.on(StoreIncrementEvent, (event) => {
+      debugger;
+      this.#history.record(event.elementsChange, event.appStateChange);
+    });
+  }
 
   /**
    * Create a new canvas.
@@ -78,6 +108,19 @@ export class API {
    */
   gotoLandmark() {}
 
+  /**
+   * ZoomLevel system will handle the zoom level.
+   */
+  zoomTo(zoom: number) {
+    this.element.dispatchEvent(
+      new CustomEvent(Event.ZOOM_TO, {
+        detail: {
+          zoom,
+        },
+      }),
+    );
+  }
+
   resizeCanvas(width: number, height: number) {
     Object.assign(this.#canvasEntity.write(Canvas), {
       width,
@@ -87,8 +130,6 @@ export class API {
     this.element.dispatchEvent(
       new CustomEvent(Event.RESIZED, {
         detail: { width, height },
-        bubbles: true,
-        composed: true,
       }),
     );
   }
@@ -97,6 +138,35 @@ export class API {
     Object.assign(this.#canvasEntity.write(Canvas), {
       pen,
     });
+
+    const prevAppState = this.getAppState();
+    this.setAppState({
+      ...prevAppState,
+      penbarSelected: [pen],
+    });
+
+    this.#store.shouldCaptureIncrement();
+    this.#store.commit(arrayToMap(this.getNodes()), this.getAppState());
+
+    this.element.dispatchEvent(
+      new CustomEvent(Event.PEN_CHANGED, {
+        detail: { selected: [pen] },
+      }),
+    );
+  }
+
+  setTaskbars(selected: Task[]) {
+    const prevAppState = this.getAppState();
+    this.setAppState({
+      ...prevAppState,
+      taskbarSelected: selected,
+    });
+
+    this.element.dispatchEvent(
+      new CustomEvent(Event.TASK_CHANGED, {
+        detail: { selected },
+      }),
+    );
   }
 
   /**
@@ -120,34 +190,65 @@ export class API {
     this.element.dispatchEvent(new CustomEvent(Event.DESTROY));
   }
 
-  toggleVisibility(nodeId: SerializedNode['id']) {
-    const entity = this.#idEntityMap.get(nodeId).id();
-
-    const visibility = entity.write(Visibility);
-
-    visibility.value = visibility.value === 'visible' ? 'hidden' : 'visible';
-
-    // this.element.dispatchEvent(
-    //   new CustomEvent(Event.VISIBILITY_CHANGED, {
-    //     detail: {
-    //       // visible: !this.node.visible,
-    //     },
-    //     bubbles: true,
-    //     composed: true,
-    //     cancelable: true,
-    //   }),
-    // );
-  }
-
   /**
    * Select nodes.
    */
-  selectNodes(nodeIds: SerializedNode['id'][], preserveSelection = false) {
+  selectNodes(selected: SerializedNode['id'][], preserveSelection = false) {
     // TODO: select nodes in the canvas.
+    const prevAppState = this.getAppState();
+
+    this.setAppState({
+      ...prevAppState,
+      layersSelected: preserveSelection
+        ? [...prevAppState.layersSelected, ...selected]
+        : selected,
+    });
 
     this.element.dispatchEvent(
       new CustomEvent(Event.SELECTED_NODES_CHANGED, {
-        detail: { selected: nodeIds, preserveSelection },
+        detail: { selected, preserveSelection },
+      }),
+    );
+  }
+
+  /**
+   * If diff is provided, no need to calculate diffs.
+   */
+  updateNode(node: SerializedNode, diff?: Partial<SerializedNode>) {
+    const entity = this.#idEntityMap.get(node.id).id();
+
+    let updated = node;
+    if (diff) {
+      const { name, visibility } = diff;
+
+      if (name) {
+        entity.write(Name).value = name;
+      }
+      if (visibility) {
+        entity.write(Visibility).value = visibility;
+      }
+
+      updated = {
+        ...node,
+        ...diff,
+      } as SerializedNode;
+    }
+
+    const nodes = this.getNodes();
+    const index = nodes.findIndex((n) => n.id === updated.id);
+    if (index !== -1) {
+      nodes[index] = updated;
+      this.setNodes(nodes);
+    }
+
+    this.#store.shouldCaptureIncrement();
+    this.#store.commit(arrayToMap(this.getNodes()), this.getAppState());
+
+    this.element.dispatchEvent(
+      new CustomEvent(Event.NODE_UPDATED, {
+        detail: {
+          node: updated,
+        },
       }),
     );
   }
@@ -159,6 +260,8 @@ export class API {
    * @see https://docs.excalidraw.com/docs/@excalidraw/excalidraw/api/props/excalidraw-api#updatescene
    */
   updateNodes(nodes: SerializedNode[]) {
+    this.nodes = nodes;
+
     const { cameras } = this.#canvasEntity.read(Canvas);
     if (cameras.length === 0) {
       throw new Error('No camera found');
@@ -185,16 +288,33 @@ export class API {
     });
 
     this.commands.execute();
+    this.setNodes(nodes);
+
+    this.#store.shouldUpdateSnapshot();
+    this.#store.commit(arrayToMap(this.getNodes()), this.getAppState());
 
     this.element.dispatchEvent(
       new CustomEvent(Event.NODES_UPDATED, {
         detail: {
           nodes,
         },
-        bubbles: true,
-        composed: true,
-        cancelable: true,
       }),
+    );
+  }
+
+  undo() {
+    this.#history.undo(
+      arrayToMap(this.getNodes()),
+      this.getAppState(),
+      this.#store.snapshot,
+    );
+  }
+
+  redo() {
+    this.#history.redo(
+      arrayToMap(this.getNodes()),
+      this.getAppState(),
+      this.#store.snapshot,
     );
   }
 }

@@ -56,22 +56,22 @@ export function serializeNodesToSVGElements(
 ): SVGElement[] {
   const elements: SVGElement[] = [];
 
-  const idSerializedNodeMap = new Map<number, SerializedNode>();
+  const idSerializedNodeMap = new Map<string, SerializedNode>();
   for (const node of nodes) {
     idSerializedNodeMap.set(node.id, node);
   }
 
-  const idSVGElementMap = new Map<number, SVGElement>();
+  const idSVGElementMap = new Map<string, SVGElement>();
 
   const vertices = nodes.map((node) => node.id);
   const edges = nodes
     .filter((node) => !isNil(node.parentId))
-    .map((node) => [node.parentId, node.id] as [number, number]);
+    .map((node) => [node.parentId, node.id] as [string, string]);
   const sorted = toposort.array(vertices, edges);
 
   for (const id of sorted) {
     const node = idSerializedNodeMap.get(id);
-    const { parentId, type, attributes } = node;
+    const { id: _, parentId, type, ...restAttributes } = node;
     const element = createSVGElement(type);
     element.id = `${id}`;
 
@@ -108,7 +108,7 @@ export function serializeNodesToSVGElements(
       leading,
       maxLines,
       ...rest
-    } = attributes as any;
+    } = restAttributes as any;
 
     Object.entries(rest).forEach(([key, value]) => {
       if (`${value}` !== '' && `${defaultValues[key]}` !== `${value}`) {
@@ -118,7 +118,7 @@ export function serializeNodesToSVGElements(
 
     // Handle negative size of rect.
     if (type === 'rect') {
-      const { width, height, x, y } = attributes;
+      const { width, height, x, y } = node;
       if (width < 0 || height < 0) {
         const x1 = x;
         const y1 = y;
@@ -157,7 +157,7 @@ export function serializeNodesToSVGElements(
     const hasFillGradient = false;
     const hasFillPattern = false;
     const isRough = false;
-    const visible = true;
+    // const visible = true;
     const hasChildren = edges.some(([parentId]) => parentId === id);
 
     /**
@@ -278,11 +278,11 @@ export function camelToKebabCase(str: string) {
  * ```
  */
 function exportInnerOrOuterStrokeAlignment(
-  node: SerializedNode,
+  attributes: SerializedNode,
   element: SVGElement,
   $g: SVGElement,
 ) {
-  const { type, attributes } = node;
+  const { type } = attributes;
   const { strokeWidth, strokeAlignment } = attributes as StrokeAttributes;
   const innerStrokeAlignment = strokeAlignment === 'inner';
   const halfStrokeWidth = strokeWidth / 2;
@@ -355,11 +355,11 @@ function exportInnerOrOuterStrokeAlignment(
  * ```
  */
 export function exportInnerShadow(
-  node: SerializedNode,
+  attributes: SerializedNode,
   element: SVGElement,
   $g: SVGElement,
 ) {
-  const { id, attributes } = node;
+  const { id } = attributes;
   const {
     innerShadowOffsetX,
     innerShadowOffsetY,
@@ -423,19 +423,19 @@ export function exportInnerShadow(
 }
 
 export function exportDropShadow(
-  node: SerializedNode,
+  attributes: SerializedNode,
   element: SVGElement,
   $g: SVGElement,
 ) {
-  const { id, attributes } = node as RectSerializedNode;
   const {
+    id,
     width,
     height,
     dropShadowBlurRadius,
     dropShadowColor,
     dropShadowOffsetX,
     dropShadowOffsetY,
-  } = attributes;
+  } = attributes as RectSerializedNode;
 
   const $defs = createSVGElement('defs');
   const $filter = createSVGElement('filter');
@@ -468,18 +468,16 @@ export function exportDropShadow(
  * use <text> and <tspan> to render text.
  * @see https://developer.mozilla.org/en-US/docs/Web/SVG/Element/text#example
  */
-export function exportText(node: SerializedNode, $g: SVGElement) {
+export function exportText(attributes: SerializedNode, $g: SVGElement) {
   const {
-    attributes: {
-      content,
-      fontFamily,
-      fontSize,
-      fontWeight,
-      fontStyle,
-      fontVariant,
-      fill,
-    },
-  } = node as TextSerializedNode;
+    content,
+    fontFamily,
+    fontSize,
+    fontWeight,
+    fontStyle,
+    fontVariant,
+    fill,
+  } = attributes as TextSerializedNode;
   $g.textContent = content;
 
   let styleCSSText = '';

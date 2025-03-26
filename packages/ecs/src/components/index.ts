@@ -7,6 +7,7 @@ export * from './Input';
 export * from './Cursor';
 export * from './Screenshot';
 export * from './GPUResource';
+export * from './Name';
 export * from './camera';
 export * from './transform';
 export * from './hierarchy';

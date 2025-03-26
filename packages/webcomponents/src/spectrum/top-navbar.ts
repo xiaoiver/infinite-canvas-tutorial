@@ -6,8 +6,9 @@ import {
   VectorScreenshotRequest,
   RasterScreenshotRequest,
 } from '@infinite-canvas-tutorial/ecs';
-import { AppState, appStateContext } from '../context';
+import { apiContext, AppState, appStateContext } from '../context';
 import { Event } from '../event';
+import { API } from '../API';
 @customElement('ic-spectrum-top-navbar')
 export class TopNavbar extends LitElement {
   static styles = css`
@@ -31,10 +32,25 @@ export class TopNavbar extends LitElement {
       padding: 0;
       line-height: normal;
     }
+
+    .actions {
+      display: flex;
+      align-items: center;
+      gap: var(--spectrum-global-dimension-size-100);
+    }
   `;
 
   @consume({ context: appStateContext, subscribe: true })
   appState: AppState;
+
+  @consume({ context: apiContext, subscribe: true })
+  api: API;
+
+  connectedCallback() {
+    super.connectedCallback();
+
+    // TODO: bind keyboard shortcuts
+  }
 
   private handleExport(event: CustomEvent) {
     const format = (event.target as any).value;
@@ -57,7 +73,22 @@ export class TopNavbar extends LitElement {
     );
   }
 
-  private handleEdit(event: CustomEvent) {}
+  private handleEdit(event: CustomEvent) {
+    const value = (event.target as any).value;
+    if (value === 'undo') {
+      this.handleUndo();
+    } else if (value === 'redo') {
+      this.handleRedo();
+    }
+  }
+
+  private handleUndo() {
+    this.api.undo();
+  }
+
+  private handleRedo() {
+    this.api.redo();
+  }
 
   render() {
     return html`
@@ -101,7 +132,17 @@ export class TopNavbar extends LitElement {
           </sp-menu>
         </sp-menu-item>
       </sp-action-menu>
-      <ic-spectrum-zoom-toolbar />
+      <div class="actions">
+        <sp-action-button quiet @click=${this.handleUndo}>
+          <sp-icon-undo slot="icon"></sp-icon-undo>
+          <sp-tooltip self-managed placement="bottom"> Undo </sp-tooltip>
+        </sp-action-button>
+        <sp-action-button quiet @click=${this.handleRedo}>
+          <sp-icon-redo slot="icon"></sp-icon-redo>
+          <sp-tooltip self-managed placement="bottom"> Redo </sp-tooltip>
+        </sp-action-button>
+        <ic-spectrum-zoom-toolbar />
+      </div>
     `;
   }
 }

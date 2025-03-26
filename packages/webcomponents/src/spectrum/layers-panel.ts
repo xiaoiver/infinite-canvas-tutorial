@@ -5,7 +5,6 @@ import { customElement } from 'lit/decorators.js';
 import { SerializedNode } from '@infinite-canvas-tutorial/ecs';
 import { apiContext, appStateContext, nodesContext, Task } from '../context';
 import { AppState } from '../context';
-import { Event } from '../event';
 import { API } from '../API';
 @customElement('ic-spectrum-layers-panel')
 export class LayersPanel extends LitElement {
@@ -49,17 +48,10 @@ export class LayersPanel extends LitElement {
   api: API;
 
   private handleClose() {
-    this.dispatchEvent(
-      new CustomEvent(Event.TASK_CHANGED, {
-        detail: {
-          selected: this.appState.taskbar.selected.filter(
-            (task) => task !== Task.SHOW_LAYERS_PANEL,
-          ),
-        },
-        bubbles: true,
-        composed: true,
-        cancelable: true,
-      }),
+    this.api.setTaskbars(
+      this.appState.taskbarSelected.filter(
+        (task) => task !== Task.SHOW_LAYERS_PANEL,
+      ),
     );
   }
 
@@ -68,9 +60,9 @@ export class LayersPanel extends LitElement {
   }
 
   render() {
-    const { layers, taskbar } = this.appState;
+    const { layersSelected, taskbarSelected } = this.appState;
 
-    return taskbar.selected.includes(Task.SHOW_LAYERS_PANEL)
+    return taskbarSelected.includes(Task.SHOW_LAYERS_PANEL)
       ? html`<section>
           <h4>
             Layers
@@ -85,8 +77,9 @@ export class LayersPanel extends LitElement {
               return html`<ic-spectrum-layers-panel-item
                 .node=${node}
                 draggable
-                @click=${(e) => this.handleSelect(e, node.id)}
-                ?selected=${layers.selected.includes(node.id)}
+                @click=${(e: MouseEvent) => this.handleSelect(e, node.id)}
+                ?selected=${layersSelected.includes(node.id)}
+                ?child=${!!node.parentId}
               ></ic-spectrum-layers-panel-item>`;
             })}
           </div>

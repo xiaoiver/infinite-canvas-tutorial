@@ -1,9 +1,8 @@
 import { html, css, LitElement } from 'lit';
 import { customElement } from 'lit/decorators.js';
 import { consume } from '@lit/context';
-import { appStateContext, Task } from '../context';
-import { AppState } from '../context';
-import { Event } from '../event';
+import { apiContext, appStateContext, Task, AppState } from '../context';
+import { API } from '../API';
 
 @customElement('ic-spectrum-properties-panel')
 export class PropertiesPanel extends LitElement {
@@ -34,23 +33,19 @@ export class PropertiesPanel extends LitElement {
   @consume({ context: appStateContext, subscribe: true })
   appState: AppState;
 
+  @consume({ context: apiContext, subscribe: true })
+  api: API;
+
   private handleClose() {
-    this.dispatchEvent(
-      new CustomEvent(Event.TASK_CHANGED, {
-        detail: {
-          selected: this.appState.taskbar.selected.filter(
-            (task) => task !== Task.SHOW_PROPERTIES_PANEL,
-          ),
-        },
-        bubbles: true,
-        composed: true,
-        cancelable: true,
-      }),
+    this.api.setTaskbars(
+      this.appState.taskbarSelected.filter(
+        (task) => task !== Task.SHOW_PROPERTIES_PANEL,
+      ),
     );
   }
 
   render() {
-    return this.appState.taskbar.selected.includes(Task.SHOW_PROPERTIES_PANEL)
+    return this.appState.taskbarSelected.includes(Task.SHOW_PROPERTIES_PANEL)
       ? html`<section>
           <h4>
             Properties
