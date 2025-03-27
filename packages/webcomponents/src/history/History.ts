@@ -1,3 +1,9 @@
+/**
+ * History is a class that manages the undo and redo stacks.
+ * @see https://github.com/excalidraw/excalidraw/blob/master/packages/excalidraw/history.ts
+ * @see https://docs.excalidraw.com/docs/@excalidraw/excalidraw/api/props/excalidraw-api#history
+ */
+
 import { AppState } from '../context';
 import { AppStateChange } from './AppStateChange';
 import { ElementsChange, SceneElementsMap } from './ElementsChange';
@@ -10,8 +16,8 @@ export class History {
   //   [HistoryChangedEvent]
   // >();
 
-  private readonly undoStack: HistoryStack = [];
-  private readonly redoStack: HistoryStack = [];
+  #undoStack: HistoryStack = [];
+  #redoStack: HistoryStack = [];
 
   private static pop(stack: HistoryStack): HistoryEntry | null {
     if (!stack.length) {
@@ -37,16 +43,16 @@ export class History {
   }
 
   get isUndoStackEmpty() {
-    return this.undoStack.length === 0;
+    return this.#undoStack.length === 0;
   }
 
   get isRedoStackEmpty() {
-    return this.redoStack.length === 0;
+    return this.#redoStack.length === 0;
   }
 
   clear() {
-    this.undoStack.length = 0;
-    this.redoStack.length = 0;
+    this.#undoStack.length = 0;
+    this.#redoStack.length = 0;
   }
 
   /**
@@ -57,13 +63,15 @@ export class History {
 
     if (!entry.isEmpty()) {
       // we have the latest changes, no need to `applyLatest`, which is done within `History.push`
-      this.undoStack.push(entry.inverse());
+      this.#undoStack.push(entry.inverse());
+
+      console.log(this.#undoStack);
 
       if (!entry.elementsChange.isEmpty()) {
         // don't reset redo stack on local appState changes,
         // as a simple click (unselect) could lead to losing all the redo entries
         // only reset on non empty elements changes!
-        this.redoStack.length = 0;
+        this.#redoStack.length = 0;
       }
 
       // this.onHistoryChangedEmitter.trigger(
@@ -81,8 +89,8 @@ export class History {
       elements,
       appState,
       snapshot,
-      () => History.pop(this.undoStack),
-      (entry: HistoryEntry) => History.push(this.redoStack, entry, elements),
+      () => History.pop(this.#undoStack),
+      (entry: HistoryEntry) => History.push(this.#redoStack, entry, elements),
     );
   }
 
@@ -95,8 +103,8 @@ export class History {
       elements,
       appState,
       snapshot,
-      () => History.pop(this.redoStack),
-      (entry: HistoryEntry) => History.push(this.undoStack, entry, elements),
+      () => History.pop(this.#redoStack),
+      (entry: HistoryEntry) => History.push(this.#undoStack, entry, elements),
     );
   }
 
@@ -152,21 +160,21 @@ export class HistoryEntry {
     public readonly elementsChange: ElementsChange,
   ) {}
 
-  public static create(
+  static create(
     appStateChange: AppStateChange,
     elementsChange: ElementsChange,
   ) {
     return new HistoryEntry(appStateChange, elementsChange);
   }
 
-  public inverse(): HistoryEntry {
+  inverse(): HistoryEntry {
     return new HistoryEntry(
       this.appStateChange.inverse(),
       this.elementsChange.inverse(),
     );
   }
 
-  public applyTo(
+  applyTo(
     elements: SceneElementsMap,
     appState: AppState,
     snapshot: Readonly<Snapshot>,
@@ -186,14 +194,14 @@ export class HistoryEntry {
   /**
    * Apply latest (remote) changes to the history entry, creates new instance of `HistoryEntry`.
    */
-  public applyLatestChanges(elements: SceneElementsMap): HistoryEntry {
+  applyLatestChanges(elements: SceneElementsMap): HistoryEntry {
     const updatedElementsChange =
       this.elementsChange.applyLatestChanges(elements);
 
     return HistoryEntry.create(this.appStateChange, updatedElementsChange);
   }
 
-  public isEmpty(): boolean {
+  isEmpty(): boolean {
     return this.appStateChange.isEmpty() && this.elementsChange.isEmpty();
   }
 }

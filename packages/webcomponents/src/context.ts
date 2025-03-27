@@ -4,6 +4,7 @@ import {
   Pen,
   Theme,
   ThemeMode,
+  CheckboardStyle,
 } from '@infinite-canvas-tutorial/ecs';
 import { API } from './API';
 
@@ -18,6 +19,7 @@ export enum Task {
  */
 export interface AppState {
   theme: Theme;
+  checkboardStyle: CheckboardStyle;
   cameraZoom: number;
   penbarAll: Pen[];
   penbarSelected: Pen[];
@@ -42,6 +44,7 @@ export const getDefaultAppState = () => {
         [ThemeMode.DARK]: {},
       },
     },
+    checkboardStyle: CheckboardStyle.GRID,
     cameraZoom: 1,
     penbarAll: [Pen.HAND, Pen.SELECT, Pen.DRAW_RECT],
     penbarSelected: [Pen.HAND],

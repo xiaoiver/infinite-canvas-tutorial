@@ -1,4 +1,5 @@
 import {
+  CheckboardStyle,
   Pen,
   RasterScreenshotRequest,
   Screenshot,
@@ -16,6 +17,7 @@ export enum Event {
   ZOOM_CHANGED = 'ic-zoom-changed',
   SCREENSHOT_REQUESTED = 'ic-screenshot-requested',
   SCREENSHOT_DOWNLOADED = 'ic-screenshot-downloaded',
+  CHECKBOARD_STYLE_CHANGED = 'ic-checkboard-style-changed',
   PEN_CHANGED = 'ic-pen-changed',
   TASK_CHANGED = 'ic-task-changed',
   NODES_UPDATED = 'ic-nodes-updated',
@@ -31,6 +33,9 @@ declare global {
     [Event.ZOOM_TO]: CustomEvent<{ zoom: number }>;
     [Event.ZOOM_CHANGED]: CustomEvent<{ zoom: number }>;
     [Event.PEN_CHANGED]: CustomEvent<{ selected: Pen[] }>;
+    [Event.CHECKBOARD_STYLE_CHANGED]: CustomEvent<{
+      checkboardStyle: CheckboardStyle;
+    }>;
     [Event.TASK_CHANGED]: CustomEvent<{ selected: Task[] }>;
     [Event.SCREENSHOT_REQUESTED]: CustomEvent<
       RasterScreenshotRequest | VectorScreenshotRequest

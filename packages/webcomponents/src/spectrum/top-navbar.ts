@@ -5,6 +5,7 @@ import {
   DataURLType,
   VectorScreenshotRequest,
   RasterScreenshotRequest,
+  CheckboardStyle,
 } from '@infinite-canvas-tutorial/ecs';
 import { apiContext, AppState, appStateContext } from '../context';
 import { Event } from '../event';
@@ -82,6 +83,15 @@ export class TopNavbar extends LitElement {
     }
   }
 
+  private handleConfigView(event: CustomEvent) {
+    const value = (event.target as any).value;
+    if (value === 'grid') {
+      this.api.setCheckboardStyle(CheckboardStyle.GRID);
+    } else {
+      this.api.setCheckboardStyle(CheckboardStyle.NONE);
+    }
+  }
+
   private handleUndo() {
     this.api.undo();
   }
@@ -100,11 +110,17 @@ export class TopNavbar extends LitElement {
         <sp-menu-item>
           Edit
           <sp-menu slot="submenu" @change=${this.handleEdit}>
-            <sp-menu-item value="undo">
+            <sp-menu-item
+              value="undo"
+              ?disabled=${this.api?.isUndoStackEmpty()}
+            >
               Undo
               <kbd slot="value">⌘Z</kbd>
             </sp-menu-item>
-            <sp-menu-item value="redo">
+            <sp-menu-item
+              value="redo"
+              ?disabled=${this.api?.isRedoStackEmpty()}
+            >
               Redo
               <kbd slot="value">⇧⌘Z</kbd>
             </sp-menu-item>
@@ -124,6 +140,20 @@ export class TopNavbar extends LitElement {
           </sp-menu>
         </sp-menu-item>
         <sp-menu-item>
+          View
+          <sp-menu
+            slot="submenu"
+            selects="multiple"
+            .selected=${this.appState.checkboardStyle === CheckboardStyle.GRID
+              ? ['grid']
+              : []}
+            @change=${this.handleConfigView}
+          >
+            <sp-menu-item value="grid"> Grid </sp-menu-item>
+          </sp-menu>
+        </sp-menu-item>
+        <sp-menu-divider></sp-menu-divider>
+        <sp-menu-item>
           Export as...
           <sp-menu slot="submenu" @change=${this.handleExport}>
             <sp-menu-item value="svg">SVG</sp-menu-item>
@@ -133,11 +163,19 @@ export class TopNavbar extends LitElement {
         </sp-menu-item>
       </sp-action-menu>
       <div class="actions">
-        <sp-action-button quiet @click=${this.handleUndo}>
+        <sp-action-button
+          quiet
+          @click=${this.handleUndo}
+          ?disabled=${this.api?.isUndoStackEmpty()}
+        >
           <sp-icon-undo slot="icon"></sp-icon-undo>
           <sp-tooltip self-managed placement="bottom"> Undo </sp-tooltip>
         </sp-action-button>
-        <sp-action-button quiet @click=${this.handleRedo}>
+        <sp-action-button
+          quiet
+          @click=${this.handleRedo}
+          ?disabled=${this.api?.isRedoStackEmpty()}
+        >
           <sp-icon-redo slot="icon"></sp-icon-redo>
           <sp-tooltip self-managed placement="bottom"> Redo </sp-tooltip>
         </sp-action-button>

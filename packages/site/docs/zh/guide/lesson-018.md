@@ -3,9 +3,20 @@ outline: deep
 publish: false
 ---
 
+<script setup>
+import Spectrum from '../../components/Spectrum.vue'
+</script>
+
 # 课程 18 - 使用 ECS 重构
 
-我决定在这个节点进行重构。目前我们使用 [TypeScript Mixins] 来实现组件，但这种基于继承的方式存在明显的问题，即层层嵌套的组件类难以维护：
+我决定在这个节点进行重构。从本节课开始，我们实现的功能将包含在以下两个 npm package 中：
+
+-   [@infinite-canvas-tutorial/ecs] 基于 [Becsy] 提供 ECS 实现，包含内置的插件、Component 和 System。
+-   [@infinite-canvas-tutorial/webcomponents] 基于 [Spectrum] 实现 UI，取代 [课程 7] 中使用的 Shoelace。不过不用担心，它们都是基于 Lit 实现的。
+
+<Spectrum />
+
+目前我们使用 [TypeScript Mixins] 来实现组件，但这种基于继承的方式存在明显的问题，即层层嵌套的组件类难以维护：
 
 ```ts
 // 目前的做法
@@ -25,11 +36,6 @@ const shape = world.spawn(Renderable, Sortable, Transformable);
 
 值得一提的是，A-Frame 是一个很有名的 Three.js 框架，它的声明式 ECS 用法令人印象深刻。
 而在游戏引擎中，ECS 使用的更广泛，例如 [ECS for Unity] 以及我们在实现中重点参考的 [Bevy ECS]。
-
-从本节课开始，我们将实现以下两个 npm package：
-
--   [@infinite-canvas-tutorial/ecs] 基于 [Becsy] 提供 ECS 实现
--   [@infinite-canvas-tutorial/webcomponents] 基于 [Spectrum] 实现 UI
 
 ## 什么是 ECS 架构 {#what-is-ecs}
 
@@ -219,7 +225,31 @@ child.add(Children, {
 parent.read(Parent).children; // [child]
 ```
 
+最后我们在插件中完成对这两个 Component 的注册：
+
+```ts
+import { component } from '@lastolivegames/becsy';
+
+export const HierarchyPlugin: Plugin = () => {
+    component(Parent);
+    component(Children);
+};
+```
+
 ### 计算 world transform {#calculate-world-transform}
+
+System 的 Query 语法有很好的自解释性。比如这里我们希望选取所有包含 `Transform` 和 `Parent` 的实体，当它们首次添加和发生变更时，计算并更新（子节点）的 `GlobalTransform`。
+
+```ts
+export class PropagateTransforms extends System {
+    queries = this.query(
+        (q) =>
+            q
+                .with(Transform, Parent)
+                .addedOrChanged.trackWrites.using(GlobalTransform).write,
+    );
+}
+```
 
 ## 响应事件 {#response-to-an-event}
 
@@ -284,3 +314,4 @@ Becsy 提供了 [coroutines] 来响应事件。
 [@infinite-canvas-tutorial/webcomponents]: https://www.npmjs.com/package/@infinite-canvas-tutorial/webcomponents
 [Spectrum]: https://opensource.adobe.com/spectrum-web-components
 [Attaching systems]: https://lastolivegames.github.io/becsy/guide/architecture/systems#attaching-systems
+[课程 7]: /zh/guide/lesson-007

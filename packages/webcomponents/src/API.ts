@@ -13,19 +13,15 @@ import {
   Visibility,
   Name,
   EntityCommands,
+  Grid,
+  CheckboardStyle,
 } from '@infinite-canvas-tutorial/ecs';
 import { type LitElement } from 'lit';
 import { Event } from './event';
 import { Container } from './components';
-import {
-  AppStateChange,
-  ElementsChange,
-  History,
-  Store,
-  StoreIncrementEvent,
-} from './history';
+import { History, Store, StoreIncrementEvent } from './history';
 import { AppState, getDefaultAppState, Task } from './context';
-import { arrayToMap } from './utils';
+import { arrayToMap, mapToArray } from './utils';
 
 /**
  * Since the canvas is created in the system, we need to store them here for later use.
@@ -65,8 +61,9 @@ export class API {
     this.appState = getDefaultAppState();
 
     this.#store.onStoreIncrementEmitter.on(StoreIncrementEvent, (event) => {
-      debugger;
       this.#history.record(event.elementsChange, event.appStateChange);
+
+      console.log(event.appStateChange);
     });
   }
 
@@ -110,6 +107,7 @@ export class API {
 
   /**
    * ZoomLevel system will handle the zoom level.
+   * @see https://infinitecanvas.cc/guide/lesson-004
    */
   zoomTo(zoom: number) {
     this.element.dispatchEvent(
@@ -121,6 +119,10 @@ export class API {
     );
   }
 
+  /**
+   * Resize the canvas.
+   * @see https://infinitecanvas.cc/guide/lesson-001
+   */
   resizeCanvas(width: number, height: number) {
     Object.assign(this.#canvasEntity.write(Canvas), {
       width,
@@ -130,6 +132,30 @@ export class API {
     this.element.dispatchEvent(
       new CustomEvent(Event.RESIZED, {
         detail: { width, height },
+      }),
+    );
+  }
+
+  /**
+   * Set the checkboard style.
+   * @see https://infinitecanvas.cc/guide/lesson-005
+   */
+  setCheckboardStyle(checkboardStyle: CheckboardStyle) {
+    console.log('setCheckboardStyle', checkboardStyle);
+
+    Object.assign(this.#canvasEntity.write(Grid), {
+      checkboardStyle,
+    });
+
+    const prevAppState = this.getAppState();
+    this.setAppState({
+      ...prevAppState,
+      checkboardStyle,
+    });
+
+    this.element.dispatchEvent(
+      new CustomEvent(Event.CHECKBOARD_STYLE_CHANGED, {
+        detail: { checkboardStyle },
       }),
     );
   }
@@ -161,6 +187,9 @@ export class API {
       ...prevAppState,
       taskbarSelected: selected,
     });
+
+    this.#store.shouldCaptureIncrement();
+    this.#store.commit(arrayToMap(this.getNodes()), this.getAppState());
 
     this.element.dispatchEvent(
       new CustomEvent(Event.TASK_CHANGED, {
@@ -203,6 +232,9 @@ export class API {
         ? [...prevAppState.layersSelected, ...selected]
         : selected,
     });
+
+    this.#store.shouldCaptureIncrement();
+    this.#store.commit(arrayToMap(this.getNodes()), this.getAppState());
 
     this.element.dispatchEvent(
       new CustomEvent(Event.SELECTED_NODES_CHANGED, {
@@ -303,18 +335,38 @@ export class API {
   }
 
   undo() {
-    this.#history.undo(
+    const result = this.#history.undo(
       arrayToMap(this.getNodes()),
       this.getAppState(),
       this.#store.snapshot,
     );
+
+    if (result) {
+      const [elements, appState] = result;
+      this.setNodes(mapToArray(elements));
+      this.setAppState(appState);
+    }
   }
 
   redo() {
-    this.#history.redo(
+    const result = this.#history.redo(
       arrayToMap(this.getNodes()),
       this.getAppState(),
       this.#store.snapshot,
     );
+
+    if (result) {
+      const [elements, appState] = result;
+      this.setNodes(mapToArray(elements));
+      this.setAppState(appState);
+    }
+  }
+
+  isUndoStackEmpty() {
+    return this.#history.isUndoStackEmpty;
+  }
+
+  isRedoStackEmpty() {
+    return this.#history.isRedoStackEmpty;
   }
 }

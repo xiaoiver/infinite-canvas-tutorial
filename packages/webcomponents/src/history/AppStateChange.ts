@@ -65,13 +65,14 @@ export class AppStateChange implements Change<AppState> {
   ): [AppState, boolean] {
     // TODO: selected elements
 
-    console.log('applyTo', appState);
+    const directlyApplicablePartial = this.delta.inserted;
 
     const nextAppState = {
       ...appState,
+      ...directlyApplicablePartial,
     };
 
-    return [nextAppState, false];
+    return [nextAppState, true];
   }
 
   isEmpty(): boolean {

@@ -259,7 +259,7 @@ export class ElementsChange implements Change<SceneElementsMap> {
   ): [SceneElementsMap, boolean] {
     const nextElements = new Map(elements);
 
-    return [nextElements, false];
+    return [nextElements, true];
   }
 
   isEmpty(): boolean {

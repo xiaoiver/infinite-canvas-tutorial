@@ -3,9 +3,20 @@ outline: deep
 publish: false
 ---
 
+<script setup>
+import Spectrum from '../components/Spectrum.vue'
+</script>
+
 # Lesson 18 - Refactor with ECS
 
-I've decided to refactor at this point. Currently, we're using [TypeScript Mixins] to implement components, but this inheritance-based approach has obvious problems, namely that layered component classes are difficult to maintain:
+I've decided to refactor at this point. Starting in this lesson, we will implement the following two npm packages:
+
+-   [@infinite-canvas-tutorial/ecs] Implements ECS with [Becsy], includes built-in Plugins, Components and Systems.
+-   [@infinite-canvas-tutorial/webcomponents] Implements UIs based on [Spectrum], replacing the Shoelace used in [Lesson 7], but don't worry, they're both based on the Lit implementation.
+
+<Spectrum />
+
+Currently, we're using [TypeScript Mixins] to implement components, but this inheritance-based approach has obvious problems, namely that layered component classes are difficult to maintain:
 
 ```ts
 // Current approach
@@ -25,11 +36,6 @@ ECS handles composition well, allowing flexible enhancement of entity capabiliti
 
 It's worth mentioning that A-Frame is a well-known Three.js framework with an impressive declarative ECS usage.
 In game engines, ECS is used more widely, such as [ECS for Unity] and [Bevy ECS], which we're primarily referencing in our implementation.
-
-Starting in this lesson, we will implement the following two npm packages:
-
--   [@infinite-canvas-tutorial/ecs] Implements ECS with [Becsy].
--   [@infinite-canvas-tutorial/webcomponents] Implements UIs based on [Spectrum].
 
 ## What is ECS architecture {#what-is-ecs}
 
@@ -219,7 +225,31 @@ child.add(Children, {
 parent.read(Parent).children; // [child]
 ```
 
+Finally, we finish registering the two Components in the plugin:
+
+```ts
+import { component } from '@lastolivegames/becsy';
+
+export const HierarchyPlugin: Plugin = () => {
+    component(Parent);
+    component(Children);
+};
+```
+
 ### Calculate world transform {#calculate-world-transform}
+
+System's Query syntax is very self explanatory. For example, here we want to select all entities containing `Transform` and `Parent`, and compute and update the `GlobalTransform` (of the child nodes) when they are first added and changed.
+
+```ts
+export class PropagateTransforms extends System {
+    queries = this.query(
+        (q) =>
+            q
+                .with(Transform, Parent)
+                .addedOrChanged.trackWrites.using(GlobalTransform).write,
+    );
+}
+```
 
 ## Response to events {#response-to-an-event}
 
@@ -284,3 +314,4 @@ Becsy provides [coroutines] to respond to events.
 [@infinite-canvas-tutorial/webcomponents]: https://www.npmjs.com/package/@infinite-canvas-tutorial/webcomponents
 [Spectrum]: https://opensource.adobe.com/spectrum-web-components
 [Attaching systems]: https://lastolivegames.github.io/becsy/guide/architecture/systems#attaching-systems
+[Lesson 7]: /guide/lesson-007
