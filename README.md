@@ -1,5 +1,7 @@
 # An Infinite Canvas Tutorial
 
+[![Infinite canvas tutorial is released under the MIT license](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/xiaoiver/infinite-canvas-tutorial/blob/master/LICENSE)
+[![PRs welcome!](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat)](https://docs.excalidraw.com/docs/introduction/contributing)
 [![Build Status](https://github.com/xiaoiver/infinite-canvas-tutorial/actions/workflows/unit-ssr.yml/badge.svg)](https://github.com/xiaoiver/infinite-canvas-tutorial/actions/workflows/unit-ssr.yml)
 [![Coverage Status](https://coveralls.io/repos/github/xiaoiver/infinite-canvas-tutorial/badge.svg?branch=master)](https://coveralls.io/github/xiaoiver/infinite-canvas-tutorial?branch=master)
 

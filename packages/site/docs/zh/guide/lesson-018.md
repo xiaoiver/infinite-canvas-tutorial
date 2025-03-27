@@ -5,9 +5,7 @@ publish: false
 
 # 课程 18 - 使用 ECS 重构
 
-我决定在这个节点进行重构。
-
-目前我们使用 [TypeScript Mixins] 来实现组件，但这种基于继承的方式存在明显的问题，即层层嵌套的组件类难以维护：
+我决定在这个节点进行重构。目前我们使用 [TypeScript Mixins] 来实现组件，但这种基于继承的方式存在明显的问题，即层层嵌套的组件类难以维护：
 
 ```ts
 // 目前的做法
@@ -27,6 +25,11 @@ const shape = world.spawn(Renderable, Sortable, Transformable);
 
 值得一提的是，A-Frame 是一个很有名的 Three.js 框架，它的声明式 ECS 用法令人印象深刻。
 而在游戏引擎中，ECS 使用的更广泛，例如 [ECS for Unity] 以及我们在实现中重点参考的 [Bevy ECS]。
+
+从本节课开始，我们将实现以下两个 npm package：
+
+-   [@infinite-canvas-tutorial/ecs] 基于 [Becsy] 提供 ECS 实现
+-   [@infinite-canvas-tutorial/webcomponents] 基于 [Spectrum] 实现 UI
 
 ## 什么是 ECS 架构 {#what-is-ecs}
 
@@ -90,6 +93,14 @@ fn main() {
 }
 ```
 
+在我们的项目中，`/plugins` 下存放了内置的插件，并通过 `DefaultPlugins` 以插件集合形式暴露，可以在初始化时使用它们。当然也可以自定义插件进行扩展：
+
+```ts
+import { App, DefaultPlugins } from '@infinite-canvas-tutorial/ecs';
+
+new App().addPlugins(...DefaultPlugins, MyPlugin).run();
+```
+
 ### Resources {#resources}
 
 前面介绍过 Entity 和 Component 的组合形成了类似数据表的结构，但应用中也必然会使用到一些全局唯一对象，详见：[Bevy Resources]。在后续实现时我们会使用 `singleton` 的概念来描述。
@@ -144,13 +155,36 @@ private boxes = this.query(q => q.added.and.removed.with(Box, Transform));
 
 ### System 执行顺序 {#system-execution-order}
 
+在简单的情况下，[Becsy] 的 scheduler 会根据各个 System 对 Component 的读写关系，计算出最终的执行顺序。但如果两个 System 都需要对同一类 Component 进行写入，此时需要使用者显式指定它们的执行顺序，除了 `before/after` 这些很直观的约束，我们还可以使用一些更符合直觉的约束。
+
+例如我们想让 `ComputeCamera` 这个 System 在所有对 `Camera` 进行写入的 System 之后运行：
+
+```ts
+// CameraPlugin
+system((s) => s.afterWritersOf(Camera))(ComputeCamera);
+```
+
+最后在开发模式下，[Becsy] 会在控制台打印出当前系统的执行顺序，如果存在循环会报错。
+
 ### System 间通信 {#system-communication}
+
+理想状态下各个 System 只需要关注自身对 Component 的读写，但 [Attaching systems] 让我们拥有了一种更直接引用其他 System 的能力：
+
+```ts
+export class ZoomLevel extends System {
+    private readonly cameraControl = this.attach(CameraControl);
+}
+```
+
+下面我们通过一个例子来感受 ECS 这种设计模式带来的便利。
 
 ## 层次结构 {#hierarchy}
 
 ![Comparison of AoS (left) and SoA (right) memory layouts](https://developer-blogs.nvidia.com/wp-content/uploads/2021/08/MLFrameworksIneroperability_pic2.png)
 
-在课程 3 中我们介绍过场景图，如何在扁平的数据结构中表示这样的层次结构呢？
+在[课程 3]中我们介绍过场景图，如何在扁平的数据结构中表示这样的层次结构呢？
+
+### 定义 Component {define-component}
 
 [Hierarchical relationships in an Entity Component System] 提供了几种思路：
 
@@ -169,6 +203,23 @@ export class Children {
     @field.ref declare parent: Entity;
 }
 ```
+
+在添加子节点时只需要在 Child 端关联 Parent 实体，关联关系在另一端就会生效：
+
+```ts
+// addChild(parent, child)
+if (!parent.has(Parent)) {
+    parent.add(Parent);
+}
+child.add(Children, {
+    parent,
+});
+
+// getChildren()
+parent.read(Parent).children; // [child]
+```
+
+### 计算 world transform {#calculate-world-transform}
 
 ## 响应事件 {#response-to-an-event}
 
@@ -228,3 +279,8 @@ Becsy 提供了 [coroutines] 来响应事件。
 [bitECS]: https://github.com/NateTheGreatt/bitECS
 [Hierarchical relationships in an Entity Component System]: https://gamedev.stackexchange.com/questions/206715/hierarchical-relationships-in-an-entity-component-system
 [Referencing entities]: https://lastolivegames.github.io/becsy/guide/architecture/components#referencing-entities
+[课程 3]: /zh/guide/lesson-003#scene-graph
+[@infinite-canvas-tutorial/ecs]: https://www.npmjs.com/package/@infinite-canvas-tutorial/ecs
+[@infinite-canvas-tutorial/webcomponents]: https://www.npmjs.com/package/@infinite-canvas-tutorial/webcomponents
+[Spectrum]: https://opensource.adobe.com/spectrum-web-components
+[Attaching systems]: https://lastolivegames.github.io/becsy/guide/architecture/systems#attaching-systems

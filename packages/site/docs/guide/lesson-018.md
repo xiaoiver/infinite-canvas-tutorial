@@ -5,9 +5,7 @@ publish: false
 
 # Lesson 18 - Refactor with ECS
 
-I've decided to refactor at this point.
-
-Currently, we're using [TypeScript Mixins] to implement components, but this inheritance-based approach has obvious problems, namely that layered component classes are difficult to maintain:
+I've decided to refactor at this point. Currently, we're using [TypeScript Mixins] to implement components, but this inheritance-based approach has obvious problems, namely that layered component classes are difficult to maintain:
 
 ```ts
 // Current approach
@@ -28,7 +26,12 @@ ECS handles composition well, allowing flexible enhancement of entity capabiliti
 It's worth mentioning that A-Frame is a well-known Three.js framework with an impressive declarative ECS usage.
 In game engines, ECS is used more widely, such as [ECS for Unity] and [Bevy ECS], which we're primarily referencing in our implementation.
 
-## What is ECS Architecture {#what-is-ecs}
+Starting in this lesson, we will implement the following two npm packages:
+
+-   [@infinite-canvas-tutorial/ecs] Implements ECS with [Becsy].
+-   [@infinite-canvas-tutorial/webcomponents] Implements UIs based on [Spectrum].
+
+## What is ECS architecture {#what-is-ecs}
 
 [ecs-faq] compiles common questions, resources, and implementations in various languages, which is worth checking out. Here we quote the introduction from [Bevy ECS]:
 
@@ -90,6 +93,14 @@ fn main() {
 }
 ```
 
+In our project, the built-in plugins are stored under `/plugins` and exposed as a collection of plugins via `DefaultPlugins`, which can be used at initialization time. Of course, you can also customize plugins to extend them:
+
+```ts
+import { App, DefaultPlugins } from '@infinite-canvas-tutorial/ecs';
+
+new App().addPlugins(...DefaultPlugins, MyPlugin).run();
+```
+
 ### Resources {#resources}
 
 We've introduced how Entity and Component combinations form a data table-like structure, but applications will inevitably use some globally unique objects, see: [Bevy Resources]. In our subsequent implementation, we'll use the concept of `singleton`.
@@ -105,7 +116,7 @@ There are several ready-to-use ECS implementations in the frontend. Although I r
 | System execution order | ✅    | ❌    | ✅   | ✅     |
 | System communication   | ✅    | ❌    | ❌   | ❌     |
 
-### Query Modifiers {#query-modifiers}
+### Query modifiers {#query-modifiers}
 
 Simple Query construction is supported in both ECSY and [bitECS]:
 
@@ -142,15 +153,38 @@ const newPositions = world.query(Added(Position));
 private boxes = this.query(q => q.added.and.removed.with(Box, Transform));
 ```
 
-### System Execution Order {#system-execution-order}
+### System execution order {#system-execution-order}
 
-### System Communication {#system-communication}
+In the simple case, [Becsy]'s scheduler will calculate the final execution order based on each System's read/write relationship to the Component. However, if both Systems need to write to the same type of Component, then you need to explicitly specify the order in which they should be executed. In addition to `before/after` constraints, you can also use some more intuitive constraints.
+
+For example, we want the System `ComputeCamera` to run after all the Systems that write to `Camera`:
+
+```ts
+// CameraPlugin
+system((s) => s.afterWritersOf(Camera))(ComputeCamera);
+```
+
+Finally, in development mode, [Becsy] prints the current system execution order on the console and reports an error if a loop exists.
+
+### System communication {#system-communication}
+
+Ideally each System would only need to be concerned with its own reads and writes to Components, but [Attaching systems] gives us the ability to reference other Systems more directly:
+
+```ts
+export class ZoomLevel extends System {
+    private readonly cameraControl = this.attach(CameraControl);
+}
+```
+
+Let's take a look at an example of the convenience of the ECS design pattern.
 
 ## Hierarchy {#hierarchy}
 
 ![Comparison of AoS (left) and SoA (right) memory layouts](https://developer-blogs.nvidia.com/wp-content/uploads/2021/08/MLFrameworksIneroperability_pic2.png)
 
-In Lesson 3, we introduced the scene graph. How do we represent such a hierarchical structure in a flat data structure?
+In [Lesson 3], we introduced the scene graph. How do we represent such a hierarchical structure in a flat data structure?
+
+### Define component {define-component}
 
 [Hierarchical relationships in an Entity Component System] provides several approaches:
 
@@ -170,11 +204,28 @@ export class Children {
 }
 ```
 
-## Response to Events {#response-to-an-event}
+When adding a child node, you only need to associate the Parent entity on the Child side, and the association will take effect on the other side:
+
+```ts
+// addChild(parent, child)
+if (!parent.has(Parent)) {
+    parent.add(Parent);
+}
+child.add(Children, {
+    parent,
+});
+
+// getChildren()
+parent.read(Parent).children; // [child]
+```
+
+### Calculate world transform {#calculate-world-transform}
+
+## Response to events {#response-to-an-event}
 
 If a System is called every frame, how do we respond to asynchronous events?
 
-### Bevy Events {#bevy-events}
+### Bevy events {#bevy-events}
 
 Let's look at an example of responding to window resize events in Bevy: [window-resizing], using an `EventReader` to read data carried by the `WindowResized` event:
 
@@ -203,7 +254,7 @@ window_resized.write(WindowResized {
 
 We can see that the event mechanism provides convenience for inter-system communication, see [Bevy Events] for details.
 
-### Becsy Coroutines {#becsy-coroutines}
+### Becsy coroutines {#becsy-coroutines}
 
 Becsy provides [coroutines] to respond to events.
 
@@ -228,3 +279,8 @@ Becsy provides [coroutines] to respond to events.
 [bitECS]: https://github.com/NateTheGreatt/bitECS
 [Hierarchical relationships in an Entity Component System]: https://gamedev.stackexchange.com/questions/206715/hierarchical-relationships-in-an-entity-component-system
 [Referencing entities]: https://lastolivegames.github.io/becsy/guide/architecture/components#referencing-entities
+[Lesson 3]: /guide/lesson-003#scene-graph
+[@infinite-canvas-tutorial/ecs]: https://www.npmjs.com/package/@infinite-canvas-tutorial/ecs
+[@infinite-canvas-tutorial/webcomponents]: https://www.npmjs.com/package/@infinite-canvas-tutorial/webcomponents
+[Spectrum]: https://opensource.adobe.com/spectrum-web-components
+[Attaching systems]: https://lastolivegames.github.io/becsy/guide/architecture/systems#attaching-systems
