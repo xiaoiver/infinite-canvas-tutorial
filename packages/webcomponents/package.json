@@ -15,11 +15,6 @@
       "types": "./lib/spectrum/index.d.ts",
       "import": "./esm/spectrum/index.js",
       "require": "./lib/spectrum/index.js"
-    },
-    "./shoelace": {
-      "types": "./lib/shoelace/index.d.ts",
-      "import": "./esm/shoelace/index.js",
-      "require": "./lib/shoelace/index.js"
     }
   },
   "files": [

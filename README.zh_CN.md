@@ -5,6 +5,8 @@
 
 > [我在 Gumroad 上的免费课程]，欢迎评分！
 
+[![Open in StackBlitz](https://developer.stackblitz.com/img/open_in_stackblitz.svg)](https://stackblitz.com/edit/vite-tvhpcpvl?file=main.js)
+
 什么是无限画布？[infinitecanvas] 对“无限”的描述如下：
 
 -   高扩展性。用户可以以非线形的形式自由组织内容结构。

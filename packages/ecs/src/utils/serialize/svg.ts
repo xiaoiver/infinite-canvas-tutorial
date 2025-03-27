@@ -107,6 +107,7 @@ export function serializeNodesToSVGElements(
       esdt,
       leading,
       maxLines,
+      visibility,
       ...rest
     } = restAttributes as any;
 
@@ -228,10 +229,10 @@ export function serializeNodesToSVGElements(
 
     $g = $g || element;
 
-    // if (visible === false) {
-    //   // @see https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/visibility
-    //   $g.setAttribute('visibility', 'hidden');
-    // }
+    if (visibility === 'hidden') {
+      // @see https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/visibility
+      $g.setAttribute('visibility', 'hidden');
+    }
     if (cornerRadius) {
       $g.setAttribute('rx', `${cornerRadius}`);
       $g.setAttribute('ry', `${cornerRadius}`);

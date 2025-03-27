@@ -5,6 +5,8 @@
 
 > [My free course in Gumroad]. Feel free to rate!
 
+[![Open in StackBlitz](https://developer.stackblitz.com/img/open_in_stackblitz.svg)](https://stackblitz.com/edit/vite-tvhpcpvl?file=main.js)
+
 What is an Infinite Canvas? The term "infinite" in [infinitecanvas] is described as follows:
 
 -   High scalability. Users can freely organize content structures in a non-linear fashion.
