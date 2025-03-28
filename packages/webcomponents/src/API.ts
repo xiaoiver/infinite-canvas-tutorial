@@ -67,6 +67,10 @@ export class API {
     });
   }
 
+  getElement() {
+    return this.element;
+  }
+
   /**
    * Create a new canvas.
    */

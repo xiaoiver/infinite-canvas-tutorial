@@ -163,6 +163,7 @@ export class InfiniteCanvas extends LitElement {
       const $canvas = document.createElement('canvas');
       $canvas.style.width = '100%';
       $canvas.style.height = 'calc(100% - 48px)';
+      $canvas.tabIndex = 0; // Make canvas focusable
 
       const { width, height } = this.getBoundingClientRect();
       const { cameraZoom } = this.appState;

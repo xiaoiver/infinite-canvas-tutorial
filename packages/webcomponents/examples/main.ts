@@ -1,4 +1,9 @@
-import { App, svgElementsToSerializedNodes, DefaultPlugins } from '../../ecs';
+import {
+  App,
+  svgElementsToSerializedNodes,
+  DefaultPlugins,
+  CheckboardStyle,
+} from '../../ecs';
 import { Event, UIPlugin } from '../src';
 import '../src/spectrum';
 

@@ -49,9 +49,29 @@ export class TopNavbar extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
-
-    // TODO: bind keyboard shortcuts
+    document.addEventListener('keydown', this.handleKeyDown);
   }
+
+  disconnectedCallback() {
+    super.disconnectedCallback();
+    document.removeEventListener('keydown', this.handleKeyDown);
+  }
+
+  private handleKeyDown = (e: KeyboardEvent) => {
+    // Canvas is focused
+    if (document.activeElement !== this.api.getElement()) {
+      return;
+    }
+
+    if (e.key === 'z' && e.metaKey) {
+      e.preventDefault();
+      if (e.shiftKey) {
+        this.handleRedo();
+      } else {
+        this.handleUndo();
+      }
+    }
+  };
 
   private handleExport(event: CustomEvent) {
     const format = (event.target as any).value;

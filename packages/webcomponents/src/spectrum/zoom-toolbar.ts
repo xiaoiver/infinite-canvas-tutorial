@@ -58,33 +58,28 @@ export class ZoomToolbar extends LitElement {
 
   private handleKeyDown = (e: KeyboardEvent) => {
     // Canvas is focused
-    // console.log(document.activeElement);
+    if (document.activeElement !== this.api.getElement()) {
+      return;
+    }
 
     if ((e.key === '+' || e.key === '=') && e.metaKey) {
       e.preventDefault();
-      e.stopImmediatePropagation();
       this.zoomIn();
     } else if ((e.key === '-' || e.key === '_') && e.metaKey) {
       e.preventDefault();
-      e.stopImmediatePropagation();
       this.zoomOut();
     } else if (e.key === '1' && e.metaKey) {
       e.preventDefault();
-      e.stopImmediatePropagation();
       this.zoomTo100();
     } else if (e.key === '2' && e.metaKey) {
       e.preventDefault();
-      e.stopImmediatePropagation();
       this.zoomTo200();
     } else if (e.key === '0' && e.metaKey) {
       e.preventDefault();
-      e.stopImmediatePropagation();
-      // this.zoomTo100();
       // TODO: fit to screen
     } else if (e.key === 'f') {
-      // TODO: full screen mode
       e.preventDefault();
-      e.stopImmediatePropagation();
+      // TODO: full screen mode
       this.toggleFullScreen();
     }
   };
