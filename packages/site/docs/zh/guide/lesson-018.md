@@ -186,9 +186,18 @@ export class ZoomLevel extends System {
 
 ## 层次结构 {#hierarchy}
 
-![Comparison of AoS (left) and SoA (right) memory layouts](https://developer-blogs.nvidia.com/wp-content/uploads/2021/08/MLFrameworksIneroperability_pic2.png)
+在[课程 3]中我们介绍过场景图这样的树形结构，其中父子结构以引用的形式维护，这是计算变换、级联可见性等特性的基础：
 
-在[课程 3]中我们介绍过场景图，如何在扁平的数据结构中表示这样的层次结构呢？
+```ts
+export abstract class Shape {
+    parent: Shape;
+    readonly children: Shape[] = [];
+}
+```
+
+而在 ECS 架构中，无论底层采用 AoS 还是 SoA 形式存储实体，它都是线性的。如何在扁平的数据结构中表示这样的层次结构呢？
+
+![Comparison of AoS (left) and SoA (right) memory layouts](https://developer-blogs.nvidia.com/wp-content/uploads/2021/08/MLFrameworksIneroperability_pic2.png)
 
 ### 定义 Component {define-component}
 
@@ -225,6 +234,20 @@ child.add(Children, {
 parent.read(Parent).children; // [child]
 ```
 
+在实现中，我们参考 [Bevy Hierarchy]，在 Entity 之上封装了 EntityCommand，以更友好的方式提供上述父子关系的构建。其中 `AddChild` 包含了上面的实现：
+
+```ts
+export class EntityCommands {
+    appendChild(child: EntityCommands) {
+        this.commands.add(new AddChild(this.id(), child.id()));
+        return this;
+    }
+}
+
+// 以更简洁的方式使用
+parent.appendChild(child);
+```
+
 最后我们在插件中完成对这两个 Component 的注册：
 
 ```ts
@@ -241,6 +264,8 @@ export const HierarchyPlugin: Plugin = () => {
 System 的 Query 语法有很好的自解释性。比如这里我们希望选取所有包含 `Transform` 和 `Parent` 的实体，当它们首次添加和发生变更时，计算并更新（子节点）的 `GlobalTransform`。
 
 ```ts
+import { System } from '@lastolivegames/becsy';
+
 export class PropagateTransforms extends System {
     queries = this.query(
         (q) =>
@@ -315,3 +340,4 @@ Becsy 提供了 [coroutines] 来响应事件。
 [Spectrum]: https://opensource.adobe.com/spectrum-web-components
 [Attaching systems]: https://lastolivegames.github.io/becsy/guide/architecture/systems#attaching-systems
 [课程 7]: /zh/guide/lesson-007
+[Bevy Hierarchy]: https://bevy-cheatbook.github.io/fundamentals/hierarchy.html

@@ -186,9 +186,18 @@ Let's take a look at an example of the convenience of the ECS design pattern.
 
 ## Hierarchy {#hierarchy}
 
-![Comparison of AoS (left) and SoA (right) memory layouts](https://developer-blogs.nvidia.com/wp-content/uploads/2021/08/MLFrameworksIneroperability_pic2.png)
+In [Lesson 3] we introduced tree structures like scene graphs, where parent-child structures are maintained in the form of references, which are the basis for properties like computational transformations, cascade visibility, etc:
 
-In [Lesson 3], we introduced the scene graph. How do we represent such a hierarchical structure in a flat data structure?
+```ts
+export abstract class Shape {
+    parent: Shape;
+    readonly children: Shape[] = [];
+}
+```
+
+Whereas in the ECS architecture, it is linear whether the underlying layer stores entities in the form of AoS or SoA. How do we represent such a hierarchical structure in a flat data structure?
+
+![Comparison of AoS (left) and SoA (right) memory layouts](https://developer-blogs.nvidia.com/wp-content/uploads/2021/08/MLFrameworksIneroperability_pic2.png)
 
 ### Define component {define-component}
 
@@ -225,6 +234,20 @@ child.add(Children, {
 parent.read(Parent).children; // [child]
 ```
 
+In our implementation, we refer to [Bevy Hierarchy] and encapsulate EntityCommand on top of Entity to provide the construction of the above parent-child relationship in a more user-friendly way. The `AddChild` contains the above implementation:
+
+```ts
+export class EntityCommands {
+    appendChild(child: EntityCommands) {
+        this.commands.add(new AddChild(this.id(), child.id()));
+        return this;
+    }
+}
+
+// 以更简洁的方式使用
+parent.appendChild(child);
+```
+
 Finally, we finish registering the two Components in the plugin:
 
 ```ts
@@ -241,6 +264,8 @@ export const HierarchyPlugin: Plugin = () => {
 System's Query syntax is very self explanatory. For example, here we want to select all entities containing `Transform` and `Parent`, and compute and update the `GlobalTransform` (of the child nodes) when they are first added and changed.
 
 ```ts
+import { System } from '@lastolivegames/becsy';
+
 export class PropagateTransforms extends System {
     queries = this.query(
         (q) =>
@@ -315,3 +340,4 @@ Becsy provides [coroutines] to respond to events.
 [Spectrum]: https://opensource.adobe.com/spectrum-web-components
 [Attaching systems]: https://lastolivegames.github.io/becsy/guide/architecture/systems#attaching-systems
 [Lesson 7]: /guide/lesson-007
+[Bevy Hierarchy]: https://bevy-cheatbook.github.io/fundamentals/hierarchy.html

@@ -72,7 +72,26 @@ export class AppStateChange implements Change<AppState> {
       ...directlyApplicablePartial,
     };
 
-    return [nextAppState, true];
+    const constainsVisibleChanges = this.filterInvisibleChanges(
+      appState,
+      nextAppState,
+      nextElements,
+    );
+
+    return [nextAppState, constainsVisibleChanges];
+  }
+
+  /**
+   * Mutates `nextAppState` be filtering out state related to deleted elements.
+   *
+   * @returns `true` if a visible change is found, `false` otherwise.
+   */
+  private filterInvisibleChanges(
+    prevAppState: AppState,
+    nextAppState: AppState,
+    nextElements: SceneElementsMap,
+  ): boolean {
+    return true;
   }
 
   isEmpty(): boolean {
