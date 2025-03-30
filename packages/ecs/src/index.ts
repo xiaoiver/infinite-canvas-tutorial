@@ -21,6 +21,7 @@ export {
   serializedNodesToEntities,
   randomInteger,
   type SerializedNode,
+  type OrderedSerializedNode,
 } from './utils';
 
 export {

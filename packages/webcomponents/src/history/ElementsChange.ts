@@ -2,13 +2,28 @@
  * Borrow from https://github.com/excalidraw/excalidraw/blob/master/packages/excalidraw/change.ts#L399
  */
 
-import { SerializedNode } from '@infinite-canvas-tutorial/ecs';
+import {
+  SerializedNode,
+  OrderedSerializedNode,
+  randomInteger,
+} from '@infinite-canvas-tutorial/ecs';
 import { Change } from './Change';
 import { Delta } from './Delta';
+import { newElementWith } from './Snapshot';
+import { getUpdatedTimestamp } from '../utils';
 
 export type SceneElementsMap = Map<SerializedNode['id'], SerializedNode>;
 
 export type ElementPartial = Partial<SerializedNode>;
+
+export type ElementUpdate<TElement extends SerializedNode> = Omit<
+  Partial<TElement>,
+  'id' | 'version' | 'versionNonce' | 'updated'
+>;
+
+export type Mutable<T> = {
+  -readonly [P in keyof T]: T[P];
+};
 
 export class ElementsChange implements Change<SceneElementsMap> {
   static empty() {
@@ -134,6 +149,152 @@ export class ElementsChange implements Change<SceneElementsMap> {
     inserted,
   }: Delta<ElementPartial>) => !!deleted.isDeleted === !!inserted.isDeleted;
 
+  private static createGetter =
+    (
+      elements: SceneElementsMap,
+      snapshot: Map<string, SerializedNode>,
+      flags: {
+        containsVisibleDifference: boolean;
+        containsZindexDifference: boolean;
+      },
+    ) =>
+    (id: string, partial: ElementPartial) => {
+      let element = elements.get(id);
+
+      if (!element) {
+        // always fallback to the local snapshot, in cases when we cannot find the element in the elements array
+        element = snapshot.get(id);
+
+        if (element) {
+          // as the element was brought from the snapshot, it automatically results in a possible zindex difference
+          flags.containsZindexDifference = true;
+
+          // as the element was force deleted, we need to check if adding it back results in a visible change
+          if (
+            partial.isDeleted === false ||
+            (partial.isDeleted !== true && element.isDeleted === false)
+          ) {
+            flags.containsVisibleDifference = true;
+          }
+        }
+      }
+
+      return element;
+    };
+
+  private static createApplier = (
+    nextElements: SceneElementsMap,
+    snapshot: Map<string, SerializedNode>,
+    flags: {
+      containsVisibleDifference: boolean;
+      containsZindexDifference: boolean;
+    },
+  ) => {
+    const getElement = ElementsChange.createGetter(
+      nextElements,
+      snapshot,
+      flags,
+    );
+
+    return (deltas: Map<string, Delta<ElementPartial>>) =>
+      Array.from(deltas.entries()).reduce((acc, [id, delta]) => {
+        const element = getElement(id, delta.inserted);
+
+        if (element) {
+          const newElement = ElementsChange.applyDelta(element, delta, flags);
+          nextElements.set(newElement.id, newElement);
+          acc.set(newElement.id, newElement);
+        }
+
+        return acc;
+      }, new Map<string, SerializedNode>());
+  };
+
+  /**
+   * Check for visible changes regardless of whether they were removed, added or updated.
+   */
+  private static checkForVisibleDifference(
+    element: SerializedNode,
+    partial: ElementPartial,
+  ) {
+    if (element.isDeleted && partial.isDeleted !== false) {
+      // when it's deleted and partial is not false, it cannot end up with a visible change
+      return false;
+    }
+
+    if (element.isDeleted && partial.isDeleted === false) {
+      // when we add an element, it results in a visible change
+      return true;
+    }
+
+    if (element.isDeleted === false && partial.isDeleted) {
+      // when we remove an element, it results in a visible change
+      return true;
+    }
+
+    // check for any difference on a visible element
+    return Delta.isRightDifferent(element, partial);
+  }
+
+  private static applyDelta(
+    element: SerializedNode,
+    delta: Delta<ElementPartial>,
+    flags: {
+      containsVisibleDifference: boolean;
+      containsZindexDifference: boolean;
+    } = {
+      // by default we don't care about about the flags
+      containsVisibleDifference: true,
+      containsZindexDifference: true,
+    },
+  ) {
+    const { ...directlyApplicablePartial } = delta.inserted;
+
+    // if (
+    //   delta.deleted.boundElements?.length ||
+    //   delta.inserted.boundElements?.length
+    // ) {
+    //   const mergedBoundElements = Delta.mergeArrays(
+    //     element.boundElements,
+    //     delta.inserted.boundElements,
+    //     delta.deleted.boundElements,
+    //     (x) => x.id,
+    //   );
+
+    //   Object.assign(directlyApplicablePartial, {
+    //     boundElements: mergedBoundElements,
+    //   });
+    // }
+
+    // if (isImageElement(element)) {
+    //   const _delta = delta as Delta<ElementPartial<ExcalidrawImageElement>>;
+    //   // we want to override `crop` only if modified so that we don't reset
+    //   // when undoing/redoing unrelated change
+    //   if (_delta.deleted.crop || _delta.inserted.crop) {
+    //     Object.assign(directlyApplicablePartial, {
+    //       // apply change verbatim
+    //       crop: _delta.inserted.crop ?? null,
+    //     });
+    //   }
+    // }
+
+    if (!flags.containsVisibleDifference) {
+      // strip away fractional as even if it would be different, it doesn't have to result in visible change
+      const { index, ...rest } = directlyApplicablePartial;
+      const containsVisibleDifference =
+        ElementsChange.checkForVisibleDifference(element, rest);
+
+      flags.containsVisibleDifference = containsVisibleDifference;
+    }
+
+    if (!flags.containsZindexDifference) {
+      flags.containsZindexDifference =
+        delta.deleted.index !== delta.inserted.index;
+    }
+
+    return newElementWith(element, directlyApplicablePartial);
+  }
+
   public static create(
     added: Map<string, Delta<ElementPartial>>,
     removed: Map<string, Delta<ElementPartial>>,
@@ -201,7 +362,7 @@ export class ElementsChange implements Change<SceneElementsMap> {
    */
   public applyLatestChanges(elements: SceneElementsMap): ElementsChange {
     const modifier = (element: SerializedNode) => (partial: ElementPartial) => {
-      // (element: OrderedExcalidrawElement) => (partial: ElementPartial) => {
+      // (element: OrderedSerializedNode) => (partial: ElementPartial) => {
       const latestPartial: { [key: string]: unknown } = {};
 
       for (const key of Object.keys(partial) as Array<keyof typeof partial>) {
@@ -257,9 +418,43 @@ export class ElementsChange implements Change<SceneElementsMap> {
     elements: SceneElementsMap,
     snapshot: Map<string, SerializedNode>,
   ): [SceneElementsMap, boolean] {
-    const nextElements = new Map(elements);
+    let nextElements = new Map(elements);
+    let changedElements: Map<string, SerializedNode>;
 
-    return [nextElements, true];
+    const flags = {
+      containsVisibleDifference: false,
+      containsZindexDifference: false,
+    };
+
+    const applyDeltas = ElementsChange.createApplier(
+      nextElements,
+      snapshot,
+      flags,
+    );
+
+    const addedElements = applyDeltas(this.added);
+    const removedElements = applyDeltas(this.removed);
+    const updatedElements = applyDeltas(this.updated);
+
+    const affectedElements = this.resolveConflicts(elements, nextElements);
+
+    // TODO: #7348 validate elements semantically and syntactically the changed elements, in case they would result data integrity issues
+    changedElements = new Map([
+      ...addedElements,
+      ...removedElements,
+      ...updatedElements,
+      ...affectedElements,
+    ]);
+
+    // the following reorder performs also mutations, but only on new instances of changed elements
+    // (unless something goes really bad and it fallbacks to fixing all invalid indices)
+    // nextElements = ElementsChange.reorderElements(
+    //   nextElements,
+    //   changedElements,
+    //   flags,
+    // );
+
+    return [nextElements, flags.containsVisibleDifference];
   }
 
   isEmpty(): boolean {
@@ -269,4 +464,125 @@ export class ElementsChange implements Change<SceneElementsMap> {
       this.updated.size === 0
     );
   }
+
+  /**
+   * Resolves conflicts for all previously added, removed and updated elements.
+   * Updates the previous deltas with all the changes after conflict resolution.
+   *
+   * @returns all elements affected by the conflict resolution
+   */
+  private resolveConflicts(
+    prevElements: SceneElementsMap,
+    nextElements: SceneElementsMap,
+  ) {
+    const nextAffectedElements = new Map<string, OrderedSerializedNode>();
+    const updater = (
+      element: SerializedNode,
+      updates: ElementUpdate<SerializedNode>,
+    ) => {
+      const nextElement = nextElements.get(element.id); // only ever modify next element!
+      if (!nextElement) {
+        return;
+      }
+
+      let affectedElement: OrderedSerializedNode;
+
+      if (prevElements.get(element.id) === nextElement) {
+        // create the new element instance in case we didn't modify the element yet
+        // so that we won't end up in an incosistent state in case we would fail in the middle of mutations
+        affectedElement = newElementWith(
+          nextElement,
+          updates as ElementUpdate<OrderedSerializedNode>,
+        ) as OrderedSerializedNode;
+      } else {
+        affectedElement = mutateElement(
+          nextElement,
+          updates as ElementUpdate<OrderedSerializedNode>,
+        ) as OrderedSerializedNode;
+      }
+
+      nextAffectedElements.set(affectedElement.id, affectedElement);
+      nextElements.set(affectedElement.id, affectedElement);
+    };
+
+    // // removed delta is affecting the bindings always, as all the affected elements of the removed elements need to be unbound
+    // for (const [id] of this.removed) {
+    //   ElementsChange.unbindAffected(prevElements, nextElements, id, updater);
+    // }
+
+    // // added delta is affecting the bindings always, all the affected elements of the added elements need to be rebound
+    // for (const [id] of this.added) {
+    //   ElementsChange.rebindAffected(prevElements, nextElements, id, updater);
+    // }
+
+    // // updated delta is affecting the binding only in case it contains changed binding or bindable property
+    // for (const [id] of Array.from(this.updated).filter(([_, delta]) =>
+    //   Object.keys({ ...delta.deleted, ...delta.inserted }).find((prop) =>
+    //     bindingProperties.has(prop as BindingProp | BindableProp),
+    //   ),
+    // )) {
+    //   const updatedElement = nextElements.get(id);
+    //   if (!updatedElement || updatedElement.isDeleted) {
+    //     // skip fixing bindings for updates on deleted elements
+    //     continue;
+    //   }
+
+    //   ElementsChange.rebindAffected(prevElements, nextElements, id, updater);
+    // }
+
+    // filter only previous elements, which were now affected
+    const prevAffectedElements = new Map(
+      Array.from(prevElements).filter(([id]) => nextAffectedElements.has(id)),
+    );
+
+    // calculate complete deltas for affected elements, and assign them back to all the deltas
+    // technically we could do better here if perf. would become an issue
+    const { added, removed, updated } = ElementsChange.calculate(
+      prevAffectedElements,
+      nextAffectedElements,
+    );
+
+    for (const [id, delta] of added) {
+      this.added.set(id, delta);
+    }
+
+    for (const [id, delta] of removed) {
+      this.removed.set(id, delta);
+    }
+
+    for (const [id, delta] of updated) {
+      this.updated.set(id, delta);
+    }
+
+    return nextAffectedElements;
+  }
 }
+
+// This function tracks updates of text elements for the purposes for collaboration.
+// The version is used to compare updates when more than one user is working in
+// the same drawing. Note: this will trigger the component to update. Make sure you
+// are calling it either from a React event handler or within unstable_batchedUpdates().
+export const mutateElement = <TElement extends Mutable<SerializedNode>>(
+  element: TElement,
+  updates: ElementUpdate<TElement>,
+): TElement => {
+  let didChange = false;
+
+  for (const key in updates) {
+    const value = (updates as any)[key];
+    if (typeof value !== 'undefined') {
+      (element as any)[key] = value;
+      didChange = true;
+    }
+  }
+
+  if (!didChange) {
+    return element;
+  }
+
+  element.version++;
+  element.versionNonce = randomInteger();
+  element.updated = getUpdatedTimestamp();
+
+  return element;
+};

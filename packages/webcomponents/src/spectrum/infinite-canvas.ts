@@ -17,13 +17,17 @@ import { pendingCanvases } from '../API';
 
 import '@spectrum-web-components/theme/sp-theme.js';
 import '@spectrum-web-components/theme/src/themes.js';
-// import '@spectrum-web-components/accordion/sp-accordion.js';
-// import '@spectrum-web-components/accordion/sp-accordion-item.js';
+import '@spectrum-web-components/accordion/sp-accordion.js';
+import '@spectrum-web-components/accordion/sp-accordion-item.js';
 import '@spectrum-web-components/action-group/sp-action-group.js';
 import '@spectrum-web-components/action-menu/sp-action-menu.js';
 import '@spectrum-web-components/alert-banner/sp-alert-banner.js';
+import '@spectrum-web-components/color-slider/sp-color-slider.js';
+import '@spectrum-web-components/color-area/sp-color-area.js';
 import '@spectrum-web-components/menu/sp-menu-item.js';
 import '@spectrum-web-components/menu/sp-menu-divider.js';
+import '@spectrum-web-components/number-field/sp-number-field.js';
+import '@spectrum-web-components/overlay/sp-overlay.js';
 import '@spectrum-web-components/progress-circle/sp-progress-circle.js';
 import '@spectrum-web-components/textfield/sp-textfield.js';
 import '@spectrum-web-components/thumbnail/sp-thumbnail.js';
@@ -52,6 +56,9 @@ export class InfiniteCanvas extends LitElement {
     :host {
       display: block;
       position: relative;
+
+      --mod-popover-content-area-spacing-vertical: 0;
+      --spectrum-popover-content-area-spacing-vertical: 0;
     }
 
     ic-spectrum-penbar {

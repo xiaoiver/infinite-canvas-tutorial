@@ -11,6 +11,13 @@ import {
   Visibility,
 } from '../../components';
 
+// @see https://dev.to/themuneebh/typescript-branded-types-in-depth-overview-and-use-cases-60e
+export type FractionalIndex = string & { _brand: 'franctionalIndex' };
+export type Ordered<TElement extends SerializedNode> = TElement & {
+  index: FractionalIndex;
+};
+export type OrderedSerializedNode = Ordered<SerializedNode>;
+
 /**
  * Refer SVG attribut
  * @see https://github.com/tldraw/tldraw/blob/main/packages/tlschema/src/shapes/TLBaseShape.ts
@@ -41,6 +48,16 @@ export interface BaseSerializeNode<Type extends string>
   version?: number;
   versionNonce?: number;
   isDeleted?: boolean;
+
+  /**
+   * String in a fractional form defined by https://github.com/rocicorp/fractional-indexing.
+   * Used for ordering in multiplayer scenarios, such as during reconciliation or undo / redo.
+   * Always kept in sync with the array order by `syncMovedIndices` and `syncInvalidIndices`.
+   * Could be null, i.e. for new elements which were not yet assigned to the scene.
+   */
+  index?: FractionalIndex | null;
+
+  updated?: number;
 }
 
 export type SerializedTransform = {

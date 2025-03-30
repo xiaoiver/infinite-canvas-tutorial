@@ -32,6 +32,42 @@ export class Delta<T> {
   }
 
   /**
+   * Compares if object1 contains any different value compared to the object2.
+   */
+  public static isLeftDifferent<T extends {}>(
+    object1: T,
+    object2: T,
+    skipShallowCompare = false,
+  ): boolean {
+    const anyDistinctKey = this.distinctKeysIterator(
+      'left',
+      object1,
+      object2,
+      skipShallowCompare,
+    ).next().value;
+
+    return !!anyDistinctKey;
+  }
+
+  /**
+   * Compares if object2 contains any different value compared to the object1.
+   */
+  public static isRightDifferent<T extends {}>(
+    object1: T,
+    object2: T,
+    skipShallowCompare = false,
+  ): boolean {
+    const anyDistinctKey = this.distinctKeysIterator(
+      'right',
+      object1,
+      object2,
+      skipShallowCompare,
+    ).next().value;
+
+    return !!anyDistinctKey;
+  }
+
+  /**
    * Calculates the delta between two objects.
    *
    * @param prevObject - The previous state of the object.

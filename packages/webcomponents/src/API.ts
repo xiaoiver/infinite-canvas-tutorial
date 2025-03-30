@@ -175,8 +175,8 @@ export class API {
       penbarSelected: [pen],
     });
 
-    this.#store.shouldCaptureIncrement();
-    this.#store.commit(arrayToMap(this.getNodes()), this.getAppState());
+    // this.#store.shouldCaptureIncrement();
+    // this.#store.commit(arrayToMap(this.getNodes()), this.getAppState());
 
     this.element.dispatchEvent(
       new CustomEvent(Event.PEN_CHANGED, {
@@ -192,8 +192,8 @@ export class API {
       taskbarSelected: selected,
     });
 
-    this.#store.shouldCaptureIncrement();
-    this.#store.commit(arrayToMap(this.getNodes()), this.getAppState());
+    // this.#store.shouldCaptureIncrement();
+    // this.#store.commit(arrayToMap(this.getNodes()), this.getAppState());
 
     this.element.dispatchEvent(
       new CustomEvent(Event.TASK_CHANGED, {

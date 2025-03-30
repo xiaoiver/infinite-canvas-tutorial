@@ -55,6 +55,7 @@
     "d3-color": "^3.1.0",
     "earcut": "^3.0.0",
     "eventemitter3": "^5.0.1",
+    "fractional-indexing": "^3.2.0",
     "gl-matrix": "^3.4.3",
     "libtess": "^1.2.2",
     "potpack": "^2.0.0",

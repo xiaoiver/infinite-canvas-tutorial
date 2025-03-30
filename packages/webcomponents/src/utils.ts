@@ -28,3 +28,5 @@ export const arrayToMap = <T extends { id: string } | string>(
 export const mapToArray = <T extends { id: string } | string>(
   map: Map<string, T>,
 ) => Array.from(map.values());
+
+export const getUpdatedTimestamp = () => Date.now();

@@ -86,12 +86,20 @@ export class LayersPanelItem extends LitElement {
         class="layer-actions" style="visibility: ${
           this.selected ? 'visible' : 'hidden'
         };">
-        <sp-action-button quiet size="m">
+        <sp-action-button quiet size="m" id="trigger">
           <sp-icon-properties slot="icon"></sp-icon-properties>
           <sp-tooltip self-managed placement="bottom">
             Layer properties</sp-tooltip
           >
         </sp-action-button>
+
+        <sp-overlay trigger="trigger@click" placement="bottom">
+          <sp-popover>
+            <ic-spectrum-properties-panel .node=${
+              this.node
+            }></ic-spectrum-properties-panel>
+          </sp-popover>
+        </sp-overlay>
       </div>
     </span>`;
   }

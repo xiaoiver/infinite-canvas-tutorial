@@ -220,6 +220,9 @@ importers:
       eventemitter3:
         specifier: ^5.0.1
         version: 5.0.1
+      fractional-indexing:
+        specifier: ^3.2.0
+        version: 3.2.0
       gl-matrix:
         specifier: ^3.4.3
         version: 3.4.3
@@ -822,6 +825,12 @@ importers:
       '@spectrum-web-components/alert-banner':
         specifier: ^1.4.0
         version: 1.4.0
+      '@spectrum-web-components/color-area':
+        specifier: ^1.4.0
+        version: 1.4.0
+      '@spectrum-web-components/color-slider':
+        specifier: ^1.4.0
+        version: 1.4.0
       '@spectrum-web-components/icon':
         specifier: ^1.4.0
         version: 1.4.0
@@ -829,6 +838,12 @@ importers:
         specifier: ^1.4.0
         version: 1.4.0
       '@spectrum-web-components/menu':
+        specifier: ^1.4.0
+        version: 1.4.0
+      '@spectrum-web-components/number-field':
+        specifier: ^1.4.0
+        version: 1.4.0
+      '@spectrum-web-components/overlay':
         specifier: ^1.4.0
         version: 1.4.0
       '@spectrum-web-components/progress-circle':
@@ -1522,6 +1537,9 @@ packages:
   '@iconify/types@2.0.0':
     resolution: {integrity: sha512-+wluvCrRhXrhyOmRDJ3q8mux9JkKy5SJ/v8ol2tu4FVjyYvtEzkc/3pK15ET6RKg4b4w4BmTk1+gsCUhf21Ykg==}
 
+  '@internationalized/number@3.6.0':
+    resolution: {integrity: sha512-PtrRcJVy7nw++wn4W2OuePQQfTqDzfusSuY1QTtui4wa7r+rGVtR75pO8CyKvHvzyQYi3Q1uO5sY0AsB4e65Bw==}
+
   '@istanbuljs/load-nyc-config@1.1.0':
     resolution: {integrity: sha512-VjeHSlIzpv/NyD3N0YuHfXOPDIixcA1q2ZV98wsMqcYlPmv2n3Yb2lYP9XMElnaFVXg5A7YLTeLu6V84uQDjmQ==}
     engines: {node: '>=8'}
@@ -2118,6 +2136,18 @@ packages:
   '@spectrum-web-components/close-button@1.4.0':
     resolution: {integrity: sha512-NXAo2DYvfbZ8FZiFMuJRIwNBoXZ/aLc5TG7FeafpH2/mQnaOaSdO9+9MkCSN/aQuf99nxAQeHF8WqvaBzz2k+w==}
 
+  '@spectrum-web-components/color-area@1.4.0':
+    resolution: {integrity: sha512-uI8MOdzBysfe7BNlv2HIjNZvfqaQY2aN8fIk1GBDmGLFIpUYaejJGnhed/DoUUQPmJR4hEOaQ2X6qPb72SHqMw==}
+
+  '@spectrum-web-components/color-handle@1.4.0':
+    resolution: {integrity: sha512-coGAXPhllZlp5sL4eShJCCLjk5ajkQY+IctY6xbUOrh5FTT+ZSpfQ9YOoiF+lW+7Mw+jt9EFv94Lqm+y+G7YQA==}
+
+  '@spectrum-web-components/color-loupe@1.4.0':
+    resolution: {integrity: sha512-knAKTFROjwudx5bzjeBXmFc++j5hcKc75pBwDBP0h+Qtz1hj+NS51wUHqB8j6A7nUx0SNBYRGd9yMFoGQ1illg==}
+
+  '@spectrum-web-components/color-slider@1.4.0':
+    resolution: {integrity: sha512-MG47G/3kUAAMfOtE4zSDdRiAduGs4w7CX7g3VY8eWDkyhwwK7jKl5FTleax5bjZPj2snkZI70ty4mGdWWIFELQ==}
+
   '@spectrum-web-components/divider@1.4.0':
     resolution: {integrity: sha512-mZIymIFdyBms4C0rjCbYvasCo2TgOXnTIKDw3XfiP1nRp0s1268nCc+BMtp1jCrMYAJBjJMyFm0NR0awCrm5IQ==}
 
@@ -2139,11 +2169,17 @@ packages:
   '@spectrum-web-components/iconset@1.4.0':
     resolution: {integrity: sha512-jWuh8HYz2LxTimLyJRN+HXNvWMF0hgpRCAJs+A688BwjBZ3yrPUzz8UCHCltdDmYqjdWPGvm2wcRwx7hqvicFA==}
 
+  '@spectrum-web-components/infield-button@1.4.0':
+    resolution: {integrity: sha512-T46eUhWcxYmgKPx/jZrM+gpuTmT6348DSnWNJE54BvTXPS9nemG6VSo8E+IXnuzRpjdyxeo77tqFqdHmz3d+pw==}
+
   '@spectrum-web-components/menu@1.4.0':
     resolution: {integrity: sha512-D5SY7ffO8L729j4VXAvdDIIpIABR3DFAqvbyPFKv9h0Jez6dt1PwClwTccGq1xLCtKhi0NIG1wm5EzCk1Rv0zA==}
 
   '@spectrum-web-components/modal@1.4.0':
     resolution: {integrity: sha512-S7GLdrZG/xPFkyuDl2qMyCiJre/YDJW9J7TUa6+W1ww9k1ycYe+wNdf0SxNgcbaJ8jLvx09xOAwmsPL+PHfNmw==}
+
+  '@spectrum-web-components/number-field@1.4.0':
+    resolution: {integrity: sha512-sY2M59JgdgIMfMQIM6aOPLyzNAWvcggf5cSpaL2lcDSdrwBp9WwB0I6ORz5DKCJZMNUCnSWM4uGkGPf/+g//Qg==}
 
   '@spectrum-web-components/opacity-checkerboard@1.4.0':
     resolution: {integrity: sha512-xhAZw9YlAKL2dpVLcdGU++LjuChXgwz2ydRuN42pW6UbCV4JXpWEPlyyvOmWZHUu3BGG5JfmphsGNR6o+gJ9Fw==}
@@ -3849,6 +3885,10 @@ packages:
   formdata-node@4.4.1:
     resolution: {integrity: sha512-0iirZp3uVDjVGt9p49aTaqjk84TrglENEDuqfdlZQ1roC9CWlPk6Avf8EEnZNcAqPonwkG35x4n3ww/1THYAeQ==}
     engines: {node: '>= 12.20'}
+
+  fractional-indexing@3.2.0:
+    resolution: {integrity: sha512-PcOxmqwYCW7O2ovKRU8OoQQj2yqTfEB/yeTYk4gPid6dN5ODRfU1hXd9tTVZzax/0NkO7AxpHykvZnT1aYp/BQ==}
+    engines: {node: ^14.13.1 || >=16.0.0}
 
   framer-motion@11.18.0:
     resolution: {integrity: sha512-Vmjl5Al7XqKHzDFnVqzi1H9hzn5w4eN/bdqXTymVpU2UuMQuz9w6UPdsL9dFBeH7loBlnu4qcEXME+nvbkcIOw==}
@@ -7421,6 +7461,10 @@ snapshots:
 
   '@iconify/types@2.0.0': {}
 
+  '@internationalized/number@3.6.0':
+    dependencies:
+      '@swc/helpers': 0.5.13
+
   '@istanbuljs/load-nyc-config@1.1.0':
     dependencies:
       camelcase: 5.3.1
@@ -8126,6 +8170,33 @@ snapshots:
     dependencies:
       '@spectrum-web-components/base': 1.4.0
 
+  '@spectrum-web-components/color-area@1.4.0':
+    dependencies:
+      '@spectrum-web-components/base': 1.4.0
+      '@spectrum-web-components/color-handle': 1.4.0
+      '@spectrum-web-components/opacity-checkerboard': 1.4.0
+      '@spectrum-web-components/reactive-controllers': 1.4.0
+      '@spectrum-web-components/shared': 1.4.0
+
+  '@spectrum-web-components/color-handle@1.4.0':
+    dependencies:
+      '@spectrum-web-components/base': 1.4.0
+      '@spectrum-web-components/color-loupe': 1.4.0
+      '@spectrum-web-components/opacity-checkerboard': 1.4.0
+
+  '@spectrum-web-components/color-loupe@1.4.0':
+    dependencies:
+      '@spectrum-web-components/base': 1.4.0
+      '@spectrum-web-components/opacity-checkerboard': 1.4.0
+
+  '@spectrum-web-components/color-slider@1.4.0':
+    dependencies:
+      '@spectrum-web-components/base': 1.4.0
+      '@spectrum-web-components/color-handle': 1.4.0
+      '@spectrum-web-components/opacity-checkerboard': 1.4.0
+      '@spectrum-web-components/reactive-controllers': 1.4.0
+      '@spectrum-web-components/shared': 1.4.0
+
   '@spectrum-web-components/divider@1.4.0':
     dependencies:
       '@spectrum-web-components/base': 1.4.0
@@ -8164,6 +8235,11 @@ snapshots:
     dependencies:
       '@spectrum-web-components/base': 1.4.0
 
+  '@spectrum-web-components/infield-button@1.4.0':
+    dependencies:
+      '@spectrum-web-components/base': 1.4.0
+      '@spectrum-web-components/button': 1.4.0
+
   '@spectrum-web-components/menu@1.4.0':
     dependencies:
       '@lit-labs/observers': 2.0.5
@@ -8180,6 +8256,17 @@ snapshots:
   '@spectrum-web-components/modal@1.4.0':
     dependencies:
       '@spectrum-web-components/base': 1.4.0
+
+  '@spectrum-web-components/number-field@1.4.0':
+    dependencies:
+      '@internationalized/number': 3.6.0
+      '@spectrum-web-components/base': 1.4.0
+      '@spectrum-web-components/icon': 1.4.0
+      '@spectrum-web-components/icons-ui': 1.4.0
+      '@spectrum-web-components/infield-button': 1.4.0
+      '@spectrum-web-components/reactive-controllers': 1.4.0
+      '@spectrum-web-components/shared': 1.4.0
+      '@spectrum-web-components/textfield': 1.4.0
 
   '@spectrum-web-components/opacity-checkerboard@1.4.0':
     dependencies:
@@ -10278,6 +10365,8 @@ snapshots:
     dependencies:
       node-domexception: 1.0.0
       web-streams-polyfill: 4.0.0-beta.3
+
+  fractional-indexing@3.2.0: {}
 
   framer-motion@11.18.0:
     dependencies:
