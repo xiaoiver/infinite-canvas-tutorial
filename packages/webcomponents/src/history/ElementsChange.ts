@@ -591,8 +591,6 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
       (element as any)[key] = value;
       didChange = true;
     }
-
-    console.log('update', key, value);
   }
 
   if (!didChange) {
@@ -600,7 +598,17 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
   }
 
   const { name, visibility } = updates;
-  const { fill, stroke, strokeWidth, fontSize } = updates as any;
+  const {
+    fill,
+    stroke,
+    strokeWidth,
+    strokeCap,
+    strokeJoin,
+    strokeAlignment,
+    fontSize,
+  } = updates as any;
+
+  console.log('updates', updates);
 
   if (!isNil(name)) {
     entity.write(Name).value = name;
@@ -616,6 +624,15 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
   }
   if (!isNil(strokeWidth)) {
     entity.write(Stroke).width = strokeWidth;
+  }
+  if (!isNil(strokeCap)) {
+    entity.write(Stroke).linecap = strokeCap;
+  }
+  if (!isNil(strokeJoin)) {
+    entity.write(Stroke).linejoin = strokeJoin;
+  }
+  if (!isNil(strokeAlignment)) {
+    entity.write(Stroke).alignment = strokeAlignment;
   }
   if (!isNil(fontSize)) {
     entity.write(Text).fontSize = fontSize;
