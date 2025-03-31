@@ -6,7 +6,14 @@ import {
   SerializedNode,
   OrderedSerializedNode,
   randomInteger,
+  Name,
+  Visibility,
+  FillSolid,
+  Stroke,
+  Entity,
+  Text,
 } from '@infinite-canvas-tutorial/ecs';
+import { isNil } from '@antv/util';
 import { Change } from './Change';
 import { Delta } from './Delta';
 import { newElementWith } from './Snapshot';
@@ -436,6 +443,10 @@ export class ElementsChange implements Change<SceneElementsMap> {
     const removedElements = applyDeltas(this.removed);
     const updatedElements = applyDeltas(this.updated);
 
+    console.log('addedElements', addedElements);
+    console.log('removedElements', removedElements);
+    console.log('updatedElements', updatedElements);
+
     const affectedElements = this.resolveConflicts(elements, nextElements);
 
     // TODO: #7348 validate elements semantically and syntactically the changed elements, in case they would result data integrity issues
@@ -495,10 +506,12 @@ export class ElementsChange implements Change<SceneElementsMap> {
           updates as ElementUpdate<OrderedSerializedNode>,
         ) as OrderedSerializedNode;
       } else {
-        affectedElement = mutateElement(
-          nextElement,
-          updates as ElementUpdate<OrderedSerializedNode>,
-        ) as OrderedSerializedNode;
+        console.log('mutateElement', nextElement, updates);
+
+        // affectedElement = mutateElement(
+        //   nextElement,
+        //   updates as ElementUpdate<OrderedSerializedNode>,
+        // ) as OrderedSerializedNode;
       }
 
       nextAffectedElements.set(affectedElement.id, affectedElement);
@@ -515,20 +528,23 @@ export class ElementsChange implements Change<SceneElementsMap> {
     //   ElementsChange.rebindAffected(prevElements, nextElements, id, updater);
     // }
 
-    // // updated delta is affecting the binding only in case it contains changed binding or bindable property
-    // for (const [id] of Array.from(this.updated).filter(([_, delta]) =>
+    // updated delta is affecting the binding only in case it contains changed binding or bindable property
+    // .filter(([_, delta]) =>
     //   Object.keys({ ...delta.deleted, ...delta.inserted }).find((prop) =>
     //     bindingProperties.has(prop as BindingProp | BindableProp),
     //   ),
-    // )) {
-    //   const updatedElement = nextElements.get(id);
-    //   if (!updatedElement || updatedElement.isDeleted) {
-    //     // skip fixing bindings for updates on deleted elements
-    //     continue;
-    //   }
+    // )
+    for (const [id] of Array.from(this.updated)) {
+      const updatedElement = nextElements.get(id);
+      if (!updatedElement || updatedElement.isDeleted) {
+        // skip fixing bindings for updates on deleted elements
+        continue;
+      }
 
-    //   ElementsChange.rebindAffected(prevElements, nextElements, id, updater);
-    // }
+      updater(updatedElement, updatedElement);
+
+      // ElementsChange.rebindAffected(prevElements, nextElements, id, updater);
+    }
 
     // filter only previous elements, which were now affected
     const prevAffectedElements = new Map(
@@ -563,6 +579,7 @@ export class ElementsChange implements Change<SceneElementsMap> {
 // the same drawing. Note: this will trigger the component to update. Make sure you
 // are calling it either from a React event handler or within unstable_batchedUpdates().
 export const mutateElement = <TElement extends Mutable<SerializedNode>>(
+  entity: Entity,
   element: TElement,
   updates: ElementUpdate<TElement>,
 ): TElement => {
@@ -574,10 +591,38 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
       (element as any)[key] = value;
       didChange = true;
     }
+
+    console.log('update', key, value);
   }
 
   if (!didChange) {
     return element;
+  }
+
+  const { name, visibility } = updates;
+  const { fill, stroke, strokeWidth, fontSize } = updates as any;
+
+  if (!isNil(name)) {
+    entity.write(Name).value = name;
+  }
+  if (!isNil(visibility)) {
+    entity.write(Visibility).value = visibility;
+  }
+  if (!isNil(fill)) {
+    entity.write(FillSolid).value = fill;
+  }
+  if (!isNil(stroke)) {
+    entity.write(Stroke).color = stroke;
+  }
+  if (!isNil(strokeWidth)) {
+    entity.write(Stroke).width = strokeWidth;
+  }
+  if (!isNil(fontSize)) {
+    entity.write(Text).fontSize = fontSize;
+  }
+
+  if (isNil(element.version)) {
+    element.version = 0;
   }
 
   element.version++;

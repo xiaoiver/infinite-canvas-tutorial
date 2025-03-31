@@ -10,8 +10,6 @@ import {
   SerializedNode,
   serializedNodesToEntities,
   Transform,
-  Visibility,
-  Name,
   EntityCommands,
   Grid,
   CheckboardStyle,
@@ -19,7 +17,7 @@ import {
 import { type LitElement } from 'lit';
 import { Event } from './event';
 import { Container } from './components';
-import { History, Store, StoreIncrementEvent } from './history';
+import { History, mutateElement, Store, StoreIncrementEvent } from './history';
 import { AppState, getDefaultAppState, Task } from './context';
 import { arrayToMap, mapToArray } from './utils';
 
@@ -145,8 +143,6 @@ export class API {
    * @see https://infinitecanvas.cc/guide/lesson-005
    */
   setCheckboardStyle(checkboardStyle: CheckboardStyle) {
-    console.log('setCheckboardStyle', checkboardStyle);
-
     Object.assign(this.#canvasEntity.write(Grid), {
       checkboardStyle,
     });
@@ -202,6 +198,14 @@ export class API {
     );
   }
 
+  setPropertiesOpened(propertiesOpened: SerializedNode['id'][]) {
+    const prevAppState = this.getAppState();
+    this.setAppState({
+      ...prevAppState,
+      propertiesOpened,
+    });
+  }
+
   /**
    * @see https://docs.excalidraw.com/docs/@excalidraw/excalidraw/api/props/excalidraw-api#setcursor
    */
@@ -253,25 +257,11 @@ export class API {
   updateNode(node: SerializedNode, diff?: Partial<SerializedNode>) {
     const entity = this.#idEntityMap.get(node.id).id();
 
-    let updated = node;
-    if (diff) {
-      const { name, visibility } = diff;
-
-      if (name) {
-        entity.write(Name).value = name;
-      }
-      if (visibility) {
-        entity.write(Visibility).value = visibility;
-      }
-
-      updated = {
-        ...node,
-        ...diff,
-      } as SerializedNode;
-    }
+    const updated = mutateElement(entity, node, diff);
 
     const nodes = this.getNodes();
     const index = nodes.findIndex((n) => n.id === updated.id);
+
     if (index !== -1) {
       nodes[index] = updated;
       this.setNodes(nodes);

@@ -3,6 +3,10 @@ import { customElement, property } from 'lit/decorators.js';
 import { when } from 'lit/directives/when.js';
 import { consume } from '@lit/context';
 import { SerializedNode } from '@infinite-canvas-tutorial/ecs';
+import {
+  OverlayOpenCloseDetail,
+  trigger,
+} from '@spectrum-web-components/overlay';
 import { API } from '../API';
 import { apiContext } from '../context';
 
@@ -61,8 +65,47 @@ export class LayersPanelItem extends LitElement {
     });
   }
 
+  private renderOverlayContent = () => {
+    console.log('render overlay content...');
+
+    return html`
+      <sp-popover
+        @sp-opened=${(event: CustomEvent<OverlayOpenCloseDetail>) => {
+          if (event.target !== event.currentTarget) {
+            return;
+          }
+
+          if (!this.api.getAppState().propertiesOpened.includes(this.node.id)) {
+            this.api.setPropertiesOpened([
+              ...this.api.getAppState().propertiesOpened,
+              this.node.id,
+            ]);
+          }
+        }}
+        @sp-closed=${(event: CustomEvent<OverlayOpenCloseDetail>) => {
+          if (event.target !== event.currentTarget) {
+            return;
+          }
+          this.api.setPropertiesOpened(
+            this.api
+              .getAppState()
+              .propertiesOpened.filter((id) => id !== this.node.id),
+          );
+        }}
+      >
+        <ic-spectrum-properties-panel
+          .node=${this.node}
+        ></ic-spectrum-properties-panel>
+      </sp-popover>
+    `;
+  };
+
   render() {
     const isVisible = this.node.visibility === 'visible';
+    const isOpen = this.api
+      .getAppState()
+      .propertiesOpened.includes(this.node.id);
+
     return html`<span>
         <sp-action-button quiet size="s" @click=${this.handleToggleVisibility}>
           ${when(
@@ -86,20 +129,22 @@ export class LayersPanelItem extends LitElement {
         class="layer-actions" style="visibility: ${
           this.selected ? 'visible' : 'hidden'
         };">
-        <sp-action-button quiet size="m" id="trigger">
+        <sp-action-button quiet size="m" .selected=${isOpen} ${trigger(
+      this.renderOverlayContent,
+      {
+        open: isOpen,
+        triggerInteraction: 'click',
+        overlayOptions: {
+          placement: 'bottom',
+          offset: 6,
+        },
+      },
+    )}>
           <sp-icon-properties slot="icon"></sp-icon-properties>
           <sp-tooltip self-managed placement="bottom">
             Layer properties</sp-tooltip
           >
         </sp-action-button>
-
-        <sp-overlay trigger="trigger@click" placement="bottom">
-          <sp-popover>
-            <ic-spectrum-properties-panel .node=${
-              this.node
-            }></ic-spectrum-properties-panel>
-          </sp-popover>
-        </sp-overlay>
       </div>
     </span>`;
   }

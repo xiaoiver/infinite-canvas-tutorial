@@ -24,9 +24,12 @@ import '@spectrum-web-components/action-menu/sp-action-menu.js';
 import '@spectrum-web-components/alert-banner/sp-alert-banner.js';
 import '@spectrum-web-components/color-slider/sp-color-slider.js';
 import '@spectrum-web-components/color-area/sp-color-area.js';
+import '@spectrum-web-components/color-field/sp-color-field.js';
+import '@spectrum-web-components/color-wheel/sp-color-wheel.js';
 import '@spectrum-web-components/menu/sp-menu-item.js';
 import '@spectrum-web-components/menu/sp-menu-divider.js';
 import '@spectrum-web-components/number-field/sp-number-field.js';
+import '@spectrum-web-components/slider/sp-slider.js';
 import '@spectrum-web-components/overlay/sp-overlay.js';
 import '@spectrum-web-components/progress-circle/sp-progress-circle.js';
 import '@spectrum-web-components/textfield/sp-textfield.js';
@@ -156,7 +159,7 @@ export class InfiniteCanvas extends LitElement {
           this.#appStateProvider.setValue(appState);
         e.detail.getNodes = () => this.#nodesProvider.value;
         e.detail.setNodes = (nodes: SerializedNode[]) =>
-          this.#nodesProvider.setValue(nodes);
+          this.#nodesProvider.setValue(JSON.parse(JSON.stringify(nodes)));
         this.#apiProvider.setValue(e.detail);
       });
 

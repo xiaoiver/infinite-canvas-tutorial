@@ -56,6 +56,12 @@ export class LayersPanel extends LitElement {
   }
 
   private handleSelect(e: MouseEvent, id: SerializedNode['id']) {
+    const { layersSelected } = this.api.getAppState();
+
+    if (layersSelected.length === 1 && layersSelected.includes(id)) {
+      return;
+    }
+
     this.api.selectNodes([id], e.shiftKey);
   }
 

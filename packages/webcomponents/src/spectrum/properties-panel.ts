@@ -4,8 +4,8 @@ import { consume } from '@lit/context';
 import { SerializedNode } from '@infinite-canvas-tutorial/ecs';
 import { apiContext, appStateContext, AppState } from '../context';
 import { API } from '../API';
-import { ColorSlider } from '@spectrum-web-components/color-slider';
 import { ColorArea } from '@spectrum-web-components/color-area';
+import { TextSerializedNode } from '@infinite-canvas-tutorial/ecs/lib/utils';
 
 @customElement('ic-spectrum-properties-panel')
 export class PropertiesPanel extends LitElement {
@@ -34,7 +34,7 @@ export class PropertiesPanel extends LitElement {
     .content {
       display: flex;
       flex-direction: column;
-      gap: 16px;
+      gap: 8px;
     }
 
     .line {
@@ -42,12 +42,32 @@ export class PropertiesPanel extends LitElement {
       align-items: center;
 
       sp-field-label {
-        width: 40px;
+        width: 30px;
       }
 
       sp-number-field {
         width: 100px;
       }
+    }
+
+    ic-spectrum-fill-icon {
+      width: 30px;
+      height: 30px;
+    }
+
+    ic-spectrum-stroke-icon {
+      width: 30px;
+      height: 30px;
+    }
+
+    sp-slider {
+      flex: 1;
+      margin-right: 8px;
+    }
+
+    .stroke-width-field {
+      position: relative;
+      top: 10px;
     }
   `;
 
@@ -64,92 +84,173 @@ export class PropertiesPanel extends LitElement {
     console.log('width changed', e.target.value);
   }
 
+  private handleFontSizeChanged(e: Event & { target: HTMLInputElement }) {
+    const fontSize = parseFloat(e.target.value);
+    this.api.updateNode(this.node, {
+      fontSize,
+    });
+  }
+
+  private handleStrokeWidthChanging(e: Event & { target: HTMLInputElement }) {
+    const nextElementSibling = e.target.nextElementSibling as HTMLInputElement;
+    if (nextElementSibling) {
+      nextElementSibling.value = e.target.value;
+    }
+  }
+
+  private handleStrokeWidthChanged(e: Event & { target: HTMLInputElement }) {
+    const strokeWidth = parseFloat(e.target.value);
+    this.api.updateNode(this.node, {
+      strokeWidth,
+    });
+  }
+
+  private handleFillChanged(e: Event & { target: ColorArea }) {
+    const fill = e.target.color.toString();
+
+    // TODO: hex color
+    this.api.updateNode(this.node, {
+      fill: fill.startsWith('#') ? fill : `#${fill}`,
+    });
+  }
+
   render() {
+    const { type } = this.node;
+    const isGroup = type === 'g';
+    const isText = type === 'text';
+
+    const { fill, stroke, strokeWidth, fontSize } = this
+      .node as TextSerializedNode;
+
     let width = 0;
     let height = 0;
     let x = 0;
     let y = 0;
     let angle = 0;
 
-    if (this.node.type === 'circle') {
-      width = this.node.r * 2;
-      height = this.node.r * 2;
-      x = this.node.cx - this.node.r;
-      y = this.node.cy - this.node.r;
+    if (type === 'circle') {
+      const { r, cx, cy } = this.node;
+      width = r * 2;
+      height = r * 2;
+      x = cx - r;
+      y = cy - r;
       angle = 0;
-    } else if (this.node.type === 'ellipse') {
-      width = this.node.rx * 2;
-      height = this.node.ry * 2;
-      x = this.node.cx - this.node.rx;
-      y = this.node.cy - this.node.ry;
+    } else if (type === 'ellipse') {
+      const { rx, ry, cx, cy } = this.node;
+      width = rx * 2;
+      height = ry * 2;
+      x = cx - rx;
+      y = cy - ry;
       angle = 0;
-    } else if (this.node.type === 'rect') {
-      width = this.node.width;
-      height = this.node.height;
-      x = this.node.x;
-      y = this.node.y;
+    } else if (type === 'rect') {
+      const { width: w, height: h, x: xx, y: yy } = this.node;
+      width = w;
+      height = h;
+      x = xx;
+      y = yy;
       angle = 0;
     }
 
     return html`
       <h4>Properties</h4>
       <sp-accordion allow-multiple size="s">
-        <sp-accordion-item label=${'Shape ' + this.node.type} open>
-          <div class="content">
-            <div class="line">
-              <sp-field-label for="style" side-aligned="start"
-                >Style</sp-field-label
-              >
-              <sp-action-button quiet size="m" id="fill">
-                <sp-icon-properties slot="icon"></sp-icon-properties>
-                <sp-tooltip self-managed placement="bottom"> Fill </sp-tooltip>
-              </sp-action-button>
-              <sp-overlay trigger="fill@click" placement="bottom">
-                <sp-popover>
-                  <sp-color-area
-                    color="hsv (0 100% 100%)"
-                    @input=${({ target }: Event & { target: ColorArea }) => {
-                      const next = target.nextElementSibling as ColorSlider;
-                      const display = next.nextElementSibling as HTMLElement;
-                      display.textContent = target.color as string;
-                      display.style.color = target.color as string;
-                      next.color = target.color;
-                    }}
-                  ></sp-color-area>
-                  <sp-color-slider
-                    color="hsv(0 100% 100%)"
-                    @input=${({
-                      target: {
-                        color,
-                        previousElementSibling,
-                        nextElementSibling,
-                      },
-                    }: Event & {
-                      target: ColorSlider & {
-                        previousElementSibling: ColorArea;
-                        nextElementSibling: HTMLDivElement;
-                      };
-                    }): void => {
-                      previousElementSibling.color = color;
-                      nextElementSibling.textContent = color as string;
-                      nextElementSibling.style.color = color as string;
-                    }}
-                  ></sp-color-slider>
-                </sp-popover>
-              </sp-overlay>
+        ${!isGroup
+          ? html`
+              <sp-accordion-item label=${'Shape ' + this.node.type} open>
+                <div class="content">
+                  <div class="line">
+                    <sp-field-label for="style" side-aligned="start"
+                      >Style</sp-field-label
+                    >
+                    <sp-action-button quiet size="m" id="fill">
+                      <ic-spectrum-fill-icon
+                        value=${fill}
+                        slot="icon"
+                      ></ic-spectrum-fill-icon>
+                      <sp-tooltip self-managed placement="bottom">
+                        Fill
+                      </sp-tooltip>
+                    </sp-action-button>
+                    <sp-overlay trigger="fill@click" placement="bottom">
+                      <sp-popover>
+                        <sp-color-area
+                          color=${fill}
+                          @input=${this.handleFillChanged}
+                        ></sp-color-area>
+                        <sp-color-slider
+                          color=${fill}
+                          @input=${this.handleFillChanged}
+                        ></sp-color-slider>
+                        <sp-field-label for="hex">Hex</sp-field-label>
+                        <sp-color-field
+                          id="hex"
+                          size="s"
+                          value=${fill}
+                          @input=${this.handleFillChanged}
+                        ></sp-color-field>
+                      </sp-popover>
+                    </sp-overlay>
 
-              <sp-action-button quiet size="m" id="stroke">
-                <sp-icon-properties slot="icon"></sp-icon-properties>
-                <sp-tooltip self-managed placement="bottom">
-                  Stroke
-                </sp-tooltip>
-              </sp-action-button>
-              <sp-overlay trigger="stroke@click" placement="bottom">
-                <sp-popover> </sp-popover>
-              </sp-overlay>
-            </div>
-          </div>
-        </sp-accordion-item>
+                    ${!isText
+                      ? html`<sp-action-button quiet size="m" id="stroke">
+                            <ic-spectrum-stroke-icon
+                              value=${stroke}
+                              slot="icon"
+                            ></ic-spectrum-stroke-icon>
+                            <sp-tooltip self-managed placement="bottom">
+                              Stroke
+                            </sp-tooltip>
+                          </sp-action-button>
+                          <sp-overlay trigger="stroke@click" placement="bottom">
+                            <sp-popover> </sp-popover>
+                          </sp-overlay> `
+                      : ''}
+                  </div>
+
+                  ${!isText
+                    ? html`<div class="line">
+                        <sp-slider
+                          label="Stroke width"
+                          label-visibility="text"
+                          value=${strokeWidth}
+                          @input=${this.handleStrokeWidthChanging}
+                          @change=${this.handleStrokeWidthChanged}
+                        ></sp-slider>
+                        <sp-number-field
+                          class="stroke-width-field"
+                          value=${strokeWidth}
+                          @change=${this.handleStrokeWidthChanged}
+                          hide-stepper
+                          autocomplete="off"
+                          format-options='{
+                            "style": "unit",
+                            "unit": "px"
+                          }'
+                        ></sp-number-field>
+                      </div> `
+                    : ''}
+                  ${isText
+                    ? html`<div class="line">
+                        <sp-field-label for="font-size" side-aligned="start"
+                          >Font size</sp-field-label
+                        >
+                        <sp-number-field
+                          id="font-size"
+                          value=${fontSize}
+                          hide-stepper
+                          autocomplete="off"
+                          @change=${this.handleFontSizeChanged}
+                          format-options='{
+                            "style": "unit",
+                            "unit": "px"
+                          }'
+                        ></sp-number-field>
+                      </div> `
+                    : ''}
+                </div>
+              </sp-accordion-item>
+            `
+          : ''}
         <sp-accordion-item label="Transform" open>
           <div class="content">
             <div class="line">

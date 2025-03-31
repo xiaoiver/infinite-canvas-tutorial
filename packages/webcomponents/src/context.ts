@@ -26,6 +26,7 @@ export interface AppState {
   taskbarAll: Task[];
   taskbarSelected: Task[];
   layersSelected: SerializedNode['id'][];
+  propertiesOpened: SerializedNode['id'][];
 }
 
 export const appStateContext = createContext<AppState>(Symbol('appAtate'));
@@ -51,5 +52,6 @@ export const getDefaultAppState = () => {
     taskbarAll: [Task.SHOW_LAYERS_PANEL, Task.SHOW_PROPERTIES_PANEL],
     taskbarSelected: [],
     layersSelected: [],
+    propertiesOpened: [],
   };
 };

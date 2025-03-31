@@ -828,7 +828,13 @@ importers:
       '@spectrum-web-components/color-area':
         specifier: ^1.4.0
         version: 1.4.0
+      '@spectrum-web-components/color-field':
+        specifier: ^1.4.0
+        version: 1.4.0
       '@spectrum-web-components/color-slider':
+        specifier: ^1.4.0
+        version: 1.4.0
+      '@spectrum-web-components/color-wheel':
         specifier: ^1.4.0
         version: 1.4.0
       '@spectrum-web-components/icon':
@@ -847,6 +853,9 @@ importers:
         specifier: ^1.4.0
         version: 1.4.0
       '@spectrum-web-components/progress-circle':
+        specifier: ^1.4.0
+        version: 1.4.0
+      '@spectrum-web-components/slider':
         specifier: ^1.4.0
         version: 1.4.0
       '@spectrum-web-components/textfield':
@@ -2139,6 +2148,9 @@ packages:
   '@spectrum-web-components/color-area@1.4.0':
     resolution: {integrity: sha512-uI8MOdzBysfe7BNlv2HIjNZvfqaQY2aN8fIk1GBDmGLFIpUYaejJGnhed/DoUUQPmJR4hEOaQ2X6qPb72SHqMw==}
 
+  '@spectrum-web-components/color-field@1.4.0':
+    resolution: {integrity: sha512-lr0mCE70mglE/Sf+qMYrjAhU1YKST57jLnwUKuPKqqwkDSzt2IWAA7mdw+wTt7vl9IMzPKtMxkWYQt9VLVDvTA==}
+
   '@spectrum-web-components/color-handle@1.4.0':
     resolution: {integrity: sha512-coGAXPhllZlp5sL4eShJCCLjk5ajkQY+IctY6xbUOrh5FTT+ZSpfQ9YOoiF+lW+7Mw+jt9EFv94Lqm+y+G7YQA==}
 
@@ -2147,6 +2159,9 @@ packages:
 
   '@spectrum-web-components/color-slider@1.4.0':
     resolution: {integrity: sha512-MG47G/3kUAAMfOtE4zSDdRiAduGs4w7CX7g3VY8eWDkyhwwK7jKl5FTleax5bjZPj2snkZI70ty4mGdWWIFELQ==}
+
+  '@spectrum-web-components/color-wheel@1.4.0':
+    resolution: {integrity: sha512-IudhqCZDBMzdXihnIfLBws8CQHwTifginvahrFohijNTtVGJd8TKO7GjJaMTjMZwdT2nmkTi4MTiM7FHuLeopg==}
 
   '@spectrum-web-components/divider@1.4.0':
     resolution: {integrity: sha512-mZIymIFdyBms4C0rjCbYvasCo2TgOXnTIKDw3XfiP1nRp0s1268nCc+BMtp1jCrMYAJBjJMyFm0NR0awCrm5IQ==}
@@ -2201,6 +2216,9 @@ packages:
 
   '@spectrum-web-components/shared@1.4.0':
     resolution: {integrity: sha512-HWuFeZCY66uJJtU4zaCzVy8qjsVaRE9HM+vcbS66c1+lAztDUBEY43V81ZhixLjCvn13Zoq4zrUB1sQUd5n97g==}
+
+  '@spectrum-web-components/slider@1.4.0':
+    resolution: {integrity: sha512-4p2Yi0l3DozRtcYG8IZn6lEdwXHWJ9WvumySb9O72/MXg0mtFRto5i+SqxVWMcsn98A7QZDlxNxrI/9Wo5D0sA==}
 
   '@spectrum-web-components/styles@1.4.0':
     resolution: {integrity: sha512-F1mxHGU4eOav93uRBP1pUUfxZPrXK8M/TDYpiVHY5pRdtENUKnienEP2iTuogN/mq6A5XXrCUzZya/zySpqjbA==}
@@ -8178,6 +8196,12 @@ snapshots:
       '@spectrum-web-components/reactive-controllers': 1.4.0
       '@spectrum-web-components/shared': 1.4.0
 
+  '@spectrum-web-components/color-field@1.4.0':
+    dependencies:
+      '@spectrum-web-components/base': 1.4.0
+      '@spectrum-web-components/color-handle': 1.4.0
+      '@spectrum-web-components/textfield': 1.4.0
+
   '@spectrum-web-components/color-handle@1.4.0':
     dependencies:
       '@spectrum-web-components/base': 1.4.0
@@ -8194,6 +8218,13 @@ snapshots:
       '@spectrum-web-components/base': 1.4.0
       '@spectrum-web-components/color-handle': 1.4.0
       '@spectrum-web-components/opacity-checkerboard': 1.4.0
+      '@spectrum-web-components/reactive-controllers': 1.4.0
+      '@spectrum-web-components/shared': 1.4.0
+
+  '@spectrum-web-components/color-wheel@1.4.0':
+    dependencies:
+      '@spectrum-web-components/base': 1.4.0
+      '@spectrum-web-components/color-handle': 1.4.0
       '@spectrum-web-components/reactive-controllers': 1.4.0
       '@spectrum-web-components/shared': 1.4.0
 
@@ -8320,6 +8351,17 @@ snapshots:
       '@lit-labs/observers': 2.0.5
       '@spectrum-web-components/base': 1.4.0
       focus-visible: 5.2.1
+
+  '@spectrum-web-components/slider@1.4.0':
+    dependencies:
+      '@internationalized/number': 3.6.0
+      '@lit-labs/observers': 2.0.5
+      '@spectrum-web-components/base': 1.4.0
+      '@spectrum-web-components/field-label': 1.4.0
+      '@spectrum-web-components/number-field': 1.4.0
+      '@spectrum-web-components/reactive-controllers': 1.4.0
+      '@spectrum-web-components/shared': 1.4.0
+      '@spectrum-web-components/theme': 1.4.0
 
   '@spectrum-web-components/styles@1.4.0':
     dependencies:

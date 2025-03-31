@@ -70,8 +70,11 @@ export class ZoomLevelSystem extends System {
       const container = canvas.read(Container);
 
       const { zoom } = camera.read(ComputedCamera);
-      this.#zoomEvent.detail.zoom = zoom;
-      container.element.dispatchEvent(this.#zoomEvent);
+
+      if (zoom !== this.#zoomEvent.detail.zoom) {
+        this.#zoomEvent.detail.zoom = zoom;
+        container.element.dispatchEvent(this.#zoomEvent);
+      }
     });
   }
 }
