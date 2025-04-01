@@ -8,6 +8,7 @@ export * from './Cursor';
 export * from './Screenshot';
 export * from './GPUResource';
 export * from './Name';
+export * from './Culled';
 export * from './camera';
 export * from './transform';
 export * from './hierarchy';

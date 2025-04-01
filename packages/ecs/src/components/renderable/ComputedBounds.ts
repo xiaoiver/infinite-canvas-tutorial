@@ -15,7 +15,7 @@ export class ComputedBounds {
   @field(aabbType) declare geometryBounds: AABB;
 
   /**
-   * Account for its children.
+   * Account for world transform.
    */
   @field(aabbType) declare bounds: AABB;
 }

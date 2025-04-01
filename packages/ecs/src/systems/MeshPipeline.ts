@@ -46,6 +46,7 @@ import {
 import { paddingMat3 } from '../utils';
 import { GridRenderer } from './GridRenderer';
 import { BatchManager } from './BatchManager';
+import { getSceneRoot } from './Transform';
 
 export class MeshPipeline extends System {
   private canvases = this.query((q) => q.current.with(Canvas).read);
@@ -258,7 +259,7 @@ export class MeshPipeline extends System {
     });
 
     this.renderables.addedOrChanged.forEach((entity) => {
-      const camera = this.getSceneRoot(entity);
+      const camera = getSceneRoot(entity);
 
       // The gpu resources is not ready for the camera.
       if (!this.pendingRenderables[camera.__id]) {
@@ -271,7 +272,7 @@ export class MeshPipeline extends System {
     });
 
     this.renderables.removed.forEach((entity) => {
-      const camera = this.getSceneRoot(entity);
+      const camera = getSceneRoot(entity);
       this.pendingRenderables[camera.__id].remove.push(entity);
     });
 
@@ -281,7 +282,7 @@ export class MeshPipeline extends System {
         return;
       }
 
-      const camera = this.getSceneRoot(entity);
+      const camera = getSceneRoot(entity);
 
       if (!this.pendingRenderables[camera.__id]) {
         this.pendingRenderables[camera.__id] = {
@@ -310,18 +311,6 @@ export class MeshPipeline extends System {
       batchManager.clear();
       batchManager.destroy();
     });
-  }
-
-  private getSceneRoot(entity: Entity): Entity {
-    if (!entity.has(Children)) {
-      return entity;
-    }
-
-    const parent = entity.read(Children).parent;
-    if (parent) {
-      return this.getSceneRoot(parent);
-    }
-    return entity;
   }
 
   private updateUniform(

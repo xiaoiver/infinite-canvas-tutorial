@@ -105,3 +105,15 @@ export class PropagateTransforms extends System {
     });
   }
 }
+
+export function getSceneRoot(entity: Entity): Entity {
+  if (!entity.has(Children)) {
+    return entity;
+  }
+
+  const parent = entity.read(Children).parent;
+  if (parent) {
+    return getSceneRoot(parent);
+  }
+  return entity;
+}

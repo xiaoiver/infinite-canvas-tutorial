@@ -104,6 +104,17 @@ export class ComputeBounds extends System {
       if (renderBounds) {
         entity.write(ComputedBounds).renderBounds = renderBounds;
       }
+
+      {
+        const matrix = entity.read(GlobalTransform).matrix;
+        const { renderBounds } = entity.read(ComputedBounds);
+
+        // apply global transform
+        const bounds = new AABB();
+        bounds.addBounds(renderBounds, matrix);
+
+        Object.assign(entity.write(ComputedBounds), { bounds });
+      }
     });
   }
 }

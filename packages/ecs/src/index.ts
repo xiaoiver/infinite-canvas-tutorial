@@ -1,5 +1,5 @@
 import {
-  Plugin,
+  type Plugin,
   HierarchyPlugin,
   RendererPlugin,
   TransformPlugin,
@@ -8,6 +8,7 @@ import {
   EventPlugin,
   ScreenshotPlugin,
   PenPlugin,
+  CullingPlugin,
 } from './plugins';
 
 export * from './App';
@@ -48,6 +49,7 @@ export const DefaultPlugins: Plugin[] = [
   CanvasPlugin,
   CameraPlugin,
   EventPlugin,
+  CullingPlugin,
   RendererPlugin,
   ScreenshotPlugin,
   PenPlugin,

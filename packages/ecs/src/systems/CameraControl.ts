@@ -342,7 +342,7 @@ export class CameraControl extends System {
     }
   }
 
-  private viewport2Canvas(
+  viewport2Canvas(
     entity: Entity,
     { x, y }: IPointData,
     viewProjectionMatrixInv: mat3,
