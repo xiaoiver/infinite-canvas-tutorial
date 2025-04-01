@@ -94,6 +94,7 @@ export interface NameAttributes {
 
 export interface TransformAttributes {
   transform: SerializedTransform;
+  lockAspectRatio: boolean;
 }
 
 export interface VisibilityAttributes {

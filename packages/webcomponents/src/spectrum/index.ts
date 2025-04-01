@@ -10,3 +10,4 @@ export * from './penbar';
 export * from './properties-panel';
 export * from './fill-icon';
 export * from './stroke-icon';
+export * from './color-picker';

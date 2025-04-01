@@ -22,6 +22,12 @@ export {
   randomInteger,
   type SerializedNode,
   type OrderedSerializedNode,
+  type CircleSerializedNode,
+  type EllipseSerializedNode,
+  type RectSerializedNode,
+  type PolylineSerializedNode,
+  type PathSerializedNode,
+  type TextSerializedNode,
 } from './utils';
 
 export {

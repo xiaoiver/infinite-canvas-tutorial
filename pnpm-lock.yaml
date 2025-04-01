@@ -858,6 +858,9 @@ importers:
       '@spectrum-web-components/slider':
         specifier: ^1.4.0
         version: 1.4.0
+      '@spectrum-web-components/swatch':
+        specifier: ^1.4.0
+        version: 1.4.0
       '@spectrum-web-components/textfield':
         specifier: ^1.4.0
         version: 1.4.0
@@ -2222,6 +2225,9 @@ packages:
 
   '@spectrum-web-components/styles@1.4.0':
     resolution: {integrity: sha512-F1mxHGU4eOav93uRBP1pUUfxZPrXK8M/TDYpiVHY5pRdtENUKnienEP2iTuogN/mq6A5XXrCUzZya/zySpqjbA==}
+
+  '@spectrum-web-components/swatch@1.4.0':
+    resolution: {integrity: sha512-UbkpRf5x6vi7saPF02YFjuG+nn0IKUQYEfB0c/dY/9onTA2LsBHubLZNIa2nh4l5n+PDYQ20Ex5YT/EUyCFHaw==}
 
   '@spectrum-web-components/textfield@1.4.0':
     resolution: {integrity: sha512-cTOsn0hzBEaIr3b/8anOhCYjMpbfeRMYf696c0yfoGP8oYql7Fc/LYYvl6o8Rd9ImnEPlJcVzQeLnIQbMbcrNg==}
@@ -8367,6 +8373,16 @@ snapshots:
     dependencies:
       '@spectrum-web-components/base': 1.4.0
       lit: 3.2.1
+
+  '@spectrum-web-components/swatch@1.4.0':
+    dependencies:
+      '@lit-labs/observers': 2.0.5
+      '@spectrum-web-components/base': 1.4.0
+      '@spectrum-web-components/icon': 1.4.0
+      '@spectrum-web-components/icons-ui': 1.4.0
+      '@spectrum-web-components/opacity-checkerboard': 1.4.0
+      '@spectrum-web-components/reactive-controllers': 1.4.0
+      '@spectrum-web-components/shared': 1.4.0
 
   '@spectrum-web-components/textfield@1.4.0':
     dependencies:

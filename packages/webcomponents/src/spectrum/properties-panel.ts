@@ -1,11 +1,13 @@
 import { html, css, LitElement } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
 import { consume } from '@lit/context';
-import { SerializedNode } from '@infinite-canvas-tutorial/ecs';
+import {
+  SerializedNode,
+  TextSerializedNode,
+} from '@infinite-canvas-tutorial/ecs';
+import { when } from 'lit/directives/when.js';
 import { apiContext, appStateContext, AppState } from '../context';
 import { API } from '../API';
-import { ColorArea } from '@spectrum-web-components/color-area';
-import { TextSerializedNode } from '@infinite-canvas-tutorial/ecs/lib/utils';
 
 @customElement('ic-spectrum-properties-panel')
 export class PropertiesPanel extends LitElement {
@@ -18,13 +20,6 @@ export class PropertiesPanel extends LitElement {
       overflow: hidden;
 
       --system-accordion-size-s-item-header-font-size: 14px;
-    }
-
-    .fill-popover {
-      display: flex;
-      align-items: center;
-      flex-direction: column;
-      gap: 8px;
     }
 
     sp-color-field {
@@ -49,6 +44,7 @@ export class PropertiesPanel extends LitElement {
       display: flex;
       flex-direction: column;
       gap: 8px;
+      position: relative;
     }
 
     .style-group {
@@ -62,13 +58,20 @@ export class PropertiesPanel extends LitElement {
     .line {
       display: flex;
       align-items: center;
+      justify-content: space-between;
 
       sp-field-label {
         width: 30px;
       }
 
       sp-number-field {
-        width: 100px;
+        width: 80px;
+      }
+
+      > div {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
       }
     }
 
@@ -91,6 +94,24 @@ export class PropertiesPanel extends LitElement {
       position: relative;
       top: 10px;
     }
+
+    .lock {
+      width: 20px;
+      height: 20px;
+
+      svg {
+        height: 100%;
+        width: 100%;
+        vertical-align: top;
+        color: inherit;
+      }
+    }
+
+    .lock-button {
+      position: absolute;
+      left: 128px;
+      top: 22px;
+    }
   `;
 
   @consume({ context: appStateContext, subscribe: true })
@@ -103,35 +124,53 @@ export class PropertiesPanel extends LitElement {
   node: SerializedNode;
 
   private handleWidthChanged(e: Event & { target: HTMLInputElement }) {
-    const width = parseFloat(e.target.value);
+    const newWidth = parseInt(e.target.value);
     if (this.node.type === 'rect') {
-      this.api.updateNode(this.node, {
-        width,
-      });
+      if (this.node.lockAspectRatio) {
+        const { width, height } = this.node;
+        const aspectRatio = width / height;
+        const newHeight = newWidth / aspectRatio;
+        this.api.updateNode(this.node, { width: newWidth, height: newHeight });
+      } else {
+        this.api.updateNode(this.node, {
+          width: newWidth,
+        });
+      }
     }
+    this.requestUpdate();
   }
 
   private handleHeightChanged(e: Event & { target: HTMLInputElement }) {
-    const height = parseFloat(e.target.value);
+    const height = parseInt(e.target.value);
     if (this.node.type === 'rect') {
       this.api.updateNode(this.node, {
         height,
       });
     }
+    this.requestUpdate();
   }
 
   private handleXChanged(e: Event & { target: HTMLInputElement }) {
-    const x = parseFloat(e.target.value);
+    const x = parseInt(e.target.value);
     if (this.node.type === 'rect') {
       this.api.updateNode(this.node, { x });
     }
+    this.requestUpdate();
   }
 
   private handleYChanged(e: Event & { target: HTMLInputElement }) {
-    const y = parseFloat(e.target.value);
+    const y = parseInt(e.target.value);
     if (this.node.type === 'rect') {
       this.api.updateNode(this.node, { y });
     }
+    this.requestUpdate();
+  }
+
+  private handleLockAspectRatioChanged() {
+    this.api.updateNode(this.node, {
+      lockAspectRatio: !this.node.lockAspectRatio,
+    });
+    this.requestUpdate();
   }
 
   private handleFontSizeChanged(e: Event & { target: HTMLInputElement }) {
@@ -139,6 +178,7 @@ export class PropertiesPanel extends LitElement {
     this.api.updateNode(this.node, {
       fontSize,
     });
+    this.requestUpdate();
   }
 
   private handleStrokeWidthChanging(e: Event & { target: HTMLInputElement }) {
@@ -149,10 +189,11 @@ export class PropertiesPanel extends LitElement {
   }
 
   private handleStrokeWidthChanged(e: Event & { target: HTMLInputElement }) {
-    const strokeWidth = parseFloat(e.target.value);
+    const strokeWidth = parseInt(e.target.value);
     this.api.updateNode(this.node, {
       strokeWidth,
     });
+    this.requestUpdate();
   }
 
   private handleStrokeAlignmentChanged(e: Event) {
@@ -160,25 +201,36 @@ export class PropertiesPanel extends LitElement {
     this.api.updateNode(this.node, {
       strokeAlignment,
     });
+    this.requestUpdate();
   }
 
   private handleStrokeLinecapChanged(e: Event & { target: HTMLInputElement }) {
     const strokeLinecap = (e.target as any).selected[0] as CanvasLineCap;
     this.api.updateNode(this.node, { strokeLinecap });
+    this.requestUpdate();
   }
 
   private handleStrokeLinejoinChanged(e: Event & { target: HTMLInputElement }) {
     const strokeLinejoin = (e.target as any).selected[0] as CanvasLineJoin;
     this.api.updateNode(this.node, { strokeLinejoin });
+    this.requestUpdate();
   }
 
-  private handleFillChanged(e: Event & { target: ColorArea }) {
-    const fill = e.target.color.toString();
-
-    // TODO: hex color
+  private handleFillChanged(e: CustomEvent) {
+    const fill = e.detail;
     this.api.updateNode(this.node, {
-      fill: fill.startsWith('#') ? fill : `#${fill}`,
+      fill: fill.startsWith('#') || fill === 'none' ? fill : `#${fill}`,
     });
+    this.requestUpdate();
+  }
+
+  private handleStrokeChanged(e: CustomEvent) {
+    const stroke = e.detail;
+    this.api.updateNode(this.node, {
+      stroke:
+        stroke.startsWith('#') || stroke === 'none' ? stroke : `#${stroke}`,
+    });
+    this.requestUpdate();
   }
 
   render() {
@@ -187,6 +239,7 @@ export class PropertiesPanel extends LitElement {
     const isText = type === 'text';
 
     const {
+      lockAspectRatio,
       fill,
       stroke,
       strokeWidth,
@@ -234,23 +287,10 @@ export class PropertiesPanel extends LitElement {
       </sp-action-button>
       <sp-overlay trigger="fill@click" placement="bottom">
         <sp-popover class="fill-popover">
-          <sp-color-area
-            color=${fill}
-            @input=${this.handleFillChanged}
-          ></sp-color-area>
-          <sp-color-slider
-            color=${fill}
-            @input=${this.handleFillChanged}
-          ></sp-color-slider>
-          <div>
-            <sp-field-label for="hex" side-aligned="start">Hex</sp-field-label>
-            <sp-color-field
-              id="hex"
-              size="s"
-              value=${fill}
-              @input=${this.handleFillChanged}
-            ></sp-color-field>
-          </div>
+          <ic-spectrum-color-picker
+            value=${fill}
+            @color-change=${this.handleFillChanged}
+          ></ic-spectrum-color-picker>
         </sp-popover>
       </sp-overlay>`;
 
@@ -262,7 +302,12 @@ export class PropertiesPanel extends LitElement {
         <sp-tooltip self-managed placement="bottom"> Stroke </sp-tooltip>
       </sp-action-button>
       <sp-overlay trigger="stroke@click" placement="bottom">
-        <sp-popover> </sp-popover>
+        <sp-popover>
+          <ic-spectrum-color-picker
+            value=${stroke}
+            @color-change=${this.handleStrokeChanged}
+          ></ic-spectrum-color-picker>
+        </sp-popover>
       </sp-overlay> `;
 
     const strokeWidthHTML = html`<div class="line">
@@ -279,6 +324,7 @@ export class PropertiesPanel extends LitElement {
         @change=${this.handleStrokeWidthChanged}
         hide-stepper
         autocomplete="off"
+        min="0"
         format-options='{
           "style": "unit",
           "unit": "px"
@@ -612,7 +658,7 @@ export class PropertiesPanel extends LitElement {
                     <sp-field-label for="style" side-aligned="start"
                       >Style</sp-field-label
                     >
-                    ${fillHTML} ${!isText ? strokeHTML : ''}
+                    <div>${fillHTML} ${!isText ? strokeHTML : ''}</div>
                   </div>
 
                   ${!isText ? strokeWidthHTML : ''}
@@ -627,81 +673,144 @@ export class PropertiesPanel extends LitElement {
         <sp-accordion-item label="Transform" open>
           <div class="content">
             <div class="line">
-              <sp-field-label for="w" side-aligned="start">W</sp-field-label>
-              <sp-number-field
-                id="w"
-                value=${width}
-                @change=${this.handleWidthChanged}
-                hide-stepper
-                autocomplete="off"
-                format-options='{
+              <div>
+                <sp-field-label for="w" side-aligned="start">W</sp-field-label>
+                <sp-number-field
+                  id="w"
+                  value=${width}
+                  @change=${this.handleWidthChanged}
+                  hide-stepper
+                  autocomplete="off"
+                  min="0"
+                  format-options='{
                   "style": "unit",
                   "unit": "px"
                 }'
-              ></sp-number-field>
+                ></sp-number-field>
+                <sp-icon class="lock">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 19 4.5">
+                    <defs>
+                      <style>
+                        .lock {
+                          fill: none;
+                          stroke: var(--spectrum-gray-500);
+                          stroke-miterlimit: 10;
+                        }
+                      </style>
+                    </defs>
+                    <line class="lock" y1="0.5" x2="16.5" y2="0.5"></line>
+                    <line class="lock" x1="16.5" x2="16.5" y2="4.5"></line>
+                  </svg>
+                </sp-icon>
+              </div>
 
-              <sp-field-label for="x" side-aligned="start">X</sp-field-label>
-              <sp-number-field
-                id="x"
-                value=${x}
-                @change=${this.handleXChanged}
-                hide-stepper
-                autocomplete="off"
-                format-options='{
-                  "style": "unit",
-                  "unit": "px"
-                }'
-              ></sp-number-field>
+              <div>
+                <sp-field-label for="x" side-aligned="end">X</sp-field-label>
+                <sp-number-field
+                  id="x"
+                  value=${x}
+                  @change=${this.handleXChanged}
+                  hide-stepper
+                  autocomplete="off"
+                  format-options='{
+                    "style": "unit",
+                    "unit": "px"
+                  }'
+                ></sp-number-field>
+              </div>
             </div>
 
             <div class="line">
-              <sp-field-label for="h" side-aligned="start">H</sp-field-label>
-              <sp-number-field
-                id="h"
-                value=${height}
-                @change=${this.handleHeightChanged}
-                hide-stepper
-                autocomplete="off"
-                format-options='{
-                  "style": "unit",
-                  "unit": "px"
-                }'
-              ></sp-number-field>
+              <div>
+                <sp-field-label for="h" side-aligned="start">H</sp-field-label>
+                <sp-number-field
+                  id="h"
+                  value=${height}
+                  @change=${this.handleHeightChanged}
+                  hide-stepper
+                  autocomplete="off"
+                  min="0"
+                  format-options='{
+                    "style": "unit",
+                    "unit": "px"
+                  }'
+                ></sp-number-field>
+                <sp-icon class="lock">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 19 7">
+                    <defs>
+                      <style>
+                        .lock {
+                          fill: none;
+                          stroke: var(--spectrum-gray-500);
+                          stroke-miterlimit: 10;
+                        }
+                      </style>
+                    </defs>
+                    <line class="lock" y1="4.5" x2="17" y2="4.5"></line>
+                    <line class="lock" x1="16.5" x2="16.5" y2="4.5"></line>
+                  </svg>
+                </sp-icon>
+              </div>
 
-              <sp-field-label for="y" side-aligned="start">Y</sp-field-label>
-              <sp-number-field
-                id="y"
-                value=${y}
-                @change=${this.handleYChanged}
-                hide-stepper
-                autocomplete="off"
-                format-options='{
-                  "style": "unit",
-                  "unit": "px"
-                }'
-              ></sp-number-field>
+              <div>
+                <sp-field-label for="y" side-aligned="end">Y</sp-field-label>
+                <sp-number-field
+                  id="y"
+                  value=${y}
+                  @change=${this.handleYChanged}
+                  hide-stepper
+                  autocomplete="off"
+                  format-options='{
+                    "style": "unit",
+                    "unit": "px"
+                  }'
+                ></sp-number-field>
+              </div>
             </div>
 
+            <sp-action-button
+              quiet
+              size="s"
+              class="lock-button"
+              @click=${this.handleLockAspectRatioChanged}
+            >
+              <sp-tooltip self-managed placement="bottom">
+                ${when(
+                  lockAspectRatio,
+                  () => 'Constrain aspect ratio',
+                  () => 'Do not constrain aspect ratio',
+                )}
+              </sp-tooltip>
+              ${when(
+                lockAspectRatio,
+                () =>
+                  html`<sp-icon-lock-closed slot="icon"></sp-icon-lock-closed>`,
+                () => html`<sp-icon-lock-open slot="icon"></sp-icon-lock-open>`,
+              )}
+            </sp-action-button>
+
             <div class="line">
-              <sp-field-label
-                for="angle"
-                side-aligned="start"
-                format-options='{
+              <div>
+                <sp-field-label
+                  for="angle"
+                  side-aligned="start"
+                  format-options='{
                   "style": "unit",
                   "unit": "px"
                 }'
-                >Angle</sp-field-label
-              >
-              <sp-number-field
-                id="angle"
-                value=${angle}
-                hide-stepper
-                autocomplete="off"
-                format-options='{
+                  >Angle</sp-field-label
+                >
+                <sp-number-field
+                  id="angle"
+                  value=${angle}
+                  hide-stepper
+                  autocomplete="off"
+                  format-options='{
                   "style": "unit",
                   "unit": "deg"
                 }'
-              ></sp-number-field>
+                ></sp-number-field>
+              </div>
             </div>
           </div>
         </sp-accordion-item>

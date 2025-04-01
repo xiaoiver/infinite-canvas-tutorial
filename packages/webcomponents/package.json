@@ -73,6 +73,7 @@
     "@spectrum-web-components/menu": "^1.4.0",
     "@spectrum-web-components/number-field": "^1.4.0",
     "@spectrum-web-components/slider": "^1.4.0",
+    "@spectrum-web-components/swatch": "^1.4.0",
     "@spectrum-web-components/tooltip": "^1.4.0",
     "@spectrum-web-components/thumbnail": "^1.4.0",
     "@spectrum-web-components/textfield": "^1.4.0",

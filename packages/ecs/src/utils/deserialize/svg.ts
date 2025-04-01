@@ -135,6 +135,8 @@ export function svgElementsToSerializedNodes(
       (type === 'text' && (attributes as TextSerializedNode).content) ||
       `Layer ${id}`;
 
+    attributes.lockAspectRatio = true;
+
     const node = {
       id: `${id}`,
       parentId: parentId ? `${parentId}` : undefined,
