@@ -12,12 +12,13 @@ import {
   Stroke,
   Entity,
   Text,
+  Rect,
 } from '@infinite-canvas-tutorial/ecs';
 import { isNil } from '@antv/util';
 import { Change } from './Change';
 import { Delta } from './Delta';
 import { newElementWith } from './Snapshot';
-import { getUpdatedTimestamp } from '../utils';
+import { createOrSetComponent, getUpdatedTimestamp } from '../utils';
 
 export type SceneElementsMap = Map<SerializedNode['id'], SerializedNode>;
 
@@ -606,9 +607,11 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
     strokeJoin,
     strokeAlignment,
     fontSize,
+    width,
+    height,
+    x,
+    y,
   } = updates as any;
-
-  console.log('updates', updates);
 
   if (!isNil(name)) {
     entity.write(Name).value = name;
@@ -620,22 +623,34 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
     entity.write(FillSolid).value = fill;
   }
   if (!isNil(stroke)) {
-    entity.write(Stroke).color = stroke;
+    createOrSetComponent(entity, Stroke, { color: stroke });
   }
   if (!isNil(strokeWidth)) {
-    entity.write(Stroke).width = strokeWidth;
+    createOrSetComponent(entity, Stroke, { width: strokeWidth });
   }
   if (!isNil(strokeCap)) {
-    entity.write(Stroke).linecap = strokeCap;
+    createOrSetComponent(entity, Stroke, { linecap: strokeCap });
   }
   if (!isNil(strokeJoin)) {
-    entity.write(Stroke).linejoin = strokeJoin;
+    createOrSetComponent(entity, Stroke, { linejoin: strokeJoin });
   }
   if (!isNil(strokeAlignment)) {
-    entity.write(Stroke).alignment = strokeAlignment;
+    createOrSetComponent(entity, Stroke, { alignment: strokeAlignment });
   }
   if (!isNil(fontSize)) {
     entity.write(Text).fontSize = fontSize;
+  }
+  if (!isNil(width)) {
+    entity.write(Rect).width = width;
+  }
+  if (!isNil(height)) {
+    entity.write(Rect).height = height;
+  }
+  if (!isNil(x)) {
+    entity.write(Rect).x = x;
+  }
+  if (!isNil(y)) {
+    entity.write(Rect).y = y;
   }
 
   if (isNil(element.version)) {

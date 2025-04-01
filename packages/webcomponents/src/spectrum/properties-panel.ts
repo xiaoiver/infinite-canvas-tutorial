@@ -15,12 +15,9 @@ export class PropertiesPanel extends LitElement {
       flex-direction: column;
       padding: 0;
       width: 300px;
+      overflow: hidden;
 
       --system-accordion-size-s-item-header-font-size: 14px;
-    }
-
-    sp-popover {
-      padding: 0;
     }
 
     .fill-popover {
@@ -106,7 +103,35 @@ export class PropertiesPanel extends LitElement {
   node: SerializedNode;
 
   private handleWidthChanged(e: Event & { target: HTMLInputElement }) {
-    console.log('width changed', e.target.value);
+    const width = parseFloat(e.target.value);
+    if (this.node.type === 'rect') {
+      this.api.updateNode(this.node, {
+        width,
+      });
+    }
+  }
+
+  private handleHeightChanged(e: Event & { target: HTMLInputElement }) {
+    const height = parseFloat(e.target.value);
+    if (this.node.type === 'rect') {
+      this.api.updateNode(this.node, {
+        height,
+      });
+    }
+  }
+
+  private handleXChanged(e: Event & { target: HTMLInputElement }) {
+    const x = parseFloat(e.target.value);
+    if (this.node.type === 'rect') {
+      this.api.updateNode(this.node, { x });
+    }
+  }
+
+  private handleYChanged(e: Event & { target: HTMLInputElement }) {
+    const y = parseFloat(e.target.value);
+    if (this.node.type === 'rect') {
+      this.api.updateNode(this.node, { y });
+    }
   }
 
   private handleFontSizeChanged(e: Event & { target: HTMLInputElement }) {
@@ -199,6 +224,35 @@ export class PropertiesPanel extends LitElement {
       y = yy;
       angle = 0;
     }
+
+    const fillHTML = html`<sp-action-button quiet size="m" id="fill">
+        <ic-spectrum-fill-icon
+          value=${fill}
+          slot="icon"
+        ></ic-spectrum-fill-icon>
+        <sp-tooltip self-managed placement="bottom"> Fill </sp-tooltip>
+      </sp-action-button>
+      <sp-overlay trigger="fill@click" placement="bottom">
+        <sp-popover class="fill-popover">
+          <sp-color-area
+            color=${fill}
+            @input=${this.handleFillChanged}
+          ></sp-color-area>
+          <sp-color-slider
+            color=${fill}
+            @input=${this.handleFillChanged}
+          ></sp-color-slider>
+          <div>
+            <sp-field-label for="hex" side-aligned="start">Hex</sp-field-label>
+            <sp-color-field
+              id="hex"
+              size="s"
+              value=${fill}
+              @input=${this.handleFillChanged}
+            ></sp-color-field>
+          </div>
+        </sp-popover>
+      </sp-overlay>`;
 
     const strokeHTML = html`<sp-action-button quiet size="m" id="stroke">
         <ic-spectrum-stroke-icon
@@ -558,40 +612,7 @@ export class PropertiesPanel extends LitElement {
                     <sp-field-label for="style" side-aligned="start"
                       >Style</sp-field-label
                     >
-                    <sp-action-button quiet size="m" id="fill">
-                      <ic-spectrum-fill-icon
-                        value=${fill}
-                        slot="icon"
-                      ></ic-spectrum-fill-icon>
-                      <sp-tooltip self-managed placement="bottom">
-                        Fill
-                      </sp-tooltip>
-                    </sp-action-button>
-                    <sp-overlay trigger="fill@click" placement="bottom">
-                      <sp-popover class="fill-popover">
-                        <sp-color-area
-                          color=${fill}
-                          @input=${this.handleFillChanged}
-                        ></sp-color-area>
-                        <sp-color-slider
-                          color=${fill}
-                          @input=${this.handleFillChanged}
-                        ></sp-color-slider>
-                        <div>
-                          <sp-field-label for="hex" side-aligned="start"
-                            >Hex</sp-field-label
-                          >
-                          <sp-color-field
-                            id="hex"
-                            size="s"
-                            value=${fill}
-                            @input=${this.handleFillChanged}
-                          ></sp-color-field>
-                        </div>
-                      </sp-popover>
-                    </sp-overlay>
-
-                    ${!isText ? strokeHTML : ''}
+                    ${fillHTML} ${!isText ? strokeHTML : ''}
                   </div>
 
                   ${!isText ? strokeWidthHTML : ''}
@@ -610,9 +631,9 @@ export class PropertiesPanel extends LitElement {
               <sp-number-field
                 id="w"
                 value=${width}
+                @change=${this.handleWidthChanged}
                 hide-stepper
                 autocomplete="off"
-                @change=${this.handleWidthChanged}
                 format-options='{
                   "style": "unit",
                   "unit": "px"
@@ -623,6 +644,7 @@ export class PropertiesPanel extends LitElement {
               <sp-number-field
                 id="x"
                 value=${x}
+                @change=${this.handleXChanged}
                 hide-stepper
                 autocomplete="off"
                 format-options='{
@@ -637,6 +659,7 @@ export class PropertiesPanel extends LitElement {
               <sp-number-field
                 id="h"
                 value=${height}
+                @change=${this.handleHeightChanged}
                 hide-stepper
                 autocomplete="off"
                 format-options='{
@@ -649,6 +672,7 @@ export class PropertiesPanel extends LitElement {
               <sp-number-field
                 id="y"
                 value=${y}
+                @change=${this.handleYChanged}
                 hide-stepper
                 autocomplete="off"
                 format-options='{

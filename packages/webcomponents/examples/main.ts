@@ -1,13 +1,9 @@
-import {
-  App,
-  svgElementsToSerializedNodes,
-  DefaultPlugins,
-  CheckboardStyle,
-} from '../../ecs';
+import { App, svgElementsToSerializedNodes, DefaultPlugins } from '../../ecs';
 import { Event, UIPlugin } from '../src';
 import '../src/spectrum';
 
 const res = await fetch('/maslow-hierarchy.svg');
+// const res = await fetch('/test.svg');
 const svg = await res.text();
 // TODO: extract semantic groups inside comments
 const $container = document.createElement('div');

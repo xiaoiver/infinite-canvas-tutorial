@@ -291,8 +291,14 @@ export class MeshPipeline extends System {
       }
 
       if (visibility.value === 'visible') {
+        if (this.pendingRenderables[camera.__id].add.includes(entity)) {
+          return;
+        }
         this.pendingRenderables[camera.__id].add.push(entity);
       } else {
+        if (this.pendingRenderables[camera.__id].remove.includes(entity)) {
+          return;
+        }
         this.pendingRenderables[camera.__id].remove.push(entity);
       }
     });

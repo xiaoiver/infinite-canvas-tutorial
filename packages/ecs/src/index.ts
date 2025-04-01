@@ -32,6 +32,7 @@ export {
   Type,
   World,
   System,
+  type ComponentType,
   type Entity,
 } from '@lastolivegames/becsy';
 

@@ -222,6 +222,13 @@ export class BatchManager {
       });
       delete this.#batchableDrawcallsCache[shape.__id];
     } else {
+      this.#nonBatchableDrawcallsCache[shape.__id].forEach((drawcall) => {
+        drawcall.destroy();
+        this.#drawcallsToFlush.splice(
+          this.#drawcallsToFlush.indexOf(drawcall),
+          1,
+        );
+      });
       delete this.#nonBatchableDrawcallsCache[shape.__id];
     }
   }

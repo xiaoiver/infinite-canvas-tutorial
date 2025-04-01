@@ -1,3 +1,5 @@
+import { Entity, ComponentType } from '@infinite-canvas-tutorial/ecs';
+
 export async function checkWebGPUSupport() {
   if ('gpu' in navigator) {
     const gpu = await navigator.gpu.requestAdapter();
@@ -30,3 +32,14 @@ export const mapToArray = <T extends { id: string } | string>(
 ) => Array.from(map.values());
 
 export const getUpdatedTimestamp = () => Date.now();
+
+export function createOrSetComponent<T>(
+  entity: Entity,
+  componentCtor: ComponentType<T>,
+  component: Partial<T>,
+) {
+  if (!entity.has(componentCtor)) {
+    entity.add(componentCtor);
+  }
+  Object.assign(entity.write(componentCtor), component);
+}
