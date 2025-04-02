@@ -205,8 +205,9 @@ If you want to use it in your own project, you can refer to:
 -   How to draw bitmap font
 -   How to draw emoji
 
-<img src="./screenshots/lesson15.png" width="300" alt="Lesson 15 - text">
-<img src="./screenshots/lesson15-2.png" width="300" alt="Lesson 15 - text">
+|                  Render text with SDF atlas                   |     Bitmap font, emoji, BiDi and clusters      |
+| :-----------------------------------------------------------: | :--------------------------------------------: |
+| ![Linear, Radial, Conic Gradient](./screenshots/lesson15.png) | ![Mesh Gradient](./screenshots/lesson15-2.png) |
 
 ## Lesson 16 - Advanced text features [🔗](https://infinitecanvas.cc/guide/lesson-016)
 
@@ -216,8 +217,9 @@ If you want to use it in your own project, you can refer to:
 -   Physical text rendering
 -   Load web font with web font loader
 
-<img src="./screenshots/lesson16.png" width="300" alt="Lesson 16 - text">
-<img src="./screenshots/lesson16-2.png" width="300" alt="Lesson 16 - physical text">
+|                Shaping TeX with MathJax                 |                 Physical text                  |
+| :-----------------------------------------------------: | :--------------------------------------------: |
+| ![Shaping TeX with MathJax](./screenshots/lesson16.png) | ![physical text](./screenshots/lesson16-2.png) |
 
 ## Lesson 17 - Gradient and Pattern [🔗](https://infinitecanvas.cc/guide/lesson-017)
 

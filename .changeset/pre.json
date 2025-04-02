@@ -1,5 +1,5 @@
 {
-  "mode": "pre",
+  "mode": "exit",
   "tag": "alpha",
   "initialVersions": {
     "@infinite-canvas-tutorial/ecs": "0.0.1-alpha.1",

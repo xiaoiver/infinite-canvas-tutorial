@@ -205,8 +205,9 @@ pnpm run dev
 -   如何绘制 Bitmap 格式的字体
 -   如何绘制 emoji
 
-<img src="./screenshots/lesson15.png" width="300" alt="Lesson 15 - text">
-<img src="./screenshots/lesson15-2.png" width="300" alt="Lesson 15 - text">
+|                  Render text with SDF atlas                   |     Bitmap font, emoji, BiDi and clusters      |
+| :-----------------------------------------------------------: | :--------------------------------------------: |
+| ![Linear, Radial, Conic Gradient](./screenshots/lesson15.png) | ![Mesh Gradient](./screenshots/lesson15-2.png) |
 
 ## 课程 16 - 文本的高级特性 [🔗](https://infinitecanvas.cc/zh/guide/lesson-016)
 
@@ -216,8 +217,9 @@ pnpm run dev
 -   带有晕染效果的文本渲染
 -   使用 Web Font Loader 加载 Web 字体
 
-<img src="./screenshots/lesson16.png" width="300" alt="Lesson 16 - text">
-<img src="./screenshots/lesson16-2.png" width="300" alt="Lesson 16 - physical text">
+|                Shaping TeX with MathJax                 |                 Physical text                  |
+| :-----------------------------------------------------: | :--------------------------------------------: |
+| ![Shaping TeX with MathJax](./screenshots/lesson16.png) | ![physical text](./screenshots/lesson16-2.png) |
 
 ## 课程 17 - 渐变和重复图案 [🔗](https://infinitecanvas.cc/zh/guide/lesson-017)
 
