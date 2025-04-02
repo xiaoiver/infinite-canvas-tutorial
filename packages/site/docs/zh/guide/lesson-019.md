@@ -145,6 +145,8 @@ canvas.updateScene({ elements });
 
 ## 历史记录 {#history}
 
+[UI Algorithms: A Tiny Undo Stack]
+
 参考 [Excalidraw HistoryEntry]，我们增加一个 History 类，用于管理撤销和重做。
 
 ```ts
@@ -198,3 +200,4 @@ export class History {
 [Excalidraw updateScene]: https://docs.excalidraw.com/docs/@excalidraw/excalidraw/api/props/excalidraw-api#updatescene
 [fractional-indexing]: https://github.com/rocicorp/fractional-indexing
 [Movable tree CRDTs and Loro's implementation]: https://loro.dev/blog/movable-tree
+[UI Algorithms: A Tiny Undo Stack]: https://blog.julik.nl/2025/03/a-tiny-undo-stack

@@ -117,3 +117,11 @@ export function getSceneRoot(entity: Entity): Entity {
   }
   return entity;
 }
+
+export function getDescendants(entity: Entity): Entity[] {
+  if (!entity.has(Parent)) {
+    return [];
+  }
+  const children = entity.read(Parent).children;
+  return children.flatMap((child) => [child, ...getDescendants(child)]);
+}

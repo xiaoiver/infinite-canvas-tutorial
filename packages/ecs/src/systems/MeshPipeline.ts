@@ -17,6 +17,7 @@ import {
   ComputedPoints,
   ComputedRough,
   ComputedTextMetrics,
+  Culled,
   DropShadow,
   Ellipse,
   FillGradient,
@@ -40,7 +41,6 @@ import {
   Stroke,
   Text,
   Theme,
-  Visibility,
   Wireframe,
 } from '../components';
 import { paddingMat3 } from '../utils';
@@ -58,8 +58,8 @@ export class MeshPipeline extends System {
         .withAny(Circle, Ellipse, Rect, Polyline, Path, Text).trackWrites,
   );
 
-  private visibilities = this.query(
-    (q) => q.addedOrChanged.with(Visibility).trackWrites,
+  private culleds = this.query(
+    (q) => q.addedOrChanged.and.removed.with(Culled).trackWrites,
   );
 
   // private styles = this.query(
@@ -89,13 +89,13 @@ export class MeshPipeline extends System {
     }
   > = new Map();
 
-  private pendingRenderables: Record<
-    Entity['__id'],
+  private pendingRenderables: WeakMap<
+    Entity,
     {
       add: Entity[];
       remove: Entity[];
     }
-  > = {};
+  > = new WeakMap();
 
   constructor() {
     super();
@@ -218,14 +218,15 @@ export class MeshPipeline extends System {
 
     gridRenderer.render(device, renderPass, uniformBuffer, uniformLegacyObject);
 
-    if (this.pendingRenderables[camera.__id]) {
-      this.pendingRenderables[camera.__id].add.forEach((entity) => {
+    if (this.pendingRenderables.has(camera)) {
+      this.pendingRenderables.get(camera).add.forEach((entity) => {
         batchManager.add(entity);
       });
-      this.pendingRenderables[camera.__id].remove.forEach((entity) => {
-        batchManager.remove(entity);
+      this.pendingRenderables.get(camera).remove.forEach((entity) => {
+        // TODO: split removed and culled
+        batchManager.remove(entity, false);
       });
-      delete this.pendingRenderables[camera.__id];
+      this.pendingRenderables.delete(camera);
     }
 
     batchManager.flush(renderPass, uniformBuffer, uniformLegacyObject);
@@ -258,50 +259,36 @@ export class MeshPipeline extends System {
       //   (needRender = true);
     });
 
-    this.renderables.addedOrChanged.forEach((entity) => {
+    new Set([
+      ...this.renderables.addedOrChanged,
+      ...this.culleds.removed,
+    ]).forEach((entity) => {
       const camera = getSceneRoot(entity);
 
       // The gpu resources is not ready for the camera.
-      if (!this.pendingRenderables[camera.__id]) {
-        this.pendingRenderables[camera.__id] = {
+      if (!this.pendingRenderables.has(camera)) {
+        this.pendingRenderables.set(camera, {
           add: [],
           remove: [],
-        };
+        });
       }
-      this.pendingRenderables[camera.__id].add.push(entity);
+      this.pendingRenderables.get(camera).add.push(entity);
     });
 
-    this.renderables.removed.forEach((entity) => {
-      const camera = getSceneRoot(entity);
-      this.pendingRenderables[camera.__id].remove.push(entity);
-    });
-
-    this.visibilities.addedOrChanged.forEach((entity) => {
-      const visibility = entity.read(Visibility);
-      if (!entity.has(Renderable)) {
-        return;
-      }
-
+    new Set([
+      ...this.renderables.removed,
+      ...this.culleds.addedOrChanged,
+    ]).forEach((entity) => {
       const camera = getSceneRoot(entity);
 
-      if (!this.pendingRenderables[camera.__id]) {
-        this.pendingRenderables[camera.__id] = {
+      // The gpu resources is not ready for the camera.
+      if (!this.pendingRenderables.has(camera)) {
+        this.pendingRenderables.set(camera, {
           add: [],
           remove: [],
-        };
+        });
       }
-
-      if (visibility.value === 'visible') {
-        if (this.pendingRenderables[camera.__id].add.includes(entity)) {
-          return;
-        }
-        this.pendingRenderables[camera.__id].add.push(entity);
-      } else {
-        if (this.pendingRenderables[camera.__id].remove.includes(entity)) {
-          return;
-        }
-        this.pendingRenderables[camera.__id].remove.push(entity);
-      }
+      this.pendingRenderables.get(camera).remove.push(entity);
     });
   }
 

@@ -1,4 +1,5 @@
 import { Entity, System } from '@lastolivegames/becsy';
+import { Renderable } from '../components';
 import RBush from 'rbush';
 import {
   AABB,
@@ -9,9 +10,11 @@ import {
   ComputedCamera,
   Culled,
   Mat3,
+  Parent,
+  Visibility,
 } from '../components';
 import { CameraControl } from './CameraControl';
-import { getSceneRoot } from './Transform';
+import { getDescendants, getSceneRoot } from './Transform';
 
 export interface RBushNodeAABB {
   entity: Entity;
@@ -26,7 +29,11 @@ export class ViewportCulling extends System {
   );
 
   cameras = this.query(
-    (q) => q.addedOrChanged.with(ComputedCamera).trackWrites,
+    (q) => q.current.and.addedOrChanged.with(ComputedCamera).trackWrites,
+  );
+
+  visibilities = this.query(
+    (q) => q.addedChangedOrRemoved.with(Visibility).trackWrites,
   );
 
   /**
@@ -37,49 +44,68 @@ export class ViewportCulling extends System {
   /**
    * Map of camera entity id to its viewport's AABB.
    */
-  #cameraViewportMap: Record<number, AABB> = {};
+  #cameraViewportMap: WeakMap<Entity, AABB> = new WeakMap();
 
-  #cameraRBushMap: Record<number, RBush<RBushNodeAABB>> = {};
+  #cameraRBushMap: WeakMap<Entity, RBush<RBushNodeAABB>> = new WeakMap();
 
   constructor() {
     super();
     this.query(
-      (q) => q.using(Camera, Canvas, Children).read.and.using(Culled).write,
+      (q) =>
+        q
+          .using(Camera, Canvas, Children, Parent, Renderable)
+          .read.and.using(Culled).write,
     );
   }
 
   execute() {
-    this.cameras.addedOrChanged.forEach((entity) => {
-      this.updateViewport(entity);
+    const entitiesToCull: WeakMap<Entity, Set<Entity>> = new WeakMap();
+    this.cameras.current.forEach((camera) => {
+      entitiesToCull.set(camera, new Set());
     });
 
-    const modified: Map<number, Set<Entity>> = new Map();
-    const removed: Map<number, Set<Entity>> = new Map();
+    this.cameras.addedOrChanged.forEach((camera) => {
+      this.updateViewport(camera);
+
+      // Recalcaulate all renderables' culled status under this camera.
+      getDescendants(camera).forEach((child) => {
+        entitiesToCull.get(camera)?.add(child);
+      });
+    });
+
+    this.visibilities.addedChangedOrRemoved.forEach((entity) => {
+      const camera = getSceneRoot(entity);
+      if (entitiesToCull.has(camera)) {
+        entitiesToCull.get(camera)?.add(entity);
+      }
+    });
+
+    const modified: Map<Entity, Set<Entity>> = new Map();
+    const removed: Map<Entity, Set<Entity>> = new Map();
 
     this.bounds.addedOrChanged.forEach((entity) => {
       const camera = getSceneRoot(entity);
-      if (!modified.has(camera.__id)) {
-        modified.set(camera.__id, new Set());
+      if (!modified.has(camera)) {
+        modified.set(camera, new Set());
       }
-      modified.get(camera.__id)?.add(entity);
+      modified.get(camera)?.add(entity);
     });
 
     this.bounds.removed.forEach((entity) => {
       const camera = getSceneRoot(entity);
-      if (!removed.has(camera.__id)) {
-        removed.set(camera.__id, new Set());
+      if (!removed.has(camera)) {
+        removed.set(camera, new Set());
       }
-      removed.get(camera.__id)?.add(entity);
+      removed.get(camera)?.add(entity);
     });
 
     [removed, modified].forEach((map) => {
-      map.forEach((entities, cameraId) => {
-        let rBush = this.#cameraRBushMap[cameraId];
-        if (!rBush) {
-          rBush = this.#cameraRBushMap[cameraId] = new RBush();
-        }
+      map.forEach((entities, camera) => {
+        const rBush = this.getOrCreateRBush(camera);
 
         entities.forEach((entity) => {
+          entitiesToCull.get(camera)?.add(entity);
+
           rBush.remove(
             {
               entity,
@@ -94,11 +120,8 @@ export class ViewportCulling extends System {
       });
     });
 
-    modified.forEach((entities, cameraId) => {
-      let rBush = this.#cameraRBushMap[cameraId];
-      if (!rBush) {
-        rBush = this.#cameraRBushMap[cameraId] = new RBush();
-      }
+    modified.forEach((entities, camera) => {
+      const rBush = this.getOrCreateRBush(camera);
 
       const bulk: RBushNodeAABB[] = [];
       entities.forEach((entity) => {
@@ -112,22 +135,75 @@ export class ViewportCulling extends System {
         });
       });
       rBush.load(bulk);
-
-      console.log(rBush.all());
     });
 
-    // TODO: write culled component
+    // Write culled component.
+    this.cameras.current.forEach((camera) => {
+      if (entitiesToCull.get(camera)?.size === 0) {
+        return;
+      }
+
+      const rBush = this.getOrCreateRBush(camera);
+      const viewport = this.getOrCreateViewport(camera);
+
+      const entitiesInViewport = rBush
+        .search(viewport)
+        .map((bush) => bush.entity);
+
+      entitiesToCull.get(camera)?.forEach((entity) => {
+        const visibility = entity.read(Visibility);
+
+        if (!entity.has(Renderable)) {
+          return;
+        }
+
+        // TODO: inherit visibility from parent
+        if (
+          visibility.value === 'visible' &&
+          entitiesInViewport.includes(entity)
+        ) {
+          if (entity.has(Culled)) {
+            entity.remove(Culled);
+          }
+        } else if (
+          visibility.value === 'hidden' ||
+          !entitiesInViewport.includes(entity)
+        ) {
+          if (!entity.has(Culled)) {
+            entity.add(Culled);
+          }
+        }
+      });
+    });
   }
 
-  private updateViewport(entity: Entity) {
-    const { width, height } = entity.read(Camera).canvas.read(Canvas);
+  private getOrCreateRBush(camera: Entity) {
+    let rBush = this.#cameraRBushMap.get(camera);
+    if (!rBush) {
+      this.#cameraRBushMap.set(camera, new RBush<RBushNodeAABB>());
+      rBush = this.#cameraRBushMap.get(camera);
+    }
+    return rBush;
+  }
+
+  private getOrCreateViewport(camera: Entity) {
+    let viewport = this.#cameraViewportMap.get(camera);
+    if (!viewport) {
+      this.#cameraViewportMap.set(camera, new AABB());
+      viewport = this.#cameraViewportMap.get(camera);
+    }
+    return viewport;
+  }
+
+  private updateViewport(camera: Entity) {
+    const { width, height } = camera.read(Camera).canvas.read(Canvas);
     const viewProjectionMatrixInv = Mat3.toGLMat3(
-      entity.read(ComputedCamera).viewProjectionMatrixInv,
+      camera.read(ComputedCamera).viewProjectionMatrixInv,
     );
 
     // tl, tr, br, bl
     const tl = this.cameraControl.viewport2Canvas(
-      entity,
+      camera,
       {
         x: 0,
         y: 0,
@@ -135,7 +211,7 @@ export class ViewportCulling extends System {
       viewProjectionMatrixInv,
     );
     const tr = this.cameraControl.viewport2Canvas(
-      entity,
+      camera,
       {
         x: width,
         y: 0,
@@ -143,7 +219,7 @@ export class ViewportCulling extends System {
       viewProjectionMatrixInv,
     );
     const br = this.cameraControl.viewport2Canvas(
-      entity,
+      camera,
       {
         x: width,
         y: height,
@@ -151,7 +227,7 @@ export class ViewportCulling extends System {
       viewProjectionMatrixInv,
     );
     const bl = this.cameraControl.viewport2Canvas(
-      entity,
+      camera,
       {
         x: 0,
         y: height,
@@ -159,11 +235,7 @@ export class ViewportCulling extends System {
       viewProjectionMatrixInv,
     );
 
-    if (!this.#cameraViewportMap[entity.__id]) {
-      this.#cameraViewportMap[entity.__id] = new AABB();
-    }
-
-    const viewport = this.#cameraViewportMap[entity.__id];
+    const viewport = this.getOrCreateViewport(camera);
     viewport.minX = Math.min(tl.x, tr.x, br.x, bl.x);
     viewport.minY = Math.min(tl.y, tr.y, br.y, bl.y);
     viewport.maxX = Math.max(tl.x, tr.x, br.x, bl.x);

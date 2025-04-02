@@ -74,9 +74,9 @@ export class BatchManager {
   /**
    * Cache drawcalls for non batchable shape.
    */
-  #nonBatchableDrawcallsCache: Record<number, Drawcall[]> = Object.create(null);
+  #nonBatchableDrawcallsCache: WeakMap<Entity, Drawcall[]> = new WeakMap();
 
-  #batchableDrawcallsCache: Record<number, Drawcall[]> = Object.create(null);
+  #batchableDrawcallsCache: WeakMap<Entity, Drawcall[]> = new WeakMap();
 
   #instancesCache: Record<
     | 'circle'
@@ -131,10 +131,10 @@ export class BatchManager {
   }
 
   private getOrCreateNonBatchableDrawcalls(shape: Entity) {
-    let existed = this.#nonBatchableDrawcallsCache[shape.__id];
+    let existed = this.#nonBatchableDrawcallsCache.get(shape);
     if (!existed) {
       existed = this.createDrawcalls(shape) || [];
-      this.#nonBatchableDrawcallsCache[shape.__id] = existed;
+      this.#nonBatchableDrawcallsCache.set(shape, existed);
     }
 
     return existed;
@@ -142,7 +142,7 @@ export class BatchManager {
 
   private getOrCreateBatchableDrawcalls(shape: Entity) {
     let existed: Drawcall[] | undefined =
-      this.#batchableDrawcallsCache[shape.__id];
+      this.#batchableDrawcallsCache.get(shape);
     if (!existed) {
       const geometryCtor = shape.has(Circle)
         ? shape.has(Rough)
@@ -190,7 +190,7 @@ export class BatchManager {
         drawcall.add(shape);
       });
 
-      this.#batchableDrawcallsCache[shape.__id] = existed;
+      this.#batchableDrawcallsCache.set(shape, existed);
     }
 
     return existed;
@@ -215,21 +215,26 @@ export class BatchManager {
    * * culled from viewport.
    * * invisible.
    */
-  remove(shape: Entity) {
+  remove(shape: Entity, destroy = true) {
     if (shape.read(Renderable).batchable) {
       this.getOrCreateBatchableDrawcalls(shape).forEach((drawcall) => {
         drawcall.remove(shape);
       });
-      delete this.#batchableDrawcallsCache[shape.__id];
+      this.#batchableDrawcallsCache.delete(shape);
     } else {
-      this.#nonBatchableDrawcallsCache[shape.__id].forEach((drawcall) => {
-        drawcall.destroy();
+      this.#nonBatchableDrawcallsCache.get(shape)?.forEach((drawcall) => {
+        if (destroy) {
+          drawcall.destroy();
+        }
         this.#drawcallsToFlush.splice(
           this.#drawcallsToFlush.indexOf(drawcall),
           1,
         );
       });
-      delete this.#nonBatchableDrawcallsCache[shape.__id];
+
+      if (destroy) {
+        this.#nonBatchableDrawcallsCache.delete(shape);
+      }
     }
   }
 
