@@ -69,6 +69,10 @@ export class API {
     return this.element;
   }
 
+  getEntity(node: SerializedNode) {
+    return this.#idEntityMap.get(node.id).id();
+  }
+
   /**
    * Create a new canvas.
    */

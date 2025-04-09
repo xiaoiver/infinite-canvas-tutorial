@@ -37,6 +37,7 @@ import '@spectrum-web-components/textfield/sp-textfield.js';
 import '@spectrum-web-components/thumbnail/sp-thumbnail.js';
 import '@spectrum-web-components/tooltip/sp-tooltip.js';
 
+import '@spectrum-web-components/icons-workflow/icons/sp-icon-add.js';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-text.js';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-visibility.js';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-visibility-off.js';
@@ -77,12 +78,6 @@ export class InfiniteCanvas extends LitElement {
       position: absolute;
       top: 48px;
       right: 0;
-    }
-
-    ic-spectrum-layers-panel {
-      position: absolute;
-      top: 48px;
-      right: 54px;
     }
 
     canvas {
@@ -224,7 +219,6 @@ export class InfiniteCanvas extends LitElement {
           html`<ic-spectrum-top-navbar></ic-spectrum-top-navbar>
             <ic-spectrum-penbar></ic-spectrum-penbar>
             <ic-spectrum-taskbar></ic-spectrum-taskbar>
-            <ic-spectrum-layers-panel></ic-spectrum-layers-panel>
             ${$canvas}`,
         ),
       error: (e: Error) => {

@@ -1,3 +1,4 @@
+import { isNumber } from '@antv/util';
 import { Visibility } from '../../components';
 import {
   PathSerializedNode,
@@ -54,6 +55,16 @@ export function svgElementsToSerializedNodes(
       let attributeName = kebabToCamelCase(attr.name);
 
       let value: string | number | SerializedTransform = attr.value;
+
+      // e.g. fill="url(#bgGradient)"
+      if (value.startsWith('url(#')) {
+        const id = value.replace('url(#', '').replace(')', '');
+        const def = defsChildren.find((d) => d.id === id);
+        if (def) {
+          value = deserializeGradient(def as SVGGradientElement);
+        }
+      }
+
       if (attributeName === 'transform') {
         value = serializeTransform(value);
       } else if (
@@ -161,4 +172,45 @@ export function svgElementsToSerializedNodes(
 
 export function kebabToCamelCase(str: string) {
   return str.replace(/-([a-z])/g, (match, letter) => letter.toUpperCase());
+}
+
+export function toNumber(
+  length: SVGAnimatedLength | SVGAnimatedNumber,
+): number {
+  if (isNumber(length.baseVal)) {
+    return length.baseVal;
+  }
+  return length.baseVal.valueInSpecifiedUnits;
+}
+
+/**
+ * convert <linearGradient> to CSS gradient string
+ */
+export function deserializeGradient(element: SVGGradientElement): string {
+  if (element.tagName === 'linearGradient') {
+    const { x1, y1, x2, y2 } = element as SVGLinearGradientElement;
+    // calculate angle
+    const angle =
+      (Math.atan2(toNumber(y2) - toNumber(y1), toNumber(x2) - toNumber(x1)) *
+        180) /
+      Math.PI;
+
+    const stops = Array.from(element.querySelectorAll('stop')).map(
+      (stop: SVGStopElement) => {
+        const offset = toNumber(stop.offset);
+        const stopColor = stop.getAttribute('stop-color');
+        // @see https://developer.mozilla.org/en-US/docs/Web/SVG/Reference/Attribute/stop-opacity
+        // const stopOpacity = stop.getAttribute('stop-opacity');
+
+        return `${stopColor} ${offset * 100}%`;
+      },
+    );
+
+    // linear-gradient(217deg, rgba(255,0,0,.8), rgba(255,0,0,0) 70.71%)
+    return `linear-gradient(${angle}deg, ${stops.join(',')})`;
+  } else if (element.tagName === 'radialGradient') {
+    // const { cx, cy, r } = element as SVGRadialGradientElement;
+  }
+
+  return '';
 }

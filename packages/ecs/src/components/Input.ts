@@ -1,7 +1,9 @@
 import { Entity, field } from '@lastolivegames/becsy';
 
 export class Input {
-  @field.int32.vector(2) declare pointerWorld: [number, number];
+  @field.int32.vector(2) declare pointerClient: [number, number];
+
+  @field.int32.vector(2) declare pointerViewport: [number, number];
 
   @field.boolean declare pointerDownTrigger: boolean;
 
@@ -21,6 +23,9 @@ export class Input {
 }
 
 export class InputPoint {
+  /**
+   * In viewport coordinates.
+   */
   @field.int32.vector(2) declare prevPoint: [number, number];
 
   /**

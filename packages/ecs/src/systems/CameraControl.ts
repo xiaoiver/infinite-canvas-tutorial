@@ -71,7 +71,7 @@ export class CameraControl extends System {
 
       if (input.pointerDownTrigger) {
         this.createEntity(InputPoint, {
-          prevPoint: input.pointerWorld,
+          prevPoint: input.pointerViewport,
           canvas,
         });
         if (pen === Pen.HAND) {
@@ -91,14 +91,22 @@ export class CameraControl extends System {
             cameraControl.startInvertViewProjectionMatrix,
           );
           cameraControl.startMousePos = [
-            input.pointerWorld[0],
-            input.pointerWorld[1],
+            input.pointerViewport[0],
+            input.pointerViewport[1],
           ];
         }
       }
 
       canvas.read(Canvas).inputPoints.forEach((point) => {
-        point.write(InputPoint).prevPoint = input.pointerWorld;
+        const inputPoint = point.write(InputPoint);
+        if (
+          inputPoint.prevPoint[0] === input.pointerViewport[0] &&
+          inputPoint.prevPoint[1] === input.pointerViewport[1]
+        ) {
+          return;
+        }
+
+        inputPoint.prevPoint = input.pointerViewport;
         if (pen === Pen.HAND) {
           cursor.value = 'grabbing';
           if (cameraControl.rotate) {
@@ -123,7 +131,7 @@ export class CameraControl extends System {
         if (input.metaKey || input.ctrlKey) {
           this.zoomByClientPoint(
             entity,
-            { x: input.pointerWorld[0], y: input.pointerWorld[1] },
+            { x: input.pointerViewport[0], y: input.pointerViewport[1] },
             input.deltaY,
           );
         } else {
@@ -184,7 +192,7 @@ export class CameraControl extends System {
     const transform = entity.write(Transform);
     const input = entity.read(Camera).canvas.read(Input);
 
-    const delta = (input.pointerWorld[0] - startMousePos[0]) / PINCH_FACTOR;
+    const delta = (input.pointerViewport[0] - startMousePos[0]) / PINCH_FACTOR;
 
     // compute a matrix to pivot around the camera space startPos
     const camMat = mat3.create();
@@ -249,8 +257,8 @@ export class CameraControl extends System {
 
     // get canvas relative css position
     const rect = (element as HTMLCanvasElement).getBoundingClientRect();
-    const cssX = input.pointerWorld[0] - rect.left;
-    const cssY = input.pointerWorld[1] - rect.top;
+    const cssX = input.pointerViewport[0] - rect.left;
+    const cssY = input.pointerViewport[1] - rect.top;
 
     // get normalized 0 to 1 position across and down canvas
     const normalizedX =
@@ -345,10 +353,17 @@ export class CameraControl extends System {
   viewport2Canvas(
     entity: Entity,
     { x, y }: IPointData,
-    viewProjectionMatrixInv: mat3,
+    viewProjectionMatrixInv?: mat3,
   ): IPointData {
     const camera = entity.read(Camera);
     const { width, height } = camera.canvas.read(Canvas);
+
+    if (!viewProjectionMatrixInv) {
+      viewProjectionMatrixInv = Mat3.toGLMat3(
+        entity.read(ComputedCamera).viewProjectionMatrixInv,
+      );
+    }
+
     const canvas = vec2.transformMat3(
       vec2.create(),
       [(x / width) * 2 - 1, (1 - y / height) * 2 - 1],

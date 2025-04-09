@@ -2,7 +2,12 @@
  * @see https://github.com/excalidraw/excalidraw/blob/f2e8404c7bee230c12e78747492fd120a7929a67/packages/element/src/fractionalIndex.ts#L2
  */
 
-import { OrderedSerializedNode, SerializedNode } from './serialize';
+import { generateNKeysBetween } from 'fractional-indexing';
+import {
+  FractionalIndex,
+  OrderedSerializedNode,
+  SerializedNode,
+} from './serialize';
 
 const isOrderedElement = (
   element: SerializedNode,
@@ -41,3 +46,31 @@ export const orderByFractionalIndex = (elements: OrderedSerializedNode[]) => {
     return 1;
   });
 };
+
+export function generateIndices(
+  elements: readonly SerializedNode[],
+  indicesGroups: number[][],
+) {
+  const elementsUpdates = new Map<SerializedNode, { index: FractionalIndex }>();
+
+  for (const indices of indicesGroups) {
+    const lowerBoundIndex = indices.shift()!;
+    const upperBoundIndex = indices.pop()!;
+
+    const fractionalIndices = generateNKeysBetween(
+      elements[lowerBoundIndex]?.index,
+      elements[upperBoundIndex]?.index,
+      indices.length,
+    ) as FractionalIndex[];
+
+    for (let i = 0; i < indices.length; i++) {
+      const element = elements[indices[i]];
+
+      elementsUpdates.set(element, {
+        index: fractionalIndices[i],
+      });
+    }
+  }
+
+  return elementsUpdates;
+}

@@ -13,12 +13,18 @@ import {
   Entity,
   Text,
   Rect,
+  isGradient,
+  FillGradient,
 } from '@infinite-canvas-tutorial/ecs';
 import { isNil } from '@antv/util';
 import { Change } from './Change';
 import { Delta } from './Delta';
 import { newElementWith } from './Snapshot';
-import { createOrSetComponent, getUpdatedTimestamp } from '../utils';
+import {
+  createOrSetComponent,
+  getUpdatedTimestamp,
+  removeComponent,
+} from '../utils';
 
 export type SceneElementsMap = Map<SerializedNode['id'], SerializedNode>;
 
@@ -620,7 +626,13 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
     entity.write(Visibility).value = visibility;
   }
   if (!isNil(fill)) {
-    entity.write(FillSolid).value = fill;
+    if (isGradient(fill)) {
+      removeComponent(entity, FillSolid);
+      createOrSetComponent(entity, FillGradient, { value: fill });
+    } else {
+      removeComponent(entity, FillGradient);
+      createOrSetComponent(entity, FillSolid, { value: fill });
+    }
   }
   if (!isNil(stroke)) {
     createOrSetComponent(entity, Stroke, { color: stroke });

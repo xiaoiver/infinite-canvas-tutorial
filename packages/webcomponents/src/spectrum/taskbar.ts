@@ -1,9 +1,11 @@
 import { html, css, LitElement } from 'lit';
 import { customElement } from 'lit/decorators.js';
 import { map } from 'lit/directives/map.js';
+import { when } from 'lit/directives/when.js';
 import { consume } from '@lit/context';
 import { apiContext, AppState, appStateContext, Task } from '../context';
 import { API } from '../API';
+import { Pen } from '@infinite-canvas-tutorial/ecs';
 
 const TaskMap = {
   [Task.SHOW_LAYERS_PANEL]: {
@@ -19,7 +21,7 @@ const TaskMap = {
 @customElement('ic-spectrum-taskbar')
 export class Taskbar extends LitElement {
   static styles = css`
-    :host {
+    .taskbar {
       display: flex;
       background: var(--spectrum-gray-100);
       border-radius: var(--spectrum-corner-radius-200);
@@ -32,6 +34,12 @@ export class Taskbar extends LitElement {
         var(--spectrum-drop-shadow-color) 0px var(--spectrum-drop-shadow-y)
           var(--spectrum-drop-shadow-blur)
       );
+    }
+
+    ic-spectrum-layers-panel {
+      position: absolute;
+      top: 0px;
+      right: 54px;
     }
   `;
 
@@ -47,23 +55,28 @@ export class Taskbar extends LitElement {
 
   render() {
     const { taskbarAll, taskbarSelected } = this.appState;
-    return html`
-      <sp-action-group
-        vertical
-        quiet
-        selects="multiple"
-        .selected=${taskbarSelected}
-        @change=${this.handleTaskChanged}
-      >
-        ${map(taskbarAll, (task) => {
-          const { icon, label } = TaskMap[task];
-          return html`<sp-action-button value="${task}">
-            ${icon}
-            <sp-tooltip self-managed placement="left"> ${label} </sp-tooltip>
-          </sp-action-button>`;
-        })}
-      </sp-action-group>
-    `;
+    return when(
+      this.appState.penbarSelected[0] !== Pen.HAND,
+      () => html`
+        <sp-action-group
+          class="taskbar"
+          vertical
+          quiet
+          selects="multiple"
+          .selected=${taskbarSelected}
+          @change=${this.handleTaskChanged}
+        >
+          ${map(taskbarAll, (task) => {
+            const { icon, label } = TaskMap[task];
+            return html`<sp-action-button value="${task}">
+              ${icon}
+              <sp-tooltip self-managed placement="left"> ${label} </sp-tooltip>
+            </sp-action-button>`;
+          })}
+        </sp-action-group>
+        <ic-spectrum-layers-panel></ic-spectrum-layers-panel>
+      `,
+    );
   }
 }
 

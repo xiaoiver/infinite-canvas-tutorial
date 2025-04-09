@@ -6,6 +6,7 @@ import {
   Ellipse,
   Entity,
   FillSolid,
+  FillGradient,
   Name,
   Opacity,
   Path,
@@ -32,6 +33,7 @@ import {
 } from '../serialize';
 import { deserializePoints } from './points';
 import { EntityCommands } from '../../commands/EntityCommands';
+import { isGradient } from '../gradient';
 
 export function serializedNodesToEntities(
   nodes: SerializedNode[],
@@ -121,7 +123,11 @@ export function serializedNodesToEntities(
 
     const { fill, fillOpacity, opacity } = attributes as FillAttributes;
     if (fill) {
-      entity.insert(new FillSolid(fill));
+      if (isGradient(fill)) {
+        entity.insert(new FillGradient(fill));
+      } else {
+        entity.insert(new FillSolid(fill));
+      }
       // TODO: gradient, pattern, etc.
     }
 

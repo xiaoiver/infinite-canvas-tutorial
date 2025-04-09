@@ -1,7 +1,7 @@
 import { css, html, LitElement } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
 import { when } from 'lit/directives/when.js';
-import { ColorArea } from '@spectrum-web-components/color-area';
+import { isGradient } from '@infinite-canvas-tutorial/ecs';
 
 @customElement('ic-spectrum-color-picker')
 export class ColorPicker extends LitElement {
@@ -32,22 +32,24 @@ export class ColorPicker extends LitElement {
           composed: true,
         }),
       );
+    } else if (type === 'solid') {
+      this.dispatchEvent(
+        new CustomEvent('color-change', {
+          detail: '#000',
+          bubbles: true,
+          composed: true,
+        }),
+      );
     }
   }
 
-  private handleSolidChanged(e: Event & { target: ColorArea }) {
-    const value = e.target.color.toString();
-    this.dispatchEvent(
-      new CustomEvent('color-change', {
-        detail: value,
-        bubbles: true,
-        composed: true,
-      }),
-    );
-  }
-
   render() {
-    const selected = this.value === 'none' ? 'none' : 'solid';
+    const selected =
+      this.value === 'none'
+        ? 'none'
+        : isGradient(this.value)
+        ? 'gradient'
+        : 'solid';
 
     return html`
       <h4>Select a color</h4>
@@ -78,24 +80,16 @@ export class ColorPicker extends LitElement {
       ${when(
         selected === 'solid',
         () => html`
-          <sp-color-area
-            color=${this.value}
-            @input=${this.handleSolidChanged}
-          ></sp-color-area>
-          <sp-color-slider
-            color=${this.value}
-            @input=${this.handleSolidChanged}
-          ></sp-color-slider>
-          <div>
-            <sp-field-label for="hex" side-aligned="start">Hex</sp-field-label>
-            <sp-color-field
-              id="hex"
-              size="s"
-              value=${this.value}
-              @input=${this.handleSolidChanged}
-            ></sp-color-field>
-          </div>
+          <ic-spectrum-input-solid
+            value=${this.value}
+          ></ic-spectrum-input-solid>
         `,
+      )}
+      ${when(
+        selected === 'gradient',
+        () => html`<ic-spectrum-input-gradient
+          value=${this.value}
+        ></ic-spectrum-input-gradient>`,
       )}
     `;
   }

@@ -81,14 +81,18 @@ export class EventWriter extends System {
       // ev.preventDefault();
 
       if (pointerIds.size > 1 || !pointerIds.has(e.pointerId)) return;
-      const pointerWorld = this.client2Viewport(
+      const viewport = this.client2Viewport(
         {
           x: e.clientX,
           y: e.clientY,
         },
         canvas,
       );
-      input.write(Input).pointerWorld = [pointerWorld.x, pointerWorld.y];
+
+      Object.assign(input.write(Input), {
+        pointerClient: [e.clientX, e.clientY],
+        pointerViewport: [viewport.x, viewport.y],
+      });
     };
 
     const onPointerUp = (e: PointerEvent) => {
@@ -112,14 +116,17 @@ export class EventWriter extends System {
       this.setInputTrigger(input, 'pointerDownTrigger');
 
       if (pointerIds.size === 1) {
-        const pointerWorld = this.client2Viewport(
+        const viewport = this.client2Viewport(
           {
             x: e.clientX,
             y: e.clientY,
           },
           canvas,
         );
-        input.write(Input).pointerWorld = [pointerWorld.x, pointerWorld.y];
+        Object.assign(input.write(Input), {
+          pointerClient: [e.clientX, e.clientY],
+          pointerViewport: [viewport.x, viewport.y],
+        });
       }
     };
 
@@ -143,14 +150,17 @@ export class EventWriter extends System {
         input.write(Input).metaKey = true;
       }
 
-      const pointerWorld = this.client2Viewport(
+      const viewport = this.client2Viewport(
         {
           x: e.clientX,
           y: e.clientY,
         },
         canvas,
       );
-      input.write(Input).pointerWorld = [pointerWorld.x, pointerWorld.y];
+      Object.assign(input.write(Input), {
+        pointerClient: [e.clientX, e.clientY],
+        pointerViewport: [viewport.x, viewport.y],
+      });
     };
 
     const onKeyDown = (e: KeyboardEvent) => {

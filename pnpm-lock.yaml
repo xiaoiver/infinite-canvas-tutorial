@@ -852,6 +852,9 @@ importers:
       '@spectrum-web-components/overlay':
         specifier: ^1.4.0
         version: 1.4.0
+      '@spectrum-web-components/picker':
+        specifier: ^1.4.0
+        version: 1.4.0
       '@spectrum-web-components/progress-circle':
         specifier: ^1.4.0
         version: 1.4.0

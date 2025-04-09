@@ -43,3 +43,12 @@ export function createOrSetComponent<T>(
   }
   Object.assign(entity.write(componentCtor), component);
 }
+
+export function removeComponent<T>(
+  entity: Entity,
+  componentCtor: ComponentType<T>,
+) {
+  if (entity.has(componentCtor)) {
+    entity.remove(componentCtor);
+  }
+}

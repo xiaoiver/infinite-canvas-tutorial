@@ -13,6 +13,7 @@ import {
   CheckboardStyle,
   Children,
   Circle,
+  ComputedBounds,
   ComputedCamera,
   ComputedPoints,
   ComputedRough,
@@ -51,6 +52,10 @@ import { getSceneRoot } from './Transform';
 export class MeshPipeline extends System {
   private canvases = this.query((q) => q.current.with(Canvas).read);
 
+  private cameras = this.query(
+    (q) => q.addedOrChanged.with(ComputedCamera).trackWrites,
+  );
+
   private renderables = this.query(
     (q) =>
       q.addedOrChanged.and.removed
@@ -62,25 +67,32 @@ export class MeshPipeline extends System {
     (q) => q.addedOrChanged.and.removed.with(Culled).trackWrites,
   );
 
-  // private styles = this.query(
-  //   (q) =>
-  //     q.addedChangedOrRemoved.withAny(
-  //       FillSolid,
-  //       FillGradient,
-  //       FillPattern,
-  //       FillTexture,
-  //       FillImage,
-  //       Stroke,
-  //       Opacity,
-  //       InnerShadow,
-  //       DropShadow,
-  //       Wireframe,
-  //       Rough,
-  //     ).trackWrites,
-  // );
+  private grids = this.query(
+    (q) => q.addedChangedOrRemoved.with(Grid).trackWrites,
+  );
+  private themes = this.query(
+    (q) => q.addedChangedOrRemoved.with(Theme).trackWrites,
+  );
+
+  private styles = this.query(
+    (q) =>
+      q.addedChangedOrRemoved.withAny(
+        FillSolid,
+        FillGradient,
+        FillPattern,
+        FillTexture,
+        FillImage,
+        Stroke,
+        Opacity,
+        InnerShadow,
+        DropShadow,
+        Wireframe,
+        Rough,
+      ).trackWrites,
+  );
 
   gpuResources: Map<
-    Entity['__id'],
+    Entity,
     {
       uniformBuffer: Buffer;
       uniformLegacyObject: Record<string, unknown>;
@@ -115,6 +127,7 @@ export class MeshPipeline extends System {
             Polyline,
             Path,
             ComputedPoints,
+            ComputedBounds,
             GlobalTransform,
             Opacity,
             Stroke,
@@ -176,8 +189,8 @@ export class MeshPipeline extends System {
 
     const shouldRenderGrid = !enabled || grid;
 
-    if (!this.gpuResources.get(camera.__id)) {
-      this.gpuResources.set(camera.__id, {
+    if (!this.gpuResources.get(camera)) {
+      this.gpuResources.set(camera, {
         uniformBuffer: device.createBuffer({
           viewOrSize: (16 * 3 + 4 * 5) * Float32Array.BYTES_PER_ELEMENT,
           usage: BufferUsage.UNIFORM,
@@ -195,13 +208,13 @@ export class MeshPipeline extends System {
       shouldRenderGrid,
       swapChain,
     );
-    this.gpuResources.set(camera.__id, {
-      ...this.gpuResources.get(camera.__id),
+    this.gpuResources.set(camera, {
+      ...this.gpuResources.get(camera),
       uniformLegacyObject: legacyObject,
     });
 
     const { uniformBuffer, uniformLegacyObject, gridRenderer, batchManager } =
-      this.gpuResources.get(camera.__id);
+      this.gpuResources.get(camera);
 
     uniformBuffer.setSubData(0, new Uint8Array(buffer.buffer));
 
@@ -244,21 +257,6 @@ export class MeshPipeline extends System {
   }
 
   execute() {
-    this.canvases.current.forEach((canvas) => {
-      const { cameras } = canvas.read(Canvas);
-      cameras.forEach((camera) => {
-        this.renderCamera(canvas, camera);
-      });
-
-      // let needRender = true;
-      // Style changed.
-      // (this.computedCameras.addedOrChanged.length ||
-      //   this.styles.addedChangedOrRemoved.length ||
-      //   this.themes.addedOrChanged.length ||
-      //   this.grids.addedOrChanged.length) &&
-      //   (needRender = true);
-    });
-
     new Set([
       ...this.renderables.addedOrChanged,
       ...this.culleds.removed,
@@ -289,6 +287,33 @@ export class MeshPipeline extends System {
         });
       }
       this.pendingRenderables.get(camera).remove.push(entity);
+    });
+
+    this.canvases.current.forEach((canvas) => {
+      let toRender =
+        this.grids.addedChangedOrRemoved.includes(canvas) ||
+        this.themes.addedChangedOrRemoved.includes(canvas);
+
+      const { cameras } = canvas.read(Canvas);
+      cameras.forEach((camera) => {
+        if (!toRender && this.pendingRenderables.get(camera)) {
+          const { add, remove } = this.pendingRenderables.get(camera);
+          toRender = !!(add.length || remove.length);
+        }
+
+        if (!toRender && this.cameras.addedOrChanged.includes(camera)) {
+          toRender = true;
+        }
+
+        if (!toRender && !!this.styles.addedChangedOrRemoved.length) {
+          toRender = true;
+        }
+
+        if (toRender) {
+          console.log('render...');
+          this.renderCamera(canvas, camera);
+        }
+      });
     });
   }
 

@@ -128,8 +128,6 @@ export class ExportSVG extends System {
       }
     }
 
-    // console.log(entityToSerializedNodes(entity));
-
     serializeNodesToSVGElements(entityToSerializedNodes(cameras[0])).forEach(
       (element) => {
         $namespace.appendChild(element);

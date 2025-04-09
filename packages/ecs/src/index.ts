@@ -21,6 +21,11 @@ export {
   svgElementsToSerializedNodes,
   serializedNodesToEntities,
   randomInteger,
+  isGradient,
+  isPattern,
+  parseGradient,
+  deserializePoints,
+  type Gradient,
   type SerializedNode,
   type OrderedSerializedNode,
   type CircleSerializedNode,
@@ -30,6 +35,7 @@ export {
   type PathSerializedNode,
   type TextSerializedNode,
 } from './utils';
+export { TexturePool } from './resources';
 
 export {
   co,

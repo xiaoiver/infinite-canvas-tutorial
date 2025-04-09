@@ -11,3 +11,5 @@ export * from './properties-panel';
 export * from './fill-icon';
 export * from './stroke-icon';
 export * from './color-picker';
+export * from './input-solid';
+export * from './input-gradient';

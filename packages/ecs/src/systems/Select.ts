@@ -6,7 +6,9 @@ import {
   Canvas,
   Children,
   ComputedCamera,
+  Cursor,
   FillSolid,
+  Input,
   Parent,
   Pen,
   Rect,
@@ -16,8 +18,12 @@ import {
   // Visibility,
 } from '../components';
 import { Commands } from '../commands/Commands';
-
+import { ViewportCulling } from './ViewportCulling';
+import { CameraControl } from './CameraControl';
 export class Select extends System {
+  private viewportCulling = this.attach(ViewportCulling);
+  private cameraControl = this.attach(CameraControl);
+
   private readonly commands = new Commands(this);
 
   // private readonly input = this.singleton.write(Input);
@@ -33,6 +39,8 @@ export class Select extends System {
     this.query(
       (q) =>
         q.using(
+          Input,
+          Cursor,
           Camera,
           Transform,
           Parent,
@@ -47,8 +55,6 @@ export class Select extends System {
   }
 
   execute() {
-    // this.cursor.value = 'default';
-
     this.cameras.current.forEach((entity) => {
       const camera = entity.read(Camera);
 
@@ -56,13 +62,29 @@ export class Select extends System {
         return;
       }
 
-      const canvas = camera.canvas.read(Canvas);
+      const canvas = camera.canvas.hold();
+      const { pen } = canvas.read(Canvas);
 
-      if (canvas.pen !== Pen.SELECT) {
+      if (pen !== Pen.SELECT) {
         // Hide selection brush
         // this.#selectionBrush?.add(Visibility.Hidden);
 
         return;
+      }
+
+      const input = canvas.write(Input);
+      const cursor = canvas.write(Cursor);
+
+      cursor.value = 'default';
+
+      if (input.pointerDownTrigger) {
+        const [x, y] = input.pointerViewport;
+        const { x: wx, y: wy } = this.cameraControl.viewport2Canvas(entity, {
+          x,
+          y,
+        });
+
+        this.viewportCulling.elementsFromBBox(entity, wx, wy, wx, wy);
       }
 
       // const { viewProjectionMatrixInv } = entity.read(ComputedCamera);

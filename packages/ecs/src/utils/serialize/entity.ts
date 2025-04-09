@@ -135,8 +135,10 @@ export function entityToSerializedNodes(entity: Entity): SerializedNode[] {
   if (entity.has(FillSolid)) {
     (attributes as FillAttributes).fill = entity.read(FillSolid).value;
   } else if (entity.has(FillGradient)) {
-    // TODO: serialize gradient
+    (attributes as FillAttributes).fill = entity.read(FillGradient).value;
   }
+
+  // TODO: serialize pattern
 
   if (entity.has(Stroke)) {
     const {

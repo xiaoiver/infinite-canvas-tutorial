@@ -24,11 +24,15 @@ export class TexturePool {
   #gradientCache: Record<string, CanvasGradient> = {};
   #patternCache: Record<string, CanvasPattern> = {};
 
-  constructor() {
-    this.#canvas = DOMAdapter.get().createCanvas(128, 128);
-    this.#ctx = this.#canvas.getContext('2d') as
-      | CanvasRenderingContext2D
-      | OffscreenCanvasRenderingContext2D;
+  constructor(
+    context?: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D,
+  ) {
+    this.#canvas = context?.canvas || DOMAdapter.get().createCanvas(128, 128);
+    this.#ctx =
+      context ||
+      (this.#canvas.getContext('2d') as
+        | CanvasRenderingContext2D
+        | OffscreenCanvasRenderingContext2D);
   }
 
   destroy() {
@@ -87,10 +91,14 @@ export class TexturePool {
     params: {
       gradients: Gradient[];
     } & GradientExtraParams,
+    fillRect = true,
   ) {
     const { width, height, gradients } = params;
-    this.#canvas.width = width;
-    this.#canvas.height = height;
+
+    if (fillRect) {
+      this.#canvas.width = width;
+      this.#canvas.height = height;
+    }
 
     gradients.forEach((g) => {
       const gradient = this.getOrCreateGradientInternal({
@@ -101,7 +109,9 @@ export class TexturePool {
       });
 
       this.#ctx.fillStyle = gradient;
-      this.#ctx.fillRect(0, 0, width, height);
+      if (fillRect) {
+        this.#ctx.fillRect(0, 0, width, height);
+      }
     });
 
     return DOMAdapter.get().createTexImageSource(this.#canvas);
@@ -165,25 +175,25 @@ export function generateGradientKey(
 ): string {
   const { type, min, width, height, steps } = params;
 
-  const suffix = `${Math.round(min[0])}-${Math.round(min[1])}-${Math.round(
-    width,
-  )}-${Math.round(height)}-${steps
+  const suffix = `${type}-${Math.round(min[0])}-${Math.round(
+    min[1],
+  )}-${Math.round(width)}-${Math.round(height)}-${steps
     .map(({ offset, color }) => `${offset.value}${color}`)
     .join('-')}`;
 
   if (type === 'linear-gradient') {
     const { angle } = params;
-    return `${type}-${hashCode(`${Math.round(angle)}-${suffix}`)}`;
+    return `gradient-${hashCode(`${Math.round(angle)}-${suffix}`)}`;
   } else if (type === 'radial-gradient') {
     const { cx, cy, size } = params;
-    return `${type}-${hashCode(
+    return `gradient-${hashCode(
       `${Math.round(cx.value)}-${Math.round(cy.value)}-${Math.round(
         Number(size?.value || 0),
       )}-${suffix}`,
     )}`;
   } else if (type === 'conic-gradient') {
     const { cx, cy, angle } = params;
-    return `${type}-${hashCode(
+    return `gradient-${hashCode(
       `${Math.round(cx.value)}-${Math.round(cy.value)}-${Math.round(
         angle || 0,
       )}-${suffix}`,
@@ -194,5 +204,7 @@ export function generateGradientKey(
 export function generatePatternKey(params: { pattern: Pattern }): string {
   const { image, repetition, transform } = params.pattern;
   // TODO: when image is not string
-  return `pattern-${hashCode(`${image}-${repetition}-${transform}`)}`;
+  return `pattern-${hashCode(`pattern-${image}-${repetition}-${transform}`)}`;
 }
+
+export const texturePool = new TexturePool();

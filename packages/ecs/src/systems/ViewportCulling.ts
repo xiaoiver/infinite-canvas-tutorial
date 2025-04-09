@@ -9,7 +9,6 @@ import {
   ComputedBounds,
   ComputedCamera,
   Culled,
-  Mat3,
   Parent,
   Visibility,
 } from '../components';
@@ -177,6 +176,27 @@ export class ViewportCulling extends System {
     });
   }
 
+  elementsFromBBox(
+    camera: Entity,
+    minX: number,
+    minY: number,
+    maxX: number,
+    maxY: number,
+  ) {
+    const rBush = this.getOrCreateRBush(camera);
+
+    const rBushNodes = rBush.search({
+      minX,
+      minY,
+      maxX,
+      maxY,
+    });
+
+    console.log(minX, minY, rBushNodes);
+
+    return rBushNodes.map((node) => node.entity);
+  }
+
   private getOrCreateRBush(camera: Entity) {
     let rBush = this.#cameraRBushMap.get(camera);
     if (!rBush) {
@@ -197,43 +217,23 @@ export class ViewportCulling extends System {
 
   private updateViewport(camera: Entity) {
     const { width, height } = camera.read(Camera).canvas.read(Canvas);
-    const viewProjectionMatrixInv = Mat3.toGLMat3(
-      camera.read(ComputedCamera).viewProjectionMatrixInv,
-    );
-
     // tl, tr, br, bl
-    const tl = this.cameraControl.viewport2Canvas(
-      camera,
-      {
-        x: 0,
-        y: 0,
-      },
-      viewProjectionMatrixInv,
-    );
-    const tr = this.cameraControl.viewport2Canvas(
-      camera,
-      {
-        x: width,
-        y: 0,
-      },
-      viewProjectionMatrixInv,
-    );
-    const br = this.cameraControl.viewport2Canvas(
-      camera,
-      {
-        x: width,
-        y: height,
-      },
-      viewProjectionMatrixInv,
-    );
-    const bl = this.cameraControl.viewport2Canvas(
-      camera,
-      {
-        x: 0,
-        y: height,
-      },
-      viewProjectionMatrixInv,
-    );
+    const tl = this.cameraControl.viewport2Canvas(camera, {
+      x: 0,
+      y: 0,
+    });
+    const tr = this.cameraControl.viewport2Canvas(camera, {
+      x: width,
+      y: 0,
+    });
+    const br = this.cameraControl.viewport2Canvas(camera, {
+      x: width,
+      y: height,
+    });
+    const bl = this.cameraControl.viewport2Canvas(camera, {
+      x: 0,
+      y: height,
+    });
 
     const viewport = this.getOrCreateViewport(camera);
     viewport.minX = Math.min(tl.x, tr.x, br.x, bl.x);
