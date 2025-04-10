@@ -24,15 +24,11 @@ export class TexturePool {
   #gradientCache: Record<string, CanvasGradient> = {};
   #patternCache: Record<string, CanvasPattern> = {};
 
-  constructor(
-    context?: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D,
-  ) {
-    this.#canvas = context?.canvas || DOMAdapter.get().createCanvas(128, 128);
-    this.#ctx =
-      context ||
-      (this.#canvas.getContext('2d') as
-        | CanvasRenderingContext2D
-        | OffscreenCanvasRenderingContext2D);
+  constructor() {
+    this.#canvas = DOMAdapter.get().createCanvas(128, 128);
+    this.#ctx = this.#canvas.getContext('2d') as
+      | CanvasRenderingContext2D
+      | OffscreenCanvasRenderingContext2D;
   }
 
   destroy() {
@@ -206,5 +202,3 @@ export function generatePatternKey(params: { pattern: Pattern }): string {
   // TODO: when image is not string
   return `pattern-${hashCode(`pattern-${image}-${repetition}-${transform}`)}`;
 }
-
-export const texturePool = new TexturePool();

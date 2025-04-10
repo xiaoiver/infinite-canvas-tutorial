@@ -9,7 +9,7 @@ import {
 } from '@antv/g-device-api';
 import { Canvas, GPUResource, Grid, Theme } from '../components';
 import { RenderCache } from '../utils';
-import { texturePool } from '../resources';
+import { TexturePool } from '../resources';
 
 /**
  * Usually the first built-in system to run.
@@ -20,9 +20,12 @@ export class SetupDevice extends System {
     (q) => q.added.and.changed.and.removed.with(Canvas).trackWrites,
   );
 
+  #texturePool: TexturePool;
+
   constructor() {
     super();
     this.query((q) => q.using(GPUResource, Canvas, Theme, Grid).write);
+    this.#texturePool = new TexturePool();
   }
 
   @co private *addGPUResource(
@@ -94,7 +97,7 @@ export class SetupDevice extends System {
         renderTarget,
         depthRenderTarget,
         renderCache,
-        texturePool,
+        texturePool: this.#texturePool,
       });
     });
 
@@ -140,7 +143,7 @@ export class SetupDevice extends System {
       this.destroyCanvas(canvas);
     });
 
-    texturePool.destroy();
+    this.#texturePool.destroy();
   }
 
   private createRenderTarget(device: Device, width: number, height: number) {
