@@ -36,10 +36,12 @@ export class Taskbar extends LitElement {
       );
     }
 
-    ic-spectrum-layers-panel {
+    .panels {
       position: absolute;
       top: 0px;
       right: 54px;
+      display: flex;
+      flex-direction: column;
     }
   `;
 
@@ -74,7 +76,10 @@ export class Taskbar extends LitElement {
             </sp-action-button>`;
           })}
         </sp-action-group>
-        <ic-spectrum-layers-panel></ic-spectrum-layers-panel>
+        <div class="panels">
+          <ic-spectrum-layers-panel></ic-spectrum-layers-panel>
+          <ic-spectrum-properties-panel></ic-spectrum-properties-panel>
+        </div>
       `,
     );
   }

@@ -8,7 +8,7 @@ import {
   trigger,
 } from '@spectrum-web-components/overlay';
 import { API } from '../API';
-import { apiContext } from '../context';
+import { apiContext, AppState, appStateContext, Task } from '../context';
 
 @customElement('ic-spectrum-layers-panel-item')
 export class LayersPanelItem extends LitElement {
@@ -48,6 +48,14 @@ export class LayersPanelItem extends LitElement {
     :host([child]) > span {
       padding-left: 24px;
     }
+
+    h4 {
+      padding: var(--spectrum-global-dimension-size-100);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin: 0;
+    }
   `;
 
   @property()
@@ -59,6 +67,9 @@ export class LayersPanelItem extends LitElement {
   @consume({ context: apiContext, subscribe: true })
   api: API;
 
+  @consume({ context: appStateContext, subscribe: true })
+  appState: AppState;
+
   private handleToggleVisibility() {
     this.api.updateNode(this.node, {
       visibility: this.node.visibility === 'visible' ? 'hidden' : 'visible',
@@ -66,8 +77,6 @@ export class LayersPanelItem extends LitElement {
   }
 
   private renderOverlayContent = () => {
-    console.log('render overlay content...');
-
     return html`
       <sp-popover
         @sp-opened=${(event: CustomEvent<OverlayOpenCloseDetail>) => {
@@ -93,9 +102,10 @@ export class LayersPanelItem extends LitElement {
           );
         }}
       >
-        <ic-spectrum-properties-panel
+        <h4>Properties</h4>
+        <ic-spectrum-properties-panel-content
           .node=${this.node}
-        ></ic-spectrum-properties-panel>
+        ></ic-spectrum-properties-panel-content>
       </sp-popover>
     `;
   };
@@ -105,6 +115,9 @@ export class LayersPanelItem extends LitElement {
     const isOpen = this.api
       .getAppState()
       .propertiesOpened.includes(this.node.id);
+    const showProperties =
+      this.selected &&
+      !this.appState.taskbarSelected.includes(Task.SHOW_PROPERTIES_PANEL);
 
     return html`<span>
         <sp-action-button quiet size="s" @click=${this.handleToggleVisibility}>
@@ -127,7 +140,7 @@ export class LayersPanelItem extends LitElement {
         .node=${this.node}></ic-spectrum-layer-name>
       <div 
         class="layer-actions" style="visibility: ${
-          this.selected ? 'visible' : 'hidden'
+          showProperties ? 'visible' : 'hidden'
         };">
         <sp-action-button quiet size="m" .selected=${isOpen} ${trigger(
       this.renderOverlayContent,

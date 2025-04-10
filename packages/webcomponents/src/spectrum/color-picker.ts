@@ -3,6 +3,12 @@ import { customElement, property } from 'lit/decorators.js';
 import { when } from 'lit/directives/when.js';
 import { isGradient } from '@infinite-canvas-tutorial/ecs';
 
+const DEFAULT_COLOR = {
+  ['none']: 'none',
+  ['solid']: '#000',
+  ['gradient']: 'linear-gradient(to right, #000, #fff)',
+};
+
 @customElement('ic-spectrum-color-picker')
 export class ColorPicker extends LitElement {
   static styles = css`
@@ -11,7 +17,7 @@ export class ColorPicker extends LitElement {
       flex-direction: column;
       gap: 8px;
       padding: 8px;
-      width: 300px;
+      width: 200px;
     }
 
     h4 {
@@ -22,25 +28,21 @@ export class ColorPicker extends LitElement {
   @property()
   value: string;
 
+  @property({ type: Boolean })
+  solid: boolean = false;
+
   private handleTypeChanged(e: CustomEvent) {
     const type = (e.target as any).selected[0];
-    if (type === 'none') {
-      this.dispatchEvent(
-        new CustomEvent('color-change', {
-          detail: 'none',
-          bubbles: true,
-          composed: true,
-        }),
-      );
-    } else if (type === 'solid') {
-      this.dispatchEvent(
-        new CustomEvent('color-change', {
-          detail: '#000',
-          bubbles: true,
-          composed: true,
-        }),
-      );
-    }
+    this.dispatchEvent(
+      new CustomEvent('color-change', {
+        detail: {
+          type,
+          value: DEFAULT_COLOR[type],
+        },
+        bubbles: true,
+        composed: true,
+      }),
+    );
   }
 
   render() {
@@ -53,30 +55,32 @@ export class ColorPicker extends LitElement {
 
     return html`
       <h4>Select a color</h4>
-      <sp-action-group
-        quiet
-        compact
-        size="m"
-        selects="single"
-        .selected=${[selected]}
-        @change=${this.handleTypeChanged}
-      >
-        <sp-action-button value="none">
-          <sp-tooltip self-managed placement="bottom"> No color </sp-tooltip>
-          <sp-swatch nothing slot="icon"> </sp-swatch>
-        </sp-action-button>
+      ${when(
+        !this.solid,
+        () => html`<sp-action-group
+          quiet
+          compact
+          size="m"
+          selects="single"
+          .selected=${[selected]}
+          @change=${this.handleTypeChanged}
+        >
+          <sp-action-button value="none">
+            <sp-tooltip self-managed placement="bottom"> No color </sp-tooltip>
+            <sp-swatch nothing slot="icon"> </sp-swatch>
+          </sp-action-button>
 
-        <sp-action-button value="solid">
-          <sp-tooltip self-managed placement="bottom"> Solid </sp-tooltip>
-          <sp-swatch color=${this.value} slot="icon"> </sp-swatch>
-        </sp-action-button>
+          <sp-action-button value="solid">
+            <sp-tooltip self-managed placement="bottom"> Solid </sp-tooltip>
+            <sp-swatch color=${this.value} slot="icon"> </sp-swatch>
+          </sp-action-button>
 
-        <sp-action-button value="gradient">
-          <sp-tooltip self-managed placement="bottom"> Gradient </sp-tooltip>
-          <sp-swatch color=${this.value} slot="icon"> </sp-swatch>
-        </sp-action-button>
-      </sp-action-group>
-
+          <sp-action-button value="gradient">
+            <sp-tooltip self-managed placement="bottom"> Gradient </sp-tooltip>
+            <sp-swatch color=${this.value} slot="icon"> </sp-swatch>
+          </sp-action-button>
+        </sp-action-group>`,
+      )}
       ${when(
         selected === 'solid',
         () => html`

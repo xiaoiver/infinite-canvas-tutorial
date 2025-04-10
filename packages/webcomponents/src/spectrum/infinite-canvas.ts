@@ -36,8 +36,10 @@ import '@spectrum-web-components/progress-circle/sp-progress-circle.js';
 import '@spectrum-web-components/textfield/sp-textfield.js';
 import '@spectrum-web-components/thumbnail/sp-thumbnail.js';
 import '@spectrum-web-components/tooltip/sp-tooltip.js';
+import '@spectrum-web-components/picker/sp-picker.js';
 
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-add.js';
+import '@spectrum-web-components/icons-workflow/icons/sp-icon-remove.js';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-text.js';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-visibility.js';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-visibility-off.js';
@@ -49,6 +51,7 @@ import '@spectrum-web-components/icons-workflow/icons/sp-icon-properties.js';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-show-menu.js';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-hand.js';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-select.js';
+import '@spectrum-web-components/icons-workflow/icons/sp-icon-settings.js';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-shapes.js';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-undo.js';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-redo.js';

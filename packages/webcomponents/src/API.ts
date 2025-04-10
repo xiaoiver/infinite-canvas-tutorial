@@ -73,6 +73,10 @@ export class API {
     return this.#idEntityMap.get(node.id).id();
   }
 
+  getNodeById(id: string) {
+    return this.nodes.find((node) => node.id === id);
+  }
+
   /**
    * Create a new canvas.
    */

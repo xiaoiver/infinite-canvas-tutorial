@@ -15,11 +15,7 @@ export class InputSolid extends LitElement {
       .hex-field {
         display: flex;
         align-items: center;
-        gap: 8px;
-
-        sp-field-label {
-          width: 32px;
-        }
+        width: 100%;
 
         sp-color-field {
           flex: 1;
@@ -35,7 +31,10 @@ export class InputSolid extends LitElement {
     const value = e.target.color.toString();
     this.dispatchEvent(
       new CustomEvent('color-change', {
-        detail: value,
+        detail: {
+          type: 'solid',
+          value,
+        },
         bubbles: true,
         composed: true,
       }),

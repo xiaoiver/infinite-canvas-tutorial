@@ -31,7 +31,7 @@ export class LayersPanel extends LitElement {
       margin: 0;
     }
 
-    .layers-container {
+    .container {
       height: 300px;
       overflow: hidden;
       overflow-y: auto;
@@ -76,7 +76,7 @@ export class LayersPanel extends LitElement {
               <sp-icon-close slot="icon"></sp-icon-close>
             </sp-action-button>
           </h4>
-          <div class="layers-container">
+          <div class="container">
             ${map(this.nodes, (node) => {
               // TODO: hierarchy
               // TODO: virtual scroll for better performance

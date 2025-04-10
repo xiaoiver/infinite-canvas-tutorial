@@ -22,17 +22,60 @@ export class InputGradient extends LitElement {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      font-size: var(--sl-font-size-small);
 
       > div {
         display: flex;
         align-items: center;
         gap: 8px;
       }
+
+      sp-picker {
+        width: 100px;
+      }
     }
+
     .gradient-preview {
       width: 24px;
       height: 24px;
+    }
+
+    .gradient-settings-popover {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding: 8px;
+      width: 200px;
+
+      h4 {
+        margin: 0;
+      }
+
+      .angle-field {
+        display: flex;
+        align-items: center;
+      }
+
+      sp-number-field {
+        width: 100px;
+      }
+    }
+
+    .gradient-stops-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .gradient-stop {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+
+      > div {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
     }
   `;
 
@@ -78,7 +121,7 @@ export class InputGradient extends LitElement {
           {
             offset: {
               type: '%',
-              value: 100,
+              value: 1,
             },
             color: 'black',
           },
@@ -138,7 +181,10 @@ export class InputGradient extends LitElement {
   }
 
   private handleColorChange(index: number, stopIndex: number, e: CustomEvent) {
+    e.stopPropagation();
+
     const color = (e.target as any).value;
+    console.log(color);
     this.gradients[index].steps[stopIndex].color = color;
     this.requestUpdate();
     this.triggerGradientChangeEvent();
@@ -167,6 +213,129 @@ export class InputGradient extends LitElement {
                   gradient,
                 ])}; transform: rotate(90deg);"
               ></div>
+              <sp-picker
+                label="Gradient type"
+                size="s"
+                value=${gradient.type}
+                @change=${this.handleGradientTypeChange.bind(this, index)}
+              >
+                <sp-menu-item value="linear-gradient">Linear</sp-menu-item>
+                <sp-menu-item value="radial-gradient">Radial</sp-menu-item>
+                <sp-menu-item value="conic-gradient">Conic</sp-menu-item>
+              </sp-picker>
+            </div>
+            <div>
+              <sp-action-button quiet size="s" id="gradient-settings">
+                <sp-icon-settings slot="icon"></sp-icon-settings>
+                <sp-tooltip self-managed placement="bottom">
+                  Gradient settings
+                </sp-tooltip>
+              </sp-action-button>
+              <sp-overlay trigger="gradient-settings@click" placement="bottom">
+                <sp-popover class="gradient-settings-popover">
+                  <h4>Gradient settings</h4>
+                  ${gradient.type === 'linear-gradient'
+                    ? html`
+                      <div class="angle-field"
+                        <sp-field-label for="angle" side-aligned="start"
+                            >Angle</sp-field-label
+                          >
+                          <sp-number-field
+                            id="angle"
+                            size="s"
+                            min="0"
+                            max="360"
+                            step="1"
+                            value=${gradient.angle}
+                            @input=${this.handleAngleChange.bind(this, index)}
+                          ></sp-number-field></div>`
+                    : ''}
+                  <div class="gradient-stops-header">
+                    Stops
+                    <sp-action-button
+                      quiet
+                      size="s"
+                      @click="${this.addStop.bind(this, index)}"
+                    >
+                      <sp-tooltip self-managed placement="bottom">
+                        Add stop
+                      </sp-tooltip>
+                      <sp-icon-add slot="icon"></sp-icon-add>
+                    </sp-action-button>
+                  </div>
+                  ${gradient.steps.map((step, stopIndex) => {
+                    return html`
+                      <div class="gradient-stop">
+                        <div>
+                          <sp-number-field
+                            id="angle"
+                            size="s"
+                            min="0"
+                            max="1"
+                            step="0.1"
+                            format-options='{
+                                "style": "percent"
+                              }'
+                            value=${step.offset.value}
+                            @input=${this.handleOffsetChange.bind(
+                              this,
+                              index,
+                              stopIndex,
+                            )}
+                          ></sp-number-field>
+
+                          <sp-swatch
+                            id=${`stop-color-${index}-${stopIndex}`}
+                            color=${step.color}
+                            size="s"
+                          ></sp-swatch>
+                          <sp-overlay
+                            trigger=${`stop-color-${index}-${stopIndex}@click`}
+                            placement="bottom"
+                          >
+                            <sp-popover class="stop-color-popover">
+                              <ic-spectrum-color-picker
+                                solid
+                                value=${step.color}
+                                @color-change=${this.handleColorChange.bind(
+                                  this,
+                                  index,
+                                  stopIndex,
+                                )}
+                              ></ic-spectrum-color-picker>
+                            </sp-popover>
+                          </sp-overlay>
+                        </div>
+                        <sp-action-button
+                          quiet
+                          size="s"
+                          @click="${this.removeStop.bind(
+                            this,
+                            index,
+                            stopIndex,
+                          )}"
+                        >
+                          <sp-tooltip self-managed placement="bottom">
+                            Remove stop
+                          </sp-tooltip>
+                          <sp-icon-remove slot="icon"></sp-icon-remove>
+                        </sp-action-button>
+                      </div>
+                    `;
+                  })}
+                </sp-popover>
+              </sp-overlay>
+
+              <sp-action-button
+                quiet
+                size="s"
+                @click="${this.removeGradient.bind(this, index)}"
+              >
+                <sp-tooltip self-managed placement="bottom">
+                  Remove gradient
+                </sp-tooltip>
+                <sp-icon-remove slot="icon"></sp-icon-remove>
+              </sp-action-button>
             </div>
           </div>`;
         })}
