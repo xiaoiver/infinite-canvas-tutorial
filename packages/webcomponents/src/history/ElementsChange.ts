@@ -4,7 +4,6 @@
 
 import {
   SerializedNode,
-  OrderedSerializedNode,
   randomInteger,
   Name,
   Visibility,
@@ -15,6 +14,8 @@ import {
   Rect,
   isGradient,
   FillGradient,
+  Circle,
+  Ellipse,
 } from '@infinite-canvas-tutorial/ecs';
 import { isNil } from '@antv/util';
 import { Change } from './Change';
@@ -25,6 +26,7 @@ import {
   getUpdatedTimestamp,
   removeComponent,
 } from '../utils';
+import { API } from '../API';
 
 export type SceneElementsMap = Map<SerializedNode['id'], SerializedNode>;
 
@@ -41,13 +43,13 @@ export type Mutable<T> = {
 
 export class ElementsChange implements Change<SceneElementsMap> {
   static empty() {
-    return ElementsChange.create(new Map(), new Map(), new Map());
+    return ElementsChange.create(new Map(), new Map(), new Map(), undefined);
   }
 
   private static stripIrrelevantProps(
     partial: Partial<SerializedNode>,
   ): ElementPartial {
-    const { id, version, versionNonce, ...strippedPartial } = partial;
+    const { id, updated, version, versionNonce, ...strippedPartial } = partial;
 
     return strippedPartial;
   }
@@ -63,6 +65,7 @@ export class ElementsChange implements Change<SceneElementsMap> {
   public static calculate<T extends SerializedNode>(
     prevElements: Map<string, T>,
     nextElements: Map<string, T>,
+    api: API,
   ): ElementsChange {
     if (prevElements === nextElements) {
       return ElementsChange.empty();
@@ -142,7 +145,7 @@ export class ElementsChange implements Change<SceneElementsMap> {
       }
     }
 
-    return ElementsChange.create(added, removed, updated);
+    return ElementsChange.create(added, removed, updated, api);
   }
 
   private static satisfiesAddition = ({
@@ -313,6 +316,7 @@ export class ElementsChange implements Change<SceneElementsMap> {
     added: Map<string, Delta<ElementPartial>>,
     removed: Map<string, Delta<ElementPartial>>,
     updated: Map<string, Delta<ElementPartial>>,
+    api: API,
     options = { shouldRedistribute: false },
   ) {
     let change: ElementsChange;
@@ -334,9 +338,9 @@ export class ElementsChange implements Change<SceneElementsMap> {
         }
       }
 
-      change = new ElementsChange(nextAdded, nextRemoved, nextUpdated);
+      change = new ElementsChange(nextAdded, nextRemoved, nextUpdated, api);
     } else {
-      change = new ElementsChange(added, removed, updated);
+      change = new ElementsChange(added, removed, updated, api);
     }
 
     return change;
@@ -346,6 +350,7 @@ export class ElementsChange implements Change<SceneElementsMap> {
     private readonly added: Map<string, Delta<ElementPartial>>,
     private readonly removed: Map<string, Delta<ElementPartial>>,
     private readonly updated: Map<string, Delta<ElementPartial>>,
+    private readonly api: API,
   ) {}
 
   inverse(): ElementsChange {
@@ -364,7 +369,7 @@ export class ElementsChange implements Change<SceneElementsMap> {
     const updated = inverseInternal(this.updated);
 
     // notice we inverse removed with added not to break the invariants
-    return ElementsChange.create(removed, added, updated);
+    return ElementsChange.create(removed, added, updated, this.api);
   }
 
   /**
@@ -423,7 +428,7 @@ export class ElementsChange implements Change<SceneElementsMap> {
     const removed = applyLatestChangesInternal(this.removed);
     const updated = applyLatestChangesInternal(this.updated);
 
-    return ElementsChange.create(added, removed, updated, {
+    return ElementsChange.create(added, removed, updated, this.api, {
       shouldRedistribute: true, // redistribute the deltas as `isDeleted` could have been updated
     });
   }
@@ -432,8 +437,7 @@ export class ElementsChange implements Change<SceneElementsMap> {
     elements: SceneElementsMap,
     snapshot: Map<string, SerializedNode>,
   ): [SceneElementsMap, boolean] {
-    let nextElements = new Map(elements);
-    let changedElements: Map<string, SerializedNode>;
+    const nextElements = new Map(elements);
 
     const flags = {
       containsVisibleDifference: false,
@@ -450,27 +454,12 @@ export class ElementsChange implements Change<SceneElementsMap> {
     const removedElements = applyDeltas(this.removed);
     const updatedElements = applyDeltas(this.updated);
 
-    console.log('addedElements', addedElements);
-    console.log('removedElements', removedElements);
-    console.log('updatedElements', updatedElements);
-
-    const affectedElements = this.resolveConflicts(elements, nextElements);
-
-    // TODO: #7348 validate elements semantically and syntactically the changed elements, in case they would result data integrity issues
-    changedElements = new Map([
-      ...addedElements,
-      ...removedElements,
-      ...updatedElements,
-      ...affectedElements,
-    ]);
-
-    // the following reorder performs also mutations, but only on new instances of changed elements
-    // (unless something goes really bad and it fallbacks to fixing all invalid indices)
-    // nextElements = ElementsChange.reorderElements(
-    //   nextElements,
-    //   changedElements,
-    //   flags,
-    // );
+    this.updated.forEach((delta, id) => {
+      const element = nextElements.get(id);
+      if (element) {
+        this.api.updateNode(element, delta.inserted, false);
+      }
+    });
 
     return [nextElements, flags.containsVisibleDifference];
   }
@@ -481,103 +470,6 @@ export class ElementsChange implements Change<SceneElementsMap> {
       this.removed.size === 0 &&
       this.updated.size === 0
     );
-  }
-
-  /**
-   * Resolves conflicts for all previously added, removed and updated elements.
-   * Updates the previous deltas with all the changes after conflict resolution.
-   *
-   * @returns all elements affected by the conflict resolution
-   */
-  private resolveConflicts(
-    prevElements: SceneElementsMap,
-    nextElements: SceneElementsMap,
-  ) {
-    const nextAffectedElements = new Map<string, OrderedSerializedNode>();
-    const updater = (
-      element: SerializedNode,
-      updates: ElementUpdate<SerializedNode>,
-    ) => {
-      const nextElement = nextElements.get(element.id); // only ever modify next element!
-      if (!nextElement) {
-        return;
-      }
-
-      let affectedElement: OrderedSerializedNode;
-
-      if (prevElements.get(element.id) === nextElement) {
-        // create the new element instance in case we didn't modify the element yet
-        // so that we won't end up in an incosistent state in case we would fail in the middle of mutations
-        affectedElement = newElementWith(
-          nextElement,
-          updates as ElementUpdate<OrderedSerializedNode>,
-        ) as OrderedSerializedNode;
-      } else {
-        console.log('mutateElement', nextElement, updates);
-
-        // affectedElement = mutateElement(
-        //   nextElement,
-        //   updates as ElementUpdate<OrderedSerializedNode>,
-        // ) as OrderedSerializedNode;
-      }
-
-      nextAffectedElements.set(affectedElement.id, affectedElement);
-      nextElements.set(affectedElement.id, affectedElement);
-    };
-
-    // // removed delta is affecting the bindings always, as all the affected elements of the removed elements need to be unbound
-    // for (const [id] of this.removed) {
-    //   ElementsChange.unbindAffected(prevElements, nextElements, id, updater);
-    // }
-
-    // // added delta is affecting the bindings always, all the affected elements of the added elements need to be rebound
-    // for (const [id] of this.added) {
-    //   ElementsChange.rebindAffected(prevElements, nextElements, id, updater);
-    // }
-
-    // updated delta is affecting the binding only in case it contains changed binding or bindable property
-    // .filter(([_, delta]) =>
-    //   Object.keys({ ...delta.deleted, ...delta.inserted }).find((prop) =>
-    //     bindingProperties.has(prop as BindingProp | BindableProp),
-    //   ),
-    // )
-    for (const [id] of Array.from(this.updated)) {
-      const updatedElement = nextElements.get(id);
-      if (!updatedElement || updatedElement.isDeleted) {
-        // skip fixing bindings for updates on deleted elements
-        continue;
-      }
-
-      updater(updatedElement, updatedElement);
-
-      // ElementsChange.rebindAffected(prevElements, nextElements, id, updater);
-    }
-
-    // filter only previous elements, which were now affected
-    const prevAffectedElements = new Map(
-      Array.from(prevElements).filter(([id]) => nextAffectedElements.has(id)),
-    );
-
-    // calculate complete deltas for affected elements, and assign them back to all the deltas
-    // technically we could do better here if perf. would become an issue
-    const { added, removed, updated } = ElementsChange.calculate(
-      prevAffectedElements,
-      nextAffectedElements,
-    );
-
-    for (const [id, delta] of added) {
-      this.added.set(id, delta);
-    }
-
-    for (const [id, delta] of removed) {
-      this.removed.set(id, delta);
-    }
-
-    for (const [id, delta] of updated) {
-      this.updated.set(id, delta);
-    }
-
-    return nextAffectedElements;
   }
 }
 
@@ -617,6 +509,11 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
     height,
     x,
     y,
+    cx,
+    cy,
+    r,
+    rx,
+    ry,
   } = updates as any;
 
   if (!isNil(name)) {
@@ -652,22 +549,64 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
   if (!isNil(fontSize)) {
     entity.write(Text).fontSize = fontSize;
   }
+
+  // TODO: Polyline, Path, Text
+
   if (!isNil(width)) {
-    entity.write(Rect).width = width;
+    if (entity.has(Rect)) {
+      entity.write(Rect).width = width;
+    }
   }
   if (!isNil(height)) {
-    entity.write(Rect).height = height;
+    if (entity.has(Rect)) {
+      entity.write(Rect).height = height;
+    }
   }
   if (!isNil(x)) {
-    entity.write(Rect).x = x;
+    if (entity.has(Rect)) {
+      entity.write(Rect).x = x;
+    }
   }
   if (!isNil(y)) {
-    entity.write(Rect).y = y;
+    if (entity.has(Rect)) {
+      entity.write(Rect).y = y;
+    }
+  }
+  if (!isNil(cx)) {
+    if (entity.has(Circle)) {
+      entity.write(Circle).cx = cx;
+    } else if (entity.has(Ellipse)) {
+      entity.write(Ellipse).cx = cx;
+    }
+  }
+  if (!isNil(cy)) {
+    if (entity.has(Circle)) {
+      entity.write(Circle).cy = cy;
+    } else if (entity.has(Ellipse)) {
+      entity.write(Ellipse).cy = cy;
+    }
+  }
+  if (!isNil(r)) {
+    if (entity.has(Circle)) {
+      entity.write(Circle).r = r;
+    }
+  }
+  if (!isNil(rx)) {
+    if (entity.has(Ellipse)) {
+      entity.write(Ellipse).rx = rx;
+    }
+  }
+  if (!isNil(ry)) {
+    if (entity.has(Ellipse)) {
+      entity.write(Ellipse).ry = ry;
+    }
   }
 
   if (isNil(element.version)) {
     element.version = 0;
   }
+
+  Object.assign(element, updates);
 
   element.version++;
   element.versionNonce = randomInteger();

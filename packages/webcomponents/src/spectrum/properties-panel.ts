@@ -48,18 +48,9 @@ export class PropertiesPanel extends LitElement {
     );
   }
 
-  private handleSelect(e: MouseEvent, id: SerializedNode['id']) {
-    const { layersSelected } = this.api.getAppState();
-
-    if (layersSelected.length === 1 && layersSelected.includes(id)) {
-      return;
-    }
-
-    this.api.selectNodes([id], e.shiftKey);
-  }
-
   render() {
     const { layersSelected, taskbarSelected } = this.appState;
+    const node = this.api.getNodeById(layersSelected[0]);
 
     return taskbarSelected.includes(Task.SHOW_PROPERTIES_PANEL)
       ? html`<section>
@@ -71,7 +62,7 @@ export class PropertiesPanel extends LitElement {
           </h4>
           <div class="container">
             <ic-spectrum-properties-panel-content
-              .node=${this.api.getNodeById(layersSelected[0])}
+              .node=${node}
             ></ic-spectrum-properties-panel-content>
           </div>
         </section>`

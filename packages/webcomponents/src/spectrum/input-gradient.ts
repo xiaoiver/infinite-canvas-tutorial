@@ -146,7 +146,7 @@ export class InputGradient extends LitElement {
       },
       color: 'white',
     });
-    this.requestUpdate();
+
     this.triggerGradientChangeEvent();
   }
 
@@ -154,7 +154,7 @@ export class InputGradient extends LitElement {
     this.gradients[index].steps = this.gradients[index].steps.filter(
       (_, i) => i !== stopIndex,
     );
-    this.requestUpdate();
+
     this.triggerGradientChangeEvent();
   }
 
@@ -168,7 +168,7 @@ export class InputGradient extends LitElement {
     const angle = (e.target as any).value;
     if (this.gradients[index].type === 'linear-gradient') {
       (this.gradients[index] as any).angle = angle;
-      this.requestUpdate();
+
       this.triggerGradientChangeEvent();
     }
   }
@@ -176,7 +176,7 @@ export class InputGradient extends LitElement {
   private handleGradientTypeChange(index: number, e: CustomEvent) {
     const type = (e.target as any).value;
     this.gradients[index].type = type;
-    this.requestUpdate();
+
     this.triggerGradientChangeEvent();
   }
 
@@ -186,14 +186,14 @@ export class InputGradient extends LitElement {
     const color = (e.target as any).value;
     console.log(color);
     this.gradients[index].steps[stopIndex].color = color;
-    this.requestUpdate();
+
     this.triggerGradientChangeEvent();
   }
 
   private handleOffsetChange(index: number, stopIndex: number, e: CustomEvent) {
     const offset = (e.target as any).value;
     this.gradients[index].steps[stopIndex].offset.value = offset;
-    this.requestUpdate();
+
     this.triggerGradientChangeEvent();
   }
 

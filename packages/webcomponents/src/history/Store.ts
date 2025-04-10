@@ -8,6 +8,7 @@ import { AppState } from '../context';
 import { AppStateChange } from './AppStateChange';
 import { ElementsChange } from './ElementsChange';
 import { Snapshot } from './Snapshot';
+import { API } from '../API';
 
 export const StoreIncrementEvent = 'storeIncrement';
 
@@ -53,6 +54,8 @@ export class Store {
   private scheduledActions: Set<CaptureUpdateActionType> = new Set();
 
   onStoreIncrementEmitter = new EventEmitter();
+
+  constructor(private readonly api: API) {}
 
   get snapshot() {
     return this._snapshot;
@@ -102,7 +105,11 @@ export class Store {
     if (prevSnapshot !== nextSnapshot) {
       // Calculate and record the changes based on the previous and next snapshot
       const elementsChange = nextSnapshot.meta.didElementsChange
-        ? ElementsChange.calculate(prevSnapshot.elements, nextSnapshot.elements)
+        ? ElementsChange.calculate(
+            prevSnapshot.elements,
+            nextSnapshot.elements,
+            this.api,
+          )
         : ElementsChange.empty();
 
       const appStateChange = nextSnapshot.meta.didAppStateChange

@@ -39,7 +39,7 @@ export class API {
   #canvasEntity: Entity;
   #idEntityMap: Map<string, EntityCommands>;
   #history = new History();
-  #store = new Store();
+  #store = new Store(this);
 
   appState: AppState;
   nodes: SerializedNode[];
@@ -67,6 +67,10 @@ export class API {
 
   getElement() {
     return this.element;
+  }
+
+  getEntityCommands() {
+    return this.#idEntityMap;
   }
 
   getEntity(node: SerializedNode) {
@@ -262,21 +266,27 @@ export class API {
   /**
    * If diff is provided, no need to calculate diffs.
    */
-  updateNode(node: SerializedNode, diff?: Partial<SerializedNode>) {
+  updateNode(
+    node: SerializedNode,
+    diff?: Partial<SerializedNode>,
+    record = true,
+  ) {
     const entity = this.#idEntityMap.get(node.id).id();
 
     const updated = mutateElement(entity, node, diff);
 
-    const nodes = this.getNodes();
-    const index = nodes.findIndex((n) => n.id === updated.id);
+    this.nodes = this.getNodes();
+    const index = this.nodes.findIndex((n) => n.id === updated.id);
 
     if (index !== -1) {
-      nodes[index] = updated;
-      this.setNodes(nodes);
+      this.nodes[index] = updated;
+      this.setNodes(this.nodes);
     }
 
-    this.#store.shouldCaptureIncrement();
-    this.#store.commit(arrayToMap(this.getNodes()), this.getAppState());
+    if (record) {
+      this.#store.shouldCaptureIncrement();
+      this.#store.commit(arrayToMap(this.getNodes()), this.getAppState());
+    }
 
     this.element.dispatchEvent(
       new CustomEvent(Event.NODE_UPDATED, {
