@@ -1,5 +1,10 @@
-import { App, svgElementsToSerializedNodes, DefaultPlugins } from '../../ecs';
-import { Event, UIPlugin } from '../src';
+import {
+  App,
+  svgElementsToSerializedNodes,
+  DefaultPlugins,
+  Pen,
+} from '../../ecs';
+import { Event, UIPlugin, Task } from '../src';
 import '../src/spectrum';
 
 const res = await fetch('/maslow-hierarchy.svg');
@@ -20,7 +25,11 @@ const nodes = svgElementsToSerializedNodes(
 const canvas = document.querySelector<HTMLElement>('#canvas1')!;
 canvas.addEventListener(Event.READY, (e) => {
   const api = e.detail;
+  api.setPen(Pen.SELECT);
+  api.setTaskbars([Task.SHOW_LAYERS_PANEL, Task.SHOW_PROPERTIES_PANEL]);
+
   api.updateNodes(nodes);
+  api.selectNodes([nodes[0].id]);
 });
 
 const app = new App().addPlugins(...DefaultPlugins, UIPlugin);

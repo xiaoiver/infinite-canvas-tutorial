@@ -23,6 +23,7 @@ import {
   Text,
   Wireframe,
   Opacity,
+  Visibility,
   Canvas,
   system,
   PreStartUp,
@@ -76,6 +77,7 @@ class StartUpSystem extends System {
         Text,
         Wireframe,
         Opacity,
+        Visibility,
       ).write,
   );
 
@@ -102,6 +104,7 @@ class StartUpSystem extends System {
       new FillSolid('red'),
       new Circle({ cx: 0, cy: 0, r: 100 }),
       new Opacity(),
+      new Visibility(),
     );
 
     camera.appendChild(parent);
@@ -118,6 +121,7 @@ class StartUpSystem extends System {
       }),
       new Wireframe(true),
       new Circle({ cx: 0, cy: 0, r: 50 }),
+      new Visibility(),
     );
     parent.appendChild(child);
 
@@ -132,6 +136,7 @@ class StartUpSystem extends System {
         offsetY: 10,
       }),
       new Rect({ x: 0, y: 0, width: 100, height: 100, cornerRadius: 10 }),
+      new Visibility(),
     );
     child.appendChild(grandchild);
 
@@ -153,6 +158,7 @@ class StartUpSystem extends System {
           [200, 0],
         ],
       }),
+      new Visibility(),
     );
     child.appendChild(polyline);
 
@@ -171,6 +177,7 @@ class StartUpSystem extends System {
       new Path({
         d: 'M 0 0 L 100 100 L 200 0 Z',
       }),
+      new Visibility(),
     );
     child.appendChild(path);
 
@@ -192,6 +199,7 @@ class StartUpSystem extends System {
       }),
       new Rough(),
       new Rect({ x: 0, y: 0, width: 100, height: 100, cornerRadius: 10 }),
+      new Visibility(),
     );
     child.appendChild(rough);
 
@@ -205,6 +213,7 @@ class StartUpSystem extends System {
       }),
       new Rough(),
       new Circle({ cx: 100, cy: 200, r: 50 }),
+      new Visibility(),
     );
     parent.appendChild(roughCircle);
 
@@ -219,6 +228,7 @@ class StartUpSystem extends System {
         fontSize: 24,
         fontFamily: 'Arial',
       }),
+      new Visibility(),
     );
     parent.appendChild(text);
 

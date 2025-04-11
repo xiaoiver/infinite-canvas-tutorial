@@ -23,6 +23,7 @@
     "build": "pnpm -r run build",
     "deploy": "npx wrangler pages deploy ./packages/site/docs/.vitepress/dist",
     "cov": "jest --coverage",
+    "test:ecs": "jest -c ./jest.ecs.config.js --coverage",
     "test:e2e": "npx playwright test",
     "dev:e2e": "vite dev",
     "test:ui": "npx playwright test -c playwright.config.ui.ts",

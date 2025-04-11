@@ -17,7 +17,7 @@ import { TexturePool } from '../resources';
  */
 export class SetupDevice extends System {
   private readonly canvases = this.query(
-    (q) => q.added.and.changed.and.removed.with(Canvas).trackWrites,
+    (q) => q.added.and.changed.and.removed.and.current.with(Canvas).trackWrites,
   );
 
   #texturePool: TexturePool;

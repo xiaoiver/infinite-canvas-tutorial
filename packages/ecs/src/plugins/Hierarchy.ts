@@ -2,9 +2,10 @@
  * @see https://github.com/bevyengine/bevy/blob/latest/crates/bevy_hierarchy
  */
 
-import { component } from '@lastolivegames/becsy';
+import { component, system } from '@lastolivegames/becsy';
 import { Plugin } from './types';
-import { Children, Parent } from '../components';
+import { Children, Parent, ZIndex } from '../components';
+import { ComputeZIndex, PreUpdate } from '../systems';
 
 // /**
 //  * @see https://github.com/bevyengine/bevy/blob/latest/crates/bevy_hierarchy/src/events.rs
@@ -27,4 +28,7 @@ import { Children, Parent } from '../components';
 export const HierarchyPlugin: Plugin = () => {
   component(Parent);
   component(Children);
+  component(ZIndex);
+
+  system(PreUpdate)(ComputeZIndex);
 };

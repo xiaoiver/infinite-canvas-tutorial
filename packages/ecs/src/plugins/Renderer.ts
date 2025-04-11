@@ -41,7 +41,6 @@ import {
   Stroke,
   Text,
   Wireframe,
-  ZIndex,
   Visibility,
   GPUResource,
   Name,
@@ -56,7 +55,6 @@ export const RendererPlugin: Plugin = () => {
   component(Name);
   component(Wireframe);
   component(GlobalRenderOrder);
-  component(ZIndex);
   component(Visibility);
   /**
    * Style

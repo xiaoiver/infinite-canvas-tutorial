@@ -1,5 +1,6 @@
 import { System } from '@lastolivegames/becsy';
 import { Canvas, Cursor } from '../components';
+import { isBrowser } from '../utils';
 
 export class SetCursor extends System {
   private readonly cursors = this.query(
@@ -16,7 +17,7 @@ export class SetCursor extends System {
       const cursor = entity.read(Cursor);
       const { element } = entity.read(Canvas);
 
-      if (element instanceof HTMLCanvasElement) {
+      if (isBrowser && element instanceof HTMLCanvasElement) {
         element.style.cursor = cursor.value;
       }
     });

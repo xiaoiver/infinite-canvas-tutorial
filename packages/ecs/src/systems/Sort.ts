@@ -1,5 +1,11 @@
 import { System } from '@lastolivegames/becsy';
-import { GlobalRenderOrder, Parent, Renderable, ZIndex } from '../components';
+import {
+  GlobalRenderOrder,
+  Parent,
+  Renderable,
+  Visibility,
+  ZIndex,
+} from '../components';
 
 /**
  * Sort entities by z-index under context.
@@ -7,22 +13,12 @@ import { GlobalRenderOrder, Parent, Renderable, ZIndex } from '../components';
  * @see https://infinitecanvas.cc/guide/lesson-014#z-index
  */
 export class Sort extends System {
-  // orphans = this.query(
-  //   (q) =>
-  //     q.addedChangedOrRemoved.with(Renderable).without(Parent, Children)
-  //       .trackWrites,
-  // );
-
-  // root = this.query(
-  //   (q) =>
-  //     q.addedChangedOrRemoved
-  //       .with(Renderable, Parent)
-  //       .without(Children)
-  //       .trackWrites.using(GlobalRenderOrder).write,
-  // );
-
   renderables = this.query(
     (q) => q.addedChangedOrRemoved.with(Renderable).trackWrites,
+  );
+
+  visibilities = this.query(
+    (q) => q.addedChangedOrRemoved.with(Visibility).trackWrites,
   );
 
   zIndex = this.query((q) => q.addedChangedOrRemoved.with(ZIndex).trackWrites);
