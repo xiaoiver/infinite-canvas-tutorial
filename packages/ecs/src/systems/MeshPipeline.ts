@@ -310,7 +310,6 @@ export class MeshPipeline extends System {
         }
 
         if (toRender) {
-          console.log('render...');
           this.renderCamera(canvas, camera);
         }
       });

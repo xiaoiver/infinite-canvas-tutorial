@@ -29,7 +29,7 @@ export class ComputeZIndex extends System {
       if (!entity.has(ZIndex)) {
         entity.add(ZIndex);
 
-        console.log('zindex', entity.__id);
+        // console.log('zindex', entity.__id);
       }
     });
 
@@ -37,7 +37,7 @@ export class ComputeZIndex extends System {
       if (!entity.has(ZIndex)) {
         entity.add(ZIndex);
 
-        console.log('zindex', entity.__id);
+        // console.log('zindex', entity.__id);
       }
     });
   }

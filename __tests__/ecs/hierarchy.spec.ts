@@ -1,3 +1,4 @@
+import _gl from 'gl';
 import {
   App,
   Camera,

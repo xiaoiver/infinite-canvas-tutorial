@@ -486,8 +486,6 @@ export class SDF extends Drawcall {
     let cornerRadius = 0;
     const zIndex = (globalRenderOrder + (1 / total) * index) / ZINDEX_FACTOR;
 
-    console.log(shape.__id, zIndex);
-
     if (shape.has(Circle)) {
       const { cx, cy, r } = shape.read(Circle);
       position = [cx, cy, zIndex, 0];
