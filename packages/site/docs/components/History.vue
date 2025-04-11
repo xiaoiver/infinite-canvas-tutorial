@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import {
   App,
+  Pen,
   DefaultPlugins,
-  svgElementsToSerializedNodes,
 } from '@infinite-canvas-tutorial/ecs';
 import { ref, onMounted, onUnmounted } from 'vue';
 
@@ -19,24 +19,27 @@ onMounted(async () => {
   const { Event, UIPlugin } = await import('@infinite-canvas-tutorial/webcomponents');
   await import('@infinite-canvas-tutorial/webcomponents/spectrum');
 
-  const res = await fetch('/maslow-hierarchy.svg');
-  const svg = await res.text();
-  // TODO: extract semantic groups inside comments
-  const $container = document.createElement('div');
-  $container.innerHTML = svg;
-  const $svg = $container.children[0] as SVGSVGElement;
-
-  const nodes = svgElementsToSerializedNodes(
-    Array.from($svg.children) as SVGElement[],
-    0,
-    [],
-    undefined,
-  );
-
   onReady = (e) => {
     api = e.detail;
 
-    api.updateNodes(nodes);
+    const node = {
+      type: 'rect',
+      id: '0',
+      fill: 'red',
+      stroke: 'black',
+      x: 100,
+      y: 100,
+      width: 100,
+      height: 100,
+    };
+
+    api.setPen(Pen.SELECT);
+    api.setTaskbars(['show-layers-panel']);
+
+    api.updateNodes([node]);
+    api.updateNode(node, {
+      fill: 'blue',
+    });
   };
 
   canvas.addEventListener(Event.READY, onReady);
@@ -64,6 +67,6 @@ onUnmounted(async () => {
 
 <template>
   <div>
-    <ic-spectrum-canvas ref="wrapper" style="width: 100%; height: 600px"></ic-spectrum-canvas>
+    <ic-spectrum-canvas ref="wrapper" style="width: 100%; height: 400px"></ic-spectrum-canvas>
   </div>
 </template>

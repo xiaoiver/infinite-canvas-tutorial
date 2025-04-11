@@ -64,9 +64,6 @@ export class History {
     if (!entry.isEmpty()) {
       // we have the latest changes, no need to `applyLatest`, which is done within `History.push`
       this.#undoStack.push(entry.inverse());
-
-      console.log(this.#undoStack);
-
       if (!entry.elementsChange.isEmpty()) {
         // don't reset redo stack on local appState changes,
         // as a simple click (unselect) could lead to losing all the redo entries

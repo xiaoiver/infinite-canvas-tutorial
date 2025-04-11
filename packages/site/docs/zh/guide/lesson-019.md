@@ -4,12 +4,169 @@ publish: false
 ---
 
 <script setup>
+import History from '../../components/History.vue';
 import LoroCRDT from '../../components/LoroCRDT.vue';
 </script>
 
-# 课程 19 - 协同
+# 课程 19 - 历史记录与协同
 
 在本课程中，我们将探讨如何实现多人协同编辑功能。我们会介绍几个核心概念和技术，包括历史记录、本地优先（Local-first）以及 CRDT。
+
+## 历史记录 {#history}
+
+<History />
+
+无论是文本还是图形编辑器，历史记录以及撤销重做功能都是必备的。正如 [JavaScript-Undo-Manager] 的实现，我们可以使用一个 undoStack 保存每次操作和它的逆操作：
+
+```ts
+function createPerson(id, name) {
+    // first creation
+    addPerson(id, name);
+
+    // make undoable
+    undoManager.add({
+        undo: () => removePerson(id),
+        redo: () => addPerson(id, name),
+    });
+}
+```
+
+我们也可以使用两个 stack 分别管理 undo 和 redo 操作，详见：[UI Algorithms: A Tiny Undo Stack]。Figma 也采用了这种方式，详见：[How Figma’s multiplayer technology works] 一文最后一节介绍了 Figma 的实现思路：
+
+> This is why in Figma an undo operation modifies redo history at the time of the undo, and likewise a redo operation modifies undo history at the time of the redo.
+
+参考 [Excalidraw HistoryEntry]，我们增加一个 History 类，持有两个 stack 用于管理撤销和重做。
+
+```ts
+export class History {
+    #undoStack: HistoryStack = [];
+    #redoStack: HistoryStack = [];
+
+    clear() {
+        this.#undoStack.length = 0;
+        this.#redoStack.length = 0;
+    }
+}
+```
+
+历史记录栈中的每一个条目包含两类系统状态的修改，下面我们来介绍这两类状态：
+
+```ts
+type HistoryStack = HistoryEntry[];
+export class HistoryEntry {
+    private constructor(
+        public readonly appStateChange: AppStateChange,
+        public readonly elementsChange: ElementsChange,
+    ) {}
+}
+```
+
+### 设计系统状态 {#design-states}
+
+参考 Excalidraw，我们把系统状态分成 AppState 和 Elements。前者包括画布以及 UI 组件的状态，例如当前主题、相机缩放等级、工具条配置和选中情况等等。
+
+```ts
+export interface AppState {
+    theme: Theme;
+    checkboardStyle: CheckboardStyle;
+    cameraZoom: number;
+    penbarAll: Pen[];
+    penbarSelected: Pen[];
+    taskbarAll: Task[];
+    taskbarSelected: Task[];
+    layersSelected: SerializedNode['id'][];
+    propertiesOpened: SerializedNode['id'][];
+}
+```
+
+可以看出这里我们倾向于使用扁平的数据结构，而非 `{ penbar: { all: [], selected: [] } }` 这样的嵌套对象结构，这是为了后续更方便快速地进行状态 diff 考虑，不需要使用递归，详见：[distinctKeysIterator]。
+
+而后者就是画布中的图形数组了，之前在 [课程 10] 中我们介绍过图形的序列化方案。这里我们使用扁平的数组而非树形结构，把 `attributes` 对象中的属性上移到最顶层，在父子关系的表示上稍有不同，使用 `parentId` 关联父节点的 `id`。但这样我们就没法直接遍历树形结构进行渲染了，需要按照某种规则对图形数组排序，稍后我们会介绍这种方法：
+
+```ts
+// before
+interface SerializedNode {
+    id: string;
+    children: [];
+    attributes: {
+        fill: string;
+        stroke: string;
+    };
+}
+
+// after
+interface SerializedNode {
+    id: string;
+    parentId?: string;
+    fill: string;
+    stroke: string;
+}
+```
+
+考虑协同我们稍后还会添加 `version` 等属性。下面我们来看如何添加一条历史记录。
+
+### 插入历史记录 {#record-history-entry}
+
+在本节最上面的例子中，我们使用 API 插入了两条历史记录用来更新矩形的填充色，你可以使用顶部工具条的 undo 和 redo 操作：
+
+```ts
+api.updateNode(node, {
+    fill: 'red',
+});
+api.updateNode(node, {
+    fill: 'blue',
+});
+```
+
+每次调用 `api.updateNode` 都会增加一条历史记录，因为图形的状态确实发生了改变，但需要注意的是仅发生 AppState 的修改不应该重置 redoStack。发生变更时，我们将变更的逆操作添加到 undoStack 中：
+
+```ts
+export class History {
+    record(elementsChange: ElementsChange, appStateChange: AppStateChange) {
+        const entry = HistoryEntry.create(appStateChange, elementsChange);
+
+        if (!entry.isEmpty()) {
+            // 添加逆操作
+            this.#undoStack.push(entry.inverse());
+            if (!entry.elementsChange.isEmpty()) {
+                this.#redoStack.length = 0;
+            }
+        }
+    }
+}
+```
+
+现在我们可以来看如何设计“变更”的数据结构 `AppStateChange` 和 `ElementsChange`，让我们可以用一种通用的 `entry.inverse()`，而不是针对每一个可变更属性都用 `add/removeFill` `add/removeStroke` 等等来描述。
+
+### 设计变更数据结构 {#design-change-structure}
+
+Excalidraw 中的 `Change` 接口十分简单：
+
+```ts
+export interface Change<T> {
+    /**
+     * Inverses the `Delta`s inside while creating a new `Change`.
+     */
+    inverse(): Change<T>;
+
+    /**
+     * Applies the `Change` to the previous object.
+     *
+     * @returns a tuple of the next object `T` with applied change, and `boolean`, indicating whether the applied change resulted in a visible change.
+     */
+    applyTo(previous: T, ...options: unknown[]): [T, boolean];
+
+    /**
+     * Checks whether there are actually `Delta`s.
+     */
+    isEmpty(): boolean;
+}
+```
+
+```ts
+class AppStateChange implements Change<AppState> {}
+class ElementsChange implements Change<SceneElementsMap> {}
+```
 
 ## CRDT {#crdt}
 
@@ -143,30 +300,6 @@ Loro 提供的 Tree 内置了 Fractional Index 算法，详见：[Movable tree C
 canvas.updateScene({ elements });
 ```
 
-## 历史记录 {#history}
-
-[UI Algorithms: A Tiny Undo Stack]
-
-参考 [Excalidraw HistoryEntry]，我们增加一个 History 类，用于管理撤销和重做。
-
-```ts
-export class History {
-    #undoStack: HistoryStack = [];
-    #redoStack: HistoryStack = [];
-
-    clear() {
-        this.#undoStack.length = 0;
-        this.#redoStack.length = 0;
-    }
-}
-```
-
-### 撤销和重做 {#undo-and-redo}
-
-[How Figma’s multiplayer technology works] 一文最后一节介绍了 Figma 的实现思路：
-
-> This is why in Figma an undo operation modifies redo history at the time of the undo, and likewise a redo operation modifies undo history at the time of the redo.
-
 ## 扩展阅读 {#extended-reading}
 
 -   [How Figma’s multiplayer technology works]
@@ -201,3 +334,6 @@ export class History {
 [fractional-indexing]: https://github.com/rocicorp/fractional-indexing
 [Movable tree CRDTs and Loro's implementation]: https://loro.dev/blog/movable-tree
 [UI Algorithms: A Tiny Undo Stack]: https://blog.julik.nl/2025/03/a-tiny-undo-stack
+[JavaScript-Undo-Manager]: https://github.com/ArthurClemens/JavaScript-Undo-Manager
+[distinctKeysIterator]: https://github.com/excalidraw/excalidraw/blob/dff69e91912507bbfcc68b35277cc6031ce5b437/packages/excalidraw/change.ts#L359
+[课程 10]: /zh/guide/lesson-010#shape-to-serialized-node

@@ -60,8 +60,6 @@ export class API {
 
     this.#store.onStoreIncrementEmitter.on(StoreIncrementEvent, (event) => {
       this.#history.record(event.elementsChange, event.appStateChange);
-
-      console.log(event.appStateChange);
     });
   }
 
