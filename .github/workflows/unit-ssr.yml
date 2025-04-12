@@ -34,7 +34,10 @@ jobs:
         run: pnpm install
 
       - name: Run ECS unit tests
-        run: pnpm test:ecs
+        run: |
+          xvfb-run -s "-ac -screen 0 1280x1024x16" pnpm test:ecs
+        env:
+          CI: true
 
       - name: Cov
         run: |
