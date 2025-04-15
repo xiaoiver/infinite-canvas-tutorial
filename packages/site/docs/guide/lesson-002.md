@@ -512,7 +512,7 @@ pixelSize = fwidth(dist);
 pixelSize = length(vec2(dFdx(dist), dFdy(dist)));
 ```
 
-[AAA - Analytical Anti-Aliasing] 一文指出，`fwidth` 的开销相比 `length` 要小，虽然存在对角线方向的轻微偏差，但在我们的场景下几乎可以忽略不计。
+[AAA - Analytical Anti-Aliasing] points out that `fwidth` has less overhead compared to `length`, and while there is a slight deviation in the diagonal direction, it is almost negligible in our scenario.
 
 > Fast LAA has a slight bias in the diagonal directions, making circular shapes appear ever so slightly rhombous and have a slightly sharper curvature in the orthogonal directions, especially when small. Sometimes the edges in the diagonals are slightly fuzzy as well.
 

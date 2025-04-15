@@ -148,14 +148,10 @@ export interface Change<T> {
      * Inverses the `Delta`s inside while creating a new `Change`.
      */
     inverse(): Change<T>;
-
     /**
      * Applies the `Change` to the previous object.
-     *
-     * @returns a tuple of the next object `T` with applied change, and `boolean`, indicating whether the applied change resulted in a visible change.
      */
     applyTo(previous: T, ...options: unknown[]): [T, boolean];
-
     /**
      * Checks whether there are actually `Delta`s.
      */
@@ -163,9 +159,34 @@ export interface Change<T> {
 }
 ```
 
+两类状态的变更可以通过泛型描述，其中 `SceneElementsMap` 就是一个 `Map<SerializedNode['id'], SerializedNode>`：
+
 ```ts
 class AppStateChange implements Change<AppState> {}
 class ElementsChange implements Change<SceneElementsMap> {}
+```
+
+下面我们先来看比较简单的 `AppStateChange`，它的构造函数是一个 `Delta` 实例，接受被删除和加入/修改的属性，如果需要反转只需要调换一下两者的顺序：
+
+```ts
+class AppStateChange implements Change<AppState> {
+    private constructor(private readonly delta: Delta<AppState>) {}
+
+    inverse(): AppStateChange {
+        const inversedDelta = Delta.create(
+            this.delta.inserted,
+            this.delta.deleted,
+        );
+        return new AppStateChange(inversedDelta);
+    }
+}
+
+class Delta<T> {
+    private constructor(
+        public readonly deleted: Partial<T>,
+        public readonly inserted: Partial<T>,
+    ) {}
+}
 ```
 
 ## CRDT {#crdt}
@@ -294,10 +315,10 @@ Loro 提供的 Tree 内置了 Fractional Index 算法，详见：[Movable tree C
 
 ### 应用场景图变更 {#apply-scene-graph-change}
 
-参考 [Excalidraw updateScene]，我们也可以提供一个 `updateScene` 方法，用于更新场景图。
+参考 [Excalidraw updateScene]，我们也可以提供一个 `updateNodes` 方法，用于更新场景图。
 
 ```ts
-canvas.updateScene({ elements });
+api.updateNodes(nodes);
 ```
 
 ## 扩展阅读 {#extended-reading}

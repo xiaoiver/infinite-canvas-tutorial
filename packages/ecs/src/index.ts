@@ -25,6 +25,8 @@ export {
   isPattern,
   parseGradient,
   deserializePoints,
+  createSVGElement,
+  exportFillGradientOrPattern,
   type Gradient,
   type SerializedNode,
   type OrderedSerializedNode,

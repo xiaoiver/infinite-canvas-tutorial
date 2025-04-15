@@ -7,6 +7,7 @@ examples/dist
 rust/target
 coverage
 cache
+.temp
 
 # tests
 __tests__/ssr/**/*-diff.png

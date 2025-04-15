@@ -3,8 +3,13 @@ import { consume } from '@lit/context';
 import { map } from 'lit/directives/map.js';
 import { customElement } from 'lit/decorators.js';
 import { SerializedNode } from '@infinite-canvas-tutorial/ecs';
-import { apiContext, appStateContext, nodesContext, Task } from '../context';
-import { AppState } from '../context';
+import {
+  apiContext,
+  appStateContext,
+  nodesContext,
+  Task,
+  AppState,
+} from '../context';
 import { API } from '../API';
 @customElement('ic-spectrum-layers-panel')
 export class LayersPanel extends LitElement {

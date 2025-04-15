@@ -551,7 +551,7 @@ function createOrUpdateGradient(
   return gradientId;
 }
 
-function createOrUpdateMultiGradient(
+export function createOrUpdateMultiGradient(
   node: SerializedNode,
   $def: SVGDefsElement,
   gradients: Gradient[],

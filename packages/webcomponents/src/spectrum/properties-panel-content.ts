@@ -8,6 +8,7 @@ import {
 import { when } from 'lit/directives/when.js';
 import { apiContext, appStateContext, AppState } from '../context';
 import { API } from '../API';
+import { ColorType } from './color-picker';
 
 @customElement('ic-spectrum-properties-panel-content')
 export class PropertiesPanelContent extends LitElement {
@@ -21,8 +22,8 @@ export class PropertiesPanelContent extends LitElement {
       --system-accordion-size-s-item-header-font-size: 14px;
     }
 
-    sp-color-field {
-      width: 100px;
+    sp-popover {
+      padding: 0;
     }
 
     sp-accordion {
@@ -462,12 +463,13 @@ export class PropertiesPanelContent extends LitElement {
     const fillHTML = html`<sp-action-button quiet size="m" id="fill">
         <ic-spectrum-fill-icon
           value=${fill}
+          .node=${this.node}
           slot="icon"
         ></ic-spectrum-fill-icon>
         <sp-tooltip self-managed placement="bottom"> Fill </sp-tooltip>
       </sp-action-button>
-      <sp-overlay trigger="fill@click" placement="bottom">
-        <sp-popover class="fill-popover">
+      <sp-overlay trigger="fill@click" placement="bottom" type="auto">
+        <sp-popover class="fill-popover" dialog>
           <ic-spectrum-color-picker
             value=${fill}
             @color-change=${this.handleFillChanged}
@@ -482,10 +484,11 @@ export class PropertiesPanelContent extends LitElement {
         ></ic-spectrum-stroke-icon>
         <sp-tooltip self-managed placement="bottom"> Stroke </sp-tooltip>
       </sp-action-button>
-      <sp-overlay trigger="stroke@click" placement="bottom">
-        <sp-popover>
+      <sp-overlay trigger="stroke@click" placement="bottom" type="auto">
+        <sp-popover dialog>
           <ic-spectrum-color-picker
             value=${stroke}
+            .types=${[ColorType.None, ColorType.Solid]}
             @color-change=${this.handleStrokeChanged}
           ></ic-spectrum-color-picker>
         </sp-popover>

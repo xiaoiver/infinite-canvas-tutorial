@@ -150,6 +150,10 @@ export class ViewportCulling extends System {
         .map((bush) => bush.entity);
 
       entitiesToCull.get(camera)?.forEach((entity) => {
+        if (!entity.has(Visibility)) {
+          return;
+        }
+
         const visibility = entity.read(Visibility);
 
         if (!entity.has(Renderable)) {

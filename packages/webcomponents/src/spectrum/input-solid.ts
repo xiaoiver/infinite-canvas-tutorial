@@ -15,12 +15,17 @@ export class InputSolid extends LitElement {
       .hex-field {
         display: flex;
         align-items: center;
-        width: 100%;
+        justify-content: center;
 
         sp-color-field {
-          flex: 1;
+          width: 100px;
         }
       }
+    }
+
+    sp-color-area {
+      width: 72px;
+      height: 72px;
     }
   `;
 

@@ -18,7 +18,7 @@ export class FillSolid {
 }
 
 export class FillGradient {
-  @field.dynamicString(100) declare value: string;
+  @field.dynamicString(300) declare value: string;
   constructor(value?: string) {
     this.value = value;
   }

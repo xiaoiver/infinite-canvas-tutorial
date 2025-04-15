@@ -42,6 +42,7 @@ export class Taskbar extends LitElement {
       right: 54px;
       display: flex;
       flex-direction: column;
+      z-index: 1;
     }
   `;
 

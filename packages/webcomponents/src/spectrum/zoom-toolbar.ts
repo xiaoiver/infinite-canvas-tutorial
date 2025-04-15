@@ -93,11 +93,11 @@ export class ZoomToolbar extends LitElement {
   }
 
   private zoomOut() {
-    this.api.zoomTo(findZoomFloor(this.api.appState.cameraZoom));
+    this.api.zoomTo(findZoomFloor(this.api.getAppState().cameraZoom));
   }
 
   private zoomIn() {
-    this.api.zoomTo(findZoomCeil(this.api.appState.cameraZoom));
+    this.api.zoomTo(findZoomCeil(this.api.getAppState().cameraZoom));
   }
 
   private zoomTo100() {

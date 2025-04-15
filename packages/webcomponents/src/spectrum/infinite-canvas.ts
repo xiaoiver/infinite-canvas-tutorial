@@ -108,9 +108,25 @@ export class InfiniteCanvas extends LitElement {
   @property({ type: Array })
   nodes: SerializedNode[] = [];
 
-  #appStateProvider = new ContextProvider(this, { context: appStateContext });
-  #nodesProvider = new ContextProvider(this, { context: nodesContext });
-  #apiProvider = new ContextProvider(this, { context: apiContext });
+  appStateProvider = new ContextProvider(this, { context: appStateContext });
+  nodesProvider = new ContextProvider(this, { context: nodesContext });
+  apiProvider = new ContextProvider(this, { context: apiContext });
+
+  setAppState(appState: AppState) {
+    this.appStateProvider.setValue(appState);
+  }
+
+  getAppState() {
+    return this.appStateProvider.value;
+  }
+
+  setNodes(nodes: SerializedNode[]) {
+    this.nodesProvider.setValue(JSON.parse(JSON.stringify(nodes)));
+  }
+
+  getNodes() {
+    return this.nodesProvider.value;
+  }
 
   private resizeObserver: ResizeObserver;
 
@@ -127,7 +143,7 @@ export class InfiniteCanvas extends LitElement {
     super.disconnectedCallback();
     this.resizeObserver?.unobserve(this);
 
-    this.#apiProvider.value?.destroy();
+    this.apiProvider.value?.destroy();
   }
 
   private handleResize(entries: ResizeObserverEntry[]) {
@@ -139,7 +155,7 @@ export class InfiniteCanvas extends LitElement {
       $canvas.width = width * dpr;
       $canvas.height = (height - TOP_NAVBAR_HEIGHT) * dpr;
 
-      this.#apiProvider.value?.resizeCanvas(width, height - TOP_NAVBAR_HEIGHT);
+      this.apiProvider.value?.resizeCanvas(width, height - TOP_NAVBAR_HEIGHT);
     }
   }
 
@@ -149,24 +165,15 @@ export class InfiniteCanvas extends LitElement {
         await checkWebGPUSupport();
       }
 
-      this.#appStateProvider.setValue(this.appState);
+      this.setAppState(this.appState);
+      this.setNodes(this.nodes);
 
       /**
        * Update context values
        */
-      this.addEventListener(Event.READY, (e: CustomEvent) => {
-        e.detail.getAppState = () => this.#appStateProvider.value;
-        e.detail.setAppState = (appState: AppState) =>
-          this.#appStateProvider.setValue(appState);
-        e.detail.getNodes = () => this.#nodesProvider.value;
-        e.detail.setNodes = (nodes: SerializedNode[]) =>
-          this.#nodesProvider.setValue(JSON.parse(JSON.stringify(nodes)));
-        this.#apiProvider.setValue(e.detail);
-      });
-
       this.addEventListener(Event.ZOOM_CHANGED, (e: CustomEvent) => {
-        this.#appStateProvider.setValue({
-          ...this.#appStateProvider.value,
+        this.appStateProvider.setValue({
+          ...this.appStateProvider.value,
           cameraZoom: e.detail.zoom,
         });
       });

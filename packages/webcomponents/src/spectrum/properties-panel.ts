@@ -2,8 +2,13 @@ import { html, css, LitElement } from 'lit';
 import { consume } from '@lit/context';
 import { customElement } from 'lit/decorators.js';
 import { SerializedNode } from '@infinite-canvas-tutorial/ecs';
-import { apiContext, appStateContext, nodesContext, Task } from '../context';
-import { AppState } from '../context';
+import {
+  apiContext,
+  appStateContext,
+  nodesContext,
+  Task,
+  AppState,
+} from '../context';
 import { API } from '../API';
 @customElement('ic-spectrum-properties-panel')
 export class PropertiesPanel extends LitElement {
@@ -50,7 +55,7 @@ export class PropertiesPanel extends LitElement {
 
   render() {
     const { layersSelected, taskbarSelected } = this.appState;
-    const node = this.api.getNodeById(layersSelected[0]);
+    const node = this.api?.getNodeById(layersSelected[0]);
 
     return taskbarSelected.includes(Task.SHOW_PROPERTIES_PANEL)
       ? html`<section>

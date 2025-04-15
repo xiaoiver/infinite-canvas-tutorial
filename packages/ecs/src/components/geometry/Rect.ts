@@ -9,7 +9,7 @@ import { DropShadow, Stroke } from '../renderable';
  */
 export class Rect {
   static getGeometryBounds(rect: Rect) {
-    const { x, y, width, height } = rect;
+    const { x = 0, y = 0, width = 0, height = 0 } = rect;
     return new AABB(
       Math.min(x, x + width),
       Math.min(y, y + height),

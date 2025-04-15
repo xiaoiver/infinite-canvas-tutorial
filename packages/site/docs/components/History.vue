@@ -10,58 +10,70 @@ const wrapper = ref<HTMLElement | null>(null);
 let api: any | undefined;
 let onReady: ((api: CustomEvent<any>) => void) | undefined;
 
+onReady = (e) => {
+  console.log('ready');
+
+  api = e.detail;
+
+  const node = {
+    type: 'rect',
+    id: '0',
+    fill: 'red',
+    stroke: 'black',
+    x: 100,
+    y: 100,
+    width: 100,
+    height: 100,
+  };
+
+  api.setPen(Pen.SELECT);
+  api.setTaskbars(['show-layers-panel']);
+
+  api.updateNodes([node]);
+  api.updateNode(node, {
+    fill: 'blue',
+  });
+};
+
 onMounted(async () => {
   const canvas = wrapper.value;
   if (!canvas) {
     return;
   }
 
-  const { Event, UIPlugin } = await import('@infinite-canvas-tutorial/webcomponents');
-  await import('@infinite-canvas-tutorial/webcomponents/spectrum');
+  console.log('mounted');
 
-  onReady = (e) => {
-    api = e.detail;
 
-    const node = {
-      type: 'rect',
-      id: '0',
-      fill: 'red',
-      stroke: 'black',
-      x: 100,
-      y: 100,
-      width: 100,
-      height: 100,
-    };
 
-    api.setPen(Pen.SELECT);
-    api.setTaskbars(['show-layers-panel']);
-
-    api.updateNodes([node]);
-    api.updateNode(node, {
-      fill: 'blue',
-    });
-  };
-
-  canvas.addEventListener(Event.READY, onReady);
+  canvas.addEventListener('ic-ready', onReady);
 
   // App only runs once
   if (!(window as any).worldInited) {
+    const { Event, UIPlugin } = await import('@infinite-canvas-tutorial/webcomponents');
+    await import('@infinite-canvas-tutorial/webcomponents/spectrum');
+
     new App().addPlugins(...DefaultPlugins, UIPlugin).run();
     (window as any).worldInited = true;
   }
 });
 
 onUnmounted(async () => {
+
+
   const canvas = wrapper.value;
+
+  console.log('unmounted', canvas);
+
   if (!canvas) {
     return;
   }
 
   if (onReady) {
-    // canvas.removeEventListener(Event.READY, onReady);
+    canvas.removeEventListener('ic-ready', onReady);
   }
 
   api?.destroy();
+
 });
 </script>
 

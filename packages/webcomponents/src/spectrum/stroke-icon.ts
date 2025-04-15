@@ -16,7 +16,7 @@ export class StrokeIcon extends LitElement {
       >
         <style>
           .picker {
-            fill: ${this.value};
+            fill: ${this.value || 'none'};
             stroke: var(--spectrum-gray-800);
             stroke-width: var(--spectrum-border-width-100);
           }

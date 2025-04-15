@@ -23,6 +23,7 @@ import {
 import { Container } from '../components';
 import { Event } from '../event';
 import { API, pendingCanvases } from '../API';
+import { InfiniteCanvas } from '../spectrum/infinite-canvas';
 
 export class InitCanvasSystem extends System {
   private readonly commands = new Commands(this);
@@ -59,9 +60,19 @@ export class InitCanvasSystem extends System {
     if (pendingCanvases.length) {
       pendingCanvases.forEach(({ container, canvas, camera }) => {
         const api = new API(container, this.commands);
+        (container as InfiniteCanvas).apiProvider.setValue(api);
 
         api.createCanvas(canvas);
         api.createCamera(camera);
+
+        api.getAppState = (container as InfiniteCanvas).getAppState.bind(
+          container,
+        );
+        api.setAppState = (container as InfiniteCanvas).setAppState.bind(
+          container,
+        );
+        api.getNodes = (container as InfiniteCanvas).getNodes.bind(container);
+        api.setNodes = (container as InfiniteCanvas).setNodes.bind(container);
 
         this.commands.execute();
 

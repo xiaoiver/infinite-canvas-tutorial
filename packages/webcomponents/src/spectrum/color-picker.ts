@@ -1,13 +1,13 @@
-import { css, html, LitElement } from 'lit';
-import { customElement, property } from 'lit/decorators.js';
+import { css, html, LitElement, PropertyValues } from 'lit';
+import { customElement, property, state } from 'lit/decorators.js';
 import { when } from 'lit/directives/when.js';
 import { isGradient } from '@infinite-canvas-tutorial/ecs';
 
-const DEFAULT_COLOR = {
-  ['none']: 'none',
-  ['solid']: '#000',
-  ['gradient']: 'linear-gradient(to right, #000, #fff)',
-};
+export enum ColorType {
+  None = 'none',
+  Solid = 'solid',
+  Gradient = 'gradient',
+}
 
 @customElement('ic-spectrum-color-picker')
 export class ColorPicker extends LitElement {
@@ -17,27 +17,54 @@ export class ColorPicker extends LitElement {
       flex-direction: column;
       gap: 8px;
       padding: 8px;
-      width: 200px;
+      height: 200px;
     }
 
     h4 {
       margin: 0;
     }
+
+    // sp-swatch {
+    //   transform: rotate(90deg);
+    // }
   `;
 
   @property()
   value: string;
 
-  @property({ type: Boolean })
-  solid: boolean = false;
+  @property()
+  types: ColorType[] = [ColorType.None, ColorType.Solid, ColorType.Gradient];
+
+  @state()
+  type: ColorType = ColorType.None;
+
+  @state()
+  prevColors: Record<ColorType, string> = {
+    [ColorType.None]: 'none',
+    [ColorType.Solid]: '#000',
+    [ColorType.Gradient]: 'linear-gradient(to right, #000, #fff)',
+  };
+
+  willUpdate(changedProperties: PropertyValues<this>) {
+    if (changedProperties.has('value')) {
+      this.type =
+        !this.value || this.value === 'none'
+          ? ColorType.None
+          : isGradient(this.value)
+          ? ColorType.Gradient
+          : ColorType.Solid;
+
+      this.prevColors[this.type] = this.value;
+    }
+  }
 
   private handleTypeChanged(e: CustomEvent) {
-    const type = (e.target as any).selected[0];
+    const type = (e.target as any).selected[0] as ColorType;
     this.dispatchEvent(
       new CustomEvent('color-change', {
         detail: {
           type,
-          value: DEFAULT_COLOR[type],
+          value: this.prevColors[type],
         },
         bubbles: true,
         composed: true,
@@ -45,54 +72,79 @@ export class ColorPicker extends LitElement {
     );
   }
 
-  render() {
-    const selected =
-      this.value === 'none'
-        ? 'none'
-        : isGradient(this.value)
-        ? 'gradient'
-        : 'solid';
+  private handleColorChanged(e: CustomEvent) {
+    const { type, value } = e.detail;
+    this.prevColors[type] = value;
+  }
 
+  render() {
     return html`
       <h4>Select a color</h4>
       ${when(
-        !this.solid,
+        this.types.length > 1,
         () => html`<sp-action-group
           quiet
           compact
           size="m"
           selects="single"
-          .selected=${[selected]}
+          .selected=${[this.type]}
           @change=${this.handleTypeChanged}
         >
-          <sp-action-button value="none">
-            <sp-tooltip self-managed placement="bottom"> No color </sp-tooltip>
-            <sp-swatch nothing slot="icon"> </sp-swatch>
-          </sp-action-button>
-
-          <sp-action-button value="solid">
-            <sp-tooltip self-managed placement="bottom"> Solid </sp-tooltip>
-            <sp-swatch color=${this.value} slot="icon"> </sp-swatch>
-          </sp-action-button>
-
-          <sp-action-button value="gradient">
-            <sp-tooltip self-managed placement="bottom"> Gradient </sp-tooltip>
-            <sp-swatch color=${this.value} slot="icon"> </sp-swatch>
-          </sp-action-button>
+          ${when(
+            this.types.includes(ColorType.None),
+            () => html`
+              <sp-action-button value=${ColorType.None}>
+                <sp-tooltip self-managed placement="bottom">
+                  No color
+                </sp-tooltip>
+                <sp-swatch nothing slot="icon"> </sp-swatch>
+              </sp-action-button>
+            `,
+          )}
+          ${when(
+            this.types.includes(ColorType.Solid),
+            () => html`
+              <sp-action-button value=${ColorType.Solid}>
+                <sp-tooltip self-managed placement="bottom"> Solid </sp-tooltip>
+                <sp-swatch
+                  color=${this.prevColors[ColorType.Solid]}
+                  slot="icon"
+                >
+                </sp-swatch>
+              </sp-action-button>
+            `,
+          )}
+          ${when(
+            this.types.includes(ColorType.Gradient),
+            () => html`
+              <sp-action-button value=${ColorType.Gradient}>
+                <sp-tooltip self-managed placement="bottom">
+                  Gradient
+                </sp-tooltip>
+                <sp-swatch
+                  color=${this.prevColors[ColorType.Gradient]}
+                  slot="icon"
+                >
+                </sp-swatch>
+              </sp-action-button>
+            `,
+          )}
         </sp-action-group>`,
       )}
       ${when(
-        selected === 'solid',
+        this.type === ColorType.Solid,
         () => html`
           <ic-spectrum-input-solid
-            value=${this.value}
+            value=${this.prevColors[ColorType.Solid]}
+            @color-change=${this.handleColorChanged}
           ></ic-spectrum-input-solid>
         `,
       )}
       ${when(
-        selected === 'gradient',
+        this.type === ColorType.Gradient,
         () => html`<ic-spectrum-input-gradient
-          value=${this.value}
+          value=${this.prevColors[ColorType.Gradient]}
+          @color-change=${this.handleColorChanged}
         ></ic-spectrum-input-gradient>`,
       )}
     `;

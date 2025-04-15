@@ -18,7 +18,7 @@ import { type LitElement } from 'lit';
 import { Event } from './event';
 import { Container } from './components';
 import { History, mutateElement, Store, StoreIncrementEvent } from './history';
-import { AppState, getDefaultAppState, Task } from './context';
+import { AppState, Task } from './context';
 import { arrayToMap, mapToArray } from './utils';
 
 /**
@@ -41,9 +41,6 @@ export class API {
   #history = new History();
   #store = new Store(this);
 
-  appState: AppState;
-  nodes: SerializedNode[];
-
   /**
    * Injected from the LitElement's context provider.
    */
@@ -56,8 +53,6 @@ export class API {
     private readonly element: LitElement,
     private readonly commands: Commands,
   ) {
-    this.appState = getDefaultAppState();
-
     this.#store.onStoreIncrementEmitter.on(StoreIncrementEvent, (event) => {
       this.#history.record(event.elementsChange, event.appStateChange);
     });
@@ -76,7 +71,7 @@ export class API {
   }
 
   getNodeById(id: string) {
-    return this.nodes.find((node) => node.id === id);
+    return this.getNodes().find((node) => node.id === id);
   }
 
   /**
@@ -273,12 +268,12 @@ export class API {
 
     const updated = mutateElement(entity, node, diff);
 
-    this.nodes = this.getNodes();
-    const index = this.nodes.findIndex((n) => n.id === updated.id);
+    const nodes = this.getNodes();
+    const index = nodes.findIndex((n) => n.id === updated.id);
 
     if (index !== -1) {
-      this.nodes[index] = updated;
-      this.setNodes(this.nodes);
+      nodes[index] = updated;
+      this.setNodes(nodes);
     }
 
     if (record) {
@@ -302,8 +297,6 @@ export class API {
    * @see https://docs.excalidraw.com/docs/@excalidraw/excalidraw/api/props/excalidraw-api#updatescene
    */
   updateNodes(nodes: SerializedNode[]) {
-    this.nodes = nodes;
-
     const { cameras } = this.#canvasEntity.read(Canvas);
     if (cameras.length === 0) {
       throw new Error('No camera found');
