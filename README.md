@@ -7,6 +7,8 @@
 
 > [My free course in Gumroad]. Feel free to rate!
 
+[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/U7U71DK7IM)
+
 [![Open in StackBlitz](https://developer.stackblitz.com/img/open_in_stackblitz.svg)](https://stackblitz.com/edit/vite-tvhpcpvl?file=main.js)
 
 What is an Infinite Canvas? The term "infinite" in [infinitecanvas] is described as follows:

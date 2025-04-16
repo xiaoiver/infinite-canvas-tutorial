@@ -36,6 +36,11 @@ export class LayersPanel extends LitElement {
       margin: 0;
     }
 
+    .actions {
+      padding: 4px;
+      padding-top: 0;
+    }
+
     .container {
       height: 300px;
       overflow: hidden;
@@ -60,6 +65,25 @@ export class LayersPanel extends LitElement {
     );
   }
 
+  private handleDelete() {
+    const { layersSelected } = this.api.getAppState();
+    this.api.deleteNodesById(layersSelected);
+
+    // Try to select the next layer
+    const nextLayer = this.nodes.find(
+      (node) => !layersSelected.includes(node.id),
+    );
+    if (nextLayer) {
+      this.api.selectNodes([nextLayer.id]);
+    }
+
+    // TODO: scroll to the selected layer
+  }
+
+  private handleAdd() {
+    // this.api.addNodes(this.nodes);
+  }
+
   private handleSelect(e: MouseEvent, id: SerializedNode['id']) {
     const { layersSelected } = this.api.getAppState();
 
@@ -81,6 +105,23 @@ export class LayersPanel extends LitElement {
               <sp-icon-close slot="icon"></sp-icon-close>
             </sp-action-button>
           </h4>
+          <sp-action-group class="actions">
+            <sp-action-button quiet size="s" @click=${this.handleAdd}>
+              <sp-tooltip self-managed placement="bottom">
+                Add new layer
+              </sp-tooltip>
+              <sp-icon-add slot="icon"></sp-icon-add>
+            </sp-action-button>
+            <sp-action-button
+              quiet
+              size="s"
+              @click=${this.handleDelete}
+              .disabled=${layersSelected.length === 0}
+            >
+              <sp-tooltip self-managed placement="bottom"> Delete </sp-tooltip>
+              <sp-icon-delete slot="icon"></sp-icon-delete>
+            </sp-action-button>
+          </sp-action-group>
           <div class="container">
             ${map(this.nodes, (node) => {
               // TODO: hierarchy

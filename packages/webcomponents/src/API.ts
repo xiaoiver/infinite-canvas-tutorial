@@ -337,6 +337,35 @@ export class API {
     );
   }
 
+  deleteNodesById(ids: SerializedNode['id'][]) {
+    const nodes = this.getNodes();
+    const index = nodes.findIndex((n) => ids.includes(n.id));
+    if (index !== -1) {
+      nodes.splice(index, 1);
+    }
+
+    ids.forEach((id) => {
+      const entity = this.#idEntityMap.get(id);
+      if (entity) {
+        entity.id().delete();
+      }
+      this.#idEntityMap.delete(id);
+    });
+
+    this.setNodes(nodes);
+
+    this.#store.shouldUpdateSnapshot();
+    this.#store.commit(arrayToMap(this.getNodes()), this.getAppState());
+
+    this.element.dispatchEvent(
+      new CustomEvent(Event.NODE_DELETED, {
+        detail: {
+          nodes,
+        },
+      }),
+    );
+  }
+
   undo() {
     const result = this.#history.undo(
       arrayToMap(this.getNodes()),

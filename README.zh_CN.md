@@ -7,6 +7,8 @@
 
 > [我在 Gumroad 上的免费课程]，欢迎评分！
 
+[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/U7U71DK7IM)
+
 [![Open in StackBlitz](https://developer.stackblitz.com/img/open_in_stackblitz.svg)](https://stackblitz.com/edit/vite-tvhpcpvl?file=main.js)
 
 什么是无限画布？[infinitecanvas] 对“无限”的描述如下：

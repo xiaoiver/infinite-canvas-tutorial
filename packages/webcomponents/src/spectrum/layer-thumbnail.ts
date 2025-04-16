@@ -61,8 +61,17 @@ export class LayerThumbnail extends LitElement {
 
     let $el: SVGElement;
 
-    const { type, fill, stroke, strokeWidth } = this
-      .node as CircleSerializedNode;
+    const {
+      type,
+      fill,
+      stroke,
+      strokeWidth,
+      strokeLinecap,
+      strokeLinejoin,
+      strokeMiterlimit,
+      strokeDasharray,
+      strokeDashoffset,
+    } = this.node as CircleSerializedNode;
     if (type === 'circle') {
       $el = createSVGElement('circle') as SVGElement;
       $el.setAttribute('cx', `${minX + width / 2}`);
@@ -98,6 +107,21 @@ export class LayerThumbnail extends LitElement {
       }
       if (strokeWidth) {
         $el.setAttribute('stroke-width', strokeWidth.toString());
+      }
+      if (strokeLinecap) {
+        $el.setAttribute('stroke-linecap', strokeLinecap);
+      }
+      if (strokeLinejoin) {
+        $el.setAttribute('stroke-linejoin', strokeLinejoin);
+      }
+      if (strokeMiterlimit) {
+        $el.setAttribute('stroke-miterlimit', strokeMiterlimit.toString());
+      }
+      if (strokeDasharray) {
+        $el.setAttribute('stroke-dasharray', strokeDasharray);
+      }
+      if (strokeDashoffset) {
+        $el.setAttribute('stroke-dashoffset', strokeDashoffset.toString());
       }
     }
 

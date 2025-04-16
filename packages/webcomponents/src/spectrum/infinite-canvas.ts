@@ -39,6 +39,7 @@ import '@spectrum-web-components/tooltip/sp-tooltip.js';
 import '@spectrum-web-components/picker/sp-picker.js';
 
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-add.js';
+import '@spectrum-web-components/icons-workflow/icons/sp-icon-delete.js';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-remove.js';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-text.js';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-visibility.js';

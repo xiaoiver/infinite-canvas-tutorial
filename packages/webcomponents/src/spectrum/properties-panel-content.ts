@@ -446,6 +446,10 @@ export class PropertiesPanelContent extends LitElement {
   }
 
   render() {
+    if (!this.node) {
+      return;
+    }
+
     const { type } = this.node;
     const isGroup = type === 'g';
     const isText = type === 'text';

@@ -22,6 +22,7 @@ export enum Event {
   TASK_CHANGED = 'ic-task-changed',
   NODES_UPDATED = 'ic-nodes-updated',
   NODE_UPDATED = 'ic-node-updated',
+  NODE_DELETED = 'ic-node-deleted',
   VISIBILITY_CHANGED = 'ic-visibility-changed',
   SELECTED_NODES_CHANGED = 'ic-selected-nodes-changed',
 }
@@ -43,6 +44,7 @@ declare global {
     [Event.SCREENSHOT_DOWNLOADED]: CustomEvent<Screenshot>;
     [Event.NODES_UPDATED]: CustomEvent<{ nodes: SerializedNode[] }>;
     [Event.NODE_UPDATED]: CustomEvent<{ node: SerializedNode }>;
+    [Event.NODE_DELETED]: CustomEvent<{ nodes: SerializedNode[] }>;
     [Event.SELECTED_NODES_CHANGED]: CustomEvent<{
       selected: SerializedNode['id'][];
       preserveSelection: boolean;
