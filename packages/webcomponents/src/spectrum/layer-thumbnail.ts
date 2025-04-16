@@ -1,21 +1,24 @@
 import { css, html, LitElement } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
 import { when } from 'lit/directives/when.js';
-import { choose } from 'lit/directives/choose.js';
 import { unsafeSVG } from 'lit/directives/unsafe-svg.js';
 import {
   SerializedNode,
   ComputedBounds,
-  RectSerializedNode,
   PathSerializedNode,
   CircleSerializedNode,
+  exportFillGradientOrPattern,
+  isGradient,
+  isPattern,
+  createSVGElement,
+  PolylineSerializedNode,
 } from '@infinite-canvas-tutorial/ecs';
 import { apiContext } from '../context';
 import { API } from '../API';
 import { consume } from '@lit/context';
 
 const THUMBNAIL_SIZE = 52;
-const THUMBNAIL_PADDING = 4;
+// const THUMBNAIL_PADDING = 4;
 @customElement('ic-spectrum-layer-thumbnail')
 export class LayerThumbnail extends LitElement {
   static styles = css`
@@ -54,61 +57,72 @@ export class LayerThumbnail extends LitElement {
     const width = maxX - minX;
     const height = maxY - minY;
 
-    const scale = Math.min(
-      (THUMBNAIL_SIZE - THUMBNAIL_PADDING * 2) / width,
-      (THUMBNAIL_SIZE - THUMBNAIL_PADDING * 2) / height,
-    );
+    const transform = `translate(${-minX - width / 2}, ${-minY - height / 2})`;
 
-    const transform = `translate(${-minX}, ${-minY}) scale(${scale}) translate(${
-      (THUMBNAIL_SIZE / scale - width) / 2
-    }, ${(THUMBNAIL_SIZE / scale - height) / 2})`;
-    const transformOrigin = `${minX + width / 2} ${minY + height / 2}`;
+    let $el: SVGElement;
+
+    const { type, fill, stroke, strokeWidth } = this
+      .node as CircleSerializedNode;
+    if (type === 'circle') {
+      $el = createSVGElement('circle') as SVGElement;
+      $el.setAttribute('cx', `${minX + width / 2}`);
+      $el.setAttribute('cy', `${minY + height / 2}`);
+      $el.setAttribute('r', `${width / 2}`);
+    } else if (type === 'ellipse') {
+      $el = createSVGElement('ellipse') as SVGElement;
+      $el.setAttribute('cx', `${minX + width / 2}`);
+      $el.setAttribute('cy', `${minY + height / 2}`);
+      $el.setAttribute('rx', `${width / 2}`);
+      $el.setAttribute('ry', `${height / 2}`);
+    } else if (type === 'rect') {
+      $el = createSVGElement('rect') as SVGElement;
+      $el.setAttribute('x', `${minX}`);
+      $el.setAttribute('y', `${minY}`);
+      $el.setAttribute('width', `${width}`);
+      $el.setAttribute('height', `${height}`);
+    } else if (type === 'path') {
+      $el = createSVGElement('path') as SVGElement;
+      $el.setAttribute('d', (this.node as PathSerializedNode).d);
+    } else if (type === 'polyline') {
+      $el = createSVGElement('polyline') as SVGElement;
+      $el.setAttribute('points', (this.node as PolylineSerializedNode).points);
+    }
+
+    if ($el) {
+      $el.setAttribute('transform', transform);
+      if (fill) {
+        $el.setAttribute('fill', fill);
+      }
+      if (stroke) {
+        $el.setAttribute('stroke', stroke);
+      }
+      if (strokeWidth) {
+        $el.setAttribute('stroke-width', strokeWidth.toString());
+      }
+    }
+
+    const isGradientOrPattern = isGradient(fill) || isPattern(fill);
+    let defsHTML = '';
+    if (isGradientOrPattern) {
+      const $g = createSVGElement('g') as SVGElement;
+      exportFillGradientOrPattern(
+        {
+          ...this.node,
+        } as SerializedNode,
+        $el,
+        $g,
+      );
+      defsHTML = $g.children[0].innerHTML;
+    }
 
     return html`<sp-thumbnail size="1000" ?focused=${this.selected}>
       ${when(
         this.node.type === 'text',
         () => html`<sp-icon-text></sp-icon-text>`,
-        () => html`<svg>
-          ${choose(
-            this.node.type,
-            [
-              [
-                'circle',
-                () => {
-                  const { cx, cy, r, fill, stroke, strokeWidth } = this
-                    .node as CircleSerializedNode;
-                  return unsafeSVG(
-                    `<circle cx=${cx} cy=${cy} r=${r} fill=${fill} stroke=${stroke} stroke-width=${strokeWidth} transform="${transform}" transform-origin="${transformOrigin}"/>`,
-                  );
-                },
-              ],
-              [
-                'rect',
-                () => {
-                  const {
-                    x = 0,
-                    y = 0,
-                    width,
-                    height,
-                  } = this.node as RectSerializedNode;
-                  return unsafeSVG(
-                    `<rect x=${x} y=${y} width=${width} height=${height} fill="red" transform="${transform}" transform-origin="${transformOrigin}"/>`,
-                  );
-                },
-              ],
-              [
-                'path',
-                () => {
-                  const { d, fill, stroke, strokeWidth } = this
-                    .node as PathSerializedNode;
-                  return unsafeSVG(
-                    `<path d=${d} fill=${fill} stroke=${stroke} stroke-width=${strokeWidth} transform="${transform}" transform-origin="${transformOrigin}"/>`,
-                  );
-                },
-              ],
-            ],
-            () => html``,
-          )}
+        () => html`<svg
+          viewBox="${-width / 2} ${-height / 2} ${width} ${height}"
+        >
+          ${unsafeSVG(defsHTML)} ${unsafeSVG($el.outerHTML)}
         </svg>`,
       )}
     </sp-thumbnail>`;

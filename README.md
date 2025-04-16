@@ -246,7 +246,9 @@ If you want to use it in your own project, you can refer to:
 -   Using ECS architecture to refactor the application with [Becsy]
 -   Using [Spectrum] to implement UIs instead of shoelace
 
-<img src="./screenshots/lesson18.png" width="300" alt="Lesson 18 - ecs">
+|                Top nav and zoom toolbar                 |                 Layers and properties panels                  |
+| :-----------------------------------------------------: | :-----------------------------------------------------------: |
+| ![Top nav and zoom toolbar](./screenshots/lesson18.png) | ![Layers and properties panels](./screenshots/lesson18-2.png) |
 
 ## Lesson 19 - History and Collaboration [🔗](https://infinitecanvas.cc/guide/lesson-019)
 

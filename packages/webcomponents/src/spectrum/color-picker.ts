@@ -23,10 +23,6 @@ export class ColorPicker extends LitElement {
     h4 {
       margin: 0;
     }
-
-    // sp-swatch {
-    //   transform: rotate(90deg);
-    // }
   `;
 
   @property()
@@ -122,6 +118,7 @@ export class ColorPicker extends LitElement {
                   Gradient
                 </sp-tooltip>
                 <sp-swatch
+                  style="transform: rotate(90deg);"
                   color=${this.prevColors[ColorType.Gradient]}
                   slot="icon"
                 >

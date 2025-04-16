@@ -246,7 +246,9 @@ pnpm run dev
 -   使用 [Becsy] 重构应用
 -   使用 [Spectrum] 实现 UI
 
-<img src="./screenshots/lesson18.png" width="300" alt="Lesson 18 - ecs">
+|                Top nav and zoom toolbar                 |                 Layers and properties panels                  |
+| :-----------------------------------------------------: | :-----------------------------------------------------------: |
+| ![Top nav and zoom toolbar](./screenshots/lesson18.png) | ![Layers and properties panels](./screenshots/lesson18-2.png) |
 
 ## 课程 19 - 历史记录与协同 [🔗](https://infinitecanvas.cc/zh/guide/lesson-019)
 
