@@ -86,8 +86,12 @@ export const en = defineConfig({
               { text: 'Lesson 017 - Gradient and pattern', link: 'lesson-017' },
               { text: 'Lesson 018 - Refactor with ECS', link: 'lesson-018' },
               {
-                text: 'Lesson 019 - History and collaboration',
+                text: 'Lesson 019 - History',
                 link: 'lesson-019',
+              },
+              {
+                text: 'Lesson 020 - Collaboration',
+                link: 'lesson-020',
               },
             ],
           },

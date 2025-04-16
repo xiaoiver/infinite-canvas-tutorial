@@ -10,3 +10,4 @@ export * from './GlobalRenderOrder';
 export * from './Rough';
 export * from './ComputedBounds';
 export * from './Visibility';
+export * from './ToBeDeleted';

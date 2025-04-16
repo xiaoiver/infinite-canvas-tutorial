@@ -454,10 +454,18 @@ export class ElementsChange implements Change<SceneElementsMap> {
     const removedElements = applyDeltas(this.removed);
     const updatedElements = applyDeltas(this.updated);
 
+    this.added.forEach((delta, id) => {
+      console.log('added', id, delta);
+    });
+
+    this.removed.forEach((delta, id) => {
+      console.log('removed', id, delta);
+    });
+
     this.updated.forEach((delta, id) => {
       const element = nextElements.get(id);
       if (element) {
-        this.api.updateNode(element, delta.inserted, false);
+        this.api.updateNode(element, delta.inserted);
       }
     });
 

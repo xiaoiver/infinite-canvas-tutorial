@@ -252,9 +252,14 @@ pnpm run dev
 | :-----------------------------------------------------: | :-----------------------------------------------------------: |
 | ![Top nav and zoom toolbar](./screenshots/lesson18.png) | ![Layers and properties panels](./screenshots/lesson18-2.png) |
 
-## 课程 19 - 历史记录与协同 [🔗](https://infinitecanvas.cc/zh/guide/lesson-019)
+## 课程 19 - 历史记录 [🔗](https://infinitecanvas.cc/zh/guide/lesson-019)
 
 -   实现简单的历史记录功能，包含撤销和重做
+
+<img src="./screenshots/lesson19.png" width="300" alt="Lesson 19 - history">
+
+## 课程 20 - 协同 [🔗](https://infinitecanvas.cc/zh/guide/lesson-020)
+
 -   通过 CRDT 实现协同
 
 [infinitecanvas]: https://infinitecanvas.tools/

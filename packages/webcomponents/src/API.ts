@@ -13,11 +13,19 @@ import {
   EntityCommands,
   Grid,
   CheckboardStyle,
+  ToBeDeleted,
 } from '@infinite-canvas-tutorial/ecs';
 import { type LitElement } from 'lit';
 import { Event } from './event';
 import { Container } from './components';
-import { History, mutateElement, Store, StoreIncrementEvent } from './history';
+import {
+  History,
+  mutateElement,
+  Store,
+  StoreIncrementEvent,
+  CaptureUpdateAction,
+  CaptureUpdateActionType,
+} from './history';
 import { AppState, Task } from './context';
 import { arrayToMap, mapToArray } from './utils';
 
@@ -176,9 +184,6 @@ export class API {
       penbarSelected: [pen],
     });
 
-    // this.#store.shouldCaptureIncrement();
-    // this.#store.commit(arrayToMap(this.getNodes()), this.getAppState());
-
     this.element.dispatchEvent(
       new CustomEvent(Event.PEN_CHANGED, {
         detail: { selected: [pen] },
@@ -192,9 +197,6 @@ export class API {
       ...prevAppState,
       taskbarSelected: selected,
     });
-
-    // this.#store.shouldCaptureIncrement();
-    // this.#store.commit(arrayToMap(this.getNodes()), this.getAppState());
 
     this.element.dispatchEvent(
       new CustomEvent(Event.TASK_CHANGED, {
@@ -246,9 +248,6 @@ export class API {
         : selected,
     });
 
-    this.#store.shouldCaptureIncrement();
-    this.#store.commit(arrayToMap(this.getNodes()), this.getAppState());
-
     this.element.dispatchEvent(
       new CustomEvent(Event.SELECTED_NODES_CHANGED, {
         detail: { selected, preserveSelection },
@@ -259,11 +258,7 @@ export class API {
   /**
    * If diff is provided, no need to calculate diffs.
    */
-  updateNode(
-    node: SerializedNode,
-    diff?: Partial<SerializedNode>,
-    record = true,
-  ) {
+  updateNode(node: SerializedNode, diff?: Partial<SerializedNode>) {
     const entity = this.#idEntityMap.get(node.id).id();
 
     const updated = mutateElement(entity, node, diff);
@@ -274,11 +269,6 @@ export class API {
     if (index !== -1) {
       nodes[index] = updated;
       this.setNodes(nodes);
-    }
-
-    if (record) {
-      this.#store.shouldCaptureIncrement();
-      this.#store.commit(arrayToMap(this.getNodes()), this.getAppState());
     }
 
     this.element.dispatchEvent(
@@ -325,9 +315,6 @@ export class API {
     this.commands.execute();
     this.setNodes(nodes);
 
-    this.#store.shouldUpdateSnapshot();
-    this.#store.commit(arrayToMap(this.getNodes()), this.getAppState());
-
     this.element.dispatchEvent(
       new CustomEvent(Event.NODES_UPDATED, {
         detail: {
@@ -347,15 +334,13 @@ export class API {
     ids.forEach((id) => {
       const entity = this.#idEntityMap.get(id);
       if (entity) {
-        entity.id().delete();
+        // entity.id().delete();
+        entity.id().add(ToBeDeleted);
       }
       this.#idEntityMap.delete(id);
     });
 
     this.setNodes(nodes);
-
-    this.#store.shouldUpdateSnapshot();
-    this.#store.commit(arrayToMap(this.getNodes()), this.getAppState());
 
     this.element.dispatchEvent(
       new CustomEvent(Event.NODE_DELETED, {
@@ -364,6 +349,24 @@ export class API {
         },
       }),
     );
+  }
+
+  /**
+   * Record the current state of the canvas.
+   * @param captureUpdateAction Record the changes immediately or never.
+   */
+  record(
+    captureUpdateAction: CaptureUpdateActionType = CaptureUpdateAction.IMMEDIATELY,
+  ) {
+    if (
+      captureUpdateAction === CaptureUpdateAction.NEVER ||
+      this.#store.snapshot.isEmpty()
+    ) {
+      this.#store.shouldUpdateSnapshot();
+    } else {
+      this.#store.shouldCaptureIncrement();
+    }
+    this.#store.commit(arrayToMap(this.getNodes()), this.getAppState());
   }
 
   undo() {
@@ -400,5 +403,9 @@ export class API {
 
   isRedoStackEmpty() {
     return this.#history.isRedoStackEmpty;
+  }
+
+  clearHistory() {
+    this.#history.clear();
   }
 }

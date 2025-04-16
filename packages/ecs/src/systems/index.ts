@@ -17,3 +17,4 @@ export * from './ExportSVG';
 export * from './Select';
 export * from './ViewportCulling';
 export * from './ComputeZIndex';
+export * from './Deleter';

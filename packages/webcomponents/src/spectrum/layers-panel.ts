@@ -78,6 +78,7 @@ export class LayersPanel extends LitElement {
     }
 
     // TODO: scroll to the selected layer
+    this.api.record();
   }
 
   private handleAdd() {
@@ -92,6 +93,7 @@ export class LayersPanel extends LitElement {
     }
 
     this.api.selectNodes([id], e.shiftKey);
+    this.api.record();
   }
 
   render() {

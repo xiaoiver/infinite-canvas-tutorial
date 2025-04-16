@@ -28,9 +28,10 @@ export class Snapshot {
       isEmpty: true,
     });
   }
-  // public isEmpty() {
-  //   return this.meta.isEmpty;
-  // }
+
+  isEmpty() {
+    return this.meta.isEmpty;
+  }
   /**
    * Efficiently clone the existing snapshot, only if we detected changes.
    *
@@ -195,7 +196,7 @@ export const newElementWith = <TElement extends SerializedNode>(
     ...element,
     ...updates,
     updated: getUpdatedTimestamp(),
-    version: element.version + 1,
+    version: (element.version || 0) + 1,
     versionNonce: randomInteger(),
   };
 };

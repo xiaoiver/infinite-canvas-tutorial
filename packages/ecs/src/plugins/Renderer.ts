@@ -16,6 +16,12 @@ import {
   PostUpdate,
   ComputeCamera,
   StartUp,
+  Deleter,
+  Last,
+  PropagateTransforms,
+  CameraControl,
+  Select,
+  ExportSVG,
 } from '../systems';
 import {
   Circle,
@@ -44,6 +50,7 @@ import {
   Visibility,
   GPUResource,
   Name,
+  ToBeDeleted,
 } from '../components';
 
 export const RendererPlugin: Plugin = () => {
@@ -56,6 +63,7 @@ export const RendererPlugin: Plugin = () => {
   component(Wireframe);
   component(GlobalRenderOrder);
   component(Visibility);
+  component(ToBeDeleted);
   /**
    * Style
    */
@@ -88,8 +96,20 @@ export const RendererPlugin: Plugin = () => {
   system(PreUpdate)(ComputePoints);
   system(PreUpdate)(ComputeRough);
   system(PreUpdate)(ComputeTextMetrics);
-  system(PreUpdate)(ComputeBounds);
+  system(PostUpdate)(ComputeBounds);
+  system((s) => s.after(PropagateTransforms))(ComputeBounds);
   system(PostUpdate)(Sort);
   system(PostUpdate)(SetCursor);
   system((s) => s.after(ComputeCamera, SetupDevice))(MeshPipeline);
+  system((s) =>
+    s.after(
+      Last,
+      PropagateTransforms,
+      CameraControl,
+      // Select,
+      ComputeCamera,
+      MeshPipeline,
+      ExportSVG,
+    ),
+  )(Deleter);
 };

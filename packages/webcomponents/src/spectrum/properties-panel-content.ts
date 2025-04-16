@@ -126,25 +126,30 @@ export class PropertiesPanelContent extends LitElement {
         const aspectRatio = width / height;
         const newHeight = newWidth / aspectRatio;
         this.api.updateNode(this.node, { width: newWidth, height: newHeight });
+        this.api.record();
       } else {
         this.api.updateNode(this.node, {
           width: newWidth,
         });
+        this.api.record();
       }
     } else if (this.node.type === 'circle') {
       this.api.updateNode(this.node, {
         r: newWidth / 2,
       });
+      this.api.record();
     } else if (this.node.type === 'ellipse') {
       if (this.node.lockAspectRatio) {
         const { rx, ry } = this.node;
         const aspectRatio = rx / ry;
         const newHeight = newWidth / aspectRatio;
         this.api.updateNode(this.node, { rx: newWidth / 2, ry: newHeight / 2 });
+        this.api.record();
       } else {
         this.api.updateNode(this.node, {
           rx: newWidth / 2,
         });
+        this.api.record();
       }
     }
     // TODO: Polyline, Path, Text
@@ -158,19 +163,23 @@ export class PropertiesPanelContent extends LitElement {
         const aspectRatio = width / height;
         const newWidth = newHeight * aspectRatio;
         this.api.updateNode(this.node, { width: newWidth, height: newHeight });
+        this.api.record();
       } else {
         this.api.updateNode(this.node, {
           height: newHeight,
         });
+        this.api.record();
       }
     } else if (this.node.type === 'circle') {
       this.api.updateNode(this.node, {
         r: newHeight / 2,
       });
+      this.api.record();
     } else if (this.node.type === 'ellipse') {
       this.api.updateNode(this.node, {
         ry: newHeight / 2,
       });
+      this.api.record();
     }
     // TODO: Polyline, Path, Text
   }
@@ -179,10 +188,13 @@ export class PropertiesPanelContent extends LitElement {
     const x = parseInt(e.target.value);
     if (this.node.type === 'rect') {
       this.api.updateNode(this.node, { x });
+      this.api.record();
     } else if (this.node.type === 'circle') {
       this.api.updateNode(this.node, { cx: x + this.node.r });
+      this.api.record();
     } else if (this.node.type === 'ellipse') {
       this.api.updateNode(this.node, { cx: x + this.node.rx });
+      this.api.record();
     }
     // TODO: Polyline, Path, Text
   }
@@ -191,10 +203,13 @@ export class PropertiesPanelContent extends LitElement {
     const y = parseInt(e.target.value);
     if (this.node.type === 'rect') {
       this.api.updateNode(this.node, { y });
+      this.api.record();
     } else if (this.node.type === 'circle') {
       this.api.updateNode(this.node, { cy: y + this.node.r });
+      this.api.record();
     } else if (this.node.type === 'ellipse') {
       this.api.updateNode(this.node, { cy: y + this.node.ry });
+      this.api.record();
     }
     // TODO: Polyline, Path, Text
   }
@@ -203,6 +218,7 @@ export class PropertiesPanelContent extends LitElement {
     this.api.updateNode(this.node, {
       lockAspectRatio: !this.node.lockAspectRatio,
     });
+    this.api.record();
   }
 
   private handleFontSizeChanged(e: Event & { target: HTMLInputElement }) {
@@ -210,6 +226,7 @@ export class PropertiesPanelContent extends LitElement {
     this.api.updateNode(this.node, {
       fontSize,
     });
+    this.api.record();
   }
 
   private handleStrokeWidthChanging(e: Event & { target: HTMLInputElement }) {
@@ -224,6 +241,7 @@ export class PropertiesPanelContent extends LitElement {
     this.api.updateNode(this.node, {
       strokeWidth,
     });
+    this.api.record();
   }
 
   private handleStrokeAlignmentChanged(e: Event) {
@@ -231,16 +249,19 @@ export class PropertiesPanelContent extends LitElement {
     this.api.updateNode(this.node, {
       strokeAlignment,
     });
+    this.api.record();
   }
 
   private handleStrokeLinecapChanged(e: Event & { target: HTMLInputElement }) {
     const strokeLinecap = (e.target as any).selected[0] as CanvasLineCap;
     this.api.updateNode(this.node, { strokeLinecap });
+    this.api.record();
   }
 
   private handleStrokeLinejoinChanged(e: Event & { target: HTMLInputElement }) {
     const strokeLinejoin = (e.target as any).selected[0] as CanvasLineJoin;
     this.api.updateNode(this.node, { strokeLinejoin });
+    this.api.record();
   }
 
   private handleFillChanged(e: CustomEvent) {
@@ -253,6 +274,7 @@ export class PropertiesPanelContent extends LitElement {
             : `#${value}`
           : value,
     });
+    this.api.record();
   }
 
   private handleStrokeChanged(e: CustomEvent) {
@@ -265,6 +287,7 @@ export class PropertiesPanelContent extends LitElement {
             : `#${value}`
           : value,
     });
+    this.api.record();
   }
 
   private transformTemplate() {

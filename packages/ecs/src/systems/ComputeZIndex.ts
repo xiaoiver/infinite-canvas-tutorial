@@ -3,11 +3,11 @@ import { generateKeyBetween } from 'fractional-indexing';
 import { Children, Parent, ZIndex } from '../components';
 
 export class ComputeZIndex extends System {
-  parents = this.query((q) => q.addedChangedOrRemoved.with(Parent).trackWrites);
+  // parents = this.query((q) => q.addedChangedOrRemoved.with(Parent).trackWrites);
 
-  children = this.query(
-    (q) => q.addedChangedOrRemoved.with(Children).trackWrites,
-  );
+  // children = this.query(
+  //   (q) => q.addedChangedOrRemoved.with(Children).trackWrites,
+  // );
 
   constructor() {
     super();
@@ -25,20 +25,17 @@ export class ComputeZIndex extends System {
   }
 
   execute() {
-    this.parents.addedChangedOrRemoved.forEach((entity) => {
-      if (!entity.has(ZIndex)) {
-        entity.add(ZIndex);
-
-        // console.log('zindex', entity.__id);
-      }
-    });
-
-    this.children.addedChangedOrRemoved.forEach((entity) => {
-      if (!entity.has(ZIndex)) {
-        entity.add(ZIndex);
-
-        // console.log('zindex', entity.__id);
-      }
-    });
+    // this.parents.addedChangedOrRemoved.forEach((entity) => {
+    //   if (!entity.has(ZIndex)) {
+    //     entity.add(ZIndex);
+    //     // console.log('zindex', entity.__id);
+    //   }
+    // });
+    // this.children.addedChangedOrRemoved.forEach((entity) => {
+    //   if (!entity.has(ZIndex)) {
+    //     entity.add(ZIndex);
+    //     // console.log('zindex', entity.__id);
+    //   }
+    // });
   }
 }

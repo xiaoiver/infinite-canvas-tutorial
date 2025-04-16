@@ -50,23 +50,23 @@ export const CaptureUpdateAction = {
 export type CaptureUpdateActionType = ValueOf<typeof CaptureUpdateAction>;
 
 export class Store {
-  private _snapshot = Snapshot.empty();
-  private scheduledActions: Set<CaptureUpdateActionType> = new Set();
+  #snapshot = Snapshot.empty();
+  #scheduledActions: Set<CaptureUpdateActionType> = new Set();
 
   onStoreIncrementEmitter = new EventEmitter();
 
   constructor(private readonly api: API) {}
 
   get snapshot() {
-    return this._snapshot;
+    return this.#snapshot;
   }
 
   set snapshot(snapshot: Snapshot) {
-    this._snapshot = snapshot;
+    this.#snapshot = snapshot;
   }
 
   private scheduleAction(action: CaptureUpdateActionType) {
-    this.scheduledActions.add(action);
+    this.#scheduledActions.add(action);
   }
 
   shouldCaptureIncrement() {
@@ -83,14 +83,14 @@ export class Store {
   ) {
     try {
       // Capture has precedence since it also performs update
-      if (this.scheduledActions.has(CaptureUpdateAction.IMMEDIATELY)) {
+      if (this.#scheduledActions.has(CaptureUpdateAction.IMMEDIATELY)) {
         this.captureIncrement(elements, appState);
-      } else if (this.scheduledActions.has(CaptureUpdateAction.NEVER)) {
+      } else if (this.#scheduledActions.has(CaptureUpdateAction.NEVER)) {
         this.updateSnapshot(elements, appState);
       }
     } finally {
       // Defensively reset all scheduled actions, potentially cleans up other runtime garbage
-      this.scheduledActions = new Set();
+      this.#scheduledActions = new Set();
     }
   }
 

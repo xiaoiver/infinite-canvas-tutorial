@@ -74,6 +74,7 @@ export class LayersPanelItem extends LitElement {
     this.api.updateNode(this.node, {
       visibility: this.node.visibility === 'visible' ? 'hidden' : 'visible',
     });
+    this.api.record();
   }
 
   private renderOverlayContent = () => {

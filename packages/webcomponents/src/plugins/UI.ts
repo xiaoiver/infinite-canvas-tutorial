@@ -4,7 +4,9 @@ import {
   component,
   Plugin,
   PreStartUp,
+  PropagateTransforms,
   SetupDevice,
+  SyncSimpleTransforms,
   system,
 } from '@infinite-canvas-tutorial/ecs';
 import {
@@ -20,8 +22,10 @@ export const UIPlugin: Plugin = () => {
   system((s) =>
     s.after(PreStartUp).before(ZoomLevelSystem).beforeWritersOf(Canvas),
   )(InitCanvasSystem);
-  system((s) => s.inAnyOrderWithWritersOf(Camera).after(SetupDevice))(
-    ZoomLevelSystem,
-  );
+  system((s) =>
+    s
+      .inAnyOrderWithWritersOf(Camera)
+      .after(SetupDevice, SyncSimpleTransforms, PropagateTransforms),
+  )(ZoomLevelSystem);
   system((s) => s.before(PreStartUp))(DownloadScreenshotSystem);
 };

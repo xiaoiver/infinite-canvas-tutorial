@@ -14,7 +14,7 @@ import {
  */
 export class Sort extends System {
   renderables = this.query(
-    (q) => q.addedChangedOrRemoved.with(Renderable).trackWrites,
+    (q) => q.addedOrChanged.with(Renderable).trackWrites,
   );
 
   visibilities = this.query(
@@ -31,7 +31,7 @@ export class Sort extends System {
 
   execute() {
     let i = 1;
-    this.renderables.addedChangedOrRemoved.forEach((entity) => {
+    this.renderables.addedOrChanged.forEach((entity) => {
       if (!entity.has(GlobalRenderOrder)) {
         entity.add(GlobalRenderOrder);
       }

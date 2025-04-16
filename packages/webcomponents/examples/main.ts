@@ -4,7 +4,7 @@ import {
   DefaultPlugins,
   Pen,
 } from '../../ecs';
-import { Event, UIPlugin, Task } from '../src';
+import { Event, UIPlugin, Task, CaptureUpdateAction } from '../src';
 import '../src/spectrum';
 
 const res = await fetch('/maslow-hierarchy.svg');
@@ -30,6 +30,8 @@ canvas.addEventListener(Event.READY, (e) => {
 
   api.updateNodes(nodes);
   api.selectNodes([nodes[0].id]);
+
+  api.record(CaptureUpdateAction.NEVER);
 });
 
 const app = new App().addPlugins(...DefaultPlugins, UIPlugin);

@@ -5,7 +5,9 @@ import {
   CameraControl,
   ComputeCamera,
   EventWriter,
+  PropagateTransforms,
   SetupDevice,
+  SyncSimpleTransforms,
 } from '../systems';
 
 export const CameraPlugin: Plugin = () => {
@@ -13,8 +15,15 @@ export const CameraPlugin: Plugin = () => {
   component(ComputedCamera);
   component(ComputedCameraControl);
 
-  system((s) => s.afterWritersOf(Camera).after(EventWriter, SetupDevice))(
-    CameraControl,
-  );
-  system((s) => s.afterWritersOf(Camera))(ComputeCamera);
+  system((s) =>
+    s
+      .afterWritersOf(Camera)
+      .after(
+        EventWriter,
+        SetupDevice,
+        SyncSimpleTransforms,
+        PropagateTransforms,
+      ),
+  )(CameraControl);
+  system((s) => s.afterWritersOf(Camera).after(CameraControl))(ComputeCamera);
 };

@@ -5,35 +5,11 @@ import {
   DefaultPlugins,
 } from '@infinite-canvas-tutorial/ecs';
 import { ref, onMounted, onUnmounted } from 'vue';
+import { Event, UIPlugin } from '@infinite-canvas-tutorial/webcomponents';
 
 const wrapper = ref<HTMLElement | null>(null);
 let api: any | undefined;
 let onReady: ((api: CustomEvent<any>) => void) | undefined;
-
-onReady = (e) => {
-  console.log('ready');
-
-  api = e.detail;
-
-  const node = {
-    type: 'rect',
-    id: '0',
-    fill: 'red',
-    stroke: 'black',
-    x: 100,
-    y: 100,
-    width: 100,
-    height: 100,
-  };
-
-  api.setPen(Pen.SELECT);
-  api.setTaskbars(['show-layers-panel']);
-
-  api.updateNodes([node]);
-  api.updateNode(node, {
-    fill: 'blue',
-  });
-};
 
 onMounted(async () => {
   const canvas = wrapper.value;
@@ -41,15 +17,36 @@ onMounted(async () => {
     return;
   }
 
-  console.log('mounted');
+  onReady = (e) => {
+    api = e.detail;
 
+    const node = {
+      type: 'rect',
+      id: '0',
+      fill: 'red',
+      stroke: 'black',
+      x: 100,
+      y: 100,
+      width: 100,
+      height: 100,
+    };
 
+    api.setPen(Pen.SELECT);
+    api.setTaskbars(['show-layers-panel']);
 
-  canvas.addEventListener('ic-ready', onReady);
+    api.updateNodes([node]);
+    api.record();
+
+    api.updateNode(node, {
+      fill: 'blue',
+    });
+    api.record();
+  };
+  canvas.addEventListener(Event.READY, onReady);
 
   // App only runs once
   if (!(window as any).worldInited) {
-    const { Event, UIPlugin } = await import('@infinite-canvas-tutorial/webcomponents');
+
     await import('@infinite-canvas-tutorial/webcomponents/spectrum');
 
     new App().addPlugins(...DefaultPlugins, UIPlugin).run();
@@ -58,18 +55,14 @@ onMounted(async () => {
 });
 
 onUnmounted(async () => {
-
-
   const canvas = wrapper.value;
-
-  console.log('unmounted', canvas);
 
   if (!canvas) {
     return;
   }
 
   if (onReady) {
-    canvas.removeEventListener('ic-ready', onReady);
+    canvas.removeEventListener(Event.READY, onReady);
   }
 
   api?.destroy();

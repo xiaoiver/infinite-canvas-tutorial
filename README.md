@@ -252,9 +252,14 @@ If you want to use it in your own project, you can refer to:
 | :-----------------------------------------------------: | :-----------------------------------------------------------: |
 | ![Top nav and zoom toolbar](./screenshots/lesson18.png) | ![Layers and properties panels](./screenshots/lesson18-2.png) |
 
-## Lesson 19 - History and Collaboration [🔗](https://infinitecanvas.cc/guide/lesson-019)
+## Lesson 19 - History [🔗](https://infinitecanvas.cc/guide/lesson-019)
 
 -   Implement a simple history system, including undo and redo
+
+<img src="./screenshots/lesson19.png" width="300" alt="Lesson 19 - history">
+
+## Lesson 20 - Collaboration [🔗](https://infinitecanvas.cc/guide/lesson-020)
+
 -   Implement collaboration through CRDT
 
 [infinitecanvas]: https://infinitecanvas.tools/

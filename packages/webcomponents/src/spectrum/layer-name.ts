@@ -61,6 +61,7 @@ export class LayerName extends LitElement {
     this.api.updateNode(this.node, {
       name: (this.textfield as any).value,
     });
+    this.api.record();
   }
 
   render() {

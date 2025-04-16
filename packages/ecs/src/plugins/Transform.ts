@@ -4,7 +4,7 @@ import { Transform, GlobalTransform } from '../components';
 import {
   SyncSimpleTransforms,
   PropagateTransforms,
-  PostStartUp,
+  PostUpdate,
 } from '../systems';
 
 /**
@@ -15,6 +15,6 @@ export const TransformPlugin: Plugin = () => {
   component(Transform);
   component(GlobalTransform);
 
-  system(PostStartUp)(SyncSimpleTransforms);
+  system(PostUpdate)(SyncSimpleTransforms);
   system((s) => s.after(SyncSimpleTransforms))(PropagateTransforms);
 };

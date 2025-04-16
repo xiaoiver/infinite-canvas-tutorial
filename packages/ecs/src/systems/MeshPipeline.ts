@@ -42,6 +42,7 @@ import {
   Stroke,
   Text,
   Theme,
+  ToBeDeleted,
   Wireframe,
 } from '../components';
 import { paddingMat3 } from '../utils';
@@ -58,9 +59,13 @@ export class MeshPipeline extends System {
 
   private renderables = this.query(
     (q) =>
-      q.addedOrChanged.and.removed
+      q.addedOrChanged
         .with(Renderable)
         .withAny(Circle, Ellipse, Rect, Polyline, Path, Text).trackWrites,
+  );
+
+  private toBeDeleted = this.query(
+    (q) => q.addedOrChanged.with(ToBeDeleted).trackWrites,
   );
 
   private culleds = this.query(
@@ -236,6 +241,7 @@ export class MeshPipeline extends System {
         batchManager.add(entity);
       });
       this.pendingRenderables.get(camera).remove.forEach((entity) => {
+        console.log('remove', entity);
         // TODO: split removed and culled
         batchManager.remove(entity, false);
       });
@@ -274,7 +280,8 @@ export class MeshPipeline extends System {
     });
 
     new Set([
-      ...this.renderables.removed,
+      ...this.toBeDeleted.addedOrChanged,
+      // ...this.renderables.removed,
       ...this.culleds.addedOrChanged,
     ]).forEach((entity) => {
       const camera = getSceneRoot(entity);

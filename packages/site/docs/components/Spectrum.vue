@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import {
   App,
+  Pen,
   DefaultPlugins,
   svgElementsToSerializedNodes,
 } from '@infinite-canvas-tutorial/ecs';
@@ -16,7 +17,7 @@ onMounted(async () => {
     return;
   }
 
-  const { Event, UIPlugin } = await import('@infinite-canvas-tutorial/webcomponents');
+  const { Event, UIPlugin, Task } = await import('@infinite-canvas-tutorial/webcomponents');
   await import('@infinite-canvas-tutorial/webcomponents/spectrum');
 
   const res = await fetch('/maslow-hierarchy.svg');
@@ -36,7 +37,13 @@ onMounted(async () => {
   onReady = (e) => {
     api = e.detail;
 
+    api.setPen(Pen.SELECT);
+    api.setTaskbars([Task.SHOW_LAYERS_PANEL]);
+
     api.updateNodes(nodes);
+    api.selectNodes([nodes[0].id]);
+
+    api.record();
   };
 
   canvas.addEventListener(Event.READY, onReady);
