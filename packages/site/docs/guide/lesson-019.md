@@ -104,7 +104,11 @@ Consider collaboration we'll add more attributes like `version` later on.
 
 ## State as a snapshot {#state-as-a-snapshot}
 
-[State as a Snapshot]
+The following image from [State as a Snapshot] shows how the React render function executes and then takes a snapshot before updating the DOM tree:
+
+![React snapshot](/react-snapshot.png)
+
+Our snapshot contains the two types of system states defined above, there will only be one snapshot of the system at any given moment, and each time the state changes, you can calculate with the current snapshot to get the corresponding modification of the state, e.g., "A graphic was deleted" in `ElementsChange`, "A layer was selected" in `AppStateChange`, and so on.
 
 ```ts
 class Snapshot {
@@ -115,9 +119,52 @@ class Snapshot {
 }
 ```
 
+So how should the system update the snapshot? Strategically you can choose to directly overwrite, or compute an incremental update. excalidraw provides [captureUpdate] to describe these two behaviors, which are suitable for different scenarios, for example, direct overwrite is suitable for scene initialization, after all, at this time, there is no need to fall back to a blank canvas state:
+
 ```ts
 class Store {
     private _snapshot = Snapshot.empty();
+
+    commit(
+        elements: Map<string, SerializedNode> | undefined,
+        appState: AppState | undefined,
+    ) {
+        try {
+            // Capture has precedence since it also performs update
+            if (this.#scheduledActions.has(CaptureUpdateAction.IMMEDIATELY)) {
+                this.captureIncrement(elements, appState);
+            } else if (this.#scheduledActions.has(CaptureUpdateAction.NEVER)) {
+                this.updateSnapshot(elements, appState);
+            }
+        } finally {
+            // Defensively reset all scheduled actions, potentially cleans up other runtime garbage
+            this.#scheduledActions = new Set();
+        }
+    }
+}
+```
+
+Let's focus on how to calculate the increment and use it to create a `HistoryEntry`.
+
+```ts
+class Store {
+    captureIncrement(
+        elements: Map<string, SerializedNode> | undefined,
+        appState: AppState | undefined,
+    ) {
+        const prevSnapshot = this.snapshot;
+        const nextSnapshot = this.snapshot.maybeClone(elements, appState);
+        const elementsChange = nextSnapshot.meta.didElementsChange
+            ? ElementsChange.calculate(
+                  prevSnapshot.elements,
+                  nextSnapshot.elements,
+                  this.api,
+              )
+            : ElementsChange.empty();
+        // AppStateChange 同理
+
+        // Use history.record to create HistoryEntry
+    }
 }
 ```
 
@@ -137,6 +184,26 @@ api.updateNode(node, {
     fill: 'blue',
 });
 api.record();
+```
+
+Each call to `api.record` updates the snapshot with the current `AppState` and `Elements` state:
+
+```ts
+class API {
+    record(
+        captureUpdateAction: CaptureUpdateActionType = CaptureUpdateAction.IMMEDIATELY,
+    ) {
+        if (
+            captureUpdateAction === CaptureUpdateAction.NEVER ||
+            this.#store.snapshot.isEmpty()
+        ) {
+            this.#store.shouldUpdateSnapshot();
+        } else {
+            this.#store.shouldCaptureIncrement();
+        }
+        this.#store.commit(arrayToMap(this.getNodes()), this.getAppState());
+    }
+}
 ```
 
 Each call to `api.record` adds a history record because the state of the graph did change, but it is important to note that only AppState changes should not reset the redoStack. when a change occurs we add the inverse operation of the change to the undoStack:
@@ -214,9 +281,11 @@ class Delta<T> {
 }
 ```
 
+[How Figma’s multiplayer technology works]: https://www.figma.com/blog/how-figmas-multiplayer-technology-works/
 [UI Algorithms: A Tiny Undo Stack]: https://blog.julik.nl/2025/03/a-tiny-undo-stack
 [JavaScript-Undo-Manager]: https://github.com/ArthurClemens/JavaScript-Undo-Manager
 [distinctKeysIterator]: https://github.com/excalidraw/excalidraw/blob/dff69e91912507bbfcc68b35277cc6031ce5b437/packages/excalidraw/change.ts#L359
 [Lesson 10]: /guide/lesson-010#shape-to-serialized-node
 [State as a Snapshot]: https://react.dev/learn/state-as-a-snapshot
 [Excalidraw HistoryEntry]: https://github.com/excalidraw/excalidraw/blob/master/packages/excalidraw/history.ts#L160-L164
+[captureUpdate]: https://docs.excalidraw.com/docs/@excalidraw/excalidraw/api/props/excalidraw-api#captureupdate

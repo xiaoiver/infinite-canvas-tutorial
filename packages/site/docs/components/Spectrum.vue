@@ -6,20 +6,13 @@ import {
   svgElementsToSerializedNodes,
 } from '@infinite-canvas-tutorial/ecs';
 import { ref, onMounted, onUnmounted } from 'vue';
+import { Event, UIPlugin, Task } from '@infinite-canvas-tutorial/webcomponents';
 
 const wrapper = ref<HTMLElement | null>(null);
 let api: any | undefined;
 let onReady: ((api: CustomEvent<any>) => void) | undefined;
 
 onMounted(async () => {
-  const canvas = wrapper.value;
-  if (!canvas) {
-    return;
-  }
-
-  const { Event, UIPlugin, Task } = await import('@infinite-canvas-tutorial/webcomponents');
-  await import('@infinite-canvas-tutorial/webcomponents/spectrum');
-
   const res = await fetch('/maslow-hierarchy.svg');
   const svg = await res.text();
   // TODO: extract semantic groups inside comments
@@ -34,7 +27,12 @@ onMounted(async () => {
     undefined,
   );
 
-  onReady = (e) => {
+  const canvas = wrapper.value;
+  if (!canvas) {
+    return;
+  }
+
+  onReady = async (e) => {
     api = e.detail;
 
     api.setPen(Pen.SELECT);
@@ -50,6 +48,7 @@ onMounted(async () => {
 
   // App only runs once
   if (!(window as any).worldInited) {
+    await import('@infinite-canvas-tutorial/webcomponents/spectrum');
     new App().addPlugins(...DefaultPlugins, UIPlugin).run();
     (window as any).worldInited = true;
   }
@@ -62,7 +61,7 @@ onUnmounted(async () => {
   }
 
   if (onReady) {
-    // canvas.removeEventListener(Event.READY, onReady);
+    canvas.removeEventListener(Event.READY, onReady);
   }
 
   api?.destroy();

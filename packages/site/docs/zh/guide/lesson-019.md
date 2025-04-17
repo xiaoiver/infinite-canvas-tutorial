@@ -104,7 +104,11 @@ interface SerializedNode {
 
 ## 定义快照 {#state-as-a-snapshot}
 
-[State as a Snapshot]
+下图来自 [State as a Snapshot]，展示了 React render 函数执行后，先生成快照再更新 DOM 树的过程：
+
+![React snapshot](/react-snapshot.png)
+
+我们的快照就包含上面定义的两类系统状态，系统任意时刻只会有一张快照，每次状态发生改变时，可以与当前快照计算得到状态对应的修改，例如 `ElementsChange` 中 “删除了一个图形”，`AppStateChange` 中 “选中了一个图层” 等等：
 
 ```ts
 class Snapshot {
@@ -115,11 +119,52 @@ class Snapshot {
 }
 ```
 
-如何更新快照
+那系统应该如何更新快照呢？在策略上可以选择直接覆盖，或者计算增量更新。Excalidraw 提供了 [captureUpdate] 描述这两种行为，这两种行为适合不同的场景，比如直接覆盖适合场景初始化的场景，毕竟此时不需要回退到空白画布状态：
 
 ```ts
 class Store {
     private _snapshot = Snapshot.empty();
+
+    commit(
+        elements: Map<string, SerializedNode> | undefined,
+        appState: AppState | undefined,
+    ) {
+        try {
+            // Capture has precedence since it also performs update
+            if (this.#scheduledActions.has(CaptureUpdateAction.IMMEDIATELY)) {
+                this.captureIncrement(elements, appState);
+            } else if (this.#scheduledActions.has(CaptureUpdateAction.NEVER)) {
+                this.updateSnapshot(elements, appState);
+            }
+        } finally {
+            // Defensively reset all scheduled actions, potentially cleans up other runtime garbage
+            this.#scheduledActions = new Set();
+        }
+    }
+}
+```
+
+我们着重来看如何计算增量，并使用它创建 `HistoryEntry`。
+
+```ts
+class Store {
+    captureIncrement(
+        elements: Map<string, SerializedNode> | undefined,
+        appState: AppState | undefined,
+    ) {
+        const prevSnapshot = this.snapshot;
+        const nextSnapshot = this.snapshot.maybeClone(elements, appState);
+        const elementsChange = nextSnapshot.meta.didElementsChange
+            ? ElementsChange.calculate(
+                  prevSnapshot.elements,
+                  nextSnapshot.elements,
+                  this.api,
+              )
+            : ElementsChange.empty();
+        // AppStateChange 同理
+
+        // 使用 history.record 创建 HistoryEntry
+    }
 }
 ```
 
@@ -141,7 +186,27 @@ api.updateNode(node, {
 api.record();
 ```
 
-每次调用 `api.record` 都会增加一条历史记录，因为图形的状态确实发生了改变，但需要注意的是仅发生 AppState 的修改不应该重置 redoStack。发生变更时，我们将变更的逆操作添加到 undoStack 中：
+每次调用 `api.record` 会使用当前的 `AppState` 和 `Elements` 状态更新快照：
+
+```ts
+class API {
+    record(
+        captureUpdateAction: CaptureUpdateActionType = CaptureUpdateAction.IMMEDIATELY,
+    ) {
+        if (
+            captureUpdateAction === CaptureUpdateAction.NEVER ||
+            this.#store.snapshot.isEmpty()
+        ) {
+            this.#store.shouldUpdateSnapshot();
+        } else {
+            this.#store.shouldCaptureIncrement();
+        }
+        this.#store.commit(arrayToMap(this.getNodes()), this.getAppState());
+    }
+}
+```
+
+如果是增量更新模式，就会增加一条历史记录，因为图形的状态确实发生了改变，但需要注意的是仅发生 AppState 的修改不应该重置 redoStack。发生变更时，我们将变更的逆操作添加到 undoStack 中：
 
 ```ts
 export class History {
@@ -212,9 +277,11 @@ class Delta<T> {
 }
 ```
 
+[How Figma’s multiplayer technology works]: https://www.figma.com/blog/how-figmas-multiplayer-technology-works/
 [UI Algorithms: A Tiny Undo Stack]: https://blog.julik.nl/2025/03/a-tiny-undo-stack
 [JavaScript-Undo-Manager]: https://github.com/ArthurClemens/JavaScript-Undo-Manager
 [distinctKeysIterator]: https://github.com/excalidraw/excalidraw/blob/dff69e91912507bbfcc68b35277cc6031ce5b437/packages/excalidraw/change.ts#L359
 [课程 10]: /zh/guide/lesson-010#shape-to-serialized-node
-[State as a Snapshot]: https://react.dev/learn/state-as-a-snapshot
+[State as a Snapshot]: https://zh-hans.react.dev/learn/state-as-a-snapshot
 [Excalidraw HistoryEntry]: https://github.com/excalidraw/excalidraw/blob/master/packages/excalidraw/history.ts#L160-L164
+[captureUpdate]: https://docs.excalidraw.com/docs/@excalidraw/excalidraw/api/props/excalidraw-api#captureupdate
