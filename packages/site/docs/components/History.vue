@@ -52,7 +52,7 @@ onMounted(async () => {
   }
 });
 
-onUnmounted(async () => {
+onUnmounted(() => {
   const canvas = wrapper.value;
 
   if (!canvas) {
@@ -64,7 +64,6 @@ onUnmounted(async () => {
   }
 
   api?.destroy();
-
 });
 </script>
 

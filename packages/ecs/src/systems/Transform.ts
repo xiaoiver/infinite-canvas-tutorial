@@ -131,5 +131,8 @@ export function getDescendants(
     children.sort(compareFn);
   }
 
-  return children.flatMap((child) => [child, ...getDescendants(child)]);
+  return children.flatMap((child) => [
+    child,
+    ...getDescendants(child, compareFn),
+  ]);
 }

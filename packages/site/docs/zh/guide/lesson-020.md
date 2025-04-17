@@ -95,12 +95,6 @@ let tree: LoroTree = doc.getTree('tree');
 let root: LoroTreeNode = tree.createNode();
 ```
 
-<LoroCRDT />
-
-<br />
-
-<LoroCRDT />
-
 ### fractional-indexing
 
 [Realtime editing of ordered sequences] 中介绍了 Figma 使用 [fractional-indexing] 反映元素在场景图中的位置。
@@ -123,6 +117,67 @@ Loro 提供的 Tree 内置了 Fractional Index 算法，详见：[Movable tree C
 
 > We integrated the Fractional Index algorithm into Loro and combined it with the movable tree, making the child nodes of the movable tree sortable.
 
+在[课程 14]中，我们希望通过 `ZIndex` 干预渲染次序，在编辑器 UI 中会以“调整图层次序”、“上移”、“下移”这样的功能呈现。因此当 `ZIndex` 首次被添加或发生修改时，我们首先遍历场景图，对子节点按照 `ZIndex` 排序，得到排序后的数组后根据一前一后两个兄弟节点，更新当前节点的 fractional index
+
+```ts
+class ComputeZIndex extends System {
+    private readonly zIndexes = this.query(
+        (q) => q.addedOrChanged.with(ZIndex).trackWrites,
+    );
+
+    execute() {
+        this.zIndexes.addedOrChanged.forEach((entity) => {
+            // Travese scenegraph, sort children by z-index
+            const descendants = getDescendants(
+                getSceneRoot(entity),
+                sortByZIndex,
+            );
+            const index = descendants.indexOf(entity);
+            const prev = descendants[index - 1] || null;
+            const next = descendants[index + 1] || null;
+            const prevFractionalIndex =
+                (prev?.has(FractionalIndex) &&
+                    prev.read(FractionalIndex)?.value) ||
+                null;
+            const nextFractionalIndex =
+                (next?.has(FractionalIndex) &&
+                    next.read(FractionalIndex)?.value) ||
+                null;
+
+            // Generate fractional index with prev and next node
+            const key = generateKeyBetween(
+                prevFractionalIndex, // a0
+                nextFractionalIndex, // a2
+            );
+
+            if (!entity.has(FractionalIndex)) {
+                entity.add(FractionalIndex);
+            }
+            entity.write(FractionalIndex).value = key; // a1
+        });
+    }
+}
+```
+
+这样在渲染前就可以根据 fractional index 排序，值得一提的是不可以直接使用 [localeCompare] 比较：
+
+```ts
+export function sortByFractionalIndex(a: Entity, b: Entity) {
+    if (a.has(FractionalIndex) && b.has(FractionalIndex)) {
+        const aFractionalIndex = a.read(FractionalIndex).value;
+        const bFractionalIndex = b.read(FractionalIndex).value;
+
+        // Can't use localeCompare here.
+        // @see https://github.com/rocicorp/fractional-indexing/issues/20
+        if (aFractionalIndex < bFractionalIndex) return -1;
+        if (aFractionalIndex > bFractionalIndex) return 1;
+        return 0;
+    }
+
+    return 0;
+}
+```
+
 ### 监听场景图变更 {#listen-scene-graph-change}
 
 ```tsx
@@ -133,6 +188,12 @@ Loro 提供的 Tree 内置了 Fractional Index 算法，详见：[Movable tree C
 />
 ```
 
+```ts
+api.onchange = (snapshot) => {
+    const { appState, elements } = snapshot;
+};
+```
+
 ### 应用场景图变更 {#apply-scene-graph-change}
 
 参考 [Excalidraw updateScene]，我们也可以提供一个 `updateNodes` 方法，用于更新场景图。
@@ -140,6 +201,12 @@ Loro 提供的 Tree 内置了 Fractional Index 算法，详见：[Movable tree C
 ```ts
 api.updateNodes(nodes);
 ```
+
+<LoroCRDT />
+
+<br />
+
+<LoroCRDT />
 
 ## 扩展阅读 {#extended-reading}
 
@@ -174,3 +241,5 @@ api.updateNodes(nodes);
 [fractional-indexing]: https://github.com/rocicorp/fractional-indexing
 [Movable tree CRDTs and Loro's implementation]: https://loro.dev/blog/movable-tree
 [State as a Snapshot]: https://react.dev/learn/state-as-a-snapshot
+[课程 14]: /zh/guide/lesson-014#z-index
+[localeCompare]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/localeCompare

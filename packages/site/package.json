@@ -51,6 +51,7 @@
     "ant-design-vue": "^4.2.6",
     "ant-design-x-vue": "^0.0.11",
     "d3-color": "^3.1.0",
+    "deep-equal": "^2.2.3",
     "genji-theme-vitepress": "^0.2.1",
     "harfbuzzjs": "^0.3.1",
     "lil-gui": "^0.19.2",
