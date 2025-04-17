@@ -21,6 +21,7 @@ import {
 } from '../components';
 import { TexturePool } from '../resources';
 import { RenderCache } from '../utils';
+import { sortByFractionalIndex } from './Sort';
 
 /**
  * Since a shape may have multiple drawcalls, we need to cache them and maintain an 1-to-many relationship.
@@ -257,6 +258,14 @@ export class BatchManager {
 
   clear() {
     this.#drawcallsToFlush = [];
+  }
+
+  sort() {
+    this.#drawcallsToFlush.sort((a, b) => {
+      const aShape = a.shapes[0];
+      const bShape = b.shapes[0];
+      return sortByFractionalIndex(aShape, bShape);
+    });
   }
 
   flush(

@@ -1,7 +1,24 @@
 import { system } from '@lastolivegames/becsy';
 import { Plugin } from './types';
-import { CameraControl, Select } from '../systems';
+import {
+  ComputeBounds,
+  EventWriter,
+  PropagateTransforms,
+  Select,
+  SetupDevice,
+  Sort,
+  SyncSimpleTransforms,
+} from '../systems';
 
 export const PenPlugin: Plugin = () => {
-  // system((s) => s.after(CameraControl))(Select);
+  system((s) =>
+    s.after(
+      ComputeBounds,
+      EventWriter,
+      SetupDevice,
+      SyncSimpleTransforms,
+      PropagateTransforms,
+      Sort,
+    ),
+  )(Select);
 };

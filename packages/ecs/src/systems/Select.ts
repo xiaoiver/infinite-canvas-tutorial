@@ -8,14 +8,17 @@ import {
   ComputedCamera,
   Cursor,
   FillSolid,
+  FractionalIndex,
   Input,
+  InputPoint,
   Parent,
   Pen,
   Rect,
   Renderable,
   Stroke,
   Transform,
-  // Visibility,
+  Visibility,
+  ZIndex,
 } from '../components';
 import { Commands } from '../commands/Commands';
 import { ViewportCulling } from './ViewportCulling';
@@ -26,11 +29,7 @@ export class Select extends System {
 
   private readonly commands = new Commands(this);
 
-  // private readonly input = this.singleton.write(Input);
-  // private readonly cursor = this.singleton.write(Cursor);
-
   private readonly cameras = this.query((q) => q.current.with(Camera).read);
-  // private readonly points = this.query((q) => q.current.with(InputPoint).write);
 
   #selectionBrush: Entity;
 
@@ -38,20 +37,25 @@ export class Select extends System {
     super();
     this.query(
       (q) =>
-        q.using(
-          Input,
-          Cursor,
-          Camera,
-          Transform,
-          Parent,
-          Children,
-          Renderable,
-          FillSolid,
-          Stroke,
-          Rect,
-        ).write,
+        q
+          .using(Canvas)
+          .read.update.using(
+            InputPoint,
+            Input,
+            Cursor,
+            Camera,
+            Transform,
+            Parent,
+            Children,
+            Renderable,
+            FillSolid,
+            Stroke,
+            Rect,
+            Visibility,
+            ZIndex,
+          ).write,
     );
-    this.query((q) => q.using(ComputedCamera, Canvas).read);
+    this.query((q) => q.using(ComputedCamera, FractionalIndex).read);
   }
 
   execute() {
@@ -63,11 +67,13 @@ export class Select extends System {
       }
 
       const canvas = camera.canvas.hold();
-      const { pen } = canvas.read(Canvas);
+      const { pen, inputPoints } = canvas.read(Canvas);
 
       if (pen !== Pen.SELECT) {
-        // Hide selection brush
-        // this.#selectionBrush?.add(Visibility.Hidden);
+        if (this.#selectionBrush) {
+          // Hide selection brush
+          this.#selectionBrush.write(Visibility).value = 'hidden';
+        }
 
         return;
       }
@@ -78,92 +84,83 @@ export class Select extends System {
       cursor.value = 'default';
 
       if (input.pointerDownTrigger) {
+        if (!this.#selectionBrush) {
+          this.#selectionBrush = this.commands
+            .spawn(
+              new Transform(),
+              new Renderable(),
+              new FillSolid('rgba(0, 0, 0, 0.2)'),
+              new Stroke({ width: 1, color: 'black' }),
+              new Rect(),
+              new Visibility('hidden'),
+              new ZIndex(Infinity),
+            )
+            .id()
+            .hold();
+
+          const camera = this.commands.entity(entity);
+          camera.appendChild(this.commands.entity(this.#selectionBrush));
+
+          this.commands.execute();
+        }
+
+        this.createEntity(InputPoint, {
+          prevPoint: input.pointerViewport,
+          canvas,
+        });
+
         const [x, y] = input.pointerViewport;
         const { x: wx, y: wy } = this.cameraControl.viewport2Canvas(entity, {
           x,
           y,
         });
 
-        this.viewportCulling.elementsFromBBox(entity, wx, wy, wx, wy);
+        const entities = this.viewportCulling.elementsFromBBox(
+          entity,
+          wx,
+          wy,
+          wx,
+          wy,
+        );
+        console.log(entities);
+
+        this.#selectionBrush.write(Visibility).value = 'visible';
+
+        Object.assign(this.#selectionBrush.write(Rect), {
+          x: wx,
+          y: wy,
+        });
       }
 
-      // const { viewProjectionMatrixInv } = entity.read(ComputedCamera);
+      inputPoints.forEach((point) => {
+        const inputPoint = point.write(InputPoint);
+        const [x, y] = input.pointerViewport;
 
-      // if (!this.#selectionBrush) {
-      //   this.#selectionBrush = this.commands
-      //     .spawn(
-      //       new Transform(),
-      //       new Renderable(),
-      //       new FillSolid('rgba(0, 0, 0, 0.2)'),
-      //       new Stroke({ width: 1, color: 'black' }),
-      //       new Rect(),
-      //     )
-      //     .id()
-      //     .hold();
+        if (inputPoint.prevPoint[0] === x && inputPoint.prevPoint[1] === y) {
+          return;
+        }
 
-      //   const camera = this.commands.entity(entity);
-      //   camera.appendChild(this.commands.entity(this.#selectionBrush));
+        const { x: wx, y: wy } = this.cameraControl.viewport2Canvas(entity, {
+          x,
+          y,
+        });
 
-      //   this.commands.execute();
-      // }
+        const rect = this.#selectionBrush.write(Rect);
 
-      // if (this.input.pointerDownTrigger) {
-      //   this.createEntity(InputPoint, {
-      //     prevPoint: this.input.pointerWorld,
-      //   });
+        Object.assign(rect, {
+          width: wx - rect.x,
+          height: wy - rect.y,
+        });
 
-      //   // this.#selectionBrush.add(Visibility.Visible);
+        inputPoint.prevPoint = input.pointerViewport;
+      });
 
-      //   Object.assign(
-      //     this.#selectionBrush.write(Rect),
-      //     this.viewport2Canvas(
-      //       entity,
-      //       {
-      //         x: this.input.pointerWorld[0],
-      //         y: this.input.pointerWorld[1],
-      //       },
-      //       viewProjectionMatrixInv,
-      //     ),
-      //   );
-      // }
-
-      // for (const point of this.points.current) {
-      //   const stroke = point.write(InputPoint);
-      //   stroke.prevPoint = this.input.pointerWorld;
-      //   const start = [stroke.prevPoint[0], stroke.prevPoint[1]] as [
-      //     number,
-      //     number,
-      //   ];
-      //   const end = [
-      //     Math.round(this.input.pointerWorld[0]),
-      //     Math.round(this.input.pointerWorld[1]),
-      //   ] as [number, number];
-
-      //   // console.log(start, end);
-
-      //   const { x, y } = this.#selectionBrush.write(Rect);
-      //   const { x: canvasX, y: canvasY } = this.viewport2Canvas(
-      //     entity,
-      //     {
-      //       x: this.input.pointerWorld[0],
-      //       y: this.input.pointerWorld[1],
-      //     },
-      //     viewProjectionMatrixInv,
-      //   );
-
-      //   Object.assign(this.#selectionBrush.write(Rect), {
-      //     width: canvasX - x,
-      //     height: canvasY - y,
-      //   });
-      // }
-
-      // if (this.input.pointerUpTrigger) {
-      //   for (const point of this.points.current) {
-      //     point.delete();
-      //   }
-
-      //   // this.#selectionBrush.add(Visibility.Hidden);
-      // }
+      if (input.pointerUpTrigger) {
+        for (const point of inputPoints) {
+          point.delete();
+        }
+        this.#selectionBrush.write(Visibility).value = 'hidden';
+      }
     });
   }
 

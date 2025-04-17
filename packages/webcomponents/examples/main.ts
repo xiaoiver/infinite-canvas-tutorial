@@ -31,7 +31,7 @@ canvas.addEventListener(Event.READY, (e) => {
   api.updateNodes(nodes);
   api.selectNodes([nodes[0].id]);
 
-  api.record(CaptureUpdateAction.NEVER);
+  api.record();
 });
 
 const app = new App().addPlugins(...DefaultPlugins, UIPlugin);

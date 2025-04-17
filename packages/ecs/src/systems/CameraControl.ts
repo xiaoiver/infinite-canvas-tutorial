@@ -51,7 +51,7 @@ export class CameraControl extends System {
       }
 
       const canvas = camera.canvas.hold();
-      const { pen } = canvas.read(Canvas);
+      const { pen, inputPoints } = canvas.read(Canvas);
 
       if (!entity.has(ComputedCameraControl)) {
         entity.add(ComputedCameraControl);
@@ -97,7 +97,7 @@ export class CameraControl extends System {
         }
       }
 
-      canvas.read(Canvas).inputPoints.forEach((point) => {
+      inputPoints.forEach((point) => {
         const inputPoint = point.write(InputPoint);
         if (
           inputPoint.prevPoint[0] === input.pointerViewport[0] &&

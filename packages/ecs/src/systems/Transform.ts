@@ -118,10 +118,18 @@ export function getSceneRoot(entity: Entity): Entity {
   return entity;
 }
 
-export function getDescendants(entity: Entity): Entity[] {
+export function getDescendants(
+  entity: Entity,
+  compareFn?: (a: Entity, b: Entity) => number,
+): Entity[] {
   if (!entity.has(Parent)) {
     return [];
   }
-  const children = entity.read(Parent).children;
+  const children = [...entity.read(Parent).children];
+
+  if (compareFn) {
+    children.sort(compareFn);
+  }
+
   return children.flatMap((child) => [child, ...getDescendants(child)]);
 }

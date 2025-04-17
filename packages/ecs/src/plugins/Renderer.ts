@@ -106,7 +106,7 @@ export const RendererPlugin: Plugin = () => {
       Last,
       PropagateTransforms,
       CameraControl,
-      // Select,
+      Select,
       ComputeCamera,
       MeshPipeline,
       ExportSVG,

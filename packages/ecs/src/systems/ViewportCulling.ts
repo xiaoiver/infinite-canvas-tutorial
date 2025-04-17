@@ -14,6 +14,7 @@ import {
 } from '../components';
 import { CameraControl } from './CameraControl';
 import { getDescendants, getSceneRoot } from './Transform';
+import { sortByFractionalIndex } from './Sort';
 
 export interface RBushNodeAABB {
   entity: Entity;
@@ -196,9 +197,11 @@ export class ViewportCulling extends System {
       maxY,
     });
 
-    console.log(minX, minY, rBushNodes);
-
-    return rBushNodes.map((node) => node.entity);
+    // Sort by fractional index
+    return rBushNodes
+      .map((node) => node.entity)
+      .sort(sortByFractionalIndex)
+      .reverse();
   }
 
   private getOrCreateRBush(camera: Entity) {

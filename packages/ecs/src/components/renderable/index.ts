@@ -6,6 +6,7 @@ export * from './DropShadow';
 export * from './InnerShadow';
 export * from './Wireframe';
 export * from './ZIndex';
+export * from './FractionalIndex';
 export * from './GlobalRenderOrder';
 export * from './Rough';
 export * from './ComputedBounds';

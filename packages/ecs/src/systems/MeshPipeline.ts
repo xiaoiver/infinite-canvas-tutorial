@@ -26,6 +26,7 @@ import {
   FillPattern,
   FillSolid,
   FillTexture,
+  FractionalIndex,
   GlobalRenderOrder,
   GlobalTransform,
   GPUResource,
@@ -149,6 +150,7 @@ export class MeshPipeline extends System {
             FillGradient,
             FillSolid,
             FillTexture,
+            FractionalIndex,
           )
           .read.and.using(RasterScreenshotRequest, Screenshot).write,
     );
@@ -169,7 +171,7 @@ export class MeshPipeline extends System {
     Object.assign(screenshot, { dataURL: '' });
   }
 
-  private renderCamera(canvas: Entity, camera: Entity) {
+  private renderCamera(canvas: Entity, camera: Entity, sort = false) {
     if (!canvas.has(GPUResource)) {
       return;
     }
@@ -241,13 +243,15 @@ export class MeshPipeline extends System {
         batchManager.add(entity);
       });
       this.pendingRenderables.get(camera).remove.forEach((entity) => {
-        console.log('remove', entity);
         // TODO: split removed and culled
         batchManager.remove(entity, false);
       });
       this.pendingRenderables.delete(camera);
     }
 
+    if (sort) {
+      batchManager.sort();
+    }
     batchManager.flush(renderPass, uniformBuffer, uniformLegacyObject);
 
     device.submitPass(renderPass);
@@ -301,6 +305,8 @@ export class MeshPipeline extends System {
         this.grids.addedChangedOrRemoved.includes(canvas) ||
         this.themes.addedChangedOrRemoved.includes(canvas);
 
+      // let toSort = this.fractionalIndexes.addedOrChanged.length > 0;
+
       const { cameras } = canvas.read(Canvas);
       cameras.forEach((camera) => {
         if (!toRender && this.pendingRenderables.get(camera)) {
@@ -317,7 +323,7 @@ export class MeshPipeline extends System {
         }
 
         if (toRender) {
-          this.renderCamera(canvas, camera);
+          this.renderCamera(canvas, camera, true);
         }
       });
     });

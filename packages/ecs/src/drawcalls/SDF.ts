@@ -362,10 +362,6 @@ export class SDF extends Drawcall {
     renderPass: RenderPass,
     sceneUniformLegacyObject: Record<string, unknown>,
   ) {
-    // if (
-    //   this.shapes.some((shape) => shape.renderDirtyFlag) ||
-    //   this.geometryDirty
-    // ) {
     if (this.instanced) {
       const instancedData: number[] = [];
       this.shapes.forEach((shape, i, total) => {
@@ -445,7 +441,6 @@ export class SDF extends Drawcall {
         );
       }
     }
-    // }
 
     this.program.setUniformsLegacy(sceneUniformLegacyObject);
     renderPass.setPipeline(this.pipeline);
