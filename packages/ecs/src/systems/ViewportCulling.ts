@@ -48,6 +48,8 @@ export class ViewportCulling extends System {
 
   #cameraRBushMap: WeakMap<Entity, RBush<RBushNodeAABB>> = new WeakMap();
 
+  #entityRBushAABBMap: WeakMap<Entity, RBushNodeAABB> = new WeakMap();
+
   constructor() {
     super();
     this.query(
@@ -107,13 +109,7 @@ export class ViewportCulling extends System {
           entitiesToCull.get(camera)?.add(entity);
 
           rBush.remove(
-            {
-              entity,
-              minX: 0,
-              minY: 0,
-              maxX: 0,
-              maxY: 0,
-            },
+            this.#entityRBushAABBMap.get(entity),
             (a, b) => a.entity === b.entity,
           );
         });
@@ -126,13 +122,16 @@ export class ViewportCulling extends System {
       const bulk: RBushNodeAABB[] = [];
       entities.forEach((entity) => {
         const { bounds } = entity.read(ComputedBounds);
-        bulk.push({
+        const rBushNodeAABB: RBushNodeAABB = {
           minX: bounds.minX,
           minY: bounds.minY,
           maxX: bounds.maxX,
           maxY: bounds.maxY,
           entity,
-        });
+        };
+        bulk.push(rBushNodeAABB);
+
+        this.#entityRBushAABBMap.set(entity, rBushNodeAABB);
       });
       rBush.load(bulk);
     });

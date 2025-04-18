@@ -29,14 +29,21 @@ import {
 } from '../../components';
 import { serializeTransform } from './transform';
 
-export function entityToSerializedNodes(entity: Entity): SerializedNode[] {
+export function entityToSerializedNodes(
+  entity: Entity,
+  filter?: (entity: Entity) => boolean,
+): SerializedNode[] {
+  if (filter && !filter(entity)) {
+    return [];
+  }
+
   const id = entity.__id;
   const parentId = entity.has(Children)
     ? entity.read(Children).parent.__id
     : undefined;
 
   let type: SerializedNode['type'];
-  let attributes: Partial<SerializedNode> = {};
+  const attributes: Partial<SerializedNode> = {};
   if (entity.has(Circle)) {
     type = 'circle';
     const { cx, cy, r } = entity.read(Circle);
@@ -197,7 +204,9 @@ export function entityToSerializedNodes(entity: Entity): SerializedNode[] {
   ];
 
   if (entity.has(Parent)) {
-    const children = entity.read(Parent).children.map(entityToSerializedNodes);
+    const children = entity
+      .read(Parent)
+      .children.map((e) => entityToSerializedNodes(e, filter));
     nodes.push(...children.flat(1));
   }
 

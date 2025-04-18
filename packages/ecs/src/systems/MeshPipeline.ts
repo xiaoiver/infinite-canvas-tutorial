@@ -40,6 +40,7 @@ import {
   Renderable,
   Rough,
   Screenshot,
+  SizeAttenuation,
   Stroke,
   Text,
   Theme,
@@ -151,6 +152,7 @@ export class MeshPipeline extends System {
             FillSolid,
             FillTexture,
             FractionalIndex,
+            SizeAttenuation,
           )
           .read.and.using(RasterScreenshotRequest, Screenshot).write,
     );

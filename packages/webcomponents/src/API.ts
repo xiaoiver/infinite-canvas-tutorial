@@ -14,6 +14,7 @@ import {
   Grid,
   CheckboardStyle,
   ToBeDeleted,
+  Selected,
 } from '@infinite-canvas-tutorial/ecs';
 import { type LitElement } from 'lit';
 import { Event } from './event';
@@ -46,7 +47,7 @@ export const pendingCanvases: {
  */
 export class API {
   #canvasEntity: Entity;
-  #idEntityMap: Map<string, EntityCommands>;
+  #idEntityMap: Map<string, EntityCommands> = new Map();
   #history = new History();
   #store = new Store(this);
 
@@ -243,14 +244,30 @@ export class API {
    * Select nodes.
    */
   selectNodes(selected: SerializedNode['id'][], preserveSelection = false) {
-    // TODO: select nodes in the canvas.
     const prevAppState = this.getAppState();
+
+    if (!preserveSelection) {
+      this.getAppState().layersSelected.forEach((id) => {
+        const entity = this.#idEntityMap.get(id)?.id();
+        if (entity) {
+          entity.remove(Selected);
+        }
+      });
+    }
 
     this.setAppState({
       ...prevAppState,
       layersSelected: preserveSelection
         ? [...prevAppState.layersSelected, ...selected]
         : selected,
+    });
+
+    // Select nodes in the canvas.
+    this.getAppState().layersSelected.forEach((id) => {
+      const entity = this.#idEntityMap.get(id)?.id();
+      if (entity && !entity.has(Selected)) {
+        entity.add(Selected);
+      }
     });
 
     this.element.dispatchEvent(
@@ -264,25 +281,63 @@ export class API {
    * If diff is provided, no need to calculate diffs.
    */
   updateNode(node: SerializedNode, diff?: Partial<SerializedNode>) {
-    const entity = this.#idEntityMap.get(node.id).id();
-
-    const updated = mutateElement(entity, node, diff);
-
+    const entity = this.#idEntityMap.get(node.id)?.id();
     const nodes = this.getNodes();
-    const index = nodes.findIndex((n) => n.id === updated.id);
 
-    if (index !== -1) {
-      nodes[index] = updated;
-      this.setNodes(nodes);
+    if (!entity) {
+      const { cameras } = this.#canvasEntity.read(Canvas);
+      if (cameras.length === 0) {
+        throw new Error('No camera found');
+      }
+
+      // TODO: Support multiple cameras.
+      const camera = cameras[0];
+      const cameraEntityCommands = this.commands.entity(camera);
+
+      // TODO: Calculate diffs and only update the changed nodes.
+      const { entities, idEntityMap } = serializedNodesToEntities(
+        [node],
+        this.commands,
+      );
+      this.#idEntityMap.set(node.id, idEntityMap.get(node.id));
+
+      this.commands.execute();
+
+      entities.forEach((entity) => {
+        // Append roots to the camera.
+        if (!entity.has(Children)) {
+          cameraEntityCommands.appendChild(this.commands.entity(entity));
+        }
+      });
+
+      this.commands.execute();
+
+      this.setNodes([...nodes, node]);
+
+      this.element.dispatchEvent(
+        new CustomEvent(Event.NODE_UPDATED, {
+          detail: {
+            node,
+          },
+        }),
+      );
+    } else {
+      const updated = mutateElement(entity, node, diff);
+      const index = nodes.findIndex((n) => n.id === updated.id);
+
+      if (index !== -1) {
+        nodes[index] = updated;
+        this.setNodes(nodes);
+      }
+
+      this.element.dispatchEvent(
+        new CustomEvent(Event.NODE_UPDATED, {
+          detail: {
+            node: updated,
+          },
+        }),
+      );
     }
-
-    this.element.dispatchEvent(
-      new CustomEvent(Event.NODE_UPDATED, {
-        detail: {
-          node: updated,
-        },
-      }),
-    );
   }
 
   /**
@@ -292,33 +347,51 @@ export class API {
    * @see https://docs.excalidraw.com/docs/@excalidraw/excalidraw/api/props/excalidraw-api#updatescene
    */
   updateNodes(nodes: SerializedNode[]) {
-    const { cameras } = this.#canvasEntity.read(Canvas);
-    if (cameras.length === 0) {
-      throw new Error('No camera found');
+    const existentNodes = nodes.filter((node) =>
+      this.#idEntityMap.has(node.id),
+    );
+    const nonExistentNodes = nodes.filter(
+      (node) => !this.#idEntityMap.has(node.id),
+    );
+
+    if (nonExistentNodes.length > 0) {
+      const { cameras } = this.#canvasEntity.read(Canvas);
+      if (cameras.length === 0) {
+        throw new Error('No camera found');
+      }
+
+      // TODO: Support multiple cameras.
+      const camera = cameras[0];
+      const cameraEntityCommands = this.commands.entity(camera);
+
+      // TODO: Calculate diffs and only update the changed nodes.
+      const { entities, idEntityMap } = serializedNodesToEntities(
+        nonExistentNodes,
+        this.commands,
+      );
+      nonExistentNodes.forEach((node) => {
+        this.#idEntityMap.set(node.id, idEntityMap.get(node.id));
+      });
+
+      this.commands.execute();
+
+      entities.forEach((entity) => {
+        // Append roots to the camera.
+        if (!entity.has(Children)) {
+          cameraEntityCommands.appendChild(this.commands.entity(entity));
+        }
+      });
+
+      this.commands.execute();
+
+      this.setNodes([...this.getNodes(), ...nonExistentNodes]);
     }
 
-    // TODO: Support multiple cameras.
-    const camera = cameras[0];
-    const cameraEntityCommands = this.commands.entity(camera);
-
-    // TODO: Calculate diffs and only update the changed nodes.
-    const { entities, idEntityMap } = serializedNodesToEntities(
-      nodes,
-      this.commands,
-    );
-    this.#idEntityMap = idEntityMap;
-
-    this.commands.execute();
-
-    entities.forEach((entity) => {
-      // Append roots to the camera.
-      if (!entity.has(Children)) {
-        cameraEntityCommands.appendChild(this.commands.entity(entity));
-      }
-    });
-
-    this.commands.execute();
-    this.setNodes(nodes);
+    if (existentNodes.length > 0) {
+      existentNodes.forEach((node) => {
+        this.updateNode(node);
+      });
+    }
 
     this.element.dispatchEvent(
       new CustomEvent(Event.NODES_UPDATED, {

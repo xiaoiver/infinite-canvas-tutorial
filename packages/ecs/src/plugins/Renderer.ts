@@ -51,6 +51,7 @@ import {
   GPUResource,
   Name,
   ToBeDeleted,
+  SizeAttenuation,
 } from '../components';
 
 export const RendererPlugin: Plugin = () => {
@@ -64,6 +65,7 @@ export const RendererPlugin: Plugin = () => {
   component(GlobalRenderOrder);
   component(Visibility);
   component(ToBeDeleted);
+  component(SizeAttenuation);
   /**
    * Style
    */

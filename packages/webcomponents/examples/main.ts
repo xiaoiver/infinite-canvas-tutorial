@@ -4,7 +4,7 @@ import {
   DefaultPlugins,
   Pen,
 } from '../../ecs';
-import { Event, UIPlugin, Task, CaptureUpdateAction } from '../src';
+import { Event, UIPlugin, Task } from '../src';
 import '../src/spectrum';
 
 const res = await fetch('/maslow-hierarchy.svg');

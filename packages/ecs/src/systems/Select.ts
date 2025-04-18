@@ -1,6 +1,4 @@
 import { Entity, System } from '@lastolivegames/becsy';
-import { mat3, vec2 } from 'gl-matrix';
-import { IPointData } from '@pixi/math';
 import {
   Camera,
   Canvas,
@@ -11,12 +9,15 @@ import {
   FractionalIndex,
   Input,
   InputPoint,
+  Opacity,
   Parent,
   Pen,
   Rect,
   Renderable,
+  Selected,
   Stroke,
   Transform,
+  UI,
   Visibility,
   ZIndex,
 } from '../components';
@@ -30,6 +31,7 @@ export class Select extends System {
   private readonly commands = new Commands(this);
 
   private readonly cameras = this.query((q) => q.current.with(Camera).read);
+  private readonly selected = this.query((q) => q.current.with(Selected).read);
 
   #selectionBrush: Entity;
 
@@ -44,11 +46,14 @@ export class Select extends System {
             Input,
             Cursor,
             Camera,
+            UI,
+            Selected,
             Transform,
             Parent,
             Children,
             Renderable,
             FillSolid,
+            Opacity,
             Stroke,
             Rect,
             Visibility,
@@ -87,10 +92,12 @@ export class Select extends System {
         if (!this.#selectionBrush) {
           this.#selectionBrush = this.commands
             .spawn(
+              new UI(),
               new Transform(),
               new Renderable(),
-              new FillSolid('rgba(0, 0, 0, 0.2)'),
-              new Stroke({ width: 1, color: 'black' }),
+              new FillSolid('#e0f2ff'), // --spectrum-blue-100
+              new Opacity({ fillOpacity: 0.5 }),
+              new Stroke({ width: 1, color: '#147af3' }), // --spectrum-thumbnail-border-color-selected
               new Rect(),
               new Visibility('hidden'),
               new ZIndex(Infinity),
@@ -115,6 +122,16 @@ export class Select extends System {
           y,
         });
 
+        this.#selectionBrush.write(Visibility).value = 'visible';
+
+        Object.assign(this.#selectionBrush.write(Rect), {
+          x: wx,
+          y: wy,
+          width: 0,
+          height: 0,
+        });
+
+        // Single selection
         const entities = this.viewportCulling.elementsFromBBox(
           entity,
           wx,
@@ -122,14 +139,12 @@ export class Select extends System {
           wx,
           wy,
         );
-        console.log(entities);
-
-        this.#selectionBrush.write(Visibility).value = 'visible';
-
-        Object.assign(this.#selectionBrush.write(Rect), {
-          x: wx,
-          y: wy,
+        this.selected.current.forEach((entity) => {
+          entity.remove(Selected);
         });
+        if (entities.length > 0 && !entities[0].has(UI)) {
+          entities[0].add(Selected);
+        }
       }
 
       inputPoints.forEach((point) => {
@@ -162,19 +177,5 @@ export class Select extends System {
         this.#selectionBrush.write(Visibility).value = 'hidden';
       }
     });
-  }
-
-  private viewport2Canvas(
-    entity: Entity,
-    { x, y }: IPointData,
-    viewProjectionMatrixInv: mat3,
-  ): IPointData {
-    const { width, height } = entity.read(Camera).canvas.read(Canvas);
-    const canvas = vec2.transformMat3(
-      vec2.create(),
-      [(x / width) * 2 - 1, (1 - y / height) * 2 - 1],
-      viewProjectionMatrixInv,
-    );
-    return { x: canvas[0], y: canvas[1] };
   }
 }

@@ -35,6 +35,10 @@ export class SyncSimpleTransforms extends System {
     entity: Entity,
     checkGlobalTransform: boolean = true,
   ): void {
+    if (!entity.has(Transform)) {
+      return;
+    }
+
     const transform = entity.read(Transform);
     if (checkGlobalTransform && !entity.has(GlobalTransform)) {
       entity.add(GlobalTransform, new GlobalTransform());

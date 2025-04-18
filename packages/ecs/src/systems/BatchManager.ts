@@ -198,15 +198,14 @@ export class BatchManager {
   }
 
   add(shape: Entity) {
+    let drawcalls: Drawcall[];
     if (shape.read(Renderable).batchable) {
-      const drawcalls = this.getOrCreateBatchableDrawcalls(shape);
-      if (this.#drawcallsToFlush.indexOf(drawcalls[0]) === -1) {
-        this.#drawcallsToFlush.push(...drawcalls);
-      }
+      drawcalls = this.getOrCreateBatchableDrawcalls(shape);
     } else {
-      this.#drawcallsToFlush.push(
-        ...this.getOrCreateNonBatchableDrawcalls(shape),
-      );
+      drawcalls = this.getOrCreateNonBatchableDrawcalls(shape);
+    }
+    if (this.#drawcallsToFlush.indexOf(drawcalls[0]) === -1) {
+      this.#drawcallsToFlush.push(...drawcalls);
     }
   }
 
@@ -306,6 +305,8 @@ export class BatchManager {
     this.#drawcallsToFlush.forEach((drawcall) => {
       drawcall.submit(renderPass, uniformBuffer, uniformLegacyObject);
     });
+
+    // console.log('flush', this.#drawcallsToFlush);
   }
 
   stats() {

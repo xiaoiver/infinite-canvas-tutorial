@@ -24,6 +24,7 @@ import {
   Text,
   Theme,
   Transform,
+  UI,
   VectorScreenshotRequest,
   Visibility,
 } from '../components';
@@ -65,6 +66,7 @@ export class ExportSVG extends System {
             Theme,
             Grid,
             Camera,
+            UI,
             Name,
             Parent,
             Children,
@@ -128,11 +130,11 @@ export class ExportSVG extends System {
       }
     }
 
-    serializeNodesToSVGElements(entityToSerializedNodes(cameras[0])).forEach(
-      (element) => {
-        $namespace.appendChild(element);
-      },
-    );
+    serializeNodesToSVGElements(
+      entityToSerializedNodes(cameras[0], (entity) => !entity.has(UI)),
+    ).forEach((element) => {
+      $namespace.appendChild(element);
+    });
     return $namespace;
   }
 

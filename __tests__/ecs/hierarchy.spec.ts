@@ -1,4 +1,5 @@
 import _gl from 'gl';
+import '../useSnapshotMatchers';
 import {
   App,
   Camera,
@@ -31,6 +32,7 @@ describe('Hierarchy', () => {
   it('should create a hierarchy', async () => {
     const app = new App();
 
+    let $canvas: HTMLCanvasElement;
     let canvasEntity: Entity | undefined;
     let cameraEntity: Entity | undefined;
     let parentEntity: Entity | undefined;
@@ -62,10 +64,7 @@ describe('Hierarchy', () => {
       );
 
       initialize(): void {
-        const $canvas = DOMAdapter.get().createCanvas(
-          200,
-          200,
-        ) as HTMLCanvasElement;
+        $canvas = DOMAdapter.get().createCanvas(200, 200) as HTMLCanvasElement;
 
         const canvas = this.commands.spawn(
           new Canvas({
@@ -87,7 +86,7 @@ describe('Hierarchy', () => {
           new Transform(),
           new Renderable(),
           new FillSolid('red'),
-          new Circle({ cx: 0, cy: 0, r: 100 }),
+          new Circle({ cx: 100, cy: 100, r: 100 }),
           new Visibility(),
         );
 
@@ -103,7 +102,7 @@ describe('Hierarchy', () => {
             alignment: 'center',
             dasharray: [10, 10],
           }),
-          new Circle({ cx: 0, cy: 0, r: 50 }),
+          new Circle({ cx: 100, cy: 100, r: 50 }),
           new Visibility(),
         );
         parent.appendChild(child);
@@ -146,6 +145,12 @@ describe('Hierarchy', () => {
       const child = childEntity.read(Children);
       expect(child.parent.isSame(parentEntity)).toBeTruthy();
     }
+
+    const dir = `${__dirname}/snapshots`;
+    expect($canvas!.getContext('webgl1')).toMatchWebGLSnapshot(
+      dir,
+      'hierarchy',
+    );
 
     await app.exit();
   });

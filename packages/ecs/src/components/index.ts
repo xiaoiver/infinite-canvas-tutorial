@@ -15,3 +15,4 @@ export * from './hierarchy';
 export * from './renderable';
 export * from './math';
 export * from './geometry';
+export * from './pen';

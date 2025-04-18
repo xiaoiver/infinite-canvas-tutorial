@@ -14,6 +14,7 @@ import {
   Polyline,
   Rect,
   Renderable,
+  Selected,
   Stroke,
   System,
   Text,
@@ -52,6 +53,7 @@ export class InitCanvasSystem extends System {
           Polyline,
           Path,
           Text,
+          Selected,
         ).write,
     );
   }

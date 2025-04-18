@@ -38,6 +38,7 @@ import {
   Mat3,
   Opacity,
   Rect,
+  SizeAttenuation,
   Stroke,
 } from '../components';
 
@@ -469,8 +470,6 @@ export class SDF extends Drawcall {
     index: number,
     total: number,
   ): [number[], Record<string, unknown>] {
-    // TODO
-    const sizeAttenuation = 0;
     const globalRenderOrder = shape.has(GlobalRenderOrder)
       ? shape.read(GlobalRenderOrder).value
       : 0;
@@ -548,7 +547,8 @@ export class SDF extends Drawcall {
     ];
 
     const LEFT_SHIFT23 = 8388608.0;
-    const compressed = (sizeAttenuation ? 1 : 0) * LEFT_SHIFT23 + type;
+    const compressed =
+      (shape.has(SizeAttenuation) ? 1 : 0) * LEFT_SHIFT23 + type;
     const u_Opacity = [opacity, fillOpacity, strokeOpacity, compressed];
     const u_InnerShadowColor = [isr / 255, isg / 255, isb / 255, iso];
     const u_InnerShadow = [offsetX, offsetY, blurRadius, 0];

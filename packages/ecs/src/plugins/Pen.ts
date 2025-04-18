@@ -1,16 +1,22 @@
-import { system } from '@lastolivegames/becsy';
+import { component, system } from '@lastolivegames/becsy';
 import { Plugin } from './types';
 import {
   ComputeBounds,
   EventWriter,
   PropagateTransforms,
+  RenderTransformer,
   Select,
+  SetCursor,
   SetupDevice,
   Sort,
   SyncSimpleTransforms,
 } from '../systems';
+import { Selected, UI } from '../components';
 
 export const PenPlugin: Plugin = () => {
+  component(UI);
+  component(Selected);
+
   system((s) =>
     s.after(
       ComputeBounds,
@@ -19,6 +25,8 @@ export const PenPlugin: Plugin = () => {
       SyncSimpleTransforms,
       PropagateTransforms,
       Sort,
+      SetCursor,
     ),
   )(Select);
+  system((s) => s.afterWritersOf(Selected))(RenderTransformer);
 };
