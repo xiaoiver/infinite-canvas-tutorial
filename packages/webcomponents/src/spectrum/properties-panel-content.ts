@@ -20,6 +20,7 @@ export class PropertiesPanelContent extends LitElement {
       overflow: hidden;
 
       --system-accordion-size-s-item-header-font-size: 14px;
+      --mod-accordion-item-header-font-size: 14px;
     }
 
     sp-popover {

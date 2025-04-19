@@ -11,6 +11,7 @@ export * from './ComputePoints';
 export * from './ComputeRough';
 export * from './ComputeTextMetrics';
 export * from './ComputeBounds';
+export * from './ComputeVisibility';
 export * from './ViewportCulling';
 export * from './SetCursor';
 export * from './ExportSVG';

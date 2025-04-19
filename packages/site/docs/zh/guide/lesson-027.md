@@ -3,7 +3,7 @@ outline: deep
 publish: false
 ---
 
-# 课程 20 - Radiance Cascades
+# 课程 27 - Radiance Cascades
 
 -   [Fundamentals of Radiance Cascades]
 -   [Building Real-Time Global Illumination]

@@ -1,5 +1,5 @@
 import { Entity, System } from '@lastolivegames/becsy';
-import { Renderable } from '../components';
+import { ComputedVisibility, Renderable } from '../components';
 import RBush from 'rbush';
 import {
   AABB,
@@ -10,7 +10,6 @@ import {
   ComputedCamera,
   Culled,
   Parent,
-  Visibility,
 } from '../components';
 import { CameraControl } from './CameraControl';
 import { getDescendants, getSceneRoot } from './Transform';
@@ -33,7 +32,7 @@ export class ViewportCulling extends System {
   );
 
   visibilities = this.query(
-    (q) => q.addedChangedOrRemoved.with(Visibility).trackWrites,
+    (q) => q.addedChangedOrRemoved.with(ComputedVisibility).trackWrites,
   );
 
   /**
@@ -48,8 +47,6 @@ export class ViewportCulling extends System {
 
   #cameraRBushMap: WeakMap<Entity, RBush<RBushNodeAABB>> = new WeakMap();
 
-  #entityRBushAABBMap: WeakMap<Entity, RBushNodeAABB> = new WeakMap();
-
   constructor() {
     super();
     this.query(
@@ -57,6 +54,24 @@ export class ViewportCulling extends System {
         q
           .using(Camera, Canvas, Children, Parent, Renderable)
           .read.and.using(Culled).write,
+    );
+  }
+
+  /**
+   * Since the entity is deleted, we need to remove it from the RBush.
+   */
+  remove(entity: Entity) {
+    const camera = getSceneRoot(entity);
+    const rBush = this.getOrCreateRBush(camera);
+    rBush.remove(
+      {
+        minX: 0,
+        minY: 0,
+        maxX: 0,
+        maxY: 0,
+        entity,
+      },
+      (a, b) => a.entity === b.entity,
     );
   }
 
@@ -78,7 +93,7 @@ export class ViewportCulling extends System {
     this.visibilities.addedChangedOrRemoved.forEach((entity) => {
       const camera = getSceneRoot(entity);
       if (entitiesToCull.has(camera)) {
-        entitiesToCull.get(camera)?.add(entity);
+        entitiesToCull.get(camera).add(entity);
       }
     });
 
@@ -95,10 +110,15 @@ export class ViewportCulling extends System {
 
     this.bounds.removed.forEach((entity) => {
       const camera = getSceneRoot(entity);
+      if (camera === entity) {
+        return;
+      }
+
       if (!removed.has(camera)) {
         removed.set(camera, new Set());
       }
-      removed.get(camera)?.add(entity);
+
+      removed.get(camera).add(entity);
     });
 
     [removed, modified].forEach((map) => {
@@ -107,9 +127,14 @@ export class ViewportCulling extends System {
 
         entities.forEach((entity) => {
           entitiesToCull.get(camera)?.add(entity);
-
           rBush.remove(
-            this.#entityRBushAABBMap.get(entity),
+            {
+              minX: 0,
+              minY: 0,
+              maxX: 0,
+              maxY: 0,
+              entity,
+            },
             (a, b) => a.entity === b.entity,
           );
         });
@@ -130,8 +155,6 @@ export class ViewportCulling extends System {
           entity,
         };
         bulk.push(rBushNodeAABB);
-
-        this.#entityRBushAABBMap.set(entity, rBushNodeAABB);
       });
       rBush.load(bulk);
     });
@@ -150,28 +173,22 @@ export class ViewportCulling extends System {
         .map((bush) => bush.entity);
 
       entitiesToCull.get(camera)?.forEach((entity) => {
-        if (!entity.has(Visibility)) {
+        if (!entity.has(ComputedVisibility)) {
           return;
         }
 
-        const visibility = entity.read(Visibility);
+        const { visible } = entity.read(ComputedVisibility);
 
         if (!entity.has(Renderable)) {
           return;
         }
 
         // TODO: inherit visibility from parent
-        if (
-          visibility.value === 'visible' &&
-          entitiesInViewport.includes(entity)
-        ) {
+        if (visible && entitiesInViewport.includes(entity)) {
           if (entity.has(Culled)) {
             entity.remove(Culled);
           }
-        } else if (
-          visibility.value === 'hidden' ||
-          !entitiesInViewport.includes(entity)
-        ) {
+        } else if (!visible || !entitiesInViewport.includes(entity)) {
           if (!entity.has(Culled)) {
             entity.add(Culled);
           }

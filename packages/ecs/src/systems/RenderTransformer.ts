@@ -61,8 +61,6 @@ export class RenderTransformer extends System {
 
   execute() {
     this.selected.added.forEach((entity) => {
-      console.log('add', entity);
-
       const { geometryBounds } = entity.read(ComputedBounds);
       const { minX, minY, maxX, maxY } = geometryBounds;
       const width = maxX - minX;
@@ -113,8 +111,6 @@ export class RenderTransformer extends System {
     });
 
     this.selected.removed.forEach((entity) => {
-      console.log('remove', entity);
-
       if (this.#transformers.has(entity)) {
         const transformer = this.#transformers.get(entity);
 

@@ -189,9 +189,9 @@ export function entityToSerializedNodes(
   }
 
   // serialize visibility
-  attributes.visibility = entity.has(Visibility)
-    ? entity.read(Visibility).value
-    : 'visible';
+  if (entity.has(Visibility)) {
+    attributes.visibility = entity.read(Visibility).value;
+  }
 
   // serialize children
   const nodes: SerializedNode[] = [

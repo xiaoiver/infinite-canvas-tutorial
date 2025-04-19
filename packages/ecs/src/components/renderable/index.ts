@@ -14,3 +14,4 @@ export * from './Visibility';
 export * from './ToBeDeleted';
 export * from './SizeAttenuation';
 export * from './StrokeAttenuation';
+export * from './ComputedVisibility';

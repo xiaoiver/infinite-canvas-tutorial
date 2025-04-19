@@ -4,6 +4,7 @@ import { Camera, ComputedCamera, ComputedCameraControl } from '../components';
 import {
   CameraControl,
   ComputeCamera,
+  ComputeVisibility,
   EventWriter,
   PropagateTransforms,
   SetupDevice,
@@ -23,6 +24,7 @@ export const CameraPlugin: Plugin = () => {
         SetupDevice,
         SyncSimpleTransforms,
         PropagateTransforms,
+        ComputeVisibility,
       ),
   )(CameraControl);
   system((s) => s.afterWritersOf(Camera).after(CameraControl))(ComputeCamera);

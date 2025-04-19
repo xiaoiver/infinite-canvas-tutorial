@@ -22,6 +22,7 @@ import {
   CameraControl,
   Select,
   ExportSVG,
+  ComputeVisibility,
 } from '../systems';
 import {
   Circle,
@@ -53,6 +54,7 @@ import {
   ToBeDeleted,
   SizeAttenuation,
   StrokeAttenuation,
+  ComputedVisibility,
 } from '../components';
 
 export const RendererPlugin: Plugin = () => {
@@ -65,6 +67,7 @@ export const RendererPlugin: Plugin = () => {
   component(Wireframe);
   component(GlobalRenderOrder);
   component(Visibility);
+  component(ComputedVisibility);
   component(ToBeDeleted);
   component(SizeAttenuation);
   component(StrokeAttenuation);
@@ -102,6 +105,7 @@ export const RendererPlugin: Plugin = () => {
   system(PreUpdate)(ComputeRough);
   system(PreUpdate)(ComputeTextMetrics);
   system(PostUpdate)(ComputeBounds);
+  system((s) => s.after(PropagateTransforms))(ComputeVisibility);
   system((s) => s.after(PropagateTransforms))(ComputeBounds);
   system(PostUpdate)(Sort);
   system(PostUpdate)(SetCursor);
@@ -113,6 +117,7 @@ export const RendererPlugin: Plugin = () => {
       CameraControl,
       Select,
       ComputeCamera,
+      ComputeVisibility,
       MeshPipeline,
       ExportSVG,
     ),
