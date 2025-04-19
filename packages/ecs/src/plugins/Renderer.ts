@@ -52,6 +52,7 @@ import {
   Name,
   ToBeDeleted,
   SizeAttenuation,
+  StrokeAttenuation,
 } from '../components';
 
 export const RendererPlugin: Plugin = () => {
@@ -66,6 +67,8 @@ export const RendererPlugin: Plugin = () => {
   component(Visibility);
   component(ToBeDeleted);
   component(SizeAttenuation);
+  component(StrokeAttenuation);
+
   /**
    * Style
    */

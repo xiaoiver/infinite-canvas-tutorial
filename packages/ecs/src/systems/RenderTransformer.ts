@@ -11,6 +11,7 @@ import {
   Selected,
   SizeAttenuation,
   Stroke,
+  StrokeAttenuation,
   ToBeDeleted,
   Transform,
   UI,
@@ -52,6 +53,7 @@ export class RenderTransformer extends System {
             Circle,
             ZIndex,
             SizeAttenuation,
+            StrokeAttenuation,
             ToBeDeleted,
           ).write,
     );
@@ -84,7 +86,7 @@ export class RenderTransformer extends System {
             height,
           }),
           new ZIndex(Infinity),
-          // new SizeAttenuation(),
+          new StrokeAttenuation(),
         )
         .id()
         .hold();

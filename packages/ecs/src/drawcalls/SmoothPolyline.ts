@@ -32,6 +32,7 @@ import {
   Rect,
   Rough,
   Stroke,
+  StrokeAttenuation,
 } from '../components';
 
 const epsilon = 1e-4;
@@ -423,7 +424,6 @@ export class SmoothPolyline extends Drawcall {
   }
 
   private generateBuffer(shape: Entity): [number[], Record<string, unknown>] {
-    const sizeAttenuation = 0;
     const globalRenderOrder = shape.has(GlobalRenderOrder)
       ? shape.read(GlobalRenderOrder).value
       : 0;
@@ -468,7 +468,7 @@ export class SmoothPolyline extends Drawcall {
       opacity,
       fillOpacity,
       strokeOpacity,
-      sizeAttenuation ? 1 : 0,
+      shape.has(StrokeAttenuation) ? 1 : 0,
     ];
     const u_StrokeDash = [
       (dasharray && dasharray[0]) || 0, // DASH

@@ -39,6 +39,7 @@ import {
   Opacity,
   Rect,
   SizeAttenuation,
+  StrokeAttenuation,
   Stroke,
 } from '../components';
 
@@ -546,9 +547,12 @@ export class SDF extends Drawcall {
       strokeAlignmentMap[alignment],
     ];
 
+    const LEFT_SHIFT22 = 4194304.0;
     const LEFT_SHIFT23 = 8388608.0;
     const compressed =
-      (shape.has(SizeAttenuation) ? 1 : 0) * LEFT_SHIFT23 + type;
+      (shape.has(SizeAttenuation) ? 1 : 0) * LEFT_SHIFT23 +
+      (shape.has(StrokeAttenuation) ? 1 : 0) * LEFT_SHIFT22 +
+      type;
     const u_Opacity = [opacity, fillOpacity, strokeOpacity, compressed];
     const u_InnerShadowColor = [isr / 255, isg / 255, isb / 255, iso];
     const u_InnerShadow = [offsetX, offsetY, blurRadius, 0];

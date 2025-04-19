@@ -122,9 +122,9 @@ void main() {
   float strokeWidth = u_ZIndexStrokeWidth.y;
   float strokeMiterlimit = u_ZIndexStrokeWidth.z;
   float strokeAlignment = u_ZIndexStrokeWidth.w;
-  bool sizeAttenuation = u_Opacity.w > 0.5;
+  bool strokeAttenuation = u_Opacity.w > 0.5;
 
-  if (sizeAttenuation) {
+  if (strokeAttenuation) {
     strokeWidth /= u_ZoomScale;
   }
 
