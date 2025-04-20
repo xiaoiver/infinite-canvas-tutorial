@@ -13,6 +13,9 @@ export class Deleter extends System {
 
   execute() {
     for (const entity of this.entities.current) {
+      /**
+       * Execute before node removed from scenegraph.
+       */
       this.viewportCulling.remove(entity);
 
       entity.delete();

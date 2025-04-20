@@ -11,6 +11,7 @@ import {
   AppState,
 } from '../context';
 import { API } from '../API';
+import { Event } from '../event';
 @customElement('ic-spectrum-layers-panel')
 export class LayersPanel extends LitElement {
   static styles = css`
@@ -56,6 +57,18 @@ export class LayersPanel extends LitElement {
 
   @consume({ context: apiContext, subscribe: true })
   api: API;
+
+  connectedCallback(): void {
+    super.connectedCallback();
+
+    this.api
+      .getElement()
+      .addEventListener(Event.SELECTED_NODES_CHANGED, (e) => {
+        const { selected, preserveSelection } = e.detail;
+
+        // console.log('selected', selected);
+      });
+  }
 
   private handleClose() {
     this.api.setTaskbars(
