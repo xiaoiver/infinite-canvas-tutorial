@@ -26,7 +26,6 @@ import {
   StoreIncrementEvent,
   CaptureUpdateAction,
   CaptureUpdateActionType,
-  Snapshot,
 } from './history';
 import { AppState, Task } from './context';
 import { arrayToMap, mapToArray } from './utils';
@@ -59,7 +58,10 @@ export class API {
   getNodes: () => SerializedNode[];
   setNodes: (nodes: SerializedNode[]) => void;
 
-  onchange: (snapshot: Snapshot) => void;
+  onchange: (snapshot: {
+    appState: AppState;
+    elements: SerializedNode[];
+  }) => void;
 
   constructor(
     private readonly element: LitElement,
@@ -68,7 +70,9 @@ export class API {
     this.#store.onStoreIncrementEmitter.on(StoreIncrementEvent, (event) => {
       this.#history.record(event.elementsChange, event.appStateChange);
 
-      this.onchange?.(this.#store.snapshot);
+      const { elements, appState } = this.#store.snapshot;
+
+      this.onchange?.({ appState, elements: mapToArray(elements) });
     });
   }
 

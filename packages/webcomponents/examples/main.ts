@@ -25,6 +25,11 @@ const nodes = svgElementsToSerializedNodes(
 const canvas = document.querySelector<HTMLElement>('#canvas1')!;
 canvas.addEventListener(Event.READY, (e) => {
   const api = e.detail;
+
+  api.onchange = (e) => {
+    console.log(e);
+  };
+
   api.setPen(Pen.SELECT);
   api.setTaskbars([Task.SHOW_LAYERS_PANEL, Task.SHOW_PROPERTIES_PANEL]);
 

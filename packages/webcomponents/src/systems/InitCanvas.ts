@@ -9,6 +9,7 @@ import {
   FillGradient,
   FillSolid,
   Name,
+  Opacity,
   Parent,
   Path,
   Polyline,
@@ -54,6 +55,7 @@ export class InitCanvasSystem extends System {
           Path,
           Text,
           Selected,
+          Opacity,
         ).write,
     );
   }
