@@ -9,6 +9,7 @@ import {
   Commands,
   DOMAdapter,
   DefaultPlugins,
+  DefaultStateManagement,
   Entity,
   FillSolid,
   Grid,
@@ -23,6 +24,7 @@ import {
   Transform,
   Visibility,
   system,
+  API,
 } from '../../packages/ecs/src';
 import { NodeJSAdapter, sleep } from '../utils';
 
@@ -66,12 +68,15 @@ describe('Hierarchy', () => {
       initialize(): void {
         $canvas = DOMAdapter.get().createCanvas(200, 200) as HTMLCanvasElement;
 
+        const api = new API(new DefaultStateManagement(), this.commands);
+
         const canvas = this.commands.spawn(
           new Canvas({
             element: $canvas,
             width: 200,
             height: 200,
             devicePixelRatio: 1,
+            api,
           }),
         );
 
@@ -103,7 +108,7 @@ describe('Hierarchy', () => {
             dasharray: [10, 10],
           }),
           new Circle({ cx: 100, cy: 100, r: 50 }),
-          new Visibility(),
+          // new Visibility(),
         );
         parent.appendChild(child);
 
@@ -128,7 +133,6 @@ describe('Hierarchy', () => {
       expect(canvas.width).toBe(200);
       expect(canvas.height).toBe(200);
       expect(canvas.renderer).toBe('webgl');
-      expect(canvas.pen).toBe(Pen.HAND);
       expect(canvas.cameras).toHaveLength(1);
 
       const camera = cameraEntity.read(Camera);

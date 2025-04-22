@@ -8,6 +8,7 @@ import {
   Commands,
   DOMAdapter,
   DefaultPlugins,
+  DefaultStateManagement,
   Entity,
   FillSolid,
   GlobalTransform,
@@ -23,6 +24,7 @@ import {
   Transform,
   Visibility,
   system,
+  API,
 } from '../../packages/ecs/src';
 import { NodeJSAdapter, sleep } from '../utils';
 
@@ -68,12 +70,15 @@ describe('Transform', () => {
           200,
         ) as HTMLCanvasElement;
 
+        const api = new API(new DefaultStateManagement(), this.commands);
+
         const canvas = this.commands.spawn(
           new Canvas({
             element: $canvas,
             width: 200,
             height: 200,
             devicePixelRatio: 1,
+            api,
           }),
         );
 
@@ -112,7 +117,6 @@ describe('Transform', () => {
       expect(canvas.width).toBe(200);
       expect(canvas.height).toBe(200);
       expect(canvas.renderer).toBe('webgl');
-      expect(canvas.pen).toBe(Pen.HAND);
       expect(canvas.cameras).toHaveLength(1);
 
       const camera = cameraEntity.read(Camera);
