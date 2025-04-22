@@ -1,11 +1,7 @@
 import { Entity, field, Type } from '@lastolivegames/becsy';
 import { Camera } from './camera/Camera';
 import { InputPoint } from './Input';
-import {
-  RasterScreenshotRequest,
-  Screenshot,
-  VectorScreenshotRequest,
-} from './Screenshot';
+import { API } from '../API';
 
 export enum Pen {
   SELECT = 'select',
@@ -49,15 +45,6 @@ export class Canvas {
   @field({ type: Type.float32, default: 1 }) declare devicePixelRatio: number;
 
   /**
-   * Default to `Pen.HAND`.
-   */
-  @field({
-    type: Type.staticString([Pen.SELECT, Pen.HAND, Pen.DRAW_RECT]),
-    default: Pen.HAND,
-  })
-  declare pen: Pen;
-
-  /**
    * TODO: multiple {@link Camera}s
    * @example
    *
@@ -68,13 +55,7 @@ export class Canvas {
 
   @field.backrefs(InputPoint, 'canvas') declare inputPoints: Entity[];
 
-  @field.backrefs(Screenshot, 'canvas') declare screenshots: Entity[];
-
-  @field.backrefs(VectorScreenshotRequest, 'canvas')
-  declare vectorScreenshotRequests: Entity[];
-
-  @field.backrefs(RasterScreenshotRequest, 'canvas')
-  declare rasterScreenshotRequests: Entity[];
+  @field.object declare api: API;
 
   constructor(canvas?: Partial<Canvas>) {
     Object.assign(this, canvas);

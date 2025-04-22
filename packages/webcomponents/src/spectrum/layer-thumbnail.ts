@@ -12,10 +12,10 @@ import {
   isPattern,
   createSVGElement,
   PolylineSerializedNode,
+  API,
 } from '@infinite-canvas-tutorial/ecs';
-import { apiContext } from '../context';
-import { API } from '../API';
 import { consume } from '@lit/context';
+import { apiContext } from '../context';
 
 const THUMBNAIL_SIZE = 52;
 // const THUMBNAIL_PADDING = 4;

@@ -3,9 +3,8 @@ import { consume } from '@lit/context';
 import { customElement, property, state } from 'lit/decorators.js';
 import { when } from 'lit/directives/when.js';
 import { query } from 'lit/decorators/query.js';
-import { SerializedNode } from '@infinite-canvas-tutorial/ecs';
+import { SerializedNode, API } from '@infinite-canvas-tutorial/ecs';
 import { apiContext } from '../context';
-import { API } from '../API';
 
 @customElement('ic-spectrum-layer-name')
 export class LayerName extends LitElement {

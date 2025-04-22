@@ -1,15 +1,13 @@
 import { html, css, LitElement } from 'lit';
 import { consume } from '@lit/context';
 import { customElement } from 'lit/decorators.js';
-import { SerializedNode } from '@infinite-canvas-tutorial/ecs';
 import {
-  apiContext,
-  appStateContext,
-  nodesContext,
+  SerializedNode,
   Task,
   AppState,
-} from '../context';
-import { API } from '../API';
+  API,
+} from '@infinite-canvas-tutorial/ecs';
+import { apiContext, appStateContext, nodesContext } from '../context';
 @customElement('ic-spectrum-properties-panel')
 export class PropertiesPanel extends LitElement {
   static styles = css`

@@ -36,11 +36,6 @@ export class RasterScreenshotRequest {
   @field.boolean declare grid: boolean;
 
   /**
-   * Whether to take a screenshot.
-   */
-  @field.boolean declare enabled: boolean;
-
-  /**
    * Canvas target.
    */
   @field.ref declare canvas: Entity;
@@ -51,11 +46,6 @@ export class VectorScreenshotRequest {
    * Whether to draw grid on the image.
    */
   @field.boolean declare grid: boolean;
-
-  /**
-   * Whether to take a screenshot.
-   */
-  @field.boolean declare enabled: boolean;
 
   /**
    * Canvas target.

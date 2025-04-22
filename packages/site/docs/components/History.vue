@@ -2,6 +2,7 @@
 import {
   App,
   Pen,
+  Task,
   DefaultPlugins,
 } from '@infinite-canvas-tutorial/ecs';
 import { ref, onMounted, onUnmounted } from 'vue';
@@ -32,7 +33,7 @@ onMounted(async () => {
     };
 
     api.setPen(Pen.SELECT);
-    api.setTaskbars(['show-layers-panel']);
+    api.setTaskbars([Task.SHOW_LAYERS_PANEL]);
 
     api.updateNodes([node]);
     api.record();

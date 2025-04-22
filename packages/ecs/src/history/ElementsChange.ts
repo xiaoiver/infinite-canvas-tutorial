@@ -2,31 +2,24 @@
  * Borrow from https://github.com/excalidraw/excalidraw/blob/master/packages/excalidraw/change.ts#L399
  */
 
-import {
-  SerializedNode,
-  randomInteger,
-  Name,
-  Visibility,
-  FillSolid,
-  Stroke,
-  Entity,
-  Text,
-  Rect,
-  isGradient,
-  FillGradient,
-  Circle,
-  Ellipse,
-} from '@infinite-canvas-tutorial/ecs';
 import { isNil } from '@antv/util';
 import { Change } from './Change';
 import { Delta } from './Delta';
 import { newElementWith } from './Snapshot';
-import {
-  createOrSetComponent,
-  getUpdatedTimestamp,
-  removeComponent,
-} from '../utils';
+import { isGradient, randomInteger, SerializedNode } from '../utils';
 import { API } from '../API';
+import {
+  Name,
+  FillSolid,
+  FillGradient,
+  Stroke,
+  Visibility,
+  Circle,
+  Ellipse,
+  Rect,
+  Text,
+} from '../components';
+import { ComponentType, Entity } from '@lastolivegames/becsy';
 
 export type SceneElementsMap = Map<SerializedNode['id'], SerializedNode>;
 
@@ -40,6 +33,28 @@ export type ElementUpdate<TElement extends SerializedNode> = Omit<
 export type Mutable<T> = {
   -readonly [P in keyof T]: T[P];
 };
+
+export const getUpdatedTimestamp = () => Date.now();
+
+export function safeAddComponent<T>(
+  entity: Entity,
+  componentCtor: ComponentType<T>,
+  component?: Partial<T>,
+) {
+  if (!entity.has(componentCtor)) {
+    entity.add(componentCtor);
+  }
+  Object.assign(entity.write(componentCtor), component);
+}
+
+export function safeRemoveComponent<T>(
+  entity: Entity,
+  componentCtor: ComponentType<T>,
+) {
+  if (entity.has(componentCtor)) {
+    entity.remove(componentCtor);
+  }
+}
 
 export class ElementsChange implements Change<SceneElementsMap> {
   static empty() {
@@ -532,27 +547,27 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
   }
   if (!isNil(fill)) {
     if (isGradient(fill)) {
-      removeComponent(entity, FillSolid);
-      createOrSetComponent(entity, FillGradient, { value: fill });
+      safeRemoveComponent(entity, FillSolid);
+      safeAddComponent(entity, FillGradient, { value: fill });
     } else {
-      removeComponent(entity, FillGradient);
-      createOrSetComponent(entity, FillSolid, { value: fill });
+      safeRemoveComponent(entity, FillGradient);
+      safeAddComponent(entity, FillSolid, { value: fill });
     }
   }
   if (!isNil(stroke)) {
-    createOrSetComponent(entity, Stroke, { color: stroke });
+    safeAddComponent(entity, Stroke, { color: stroke });
   }
   if (!isNil(strokeWidth)) {
-    createOrSetComponent(entity, Stroke, { width: strokeWidth });
+    safeAddComponent(entity, Stroke, { width: strokeWidth });
   }
   if (!isNil(strokeCap)) {
-    createOrSetComponent(entity, Stroke, { linecap: strokeCap });
+    safeAddComponent(entity, Stroke, { linecap: strokeCap });
   }
   if (!isNil(strokeJoin)) {
-    createOrSetComponent(entity, Stroke, { linejoin: strokeJoin });
+    safeAddComponent(entity, Stroke, { linejoin: strokeJoin });
   }
   if (!isNil(strokeAlignment)) {
-    createOrSetComponent(entity, Stroke, { alignment: strokeAlignment });
+    safeAddComponent(entity, Stroke, { alignment: strokeAlignment });
   }
   if (!isNil(fontSize)) {
     entity.write(Text).fontSize = fontSize;

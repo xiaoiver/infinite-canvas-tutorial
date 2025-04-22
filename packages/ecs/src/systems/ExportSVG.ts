@@ -40,7 +40,9 @@ interface SVGOptions {
 }
 
 export class ExportSVG extends System {
-  private readonly canvases = this.query((q) => q.current.with(Canvas).read);
+  private readonly vectorScreenshotRequests = this.query((q) =>
+    q.added.with(VectorScreenshotRequest),
+  );
 
   @co private *setScreenshotTrigger(
     canvas: Entity,
@@ -52,9 +54,11 @@ export class ExportSVG extends System {
 
     const screenshot = canvas.write(Screenshot);
 
-    Object.assign(screenshot, { dataURL });
+    Object.assign(screenshot, { dataURL, canvas });
     yield;
-    Object.assign(screenshot, { dataURL: '' });
+
+    canvas.remove(Screenshot);
+    canvas.remove(VectorScreenshotRequest);
   }
 
   constructor() {
@@ -63,6 +67,7 @@ export class ExportSVG extends System {
       (q) =>
         q
           .using(
+            Canvas,
             Theme,
             Grid,
             Camera,
@@ -87,25 +92,17 @@ export class ExportSVG extends System {
             InnerShadow,
             Visibility,
           )
-          .read.and.using(VectorScreenshotRequest, Screenshot).write,
+          .read.and.using(Screenshot, VectorScreenshotRequest).write,
     );
   }
 
   execute(): void {
-    this.canvases.current.forEach((canvas) => {
-      if (!canvas.has(VectorScreenshotRequest)) {
-        return;
-      }
-
-      const vectorScreenshotRequest = canvas.read(VectorScreenshotRequest);
-      if (!vectorScreenshotRequest.enabled) {
-        return;
-      }
-
-      this.setScreenshotTrigger(
-        canvas,
-        this.toSVGDataURL(canvas, vectorScreenshotRequest),
+    this.vectorScreenshotRequests.added.forEach((vectorScreenshotRequest) => {
+      const { canvas, grid } = vectorScreenshotRequest.read(
+        VectorScreenshotRequest,
       );
+
+      this.setScreenshotTrigger(canvas, this.toSVGDataURL(canvas, { grid }));
     });
   }
 

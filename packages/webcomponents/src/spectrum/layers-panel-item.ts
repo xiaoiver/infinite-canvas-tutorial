@@ -2,13 +2,17 @@ import { html, css, LitElement } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
 import { when } from 'lit/directives/when.js';
 import { consume } from '@lit/context';
-import { SerializedNode } from '@infinite-canvas-tutorial/ecs';
+import {
+  SerializedNode,
+  AppState,
+  Task,
+  API,
+} from '@infinite-canvas-tutorial/ecs';
 import {
   OverlayOpenCloseDetail,
   trigger,
 } from '@spectrum-web-components/overlay';
-import { API } from '../API';
-import { apiContext, AppState, appStateContext, Task } from '../context';
+import { apiContext, appStateContext } from '../context';
 
 @customElement('ic-spectrum-layers-panel-item')
 export class LayersPanelItem extends LitElement {

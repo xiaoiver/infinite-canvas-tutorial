@@ -22,12 +22,12 @@ import {
   Transform,
   Visibility,
 } from '@infinite-canvas-tutorial/ecs';
-import { Container } from '../components';
 import { Event } from '../event';
-import { API, pendingCanvases } from '../API';
+import { ExtendedAPI, pendingCanvases } from '../API';
+import { LitStateManagement } from '../context';
 import { InfiniteCanvas } from '../spectrum/infinite-canvas';
 
-export class InitCanvasSystem extends System {
+export class InitCanvas extends System {
   private readonly commands = new Commands(this);
 
   constructor() {
@@ -35,7 +35,6 @@ export class InitCanvasSystem extends System {
     this.query(
       (q) =>
         q.using(
-          Container,
           Canvas,
           Camera,
           Name,
@@ -63,20 +62,18 @@ export class InitCanvasSystem extends System {
   execute() {
     if (pendingCanvases.length) {
       pendingCanvases.forEach(({ container, canvas, camera }) => {
-        const api = new API(container, this.commands);
-        (container as InfiniteCanvas).apiProvider.setValue(api);
+        const { appStateProvider, nodesProvider, apiProvider } =
+          container as InfiniteCanvas;
 
-        api.createCanvas(canvas);
+        const stateManagement = new LitStateManagement(
+          appStateProvider,
+          nodesProvider,
+        );
+        const api = new ExtendedAPI(stateManagement, this.commands, container);
+        apiProvider.setValue(api);
+
+        api.createCanvas({ ...canvas, api });
         api.createCamera(camera);
-
-        api.getAppState = (container as InfiniteCanvas).getAppState.bind(
-          container,
-        );
-        api.setAppState = (container as InfiniteCanvas).setAppState.bind(
-          container,
-        );
-        api.getNodes = (container as InfiniteCanvas).getNodes.bind(container);
-        api.setNodes = (container as InfiniteCanvas).setNodes.bind(container);
 
         this.commands.execute();
 

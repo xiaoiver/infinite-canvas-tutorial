@@ -7,9 +7,9 @@ import {
   Transform,
 } from '@infinite-canvas-tutorial/ecs';
 import { Event } from '../event';
-import { Container } from '../components';
+import { ExtendedAPI } from '../API';
 
-export class ZoomLevelSystem extends System {
+export class ZoomLevel extends System {
   #zoomEvent: CustomEvent;
 
   private readonly cameraControl = this.attach(CameraControl);
@@ -22,9 +22,7 @@ export class ZoomLevelSystem extends System {
 
   constructor() {
     super();
-    this.query(
-      (q) => q.using(Camera, Transform).write.and.using(Container).read,
-    );
+    this.query((q) => q.using(Camera, Transform).write);
   }
 
   initialize() {
@@ -41,9 +39,9 @@ export class ZoomLevelSystem extends System {
     this.canvases.added.forEach((canvas) => {
       const { cameras, width, height } = canvas.read(Canvas);
 
-      const container = canvas.read(Container);
+      const api = canvas.read(Canvas).api as ExtendedAPI;
 
-      container.element.addEventListener(Event.ZOOM_TO, (e) => {
+      api.element.addEventListener(Event.ZOOM_TO, (e) => {
         const { zoom } = e.detail;
 
         cameras.forEach((camera) => {
@@ -67,13 +65,13 @@ export class ZoomLevelSystem extends System {
     this.cameras.changed.forEach((camera) => {
       const { canvas } = camera.read(Camera);
 
-      const container = canvas.read(Container);
+      const api = canvas.read(Canvas).api as ExtendedAPI;
 
       const { zoom } = camera.read(ComputedCamera);
 
       if (zoom !== this.#zoomEvent.detail.zoom) {
         this.#zoomEvent.detail.zoom = zoom;
-        container.element.dispatchEvent(this.#zoomEvent);
+        api.element.dispatchEvent(this.#zoomEvent);
       }
     });
   }

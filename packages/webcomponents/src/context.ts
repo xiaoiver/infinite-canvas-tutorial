@@ -1,57 +1,50 @@
-import { createContext } from '@lit/context';
+import { ContextProvider, createContext } from '@lit/context';
 import {
   SerializedNode,
-  Pen,
-  Theme,
-  ThemeMode,
-  CheckboardStyle,
+  AppState,
+  DefaultStateManagement,
 } from '@infinite-canvas-tutorial/ecs';
-import { API } from './API';
-
-export enum Task {
-  SHOW_LAYERS_PANEL = 'show-layers-panel',
-  SHOW_PROPERTIES_PANEL = 'show-properties-panel',
-}
-
-/**
- * Prefer flat objects.
- * @see https://docs.excalidraw.com/docs/@excalidraw/excalidraw/api/props/initialdata
- */
-export interface AppState {
-  theme: Theme;
-  checkboardStyle: CheckboardStyle;
-  cameraZoom: number;
-  penbarAll: Pen[];
-  penbarSelected: Pen[];
-  taskbarAll: Task[];
-  taskbarSelected: Task[];
-  layersSelected: SerializedNode['id'][];
-  propertiesOpened: SerializedNode['id'][];
-}
+import { ExtendedAPI } from './API';
 
 export const appStateContext = createContext<AppState>(Symbol('appAtate'));
-
 export const nodesContext = createContext<SerializedNode[]>(Symbol('nodes'));
+export const apiContext = createContext<ExtendedAPI>(Symbol('api'));
 
-export const apiContext = createContext<API>(Symbol('api'));
+/**
+ * Delegate the methods to the LitElement's context which will trigger re-rendering.
+ */
+export class LitStateManagement extends DefaultStateManagement {
+  constructor(
+    private readonly appStateProvider: ContextProvider<{
+      __context__: AppState;
+    }>,
+    private readonly nodesProvider: ContextProvider<{
+      __context__: SerializedNode[];
+    }>,
+  ) {
+    super();
+  }
 
-export const getDefaultAppState = () => {
-  return {
-    // TODO: Flatten theme
-    theme: {
-      mode: ThemeMode.LIGHT,
-      colors: {
-        [ThemeMode.LIGHT]: {},
-        [ThemeMode.DARK]: {},
-      },
-    },
-    checkboardStyle: CheckboardStyle.GRID,
-    cameraZoom: 1,
-    penbarAll: [Pen.HAND, Pen.SELECT, Pen.DRAW_RECT],
-    penbarSelected: [Pen.HAND],
-    taskbarAll: [Task.SHOW_LAYERS_PANEL, Task.SHOW_PROPERTIES_PANEL],
-    taskbarSelected: [],
-    layersSelected: [],
-    propertiesOpened: [],
-  };
-};
+  getAppState() {
+    return this.appStateProvider.value;
+  }
+
+  setAppState(appState: AppState) {
+    super.setAppState(appState);
+    this.appStateProvider.value = appState;
+  }
+
+  getNodes() {
+    return this.nodesProvider.value || [];
+  }
+
+  setNodes(nodes: SerializedNode[]) {
+    super.setNodes(nodes);
+    this.nodesProvider.value = nodes;
+  }
+
+  onChange(snapshot: { appState: AppState; nodes: SerializedNode[] }) {
+    super.onChange(snapshot);
+    // console.log('onChange', snapshot);
+  }
+}

@@ -2,9 +2,8 @@ import { html, css, LitElement } from 'lit';
 import { customElement } from 'lit/decorators.js';
 import { map } from 'lit/directives/map.js';
 import { consume } from '@lit/context';
-import { Pen } from '@infinite-canvas-tutorial/ecs';
-import { apiContext, AppState, appStateContext } from '../context';
-import { API } from '../API';
+import { Pen, AppState, API } from '@infinite-canvas-tutorial/ecs';
+import { apiContext, appStateContext } from '../context';
 
 const PenMap = {
   [Pen.HAND]: {

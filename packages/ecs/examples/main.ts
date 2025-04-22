@@ -121,129 +121,129 @@ class StartUpSystem extends System {
       }),
       new Wireframe(true),
       new Circle({ cx: 0, cy: 0, r: 50 }),
-      new Visibility(),
+      // new Visibility(),
     );
     parent.appendChild(child);
 
-    const grandchild = this.commands.spawn(
-      new Transform(),
-      new Renderable(),
-      new FillSolid('blue'),
-      new DropShadow({
-        color: 'rgba(0, 0, 0, 0.5)',
-        blurRadius: 10,
-        offsetX: 10,
-        offsetY: 10,
-      }),
-      new Rect({ x: 0, y: 0, width: 100, height: 100, cornerRadius: 10 }),
-      new Visibility(),
-    );
-    child.appendChild(grandchild);
+    // const grandchild = this.commands.spawn(
+    //   new Transform(),
+    //   new Renderable(),
+    //   new FillSolid('blue'),
+    //   new DropShadow({
+    //     color: 'rgba(0, 0, 0, 0.5)',
+    //     blurRadius: 10,
+    //     offsetX: 10,
+    //     offsetY: 10,
+    //   }),
+    //   new Rect({ x: 0, y: 0, width: 100, height: 100, cornerRadius: 10 }),
+    //   new Visibility(),
+    // );
+    // child.appendChild(grandchild);
 
-    const polyline = this.commands.spawn(
-      new Transform({
-        translation: { x: 200, y: 200 },
-      }),
-      new Renderable(),
-      new Stroke({
-        color: 'black',
-        width: 10,
-        alignment: 'center',
-        dasharray: [10, 10],
-      }),
-      new Polyline({
-        points: [
-          [0, 0],
-          [100, 100],
-          [200, 0],
-        ],
-      }),
-      new Visibility(),
-    );
-    child.appendChild(polyline);
+    // const polyline = this.commands.spawn(
+    //   new Transform({
+    //     translation: { x: 200, y: 200 },
+    //   }),
+    //   new Renderable(),
+    //   new Stroke({
+    //     color: 'black',
+    //     width: 10,
+    //     alignment: 'center',
+    //     dasharray: [10, 10],
+    //   }),
+    //   new Polyline({
+    //     points: [
+    //       [0, 0],
+    //       [100, 100],
+    //       [200, 0],
+    //     ],
+    //   }),
+    //   new Visibility(),
+    // );
+    // child.appendChild(polyline);
 
-    const path = this.commands.spawn(
-      new Transform({
-        translation: { x: 200, y: 100 },
-      }),
-      new Renderable(),
-      new Stroke({
-        color: 'black',
-        width: 10,
-        alignment: 'center',
-        dasharray: [10, 10],
-      }),
-      new FillSolid('yellow'),
-      new Path({
-        d: 'M 0 0 L 100 100 L 200 0 Z',
-      }),
-      new Visibility(),
-    );
-    child.appendChild(path);
+    // const path = this.commands.spawn(
+    //   new Transform({
+    //     translation: { x: 200, y: 100 },
+    //   }),
+    //   new Renderable(),
+    //   new Stroke({
+    //     color: 'black',
+    //     width: 10,
+    //     alignment: 'center',
+    //     dasharray: [10, 10],
+    //   }),
+    //   new FillSolid('yellow'),
+    //   new Path({
+    //     d: 'M 0 0 L 100 100 L 200 0 Z',
+    //   }),
+    //   new Visibility(),
+    // );
+    // child.appendChild(path);
 
-    const rough = this.commands.spawn(
-      new Transform({
-        translation: { x: 200, y: -50 },
-      }),
-      new Renderable(),
-      new FillSolid('blue'),
-      new DropShadow({
-        color: 'rgba(0, 0, 0, 0.5)',
-        blurRadius: 10,
-        offsetX: 10,
-        offsetY: 10,
-      }),
-      new Stroke({
-        color: 'black',
-        width: 10,
-      }),
-      new Rough(),
-      new Rect({ x: 0, y: 0, width: 100, height: 100, cornerRadius: 10 }),
-      new Visibility(),
-    );
-    child.appendChild(rough);
+    // const rough = this.commands.spawn(
+    //   new Transform({
+    //     translation: { x: 200, y: -50 },
+    //   }),
+    //   new Renderable(),
+    //   new FillSolid('blue'),
+    //   new DropShadow({
+    //     color: 'rgba(0, 0, 0, 0.5)',
+    //     blurRadius: 10,
+    //     offsetX: 10,
+    //     offsetY: 10,
+    //   }),
+    //   new Stroke({
+    //     color: 'black',
+    //     width: 10,
+    //   }),
+    //   new Rough(),
+    //   new Rect({ x: 0, y: 0, width: 100, height: 100, cornerRadius: 10 }),
+    //   new Visibility(),
+    // );
+    // child.appendChild(rough);
 
-    const roughCircle = this.commands.spawn(
-      new Transform(),
-      new Renderable(),
-      new FillSolid('green'),
-      new Stroke({
-        color: 'black',
-        width: 10,
-      }),
-      new Rough(),
-      new Circle({ cx: 100, cy: 200, r: 50 }),
-      new Visibility(),
-    );
-    parent.appendChild(roughCircle);
+    // const roughCircle = this.commands.spawn(
+    //   new Transform(),
+    //   new Renderable(),
+    //   new FillSolid('green'),
+    //   new Stroke({
+    //     color: 'black',
+    //     width: 10,
+    //   }),
+    //   new Rough(),
+    //   new Circle({ cx: 100, cy: 200, r: 50 }),
+    //   new Visibility(),
+    // );
+    // parent.appendChild(roughCircle);
 
-    const text = this.commands.spawn(
-      new Transform(),
-      new Renderable(),
-      new FillSolid('black'),
-      new Text({
-        x: 100,
-        y: 300,
-        content: 'Hello, world!',
-        fontSize: 24,
-        fontFamily: 'Arial',
-      }),
-      new Visibility(),
-    );
-    parent.appendChild(text);
+    // const text = this.commands.spawn(
+    //   new Transform(),
+    //   new Renderable(),
+    //   new FillSolid('black'),
+    //   new Text({
+    //     x: 100,
+    //     y: 300,
+    //     content: 'Hello, world!',
+    //     fontSize: 24,
+    //     fontFamily: 'Arial',
+    //   }),
+    //   new Visibility(),
+    // );
+    // parent.appendChild(text);
 
     canvasEntity = canvas.id().hold();
     cameraEntity = camera.id().hold();
     parentEntity = parent.id().hold();
     childEntity = child.id().hold();
-    grandchildEntity = grandchild.id().hold();
-    polylineEntity = polyline.id().hold();
+    // grandchildEntity = grandchild.id().hold();
+    // polylineEntity = polyline.id().hold();
 
     this.commands.execute();
 
-    Object.assign(parentEntity.write(Transform), {
-      translation: { x: 100, y: 100 },
-    });
+    // Object.assign(parentEntity.write(Transform), {
+    //   translation: { x: 100, y: 100 },
+    // });
     // childEntity.write(Transform).scale.x = 1;
     // grandchildEntity.write(Transform).scale.x = 1;
 

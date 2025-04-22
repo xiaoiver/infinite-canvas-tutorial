@@ -7,9 +7,11 @@ import {
   Pen,
   DefaultPlugins,
   SerializedNode,
+  API,
+  Task,
 } from '@infinite-canvas-tutorial/ecs';
 import { ref, onMounted, onUnmounted } from 'vue';
-import { API, Event, Task, UIPlugin } from '@infinite-canvas-tutorial/webcomponents';
+import { Event, UIPlugin } from '@infinite-canvas-tutorial/webcomponents';
 import { LoroDoc, LoroList, LoroMap, OpId, VersionVector } from "loro-crdt";
 import deepEqual from "deep-equal";
 
@@ -142,22 +144,22 @@ onMounted(async () => {
 
   onReady = (e) => {
     api = e.detail;
-    api.onchange = (snapshot) => {
-      const { appState } = snapshot;
+    // api.onchange = (snapshot) => {
+    //   const { appState } = snapshot;
 
-      const elements = Array.from(snapshot.elements.values());
+    //   const elements = Array.from(snapshot.elements.values());
 
-      const v = getVersion(elements);
+    //   const v = getVersion(elements);
 
-      // if (lastVersion === v) {
-      // local change, should detect and record the diff to loro doc
-      if (recordLocalOps(docElements, elements)) {
-        doc.commit();
-      }
-      // }
+    //   // if (lastVersion === v) {
+    //   // local change, should detect and record the diff to loro doc
+    //   if (recordLocalOps(docElements, elements)) {
+    //     doc.commit();
+    //   }
+    //   // }
 
-      // lastVersion = v;
-    }
+    //   // lastVersion = v;
+    // }
 
     const node = {
       type: 'rect',

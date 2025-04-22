@@ -3,9 +3,8 @@ import { customElement } from 'lit/decorators.js';
 import { map } from 'lit/directives/map.js';
 import { when } from 'lit/directives/when.js';
 import { consume } from '@lit/context';
-import { apiContext, AppState, appStateContext, Task } from '../context';
-import { API } from '../API';
-import { Pen } from '@infinite-canvas-tutorial/ecs';
+import { apiContext, appStateContext } from '../context';
+import { Pen, AppState, Task, API } from '@infinite-canvas-tutorial/ecs';
 
 const TaskMap = {
   [Task.SHOW_LAYERS_PANEL]: {

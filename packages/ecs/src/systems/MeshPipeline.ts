@@ -82,6 +82,10 @@ export class MeshPipeline extends System {
     (q) => q.addedChangedOrRemoved.with(Theme).trackWrites,
   );
 
+  private rasterScreenshotRequests = this.query(
+    (q) => q.addedChangedOrRemoved.with(RasterScreenshotRequest).trackWrites,
+  );
+
   private styles = this.query(
     (q) =>
       q.addedChangedOrRemoved.withAny(
@@ -170,9 +174,11 @@ export class MeshPipeline extends System {
 
     const screenshot = canvas.write(Screenshot);
 
-    Object.assign(screenshot, { dataURL });
+    Object.assign(screenshot, { dataURL, canvas });
     yield;
-    Object.assign(screenshot, { dataURL: '' });
+
+    canvas.remove(Screenshot);
+    canvas.remove(RasterScreenshotRequest);
   }
 
   private renderCamera(canvas: Entity, camera: Entity, sort = false) {
@@ -189,16 +195,20 @@ export class MeshPipeline extends System {
       texturePool,
     } = canvas.read(GPUResource);
 
-    const { enabled, type, encoderOptions, grid } = canvas.has(
-      RasterScreenshotRequest,
-    )
+    const request = canvas.has(RasterScreenshotRequest)
       ? canvas.read(RasterScreenshotRequest)
-      : { enabled: false, type: 'image/png', encoderOptions: 1, grid: false };
+      : null;
+
+    const { type, encoderOptions, grid } = request ?? {
+      type: 'image/png',
+      encoderOptions: 1,
+      grid: false,
+    };
 
     const { width, height } = swapChain.getCanvas();
     const onscreenTexture = swapChain.getOnscreenTexture();
 
-    const shouldRenderGrid = !enabled || grid;
+    const shouldRenderGrid = !request || grid;
 
     if (!this.gpuResources.get(camera)) {
       this.gpuResources.set(camera, {
@@ -261,7 +271,7 @@ export class MeshPipeline extends System {
     device.submitPass(renderPass);
     device.endFrame();
 
-    if (enabled) {
+    if (request) {
       const dataURL = (swapChain.getCanvas() as HTMLCanvasElement).toDataURL(
         type,
         encoderOptions,
@@ -307,9 +317,8 @@ export class MeshPipeline extends System {
     this.canvases.current.forEach((canvas) => {
       let toRender =
         this.grids.addedChangedOrRemoved.includes(canvas) ||
-        this.themes.addedChangedOrRemoved.includes(canvas);
-
-      // let toSort = this.fractionalIndexes.addedOrChanged.length > 0;
+        this.themes.addedChangedOrRemoved.includes(canvas) ||
+        this.rasterScreenshotRequests.addedChangedOrRemoved.includes(canvas);
 
       const { cameras } = canvas.read(Canvas);
       cameras.forEach((camera) => {

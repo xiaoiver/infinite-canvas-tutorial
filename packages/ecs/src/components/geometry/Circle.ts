@@ -7,12 +7,12 @@ import { Stroke } from '../renderable';
  * @see https://docs.rs/bevy/latest/bevy/math/prelude/struct.Circle.html
  */
 export class Circle {
-  static getGeometryBounds(circle: Circle) {
+  static getGeometryBounds(circle: Partial<Circle>) {
     const { cx, cy, r } = circle;
     return new AABB(cx - r, cy - r, cx + r, cy + r);
   }
 
-  static getRenderBounds(circle: Circle, stroke?: Stroke) {
+  static getRenderBounds(circle: Partial<Circle>, stroke?: Stroke) {
     const { cx, cy, r } = circle;
     const offset = strokeOffset(stroke);
     return new AABB(

@@ -2,13 +2,13 @@
  * Borrow from https://github.com/excalidraw/excalidraw/blob/master/packages/excalidraw/store.ts
  */
 
-import { SerializedNode } from '@infinite-canvas-tutorial/ecs';
 import { EventEmitter } from 'eventemitter3';
 import { AppState } from '../context';
 import { AppStateChange } from './AppStateChange';
 import { ElementsChange } from './ElementsChange';
 import { Snapshot } from './Snapshot';
 import { API } from '../API';
+import { SerializedNode } from '../utils';
 
 export const StoreIncrementEvent = 'storeIncrement';
 

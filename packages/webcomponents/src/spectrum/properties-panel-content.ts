@@ -4,10 +4,11 @@ import { consume } from '@lit/context';
 import {
   SerializedNode,
   TextSerializedNode,
+  AppState,
+  API,
 } from '@infinite-canvas-tutorial/ecs';
 import { when } from 'lit/directives/when.js';
-import { apiContext, appStateContext, AppState } from '../context';
-import { API } from '../API';
+import { apiContext, appStateContext } from '../context';
 import { ColorType } from './color-picker';
 
 @customElement('ic-spectrum-properties-panel-content')

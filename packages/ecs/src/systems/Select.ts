@@ -24,6 +24,7 @@ import {
 import { Commands } from '../commands/Commands';
 import { ViewportCulling } from './ViewportCulling';
 import { CameraControl } from './CameraControl';
+import { distanceBetweenPoints } from '../utils';
 export class Select extends System {
   private viewportCulling = this.attach(ViewportCulling);
   private cameraControl = this.attach(CameraControl);
@@ -31,9 +32,13 @@ export class Select extends System {
   private readonly commands = new Commands(this);
 
   private readonly cameras = this.query((q) => q.current.with(Camera).read);
-  private readonly selected = this.query((q) => q.current.with(Selected).read);
 
   #selectionBrush: Entity;
+
+  #pointerDownViewportX: number;
+  #pointerDownViewportY: number;
+  #pointerDownCanvasX: number;
+  #pointerDownCanvasY: number;
 
   constructor() {
     super();
@@ -72,7 +77,8 @@ export class Select extends System {
       }
 
       const canvas = camera.canvas.hold();
-      const { pen, inputPoints } = canvas.read(Canvas);
+      const { inputPoints, api } = canvas.read(Canvas);
+      const pen = api.getAppState().penbarSelected[0];
 
       if (pen !== Pen.SELECT) {
         if (this.#selectionBrush) {
@@ -89,47 +95,21 @@ export class Select extends System {
       cursor.value = 'default';
 
       if (input.pointerDownTrigger) {
-        if (!this.#selectionBrush) {
-          this.#selectionBrush = this.commands
-            .spawn(
-              new UI(),
-              new Transform(),
-              new Renderable(),
-              new FillSolid('#e0f2ff'), // --spectrum-blue-100
-              new Opacity({ fillOpacity: 0.5 }),
-              new Stroke({ width: 1, color: '#147af3' }), // --spectrum-thumbnail-border-color-selected
-              new Rect(),
-              new Visibility('hidden'),
-              new ZIndex(Infinity),
-            )
-            .id()
-            .hold();
-
-          const camera = this.commands.entity(entity);
-          camera.appendChild(this.commands.entity(this.#selectionBrush));
-
-          this.commands.execute();
-        }
-
         this.createEntity(InputPoint, {
           prevPoint: input.pointerViewport,
           canvas,
         });
 
         const [x, y] = input.pointerViewport;
+        this.#pointerDownViewportX = x;
+        this.#pointerDownViewportY = y;
+
         const { x: wx, y: wy } = this.cameraControl.viewport2Canvas(entity, {
           x,
           y,
         });
-
-        this.#selectionBrush.write(Visibility).value = 'visible';
-
-        Object.assign(this.#selectionBrush.write(Rect), {
-          x: wx,
-          y: wy,
-          width: 0,
-          height: 0,
-        });
+        this.#pointerDownCanvasX = wx;
+        this.#pointerDownCanvasY = wy;
 
         // Single selection
         const entities = this.viewportCulling.elementsFromBBox(
@@ -139,12 +119,13 @@ export class Select extends System {
           wx,
           wy,
         );
-        this.selected.current.forEach((entity) => {
-          entity.remove(Selected);
-        });
+
+        const selectedIds = [];
         if (entities.length > 0 && !entities[0].has(UI)) {
-          entities[0].add(Selected);
+          const selected = api.getNodeByEntity(entities[0]);
+          selectedIds.push(selected.id);
         }
+        api.selectNodes(selectedIds);
       }
 
       inputPoints.forEach((point) => {
@@ -155,17 +136,52 @@ export class Select extends System {
           return;
         }
 
-        const { x: wx, y: wy } = this.cameraControl.viewport2Canvas(entity, {
-          x,
-          y,
-        });
+        // Use a threshold to avoid showing the selection brush when the pointer is moved a little.
+        const shouldShowSelectionBrush =
+          distanceBetweenPoints(
+            x,
+            y,
+            this.#pointerDownViewportX,
+            this.#pointerDownViewportY,
+          ) > 10;
 
-        const rect = this.#selectionBrush.write(Rect);
+        if (shouldShowSelectionBrush) {
+          if (!this.#selectionBrush) {
+            this.#selectionBrush = this.commands
+              .spawn(
+                new UI(),
+                new Transform(),
+                new Renderable(),
+                new FillSolid('#e0f2ff'), // --spectrum-blue-100
+                new Opacity({ fillOpacity: 0.5 }),
+                new Stroke({ width: 1, color: '#147af3' }), // --spectrum-thumbnail-border-color-selected
+                new Rect(),
+                new Visibility('hidden'),
+                new ZIndex(Infinity),
+              )
+              .id()
+              .hold();
 
-        Object.assign(rect, {
-          width: wx - rect.x,
-          height: wy - rect.y,
-        });
+            const camera = this.commands.entity(entity);
+            camera.appendChild(this.commands.entity(this.#selectionBrush));
+
+            this.commands.execute();
+          }
+
+          this.#selectionBrush.write(Visibility).value = 'visible';
+
+          const { x: wx, y: wy } = this.cameraControl.viewport2Canvas(entity, {
+            x,
+            y,
+          });
+
+          Object.assign(this.#selectionBrush.write(Rect), {
+            x: this.#pointerDownCanvasX,
+            y: this.#pointerDownCanvasY,
+            width: wx - this.#pointerDownCanvasX,
+            height: wy - this.#pointerDownCanvasY,
+          });
+        }
 
         inputPoint.prevPoint = input.pointerViewport;
       });
@@ -174,7 +190,15 @@ export class Select extends System {
         for (const point of inputPoints) {
           point.delete();
         }
-        this.#selectionBrush.write(Visibility).value = 'hidden';
+
+        if (this.#selectionBrush) {
+          this.#selectionBrush.write(Visibility).value = 'hidden';
+        }
+
+        this.#pointerDownViewportX = undefined;
+        this.#pointerDownViewportY = undefined;
+        this.#pointerDownCanvasX = undefined;
+        this.#pointerDownCanvasY = undefined;
       }
     });
   }

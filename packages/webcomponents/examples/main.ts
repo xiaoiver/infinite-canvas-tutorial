@@ -3,8 +3,9 @@ import {
   svgElementsToSerializedNodes,
   DefaultPlugins,
   Pen,
+  Task,
 } from '../../ecs';
-import { Event, UIPlugin, Task } from '../src';
+import { Event, UIPlugin } from '../src';
 import '../src/spectrum';
 
 const res = await fetch('/maslow-hierarchy.svg');
@@ -26,9 +27,9 @@ const canvas = document.querySelector<HTMLElement>('#canvas1')!;
 canvas.addEventListener(Event.READY, (e) => {
   const api = e.detail;
 
-  api.onchange = (e) => {
-    console.log(e);
-  };
+  // api.onchange = (e) => {
+  //   console.log(e);
+  // };
 
   api.setPen(Pen.SELECT);
   api.setTaskbars([Task.SHOW_LAYERS_PANEL, Task.SHOW_PROPERTIES_PANEL]);

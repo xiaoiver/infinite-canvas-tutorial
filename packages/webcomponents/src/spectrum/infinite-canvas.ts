@@ -2,15 +2,13 @@ import { html, css, LitElement, TemplateResult } from 'lit';
 import { Task } from '@lit/task';
 import { ContextProvider } from '@lit/context';
 import { customElement, property } from 'lit/decorators.js';
-import { SerializedNode } from '@infinite-canvas-tutorial/ecs';
-
 import {
+  SerializedNode,
   AppState,
-  apiContext,
-  appStateContext,
   getDefaultAppState,
-  nodesContext,
-} from '../context';
+} from '@infinite-canvas-tutorial/ecs';
+
+import { apiContext, appStateContext, nodesContext } from '../context';
 import { Event } from '../event';
 import { checkWebGPUSupport } from '../utils';
 import { pendingCanvases } from '../API';
@@ -113,22 +111,6 @@ export class InfiniteCanvas extends LitElement {
   nodesProvider = new ContextProvider(this, { context: nodesContext });
   apiProvider = new ContextProvider(this, { context: apiContext });
 
-  setAppState(appState: AppState) {
-    this.appStateProvider.setValue(appState);
-  }
-
-  getAppState() {
-    return this.appStateProvider.value;
-  }
-
-  setNodes(nodes: SerializedNode[]) {
-    this.nodesProvider.setValue(JSON.parse(JSON.stringify(nodes)));
-  }
-
-  getNodes() {
-    return this.nodesProvider.value;
-  }
-
   private resizeObserver: ResizeObserver;
 
   connectedCallback() {
@@ -166,8 +148,8 @@ export class InfiniteCanvas extends LitElement {
         await checkWebGPUSupport();
       }
 
-      this.setAppState(this.appState);
-      this.setNodes(this.nodes);
+      this.appStateProvider.value = this.appState;
+      this.nodesProvider.value = this.nodes;
 
       /**
        * Update context values

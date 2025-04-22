@@ -1,15 +1,16 @@
 import { html, css, LitElement } from 'lit';
 import { customElement } from 'lit/decorators.js';
 import { consume } from '@lit/context';
-import {
-  DataURLType,
-  VectorScreenshotRequest,
-  RasterScreenshotRequest,
-  CheckboardStyle,
-} from '@infinite-canvas-tutorial/ecs';
-import { apiContext, AppState, appStateContext } from '../context';
-import { Event } from '../event';
-import { API } from '../API';
+import { CheckboardStyle, AppState } from '@infinite-canvas-tutorial/ecs';
+import { apiContext, appStateContext } from '../context';
+import { ExtendedAPI } from '../API';
+
+export enum ExportFormat {
+  SVG = 'svg',
+  PNG = 'png',
+  JPEG = 'jpeg',
+}
+
 @customElement('ic-spectrum-top-navbar')
 export class TopNavbar extends LitElement {
   static styles = css`
@@ -45,7 +46,7 @@ export class TopNavbar extends LitElement {
   appState: AppState;
 
   @consume({ context: apiContext, subscribe: true })
-  api: API;
+  api: ExtendedAPI;
 
   connectedCallback() {
     super.connectedCallback();
@@ -59,7 +60,7 @@ export class TopNavbar extends LitElement {
 
   private handleKeyDown = (e: KeyboardEvent) => {
     // Canvas is focused
-    if (document.activeElement !== this.api.getElement()) {
+    if (document.activeElement !== this.api.element) {
       return;
     }
 
@@ -74,24 +75,9 @@ export class TopNavbar extends LitElement {
   };
 
   private handleExport(event: CustomEvent) {
-    const format = (event.target as any).value;
+    const format = (event.target as any).value as ExportFormat;
 
-    let detail: RasterScreenshotRequest | VectorScreenshotRequest;
-    if (format === 'png' || format === 'jpeg') {
-      detail = new RasterScreenshotRequest();
-      (detail as RasterScreenshotRequest).type =
-        `image/${format}` as DataURLType;
-    } else {
-      detail = new VectorScreenshotRequest();
-    }
-
-    this.dispatchEvent(
-      new CustomEvent(Event.SCREENSHOT_REQUESTED, {
-        detail,
-        bubbles: true,
-        composed: true,
-      }),
-    );
+    this.api.export(format);
   }
 
   private handleEdit(event: CustomEvent) {
@@ -176,9 +162,9 @@ export class TopNavbar extends LitElement {
         <sp-menu-item>
           Export as...
           <sp-menu slot="submenu" @change=${this.handleExport}>
-            <sp-menu-item value="svg">SVG</sp-menu-item>
-            <sp-menu-item value="png">PNG</sp-menu-item>
-            <sp-menu-item value="jpeg">JPEG</sp-menu-item>
+            <sp-menu-item value=${ExportFormat.SVG}>SVG</sp-menu-item>
+            <sp-menu-item value=${ExportFormat.PNG}>PNG</sp-menu-item>
+            <sp-menu-item value=${ExportFormat.JPEG}>JPEG</sp-menu-item>
           </sp-menu>
         </sp-menu-item>
       </sp-action-menu>

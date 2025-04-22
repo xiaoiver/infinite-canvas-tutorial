@@ -1,13 +1,11 @@
 import {
   CheckboardStyle,
   Pen,
-  RasterScreenshotRequest,
   Screenshot,
   SerializedNode,
-  VectorScreenshotRequest,
+  Task,
+  API,
 } from '@infinite-canvas-tutorial/ecs';
-import { Task } from './context';
-import { API } from './API';
 
 export enum Event {
   READY = 'ic-ready',
@@ -15,7 +13,6 @@ export enum Event {
   RESIZED = 'ic-resized',
   ZOOM_TO = 'ic-zoom-to',
   ZOOM_CHANGED = 'ic-zoom-changed',
-  SCREENSHOT_REQUESTED = 'ic-screenshot-requested',
   SCREENSHOT_DOWNLOADED = 'ic-screenshot-downloaded',
   CHECKBOARD_STYLE_CHANGED = 'ic-checkboard-style-changed',
   PEN_CHANGED = 'ic-pen-changed',
@@ -38,10 +35,7 @@ declare global {
       checkboardStyle: CheckboardStyle;
     }>;
     [Event.TASK_CHANGED]: CustomEvent<{ selected: Task[] }>;
-    [Event.SCREENSHOT_REQUESTED]: CustomEvent<
-      RasterScreenshotRequest | VectorScreenshotRequest
-    >;
-    [Event.SCREENSHOT_DOWNLOADED]: CustomEvent<Screenshot>;
+    [Event.SCREENSHOT_DOWNLOADED]: CustomEvent<Pick<Screenshot, 'dataURL'>>;
     [Event.NODES_UPDATED]: CustomEvent<{ nodes: SerializedNode[] }>;
     [Event.NODE_UPDATED]: CustomEvent<{ node: SerializedNode }>;
     [Event.NODE_DELETED]: CustomEvent<{ nodes: SerializedNode[] }>;

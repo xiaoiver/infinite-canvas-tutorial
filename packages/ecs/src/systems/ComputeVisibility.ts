@@ -31,7 +31,7 @@ export class ComputeVisibility extends System {
 
       if (value === 'inherited') {
         const parent = entity.has(Children) && entity.read(Children).parent;
-        if (parent) {
+        if (parent && parent.has(ComputedVisibility)) {
           computedVisibility.visible = parent.read(ComputedVisibility).visible;
         } else {
           computedVisibility.visible = true;

@@ -1,79 +1,36 @@
 import {
   Canvas,
-  co,
   DOMAdapter,
-  RasterScreenshotRequest,
   Screenshot,
   System,
-  VectorScreenshotRequest,
 } from '@infinite-canvas-tutorial/ecs';
+import { ExtendedAPI } from '../API';
 import { Event } from '../event';
-import { Container } from '../components';
 
 const downloadedFilename = 'infinite-canvas-screenshot';
 
-export class DownloadScreenshotSystem extends System {
-  private readonly canvases = this.query((q) =>
-    q.current.and.added.with(Canvas),
-  );
+export class DownloadScreenshot extends System {
+  private readonly screenshots = this.query((q) => q.added.with(Screenshot));
 
   constructor() {
     super();
-    this.query((q) => q.using(Container, Screenshot).read);
+    this.query((q) => q.using(Canvas).read);
   }
 
   execute(): void {
-    this.canvases.added.forEach((canvas) => {
-      const container = canvas.read(Container);
+    this.screenshots.added.forEach((screenshot) => {
+      const { dataURL, canvas } = screenshot.read(Screenshot);
+      this.downloadImage(downloadedFilename, dataURL);
 
-      container.element.addEventListener(Event.SCREENSHOT_REQUESTED, (e) => {
-        if (e.detail instanceof RasterScreenshotRequest) {
-          if (!canvas.has(RasterScreenshotRequest)) {
-            canvas.add(RasterScreenshotRequest);
-          }
-
-          const rasterScreenshotRequest = canvas.write(RasterScreenshotRequest);
-          Object.assign(rasterScreenshotRequest, e.detail);
-          this.setScreenshotTrigger(rasterScreenshotRequest);
-        } else if (e.detail instanceof VectorScreenshotRequest) {
-          if (!canvas.has(VectorScreenshotRequest)) {
-            canvas.add(VectorScreenshotRequest);
-          }
-
-          const vectorScreenshotRequest = canvas.write(VectorScreenshotRequest);
-          Object.assign(vectorScreenshotRequest, e.detail);
-          this.setScreenshotTrigger(vectorScreenshotRequest);
-        }
-      });
+      const api = canvas.read(Canvas).api as ExtendedAPI;
+      api.element.dispatchEvent(
+        new CustomEvent(Event.SCREENSHOT_DOWNLOADED, {
+          detail: {
+            dataURL,
+          },
+        }),
+      );
     });
-
-    this.canvases.current.forEach((canvas) => {
-      if (!canvas.has(Screenshot)) {
-        return;
-      }
-
-      const { dataURL } = canvas.read(Screenshot);
-      const container = canvas.read(Container);
-
-      if (dataURL) {
-        this.downloadImage(downloadedFilename, dataURL);
-        container.element.dispatchEvent(
-          new CustomEvent(Event.SCREENSHOT_DOWNLOADED, {
-            detail: {
-              dataURL,
-            },
-          }),
-        );
-      }
-    });
-  }
-
-  @co private *setScreenshotTrigger(
-    screenshotRequest: RasterScreenshotRequest | VectorScreenshotRequest,
-  ): Generator {
-    Object.assign(screenshotRequest, { enabled: true });
-    yield;
-    Object.assign(screenshotRequest, { enabled: false });
   }
 
   private downloadImage(defaultFilename: string, dataURL: string) {

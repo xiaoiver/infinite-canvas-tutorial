@@ -11,12 +11,14 @@ import {
   CullingPlugin,
 } from './plugins';
 
+export * from './API';
 export * from './App';
 export * from './commands';
 export * from './components';
 export * from './plugins';
 export * from './systems';
 export * from './environment';
+export * from './context';
 export {
   svgElementsToSerializedNodes,
   serializedNodesToEntities,

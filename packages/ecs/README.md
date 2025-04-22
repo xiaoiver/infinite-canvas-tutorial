@@ -14,6 +14,10 @@ As for UIs you can choose the following, but it's not necessary:
 
 ## Getting Started
 
+We provide 2 ways: pure ECS and API.
+
+### ECS
+
 Create a system:
 
 ```ts
@@ -44,6 +48,36 @@ const app = new App().addPlugins(...DefaultPlugins, MyPlugin);
 app.run();
 ```
 
+### API
+
+```ts
+import { API } from '@infinite-canvas-tutorial/ecs';
+
+const api = new API();
+api.createCanvas({
+    element: $canvas,
+    width: window.innerWidth,
+    height: window.innerHeight,
+    devicePixelRatio: window.devicePixelRatio,
+});
+api.createCamera({
+    zoom: 1,
+});
+
+api.updateNodes([
+    {
+        id: '1',
+        type: 'rect',
+        x: 0,
+        y: 0,
+        width: 100,
+        height: 100,
+        fill: 'red',
+    },
+]);
+api.record();
+```
+
 ## Project Structure
 
 ```bash
@@ -64,7 +98,7 @@ src/
 ├── drawcalls/
 ```
 
-## Examples
+## Recipes
 
 ### Resize with window
 

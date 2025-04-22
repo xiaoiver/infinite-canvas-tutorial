@@ -24,9 +24,9 @@ export type OrderedSerializedNode = Ordered<SerializedNode>;
  * @see https://github.com/excalidraw/excalidraw/blob/master/packages/excalidraw/element/types.ts
  */
 export interface BaseSerializeNode<Type extends string>
-  extends TransformAttributes,
-    VisibilityAttributes,
-    NameAttributes {
+  extends Partial<TransformAttributes>,
+    Partial<VisibilityAttributes>,
+    Partial<NameAttributes> {
   /**
    * Unique identifier
    */
@@ -40,7 +40,7 @@ export interface BaseSerializeNode<Type extends string>
   /**
    * Shape type
    */
-  type: Type;
+  type?: Type;
 
   /**
    * @see https://github.com/excalidraw/excalidraw/issues/1639
@@ -137,68 +137,70 @@ export interface GSerializedNode extends BaseSerializeNode<'g'> {}
 
 export interface CircleSerializedNode
   extends BaseSerializeNode<'circle'>,
-    Pick<Circle, 'cx' | 'cy' | 'r'>,
-    FillAttributes,
-    StrokeAttributes {}
+    Partial<Pick<Circle, 'cx' | 'cy' | 'r'>>,
+    Partial<FillAttributes>,
+    Partial<StrokeAttributes> {}
 
 export interface EllipseSerializedNode
   extends BaseSerializeNode<'ellipse'>,
-    Pick<Ellipse, 'cx' | 'cy' | 'rx' | 'ry'>,
-    FillAttributes,
-    StrokeAttributes {}
+    Partial<Pick<Ellipse, 'cx' | 'cy' | 'rx' | 'ry'>>,
+    Partial<FillAttributes>,
+    Partial<StrokeAttributes> {}
 
 export interface RectSerializedNode
   extends BaseSerializeNode<'rect'>,
-    Pick<Rect, 'x' | 'y' | 'width' | 'height' | 'cornerRadius'>,
-    FillAttributes,
-    StrokeAttributes,
-    InnerShadowAttributes,
-    DropShadowAttributes {}
+    Partial<Pick<Rect, 'x' | 'y' | 'width' | 'height' | 'cornerRadius'>>,
+    Partial<FillAttributes>,
+    Partial<StrokeAttributes>,
+    Partial<InnerShadowAttributes>,
+    Partial<DropShadowAttributes> {}
 
 interface PolylineAttributes {
   points: string;
 }
 export interface PolylineSerializedNode
   extends BaseSerializeNode<'polyline'>,
-    PolylineAttributes,
-    StrokeAttributes {}
+    Partial<PolylineAttributes>,
+    Partial<StrokeAttributes> {}
 
 export interface PathSerializedNode
   extends BaseSerializeNode<'path'>,
-    Pick<Path, 'd' | 'fillRule' | 'tessellationMethod'>,
-    FillAttributes,
-    StrokeAttributes {}
+    Partial<Pick<Path, 'd' | 'fillRule' | 'tessellationMethod'>>,
+    Partial<FillAttributes>,
+    Partial<StrokeAttributes> {}
 
 export interface TextSerializedNode
   extends BaseSerializeNode<'text'>,
-    Pick<
-      Text,
-      | 'x'
-      | 'y'
-      | 'content'
-      | 'fontFamily'
-      | 'fontSize'
-      | 'fontWeight'
-      | 'fontStyle'
-      | 'fontVariant'
-      | 'letterSpacing'
-      | 'lineHeight'
-      | 'whiteSpace'
-      | 'wordWrap'
-      | 'wordWrapWidth'
-      | 'textOverflow'
-      | 'maxLines'
-      | 'textAlign'
-      | 'textBaseline'
-      | 'leading'
-      | 'bitmapFont'
-      | 'bitmapFontKerning'
-      | 'physical'
-      | 'esdt'
+    Partial<
+      Pick<
+        Text,
+        | 'x'
+        | 'y'
+        | 'content'
+        | 'fontFamily'
+        | 'fontSize'
+        | 'fontWeight'
+        | 'fontStyle'
+        | 'fontVariant'
+        | 'letterSpacing'
+        | 'lineHeight'
+        | 'whiteSpace'
+        | 'wordWrap'
+        | 'wordWrapWidth'
+        | 'textOverflow'
+        | 'maxLines'
+        | 'textAlign'
+        | 'textBaseline'
+        | 'leading'
+        | 'bitmapFont'
+        | 'bitmapFontKerning'
+        | 'physical'
+        | 'esdt'
+      >
     >,
-    FillAttributes,
-    StrokeAttributes,
-    DropShadowAttributes {}
+    Partial<FillAttributes>,
+    Partial<StrokeAttributes>,
+    Partial<DropShadowAttributes> {}
 
 export type SerializedNode =
   | GSerializedNode

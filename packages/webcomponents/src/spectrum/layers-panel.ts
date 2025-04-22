@@ -2,16 +2,10 @@ import { html, css, LitElement } from 'lit';
 import { consume } from '@lit/context';
 import { map } from 'lit/directives/map.js';
 import { customElement } from 'lit/decorators.js';
-import { SerializedNode } from '@infinite-canvas-tutorial/ecs';
-import {
-  apiContext,
-  appStateContext,
-  nodesContext,
-  Task,
-  AppState,
-} from '../context';
-import { API } from '../API';
+import { SerializedNode, Task, AppState } from '@infinite-canvas-tutorial/ecs';
+import { apiContext, appStateContext, nodesContext } from '../context';
 import { Event } from '../event';
+import { ExtendedAPI } from '../API';
 @customElement('ic-spectrum-layers-panel')
 export class LayersPanel extends LitElement {
   static styles = css`
@@ -56,18 +50,23 @@ export class LayersPanel extends LitElement {
   nodes: SerializedNode[];
 
   @consume({ context: apiContext, subscribe: true })
-  api: API;
+  api: ExtendedAPI;
 
   connectedCallback(): void {
     super.connectedCallback();
 
-    this.api
-      .getElement()
-      .addEventListener(Event.SELECTED_NODES_CHANGED, (e) => {
-        const { selected, preserveSelection } = e.detail;
+    this.api.element.addEventListener(Event.SELECTED_NODES_CHANGED, (e) => {
+      const { selected } = e.detail;
 
-        // console.log('selected', selected);
-      });
+      // Scroll to the selected layer
+      if (selected.length > 0) {
+        const scrollToId = `layers-panel-item-${selected[0]}`;
+        const scrollToElement = this.shadowRoot.querySelector(`#${scrollToId}`);
+        if (scrollToElement) {
+          scrollToElement.scrollIntoView({ behavior: 'smooth' });
+        }
+      }
+    });
   }
 
   private handleClose() {
@@ -89,8 +88,6 @@ export class LayersPanel extends LitElement {
     if (nextLayer) {
       this.api.selectNodes([nextLayer.id]);
     }
-
-    // TODO: scroll to the selected layer
     this.api.record();
   }
 
@@ -142,6 +139,7 @@ export class LayersPanel extends LitElement {
               // TODO: hierarchy
               // TODO: virtual scroll for better performance
               return html`<ic-spectrum-layers-panel-item
+                id="layers-panel-item-${node.id}"
                 .node=${node}
                 draggable
                 @click=${(e: MouseEvent) => this.handleSelect(e, node.id)}

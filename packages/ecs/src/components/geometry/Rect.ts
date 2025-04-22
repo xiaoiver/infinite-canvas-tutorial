@@ -8,7 +8,7 @@ import { DropShadow, Stroke } from '../renderable';
  * @see https://developer.mozilla.org/en-US/docs/Web/SVG/Element/rect
  */
 export class Rect {
-  static getGeometryBounds(rect: Rect) {
+  static getGeometryBounds(rect: Partial<Rect>) {
     const { x = 0, y = 0, width = 0, height = 0 } = rect;
     return new AABB(
       Math.min(x, x + width),
@@ -18,7 +18,11 @@ export class Rect {
     );
   }
 
-  static getRenderBounds(rect: Rect, stroke?: Stroke, dropShadow?: DropShadow) {
+  static getRenderBounds(
+    rect: Partial<Rect>,
+    stroke?: Stroke,
+    dropShadow?: DropShadow,
+  ) {
     const { x, y, width, height } = rect;
     const { offsetX = 0, offsetY = 0, blurRadius = 0 } = dropShadow ?? {};
     const offset = strokeOffset(stroke);

@@ -55,7 +55,9 @@ export class SmoothPolyline extends Drawcall {
         shape.has(Stroke) &&
         shape.read(Stroke).dasharray[0] > 0 &&
         shape.read(Stroke).dasharray[1] > 0) ||
-      (shape.has(Path) && hasValidStroke(shape.read(Stroke)))
+      (shape.has(Path) &&
+        shape.has(Stroke) &&
+        hasValidStroke(shape.read(Stroke)))
     );
   }
 

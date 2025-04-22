@@ -51,7 +51,8 @@ export class CameraControl extends System {
       }
 
       const canvas = camera.canvas.hold();
-      const { pen, inputPoints } = canvas.read(Canvas);
+      const { api, inputPoints } = canvas.read(Canvas);
+      const pen = api.getAppState().penbarSelected[0];
 
       if (!entity.has(ComputedCameraControl)) {
         entity.add(ComputedCameraControl);

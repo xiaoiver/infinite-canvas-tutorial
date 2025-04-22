@@ -8,12 +8,12 @@ import { Stroke } from '../renderable';
  * @see https://developer.mozilla.org/en-US/docs/Web/SVG/Element/ellipse
  */
 export class Ellipse {
-  static getGeometryBounds(ellipse: Ellipse) {
+  static getGeometryBounds(ellipse: Partial<Ellipse>) {
     const { cx, cy, rx, ry } = ellipse;
     return new AABB(cx - rx, cy - ry, cx + rx, cy + ry);
   }
 
-  static getRenderBounds(ellipse: Ellipse, stroke?: Stroke) {
+  static getRenderBounds(ellipse: Partial<Ellipse>, stroke?: Stroke) {
     const { cx, cy, rx, ry } = ellipse;
     const offset = strokeOffset(stroke);
     return new AABB(

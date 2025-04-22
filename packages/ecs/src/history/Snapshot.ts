@@ -1,7 +1,7 @@
-import { SerializedNode, randomInteger } from '@infinite-canvas-tutorial/ecs';
 import { AppState, getDefaultAppState } from '../context';
 import { isShallowEqual } from './Delta';
-import { getUpdatedTimestamp } from '../utils';
+import { randomInteger, SerializedNode } from '../utils';
+import { getUpdatedTimestamp } from './ElementsChange';
 
 type OrderedExcalidrawElement = SerializedNode;
 type ObservedAppState = AppState;

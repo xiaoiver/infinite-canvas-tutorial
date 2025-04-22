@@ -2,11 +2,12 @@
 import {
   App,
   Pen,
+  Task,
   DefaultPlugins,
   svgElementsToSerializedNodes,
 } from '@infinite-canvas-tutorial/ecs';
 import { ref, onMounted, onUnmounted } from 'vue';
-import { Event, UIPlugin, Task } from '@infinite-canvas-tutorial/webcomponents';
+import { Event, UIPlugin } from '@infinite-canvas-tutorial/webcomponents';
 
 const wrapper = ref<HTMLElement | null>(null);
 let api: any | undefined;

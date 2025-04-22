@@ -1,8 +1,9 @@
 import { html, css, LitElement } from 'lit';
 import { consume } from '@lit/context';
 import { customElement } from 'lit/decorators.js';
-import { apiContext, AppState, appStateContext } from '../context';
-import { API } from '../API';
+import { AppState } from '@infinite-canvas-tutorial/ecs';
+import { apiContext, appStateContext } from '../context';
+import { ExtendedAPI } from '../API';
 
 const ZOOM_STEPS = [
   0.02, 0.05, 0.1, 0.15, 0.2, 0.33, 0.5, 0.75, 1, 1.25, 1.5, 2, 2.5, 3, 4,
@@ -41,7 +42,7 @@ export class ZoomToolbar extends LitElement {
   `;
 
   @consume({ context: apiContext, subscribe: true })
-  api: API;
+  api: ExtendedAPI;
 
   @consume({ context: appStateContext, subscribe: true })
   appState: AppState;
@@ -58,7 +59,7 @@ export class ZoomToolbar extends LitElement {
 
   private handleKeyDown = (e: KeyboardEvent) => {
     // Canvas is focused
-    if (document.activeElement !== this.api.getElement()) {
+    if (document.activeElement !== this.api.element) {
       return;
     }
 
