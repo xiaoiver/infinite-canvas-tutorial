@@ -38,8 +38,10 @@ export class Sort extends System {
   execute() {
     if (this.fractionalIndexes.addedChangedOrRemoved.length > 0) {
       let i = 1;
-      this.renderables.current
-        .toSorted((a, b) => {
+      [...this.renderables.current]
+        // Can't use toSorted here for compatibility with older browsers.
+        // @see https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/toSorted
+        .sort((a, b) => {
           if (a.has(FractionalIndex) && b.has(FractionalIndex)) {
             const aFractionalIndex = a.read(FractionalIndex).value;
             const bFractionalIndex = b.read(FractionalIndex).value;
