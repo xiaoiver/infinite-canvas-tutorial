@@ -1,6 +1,6 @@
 import { Entity, System } from '@lastolivegames/becsy';
-import { ComputedVisibility, Renderable } from '../components';
-import RBush from 'rbush';
+import Rbush from 'rbush';
+import { ComputedVisibility, RBushNodeAABB, Renderable } from '../components';
 import {
   AABB,
   Camera,
@@ -10,18 +10,12 @@ import {
   ComputedCamera,
   Culled,
   Parent,
+  RBush,
 } from '../components';
 import { CameraControl } from './CameraControl';
 import { getDescendants, getSceneRoot } from './Transform';
 import { sortByFractionalIndex } from './Sort';
 
-export interface RBushNodeAABB {
-  entity: Entity;
-  minX: number;
-  minY: number;
-  maxX: number;
-  maxY: number;
-}
 export class ViewportCulling extends System {
   bounds = this.query(
     (q) => q.addedOrChanged.and.removed.with(ComputedBounds).trackWrites,
@@ -45,15 +39,13 @@ export class ViewportCulling extends System {
    */
   #cameraViewportMap: WeakMap<Entity, AABB> = new WeakMap();
 
-  #cameraRBushMap: WeakMap<Entity, RBush<RBushNodeAABB>> = new WeakMap();
-
   constructor() {
     super();
     this.query(
       (q) =>
         q
           .using(Camera, Canvas, Children, Parent, Renderable)
-          .read.and.using(Culled).write,
+          .read.and.using(Culled, RBush).write,
     );
   }
 
@@ -183,7 +175,7 @@ export class ViewportCulling extends System {
           return;
         }
 
-        // TODO: inherit visibility from parent
+        // Inherit visibility from parent
         if (visible && entitiesInViewport.includes(entity)) {
           if (entity.has(Culled)) {
             entity.remove(Culled);
@@ -221,12 +213,10 @@ export class ViewportCulling extends System {
   }
 
   private getOrCreateRBush(camera: Entity) {
-    let rBush = this.#cameraRBushMap.get(camera);
-    if (!rBush) {
-      this.#cameraRBushMap.set(camera, new RBush<RBushNodeAABB>());
-      rBush = this.#cameraRBushMap.get(camera);
+    if (!camera.has(RBush)) {
+      camera.add(RBush, { value: new Rbush<RBushNodeAABB>() });
     }
-    return rBush;
+    return camera.read(RBush).value;
   }
 
   private getOrCreateViewport(camera: Entity) {

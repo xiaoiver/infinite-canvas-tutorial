@@ -77,10 +77,9 @@ export class ZoomToolbar extends LitElement {
       this.zoomTo200();
     } else if (e.key === '0' && e.metaKey) {
       e.preventDefault();
-      // TODO: fit to screen
+      this.fitToScreen();
     } else if (e.key === 'f') {
       e.preventDefault();
-      // TODO: full screen mode
       this.toggleFullScreen();
     }
   };
@@ -107,6 +106,14 @@ export class ZoomToolbar extends LitElement {
 
   private zoomTo200() {
     this.api.zoomTo(2);
+  }
+
+  private fitToScreen() {
+    this.api.fitToScreen();
+  }
+
+  private fillScreen() {
+    this.api.fillScreen();
   }
 
   render() {
@@ -136,11 +143,11 @@ export class ZoomToolbar extends LitElement {
           200%
           <kbd slot="value">⌘2</kbd>
         </sp-menu-item>
-        <sp-menu-item>
+        <sp-menu-item @click=${this.fitToScreen}>
           Fit to screen
           <kbd slot="value">⌘0</kbd>
         </sp-menu-item>
-        <sp-menu-item> Fill screen </sp-menu-item>
+        <sp-menu-item @click=${this.fillScreen}> Fill screen </sp-menu-item>
         <sp-menu-divider></sp-menu-divider>
         <sp-menu-item @click=${this.toggleFullScreen}>
           Full screen mode

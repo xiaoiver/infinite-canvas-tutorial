@@ -9,6 +9,7 @@ import { Commands, EntityCommands } from './commands';
 import { AppState, getDefaultAppState, Task } from './context';
 import { SerializedNode, serializedNodesToEntities } from './utils';
 import {
+  AABB,
   Camera,
   Canvas,
   CheckboardStyle,
@@ -18,6 +19,7 @@ import {
   Grid,
   Pen,
   RasterScreenshotRequest,
+  RBush,
   Selected,
   ToBeDeleted,
   Transform,
@@ -200,6 +202,63 @@ export class API {
    */
   zoomTo(zoom: number) {
     // TODO: Implement zoom to.
+  }
+
+  private getSceneGraphBounds() {
+    const rbush = this.#camera.read(RBush).value;
+
+    // Get bounds of all renderables.
+    const bounds = new AABB();
+    rbush.all().forEach((node) => {
+      const { minX, minY, maxX, maxY } = node;
+      bounds.addFrame(minX, minY, maxX, maxY);
+    });
+
+    return bounds;
+  }
+
+  fitToScreen() {
+    const { minX, minY, maxX, maxY } = this.getSceneGraphBounds();
+    const { width, height } = this.#canvas.read(Canvas);
+
+    const scaleX = width / (maxX - minX);
+    const scaleY = height / (maxY - minY);
+
+    const zoom = Math.min(scaleX, scaleY);
+
+    // Fit to center
+
+    Object.assign(this.#camera.write(Transform), {
+      translation: {
+        x: 0,
+        y: 0,
+      },
+      scale: {
+        x: 1 / zoom,
+        y: 1 / zoom,
+      },
+    });
+  }
+
+  fillScreen() {
+    const { minX, minY, maxX, maxY } = this.getSceneGraphBounds();
+    const { width, height } = this.#canvas.read(Canvas);
+
+    const scaleX = width / (maxX - minX);
+    const scaleY = height / (maxY - minY);
+
+    const zoom = Math.max(scaleX, scaleY);
+
+    Object.assign(this.#camera.write(Transform), {
+      translation: {
+        x: 0,
+        y: 0,
+      },
+      scale: {
+        x: 1 / zoom,
+        y: 1 / zoom,
+      },
+    });
   }
 
   /**

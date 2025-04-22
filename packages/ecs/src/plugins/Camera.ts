@@ -1,6 +1,11 @@
 import { component, system } from '@lastolivegames/becsy';
 import { Plugin } from './types';
-import { Camera, ComputedCamera, ComputedCameraControl } from '../components';
+import {
+  Camera,
+  ComputedCamera,
+  ComputedCameraControl,
+  RBush,
+} from '../components';
 import {
   CameraControl,
   ComputeCamera,
@@ -15,6 +20,7 @@ export const CameraPlugin: Plugin = () => {
   component(Camera);
   component(ComputedCamera);
   component(ComputedCameraControl);
+  component(RBush);
 
   system((s) =>
     s

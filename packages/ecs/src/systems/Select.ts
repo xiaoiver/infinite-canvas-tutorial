@@ -12,6 +12,7 @@ import {
   Opacity,
   Parent,
   Pen,
+  RBush,
   Rect,
   Renderable,
   Selected,
@@ -65,7 +66,7 @@ export class Select extends System {
             ZIndex,
           ).write,
     );
-    this.query((q) => q.using(ComputedCamera, FractionalIndex).read);
+    this.query((q) => q.using(ComputedCamera, FractionalIndex, RBush).read);
   }
 
   execute() {
