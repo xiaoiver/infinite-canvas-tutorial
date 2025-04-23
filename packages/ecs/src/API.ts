@@ -9,7 +9,12 @@ import {
 } from './history/Store';
 import { Commands, EntityCommands } from './commands';
 import { AppState, getDefaultAppState, Task } from './context';
-import { getScale, SerializedNode, serializedNodesToEntities } from './utils';
+import {
+  EASING_FUNCTION,
+  getScale,
+  SerializedNode,
+  serializedNodesToEntities,
+} from './utils';
 import {
   AABB,
   Camera,
@@ -19,6 +24,8 @@ import {
   ComputedCamera,
   Cursor,
   Grid,
+  Landmark,
+  LandmarkAnimationEffectTiming,
   Mat3,
   Pen,
   RasterScreenshotRequest,
@@ -32,6 +39,7 @@ import { vec2 } from 'gl-matrix';
 import { History, mutateElement, safeAddComponent } from './history';
 import { sortByFractionalIndex } from './systems/Sort';
 import { updateMatrix } from './systems/CameraControl';
+import { DOMAdapter } from './environment';
 
 export interface StateManagement {
   getAppState: () => AppState;
@@ -98,6 +106,10 @@ export const arrayToMap = <T extends { id: string } | string>(
 export class API {
   #canvas: Entity;
   #camera: Entity;
+  /**
+   * Animation ID of landmark animation.
+   */
+  #landmarkAnimationID: number;
   #idEntityMap: Map<string, EntityCommands> = new Map();
   #history = new History();
   #store = new Store(this);
@@ -164,7 +176,15 @@ export class API {
    * Create a new canvas.
    */
   createCanvas(canvasProps: Partial<Canvas>) {
-    this.#canvas = this.commands.spawn(new Canvas(canvasProps)).id().hold();
+    this.#canvas = this.commands
+      .spawn(
+        new Canvas({
+          ...canvasProps,
+          api: this,
+        }),
+      )
+      .id()
+      .hold();
 
     this.commands.execute();
 
@@ -241,12 +261,32 @@ export class API {
     return { x: canvas[0], y: canvas[1] };
   }
 
-  // canvas2Viewport({ x, y }: IPointData): IPointData {
-  //   const camera = this.#camera;
-  //   const { width, height } = camera.read(Camera).canvas.read(Canvas);
-  //   return this.viewport2Canvas({ x, y }, camera.read(ComputedCamera).viewProjectionMatrixInv);
-  // }
+  canvas2Viewport(
+    { x, y }: IPointData,
+    viewProjectionMatrix?: mat3,
+  ): IPointData {
+    const { width, height } = this.#camera.read(Camera).canvas.read(Canvas);
 
+    if (!viewProjectionMatrix) {
+      viewProjectionMatrix = Mat3.toGLMat3(
+        this.#camera.read(ComputedCamera).viewProjectionMatrix,
+      );
+    }
+
+    const clip = vec2.transformMat3(
+      vec2.create(),
+      [x, y],
+      viewProjectionMatrix,
+    );
+    return {
+      x: ((clip[0] + 1) / 2) * width,
+      y: (1 - (clip[1] + 1) / 2) * height,
+    };
+  }
+
+  /**
+   * Search entites within a bounding box. Use rbush under the hood to accelerate the search.
+   */
   elementsFromBBox(minX: number, minY: number, maxX: number, maxY: number) {
     const rBush = this.#camera.read(RBush).value;
 
@@ -267,52 +307,158 @@ export class API {
   /**
    * Create a new landmark.
    */
-  createLandmark() {}
+  createLandmark(params: Partial<Landmark> = {}): Partial<Landmark> {
+    const { zoom, x, y, rotation } = this.#camera.read(ComputedCamera);
+
+    return {
+      zoom,
+      x,
+      y,
+      rotation,
+      ...params,
+    };
+  }
 
   /**
    * Go to a landmark.
    * @see https://infinitecanvas.cc/guide/lesson-004#camera-animation
    */
-  gotoLandmark(landmark: {
-    x: number;
-    y: number;
-    zoom: number;
-    rotation: number;
-    viewportX: number;
-    viewportY: number;
-  }) {
+  gotoLandmark(
+    landmark: Partial<Landmark>,
+    options: Partial<LandmarkAnimationEffectTiming> = {},
+  ) {
+    const {
+      easing = 'linear',
+      duration = 100,
+      onframe = undefined,
+      onfinish = undefined,
+    } = options;
+
     const camera = this.#camera;
-    const { projectionMatrix, viewProjectionMatrixInv } =
-      camera.read(ComputedCamera);
+    const {
+      x,
+      y,
+      zoom,
+      rotation,
+      viewportX = 0,
+      viewportY = 0,
+    } = {
+      ...camera.read(ComputedCamera),
+      ...landmark,
+    };
+    const useFixedViewport = viewportX || viewportY;
+
+    const endAnimation = () => {
+      this.applyLandmark({ x, y, zoom, rotation, viewportX, viewportY });
+      if (onfinish) {
+        onfinish();
+      }
+    };
+
+    if (duration === 0) {
+      endAnimation();
+      return;
+    }
+
+    this.cancelLandmarkAnimation();
+
+    let timeStart: number | undefined;
+    const destPosition: vec2 = [x, y]; // in world space
+    const destZoomRotation: vec2 = [zoom, rotation];
+    const EPSILON = 0.0001;
+
+    const animate = (timestamp: number) => {
+      if (timeStart === undefined) {
+        timeStart = timestamp;
+      }
+      const elapsed = timestamp - timeStart;
+
+      if (elapsed > duration) {
+        endAnimation();
+        return;
+      }
+
+      const { x, y, zoom, rotation } = this.#camera.read(ComputedCamera);
+
+      // use the same ease function in animation system
+      const t = EASING_FUNCTION[easing](elapsed / duration);
+
+      const interPosition = vec2.create();
+      const interZoomRotation = vec2.fromValues(1, 0);
+
+      vec2.lerp(interPosition, [x, y], destPosition, t);
+      vec2.lerp(interZoomRotation, [zoom, rotation], destZoomRotation, t);
+
+      this.applyLandmark({
+        x: interPosition[0],
+        y: interPosition[1],
+        zoom: interZoomRotation[0],
+        rotation: interZoomRotation[1],
+        viewportX,
+        viewportY,
+      });
+
+      if (
+        useFixedViewport
+          ? vec2.dist(interZoomRotation, destZoomRotation) <= EPSILON
+          : vec2.dist(interPosition, destPosition) <= EPSILON
+      ) {
+        endAnimation();
+        return;
+      }
+
+      if (elapsed < duration) {
+        if (onframe) {
+          onframe(t);
+        }
+        this.#landmarkAnimationID =
+          DOMAdapter.get().requestAnimationFrame(animate);
+      }
+    };
+
+    DOMAdapter.get().requestAnimationFrame(animate);
+  }
+
+  private applyLandmark(landmark: Landmark) {
+    const transform = this.#camera.write(Transform);
     const { x, y, zoom, rotation, viewportX, viewportY } = landmark;
     const useFixedViewport = viewportX || viewportY;
+
     let preZoomX = 0;
     let preZoomY = 0;
     if (useFixedViewport) {
-      const canvas = this.viewport2Canvas(
-        {
-          x: viewportX,
-          y: viewportY,
-        },
-        Mat3.toGLMat3(viewProjectionMatrixInv),
-      );
+      const canvas = this.viewport2Canvas({
+        x: viewportX,
+        y: viewportY,
+      });
       preZoomX = canvas.x;
       preZoomY = canvas.y;
     }
 
-    const viewMatrix = mat3.create();
-    const viewProjectionMatrix = mat3.create();
-    const viewProjectionMatrixInv2 = mat3.create();
-    const matrix = updateMatrix(x, y, rotation, zoom);
-    mat3.invert(viewMatrix, matrix);
-    mat3.multiply(
-      viewProjectionMatrix,
-      Mat3.toGLMat3(projectionMatrix),
-      viewMatrix,
-    );
-    mat3.invert(viewProjectionMatrixInv2, viewProjectionMatrix);
+    Object.assign(transform, {
+      translation: {
+        x,
+        y,
+      },
+      rotation,
+      scale: { x: 1 / zoom, y: 1 / zoom },
+    });
 
     if (useFixedViewport) {
+      const { projectionMatrix } = this.#camera.read(ComputedCamera);
+
+      const viewMatrix = mat3.create();
+      const viewProjectionMatrix = mat3.create();
+      const viewProjectionMatrixInv2 = mat3.create();
+      const matrix = updateMatrix(x, y, rotation, zoom);
+      mat3.invert(viewMatrix, matrix);
+      mat3.multiply(
+        viewProjectionMatrix,
+        Mat3.toGLMat3(projectionMatrix),
+        viewMatrix,
+      );
+      mat3.invert(viewProjectionMatrixInv2, viewProjectionMatrix);
+
       const { x: postZoomX, y: postZoomY } = this.viewport2Canvas(
         {
           x: viewportX,
@@ -321,14 +467,14 @@ export class API {
         viewProjectionMatrixInv2,
       );
 
-      Object.assign(camera.write(Transform), {
-        translation: {
-          x: x + preZoomX - postZoomX,
-          y: y + preZoomY - postZoomY,
-        },
-        rotation,
-        scale: { x: 1 / zoom, y: 1 / zoom },
-      });
+      transform.translation.x += preZoomX - postZoomX;
+      transform.translation.y += preZoomY - postZoomY;
+    }
+  }
+
+  cancelLandmarkAnimation() {
+    if (this.#landmarkAnimationID !== undefined) {
+      DOMAdapter.get().cancelAnimationFrame(this.#landmarkAnimationID);
     }
   }
 
@@ -345,48 +491,75 @@ export class API {
     return bounds;
   }
 
-  fitToScreen() {
-    const { minX, minY, maxX, maxY } = this.getSceneGraphBounds();
-    const { width, height } = this.#canvas.read(Canvas);
+  zoomTo(zoom: number, effectTiming?: Partial<LandmarkAnimationEffectTiming>) {
+    const { width, height } = this.getCanvas().read(Canvas);
 
-    const scaleX = width / (maxX - minX);
-    const scaleY = height / (maxY - minY);
-
-    const zoom = Math.min(scaleX, scaleY);
-
-    // Fit to center
-
-    Object.assign(this.#camera.write(Transform), {
-      translation: {
-        x: 0,
-        y: 0,
-      },
-      scale: {
-        x: 1 / zoom,
-        y: 1 / zoom,
-      },
-    });
+    this.gotoLandmark(
+      this.createLandmark({
+        viewportX: width / 2,
+        viewportY: height / 2,
+        zoom,
+      }),
+      effectTiming ?? { duration: 300, easing: 'ease' },
+    );
   }
 
-  fillScreen() {
+  fitToScreen(effectTiming?: Partial<LandmarkAnimationEffectTiming>) {
     const { minX, minY, maxX, maxY } = this.getSceneGraphBounds();
     const { width, height } = this.#canvas.read(Canvas);
 
     const scaleX = width / (maxX - minX);
     const scaleY = height / (maxY - minY);
 
-    const zoom = Math.max(scaleX, scaleY);
+    const newZoom = Math.min(scaleX, scaleY);
 
-    Object.assign(this.#camera.write(Transform), {
-      translation: {
-        x: 0,
-        y: 0,
+    // Fit to center
+    const centerX = (minX + maxX) / 2;
+    const centerY = (minY + maxY) / 2;
+
+    const { zoom } = this.#camera.read(ComputedCamera);
+
+    this.gotoLandmark(
+      this.createLandmark({
+        x: centerX - width / 2 / zoom,
+        y: centerY - height / 2 / zoom,
+      }),
+      {
+        duration: 0,
+        onfinish: () => {
+          this.zoomTo(newZoom, effectTiming);
+        },
       },
-      scale: {
-        x: 1 / zoom,
-        y: 1 / zoom,
+    );
+  }
+
+  fillScreen(effectTiming?: Partial<LandmarkAnimationEffectTiming>) {
+    const { minX, minY, maxX, maxY } = this.getSceneGraphBounds();
+    const { width, height } = this.#canvas.read(Canvas);
+
+    const scaleX = width / (maxX - minX);
+    const scaleY = height / (maxY - minY);
+
+    const newZoom = Math.max(scaleX, scaleY);
+
+    // Fit to center
+    const centerX = (minX + maxX) / 2;
+    const centerY = (minY + maxY) / 2;
+
+    const { zoom } = this.#camera.read(ComputedCamera);
+
+    this.gotoLandmark(
+      this.createLandmark({
+        x: centerX - width / 2 / zoom,
+        y: centerY - height / 2 / zoom,
+      }),
+      {
+        duration: 0,
+        onfinish: () => {
+          this.zoomTo(newZoom, effectTiming);
+        },
       },
-    });
+    );
   }
 
   /**

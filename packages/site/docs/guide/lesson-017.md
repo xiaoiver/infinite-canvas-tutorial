@@ -381,6 +381,10 @@ The string-based `transform` needs to be parsed into `mat3`, and then passed to 
 
 <Pattern />
 
+## Extended Reading {#extended-reading}
+
+-   [A flowing WebGL gradient, deconstructed]
+
 [CanvasGradient]: https://developer.mozilla.org/en-US/docs/Web/API/CanvasGradient
 [Device]: /reference/canvas#getdevice
 [linear-gradient]: https://developer.mozilla.org/en-US/docs/Web/CSS/gradient/linear-gradient
@@ -412,3 +416,4 @@ The string-based `transform` needs to be parsed into `mat3`, and then passed to 
 [The Book of Shaders - Generative Design]: https://thebookofshaders.com/10/
 [2d-snoise-clear]: https://thebookofshaders.com/edit.php#11/2d-snoise-clear.frag
 [lygia/generative]: https://lygia.xyz/generative
+[A flowing WebGL gradient, deconstructed]: https://alexharri.com/blog/webgl-gradients

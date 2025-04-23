@@ -5,6 +5,7 @@ import {
   Circle,
   Commands,
   Cursor,
+  DropShadow,
   Ellipse,
   FillGradient,
   FillSolid,
@@ -55,6 +56,7 @@ export class InitCanvas extends System {
           Text,
           Selected,
           Opacity,
+          DropShadow,
         ).write,
     );
   }

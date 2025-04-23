@@ -84,7 +84,7 @@ describe('Transform', () => {
 
         const camera = this.commands.spawn(
           new Camera({
-            canvas: canvas.id(),
+            canvas: canvas.id().hold(),
           }),
           new Transform(),
         );

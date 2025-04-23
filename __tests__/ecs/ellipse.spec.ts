@@ -5,7 +5,6 @@ import {
   Camera,
   Canvas,
   Children,
-  Circle,
   Commands,
   DOMAdapter,
   DefaultPlugins,
@@ -14,7 +13,6 @@ import {
   FillSolid,
   Grid,
   Parent,
-  Pen,
   Plugin,
   PreStartUp,
   Renderable,
@@ -26,13 +24,14 @@ import {
   system,
   API,
   Name,
+  Ellipse,
 } from '../../packages/ecs/src';
 import { NodeJSAdapter, sleep } from '../utils';
 
 DOMAdapter.set(NodeJSAdapter);
 
-describe('Hierarchy', () => {
-  it('should create a hierarchy', async () => {
+describe('Ellipse', () => {
+  it('should render ellipses correctly', async () => {
     const app = new App();
 
     let $canvas: HTMLCanvasElement;
@@ -61,7 +60,7 @@ describe('Hierarchy', () => {
             Renderable,
             FillSolid,
             Stroke,
-            Circle,
+            Ellipse,
             Visibility,
             Name,
           ).write,
@@ -86,21 +85,23 @@ describe('Hierarchy', () => {
         api.updateNodes([
           {
             id: '1',
-            type: 'circle',
+            type: 'ellipse',
             fill: 'red',
             cx: 100,
             cy: 100,
-            r: 100,
+            rx: 100,
+            ry: 50,
             visibility: 'visible',
           },
           {
             id: '2',
             parentId: '1',
-            type: 'circle',
+            type: 'ellipse',
             fill: 'green',
             cx: 100,
             cy: 100,
-            r: 50,
+            rx: 50,
+            ry: 100,
             stroke: 'black',
             strokeWidth: 10,
             strokeAlignment: 'center',
@@ -152,10 +153,7 @@ describe('Hierarchy', () => {
     }
 
     const dir = `${__dirname}/snapshots`;
-    expect($canvas!.getContext('webgl1')).toMatchWebGLSnapshot(
-      dir,
-      'hierarchy',
-    );
+    expect($canvas!.getContext('webgl1')).toMatchWebGLSnapshot(dir, 'ellipse');
 
     await app.exit();
   });

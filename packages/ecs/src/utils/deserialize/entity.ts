@@ -1,10 +1,9 @@
 import { isNil } from '@antv/util';
 import toposort from 'toposort';
+import { Entity } from '@lastolivegames/becsy';
 import {
   Circle,
-  Commands,
   Ellipse,
-  Entity,
   FillSolid,
   FillGradient,
   Name,
@@ -17,9 +16,11 @@ import {
   Text,
   Transform,
   Visibility,
-} from '../..';
+  DropShadow,
+} from '../../components';
 import {
   CircleSerializedNode,
+  DropShadowAttributes,
   EllipseSerializedNode,
   FillAttributes,
   NameAttributes,
@@ -34,6 +35,7 @@ import {
 import { deserializePoints } from './points';
 import { EntityCommands } from '../../commands/EntityCommands';
 import { isGradient } from '../gradient';
+import { Commands } from '../../commands/Commands';
 
 export function serializedNodesToEntities(
   nodes: SerializedNode[],
@@ -147,10 +149,11 @@ export function serializedNodesToEntities(
         new Stroke({
           color: stroke,
           width: strokeWidth,
-          dasharray: strokeDasharray?.split(',').map(Number) as [
-            number,
-            number,
-          ],
+          // comma and/or white space separated
+          dasharray: (strokeDasharray?.includes(',')
+            ? strokeDasharray?.split(',')
+            : strokeDasharray?.split(' ')
+          )?.map(Number) as [number, number],
           linecap: strokeLinecap,
           linejoin: strokeLinejoin,
           miterlimit: strokeMiterlimit,
@@ -166,6 +169,23 @@ export function serializedNodesToEntities(
           opacity,
           fillOpacity,
           strokeOpacity,
+        }),
+      );
+    }
+
+    const {
+      dropShadowBlurRadius,
+      dropShadowColor,
+      dropShadowOffsetX,
+      dropShadowOffsetY,
+    } = attributes as DropShadowAttributes;
+    if (dropShadowBlurRadius) {
+      entity.insert(
+        new DropShadow({
+          color: dropShadowColor,
+          blurRadius: dropShadowBlurRadius,
+          offsetX: dropShadowOffsetX,
+          offsetY: dropShadowOffsetY,
         }),
       );
     }

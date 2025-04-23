@@ -230,7 +230,7 @@ export class CameraControl extends System {
     client: IPointData,
     dist: number,
   ) => {
-    const { x, y, zoom, rotation } = camera.read(ComputedCamera);
+    const { zoom } = camera.read(ComputedCamera);
 
     // multiply the wheel movement by the current zoom level
     // so we zoom less when zoomed in and more when zoomed out
@@ -239,14 +239,14 @@ export class CameraControl extends System {
       Math.min(MAX_ZOOM, zoom * Math.pow(2, dist * -0.01)),
     );
 
-    api.gotoLandmark({
-      x,
-      y,
-      zoom: newZoom,
-      rotation,
-      viewportX: client.x,
-      viewportY: client.y,
-    });
+    api.gotoLandmark(
+      api.createLandmark({
+        viewportX: client.x,
+        viewportY: client.y,
+        zoom: newZoom,
+      }),
+      { duration: 0 },
+    );
   };
 
   private getClipSpaceMousePosition(entity: Entity): vec2 {

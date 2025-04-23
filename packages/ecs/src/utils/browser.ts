@@ -23,7 +23,7 @@ export function createSVGElement(type: string): SVGElement {
 }
 
 export function getScale($el: HTMLCanvasElement) {
-  const bbox = $el.getBoundingClientRect();
+  const bbox = $el.getBoundingClientRect?.();
   let scaleX = 1;
   let scaleY = 1;
 

@@ -1,12 +1,7 @@
 import { html, css, LitElement } from 'lit';
 import { consume } from '@lit/context';
 import { customElement } from 'lit/decorators.js';
-import {
-  AppState,
-  Camera,
-  Canvas,
-  ComputedCamera,
-} from '@infinite-canvas-tutorial/ecs';
+import { AppState } from '@infinite-canvas-tutorial/ecs';
 import { apiContext, appStateContext } from '../context';
 import { ExtendedAPI } from '../API';
 
@@ -97,35 +92,20 @@ export class ZoomToolbar extends LitElement {
     }
   }
 
-  private zoomTo(zoom: number) {
-    const camera = this.api.getCamera();
-    const { x, y, rotation } = camera.read(ComputedCamera);
-    const { width, height } = camera.read(Camera).canvas.read(Canvas);
-
-    this.api.gotoLandmark({
-      zoom,
-      x,
-      y,
-      rotation,
-      viewportX: width / 2,
-      viewportY: height / 2,
-    });
-  }
-
   private zoomOut() {
-    this.zoomTo(findZoomFloor(this.api.getAppState().cameraZoom));
+    this.api.zoomTo(findZoomFloor(this.api.getAppState().cameraZoom));
   }
 
   private zoomIn() {
-    this.zoomTo(findZoomCeil(this.api.getAppState().cameraZoom));
+    this.api.zoomTo(findZoomCeil(this.api.getAppState().cameraZoom));
   }
 
   private zoomTo100() {
-    this.zoomTo(1);
+    this.api.zoomTo(1);
   }
 
   private zoomTo200() {
-    this.zoomTo(2);
+    this.api.zoomTo(2);
   }
 
   private fitToScreen() {

@@ -385,6 +385,10 @@ SVG 提供了 [linearGradient] 和 [radialGradient]，但支持的属性和 [Can
 
 ### 重复图案 {#export-pattern-to-svg}
 
+## 扩展阅读 {#extended-reading}
+
+-   [A flowing WebGL gradient, deconstructed]
+
 [CanvasGradient]: https://developer.mozilla.org/en-US/docs/Web/API/CanvasGradient
 [Device]: /zh/reference/canvas#getdevice
 [linear-gradient]: https://developer.mozilla.org/zh-CN/docs/Web/CSS/gradient/linear-gradient
@@ -416,3 +420,4 @@ SVG 提供了 [linearGradient] 和 [radialGradient]，但支持的属性和 [Can
 [The book of shaders - 生成设计]: https://thebookofshaders.com/10/
 [2d-snoise-clear]: https://thebookofshaders.com/edit.php#11/2d-snoise-clear.frag
 [lygia/generative]: https://lygia.xyz/generative
+[A flowing WebGL gradient, deconstructed]: https://alexharri.com/blog/webgl-gradients

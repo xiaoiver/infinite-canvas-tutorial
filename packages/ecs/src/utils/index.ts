@@ -17,3 +17,4 @@ export * from './math';
 export * from './serialize';
 export * from './deserialize';
 export * from './fractional-index';
+export * from './easing';

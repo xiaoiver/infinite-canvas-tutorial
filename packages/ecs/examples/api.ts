@@ -92,7 +92,6 @@ class StartUpSystem extends System {
       width: window.innerWidth,
       height: window.innerHeight,
       devicePixelRatio: window.devicePixelRatio,
-      api,
     });
     api.createCamera({
       zoom: 1,

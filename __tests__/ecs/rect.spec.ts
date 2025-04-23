@@ -5,7 +5,6 @@ import {
   Camera,
   Canvas,
   Children,
-  Circle,
   Commands,
   DOMAdapter,
   DefaultPlugins,
@@ -14,7 +13,6 @@ import {
   FillSolid,
   Grid,
   Parent,
-  Pen,
   Plugin,
   PreStartUp,
   Renderable,
@@ -26,13 +24,15 @@ import {
   system,
   API,
   Name,
+  Rect,
+  DropShadow,
 } from '../../packages/ecs/src';
 import { NodeJSAdapter, sleep } from '../utils';
 
 DOMAdapter.set(NodeJSAdapter);
 
-describe('Hierarchy', () => {
-  it('should create a hierarchy', async () => {
+describe('Rect', () => {
+  it('should render rects correctly', async () => {
     const app = new App();
 
     let $canvas: HTMLCanvasElement;
@@ -61,9 +61,10 @@ describe('Hierarchy', () => {
             Renderable,
             FillSolid,
             Stroke,
-            Circle,
+            Rect,
             Visibility,
             Name,
+            DropShadow,
           ).write,
       );
 
@@ -86,25 +87,31 @@ describe('Hierarchy', () => {
         api.updateNodes([
           {
             id: '1',
-            type: 'circle',
+            type: 'rect',
             fill: 'red',
-            cx: 100,
-            cy: 100,
-            r: 100,
+            x: 50,
+            y: 50,
+            width: 100,
+            height: 100,
             visibility: 'visible',
           },
           {
             id: '2',
             parentId: '1',
-            type: 'circle',
+            type: 'rect',
             fill: 'green',
-            cx: 100,
-            cy: 100,
-            r: 50,
+            x: 100,
+            y: 100,
+            width: 50,
+            height: 50,
             stroke: 'black',
             strokeWidth: 10,
             strokeAlignment: 'center',
             strokeDasharray: '10 10',
+            dropShadowColor: 'black',
+            dropShadowBlurRadius: 10,
+            dropShadowOffsetX: 10,
+            dropShadowOffsetY: 10,
             visibility: 'visible',
           },
         ]);
@@ -152,10 +159,7 @@ describe('Hierarchy', () => {
     }
 
     const dir = `${__dirname}/snapshots`;
-    expect($canvas!.getContext('webgl1')).toMatchWebGLSnapshot(
-      dir,
-      'hierarchy',
-    );
+    expect($canvas!.getContext('webgl1')).toMatchWebGLSnapshot(dir, 'rect');
 
     await app.exit();
   });

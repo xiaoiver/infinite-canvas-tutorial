@@ -37,6 +37,13 @@ canvas.addEventListener(Event.READY, (e) => {
   api.updateNodes(nodes);
   api.selectNodes([nodes[0].id]);
 
+  // api.updateNode(nodes[0], {
+  //   dropShadowBlurRadius: 10,
+  //   dropShadowColor: 'black',
+  //   dropShadowOffsetX: 10,
+  //   dropShadowOffsetY: 10,
+  // });
+
   api.record();
 });
 

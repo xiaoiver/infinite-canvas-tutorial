@@ -1,5 +1,24 @@
 import { Entity, field } from '@lastolivegames/becsy';
 
+export interface Landmark {
+  x: number;
+  y: number;
+  zoom: number;
+  viewportX: number;
+  viewportY: number;
+  rotation: number;
+}
+
+/**
+ * @see https://developer.mozilla.org/en-US/docs/Web/API/AnimationEffect/getTiming
+ */
+export interface LandmarkAnimationEffectTiming {
+  easing: string;
+  duration: number;
+  onframe: (t: number) => void;
+  onfinish: () => void;
+}
+
 /**
  * @see https://bevy-cheatbook.github.io/graphics/camera.html
  * @see https://bevy-cheatbook.github.io/2d/camera.html

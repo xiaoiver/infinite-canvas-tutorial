@@ -63,7 +63,10 @@ export class LayersPanel extends LitElement {
         const scrollToId = `layers-panel-item-${selected[0]}`;
         const scrollToElement = this.shadowRoot.querySelector(`#${scrollToId}`);
         if (scrollToElement) {
-          scrollToElement.scrollIntoView({ behavior: 'smooth' });
+          scrollToElement.scrollIntoView({
+            behavior: 'smooth',
+            block: 'center',
+          });
         }
       }
     });

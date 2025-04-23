@@ -18,6 +18,8 @@ import {
   Ellipse,
   Rect,
   Text,
+  Opacity,
+  DropShadow,
 } from '../components';
 import { ComponentType, Entity } from '@lastolivegames/becsy';
 
@@ -527,6 +529,13 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
     strokeCap,
     strokeJoin,
     strokeAlignment,
+    opacity,
+    fillOpacity,
+    strokeOpacity,
+    dropShadowColor,
+    dropShadowBlurRadius,
+    dropShadowOffsetX,
+    dropShadowOffsetY,
     fontSize,
     width,
     height,
@@ -569,6 +578,28 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
   if (!isNil(strokeAlignment)) {
     safeAddComponent(entity, Stroke, { alignment: strokeAlignment });
   }
+  if (!isNil(opacity)) {
+    safeAddComponent(entity, Opacity, { opacity });
+  }
+  if (!isNil(fillOpacity)) {
+    safeAddComponent(entity, Opacity, { fillOpacity });
+  }
+  if (!isNil(strokeOpacity)) {
+    safeAddComponent(entity, Opacity, { strokeOpacity });
+  }
+  if (!isNil(dropShadowColor)) {
+    safeAddComponent(entity, DropShadow, { color: dropShadowColor });
+  }
+  if (!isNil(dropShadowBlurRadius)) {
+    safeAddComponent(entity, DropShadow, { blurRadius: dropShadowBlurRadius });
+  }
+  if (!isNil(dropShadowOffsetX)) {
+    safeAddComponent(entity, DropShadow, { offsetX: dropShadowOffsetX });
+  }
+  if (!isNil(dropShadowOffsetY)) {
+    safeAddComponent(entity, DropShadow, { offsetY: dropShadowOffsetY });
+  }
+
   if (!isNil(fontSize)) {
     entity.write(Text).fontSize = fontSize;
   }
