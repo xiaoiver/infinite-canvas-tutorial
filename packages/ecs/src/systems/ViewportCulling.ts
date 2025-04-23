@@ -12,9 +12,8 @@ import {
   Parent,
   RBush,
 } from '../components';
-import { CameraControl } from './CameraControl';
 import { getDescendants, getSceneRoot } from './Transform';
-import { sortByFractionalIndex } from './Sort';
+import { API } from '..';
 
 export class ViewportCulling extends System {
   bounds = this.query(
@@ -22,17 +21,13 @@ export class ViewportCulling extends System {
   );
 
   cameras = this.query(
-    (q) => q.current.and.addedOrChanged.with(ComputedCamera).trackWrites,
+    (q) =>
+      q.current.and.added.and.addedOrChanged.with(ComputedCamera).trackWrites,
   );
 
   visibilities = this.query(
     (q) => q.addedChangedOrRemoved.with(ComputedVisibility).trackWrites,
   );
-
-  /**
-   * Use its viewport2Canvas method.
-   */
-  cameraControl = this.attach(CameraControl);
 
   /**
    * Map of camera entity id to its viewport's AABB.
@@ -54,7 +49,12 @@ export class ViewportCulling extends System {
    */
   remove(entity: Entity) {
     const camera = getSceneRoot(entity);
-    const rBush = this.getOrCreateRBush(camera);
+
+    if (camera === entity) {
+      return;
+    }
+
+    const rBush = camera.read(RBush).value;
     rBush.remove(
       {
         minX: 0,
@@ -73,8 +73,13 @@ export class ViewportCulling extends System {
       entitiesToCull.set(camera, new Set());
     });
 
+    this.cameras.added.forEach((camera) => {
+      camera.add(RBush, { value: new Rbush<RBushNodeAABB>() });
+    });
+
     this.cameras.addedOrChanged.forEach((camera) => {
-      this.updateViewport(camera);
+      const { api } = camera.read(Camera).canvas.read(Canvas);
+      this.updateViewport(camera, api);
 
       // Recalcaulate all renderables' culled status under this camera.
       getDescendants(camera).forEach((child) => {
@@ -115,7 +120,7 @@ export class ViewportCulling extends System {
 
     [removed, modified].forEach((map) => {
       map.forEach((entities, camera) => {
-        const rBush = this.getOrCreateRBush(camera);
+        const rBush = camera.read(RBush).value;
 
         entities.forEach((entity) => {
           entitiesToCull.get(camera)?.add(entity);
@@ -134,7 +139,7 @@ export class ViewportCulling extends System {
     });
 
     modified.forEach((entities, camera) => {
-      const rBush = this.getOrCreateRBush(camera);
+      const rBush = camera.read(RBush).value;
 
       const bulk: RBushNodeAABB[] = [];
       entities.forEach((entity) => {
@@ -157,7 +162,7 @@ export class ViewportCulling extends System {
         return;
       }
 
-      const rBush = this.getOrCreateRBush(camera);
+      const rBush = camera.read(RBush).value;
       const viewport = this.getOrCreateViewport(camera);
 
       const entitiesInViewport = rBush
@@ -189,36 +194,6 @@ export class ViewportCulling extends System {
     });
   }
 
-  elementsFromBBox(
-    camera: Entity,
-    minX: number,
-    minY: number,
-    maxX: number,
-    maxY: number,
-  ) {
-    const rBush = this.getOrCreateRBush(camera);
-
-    const rBushNodes = rBush.search({
-      minX,
-      minY,
-      maxX,
-      maxY,
-    });
-
-    // Sort by fractional index
-    return rBushNodes
-      .map((node) => node.entity)
-      .sort(sortByFractionalIndex)
-      .reverse();
-  }
-
-  private getOrCreateRBush(camera: Entity) {
-    if (!camera.has(RBush)) {
-      camera.add(RBush, { value: new Rbush<RBushNodeAABB>() });
-    }
-    return camera.read(RBush).value;
-  }
-
   private getOrCreateViewport(camera: Entity) {
     let viewport = this.#cameraViewportMap.get(camera);
     if (!viewport) {
@@ -228,22 +203,22 @@ export class ViewportCulling extends System {
     return viewport;
   }
 
-  private updateViewport(camera: Entity) {
+  private updateViewport(camera: Entity, api: API) {
     const { width, height } = camera.read(Camera).canvas.read(Canvas);
     // tl, tr, br, bl
-    const tl = this.cameraControl.viewport2Canvas(camera, {
+    const tl = api.viewport2Canvas({
       x: 0,
       y: 0,
     });
-    const tr = this.cameraControl.viewport2Canvas(camera, {
+    const tr = api.viewport2Canvas({
       x: width,
       y: 0,
     });
-    const br = this.cameraControl.viewport2Canvas(camera, {
+    const br = api.viewport2Canvas({
       x: width,
       y: height,
     });
-    const bl = this.cameraControl.viewport2Canvas(camera, {
+    const bl = api.viewport2Canvas({
       x: 0,
       y: height,
     });

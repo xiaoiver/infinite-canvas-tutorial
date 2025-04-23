@@ -78,6 +78,20 @@ api.updateNodes([
 api.record();
 ```
 
+## API
+
+### createCanvas
+
+### createCamera
+
+### getAppState
+
+### setAppState
+
+### getNodes
+
+### setNodes
+
 ## Project Structure
 
 ```bash

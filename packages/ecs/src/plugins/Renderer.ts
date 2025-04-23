@@ -19,8 +19,6 @@ import {
   Deleter,
   Last,
   PropagateTransforms,
-  CameraControl,
-  Select,
   ExportSVG,
   ComputeVisibility,
 } from '../systems';
@@ -114,8 +112,6 @@ export const RendererPlugin: Plugin = () => {
     s.after(
       Last,
       PropagateTransforms,
-      CameraControl,
-      Select,
       ComputeCamera,
       ComputeVisibility,
       MeshPipeline,

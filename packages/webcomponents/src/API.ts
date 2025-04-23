@@ -33,16 +33,6 @@ export class ExtendedAPI extends API {
     super(stateManagement, commands);
   }
 
-  zoomTo(zoom: number) {
-    this.element.dispatchEvent(
-      new CustomEvent(Event.ZOOM_TO, {
-        detail: {
-          zoom,
-        },
-      }),
-    );
-  }
-
   resizeCanvas(width: number, height: number) {
     super.resizeCanvas(width, height);
 

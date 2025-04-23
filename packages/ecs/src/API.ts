@@ -1,4 +1,6 @@
 import { Entity } from '@lastolivegames/becsy';
+import { IPointData } from '@pixi/math';
+import { mat3 } from 'gl-matrix';
 import {
   CaptureUpdateAction,
   CaptureUpdateActionType,
@@ -7,7 +9,7 @@ import {
 } from './history/Store';
 import { Commands, EntityCommands } from './commands';
 import { AppState, getDefaultAppState, Task } from './context';
-import { SerializedNode, serializedNodesToEntities } from './utils';
+import { getScale, SerializedNode, serializedNodesToEntities } from './utils';
 import {
   AABB,
   Camera,
@@ -17,6 +19,7 @@ import {
   ComputedCamera,
   Cursor,
   Grid,
+  Mat3,
   Pen,
   RasterScreenshotRequest,
   RBush,
@@ -25,7 +28,10 @@ import {
   Transform,
   VectorScreenshotRequest,
 } from './components';
+import { vec2 } from 'gl-matrix';
 import { History, mutateElement, safeAddComponent } from './history';
+import { sortByFractionalIndex } from './systems/Sort';
+import { updateMatrix } from './systems/CameraControl';
 
 export interface StateManagement {
   getAppState: () => AppState;
@@ -150,6 +156,10 @@ export class API {
     return this.#canvas;
   }
 
+  getCamera() {
+    return this.#camera;
+  }
+
   /**
    * Create a new canvas.
    */
@@ -187,21 +197,139 @@ export class API {
   }
 
   /**
+   * Should account for CSS Transform applied on container.
+   * @see https://github.com/antvis/G/issues/1161
+   * @see https://github.com/antvis/G/issues/1677
+   * @see https://developer.mozilla.org/zh-CN/docs/Web/API/MouseEvent/offsetX
+   */
+  client2Viewport({ x, y }: IPointData): IPointData {
+    const $el = this.#canvas.read(Canvas).element as HTMLCanvasElement;
+    const { scaleX, scaleY, bbox } = getScale($el);
+    return {
+      x: (x - (bbox?.left || 0)) / scaleX,
+      y: (y - (bbox?.top || 0)) / scaleY,
+    };
+  }
+
+  viewport2Client({ x, y }: IPointData): IPointData {
+    const $el = this.#canvas.read(Canvas).element as HTMLCanvasElement;
+    const { scaleX, scaleY, bbox } = getScale($el);
+    return {
+      x: (x + (bbox?.left || 0)) * scaleX,
+      y: (y + (bbox?.top || 0)) * scaleY,
+    };
+  }
+
+  viewport2Canvas(
+    { x, y }: IPointData,
+    viewProjectionMatrixInv?: mat3,
+  ): IPointData {
+    const camera = this.#camera;
+    const { width, height } = camera.read(Camera).canvas.read(Canvas);
+
+    if (!viewProjectionMatrixInv) {
+      viewProjectionMatrixInv = Mat3.toGLMat3(
+        camera.read(ComputedCamera).viewProjectionMatrixInv,
+      );
+    }
+
+    const canvas = vec2.transformMat3(
+      vec2.create(),
+      [(x / width) * 2 - 1, (1 - y / height) * 2 - 1],
+      viewProjectionMatrixInv,
+    );
+    return { x: canvas[0], y: canvas[1] };
+  }
+
+  // canvas2Viewport({ x, y }: IPointData): IPointData {
+  //   const camera = this.#camera;
+  //   const { width, height } = camera.read(Camera).canvas.read(Canvas);
+  //   return this.viewport2Canvas({ x, y }, camera.read(ComputedCamera).viewProjectionMatrixInv);
+  // }
+
+  elementsFromBBox(minX: number, minY: number, maxX: number, maxY: number) {
+    const rBush = this.#camera.read(RBush).value;
+
+    const rBushNodes = rBush.search({
+      minX,
+      minY,
+      maxX,
+      maxY,
+    });
+
+    // Sort by fractional index
+    return rBushNodes
+      .map((node) => node.entity)
+      .sort(sortByFractionalIndex)
+      .reverse();
+  }
+
+  /**
    * Create a new landmark.
    */
   createLandmark() {}
 
   /**
    * Go to a landmark.
+   * @see https://infinitecanvas.cc/guide/lesson-004#camera-animation
    */
-  gotoLandmark() {}
+  gotoLandmark(landmark: {
+    x: number;
+    y: number;
+    zoom: number;
+    rotation: number;
+    viewportX: number;
+    viewportY: number;
+  }) {
+    const camera = this.#camera;
+    const { projectionMatrix, viewProjectionMatrixInv } =
+      camera.read(ComputedCamera);
+    const { x, y, zoom, rotation, viewportX, viewportY } = landmark;
+    const useFixedViewport = viewportX || viewportY;
+    let preZoomX = 0;
+    let preZoomY = 0;
+    if (useFixedViewport) {
+      const canvas = this.viewport2Canvas(
+        {
+          x: viewportX,
+          y: viewportY,
+        },
+        Mat3.toGLMat3(viewProjectionMatrixInv),
+      );
+      preZoomX = canvas.x;
+      preZoomY = canvas.y;
+    }
 
-  /**
-   * ZoomLevel system will handle the zoom level.
-   * @see https://infinitecanvas.cc/guide/lesson-004
-   */
-  zoomTo(zoom: number) {
-    // TODO: Implement zoom to.
+    const viewMatrix = mat3.create();
+    const viewProjectionMatrix = mat3.create();
+    const viewProjectionMatrixInv2 = mat3.create();
+    const matrix = updateMatrix(x, y, rotation, zoom);
+    mat3.invert(viewMatrix, matrix);
+    mat3.multiply(
+      viewProjectionMatrix,
+      Mat3.toGLMat3(projectionMatrix),
+      viewMatrix,
+    );
+    mat3.invert(viewProjectionMatrixInv2, viewProjectionMatrix);
+
+    if (useFixedViewport) {
+      const { x: postZoomX, y: postZoomY } = this.viewport2Canvas(
+        {
+          x: viewportX,
+          y: viewportY,
+        },
+        viewProjectionMatrixInv2,
+      );
+
+      Object.assign(camera.write(Transform), {
+        translation: {
+          x: x + preZoomX - postZoomX,
+          y: y + preZoomY - postZoomY,
+        },
+        rotation,
+        scale: { x: 1 / zoom, y: 1 / zoom },
+      });
+    }
   }
 
   private getSceneGraphBounds() {

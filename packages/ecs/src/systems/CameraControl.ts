@@ -13,6 +13,7 @@ import {
   ComputedCameraControl,
   Mat3,
 } from '../components';
+import { API } from '../API';
 
 const MIN_ZOOM = 0.02;
 const MAX_ZOOM = 4;
@@ -132,6 +133,7 @@ export class CameraControl extends System {
         if (input.metaKey || input.ctrlKey) {
           this.zoomByClientPoint(
             entity,
+            api,
             { x: input.pointerViewport[0], y: input.pointerViewport[1] },
             input.deltaY,
           );
@@ -202,7 +204,7 @@ export class CameraControl extends System {
     mat3.translate(camMat, camMat, [-startPos[0], -startPos[1]]);
 
     // multiply in the original camera matrix
-    const matrix = this.updateMatrix(
+    const matrix = updateMatrix(
       startCameraX,
       startCameraY,
       startCameraRotation,
@@ -223,11 +225,12 @@ export class CameraControl extends System {
   }
 
   private zoomByClientPoint = (
-    entity: Entity,
+    camera: Entity,
+    api: API,
     client: IPointData,
     dist: number,
   ) => {
-    const { x, y, zoom, rotation } = entity.read(ComputedCamera);
+    const { x, y, zoom, rotation } = camera.read(ComputedCamera);
 
     // multiply the wheel movement by the current zoom level
     // so we zoom less when zoomed in and more when zoomed out
@@ -236,17 +239,14 @@ export class CameraControl extends System {
       Math.min(MAX_ZOOM, zoom * Math.pow(2, dist * -0.01)),
     );
 
-    this.applyLandmark(
-      {
-        x,
-        y,
-        zoom: newZoom,
-        rotation,
-        viewportX: client.x,
-        viewportY: client.y,
-      },
-      entity,
-    );
+    api.gotoLandmark({
+      x,
+      y,
+      zoom: newZoom,
+      rotation,
+      viewportX: client.x,
+      viewportY: client.y,
+    });
   };
 
   private getClipSpaceMousePosition(entity: Entity): vec2 {
@@ -277,99 +277,19 @@ export class CameraControl extends System {
 
     return [clipX, clipY];
   }
+}
 
-  private updateMatrix(x: number, y: number, rotation: number, zoom: number) {
-    const zoomScale = 1 / zoom;
-    const matrix = mat3.create();
-    mat3.identity(matrix);
-    mat3.translate(matrix, matrix, [x, y]);
-    mat3.rotate(matrix, matrix, rotation);
-    mat3.scale(matrix, matrix, [zoomScale, zoomScale]);
-    return matrix;
-  }
-
-  applyLandmark(
-    landmark: {
-      x: number;
-      y: number;
-      zoom: number;
-      rotation: number;
-      viewportX: number;
-      viewportY: number;
-    },
-    entity: Entity,
-  ) {
-    const { projectionMatrix, viewProjectionMatrixInv } =
-      entity.read(ComputedCamera);
-    const { x, y, zoom, rotation, viewportX, viewportY } = landmark;
-    const useFixedViewport = viewportX || viewportY;
-    let preZoomX = 0;
-    let preZoomY = 0;
-    if (useFixedViewport) {
-      const canvas = this.viewport2Canvas(
-        entity,
-        {
-          x: viewportX,
-          y: viewportY,
-        },
-        Mat3.toGLMat3(viewProjectionMatrixInv),
-      );
-      preZoomX = canvas.x;
-      preZoomY = canvas.y;
-    }
-
-    const viewMatrix = mat3.create();
-    const viewProjectionMatrix = mat3.create();
-    const viewProjectionMatrixInv2 = mat3.create();
-    const matrix = this.updateMatrix(x, y, rotation, zoom);
-    mat3.invert(viewMatrix, matrix);
-    mat3.multiply(
-      viewProjectionMatrix,
-      Mat3.toGLMat3(projectionMatrix),
-      viewMatrix,
-    );
-    mat3.invert(viewProjectionMatrixInv2, viewProjectionMatrix);
-
-    if (useFixedViewport) {
-      const { x: postZoomX, y: postZoomY } = this.viewport2Canvas(
-        entity,
-        {
-          x: viewportX,
-          y: viewportY,
-        },
-        viewProjectionMatrixInv2,
-      );
-
-      Object.assign(entity.write(Transform), {
-        translation: {
-          x: x + preZoomX - postZoomX,
-          y: y + preZoomY - postZoomY,
-        },
-        rotation,
-        scale: { x: 1 / zoom, y: 1 / zoom },
-      });
-    }
-  }
-
-  viewport2Canvas(
-    entity: Entity,
-    { x, y }: IPointData,
-    viewProjectionMatrixInv?: mat3,
-  ): IPointData {
-    const camera = entity.read(Camera);
-    const { width, height } = camera.canvas.read(Canvas);
-
-    if (!viewProjectionMatrixInv) {
-      viewProjectionMatrixInv = Mat3.toGLMat3(
-        entity.read(ComputedCamera).viewProjectionMatrixInv,
-      );
-    }
-
-    const canvas = vec2.transformMat3(
-      vec2.create(),
-      [(x / width) * 2 - 1, (1 - y / height) * 2 - 1],
-      viewProjectionMatrixInv,
-    );
-    return { x: canvas[0], y: canvas[1] };
-  }
+export function updateMatrix(
+  x: number,
+  y: number,
+  rotation: number,
+  zoom: number,
+) {
+  const zoomScale = 1 / zoom;
+  const matrix = mat3.create();
+  mat3.identity(matrix);
+  mat3.translate(matrix, matrix, [x, y]);
+  mat3.rotate(matrix, matrix, rotation);
+  mat3.scale(matrix, matrix, [zoomScale, zoomScale]);
+  return matrix;
 }

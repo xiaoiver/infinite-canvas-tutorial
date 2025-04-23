@@ -1,6 +1,5 @@
 import {
   Camera,
-  CameraControl,
   Canvas,
   ComputedCamera,
   System,
@@ -12,17 +11,13 @@ import { ExtendedAPI } from '../API';
 export class ZoomLevel extends System {
   #zoomEvent: CustomEvent;
 
-  private readonly cameraControl = this.attach(CameraControl);
-
   private readonly cameras = this.query(
     (q) => q.changed.with(ComputedCamera).trackWrites,
   );
 
-  private readonly canvases = this.query((q) => q.added.with(Canvas));
-
   constructor() {
     super();
-    this.query((q) => q.using(Camera, Transform).write);
+    this.query((q) => q.using(Camera, Transform).write.and.using(Canvas).read);
   }
 
   initialize() {
@@ -36,32 +31,6 @@ export class ZoomLevel extends System {
   }
 
   execute(): void {
-    this.canvases.added.forEach((canvas) => {
-      const { cameras, width, height } = canvas.read(Canvas);
-
-      const api = canvas.read(Canvas).api as ExtendedAPI;
-
-      api.element.addEventListener(Event.ZOOM_TO, (e) => {
-        const { zoom } = e.detail;
-
-        cameras.forEach((camera) => {
-          const { x, y, rotation } = camera.read(ComputedCamera);
-
-          this.cameraControl.applyLandmark(
-            {
-              zoom,
-              x,
-              y,
-              rotation,
-              viewportX: width / 2,
-              viewportY: height / 2,
-            },
-            camera,
-          );
-        });
-      });
-    });
-
     this.cameras.changed.forEach((camera) => {
       const { canvas } = camera.read(Camera);
 

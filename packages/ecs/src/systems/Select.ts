@@ -23,13 +23,8 @@ import {
   ZIndex,
 } from '../components';
 import { Commands } from '../commands/Commands';
-import { ViewportCulling } from './ViewportCulling';
-import { CameraControl } from './CameraControl';
 import { distanceBetweenPoints } from '../utils';
 export class Select extends System {
-  private viewportCulling = this.attach(ViewportCulling);
-  private cameraControl = this.attach(CameraControl);
-
   private readonly commands = new Commands(this);
 
   private readonly cameras = this.query((q) => q.current.with(Camera).read);
@@ -105,7 +100,7 @@ export class Select extends System {
         this.#pointerDownViewportX = x;
         this.#pointerDownViewportY = y;
 
-        const { x: wx, y: wy } = this.cameraControl.viewport2Canvas(entity, {
+        const { x: wx, y: wy } = api.viewport2Canvas({
           x,
           y,
         });
@@ -113,13 +108,7 @@ export class Select extends System {
         this.#pointerDownCanvasY = wy;
 
         // Single selection
-        const entities = this.viewportCulling.elementsFromBBox(
-          entity,
-          wx,
-          wy,
-          wx,
-          wy,
-        );
+        const entities = api.elementsFromBBox(wx, wy, wx, wy);
 
         const selectedIds = [];
         if (entities.length > 0 && !entities[0].has(UI)) {
@@ -171,7 +160,7 @@ export class Select extends System {
 
           this.#selectionBrush.write(Visibility).value = 'visible';
 
-          const { x: wx, y: wy } = this.cameraControl.viewport2Canvas(entity, {
+          const { x: wx, y: wy } = api.viewport2Canvas({
             x,
             y,
           });

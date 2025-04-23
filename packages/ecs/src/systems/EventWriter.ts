@@ -1,5 +1,4 @@
 import { co, Entity, System } from '@lastolivegames/becsy';
-import { IPointData } from '@pixi/math';
 import { Canvas, Input } from '../components';
 import { getGlobalThis } from '../utils';
 import { Cursor } from '..';
@@ -65,7 +64,7 @@ export class EventWriter extends System {
   }
 
   private bindEventListeners(entity: Entity): void {
-    const canvas = entity.read(Canvas).element as HTMLCanvasElement;
+    const { element, api } = entity.read(Canvas);
 
     const globalThis = getGlobalThis();
     const supportsPointerEvents = !!globalThis.PointerEvent;
@@ -81,13 +80,10 @@ export class EventWriter extends System {
       // ev.preventDefault();
 
       if (pointerIds.size > 1 || !pointerIds.has(e.pointerId)) return;
-      const viewport = this.client2Viewport(
-        {
-          x: e.clientX,
-          y: e.clientY,
-        },
-        canvas,
-      );
+      const viewport = api.client2Viewport({
+        x: e.clientX,
+        y: e.clientY,
+      });
 
       Object.assign(input.write(Input), {
         pointerClient: [e.clientX, e.clientY],
@@ -116,13 +112,10 @@ export class EventWriter extends System {
       this.setInputTrigger(input, 'pointerDownTrigger');
 
       if (pointerIds.size === 1) {
-        const viewport = this.client2Viewport(
-          {
-            x: e.clientX,
-            y: e.clientY,
-          },
-          canvas,
-        );
+        const viewport = api.client2Viewport({
+          x: e.clientX,
+          y: e.clientY,
+        });
         Object.assign(input.write(Input), {
           pointerClient: [e.clientX, e.clientY],
           pointerViewport: [viewport.x, viewport.y],
@@ -150,13 +143,10 @@ export class EventWriter extends System {
         input.write(Input).metaKey = true;
       }
 
-      const viewport = this.client2Viewport(
-        {
-          x: e.clientX,
-          y: e.clientY,
-        },
-        canvas,
-      );
+      const viewport = api.client2Viewport({
+        x: e.clientX,
+        y: e.clientY,
+      });
       Object.assign(input.write(Input), {
         pointerClient: [e.clientX, e.clientY],
         pointerViewport: [viewport.x, viewport.y],
@@ -233,82 +223,41 @@ export class EventWriter extends System {
 
     if ('addEventListener' in globalThis) {
       if (supportsPointerEvents) {
-        addPointerEventListener(canvas as HTMLCanvasElement);
+        addPointerEventListener(element as HTMLCanvasElement);
       } else {
-        addMouseEventListener(canvas as HTMLCanvasElement);
+        addMouseEventListener(element as HTMLCanvasElement);
 
         if (supportsTouchEvents) {
-          addTouchEventListener(canvas as HTMLCanvasElement);
+          addTouchEventListener(element as HTMLCanvasElement);
         }
       }
 
       // use passive event listeners
       // @see https://zhuanlan.zhihu.com/p/24555031
-      canvas.addEventListener('wheel', onPointerWheel, {
+      element.addEventListener('wheel', onPointerWheel, {
         // passive: true,
         capture: true,
       });
 
       globalThis.addEventListener('keydown', onKeyDown, true);
       globalThis.addEventListener('keyup', onKeyUp, true);
-      this.#onDestroyCallbacks.set(canvas as HTMLCanvasElement, [
+      this.#onDestroyCallbacks.set(element as HTMLCanvasElement, [
         () => {
           if (supportsPointerEvents) {
-            removePointerEventListener(canvas as HTMLCanvasElement);
+            removePointerEventListener(element as HTMLCanvasElement);
           } else {
-            removeMouseEventListener(canvas as HTMLCanvasElement);
+            removeMouseEventListener(element as HTMLCanvasElement);
 
             if (supportsTouchEvents) {
-              removeTouchEventListener(canvas as HTMLCanvasElement);
+              removeTouchEventListener(element as HTMLCanvasElement);
             }
           }
 
-          canvas.removeEventListener('wheel', onPointerWheel, true);
+          element.removeEventListener('wheel', onPointerWheel, true);
           globalThis.removeEventListener('keydown', onKeyDown, true);
           globalThis.removeEventListener('keyup', onKeyUp, true);
         },
       ]);
     }
-  }
-
-  /**
-   * Should account for CSS Transform applied on container.
-   * @see https://github.com/antvis/G/issues/1161
-   * @see https://github.com/antvis/G/issues/1677
-   * @see https://developer.mozilla.org/zh-CN/docs/Web/API/MouseEvent/offsetX
-   */
-  client2Viewport({ x, y }: IPointData, $el: HTMLCanvasElement): IPointData {
-    const { scaleX, scaleY, bbox } = this.getScale($el);
-    return {
-      x: (x - (bbox?.left || 0)) / scaleX,
-      y: (y - (bbox?.top || 0)) / scaleY,
-    };
-  }
-
-  viewport2Client({ x, y }: IPointData, $el: HTMLCanvasElement): IPointData {
-    const { scaleX, scaleY, bbox } = this.getScale($el);
-    return {
-      x: (x + (bbox?.left || 0)) * scaleX,
-      y: (y + (bbox?.top || 0)) * scaleY,
-    };
-  }
-
-  private getScale($el: HTMLCanvasElement) {
-    const bbox = $el.getBoundingClientRect();
-    let scaleX = 1;
-    let scaleY = 1;
-
-    if ($el && bbox) {
-      const { offsetWidth, offsetHeight } = $el;
-      if (offsetWidth && offsetHeight) {
-        scaleX = bbox.width / offsetWidth;
-        scaleY = bbox.height / offsetHeight;
-      }
-    }
-    return {
-      scaleX,
-      scaleY,
-      bbox,
-    };
   }
 }
