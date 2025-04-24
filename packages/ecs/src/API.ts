@@ -504,14 +504,17 @@ export class API {
     );
   }
 
-  fitToScreen(effectTiming?: Partial<LandmarkAnimationEffectTiming>) {
+  private zoomToFit(
+    zoomCompare: (...values: number[]) => number,
+    effectTiming?: Partial<LandmarkAnimationEffectTiming>,
+  ) {
     const { minX, minY, maxX, maxY } = this.getSceneGraphBounds();
     const { width, height } = this.#canvas.read(Canvas);
 
     const scaleX = width / (maxX - minX);
     const scaleY = height / (maxY - minY);
 
-    const newZoom = Math.min(scaleX, scaleY);
+    const newZoom = zoomCompare(scaleX, scaleY);
 
     // Fit to center
     const centerX = (minX + maxX) / 2;
@@ -533,33 +536,12 @@ export class API {
     );
   }
 
+  fitToScreen(effectTiming?: Partial<LandmarkAnimationEffectTiming>) {
+    this.zoomToFit(Math.min, effectTiming);
+  }
+
   fillScreen(effectTiming?: Partial<LandmarkAnimationEffectTiming>) {
-    const { minX, minY, maxX, maxY } = this.getSceneGraphBounds();
-    const { width, height } = this.#canvas.read(Canvas);
-
-    const scaleX = width / (maxX - minX);
-    const scaleY = height / (maxY - minY);
-
-    const newZoom = Math.max(scaleX, scaleY);
-
-    // Fit to center
-    const centerX = (minX + maxX) / 2;
-    const centerY = (minY + maxY) / 2;
-
-    const { zoom } = this.#camera.read(ComputedCamera);
-
-    this.gotoLandmark(
-      this.createLandmark({
-        x: centerX - width / 2 / zoom,
-        y: centerY - height / 2 / zoom,
-      }),
-      {
-        duration: 0,
-        onfinish: () => {
-          this.zoomTo(newZoom, effectTiming);
-        },
-      },
-    );
+    this.zoomToFit(Math.max, effectTiming);
   }
 
   /**

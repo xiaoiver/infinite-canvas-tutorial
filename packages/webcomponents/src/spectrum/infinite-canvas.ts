@@ -9,7 +9,6 @@ import {
 } from '@infinite-canvas-tutorial/ecs';
 
 import { apiContext, appStateContext, nodesContext } from '../context';
-import { Event } from '../event';
 import { checkWebGPUSupport } from '../utils';
 import { pendingCanvases } from '../API';
 
@@ -48,6 +47,7 @@ import '@spectrum-web-components/icons-workflow/icons/sp-icon-chevron-down.js';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-layers.js';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-properties.js';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-show-menu.js';
+import '@spectrum-web-components/icons-workflow/icons/sp-icon-stroke-width.js';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-hand.js';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-select.js';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-settings.js';
@@ -151,16 +151,6 @@ export class InfiniteCanvas extends LitElement {
       this.appStateProvider.value = this.appState;
       this.nodesProvider.value = this.nodes;
 
-      /**
-       * Update context values
-       */
-      this.addEventListener(Event.ZOOM_CHANGED, (e: CustomEvent) => {
-        this.appStateProvider.setValue({
-          ...this.appStateProvider.value,
-          cameraZoom: e.detail.zoom,
-        });
-      });
-
       const $canvas = document.createElement('canvas');
       $canvas.style.width = '100%';
       $canvas.style.height = 'calc(100% - 48px)';
@@ -190,10 +180,11 @@ export class InfiniteCanvas extends LitElement {
   });
 
   render() {
+    const appState = this.appStateProvider.value;
     const themeWrapper = (content: string | TemplateResult) =>
       html`<sp-theme
         system="spectrum"
-        color="${this.appState.theme.mode}"
+        color="${appState.theme.mode}"
         scale="medium"
         >${typeof content === 'string' ? html`${content}` : content}</sp-theme
       >`;
@@ -212,6 +203,7 @@ export class InfiniteCanvas extends LitElement {
           html`<ic-spectrum-top-navbar></ic-spectrum-top-navbar>
             <ic-spectrum-penbar></ic-spectrum-penbar>
             <ic-spectrum-taskbar></ic-spectrum-taskbar>
+            <ic-spectrum-context-bar></ic-spectrum-context-bar>
             ${$canvas}`,
         ),
       error: (e: Error) => {

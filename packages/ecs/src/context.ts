@@ -14,6 +14,9 @@ export interface AppState {
   theme: Theme;
   checkboardStyle: CheckboardStyle;
   cameraZoom: number;
+  cameraX: number;
+  cameraY: number;
+  cameraRotation: number;
   penbarAll: Pen[];
   penbarSelected: Pen[];
   taskbarAll: Task[];
@@ -34,6 +37,9 @@ export const getDefaultAppState: () => AppState = () => {
     },
     checkboardStyle: CheckboardStyle.GRID,
     cameraZoom: 1,
+    cameraX: 0,
+    cameraY: 0,
+    cameraRotation: 0,
     penbarAll: [Pen.HAND, Pen.SELECT, Pen.DRAW_RECT],
     penbarSelected: [Pen.HAND],
     taskbarAll: [Task.SHOW_LAYERS_PANEL, Task.SHOW_PROPERTIES_PANEL],

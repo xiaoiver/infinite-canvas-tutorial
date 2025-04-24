@@ -32,7 +32,7 @@ canvas.addEventListener(Event.READY, (e) => {
   // };
 
   api.setPen(Pen.SELECT);
-  api.setTaskbars([Task.SHOW_LAYERS_PANEL, Task.SHOW_PROPERTIES_PANEL]);
+  // api.setTaskbars([Task.SHOW_LAYERS_PANEL, Task.SHOW_PROPERTIES_PANEL]);
 
   api.updateNodes(nodes);
   api.selectNodes([nodes[0].id]);

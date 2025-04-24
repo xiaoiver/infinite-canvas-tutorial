@@ -36,7 +36,15 @@ export class ZoomLevel extends System {
 
       const api = canvas.read(Canvas).api as ExtendedAPI;
 
-      const { zoom } = camera.read(ComputedCamera);
+      const { zoom, x, y, rotation } = camera.read(ComputedCamera);
+
+      api.setAppState({
+        ...api.getAppState(),
+        cameraZoom: zoom,
+        cameraX: x,
+        cameraY: y,
+        cameraRotation: rotation,
+      });
 
       if (zoom !== this.#zoomEvent.detail.zoom) {
         this.#zoomEvent.detail.zoom = zoom;
