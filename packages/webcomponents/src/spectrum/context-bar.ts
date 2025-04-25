@@ -4,6 +4,7 @@ import { when } from 'lit/directives/when.js';
 import { consume } from '@lit/context';
 import {
   AppState,
+  Canvas,
   ComputedBounds,
   SerializedNode,
 } from '@infinite-canvas-tutorial/ecs';
@@ -63,7 +64,51 @@ export class ContextBar extends LitElement {
   @state()
   position: [number, number] = [0, 0];
 
+  connectedCallback() {
+    super.connectedCallback();
+    document.addEventListener('keydown', this.handleKeyDown);
+  }
+
+  disconnectedCallback() {
+    super.disconnectedCallback();
+    document.removeEventListener('keydown', this.handleKeyDown);
+  }
+
+  private handleKeyDown = (e: KeyboardEvent) => {
+    const { layersSelected } = this.appState;
+
+    // Canvas is focused
+    if (
+      document.activeElement !== this.api.element ||
+      layersSelected.length === 0
+    ) {
+      return;
+    }
+
+    const selected = this.api.getNodeById(layersSelected[0]);
+
+    if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      this.api.updateNodeTransform(selected, { dy: -10 });
+      this.api.record();
+    } else if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      this.api.updateNodeTransform(selected, { dy: 10 });
+      this.api.record();
+    } else if (e.key === 'ArrowLeft') {
+      e.preventDefault();
+      this.api.updateNodeTransform(selected, { dx: -10 });
+      this.api.record();
+    } else if (e.key === 'ArrowRight') {
+      e.preventDefault();
+      this.api.updateNodeTransform(selected, { dx: 10 });
+      this.api.record();
+    }
+  };
+
   private calculatePosition(node: SerializedNode): [number, number] {
+    const { width, height } = this.api.getCanvas().read(Canvas);
+
     const entity = this.api.getEntity(node);
     const { geometryBounds } = entity.read(ComputedBounds);
     const { minX, minY, maxX, maxY } = geometryBounds;
@@ -75,10 +120,10 @@ export class ContextBar extends LitElement {
       this.api.canvas2Viewport({ x: maxX, y: maxY }),
     );
 
-    const width = br.x - tl.x;
-    const height = br.y - tl.y;
-
-    return [Math.max(0, tl.x + width / 2), Math.max(0, tl.y + height)];
+    return [
+      Math.min(width, Math.max(0, tl.x + (br.x - tl.x) / 2)),
+      Math.min(height, Math.max(0, tl.y + (br.y - tl.y))),
+    ];
   }
 
   render() {

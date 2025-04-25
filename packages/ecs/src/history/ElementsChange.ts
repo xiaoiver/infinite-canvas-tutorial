@@ -20,6 +20,8 @@ import {
   Text,
   Opacity,
   DropShadow,
+  Polyline,
+  Path,
 } from '../components';
 import { ComponentType, Entity } from '@lastolivegames/becsy';
 
@@ -546,6 +548,8 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
     r,
     rx,
     ry,
+    points,
+    d,
   } = updates as any;
 
   if (!isNil(name)) {
@@ -604,7 +608,7 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
     entity.write(Text).fontSize = fontSize;
   }
 
-  // TODO: Polyline, Path, Text
+  // TODO: Text
 
   if (!isNil(width)) {
     if (entity.has(Rect)) {
@@ -619,13 +623,18 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
   if (!isNil(x)) {
     if (entity.has(Rect)) {
       entity.write(Rect).x = x;
+    } else if (entity.has(Text)) {
+      entity.write(Text).x = x;
     }
   }
   if (!isNil(y)) {
     if (entity.has(Rect)) {
       entity.write(Rect).y = y;
+    } else if (entity.has(Text)) {
+      entity.write(Text).y = y;
     }
   }
+
   if (!isNil(cx)) {
     if (entity.has(Circle)) {
       entity.write(Circle).cx = cx;
@@ -653,6 +662,16 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
   if (!isNil(ry)) {
     if (entity.has(Ellipse)) {
       entity.write(Ellipse).ry = ry;
+    }
+  }
+  if (!isNil(points)) {
+    if (entity.has(Polyline)) {
+      entity.write(Polyline).points = points;
+    }
+  }
+  if (!isNil(d)) {
+    if (entity.has(Path)) {
+      entity.write(Path).d = d;
     }
   }
 

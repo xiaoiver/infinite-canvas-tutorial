@@ -1,6 +1,7 @@
 import { isNumber } from '@antv/util';
 import { Visibility } from '../../components';
 import {
+  defaultAttributes,
   PathSerializedNode,
   PolylineSerializedNode,
   SerializedNode,
@@ -152,6 +153,7 @@ export function svgElementsToSerializedNodes(
       id: `${id}`,
       parentId: parentId ? `${parentId}` : undefined,
       type,
+      ...defaultAttributes[type],
       ...attributes,
     } as SerializedNode;
     nodes.push(node);

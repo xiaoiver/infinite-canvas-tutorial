@@ -26,6 +26,7 @@ export {
   isGradient,
   isPattern,
   parseGradient,
+  serializePoints,
   deserializePoints,
   createSVGElement,
   exportFillGradientOrPattern,

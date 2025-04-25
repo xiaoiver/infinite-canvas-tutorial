@@ -150,10 +150,13 @@ export function serializedNodesToEntities(
           color: stroke,
           width: strokeWidth,
           // comma and/or white space separated
-          dasharray: (strokeDasharray?.includes(',')
-            ? strokeDasharray?.split(',')
-            : strokeDasharray?.split(' ')
-          )?.map(Number) as [number, number],
+          dasharray:
+            strokeDasharray === 'none'
+              ? [0, 0]
+              : ((strokeDasharray?.includes(',')
+                  ? strokeDasharray?.split(',')
+                  : strokeDasharray?.split(' ')
+                )?.map(Number) as [number, number]),
           linecap: strokeLinecap,
           linejoin: strokeLinejoin,
           miterlimit: strokeMiterlimit,

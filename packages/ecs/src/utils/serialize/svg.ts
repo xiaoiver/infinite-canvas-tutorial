@@ -24,14 +24,8 @@ import { generateGradientKey, generatePatternKey } from '../../resources';
 import { deserializePoints } from '../deserialize';
 import { formatTransform } from '../matrix';
 
-/**
- * No need to output default value in SVG Element.
- */
-const defaultValues = {
-  opacity: 1,
-  fillOpacity: 1,
+const strokeDefaultAttributes = {
   strokeOpacity: 1,
-  fill: 'black',
   stroke: 'none',
   strokeWidth: 1,
   strokeLinecap: 'butt',
@@ -40,18 +34,78 @@ const defaultValues = {
   strokeMiterlimit: 4,
   strokeDasharray: 'none',
   strokeDashoffset: 0,
-  innerShadowBlurRadius: 0,
-  innerShadowColor: 'none',
-  innerShadowOffsetX: 0,
-  innerShadowOffsetY: 0,
+};
+
+const fillDefaultAttributes = {
+  fillOpacity: 1,
+  fill: 'black',
+};
+
+const commonDefaultAttributes = {
   visibility: 'visible',
   transform: 'matrix(1,0,0,1,0,0)',
-  cornerRadius: 0,
-  dropShadowColor: 'none',
-  dropShadowOffsetX: 0,
-  dropShadowOffsetY: 0,
-  dropShadowBlurRadius: 0,
-  fillRule: 'nonzero',
+  opacity: 1,
+};
+
+/**
+ * No need to output default value in SVG Element.
+ */
+export const defaultAttributes: Record<
+  SerializedNode['type'],
+  Record<string, any>
+> = {
+  rect: {
+    x: 0,
+    y: 0,
+    width: 0,
+    height: 0,
+    cornerRadius: 0,
+    dropShadowColor: 'none',
+    dropShadowOffsetX: 0,
+    dropShadowOffsetY: 0,
+    dropShadowBlurRadius: 0,
+    innerShadowBlurRadius: 0,
+    innerShadowColor: 'none',
+    innerShadowOffsetX: 0,
+    innerShadowOffsetY: 0,
+    ...commonDefaultAttributes,
+    ...fillDefaultAttributes,
+    ...strokeDefaultAttributes,
+  },
+  circle: {
+    cx: 0,
+    cy: 0,
+    r: 0,
+    ...commonDefaultAttributes,
+    ...fillDefaultAttributes,
+    ...strokeDefaultAttributes,
+  },
+  ellipse: {
+    cx: 0,
+    cy: 0,
+    rx: 0,
+    ry: 0,
+    ...commonDefaultAttributes,
+    ...fillDefaultAttributes,
+    ...strokeDefaultAttributes,
+  },
+  polyline: {
+    ...commonDefaultAttributes,
+    ...strokeDefaultAttributes,
+  },
+  path: {
+    fillRule: 'nonzero',
+    ...commonDefaultAttributes,
+    ...fillDefaultAttributes,
+    ...strokeDefaultAttributes,
+  },
+  text: {
+    ...commonDefaultAttributes,
+    ...fillDefaultAttributes,
+  },
+  g: {
+    ...commonDefaultAttributes,
+  },
 };
 
 // @see https://github.com/plouc/nivo/issues/164
@@ -125,7 +179,10 @@ export function serializeNodesToSVGElements(
     } = restAttributes as any;
 
     Object.entries(rest).forEach(([key, value]) => {
-      if (`${value}` !== '' && `${defaultValues[key]}` !== `${value}`) {
+      if (
+        `${value}` !== '' &&
+        `${defaultAttributes[type][key]}` !== `${value}`
+      ) {
         element.setAttribute(camelToKebabCase(key), `${value}`);
       }
     });

@@ -5,10 +5,10 @@ import {
   SerializedNode,
   TextSerializedNode,
   AppState,
-  API,
 } from '@infinite-canvas-tutorial/ecs';
 import { when } from 'lit/directives/when.js';
 import { apiContext, appStateContext } from '../context';
+import { ExtendedAPI } from '../API';
 
 @customElement('ic-spectrum-properties-panel-content')
 export class PropertiesPanelContent extends LitElement {
@@ -91,7 +91,7 @@ export class PropertiesPanelContent extends LitElement {
   appState: AppState;
 
   @consume({ context: apiContext, subscribe: true })
-  api: API;
+  api: ExtendedAPI;
 
   @property()
   node: SerializedNode;
@@ -167,32 +167,14 @@ export class PropertiesPanelContent extends LitElement {
 
   private handleXChanged(e: Event & { target: HTMLInputElement }) {
     const x = parseInt(e.target.value);
-    if (this.node.type === 'rect') {
-      this.api.updateNode(this.node, { x });
-      this.api.record();
-    } else if (this.node.type === 'circle') {
-      this.api.updateNode(this.node, { cx: x + this.node.r });
-      this.api.record();
-    } else if (this.node.type === 'ellipse') {
-      this.api.updateNode(this.node, { cx: x + this.node.rx });
-      this.api.record();
-    }
-    // TODO: Polyline, Path, Text
+    this.api.updateNodeTransform(this.node, { x });
+    this.api.record();
   }
 
   private handleYChanged(e: Event & { target: HTMLInputElement }) {
     const y = parseInt(e.target.value);
-    if (this.node.type === 'rect') {
-      this.api.updateNode(this.node, { y });
-      this.api.record();
-    } else if (this.node.type === 'circle') {
-      this.api.updateNode(this.node, { cy: y + this.node.r });
-      this.api.record();
-    } else if (this.node.type === 'ellipse') {
-      this.api.updateNode(this.node, { cy: y + this.node.ry });
-      this.api.record();
-    }
-    // TODO: Polyline, Path, Text
+    this.api.updateNodeTransform(this.node, { y });
+    this.api.record();
   }
 
   private handleLockAspectRatioChanged() {
@@ -211,37 +193,9 @@ export class PropertiesPanelContent extends LitElement {
   }
 
   private transformTemplate() {
-    const { type } = this.node;
     const { lockAspectRatio } = this.node as TextSerializedNode;
 
-    let width = 0;
-    let height = 0;
-    let x = 0;
-    let y = 0;
-    let angle = 0;
-
-    if (type === 'circle') {
-      const { r, cx, cy } = this.node;
-      width = r * 2;
-      height = r * 2;
-      x = cx - r;
-      y = cy - r;
-      angle = 0;
-    } else if (type === 'ellipse') {
-      const { rx, ry, cx, cy } = this.node;
-      width = rx * 2;
-      height = ry * 2;
-      x = cx - rx;
-      y = cy - ry;
-      angle = 0;
-    } else if (type === 'rect') {
-      const { width: w, height: h, x: xx, y: yy } = this.node;
-      width = w;
-      height = h;
-      x = xx;
-      y = yy;
-      angle = 0;
-    }
+    const { width, height, x, y, angle } = this.api.getNodeTransform(this.node);
 
     return html`<sp-accordion-item label="Transform" open>
       <div class="content">
