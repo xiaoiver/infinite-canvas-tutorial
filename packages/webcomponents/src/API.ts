@@ -16,6 +16,7 @@ import {
   ComputedBounds,
   Polyline,
   serializePoints,
+  TextSerializedNode,
 } from '@infinite-canvas-tutorial/ecs';
 import { type LitElement } from 'lit';
 import { Event } from './event';
@@ -158,14 +159,20 @@ export class ExtendedAPI extends API {
 
   updateNodeTransform(
     node: SerializedNode,
-    position: Partial<{ x: number; y: number; dx: number; dy: number }>,
+    transform: Partial<{
+      x: number;
+      y: number;
+      dx: number;
+      dy: number;
+      width: number;
+      height: number;
+    }>,
   ) {
-    const { type } = node;
-    const { x, y } = position;
-    let { dx, dy } = position;
+    const { type, lockAspectRatio } = node;
+    const { x, y, width, height } = transform;
+    let { dx, dy } = transform;
 
-    // TODO: Text should account for text align & baseline.
-    if (type === 'rect' || type === 'text') {
+    if (type === 'rect') {
       const diff: Partial<RectSerializedNode> = {};
       if (!isNil(x)) {
         diff.x = x;
@@ -178,6 +185,20 @@ export class ExtendedAPI extends API {
       }
       if (!isNil(dy)) {
         diff.y = (node.y || 0) + dy;
+      }
+      if (!isNil(width)) {
+        if (lockAspectRatio) {
+          const aspectRatio = node.width / node.height;
+          diff.height = width / aspectRatio;
+        }
+        diff.width = width;
+      }
+      if (!isNil(height)) {
+        if (lockAspectRatio) {
+          const aspectRatio = node.width / node.height;
+          diff.width = height * aspectRatio;
+        }
+        diff.height = height;
       }
       this.updateNode(node, diff);
     } else if (type === 'circle') {
@@ -195,6 +216,12 @@ export class ExtendedAPI extends API {
       if (!isNil(dy)) {
         diff.cy = cy + dy;
       }
+      if (!isNil(width)) {
+        diff.r = width / 2;
+      }
+      if (!isNil(height)) {
+        diff.r = height / 2;
+      }
       this.updateNode(node, diff);
     } else if (type === 'ellipse') {
       const diff: Partial<EllipseSerializedNode> = {};
@@ -210,6 +237,20 @@ export class ExtendedAPI extends API {
       }
       if (!isNil(dy)) {
         diff.cy = cy + dy;
+      }
+      if (!isNil(width)) {
+        if (lockAspectRatio) {
+          const aspectRatio = node.rx / node.ry;
+          diff.ry = width / aspectRatio / 2;
+        }
+        diff.rx = width / 2;
+      }
+      if (!isNil(height)) {
+        if (lockAspectRatio) {
+          const aspectRatio = node.rx / node.ry;
+          diff.rx = (height * aspectRatio) / 2;
+        }
+        diff.ry = height / 2;
       }
       this.updateNode(node, diff);
     } else if (type === 'polyline') {
@@ -317,6 +358,22 @@ export class ExtendedAPI extends API {
       });
 
       diff.d = path2String(absoluteArray);
+      this.updateNode(node, diff);
+    } else if (type === 'text') {
+      // TODO: Text should account for text align & baseline.
+      const diff: Partial<TextSerializedNode> = {};
+      if (!isNil(x)) {
+        diff.x = x;
+      }
+      if (!isNil(y)) {
+        diff.y = y;
+      }
+      if (!isNil(dx)) {
+        diff.x = (node.x || 0) + dx;
+      }
+      if (!isNil(dy)) {
+        diff.y = (node.y || 0) + dy;
+      }
       this.updateNode(node, diff);
     }
   }

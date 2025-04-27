@@ -56,6 +56,12 @@ import '@spectrum-web-components/icons-workflow/icons/sp-icon-undo.js';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-redo.js';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-lock-closed.js';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-lock-open.js';
+import '@spectrum-web-components/icons-workflow/icons/sp-icon-text-bold.js';
+import '@spectrum-web-components/icons-workflow/icons/sp-icon-text-italic.js';
+import '@spectrum-web-components/icons-workflow/icons/sp-icon-text-underline.js';
+import '@spectrum-web-components/icons-workflow/icons/sp-icon-text-align-left.js';
+import '@spectrum-web-components/icons-workflow/icons/sp-icon-text-align-center.js';
+import '@spectrum-web-components/icons-workflow/icons/sp-icon-text-align-right.js';
 
 const TOP_NAVBAR_HEIGHT = 48;
 

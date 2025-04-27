@@ -550,6 +550,10 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
     ry,
     points,
     d,
+    fontWeight,
+    fontStyle,
+    textAlign,
+    textBaseline,
   } = updates as any;
 
   if (!isNil(name)) {
@@ -607,8 +611,19 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
   if (!isNil(fontSize)) {
     entity.write(Text).fontSize = fontSize;
   }
-
-  // TODO: Text
+  if (!isNil(fontWeight)) {
+    entity.write(Text).fontWeight = fontWeight;
+  }
+  if (!isNil(fontStyle)) {
+    entity.write(Text).fontStyle = fontStyle;
+  }
+  if (!isNil(textAlign)) {
+    entity.write(Text).textAlign = textAlign;
+  }
+  if (!isNil(textBaseline)) {
+    entity.write(Text).textBaseline = textBaseline;
+  }
+  // TODO: Other text properties
 
   if (!isNil(width)) {
     if (entity.has(Rect)) {

@@ -30,6 +30,10 @@ export class RenderTransformer extends System {
     q.added.and.removed.with(Selected),
   );
 
+  private readonly bounds = this.query(
+    (q) => q.changed.with(ComputedBounds).trackWrites,
+  );
+
   #transformers = new WeakMap<Entity, Entity>();
 
   constructor() {
@@ -120,6 +124,48 @@ export class RenderTransformer extends System {
         });
 
         this.#transformers.delete(entity);
+      }
+    });
+
+    this.bounds.changed.forEach((entity) => {
+      if (entity.has(Selected)) {
+        const transformer = this.#transformers.get(entity);
+
+        const { geometryBounds } = entity.read(ComputedBounds);
+        const { minX, minY, maxX, maxY } = geometryBounds;
+        const width = maxX - minX;
+        const height = maxY - minY;
+        const { rotation } = entity.read(Transform);
+
+        Object.assign(transformer.write(Rect), {
+          x: minX,
+          y: minY,
+          width,
+          height,
+        });
+
+        const [tlAnchor, trAnchor, blAnchor, brAnchor] =
+          transformer.read(Parent).children;
+
+        Object.assign(tlAnchor.write(Circle), {
+          cx: minX,
+          cy: minY,
+        });
+
+        Object.assign(trAnchor.write(Circle), {
+          cx: maxX,
+          cy: minY,
+        });
+
+        Object.assign(blAnchor.write(Circle), {
+          cx: minX,
+          cy: maxY,
+        });
+
+        Object.assign(brAnchor.write(Circle), {
+          cx: maxX,
+          cy: maxY,
+        });
       }
     });
   }

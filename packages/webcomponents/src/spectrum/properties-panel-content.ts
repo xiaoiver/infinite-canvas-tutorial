@@ -100,94 +100,32 @@ export class PropertiesPanelContent extends LitElement {
   width: number;
 
   private handleWidthChanged(e: Event & { target: HTMLInputElement }) {
-    const newWidth = parseInt(e.target.value);
-    if (this.node.type === 'rect') {
-      if (this.node.lockAspectRatio) {
-        const { width, height } = this.node;
-        const aspectRatio = width / height;
-        const newHeight = newWidth / aspectRatio;
-        this.api.updateNode(this.node, { width: newWidth, height: newHeight });
-        this.api.record();
-      } else {
-        this.api.updateNode(this.node, {
-          width: newWidth,
-        });
-        this.api.record();
-      }
-    } else if (this.node.type === 'circle') {
-      this.api.updateNode(this.node, {
-        r: newWidth / 2,
-      });
-      this.api.record();
-    } else if (this.node.type === 'ellipse') {
-      if (this.node.lockAspectRatio) {
-        const { rx, ry } = this.node;
-        const aspectRatio = rx / ry;
-        const newHeight = newWidth / aspectRatio;
-        this.api.updateNode(this.node, { rx: newWidth / 2, ry: newHeight / 2 });
-        this.api.record();
-      } else {
-        this.api.updateNode(this.node, {
-          rx: newWidth / 2,
-        });
-        this.api.record();
-      }
-    }
-    // TODO: Polyline, Path, Text
+    this.api.updateNodeTransform(this.node, {
+      width: parseInt(e.target.value),
+    });
+    this.api.record();
   }
 
   private handleHeightChanged(e: Event & { target: HTMLInputElement }) {
-    const newHeight = parseInt(e.target.value);
-    if (this.node.type === 'rect') {
-      if (this.node.lockAspectRatio) {
-        const { width, height } = this.node;
-        const aspectRatio = width / height;
-        const newWidth = newHeight * aspectRatio;
-        this.api.updateNode(this.node, { width: newWidth, height: newHeight });
-        this.api.record();
-      } else {
-        this.api.updateNode(this.node, {
-          height: newHeight,
-        });
-        this.api.record();
-      }
-    } else if (this.node.type === 'circle') {
-      this.api.updateNode(this.node, {
-        r: newHeight / 2,
-      });
-      this.api.record();
-    } else if (this.node.type === 'ellipse') {
-      this.api.updateNode(this.node, {
-        ry: newHeight / 2,
-      });
-      this.api.record();
-    }
-    // TODO: Polyline, Path, Text
+    this.api.updateNodeTransform(this.node, {
+      height: parseInt(e.target.value),
+    });
+    this.api.record();
   }
 
   private handleXChanged(e: Event & { target: HTMLInputElement }) {
-    const x = parseInt(e.target.value);
-    this.api.updateNodeTransform(this.node, { x });
+    this.api.updateNodeTransform(this.node, { x: parseInt(e.target.value) });
     this.api.record();
   }
 
   private handleYChanged(e: Event & { target: HTMLInputElement }) {
-    const y = parseInt(e.target.value);
-    this.api.updateNodeTransform(this.node, { y });
+    this.api.updateNodeTransform(this.node, { y: parseInt(e.target.value) });
     this.api.record();
   }
 
   private handleLockAspectRatioChanged() {
     this.api.updateNode(this.node, {
       lockAspectRatio: !this.node.lockAspectRatio,
-    });
-    this.api.record();
-  }
-
-  private handleFontSizeChanged(e: Event & { target: HTMLInputElement }) {
-    const fontSize = parseFloat(e.target.value);
-    this.api.updateNode(this.node, {
-      fontSize,
     });
     this.api.record();
   }
@@ -381,22 +319,9 @@ export class PropertiesPanelContent extends LitElement {
                     () => html`<ic-spectrum-stroke-content
                       .node=${this.node}
                     ></ic-spectrum-stroke-content>`,
-                    () => html`<div class="line">
-                      <sp-field-label for="font-size" side-aligned="start"
-                        >Font size</sp-field-label
-                      >
-                      <sp-number-field
-                        id="font-size"
-                        value=${fontSize}
-                        hide-stepper
-                        autocomplete="off"
-                        @change=${this.handleFontSizeChanged}
-                        format-options='{
-                          "style": "unit",
-                          "unit": "px"
-                        }'
-                      ></sp-number-field>
-                    </div> `,
+                    () => html`<ic-spectrum-text-content
+                      .node=${this.node}
+                    ></ic-spectrum-text-content>`,
                   )}
                 </div>
               </sp-accordion-item>

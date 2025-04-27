@@ -18,3 +18,4 @@ export * from './context-bar';
 export * from './fill-action-button';
 export * from './stroke-action-button';
 export * from './stroke-content';
+export * from './text-content';
