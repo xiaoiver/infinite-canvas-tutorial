@@ -110,12 +110,12 @@ export class Select extends System {
         // Single selection
         const entities = api.elementsFromBBox(wx, wy, wx, wy);
 
-        const selectedIds = [];
+        const selecteds = [];
         if (entities.length > 0 && !entities[0].has(UI)) {
           const selected = api.getNodeByEntity(entities[0]);
-          selectedIds.push(selected.id);
+          selecteds.push(selected);
         }
-        api.selectNodes(selectedIds);
+        api.selectNodes(selecteds);
       }
 
       inputPoints.forEach((point) => {

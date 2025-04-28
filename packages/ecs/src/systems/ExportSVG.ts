@@ -11,6 +11,7 @@ import {
   FillImage,
   FillPattern,
   FillSolid,
+  FractionalIndex,
   Grid,
   InnerShadow,
   Name,
@@ -91,6 +92,7 @@ export class ExportSVG extends System {
             DropShadow,
             InnerShadow,
             Visibility,
+            FractionalIndex,
           )
           .read.and.using(Screenshot, VectorScreenshotRequest).write,
     );

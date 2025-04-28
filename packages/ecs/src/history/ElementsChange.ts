@@ -22,6 +22,7 @@ import {
   DropShadow,
   Polyline,
   Path,
+  ZIndex,
 } from '../components';
 import { ComponentType, Entity } from '@lastolivegames/becsy';
 
@@ -316,7 +317,7 @@ export class ElementsChange implements Change<SceneElementsMap> {
 
     if (!flags.containsVisibleDifference) {
       // strip away fractional as even if it would be different, it doesn't have to result in visible change
-      const { index, ...rest } = directlyApplicablePartial;
+      const { fractionalIndex, ...rest } = directlyApplicablePartial;
       const containsVisibleDifference =
         ElementsChange.checkForVisibleDifference(element, rest);
 
@@ -325,7 +326,7 @@ export class ElementsChange implements Change<SceneElementsMap> {
 
     if (!flags.containsZindexDifference) {
       flags.containsZindexDifference =
-        delta.deleted.index !== delta.inserted.index;
+        delta.deleted.fractionalIndex !== delta.inserted.fractionalIndex;
     }
 
     return newElementWith(element, directlyApplicablePartial);
@@ -525,6 +526,7 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
 
   const { name, visibility } = updates;
   const {
+    zIndex,
     fill,
     stroke,
     strokeWidth,
@@ -558,6 +560,9 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
 
   if (!isNil(name)) {
     entity.write(Name).value = name;
+  }
+  if (!isNil(zIndex)) {
+    entity.write(ZIndex).value = zIndex;
   }
   if (!isNil(visibility)) {
     entity.write(Visibility).value = visibility;

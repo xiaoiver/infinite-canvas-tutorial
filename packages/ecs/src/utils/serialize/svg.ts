@@ -23,6 +23,7 @@ import { isPattern, Pattern } from '../pattern';
 import { generateGradientKey, generatePatternKey } from '../../resources';
 import { deserializePoints } from '../deserialize';
 import { formatTransform } from '../matrix';
+import { sortByFractionalIndex } from '../../systems';
 
 const strokeDefaultAttributes = {
   strokeOpacity: 1,
@@ -175,6 +176,7 @@ export function serializeNodesToSVGElements(
       leading,
       maxLines,
       visibility,
+      fractionalIndex,
       ...rest
     } = restAttributes as any;
 
@@ -317,18 +319,33 @@ export function serializeNodesToSVGElements(
       $g.setAttribute('transform', `matrix(${a},${b},${c},${d},${tx},${ty})`);
     }
 
-    // TODO: ZIndex
-
     idSVGElementMap.set(id, $g);
     if (parentId) {
       const parent = idSVGElementMap.get(parentId);
       if (parent) {
+        // parent.childNodes
+
         parent.appendChild($g);
       }
     } else {
       elements.push($g);
     }
   }
+
+  // TODO: Sort by zIndex
+
+  // Sort by fractionalIndex
+  elements
+    .sort((a, b) => {
+      const aNode = idSerializedNodeMap.get(`node-${a.id}`);
+      const bNode = idSerializedNodeMap.get(`node-${b.id}`);
+      return sortByFractionalIndex(
+        aNode.fractionalIndex,
+        bNode.fractionalIndex,
+      );
+    })
+    .reverse();
+
   return elements;
 }
 

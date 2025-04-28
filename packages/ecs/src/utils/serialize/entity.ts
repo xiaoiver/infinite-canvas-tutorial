@@ -26,6 +26,7 @@ import {
   Opacity,
   Visibility,
   Name,
+  FractionalIndex,
 } from '../../components';
 import { serializeTransform } from './transform';
 
@@ -191,6 +192,10 @@ export function entityToSerializedNodes(
   // serialize visibility
   if (entity.has(Visibility)) {
     attributes.visibility = entity.read(Visibility).value;
+  }
+
+  if (entity.has(FractionalIndex)) {
+    attributes.fractionalIndex = entity.read(FractionalIndex).value;
   }
 
   // serialize children

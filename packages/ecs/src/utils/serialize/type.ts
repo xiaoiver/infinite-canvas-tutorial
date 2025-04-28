@@ -43,19 +43,19 @@ export interface BaseSerializeNode<Type extends string>
   type?: Type;
 
   /**
+   * Z index
+   * @see https://developer.mozilla.org/en-US/docs/Web/CSS/z-index
+   */
+  zIndex?: number;
+
+  fractionalIndex?: string;
+
+  /**
    * @see https://github.com/excalidraw/excalidraw/issues/1639
    */
   version?: number;
   versionNonce?: number;
   isDeleted?: boolean;
-
-  /**
-   * String in a fractional form defined by https://github.com/rocicorp/fractional-indexing.
-   * Used for ordering in multiplayer scenarios, such as during reconciliation or undo / redo.
-   * Always kept in sync with the array order by `syncMovedIndices` and `syncInvalidIndices`.
-   * Could be null, i.e. for new elements which were not yet assigned to the scene.
-   */
-  index?: FractionalIndex | null;
 
   updated?: number;
 }

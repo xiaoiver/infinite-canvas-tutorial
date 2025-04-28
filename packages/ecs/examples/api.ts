@@ -33,6 +33,7 @@ import {
   Pen,
   FillGradient,
   Selected,
+  RectSerializedNode,
 } from '../src';
 import { Task } from '../src/context';
 
@@ -100,19 +101,18 @@ class StartUpSystem extends System {
     api.setPen(Pen.SELECT);
     api.setTaskbars([Task.SHOW_LAYERS_PANEL, Task.SHOW_PROPERTIES_PANEL]);
 
-    api.updateNodes([
-      {
-        id: '1',
-        type: 'rect',
-        x: 0,
-        y: 0,
-        width: 100,
-        height: 100,
-        fill: 'red',
-      },
-    ]);
+    const node = {
+      id: '1',
+      type: 'rect',
+      x: 0,
+      y: 0,
+      width: 100,
+      height: 100,
+      fill: 'red',
+    } as RectSerializedNode;
+    api.updateNodes([node]);
 
-    api.selectNodes(['1']);
+    api.selectNodes([node]);
 
     api.record();
 

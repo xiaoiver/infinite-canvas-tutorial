@@ -65,6 +65,11 @@ export class RenderTransformer extends System {
 
   execute() {
     this.selected.added.forEach((entity) => {
+      // Group
+      if (!entity.has(ComputedBounds)) {
+        return;
+      }
+
       const { geometryBounds } = entity.read(ComputedBounds);
       const { minX, minY, maxX, maxY } = geometryBounds;
       const width = maxX - minX;

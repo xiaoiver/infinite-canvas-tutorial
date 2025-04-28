@@ -100,6 +100,7 @@ export class MeshPipeline extends System {
         DropShadow,
         Wireframe,
         Rough,
+        FractionalIndex,
       ).trackWrites,
   );
 

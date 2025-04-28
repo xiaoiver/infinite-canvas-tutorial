@@ -79,7 +79,7 @@ export class ExtendedAPI extends API {
     );
   }
 
-  selectNodes(selected: SerializedNode['id'][], preserveSelection = false) {
+  selectNodes(selected: SerializedNode[], preserveSelection = false) {
     super.selectNodes(selected, preserveSelection);
 
     this.element.dispatchEvent(

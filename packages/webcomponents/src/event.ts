@@ -38,7 +38,7 @@ declare global {
     [Event.NODE_UPDATED]: CustomEvent<{ node: SerializedNode }>;
     [Event.NODE_DELETED]: CustomEvent<{ nodes: SerializedNode[] }>;
     [Event.SELECTED_NODES_CHANGED]: CustomEvent<{
-      selected: SerializedNode['id'][];
+      selected: SerializedNode[];
       preserveSelection: boolean;
     }>;
   }

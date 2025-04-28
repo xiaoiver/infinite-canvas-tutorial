@@ -23,6 +23,7 @@ export function svgElementsToSerializedNodes(
   id = 0,
   defsChildren: SVGElement[] = [],
   parentId?: number,
+  zIndex = 0,
 ): SerializedNode[] {
   const nodes: SerializedNode[] = [];
 
@@ -148,6 +149,7 @@ export function svgElementsToSerializedNodes(
       `Layer ${id}`;
 
     attributes.lockAspectRatio = true;
+    attributes.zIndex = zIndex++;
 
     const node = {
       id: `${id}`,
@@ -163,6 +165,7 @@ export function svgElementsToSerializedNodes(
       ++id,
       defsChildren,
       Number(node.id),
+      0,
     ).filter(Boolean);
 
     id += children.length;

@@ -2,7 +2,12 @@ import { html, css, LitElement } from 'lit';
 import { consume } from '@lit/context';
 import { map } from 'lit/directives/map.js';
 import { customElement } from 'lit/decorators.js';
-import { SerializedNode, Task, AppState } from '@infinite-canvas-tutorial/ecs';
+import {
+  SerializedNode,
+  Task,
+  AppState,
+  sortByFractionalIndex,
+} from '@infinite-canvas-tutorial/ecs';
 import { apiContext, appStateContext, nodesContext } from '../context';
 import { Event } from '../event';
 import { ExtendedAPI } from '../API';
@@ -60,7 +65,7 @@ export class LayersPanel extends LitElement {
 
       // Scroll to the selected layer
       if (selected.length > 0) {
-        const scrollToId = `layers-panel-item-${selected[0]}`;
+        const scrollToId = this.generateLayersPanelItemId(selected[0]);
         const scrollToElement = this.shadowRoot.querySelector(`#${scrollToId}`);
         if (scrollToElement) {
           scrollToElement.scrollIntoView({
@@ -70,6 +75,10 @@ export class LayersPanel extends LitElement {
         }
       }
     });
+  }
+
+  private generateLayersPanelItemId(node: SerializedNode) {
+    return `layers-panel-item-${node.id}`;
   }
 
   private handleClose() {
@@ -89,7 +98,7 @@ export class LayersPanel extends LitElement {
       (node) => !layersSelected.includes(node.id),
     );
     if (nextLayer) {
-      this.api.selectNodes([nextLayer.id]);
+      this.api.selectNodes([nextLayer]);
     }
     this.api.record();
   }
@@ -105,12 +114,59 @@ export class LayersPanel extends LitElement {
       return;
     }
 
-    this.api.selectNodes([id], e.shiftKey);
+    const node = this.api.getNodeById(id);
+    this.api.selectNodes([node], e.shiftKey);
     this.api.record();
+  }
+
+  private handleBringToFront() {
+    const { layersSelected } = this.api.getAppState();
+    const node = this.api.getNodeById(layersSelected[0]);
+    this.api.bringToFront(node);
+    this.api.record();
+
+    this.api.selectNodes([node]);
+  }
+
+  private handleBringForward() {
+    const { layersSelected } = this.api.getAppState();
+    const node = this.api.getNodeById(layersSelected[0]);
+    this.api.bringForward(node);
+    this.api.record();
+
+    this.api.selectNodes([node]);
+  }
+
+  private handleSendBackward() {
+    const { layersSelected } = this.api.getAppState();
+    const node = this.api.getNodeById(layersSelected[0]);
+    this.api.sendBackward(node);
+    this.api.record();
+
+    this.api.selectNodes([node]);
+  }
+
+  private handleSendToBack() {
+    const { layersSelected } = this.api.getAppState();
+    const node = this.api.getNodeById(layersSelected[0]);
+    this.api.sendToBack(node);
+    this.api.record();
+
+    this.api.selectNodes([node]);
   }
 
   render() {
     const { layersSelected, taskbarSelected } = this.appState;
+
+    const sortedNodes = this.nodes
+      .map((node) => {
+        return this.api.getEntity(node);
+      })
+      .sort(sortByFractionalIndex)
+      .map((entity) => {
+        return this.api.getNodeByEntity(entity);
+      })
+      .reverse();
 
     return taskbarSelected.includes(Task.SHOW_LAYERS_PANEL)
       ? html`<section>
@@ -127,6 +183,41 @@ export class LayersPanel extends LitElement {
               </sp-tooltip>
               <sp-icon-add slot="icon"></sp-icon-add>
             </sp-action-button>
+
+            <sp-action-menu
+              label="Arrange layers"
+              quiet
+              size="s"
+              .disabled=${layersSelected.length === 0}
+            >
+              <sp-icon-show-all-layers slot="icon"></sp-icon-show-all-layers>
+              <sp-menu-group>
+                <span slot="header">Arrange layers</span>
+                <sp-menu-item @click=${this.handleBringToFront}>
+                  <sp-icon-layers-bring-to-front
+                    slot="icon"
+                  ></sp-icon-layers-bring-to-front>
+                  Bring to front
+                </sp-menu-item>
+                <sp-menu-item @click=${this.handleBringForward}>
+                  <sp-icon-layers-forward slot="icon"></sp-icon-layers-forward>
+                  Bring forward
+                </sp-menu-item>
+                <sp-menu-item @click=${this.handleSendBackward}>
+                  <sp-icon-layers-backward
+                    slot="icon"
+                  ></sp-icon-layers-backward>
+                  Send backward
+                </sp-menu-item>
+                <sp-menu-item @click=${this.handleSendToBack}>
+                  <sp-icon-layers-send-to-back
+                    slot="icon"
+                  ></sp-icon-layers-send-to-back>
+                  Send to back
+                </sp-menu-item>
+              </sp-menu-group>
+            </sp-action-menu>
+
             <sp-action-button
               quiet
               size="s"
@@ -138,11 +229,11 @@ export class LayersPanel extends LitElement {
             </sp-action-button>
           </sp-action-group>
           <div class="container">
-            ${map(this.nodes, (node) => {
+            ${map(sortedNodes, (node) => {
               // TODO: hierarchy
               // TODO: virtual scroll for better performance
               return html`<ic-spectrum-layers-panel-item
-                id="layers-panel-item-${node.id}"
+                id=${this.generateLayersPanelItemId(node)}
                 .node=${node}
                 draggable
                 @click=${(e: MouseEvent) => this.handleSelect(e, node.id)}

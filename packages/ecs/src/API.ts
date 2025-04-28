@@ -23,10 +23,12 @@ import {
   Children,
   ComputedCamera,
   Cursor,
+  FractionalIndex,
   Grid,
   Landmark,
   LandmarkAnimationEffectTiming,
   Mat3,
+  Parent,
   Pen,
   RasterScreenshotRequest,
   RBush,
@@ -34,6 +36,7 @@ import {
   ToBeDeleted,
   Transform,
   VectorScreenshotRequest,
+  ZIndex,
 } from './components';
 import { vec2 } from 'gl-matrix';
 import { History, mutateElement, safeAddComponent } from './history';
@@ -615,7 +618,7 @@ export class API {
   /**
    * Select nodes.
    */
-  selectNodes(selected: SerializedNode['id'][], preserveSelection = false) {
+  selectNodes(selected: SerializedNode[], preserveSelection = false) {
     if (!preserveSelection) {
       this.getAppState().layersSelected.forEach((id) => {
         const entity = this.#idEntityMap.get(id)?.id();
@@ -629,8 +632,8 @@ export class API {
     this.setAppState({
       ...prevAppState,
       layersSelected: preserveSelection
-        ? [...prevAppState.layersSelected, ...selected]
-        : selected,
+        ? [...prevAppState.layersSelected, ...selected.map((node) => node.id)]
+        : selected.map((node) => node.id),
     });
 
     // Select nodes in the canvas.
@@ -750,6 +753,73 @@ export class API {
     this.setNodes(nodes);
 
     return deletedNodes;
+  }
+
+  private getSiblings(node: SerializedNode) {
+    const entity = this.getEntity(node);
+    if (!entity.has(Children)) {
+      return [];
+    }
+
+    // We can't set backrefs manually.
+    // @see https://lastolivegames.github.io/becsy/guide/architecture/components#referencing-entities
+
+    const parent = entity.read(Children).parent;
+    const children = parent
+      .read(Parent)
+      .children.filter((child) => !!this.getNodeByEntity(child)); // Filter out entities that are not in the scene graph e.g. Transformer UI.
+
+    return children;
+  }
+
+  /**
+   * Bring current node to the front in its context.
+   * The context is the parent of the node.
+   * @see https://developer.mozilla.org/en-US/docs/Web/CSS/z-index
+   */
+  bringToFront(node: SerializedNode) {
+    const children = this.getSiblings(node);
+    const maxZIndex = Math.max(
+      ...children.map((child) => child.read(ZIndex).value),
+    );
+
+    this.updateNode(node, { zIndex: maxZIndex + 1 });
+  }
+
+  bringForward(node: SerializedNode) {
+    const children = this.getSiblings(node);
+    const zIndexes = children
+      .map((child) => child.read(ZIndex).value)
+      .sort((a, b) => a - b);
+    const index = zIndexes.indexOf(node.zIndex);
+    const nextZIndex = zIndexes[index + 1] ?? Infinity;
+    const nextNextZIndex = zIndexes[index + 2] ?? Infinity;
+
+    this.updateNode(node, { zIndex: (nextZIndex + nextNextZIndex) / 2 });
+  }
+
+  sendBackward(node: SerializedNode) {
+    const children = this.getSiblings(node);
+    const zIndexes = children
+      .map((child) => child.read(ZIndex).value)
+      .sort((a, b) => a - b);
+    const index = zIndexes.indexOf(node.zIndex);
+    const prevZIndex = zIndexes[index - 1] ?? -Infinity;
+    const prevPrevZIndex = zIndexes[index - 2] ?? -Infinity;
+
+    this.updateNode(node, { zIndex: (prevZIndex + prevPrevZIndex) / 2 });
+  }
+
+  /**
+   * Send current node to the back in its context.
+   */
+  sendToBack(node: SerializedNode) {
+    const children = this.getSiblings(node);
+    const minZIndex = Math.min(
+      ...children.map((child) => child.read(ZIndex).value),
+    );
+
+    this.updateNode(node, { zIndex: minZIndex - 1 });
   }
 
   /**

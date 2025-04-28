@@ -40,7 +40,7 @@ onMounted(async () => {
     api.setTaskbars([Task.SHOW_LAYERS_PANEL]);
 
     api.updateNodes(nodes);
-    api.selectNodes([nodes[0].id]);
+    api.selectNodes([nodes[0]]);
 
     api.record();
   };

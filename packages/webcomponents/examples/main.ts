@@ -35,7 +35,7 @@ canvas.addEventListener(Event.READY, (e) => {
   // api.setTaskbars([Task.SHOW_LAYERS_PANEL, Task.SHOW_PROPERTIES_PANEL]);
 
   api.updateNodes(nodes);
-  api.selectNodes([nodes[0].id]);
+  api.selectNodes([nodes[0]]);
 
   // api.updateNode(nodes[0], {
   //   dropShadowBlurRadius: 10,

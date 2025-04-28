@@ -1,18 +1,20 @@
 import { Entity, System } from '@lastolivegames/becsy';
 import { FractionalIndex, GlobalRenderOrder, Renderable } from '../components';
 
-export function sortByFractionalIndex(a: Entity, b: Entity) {
-  if (a.has(FractionalIndex) && b.has(FractionalIndex)) {
-    const aFractionalIndex = a.read(FractionalIndex).value;
-    const bFractionalIndex = b.read(FractionalIndex).value;
+export function sortByFractionalIndex(a: Entity | string, b: Entity | string) {
+  const aFractionalIndex =
+    typeof a === 'string'
+      ? a
+      : a.has(FractionalIndex) && a.read(FractionalIndex).value;
+  const bFractionalIndex =
+    typeof b === 'string'
+      ? b
+      : b.has(FractionalIndex) && b.read(FractionalIndex).value;
 
-    // Can't use localeCompare here.
-    // @see https://github.com/rocicorp/fractional-indexing/issues/20
-    if (aFractionalIndex < bFractionalIndex) return -1;
-    if (aFractionalIndex > bFractionalIndex) return 1;
-    return 0;
-  }
-
+  // Can't use localeCompare here.
+  // @see https://github.com/rocicorp/fractional-indexing/issues/20
+  if (aFractionalIndex < bFractionalIndex) return -1;
+  if (aFractionalIndex > bFractionalIndex) return 1;
   return 0;
 }
 

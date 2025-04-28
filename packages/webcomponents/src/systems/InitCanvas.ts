@@ -22,6 +22,7 @@ import {
   Text,
   Transform,
   Visibility,
+  ZIndex,
 } from '@infinite-canvas-tutorial/ecs';
 import { Event } from '../event';
 import { ExtendedAPI, pendingCanvases } from '../API';
@@ -57,6 +58,7 @@ export class InitCanvas extends System {
           Selected,
           Opacity,
           DropShadow,
+          ZIndex,
         ).write,
     );
   }

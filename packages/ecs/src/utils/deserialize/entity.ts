@@ -17,6 +17,7 @@ import {
   Transform,
   Visibility,
   DropShadow,
+  ZIndex,
 } from '../../components';
 import {
   CircleSerializedNode,
@@ -198,6 +199,9 @@ export function serializedNodesToEntities(
 
     const { name } = attributes as NameAttributes;
     entity.insert(new Name(name));
+
+    const { zIndex } = attributes;
+    entity.insert(new ZIndex(zIndex));
 
     if (parentId) {
       idEntityMap.get(parentId)?.appendChild(entity);

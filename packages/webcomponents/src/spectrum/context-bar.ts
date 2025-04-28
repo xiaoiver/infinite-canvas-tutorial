@@ -110,6 +110,10 @@ export class ContextBar extends LitElement {
     const { width, height } = this.api.getCanvas().read(Canvas);
 
     const entity = this.api.getEntity(node);
+    if (!entity.has(ComputedBounds)) {
+      return [0, 0];
+    }
+
     const { geometryBounds } = entity.read(ComputedBounds);
     const { minX, minY, maxX, maxY } = geometryBounds;
 

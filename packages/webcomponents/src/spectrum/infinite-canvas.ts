@@ -25,6 +25,7 @@ import '@spectrum-web-components/color-field/sp-color-field.js';
 import '@spectrum-web-components/color-wheel/sp-color-wheel.js';
 import '@spectrum-web-components/menu/sp-menu-item.js';
 import '@spectrum-web-components/menu/sp-menu-divider.js';
+import '@spectrum-web-components/menu/sp-menu-group.js';
 import '@spectrum-web-components/number-field/sp-number-field.js';
 import '@spectrum-web-components/slider/sp-slider.js';
 import '@spectrum-web-components/swatch/sp-swatch.js';
@@ -34,6 +35,7 @@ import '@spectrum-web-components/textfield/sp-textfield.js';
 import '@spectrum-web-components/thumbnail/sp-thumbnail.js';
 import '@spectrum-web-components/tooltip/sp-tooltip.js';
 import '@spectrum-web-components/picker/sp-picker.js';
+import '@spectrum-web-components/overlay/overlay-trigger.js';
 
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-add.js';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-delete.js';
@@ -62,6 +64,11 @@ import '@spectrum-web-components/icons-workflow/icons/sp-icon-text-underline.js'
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-text-align-left.js';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-text-align-center.js';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-text-align-right.js';
+import '@spectrum-web-components/icons-workflow/icons/sp-icon-layers-backward.js';
+import '@spectrum-web-components/icons-workflow/icons/sp-icon-layers-forward.js';
+import '@spectrum-web-components/icons-workflow/icons/sp-icon-layers-bring-to-front.js';
+import '@spectrum-web-components/icons-workflow/icons/sp-icon-layers-send-to-back.js';
+import '@spectrum-web-components/icons-workflow/icons/sp-icon-show-all-layers.js';
 
 const TOP_NAVBAR_HEIGHT = 48;
 
