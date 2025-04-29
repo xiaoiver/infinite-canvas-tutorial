@@ -26,6 +26,8 @@ import {
   system,
   API,
   Name,
+  ZIndex,
+  ComputeZIndex,
 } from '../../packages/ecs/src';
 import { NodeJSAdapter, sleep } from '../utils';
 
@@ -43,6 +45,7 @@ describe('Hierarchy', () => {
 
     const MyPlugin: Plugin = () => {
       system(PreStartUp)(StartUpSystem);
+      system((s) => s.before(ComputeZIndex))(StartUpSystem);
     };
 
     class StartUpSystem extends System {
@@ -64,6 +67,7 @@ describe('Hierarchy', () => {
             Circle,
             Visibility,
             Name,
+            ZIndex,
           ).write,
       );
 

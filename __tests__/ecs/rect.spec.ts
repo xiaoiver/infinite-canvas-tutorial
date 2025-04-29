@@ -26,6 +26,8 @@ import {
   Name,
   Rect,
   DropShadow,
+  ZIndex,
+  ComputeZIndex,
 } from '../../packages/ecs/src';
 import { NodeJSAdapter, sleep } from '../utils';
 
@@ -43,6 +45,7 @@ describe('Rect', () => {
 
     const MyPlugin: Plugin = () => {
       system(PreStartUp)(StartUpSystem);
+      system((s) => s.before(ComputeZIndex))(StartUpSystem);
     };
 
     class StartUpSystem extends System {
@@ -65,6 +68,7 @@ describe('Rect', () => {
             Visibility,
             Name,
             DropShadow,
+            ZIndex,
           ).write,
       );
 
