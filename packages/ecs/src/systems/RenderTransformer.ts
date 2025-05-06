@@ -15,10 +15,13 @@ import {
   ToBeDeleted,
   Transform,
   UI,
+  UIType,
   ZIndex,
 } from '../components';
 import { Commands } from '../commands';
 import { getDescendants, getSceneRoot } from './Transform';
+
+export const TRANSFORMER_Z_INDEX = 100000;
 
 /**
  * @see https://github.com/konvajs/konva/blob/master/src/shapes/Transformer.ts
@@ -78,7 +81,7 @@ export class RenderTransformer extends System {
 
       const transformer = this.commands
         .spawn(
-          new UI(),
+          new UI(UIType.TRANSFORMER_MASK),
           new Transform({
             rotation,
           }),
@@ -92,7 +95,7 @@ export class RenderTransformer extends System {
             width,
             height,
           }),
-          new ZIndex(Infinity),
+          new ZIndex(TRANSFORMER_Z_INDEX),
           new StrokeAttenuation(),
         )
         .id()
@@ -178,7 +181,7 @@ export class RenderTransformer extends System {
   private createAnchor(cx: number, cy: number) {
     return this.commands
       .spawn(
-        new UI(),
+        new UI(UIType.TRANSFORMER_ANCHOR),
         new Transform(),
         new Renderable(),
         new FillSolid('#fff'),

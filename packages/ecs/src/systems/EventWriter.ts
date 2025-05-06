@@ -79,7 +79,7 @@ export class EventWriter extends System {
       // @see https://stackoverflow.com/questions/49500339/cant-prevent-touchmove-from-scrolling-window-on-ios
       // ev.preventDefault();
 
-      if (pointerIds.size > 1 || !pointerIds.has(e.pointerId)) return;
+      // if (pointerIds.size > 1 || !pointerIds.has(e.pointerId)) return;
       const viewport = api.client2Viewport({
         x: e.clientX,
         y: e.clientY,

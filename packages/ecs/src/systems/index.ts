@@ -20,3 +20,4 @@ export * from './ViewportCulling';
 export * from './ComputeZIndex';
 export * from './Deleter';
 export * from './RenderTransformer';
+export * from './RenderHighlighter';

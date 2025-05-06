@@ -4,6 +4,7 @@ import {
   ComputeBounds,
   EventWriter,
   PropagateTransforms,
+  RenderHighlighter,
   RenderTransformer,
   Select,
   SetCursor,
@@ -11,11 +12,12 @@ import {
   Sort,
   SyncSimpleTransforms,
 } from '../systems';
-import { Selected, UI } from '../components';
+import { Highlighted, Selected, UI } from '../components';
 
 export const PenPlugin: Plugin = () => {
   component(UI);
   component(Selected);
+  component(Highlighted);
 
   system((s) =>
     s.after(
@@ -29,4 +31,7 @@ export const PenPlugin: Plugin = () => {
     ),
   )(Select);
   system((s) => s.afterWritersOf(Selected))(RenderTransformer);
+  system((s) =>
+    s.afterWritersOf(Highlighted).inAnyOrderWith(RenderTransformer),
+  )(RenderHighlighter);
 };

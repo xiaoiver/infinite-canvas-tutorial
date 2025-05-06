@@ -3,10 +3,12 @@ import {
   Camera,
   Canvas,
   Children,
+  ComputedBounds,
   ComputedCamera,
   Cursor,
   FillSolid,
   FractionalIndex,
+  Highlighted,
   Input,
   InputPoint,
   Opacity,
@@ -19,15 +21,38 @@ import {
   Stroke,
   Transform,
   UI,
+  UIType,
   Visibility,
   ZIndex,
 } from '../components';
 import { Commands } from '../commands/Commands';
 import { distanceBetweenPoints } from '../utils';
+import { API } from '../API';
+
+enum SelectionMode {
+  BRUSH,
+  SINGLE,
+  MULTIPLE,
+  MOVE,
+  RESIZE,
+}
+
+/**
+ * * Click to select individual object. Hold `Shift` and click on another object to select multiple objects.
+ * * Brush(marquee) to select multiple objects.
+ * @see https://help.figma.com/hc/en-us/articles/360040449873-Select-layers-and-objects
+ */
 export class Select extends System {
   private readonly commands = new Commands(this);
 
   private readonly cameras = this.query((q) => q.current.with(Camera).read);
+
+  private readonly selected = this.query((q) => q.current.with(Selected).read);
+  private readonly highlighted = this.query(
+    (q) => q.current.with(Highlighted).read,
+  );
+
+  #selectionMode: SelectionMode;
 
   #selectionBrush: Entity;
 
@@ -41,7 +66,7 @@ export class Select extends System {
     this.query(
       (q) =>
         q
-          .using(Canvas)
+          .using(Canvas, ComputedBounds)
           .read.update.using(
             InputPoint,
             Input,
@@ -49,6 +74,7 @@ export class Select extends System {
             Camera,
             UI,
             Selected,
+            Highlighted,
             Transform,
             Parent,
             Children,
@@ -62,6 +88,21 @@ export class Select extends System {
           ).write,
     );
     this.query((q) => q.using(ComputedCamera, FractionalIndex, RBush).read);
+  }
+
+  private getTopmostEntity(
+    api: API,
+    x: number,
+    y: number,
+    selector: (e: Entity) => boolean,
+  ) {
+    const { x: wx, y: wy } = api.viewport2Canvas({
+      x,
+      y,
+    });
+    const entities = api.elementsFromBBox(wx, wy, wx, wy);
+
+    return entities.find(selector);
   }
 
   execute() {
@@ -80,7 +121,15 @@ export class Select extends System {
         if (this.#selectionBrush) {
           // Hide selection brush
           this.#selectionBrush.write(Visibility).value = 'hidden';
+          this.#selectionBrush = undefined;
         }
+
+        // Clear selection
+        api.selectNodes([]);
+
+        this.highlighted.current.forEach((e) => {
+          e.remove(Highlighted);
+        });
 
         return;
       }
@@ -91,31 +140,45 @@ export class Select extends System {
       cursor.value = 'default';
 
       if (input.pointerDownTrigger) {
-        this.createEntity(InputPoint, {
-          prevPoint: input.pointerViewport,
-          canvas,
-        });
-
         const [x, y] = input.pointerViewport;
-        this.#pointerDownViewportX = x;
-        this.#pointerDownViewportY = y;
+        const topmost = this.getTopmostEntity(api, x, y, (e) => !e.has(UI));
 
-        const { x: wx, y: wy } = api.viewport2Canvas({
-          x,
-          y,
-        });
-        this.#pointerDownCanvasX = wx;
-        this.#pointerDownCanvasY = wy;
+        // Click and hold on an empty part of the canvas.
+        if (!topmost) {
+          this.#selectionMode = SelectionMode.BRUSH;
+          this.#pointerDownViewportX = x;
+          this.#pointerDownViewportY = y;
 
-        // Single selection
-        const entities = api.elementsFromBBox(wx, wy, wx, wy);
-
-        const selecteds = [];
-        if (entities.length > 0 && !entities[0].has(UI)) {
-          const selected = api.getNodeByEntity(entities[0]);
-          selecteds.push(selected);
+          const { x: wx, y: wy } = api.viewport2Canvas({
+            x,
+            y,
+          });
+          this.#pointerDownCanvasX = wx;
+          this.#pointerDownCanvasY = wy;
+        } else if (topmost.has(Selected)) {
+          // TODO: Click on a UI element, resize or move the object later
+          this.#selectionMode = SelectionMode.MOVE;
+        } else {
+          if (input.shiftKey) {
+            // TODO: multiple selection
+          } else {
+            this.#selectionMode = SelectionMode.SINGLE;
+          }
         }
-        api.selectNodes(selecteds);
+      }
+
+      if (entity.has(ComputedCamera) && inputPoints.length === 0) {
+        this.highlighted.current.forEach((e) => {
+          e.remove(Highlighted);
+        });
+
+        // TODO: display to select hint when hover
+        const [x, y] = input.pointerViewport;
+        const toHighlight = this.getTopmostEntity(api, x, y, (e) => !e.has(UI));
+        if (toHighlight) {
+          toHighlight.add(Highlighted);
+          // cursor.value = 'nw-resize';
+        }
       }
 
       inputPoints.forEach((point) => {
@@ -126,69 +189,92 @@ export class Select extends System {
           return;
         }
 
-        // Use a threshold to avoid showing the selection brush when the pointer is moved a little.
-        const shouldShowSelectionBrush =
-          distanceBetweenPoints(
-            x,
-            y,
-            this.#pointerDownViewportX,
-            this.#pointerDownViewportY,
-          ) > 10;
+        if (this.#selectionMode === SelectionMode.MOVE) {
+          // TODO: move the object
+        } else if (this.#selectionMode === SelectionMode.BRUSH) {
+          // Use a threshold to avoid showing the selection brush when the pointer is moved a little.
+          const shouldShowSelectionBrush =
+            distanceBetweenPoints(
+              x,
+              y,
+              this.#pointerDownViewportX,
+              this.#pointerDownViewportY,
+            ) > 10;
 
-        if (shouldShowSelectionBrush) {
-          if (!this.#selectionBrush) {
-            this.#selectionBrush = this.commands
-              .spawn(
-                new UI(),
-                new Transform(),
-                new Renderable(),
-                new FillSolid('#e0f2ff'), // --spectrum-blue-100
-                new Opacity({ fillOpacity: 0.5 }),
-                new Stroke({ width: 1, color: '#147af3' }), // --spectrum-thumbnail-border-color-selected
-                new Rect(),
-                new Visibility('hidden'),
-                new ZIndex(Infinity),
-              )
-              .id()
-              .hold();
+          if (shouldShowSelectionBrush) {
+            if (!this.#selectionBrush) {
+              this.#selectionBrush = this.commands
+                .spawn(
+                  new UI(UIType.BRUSH),
+                  new Transform(),
+                  new Renderable(),
+                  new FillSolid('#e0f2ff'), // --spectrum-blue-100
+                  new Opacity({ fillOpacity: 0.5 }),
+                  new Stroke({ width: 1, color: '#147af3' }), // --spectrum-thumbnail-border-color-selected
+                  new Rect(),
+                  new Visibility('hidden'),
+                  new ZIndex(Infinity),
+                )
+                .id()
+                .hold();
 
-            const camera = this.commands.entity(entity);
-            camera.appendChild(this.commands.entity(this.#selectionBrush));
+              const camera = this.commands.entity(entity);
+              camera.appendChild(this.commands.entity(this.#selectionBrush));
 
-            this.commands.execute();
+              this.commands.execute();
+            }
+
+            this.#selectionBrush.write(Visibility).value = 'visible';
+
+            const { x: wx, y: wy } = api.viewport2Canvas({
+              x,
+              y,
+            });
+
+            Object.assign(this.#selectionBrush.write(Rect), {
+              x: this.#pointerDownCanvasX,
+              y: this.#pointerDownCanvasY,
+              width: wx - this.#pointerDownCanvasX,
+              height: wy - this.#pointerDownCanvasY,
+            });
+
+            // TODO: multiple selection
           }
-
-          this.#selectionBrush.write(Visibility).value = 'visible';
-
-          const { x: wx, y: wy } = api.viewport2Canvas({
-            x,
-            y,
-          });
-
-          Object.assign(this.#selectionBrush.write(Rect), {
-            x: this.#pointerDownCanvasX,
-            y: this.#pointerDownCanvasY,
-            width: wx - this.#pointerDownCanvasX,
-            height: wy - this.#pointerDownCanvasY,
-          });
         }
 
         inputPoint.prevPoint = input.pointerViewport;
       });
 
       if (input.pointerUpTrigger) {
-        for (const point of inputPoints) {
-          point.delete();
-        }
+        this.highlighted.current.forEach((e) => {
+          e.remove(Highlighted);
+        });
 
         if (this.#selectionBrush) {
           this.#selectionBrush.write(Visibility).value = 'hidden';
         }
 
-        this.#pointerDownViewportX = undefined;
-        this.#pointerDownViewportY = undefined;
-        this.#pointerDownCanvasX = undefined;
-        this.#pointerDownCanvasY = undefined;
+        const [x, y] = input.pointerViewport;
+
+        if (this.#selectionMode === SelectionMode.BRUSH) {
+          api.selectNodes([]);
+
+          this.#pointerDownViewportX = undefined;
+          this.#pointerDownViewportY = undefined;
+          this.#pointerDownCanvasX = undefined;
+          this.#pointerDownCanvasY = undefined;
+        } else if (this.#selectionMode === SelectionMode.SINGLE) {
+          // Single selection
+          const toSelect = this.getTopmostEntity(api, x, y, (e) => !e.has(UI));
+
+          if (!toSelect) {
+            // Clear selection
+            api.selectNodes([]);
+          } else {
+            const selected = api.getNodeByEntity(toSelect);
+            api.selectNodes([selected]);
+          }
+        }
       }
     });
   }
