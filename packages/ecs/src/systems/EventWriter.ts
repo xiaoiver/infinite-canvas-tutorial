@@ -75,6 +75,21 @@ export class EventWriter extends System {
     this.pointerIds.set(entity.__id, new Set());
     const pointerIds = this.pointerIds.get(entity.__id);
 
+    const syncCtrlShiftAltMeta = (e: PointerEvent | WheelEvent) => {
+      if (e.ctrlKey) {
+        input.write(Input).ctrlKey = true;
+      }
+      if (e.shiftKey) {
+        input.write(Input).shiftKey = true;
+      }
+      if (e.metaKey) {
+        input.write(Input).metaKey = true;
+      }
+      if (e.altKey) {
+        input.write(Input).altKey = true;
+      }
+    };
+
     const onPointerMove = (e: PointerEvent) => {
       // @see https://stackoverflow.com/questions/49500339/cant-prevent-touchmove-from-scrolling-window-on-ios
       // ev.preventDefault();
@@ -89,10 +104,11 @@ export class EventWriter extends System {
         pointerClient: [e.clientX, e.clientY],
         pointerViewport: [viewport.x, viewport.y],
       });
+
+      syncCtrlShiftAltMeta(e);
     };
 
     const onPointerUp = (e: PointerEvent) => {
-      // input.write(Input).pointerUpTrigger = true;
       this.setInputTrigger(input, 'pointerUpTrigger');
       pointerIds.delete(e.pointerId);
     };
@@ -121,6 +137,8 @@ export class EventWriter extends System {
           pointerViewport: [viewport.x, viewport.y],
         });
       }
+
+      syncCtrlShiftAltMeta(e);
     };
 
     const onPointerCancel = (e: PointerEvent) => {
@@ -133,15 +151,7 @@ export class EventWriter extends System {
       input.write(Input).deltaX = e.deltaX;
       input.write(Input).deltaY = e.deltaY;
 
-      if (e.ctrlKey) {
-        input.write(Input).ctrlKey = true;
-      }
-      if (e.shiftKey) {
-        input.write(Input).shiftKey = true;
-      }
-      if (e.metaKey) {
-        input.write(Input).metaKey = true;
-      }
+      syncCtrlShiftAltMeta(e);
 
       const viewport = api.client2Viewport({
         x: e.clientX,
@@ -157,13 +167,14 @@ export class EventWriter extends System {
       if (e.key === 'Control') {
         input.write(Input).ctrlKey = true;
       }
-
       if (e.key === 'Shift') {
         input.write(Input).shiftKey = true;
       }
-
       if (e.key === 'Meta') {
         input.write(Input).metaKey = true;
+      }
+      if (e.key === 'Alt') {
+        input.write(Input).altKey = true;
       }
     };
 
@@ -171,13 +182,14 @@ export class EventWriter extends System {
       if (e.key === 'Control') {
         input.write(Input).ctrlKey = false;
       }
-
       if (e.key === 'Shift') {
         input.write(Input).shiftKey = false;
       }
-
       if (e.key === 'Meta') {
         input.write(Input).metaKey = false;
+      }
+      if (e.key === 'Alt') {
+        input.write(Input).altKey = false;
       }
     };
 

@@ -13,6 +13,8 @@ export class Input {
 
   @field.boolean declare shiftKey: boolean;
 
+  @field.boolean declare altKey: boolean;
+
   @field.boolean declare metaKey: boolean;
 
   @field.boolean declare wheelTrigger: boolean;

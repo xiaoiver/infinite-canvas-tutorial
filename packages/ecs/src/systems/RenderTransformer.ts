@@ -4,6 +4,7 @@ import {
   Circle,
   ComputedBounds,
   FillSolid,
+  Name,
   Opacity,
   Parent,
   Rect,
@@ -22,6 +23,13 @@ import { Commands } from '../commands';
 import { getDescendants, getSceneRoot } from './Transform';
 
 export const TRANSFORMER_Z_INDEX = 100000;
+
+export enum AnchorName {
+  TOP_LEFT = 'top-left',
+  TOP_RIGHT = 'top-right',
+  BOTTOM_LEFT = 'bottom-left',
+  BOTTOM_RIGHT = 'bottom-right',
+}
 
 /**
  * @see https://github.com/konvajs/konva/blob/master/src/shapes/Transformer.ts
@@ -62,6 +70,7 @@ export class RenderTransformer extends System {
             SizeAttenuation,
             StrokeAttenuation,
             ToBeDeleted,
+            Name,
           ).write,
     );
   }
@@ -101,10 +110,10 @@ export class RenderTransformer extends System {
         .id()
         .hold();
 
-      const tlAnchor = this.createAnchor(minX, minY);
-      const trAnchor = this.createAnchor(maxX, minY);
-      const blAnchor = this.createAnchor(minX, maxY);
-      const brAnchor = this.createAnchor(maxX, maxY);
+      const tlAnchor = this.createAnchor(minX, minY, AnchorName.TOP_LEFT);
+      const trAnchor = this.createAnchor(maxX, minY, AnchorName.TOP_RIGHT);
+      const blAnchor = this.createAnchor(minX, maxY, AnchorName.BOTTOM_LEFT);
+      const brAnchor = this.createAnchor(maxX, maxY, AnchorName.BOTTOM_RIGHT);
 
       const transformEntity = this.commands.entity(transformer);
       transformEntity.appendChild(this.commands.entity(tlAnchor));
@@ -178,10 +187,11 @@ export class RenderTransformer extends System {
     });
   }
 
-  private createAnchor(cx: number, cy: number) {
+  private createAnchor(cx: number, cy: number, name: string) {
     return this.commands
       .spawn(
         new UI(UIType.TRANSFORMER_ANCHOR),
+        new Name(name),
         new Transform(),
         new Renderable(),
         new FillSolid('#fff'),

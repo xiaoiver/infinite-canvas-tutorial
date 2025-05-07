@@ -234,6 +234,13 @@ child.add(Children, {
 parent.read(Parent).children; // [child]
 ```
 
+It's worth mentioning that Bevy has used the new [ECS Relationships] since version 0.16:
+
+```rs
+commands.spawn(ChildOf(some_parent));
+commands.entity(some_entity).insert(ChildOf(new_parent));
+```
+
 In our implementation, we refer to [Bevy Hierarchy] and encapsulate EntityCommand on top of Entity to provide the construction of the above parent-child relationship in a more user-friendly way. The `AddChild` contains the above implementation:
 
 ```ts
@@ -244,7 +251,6 @@ export class EntityCommands {
     }
 }
 
-// 以更简洁的方式使用
 parent.appendChild(child);
 ```
 
@@ -311,9 +317,56 @@ We can see that the event mechanism provides convenience for inter-system commun
 
 ### Becsy coroutines {#becsy-coroutines}
 
-Becsy provides [coroutines] to respond to events.
+Listen to events through DOM API in the EventWriter System:
 
-[babylon.js coroutines]
+```ts
+$el.addEventListener('pointerup', onPointerUp, true);
+const onPointerUp = (e: PointerEvent) => {
+    this.setInputTrigger(input, 'pointerUpTrigger');
+};
+```
+
+When an event is triggered, the corresponding event flag is written to the Input component. This component also records the trigger state of other events, <kbd>Ctrl</kbd>, <kbd>Shift</kbd> key states, and event coordinates. These states will be used for subsequent interaction behaviors, such as clicking to select shapes, dragging to select shapes, etc:
+
+```ts
+export class Input {
+    @field.boolean declare pointerUpTrigger: boolean;
+}
+```
+
+So how do we ensure that the state is only written once in a frame? Becsy provides [coroutines] to handle logic that spans multiple frames, including the ability to wait for a certain number of frames or seconds. Here we use the most basic usage:
+
+```ts
+@co private *setInputTrigger(entity: Entity, triggerKey: string): Generator {
+    const input = entity.write(Input);
+
+    if (!(triggerKey in input)) return;
+    Object.assign(input, { [triggerKey]: true });
+
+    yield;
+
+    {
+      const input = entity.hold().write(Input);
+      Object.assign(input, { [triggerKey]: false });
+    }
+
+    yield;
+}
+```
+
+Finally, in systems like CameraControl that need to handle events, we can process the corresponding events in the current frame through flags:
+
+```ts
+execute() {
+    const input = canvas.write(Input);
+    if (input.pointerDownTrigger) {}
+    if (input.pointerUpTrigger) {}
+}
+```
+
+## Extended reading {#extended-reading}
+
+-   [babylon.js coroutines]
 
 [Bevy ECS]: https://bevyengine.org/learn/quick-start/getting-started/ecs/
 [Bevy Plugins]: https://bevyengine.org/learn/quick-start/getting-started/plugins/
@@ -341,3 +394,4 @@ Becsy provides [coroutines] to respond to events.
 [Attaching systems]: https://lastolivegames.github.io/becsy/guide/architecture/systems#attaching-systems
 [Lesson 7]: /guide/lesson-007
 [Bevy Hierarchy]: https://bevy-cheatbook.github.io/fundamentals/hierarchy.html
+[ECS Relationships]: https://bevyengine.org/news/bevy-0-16/#ecs-relationships

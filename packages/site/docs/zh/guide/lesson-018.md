@@ -248,6 +248,13 @@ export class EntityCommands {
 parent.appendChild(child);
 ```
 
+值得一提的是，Bevy 在 0.16 版本后使用了新的 [ECS Relationships]：
+
+```rs
+commands.spawn(ChildOf(some_parent));
+commands.entity(some_entity).insert(ChildOf(new_parent));
+```
+
 最后我们在插件中完成对这两个 Component 的注册：
 
 ```ts
@@ -311,9 +318,56 @@ window_resized.write(WindowResized {
 
 ### Becsy coroutines {#becsy-coroutines}
 
-Becsy 提供了 [coroutines] 来响应事件。
+在 EventWriter System 中通过 DOM API 监听事件：
 
-[babylon.js coroutines]
+```ts
+$el.addEventListener('pointerup', onPointerUp, true);
+const onPointerUp = (e: PointerEvent) => {
+    this.setInputTrigger(input, 'pointerUpTrigger');
+};
+```
+
+当事件触发时，把对应事件的标志写入 Input 组件中。这个组件还记录了其他事件的触发状态，<kbd>Ctrl</kbd>，<kbd>Shift</kbd> 等按键状态以及事件坐标。这些状态将用于后续交互行为的处理，比如点击选中图形、拖拽框选图形等：
+
+```ts
+export class Input {
+    @field.boolean declare pointerUpTrigger: boolean;
+}
+```
+
+那我们如何保证在一帧中只会写入一次状态呢？Becsy 提供了 [coroutines] 来处理跨越多帧的逻辑，包括可以等待一定的帧数、秒数等。这里我们就使用最基础的用法：
+
+```ts
+@co private *setInputTrigger(entity: Entity, triggerKey: string): Generator {
+    const input = entity.write(Input);
+
+    if (!(triggerKey in input)) return;
+    Object.assign(input, { [triggerKey]: true });
+
+    yield;
+
+    {
+      const input = entity.hold().write(Input);
+      Object.assign(input, { [triggerKey]: false });
+    }
+
+    yield;
+}
+```
+
+最后在 CameraControl 这样需要处理事件的系统里，通过标志就可以在当前帧处理对应事件：
+
+```ts
+execute() {
+    const input = canvas.write(Input);
+    if (input.pointerDownTrigger) {}
+    if (input.pointerUpTrigger) {}
+}
+```
+
+## 扩展阅读 {#extended-reading}
+
+-   [babylon.js coroutines]
 
 [Bevy ECS]: https://bevyengine.org/learn/quick-start/getting-started/ecs/
 [Bevy Plugins]: https://bevyengine.org/learn/quick-start/getting-started/plugins/
@@ -341,3 +395,4 @@ Becsy 提供了 [coroutines] 来响应事件。
 [Attaching systems]: https://lastolivegames.github.io/becsy/guide/architecture/systems#attaching-systems
 [课程 7]: /zh/guide/lesson-007
 [Bevy Hierarchy]: https://bevy-cheatbook.github.io/fundamentals/hierarchy.html
+[ECS Relationships]: https://bevyengine.org/news/bevy-0-16/#ecs-relationships

@@ -31,3 +31,7 @@ export function bisect(norm: vec2, norm2: vec2, dy: number) {
 
 const random = new Random(Date.now());
 export const randomInteger = () => Math.floor(random.next() * 2 ** 31);
+
+export function inRange(value: number, min: number, max: number) {
+  return value >= min && value <= max;
+}

@@ -311,6 +311,7 @@ export class API {
     // Sort by fractional index
     return rBushNodes
       .map((node) => node.entity)
+      .filter((entity) => entity.__valid)
       .sort(sortByFractionalIndex)
       .reverse();
   }
