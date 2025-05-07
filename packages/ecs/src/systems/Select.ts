@@ -3,9 +3,11 @@ import {
   Camera,
   Canvas,
   Children,
+  Circle,
   ComputedBounds,
   ComputedCamera,
   Cursor,
+  Ellipse,
   FillSolid,
   FractionalIndex,
   Highlighted,
@@ -13,12 +15,15 @@ import {
   InputPoint,
   Opacity,
   Parent,
+  Path,
   Pen,
+  Polyline,
   RBush,
   Rect,
   Renderable,
   Selected,
   Stroke,
+  Text,
   Transform,
   UI,
   UIType,
@@ -28,6 +33,7 @@ import {
 import { Commands } from '../commands/Commands';
 import { distanceBetweenPoints } from '../utils';
 import { API } from '../API';
+import { RenderHighlighter } from './RenderHighlighter';
 
 enum SelectionMode {
   BRUSH,
@@ -44,6 +50,8 @@ enum SelectionMode {
  */
 export class Select extends System {
   private readonly commands = new Commands(this);
+
+  private readonly renderHighlighter = this.attach(RenderHighlighter);
 
   private readonly cameras = this.query((q) => q.current.with(Camera).read);
 
@@ -83,6 +91,11 @@ export class Select extends System {
             Opacity,
             Stroke,
             Rect,
+            Circle,
+            Ellipse,
+            Text,
+            Path,
+            Polyline,
             Visibility,
             ZIndex,
           ).write,
@@ -103,6 +116,33 @@ export class Select extends System {
     const entities = api.elementsFromBBox(wx, wy, wx, wy);
 
     return entities.find(selector);
+  }
+
+  private handleSelectedMoving(api: API, dx: number, dy: number) {
+    this.selected.current.forEach((selected) => {
+      if (selected.has(Highlighted)) {
+        selected.remove(Highlighted);
+      }
+
+      // Hide transformer and highlighter
+      const node = api.getNodeByEntity(selected);
+
+      api.updateNodeTransform(node, {
+        dx,
+        dy,
+      });
+    });
+  }
+
+  private handleSelectedMoved(api: API) {
+    api.setNodes(api.getNodes());
+    api.record();
+
+    this.selected.current.forEach((selected) => {
+      if (!selected.has(Highlighted)) {
+        selected.add(Highlighted);
+      }
+    });
   }
 
   execute() {
@@ -143,18 +183,19 @@ export class Select extends System {
         const [x, y] = input.pointerViewport;
         const topmost = this.getTopmostEntity(api, x, y, (e) => !e.has(UI));
 
+        this.#pointerDownViewportX = x;
+        this.#pointerDownViewportY = y;
+
+        const { x: wx, y: wy } = api.viewport2Canvas({
+          x,
+          y,
+        });
+        this.#pointerDownCanvasX = wx;
+        this.#pointerDownCanvasY = wy;
+
         // Click and hold on an empty part of the canvas.
         if (!topmost) {
           this.#selectionMode = SelectionMode.BRUSH;
-          this.#pointerDownViewportX = x;
-          this.#pointerDownViewportY = y;
-
-          const { x: wx, y: wy } = api.viewport2Canvas({
-            x,
-            y,
-          });
-          this.#pointerDownCanvasX = wx;
-          this.#pointerDownCanvasY = wy;
         } else if (topmost.has(Selected)) {
           // TODO: Click on a UI element, resize or move the object later
           this.#selectionMode = SelectionMode.MOVE;
@@ -175,7 +216,7 @@ export class Select extends System {
         // TODO: display to select hint when hover
         const [x, y] = input.pointerViewport;
         const toHighlight = this.getTopmostEntity(api, x, y, (e) => !e.has(UI));
-        if (toHighlight) {
+        if (toHighlight && toHighlight.alive) {
           toHighlight.add(Highlighted);
           // cursor.value = 'nw-resize';
         }
@@ -189,9 +230,7 @@ export class Select extends System {
           return;
         }
 
-        if (this.#selectionMode === SelectionMode.MOVE) {
-          // TODO: move the object
-        } else if (this.#selectionMode === SelectionMode.BRUSH) {
+        if (this.#selectionMode === SelectionMode.BRUSH) {
           // Use a threshold to avoid showing the selection brush when the pointer is moved a little.
           const shouldShowSelectionBrush =
             distanceBetweenPoints(
@@ -240,6 +279,21 @@ export class Select extends System {
 
             // TODO: multiple selection
           }
+        } else if (this.#selectionMode === SelectionMode.MOVE) {
+          // TODO: move the object
+          const { x: sx, y: sy } = api.viewport2Canvas({
+            x: inputPoint.prevPoint[0],
+            y: inputPoint.prevPoint[1],
+          });
+          const { x: ex, y: ey } = api.viewport2Canvas({
+            x,
+            y,
+          });
+
+          const deltaX = ex - sx;
+          const deltaY = ey - sy;
+
+          this.handleSelectedMoving(api, deltaX, deltaY);
         }
 
         inputPoint.prevPoint = input.pointerViewport;
@@ -256,13 +310,15 @@ export class Select extends System {
 
         const [x, y] = input.pointerViewport;
 
+        this.#pointerDownViewportX = undefined;
+        this.#pointerDownViewportY = undefined;
+        this.#pointerDownCanvasX = undefined;
+        this.#pointerDownCanvasY = undefined;
+
         if (this.#selectionMode === SelectionMode.BRUSH) {
           api.selectNodes([]);
 
-          this.#pointerDownViewportX = undefined;
-          this.#pointerDownViewportY = undefined;
-          this.#pointerDownCanvasX = undefined;
-          this.#pointerDownCanvasY = undefined;
+          // TODO: Apply selection
         } else if (this.#selectionMode === SelectionMode.SINGLE) {
           // Single selection
           const toSelect = this.getTopmostEntity(api, x, y, (e) => !e.has(UI));
@@ -274,6 +330,9 @@ export class Select extends System {
             const selected = api.getNodeByEntity(toSelect);
             api.selectNodes([selected]);
           }
+        } else if (this.#selectionMode === SelectionMode.MOVE) {
+          // move the object and commit the changes
+          this.handleSelectedMoved(api);
         }
       }
     });

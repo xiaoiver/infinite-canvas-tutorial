@@ -1,6 +1,7 @@
 import { Entity } from '@lastolivegames/becsy';
 import { IPointData } from '@pixi/math';
-import { mat3 } from 'gl-matrix';
+import { mat3, vec2 } from 'gl-matrix';
+import { isNil, path2Absolute, path2String } from '@antv/util';
 import {
   CaptureUpdateAction,
   CaptureUpdateActionType,
@@ -10,10 +11,17 @@ import {
 import { Commands, EntityCommands } from './commands';
 import { AppState, getDefaultAppState, Task } from './context';
 import {
+  CircleSerializedNode,
   EASING_FUNCTION,
+  EllipseSerializedNode,
   getScale,
+  PathSerializedNode,
+  PolylineSerializedNode,
+  RectSerializedNode,
   SerializedNode,
   serializedNodesToEntities,
+  serializePoints,
+  TextSerializedNode,
 } from './utils';
 import {
   AABB,
@@ -21,15 +29,16 @@ import {
   Canvas,
   CheckboardStyle,
   Children,
+  ComputedBounds,
   ComputedCamera,
   Cursor,
-  FractionalIndex,
   Grid,
   Landmark,
   LandmarkAnimationEffectTiming,
   Mat3,
   Parent,
   Pen,
+  Polyline,
   RasterScreenshotRequest,
   RBush,
   Selected,
@@ -38,10 +47,9 @@ import {
   VectorScreenshotRequest,
   ZIndex,
 } from './components';
-import { vec2 } from 'gl-matrix';
+
 import { History, mutateElement, safeAddComponent } from './history';
-import { sortByFractionalIndex } from './systems/Sort';
-import { updateMatrix } from './systems/CameraControl';
+import { sortByFractionalIndex, updateMatrix } from './systems';
 import { DOMAdapter } from './environment';
 
 export interface StateManagement {
@@ -731,6 +739,269 @@ export class API {
       existentNodes.forEach((node) => {
         this.updateNode(node);
       });
+    }
+  }
+
+  getNodeTransform(node: SerializedNode) {
+    const { type } = node;
+    let width = 0;
+    let height = 0;
+    let x = 0;
+    let y = 0;
+    let angle = 0;
+
+    if (type === 'circle') {
+      const { r, cx, cy } = node;
+      width = r * 2;
+      height = r * 2;
+      x = cx - r;
+      y = cy - r;
+      angle = 0;
+    } else if (type === 'ellipse') {
+      const { rx, ry, cx, cy } = node;
+      width = rx * 2;
+      height = ry * 2;
+      x = cx - rx;
+      y = cy - ry;
+      angle = 0;
+    } else if (type === 'rect') {
+      const { width: w, height: h, x: xx, y: yy } = node;
+      width = w;
+      height = h;
+      x = xx;
+      y = yy;
+      angle = 0;
+    } else if (type === 'polyline' || type === 'path' || type === 'text') {
+      const { geometryBounds } = this.getEntity(node)?.read(ComputedBounds);
+      const { minX, minY, maxX, maxY } = geometryBounds;
+      width = maxX - minX;
+      height = maxY - minY;
+      x = minX;
+      y = minY;
+      angle = 0;
+    }
+
+    return { width, height, x, y, angle };
+  }
+
+  updateNodeTransform(
+    node: SerializedNode,
+    transform: Partial<{
+      x: number;
+      y: number;
+      dx: number;
+      dy: number;
+      width: number;
+      height: number;
+    }>,
+  ) {
+    const { type, lockAspectRatio } = node;
+    const { x, y, width, height } = transform;
+    let { dx, dy } = transform;
+
+    if (type === 'rect') {
+      const diff: Partial<RectSerializedNode> = {};
+      if (!isNil(x)) {
+        diff.x = x;
+      }
+      if (!isNil(y)) {
+        diff.y = y;
+      }
+      if (!isNil(dx)) {
+        diff.x = (node.x || 0) + dx;
+      }
+      if (!isNil(dy)) {
+        diff.y = (node.y || 0) + dy;
+      }
+      if (!isNil(width)) {
+        if (lockAspectRatio) {
+          const aspectRatio = node.width / node.height;
+          diff.height = width / aspectRatio;
+        }
+        diff.width = width;
+      }
+      if (!isNil(height)) {
+        if (lockAspectRatio) {
+          const aspectRatio = node.width / node.height;
+          diff.width = height * aspectRatio;
+        }
+        diff.height = height;
+      }
+      this.updateNode(node, diff);
+    } else if (type === 'circle') {
+      const diff: Partial<CircleSerializedNode> = {};
+      const { cx = 0, cy = 0, r = 0 } = node;
+      if (!isNil(x)) {
+        diff.cx = x + r;
+      }
+      if (!isNil(y)) {
+        diff.cy = y + r;
+      }
+      if (!isNil(dx)) {
+        diff.cx = cx + dx;
+      }
+      if (!isNil(dy)) {
+        diff.cy = cy + dy;
+      }
+      if (!isNil(width)) {
+        diff.r = width / 2;
+      }
+      if (!isNil(height)) {
+        diff.r = height / 2;
+      }
+      this.updateNode(node, diff);
+    } else if (type === 'ellipse') {
+      const diff: Partial<EllipseSerializedNode> = {};
+      const { cx = 0, cy = 0, rx = 0, ry = 0 } = node;
+      if (!isNil(x)) {
+        diff.cx = x + rx;
+      }
+      if (!isNil(y)) {
+        diff.cy = y + ry;
+      }
+      if (!isNil(dx)) {
+        diff.cx = cx + dx;
+      }
+      if (!isNil(dy)) {
+        diff.cy = cy + dy;
+      }
+      if (!isNil(width)) {
+        if (lockAspectRatio) {
+          const aspectRatio = node.rx / node.ry;
+          diff.ry = width / aspectRatio / 2;
+        }
+        diff.rx = width / 2;
+      }
+      if (!isNil(height)) {
+        if (lockAspectRatio) {
+          const aspectRatio = node.rx / node.ry;
+          diff.rx = (height * aspectRatio) / 2;
+        }
+        diff.ry = height / 2;
+      }
+      this.updateNode(node, diff);
+    } else if (type === 'polyline') {
+      const { x: prevX, y: prevY } = this.getNodeTransform(node);
+      if (isNil(dx)) {
+        dx = x - prevX;
+      }
+      if (isNil(dy)) {
+        dy = y - prevY;
+      }
+
+      const points = this.getEntity(node)?.read(Polyline).points;
+      const diff: Partial<PolylineSerializedNode> = {
+        points: serializePoints(
+          points.map(([x, y]) => {
+            return [x + dx, y + dy];
+          }),
+        ),
+      };
+      this.updateNode(node, diff);
+    } else if (type === 'path') {
+      const { x: prevX, y: prevY } = this.getNodeTransform(node);
+      if (!isNil(x) && isNil(dx)) {
+        dx = x - prevX;
+      }
+      if (!isNil(y) && isNil(dy)) {
+        dy = y - prevY;
+      }
+
+      const hasDx = !isNil(dx);
+      const hasDy = !isNil(dy);
+
+      const diff: Partial<PathSerializedNode> = {};
+      const { d } = node;
+      const absoluteArray = path2Absolute(d);
+
+      absoluteArray.forEach((segment) => {
+        const [command] = segment;
+        if (command === 'M') {
+          if (hasDx) {
+            segment[1] += dx;
+          }
+          if (hasDy) {
+            segment[2] += dy;
+          }
+        } else if (command === 'L') {
+          if (hasDx) {
+            segment[1] += dx;
+          }
+          if (hasDy) {
+            segment[2] += dy;
+          }
+        } else if (command === 'H') {
+          if (hasDx) {
+            segment[1] += dx;
+          }
+        } else if (command === 'V') {
+          if (hasDy) {
+            segment[1] += dy;
+          }
+        } else if (command === 'A') {
+          if (hasDx) {
+            segment[6] += dx;
+          }
+          if (hasDy) {
+            segment[7] += dy;
+          }
+        } else if (command === 'T') {
+          if (hasDx) {
+            segment[1] += dx;
+          }
+          if (hasDy) {
+            segment[2] += dy;
+          }
+        } else if (command === 'C') {
+          if (hasDx) {
+            segment[1] += dx;
+            segment[3] += dx;
+            segment[5] += dx;
+          }
+          if (hasDy) {
+            segment[2] += dy;
+            segment[4] += dy;
+            segment[6] += dy;
+          }
+        } else if (command === 'S') {
+          if (hasDx) {
+            segment[1] += dx;
+            segment[3] += dx;
+          }
+          if (hasDy) {
+            segment[2] += dy;
+            segment[4] += dy;
+          }
+        } else if (command === 'Q') {
+          if (hasDx) {
+            segment[1] += dx;
+            segment[3] += dx;
+          }
+          if (hasDy) {
+            segment[2] += dy;
+            segment[4] += dy;
+          }
+        }
+      });
+
+      diff.d = path2String(absoluteArray);
+      this.updateNode(node, diff);
+    } else if (type === 'text') {
+      // TODO: Text should account for text align & baseline.
+      const diff: Partial<TextSerializedNode> = {};
+      if (!isNil(x)) {
+        diff.x = x;
+      }
+      if (!isNil(y)) {
+        diff.y = y;
+      }
+      if (!isNil(dx)) {
+        diff.x = (node.x || 0) + dx;
+      }
+      if (!isNil(dy)) {
+        diff.y = (node.y || 0) + dy;
+      }
+      this.updateNode(node, diff);
     }
   }
 
