@@ -74,6 +74,7 @@ export class Select extends System {
   #cos: number;
   #width: number;
   #height: number;
+  #center: [number, number];
 
   #selectionBrush: Entity;
 
@@ -197,8 +198,8 @@ export class Select extends System {
       if (lockAspectRatio) {
         const comparePoint = centeredScaling
           ? {
-              x: this.#width / 2,
-              y: this.#height / 2,
+              x: this.#center[0],
+              y: this.#center[1],
             }
           : {
               x: brAnchor.read(Circle).cx,
@@ -221,6 +222,14 @@ export class Select extends System {
           cy: comparePoint.y - y,
         });
       }
+
+      if (centeredScaling) {
+        const { cx, cy } = tlAnchor.read(Circle);
+        Object.assign(brAnchor.write(Circle), {
+          cx: 2 * this.#center[0] - cx,
+          cy: 2 * this.#center[1] - cy,
+        });
+      }
     } else if (anchorName === AnchorName.TOP_RIGHT) {
       Object.assign(trAnchor.write(Circle), {
         cx: anchorNodeX,
@@ -230,8 +239,8 @@ export class Select extends System {
       if (lockAspectRatio) {
         const comparePoint = centeredScaling
           ? {
-              x: this.#width / 2,
-              y: this.#height / 2,
+              x: this.#center[0],
+              y: this.#center[1],
             }
           : {
               x: blAnchor.read(Circle).cx,
@@ -258,6 +267,18 @@ export class Select extends System {
 
       tlAnchor.write(Circle).cy = trAnchor.read(Circle).cy;
       brAnchor.write(Circle).cx = trAnchor.read(Circle).cx;
+
+      if (centeredScaling) {
+        const { cx, cy } = trAnchor.read(Circle);
+        Object.assign(tlAnchor.write(Circle), {
+          cx: 2 * this.#center[0] - cx,
+          cy,
+        });
+        Object.assign(brAnchor.write(Circle), {
+          cx,
+          cy: 2 * this.#center[1] - cy,
+        });
+      }
     } else if (anchorName === AnchorName.BOTTOM_LEFT) {
       Object.assign(blAnchor.write(Circle), {
         cx: anchorNodeX,
@@ -267,8 +288,8 @@ export class Select extends System {
       if (lockAspectRatio) {
         const comparePoint = centeredScaling
           ? {
-              x: this.#width / 2,
-              y: this.#height / 2,
+              x: this.#center[0],
+              y: this.#center[1],
             }
           : {
               x: trAnchor.read(Circle).cx,
@@ -295,6 +316,18 @@ export class Select extends System {
 
       tlAnchor.write(Circle).cx = blAnchor.read(Circle).cx;
       brAnchor.write(Circle).cy = blAnchor.read(Circle).cy;
+
+      if (centeredScaling) {
+        const { cx, cy } = blAnchor.read(Circle);
+        Object.assign(tlAnchor.write(Circle), {
+          cx,
+          cy: 2 * this.#center[1] - cy,
+        });
+        Object.assign(brAnchor.write(Circle), {
+          cx: 2 * this.#center[0] - cx,
+          cy,
+        });
+      }
     } else if (anchorName === AnchorName.BOTTOM_RIGHT) {
       Object.assign(brAnchor.write(Circle), {
         cx: anchorNodeX,
@@ -304,8 +337,8 @@ export class Select extends System {
       if (lockAspectRatio) {
         const comparePoint = centeredScaling
           ? {
-              x: this.#width / 2,
-              y: this.#height / 2,
+              x: this.#center[0],
+              y: this.#center[1],
             }
           : {
               x: tlAnchor.read(Circle).cx,
@@ -328,6 +361,14 @@ export class Select extends System {
           cy: comparePoint.y + y,
         });
       }
+
+      if (centeredScaling) {
+        const { cx, cy } = brAnchor.read(Circle);
+        Object.assign(tlAnchor.write(Circle), {
+          cx: 2 * this.#center[0] - cx,
+          cy: 2 * this.#center[1] - cy,
+        });
+      }
     } else if (anchorName === AnchorName.TOP_CENTER) {
       tlAnchor.write(Circle).cy = anchorNodeY;
     } else if (anchorName === AnchorName.BOTTOM_CENTER) {
@@ -337,30 +378,6 @@ export class Select extends System {
     } else if (anchorName === AnchorName.MIDDLE_RIGHT) {
       brAnchor.write(Circle).cx = anchorNodeX;
     }
-
-    // if (centeredScaling) {
-    //   const { cx: tlCx, cy: tlCy } = tlAnchor.read(Circle);
-    //   const { cx: brCx, cy: brCy } = brAnchor.read(Circle);
-
-    //   const topOffsetX = tlCx;
-    //   const topOffsetY = tlCy;
-
-    //   const bottomOffsetX = this.#width - brCx;
-    //   const bottomOffsetY = this.#height - brCy;
-
-    //   Object.assign(brAnchor.write(Circle), {
-    //     cx: brCx - topOffsetX,
-    //     cy: brCy - topOffsetY,
-    //   });
-
-    //   {
-    //     const { cx: tlCx, cy: tlCy } = tlAnchor.read(Circle);
-    //     Object.assign(tlAnchor.write(Circle), {
-    //       cx: tlCx + bottomOffsetX,
-    //       cy: tlCy + bottomOffsetY,
-    //     });
-    //   }
-    // }
 
     const { cx: tlCx, cy: tlCy } = tlAnchor.read(Circle);
     const { cx: brCx, cy: brCy } = brAnchor.read(Circle);
@@ -507,7 +524,7 @@ export class Select extends System {
             this.#cos = Math.abs(width / hypotenuse);
             this.#width = width;
             this.#height = height;
-
+            this.#center = [minX + width / 2, minY + height / 2];
             this.#resizingAnchorName = topmost.read(Name).value as AnchorName;
             this.#selectionMode = SelectionMode.RESIZE;
           }

@@ -795,10 +795,11 @@ export class API {
       dy: number;
       width: number;
       height: number;
+      lockAspectRatio: boolean;
     }>,
   ) {
     const { type } = node;
-    const { x, y, width, height } = transform;
+    const { x, y, width, height, lockAspectRatio } = transform;
     let { dx, dy } = transform;
 
     if (type === 'rect') {
@@ -816,17 +817,17 @@ export class API {
         diff.y = (node.y || 0) + dy;
       }
       if (!isNil(width)) {
-        // if (lockAspectRatio) {
-        //   const aspectRatio = node.width / node.height;
-        //   diff.height = width / aspectRatio;
-        // }
+        if (lockAspectRatio) {
+          const aspectRatio = node.width / node.height;
+          diff.height = width / aspectRatio;
+        }
         diff.width = width;
       }
       if (!isNil(height)) {
-        // if (lockAspectRatio) {
-        //   const aspectRatio = node.width / node.height;
-        //   diff.width = height * aspectRatio;
-        // }
+        if (lockAspectRatio) {
+          const aspectRatio = node.width / node.height;
+          diff.width = height * aspectRatio;
+        }
         diff.height = height;
       }
       this.updateNode(node, diff);
@@ -868,17 +869,17 @@ export class API {
         diff.cy = cy + dy;
       }
       if (!isNil(width)) {
-        // if (lockAspectRatio) {
-        //   const aspectRatio = node.rx / node.ry;
-        //   diff.ry = width / aspectRatio / 2;
-        // }
+        if (lockAspectRatio) {
+          const aspectRatio = node.rx / node.ry;
+          diff.ry = width / aspectRatio / 2;
+        }
         diff.rx = width / 2;
       }
       if (!isNil(height)) {
-        // if (lockAspectRatio) {
-        //   const aspectRatio = node.rx / node.ry;
-        //   diff.rx = (height * aspectRatio) / 2;
-        // }
+        if (lockAspectRatio) {
+          const aspectRatio = node.rx / node.ry;
+          diff.rx = (height * aspectRatio) / 2;
+        }
         diff.ry = height / 2;
       }
       this.updateNode(node, diff);

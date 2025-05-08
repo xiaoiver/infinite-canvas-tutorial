@@ -1,11 +1,7 @@
 import { html, css, LitElement } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { consume } from '@lit/context';
-import {
-  SerializedNode,
-  TextSerializedNode,
-  AppState,
-} from '@infinite-canvas-tutorial/ecs';
+import { SerializedNode, AppState } from '@infinite-canvas-tutorial/ecs';
 import { when } from 'lit/directives/when.js';
 import { apiContext, appStateContext } from '../context';
 import { ExtendedAPI } from '../API';
@@ -97,11 +93,12 @@ export class PropertiesPanelContent extends LitElement {
   node: SerializedNode;
 
   @state()
-  width: number;
+  lockAspectRatio: boolean = true;
 
   private handleWidthChanged(e: Event & { target: HTMLInputElement }) {
     this.api.updateNodeTransform(this.node, {
       width: parseInt(e.target.value),
+      lockAspectRatio: this.lockAspectRatio,
     });
     this.api.record();
   }
@@ -109,6 +106,7 @@ export class PropertiesPanelContent extends LitElement {
   private handleHeightChanged(e: Event & { target: HTMLInputElement }) {
     this.api.updateNodeTransform(this.node, {
       height: parseInt(e.target.value),
+      lockAspectRatio: this.lockAspectRatio,
     });
     this.api.record();
   }
@@ -124,15 +122,10 @@ export class PropertiesPanelContent extends LitElement {
   }
 
   private handleLockAspectRatioChanged() {
-    this.api.updateNode(this.node, {
-      lockAspectRatio: !this.node.lockAspectRatio,
-    });
-    this.api.record();
+    this.lockAspectRatio = !this.lockAspectRatio;
   }
 
   private transformTemplate() {
-    const { lockAspectRatio } = this.node as TextSerializedNode;
-
     const { width, height, x, y, angle } = this.api.getNodeTransform(this.node);
 
     return html`<sp-accordion-item label="Transform" open>
@@ -241,13 +234,13 @@ export class PropertiesPanelContent extends LitElement {
         >
           <sp-tooltip self-managed placement="bottom">
             ${when(
-              lockAspectRatio,
+              this.lockAspectRatio,
               () => 'Constrain aspect ratio',
               () => 'Do not constrain aspect ratio',
             )}
           </sp-tooltip>
           ${when(
-            lockAspectRatio,
+            this.lockAspectRatio,
             () => html`<sp-icon-lock-closed slot="icon"></sp-icon-lock-closed>`,
             () => html`<sp-icon-lock-open slot="icon"></sp-icon-lock-open>`,
           )}
@@ -289,7 +282,7 @@ export class PropertiesPanelContent extends LitElement {
     const isGroup = type === 'g';
     const isText = type === 'text';
 
-    const { fontSize } = this.node as TextSerializedNode;
+    // const { fontSize } = this.node as TextSerializedNode;
 
     return html`
       <sp-accordion allow-multiple size="s">
