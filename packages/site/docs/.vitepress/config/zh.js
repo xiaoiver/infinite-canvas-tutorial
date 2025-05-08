@@ -60,6 +60,7 @@ export const zh = defineConfig({
               { text: '课程18 - 使用 ECS 重构', link: 'lesson-018' },
               { text: '课程19 - 历史记录', link: 'lesson-019' },
               { text: '课程20 - 协同', link: 'lesson-020' },
+              { text: '课程21 - Vector Networks', link: 'lesson-021' },
             ],
           },
         ],

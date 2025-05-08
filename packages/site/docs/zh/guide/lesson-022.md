@@ -3,12 +3,38 @@ outline: deep
 publish: false
 ---
 
-# 课程 22 - Vector Networks
+# 课程 22 - Flex layout
 
-在这节课中你将学习到以下内容：
+## Yoga
 
--   [The Engineering behind Figma's Vector Networks]
--   [penpot]
+支持 [Yoga] 排版引擎，使用 yoga-layout-prebuilt
 
-[The Engineering behind Figma's Vector Networks]: https://alexharri.com/blog/vector-networks
-[penpot]: https://github.com/penpot/penpot
+参考以下实现：
+
+-   [yoga-wasm-web] 的[示例](https://github.com/DioxusLabs/taffy/pull/394#issuecomment-1476430705)
+-   <https://github.com/pmndrs/react-three-flex/>
+-   <https://github.com/fireveined/pixi-flex-layout/>
+
+[Simplifying WebGL: Building an Effective Layout Engine]
+
+[troika-flex-layout]
+
+## taffy
+
+[taffy]
+
+## clay
+
+[clay]
+
+## Motion Canvas Layouts
+
+[Motion Canvas Layouts]
+
+[Yoga]: https://yogalayout.com/
+[taffy]: https://github.com/DioxusLabs/taffy
+[Simplifying WebGL: Building an Effective Layout Engine]: https://blog.certa.dev/building-a-layout-engine-for-webgl
+[troika-flex-layout]: https://github.com/protectwise/troika/blob/main/packages/troika-flex-layout/
+[clay]: https://github.com/nicbarker/clay
+[Motion Canvas Layouts]: https://motioncanvas.io/docs/layouts
+[yoga-wasm-web]: https://github.com/shuding/yoga-wasm-web

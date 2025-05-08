@@ -1,6 +1,7 @@
 import { Entity, System } from '@lastolivegames/becsy';
 import { DEG_TO_RAD, RAD_TO_DEG } from '@pixi/math';
 import {
+  AABB,
   Camera,
   Canvas,
   Children,
@@ -37,15 +38,15 @@ import { Commands } from '../commands/Commands';
 import { distanceBetweenPoints, inRange } from '../utils';
 import { API } from '../API';
 import { RenderHighlighter } from './RenderHighlighter';
-import { AnchorName } from '..';
+import { AnchorName, RenderTransformer } from './RenderTransformer';
 
 enum SelectionMode {
-  IDLE,
-  BRUSH,
-  SINGLE,
-  MULTIPLE,
-  MOVE,
-  RESIZE,
+  IDLE = 'IDLE',
+  BRUSH = 'BRUSH',
+  SINGLE = 'SINGLE',
+  MULTIPLE = 'MULTIPLE',
+  MOVE = 'MOVE',
+  RESIZE = 'RESIZE',
 }
 
 /**
@@ -57,6 +58,7 @@ export class Select extends System {
   private readonly commands = new Commands(this);
 
   private readonly renderHighlighter = this.attach(RenderHighlighter);
+  private readonly renderTransformer = this.attach(RenderTransformer);
 
   private readonly cameras = this.query((q) => q.current.with(Camera).read);
 
@@ -68,6 +70,10 @@ export class Select extends System {
   #selectionMode: SelectionMode = SelectionMode.IDLE;
 
   #resizingAnchorName: AnchorName;
+  #sin: number;
+  #cos: number;
+  #width: number;
+  #height: number;
 
   #selectionBrush: Entity;
 
@@ -160,8 +166,8 @@ export class Select extends System {
 
   private handleSelectedResizing(
     api: API,
-    dx: number,
-    dy: number,
+    anchorNodeX: number,
+    anchorNodeY: number,
     anchorName: AnchorName,
     lockAspectRatio: boolean,
     centeredScaling: boolean,
@@ -171,39 +177,194 @@ export class Select extends System {
       if (selected.has(Highlighted)) {
         selected.remove(Highlighted);
       }
-      const node = api.getNodeByEntity(selected);
+    });
 
-      const { x, y, width, height } = api.getNodeTransform(node);
-      node.lockAspectRatio = lockAspectRatio;
+    // FIXME: get transformer for multiple selected nodes
+    const transformer = this.renderTransformer.getTransformer(
+      this.selected.current[0],
+    );
+    const [tlAnchor, trAnchor, blAnchor, brAnchor] =
+      transformer.read(Parent).children;
 
-      if (anchorName === AnchorName.BOTTOM_RIGHT) {
-        api.updateNodeTransform(node, {
-          width: width + dx,
-          height: height + dy,
-        });
-      } else if (anchorName === AnchorName.TOP_LEFT) {
-        api.updateNodeTransform(node, {
-          x: x + dx,
-          y: y + dy,
-          width: width - dx,
-          height: height - dy,
-        });
-      } else if (anchorName === AnchorName.TOP_RIGHT) {
-        api.updateNodeTransform(node, {
-          x,
-          y: y + dy,
-          width: width + dx,
-          height: height - dy,
-        });
-      } else if (anchorName === AnchorName.BOTTOM_LEFT) {
-        api.updateNodeTransform(node, {
-          x: x + dx,
-          y,
-          width: width - dx,
-          height: height + dy,
+    let newHypotenuse: number;
+
+    if (anchorName === AnchorName.TOP_LEFT) {
+      Object.assign(tlAnchor.write(Circle), {
+        cx: anchorNodeX,
+        cy: anchorNodeY,
+      });
+
+      if (lockAspectRatio) {
+        const comparePoint = centeredScaling
+          ? {
+              x: this.#width / 2,
+              y: this.#height / 2,
+            }
+          : {
+              x: brAnchor.read(Circle).cx,
+              y: brAnchor.read(Circle).cy,
+            };
+        newHypotenuse = Math.sqrt(
+          Math.pow(comparePoint.x - anchorNodeX, 2) +
+            Math.pow(comparePoint.y - anchorNodeY, 2),
+        );
+
+        const { cx, cy } = tlAnchor.read(Circle);
+        const reverseX = cx > comparePoint.x ? -1 : 1;
+        const reverseY = cy > comparePoint.y ? -1 : 1;
+
+        const x = newHypotenuse * this.#cos * reverseX;
+        const y = newHypotenuse * this.#sin * reverseY;
+
+        Object.assign(tlAnchor.write(Circle), {
+          cx: comparePoint.x - x,
+          cy: comparePoint.y - y,
         });
       }
-    });
+    } else if (anchorName === AnchorName.TOP_RIGHT) {
+      Object.assign(trAnchor.write(Circle), {
+        cx: anchorNodeX,
+        cy: anchorNodeY,
+      });
+
+      if (lockAspectRatio) {
+        const comparePoint = centeredScaling
+          ? {
+              x: this.#width / 2,
+              y: this.#height / 2,
+            }
+          : {
+              x: blAnchor.read(Circle).cx,
+              y: blAnchor.read(Circle).cy,
+            };
+
+        newHypotenuse = Math.sqrt(
+          Math.pow(anchorNodeX - comparePoint.x, 2) +
+            Math.pow(comparePoint.y - anchorNodeY, 2),
+        );
+
+        const { cx, cy } = trAnchor.read(Circle);
+        const reverseX = cx < comparePoint.x ? -1 : 1;
+        const reverseY = cy > comparePoint.y ? -1 : 1;
+
+        const x = newHypotenuse * this.#cos * reverseX;
+        const y = newHypotenuse * this.#sin * reverseY;
+
+        Object.assign(trAnchor.write(Circle), {
+          cx: comparePoint.x + x,
+          cy: comparePoint.y - y,
+        });
+      }
+
+      tlAnchor.write(Circle).cy = trAnchor.read(Circle).cy;
+      brAnchor.write(Circle).cx = trAnchor.read(Circle).cx;
+    } else if (anchorName === AnchorName.BOTTOM_LEFT) {
+      Object.assign(blAnchor.write(Circle), {
+        cx: anchorNodeX,
+        cy: anchorNodeY,
+      });
+
+      if (lockAspectRatio) {
+        const comparePoint = centeredScaling
+          ? {
+              x: this.#width / 2,
+              y: this.#height / 2,
+            }
+          : {
+              x: trAnchor.read(Circle).cx,
+              y: trAnchor.read(Circle).cy,
+            };
+
+        newHypotenuse = Math.sqrt(
+          Math.pow(comparePoint.x - anchorNodeX, 2) +
+            Math.pow(anchorNodeY - comparePoint.y, 2),
+        );
+
+        const reverseX = comparePoint.x < anchorNodeX ? -1 : 1;
+
+        const reverseY = anchorNodeY < comparePoint.y ? -1 : 1;
+
+        const x = newHypotenuse * this.#cos * reverseX;
+        const y = newHypotenuse * this.#sin * reverseY;
+
+        Object.assign(blAnchor.write(Circle), {
+          cx: comparePoint.x - x,
+          cy: comparePoint.y + y,
+        });
+      }
+
+      tlAnchor.write(Circle).cx = blAnchor.read(Circle).cx;
+      brAnchor.write(Circle).cy = blAnchor.read(Circle).cy;
+    } else if (anchorName === AnchorName.BOTTOM_RIGHT) {
+      Object.assign(brAnchor.write(Circle), {
+        cx: anchorNodeX,
+        cy: anchorNodeY,
+      });
+
+      if (lockAspectRatio) {
+        const comparePoint = centeredScaling
+          ? {
+              x: this.#width / 2,
+              y: this.#height / 2,
+            }
+          : {
+              x: tlAnchor.read(Circle).cx,
+              y: tlAnchor.read(Circle).cy,
+            };
+
+        newHypotenuse = Math.sqrt(
+          Math.pow(anchorNodeX - comparePoint.x, 2) +
+            Math.pow(anchorNodeY - comparePoint.y, 2),
+        );
+
+        const reverseX = anchorNodeX < comparePoint.x ? -1 : 1;
+        const reverseY = anchorNodeY < comparePoint.y ? -1 : 1;
+
+        const x = newHypotenuse * this.#cos * reverseX;
+        const y = newHypotenuse * this.#sin * reverseY;
+
+        Object.assign(brAnchor.write(Circle), {
+          cx: comparePoint.x + x,
+          cy: comparePoint.y + y,
+        });
+      }
+    } else if (anchorName === AnchorName.TOP_CENTER) {
+      tlAnchor.write(Circle).cy = anchorNodeY;
+    } else if (anchorName === AnchorName.BOTTOM_CENTER) {
+      brAnchor.write(Circle).cy = anchorNodeY;
+    } else if (anchorName === AnchorName.MIDDLE_LEFT) {
+      tlAnchor.write(Circle).cx = anchorNodeX;
+    } else if (anchorName === AnchorName.MIDDLE_RIGHT) {
+      brAnchor.write(Circle).cx = anchorNodeX;
+    }
+
+    // if (centeredScaling) {
+    //   const { cx: tlCx, cy: tlCy } = tlAnchor.read(Circle);
+    //   const { cx: brCx, cy: brCy } = brAnchor.read(Circle);
+
+    //   const topOffsetX = tlCx;
+    //   const topOffsetY = tlCy;
+
+    //   const bottomOffsetX = this.#width - brCx;
+    //   const bottomOffsetY = this.#height - brCy;
+
+    //   Object.assign(brAnchor.write(Circle), {
+    //     cx: brCx - topOffsetX,
+    //     cy: brCy - topOffsetY,
+    //   });
+
+    //   {
+    //     const { cx: tlCx, cy: tlCy } = tlAnchor.read(Circle);
+    //     Object.assign(tlAnchor.write(Circle), {
+    //       cx: tlCx + bottomOffsetX,
+    //       cy: tlCy + bottomOffsetY,
+    //     });
+    //   }
+    // }
+
+    const { cx: tlCx, cy: tlCy } = tlAnchor.read(Circle);
+    const { cx: brCx, cy: brCy } = brAnchor.read(Circle);
+    this.fitSelected(api, tlCx, tlCy, brCx - tlCx, brCy - tlCy);
   }
 
   private handleSelectedResized(api: API) {
@@ -336,6 +497,17 @@ export class Select extends System {
               this.#selectionMode = SelectionMode.MOVE;
             }
           } else if (type === UIType.TRANSFORMER_ANCHOR) {
+            const { minX, minY, maxX, maxY } = this.getSelectedAABB();
+            const width = maxX - minX;
+            const height = maxY - minY;
+            const hypotenuse = Math.sqrt(
+              Math.pow(width, 2) + Math.pow(height, 2),
+            );
+            this.#sin = Math.abs(height / hypotenuse);
+            this.#cos = Math.abs(width / hypotenuse);
+            this.#width = width;
+            this.#height = height;
+
             this.#resizingAnchorName = topmost.read(Name).value as AnchorName;
             this.#selectionMode = SelectionMode.RESIZE;
           }
@@ -366,6 +538,7 @@ export class Select extends System {
               cursor.value = 'default';
             } else if (type === UIType.TRANSFORMER_ANCHOR) {
               const { value } = transformer.read(Name);
+              // TODO: rotation
               cursor.value = getCursor(value, 0);
             }
           } else {
@@ -373,13 +546,10 @@ export class Select extends System {
           }
         }
         const toHighlight = this.getTopmostEntity(api, x, y, (e) => !e.has(UI));
-        if (toHighlight && toHighlight.alive) {
-          if (
-            this.highlighted.current[0] &&
-            this.highlighted.current[0] !== toHighlight
-          ) {
-            this.highlighted.current[0].remove(Highlighted);
-          }
+        if (toHighlight) {
+          this.highlighted.current.forEach((e) => {
+            e.remove(Highlighted);
+          });
           if (!toHighlight.has(Highlighted)) {
             toHighlight.add(Highlighted);
             cursor.value = 'default';
@@ -416,8 +586,8 @@ export class Select extends System {
           } else if (this.#selectionMode === SelectionMode.RESIZE) {
             this.handleSelectedResizing(
               api,
-              dx,
-              dy,
+              ex,
+              ey,
               this.#resizingAnchorName,
               input.shiftKey,
               input.altKey,
@@ -464,6 +634,35 @@ export class Select extends System {
 
         this.#selectionMode = SelectionMode.IDLE;
       }
+    });
+  }
+
+  private getSelectedAABB() {
+    const bounds = new AABB();
+    this.selected.current.forEach((selected) => {
+      const { geometryBounds } = selected.read(ComputedBounds);
+      const { minX, minY, maxX, maxY } = geometryBounds;
+
+      bounds.addFrame(minX, minY, maxX, maxY);
+    });
+    return bounds;
+  }
+
+  private fitSelected(
+    api: API,
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+  ) {
+    // TODO: calculate all selected nodes' transform
+    // TODO: update transformer immediately
+    const node = api.getNodeByEntity(this.selected.current[0]);
+    api.updateNodeTransform(node, {
+      x,
+      y,
+      width,
+      height,
     });
   }
 }

@@ -57,10 +57,10 @@ export class ViewportCulling extends System {
     const rBush = camera.read(RBush).value;
     rBush.remove(
       {
-        minX: 0,
-        minY: 0,
-        maxX: 0,
-        maxY: 0,
+        minX: Infinity,
+        minY: Infinity,
+        maxX: -Infinity,
+        maxY: -Infinity,
         entity,
       },
       (a, b) => a.entity === b.entity,
@@ -124,12 +124,13 @@ export class ViewportCulling extends System {
 
         entities.forEach((entity) => {
           entitiesToCull.get(camera)?.add(entity);
+          // @see https://github.com/mourner/rbush/issues/95
           rBush.remove(
             {
-              minX: 0,
-              minY: 0,
-              maxX: 0,
-              maxY: 0,
+              minX: Infinity,
+              minY: Infinity,
+              maxX: -Infinity,
+              maxY: -Infinity,
               entity,
             },
             (a, b) => a.entity === b.entity,

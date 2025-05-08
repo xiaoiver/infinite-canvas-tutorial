@@ -38,6 +38,10 @@ export class RenderHighlighter extends System {
     q.current.and.added.and.removed.with(Highlighted),
   );
 
+  private readonly bounds = this.query(
+    (q) => q.changed.with(ComputedBounds).trackWrites,
+  );
+
   #highlighters = new WeakMap<Entity, Entity>();
 
   constructor() {
@@ -78,11 +82,40 @@ export class RenderHighlighter extends System {
         return;
       }
 
+      const highlighter = this.createOrUpdate(entity);
+
+      this.commands.execute();
+
+      const camera = this.commands.entity(getSceneRoot(entity));
+      camera.appendChild(this.commands.entity(highlighter));
+
+      this.commands.execute();
+    });
+
+    this.highlighted.removed.forEach((entity) => {
+      if (this.#highlighters.has(entity)) {
+        const highlighter = this.#highlighters.get(entity);
+
+        highlighter.add(ToBeDeleted);
+        this.#highlighters.delete(entity);
+      }
+    });
+
+    this.bounds.changed.forEach((entity) => {
+      if (this.#highlighters.has(entity)) {
+        this.createOrUpdate(entity);
+      }
+    });
+  }
+
+  private createOrUpdate(entity: Entity) {
+    let highlighter = this.#highlighters.get(entity);
+    if (!highlighter) {
       const { geometryBounds } = entity.read(ComputedBounds);
       const { minX, minY, maxX, maxY } = geometryBounds;
       const { rotation } = entity.read(Transform);
 
-      const highlighter = this.commands
+      highlighter = this.commands
         .spawn(
           new UI(UIType.HIGHLIGHTER),
           new Transform({
@@ -98,65 +131,78 @@ export class RenderHighlighter extends System {
         .id()
         .hold();
 
-      if (entity.has(Circle)) {
-        const { cx, cy, r } = entity.read(Circle);
-        highlighter.add(Circle, {
-          cx,
-          cy,
-          r,
-        });
-      } else if (entity.has(Ellipse)) {
-        const { cx, cy, rx, ry } = entity.read(Ellipse);
-        highlighter.add(Ellipse, {
-          cx,
-          cy,
-          rx,
-          ry,
-        });
-      } else if (entity.has(Rect)) {
-        const { x, y, width, height } = entity.read(Rect);
-        highlighter.add(Rect, {
-          x,
-          y,
-          width,
-          height,
-        });
-      } else if (entity.has(Path)) {
-        const { d } = entity.read(Path);
-        highlighter.add(Path, {
-          d,
-        });
-      } else if (entity.has(Polyline)) {
-        const { points } = entity.read(Polyline);
-        highlighter.add(Polyline, {
-          points,
-        });
-      } else if (entity.has(Text)) {
-        highlighter.add(Polyline, {
-          points: [
-            [minX, maxY],
-            [maxX, maxY],
-          ],
-        });
-      }
-
-      this.commands.execute();
-
-      const camera = this.commands.entity(getSceneRoot(entity));
-      camera.appendChild(this.commands.entity(highlighter));
-
-      this.commands.execute();
-
       this.#highlighters.set(entity, highlighter);
-    });
-
-    this.highlighted.removed.forEach((entity) => {
-      if (this.#highlighters.has(entity)) {
-        const highlighter = this.#highlighters.get(entity);
-
-        highlighter.add(ToBeDeleted);
-        this.#highlighters.delete(entity);
+    }
+    if (entity.has(Circle)) {
+      if (!highlighter.has(Circle)) {
+        highlighter.add(Circle);
       }
-    });
+
+      const { cx, cy, r } = entity.read(Circle);
+      Object.assign(highlighter.write(Circle), {
+        cx,
+        cy,
+        r,
+      });
+    } else if (entity.has(Ellipse)) {
+      if (!highlighter.has(Ellipse)) {
+        highlighter.add(Ellipse);
+      }
+
+      const { cx, cy, rx, ry } = entity.read(Ellipse);
+      Object.assign(highlighter.write(Ellipse), {
+        cx,
+        cy,
+        rx,
+        ry,
+      });
+    } else if (entity.has(Rect)) {
+      if (!highlighter.has(Rect)) {
+        highlighter.add(Rect);
+      }
+
+      const { x, y, width, height } = entity.read(Rect);
+      Object.assign(highlighter.write(Rect), {
+        x,
+        y,
+        width,
+        height,
+      });
+    } else if (entity.has(Path)) {
+      if (!highlighter.has(Path)) {
+        highlighter.add(Path);
+      }
+
+      const { d } = entity.read(Path);
+      Object.assign(highlighter.write(Path), {
+        d,
+      });
+    } else if (entity.has(Polyline)) {
+      if (!highlighter.has(Polyline)) {
+        highlighter.add(Polyline);
+      }
+
+      const { points } = entity.read(Polyline);
+      Object.assign(highlighter.write(Polyline), {
+        points,
+      });
+    } else if (entity.has(Text)) {
+      if (!highlighter.has(Polyline)) {
+        highlighter.add(Polyline);
+      }
+
+      const { geometryBounds } = entity.read(ComputedBounds);
+      const { minX, minY, maxX, maxY } = geometryBounds;
+      const { rotation } = entity.read(Transform);
+
+      Object.assign(highlighter.write(Polyline), {
+        points: [
+          [minX, maxY],
+          [maxX, maxY],
+        ],
+      });
+    }
+
+    return highlighter;
   }
 }

@@ -29,6 +29,10 @@ export enum AnchorName {
   TOP_RIGHT = 'top-right',
   BOTTOM_LEFT = 'bottom-left',
   BOTTOM_RIGHT = 'bottom-right',
+  TOP_CENTER = 'top-center',
+  MIDDLE_LEFT = 'middle-left',
+  MIDDLE_RIGHT = 'middle-right',
+  BOTTOM_CENTER = 'bottom-center',
 }
 
 /**
@@ -73,6 +77,13 @@ export class RenderTransformer extends System {
             Name,
           ).write,
     );
+  }
+
+  getTransformer(entity: Entity) {
+    if (this.#transformers.has(entity)) {
+      return this.#transformers.get(entity);
+    }
+    return null;
   }
 
   execute() {
