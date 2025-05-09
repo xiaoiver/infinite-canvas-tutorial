@@ -93,6 +93,10 @@ export const en = defineConfig({
                 text: 'Lesson 020 - Collaboration',
                 link: 'lesson-020',
               },
+              {
+                text: 'Lesson 021 - VectorNetwork',
+                link: 'lesson-021',
+              },
             ],
           },
         ],

@@ -262,6 +262,11 @@ pnpm run dev
 
 -   通过 CRDT 实现协同
 
+## 课程 21 - VectorNetwork [🔗](https://infinitecanvas.cc/zh/guide/lesson-021)
+
+-   SVG Path 的局限性
+-   什么是 VectorNetwork
+
 [infinitecanvas]: https://infinitecanvas.tools/
 [Figma]: https://madebyevan.com/figma/building-a-professional-design-tool-on-the-web/
 [Modyfi]: https://digest.browsertech.com/archive/browsertech-digest-how-modyfi-is-building-with/

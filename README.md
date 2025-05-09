@@ -262,6 +262,11 @@ If you want to use it in your own project, you can refer to:
 
 -   Implement collaboration through CRDT
 
+## Lesson 21 - VectorNetwork [🔗](https://infinitecanvas.cc/guide/lesson-021)
+
+-   Limitations of SVG Path
+-   What is VectorNetwork
+
 [infinitecanvas]: https://infinitecanvas.tools/
 [Figma]: https://madebyevan.com/figma/building-a-professional-design-tool-on-the-web/
 [Modyfi]: https://digest.browsertech.com/archive/browsertech-digest-how-modyfi-is-building-with/
