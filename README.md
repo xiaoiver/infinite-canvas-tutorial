@@ -262,7 +262,13 @@ If you want to use it in your own project, you can refer to:
 
 -   Implement collaboration through CRDT
 
-## Lesson 21 - VectorNetwork [🔗](https://infinitecanvas.cc/guide/lesson-021)
+## Lesson 21 - Transformer [🔗](https://infinitecanvas.cc/guide/lesson-021)
+
+-   Resize, lock aspect ratio and centered scaling
+-   Rotate and change the rotation origin
+-   Nudge shapes with arrow key
+
+## Lesson 22 - VectorNetwork [🔗](https://infinitecanvas.cc/guide/lesson-022)
 
 -   Limitations of SVG Path
 -   What is VectorNetwork

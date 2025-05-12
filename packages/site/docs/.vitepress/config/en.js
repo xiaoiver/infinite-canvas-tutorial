@@ -94,8 +94,12 @@ export const en = defineConfig({
                 link: 'lesson-020',
               },
               {
-                text: 'Lesson 021 - VectorNetwork',
+                text: 'Lesson 021 - Transformer',
                 link: 'lesson-021',
+              },
+              {
+                text: 'Lesson 022 - VectorNetwork',
+                link: 'lesson-022',
               },
             ],
           },

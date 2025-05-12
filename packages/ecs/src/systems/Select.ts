@@ -672,6 +672,11 @@ export class Select extends System {
     width: number,
     height: number,
   ) {
+    // const oldTr = new Transform();
+    // oldTr.translate(oldAttrs.x, oldAttrs.y);
+    // oldTr.rotate(oldAttrs.rotation);
+    // oldTr.scale(oldAttrs.width / baseSize, oldAttrs.height / baseSize);
+
     // TODO: calculate all selected nodes' transform
     // TODO: update transformer immediately
     const node = api.getNodeByEntity(this.selected.current[0]);

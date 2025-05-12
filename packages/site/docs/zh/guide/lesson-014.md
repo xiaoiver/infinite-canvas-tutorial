@@ -13,7 +13,7 @@ import SelectCanvasMode from '../../components/SelectCanvasMode.vue';
 
 -   实现 `zIndex` 和 `sizeAttenuation` 绘图属性
 -   在手型模式下移动、旋转、缩放画布
--   在选择模式下单选、框选、拖拽移动图形，并展示图形属性面板
+-   在选择模式下单选和拖拽移动图形，并展示图形属性面板
 
 在实现画布模式之前，我们需要做一些准备工作，支持 `zIndex` 和 `sizeAttenuation` 这两个绘图属性。
 
@@ -450,8 +450,6 @@ root.addEventListener('click', handleClick);
 ```
 
 <SelectCanvasMode />
-
-### 框选图形 {#selection-brush}
 
 ### 拖拽移动图形 {#dragndrop-move}
 

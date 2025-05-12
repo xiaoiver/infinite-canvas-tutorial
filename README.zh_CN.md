@@ -262,7 +262,13 @@ pnpm run dev
 
 -   通过 CRDT 实现协同
 
-## 课程 21 - VectorNetwork [🔗](https://infinitecanvas.cc/zh/guide/lesson-021)
+## 课程 21 - Transformer [🔗](https://infinitecanvas.cc/zh/guide/lesson-021)
+
+-   实现 Resize，锁定长宽比与中心缩放
+-   实现旋转，移动旋转中心
+-   使用方向键移动图形
+
+## 课程 22 - VectorNetwork [🔗](https://infinitecanvas.cc/zh/guide/lesson-022)
 
 -   SVG Path 的局限性
 -   VectorNetwork 的拓扑定义
