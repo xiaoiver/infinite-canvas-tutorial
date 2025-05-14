@@ -229,6 +229,9 @@ importers:
       libtess:
         specifier: ^1.2.2
         version: 1.2.2
+      point-to-segment-2d:
+        specifier: ^1.0.0
+        version: 1.0.0
       potpack:
         specifier: ^2.0.0
         version: 2.0.0
@@ -5449,6 +5452,10 @@ packages:
 
   pngparse-sync@1.0.2:
     resolution: {integrity: sha512-LteruApcUR0QvhDVoStzI+b3omkwTexNqDyTPCESWyo4hCGKViltap/m6zi4a02HaWbUUrGEgz7OR3Fegr+Iuw==}
+
+  point-to-segment-2d@1.0.0:
+    resolution: {integrity: sha512-qjMaW51jOWDjvNSEntnxiGCvfWKu64Iiu6FVRaCWB5hBlZG7adxhx1AG3sXEwgf7v7e+o0y7TpO65OgumpDhfg==}
+    engines: {node: '>=12'}
 
   points-on-curve@0.2.0:
     resolution: {integrity: sha512-0mYKnYYe9ZcqMCWhUjItv/oHjvgEsfKvnUTg8sAtnHr3GVy7rGkXCb6d5cSyqrWqL4k81b9CPg3urd+T7aop3A==}
@@ -12295,6 +12302,8 @@ snapshots:
   pngparse-sync@1.0.2:
     dependencies:
       pako: 0.2.9
+
+  point-to-segment-2d@1.0.0: {}
 
   points-on-curve@0.2.0: {}
 

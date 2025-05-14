@@ -98,6 +98,17 @@ export class ComputeBounds extends System {
         );
       }
 
+      const hitArea = entity.has(Renderable)
+        ? entity.read(Renderable).hitArea
+        : null;
+      if (hitArea) {
+        if (hitArea instanceof Circle) {
+          renderBounds = Circle.getRenderBounds(hitArea);
+        } else if (hitArea instanceof Rect) {
+          renderBounds = Rect.getRenderBounds(hitArea);
+        }
+      }
+
       if (geometryBounds) {
         entity.write(ComputedBounds).geometryBounds = geometryBounds;
       }

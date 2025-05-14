@@ -795,6 +795,7 @@ export class API {
       dy: number;
       width: number;
       height: number;
+      rotation: number;
       lockAspectRatio: boolean;
     }>,
   ) {

@@ -56,47 +56,9 @@ export type CursorValue =
 export class Cursor {
   @field.ref declare canvas: Entity;
 
-  @field({
-    type: Type.staticString([
-      'default',
-      'auto',
-      'none',
-      'context-menu',
-      'help',
-      'pointer',
-      'progress',
-      'wait',
-      'cell',
-      'crosshair',
-      'text',
-      'vertical-text',
-      'alias',
-      'copy',
-      'move',
-      'no-drop',
-      'not-allowed',
-      'e-resize',
-      'n-resize',
-      'ne-resize',
-      'nw-resize',
-      's-resize',
-      'se-resize',
-      'sw-resize',
-      'w-resize',
-      'ns-resize',
-      'ew-resize',
-      'nesw-resize',
-      'col-resize',
-      'nwse-resize',
-      'row-resize',
-      'all-scroll',
-      'zoom-in',
-      'zoom-out',
-      'grab',
-      'grabbing',
-    ]),
-  })
-  declare value: CursorValue;
+  @field({ type: Type.dynamicString(2000), default: 'default' }) declare value:
+    | CursorValue
+    | string;
 
   constructor(value?: Partial<Cursor>) {
     Object.assign(this, value);

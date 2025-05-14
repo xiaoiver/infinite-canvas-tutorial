@@ -205,4 +205,26 @@ export class RenderHighlighter extends System {
 
     return highlighter;
   }
+
+  clear() {
+    this.highlighted.current.forEach((e) => {
+      e.remove(Highlighted);
+    });
+  }
+
+  highlight(toHighlight: readonly Entity[]) {
+    toHighlight.forEach((e) => {
+      if (!e.has(Highlighted)) {
+        e.add(Highlighted);
+      }
+    });
+  }
+
+  unhighlight(toUnhighlight: readonly Entity[]) {
+    toUnhighlight.forEach((e) => {
+      if (e.has(Highlighted)) {
+        e.remove(Highlighted);
+      }
+    });
+  }
 }

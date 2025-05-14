@@ -1,22 +1,48 @@
 import { Random } from 'roughjs/bin/math';
 import { vec2 } from 'gl-matrix';
+import { OBB } from '../components/math';
+import { IPointData } from '@pixi/math';
 
-export function pointToLine(
-  x1: number,
-  y1: number,
-  x2: number,
-  y2: number,
-  x: number,
-  y: number,
-) {
-  const d: [number, number] = [x2 - x1, y2 - y1];
-  if (vec2.exactEquals(d, [0, 0])) {
-    return Math.sqrt((x - x1) * (x - x1) + (y - y1) * (y - y1));
+// @see https://stackoverflow.com/questions/22521982/check-if-point-is-inside-a-polygon
+export function inside(point: [number, number], vs: [number, number][]) {
+  // ray-casting algorithm based on
+  // https://wrf.ecse.rpi.edu/Research/Short_Notes/pnpoly.html
+
+  const x = point[0];
+  const y = point[1];
+
+  let inside = false;
+  for (let i = 0, j = vs.length - 1; i < vs.length; j = i++) {
+    const xi = vs[i][0];
+    const yi = vs[i][1];
+    const xj = vs[j][0];
+    const yj = vs[j][1];
+
+    const intersect =
+      yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi;
+    if (intersect) inside = !inside;
   }
-  const u: [number, number] = [-d[1], d[0]];
-  vec2.normalize(u, u);
-  const a: [number, number] = [x - x1, y - y1];
-  return Math.abs(vec2.dot(a, u));
+
+  return inside;
+}
+
+export function rotateAroundPoint(
+  shape: OBB,
+  angleRad: number,
+  point: IPointData,
+): OBB {
+  const width = shape.maxX - shape.minX;
+  const height = shape.maxY - shape.minY;
+  const x =
+    point.x +
+    (shape.minX - point.x) * Math.cos(angleRad) -
+    (shape.minY - point.y) * Math.sin(angleRad);
+  const y =
+    point.y +
+    (shape.minX - point.x) * Math.sin(angleRad) +
+    (shape.minY - point.y) * Math.cos(angleRad);
+
+  return new OBB(x, y, x + width, y + height, shape.rotation + angleRad);
 }
 
 export function bisect(norm: vec2, norm2: vec2, dy: number) {
@@ -31,7 +57,3 @@ export function bisect(norm: vec2, norm2: vec2, dy: number) {
 
 const random = new Random(Date.now());
 export const randomInteger = () => Math.floor(random.next() * 2 ** 31);
-
-export function inRange(value: number, min: number, max: number) {
-  return value >= min && value <= max;
-}
