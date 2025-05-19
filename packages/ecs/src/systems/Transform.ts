@@ -8,6 +8,22 @@ import {
   Transform,
 } from '../components';
 
+function syncTransform(
+  entity: Entity,
+  checkGlobalTransform: boolean = true,
+): void {
+  if (!entity.has(Transform)) {
+    return;
+  }
+
+  const transform = entity.read(Transform);
+  if (checkGlobalTransform && !entity.has(GlobalTransform)) {
+    entity.add(GlobalTransform, new GlobalTransform());
+  }
+  const globalTransform = entity.write(GlobalTransform);
+  globalTransform.from(transform);
+}
+
 /**
  * Update {@link GlobalTransform} component of entities that aren't in the hierarchy
  * Third party plugins should ensure that this is used in concert with {@link PropagateTransforms}.
@@ -31,35 +47,19 @@ export class SyncSimpleTransforms extends System {
     this.query((q) => q.using(GlobalTransform).write);
   }
 
-  private syncTransform(
-    entity: Entity,
-    checkGlobalTransform: boolean = true,
-  ): void {
-    if (!entity.has(Transform)) {
-      return;
-    }
-
-    const transform = entity.read(Transform);
-    if (checkGlobalTransform && !entity.has(GlobalTransform)) {
-      entity.add(GlobalTransform, new GlobalTransform());
-    }
-    const globalTransform = entity.write(GlobalTransform);
-    globalTransform.from(transform);
-  }
-
   execute(): void {
     this.cameras.addedOrChanged.forEach((entity) => {
-      this.syncTransform(entity);
+      syncTransform(entity);
     });
 
     // Update changed entities.
     this.queries.addedOrChanged.forEach((entity) => {
-      this.syncTransform(entity);
+      syncTransform(entity);
     });
 
     // Update orphaned entities.
     this.orphaned.removed.forEach((entity) => {
-      this.syncTransform(entity, false);
+      syncTransform(entity, false);
     });
   }
 }
@@ -84,6 +84,8 @@ export class PropagateTransforms extends System {
 
   execute(): void {
     this.queries.addedOrChanged.forEach((entity) => {
+      syncTransform(entity);
+
       // Camera's worldTransform reflects the camera's position in the world.
       // It is not affected by the hierarchy.
       const worldTransform =

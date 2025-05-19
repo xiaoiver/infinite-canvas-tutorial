@@ -244,6 +244,9 @@ importers:
       toposort:
         specifier: ^2.0.2
         version: 2.0.2
+      transformation-matrix:
+        specifier: ^3.0.0
+        version: 3.0.0
     devDependencies:
       '@types/d3-color':
         specifier: ^3.1.0
@@ -6106,6 +6109,9 @@ packages:
   tr46@3.0.0:
     resolution: {integrity: sha512-l7FvfAHlcmulp8kr+flpQZmVwtu7nfRV7NZujtN0OqES8EL4O4e0qqzL0DC5gAvx/ZC/9lk6rhcUwYvkBnBnYA==}
     engines: {node: '>=12'}
+
+  transformation-matrix@3.0.0:
+    resolution: {integrity: sha512-C6NlNnD6T8JqDeY4BpGznuve4d8/JlLDZLcJbnnx7gQKoyk01+uk2XYVFjBGqvNsVxJUpUwb3WZpjpdPr+05FQ==}
 
   trim-lines@3.0.1:
     resolution: {integrity: sha512-kRj8B+YHZCc9kQYdWfJB2/oUl9rA99qbowYYBtr4ui4mZyAQ2JpvVBd/6U2YloATfqBhBTSMhTpgBHtU0Mf3Rg==}
@@ -13041,6 +13047,8 @@ snapshots:
   tr46@3.0.0:
     dependencies:
       punycode: 2.3.1
+
+  transformation-matrix@3.0.0: {}
 
   trim-lines@3.0.1: {}
 

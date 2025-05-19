@@ -23,6 +23,7 @@ import {
   Polyline,
   Path,
   ZIndex,
+  Transform,
 } from '../components';
 import { ComponentType, Entity } from '@lastolivegames/becsy';
 
@@ -556,10 +557,14 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
     fontStyle,
     textAlign,
     textBaseline,
+    transform,
   } = updates as any;
 
   if (!isNil(name)) {
     entity.write(Name).value = name;
+  }
+  if (!isNil(transform)) {
+    Object.assign(entity.write(Transform), transform);
   }
   if (!isNil(zIndex)) {
     entity.write(ZIndex).value = zIndex;

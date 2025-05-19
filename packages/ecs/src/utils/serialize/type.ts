@@ -69,7 +69,7 @@ export type SerializedTransform = {
     tx: number;
     ty: number;
   };
-  position: {
+  translation: {
     x: number;
     y: number;
   };
@@ -77,15 +77,7 @@ export type SerializedTransform = {
     x: number;
     y: number;
   };
-  skew: {
-    x: number;
-    y: number;
-  };
   rotation: number;
-  pivot: {
-    x: number;
-    y: number;
-  };
 };
 
 export interface NameAttributes {
@@ -93,7 +85,7 @@ export interface NameAttributes {
 }
 
 export interface TransformAttributes {
-  transform: SerializedTransform;
+  transform: Partial<SerializedTransform>;
 }
 
 export interface VisibilityAttributes {

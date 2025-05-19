@@ -1,6 +1,7 @@
 // @see https://gist.github.com/mattdesl/47412d930dcd8cd765c871a65532ffac
 import distanceBetweenPointAndLineSegment from 'point-to-segment-2d';
 import { Entity, System } from '@lastolivegames/becsy';
+import { mat3, vec2 } from 'gl-matrix';
 import {
   Children,
   Circle,
@@ -23,19 +24,24 @@ import {
   UI,
   UIType,
   ZIndex,
+  Canvas,
+  ComputedCamera,
+  Transformable,
 } from '../components';
-import { mat3 } from 'gl-matrix';
 import { Commands } from '../commands';
-import { getDescendants, getSceneRoot } from './Transform';
-import { vec2 } from 'gl-matrix';
+import { getSceneRoot } from './Transform';
 import { API } from '..';
 import { inside } from '../utils/math';
 import { distanceBetweenPoints } from '../utils/matrix';
+import { IPointData } from '@pixi/math';
 
 export const TRANSFORMER_Z_INDEX = 100000;
 const TRANSFORMER_ANCHOR_RADIUS = 5;
 export const TRANSFORMER_ANCHOR_ROTATE_RADIUS = 20;
 export const TRANSFORMER_ANCHOR_RESIZE_RADIUS = 10;
+// --spectrum-thumbnail-border-color-selected
+export const TRANSFORMER_ANCHOR_STROKE_COLOR = '#147af3';
+export const TRANSFORMER_ANCHOR_FILL_COLOR = 'white';
 
 export enum AnchorName {
   TOP_LEFT = 'top-left',
@@ -57,14 +63,12 @@ export class RenderTransformer extends System {
   private readonly commands = new Commands(this);
 
   private readonly selected = this.query((q) =>
-    q.added.and.removed.and.current.with(Selected),
+    q.added.and.removed.with(Selected),
   );
 
   private readonly bounds = this.query(
     (q) => q.changed.with(ComputedBounds).trackWrites,
   );
-
-  #transformers = new WeakMap<Entity, Entity>();
 
   constructor() {
     super();
@@ -72,8 +76,10 @@ export class RenderTransformer extends System {
     this.query(
       (q) =>
         q
-          .using(ComputedBounds)
+          .using(Canvas, ComputedBounds, GlobalTransform, ComputedCamera)
           .read.and.using(
+            Canvas,
+            Transformable,
             UI,
             Selected,
             Transform,
@@ -94,122 +100,121 @@ export class RenderTransformer extends System {
     );
   }
 
-  getTransformer(entity: Entity) {
-    if (this.#transformers.has(entity)) {
-      return this.#transformers.get(entity);
-    }
-    return null;
-  }
-
-  execute() {
-    this.selected.added.forEach((entity) => {
-      // Group
-      if (!entity.has(ComputedBounds)) {
-        return;
-      }
-
-      const { geometryBounds } = entity.read(ComputedBounds);
-      const { minX, minY, maxX, maxY } = geometryBounds;
-      const width = maxX - minX;
-      const height = maxY - minY;
-      const { rotation } = entity.read(Transform);
-
-      const transformer = this.commands
+  private createOrUpdate(camera: Entity) {
+    if (!camera.has(Transformable)) {
+      const mask = this.commands
         .spawn(
           new UI(UIType.TRANSFORMER_MASK),
-          new Transform({
-            rotation,
-          }),
+          new Transform(),
           new Renderable(),
-          new FillSolid('white'), // --spectrum-blue-100
+          new FillSolid(TRANSFORMER_ANCHOR_FILL_COLOR),
           new Opacity({ fillOpacity: 0 }),
-          new Stroke({ width: 1, color: '#147af3' }), // --spectrum-thumbnail-border-color-selected
-          new Rect({
-            x: minX,
-            y: minY,
-            width,
-            height,
-          }),
-          new ZIndex(TRANSFORMER_Z_INDEX),
+          new Stroke({ width: 1, color: TRANSFORMER_ANCHOR_STROKE_COLOR }),
+          new Rect(),
           new StrokeAttenuation(),
+          new ZIndex(TRANSFORMER_Z_INDEX),
         )
         .id()
         .hold();
 
-      const tlAnchor = this.createAnchor(minX, minY, AnchorName.TOP_LEFT);
-      const trAnchor = this.createAnchor(maxX, minY, AnchorName.TOP_RIGHT);
-      const blAnchor = this.createAnchor(minX, maxY, AnchorName.BOTTOM_LEFT);
-      const brAnchor = this.createAnchor(maxX, maxY, AnchorName.BOTTOM_RIGHT);
+      const tlAnchor = this.createAnchor(0, 0, AnchorName.TOP_LEFT);
+      const trAnchor = this.createAnchor(0, 0, AnchorName.TOP_RIGHT);
+      const blAnchor = this.createAnchor(0, 0, AnchorName.BOTTOM_LEFT);
+      const brAnchor = this.createAnchor(0, 0, AnchorName.BOTTOM_RIGHT);
 
-      const transformEntity = this.commands.entity(transformer);
-      transformEntity.appendChild(this.commands.entity(tlAnchor));
-      transformEntity.appendChild(this.commands.entity(trAnchor));
-      transformEntity.appendChild(this.commands.entity(blAnchor));
-      transformEntity.appendChild(this.commands.entity(brAnchor));
+      camera.add(Transformable, {
+        mask,
+        tlAnchor,
+        trAnchor,
+        blAnchor,
+        brAnchor,
+      });
 
+      this.commands
+        .entity(mask)
+        .appendChild(this.commands.entity(tlAnchor))
+        .appendChild(this.commands.entity(trAnchor))
+        .appendChild(this.commands.entity(blAnchor))
+        .appendChild(this.commands.entity(brAnchor));
+
+      this.commands.entity(camera).appendChild(this.commands.entity(mask));
       this.commands.execute();
+    }
 
-      const camera = this.commands.entity(getSceneRoot(entity));
-      camera.appendChild(this.commands.entity(transformer));
+    const { mask, tlAnchor, trAnchor, blAnchor, brAnchor, selecteds } =
+      camera.read(Transformable);
+    if (selecteds.length === 1) {
+      const [selected] = selecteds;
+      const { geometryBounds } = selected.read(ComputedBounds);
+      const { minX, minY, maxX, maxY } = geometryBounds;
+      const width = maxX - minX;
+      const height = maxY - minY;
+      const { translation, scale, rotation } = selected.read(Transform);
+      // const matrix = Mat3.toGLMat3(selected.read(GlobalTransform).matrix);
+      // const points = [
+      //   vec2.transformMat3(vec2.create(), [minX, minY], matrix), // tl
+      //   vec2.transformMat3(vec2.create(), [maxX, minY], matrix), // tr
+      //   vec2.transformMat3(vec2.create(), [minX, maxY], matrix), // bl
+      //   vec2.transformMat3(vec2.create(), [maxX, maxY], matrix), // br
+      // ];
 
-      this.commands.execute();
+      Object.assign(mask.write(Rect), {
+        x: minX,
+        y: minY,
+        width,
+        height,
+      });
+      Object.assign(mask.write(Transform), {
+        translation,
+        scale,
+        rotation,
+      });
 
-      this.#transformers.set(entity, transformer);
+      Object.assign(tlAnchor.write(Circle), {
+        cx: minX,
+        cy: minY,
+      });
+
+      Object.assign(trAnchor.write(Circle), {
+        cx: maxX,
+        cy: minY,
+      });
+
+      Object.assign(blAnchor.write(Circle), {
+        cx: minX,
+        cy: maxY,
+      });
+
+      Object.assign(brAnchor.write(Circle), {
+        cx: maxX,
+        cy: maxY,
+      });
+    } else {
+      selecteds.forEach((selected) => {});
+    }
+  }
+
+  execute() {
+    const camerasToUpdate = new Set<Entity>();
+
+    this.selected.added.forEach((selected) => {
+      camerasToUpdate.add(selected.read(Selected).camera);
     });
 
-    this.selected.removed.forEach((entity) => {
-      if (this.#transformers.has(entity)) {
-        const transformer = this.#transformers.get(entity);
-
-        transformer.add(ToBeDeleted);
-        getDescendants(transformer).forEach((child) => {
-          child.add(ToBeDeleted);
-        });
-
-        this.#transformers.delete(entity);
-      }
+    this.selected.removed.forEach((selected) => {
+      const camera = getSceneRoot(selected);
+      camerasToUpdate.add(camera);
     });
 
     this.bounds.changed.forEach((entity) => {
       if (entity.has(Selected)) {
-        const transformer = this.#transformers.get(entity);
-
-        const { geometryBounds } = entity.read(ComputedBounds);
-        const { minX, minY, maxX, maxY } = geometryBounds;
-        const width = maxX - minX;
-        const height = maxY - minY;
-        const { rotation } = entity.read(Transform);
-
-        Object.assign(transformer.write(Rect), {
-          x: minX,
-          y: minY,
-          width,
-          height,
-        });
-
-        const [tlAnchor, trAnchor, blAnchor, brAnchor] =
-          transformer.read(Parent).children;
-
-        Object.assign(tlAnchor.write(Circle), {
-          cx: minX,
-          cy: minY,
-        });
-
-        Object.assign(trAnchor.write(Circle), {
-          cx: maxX,
-          cy: minY,
-        });
-
-        Object.assign(blAnchor.write(Circle), {
-          cx: minX,
-          cy: maxY,
-        });
-
-        Object.assign(brAnchor.write(Circle), {
-          cx: maxX,
-          cy: maxY,
-        });
+        const camera = getSceneRoot(entity);
+        camerasToUpdate.add(camera);
       }
+    });
+
+    camerasToUpdate.forEach((camera) => {
+      this.createOrUpdate(camera);
     });
   }
 
@@ -220,8 +225,8 @@ export class RenderTransformer extends System {
         new Name(name),
         new Transform(),
         new Renderable(),
-        new FillSolid('#fff'),
-        new Stroke({ width: 1, color: '#147af3' }),
+        new FillSolid(TRANSFORMER_ANCHOR_FILL_COLOR),
+        new Stroke({ width: 1, color: TRANSFORMER_ANCHOR_STROKE_COLOR }),
         new Circle({
           cx,
           cy,
@@ -233,11 +238,11 @@ export class RenderTransformer extends System {
       .hold();
   }
 
-  getOBB() {
-    const transformer = this.getTransformer(this.selected.current[0]);
-    const rotation = transformer.read(Transform).rotation;
+  getOBB(camera: Entity) {
+    const { mask, selecteds } = camera.read(Transformable);
+    const rotation = mask.read(Transform).rotation;
     const totalPoints: [number, number][] = [];
-    this.selected.current.forEach((selected) => {
+    selecteds.forEach((selected) => {
       const { geometryBounds } = selected.read(ComputedBounds);
       const { minX, minY, maxX, maxY } = geometryBounds;
       const points = [
@@ -284,67 +289,73 @@ export class RenderTransformer extends System {
   }
 
   /**
+   * Calculate anchor's position in canvas coordinate, account for transformer's transform.
+   */
+  getAnchorPositionInCanvas(camera: Entity, anchor: Entity): IPointData {
+    const { mask } = camera.read(Transformable);
+    const matrix = Mat3.toGLMat3(mask.read(GlobalTransform).matrix);
+    const [x, y] = vec2.transformMat3(
+      vec2.create(),
+      [anchor.read(Circle).cx, anchor.read(Circle).cy],
+      matrix,
+    );
+    return {
+      x,
+      y,
+    };
+  }
+
+  /**
+   * Only accorunt for transformer's rotation.
+   */
+  setAnchorPositionInCanvas(camera: Entity, anchor: Entity, point: IPointData) {
+    const { mask } = camera.read(Transformable);
+    const matrix = Mat3.toGLMat3(mask.read(GlobalTransform).matrix);
+    const invMatrix = mat3.invert(mat3.create(), matrix);
+    const [x, y] = vec2.transformMat3(
+      vec2.create(),
+      [point.x, point.y],
+      invMatrix,
+    );
+    Object.assign(anchor.write(Circle), {
+      cx: x,
+      cy: y,
+    });
+  }
+
+  /**
    * Hit test with transformer, return anchor name and cursor.
    */
-  hitTest(api: API, x: number, y: number) {
+  hitTest(api: API, { x, y }: IPointData) {
     const point = [x, y] as [number, number];
+    const { tlAnchor, trAnchor, blAnchor, brAnchor } = api
+      .getCamera()
+      .read(Transformable);
 
-    const transformer = this.getTransformer(this.selected.current[0]);
-
-    const [tlAnchor, trAnchor, blAnchor, brAnchor] =
-      transformer.read(Parent).children;
-
-    const tlAnchorViewport = api.canvas2Viewport({
-      x: tlAnchor.read(Circle).cx,
-      y: tlAnchor.read(Circle).cy,
-    });
-
-    const trAnchorViewport = api.canvas2Viewport({
-      x: trAnchor.read(Circle).cx,
-      y: trAnchor.read(Circle).cy,
-    });
-
-    const blAnchorViewport = api.canvas2Viewport({
-      x: blAnchor.read(Circle).cx,
-      y: blAnchor.read(Circle).cy,
-    });
-
-    const brAnchorViewport = api.canvas2Viewport({
-      x: brAnchor.read(Circle).cx,
-      y: brAnchor.read(Circle).cy,
-    });
+    const { x: tlX, y: tlY } = api.canvas2Viewport(
+      this.getAnchorPositionInCanvas(api.getCamera(), tlAnchor),
+    );
+    const { x: trX, y: trY } = api.canvas2Viewport(
+      this.getAnchorPositionInCanvas(api.getCamera(), trAnchor),
+    );
+    const { x: blX, y: blY } = api.canvas2Viewport(
+      this.getAnchorPositionInCanvas(api.getCamera(), blAnchor),
+    );
+    const { x: brX, y: brY } = api.canvas2Viewport(
+      this.getAnchorPositionInCanvas(api.getCamera(), brAnchor),
+    );
 
     const isInside = inside(point, [
-      [tlAnchorViewport.x, tlAnchorViewport.y],
-      [trAnchorViewport.x, trAnchorViewport.y],
-      [brAnchorViewport.x, brAnchorViewport.y],
-      [blAnchorViewport.x, blAnchorViewport.y],
+      [tlX, tlY],
+      [trX, trY],
+      [brX, brY],
+      [blX, blY],
     ]);
 
-    const distanceToTL = distanceBetweenPoints(
-      x,
-      y,
-      tlAnchorViewport.x,
-      tlAnchorViewport.y,
-    );
-    const distanceToTR = distanceBetweenPoints(
-      x,
-      y,
-      trAnchorViewport.x,
-      trAnchorViewport.y,
-    );
-    const distanceToBL = distanceBetweenPoints(
-      x,
-      y,
-      blAnchorViewport.x,
-      blAnchorViewport.y,
-    );
-    const distanceToBR = distanceBetweenPoints(
-      x,
-      y,
-      brAnchorViewport.x,
-      brAnchorViewport.y,
-    );
+    const distanceToTL = distanceBetweenPoints(x, y, tlX, tlY);
+    const distanceToTR = distanceBetweenPoints(x, y, trX, trY);
+    const distanceToBL = distanceBetweenPoints(x, y, blX, blY);
+    const distanceToBR = distanceBetweenPoints(x, y, brX, brY);
 
     const minDistanceToAnchors = Math.min(
       distanceToTL,
@@ -404,26 +415,26 @@ export class RenderTransformer extends System {
 
     const distanceToTopEdge = distanceBetweenPointAndLineSegment(
       point,
-      [tlAnchorViewport.x, tlAnchorViewport.y],
-      [trAnchorViewport.x, trAnchorViewport.y],
+      [tlX, tlY],
+      [trX, trY],
     );
 
     const distanceToBottomEdge = distanceBetweenPointAndLineSegment(
       point,
-      [blAnchorViewport.x, blAnchorViewport.y],
-      [brAnchorViewport.x, brAnchorViewport.y],
+      [blX, blY],
+      [brX, brY],
     );
 
     const distanceToLeftEdge = distanceBetweenPointAndLineSegment(
       point,
-      [tlAnchorViewport.x, tlAnchorViewport.y],
-      [blAnchorViewport.x, blAnchorViewport.y],
+      [tlX, tlY],
+      [blX, blY],
     );
 
     const distanceToRightEdge = distanceBetweenPointAndLineSegment(
       point,
-      [trAnchorViewport.x, trAnchorViewport.y],
-      [brAnchorViewport.x, brAnchorViewport.y],
+      [trX, trY],
+      [brX, brY],
     );
 
     const minDistanceToEdges = Math.min(

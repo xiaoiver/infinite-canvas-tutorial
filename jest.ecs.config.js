@@ -5,6 +5,7 @@ const esm = [
   '@mapbox',
   'roughjs',
   'fractional-indexing',
+  'point-to-segment-2d',
 ]
   .map((d) => `_${d}|${d}`)
   .join('|');

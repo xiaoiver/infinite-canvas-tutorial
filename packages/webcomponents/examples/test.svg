@@ -6,7 +6,8 @@
             <stop offset="1" stop-color="#e0e0e0" />
         </linearGradient>
     </defs>
-    <rect x="0" y="0" width="800" height="600" fill="url(#gradient-638896088)" name="Layer 0" />
+    <rect x="200" y="200" width="200" height="100" fill="url(#gradient-638896088)" name="Layer 0"
+        transform="rotate(45 300 250)" />
 
     <!-- <rect x="100" y="100" width="100" height="100" fill="green" name="Layer 0" /> -->
 </svg>

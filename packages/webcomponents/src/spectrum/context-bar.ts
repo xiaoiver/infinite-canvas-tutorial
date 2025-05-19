@@ -12,6 +12,7 @@ import { apiContext, appStateContext } from '../context';
 import { ExtendedAPI } from '../API';
 
 const CONTEXT_BAR_HEIGHT = 48;
+const CONTEXT_BAR_MARGIN_BOTTOM = 16;
 
 @customElement('ic-spectrum-context-bar')
 export class ContextBar extends LitElement {
@@ -116,15 +117,20 @@ export class ContextBar extends LitElement {
       return [0, 0];
     }
 
-    const { geometryBounds } = entity.read(ComputedBounds);
-    const { minX, minY, maxX, maxY } = geometryBounds;
-
+    const { bounds } = entity.read(ComputedBounds);
+    const { minX, minY, maxX, maxY } = bounds;
     const tl = this.api.canvas2Viewport({ x: minX, y: minY });
     const br = this.api.canvas2Viewport({ x: maxX, y: maxY });
 
     return [
       Math.min(width, Math.max(0, tl.x + (br.x - tl.x) / 2)),
-      Math.min(height, Math.max(0, tl.y + (br.y - tl.y) + CONTEXT_BAR_HEIGHT)),
+      Math.min(
+        height,
+        Math.max(
+          0,
+          tl.y + (br.y - tl.y) + CONTEXT_BAR_HEIGHT + CONTEXT_BAR_MARGIN_BOTTOM,
+        ),
+      ),
     ];
   }
 

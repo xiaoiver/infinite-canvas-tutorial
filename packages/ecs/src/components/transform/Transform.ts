@@ -43,8 +43,4 @@ export class Transform {
       : Vec2.ONE;
     this.rotation = props?.rotation ?? 0;
   }
-
-  // static fromTranslation(translation: Vec2) {
-  //   return new Transform({ translation, scale: Vec2.ONE, rotation: 0 });
-  // }
 }

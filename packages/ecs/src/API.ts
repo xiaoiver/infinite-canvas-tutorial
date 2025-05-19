@@ -650,7 +650,7 @@ export class API {
     this.getAppState().layersSelected.forEach((id) => {
       const entity = this.#idEntityMap.get(id)?.id();
       if (entity && !entity.has(Selected)) {
-        entity.add(Selected);
+        entity.add(Selected, { camera: this.#camera });
       }
     });
   }
@@ -800,7 +800,7 @@ export class API {
     }>,
   ) {
     const { type } = node;
-    const { x, y, width, height, lockAspectRatio } = transform;
+    const { x, y, width, height, rotation, lockAspectRatio } = transform;
     let { dx, dy } = transform;
 
     if (type === 'rect') {
@@ -831,6 +831,9 @@ export class API {
         }
         diff.height = height;
       }
+      if (!isNil(rotation)) {
+        diff.transform = { rotation };
+      }
       this.updateNode(node, diff);
     } else if (type === 'circle') {
       const diff: Partial<CircleSerializedNode> = {};
@@ -852,6 +855,9 @@ export class API {
       }
       if (!isNil(height)) {
         diff.r = height / 2;
+      }
+      if (!isNil(rotation)) {
+        diff.transform = { rotation };
       }
       this.updateNode(node, diff);
     } else if (type === 'ellipse') {
@@ -882,6 +888,9 @@ export class API {
           diff.rx = (height * aspectRatio) / 2;
         }
         diff.ry = height / 2;
+      }
+      if (!isNil(rotation)) {
+        diff.transform = { rotation };
       }
       this.updateNode(node, diff);
     } else if (type === 'polyline') {
@@ -1004,6 +1013,9 @@ export class API {
       }
       if (!isNil(dy)) {
         diff.y = (node.y || 0) + dy;
+      }
+      if (!isNil(rotation)) {
+        diff.transform = { rotation };
       }
       this.updateNode(node, diff);
     }

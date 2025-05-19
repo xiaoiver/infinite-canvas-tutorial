@@ -24,7 +24,11 @@ import {
 } from '../components';
 import { Commands } from '../commands';
 import { getSceneRoot } from './Transform';
-import { TRANSFORMER_Z_INDEX } from './RenderTransformer';
+import {
+  TRANSFORMER_ANCHOR_FILL_COLOR,
+  TRANSFORMER_ANCHOR_STROKE_COLOR,
+  TRANSFORMER_Z_INDEX,
+} from './RenderTransformer';
 
 const HIGHLIGHTER_Z_INDEX = TRANSFORMER_Z_INDEX - 1;
 
@@ -113,18 +117,20 @@ export class RenderHighlighter extends System {
     if (!highlighter) {
       const { geometryBounds } = entity.read(ComputedBounds);
       const { minX, minY, maxX, maxY } = geometryBounds;
-      const { rotation } = entity.read(Transform);
+      const { translation, scale, rotation } = entity.read(Transform);
 
       highlighter = this.commands
         .spawn(
           new UI(UIType.HIGHLIGHTER),
           new Transform({
+            translation,
+            scale,
             rotation,
           }),
           new Renderable(),
-          new FillSolid('white'),
+          new FillSolid(TRANSFORMER_ANCHOR_FILL_COLOR),
           new Opacity({ fillOpacity: 0 }),
-          new Stroke({ width: 2, color: '#147af3' }), // --spectrum-thumbnail-border-color-selected
+          new Stroke({ width: 2, color: TRANSFORMER_ANCHOR_STROKE_COLOR }), // --spectrum-thumbnail-border-color-selected
           new ZIndex(HIGHLIGHTER_Z_INDEX),
           new StrokeAttenuation(),
         )

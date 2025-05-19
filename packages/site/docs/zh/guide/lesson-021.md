@@ -61,11 +61,22 @@ function getCursor(anchorName: string, rad: number) {
 }
 ```
 
-因此我们需要使用自定义鼠标样式，还需要能根据旋转角度动态调整。[How can I rotate a css cursor] 中提供了一种使用 SVG 的方式，而 tldraw 在此基础上增加了动态计算角度的逻辑，详见：[useCursor]。
+因此我们需要使用自定义鼠标样式，还需要能根据旋转角度动态调整。[How can I rotate a css cursor] 中提供了一种使用 SVG 的方式，而 tldraw 在此基础上增加了动态计算角度的逻辑，详见：[useCursor]。以右上角锚点为例：
 
 ![Rotate anchor](/transformer-anchor-rotate.png)
 
-![Resize anchor](/transformer-anchor-rotate.png)
+将旋转变换应用在 SVG 图标上，得到此时 Cursor 的值：
+
+```ts
+`url("data:image/svg+xml,<svg height='32' width='32'>...
+    <g fill='none' transform='rotate(${
+      r + tr // 旋转角度
+    } 16 16)>
+```
+
+而当鼠标进一步靠近锚点时，会从旋转变成 Resize 交互：
+
+![Resize anchor](/transformer-anchor-resize.png)
 
 ## Resize {#resize}
 
@@ -191,13 +202,13 @@ if (centeredScaling) {
 
 ## 旋转 {#rotation}
 
-Figma 提供了以下
+Figma
 
-Hover just outside one of the layer's bounds until the icon appears.
-Click and drag to rotate your selection:
-Drag clockwise to create a negative angle (towards -180° ).
-Drag counterclockwise to create a positive angle (towards 180° )
-Hold down Shift to snap rotation values to increments of 15.
+> Hover just outside one of the layer's bounds until the icon appears.
+> Click and drag to rotate your selection:
+> Drag clockwise to create a negative angle (towards -180° ).
+> Drag counterclockwise to create a positive angle (towards 180° )
+> Hold down Shift to snap rotation values to increments of 15.
 
 ### 调整旋转中心 {#change-the-rotation-origin}
 
