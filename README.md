@@ -268,6 +268,10 @@ If you want to use it in your own project, you can refer to:
 -   Rotate and change the rotation origin
 -   Nudge shapes with arrow key
 
+|                Rotate anchor                 |                 Resize anchor                  |
+| :------------------------------------------: | :--------------------------------------------: |
+| ![Rotate anchor](./screenshots/lesson21.png) | ![Resize anchor](./screenshots/lesson21-2.png) |
+
 ## Lesson 22 - VectorNetwork [🔗](https://infinitecanvas.cc/guide/lesson-022)
 
 -   Limitations of SVG Path
