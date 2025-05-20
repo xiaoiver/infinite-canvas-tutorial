@@ -51,6 +51,7 @@ import {
 import { History, mutateElement, safeAddComponent } from './history';
 import { sortByFractionalIndex, updateMatrix } from './systems';
 import { DOMAdapter } from './environment';
+import { decomposeTSR } from 'transformation-matrix';
 
 export interface StateManagement {
   getAppState: () => AppState;
@@ -795,12 +796,23 @@ export class API {
       dy: number;
       width: number;
       height: number;
-      rotation: number;
+      transform: {
+        scale: { x: number; y: number };
+        rotation: number;
+        translation: { x: number; y: number };
+      };
       lockAspectRatio: boolean;
     }>,
   ) {
     const { type } = node;
-    const { x, y, width, height, rotation, lockAspectRatio } = transform;
+    const {
+      x,
+      y,
+      width,
+      height,
+      transform: ttransform,
+      lockAspectRatio,
+    } = transform;
     let { dx, dy } = transform;
 
     if (type === 'rect') {
@@ -831,8 +843,9 @@ export class API {
         }
         diff.height = height;
       }
-      if (!isNil(rotation)) {
-        diff.transform = { rotation };
+      if (!isNil(transform)) {
+        decomposeTSR;
+        diff.transform = ttransform;
       }
       this.updateNode(node, diff);
     } else if (type === 'circle') {
@@ -855,9 +868,6 @@ export class API {
       }
       if (!isNil(height)) {
         diff.r = height / 2;
-      }
-      if (!isNil(rotation)) {
-        diff.transform = { rotation };
       }
       this.updateNode(node, diff);
     } else if (type === 'ellipse') {
@@ -888,9 +898,6 @@ export class API {
           diff.rx = (height * aspectRatio) / 2;
         }
         diff.ry = height / 2;
-      }
-      if (!isNil(rotation)) {
-        diff.transform = { rotation };
       }
       this.updateNode(node, diff);
     } else if (type === 'polyline') {
@@ -1013,9 +1020,6 @@ export class API {
       }
       if (!isNil(dy)) {
         diff.y = (node.y || 0) + dy;
-      }
-      if (!isNil(rotation)) {
-        diff.transform = { rotation };
       }
       this.updateNode(node, diff);
     }

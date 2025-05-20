@@ -1,4 +1,4 @@
-import { DEG_TO_RAD } from '@pixi/math';
+import { DEG_TO_RAD, RAD_TO_DEG } from '@pixi/math';
 import { Entity, System } from '@lastolivegames/becsy';
 import {
   Camera,
@@ -15,6 +15,7 @@ import {
   Highlighted,
   Input,
   InputPoint,
+  Mat3,
   Name,
   OBB,
   Opacity,
@@ -45,6 +46,8 @@ import {
   RenderTransformer,
   TRANSFORMER_ANCHOR_STROKE_COLOR,
 } from './RenderTransformer';
+import { mat3 } from 'gl-matrix';
+import { decomposeTSR, rotateDEG } from 'transformation-matrix';
 
 enum SelectionMode {
   IDLE = 'IDLE',
@@ -72,8 +75,6 @@ export class Select extends System {
 
   private readonly cameras = this.query((q) => q.current.with(Camera).read);
 
-  private readonly selected = this.query((q) => q.current.with(Selected).read);
-
   #selectionMode: SelectionMode = SelectionMode.IDLE;
 
   #resizingAnchorName: AnchorName;
@@ -81,8 +82,9 @@ export class Select extends System {
   #cos: number;
   #width: number;
   #height: number;
-  #rotation: number;
   #center: [number, number];
+  #matrix: mat3;
+  #rotation: number;
 
   #selectionBrush: Entity;
 
@@ -148,8 +150,25 @@ export class Select extends System {
     return entities.find(selector);
   }
 
-  private handleSelectedMoving(api: API, dx: number, dy: number) {
-    this.selected.current.forEach((selected) => {
+  private handleSelectedMoving(
+    api: API,
+    sx: number,
+    sy: number,
+    ex: number,
+    ey: number,
+  ) {
+    const camera = api.getCamera();
+    const sl = this.renderTransformer.canvas2LocalTransform(camera, {
+      x: sx,
+      y: sy,
+    });
+    const el = this.renderTransformer.canvas2LocalTransform(camera, {
+      x: ex,
+      y: ey,
+    });
+
+    const { selecteds } = camera.read(Transformable);
+    selecteds.forEach((selected) => {
       // Hide transformer and highlighter
       if (selected.has(Highlighted)) {
         selected.remove(Highlighted);
@@ -157,9 +176,11 @@ export class Select extends System {
       const node = api.getNodeByEntity(selected);
 
       api.updateNodeTransform(node, {
-        dx,
-        dy,
+        dx: el.x - sl.x,
+        dy: el.y - sl.y,
       });
+
+      this.renderTransformer.createOrUpdate(camera);
     });
   }
 
@@ -167,11 +188,14 @@ export class Select extends System {
     api.setNodes(api.getNodes());
     api.record();
 
-    this.selected.current.forEach((selected) => {
+    const { selecteds } = api.getCamera().read(Transformable);
+    selecteds.forEach((selected) => {
       if (!selected.has(Highlighted)) {
         selected.add(Highlighted);
       }
     });
+
+    this.saveSelectedTransform(api.getCamera());
   }
 
   private handleSelectedRotating(
@@ -179,21 +203,42 @@ export class Select extends System {
     anchorNodeX: number,
     anchorNodeY: number,
   ) {
-    const x = anchorNodeX - this.#width / 2;
-    const y = -anchorNodeY + this.#height / 2;
-    // hor angle is changed?
+    const camera = api.getCamera();
+    const sl = this.renderTransformer.canvas2LocalTransform(
+      camera,
+      {
+        x: anchorNodeX,
+        y: anchorNodeY,
+      },
+      // this.#matrix,
+    );
+
+    const x = sl.x - this.#width / 2;
+    const y = sl.y - this.#height / 2;
+
     let delta = Math.atan2(-y, x) + Math.PI / 2;
 
-    const obb = this.renderTransformer.getOBB(api.getCamera());
+    const obb = this.renderTransformer.getOBB(camera);
 
-    const newOBB = rotateAroundPoint(obb, delta, {
-      x: this.#center[0],
-      y: this.#center[1],
+    const {
+      scale: { sx, sy },
+      rotation: { angle },
+      translate: { tx, ty },
+    } = decomposeTSR(
+      rotateDEG(delta * RAD_TO_DEG, this.#center[0], this.#center[1]),
+    );
+
+    this.fitSelected(api, {
+      x: obb.minX,
+      y: obb.minY,
+      width: obb.maxX - obb.minX,
+      height: obb.maxY - obb.minY,
+      transform: {
+        scale: { x: sx, y: sy },
+        rotation: angle,
+        translation: { x: tx, y: ty },
+      },
     });
-
-    console.log(obb, newOBB);
-
-    this.fitSelected(api, newOBB);
   }
 
   private handleSelectedResizing(
@@ -205,25 +250,33 @@ export class Select extends System {
     centeredScaling: boolean,
   ) {
     const camera = api.getCamera();
-    this.renderHighlighter.unhighlight(this.selected.current);
+    const { selecteds } = camera.read(Transformable);
+    this.renderHighlighter.unhighlight(selecteds);
 
     const { mask, tlAnchor, trAnchor, blAnchor, brAnchor } = api
       .getCamera()
       .read(Transformable);
 
-    const anchor =
-      anchorName === AnchorName.TOP_LEFT
-        ? tlAnchor
-        : anchorName === AnchorName.TOP_RIGHT
-        ? trAnchor
-        : anchorName === AnchorName.BOTTOM_LEFT
-        ? blAnchor
-        : brAnchor;
-    this.renderTransformer.setAnchorPositionInCanvas(camera, anchor, {
-      x,
-      y,
-    });
-    const { cx: anchorNodeX, cy: anchorNodeY } = anchor.read(Circle);
+    const { x: anchorNodeX, y: anchorNodeY } =
+      this.renderTransformer.canvas2LocalTransform(camera, { x, y });
+
+    let anchor: Entity;
+    if (anchorName === AnchorName.TOP_LEFT) {
+      anchor = tlAnchor;
+    } else if (anchorName === AnchorName.TOP_RIGHT) {
+      anchor = trAnchor;
+    } else if (anchorName === AnchorName.BOTTOM_LEFT) {
+      anchor = blAnchor;
+    } else if (anchorName === AnchorName.BOTTOM_RIGHT) {
+      anchor = brAnchor;
+    }
+
+    if (anchor) {
+      Object.assign(anchor.write(Circle), {
+        cx: anchorNodeX,
+        cy: anchorNodeY,
+      });
+    }
 
     let newHypotenuse: number;
 
@@ -355,8 +408,8 @@ export class Select extends System {
       if (lockAspectRatio) {
         const comparePoint = centeredScaling
           ? {
-              x: this.#width / 2,
-              y: this.#height / 2,
+              x: this.#center[0],
+              y: this.#center[1],
             }
           : {
               x: tlAnchor.read(Circle).cx,
@@ -368,8 +421,8 @@ export class Select extends System {
             Math.pow(anchorNodeY - comparePoint.y, 2),
         );
 
-        const reverseX = anchorNodeX < comparePoint.x ? -1 : 1;
-        const reverseY = anchorNodeY < comparePoint.y ? -1 : 1;
+        const reverseX = brAnchor.read(Circle).cx < comparePoint.x ? -1 : 1;
+        const reverseY = brAnchor.read(Circle).cy < comparePoint.y ? -1 : 1;
 
         const x = newHypotenuse * this.#cos * reverseX;
         const y = newHypotenuse * this.#sin * reverseY;
@@ -400,36 +453,43 @@ export class Select extends System {
     const { cx: tlCx, cy: tlCy } = tlAnchor.read(Circle);
     const { cx: brCx, cy: brCy } = brAnchor.read(Circle);
 
-    // const { x, y } = this.renderTransformer.getAnchorPositionInCanvas(
-    //   camera,
-    //   tlAnchor,
-    // );
-    // const width = brCx - tlCx;
-    // const height = brCy - tlCy;
+    {
+      const { cx: x, cy: y } = tlAnchor.read(Circle);
+      const width = brCx - tlCx;
+      const height = brCy - tlCy;
 
-    this.fitSelected(api, new OBB(tlCx, tlCy, brCx, brCy, this.#rotation));
+      this.fitSelected(api, { x, y, width, height });
+    }
+
+    this.renderTransformer.createOrUpdate(camera);
   }
 
   private handleSelectedResized(api: API) {
     api.setNodes(api.getNodes());
     api.record();
 
-    this.selected.current.forEach((selected) => {
+    const { selecteds } = api.getCamera().read(Transformable);
+    selecteds.forEach((selected) => {
       if (!selected.has(Highlighted)) {
         selected.add(Highlighted);
       }
     });
+
+    this.saveSelectedTransform(api.getCamera());
   }
 
   private handleSelectedRotated(api: API) {
     api.setNodes(api.getNodes());
     api.record();
 
-    this.selected.current.forEach((selected) => {
+    const { selecteds } = api.getCamera().read(Transformable);
+    selecteds.forEach((selected) => {
       if (!selected.has(Highlighted)) {
         selected.add(Highlighted);
       }
     });
+
+    this.saveSelectedTransform(api.getCamera());
   }
 
   private handleBrushing(api: API, viewportX: number, viewportY: number) {
@@ -533,19 +593,7 @@ export class Select extends System {
           this.#selectionMode === SelectionMode.READY_TO_RESIZE ||
           this.#selectionMode === SelectionMode.READY_TO_ROTATE
         ) {
-          const { minX, minY, maxX, maxY, rotation } =
-            this.renderTransformer.getOBB(api.getCamera());
-          const width = maxX - minX;
-          const height = maxY - minY;
-          const hypotenuse = Math.sqrt(
-            Math.pow(width, 2) + Math.pow(height, 2),
-          );
-          this.#sin = Math.abs(height / hypotenuse);
-          this.#cos = Math.abs(width / hypotenuse);
-          this.#width = width;
-          this.#height = height;
-          this.#center = [minX + width / 2, minY + height / 2];
-          this.#rotation = rotation;
+          this.saveSelectedTransform(camera);
           if (this.#selectionMode === SelectionMode.READY_TO_RESIZE) {
             this.#selectionMode = SelectionMode.RESIZE;
           } else if (this.#selectionMode === SelectionMode.READY_TO_ROTATE) {
@@ -575,12 +623,15 @@ export class Select extends System {
           // console.log('highlight', toHighlight.__id);
         }
 
+        const { mask, selecteds } = camera.read(Transformable);
+
         // Hit test with transformer
-        if (this.selected.current.length >= 1) {
+        if (selecteds.length >= 1) {
           const { anchor, cursor: cursorName } =
             this.renderTransformer.hitTest(api, { x, y }) || {};
           if (anchor) {
-            cursor.value = getCursor(cursorName, 45 * DEG_TO_RAD);
+            const { rotation } = mask.read(Transform);
+            cursor.value = getCursor(cursorName, rotation);
             this.#resizingAnchorName = anchor;
             if (cursorName.includes('rotate')) {
               this.#selectionMode = SelectionMode.READY_TO_ROTATE;
@@ -626,13 +677,11 @@ export class Select extends System {
           x,
           y,
         });
-        const dx = ex - sx;
-        const dy = ey - sy;
 
         if (this.#selectionMode === SelectionMode.BRUSH) {
           this.handleBrushing(api, x, y);
         } else if (this.#selectionMode === SelectionMode.MOVE) {
-          this.handleSelectedMoving(api, dx, dy);
+          this.handleSelectedMoving(api, sx, sy, ex, ey);
         } else if (this.#selectionMode === SelectionMode.RESIZE) {
           this.handleSelectedResizing(
             api,
@@ -699,12 +748,38 @@ export class Select extends System {
     });
   }
 
-  private fitSelected(api: API, obb: OBB) {
-    const { minX, maxX, minY, maxY, rotation } = obb;
+  private saveSelectedTransform(camera: Entity) {
+    const { mask } = camera.read(Transformable);
+    const { minX, minY, maxX, maxY, rotation } =
+      this.renderTransformer.getOBB(camera);
     const width = maxX - minX;
     const height = maxY - minY;
-    const x = minX;
-    const y = minY;
+    const hypotenuse = Math.sqrt(Math.pow(width, 2) + Math.pow(height, 2));
+    this.#sin = Math.abs(height / hypotenuse);
+    this.#cos = Math.abs(width / hypotenuse);
+    this.#width = width;
+    this.#height = height;
+    this.#center = [minX + width / 2, minY + height / 2];
+    this.#matrix = Mat3.toGLMat3(mask.read(GlobalTransform).matrix);
+    this.#rotation = rotation;
+  }
+
+  private fitSelected(
+    api: API,
+    obb: {
+      x: number;
+      y: number;
+      width: number;
+      height: number;
+      transform?: {
+        scale: { x: number; y: number };
+        rotation: number;
+        translation: { x: number; y: number };
+      };
+    },
+  ) {
+    const { mask, selecteds } = api.getCamera().read(Transformable);
+    const { x, y, width, height, transform } = obb;
 
     // const oldTr = new Transform();
     // oldTr.translate(oldAttrs.x, oldAttrs.y);
@@ -713,13 +788,16 @@ export class Select extends System {
 
     // TODO: calculate all selected nodes' transform
     // TODO: update transformer immediately
-    const node = api.getNodeByEntity(this.selected.current[0]);
-    api.updateNodeTransform(node, {
-      x,
-      y,
-      width,
-      height,
-      rotation,
-    });
+
+    if (selecteds.length === 1) {
+      const node = api.getNodeByEntity(selecteds[0]);
+      api.updateNodeTransform(node, {
+        x,
+        y,
+        width,
+        height,
+        transform,
+      });
+    }
   }
 }

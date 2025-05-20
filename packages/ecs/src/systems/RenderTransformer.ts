@@ -100,7 +100,7 @@ export class RenderTransformer extends System {
     );
   }
 
-  private createOrUpdate(camera: Entity) {
+  createOrUpdate(camera: Entity) {
     if (!camera.has(Transformable)) {
       const mask = this.commands
         .spawn(
@@ -241,6 +241,19 @@ export class RenderTransformer extends System {
   getOBB(camera: Entity) {
     const { mask, selecteds } = camera.read(Transformable);
     const rotation = mask.read(Transform).rotation;
+
+    if (selecteds.length === 1) {
+      const [selected] = selecteds;
+      const { geometryBounds } = selected.read(ComputedBounds);
+      return new OBB(
+        geometryBounds.minX,
+        geometryBounds.minY,
+        geometryBounds.maxX,
+        geometryBounds.maxY,
+        rotation,
+      );
+    }
+
     const totalPoints: [number, number][] = [];
     selecteds.forEach((selected) => {
       const { geometryBounds } = selected.read(ComputedBounds);
@@ -305,22 +318,17 @@ export class RenderTransformer extends System {
     };
   }
 
-  /**
-   * Only accorunt for transformer's rotation.
-   */
-  setAnchorPositionInCanvas(camera: Entity, anchor: Entity, point: IPointData) {
+  canvas2LocalTransform(camera: Entity, point: IPointData, worldMatrix?: mat3) {
     const { mask } = camera.read(Transformable);
-    const matrix = Mat3.toGLMat3(mask.read(GlobalTransform).matrix);
+    const matrix =
+      worldMatrix || Mat3.toGLMat3(mask.read(GlobalTransform).matrix);
     const invMatrix = mat3.invert(mat3.create(), matrix);
     const [x, y] = vec2.transformMat3(
       vec2.create(),
       [point.x, point.y],
       invMatrix,
     );
-    Object.assign(anchor.write(Circle), {
-      cx: x,
-      cy: y,
-    });
+    return { x, y };
   }
 
   /**
