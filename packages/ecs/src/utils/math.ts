@@ -1,7 +1,7 @@
 import { Random } from 'roughjs/bin/math';
 import { vec2 } from 'gl-matrix';
-import { OBB } from '../components/math';
 import { IPointData } from '@pixi/math';
+import { OBB } from '../components/math';
 
 // @see https://stackoverflow.com/questions/22521982/check-if-point-is-inside-a-polygon
 export function inside(point: [number, number], vs: [number, number][]) {

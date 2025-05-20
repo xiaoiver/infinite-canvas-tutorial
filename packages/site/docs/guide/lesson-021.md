@@ -14,9 +14,9 @@ In Konva, the operation layer on selected shapes is called [Transformer], which 
 
 ## Anchors {#anchors}
 
-Transformer anchors are divided into two categories: Resize and rotation, with two common combinations in terms of numbers.
+Transformer anchors are divided into two categories: Resize and rotation, with two common combinations in terms of number.
 
-One is used by Excalidraw and Konva, with 8 anchors for Resize surrounding the shape, plus an independent rotation anchor:
+One is adopted by Excalidraw and Konva, using 8 anchors around the perimeter for Resize, plus an independent rotation anchor:
 
 ![Source: https://csswolf.com/the-ultimate-excalidraw-tutorial-for-beginners/](https://sp-ao.shortpixel.ai/client/to_auto,q_lossy,ret_img,w_1148/https://csswolf.com/wp-content/uploads/2023/11/image-9.png)
 
@@ -24,31 +24,11 @@ The other is used by tldraw and Figma, using 4 anchors that transform into rotat
 
 ![Source: https://wpdean.com/how-to-rotate-in-figma/](https://wpdean.com/wp-content/uploads/2024/12/how-to-rotate-in-figma.jpg)
 
-We chose this seemingly more concise solution.
+We choose this seemingly more concise solution.
 
-### Expanding Hit Area {#hit-area}
+### Display CSS cursor {#display-css-cursor}
 
-How can we trigger selection when approaching the anchor from a distance? This requires the shape to expand or even customize its hit area, for example, Pixi.js provides [hitArea]. We also add this field to the Renderable component:
-
-```ts
-export class Renderable {
-    @field({ type: Type.object, default: null }) declare hitArea: Circle | Rect;
-}
-```
-
-The ComputeBounds System considers this property when calculating the bounding box:
-
-```ts
-if (hitArea instanceof Circle) {
-    renderBounds = Circle.getRenderBounds(hitArea);
-}
-```
-
-After expanding the anchor's hit area, we need to distinguish between rotation and Resize.
-
-### Display CSS Cursor {#display-css-cursor}
-
-When hovering over an anchor, the mouse style needs to intuitively display the corresponding function, implemented by modifying the `<canvas>` style in the web version. The default [CSS cursor] has limited icon support, for example, there is no icon representing rotation semantics, and Excalidraw and Konva can only use `grab` as a substitute. Similarly, while there are indeed 8 icons for Resize, when the shape is rotated at angles not multiples of 45 degrees, even calculating appropriate icons like Konva does cannot precisely represent the action:
+When hovering over an anchor point, the mouse style needs to intuitively display the corresponding function, implemented in the web by modifying the `<canvas>` style. The default [CSS cursor] has limited icon support, for example, there is no icon representing rotation semantics, so Excalidraw and Konva can only use `grab` as a substitute. Similarly, while there are indeed 8 icons for Resize, when the shape is rotated and the angle is not a multiple of 45 degrees, even if we calculate and select the appropriate icon like Konva does, we cannot precisely represent it:
 
 ```ts
 function getCursor(anchorName: string, rad: number) {
@@ -61,11 +41,11 @@ function getCursor(anchorName: string, rad: number) {
 }
 ```
 
-Therefore, we need to use custom mouse styles and be able to dynamically adjust based on rotation angle. [How can I rotate a css cursor] provides a method using SVG, and tldraw adds dynamic angle calculation logic on this basis, see: [useCursor]. Taking the top-right anchor as an example:
+Therefore, we need to use custom mouse styles and be able to adjust them dynamically based on rotation angle. [How can I rotate a css cursor] provides a method using SVG, and tldraw adds dynamic angle calculation logic on top of this, see: [useCursor]. Taking the top-right anchor as an example:
 
 ![Rotate anchor](/transformer-anchor-rotate.png)
 
-Apply the rotation transformation to the SVG icon to get the Cursor value:
+Apply the rotation transformation to the SVG icon to get the Cursor value at this time:
 
 ```ts
 `url("data:image/svg+xml,<svg height='32' width='32'>...
@@ -74,9 +54,106 @@ Apply the rotation transformation to the SVG icon to get the Cursor value:
     } 16 16)>
 ```
 
-When the mouse gets closer to the anchor, it changes from rotation to Resize interaction:
+When the mouse gets closer to the anchor point, it changes from rotation to Resize interaction:
 
 ![Resize anchor](/transformer-anchor-resize.png)
+
+How can we trigger picking when the mouse is still far from the anchor point?
+
+### Expand Hit Area {#hit-area}
+
+The first thought is to allow shapes to expand or even customize their hit area, for example, Pixi.js provides [hitArea]. We can also add this field to the Renderable component:
+
+```ts
+export class Renderable {
+    @field({ type: Type.object, default: null }) declare hitArea: Circle | Rect;
+}
+```
+
+Consider this property when computing bounding boxes in the ComputeBounds System, so we can set a circular detection area that's larger than the anchor point:
+
+```ts
+if (hitArea instanceof Circle) {
+    renderBounds = Circle.getRenderBounds(hitArea);
+}
+```
+
+However, this approach has an obvious problem: even if we set the hit area to be 5 times larger than the anchor point, when the camera zooms, we still need to hover over the anchor point to trigger picking. Therefore, we need to consider picking outside the Canvas world coordinate system.
+
+### Picking in Viewport Coordinates {#picking-in-viewport-coordinates}
+
+We need to perform hit testing in the Viewport coordinate system, so we can ignore camera zoom.
+
+First, we need to calculate the positions of the four anchors in the Canvas world coordinate system, rather than directly using the anchor's `cx/cy`, otherwise it will be incorrect when the Transformer itself has rotation (we'll see this soon):
+
+```ts
+hitTest(api: API, { x, y }: IPointData) {
+    const { tlAnchor, trAnchor, blAnchor, brAnchor } = api
+        .getCamera()
+        .read(Transformable);
+
+    const { x: tlX, y: tlY } = api.canvas2Viewport(
+        // Need to consider Transformer's own transformation, such as rotation
+        this.getAnchorPositionInCanvas(api.getCamera(), tlAnchor),
+    );
+    // Omit other anchor position calculations
+
+    const distanceToTL = distanceBetweenPoints(x, y, tlX, tlY);
+}
+```
+
+Then first determine if the minimum distance to the four anchors meets the threshold for Resize interaction, if it does, return the corresponding mouse style icon name, add the rotation angle to get the rotated SVG:
+
+```ts
+if (minDistanceToAnchors <= TRANSFORMER_ANCHOR_RESIZE_RADIUS) {
+    if (minDistanceToAnchors === distanceToTL) {
+        return {
+            anchor: AnchorName.TOP_LEFT,
+            cursor: 'nwse-resize',
+        };
+    }
+}
+```
+
+Next, enter the rotation interaction determination. At this time, the detection point cannot be inside the Transformer, you can use the determination method introduced in [Check if Point Is Inside A Polygon]:
+
+```ts
+else if (
+    !isInside &&
+    minDistanceToAnchors <= TRANSFORMER_ANCHOR_ROTATE_RADIUS
+) {
+    if (minDistanceToAnchors === distanceToTL) {
+        return {
+            anchor: AnchorName.TOP_LEFT,
+            cursor: 'nwse-rotate',
+        };
+    }
+}
+```
+
+Finally, we come to the Resize determination for the four edges of the Transformer, here we need to calculate the distance from the detection point to the line segment, refer to [Gist - point to line 2d]:
+
+```ts
+import distanceBetweenPointAndLineSegment from 'point-to-segment-2d';
+
+const distanceToTopEdge = distanceBetweenPointAndLineSegment(
+    point,
+    [tlX, tlY],
+    [trX, trY],
+);
+// Omit calculation of distance to other 3 edges
+
+if (minDistanceToEdges <= TRANSFORMER_ANCHOR_RESIZE_RADIUS) {
+    if (minDistanceToEdges === distanceToTopEdge) {
+        return {
+            anchor: AnchorName.TOP_CENTER,
+            cursor: 'ns-resize',
+        };
+    }
+}
+```
+
+After expanding the anchor's hit area, we need to distinguish between rotation and Resize.
 
 ## Resize {#resize}
 
@@ -86,11 +163,11 @@ In Figma / FigJam, in addition to freely changing size by dragging the four corn
 -   Press <kbd>Shift</kbd> while dragging to fix the opposite corner/edge and scale proportionally along horizontal and vertical directions
 -   Combine these keys
 
-The effect is shown below, from: [Resize, rotate, and flip objects in FigJam]
+The effect is as follows, from: [Resize, rotate, and flip objects in FigJam]
 
 ![Resizing in FigJam](https://help.figma.com/hc/article_attachments/1500011223302)
 
-Let's look at how to implement free size changing. Taking the top-left anchor as an example, the bottom-right anchor remains fixed during dragging:
+Let's first look at how to implement free size changing. Taking the top-left anchor as an example, when dragging, the bottom-right anchor remains fixed:
 
 ```ts
 handleSelectedResizing(
@@ -118,9 +195,9 @@ Finally, transform the selected shape based on the top-left and bottom-right anc
 
 ### Lock Aspect Ratio {#lock-aspect-ratio}
 
-Still taking the top-left anchor as an example, when locking the aspect ratio, we can't directly set its position. Instead, we need to recalculate the top-left anchor position based on the shape's aspect ratio at the start of dragging, while keeping the bottom-right anchor position fixed.
+Still taking the top-left anchor as an example, when locking the aspect ratio, we can't directly set its position. We need to recalculate the top-left anchor's position based on the shape's aspect ratio at the start of dragging, while keeping the bottom-right anchor position fixed.
 
-First, record the shape's aspect ratio when starting to drag the anchor, equivalent to the diagonal slope:
+First, record the shape's aspect ratio when the drag anchor starts, equivalent to the diagonal slope:
 
 ```ts
 if (input.pointerDownTrigger) {
@@ -166,11 +243,11 @@ if (lockAspectRatio) {
 }
 ```
 
-During dragging, you can display the diagonal in real-time to give users a clear hint (usually as a dashed line).
+During dragging, we can show the diagonal in real-time to give users a clear hint (usually as a dashed line).
 
 ### Centered Scaling {#centered-scaling}
 
-Still taking the top-left anchor as an example, the fixed reference point changes from the bottom-right anchor to the geometric center point, also recorded at the start of the drag behavior:
+Still taking the top-left anchor as an example, now the fixed reference point changes from the bottom-right anchor to the geometric center point, also recorded at the start of the drag behavior:
 
 ```ts
 const comparePoint = centeredScaling
@@ -210,15 +287,15 @@ Figma
 > Drag counterclockwise to create a positive angle (towards 180° )
 > Hold down Shift to snap rotation values to increments of 15.
 
-### Adjust Rotation Origin {#change-the-rotation-origin}
+### Change the Rotation Origin {#change-the-rotation-origin}
 
 Below is the effect of Figma's [Change the rotation origin]:
 
 ![Change the rotation origin](https://help.figma.com/hc/article_attachments/31937330391447)
 
-## Move Shapes with Arrow Keys {#nudge-the-position}
+## Nudge the Position Using Arrow Keys {#nudge-the-position}
 
-Figma provides the [Nudge layers] feature, allowing you to move shapes using the arrow keys, and you can also use <kbd>Shift</kbd> for larger movements. In our implementation, we use a fixed distance:
+Figma provides the [Nudge layers] feature, allowing you to move shapes using the arrow keys, and you can also use <kbd>Shift</kbd> for larger movements. In our implementation, we'll use fixed distances:
 
 ```ts
 if (e.key === 'ArrowUp') {
@@ -230,7 +307,7 @@ if (e.key === 'ArrowUp') {
 
 ## Extended Reading {#extended-reading}
 
--   [Graphic Editor Development: Custom Cursor]
+-   [Graphics Editor Development: Custom Cursor]
 
 [Lesson 14]: /guide/lesson-014
 [Limit Dragging and Resizing]: https://konvajs.org/docs/sandbox/Limited_Drag_And_Resize.html
@@ -240,7 +317,9 @@ if (e.key === 'ArrowUp') {
 [Resize, rotate, and flip objects in FigJam]: https://help.figma.com/hc/en-us/articles/1500006206242-Resize-rotate-and-flip-objects-in-FigJam
 [Nudge layers]: https://help.figma.com/hc/en-us/articles/360039956914-Adjust-alignment-rotation-position-and-dimensions#h_01HNBH5565CW1S5FTNP6RZF00C
 [How can I rotate a css cursor]: https://stackoverflow.com/questions/44817022/how-can-i-rotate-a-css-cursor
-[Graphic Editor Development: Custom Cursor]: https://zhuanlan.zhihu.com/p/667709457
+[Graphics Editor Development: Custom Cursor]: https://zhuanlan.zhihu.com/p/667709457
 [useCursor]: https://github.com/tldraw/tldraw/blob/324a049abe8f414f96fdcbca68bb95396b6c1a46/packages/editor/src/lib/hooks/useCursor.ts#L12
 [CSS cursor]: https://developer.mozilla.org/en-US/docs/Web/CSS/cursor
 [hitArea]: https://pixijs.com/8.x/examples/events/custom-hitarea
+[Check if Point Is Inside A Polygon]: https://stackoverflow.com/questions/22521982/check-if-point-is-inside-a-polygon
+[Gist - point to line 2d]: https://gist.github.com/mattdesl/47412d930dcd8cd765c871a65532ffac

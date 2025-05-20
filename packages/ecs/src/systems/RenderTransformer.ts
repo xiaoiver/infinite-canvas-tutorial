@@ -2,6 +2,7 @@
 import distanceBetweenPointAndLineSegment from 'point-to-segment-2d';
 import { Entity, System } from '@lastolivegames/becsy';
 import { mat3, vec2 } from 'gl-matrix';
+import { IPointData } from '@pixi/math';
 import {
   Children,
   Circle,
@@ -33,7 +34,6 @@ import { getSceneRoot } from './Transform';
 import { API } from '..';
 import { inside } from '../utils/math';
 import { distanceBetweenPoints } from '../utils/matrix';
-import { IPointData } from '@pixi/math';
 
 export const TRANSFORMER_Z_INDEX = 100000;
 const TRANSFORMER_ANCHOR_RADIUS = 5;

@@ -26,26 +26,6 @@ Transformer 的锚点分成 Resize 和旋转两类，在数目上有两种常见
 
 我们选择这种看起来更为简洁的方案。
 
-### 扩大拾取面积 {#hit-area}
-
-如何在远远地靠近锚点时就触发拾取呢？这就要求图形可以扩大甚至是自定义拾取面积，例如 Pixi.js 就提供了 [hitArea]。我们为 Renderable 组件也增加这个字段：
-
-```ts
-export class Renderable {
-    @field({ type: Type.object, default: null }) declare hitArea: Circle | Rect;
-}
-```
-
-在 ComputeBounds System 计算包围盒时考虑这个属性：
-
-```ts
-if (hitArea instanceof Circle) {
-    renderBounds = Circle.getRenderBounds(hitArea);
-}
-```
-
-在扩大了锚点的拾取范围后，接下来需要区分旋转和 Resize。
-
 ### 展示 CSS cursor {#display-css-cursor}
 
 当鼠标悬停到锚点上时，鼠标样式需要直观地展示对应的功能，在 Web 端通过修改 `<canvas>` 的样式实现。默认的 [CSS cursor] 支持的图标比较有限，例如表示旋转语义的图标是不存在的，在 Excalidraw 和 Konva 中只能使用 `grab` 代替。再比如表示 Resize 的图标确实有 8 个，但由于图形存在旋转情况，当旋转角度不为 45 的整数倍时，即便像 Konva 一样计算选择合适的图标，也无法精确表示：
@@ -77,6 +57,103 @@ function getCursor(anchorName: string, rad: number) {
 而当鼠标进一步靠近锚点时，会从旋转变成 Resize 交互：
 
 ![Resize anchor](/transformer-anchor-resize.png)
+
+如何在远远地靠近锚点时就触发拾取呢？
+
+### 扩大拾取面积 {#hit-area}
+
+首先想到的是让图形可以扩大甚至是自定义拾取面积，例如 Pixi.js 就提供了 [hitArea]。我们也可以为 Renderable 组件也增加这个字段：
+
+```ts
+export class Renderable {
+    @field({ type: Type.object, default: null }) declare hitArea: Circle | Rect;
+}
+```
+
+在 ComputeBounds System 计算包围盒时考虑这个属性，这样我们就可以设置一个比锚点大一圈的圆形判定区域：
+
+```ts
+if (hitArea instanceof Circle) {
+    renderBounds = Circle.getRenderBounds(hitArea);
+}
+```
+
+但这种方式存在一个明显的问题：即使我们把拾取面积设置成锚点的 5 倍大，当相机缩放时，仍需要悬停到锚点上才能触发拾取。因此我们需要跳出 Canvas 世界坐标系下考虑拾取问题。
+
+### 在 Viewport 坐标系下拾取 {#picking-in-viewport-coordinates}
+
+我们需要在 Viewport 坐标系下进行拾取判定，这样才可以无视相机缩放。
+
+首先我们需要计算四个锚点在 Canvas 世界坐标系下的位置，而不是直接使用锚点的 `cx/cy`，否则当 Transformer 本身存在旋转时（我们马上就会看到这一点）就会出错。
+
+```ts
+hitTest(api: API, { x, y }: IPointData) {
+    const { tlAnchor, trAnchor, blAnchor, brAnchor } = api
+        .getCamera()
+        .read(Transformable);
+
+    const { x: tlX, y: tlY } = api.canvas2Viewport(
+        // 需要考虑 Transformer 本身的变换，例如旋转
+        this.getAnchorPositionInCanvas(api.getCamera(), tlAnchor),
+    );
+    // 省略其余锚点位置计算
+
+    const distanceToTL = distanceBetweenPoints(x, y, tlX, tlY);
+}
+```
+
+然后优先判定离四个锚点的最小距离是否满足 Resize 交互的阈值，如果满足就返回对应的鼠标样式图标名称，加上旋转角度得到旋转后的 SVG：
+
+```ts
+if (minDistanceToAnchors <= TRANSFORMER_ANCHOR_RESIZE_RADIUS) {
+    if (minDistanceToAnchors === distanceToTL) {
+        return {
+            anchor: AnchorName.TOP_LEFT,
+            cursor: 'nwse-resize',
+        };
+    }
+}
+```
+
+接下来进入旋转交互的判定。此时检测点不能在 Transformer 内，可以使用 [Check if Point Is Inside A Polygon] 中介绍的判定方法：
+
+```ts
+else if (
+    !isInside &&
+    minDistanceToAnchors <= TRANSFORMER_ANCHOR_ROTATE_RADIUS
+) {
+    if (minDistanceToAnchors === distanceToTL) {
+        return {
+            anchor: AnchorName.TOP_LEFT,
+            cursor: 'nwse-rotate',
+        };
+    }
+}
+```
+
+最后来到 Transformer 四条边的 Resize 判定，这里需要计算检测点到线段的距离，可参考 [Gist - point to line 2d]：
+
+```ts
+import distanceBetweenPointAndLineSegment from 'point-to-segment-2d';
+
+const distanceToTopEdge = distanceBetweenPointAndLineSegment(
+    point,
+    [tlX, tlY],
+    [trX, trY],
+);
+// 省略计算到其余3条边的距离
+
+if (minDistanceToEdges <= TRANSFORMER_ANCHOR_RESIZE_RADIUS) {
+    if (minDistanceToEdges === distanceToTopEdge) {
+        return {
+            anchor: AnchorName.TOP_CENTER,
+            cursor: 'ns-resize',
+        };
+    }
+}
+```
+
+在扩大了锚点的拾取范围后，接下来需要区分旋转和 Resize。
 
 ## Resize {#resize}
 
@@ -244,3 +321,5 @@ if (e.key === 'ArrowUp') {
 [useCursor]: https://github.com/tldraw/tldraw/blob/324a049abe8f414f96fdcbca68bb95396b6c1a46/packages/editor/src/lib/hooks/useCursor.ts#L12
 [CSS cursor]: https://developer.mozilla.org/en-US/docs/Web/CSS/cursor
 [hitArea]: https://pixijs.com/8.x/examples/events/custom-hitarea
+[Check if Point Is Inside A Polygon]: https://stackoverflow.com/questions/22521982/check-if-point-is-inside-a-polygon
+[Gist - point to line 2d]: https://gist.github.com/mattdesl/47412d930dcd8cd765c871a65532ffac
