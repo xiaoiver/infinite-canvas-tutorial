@@ -24,7 +24,48 @@ The other is used by tldraw and Figma, using 4 anchors that transform into rotat
 
 ![Source: https://wpdean.com/how-to-rotate-in-figma/](https://wpdean.com/wp-content/uploads/2024/12/how-to-rotate-in-figma.jpg)
 
-We choose this seemingly more concise solution.
+We choose this seemingly more concise solution: 一个 `Rect` mask 作为父节点，以及四个子节点 `Circle` 锚点：
+
+```ts
+const mask = this.commands.spawn(
+    new UI(UIType.TRANSFORMER_MASK),
+    new Transform(),
+    new Renderable(),
+    new Rect(), // Use Rect component
+);
+const tlAnchor = this.createAnchor(minX, minY, AnchorName.TOP_LEFT); // Use Circle component
+const trAnchor = this.createAnchor(maxX, minY, AnchorName.TOP_RIGHT);
+const blAnchor = this.createAnchor(minX, maxY, AnchorName.BOTTOM_LEFT);
+const brAnchor = this.createAnchor(maxX, maxY, AnchorName.BOTTOM_RIGHT);
+
+this.commands
+    .entity(mask)
+    .appendChild(this.commands.entity(tlAnchor))
+    .appendChild(this.commands.entity(trAnchor))
+    .appendChild(this.commands.entity(blAnchor))
+    .appendChild(this.commands.entity(brAnchor));
+```
+
+### Transformer coordinates {#transformer-coordinates}
+
+In [Lesson 6 - Coordinates], we implemented the mutual conversion between three coordinate systems: Viewport, Canvas, and Client. Here we need to introduce a new coordinate system, which is the local coordinate system of the mask. For example, when the mask has transformations (such as rotation), the anchor points as child nodes need to know their position in the world coordinate system. We add this new set of conversion methods:
+
+```ts
+transformer2Canvas(camera: Entity, point: IPointData) {
+    const { mask } = camera.read(Transformable);
+    const matrix = Mat3.toGLMat3(mask.read(GlobalTransform).matrix);
+    const [x, y] = vec2.transformMat3(
+      vec2.create(),
+      [point.x, point.y],
+      matrix,
+    );
+    return {
+      x,
+      y,
+    };
+}
+canvas2Transformer(camera: Entity, point: IPointData) {}
+```
 
 ### Display CSS cursor {#display-css-cursor}
 
@@ -88,13 +129,14 @@ First, we need to calculate the positions of the four anchors in the Canvas worl
 
 ```ts
 hitTest(api: API, { x, y }: IPointData) {
-    const { tlAnchor, trAnchor, blAnchor, brAnchor } = api
-        .getCamera()
-        .read(Transformable);
+    const { tlAnchor, trAnchor, blAnchor, brAnchor } = camera.read(Transformable);
 
     const { x: tlX, y: tlY } = api.canvas2Viewport(
         // Need to consider Transformer's own transformation, such as rotation
-        this.getAnchorPositionInCanvas(api.getCamera(), tlAnchor),
+        api.transformer2Canvas(camera, {
+            x: tlAnchor.read(Circle).cx,
+            y: tlAnchor.read(Circle).cy,
+        }),
     );
     // Omit other anchor position calculations
 
@@ -323,3 +365,4 @@ if (e.key === 'ArrowUp') {
 [hitArea]: https://pixijs.com/8.x/examples/events/custom-hitarea
 [Check if Point Is Inside A Polygon]: https://stackoverflow.com/questions/22521982/check-if-point-is-inside-a-polygon
 [Gist - point to line 2d]: https://gist.github.com/mattdesl/47412d930dcd8cd765c871a65532ffac
+[Lesson 6 - Coordinates]: /guide/lesson-006#coordinates

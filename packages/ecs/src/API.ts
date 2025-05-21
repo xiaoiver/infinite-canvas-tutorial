@@ -32,6 +32,7 @@ import {
   ComputedBounds,
   ComputedCamera,
   Cursor,
+  GlobalTransform,
   Grid,
   Landmark,
   LandmarkAnimationEffectTiming,
@@ -44,6 +45,7 @@ import {
   Selected,
   ToBeDeleted,
   Transform,
+  Transformable,
   VectorScreenshotRequest,
   ZIndex,
 } from './components';
@@ -294,6 +296,36 @@ export class API {
       x: ((clip[0] + 1) / 2) * width,
       y: (1 - (clip[1] + 1) / 2) * height,
     };
+  }
+
+  /**
+   * Calculate anchor's position in canvas coordinate, account for transformer's transform.
+   */
+  transformer2Canvas(camera: Entity, point: IPointData) {
+    const { mask } = camera.read(Transformable);
+    const matrix = Mat3.toGLMat3(mask.read(GlobalTransform).matrix);
+    const [x, y] = vec2.transformMat3(
+      vec2.create(),
+      [point.x, point.y],
+      matrix,
+    );
+    return {
+      x,
+      y,
+    };
+  }
+
+  canvas2Transformer(camera: Entity, point: IPointData, worldMatrix?: mat3) {
+    const { mask } = camera.read(Transformable);
+    const matrix =
+      worldMatrix || Mat3.toGLMat3(mask.read(GlobalTransform).matrix);
+    const invMatrix = mat3.invert(mat3.create(), matrix);
+    const [x, y] = vec2.transformMat3(
+      vec2.create(),
+      [point.x, point.y],
+      invMatrix,
+    );
+    return { x, y };
   }
 
   /**

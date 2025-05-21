@@ -24,7 +24,48 @@ Transformer 的锚点分成 Resize 和旋转两类，在数目上有两种常见
 
 ![Source: https://wpdean.com/how-to-rotate-in-figma/](https://wpdean.com/wp-content/uploads/2024/12/how-to-rotate-in-figma.jpg)
 
-我们选择这种看起来更为简洁的方案。
+我们选择这种看起来更为简洁的方案：一个 `Rect` mask 作为父节点，以及四个子节点 `Circle` 锚点：
+
+```ts
+const mask = this.commands.spawn(
+    new UI(UIType.TRANSFORMER_MASK),
+    new Transform(),
+    new Renderable(),
+    new Rect(), // 使用 Rect 组件
+);
+const tlAnchor = this.createAnchor(minX, minY, AnchorName.TOP_LEFT); // 使用 Circle 组件
+const trAnchor = this.createAnchor(maxX, minY, AnchorName.TOP_RIGHT);
+const blAnchor = this.createAnchor(minX, maxY, AnchorName.BOTTOM_LEFT);
+const brAnchor = this.createAnchor(maxX, maxY, AnchorName.BOTTOM_RIGHT);
+
+this.commands
+    .entity(mask)
+    .appendChild(this.commands.entity(tlAnchor))
+    .appendChild(this.commands.entity(trAnchor))
+    .appendChild(this.commands.entity(blAnchor))
+    .appendChild(this.commands.entity(brAnchor));
+```
+
+### Transformer 坐标系 {#transformer-coordinates}
+
+在 [课程 6 - 坐标系转换] 中我们实现了 Viewport、Canvas、Client 这三个坐标系下的互相转换。这里我们需要引入一个新的坐标系，即 mask 的局部坐标系。例如当 mask 存在变换（例如旋转）时，作为子节点的锚点需要知道自身在世界坐标系下的位置。我们新增这一组转换方法：
+
+```ts
+transformer2Canvas(camera: Entity, point: IPointData) {
+    const { mask } = camera.read(Transformable);
+    const matrix = Mat3.toGLMat3(mask.read(GlobalTransform).matrix);
+    const [x, y] = vec2.transformMat3(
+      vec2.create(),
+      [point.x, point.y],
+      matrix,
+    );
+    return {
+      x,
+      y,
+    };
+}
+canvas2Transformer(camera: Entity, point: IPointData) {}
+```
 
 ### 展示 CSS cursor {#display-css-cursor}
 
@@ -88,13 +129,14 @@ if (hitArea instanceof Circle) {
 
 ```ts
 hitTest(api: API, { x, y }: IPointData) {
-    const { tlAnchor, trAnchor, blAnchor, brAnchor } = api
-        .getCamera()
-        .read(Transformable);
+    const { tlAnchor, trAnchor, blAnchor, brAnchor } = camera.read(Transformable);
 
     const { x: tlX, y: tlY } = api.canvas2Viewport(
         // 需要考虑 Transformer 本身的变换，例如旋转
-        this.getAnchorPositionInCanvas(api.getCamera(), tlAnchor),
+        api.transformer2Canvas(camera, {
+            x: tlAnchor.read(Circle).cx,
+            y: tlAnchor.read(Circle).cy,
+        }),
     );
     // 省略其余锚点位置计算
 
@@ -323,3 +365,4 @@ if (e.key === 'ArrowUp') {
 [hitArea]: https://pixijs.com/8.x/examples/events/custom-hitarea
 [Check if Point Is Inside A Polygon]: https://stackoverflow.com/questions/22521982/check-if-point-is-inside-a-polygon
 [Gist - point to line 2d]: https://gist.github.com/mattdesl/47412d930dcd8cd765c871a65532ffac
+[课程 6 - 坐标系转换]: /zh/guide/lesson-006#coordinates

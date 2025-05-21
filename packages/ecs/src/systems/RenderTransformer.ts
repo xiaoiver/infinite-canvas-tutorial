@@ -302,55 +302,37 @@ export class RenderTransformer extends System {
   }
 
   /**
-   * Calculate anchor's position in canvas coordinate, account for transformer's transform.
-   */
-  getAnchorPositionInCanvas(camera: Entity, anchor: Entity): IPointData {
-    const { mask } = camera.read(Transformable);
-    const matrix = Mat3.toGLMat3(mask.read(GlobalTransform).matrix);
-    const [x, y] = vec2.transformMat3(
-      vec2.create(),
-      [anchor.read(Circle).cx, anchor.read(Circle).cy],
-      matrix,
-    );
-    return {
-      x,
-      y,
-    };
-  }
-
-  canvas2LocalTransform(camera: Entity, point: IPointData, worldMatrix?: mat3) {
-    const { mask } = camera.read(Transformable);
-    const matrix =
-      worldMatrix || Mat3.toGLMat3(mask.read(GlobalTransform).matrix);
-    const invMatrix = mat3.invert(mat3.create(), matrix);
-    const [x, y] = vec2.transformMat3(
-      vec2.create(),
-      [point.x, point.y],
-      invMatrix,
-    );
-    return { x, y };
-  }
-
-  /**
    * Hit test with transformer, return anchor name and cursor.
    */
   hitTest(api: API, { x, y }: IPointData) {
+    const camera = api.getCamera();
     const point = [x, y] as [number, number];
-    const { tlAnchor, trAnchor, blAnchor, brAnchor } = api
-      .getCamera()
-      .read(Transformable);
+    const { tlAnchor, trAnchor, blAnchor, brAnchor } =
+      camera.read(Transformable);
 
     const { x: tlX, y: tlY } = api.canvas2Viewport(
-      this.getAnchorPositionInCanvas(api.getCamera(), tlAnchor),
+      api.transformer2Canvas(camera, {
+        x: tlAnchor.read(Circle).cx,
+        y: tlAnchor.read(Circle).cy,
+      }),
     );
     const { x: trX, y: trY } = api.canvas2Viewport(
-      this.getAnchorPositionInCanvas(api.getCamera(), trAnchor),
+      api.transformer2Canvas(camera, {
+        x: trAnchor.read(Circle).cx,
+        y: trAnchor.read(Circle).cy,
+      }),
     );
     const { x: blX, y: blY } = api.canvas2Viewport(
-      this.getAnchorPositionInCanvas(api.getCamera(), blAnchor),
+      api.transformer2Canvas(camera, {
+        x: blAnchor.read(Circle).cx,
+        y: blAnchor.read(Circle).cy,
+      }),
     );
     const { x: brX, y: brY } = api.canvas2Viewport(
-      this.getAnchorPositionInCanvas(api.getCamera(), brAnchor),
+      api.transformer2Canvas(camera, {
+        x: brAnchor.read(Circle).cx,
+        y: brAnchor.read(Circle).cy,
+      }),
     );
 
     const isInside = inside(point, [

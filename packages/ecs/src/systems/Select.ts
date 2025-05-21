@@ -1,4 +1,4 @@
-import { DEG_TO_RAD, RAD_TO_DEG } from '@pixi/math';
+import { RAD_TO_DEG } from '@pixi/math';
 import { Entity, System } from '@lastolivegames/becsy';
 import {
   Camera,
@@ -158,11 +158,11 @@ export class Select extends System {
     ey: number,
   ) {
     const camera = api.getCamera();
-    const sl = this.renderTransformer.canvas2LocalTransform(camera, {
+    const sl = api.canvas2Transformer(camera, {
       x: sx,
       y: sy,
     });
-    const el = this.renderTransformer.canvas2LocalTransform(camera, {
+    const el = api.canvas2Transformer(camera, {
       x: ex,
       y: ey,
     });
@@ -204,7 +204,7 @@ export class Select extends System {
     anchorNodeY: number,
   ) {
     const camera = api.getCamera();
-    const sl = this.renderTransformer.canvas2LocalTransform(
+    const sl = api.canvas2Transformer(
       camera,
       {
         x: anchorNodeX,
@@ -257,8 +257,10 @@ export class Select extends System {
       .getCamera()
       .read(Transformable);
 
-    const { x: anchorNodeX, y: anchorNodeY } =
-      this.renderTransformer.canvas2LocalTransform(camera, { x, y });
+    const { x: anchorNodeX, y: anchorNodeY } = api.canvas2Transformer(camera, {
+      x,
+      y,
+    });
 
     let anchor: Entity;
     if (anchorName === AnchorName.TOP_LEFT) {
