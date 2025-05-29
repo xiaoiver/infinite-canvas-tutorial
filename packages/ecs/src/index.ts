@@ -33,7 +33,6 @@ export {
   type Gradient,
   type SerializedNode,
   type OrderedSerializedNode,
-  type CircleSerializedNode,
   type EllipseSerializedNode,
   type RectSerializedNode,
   type PolylineSerializedNode,

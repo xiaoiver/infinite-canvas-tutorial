@@ -1,5 +1,5 @@
 import { field } from '@lastolivegames/becsy';
-import { AABB, aabbType } from '../math';
+import { AABB, aabbType, OBB, obbType } from '../math';
 
 export class ComputedBounds {
   /**
@@ -18,4 +18,6 @@ export class ComputedBounds {
    * Account for world transform.
    */
   @field(aabbType) declare bounds: AABB;
+
+  @field(obbType) declare obb: OBB;
 }

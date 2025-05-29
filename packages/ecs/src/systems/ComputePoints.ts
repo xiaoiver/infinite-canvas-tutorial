@@ -36,17 +36,27 @@ export class ComputePoints extends System {
     this.polylines.addedOrChanged.forEach((entity) => {
       const { points } = entity.read(Polyline);
       const { alignment, width } = entity.read(Stroke);
-      const shiftedPoints =
-        alignment === 'center'
-          ? points
-          : shiftPoints(points, alignment === 'inner', width);
 
       if (!entity.has(ComputedPoints)) {
         entity.add(ComputedPoints);
       }
-      entity.write(ComputedPoints).shiftedPoints = shiftedPoints;
+      entity.write(ComputedPoints).shiftedPoints = maybeShiftPoints(
+        points,
+        alignment,
+        width,
+      );
     });
   }
+}
+
+export function maybeShiftPoints(
+  points: [number, number][],
+  strokeAlignment: Stroke['alignment'],
+  strokeWidth: number,
+) {
+  return strokeAlignment === 'center'
+    ? points
+    : shiftPoints(points, strokeAlignment === 'inner', strokeWidth);
 }
 
 export function shiftPoints(

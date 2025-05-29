@@ -1,4 +1,5 @@
-import { RAD_TO_DEG } from '@pixi/math';
+import { DEG_TO_RAD, Matrix, RAD_TO_DEG } from '@pixi/math';
+import { fromObject } from 'transformation-matrix';
 import { Entity, System } from '@lastolivegames/becsy';
 import {
   Camera,
@@ -38,7 +39,7 @@ import {
   ZIndex,
 } from '../components';
 import { Commands } from '../commands/Commands';
-import { distanceBetweenPoints, getCursor, rotateAroundPoint } from '../utils';
+import { decompose, distanceBetweenPoints, getCursor } from '../utils';
 import { API } from '../API';
 import { RenderHighlighter } from './RenderHighlighter';
 import {
@@ -46,8 +47,9 @@ import {
   RenderTransformer,
   TRANSFORMER_ANCHOR_STROKE_COLOR,
 } from './RenderTransformer';
-import { mat3 } from 'gl-matrix';
+import { mat3, vec2 } from 'gl-matrix';
 import { decomposeTSR, rotateDEG } from 'transformation-matrix';
+import { SerializedNode, updateGlobalTransform } from '..';
 
 enum SelectionMode {
   IDLE = 'IDLE',
@@ -78,13 +80,20 @@ export class Select extends System {
   #selectionMode: SelectionMode = SelectionMode.IDLE;
 
   #resizingAnchorName: AnchorName;
-  #sin: number;
-  #cos: number;
+
+  /**
+   * OBB
+   */
+  #x: number;
+  #y: number;
   #width: number;
   #height: number;
-  #center: [number, number];
-  #matrix: mat3;
   #rotation: number;
+  #scaleX: number;
+  #scaleY: number;
+  #sin: number;
+  #cos: number;
+  #selectedNodes: SerializedNode[];
 
   #selectionBrush: Entity;
 
@@ -92,11 +101,8 @@ export class Select extends System {
   #pointerDownViewportY: number;
   #pointerDownCanvasX: number;
   #pointerDownCanvasY: number;
-
   #pointerMoveViewportX: number;
   #pointerMoveViewportY: number;
-  #pointerMoveCanvasX: number;
-  #pointerMoveCanvasY: number;
 
   constructor() {
     super();
@@ -104,8 +110,9 @@ export class Select extends System {
       (q) =>
         q
           .using(Canvas, ComputedBounds)
-          .read.update.and.using(Name, GlobalTransform)
+          .read.update.and.using(Name)
           .read.and.using(
+            GlobalTransform,
             InputPoint,
             Input,
             Cursor,
@@ -157,16 +164,8 @@ export class Select extends System {
     ex: number,
     ey: number,
   ) {
+    api.highlightNodes([]);
     const camera = api.getCamera();
-    const sl = api.canvas2Transformer(camera, {
-      x: sx,
-      y: sy,
-    });
-    const el = api.canvas2Transformer(camera, {
-      x: ex,
-      y: ey,
-    });
-
     const { selecteds } = camera.read(Transformable);
     selecteds.forEach((selected) => {
       // Hide transformer and highlighter
@@ -175,16 +174,17 @@ export class Select extends System {
       }
       const node = api.getNodeByEntity(selected);
 
-      api.updateNodeTransform(node, {
-        dx: el.x - sl.x,
-        dy: el.y - sl.y,
+      api.updateNodeOBB(node, {
+        x: node.x + ex - sx,
+        y: node.y + ey - sy,
       });
-
-      this.renderTransformer.createOrUpdate(camera);
     });
+
+    this.renderTransformer.createOrUpdate(camera);
   }
 
   private handleSelectedMoved(api: API) {
+    const camera = api.getCamera();
     api.setNodes(api.getNodes());
     api.record();
 
@@ -195,7 +195,7 @@ export class Select extends System {
       }
     });
 
-    this.saveSelectedTransform(api.getCamera());
+    this.saveSelectedTransform(api);
   }
 
   private handleSelectedRotating(
@@ -205,7 +205,6 @@ export class Select extends System {
   ) {
     const camera = api.getCamera();
     const sl = api.canvas2Transformer(
-      camera,
       {
         x: anchorNodeX,
         y: anchorNodeY,
@@ -218,51 +217,52 @@ export class Select extends System {
 
     let delta = Math.atan2(-y, x) + Math.PI / 2;
 
-    const obb = this.renderTransformer.getOBB(camera);
+    // const obb = this.renderTransformer.getOBB(camera);
 
-    const {
-      scale: { sx, sy },
-      rotation: { angle },
-      translate: { tx, ty },
-    } = decomposeTSR(
-      rotateDEG(delta * RAD_TO_DEG, this.#center[0], this.#center[1]),
-    );
+    // const {
+    //   scale: { sx, sy },
+    //   rotation: { angle },
+    //   translate: { tx, ty },
+    // } = decomposeTSR(
+    //   rotateDEG(delta * RAD_TO_DEG, this.#center[0], this.#center[1]),
+    // );
 
-    this.fitSelected(api, {
-      x: obb.minX,
-      y: obb.minY,
-      width: obb.maxX - obb.minX,
-      height: obb.maxY - obb.minY,
-      transform: {
-        scale: { x: sx, y: sy },
-        rotation: angle,
-        translation: { x: tx, y: ty },
-      },
-    });
+    // this.fitSelected(api, {
+    //   x: obb.minX,
+    //   y: obb.minY,
+    //   width: obb.maxX - obb.minX,
+    //   height: obb.maxY - obb.minY,
+    //   transform: {
+    //     scale: { x: sx, y: sy },
+    //     rotation: angle,
+    //     translation: { x: tx, y: ty },
+    //   },
+    // });
   }
 
   private handleSelectedResizing(
     api: API,
     x: number,
     y: number,
-    anchorName: AnchorName,
     lockAspectRatio: boolean,
     centeredScaling: boolean,
   ) {
     const camera = api.getCamera();
-    const { selecteds } = camera.read(Transformable);
-    this.renderHighlighter.unhighlight(selecteds);
+    api.highlightNodes([]);
 
-    const { mask, tlAnchor, trAnchor, blAnchor, brAnchor } = api
-      .getCamera()
-      .read(Transformable);
-
-    const { x: anchorNodeX, y: anchorNodeY } = api.canvas2Transformer(camera, {
+    const { tlAnchor, trAnchor, blAnchor, brAnchor } =
+      camera.read(Transformable);
+    const prevTlAnchorX = tlAnchor.read(Circle).cx;
+    const prevTlAnchorY = tlAnchor.read(Circle).cy;
+    const prevBrAnchorX = brAnchor.read(Circle).cx;
+    const prevBrAnchorY = brAnchor.read(Circle).cy;
+    const { x: anchorNodeX, y: anchorNodeY } = api.canvas2Transformer({
       x,
       y,
     });
 
     let anchor: Entity;
+    const anchorName = this.#resizingAnchorName;
     if (anchorName === AnchorName.TOP_LEFT) {
       anchor = tlAnchor;
     } else if (anchorName === AnchorName.TOP_RIGHT) {
@@ -286,8 +286,8 @@ export class Select extends System {
       if (lockAspectRatio) {
         const comparePoint = centeredScaling
           ? {
-              x: this.#center[0],
-              y: this.#center[1],
+              x: this.#width / 2,
+              y: this.#height / 2,
             }
           : {
               x: brAnchor.read(Circle).cx,
@@ -310,20 +310,12 @@ export class Select extends System {
           cy: comparePoint.y - y,
         });
       }
-
-      if (centeredScaling) {
-        const { cx, cy } = tlAnchor.read(Circle);
-        Object.assign(brAnchor.write(Circle), {
-          cx: 2 * this.#center[0] - cx,
-          cy: 2 * this.#center[1] - cy,
-        });
-      }
     } else if (anchorName === AnchorName.TOP_RIGHT) {
       if (lockAspectRatio) {
         const comparePoint = centeredScaling
           ? {
-              x: this.#center[0],
-              y: this.#center[1],
+              x: this.#width / 2,
+              y: this.#height / 2,
             }
           : {
               x: blAnchor.read(Circle).cx,
@@ -350,24 +342,12 @@ export class Select extends System {
 
       tlAnchor.write(Circle).cy = trAnchor.read(Circle).cy;
       brAnchor.write(Circle).cx = trAnchor.read(Circle).cx;
-
-      if (centeredScaling) {
-        const { cx, cy } = trAnchor.read(Circle);
-        Object.assign(tlAnchor.write(Circle), {
-          cx: 2 * this.#center[0] - cx,
-          cy,
-        });
-        Object.assign(brAnchor.write(Circle), {
-          cx,
-          cy: 2 * this.#center[1] - cy,
-        });
-      }
     } else if (anchorName === AnchorName.BOTTOM_LEFT) {
       if (lockAspectRatio) {
         const comparePoint = centeredScaling
           ? {
-              x: this.#center[0],
-              y: this.#center[1],
+              x: this.#width / 2,
+              y: this.#height / 2,
             }
           : {
               x: trAnchor.read(Circle).cx,
@@ -380,7 +360,6 @@ export class Select extends System {
         );
 
         const reverseX = comparePoint.x < anchorNodeX ? -1 : 1;
-
         const reverseY = anchorNodeY < comparePoint.y ? -1 : 1;
 
         const x = newHypotenuse * this.#cos * reverseX;
@@ -394,24 +373,12 @@ export class Select extends System {
 
       tlAnchor.write(Circle).cx = blAnchor.read(Circle).cx;
       brAnchor.write(Circle).cy = blAnchor.read(Circle).cy;
-
-      if (centeredScaling) {
-        const { cx, cy } = blAnchor.read(Circle);
-        Object.assign(tlAnchor.write(Circle), {
-          cx,
-          cy: 2 * this.#center[1] - cy,
-        });
-        Object.assign(brAnchor.write(Circle), {
-          cx: 2 * this.#center[0] - cx,
-          cy,
-        });
-      }
     } else if (anchorName === AnchorName.BOTTOM_RIGHT) {
       if (lockAspectRatio) {
         const comparePoint = centeredScaling
           ? {
-              x: this.#center[0],
-              y: this.#center[1],
+              x: this.#width / 2,
+              y: this.#height / 2,
             }
           : {
               x: tlAnchor.read(Circle).cx,
@@ -434,14 +401,6 @@ export class Select extends System {
           cy: comparePoint.y + y,
         });
       }
-
-      if (centeredScaling) {
-        const { cx, cy } = brAnchor.read(Circle);
-        Object.assign(tlAnchor.write(Circle), {
-          cx: 2 * this.#center[0] - cx,
-          cy: 2 * this.#center[1] - cy,
-        });
-      }
     } else if (anchorName === AnchorName.TOP_CENTER) {
       tlAnchor.write(Circle).cy = anchorNodeY;
     } else if (anchorName === AnchorName.BOTTOM_CENTER) {
@@ -452,46 +411,78 @@ export class Select extends System {
       brAnchor.write(Circle).cx = anchorNodeX;
     }
 
+    if (centeredScaling) {
+      const topOffsetX = tlAnchor.read(Circle).cx - prevTlAnchorX;
+      const topOffsetY = tlAnchor.read(Circle).cy - prevTlAnchorY;
+
+      const bottomOffsetX = brAnchor.read(Circle).cx - prevBrAnchorX;
+      const bottomOffsetY = brAnchor.read(Circle).cy - prevBrAnchorY;
+
+      console.log(bottomOffsetX, bottomOffsetY);
+
+      Object.assign(brAnchor.write(Circle), {
+        cx: brAnchor.read(Circle).cx - topOffsetX,
+        cy: brAnchor.read(Circle).cy - topOffsetY,
+      });
+
+      Object.assign(tlAnchor.write(Circle), {
+        cx: tlAnchor.read(Circle).cx - bottomOffsetX,
+        cy: tlAnchor.read(Circle).cy - bottomOffsetY,
+      });
+    }
+
     const { cx: tlCx, cy: tlCy } = tlAnchor.read(Circle);
     const { cx: brCx, cy: brCy } = brAnchor.read(Circle);
 
     {
-      const { cx: x, cy: y } = tlAnchor.read(Circle);
       const width = brCx - tlCx;
       const height = brCy - tlCy;
 
-      this.fitSelected(api, { x, y, width, height });
+      const { x, y } = api.transformer2Canvas({ x: tlCx, y: tlCy });
+      this.fitSelected(api, {
+        x,
+        y,
+        width,
+        height,
+        rotation: this.#rotation,
+        scaleX: this.#scaleX,
+        scaleY: this.#scaleY,
+      });
     }
 
     this.renderTransformer.createOrUpdate(camera);
   }
 
   private handleSelectedResized(api: API) {
+    const camera = api.getCamera();
+
     api.setNodes(api.getNodes());
     api.record();
 
-    const { selecteds } = api.getCamera().read(Transformable);
+    const { selecteds } = camera.read(Transformable);
     selecteds.forEach((selected) => {
       if (!selected.has(Highlighted)) {
         selected.add(Highlighted);
       }
     });
 
-    this.saveSelectedTransform(api.getCamera());
+    this.saveSelectedTransform(api);
   }
 
   private handleSelectedRotated(api: API) {
+    const camera = api.getCamera();
+
     api.setNodes(api.getNodes());
     api.record();
 
-    const { selecteds } = api.getCamera().read(Transformable);
+    const { selecteds } = camera.read(Transformable);
     selecteds.forEach((selected) => {
       if (!selected.has(Highlighted)) {
         selected.add(Highlighted);
       }
     });
 
-    this.saveSelectedTransform(api.getCamera());
+    this.saveSelectedTransform(api);
   }
 
   private handleBrushing(api: API, viewportX: number, viewportY: number) {
@@ -564,8 +555,7 @@ export class Select extends System {
 
         // Clear selection
         api.selectNodes([]);
-
-        this.renderHighlighter.clear();
+        api.highlightNodes([]);
 
         return;
       }
@@ -595,7 +585,7 @@ export class Select extends System {
           this.#selectionMode === SelectionMode.READY_TO_RESIZE ||
           this.#selectionMode === SelectionMode.READY_TO_ROTATE
         ) {
-          this.saveSelectedTransform(camera);
+          this.saveSelectedTransform(api);
           if (this.#selectionMode === SelectionMode.READY_TO_RESIZE) {
             this.#selectionMode = SelectionMode.RESIZE;
           } else if (this.#selectionMode === SelectionMode.READY_TO_ROTATE) {
@@ -616,36 +606,38 @@ export class Select extends System {
         this.#pointerMoveViewportX = x;
         this.#pointerMoveViewportY = y;
 
-        this.renderHighlighter.clear();
+        api.highlightNodes([]);
         // Highlight the topmost non-ui element
         toHighlight = this.getTopmostEntity(api, x, y, (e) => !e.has(UI));
         if (toHighlight) {
-          this.renderHighlighter.highlight([toHighlight]);
+          api.highlightNodes([api.getNodeByEntity(toHighlight)]);
           this.#selectionMode = SelectionMode.READY_TO_SELECT;
           // console.log('highlight', toHighlight.__id);
         }
 
-        const { mask, selecteds } = camera.read(Transformable);
+        if (camera.has(Transformable)) {
+          const { mask, selecteds } = camera.read(Transformable);
 
-        // Hit test with transformer
-        if (selecteds.length >= 1) {
-          const { anchor, cursor: cursorName } =
-            this.renderTransformer.hitTest(api, { x, y }) || {};
-          if (anchor) {
-            const { rotation } = mask.read(Transform);
-            cursor.value = getCursor(cursorName, rotation);
-            this.#resizingAnchorName = anchor;
-            if (cursorName.includes('rotate')) {
-              this.#selectionMode = SelectionMode.READY_TO_ROTATE;
-            } else if (cursorName.includes('resize')) {
-              this.#selectionMode = SelectionMode.READY_TO_RESIZE;
-            } else if (anchor === AnchorName.INSIDE) {
-              this.#selectionMode = SelectionMode.READY_TO_MOVE;
-            } else {
-              if (toHighlight) {
-                this.#selectionMode = SelectionMode.READY_TO_SELECT;
+          // Hit test with transformer
+          if (selecteds.length >= 1) {
+            const { anchor, cursor: cursorName } =
+              this.renderTransformer.hitTest(api, { x, y }) || {};
+            if (anchor) {
+              const { rotation } = mask.read(Transform);
+              cursor.value = getCursor(cursorName, rotation);
+              this.#resizingAnchorName = anchor;
+              if (cursorName.includes('rotate')) {
+                this.#selectionMode = SelectionMode.READY_TO_ROTATE;
+              } else if (cursorName.includes('resize')) {
+                this.#selectionMode = SelectionMode.READY_TO_RESIZE;
+              } else if (anchor === AnchorName.INSIDE) {
+                this.#selectionMode = SelectionMode.READY_TO_MOVE;
               } else {
-                this.#selectionMode = SelectionMode.IDLE;
+                if (toHighlight) {
+                  this.#selectionMode = SelectionMode.READY_TO_SELECT;
+                } else {
+                  this.#selectionMode = SelectionMode.IDLE;
+                }
               }
             }
           }
@@ -689,7 +681,6 @@ export class Select extends System {
             api,
             ex,
             ey,
-            this.#resizingAnchorName,
             input.shiftKey,
             input.altKey,
           );
@@ -701,7 +692,7 @@ export class Select extends System {
       });
 
       if (input.pointerUpTrigger) {
-        this.renderHighlighter.clear();
+        api.highlightNodes([]);
 
         const [x, y] = input.pointerViewport;
 
@@ -750,56 +741,187 @@ export class Select extends System {
     });
   }
 
-  private saveSelectedTransform(camera: Entity) {
-    const { mask } = camera.read(Transformable);
-    const { minX, minY, maxX, maxY, rotation } =
-      this.renderTransformer.getOBB(camera);
-    const width = maxX - minX;
-    const height = maxY - minY;
+  private saveSelectedTransform(api: API) {
+    const { x, y, width, height, rotation, scaleX, scaleY } =
+      this.renderTransformer.getOBB(api.getCamera());
     const hypotenuse = Math.sqrt(Math.pow(width, 2) + Math.pow(height, 2));
     this.#sin = Math.abs(height / hypotenuse);
     this.#cos = Math.abs(width / hypotenuse);
     this.#width = width;
     this.#height = height;
-    this.#center = [minX + width / 2, minY + height / 2];
-    this.#matrix = Mat3.toGLMat3(mask.read(GlobalTransform).matrix);
     this.#rotation = rotation;
+    this.#x = x;
+    this.#y = y;
+    this.#scaleX = scaleX;
+    this.#scaleY = scaleY;
+
+    this.#selectedNodes = api.getAppState().layersSelected.map((id) => {
+      return { ...api.getNodeById(id) };
+    });
   }
 
-  private fitSelected(
-    api: API,
-    obb: {
-      x: number;
-      y: number;
-      width: number;
-      height: number;
-      transform?: {
-        scale: { x: number; y: number };
-        rotation: number;
-        translation: { x: number; y: number };
-      };
-    },
-  ) {
-    const { mask, selecteds } = api.getCamera().read(Transformable);
-    const { x, y, width, height, transform } = obb;
+  private fitSelected(api: API, newAttrs: OBB) {
+    const camera = api.getCamera();
+    const { selecteds } = camera.read(Transformable);
 
-    // const oldTr = new Transform();
-    // oldTr.translate(oldAttrs.x, oldAttrs.y);
-    // oldTr.rotate(oldAttrs.rotation);
-    // oldTr.scale(oldAttrs.width / baseSize, oldAttrs.height / baseSize);
+    const { x, y, width, height, rotation, scaleX, scaleY } = newAttrs;
+    const epsilon = 0.000001;
 
-    // TODO: calculate all selected nodes' transform
-    // TODO: update transformer immediately
+    const oldAttrs = {
+      x: this.#x,
+      y: this.#y,
+      width: this.#width,
+      height: this.#height,
+      rotation: this.#rotation,
+    };
+
+    console.log('oldAttrs', oldAttrs);
+
+    const baseSize = 10000000;
+    const oldTr = mat3.create();
+    mat3.translate(oldTr, oldTr, [oldAttrs.x, oldAttrs.y]);
+    mat3.rotate(oldTr, oldTr, oldAttrs.rotation);
+    mat3.scale(oldTr, oldTr, [
+      oldAttrs.width / baseSize,
+      oldAttrs.height / baseSize,
+    ]);
+
+    const newTr = mat3.create();
+    const newScaleX = newAttrs.width / baseSize;
+    const newScaleY = newAttrs.height / baseSize;
+    mat3.translate(newTr, newTr, [newAttrs.x, newAttrs.y]);
+    mat3.rotate(newTr, newTr, newAttrs.rotation);
+    mat3.scale(newTr, newTr, [newScaleX, newScaleY]);
+
+    // [delta transform] = [new transform] * [old transform inverted]
+    const delta = mat3.multiply(
+      newTr,
+      newTr,
+      mat3.invert(mat3.create(), oldTr),
+    );
 
     if (selecteds.length === 1) {
-      const node = api.getNodeByEntity(selecteds[0]);
-      api.updateNodeTransform(node, {
-        x,
-        y,
-        width,
-        height,
-        transform,
-      });
+      const [selected] = selecteds;
+      const node = api.getNodeByEntity(selected);
+
+      // if (width < 0) {
+      //   if (this.#resizingAnchorName.includes('right')) {
+      //     this.#resizingAnchorName = this.#resizingAnchorName.replace(
+      //       'right',
+      //       'left',
+      //     ) as AnchorName;
+      //   } else if (this.#resizingAnchorName.includes('left')) {
+      //     this.#resizingAnchorName = this.#resizingAnchorName.replace(
+      //       'left',
+      //       'right',
+      //     ) as AnchorName;
+      //   }
+      // }
+
+      // if (height < 0) {
+      //   if (this.#resizingAnchorName.includes('top')) {
+      //     this.#resizingAnchorName = this.#resizingAnchorName.replace(
+      //       'top',
+      //       'bottom',
+      //     ) as AnchorName;
+      //   } else if (this.#resizingAnchorName.includes('bottom')) {
+      //     this.#resizingAnchorName = this.#resizingAnchorName.replace(
+      //       'bottom',
+      //       'top',
+      //     ) as AnchorName;
+      //   }
+      // }
+
+      const oldNode = this.#selectedNodes.find((n) => n.id === node.id);
+      api.updateNodeOBB(
+        node,
+        {
+          x,
+          y,
+          width: Math.max(Math.abs(width), epsilon),
+          height: Math.max(Math.abs(height), epsilon),
+          rotation,
+          scaleX: scaleX * (Math.sign(width) || 1),
+          scaleY: scaleY * (Math.sign(height) || 1),
+        },
+        false,
+        delta,
+        oldNode,
+      );
+
+      updateGlobalTransform(selected);
     }
+
+    // if (selecteds.length === 1) {
+    //   const [selected] = selecteds;
+    //   const node = api.getNodeByEntity(selected);
+
+    //   // const { transform } = this.renderTransformer.getOBB(camera);
+    //   const transform = this.#transform;
+    //   const newMatrix = mat3.multiply(mat3.create(), transform, scaleMatrix);
+
+    //   // const newGlobalOrigin = newMatrix.apply(
+    //   //   scaleFromCenter
+    //   //     ? { x: newRect.width / 2, y: newRect.height / 2 }
+    //   //     : resizeOp.getLocalOrigin(newRect.width, newRect.height),
+    //   // );
+    //   // const globalOrigin = transform.apply(localOrigin);
+
+    //   // const offset = {
+    //   //   x: globalOrigin.x - newGlobalOrigin.x,
+    //   //   y: globalOrigin.y - newGlobalOrigin.y,
+    //   // };
+
+    //   // mat3.multiply(newMatrix, mat3.fromTranslation(mat3.create(), [offset.x, offset.y]), newMatrix);
+
+    //   api.updateNodeTransform(node, {
+    //     x,
+    //     y,
+    //     width: Math.max(Math.abs(width), 0.000001),
+    //     height: Math.max(Math.abs(height), 0.000001),
+    //     matrix: newMatrix,
+    //   });
+    // }
+
+    // selecteds.forEach((selected) => {
+    //   // for each node we have the same [delta transform]
+    //   // the equations is
+    //   // [delta transform] * [parent transform] * [old local transform] = [parent transform] * [new local transform]
+    //   // and we need to find [new local transform]
+    //   // [new local] = [parent inverted] * [delta] * [parent] * [old local]
+    //   // const parentTransform = node.getParent()!.getAbsoluteTransform();
+    //   const parentTransform = selected.read(Children).parent.has(Camera)
+    //     ? mat3.create()
+    //     : Mat3.toGLMat3(
+    //         selected.read(Children).parent.read(GlobalTransform).matrix,
+    //       );
+    //   const localTransform = Mat3.toGLMat3(
+    //     Mat3.fromTransform(selected.read(Transform)),
+    //   );
+    //   // const localTransform = mat3.create();
+    //   // // skip offset:
+    //   // // localTransform.translate(node.offsetX(), node.offsetY());
+
+    //   const newLocalTransform = mat3.create();
+    //   mat3.multiply(
+    //     newLocalTransform,
+    //     newLocalTransform,
+    //     mat3.invert(mat3.create(), parentTransform),
+    //   );
+    //   mat3.multiply(newLocalTransform, newLocalTransform, delta);
+    //   mat3.multiply(newLocalTransform, newLocalTransform, parentTransform);
+    //   mat3.multiply(newLocalTransform, newLocalTransform, localTransform);
+
+    //   console.log(newLocalTransform);
+
+    //   const node = api.getNodeByEntity(selected);
+    //   api.updateNodeOBB(node, {
+    //     matrix: newLocalTransform,
+    //   });
+    // });
+
+    // this.#rotation = newAttrs.rotation;
+
+    // this.renderTransformer.resetTransformCache(camera);
   }
 }

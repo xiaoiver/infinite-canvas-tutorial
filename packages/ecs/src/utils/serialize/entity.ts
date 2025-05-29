@@ -1,6 +1,5 @@
 import { Entity } from '@lastolivegames/becsy';
 import {
-  CircleSerializedNode,
   EllipseSerializedNode,
   FillAttributes,
   PathSerializedNode,
@@ -11,7 +10,6 @@ import {
   TextSerializedNode,
 } from './type';
 import {
-  Transform,
   Children,
   Circle,
   Ellipse,
@@ -27,8 +25,8 @@ import {
   Visibility,
   Name,
   FractionalIndex,
+  ComputedBounds,
 } from '../../components';
-import { serializeTransform } from './transform';
 
 export function entityToSerializedNodes(
   entity: Entity,
@@ -46,12 +44,13 @@ export function entityToSerializedNodes(
   let type: SerializedNode['type'];
   const attributes: Partial<SerializedNode> = {};
   if (entity.has(Circle)) {
-    type = 'circle';
+    type = 'ellipse';
     const { cx, cy, r } = entity.read(Circle);
-    Object.assign(attributes as CircleSerializedNode, {
+    Object.assign(attributes as EllipseSerializedNode, {
       cx,
       cy,
-      r,
+      rx: r,
+      ry: r,
     });
   } else if (entity.has(Ellipse)) {
     type = 'ellipse';
@@ -173,7 +172,7 @@ export function entityToSerializedNodes(
 
   if (entity.has(Opacity)) {
     const { opacity, fillOpacity, strokeOpacity } = entity.read(Opacity);
-    Object.assign(attributes as CircleSerializedNode, {
+    Object.assign(attributes, {
       opacity,
       fillOpacity,
       strokeOpacity,
@@ -181,8 +180,15 @@ export function entityToSerializedNodes(
   }
 
   // serialize transform
-  if (entity.has(Transform)) {
-    attributes.transform = serializeTransform(entity.read(Transform));
+  if (entity.has(ComputedBounds)) {
+    const {
+      obb: { x, y, width, height, rotation },
+    } = entity.read(ComputedBounds);
+    attributes.x = x;
+    attributes.y = y;
+    attributes.width = width;
+    attributes.height = height;
+    attributes.rotation = rotation;
   }
 
   if (entity.has(Name)) {

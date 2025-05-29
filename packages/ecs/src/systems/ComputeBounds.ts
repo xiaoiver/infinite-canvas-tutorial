@@ -8,12 +8,14 @@ import {
   DropShadow,
   Ellipse,
   GlobalTransform,
+  OBB,
   Path,
   Polyline,
   Rect,
   Renderable,
   Stroke,
   Text,
+  Transform,
 } from '../components';
 
 export class ComputeBounds extends System {
@@ -21,7 +23,8 @@ export class ComputeBounds extends System {
     (q) =>
       q.addedOrChanged
         .with(Renderable, GlobalTransform)
-        .withAny(Circle, Ellipse, Rect, Polyline, Path, Text).trackWrites,
+        .withAny(Transform, Circle, Ellipse, Rect, Polyline, Path, Text)
+        .trackWrites,
   );
 
   constructor() {
@@ -117,6 +120,7 @@ export class ComputeBounds extends System {
       }
 
       {
+        const { translation, rotation } = entity.read(Transform);
         const matrix = entity.read(GlobalTransform).matrix;
         const { renderBounds } = entity.read(ComputedBounds);
 
@@ -124,7 +128,17 @@ export class ComputeBounds extends System {
         const bounds = new AABB();
         bounds.addBounds(renderBounds, matrix);
 
-        Object.assign(entity.write(ComputedBounds), { bounds });
+        const obb = new OBB({
+          x: translation[0],
+          y: translation[1],
+          width: geometryBounds.maxX - geometryBounds.minX,
+          height: geometryBounds.maxY - geometryBounds.minY,
+          rotation,
+          scaleX: 1,
+          scaleY: 1,
+        });
+
+        Object.assign(entity.write(ComputedBounds), { bounds, obb });
       }
     });
   }

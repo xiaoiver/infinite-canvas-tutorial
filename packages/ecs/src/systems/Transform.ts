@@ -20,8 +20,7 @@ function syncTransform(
   if (checkGlobalTransform && !entity.has(GlobalTransform)) {
     entity.add(GlobalTransform, new GlobalTransform());
   }
-  const globalTransform = entity.write(GlobalTransform);
-  globalTransform.from(transform);
+  entity.write(GlobalTransform).matrix = Mat3.fromTransform(transform);
 }
 
 /**
@@ -73,41 +72,19 @@ export class PropagateTransforms extends System {
   queries = this.query(
     (q) =>
       q
-        .with(Transform, Parent)
+        .without(Camera)
+        .with(Transform)
         .addedOrChanged.trackWrites.using(GlobalTransform).write,
   );
 
   constructor() {
     super();
-    this.query((q) => q.using(Camera).read);
+    this.query((q) => q.using(Camera, Parent, Children).read);
   }
 
   execute(): void {
     this.queries.addedOrChanged.forEach((entity) => {
-      syncTransform(entity);
-
-      // Camera's worldTransform reflects the camera's position in the world.
-      // It is not affected by the hierarchy.
-      const worldTransform =
-        entity.has(Camera) || !entity.has(GlobalTransform)
-          ? new GlobalTransform()
-          : entity.read(GlobalTransform);
-
-      entity.read(Parent).children.forEach((child) => {
-        const localTransform = child.read(Transform);
-
-        if (!child.has(GlobalTransform)) {
-          child.add(GlobalTransform, new GlobalTransform());
-        }
-
-        child.write(GlobalTransform).matrix = worldTransform.matrix.mul_mat3(
-          Mat3.from_scale_angle_translation(
-            localTransform.scale,
-            localTransform.rotation,
-            localTransform.translation,
-          ),
-        );
-      });
+      updateGlobalTransform(entity);
     });
   }
 }
@@ -141,4 +118,25 @@ export function getDescendants(
     child,
     ...getDescendants(child, compareFn),
   ]);
+}
+
+export function updateGlobalTransform(entity: Entity): void {
+  const parentWorldTransform = entity.has(Children)
+    ? entity.read(Children).parent.read(GlobalTransform).matrix
+    : Mat3.IDENTITY;
+  const localTransform = entity.read(Transform);
+  const worldTransform = parentWorldTransform.mul_mat3(
+    Mat3.fromTransform(localTransform),
+  );
+  if (!entity.has(GlobalTransform)) {
+    entity.add(GlobalTransform, new GlobalTransform(worldTransform));
+  } else {
+    entity.write(GlobalTransform).matrix = worldTransform;
+  }
+
+  if (entity.has(Parent)) {
+    entity.read(Parent).children.forEach((child) => {
+      updateGlobalTransform(child);
+    });
+  }
 }

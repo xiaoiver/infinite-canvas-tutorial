@@ -819,6 +819,9 @@ importers:
       '@loaders.gl/images':
         specifier: ^4.2.2
         version: 4.3.3(@loaders.gl/core@4.3.3)
+      '@pixi/math':
+        specifier: ^7.4.2
+        version: 7.4.2
       '@spectrum-web-components/accordion':
         specifier: ^1.5.0
         version: 1.5.0

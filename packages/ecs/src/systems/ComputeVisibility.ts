@@ -42,6 +42,8 @@ export class ComputeVisibility extends System {
         computedVisibility.visible = true;
       }
 
+      const computed = computedVisibility.visible;
+
       // Update children cascade
       getDescendants(entity).forEach((child) => {
         if (
@@ -49,10 +51,10 @@ export class ComputeVisibility extends System {
           child.read(Visibility).value === 'inherited'
         ) {
           if (!child.has(ComputedVisibility)) {
-            child.add(ComputedVisibility);
+            child.add(ComputedVisibility, { visible: computed });
+          } else {
+            child.write(ComputedVisibility).visible = computed;
           }
-
-          child.write(ComputedVisibility).visible = computedVisibility.visible;
         }
       });
     });

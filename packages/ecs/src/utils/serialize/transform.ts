@@ -1,4 +1,3 @@
-import { isString } from '@antv/util';
 import {
   fromTransformAttribute,
   translate,
@@ -8,13 +7,19 @@ import {
   Matrix,
   rotateDEG,
 } from 'transformation-matrix';
-import { SerializedTransform } from './type';
-import { Transform } from '../../components';
+import { SerializedNode } from './type';
+import { getXY } from './svg';
+import { serializePoints } from './points';
+import { deserializePoints } from '../deserialize';
 
-export function serializeTransform(
-  transform: Transform | string,
-): SerializedTransform {
-  if (isString(transform)) {
+export function fixTransform(transform: string, attributes: SerializedNode) {
+  const { x, y, width, height } = getXY(attributes);
+
+  if (transform === '') {
+    attributes.x = x;
+    attributes.y = y;
+    attributes.rotation = 0;
+  } else {
     const matrices: Matrix[] = [];
     fromTransformAttribute(transform).forEach((d) => {
       const { type } = d;
@@ -28,61 +33,39 @@ export function serializeTransform(
         // Incorrect type definition sx, sy in d.ts
         // @ts-ignore
         const { cx, cy, angle } = d;
-        matrices.push(rotateDEG(angle, cx, cy));
+        matrices.push(rotateDEG(angle, cx - x, cy - y));
       }
     });
     const matrix = compose(matrices);
 
     const {
       translate: { tx, ty },
-      scale: { sx, sy },
+      scale: { sx, sy }, // FIXME: scale is not working for now
       rotation: { angle },
     } = decomposeTSR(matrix);
 
-    return {
-      matrix: {
-        a: matrix.a,
-        b: matrix.b,
-        c: matrix.c,
-        d: matrix.d,
-        tx: matrix.e,
-        ty: matrix.f,
-      },
-      translation: {
-        x: tx,
-        y: ty,
-      },
-      scale: {
-        x: sx,
-        y: sy,
-      },
-      rotation: angle,
-    };
-  } else {
-    const {
-      translation: { x: tx, y: ty },
-      scale: { x: sx, y: sy },
-      rotation,
-    } = transform;
+    attributes.x = tx + x;
+    attributes.y = ty + y;
+    attributes.rotation = angle;
+  }
 
-    return {
-      matrix: {
-        a: 1,
-        b: 0,
-        c: 0,
-        d: 1,
-        tx: tx,
-        ty: ty,
-      },
-      translation: {
-        x: tx,
-        y: ty,
-      },
-      scale: {
-        x: sx,
-        y: sy,
-      },
-      rotation,
-    };
+  const { type } = attributes;
+
+  if (type === 'ellipse') {
+    attributes.width = attributes.rx * 2;
+    attributes.height = attributes.ry * 2;
+    // @ts-ignore
+    delete attributes.cx;
+    // @ts-ignore
+    delete attributes.cy;
+  } else if (type === 'polyline') {
+    attributes.width = width;
+    attributes.height = height;
+    const points = deserializePoints(attributes.points);
+    attributes.points = serializePoints(
+      points.map((point) => {
+        return [point[0] - x, point[1] - y];
+      }),
+    );
   }
 }

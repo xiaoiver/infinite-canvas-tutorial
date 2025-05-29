@@ -11,17 +11,13 @@ import {
 import { Commands, EntityCommands } from './commands';
 import { AppState, getDefaultAppState, Task } from './context';
 import {
-  CircleSerializedNode,
+  deserializePoints,
   EASING_FUNCTION,
-  EllipseSerializedNode,
   getScale,
-  PathSerializedNode,
   PolylineSerializedNode,
-  RectSerializedNode,
   SerializedNode,
   serializedNodesToEntities,
   serializePoints,
-  TextSerializedNode,
 } from './utils';
 import {
   AABB,
@@ -29,17 +25,17 @@ import {
   Canvas,
   CheckboardStyle,
   Children,
-  ComputedBounds,
   ComputedCamera,
   Cursor,
   GlobalTransform,
   Grid,
+  Highlighted,
   Landmark,
   LandmarkAnimationEffectTiming,
   Mat3,
+  OBB,
   Parent,
   Pen,
-  Polyline,
   RasterScreenshotRequest,
   RBush,
   Selected,
@@ -49,11 +45,13 @@ import {
   VectorScreenshotRequest,
   ZIndex,
 } from './components';
-
 import { History, mutateElement, safeAddComponent } from './history';
-import { sortByFractionalIndex, updateMatrix } from './systems';
+import {
+  maybeShiftPoints,
+  sortByFractionalIndex,
+  updateMatrix,
+} from './systems';
 import { DOMAdapter } from './environment';
-import { decomposeTSR } from 'transformation-matrix';
 
 export interface StateManagement {
   getAppState: () => AppState;
@@ -301,8 +299,8 @@ export class API {
   /**
    * Calculate anchor's position in canvas coordinate, account for transformer's transform.
    */
-  transformer2Canvas(camera: Entity, point: IPointData) {
-    const { mask } = camera.read(Transformable);
+  transformer2Canvas(point: IPointData) {
+    const { mask } = this.#camera.read(Transformable);
     const matrix = Mat3.toGLMat3(mask.read(GlobalTransform).matrix);
     const [x, y] = vec2.transformMat3(
       vec2.create(),
@@ -315,10 +313,9 @@ export class API {
     };
   }
 
-  canvas2Transformer(camera: Entity, point: IPointData, worldMatrix?: mat3) {
-    const { mask } = camera.read(Transformable);
-    const matrix =
-      worldMatrix || Mat3.toGLMat3(mask.read(GlobalTransform).matrix);
+  canvas2Transformer(point: IPointData) {
+    const { mask } = this.#camera.read(Transformable);
+    const matrix = Mat3.toGLMat3(mask.read(GlobalTransform).matrix);
     const invMatrix = mat3.invert(mat3.create(), matrix);
     const [x, y] = vec2.transformMat3(
       vec2.create(),
@@ -555,6 +552,12 @@ export class API {
     effectTiming?: Partial<LandmarkAnimationEffectTiming>,
   ) {
     const { minX, minY, maxX, maxY } = this.getSceneGraphBounds();
+
+    // If the bounds are invalid, do nothing, e.g. when there are no elements in the canvas.
+    if (minX > maxX || minY > maxY) {
+      return;
+    }
+
     const { width, height } = this.#canvas.read(Canvas);
 
     const scaleX = width / (maxX - minX);
@@ -661,7 +664,7 @@ export class API {
   /**
    * Select nodes.
    */
-  selectNodes(selected: SerializedNode[], preserveSelection = false) {
+  selectNodes(nodes: SerializedNode[], preserveSelection = false) {
     if (!preserveSelection) {
       this.getAppState().layersSelected.forEach((id) => {
         const entity = this.#idEntityMap.get(id)?.id();
@@ -675,8 +678,8 @@ export class API {
     this.setAppState({
       ...prevAppState,
       layersSelected: preserveSelection
-        ? [...prevAppState.layersSelected, ...selected.map((node) => node.id)]
-        : selected.map((node) => node.id),
+        ? [...prevAppState.layersSelected, ...nodes.map((node) => node.id)]
+        : nodes.map((node) => node.id),
     });
 
     // Select nodes in the canvas.
@@ -684,6 +687,32 @@ export class API {
       const entity = this.#idEntityMap.get(id)?.id();
       if (entity && !entity.has(Selected)) {
         entity.add(Selected, { camera: this.#camera });
+      }
+    });
+  }
+
+  highlightNodes(nodes: SerializedNode[], preserveSelection = false) {
+    if (!preserveSelection) {
+      this.getAppState().layersHighlighted.forEach((id) => {
+        const entity = this.#idEntityMap.get(id)?.id();
+        if (entity && entity.has(Highlighted)) {
+          entity.remove(Highlighted);
+        }
+      });
+    }
+
+    const prevAppState = this.getAppState();
+    this.setAppState({
+      ...prevAppState,
+      layersHighlighted: preserveSelection
+        ? [...prevAppState.layersHighlighted, ...nodes.map((node) => node.id)]
+        : nodes.map((node) => node.id),
+    });
+
+    this.getAppState().layersHighlighted.forEach((id) => {
+      const entity = this.#idEntityMap.get(id)?.id();
+      if (entity && !entity.has(Highlighted)) {
+        entity.add(Highlighted, { camera: this.#camera });
       }
     });
   }
@@ -777,284 +806,166 @@ export class API {
     }
   }
 
-  getNodeTransform(node: SerializedNode) {
-    const { type } = node;
-    let width = 0;
-    let height = 0;
-    let x = 0;
-    let y = 0;
-    let angle = 0;
-
-    if (type === 'circle') {
-      const { r, cx, cy } = node;
-      width = r * 2;
-      height = r * 2;
-      x = cx - r;
-      y = cy - r;
-      angle = 0;
-    } else if (type === 'ellipse') {
-      const { rx, ry, cx, cy } = node;
-      width = rx * 2;
-      height = ry * 2;
-      x = cx - rx;
-      y = cy - ry;
-      angle = 0;
-    } else if (type === 'rect') {
-      const { width: w, height: h, x: xx, y: yy } = node;
-      width = w;
-      height = h;
-      x = xx;
-      y = yy;
-      angle = 0;
-    } else if (type === 'polyline' || type === 'path' || type === 'text') {
-      const { geometryBounds } = this.getEntity(node)?.read(ComputedBounds);
-      const { minX, minY, maxX, maxY } = geometryBounds;
-      width = maxX - minX;
-      height = maxY - minY;
-      x = minX;
-      y = minY;
-      angle = 0;
-    }
-
-    return { width, height, x, y, angle };
-  }
-
-  updateNodeTransform(
+  updateNodeOBB(
     node: SerializedNode,
-    transform: Partial<{
-      x: number;
-      y: number;
-      dx: number;
-      dy: number;
-      width: number;
-      height: number;
-      transform: {
-        scale: { x: number; y: number };
-        rotation: number;
-        translation: { x: number; y: number };
-      };
-      lockAspectRatio: boolean;
-    }>,
+    obb: Partial<OBB>,
+    lockAspectRatio = false,
+    delta?: mat3,
+    oldNode?: SerializedNode,
   ) {
-    const { type } = node;
-    const {
-      x,
-      y,
-      width,
-      height,
-      transform: ttransform,
-      lockAspectRatio,
-    } = transform;
-    let { dx, dy } = transform;
+    const { x, y, width, height, rotation, scaleX, scaleY } = obb;
 
-    if (type === 'rect') {
-      const diff: Partial<RectSerializedNode> = {};
-      if (!isNil(x)) {
-        diff.x = x;
-      }
-      if (!isNil(y)) {
-        diff.y = y;
-      }
-      if (!isNil(dx)) {
-        diff.x = (node.x || 0) + dx;
-      }
-      if (!isNil(dy)) {
-        diff.y = (node.y || 0) + dy;
-      }
-      if (!isNil(width)) {
-        if (lockAspectRatio) {
-          const aspectRatio = node.width / node.height;
-          diff.height = width / aspectRatio;
-        }
-        diff.width = width;
-      }
-      if (!isNil(height)) {
-        if (lockAspectRatio) {
-          const aspectRatio = node.width / node.height;
-          diff.width = height * aspectRatio;
-        }
-        diff.height = height;
-      }
-      if (!isNil(transform)) {
-        decomposeTSR;
-        diff.transform = ttransform;
-      }
-      this.updateNode(node, diff);
-    } else if (type === 'circle') {
-      const diff: Partial<CircleSerializedNode> = {};
-      const { cx = 0, cy = 0, r = 0 } = node;
-      if (!isNil(x)) {
-        diff.cx = x + r;
-      }
-      if (!isNil(y)) {
-        diff.cy = y + r;
-      }
-      if (!isNil(dx)) {
-        diff.cx = cx + dx;
-      }
-      if (!isNil(dy)) {
-        diff.cy = cy + dy;
-      }
-      if (!isNil(width)) {
-        diff.r = width / 2;
-      }
-      if (!isNil(height)) {
-        diff.r = height / 2;
-      }
-      this.updateNode(node, diff);
-    } else if (type === 'ellipse') {
-      const diff: Partial<EllipseSerializedNode> = {};
-      const { cx = 0, cy = 0, rx = 0, ry = 0 } = node;
-      if (!isNil(x)) {
-        diff.cx = x + rx;
-      }
-      if (!isNil(y)) {
-        diff.cy = y + ry;
-      }
-      if (!isNil(dx)) {
-        diff.cx = cx + dx;
-      }
-      if (!isNil(dy)) {
-        diff.cy = cy + dy;
-      }
-      if (!isNil(width)) {
-        if (lockAspectRatio) {
-          const aspectRatio = node.rx / node.ry;
-          diff.ry = width / aspectRatio / 2;
-        }
-        diff.rx = width / 2;
-      }
-      if (!isNil(height)) {
-        if (lockAspectRatio) {
-          const aspectRatio = node.rx / node.ry;
-          diff.rx = (height * aspectRatio) / 2;
-        }
-        diff.ry = height / 2;
-      }
-      this.updateNode(node, diff);
-    } else if (type === 'polyline') {
-      const { x: prevX, y: prevY } = this.getNodeTransform(node);
-      if (isNil(dx)) {
-        dx = x - prevX;
-      }
-      if (isNil(dy)) {
-        dy = y - prevY;
-      }
-
-      const points = this.getEntity(node)?.read(Polyline).points;
-      const diff: Partial<PolylineSerializedNode> = {
-        points: serializePoints(
-          points.map(([x, y]) => {
-            return [x + dx, y + dy];
-          }),
-        ),
-      };
-      this.updateNode(node, diff);
-    } else if (type === 'path') {
-      const { x: prevX, y: prevY } = this.getNodeTransform(node);
-      if (!isNil(x) && isNil(dx)) {
-        dx = x - prevX;
-      }
-      if (!isNil(y) && isNil(dy)) {
-        dy = y - prevY;
-      }
-
-      const hasDx = !isNil(dx);
-      const hasDy = !isNil(dy);
-
-      const diff: Partial<PathSerializedNode> = {};
-      const { d } = node;
-      const absoluteArray = path2Absolute(d);
-
-      absoluteArray.forEach((segment) => {
-        const [command] = segment;
-        if (command === 'M') {
-          if (hasDx) {
-            segment[1] += dx;
-          }
-          if (hasDy) {
-            segment[2] += dy;
-          }
-        } else if (command === 'L') {
-          if (hasDx) {
-            segment[1] += dx;
-          }
-          if (hasDy) {
-            segment[2] += dy;
-          }
-        } else if (command === 'H') {
-          if (hasDx) {
-            segment[1] += dx;
-          }
-        } else if (command === 'V') {
-          if (hasDy) {
-            segment[1] += dy;
-          }
-        } else if (command === 'A') {
-          if (hasDx) {
-            segment[6] += dx;
-          }
-          if (hasDy) {
-            segment[7] += dy;
-          }
-        } else if (command === 'T') {
-          if (hasDx) {
-            segment[1] += dx;
-          }
-          if (hasDy) {
-            segment[2] += dy;
-          }
-        } else if (command === 'C') {
-          if (hasDx) {
-            segment[1] += dx;
-            segment[3] += dx;
-            segment[5] += dx;
-          }
-          if (hasDy) {
-            segment[2] += dy;
-            segment[4] += dy;
-            segment[6] += dy;
-          }
-        } else if (command === 'S') {
-          if (hasDx) {
-            segment[1] += dx;
-            segment[3] += dx;
-          }
-          if (hasDy) {
-            segment[2] += dy;
-            segment[4] += dy;
-          }
-        } else if (command === 'Q') {
-          if (hasDx) {
-            segment[1] += dx;
-            segment[3] += dx;
-          }
-          if (hasDy) {
-            segment[2] += dy;
-            segment[4] += dy;
-          }
-        }
-      });
-
-      diff.d = path2String(absoluteArray);
-      this.updateNode(node, diff);
-    } else if (type === 'text') {
-      // TODO: Text should account for text align & baseline.
-      const diff: Partial<TextSerializedNode> = {};
-      if (!isNil(x)) {
-        diff.x = x;
-      }
-      if (!isNil(y)) {
-        diff.y = y;
-      }
-      if (!isNil(dx)) {
-        diff.x = (node.x || 0) + dx;
-      }
-      if (!isNil(dy)) {
-        diff.y = (node.y || 0) + dy;
-      }
-      this.updateNode(node, diff);
+    const diff: Partial<SerializedNode> = {};
+    if (!isNil(x)) {
+      diff.x = x;
     }
+    if (!isNil(y)) {
+      diff.y = y;
+    }
+    if (!isNil(rotation)) {
+      diff.rotation = rotation;
+    }
+    if (!isNil(scaleX)) {
+      diff.scaleX = scaleX;
+    }
+    if (!isNil(scaleY)) {
+      diff.scaleY = scaleY;
+    }
+    if (!isNil(width)) {
+      if (lockAspectRatio) {
+        const aspectRatio = node.width / node.height;
+        diff.height = width / aspectRatio;
+      }
+      diff.width = width;
+    }
+    if (!isNil(height)) {
+      if (lockAspectRatio) {
+        const aspectRatio = node.width / node.height;
+        diff.width = height * aspectRatio;
+      }
+      diff.height = height;
+    }
+
+    if (node.type === 'polyline' && delta) {
+      const { strokeAlignment, strokeWidth } = node;
+
+      const points = deserializePoints(
+        (oldNode as PolylineSerializedNode)?.points,
+      );
+      const shiftedPoints = maybeShiftPoints(
+        points.map((point) => {
+          const [x, y] = point;
+          const [newX, newY] = vec2.transformMat3(vec2.create(), [x, y], delta);
+          return [newX, newY] as [number, number];
+        }),
+        strokeAlignment,
+        strokeWidth,
+      );
+
+      const minX = Math.min(
+        ...shiftedPoints.map((point) =>
+          isNaN(point[0]) ? Infinity : point[0],
+        ),
+      );
+      const minY = Math.min(
+        ...shiftedPoints.map((point) =>
+          isNaN(point[1]) ? Infinity : point[1],
+        ),
+      );
+
+      (diff as PolylineSerializedNode).points = serializePoints(
+        shiftedPoints.map((point) => [point[0] - minX, point[1] - minY]),
+      );
+    }
+
+    this.updateNode(node, diff);
+    // } else if (type === 'path') {
+    //   const { x: prevX, y: prevY } = this.getNodeTransform(node);
+    //   if (!isNil(x) && isNil(dx)) {
+    //     dx = x - prevX;
+    //   }
+    //   if (!isNil(y) && isNil(dy)) {
+    //     dy = y - prevY;
+    //   }
+
+    //   const hasDx = !isNil(dx);
+    //   const hasDy = !isNil(dy);
+
+    //   const diff: Partial<PathSerializedNode> = {};
+    //   const { d } = node;
+    //   const absoluteArray = path2Absolute(d);
+
+    //   absoluteArray.forEach((segment) => {
+    //     const [command] = segment;
+    //     if (command === 'M') {
+    //       if (hasDx) {
+    //         segment[1] += dx;
+    //       }
+    //       if (hasDy) {
+    //         segment[2] += dy;
+    //       }
+    //     } else if (command === 'L') {
+    //       if (hasDx) {
+    //         segment[1] += dx;
+    //       }
+    //       if (hasDy) {
+    //         segment[2] += dy;
+    //       }
+    //     } else if (command === 'H') {
+    //       if (hasDx) {
+    //         segment[1] += dx;
+    //       }
+    //     } else if (command === 'V') {
+    //       if (hasDy) {
+    //         segment[1] += dy;
+    //       }
+    //     } else if (command === 'A') {
+    //       if (hasDx) {
+    //         segment[6] += dx;
+    //       }
+    //       if (hasDy) {
+    //         segment[7] += dy;
+    //       }
+    //     } else if (command === 'T') {
+    //       if (hasDx) {
+    //         segment[1] += dx;
+    //       }
+    //       if (hasDy) {
+    //         segment[2] += dy;
+    //       }
+    //     } else if (command === 'C') {
+    //       if (hasDx) {
+    //         segment[1] += dx;
+    //         segment[3] += dx;
+    //         segment[5] += dx;
+    //       }
+    //       if (hasDy) {
+    //         segment[2] += dy;
+    //         segment[4] += dy;
+    //         segment[6] += dy;
+    //       }
+    //     } else if (command === 'S') {
+    //       if (hasDx) {
+    //         segment[1] += dx;
+    //         segment[3] += dx;
+    //       }
+    //       if (hasDy) {
+    //         segment[2] += dy;
+    //         segment[4] += dy;
+    //       }
+    //     } else if (command === 'Q') {
+    //       if (hasDx) {
+    //         segment[1] += dx;
+    //         segment[3] += dx;
+    //       }
+    //       if (hasDy) {
+    //         segment[2] += dy;
+    //         segment[4] += dy;
+    //       }
+    //     }
+    //   });
+
+    //   diff.d = path2String(absoluteArray);
   }
 
   deleteNodesById(ids: SerializedNode['id'][]) {

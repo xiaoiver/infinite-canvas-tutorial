@@ -5,6 +5,7 @@ import {
   ComputedBounds,
   Ellipse,
   FillSolid,
+  GlobalTransform,
   Highlighted,
   Opacity,
   Parent,
@@ -23,7 +24,7 @@ import {
   ZIndex,
 } from '../components';
 import { Commands } from '../commands';
-import { getSceneRoot } from './Transform';
+import { getSceneRoot, updateGlobalTransform } from './Transform';
 import {
   TRANSFORMER_ANCHOR_FILL_COLOR,
   TRANSFORMER_ANCHOR_STROKE_COLOR,
@@ -56,6 +57,7 @@ export class RenderHighlighter extends System {
         q
           .using(ComputedBounds)
           .read.and.using(
+            GlobalTransform,
             UI,
             Highlighted,
             Transform,
@@ -86,14 +88,7 @@ export class RenderHighlighter extends System {
         return;
       }
 
-      const highlighter = this.createOrUpdate(entity);
-
-      this.commands.execute();
-
-      const camera = this.commands.entity(getSceneRoot(entity));
-      camera.appendChild(this.commands.entity(highlighter));
-
-      this.commands.execute();
+      this.createOrUpdate(entity);
     });
 
     this.highlighted.removed.forEach((entity) => {
@@ -115,18 +110,10 @@ export class RenderHighlighter extends System {
   private createOrUpdate(entity: Entity) {
     let highlighter = this.#highlighters.get(entity);
     if (!highlighter) {
-      const { geometryBounds } = entity.read(ComputedBounds);
-      const { minX, minY, maxX, maxY } = geometryBounds;
-      const { translation, scale, rotation } = entity.read(Transform);
-
       highlighter = this.commands
         .spawn(
           new UI(UIType.HIGHLIGHTER),
-          new Transform({
-            translation,
-            scale,
-            rotation,
-          }),
+          new Transform(),
           new Renderable(),
           new FillSolid(TRANSFORMER_ANCHOR_FILL_COLOR),
           new Opacity({ fillOpacity: 0 }),
@@ -137,8 +124,27 @@ export class RenderHighlighter extends System {
         .id()
         .hold();
 
+      this.commands.execute();
+
+      const camera = this.commands.entity(getSceneRoot(entity));
+      camera.appendChild(this.commands.entity(highlighter));
+
+      this.commands.execute();
+
       this.#highlighters.set(entity, highlighter);
     }
+
+    const {
+      obb: { x, y, width, height, rotation },
+    } = entity.read(ComputedBounds);
+    Object.assign(highlighter.write(Transform), {
+      translation: {
+        x,
+        y,
+      },
+      rotation,
+    });
+
     if (entity.has(Circle)) {
       if (!highlighter.has(Circle)) {
         highlighter.add(Circle);
@@ -166,11 +172,7 @@ export class RenderHighlighter extends System {
       if (!highlighter.has(Rect)) {
         highlighter.add(Rect);
       }
-
-      const { x, y, width, height } = entity.read(Rect);
       Object.assign(highlighter.write(Rect), {
-        x,
-        y,
         width,
         height,
       });
@@ -209,28 +211,8 @@ export class RenderHighlighter extends System {
       });
     }
 
+    updateGlobalTransform(highlighter);
+
     return highlighter;
-  }
-
-  clear() {
-    this.highlighted.current.forEach((e) => {
-      e.remove(Highlighted);
-    });
-  }
-
-  highlight(toHighlight: readonly Entity[]) {
-    toHighlight.forEach((e) => {
-      if (!e.has(Highlighted)) {
-        e.add(Highlighted);
-      }
-    });
-  }
-
-  unhighlight(toUnhighlight: readonly Entity[]) {
-    toUnhighlight.forEach((e) => {
-      if (e.has(Highlighted)) {
-        e.remove(Highlighted);
-      }
-    });
   }
 }

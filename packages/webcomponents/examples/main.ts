@@ -8,8 +8,8 @@ import {
 import { Event, UIPlugin } from '../src';
 import '../src/spectrum';
 
-// const res = await fetch('/maslow-hierarchy.svg');
-const res = await fetch('/test.svg');
+const res = await fetch('/maslow-hierarchy.svg');
+// const res = await fetch('/test.svg');
 const svg = await res.text();
 // TODO: extract semantic groups inside comments
 const $container = document.createElement('div');
@@ -37,6 +37,8 @@ canvas.addEventListener(Event.READY, (e) => {
   api.updateNodes(nodes);
   api.selectNodes([nodes[0]]);
 
+  console.log(nodes[0]);
+
   // api.updateNode(nodes[0], {
   //   dropShadowBlurRadius: 10,
   //   dropShadowColor: 'black',
@@ -46,6 +48,24 @@ canvas.addEventListener(Event.READY, (e) => {
 
   api.record();
 });
+
+// const canvas2 = document.querySelector<HTMLElement>('#canvas2')!;
+// canvas2.addEventListener(Event.READY, (e) => {
+//   const api = e.detail;
+//   api.setPen(Pen.SELECT);
+
+//   const node = {
+//     id: '1',
+//     type: 'rect',
+//     x: 100,
+//     y: 100,
+//     width: 100,
+//     height: 100,
+//     fill: 'green',
+//   };
+//   api.updateNodes([node]);
+//   api.selectNodes([node]);
+// });
 
 const app = new App().addPlugins(...DefaultPlugins, UIPlugin);
 app.run();

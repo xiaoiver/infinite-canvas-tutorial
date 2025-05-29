@@ -1,7 +1,7 @@
 /**
  * Borrow from https://github.com/excalidraw/excalidraw/blob/master/packages/excalidraw/change.ts#L399
  */
-
+import { ComponentType, Entity } from '@lastolivegames/becsy';
 import { isNil } from '@antv/util';
 import { Change } from './Change';
 import { Delta } from './Delta';
@@ -25,7 +25,7 @@ import {
   ZIndex,
   Transform,
 } from '../components';
-import { ComponentType, Entity } from '@lastolivegames/becsy';
+import { ComputeBounds, ComputedBounds, deserializePoints } from '..';
 
 export type SceneElementsMap = Map<SerializedNode['id'], SerializedNode>;
 
@@ -512,6 +512,8 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
   updates: ElementUpdate<TElement>,
 ): TElement => {
   let didChange = false;
+  let prevWidth = element.width;
+  let prevHeight = element.height;
 
   for (const key in updates) {
     const value = (updates as any)[key];
@@ -542,29 +544,23 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
     dropShadowOffsetX,
     dropShadowOffsetY,
     fontSize,
-    width,
-    height,
     x,
     y,
-    cx,
-    cy,
-    r,
-    rx,
-    ry,
+    width,
+    height,
+    rotation,
+    scaleX,
+    scaleY,
     points,
     d,
     fontWeight,
     fontStyle,
     textAlign,
     textBaseline,
-    transform,
   } = updates as any;
 
   if (!isNil(name)) {
     entity.write(Name).value = name;
-  }
-  if (!isNil(transform)) {
-    Object.assign(entity.write(Transform), transform);
   }
   if (!isNil(zIndex)) {
     entity.write(ZIndex).value = zIndex;
@@ -646,52 +642,45 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
     }
   }
   if (!isNil(x)) {
-    if (entity.has(Rect)) {
-      entity.write(Rect).x = x;
-    } else if (entity.has(Text)) {
-      entity.write(Text).x = x;
-    }
+    entity.write(Transform).translation.x = x;
   }
   if (!isNil(y)) {
+    entity.write(Transform).translation.y = y;
+  }
+  if (!isNil(rotation)) {
+    entity.write(Transform).rotation = rotation;
+  }
+  if (!isNil(scaleX)) {
+    entity.write(Transform).scale.x = scaleX;
+  }
+  if (!isNil(scaleY)) {
+    entity.write(Transform).scale.y = scaleY;
+  }
+  if (!isNil(width)) {
     if (entity.has(Rect)) {
-      entity.write(Rect).y = y;
-    } else if (entity.has(Text)) {
-      entity.write(Text).y = y;
-    }
-  }
-
-  if (!isNil(cx)) {
-    if (entity.has(Circle)) {
-      entity.write(Circle).cx = cx;
+      entity.write(Rect).width = width;
     } else if (entity.has(Ellipse)) {
-      entity.write(Ellipse).cx = cx;
+      Object.assign(entity.write(Ellipse), {
+        rx: width / 2,
+        cx: width / 2,
+      });
     }
+    // TODO: Other shapes
   }
-  if (!isNil(cy)) {
-    if (entity.has(Circle)) {
-      entity.write(Circle).cy = cy;
+  if (!isNil(height)) {
+    if (entity.has(Rect)) {
+      entity.write(Rect).height = height;
     } else if (entity.has(Ellipse)) {
-      entity.write(Ellipse).cy = cy;
+      Object.assign(entity.write(Ellipse), {
+        ry: height / 2,
+        cy: height / 2,
+      });
     }
-  }
-  if (!isNil(r)) {
-    if (entity.has(Circle)) {
-      entity.write(Circle).r = r;
-    }
-  }
-  if (!isNil(rx)) {
-    if (entity.has(Ellipse)) {
-      entity.write(Ellipse).rx = rx;
-    }
-  }
-  if (!isNil(ry)) {
-    if (entity.has(Ellipse)) {
-      entity.write(Ellipse).ry = ry;
-    }
+    // TODO: Other shapes
   }
   if (!isNil(points)) {
     if (entity.has(Polyline)) {
-      entity.write(Polyline).points = points;
+      entity.write(Polyline).points = deserializePoints(points);
     }
   }
   if (!isNil(d)) {

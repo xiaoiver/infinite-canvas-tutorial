@@ -33,10 +33,11 @@ export class FillIcon extends LitElement {
       exportFillGradientOrPattern(
         {
           ...this.node,
-          type: 'circle',
-          cx: 50,
-          cy: 50,
-          r: 50,
+          type: 'ellipse',
+          x: 0,
+          y: 0,
+          width: 100,
+          height: 100,
         } as SerializedNode,
         $circle,
         $g,

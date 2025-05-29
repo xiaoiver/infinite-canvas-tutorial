@@ -27,12 +27,17 @@ export class Transform {
    * Rotation of the entity.
    */
   @field({ type: Type.float32, default: 0 }) declare rotation: number;
+  /**
+   * Origin of the entity.
+   */
+  // @field({ type: v2Type, default: Vec2.ZERO }) declare origin: Vec2;
 
   constructor(
     props?: Partial<{
       translation: { x: number; y: number };
       scale: { x: number; y: number };
       rotation: number;
+      // origin: { x: number; y: number };
     }>,
   ) {
     this.translation = props?.translation
@@ -42,5 +47,6 @@ export class Transform {
       ? new Vec2(props.scale.x ?? 1, props.scale.y ?? 1)
       : Vec2.ONE;
     this.rotation = props?.rotation ?? 0;
+    // this.origin = props?.origin ?? Vec2.ZERO;
   }
 }

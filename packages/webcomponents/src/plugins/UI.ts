@@ -1,6 +1,7 @@
 import {
   Camera,
   Canvas,
+  ComputeBounds,
   Plugin,
   PreStartUp,
   PropagateTransforms,
@@ -33,7 +34,12 @@ export const UIPlugin: Plugin = () => {
   system((s) =>
     s
       .inAnyOrderWithWritersOf(Camera)
-      .after(SetupDevice, SyncSimpleTransforms, PropagateTransforms),
+      .after(
+        SetupDevice,
+        SyncSimpleTransforms,
+        PropagateTransforms,
+        ComputeBounds,
+      ),
   )(ZoomLevel);
   system((s) => s.before(PreStartUp))(DownloadScreenshot);
 };

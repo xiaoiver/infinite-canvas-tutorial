@@ -1,7 +1,6 @@
 // @see https://gist.github.com/mattdesl/47412d930dcd8cd765c871a65532ffac
 import distanceBetweenPointAndLineSegment from 'point-to-segment-2d';
 import { Entity, System } from '@lastolivegames/becsy';
-import { mat3, vec2 } from 'gl-matrix';
 import { IPointData } from '@pixi/math';
 import {
   Children,
@@ -9,7 +8,6 @@ import {
   ComputedBounds,
   FillSolid,
   GlobalTransform,
-  Mat3,
   Name,
   OBB,
   Opacity,
@@ -25,13 +23,11 @@ import {
   UI,
   UIType,
   ZIndex,
-  Canvas,
-  ComputedCamera,
   Transformable,
 } from '../components';
 import { Commands } from '../commands';
-import { getSceneRoot } from './Transform';
-import { API } from '..';
+import { getSceneRoot, updateGlobalTransform } from './Transform';
+import { API, Visibility } from '..';
 import { inside } from '../utils/math';
 import { distanceBetweenPoints } from '../utils/matrix';
 
@@ -70,15 +66,17 @@ export class RenderTransformer extends System {
     (q) => q.changed.with(ComputedBounds).trackWrites,
   );
 
+  // #nodeRectCache = new WeakMap<Entity, NodeRect>();
+
   constructor() {
     super();
 
     this.query(
       (q) =>
         q
-          .using(Canvas, ComputedBounds, GlobalTransform, ComputedCamera)
+          .using(ComputedBounds)
           .read.and.using(
-            Canvas,
+            GlobalTransform,
             Transformable,
             UI,
             Selected,
@@ -96,6 +94,7 @@ export class RenderTransformer extends System {
             StrokeAttenuation,
             ToBeDeleted,
             Name,
+            Visibility,
           ).write,
     );
   }
@@ -113,6 +112,7 @@ export class RenderTransformer extends System {
           new Rect(),
           new StrokeAttenuation(),
           new ZIndex(TRANSFORMER_Z_INDEX),
+          new Visibility(),
         )
         .id()
         .hold();
@@ -141,57 +141,52 @@ export class RenderTransformer extends System {
       this.commands.execute();
     }
 
-    const { mask, tlAnchor, trAnchor, blAnchor, brAnchor, selecteds } =
+    const { mask, tlAnchor, trAnchor, blAnchor, brAnchor } =
       camera.read(Transformable);
-    if (selecteds.length === 1) {
-      const [selected] = selecteds;
-      const { geometryBounds } = selected.read(ComputedBounds);
-      const { minX, minY, maxX, maxY } = geometryBounds;
-      const width = maxX - minX;
-      const height = maxY - minY;
-      const { translation, scale, rotation } = selected.read(Transform);
-      // const matrix = Mat3.toGLMat3(selected.read(GlobalTransform).matrix);
-      // const points = [
-      //   vec2.transformMat3(vec2.create(), [minX, minY], matrix), // tl
-      //   vec2.transformMat3(vec2.create(), [maxX, minY], matrix), // tr
-      //   vec2.transformMat3(vec2.create(), [minX, maxY], matrix), // bl
-      //   vec2.transformMat3(vec2.create(), [maxX, maxY], matrix), // br
-      // ];
+    const { x, y, width, height, rotation } = this.getOBB(camera);
 
-      Object.assign(mask.write(Rect), {
-        x: minX,
-        y: minY,
-        width,
-        height,
-      });
-      Object.assign(mask.write(Transform), {
-        translation,
-        scale,
-        rotation,
-      });
-
-      Object.assign(tlAnchor.write(Circle), {
-        cx: minX,
-        cy: minY,
-      });
-
-      Object.assign(trAnchor.write(Circle), {
-        cx: maxX,
-        cy: minY,
-      });
-
-      Object.assign(blAnchor.write(Circle), {
-        cx: minX,
-        cy: maxY,
-      });
-
-      Object.assign(brAnchor.write(Circle), {
-        cx: maxX,
-        cy: maxY,
-      });
-    } else {
-      selecteds.forEach((selected) => {});
+    if (width === 0 || height === 0) {
+      mask.write(Visibility).value = 'hidden';
+      return;
     }
+
+    mask.write(Visibility).value = 'visible';
+
+    Object.assign(mask.write(Rect), {
+      x: 0,
+      y: 0,
+      width,
+      height,
+    });
+    Object.assign(mask.write(Transform), {
+      translation: {
+        x,
+        y,
+      },
+      rotation,
+    });
+
+    Object.assign(tlAnchor.write(Circle), {
+      cx: 0,
+      cy: 0,
+    });
+
+    Object.assign(trAnchor.write(Circle), {
+      cx: width,
+      cy: 0,
+    });
+
+    Object.assign(blAnchor.write(Circle), {
+      cx: 0,
+      cy: height,
+    });
+
+    Object.assign(brAnchor.write(Circle), {
+      cx: width,
+      cy: height,
+    });
+
+    updateGlobalTransform(mask);
   }
 
   execute() {
@@ -233,72 +228,10 @@ export class RenderTransformer extends System {
           r: TRANSFORMER_ANCHOR_RADIUS,
         }),
         new SizeAttenuation(),
+        new Visibility(),
       )
       .id()
       .hold();
-  }
-
-  getOBB(camera: Entity) {
-    const { mask, selecteds } = camera.read(Transformable);
-    const rotation = mask.read(Transform).rotation;
-
-    if (selecteds.length === 1) {
-      const [selected] = selecteds;
-      const { geometryBounds } = selected.read(ComputedBounds);
-      return new OBB(
-        geometryBounds.minX,
-        geometryBounds.minY,
-        geometryBounds.maxX,
-        geometryBounds.maxY,
-        rotation,
-      );
-    }
-
-    const totalPoints: [number, number][] = [];
-    selecteds.forEach((selected) => {
-      const { geometryBounds } = selected.read(ComputedBounds);
-      const { minX, minY, maxX, maxY } = geometryBounds;
-      const points = [
-        [minX, minY],
-        [maxX, minY],
-        [maxX, maxY],
-        [minX, maxY],
-      ];
-      const matrix = Mat3.toGLMat3(selected.read(GlobalTransform).matrix);
-      points.forEach(function (point: [number, number]) {
-        const transformed = vec2.transformMat3(vec2.create(), point, matrix);
-        totalPoints.push([transformed[0], transformed[1]]);
-      });
-    });
-
-    const tr = mat3.create();
-    mat3.rotate(tr, tr, -rotation);
-
-    let minX: number = Infinity,
-      minY: number = Infinity,
-      maxX: number = -Infinity,
-      maxY: number = -Infinity;
-    totalPoints.forEach(function (point) {
-      const transformed = vec2.transformMat3(vec2.create(), point, tr);
-      if (minX === undefined) {
-        minX = maxX = transformed[0];
-        minY = maxY = transformed[1];
-      }
-      minX = Math.min(minX, transformed[0]);
-      minY = Math.min(minY, transformed[1]);
-      maxX = Math.max(maxX, transformed[0]);
-      maxY = Math.max(maxY, transformed[1]);
-    });
-
-    mat3.invert(tr, tr);
-    const p = vec2.transformMat3(vec2.create(), [minX, minY], tr);
-    return new OBB(
-      p[0],
-      p[1],
-      p[0] + (maxX - minX),
-      p[1] + (maxY - minY),
-      rotation,
-    );
   }
 
   /**
@@ -307,29 +240,29 @@ export class RenderTransformer extends System {
   hitTest(api: API, { x, y }: IPointData) {
     const camera = api.getCamera();
     const point = [x, y] as [number, number];
-    const { tlAnchor, trAnchor, blAnchor, brAnchor } =
+    const { mask, tlAnchor, trAnchor, blAnchor, brAnchor } =
       camera.read(Transformable);
 
     const { x: tlX, y: tlY } = api.canvas2Viewport(
-      api.transformer2Canvas(camera, {
+      api.transformer2Canvas({
         x: tlAnchor.read(Circle).cx,
         y: tlAnchor.read(Circle).cy,
       }),
     );
     const { x: trX, y: trY } = api.canvas2Viewport(
-      api.transformer2Canvas(camera, {
+      api.transformer2Canvas({
         x: trAnchor.read(Circle).cx,
         y: trAnchor.read(Circle).cy,
       }),
     );
     const { x: blX, y: blY } = api.canvas2Viewport(
-      api.transformer2Canvas(camera, {
+      api.transformer2Canvas({
         x: blAnchor.read(Circle).cx,
         y: blAnchor.read(Circle).cy,
       }),
     );
     const { x: brX, y: brY } = api.canvas2Viewport(
-      api.transformer2Canvas(camera, {
+      api.transformer2Canvas({
         x: brAnchor.read(Circle).cx,
         y: brAnchor.read(Circle).cy,
       }),
@@ -469,5 +402,80 @@ export class RenderTransformer extends System {
         cursor: 'default',
       };
     }
+  }
+
+  // resetTransformCache(camera: Entity) {
+  //   this.#nodeRectCache.delete(camera);
+  // }
+
+  getOBB(camera: Entity): OBB {
+    // if (this.#nodeRectCache.has(camera)) {
+    //   return this.#nodeRectCache.get(camera);
+    // }
+
+    const { selecteds } = camera.read(Transformable);
+
+    if (selecteds.length === 1) {
+      const selected = selecteds[0];
+      const { obb } = selected.read(ComputedBounds);
+
+      return obb;
+    } else {
+      // const rotation = mask.read(Transform).rotation;
+      // const totalPoints: [number, number][] = [];
+      // selecteds.forEach((selected) => {
+      //   const { geometryBounds } = selected.read(ComputedBounds);
+      //   const { minX, minY, maxX, maxY } = geometryBounds;
+      //   const points = [
+      //     [minX, minY],
+      //     [maxX, minY],
+      //     [maxX, maxY],
+      //     [minX, maxY],
+      //   ];
+      //   const matrix = Mat3.toGLMat3(selected.read(GlobalTransform).matrix);
+      //   points.forEach(function (point: [number, number]) {
+      //     const transformed = vec2.transformMat3(vec2.create(), point, matrix);
+      //     totalPoints.push([transformed[0], transformed[1]]);
+      //   });
+      // });
+      // const tr = mat3.create();
+      // mat3.rotate(tr, tr, -rotation);
+      // let minX: number = Infinity,
+      //   minY: number = Infinity,
+      //   maxX: number = -Infinity,
+      //   maxY: number = -Infinity;
+      // totalPoints.forEach(function (point) {
+      //   const transformed = vec2.transformMat3(vec2.create(), point, tr);
+      //   if (minX === undefined) {
+      //     minX = maxX = transformed[0];
+      //     minY = maxY = transformed[1];
+      //   }
+      //   minX = Math.min(minX, transformed[0]);
+      //   minY = Math.min(minY, transformed[1]);
+      //   maxX = Math.max(maxX, transformed[0]);
+      //   maxY = Math.max(maxY, transformed[1]);
+      // });
+      // mat3.invert(tr, tr);
+      // // const p = vec2.transformMat3(vec2.create(), [minX, minY], tr);
+      // const nodeRect = {
+      //   // x: p[0],
+      //   // y: p[1],
+      //   width: maxX - minX,
+      //   height: maxY - minY,
+      //   rotation,
+      // };
+      // // this.#nodeRectCache.set(camera, nodeRect);
+      // return nodeRect;
+    }
+
+    return {
+      x: 0,
+      y: 0,
+      width: 0,
+      height: 0,
+      rotation: 0,
+      scaleX: 1,
+      scaleY: 1,
+    };
   }
 }

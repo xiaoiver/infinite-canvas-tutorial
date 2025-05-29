@@ -1,5 +1,4 @@
 import {
-  Circle,
   DropShadow,
   Ellipse,
   InnerShadow,
@@ -19,9 +18,9 @@ export type Ordered<TElement extends SerializedNode> = TElement & {
 export type OrderedSerializedNode = Ordered<SerializedNode>;
 
 /**
- * Refer SVG attribut
+ * Refer SVG attributes
  * @see https://github.com/tldraw/tldraw/blob/main/packages/tlschema/src/shapes/TLBaseShape.ts
- * @see https://github.com/excalidraw/excalidraw/blob/master/packages/excalidraw/element/types.ts
+ * @see https://docs.excalidraw.com/docs/@excalidraw/excalidraw/api/excalidraw-element-skeleton
  */
 export interface BaseSerializeNode<Type extends string>
   extends Partial<TransformAttributes>,
@@ -60,32 +59,21 @@ export interface BaseSerializeNode<Type extends string>
   updated?: number;
 }
 
-export type SerializedTransform = {
-  matrix: {
-    a: number;
-    b: number;
-    c: number;
-    d: number;
-    tx: number;
-    ty: number;
-  };
-  translation: {
-    x: number;
-    y: number;
-  };
-  scale: {
-    x: number;
-    y: number;
-  };
-  rotation: number;
-};
-
 export interface NameAttributes {
   name: string;
 }
 
+/**
+ * Friendly to transformer.
+ */
 export interface TransformAttributes {
-  transform: Partial<SerializedTransform>;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  rotation: number;
+  scaleX: number;
+  scaleY: number;
 }
 
 export interface VisibilityAttributes {
@@ -126,21 +114,15 @@ export interface DropShadowAttributes {
 
 export interface GSerializedNode extends BaseSerializeNode<'g'> {}
 
-export interface CircleSerializedNode
-  extends BaseSerializeNode<'circle'>,
-    Partial<Pick<Circle, 'cx' | 'cy' | 'r'>>,
-    Partial<FillAttributes>,
-    Partial<StrokeAttributes> {}
-
 export interface EllipseSerializedNode
   extends BaseSerializeNode<'ellipse'>,
-    Partial<Pick<Ellipse, 'cx' | 'cy' | 'rx' | 'ry'>>,
+    Partial<Pick<Ellipse, 'rx' | 'ry'>>,
     Partial<FillAttributes>,
     Partial<StrokeAttributes> {}
 
 export interface RectSerializedNode
   extends BaseSerializeNode<'rect'>,
-    Partial<Pick<Rect, 'x' | 'y' | 'width' | 'height' | 'cornerRadius'>>,
+    Partial<Pick<Rect, 'width' | 'height' | 'cornerRadius'>>,
     Partial<FillAttributes>,
     Partial<StrokeAttributes>,
     Partial<InnerShadowAttributes>,
@@ -165,8 +147,6 @@ export interface TextSerializedNode
     Partial<
       Pick<
         Text,
-        | 'x'
-        | 'y'
         | 'content'
         | 'fontFamily'
         | 'fontSize'
@@ -195,7 +175,6 @@ export interface TextSerializedNode
 
 export type SerializedNode =
   | GSerializedNode
-  | CircleSerializedNode
   | EllipseSerializedNode
   | RectSerializedNode
   | PolylineSerializedNode

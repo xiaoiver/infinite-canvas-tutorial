@@ -3,6 +3,7 @@ import { customElement, property, state } from 'lit/decorators.js';
 import { consume } from '@lit/context';
 import { SerializedNode, AppState } from '@infinite-canvas-tutorial/ecs';
 import { when } from 'lit/directives/when.js';
+import { RAD_TO_DEG } from '@pixi/math';
 import { apiContext, appStateContext } from '../context';
 import { ExtendedAPI } from '../API';
 
@@ -96,28 +97,46 @@ export class PropertiesPanelContent extends LitElement {
   lockAspectRatio: boolean = true;
 
   private handleWidthChanged(e: Event & { target: HTMLInputElement }) {
-    this.api.updateNodeTransform(this.node, {
-      width: parseInt(e.target.value),
-      lockAspectRatio: this.lockAspectRatio,
-    });
+    this.api.updateNodeOBB(
+      this.node,
+      {
+        width: parseInt(e.target.value),
+      },
+      this.lockAspectRatio,
+    );
     this.api.record();
   }
 
   private handleHeightChanged(e: Event & { target: HTMLInputElement }) {
-    this.api.updateNodeTransform(this.node, {
-      height: parseInt(e.target.value),
-      lockAspectRatio: this.lockAspectRatio,
-    });
+    this.api.updateNodeOBB(
+      this.node,
+      {
+        height: parseInt(e.target.value),
+      },
+      this.lockAspectRatio,
+    );
     this.api.record();
   }
 
   private handleXChanged(e: Event & { target: HTMLInputElement }) {
-    this.api.updateNodeTransform(this.node, { x: parseInt(e.target.value) });
+    this.api.updateNodeOBB(
+      this.node,
+      {
+        x: parseInt(e.target.value),
+      },
+      this.lockAspectRatio,
+    );
     this.api.record();
   }
 
   private handleYChanged(e: Event & { target: HTMLInputElement }) {
-    this.api.updateNodeTransform(this.node, { y: parseInt(e.target.value) });
+    this.api.updateNodeOBB(
+      this.node,
+      {
+        y: parseInt(e.target.value),
+      },
+      this.lockAspectRatio,
+    );
     this.api.record();
   }
 
@@ -126,7 +145,8 @@ export class PropertiesPanelContent extends LitElement {
   }
 
   private transformTemplate() {
-    const { width, height, x, y, angle } = this.api.getNodeTransform(this.node);
+    const { width, height, x, y, rotation } = this.node;
+    const angle = rotation * RAD_TO_DEG;
 
     return html`<sp-accordion-item label="Transform" open>
       <div class="content">

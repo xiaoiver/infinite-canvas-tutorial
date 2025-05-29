@@ -6,13 +6,13 @@ import {
   SerializedNode,
   ComputedBounds,
   PathSerializedNode,
-  CircleSerializedNode,
   exportFillGradientOrPattern,
   isGradient,
   isPattern,
   createSVGElement,
   PolylineSerializedNode,
   API,
+  EllipseSerializedNode,
 } from '@infinite-canvas-tutorial/ecs';
 import { consume } from '@lit/context';
 import { apiContext } from '../context';
@@ -61,23 +61,8 @@ export class LayerThumbnail extends LitElement {
 
     let $el: SVGElement;
 
-    const {
-      type,
-      fill,
-      stroke,
-      strokeWidth,
-      strokeLinecap,
-      strokeLinejoin,
-      strokeMiterlimit,
-      strokeDasharray,
-      strokeDashoffset,
-    } = this.node as CircleSerializedNode;
-    if (type === 'circle') {
-      $el = createSVGElement('circle') as SVGElement;
-      $el.setAttribute('cx', `${minX + width / 2}`);
-      $el.setAttribute('cy', `${minY + height / 2}`);
-      $el.setAttribute('r', `${width / 2}`);
-    } else if (type === 'ellipse') {
+    const { type } = this.node;
+    if (type === 'ellipse') {
       $el = createSVGElement('ellipse') as SVGElement;
       $el.setAttribute('cx', `${minX + width / 2}`);
       $el.setAttribute('cy', `${minY + height / 2}`);
@@ -96,6 +81,17 @@ export class LayerThumbnail extends LitElement {
       $el = createSVGElement('polyline') as SVGElement;
       $el.setAttribute('points', (this.node as PolylineSerializedNode).points);
     }
+
+    const {
+      fill,
+      stroke,
+      strokeWidth,
+      strokeLinecap,
+      strokeLinejoin,
+      strokeMiterlimit,
+      strokeDasharray,
+      strokeDashoffset,
+    } = this.node as EllipseSerializedNode;
 
     if ($el) {
       $el.setAttribute('transform', transform);

@@ -1,5 +1,5 @@
 import { html, css, LitElement } from 'lit';
-import { customElement, state } from 'lit/decorators.js';
+import { customElement } from 'lit/decorators.js';
 import { when } from 'lit/directives/when.js';
 import { consume } from '@lit/context';
 import {
@@ -64,9 +64,6 @@ export class ContextBar extends LitElement {
   @consume({ context: apiContext, subscribe: true })
   api: ExtendedAPI;
 
-  @state()
-  position: [number, number] = [0, 0];
-
   connectedCallback() {
     super.connectedCallback();
     document.addEventListener('keydown', this.handleKeyDown);
@@ -92,19 +89,19 @@ export class ContextBar extends LitElement {
 
     if (e.key === 'ArrowUp') {
       e.preventDefault();
-      this.api.updateNodeTransform(selected, { dy: -10 });
+      this.api.updateNodeOBB(selected, { y: selected.y - 10 });
       this.api.record();
     } else if (e.key === 'ArrowDown') {
       e.preventDefault();
-      this.api.updateNodeTransform(selected, { dy: 10 });
+      this.api.updateNodeOBB(selected, { y: selected.y + 10 });
       this.api.record();
     } else if (e.key === 'ArrowLeft') {
       e.preventDefault();
-      this.api.updateNodeTransform(selected, { dx: -10 });
+      this.api.updateNodeOBB(selected, { x: selected.x - 10 });
       this.api.record();
     } else if (e.key === 'ArrowRight') {
       e.preventDefault();
-      this.api.updateNodeTransform(selected, { dx: 10 });
+      this.api.updateNodeOBB(selected, { x: selected.x + 10 });
       this.api.record();
     }
   };

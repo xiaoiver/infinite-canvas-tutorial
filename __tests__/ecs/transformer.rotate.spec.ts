@@ -28,20 +28,22 @@ import {
   DropShadow,
   ZIndex,
   ComputeZIndex,
+  RectSerializedNode,
+  Selected,
+  Pen,
 } from '../../packages/ecs/src';
 import { NodeJSAdapter, sleep } from '../utils';
 
 DOMAdapter.set(NodeJSAdapter);
 
-describe('Rect', () => {
-  it('should render rects correctly', async () => {
+describe('Transformer when rotate', () => {
+  it('should render transformer correctly', async () => {
     const app = new App();
 
     let $canvas: HTMLCanvasElement;
     let canvasEntity: Entity | undefined;
     let cameraEntity: Entity | undefined;
-    let parentEntity: Entity | undefined;
-    let childEntity: Entity | undefined;
+    let entity: Entity | undefined;
 
     const MyPlugin: Plugin = () => {
       system(PreStartUp)(StartUpSystem);
@@ -69,6 +71,7 @@ describe('Rect', () => {
             Name,
             DropShadow,
             ZIndex,
+            Selected,
           ).write,
       );
 
@@ -88,46 +91,24 @@ describe('Rect', () => {
           zoom: 1,
         });
 
-        api.updateNodes([
-          {
-            id: '1',
-            type: 'rect',
-            fill: 'red',
-            x: 50,
-            y: 50,
-            width: 100,
-            height: 100,
-            visibility: 'visible',
-          },
-          {
-            id: '2',
-            parentId: '1',
-            type: 'rect',
-            fill: 'green',
-            x: 50,
-            y: 50,
-            width: 50,
-            height: 50,
-            stroke: 'black',
-            strokeWidth: 10,
-            strokeAlignment: 'center',
-            strokeDasharray: '10 10',
-            dropShadowColor: 'black',
-            dropShadowBlurRadius: 10,
-            dropShadowOffsetX: 10,
-            dropShadowOffsetY: 10,
-            visibility: 'visible',
-          },
-        ]);
+        const node: RectSerializedNode = {
+          id: '1',
+          type: 'rect',
+          fill: 'red',
+          x: 50,
+          y: 50,
+          width: 100,
+          height: 100,
+          rotation: Math.PI / 4,
+          visibility: 'visible',
+        };
+        api.setPen(Pen.SELECT);
+        api.updateNodes([node]);
+        api.selectNodes([node]);
 
-        parentEntity = api
+        entity = api
           .getEntity({
             id: '1',
-          })
-          .hold();
-        childEntity = api
-          .getEntity({
-            id: '2',
           })
           .hold();
       }
@@ -139,7 +120,7 @@ describe('Rect', () => {
 
     await sleep(300);
 
-    if (canvasEntity && cameraEntity && parentEntity && childEntity) {
+    if (canvasEntity && cameraEntity && entity) {
       const canvas = canvasEntity.read(Canvas);
       expect(canvas.devicePixelRatio).toBe(1);
       expect(canvas.width).toBe(200);
@@ -149,21 +130,15 @@ describe('Rect', () => {
 
       const camera = cameraEntity.read(Camera);
       expect(camera.canvas.isSame(canvasEntity)).toBeTruthy();
-      expect(cameraEntity.read(Parent).children).toHaveLength(1);
-      expect(
-        cameraEntity.read(Parent).children[0].isSame(parentEntity),
-      ).toBeTruthy();
-
-      const parent = parentEntity.read(Parent);
-      expect(parent.children).toHaveLength(1);
-      expect(parent.children[0].isSame(childEntity)).toBeTruthy();
-
-      const child = childEntity.read(Children);
-      expect(child.parent.isSame(parentEntity)).toBeTruthy();
+      expect(cameraEntity.read(Parent).children).toHaveLength(2);
+      expect(cameraEntity.read(Parent).children[0].isSame(entity)).toBeTruthy();
     }
 
     const dir = `${__dirname}/snapshots`;
-    expect($canvas!.getContext('webgl1')).toMatchWebGLSnapshot(dir, 'rect');
+    expect($canvas!.getContext('webgl1')).toMatchWebGLSnapshot(
+      dir,
+      'transformer-rotate',
+    );
 
     await app.exit();
   });

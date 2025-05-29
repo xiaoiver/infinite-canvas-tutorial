@@ -2,7 +2,6 @@ import { isNil } from '@antv/util';
 import toposort from 'toposort';
 import { Entity } from '@lastolivegames/becsy';
 import {
-  Circle,
   Ellipse,
   FillSolid,
   FillGradient,
@@ -20,9 +19,7 @@ import {
   ZIndex,
 } from '../../components';
 import {
-  CircleSerializedNode,
   DropShadowAttributes,
-  EllipseSerializedNode,
   FillAttributes,
   NameAttributes,
   PathSerializedNode,
@@ -34,9 +31,8 @@ import {
   VisibilityAttributes,
 } from '../serialize';
 import { deserializePoints } from './points';
-import { EntityCommands } from '../../commands/EntityCommands';
+import { EntityCommands, Commands } from '../../commands';
 import { isGradient } from '../gradient';
-import { Commands } from '../../commands/Commands';
 
 export function serializedNodesToEntities(
   nodes: SerializedNode[],
@@ -61,34 +57,44 @@ export function serializedNodesToEntities(
     const entity = commands.spawn();
     idEntityMap.set(id, entity);
 
-    const { transform } = attributes;
-    entity.insert(new Transform(transform));
+    const { x, y, width, height, rotation } = attributes;
+
+    entity.insert(
+      new Transform({
+        translation: {
+          x,
+          y,
+        },
+        rotation,
+      }),
+    );
 
     if (type !== 'g') {
       entity.insert(new Renderable());
     }
 
-    if (type === 'circle') {
-      const { cx, cy, r } = attributes as CircleSerializedNode;
-      entity.insert(new Circle({ cx, cy, r }));
-    } else if (type === 'ellipse') {
-      const { cx, cy, rx, ry } = attributes as EllipseSerializedNode;
-      entity.insert(new Ellipse({ cx, cy, rx, ry }));
+    if (type === 'ellipse') {
+      entity.insert(
+        new Ellipse({
+          cx: width / 2,
+          cy: height / 2,
+          rx: width / 2,
+          ry: height / 2,
+        }),
+      );
     } else if (type === 'rect') {
-      const { x, y, width, height, cornerRadius } =
-        attributes as RectSerializedNode;
-      entity.insert(new Rect({ x, y, width, height, cornerRadius }));
+      const { cornerRadius } = attributes as RectSerializedNode;
+      entity.insert(new Rect({ x: 0, y: 0, width, height, cornerRadius }));
     } else if (type === 'polyline') {
       const { points } = attributes as PolylineSerializedNode;
       entity.insert(new Polyline({ points: deserializePoints(points) }));
     } else if (type === 'path') {
+      // FIXME: path is not working for now
       const { d, fillRule, tessellationMethod } =
         attributes as PathSerializedNode;
       entity.insert(new Path({ d, fillRule, tessellationMethod }));
     } else if (type === 'text') {
       const {
-        x,
-        y,
         content,
         fontFamily,
         fontSize,
@@ -105,8 +111,8 @@ export function serializedNodesToEntities(
       } = attributes as TextSerializedNode;
       entity.insert(
         new Text({
-          x,
-          y,
+          x: 0,
+          y: 0,
           content,
           fontFamily,
           fontSize,

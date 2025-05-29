@@ -5,8 +5,7 @@ import {
   PathSerializedNode,
   PolylineSerializedNode,
   SerializedNode,
-  SerializedTransform,
-  serializeTransform,
+  fixTransform,
   TextSerializedNode,
 } from '../serialize';
 import { deserializePoints } from './points';
@@ -56,7 +55,7 @@ export function svgElementsToSerializedNodes(
     const attributes = Array.from(element.attributes).reduce((prev, attr) => {
       let attributeName = kebabToCamelCase(attr.name);
 
-      let value: string | number | SerializedTransform = attr.value;
+      let value: string | number = attr.value;
 
       // e.g. fill="url(#bgGradient)"
       if (value.startsWith('url(#')) {
@@ -67,9 +66,7 @@ export function svgElementsToSerializedNodes(
         }
       }
 
-      if (attributeName === 'transform') {
-        value = serializeTransform(value);
-      } else if (
+      if (
         type === 'rect' &&
         (attributeName === 'rx' || attributeName === 'ry')
       ) {
@@ -106,7 +103,15 @@ export function svgElementsToSerializedNodes(
       return prev;
     }, {} as SerializedNode);
 
-    if (type === 'text') {
+    if (type === 'circle') {
+      type = 'ellipse';
+      Object.assign(attributes, {
+        // @ts-ignore
+        rx: attributes.r,
+        // @ts-ignore
+        ry: attributes.r,
+      });
+    } else if (type === 'text') {
       (attributes as TextSerializedNode).content = element.textContent;
     } else if (type === 'line') {
       type = 'polyline';
@@ -140,8 +145,10 @@ export function svgElementsToSerializedNodes(
     }
 
     // @see https://developer.mozilla.org/en-US/docs/Web/SVG/Reference/Attribute/visibility
-    const visibility = element.getAttribute('visibility') || 'visible';
-    attributes.visibility = visibility as Visibility['value'];
+    const visibility = element.getAttribute('visibility');
+    if (visibility) {
+      attributes.visibility = visibility as Visibility['value'];
+    }
 
     attributes.name =
       element.getAttribute('name') ||
@@ -158,6 +165,11 @@ export function svgElementsToSerializedNodes(
       ...attributes,
     } as SerializedNode;
     nodes.push(node);
+
+    fixTransform(
+      element.attributes.getNamedItem('transform')?.value || '',
+      node,
+    );
 
     const children = svgElementsToSerializedNodes(
       Array.from(element.children) as SVGElement[],

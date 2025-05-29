@@ -22,6 +22,7 @@ export interface AppState {
   taskbarAll: Task[];
   taskbarSelected: Task[];
   layersSelected: SerializedNode['id'][];
+  layersHighlighted: SerializedNode['id'][];
   propertiesOpened: SerializedNode['id'][];
 }
 
@@ -45,6 +46,7 @@ export const getDefaultAppState: () => AppState = () => {
     taskbarAll: [Task.SHOW_LAYERS_PANEL, Task.SHOW_PROPERTIES_PANEL],
     taskbarSelected: [],
     layersSelected: [],
+    layersHighlighted: [],
     propertiesOpened: [],
   };
 };

@@ -195,9 +195,7 @@ if (minDistanceToEdges <= TRANSFORMER_ANCHOR_RESIZE_RADIUS) {
 }
 ```
 
-在扩大了锚点的拾取范围后，接下来需要区分旋转和 Resize。
-
-## Resize {#resize}
+## 单个图形 Resize {#resize-single-shape}
 
 在 Figma / FigJam 中，除了可以通过拖拽四个角落的锚点以及四条边进行自由改变大小之外，还可以：
 
@@ -317,7 +315,9 @@ if (centeredScaling) {
 
 ### 翻转 {#flip}
 
-当拖拽到反方向时。
+当拖拽锚点或者边到反方向时，会出现翻转现象，下图为 Figma 中的效果，注意 Rotation 的变化：
+
+![Rotate 180 deg when flipped](/resize-flip.gif)
 
 ## 旋转 {#rotation}
 

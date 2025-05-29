@@ -1,11 +1,14 @@
 import { isNil, isString } from '@antv/util';
 import toposort from 'toposort';
-import { AABB, Circle, Ellipse, Polyline, Rect } from '../../components';
-import { shiftPoints } from '../../systems/ComputePoints';
+import { AABB, Ellipse, Polyline, Rect } from '../../components';
+import { maybeShiftPoints, shiftPoints } from '../../systems/ComputePoints';
 import { fontStringFromTextStyle } from '../../systems/ComputeTextMetrics';
 import { createSVGElement } from '../browser';
 import {
+  EllipseSerializedNode,
   InnerShadowAttributes,
+  PathSerializedNode,
+  PolylineSerializedNode,
   RectSerializedNode,
   SerializedNode,
   StrokeAttributes,
@@ -43,8 +46,12 @@ const fillDefaultAttributes = {
 };
 
 const commonDefaultAttributes = {
-  visibility: 'visible',
-  transform: 'matrix(1,0,0,1,0,0)',
+  visibility: 'inherited',
+  x: 0,
+  y: 0,
+  scaleX: 1,
+  scaleY: 1,
+  rotation: 0,
   opacity: 1,
 };
 
@@ -69,14 +76,6 @@ export const defaultAttributes: Record<
     innerShadowColor: 'none',
     innerShadowOffsetX: 0,
     innerShadowOffsetY: 0,
-    ...commonDefaultAttributes,
-    ...fillDefaultAttributes,
-    ...strokeDefaultAttributes,
-  },
-  circle: {
-    cx: 0,
-    cy: 0,
-    r: 0,
     ...commonDefaultAttributes,
     ...fillDefaultAttributes,
     ...strokeDefaultAttributes,
@@ -392,11 +391,7 @@ function exportInnerOrOuterStrokeAlignment(
     element.setAttribute('stroke', 'none');
     $stroke.setAttribute('fill', 'none');
 
-    if (type === 'circle') {
-      const { r } = attributes;
-      const offset = innerStrokeAlignment ? -halfStrokeWidth : halfStrokeWidth;
-      $stroke.setAttribute('r', `${r + offset}`);
-    } else if (type === 'ellipse') {
+    if (type === 'ellipse') {
       const { rx, ry } = attributes;
       const offset = innerStrokeAlignment ? -halfStrokeWidth : halfStrokeWidth;
       $stroke.setAttribute('rx', `${rx + offset}`);
@@ -555,14 +550,11 @@ function createOrUpdateGradient(
   $def: SVGDefsElement,
   gradient: Gradient,
 ) {
-  const bounds = calcGeometryBounds(node);
-  const min = [bounds.minX, bounds.minY] as [number, number];
-  const width = bounds.maxX - bounds.minX;
-  const height = bounds.maxY - bounds.minY;
+  const { x, y, width, height } = node;
 
   const gradientId = generateGradientKey({
     ...gradient,
-    min,
+    min: [x, y],
     width,
     height,
   });
@@ -596,7 +588,7 @@ function createOrUpdateGradient(
   if (gradient.type === 'linear-gradient') {
     const { angle } = gradient;
     const { x1, y1, x2, y2 } = computeLinearGradient(
-      [min[0], min[1]],
+      [x, y],
       width,
       height,
       angle,
@@ -608,17 +600,14 @@ function createOrUpdateGradient(
     $existed.setAttribute('y2', `${y2}`);
   } else if (gradient.type === 'radial-gradient') {
     const { cx, cy, size } = gradient;
-    const { x, y, r } = computeRadialGradient(
-      [min[0], min[1]],
-      width,
-      height,
-      cx,
-      cy,
-      size,
-    );
+    const {
+      x: xx,
+      y: yy,
+      r,
+    } = computeRadialGradient([x, y], width, height, cx, cy, size);
 
-    $existed.setAttribute('cx', `${x}`);
-    $existed.setAttribute('cy', `${y}`);
+    $existed.setAttribute('cx', `${xx}`);
+    $existed.setAttribute('cy', `${yy}`);
     $existed.setAttribute('r', `${r}`);
   }
 
@@ -716,21 +705,21 @@ function create$Pattern(
   $pattern.id = patternId;
   $def.appendChild($pattern);
 
-  const { minX, minY, maxX, maxY } = calcGeometryBounds(node);
-  $pattern.setAttribute('x', `${minX}`);
-  $pattern.setAttribute('y', `${minY}`);
+  const { x, y, width: nodeWidth, height: nodeHeight } = node;
+  $pattern.setAttribute('x', `${x}`);
+  $pattern.setAttribute('y', `${y}`);
 
   // There is no equivalent to CSS no-repeat for SVG patterns
   // @see https://stackoverflow.com/a/33481956
   let patternWidth = width;
   let patternHeight = height;
   if (repetition === 'repeat-x') {
-    patternHeight = maxY - minY;
+    patternHeight = nodeHeight;
   } else if (repetition === 'repeat-y') {
-    patternWidth = maxX - minX;
+    patternWidth = nodeWidth;
   } else if (repetition === 'no-repeat') {
-    patternWidth = maxX - minX;
-    patternHeight = maxY - minY;
+    patternWidth = nodeWidth;
+    patternHeight = nodeHeight;
   }
   $pattern.setAttribute('width', `${patternWidth}`);
   $pattern.setAttribute('height', `${patternHeight}`);
@@ -743,9 +732,7 @@ function createOrUpdatePattern(
   $def: SVGDefsElement,
   pattern: Pattern,
 ) {
-  const bounds = calcGeometryBounds(node);
-  const width = bounds.maxX - bounds.minX;
-  const height = bounds.maxY - bounds.minY;
+  const { width: nodeWidth, height: nodeHeight } = node;
 
   const patternId = generatePatternKey({ pattern });
   const $existed = $def.querySelector(`#${patternId}`);
@@ -764,8 +751,8 @@ function createOrUpdatePattern(
 
       $image.setAttribute('x', '0');
       $image.setAttribute('y', '0');
-      $image.setAttribute('width', `${pattern.width || width}`);
-      $image.setAttribute('height', `${pattern.height || height}`);
+      $image.setAttribute('width', `${pattern.width || nodeWidth}`);
+      $image.setAttribute('height', `${pattern.height || nodeHeight}`);
     }
   }
   return patternId;
@@ -849,9 +836,9 @@ export function exportFillImage(
   $image.setAttribute('x', '0');
   $image.setAttribute('y', '0');
   // use geometry bounds of shape.
-  const bounds = calcGeometryBounds(node);
-  $image.setAttribute('width', `${bounds.maxX - bounds.minX}`);
-  $image.setAttribute('height', `${bounds.maxY - bounds.minY}`);
+  const { width: nodeWidth, height: nodeHeight } = node;
+  $image.setAttribute('width', `${nodeWidth}`);
+  $image.setAttribute('height', `${nodeHeight}`);
   $pattern.appendChild($image);
   $defs.appendChild($pattern);
   $g.appendChild($defs);
@@ -865,21 +852,48 @@ export function isDataUrl(url: string) {
   return dataUrlRegex.test(url);
 }
 
-function calcGeometryBounds(node: SerializedNode) {
-  let bounds: AABB;
-  if (node.type === 'circle') {
-    bounds = Circle.getGeometryBounds(node);
-  } else if (node.type === 'ellipse') {
-    bounds = Ellipse.getGeometryBounds(node);
-  } else if (node.type === 'rect') {
-    bounds = Rect.getGeometryBounds(node);
-  } else if (node.type === 'polyline') {
-    bounds = Polyline.getGeometryBounds({
-      points: deserializePoints(node.points),
-    });
-  } else if (node.type === 'path') {
-    // TODO:
-    // bounds = Path.getGeometryBounds(node);
+/**
+ * Calculate the x and y of the node.
+ */
+export function getXY(node: SerializedNode) {
+  const { type } = node;
+  if (type === 'rect') {
+    const { x, y } = node as RectSerializedNode;
+    return { x, y };
+  } else if (type === 'text') {
+    const { x, y } = node as TextSerializedNode;
+    return { x, y };
+  } else if (type === 'ellipse') {
+    // @ts-ignore
+    const { cx, cy, rx, ry } = node as EllipseSerializedNode;
+    return { x: cx - rx, y: cy - ry };
+  } else if (type === 'polyline') {
+    const { points, strokeWidth, strokeAlignment } =
+      node as PolylineSerializedNode;
+
+    const shiftedPoints = maybeShiftPoints(
+      deserializePoints(points),
+      strokeAlignment,
+      strokeWidth,
+    );
+
+    const minX = Math.min(
+      ...shiftedPoints.map((point) => (isNaN(point[0]) ? Infinity : point[0])),
+    );
+    const minY = Math.min(
+      ...shiftedPoints.map((point) => (isNaN(point[1]) ? Infinity : point[1])),
+    );
+    const maxX = Math.max(
+      ...shiftedPoints.map((point) => (isNaN(point[0]) ? Infinity : point[0])),
+    );
+    const maxY = Math.max(
+      ...shiftedPoints.map((point) => (isNaN(point[1]) ? Infinity : point[1])),
+    );
+    return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
+  } else if (type === 'path') {
+    return { x: 0, y: 0 };
+    // const { d } = node as PathSerializedNode;
   }
-  return bounds;
+
+  return { x: 0, y: 0 };
 }
