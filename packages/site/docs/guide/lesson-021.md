@@ -317,7 +317,9 @@ if (centeredScaling) {
 
 ### Flip {#flip}
 
-When dragging to the opposite direction.
+When dragging an anchor or edge in the opposite direction, it will flip, as shown in Figma below, note the change in Rotation:
+
+![Rotate 180 deg when flipped](/resize-flip.gif)
 
 ## Rotation {#rotation}
 
