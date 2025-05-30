@@ -64,7 +64,7 @@ export function shiftPoints(
   innerStrokeAlignment: boolean,
   strokeWidth: number,
 ) {
-  const shiftedPoints = [];
+  const shiftedPoints: [number, number][] = [];
   points.forEach(([x, y], index) => {
     const current = vec2.fromValues(x, y);
     const prev =

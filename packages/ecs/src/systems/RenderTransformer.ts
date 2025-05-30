@@ -240,7 +240,7 @@ export class RenderTransformer extends System {
   hitTest(api: API, { x, y }: IPointData) {
     const camera = api.getCamera();
     const point = [x, y] as [number, number];
-    const { mask, tlAnchor, trAnchor, blAnchor, brAnchor } =
+    const { tlAnchor, trAnchor, blAnchor, brAnchor } =
       camera.read(Transformable);
 
     const { x: tlX, y: tlY } = api.canvas2Viewport(
@@ -419,7 +419,15 @@ export class RenderTransformer extends System {
       const selected = selecteds[0];
       const { obb } = selected.read(ComputedBounds);
 
-      return obb;
+      return {
+        x: obb.x,
+        y: obb.y,
+        width: obb.width,
+        height: obb.height,
+        rotation: obb.rotation,
+        scaleX: obb.scaleX,
+        scaleY: obb.scaleY,
+      };
     } else {
       // const rotation = mask.read(Transform).rotation;
       // const totalPoints: [number, number][] = [];

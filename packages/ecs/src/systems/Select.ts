@@ -1,6 +1,5 @@
-import { DEG_TO_RAD, Matrix, RAD_TO_DEG } from '@pixi/math';
-import { fromObject } from 'transformation-matrix';
 import { Entity, System } from '@lastolivegames/becsy';
+import { mat3 } from 'gl-matrix';
 import {
   Camera,
   Canvas,
@@ -16,7 +15,6 @@ import {
   Highlighted,
   Input,
   InputPoint,
-  Mat3,
   Name,
   OBB,
   Opacity,
@@ -39,7 +37,7 @@ import {
   ZIndex,
 } from '../components';
 import { Commands } from '../commands/Commands';
-import { decompose, distanceBetweenPoints, getCursor } from '../utils';
+import { distanceBetweenPoints, getCursor } from '../utils';
 import { API } from '../API';
 import { RenderHighlighter } from './RenderHighlighter';
 import {
@@ -47,8 +45,7 @@ import {
   RenderTransformer,
   TRANSFORMER_ANCHOR_STROKE_COLOR,
 } from './RenderTransformer';
-import { mat3, vec2 } from 'gl-matrix';
-import { decomposeTSR, rotateDEG } from 'transformation-matrix';
+
 import { SerializedNode, updateGlobalTransform } from '..';
 
 enum SelectionMode {
@@ -84,13 +81,7 @@ export class Select extends System {
   /**
    * OBB
    */
-  #x: number;
-  #y: number;
-  #width: number;
-  #height: number;
-  #rotation: number;
-  #scaleX: number;
-  #scaleY: number;
+  #obb: OBB;
   #sin: number;
   #cos: number;
   #selectedNodes: SerializedNode[];
@@ -195,7 +186,7 @@ export class Select extends System {
       }
     });
 
-    this.saveSelectedTransform(api);
+    this.saveSelectedOBB(api);
   }
 
   private handleSelectedRotating(
@@ -212,8 +203,8 @@ export class Select extends System {
       // this.#matrix,
     );
 
-    const x = sl.x - this.#width / 2;
-    const y = sl.y - this.#height / 2;
+    const x = sl.x - this.#obb.width / 2;
+    const y = sl.y - this.#obb.height / 2;
 
     let delta = Math.atan2(-y, x) + Math.PI / 2;
 
@@ -242,8 +233,8 @@ export class Select extends System {
 
   private handleSelectedResizing(
     api: API,
-    x: number,
-    y: number,
+    canvasX: number,
+    canvasY: number,
     lockAspectRatio: boolean,
     centeredScaling: boolean,
   ) {
@@ -256,9 +247,9 @@ export class Select extends System {
     const prevTlAnchorY = tlAnchor.read(Circle).cy;
     const prevBrAnchorX = brAnchor.read(Circle).cx;
     const prevBrAnchorY = brAnchor.read(Circle).cy;
-    const { x: anchorNodeX, y: anchorNodeY } = api.canvas2Transformer({
-      x,
-      y,
+    const { x, y } = api.canvas2Transformer({
+      x: canvasX,
+      y: canvasY,
     });
 
     let anchor: Entity;
@@ -275,8 +266,8 @@ export class Select extends System {
 
     if (anchor) {
       Object.assign(anchor.write(Circle), {
-        cx: anchorNodeX,
-        cy: anchorNodeY,
+        cx: x,
+        cy: y,
       });
     }
 
@@ -286,36 +277,32 @@ export class Select extends System {
       if (lockAspectRatio) {
         const comparePoint = centeredScaling
           ? {
-              x: this.#width / 2,
-              y: this.#height / 2,
+              x: this.#obb.width / 2,
+              y: this.#obb.height / 2,
             }
           : {
               x: brAnchor.read(Circle).cx,
               y: brAnchor.read(Circle).cy,
             };
         newHypotenuse = Math.sqrt(
-          Math.pow(comparePoint.x - anchorNodeX, 2) +
-            Math.pow(comparePoint.y - anchorNodeY, 2),
+          Math.pow(comparePoint.x - x, 2) + Math.pow(comparePoint.y - y, 2),
         );
 
         const { cx, cy } = tlAnchor.read(Circle);
         const reverseX = cx > comparePoint.x ? -1 : 1;
         const reverseY = cy > comparePoint.y ? -1 : 1;
 
-        const x = newHypotenuse * this.#cos * reverseX;
-        const y = newHypotenuse * this.#sin * reverseY;
-
         Object.assign(tlAnchor.write(Circle), {
-          cx: comparePoint.x - x,
-          cy: comparePoint.y - y,
+          cx: comparePoint.x - newHypotenuse * this.#cos * reverseX,
+          cy: comparePoint.y - newHypotenuse * this.#sin * reverseY,
         });
       }
     } else if (anchorName === AnchorName.TOP_RIGHT) {
       if (lockAspectRatio) {
         const comparePoint = centeredScaling
           ? {
-              x: this.#width / 2,
-              y: this.#height / 2,
+              x: this.#obb.width / 2,
+              y: this.#obb.height / 2,
             }
           : {
               x: blAnchor.read(Circle).cx,
@@ -323,20 +310,16 @@ export class Select extends System {
             };
 
         newHypotenuse = Math.sqrt(
-          Math.pow(anchorNodeX - comparePoint.x, 2) +
-            Math.pow(comparePoint.y - anchorNodeY, 2),
+          Math.pow(x - comparePoint.x, 2) + Math.pow(comparePoint.y - y, 2),
         );
 
         const { cx, cy } = trAnchor.read(Circle);
         const reverseX = cx < comparePoint.x ? -1 : 1;
         const reverseY = cy > comparePoint.y ? -1 : 1;
 
-        const x = newHypotenuse * this.#cos * reverseX;
-        const y = newHypotenuse * this.#sin * reverseY;
-
         Object.assign(trAnchor.write(Circle), {
-          cx: comparePoint.x + x,
-          cy: comparePoint.y - y,
+          cx: comparePoint.x + newHypotenuse * this.#cos * reverseX,
+          cy: comparePoint.y - newHypotenuse * this.#sin * reverseY,
         });
       }
 
@@ -346,8 +329,8 @@ export class Select extends System {
       if (lockAspectRatio) {
         const comparePoint = centeredScaling
           ? {
-              x: this.#width / 2,
-              y: this.#height / 2,
+              x: this.#obb.width / 2,
+              y: this.#obb.height / 2,
             }
           : {
               x: trAnchor.read(Circle).cx,
@@ -355,19 +338,15 @@ export class Select extends System {
             };
 
         newHypotenuse = Math.sqrt(
-          Math.pow(comparePoint.x - anchorNodeX, 2) +
-            Math.pow(anchorNodeY - comparePoint.y, 2),
+          Math.pow(comparePoint.x - x, 2) + Math.pow(y - comparePoint.y, 2),
         );
 
-        const reverseX = comparePoint.x < anchorNodeX ? -1 : 1;
-        const reverseY = anchorNodeY < comparePoint.y ? -1 : 1;
-
-        const x = newHypotenuse * this.#cos * reverseX;
-        const y = newHypotenuse * this.#sin * reverseY;
+        const reverseX = comparePoint.x < x ? -1 : 1;
+        const reverseY = y < comparePoint.y ? -1 : 1;
 
         Object.assign(blAnchor.write(Circle), {
-          cx: comparePoint.x - x,
-          cy: comparePoint.y + y,
+          cx: comparePoint.x - newHypotenuse * this.#cos * reverseX,
+          cy: comparePoint.y + newHypotenuse * this.#sin * reverseY,
         });
       }
 
@@ -377,8 +356,8 @@ export class Select extends System {
       if (lockAspectRatio) {
         const comparePoint = centeredScaling
           ? {
-              x: this.#width / 2,
-              y: this.#height / 2,
+              x: this.#obb.width / 2,
+              y: this.#obb.height / 2,
             }
           : {
               x: tlAnchor.read(Circle).cx,
@@ -386,29 +365,24 @@ export class Select extends System {
             };
 
         newHypotenuse = Math.sqrt(
-          Math.pow(anchorNodeX - comparePoint.x, 2) +
-            Math.pow(anchorNodeY - comparePoint.y, 2),
+          Math.pow(x - comparePoint.x, 2) + Math.pow(y - comparePoint.y, 2),
         );
 
         const reverseX = brAnchor.read(Circle).cx < comparePoint.x ? -1 : 1;
         const reverseY = brAnchor.read(Circle).cy < comparePoint.y ? -1 : 1;
-
-        const x = newHypotenuse * this.#cos * reverseX;
-        const y = newHypotenuse * this.#sin * reverseY;
-
         Object.assign(brAnchor.write(Circle), {
-          cx: comparePoint.x + x,
-          cy: comparePoint.y + y,
+          cx: comparePoint.x + newHypotenuse * this.#cos * reverseX,
+          cy: comparePoint.y + newHypotenuse * this.#sin * reverseY,
         });
       }
     } else if (anchorName === AnchorName.TOP_CENTER) {
-      tlAnchor.write(Circle).cy = anchorNodeY;
+      tlAnchor.write(Circle).cy = y;
     } else if (anchorName === AnchorName.BOTTOM_CENTER) {
-      brAnchor.write(Circle).cy = anchorNodeY;
+      brAnchor.write(Circle).cy = y;
     } else if (anchorName === AnchorName.MIDDLE_LEFT) {
-      tlAnchor.write(Circle).cx = anchorNodeX;
+      tlAnchor.write(Circle).cx = x;
     } else if (anchorName === AnchorName.MIDDLE_RIGHT) {
-      brAnchor.write(Circle).cx = anchorNodeX;
+      brAnchor.write(Circle).cx = x;
     }
 
     if (centeredScaling) {
@@ -417,8 +391,6 @@ export class Select extends System {
 
       const bottomOffsetX = brAnchor.read(Circle).cx - prevBrAnchorX;
       const bottomOffsetY = brAnchor.read(Circle).cy - prevBrAnchorY;
-
-      console.log(bottomOffsetX, bottomOffsetY);
 
       Object.assign(brAnchor.write(Circle), {
         cx: brAnchor.read(Circle).cx - topOffsetX,
@@ -444,9 +416,9 @@ export class Select extends System {
         y,
         width,
         height,
-        rotation: this.#rotation,
-        scaleX: this.#scaleX,
-        scaleY: this.#scaleY,
+        rotation: this.#obb.rotation,
+        scaleX: this.#obb.scaleX,
+        scaleY: this.#obb.scaleY,
       });
     }
 
@@ -466,7 +438,7 @@ export class Select extends System {
       }
     });
 
-    this.saveSelectedTransform(api);
+    this.saveSelectedOBB(api);
   }
 
   private handleSelectedRotated(api: API) {
@@ -482,7 +454,7 @@ export class Select extends System {
       }
     });
 
-    this.saveSelectedTransform(api);
+    this.saveSelectedOBB(api);
   }
 
   private handleBrushing(api: API, viewportX: number, viewportY: number) {
@@ -585,7 +557,7 @@ export class Select extends System {
           this.#selectionMode === SelectionMode.READY_TO_RESIZE ||
           this.#selectionMode === SelectionMode.READY_TO_ROTATE
         ) {
-          this.saveSelectedTransform(api);
+          this.saveSelectedOBB(api);
           if (this.#selectionMode === SelectionMode.READY_TO_RESIZE) {
             this.#selectionMode = SelectionMode.RESIZE;
           } else if (this.#selectionMode === SelectionMode.READY_TO_ROTATE) {
@@ -741,19 +713,12 @@ export class Select extends System {
     });
   }
 
-  private saveSelectedTransform(api: API) {
-    const { x, y, width, height, rotation, scaleX, scaleY } =
-      this.renderTransformer.getOBB(api.getCamera());
+  private saveSelectedOBB(api: API) {
+    this.#obb = this.renderTransformer.getOBB(api.getCamera());
+    const { width, height } = this.#obb;
     const hypotenuse = Math.sqrt(Math.pow(width, 2) + Math.pow(height, 2));
     this.#sin = Math.abs(height / hypotenuse);
     this.#cos = Math.abs(width / hypotenuse);
-    this.#width = width;
-    this.#height = height;
-    this.#rotation = rotation;
-    this.#x = x;
-    this.#y = y;
-    this.#scaleX = scaleX;
-    this.#scaleY = scaleY;
 
     this.#selectedNodes = api.getAppState().layersSelected.map((id) => {
       return { ...api.getNodeById(id) };
@@ -768,14 +733,12 @@ export class Select extends System {
     const epsilon = 0.000001;
 
     const oldAttrs = {
-      x: this.#x,
-      y: this.#y,
-      width: this.#width,
-      height: this.#height,
-      rotation: this.#rotation,
+      x: this.#obb.x,
+      y: this.#obb.y,
+      width: this.#obb.width,
+      height: this.#obb.height,
+      rotation: this.#obb.rotation,
     };
-
-    console.log('oldAttrs', oldAttrs);
 
     const baseSize = 10000000;
     const oldTr = mat3.create();
@@ -851,77 +814,5 @@ export class Select extends System {
 
       updateGlobalTransform(selected);
     }
-
-    // if (selecteds.length === 1) {
-    //   const [selected] = selecteds;
-    //   const node = api.getNodeByEntity(selected);
-
-    //   // const { transform } = this.renderTransformer.getOBB(camera);
-    //   const transform = this.#transform;
-    //   const newMatrix = mat3.multiply(mat3.create(), transform, scaleMatrix);
-
-    //   // const newGlobalOrigin = newMatrix.apply(
-    //   //   scaleFromCenter
-    //   //     ? { x: newRect.width / 2, y: newRect.height / 2 }
-    //   //     : resizeOp.getLocalOrigin(newRect.width, newRect.height),
-    //   // );
-    //   // const globalOrigin = transform.apply(localOrigin);
-
-    //   // const offset = {
-    //   //   x: globalOrigin.x - newGlobalOrigin.x,
-    //   //   y: globalOrigin.y - newGlobalOrigin.y,
-    //   // };
-
-    //   // mat3.multiply(newMatrix, mat3.fromTranslation(mat3.create(), [offset.x, offset.y]), newMatrix);
-
-    //   api.updateNodeTransform(node, {
-    //     x,
-    //     y,
-    //     width: Math.max(Math.abs(width), 0.000001),
-    //     height: Math.max(Math.abs(height), 0.000001),
-    //     matrix: newMatrix,
-    //   });
-    // }
-
-    // selecteds.forEach((selected) => {
-    //   // for each node we have the same [delta transform]
-    //   // the equations is
-    //   // [delta transform] * [parent transform] * [old local transform] = [parent transform] * [new local transform]
-    //   // and we need to find [new local transform]
-    //   // [new local] = [parent inverted] * [delta] * [parent] * [old local]
-    //   // const parentTransform = node.getParent()!.getAbsoluteTransform();
-    //   const parentTransform = selected.read(Children).parent.has(Camera)
-    //     ? mat3.create()
-    //     : Mat3.toGLMat3(
-    //         selected.read(Children).parent.read(GlobalTransform).matrix,
-    //       );
-    //   const localTransform = Mat3.toGLMat3(
-    //     Mat3.fromTransform(selected.read(Transform)),
-    //   );
-    //   // const localTransform = mat3.create();
-    //   // // skip offset:
-    //   // // localTransform.translate(node.offsetX(), node.offsetY());
-
-    //   const newLocalTransform = mat3.create();
-    //   mat3.multiply(
-    //     newLocalTransform,
-    //     newLocalTransform,
-    //     mat3.invert(mat3.create(), parentTransform),
-    //   );
-    //   mat3.multiply(newLocalTransform, newLocalTransform, delta);
-    //   mat3.multiply(newLocalTransform, newLocalTransform, parentTransform);
-    //   mat3.multiply(newLocalTransform, newLocalTransform, localTransform);
-
-    //   console.log(newLocalTransform);
-
-    //   const node = api.getNodeByEntity(selected);
-    //   api.updateNodeOBB(node, {
-    //     matrix: newLocalTransform,
-    //   });
-    // });
-
-    // this.#rotation = newAttrs.rotation;
-
-    // this.renderTransformer.resetTransformCache(camera);
   }
 }

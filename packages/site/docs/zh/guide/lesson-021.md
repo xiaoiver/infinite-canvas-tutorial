@@ -12,6 +12,56 @@ publish: false
 -   [HTML5 Canvas Shape select, resize and rotate]
 -   [Limit Dragging and Resizing]
 
+我们也选择使用 Transformer 这个名字，它看起来和图形的 AABB 非常相似，事实上它被称为 OBB(oriented bounding box)，是一个带有旋转角度的矩形。
+
+## 序列化变换矩阵和尺寸信息 {#serialize-transform-dimension}
+
+在 Figma 中图形的变换矩阵和尺寸信息如下。我们知道对于 2D 图形的变换矩阵 mat3 可以分解成 translation, scale 和 rotation 三部分。其中 X/Y 对应 translation，scale 我们放到[翻转](#flip)这一小节介绍。
+
+![source: https://help.figma.com/hc/en-us/articles/360039956914-Adjust-alignment-rotation-position-and-dimensions](https://help.figma.com/hc/article_attachments/29799649003671)
+
+因此我们选择修改 [SerializedNode] 结构，让它尽可能描述多种图形，同时移除一些图形表示位置的属性，例如 Circle 的 `cx/cy`，通过 `x/y` 和 `width/height` 我们是可以计算出 `cx/cy` 的。
+
+```ts
+export interface TransformAttributes {
+    // Transform
+    x: number;
+    y: number;
+    rotation: number;
+    scaleX: number;
+    scaleY: number;
+    // Dimension
+    width: number;
+    height: number;
+}
+```
+
+`<circle cx="100" cy="100" r="50" />` 序列化后结构如下，这里使用 `ellipse` 表示是为了后续可以更灵活地 resize：
+
+```js eval code=false
+call(() => {
+    const { createSVGElement, svgElementsToSerializedNodes } = ECS;
+    const $circle = createSVGElement('circle');
+    $circle.setAttribute('cx', '100');
+    $circle.setAttribute('cy', '100');
+    $circle.setAttribute('r', '50');
+    const nodes = svgElementsToSerializedNodes([$circle], 0);
+    return nodes[0];
+});
+```
+
+对于 Polyline 和 Path 这种通过 `point` 和 `d` 属性定义的图形，我们无法删除这些属性，而需要计算出它们的 AABB 后，对这些属性进行重新计算。以 `<polyline points="50,50 100,100, 100,50" />` 为例：
+
+```js eval code=false
+call(() => {
+    const { createSVGElement, svgElementsToSerializedNodes } = ECS;
+    const $polyline = createSVGElement('polyline');
+    $polyline.setAttribute('points', '50,50 100,100, 100,50');
+    const nodes = svgElementsToSerializedNodes([$polyline], 0);
+    return nodes[0];
+});
+```
+
 ## 锚点 {#anchors}
 
 Transformer 的锚点分成 Resize 和旋转两类，在数目上有两种常见的组合。
@@ -33,10 +83,10 @@ const mask = this.commands.spawn(
     new Renderable(),
     new Rect(), // 使用 Rect 组件
 );
-const tlAnchor = this.createAnchor(minX, minY, AnchorName.TOP_LEFT); // 使用 Circle 组件
-const trAnchor = this.createAnchor(maxX, minY, AnchorName.TOP_RIGHT);
-const blAnchor = this.createAnchor(minX, maxY, AnchorName.BOTTOM_LEFT);
-const brAnchor = this.createAnchor(maxX, maxY, AnchorName.BOTTOM_RIGHT);
+const tlAnchor = this.createAnchor(0, 0, AnchorName.TOP_LEFT); // 使用 Circle 组件
+const trAnchor = this.createAnchor(width, 0, AnchorName.TOP_RIGHT);
+const blAnchor = this.createAnchor(0, height, AnchorName.BOTTOM_LEFT);
+const brAnchor = this.createAnchor(width, height, AnchorName.BOTTOM_RIGHT);
 
 this.commands
     .entity(mask)
@@ -210,41 +260,59 @@ if (minDistanceToEdges <= TRANSFORMER_ANCHOR_RESIZE_RADIUS) {
 先来看自由改变大小如何实现。以左上角锚点为例，拖拽时右下角锚点是固定不动的：
 
 ```ts
-handleSelectedResizing(
+private handleSelectedResizing(
     api: API,
-    anchorNodeX: number,
-    anchorNodeY: number,
+    canvasX: number,
+    canvasY: number,
     anchorName: AnchorName,
 ) {
+    const { x, y } = api.canvas2Transformer({
+      x: canvasX,
+      y: canvasY,
+    });
     if (anchorName === AnchorName.TOP_LEFT) {
         // 设置左上角锚点位置
         Object.assign(tlAnchor.write(Circle), {
-            cx: anchorNodeX,
-            cy: anchorNodeY,
+            cx: x,
+            cy: y,
         });
     }
     // 省略其他锚点处理逻辑
-    const { cx: tlCx, cy: tlCy } = tlAnchor.read(Circle);
-    const { cx: brCx, cy: brCy } = brAnchor.read(Circle);
-    // 重新计算被选中图形位置和尺寸
-    this.fitSelected(api, tlCx, tlCy, brCx - tlCx, brCy - tlCy);
+    {
+        const { cx: tlCx, cy: tlCy } = tlAnchor.read(Circle);
+        const { cx: brCx, cy: brCy } = brAnchor.read(Circle);
+        const width = brCx - tlCx;
+        const height = brCy - tlCy;
+        const { x, y } = api.transformer2Canvas({ x: tlCx, y: tlCy });
+        // 重新计算被选中图形位置和尺寸
+        this.fitSelected(api, {
+            x,
+            y,
+            width,
+            height,
+            rotation: this.#rotation,
+        });
+    }
 }
 ```
 
 最后根据左上和右下两个锚点，对选中图形重新进行变换操作。
 
+### 变换图形 {#transform-shape}
+
+现在我们知道了发生 resize 前后的属性（变换和尺寸信息）。
+
 ### 锁定长宽比 {#lock-aspect-ratio}
 
 仍然以拖拽左上角锚点为例，锁定长宽比时就不能直接设置它的位置，需要在固定住右下角锚点位置不变的情况下，根据拖拽开始时图形的长宽比重新计算左上角锚点的位置。
 
-首先记录拖拽锚点开始时图形的长宽比，等价于对角线的斜率：
+首先记录拖拽锚点开始时选中图形的 OBB 和长宽比，等价于对角线的斜率：
 
 ```ts
 if (input.pointerDownTrigger) {
     if (type === UIType.TRANSFORMER_ANCHOR) {
-        const { minX, minY, maxX, maxY } = this.getSelectedAABB();
-        const width = maxX - minX;
-        const height = maxY - minY;
+        this.#obb = this.getSelectedOBB();
+        const { width, height } = this.#obb;
         const hypotenuse = Math.sqrt(Math.pow(width, 2) + Math.pow(height, 2));
         this.#sin = Math.abs(height / hypotenuse);
         this.#cos = Math.abs(width / hypotenuse);
@@ -267,18 +335,15 @@ if (lockAspectRatio) {
     };
     // 2.
     newHypotenuse = Math.sqrt(
-        Math.pow(comparePoint.x - anchorNodeX, 2) +
-            Math.pow(comparePoint.y - anchorNodeY, 2),
+        Math.pow(comparePoint.x - x, 2) + Math.pow(comparePoint.y - y, 2),
     );
     const { cx, cy } = tlAnchor.read(Circle);
     const reverseX = cx > comparePoint.x ? -1 : 1;
     const reverseY = cy > comparePoint.y ? -1 : 1;
     // 3.
-    const x = newHypotenuse * this.#cos * reverseX;
-    const y = newHypotenuse * this.#sin * reverseY;
     Object.assign(tlAnchor.write(Circle), {
-        cx: comparePoint.x - x,
-        cy: comparePoint.y - y,
+        cx: comparePoint.x - newHypotenuse * this.#cos * reverseX,
+        cy: comparePoint.y - newHypotenuse * this.#sin * reverseY,
     });
 }
 ```
@@ -292,8 +357,8 @@ if (lockAspectRatio) {
 ```ts
 const comparePoint = centeredScaling
     ? {
-          x: this.#center[0], // [!code ++]
-          y: this.#center[1], // [!code ++]
+          x: this.#obb.width / 2, // [!code ++]
+          y: this.#obb.height / 2, // [!code ++]
       }
     : {
           x: brAnchor.read(Circle).cx,
@@ -305,10 +370,11 @@ const comparePoint = centeredScaling
 
 ```ts
 if (centeredScaling) {
-    const { cx, cy } = tlAnchor.read(Circle);
+    const tlOffsetX = tlAnchor.read(Circle).cx - prevTlAnchorX;
+    const tlOffsetY = tlAnchor.read(Circle).cy - prevTlAnchorY;
     Object.assign(brAnchor.write(Circle), {
-        cx: 2 * this.#center[0] - cx,
-        cy: 2 * this.#center[1] - cy,
+        cx: brAnchor.read(Circle).cx - tlOffsetX,
+        cy: brAnchor.read(Circle).cy - tlOffsetY,
     });
 }
 ```
@@ -342,7 +408,7 @@ Figma 提供了 [Nudge layers] 特性，可以使用上下左右方向键移动�
 ```ts
 if (e.key === 'ArrowUp') {
     e.preventDefault();
-    this.api.updateNodeTransform(selected, { dy: -10 });
+    this.api.updateNodeOBB(selected, { y: selected.y - 10 });
     this.api.record();
 }
 ```
@@ -366,3 +432,4 @@ if (e.key === 'ArrowUp') {
 [Check if Point Is Inside A Polygon]: https://stackoverflow.com/questions/22521982/check-if-point-is-inside-a-polygon
 [Gist - point to line 2d]: https://gist.github.com/mattdesl/47412d930dcd8cd765c871a65532ffac
 [课程 6 - 坐标系转换]: /zh/guide/lesson-006#coordinates
+[SerializedNode]: /zh/guide/lesson-010#shape-to-serialized-node

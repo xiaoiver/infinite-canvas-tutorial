@@ -16,5 +16,7 @@
 
     <!-- <ellipse cx="200" cy="200" rx="100" ry="50" fill="red" name="Layer 0" /> -->
 
-    <polyline points="0,0 200,200 200,100" stroke="black" stroke-width="10" />
+    <!-- <polyline points="50,0 200,200 200,100" stroke="black" stroke-width="10" /> -->
+
+    <path d="M 50 0 L 200 200 L 200 100 Z" stroke="black" stroke-width="10" fill="red" />
 </svg>

@@ -19,8 +19,6 @@ const $svg = $container.children[0] as SVGSVGElement;
 const nodes = svgElementsToSerializedNodes(
   Array.from($svg.children) as SVGElement[],
   0,
-  [],
-  undefined,
 );
 
 const canvas = document.querySelector<HTMLElement>('#canvas1')!;

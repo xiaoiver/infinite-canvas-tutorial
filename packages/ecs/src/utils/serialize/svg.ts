@@ -1,6 +1,6 @@
 import { isNil, isString } from '@antv/util';
 import toposort from 'toposort';
-import { AABB, Ellipse, Polyline, Rect } from '../../components';
+import { Path, Polyline } from '../../components';
 import { maybeShiftPoints, shiftPoints } from '../../systems/ComputePoints';
 import { fontStringFromTextStyle } from '../../systems/ComputeTextMetrics';
 import { createSVGElement } from '../browser';
@@ -27,6 +27,7 @@ import { generateGradientKey, generatePatternKey } from '../../resources';
 import { deserializePoints } from '../deserialize';
 import { formatTransform } from '../matrix';
 import { sortByFractionalIndex } from '../../systems';
+import { parsePath } from '..';
 
 const strokeDefaultAttributes = {
   strokeOpacity: 1,
@@ -855,18 +856,18 @@ export function isDataUrl(url: string) {
 /**
  * Calculate the x and y of the node.
  */
-export function getXY(node: SerializedNode) {
+export function getAABB(node: SerializedNode) {
   const { type } = node;
   if (type === 'rect') {
-    const { x, y } = node as RectSerializedNode;
-    return { x, y };
+    const { x, y, width, height } = node as RectSerializedNode;
+    return { x, y, width, height };
   } else if (type === 'text') {
     const { x, y } = node as TextSerializedNode;
-    return { x, y };
+    return { x, y, width: 0, height: 0 };
   } else if (type === 'ellipse') {
     // @ts-ignore
     const { cx, cy, rx, ry } = node as EllipseSerializedNode;
-    return { x: cx - rx, y: cy - ry };
+    return { x: cx - rx, y: cy - ry, width: rx * 2, height: ry * 2 };
   } else if (type === 'polyline') {
     const { points, strokeWidth, strokeAlignment } =
       node as PolylineSerializedNode;
@@ -877,23 +878,30 @@ export function getXY(node: SerializedNode) {
       strokeWidth,
     );
 
-    const minX = Math.min(
-      ...shiftedPoints.map((point) => (isNaN(point[0]) ? Infinity : point[0])),
-    );
-    const minY = Math.min(
-      ...shiftedPoints.map((point) => (isNaN(point[1]) ? Infinity : point[1])),
-    );
-    const maxX = Math.max(
-      ...shiftedPoints.map((point) => (isNaN(point[0]) ? Infinity : point[0])),
-    );
-    const maxY = Math.max(
-      ...shiftedPoints.map((point) => (isNaN(point[1]) ? Infinity : point[1])),
-    );
+    const { minX, minY, maxX, maxY } = Polyline.getGeometryBounds({
+      points: shiftedPoints,
+    });
     return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
   } else if (type === 'path') {
-    return { x: 0, y: 0 };
-    // const { d } = node as PathSerializedNode;
+    const { d } = node as PathSerializedNode;
+    const { subPaths } = parsePath(d);
+    const points = subPaths.map((subPath) =>
+      subPath
+        .getPoints()
+        .map((point) => [point[0], point[1]] as [number, number]),
+    );
+
+    const { minX, minY, maxX, maxY } = Path.getGeometryBounds(
+      // @ts-ignore
+      {
+        d,
+      },
+      {
+        points,
+      },
+    );
+    return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
   }
 
-  return { x: 0, y: 0 };
+  return { x: 0, y: 0, width: 0, height: 0 };
 }

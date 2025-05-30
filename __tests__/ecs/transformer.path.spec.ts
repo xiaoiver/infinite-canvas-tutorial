@@ -30,15 +30,15 @@ import {
   ComputeZIndex,
   Selected,
   Pen,
-  PolylineSerializedNode,
-  Polyline,
+  PathSerializedNode,
+  Path,
 } from '../../packages/ecs/src';
 import { NodeJSAdapter, sleep } from '../utils';
 
 DOMAdapter.set(NodeJSAdapter);
 
 describe('Transformer', () => {
-  it('should render transformer for polyline correctly', async () => {
+  it('should render transformer for path correctly', async () => {
     const app = new App();
 
     let $canvas: HTMLCanvasElement;
@@ -73,7 +73,7 @@ describe('Transformer', () => {
             DropShadow,
             ZIndex,
             Selected,
-            Polyline,
+            Path,
           ).write,
       );
 
@@ -93,12 +93,13 @@ describe('Transformer', () => {
           zoom: 1,
         });
 
-        const node: PolylineSerializedNode = {
+        const node: PathSerializedNode = {
           id: '1',
-          type: 'polyline',
-          points: '0,0 100,100 100,50',
+          type: 'path',
+          d: 'M 0 0 L 100 100 L 100 50 Z',
           stroke: 'black',
           strokeWidth: 10,
+          fill: 'red',
           visibility: 'visible',
           x: 50,
           y: 50,
@@ -138,7 +139,7 @@ describe('Transformer', () => {
     const dir = `${__dirname}/snapshots`;
     await expect($canvas!.getContext('webgl1')).toMatchWebGLSnapshot(
       dir,
-      'transformer-polyline',
+      'transformer-path',
     );
 
     await app.exit();

@@ -16,7 +16,7 @@ export class Path {
     const { d } = path;
     const { points } = computed;
     if (!d) {
-      return new AABB(0, 0, 0, 0);
+      return new AABB(Infinity, Infinity, -Infinity, -Infinity);
     }
 
     const flattedPoints = points.flat();

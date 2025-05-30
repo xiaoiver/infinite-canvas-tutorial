@@ -6,7 +6,12 @@ import { isNil } from '@antv/util';
 import { Change } from './Change';
 import { Delta } from './Delta';
 import { newElementWith } from './Snapshot';
-import { isGradient, randomInteger, SerializedNode } from '../utils';
+import {
+  isGradient,
+  randomInteger,
+  SerializedNode,
+  deserializePoints,
+} from '../utils';
 import { API } from '../API';
 import {
   Name,
@@ -14,7 +19,6 @@ import {
   FillGradient,
   Stroke,
   Visibility,
-  Circle,
   Ellipse,
   Rect,
   Text,
@@ -25,7 +29,6 @@ import {
   ZIndex,
   Transform,
 } from '../components';
-import { ComputeBounds, ComputedBounds, deserializePoints } from '..';
 
 export type SceneElementsMap = Map<SerializedNode['id'], SerializedNode>;
 
@@ -512,8 +515,6 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
   updates: ElementUpdate<TElement>,
 ): TElement => {
   let didChange = false;
-  let prevWidth = element.width;
-  let prevHeight = element.height;
 
   for (const key in updates) {
     const value = (updates as any)[key];
@@ -665,7 +666,6 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
         cx: width / 2,
       });
     }
-    // TODO: Other shapes
   }
   if (!isNil(height)) {
     if (entity.has(Rect)) {
@@ -676,7 +676,6 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
         cy: height / 2,
       });
     }
-    // TODO: Other shapes
   }
   if (!isNil(points)) {
     if (entity.has(Polyline)) {

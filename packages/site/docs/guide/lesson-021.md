@@ -12,31 +12,81 @@ In Konva, the operation layer on selected shapes is called [Transformer], which 
 -   [HTML5 Canvas Shape select, resize and rotate]
 -   [Limit Dragging and Resizing]
 
+We also chose to use the name Transformer, which looks very similar to the shape's AABB. In fact, it's called OBB (oriented bounding box), which is a rectangle with a rotation angle.
+
+## Serializing Transform Matrix and Dimension Information {#serialize-transform-dimension}
+
+In Figma, the transform matrix and dimension information for shapes are as follows. We know that for 2D shapes, the mat3 transform matrix can be decomposed into translation, scale, and rotation parts. Among them, X/Y corresponds to translation, and scale will be introduced in the [flip](#flip) section.
+
+![source: https://help.figma.com/hc/en-us/articles/360039956914-Adjust-alignment-rotation-position-and-dimensions](https://help.figma.com/hc/article_attachments/29799649003671)
+
+Therefore, we chose to modify the [SerializedNode] structure to make it describe multiple shapes as much as possible, while removing some shape position attributes, such as `cx/cy` for Circle, since we can calculate `cx/cy` through `x/y` and `width/height`.
+
+```ts
+export interface TransformAttributes {
+    // Transform
+    x: number;
+    y: number;
+    rotation: number;
+    scaleX: number;
+    scaleY: number;
+    // Dimension
+    width: number;
+    height: number;
+}
+```
+
+`<circle cx="100" cy="100" r="50" />` is serialized as follows, using `ellipse` to represent it for more flexible resizing in the future:
+
+```js eval code=false
+call(() => {
+    const { createSVGElement, svgElementsToSerializedNodes } = ECS;
+    const $circle = createSVGElement('circle');
+    $circle.setAttribute('cx', '100');
+    $circle.setAttribute('cy', '100');
+    $circle.setAttribute('r', '50');
+    const nodes = svgElementsToSerializedNodes([$circle], 0);
+    return nodes[0];
+});
+```
+
+For shapes like Polyline and Path that are defined through `point` and `d` attributes, we cannot delete these attributes. Instead, we need to calculate their AABB and recalculate these attributes. Taking `<polyline points="50,50 100,100, 100,50" />` as an example:
+
+```js eval code=false
+call(() => {
+    const { createSVGElement, svgElementsToSerializedNodes } = ECS;
+    const $polyline = createSVGElement('polyline');
+    $polyline.setAttribute('points', '50,50 100,100, 100,50');
+    const nodes = svgElementsToSerializedNodes([$polyline], 0);
+    return nodes[0];
+});
+```
+
 ## Anchors {#anchors}
 
-Transformer anchors are divided into two categories: Resize and rotation, with two common combinations in terms of number.
+Transformer's anchors are divided into two categories: Resize and rotation, with two common combinations in terms of number.
 
 One is adopted by Excalidraw and Konva, using 8 anchors around the perimeter for Resize, plus an independent rotation anchor:
 
 ![Source: https://csswolf.com/the-ultimate-excalidraw-tutorial-for-beginners/](https://sp-ao.shortpixel.ai/client/to_auto,q_lossy,ret_img,w_1148/https://csswolf.com/wp-content/uploads/2023/11/image-9.png)
 
-The other is used by tldraw and Figma, using 4 anchors that transform into rotation when approached from the outside, while horizontal and vertical Resize is achieved by dragging the four edges:
+The other is adopted by tldraw and Figma, using 4 anchors. When approaching these 4 anchors from the outside, it becomes rotation, while horizontal and vertical Resize is achieved by dragging the four edges:
 
 ![Source: https://wpdean.com/how-to-rotate-in-figma/](https://wpdean.com/wp-content/uploads/2024/12/how-to-rotate-in-figma.jpg)
 
-We choose this seemingly more concise solution: 一个 `Rect` mask 作为父节点，以及四个子节点 `Circle` 锚点：
+We chose this seemingly more concise solution: a `Rect` mask as the parent node, and four child nodes `Circle` anchors:
 
 ```ts
 const mask = this.commands.spawn(
     new UI(UIType.TRANSFORMER_MASK),
     new Transform(),
     new Renderable(),
-    new Rect(), // Use Rect component
+    new Rect(), // Using Rect component
 );
-const tlAnchor = this.createAnchor(minX, minY, AnchorName.TOP_LEFT); // Use Circle component
-const trAnchor = this.createAnchor(maxX, minY, AnchorName.TOP_RIGHT);
-const blAnchor = this.createAnchor(minX, maxY, AnchorName.BOTTOM_LEFT);
-const brAnchor = this.createAnchor(maxX, maxY, AnchorName.BOTTOM_RIGHT);
+const tlAnchor = this.createAnchor(0, 0, AnchorName.TOP_LEFT); // Using Circle component
+const trAnchor = this.createAnchor(width, 0, AnchorName.TOP_RIGHT);
+const blAnchor = this.createAnchor(0, height, AnchorName.BOTTOM_LEFT);
+const brAnchor = this.createAnchor(width, height, AnchorName.BOTTOM_RIGHT);
 
 this.commands
     .entity(mask)
@@ -46,9 +96,9 @@ this.commands
     .appendChild(this.commands.entity(brAnchor));
 ```
 
-### Transformer coordinates {#transformer-coordinates}
+### Transformer Coordinate System {#transformer-coordinates}
 
-In [Lesson 6 - Coordinates], we implemented the mutual conversion between three coordinate systems: Viewport, Canvas, and Client. Here we need to introduce a new coordinate system, which is the local coordinate system of the mask. For example, when the mask has transformations (such as rotation), the anchor points as child nodes need to know their position in the world coordinate system. We add this new set of conversion methods:
+In [Lesson 6 - Coordinate System Conversion], we implemented the conversion between Viewport, Canvas, and Client coordinate systems. Here we need to introduce a new coordinate system, the local coordinate system of the mask. For example, when the mask has transformations (such as rotation), the anchor points as child nodes need to know their position in the world coordinate system. We add this set of conversion methods:
 
 ```ts
 transformer2Canvas(camera: Entity, point: IPointData) {
@@ -67,9 +117,9 @@ transformer2Canvas(camera: Entity, point: IPointData) {
 canvas2Transformer(camera: Entity, point: IPointData) {}
 ```
 
-### Display CSS cursor {#display-css-cursor}
+### Display CSS Cursor {#display-css-cursor}
 
-When hovering over an anchor point, the mouse style needs to intuitively display the corresponding function, implemented in the web by modifying the `<canvas>` style. The default [CSS cursor] has limited icon support, for example, there is no icon representing rotation semantics, so Excalidraw and Konva can only use `grab` as a substitute. Similarly, while there are indeed 8 icons for Resize, when the shape is rotated and the angle is not a multiple of 45 degrees, even if we calculate and select the appropriate icon like Konva does, we cannot precisely represent it:
+When hovering over an anchor point, the mouse style needs to intuitively show the corresponding function, implemented by modifying the `<canvas>` style in the web end. The default [CSS cursor] has limited supported icons, for example, there is no icon for rotation semantics, and in Excalidraw and Konva, we can only use `grab` instead. Another example is that there are indeed 8 icons for Resize, but because shapes can be rotated, when the rotation angle is not an integer multiple of 45, even if we calculate and choose the appropriate icon like Konva does, we cannot accurately represent it:
 
 ```ts
 function getCursor(anchorName: string, rad: number) {
@@ -82,7 +132,7 @@ function getCursor(anchorName: string, rad: number) {
 }
 ```
 
-Therefore, we need to use custom mouse styles and be able to adjust them dynamically based on rotation angle. [How can I rotate a css cursor] provides a method using SVG, and tldraw adds dynamic angle calculation logic on top of this, see: [useCursor]. Taking the top-right anchor as an example:
+Therefore, we need to use custom mouse styles and be able to dynamically adjust based on rotation angle. [How can I rotate a css cursor] provides a way using SVG, and tldraw adds logic for dynamic angle calculation on this basis, see: [useCursor]. Taking the top-right anchor point as an example:
 
 ![Rotate anchor](/transformer-anchor-rotate.png)
 
@@ -95,15 +145,15 @@ Apply the rotation transformation to the SVG icon to get the Cursor value at thi
     } 16 16)>
 ```
 
-When the mouse gets closer to the anchor point, it changes from rotation to Resize interaction:
+And when the mouse gets closer to the anchor point, it changes from rotation to Resize interaction:
 
 ![Resize anchor](/transformer-anchor-resize.png)
 
-How can we trigger picking when the mouse is still far from the anchor point?
+How to trigger picking when approaching the anchor point from far away?
 
 ### Expand Hit Area {#hit-area}
 
-The first thought is to allow shapes to expand or even customize their hit area, for example, Pixi.js provides [hitArea]. We can also add this field to the Renderable component:
+First, we thought of allowing shapes to expand or even customize the hit area, for example, Pixi.js provides [hitArea]. We can also add this field to the Renderable component:
 
 ```ts
 export class Renderable {
@@ -111,7 +161,7 @@ export class Renderable {
 }
 ```
 
-Consider this property when computing bounding boxes in the ComputeBounds System, so we can set a circular detection area that's larger than the anchor point:
+Consider this property when computing bounds in the ComputeBounds System, so we can set a circular detection area that's larger than the anchor point:
 
 ```ts
 if (hitArea instanceof Circle) {
@@ -119,13 +169,13 @@ if (hitArea instanceof Circle) {
 }
 ```
 
-However, this approach has an obvious problem: even if we set the hit area to be 5 times larger than the anchor point, when the camera zooms, we still need to hover over the anchor point to trigger picking. Therefore, we need to consider picking outside the Canvas world coordinate system.
+But this approach has an obvious problem: even if we set the hit area to be 5 times larger than the anchor point, when the camera zooms, we still need to hover over the anchor point to trigger picking. Therefore, we need to consider picking outside the Canvas world coordinate system.
 
 ### Picking in Viewport Coordinates {#picking-in-viewport-coordinates}
 
-We need to perform hit testing in the Viewport coordinate system, so we can ignore camera zoom.
+We need to perform picking detection in the Viewport coordinate system, so we can ignore camera zoom.
 
-First, we need to calculate the positions of the four anchors in the Canvas world coordinate system, rather than directly using the anchor's `cx/cy`, otherwise it will be incorrect when the Transformer itself has rotation (we'll see this soon):
+First, we need to calculate the positions of the four anchor points in the Canvas world coordinate system, rather than directly using the anchor points' `cx/cy`, otherwise it will go wrong when the Transformer itself has rotation (we'll see this soon):
 
 ```ts
 hitTest(api: API, { x, y }: IPointData) {
@@ -138,13 +188,13 @@ hitTest(api: API, { x, y }: IPointData) {
             y: tlAnchor.read(Circle).cy,
         }),
     );
-    // Omit other anchor position calculations
+    // Omit calculation of other anchor positions
 
     const distanceToTL = distanceBetweenPoints(x, y, tlX, tlY);
 }
 ```
 
-Then first determine if the minimum distance to the four anchors meets the threshold for Resize interaction, if it does, return the corresponding mouse style icon name, add the rotation angle to get the rotated SVG:
+Then first determine if the minimum distance to the four anchor points meets the threshold for Resize interaction, if it does, return the corresponding mouse style icon name, add the rotation angle to get the rotated SVG:
 
 ```ts
 if (minDistanceToAnchors <= TRANSFORMER_ANCHOR_RESIZE_RADIUS) {
@@ -157,7 +207,7 @@ if (minDistanceToAnchors <= TRANSFORMER_ANCHOR_RESIZE_RADIUS) {
 }
 ```
 
-Next, enter the rotation interaction determination. At this time, the detection point cannot be inside the Transformer, you can use the determination method introduced in [Check if Point Is Inside A Polygon]:
+Next, enter the rotation interaction detection. At this time, the detection point cannot be inside the Transformer, you can use the detection method introduced in [Check if Point Is Inside A Polygon]:
 
 ```ts
 else if (
@@ -173,7 +223,7 @@ else if (
 }
 ```
 
-Finally, we come to the Resize determination for the four edges of the Transformer, here we need to calculate the distance from the detection point to the line segment, refer to [Gist - point to line 2d]:
+Finally, come to the Resize detection of the four edges of the Transformer, here we need to calculate the distance from the detection point to the line segment, refer to [Gist - point to line 2d]:
 
 ```ts
 import distanceBetweenPointAndLineSegment from 'point-to-segment-2d';
@@ -195,58 +245,74 @@ if (minDistanceToEdges <= TRANSFORMER_ANCHOR_RESIZE_RADIUS) {
 }
 ```
 
-After expanding the anchor's hit area, we need to distinguish between rotation and Resize.
+## Single Shape Resize {#resize-single-shape}
 
-## Resize {#resize}
-
-In Figma / FigJam, in addition to freely changing size by dragging the four corner anchors and four edges, you can also:
+In Figma / FigJam, besides being able to freely change size by dragging the four corner anchor points and four edges, you can also:
 
 -   Press <kbd>Option</kbd> or <kbd>Alt</kbd> while dragging to scale from the geometric center
--   Press <kbd>Shift</kbd> while dragging to fix the opposite corner/edge and scale proportionally along horizontal and vertical directions
+-   Press <kbd>Shift</kbd> while dragging to fix the opposite corner/edge, scale proportionally along horizontal and vertical directions
 -   Combine these keys
 
 The effect is as follows, from: [Resize, rotate, and flip objects in FigJam]
 
 ![Resizing in FigJam](https://help.figma.com/hc/article_attachments/1500011223302)
 
-Let's first look at how to implement free size changing. Taking the top-left anchor as an example, when dragging, the bottom-right anchor remains fixed:
+Let's first look at how to implement free size change. Taking the top-left anchor point as an example, when dragging, the bottom-right anchor point is fixed:
 
 ```ts
-handleSelectedResizing(
+private handleSelectedResizing(
     api: API,
-    anchorNodeX: number,
-    anchorNodeY: number,
+    canvasX: number,
+    canvasY: number,
     anchorName: AnchorName,
 ) {
+    const { x, y } = api.canvas2Transformer({
+      x: canvasX,
+      y: canvasY,
+    });
     if (anchorName === AnchorName.TOP_LEFT) {
-        // Set top-left anchor position
+        // Set top-left anchor point position
         Object.assign(tlAnchor.write(Circle), {
-            cx: anchorNodeX,
-            cy: anchorNodeY,
+            cx: x,
+            cy: y,
         });
     }
-    // Omit other anchor handling logic
-    const { cx: tlCx, cy: tlCy } = tlAnchor.read(Circle);
-    const { cx: brCx, cy: brCy } = brAnchor.read(Circle);
-    // Recalculate selected shape position and size
-    this.fitSelected(api, tlCx, tlCy, brCx - tlCx, brCy - tlCy);
+    // Omit other anchor point handling logic
+    {
+        const { cx: tlCx, cy: tlCy } = tlAnchor.read(Circle);
+        const { cx: brCx, cy: brCy } = brAnchor.read(Circle);
+        const width = brCx - tlCx;
+        const height = brCy - tlCy;
+        const { x, y } = api.transformer2Canvas({ x: tlCx, y: tlCy });
+        // Recalculate selected shape position and size
+        this.fitSelected(api, {
+            x,
+            y,
+            width,
+            height,
+            rotation: this.#rotation,
+        });
+    }
 }
 ```
 
-Finally, transform the selected shape based on the top-left and bottom-right anchors.
+Finally, transform the selected shape based on the top-left and bottom-right anchor points.
+
+### Transform Shape {#transform-shape}
+
+Now we know the properties before and after resize (transform and dimension information).
 
 ### Lock Aspect Ratio {#lock-aspect-ratio}
 
-Still taking the top-left anchor as an example, when locking the aspect ratio, we can't directly set its position. We need to recalculate the top-left anchor's position based on the shape's aspect ratio at the start of dragging, while keeping the bottom-right anchor position fixed.
+Still taking the top-left anchor point as an example, when locking the aspect ratio, we can't directly set its position. We need to recalculate the top-left anchor point's position based on the shape's aspect ratio at the start of dragging, while keeping the bottom-right anchor point position unchanged.
 
-First, record the shape's aspect ratio when the drag anchor starts, equivalent to the diagonal slope:
+First, record the selected shape's OBB and aspect ratio when starting to drag the anchor point, equivalent to the diagonal slope:
 
 ```ts
 if (input.pointerDownTrigger) {
     if (type === UIType.TRANSFORMER_ANCHOR) {
-        const { minX, minY, maxX, maxY } = this.getSelectedAABB();
-        const width = maxX - minX;
-        const height = maxY - minY;
+        this.#obb = this.getSelectedOBB();
+        const { width, height } = this.#obb;
         const hypotenuse = Math.sqrt(Math.pow(width, 2) + Math.pow(height, 2));
         this.#sin = Math.abs(height / hypotenuse);
         this.#cos = Math.abs(width / hypotenuse);
@@ -256,9 +322,9 @@ if (input.pointerDownTrigger) {
 
 During dragging:
 
-1. Keep the bottom-right anchor position fixed
-2. Calculate the current diagonal distance from top-left to bottom-right
-3. Recalculate the top-left anchor position based on the previously saved aspect ratio
+1. Keep the bottom-right anchor point position unchanged
+2. Calculate the diagonal distance from top-left to bottom-right at this time
+3. Recalculate the top-left anchor point position based on the previously saved aspect ratio
 
 ```ts
 if (lockAspectRatio) {
@@ -269,33 +335,30 @@ if (lockAspectRatio) {
     };
     // 2.
     newHypotenuse = Math.sqrt(
-        Math.pow(comparePoint.x - anchorNodeX, 2) +
-            Math.pow(comparePoint.y - anchorNodeY, 2),
+        Math.pow(comparePoint.x - x, 2) + Math.pow(comparePoint.y - y, 2),
     );
     const { cx, cy } = tlAnchor.read(Circle);
     const reverseX = cx > comparePoint.x ? -1 : 1;
     const reverseY = cy > comparePoint.y ? -1 : 1;
     // 3.
-    const x = newHypotenuse * this.#cos * reverseX;
-    const y = newHypotenuse * this.#sin * reverseY;
     Object.assign(tlAnchor.write(Circle), {
-        cx: comparePoint.x - x,
-        cy: comparePoint.y - y,
+        cx: comparePoint.x - newHypotenuse * this.#cos * reverseX,
+        cy: comparePoint.y - newHypotenuse * this.#sin * reverseY,
     });
 }
 ```
 
-During dragging, we can show the diagonal in real-time to give users a clear hint (usually as a dashed line).
+During dragging, we can show the diagonal line in real-time to give users a clear hint (usually a dashed line).
 
 ### Centered Scaling {#centered-scaling}
 
-Still taking the top-left anchor as an example, now the fixed reference point changes from the bottom-right anchor to the geometric center point, also recorded at the start of the drag behavior:
+Still taking the top-left anchor point as an example, at this time the fixed reference point changes from the bottom-right anchor point to the geometric center point, also recorded at the start of dragging:
 
 ```ts
 const comparePoint = centeredScaling
     ? {
-          x: this.#center[0], // [!code ++]
-          y: this.#center[1], // [!code ++]
+          x: this.#obb.width / 2, // [!code ++]
+          y: this.#obb.height / 2, // [!code ++]
       }
     : {
           x: brAnchor.read(Circle).cx,
@@ -303,21 +366,22 @@ const comparePoint = centeredScaling
       };
 ```
 
-Then recalculate the bottom-right anchor position, symmetrical to the top-left anchor about the center point:
+Then recalculate the bottom-right anchor point position, symmetrical to the top-left anchor point about the center point:
 
 ```ts
 if (centeredScaling) {
-    const { cx, cy } = tlAnchor.read(Circle);
+    const tlOffsetX = tlAnchor.read(Circle).cx - prevTlAnchorX;
+    const tlOffsetY = tlAnchor.read(Circle).cy - prevTlAnchorY;
     Object.assign(brAnchor.write(Circle), {
-        cx: 2 * this.#center[0] - cx,
-        cy: 2 * this.#center[1] - cy,
+        cx: brAnchor.read(Circle).cx - tlOffsetX,
+        cy: brAnchor.read(Circle).cy - tlOffsetY,
     });
 }
 ```
 
 ### Flip {#flip}
 
-When dragging an anchor or edge in the opposite direction, it will flip, as shown in Figma below, note the change in Rotation:
+When dragging an anchor point or edge to the opposite direction, flipping occurs. The following is the effect in Figma, note the change in Rotation:
 
 ![Rotate 180 deg when flipped](/resize-flip.gif)
 
@@ -333,18 +397,18 @@ Figma
 
 ### Change the Rotation Origin {#change-the-rotation-origin}
 
-Below is the effect of Figma's [Change the rotation origin]:
+The following is the effect of Figma's [Change the rotation origin]:
 
 ![Change the rotation origin](https://help.figma.com/hc/article_attachments/31937330391447)
 
-## Nudge the Position Using Arrow Keys {#nudge-the-position}
+## Move Shapes with Arrow Keys {#nudge-the-position}
 
-Figma provides the [Nudge layers] feature, allowing you to move shapes using the arrow keys, and you can also use <kbd>Shift</kbd> for larger movements. In our implementation, we'll use fixed distances:
+Figma provides the [Nudge layers] feature, allowing you to move shapes using the up, down, left, and right arrow keys, and you can also use <kbd>Shift</kbd> for larger movements. In our implementation, we'll use fixed distances:
 
 ```ts
 if (e.key === 'ArrowUp') {
     e.preventDefault();
-    this.api.updateNodeTransform(selected, { dy: -10 });
+    this.api.updateNodeOBB(selected, { y: selected.y - 10 });
     this.api.record();
 }
 ```
@@ -367,4 +431,5 @@ if (e.key === 'ArrowUp') {
 [hitArea]: https://pixijs.com/8.x/examples/events/custom-hitarea
 [Check if Point Is Inside A Polygon]: https://stackoverflow.com/questions/22521982/check-if-point-is-inside-a-polygon
 [Gist - point to line 2d]: https://gist.github.com/mattdesl/47412d930dcd8cd765c871a65532ffac
-[Lesson 6 - Coordinates]: /guide/lesson-006#coordinates
+[Lesson 6 - Coordinate System Conversion]: /guide/lesson-006#coordinates
+[SerializedNode]: /guide/lesson-010#shape-to-serialized-node

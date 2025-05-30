@@ -1,7 +1,7 @@
 import { Entity } from '@lastolivegames/becsy';
 import { IPointData } from '@pixi/math';
 import { mat3, vec2 } from 'gl-matrix';
-import { isNil, path2Absolute, path2String } from '@antv/util';
+import { isNil } from '@antv/util';
 import {
   CaptureUpdateAction,
   CaptureUpdateActionType,
@@ -14,10 +14,14 @@ import {
   deserializePoints,
   EASING_FUNCTION,
   getScale,
+  parsePath,
+  PathSerializedNode,
   PolylineSerializedNode,
   SerializedNode,
   serializedNodesToEntities,
   serializePoints,
+  shiftPath,
+  transformPath,
 } from './utils';
 import {
   AABB,
@@ -35,7 +39,9 @@ import {
   Mat3,
   OBB,
   Parent,
+  Path,
   Pen,
+  Polyline,
   RasterScreenshotRequest,
   RBush,
   Selected,
@@ -846,126 +852,47 @@ export class API {
       diff.height = height;
     }
 
-    if (node.type === 'polyline' && delta) {
-      const { strokeAlignment, strokeWidth } = node;
+    if (delta) {
+      if (node.type === 'polyline') {
+        const { strokeAlignment, strokeWidth } = node;
+        const shiftedPoints = maybeShiftPoints(
+          deserializePoints((oldNode as PolylineSerializedNode)?.points).map(
+            (point) => {
+              const [x, y] = point;
+              const [newX, newY] = vec2.transformMat3(
+                vec2.create(),
+                [x, y],
+                delta,
+              );
+              return [newX, newY] as [number, number];
+            },
+          ),
+          strokeAlignment,
+          strokeWidth,
+        );
 
-      const points = deserializePoints(
-        (oldNode as PolylineSerializedNode)?.points,
-      );
-      const shiftedPoints = maybeShiftPoints(
-        points.map((point) => {
-          const [x, y] = point;
-          const [newX, newY] = vec2.transformMat3(vec2.create(), [x, y], delta);
-          return [newX, newY] as [number, number];
-        }),
-        strokeAlignment,
-        strokeWidth,
-      );
+        const { minX, minY } = Polyline.getGeometryBounds({
+          points: shiftedPoints,
+        });
 
-      const minX = Math.min(
-        ...shiftedPoints.map((point) =>
-          isNaN(point[0]) ? Infinity : point[0],
-        ),
-      );
-      const minY = Math.min(
-        ...shiftedPoints.map((point) =>
-          isNaN(point[1]) ? Infinity : point[1],
-        ),
-      );
-
-      (diff as PolylineSerializedNode).points = serializePoints(
-        shiftedPoints.map((point) => [point[0] - minX, point[1] - minY]),
-      );
+        (diff as PolylineSerializedNode).points = serializePoints(
+          shiftedPoints.map((point) => [point[0] - minX, point[1] - minY]),
+        );
+      } else if (node.type === 'path') {
+        const d = transformPath((oldNode as PathSerializedNode).d, delta);
+        const { subPaths } = parsePath(d);
+        const points = subPaths.map((subPath) =>
+          subPath
+            .getPoints()
+            .map((point) => [point[0], point[1]] as [number, number]),
+        );
+        // @ts-ignore
+        const { minX, minY } = Path.getGeometryBounds({ d }, { points });
+        (diff as PathSerializedNode).d = shiftPath(d, -minX, -minY);
+      }
     }
 
     this.updateNode(node, diff);
-    // } else if (type === 'path') {
-    //   const { x: prevX, y: prevY } = this.getNodeTransform(node);
-    //   if (!isNil(x) && isNil(dx)) {
-    //     dx = x - prevX;
-    //   }
-    //   if (!isNil(y) && isNil(dy)) {
-    //     dy = y - prevY;
-    //   }
-
-    //   const hasDx = !isNil(dx);
-    //   const hasDy = !isNil(dy);
-
-    //   const diff: Partial<PathSerializedNode> = {};
-    //   const { d } = node;
-    //   const absoluteArray = path2Absolute(d);
-
-    //   absoluteArray.forEach((segment) => {
-    //     const [command] = segment;
-    //     if (command === 'M') {
-    //       if (hasDx) {
-    //         segment[1] += dx;
-    //       }
-    //       if (hasDy) {
-    //         segment[2] += dy;
-    //       }
-    //     } else if (command === 'L') {
-    //       if (hasDx) {
-    //         segment[1] += dx;
-    //       }
-    //       if (hasDy) {
-    //         segment[2] += dy;
-    //       }
-    //     } else if (command === 'H') {
-    //       if (hasDx) {
-    //         segment[1] += dx;
-    //       }
-    //     } else if (command === 'V') {
-    //       if (hasDy) {
-    //         segment[1] += dy;
-    //       }
-    //     } else if (command === 'A') {
-    //       if (hasDx) {
-    //         segment[6] += dx;
-    //       }
-    //       if (hasDy) {
-    //         segment[7] += dy;
-    //       }
-    //     } else if (command === 'T') {
-    //       if (hasDx) {
-    //         segment[1] += dx;
-    //       }
-    //       if (hasDy) {
-    //         segment[2] += dy;
-    //       }
-    //     } else if (command === 'C') {
-    //       if (hasDx) {
-    //         segment[1] += dx;
-    //         segment[3] += dx;
-    //         segment[5] += dx;
-    //       }
-    //       if (hasDy) {
-    //         segment[2] += dy;
-    //         segment[4] += dy;
-    //         segment[6] += dy;
-    //       }
-    //     } else if (command === 'S') {
-    //       if (hasDx) {
-    //         segment[1] += dx;
-    //         segment[3] += dx;
-    //       }
-    //       if (hasDy) {
-    //         segment[2] += dy;
-    //         segment[4] += dy;
-    //       }
-    //     } else if (command === 'Q') {
-    //       if (hasDx) {
-    //         segment[1] += dx;
-    //         segment[3] += dx;
-    //       }
-    //       if (hasDy) {
-    //         segment[2] += dy;
-    //         segment[4] += dy;
-    //       }
-    //     }
-    //   });
-
-    //   diff.d = path2String(absoluteArray);
   }
 
   deleteNodesById(ids: SerializedNode['id'][]) {
