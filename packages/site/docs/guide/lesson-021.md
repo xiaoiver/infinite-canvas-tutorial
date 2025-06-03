@@ -12,11 +12,11 @@ In Konva, the operation layer on selected shapes is called [Transformer], which 
 -   [HTML5 Canvas Shape select, resize and rotate]
 -   [Limit Dragging and Resizing]
 
-We also chose to use the name Transformer, which looks very similar to the shape's AABB. In fact, it's called OBB (oriented bounding box), which is a rectangle with a rotation angle.
+We also chose to use the name Transformer, which looks very similar to the shape's AABB. In fact, it's called OBB (oriented bounding box), which is a rectangle with a rotation angle under the world coordinate.
 
 ## Serializing Transform Matrix and Dimension Information {#serialize-transform-dimension}
 
-In Figma, the transform matrix and dimension information for shapes are as follows. We know that for 2D shapes, the mat3 transform matrix can be decomposed into translation, scale, and rotation parts. Among them, X/Y corresponds to translation, and scale will be introduced in the [flip](#flip) section.
+In Figma, the local transform matrix and dimension information for shapes are as follows. We know that for 2D shapes, the mat3 transform matrix can be decomposed into translation, scale, and rotation parts. Among them, X/Y corresponds to translation, and scale will be introduced in the [flip](#flip) section.
 
 ![source: https://help.figma.com/hc/en-us/articles/360039956914-Adjust-alignment-rotation-position-and-dimensions](https://help.figma.com/hc/article_attachments/29799649003671)
 
@@ -300,7 +300,47 @@ Finally, transform the selected shape based on the top-left and bottom-right anc
 
 ### Transform Shape {#transform-shape}
 
-Now we know the properties before and after resize (transform and dimension information).
+Now that we know the properties before and after resize (transform and dimension information), it's easy to calculate the transition matrix between these two states:
+
+```plaintext
+// @see https://github.com/konvajs/konva/blob/master/src/shapes/Transformer.ts#L1106
+
+[delta transform] = [new transform] * [old transform inverted]
+```
+
+```ts
+const baseSize = 10000000;
+const oldTr = mat3.create();
+mat3.translate(oldTr, oldTr, [oldAttrs.x, oldAttrs.y]);
+mat3.rotate(oldTr, oldTr, oldAttrs.rotation);
+mat3.scale(oldTr, oldTr, [
+    oldAttrs.width / baseSize,
+    oldAttrs.height / baseSize,
+]);
+const newTr = mat3.create();
+mat3.translate(newTr, newTr, [newAttrs.x, newAttrs.y]);
+mat3.rotate(newTr, newTr, newAttrs.rotation);
+mat3.scale(newTr, newTr, [
+    newAttrs.width / baseSize,
+    newAttrs.height / baseSize,
+]);
+
+const delta = mat3.multiply(newTr, newTr, mat3.invert(mat3.create(), oldTr));
+```
+
+But we can't apply this matrix directly to the selected shape, we also need to consider the transformation of the parent node in the scene graph in the world coordinate system:
+
+```plaintext
+[delta transform] * [parent transform] * [old local transform] = [parent transform] * [new local transform]
+```
+
+We can get the new transformation of selected shape in local coordinate system after left-multiplying its parent's world transform:
+
+```plaintext
+[new local] = [parent inverted] * [delta] * [parent] * [old local]
+```
+
+Finally the new matrix under the local coordinate system is applied to the selected shape.
 
 ### Lock Aspect Ratio {#lock-aspect-ratio}
 
@@ -384,6 +424,10 @@ if (centeredScaling) {
 When dragging an anchor point or edge to the opposite direction, flipping occurs. The following is the effect in Figma, note the change in Rotation:
 
 ![Rotate 180 deg when flipped](/resize-flip.gif)
+
+We use a gradient background to show this flipping effect more clearly:
+
+![Flip a rect with gradient fill](/rotate-when-flipped.png)
 
 ## Rotation {#rotation}
 

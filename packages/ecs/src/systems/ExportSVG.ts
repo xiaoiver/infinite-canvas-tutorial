@@ -5,6 +5,7 @@ import {
   CheckboardStyle,
   Children,
   Circle,
+  ComputedBounds,
   DropShadow,
   Ellipse,
   FillGradient,
@@ -93,6 +94,7 @@ export class ExportSVG extends System {
             InnerShadow,
             Visibility,
             FractionalIndex,
+            ComputedBounds,
           )
           .read.and.using(Screenshot, VectorScreenshotRequest).write,
     );
@@ -130,7 +132,12 @@ export class ExportSVG extends System {
     }
 
     serializeNodesToSVGElements(
-      entityToSerializedNodes(cameras[0], (entity) => !entity.has(UI)),
+      cameras[0]
+        .read(Parent)
+        .children.map((child) =>
+          entityToSerializedNodes(child, (entity) => !entity.has(UI)),
+        )
+        .flat(),
     ).forEach((element) => {
       $namespace.appendChild(element);
     });

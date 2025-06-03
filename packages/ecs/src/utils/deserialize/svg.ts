@@ -1,4 +1,4 @@
-import { isNumber } from '@antv/util';
+import { isNil, isNumber } from '@antv/util';
 import { Visibility } from '../../components';
 import {
   defaultAttributes,
@@ -159,7 +159,7 @@ export function svgElementsToSerializedNodes(
 
     const node = {
       id: `${id}`,
-      parentId: parentId ? `${parentId}` : undefined,
+      parentId: !isNil(parentId) ? `${parentId}` : undefined,
       type,
       ...defaultAttributes[type],
       ...attributes,

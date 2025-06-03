@@ -163,7 +163,10 @@ describe('Rect', () => {
     }
 
     const dir = `${__dirname}/snapshots`;
-    expect($canvas!.getContext('webgl1')).toMatchWebGLSnapshot(dir, 'rect');
+    await expect($canvas!.getContext('webgl1')).toMatchWebGLSnapshot(
+      dir,
+      'rect',
+    );
 
     await app.exit();
   });

@@ -534,8 +534,8 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
     fill,
     stroke,
     strokeWidth,
-    strokeCap,
-    strokeJoin,
+    strokeLinecap,
+    strokeLinejoin,
     strokeAlignment,
     opacity,
     fillOpacity,
@@ -584,11 +584,11 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
   if (!isNil(strokeWidth)) {
     safeAddComponent(entity, Stroke, { width: strokeWidth });
   }
-  if (!isNil(strokeCap)) {
-    safeAddComponent(entity, Stroke, { linecap: strokeCap });
+  if (!isNil(strokeLinecap)) {
+    safeAddComponent(entity, Stroke, { linecap: strokeLinecap });
   }
-  if (!isNil(strokeJoin)) {
-    safeAddComponent(entity, Stroke, { linejoin: strokeJoin });
+  if (!isNil(strokeLinejoin)) {
+    safeAddComponent(entity, Stroke, { linejoin: strokeLinejoin });
   }
   if (!isNil(strokeAlignment)) {
     safeAddComponent(entity, Stroke, { alignment: strokeAlignment });

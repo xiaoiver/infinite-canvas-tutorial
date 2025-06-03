@@ -143,7 +143,8 @@ export class RenderTransformer extends System {
 
     const { mask, tlAnchor, trAnchor, blAnchor, brAnchor } =
       camera.read(Transformable);
-    const { x, y, width, height, rotation } = this.getOBB(camera);
+    const { x, y, width, height, rotation, scaleX, scaleY } =
+      this.getOBB(camera);
 
     if (width === 0 || height === 0) {
       mask.write(Visibility).value = 'hidden';
@@ -164,6 +165,10 @@ export class RenderTransformer extends System {
         y,
       },
       rotation,
+      scale: {
+        x: scaleX,
+        y: scaleY,
+      },
     });
 
     Object.assign(tlAnchor.write(Circle), {
@@ -417,17 +422,19 @@ export class RenderTransformer extends System {
 
     if (selecteds.length === 1) {
       const selected = selecteds[0];
-      const { obb } = selected.read(ComputedBounds);
+      if (selected.has(ComputedBounds)) {
+        const { obb } = selected.read(ComputedBounds);
 
-      return {
-        x: obb.x,
-        y: obb.y,
-        width: obb.width,
-        height: obb.height,
-        rotation: obb.rotation,
-        scaleX: obb.scaleX,
-        scaleY: obb.scaleY,
-      };
+        return {
+          x: obb.x,
+          y: obb.y,
+          width: obb.width,
+          height: obb.height,
+          rotation: obb.rotation,
+          scaleX: obb.scaleX,
+          scaleY: obb.scaleY,
+        };
+      }
     } else {
       // const rotation = mask.read(Transform).rotation;
       // const totalPoints: [number, number][] = [];

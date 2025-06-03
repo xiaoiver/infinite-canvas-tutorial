@@ -1,3 +1,5 @@
+import { path2Absolute, path2String } from '@antv/util';
+import { mat3, vec2 } from 'gl-matrix';
 import {
   fromTransformAttribute,
   translate,
@@ -11,8 +13,6 @@ import { SerializedNode } from './type';
 import { getAABB } from './svg';
 import { serializePoints } from './points';
 import { deserializePoints } from '../deserialize';
-import { path2Absolute, path2String } from '@antv/util';
-import { mat3, vec2 } from 'gl-matrix';
 
 export function fixTransform(transform: string, attributes: SerializedNode) {
   const { x, y, width, height } = getAABB(attributes);
@@ -46,13 +46,17 @@ export function fixTransform(transform: string, attributes: SerializedNode) {
 
     const {
       translate: { tx, ty },
-      scale: { sx, sy }, // FIXME: scale is not working for now
+      scale: { sx, sy },
       rotation: { angle },
     } = decomposeTSR(matrix);
+
+    console.log('tx', tx, 'ty', ty, 'sx', sx, 'sy', sy, 'angle', angle);
 
     attributes.x = tx + x;
     attributes.y = ty + y;
     attributes.rotation = angle;
+    attributes.scaleX = sx;
+    attributes.scaleY = sy;
   }
 
   const { type } = attributes;
@@ -73,6 +77,9 @@ export function fixTransform(transform: string, attributes: SerializedNode) {
   } else if (type === 'path') {
     attributes.d = shiftPath(attributes.d, -x, -y);
   }
+
+  // @ts-ignore
+  delete attributes.transform;
 }
 
 export function shiftPath(d: string, dx: number, dy: number) {

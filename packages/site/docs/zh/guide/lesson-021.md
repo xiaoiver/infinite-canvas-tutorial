@@ -12,11 +12,11 @@ publish: false
 -   [HTML5 Canvas Shape select, resize and rotate]
 -   [Limit Dragging and Resizing]
 
-我们也选择使用 Transformer 这个名字，它看起来和图形的 AABB 非常相似，事实上它被称为 OBB(oriented bounding box)，是一个带有旋转角度的矩形。
+我们也选择使用 Transformer 这个名字，它看起来和图形的 AABB 非常相似，事实上它被称为 OBB(oriented bounding box)，是一个世界坐标系下带有旋转角度的矩形。
 
 ## 序列化变换矩阵和尺寸信息 {#serialize-transform-dimension}
 
-在 Figma 中图形的变换矩阵和尺寸信息如下。我们知道对于 2D 图形的变换矩阵 mat3 可以分解成 translation, scale 和 rotation 三部分。其中 X/Y 对应 translation，scale 我们放到[翻转](#flip)这一小节介绍。
+在 Figma 中图形局部坐标系下的变换矩阵和尺寸信息如下。我们知道对于 2D 图形的变换矩阵 mat3 可以分解成 translation, scale 和 rotation 三部分。其中 X/Y 对应 translation，scale 我们放到[翻转](#flip)这一小节介绍。
 
 ![source: https://help.figma.com/hc/en-us/articles/360039956914-Adjust-alignment-rotation-position-and-dimensions](https://help.figma.com/hc/article_attachments/29799649003671)
 
@@ -300,7 +300,47 @@ private handleSelectedResizing(
 
 ### 变换图形 {#transform-shape}
 
-现在我们知道了发生 resize 前后的属性（变换和尺寸信息）。
+现在我们知道了发生 resize 前后的属性（变换和尺寸信息），很容易计算出两个状态间的过渡矩阵：
+
+```plaintext
+// @see https://github.com/konvajs/konva/blob/master/src/shapes/Transformer.ts#L1106
+
+[delta transform] = [new transform] * [old transform inverted]
+```
+
+```ts
+const baseSize = 10000000;
+const oldTr = mat3.create();
+mat3.translate(oldTr, oldTr, [oldAttrs.x, oldAttrs.y]);
+mat3.rotate(oldTr, oldTr, oldAttrs.rotation);
+mat3.scale(oldTr, oldTr, [
+    oldAttrs.width / baseSize,
+    oldAttrs.height / baseSize,
+]);
+const newTr = mat3.create();
+mat3.translate(newTr, newTr, [newAttrs.x, newAttrs.y]);
+mat3.rotate(newTr, newTr, newAttrs.rotation);
+mat3.scale(newTr, newTr, [
+    newAttrs.width / baseSize,
+    newAttrs.height / baseSize,
+]);
+
+const delta = mat3.multiply(newTr, newTr, mat3.invert(mat3.create(), oldTr));
+```
+
+但是我们并不能直接将这个矩阵应用到目标图形上，还需要考虑场景图中父节点在世界坐标系下的变换：
+
+```plaintext
+[delta transform] * [parent transform] * [old local transform] = [parent transform] * [new local transform]
+```
+
+左乘父节点在世界坐标系下的变换的逆变换，可以得到目标图形局部坐标系下的变换：
+
+```plaintext
+[new local] = [parent inverted] * [delta] * [parent] * [old local]
+```
+
+最后将新的局部坐标系下矩阵应用到目标图形上。
 
 ### 锁定长宽比 {#lock-aspect-ratio}
 
@@ -384,6 +424,10 @@ if (centeredScaling) {
 当拖拽锚点或者边到反方向时，会出现翻转现象，下图为 Figma 中的效果，注意 Rotation 的变化：
 
 ![Rotate 180 deg when flipped](/resize-flip.gif)
+
+我们用渐变背景来更清晰地展示这种翻转效果：
+
+![Flip a rect with gradient fill](/rotate-when-flipped.png)
 
 ## 旋转 {#rotation}
 

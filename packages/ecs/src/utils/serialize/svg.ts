@@ -1,6 +1,6 @@
 import { isNil, isString } from '@antv/util';
 import toposort from 'toposort';
-import { Path, Polyline } from '../../components';
+import { Mat3, Path, Polyline } from '../../components';
 import { maybeShiftPoints, shiftPoints } from '../../systems/ComputePoints';
 import { fontStringFromTextStyle } from '../../systems/ComputeTextMetrics';
 import { createSVGElement } from '../browser';
@@ -26,8 +26,8 @@ import { isPattern, Pattern } from '../pattern';
 import { generateGradientKey, generatePatternKey } from '../../resources';
 import { deserializePoints } from '../deserialize';
 import { formatTransform } from '../matrix';
+import { parsePath } from '../curve';
 import { sortByFractionalIndex } from '../../systems';
-import { parsePath } from '..';
 
 const strokeDefaultAttributes = {
   strokeOpacity: 1,
@@ -37,7 +37,8 @@ const strokeDefaultAttributes = {
   strokeLinejoin: 'miter',
   strokeAlignment: 'center',
   strokeMiterlimit: 4,
-  strokeDasharray: 'none',
+  // strokeDasharray: 'none',
+  strokeDasharray: '0,0',
   strokeDashoffset: 0,
 };
 
@@ -144,7 +145,13 @@ export function serializeNodesToSVGElements(
     element.id = `node-${id}`;
 
     const {
-      transform,
+      x = 0,
+      y = 0,
+      width,
+      height,
+      scaleX = 1,
+      scaleY = 1,
+      rotation = 0,
       innerShadowColor,
       innerShadowOffsetX,
       innerShadowOffsetY,
@@ -189,19 +196,26 @@ export function serializeNodesToSVGElements(
       }
     });
 
-    // Handle negative size of rect.
-    if (type === 'rect') {
-      const { width, height, x, y } = node;
-      if (width < 0 || height < 0) {
-        const x1 = x;
-        const y1 = y;
-        const x2 = x + width;
-        const y2 = y + height;
-        element.setAttribute('x', `${Math.min(x1, x2)}`);
-        element.setAttribute('y', `${Math.min(y1, y2)}`);
-        element.setAttribute('width', `${Math.abs(width)}`);
-        element.setAttribute('height', `${Math.abs(height)}`);
-      }
+    if (type === 'ellipse') {
+      element.setAttribute('cx', `${width / 2}`);
+      element.setAttribute('cy', `${height / 2}`);
+      element.setAttribute('rx', `${width / 2}`);
+      element.setAttribute('ry', `${height / 2}`);
+    } else if (type === 'rect') {
+      element.setAttribute('width', `${width}`);
+      element.setAttribute('height', `${height}`);
+      // const { width, height, x, y } = node;
+      // // Handle negative size of rect.
+      // if (width < 0 || height < 0) {
+      //   const x1 = x;
+      //   const y1 = y;
+      //   const x2 = x + width;
+      //   const y2 = y + height;
+      //   element.setAttribute('x', `${Math.min(x1, x2)}`);
+      //   element.setAttribute('y', `${Math.min(y1, y2)}`);
+      //   element.setAttribute('width', `${Math.abs(width)}`);
+      //   element.setAttribute('height', `${Math.abs(height)}`);
+      // }
     }
 
     if (textAlign) {
@@ -314,9 +328,26 @@ export function serializeNodesToSVGElements(
       exportText(node, $g);
     }
 
-    const { a, b, c, d, tx, ty } = transform.matrix;
-    if (a !== 1 || b !== 0 || c !== 0 || d !== 1 || tx !== 0 || ty !== 0) {
-      $g.setAttribute('transform', `matrix(${a},${b},${c},${d},${tx},${ty})`);
+    const matrix = Mat3.from_scale_angle_translation(
+      {
+        x: scaleX,
+        y: scaleY,
+      },
+      rotation,
+      {
+        x,
+        y,
+      },
+    );
+    const a = matrix.m00;
+    const b = matrix.m01;
+    const c = matrix.m10;
+    const d = matrix.m11;
+    const e = matrix.m20;
+    const f = matrix.m21;
+
+    if (a !== 1 || b !== 0 || c !== 0 || d !== 1 || e !== 0 || f !== 0) {
+      $g.setAttribute('transform', `matrix(${a},${b},${c},${d},${e},${f})`);
     }
 
     idSVGElementMap.set(id, $g);
@@ -332,13 +363,12 @@ export function serializeNodesToSVGElements(
     }
   }
 
-  // TODO: Sort by zIndex
-
   // Sort by fractionalIndex
   elements
     .sort((a, b) => {
-      const aNode = idSerializedNodeMap.get(`node-${a.id}`);
-      const bNode = idSerializedNodeMap.get(`node-${b.id}`);
+      // node-1 -> 1
+      const aNode = idSerializedNodeMap.get(`${a.id.split('-')[1]}`);
+      const bNode = idSerializedNodeMap.get(`${b.id.split('-')[1]}`);
       return sortByFractionalIndex(
         aNode.fractionalIndex,
         bNode.fractionalIndex,

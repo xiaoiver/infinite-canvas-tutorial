@@ -37,7 +37,12 @@ import {
   ZIndex,
 } from '../components';
 import { Commands } from '../commands/Commands';
-import { distanceBetweenPoints, getCursor } from '../utils';
+import {
+  decompose,
+  distanceBetweenPoints,
+  getCursor,
+  SerializedNode,
+} from '../utils';
 import { API } from '../API';
 import { RenderHighlighter } from './RenderHighlighter';
 import {
@@ -45,8 +50,7 @@ import {
   RenderTransformer,
   TRANSFORMER_ANCHOR_STROKE_COLOR,
 } from './RenderTransformer';
-
-import { SerializedNode, updateGlobalTransform } from '..';
+import { updateGlobalTransform } from './Transform';
 
 enum SelectionMode {
   IDLE = 'IDLE',
@@ -175,7 +179,6 @@ export class Select extends System {
   }
 
   private handleSelectedMoved(api: API) {
-    const camera = api.getCamera();
     api.setNodes(api.getNodes());
     api.record();
 
@@ -194,14 +197,10 @@ export class Select extends System {
     anchorNodeX: number,
     anchorNodeY: number,
   ) {
-    const camera = api.getCamera();
-    const sl = api.canvas2Transformer(
-      {
-        x: anchorNodeX,
-        y: anchorNodeY,
-      },
-      // this.#matrix,
-    );
+    const sl = api.canvas2Transformer({
+      x: anchorNodeX,
+      y: anchorNodeY,
+    });
 
     const x = sl.x - this.#obb.width / 2;
     const y = sl.y - this.#obb.height / 2;
@@ -595,8 +594,14 @@ export class Select extends System {
             const { anchor, cursor: cursorName } =
               this.renderTransformer.hitTest(api, { x, y }) || {};
             if (anchor) {
-              const { rotation } = mask.read(Transform);
-              cursor.value = getCursor(cursorName, rotation);
+              const { rotation, scale } = mask.read(Transform);
+              cursor.value = getCursor(
+                cursorName,
+                rotation,
+                '',
+                Math.sign(scale[0] * scale[1]) < 0,
+              );
+
               this.#resizingAnchorName = anchor;
               if (cursorName.includes('rotate')) {
                 this.#selectionMode = SelectionMode.READY_TO_ROTATE;
@@ -729,8 +734,8 @@ export class Select extends System {
     const camera = api.getCamera();
     const { selecteds } = camera.read(Transformable);
 
-    const { x, y, width, height, rotation, scaleX, scaleY } = newAttrs;
-    const epsilon = 0.000001;
+    const { width, height } = newAttrs;
+    const epsilon = 1;
 
     const oldAttrs = {
       x: this.#obb.x,
@@ -738,6 +743,8 @@ export class Select extends System {
       width: this.#obb.width,
       height: this.#obb.height,
       rotation: this.#obb.rotation,
+      scaleX: this.#obb.scaleX,
+      scaleY: this.#obb.scaleY,
     };
 
     const baseSize = 10000000;
@@ -748,13 +755,13 @@ export class Select extends System {
       oldAttrs.width / baseSize,
       oldAttrs.height / baseSize,
     ]);
-
     const newTr = mat3.create();
-    const newScaleX = newAttrs.width / baseSize;
-    const newScaleY = newAttrs.height / baseSize;
     mat3.translate(newTr, newTr, [newAttrs.x, newAttrs.y]);
     mat3.rotate(newTr, newTr, newAttrs.rotation);
-    mat3.scale(newTr, newTr, [newScaleX, newScaleY]);
+    mat3.scale(newTr, newTr, [
+      newAttrs.width / baseSize,
+      newAttrs.height / baseSize,
+    ]);
 
     // [delta transform] = [new transform] * [old transform inverted]
     const delta = mat3.multiply(
@@ -763,9 +770,26 @@ export class Select extends System {
       mat3.invert(mat3.create(), oldTr),
     );
 
-    if (selecteds.length === 1) {
-      const [selected] = selecteds;
+    selecteds.forEach((selected) => {
       const node = api.getNodeByEntity(selected);
+      const oldNode = this.#selectedNodes.find((n) => n.id === node.id);
+
+      // for each node we have the same [delta transform]
+      // the equations is
+      // [delta transform] * [parent transform] * [old local transform] = [parent transform] * [new local transform]
+      // and we need to find [new local transform]
+      // [new local] = [parent inverted] * [delta] * [parent] * [old local]
+      const parentTransform = api.getParentTransform(selected);
+      const localTransform = api.getTransform(oldNode);
+
+      const newLocalTransform = mat3.create();
+      mat3.multiply(newLocalTransform, parentTransform, localTransform);
+      mat3.multiply(newLocalTransform, delta, newLocalTransform);
+      mat3.multiply(
+        newLocalTransform,
+        mat3.invert(mat3.create(), parentTransform),
+        newLocalTransform,
+      );
 
       // if (width < 0) {
       //   if (this.#resizingAnchorName.includes('right')) {
@@ -795,24 +819,24 @@ export class Select extends System {
       //   }
       // }
 
-      const oldNode = this.#selectedNodes.find((n) => n.id === node.id);
+      const { rotation, translation } = decompose(newLocalTransform);
       api.updateNodeOBB(
         node,
         {
-          x,
-          y,
+          x: translation[0],
+          y: translation[1],
           width: Math.max(Math.abs(width), epsilon),
           height: Math.max(Math.abs(height), epsilon),
           rotation,
-          scaleX: scaleX * (Math.sign(width) || 1),
-          scaleY: scaleY * (Math.sign(height) || 1),
+          scaleX: oldAttrs.scaleX * (Math.sign(width) || 1),
+          scaleY: oldAttrs.scaleY * (Math.sign(height) || 1),
         },
         false,
-        delta,
+        newLocalTransform,
         oldNode,
       );
 
       updateGlobalTransform(selected);
-    }
+    });
   }
 }

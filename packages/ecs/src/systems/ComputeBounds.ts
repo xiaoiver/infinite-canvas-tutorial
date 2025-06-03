@@ -8,6 +8,7 @@ import {
   DropShadow,
   Ellipse,
   GlobalTransform,
+  Mat3,
   OBB,
   Path,
   Polyline,
@@ -17,6 +18,7 @@ import {
   Text,
   Transform,
 } from '../components';
+import { decompose } from '../utils';
 
 export class ComputeBounds extends System {
   renderables = this.query(
@@ -120,8 +122,11 @@ export class ComputeBounds extends System {
       }
 
       {
-        const { translation, rotation } = entity.read(Transform);
         const matrix = entity.read(GlobalTransform).matrix;
+        const { translation, rotation, scale } = decompose(
+          Mat3.toGLMat3(matrix),
+        );
+
         const { renderBounds } = entity.read(ComputedBounds);
 
         // apply global transform
@@ -134,8 +139,8 @@ export class ComputeBounds extends System {
           width: geometryBounds.maxX - geometryBounds.minX,
           height: geometryBounds.maxY - geometryBounds.minY,
           rotation,
-          scaleX: 1,
-          scaleY: 1,
+          scaleX: scale[0],
+          scaleY: scale[1],
         });
 
         Object.assign(entity.write(ComputedBounds), { bounds, obb });

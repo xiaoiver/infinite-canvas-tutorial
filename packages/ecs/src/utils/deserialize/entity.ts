@@ -57,7 +57,7 @@ export function serializedNodesToEntities(
     const entity = commands.spawn();
     idEntityMap.set(id, entity);
 
-    const { x, y, width, height, rotation } = attributes;
+    const { x, y, width, height, rotation, scaleX, scaleY } = attributes;
 
     entity.insert(
       new Transform({
@@ -66,6 +66,10 @@ export function serializedNodesToEntities(
           y,
         },
         rotation,
+        scale: {
+          x: scaleX,
+          y: scaleY,
+        },
       }),
     );
 

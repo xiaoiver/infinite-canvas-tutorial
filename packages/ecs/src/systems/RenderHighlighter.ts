@@ -135,7 +135,7 @@ export class RenderHighlighter extends System {
     }
 
     const {
-      obb: { x, y, width, height, rotation },
+      obb: { x, y, width, height, rotation, scaleX, scaleY },
     } = entity.read(ComputedBounds);
     Object.assign(highlighter.write(Transform), {
       translation: {
@@ -143,6 +143,10 @@ export class RenderHighlighter extends System {
         y,
       },
       rotation,
+      scale: {
+        x: scaleX,
+        y: scaleY,
+      },
     });
 
     if (entity.has(Circle)) {

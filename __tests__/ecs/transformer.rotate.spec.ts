@@ -135,7 +135,7 @@ describe('Transformer when rotate', () => {
     }
 
     const dir = `${__dirname}/snapshots`;
-    expect($canvas!.getContext('webgl1')).toMatchWebGLSnapshot(
+    await expect($canvas!.getContext('webgl1')).toMatchWebGLSnapshot(
       dir,
       'transformer-rotate',
     );

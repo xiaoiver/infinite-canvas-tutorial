@@ -157,7 +157,10 @@ describe('Ellipse', () => {
     }
 
     const dir = `${__dirname}/snapshots`;
-    expect($canvas!.getContext('webgl1')).toMatchWebGLSnapshot(dir, 'ellipse');
+    await expect($canvas!.getContext('webgl1')).toMatchWebGLSnapshot(
+      dir,
+      'ellipse',
+    );
 
     await app.exit();
   });

@@ -1,6 +1,5 @@
 import { Entity } from '@lastolivegames/becsy';
 import {
-  EllipseSerializedNode,
   FillAttributes,
   PathSerializedNode,
   PolylineSerializedNode,
@@ -26,7 +25,12 @@ import {
   Name,
   FractionalIndex,
   ComputedBounds,
+  Camera,
 } from '../../components';
+
+export function isEntity(entity: any): entity is Entity {
+  return entity.__id !== undefined;
+}
 
 export function entityToSerializedNodes(
   entity: Entity,
@@ -38,37 +42,33 @@ export function entityToSerializedNodes(
 
   const id = entity.__id;
   const parentId = entity.has(Children)
-    ? entity.read(Children).parent.__id
+    ? entity.read(Children).parent.has(Camera)
+      ? undefined
+      : entity.read(Children).parent.__id
     : undefined;
 
   let type: SerializedNode['type'];
   const attributes: Partial<SerializedNode> = {};
   if (entity.has(Circle)) {
     type = 'ellipse';
-    const { cx, cy, r } = entity.read(Circle);
-    Object.assign(attributes as EllipseSerializedNode, {
-      cx,
-      cy,
-      rx: r,
-      ry: r,
-    });
+    // const { cx, cy, r } = entity.read(Circle);
+    // Object.assign(attributes as EllipseSerializedNode, {
+    //   width: r * 2,
+    //   height: r * 2,
+    // } as EllipseSerializedNode);
   } else if (entity.has(Ellipse)) {
     type = 'ellipse';
-    const { cx, cy, rx, ry } = entity.read(Ellipse);
-    Object.assign(attributes as EllipseSerializedNode, {
-      cx,
-      cy,
-      rx,
-      ry,
-    });
+    // const { cx, cy, rx, ry } = entity.read(Ellipse);
+    // Object.assign(attributes as EllipseSerializedNode, {
+    //   cx,
+    //   cy,
+    //   rx,
+    //   ry,
+    // });
   } else if (entity.has(Rect)) {
     type = 'rect';
-    const { x, y, width, height, cornerRadius } = entity.read(Rect);
+    const { cornerRadius } = entity.read(Rect);
     Object.assign(attributes as RectSerializedNode, {
-      x,
-      y,
-      width,
-      height,
       cornerRadius,
     });
   } else if (entity.has(Polyline)) {
@@ -88,8 +88,8 @@ export function entityToSerializedNodes(
   } else if (entity.has(Text)) {
     type = 'text';
     const {
-      x,
-      y,
+      // x,
+      // y,
       content,
       fontFamily,
       fontSize,
@@ -112,8 +112,8 @@ export function entityToSerializedNodes(
       esdt,
     } = entity.read(Text);
     Object.assign(attributes as TextSerializedNode, {
-      x,
-      y,
+      // x,
+      // y,
       content,
       fontFamily,
       fontSize,
@@ -182,13 +182,15 @@ export function entityToSerializedNodes(
   // serialize transform
   if (entity.has(ComputedBounds)) {
     const {
-      obb: { x, y, width, height, rotation },
+      obb: { x, y, width, height, rotation, scaleX, scaleY },
     } = entity.read(ComputedBounds);
     attributes.x = x;
     attributes.y = y;
     attributes.width = width;
     attributes.height = height;
     attributes.rotation = rotation;
+    attributes.scaleX = scaleX;
+    attributes.scaleY = scaleY;
   }
 
   if (entity.has(Name)) {

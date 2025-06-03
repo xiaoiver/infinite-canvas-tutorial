@@ -14,6 +14,7 @@ import {
   deserializePoints,
   EASING_FUNCTION,
   getScale,
+  isEntity,
   parsePath,
   PathSerializedNode,
   PolylineSerializedNode,
@@ -180,6 +181,36 @@ export class API {
         return this.getNodeById(id);
       }
     }
+  }
+
+  getParentTransform(entity: Entity) {
+    if (entity.has(Children) && !entity.read(Children).parent.has(Camera)) {
+      return Mat3.toGLMat3(
+        entity.read(Children).parent.read(GlobalTransform).matrix,
+      );
+    }
+
+    return mat3.create();
+  }
+
+  getTransform(entity: Entity | SerializedNode) {
+    if (isEntity(entity)) {
+      return Mat3.toGLMat3(Mat3.fromTransform(entity.read(Transform)));
+    }
+
+    return Mat3.toGLMat3(
+      Mat3.from_scale_angle_translation(
+        {
+          x: entity.scaleX,
+          y: entity.scaleY,
+        },
+        entity.rotation,
+        {
+          x: entity.x,
+          y: entity.y,
+        },
+      ),
+    );
   }
 
   getCanvas() {
