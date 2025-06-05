@@ -1,0 +1,36 @@
+<svg viewBox="0 0 400 600" xmlns="http://www.w3.org/2000/svg">
+  <!-- 第一层：生理需求 -->
+  <polygon points="50,500 350,500 320,440 80,440" fill="#FF9500" stroke="none"/>
+  <text x="200" y="465" text-anchor="middle" fill="white" font-family="sans-serif" font-size="16" font-weight="bold">生理需求</text>
+  <text x="200" y="485" text-anchor="middle" fill="white" font-family="sans-serif" font-size="13">食物、水、睡眠、呼吸</text>
+  
+  <!-- 第二层：安全需求 -->
+  <polygon points="80,440 320,440 290,380 110,380" fill="#2997FF" stroke="none"/>
+  <text x="200" y="405" text-anchor="middle" fill="white" font-family="sans-serif" font-size="16" font-weight="bold">安全需求</text>
+  <text x="200" y="425" text-anchor="middle" fill="white" font-family="sans-serif" font-size="13">人身安全、工作保障、健康保障</text>
+  
+  <!-- 第三层：社交需求 -->
+  <polygon points="110,380 290,380 260,320 140,320" fill="#5DD6CC" stroke="none"/>
+  <text x="200" y="345" text-anchor="middle" fill="white" font-family="sans-serif" font-size="16" font-weight="bold">社交需求</text>
+  <text x="200" y="365" text-anchor="middle" fill="white" font-family="sans-serif" font-size="13">友谊、爱情、归属感</text>
+  
+  <!-- 第四层：尊重需求 -->
+  <polygon points="140,320 260,320 230,260 170,260" fill="#FFCC00" stroke="none"/>
+  <text x="200" y="285" text-anchor="middle" fill="#02041A" font-family="sans-serif" font-size="16" font-weight="bold">尊重需求</text>
+  <text x="200" y="305" text-anchor="middle" fill="#02041A" font-family="sans-serif" font-size="13">自尊、他人尊重、成就感</text>
+  
+  <!-- 第五层：自我实现需求 -->
+  <polygon points="170,260 230,260 200,200 200,200" fill="#A25AD9" stroke="none"/>
+  <text x="200" y="220" text-anchor="middle" fill="white" font-family="sans-serif" font-size="16" font-weight="bold">自我实现需求</text>
+  <text x="200" y="240" text-anchor="middle" fill="white" font-family="sans-serif" font-size="13">创造力、道德、解决问题</text>
+  
+  <!-- 标题 -->
+  <text x="200" y="150" text-anchor="middle" fill="#02041AE0" font-family="sans-serif" font-size="24" font-weight="bold">马斯洛需求层次金字塔</text>
+  
+  <!-- 层级标注 -->
+  <text x="30" y="470" text-anchor="middle" fill="#02041A99" font-family="sans-serif" font-size="10">1</text>
+  <text x="30" y="410" text-anchor="middle" fill="#02041A99" font-family="sans-serif" font-size="10">2</text>
+  <text x="30" y="350" text-anchor="middle" fill="#02041A99" font-family="sans-serif" font-size="10">3</text>
+  <text x="30" y="290" text-anchor="middle" fill="#02041A99" font-family="sans-serif" font-size="10">4</text>
+  <text x="30" y="230" text-anchor="middle" fill="#02041A99" font-family="sans-serif" font-size="10">5</text>
+</svg>

@@ -10,8 +10,8 @@ import {
 } from '@infinite-canvas-tutorial/ecs';
 import { apiContext, appStateContext } from '../context';
 import { ExtendedAPI } from '../API';
+import { TOP_NAVBAR_HEIGHT } from './infinite-canvas';
 
-const CONTEXT_BAR_HEIGHT = 48;
 const CONTEXT_BAR_MARGIN_BOTTOM = 16;
 
 @customElement('ic-spectrum-context-bar')
@@ -108,6 +108,7 @@ export class ContextBar extends LitElement {
 
   private calculatePosition(node: SerializedNode): [number, number] {
     const { width, height } = this.api.getCanvas().read(Canvas);
+    const { topbarVisible } = this.appState;
 
     const entity = this.api.getEntity(node);
     if (!entity.has(ComputedBounds)) {
@@ -125,18 +126,21 @@ export class ContextBar extends LitElement {
         height,
         Math.max(
           0,
-          tl.y + (br.y - tl.y) + CONTEXT_BAR_HEIGHT + CONTEXT_BAR_MARGIN_BOTTOM,
+          tl.y +
+            (br.y - tl.y) +
+            (topbarVisible ? TOP_NAVBAR_HEIGHT : 0) +
+            CONTEXT_BAR_MARGIN_BOTTOM,
         ),
       ),
     ];
   }
 
   render() {
-    const { layersSelected } = this.appState;
+    const { layersSelected, contextBarVisible } = this.appState;
     const node = layersSelected[0] && this.api.getNodeById(layersSelected[0]);
     const isText = node?.type === 'text';
 
-    return html`${when(layersSelected.length > 0, () => {
+    return html`${when(contextBarVisible && layersSelected.length > 0, () => {
       const [left, top] = this.calculatePosition(node);
 
       return html` <div class="wrapper" style="left: ${left}px; top: ${top}px;">

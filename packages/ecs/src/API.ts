@@ -646,6 +646,10 @@ export class API {
    * @see https://infinitecanvas.cc/guide/lesson-005
    */
   setCheckboardStyle(checkboardStyle: CheckboardStyle) {
+    if (!this.#canvas.has(Grid)) {
+      this.#canvas.add(Grid);
+    }
+
     Object.assign(this.#canvas.write(Grid), {
       checkboardStyle,
     });
@@ -1072,15 +1076,17 @@ export class API {
     this.#history.clear();
   }
 
-  export(format: ExportFormat) {
+  export(format: ExportFormat, download = true) {
     if (format === ExportFormat.SVG) {
       safeAddComponent(this.#canvas, VectorScreenshotRequest, {
         canvas: this.#canvas,
+        download,
       });
     } else if (format === ExportFormat.PNG || format === ExportFormat.JPEG) {
       safeAddComponent(this.#canvas, RasterScreenshotRequest, {
         canvas: this.#canvas,
         type: `image/${format}`,
+        download,
       });
     }
 

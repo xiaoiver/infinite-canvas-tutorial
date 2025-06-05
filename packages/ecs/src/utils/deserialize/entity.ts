@@ -93,7 +93,6 @@ export function serializedNodesToEntities(
       const { points } = attributes as PolylineSerializedNode;
       entity.insert(new Polyline({ points: deserializePoints(points) }));
     } else if (type === 'path') {
-      // FIXME: path is not working for now
       const { d, fillRule, tessellationMethod } =
         attributes as PathSerializedNode;
       entity.insert(new Path({ d, fillRule, tessellationMethod }));

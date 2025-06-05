@@ -1,5 +1,6 @@
 import { html, css, LitElement } from 'lit';
 import { customElement } from 'lit/decorators.js';
+import { when } from 'lit/directives/when.js';
 import { consume } from '@lit/context';
 import { CheckboardStyle, AppState } from '@infinite-canvas-tutorial/ecs';
 import { apiContext, appStateContext } from '../context';
@@ -14,7 +15,7 @@ export enum ExportFormat {
 @customElement('ic-spectrum-top-navbar')
 export class TopNavbar extends LitElement {
   static styles = css`
-    :host {
+    .top-navbar {
       display: flex;
       justify-content: space-between;
       padding: var(--spectrum-global-dimension-size-100);
@@ -107,87 +108,94 @@ export class TopNavbar extends LitElement {
   }
 
   render() {
-    return html`
-      <sp-action-menu size="m" label="Main menu" quiet>
-        <sp-tooltip slot="tooltip" self-managed placement="bottom">
-          Main menu
-        </sp-tooltip>
-        <sp-icon-show-menu slot="icon" size="l"></sp-icon-show-menu>
-        <sp-menu-item>
-          Edit
-          <sp-menu slot="submenu" @change=${this.handleEdit}>
-            <sp-menu-item
-              value="undo"
-              ?disabled=${this.api?.isUndoStackEmpty()}
-            >
-              Undo
-              <kbd slot="value">⌘Z</kbd>
-            </sp-menu-item>
-            <sp-menu-item
-              value="redo"
-              ?disabled=${this.api?.isRedoStackEmpty()}
-            >
-              Redo
-              <kbd slot="value">⇧⌘Z</kbd>
-            </sp-menu-item>
-            <sp-menu-divider></sp-menu-divider>
-            <sp-menu-item value="cut">
-              Cut
-              <kbd slot="value">⌘X</kbd>
-            </sp-menu-item>
-            <sp-menu-item value="copy">
-              Copy
-              <kbd slot="value">⌘C</kbd>
-            </sp-menu-item>
-            <sp-menu-item value="paste">
-              Paste
-              <kbd slot="value">⌘V</kbd>
-            </sp-menu-item>
-          </sp-menu>
-        </sp-menu-item>
-        <sp-menu-item>
-          View
-          <sp-menu
-            slot="submenu"
-            selects="multiple"
-            .selected=${this.appState.checkboardStyle === CheckboardStyle.GRID
-              ? ['grid']
-              : []}
-            @change=${this.handleConfigView}
-          >
-            <sp-menu-item value="grid"> Grid </sp-menu-item>
-          </sp-menu>
-        </sp-menu-item>
-        <sp-menu-divider></sp-menu-divider>
-        <sp-menu-item>
-          Export as...
-          <sp-menu slot="submenu" @change=${this.handleExport}>
-            <sp-menu-item value=${ExportFormat.SVG}>SVG</sp-menu-item>
-            <sp-menu-item value=${ExportFormat.PNG}>PNG</sp-menu-item>
-            <sp-menu-item value=${ExportFormat.JPEG}>JPEG</sp-menu-item>
-          </sp-menu>
-        </sp-menu-item>
-      </sp-action-menu>
-      <div class="actions">
-        <sp-action-button
-          quiet
-          @click=${this.handleUndo}
-          ?disabled=${this.api?.isUndoStackEmpty()}
-        >
-          <sp-icon-undo slot="icon"></sp-icon-undo>
-          <sp-tooltip self-managed placement="bottom"> Undo </sp-tooltip>
-        </sp-action-button>
-        <sp-action-button
-          quiet
-          @click=${this.handleRedo}
-          ?disabled=${this.api?.isRedoStackEmpty()}
-        >
-          <sp-icon-redo slot="icon"></sp-icon-redo>
-          <sp-tooltip self-managed placement="bottom"> Redo </sp-tooltip>
-        </sp-action-button>
-        <ic-spectrum-zoom-toolbar />
-      </div>
-    `;
+    return when(
+      this.appState.topbarVisible,
+      () =>
+        html`
+          <div class="top-navbar">
+            <sp-action-menu size="m" label="Main menu" quiet>
+              <sp-tooltip slot="tooltip" self-managed placement="bottom">
+                Main menu
+              </sp-tooltip>
+              <sp-icon-show-menu slot="icon" size="l"></sp-icon-show-menu>
+              <sp-menu-item>
+                Edit
+                <sp-menu slot="submenu" @change=${this.handleEdit}>
+                  <sp-menu-item
+                    value="undo"
+                    ?disabled=${this.api?.isUndoStackEmpty()}
+                  >
+                    Undo
+                    <kbd slot="value">⌘Z</kbd>
+                  </sp-menu-item>
+                  <sp-menu-item
+                    value="redo"
+                    ?disabled=${this.api?.isRedoStackEmpty()}
+                  >
+                    Redo
+                    <kbd slot="value">⇧⌘Z</kbd>
+                  </sp-menu-item>
+                  <sp-menu-divider></sp-menu-divider>
+                  <sp-menu-item value="cut">
+                    Cut
+                    <kbd slot="value">⌘X</kbd>
+                  </sp-menu-item>
+                  <sp-menu-item value="copy">
+                    Copy
+                    <kbd slot="value">⌘C</kbd>
+                  </sp-menu-item>
+                  <sp-menu-item value="paste">
+                    Paste
+                    <kbd slot="value">⌘V</kbd>
+                  </sp-menu-item>
+                </sp-menu>
+              </sp-menu-item>
+              <sp-menu-item>
+                View
+                <sp-menu
+                  slot="submenu"
+                  selects="multiple"
+                  .selected=${this.appState.checkboardStyle ===
+                  CheckboardStyle.GRID
+                    ? ['grid']
+                    : []}
+                  @change=${this.handleConfigView}
+                >
+                  <sp-menu-item value="grid"> Grid </sp-menu-item>
+                </sp-menu>
+              </sp-menu-item>
+              <sp-menu-divider></sp-menu-divider>
+              <sp-menu-item>
+                Export as...
+                <sp-menu slot="submenu" @change=${this.handleExport}>
+                  <sp-menu-item value=${ExportFormat.SVG}>SVG</sp-menu-item>
+                  <sp-menu-item value=${ExportFormat.PNG}>PNG</sp-menu-item>
+                  <sp-menu-item value=${ExportFormat.JPEG}>JPEG</sp-menu-item>
+                </sp-menu>
+              </sp-menu-item>
+            </sp-action-menu>
+            <div class="actions">
+              <sp-action-button
+                quiet
+                @click=${this.handleUndo}
+                ?disabled=${this.api?.isUndoStackEmpty()}
+              >
+                <sp-icon-undo slot="icon"></sp-icon-undo>
+                <sp-tooltip self-managed placement="bottom"> Undo </sp-tooltip>
+              </sp-action-button>
+              <sp-action-button
+                quiet
+                @click=${this.handleRedo}
+                ?disabled=${this.api?.isRedoStackEmpty()}
+              >
+                <sp-icon-redo slot="icon"></sp-icon-redo>
+                <sp-tooltip self-managed placement="bottom"> Redo </sp-tooltip>
+              </sp-action-button>
+              <ic-spectrum-zoom-toolbar />
+            </div>
+          </div>
+        `,
+    );
   }
 }
 

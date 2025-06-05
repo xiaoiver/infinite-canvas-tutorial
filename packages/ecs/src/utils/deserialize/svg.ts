@@ -70,7 +70,7 @@ export function svgElementsToSerializedNodes(
         type === 'rect' &&
         (attributeName === 'rx' || attributeName === 'ry')
       ) {
-        attributeName = 'radius';
+        attributeName = 'cornerRadius';
         value = Number(value);
       } else if (
         attributeName === 'cx' ||
@@ -113,6 +113,12 @@ export function svgElementsToSerializedNodes(
       });
     } else if (type === 'text') {
       (attributes as TextSerializedNode).content = element.textContent;
+      const dominantBaseline =
+        element.attributes.getNamedItem('dominant-baseline')?.value;
+      if (dominantBaseline) {
+        (attributes as TextSerializedNode).textBaseline =
+          dominantBaseline as CanvasTextBaseline;
+      }
     } else if (type === 'line') {
       type = 'polyline';
       // @ts-ignore

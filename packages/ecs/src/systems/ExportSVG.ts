@@ -49,6 +49,7 @@ export class ExportSVG extends System {
   @co private *setScreenshotTrigger(
     canvas: Entity,
     dataURL: string,
+    download: boolean,
   ): Generator {
     if (!canvas.has(Screenshot)) {
       canvas.add(Screenshot);
@@ -56,7 +57,7 @@ export class ExportSVG extends System {
 
     const screenshot = canvas.write(Screenshot);
 
-    Object.assign(screenshot, { dataURL, canvas });
+    Object.assign(screenshot, { dataURL, canvas, download });
     yield;
 
     canvas.remove(Screenshot);
@@ -102,11 +103,15 @@ export class ExportSVG extends System {
 
   execute(): void {
     this.vectorScreenshotRequests.added.forEach((vectorScreenshotRequest) => {
-      const { canvas, grid } = vectorScreenshotRequest.read(
+      const { canvas, grid, download } = vectorScreenshotRequest.read(
         VectorScreenshotRequest,
       );
 
-      this.setScreenshotTrigger(canvas, this.toSVGDataURL(canvas, { grid }));
+      this.setScreenshotTrigger(
+        canvas,
+        this.toSVGDataURL(canvas, { grid }),
+        download,
+      );
     });
   }
 

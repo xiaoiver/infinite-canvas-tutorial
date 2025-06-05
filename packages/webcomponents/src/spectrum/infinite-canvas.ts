@@ -70,7 +70,7 @@ import '@spectrum-web-components/icons-workflow/icons/sp-icon-layers-bring-to-fr
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-layers-send-to-back.js';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-show-all-layers.js';
 
-const TOP_NAVBAR_HEIGHT = 48;
+export const TOP_NAVBAR_HEIGHT = 48;
 
 @customElement('ic-spectrum-canvas')
 export class InfiniteCanvas extends LitElement {
@@ -115,7 +115,7 @@ export class InfiniteCanvas extends LitElement {
     'https://unpkg.com/@antv/g-device-api@1.6.8/dist/pkg/glsl_wgsl_compiler_bg.wasm';
 
   @property({ type: Object, attribute: 'app-state' })
-  appState: AppState = getDefaultAppState();
+  appState: AppState;
 
   @property({ type: Array })
   nodes: SerializedNode[] = [];
@@ -143,15 +143,19 @@ export class InfiniteCanvas extends LitElement {
   }
 
   private handleResize(entries: ResizeObserverEntry[]) {
+    const { topbarVisible } = this.appStateProvider.value;
     const { width, height } = entries[0].contentRect;
     const dpr = window.devicePixelRatio;
 
     if (width && height) {
       const $canvas = this.shadowRoot?.querySelector('canvas');
       $canvas.width = width * dpr;
-      $canvas.height = (height - TOP_NAVBAR_HEIGHT) * dpr;
+      $canvas.height = (height - (topbarVisible ? TOP_NAVBAR_HEIGHT : 0)) * dpr;
 
-      this.apiProvider.value?.resizeCanvas(width, height - TOP_NAVBAR_HEIGHT);
+      this.apiProvider.value?.resizeCanvas(
+        $canvas.width / dpr,
+        $canvas.height / dpr,
+      );
     }
   }
 
@@ -161,23 +165,29 @@ export class InfiniteCanvas extends LitElement {
         await checkWebGPUSupport();
       }
 
-      this.appStateProvider.value = this.appState;
+      this.appStateProvider.value = {
+        ...getDefaultAppState(),
+        ...this.appState,
+      };
       this.nodesProvider.value = this.nodes;
+
+      const { topbarVisible, cameraZoom } = this.appStateProvider.value;
 
       const $canvas = document.createElement('canvas');
       $canvas.style.width = '100%';
-      $canvas.style.height = 'calc(100% - 48px)';
+      $canvas.style.height = topbarVisible
+        ? `calc(100% - ${TOP_NAVBAR_HEIGHT}px)`
+        : '100%';
       $canvas.tabIndex = 0; // Make canvas focusable
 
       const { width, height } = this.getBoundingClientRect();
-      const { cameraZoom } = this.appState;
 
       pendingCanvases.push({
         container: this,
         canvas: {
           element: $canvas,
           width,
-          height: height - TOP_NAVBAR_HEIGHT,
+          height: topbarVisible ? height - TOP_NAVBAR_HEIGHT : height,
           devicePixelRatio: window.devicePixelRatio,
           renderer,
           shaderCompilerPath,
@@ -193,12 +203,10 @@ export class InfiniteCanvas extends LitElement {
   });
 
   render() {
-    const appState = this.appStateProvider.value;
+    const { theme } = this.appStateProvider.value;
+
     const themeWrapper = (content: string | TemplateResult) =>
-      html`<sp-theme
-        system="spectrum"
-        color="${appState.theme.mode}"
-        scale="medium"
+      html`<sp-theme system="spectrum" color="${theme.mode}" scale="medium"
         >${typeof content === 'string' ? html`${content}` : content}</sp-theme
       >`;
 

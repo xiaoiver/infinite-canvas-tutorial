@@ -1,7 +1,11 @@
 import { field, Type } from '@lastolivegames/becsy';
 import { Rectangle } from '@pixi/math';
-import { BitmapFont, strokeOffset } from '../../utils';
-import { yOffsetFromTextBaseline } from '../../systems/ComputeTextMetrics';
+import { BitmapFont, strokeOffset, TextSerializedNode } from '../../utils';
+import {
+  computeBidi,
+  measureText,
+  yOffsetFromTextBaseline,
+} from '../../systems/ComputeTextMetrics';
 import { AABB } from '../math';
 import { DropShadow, Stroke } from '../renderable';
 
@@ -12,9 +16,20 @@ export type TextStyleWhiteSpace = 'normal' | 'pre' | 'pre-line';
  * @see https://developer.mozilla.org/en-US/docs/Web/SVG/Element/text
  */
 export class Text {
-  static getGeometryBounds(text: Text, computed: ComputedTextMetrics) {
-    const { x, y, textAlign, textBaseline } = text;
-    const { width, height, fontMetrics } = computed;
+  static getGeometryBounds(
+    text: Partial<Text> | Partial<TextSerializedNode>,
+    computed?: ComputedTextMetrics,
+  ) {
+    const { x, y, textAlign, textBaseline, content } = text;
+
+    let { width, height, fontMetrics } = computed ?? {};
+    if (!width || !height || !fontMetrics) {
+      computeBidi(content);
+      const metrics = measureText(text);
+      width = metrics.width;
+      height = metrics.height;
+      fontMetrics = metrics.fontMetrics;
+    }
 
     const hwidth = width / 2;
 

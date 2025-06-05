@@ -51,20 +51,8 @@ export function entityToSerializedNodes(
   const attributes: Partial<SerializedNode> = {};
   if (entity.has(Circle)) {
     type = 'ellipse';
-    // const { cx, cy, r } = entity.read(Circle);
-    // Object.assign(attributes as EllipseSerializedNode, {
-    //   width: r * 2,
-    //   height: r * 2,
-    // } as EllipseSerializedNode);
   } else if (entity.has(Ellipse)) {
     type = 'ellipse';
-    // const { cx, cy, rx, ry } = entity.read(Ellipse);
-    // Object.assign(attributes as EllipseSerializedNode, {
-    //   cx,
-    //   cy,
-    //   rx,
-    //   ry,
-    // });
   } else if (entity.has(Rect)) {
     type = 'rect';
     const { cornerRadius } = entity.read(Rect);
@@ -88,8 +76,6 @@ export function entityToSerializedNodes(
   } else if (entity.has(Text)) {
     type = 'text';
     const {
-      // x,
-      // y,
       content,
       fontFamily,
       fontSize,
@@ -112,8 +98,6 @@ export function entityToSerializedNodes(
       esdt,
     } = entity.read(Text);
     Object.assign(attributes as TextSerializedNode, {
-      // x,
-      // y,
       content,
       fontFamily,
       fontSize,

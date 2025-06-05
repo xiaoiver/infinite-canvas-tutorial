@@ -9,6 +9,7 @@ import {
   Ellipse,
   FillGradient,
   FillSolid,
+  Grid,
   Name,
   Opacity,
   Parent,
@@ -39,6 +40,7 @@ export class InitCanvas extends System {
         q.using(
           Canvas,
           Camera,
+          Grid,
           Name,
           Cursor,
           Transform,

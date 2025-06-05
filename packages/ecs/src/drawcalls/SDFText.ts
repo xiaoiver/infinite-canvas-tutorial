@@ -339,6 +339,8 @@ export class SDFText extends Drawcall {
       matrix.m22,
     ] as mat3;
 
+    console.log(u_ModelMatrix, 'u_ModelMatrix');
+
     const [buffer, legacyObject] = this.generateBuffer(
       this.shapes[0],
       this.useBitmapFont
@@ -493,13 +495,7 @@ export class SDFText extends Drawcall {
     bitmapFont: BitmapFont;
     fontScale: number;
   }) {
-    const {
-      textAlign,
-      textBaseline,
-      x = 0,
-      y = 0,
-      bitmapFontKerning,
-    } = object.read(Text);
+    const { textAlign, textBaseline, bitmapFontKerning } = object.read(Text);
     const metrics = object.read(ComputedTextMetrics);
     const globalRenderOrder = object.has(GlobalRenderOrder)
       ? object.read(GlobalRenderOrder).value
@@ -574,6 +570,8 @@ export class SDFText extends Drawcall {
           quad.bl.y,
         );
 
+        const x = 0;
+        const y = 0;
         const zIndex =
           (globalRenderOrder + (1 / total.length) * index) / ZINDEX_FACTOR;
         charPositionsBuffer.push(

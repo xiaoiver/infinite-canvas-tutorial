@@ -1,14 +1,14 @@
 import { isNil, isString } from '@antv/util';
 import toposort from 'toposort';
-import { Mat3, Path, Polyline } from '../../components';
-import { maybeShiftPoints, shiftPoints } from '../../systems/ComputePoints';
-import { fontStringFromTextStyle } from '../../systems/ComputeTextMetrics';
+import { Mat3 } from '../../components';
+import {
+  shiftPoints,
+  fontStringFromTextStyle,
+  sortByFractionalIndex,
+} from '../../systems';
 import { createSVGElement } from '../browser';
 import {
-  EllipseSerializedNode,
   InnerShadowAttributes,
-  PathSerializedNode,
-  PolylineSerializedNode,
   RectSerializedNode,
   SerializedNode,
   StrokeAttributes,
@@ -24,10 +24,7 @@ import {
 } from '../gradient';
 import { isPattern, Pattern } from '../pattern';
 import { generateGradientKey, generatePatternKey } from '../../resources';
-import { deserializePoints } from '../deserialize';
 import { formatTransform } from '../matrix';
-import { parsePath } from '../curve';
-import { sortByFractionalIndex } from '../../systems';
 
 const strokeDefaultAttributes = {
   strokeOpacity: 1,
@@ -102,6 +99,17 @@ export const defaultAttributes: Record<
     ...strokeDefaultAttributes,
   },
   text: {
+    fontFamily: 'sans-serif',
+    fontSize: 12,
+    fontWeight: 'normal',
+    fontStyle: 'normal',
+    fontVariant: 'normal',
+    letterSpacing: 0,
+    whiteSpace: 'normal',
+    textAlign: 'start',
+    textBaseline: 'alphabetic',
+    lineHeight: 0,
+    leading: 0,
     ...commonDefaultAttributes,
     ...fillDefaultAttributes,
   },
@@ -881,57 +889,4 @@ const dataUrlRegex =
   /^data:([a-z]+\/[a-z0-9\-\+]+)?(;charset=[a-z0-9\-]+)?(;base64)?,[a-z0-9\!\$&',\(\)\*\+,;=\-\._\~:@\/\?%\s]*$/i;
 export function isDataUrl(url: string) {
   return dataUrlRegex.test(url);
-}
-
-/**
- * Calculate the x and y of the node.
- */
-export function getAABB(node: SerializedNode) {
-  const { type } = node;
-  if (type === 'rect') {
-    const { x, y, width, height } = node as RectSerializedNode;
-    return { x, y, width, height };
-  } else if (type === 'text') {
-    const { x, y } = node as TextSerializedNode;
-    return { x, y, width: 0, height: 0 };
-  } else if (type === 'ellipse') {
-    // @ts-ignore
-    const { cx, cy, rx, ry } = node as EllipseSerializedNode;
-    return { x: cx - rx, y: cy - ry, width: rx * 2, height: ry * 2 };
-  } else if (type === 'polyline') {
-    const { points, strokeWidth, strokeAlignment } =
-      node as PolylineSerializedNode;
-
-    const shiftedPoints = maybeShiftPoints(
-      deserializePoints(points),
-      strokeAlignment,
-      strokeWidth,
-    );
-
-    const { minX, minY, maxX, maxY } = Polyline.getGeometryBounds({
-      points: shiftedPoints,
-    });
-    return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
-  } else if (type === 'path') {
-    const { d } = node as PathSerializedNode;
-    const { subPaths } = parsePath(d);
-    const points = subPaths.map((subPath) =>
-      subPath
-        .getPoints()
-        .map((point) => [point[0], point[1]] as [number, number]),
-    );
-
-    const { minX, minY, maxX, maxY } = Path.getGeometryBounds(
-      // @ts-ignore
-      {
-        d,
-      },
-      {
-        points,
-      },
-    );
-    return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
-  }
-
-  return { x: 0, y: 0, width: 0, height: 0 };
 }

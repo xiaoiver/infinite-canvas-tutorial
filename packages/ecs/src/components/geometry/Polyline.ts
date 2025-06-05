@@ -1,6 +1,7 @@
 import { field, Type } from '@lastolivegames/becsy';
 import { AABB } from '../math';
 import { Stroke } from '../renderable';
+import { deserializePoints, PolylineSerializedNode } from '../../utils';
 
 /**
  * Basic shape that creates straight lines connecting several points.
@@ -8,11 +9,17 @@ import { Stroke } from '../renderable';
  * @see https://developer.mozilla.org/en-US/docs/Web/SVG/Element/polyline
  */
 export class Polyline {
-  static getGeometryBounds(polyline: Polyline) {
-    const { points } = polyline;
+  static getGeometryBounds(
+    polyline: Partial<Polyline> | Partial<PolylineSerializedNode>,
+  ) {
+    let { points } = polyline;
 
     if (!points || points.length < 2) {
       return new AABB(0, 0, 0, 0);
+    }
+
+    if (typeof points === 'string') {
+      points = deserializePoints(points);
     }
 
     // FIXME: account for strokeLinejoin & strokeLinecap

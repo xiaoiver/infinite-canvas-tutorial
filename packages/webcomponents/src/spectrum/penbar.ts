@@ -2,6 +2,7 @@ import { html, css, LitElement } from 'lit';
 import { customElement } from 'lit/decorators.js';
 import { map } from 'lit/directives/map.js';
 import { consume } from '@lit/context';
+import { when } from 'lit/directives/when.js';
 import { Pen, AppState, API } from '@infinite-canvas-tutorial/ecs';
 import { apiContext, appStateContext } from '../context';
 
@@ -23,7 +24,7 @@ const PenMap = {
 @customElement('ic-spectrum-penbar')
 export class Penbar extends LitElement {
   static styles = css`
-    :host {
+    .penbar {
       display: flex;
       justify-content: center;
 
@@ -51,25 +52,29 @@ export class Penbar extends LitElement {
   }
 
   render() {
-    const { penbarAll, penbarSelected } = this.appState;
-    return html`
-      <sp-action-group
-        vertical
-        selects="single"
-        .selected=${penbarSelected}
-        @change=${this.handlePenChanged}
-        emphasized
-        quiet
-      >
-        ${map(penbarAll, (pen) => {
-          const { icon, label } = PenMap[pen];
-          return html`<sp-action-button value="${pen}">
-            ${icon}
-            <sp-tooltip self-managed placement="right"> ${label} </sp-tooltip>
-          </sp-action-button>`;
-        })}
-      </sp-action-group>
-    `;
+    const { penbarAll, penbarSelected, penbarVisible } = this.appState;
+    return when(
+      penbarVisible,
+      () => html`
+        <sp-action-group
+          class="penbar"
+          vertical
+          selects="single"
+          .selected=${penbarSelected}
+          @change=${this.handlePenChanged}
+          emphasized
+          quiet
+        >
+          ${map(penbarAll, (pen) => {
+            const { icon, label } = PenMap[pen];
+            return html`<sp-action-button value="${pen}">
+              ${icon}
+              <sp-tooltip self-managed placement="right"> ${label} </sp-tooltip>
+            </sp-action-button>`;
+          })}
+        </sp-action-group>
+      `,
+    );
   }
 }
 

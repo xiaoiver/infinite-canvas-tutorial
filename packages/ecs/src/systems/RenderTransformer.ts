@@ -244,6 +244,7 @@ export class RenderTransformer extends System {
    */
   hitTest(api: API, { x, y }: IPointData) {
     const camera = api.getCamera();
+    const { rotateEnabled } = api.getAppState();
     const point = [x, y] as [number, number];
     const { tlAnchor, trAnchor, blAnchor, brAnchor } =
       camera.read(Transformable);
@@ -315,6 +316,7 @@ export class RenderTransformer extends System {
         };
       }
     } else if (
+      rotateEnabled &&
       !isInside &&
       minDistanceToAnchors <= TRANSFORMER_ANCHOR_ROTATE_RADIUS
     ) {

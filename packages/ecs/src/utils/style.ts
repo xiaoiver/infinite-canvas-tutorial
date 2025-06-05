@@ -1,4 +1,13 @@
-import { Stroke } from '../components';
+import {
+  AABB,
+  Ellipse,
+  Path,
+  Polyline,
+  Rect,
+  Text,
+  Stroke,
+} from '../components';
+import { SerializedNode } from './serialize/type';
 
 export function strokeOffset(stroke?: Stroke) {
   if (!stroke) {
@@ -46,4 +55,23 @@ export function strokeOffset(stroke?: Stroke) {
 
 export function hasValidStroke(stroke: Stroke) {
   return !!stroke.color && stroke.width > 0;
+}
+
+export function getGeometryBounds(node: SerializedNode) {
+  const { type } = node;
+  if (type === 'rect') {
+    return Rect.getGeometryBounds(node);
+  } else if (type === 'ellipse') {
+    return Ellipse.getGeometryBounds(node);
+  } else if (type === 'polyline') {
+    return Polyline.getGeometryBounds(node);
+  } else if (type === 'path') {
+    return Path.getGeometryBounds(node);
+  } else if (type === 'text') {
+    return Text.getGeometryBounds(node);
+  } else if (type === 'g') {
+    return new AABB(0, 0, 0, 0);
+  }
+
+  return new AABB(Infinity, Infinity, -Infinity, -Infinity);
 }

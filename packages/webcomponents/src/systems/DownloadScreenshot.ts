@@ -19,8 +19,10 @@ export class DownloadScreenshot extends System {
 
   execute(): void {
     this.screenshots.added.forEach((screenshot) => {
-      const { dataURL, canvas } = screenshot.read(Screenshot);
-      this.downloadImage(downloadedFilename, dataURL);
+      const { dataURL, canvas, download } = screenshot.read(Screenshot);
+      if (download) {
+        this.downloadImage(downloadedFilename, dataURL);
+      }
 
       const api = canvas.read(Canvas).api as ExtendedAPI;
       api.element.dispatchEvent(

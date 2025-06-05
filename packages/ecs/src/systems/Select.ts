@@ -406,6 +406,7 @@ export class Select extends System {
     const { cx: brCx, cy: brCy } = brAnchor.read(Circle);
 
     {
+      const { flipEnabled } = api.getAppState();
       const width = brCx - tlCx;
       const height = brCy - tlCy;
 
@@ -551,6 +552,7 @@ export class Select extends System {
         } else if (this.#selectionMode === SelectionMode.READY_TO_SELECT) {
           this.#selectionMode = SelectionMode.SELECT;
         } else if (this.#selectionMode === SelectionMode.READY_TO_MOVE) {
+          cursor.value = 'grab';
           this.#selectionMode = SelectionMode.MOVE;
         } else if (
           this.#selectionMode === SelectionMode.READY_TO_RESIZE ||
@@ -652,6 +654,8 @@ export class Select extends System {
         if (this.#selectionMode === SelectionMode.BRUSH) {
           this.handleBrushing(api, x, y);
         } else if (this.#selectionMode === SelectionMode.MOVE) {
+          cursor.value = 'grabbing';
+
           this.handleSelectedMoving(api, sx, sy, ex, ey);
         } else if (this.#selectionMode === SelectionMode.RESIZE) {
           this.handleSelectedResizing(

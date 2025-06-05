@@ -10,17 +10,17 @@ import {
   rotateDEG,
 } from 'transformation-matrix';
 import { SerializedNode } from './type';
-import { getAABB } from './svg';
 import { serializePoints } from './points';
 import { deserializePoints } from '../deserialize';
+import { getGeometryBounds } from '../style';
 
 export function fixTransform(transform: string, attributes: SerializedNode) {
-  const { x, y, width, height } = getAABB(attributes);
+  const { minX, minY, maxX, maxY } = getGeometryBounds(attributes);
 
-  attributes.x = x;
-  attributes.y = y;
-  attributes.width = width;
-  attributes.height = height;
+  attributes.x = minX;
+  attributes.y = minY;
+  attributes.width = maxX - minX;
+  attributes.height = maxY - minY;
   attributes.rotation = 0;
   attributes.scaleX = 1;
   attributes.scaleY = 1;
@@ -39,7 +39,7 @@ export function fixTransform(transform: string, attributes: SerializedNode) {
         // Incorrect type definition sx, sy in d.ts
         // @ts-ignore
         const { cx, cy, angle } = d;
-        matrices.push(rotateDEG(angle, cx - x, cy - y));
+        matrices.push(rotateDEG(angle, cx - minX, cy - minY));
       }
     });
     const matrix = compose(matrices);
@@ -50,10 +50,8 @@ export function fixTransform(transform: string, attributes: SerializedNode) {
       rotation: { angle },
     } = decomposeTSR(matrix);
 
-    console.log('tx', tx, 'ty', ty, 'sx', sx, 'sy', sy, 'angle', angle);
-
-    attributes.x = tx + x;
-    attributes.y = ty + y;
+    attributes.x = tx + minX;
+    attributes.y = ty + minY;
     attributes.rotation = angle;
     attributes.scaleX = sx;
     attributes.scaleY = sy;
@@ -71,11 +69,11 @@ export function fixTransform(transform: string, attributes: SerializedNode) {
   } else if (type === 'polyline') {
     attributes.points = serializePoints(
       deserializePoints(attributes.points).map((point) => {
-        return [point[0] - x, point[1] - y];
+        return [point[0] - minX, point[1] - minY];
       }),
     );
   } else if (type === 'path') {
-    attributes.d = shiftPath(attributes.d, -x, -y);
+    attributes.d = shiftPath(attributes.d, -minX, -minY);
   }
 
   // @ts-ignore

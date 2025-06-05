@@ -168,6 +168,7 @@ export class MeshPipeline extends System {
   @co private *setScreenshotTrigger(
     canvas: Entity,
     dataURL: string,
+    download: boolean,
   ): Generator {
     if (!canvas.has(Screenshot)) {
       canvas.add(Screenshot);
@@ -175,7 +176,7 @@ export class MeshPipeline extends System {
 
     const screenshot = canvas.write(Screenshot);
 
-    Object.assign(screenshot, { dataURL, canvas });
+    Object.assign(screenshot, { dataURL, canvas, download });
     yield;
 
     canvas.remove(Screenshot);
@@ -200,7 +201,7 @@ export class MeshPipeline extends System {
       ? canvas.read(RasterScreenshotRequest)
       : null;
 
-    const { type, encoderOptions, grid } = request ?? {
+    const { type, encoderOptions, grid, download } = request ?? {
       type: 'image/png',
       encoderOptions: 1,
       grid: false,
@@ -277,7 +278,7 @@ export class MeshPipeline extends System {
         type,
         encoderOptions,
       );
-      this.setScreenshotTrigger(canvas, dataURL);
+      this.setScreenshotTrigger(canvas, dataURL, download);
     }
   }
 

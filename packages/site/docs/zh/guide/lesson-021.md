@@ -340,7 +340,7 @@ const delta = mat3.multiply(newTr, newTr, mat3.invert(mat3.create(), oldTr));
 [new local] = [parent inverted] * [delta] * [parent] * [old local]
 ```
 
-最后将新的局部坐标系下矩阵应用到目标图形上。
+最后将新的局部坐标系下矩阵应用到目标图形上，不同类型的图形会作用于不同的属性。例如我们不希望对 Text 进行拉伸导致形变，而是通过修改 `fontSize` 实现缩放效果；如果是 Polyline / Path 则需要对每个控制点应用变换得到新的 `points` 或者 `d` 属性值。另外这样也可以确保描边不会被变换影响，毕竟每次都视作产生一个新的图形。
 
 ### 锁定长宽比 {#lock-aspect-ratio}
 

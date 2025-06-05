@@ -203,14 +203,13 @@ export class RenderHighlighter extends System {
         highlighter.add(Polyline);
       }
 
-      const { geometryBounds } = entity.read(ComputedBounds);
-      const { minX, minY, maxX, maxY } = geometryBounds;
-      const { rotation } = entity.read(Transform);
-
+      const {
+        obb: { width, height },
+      } = entity.read(ComputedBounds);
       Object.assign(highlighter.write(Polyline), {
         points: [
-          [minX, maxY],
-          [maxX, maxY],
+          [0, height],
+          [width, height],
         ],
       });
     }

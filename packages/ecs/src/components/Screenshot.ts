@@ -39,6 +39,11 @@ export class RasterScreenshotRequest {
    * Canvas target.
    */
   @field.ref declare canvas: Entity;
+
+  /**
+   * Whether to download the image.
+   */
+  @field.boolean declare download: boolean;
 }
 
 export class VectorScreenshotRequest {
@@ -51,6 +56,11 @@ export class VectorScreenshotRequest {
    * Canvas target.
    */
   @field.ref declare canvas: Entity;
+
+  /**
+   * Whether to download the image.
+   */
+  @field.boolean declare download: boolean;
 }
 
 export class Screenshot {
@@ -60,4 +70,9 @@ export class Screenshot {
    * Canvas target.
    */
   @field.ref declare canvas: Entity;
+
+  /**
+   * Whether to download the image.
+   */
+  @field.boolean declare download: boolean;
 }

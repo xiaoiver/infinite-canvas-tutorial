@@ -1,6 +1,7 @@
 import { field, Type } from '@lastolivegames/becsy';
 import { AABB } from '../math';
 import { Stroke } from '../renderable';
+import { parsePath } from '../../utils';
 
 export enum TesselationMethod {
   EARCUT = 'earcut',
@@ -12,11 +13,23 @@ export enum TesselationMethod {
  * @see https://developer.mozilla.org/en-US/docs/Web/SVG/Element/path
  */
 export class Path {
-  static getGeometryBounds(path: Path, computed: ComputedPoints) {
+  static getGeometryBounds(
+    path: Partial<Path>,
+    computed?: Partial<ComputedPoints>,
+  ) {
     const { d } = path;
-    const { points } = computed;
+    let { points } = computed || {};
     if (!d) {
       return new AABB(Infinity, Infinity, -Infinity, -Infinity);
+    }
+
+    if (!points) {
+      const { subPaths } = parsePath(d);
+      points = subPaths.map((subPath) =>
+        subPath
+          .getPoints()
+          .map((point) => [point[0], point[1]] as [number, number]),
+      );
     }
 
     const flattedPoints = points.flat();
