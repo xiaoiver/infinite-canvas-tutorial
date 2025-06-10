@@ -7,16 +7,22 @@
         </linearGradient>
     </defs>
 
-    <text x="0" y="0" font-family="Arial, sans-serif" font-size="20" text-anchor="middle" dominant-baseline="middle"
+    <circle cx="100" cy="300" r="10" fill="red" name="Layer 0" />
+    <circle cx="100" cy="100" r="10" fill="red" name="Layer 0" />
+
+    <text x="100" y="300" font-family="Arial, sans-serif" font-size="20" text-anchor="middle" dominant-baseline="middle"
         fill="#666">需求层次</text>
+
+    <text x="100" y="100" font-family="Arial, sans-serif" font-size="20" fill="#666">需求层次</text>
+
+    <rect x="100" y="100" width="80" height="80" fill="red" stroke="#ddd" stroke-width="1" rx="5" ry="5" />
 
     <!-- <rect x="200" y="200" width="200" height="200" fill="url(#gradient-638896088)" name="Layer 0" /> -->
 
-    <g transform="translate(150, 250)">
+    <!-- <g transform="translate(150, 250)">
         <path d="M 50 0 L 200 200 L 200 100 Z" stroke="black" stroke-width="10" fill="red" />
         <rect x="0" y="0" width="80" height="80" fill="red" stroke="#ddd" stroke-width="1" rx="5" ry="5" />
-        <!-- <text x="40" y="30" font-family="Arial, sans-serif" font-size="10" text-anchor="middle" fill="#666">需求层次</text> -->
-    </g>
+    </g> -->
 
     <!-- <rect x="0" y="0" width="200" height="100" fill="url(#gradient-638896088)" name="Layer 0" transform="scale(-1 1)" />
     <rect x="0" y="0" width="200" height="100" fill="url(#gradient-638896088)" name="Layer 1" />

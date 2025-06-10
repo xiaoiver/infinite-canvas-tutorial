@@ -463,6 +463,20 @@ hooks.beginFrame.tap(() => {
 });
 ```
 
+#### Reflecting camera parameters with viewBox {#use-viewbox}
+
+We can place the width and height of the canvas on the `<svg>` element, but how should the camera's transformation parameters such as translation `x/y` and `zoom` (we don't support camera rotation export yet) be reflected in the resulting SVG element?
+
+Here you can use the [viewBox]:
+
+```ts
+const { x, y, rotation, zoom } = cameras[0].read(ComputedCamera);
+$namespace.setAttribute(
+    'viewBox',
+    `${x} ${y} ${width / zoom} ${height / zoom}`,
+);
+```
+
 #### SVG Optimizer {#svg-optimizer}
 
 If you look closely at current SVG products, you'll see that there are some redundant attributes, such as `opacity=“1”`, which is a default value and doesn't need to be explicitly present in the product. In fact, this is one of the tools used by SVG optimization tools such as [svgo]:
@@ -934,3 +948,4 @@ With the richness of the canvas functionality, it is necessary to introduce test
 [filter primitive]: https://developer.mozilla.org/en-US/docs/Web/SVG/Element#filter_primitive_elements
 [JSON objects in tldraw]: https://tldraw.dev/docs/shapes#The-shape-object
 [JSON schema in excalidraw]: https://docs.excalidraw.com/docs/codebase/json-schema
+[viewBox]: https://developer.mozilla.org/en-US/docs/Web/SVG/Reference/Attribute/viewBox

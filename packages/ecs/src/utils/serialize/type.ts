@@ -147,6 +147,8 @@ export interface TextSerializedNode
     Partial<
       Pick<
         Text,
+        | 'anchorX'
+        | 'anchorY'
         | 'content'
         | 'fontFamily'
         | 'fontSize'

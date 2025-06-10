@@ -112,10 +112,25 @@ export function serializedNodesToEntities(
         textAlign,
         textBaseline,
       } = attributes as TextSerializedNode;
+
+      let anchorX = 0;
+      let anchorY = 0;
+      if (textAlign === 'center') {
+        anchorX = width / 2;
+      } else if (textAlign === 'right' || textAlign === 'end') {
+        anchorX = width;
+      }
+
+      if (textBaseline === 'middle') {
+        anchorY = height / 2;
+      } else if (textBaseline === 'alphabetic' || textBaseline === 'hanging') {
+        anchorY = height;
+      }
+
       entity.insert(
         new Text({
-          x: 0,
-          y: 0,
+          anchorX,
+          anchorY,
           content,
           fontFamily,
           fontSize,

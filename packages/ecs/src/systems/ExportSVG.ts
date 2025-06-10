@@ -6,6 +6,7 @@ import {
   Children,
   Circle,
   ComputedBounds,
+  ComputedCamera,
   DropShadow,
   Ellipse,
   FillGradient,
@@ -96,6 +97,7 @@ export class ExportSVG extends System {
             Visibility,
             FractionalIndex,
             ComputedBounds,
+            ComputedCamera,
           )
           .read.and.using(Screenshot, VectorScreenshotRequest).write,
     );
@@ -127,6 +129,15 @@ export class ExportSVG extends System {
     $namespace.setAttribute('height', `${height}`);
     // @see https://www.geeksforgeeks.org/how-to-set-the-svg-background-color/
     $namespace.setAttribute('style', `background-color: ${backgroundColor}`);
+
+    {
+      // Calculate viewBox according to the camera's transform.
+      const { x, y, zoom } = cameras[0].read(ComputedCamera);
+      $namespace.setAttribute(
+        'viewBox',
+        `${x} ${y} ${width / zoom} ${height / zoom}`,
+      );
+    }
 
     if (gridEnabled) {
       if (checkboardStyle === CheckboardStyle.GRID) {

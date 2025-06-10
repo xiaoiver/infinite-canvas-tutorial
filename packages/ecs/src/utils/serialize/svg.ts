@@ -139,6 +139,7 @@ export function serializeNodesToSVGElements(
   }
 
   const idSVGElementMap = new Map<string, SVGElement>();
+  const svgElementIdMap = new WeakMap<SVGElement, string>();
 
   const vertices = nodes.map((node) => node.id);
   const edges = nodes
@@ -224,6 +225,23 @@ export function serializeNodesToSVGElements(
       //   element.setAttribute('width', `${Math.abs(width)}`);
       //   element.setAttribute('height', `${Math.abs(height)}`);
       // }
+    } else if (type === 'text') {
+      let x = 0;
+      let y = 0;
+      if (textAlign === 'center') {
+        x = width / 2;
+      } else if (textAlign === 'right' || textAlign === 'end') {
+        x = width;
+      }
+
+      if (textBaseline === 'middle') {
+        y = height / 2;
+      } else if (textBaseline === 'alphabetic' || textBaseline === 'hanging') {
+        y = height;
+      }
+
+      element.setAttribute('x', `${x}`);
+      element.setAttribute('y', `${y}`);
     }
 
     if (textAlign) {
@@ -359,6 +377,7 @@ export function serializeNodesToSVGElements(
     }
 
     idSVGElementMap.set(id, $g);
+    svgElementIdMap.set($g, id);
     if (parentId) {
       const parent = idSVGElementMap.get(parentId);
       if (parent) {
@@ -372,17 +391,13 @@ export function serializeNodesToSVGElements(
   }
 
   // Sort by fractionalIndex
-  elements
-    .sort((a, b) => {
-      // node-1 -> 1
-      const aNode = idSerializedNodeMap.get(`${a.id.split('-')[1]}`);
-      const bNode = idSerializedNodeMap.get(`${b.id.split('-')[1]}`);
-      return sortByFractionalIndex(
-        aNode.fractionalIndex,
-        bNode.fractionalIndex,
-      );
-    })
-    .reverse();
+  elements.sort((a, b) => {
+    const aId = svgElementIdMap.get(a);
+    const bId = svgElementIdMap.get(b);
+    const aNode = idSerializedNodeMap.get(aId);
+    const bNode = idSerializedNodeMap.get(bId);
+    return sortByFractionalIndex(aNode.fractionalIndex, bNode.fractionalIndex);
+  });
 
   return elements;
 }

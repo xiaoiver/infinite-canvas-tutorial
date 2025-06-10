@@ -50,7 +50,7 @@ canvas.addEventListener(Event.READY, (e) => {
   // api.setTaskbars([Task.SHOW_LAYERS_PANEL, Task.SHOW_PROPERTIES_PANEL]);
 
   api.updateNodes(nodes);
-  api.selectNodes([nodes[0]]);
+  // api.selectNodes([nodes[0]]);
 
   console.log(nodes);
 
@@ -62,6 +62,12 @@ canvas.addEventListener(Event.READY, (e) => {
   // });
 
   api.record();
+});
+
+canvas.addEventListener(Event.SCREENSHOT_DOWNLOADED, (e) => {
+  const dataURL = e.detail;
+
+  console.log(dataURL);
 });
 
 // const canvas2 = document.querySelector<HTMLElement>('#canvas2')!;

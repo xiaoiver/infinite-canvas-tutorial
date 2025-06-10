@@ -43,7 +43,6 @@ import {
   Stroke,
   Text,
 } from '../components';
-import { yOffsetFromTextBaseline } from '../systems';
 
 export class SDFText extends Drawcall {
   #glyphManager = new GlyphManager();
@@ -339,8 +338,6 @@ export class SDFText extends Drawcall {
       matrix.m22,
     ] as mat3;
 
-    console.log(u_ModelMatrix, 'u_ModelMatrix');
-
     const [buffer, legacyObject] = this.generateBuffer(
       this.shapes[0],
       this.useBitmapFont
@@ -501,15 +498,42 @@ export class SDFText extends Drawcall {
       ? object.read(GlobalRenderOrder).value
       : 0;
 
+    let x = 0;
+    let y = 0;
+    // 'start', 'end', 'left', 'right', 'center'
+    if (textAlign === 'left' || textAlign === 'start') {
+      x = 0;
+    } else if (textAlign === 'right' || textAlign === 'end') {
+      x = metrics.width;
+    } else if (textAlign === 'center') {
+      x = metrics.width / 2;
+    }
+
+    const {
+      fontBoundingBoxAscent = 0,
+      fontBoundingBoxDescent = 0,
+      hangingBaseline = 0,
+      ideographicBaseline = 0,
+    } = metrics.fontMetrics;
+    if (textBaseline === 'alphabetic') {
+      y = fontBoundingBoxAscent;
+    } else if (textBaseline === 'middle') {
+      y = fontBoundingBoxAscent;
+    } else if (textBaseline === 'hanging') {
+      y = hangingBaseline;
+    } else if (textBaseline === 'ideographic') {
+      y = ideographicBaseline;
+    } else if (textBaseline === 'bottom') {
+      y = fontBoundingBoxAscent + fontBoundingBoxDescent;
+    } else if (textBaseline === 'top') {
+      y = 0;
+    }
+
     const charUVOffsetBuffer: number[] = [];
     const charPositionsBuffer: number[] = [];
     const indexBuffer: number[] = [];
 
     let i = indicesOffset;
-
-    const dy =
-      yOffsetFromTextBaseline(textBaseline, metrics.fontMetrics) +
-        metrics.fontMetrics.fontBoundingBoxAscent || 0;
 
     const positionedGlyphs = this.#glyphManager.layout(
       lines,
@@ -521,7 +545,7 @@ export class SDFText extends Drawcall {
       fontScale,
       bitmapFontKerning,
       0,
-      dy,
+      0,
     );
 
     let positions: GlyphPositions;
@@ -570,8 +594,6 @@ export class SDFText extends Drawcall {
           quad.bl.y,
         );
 
-        const x = 0;
-        const y = 0;
         const zIndex =
           (globalRenderOrder + (1 / total.length) * index) / ZINDEX_FACTOR;
         charPositionsBuffer.push(

@@ -133,8 +133,6 @@ export class ComputeBounds extends System {
         const bounds = new AABB();
         bounds.addBounds(renderBounds, matrix);
 
-        console.log(geometryBounds);
-
         const obb = new OBB({
           x: translation[0],
           y: translation[1],

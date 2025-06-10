@@ -1,6 +1,6 @@
 import { field, Type } from '@lastolivegames/becsy';
 import { Rectangle } from '@pixi/math';
-import { BitmapFont, strokeOffset, TextSerializedNode } from '../../utils';
+import { BitmapFont, strokeOffset } from '../../utils';
 import {
   computeBidi,
   measureText,
@@ -17,11 +17,10 @@ export type TextStyleWhiteSpace = 'normal' | 'pre' | 'pre-line';
  */
 export class Text {
   static getGeometryBounds(
-    text: Partial<Text> | Partial<TextSerializedNode>,
+    text: Partial<Text>,
     computed?: ComputedTextMetrics,
   ) {
-    const { x, y, textAlign, textBaseline, content } = text;
-
+    const { anchorX = 0, anchorY = 0, textAlign, textBaseline, content } = text;
     let { width, height, fontMetrics } = computed ?? {};
     if (!width || !height || !fontMetrics) {
       computeBidi(content);
@@ -34,14 +33,14 @@ export class Text {
     const hwidth = width / 2;
 
     // default 'left'
-    let lineXOffset = x;
+    let lineXOffset = anchorX;
     if (textAlign === 'center') {
       lineXOffset += -hwidth;
     } else if (textAlign === 'right' || textAlign === 'end') {
       lineXOffset += -hwidth * 2;
     }
 
-    let lineYOffset = y;
+    let lineYOffset = anchorY;
     if (fontMetrics) {
       lineYOffset += yOffsetFromTextBaseline(textBaseline, fontMetrics);
     }
@@ -86,13 +85,13 @@ export class Text {
    * The x-axis coordinate of the point at which to begin drawing the text, in pixels.
    * @see https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/fillText#x
    */
-  @field({ type: Type.float32, default: 0 }) declare x: number;
+  @field({ type: Type.float32, default: 0 }) declare anchorX: number;
 
   /**
    * The y-axis coordinate of the point at which to begin drawing the text, in pixels.
    * @see https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/fillText#y
    */
-  @field({ type: Type.float32, default: 0 }) declare y: number;
+  @field({ type: Type.float32, default: 0 }) declare anchorY: number;
 
   /**
    * The text content.

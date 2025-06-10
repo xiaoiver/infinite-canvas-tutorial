@@ -467,6 +467,20 @@ hooks.beginFrame.tap(() => {
 });
 ```
 
+#### 使用 viewBox 反映相机参数 {#use-viewbox}
+
+我们可以将画布的宽高放置在 `<svg>` 元素上，但相机的变换参数例如平移 `x/y` 和 `zoom`（我们暂不支持相机 rotation 的导出）应该如何反映在生成的 SVG 元素上呢？
+
+这里可以使用 [viewBox]：
+
+```ts
+const { x, y, rotation, zoom } = cameras[0].read(ComputedCamera);
+$namespace.setAttribute(
+    'viewBox',
+    `${x} ${y} ${width / zoom} ${height / zoom}`,
+);
+```
+
 #### 产物优化 {#svg-optimizer}
 
 如果仔细观察目前的 SVG 产物，会发现其中存在一些冗余的属性，例如 `opacity="1"` 本身就是默认值，没有必要显式出现在产物中。事实上这也是一些 SVG 优化工具例如 [svgo] 使用的手段之一：
@@ -945,3 +959,4 @@ function strokeOffset(
 [filter primitive]: https://developer.mozilla.org/en-US/docs/Web/SVG/Element#filter_primitive_elements
 [JSON objects in tldraw]: https://tldraw.dev/docs/shapes#The-shape-object
 [JSON schema in excalidraw]: https://docs.excalidraw.com/docs/codebase/json-schema
+[viewBox]: https://developer.mozilla.org/zh-CN/docs/Web/SVG/Reference/Attribute/viewBox

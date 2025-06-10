@@ -585,9 +585,7 @@ export class Select extends System {
         if (toHighlight) {
           api.highlightNodes([api.getNodeByEntity(toHighlight)]);
           this.#selectionMode = SelectionMode.READY_TO_SELECT;
-          // console.log('highlight', toHighlight.__id);
         }
-
         if (camera.has(Transformable)) {
           const { mask, selecteds } = camera.read(Transformable);
 
@@ -610,7 +608,11 @@ export class Select extends System {
               } else if (cursorName.includes('resize')) {
                 this.#selectionMode = SelectionMode.READY_TO_RESIZE;
               } else if (anchor === AnchorName.INSIDE) {
-                this.#selectionMode = SelectionMode.READY_TO_MOVE;
+                if (toHighlight && toHighlight !== selecteds[0]) {
+                  this.#selectionMode = SelectionMode.READY_TO_SELECT;
+                } else {
+                  this.#selectionMode = SelectionMode.READY_TO_MOVE;
+                }
               } else {
                 if (toHighlight) {
                   this.#selectionMode = SelectionMode.READY_TO_SELECT;

@@ -119,6 +119,13 @@ export function svgElementsToSerializedNodes(
         (attributes as TextSerializedNode).textBaseline =
           dominantBaseline as CanvasTextBaseline;
       }
+
+      const { x, y } = attributes;
+      (attributes as TextSerializedNode).anchorX = x;
+      (attributes as TextSerializedNode).anchorY = y;
+
+      delete attributes.x;
+      delete attributes.y;
     } else if (type === 'line') {
       type = 'polyline';
       // @ts-ignore
