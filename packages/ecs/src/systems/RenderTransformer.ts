@@ -27,14 +27,14 @@ import {
 } from '../components';
 import { Commands } from '../commands';
 import { getSceneRoot, updateGlobalTransform } from './Transform';
-import { API, Visibility } from '..';
+import { API, Text, Visibility } from '..';
 import { inside } from '../utils/math';
 import { distanceBetweenPoints } from '../utils/matrix';
 
 export const TRANSFORMER_Z_INDEX = 100000;
 const TRANSFORMER_ANCHOR_RADIUS = 5;
 export const TRANSFORMER_ANCHOR_ROTATE_RADIUS = 20;
-export const TRANSFORMER_ANCHOR_RESIZE_RADIUS = 10;
+export const TRANSFORMER_ANCHOR_RESIZE_RADIUS = 5;
 // --spectrum-thumbnail-border-color-selected
 export const TRANSFORMER_ANCHOR_STROKE_COLOR = '#147af3';
 export const TRANSFORMER_ANCHOR_FILL_COLOR = 'white';
@@ -280,6 +280,22 @@ export class RenderTransformer extends System {
       [brX, brY],
       [blX, blY],
     ]);
+
+    // Text's transform is not supported yet.
+    const { selecteds } = camera.read(Transformable);
+    if (selecteds.length === 1 && selecteds[0].has(Text)) {
+      if (isInside) {
+        return {
+          anchor: AnchorName.INSIDE,
+          cursor: 'default',
+        };
+      } else {
+        return {
+          anchor: AnchorName.OUTSIDE,
+          cursor: 'default',
+        };
+      }
+    }
 
     const distanceToTL = distanceBetweenPoints(x, y, tlX, tlY);
     const distanceToTR = distanceBetweenPoints(x, y, trX, trY);

@@ -20,6 +20,7 @@ export * from './systems';
 export * from './environment';
 export * from './context';
 export {
+  svgSvgElementToComputedCamera,
   svgElementsToSerializedNodes,
   serializedNodesToEntities,
   randomInteger,

@@ -1,6 +1,7 @@
 import {
   App,
   svgElementsToSerializedNodes,
+  svgSvgElementToComputedCamera,
   DefaultPlugins,
   Pen,
   Task,
@@ -11,6 +12,7 @@ import '../src/spectrum';
 
 // const res = await fetch('/maslow-hierarchy.svg');
 const res = await fetch('/test.svg');
+// const res = await fetch('/test-camera.svg');
 // const res = await fetch(
 //   '/62f5208ddbc232ac973f53d9cfd91ba463c50b8bfd846349247709fe4a7a9053.svg',
 // );
@@ -20,12 +22,13 @@ const $container = document.createElement('div');
 $container.innerHTML = svg;
 const $svg = $container.children[0] as SVGSVGElement;
 
+const camera = svgSvgElementToComputedCamera($svg);
 const nodes = svgElementsToSerializedNodes(
   Array.from($svg.children) as SVGElement[],
   0,
 );
 
-console.log(nodes);
+console.log(camera);
 
 const canvas = document.querySelector<HTMLElement>('#canvas1')!;
 canvas.addEventListener(Event.READY, (e) => {
@@ -52,6 +55,17 @@ canvas.addEventListener(Event.READY, (e) => {
   api.updateNodes(nodes);
   // api.selectNodes([nodes[0]]);
 
+  setTimeout(() => {
+    api.gotoLandmark(
+      api.createLandmark({
+        x: camera.x,
+        y: camera.y,
+        zoom: camera.zoom,
+      }),
+      { duration: 100 },
+    );
+  }, 300);
+
   console.log(nodes);
 
   // api.updateNode(nodes[0], {
@@ -65,9 +79,9 @@ canvas.addEventListener(Event.READY, (e) => {
 });
 
 canvas.addEventListener(Event.SCREENSHOT_DOWNLOADED, (e) => {
-  const dataURL = e.detail;
+  const { dataURL, svg } = e.detail;
 
-  console.log(dataURL);
+  console.log(dataURL, svg);
 });
 
 // const canvas2 = document.querySelector<HTMLElement>('#canvas2')!;

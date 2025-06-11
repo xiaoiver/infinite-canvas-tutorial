@@ -1,6 +1,6 @@
 {
   "name": "@infinite-canvas-tutorial/webcomponents",
-  "version": "0.0.1-alpha.13",
+  "version": "0.0.1-alpha.14",
   "description": "WebComponents UI implementation",
   "main": "lib/index.js",
   "module": "esm/index.js",

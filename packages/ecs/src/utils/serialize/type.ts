@@ -171,6 +171,12 @@ export interface TextSerializedNode
         | 'esdt'
       >
     >,
+    Partial<{
+      fontBoundingBoxAscent: number;
+      fontBoundingBoxDescent: number;
+      hangingBaseline: number;
+      ideographicBaseline: number;
+    }>,
     Partial<FillAttributes>,
     Partial<StrokeAttributes>,
     Partial<DropShadowAttributes> {}

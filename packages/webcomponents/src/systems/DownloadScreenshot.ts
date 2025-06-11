@@ -19,7 +19,7 @@ export class DownloadScreenshot extends System {
 
   execute(): void {
     this.screenshots.added.forEach((screenshot) => {
-      const { dataURL, canvas, download } = screenshot.read(Screenshot);
+      const { dataURL, svg, canvas, download } = screenshot.read(Screenshot);
       if (download) {
         this.downloadImage(downloadedFilename, dataURL);
       }
@@ -29,6 +29,7 @@ export class DownloadScreenshot extends System {
         new CustomEvent(Event.SCREENSHOT_DOWNLOADED, {
           detail: {
             dataURL,
+            svg,
           },
         }),
       );

@@ -18,7 +18,7 @@ export type TextStyleWhiteSpace = 'normal' | 'pre' | 'pre-line';
 export class Text {
   static getGeometryBounds(
     text: Partial<Text>,
-    computed?: ComputedTextMetrics,
+    computed?: Partial<ComputedTextMetrics>,
   ) {
     const { anchorX = 0, anchorY = 0, textAlign, textBaseline, content } = text;
     let { width, height, fontMetrics } = computed ?? {};

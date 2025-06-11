@@ -111,6 +111,10 @@ export function serializedNodesToEntities(
         wordWrapWidth,
         textAlign,
         textBaseline,
+        // fontBoundingBoxAscent = 0,
+        // fontBoundingBoxDescent = 0,
+        // hangingBaseline = 0,
+        // ideographicBaseline = 0,
       } = attributes as TextSerializedNode;
 
       let anchorX = 0;

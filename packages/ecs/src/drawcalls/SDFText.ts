@@ -82,8 +82,15 @@ export class SDFText extends Drawcall {
   }
 
   createGeometry(): void {
-    const { fontFamily, fontWeight, fontStyle, bitmapFont, esdt, content } =
-      this.shapes[0].read(Text);
+    const {
+      fontFamily,
+      fontWeight,
+      fontStyle,
+      bitmapFont,
+      esdt,
+      content,
+      fontSize,
+    } = this.shapes[0].read(Text);
     const { font, fontMetrics } = this.shapes[0].read(ComputedTextMetrics);
     const { value: fill } = this.shapes[0].has(FillSolid)
       ? this.shapes[0].read(FillSolid)
@@ -101,7 +108,7 @@ export class SDFText extends Drawcall {
       fontScale = fontMetrics.fontSize / bitmapFont.baseMeasurementFontSize;
     } else {
       // scale current font size to base(24)
-      fontScale = fontMetrics.fontSize / (BASE_FONT_WIDTH / SDF_SCALE);
+      fontScale = Number(fontSize) / (BASE_FONT_WIDTH / SDF_SCALE);
       const allText = this.shapes
         .map((text: Entity) => text.read(ComputedTextMetrics).bidiChars)
         .join('');

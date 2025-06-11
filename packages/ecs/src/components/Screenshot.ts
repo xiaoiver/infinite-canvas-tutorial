@@ -66,6 +66,8 @@ export class VectorScreenshotRequest {
 export class Screenshot {
   @field.object declare dataURL: string;
 
+  @field.object declare svg: string;
+
   /**
    * Canvas target.
    */

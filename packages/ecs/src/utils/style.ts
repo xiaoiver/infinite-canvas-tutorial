@@ -6,6 +6,7 @@ import {
   Rect,
   Text,
   Stroke,
+  ComputedTextMetrics,
 } from '../components';
 import { SerializedNode } from './serialize/type';
 
@@ -57,7 +58,10 @@ export function hasValidStroke(stroke: Stroke) {
   return !!stroke.color && stroke.width > 0;
 }
 
-export function getGeometryBounds(node: SerializedNode) {
+export function getGeometryBounds(
+  node: SerializedNode,
+  metrics?: Partial<ComputedTextMetrics>,
+) {
   const { type } = node;
   if (type === 'rect') {
     return Rect.getGeometryBounds(node);
@@ -68,7 +72,7 @@ export function getGeometryBounds(node: SerializedNode) {
   } else if (type === 'path') {
     return Path.getGeometryBounds(node);
   } else if (type === 'text') {
-    return Text.getGeometryBounds(node);
+    return Text.getGeometryBounds(node, metrics);
   } else if (type === 'g') {
     return new AABB(0, 0, 0, 0);
   }

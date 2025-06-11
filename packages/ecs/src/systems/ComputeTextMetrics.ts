@@ -105,7 +105,13 @@ export function fontStringFromTextStyle(style: Partial<Text>): string {
 
 export function yOffsetFromTextBaseline(
   textBaseline: CanvasTextBaseline,
-  fontMetrics: globalThis.TextMetrics & { fontSize: number },
+  fontMetrics: Pick<
+    globalThis.TextMetrics,
+    | 'fontBoundingBoxAscent'
+    | 'fontBoundingBoxDescent'
+    | 'hangingBaseline'
+    | 'ideographicBaseline'
+  >,
 ) {
   let offset = 0;
   const {
@@ -132,9 +138,9 @@ export function yOffsetFromTextBaseline(
 
 let canvas: OffscreenCanvas | HTMLCanvasElement;
 let context: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
-let fonts: Record<string, globalThis.TextMetrics & { fontSize: number }> = {};
-let bidi = bidiFactory();
-let bidiCache: Record<string, string> = {};
+const fonts: Record<string, globalThis.TextMetrics & { fontSize: number }> = {};
+const bidi = bidiFactory();
+const bidiCache: Record<string, string> = {};
 export class ComputeTextMetrics extends System {
   texts = this.query((q) => q.addedOrChanged.with(Text).trackWrites);
 

@@ -10,6 +10,33 @@ import {
 } from '../serialize';
 import { deserializePoints } from './points';
 
+const DOMINANT_BASELINE_MAP: Record<string, string> = {
+  auto: 'alphabetic',
+  central: 'middle',
+  middle: 'middle',
+  alphabetic: 'alphabetic',
+  ideographic: 'ideographic',
+  hanging: 'hanging',
+};
+
+export function svgSvgElementToComputedCamera(element: SVGSVGElement) {
+  const { viewBox, width, height } = element;
+  const { x, y, width: vw, height: vh } = viewBox.baseVal;
+
+  if (vw === 0 || vh === 0) {
+    return {
+      x,
+      y,
+      zoom: 1,
+    };
+  }
+
+  return {
+    x,
+    y,
+    zoom: Math.min(width.baseVal.value / vw, height.baseVal.value / vh),
+  };
+}
 /**
  * Note that this conversion is not fully reversible.
  * For example, in the StrokeAlignment implementation, one Circle corresponds to two <circle>s.
@@ -116,8 +143,9 @@ export function svgElementsToSerializedNodes(
       const dominantBaseline =
         element.attributes.getNamedItem('dominant-baseline')?.value;
       if (dominantBaseline) {
-        (attributes as TextSerializedNode).textBaseline =
-          dominantBaseline as CanvasTextBaseline;
+        (attributes as TextSerializedNode).textBaseline = DOMINANT_BASELINE_MAP[
+          dominantBaseline
+        ] as CanvasTextBaseline;
       }
 
       const { x, y } = attributes;

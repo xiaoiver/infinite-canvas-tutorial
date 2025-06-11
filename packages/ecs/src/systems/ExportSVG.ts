@@ -50,6 +50,7 @@ export class ExportSVG extends System {
   @co private *setScreenshotTrigger(
     canvas: Entity,
     dataURL: string,
+    svg: string,
     download: boolean,
   ): Generator {
     if (!canvas.has(Screenshot)) {
@@ -58,7 +59,7 @@ export class ExportSVG extends System {
 
     const screenshot = canvas.write(Screenshot);
 
-    Object.assign(screenshot, { dataURL, canvas, download });
+    Object.assign(screenshot, { dataURL, canvas, svg, download });
     yield;
 
     canvas.remove(Screenshot);
@@ -109,9 +110,13 @@ export class ExportSVG extends System {
         VectorScreenshotRequest,
       );
 
+      const $svg = this.toSVG(canvas, { grid });
+      const serializer = DOMAdapter.get().getXMLSerializer();
+
       this.setScreenshotTrigger(
         canvas,
-        this.toSVGDataURL(canvas, { grid }),
+        this.toSVGDataURL($svg),
+        serializer.serializeToString($svg),
         download,
       );
     });
@@ -160,8 +165,7 @@ export class ExportSVG extends System {
     return $namespace;
   }
 
-  private toSVGDataURL(entity: Entity, options: Partial<SVGOptions> = {}) {
-    const $namespace = this.toSVG(entity, options);
+  private toSVGDataURL($svg: SVGElement) {
     const svgDocType = DOMAdapter.get()
       .getDocument()
       .implementation.createDocumentType(
@@ -176,7 +180,7 @@ export class ExportSVG extends System {
         'svg',
         svgDocType,
       );
-    svgDoc.replaceChild($namespace, svgDoc.documentElement);
+    svgDoc.replaceChild($svg, svgDoc.documentElement);
     return `data:image/svg+xml;charset=utf8,${encodeURIComponent(
       DOMAdapter.get().getXMLSerializer().serializeToString(svgDoc),
     )}`;

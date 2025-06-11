@@ -6,6 +6,7 @@ import {
   scale,
   decomposeTSR,
   compose,
+  fromDefinition,
   Matrix,
   rotateDEG,
 } from 'transformation-matrix';
@@ -13,9 +14,23 @@ import { SerializedNode } from './type';
 import { serializePoints } from './points';
 import { deserializePoints } from '../deserialize';
 import { getGeometryBounds } from '../style';
+import { computeBidi, measureText } from '../../systems/ComputeTextMetrics';
+import { ComputedTextMetrics } from '../../components';
 
 export function fixTransform(transform: string, attributes: SerializedNode) {
-  const { minX, minY, maxX, maxY } = getGeometryBounds(attributes);
+  let metrics: Partial<ComputedTextMetrics>;
+  if (attributes.type === 'text') {
+    computeBidi(attributes.content);
+    metrics = measureText(attributes);
+    attributes.fontBoundingBoxAscent =
+      metrics.fontMetrics.fontBoundingBoxAscent;
+    attributes.fontBoundingBoxDescent =
+      metrics.fontMetrics.fontBoundingBoxDescent;
+    attributes.hangingBaseline = metrics.fontMetrics.hangingBaseline;
+    attributes.ideographicBaseline = metrics.fontMetrics.ideographicBaseline;
+  }
+
+  const { minX, minY, maxX, maxY } = getGeometryBounds(attributes, metrics);
 
   attributes.x = minX;
   attributes.y = minY;
@@ -40,6 +55,8 @@ export function fixTransform(transform: string, attributes: SerializedNode) {
         // @ts-ignore
         const { cx, cy, angle } = d;
         matrices.push(rotateDEG(angle, cx - minX, cy - minY));
+      } else if (type === 'matrix') {
+        matrices.push(fromDefinition(d));
       }
     });
     const matrix = compose(matrices);
