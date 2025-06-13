@@ -42,7 +42,7 @@ canvas.addEventListener(Event.READY, (e) => {
     ...api.getAppState(),
     // checkboardStyle: CheckboardStyle.NONE,
     // topbarVisible: false,
-    contextBarVisible: false,
+    // contextBarVisible: false,
     penbarVisible: false,
     taskbarVisible: false,
     rotateEnabled: false,
@@ -82,6 +82,18 @@ canvas.addEventListener(Event.SCREENSHOT_DOWNLOADED, (e) => {
   const { dataURL, svg } = e.detail;
 
   console.log(dataURL, svg);
+});
+
+canvas.addEventListener(Event.SELECTED_NODES_CHANGED, (e) => {
+  console.log(e.detail);
+});
+
+canvas.addEventListener(Event.NODE_UPDATED, (e) => {
+  console.log(e.detail);
+});
+
+canvas.addEventListener(Event.NODES_UPDATED, (e) => {
+  console.log(e.detail);
 });
 
 // const canvas2 = document.querySelector<HTMLElement>('#canvas2')!;

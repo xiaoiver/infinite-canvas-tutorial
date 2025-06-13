@@ -26,7 +26,9 @@ import {
   FractionalIndex,
   ComputedBounds,
   Camera,
+  ComputedTextMetrics,
 } from '../../components';
+import { serializePoints } from './points';
 
 export function isEntity(entity: any): entity is Entity {
   return entity.__id !== undefined;
@@ -56,15 +58,11 @@ export function entityToSerializedNodes(
   } else if (entity.has(Rect)) {
     type = 'rect';
     const { cornerRadius } = entity.read(Rect);
-    Object.assign(attributes as RectSerializedNode, {
-      cornerRadius,
-    });
+    (attributes as RectSerializedNode).cornerRadius = cornerRadius;
   } else if (entity.has(Polyline)) {
     type = 'polyline';
     const { points } = entity.read(Polyline);
-    Object.assign(attributes as PolylineSerializedNode, {
-      points,
-    });
+    (attributes as PolylineSerializedNode).points = serializePoints(points);
   } else if (entity.has(Path)) {
     type = 'path';
     const { d, fillRule, tessellationMethod } = entity.read(Path);
@@ -97,7 +95,19 @@ export function entityToSerializedNodes(
       physical,
       esdt,
     } = entity.read(Text);
+    const { fontMetrics } = entity.read(ComputedTextMetrics);
+    const {
+      fontBoundingBoxAscent,
+      fontBoundingBoxDescent,
+      hangingBaseline,
+      ideographicBaseline,
+    } = fontMetrics;
+
     Object.assign(attributes as TextSerializedNode, {
+      fontBoundingBoxAscent,
+      fontBoundingBoxDescent,
+      hangingBaseline,
+      ideographicBaseline,
       content,
       fontFamily,
       fontSize,
@@ -149,7 +159,7 @@ export function entityToSerializedNodes(
       strokeLinecap: linecap,
       strokeLinejoin: linejoin,
       strokeMiterlimit: miterlimit,
-      strokeDasharray: [dasharray[0], dasharray[1]],
+      strokeDasharray: `${dasharray[0]},${dasharray[1]}`,
       strokeDashoffset: dashoffset,
     });
   }

@@ -90,6 +90,7 @@ export const defaultAttributes: Record<
   },
   polyline: {
     ...commonDefaultAttributes,
+    ...fillDefaultAttributes,
     ...strokeDefaultAttributes,
   },
   path: {
@@ -112,6 +113,7 @@ export const defaultAttributes: Record<
     leading: 0,
     ...commonDefaultAttributes,
     ...fillDefaultAttributes,
+    ...strokeDefaultAttributes,
   },
   g: {
     ...commonDefaultAttributes,
@@ -193,6 +195,11 @@ export function serializeNodesToSVGElements(
       maxLines,
       visibility,
       fractionalIndex,
+      fontBoundingBoxAscent,
+      fontBoundingBoxDescent,
+      hangingBaseline,
+      ideographicBaseline,
+      textOverflow,
       ...rest
     } = restAttributes as any;
 
@@ -237,11 +244,12 @@ export function serializeNodesToSVGElements(
       if (textBaseline === 'middle') {
         y = height / 2;
       } else if (textBaseline === 'alphabetic' || textBaseline === 'hanging') {
-        y = height;
+        y = fontBoundingBoxAscent;
       }
 
       element.setAttribute('x', `${x}`);
       element.setAttribute('y', `${y}`);
+      element.removeAttribute('fill');
     }
 
     if (textAlign) {
@@ -351,7 +359,7 @@ export function serializeNodesToSVGElements(
       // exportRough(node, $g);
     }
     if (content) {
-      exportText(node, $g);
+      exportText(node, $g, element);
     }
 
     const matrix = Mat3.from_scale_angle_translation(
@@ -843,7 +851,11 @@ export function exportFillGradientOrPattern(
  * use <text> and <tspan> to render text.
  * @see https://developer.mozilla.org/en-US/docs/Web/SVG/Element/text#example
  */
-export function exportText(attributes: SerializedNode, $g: SVGElement) {
+export function exportText(
+  attributes: SerializedNode,
+  $g: SVGElement,
+  element: SVGElement,
+) {
   const {
     content,
     fontFamily,
@@ -855,22 +867,31 @@ export function exportText(attributes: SerializedNode, $g: SVGElement) {
   } = attributes as TextSerializedNode;
   $g.textContent = content;
 
-  let styleCSSText = '';
-  const fontStyleString = fontStringFromTextStyle({
-    fontFamily,
-    fontSize,
-    fontWeight,
-    fontStyle,
-    fontVariant,
-  });
-  if (fontStyleString) {
-    styleCSSText += `font: ${fontStyleString};`;
-  }
-  if (fill) {
-    styleCSSText += `fill: ${fill as string};`;
-  }
-  if (styleCSSText) {
-    $g.setAttribute('style', styleCSSText);
+  if ($g === element) {
+    $g.setAttribute('font-family', fontFamily);
+    $g.setAttribute('font-size', `${fontSize}`);
+    $g.setAttribute('font-weight', `${fontWeight}`);
+    $g.setAttribute('font-style', fontStyle);
+    $g.setAttribute('font-variant', fontVariant);
+    $g.setAttribute('fill', fill as string);
+  } else {
+    let styleCSSText = '';
+    const fontStyleString = fontStringFromTextStyle({
+      fontFamily,
+      fontSize,
+      fontWeight,
+      fontStyle,
+      fontVariant,
+    });
+    if (fontStyleString) {
+      styleCSSText += `font: ${fontStyleString};`;
+    }
+    if (fill) {
+      styleCSSText += `fill: ${fill as string};`;
+    }
+    if (styleCSSText) {
+      $g.setAttribute('style', styleCSSText);
+    }
   }
 }
 

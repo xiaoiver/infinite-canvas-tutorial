@@ -763,6 +763,7 @@ this.glyphAtlasTexture = device.createTexture({
 -   [Text layout is a loose hierarchy of segmentation]
 -   [End-To-End Tour of Text Layout/Rendering]
 -   [Text rendering in mapbox]
+-   [Rendering Crispy Text On The GPU]
 
 [Drawing text]: https://developer.mozilla.org/en-US/docs/Web/API/Canvas_API/Tutorial/Drawing_text
 [FreeType]: https://freetype.org/
@@ -826,3 +827,4 @@ this.glyphAtlasTexture = device.createTexture({
 [MSDF font generator]: https://msdf-bmfont.donmccurdy.com/
 [font-kerning]: https://developer.mozilla.org/en-US/docs/Web/CSS/font-kerning
 [BiDi in Pixi.js]: https://github.com/pixijs/pixijs/issues/4482
+[Rendering Crispy Text On The GPU]: https://osor.io/text

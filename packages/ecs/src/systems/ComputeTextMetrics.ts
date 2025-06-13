@@ -103,6 +103,19 @@ export function fontStringFromTextStyle(style: Partial<Text>): string {
   } ${fontSizeString} ${(fontFamilies as string[]).join(',')}`;
 }
 
+// export function textStyleFromFontString(fontString: string) {
+//   const [fontStyle, fontVariant, fontWeight, fontSizeString, fontFamily] =
+//     fontString.split(' ');
+//   const fontSize = parseInt(fontSizeString.replace('px', ''));
+//   return {
+//     fontStyle,
+//     fontVariant,
+//     fontWeight,
+//     fontSize,
+//     fontFamily,
+//   };
+// }
+
 export function yOffsetFromTextBaseline(
   textBaseline: CanvasTextBaseline,
   fontMetrics: Pick<

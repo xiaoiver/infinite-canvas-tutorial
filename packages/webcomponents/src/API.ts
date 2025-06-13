@@ -79,6 +79,14 @@ export class ExtendedAPI extends API {
     );
   }
 
+  updateNode(node: SerializedNode, diff?: Partial<SerializedNode>) {
+    super.updateNode(node, diff);
+
+    this.element.dispatchEvent(
+      new CustomEvent(Event.NODE_UPDATED, { detail: { node } }),
+    );
+  }
+
   updateNodes(nodes: SerializedNode[]) {
     super.updateNodes(nodes);
 
@@ -112,67 +120,4 @@ export class ExtendedAPI extends API {
     super.destroy();
     this.element.dispatchEvent(new CustomEvent(Event.DESTROY));
   }
-
-  //   /**
-  //    * If diff is provided, no need to calculate diffs.
-  //    */
-  //   updateNode(node: SerializedNode, diff?: Partial<SerializedNode>) {
-  //     const entity = this.#idEntityMap.get(node.id)?.id();
-  //     const nodes = this.getNodes();
-
-  //     if (!entity) {
-  //       const { cameras } = this.#canvasEntity.read(Canvas);
-  //       if (cameras.length === 0) {
-  //         throw new Error('No camera found');
-  //       }
-
-  //       // TODO: Support multiple cameras.
-  //       const camera = cameras[0];
-  //       const cameraEntityCommands = this.commands.entity(camera);
-
-  //       // TODO: Calculate diffs and only update the changed nodes.
-  //       const { entities, idEntityMap } = serializedNodesToEntities(
-  //         [node],
-  //         this.commands,
-  //       );
-  //       this.#idEntityMap.set(node.id, idEntityMap.get(node.id));
-
-  //       this.commands.execute();
-
-  //       entities.forEach((entity) => {
-  //         // Append roots to the camera.
-  //         if (!entity.has(Children)) {
-  //           cameraEntityCommands.appendChild(this.commands.entity(entity));
-  //         }
-  //       });
-
-  //       this.commands.execute();
-
-  //       this.setNodes([...nodes, node]);
-
-  //       this.element.dispatchEvent(
-  //         new CustomEvent(Event.NODE_UPDATED, {
-  //           detail: {
-  //             node,
-  //           },
-  //         }),
-  //       );
-  //     } else {
-  //       const updated = mutateElement(entity, node, diff);
-  //       const index = nodes.findIndex((n) => n.id === updated.id);
-
-  //       if (index !== -1) {
-  //         nodes[index] = updated;
-  //         this.setNodes(nodes);
-  //       }
-
-  //       this.element.dispatchEvent(
-  //         new CustomEvent(Event.NODE_UPDATED, {
-  //           detail: {
-  //             node: updated,
-  //           },
-  //         }),
-  //       );
-  //     }
-  //   }
 }

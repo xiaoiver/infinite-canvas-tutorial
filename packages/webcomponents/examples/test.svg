@@ -17,6 +17,8 @@
 
     <rect x="100" y="100" width="80" height="80" fill="red" stroke="#ddd" stroke-width="1" rx="5" ry="5" />
 
+    <line x1="100" y1="100" x2="200" y2="200" stroke="black" stroke-width="10" />
+
     <!-- <rect x="200" y="200" width="200" height="200" fill="url(#gradient-638896088)" name="Layer 0" /> -->
 
     <!-- <g transform="translate(150, 250)">

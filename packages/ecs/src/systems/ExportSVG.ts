@@ -7,6 +7,7 @@ import {
   Circle,
   ComputedBounds,
   ComputedCamera,
+  ComputedTextMetrics,
   DropShadow,
   Ellipse,
   FillGradient,
@@ -99,6 +100,7 @@ export class ExportSVG extends System {
             FractionalIndex,
             ComputedBounds,
             ComputedCamera,
+            ComputedTextMetrics,
           )
           .read.and.using(Screenshot, VectorScreenshotRequest).write,
     );
@@ -132,8 +134,11 @@ export class ExportSVG extends System {
     const $namespace = createSVGElement('svg');
     $namespace.setAttribute('width', `${width}`);
     $namespace.setAttribute('height', `${height}`);
-    // @see https://www.geeksforgeeks.org/how-to-set-the-svg-background-color/
-    $namespace.setAttribute('style', `background-color: ${backgroundColor}`);
+
+    if (checkboardStyle !== CheckboardStyle.NONE) {
+      // @see https://www.geeksforgeeks.org/how-to-set-the-svg-background-color/
+      $namespace.setAttribute('style', `background-color: ${backgroundColor}`);
+    }
 
     {
       // Calculate viewBox according to the camera's transform.

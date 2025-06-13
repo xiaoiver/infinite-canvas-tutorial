@@ -23,7 +23,12 @@ export function svgSvgElementToComputedCamera(element: SVGSVGElement) {
   const { viewBox, width, height } = element;
   const { x, y, width: vw, height: vh } = viewBox.baseVal;
 
-  if (vw === 0 || vh === 0) {
+  if (
+    vw === 0 ||
+    vh === 0 ||
+    width.baseVal.unitType === 2 ||
+    height.baseVal.unitType === 2
+  ) {
     return {
       x,
       y,
@@ -139,6 +144,23 @@ export function svgElementsToSerializedNodes(
         ry: attributes.r,
       });
     } else if (type === 'text') {
+      // extract from style, e.g. font: normal normal normal 10px sans-serif;
+      if (element.style.font) {
+        (attributes as TextSerializedNode).fontFamily =
+          element.style.fontFamily;
+        (attributes as TextSerializedNode).fontSize = Number(
+          element.style.fontSize.replace('px', ''),
+        );
+        (attributes as TextSerializedNode).fontStyle = element.style.fontStyle;
+        (attributes as TextSerializedNode).fontWeight =
+          element.style.fontWeight;
+        (attributes as TextSerializedNode).fontVariant =
+          element.style.fontVariant;
+      }
+      if (element.style.fill) {
+        (attributes as TextSerializedNode).fill = element.style.fill;
+      }
+
       (attributes as TextSerializedNode).content = element.textContent;
       const dominantBaseline =
         element.attributes.getNamedItem('dominant-baseline')?.value;
@@ -154,6 +176,8 @@ export function svgElementsToSerializedNodes(
 
       delete attributes.x;
       delete attributes.y;
+      // @ts-ignore
+      delete attributes.style;
     } else if (type === 'line') {
       type = 'polyline';
       // @ts-ignore

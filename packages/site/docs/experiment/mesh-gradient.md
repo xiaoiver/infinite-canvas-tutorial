@@ -10,4 +10,4 @@ import MeshGradient from '../components/MeshGradient.vue'
 
 <MeshGradient />
 
-[Mesh Gradient]: /guide/lesson-018#mesh-gradient
+[Mesh Gradient]: /guide/lesson-017#mesh-gradient

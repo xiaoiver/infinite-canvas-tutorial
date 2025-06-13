@@ -4,6 +4,7 @@ import {
   Children,
   Circle,
   Commands,
+  ComputedBounds,
   ComputedCamera,
   Cursor,
   DropShadow,
@@ -39,7 +40,7 @@ export class InitCanvas extends System {
     this.query(
       (q) =>
         q
-          .using(ComputedCamera)
+          .using(ComputedCamera, ComputedBounds)
           .read.and.using(
             Canvas,
             Camera,
