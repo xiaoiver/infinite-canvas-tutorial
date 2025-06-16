@@ -31,6 +31,7 @@ export {
   deserializePoints,
   createSVGElement,
   exportFillGradientOrPattern,
+  loadBitmapFont,
   type Gradient,
   type SerializedNode,
   type OrderedSerializedNode,

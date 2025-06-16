@@ -11,6 +11,7 @@ import {
 import { Commands, EntityCommands } from './commands';
 import { AppState, getDefaultAppState, Task } from './context';
 import {
+  BitmapFont,
   deserializePoints,
   EASING_FUNCTION,
   getScale,
@@ -32,6 +33,7 @@ import {
   Children,
   ComputedCamera,
   Cursor,
+  Font,
   GlobalTransform,
   Grid,
   Highlighted,
@@ -771,6 +773,7 @@ export class API {
       // TODO: Calculate diffs and only update the changed nodes.
       const { entities, idEntityMap } = serializedNodesToEntities(
         [node],
+        this.#canvas.read(Canvas).fonts,
         this.commands,
       );
       this.#idEntityMap.set(node.id, idEntityMap.get(node.id));
@@ -820,6 +823,7 @@ export class API {
       // TODO: Calculate diffs and only update the changed nodes.
       const { entities, idEntityMap } = serializedNodesToEntities(
         nonExistentNodes,
+        this.#canvas.read(Canvas).fonts,
         this.commands,
       );
       nonExistentNodes.forEach((node) => {
@@ -1098,5 +1102,19 @@ export class API {
    */
   destroy() {
     this.#canvas.delete();
+  }
+
+  /**
+   * @see
+   */
+  loadBitmapFont(bitmapFont: BitmapFont) {
+    this.commands.spawn(
+      new Font({
+        canvas: this.#canvas,
+        type: 'bitmap',
+        bitmapFont,
+      }),
+    );
+    this.commands.execute();
   }
 }

@@ -290,6 +290,7 @@ export const en = defineConfig({
             link: 'pythagorean-theorem',
           },
           { text: 'Recraft', link: 'recraft' },
+          { text: 'Signature', link: 'signature' },
         ],
       },
     },

@@ -1,6 +1,7 @@
 import { Entity, field, Type } from '@lastolivegames/becsy';
-import { Camera } from './camera/Camera';
+import { Camera } from './camera';
 import { InputPoint } from './Input';
+import { Font } from './Font';
 import { API } from '../API';
 
 export enum Pen {
@@ -54,6 +55,8 @@ export class Canvas {
   @field.backrefs(Camera, 'canvas') declare cameras: Entity[];
 
   @field.backrefs(InputPoint, 'canvas') declare inputPoints: Entity[];
+
+  @field.backrefs(Font, 'canvas') declare fonts: Entity[];
 
   @field.object declare api: API;
 

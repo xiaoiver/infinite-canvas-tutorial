@@ -17,6 +17,7 @@ import {
   Visibility,
   DropShadow,
   ZIndex,
+  Font,
 } from '../../components';
 import {
   DropShadowAttributes,
@@ -36,6 +37,7 @@ import { isGradient } from '../gradient';
 
 export function serializedNodesToEntities(
   nodes: SerializedNode[],
+  fonts: Entity[],
   commands: Commands,
 ): {
   entities: Entity[];
@@ -131,6 +133,11 @@ export function serializedNodesToEntities(
         anchorY = height;
       }
 
+      const bitmapFonts = fonts.map((font) => font.read(Font).bitmapFont);
+      const bitmapFont = bitmapFonts.find(
+        (font) => font.fontFamily === fontFamily,
+      );
+
       entity.insert(
         new Text({
           anchorX,
@@ -148,6 +155,7 @@ export function serializedNodesToEntities(
           wordWrapWidth,
           textAlign,
           textBaseline,
+          bitmapFont,
         }),
       );
     }

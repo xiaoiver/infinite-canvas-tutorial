@@ -68,13 +68,20 @@ export class SDFText extends Drawcall {
 
   private hash(shape: Entity) {
     const { bitmapFont, physical } = shape.read(Text);
+    const { value: fill } = shape.has(FillSolid)
+      ? shape.read(FillSolid)
+      : { value: 'none' };
+    const { color: stroke } = shape.has(Stroke)
+      ? shape.read(Stroke)
+      : { color: 'none' };
+
     const font = shape.has(ComputedTextMetrics)
       ? shape.read(ComputedTextMetrics)
       : '';
     const blurRadius = shape.has(DropShadow)
       ? shape.read(DropShadow).blurRadius
       : 0;
-    return `${font}-${bitmapFont?.fontFamily}-${physical}-${blurRadius}`;
+    return `${font}-${bitmapFont?.fontFamily}-${physical}-${blurRadius}-${fill}-${stroke}`;
   }
 
   private get useBitmapFont() {

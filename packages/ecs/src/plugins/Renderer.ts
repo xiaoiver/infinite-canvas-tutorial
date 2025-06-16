@@ -53,6 +53,7 @@ import {
   SizeAttenuation,
   StrokeAttenuation,
   ComputedVisibility,
+  Font,
 } from '../components';
 
 export const RendererPlugin: Plugin = () => {
@@ -83,6 +84,7 @@ export const RendererPlugin: Plugin = () => {
   component(DropShadow);
   component(InnerShadow);
   component(Rough);
+  component(Font);
 
   /**
    * Geometry

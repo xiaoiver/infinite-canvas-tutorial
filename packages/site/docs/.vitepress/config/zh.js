@@ -248,6 +248,7 @@ export const zh = defineConfig({
             link: 'pythagorean-theorem',
           },
           { text: 'Recraft', link: 'recraft' },
+          { text: '签名', link: 'signature' },
         ],
       },
     },

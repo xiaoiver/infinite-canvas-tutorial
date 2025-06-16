@@ -9,6 +9,7 @@ export * from './Screenshot';
 export * from './GPUResource';
 export * from './Name';
 export * from './Culled';
+export * from './Font';
 export * from './camera';
 export * from './transform';
 export * from './hierarchy';

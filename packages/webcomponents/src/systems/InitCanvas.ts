@@ -11,6 +11,7 @@ import {
   Ellipse,
   FillGradient,
   FillSolid,
+  Font,
   Grid,
   Name,
   Opacity,
@@ -65,6 +66,7 @@ export class InitCanvas extends System {
             Opacity,
             DropShadow,
             ZIndex,
+            Font,
           ).write,
     );
   }
