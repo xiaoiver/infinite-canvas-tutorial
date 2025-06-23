@@ -24,19 +24,6 @@ const canvas = await new Canvas({
   // shaderCompilerPath: '/glsl_wgsl_compiler_bg.wasm',
 }).initialized;
 
-// 添加一个文本描边测试
-// 首先检查Text类是否可用
-try {
-  // 如果Text类可用，则使用它
-  // 这里我们需要使用ECS版本的Text组件
-  console.log('Testing text stroke functionality...');
-
-  // 创建一个简单的文本元素用于测试
-  // 注意：这需要根据实际的Text类实现来调整
-} catch (error) {
-  console.log('Text class not available in this lesson:', error);
-}
-
 // fetch(
 //   '/Ghostscript_Tiger.svg',
 //   // '/photo-camera.svg',

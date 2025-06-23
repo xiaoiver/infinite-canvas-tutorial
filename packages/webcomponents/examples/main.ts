@@ -28,11 +28,13 @@ const nodes = svgElementsToSerializedNodes(
   0,
 );
 
-console.log(camera);
+console.log(camera, nodes);
 
 const canvas = document.querySelector<HTMLElement>('#canvas1')!;
-canvas.addEventListener(Event.READY, (e) => {
+canvas.addEventListener(Event.READY, async (e) => {
   const api = e.detail;
+
+  // await new Promise((resolve) => setTimeout(resolve, 1000));
 
   // api.onchange = (e) => {
   //   console.log(e);
@@ -48,23 +50,24 @@ canvas.addEventListener(Event.READY, (e) => {
     rotateEnabled: false,
     flipEnabled: false,
   });
-  api.setCheckboardStyle(CheckboardStyle.NONE);
+  // api.setCheckboardStyle(CheckboardStyle.NONE);
   api.setPen(Pen.SELECT);
   // api.setTaskbars([Task.SHOW_LAYERS_PANEL, Task.SHOW_PROPERTIES_PANEL]);
 
-  api.updateNodes(nodes);
-  // api.selectNodes([nodes[0]]);
+  api.runAtNextTick(() => {
+    api.updateNodes(nodes);
 
-  setTimeout(() => {
-    api.gotoLandmark(
-      api.createLandmark({
-        x: camera.x,
-        y: camera.y,
-        zoom: camera.zoom,
-      }),
-      { duration: 100 },
-    );
-  }, 300);
+    // api.gotoLandmark(
+    //   api.createLandmark({
+    //     x: camera.x,
+    //     y: camera.y,
+    //     zoom: camera.zoom,
+    //   }),
+    //   { duration: 100 },
+    // );
+  });
+  // api.updateNodes(nodes);
+  // api.selectNodes([nodes[0]]);
 
   console.log(nodes);
 

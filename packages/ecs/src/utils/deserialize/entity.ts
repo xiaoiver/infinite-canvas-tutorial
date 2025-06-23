@@ -22,6 +22,7 @@ import {
 import {
   DropShadowAttributes,
   FillAttributes,
+  fixTransform,
   NameAttributes,
   PathSerializedNode,
   PolylineSerializedNode,
@@ -58,6 +59,16 @@ export function serializedNodesToEntities(
 
     const entity = commands.spawn();
     idEntityMap.set(id, entity);
+
+    // Make sure the entity has a width and height
+    if (
+      !attributes.width ||
+      !attributes.height ||
+      !attributes.x ||
+      !attributes.y
+    ) {
+      fixTransform('', attributes);
+    }
 
     const { x, y, width, height, rotation, scaleX, scaleY } = attributes;
 
@@ -103,16 +114,16 @@ export function serializedNodesToEntities(
         content,
         fontFamily,
         fontSize,
-        fontWeight,
-        fontStyle,
-        fontVariant,
-        letterSpacing,
-        lineHeight,
-        whiteSpace,
-        wordWrap,
+        fontWeight = 'normal',
+        fontStyle = 'normal',
+        fontVariant = 'normal',
+        letterSpacing = 0,
+        lineHeight = 1,
+        whiteSpace = 'normal',
+        wordWrap = false,
         wordWrapWidth,
-        textAlign,
-        textBaseline,
+        textAlign = 'start',
+        textBaseline = 'alphabetic',
         // fontBoundingBoxAscent = 0,
         // fontBoundingBoxDescent = 0,
         // hangingBaseline = 0,

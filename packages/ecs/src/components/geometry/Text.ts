@@ -20,7 +20,13 @@ export class Text {
     text: Partial<Text>,
     computed?: Partial<ComputedTextMetrics>,
   ) {
-    const { anchorX = 0, anchorY = 0, textAlign, textBaseline, content } = text;
+    const {
+      anchorX = 0,
+      anchorY = 0,
+      textAlign = 'start',
+      textBaseline = 'alphabetic',
+      content,
+    } = text;
     let { width, height, fontMetrics } = computed ?? {};
     if (!width || !height || !fontMetrics) {
       computeBidi(content);

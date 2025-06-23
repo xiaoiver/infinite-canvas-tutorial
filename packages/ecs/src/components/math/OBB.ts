@@ -11,8 +11,8 @@ export class OBB {
   @field({ type: Type.float32, default: 0 }) declare width: number;
   @field({ type: Type.float32, default: 0 }) declare height: number;
   @field({ type: Type.float32, default: 0 }) declare rotation: number;
-  @field({ type: Type.float32, default: 0 }) declare scaleX: number;
-  @field({ type: Type.float32, default: 0 }) declare scaleY: number;
+  @field({ type: Type.float32, default: 1 }) declare scaleX: number;
+  @field({ type: Type.float32, default: 1 }) declare scaleY: number;
 
   constructor(obb: Partial<OBB> = {}) {
     this.x = obb.x ?? 0;

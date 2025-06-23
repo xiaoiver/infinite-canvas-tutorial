@@ -143,6 +143,8 @@ export function svgElementsToSerializedNodes(
         // @ts-ignore
         ry: attributes.r,
       });
+      // @ts-ignore
+      delete attributes.r;
     } else if (type === 'text') {
       // extract from style, e.g. font: normal normal normal 10px sans-serif;
       if (element.style.font) {

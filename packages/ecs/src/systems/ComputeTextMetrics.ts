@@ -98,8 +98,8 @@ export function fontStringFromTextStyle(style: Partial<Text>): string {
   }
 
   // eslint-disable-next-line max-len
-  return `${style.fontStyle} ${style.fontVariant} ${
-    style.fontWeight
+  return `${style.fontStyle ?? 'normal'} ${style.fontVariant ?? 'normal'} ${
+    style.fontWeight ?? 'normal'
   } ${fontSizeString} ${(fontFamilies as string[]).join(',')}`;
 }
 
@@ -237,10 +237,10 @@ export function measureText(
 
   const {
     wordWrap,
-    letterSpacing,
-    textAlign,
-    textBaseline,
-    leading,
+    letterSpacing = 0,
+    textAlign = 'start',
+    textBaseline = 'alphabetic',
+    leading = 0,
     bitmapFont,
     bitmapFontKerning,
     fontSize,
@@ -249,7 +249,7 @@ export function measureText(
   // TODO: strokeWidth
   const strokeWidth = 0;
 
-  let lineHeight = style.lineHeight;
+  let lineHeight = style.lineHeight ?? 1;
   const font = fontStringFromTextStyle(style);
   let fontMetrics: globalThis.TextMetrics & { fontSize: number };
   let scale = 1;
@@ -353,7 +353,7 @@ function wordWrapInternal(text: string, style: Partial<Text>, scale: number) {
     willReadFrequently: true,
   });
 
-  const { letterSpacing, textOverflow, maxLines, bitmapFont } = style;
+  const { letterSpacing = 0, textOverflow, maxLines, bitmapFont } = style;
 
   // How to handle whitespaces
   // const collapseSpaces = this.collapseSpaces(whiteSpace);
