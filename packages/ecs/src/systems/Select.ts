@@ -51,6 +51,7 @@ import {
   TRANSFORMER_ANCHOR_STROKE_COLOR,
 } from './RenderTransformer';
 import { updateGlobalTransform } from './Transform';
+import { DOMAdapter } from '../environment';
 
 enum SelectionMode {
   IDLE = 'IDLE',
@@ -506,6 +507,63 @@ export class Select extends System {
       });
     }
   }
+
+  initialize() {
+    const document = DOMAdapter.get().getDocument();
+    document.addEventListener('keydown', this.handleKeyDown);
+  }
+
+  finalize() {
+    const document = DOMAdapter.get().getDocument();
+    document.removeEventListener('keydown', this.handleKeyDown);
+  }
+
+  private handleKeyDown = (e: KeyboardEvent) => {
+    this.cameras.current.forEach((camera) => {
+      const { canvas } = camera.read(Camera);
+
+      if (!canvas) {
+        return;
+      }
+
+      const { api } = canvas.read(Canvas);
+
+      const { layersSelected } = api.getAppState();
+      const document = DOMAdapter.get().getDocument();
+
+      if (
+        // @ts-ignore
+        document.activeElement !== api.element ||
+        layersSelected.length === 0
+      ) {
+        return;
+      }
+
+      const selected = api.getNodeById(layersSelected[0]);
+
+      if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        api.updateNodeOBB(selected, { y: selected.y - 10 });
+        api.record();
+      } else if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        api.updateNodeOBB(selected, { y: selected.y + 10 });
+        api.record();
+      } else if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        api.updateNodeOBB(selected, { x: selected.x - 10 });
+        api.record();
+      } else if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        api.updateNodeOBB(selected, { x: selected.x + 10 });
+        api.record();
+      } else if (e.key === 'Backspace') {
+        e.preventDefault();
+        api.deleteNodesById([selected.id]);
+        api.record();
+      }
+    });
+  };
 
   execute() {
     this.cameras.current.forEach((camera) => {

@@ -22,13 +22,13 @@ const $container = document.createElement('div');
 $container.innerHTML = svg;
 const $svg = $container.children[0] as SVGSVGElement;
 
-const camera = svgSvgElementToComputedCamera($svg);
-const nodes = svgElementsToSerializedNodes(
-  Array.from($svg.children) as SVGElement[],
-  0,
-);
+// const camera = svgSvgElementToComputedCamera($svg);
+// const nodes = svgElementsToSerializedNodes(
+//   Array.from($svg.children) as SVGElement[],
+//   0,
+// );
 
-console.log(camera, nodes);
+// console.log(camera, nodes);
 
 const canvas = document.querySelector<HTMLElement>('#canvas1')!;
 canvas.addEventListener(Event.READY, async (e) => {
@@ -55,7 +55,35 @@ canvas.addEventListener(Event.READY, async (e) => {
   // api.setTaskbars([Task.SHOW_LAYERS_PANEL, Task.SHOW_PROPERTIES_PANEL]);
 
   api.runAtNextTick(() => {
-    api.updateNodes(nodes);
+    api.updateNodes([
+      {
+        id: '1',
+        type: 'ellipse',
+        fill: 'red',
+        x: 0,
+        y: 50,
+        width: 200,
+        height: 100,
+        visibility: 'visible',
+      },
+      // {
+      //   id: '2',
+      //   parentId: '1',
+      //   type: 'ellipse',
+      //   fill: 'green',
+      //   x: 50,
+      //   y: -50,
+      //   width: 100,
+      //   height: 200,
+      //   stroke: 'black',
+      //   strokeWidth: 10,
+      //   strokeAlignment: 'center',
+      //   strokeDasharray: '10 10',
+      //   visibility: 'visible',
+      // },
+    ]);
+
+    // api.updateNodes(nodes);
 
     // api.gotoLandmark(
     //   api.createLandmark({
@@ -69,7 +97,7 @@ canvas.addEventListener(Event.READY, async (e) => {
   // api.updateNodes(nodes);
   // api.selectNodes([nodes[0]]);
 
-  console.log(nodes);
+  // console.log(nodes);
 
   // api.updateNode(nodes[0], {
   //   dropShadowBlurRadius: 10,

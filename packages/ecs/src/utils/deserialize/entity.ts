@@ -18,16 +18,18 @@ import {
   DropShadow,
   ZIndex,
   Font,
+  AABB,
 } from '../../components';
 import {
   DropShadowAttributes,
   FillAttributes,
-  fixTransform,
   NameAttributes,
   PathSerializedNode,
   PolylineSerializedNode,
   RectSerializedNode,
   SerializedNode,
+  serializePoints,
+  shiftPath,
   StrokeAttributes,
   TextSerializedNode,
   VisibilityAttributes,
@@ -35,6 +37,42 @@ import {
 import { deserializePoints } from './points';
 import { EntityCommands, Commands } from '../../commands';
 import { isGradient } from '../gradient';
+import { computeBidi, measureText } from '../../systems/ComputeTextMetrics';
+
+function inferXYWidthHeight(node: SerializedNode) {
+  const { type } = node;
+  let bounds: AABB;
+  if (type === 'ellipse') {
+    bounds = Ellipse.getGeometryBounds(node);
+  } else if (type === 'polyline') {
+    bounds = Polyline.getGeometryBounds(node);
+  } else if (type === 'path') {
+    bounds = Path.getGeometryBounds(node);
+  } else if (type === 'text') {
+    computeBidi(node.content);
+    const metrics = measureText(node);
+    bounds = Text.getGeometryBounds(node, metrics);
+  }
+
+  if (bounds) {
+    node.x = bounds.minX;
+    node.y = bounds.minY;
+    node.width = bounds.maxX - bounds.minX;
+    node.height = bounds.maxY - bounds.minY;
+
+    if (type === 'polyline') {
+      node.points = serializePoints(
+        deserializePoints(node.points).map((point) => {
+          return [point[0] - bounds.minX, point[1] - bounds.minY];
+        }),
+      );
+    } else if (type === 'path') {
+      node.d = shiftPath(node.d, -bounds.minX, -bounds.minY);
+    }
+  } else {
+    throw new Error('Cannot infer x, y, width or height for node');
+  }
+}
 
 export function serializedNodesToEntities(
   nodes: SerializedNode[],
@@ -62,12 +100,22 @@ export function serializedNodesToEntities(
 
     // Make sure the entity has a width and height
     if (
-      !attributes.width ||
-      !attributes.height ||
-      !attributes.x ||
-      !attributes.y
+      isNil(attributes.width) ||
+      isNil(attributes.height) ||
+      isNil(attributes.x) ||
+      isNil(attributes.y)
     ) {
-      fixTransform('', attributes);
+      inferXYWidthHeight(attributes);
+    }
+
+    if (isNil(attributes.rotation)) {
+      attributes.rotation = 0;
+    }
+    if (isNil(attributes.scaleX)) {
+      attributes.scaleX = 1;
+    }
+    if (isNil(attributes.scaleY)) {
+      attributes.scaleY = 1;
     }
 
     const { x, y, width, height, rotation, scaleX, scaleY } = attributes;

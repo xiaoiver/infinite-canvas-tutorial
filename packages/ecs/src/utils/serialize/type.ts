@@ -116,7 +116,7 @@ export interface GSerializedNode extends BaseSerializeNode<'g'> {}
 
 export interface EllipseSerializedNode
   extends BaseSerializeNode<'ellipse'>,
-    Partial<Pick<Ellipse, 'rx' | 'ry'>>,
+    Partial<Pick<Ellipse, 'rx' | 'ry' | 'cx' | 'cy'>>,
     Partial<FillAttributes>,
     Partial<StrokeAttributes> {}
 

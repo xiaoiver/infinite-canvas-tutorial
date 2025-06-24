@@ -64,48 +64,6 @@ export class ContextBar extends LitElement {
   @consume({ context: apiContext, subscribe: true })
   api: ExtendedAPI;
 
-  connectedCallback() {
-    super.connectedCallback();
-    document.addEventListener('keydown', this.handleKeyDown);
-  }
-
-  disconnectedCallback() {
-    super.disconnectedCallback();
-    document.removeEventListener('keydown', this.handleKeyDown);
-  }
-
-  private handleKeyDown = (e: KeyboardEvent) => {
-    const { layersSelected } = this.appState;
-
-    // Canvas is focused
-    if (
-      document.activeElement !== this.api.element ||
-      layersSelected.length === 0
-    ) {
-      return;
-    }
-
-    const selected = this.api.getNodeById(layersSelected[0]);
-
-    if (e.key === 'ArrowUp') {
-      e.preventDefault();
-      this.api.updateNodeOBB(selected, { y: selected.y - 10 });
-      this.api.record();
-    } else if (e.key === 'ArrowDown') {
-      e.preventDefault();
-      this.api.updateNodeOBB(selected, { y: selected.y + 10 });
-      this.api.record();
-    } else if (e.key === 'ArrowLeft') {
-      e.preventDefault();
-      this.api.updateNodeOBB(selected, { x: selected.x - 10 });
-      this.api.record();
-    } else if (e.key === 'ArrowRight') {
-      e.preventDefault();
-      this.api.updateNodeOBB(selected, { x: selected.x + 10 });
-      this.api.record();
-    }
-  };
-
   private calculatePosition(node: SerializedNode): [number, number] {
     const { width, height } = this.api.getCanvas().read(Canvas);
     const { topbarVisible } = this.appState;
