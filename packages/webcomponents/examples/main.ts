@@ -10,8 +10,8 @@ import {
 import { Event, UIPlugin } from '../src';
 import '../src/spectrum';
 
-// const res = await fetch('/maslow-hierarchy.svg');
-const res = await fetch('/test.svg');
+const res = await fetch('/maslow-hierarchy.svg');
+// const res = await fetch('/test.svg');
 // const res = await fetch('/test-camera.svg');
 // const res = await fetch(
 //   '/62f5208ddbc232ac973f53d9cfd91ba463c50b8bfd846349247709fe4a7a9053.svg',
@@ -22,11 +22,11 @@ const $container = document.createElement('div');
 $container.innerHTML = svg;
 const $svg = $container.children[0] as SVGSVGElement;
 
-// const camera = svgSvgElementToComputedCamera($svg);
-// const nodes = svgElementsToSerializedNodes(
-//   Array.from($svg.children) as SVGElement[],
-//   0,
-// );
+const camera = svgSvgElementToComputedCamera($svg);
+const nodes = svgElementsToSerializedNodes(
+  Array.from($svg.children) as SVGElement[],
+  0,
+);
 
 // console.log(camera, nodes);
 
@@ -56,16 +56,16 @@ canvas.addEventListener(Event.READY, async (e) => {
 
   api.runAtNextTick(() => {
     api.updateNodes([
-      {
-        id: '1',
-        type: 'ellipse',
-        fill: 'red',
-        x: 0,
-        y: 50,
-        width: 200,
-        height: 100,
-        visibility: 'visible',
-      },
+      // {
+      //   id: '1',
+      //   type: 'ellipse',
+      //   fill: 'red',
+      //   x: 0,
+      //   y: 50,
+      //   width: 200,
+      //   height: 100,
+      //   visibility: 'visible',
+      // },
       // {
       //   id: '2',
       //   parentId: '1',
@@ -83,7 +83,7 @@ canvas.addEventListener(Event.READY, async (e) => {
       // },
     ]);
 
-    // api.updateNodes(nodes);
+    api.updateNodes(nodes);
 
     // api.gotoLandmark(
     //   api.createLandmark({

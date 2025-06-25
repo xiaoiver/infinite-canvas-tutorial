@@ -623,6 +623,27 @@ export class Select extends System {
             this.#selectionMode = SelectionMode.ROTATE;
           }
         }
+
+        if (this.#selectionMode === SelectionMode.SELECT) {
+          if (input.shiftKey) {
+            // Add to selection
+          } else {
+            // Single selection
+            const toSelect = this.getTopmostEntity(
+              api,
+              x,
+              y,
+              (e) => !e.has(UI),
+            );
+            if (toSelect) {
+              const selected = api.getNodeByEntity(toSelect);
+              if (selected) {
+                api.selectNodes([selected]);
+              }
+            }
+          }
+          this.#selectionMode = SelectionMode.MOVE;
+        }
       }
 
       let toHighlight: Entity | undefined;
@@ -749,25 +770,6 @@ export class Select extends System {
           api.selectNodes([]);
           this.#selectionMode = SelectionMode.IDLE;
           // TODO: Apply selection
-        } else if (this.#selectionMode === SelectionMode.SELECT) {
-          if (input.shiftKey) {
-            // Add to selection
-          } else {
-            // Single selection
-            const toSelect = this.getTopmostEntity(
-              api,
-              x,
-              y,
-              (e) => !e.has(UI),
-            );
-            if (toSelect) {
-              const selected = api.getNodeByEntity(toSelect);
-              if (selected) {
-                api.selectNodes([selected]);
-              }
-            }
-          }
-          this.#selectionMode = SelectionMode.IDLE;
         } else if (this.#selectionMode === SelectionMode.MOVE) {
           this.handleSelectedMoved(api);
           this.#selectionMode = SelectionMode.READY_TO_MOVE;

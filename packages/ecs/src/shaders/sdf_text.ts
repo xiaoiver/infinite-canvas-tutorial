@@ -146,7 +146,7 @@ void main() {
     float fontSize = u_ZIndexStrokeWidth.z;
 
     highp float gamma_scaled = fwidth(dist);
-    if (strokeWidth > 0.0) {
+    if (strokeWidth > 0.0 && strokeColor.a > 0.0) {
       float fillAlpha = smoothstep(buff - gamma_scaled, buff + gamma_scaled, dist);      
       float strokeThreshold = buff - strokeWidth / fontSize;
       float strokeAlpha = smoothstep(strokeThreshold - gamma_scaled, strokeThreshold + gamma_scaled, dist);
