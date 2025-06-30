@@ -10,8 +10,8 @@ import {
 import { Event, UIPlugin } from '../src';
 import '../src/spectrum';
 
-const res = await fetch('/maslow-hierarchy.svg');
-// const res = await fetch('/test.svg');
+// const res = await fetch('/maslow-hierarchy.svg');
+const res = await fetch('/test.svg');
 // const res = await fetch('/test-camera.svg');
 // const res = await fetch(
 //   '/62f5208ddbc232ac973f53d9cfd91ba463c50b8bfd846349247709fe4a7a9053.svg',
@@ -28,13 +28,9 @@ const nodes = svgElementsToSerializedNodes(
   0,
 );
 
-// console.log(camera, nodes);
-
 const canvas = document.querySelector<HTMLElement>('#canvas1')!;
 canvas.addEventListener(Event.READY, async (e) => {
   const api = e.detail;
-
-  // await new Promise((resolve) => setTimeout(resolve, 1000));
 
   // api.onchange = (e) => {
   //   console.log(e);
@@ -54,78 +50,59 @@ canvas.addEventListener(Event.READY, async (e) => {
   api.setPen(Pen.SELECT);
   // api.setTaskbars([Task.SHOW_LAYERS_PANEL, Task.SHOW_PROPERTIES_PANEL]);
 
-  api.runAtNextTick(() => {
-    api.updateNodes([
-      // {
-      //   id: '1',
-      //   type: 'ellipse',
-      //   fill: 'red',
-      //   x: 0,
-      //   y: 50,
-      //   width: 200,
-      //   height: 100,
-      //   visibility: 'visible',
-      // },
-      // {
-      //   id: '2',
-      //   parentId: '1',
-      //   type: 'ellipse',
-      //   fill: 'green',
-      //   x: 50,
-      //   y: -50,
-      //   width: 100,
-      //   height: 200,
-      //   stroke: 'black',
-      //   strokeWidth: 10,
-      //   strokeAlignment: 'center',
-      //   strokeDasharray: '10 10',
-      //   visibility: 'visible',
-      // },
-    ]);
+  // api.runAtNextTick(() => {
+  // const node = {
+  //   id: '1',
+  //   type: 'ellipse',
+  //   fill: 'red',
+  //   x: 0,
+  //   y: 50,
+  //   width: 200,
+  //   height: 100,
+  //   visibility: 'visible',
+  // };
+  // api.updateNodes([node]);
+  // api.selectNodes([node]);
+  // });
 
-    api.updateNodes(nodes);
+  console.log(nodes);
 
-    // api.gotoLandmark(
-    //   api.createLandmark({
-    //     x: camera.x,
-    //     y: camera.y,
-    //     zoom: camera.zoom,
-    //   }),
-    //   { duration: 100 },
-    // );
-  });
+  api.updateNodes(nodes);
+
+  // api.gotoLandmark(
+  //   api.createLandmark({
+  //     x: camera.x,
+  //     y: camera.y,
+  //     zoom: camera.zoom,
+  //   }),
+  //   { duration: 100 },
+  // );
+  // });
   // api.updateNodes(nodes);
   // api.selectNodes([nodes[0]]);
 
   // console.log(nodes);
 
-  // api.updateNode(nodes[0], {
-  //   dropShadowBlurRadius: 10,
-  //   dropShadowColor: 'black',
-  //   dropShadowOffsetX: 10,
-  //   dropShadowOffsetY: 10,
-  // });
-
   api.record();
 });
 
-canvas.addEventListener(Event.SCREENSHOT_DOWNLOADED, (e) => {
-  const { dataURL, svg } = e.detail;
+// canvas.addEventListener(Event.SCREENSHOT_DOWNLOADED, (e) => {
+//   const { dataURL, svg } = e.detail;
 
-  console.log(dataURL, svg);
-});
+//   console.log(dataURL, svg);
+// });
 
-canvas.addEventListener(Event.SELECTED_NODES_CHANGED, (e) => {
-  console.log(e.detail);
-});
+// canvas.addEventListener(Event.SELECTED_NODES_CHANGED, (e) => {
+//   console.log(e.detail);
+// });
 
-canvas.addEventListener(Event.NODE_UPDATED, (e) => {
-  console.log(e.detail);
-});
+// canvas.addEventListener(Event.NODE_UPDATED, (e) => {
+//   console.log(e.detail);
+// });
 
-canvas.addEventListener(Event.NODES_UPDATED, (e) => {
-  console.log(e.detail);
-});
+// canvas.addEventListener(Event.NODES_UPDATED, (e) => {
+//   console.log(e.detail);
+// });
 
 // const canvas2 = document.querySelector<HTMLElement>('#canvas2')!;
 // canvas2.addEventListener(Event.READY, (e) => {

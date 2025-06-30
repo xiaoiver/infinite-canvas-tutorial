@@ -119,6 +119,8 @@ export const arrayToMap = <T extends { id: string } | string>(
   }, new Map());
 };
 
+export const pendingAPICallings: (() => any)[] = [];
+
 /**
  * Expose the API to the outside world.
  *
@@ -707,7 +709,11 @@ export class API {
   /**
    * Select nodes.
    */
-  selectNodes(nodes: SerializedNode[], preserveSelection = false) {
+  selectNodes(
+    nodes: SerializedNode[],
+    preserveSelection = false,
+    updateAppState = true,
+  ) {
     if (!preserveSelection) {
       this.getAppState().layersSelected.forEach((id) => {
         const entity = this.#idEntityMap.get(id)?.id();
@@ -717,13 +723,15 @@ export class API {
       });
     }
 
-    const prevAppState = this.getAppState();
-    this.setAppState({
-      ...prevAppState,
-      layersSelected: preserveSelection
-        ? [...prevAppState.layersSelected, ...nodes.map((node) => node.id)]
-        : nodes.map((node) => node.id),
-    });
+    if (updateAppState) {
+      const prevAppState = this.getAppState();
+      this.setAppState({
+        ...prevAppState,
+        layersSelected: preserveSelection
+          ? [...prevAppState.layersSelected, ...nodes.map((node) => node.id)]
+          : nodes.map((node) => node.id),
+      });
+    }
 
     // Select nodes in the canvas.
     this.getAppState().layersSelected.forEach((id) => {
@@ -731,6 +739,23 @@ export class API {
       if (entity && !entity.has(Selected)) {
         entity.add(Selected, { camera: this.#camera });
       }
+    });
+  }
+
+  deselectNodes(nodes: SerializedNode[]) {
+    nodes.forEach((node) => {
+      const entity = this.#idEntityMap.get(node.id)?.id();
+      if (entity) {
+        entity.remove(Selected);
+      }
+    });
+
+    const prevAppState = this.getAppState();
+    this.setAppState({
+      ...prevAppState,
+      layersSelected: prevAppState.layersSelected.filter(
+        (id) => !nodes.map((node) => node.id).includes(id),
+      ),
     });
   }
 
@@ -757,6 +782,23 @@ export class API {
       if (entity && !entity.has(Highlighted)) {
         entity.add(Highlighted, { camera: this.#camera });
       }
+    });
+  }
+
+  unhighlightNodes(nodes: SerializedNode[]) {
+    nodes.forEach((node) => {
+      const entity = this.#idEntityMap.get(node.id)?.id();
+      if (entity) {
+        entity.remove(Highlighted);
+      }
+    });
+
+    const prevAppState = this.getAppState();
+    this.setAppState({
+      ...prevAppState,
+      layersHighlighted: prevAppState.layersHighlighted.filter(
+        (id) => !nodes.map((node) => node.id).includes(id),
+      ),
     });
   }
 
@@ -942,12 +984,16 @@ export class API {
       if (index !== -1) {
         deletedNodes.push(...nodes.splice(index, 1));
       }
+    });
 
-      const entity = this.#idEntityMap.get(id);
+    this.deselectNodes(deletedNodes);
+
+    deletedNodes.forEach((node) => {
+      const entity = this.#idEntityMap.get(node.id);
       if (entity) {
         entity.id().add(ToBeDeleted);
       }
-      this.#idEntityMap.delete(id);
+      this.#idEntityMap.delete(node.id);
     });
 
     this.setNodes(nodes);
@@ -1041,31 +1087,44 @@ export class API {
   }
 
   undo() {
-    const result = this.#history.undo(
-      arrayToMap(this.getNodes()),
-      this.getAppState(),
-      this.#store.snapshot,
-    );
+    this.runAtNextTick(() => {
+      const result = this.#history.undo(
+        arrayToMap(this.getNodes()),
+        this.getAppState(),
+        this.#store.snapshot,
+      );
 
-    if (result) {
-      const [elements, appState] = result;
-      this.setNodes(mapToArray(elements));
-      this.setAppState(appState);
-    }
+      if (result) {
+        const [elements, appState] = result;
+        this.setNodes(mapToArray(elements));
+        this.setAppState(appState);
+
+        // reselect or rehighlight nodes
+
+        const { layersHighlighted, layersSelected } = appState;
+        this.selectNodes(
+          layersSelected.map((id) => this.getNodeById(id)),
+          true,
+          false,
+        );
+      }
+    });
   }
 
   redo() {
-    const result = this.#history.redo(
-      arrayToMap(this.getNodes()),
-      this.getAppState(),
-      this.#store.snapshot,
-    );
+    this.runAtNextTick(() => {
+      const result = this.#history.redo(
+        arrayToMap(this.getNodes()),
+        this.getAppState(),
+        this.#store.snapshot,
+      );
 
-    if (result) {
-      const [elements, appState] = result;
-      this.setNodes(mapToArray(elements));
-      this.setAppState(appState);
-    }
+      if (result) {
+        const [elements, appState] = result;
+        this.setNodes(mapToArray(elements));
+        this.setAppState(appState);
+      }
+    });
   }
 
   isUndoStackEmpty() {
@@ -1104,9 +1163,6 @@ export class API {
     this.#canvas.delete();
   }
 
-  /**
-   * @see
-   */
   loadBitmapFont(bitmapFont: BitmapFont) {
     this.commands.spawn(
       new Font({
@@ -1116,5 +1172,9 @@ export class API {
       }),
     );
     this.commands.execute();
+  }
+
+  runAtNextTick(fn: () => any) {
+    pendingAPICallings.push(fn);
   }
 }

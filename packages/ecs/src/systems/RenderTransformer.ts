@@ -26,8 +26,8 @@ import {
   Transformable,
 } from '../components';
 import { Commands } from '../commands';
-import { getSceneRoot, updateGlobalTransform } from './Transform';
-import { API, Text, Visibility } from '..';
+import { updateGlobalTransform } from './Transform';
+import { API, Camera, Text, Visibility } from '..';
 import { inside } from '../utils/math';
 import { distanceBetweenPoints } from '../utils/matrix';
 
@@ -59,14 +59,12 @@ export class RenderTransformer extends System {
   private readonly commands = new Commands(this);
 
   private readonly selected = this.query((q) =>
-    q.added.and.removed.with(Selected),
+    q.current.and.added.and.removed.with(Selected),
   );
 
   private readonly bounds = this.query(
     (q) => q.changed.with(ComputedBounds).trackWrites,
   );
-
-  // #nodeRectCache = new WeakMap<Entity, NodeRect>();
 
   constructor() {
     super();
@@ -74,7 +72,7 @@ export class RenderTransformer extends System {
     this.query(
       (q) =>
         q
-          .using(ComputedBounds)
+          .using(ComputedBounds, Camera)
           .read.and.using(
             GlobalTransform,
             Transformable,
@@ -202,14 +200,15 @@ export class RenderTransformer extends System {
     });
 
     this.selected.removed.forEach((selected) => {
-      const camera = getSceneRoot(selected);
-      camerasToUpdate.add(camera);
+      this.accessRecentlyDeletedData();
+      camerasToUpdate.add(selected.read(Selected).camera);
     });
+    // Backrefs field Transformable.selecteds not configured to track recently deleted refs
+    this.accessRecentlyDeletedData(false);
 
     this.bounds.changed.forEach((entity) => {
       if (entity.has(Selected)) {
-        const camera = getSceneRoot(entity);
-        camerasToUpdate.add(camera);
+        camerasToUpdate.add(entity.read(Selected).camera);
       }
     });
 
@@ -437,6 +436,8 @@ export class RenderTransformer extends System {
     // }
 
     const { selecteds } = camera.read(Transformable);
+
+    console.log('selecteds', selecteds);
 
     if (selecteds.length === 1) {
       const selected = selecteds[0];

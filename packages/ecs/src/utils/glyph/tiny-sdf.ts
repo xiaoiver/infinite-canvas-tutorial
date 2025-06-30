@@ -3,6 +3,7 @@
  * @see https://gitlab.com/unconed/use.gpu/-/blob/master/packages/glyph/src/sdf.ts
  * @see https://acko.net/blog/subpixel-distance-transform/
  */
+import { fontStringFromTextStyle } from '../../systems/ComputeTextMetrics';
 import { DOMAdapter } from '../../environment';
 import { glyphToEDT } from './sdf-edt';
 import { glyphToESDT } from './sdf-esdt';
@@ -96,7 +97,12 @@ export class TinySDF {
     const ctx = (this.ctx = canvas.getContext('2d', {
       willReadFrequently: true,
     }) as CanvasRenderingContext2D);
-    ctx.font = `${fontStyle} ${fontWeight} ${fontSize}px ${fontFamily}`;
+    ctx.font = fontStringFromTextStyle({
+      fontStyle,
+      fontWeight,
+      fontSize,
+      fontFamily,
+    });
 
     ctx.textBaseline = 'alphabetic';
     ctx.textAlign = 'left'; // Necessary so that RTL text doesn't have different alignment

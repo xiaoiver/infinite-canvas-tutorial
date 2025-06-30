@@ -10,6 +10,7 @@ import {
 import { Canvas, GPUResource, Grid, Theme } from '../components';
 import { RenderCache } from '../utils';
 import { TexturePool } from '../resources';
+import { pendingAPICallings } from '../API';
 
 /**
  * Usually the first built-in system to run.
@@ -37,6 +38,11 @@ export class SetupDevice extends System {
   }
 
   execute() {
+    // if (pendingAPICallings.length) {
+    //   pendingAPICallings.forEach((fn) => fn());
+    //   pendingAPICallings.length = 0;
+    // }
+
     this.canvases.added.forEach(async (canvas) => {
       if (!canvas.has(Theme)) {
         canvas.add(Theme);

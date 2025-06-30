@@ -144,12 +144,23 @@ void main() {
     #endif
 
     float fontSize = u_ZIndexStrokeWidth.z;
+    fillColor.a *= fillOpacity;
+    strokeColor.a *= strokeOpacity;
 
     highp float gamma_scaled = fwidth(dist);
-    highp float alpha = smoothstep(buff - gamma_scaled, buff + gamma_scaled, dist);
-    opacity *= alpha;
+    if (strokeWidth > 0.0 && strokeColor.a > 0.0) {
+      float fillAlpha = smoothstep(buff - gamma_scaled, buff + gamma_scaled, dist);      
+      float strokeThreshold = buff - strokeWidth / fontSize;
+      float strokeAlpha = smoothstep(strokeThreshold - gamma_scaled, strokeThreshold + gamma_scaled, dist);
 
-    outputColor = fillColor;
+      vec4 finalColor = mix(strokeColor, fillColor, fillAlpha);
+      outputColor = finalColor;
+      opacity *= strokeAlpha;
+    } else {
+      highp float alpha = smoothstep(buff - gamma_scaled, buff + gamma_scaled, dist);
+      opacity *= alpha;
+      outputColor = fillColor;
+    }
   #endif
   
   outputColor.a *= opacity;

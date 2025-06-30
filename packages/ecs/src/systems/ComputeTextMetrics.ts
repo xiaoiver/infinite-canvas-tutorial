@@ -65,6 +65,26 @@ const genericFontFamilies = [
   'system-ui',
 ];
 
+// https://developer.mozilla.org/en-US/docs/Web/CSS/font-weight#common_weight_name_mapping
+const fontWeightMap = {
+  thin: 100,
+  extraLight: 200,
+  ultraLight: 200,
+  light: 300,
+  normal: 400,
+  regular: 400,
+  medium: 500,
+  semiBold: 600,
+  demiBold: 600,
+  bold: 700,
+  extraBold: 800,
+  ultraBold: 800,
+  black: 900,
+  heavy: 900,
+  extraBlack: 950,
+  ultraBlack: 950,
+};
+
 /**
  * Generates a font style string to use for `TextMetrics.measureFont()`.
  * @param style
@@ -99,7 +119,7 @@ export function fontStringFromTextStyle(style: Partial<Text>): string {
 
   // eslint-disable-next-line max-len
   return `${style.fontStyle ?? 'normal'} ${style.fontVariant ?? 'normal'} ${
-    style.fontWeight ?? 'normal'
+    style.fontWeight ? fontWeightMap[style.fontWeight] : 'normal'
   } ${fontSizeString} ${(fontFamilies as string[]).join(',')}`;
 }
 

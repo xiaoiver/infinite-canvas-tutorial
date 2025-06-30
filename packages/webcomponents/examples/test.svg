@@ -11,9 +11,9 @@
     <circle cx="100" cy="100" r="10" fill="red" name="Layer 0" />
 
     <text x="100" y="300" font-family="Arial, sans-serif" font-size="20" text-anchor="middle" dominant-baseline="middle"
-        fill="#666">需求层次</text>
+        fill="#666" fill-opacity="0.5">需求层次</text>
 
-    <text x="100" y="100" font-family="Arial, sans-serif" font-size="20" fill="#666">需求层次</text>
+    <text x="100" y="100" font-family="Arial, sans-serif" font-size="20" fill="#666" font-weight="medium">需求层次</text>
 
     <rect x="100" y="100" width="80" height="80" fill="red" stroke="#ddd" stroke-width="1" rx="5" ry="5" />
 

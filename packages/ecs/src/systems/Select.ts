@@ -642,7 +642,10 @@ export class Select extends System {
               }
             }
           }
-          this.#selectionMode = SelectionMode.MOVE;
+
+          if (api.getAppState().layersSelected.length > 0) {
+            this.#selectionMode = SelectionMode.MOVE;
+          }
         }
       }
 
@@ -714,14 +717,8 @@ export class Select extends System {
 
         // TODO: If the pointer is not moved, change the selection mode to SELECT
         if (prevX === x && prevY === y) {
-          // if (this.#selectionMode === SelectionMode.MOVE) {
-          //   this.#selectionMode = SelectionMode.SELECT;
-          // }
           return;
         }
-        // if (this.#selectionMode === SelectionMode.SELECT) {
-        //   this.#selectionMode = SelectionMode.MOVE;
-        // }
 
         const { x: sx, y: sy } = api.viewport2Canvas({
           x: prevX,

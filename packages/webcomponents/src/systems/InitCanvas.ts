@@ -29,7 +29,7 @@ import {
   ZIndex,
 } from '@infinite-canvas-tutorial/ecs';
 import { Event } from '../event';
-import { ExtendedAPI, pendingAPICallings, pendingCanvases } from '../API';
+import { ExtendedAPI, pendingCanvases } from '../API';
 import { LitStateManagement } from '../context';
 import { InfiniteCanvas } from '../spectrum/infinite-canvas';
 
@@ -92,11 +92,6 @@ export class InitCanvas extends System {
         container.dispatchEvent(new CustomEvent(Event.READY, { detail: api }));
       });
       pendingCanvases.length = 0;
-    }
-
-    if (pendingAPICallings.length) {
-      pendingAPICallings.forEach((fn) => fn());
-      pendingAPICallings.length = 0;
     }
   }
 }

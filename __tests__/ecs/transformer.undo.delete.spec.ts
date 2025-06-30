@@ -40,7 +40,7 @@ import { NodeJSAdapter, sleep } from '../utils';
 DOMAdapter.set(NodeJSAdapter);
 
 describe('Transformer', () => {
-  it('should not render transformer after deleting node correctly', async () => {
+  it('should undo deleting node correctly', async () => {
     const app = new App();
 
     let api: API;
@@ -123,6 +123,10 @@ describe('Transformer', () => {
           deleted = true;
         }
 
+        if (frameCounter === 2) {
+          api.undo();
+        }
+
         frameCounter++;
       }
     }
@@ -148,7 +152,7 @@ describe('Transformer', () => {
     const dir = `${__dirname}/snapshots`;
     await expect($canvas!.getContext('webgl1')).toMatchWebGLSnapshot(
       dir,
-      'transformer-delete',
+      'transformer-undo-delete',
     );
 
     await app.exit();

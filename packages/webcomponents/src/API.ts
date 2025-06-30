@@ -21,8 +21,6 @@ export const pendingCanvases: {
   camera: Partial<ComputedCamera>;
 }[] = [];
 
-export const pendingAPICallings: (() => any)[] = [];
-
 /**
  * Emit CustomEvents for the canvas.
  */
@@ -33,10 +31,6 @@ export class ExtendedAPI extends API {
     public element: LitElement,
   ) {
     super(stateManagement, commands);
-  }
-
-  runAtNextTick(fn: () => any) {
-    pendingAPICallings.push(fn);
   }
 
   resizeCanvas(width: number, height: number) {
