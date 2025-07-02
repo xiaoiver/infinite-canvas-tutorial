@@ -1,6 +1,7 @@
 import { System } from '@lastolivegames/becsy';
 import { ToBeDeleted } from '../components';
 import { ViewportCulling } from './ViewportCulling';
+import { pendingAPICallings } from '..';
 /**
  * Deletes entities with the {@link ToBeDeleted} component.
  * @see https://lastolivegames.github.io/becsy/guide/architecture/entities#deleting-entities
@@ -12,6 +13,11 @@ export class Deleter extends System {
   viewportCulling = this.attach(ViewportCulling);
 
   execute() {
+    if (pendingAPICallings.length) {
+      pendingAPICallings.forEach((fn) => fn());
+      pendingAPICallings.length = 0;
+    }
+
     for (const entity of this.entities.current) {
       /**
        * Execute before node removed from scenegraph.

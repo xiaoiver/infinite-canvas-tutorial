@@ -113,7 +113,11 @@ export class Store {
         : ElementsChange.empty();
 
       const appStateChange = nextSnapshot.meta.didAppStateChange
-        ? AppStateChange.calculate(prevSnapshot.appState, nextSnapshot.appState)
+        ? AppStateChange.calculate(
+            prevSnapshot.appState,
+            nextSnapshot.appState,
+            this.api,
+          )
         : AppStateChange.empty();
 
       if (!elementsChange.isEmpty() || !appStateChange.isEmpty()) {

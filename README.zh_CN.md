@@ -199,7 +199,7 @@ pnpm run dev
 -   什么是 Shaping？实现 letterSpacing 与 kerning
 -   处理段落
     -   分段与自动换行
-    -   支持 BiDi
+    -   支持 BiDi，包括阿拉伯字符的特殊处理
     -   处理复合字符
     -   支持 text-align
 -   如何生成 SDF atlas 并使用它绘制

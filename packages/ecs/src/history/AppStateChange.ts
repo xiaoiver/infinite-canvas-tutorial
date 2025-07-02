@@ -3,20 +3,25 @@
  */
 
 import { AppState } from '../context';
+import { API } from '../API';
 import { Change } from './Change';
 import { Delta } from './Delta';
 import { SceneElementsMap } from './ElementsChange';
 
 export class AppStateChange implements Change<AppState> {
-  private constructor(private readonly delta: Delta<AppState>) {}
+  private constructor(
+    private readonly delta: Delta<AppState>,
+    private readonly api: API,
+  ) {}
 
   static empty() {
-    return new AppStateChange(Delta.create({}, {}));
+    return new AppStateChange(Delta.create({}, {}), undefined);
   }
 
   static calculate<T extends AppState>(
     prevAppState: T,
     nextAppState: T,
+    api: API,
   ): AppStateChange {
     const delta = Delta.calculate(
       prevAppState,
@@ -25,7 +30,7 @@ export class AppStateChange implements Change<AppState> {
       // AppStateChange.postProcess,
     );
 
-    return new AppStateChange(delta);
+    return new AppStateChange(delta, api);
   }
 
   // private static postProcess<T extends ObservedAppState>(
@@ -56,7 +61,7 @@ export class AppStateChange implements Change<AppState> {
 
   inverse(): AppStateChange {
     const inversedDelta = Delta.create(this.delta.inserted, this.delta.deleted);
-    return new AppStateChange(inversedDelta);
+    return new AppStateChange(inversedDelta, this.api);
   }
 
   applyTo(
@@ -77,6 +82,20 @@ export class AppStateChange implements Change<AppState> {
       nextAppState,
       nextElements,
     );
+
+    if (this.api) {
+      this.api.setAppState(nextAppState);
+
+      console.log('nextAppState', nextAppState);
+
+      // reselect or rehighlight nodes
+      const { layersHighlighted, layersSelected } = nextAppState;
+      this.api.selectNodes(
+        layersSelected.map((id) => this.api.getNodeById(id)),
+        true,
+        false,
+      );
+    }
 
     return [nextAppState, constainsVisibleChanges];
   }

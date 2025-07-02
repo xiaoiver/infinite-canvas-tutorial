@@ -527,6 +527,9 @@ export class Select extends System {
       }
 
       const { api } = canvas.read(Canvas);
+      if (!api) {
+        return;
+      }
 
       const { layersSelected } = api.getAppState();
       const document = DOMAdapter.get().getDocument();

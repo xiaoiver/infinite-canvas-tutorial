@@ -59,7 +59,7 @@ export class ZoomToolbar extends LitElement {
 
   private handleKeyDown = (e: KeyboardEvent) => {
     // Canvas is focused
-    if (document.activeElement !== this.api.element) {
+    if (!this.api || document.activeElement !== this.api.element) {
       return;
     }
 

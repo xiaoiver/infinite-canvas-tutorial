@@ -231,7 +231,7 @@ For example, for this mixed LTR and RTL content `ABCאבגDEF`, we need to manua
 'ABCאבגDEF'.split(''); // ['A', 'B', 'C', 'ג' ,'ב' ,'א', 'D', 'E', 'F']
 ```
 
-This issue is not easy to solve in the browser, see: [BiDi in Pixi.js] or choose to implement it ourselves like [mapbox-gl-rtl-text], see: [Improving Arabic and Hebrew text in map labels]. However, currently we can use [bidi-js] to handle it, when encountering RTL characters, we need to manually reverse them:
+This issue is not easy to solve in the browser, see: [BiDi in Pixi.js]. [mapbox-gl-rtl-text] and [rtl-text] ported [International Components for Unicode (ICU)] to WASM which will increase the JS bundle size. However, currently we can use [bidi-js] to handle it, when encountering RTL characters, we need to manually reverse them:
 
 ```ts
 import bidiFactory from 'bidi-js';
@@ -242,6 +242,25 @@ let bidiChars = '';
 for (const segment of segmentStack[0]!) {
     const { text, direction } = segment;
     bidiChars += direction === 'ltr' ? text : text.split('').reverse().join('');
+}
+```
+
+In printed Arabic, each character can have an “isolated,” “initial,” “medial,” and “final” form. As an example, here are the four forms for the Arabic letter “meem” (U+0645), see: [Improving Arabic and Hebrew text in map labels].
+
+![Copyright © 2015–2017 W3C® https://w3c.github.io/alreq/](https://miro.medium.com/v2/resize:fit:1400/format:webp/0*bw5EsYu7dRATHtvg.png)
+
+We choose [Javascript-Arabic-Reshaper] which is much more light-weighted compared with ICU.
+
+```ts
+import ArabicReshaper from 'arabic-reshaper';
+
+if (direction === 'ltr') {
+    bidiChars += text;
+} else {
+    bidiChars += ArabicReshaper.convertArabic(text)
+        .split('')
+        .reverse()
+        .join('');
 }
 ```
 
@@ -749,6 +768,8 @@ The biggest difference between this approach and SDF is that we cannot only pres
 -   [End-To-End Tour of Text Layout/Rendering]
 -   [Text rendering in mapbox]
 -   [Rendering Crispy Text On The GPU]
+-   [Localization, languages, and listening]
+-   [RTL languages in Figma]
 
 [Drawing text]: https://developer.mozilla.org/en-US/docs/Web/API/Canvas_API/Tutorial/Drawing_text
 [FreeType]: https://freetype.org/
@@ -813,3 +834,8 @@ The biggest difference between this approach and SDF is that we cannot only pres
 [font-kerning]: https://developer.mozilla.org/en-US/docs/Web/CSS/font-kerning
 [BiDi in Pixi.js]: https://github.com/pixijs/pixijs/issues/4482
 [Rendering Crispy Text On The GPU]: https://osor.io/text
+[Localization, languages, and listening]: https://www.figma.com/blog/expanding-figmas-international-presence/
+[RTL languages in Figma]: https://help.figma.com/hc/en-us/articles/4972283635863-Add-right-to-left-text
+[International Components for Unicode (ICU)]: http://site.icu-project.org/
+[rtl-text]: https://www.jsdelivr.com/package/npm/rtl-text
+[Javascript-Arabic-Reshaper]: https://github.com/louy/Javascript-Arabic-Reshaper

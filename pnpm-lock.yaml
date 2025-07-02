@@ -144,6 +144,9 @@ importers:
       '@pixi/math':
         specifier: ^7.4.2
         version: 7.4.2
+      arabic-reshaper:
+        specifier: ^1.1.0
+        version: 1.1.0
       bezier-easing:
         specifier: ^2.1.0
         version: 2.1.0
@@ -205,6 +208,9 @@ importers:
       '@pixi/math':
         specifier: ^7.4.2
         version: 7.4.2
+      arabic-reshaper:
+        specifier: ^1.1.0
+        version: 1.1.0
       bezier-easing:
         specifier: ^2.1.0
         version: 2.1.0
@@ -2952,6 +2958,9 @@ packages:
 
   aproba@2.0.0:
     resolution: {integrity: sha512-lYe4Gx7QT+MKGbDsA+Z+he/Wtef0BiwDOlK/XkBrdfsh9J/jPPXbX0tE9x9cl27Tmu5gg3QUbUrQYa/y+KOHPQ==}
+
+  arabic-reshaper@1.1.0:
+    resolution: {integrity: sha512-DfF1CxCCgLi0XsqHFdr2cdi/7qEoupT76+6Q2vPPWroS6dinvKbomKMZD9AYxKAb+SXK+UYFuS3iBD0/ZVOzyw==}
 
   are-we-there-yet@3.0.1:
     resolution: {integrity: sha512-QZW4EDmGwlYur0Yyf/b2uGucHQMa8aFUP7eu9ddR73vvhFyt4V0Vl3QHPcTNJ8l6qYOBdxgXdnBXQrHilfRQBg==}
@@ -9396,6 +9405,8 @@ snapshots:
       tslib: 2.8.1
 
   aproba@2.0.0: {}
+
+  arabic-reshaper@1.1.0: {}
 
   are-we-there-yet@3.0.1:
     dependencies:

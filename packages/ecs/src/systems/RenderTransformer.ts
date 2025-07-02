@@ -437,8 +437,6 @@ export class RenderTransformer extends System {
 
     const { selecteds } = camera.read(Transformable);
 
-    console.log('selecteds', selecteds);
-
     if (selecteds.length === 1) {
       const selected = selecteds[0];
       if (selected.has(ComputedBounds)) {

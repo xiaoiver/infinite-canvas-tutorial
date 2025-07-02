@@ -478,20 +478,38 @@ export class ElementsChange implements Change<SceneElementsMap> {
     const removedElements = applyDeltas(this.removed);
     const updatedElements = applyDeltas(this.updated);
 
-    this.added.forEach((delta, id) => {
-      console.log('added', id, delta);
-    });
+    if (this.api) {
+      this.added.forEach((delta, id) => {
+        const { inserted, deleted } = delta;
+        const element = addedElements.get(id);
+        if (element) {
+          Object.keys(deleted).forEach((key) => {
+            delete element[key];
+          });
+          Object.assign(element, inserted);
+          this.api.updateNode(element, delta.inserted);
+        }
+      });
 
-    this.removed.forEach((delta, id) => {
-      console.log('removed', id, delta);
-    });
+      this.removed.forEach((delta, id) => {
+        const element = nextElements.get(id);
+        if (element) {
+          this.api.deleteNodesById([id]);
+        }
+      });
 
-    this.updated.forEach((delta, id) => {
-      const element = nextElements.get(id);
-      if (element) {
-        this.api.updateNode(element, delta.inserted);
-      }
-    });
+      this.updated.forEach((delta, id) => {
+        const { inserted, deleted } = delta;
+        const element = nextElements.get(id);
+        if (element) {
+          Object.keys(deleted).forEach((key) => {
+            delete element[key];
+          });
+          Object.assign(element, inserted);
+          this.api.updateNode(element, delta.inserted);
+        }
+      });
+    }
 
     return [nextElements, flags.containsVisibleDifference];
   }

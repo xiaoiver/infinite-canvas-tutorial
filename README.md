@@ -199,7 +199,7 @@ If you want to use it in your own project, you can refer to:
 -   What's shaping? Implement letterSpacing and kerning
 -   Paragraph layout
     -   Auto wordbreak
-    -   BiDi
+    -   BiDi, arabic shaping included
     -   Handle clusters
     -   Support text-align
 -   How to generate SDF atlas and use it to draw

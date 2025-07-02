@@ -1,5 +1,6 @@
 import bidiFactory from 'bidi-js';
 import { Rectangle } from '@pixi/math';
+import ArabicReshaper from 'arabic-reshaper';
 import { TextAttributes, TextStyleWhiteSpace } from '../shapes';
 import { BitmapFont } from './bitmap-font';
 import { DOMAdapter } from '../environment/adapter';
@@ -152,8 +153,15 @@ export class CanvasTextMetrics {
       let bidiChars = '';
       for (const segment of segmentStack[0]!) {
         const { text, direction } = segment;
-        bidiChars +=
-          direction === 'ltr' ? text : text.split('').reverse().join('');
+
+        if (direction === 'ltr') {
+          bidiChars += text;
+        } else {
+          bidiChars += ArabicReshaper.convertArabic(text)
+            .split('')
+            .reverse()
+            .join('');
+        }
       }
 
       this.#bidiCache[text] = bidiChars;

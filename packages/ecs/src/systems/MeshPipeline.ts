@@ -212,6 +212,8 @@ export class MeshPipeline extends System {
 
     const shouldRenderGrid = !request || grid;
 
+    // console.log(request, grid);
+
     if (!this.gpuResources.get(camera)) {
       this.gpuResources.set(camera, {
         uniformBuffer: device.createBuffer({
@@ -260,7 +262,7 @@ export class MeshPipeline extends System {
       });
       this.pendingRenderables.get(camera).remove.forEach((entity) => {
         // TODO: split removed and culled
-        batchManager.remove(entity, false);
+        batchManager.remove(entity);
       });
       this.pendingRenderables.delete(camera);
     }

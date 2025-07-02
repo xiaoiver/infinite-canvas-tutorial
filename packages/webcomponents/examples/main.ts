@@ -10,8 +10,8 @@ import {
 import { Event, UIPlugin } from '../src';
 import '../src/spectrum';
 
-// const res = await fetch('/maslow-hierarchy.svg');
-const res = await fetch('/test.svg');
+const res = await fetch('/maslow-hierarchy.svg');
+// const res = await fetch('/test.svg');
 // const res = await fetch('/test-camera.svg');
 // const res = await fetch(
 //   '/62f5208ddbc232ac973f53d9cfd91ba463c50b8bfd846349247709fe4a7a9053.svg',
@@ -27,6 +27,8 @@ const nodes = svgElementsToSerializedNodes(
   Array.from($svg.children) as SVGElement[],
   0,
 );
+
+console.log('nodes', nodes);
 
 const canvas = document.querySelector<HTMLElement>('#canvas1')!;
 canvas.addEventListener(Event.READY, async (e) => {
@@ -64,8 +66,6 @@ canvas.addEventListener(Event.READY, async (e) => {
   // api.updateNodes([node]);
   // api.selectNodes([node]);
   // });
-
-  console.log(nodes);
 
   api.updateNodes(nodes);
 
@@ -122,5 +122,9 @@ canvas.addEventListener(Event.READY, async (e) => {
 //   api.selectNodes([node]);
 // });
 
-const app = new App().addPlugins(...DefaultPlugins, UIPlugin);
-app.run();
+try {
+  const app = new App().addPlugins(...DefaultPlugins, UIPlugin);
+  app.run();
+} catch (e) {
+  console.log(e);
+}

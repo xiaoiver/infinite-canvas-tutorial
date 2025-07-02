@@ -1,6 +1,7 @@
 import { System } from '@lastolivegames/becsy';
 import { Rectangle } from '@pixi/math';
 import bidiFactory from 'bidi-js';
+import ArabicReshaper from 'arabic-reshaper';
 import { ComputedTextMetrics, Text } from '../components';
 import { DOMAdapter } from '../environment';
 import { BitmapFont } from '../utils';
@@ -555,8 +556,15 @@ export function computeBidi(text: string) {
     let bidiChars = '';
     for (const segment of segmentStack[0]!) {
       const { text, direction } = segment;
-      bidiChars +=
-        direction === 'ltr' ? text : text.split('').reverse().join('');
+
+      if (direction === 'ltr') {
+        bidiChars += text;
+      } else {
+        bidiChars += ArabicReshaper.convertArabic(text)
+          .split('')
+          .reverse()
+          .join('');
+      }
     }
 
     bidiCache[text] = bidiChars;

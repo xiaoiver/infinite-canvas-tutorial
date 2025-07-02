@@ -717,7 +717,7 @@ export class API {
     if (!preserveSelection) {
       this.getAppState().layersSelected.forEach((id) => {
         const entity = this.#idEntityMap.get(id)?.id();
-        if (entity) {
+        if (entity && entity.has(Selected)) {
           entity.remove(Selected);
         }
       });
@@ -745,7 +745,7 @@ export class API {
   deselectNodes(nodes: SerializedNode[]) {
     nodes.forEach((node) => {
       const entity = this.#idEntityMap.get(node.id)?.id();
-      if (entity) {
+      if (entity && entity.has(Selected)) {
         entity.remove(Selected);
       }
     });
@@ -1088,42 +1088,21 @@ export class API {
 
   undo() {
     this.runAtNextTick(() => {
-      const result = this.#history.undo(
+      this.#history.undo(
         arrayToMap(this.getNodes()),
         this.getAppState(),
         this.#store.snapshot,
       );
-
-      if (result) {
-        const [elements, appState] = result;
-        this.setNodes(mapToArray(elements));
-        this.setAppState(appState);
-
-        // reselect or rehighlight nodes
-
-        const { layersHighlighted, layersSelected } = appState;
-        this.selectNodes(
-          layersSelected.map((id) => this.getNodeById(id)),
-          true,
-          false,
-        );
-      }
     });
   }
 
   redo() {
     this.runAtNextTick(() => {
-      const result = this.#history.redo(
+      this.#history.redo(
         arrayToMap(this.getNodes()),
         this.getAppState(),
         this.#store.snapshot,
       );
-
-      if (result) {
-        const [elements, appState] = result;
-        this.setNodes(mapToArray(elements));
-        this.setAppState(appState);
-      }
     });
   }
 

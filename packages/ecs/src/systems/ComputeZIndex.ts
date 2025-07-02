@@ -55,12 +55,19 @@ export class ComputeZIndex extends System {
         (next?.has(FractionalIndex) && next.read(FractionalIndex)?.value) ||
         null;
 
-      const key = generateKeyBetween(prevFractionalIndex, nextFractionalIndex);
+      try {
+        const key = generateKeyBetween(
+          prevFractionalIndex,
+          nextFractionalIndex,
+        );
 
-      if (!entity.has(FractionalIndex)) {
-        entity.add(FractionalIndex);
+        if (!entity.has(FractionalIndex)) {
+          entity.add(FractionalIndex);
+        }
+        entity.write(FractionalIndex).value = key;
+      } catch (e) {
+        console.log(e);
       }
-      entity.write(FractionalIndex).value = key;
     });
   }
 }

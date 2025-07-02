@@ -1,4 +1,4 @@
-import { isNil, isString } from '@antv/util';
+import { isNil, isNumber, isString } from '@antv/util';
 import toposort from 'toposort';
 import { Mat3 } from '../../components';
 import {
@@ -208,18 +208,21 @@ export function serializeNodesToSVGElements(
         `${value}` !== '' &&
         `${defaultAttributes[type][key]}` !== `${value}`
       ) {
+        if (isNumber(value)) {
+          value = value.toFixed(3);
+        }
         element.setAttribute(camelToKebabCase(key), `${value}`);
       }
     });
 
     if (type === 'ellipse') {
-      element.setAttribute('cx', `${width / 2}`);
-      element.setAttribute('cy', `${height / 2}`);
-      element.setAttribute('rx', `${width / 2}`);
-      element.setAttribute('ry', `${height / 2}`);
+      element.setAttribute('cx', `${(width / 2).toFixed(3)}`);
+      element.setAttribute('cy', `${(height / 2).toFixed(3)}`);
+      element.setAttribute('rx', `${(width / 2).toFixed(3)}`);
+      element.setAttribute('ry', `${(height / 2).toFixed(3)}`);
     } else if (type === 'rect') {
-      element.setAttribute('width', `${width}`);
-      element.setAttribute('height', `${height}`);
+      element.setAttribute('width', `${width.toFixed(3)}`);
+      element.setAttribute('height', `${height.toFixed(3)}`);
       // const { width, height, x, y } = node;
       // // Handle negative size of rect.
       // if (width < 0 || height < 0) {
@@ -247,8 +250,8 @@ export function serializeNodesToSVGElements(
         y = fontBoundingBoxAscent;
       }
 
-      element.setAttribute('x', `${x}`);
-      element.setAttribute('y', `${y}`);
+      element.setAttribute('x', `${x.toFixed(3)}`);
+      element.setAttribute('y', `${y.toFixed(3)}`);
       element.removeAttribute('fill');
     }
 
@@ -381,7 +384,12 @@ export function serializeNodesToSVGElements(
     const f = matrix.m21;
 
     if (a !== 1 || b !== 0 || c !== 0 || d !== 1 || e !== 0 || f !== 0) {
-      $g.setAttribute('transform', `matrix(${a},${b},${c},${d},${e},${f})`);
+      $g.setAttribute(
+        'transform',
+        `matrix(${a.toFixed(3)},${b.toFixed(3)},${c.toFixed(3)},${d.toFixed(
+          3,
+        )},${e.toFixed(3)},${f.toFixed(3)})`,
+      );
     }
 
     idSVGElementMap.set(id, $g);
@@ -456,25 +464,33 @@ function exportInnerOrOuterStrokeAlignment(
     if (type === 'ellipse') {
       const { rx, ry } = attributes;
       const offset = innerStrokeAlignment ? -halfStrokeWidth : halfStrokeWidth;
-      $stroke.setAttribute('rx', `${rx + offset}`);
-      $stroke.setAttribute('ry', `${ry + offset}`);
+      $stroke.setAttribute('rx', `${(rx + offset).toFixed(3)}`);
+      $stroke.setAttribute('ry', `${(ry + offset).toFixed(3)}`);
     } else if (type === 'rect') {
       const { x, y, width, height, strokeWidth } = attributes;
       $stroke.setAttribute(
         'x',
-        `${x + (innerStrokeAlignment ? halfStrokeWidth : -halfStrokeWidth)}`,
+        `${(
+          x + (innerStrokeAlignment ? halfStrokeWidth : -halfStrokeWidth)
+        ).toFixed(3)}`,
       );
       $stroke.setAttribute(
         'y',
-        `${y + (innerStrokeAlignment ? halfStrokeWidth : -halfStrokeWidth)}`,
+        `${(
+          y + (innerStrokeAlignment ? halfStrokeWidth : -halfStrokeWidth)
+        ).toFixed(3)}`,
       );
       $stroke.setAttribute(
         'width',
-        `${width + (innerStrokeAlignment ? -strokeWidth : strokeWidth)}`,
+        `${(
+          width + (innerStrokeAlignment ? -strokeWidth : strokeWidth)
+        ).toFixed(3)}`,
       );
       $stroke.setAttribute(
         'height',
-        `${height + (innerStrokeAlignment ? -strokeWidth : strokeWidth)}`,
+        `${(
+          height + (innerStrokeAlignment ? -strokeWidth : strokeWidth)
+        ).toFixed(3)}`,
       );
     }
 

@@ -231,7 +231,7 @@ support for handling text containing a mixture of left to right (English) and ri
 'ABCאבגDEF'.split(''); // ['A', 'B', 'C', 'ג' ,'ב' ,'א', 'D', 'E', 'F']
 ```
 
-在浏览器端这个问题并不容易解决，例如 Pixi.js 至今也没有解决，详见：[BiDi in Pixi.js]。[mapbox-gl-rtl-text] 则选择自行实现，详见：[Improving Arabic and Hebrew text in map labels]。目前我们可以使用 [bidi-js]，遇到 RTL 字符时，需要手动反转：
+在浏览器端这个问题并不容易解决，例如 Pixi.js 至今也没有解决，详见：[BiDi in Pixi.js]。[mapbox-gl-rtl-text] 和 [rtl-text] 通过 WASM 将 [International Components for Unicode (ICU)] 移植到浏览器环境，但会显著增加 JS 包大小。目前我们可以使用 [bidi-js]，遇到 RTL 字符时，需要手动反转：
 
 ```ts
 import bidiFactory from 'bidi-js';
@@ -242,6 +242,25 @@ let bidiChars = '';
 for (const segment of segmentStack[0]!) {
     const { text, direction } = segment;
     bidiChars += direction === 'ltr' ? text : text.split('').reverse().join('');
+}
+```
+
+另外在阿拉伯语中，同一个字符在不同情况下会有多个变体。例如 meem (U+0645) 就有以下四种，需要根据前后的字符做出调整，详见：[Improving Arabic and Hebrew text in map labels]：
+
+![Copyright © 2015–2017 W3C® https://w3c.github.io/alreq/](https://miro.medium.com/v2/resize:fit:1400/format:webp/0*bw5EsYu7dRATHtvg.png)
+
+我们选择使用 [Javascript-Arabic-Reshaper]，相比基于 ICU 的方案要轻量很多。
+
+```ts
+import ArabicReshaper from 'arabic-reshaper';
+
+if (direction === 'ltr') {
+    bidiChars += text;
+} else {
+    bidiChars += ArabicReshaper.convertArabic(text)
+        .split('')
+        .reverse()
+        .join('');
 }
 ```
 
@@ -764,6 +783,8 @@ this.glyphAtlasTexture = device.createTexture({
 -   [End-To-End Tour of Text Layout/Rendering]
 -   [Text rendering in mapbox]
 -   [Rendering Crispy Text On The GPU]
+-   [Localization, languages, and listening]
+-   [RTL languages in Figma]
 
 [Drawing text]: https://developer.mozilla.org/en-US/docs/Web/API/Canvas_API/Tutorial/Drawing_text
 [FreeType]: https://freetype.org/
@@ -828,3 +849,8 @@ this.glyphAtlasTexture = device.createTexture({
 [font-kerning]: https://developer.mozilla.org/en-US/docs/Web/CSS/font-kerning
 [BiDi in Pixi.js]: https://github.com/pixijs/pixijs/issues/4482
 [Rendering Crispy Text On The GPU]: https://osor.io/text
+[Localization, languages, and listening]: https://www.figma.com/blog/expanding-figmas-international-presence/
+[RTL languages in Figma]: https://help.figma.com/hc/en-us/articles/4972283635863-Add-right-to-left-text
+[International Components for Unicode (ICU)]: http://site.icu-project.org/
+[rtl-text]: https://www.jsdelivr.com/package/npm/rtl-text
+[Javascript-Arabic-Reshaper]: https://github.com/louy/Javascript-Arabic-Reshaper
