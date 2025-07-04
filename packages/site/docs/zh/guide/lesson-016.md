@@ -175,21 +175,43 @@ canvas.drawTextBlob(textblob, 0, 0, textPaint);
 
 Kittl 提供了 [Easily Type Text On Any Path] 工具，可以方便的将文本放置在路径上。
 
+一个比较合适的参考实现来自 Fabricjs，详见：[fabricjs - text on path]。
+
 ## 更友好的交互方式 {#more-friendly-interaction}
 
-### 输入框 {#textarea}
+浏览器原生的 `<textarea>` 提供了闪烁光标、选区、键盘控制、复制粘贴等等便捷的功能。如果希望从头基于 `<canvas>` 实现这些功能将是非常繁重的任务，例如：[fabricjs - loading custom fonts] 和 google docs，因此我们不会选择这个方案。
 
-目前我们只实现了文本的绘制，实际在应用中，文本输入框是必不可少的。下图来自 Figma，可以看到使用了原生的 `<textarea>` 元素定位在画布上，当双击 Text 时，会展示输入框：
+### 使用原生输入框 {#textarea}
 
-![textarea in figma](/textarea-in-figma.png)
+下图来自 Figma，可以看到使用了原生的 `<textarea>` 元素定位在画布上，当双击 Text 时，会展示输入框：
 
-在 excalidraw 中也采用了这种方式：<https://github.com/excalidraw/excalidraw/blob/master/packages/excalidraw/element/textWysiwyg.tsx#L728>
+![Textarea in figma](/textarea-in-figma.png)
 
-我们也增加一个 `<ic-textarea>` 元素：
+在 excalidraw 中也采用了这种方式：[textWysiwyg.tsx]。
+
+![Text editor in excalidraw](/excalidraw-text-editor.png)
+
+我们也增加一个 `<ic-text-editor>` 元素，让它尽可能贴合画布中的 Text 渲染效果。对原生 `<textarea>` 元素进行样式上的重置，例如不展示边框和背景。其中 `fontFamily`、`fontSize`、`color` 等属性都有对应的 CSS 属性，直接设置即可，但使用绝对定位后的位置需要考虑许多因素：
 
 ```ts
-@customElement('ic-textarea')
-export class Textarea extends LitElement {
+@customElement('ic-text-editor')
+export class TextEditor extends LitElement {
+    static styles = css`
+        :host {
+            position: absolute;
+        }
+        textarea {
+            position: absolute;
+            display: none;
+            margin: 0;
+            padding: 0;
+            border: 0;
+            outline: 0;
+            resize: none;
+            background: transparent;
+        }
+    `;
+
     @query('textarea')
     editable: HTMLTextAreaElement;
 
@@ -199,7 +221,39 @@ export class Textarea extends LitElement {
 }
 ```
 
+首先需要将双击时的鼠标事件位置坐标转换到 viewport 坐标系下：
+
+```ts
+
+```
+
+然后需要考虑当前相机的缩放等级：
+
+```ts
+const { zoom } = this.api.getCamera().read(ComputedCamera);
+this.editable.style.transform = `scale(${zoom})`;
+this.editable.style.transformOrigin = `left top`;
+```
+
+最后我们希望在 `<textarea>` 元素上进行滚动不会触发浏览器默认行为，而是穿透它在 `<canvas>` 元素上触发，执行相机平移和缩放操作：
+
+```ts
+handleWheel = (event: WheelEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+
+    const newWheelEvent = new WheelEvent('wheel', {});
+    $canvas.dispatchEvent(newWheelEvent);
+};
+```
+
+### 计算宽高 {#calculate-size}
+
+在实时输入以及粘贴文本时，需要重新计算并设置 `<textarea>` 的宽高。
+
 ### 文本选中 {#text-selection}
+
+一旦支持了在 Text 覆盖 textarea，实现这个功能就很简单了。
 
 ## 特殊效果 {#special-effects}
 
@@ -276,3 +330,6 @@ export const absorb = /* wgsl */ `
 [shadowBlur]: https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/shadowBlur
 [text-decoration]: https://developer.mozilla.org/en-US/docs/Web/CSS/text-decoration
 [Easily Type Text On Any Path]: https://www.kittl.com/article/easily-type-text-on-any-path
+[textWysiwyg.tsx]: https://github.com/excalidraw/excalidraw/blob/master/packages/excalidraw/wysiwyg/textWysiwyg.tsx
+[fabricjs - text on path]: https://fabricjs.com/demos/text-on-path/
+[fabricjs - loading custom fonts]: https://fabricjs.com/demos/loading-custom-fonts/

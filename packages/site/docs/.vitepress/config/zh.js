@@ -3,7 +3,17 @@ import { defineConfig } from 'vitepress';
 export const zh = defineConfig({
   lang: 'zh-Hans',
   title: '一个无限画布教程',
-  description: '一个无限画布教程',
+  description:
+    '一个开源的无限画布教程，基于 HTML5 Canvas、WebGL/WebGPU、ECS 架构、SDF 渲染及 CRDT/Yjs 协同，帮助开发者打造类似 Figma 的交互式画布。',
+  keywords: [
+    '无限画布',
+    'infinite canvas',
+    'canvas',
+    'webgl',
+    'webgpu',
+    'ecs',
+    'crdt',
+  ],
   themeConfig: {
     nav: [
       { text: '课程', link: '/zh/guide/lesson-001', activeMatch: '/zh/guide/' },

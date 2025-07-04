@@ -261,8 +261,7 @@ export class MeshPipeline extends System {
         batchManager.add(entity);
       });
       this.pendingRenderables.get(camera).remove.forEach((entity) => {
-        // TODO: split removed and culled
-        batchManager.remove(entity);
+        batchManager.remove(entity, !entity.has(Culled));
       });
       this.pendingRenderables.delete(camera);
     }

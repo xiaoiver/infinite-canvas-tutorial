@@ -120,7 +120,9 @@ export function fontStringFromTextStyle(style: Partial<Text>): string {
 
   // eslint-disable-next-line max-len
   return `${style.fontStyle ?? 'normal'} ${style.fontVariant ?? 'normal'} ${
-    style.fontWeight ? fontWeightMap[style.fontWeight] : 'normal'
+    style.fontWeight
+      ? fontWeightMap[style.fontWeight] || style.fontWeight
+      : 'normal'
   } ${fontSizeString} ${(fontFamilies as string[]).join(',')}`;
 }
 

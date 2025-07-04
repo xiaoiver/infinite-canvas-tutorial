@@ -788,7 +788,7 @@ export class API {
   unhighlightNodes(nodes: SerializedNode[]) {
     nodes.forEach((node) => {
       const entity = this.#idEntityMap.get(node.id)?.id();
-      if (entity) {
+      if (entity && entity.has(Highlighted)) {
         entity.remove(Highlighted);
       }
     });

@@ -225,6 +225,7 @@ export class InfiniteCanvas extends LitElement {
             <ic-spectrum-penbar></ic-spectrum-penbar>
             <ic-spectrum-taskbar></ic-spectrum-taskbar>
             <ic-spectrum-context-bar></ic-spectrum-context-bar>
+            <ic-spectrum-text-editor></ic-spectrum-text-editor>
             ${$canvas}`,
         ),
       error: (e: Error) => {

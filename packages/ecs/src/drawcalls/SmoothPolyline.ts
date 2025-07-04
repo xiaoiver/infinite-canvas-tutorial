@@ -315,7 +315,7 @@ export class SmoothPolyline extends Drawcall {
             channelWriteMask: ChannelWriteMask.ALL,
             rgbBlendState: {
               blendMode: BlendMode.ADD,
-              blendSrcFactor: BlendFactor.ONE,
+              blendSrcFactor: BlendFactor.SRC_ALPHA,
               blendDstFactor: BlendFactor.ONE_MINUS_SRC_ALPHA,
             },
             alphaBlendState: {

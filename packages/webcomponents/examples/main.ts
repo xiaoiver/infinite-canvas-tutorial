@@ -10,8 +10,8 @@ import {
 import { Event, UIPlugin } from '../src';
 import '../src/spectrum';
 
-const res = await fetch('/maslow-hierarchy.svg');
-// const res = await fetch('/test.svg');
+// const res = await fetch('/maslow-hierarchy.svg');
+const res = await fetch('/test.svg');
 // const res = await fetch('/test-camera.svg');
 // const res = await fetch(
 //   '/62f5208ddbc232ac973f53d9cfd91ba463c50b8bfd846349247709fe4a7a9053.svg',
@@ -25,7 +25,6 @@ const $svg = $container.children[0] as SVGSVGElement;
 const camera = svgSvgElementToComputedCamera($svg);
 const nodes = svgElementsToSerializedNodes(
   Array.from($svg.children) as SVGElement[],
-  0,
 );
 
 console.log('nodes', nodes);
@@ -52,31 +51,54 @@ canvas.addEventListener(Event.READY, async (e) => {
   api.setPen(Pen.SELECT);
   // api.setTaskbars([Task.SHOW_LAYERS_PANEL, Task.SHOW_PROPERTIES_PANEL]);
 
-  // api.runAtNextTick(() => {
-  // const node = {
-  //   id: '1',
-  //   type: 'ellipse',
-  //   fill: 'red',
-  //   x: 0,
-  //   y: 50,
-  //   width: 200,
-  //   height: 100,
-  //   visibility: 'visible',
-  // };
-  // api.updateNodes([node]);
-  // api.selectNodes([node]);
-  // });
-
   api.updateNodes(nodes);
 
-  // api.gotoLandmark(
-  //   api.createLandmark({
-  //     x: camera.x,
-  //     y: camera.y,
-  //     zoom: camera.zoom,
-  //   }),
-  //   { duration: 100 },
-  // );
+  api.runAtNextTick(() => {
+    // api.gotoLandmark(
+    //   api.createLandmark({
+    //     x: camera.x,
+    //     y: camera.y,
+    //     zoom: 2,
+    //   }),
+    //   { duration: 100 },
+    // );
+    // const node = {
+    //   id: '1',
+    //   type: 'ellipse',
+    //   fill: 'red',
+    //   x: 0,
+    //   y: 50,
+    //   width: 200,
+    //   height: 100,
+    //   visibility: 'visible',
+    // };
+    // api.updateNodes([node]);
+    //   // api.selectNodes([node]);
+  });
+
+  // api.updateNodes([
+  //   {
+  //     id: '98a47089-1060-4f70-9020-f8802c23c13a',
+  //     type: 'text',
+  //     content: '123',
+  //     anchorX: 201,
+  //     anchorY: 199,
+  //     fontSize: 16,
+  //     fontFamily: 'system-ui',
+  //     textAlign: 'left',
+  //     textBaseline: 'alphabetic',
+  //     fill: 'black',
+  //     visibility: 'visible',
+  //     x: 201,
+  //     y: 184,
+  //     width: 26.171875,
+  //     height: 18.0703125,
+  //     rotation: 0,
+  //     scaleX: 1,
+  //     scaleY: 1,
+  //   },
+  // ]);
+
   // });
   // api.updateNodes(nodes);
   // api.selectNodes([nodes[0]]);

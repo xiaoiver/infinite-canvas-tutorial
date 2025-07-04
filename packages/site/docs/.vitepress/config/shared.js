@@ -10,6 +10,10 @@ export const shared = defineConfig({
         icon: 'github',
         link: 'https://github.com/xiaoiver/infinite-canvas-tutorial',
       },
+      {
+        icon: 'twitter',
+        link: 'https://x.com/YuqiP45780',
+      },
     ],
     search: {
       provider: 'algolia',

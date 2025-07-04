@@ -1,4 +1,5 @@
 import { isNil, isNumber } from '@antv/util';
+import { v4 as uuidv4 } from 'uuid';
 import { Visibility } from '../../components';
 import {
   defaultAttributes,
@@ -51,15 +52,16 @@ export function svgSvgElementToComputedCamera(element: SVGSVGElement) {
  */
 export function svgElementsToSerializedNodes(
   elements: SVGElement[],
-  id = 0,
   defsChildren: SVGElement[] = [],
-  parentId?: number,
+  parentId?: string,
   zIndex = 0,
 ): SerializedNode[] {
   const nodes: SerializedNode[] = [];
 
   for (const element of elements) {
     let type = element.tagName.toLowerCase();
+
+    const id = element.id || uuidv4();
 
     if (type === 'svg') {
       type = 'g';
@@ -71,12 +73,7 @@ export function svgElementsToSerializedNodes(
       if (href) {
         const def = defsChildren.find((d) => d.id === href.replace('#', ''));
         if (def) {
-          return svgElementsToSerializedNodes(
-            [def],
-            id,
-            defsChildren,
-            parentId,
-          );
+          return svgElementsToSerializedNodes([def], defsChildren, parentId);
         }
       }
       continue;
@@ -163,7 +160,8 @@ export function svgElementsToSerializedNodes(
         (attributes as TextSerializedNode).fill = element.style.fill;
       }
 
-      (attributes as TextSerializedNode).content = element.textContent;
+      // remove prefix and suffix whitespace and newlines
+      (attributes as TextSerializedNode).content = element.textContent?.trim();
       const dominantBaseline =
         element.attributes.getNamedItem('dominant-baseline')?.value;
       if (dominantBaseline) {
@@ -225,7 +223,7 @@ export function svgElementsToSerializedNodes(
     attributes.zIndex = zIndex++;
 
     const node = {
-      id: `${id}`,
+      id,
       parentId: !isNil(parentId) ? `${parentId}` : undefined,
       type,
       ...defaultAttributes[type],
@@ -240,13 +238,11 @@ export function svgElementsToSerializedNodes(
 
     const children = svgElementsToSerializedNodes(
       Array.from(element.children) as SVGElement[],
-      ++id,
       defsChildren,
-      Number(node.id),
+      node.id,
       0,
     ).filter(Boolean);
 
-    id += children.length;
     nodes.push(...children);
   }
 

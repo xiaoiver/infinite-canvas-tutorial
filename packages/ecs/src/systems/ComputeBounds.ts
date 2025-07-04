@@ -121,7 +121,7 @@ export class ComputeBounds extends System {
         entity.write(ComputedBounds).renderBounds = renderBounds;
       }
 
-      {
+      if (geometryBounds && renderBounds) {
         const matrix = entity.read(GlobalTransform).matrix;
         const { translation, rotation, scale } = decompose(
           Mat3.toGLMat3(matrix),

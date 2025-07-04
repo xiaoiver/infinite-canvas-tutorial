@@ -86,7 +86,7 @@ export class AppStateChange implements Change<AppState> {
     if (this.api) {
       this.api.setAppState(nextAppState);
 
-      console.log('nextAppState', nextAppState);
+      // console.log('nextAppState', nextAppState);
 
       // reselect or rehighlight nodes
       const { layersHighlighted, layersSelected } = nextAppState;

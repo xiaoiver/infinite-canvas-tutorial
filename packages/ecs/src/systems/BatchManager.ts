@@ -215,7 +215,7 @@ export class BatchManager {
    * * culled from viewport.
    * * invisible.
    */
-  remove(shape: Entity) {
+  remove(shape: Entity, destroy = true) {
     if (shape.read(Renderable).batchable) {
       this.getOrCreateBatchableDrawcalls(shape).forEach((drawcall) => {
         drawcall.remove(shape);
@@ -223,12 +223,18 @@ export class BatchManager {
       this.#batchableDrawcallsCache.delete(shape);
     } else {
       this.#nonBatchableDrawcallsCache.get(shape)?.forEach((drawcall) => {
+        if (destroy) {
+          drawcall.destroy();
+        }
         this.#drawcallsToFlush.splice(
           this.#drawcallsToFlush.indexOf(drawcall),
           1,
         );
       });
-      this.#nonBatchableDrawcallsCache.delete(shape);
+
+      if (destroy) {
+        this.#nonBatchableDrawcallsCache.delete(shape);
+      }
     }
   }
 

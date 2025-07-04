@@ -3,7 +3,9 @@ import { defineConfig } from 'vitepress';
 export const en = defineConfig({
   lang: 'en-US',
   title: 'An infinite canvas tutorial',
-  description: 'An infinite canvas tutorial.',
+  description:
+    'An in-depth and open-source infinite canvas tutorial built with HTML5 Canvas, WebGL/WebGPU, ECS, SDF rendering, collaboration via CRDT/Yjs—empowering developers to craft Figma‑like interactive workspaces.',
+  keywords: ['infinite canvas', 'canvas', 'webgl', 'webgpu', 'ecs'],
   themeConfig: {
     nav: [
       { text: 'Guide', link: '/guide/lesson-001', activeMatch: '/guide/' },
