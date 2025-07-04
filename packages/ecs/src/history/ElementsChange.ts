@@ -53,7 +53,9 @@ export function safeAddComponent<T>(
   if (!entity.has(componentCtor)) {
     entity.add(componentCtor);
   }
-  Object.assign(entity.write(componentCtor), component);
+  if (component) {
+    Object.assign(entity.write(componentCtor), component);
+  }
 }
 
 export function safeRemoveComponent<T>(
@@ -576,6 +578,7 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
     fontStyle,
     textAlign,
     textBaseline,
+    content,
   } = updates as any;
 
   if (!isNil(name)) {
@@ -648,7 +651,10 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
   if (!isNil(textBaseline)) {
     entity.write(Text).textBaseline = textBaseline;
   }
-  // TODO: Other text properties
+  if (!isNil(content)) {
+    entity.write(Text).content = content;
+  }
+  // TODO: Other text properties e.g. fontFamily
 
   if (!isNil(width)) {
     if (entity.has(Rect)) {

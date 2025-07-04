@@ -47,11 +47,14 @@ import {
   Theme,
   ToBeDeleted,
   Wireframe,
+  MaterialDirty,
+  GeometryDirty,
 } from '../components';
 import { paddingMat3 } from '../utils';
 import { GridRenderer } from './GridRenderer';
 import { BatchManager } from './BatchManager';
 import { getSceneRoot } from './Transform';
+import { safeAddComponent } from '../history';
 
 export class MeshPipeline extends System {
   private canvases = this.query((q) => q.current.with(Canvas).read);
@@ -62,7 +65,7 @@ export class MeshPipeline extends System {
 
   private renderables = this.query(
     (q) =>
-      q.addedOrChanged
+      q.added.and.changed
         .with(Renderable)
         .withAny(Circle, Ellipse, Rect, Polyline, Path, Text).trackWrites,
   );
@@ -161,7 +164,12 @@ export class MeshPipeline extends System {
             SizeAttenuation,
             StrokeAttenuation,
           )
-          .read.and.using(RasterScreenshotRequest, Screenshot).write,
+          .read.and.using(
+            RasterScreenshotRequest,
+            Screenshot,
+            GeometryDirty,
+            MaterialDirty,
+          ).write,
     );
   }
 
@@ -285,10 +293,27 @@ export class MeshPipeline extends System {
 
   execute() {
     new Set([
-      ...this.renderables.addedOrChanged,
+      ...this.renderables.added,
+      ...this.renderables.changed,
       ...this.culleds.removed,
     ]).forEach((entity) => {
       const camera = getSceneRoot(entity);
+
+      // TODO: batchable
+
+      if (this.renderables.added.includes(entity)) {
+        safeAddComponent(entity, GeometryDirty);
+        safeAddComponent(entity, MaterialDirty);
+      }
+
+      if (this.renderables.changed.includes(entity)) {
+        if (entity.has(Polyline) || entity.has(Path) || entity.has(Text)) {
+          safeAddComponent(entity, GeometryDirty);
+        }
+        if (entity.has(Text)) {
+          safeAddComponent(entity, MaterialDirty);
+        }
+      }
 
       // The gpu resources is not ready for the camera.
       if (!this.pendingRenderables.has(camera)) {

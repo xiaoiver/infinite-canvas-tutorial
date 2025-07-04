@@ -72,18 +72,21 @@ export class TextEditor extends LitElement {
     const target = event.target as HTMLTextAreaElement;
     const content = target.value;
 
-    if (content.trim() !== '') {
+    if (content.trim() !== '' && content.trim() !== this.node.content) {
       this.api.runAtNextTick(() => {
-        console.log('update', content, this.node);
-
         this.api.updateNode({
           ...this.node,
           content,
           visibility: 'visible',
         });
         this.api.record();
-
-        console.log(this.api.getNodes());
+      });
+    } else {
+      this.api.runAtNextTick(() => {
+        this.api.updateNode({
+          ...this.node,
+          visibility: 'visible',
+        });
       });
     }
 
@@ -108,6 +111,8 @@ export class TextEditor extends LitElement {
 
     // Create a new text node if blank area is clicked.
     if (!entity) {
+      return;
+
       this.node = {
         id: uuidv4(),
         type: 'text',
@@ -139,6 +144,8 @@ export class TextEditor extends LitElement {
       this.editable.style.color = node.fill;
       this.editable.style.opacity = node.opacity && node.opacity.toString();
       this.editable.style.textAlign = node.textAlign;
+      this.editable.style.width = `${node.width}px`;
+      this.editable.style.height = `${node.height}px`;
       // TODO: support textBaseline.
       // this.editable.style.textBaseline = node.textBaseline;
       this.editable.style.letterSpacing =
@@ -230,7 +237,7 @@ export class TextEditor extends LitElement {
     // FIXME: wait for the element to be ready.
     if (this.api?.element && !this.binded) {
       const $canvas = this.api.getCanvas().read(Canvas).element;
-      // $canvas?.addEventListener('dblclick', this.handleDblclick);
+      $canvas?.addEventListener('dblclick', this.handleDblclick);
       this.binded = true;
     }
 

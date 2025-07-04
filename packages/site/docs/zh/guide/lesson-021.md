@@ -45,7 +45,7 @@ call(() => {
     $circle.setAttribute('cx', '100');
     $circle.setAttribute('cy', '100');
     $circle.setAttribute('r', '50');
-    const nodes = svgElementsToSerializedNodes([$circle], 0);
+    const nodes = svgElementsToSerializedNodes([$circle]);
     return nodes[0];
 });
 ```
@@ -57,7 +57,7 @@ call(() => {
     const { createSVGElement, svgElementsToSerializedNodes } = ECS;
     const $polyline = createSVGElement('polyline');
     $polyline.setAttribute('points', '50,50 100,100, 100,50');
-    const nodes = svgElementsToSerializedNodes([$polyline], 0);
+    const nodes = svgElementsToSerializedNodes([$polyline]);
     return nodes[0];
 });
 ```

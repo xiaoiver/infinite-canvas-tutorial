@@ -54,6 +54,8 @@ import {
   StrokeAttenuation,
   ComputedVisibility,
   Font,
+  MaterialDirty,
+  GeometryDirty,
 } from '../components';
 
 export const RendererPlugin: Plugin = () => {
@@ -70,6 +72,8 @@ export const RendererPlugin: Plugin = () => {
   component(ToBeDeleted);
   component(SizeAttenuation);
   component(StrokeAttenuation);
+  component(GeometryDirty);
+  component(MaterialDirty);
 
   /**
    * Style

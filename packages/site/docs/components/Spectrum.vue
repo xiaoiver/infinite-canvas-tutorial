@@ -23,9 +23,6 @@ onMounted(async () => {
 
   const nodes = svgElementsToSerializedNodes(
     Array.from($svg.children) as SVGElement[],
-    0,
-    [],
-    undefined,
   );
 
   const canvas = wrapper.value;

@@ -12,6 +12,8 @@ import {
 import {
   Circle,
   Ellipse,
+  GeometryDirty,
+  MaterialDirty,
   Path,
   Polyline,
   Rect,
@@ -22,6 +24,7 @@ import {
 import { TexturePool } from '../resources';
 import { RenderCache } from '../utils';
 import { sortByFractionalIndex } from './Sort';
+import { safeRemoveComponent } from '../history';
 
 /**
  * Since a shape may have multiple drawcalls, we need to cache them and maintain an 1-to-many relationship.
@@ -278,14 +281,14 @@ export class BatchManager {
     const materialDirtyShapes: Entity[] = [];
     this.#drawcallsToFlush.forEach((drawcall) => {
       drawcall.shapes.forEach((shape) => {
-        // if (shape.geometryDirtyFlag) {
-        geometryDirtyShapes.push(shape);
-        geometryDirtyDrawcalls.push(drawcall);
-        // }
-        // if (shape.materialDirtyFlag) {
-        materialDirtyShapes.push(shape);
-        materialDirtyDrawcalls.push(drawcall);
-        // }
+        if (shape.has(GeometryDirty)) {
+          geometryDirtyShapes.push(shape);
+          geometryDirtyDrawcalls.push(drawcall);
+        }
+        if (shape.has(MaterialDirty)) {
+          materialDirtyShapes.push(shape);
+          materialDirtyDrawcalls.push(drawcall);
+        }
       });
     });
 
@@ -295,13 +298,12 @@ export class BatchManager {
     materialDirtyDrawcalls.forEach(
       (drawcall) => (drawcall.materialDirty = true),
     );
-    // geometryDirtyShapes.forEach((shape) => {
-    //   if (shape.geometryDirtyFlag) {
-    //     shape.preCreateGeometry?.();
-    //     shape.geometryDirtyFlag = false;
-    //   }
-    // });
-    // materialDirtyShapes.forEach((shape) => (shape.materialDirtyFlag = false));
+    geometryDirtyShapes.forEach((shape) =>
+      safeRemoveComponent(shape, GeometryDirty),
+    );
+    materialDirtyShapes.forEach((shape) =>
+      safeRemoveComponent(shape, MaterialDirty),
+    );
     this.#drawcallsToFlush.forEach((drawcall) => {
       drawcall.submit(renderPass, uniformBuffer, uniformLegacyObject);
     });
