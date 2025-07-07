@@ -23,6 +23,9 @@ export enum Location {
 
 export const vert = /* wgsl */ `
 #define SHIFT_RIGHT23 1.0 / 8388608.0
+#define SHIFT_LEFT23 8388608.0
+#define SHIFT_RIGHT22 1.0 / 4194304.0
+#define SHIFT_LEFT22 4194304.0
 
 layout(std140) uniform SceneUniforms {
   mat3 u_ProjectionMatrix;
@@ -124,6 +127,20 @@ void main() {
     shapeSizeAttenuation = u_Opacity.w;
   #endif
 
+  
+  float compressed = shapeSizeAttenuation;
+  float sizeAttenuation = floor(compressed * SHIFT_RIGHT23);
+  compressed -= sizeAttenuation * SHIFT_LEFT23;
+  float strokeAttenuation = floor(compressed * SHIFT_RIGHT22);
+  
+  float scale = 1.0;
+  if (sizeAttenuation > 0.5) {
+    scale = 1.0 / u_ZoomScale;
+  }
+  if (strokeAttenuation > 0.5) {
+    strokeWidth = strokeWidth / u_ZoomScale;
+  }
+
   float strokeOffset;
   if (strokeAlignment < 0.5) {
     strokeOffset = strokeWidth / 2.0;
@@ -134,13 +151,6 @@ void main() {
   }
 
   vec2 radius = size + vec2(strokeOffset);
-  float compressed = shapeSizeAttenuation;
-  float sizeAttenuation = floor(compressed * SHIFT_RIGHT23);
-  float scale = 1.0;
-  if (sizeAttenuation > 0.5) {
-    scale = 1.0 / u_ZoomScale;
-  }
-
   v_FragCoord = vec2(a_FragCoord * radius);
   v_Radius = abs(radius);
 

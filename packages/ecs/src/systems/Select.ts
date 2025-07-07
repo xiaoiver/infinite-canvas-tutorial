@@ -520,6 +520,10 @@ export class Select extends System {
 
   private handleKeyDown = (e: KeyboardEvent) => {
     this.cameras.current.forEach((camera) => {
+      if (!camera.has(Camera)) {
+        return;
+      }
+
       const { canvas } = camera.read(Camera);
 
       if (!canvas) {
@@ -570,6 +574,10 @@ export class Select extends System {
 
   execute() {
     this.cameras.current.forEach((camera) => {
+      if (!camera.has(Camera)) {
+        return;
+      }
+
       const { canvas } = camera.read(Camera);
 
       if (!canvas) {

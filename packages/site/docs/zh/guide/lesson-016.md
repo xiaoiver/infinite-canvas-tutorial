@@ -10,6 +10,7 @@ import Harfbuzz from '../../components/Harfbuzz.vue';
 import TeXMath from '../../components/TeXMath.vue';
 import TextDropShadow from '../../components/TextDropShadow.vue';
 import PhysicalText from '../../components/PhysicalText.vue';
+import TextEditor from '../../components/TextEditor.vue';
 </script>
 
 # 课程 16 - 文本的高级特性
@@ -181,6 +182,8 @@ Kittl 提供了 [Easily Type Text On Any Path] 工具，可以方便的将文本
 
 浏览器原生的 `<textarea>` 提供了闪烁光标、选区、键盘控制、复制粘贴等等便捷的功能。如果希望从头基于 `<canvas>` 实现这些功能将是非常繁重的任务，例如：[fabricjs - loading custom fonts] 和 google docs，因此我们不会选择这个方案。
 
+<TextEditor />
+
 ### 使用原生输入框 {#textarea}
 
 下图来自 Figma，可以看到使用了原生的 `<textarea>` 元素定位在画布上，当双击 Text 时，会展示输入框：
@@ -224,7 +227,13 @@ export class TextEditor extends LitElement {
 首先需要将双击时的鼠标事件位置坐标转换到 viewport 坐标系下：
 
 ```ts
+const { x, y } = this.api.canvas2Viewport({
+    x: this.node.x,
+    y: this.node.y,
+});
 
+this.editable.style.left = `${x}px`;
+this.editable.style.top = `${y}px`;
 ```
 
 然后需要考虑当前相机的缩放等级：
@@ -247,9 +256,19 @@ handleWheel = (event: WheelEvent) => {
 };
 ```
 
+效果如下：
+
+![pan and zoom with camera](/text-editor-with-camera.gif)
+
 ### 计算宽高 {#calculate-size}
 
 在实时输入以及粘贴文本时，需要重新计算并设置 `<textarea>` 的宽高。
+
+### 处理 Tab {#in-and-outdent}
+
+在 `<textarea>` 中按下 Tab 键的默认行为是切换焦点到下一个元素。我们希望和代码编辑器一样。
+
+[excalidraw - handle tab]
 
 ### 文本选中 {#text-selection}
 
@@ -333,3 +352,4 @@ export const absorb = /* wgsl */ `
 [textWysiwyg.tsx]: https://github.com/excalidraw/excalidraw/blob/master/packages/excalidraw/wysiwyg/textWysiwyg.tsx
 [fabricjs - text on path]: https://fabricjs.com/demos/text-on-path/
 [fabricjs - loading custom fonts]: https://fabricjs.com/demos/loading-custom-fonts/
+[excalidraw - handle tab]: https://github.com/excalidraw/excalidraw/blob/master/packages/excalidraw/wysiwyg/textWysiwyg.tsx#L412-L429

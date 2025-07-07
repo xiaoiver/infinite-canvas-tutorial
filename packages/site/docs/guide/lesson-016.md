@@ -10,6 +10,7 @@ import Harfbuzz from '../components/Harfbuzz.vue';
 import TeXMath from '../components/TeXMath.vue';
 import TextDropShadow from '../components/TextDropShadow.vue';
 import PhysicalText from '../components/PhysicalText.vue';
+import TextEditor from '../components/TextEditor.vue';
 </script>
 
 # Lesson 16 - Advanced Text Features
@@ -162,15 +163,103 @@ In Mapbox, placing labels along roads and rivers is a common scenario, see [Map 
 
 Kittl provides a [Easily Type Text On Any Path] tool.
 
+A more appropriate reference implementation comes from Fabricjs, see: [fabricjs - text on path].
+
 ## More Friendly Interaction {#more-friendly-interaction}
+
+Browser-native `<textarea>`s provide convenient features such as blinking cursors, selections, keyboard control, copy and paste, etc. If you wish to implement these features from scratch based on `<canvas>`, it would be a very tedious task, e.g. [fabricjs - loading custom fonts] and google docs, so we won't be choosing this option.
+
+<TextEditor />
 
 ### Text Input {#textarea}
 
-Currently, we've only implemented text rendering, but in actual applications, text input boxes are essential. The image below is from Figma
+Below, from Figma, you can see that the native `<textarea>` element is used to position itself on the canvas, and when Text is double-clicked, the input box is displayed:
 
 ![textarea in figma](/textarea-in-figma.png)
 
+This is also used in excalidraw, see: [textWysiwyg.tsx]。
+
+![Text editor in excalidraw](/excalidraw-text-editor.png)
+
+We also add a `<ic-text-editor>` element to make it fit the Text rendering in the canvas as closely as possible. The native `<textarea>` element is stylistically reset, e.g. not showing borders and backgrounds. The `fontFamily`, `fontSize`, and `color` properties all have corresponding CSS properties that can be set directly, but there are a number of factors that need to be taken into account when using absolute positioning:
+
+```ts
+@customElement('ic-text-editor')
+export class TextEditor extends LitElement {
+    static styles = css`
+        :host {
+            position: absolute;
+        }
+        textarea {
+            position: absolute;
+            display: none;
+            margin: 0;
+            padding: 0;
+            border: 0;
+            outline: 0;
+            resize: none;
+            background: transparent;
+        }
+    `;
+
+    @query('textarea')
+    editable: HTMLTextAreaElement;
+
+    render() {
+        return html`<textarea></textarea>`;
+    }
+}
+```
+
+First you need to convert the mouse event position coordinates of the double click to the viewport coordinate system:
+
+```ts
+const { x, y } = this.api.canvas2Viewport({
+    x: this.node.x,
+    y: this.node.y,
+});
+
+this.editable.style.left = `${x}px`;
+this.editable.style.top = `${y}px`;
+```
+
+The current zoom level of the camera then needs to be taken into account:
+
+```ts
+const { zoom } = this.api.getCamera().read(ComputedCamera);
+this.editable.style.transform = `scale(${zoom})`;
+this.editable.style.transformOrigin = `left top`;
+```
+
+Finally, we want scrolling on the `<textarea>` element not to trigger the browser's default behavior, but to cut through it and trigger it on the `<canvas>` element, which performs the camera pan and zoom operations:
+
+```ts
+handleWheel = (event: WheelEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+
+    const newWheelEvent = new WheelEvent('wheel', {});
+    $canvas.dispatchEvent(newWheelEvent);
+};
+```
+
+The effect is as follows:
+
+![pan and zoom with camera](/text-editor-with-camera.gif)
+
+### Calculate size when text changed {#calculate-size}
+
+The width and height of `<textarea>` needs to be recalculated and set when typing and pasting text in real time.
+
+### Handle Tab {#in-and-outdent}
+
+The default behavior of pressing the Tab key in `<textarea>` is to switch focus to the next element. We want it to be the same as the code editor.
+
+[excalidraw - handle tab]
+
 ### Text Selection {#text-selection}
+
+Once you have support for overlaying textarea on Text, it's easy to implement this feature.
 
 ## Special Effects {#special-effects}
 
@@ -247,3 +336,7 @@ export const absorb = /* wgsl */ `
 [shadowBlur]: https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/shadowBlur
 [text-decoration]: https://developer.mozilla.org/en-US/docs/Web/CSS/text-decoration
 [Easily Type Text On Any Path]: https://www.kittl.com/article/easily-type-text-on-any-path
+[textWysiwyg.tsx]: https://github.com/excalidraw/excalidraw/blob/master/packages/excalidraw/wysiwyg/textWysiwyg.tsx
+[fabricjs - text on path]: https://fabricjs.com/demos/text-on-path/
+[fabricjs - loading custom fonts]: https://fabricjs.com/demos/loading-custom-fonts/
+[excalidraw - handle tab]: https://github.com/excalidraw/excalidraw/blob/master/packages/excalidraw/wysiwyg/textWysiwyg.tsx#L412-L429

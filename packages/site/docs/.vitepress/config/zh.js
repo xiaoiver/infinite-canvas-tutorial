@@ -212,6 +212,7 @@ export const zh = defineConfig({
                 text: '文本阴影',
                 link: 'text-dropshadow',
               },
+
               {
                 text: '晕染效果的文本',
                 link: 'physical-text',
@@ -223,6 +224,10 @@ export const zh = defineConfig({
               {
                 text: '渲染 TeX 公式',
                 link: 'tex-math',
+              },
+              {
+                text: '文本编辑器',
+                link: 'text-editor',
               },
               {
                 text: 'Web Animations API',

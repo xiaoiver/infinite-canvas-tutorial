@@ -52,6 +52,8 @@ export interface IRenderable {
    */
   sizeAttenuation: boolean;
 
+  strokeAttenuation: boolean;
+
   /**
    * The global render order of the object.
    */

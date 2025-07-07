@@ -4,7 +4,11 @@ import { consume } from '@lit/context';
 import {
   AppState,
   Canvas,
+  computeBidi,
+  ComputeBounds,
+  ComputedBounds,
   ComputedCamera,
+  measureText,
   SerializedNode,
   Text,
   TextSerializedNode,
@@ -29,7 +33,7 @@ export class TextEditor extends LitElement {
       backface-visibility: hidden;
       margin: 0;
       padding: 0;
-      // border: 0;
+      border: 0;
       outline: 0;
       resize: none;
       background: transparent;
@@ -132,6 +136,8 @@ export class TextEditor extends LitElement {
     } else if (entity.has(Text)) {
       // Edit the existing text node.
       const node = this.api.getNodeByEntity(entity) as TextSerializedNode;
+
+      const { obb } = entity.read(ComputedBounds);
       this.node = node;
 
       this.editable.value = node.content;
@@ -144,8 +150,8 @@ export class TextEditor extends LitElement {
       this.editable.style.color = node.fill;
       this.editable.style.opacity = node.opacity && node.opacity.toString();
       this.editable.style.textAlign = node.textAlign;
-      this.editable.style.width = `${node.width}px`;
-      this.editable.style.height = `${node.height}px`;
+      this.editable.style.width = `${obb.width}px`;
+      this.editable.style.height = `${obb.height}px`;
       // TODO: support textBaseline.
       // this.editable.style.textBaseline = node.textBaseline;
       this.editable.style.letterSpacing =
@@ -178,10 +184,46 @@ export class TextEditor extends LitElement {
 
     if (event.key === 'Escape') {
       this.editable.blur();
+      // } else if (
+      //   event.key === KEYS.TAB ||
+      //   (event[KEYS.CTRL_OR_CMD] &&
+      //     (event.code === CODES.BRACKET_LEFT ||
+      //       event.code === CODES.BRACKET_RIGHT))
+      // ) {
+      //   event.preventDefault();
+      //   if (event.isComposing) {
+      //     // input keyboard
+      //     return;
+      //   } else if (event.shiftKey || event.code === CODES.BRACKET_LEFT) {
+      //     outdent();
+      //   } else {
+      //     indent();
+      //   }
+      //   // We must send an input event to resize the element
     }
   };
 
-  private handleInput = (event: Event) => {};
+  private handleInput = (event: Event) => {
+    const target = event.target as HTMLTextAreaElement;
+    const content = target.value;
+
+    const attributes = {
+      ...this.node,
+      content,
+    };
+    computeBidi(content);
+    const metrics = measureText(attributes);
+
+    const { minX, minY, maxX, maxY } = Text.getGeometryBounds(
+      attributes,
+      metrics,
+    );
+    const width = maxX - minX;
+    const height = maxY - minY;
+
+    this.editable.style.width = `${width}px`;
+    this.editable.style.height = `${height}px`;
+  };
 
   private handleWheel = (event: WheelEvent) => {
     event.preventDefault();

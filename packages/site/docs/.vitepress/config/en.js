@@ -259,6 +259,10 @@ export const en = defineConfig({
                 link: 'tex-math',
               },
               {
+                text: 'Text editor',
+                link: 'text-editor',
+              },
+              {
                 text: 'Web Animations API',
                 link: 'web-animations-api',
               },

@@ -33,13 +33,16 @@ onMounted(async () => {
   onReady = async (e) => {
     api = e.detail;
 
-    api.setPen(Pen.SELECT);
-    api.setTaskbars([Task.SHOW_LAYERS_PANEL]);
+    api.runAtNextTick(() => {
 
-    api.updateNodes(nodes);
-    api.selectNodes([nodes[0]]);
+      api.setPen(Pen.SELECT);
+      api.setTaskbars([Task.SHOW_LAYERS_PANEL]);
 
-    api.record();
+      api.updateNodes(nodes);
+      api.selectNodes([nodes[0]]);
+
+      api.record();
+    });
   };
 
   canvas.addEventListener(Event.READY, onReady);
@@ -49,6 +52,38 @@ onMounted(async () => {
     await import('@infinite-canvas-tutorial/webcomponents/spectrum');
     new App().addPlugins(...DefaultPlugins, UIPlugin).run();
     (window as any).worldInited = true;
+  } else {
+    // 当App已经初始化时，需要等待canvas组件准备好并检查API
+    await import('@infinite-canvas-tutorial/webcomponents/spectrum');
+
+    // 等待组件更新完成后检查API是否已经准备好
+    setTimeout(() => {
+      // 检查canvas的apiProvider是否已经有值
+      const canvasElement = canvas as any;
+      if (canvasElement.apiProvider?.value) {
+        // 如果API已经准备好，手动触发onReady
+        const readyEvent = new CustomEvent(Event.READY, {
+          detail: canvasElement.apiProvider.value
+        });
+        onReady?.(readyEvent);
+      } else {
+        // 如果API还没准备好，监听API的变化
+        let checkCount = 0;
+        const checkInterval = setInterval(() => {
+          checkCount++;
+          if (canvasElement.apiProvider?.value) {
+            clearInterval(checkInterval);
+            const readyEvent = new CustomEvent(Event.READY, {
+              detail: canvasElement.apiProvider.value
+            });
+            onReady?.(readyEvent);
+          } else if (checkCount > 50) { // 5秒超时
+            clearInterval(checkInterval);
+            console.warn('Canvas API initialization timeout');
+          }
+        }, 100);
+      }
+    }, 100);
   }
 });
 
