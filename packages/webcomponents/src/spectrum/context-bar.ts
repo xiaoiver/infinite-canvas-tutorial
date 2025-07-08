@@ -65,6 +65,10 @@ export class ContextBar extends LitElement {
   api: ExtendedAPI;
 
   private calculatePosition(node: SerializedNode): [number, number] {
+    if (!node) {
+      return [0, 0];
+    }
+
     const { width, height } = this.api.getCanvas().read(Canvas);
     const { topbarVisible } = this.appState;
 

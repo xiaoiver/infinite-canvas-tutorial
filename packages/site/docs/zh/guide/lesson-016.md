@@ -10,6 +10,7 @@ import Harfbuzz from '../../components/Harfbuzz.vue';
 import TeXMath from '../../components/TeXMath.vue';
 import TextDropShadow from '../../components/TextDropShadow.vue';
 import TextStroke from '../../components/TextStroke.vue';
+import TextDecoration from '../../components/TextDecoration.vue';
 import PhysicalText from '../../components/PhysicalText.vue';
 import TextEditor from '../../components/TextEditor.vue';
 </script>
@@ -132,11 +133,13 @@ if (strokeWidth > 0.0 && strokeColor.a > 0.0) {
 }
 ```
 
+下面展示了基于 SDF 和 MSDF 渲染的效果，可以看出 MSDF 在描边时也能保持锐利：
+
 <TextStroke />
 
 ## 装饰线 {#text-decoration}
 
-早期浏览器对于 [text-decoration] 的实现比较粗糙，以 `underline` 为例，下图来自：[Crafting link underlines on Medium]
+在 CSS 中，早期浏览器对于 [text-decoration] 的实现比较粗糙，以 `underline` 为例，下图来自：[Crafting link underlines on Medium]
 
 ![Ugly. Distracting. Unacceptable underlines](https://miro.medium.com/v2/resize:fit:2000/format:webp/1*RmN57MMY_q9-kEt7j7eiVA.gif)
 
@@ -144,7 +147,125 @@ if (strokeWidth > 0.0 && strokeColor.a > 0.0) {
 
 ![Beautiful underline](https://miro.medium.com/v2/resize:fit:1400/format:webp/1*5iD2Znv03I2XR5QI3KLJrg.png)
 
-[underlineJS]
+但目前的浏览器已经完善了这一实现。另外 Canvas 未提供这一特性，而 CanvasKit 做了增强，对应 CSS `text-decoration` 的一系列属性：
+
+```ts
+// @see https://developer.mozilla.org/en-US/docs/Web/CSS/text-decoration#constituent_properties
+// @see https://skia.org/docs/dev/design/text_shaper/#principles
+const paraStyle = new CanvasKit.ParagraphStyle({
+    textStyle: {
+        decoration: CanvasKit.UnderlineDecoration,
+        decorationColor,
+        decorationThickness,
+        decorationStyle: CanvasKit.DecorationStyle.Solid,
+    },
+});
+```
+
+另一个有趣的实现 [underlineJS] 则是基于 Canvas 实现的。
+
+### 使用 Polyline 绘制 {#use-polyline}
+
+装饰线样式由 `decorationStyle` 属性控制：
+
+```ts
+export type TextDecorationStyle =
+  | 'solid'
+  | 'double'
+  | 'dotted'
+  | 'dashed'
+  | 'wavy';
+: TextDecorationStyle;
+```
+
+以最简单的 `solid` 样式为例，我们将 `decorationColor` 和 `decorationThickness` 作为 `strokeColor` 和 `strokeWidth` 传入：
+
+```ts
+if (instance instanceof Text) {
+    const {
+        decorationColorRGB,
+        decorationThickness,
+        decorationStyle,
+        metrics,
+    } = instance;
+    u_StrokeColor = [
+        decorationColorRGB.r / 255,
+        decorationColorRGB.g / 255,
+        decorationColorRGB.b / 255,
+        fo,
+    ];
+    u_ZIndexStrokeWidth[1] = decorationThickness;
+}
+```
+
+### 处理特殊样式 {#decoration-style}
+
+Polyline 本身支持 `strokeDasharray`，因此 `dotted` 和 `dashed` 都可以通过它实现。这里我们参考 Skia 的实现设置 `dash` 和 `gap` 的比例：
+
+```c++
+// @see https://github.com/google/skia/blob/main/modules/skparagraph/src/Decorations.cpp#L187
+SkScalar scaleFactor = textStyle.getFontSize() / 14.f;
+switch (textStyle.getDecorationStyle()) {
+    case TextDecorationStyle::kDotted: {
+        dashPathEffect.emplace(1.0f * scaleFactor, 1.5f * scaleFactor);
+        break;
+    }
+    case TextDecorationStyle::kDashed: {
+        dashPathEffect.emplace(4.0f * scaleFactor, 2.0f * scaleFactor);
+        break;
+    }
+    default: break;
+}
+```
+
+`wavy` 要特殊一点，我们需要计算并采样波浪线，这里我们先生成 SVG Path，再利用 [课程 13 - 在曲线上采样] 中介绍的方法：
+
+```c++
+// @see https://github.com/google/skia/blob/main/modules/skparagraph/src/Decorations.cpp#L215
+let d = 'M 0 0';
+while (x_start + quarterWave * 2 < line.width) {
+    d += ` Q ${x_start + quarterWave} ${
+        wave_count % 2 != 0 ? quarterWave : -quarterWave
+    } ${x_start + quarterWave * 2} 0`;
+
+    x_start += quarterWave * 2;
+    ++wave_count;
+}
+```
+
+效果如下：
+
+<TextDecoration />
+
+### 计算位置 {#calculate-position}
+
+位置由属性 `decorationLine` 控制：
+
+```ts
+export type TextDecorationLine =
+    | 'underline'
+    | 'overline'
+    | 'line-through'
+    | 'none';
+```
+
+我们参考 Skia [Decorations::calculatePosition] 的实现，以 `underline` 为例：
+
+```c++
+void Decorations::calculatePosition(TextDecoration decoration, SkScalar ascent) {
+    switch (decoration) {
+        case TextDecoration::kUnderline:
+            if ((fFontMetrics.fFlags & SkFontMetrics::FontMetricsFlags::kUnderlinePositionIsValid_Flag) &&
+                fFontMetrics.fUnderlinePosition > 0) {
+                fPosition  = fFontMetrics.fUnderlinePosition;
+            } else {
+                fPosition = fThickness;
+            }
+            fPosition -= ascent;
+            break;
+    }
+}
+```
 
 ## 阴影 {#dropshadow}
 
@@ -384,3 +505,5 @@ export const absorb = /* wgsl */ `
 [Crafting link underlines on Medium]: https://medium.design/crafting-link-underlines-on-medium-7c03a9274f9
 [-webkit-text-stroke]: https://developer.mozilla.org/en-US/docs/Web/CSS/-webkit-text-stroke
 [strokeText]: https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/strokeText
+[Decorations::calculatePosition]: https://github.com/google/skia/blob/main/modules/skparagraph/src/Decorations.cpp#L161-L185
+[课程 13 - 在曲线上采样]: /zh/guide/lesson-013#sample-on-curve

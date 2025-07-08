@@ -10,6 +10,7 @@ import Harfbuzz from '../components/Harfbuzz.vue';
 import TeXMath from '../components/TeXMath.vue';
 import TextDropShadow from '../components/TextDropShadow.vue';
 import TextStroke from '../components/TextStroke.vue';
+import TextDecoration from '../components/TextDecoration.vue';
 import PhysicalText from '../components/PhysicalText.vue';
 import TextEditor from '../components/TextEditor.vue';
 </script>
@@ -132,11 +133,13 @@ if (strokeWidth > 0.0 && strokeColor.a > 0.0) {
 }
 ```
 
+The following shows renderings based on SDF and MSDF, and you can see that MSDF stays sharp even when stroked:
+
 <TextStroke />
 
 ## Text Decoration {#text-decoration}
 
-Early browsers had a crude implementation of [text-decoration], as exemplified by `underline`, from which the following image is taken: [Crafting link underlines on Medium]
+In CSS, early browsers had a crude implementation of [text-decoration], as exemplified by `underline`, from which the following image is taken: [Crafting link underlines on Medium]
 
 ![Ugly. Distracting. Unacceptable underlines](https://miro.medium.com/v2/resize:fit:2000/format:webp/1*RmN57MMY_q9-kEt7j7eiVA.gif)
 
@@ -144,7 +147,125 @@ Early browsers had a crude implementation of [text-decoration], as exemplified b
 
 ![Beautiful underline](https://miro.medium.com/v2/resize:fit:1400/format:webp/1*5iD2Znv03I2XR5QI3KLJrg.png)
 
-[underlineJS]
+Current browsers have perfected this implementation. In addition, Canvas does not provide this feature, and CanvasKit enhances it with a set of properties that correspond to CSS `text-decoration`:
+
+```ts
+// @see https://developer.mozilla.org/en-US/docs/Web/CSS/text-decoration#constituent_properties
+// @see https://skia.org/docs/dev/design/text_shaper/#principles
+const paraStyle = new CanvasKit.ParagraphStyle({
+    textStyle: {
+        decoration: CanvasKit.UnderlineDecoration,
+        decorationColor,
+        decorationThickness,
+        decorationStyle: CanvasKit.DecorationStyle.Solid,
+    },
+});
+```
+
+Another interesting implementation [underlineJS] is based on Canvas.
+
+### Use polyline {#use-polyline}
+
+The decoration line style is controlled by the `decorationStyle` property:
+
+```ts
+export type TextDecorationStyle =
+  | 'solid'
+  | 'double'
+  | 'dotted'
+  | 'dashed'
+  | 'wavy';
+: TextDecorationStyle;
+```
+
+In the simplest `solid` style, for example, we pass in `decorationColor` and `decorationThickness` as `strokeColor` and `strokeWidth`:
+
+```ts
+if (instance instanceof Text) {
+    const {
+        decorationColorRGB,
+        decorationThickness,
+        decorationStyle,
+        metrics,
+    } = instance;
+    u_StrokeColor = [
+        decorationColorRGB.r / 255,
+        decorationColorRGB.g / 255,
+        decorationColorRGB.b / 255,
+        fo,
+    ];
+    u_ZIndexStrokeWidth[1] = decorationThickness;
+}
+```
+
+### Decoration style {#decoration-style}
+
+Polyline itself supports `strokeDasharray`, so both `dotted` and `dashed` can be realized by it. Here we refer to Skia's implementation to set the ratio of `dash` to `gap`:
+
+```c++
+// @see https://github.com/google/skia/blob/main/modules/skparagraph/src/Decorations.cpp#L187
+SkScalar scaleFactor = textStyle.getFontSize() / 14.f;
+switch (textStyle.getDecorationStyle()) {
+    case TextDecorationStyle::kDotted: {
+        dashPathEffect.emplace(1.0f * scaleFactor, 1.5f * scaleFactor);
+        break;
+    }
+    case TextDecorationStyle::kDashed: {
+        dashPathEffect.emplace(4.0f * scaleFactor, 2.0f * scaleFactor);
+        break;
+    }
+    default: break;
+}
+```
+
+To be specific, we need to calculate and sample the `wavy` lines, which we'll do here by generating an SVG Path and using the method described in [Lesson 13 - Sampling on a curve]:
+
+```c++
+// @see https://github.com/google/skia/blob/main/modules/skparagraph/src/Decorations.cpp#L215
+let d = 'M 0 0';
+while (x_start + quarterWave * 2 < line.width) {
+    d += ` Q ${x_start + quarterWave} ${
+        wave_count % 2 != 0 ? quarterWave : -quarterWave
+    } ${x_start + quarterWave * 2} 0`;
+
+    x_start += quarterWave * 2;
+    ++wave_count;
+}
+```
+
+The effect is as follows:
+
+<TextDecoration />
+
+### Calculate position {#calculate-position}
+
+The position is controlled by the property `decorationLine`:
+
+```ts
+export type TextDecorationLine =
+    | 'underline'
+    | 'overline'
+    | 'line-through'
+    | 'none';
+```
+
+We refer to the Skia [Decorations::calculatePosition] implementation for `underline` as an example:
+
+```c++
+void Decorations::calculatePosition(TextDecoration decoration, SkScalar ascent) {
+    switch (decoration) {
+        case TextDecoration::kUnderline:
+            if ((fFontMetrics.fFlags & SkFontMetrics::FontMetricsFlags::kUnderlinePositionIsValid_Flag) &&
+                fFontMetrics.fUnderlinePosition > 0) {
+                fPosition  = fFontMetrics.fUnderlinePosition;
+            } else {
+                fPosition = fThickness;
+            }
+            fPosition -= ascent;
+            break;
+    }
+}
+```
 
 ## Shadows {#dropshadow}
 
@@ -370,3 +491,5 @@ export const absorb = /* wgsl */ `
 [Crafting link underlines on Medium]: https://medium.design/crafting-link-underlines-on-medium-7c03a9274f9
 [-webkit-text-stroke]: https://developer.mozilla.org/en-US/docs/Web/CSS/-webkit-text-stroke
 [strokeText]: https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/strokeText
+[Decorations::calculatePosition]: https://github.com/google/skia/blob/main/modules/skparagraph/src/Decorations.cpp#L161-L185
+[Lesson 13 - Sampling on a curve]: /guide/lesson-013#sample-on-curve

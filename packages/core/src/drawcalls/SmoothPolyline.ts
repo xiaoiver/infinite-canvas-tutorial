@@ -25,10 +25,12 @@ import {
   Shape,
   hasValidStroke,
   RoughPath,
+  hasValidDecoration,
+  Text,
 } from '../shapes';
 import { Drawcall, ZINDEX_FACTOR } from './Drawcall';
 import { vert, frag, Location, JointType } from '../shaders/polyline';
-import { paddingMat3 } from '../utils';
+import { paddingMat3, parsePath } from '../utils';
 
 const epsilon = 1e-4;
 const circleEllipsePointsNum = 64;
@@ -54,7 +56,9 @@ export class SmoothPolyline extends Drawcall {
         shape instanceof Ellipse) &&
         shape.strokeDasharray.length > 0 &&
         shape.strokeDasharray.some((dash) => dash > 0)) ||
-      (shape instanceof Path && hasValidStroke(shape.stroke, shape.strokeWidth))
+      (shape instanceof Path &&
+        hasValidStroke(shape.stroke, shape.strokeWidth)) ||
+      (shape instanceof Text && hasValidDecoration(shape as Text))
     );
   }
 
@@ -80,7 +84,8 @@ export class SmoothPolyline extends Drawcall {
       instance instanceof RoughEllipse ||
       instance instanceof RoughRect ||
       instance instanceof RoughPolyline ||
-      instance instanceof RoughPath
+      instance instanceof RoughPath ||
+      instance instanceof Text
     ) {
       return this.pointsBuffer.length / strideFloats - 3;
     } else if (instance instanceof Rect) {
@@ -460,6 +465,33 @@ export class SmoothPolyline extends Drawcall {
     ) {
       u_StrokeColor = [fr / 255, fg / 255, fb / 255, fo];
       u_Opacity[2] = fillOpacity;
+    } else if (instance instanceof Text) {
+      const {
+        decorationColorRGB,
+        decorationThickness,
+        decorationStyle,
+        metrics,
+      } = instance;
+      u_StrokeColor = [
+        decorationColorRGB.r / 255,
+        decorationColorRGB.g / 255,
+        decorationColorRGB.b / 255,
+        fo,
+      ];
+      u_ZIndexStrokeWidth[1] = decorationThickness;
+
+      const scaleFactor = metrics.fontMetrics.fontSize / 14;
+      // @see https://github.com/google/skia/blob/main/modules/skparagraph/src/Decorations.cpp#L187-L213
+      if (decorationStyle === 'dotted') {
+        u_StrokeDash[0] = scaleFactor * 1.5;
+        u_StrokeDash[1] = scaleFactor;
+      } else if (decorationStyle === 'dashed') {
+        u_StrokeDash[0] = scaleFactor * 4;
+        u_StrokeDash[1] = scaleFactor * 2;
+      } else if (decorationStyle === 'wavy') {
+      } else if (decorationStyle === 'double') {
+        // TODO: use two lines to render double decoration
+      }
     }
 
     return [
@@ -574,6 +606,73 @@ export function updateBuffer(object: Shape, useRoughStroke = true) {
       points.push(cx + rx * Math.cos(angle), cy + ry * Math.sin(angle));
     }
     points.push(cx + rx, cy);
+  } else if (object instanceof Text) {
+    const {
+      decorationLine,
+      decorationStyle,
+      decorationThickness,
+      x,
+      y,
+      metrics,
+    } = object;
+
+    metrics.lineMetrics.forEach((line, index) => {
+      const linePoints: number[] = [];
+      let wave_count = 0;
+      let x_start = 0;
+      const quarterWave = decorationThickness;
+      if (decorationStyle === 'wavy') {
+        // Calculate wave. @see https://github.com/google/skia/blob/main/modules/skparagraph/src/Decorations.cpp#L215
+        let d = 'M 0 0';
+        while (x_start + quarterWave * 2 < line.width) {
+          // fPath.rQuadTo(quarterWave,
+          //   wave_count % 2 != 0 ? quarterWave : -quarterWave,
+          //   quarterWave * 2,
+          //   0);
+          d += ` Q ${x_start + quarterWave} ${
+            wave_count % 2 != 0 ? quarterWave : -quarterWave
+          } ${x_start + quarterWave * 2} 0`;
+
+          x_start += quarterWave * 2;
+          ++wave_count;
+        }
+
+        const { subPaths } = parsePath(d);
+        const points = subPaths.map((subPath) =>
+          subPath
+            .getPoints()
+            .map((point) => [point[0], point[1]] as [number, number]),
+        );
+        linePoints.push(...points.flat(2));
+      } else {
+        linePoints.push(0, 0, line.width, 0);
+      }
+
+      let offsetY = 0;
+      // Calculate the position of the decoration line with offsetY.
+      // @see https://github.com/google/skia/blob/main/modules/skparagraph/src/Decorations.cpp#L161-L185
+      if (decorationLine === 'underline') {
+        offsetY = metrics.height;
+      } else if (decorationLine === 'overline') {
+        offsetY = metrics.height;
+      } else if (decorationLine === 'line-through') {
+        offsetY = metrics.height / 2;
+      }
+
+      linePoints.forEach((_, i) => {
+        if (i % 2 === 0) {
+          linePoints[i] += x + line.x;
+        } else {
+          linePoints[i] += y + line.y + offsetY;
+        }
+      });
+
+      if (index !== metrics.lineMetrics.length - 1) {
+        linePoints.push(NaN, NaN);
+      }
+
+      points.push(...linePoints);
+    });
   }
 
   const jointType = getJointType(lineJoin);

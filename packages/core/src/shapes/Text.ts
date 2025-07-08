@@ -10,6 +10,17 @@ import { GConstructor } from './mixins';
 import { Shape, ShapeAttributes, strokeOffset } from './Shape';
 
 export type TextStyleWhiteSpace = 'normal' | 'pre' | 'pre-line';
+export type TextDecorationLine =
+  | 'underline'
+  | 'overline'
+  | 'line-through'
+  | 'none';
+export type TextDecorationStyle =
+  | 'solid'
+  | 'double'
+  | 'dotted'
+  | 'dashed'
+  | 'wavy';
 
 export interface TextAttributes extends ShapeAttributes {
   /**
@@ -173,6 +184,30 @@ export interface TextAttributes extends ShapeAttributes {
    * @see https://mattdesl.svbtle.com/material-design-on-the-gpu
    */
   physical: boolean;
+
+  /**
+   * The color applies to decorations, such as underlines, overlines, strikethroughs, and wavy lines like those used to mark misspellings, in the scope of the property's value.
+   * @see https://developer.mozilla.org/en-US/docs/Web/CSS/text-decoration-color
+   */
+  decorationColor: string;
+
+  /**
+   * Sets the kind of decoration that is used on text in an element, such as an underline or overline.
+   * @see https://developer.mozilla.org/en-US/docs/Web/CSS/text-decoration-line
+   */
+  decorationLine: TextDecorationLine;
+
+  /**
+   * Sets the style of the lines. e.g. `solid`, `double`, `dotted`, `dashed`, `wavy`.
+   * @see https://developer.mozilla.org/en-US/docs/Web/CSS/text-decoration-style
+   */
+  decorationStyle: TextDecorationStyle;
+
+  /**
+   * Sets the stroke thickness of the decoration line that is used on text in an element, such as a line-through, underline, or overline.
+   * @see https://developer.mozilla.org/en-US/docs/Web/CSS/text-decoration-thickness
+   */
+  decorationThickness: number;
 }
 
 // @ts-ignore
@@ -205,6 +240,11 @@ export function TextWrapper<TBase extends GConstructor>(Base: TBase) {
     #dropShadowOffsetX: number;
     #dropShadowOffsetY: number;
     #dropShadowBlurRadius: number;
+    #decorationColor: string;
+    #decorationColorRGB: d3.RGBColor;
+    #decorationLine: TextDecorationLine;
+    #decorationStyle: TextDecorationStyle;
+    #decorationThickness: number;
 
     bitmapFont: BitmapFont;
     bitmapFontKerning: boolean;
@@ -276,6 +316,10 @@ export function TextWrapper<TBase extends GConstructor>(Base: TBase) {
         dropShadowOffsetX,
         dropShadowOffsetY,
         dropShadowBlurRadius,
+        decorationColor,
+        decorationLine,
+        decorationStyle,
+        decorationThickness,
       } = attributes;
 
       this.#x = x ?? 0;
@@ -304,6 +348,10 @@ export function TextWrapper<TBase extends GConstructor>(Base: TBase) {
       this.dropShadowOffsetX = dropShadowOffsetX ?? 0;
       this.dropShadowOffsetY = dropShadowOffsetY ?? 0;
       this.dropShadowBlurRadius = dropShadowBlurRadius ?? 0;
+      this.decorationColor = decorationColor ?? 'black';
+      this.decorationLine = decorationLine ?? 'none';
+      this.decorationStyle = decorationStyle ?? 'solid';
+      this.decorationThickness = decorationThickness ?? 1;
     }
 
     containsPoint(x: number, y: number) {
@@ -653,6 +701,52 @@ export function TextWrapper<TBase extends GConstructor>(Base: TBase) {
     set dropShadowBlurRadius(dropShadowBlurRadius: number) {
       if (this.#dropShadowBlurRadius !== dropShadowBlurRadius) {
         this.#dropShadowBlurRadius = dropShadowBlurRadius;
+        this.renderDirtyFlag = true;
+      }
+    }
+
+    get decorationColor() {
+      return this.#decorationColor;
+    }
+    set decorationColor(decorationColor: string) {
+      if (this.#decorationColor !== decorationColor) {
+        this.#decorationColor = decorationColor;
+        this.#decorationColorRGB =
+          d3.rgb(decorationColor)?.rgb() || d3.rgb(0, 0, 0, 1);
+        this.renderDirtyFlag = true;
+      }
+    }
+
+    get decorationColorRGB() {
+      return this.#decorationColorRGB;
+    }
+
+    get decorationLine() {
+      return this.#decorationLine;
+    }
+    set decorationLine(decorationLine: TextDecorationLine) {
+      if (this.#decorationLine !== decorationLine) {
+        this.#decorationLine = decorationLine;
+        this.renderDirtyFlag = true;
+      }
+    }
+
+    get decorationStyle() {
+      return this.#decorationStyle;
+    }
+    set decorationStyle(decorationStyle: TextDecorationStyle) {
+      if (this.#decorationStyle !== decorationStyle) {
+        this.#decorationStyle = decorationStyle;
+        this.renderDirtyFlag = true;
+      }
+    }
+
+    get decorationThickness() {
+      return this.#decorationThickness;
+    }
+    set decorationThickness(decorationThickness: number) {
+      if (this.#decorationThickness !== decorationThickness) {
+        this.#decorationThickness = decorationThickness;
         this.renderDirtyFlag = true;
       }
     }

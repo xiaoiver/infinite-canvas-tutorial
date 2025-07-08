@@ -251,6 +251,10 @@ export const en = defineConfig({
                 link: 'text-stroke',
               },
               {
+                text: 'Text decoration',
+                link: 'text-decoration',
+              },
+              {
                 text: 'Physical text',
                 link: 'physical-text',
               },

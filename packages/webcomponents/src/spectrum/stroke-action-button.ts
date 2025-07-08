@@ -46,6 +46,10 @@ export class StrokeActionButton extends LitElement {
   }
 
   render() {
+    if (!this.node) {
+      return html``;
+    }
+
     const { stroke } = this.node as TextSerializedNode;
 
     return html`<sp-action-button quiet size="m" id="stroke">

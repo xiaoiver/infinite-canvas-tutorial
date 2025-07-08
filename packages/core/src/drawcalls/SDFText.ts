@@ -491,7 +491,8 @@ export class SDFText extends Drawcall {
               width: xAdvance,
               height: bitmapFont.lineHeight,
               left: xOffset,
-              top: -yOffset,
+              // top: -yOffset + metrics.fontMetrics.fontBoundingBoxAscent,
+              top: -yOffset + bitmapFont.lineHeight,
               advance: xAdvance,
             },
           };

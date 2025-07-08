@@ -64,7 +64,7 @@ SHAPE_DRAWCALL_CTORS.set(RoughPath, [
   SmoothPolyline, // fill
   SmoothPolyline, // stroke
 ]);
-SHAPE_DRAWCALL_CTORS.set(Text, [SDFText]);
+SHAPE_DRAWCALL_CTORS.set(Text, [SmoothPolyline, SDFText]); // underline
 SHAPE_DRAWCALL_CTORS.set(Custom, [CustomDrawcall]);
 
 export class BatchManager {

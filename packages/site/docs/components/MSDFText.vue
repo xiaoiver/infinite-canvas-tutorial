@@ -32,7 +32,7 @@ onMounted(() => {
     {
       const text = new Text({
         x: 10,
-        y: 10,
+        y: 60,
         content: 'Hello, world!',
         fontSize: 45,
         fill: '#F67676',

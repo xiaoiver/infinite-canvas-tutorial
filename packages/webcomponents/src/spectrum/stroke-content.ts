@@ -94,6 +94,10 @@ export class StrokeContent extends LitElement {
   }
 
   render() {
+    if (!this.node) {
+      return html``;
+    }
+
     const {
       strokeWidth,
       strokeAlignment = 'center',

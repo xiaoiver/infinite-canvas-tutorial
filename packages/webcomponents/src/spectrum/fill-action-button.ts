@@ -45,6 +45,10 @@ export class FillActionButton extends LitElement {
   }
 
   render() {
+    if (!this.node) {
+      return html``;
+    }
+
     const { fill } = this.node as TextSerializedNode;
 
     return html`<sp-action-button quiet size="m" id="fill">

@@ -215,13 +215,17 @@ pnpm run dev
 
 -   使用贝塞尔曲线渲染文本，使用 OpenType 和 Harfbuzz 进行字形处理
 -   渲染 TeX 公式
--   文本装饰和阴影
+-   文本描边、装饰线和阴影
 -   带有晕染效果的文本渲染
 -   使用 Web Font Loader 加载 Web 字体
 
 |                Shaping TeX with MathJax                 |                 Physical text                  |
 | :-----------------------------------------------------: | :--------------------------------------------: |
 | ![Shaping TeX with MathJax](./screenshots/lesson16.png) | ![physical text](./screenshots/lesson16-2.png) |
+
+|                     Text decoration                     |                 Text stroke                  |
+| :-----------------------------------------------------: | :------------------------------------------: |
+| ![Text decoration - wavy](./screenshots/lesson16-3.png) | ![Text stroke](./screenshots/lesson16-4.png) |
 
 ## 课程 17 - 渐变和重复图案 [🔗](https://infinitecanvas.cc/zh/guide/lesson-017)
 

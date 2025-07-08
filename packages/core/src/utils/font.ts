@@ -66,6 +66,8 @@ const regexCannotEnd = new RegExp(
   `${regexCannotEndZhCn.source}|${regexCannotEndZhTw.source}|${regexCannotEndJaJp.source}|${regexCannotEndKoKr.source}`,
 );
 
+const DEFAULT_ASCENT_RATIO = 1;
+
 export class CanvasTextMetrics {
   #fonts: Record<string, globalThis.TextMetrics & { fontSize: number }> = {};
   #canvas: OffscreenCanvas | HTMLCanvasElement;
@@ -94,7 +96,13 @@ export class CanvasTextMetrics {
       scale,
       lineHeight: lineHeight * scale,
       fontMetrics: {
-        actualBoundingBoxAscent: fontMetrics.ascent * scale,
+        fontBoundingBoxAscent:
+          (fontMetrics.ascent || lineHeight * DEFAULT_ASCENT_RATIO) * scale,
+        fontBoundingBoxDescent: fontMetrics.descent * scale,
+        hangingBaseline: 0,
+        ideographicBaseline: 0,
+        actualBoundingBoxAscent:
+          (fontMetrics.ascent || lineHeight * DEFAULT_ASCENT_RATIO) * scale,
         actualBoundingBoxDescent: fontMetrics.descent * scale,
         fontSize,
       } as globalThis.TextMetrics & { fontSize: number },

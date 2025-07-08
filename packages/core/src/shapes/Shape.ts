@@ -11,6 +11,7 @@ import { IRenderable, Renderable } from './mixins/Renderable';
 import { ITransformable, Transformable } from './mixins/Transformable';
 import { ISortable, Sortable } from './mixins/Sortable';
 import { GConstructor } from './mixins';
+import { Text } from './Text';
 
 export const IDENTITY_TRANSFORM = new Transform();
 const pooledMatrix = new Matrix();
@@ -284,6 +285,10 @@ export function isFillOrStrokeAffected(
 
 export function hasValidStroke(stroke: string, strokeWidth: number) {
   return !!stroke && strokeWidth > 0;
+}
+
+export function hasValidDecoration(shape: Text) {
+  return shape.decorationLine !== 'none' && shape.decorationThickness > 0;
 }
 
 export function sortByZIndex(a: Shape, b: Shape) {

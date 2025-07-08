@@ -215,13 +215,17 @@ If you want to use it in your own project, you can refer to:
 
 -   Using Bezier curves to render text, shaping with OpenType and Harfbuzz
 -   Render TeX math
--   Text decoration and dropshadow
+-   Text stroke, decoration and dropshadow
 -   Physical text rendering
 -   Load web font with web font loader
 
 |                Shaping TeX with MathJax                 |                 Physical text                  |
 | :-----------------------------------------------------: | :--------------------------------------------: |
 | ![Shaping TeX with MathJax](./screenshots/lesson16.png) | ![physical text](./screenshots/lesson16-2.png) |
+
+|                     Text decoration                     |                 Text stroke                  |
+| :-----------------------------------------------------: | :------------------------------------------: |
+| ![Text decoration - wavy](./screenshots/lesson16-3.png) | ![Text stroke](./screenshots/lesson16-4.png) |
 
 ## Lesson 17 - Gradient and Pattern [🔗](https://infinitecanvas.cc/guide/lesson-017)
 
