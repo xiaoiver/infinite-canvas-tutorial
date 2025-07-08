@@ -212,7 +212,10 @@ export const zh = defineConfig({
                 text: '文本阴影',
                 link: 'text-dropshadow',
               },
-
+              {
+                text: '文本描边',
+                link: 'text-stroke',
+              },
               {
                 text: '晕染效果的文本',
                 link: 'physical-text',

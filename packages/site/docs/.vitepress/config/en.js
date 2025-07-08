@@ -247,6 +247,10 @@ export const en = defineConfig({
                 link: 'text-dropshadow',
               },
               {
+                text: 'Text stroke',
+                link: 'text-stroke',
+              },
+              {
                 text: 'Physical text',
                 link: 'physical-text',
               },

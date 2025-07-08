@@ -9,6 +9,7 @@ import Opentype from '../../components/Opentype.vue';
 import Harfbuzz from '../../components/Harfbuzz.vue';
 import TeXMath from '../../components/TeXMath.vue';
 import TextDropShadow from '../../components/TextDropShadow.vue';
+import TextStroke from '../../components/TextStroke.vue';
 import PhysicalText from '../../components/PhysicalText.vue';
 import TextEditor from '../../components/TextEditor.vue';
 </script>
@@ -115,9 +116,35 @@ const root = await deserializeNode(fromSVGElement($svg));
 
 <TeXMath />
 
+## 文本描边 {#text-stroke}
+
+Canvas 中的 [strokeText] 和 CSS 中的 [-webkit-text-stroke] 都提供了文本描边效果。好消息是 SDF 天然就很容易实现描边：
+
+```glsl
+if (strokeWidth > 0.0 && strokeColor.a > 0.0) {
+    float fillAlpha = smoothstep(buff - gamma_scaled, buff + gamma_scaled, dist);
+    float strokeThreshold = buff - strokeWidth / fontSize;
+    float strokeAlpha = smoothstep(strokeThreshold - gamma_scaled, strokeThreshold + gamma_scaled, dist);
+
+    vec4 finalColor = mix(strokeColor, fillColor, fillAlpha);
+    outputColor = finalColor;
+    opacity *= strokeAlpha;
+}
+```
+
+<TextStroke />
+
 ## 装饰线 {#text-decoration}
 
-[text-decoration]
+早期浏览器对于 [text-decoration] 的实现比较粗糙，以 `underline` 为例，下图来自：[Crafting link underlines on Medium]
+
+![Ugly. Distracting. Unacceptable underlines](https://miro.medium.com/v2/resize:fit:2000/format:webp/1*RmN57MMY_q9-kEt7j7eiVA.gif)
+
+> The perfect underline should be visible, but unobtrusive — allowing people to realize what’s clickable, but without drawing too much attention to itself. It should be positioned at just the right distance from the text, sitting comfortably behind it for when descenders want to occupy the same space:
+
+![Beautiful underline](https://miro.medium.com/v2/resize:fit:1400/format:webp/1*5iD2Znv03I2XR5QI3KLJrg.png)
+
+[underlineJS]
 
 ## 阴影 {#dropshadow}
 
@@ -353,3 +380,7 @@ export const absorb = /* wgsl */ `
 [fabricjs - text on path]: https://fabricjs.com/demos/text-on-path/
 [fabricjs - loading custom fonts]: https://fabricjs.com/demos/loading-custom-fonts/
 [excalidraw - handle tab]: https://github.com/excalidraw/excalidraw/blob/master/packages/excalidraw/wysiwyg/textWysiwyg.tsx#L412-L429
+[underlineJS]: https://github.com/wentin/underlineJS
+[Crafting link underlines on Medium]: https://medium.design/crafting-link-underlines-on-medium-7c03a9274f9
+[-webkit-text-stroke]: https://developer.mozilla.org/en-US/docs/Web/CSS/-webkit-text-stroke
+[strokeText]: https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/strokeText
