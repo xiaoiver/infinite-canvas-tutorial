@@ -33,21 +33,36 @@
     <text
       x="20"
       y="35"
-      style="font: italic normal 400 13px sans-serif;fill: black;"
+      font-family="sans-serif"
+      font-size="13"
+      font-weight="400"
+      font-style="italic"
+      font-variant="normal"
+      fill="black"
     >
       My
     </text>
     <text
       x="40"
       y="35"
-      style="font: normal normal 700 30px sans-serif;fill: black;"
+      font-family="sans-serif"
+      font-size="30"
+      font-weight="700"
+      font-style="normal"
+      font-variant="normal"
+      fill="black"
     >
       cat
     </text>
     <text
       x="55"
       y="55"
-      style="font: italic normal 400 13px sans-serif;fill: black;"
+      font-family="sans-serif"
+      font-size="13"
+      font-weight="400"
+      font-style="italic"
+      font-variant="normal"
+      fill="black"
     >
       is
     </text>
@@ -55,7 +70,11 @@
       fill="red"
       x="65"
       y="55"
-      style="font: italic normal 400 40px serif;fill: red;"
+      font-family="serif"
+      font-size="40"
+      font-weight="400"
+      font-style="italic"
+      font-variant="normal"
     >
       Grumpy!
     </text>

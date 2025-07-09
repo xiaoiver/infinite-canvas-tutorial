@@ -33,7 +33,12 @@
     <text
       x="20"
       y="35"
-      style="font: normal normal 400 40px sans-serif;fill: black;"
+      font-family="sans-serif"
+      font-size="40"
+      font-weight="400"
+      font-style="normal"
+      font-variant="normal"
+      fill="black"
     >
       🐱🌞🌛
     </text>
