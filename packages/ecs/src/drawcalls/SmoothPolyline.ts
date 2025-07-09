@@ -16,11 +16,18 @@ import { Entity } from '@lastolivegames/becsy';
 import { mat3 } from 'gl-matrix';
 import { Drawcall, ZINDEX_FACTOR } from './Drawcall';
 import { vert, frag, Location, JointType } from '../shaders/polyline';
-import { hasValidStroke, paddingMat3, parseColor } from '../utils';
+import {
+  hasValidDecoration,
+  hasValidStroke,
+  paddingMat3,
+  parseColor,
+  parsePath,
+} from '../utils';
 import {
   Circle,
   ComputedPoints,
   ComputedRough,
+  ComputedTextMetrics,
   Ellipse,
   FillSolid,
   GlobalRenderOrder,
@@ -33,6 +40,8 @@ import {
   Rough,
   Stroke,
   StrokeAttenuation,
+  Text,
+  TextDecoration,
 } from '../components';
 
 const epsilon = 1e-4;
@@ -57,7 +66,10 @@ export class SmoothPolyline extends Drawcall {
         shape.read(Stroke).dasharray[1] > 0) ||
       (shape.has(Path) &&
         shape.has(Stroke) &&
-        hasValidStroke(shape.read(Stroke)))
+        hasValidStroke(shape.read(Stroke))) ||
+      (shape.has(Text) &&
+        shape.has(TextDecoration) &&
+        hasValidDecoration(shape.read(TextDecoration)))
     );
   }
 
@@ -77,7 +89,7 @@ export class SmoothPolyline extends Drawcall {
   get instanceCount() {
     const instance = this.shapes[0];
     if (
-      instance.hasSomeOf(Polyline, Path) ||
+      instance.hasSomeOf(Polyline, Path, Text) ||
       (instance.has(Rough) &&
         instance.hasSomeOf(Circle, Ellipse, Rect, Polyline, Path))
     ) {
@@ -487,6 +499,34 @@ export class SmoothPolyline extends Drawcall {
     ) {
       u_StrokeColor = [fr / 255, fg / 255, fb / 255, fo];
       u_Opacity[2] = fillOpacity;
+    } else if (instance.has(Text) && instance.has(TextDecoration)) {
+      const {
+        color: decorationColor,
+        thickness: decorationThickness,
+        style: decorationStyle,
+      } = instance.read(TextDecoration);
+      const { fontMetrics } = instance.read(ComputedTextMetrics);
+      const decorationColorRGB = parseColor(decorationColor);
+      u_StrokeColor = [
+        decorationColorRGB.r / 255,
+        decorationColorRGB.g / 255,
+        decorationColorRGB.b / 255,
+        fo,
+      ];
+      u_ZIndexStrokeWidth[1] = decorationThickness;
+
+      const scaleFactor = fontMetrics.fontSize / 14;
+      // @see https://github.com/google/skia/blob/main/modules/skparagraph/src/Decorations.cpp#L187-L213
+      if (decorationStyle === 'dotted') {
+        u_StrokeDash[0] = scaleFactor * 1.5;
+        u_StrokeDash[1] = scaleFactor;
+      } else if (decorationStyle === 'dashed') {
+        u_StrokeDash[0] = scaleFactor * 4;
+        u_StrokeDash[1] = scaleFactor * 2;
+      } else if (decorationStyle === 'wavy') {
+      } else if (decorationStyle === 'double') {
+        // TODO: use two lines to render double decoration
+      }
     }
 
     return [
@@ -601,6 +641,72 @@ export function updateBuffer(object: Entity, useRoughStroke = true) {
       points.push(cx + rx * Math.cos(angle), cy + ry * Math.sin(angle));
     }
     points.push(cx + rx, cy);
+  } else if (object.has(Text) && object.has(TextDecoration)) {
+    const { anchorX: x, anchorY: y } = object.read(Text);
+    const {
+      line: decorationLine,
+      style: decorationStyle,
+      thickness: decorationThickness,
+    } = object.read(TextDecoration);
+    const { lineMetrics, height } = object.read(ComputedTextMetrics);
+
+    lineMetrics.forEach((line, index) => {
+      const linePoints: number[] = [];
+      let wave_count = 0;
+      let x_start = 0;
+      const quarterWave = decorationThickness;
+      if (decorationStyle === 'wavy') {
+        // Calculate wave. @see https://github.com/google/skia/blob/main/modules/skparagraph/src/Decorations.cpp#L215
+        let d = 'M 0 0';
+        while (x_start + quarterWave * 2 < line.width) {
+          // fPath.rQuadTo(quarterWave,
+          //   wave_count % 2 != 0 ? quarterWave : -quarterWave,
+          //   quarterWave * 2,
+          //   0);
+          d += ` Q ${x_start + quarterWave} ${
+            wave_count % 2 != 0 ? quarterWave : -quarterWave
+          } ${x_start + quarterWave * 2} 0`;
+
+          x_start += quarterWave * 2;
+          ++wave_count;
+        }
+
+        const { subPaths } = parsePath(d);
+        const points = subPaths.map((subPath) =>
+          subPath
+            .getPoints()
+            .map((point) => [point[0], point[1]] as [number, number]),
+        );
+        linePoints.push(...points.flat(2));
+      } else {
+        linePoints.push(0, 0, line.width, 0);
+      }
+
+      let offsetY = 0;
+      // Calculate the position of the decoration line with offsetY.
+      // @see https://github.com/google/skia/blob/main/modules/skparagraph/src/Decorations.cpp#L161-L185
+      if (decorationLine === 'underline') {
+        offsetY = height;
+      } else if (decorationLine === 'overline') {
+        offsetY = height;
+      } else if (decorationLine === 'line-through') {
+        offsetY = height / 2;
+      }
+
+      linePoints.forEach((_, i) => {
+        if (i % 2 === 0) {
+          linePoints[i] += x + line.x;
+        } else {
+          linePoints[i] += y + line.y + offsetY;
+        }
+      });
+
+      if (index !== lineMetrics.length - 1) {
+        linePoints.push(NaN, NaN);
+      }
+
+      points.push(...linePoints);
+    });
   }
 
   const jointType = getJointType(linejoin);

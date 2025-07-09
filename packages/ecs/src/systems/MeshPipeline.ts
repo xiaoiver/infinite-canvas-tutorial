@@ -49,6 +49,7 @@ import {
   Wireframe,
   MaterialDirty,
   GeometryDirty,
+  TextDecoration,
 } from '../components';
 import { paddingMat3 } from '../utils';
 import { GridRenderer } from './GridRenderer';
@@ -104,6 +105,7 @@ export class MeshPipeline extends System {
         Wireframe,
         Rough,
         FractionalIndex,
+        TextDecoration,
       ).trackWrites,
   );
 
@@ -163,6 +165,7 @@ export class MeshPipeline extends System {
             FractionalIndex,
             SizeAttenuation,
             StrokeAttenuation,
+            TextDecoration,
           )
           .read.and.using(
             RasterScreenshotRequest,

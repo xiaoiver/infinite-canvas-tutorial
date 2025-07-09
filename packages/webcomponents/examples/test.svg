@@ -80,4 +80,8 @@
         font-weight="400" fill="#1D2333" opacity="0.65">
         2025年1月
     </text>
+
+    <text fill="#F67676" x="50" y="100" decoration-line="underline" decoration-style="wavy" decoration-color="#000000"
+        decoration-thickness="4" font-family="sans-serif" font-size="45" font-weight="400" font-style="normal"
+        font-variant="normal" style="text-decoration: wavy underline red 4px;">I'd far rather be.</text>
 </svg>

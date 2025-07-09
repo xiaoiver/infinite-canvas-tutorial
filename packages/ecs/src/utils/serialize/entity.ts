@@ -6,6 +6,7 @@ import {
   RectSerializedNode,
   SerializedNode,
   StrokeAttributes,
+  TextDecorationAttributes,
   TextSerializedNode,
 } from './type';
 import {
@@ -27,6 +28,7 @@ import {
   ComputedBounds,
   Camera,
   ComputedTextMetrics,
+  TextDecoration,
 } from '../../components';
 import { serializePoints } from './points';
 
@@ -129,6 +131,16 @@ export function entityToSerializedNodes(
       physical,
       esdt,
     });
+
+    if (entity.has(TextDecoration)) {
+      const { color, line, style, thickness } = entity.read(TextDecoration);
+      Object.assign(attributes as TextDecorationAttributes, {
+        decorationColor: color,
+        decorationLine: line,
+        decorationStyle: style,
+        decorationThickness: thickness,
+      });
+    }
   } else {
     type = 'g';
   }

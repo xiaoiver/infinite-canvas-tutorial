@@ -150,6 +150,10 @@ const textAttributes = [
   'whiteSpace',
   'wordWrap',
   'wordWrapWidth',
+  'decorationLine',
+  'decorationStyle',
+  'decorationColor',
+  'decorationThickness',
 ] as const;
 
 /**
@@ -1031,7 +1035,11 @@ export function exportFillImage(
  * use <text> and <tspan> to render text.
  * @see https://developer.mozilla.org/en-US/docs/Web/SVG/Element/text#example
  */
-export function exportText(node: SerializedNode, $g: SVGElement) {
+export function exportText(
+  node: SerializedNode,
+  $g: SVGElement,
+  element: SVGElement,
+) {
   const {
     content,
     fontFamily,
@@ -1040,25 +1048,54 @@ export function exportText(node: SerializedNode, $g: SVGElement) {
     fontStyle,
     fontVariant,
     fill,
+    decorationLine,
+    decorationStyle,
+    decorationColor,
+    decorationThickness,
   } = node.attributes;
   $g.textContent = content;
 
-  let styleCSSText = '';
-  const fontStyleString = fontStringFromTextStyle({
-    fontFamily,
-    fontSize,
-    fontWeight,
-    fontStyle,
-    fontVariant,
-  });
-  if (fontStyleString) {
-    styleCSSText += `font: ${fontStyleString};`;
+  // <text>
+  if ($g === element) {
+    $g.setAttribute('font-family', fontFamily);
+    $g.setAttribute('font-size', `${fontSize}`);
+    $g.setAttribute('font-weight', `${fontWeight}`);
+    $g.setAttribute('font-style', fontStyle);
+    $g.setAttribute('font-variant', fontVariant);
+    $g.setAttribute('fill', fill as string);
+  } else {
+    let styleCSSText = '';
+    const fontStyleString = fontStringFromTextStyle({
+      fontFamily,
+      fontSize,
+      fontWeight,
+      fontStyle,
+      fontVariant,
+    });
+    if (fontStyleString) {
+      styleCSSText += `font: ${fontStyleString};`;
+    }
+    if (fill) {
+      styleCSSText += `fill: ${fill as string};`;
+    }
+    if (styleCSSText) {
+      $g.setAttribute('style', styleCSSText);
+    }
   }
-  if (fill) {
-    styleCSSText += `fill: ${fill as string};`;
-  }
-  if (styleCSSText) {
-    $g.setAttribute('style', styleCSSText);
+
+  // TODO: use <foreignObject> to render text decoration.
+  // @see https://stackoverflow.com/questions/76894327/text-decoration-of-a-text-svg-in-html
+  if (decorationLine !== 'none' && decorationThickness > 0) {
+    // @see https://developer.mozilla.org/en-US/docs/Web/CSS/text-decoration#values
+    // @see https://developer.mozilla.org/en-US/docs/Web/SVG/Reference/Attribute/text-decoration
+    // e.g. text-decoration: solid underline purple 4px;
+    const styleCSSText = $g.getAttribute('style') || '';
+
+    $g.setAttribute(
+      'style',
+      styleCSSText +
+        `text-decoration: ${decorationStyle} ${decorationLine} ${decorationColor} ${decorationThickness}px;`,
+    );
   }
 }
 
@@ -1110,6 +1147,10 @@ export function toSVGElement(node?: SerializedNode) {
     dropShadowOffsetX,
     dropShadowOffsetY,
     dropShadowBlurRadius,
+    decorationLine,
+    decorationStyle,
+    decorationColor,
+    decorationThickness,
     strokeAlignment,
     cornerRadius,
     zIndex,
@@ -1239,7 +1280,7 @@ export function toSVGElement(node?: SerializedNode) {
     exportRough(node, $g);
   }
   if (content) {
-    exportText(node, $g);
+    exportText(node, $g, element);
   }
 
   const { a, b, c, d, tx, ty } = transform.matrix;

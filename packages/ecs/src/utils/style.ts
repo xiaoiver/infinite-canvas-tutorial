@@ -7,6 +7,7 @@ import {
   Text,
   Stroke,
   ComputedTextMetrics,
+  TextDecoration,
 } from '../components';
 import { SerializedNode } from './serialize/type';
 
@@ -56,6 +57,10 @@ export function strokeOffset(stroke?: Stroke) {
 
 export function hasValidStroke(stroke: Stroke) {
   return !!stroke.color && stroke.width > 0;
+}
+
+export function hasValidDecoration(decoration: TextDecoration) {
+  return !!decoration.color && decoration.thickness > 0;
 }
 
 export function getGeometryBounds(

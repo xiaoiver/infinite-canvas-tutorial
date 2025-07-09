@@ -49,8 +49,6 @@ onMounted(() => {
                 content: 'I\'d far rather be \nhappy than right any day.',
                 fontSize: 45,
                 fill: '#F67676',
-                stroke: 'white',
-                strokeWidth: 10,
                 fontFamily: 'sans-serif',
                 bitmapFont: font,
                 decorationColor: '#000000',

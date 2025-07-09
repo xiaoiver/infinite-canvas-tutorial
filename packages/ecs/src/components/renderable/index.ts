@@ -17,3 +17,4 @@ export * from './StrokeAttenuation';
 export * from './ComputedVisibility';
 export * from './GeometryDirty';
 export * from './MaterialDirty';
+export * from './TextDecoration';

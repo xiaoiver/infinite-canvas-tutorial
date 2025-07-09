@@ -267,6 +267,33 @@ void Decorations::calculatePosition(TextDecoration decoration, SkScalar ascent) 
 }
 ```
 
+### 导出 SVG {#export-svg}
+
+可惜的是，到目前为止（2025.7.9），SVG 并没有完整支持 [text-decoration]，在下右图中 `text-decoration-color` 并没有尊重我们设置的蓝色，而是被文本颜色覆盖，`text-decoration-style` 则完全不支持，详见：[Text decoration of a text svg in html]。
+
+> Apparentrly, text-decoration-color does not apply to SVG text elements
+
+在 Figma 中通过导出成 `<path>` 回避了这个问题。我们仍希望保留 `<text>`，因此在导出 SVG 时，只能使用 `<foreignObject>` 包裹，见下左图：
+
+```html
+<foreignObject width="50" height="20">
+    <span style="text-decoration: underline; text-decoration-color: blue;">
+        Text
+    </span>
+</foreignObject>
+```
+
+<svg id="svg" viewBox="0 0 100 20">
+  <foreignObject width="50" height="20">
+    <span style="text-decoration: underline; text-decoration-color: blue;">
+      Text
+    </span>
+  </foreignObject>
+  <text x="50" y="17" style="text-decoration: underline; text-decoration-color: blue;"  >
+    Text
+  </text>
+</svg>
+
 ## 阴影 {#dropshadow}
 
 Canvas2D 提供了 [shadowBlur] 属性，CanvasKit 在增强的段落样式中提供了 `shadows` 属性。
@@ -507,3 +534,4 @@ export const absorb = /* wgsl */ `
 [strokeText]: https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/strokeText
 [Decorations::calculatePosition]: https://github.com/google/skia/blob/main/modules/skparagraph/src/Decorations.cpp#L161-L185
 [课程 13 - 在曲线上采样]: /zh/guide/lesson-013#sample-on-curve
+[Text decoration of a text svg in html]: https://stackoverflow.com/questions/76894327/text-decoration-of-a-text-svg-in-html

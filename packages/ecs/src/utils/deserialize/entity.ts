@@ -19,6 +19,7 @@ import {
   ZIndex,
   Font,
   AABB,
+  TextDecoration,
 } from '../../components';
 import {
   DropShadowAttributes,
@@ -172,6 +173,10 @@ export function serializedNodesToEntities(
         wordWrapWidth,
         textAlign = 'start',
         textBaseline = 'alphabetic',
+        decorationThickness = 0,
+        decorationColor = 'black',
+        decorationLine = 'none',
+        decorationStyle = 'solid',
         // fontBoundingBoxAscent = 0,
         // fontBoundingBoxDescent = 0,
         // hangingBaseline = 0,
@@ -217,6 +222,17 @@ export function serializedNodesToEntities(
           bitmapFont,
         }),
       );
+
+      if (decorationLine !== 'none' && decorationThickness > 0) {
+        entity.insert(
+          new TextDecoration({
+            color: decorationColor,
+            line: decorationLine,
+            style: decorationStyle,
+            thickness: decorationThickness,
+          }),
+        );
+      }
     }
 
     const { fill, fillOpacity, opacity } = attributes as FillAttributes;

@@ -1,6 +1,10 @@
 import { isNil, isNumber } from '@antv/util';
 import { v4 as uuidv4 } from 'uuid';
-import { Visibility } from '../../components';
+import {
+  TextDecorationLine,
+  TextDecorationStyle,
+  Visibility,
+} from '../../components';
 import {
   defaultAttributes,
   PathSerializedNode,
@@ -158,6 +162,25 @@ export function svgElementsToSerializedNodes(
       }
       if (element.style.fill) {
         (attributes as TextSerializedNode).fill = element.style.fill;
+      }
+      if (element.style.textDecoration) {
+        // e.g. text-decoration: underline 4px wavy rgb(0, 0, 0) ;
+        const [
+          decorationLine,
+          decorationThickness,
+          decorationStyle,
+          decorationColor,
+        ] = element.style.textDecoration.split(' ');
+        (attributes as TextSerializedNode).decorationStyle =
+          decorationStyle as TextDecorationStyle;
+        (attributes as TextSerializedNode).decorationLine =
+          decorationLine as TextDecorationLine;
+        (attributes as TextSerializedNode).decorationColor = decorationColor;
+        (attributes as TextSerializedNode).decorationThickness = Number(
+          decorationThickness.replace('px', ''),
+        );
+
+        console.log(element.style.textDecoration, attributes);
       }
 
       // remove prefix and suffix whitespace and newlines

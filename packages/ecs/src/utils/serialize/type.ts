@@ -7,6 +7,7 @@ import {
   Rect,
   Stroke,
   Text,
+  TextDecoration,
   Visibility,
 } from '../../components';
 
@@ -112,6 +113,13 @@ export interface DropShadowAttributes {
   dropShadowBlurRadius: DropShadow['blurRadius'];
 }
 
+export interface TextDecorationAttributes {
+  decorationColor: TextDecoration['color'];
+  decorationLine: TextDecoration['line'];
+  decorationStyle: TextDecoration['style'];
+  decorationThickness: TextDecoration['thickness'];
+}
+
 export interface GSerializedNode extends BaseSerializeNode<'g'> {}
 
 export interface EllipseSerializedNode
@@ -179,7 +187,8 @@ export interface TextSerializedNode
     }>,
     Partial<FillAttributes>,
     Partial<StrokeAttributes>,
-    Partial<DropShadowAttributes> {}
+    Partial<DropShadowAttributes>,
+    Partial<TextDecorationAttributes> {}
 
 export type SerializedNode =
   | GSerializedNode

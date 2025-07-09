@@ -56,6 +56,7 @@ import {
   Font,
   MaterialDirty,
   GeometryDirty,
+  TextDecoration,
 } from '../components';
 
 export const RendererPlugin: Plugin = () => {
@@ -89,6 +90,7 @@ export const RendererPlugin: Plugin = () => {
   component(InnerShadow);
   component(Rough);
   component(Font);
+  component(TextDecoration);
 
   /**
    * Geometry

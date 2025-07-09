@@ -171,6 +171,10 @@ export function serializeNodesToSVGElements(
       dropShadowOffsetX,
       dropShadowOffsetY,
       dropShadowBlurRadius,
+      decorationColor,
+      decorationLine,
+      decorationStyle,
+      decorationThickness,
       strokeAlignment,
       tessellationMethod,
       cornerRadius,
@@ -880,9 +884,14 @@ export function exportText(
     fontStyle,
     fontVariant,
     fill,
+    decorationLine,
+    decorationStyle,
+    decorationColor,
+    decorationThickness,
   } = attributes as TextSerializedNode;
   $g.textContent = content;
 
+  // <text>
   if ($g === element) {
     $g.setAttribute('font-family', fontFamily);
     $g.setAttribute('font-size', `${fontSize}`);
@@ -908,6 +917,21 @@ export function exportText(
     if (styleCSSText) {
       $g.setAttribute('style', styleCSSText);
     }
+  }
+
+  // TODO: use <foreignObject> to render text decoration.
+  // @see https://stackoverflow.com/questions/76894327/text-decoration-of-a-text-svg-in-html
+  if (decorationLine !== 'none' && decorationThickness > 0) {
+    // @see https://developer.mozilla.org/en-US/docs/Web/CSS/text-decoration#values
+    // @see https://developer.mozilla.org/en-US/docs/Web/SVG/Reference/Attribute/text-decoration
+    // e.g. text-decoration: solid underline purple 4px;
+    const styleCSSText = $g.getAttribute('style') || '';
+
+    $g.setAttribute(
+      'style',
+      styleCSSText +
+        `text-decoration: ${decorationStyle} ${decorationLine} ${decorationColor} ${decorationThickness}px;`,
+    );
   }
 }
 

@@ -267,6 +267,33 @@ void Decorations::calculatePosition(TextDecoration decoration, SkScalar ascent) 
 }
 ```
 
+### Export SVG {#export-svg}
+
+Unfortunately, as of now (2025.7.9), SVG does not fully support [text-decoration]. In the right image below, text-decoration-color does not respect the blue color we set, but is overridden by the text color, and text-decoration-style is not supported at all. See: [Text decoration of a text svg in html].
+
+> Apparentrly, text-decoration-color does not apply to SVG text elements
+
+This is circumvented in Figma by exporting as `<path>`. We still want to keep `<text>`, so when exporting SVGs, we can only use `<foreignObject>` wrappers, see below left:
+
+```html
+<foreignObject width="50" height="20">
+    <span style="text-decoration: underline; text-decoration-color: blue;">
+        Text
+    </span>
+</foreignObject>
+```
+
+<svg id="svg" viewBox="0 0 100 20">
+  <foreignObject width="50" height="20">
+    <span style="text-decoration: underline; text-decoration-color: blue;">
+      Text
+    </span>
+  </foreignObject>
+  <text x="50" y="17" style="text-decoration: underline; text-decoration-color: blue;"  >
+    Text
+  </text>
+</svg>
+
 ## Shadows {#dropshadow}
 
 Pixi.js provides [DropShadowFilter], but we can implement it directly in SDF without using post-processing. Use `shadowOffset` and `shadowBlurRadius` to control the offset and blurring of the SDF texture.
@@ -493,3 +520,4 @@ export const absorb = /* wgsl */ `
 [strokeText]: https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/strokeText
 [Decorations::calculatePosition]: https://github.com/google/skia/blob/main/modules/skparagraph/src/Decorations.cpp#L161-L185
 [Lesson 13 - Sampling on a curve]: /guide/lesson-013#sample-on-curve
+[Text decoration of a text svg in html]: https://stackoverflow.com/questions/76894327/text-decoration-of-a-text-svg-in-html

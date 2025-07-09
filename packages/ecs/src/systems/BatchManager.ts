@@ -63,7 +63,7 @@ function getDrawcallCtors(shape: Entity) {
       SHAPE_DRAWCALL_CTORS.push(Mesh, SmoothPolyline);
     }
   } else if (shape.has(Text)) {
-    SHAPE_DRAWCALL_CTORS.push(SDFText);
+    SHAPE_DRAWCALL_CTORS.push(SmoothPolyline, SDFText);
   }
   return SHAPE_DRAWCALL_CTORS;
 }
