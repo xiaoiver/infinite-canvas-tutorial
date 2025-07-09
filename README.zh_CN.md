@@ -215,7 +215,7 @@ pnpm run dev
 
 -   使用贝塞尔曲线渲染文本，使用 OpenType 和 Harfbuzz 进行字形处理
 -   渲染 TeX 公式
--   文本描边、装饰线和阴影
+-   文本描边、装饰线、阴影以及沿路径布局
 -   带有晕染效果的文本渲染
 -   使用 Web Font Loader 加载 Web 字体
 

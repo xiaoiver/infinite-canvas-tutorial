@@ -30,7 +30,9 @@ import {
   GlyphPositions,
   containsEmoji,
   yOffsetFromTextBaseline,
+  rotateAroundOrigin,
 } from '../utils';
+import { vec2 } from 'gl-matrix';
 
 export class SDFText extends Drawcall {
   #glyphManager = new GlyphManager();
@@ -455,6 +457,9 @@ export class SDFText extends Drawcall {
       y = 0,
       bitmapFontKerning,
       metrics,
+      path,
+      side,
+      startOffset,
     } = object;
 
     const charUVOffsetBuffer: number[] = [];
@@ -478,6 +483,9 @@ export class SDFText extends Drawcall {
       bitmapFontKerning,
       0,
       dy,
+      path,
+      side,
+      startOffset,
     );
 
     let positions: GlyphPositions;
@@ -506,25 +514,42 @@ export class SDFText extends Drawcall {
 
     getGlyphQuads(positionedGlyphs, positions, this.useBitmapFont).forEach(
       (quad, index, total) => {
+        const rotation = quad.rotation;
+        const tl = vec2.fromValues(quad.tl.x, quad.tl.y);
+        const tr = vec2.fromValues(quad.tr.x, quad.tr.y);
+        const bl = vec2.fromValues(quad.bl.x, quad.bl.y);
+        const br = vec2.fromValues(quad.br.x, quad.br.y);
+
+        if (rotation !== 0) {
+          const width = quad.width;
+          const height = quad.br.y - quad.tl.y;
+          const center = vec2.fromValues(tl[0] + width / 2, tl[1] + height);
+
+          rotateAroundOrigin(tl, rotation, center);
+          rotateAroundOrigin(tr, rotation, center);
+          rotateAroundOrigin(bl, rotation, center);
+          rotateAroundOrigin(br, rotation, center);
+        }
+
         // interleaved uv & offsets
-        charUVOffsetBuffer.push(quad.tex.x, quad.tex.y, quad.tl.x, quad.tl.y);
+        charUVOffsetBuffer.push(quad.tex.x, quad.tex.y, tl[0], tl[1]);
         charUVOffsetBuffer.push(
           quad.tex.x + quad.tex.w,
           quad.tex.y,
-          quad.tr.x,
-          quad.tr.y,
+          tr[0],
+          tr[1],
         );
         charUVOffsetBuffer.push(
           quad.tex.x + quad.tex.w,
           quad.tex.y + quad.tex.h,
-          quad.br.x,
-          quad.br.y,
+          br[0],
+          br[1],
         );
         charUVOffsetBuffer.push(
           quad.tex.x,
           quad.tex.y + quad.tex.h,
-          quad.bl.x,
-          quad.bl.y,
+          bl[0],
+          bl[1],
         );
 
         const zIndex =

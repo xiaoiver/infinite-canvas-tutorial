@@ -8,6 +8,7 @@ import { BitmapFont } from '../utils/bitmap-font/BitmapFont';
 import { AABB } from './AABB';
 import { GConstructor } from './mixins';
 import { Shape, ShapeAttributes, strokeOffset } from './Shape';
+import { Path } from './Path';
 
 export type TextStyleWhiteSpace = 'normal' | 'pre' | 'pre-line';
 export type TextDecorationLine =
@@ -208,6 +209,24 @@ export interface TextAttributes extends ShapeAttributes {
    * @see https://developer.mozilla.org/en-US/docs/Web/CSS/text-decoration-thickness
    */
   decorationThickness: number;
+
+  /**
+   * The path to follow.
+   * @see https://developer.mozilla.org/en-US/docs/Web/SVG/Reference/Element/textPath
+   */
+  path: string;
+
+  /**
+   * The side attribute determines the side of a path the text is placed on (relative to the path direction).
+   * @see https://developer.mozilla.org/en-US/docs/Web/SVG/Reference/Attribute/side
+   */
+  side: 'left' | 'right';
+
+  /**
+   * The startOffset attribute defines an offset from the start of the path for the initial current text position along the path after converting the path to the <textPath> element's coordinate system.
+   * @see https://developer.mozilla.org/en-US/docs/Web/SVG/Reference/Attribute/startOffset
+   */
+  startOffset: number;
 }
 
 // @ts-ignore
@@ -245,6 +264,9 @@ export function TextWrapper<TBase extends GConstructor>(Base: TBase) {
     #decorationLine: TextDecorationLine;
     #decorationStyle: TextDecorationStyle;
     #decorationThickness: number;
+    #path: string;
+    #side: 'left' | 'right';
+    #startOffset: number;
 
     bitmapFont: BitmapFont;
     bitmapFontKerning: boolean;
@@ -257,7 +279,14 @@ export function TextWrapper<TBase extends GConstructor>(Base: TBase) {
     static getGeometryBounds(
       attributes: Partial<TextAttributes> & { metrics: TextMetrics },
     ) {
-      const { x, y, textAlign, textBaseline, metrics } = attributes;
+      const { x, y, textAlign, textBaseline, metrics, path } = attributes;
+
+      // Use path instead.
+      if (path) {
+        const ppath = new Path({ d: path });
+        return ppath.getGeometryBounds();
+      }
+
       const { width, height } = metrics;
 
       const hwidth = width / 2;
@@ -320,6 +349,9 @@ export function TextWrapper<TBase extends GConstructor>(Base: TBase) {
         decorationLine,
         decorationStyle,
         decorationThickness,
+        path,
+        side,
+        startOffset,
       } = attributes;
 
       this.#x = x ?? 0;
@@ -352,6 +384,9 @@ export function TextWrapper<TBase extends GConstructor>(Base: TBase) {
       this.decorationLine = decorationLine ?? 'none';
       this.decorationStyle = decorationStyle ?? 'solid';
       this.decorationThickness = decorationThickness ?? 1;
+      this.path = path ?? null;
+      this.side = side ?? 'left';
+      this.startOffset = startOffset ?? 0;
     }
 
     containsPoint(x: number, y: number) {
@@ -747,6 +782,36 @@ export function TextWrapper<TBase extends GConstructor>(Base: TBase) {
     set decorationThickness(decorationThickness: number) {
       if (this.#decorationThickness !== decorationThickness) {
         this.#decorationThickness = decorationThickness;
+        this.renderDirtyFlag = true;
+      }
+    }
+
+    get path() {
+      return this.#path;
+    }
+    set path(path: string) {
+      if (this.#path !== path) {
+        this.#path = path;
+        this.renderDirtyFlag = true;
+      }
+    }
+
+    get side() {
+      return this.#side;
+    }
+    set side(side: 'left' | 'right') {
+      if (this.#side !== side) {
+        this.#side = side;
+        this.renderDirtyFlag = true;
+      }
+    }
+
+    get startOffset() {
+      return this.#startOffset;
+    }
+    set startOffset(startOffset: number) {
+      if (this.#startOffset !== startOffset) {
+        this.#startOffset = startOffset;
         this.renderDirtyFlag = true;
       }
     }

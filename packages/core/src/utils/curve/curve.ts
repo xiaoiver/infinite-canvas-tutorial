@@ -142,31 +142,31 @@ export abstract class Curve {
   // In case any sub curve does not implement its tangent derivation,
   // 2 points a small delta apart will be used to find its gradient
   // which seems to give a reasonable approximation
-  // getTangent(t, optionalTarget) {
-  //   const delta = 0.0001;
-  //   let t1 = t - delta;
-  //   let t2 = t + delta;
+  getTangent(t: number, optionalTarget?: any) {
+    const delta = 0.0001;
+    let t1 = t - delta;
+    let t2 = t + delta;
 
-  //   // Capping in case of danger
+    // Capping in case of danger
 
-  //   if (t1 < 0) t1 = 0;
-  //   if (t2 > 1) t2 = 1;
+    if (t1 < 0) t1 = 0;
+    if (t2 > 1) t2 = 1;
 
-  //   const pt1 = this.getPoint(t1);
-  //   const pt2 = this.getPoint(t2);
+    const pt1 = this.getPoint(t1);
+    const pt2 = this.getPoint(t2);
 
-  //   const tangent =
-  //     optionalTarget || (pt1.isVector2 ? new Vector2() : new Vector3());
+    const tangent: vec2 = optionalTarget || vec2.create();
 
-  //   tangent.copy(pt2).sub(pt1).normalize();
+    vec2.sub(tangent, pt2, pt1);
+    vec2.normalize(tangent, tangent);
 
-  //   return tangent;
-  // }
+    return tangent;
+  }
 
-  // getTangentAt(u, optionalTarget) {
-  //   const t = this.getUtoTmapping(u);
-  //   return this.getTangent(t, optionalTarget);
-  // }
+  getTangentAt(u: number, optionalTarget?: any) {
+    const t = this.getUtoTmapping(u);
+    return this.getTangent(t, optionalTarget);
+  }
 
   // computeFrenetFrames(segments, closed: boolean) {
   //   // see http://www.cs.indiana.edu/pub/techreports/TR425.pdf

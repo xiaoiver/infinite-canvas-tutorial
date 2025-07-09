@@ -255,6 +255,10 @@ export const en = defineConfig({
                 link: 'text-decoration',
               },
               {
+                text: 'Text path',
+                link: 'text-path',
+              },
+              {
                 text: 'Physical text',
                 link: 'physical-text',
               },

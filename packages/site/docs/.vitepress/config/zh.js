@@ -221,6 +221,10 @@ export const zh = defineConfig({
                 link: 'text-decoration',
               },
               {
+                text: '文本路径',
+                link: 'text-path',
+              },
+              {
                 text: '晕染效果的文本',
                 link: 'physical-text',
               },

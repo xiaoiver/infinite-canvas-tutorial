@@ -1,4 +1,25 @@
-import { mat3 } from 'gl-matrix';
+import { mat3, vec2 } from 'gl-matrix';
+
+export function rotateAroundOrigin(
+  point: vec2,
+  rotation: number,
+  origin: vec2,
+) {
+  const translateToOrigin = mat3.fromTranslation(mat3.create(), [
+    -origin[0],
+    -origin[1],
+  ]);
+  const rotationMatrix = mat3.fromRotation(mat3.create(), rotation);
+  const translateBack = mat3.fromTranslation(mat3.create(), [
+    origin[0],
+    origin[1],
+  ]);
+
+  const transform = mat3.create();
+  mat3.multiply(transform, translateBack, rotationMatrix);
+  mat3.multiply(transform, transform, translateToOrigin);
+  vec2.transformMat3(point, point, transform);
+}
 
 const PADDING = 0;
 /**

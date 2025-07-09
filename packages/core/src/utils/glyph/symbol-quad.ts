@@ -8,6 +8,8 @@ export type SymbolQuad = {
   tr: Point;
   bl: Point;
   br: Point;
+  rotation: number;
+  width: number;
   tex: {
     x: number;
     y: number;
@@ -35,7 +37,7 @@ export function getGlyphQuads(
     const { rect, metrics } = glyph;
     if (!rect) continue;
 
-    const { x, y, scale } = positionedGlyph;
+    const { x, y, scale, width } = positionedGlyph;
 
     // The rects have an addditional buffer that is not included in their size.
     const rectBuffer = useMSDF
@@ -58,7 +60,15 @@ export function getGlyphQuads(
     const bl = { x: x1, y: y2 };
     const br = { x: x2, y: y2 };
 
-    quads.push({ tl, tr, bl, br, tex: rect });
+    quads.push({
+      tl,
+      tr,
+      bl,
+      br,
+      tex: rect,
+      rotation: positionedGlyph.rotation ?? 0,
+      width,
+    });
   }
 
   return quads;

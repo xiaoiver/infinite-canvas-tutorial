@@ -10,6 +10,8 @@ import { GlyphAtlas } from './glyph-atlas';
 import { TinySDF } from './tiny-sdf';
 import { BitmapFont } from '../bitmap-font/BitmapFont';
 import { DOMAdapter } from '../../environment';
+import { parsePath } from '..';
+import { Path } from '../curve/path';
 
 export type PositionedGlyph = {
   glyph: string;
@@ -17,6 +19,8 @@ export type PositionedGlyph = {
   y: number;
   scale: number;
   fontStack: string;
+  width: number;
+  rotation?: number;
 };
 
 /**
@@ -83,6 +87,9 @@ export class GlyphManager {
     bitmapFontKerning?: boolean,
     dx?: number,
     dy?: number,
+    d?: string,
+    side?: 'left' | 'right',
+    startOffset?: number,
   ): PositionedGlyph[] {
     const positionedGlyphs: PositionedGlyph[] = [];
 
@@ -96,7 +103,18 @@ export class GlyphManager {
         ? 0
         : 0.5;
 
+    const reverse = side === 'right';
+    let totalPathLength = 0;
+    let path: Path;
+    if (d) {
+      parsePath(d).subPaths.forEach((subPath) => {
+        path = subPath;
+        totalPathLength += subPath.getLength();
+      });
+    }
+
     lines.forEach((line) => {
+      let positionInPath = 0;
       const lineStartIndex = positionedGlyphs.length;
 
       let previousChar: string;
@@ -119,14 +137,16 @@ export class GlyphManager {
             advance = glyph.metrics.advance;
           }
 
+          const width = (advance + kerning) * scale + letterSpacing;
           positionedGlyphs.push({
             glyph: char,
             x: x,
             y: y,
             scale,
             fontStack,
+            width,
           });
-          x += (advance + kerning) * scale + letterSpacing;
+          x += width;
 
           previousChar = char;
         });
@@ -138,9 +158,62 @@ export class GlyphManager {
 
       x = 0;
       y += lineHeight;
+
+      const llength = positionedGlyphs.length - lineStartIndex;
+
+      if (d) {
+        if (textAlign === 'left') {
+          positionInPath = reverse ? totalPathLength - lineWidth : 0;
+        } else if (textAlign === 'right') {
+          positionInPath = reverse ? 0 : totalPathLength - lineWidth;
+        } else if (textAlign === 'center') {
+          positionInPath = (totalPathLength - lineWidth) / 2;
+        }
+        positionInPath += startOffset * (reverse ? -1 : 1);
+
+        for (
+          let i = reverse ? llength - 1 : 0;
+          reverse ? i >= 0 : i < llength;
+          reverse ? i-- : i++
+        ) {
+          const positionedGlyph = positionedGlyphs[i];
+          if (positionInPath > totalPathLength) {
+            positionInPath %= totalPathLength;
+          } else if (positionInPath < 0) {
+            positionInPath += totalPathLength;
+          }
+          // it would probably much faster to send all the grapheme position for a line
+          // and calculate path position/angle at once.
+          this.layoutOnPath(
+            path,
+            positionInPath,
+            totalPathLength,
+            positionedGlyph,
+          );
+          positionInPath += positionedGlyph.width;
+        }
+      }
     });
 
     return positionedGlyphs;
+  }
+
+  layoutOnPath(
+    path: Path,
+    positionInPath: number,
+    totalPathLength: number,
+    positionedGlyph: PositionedGlyph,
+  ) {
+    const centerPosition = positionInPath + positionedGlyph.width / 2;
+    const ratio = centerPosition / totalPathLength;
+    const point = path.getPointAt(ratio);
+    const tangent = path.getTangentAt(ratio);
+    const rotation = Math.atan2(tangent[1], tangent[0]);
+    if (point) {
+      positionedGlyph.x = point[0];
+      positionedGlyph.y = point[1];
+      positionedGlyph.rotation = rotation;
+    }
   }
 
   generateAtlas(

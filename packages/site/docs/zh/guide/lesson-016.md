@@ -11,6 +11,7 @@ import TeXMath from '../../components/TeXMath.vue';
 import TextDropShadow from '../../components/TextDropShadow.vue';
 import TextStroke from '../../components/TextStroke.vue';
 import TextDecoration from '../../components/TextDecoration.vue';
+import TextPath from '../../components/TextPath.vue';
 import PhysicalText from '../../components/PhysicalText.vue';
 import TextEditor from '../../components/TextEditor.vue';
 </script>
@@ -267,7 +268,7 @@ void Decorations::calculatePosition(TextDecoration decoration, SkScalar ascent) 
 }
 ```
 
-### 导出 SVG {#export-svg}
+### 导出 SVG {#export-svg-text-decoration}
 
 可惜的是，到目前为止（2025.7.9），SVG 并没有完整支持 [text-decoration]，在下右图中 `text-decoration-color` 并没有尊重我们设置的蓝色，而是被文本颜色覆盖，`text-decoration-style` 则完全不支持，详见：[Text decoration of a text svg in html]。
 
@@ -283,7 +284,7 @@ void Decorations::calculatePosition(TextDecoration decoration, SkScalar ascent) 
 </foreignObject>
 ```
 
-<svg id="svg" viewBox="0 0 100 20">
+<svg viewBox="0 0 100 20">
   <foreignObject width="50" height="20">
     <span style="text-decoration: underline; text-decoration-color: blue;">
       Text
@@ -324,19 +325,9 @@ outputColor = mix(dropShadowColor, outputColor, outputColor.a);
 
 ## 文本跟随路径 {#text-along-path}
 
-在 Figma 社区中，很多用户都在期待这个特性，例如：[Make text follow a path or a circle]
+在 Figma 社区中，很多用户都在期待这个特性，例如：[Make text follow a path or a circle]。最近官方支持了这一特性：[Type text on a path]。
 
-在 SVG 中可以通过 [textPath] 实现，详见：[Curved Text Along a Path]
-
-```html
-<path
-    id="curve"
-    d="M73.2,148.6c4-6.1,65.5-96.8,178.6-95.6c111.3,1.2,170.8,90.3,175.1,97"
-/>
-<text width="500">
-    <textPath xlink:href="#curve"> Dangerous Curves Ahead </textPath>
-</text>
-```
+![Type text on a path](https://help.figma.com/hc/article_attachments/31937313416471)
 
 Skia 提供了 `MakeOnPath` 方法，详见 [Draw text along a path]：
 
@@ -351,7 +342,77 @@ canvas.drawTextBlob(textblob, 0, 0, textPaint);
 
 Kittl 提供了 [Easily Type Text On Any Path] 工具，可以方便的将文本放置在路径上。
 
-一个比较合适的参考实现来自 Fabricjs，详见：[fabricjs - text on path]。
+我们参考来自 Fabricjs 的实现：[fabricjs - text on path]，在常规 layout 之后增加一个阶段，使用我们介绍过 [课程 13 - 在曲线上采样]，计算当前字符在路径上的位置：
+
+```ts
+const centerPosition = positionInPath + positionedGlyph.width / 2;
+const ratio = centerPosition / totalPathLength;
+const point = path.getPointAt(ratio);
+```
+
+另外在计算包围盒时需要使用 Path 的方式。
+
+![Text path without rotation](/text-path-without-rotation.png)
+
+### 调整旋转角度 {#adjust-rotation}
+
+在 [课程 13 - 在曲线上采样] 的同时，还需要计算出法线 / 切线方向，传入 shader 中进行文本旋转。
+
+```ts
+const tangent = path.getTangentAt(ratio);
+const rotation = Math.atan2(tangent[1], tangent[0]);
+```
+
+我们可以选择为 `a_Position` 增加一个分量，用于存储 `rotation`，随后在 vertex shader 中构建旋转矩阵：
+
+```ts
+this.vertexBufferDescriptors = [
+    {
+        arrayStride: 4 * 3, // [!code --]
+        arrayStride: 4 * 4, // [!code ++]
+        stepMode: VertexStepMode.VERTEX,
+        attributes: [
+            {
+                shaderLocation: Location.POSITION, // a_Position
+                offset: 0,
+                format: Format.F32_RGB, // [!code --]
+                format: Format.F32_RGBA, // [!code ++]
+            },
+        ],
+    },
+];
+```
+
+也可以选择在 CPU 侧完成 Quad 四个顶点的变换。
+
+<TextPath />
+
+### 导出 SVG {#export-svg-text-path}
+
+在 SVG 中可以通过 [textPath] 实现，详见：[Curved Text Along a Path]
+
+```html
+<path
+    id="MyPath"
+    fill="none"
+    stroke="red"
+    d="M10,90 Q90,90 90,45 Q90,10 50,10 Q10,10 10,40 Q10,70 45,70 Q70,70 75,50"
+></path>
+<text>
+    <textPath href="#MyPath">Quick brown fox jumps over the lazy dog.</textPath>
+</text>
+```
+
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" width="200" height="200">
+  <!-- to hide the path, it is usually wrapped in a <defs> element -->
+  <!-- <defs> -->
+  <path id="MyPath" fill="none" stroke="red" d="M10,90 Q90,90 90,45 Q90,10 50,10 Q10,10 10,40 Q10,70 45,70 Q70,70 75,50"></path>
+  <!-- </defs> -->
+
+  <text>
+    <textPath href="#MyPath">Quick brown fox jumps over the lazy dog.</textPath>
+  </text>
+</svg>
 
 ## 更友好的交互方式 {#more-friendly-interaction}
 
@@ -535,3 +596,4 @@ export const absorb = /* wgsl */ `
 [Decorations::calculatePosition]: https://github.com/google/skia/blob/main/modules/skparagraph/src/Decorations.cpp#L161-L185
 [课程 13 - 在曲线上采样]: /zh/guide/lesson-013#sample-on-curve
 [Text decoration of a text svg in html]: https://stackoverflow.com/questions/76894327/text-decoration-of-a-text-svg-in-html
+[Type text on a path]: https://help.figma.com/hc/en-us/articles/360039956434-Guide-to-text-in-Figma-Design#h_01JTH0B6GEA7AVVXVS72X7ANHK

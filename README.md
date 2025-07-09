@@ -215,7 +215,7 @@ If you want to use it in your own project, you can refer to:
 
 -   Using Bezier curves to render text, shaping with OpenType and Harfbuzz
 -   Render TeX math
--   Text stroke, decoration and dropshadow
+-   Text stroke, decoration, dropshadow and text along path
 -   Physical text rendering
 -   Load web font with web font loader
 

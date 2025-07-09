@@ -11,6 +11,7 @@ import TeXMath from '../components/TeXMath.vue';
 import TextDropShadow from '../components/TextDropShadow.vue';
 import TextStroke from '../components/TextStroke.vue';
 import TextDecoration from '../components/TextDecoration.vue';
+import TextPath from '../components/TextPath.vue';
 import PhysicalText from '../components/PhysicalText.vue';
 import TextEditor from '../components/TextEditor.vue';
 </script>
@@ -267,7 +268,7 @@ void Decorations::calculatePosition(TextDecoration decoration, SkScalar ascent) 
 }
 ```
 
-### Export SVG {#export-svg}
+### Export SVG {#export-svg-text-decoration}
 
 Unfortunately, as of now (2025.7.9), SVG does not fully support [text-decoration]. In the right image below, text-decoration-color does not respect the blue color we set, but is overridden by the text color, and text-decoration-style is not supported at all. See: [Text decoration of a text svg in html].
 
@@ -283,7 +284,7 @@ This is circumvented in Figma by exporting as `<path>`. We still want to keep `<
 </foreignObject>
 ```
 
-<svg id="svg" viewBox="0 0 100 20">
+<svg viewBox="0 0 100 20">
   <foreignObject width="50" height="20">
     <span style="text-decoration: underline; text-decoration-color: blue;">
       Text
@@ -311,7 +312,9 @@ gl_FragColor = mix(shadow, text, text.a);
 
 ## Text Along Path {#text-along-path}
 
-In the Figma community, many users are looking forward to this feature, for example: [Make text follow a path or a circle]
+In the Figma community, many users are looking forward to this feature, for example: [Make text follow a path or a circle]. This feature was recently officially supported: [Type text on a path].
+
+![Type text on a path](https://help.figma.com/hc/article_attachments/31937313416471)
 
 In SVG, this can be achieved through [textPath], see: [Curved Text Along a Path]
 
@@ -339,6 +342,78 @@ In Mapbox, placing labels along roads and rivers is a common scenario, see [Map 
 Kittl provides a [Easily Type Text On Any Path] tool.
 
 A more appropriate reference implementation comes from Fabricjs, see: [fabricjs - text on path].
+
+We refer to the implementation from Fabricjs: [fabricjs - text on path], which adds a stage after the regular layout to compute the position of the current character on the path, using the method we introduced [Lesson 13 - Sampling on a curve]:
+
+```ts
+const centerPosition = positionInPath + positionedGlyph.width / 2;
+const ratio = centerPosition / totalPathLength;
+const point = path.getPointAt(ratio);
+```
+
+In addition, you need to use the Path method when calculating the bounding box.
+
+![Text path without rotation](/text-path-without-rotation.png)
+
+### Adjust rotation {#adjust-rotation}
+
+The normal/tangent direction also needs to be calculated and passed into the shader for text rotation.
+
+```ts
+const tangent = path.getTangentAt(ratio);
+const rotation = Math.atan2(tangent[1], tangent[0]);
+```
+
+We can optionally add a component to `a_Position` to store the `rotation`, and later construct the rotation matrix in the vertex shader:
+
+```ts
+this.vertexBufferDescriptors = [
+    {
+        arrayStride: 4 * 3, // [!code --]
+        arrayStride: 4 * 4, // [!code ++]
+        stepMode: VertexStepMode.VERTEX,
+        attributes: [
+            {
+                shaderLocation: Location.POSITION, // a_Position
+                offset: 0,
+                format: Format.F32_RGB, // [!code --]
+                format: Format.F32_RGBA, // [!code ++]
+            },
+        ],
+    },
+];
+```
+
+Optionally, the Quad four-vertex transformation can be done on the CPU side.
+
+<TextPath />
+
+### Export SVG {#export-svg-text-path}
+
+In SVG this can be achieved with [textPath], see: [Curved Text Along a Path].
+
+```html
+<path
+    id="MyPath"
+    fill="none"
+    stroke="red"
+    d="M10,90 Q90,90 90,45 Q90,10 50,10 Q10,10 10,40 Q10,70 45,70 Q70,70 75,50"
+></path>
+<text>
+    <textPath href="#MyPath">Quick brown fox jumps over the lazy dog.</textPath>
+</text>
+```
+
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" width="200" height="200">
+  <!-- to hide the path, it is usually wrapped in a <defs> element -->
+  <!-- <defs> -->
+  <path id="MyPath" fill="none" stroke="red" d="M10,90 Q90,90 90,45 Q90,10 50,10 Q10,10 10,40 Q10,70 45,70 Q70,70 75,50"></path>
+  <!-- </defs> -->
+
+  <text>
+    <textPath href="#MyPath">Quick brown fox jumps over the lazy dog.</textPath>
+  </text>
+</svg>
 
 ## More Friendly Interaction {#more-friendly-interaction}
 
@@ -521,3 +596,4 @@ export const absorb = /* wgsl */ `
 [Decorations::calculatePosition]: https://github.com/google/skia/blob/main/modules/skparagraph/src/Decorations.cpp#L161-L185
 [Lesson 13 - Sampling on a curve]: /guide/lesson-013#sample-on-curve
 [Text decoration of a text svg in html]: https://stackoverflow.com/questions/76894327/text-decoration-of-a-text-svg-in-html
+[Type text on a path]: https://help.figma.com/hc/en-us/articles/360039956434-Guide-to-text-in-Figma-Design#h_01JTH0B6GEA7AVVXVS72X7ANHK

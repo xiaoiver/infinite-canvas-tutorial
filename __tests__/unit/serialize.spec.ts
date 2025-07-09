@@ -299,6 +299,10 @@ describe('Serialize', () => {
       attributes: {
         batchable: false,
         cullable: true,
+        decorationColor: 'black',
+        decorationLine: 'none',
+        decorationStyle: 'solid',
+        decorationThickness: 1,
         fill: '#F67676',
         fillOpacity: 1,
         innerShadowBlurRadius: 0,
@@ -498,7 +502,7 @@ describe('Serialize', () => {
       fill: '#F67676',
     });
     let serialized = serializeNode(circle);
-    const cloned = deepClone(serialized);
+    const cloned = deepClone(serialized!);
     expect(cloned).toEqual(serialized);
   });
 });
