@@ -47,6 +47,7 @@ export default defineConfig({
     ssr: {
       noExternal: [
         '@antv/g-device-api',
+        '@antv/hierarchy',
         'ant-design-vue',
         '@ant-design/icons-vue',
       ],

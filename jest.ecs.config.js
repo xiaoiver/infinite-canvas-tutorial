@@ -3,6 +3,7 @@ const esm = [
   'earcut',
   'potpack',
   '@mapbox',
+  '@antv/hierarchy',
   'roughjs',
   'fractional-indexing',
   'point-to-segment-2d',
