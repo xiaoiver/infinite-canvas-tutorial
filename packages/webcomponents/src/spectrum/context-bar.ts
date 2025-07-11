@@ -6,11 +6,13 @@ import {
   AppState,
   Canvas,
   ComputedBounds,
+  TransformableStatus,
   SerializedNode,
 } from '@infinite-canvas-tutorial/ecs';
 import { apiContext, appStateContext } from '../context';
 import { ExtendedAPI } from '../API';
 import { TOP_NAVBAR_HEIGHT } from './infinite-canvas';
+import { Event } from '../event';
 
 const CONTEXT_BAR_MARGIN_BOTTOM = 16;
 
@@ -64,6 +66,8 @@ export class ContextBar extends LitElement {
   @consume({ context: apiContext, subscribe: true })
   api: ExtendedAPI;
 
+  private binded = false;
+
   private calculatePosition(node: SerializedNode): [number, number] {
     if (!node) {
       return [0, 0];
@@ -97,7 +101,40 @@ export class ContextBar extends LitElement {
     ];
   }
 
+  private handleTransformableStatusChanged = (
+    event: CustomEvent<{
+      status: TransformableStatus;
+    }>,
+  ) => {
+    const { status } = event.detail;
+    if (
+      status === TransformableStatus.MOVING ||
+      status === TransformableStatus.RESIZING ||
+      status === TransformableStatus.ROTATING
+    ) {
+      this.style.display = 'none';
+    } else {
+      this.style.display = 'block';
+    }
+  };
+
+  disconnectedCallback() {
+    super.disconnectedCallback();
+    this.api.element.removeEventListener(
+      Event.TRANSFORMABLE_STATUS_CHANGED,
+      this.handleTransformableStatusChanged,
+    );
+  }
+
   render() {
+    // FIXME: wait for the element to be ready.
+    if (this.api?.element && !this.binded) {
+      this.api.element.addEventListener(
+        Event.TRANSFORMABLE_STATUS_CHANGED,
+        this.handleTransformableStatusChanged,
+      );
+    }
+
     const { layersSelected, contextBarVisible } = this.appState;
     const node = layersSelected[0] && this.api.getNodeById(layersSelected[0]);
     const isText = node?.type === 'text';

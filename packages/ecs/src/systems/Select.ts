@@ -26,12 +26,12 @@ import {
   Rect,
   Renderable,
   Selected,
-  SeletedStatus,
   Stroke,
   StrokeAttenuation,
   Text,
   Transform,
   Transformable,
+  TransformableStatus,
   UI,
   UIType,
   Visibility,
@@ -163,6 +163,8 @@ export class Select extends System {
   ) {
     api.highlightNodes([]);
     const camera = api.getCamera();
+    camera.write(Transformable).status = TransformableStatus.MOVING;
+
     const { selecteds } = camera.read(Transformable);
     selecteds.forEach((selected) => {
       // Hide transformer and highlighter
@@ -175,25 +177,25 @@ export class Select extends System {
         x: node.x + ex - sx,
         y: node.y + ey - sy,
       });
-
-      selected.write(Selected).status = SeletedStatus.MOVING;
     });
 
     this.renderTransformer.createOrUpdate(camera);
   }
 
   private handleSelectedMoved(api: API) {
+    const camera = api.getCamera();
+
     api.setNodes(api.getNodes());
     api.record();
 
-    const { selecteds } = api.getCamera().read(Transformable);
+    const { selecteds } = camera.read(Transformable);
     selecteds.forEach((selected) => {
       if (!selected.has(Highlighted)) {
         selected.add(Highlighted);
       }
-
-      selected.write(Selected).status = SeletedStatus.MOVED;
     });
+
+    camera.write(Transformable).status = TransformableStatus.MOVED;
 
     this.saveSelectedOBB(api);
   }
@@ -203,6 +205,9 @@ export class Select extends System {
     anchorNodeX: number,
     anchorNodeY: number,
   ) {
+    const camera = api.getCamera();
+    camera.write(Transformable).status = TransformableStatus.ROTATING;
+
     const sl = api.canvas2Transformer({
       x: anchorNodeX,
       y: anchorNodeY,
@@ -244,6 +249,8 @@ export class Select extends System {
     centeredScaling: boolean,
   ) {
     const camera = api.getCamera();
+    camera.write(Transformable).status = TransformableStatus.RESIZING;
+
     api.highlightNodes([]);
 
     const { tlAnchor, trAnchor, blAnchor, brAnchor } =
@@ -433,6 +440,7 @@ export class Select extends System {
 
   private handleSelectedResized(api: API) {
     const camera = api.getCamera();
+    camera.write(Transformable).status = TransformableStatus.RESIZED;
 
     api.setNodes(api.getNodes());
     api.record();
@@ -449,6 +457,7 @@ export class Select extends System {
 
   private handleSelectedRotated(api: API) {
     const camera = api.getCamera();
+    camera.write(Transformable).status = TransformableStatus.ROTATED;
 
     api.setNodes(api.getNodes());
     api.record();

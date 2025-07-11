@@ -281,7 +281,7 @@ If you want to use it in your own project, you can refer to:
 -   Limitations of SVG Path
 -   What is VectorNetwork
 
-## Lesson 23 - 思维导图 [🔗](https://infinitecanvas.cc/guide/lesson-023)
+## Lesson 23 - Mindmap [🔗](https://infinitecanvas.cc/guide/lesson-023)
 
 -   Analyze d3-tree, d3-flextree and @antv/hierarchy
 

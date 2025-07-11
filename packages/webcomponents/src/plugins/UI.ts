@@ -12,7 +12,7 @@ import {
 import {
   DownloadScreenshot,
   InitCanvas,
-  ListenSelectedStatus,
+  ListenTransformableStatus,
   ZoomLevel,
 } from '../systems';
 
@@ -47,5 +47,5 @@ export const UIPlugin: Plugin = () => {
       ),
   )(ZoomLevel);
   system((s) => s.before(PreStartUp))(DownloadScreenshot);
-  system((s) => s.after(PreStartUp))(ListenSelectedStatus);
+  system((s) => s.after(PreStartUp))(ListenTransformableStatus);
 };

@@ -1,5 +1,15 @@
-import { Entity, field } from '@lastolivegames/becsy';
+import { Entity, field, Type } from '@lastolivegames/becsy';
 import { Highlighted, Selected } from '../pen';
+
+export enum TransformableStatus {
+  IDLE = 'idle',
+  MOVING = 'moving',
+  MOVED = 'moved',
+  RESIZING = 'resizing',
+  RESIZED = 'resized',
+  ROTATING = 'rotating',
+  ROTATED = 'rotated',
+}
 
 /**
  * A camera can have one transformer which includes a mask and 4 anchors.
@@ -27,6 +37,20 @@ export class Transformable {
    * Highlighted list
    */
   @field.backrefs(Highlighted, 'camera') declare highlighteds: Entity[];
+
+  @field({
+    type: Type.staticString([
+      TransformableStatus.IDLE,
+      TransformableStatus.MOVING,
+      TransformableStatus.MOVED,
+      TransformableStatus.RESIZING,
+      TransformableStatus.RESIZED,
+      TransformableStatus.ROTATING,
+      TransformableStatus.ROTATED,
+    ]),
+    default: TransformableStatus.IDLE,
+  })
+  declare status: TransformableStatus;
 
   constructor(transformable?: Partial<Transformable>) {
     Object.assign(this, transformable);
