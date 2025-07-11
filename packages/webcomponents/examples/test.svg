@@ -1,87 +1,11 @@
 <svg viewBox="0 0 1200 800" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+        <linearGradient id="gradient" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="#F67676" />
+            <stop offset="100%" stop-color="#000000" />
+        </linearGradient>
+    </defs>
     <!-- Background -->
-    <rect width="1200" height="800" fill="#FFFFFF" />
-
-    <!-- === RIGHT SIDE - ABSTRACT GRAPHIC === -->
-    <!-- Large background shapes for texture and depth -->
-    <circle cx="950" cy="400" r="350" fill="#2997FF" opacity="0.05" />
-    <circle cx="1150" cy="650" r="250" fill="#5DD6CC" opacity="0.06" />
-    <circle cx="750" cy="150" r="180" fill="#A25AD9" opacity="0.04" />
-
-    <!-- Network Connections (Paths) -->
-    <path d="M 750 180 Q 850 250 950 380" stroke="#A25AD9" stroke-width="1.5" fill="none" opacity="0.3" />
-    <path d="M 950 430 Q 1020 500 1080 580" stroke="#2997FF" stroke-width="2" fill="none" opacity="0.4" />
-    <path d="M 800 650 Q 880 520 940 420" stroke="#FF9500" stroke-width="1.5" fill="none" opacity="0.3" />
-    <path d="M 1120 210 Q 1050 300 960 390" stroke="#5DD6CC" stroke-width="2" fill="none" opacity="0.4" />
-    <path d="M 1150 450 Q 1050 420 960 410" stroke="#FFCC00" stroke-width="1" fill="none" opacity="0.3" />
-
-    <!-- Network Nodes (Circles) -->
-    <circle cx="950" cy="400" r="30" fill="#2997FF" opacity="0.8" />
-    <circle cx="950" cy="400" r="50" fill="none" stroke="#2997FF" stroke-width="2.5" opacity="0.7" />
-    <circle cx="750" cy="180" r="12" fill="#A25AD9" opacity="0.7" />
-    <circle cx="1120" cy="210" r="18" fill="#5DD6CC" opacity="0.7" />
-    <circle cx="800" cy="650" r="15" fill="#FF9500" opacity="0.7" />
-    <circle cx="1080" cy="580" r="22" fill="#2997FF" opacity="0.5" />
-
-    <!-- Smaller decorative elements -->
-    <circle cx="920" cy="360" r="4" fill="#FFFFFF" opacity="0.8" />
-    <circle cx="980" cy="440" r="3" fill="#FFFFFF" opacity="0.8" />
-    <circle cx="1050" cy="320" r="5" fill="#5DD6CC" opacity="0.4" />
-    <circle cx="850" cy="500" r="6" fill="#FF9500" opacity="0.4" />
-    <circle cx="1180" cy="300" r="8" fill="#A25AD9" opacity="0.2" />
-
-    <!-- Hexagon &amp; Polygon Shapes -->
-    <polygon points="1130,440 1145,432 1160,440 1160,455 1145,463 1130,455" fill="none" stroke="#A25AD9"
-        stroke-width="1.5" opacity="0.5" />
-    <polygon points="780,280 795,272 810,280 810,295 795,303 780,295" fill="#FFCC00" opacity="0.4" />
-    <polygon points="880,150 890,140 900,150 890,160" fill="#5DD6CC" opacity="0.3" />
-
-    <!-- Data visualization bars -->
-    <rect x="1100" y="680" width="10" height="40" fill="#2997FF" opacity="0.2" rx="3" />
-    <rect x="1115" y="660" width="10" height="60" fill="#2997FF" opacity="0.25" rx="3" />
-    <rect x="1130" y="675" width="10" height="45" fill="#2997FF" opacity="0.2" rx="3" />
-
-    <!-- Binary code text -->
-    <text x="760" y="600" font-family="monospace" font-size="14" fill="#02041A" opacity="0.15">0110100101110</text>
-    <text x="1050" y="180" font-family="monospace" font-size="14" fill="#02041A" opacity="0.15">1101011010010</text>
-
-    <!-- === LEFT SIDE - TEXT CONTENT === -->
-    <!-- Main Title -->
-    <text x="100" y="220" text-anchor="start" font-family="system-ui, -apple-system, sans-serif" font-size="60"
-        font-weight="bold" fill="#1D2333">
-        数智平台的未来
-    </text>
-
-    <!-- Subtitle -->
-    <text x="100" y="285" text-anchor="start" font-family="system-ui, -apple-system, sans-serif" font-size="32"
-        font-weight="500" fill="#1D2333" opacity="0.85">
-        智能助手与MCP服务
-    </text>
-
-    <!-- Sub-subtitle -->
-    <text x="100" y="330" text-anchor="start" font-family="system-ui, -apple-system, sans-serif" font-size="22"
-        font-weight="400" fill="#1D2333" opacity="0.70">
-        ATD数智应用体系概览
-    </text>
-
-    <!-- Decorative Line -->
-    <line x1="100" y1="380" x2="400" y2="380" stroke="#2997FF" stroke-width="4" opacity="0.6" />
-
-    <!-- Speaker and Date Section -->
-    <text x="100" y="660" text-anchor="start" font-family="system-ui, -apple-system, sans-serif" font-size="18"
-        font-weight="600" fill="#1D2333" opacity="0.9">
-        演讲人
-    </text>
-    <text x="100" y="695" text-anchor="start" font-family="system-ui, -apple-system, sans-serif" font-size="16"
-        font-weight="400" fill="#1D2333" opacity="0.65">
-        [姓名]
-    </text>
-    <text x="100" y="725" text-anchor="start" font-family="system-ui, -apple-system, sans-serif" font-size="16"
-        font-weight="400" fill="#1D2333" opacity="0.65">
-        2025年1月
-    </text>
-
-    <text fill="#F67676" x="50" y="100" decoration-line="underline" decoration-style="wavy" decoration-color="#000000"
-        decoration-thickness="4" font-family="sans-serif" font-size="45" font-weight="400" font-style="normal"
-        font-variant="normal" style="text-decoration: wavy underline red 4px;">I'd far rather be.</text>
+    <rect width="200" height="100" fill="url(#gradient)" transform="scale(-1 1)" />
+    <rect width="200" height="100" fill="url(#gradient)" />
 </svg>

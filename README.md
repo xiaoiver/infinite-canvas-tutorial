@@ -281,6 +281,14 @@ If you want to use it in your own project, you can refer to:
 -   Limitations of SVG Path
 -   What is VectorNetwork
 
+## Lesson 23 - 思维导图 [🔗](https://infinitecanvas.cc/guide/lesson-023)
+
+-   Analyze d3-tree, d3-flextree and @antv/hierarchy
+
+|                 D3 flextree                  |                Mindmap                 |
+| :------------------------------------------: | :------------------------------------: |
+| ![d3-flextree](./screenshots/lesson23-2.png) | ![Mindmap](./screenshots/lesson23.png) |
+
 [infinitecanvas]: https://infinitecanvas.tools/
 [Figma]: https://madebyevan.com/figma/building-a-professional-design-tool-on-the-web/
 [Modyfi]: https://digest.browsertech.com/archive/browsertech-digest-how-modyfi-is-building-with/

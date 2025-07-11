@@ -1,15 +1,13 @@
-import { html, css, LitElement, PropertyValues } from 'lit';
+import { html, css, LitElement } from 'lit';
 import { customElement, property, query, state } from 'lit/decorators.js';
 import { consume } from '@lit/context';
 import {
   AppState,
   Canvas,
   computeBidi,
-  ComputeBounds,
   ComputedBounds,
   ComputedCamera,
   measureText,
-  SerializedNode,
   Text,
   TextSerializedNode,
   UI,
@@ -24,6 +22,7 @@ export class TextEditor extends LitElement {
   static styles = css`
     :host {
       position: absolute;
+      overflow: hidden;
     }
 
     textarea {

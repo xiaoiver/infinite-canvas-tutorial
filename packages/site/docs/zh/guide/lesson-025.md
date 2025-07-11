@@ -45,8 +45,13 @@ https://github.com/3b1b/manim
 
 -   [vectalign]
 
+## 扩展阅读
+
+-   [Magic Animator]
+
 [Improvements to Web Animations API]: https://motion.dev/docs/improvements-to-the-web-animations-api-dx
 [A major breakthrough in real-time vector graphics]: https://rive.app/renderer
 [Art meets technology: the next step in bringing our characters to life]: https://blog.duolingo.com/world-character-visemes/
 [Canvas vs WebGL]: https://rive.app/community/doc/canvas-vs-webgl/docanjXoQ1uT
 [vectalign]: https://github.com/bonnyfone/vectalign
+[Magic Animator]: https://magicanimator.com/

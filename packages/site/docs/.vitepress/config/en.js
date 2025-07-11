@@ -103,6 +103,10 @@ export const en = defineConfig({
                 text: 'Lesson 022 - VectorNetwork',
                 link: 'lesson-022',
               },
+              {
+                text: 'Lesson 023 - Mindmap',
+                link: 'lesson-023',
+              },
             ],
           },
         ],
@@ -289,6 +293,18 @@ export const en = defineConfig({
               {
                 text: 'Pattern',
                 link: 'pattern',
+              },
+              {
+                text: 'Mindmap',
+                link: 'mindmap',
+              },
+              {
+                text: 'Tree',
+                link: 'tree',
+              },
+              {
+                text: 'FlexTree',
+                link: 'flextree',
               },
             ],
           },

@@ -72,6 +72,7 @@ export const zh = defineConfig({
               { text: '课程20 - 协同', link: 'lesson-020' },
               { text: '课程21 - Transformer', link: 'lesson-021' },
               { text: '课程22 - VectorNetwork', link: 'lesson-022' },
+              { text: '课程23 - 思维导图', link: 'lesson-023' },
             ],
           },
         ],
@@ -255,6 +256,18 @@ export const zh = defineConfig({
               {
                 text: '重复图案',
                 link: 'pattern',
+              },
+              {
+                text: '思维导图',
+                link: 'mindmap',
+              },
+              {
+                text: '树形图',
+                link: 'tree',
+              },
+              {
+                text: 'FlexTree',
+                link: 'flextree',
               },
             ],
           },

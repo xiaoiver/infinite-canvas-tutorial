@@ -5,6 +5,7 @@ import {
   SerializedNode,
   Task,
   API,
+  SeletedStatus,
 } from '@infinite-canvas-tutorial/ecs';
 
 export enum Event {
@@ -21,6 +22,7 @@ export enum Event {
   NODE_DELETED = 'ic-node-deleted',
   VISIBILITY_CHANGED = 'ic-visibility-changed',
   SELECTED_NODES_CHANGED = 'ic-selected-nodes-changed',
+  SELECTED_STATUS_CHANGED = 'ic-selected-status-changed',
 }
 
 declare global {
@@ -42,6 +44,10 @@ declare global {
     [Event.SELECTED_NODES_CHANGED]: CustomEvent<{
       selected: SerializedNode[];
       preserveSelection: boolean;
+    }>;
+    [Event.SELECTED_STATUS_CHANGED]: CustomEvent<{
+      selected: SerializedNode[];
+      status: SeletedStatus;
     }>;
   }
 }

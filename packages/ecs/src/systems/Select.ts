@@ -26,6 +26,7 @@ import {
   Rect,
   Renderable,
   Selected,
+  SeletedStatus,
   Stroke,
   StrokeAttenuation,
   Text,
@@ -174,6 +175,8 @@ export class Select extends System {
         x: node.x + ex - sx,
         y: node.y + ey - sy,
       });
+
+      selected.write(Selected).status = SeletedStatus.MOVING;
     });
 
     this.renderTransformer.createOrUpdate(camera);
@@ -188,6 +191,8 @@ export class Select extends System {
       if (!selected.has(Highlighted)) {
         selected.add(Highlighted);
       }
+
+      selected.write(Selected).status = SeletedStatus.MOVED;
     });
 
     this.saveSelectedOBB(api);

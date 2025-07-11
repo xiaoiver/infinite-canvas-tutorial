@@ -46,6 +46,7 @@
   },
   "devDependencies": {
     "@ant-design/icons-vue": "^7.0.1",
+    "@antv/hierarchy": "^0.6.14",
     "@shoelace-style/shoelace": "^2.0.0",
     "@tweakpane/core": "^2.0.5",
     "@vitejs/plugin-vue-jsx": "^4.1.1",
@@ -53,6 +54,8 @@
     "ant-design-x-vue": "^0.0.11",
     "clipper-lib": "^6.4.2",
     "d3-color": "^3.1.0",
+    "d3-flextree": "^2.1.2",
+    "d3-hierarchy": "^3.1.2",
     "deep-equal": "^2.2.3",
     "genji-theme-vitepress": "^0.2.1",
     "harfbuzzjs": "^0.3.1",

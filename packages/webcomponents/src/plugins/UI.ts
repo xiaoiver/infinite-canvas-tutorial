@@ -9,7 +9,12 @@ import {
   SyncSimpleTransforms,
   system,
 } from '@infinite-canvas-tutorial/ecs';
-import { DownloadScreenshot, InitCanvas, ZoomLevel } from '../systems';
+import {
+  DownloadScreenshot,
+  InitCanvas,
+  ListenSelectedStatus,
+  ZoomLevel,
+} from '../systems';
 
 export const UIPlugin: Plugin = () => {
   /**
@@ -42,4 +47,5 @@ export const UIPlugin: Plugin = () => {
       ),
   )(ZoomLevel);
   system((s) => s.before(PreStartUp))(DownloadScreenshot);
+  system((s) => s.after(PreStartUp))(ListenSelectedStatus);
 };
