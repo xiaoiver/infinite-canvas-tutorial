@@ -1,5 +1,8 @@
 ---
 outline: deep
+description: 'Learn how to add shapes to canvas and draw a circle using SDF (Signed Distance Field). Covers anti-aliasing techniques and dirty flag design pattern for performance optimization.'
+head:
+    - ['meta', { property: 'og:title', content: 'Lesson 2 - Draw a circle' }]
 ---
 
 # Lesson 2 - Draw a circle

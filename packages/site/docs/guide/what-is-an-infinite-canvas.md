@@ -1,3 +1,7 @@
+---
+description: 'Introduction to infinite canvas concepts including high scalability, zooming capabilities, and direct manipulation. Overview of modern rendering technologies and the roadmap for building a GPU-accelerated infinite canvas.'
+---
+
 # What is an Infinite Canvas?
 
 The term "infinite" in [infinitecanvas] is described as follows:

@@ -1,5 +1,6 @@
 ---
 outline: deep
+description: '学习使用Line Geometry和屏幕空间技术绘制直线。实现网格和点状图案，为几何形状添加线框渲染效果。'
 ---
 
 # 课程 5 - 绘制网格

@@ -1,5 +1,8 @@
 ---
 outline: deep
+description: 'Learn to draw straight lines using line geometry and screen-space techniques. Implement grid and dots patterns, and add wireframe rendering for geometric shapes.'
+head:
+    - ['meta', { property: 'og:title', content: 'Lesson 5 - Grid' }]
 ---
 
 # Lesson 5 - Grid

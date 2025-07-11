@@ -1,6 +1,6 @@
 ---
 outline: deep
-publish: false
+description: '掌握复杂的文本渲染技术，包括TextMetrics、HarfBuzz shaping、文本分段、BiDi支持、SDF图集生成以及国际化排版的emoji处理。'
 ---
 
 <script setup>
@@ -249,7 +249,7 @@ for (const segment of segmentStack[0]!) {
 
 ![Copyright © 2015–2017 W3C® https://w3c.github.io/alreq/](https://miro.medium.com/v2/resize:fit:1400/format:webp/0*bw5EsYu7dRATHtvg.png)
 
-我们选择使用 [Javascript-Arabic-Reshaper]，相比基于 ICU 的方案要轻量很多。
+我们选择使用 [JavaScript-Arabic-Reshaper]，相比基于 ICU 的方案要轻量很多。
 
 ```ts
 import ArabicReshaper from 'arabic-reshaper';
@@ -853,4 +853,4 @@ this.glyphAtlasTexture = device.createTexture({
 [RTL languages in Figma]: https://help.figma.com/hc/en-us/articles/4972283635863-Add-right-to-left-text
 [International Components for Unicode (ICU)]: http://site.icu-project.org/
 [rtl-text]: https://www.jsdelivr.com/package/npm/rtl-text
-[Javascript-Arabic-Reshaper]: https://github.com/louy/Javascript-Arabic-Reshaper
+[JavaScript-Arabic-Reshaper]: https://github.com/louy/JavaScript-Arabic-Reshaper

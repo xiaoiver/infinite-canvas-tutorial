@@ -1,5 +1,6 @@
 ---
 outline: deep
+description: '搭建包含Jest单元测试、视觉回归测试的完整测试环境。实现基于headless-gl的服务端渲染和Playwright的E2E测试方案。'
 ---
 
 # 课程 11 - 截图测试与服务端渲染

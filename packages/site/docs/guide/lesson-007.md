@@ -1,5 +1,8 @@
 ---
 outline: deep
+description: 'Build framework-agnostic Web UI components using Lit and Shoelace. Create reusable canvas components and zoom toolbar with proper lifecycle management and async task handling.'
+head:
+    - ['meta', { property: 'og:title', content: 'Lesson 7 - Web UI' }]
 ---
 
 # Lesson 7 - Web UI

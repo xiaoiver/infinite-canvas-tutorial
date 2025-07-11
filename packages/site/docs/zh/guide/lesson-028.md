@@ -1,5 +1,6 @@
 ---
 outline: deep
+description: '实现画笔功能，包括画线消抖动算法和丝滑绘制体验。学习p5.brush等画笔库的实现原理和优化技术。'
 publish: false
 ---
 
@@ -8,4 +9,3 @@ publish: false
 [p5.brush]
 
 [p5.brush]: https://github.com/acamposuribe/p5.brush
-[丝滑的画线稿（画线消抖动算法讨论与实现）]: https://zhuanlan.zhihu.com/p/605481735

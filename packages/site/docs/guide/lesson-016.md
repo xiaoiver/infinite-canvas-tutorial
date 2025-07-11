@@ -1,6 +1,14 @@
 ---
 outline: deep
-publish: false
+description: 'Explore advanced text features including Bezier curve rendering, text strokes, decorations, shadows, text-on-path, and interactive text editing with selection and accessibility support.'
+head:
+    - [
+          'meta',
+          {
+              property: 'og:title',
+              content: 'Lesson 16 - Advanced Text Features',
+          },
+      ]
 ---
 
 <script setup>

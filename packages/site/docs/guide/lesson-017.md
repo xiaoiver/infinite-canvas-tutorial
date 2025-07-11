@@ -1,6 +1,11 @@
 ---
 outline: deep
-publish: false
+description: 'Implement gradients and patterns using CanvasGradient API, create mesh gradients with shaders including noise effects, and build gradient editor panels. Support CSS gradient syntax and repeating patterns.'
+head:
+    - [
+          'meta',
+          { property: 'og:title', content: 'Lesson 17 - Gradient and pattern' },
+      ]
 ---
 
 <script setup>

@@ -1,6 +1,6 @@
 ---
 outline: deep
-publish: false
+description: '探索高级文本特性，包括贝塞尔曲线渲染、文本描边、装饰线、阴影、文本路径以及交互式文本编辑和选择功能，支持辅助功能。'
 ---
 
 <script setup>

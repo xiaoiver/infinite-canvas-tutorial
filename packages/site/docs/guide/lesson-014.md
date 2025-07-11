@@ -1,6 +1,14 @@
 ---
 outline: deep
-publish: false
+description: 'Implement canvas modes and auxiliary UI including zIndex and sizeAttenuation properties. Add hand mode for canvas manipulation and selection mode for shape editing with property panels.'
+head:
+    - [
+          'meta',
+          {
+              property: 'og:title',
+              content: 'Lesson 14 - Canvas mode and auxiliary UI',
+          },
+      ]
 ---
 
 # Lesson 14 - Canvas mode and auxiliary UI

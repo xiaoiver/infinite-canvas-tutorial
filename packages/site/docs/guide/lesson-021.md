@@ -1,6 +1,8 @@
 ---
 outline: deep
-publish: false
+description: 'Implement shape transformer with resize and rotation capabilities. Learn about anchor points, coordinate system conversion, CSS cursor customization, and hit area expansion for intuitive shape editing.'
+head:
+    - ['meta', { property: 'og:title', content: 'Lesson 21 - Transformer' }]
 ---
 
 # Lesson 21 - Transformer

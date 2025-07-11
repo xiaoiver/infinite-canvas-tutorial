@@ -1,7 +1,6 @@
 ---
 outline: deep
-publish: false
-description: The evolution of tree layout algorithms is presented by analyzing papers, including d3-tree, d3-flextree and @antv/hierarchy.
+description: '实现思维导图功能和树布局算法。深入研究从d3-tree到d3-flextree的算法演化，复杂度分析以及扩展到N叉树的灵活思维导图实现。'
 ---
 
 <script setup>
@@ -193,7 +192,7 @@ $$
 
 `apportion` 函数是整个布局核心的“子树间对齐逻辑”，它负责比较当前子树与前一个子树的轮廓；如果它们重叠，就给当前子树加一个 `shift`；更新 modifier 使得后代节点也随之调整；同时平滑中间的 modifier，避免“断层”。
 
-```
+```plaintext
 function apportion(v):
     leftMost = firstChild(v)
     rightMost = lastChild(v)

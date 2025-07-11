@@ -1,6 +1,6 @@
 ---
 outline: deep
-publish: false
+description: '探索VectorNetwork作为SVG路径的高级替代方案。学习拓扑定义、共享顶点和边、填充算法以及用于复杂矢量图形编辑的拓扑操作符。'
 ---
 
 # 课程 22 - VectorNetwork

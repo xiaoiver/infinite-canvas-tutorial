@@ -1,94 +1,95 @@
 ---
 outline: deep
+description: '理解相机概念、投影变换和相机变换。实现带有地标过渡的相机动画以及交互式的平移、旋转和缩放控制。'
 ---
 
 # 课程 4 - 相机
 
 在这节课中你将学习到以下内容：
 
-- 相机是什么？
-- 投影变换。
-- 相机变换。通过一个插件实现平移、旋转和缩放功能。
-- 相机动画。平滑过渡到任意相机状态。
+-   相机是什么？
+-   投影变换。
+-   相机变换。通过一个插件实现平移、旋转和缩放功能。
+-   相机动画。平滑过渡到任意相机状态。
 
 我们可以通过控制相机改变画布展示的内容，按住并拖拽鼠标可以平移；按住 <kbd>Shift</kbd> 并拖拽可以绕指定点旋转；鼠标滚轮可以按指定点进行缩放；点按按钮回到初始状态并带有平滑过渡效果：
 
 ```js eval code=false
 $button = call(() => {
-  const $button = document.createElement('button');
-  $button.textContent = 'FlyTo origin';
-  return $button;
+    const $button = document.createElement('button');
+    $button.textContent = 'FlyTo origin';
+    return $button;
 });
 ```
 
 ```js eval code=false
 (async () => {
-  const { Canvas, Circle, Group } = Lesson4;
-  const canvas = await Utils.createCanvas(Canvas, 400, 400);
+    const { Canvas, Circle, Group } = Lesson4;
+    const canvas = await Utils.createCanvas(Canvas, 400, 400);
 
-  const solarSystem = new Group();
-  const earthOrbit = new Group();
-  const moonOrbit = new Group();
+    const solarSystem = new Group();
+    const earthOrbit = new Group();
+    const moonOrbit = new Group();
 
-  const sun = new Circle({
-    cx: 0,
-    cy: 0,
-    r: 100,
-    fill: 'red',
-  });
-  const earth = new Circle({
-    cx: 0,
-    cy: 0,
-    r: 50,
-    fill: 'blue',
-  });
-  const moon = new Circle({
-    cx: 0,
-    cy: 0,
-    r: 25,
-    fill: 'yellow',
-  });
-  solarSystem.appendChild(sun);
-  solarSystem.appendChild(earthOrbit);
-  earthOrbit.appendChild(earth);
-  earthOrbit.appendChild(moonOrbit);
-  moonOrbit.appendChild(moon);
-
-  solarSystem.position.x = 200;
-  solarSystem.position.y = 200;
-  earthOrbit.position.x = 100;
-  moonOrbit.position.x = 100;
-
-  canvas.appendChild(solarSystem);
-
-  let id;
-  const animate = () => {
-    solarSystem.rotation += 0.01;
-    earthOrbit.rotation += 0.02;
-    canvas.render();
-    id = requestAnimationFrame(animate);
-  };
-  animate();
-
-  unsubscribe(() => {
-    cancelAnimationFrame(id);
-    canvas.destroy();
-  });
-
-  const landmark = canvas.camera.createLandmark({
-    x: 0,
-    y: 0,
-    zoom: 1,
-    rotation: 0,
-  });
-  $button.onclick = () => {
-    canvas.camera.gotoLandmark(landmark, {
-      duration: 1000,
-      easing: 'ease',
+    const sun = new Circle({
+        cx: 0,
+        cy: 0,
+        r: 100,
+        fill: 'red',
     });
-  };
+    const earth = new Circle({
+        cx: 0,
+        cy: 0,
+        r: 50,
+        fill: 'blue',
+    });
+    const moon = new Circle({
+        cx: 0,
+        cy: 0,
+        r: 25,
+        fill: 'yellow',
+    });
+    solarSystem.appendChild(sun);
+    solarSystem.appendChild(earthOrbit);
+    earthOrbit.appendChild(earth);
+    earthOrbit.appendChild(moonOrbit);
+    moonOrbit.appendChild(moon);
 
-  return canvas.getDOM();
+    solarSystem.position.x = 200;
+    solarSystem.position.y = 200;
+    earthOrbit.position.x = 100;
+    moonOrbit.position.x = 100;
+
+    canvas.appendChild(solarSystem);
+
+    let id;
+    const animate = () => {
+        solarSystem.rotation += 0.01;
+        earthOrbit.rotation += 0.02;
+        canvas.render();
+        id = requestAnimationFrame(animate);
+    };
+    animate();
+
+    unsubscribe(() => {
+        cancelAnimationFrame(id);
+        canvas.destroy();
+    });
+
+    const landmark = canvas.camera.createLandmark({
+        x: 0,
+        y: 0,
+        zoom: 1,
+        rotation: 0,
+    });
+    $button.onclick = () => {
+        canvas.camera.gotoLandmark(landmark, {
+            duration: 1000,
+            easing: 'ease',
+        });
+    };
+
+    return canvas.getDOM();
 })();
 ```
 
@@ -146,15 +147,15 @@ gl_Position = vec4((u_ProjectionMatrix
 
 ```ts
 export class Camera {
-  #projectionMatrix = mat3.create();
+    #projectionMatrix = mat3.create();
 
-  get projectionMatrix() {
-    return this.#projectionMatrix;
-  }
+    get projectionMatrix() {
+        return this.#projectionMatrix;
+    }
 
-  projection(width: number, height: number) {
-    mat3.projection(this.#projectionMatrix, width, height);
-  }
+    projection(width: number, height: number) {
+        mat3.projection(this.#projectionMatrix, width, height);
+    }
 }
 ```
 
@@ -162,20 +163,20 @@ export class Camera {
 
 ```ts
 export function paddingMat3(matrix: mat3) {
-  return [
-    matrix[0],
-    matrix[1],
-    matrix[2],
-    0,
-    matrix[3],
-    matrix[4],
-    matrix[5],
-    0,
-    matrix[6],
-    matrix[7],
-    matrix[8],
-    0,
-  ];
+    return [
+        matrix[0],
+        matrix[1],
+        matrix[2],
+        0,
+        matrix[3],
+        matrix[4],
+        matrix[5],
+        0,
+        matrix[6],
+        matrix[7],
+        matrix[8],
+        0,
+    ];
 }
 ```
 
@@ -183,15 +184,15 @@ export function paddingMat3(matrix: mat3) {
 
 ```ts
 export class Canvas {
-  #camera: Camera;
-  get camera() {
-    return this.#camera;
-  }
+    #camera: Camera;
+    get camera() {
+        return this.#camera;
+    }
 
-  constructor() {
-    const camera = new Camera(width / dpr, height / dpr);
-    this.#camera = camera;
-  }
+    constructor() {
+        const camera = new Camera(width / dpr, height / dpr);
+        this.#camera = camera;
+    }
 }
 ```
 
@@ -247,20 +248,20 @@ export class Camera {
 
 ```ts
 export class Camera {
-  #zoom = 1;
-  #x = 0;
-  #y = 0;
-  #rotation = 0;
+    #zoom = 1;
+    #x = 0;
+    #y = 0;
+    #rotation = 0;
 
-  private updateMatrix() {
-    const zoomScale = 1 / this.#zoom;
-    mat3.identity(this.#matrix);
-    mat3.translate(this.#matrix, this.#matrix, [this.#x, this.#y]);
-    mat3.rotate(this.#matrix, this.#matrix, this.#rotation);
-    mat3.scale(this.#matrix, this.#matrix, [zoomScale, zoomScale]);
-    mat3.invert(this.#viewMatrix, this.#matrix);
-    this.updateViewProjectionMatrix();
-  }
+    private updateMatrix() {
+        const zoomScale = 1 / this.#zoom;
+        mat3.identity(this.#matrix);
+        mat3.translate(this.#matrix, this.#matrix, [this.#x, this.#y]);
+        mat3.rotate(this.#matrix, this.#matrix, this.#rotation);
+        mat3.scale(this.#matrix, this.#matrix, [zoomScale, zoomScale]);
+        mat3.invert(this.#viewMatrix, this.#matrix);
+        this.updateViewProjectionMatrix();
+    }
 }
 ```
 
@@ -268,12 +269,12 @@ export class Camera {
 
 ```ts
 export class Camera {
-  set x(x: number) {
-    if (this.#x !== x) {
-      this.#x = x;
-      this.updateMatrix();
+    set x(x: number) {
+        if (this.#x !== x) {
+            this.#x = x;
+            this.updateMatrix();
+        }
     }
-  }
 }
 ```
 
@@ -281,8 +282,8 @@ export class Camera {
 
 ```js eval code=false inspector=false
 canvas = call(() => {
-  const { Canvas } = Lesson4;
-  return Utils.createCanvas(Canvas, 400, 400);
+    const { Canvas } = Lesson4;
+    return Utils.createCanvas(Canvas, 400, 400);
 });
 ```
 
@@ -296,66 +297,66 @@ positionY = Inputs.range([0, 100], { label: 'camera.y', value: 0, step: 1 });
 
 ```js eval code=false inspector=false
 call(() => {
-  const camera = canvas.camera;
-  camera.x = positionX;
-  camera.y = positionY;
+    const camera = canvas.camera;
+    camera.x = positionX;
+    camera.y = positionY;
 });
 ```
 
 ```js eval code=false
 (async () => {
-  const { Circle, Group } = Lesson4;
-  canvas.getDOM().style.pointerEvents = 'none';
+    const { Circle, Group } = Lesson4;
+    canvas.getDOM().style.pointerEvents = 'none';
 
-  const solarSystem = new Group();
-  const earthOrbit = new Group();
-  const moonOrbit = new Group();
+    const solarSystem = new Group();
+    const earthOrbit = new Group();
+    const moonOrbit = new Group();
 
-  const sun = new Circle({
-    cx: 0,
-    cy: 0,
-    r: 100,
-    fill: 'red',
-  });
-  const earth = new Circle({
-    cx: 0,
-    cy: 0,
-    r: 50,
-    fill: 'blue',
-  });
-  const moon = new Circle({
-    cx: 0,
-    cy: 0,
-    r: 25,
-    fill: 'yellow',
-  });
-  solarSystem.appendChild(sun);
-  solarSystem.appendChild(earthOrbit);
-  earthOrbit.appendChild(earth);
-  earthOrbit.appendChild(moonOrbit);
-  moonOrbit.appendChild(moon);
+    const sun = new Circle({
+        cx: 0,
+        cy: 0,
+        r: 100,
+        fill: 'red',
+    });
+    const earth = new Circle({
+        cx: 0,
+        cy: 0,
+        r: 50,
+        fill: 'blue',
+    });
+    const moon = new Circle({
+        cx: 0,
+        cy: 0,
+        r: 25,
+        fill: 'yellow',
+    });
+    solarSystem.appendChild(sun);
+    solarSystem.appendChild(earthOrbit);
+    earthOrbit.appendChild(earth);
+    earthOrbit.appendChild(moonOrbit);
+    moonOrbit.appendChild(moon);
 
-  solarSystem.position.x = 200;
-  solarSystem.position.y = 200;
-  earthOrbit.position.x = 100;
-  moonOrbit.position.x = 100;
+    solarSystem.position.x = 200;
+    solarSystem.position.y = 200;
+    earthOrbit.position.x = 100;
+    moonOrbit.position.x = 100;
 
-  canvas.appendChild(solarSystem);
+    canvas.appendChild(solarSystem);
 
-  let id;
-  const animate = () => {
-    solarSystem.rotation += 0.01;
-    earthOrbit.rotation += 0.02;
-    canvas.render();
-    id = requestAnimationFrame(animate);
-  };
-  animate();
+    let id;
+    const animate = () => {
+        solarSystem.rotation += 0.01;
+        earthOrbit.rotation += 0.02;
+        canvas.render();
+        id = requestAnimationFrame(animate);
+    };
+    animate();
 
-  unsubscribe(() => {
-    cancelAnimationFrame(id);
-    canvas.destroy();
-  });
-  return canvas.getDOM();
+    unsubscribe(() => {
+        cancelAnimationFrame(id);
+        canvas.destroy();
+    });
+    return canvas.getDOM();
 })();
 ```
 
@@ -377,20 +378,20 @@ export class CameraControl implements Plugin {}
 
 ```ts
 function getClipSpaceMousePosition(e: MouseEvent): vec2 {
-  // 当前鼠标位置在 CSS 坐标系下的坐标
-  const rect = canvas.getBoundingClientRect();
-  const cssX = e.clientX - rect.left;
-  const cssY = e.clientY - rect.top;
+    // 当前鼠标位置在 CSS 坐标系下的坐标
+    const rect = canvas.getBoundingClientRect();
+    const cssX = e.clientX - rect.left;
+    const cssY = e.clientY - rect.top;
 
-  // 归一化到 [0, 1]
-  const normalizedX = cssX / canvas.clientWidth;
-  const normalizedY = cssY / canvas.clientHeight;
+    // 归一化到 [0, 1]
+    const normalizedX = cssX / canvas.clientWidth;
+    const normalizedY = cssY / canvas.clientHeight;
 
-  // 转换到裁剪坐标系下
-  const clipX = normalizedX * 2 - 1;
-  const clipY = normalizedY * -2 + 1;
+    // 转换到裁剪坐标系下
+    const clipX = normalizedX * 2 - 1;
+    const clipY = normalizedY * -2 + 1;
 
-  return [clipX, clipY];
+    return [clipX, clipY];
 }
 ```
 
@@ -398,37 +399,37 @@ function getClipSpaceMousePosition(e: MouseEvent): vec2 {
 
 ```ts
 canvas.addEventListener('mousedown', (e) => {
-  e.preventDefault();
-  window.addEventListener('mousemove', handleMouseMove);
-  window.addEventListener('mouseup', handleMouseUp);
+    e.preventDefault();
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
 
-  // 相机投影矩阵的逆矩阵
-  mat3.copy(startInvertViewProjectionMatrix, camera.viewProjectionMatrixInv);
-  // 记录下相机在世界坐标系下的位置
-  startCameraX = camera.x;
-  startCameraY = camera.y;
-  // 将当前鼠标位置变换到世界坐标系下
-  startPos = vec2.transformMat3(
-    startPos,
-    getClipSpaceMousePosition(e),
-    startInvViewProjMatrix,
-  );
+    // 相机投影矩阵的逆矩阵
+    mat3.copy(startInvertViewProjectionMatrix, camera.viewProjectionMatrixInv);
+    // 记录下相机在世界坐标系下的位置
+    startCameraX = camera.x;
+    startCameraY = camera.y;
+    // 将当前鼠标位置变换到世界坐标系下
+    startPos = vec2.transformMat3(
+        startPos,
+        getClipSpaceMousePosition(e),
+        startInvViewProjMatrix,
+    );
 });
 ```
 
 需要记录以下变量：
 
-- `startInvViewProjMatrix` 相机投影矩阵的逆矩阵
-- `startCameraX` 世界坐标系下相机 X 坐标
-- `startCameraY` 世界坐标系下相机 Y 坐标
-- `startPos` 世界坐标系下当前鼠标位置。通过 NDC 坐标系下坐标与相机投影矩阵的逆矩阵变换得到
+-   `startInvViewProjMatrix` 相机投影矩阵的逆矩阵
+-   `startCameraX` 世界坐标系下相机 X 坐标
+-   `startCameraY` 世界坐标系下相机 Y 坐标
+-   `startPos` 世界坐标系下当前鼠标位置。通过 NDC 坐标系下坐标与相机投影矩阵的逆矩阵变换得到
 
 抬起鼠标时解绑事件监听器，此次拖拽交互结束：
 
 ```ts
 function handleMouseUp(e) {
-  window.removeEventListener('mousemove', handleMouseMove);
-  window.removeEventListener('mouseup', handleMouseUp);
+    window.removeEventListener('mousemove', handleMouseMove);
+    window.removeEventListener('mouseup', handleMouseUp);
 }
 ```
 
@@ -436,18 +437,18 @@ function handleMouseUp(e) {
 
 ```ts
 function handleMouseMove(e: MouseEvent) {
-  moveCamera(e);
+    moveCamera(e);
 }
 
 function moveCamera(e: MouseEvent) {
-  const pos = vec2.transformMat3(
-    vec2.create(),
-    getClipSpaceMousePosition(e),
-    startInvertViewProjectionMatrix,
-  );
+    const pos = vec2.transformMat3(
+        vec2.create(),
+        getClipSpaceMousePosition(e),
+        startInvertViewProjectionMatrix,
+    );
 
-  camera.x = startCameraX + startPos[0] - pos[0];
-  camera.y = startCameraY + startPos[1] - pos[1];
+    camera.x = startCameraX + startPos[0] - pos[0];
+    camera.y = startCameraY + startPos[1] - pos[1];
 }
 ```
 
@@ -477,25 +478,25 @@ function handleMouseMove(e: MouseEvent) {
 
 ```ts
 function rotateCamera(e: MouseEvent) {
-  // 移动距离转换成旋转角度
-  const delta = (e.clientX - startMousePos[0]) / 100;
+    // 移动距离转换成旋转角度
+    const delta = (e.clientX - startMousePos[0]) / 100;
 
-  // 构造绕指定点旋转的变换矩阵
-  const camMat = mat3.create();
-  mat3.translate(camMat, camMat, [startPos[0], startPos[1]]);
-  mat3.rotate(camMat, camMat, delta);
-  mat3.translate(camMat, camMat, [-startPos[0], -startPos[1]]);
+    // 构造绕指定点旋转的变换矩阵
+    const camMat = mat3.create();
+    mat3.translate(camMat, camMat, [startPos[0], startPos[1]]);
+    mat3.rotate(camMat, camMat, delta);
+    mat3.translate(camMat, camMat, [-startPos[0], -startPos[1]]);
 
-  // 应用变换
-  camera.x = startCameraX;
-  camera.y = startCameraY;
-  camera.rotation = startCameraRotation;
-  mat3.multiply(camMat, camMat, camera.matrix);
+    // 应用变换
+    camera.x = startCameraX;
+    camera.y = startCameraY;
+    camera.rotation = startCameraRotation;
+    mat3.multiply(camMat, camMat, camera.matrix);
 
-  // 重新设置相机参数
-  camera.x = camMat[6];
-  camera.y = camMat[7];
-  camera.rotation = startCameraRotation + delta;
+    // 重新设置相机参数
+    camera.x = camMat[6];
+    camera.y = camMat[7];
+    camera.rotation = startCameraRotation + delta;
 }
 ```
 
@@ -513,30 +514,30 @@ function rotateCamera(e: MouseEvent) {
 
 ```ts
 canvas.addEventListener('wheel', (e) => {
-  e.preventDefault();
-  const position = getClipSpaceMousePosition(e);
+    e.preventDefault();
+    const position = getClipSpaceMousePosition(e);
 
-  // 记录下缩放前鼠标在世界坐标系下位置
-  const [preZoomX, preZoomY] = vec2.transformMat3(
-    vec2.create(),
-    position,
-    camera.viewProjectionMatrixInv,
-  );
+    // 记录下缩放前鼠标在世界坐标系下位置
+    const [preZoomX, preZoomY] = vec2.transformMat3(
+        vec2.create(),
+        position,
+        camera.viewProjectionMatrixInv,
+    );
 
-  // 相机缩放系数
-  const newZoom = camera.zoom * Math.pow(2, e.deltaY * -0.01);
-  camera.zoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, newZoom));
+    // 相机缩放系数
+    const newZoom = camera.zoom * Math.pow(2, e.deltaY * -0.01);
+    camera.zoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, newZoom));
 
-  // 缩放后鼠标在世界坐标系下位置
-  const [postZoomX, postZoomY] = vec2.transformMat3(
-    vec2.create(),
-    position,
-    camera.viewProjectionMatrixInv,
-  );
+    // 缩放后鼠标在世界坐标系下位置
+    const [postZoomX, postZoomY] = vec2.transformMat3(
+        vec2.create(),
+        position,
+        camera.viewProjectionMatrixInv,
+    );
 
-  // 移动相机
-  camera.x += preZoomX - postZoomX;
-  camera.y += preZoomY - postZoomY;
+    // 移动相机
+    camera.x += preZoomX - postZoomX;
+    camera.y += preZoomY - postZoomY;
 });
 ```
 
@@ -570,10 +571,10 @@ camera.gotoLandmark(landmark, { duration: 300 });
 
 ```ts
 export interface Landmark {
-  zoom: number;
-  x: number;
-  y: number;
-  rotation: number;
+    zoom: number;
+    x: number;
+    y: number;
+    rotation: number;
 }
 ```
 
@@ -581,15 +582,15 @@ export interface Landmark {
 
 ```ts
 export class Camera {
-  createLandmark(params: Partial<Landmark>): Landmark {
-    return {
-      zoom: this.#zoom,
-      x: this.#x,
-      y: this.#y,
-      rotation: this.#rotation,
-      ...params,
-    };
-  }
+    createLandmark(params: Partial<Landmark>): Landmark {
+        return {
+            zoom: this.#zoom,
+            x: this.#x,
+            y: this.#y,
+            rotation: this.#rotation,
+            ...params,
+        };
+    }
 }
 ```
 
@@ -600,32 +601,32 @@ export class Camera {
 ```ts
 import BezierEasing from 'bezier-easing';
 export const EASING_FUNCTION = {
-  linear: BezierEasing(0, 0, 1, 1),
-  ease: BezierEasing(0.25, 0.1, 0.25, 1),
-  'ease-in': BezierEasing(0.42, 0, 1, 1),
-  'ease-out': BezierEasing(0, 0, 0.58, 1),
-  'ease-in-out': BezierEasing(0.42, 0, 0.58, 1),
+    linear: BezierEasing(0, 0, 1, 1),
+    ease: BezierEasing(0.25, 0.1, 0.25, 1),
+    'ease-in': BezierEasing(0.42, 0, 1, 1),
+    'ease-out': BezierEasing(0, 0, 0.58, 1),
+    'ease-in-out': BezierEasing(0.42, 0, 0.58, 1),
 };
 ```
 
 下面来设计切换到 `Landmark` 的 API，参考 [Web Animations API] 我们支持如下参数：
 
-- `easing` 缓动函数，支持 `ease` `linear` 这样的字符串，和 CSS 保持一致
-- `duration` 动画持续时间。如果传入 `0` 则没有动画效果
-- `onframe` 动画持续过程中每一帧的回调函数
-- `onfinish` 动画结束后的回调函数
+-   `easing` 缓动函数，支持 `ease` `linear` 这样的字符串，和 CSS 保持一致
+-   `duration` 动画持续时间。如果传入 `0` 则没有动画效果
+-   `onframe` 动画持续过程中每一帧的回调函数
+-   `onfinish` 动画结束后的回调函数
 
 ```ts
 export class Camera {
-  gotoLandmark(
-    landmark: Landmark,
-    options: Partial<{
-      easing: string;
-      duration: number;
-      onframe: (t: number) => void;
-      onfinish: () => void;
-    }> = {},
-  ) {}
+    gotoLandmark(
+        landmark: Landmark,
+        options: Partial<{
+            easing: string;
+            duration: number;
+            onframe: (t: number) => void;
+            onfinish: () => void;
+        }> = {},
+    ) {}
 }
 ```
 
@@ -705,8 +706,8 @@ this.updateMatrix();
 ```ts
 const dist = vec2.dist(interPosition, destPosition);
 if (dist <= EPSILON) {
-  endAnimation();
-  return;
+    endAnimation();
+    return;
 }
 ```
 
@@ -714,10 +715,10 @@ if (dist <= EPSILON) {
 
 ## 扩展阅读 {#extended-reading}
 
-- [WebGL Insights - 23.Designing Cameras for WebGL Applications]
-- [LearnWebGL - Introduction to Cameras]
-- [WebGL 3D - Cameras]
-- [Simulating cameras in WebXR]
+-   [WebGL Insights - 23.Designing Cameras for WebGL Applications]
+-   [LearnWebGL - Introduction to Cameras]
+-   [WebGL 3D - Cameras]
+-   [Simulating cameras in WebXR]
 
 [LearnWebGL - Introduction to Cameras]: https://learnwebgl.brown37.net/07_cameras/camera_introduction.html#a-camera-definition
 [How to Create a Figma-like Infinite Canvas in WebGL]: https://betterprogramming.pub/how-to-create-a-figma-like-infinite-canvas-in-webgl-8be94f65674f

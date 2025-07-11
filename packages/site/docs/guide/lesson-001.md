@@ -1,5 +1,11 @@
 ---
 outline: deep
+description: 'Learn how to initialize a canvas with hardware abstraction layers based on WebGL/WebGPU, design Canvas API, implement a plugin-based architecture, and create a rendering plugin. Build an extensible canvas framework supporting multiple renderers.'
+head:
+    - [
+          'meta',
+          { property: 'og:title', content: 'Lesson 1 - Initialize canvas' },
+      ]
 ---
 
 # Lesson 1 - Initialize canvas

@@ -1,5 +1,14 @@
 ---
 outline: deep
+description: 'Derive SDF representations for ellipses and rounded rectangles. Learn to add drop shadows and inner shadows to shapes, and implement point-in-shape testing for complex geometries.'
+head:
+    - [
+          'meta',
+          {
+              property: 'og:title',
+              content: 'Lesson 9 - Drawing Ellipses and Rectangles',
+          },
+      ]
 ---
 
 # Lesson 9 - Drawing Ellipses and Rectangles

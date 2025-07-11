@@ -1,6 +1,6 @@
 ---
 outline: deep
-publish: false
+description: '实现画布模式和辅助UI，包括zIndex和sizeAttenuation属性。添加手型模式进行画布操作以及选择模式进行图形编辑和属性面板展示。'
 ---
 
 <script setup>

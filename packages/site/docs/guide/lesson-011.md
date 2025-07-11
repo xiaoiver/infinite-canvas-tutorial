@@ -1,5 +1,14 @@
 ---
 outline: deep
+description: 'Set up comprehensive testing with Jest including unit tests, visual regression testing, server-side rendering with headless-gl, E2E testing with Playwright, and browser compatibility testing.'
+head:
+    - [
+          'meta',
+          {
+              property: 'og:title',
+              content: 'Lesson 11 - Test and server-side rendering',
+          },
+      ]
 ---
 
 # Lesson 11 - Test and server-side rendering

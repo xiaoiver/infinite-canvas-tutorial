@@ -1,5 +1,14 @@
 ---
 outline: deep
+description: 'Implement transformations (translate, scale, rotate, skew) and scene graph architecture. Build a simple solar system model demonstrating hierarchical transformations and coordinate systems.'
+head:
+    - [
+          'meta',
+          {
+              property: 'og:title',
+              content: 'Lesson 3 - Scene graph and transform',
+          },
+      ]
 ---
 
 # Lesson 3 - Scene graph and transform

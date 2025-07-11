@@ -1,6 +1,11 @@
 ---
 outline: deep
-publish: false
+description: 'Refactor the architecture with Entity-Component-System (ECS) using Becsy. Replace TypeScript mixins with composition-based approach, implement plugins, components, and systems for better modularity.'
+head:
+    - [
+          'meta',
+          { property: 'og:title', content: 'Lesson 18 - Refactor with ECS' },
+      ]
 ---
 
 <script setup>

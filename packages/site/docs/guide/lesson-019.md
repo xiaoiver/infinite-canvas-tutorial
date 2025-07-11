@@ -1,6 +1,8 @@
 ---
 outline: deep
-publish: false
+description: 'Implement undo/redo functionality with history management. Learn about state snapshots, incremental updates, and recording history entries for collaborative editing support.'
+head:
+    - ['meta', { property: 'og:title', content: 'Lesson 19 - History' }]
 ---
 
 <script setup>
@@ -281,7 +283,6 @@ class Delta<T> {
 }
 ```
 
-[How Figma’s multiplayer technology works]: https://www.figma.com/blog/how-figmas-multiplayer-technology-works/
 [UI Algorithms: A Tiny Undo Stack]: https://blog.julik.nl/2025/03/a-tiny-undo-stack
 [JavaScript-Undo-Manager]: https://github.com/ArthurClemens/JavaScript-Undo-Manager
 [distinctKeysIterator]: https://github.com/excalidraw/excalidraw/blob/dff69e91912507bbfcc68b35277cc6031ce5b437/packages/excalidraw/change.ts#L359

@@ -1,6 +1,6 @@
 ---
 outline: deep
-publish: false
+description: '使用基于Becsy的实体组件系统（ECS）重构架构。以组合优于继承的方式替代TypeScript混入，实现插件、组件和系统的更好模块化。'
 ---
 
 <script setup>

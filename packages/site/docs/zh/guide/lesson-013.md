@@ -1,6 +1,6 @@
 ---
 outline: deep
-publish: false
+description: '学习绘制复杂路径并实现手绘风格。使用SDF试验路径绘制，采用三角化方法处理填充，配合rough.js创建草图风格效果。'
 head:
     - - meta
       - name: description

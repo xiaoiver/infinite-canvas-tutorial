@@ -1,5 +1,6 @@
 ---
 outline: deep
+description: '探索Radiance Cascades技术，实现实时全局光照效果。学习现代图形渲染中的高级光照技术和性能优化方法。'
 publish: false
 ---
 

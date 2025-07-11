@@ -1,5 +1,8 @@
 ---
 outline: deep
+description: 'Implement polylines with advanced features including arbitrary line widths, stroke joints and caps, dashed lines, and anti-aliasing. Learn mesh construction in CPU vs GPU and bounding box calculations.'
+head:
+    - ['meta', { property: 'og:title', content: 'Lesson 12 - Polylines' }]
 ---
 
 <script setup>

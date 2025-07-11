@@ -1,5 +1,14 @@
 ---
 outline: deep
+description: 'Learn to export canvas content to PNG, JPEG, and SVG formats. Implement image rendering in canvas and extend SVG capabilities with features like stroke-alignment for enhanced design tools.'
+head:
+    - [
+          'meta',
+          {
+              property: 'og:title',
+              content: 'Lesson 10 - Importing and Exporting Images',
+          },
+      ]
 ---
 
 # Lesson 10 - Importing and Exporting Images

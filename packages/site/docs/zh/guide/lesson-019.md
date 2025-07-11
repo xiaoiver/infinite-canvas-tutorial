@@ -1,6 +1,6 @@
 ---
 outline: deep
-publish: false
+description: '实现撤销/重做功能和历史记录管理。学习状态快照、增量更新以及记录历史条目的技术，为协同编辑提供支持。'
 ---
 
 <script setup>

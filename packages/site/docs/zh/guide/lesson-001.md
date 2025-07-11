@@ -1,5 +1,8 @@
 ---
 outline: deep
+description: '学习如何初始化画布，包括基于 WebGL/WebGPU 的硬件抽象层、Canvas API 设计、插件系统架构以及渲染插件的实现。本课将创建一个支持多渲染器的可扩展画布基础框架。'
+head:
+    - ['meta', { property: 'og:title', content: '课程 1 - 初始化画布' }]
 ---
 
 # 课程 1 - 初始化画布

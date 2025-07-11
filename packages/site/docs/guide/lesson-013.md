@@ -1,13 +1,14 @@
 ---
 outline: deep
-publish: false
+description: 'Learn to draw complex paths and implement hand-drawn styles. Experiment with SDF for paths, use triangulation methods for fills, and create sketchy rendering effects with rough.js.'
 head:
-    - - meta
-      - name: description
-        content: draw path & sketchy rendering
-    - - meta
-      - name: keywords
-        content: webgl webgpu infinite-canvas path-rendering
+    - [
+          'meta',
+          {
+              property: 'og:title',
+              content: 'Lesson 13 - Drawing a Path & Hand Drawn Styles',
+          },
+      ]
 ---
 
 <script setup>

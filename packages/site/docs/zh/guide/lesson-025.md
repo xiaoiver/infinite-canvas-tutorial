@@ -1,5 +1,6 @@
 ---
 outline: deep
+description: '实现动画系统，包括声明式动画API设计、Web Animations API兼容性、生成器函数动画流程以及SVG路径动画技术。'
 publish: false
 ---
 
@@ -31,11 +32,11 @@ animate(values, { x: 200, color: '#00f' });
 
 ### Animation flow with generator functions
 
-https://motioncanvas.io/docs/flow
+<https://motioncanvas.io/docs/flow>
 
 ## Manim
 
-https://github.com/3b1b/manim
+<https://github.com/3b1b/manim>
 
 -   [A major breakthrough in real-time vector graphics]
 -   [Art meets technology: the next step in bringing our characters to life]

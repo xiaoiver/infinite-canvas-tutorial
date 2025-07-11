@@ -1,5 +1,6 @@
 ---
 outline: deep
+description: '基于瓦片的渲染技术介绍，包含瓦片渲染原理、性能优化策略以及在无限画布中的应用实例。'
 publish: false
 ---
 

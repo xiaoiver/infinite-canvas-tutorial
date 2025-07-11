@@ -1,5 +1,11 @@
 ---
 outline: deep
+description: 'Optimize rendering performance by understanding draw calls, implementing viewport culling, draw call batching, spatial indexing for picking, and GPU-based color picking techniques.'
+head:
+    - [
+          'meta',
+          { property: 'og:title', content: 'Lesson 8 - Optimize performance' },
+      ]
 ---
 
 # Lesson 8 - Optimize performance

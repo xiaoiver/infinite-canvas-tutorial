@@ -1,5 +1,6 @@
 ---
 outline: deep
+description: '实现具有高级功能的折线绘制，包括任意线宽、stroke连接和端点、虚线以及反走样。学习在CPU和GPU中构建Mesh以及包围盒计算。'
 ---
 
 <script setup>

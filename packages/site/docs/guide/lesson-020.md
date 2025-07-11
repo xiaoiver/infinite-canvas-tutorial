@@ -1,6 +1,8 @@
 ---
 outline: deep
-publish: false
+description: 'Enable multi-user collaborative editing with CRDT (Conflict-free Replicated Data Types). Implement local-first software principles using Loro, fractional indexing, and real-time synchronization.'
+head:
+    - ['meta', { property: 'og:title', content: 'Lesson 20 - Collaboration' }]
 ---
 
 <script setup>

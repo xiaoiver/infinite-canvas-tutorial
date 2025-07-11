@@ -1,7 +1,8 @@
 ---
 outline: deep
-publish: false
-description: The evolution of tree layout algorithms is presented by analyzing papers, including d3-tree, d3-flextree and @antv/hierarchy.
+description: 'Implement mind map functionality with tree layout algorithms. Study the evolution from d3-tree to d3-flextree, complexity analysis, and extension to N-ary trees for flexible mind mapping.'
+head:
+    - ['meta', { property: 'og:title', content: 'Lesson 23 - Mindmap' }]
 ---
 
 <script setup>
@@ -10,7 +11,7 @@ import FlexTree from '../components/FlexTree.vue';
 import Mindmap from '../components/Mindmap.vue';
 </script>
 
-# Lesson 23 - Mind Maps
+# Lesson 23 - Mindmap
 
 Many infinite canvas applications provide support for mind maps, such as [miro], [excalidraw], [canva], [xmind], etc.
 I really like [excalidraw]'s categorization approach, which subdivides mind maps into three subtypes:
@@ -193,7 +194,7 @@ We can process the shifting subtrees from left to right sequentially, but this r
 
 The `apportion` function is the core "inter-subtree alignment logic" of the entire layout. It's responsible for comparing the contours of the current subtree with the previous subtree; if they overlap, it adds a `shift` to the current subtree; updates the modifier so that descendant nodes also adjust accordingly; and smooths the intermediate modifiers to avoid "gaps".
 
-```
+```plaintext
 function apportion(v):
     leftMost = firstChild(v)
     rightMost = lastChild(v)

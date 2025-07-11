@@ -1,6 +1,8 @@
 ---
 outline: deep
-publish: false
+description: 'Master complex text rendering including TextMetrics, shaping with HarfBuzz, text segmentation, BiDi support, SDF atlas generation, and emoji handling for international typography.'
+head:
+    - ['meta', { property: 'og:title', content: 'Lesson 15 - Text Rendering' }]
 ---
 
 <script setup>
@@ -249,7 +251,7 @@ In printed Arabic, each character can have an “isolated,” “initial,” “
 
 ![Copyright © 2015–2017 W3C® https://w3c.github.io/alreq/](https://miro.medium.com/v2/resize:fit:1400/format:webp/0*bw5EsYu7dRATHtvg.png)
 
-We choose [Javascript-Arabic-Reshaper] which is much more light-weighted compared with ICU.
+We choose [JavaScript-Arabic-Reshaper] which is much more light-weighted compared with ICU.
 
 ```ts
 import ArabicReshaper from 'arabic-reshaper';
@@ -838,4 +840,4 @@ The biggest difference between this approach and SDF is that we cannot only pres
 [RTL languages in Figma]: https://help.figma.com/hc/en-us/articles/4972283635863-Add-right-to-left-text
 [International Components for Unicode (ICU)]: http://site.icu-project.org/
 [rtl-text]: https://www.jsdelivr.com/package/npm/rtl-text
-[Javascript-Arabic-Reshaper]: https://github.com/louy/Javascript-Arabic-Reshaper
+[JavaScript-Arabic-Reshaper]: https://github.com/louy/JavaScript-Arabic-Reshaper

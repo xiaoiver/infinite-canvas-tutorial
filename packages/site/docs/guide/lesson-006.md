@@ -1,106 +1,109 @@
 ---
 outline: deep
+description: 'Implement a DOM-compatible event system with shape picking, drag-and-drop functionality, and gesture support. Learn how to handle pointer, mouse, and touch events for interactive canvas applications.'
+head:
+    - ['meta', { property: 'og:title', content: 'Lesson 6 - Event system' }]
 ---
 
 # Lesson 6 - Event system
 
 In this lesson, you will learn the following:
 
-- Implement an event system compatible with DOM Event API
-- How to pick a circle
-- Implement a drag-and-drop plugin based on our event system
-- Support for pinch zoom gestures
+-   Implement an event system compatible with DOM Event API
+-   How to pick a circle
+-   Implement a drag-and-drop plugin based on our event system
+-   Support for pinch zoom gestures
 
 ```js eval code=false
 $button = call(() => {
-  const $button = document.createElement('button');
-  $button.textContent = 'FlyTo origin';
-  return $button;
+    const $button = document.createElement('button');
+    $button.textContent = 'FlyTo origin';
+    return $button;
 });
 ```
 
 ```js eval code=false inspector=false
 canvas = call(() => {
-  const { Canvas } = Lesson6;
-  return Utils.createCanvas(Canvas, 400, 400);
+    const { Canvas } = Lesson6;
+    return Utils.createCanvas(Canvas, 400, 400);
 });
 ```
 
 ```js eval code=false
 (async () => {
-  const { Canvas, Circle, Group } = Lesson6;
+    const { Canvas, Circle, Group } = Lesson6;
 
-  const solarSystem = new Group();
-  const earthOrbit = new Group();
-  const moonOrbit = new Group();
+    const solarSystem = new Group();
+    const earthOrbit = new Group();
+    const moonOrbit = new Group();
 
-  const sun = new Circle({
-    cx: 0,
-    cy: 0,
-    r: 100,
-    fill: 'red',
-    cursor: 'pointer',
-  });
-  const earth = new Circle({
-    cx: 0,
-    cy: 0,
-    r: 50,
-    fill: 'blue',
-  });
-  const moon = new Circle({
-    cx: 0,
-    cy: 0,
-    r: 25,
-    fill: 'yellow',
-  });
-  solarSystem.appendChild(sun);
-  solarSystem.appendChild(earthOrbit);
-  earthOrbit.appendChild(earth);
-  earthOrbit.appendChild(moonOrbit);
-  moonOrbit.appendChild(moon);
-
-  solarSystem.position.x = 200;
-  solarSystem.position.y = 200;
-  earthOrbit.position.x = 100;
-  moonOrbit.position.x = 100;
-
-  canvas.appendChild(solarSystem);
-
-  sun.addEventListener('pointerenter', () => {
-    sun.fill = 'green';
-  });
-  sun.addEventListener('pointerleave', () => {
-    sun.fill = 'red';
-  });
-
-  let id;
-  const animate = () => {
-    solarSystem.rotation += 0.01;
-    earthOrbit.rotation += 0.02;
-    canvas.render();
-    id = requestAnimationFrame(animate);
-  };
-  animate();
-
-  unsubscribe(() => {
-    cancelAnimationFrame(id);
-    canvas.destroy();
-  });
-
-  const landmark = canvas.camera.createLandmark({
-    x: 0,
-    y: 0,
-    zoom: 1,
-    rotation: 0,
-  });
-  $button.onclick = () => {
-    canvas.camera.gotoLandmark(landmark, {
-      duration: 1000,
-      easing: 'ease',
+    const sun = new Circle({
+        cx: 0,
+        cy: 0,
+        r: 100,
+        fill: 'red',
+        cursor: 'pointer',
     });
-  };
+    const earth = new Circle({
+        cx: 0,
+        cy: 0,
+        r: 50,
+        fill: 'blue',
+    });
+    const moon = new Circle({
+        cx: 0,
+        cy: 0,
+        r: 25,
+        fill: 'yellow',
+    });
+    solarSystem.appendChild(sun);
+    solarSystem.appendChild(earthOrbit);
+    earthOrbit.appendChild(earth);
+    earthOrbit.appendChild(moonOrbit);
+    moonOrbit.appendChild(moon);
 
-  return canvas.getDOM();
+    solarSystem.position.x = 200;
+    solarSystem.position.y = 200;
+    earthOrbit.position.x = 100;
+    moonOrbit.position.x = 100;
+
+    canvas.appendChild(solarSystem);
+
+    sun.addEventListener('pointerenter', () => {
+        sun.fill = 'green';
+    });
+    sun.addEventListener('pointerleave', () => {
+        sun.fill = 'red';
+    });
+
+    let id;
+    const animate = () => {
+        solarSystem.rotation += 0.01;
+        earthOrbit.rotation += 0.02;
+        canvas.render();
+        id = requestAnimationFrame(animate);
+    };
+    animate();
+
+    unsubscribe(() => {
+        cancelAnimationFrame(id);
+        canvas.destroy();
+    });
+
+    const landmark = canvas.camera.createLandmark({
+        x: 0,
+        y: 0,
+        zoom: 1,
+        rotation: 0,
+    });
+    $button.onclick = () => {
+        canvas.camera.gotoLandmark(landmark, {
+            duration: 1000,
+            easing: 'ease',
+        });
+    };
+
+    return canvas.getDOM();
 })();
 ```
 
@@ -108,10 +111,10 @@ Currently, the interactions we support are at the canvas level. However, we defi
 
 ```ts
 sun.addEventListener('pointerenter', () => {
-  sun.fill = 'green';
+    sun.fill = 'green';
 });
 sun.addEventListener('pointerleave', () => {
-  sun.fill = 'red';
+    sun.fill = 'red';
 });
 ```
 
@@ -121,8 +124,8 @@ This requires the implementation of a complete event system.
 
 When designing the event system, we wish to adhere to the following principles:
 
-- Stay as consistent as possible with the DOM Event API, not only to reduce the learning curve but also to integrate with the existing ecosystem (such as gesture libraries).
-- Provide only standard events. Advanced events like drag-and-drop and gestures should be defined through extensions.
+-   Stay as consistent as possible with the DOM Event API, not only to reduce the learning curve but also to integrate with the existing ecosystem (such as gesture libraries).
+-   Provide only standard events. Advanced events like drag-and-drop and gestures should be defined through extensions.
 
 The implementation we introduce below is entirely based on the [PIXI.js Events Design Documents], which PIXI.js v8 is still using. If you wish to delve deeper into the details, you are encouraged to read its source code.
 
@@ -130,10 +133,10 @@ The implementation we introduce below is entirely based on the [PIXI.js Events D
 
 Browser support for interactive events has evolved through the following stages, for more details see: [The brief history of PointerEvent]
 
-- Initially, support was provided for mouse events.
-- As mobile devices gained popularity, touch events emerged and also triggered mouse events.
-- Later, new input devices were introduced, such as pens, leading to a variety of event structures, which made handling them quite painful. For example, see [hammer.js compatibility handling for various events].
-- A new standard, [PointerEvent], was proposed, aiming to cover all the aforementioned input devices.
+-   Initially, support was provided for mouse events.
+-   As mobile devices gained popularity, touch events emerged and also triggered mouse events.
+-   Later, new input devices were introduced, such as pens, leading to a variety of event structures, which made handling them quite painful. For example, see [hammer.js compatibility handling for various events].
+-   A new standard, [PointerEvent], was proposed, aiming to cover all the aforementioned input devices.
 
 ![mouse, pointer and touch events](/mouse-pointer-touch-events.png)
 
@@ -145,9 +148,9 @@ So we want to normalize Mouse / Touch / PointerEvent. The expected usage is as f
 
 ```ts
 circle.addEventListener('pointerdown', (e) => {
-  e.target; // circle
-  e.preventDefault();
-  e.stopPropagation();
+    e.target; // circle
+    e.preventDefault();
+    e.stopPropagation();
 });
 ```
 
@@ -170,12 +173,12 @@ Once the current environment supports PointerEvent, we can start listening. It i
 
 ```ts
 const addPointerEventListener = ($el: HTMLCanvasElement) => {
-  globalThis.document.addEventListener('pointermove', onPointerMove, true);
-  $el.addEventListener('pointerdown', onPointerDown, true);
-  $el.addEventListener('pointerleave', onPointerOut, true);
-  $el.addEventListener('pointerover', onPointerOver, true);
-  globalThis.addEventListener('pointerup', onPointerUp, true);
-  globalThis.addEventListener('pointercancel', onPointerCancel, true);
+    globalThis.document.addEventListener('pointermove', onPointerMove, true);
+    $el.addEventListener('pointerdown', onPointerDown, true);
+    $el.addEventListener('pointerleave', onPointerOut, true);
+    $el.addEventListener('pointerover', onPointerOver, true);
+    globalThis.addEventListener('pointerup', onPointerUp, true);
+    globalThis.addEventListener('pointercancel', onPointerCancel, true);
 };
 ```
 
@@ -183,17 +186,17 @@ If PointerEvent is not supported, then switch to listening to MouseEvent, but it
 
 ```ts
 const addMouseEventListener = ($el: HTMLCanvasElement) => {
-  globalThis.document.addEventListener('mousemove', onPointerMove, true);
-  $el.addEventListener('mousedown', onPointerDown, true);
-  $el.addEventListener('mouseout', onPointerOut, true);
-  $el.addEventListener('mouseover', onPointerOver, true);
-  globalThis.addEventListener('mouseup', onPointerUp, true);
+    globalThis.document.addEventListener('mousemove', onPointerMove, true);
+    $el.addEventListener('mousedown', onPointerDown, true);
+    $el.addEventListener('mouseout', onPointerOut, true);
+    $el.addEventListener('mouseover', onPointerOver, true);
+    globalThis.addEventListener('mouseup', onPointerUp, true);
 };
 const onPointerMove = (ev: InteractivePointerEvent) => {
-  hooks.pointerMove.call(ev);
+    hooks.pointerMove.call(ev);
 };
 const onPointerUp = (ev: InteractivePointerEvent) => {
-  hooks.pointerUp.call(ev);
+    hooks.pointerUp.call(ev);
 };
 ```
 
@@ -201,13 +204,13 @@ We add more hooks to the canvas, listening for plugins to trigger them, and the 
 
 ```ts
 export interface Hooks {
-  pointerDown: SyncHook<[InteractivePointerEvent]>;
-  pointerUp: SyncHook<[InteractivePointerEvent]>;
-  pointerMove: SyncHook<[InteractivePointerEvent]>;
-  pointerOut: SyncHook<[InteractivePointerEvent]>;
-  pointerOver: SyncHook<[InteractivePointerEvent]>;
-  pointerWheel: SyncHook<[InteractivePointerEvent]>;
-  pointerCancel: SyncHook<[InteractivePointerEvent]>;
+    pointerDown: SyncHook<[InteractivePointerEvent]>;
+    pointerUp: SyncHook<[InteractivePointerEvent]>;
+    pointerMove: SyncHook<[InteractivePointerEvent]>;
+    pointerOut: SyncHook<[InteractivePointerEvent]>;
+    pointerOver: SyncHook<[InteractivePointerEvent]>;
+    pointerWheel: SyncHook<[InteractivePointerEvent]>;
+    pointerCancel: SyncHook<[InteractivePointerEvent]>;
 }
 ```
 
@@ -218,8 +221,8 @@ Our base shape class should extend `EventEmitter` which provides `on` `once` `of
 ```ts
 import EventEmitter from 'eventemitter3';
 export abstract class Shape
-  extends EventEmitter
-  implements FederatedEventTarget {}
+    extends EventEmitter
+    implements FederatedEventTarget {}
 ```
 
 Taking [addEventListener] as an example, we need to implement it according to the DOM API standard using existing methods. For instance, for event listeners that are intended to be triggered only once, specify it at registration time using the [once] parameter:
@@ -245,15 +248,15 @@ export abstract class Shape {
 
 Due to space limitations, other methods will not be elaborated here. Detailed implementations can be referenced in the PIXI.js source code:
 
-- `removeEventListener` for removing event listeners
-- `removeAllListeners` for removing all event listeners
-- `dispatchEvent` for dispatching custom events
+-   `removeEventListener` for removing event listeners
+-   `removeAllListeners` for removing all event listeners
+-   `dispatchEvent` for dispatching custom events
 
 With this, we can use the following API to listen for events, and next, we'll need to implement the event object `e` passed to the listener:
 
 ```ts
 circle.addEventListener('pointerenter', (e) => {
-  circle.fill = 'green';
+    circle.fill = 'green';
 });
 ```
 
@@ -263,15 +266,15 @@ In order to fully comply with the DOM Event API, PIXI.js uses `FederatedEvent` t
 
 ```ts
 export class FederatedEvent<N extends UIEvent | PixiTouch = UIEvent | PixiTouch>
-  implements UIEvent
+    implements UIEvent
 {
-  preventDefault(): void {
-    if (this.nativeEvent instanceof Event && this.nativeEvent.cancelable) {
-      this.nativeEvent.preventDefault();
-    }
+    preventDefault(): void {
+        if (this.nativeEvent instanceof Event && this.nativeEvent.cancelable) {
+            this.nativeEvent.preventDefault();
+        }
 
-    this.defaultPrevented = true;
-  }
+        this.defaultPrevented = true;
+    }
 }
 ```
 
@@ -279,13 +282,13 @@ So how does one convert a native event object into `FederatedEvent`? PIXI.js fir
 
 ```ts
 function normalizeToPointerEvent(
-  event: InteractivePointerEvent,
+    event: InteractivePointerEvent,
 ): PointerEvent[] {
-  if (supportsTouchEvents && event instanceof TouchEvent) {
-    for (let i = 0; i < event.changedTouches.length; i++) {
-      const touch = event.changedTouches[i] as PixiTouch;
+    if (supportsTouchEvents && event instanceof TouchEvent) {
+        for (let i = 0; i < event.changedTouches.length; i++) {
+            const touch = event.changedTouches[i] as PixiTouch;
+        }
     }
-  }
 }
 ```
 
@@ -293,15 +296,15 @@ Next we need to convert `PointerEvent` to `FederatedPointerEvent`.
 
 ```ts
 function bootstrapEvent(
-  event: FederatedPointerEvent,
-  nativeEvent: PointerEvent,
+    event: FederatedPointerEvent,
+    nativeEvent: PointerEvent,
 ): FederatedPointerEvent {}
 ```
 
 Most of the attributes can be copied directly from the native event, but there are two types of properties that need special handling:
 
-- The position of the event within the canvas coordinate system.
-- [target] The target object of the event dispatch, namely, which graphic object on the canvas the event occurs on.
+-   The position of the event within the canvas coordinate system.
+-   [target] The target object of the event dispatch, namely, which graphic object on the canvas the event occurs on.
 
 Let's first look at the first type of property.
 
@@ -317,12 +320,12 @@ We provide methods for their conversion and incorporate them into the context of
 
 ```ts
 interface PluginContext {
-  api: {
-    client2Viewport({ x, y }: IPointData): IPointData;
-    viewport2Client({ x, y }: IPointData): IPointData;
-    viewport2Canvas({ x, y }: IPointData): IPointData;
-    canvas2Viewport({ x, y }: IPointData): IPointData;
-  };
+    api: {
+        client2Viewport({ x, y }: IPointData): IPointData;
+        viewport2Client({ x, y }: IPointData): IPointData;
+        viewport2Canvas({ x, y }: IPointData): IPointData;
+        canvas2Viewport({ x, y }: IPointData): IPointData;
+    };
 }
 ```
 
@@ -330,17 +333,17 @@ Before proceeding with subsequent event processing, we convert the coordinates f
 
 ```ts
 export class Event implements Plugin {
-  private bootstrapEvent(
-    event: FederatedPointerEvent,
-    nativeEvent: PointerEvent,
-  ): FederatedPointerEvent {
-    const { x, y } = this.getViewportXY(nativeEvent);
-    event.client.x = x;
-    event.client.y = y;
-    const { x: canvasX, y: canvasY } = this.viewport2Canvas(event.client);
-    event.screen.x = canvasX;
-    event.screen.y = canvasY;
-  }
+    private bootstrapEvent(
+        event: FederatedPointerEvent,
+        nativeEvent: PointerEvent,
+    ): FederatedPointerEvent {
+        const { x, y } = this.getViewportXY(nativeEvent);
+        event.client.x = x;
+        event.client.y = y;
+        const { x: canvasX, y: canvasY } = this.viewport2Canvas(event.client);
+        event.screen.x = canvasX;
+        event.screen.y = canvasY;
+    }
 }
 ```
 
@@ -350,9 +353,9 @@ With this, the coordinates on the event object are established. Temporarily skip
 
 Developers familiar with the DOM event flow will certainly recognize the following concepts:
 
-- The `target` property of the event object points to the target element, which in the context of the DOM API is naturally a DOM element, while in our canvas, it is a specific graphic object. We will introduce this in the next section.
-- The event flow includes both capturing and bubbling phases, and certain methods on the event object allow intervention in these phases.
-- One can add one or more listeners for a specific event, and they are triggered in the order they were registered.
+-   The `target` property of the event object points to the target element, which in the context of the DOM API is naturally a DOM element, while in our canvas, it is a specific graphic object. We will introduce this in the next section.
+-   The event flow includes both capturing and bubbling phases, and certain methods on the event object allow intervention in these phases.
+-   One can add one or more listeners for a specific event, and they are triggered in the order they were registered.
 
 [Bubbling and capturing] demonstrate the three stages of event propagation: during the capturing phase, listeners are triggered in a top-down manner, reaching the target node and then bubbling upward. Within the listener, the `eventPhase` can be used to obtain the current phase.
 
@@ -392,8 +395,8 @@ propagate(e: FederatedEvent, type?: string): void {
 
 Determining which graphic object an event occurs in is accomplished through the picking function. The DOM API offers the [elementsFromPoint] method that returns a list of elements corresponding to a specified point under the viewport coordinate system. However, since we are not using an SVG renderer, this method is not applicable to us. We have the following two choices:
 
-- Geometric method. For example, determining whether a point is within a circle.
-- Method based on GPU color coding. This will be detailed later.
+-   Geometric method. For example, determining whether a point is within a circle.
+-   Method based on GPU color coding. This will be detailed later.
 
 From the perspective of the picking criteria, aspects such as the visibility of the graphic, stroke, and fill can all be considered, similar to how CSS provides the [pointer-events] property. We also add a `pointerEvents` property to the graphic base class:
 
@@ -444,16 +447,16 @@ During detection, the first step is to transform the target point from the world
 
 ```ts
 export class Picker implements Plugin {
-  private hitTest(shape: Shape, wx: number, wy: number): boolean {
-    // skip testing
-    if (shape.pointerEvents === 'none') {
-      return false;
-    }
+    private hitTest(shape: Shape, wx: number, wy: number): boolean {
+        // skip testing
+        if (shape.pointerEvents === 'none') {
+            return false;
+        }
 
-    shape.worldTransform.applyInverse({ x: wx, y: wy }, tempLocalMapping);
-    const { x, y } = tempLocalMapping;
-    return shape.containsPoint(x, y);
-  }
+        shape.worldTransform.applyInverse({ x: wx, y: wy }, tempLocalMapping);
+        const { x, y } = tempLocalMapping;
+        return shape.containsPoint(x, y);
+    }
 }
 ```
 
@@ -465,26 +468,26 @@ To determine whether a point is inside a circle, we can use the familiar Signed 
 
 ```ts
 class Circle {
-  containsPoint(x: number, y: number) {
-    const halfLineWidth = this.#strokeWidth / 2;
-    const absDistance = vec2.length([this.#cx - x, this.#cy - y]);
+    containsPoint(x: number, y: number) {
+        const halfLineWidth = this.#strokeWidth / 2;
+        const absDistance = vec2.length([this.#cx - x, this.#cy - y]);
 
-    const [hasFill, hasStroke] = isFillOrStrokeAffected(
-      this.pointerEvents,
-      this.#fill,
-      this.#stroke,
-    );
-    if (hasFill) {
-      return absDistance <= this.#r;
+        const [hasFill, hasStroke] = isFillOrStrokeAffected(
+            this.pointerEvents,
+            this.#fill,
+            this.#stroke,
+        );
+        if (hasFill) {
+            return absDistance <= this.#r;
+        }
+        if (hasStroke) {
+            return (
+                absDistance >= this.#r - halfLineWidth &&
+                absDistance <= this.#r + halfLineWidth
+            );
+        }
+        return false;
     }
-    if (hasStroke) {
-      return (
-        absDistance >= this.#r - halfLineWidth &&
-        absDistance <= this.#r + halfLineWidth
-      );
-    }
-    return false;
-  }
 }
 ```
 
@@ -496,7 +499,7 @@ Sometimes, we might want to change the interactive area of a graphic, such as sl
 
 ```ts
 export interface FederatedEventTarget {
-  hitArea?: Rectangle;
+    hitArea?: Rectangle;
 }
 ```
 
@@ -504,10 +507,10 @@ We can modify the previously created `CameraControl` plugin by first adding an i
 
 ```ts
 root.hitArea = new Rectangle(
-  -Number.MAX_VALUE,
-  -Number.MAX_VALUE,
-  Infinity,
-  Infinity,
+    -Number.MAX_VALUE,
+    -Number.MAX_VALUE,
+    Infinity,
+    Infinity,
 );
 ```
 
@@ -524,8 +527,8 @@ The picking functionality can not only be achieved through interactive events bu
 
 ```ts
 class Canvas {
-  elementsFromPoint(x: number, y: number): Shape[] {}
-  elementFromPoint(x: number, y: number): Shape {}
+    elementsFromPoint(x: number, y: number): Shape[] {}
+    elementFromPoint(x: number, y: number): Shape {}
 }
 ```
 
@@ -539,8 +542,8 @@ export class Dragndrop implements Plugin {}
 
 To determine the conditions for initiating a "drag start," the following configuration options are provided, based on dragging distance and time, respectively. Only when these conditions are fully met will a series of drag-and-drop events like `dragstart` be triggered.
 
-- `dragstartDistanceThreshold`: This configuration item is used to set the detection threshold for the drag distance, in pixels. Only distances greater than this value will be considered a valid start. The default value is `0`.
-- `dragstartTimeThreshold`: This configuration item is used to set the detection threshold for the drag time, in milliseconds. Only times greater than this threshold will be considered a valid start. The default value is `0`.
+-   `dragstartDistanceThreshold`: This configuration item is used to set the detection threshold for the drag distance, in pixels. Only distances greater than this value will be considered a valid start. The default value is `0`.
+-   `dragstartTimeThreshold`: This configuration item is used to set the detection threshold for the drag time, in milliseconds. Only times greater than this threshold will be considered a valid start. The default value is `0`.
 
 In the HTML Drag and Drop API implementation, either a `click` event or a `drag` event is triggered, but never both for the same action. This behavior is evident from the [example](https://plnkr.co/edit/5mdl7oTg0dPWXIip) provided.
 
@@ -548,7 +551,7 @@ Retaining this setting in your implementation, where a `click` event does not fi
 
 ```ts
 if (!e.detail.preventClick) {
-  this.dispatchEvent(clickEvent, 'click');
+    this.dispatchEvent(clickEvent, 'click');
 }
 ```
 
@@ -589,9 +592,9 @@ Here's the effect on iOS simulator.
 
 ## Extended reading
 
-- [The brief history of PointerEvent]
-- [Bubbling and capturing]
-- [Drag'n'Drop with mouse events]:
+-   [The brief history of PointerEvent]
+-   [Bubbling and capturing]
+-   [Drag'n'Drop with mouse events]:
 
 [The brief history of PointerEvent]: https://javascript.info/pointer-events#the-brief-history
 [hammer.js compatibility handling for various events]: https://github.com/hammerjs/hammer.js/tree/master/src/input

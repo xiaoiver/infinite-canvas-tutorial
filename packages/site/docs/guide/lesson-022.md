@@ -1,6 +1,8 @@
 ---
 outline: deep
-publish: false
+description: 'Explore VectorNetwork as an advanced alternative to SVG paths. Learn about topology definitions, shared vertices and edges, filling algorithms, and topological operators for complex vector graphics editing.'
+head:
+    - ['meta', { property: 'og:title', content: 'Lesson 22 - VectorNetwork' }]
 ---
 
 # Lesson 22 - VectorNetwork
