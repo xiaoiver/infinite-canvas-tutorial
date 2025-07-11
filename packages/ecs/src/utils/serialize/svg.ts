@@ -213,20 +213,29 @@ export function serializeNodesToSVGElements(
         `${defaultAttributes[type][key]}` !== `${value}`
       ) {
         if (isNumber(value)) {
-          value = value.toFixed(3);
+          value = toFixedAndRemoveTrailingZeros(value);
         }
         element.setAttribute(camelToKebabCase(key), `${value}`);
       }
     });
 
     if (type === 'ellipse') {
-      element.setAttribute('cx', `${(width / 2).toFixed(3)}`);
-      element.setAttribute('cy', `${(height / 2).toFixed(3)}`);
-      element.setAttribute('rx', `${(width / 2).toFixed(3)}`);
-      element.setAttribute('ry', `${(height / 2).toFixed(3)}`);
+      element.setAttribute('cx', `${toFixedAndRemoveTrailingZeros(width / 2)}`);
+      element.setAttribute(
+        'cy',
+        `${toFixedAndRemoveTrailingZeros(height / 2)}`,
+      );
+      element.setAttribute('rx', `${toFixedAndRemoveTrailingZeros(width / 2)}`);
+      element.setAttribute(
+        'ry',
+        `${toFixedAndRemoveTrailingZeros(height / 2)}`,
+      );
     } else if (type === 'rect') {
-      element.setAttribute('width', `${width.toFixed(3)}`);
-      element.setAttribute('height', `${height.toFixed(3)}`);
+      element.setAttribute('width', `${toFixedAndRemoveTrailingZeros(width)}`);
+      element.setAttribute(
+        'height',
+        `${toFixedAndRemoveTrailingZeros(height)}`,
+      );
       // const { width, height, x, y } = node;
       // // Handle negative size of rect.
       // if (width < 0 || height < 0) {
@@ -254,8 +263,8 @@ export function serializeNodesToSVGElements(
         y = fontBoundingBoxAscent;
       }
 
-      element.setAttribute('x', `${x.toFixed(3)}`);
-      element.setAttribute('y', `${y.toFixed(3)}`);
+      element.setAttribute('x', `${toFixedAndRemoveTrailingZeros(x)}`);
+      element.setAttribute('y', `${toFixedAndRemoveTrailingZeros(y)}`);
       element.removeAttribute('fill');
     }
 
@@ -390,9 +399,13 @@ export function serializeNodesToSVGElements(
     if (a !== 1 || b !== 0 || c !== 0 || d !== 1 || e !== 0 || f !== 0) {
       $g.setAttribute(
         'transform',
-        `matrix(${a.toFixed(3)},${b.toFixed(3)},${c.toFixed(3)},${d.toFixed(
-          3,
-        )},${e.toFixed(3)},${f.toFixed(3)})`,
+        `matrix(${toFixedAndRemoveTrailingZeros(
+          a,
+        )},${toFixedAndRemoveTrailingZeros(b)},${toFixedAndRemoveTrailingZeros(
+          c,
+        )},${toFixedAndRemoveTrailingZeros(d)},${toFixedAndRemoveTrailingZeros(
+          e,
+        )},${toFixedAndRemoveTrailingZeros(f)})`,
       );
     }
 
@@ -468,33 +481,39 @@ function exportInnerOrOuterStrokeAlignment(
     if (type === 'ellipse') {
       const { rx, ry } = attributes;
       const offset = innerStrokeAlignment ? -halfStrokeWidth : halfStrokeWidth;
-      $stroke.setAttribute('rx', `${(rx + offset).toFixed(3)}`);
-      $stroke.setAttribute('ry', `${(ry + offset).toFixed(3)}`);
+      $stroke.setAttribute(
+        'rx',
+        `${toFixedAndRemoveTrailingZeros(rx + offset)}`,
+      );
+      $stroke.setAttribute(
+        'ry',
+        `${toFixedAndRemoveTrailingZeros(ry + offset)}`,
+      );
     } else if (type === 'rect') {
       const { x, y, width, height, strokeWidth } = attributes;
       $stroke.setAttribute(
         'x',
-        `${(
-          x + (innerStrokeAlignment ? halfStrokeWidth : -halfStrokeWidth)
-        ).toFixed(3)}`,
+        `${toFixedAndRemoveTrailingZeros(
+          x + (innerStrokeAlignment ? halfStrokeWidth : -halfStrokeWidth),
+        )}`,
       );
       $stroke.setAttribute(
         'y',
-        `${(
-          y + (innerStrokeAlignment ? halfStrokeWidth : -halfStrokeWidth)
-        ).toFixed(3)}`,
+        `${toFixedAndRemoveTrailingZeros(
+          y + (innerStrokeAlignment ? halfStrokeWidth : -halfStrokeWidth),
+        )}`,
       );
       $stroke.setAttribute(
         'width',
-        `${(
-          width + (innerStrokeAlignment ? -strokeWidth : strokeWidth)
-        ).toFixed(3)}`,
+        `${toFixedAndRemoveTrailingZeros(
+          width + (innerStrokeAlignment ? -strokeWidth : strokeWidth),
+        )}`,
       );
       $stroke.setAttribute(
         'height',
-        `${(
-          height + (innerStrokeAlignment ? -strokeWidth : strokeWidth)
-        ).toFixed(3)}`,
+        `${toFixedAndRemoveTrailingZeros(
+          height + (innerStrokeAlignment ? -strokeWidth : strokeWidth),
+        )}`,
       );
     }
 
@@ -965,4 +984,8 @@ const dataUrlRegex =
   /^data:([a-z]+\/[a-z0-9\-\+]+)?(;charset=[a-z0-9\-]+)?(;base64)?,[a-z0-9\!\$&',\(\)\*\+,;=\-\._\~:@\/\?%\s]*$/i;
 export function isDataUrl(url: string) {
   return dataUrlRegex.test(url);
+}
+
+function toFixedAndRemoveTrailingZeros(value: number) {
+  return value.toFixed(3).replace(/\.?0+$/, '');
 }
