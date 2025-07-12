@@ -22,7 +22,6 @@ export class TextEditor extends LitElement {
   static styles = css`
     :host {
       position: absolute;
-      overflow: hidden;
     }
 
     textarea {

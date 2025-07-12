@@ -238,6 +238,8 @@ export abstract class Drawcall {
       }
     }
 
+    // console.log(this.vertexBufferDatas);
+
     this.barycentricBuffer = this.device.createBuffer({
       viewOrSize: barycentricBufferData,
       usage: BufferUsage.VERTEX,
