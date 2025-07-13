@@ -65,14 +65,17 @@ export const shared = defineConfig({
     ['meta', { name: 'twitter:site', content: '@YuqiP45780' }],
     ['meta', { name: 'twitter:title', content: title }],
     ['meta', { name: 'twitter:description', content: description }],
-
-    // Canonical
-    //     [
-    //       'link',
-    //       {
-    //         rel: 'canonical',
-    //         href: canonicalURL,
-    //       },
-    //     ]
   ],
+  // @see https://vitepress.dev/reference/site-config#example-adding-a-canonical-url-link
+  transformPageData(pageData) {
+    const canonicalUrl = `https://infinitecanvas.cc/${pageData.relativePath}`
+      .replace(/index\.md$/, '')
+      .replace(/\.md$/, '.html');
+
+    pageData.frontmatter.head ??= [];
+    pageData.frontmatter.head.push([
+      'link',
+      { rel: 'canonical', href: canonicalUrl },
+    ]);
+  },
 });
