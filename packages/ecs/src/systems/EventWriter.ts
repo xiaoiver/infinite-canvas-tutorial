@@ -91,21 +91,25 @@ export class EventWriter extends System {
     };
 
     const onPointerMove = (e: PointerEvent) => {
-      // @see https://stackoverflow.com/questions/49500339/cant-prevent-touchmove-from-scrolling-window-on-ios
-      // ev.preventDefault();
+      try {
+        // @see https://stackoverflow.com/questions/49500339/cant-prevent-touchmove-from-scrolling-window-on-ios
+        // ev.preventDefault();
 
-      // if (pointerIds.size > 1 || !pointerIds.has(e.pointerId)) return;
-      const viewport = api.client2Viewport({
-        x: e.clientX,
-        y: e.clientY,
-      });
+        // if (pointerIds.size > 1 || !pointerIds.has(e.pointerId)) return;
+        const viewport = api.client2Viewport({
+          x: e.clientX,
+          y: e.clientY,
+        });
 
-      Object.assign(input.write(Input), {
-        pointerClient: [e.clientX, e.clientY],
-        pointerViewport: [viewport.x, viewport.y],
-      });
+        Object.assign(input.write(Input), {
+          pointerClient: [e.clientX, e.clientY],
+          pointerViewport: [viewport.x, viewport.y],
+        });
 
-      syncCtrlShiftAltMeta(e);
+        syncCtrlShiftAltMeta(e);
+      } catch (error) {
+        console.log('Pointer move error', error);
+      }
     };
 
     const onPointerUp = (e: PointerEvent) => {
@@ -114,20 +118,51 @@ export class EventWriter extends System {
     };
 
     const onPointerDown = (e: PointerEvent) => {
-      const mouseButtons = [0, 1, 2];
+      try {
+        const mouseButtons = [0, 1, 2];
 
-      if (e.pointerType === 'mouse' && !mouseButtons.includes(e.button)) return;
+        if (e.pointerType === 'mouse' && !mouseButtons.includes(e.button))
+          return;
 
-      pointerIds.add(e.pointerId);
+        pointerIds.add(e.pointerId);
 
-      if (pointerIds.size > 1) {
-        return;
+        if (pointerIds.size > 1) {
+          return;
+        }
+
+        // input.write(Input).pointerDownTrigger = true;
+        this.setInputTrigger(input, 'pointerDownTrigger');
+
+        if (pointerIds.size === 1) {
+          const viewport = api.client2Viewport({
+            x: e.clientX,
+            y: e.clientY,
+          });
+          Object.assign(input.write(Input), {
+            pointerClient: [e.clientX, e.clientY],
+            pointerViewport: [viewport.x, viewport.y],
+          });
+        }
+
+        syncCtrlShiftAltMeta(e);
+      } catch (error) {
+        console.log('Pointer down error', error);
       }
+    };
 
-      // input.write(Input).pointerDownTrigger = true;
-      this.setInputTrigger(input, 'pointerDownTrigger');
+    const onPointerCancel = (e: PointerEvent) => {
+      pointerIds.delete(e.pointerId);
+    };
 
-      if (pointerIds.size === 1) {
+    const onPointerWheel = (e: WheelEvent) => {
+      try {
+        e.preventDefault();
+        input.write(Input).wheelTrigger = true;
+        input.write(Input).deltaX = e.deltaX;
+        input.write(Input).deltaY = e.deltaY;
+
+        syncCtrlShiftAltMeta(e);
+
         const viewport = api.client2Viewport({
           x: e.clientX,
           y: e.clientY,
@@ -136,31 +171,9 @@ export class EventWriter extends System {
           pointerClient: [e.clientX, e.clientY],
           pointerViewport: [viewport.x, viewport.y],
         });
+      } catch (error) {
+        console.log('Pointer wheel error', error);
       }
-
-      syncCtrlShiftAltMeta(e);
-    };
-
-    const onPointerCancel = (e: PointerEvent) => {
-      pointerIds.delete(e.pointerId);
-    };
-
-    const onPointerWheel = (e: WheelEvent) => {
-      e.preventDefault();
-      input.write(Input).wheelTrigger = true;
-      input.write(Input).deltaX = e.deltaX;
-      input.write(Input).deltaY = e.deltaY;
-
-      syncCtrlShiftAltMeta(e);
-
-      const viewport = api.client2Viewport({
-        x: e.clientX,
-        y: e.clientY,
-      });
-      Object.assign(input.write(Input), {
-        pointerClient: [e.clientX, e.clientY],
-        pointerViewport: [viewport.x, viewport.y],
-      });
     };
 
     const onKeyDown = (e: KeyboardEvent) => {
