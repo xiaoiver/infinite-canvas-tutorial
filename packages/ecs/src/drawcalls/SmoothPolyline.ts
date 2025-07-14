@@ -409,7 +409,7 @@ export class SmoothPolyline extends Drawcall {
     };
     this.program.setUniformsLegacy(uniformLegacyObject);
 
-    if (this.useWireframe) {
+    if (this.useWireframe && this.geometryDirty) {
       this.generateWireframe();
     }
     // }

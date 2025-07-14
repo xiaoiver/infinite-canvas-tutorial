@@ -34,4 +34,29 @@ describe('Wireframe', () => {
 
     expect($canvas.getContext('webgl1')).toMatchWebGLSnapshot(dir, 'wireframe');
   });
+
+  it('should render wireframe for circle correctly.', async () => {
+    const circle = new Circle({
+      cx: 100,
+      cy: 100,
+      r: 50,
+      fill: 'grey',
+      wireframe: true,
+    });
+    canvas.appendChild(circle);
+    canvas.render();
+
+    await new Promise((resolve) => setTimeout(resolve, 300));
+
+    circle.position.x = 100;
+    circle.position.y = 100;
+    circle.cx = 0;
+    circle.cy = 0;
+    canvas.render();
+
+    expect($canvas.getContext('webgl1')).toMatchWebGLSnapshot(
+      dir,
+      'wireframe-2',
+    );
+  });
 });

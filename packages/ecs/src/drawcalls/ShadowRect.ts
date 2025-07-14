@@ -294,19 +294,8 @@ export class ShadowRect extends Drawcall {
       this.program.setUniformsLegacy(uniformLegacyObject);
     }
 
-    if (this.useWireframe) {
+    if (this.useWireframe && this.geometryDirty) {
       this.generateWireframe();
-
-      if (this.instanced) {
-        this.vertexBuffers[1].setSubData(
-          0,
-          new Uint8Array(this.vertexBufferDatas[1].buffer),
-        );
-        this.vertexBuffers[2].setSubData(
-          0,
-          new Uint8Array(this.vertexBufferDatas[2].buffer),
-        );
-      }
     }
     // }
 

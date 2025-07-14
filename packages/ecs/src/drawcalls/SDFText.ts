@@ -373,7 +373,7 @@ export class SDFText extends Drawcall {
       ...legacyObject,
     });
 
-    if (this.useWireframe) {
+    if (this.useWireframe && this.geometryDirty) {
       this.generateWireframe();
     }
     // }
