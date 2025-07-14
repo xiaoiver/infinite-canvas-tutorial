@@ -93,7 +93,8 @@
   "pnpm": {
     "overrides": {
       "esbuild": "0.23.1",
-      "playwright": "1.49.1"
+      "playwright": "1.49.1",
+      "rollup": "4.44.0"
     }
   }
 }
