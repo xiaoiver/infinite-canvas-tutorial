@@ -1,5 +1,5 @@
 <script setup>
-import { 
+import {
     Rect,
     Polyline,
     Path,
@@ -14,30 +14,34 @@ import {
     loadBitmapFont
 } from '@infinite-canvas-tutorial/core';
 import { ref, onMounted } from 'vue';
-import Stats from 'stats.js';
 
 let canvas;
-
-const stats = new Stats();
-stats.showPanel(0);
-const $stats = stats.dom;
-$stats.style.position = 'absolute';
-$stats.style.left = '0px';
-$stats.style.top = '0px';
+let stats;
 
 const wrapper = ref(null);
 
 onMounted(() => {
-  import('@infinite-canvas-tutorial/ui');
-  const $canvas = wrapper.value;
-  if (!$canvas) {
-    return;
-  }
+    import('@infinite-canvas-tutorial/ui');
 
-  $canvas.addEventListener('ic-ready', (e) => {
-    canvas = e.detail;
+    const $canvas = wrapper.value;
 
-    const polyline1 = new Polyline({
+    if (!$canvas) return;
+
+    import('stats.js').then(m => {
+        const Stats = m.default;
+        stats = new Stats();
+        stats.showPanel(0);
+        const $stats = stats.dom;
+        $stats.style.position = 'absolute';
+        $stats.style.left = '0px';
+        $stats.style.top = '0px';
+        $canvas.parentElement.appendChild($stats);
+    });
+
+    $canvas.addEventListener('ic-ready', (e) => {
+        canvas = e.detail;
+
+        const polyline1 = new Polyline({
             points: [
                 [100, 100],
                 [100, 200],
@@ -234,16 +238,16 @@ onMounted(() => {
             });
             canvas.appendChild(text);
         });
-  });
+    });
 
-  $canvas.addEventListener('ic-frame', (e) => {
-    stats.update();
-  });
+    $canvas.addEventListener('ic-frame', (e) => {
+        stats?.update();
+    });
 });
 </script>
 
 <template>
-  <div style="position: relative">
-      <ic-canvas ref="wrapper"></ic-canvas>
-  </div>
+    <div style="position: relative">
+        <ic-canvas ref="wrapper"></ic-canvas>
+    </div>
 </template>

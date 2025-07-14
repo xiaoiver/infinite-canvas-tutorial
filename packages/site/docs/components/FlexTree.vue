@@ -1,18 +1,11 @@
 <script setup lang="ts">
 import { Canvas, Rect, Path } from '@infinite-canvas-tutorial/core';
 import { ref, onMounted } from 'vue';
-import Stats from 'stats.js';
 import { hierarchy } from 'd3-hierarchy';
 import { flextree } from 'd3-flextree';
 
 let canvas: Canvas;
-
-const stats = new Stats();
-stats.showPanel(0);
-const $stats = stats.dom;
-$stats.style.position = 'absolute';
-$stats.style.left = '0px';
-$stats.style.top = '0px';
+let stats: any;
 
 const wrapper = ref<HTMLCanvasElement | null>(null);
 
@@ -58,7 +51,16 @@ onMounted(() => {
 
   if (!$canvas) return;
 
-  $canvas.parentElement!.appendChild($stats);
+  import('stats.js').then(m => {
+    const Stats = m.default;
+    stats = new Stats();
+    stats.showPanel(0);
+    const $stats = stats.dom;
+    $stats.style.position = 'absolute';
+    $stats.style.left = '0px';
+    $stats.style.top = '0px';
+    $canvas.parentElement?.appendChild($stats);
+  });
 
   $canvas.addEventListener('ic-ready', async (e) => {
     canvas = (e as any).detail;
@@ -98,7 +100,7 @@ onMounted(() => {
   });
 
   $canvas.addEventListener('ic-frame', (e) => {
-    stats.update();
+    stats?.update();
   });
 });
 </script>

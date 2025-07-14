@@ -1,17 +1,10 @@
 <script setup>
 import { onMounted, onUnmounted, ref } from 'vue';
-import Stats from 'stats.js';
 // @see https://vitejs.dev/guide/features.html#import-with-query-suffixes
 import Worker from './worker.js?worker&inline';
 
 const canvasRef = ref(null);
-
-const stats = new Stats();
-stats.showPanel(0);
-const $stats = stats.dom;
-$stats.style.position = 'absolute';
-$stats.style.left = '0px';
-$stats.style.top = '0px';
+let stats;
 
 const clonePointerEvent = (e) => {
   return {
@@ -66,7 +59,7 @@ onMounted(() => {
         if (event.data.type === 'cursor') {
           mainCanvas.style.cursor = event.data.cursor;
         } else if (event.data.type === 'frame') {
-          stats.update();
+          stats?.update();
         }
       };
 
@@ -166,7 +159,16 @@ onMounted(() => {
     }
   }
 
-  mainCanvas.parentElement.appendChild($stats);
+  import('stats.js').then(m => {
+    const Stats = m.default;
+    stats = new Stats();
+    stats.showPanel(0);
+    const $stats = stats.dom;
+    $stats.style.position = 'absolute';
+    $stats.style.left = '0px';
+    $stats.style.top = '0px';
+    mainCanvas.parentElement.appendChild($stats);
+  });
 });
 
 onUnmounted(() => {

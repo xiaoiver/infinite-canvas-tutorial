@@ -2,7 +2,6 @@
 import { Rect } from '@infinite-canvas-tutorial/core';
 import { Format, TextureUsage } from '@antv/g-device-api';
 import { ref, onMounted } from 'vue';
-import Stats from 'stats.js';
 
 function generateColorRamp(colorRamp) {
   let canvas = window.document.createElement('canvas');
@@ -24,13 +23,7 @@ function generateColorRamp(colorRamp) {
 }
 
 let canvas;
-
-const stats = new Stats();
-stats.showPanel(0);
-const $stats = stats.dom;
-$stats.style.position = 'absolute';
-$stats.style.left = '0px';
-$stats.style.top = '0px';
+let stats;
 
 const wrapper = ref(null);
 
@@ -41,7 +34,16 @@ onMounted(() => {
 
   if (!$canvas) return;
 
-  $canvas.parentElement.appendChild($stats);
+  import('stats.js').then(m => {
+    const Stats = m.default;
+    stats = new Stats();
+    stats.showPanel(0);
+    const $stats = stats.dom;
+    $stats.style.position = 'absolute';
+    $stats.style.left = '0px';
+    $stats.style.top = '0px';
+    $canvas.parentElement.appendChild($stats);
+  });
 
   $canvas.addEventListener('ic-ready', (e) => {
     canvas = e.detail;
@@ -78,7 +80,7 @@ onMounted(() => {
   });
 
   $canvas.addEventListener('ic-frame', (e) => {
-    stats.update();
+    stats?.update();
   });
 });
 </script>

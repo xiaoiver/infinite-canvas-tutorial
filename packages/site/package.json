@@ -71,7 +71,7 @@
     "svg-path-properties": "^1.3.0",
     "tweakpane": "^4.0.0",
     "unplugin-vue-macros": "^2.13.8",
-    "vitepress": "^1.5.0",
+    "vitepress": "^1.6.3",
     "vitepress-plugin-rss": "^0.2.10",
     "vite-plugin-top-level-await": "^1.5.0",
     "vite-plugin-wasm": "^3.4.1",

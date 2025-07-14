@@ -3,7 +3,7 @@ import * as d3 from 'd3-color';
 import { Rect } from '@infinite-canvas-tutorial/core';
 import { Format, TextureUsage, BufferUsage, BufferFrequencyHint, VertexStepMode, TransparentWhite } from '@antv/g-device-api';
 import { ref, computed, onMounted } from 'vue';
-import Stats from 'stats.js';
+
 import { vert, frag } from './shaders/mesh-gradient';
 import { paddingUniforms } from './utils';
 
@@ -14,12 +14,7 @@ const MAX_POINTS = 10;
 const palettes = Array.from({ length: 4 }, () => [Math.random(), Math.random(), Math.random()]);
 const positions = Array.from({ length: 4 }, () => [Math.random(), Math.random()]);
 
-const stats = new Stats();
-stats.showPanel(0);
-const $stats = stats.dom;
-$stats.style.position = 'absolute';
-$stats.style.left = '0px';
-$stats.style.top = '0px';
+let stats;
 
 const wrapper = ref(null);
 const u_NoiseRatio = ref(0.1);
@@ -82,7 +77,16 @@ onMounted(() => {
 
   if (!$canvas) return;
 
-  $canvas.parentElement.appendChild($stats);
+  import('stats.js').then(m => {
+    const Stats = m.default;
+    stats = new Stats();
+    stats.showPanel(0);
+    const $stats = stats.dom;
+    $stats.style.position = 'absolute';
+    $stats.style.left = '0px';
+    $stats.style.top = '0px';
+    $canvas.parentElement.appendChild($stats);
+  });
 
   $canvas.addEventListener('ic-ready', (e) => {
     canvas = e.detail;
@@ -228,53 +232,58 @@ onMounted(() => {
   });
 
   $canvas.addEventListener('ic-frame', (e) => {
-    stats.update();
+    stats?.update();
   });
 });
 </script>
 
 <style>
-  .small-details::part(header) {
-    padding: 4px 8px;
-  }
-  .small-details::part(content) {
-    padding: 4px;
-  }
-  sl-color-picker {
-    height: 30px;
-  }
-  .label-on-left {
-    --label-width: 3.75rem;
-    --gap-width: 1rem;
-  }
+.small-details::part(header) {
+  padding: 4px 8px;
+}
 
-  .label-on-left::part(form-control) {
-    display: grid;
-    grid: auto / var(--label-width) 1fr;
-    gap: var(--sl-spacing-3x-small) var(--gap-width);
-    align-items: center;
-  }
+.small-details::part(content) {
+  padding: 4px;
+}
 
-  .label-on-left::part(form-control-label) {
-    text-align: right;
-  }
+sl-color-picker {
+  height: 30px;
+}
 
-  .label-on-left::part(form-control-help-text) {
-    grid-column-start: 2;
-  }
+.label-on-left {
+  --label-width: 3.75rem;
+  --gap-width: 1rem;
+}
+
+.label-on-left::part(form-control) {
+  display: grid;
+  grid: auto / var(--label-width) 1fr;
+  gap: var(--sl-spacing-3x-small) var(--gap-width);
+  align-items: center;
+}
+
+.label-on-left::part(form-control-label) {
+  text-align: right;
+}
+
+.label-on-left::part(form-control-help-text) {
+  grid-column-start: 2;
+}
 </style>
 
 <template>
   <div style="position: relative">
     <ic-canvas ref="wrapper" style="height: 400px"></ic-canvas>
     <div style="display: flex; flex-direction: row; gap: 10px;">
-      <sl-select label="GradientType" size="small" :value="u_GradientTypeIndex.toString()" @sl-change="handleGradientTypeChange($event.target.value);">
+      <sl-select label="GradientType" size="small" :value="u_GradientTypeIndex.toString()"
+        @sl-change="handleGradientTypeChange($event.target.value);">
         <sl-option value="0">Original</sl-option>
         <sl-option value="1">Bezier</sl-option>
         <sl-option value="2">Mesh</sl-option>
         <sl-option value="3">Enhanced Bezier</sl-option>
       </sl-select>
-      <sl-select label="WarpShape" size="small" :value="u_WarpShapeIndex.toString()" @sl-change="handleWarpShapeChange($event.target.value);">
+      <sl-select label="WarpShape" size="small" :value="u_WarpShapeIndex.toString()"
+        @sl-change="handleWarpShapeChange($event.target.value);">
         <sl-option value="0">Snoise</sl-option>
         <sl-option value="1">Sine</sl-option>
         <sl-option value="2">ValueNoise</sl-option>
@@ -290,36 +299,34 @@ onMounted(() => {
         <sl-option value="12">FlatNoise</sl-option>
         <sl-option value="13">BlackHoleNoise</sl-option>
       </sl-select>
-      <sl-input label="NoiseRatio" min="0" max="1" step="0.05" type="number" size="small" :value="u_NoiseRatio" @input="u_NoiseRatio = Number($event.target.value); render();" />
-      <sl-input label="NoiseTime" min="0" max="1" step="0.05" type="number" size="small" :value="u_NoiseTime" @input="u_NoiseTime = Number($event.target.value); render();" />
-      <sl-input label="WarpSize" min="0" max="1" step="0.05" type="number" size="small" :value="u_WarpSize" @input="u_WarpSize = Number($event.target.value); render();" />
-      <sl-input label="WarpRatio" min="0" max="1" step="0.05" type="number" size="small" :value="u_WarpRatio" @input="u_WarpRatio = Number($event.target.value); render();" />
+      <sl-input label="NoiseRatio" min="0" max="1" step="0.05" type="number" size="small" :value="u_NoiseRatio"
+        @input="u_NoiseRatio = Number($event.target.value); render();" />
+      <sl-input label="NoiseTime" min="0" max="1" step="0.05" type="number" size="small" :value="u_NoiseTime"
+        @input="u_NoiseTime = Number($event.target.value); render();" />
+      <sl-input label="WarpSize" min="0" max="1" step="0.05" type="number" size="small" :value="u_WarpSize"
+        @input="u_WarpSize = Number($event.target.value); render();" />
+      <sl-input label="WarpRatio" min="0" max="1" step="0.05" type="number" size="small" :value="u_WarpRatio"
+        @input="u_WarpRatio = Number($event.target.value); render();" />
     </div>
     <div style="display: flex; align-items: center; flex-direction: row; gap: 10px; font-size: 14px;">
       <label for="bg-color">BackgroundColor</label>
       <sl-color-picker size="small" id="bg-color" :value="bgColor" @sl-input="handleBgColorChange" />
     </div>
     <sl-details class="small-details" summary="Points" open>
-      <sl-icon-button
-        name="plus-lg"
-        label="Add point"
-        @click="addPoint"
-      ></sl-icon-button>
+      <sl-icon-button name="plus-lg" label="Add point" @click="addPoint"></sl-icon-button>
       <ol style="margin: 0; padding: 0;">
         <li v-for="color, index in u_Colors" style="display: flex; align-items: center; gap: 10px;">
-          <sl-icon-button
-            name="dash-lg"
-            label="Remove stop"
-            @click="removePoint(index)"
-          ></sl-icon-button>
-          <sl-color-picker size="small" :value="`rgba(${color.map(c => c * 255).join(',')}, 1)`" @sl-input="handlePointColorChange(index, $event)" />
+          <sl-icon-button name="dash-lg" label="Remove stop" @click="removePoint(index)"></sl-icon-button>
+          <sl-color-picker size="small" :value="`rgba(${color.map(c => c * 255).join(',')}, 1)`"
+            @sl-input="handlePointColorChange(index, $event)" />
           <div style="display: flex; align-items: center; flex-direction: row; gap: 10px; font-size: 14px;">
-            <sl-input class="label-on-left" label="X"  min="0" max="1" step="0.05" type="number" size="small" :value="u_Positions[index][0]" @input="u_Positions[index][0] = Number($event.target.value); render();" />
-            <sl-input class="label-on-left" label="Y"  min="0" max="1" step="0.05" type="number" size="small" :value="u_Positions[index][1]" @input="u_Positions[index][1] = Number($event.target.value); render();" />
+            <sl-input class="label-on-left" label="X" min="0" max="1" step="0.05" type="number" size="small"
+              :value="u_Positions[index][0]" @input="u_Positions[index][0] = Number($event.target.value); render();" />
+            <sl-input class="label-on-left" label="Y" min="0" max="1" step="0.05" type="number" size="small"
+              :value="u_Positions[index][1]" @input="u_Positions[index][1] = Number($event.target.value); render();" />
           </div>
         </li>
       </ol>
     </sl-details>
   </div>
 </template>
-

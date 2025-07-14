@@ -1,19 +1,12 @@
 <script setup>
 import { Circle } from '@infinite-canvas-tutorial/core';
-import { onMounted, ref } from 'vue';
-import Stats from 'stats.js';
+import { ref, onMounted } from 'vue';
 
 const total = ref(0);
 const culled = ref(0);
 const circles = [];
 let canvas;
-
-const stats = new Stats();
-stats.showPanel(0);
-const $stats = stats.dom;
-$stats.style.position = 'absolute';
-$stats.style.left = '0px';
-$stats.style.top = '0px';
+let stats;
 
 const wrapper = ref(null);
 
@@ -44,11 +37,21 @@ const add500Circles = () => {
 
 onMounted(() => {
   import('@infinite-canvas-tutorial/ui');
+
   const $canvas = wrapper.value;
 
   if (!$canvas) return;
 
-  $canvas.parentElement.appendChild($stats);
+  import('stats.js').then(m => {
+    const Stats = m.default;
+    stats = new Stats();
+    stats.showPanel(0);
+    const $stats = stats.dom;
+    $stats.style.position = 'absolute';
+    $stats.style.left = '0px';
+    $stats.style.top = '0px';
+    $canvas.parentElement.appendChild($stats);
+  });
 
   $canvas.addEventListener('ic-ready', (e) => {
     canvas = e.detail;
@@ -56,7 +59,7 @@ onMounted(() => {
   });
 
   $canvas.addEventListener('ic-frame', (e) => {
-    stats.update();
+    stats?.update();
     total.value = circles.length;
     culled.value = circles.filter((circle) => circle.culled).length;
   });
@@ -70,6 +73,6 @@ onMounted(() => {
   &nbsp;
   <sl-button size="small" @click="add500Circles">Add 500 circles</sl-button>
   <div style="position: relative">
-      <ic-canvas ref="wrapper" style="height: 400px"></ic-canvas>
+    <ic-canvas ref="wrapper" style="height: 400px"></ic-canvas>
   </div>
 </template>

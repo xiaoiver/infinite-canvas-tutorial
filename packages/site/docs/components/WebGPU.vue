@@ -1,16 +1,9 @@
 <script setup>
 import { Group, deserializeNode, fromSVGElement, TesselationMethod } from '@infinite-canvas-tutorial/core';
 import { ref, onMounted } from 'vue';
-import Stats from 'stats.js';
 
 let canvas;
-
-const stats = new Stats();
-stats.showPanel(0);
-const $stats = stats.dom;
-$stats.style.position = 'absolute';
-$stats.style.left = '0px';
-$stats.style.top = '0px';
+let stats;
 
 const wrapper = ref(null);
 
@@ -18,15 +11,15 @@ const renderSVG = async (svg, x, y) => {
   const $container = document.createElement('div');
   $container.innerHTML = svg;
   const $svg = $container.children[0];
-  
+
   const root = new Group();
   for (const child of $svg.children) {
     const group = await deserializeNode(fromSVGElement(child));
     group.children.forEach((path) => {
-        path.tessellationMethod = TesselationMethod.LIBTESS;
-        path.cullable = false;
+      path.tessellationMethod = TesselationMethod.LIBTESS;
+      path.cullable = false;
     });
-   
+
     root.appendChild(group);
   }
 
@@ -38,30 +31,41 @@ const renderSVG = async (svg, x, y) => {
 
 onMounted(() => {
   import('@infinite-canvas-tutorial/ui');
+
   const $canvas = wrapper.value;
-  if (!$canvas) {
-    return;
-  }
+
+  if (!$canvas) return;
+
+  import('stats.js').then(m => {
+    const Stats = m.default;
+    stats = new Stats();
+    stats.showPanel(0);
+    const $stats = stats.dom;
+    $stats.style.position = 'absolute';
+    $stats.style.left = '0px';
+    $stats.style.top = '0px';
+    $canvas.parentElement.appendChild($stats);
+  });
 
   $canvas.addEventListener('ic-ready', (e) => {
     canvas = e.detail;
 
     window.fetch(
-        '/Ghostscript_Tiger.svg',
+      '/Ghostscript_Tiger.svg',
     ).then(async (res) => {
-        const svg = await res.text();
-        renderSVG(svg, 80, 80);
+      const svg = await res.text();
+      renderSVG(svg, 80, 80);
     });
   });
 
   $canvas.addEventListener('ic-frame', (e) => {
-    stats.update();
+    stats?.update();
   });
 });
 </script>
 
 <template>
   <div style="position: relative">
-      <ic-canvas ref="wrapper" style="height: 200px"></ic-canvas>
+    <ic-canvas ref="wrapper" style="height: 200px"></ic-canvas>
   </div>
 </template>

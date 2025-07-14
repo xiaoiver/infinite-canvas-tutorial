@@ -3,44 +3,47 @@ import { CloudUploadOutlined } from '@ant-design/icons-vue';
 import { App, Button, Flex, Upload, message } from 'ant-design-vue';
 import { ref, onMounted } from 'vue';
 import { Canvas, Group, Path, deserializeNode, fromSVGElement, TesselationMethod } from '@infinite-canvas-tutorial/core';
-import Stats from 'stats.js';
+
 
 defineOptions({ name: 'Import SVG' });
 
+let canvas: Canvas | null = null;
+let stats: any;
+
 const wrapper = ref<HTMLDivElement | null>(null);
 const loading = ref(false);
-let canvas: Canvas | null = null;
 
 onMounted(() => {
   import('@infinite-canvas-tutorial/ui');
 
-  const stats = new Stats();
-  stats.showPanel(0);
-  const $stats = stats.dom;
-  $stats.style.position = 'absolute';
-  $stats.style.left = '0px';
-  $stats.style.top = '0px';
-
   const $canvas = wrapper.value;
-  if (!$canvas) {
-    return;
-  }
-  
-  $canvas.parentElement?.appendChild($stats);
+
+  if (!$canvas) return;
+
+  import('stats.js').then(m => {
+    const Stats = m.default;
+    stats = new Stats();
+    stats.showPanel(0);
+    const $stats = stats.dom;
+    $stats.style.position = 'absolute';
+    $stats.style.left = '0px';
+    $stats.style.top = '0px';
+    $canvas.parentElement?.appendChild($stats);
+  });
 
   $canvas.addEventListener('ic-ready', (e) => {
     canvas = (e as any).detail;
 
     fetch(
-        '/Ghostscript_Tiger.svg',
+      '/Ghostscript_Tiger.svg',
     ).then(async (res) => {
-        const svg = await res.text();
-        renderSVG(svg, 80, 80);
+      const svg = await res.text();
+      renderSVG(svg, 80, 80);
     });
   });
 
-  $canvas.addEventListener('ic-frame', () => {
-    stats.update();
+  $canvas.addEventListener('ic-frame', (e) => {
+    stats?.update();
   });
 });
 
@@ -48,7 +51,7 @@ const renderSVG = async (svg: string, x: number, y: number) => {
   const $container = document.createElement('div');
   $container.innerHTML = svg;
   const $svg = $container.children[0];
-  
+
   const root = new Group();
   for (const child of $svg.children) {
     const group = await deserializeNode(fromSVGElement(child as SVGElement));
@@ -56,7 +59,7 @@ const renderSVG = async (svg: string, x: number, y: number) => {
       (path as Path).tessellationMethod = TesselationMethod.LIBTESS;
       path.cullable = false;
     });
-   
+
     root.appendChild(group);
   }
 
@@ -73,7 +76,7 @@ const handleUpload = (file: File) => {
   }
 
   loading.value = true;
-  
+
   const reader = new FileReader();
   reader.onload = async (e) => {
     try {
@@ -103,8 +106,8 @@ const Demo = () => {
       <ic-canvas ref={wrapper} style="height: 400px"></ic-canvas>
     </div>
     <Flex justify="center" align="middle" style="margin-top: 16px">
-      <Upload 
-        name="file" 
+      <Upload
+        name="file"
         beforeUpload={handleUpload}
         accept=".svg"
         showUploadList={false}

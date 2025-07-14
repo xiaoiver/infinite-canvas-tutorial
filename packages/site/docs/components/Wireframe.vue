@@ -1,23 +1,29 @@
 <script setup>
 import { Circle, Ellipse, Rect, Polyline, Path } from '@infinite-canvas-tutorial/core';
-import { onMounted } from 'vue';
-import Stats from 'stats.js';
+import { ref, onMounted } from 'vue';
 
 let canvas;
+let stats;
 
-const stats = new Stats();
-stats.showPanel(0);
-const $stats = stats.dom;
-$stats.style.position = 'absolute';
-$stats.style.left = '0px';
-$stats.style.top = '0px';
+const wrapper = ref(null);
 
 onMounted(() => {
   import('@infinite-canvas-tutorial/ui');
 
-  const $canvas = document.querySelector('ic-canvas');
+  const $canvas = wrapper.value;
 
-  $canvas.parentElement.appendChild($stats);
+  if (!$canvas) return;
+
+  import('stats.js').then(m => {
+    const Stats = m.default;
+    stats = new Stats();
+    stats.showPanel(0);
+    const $stats = stats.dom;
+    $stats.style.position = 'absolute';
+    $stats.style.left = '0px';
+    $stats.style.top = '0px';
+    $canvas.parentElement.appendChild($stats);
+  });
 
   $canvas.addEventListener('ic-ready', (e) => {
     canvas = e.detail;
@@ -82,13 +88,13 @@ onMounted(() => {
   });
 
   $canvas.addEventListener('ic-frame', (e) => {
-    stats.update();
+    stats?.update();
   });
 });
 </script>
 
 <template>
   <div style="position: relative">
-    <ic-canvas></ic-canvas>
+    <ic-canvas ref="wrapper"></ic-canvas>
   </div>
 </template>

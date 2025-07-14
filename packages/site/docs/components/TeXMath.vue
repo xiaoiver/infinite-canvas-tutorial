@@ -1,25 +1,24 @@
 <script setup>
 import { fromSVGElement, deserializeNode } from '@infinite-canvas-tutorial/core';
 import { ref, onMounted } from 'vue';
-import Stats from 'stats.js';
 
 /**
  * @see https://github.com/motion-canvas/motion-canvas/blob/13c9de85280cc1b893a178b9d6eecd8d639fd7bb/packages/2d/src/lib/components/Latex.ts#L32
  */
-import {mathjax} from 'mathjax-full/js/mathjax';
-import {liteAdaptor} from 'mathjax-full/js/adaptors/liteAdaptor';
-import {RegisterHTMLHandler} from 'mathjax-full/js/handlers/html';
-import {TeX} from 'mathjax-full/js/input/tex';
-import {AllPackages} from 'mathjax-full/js/input/tex/AllPackages';
-import {SVG} from 'mathjax-full/js/output/svg';
+import { mathjax } from 'mathjax-full/js/mathjax';
+import { liteAdaptor } from 'mathjax-full/js/adaptors/liteAdaptor';
+import { RegisterHTMLHandler } from 'mathjax-full/js/handlers/html';
+import { TeX } from 'mathjax-full/js/input/tex';
+import { AllPackages } from 'mathjax-full/js/input/tex/AllPackages';
+import { SVG } from 'mathjax-full/js/output/svg';
 
 function renderMathJaxToSVGElement(formula) {
     const Adaptor = liteAdaptor();
     RegisterHTMLHandler(Adaptor);
 
     const JaxDocument = mathjax.document('', {
-        InputJax: new TeX({packages: AllPackages}),
-        OutputJax: new SVG({fontCache: 'local'}),
+        InputJax: new TeX({ packages: AllPackages }),
+        OutputJax: new SVG({ fontCache: 'local' }),
     });
 
     const svg = Adaptor.innerHTML(JaxDocument.convert(formula));
@@ -36,13 +35,7 @@ function renderMathJaxToSVGElement(formula) {
 }
 
 let canvas;
-
-const stats = new Stats();
-stats.showPanel(0);
-const $stats = stats.dom;
-$stats.style.position = 'absolute';
-$stats.style.left = '0px';
-$stats.style.top = '0px';
+let stats;
 
 const wrapper = ref(null);
 
@@ -54,7 +47,16 @@ onMounted(() => {
 
     if (!$canvas) return;
 
-    $canvas.parentElement.appendChild($stats);
+    import('stats.js').then(m => {
+        const Stats = m.default;
+        stats = new Stats();
+        stats.showPanel(0);
+        const $stats = stats.dom;
+        $stats.style.position = 'absolute';
+        $stats.style.left = '0px';
+        $stats.style.top = '0px';
+        $canvas.parentElement.appendChild($stats);
+    });
 
     $canvas.addEventListener('ic-ready', async (e) => {
         canvas = e.detail;
@@ -63,7 +65,7 @@ onMounted(() => {
             const $svg = renderMathJaxToSVGElement(formula);
             const root = await deserializeNode(fromSVGElement($svg));
             root.scale.x = 0.05;
-            root.scale.y = 0.05;    
+            root.scale.y = 0.05;
             root.position.x = 100;
             root.position.y = 100 * (index + 1);
 
@@ -72,7 +74,7 @@ onMounted(() => {
     });
 
     $canvas.addEventListener('ic-frame', (e) => {
-        stats.update();
+        stats?.update();
     });
 });
 </script>

@@ -1,23 +1,27 @@
 <script setup>
 import { RoughRect } from '@infinite-canvas-tutorial/core';
-import { onMounted } from 'vue';
-import Stats from 'stats.js';
+import { ref, onMounted } from 'vue';
 import GUI from 'lil-gui';
 
-const stats = new Stats();
-stats.showPanel(0);
-const $stats = stats.dom;
-$stats.style.position = 'absolute';
-$stats.style.left = '0px';
-$stats.style.top = '0px';
+let stats;
+const wrapper = ref(null);
 
 onMounted(() => {
   import('@infinite-canvas-tutorial/ui');
 
-  const $canvas = document.querySelector('ic-canvas');
+  const $canvas = wrapper.value;
   let canvas;
 
-  $canvas.parentElement.appendChild($stats);
+  import('stats.js').then(m => {
+    const Stats = m.default;
+    stats = new Stats();
+    stats.showPanel(0);
+    const $stats = stats.dom;
+    $stats.style.position = 'absolute';
+    $stats.style.left = '0px';
+    $stats.style.top = '0px';
+    $canvas.parentElement.appendChild($stats);
+  });
 
   const rect = new RoughRect({
     x: 100,
@@ -37,7 +41,7 @@ onMounted(() => {
   });
 
   $canvas.addEventListener('ic-frame', (e) => {
-    stats.update();
+    stats?.update();
   });
 
   const gui = new GUI({
@@ -69,5 +73,5 @@ onMounted(() => {
 </script>
 
 <template>
-  <ic-canvas></ic-canvas>
+  <ic-canvas ref="wrapper"></ic-canvas>
 </template>

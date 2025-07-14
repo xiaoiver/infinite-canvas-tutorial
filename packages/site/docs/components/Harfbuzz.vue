@@ -1,7 +1,6 @@
 <script setup>
 import { Path, Group } from '@infinite-canvas-tutorial/core';
 import { ref, onMounted, onUnmounted } from 'vue';
-import Stats from 'stats.js';
 import init from "harfbuzzjs/hb.wasm?init";
 import hbjs from "harfbuzzjs/hbjs.js";
 
@@ -12,12 +11,7 @@ let face;
 let font;
 let buffer;
 
-const stats = new Stats();
-stats.showPanel(0);
-const $stats = stats.dom;
-$stats.style.position = 'absolute';
-$stats.style.left = '0px';
-$stats.style.top = '0px';
+let stats;
 
 const wrapper = ref(null);
 
@@ -28,7 +22,16 @@ onMounted(() => {
 
     if (!$canvas) return;
 
-    $canvas.parentElement.appendChild($stats);
+    import('stats.js').then(m => {
+        const Stats = m.default;
+        stats = new Stats();
+        stats.showPanel(0);
+        const $stats = stats.dom;
+        $stats.style.position = 'absolute';
+        $stats.style.left = '0px';
+        $stats.style.top = '0px';
+        $canvas.parentElement.appendChild($stats);
+    });
 
     $canvas.addEventListener('ic-ready', async (e) => {
         canvas = e.detail;
@@ -89,7 +92,7 @@ onMounted(() => {
     });
 
     $canvas.addEventListener('ic-frame', (e) => {
-        stats.update();
+        stats?.update();
     });
 });
 
