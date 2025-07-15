@@ -73,6 +73,7 @@ export const zh = defineConfig({
               { text: '课程21 - Transformer', link: 'lesson-021' },
               { text: '课程22 - VectorNetwork', link: 'lesson-022' },
               { text: '课程23 - 思维导图', link: 'lesson-023' },
+              { text: '课程24 - 剪贴板', link: 'lesson-024' },
             ],
           },
         ],

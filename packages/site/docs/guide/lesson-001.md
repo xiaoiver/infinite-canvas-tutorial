@@ -89,7 +89,7 @@ Since WebGL and WebGPU use different shader languages, and we don't want to main
 
 ![Transpile shader at runtime](/shader-transpile.png)
 
-All that is needed in the project is to maintain a set of shaders using GLSL 300 syntax, keyword replacements when downgrading to WebGL1, and conversion to GLSL 440 before handing it over to a WASM-formatted [compiler](https://github.com/antvis/g-device-api/tree/master/rust) (using naga and naga-oil) into WGSL.
+All that is needed in the project is to maintain a set of shaders using GLSL 300 syntax, keyword replacements when downgrading to WebGL1, and conversion to GLSL 440 before handing it over to a WASM-formatted [compiler](https://github.com/antvis/g-device-api/tree/master/rust) (using naga and naga-oil) into WGSL. Not coincidentally, [Three.js Shading Language] also uses a higher level of abstraction, and also uses a compiler to output shader code for the target runtime platform.
 
 The following shows the attribute declarations commonly used in the Vertex Shader. This is a very simple scenario, and the syntax actually varies a lot when it comes to the texture sampling part.
 
@@ -527,3 +527,4 @@ More on the plug-in design pattern:
 [Performant Game Loops in JavaScript]: https://www.aleksandrhovhannisyan.com/blog/javascript-game-loop/
 [Extensions in Tiptap]: https://tiptap.dev/docs/editor/core-concepts/extensions#what-are-extensions
 [Basic draw loop]: https://skia.org/docs/user/modules/quickstart/#basic-draw-loop
+[Three.js Shading Language]: https://github.com/mrdoob/three.js/wiki/Three.js-Shading-Language

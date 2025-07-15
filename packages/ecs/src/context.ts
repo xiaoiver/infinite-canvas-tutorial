@@ -18,6 +18,7 @@ export interface AppState {
   cameraY: number;
   cameraRotation: number;
   contextBarVisible: boolean;
+  contextMenuVisible: boolean;
   topbarVisible: boolean;
   penbarVisible: boolean;
   penbarAll: Pen[];
@@ -54,6 +55,7 @@ export const getDefaultAppState: () => AppState = () => {
     cameraY: 0,
     cameraRotation: 0,
     contextBarVisible: true,
+    contextMenuVisible: true,
     topbarVisible: true,
     penbarVisible: true,
     penbarAll: [Pen.HAND, Pen.SELECT, Pen.DRAW_RECT],

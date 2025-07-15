@@ -80,13 +80,13 @@ renderer = Inputs.select(['webgl', 'webgpu'], { label: 'renderer' });
 
 当然，考虑到浏览器兼容性，现阶段我们仍需要尽可能兼容 WebGL1/2。在渲染引擎中，硬件抽象层（Hardware Abstraction Layer，简称 HAL）将 GPU 硬件细节抽象化，使得上层可以不依赖于具体的硬件实现。
 
-我们希望基于 WebGL1/2 和 WebGPU 尽可能提供一套统一的 API，同时提供 Shader 转译和模块化功能。[@antv/g-device-api] 参考了 [noclip] 的实现，在其基础上兼容了 WebGL1，我们也在一些可视化相关的项目中使用了它。
+我们希望基于 WebGL1/2 和 WebGPU 尽可能提供一套统一的 API，同时提供 Shader 转译和模块化功能。[@antv/g-device-api] 参考了 [noclip] 的实现，在其基础上兼容了 WebGL1，我也在一些可视化相关的项目中使用了它。
 
 由于 WebGL 和 WebGPU 使用 Shader 语言不同，又不希望维护 GLSL 和 WGSL 两套代码，因此我们选择在运行时对 Shader 进行转译：
 
 ![Transpile shader at runtime](/shader-transpile.png)
 
-在项目中只需要维护一套使用 GLSL 300 语法的 Shader，降级到 WebGL1 时进行关键词替换即可，在 WebGPU 环境下先转换成 GLSL 440 再交给 WASM 格式的[编译器](https://github.com/antvis/g-device-api/tree/master/rust)（使用了 naga 和 naga-oil ）转译成 WGSL。
+在项目中只需要维护一套使用 GLSL 300 语法的 Shader，降级到 WebGL1 时进行关键词替换即可，在 WebGPU 环境下先转换成 GLSL 440 再交给 WASM 格式的[编译器](https://github.com/antvis/g-device-api/tree/master/rust)（使用了 naga 和 naga-oil ）转译成 WGSL。无独有偶，[Three.js Shading Language] 也使用了一种更高的抽象层次，同样使用编译器输出目标运行平台的 Shader 代码。
 
 下面展示了 Vertex Shader 中常用的 attribute 声明。这只是一个非常简单的场景，实际上涉及到纹理采样部分的语法差别非常大。
 
@@ -524,3 +524,4 @@ const canvas = await new Canvas({
 [Performant Game Loops in JavaScript]: https://www.aleksandrhovhannisyan.com/blog/javascript-game-loop/
 [Extensions in Tiptap]: https://tiptap.dev/docs/editor/core-concepts/extensions#what-are-extensions
 [Basic draw loop]: https://skia.org/docs/user/modules/quickstart/#basic-draw-loop
+[Three.js Shading Language]: https://github.com/mrdoob/three.js/wiki/Three.js-Shading-Language

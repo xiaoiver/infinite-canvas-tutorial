@@ -15,6 +15,7 @@ export * from './color-picker';
 export * from './input-solid';
 export * from './input-gradient';
 export * from './context-bar';
+export * from './context-menu';
 export * from './fill-action-button';
 export * from './stroke-action-button';
 export * from './stroke-content';

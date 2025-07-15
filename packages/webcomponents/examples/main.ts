@@ -44,8 +44,8 @@ canvas.addEventListener(Event.READY, async (e) => {
     // contextBarVisible: false,
     penbarVisible: false,
     taskbarVisible: false,
-    rotateEnabled: false,
-    flipEnabled: false,
+    // rotateEnabled: false,
+    // flipEnabled: false,
   });
   // api.setCheckboardStyle(CheckboardStyle.NONE);
   api.setPen(Pen.SELECT);

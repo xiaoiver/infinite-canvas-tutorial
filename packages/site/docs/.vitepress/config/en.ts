@@ -107,6 +107,10 @@ export const en = defineConfig({
                 text: 'Lesson 023 - Mindmap',
                 link: 'lesson-023',
               },
+              {
+                text: 'Lesson 024 - Clipboard',
+                link: 'lesson-024',
+              },
             ],
           },
         ],

@@ -126,7 +126,8 @@ export class EventWriter extends System {
 
         pointerIds.add(e.pointerId);
 
-        if (pointerIds.size > 1) {
+        // ignore right click for now
+        if (pointerIds.size > 1 || e.button === 2) {
           return;
         }
 

@@ -69,6 +69,9 @@ import '@spectrum-web-components/icons-workflow/icons/sp-icon-layers-forward.js'
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-layers-bring-to-front.js';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-layers-send-to-back.js';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-show-all-layers.js';
+import '@spectrum-web-components/icons-workflow/icons/sp-icon-copy.js';
+import '@spectrum-web-components/icons-workflow/icons/sp-icon-cut.js';
+import '@spectrum-web-components/icons-workflow/icons/sp-icon-paste.js';
 
 export const TOP_NAVBAR_HEIGHT = 48;
 
@@ -225,6 +228,7 @@ export class InfiniteCanvas extends LitElement {
             <ic-spectrum-penbar></ic-spectrum-penbar>
             <ic-spectrum-taskbar></ic-spectrum-taskbar>
             <ic-spectrum-context-bar></ic-spectrum-context-bar>
+            <ic-spectrum-context-menu></ic-spectrum-context-menu>
             <ic-spectrum-text-editor></ic-spectrum-text-editor>
             ${$canvas}`,
         ),
