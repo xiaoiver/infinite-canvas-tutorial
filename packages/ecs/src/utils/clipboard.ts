@@ -34,7 +34,9 @@ export const ALLOWED_PASTE_MIME_TYPES = [
 type AllowedPasteMimeTypes = (typeof ALLOWED_PASTE_MIME_TYPES)[number];
 
 const probablySupportsClipboardWriteText =
-  'clipboard' in navigator && 'writeText' in navigator.clipboard;
+  typeof navigator !== 'undefined' &&
+  'clipboard' in navigator &&
+  'writeText' in navigator.clipboard;
 
 // adapted from https://github.com/zenorocha/clipboard.js/blob/ce79f170aa655c408b6aab33c9472e8e4fa52e19/src/clipboard-action.js#L48
 const copyTextViaExecCommand = (text: string | null) => {
