@@ -409,7 +409,7 @@ export class SDFText extends Drawcall {
     const globalRenderOrder = shape.has(GlobalRenderOrder)
       ? shape.read(GlobalRenderOrder).value
       : 0;
-
+    const zIndex = globalRenderOrder / ZINDEX_FACTOR;
     const { value: fill } = shape.has(FillSolid)
       ? shape.read(FillSolid)
       : { value: null };
@@ -446,12 +446,7 @@ export class SDFText extends Drawcall {
     const u_FillColor = [fr / 255, fg / 255, fb / 255, fo];
     const u_StrokeColor = [sr / 255, sg / 255, sb / 255, so];
 
-    const u_ZIndexStrokeWidth = [
-      globalRenderOrder / ZINDEX_FACTOR,
-      width,
-      fontSize,
-      0,
-    ];
+    const u_ZIndexStrokeWidth = [zIndex, width, fontSize, 0];
 
     const u_Opacity = [
       opacity,

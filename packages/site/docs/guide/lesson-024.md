@@ -1,52 +1,52 @@
 ---
 outline: deep
-description: '实现上下文菜单和剪贴板'
+description: 'Implementing context menu and clipboard functionality'
 ---
 
 <script setup>
-import ZIndex from '../../components/ZIndex.vue';
+import ZIndex from '../components/ZIndex.vue';
 </script>
 
-# 课程 24 - 上下文菜单和剪贴板
+# Lesson 24 - Context Menu and Clipboard
 
-在本节课中我们将介绍如何实现上下文菜单和剪贴板功能。
+In this lesson, we will introduce how to implement context menu and clipboard functionality.
 
 <img src="/context-menu.png" alt="context menu" style="max-width: 300px;"/>
 
-## 实现上下文菜单 {#context-menu}
+## Implementing Context Menu {#context-menu}
 
-上下文菜单通常由右键或者长按交互触发。浏览器默认实现了菜单内容，例如在 `<canvas>` 上触发会展示 “Save as” 等等。
-因此第一步我们要监听 [contextmenu] 事件并阻止浏览器默认行为，参考：[radix - Context Menu]。
+Context menus are typically triggered by right-click or long-press interactions. Browsers implement default menu content by default, for example, triggering on `<canvas>` will show "Save as" and other options.
+Therefore, the first step is to listen for the [contextmenu] event and prevent the browser's default behavior, reference: [radix - Context Menu].
 
 ```ts
 private handleContextMenu = async (event: MouseEvent) => {
     event.preventDefault();
     event.stopPropagation();
 
-    // ...展示 Overlay
+    // ...show Overlay
 };
 
 this.api.element.addEventListener('contextmenu', this.handleContextMenu);
 ```
 
-接下来我们需要在指定位置展示菜单 UI 组件。[课程 18 - 基于 Spectrum 实现 UI]，我们使用 Overlay 的命令式 API，配合 [Using a virtual trigger]：
+Next, we need to display the menu UI component at the specified position. In [Lesson 18 - Implementing UI with Spectrum], we use the imperative API of Overlay, combined with [Using a virtual trigger]:
 
 ```ts
 import { html, render } from '@spectrum-web-components/base';
 import { VirtualTrigger, openOverlay } from '@spectrum-web-components/overlay';
 
 private handleContextMenu = async (event: MouseEvent) => {
-    // ...阻止浏览器默认行为
+    // ...prevent browser default behavior
 
-    // 在当前位置触发
+    // Trigger at current position
     const trigger = event.target as LitElement;
     const virtualTrigger = new VirtualTrigger(event.clientX, event.clientY);
 
-    // 渲染 Lit 模版
+    // Render Lit template
     const fragment = document.createDocumentFragment();
     render(this.contextMenuTemplate(), fragment);
 
-    // 展示 Overlay
+    // Show Overlay
     const popover = fragment.querySelector('sp-popover') as HTMLElement;
     const overlay = await openOverlay(popover, {
         trigger: virtualTrigger,
@@ -60,19 +60,19 @@ private handleContextMenu = async (event: MouseEvent) => {
 }
 ```
 
-在下面的例子中，在选中图形上唤起上下文菜单后可以调整 `z-index`。或者使用快捷键，在 Figma 中是 <kbd>[</kbd> 和 <kbd>]</kbd>。这里我参考了 Photoshop Web，使用 <kbd>⌘[</kbd> 和 <kbd>⌘]</kbd>。
+In the example below, after invoking the context menu on a selected shape, you can adjust the `z-index`. Alternatively, you can use keyboard shortcuts. In Figma, these are <kbd>[</kbd> and <kbd>]</kbd>. Here, I've referenced Photoshop Web and used <kbd>⌘[</kbd> and <kbd>⌘]</kbd>.
 
 <ZIndex />
 
-## 写入剪贴板 {#clipboard-write-text}
+## Writing to Clipboard {#clipboard-write-text}
 
-我们的目标是向剪贴板中写入序列化后的图形列表。用户可以通过两种方式触发这一行为：通过 [copy] 事件触发（例如 <kbd>Ctrl+C</kbd>）；通过上下文菜单触发。我们先来看第一种情况，监听 [copy] 事件，这里的 [passive] 可以告知浏览器我们在事件处理中有可能调用 `preventDefault`：
+Our goal is to write a serialized list of shapes to the clipboard. Users can trigger this behavior in two ways: through the [copy] event (such as <kbd>Ctrl+C</kbd>); through the context menu. Let's first look at the first case, listening for the [copy] event. The [passive] option here can inform the browser that we might call `preventDefault` in the event handler:
 
 ```ts
 document.addEventListener('copy', this.handleCopy, { passive: false });
 ```
 
-此时需要通过 `activeElement` 确保画布处于当前激活态，然后禁用浏览器默认行为并阻止事件冒泡：
+At this point, we need to ensure the canvas is in the currently active state through `activeElement`, then disable the browser's default behavior and prevent event bubbling:
 
 ```ts
 private handleCopy = (event: ClipboardEvent) => {
@@ -84,14 +84,14 @@ private handleCopy = (event: ClipboardEvent) => {
         return;
     }
 
-    this.executeCopy(event); // 传递 ClipboardEvent
+    this.executeCopy(event); // Pass ClipboardEvent
 
     event.preventDefault();
     event.stopPropagation();
 };
 ```
 
-在通过上下文菜单触发的场景下，并不存在 [ClipboardEvent]。参考 [excalidraw clipboard] 和 [actionClipboard] 的实现从新到旧依次尝试浏览器的 API：
+In scenarios triggered through the context menu, there is no [ClipboardEvent]. Referencing the implementation of [excalidraw clipboard] and [actionClipboard], try browser APIs from newest to oldest:
 
 ```ts
 export async function copyTextToClipboard(
@@ -109,15 +109,15 @@ export async function copyTextToClipboard(
 }
 ```
 
-## 读取剪贴板 {#clipboard-read}
+## Reading from Clipboard {#clipboard-read}
 
-读取剪贴板的实现决定了我们支持哪些常见类型的文件，从 MIME 类型上包括：图片、文本。而文本又可能包含序列化图形、SVG、URL、甚至是 mermaid 语法等等。我们先从最简单的情况开始，接收上一节中序列化后的图形列表文本。
+The implementation of reading from the clipboard determines which common file types we support. From MIME types, this includes: images and text. Text can contain serialized shapes, SVG, URLs, or even mermaid syntax, among others. We'll start with the simplest case, accepting serialized shape list text from the previous section.
 
 ```ts
 document.addEventListener('paste', this.handlePaste, { passive: false });
 ```
 
-和写入剪贴板一样，先尝试 [read] 方法，该方法仅在 HTTPS 下生效，理论上支持所有类型数据，不局限于纯文本，几乎所有现代浏览器都支持了该方法，只是在数据类型上有所限制，通常包括文本、HTML 和图片。如果不支持该方法就降级到 [readText]
+Like writing to the clipboard, first try the [read] method, which only works under HTTPS and theoretically supports all types of data, not limited to plain text. Almost all modern browsers support this method, though they have limitations on data types, typically including text, HTML, and images. If this method is not supported, fall back to [readText]
 
 ```ts
 export const readSystemClipboard = async () => {
@@ -132,9 +132,9 @@ export const readSystemClipboard = async () => {
 };
 ```
 
-### 反序列化图形 {#deserialize}
+### Deserializing Shapes {#deserialize}
 
-反序列化后，我们只需要重新生成 `id`：
+After deserialization, we only need to regenerate the `id`:
 
 ```ts
 if (data.elements) {
@@ -150,22 +150,22 @@ if (data.elements) {
 }
 ```
 
-但这样复制后的图形会重叠在一起，我们可以采用以下两种策略：
+However, the copied shapes will overlap this way. We can adopt the following two strategies:
 
-1. 跟随鼠标位置创建，这就要求记录鼠标最近一次的移动位置
-2. 在原有图形位置上增加一个偏移量
+1. Create following the mouse position, which requires recording the mouse's most recent movement position
+2. Add an offset to the original shape position
 
-### 图片 {#image}
+### Images {#image}
 
-### 纯文本 {#plain-text}
+### Plain Text {#plain-text}
 
-## 扩展阅读 {#extended-reading}
+## Extended Reading {#extended-reading}
 
 -   [Interact with the clipboard]
 
 [contextmenu]: https://developer.mozilla.org/en-US/docs/Web/API/Element/contextmenu_event
 [radix - Context Menu]: https://www.radix-ui.com/primitives/docs/components/context-menu
-[课程 18 - 基于 Spectrum 实现 UI]: /zh/guide/lesson-018
+[Lesson 18 - Implementing UI with Spectrum]: /guide/lesson-018
 [Using a virtual trigger]: https://opensource.adobe.com/spectrum-web-components/components/imperative-api/#using-a-virtual-trigger
 [copy]: https://developer.mozilla.org/en-US/docs/Web/API/Element/copy_event
 [Interact with the clipboard]: https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/Interact_with_the_clipboard

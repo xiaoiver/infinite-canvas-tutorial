@@ -291,6 +291,10 @@ export const en = defineConfig({
                 link: 'canvas-mode-select',
               },
               {
+                text: 'Adjust z-index with bring to front and send to back',
+                link: 'zindex',
+              },
+              {
                 text: 'Declarative gradient',
                 link: 'declarative-gradient',
               },

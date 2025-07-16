@@ -23,19 +23,15 @@ $container.innerHTML = svg;
 const $svg = $container.children[0] as SVGSVGElement;
 
 const camera = svgSvgElementToComputedCamera($svg);
-const nodes = svgElementsToSerializedNodes(
-  Array.from($svg.children) as SVGElement[],
-);
+// const nodes = svgElementsToSerializedNodes(
+//   Array.from($svg.children) as SVGElement[],
+// );
 
 // console.log('nodes', nodes);
 
 const canvas = document.querySelector<HTMLElement>('#canvas1')!;
 canvas.addEventListener(Event.READY, async (e) => {
   const api = e.detail;
-
-  // api.onchange = (e) => {
-  //   console.log(e);
-  // };
 
   api.setAppState({
     ...api.getAppState(),
@@ -51,58 +47,44 @@ canvas.addEventListener(Event.READY, async (e) => {
   api.setPen(Pen.SELECT);
   // api.setTaskbars([Task.SHOW_LAYERS_PANEL, Task.SHOW_PROPERTIES_PANEL]);
 
-  api.updateNodes(nodes);
+  const nodes = [
+    {
+      id: '1',
+      type: 'rect',
+      x: 100,
+      y: 100,
+      width: 100,
+      height: 100,
+      fill: 'red',
+      zIndex: 1,
+    },
+    {
+      id: '2',
+      type: 'rect',
+      x: 150,
+      y: 150,
+      width: 100,
+      height: 100,
+      fill: 'blue',
+      zIndex: 2,
+    },
+    {
+      id: '3',
+      type: 'rect',
+      x: 200,
+      y: 200,
+      width: 100,
+      height: 100,
+      fill: 'green',
+      zIndex: 3,
+    },
+  ];
 
   api.runAtNextTick(() => {
-    // api.gotoLandmark(
-    //   api.createLandmark({
-    //     x: camera.x,
-    //     y: camera.y,
-    //     zoom: 2,
-    //   }),
-    //   { duration: 100 },
-    // );
-    // const node = {
-    //   id: '1',
-    //   type: 'ellipse',
-    //   fill: 'red',
-    //   x: 0,
-    //   y: 50,
-    //   width: 200,
-    //   height: 100,
-    //   visibility: 'visible',
-    // };
-    // api.updateNodes([node]);
-    //   // api.selectNodes([node]);
+    api.updateNodes(nodes);
+    api.record();
+    // api.selectNodes([nodes[1]]);
   });
-
-  // api.updateNodes([
-  //   {
-  //     id: '98a47089-1060-4f70-9020-f8802c23c13a',
-  //     type: 'text',
-  //     content: '123',
-  //     anchorX: 201,
-  //     anchorY: 199,
-  //     fontSize: 50,
-  //     fontFamily: 'system-ui',
-  //     textAlign: 'left',
-  //     textBaseline: 'alphabetic',
-  //     fill: 'black',
-  //     visibility: 'visible',
-  //     decorationLine: 'underline',
-  //     decorationStyle: 'wavy',
-  //     decorationThickness: 10,
-  //     decorationColor: 'red',
-  //   },
-  // ]);
-
-  // });
-  // api.updateNodes(nodes);
-  // api.selectNodes([nodes[0]]);
-
-  // console.log(nodes);
-
-  api.record();
 });
 
 // canvas.addEventListener(Event.SCREENSHOT_DOWNLOADED, (e) => {

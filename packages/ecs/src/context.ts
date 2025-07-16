@@ -70,3 +70,8 @@ export const getDefaultAppState: () => AppState = () => {
     flipEnabled: true,
   };
 };
+
+export const SIBLINGS_MAX_Z_INDEX = 1000000;
+export const SIBLINGS_MIN_Z_INDEX = -1000000;
+export const TRANSFORMER_Z_INDEX = SIBLINGS_MAX_Z_INDEX * 10;
+export const HIGHLIGHTER_Z_INDEX = TRANSFORMER_Z_INDEX - 1;

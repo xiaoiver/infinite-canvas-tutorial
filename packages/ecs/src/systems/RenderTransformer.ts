@@ -30,8 +30,8 @@ import { updateGlobalTransform } from './Transform';
 import { API, Camera, Text, Visibility } from '..';
 import { inside } from '../utils/math';
 import { distanceBetweenPoints } from '../utils/matrix';
+import { TRANSFORMER_Z_INDEX } from '../context';
 
-export const TRANSFORMER_Z_INDEX = 100000;
 const TRANSFORMER_ANCHOR_RADIUS = 5;
 export const TRANSFORMER_ANCHOR_ROTATE_RADIUS = 20;
 export const TRANSFORMER_ANCHOR_RESIZE_RADIUS = 5;
@@ -426,15 +426,7 @@ export class RenderTransformer extends System {
     }
   }
 
-  // resetTransformCache(camera: Entity) {
-  //   this.#nodeRectCache.delete(camera);
-  // }
-
   getOBB(camera: Entity): OBB {
-    // if (this.#nodeRectCache.has(camera)) {
-    //   return this.#nodeRectCache.get(camera);
-    // }
-
     const { selecteds } = camera.read(Transformable);
 
     if (selecteds.length === 1) {

@@ -73,7 +73,7 @@ export const zh = defineConfig({
               { text: '课程21 - Transformer', link: 'lesson-021' },
               { text: '课程22 - VectorNetwork', link: 'lesson-022' },
               { text: '课程23 - 思维导图', link: 'lesson-023' },
-              { text: '课程24 - 剪贴板', link: 'lesson-024' },
+              { text: '课程24 - 上下文菜单和剪贴板', link: 'lesson-024' },
             ],
           },
         ],
@@ -249,6 +249,10 @@ export const zh = defineConfig({
               {
                 text: '选择画布模式',
                 link: 'canvas-mode-select',
+              },
+              {
+                text: '通过上移下移调整层级',
+                link: 'zindex',
               },
               {
                 text: '声明式渐变',

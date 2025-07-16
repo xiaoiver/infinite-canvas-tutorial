@@ -290,6 +290,14 @@ pnpm run dev
 | :------------------------------------------: | :------------------------------------: |
 | ![d3-flextree](./screenshots/lesson23-2.png) | ![Mindmap](./screenshots/lesson23.png) |
 
+## 课程 24 - 上下文菜单和剪贴板 [🔗](https://infinitecanvas.cc/zh/guide/lesson-024)
+
+-   使用 Spectrum 实现上下文菜单
+-   通过上移下移调整图形次序
+-   写入和读取剪贴板
+
+![context menu](./screenshots/lesson24.png)
+
 [infinitecanvas]: https://infinitecanvas.tools/
 [Figma]: https://madebyevan.com/figma/building-a-professional-design-tool-on-the-web/
 [Modyfi]: https://digest.browsertech.com/archive/browsertech-digest-how-modyfi-is-building-with/

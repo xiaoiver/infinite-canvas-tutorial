@@ -5,9 +5,9 @@ head:
     - ['meta', { property: 'og:title', content: 'Lesson 20 - Collaboration' }]
 ---
 
-<script setup>
+<!-- <script setup>
 import LoroCRDT from '../components/LoroCRDT.vue';
-</script>
+</script> -->
 
 # Lesson 20 - Collaboration
 
@@ -206,11 +206,11 @@ Referring to [Excalidraw updateScene], we can also provide an `updateNodes` meth
 api.updateNodes(nodes);
 ```
 
-<LoroCRDT />
+<!-- <LoroCRDT /> -->
 
 <br />
 
-<LoroCRDT />
+<!-- <LoroCRDT /> -->
 
 ## Extended Reading {#extended-reading}
 

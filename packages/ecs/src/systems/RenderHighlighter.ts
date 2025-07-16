@@ -28,10 +28,8 @@ import { getSceneRoot, updateGlobalTransform } from './Transform';
 import {
   TRANSFORMER_ANCHOR_FILL_COLOR,
   TRANSFORMER_ANCHOR_STROKE_COLOR,
-  TRANSFORMER_Z_INDEX,
 } from './RenderTransformer';
-
-const HIGHLIGHTER_Z_INDEX = TRANSFORMER_Z_INDEX - 1;
+import { HIGHLIGHTER_Z_INDEX } from '../context';
 
 /**
  * Highlight objects when hovering over them like Figma

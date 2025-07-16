@@ -12,6 +12,7 @@ import { Commands, EntityCommands } from './commands';
 import { AppState, getDefaultAppState, Task } from './context';
 import {
   BitmapFont,
+  copyTextToClipboard,
   deserializePoints,
   EASING_FUNCTION,
   getScale,
@@ -51,6 +52,7 @@ import {
   ToBeDeleted,
   Transform,
   Transformable,
+  UI,
   VectorScreenshotRequest,
   ZIndex,
 } from './components';
@@ -61,6 +63,7 @@ import {
   updateMatrix,
 } from './systems';
 import { DOMAdapter } from './environment';
+import { SIBLINGS_MAX_Z_INDEX, SIBLINGS_MIN_Z_INDEX } from './context';
 
 export interface StateManagement {
   getAppState: () => AppState;
@@ -1001,7 +1004,7 @@ export class API {
     return deletedNodes;
   }
 
-  private getSiblings(node: SerializedNode) {
+  getSiblings(node: SerializedNode) {
     const entity = this.getEntity(node);
     if (!entity.has(Children)) {
       return [];
@@ -1024,34 +1027,48 @@ export class API {
    * @see https://developer.mozilla.org/en-US/docs/Web/CSS/z-index
    */
   bringToFront(node: SerializedNode) {
-    const children = this.getSiblings(node);
+    const children = this.getSiblings(node).filter((child) => !child.has(UI));
     const maxZIndex = Math.max(
       ...children.map((child) => child.read(ZIndex).value),
     );
+
+    if (node.zIndex === maxZIndex) {
+      return;
+    }
 
     this.updateNode(node, { zIndex: maxZIndex + 1 });
   }
 
   bringForward(node: SerializedNode) {
-    const children = this.getSiblings(node);
+    const children = this.getSiblings(node).filter((child) => !child.has(UI));
     const zIndexes = children
       .map((child) => child.read(ZIndex).value)
       .sort((a, b) => a - b);
     const index = zIndexes.indexOf(node.zIndex);
-    const nextZIndex = zIndexes[index + 1] ?? Infinity;
-    const nextNextZIndex = zIndexes[index + 2] ?? Infinity;
+
+    if (index === zIndexes.length - 1) {
+      return;
+    }
+
+    const nextZIndex = zIndexes[index + 1] ?? SIBLINGS_MAX_Z_INDEX;
+    const nextNextZIndex = zIndexes[index + 2] ?? SIBLINGS_MAX_Z_INDEX;
 
     this.updateNode(node, { zIndex: (nextZIndex + nextNextZIndex) / 2 });
   }
 
   sendBackward(node: SerializedNode) {
-    const children = this.getSiblings(node);
+    const children = this.getSiblings(node).filter((child) => !child.has(UI));
     const zIndexes = children
       .map((child) => child.read(ZIndex).value)
       .sort((a, b) => a - b);
     const index = zIndexes.indexOf(node.zIndex);
-    const prevZIndex = zIndexes[index - 1] ?? -Infinity;
-    const prevPrevZIndex = zIndexes[index - 2] ?? -Infinity;
+
+    if (index === 0) {
+      return;
+    }
+
+    const prevZIndex = zIndexes[index - 1] ?? SIBLINGS_MIN_Z_INDEX;
+    const prevPrevZIndex = zIndexes[index - 2] ?? SIBLINGS_MIN_Z_INDEX;
 
     this.updateNode(node, { zIndex: (prevZIndex + prevPrevZIndex) / 2 });
   }
@@ -1060,10 +1077,14 @@ export class API {
    * Send current node to the back in its context.
    */
   sendToBack(node: SerializedNode) {
-    const children = this.getSiblings(node);
+    const children = this.getSiblings(node).filter((child) => !child.has(UI));
     const minZIndex = Math.min(
       ...children.map((child) => child.read(ZIndex).value),
     );
+
+    if (node.zIndex === minZIndex) {
+      return;
+    }
 
     this.updateNode(node, { zIndex: minZIndex - 1 });
   }
@@ -1151,6 +1172,14 @@ export class API {
       }),
     );
     this.commands.execute();
+  }
+
+  async copyToClipboard(
+    selectedNodes: SerializedNode[],
+    clipboardEvent?: ClipboardEvent,
+  ) {
+    const text = JSON.stringify(selectedNodes);
+    await copyTextToClipboard(text, clipboardEvent);
   }
 
   runAtNextTick(fn: () => any) {

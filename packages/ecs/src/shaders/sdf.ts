@@ -160,7 +160,7 @@ void main() {
   gl_Position = vec4((u_ProjectionMatrix 
     * u_ViewMatrix
     * model 
-    * vec3(position.xy + v_FragCoord * scale, 1)).xy, position.z, 1);
+    * vec3(position.xy + v_FragCoord * scale, 1)).xy, zIndex, 1);
 }
 `;
 

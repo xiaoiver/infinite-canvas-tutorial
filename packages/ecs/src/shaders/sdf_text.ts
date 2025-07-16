@@ -44,7 +44,12 @@ out vec2 v_Uv;
 void main() {
   ${wireframe_vert}
 
-  float zIndex = u_ZIndexStrokeWidth.x;
+  #ifdef USE_INSTANCES
+    float zIndex = a_Position.z;
+  #else
+    float zIndex = u_ZIndexStrokeWidth.x;
+  #endif
+
   float strokeWidth = u_ZIndexStrokeWidth.y;
   float fontSize = u_ZIndexStrokeWidth.z;
   float sizeAttenuation = u_Opacity.w;
@@ -60,7 +65,7 @@ void main() {
   gl_Position = vec4((u_ProjectionMatrix 
     * u_ViewMatrix
     * u_ModelMatrix 
-    * vec3(a_Position.xy + offset, 1)).xy, a_Position.z, 1);
+    * vec3(a_Position.xy + offset, 1)).xy, zIndex, 1);
 }
 `;
 
