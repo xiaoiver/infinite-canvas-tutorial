@@ -393,9 +393,3 @@ export const readSystemClipboard = async () => {
 
   return types;
 };
-
-export const SVGStringToFile = (SVGString: string, filename: string = '') => {
-  return new File([new TextEncoder().encode(SVGString)], filename, {
-    type: MIME_TYPES.svg,
-  }) as File & { type: typeof MIME_TYPES.svg };
-};

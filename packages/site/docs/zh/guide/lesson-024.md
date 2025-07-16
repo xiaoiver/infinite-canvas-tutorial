@@ -132,6 +132,8 @@ export const readSystemClipboard = async () => {
 };
 ```
 
+另外我们也可以用这个方法判断此时剪贴板是否为空，如果为空就禁用 `Paste` 菜单项。
+
 ### 反序列化图形 {#deserialize}
 
 反序列化后，我们只需要重新生成 `id`：
@@ -152,12 +154,53 @@ if (data.elements) {
 
 但这样复制后的图形会重叠在一起，我们可以采用以下两种策略：
 
-1. 跟随鼠标位置创建，这就要求记录鼠标最近一次的移动位置
+1. 跟随鼠标位置创建
 2. 在原有图形位置上增加一个偏移量
+
+第二种比较简单：
+
+```ts
+const nodes = data.elements.map((node) => {
+    node.id = uuidv4();
+    node.x += 10; // [!code ++]
+    node.y += 10; // [!code ++]
+    return node;
+});
+```
+
+而第一种需要记录鼠标最近一次的移动位置。
 
 ### 图片 {#image}
 
+先来看复制非矢量图片的情况。
+
+在粘贴图片时，Excalidraw 并不会对 SVG 类型的图片进行特殊处理。我们可以参考 Figma 的做法 [Convert SVG to frames]，将 SVG 元素转换成画布图形，并让其中的元素可编辑。
+
+```ts
+import { svgElementsToSerializedNodes } from '@infinite-canvas-tutorial/ecs';
+
+if (data.text) {
+    const string = data.text.trim();
+    if (string.startsWith('<svg') && string.endsWith('</svg>')) {
+        // Extract semantic groups inside comments
+        const $container = document.createElement('div');
+        $container.innerHTML = string;
+        const $svg = $container.children[0] as SVGSVGElement;
+        const nodes = svgElementsToSerializedNodes(
+            Array.from($svg.children) as SVGElement[],
+        );
+
+        this.updateAndSelectNodes(nodes);
+        return;
+    }
+}
+```
+
 ### 纯文本 {#plain-text}
+
+## 拖拽 {#drag-n-drop}
+
+除了通过复制的方式导入，还可以通过拖拽放置。
 
 ## 扩展阅读 {#extended-reading}
 
@@ -175,3 +218,4 @@ if (data.elements) {
 [passive]: https://developer.mozilla.org/en-US/docs/Web/API/EventTarget/addEventListener#passive
 [read]: https://developer.mozilla.org/en-US/docs/Web/API/Clipboard/read
 [readText]: https://developer.mozilla.org/en-US/docs/Web/API/Clipboard/readText
+[Convert SVG to frames]: https://forum.figma.com/ask-the-community-7/convert-svg-to-frames-18578

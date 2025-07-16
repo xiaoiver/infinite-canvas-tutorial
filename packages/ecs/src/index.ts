@@ -35,7 +35,7 @@ export {
   parseClipboard,
   createPasteEvent,
   readSystemClipboard,
-  SVGStringToFile,
+  isSupportedImageFileType,
   type Gradient,
   type SerializedNode,
   type OrderedSerializedNode,

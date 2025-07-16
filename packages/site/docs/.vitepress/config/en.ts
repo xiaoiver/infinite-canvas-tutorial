@@ -108,7 +108,7 @@ export const en = defineConfig({
                 link: 'lesson-023',
               },
               {
-                text: 'Lesson 024 - Clipboard',
+                text: 'Lesson 024 - Context menu and clipboard',
                 link: 'lesson-024',
               },
             ],

@@ -132,6 +132,8 @@ export const readSystemClipboard = async () => {
 };
 ```
 
+Alternatively, we can use this method to determine if the clipboard is empty at the moment, and disable the `Paste` menu item if it is empty.
+
 ### Deserializing Shapes {#deserialize}
 
 After deserialization, we only need to regenerate the `id`:
@@ -155,9 +157,48 @@ However, the copied shapes will overlap this way. We can adopt the following two
 1. Create following the mouse position, which requires recording the mouse's most recent movement position
 2. Add an offset to the original shape position
 
+The second is simpler:
+
+```ts
+const nodes = data.elements.map((node) => {
+    node.id = uuidv4();
+    node.x += 10; // [!code ++]
+    node.y += 10; // [!code ++]
+    return node;
+});
+```
+
 ### Images {#image}
 
+Let's look at copying non-vector images first.
+
+Excalidraw doesn't do anything special with SVG type images when pasting them. We can refer to Figma's approach [Convert SVG to frames] to convert SVG elements to canvas graphics and make the elements in them editable.
+
+```ts
+import { svgElementsToSerializedNodes } from '@infinite-canvas-tutorial/ecs';
+
+if (data.text) {
+    const string = data.text.trim();
+    if (string.startsWith('<svg') && string.endsWith('</svg>')) {
+        // Extract semantic groups inside comments
+        const $container = document.createElement('div');
+        $container.innerHTML = string;
+        const $svg = $container.children[0] as SVGSVGElement;
+        const nodes = svgElementsToSerializedNodes(
+            Array.from($svg.children) as SVGElement[],
+        );
+
+        this.updateAndSelectNodes(nodes);
+        return;
+    }
+}
+```
+
 ### Plain Text {#plain-text}
+
+## Drag n drop {#drag-n-drop}
+
+In addition to importing by copying, you can also place by drag-n-drop.
 
 ## Extended Reading {#extended-reading}
 
@@ -175,3 +216,4 @@ However, the copied shapes will overlap this way. We can adopt the following two
 [passive]: https://developer.mozilla.org/en-US/docs/Web/API/EventTarget/addEventListener#passive
 [read]: https://developer.mozilla.org/en-US/docs/Web/API/Clipboard/read
 [readText]: https://developer.mozilla.org/en-US/docs/Web/API/Clipboard/readText
+[Convert SVG to frames]: https://forum.figma.com/ask-the-community-7/convert-svg-to-frames-18578

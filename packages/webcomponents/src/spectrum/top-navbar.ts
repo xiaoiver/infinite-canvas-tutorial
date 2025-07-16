@@ -1,10 +1,15 @@
-import { html, css, LitElement } from 'lit';
-import { customElement } from 'lit/decorators.js';
+import { html, css, LitElement, PropertyValues } from 'lit';
+import { customElement, query, state } from 'lit/decorators.js';
 import { when } from 'lit/directives/when.js';
 import { consume } from '@lit/context';
-import { CheckboardStyle, AppState } from '@infinite-canvas-tutorial/ecs';
+import {
+  CheckboardStyle,
+  AppState,
+  readSystemClipboard,
+} from '@infinite-canvas-tutorial/ecs';
 import { apiContext, appStateContext } from '../context';
 import { ExtendedAPI } from '../API';
+import { executeCopy, executeCut, executePaste } from './context-menu';
 
 export enum ExportFormat {
   SVG = 'svg',
@@ -49,6 +54,16 @@ export class TopNavbar extends LitElement {
   @consume({ context: apiContext, subscribe: true })
   api: ExtendedAPI;
 
+  @state()
+  private isClipboardEmpty = true;
+
+  @query('sp-action-menu', true)
+  private actionMenu: LitElement;
+
+  protected firstUpdated(_changedProperties: PropertyValues): void {
+    this.actionMenu.addEventListener('sp-opened', this.handleOpen);
+  }
+
   connectedCallback() {
     super.connectedCallback();
     document.addEventListener('keydown', this.handleKeyDown);
@@ -87,6 +102,12 @@ export class TopNavbar extends LitElement {
       this.handleUndo();
     } else if (value === 'redo') {
       this.handleRedo();
+    } else if (value === 'cut') {
+      this.handleCut();
+    } else if (value === 'copy') {
+      this.handleCopy();
+    } else if (value === 'paste') {
+      this.handlePaste();
     }
   }
 
@@ -107,7 +128,27 @@ export class TopNavbar extends LitElement {
     this.api.redo();
   }
 
+  private handleCut() {
+    executeCut(this.api, this.appState);
+  }
+
+  private handleCopy() {
+    executeCopy(this.api, this.appState);
+  }
+
+  private handlePaste() {
+    executePaste(this.api, this.appState);
+  }
+
+  private handleOpen() {
+    readSystemClipboard().then((clipboard) => {
+      this.isClipboardEmpty = Object.keys(clipboard).length === 0;
+    });
+  }
+
   render() {
+    const isSelectedEmpty = this.appState.layersSelected.length === 0;
+
     return when(
       this.appState.topbarVisible,
       () =>
@@ -136,15 +177,18 @@ export class TopNavbar extends LitElement {
                     <kbd slot="value">⇧⌘Z</kbd>
                   </sp-menu-item>
                   <sp-menu-divider></sp-menu-divider>
-                  <sp-menu-item value="cut">
+                  <sp-menu-item value="cut" ?disabled=${isSelectedEmpty}>
                     Cut
                     <kbd slot="value">⌘X</kbd>
                   </sp-menu-item>
-                  <sp-menu-item value="copy">
+                  <sp-menu-item value="copy" ?disabled=${isSelectedEmpty}>
                     Copy
                     <kbd slot="value">⌘C</kbd>
                   </sp-menu-item>
-                  <sp-menu-item value="paste">
+                  <sp-menu-item
+                    value="paste"
+                    ?disabled=${this.isClipboardEmpty}
+                  >
                     Paste
                     <kbd slot="value">⌘V</kbd>
                   </sp-menu-item>

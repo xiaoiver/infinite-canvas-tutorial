@@ -1,5 +1,5 @@
 import { css, LitElement } from 'lit';
-import { customElement } from 'lit/decorators.js';
+import { customElement, state } from 'lit/decorators.js';
 import { when } from 'lit/directives/when.js';
 import { consume } from '@lit/context';
 import {
@@ -8,10 +8,10 @@ import {
   parseClipboard,
   readSystemClipboard,
   svgElementsToSerializedNodes,
-  SVGStringToFile,
-  svgSvgElementToComputedCamera,
+  isSupportedImageFileType,
   UI,
   ZIndex,
+  SerializedNode,
 } from '@infinite-canvas-tutorial/ecs';
 import { html, render } from '@spectrum-web-components/base';
 import { VirtualTrigger, openOverlay } from '@spectrum-web-components/overlay';
@@ -20,6 +20,139 @@ import { apiContext, appStateContext } from '../context';
 import { ExtendedAPI } from '../API';
 
 const ZINDEX_OFFSET = 0.0001;
+
+export function executeCopy(
+  api: ExtendedAPI,
+  appState: AppState,
+  event?: ClipboardEvent,
+) {
+  api.copyToClipboard(
+    appState.layersSelected.map((id) => api.getNodeById(id)),
+    event,
+  );
+}
+
+export function executeCut(
+  api: ExtendedAPI,
+  appState: AppState,
+  event?: ClipboardEvent,
+) {
+  executeCopy(api, appState, event);
+  // delete nodes
+  api.deleteNodesById(appState.layersSelected);
+  api.record();
+}
+
+function updateAndSelectNodes(
+  api: ExtendedAPI,
+  appState: AppState,
+  nodes: SerializedNode[],
+) {
+  api.runAtNextTick(() => {
+    api.updateNodes(nodes);
+    api.record();
+
+    setTimeout(() => {
+      api.unhighlightNodes(
+        appState.layersHighlighted.map((id) => api.getNodeById(id)),
+      );
+      api.selectNodes([nodes[0]], false);
+    }, 100);
+  });
+}
+
+function createImage(api: ExtendedAPI, appState: AppState, file: File) {
+  const image = new Image();
+  image.src = URL.createObjectURL(file);
+  image.onload = () => {
+    api.updateNodes([
+      {
+        id: uuidv4(),
+        type: 'rect',
+        x: 0,
+        y: 0,
+        width: image.width,
+        height: image.height,
+        fill: 'red',
+        // image: image,
+      },
+    ]);
+  };
+}
+
+export async function executePaste(
+  api: ExtendedAPI,
+  appState: AppState,
+  event?: ClipboardEvent,
+) {
+  if (!event) {
+    let types;
+    try {
+      types = await readSystemClipboard();
+    } catch (error: any) {}
+
+    event = createPasteEvent({ types });
+  }
+
+  const isPlainPaste = false;
+
+  // must be called in the same frame (thus before any awaits) as the paste
+  // event else some browsers (FF...) will clear the clipboardData
+  // (something something security)
+  let file = event?.clipboardData?.files[0];
+  const data = await parseClipboard(event, isPlainPaste);
+
+  if (!file && !isPlainPaste) {
+    if (data.mixedContent) {
+      // return this.addElementsFromMixedContentPaste(data.mixedContent, {
+      //   isPlainPaste,
+      //   sceneX,
+      //   sceneY,
+      // });
+    } else if (data.text) {
+      const string = data.text.trim();
+      if (string.startsWith('<svg') && string.endsWith('</svg>')) {
+        // Extract semantic groups inside comments
+        const $container = document.createElement('div');
+        $container.innerHTML = string;
+        const $svg = $container.children[0] as SVGSVGElement;
+        const nodes = svgElementsToSerializedNodes(
+          Array.from($svg.children) as SVGElement[],
+        );
+
+        updateAndSelectNodes(api, appState, nodes);
+        return;
+      }
+    }
+  }
+
+  // prefer spreadsheet data over image file (MS Office/Libre Office)
+  if (isSupportedImageFileType(file?.type)) {
+    // createImage(file);
+    return;
+  }
+
+  if (data.elements) {
+    const nodes = data.elements.map((node) => {
+      node.id = uuidv4();
+      if (node.zIndex) {
+        node.zIndex += ZINDEX_OFFSET;
+      }
+      node.x += 10;
+      node.y += 10;
+      // TODO: move to the mouse position
+      return node;
+    });
+
+    updateAndSelectNodes(api, appState, nodes);
+  } else if (data.text) {
+    // const nonEmptyLines = normalizeEOL(data.text)
+    //   .split(/\n+/)
+    //   .map((s) => s.trim())
+    //   .filter(Boolean);
+    // this.addTextFromPaste(data.text, isPlainPaste);
+  }
+}
 
 /**
  * @see https://opensource.adobe.com/spectrum-web-components/components/imperative-api/#using-a-virtual-trigger
@@ -53,16 +186,19 @@ export class ContextMenu extends LitElement {
   @consume({ context: apiContext, subscribe: true })
   api: ExtendedAPI;
 
+  @state()
+  private isClipboardEmpty = true;
+
   private binded = false;
 
   private handleExecuteAction = (event: CustomEvent) => {
     const value = (event.target as any).value;
     if (value === 'copy') {
-      this.executeCopy();
+      executeCopy(this.api, this.appState);
     } else if (value === 'paste') {
-      this.executePaste();
+      executePaste(this.api, this.appState);
     } else if (value === 'cut') {
-      this.executeCut();
+      executeCut(this.api, this.appState);
     } else if (value === 'bring-to-front') {
       this.executeBringToFront();
     } else if (value === 'bring-forward') {
@@ -78,9 +214,13 @@ export class ContextMenu extends LitElement {
 
   private contextMenuTemplate() {
     const { layersSelected, contextMenuVisible } = this.appState;
-    // const node = layersSelected[0] && this.api.getNodeById(layersSelected[0]);
 
-    const disabled = layersSelected.length === 0;
+    // check if clipboard is empty
+    readSystemClipboard().then((clipboard) => {
+      this.isClipboardEmpty = Object.keys(clipboard).length === 0;
+    });
+
+    const isSelectedEmpty = layersSelected.length === 0;
     let bringForwardDisabled = false;
     let sendBackwardDisabled = false;
 
@@ -115,24 +255,24 @@ export class ContextMenu extends LitElement {
         >
           <h4>Actions</h4>
           <sp-menu @change=${this.handleExecuteAction}>
-            <sp-menu-item .disabled=${disabled} value="copy">
+            <sp-menu-item ?disabled=${isSelectedEmpty} value="copy">
               <sp-icon-copy slot="icon"></sp-icon-copy>
               Copy
               <kbd slot="value">⌘C</kbd>
             </sp-menu-item>
-            <sp-menu-item .disabled=${disabled} value="paste">
+            <sp-menu-item ?disabled=${this.isClipboardEmpty} value="paste">
               <sp-icon-paste slot="icon"></sp-icon-paste>
               Paste
               <kbd slot="value">⌘V</kbd>
             </sp-menu-item>
-            <sp-menu-item .disabled=${disabled} value="cut">
+            <sp-menu-item ?disabled=${isSelectedEmpty} value="cut">
               <sp-icon-cut slot="icon"></sp-icon-cut>
               Cut
               <kbd slot="value">⌘X</kbd>
             </sp-menu-item>
             <sp-menu-divider></sp-menu-divider>
             <sp-menu-item
-              .disabled=${disabled || bringForwardDisabled}
+              ?disabled=${isSelectedEmpty || bringForwardDisabled}
               value="bring-to-front"
             >
               <sp-icon-layers-bring-to-front
@@ -142,7 +282,7 @@ export class ContextMenu extends LitElement {
               <kbd slot="value">⌥⌘]</kbd>
             </sp-menu-item>
             <sp-menu-item
-              .disabled=${disabled || bringForwardDisabled}
+              ?disabled=${isSelectedEmpty || bringForwardDisabled}
               value="bring-forward"
             >
               <sp-icon-layers-forward slot="icon"></sp-icon-layers-forward>
@@ -150,7 +290,7 @@ export class ContextMenu extends LitElement {
               <kbd slot="value">⌘]</kbd>
             </sp-menu-item>
             <sp-menu-item
-              .disabled=${disabled || sendBackwardDisabled}
+              ?disabled=${isSelectedEmpty || sendBackwardDisabled}
               value="send-backward"
             >
               <sp-icon-layers-backward slot="icon"></sp-icon-layers-backward>
@@ -158,7 +298,7 @@ export class ContextMenu extends LitElement {
               <kbd slot="value">⌘[</kbd>
             </sp-menu-item>
             <sp-menu-item
-              .disabled=${disabled || sendBackwardDisabled}
+              ?disabled=${isSelectedEmpty || sendBackwardDisabled}
               value="send-to-back"
             >
               <sp-icon-layers-send-to-back
@@ -203,7 +343,7 @@ export class ContextMenu extends LitElement {
       return;
     }
 
-    this.executeCopy(event);
+    executeCopy(this.api, this.appState, event);
 
     event.preventDefault();
     event.stopPropagation();
@@ -218,7 +358,7 @@ export class ContextMenu extends LitElement {
       return;
     }
 
-    this.executeCut(event);
+    executeCut(this.api, this.appState, event);
 
     event.preventDefault();
     event.stopPropagation();
@@ -229,7 +369,7 @@ export class ContextMenu extends LitElement {
       return;
     }
 
-    this.executePaste(event);
+    executePaste(this.api, this.appState, event);
 
     event.preventDefault();
     event.stopPropagation();
@@ -243,112 +383,26 @@ export class ContextMenu extends LitElement {
     // bring to front ⌥⌘]
     if (event.key === ']' && event.metaKey && event.ctrlKey) {
       this.executeBringToFront();
+
+      event.preventDefault();
+      event.stopPropagation();
     } else if (event.key === ']' && event.metaKey) {
       this.executeBringForward();
+
+      event.preventDefault();
+      event.stopPropagation();
     } else if (event.key === '[' && event.metaKey) {
       this.executeSendBackward();
+
+      event.preventDefault();
+      event.stopPropagation();
     } else if (event.key === '[' && event.metaKey && event.ctrlKey) {
       this.executeSendToBack();
-    }
 
-    event.preventDefault();
-    event.stopPropagation();
+      event.preventDefault();
+      event.stopPropagation();
+    }
   };
-
-  private executeCopy(event?: ClipboardEvent) {
-    this.api.copyToClipboard(
-      this.appState.layersSelected.map((id) => this.api.getNodeById(id)),
-      event,
-    );
-  }
-
-  private executeCut(event?: ClipboardEvent) {
-    this.executeCopy(event);
-    // delete nodes
-    this.api.deleteNodesById(this.appState.layersSelected);
-    this.api.record();
-  }
-
-  private async executePaste(event?: ClipboardEvent) {
-    if (!event) {
-      let types;
-      try {
-        types = await readSystemClipboard();
-      } catch (error: any) {}
-
-      event = createPasteEvent({ types });
-    }
-
-    const isPlainPaste = false;
-
-    // must be called in the same frame (thus before any awaits) as the paste
-    // event else some browsers (FF...) will clear the clipboardData
-    // (something something security)
-    let file = event?.clipboardData?.files[0];
-    const data = await parseClipboard(event, isPlainPaste);
-
-    if (!file && !isPlainPaste) {
-      if (data.mixedContent) {
-        // return this.addElementsFromMixedContentPaste(data.mixedContent, {
-        //   isPlainPaste,
-        //   sceneX,
-        //   sceneY,
-        // });
-      } else if (data.text) {
-        const string = data.text.trim();
-        if (string.startsWith('<svg') && string.endsWith('</svg>')) {
-          // TODO: extract semantic groups inside comments
-          // const $container = document.createElement('div');
-          // $container.innerHTML = string;
-          // const $svg = $container.children[0] as SVGSVGElement;
-          // const camera = svgSvgElementToComputedCamera($svg);
-          // const nodes = svgElementsToSerializedNodes(
-          //   Array.from($svg.children) as SVGElement[],
-          // );
-          file = SVGStringToFile(string);
-        }
-      }
-    }
-
-    // prefer spreadsheet data over image file (MS Office/Libre Office)
-    // if (isSupportedImageFile(file)) {
-    //   this.createImageElement({ sceneX, sceneY, imageFile: file });
-    //   return;
-    // }
-
-    if (data.elements) {
-      const nodes = data.elements.map((node) => {
-        node.id = uuidv4();
-        if (node.zIndex) {
-          node.zIndex += ZINDEX_OFFSET;
-        }
-        node.x += 10;
-        node.y += 10;
-        // TODO: move to the mouse position
-        return node;
-      });
-
-      this.api.runAtNextTick(() => {
-        this.api.updateNodes(nodes);
-        this.api.record();
-
-        setTimeout(() => {
-          this.api.unhighlightNodes(
-            this.appState.layersHighlighted.map((id) =>
-              this.api.getNodeById(id),
-            ),
-          );
-          this.api.selectNodes([nodes[0]], false);
-        }, 100);
-      });
-    } else if (data.text) {
-      // const nonEmptyLines = normalizeEOL(data.text)
-      //   .split(/\n+/)
-      //   .map((s) => s.trim())
-      //   .filter(Boolean);
-      // this.addTextFromPaste(data.text, isPlainPaste);
-    }
-  }
 
   private executeBringToFront() {
     const node = this.api.getNodeById(this.appState.layersSelected[0]);
