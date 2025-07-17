@@ -292,9 +292,10 @@ pnpm run dev
 
 ## 课程 24 - 上下文菜单和剪贴板 [🔗](https://infinitecanvas.cc/zh/guide/lesson-024)
 
--   使用 Spectrum 实现上下文菜单
+-   如何使用 Spectrum 实现上下文菜单
 -   通过上移下移调整图形次序
--   写入和读取剪贴板
+-   写入并读取剪贴板内容，支持粘贴序列化图形、非矢量图片、SVG 和纯文本
+-   从文件系统和页面中拖拽导入图片文件
 
 ![context menu](./screenshots/lesson24.png)
 

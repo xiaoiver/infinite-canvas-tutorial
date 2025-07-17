@@ -70,13 +70,10 @@ onMounted(async () => {
 
   // App only runs once
   if (!(window as any).worldInited) {
+    (window as any).worldInited = true;
     await import('@infinite-canvas-tutorial/webcomponents/spectrum');
     new App().addPlugins(...DefaultPlugins, UIPlugin).run();
-    (window as any).worldInited = true;
   } else {
-    // 当App已经初始化时，需要等待canvas组件准备好并检查API
-    await import('@infinite-canvas-tutorial/webcomponents/spectrum');
-
     // 等待组件更新完成后检查API是否已经准备好
     setTimeout(() => {
       // 检查canvas的apiProvider是否已经有值

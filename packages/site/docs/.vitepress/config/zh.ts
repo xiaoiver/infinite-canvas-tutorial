@@ -255,6 +255,10 @@ export const zh = defineConfig({
                 link: 'zindex',
               },
               {
+                text: '拖拽导入图片',
+                link: 'dragndrop-image',
+              },
+              {
                 text: '声明式渐变',
                 link: 'declarative-gradient',
               },

@@ -1,8 +1,8 @@
 import EventEmitter from 'eventemitter3';
-// import { isBoolean, isFunction, isObject } from '@antv/util';
 import { ComponentType, Entity } from '@lastolivegames/becsy';
 import { AddChild } from './AddChild';
 import { Insert } from './Insert';
+import { Remove } from './Remove';
 import { RemoveChild } from './RemoveChild';
 import { Commands } from './Commands';
 import { Bundle } from '../components';
@@ -45,8 +45,8 @@ export class EntityCommands extends EventEmitter {
    * @example
    * commands.entity(0).remove(Transform);
    */
-  remove(...components: ComponentType<any>[]) {
-    // this.commands.add(CommandsType.REMOVE, this.entity, null, ...components);
+  remove(...bundles: (ComponentType<any> | Bundle)[]) {
+    this.commands.add(new Remove(this.entity, bundles));
   }
 
   /**

@@ -82,6 +82,9 @@ export interface VisibilityAttributes {
 }
 
 export interface FillAttributes {
+  /**
+   * Solid color, gradient, stringified pattern, image data-uri, etc.
+   */
   fill: string;
   fillOpacity: Opacity['fillOpacity'];
   opacity: Opacity['opacity'];

@@ -12,10 +12,14 @@ import {
   UI,
   ZIndex,
   SerializedNode,
+  DOMAdapter,
+  MIME_TYPES,
 } from '@infinite-canvas-tutorial/ecs';
 import { html, render } from '@spectrum-web-components/base';
 import { VirtualTrigger, openOverlay } from '@spectrum-web-components/overlay';
 import { v4 as uuidv4 } from 'uuid';
+import { load } from '@loaders.gl/core';
+import { ImageLoader } from '@loaders.gl/images';
 import { apiContext, appStateContext } from '../context';
 import { ExtendedAPI } from '../API';
 
@@ -61,37 +65,124 @@ function updateAndSelectNodes(
   });
 }
 
-function createImage(api: ExtendedAPI, appState: AppState, file: File) {
-  const image = new Image();
-  image.src = URL.createObjectURL(file);
-  image.onload = () => {
-    api.updateNodes([
-      {
-        id: uuidv4(),
-        type: 'rect',
-        x: 0,
-        y: 0,
-        width: image.width,
-        height: image.height,
-        fill: 'red',
-        // image: image,
-      },
-    ]);
-  };
+async function getDataURL(file: Blob | File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataURL = reader.result as string;
+      resolve(dataURL);
+    };
+    reader.onerror = (error) => reject(error);
+    reader.readAsDataURL(file);
+  });
+}
+
+async function createImage(
+  api: ExtendedAPI,
+  appState: AppState,
+  file: File,
+  size: { width: number; height: number; zoom: number },
+  position?: { x: number; y: number },
+) {
+  const [image, dataURL] = await Promise.all([
+    load(file, ImageLoader),
+    getDataURL(file),
+  ]);
+
+  // Heuristic to calculate the size of the image.
+  // @see https://github.com/excalidraw/excalidraw/blob/master/packages/excalidraw/components/App.tsx#L10059
+  const minHeight = Math.max(size.height - 120, 160);
+  // max 65% of canvas height, clamped to <300px, vh - 120px>
+  const maxHeight = Math.min(
+    minHeight,
+    Math.floor(size.height * 0.5) / size.zoom,
+  );
+  const height = Math.min(image.height, maxHeight);
+  const width = height * (image.width / image.height);
+
+  updateAndSelectNodes(api, appState, [
+    {
+      id: uuidv4(),
+      type: 'rect',
+      x: position?.x ?? 0,
+      y: position?.y ?? 0,
+      width,
+      height,
+      fill: dataURL,
+    },
+  ]);
+}
+
+function createSVG(
+  api: ExtendedAPI,
+  appState: AppState,
+  svg: string,
+  position?: { x: number; y: number },
+) {
+  // TODO: Extract semantic groups inside comments
+  const doc = DOMAdapter.get()
+    .getDOMParser()
+    .parseFromString(svg, 'image/svg+xml');
+  const $svg = doc.documentElement;
+
+  // This method also works, but it may lose the namespace of the SVG element.
+  // const $container = document.createElement('div');
+  // $container.innerHTML = string;
+  // const $svg = $container.children[0] as SVGSVGElement;
+  const nodes = svgElementsToSerializedNodes(
+    Array.from($svg.children) as SVGElement[],
+  );
+  if (position) {
+    // nodes.forEach((node) => {
+    //   node.x += position.x;
+    //   node.y += position.y;
+    // });
+  }
+
+  updateAndSelectNodes(api, appState, nodes);
+}
+
+function createText(
+  api: ExtendedAPI,
+  appState: AppState,
+  text: string,
+  position?: { x: number; y: number },
+) {
+  updateAndSelectNodes(api, appState, [
+    {
+      id: uuidv4(),
+      type: 'text',
+      anchorX: position?.x ?? 0,
+      anchorY: position?.y ?? 0,
+      content: text,
+      fontSize: 16,
+      fontFamily: 'system-ui',
+      fill: 'black',
+    },
+  ]);
 }
 
 export async function executePaste(
   api: ExtendedAPI,
   appState: AppState,
   event?: ClipboardEvent,
+  position?: { x: number; y: number },
 ) {
+  if (!document.hasFocus()) {
+    return;
+  }
+
   if (!event) {
     let types;
     try {
       types = await readSystemClipboard();
     } catch (error: any) {}
-
     event = createPasteEvent({ types });
+  }
+
+  let canvasPosition: { x: number; y: number } | null = null;
+  if (position) {
+    canvasPosition = api.viewport2Canvas(api.client2Viewport(position));
   }
 
   const isPlainPaste = false;
@@ -112,23 +203,24 @@ export async function executePaste(
     } else if (data.text) {
       const string = data.text.trim();
       if (string.startsWith('<svg') && string.endsWith('</svg>')) {
-        // Extract semantic groups inside comments
-        const $container = document.createElement('div');
-        $container.innerHTML = string;
-        const $svg = $container.children[0] as SVGSVGElement;
-        const nodes = svgElementsToSerializedNodes(
-          Array.from($svg.children) as SVGElement[],
-        );
-
-        updateAndSelectNodes(api, appState, nodes);
+        createSVG(api, appState, string, canvasPosition);
         return;
       }
     }
   }
 
-  // prefer spreadsheet data over image file (MS Office/Libre Office)
   if (isSupportedImageFileType(file?.type)) {
-    // createImage(file);
+    createImage(
+      api,
+      appState,
+      file,
+      {
+        width: api.element.clientWidth,
+        height: api.element.clientHeight,
+        zoom: appState.cameraZoom,
+      },
+      canvasPosition,
+    );
     return;
   }
 
@@ -138,19 +230,25 @@ export async function executePaste(
       if (node.zIndex) {
         node.zIndex += ZINDEX_OFFSET;
       }
-      node.x += 10;
-      node.y += 10;
-      // TODO: move to the mouse position
+
+      if (canvasPosition) {
+        node.x = canvasPosition.x;
+        node.y = canvasPosition.y;
+      } else {
+        node.x += 10;
+        node.y += 10;
+      }
       return node;
     });
 
     updateAndSelectNodes(api, appState, nodes);
   } else if (data.text) {
-    // const nonEmptyLines = normalizeEOL(data.text)
-    //   .split(/\n+/)
-    //   .map((s) => s.trim())
-    //   .filter(Boolean);
-    // this.addTextFromPaste(data.text, isPlainPaste);
+    // const nonEmptyLines = data.text
+    // .replace(/\r?\n|\r/g, '\n')
+    // .split(/\n+/)
+    // .map((s) => s.trim())
+    // .filter(Boolean);
+    createText(api, appState, data.text, canvasPosition);
   }
 }
 
@@ -190,13 +288,20 @@ export class ContextMenu extends LitElement {
   private isClipboardEmpty = true;
 
   private binded = false;
+  private lastContextMenuPosition: { x: number; y: number } | null = null;
+  private lastPointerMovePosition: { x: number; y: number } | null = null;
 
   private handleExecuteAction = (event: CustomEvent) => {
     const value = (event.target as any).value;
     if (value === 'copy') {
       executeCopy(this.api, this.appState);
     } else if (value === 'paste') {
-      executePaste(this.api, this.appState);
+      executePaste(
+        this.api,
+        this.appState,
+        undefined,
+        this.lastContextMenuPosition,
+      );
     } else if (value === 'cut') {
       executeCut(this.api, this.appState);
     } else if (value === 'bring-to-front') {
@@ -210,15 +315,15 @@ export class ContextMenu extends LitElement {
     }
   };
 
-  // TODO: shortcut keys
-
   private contextMenuTemplate() {
     const { layersSelected, contextMenuVisible } = this.appState;
 
-    // check if clipboard is empty
-    readSystemClipboard().then((clipboard) => {
-      this.isClipboardEmpty = Object.keys(clipboard).length === 0;
-    });
+    if (document.hasFocus()) {
+      // check if clipboard is empty
+      readSystemClipboard().then((clipboard) => {
+        this.isClipboardEmpty = Object.keys(clipboard).length === 0;
+      });
+    }
 
     const isSelectedEmpty = layersSelected.length === 0;
     let bringForwardDisabled = false;
@@ -316,8 +421,13 @@ export class ContextMenu extends LitElement {
     event.preventDefault();
     event.stopPropagation();
 
+    this.lastContextMenuPosition = { x: event.clientX, y: event.clientY };
+
     const trigger = event.target as LitElement;
-    const virtualTrigger = new VirtualTrigger(event.clientX, event.clientY);
+    const virtualTrigger = new VirtualTrigger(
+      this.lastContextMenuPosition.x,
+      this.lastContextMenuPosition.y,
+    );
     const fragment = document.createDocumentFragment();
     render(this.contextMenuTemplate(), fragment);
     const popover = fragment.querySelector('sp-popover') as HTMLElement;
@@ -369,7 +479,7 @@ export class ContextMenu extends LitElement {
       return;
     }
 
-    executePaste(this.api, this.appState, event);
+    executePaste(this.api, this.appState, event, this.lastPointerMovePosition);
 
     event.preventDefault();
     event.stopPropagation();
@@ -404,6 +514,63 @@ export class ContextMenu extends LitElement {
     }
   };
 
+  private handlePointerMove = (event: PointerEvent) => {
+    this.lastPointerMovePosition = { x: event.clientX, y: event.clientY };
+  };
+
+  private handleDragOver = (event: DragEvent) => {
+    event.preventDefault();
+  };
+
+  /**
+   * @see https://github.com/excalidraw/excalidraw/blob/master/packages/excalidraw/components/App.tsx#L10242
+   */
+  private handleDrop = async (event: DragEvent) => {
+    event.preventDefault();
+
+    const canvasPosition = this.api.viewport2Canvas(
+      this.api.client2Viewport({
+        x: event.clientX,
+        y: event.clientY,
+      }),
+    );
+
+    const url = event.dataTransfer.getData('text/uri-list');
+    if (url) {
+      // TODO:
+      // const img = new Image();
+      // img.src = url;
+      // createImage(this.api, this.appState, img, canvasPosition);
+      // return;
+    }
+    const text = event.dataTransfer.getData('text/plain');
+    if (text) {
+      createText(this.api, this.appState, text, canvasPosition);
+      return;
+    }
+
+    for (const file of Array.from(event.dataTransfer.files)) {
+      if (isSupportedImageFileType(file.type)) {
+        if (file.type === MIME_TYPES.svg) {
+          const svg = await file.text();
+          createSVG(this.api, this.appState, svg, canvasPosition);
+        } else {
+          createImage(
+            this.api,
+            this.appState,
+            file,
+            {
+              width: this.api.element.clientWidth,
+              height: this.api.element.clientHeight,
+              zoom: this.appState.cameraZoom,
+            },
+            canvasPosition,
+          );
+        }
+      }
+    }
+  };
+
   private executeBringToFront() {
     const node = this.api.getNodeById(this.appState.layersSelected[0]);
     if (node) {
@@ -434,7 +601,15 @@ export class ContextMenu extends LitElement {
 
   disconnectedCallback() {
     super.disconnectedCallback();
-    this.api.element.removeEventListener('contextmenu', this.handleContextMenu);
+    this.api?.element?.removeEventListener(
+      'contextmenu',
+      this.handleContextMenu,
+    );
+    this.api?.element?.removeEventListener(
+      'pointermove',
+      this.handlePointerMove,
+    );
+    this.api?.element?.removeEventListener('drop', this.handleDrop);
     document.removeEventListener('copy', this.handleCopy);
     document.removeEventListener('cut', this.handleCut);
     document.removeEventListener('paste', this.handlePaste);
@@ -445,6 +620,9 @@ export class ContextMenu extends LitElement {
     // FIXME: wait for the element to be ready.
     if (this.api?.element && !this.binded) {
       this.api.element.addEventListener('contextmenu', this.handleContextMenu);
+      this.api.element.addEventListener('pointermove', this.handlePointerMove);
+      this.api.element.addEventListener('dragover', this.handleDragOver);
+      this.api.element.addEventListener('drop', this.handleDrop);
       document.addEventListener('copy', this.handleCopy, { passive: false });
       document.addEventListener('cut', this.handleCut, { passive: false });
       document.addEventListener('paste', this.handlePaste, { passive: false });

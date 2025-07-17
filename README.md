@@ -291,9 +291,10 @@ If you want to use it in your own project, you can refer to:
 
 ## Lesson 24 - Context menu and clipboard [🔗](https://infinitecanvas.cc/guide/lesson-024)
 
--   Use Spectrum to implement context menu
+-   How to implement context menu with Spectrum
 -   Adjust z-index with bring forward and send back
--   Write and read clipboard
+-   Writes and reads clipboard content, supports pasting serialized graphics, non-vector images, SVG and plain text
+-   Drag-and-drop import of image files from file systems and pages
 
 ![context menu](./screenshots/lesson24.png)
 

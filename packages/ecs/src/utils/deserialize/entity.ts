@@ -1,3 +1,5 @@
+import { load } from '@loaders.gl/core';
+import { ImageLoader } from '@loaders.gl/images';
 import { isNil } from '@antv/util';
 import toposort from 'toposort';
 import { Entity } from '@lastolivegames/becsy';
@@ -20,10 +22,14 @@ import {
   Font,
   AABB,
   TextDecoration,
+  FillImage,
+  FillPattern,
+  MaterialDirty,
 } from '../../components';
 import {
   DropShadowAttributes,
   FillAttributes,
+  isDataUrl,
   NameAttributes,
   PathSerializedNode,
   PolylineSerializedNode,
@@ -38,6 +44,7 @@ import {
 import { deserializePoints } from './points';
 import { EntityCommands, Commands } from '../../commands';
 import { isGradient } from '../gradient';
+import { isPattern } from '../pattern';
 import { computeBidi, measureText } from '../../systems/ComputeTextMetrics';
 
 function inferXYWidthHeight(node: SerializedNode) {
@@ -239,10 +246,23 @@ export function serializedNodesToEntities(
     if (fill) {
       if (isGradient(fill)) {
         entity.insert(new FillGradient(fill));
+      } else if (isDataUrl(fill)) {
+        load(fill, ImageLoader).then((image) => {
+          entity.insert(new FillImage({ src: image as ImageBitmap }));
+          entity.insert(new MaterialDirty());
+          commands.execute();
+        });
       } else {
-        entity.insert(new FillSolid(fill));
+        // TODO: fetch url image
+        try {
+          const parsed = JSON.parse(fill) as FillPattern;
+          if (isPattern(parsed)) {
+            entity.insert(new FillPattern(parsed));
+          }
+        } catch (e) {
+          entity.insert(new FillSolid(fill));
+        }
       }
-      // TODO: gradient, pattern, etc.
     }
 
     const {

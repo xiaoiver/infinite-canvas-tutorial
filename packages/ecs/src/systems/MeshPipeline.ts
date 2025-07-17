@@ -106,7 +106,7 @@ export class MeshPipeline extends System {
         Rough,
         FractionalIndex,
         TextDecoration,
-      ).trackWrites,
+      ).trackMatches,
   );
 
   gpuResources: Map<

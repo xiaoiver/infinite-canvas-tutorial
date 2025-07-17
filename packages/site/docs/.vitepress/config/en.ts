@@ -295,6 +295,10 @@ export const en = defineConfig({
                 link: 'zindex',
               },
               {
+                text: 'Drag and drop image',
+                link: 'dragndrop-image',
+              },
+              {
                 text: 'Declarative gradient',
                 link: 'declarative-gradient',
               },

@@ -47,9 +47,9 @@ onMounted(async () => {
 
   // App only runs once
   if (!(window as any).worldInited) {
+    (window as any).worldInited = true;
     await import('@infinite-canvas-tutorial/webcomponents/spectrum');
     new App().addPlugins(...DefaultPlugins, UIPlugin).run();
-    (window as any).worldInited = true;
   }
 });
 

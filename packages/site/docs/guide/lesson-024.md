@@ -5,11 +5,17 @@ description: 'Implementing context menu and clipboard functionality'
 
 <script setup>
 import ZIndex from '../components/ZIndex.vue';
+// import DragNDropImage from '../components/DragNDropImage.vue';
 </script>
 
 # Lesson 24 - Context Menu and Clipboard
 
-In this lesson, we will introduce how to implement context menu and clipboard functionality.
+In this lesson, we will introduce the following contents:
+
+-   How to implement context menu
+-   Adjust z-index with bring forward and send back
+-   Writes and reads clipboard content, supports pasting serialized graphics, non-vector images, SVG and plain text
+-   Drag-and-drop import of image files from file systems and pages
 
 <img src="/context-menu.png" alt="context menu" style="max-width: 300px;"/>
 
@@ -132,7 +138,10 @@ export const readSystemClipboard = async () => {
 };
 ```
 
-Alternatively, we can use this method to determine if the clipboard is empty at the moment, and disable the `Paste` menu item if it is empty.
+Alternatively, we can use this method to determine if the clipboard is empty at the moment, and disable the `Paste` menu item if it is empty. The last thing to note is that the read clipboard method needs to be focused on the document, if the focus is on the browser address bar or developer tools when triggered, the following error will be reported. So you can use `document.hasFocus()` to determine the success before reading:
+
+> [!CAUTION]
+> Uncaught (in promise) NotAllowedError: Failed to execute 'read' on 'Clipboard': Document is not focused
 
 ### Deserializing Shapes {#deserialize}
 
@@ -168,22 +177,94 @@ const nodes = data.elements.map((node) => {
 });
 ```
 
-### Images {#image}
-
-Let's look at copying non-vector images first.
-
-Excalidraw doesn't do anything special with SVG type images when pasting them. We can refer to Figma's approach [Convert SVG to frames] to convert SVG elements to canvas graphics and make the elements in them editable.
+And the first one needs to record the position of the context menu when it is triggered or the most recent mouse movement:
 
 ```ts
-import { svgElementsToSerializedNodes } from '@infinite-canvas-tutorial/ecs';
+private handleContextMenu = async (event: MouseEvent) => {
+    this.lastContextMenuPosition = { x: event.clientX, y: event.clientY }; // [!code ++]
+}
+private handlePointerMove = (event: PointerEvent) => {
+    this.lastPointerMovePosition = { x: event.clientX, y: event.clientY }; // [!code ++]
+};
+```
+
+We've already covered [Lesson 6 - Coordinates], converting Client coordinates to the Canvas coordinate system:
+
+```ts
+if (position) {
+    const { x, y } = api.viewport2Canvas(api.client2Viewport(position)); // [!code ++]
+    node.x = x; // [!code ++]
+    node.y = y; // [!code ++]
+} else {
+    node.x += 10;
+    node.y += 10;
+}
+```
+
+### Non-vector image {#non-vector-image}
+
+Let's look at copying non-vector images first. As we've seen before in [Lesson 10 - Render image], using `@loaders.gl` you can load an image file from the clipboard, then get the original width and height and `dataURL`, then go through a series of adjustments to get the final width and height, and then finally create a rectangle and set its `fill` to the `dataURL`:
+
+```ts
+import { load } from '@loaders.gl/core';
+import { ImageLoader } from '@loaders.gl/images';
+
+async function createImage(api: ExtendedAPI, appState: AppState, file: File) {
+    const [image, dataURL] = await Promise.all([
+        load(file, ImageLoader),
+        getDataURL(file),
+    ]);
+
+    // 省略计算宽高
+
+    updateAndSelectNodes(api, appState, [
+        {
+            id: uuidv4(),
+            type: 'rect',
+            x: position?.x ?? 0,
+            y: position?.y ?? 0,
+            width,
+            height,
+            fill: dataURL,
+        },
+    ]);
+}
+```
+
+Why can't we just use the width and height of the original image? The width and height of the created rectangle is in the world coordinate system and it should be affected by the canvas size, the current camera zoom level and the original image size.Excalidraw uses a heuristic algorithm:
+
+```ts
+// Heuristic to calculate the size of the image.
+// @see https://github.com/excalidraw/excalidraw/blob/master/packages/excalidraw/components/App.tsx#L10059
+const minHeight = Math.max(canvas.height - 120, 160);
+// max 65% of canvas height, clamped to <300px, vh - 120px>
+const maxHeight = Math.min(
+    minHeight,
+    Math.floor(canvas.height * 0.5) / canvas.zoom,
+);
+const height = Math.min(image.height, maxHeight);
+const width = height * (image.width / image.height);
+```
+
+### SVG {#svg}
+
+When pasting images, Excalidraw does not perform special processing on SVG-type images, which results in the loss of the possibility to continue editing their internal elements.
+
+Figma can convert SVG elements to canvas graphics and make the elements editable, see [Convert SVG to frames]. We covered this in [Lesson 10 - SVGElement to Serialized Node], but before that you need to use `DOMParser` to convert a string to an SVGElement:
+
+```ts
+import {
+    DOMAdapter,
+    svgElementsToSerializedNodes,
+} from '@infinite-canvas-tutorial/ecs';
 
 if (data.text) {
     const string = data.text.trim();
     if (string.startsWith('<svg') && string.endsWith('</svg>')) {
-        // Extract semantic groups inside comments
-        const $container = document.createElement('div');
-        $container.innerHTML = string;
-        const $svg = $container.children[0] as SVGSVGElement;
+        const doc = DOMAdapter.get()
+            .getDOMParser()
+            .parseFromString(string, 'image/svg+xml');
+        const $svg = doc.documentElement;
         const nodes = svgElementsToSerializedNodes(
             Array.from($svg.children) as SVGElement[],
         );
@@ -194,11 +275,71 @@ if (data.text) {
 }
 ```
 
-### Plain Text {#plain-text}
+Of course you can also use the `innerHTML` approach, but it's not recommended for complex SVGs (you may lose namespace):
 
-## Drag n drop {#drag-n-drop}
+```ts
+const container = document.createElement('div');
+container.innerHTML = svgString.trim();
+const svgElement = container.firstChild;
+```
 
-In addition to importing by copying, you can also place by drag-n-drop.
+最后一种情况也是最简单的，如果此时剪贴板中的内容是纯文本，我们就创建对应的 `text`。值得一提的是在 Excalidraw 中会使用当前用户设置的字体、颜色等属性：
+
+```ts
+function createText(
+    api: ExtendedAPI,
+    appState: AppState,
+    text: string,
+    position?: { x: number; y: number },
+) {
+    updateAndSelectNodes(api, appState, [
+        {
+            id: uuidv4(),
+            type: 'text',
+            anchorX: position?.x ?? 0,
+            anchorY: position?.y ?? 0,
+            content: text,
+            fontSize: 16,
+            fontFamily: 'system-ui',
+            fill: 'black',
+        },
+    ]);
+}
+```
+
+## Drag and drop to import images {#drag-n-drop}
+
+Many file upload components support dragging and dropping files from a file manager or other location to a specified zone to complete the upload, such as [react-dropzone]. Excalidraw also supports [handleAppOnDrop], which makes it very easy to drag and drop images, export products, and even videos into the canvas to complete the import:
+
+```tsx
+<div onDrop={this.handleAppOnDrop} />
+```
+
+In order for the `drop` event to fire properly on `<canvas>`, we also need to listen for `dragover` and disable the browser's default behavior, see: [HTML5/Canvas onDrop event isn't firing?]
+
+```ts
+this.api.element.addEventListener('dragover', this.handleDragOver);
+this.api.element.addEventListener('drop', this.handleDrop);
+```
+
+Then we can try to read the files dragged from the file system from [files]:
+
+```ts
+private handleDrop = async (event: DragEvent) => {
+    for (const file of Array.from(event.dataTransfer.files)) {}
+}
+```
+
+In addition we can also support dragging and dropping text and images from the page, see [Dragging Images].
+
+```ts
+const text = event.dataTransfer.getData('text/plain');
+if (text) {
+    createText(this.api, this.appState, text, canvasPosition);
+}
+```
+
+<!-- <DragNDropImage /> -->
 
 ## Extended Reading {#extended-reading}
 
@@ -217,3 +358,11 @@ In addition to importing by copying, you can also place by drag-n-drop.
 [read]: https://developer.mozilla.org/en-US/docs/Web/API/Clipboard/read
 [readText]: https://developer.mozilla.org/en-US/docs/Web/API/Clipboard/readText
 [Convert SVG to frames]: https://forum.figma.com/ask-the-community-7/convert-svg-to-frames-18578
+[Lesson 6 - Coordinates]: /guide/lesson-006#coordinates
+[Lesson 10 - Render image]: /guide/lesson-010#render-image
+[Lesson 10 - SVGElement to Serialized Node]: /guide/lesson-010#svgelement-to-serialized-node
+[react-dropzone]: https://github.com/react-dropzone/react-dropzone
+[handleAppOnDrop]: https://github.com/excalidraw/excalidraw/blob/master/packages/excalidraw/components/App.tsx#L1560C9-L1560C38
+[HTML5/Canvas onDrop event isn't firing?]: https://stackoverflow.com/questions/7699987/html5-canvas-ondrop-event-isnt-firing
+[files]: https://developer.mozilla.org/en-US/docs/Web/API/DataTransfer/files
+[Dragging Images]: https://developer.mozilla.org/en-US/docs/Web/API/HTML_Drag_and_Drop_API/Recommended_drag_types#dragging_images

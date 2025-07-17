@@ -2,47 +2,39 @@
 import {
   App,
   Pen,
-  Task,
   DefaultPlugins,
-  svgElementsToSerializedNodes,
 } from '@infinite-canvas-tutorial/ecs';
 import { ref, onMounted, onUnmounted } from 'vue';
 import { Event, UIPlugin } from '@infinite-canvas-tutorial/webcomponents';
 
 const wrapper = ref<HTMLElement | null>(null);
+const imgWrapper = ref<HTMLImageElement | null>(null);
 let api: any | undefined;
 let onReady: ((api: CustomEvent<any>) => void) | undefined;
 
 onMounted(async () => {
-  const res = await fetch('/maslow-hierarchy.svg');
-  const svg = await res.text();
-  // TODO: extract semantic groups inside comments
-  const $container = document.createElement('div');
-  $container.innerHTML = svg;
-  const $svg = $container.children[0] as SVGSVGElement;
-
-  const nodes = svgElementsToSerializedNodes(
-    Array.from($svg.children) as SVGElement[],
-  );
-
   const canvas = wrapper.value;
-  if (!canvas) {
+  const img = imgWrapper.value;
+  if (!canvas || !img) {
     return;
   }
+
+  // @see https://developer.mozilla.org/en-US/docs/Web/API/HTML_Drag_and_Drop_API/Recommended_drag_types#dragging_images
+  img.addEventListener("dragstart", (ev) => {
+    const dt = ev.dataTransfer;
+    dt?.setData("text/uri-list", img.src);
+    dt?.setData("text/plain", img.src);
+  });
 
   onReady = async (e) => {
     api = e.detail;
 
-    api.runAtNextTick(() => {
-
-      api.setPen(Pen.SELECT);
-      api.setTaskbars([Task.SHOW_LAYERS_PANEL]);
-
-      api.updateNodes(nodes);
-      api.selectNodes([nodes[0]]);
-
-      api.record();
+    api.setAppState({
+      ...api.getAppState(),
+      penbarVisible: false,
+      taskbarVisible: false,
     });
+    api.setPen(Pen.SELECT);
   };
 
   canvas.addEventListener(Event.READY, onReady);
@@ -53,9 +45,6 @@ onMounted(async () => {
     await import('@infinite-canvas-tutorial/webcomponents/spectrum');
     new App().addPlugins(...DefaultPlugins, UIPlugin).run();
   } else {
-    // 当App已经初始化时，需要等待canvas组件准备好并检查API
-    await import('@infinite-canvas-tutorial/webcomponents/spectrum');
-
     // 等待组件更新完成后检查API是否已经准备好
     setTimeout(() => {
       // 检查canvas的apiProvider是否已经有值
@@ -102,7 +91,8 @@ onUnmounted(async () => {
 </script>
 
 <template>
-  <div>
-    <ic-spectrum-canvas ref="wrapper" style="width: 100%; height: 600px"></ic-spectrum-canvas>
+  <div style="display: flex; gap: 20px;">
+    <ic-spectrum-canvas ref="wrapper" style="width: 70%; height: 300px"></ic-spectrum-canvas>
+    <img ref="imgWrapper" draggable="true" src="/canvas.png" style="width: 30%; object-fit: contain;" />
   </div>
 </template>

@@ -28,6 +28,9 @@ import {
   Path,
   ZIndex,
   Transform,
+  MaterialDirty,
+  FillImage,
+  FillPattern,
 } from '../components';
 
 export type SceneElementsMap = Map<SerializedNode['id'], SerializedNode>;
@@ -593,8 +596,16 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
   if (!isNil(fill)) {
     if (isGradient(fill)) {
       safeRemoveComponent(entity, FillSolid);
+      safeRemoveComponent(entity, FillImage);
+      safeRemoveComponent(entity, FillPattern);
+
+      safeAddComponent(entity, MaterialDirty);
       safeAddComponent(entity, FillGradient, { value: fill });
     } else {
+      if (entity.has(FillGradient)) {
+        safeAddComponent(entity, MaterialDirty);
+      }
+
       safeRemoveComponent(entity, FillGradient);
       safeAddComponent(entity, FillSolid, { value: fill });
     }

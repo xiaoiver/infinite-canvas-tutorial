@@ -120,7 +120,7 @@ export class ContextBar extends LitElement {
 
   disconnectedCallback() {
     super.disconnectedCallback();
-    this.api.element.removeEventListener(
+    this.api?.element?.removeEventListener(
       Event.TRANSFORMABLE_STATUS_CHANGED,
       this.handleTransformableStatusChanged,
     );
