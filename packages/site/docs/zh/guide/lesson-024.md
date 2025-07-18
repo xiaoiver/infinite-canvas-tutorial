@@ -332,14 +332,22 @@ private handleDrop = async (event: DragEvent) => {
 }
 ```
 
-另外我们也可以支持从页面中拖拽而来的文本和图片，参考 [Dragging Images]，可以在下面的例子中将右侧的图片直接拖拽进画布：
+另外我们也可以支持从页面中拖拽而来的文本和图片，文本可以直接从 `dataTransfer` 中读取。而对于图片，参考 [Dragging Images]，推荐将图片 URL 写入 `dataTransfer` 中。在下面的例子里我们在图片的 `dragstart` 中完成这一步：
 
 ```ts
 const text = event.dataTransfer.getData('text/plain');
 if (text) {
     createText(this.api, this.appState, text, canvasPosition);
 }
+
+img.addEventListener('dragstart', (ev) => {
+    const dt = ev.dataTransfer;
+    dt?.setData('text/uri-list', img.src);
+    dt?.setData('text/plain', img.src);
+});
 ```
+
+可以在下面的例子中将页面中的文字或者右侧的图片直接拖拽进画布：
 
 <DragNDropImage />
 

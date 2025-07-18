@@ -330,14 +330,22 @@ private handleDrop = async (event: DragEvent) => {
 }
 ```
 
-In addition we can also support dragging and dropping text and images from the page, see [Dragging Images]. In the following example, you can drag and drop the image on the right side into the canvas directly.
+We can also support text and images dragged from the page, the text can be read directly from the `dataTransfer`. For images, refer to [Dragging Images], it is recommended to write the image URL into `dataTransfer`. In the following example we do this in the `dragstart` of the image:
 
 ```ts
 const text = event.dataTransfer.getData('text/plain');
 if (text) {
     createText(this.api, this.appState, text, canvasPosition);
 }
+
+img.addEventListener('dragstart', (ev) => {
+    const dt = ev.dataTransfer;
+    dt?.setData('text/uri-list', img.src);
+    dt?.setData('text/plain', img.src);
+});
 ```
+
+In the following example, you can drag and drop the image on the right side or the text in this page into the canvas directly.
 
 <DragNDropImage />
 

@@ -38,9 +38,6 @@ onMounted(async () => {
   };
 
   canvas.addEventListener(Event.READY, onReady);
-  canvas.addEventListener('drop', (e) => {
-    console.log('drop', e);
-  });
 
   // App only runs once
   if (!(window as any).worldInited) {

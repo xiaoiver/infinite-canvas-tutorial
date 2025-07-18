@@ -604,7 +604,7 @@ export class Select extends System {
         return;
       }
 
-      const selection = this.cameraSelectionMap.get(camera.__id);
+      let selection = this.cameraSelectionMap.get(camera.__id);
       if (!selection) {
         this.cameraSelectionMap.set(camera.__id, {
           mode: SelectionMode.IDLE,
@@ -629,6 +629,7 @@ export class Select extends System {
           pointerMoveViewportX: 0,
           pointerMoveViewportY: 0,
         });
+        selection = this.cameraSelectionMap.get(camera.__id);
       }
 
       const { inputPoints, api } = canvas.read(Canvas);
