@@ -1,11 +1,11 @@
 ---
 outline: deep
-description: '实现上下文菜单和剪贴板'
+description: '实现上下文菜单和剪贴板，通过上移下移调整图形次序，支持写入并读取剪贴板内容，支持粘贴序列化图形、非矢量图片、SVG 和纯文本，从文件系统和页面中拖拽导入图片文件'
 ---
 
 <script setup>
 import ZIndex from '../../components/ZIndex.vue';
-// import DragNDropImage from '../../components/DragNDropImage.vue';
+import DragNDropImage from '../../components/DragNDropImage.vue';
 </script>
 
 # 课程 24 - 上下文菜单和剪贴板
@@ -317,7 +317,7 @@ function createText(
 <div onDrop={this.handleAppOnDrop} />
 ```
 
-为了让 `drop` 事件能在 `<canvas>` 上正常触发，我们还需要监听 `dragover` 并禁止浏览器默认行为，详见：[HTML5/Canvas onDrop event isn't firing?]
+为了让 `drop` 事件能在 `<canvas>` 上正常触发，我们还需要监听 `dragover` 并禁止浏览器默认行为，详见：[HTML5/Canvas onDrop event isn't firing?] 和 [Prevent the browser's default drag behavior]
 
 ```ts
 this.api.element.addEventListener('dragover', this.handleDragOver);
@@ -332,7 +332,7 @@ private handleDrop = async (event: DragEvent) => {
 }
 ```
 
-另外我们也可以支持从页面中拖拽而来的文本和图片，参考 [Dragging Images]：
+另外我们也可以支持从页面中拖拽而来的文本和图片，参考 [Dragging Images]，可以在下面的例子中将右侧的图片直接拖拽进画布：
 
 ```ts
 const text = event.dataTransfer.getData('text/plain');
@@ -341,11 +341,12 @@ if (text) {
 }
 ```
 
-<!-- <DragNDropImage /> -->
+<DragNDropImage />
 
 ## 扩展阅读 {#extended-reading}
 
 -   [Interact with the clipboard]
+-   [Prevent the browser's default drag behavior]
 
 [contextmenu]: https://developer.mozilla.org/en-US/docs/Web/API/Element/contextmenu_event
 [radix - Context Menu]: https://www.radix-ui.com/primitives/docs/components/context-menu
@@ -368,3 +369,4 @@ if (text) {
 [HTML5/Canvas onDrop event isn't firing?]: https://stackoverflow.com/questions/7699987/html5-canvas-ondrop-event-isnt-firing
 [files]: https://developer.mozilla.org/en-US/docs/Web/API/DataTransfer/files
 [Dragging Images]: https://developer.mozilla.org/en-US/docs/Web/API/HTML_Drag_and_Drop_API/Recommended_drag_types#dragging_images
+[Prevent the browser's default drag behavior]: https://developer.mozilla.org/en-US/docs/Web/API/HTML_Drag_and_Drop_API/File_drag_and_drop#prevent_the_browsers_default_drag_behavior

@@ -297,7 +297,9 @@ pnpm run dev
 -   写入并读取剪贴板内容，支持粘贴序列化图形、非矢量图片、SVG 和纯文本
 -   从文件系统和页面中拖拽导入图片文件
 
-![context menu](./screenshots/lesson24.png)
+|                Context menu                 |               Drag'n'drop image                |
+| :-----------------------------------------: | :--------------------------------------------: |
+| ![context menu](./screenshots/lesson24.png) | ![dragndrop image](./screenshots/lesson24.gif) |
 
 [infinitecanvas]: https://infinitecanvas.tools/
 [Figma]: https://madebyevan.com/figma/building-a-professional-design-tool-on-the-web/

@@ -104,8 +104,8 @@ async function createImage(
     {
       id: uuidv4(),
       type: 'rect',
-      x: position?.x ?? 0,
-      y: position?.y ?? 0,
+      x: (position?.x ?? 0) - width / 2,
+      y: (position?.y ?? 0) - height / 2,
       width,
       height,
       fill: dataURL,
@@ -496,6 +496,11 @@ export class ContextMenu extends LitElement {
 
       event.preventDefault();
       event.stopPropagation();
+    } else if (event.key === '[' && event.metaKey && event.ctrlKey) {
+      this.executeSendToBack();
+
+      event.preventDefault();
+      event.stopPropagation();
     } else if (event.key === ']' && event.metaKey) {
       this.executeBringForward();
 
@@ -506,11 +511,6 @@ export class ContextMenu extends LitElement {
 
       event.preventDefault();
       event.stopPropagation();
-    } else if (event.key === '[' && event.metaKey && event.ctrlKey) {
-      this.executeSendToBack();
-
-      event.preventDefault();
-      event.stopPropagation();
     }
   };
 
@@ -518,6 +518,9 @@ export class ContextMenu extends LitElement {
     this.lastPointerMovePosition = { x: event.clientX, y: event.clientY };
   };
 
+  /**
+   * @see https://developer.mozilla.org/en-US/docs/Web/API/HTML_Drag_and_Drop_API/File_drag_and_drop#prevent_the_browsers_default_drag_behavior
+   */
   private handleDragOver = (event: DragEvent) => {
     event.preventDefault();
   };
@@ -535,13 +538,27 @@ export class ContextMenu extends LitElement {
       }),
     );
 
+    const size = {
+      width: this.api.element.clientWidth,
+      height: this.api.element.clientHeight,
+      zoom: this.appState.cameraZoom,
+    };
+
     const url = event.dataTransfer.getData('text/uri-list');
     if (url) {
-      // TODO:
-      // const img = new Image();
-      // img.src = url;
-      // createImage(this.api, this.appState, img, canvasPosition);
-      // return;
+      try {
+        const file = await fetch(url).then((res) => res.blob());
+        createImage(
+          this.api,
+          this.appState,
+          file as File,
+          size,
+          canvasPosition,
+        );
+        return;
+      } catch (error) {
+        console.error(error);
+      }
     }
     const text = event.dataTransfer.getData('text/plain');
     if (text) {
@@ -555,17 +572,7 @@ export class ContextMenu extends LitElement {
           const svg = await file.text();
           createSVG(this.api, this.appState, svg, canvasPosition);
         } else {
-          createImage(
-            this.api,
-            this.appState,
-            file,
-            {
-              width: this.api.element.clientWidth,
-              height: this.api.element.clientHeight,
-              zoom: this.appState.cameraZoom,
-            },
-            canvasPosition,
-          );
+          createImage(this.api, this.appState, file, size, canvasPosition);
         }
       }
     }

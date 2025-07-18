@@ -38,6 +38,9 @@ onMounted(async () => {
   };
 
   canvas.addEventListener(Event.READY, onReady);
+  canvas.addEventListener('drop', (e) => {
+    console.log('drop', e);
+  });
 
   // App only runs once
   if (!(window as any).worldInited) {
@@ -93,6 +96,8 @@ onUnmounted(async () => {
 <template>
   <div style="display: flex; gap: 20px;">
     <ic-spectrum-canvas ref="wrapper" style="width: 70%; height: 300px"></ic-spectrum-canvas>
-    <img ref="imgWrapper" draggable="true" src="/canvas.png" style="width: 30%; object-fit: contain;" />
+    <div style="width: 30%; display: flex; align-items: center; justify-content: center;">
+      <img ref="imgWrapper" draggable="true" src="/canvas.png" />
+    </div>
   </div>
 </template>

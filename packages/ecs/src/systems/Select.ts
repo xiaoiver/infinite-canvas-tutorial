@@ -45,7 +45,6 @@ import {
   SerializedNode,
 } from '../utils';
 import { API } from '../API';
-import { RenderHighlighter } from './RenderHighlighter';
 import {
   AnchorName,
   RenderTransformer,
@@ -75,31 +74,28 @@ enum SelectionMode {
 export class Select extends System {
   private readonly commands = new Commands(this);
 
-  private readonly renderHighlighter = this.attach(RenderHighlighter);
   private readonly renderTransformer = this.attach(RenderTransformer);
 
   private readonly cameras = this.query((q) => q.current.with(Camera).read);
 
-  #selectionMode: SelectionMode = SelectionMode.IDLE;
-
-  #resizingAnchorName: AnchorName;
-
-  /**
-   * OBB
-   */
-  #obb: OBB;
-  #sin: number;
-  #cos: number;
-  #selectedNodes: SerializedNode[];
-
-  #selectionBrush: Entity;
-
-  #pointerDownViewportX: number;
-  #pointerDownViewportY: number;
-  #pointerDownCanvasX: number;
-  #pointerDownCanvasY: number;
-  #pointerMoveViewportX: number;
-  #pointerMoveViewportY: number;
+  private cameraSelectionMap = new Map<
+    number,
+    {
+      mode: SelectionMode;
+      resizingAnchorName: AnchorName;
+      obb: OBB;
+      sin: number;
+      cos: number;
+      selectedNodes: SerializedNode[];
+      brush: Entity;
+      pointerDownViewportX: number;
+      pointerDownViewportY: number;
+      pointerDownCanvasX: number;
+      pointerDownCanvasY: number;
+      pointerMoveViewportX: number;
+      pointerMoveViewportY: number;
+    }
+  >();
 
   constructor() {
     super();
@@ -213,8 +209,8 @@ export class Select extends System {
       y: anchorNodeY,
     });
 
-    const x = sl.x - this.#obb.width / 2;
-    const y = sl.y - this.#obb.height / 2;
+    const x = sl.x - this.cameraSelectionMap.get(camera.__id)?.obb.width / 2;
+    const y = sl.y - this.cameraSelectionMap.get(camera.__id)?.obb.height / 2;
 
     let delta = Math.atan2(-y, x) + Math.PI / 2;
 
@@ -249,6 +245,11 @@ export class Select extends System {
     centeredScaling: boolean,
   ) {
     const camera = api.getCamera();
+    const selection = this.cameraSelectionMap.get(camera.__id);
+    if (!selection) {
+      return;
+    }
+
     camera.write(Transformable).status = TransformableStatus.RESIZING;
 
     api.highlightNodes([]);
@@ -265,7 +266,7 @@ export class Select extends System {
     });
 
     let anchor: Entity;
-    const anchorName = this.#resizingAnchorName;
+    const anchorName = selection.resizingAnchorName;
     if (anchorName === AnchorName.TOP_LEFT) {
       anchor = tlAnchor;
     } else if (anchorName === AnchorName.TOP_RIGHT) {
@@ -289,8 +290,8 @@ export class Select extends System {
       if (lockAspectRatio) {
         const comparePoint = centeredScaling
           ? {
-              x: this.#obb.width / 2,
-              y: this.#obb.height / 2,
+              x: selection.obb.width / 2,
+              y: selection.obb.height / 2,
             }
           : {
               x: brAnchor.read(Circle).cx,
@@ -305,16 +306,16 @@ export class Select extends System {
         const reverseY = cy > comparePoint.y ? -1 : 1;
 
         Object.assign(tlAnchor.write(Circle), {
-          cx: comparePoint.x - newHypotenuse * this.#cos * reverseX,
-          cy: comparePoint.y - newHypotenuse * this.#sin * reverseY,
+          cx: comparePoint.x - newHypotenuse * selection.cos * reverseX,
+          cy: comparePoint.y - newHypotenuse * selection.sin * reverseY,
         });
       }
     } else if (anchorName === AnchorName.TOP_RIGHT) {
       if (lockAspectRatio) {
         const comparePoint = centeredScaling
           ? {
-              x: this.#obb.width / 2,
-              y: this.#obb.height / 2,
+              x: selection.obb.width / 2,
+              y: selection.obb.height / 2,
             }
           : {
               x: blAnchor.read(Circle).cx,
@@ -330,8 +331,8 @@ export class Select extends System {
         const reverseY = cy > comparePoint.y ? -1 : 1;
 
         Object.assign(trAnchor.write(Circle), {
-          cx: comparePoint.x + newHypotenuse * this.#cos * reverseX,
-          cy: comparePoint.y - newHypotenuse * this.#sin * reverseY,
+          cx: comparePoint.x + newHypotenuse * selection.cos * reverseX,
+          cy: comparePoint.y - newHypotenuse * selection.sin * reverseY,
         });
       }
 
@@ -341,8 +342,8 @@ export class Select extends System {
       if (lockAspectRatio) {
         const comparePoint = centeredScaling
           ? {
-              x: this.#obb.width / 2,
-              y: this.#obb.height / 2,
+              x: selection.obb.width / 2,
+              y: selection.obb.height / 2,
             }
           : {
               x: trAnchor.read(Circle).cx,
@@ -357,8 +358,8 @@ export class Select extends System {
         const reverseY = y < comparePoint.y ? -1 : 1;
 
         Object.assign(blAnchor.write(Circle), {
-          cx: comparePoint.x - newHypotenuse * this.#cos * reverseX,
-          cy: comparePoint.y + newHypotenuse * this.#sin * reverseY,
+          cx: comparePoint.x - newHypotenuse * selection.cos * reverseX,
+          cy: comparePoint.y + newHypotenuse * selection.sin * reverseY,
         });
       }
 
@@ -368,8 +369,8 @@ export class Select extends System {
       if (lockAspectRatio) {
         const comparePoint = centeredScaling
           ? {
-              x: this.#obb.width / 2,
-              y: this.#obb.height / 2,
+              x: selection.obb.width / 2,
+              y: selection.obb.height / 2,
             }
           : {
               x: tlAnchor.read(Circle).cx,
@@ -383,8 +384,8 @@ export class Select extends System {
         const reverseX = brAnchor.read(Circle).cx < comparePoint.x ? -1 : 1;
         const reverseY = brAnchor.read(Circle).cy < comparePoint.y ? -1 : 1;
         Object.assign(brAnchor.write(Circle), {
-          cx: comparePoint.x + newHypotenuse * this.#cos * reverseX,
-          cy: comparePoint.y + newHypotenuse * this.#sin * reverseY,
+          cx: comparePoint.x + newHypotenuse * selection.cos * reverseX,
+          cy: comparePoint.y + newHypotenuse * selection.sin * reverseY,
         });
       }
     } else if (anchorName === AnchorName.TOP_CENTER) {
@@ -429,9 +430,9 @@ export class Select extends System {
         y,
         width,
         height,
-        rotation: this.#obb.rotation,
-        scaleX: this.#obb.scaleX,
-        scaleY: this.#obb.scaleY,
+        rotation: selection.obb.rotation,
+        scaleX: selection.obb.scaleX,
+        scaleY: selection.obb.scaleY,
       });
     }
 
@@ -473,18 +474,23 @@ export class Select extends System {
   }
 
   private handleBrushing(api: API, viewportX: number, viewportY: number) {
+    const selection = this.cameraSelectionMap.get(api.getCamera().__id);
+    if (!selection) {
+      return;
+    }
+
     // Use a threshold to avoid showing the selection brush when the pointer is moved a little.
     const shouldShowSelectionBrush =
       distanceBetweenPoints(
         viewportX,
         viewportY,
-        this.#pointerDownViewportX,
-        this.#pointerDownViewportY,
+        selection.pointerDownViewportX,
+        selection.pointerDownViewportY,
       ) > 10;
 
     if (shouldShowSelectionBrush) {
-      if (!this.#selectionBrush) {
-        this.#selectionBrush = this.commands
+      if (!selection.brush) {
+        selection.brush = this.commands
           .spawn(
             new UI(UIType.BRUSH),
             new Transform(),
@@ -501,23 +507,23 @@ export class Select extends System {
           .hold();
 
         const camera = this.commands.entity(api.getCamera());
-        camera.appendChild(this.commands.entity(this.#selectionBrush));
+        camera.appendChild(this.commands.entity(selection.brush));
 
         this.commands.execute();
       }
 
-      this.#selectionBrush.write(Visibility).value = 'visible';
+      selection.brush.write(Visibility).value = 'visible';
 
       const { x: wx, y: wy } = api.viewport2Canvas({
         x: viewportX,
         y: viewportY,
       });
 
-      Object.assign(this.#selectionBrush.write(Rect), {
-        x: this.#pointerDownCanvasX,
-        y: this.#pointerDownCanvasY,
-        width: wx - this.#pointerDownCanvasX,
-        height: wy - this.#pointerDownCanvasY,
+      Object.assign(selection.brush.write(Rect), {
+        x: selection.pointerDownCanvasX,
+        y: selection.pointerDownCanvasY,
+        width: wx - selection.pointerDownCanvasX,
+        height: wy - selection.pointerDownCanvasY,
       });
     }
   }
@@ -598,14 +604,41 @@ export class Select extends System {
         return;
       }
 
+      const selection = this.cameraSelectionMap.get(camera.__id);
+      if (!selection) {
+        this.cameraSelectionMap.set(camera.__id, {
+          mode: SelectionMode.IDLE,
+          resizingAnchorName: AnchorName.INSIDE,
+          obb: {
+            x: 0,
+            y: 0,
+            width: 0,
+            height: 0,
+            rotation: 0,
+            scaleX: 1,
+            scaleY: 1,
+          },
+          sin: 0,
+          cos: 0,
+          selectedNodes: [],
+          brush: undefined,
+          pointerDownViewportX: 0,
+          pointerDownViewportY: 0,
+          pointerDownCanvasX: 0,
+          pointerDownCanvasY: 0,
+          pointerMoveViewportX: 0,
+          pointerMoveViewportY: 0,
+        });
+      }
+
       const { inputPoints, api } = canvas.read(Canvas);
       const pen = api.getAppState().penbarSelected[0];
 
       if (pen !== Pen.SELECT) {
-        if (this.#selectionBrush) {
+        if (selection.brush) {
           // Hide selection brush
-          this.#selectionBrush.write(Visibility).value = 'hidden';
-          this.#selectionBrush = undefined;
+          selection.brush.write(Visibility).value = 'hidden';
+          selection.brush = undefined;
         }
 
         // Clear selection
@@ -620,36 +653,36 @@ export class Select extends System {
 
       if (input.pointerDownTrigger) {
         const [x, y] = input.pointerViewport;
-        this.#pointerDownViewportX = x;
-        this.#pointerDownViewportY = y;
+        selection.pointerDownViewportX = x;
+        selection.pointerDownViewportY = y;
 
         const { x: wx, y: wy } = api.viewport2Canvas({
           x,
           y,
         });
-        this.#pointerDownCanvasX = wx;
-        this.#pointerDownCanvasY = wy;
+        selection.pointerDownCanvasX = wx;
+        selection.pointerDownCanvasY = wy;
 
-        if (this.#selectionMode === SelectionMode.IDLE) {
-          this.#selectionMode = SelectionMode.BRUSH;
-        } else if (this.#selectionMode === SelectionMode.READY_TO_SELECT) {
-          this.#selectionMode = SelectionMode.SELECT;
-        } else if (this.#selectionMode === SelectionMode.READY_TO_MOVE) {
+        if (selection.mode === SelectionMode.IDLE) {
+          selection.mode = SelectionMode.BRUSH;
+        } else if (selection.mode === SelectionMode.READY_TO_SELECT) {
+          selection.mode = SelectionMode.SELECT;
+        } else if (selection.mode === SelectionMode.READY_TO_MOVE) {
           cursor.value = 'grab';
-          this.#selectionMode = SelectionMode.MOVE;
+          selection.mode = SelectionMode.MOVE;
         } else if (
-          this.#selectionMode === SelectionMode.READY_TO_RESIZE ||
-          this.#selectionMode === SelectionMode.READY_TO_ROTATE
+          selection.mode === SelectionMode.READY_TO_RESIZE ||
+          selection.mode === SelectionMode.READY_TO_ROTATE
         ) {
           this.saveSelectedOBB(api);
-          if (this.#selectionMode === SelectionMode.READY_TO_RESIZE) {
-            this.#selectionMode = SelectionMode.RESIZE;
-          } else if (this.#selectionMode === SelectionMode.READY_TO_ROTATE) {
-            this.#selectionMode = SelectionMode.ROTATE;
+          if (selection.mode === SelectionMode.READY_TO_RESIZE) {
+            selection.mode = SelectionMode.RESIZE;
+          } else if (selection.mode === SelectionMode.READY_TO_ROTATE) {
+            selection.mode = SelectionMode.ROTATE;
           }
         }
 
-        if (this.#selectionMode === SelectionMode.SELECT) {
+        if (selection.mode === SelectionMode.SELECT) {
           if (input.shiftKey) {
             // Add to selection
           } else {
@@ -669,7 +702,7 @@ export class Select extends System {
           }
 
           if (api.getAppState().layersSelected.length > 0) {
-            this.#selectionMode = SelectionMode.MOVE;
+            selection.mode = SelectionMode.MOVE;
           }
         }
       }
@@ -678,20 +711,20 @@ export class Select extends System {
       if (camera.has(ComputedCamera) && inputPoints.length === 0) {
         const [x, y] = input.pointerViewport;
         if (
-          this.#pointerMoveViewportX === x &&
-          this.#pointerMoveViewportY === y
+          selection.pointerMoveViewportX === x &&
+          selection.pointerMoveViewportY === y
         ) {
           return;
         }
-        this.#pointerMoveViewportX = x;
-        this.#pointerMoveViewportY = y;
+        selection.pointerMoveViewportX = x;
+        selection.pointerMoveViewportY = y;
 
         api.highlightNodes([]);
         // Highlight the topmost non-ui element
         toHighlight = this.getTopmostEntity(api, x, y, (e) => !e.has(UI));
         if (toHighlight) {
           api.highlightNodes([api.getNodeByEntity(toHighlight)]);
-          this.#selectionMode = SelectionMode.READY_TO_SELECT;
+          selection.mode = SelectionMode.READY_TO_SELECT;
         }
         if (camera.has(Transformable)) {
           const { mask, selecteds } = camera.read(Transformable);
@@ -709,22 +742,22 @@ export class Select extends System {
                 Math.sign(scale[0] * scale[1]) < 0,
               );
 
-              this.#resizingAnchorName = anchor;
+              selection.resizingAnchorName = anchor;
               if (cursorName.includes('rotate')) {
-                this.#selectionMode = SelectionMode.READY_TO_ROTATE;
+                selection.mode = SelectionMode.READY_TO_ROTATE;
               } else if (cursorName.includes('resize')) {
-                this.#selectionMode = SelectionMode.READY_TO_RESIZE;
+                selection.mode = SelectionMode.READY_TO_RESIZE;
               } else if (anchor === AnchorName.INSIDE) {
                 if (toHighlight && toHighlight !== selecteds[0]) {
-                  this.#selectionMode = SelectionMode.READY_TO_SELECT;
+                  selection.mode = SelectionMode.READY_TO_SELECT;
                 } else {
-                  this.#selectionMode = SelectionMode.READY_TO_MOVE;
+                  selection.mode = SelectionMode.READY_TO_MOVE;
                 }
               } else {
                 if (toHighlight) {
-                  this.#selectionMode = SelectionMode.READY_TO_SELECT;
+                  selection.mode = SelectionMode.READY_TO_SELECT;
                 } else {
-                  this.#selectionMode = SelectionMode.IDLE;
+                  selection.mode = SelectionMode.IDLE;
                 }
               }
             }
@@ -754,13 +787,13 @@ export class Select extends System {
           y,
         });
 
-        if (this.#selectionMode === SelectionMode.BRUSH) {
+        if (selection.mode === SelectionMode.BRUSH) {
           this.handleBrushing(api, x, y);
-        } else if (this.#selectionMode === SelectionMode.MOVE) {
+        } else if (selection.mode === SelectionMode.MOVE) {
           cursor.value = 'grabbing';
 
           this.handleSelectedMoving(api, sx, sy, ex, ey);
-        } else if (this.#selectionMode === SelectionMode.RESIZE) {
+        } else if (selection.mode === SelectionMode.RESIZE) {
           this.handleSelectedResizing(
             api,
             ex,
@@ -768,7 +801,7 @@ export class Select extends System {
             input.shiftKey,
             input.altKey,
           );
-        } else if (this.#selectionMode === SelectionMode.ROTATE) {
+        } else if (selection.mode === SelectionMode.ROTATE) {
           this.handleSelectedRotating(api, ex, ey);
         }
 
@@ -780,59 +813,70 @@ export class Select extends System {
 
         const [x, y] = input.pointerViewport;
 
-        this.#pointerDownViewportX = undefined;
-        this.#pointerDownViewportY = undefined;
-        this.#pointerDownCanvasX = undefined;
-        this.#pointerDownCanvasY = undefined;
+        selection.pointerDownViewportX = undefined;
+        selection.pointerDownViewportY = undefined;
+        selection.pointerDownCanvasX = undefined;
+        selection.pointerDownCanvasY = undefined;
 
-        if (this.#selectionMode === SelectionMode.BRUSH) {
-          if (this.#selectionBrush) {
-            this.#selectionBrush.write(Visibility).value = 'hidden';
+        if (selection.mode === SelectionMode.BRUSH) {
+          if (selection.brush) {
+            selection.brush.write(Visibility).value = 'hidden';
           }
           api.selectNodes([]);
-          this.#selectionMode = SelectionMode.IDLE;
+          selection.mode = SelectionMode.IDLE;
           // TODO: Apply selection
-        } else if (this.#selectionMode === SelectionMode.MOVE) {
+        } else if (selection.mode === SelectionMode.MOVE) {
           this.handleSelectedMoved(api);
-          this.#selectionMode = SelectionMode.READY_TO_MOVE;
-        } else if (this.#selectionMode === SelectionMode.RESIZE) {
+          selection.mode = SelectionMode.READY_TO_MOVE;
+        } else if (selection.mode === SelectionMode.RESIZE) {
           this.handleSelectedResized(api);
-          this.#selectionMode = SelectionMode.READY_TO_RESIZE;
-        } else if (this.#selectionMode === SelectionMode.ROTATE) {
+          selection.mode = SelectionMode.READY_TO_RESIZE;
+        } else if (selection.mode === SelectionMode.ROTATE) {
           this.handleSelectedRotated(api);
-          this.#selectionMode = SelectionMode.READY_TO_ROTATE;
+          selection.mode = SelectionMode.READY_TO_ROTATE;
         }
       }
     });
   }
 
   private saveSelectedOBB(api: API) {
-    this.#obb = this.renderTransformer.getOBB(api.getCamera());
-    const { width, height } = this.#obb;
-    const hypotenuse = Math.sqrt(Math.pow(width, 2) + Math.pow(height, 2));
-    this.#sin = Math.abs(height / hypotenuse);
-    this.#cos = Math.abs(width / hypotenuse);
+    const camera = api.getCamera();
+    const selection = this.cameraSelectionMap.get(camera.__id);
+    if (!selection) {
+      return;
+    }
 
-    this.#selectedNodes = api.getAppState().layersSelected.map((id) => {
+    selection.obb = this.renderTransformer.getOBB(api.getCamera());
+    const { width, height } = selection.obb;
+    const hypotenuse = Math.sqrt(Math.pow(width, 2) + Math.pow(height, 2));
+    selection.sin = Math.abs(height / hypotenuse);
+    selection.cos = Math.abs(width / hypotenuse);
+
+    selection.selectedNodes = api.getAppState().layersSelected.map((id) => {
       return { ...api.getNodeById(id) };
     });
   }
 
   private fitSelected(api: API, newAttrs: OBB) {
     const camera = api.getCamera();
+    const selection = this.cameraSelectionMap.get(camera.__id);
+    if (!selection) {
+      return;
+    }
+
     const { selecteds } = camera.read(Transformable);
 
     const { width, height } = newAttrs;
     const epsilon = 1;
 
     const oldAttrs = {
-      x: this.#obb.x,
-      y: this.#obb.y,
-      width: this.#obb.width,
-      height: this.#obb.height,
-      rotation: this.#obb.rotation,
-      scaleX: this.#obb.scaleX,
-      scaleY: this.#obb.scaleY,
+      x: selection.obb.x,
+      y: selection.obb.y,
+      width: selection.obb.width,
+      height: selection.obb.height,
+      rotation: selection.obb.rotation,
+      scaleX: selection.obb.scaleX,
+      scaleY: selection.obb.scaleY,
     };
 
     const baseSize = 10000000;
@@ -860,7 +904,7 @@ export class Select extends System {
 
     selecteds.forEach((selected) => {
       const node = api.getNodeByEntity(selected);
-      const oldNode = this.#selectedNodes.find((n) => n.id === node.id);
+      const oldNode = selection.selectedNodes.find((n) => n.id === node.id);
 
       // for each node we have the same [delta transform]
       // the equations is

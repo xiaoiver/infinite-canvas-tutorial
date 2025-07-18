@@ -1,11 +1,11 @@
 ---
 outline: deep
-description: 'Implementing context menu and clipboard functionality'
+description: 'Implementing context menu and clipboard functionality. Adjust z-index with bring forward and send back.  Writes and reads clipboard content, supports pasting serialized graphics, non-vector images, SVG and plain text. Drag-and-drop import of image files from file systems and pages.'
 ---
 
 <script setup>
 import ZIndex from '../components/ZIndex.vue';
-// import DragNDropImage from '../components/DragNDropImage.vue';
+import DragNDropImage from '../components/DragNDropImage.vue';
 </script>
 
 # Lesson 24 - Context Menu and Clipboard
@@ -315,7 +315,7 @@ Many file upload components support dragging and dropping files from a file mana
 <div onDrop={this.handleAppOnDrop} />
 ```
 
-In order for the `drop` event to fire properly on `<canvas>`, we also need to listen for `dragover` and disable the browser's default behavior, see: [HTML5/Canvas onDrop event isn't firing?]
+In order for the `drop` event to fire properly on `<canvas>`, we also need to listen for `dragover` and disable the browser's default behavior, see: [HTML5/Canvas onDrop event isn't firing?] and [Prevent the browser's default drag behavior].
 
 ```ts
 this.api.element.addEventListener('dragover', this.handleDragOver);
@@ -330,7 +330,7 @@ private handleDrop = async (event: DragEvent) => {
 }
 ```
 
-In addition we can also support dragging and dropping text and images from the page, see [Dragging Images].
+In addition we can also support dragging and dropping text and images from the page, see [Dragging Images]. In the following example, you can drag and drop the image on the right side into the canvas directly.
 
 ```ts
 const text = event.dataTransfer.getData('text/plain');
@@ -339,11 +339,12 @@ if (text) {
 }
 ```
 
-<!-- <DragNDropImage /> -->
+<DragNDropImage />
 
 ## Extended Reading {#extended-reading}
 
 -   [Interact with the clipboard]
+-   [Prevent the browser's default drag behavior]
 
 [contextmenu]: https://developer.mozilla.org/en-US/docs/Web/API/Element/contextmenu_event
 [radix - Context Menu]: https://www.radix-ui.com/primitives/docs/components/context-menu
@@ -366,3 +367,4 @@ if (text) {
 [HTML5/Canvas onDrop event isn't firing?]: https://stackoverflow.com/questions/7699987/html5-canvas-ondrop-event-isnt-firing
 [files]: https://developer.mozilla.org/en-US/docs/Web/API/DataTransfer/files
 [Dragging Images]: https://developer.mozilla.org/en-US/docs/Web/API/HTML_Drag_and_Drop_API/Recommended_drag_types#dragging_images
+[Prevent the browser's default drag behavior]: https://developer.mozilla.org/en-US/docs/Web/API/HTML_Drag_and_Drop_API/File_drag_and_drop#prevent_the_browsers_default_drag_behavior

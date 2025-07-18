@@ -29,6 +29,19 @@ const camera = svgSvgElementToComputedCamera($svg);
 
 // console.log('nodes', nodes);
 
+{
+  const canvas = document.querySelector<HTMLElement>('#canvas2')!;
+  canvas.addEventListener(Event.READY, async (e) => {
+    const api = e.detail;
+    api.setAppState({
+      ...api.getAppState(),
+      penbarVisible: false,
+      taskbarVisible: false,
+    });
+    api.setPen(Pen.SELECT);
+  });
+}
+
 const canvas = document.querySelector<HTMLElement>('#canvas1')!;
 canvas.addEventListener(Event.READY, async (e) => {
   const api = e.detail;
