@@ -24,10 +24,14 @@ import {
   UIType,
   ZIndex,
   Transformable,
+  AnchorName,
+  Visibility,
+  Text,
+  Camera,
 } from '../components';
 import { Commands } from '../commands';
 import { updateGlobalTransform } from './Transform';
-import { API, Camera, Text, Visibility } from '..';
+import { API } from '../API';
 import { inside } from '../utils/math';
 import { distanceBetweenPoints } from '../utils/matrix';
 import { TRANSFORMER_Z_INDEX } from '../context';
@@ -38,19 +42,6 @@ export const TRANSFORMER_ANCHOR_RESIZE_RADIUS = 5;
 // --spectrum-thumbnail-border-color-selected
 export const TRANSFORMER_ANCHOR_STROKE_COLOR = '#147af3';
 export const TRANSFORMER_ANCHOR_FILL_COLOR = 'white';
-
-export enum AnchorName {
-  TOP_LEFT = 'top-left',
-  TOP_RIGHT = 'top-right',
-  BOTTOM_LEFT = 'bottom-left',
-  BOTTOM_RIGHT = 'bottom-right',
-  TOP_CENTER = 'top-center',
-  MIDDLE_LEFT = 'middle-left',
-  MIDDLE_RIGHT = 'middle-right',
-  BOTTOM_CENTER = 'bottom-center',
-  INSIDE = 'inside',
-  OUTSIDE = 'outside',
-}
 
 /**
  * @see https://github.com/konvajs/konva/blob/master/src/shapes/Transformer.ts

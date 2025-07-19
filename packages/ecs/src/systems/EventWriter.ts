@@ -3,6 +3,8 @@ import { Canvas, Input } from '../components';
 import { getGlobalThis } from '../utils';
 import { Cursor } from '..';
 
+const DOUBLE_CLICK_DELAY = 300;
+
 /**
  * This system will bind event listeners to the canvas.
  * It will also handle the pointer events and keyboard events.
@@ -131,7 +133,16 @@ export class EventWriter extends System {
           return;
         }
 
-        // input.write(Input).pointerDownTrigger = true;
+        // detect double click
+        const currentTime = performance.now();
+        const lastPointerDownTime = input.read(Input).lastPointerDownTime;
+        if (
+          currentTime - lastPointerDownTime <
+          DOUBLE_CLICK_DELAY
+        ) {
+          this.setInputTrigger(input, 'doubleClickTrigger');
+        }
+
         this.setInputTrigger(input, 'pointerDownTrigger');
 
         if (pointerIds.size === 1) {
@@ -142,6 +153,7 @@ export class EventWriter extends System {
           Object.assign(input.write(Input), {
             pointerClient: [e.clientX, e.clientY],
             pointerViewport: [viewport.x, viewport.y],
+            lastPointerDownTime: currentTime,
           });
         }
 

@@ -36,6 +36,7 @@ import {
   UIType,
   Visibility,
   ZIndex,
+  AnchorName,
 } from '../components';
 import { Commands } from '../commands/Commands';
 import {
@@ -46,7 +47,6 @@ import {
 } from '../utils';
 import { API } from '../API';
 import {
-  AnchorName,
   RenderTransformer,
   TRANSFORMER_ANCHOR_STROKE_COLOR,
 } from './RenderTransformer';
@@ -651,6 +651,10 @@ export class Select extends System {
 
       const input = canvas.write(Input);
       const cursor = canvas.write(Cursor);
+
+      if (input.doubleClickTrigger) {
+        // console.log('double click');
+      }
 
       if (input.pointerDownTrigger) {
         const [x, y] = input.pointerViewport;

@@ -726,18 +726,19 @@ export class API {
       });
     }
 
+    const prevAppState = this.getAppState();
+    const layersSelected = preserveSelection
+      ? [...prevAppState.layersSelected, ...nodes.map((node) => node.id)]
+      : nodes.map((node) => node.id);
     if (updateAppState) {
-      const prevAppState = this.getAppState();
       this.setAppState({
         ...prevAppState,
-        layersSelected: preserveSelection
-          ? [...prevAppState.layersSelected, ...nodes.map((node) => node.id)]
-          : nodes.map((node) => node.id),
+        layersSelected,
       });
     }
 
     // Select nodes in the canvas.
-    this.getAppState().layersSelected.forEach((id) => {
+    layersSelected.forEach((id) => {
       const entity = this.#idEntityMap.get(id)?.id();
       if (entity && !entity.has(Selected)) {
         entity.add(Selected, { camera: this.#camera });
@@ -762,7 +763,11 @@ export class API {
     });
   }
 
-  highlightNodes(nodes: SerializedNode[], preserveSelection = false) {
+  highlightNodes(
+    nodes: SerializedNode[],
+    preserveSelection = false,
+    updateAppState = true,
+  ) {
     if (!preserveSelection) {
       this.getAppState().layersHighlighted.forEach((id) => {
         const entity = this.#idEntityMap.get(id)?.id();
@@ -773,14 +778,17 @@ export class API {
     }
 
     const prevAppState = this.getAppState();
-    this.setAppState({
-      ...prevAppState,
-      layersHighlighted: preserveSelection
-        ? [...prevAppState.layersHighlighted, ...nodes.map((node) => node.id)]
-        : nodes.map((node) => node.id),
-    });
+    const layersHighlighted = preserveSelection
+      ? [...prevAppState.layersHighlighted, ...nodes.map((node) => node.id)]
+      : nodes.map((node) => node.id);
+    if (updateAppState) {
+      this.setAppState({
+        ...prevAppState,
+        layersHighlighted,
+      });
+    }
 
-    this.getAppState().layersHighlighted.forEach((id) => {
+    layersHighlighted.forEach((id) => {
       const entity = this.#idEntityMap.get(id)?.id();
       if (entity && !entity.has(Highlighted)) {
         entity.add(Highlighted, { camera: this.#camera });

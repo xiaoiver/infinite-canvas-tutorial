@@ -187,7 +187,7 @@ for (const shape of shapes) {
 
 ### 转换成绝对路径 {#convert-to-absolute-commands}
 
-SVG 路径命令包含绝对和相对两种，例如：`M 100 100 L 200 100` 和 `M 100 100 l 100 0` 是等价的。为了便于后续处理，我们先将相对命令都转换成绝对命令。Canvas2D API 也采用这种风格，类似 [lineTo]，我们参考 Three.js 的 [ShapePath] 实现，它实现了一系列 [CanvasRenderingContext2D] 的方法例如 `moveTo / lineTo / bezierCurveTo` 等等：
+SVG 路径命令包含绝对和相对两种，例如：`M 100 100 L 200 100` 和 `M 100 100 l 100 0` 是等价的。为了便于后续处理，我们先将相对命令都转换成绝对命令。Canvas2D API 也采用这种风格，类似 [lineTo]，我们参考 Three.js 的 [ShapePath] 实现，它实现了一系列 [CanvasRenderingContext2D] 的方法例如 `moveTo / lineTo / bezierCurveTo` 等等。当然也可以选择 [bezier-js]：
 
 ```ts
 import { path2Absolute } from '@antv/util';
@@ -767,3 +767,4 @@ export function exportRough(
 [Draw a hollow circle in SVG]: https://stackoverflow.com/questions/8193675/draw-a-hollow-circle-in-svg
 [fill-rule]: https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/fill-rule
 [how does fill-rule="evenodd" work on a star SVG]: https://stackoverflow.com/a/46145333/4639324
+[bezier-js]: http://pomax.github.io/bezierjs/

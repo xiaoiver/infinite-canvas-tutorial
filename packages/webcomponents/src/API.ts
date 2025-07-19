@@ -69,8 +69,12 @@ export class ExtendedAPI extends API {
     );
   }
 
-  selectNodes(selected: SerializedNode[], preserveSelection = false) {
-    super.selectNodes(selected, preserveSelection);
+  selectNodes(
+    selected: SerializedNode[],
+    preserveSelection = false,
+    updateAppState = true,
+  ) {
+    super.selectNodes(selected, preserveSelection, updateAppState);
 
     this.element.dispatchEvent(
       new CustomEvent(Event.SELECTED_NODES_CHANGED, {

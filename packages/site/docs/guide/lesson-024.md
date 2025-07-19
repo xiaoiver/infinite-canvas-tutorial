@@ -8,7 +8,7 @@ import ZIndex from '../components/ZIndex.vue';
 import DragNDropImage from '../components/DragNDropImage.vue';
 </script>
 
-# Lesson 24 - Context Menu and Clipboard
+# Lesson 24 - Context menu and clipboard
 
 In this lesson, we will introduce the following contents:
 

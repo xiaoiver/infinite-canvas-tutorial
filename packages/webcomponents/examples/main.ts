@@ -29,19 +29,6 @@ const camera = svgSvgElementToComputedCamera($svg);
 
 // console.log('nodes', nodes);
 
-{
-  const canvas = document.querySelector<HTMLElement>('#canvas2')!;
-  canvas.addEventListener(Event.READY, async (e) => {
-    const api = e.detail;
-    api.setAppState({
-      ...api.getAppState(),
-      penbarVisible: false,
-      taskbarVisible: false,
-    });
-    api.setPen(Pen.SELECT);
-  });
-}
-
 const canvas = document.querySelector<HTMLElement>('#canvas1')!;
 canvas.addEventListener(Event.READY, async (e) => {
   const api = e.detail;
@@ -63,36 +50,17 @@ canvas.addEventListener(Event.READY, async (e) => {
   const nodes = [
     {
       id: '1',
-      type: 'rect',
-      x: 100,
-      y: 100,
-      width: 100,
-      height: 100,
+      // type: 'path',
+      // d: 'M 70 110 C 70 140, 110 140, 110 110',
+      type: 'polyline',
+      points: '0,0 100,100',
+      stroke: 'black',
+      strokeWidth: 2,
       // fill: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAUAAAAFCAYAAACNbyblAAAAHElEQVQI12P4//8/w38GIAXDIBKE0DHxgljNBAAO9TXL0Y4OHwAAAABJRU5ErkJggg==',
       // fill: 'blob:http://localhost:8080/cd5e4cd2-3387-4874-b792-128d82644004',
-      fill: 'radial-gradient(circle at center, red, blue, green 100%)',
+      // fill: 'radial-gradient(circle at center, red, blue, green 100%)',
       zIndex: 1,
     },
-    // {
-    //   id: '2',
-    //   type: 'rect',
-    //   x: 150,
-    //   y: 150,
-    //   width: 100,
-    //   height: 100,
-    //   fill: 'blue',
-    //   zIndex: 2,
-    // },
-    // {
-    //   id: '3',
-    //   type: 'rect',
-    //   x: 200,
-    //   y: 200,
-    //   width: 100,
-    //   height: 100,
-    //   fill: 'green',
-    //   zIndex: 3,
-    // },
   ];
 
   api.runAtNextTick(() => {

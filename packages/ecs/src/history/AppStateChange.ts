@@ -68,8 +68,6 @@ export class AppStateChange implements Change<AppState> {
     appState: AppState,
     nextElements: SceneElementsMap,
   ): [AppState, boolean] {
-    // TODO: selected elements
-
     const directlyApplicablePartial = this.delta.inserted;
 
     const nextAppState = {
@@ -86,15 +84,35 @@ export class AppStateChange implements Change<AppState> {
     if (this.api) {
       this.api.setAppState(nextAppState);
 
-      // console.log('nextAppState', nextAppState);
-
       // reselect or rehighlight nodes
+      const {
+        layersHighlighted: prevLayersHighlighted,
+        layersSelected: prevLayersSelected,
+      } = appState;
       const { layersHighlighted, layersSelected } = nextAppState;
-      this.api.selectNodes(
-        layersSelected.map((id) => this.api.getNodeById(id)),
-        true,
-        false,
-      );
+      if (layersSelected.length > 0) {
+        this.api.selectNodes(
+          layersSelected.map((id) => this.api.getNodeById(id)),
+          false,
+          false,
+        );
+      } else {
+        this.api.deselectNodes(
+          prevLayersSelected.map((id) => this.api.getNodeById(id)),
+        );
+      }
+
+      if (layersHighlighted.length > 0) {
+        this.api.highlightNodes(
+          layersHighlighted.map((id) => this.api.getNodeById(id)),
+          false,
+          false,
+        );
+      } else {
+        this.api.unhighlightNodes(
+          prevLayersHighlighted.map((id) => this.api.getNodeById(id)),
+        );
+      }
     }
 
     return [nextAppState, constainsVisibleChanges];

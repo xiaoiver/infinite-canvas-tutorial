@@ -60,7 +60,7 @@ function updateAndSelectNodes(
       api.unhighlightNodes(
         appState.layersHighlighted.map((id) => api.getNodeById(id)),
       );
-      api.selectNodes([nodes[0]], false);
+      api.selectNodes([nodes[0]]);
     }, 100);
   });
 }
@@ -511,6 +511,38 @@ export class ContextMenu extends LitElement {
 
       event.preventDefault();
       event.stopPropagation();
+    }
+
+    const { layersSelected } = this.api.getAppState();
+    if (layersSelected.length === 0) {
+      return;
+    }
+
+    const selected = this.api.getNodeById(layersSelected[0]);
+    if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      this.api.updateNodeOBB(selected, { y: selected.y - 10 });
+      this.api.record();
+    } else if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      this.api.updateNodeOBB(selected, { y: selected.y + 10 });
+      this.api.record();
+    } else if (event.key === 'ArrowLeft') {
+      event.preventDefault();
+      this.api.updateNodeOBB(selected, { x: selected.x - 10 });
+      this.api.record();
+    } else if (event.key === 'ArrowRight') {
+      event.preventDefault();
+      this.api.updateNodeOBB(selected, { x: selected.x + 10 });
+      this.api.record();
+    } else if (event.key === 'Backspace') {
+      event.preventDefault();
+      this.api.deleteNodesById([selected.id]);
+      this.api.record();
+    } else if (event.key === 'Escape') {
+      event.preventDefault();
+      this.api.selectNodes([]);
+      this.api.record();
     }
   };
 

@@ -9,6 +9,9 @@ export class Input {
 
   @field.boolean declare pointerUpTrigger: boolean;
 
+  @field.boolean declare doubleClickTrigger: boolean;
+  @field.float32 declare lastPointerDownTime: number;
+
   @field.boolean declare ctrlKey: boolean;
 
   @field.boolean declare shiftKey: boolean;
