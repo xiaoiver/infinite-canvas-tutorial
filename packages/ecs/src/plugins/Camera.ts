@@ -5,7 +5,6 @@ import {
   ComputedCamera,
   ComputedCameraControl,
   RBush,
-  Transformable,
 } from '../components';
 import {
   CameraControl,
@@ -22,7 +21,6 @@ export const CameraPlugin: Plugin = () => {
   component(ComputedCamera);
   component(ComputedCameraControl);
   component(RBush);
-  component(Transformable);
 
   system((s) =>
     s

@@ -15,7 +15,6 @@ import {
   Highlighted,
   Input,
   InputPoint,
-  Name,
   OBB,
   Opacity,
   Parent,
@@ -37,34 +36,20 @@ import {
   Visibility,
   ZIndex,
   AnchorName,
+  SelectVectorNetwork,
+  SelectOBB,
+  SelectionMode,
+  VectorNetwork,
 } from '../components';
 import { Commands } from '../commands/Commands';
-import {
-  decompose,
-  distanceBetweenPoints,
-  getCursor,
-  SerializedNode,
-} from '../utils';
+import { decompose, distanceBetweenPoints, getCursor } from '../utils';
 import { API } from '../API';
 import {
   RenderTransformer,
   TRANSFORMER_ANCHOR_STROKE_COLOR,
 } from './RenderTransformer';
 import { updateGlobalTransform } from './Transform';
-import { DOMAdapter } from '../environment';
-
-enum SelectionMode {
-  IDLE = 'IDLE',
-  BRUSH = 'BRUSH',
-  READY_TO_SELECT = 'READY_TO_SELECT',
-  SELECT = 'SELECT',
-  READY_TO_MOVE = 'READY_TO_MOVE',
-  MOVE = 'MOVE',
-  READY_TO_RESIZE = 'READY_TO_RESIZE',
-  RESIZE = 'RESIZE',
-  READY_TO_ROTATE = 'READY_TO_ROTATE',
-  ROTATE = 'ROTATE',
-}
+import { safeAddComponent, safeRemoveComponent } from '../history';
 
 /**
  * * Click to select individual object. Hold `Shift` and click on another object to select multiple objects.
@@ -78,33 +63,13 @@ export class Select extends System {
 
   private readonly cameras = this.query((q) => q.current.with(Camera).read);
 
-  private cameraSelectionMap = new Map<
-    number,
-    {
-      mode: SelectionMode;
-      resizingAnchorName: AnchorName;
-      obb: OBB;
-      sin: number;
-      cos: number;
-      selectedNodes: SerializedNode[];
-      brush: Entity;
-      pointerDownViewportX: number;
-      pointerDownViewportY: number;
-      pointerDownCanvasX: number;
-      pointerDownCanvasY: number;
-      pointerMoveViewportX: number;
-      pointerMoveViewportY: number;
-    }
-  >();
-
   constructor() {
     super();
     this.query(
       (q) =>
         q
           .using(Canvas, ComputedBounds)
-          .read.update.and.using(Name)
-          .read.and.using(
+          .read.update.and.using(
             GlobalTransform,
             InputPoint,
             Input,
@@ -130,6 +95,9 @@ export class Select extends System {
             ZIndex,
             StrokeAttenuation,
             Transformable,
+            SelectOBB,
+            SelectVectorNetwork,
+            VectorNetwork,
           ).write,
     );
     this.query((q) => q.using(ComputedCamera, FractionalIndex, RBush).read);
@@ -178,7 +146,7 @@ export class Select extends System {
     this.renderTransformer.createOrUpdate(camera);
   }
 
-  private handleSelectedMoved(api: API) {
+  private handleSelectedMoved(api: API, selection: SelectOBB) {
     const camera = api.getCamera();
 
     api.setNodes(api.getNodes());
@@ -193,7 +161,57 @@ export class Select extends System {
 
     camera.write(Transformable).status = TransformableStatus.MOVED;
 
-    this.saveSelectedOBB(api);
+    this.saveSelectedOBB(api, selection);
+  }
+
+  private handleSelectedMovingControlPoint(
+    api: API,
+    sx: number,
+    sy: number,
+    ex: number,
+    ey: number,
+  ) {
+    api.highlightNodes([]);
+    const camera = api.getCamera();
+    camera.write(Transformable).status = TransformableStatus.MOVING;
+
+    const { selecteds } = camera.read(Transformable);
+    const { activeControlPointIndex } = camera.read(SelectVectorNetwork);
+    selecteds.forEach((selected) => {
+      // Hide transformer and highlighter
+      if (selected.has(Highlighted)) {
+        selected.remove(Highlighted);
+      }
+
+      const vn = selected.write(VectorNetwork);
+      const { vertices } = vn;
+      vertices[activeControlPointIndex].x = ex;
+      vertices[activeControlPointIndex].y = ey;
+
+      const node = api.getNodeByEntity(selected);
+      api.updateNode(VectorNetwork.toSerializedNode(vn, node));
+    });
+
+    this.renderTransformer.createOrUpdate(camera);
+  }
+
+  private handleSelectedMovedControlPoint(
+    api: API,
+    selection: SelectVectorNetwork,
+  ) {
+    const camera = api.getCamera();
+
+    api.setNodes(api.getNodes());
+    api.record();
+
+    const { selecteds } = camera.read(Transformable);
+    selecteds.forEach((selected) => {
+      if (!selected.has(Highlighted)) {
+        selected.add(Highlighted);
+      }
+    });
+
+    camera.write(Transformable).status = TransformableStatus.MOVED;
   }
 
   private handleSelectedRotating(
@@ -203,14 +221,15 @@ export class Select extends System {
   ) {
     const camera = api.getCamera();
     camera.write(Transformable).status = TransformableStatus.ROTATING;
+    const { obb } = camera.read(SelectOBB);
 
     const sl = api.canvas2Transformer({
       x: anchorNodeX,
       y: anchorNodeY,
     });
 
-    const x = sl.x - this.cameraSelectionMap.get(camera.__id)?.obb.width / 2;
-    const y = sl.y - this.cameraSelectionMap.get(camera.__id)?.obb.height / 2;
+    const x = sl.x - obb.width / 2;
+    const y = sl.y - obb.height / 2;
 
     let delta = Math.atan2(-y, x) + Math.PI / 2;
 
@@ -243,12 +262,10 @@ export class Select extends System {
     canvasY: number,
     lockAspectRatio: boolean,
     centeredScaling: boolean,
+    selection: SelectOBB,
   ) {
     const camera = api.getCamera();
-    const selection = this.cameraSelectionMap.get(camera.__id);
-    if (!selection) {
-      return;
-    }
+    const { resizingAnchorName, obb, cos, sin } = selection;
 
     camera.write(Transformable).status = TransformableStatus.RESIZING;
 
@@ -266,7 +283,7 @@ export class Select extends System {
     });
 
     let anchor: Entity;
-    const anchorName = selection.resizingAnchorName;
+    const anchorName = resizingAnchorName;
     if (anchorName === AnchorName.TOP_LEFT) {
       anchor = tlAnchor;
     } else if (anchorName === AnchorName.TOP_RIGHT) {
@@ -290,8 +307,8 @@ export class Select extends System {
       if (lockAspectRatio) {
         const comparePoint = centeredScaling
           ? {
-              x: selection.obb.width / 2,
-              y: selection.obb.height / 2,
+              x: obb.width / 2,
+              y: obb.height / 2,
             }
           : {
               x: brAnchor.read(Circle).cx,
@@ -306,16 +323,16 @@ export class Select extends System {
         const reverseY = cy > comparePoint.y ? -1 : 1;
 
         Object.assign(tlAnchor.write(Circle), {
-          cx: comparePoint.x - newHypotenuse * selection.cos * reverseX,
-          cy: comparePoint.y - newHypotenuse * selection.sin * reverseY,
+          cx: comparePoint.x - newHypotenuse * cos * reverseX,
+          cy: comparePoint.y - newHypotenuse * sin * reverseY,
         });
       }
     } else if (anchorName === AnchorName.TOP_RIGHT) {
       if (lockAspectRatio) {
         const comparePoint = centeredScaling
           ? {
-              x: selection.obb.width / 2,
-              y: selection.obb.height / 2,
+              x: obb.width / 2,
+              y: obb.height / 2,
             }
           : {
               x: blAnchor.read(Circle).cx,
@@ -331,8 +348,8 @@ export class Select extends System {
         const reverseY = cy > comparePoint.y ? -1 : 1;
 
         Object.assign(trAnchor.write(Circle), {
-          cx: comparePoint.x + newHypotenuse * selection.cos * reverseX,
-          cy: comparePoint.y - newHypotenuse * selection.sin * reverseY,
+          cx: comparePoint.x + newHypotenuse * cos * reverseX,
+          cy: comparePoint.y - newHypotenuse * sin * reverseY,
         });
       }
 
@@ -342,8 +359,8 @@ export class Select extends System {
       if (lockAspectRatio) {
         const comparePoint = centeredScaling
           ? {
-              x: selection.obb.width / 2,
-              y: selection.obb.height / 2,
+              x: obb.width / 2,
+              y: obb.height / 2,
             }
           : {
               x: trAnchor.read(Circle).cx,
@@ -358,8 +375,8 @@ export class Select extends System {
         const reverseY = y < comparePoint.y ? -1 : 1;
 
         Object.assign(blAnchor.write(Circle), {
-          cx: comparePoint.x - newHypotenuse * selection.cos * reverseX,
-          cy: comparePoint.y + newHypotenuse * selection.sin * reverseY,
+          cx: comparePoint.x - newHypotenuse * cos * reverseX,
+          cy: comparePoint.y + newHypotenuse * sin * reverseY,
         });
       }
 
@@ -369,8 +386,8 @@ export class Select extends System {
       if (lockAspectRatio) {
         const comparePoint = centeredScaling
           ? {
-              x: selection.obb.width / 2,
-              y: selection.obb.height / 2,
+              x: obb.width / 2,
+              y: obb.height / 2,
             }
           : {
               x: tlAnchor.read(Circle).cx,
@@ -384,8 +401,8 @@ export class Select extends System {
         const reverseX = brAnchor.read(Circle).cx < comparePoint.x ? -1 : 1;
         const reverseY = brAnchor.read(Circle).cy < comparePoint.y ? -1 : 1;
         Object.assign(brAnchor.write(Circle), {
-          cx: comparePoint.x + newHypotenuse * selection.cos * reverseX,
-          cy: comparePoint.y + newHypotenuse * selection.sin * reverseY,
+          cx: comparePoint.x + newHypotenuse * cos * reverseX,
+          cy: comparePoint.y + newHypotenuse * sin * reverseY,
         });
       }
     } else if (anchorName === AnchorName.TOP_CENTER) {
@@ -425,21 +442,25 @@ export class Select extends System {
       const height = brCy - tlCy;
 
       const { x, y } = api.transformer2Canvas({ x: tlCx, y: tlCy });
-      this.fitSelected(api, {
-        x,
-        y,
-        width,
-        height,
-        rotation: selection.obb.rotation,
-        scaleX: selection.obb.scaleX,
-        scaleY: selection.obb.scaleY,
-      });
+      this.fitSelected(
+        api,
+        {
+          x,
+          y,
+          width,
+          height,
+          rotation: obb.rotation,
+          scaleX: obb.scaleX,
+          scaleY: obb.scaleY,
+        },
+        selection,
+      );
     }
 
     this.renderTransformer.createOrUpdate(camera);
   }
 
-  private handleSelectedResized(api: API) {
+  private handleSelectedResized(api: API, selection: SelectOBB) {
     const camera = api.getCamera();
     camera.write(Transformable).status = TransformableStatus.RESIZED;
 
@@ -453,10 +474,10 @@ export class Select extends System {
       }
     });
 
-    this.saveSelectedOBB(api);
+    this.saveSelectedOBB(api, selection);
   }
 
-  private handleSelectedRotated(api: API) {
+  private handleSelectedRotated(api: API, selection: SelectOBB) {
     const camera = api.getCamera();
     camera.write(Transformable).status = TransformableStatus.ROTATED;
 
@@ -470,14 +491,14 @@ export class Select extends System {
       }
     });
 
-    this.saveSelectedOBB(api);
+    this.saveSelectedOBB(api, selection);
   }
 
   private handleBrushing(api: API, viewportX: number, viewportY: number) {
-    const selection = this.cameraSelectionMap.get(api.getCamera().__id);
-    if (!selection) {
-      return;
-    }
+    const camera = api.getCamera();
+    const selection = camera.has(SelectOBB)
+      ? camera.write(SelectOBB)
+      : camera.write(SelectVectorNetwork);
 
     // Use a threshold to avoid showing the selection brush when the pointer is moved a little.
     const shouldShowSelectionBrush =
@@ -528,70 +549,6 @@ export class Select extends System {
     }
   }
 
-  initialize() {
-    const document = DOMAdapter.get().getDocument();
-    document.addEventListener('keydown', this.handleKeyDown);
-  }
-
-  finalize() {
-    const document = DOMAdapter.get().getDocument();
-    document.removeEventListener('keydown', this.handleKeyDown);
-  }
-
-  private handleKeyDown = (e: KeyboardEvent) => {
-    this.cameras.current.forEach((camera) => {
-      if (!camera.has(Camera)) {
-        return;
-      }
-
-      const { canvas } = camera.read(Camera);
-
-      if (!canvas) {
-        return;
-      }
-
-      const { api } = canvas.read(Canvas);
-      if (!api) {
-        return;
-      }
-
-      const { layersSelected } = api.getAppState();
-      const document = DOMAdapter.get().getDocument();
-
-      if (
-        // @ts-ignore
-        document.activeElement !== api.element ||
-        layersSelected.length === 0
-      ) {
-        return;
-      }
-
-      const selected = api.getNodeById(layersSelected[0]);
-
-      if (e.key === 'ArrowUp') {
-        e.preventDefault();
-        api.updateNodeOBB(selected, { y: selected.y - 10 });
-        api.record();
-      } else if (e.key === 'ArrowDown') {
-        e.preventDefault();
-        api.updateNodeOBB(selected, { y: selected.y + 10 });
-        api.record();
-      } else if (e.key === 'ArrowLeft') {
-        e.preventDefault();
-        api.updateNodeOBB(selected, { x: selected.x - 10 });
-        api.record();
-      } else if (e.key === 'ArrowRight') {
-        e.preventDefault();
-        api.updateNodeOBB(selected, { x: selected.x + 10 });
-        api.record();
-      } else if (e.key === 'Backspace') {
-        e.preventDefault();
-        api.deleteNodesById([selected.id]);
-        api.record();
-      }
-    });
-  };
-
   execute() {
     this.cameras.current.forEach((camera) => {
       if (!camera.has(Camera)) {
@@ -599,48 +556,19 @@ export class Select extends System {
       }
 
       const { canvas } = camera.read(Camera);
-
       if (!canvas) {
         return;
-      }
-
-      let selection = this.cameraSelectionMap.get(camera.__id);
-      if (!selection) {
-        this.cameraSelectionMap.set(camera.__id, {
-          mode: SelectionMode.IDLE,
-          resizingAnchorName: AnchorName.INSIDE,
-          obb: {
-            x: 0,
-            y: 0,
-            width: 0,
-            height: 0,
-            rotation: 0,
-            scaleX: 1,
-            scaleY: 1,
-          },
-          sin: 0,
-          cos: 0,
-          selectedNodes: [],
-          brush: undefined,
-          pointerDownViewportX: 0,
-          pointerDownViewportY: 0,
-          pointerDownCanvasX: 0,
-          pointerDownCanvasY: 0,
-          pointerMoveViewportX: 0,
-          pointerMoveViewportY: 0,
-        });
-        selection = this.cameraSelectionMap.get(camera.__id);
       }
 
       const { inputPoints, api } = canvas.read(Canvas);
       const pen = api.getAppState().penbarSelected[0];
 
       if (pen !== Pen.SELECT) {
-        if (selection.brush) {
-          // Hide selection brush
-          selection.brush.write(Visibility).value = 'hidden';
-          selection.brush = undefined;
-        }
+        // if (selection.brush) {
+        //   // Hide selection brush
+        //   selection.brush.write(Visibility).value = 'hidden';
+        //   selection.brush = undefined;
+        // }
 
         // Clear selection
         api.selectNodes([]);
@@ -652,9 +580,28 @@ export class Select extends System {
       const input = canvas.write(Input);
       const cursor = canvas.write(Cursor);
 
+      safeAddComponent(camera, Transformable);
+
       if (input.doubleClickTrigger) {
-        // console.log('double click');
+        // FIXME: Only support Polyline for now
+        const { selecteds } = camera.read(Transformable);
+        if (selecteds.length === 1) {
+          const selected = selecteds[0];
+          if (selected.has(Polyline)) {
+            safeRemoveComponent(camera, SelectOBB);
+            safeAddComponent(camera, SelectVectorNetwork);
+          }
+        }
       }
+      if (!camera.has(SelectOBB) && !camera.has(SelectVectorNetwork)) {
+        safeAddComponent(camera, SelectOBB);
+      }
+
+      let selection: SelectOBB | SelectVectorNetwork = camera.has(
+        SelectVectorNetwork,
+      )
+        ? camera.write(SelectVectorNetwork)
+        : camera.write(SelectOBB);
 
       if (input.pointerDownTrigger) {
         const [x, y] = input.pointerViewport;
@@ -679,12 +626,16 @@ export class Select extends System {
           selection.mode === SelectionMode.READY_TO_RESIZE ||
           selection.mode === SelectionMode.READY_TO_ROTATE
         ) {
-          this.saveSelectedOBB(api);
+          this.saveSelectedOBB(api, selection as SelectOBB);
           if (selection.mode === SelectionMode.READY_TO_RESIZE) {
             selection.mode = SelectionMode.RESIZE;
           } else if (selection.mode === SelectionMode.READY_TO_ROTATE) {
             selection.mode = SelectionMode.ROTATE;
           }
+        } else if (
+          selection.mode === SelectionMode.READY_TO_MOVE_CONTROL_POINT
+        ) {
+          selection.mode = SelectionMode.MOVE_CONTROL_POINT;
         }
 
         if (selection.mode === SelectionMode.SELECT) {
@@ -731,14 +682,22 @@ export class Select extends System {
           api.highlightNodes([api.getNodeByEntity(toHighlight)]);
           selection.mode = SelectionMode.READY_TO_SELECT;
         }
-        if (camera.has(Transformable)) {
-          const { mask, selecteds } = camera.read(Transformable);
+        const { mask, selecteds } = camera.read(Transformable);
 
-          // Hit test with transformer
-          if (selecteds.length >= 1) {
-            const { anchor, cursor: cursorName } =
-              this.renderTransformer.hitTest(api, { x, y }) || {};
-            if (anchor) {
+        // Hit test with transformer
+        if (selecteds.length >= 1) {
+          const {
+            anchor,
+            cursor: cursorName,
+            index,
+          } = this.renderTransformer.hitTest(api, { x, y }) || {};
+
+          if (anchor) {
+            if (anchor === AnchorName.CONTROL) {
+              cursor.value = 'move';
+              (selection as SelectVectorNetwork).activeControlPointIndex =
+                index;
+            } else {
               const { rotation, scale } = mask.read(Transform);
               cursor.value = getCursor(
                 cursorName,
@@ -746,24 +705,26 @@ export class Select extends System {
                 '',
                 Math.sign(scale[0] * scale[1]) < 0,
               );
+              (selection as SelectOBB).resizingAnchorName = anchor;
+            }
 
-              selection.resizingAnchorName = anchor;
-              if (cursorName.includes('rotate')) {
-                selection.mode = SelectionMode.READY_TO_ROTATE;
-              } else if (cursorName.includes('resize')) {
-                selection.mode = SelectionMode.READY_TO_RESIZE;
-              } else if (anchor === AnchorName.INSIDE) {
-                if (toHighlight && toHighlight !== selecteds[0]) {
-                  selection.mode = SelectionMode.READY_TO_SELECT;
-                } else {
-                  selection.mode = SelectionMode.READY_TO_MOVE;
-                }
+            if (cursorName.includes('rotate')) {
+              selection.mode = SelectionMode.READY_TO_ROTATE;
+            } else if (cursorName.includes('resize')) {
+              selection.mode = SelectionMode.READY_TO_RESIZE;
+            } else if (anchor === AnchorName.INSIDE) {
+              if (toHighlight && toHighlight !== selecteds[0]) {
+                selection.mode = SelectionMode.READY_TO_SELECT;
               } else {
-                if (toHighlight) {
-                  selection.mode = SelectionMode.READY_TO_SELECT;
-                } else {
-                  selection.mode = SelectionMode.IDLE;
-                }
+                selection.mode = SelectionMode.READY_TO_MOVE;
+              }
+            } else if (anchor === AnchorName.CONTROL) {
+              selection.mode = SelectionMode.READY_TO_MOVE_CONTROL_POINT;
+            } else {
+              if (toHighlight) {
+                selection.mode = SelectionMode.READY_TO_SELECT;
+              } else {
+                selection.mode = SelectionMode.IDLE;
               }
             }
           }
@@ -805,9 +766,12 @@ export class Select extends System {
             ey,
             input.shiftKey,
             input.altKey,
+            selection as SelectOBB,
           );
         } else if (selection.mode === SelectionMode.ROTATE) {
           this.handleSelectedRotating(api, ex, ey);
+        } else if (selection.mode === SelectionMode.MOVE_CONTROL_POINT) {
+          this.handleSelectedMovingControlPoint(api, sx, sy, ex, ey);
         }
 
         inputPoint.prevPoint = input.pointerViewport;
@@ -815,8 +779,6 @@ export class Select extends System {
 
       if (input.pointerUpTrigger) {
         api.highlightNodes([]);
-
-        const [x, y] = input.pointerViewport;
 
         selection.pointerDownViewportX = undefined;
         selection.pointerDownViewportY = undefined;
@@ -829,29 +791,33 @@ export class Select extends System {
           }
           api.selectNodes([]);
           selection.mode = SelectionMode.IDLE;
+
+          safeRemoveComponent(camera, SelectVectorNetwork);
+          safeAddComponent(camera, SelectOBB);
           // TODO: Apply selection
         } else if (selection.mode === SelectionMode.MOVE) {
-          this.handleSelectedMoved(api);
+          this.handleSelectedMoved(api, selection as SelectOBB);
           selection.mode = SelectionMode.READY_TO_MOVE;
         } else if (selection.mode === SelectionMode.RESIZE) {
-          this.handleSelectedResized(api);
+          this.handleSelectedResized(api, selection as SelectOBB);
           selection.mode = SelectionMode.READY_TO_RESIZE;
         } else if (selection.mode === SelectionMode.ROTATE) {
-          this.handleSelectedRotated(api);
+          this.handleSelectedRotated(api, selection as SelectOBB);
           selection.mode = SelectionMode.READY_TO_ROTATE;
+        } else if (selection.mode === SelectionMode.MOVE_CONTROL_POINT) {
+          this.handleSelectedMovedControlPoint(
+            api,
+            selection as SelectVectorNetwork,
+          );
+          selection.mode = SelectionMode.READY_TO_MOVE_CONTROL_POINT;
         }
       }
     });
   }
 
-  private saveSelectedOBB(api: API) {
+  private saveSelectedOBB(api: API, selection: SelectOBB) {
     const camera = api.getCamera();
-    const selection = this.cameraSelectionMap.get(camera.__id);
-    if (!selection) {
-      return;
-    }
-
-    selection.obb = this.renderTransformer.getOBB(api.getCamera());
+    selection.obb = this.renderTransformer.getOBB(camera);
     const { width, height } = selection.obb;
     const hypotenuse = Math.sqrt(Math.pow(width, 2) + Math.pow(height, 2));
     selection.sin = Math.abs(height / hypotenuse);
@@ -862,12 +828,8 @@ export class Select extends System {
     });
   }
 
-  private fitSelected(api: API, newAttrs: OBB) {
+  private fitSelected(api: API, newAttrs: OBB, selection: SelectOBB) {
     const camera = api.getCamera();
-    const selection = this.cameraSelectionMap.get(camera.__id);
-    if (!selection) {
-      return;
-    }
 
     const { selecteds } = camera.read(Transformable);
 

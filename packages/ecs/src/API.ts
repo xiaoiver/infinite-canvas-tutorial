@@ -53,6 +53,7 @@ import {
   Transform,
   Transformable,
   UI,
+  VectorNetwork,
   VectorScreenshotRequest,
   ZIndex,
 } from './components';
@@ -903,6 +904,8 @@ export class API {
       });
     }
   }
+
+  updateNodeVectorNetwork(node: SerializedNode, vectorNetwork: VectorNetwork) {}
 
   updateNodeOBB(
     node: SerializedNode,

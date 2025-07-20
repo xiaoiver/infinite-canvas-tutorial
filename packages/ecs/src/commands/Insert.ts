@@ -30,9 +30,11 @@ export class Insert implements Command {
           }
         });
       } else {
-        // Add component.
-        // @ts-ignore
-        this.id.add(bundle.constructor, bundle);
+        if (bundle) {
+          // Add component.
+          // @ts-ignore
+          this.id.add(bundle.constructor, bundle);
+        }
       }
     } catch (e) {
       console.log(e);

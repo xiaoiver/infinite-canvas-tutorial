@@ -12,12 +12,26 @@ import {
   Sort,
   SyncSimpleTransforms,
 } from '../systems';
-import { Highlighted, Selected, UI } from '../components';
+import {
+  Highlighted,
+  Anchor,
+  Selected,
+  SelectOBB,
+  SelectVectorNetwork,
+  Transformable,
+  UI,
+  VectorNetwork,
+} from '../components';
 
 export const PenPlugin: Plugin = () => {
   component(UI);
   component(Selected);
   component(Highlighted);
+  component(SelectOBB);
+  component(SelectVectorNetwork);
+  component(Transformable);
+  component(Anchor);
+  component(VectorNetwork);
 
   system((s) =>
     s.after(

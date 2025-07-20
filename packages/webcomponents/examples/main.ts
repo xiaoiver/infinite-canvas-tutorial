@@ -61,6 +61,16 @@ canvas.addEventListener(Event.READY, async (e) => {
       // fill: 'radial-gradient(circle at center, red, blue, green 100%)',
       zIndex: 1,
     },
+    {
+      id: '2',
+      type: 'text',
+      content: 'Hello',
+      anchorX: 100,
+      anchorY: 100,
+      fontSize: 20,
+      fontFamily: 'Arial',
+      fill: 'black',
+    },
   ];
 
   api.runAtNextTick(() => {
