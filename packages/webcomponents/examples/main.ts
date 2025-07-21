@@ -22,7 +22,7 @@ const $container = document.createElement('div');
 $container.innerHTML = svg;
 const $svg = $container.children[0] as SVGSVGElement;
 
-const camera = svgSvgElementToComputedCamera($svg);
+// const camera = svgSvgElementToComputedCamera($svg);
 // const nodes = svgElementsToSerializedNodes(
 //   Array.from($svg.children) as SVGElement[],
 // );
@@ -38,14 +38,14 @@ canvas.addEventListener(Event.READY, async (e) => {
     // checkboardStyle: CheckboardStyle.NONE,
     // topbarVisible: false,
     // contextBarVisible: false,
-    penbarVisible: false,
+    // penbarVisible: false,
     taskbarVisible: false,
     // rotateEnabled: false,
     // flipEnabled: false,
   });
   // api.setCheckboardStyle(CheckboardStyle.NONE);
   api.setPen(Pen.SELECT);
-  // api.setTaskbars([Task.SHOW_LAYERS_PANEL, Task.SHOW_PROPERTIES_PANEL]);
+  api.setTaskbars([Task.SHOW_LAYERS_PANEL, Task.SHOW_PROPERTIES_PANEL]);
 
   const nodes = [
     {
@@ -73,11 +73,11 @@ canvas.addEventListener(Event.READY, async (e) => {
     },
   ];
 
-  api.runAtNextTick(() => {
-    api.updateNodes(nodes);
-    api.record();
-    // api.selectNodes([nodes[1]]);
-  });
+  // api.runAtNextTick(() => {
+  api.updateNodes(nodes);
+  api.record();
+  api.selectNodes([nodes[1]]);
+  // });
 });
 
 // canvas.addEventListener(Event.SCREENSHOT_DOWNLOADED, (e) => {

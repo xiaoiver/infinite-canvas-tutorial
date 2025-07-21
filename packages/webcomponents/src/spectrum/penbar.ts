@@ -16,8 +16,16 @@ const PenMap = {
     label: 'Select',
   },
   [Pen.DRAW_RECT]: {
+    icon: html`<sp-icon-rectangle slot="icon"></sp-icon-rectangle>`,
+    label: 'Draw Rect',
+  },
+  [Pen.DRAW_ELLIPSE]: {
+    icon: html`<sp-icon-ellipse slot="icon"></sp-icon-ellipse>`,
+    label: 'Draw Ellipse',
+  },
+  [Pen.VECTOR_NETWORK]: {
     icon: html`<sp-icon-shapes slot="icon"></sp-icon-shapes>`,
-    label: 'Shapes',
+    label: 'Vector Network',
   },
 };
 

@@ -1,6 +1,7 @@
 import { Entity, System } from '@lastolivegames/becsy';
 import { mat3 } from 'gl-matrix';
 import { Camera, Canvas, ComputedCamera, Mat3, Transform } from '../components';
+import { safeAddComponent } from '../history';
 
 /**
  * Compute the points of the path according to the definition.
@@ -56,9 +57,7 @@ export class ComputeCamera extends System {
   }
 
   private projection(camera: Entity, width: number, height: number) {
-    if (!camera.has(ComputedCamera)) {
-      camera.add(ComputedCamera);
-    }
+    safeAddComponent(camera, ComputedCamera);
 
     const projectionMatrix = mat3.projection(mat3.create(), width, height);
     camera.write(ComputedCamera).projectionMatrix =

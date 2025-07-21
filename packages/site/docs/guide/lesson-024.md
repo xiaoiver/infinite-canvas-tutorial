@@ -1,6 +1,14 @@
 ---
 outline: deep
 description: 'Implementing context menu and clipboard functionality. Adjust z-index with bring forward and send back.  Writes and reads clipboard content, supports pasting serialized graphics, non-vector images, SVG and plain text. Drag-and-drop import of image files from file systems and pages.'
+head:
+    - [
+          'meta',
+          {
+              property: 'og:title',
+              content: 'Lesson 24 - Context menu and clipboard',
+          },
+      ]
 ---
 
 <script setup>

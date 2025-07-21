@@ -14,22 +14,21 @@ import {
   Mat3,
 } from '../components';
 import { API } from '../API';
+import { safeAddComponent } from '../history';
 
 const MIN_ZOOM = 0.02;
 const MAX_ZOOM = 4;
 const PINCH_FACTOR = 100;
 
 export class CameraControl extends System {
-  private readonly cameras = this.query(
-    (q) => q.current.with(Camera, ComputedCamera).read,
-  );
+  private readonly cameras = this.query((q) => q.current.with(Camera).read);
 
   constructor() {
     super();
     this.query(
       (q) =>
         q
-          .using(Canvas)
+          .using(Canvas, ComputedCamera)
           .read.update.and.using(
             Input,
             Cursor,
@@ -41,13 +40,16 @@ export class CameraControl extends System {
     );
   }
 
-  initialize() {}
-
   execute() {
     this.cameras.current.forEach((entity) => {
       const camera = entity.read(Camera);
+      safeAddComponent(entity, ComputedCameraControl);
 
       if (!camera.canvas) {
+        return;
+      }
+
+      if (!entity.has(ComputedCamera)) {
         return;
       }
 
@@ -55,34 +57,52 @@ export class CameraControl extends System {
       const { api, inputPoints } = canvas.read(Canvas);
       const pen = api.getAppState().penbarSelected[0];
 
-      if (!entity.has(ComputedCameraControl)) {
-        entity.add(ComputedCameraControl);
-      }
-
       const cameraControl = entity.write(ComputedCameraControl);
 
       const input = canvas.write(Input);
       const cursor = canvas.write(Cursor);
 
+      const { pointerViewport } = input;
+
       const transform = entity.read(Transform);
       const computedCamera = entity.read(ComputedCamera);
+      const viewProjectionMatrixInv = Mat3.toGLMat3(
+        computedCamera.viewProjectionMatrixInv,
+      );
+
       const x = transform.translation.x;
       const y = transform.translation.y;
       const rotation = transform.rotation;
-      const viewProjectionMatrixInv = computedCamera.viewProjectionMatrixInv;
+
+      if (pen === Pen.HAND) {
+        cursor.value = 'grab';
+      }
 
       if (input.pointerDownTrigger) {
         this.createEntity(InputPoint, {
-          prevPoint: input.pointerViewport,
+          prevPoint: pointerViewport,
           canvas,
         });
+
+        {
+          const [x, y] = pointerViewport;
+          cameraControl.pointerDownViewportX = x;
+          cameraControl.pointerDownViewportY = y;
+          const { x: wx, y: wy } = api.viewport2Canvas({
+            x,
+            y,
+          });
+          cameraControl.pointerDownCanvasX = wx;
+          cameraControl.pointerDownCanvasY = wy;
+        }
+
         if (pen === Pen.HAND) {
           cursor.value = 'grabbing';
 
           cameraControl.rotate = input.shiftKey;
           mat3.copy(
             cameraControl.startInvertViewProjectionMatrix,
-            Mat3.toGLMat3(viewProjectionMatrixInv),
+            viewProjectionMatrixInv,
           );
           cameraControl.startCameraX = x;
           cameraControl.startCameraY = y;
@@ -92,23 +112,20 @@ export class CameraControl extends System {
             this.getClipSpaceMousePosition(entity),
             cameraControl.startInvertViewProjectionMatrix,
           );
-          cameraControl.startMousePos = [
-            input.pointerViewport[0],
-            input.pointerViewport[1],
-          ];
+          cameraControl.startMousePos = pointerViewport;
         }
       }
 
       inputPoints.forEach((point) => {
         const inputPoint = point.write(InputPoint);
-        if (
-          inputPoint.prevPoint[0] === input.pointerViewport[0] &&
-          inputPoint.prevPoint[1] === input.pointerViewport[1]
-        ) {
+        const {
+          prevPoint: [prevX, prevY],
+        } = inputPoint;
+        const [x, y] = pointerViewport;
+        if (prevX === x && prevY === y) {
           return;
         }
 
-        inputPoint.prevPoint = input.pointerViewport;
         if (pen === Pen.HAND) {
           cursor.value = 'grabbing';
           if (cameraControl.rotate) {
@@ -120,6 +137,13 @@ export class CameraControl extends System {
       });
 
       if (input.pointerUpTrigger) {
+        Object.assign(cameraControl, {
+          pointerDownViewportX: undefined,
+          pointerDownViewportY: undefined,
+          pointerDownCanvasX: undefined,
+          pointerDownCanvasY: undefined,
+        });
+
         for (const point of canvas.read(Canvas).inputPoints) {
           point.delete();
         }
@@ -134,7 +158,7 @@ export class CameraControl extends System {
           this.zoomByClientPoint(
             entity,
             api,
-            { x: input.pointerViewport[0], y: input.pointerViewport[1] },
+            { x: pointerViewport[0], y: pointerViewport[1] },
             input.deltaY,
           );
         } else {
@@ -151,10 +175,12 @@ export class CameraControl extends System {
         }
       }
 
-      input.wheelTrigger = false;
-      input.ctrlKey = false;
-      input.metaKey = false;
-      input.shiftKey = false;
+      Object.assign(input, {
+        wheelTrigger: false,
+        ctrlKey: false,
+        metaKey: false,
+        shiftKey: false,
+      });
     });
   }
 

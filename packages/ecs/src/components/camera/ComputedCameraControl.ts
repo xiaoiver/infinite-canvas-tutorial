@@ -12,4 +12,11 @@ export class ComputedCameraControl {
   @field({ type: Type.object, default: vec2.create() })
   declare startMousePos: vec2;
   @field({ type: Type.boolean, default: false }) declare rotate: boolean;
+
+  @field.float32 declare pointerDownViewportX: number;
+  @field.float32 declare pointerDownViewportY: number;
+  @field.float32 declare pointerDownCanvasX: number;
+  @field.float32 declare pointerDownCanvasY: number;
+  // @field.float32 declare pointerMoveViewportX: number;
+  // @field.float32 declare pointerMoveViewportY: number;
 }

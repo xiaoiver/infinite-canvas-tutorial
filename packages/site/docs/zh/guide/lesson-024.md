@@ -1,6 +1,11 @@
 ---
 outline: deep
 description: '实现上下文菜单和剪贴板，通过上移下移调整图形次序，支持写入并读取剪贴板内容，支持粘贴序列化图形、非矢量图片、SVG 和纯文本，从文件系统和页面中拖拽导入图片文件'
+head:
+    - [
+          'meta',
+          { property: 'og:title', content: '课程 24 - 上下文菜单和剪贴板' },
+      ]
 ---
 
 <script setup>

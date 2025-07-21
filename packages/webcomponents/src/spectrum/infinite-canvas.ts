@@ -72,6 +72,8 @@ import '@spectrum-web-components/icons-workflow/icons/sp-icon-show-all-layers.js
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-copy.js';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-cut.js';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-paste.js';
+import '@spectrum-web-components/icons-workflow/icons/sp-icon-rectangle.js';
+import '@spectrum-web-components/icons-workflow/icons/sp-icon-ellipse.js';
 
 export const TOP_NAVBAR_HEIGHT = 48;
 

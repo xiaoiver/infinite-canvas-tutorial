@@ -1,5 +1,6 @@
 import {
   Camera,
+  CameraControl,
   Canvas,
   ComputeBounds,
   Plugin,
@@ -8,6 +9,8 @@ import {
   SetupDevice,
   SyncSimpleTransforms,
   system,
+  Select,
+  Last,
 } from '@infinite-canvas-tutorial/ecs';
 import {
   DownloadScreenshot,
@@ -44,7 +47,10 @@ export const UIPlugin: Plugin = () => {
         SyncSimpleTransforms,
         PropagateTransforms,
         ComputeBounds,
-      ),
+        CameraControl,
+        Select,
+      )
+      .before(Last),
   )(ZoomLevel);
   system((s) => s.before(PreStartUp))(DownloadScreenshot);
   system((s) => s.after(PreStartUp))(ListenTransformableStatus);

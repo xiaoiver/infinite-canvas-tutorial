@@ -36,10 +36,10 @@ import {
   Visibility,
   ZIndex,
   AnchorName,
-  SelectVectorNetwork,
   SelectOBB,
   SelectionMode,
   VectorNetwork,
+  ComputedCameraControl,
 } from '../components';
 import { Commands } from '../commands/Commands';
 import { decompose, distanceBetweenPoints, getCursor } from '../utils';
@@ -63,12 +63,14 @@ export class Select extends System {
 
   private readonly cameras = this.query((q) => q.current.with(Camera).read);
 
+  private selections = new Map<number, SelectOBB>();
+
   constructor() {
     super();
     this.query(
       (q) =>
         q
-          .using(Canvas, ComputedBounds)
+          .using(Canvas, ComputedBounds, ComputedCameraControl)
           .read.update.and.using(
             GlobalTransform,
             InputPoint,
@@ -95,8 +97,6 @@ export class Select extends System {
             ZIndex,
             StrokeAttenuation,
             Transformable,
-            SelectOBB,
-            SelectVectorNetwork,
             VectorNetwork,
           ).write,
     );
@@ -164,56 +164,6 @@ export class Select extends System {
     this.saveSelectedOBB(api, selection);
   }
 
-  private handleSelectedMovingControlPoint(
-    api: API,
-    sx: number,
-    sy: number,
-    ex: number,
-    ey: number,
-  ) {
-    api.highlightNodes([]);
-    const camera = api.getCamera();
-    camera.write(Transformable).status = TransformableStatus.MOVING;
-
-    const { selecteds } = camera.read(Transformable);
-    const { activeControlPointIndex } = camera.read(SelectVectorNetwork);
-    selecteds.forEach((selected) => {
-      // Hide transformer and highlighter
-      if (selected.has(Highlighted)) {
-        selected.remove(Highlighted);
-      }
-
-      const vn = selected.write(VectorNetwork);
-      const { vertices } = vn;
-      vertices[activeControlPointIndex].x = ex;
-      vertices[activeControlPointIndex].y = ey;
-
-      const node = api.getNodeByEntity(selected);
-      api.updateNode(VectorNetwork.toSerializedNode(vn, node));
-    });
-
-    this.renderTransformer.createOrUpdate(camera);
-  }
-
-  private handleSelectedMovedControlPoint(
-    api: API,
-    selection: SelectVectorNetwork,
-  ) {
-    const camera = api.getCamera();
-
-    api.setNodes(api.getNodes());
-    api.record();
-
-    const { selecteds } = camera.read(Transformable);
-    selecteds.forEach((selected) => {
-      if (!selected.has(Highlighted)) {
-        selected.add(Highlighted);
-      }
-    });
-
-    camera.write(Transformable).status = TransformableStatus.MOVED;
-  }
-
   private handleSelectedRotating(
     api: API,
     anchorNodeX: number,
@@ -221,7 +171,7 @@ export class Select extends System {
   ) {
     const camera = api.getCamera();
     camera.write(Transformable).status = TransformableStatus.ROTATING;
-    const { obb } = camera.read(SelectOBB);
+    const { obb } = this.selections.get(camera.__id);
 
     const sl = api.canvas2Transformer({
       x: anchorNodeX,
@@ -496,17 +446,22 @@ export class Select extends System {
 
   private handleBrushing(api: API, viewportX: number, viewportY: number) {
     const camera = api.getCamera();
-    const selection = camera.has(SelectOBB)
-      ? camera.write(SelectOBB)
-      : camera.write(SelectVectorNetwork);
+    const selection = this.selections.get(camera.__id);
+
+    const {
+      pointerDownViewportX,
+      pointerDownViewportY,
+      pointerDownCanvasX,
+      pointerDownCanvasY,
+    } = camera.read(ComputedCameraControl);
 
     // Use a threshold to avoid showing the selection brush when the pointer is moved a little.
     const shouldShowSelectionBrush =
       distanceBetweenPoints(
         viewportX,
         viewportY,
-        selection.pointerDownViewportX,
-        selection.pointerDownViewportY,
+        pointerDownViewportX,
+        pointerDownViewportY,
       ) > 10;
 
     if (shouldShowSelectionBrush) {
@@ -529,7 +484,6 @@ export class Select extends System {
 
         const camera = this.commands.entity(api.getCamera());
         camera.appendChild(this.commands.entity(selection.brush));
-
         this.commands.execute();
       }
 
@@ -541,11 +495,12 @@ export class Select extends System {
       });
 
       Object.assign(selection.brush.write(Rect), {
-        x: selection.pointerDownCanvasX,
-        y: selection.pointerDownCanvasY,
-        width: wx - selection.pointerDownCanvasX,
-        height: wy - selection.pointerDownCanvasY,
+        x: pointerDownCanvasX,
+        y: pointerDownCanvasY,
+        width: wx - pointerDownCanvasX,
+        height: wy - pointerDownCanvasY,
       });
+      updateGlobalTransform(selection.brush);
     }
   }
 
@@ -582,38 +537,44 @@ export class Select extends System {
 
       safeAddComponent(camera, Transformable);
 
+      if (!this.selections.has(camera.__id)) {
+        this.selections.set(camera.__id, {
+          mode: SelectionMode.IDLE,
+          resizingAnchorName: AnchorName.INSIDE,
+          selectedNodes: [],
+          obb: {
+            x: 0,
+            y: 0,
+            width: 0,
+            height: 0,
+            rotation: 0,
+            scaleX: 1,
+            scaleY: 1,
+          },
+          sin: 0,
+          cos: 0,
+          pointerMoveViewportX: 0,
+          pointerMoveViewportY: 0,
+          brush: undefined,
+        });
+      }
+
       if (input.doubleClickTrigger) {
         // FIXME: Only support Polyline for now
         const { selecteds } = camera.read(Transformable);
         if (selecteds.length === 1) {
           const selected = selecteds[0];
           if (selected.has(Polyline)) {
-            safeRemoveComponent(camera, SelectOBB);
-            safeAddComponent(camera, SelectVectorNetwork);
+            // Enter VectorNetwork edit mode
+            api.setPen(Pen.VECTOR_NETWORK);
+            return;
           }
         }
       }
-      if (!camera.has(SelectOBB) && !camera.has(SelectVectorNetwork)) {
-        safeAddComponent(camera, SelectOBB);
-      }
 
-      let selection: SelectOBB | SelectVectorNetwork = camera.has(
-        SelectVectorNetwork,
-      )
-        ? camera.write(SelectVectorNetwork)
-        : camera.write(SelectOBB);
-
+      const selection = this.selections.get(camera.__id);
       if (input.pointerDownTrigger) {
         const [x, y] = input.pointerViewport;
-        selection.pointerDownViewportX = x;
-        selection.pointerDownViewportY = y;
-
-        const { x: wx, y: wy } = api.viewport2Canvas({
-          x,
-          y,
-        });
-        selection.pointerDownCanvasX = wx;
-        selection.pointerDownCanvasY = wy;
 
         if (selection.mode === SelectionMode.IDLE) {
           selection.mode = SelectionMode.BRUSH;
@@ -626,7 +587,7 @@ export class Select extends System {
           selection.mode === SelectionMode.READY_TO_RESIZE ||
           selection.mode === SelectionMode.READY_TO_ROTATE
         ) {
-          this.saveSelectedOBB(api, selection as SelectOBB);
+          this.saveSelectedOBB(api, selection);
           if (selection.mode === SelectionMode.READY_TO_RESIZE) {
             selection.mode = SelectionMode.RESIZE;
           } else if (selection.mode === SelectionMode.READY_TO_ROTATE) {
@@ -667,37 +628,34 @@ export class Select extends System {
       if (camera.has(ComputedCamera) && inputPoints.length === 0) {
         const [x, y] = input.pointerViewport;
         if (
-          selection.pointerMoveViewportX === x &&
-          selection.pointerMoveViewportY === y
+          selection.pointerMoveViewportX !== x &&
+          selection.pointerMoveViewportY !== y
         ) {
-          return;
-        }
-        selection.pointerMoveViewportX = x;
-        selection.pointerMoveViewportY = y;
+          selection.pointerMoveViewportX = x;
+          selection.pointerMoveViewportY = y;
 
-        api.highlightNodes([]);
-        // Highlight the topmost non-ui element
-        toHighlight = this.getTopmostEntity(api, x, y, (e) => !e.has(UI));
-        if (toHighlight) {
-          api.highlightNodes([api.getNodeByEntity(toHighlight)]);
-          selection.mode = SelectionMode.READY_TO_SELECT;
-        }
-        const { mask, selecteds } = camera.read(Transformable);
+          api.highlightNodes([]);
+          // Highlight the topmost non-ui element
+          toHighlight = this.getTopmostEntity(api, x, y, (e) => !e.has(UI));
+          if (toHighlight) {
+            api.highlightNodes([api.getNodeByEntity(toHighlight)]);
+            selection.mode = SelectionMode.READY_TO_SELECT;
+          }
+          const { mask, selecteds } = camera.read(Transformable);
 
-        // Hit test with transformer
-        if (selecteds.length >= 1) {
-          const {
-            anchor,
-            cursor: cursorName,
-            index,
-          } = this.renderTransformer.hitTest(api, { x, y }) || {};
+          cursor.value = 'default';
 
-          if (anchor) {
-            if (anchor === AnchorName.CONTROL) {
-              cursor.value = 'move';
-              (selection as SelectVectorNetwork).activeControlPointIndex =
-                index;
-            } else {
+          // Hit test with transformer
+          if (selecteds.length >= 1) {
+            const { anchor, cursor: cursorName } =
+              this.renderTransformer.hitTest(api, { x, y }) || {};
+
+            if (anchor) {
+              // if (anchor === AnchorName.CONTROL) {
+              //   cursor.value = 'move';
+              //   (selection as SelectVectorNetwork).activeControlPointIndex =
+              //     index;
+              // } else {
               const { rotation, scale } = mask.read(Transform);
               cursor.value = getCursor(
                 cursorName,
@@ -705,26 +663,26 @@ export class Select extends System {
                 '',
                 Math.sign(scale[0] * scale[1]) < 0,
               );
-              (selection as SelectOBB).resizingAnchorName = anchor;
-            }
+              selection.resizingAnchorName = anchor;
 
-            if (cursorName.includes('rotate')) {
-              selection.mode = SelectionMode.READY_TO_ROTATE;
-            } else if (cursorName.includes('resize')) {
-              selection.mode = SelectionMode.READY_TO_RESIZE;
-            } else if (anchor === AnchorName.INSIDE) {
-              if (toHighlight && toHighlight !== selecteds[0]) {
-                selection.mode = SelectionMode.READY_TO_SELECT;
+              if (cursorName.includes('rotate')) {
+                selection.mode = SelectionMode.READY_TO_ROTATE;
+              } else if (cursorName.includes('resize')) {
+                selection.mode = SelectionMode.READY_TO_RESIZE;
+              } else if (anchor === AnchorName.INSIDE) {
+                if (toHighlight && toHighlight !== selecteds[0]) {
+                  selection.mode = SelectionMode.READY_TO_SELECT;
+                } else {
+                  selection.mode = SelectionMode.READY_TO_MOVE;
+                }
+                // } else if (anchor === AnchorName.CONTROL) {
+                //   selection.mode = SelectionMode.READY_TO_MOVE_CONTROL_POINT;
               } else {
-                selection.mode = SelectionMode.READY_TO_MOVE;
-              }
-            } else if (anchor === AnchorName.CONTROL) {
-              selection.mode = SelectionMode.READY_TO_MOVE_CONTROL_POINT;
-            } else {
-              if (toHighlight) {
-                selection.mode = SelectionMode.READY_TO_SELECT;
-              } else {
-                selection.mode = SelectionMode.IDLE;
+                if (toHighlight) {
+                  selection.mode = SelectionMode.READY_TO_SELECT;
+                } else {
+                  selection.mode = SelectionMode.IDLE;
+                }
               }
             }
           }
@@ -766,50 +724,42 @@ export class Select extends System {
             ey,
             input.shiftKey,
             input.altKey,
-            selection as SelectOBB,
+            selection,
           );
         } else if (selection.mode === SelectionMode.ROTATE) {
           this.handleSelectedRotating(api, ex, ey);
-        } else if (selection.mode === SelectionMode.MOVE_CONTROL_POINT) {
-          this.handleSelectedMovingControlPoint(api, sx, sy, ex, ey);
+          // } else if (selection.mode === SelectionMode.MOVE_CONTROL_POINT) {
+          // this.handleSelectedMovingControlPoint(api, sx, sy, ex, ey);
         }
 
+        // FIXME: This should be done in the last relative system
         inputPoint.prevPoint = input.pointerViewport;
       });
 
       if (input.pointerUpTrigger) {
         api.highlightNodes([]);
-
-        selection.pointerDownViewportX = undefined;
-        selection.pointerDownViewportY = undefined;
-        selection.pointerDownCanvasX = undefined;
-        selection.pointerDownCanvasY = undefined;
-
         if (selection.mode === SelectionMode.BRUSH) {
           if (selection.brush) {
             selection.brush.write(Visibility).value = 'hidden';
           }
           api.selectNodes([]);
           selection.mode = SelectionMode.IDLE;
-
-          safeRemoveComponent(camera, SelectVectorNetwork);
-          safeAddComponent(camera, SelectOBB);
           // TODO: Apply selection
         } else if (selection.mode === SelectionMode.MOVE) {
-          this.handleSelectedMoved(api, selection as SelectOBB);
+          this.handleSelectedMoved(api, selection);
           selection.mode = SelectionMode.READY_TO_MOVE;
         } else if (selection.mode === SelectionMode.RESIZE) {
-          this.handleSelectedResized(api, selection as SelectOBB);
+          this.handleSelectedResized(api, selection);
           selection.mode = SelectionMode.READY_TO_RESIZE;
         } else if (selection.mode === SelectionMode.ROTATE) {
-          this.handleSelectedRotated(api, selection as SelectOBB);
+          this.handleSelectedRotated(api, selection);
           selection.mode = SelectionMode.READY_TO_ROTATE;
-        } else if (selection.mode === SelectionMode.MOVE_CONTROL_POINT) {
-          this.handleSelectedMovedControlPoint(
-            api,
-            selection as SelectVectorNetwork,
-          );
-          selection.mode = SelectionMode.READY_TO_MOVE_CONTROL_POINT;
+          // } else if (selection.mode === SelectionMode.MOVE_CONTROL_POINT) {
+          //   this.handleSelectedMovedControlPoint(
+          //     api,
+          //     selection as SelectVectorNetwork,
+          //   );
+          //   selection.mode = SelectionMode.READY_TO_MOVE_CONTROL_POINT;
         }
       }
     });

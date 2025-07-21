@@ -8,6 +8,7 @@ import {
 } from '../components';
 import {
   CameraControl,
+  ComputeBounds,
   ComputeCamera,
   ComputeVisibility,
   EventWriter,
@@ -23,15 +24,15 @@ export const CameraPlugin: Plugin = () => {
   component(RBush);
 
   system((s) =>
-    s
-      .afterWritersOf(Camera)
-      .after(
-        EventWriter,
-        SetupDevice,
-        SyncSimpleTransforms,
-        PropagateTransforms,
-        ComputeVisibility,
-      ),
+    s.after(
+      EventWriter,
+      SetupDevice,
+      SyncSimpleTransforms,
+      PropagateTransforms,
+      ComputeVisibility,
+      ComputeBounds,
+      ComputeCamera,
+    ),
   )(CameraControl);
-  system((s) => s.afterWritersOf(Camera).after(CameraControl))(ComputeCamera);
+  system((s) => s.afterWritersOf(Camera))(ComputeCamera);
 };

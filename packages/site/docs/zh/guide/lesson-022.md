@@ -1,6 +1,8 @@
 ---
 outline: deep
 description: '探索VectorNetwork作为SVG路径的高级替代方案。学习拓扑定义、共享顶点和边、填充算法以及用于复杂矢量图形编辑的拓扑操作符。'
+head:
+    - ['meta', { property: 'og:title', content: '课程 22 - VectorNetwork' }]
 ---
 
 # 课程 22 - VectorNetwork
@@ -106,11 +108,59 @@ node.vectorNetwork = {
 
 在编辑场景下，顶点和边由用户定义，而填充区域需要系统自动计算。那如何找到这些填充区域呢？
 
-## Filling
+### Filling
 
 在 `click to fill` 这样的操作中，需要找到顶点组成的最小环路。
 
 ![Source: https://www.figma.com/blog/introducing-vector-networks/](https://alexharri.com/images/posts/vector-networks/40.gif)
+
+### 转换方法 {#convert-to-vector-network}
+
+参考 [figma-fill-rule-editor]，我们给出如下类型定义：
+
+```ts
+export class VectorNetwork {
+    @field.object declare vertices: VectorVertex[];
+    @field.object declare segments: VectorSegment[];
+    @field.object declare regions?: VectorRegion[];
+}
+
+interface VectorVertex {
+    x: number;
+    y: number;
+}
+
+interface VectorSegment {
+    start: number;
+    end: number;
+    tangentStart?: VectorVertex;
+    tangentEnd?: VectorVertex;
+}
+
+interface VectorRegion {
+    fillRule: CanvasFillRule;
+    loops: ReadonlyArray<ReadonlyArray<number>>;
+}
+```
+
+[Polyline] 是最容易转换成 VectorNetwork 的图形：
+
+```ts
+class VectorNetwork {
+    static fromEntity(entity: Entity): VectorNetwork {
+        if (entity.has(Polyline)) {
+            const { points } = entity.read(Polyline);
+            const vertices: VectorVertex[] = points.map(([x, y]) => ({ x, y }));
+            const segments: VectorSegment[] = points.slice(1).map((_, i) => ({
+                start: i,
+                end: i + 1,
+            }));
+
+            return { vertices, segments };
+        }
+    }
+}
+```
 
 ## Bending
 
@@ -122,7 +172,24 @@ node.vectorNetwork = {
 
 在 VectorNetwork 的边定义中，使用 `tangentStart` 和 `tangentEnd` 可以定义三阶贝塞尔曲线的两个控制点，当两者为 `[0, 0]` 时退化为直线。
 
-也可以在 Konva 的 [How to modify line points with anchors?] 在线例子中体验。
+也可以在 Konva 的 [How to modify line points with anchors?] 在线例子或者 [bezierjs] 中体验。
+
+参考 Figma 的交互，在图形上双击进入 VectorNetwork 编辑状态，详见：[Edit vector layers]。
+
+![Vector edit mode in Figma](/figma-vectornetwork-mode.png)
+
+```ts
+export enum Pen {
+    SELECT = 'select',
+    HAND = 'hand',
+    VECTOR_NETWORK = 'vector-network', // [!code ++]
+}
+```
+
+有别于 [课程 21 - Transformer] 中基于 OBB 的实现：
+
+-   拖拽 VectorSegment 和 OBB 一样，移动整个图形
+-   拖拽 VectorVertex
 
 ## Topological operators
 
@@ -162,3 +229,8 @@ node.vectorNetwork = {
 [课程 13]: /zh/guide/lesson-013
 [fillRule]: /zh/guide/lesson-013#fill-rule
 [How to modify line points with anchors?]: https://konvajs.org/docs/sandbox/Modify_Curves_with_Anchor_Points.html
+[bezierjs]: http://pomax.github.io/bezierjs
+[figma-fill-rule-editor]: https://github.com/evanw/figma-fill-rule-editor
+[Polyline]: /zh/guide/lesson-012
+[课程 21 - Transformer]: /zh/guide/lesson-021
+[Edit vector layers]: https://help.figma.com/hc/en-us/articles/360039957634-Edit-vector-layers#h_01JYM29VEN8ABWTDXJR529446R

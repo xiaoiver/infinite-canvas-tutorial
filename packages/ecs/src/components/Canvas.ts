@@ -8,6 +8,8 @@ export enum Pen {
   SELECT = 'select',
   HAND = 'hand',
   DRAW_RECT = 'draw-rect',
+  DRAW_ELLIPSE = 'draw-ellipse',
+  VECTOR_NETWORK = 'vector-network',
 }
 
 export class Canvas {

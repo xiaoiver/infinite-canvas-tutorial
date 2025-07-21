@@ -1,6 +1,8 @@
 ---
 outline: deep
 description: '实现思维导图功能和树布局算法。深入研究从d3-tree到d3-flextree的算法演化，复杂度分析以及扩展到N叉树的灵活思维导图实现。'
+head:
+    - ['meta', { property: 'og:title', content: '课程 23 - 思维导图' }]
 ---
 
 <script setup>
