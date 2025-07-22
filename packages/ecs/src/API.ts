@@ -375,8 +375,6 @@ export class API {
    */
   elementsFromBBox(minX: number, minY: number, maxX: number, maxY: number) {
     const rBush = this.#camera.read(RBush).value;
-
-    // console.log(rBush.all());
     const rBushNodes = rBush.search({
       minX,
       minY,
@@ -817,7 +815,11 @@ export class API {
   /**
    * If diff is provided, no need to calculate diffs.
    */
-  updateNode(node: SerializedNode, diff?: Partial<SerializedNode>) {
+  updateNode(
+    node: SerializedNode,
+    diff?: Partial<SerializedNode>,
+    updateAppState = true,
+  ) {
     const entity = this.#idEntityMap.get(node.id)?.id();
     const nodes = this.getNodes();
 
@@ -829,6 +831,7 @@ export class API {
         [node],
         this.#canvas.read(Canvas).fonts,
         this.commands,
+        this.#idEntityMap,
       );
       this.#idEntityMap.set(node.id, idEntityMap.get(node.id));
 
@@ -843,16 +846,20 @@ export class API {
 
       this.commands.execute();
 
-      this.setNodes([...nodes, node]);
+      if (updateAppState) {
+        this.setNodes([...nodes, node]);
+      }
     } else {
       const updated = mutateElement(entity, node, diff ?? node);
       const index = nodes.findIndex((n) => n.id === updated.id);
 
       this.commands.execute();
 
-      if (index !== -1) {
-        nodes[index] = updated;
-        this.setNodes(nodes);
+      if (updateAppState) {
+        if (index !== -1) {
+          nodes[index] = updated;
+          this.setNodes(nodes);
+        }
       }
     }
   }
@@ -863,7 +870,7 @@ export class API {
    *
    * @see https://docs.excalidraw.com/docs/@excalidraw/excalidraw/api/props/excalidraw-api#updatescene
    */
-  updateNodes(nodes: SerializedNode[]) {
+  updateNodes(nodes: SerializedNode[], updateAppState = true) {
     const existentNodes = nodes.filter((node) =>
       this.#idEntityMap.has(node.id),
     );
@@ -879,6 +886,7 @@ export class API {
         nonExistentNodes,
         this.#canvas.read(Canvas).fonts,
         this.commands,
+        this.#idEntityMap,
       );
       nonExistentNodes.forEach((node) => {
         this.#idEntityMap.set(node.id, idEntityMap.get(node.id));
@@ -895,12 +903,14 @@ export class API {
 
       this.commands.execute();
 
-      this.setNodes([...this.getNodes(), ...nonExistentNodes]);
+      if (updateAppState) {
+        this.setNodes([...this.getNodes(), ...nonExistentNodes]);
+      }
     }
 
     if (existentNodes.length > 0) {
       existentNodes.forEach((node) => {
-        this.updateNode(node);
+        this.updateNode(node, undefined, updateAppState);
       });
     }
   }

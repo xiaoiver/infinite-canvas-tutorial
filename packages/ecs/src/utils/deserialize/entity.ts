@@ -25,8 +25,11 @@ import {
   FillImage,
   FillPattern,
   MaterialDirty,
+  SizeAttenuation,
+  StrokeAttenuation,
 } from '../../components';
 import {
+  AttenuationAttributes,
   DropShadowAttributes,
   FillAttributes,
   isDataUrl,
@@ -86,20 +89,37 @@ export function serializedNodesToEntities(
   nodes: SerializedNode[],
   fonts: Entity[],
   commands: Commands,
+  idEntityMap?: Map<string, EntityCommands>,
 ): {
   entities: Entity[];
   idEntityMap: Map<string, EntityCommands>;
 } {
-  const vertices = nodes.map((node) => node.id);
+  // The old entities are already added to canvas.
+  let existedVertices: string[] = [];
+  if (idEntityMap) {
+    existedVertices = Array.from(idEntityMap.keys());
+  }
+
+  const vertices = Array.from(
+    new Set([...existedVertices, ...nodes.map((node) => node.id)]),
+  );
   const edges = nodes
     .filter((node) => !isNil(node.parentId))
     .map((node) => [node.parentId, node.id] as [string, string]);
   const sorted = toposort.array(vertices, edges);
 
-  const idEntityMap = new Map<string, EntityCommands>();
+  if (!idEntityMap) {
+    idEntityMap = new Map<string, EntityCommands>();
+  }
+
   const entities: Entity[] = [];
   for (const id of sorted) {
     const node = nodes.find((node) => node.id === id);
+
+    if (!node) {
+      continue;
+    }
+
     const { parentId, type } = node;
     const attributes = node;
 
@@ -333,6 +353,15 @@ export function serializedNodesToEntities(
 
     const { zIndex } = attributes;
     entity.insert(new ZIndex(zIndex));
+
+    const { sizeAttenuation, strokeAttenuation } =
+      attributes as AttenuationAttributes;
+    if (sizeAttenuation) {
+      entity.insert(new SizeAttenuation());
+    }
+    if (strokeAttenuation) {
+      entity.insert(new StrokeAttenuation());
+    }
 
     if (parentId) {
       idEntityMap.get(parentId)?.appendChild(entity);

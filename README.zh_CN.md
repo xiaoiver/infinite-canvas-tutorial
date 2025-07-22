@@ -301,6 +301,10 @@ pnpm run dev
 | :-----------------------------------------: | :--------------------------------------------: |
 | ![context menu](./screenshots/lesson24.png) | ![dragndrop image](./screenshots/lesson24.gif) |
 
+## 课程 25 - 矩形绘制模式 [🔗](https://infinitecanvas.cc/zh/guide/lesson-025)
+
+![draw rect mode](./screenshots/lesson25.gif)
+
 [infinitecanvas]: https://infinitecanvas.tools/
 [Figma]: https://madebyevan.com/figma/building-a-professional-design-tool-on-the-web/
 [Modyfi]: https://digest.browsertech.com/archive/browsertech-digest-how-modyfi-is-building-with/

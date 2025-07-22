@@ -1,6 +1,14 @@
 import { Entity, System } from '@lastolivegames/becsy';
 import { mat3 } from 'gl-matrix';
-import { Camera, Canvas, ComputedCamera, Mat3, Transform } from '../components';
+import {
+  Camera,
+  Canvas,
+  ComputedBounds,
+  ComputedCamera,
+  FractionalIndex,
+  Mat3,
+  Transform,
+} from '../components';
 import { safeAddComponent } from '../history';
 
 /**
@@ -17,7 +25,12 @@ export class ComputeCamera extends System {
 
   constructor() {
     super();
-    this.query((q) => q.using(ComputedCamera).write.and.using(Canvas).read);
+    this.query(
+      (q) =>
+        q
+          .using(ComputedCamera)
+          .write.and.using(Canvas, FractionalIndex, ComputedBounds).read,
+    );
   }
 
   execute(): void {
@@ -93,9 +106,11 @@ export class ComputeCamera extends System {
       viewProjectionMatrix,
     );
 
-    Object.assign(camera.write(ComputedCamera), {
-      viewProjectionMatrix: Mat3.fromGLMat3(viewProjectionMatrix),
-      viewProjectionMatrixInv: Mat3.fromGLMat3(viewProjectionMatrixInv),
-    });
+    if (viewProjectionMatrixInv) {
+      Object.assign(camera.write(ComputedCamera), {
+        viewProjectionMatrix: Mat3.fromGLMat3(viewProjectionMatrix),
+        viewProjectionMatrixInv: Mat3.fromGLMat3(viewProjectionMatrixInv),
+      });
+    }
   }
 }

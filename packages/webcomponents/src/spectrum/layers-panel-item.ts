@@ -75,8 +75,9 @@ export class LayersPanelItem extends LitElement {
   appState: AppState;
 
   private handleToggleVisibility() {
+    const isVisible = this.node.visibility !== 'hidden';
     this.api.updateNode(this.node, {
-      visibility: this.node.visibility === 'visible' ? 'hidden' : 'visible',
+      visibility: isVisible ? 'hidden' : 'visible',
     });
     this.api.record();
   }
@@ -116,7 +117,7 @@ export class LayersPanelItem extends LitElement {
   };
 
   render() {
-    const isVisible = this.node.visibility === 'visible';
+    const isVisible = this.node.visibility !== 'hidden';
     const isOpen = this.api
       .getAppState()
       .propertiesOpened.includes(this.node.id);

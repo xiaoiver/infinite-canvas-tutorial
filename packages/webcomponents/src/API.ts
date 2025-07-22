@@ -83,24 +83,32 @@ export class ExtendedAPI extends API {
     );
   }
 
-  updateNode(node: SerializedNode, diff?: Partial<SerializedNode>) {
-    super.updateNode(node, diff);
+  updateNode(
+    node: SerializedNode,
+    diff?: Partial<SerializedNode>,
+    updateAppState = true,
+  ) {
+    super.updateNode(node, diff, updateAppState);
 
-    this.element.dispatchEvent(
-      new CustomEvent(Event.NODE_UPDATED, { detail: { node } }),
-    );
+    if (updateAppState) {
+      this.element.dispatchEvent(
+        new CustomEvent(Event.NODE_UPDATED, { detail: { node } }),
+      );
+    }
   }
 
-  updateNodes(nodes: SerializedNode[]) {
-    super.updateNodes(nodes);
+  updateNodes(nodes: SerializedNode[], updateAppState = true) {
+    super.updateNodes(nodes, updateAppState);
 
-    this.element.dispatchEvent(
-      new CustomEvent(Event.NODES_UPDATED, {
-        detail: {
-          nodes,
-        },
-      }),
-    );
+    if (updateAppState) {
+      this.element.dispatchEvent(
+        new CustomEvent(Event.NODES_UPDATED, {
+          detail: {
+            nodes,
+          },
+        }),
+      );
+    }
   }
 
   deleteNodesById(ids: SerializedNode['id'][]) {

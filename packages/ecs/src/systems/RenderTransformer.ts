@@ -39,6 +39,7 @@ import { API } from '../API';
 import { inside } from '../utils/math';
 import { distanceBetweenPoints } from '../utils/matrix';
 import { TRANSFORMER_Z_INDEX } from '../context';
+import { safeAddComponent } from '../history';
 
 const TRANSFORMER_ANCHOR_RADIUS = 5;
 export const TRANSFORMER_ANCHOR_ROTATE_RADIUS = 20;
@@ -95,9 +96,7 @@ export class RenderTransformer extends System {
   }
 
   createOrUpdate(camera: Entity) {
-    if (!camera.has(Transformable)) {
-      return;
-    }
+    safeAddComponent(camera, Transformable);
 
     const transformable = camera.write(Transformable);
 
@@ -158,11 +157,11 @@ export class RenderTransformer extends System {
     //     updateGlobalTransform(controlPoint);
     //   });
     // } else if (camera.has(SelectOBB)) {
-    if (transformable.controlPoints) {
-      transformable.controlPoints.forEach((controlPoint) => {
-        controlPoint.add(ToBeDeleted);
-      });
-    }
+    // if (transformable.controlPoints) {
+    //   transformable.controlPoints.forEach((controlPoint) => {
+    //     controlPoint.add(ToBeDeleted);
+    //   });
+    // }
 
     if (!transformable.mask) {
       const mask = this.commands
@@ -274,6 +273,8 @@ export class RenderTransformer extends System {
     this.accessRecentlyDeletedData(false);
 
     this.bounds.changed.forEach((entity) => {
+      // console.log('bounds changed', entity.__id);
+
       if (entity.has(Selected)) {
         camerasToUpdate.add(entity.read(Selected).camera);
       }
@@ -319,7 +320,7 @@ export class RenderTransformer extends System {
     const camera = api.getCamera();
     const { rotateEnabled } = api.getAppState();
     const point = [x, y] as [number, number];
-    const { tlAnchor, trAnchor, blAnchor, brAnchor, controlPoints } =
+    const { tlAnchor, trAnchor, blAnchor, brAnchor } =
       camera.read(Transformable);
 
     // if (camera.has(SelectVectorNetwork)) {

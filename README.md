@@ -300,6 +300,10 @@ If you want to use it in your own project, you can refer to:
 | :-----------------------------------------: | :--------------------------------------------: |
 | ![context menu](./screenshots/lesson24.png) | ![dragndrop image](./screenshots/lesson24.gif) |
 
+## Lesson 25 - Draw rect mode and brush [🔗](https://infinitecanvas.cc/guide/lesson-025)
+
+![draw rect mode](./screenshots/lesson25.gif)
+
 [infinitecanvas]: https://infinitecanvas.tools/
 [Figma]: https://madebyevan.com/figma/building-a-professional-design-tool-on-the-web/
 [Modyfi]: https://digest.browsertech.com/archive/browsertech-digest-how-modyfi-is-building-with/

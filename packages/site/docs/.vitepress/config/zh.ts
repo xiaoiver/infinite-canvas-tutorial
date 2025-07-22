@@ -74,6 +74,7 @@ export const zh = defineConfig({
               { text: '课程22 - VectorNetwork', link: 'lesson-022' },
               { text: '课程23 - 思维导图', link: 'lesson-023' },
               { text: '课程24 - 上下文菜单和剪贴板', link: 'lesson-024' },
+              { text: '课程25 - 绘制模式与笔刷', link: 'lesson-025' },
             ],
           },
         ],
@@ -277,6 +278,10 @@ export const zh = defineConfig({
               {
                 text: 'FlexTree',
                 link: 'flextree',
+              },
+              {
+                text: '绘制矩形',
+                link: 'draw-rect',
               },
             ],
           },

@@ -19,6 +19,7 @@ import {
   Transform,
 } from '../components';
 import { decompose } from '../utils';
+import { safeAddComponent } from '../history';
 
 export class ComputeBounds extends System {
   renderables = this.query(
@@ -51,10 +52,7 @@ export class ComputeBounds extends System {
 
   execute() {
     this.renderables.addedOrChanged.forEach((entity) => {
-      if (!entity.has(ComputedBounds)) {
-        entity.add(ComputedBounds);
-      }
-
+      safeAddComponent(entity, ComputedBounds);
       const stroke = entity.has(Stroke) ? entity.read(Stroke) : undefined;
       const dropShadow = entity.has(DropShadow)
         ? entity.read(DropShadow)

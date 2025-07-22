@@ -40,6 +40,7 @@ import {
   GlobalTransform,
   Mat3,
   Opacity,
+  SizeAttenuation,
   Stroke,
   Text,
 } from '../components';
@@ -405,7 +406,7 @@ export class SDFText extends Drawcall {
     shape: Entity,
     image: { width: number; height: number },
   ): [number[], Record<string, unknown>] {
-    const sizeAttenuation = 0;
+    const sizeAttenuation = shape.has(SizeAttenuation) ? 1 : 0;
     const globalRenderOrder = shape.has(GlobalRenderOrder)
       ? shape.read(GlobalRenderOrder).value
       : 0;
@@ -448,12 +449,7 @@ export class SDFText extends Drawcall {
 
     const u_ZIndexStrokeWidth = [zIndex, width, fontSize, 0];
 
-    const u_Opacity = [
-      opacity,
-      fillOpacity,
-      strokeOpacity,
-      sizeAttenuation ? 1 : 0,
-    ];
+    const u_Opacity = [opacity, fillOpacity, strokeOpacity, sizeAttenuation];
 
     const u_DropShadowColor = [dsR / 255, dsG / 255, dsB / 255, dsO];
     const u_DropShadow = [offsetX, offsetY, blurRadius, 0];
@@ -502,6 +498,7 @@ export class SDFText extends Drawcall {
     fontScale: number;
   }) {
     const { textAlign, textBaseline, bitmapFontKerning } = object.read(Text);
+
     const metrics = object.read(ComputedTextMetrics);
     const globalRenderOrder = object.has(GlobalRenderOrder)
       ? object.read(GlobalRenderOrder).value

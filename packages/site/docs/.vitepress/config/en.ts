@@ -111,6 +111,10 @@ export const en = defineConfig({
                 text: 'Lesson 024 - Context menu and clipboard',
                 link: 'lesson-024',
               },
+              {
+                text: 'Lesson 025 - Drawing mode and brush',
+                link: 'lesson-025',
+              },
             ],
           },
         ],
@@ -317,6 +321,10 @@ export const en = defineConfig({
               {
                 text: 'FlexTree',
                 link: 'flextree',
+              },
+              {
+                text: 'Draw rect',
+                link: 'draw-rect',
               },
             ],
           },

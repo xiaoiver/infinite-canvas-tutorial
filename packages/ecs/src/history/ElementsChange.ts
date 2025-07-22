@@ -31,6 +31,8 @@ import {
   MaterialDirty,
   FillImage,
   FillPattern,
+  StrokeAttenuation,
+  SizeAttenuation,
 } from '../components';
 
 export type SceneElementsMap = Map<SerializedNode['id'], SerializedNode>;
@@ -582,6 +584,8 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
     textAlign,
     textBaseline,
     content,
+    sizeAttenuation,
+    strokeAttenuation,
   } = updates as any;
 
   if (!isNil(name)) {
@@ -645,6 +649,20 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
   }
   if (!isNil(dropShadowOffsetY)) {
     safeAddComponent(entity, DropShadow, { offsetY: dropShadowOffsetY });
+  }
+  if (!isNil(sizeAttenuation)) {
+    if (sizeAttenuation) {
+      safeAddComponent(entity, SizeAttenuation);
+    } else {
+      safeRemoveComponent(entity, SizeAttenuation);
+    }
+  }
+  if (!isNil(strokeAttenuation)) {
+    if (strokeAttenuation) {
+      safeAddComponent(entity, StrokeAttenuation);
+    } else {
+      safeRemoveComponent(entity, StrokeAttenuation);
+    }
   }
 
   if (!isNil(fontSize)) {

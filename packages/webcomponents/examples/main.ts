@@ -39,7 +39,7 @@ canvas.addEventListener(Event.READY, async (e) => {
     // topbarVisible: false,
     // contextBarVisible: false,
     // penbarVisible: false,
-    taskbarVisible: false,
+    // taskbarVisible: false,
     // rotateEnabled: false,
     // flipEnabled: false,
   });
@@ -70,6 +70,7 @@ canvas.addEventListener(Event.READY, async (e) => {
       fontSize: 20,
       fontFamily: 'Arial',
       fill: 'black',
+      zIndex: 2,
     },
   ];
 

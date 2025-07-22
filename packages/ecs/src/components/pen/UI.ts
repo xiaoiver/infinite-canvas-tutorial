@@ -6,6 +6,7 @@ export enum UIType {
   TRANSFORMER_ANCHOR = 'transformer-anchor',
   HIGHLIGHTER = 'highlighter',
   BRUSH = 'brush',
+  LABEL = 'label',
 }
 
 /**
@@ -20,6 +21,7 @@ export class UI {
       UIType.TRANSFORMER_ANCHOR,
       UIType.HIGHLIGHTER,
       UIType.BRUSH,
+      UIType.LABEL,
     ]),
     default: UIType.UNKNOWN,
   })

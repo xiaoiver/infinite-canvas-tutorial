@@ -5,6 +5,7 @@ import ArabicReshaper from 'arabic-reshaper';
 import { ComputedTextMetrics, Text } from '../components';
 import { DOMAdapter } from '../environment';
 import { BitmapFont } from '../utils';
+import { safeAddComponent } from '../history';
 
 type TextSegment = { text: string; direction: 'ltr' | 'rtl' };
 type CharacterWidthCache = Record<string, number>;
@@ -191,9 +192,7 @@ export class ComputeTextMetrics extends System {
       const bidiChars = computeBidi(text.content);
       const metrics = measureText(text);
 
-      if (!entity.has(ComputedTextMetrics)) {
-        entity.add(ComputedTextMetrics);
-      }
+      safeAddComponent(entity, ComputedTextMetrics);
 
       Object.assign(entity.write(ComputedTextMetrics), {
         bidiChars,

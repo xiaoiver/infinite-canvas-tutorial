@@ -116,6 +116,11 @@ export interface DropShadowAttributes {
   dropShadowBlurRadius: DropShadow['blurRadius'];
 }
 
+export interface AttenuationAttributes {
+  strokeAttenuation: boolean;
+  sizeAttenuation: boolean;
+}
+
 export interface TextDecorationAttributes {
   decorationColor: TextDecoration['color'];
   decorationLine: TextDecoration['line'];
@@ -129,7 +134,8 @@ export interface EllipseSerializedNode
   extends BaseSerializeNode<'ellipse'>,
     Partial<Pick<Ellipse, 'rx' | 'ry' | 'cx' | 'cy'>>,
     Partial<FillAttributes>,
-    Partial<StrokeAttributes> {}
+    Partial<StrokeAttributes>,
+    Partial<AttenuationAttributes> {}
 
 export interface RectSerializedNode
   extends BaseSerializeNode<'rect'>,
@@ -137,7 +143,8 @@ export interface RectSerializedNode
     Partial<FillAttributes>,
     Partial<StrokeAttributes>,
     Partial<InnerShadowAttributes>,
-    Partial<DropShadowAttributes> {}
+    Partial<DropShadowAttributes>,
+    Partial<AttenuationAttributes> {}
 
 interface PolylineAttributes {
   points: string;
@@ -145,13 +152,15 @@ interface PolylineAttributes {
 export interface PolylineSerializedNode
   extends BaseSerializeNode<'polyline'>,
     Partial<PolylineAttributes>,
-    Partial<StrokeAttributes> {}
+    Partial<StrokeAttributes>,
+    Partial<Pick<AttenuationAttributes, 'strokeAttenuation'>> {}
 
 export interface PathSerializedNode
   extends BaseSerializeNode<'path'>,
     Partial<Pick<Path, 'd' | 'fillRule' | 'tessellationMethod'>>,
     Partial<FillAttributes>,
-    Partial<StrokeAttributes> {}
+    Partial<StrokeAttributes>,
+    Partial<AttenuationAttributes> {}
 
 export interface TextSerializedNode
   extends BaseSerializeNode<'text'>,
@@ -191,7 +200,8 @@ export interface TextSerializedNode
     Partial<FillAttributes>,
     Partial<StrokeAttributes>,
     Partial<DropShadowAttributes>,
-    Partial<TextDecorationAttributes> {}
+    Partial<TextDecorationAttributes>,
+    Partial<AttenuationAttributes> {}
 
 export type SerializedNode =
   | GSerializedNode

@@ -36,20 +36,54 @@ import {
   Visibility,
   ZIndex,
   AnchorName,
-  SelectOBB,
-  SelectionMode,
   VectorNetwork,
   ComputedCameraControl,
 } from '../components';
 import { Commands } from '../commands/Commands';
-import { decompose, distanceBetweenPoints, getCursor } from '../utils';
+import {
+  decompose,
+  distanceBetweenPoints,
+  getCursor,
+  SerializedNode,
+} from '../utils';
 import { API } from '../API';
 import {
   RenderTransformer,
   TRANSFORMER_ANCHOR_STROKE_COLOR,
 } from './RenderTransformer';
 import { updateGlobalTransform } from './Transform';
-import { safeAddComponent, safeRemoveComponent } from '../history';
+import { safeAddComponent } from '../history';
+
+export enum SelectionMode {
+  IDLE = 'IDLE',
+  READY_TO_BRUSH = 'READY_TO_BRUSH',
+  BRUSH = 'BRUSH',
+  READY_TO_SELECT = 'READY_TO_SELECT',
+  SELECT = 'SELECT',
+  READY_TO_MOVE = 'READY_TO_MOVE',
+  MOVE = 'MOVE',
+  READY_TO_RESIZE = 'READY_TO_RESIZE',
+  RESIZE = 'RESIZE',
+  READY_TO_ROTATE = 'READY_TO_ROTATE',
+  ROTATE = 'ROTATE',
+  READY_TO_MOVE_CONTROL_POINT = 'READY_TO_MOVE_CONTROL_POINT',
+  MOVE_CONTROL_POINT = 'MOVE_CONTROL_POINT',
+}
+
+export interface SelectOBB {
+  mode: SelectionMode;
+  resizingAnchorName: AnchorName;
+  selectedNodes: SerializedNode[];
+
+  obb: OBB;
+  sin: number;
+  cos: number;
+
+  pointerMoveViewportX: number;
+  pointerMoveViewportY: number;
+
+  brush: Entity;
+}
 
 /**
  * * Click to select individual object. Hold `Shift` and click on another object to select multiple objects.
@@ -577,7 +611,7 @@ export class Select extends System {
         const [x, y] = input.pointerViewport;
 
         if (selection.mode === SelectionMode.IDLE) {
-          selection.mode = SelectionMode.BRUSH;
+          selection.mode = SelectionMode.READY_TO_BRUSH;
         } else if (selection.mode === SelectionMode.READY_TO_SELECT) {
           selection.mode = SelectionMode.SELECT;
         } else if (selection.mode === SelectionMode.READY_TO_MOVE) {
@@ -610,6 +644,7 @@ export class Select extends System {
               y,
               (e) => !e.has(UI),
             );
+
             if (toSelect) {
               const selected = api.getNodeByEntity(toSelect);
               if (selected) {
@@ -639,7 +674,12 @@ export class Select extends System {
           toHighlight = this.getTopmostEntity(api, x, y, (e) => !e.has(UI));
           if (toHighlight) {
             api.highlightNodes([api.getNodeByEntity(toHighlight)]);
-            selection.mode = SelectionMode.READY_TO_SELECT;
+
+            if (selection.mode !== SelectionMode.BRUSH) {
+              selection.mode = SelectionMode.READY_TO_SELECT;
+            }
+          } else if (selection.mode !== SelectionMode.BRUSH) {
+            selection.mode = SelectionMode.READY_TO_BRUSH;
           }
           const { mask, selecteds } = camera.read(Transformable);
 
@@ -672,7 +712,7 @@ export class Select extends System {
               } else if (anchor === AnchorName.INSIDE) {
                 if (toHighlight && toHighlight !== selecteds[0]) {
                   selection.mode = SelectionMode.READY_TO_SELECT;
-                } else {
+                } else if (selection.mode !== SelectionMode.BRUSH) {
                   selection.mode = SelectionMode.READY_TO_MOVE;
                 }
                 // } else if (anchor === AnchorName.CONTROL) {
@@ -680,7 +720,7 @@ export class Select extends System {
               } else {
                 if (toHighlight) {
                   selection.mode = SelectionMode.READY_TO_SELECT;
-                } else {
+                } else if (selection.mode !== SelectionMode.BRUSH) {
                   selection.mode = SelectionMode.IDLE;
                 }
               }
@@ -711,8 +751,12 @@ export class Select extends System {
           y,
         });
 
-        if (selection.mode === SelectionMode.BRUSH) {
+        if (
+          selection.mode === SelectionMode.READY_TO_BRUSH ||
+          selection.mode === SelectionMode.BRUSH
+        ) {
           this.handleBrushing(api, x, y);
+          selection.mode = SelectionMode.BRUSH;
         } else if (selection.mode === SelectionMode.MOVE) {
           cursor.value = 'grabbing';
 

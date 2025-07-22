@@ -65,7 +65,7 @@ void main() {
   gl_Position = vec4((u_ProjectionMatrix 
     * u_ViewMatrix
     * u_ModelMatrix 
-    * vec3(a_Position.xy + offset, 1)).xy, zIndex, 1);
+    * vec3(a_Position.xy + offset * scale, 1)).xy, zIndex, 1);
 }
 `;
 

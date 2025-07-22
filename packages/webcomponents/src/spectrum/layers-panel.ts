@@ -7,6 +7,8 @@ import {
   Task,
   AppState,
   sortByFractionalIndex,
+  UI,
+  ZIndex,
 } from '@infinite-canvas-tutorial/ecs';
 import { apiContext, appStateContext, nodesContext } from '../context';
 import { Event } from '../event';
@@ -104,6 +106,7 @@ export class LayersPanel extends LitElement {
   }
 
   private handleAdd() {
+    // TODO: add new layer
     // this.api.addNodes(this.nodes);
   }
 
@@ -124,8 +127,6 @@ export class LayersPanel extends LitElement {
     const node = this.api.getNodeById(layersSelected[0]);
     this.api.bringToFront(node);
     this.api.record();
-
-    this.api.selectNodes([node]);
   }
 
   private handleBringForward() {
@@ -133,8 +134,6 @@ export class LayersPanel extends LitElement {
     const node = this.api.getNodeById(layersSelected[0]);
     this.api.bringForward(node);
     this.api.record();
-
-    this.api.selectNodes([node]);
   }
 
   private handleSendBackward() {
@@ -142,8 +141,6 @@ export class LayersPanel extends LitElement {
     const node = this.api.getNodeById(layersSelected[0]);
     this.api.sendBackward(node);
     this.api.record();
-
-    this.api.selectNodes([node]);
   }
 
   private handleSendToBack() {
@@ -151,8 +148,6 @@ export class LayersPanel extends LitElement {
     const node = this.api.getNodeById(layersSelected[0]);
     this.api.sendToBack(node);
     this.api.record();
-
-    this.api.selectNodes([node]);
   }
 
   render() {
@@ -168,6 +163,31 @@ export class LayersPanel extends LitElement {
       })
       .reverse();
 
+    const isSelectedEmpty = layersSelected.length === 0;
+    let bringForwardDisabled = false;
+    let sendBackwardDisabled = false;
+
+    if (layersSelected.length === 1) {
+      const node = this.api.getNodeById(layersSelected[0]);
+
+      const children = this.api
+        .getSiblings(node)
+        .filter((child) => !child.has(UI));
+      const maxZIndex = Math.max(
+        ...children.map((child) => child.read(ZIndex).value),
+      );
+      const minZIndex = Math.min(
+        ...children.map((child) => child.read(ZIndex).value),
+      );
+
+      if (node.zIndex === maxZIndex) {
+        bringForwardDisabled = true;
+      }
+      if (node.zIndex === minZIndex) {
+        sendBackwardDisabled = true;
+      }
+    }
+
     return taskbarSelected.includes(Task.SHOW_LAYERS_PANEL)
       ? html`<section>
           <h4>
@@ -177,7 +197,7 @@ export class LayersPanel extends LitElement {
             </sp-action-button>
           </h4>
           <sp-action-group class="actions">
-            <sp-action-button quiet size="s" @click=${this.handleAdd}>
+            <sp-action-button quiet size="s" disabled @click=${this.handleAdd}>
               <sp-tooltip self-managed placement="bottom">
                 Add new layer
               </sp-tooltip>
@@ -193,23 +213,35 @@ export class LayersPanel extends LitElement {
               <sp-icon-show-all-layers slot="icon"></sp-icon-show-all-layers>
               <sp-menu-group>
                 <span slot="header">Arrange layers</span>
-                <sp-menu-item @click=${this.handleBringToFront}>
+                <sp-menu-item
+                  ?disabled=${isSelectedEmpty || bringForwardDisabled}
+                  @click=${this.handleBringToFront}
+                >
                   <sp-icon-layers-bring-to-front
                     slot="icon"
                   ></sp-icon-layers-bring-to-front>
                   Bring to front
                 </sp-menu-item>
-                <sp-menu-item @click=${this.handleBringForward}>
+                <sp-menu-item
+                  ?disabled=${isSelectedEmpty || bringForwardDisabled}
+                  @click=${this.handleBringForward}
+                >
                   <sp-icon-layers-forward slot="icon"></sp-icon-layers-forward>
                   Bring forward
                 </sp-menu-item>
-                <sp-menu-item @click=${this.handleSendBackward}>
+                <sp-menu-item
+                  ?disabled=${isSelectedEmpty || sendBackwardDisabled}
+                  @click=${this.handleSendBackward}
+                >
                   <sp-icon-layers-backward
                     slot="icon"
                   ></sp-icon-layers-backward>
                   Send backward
                 </sp-menu-item>
-                <sp-menu-item @click=${this.handleSendToBack}>
+                <sp-menu-item
+                  ?disabled=${isSelectedEmpty || sendBackwardDisabled}
+                  @click=${this.handleSendToBack}
+                >
                   <sp-icon-layers-send-to-back
                     slot="icon"
                   ></sp-icon-layers-send-to-back>

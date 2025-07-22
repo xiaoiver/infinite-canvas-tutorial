@@ -614,6 +614,7 @@ export class ContextMenu extends LitElement {
     const node = this.api.getNodeById(this.appState.layersSelected[0]);
     if (node) {
       this.api.bringToFront(node);
+      this.api.record();
     }
   }
 
@@ -621,6 +622,7 @@ export class ContextMenu extends LitElement {
     const node = this.api.getNodeById(this.appState.layersSelected[0]);
     if (node) {
       this.api.bringForward(node);
+      this.api.record();
     }
   }
 
@@ -628,6 +630,7 @@ export class ContextMenu extends LitElement {
     const node = this.api.getNodeById(this.appState.layersSelected[0]);
     if (node) {
       this.api.sendBackward(node);
+      this.api.record();
     }
   }
 
@@ -635,6 +638,7 @@ export class ContextMenu extends LitElement {
     const node = this.api.getNodeById(this.appState.layersSelected[0]);
     if (node) {
       this.api.sendToBack(node);
+      this.api.record();
     }
   }
 
