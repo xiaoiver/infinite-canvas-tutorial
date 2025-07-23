@@ -17,6 +17,7 @@ import {
   ComputeCamera,
   Last,
   ComputeVisibility,
+  DrawBrush,
 } from '../systems';
 import {
   Highlighted,
@@ -53,6 +54,7 @@ export const PenPlugin: Plugin = () => {
   )(Select);
   system((s) => s.after(Select))(EditVectorNetwork);
   system((s) => s.after(EditVectorNetwork))(DrawRect);
+  system((s) => s.after(DrawRect))(DrawBrush);
   system((s) => s.afterWritersOf(Selected))(RenderTransformer);
   system((s) =>
     s.afterWritersOf(Highlighted).inAnyOrderWith(RenderTransformer),

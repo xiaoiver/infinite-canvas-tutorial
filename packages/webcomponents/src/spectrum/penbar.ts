@@ -27,6 +27,10 @@ const PenMap = {
     icon: html`<sp-icon-line slot="icon"></sp-icon-line>`,
     label: 'Draw Line',
   },
+  [Pen.BRUSH]: {
+    icon: html`<sp-icon-brush slot="icon"></sp-icon-brush>`,
+    label: 'Brush',
+  },
   [Pen.VECTOR_NETWORK]: {
     icon: html`<sp-icon-shapes slot="icon"></sp-icon-shapes>`,
     label: 'Vector Network',

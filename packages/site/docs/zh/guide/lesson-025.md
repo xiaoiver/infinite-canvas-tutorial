@@ -149,6 +149,12 @@ if (height < 0) {
 
 在 Figma 中称作 [Draw with illustration tools]
 
+### 折线 {#use-polyline}
+
+首先我们先来看最简单的一种实现，使用折线展示。
+
+为了尽可能减少拖拽过程中产生的顶点，尤其是大量重复的、或者距离较近的顶点，我们使用 [课程 12 - 简化折线的顶点] 中介绍的方法对折线进行简化。
+
 ## 扩展阅读 {#extended-reading}
 
 -   [Draw with illustration tools]
@@ -162,3 +168,4 @@ if (height < 0) {
 [p5.brush]: https://github.com/acamposuribe/p5.brush
 [Real-Time Paint System with WebGL]: https://chrisarasin.com/paint-system-webgl
 [简简单单实现画笔工具，轻松绘制丝滑曲线]: https://zhuanlan.zhihu.com/p/701668081
+[课程 12 - 简化折线的顶点]: /zh/guide/lesson-012#simplify-polyline

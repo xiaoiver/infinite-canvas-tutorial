@@ -22,4 +22,5 @@ export * from './Deleter';
 export * from './RenderTransformer';
 export * from './RenderHighlighter';
 export * from './DrawRect';
+export * from './DrawBrush';
 export * from './EditVectorNetwork';

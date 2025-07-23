@@ -187,7 +187,7 @@ for (const shape of shapes) {
 
 ### 转换成绝对路径 {#convert-to-absolute-commands}
 
-SVG 路径命令包含绝对和相对两种，例如：`M 100 100 L 200 100` 和 `M 100 100 l 100 0` 是等价的。为了便于后续处理，我们先将相对命令都转换成绝对命令。Canvas2D API 也采用这种风格，类似 [lineTo]，我们参考 Three.js 的 [ShapePath] 实现，它实现了一系列 [CanvasRenderingContext2D] 的方法例如 `moveTo / lineTo / bezierCurveTo` 等等。当然也可以选择 [bezier-js]：
+SVG 路径命令包含绝对和相对两种，例如：`M 100 100 L 200 100` 和 `M 100 100 l 100 0` 是等价的。为了便于后续处理，我们先将相对命令都转换成绝对命令。Canvas2D API 也采用这种风格，类似 [lineTo]，我们参考 Three.js 的 [ShapePath] 实现，它实现了一系列 [CanvasRenderingContext2D] 的方法例如 `moveTo / lineTo / bezierCurveTo` 等等。
 
 ```ts
 import { path2Absolute } from '@antv/util';
@@ -293,6 +293,41 @@ SHAPE_DRAWCALL_CTORS.set(Path, [Mesh, SmoothPolyline]);
 ```
 
 ### 使用 earcut 三角化 {#earcut}
+
+![RTR 3rd - Tessellation](https://picx.zhimg.com/80/v2-f38400d225d0397f99563c96ce45053d_1440w.webp?source=d16d100b)
+
+那么如何分割三角形呢？一种常见的方法叫做「ear clipping」。如果一个顶点相邻的两个顶点连线不与多边形的任何一边相交，那么这个顶点就构成了「ear」。
+我们以下图左侧为例，在这个判断标准下，v2 v4 和 v5 就是「ear」。然后移除找到的 ear 如 v4，继续判定其相邻的顶点 v5 和 v3，其中 v5 构成了 ear。以此类推最终所有的 ear 都被移除，多边形也最终被分割成多个三角形。
+
+![RTR - 12.Polygonal Techniques - Ear clipping
+](https://picx.zhimg.com/80/v2-7c2a99be56ca9e4af6269e2c070b853b_1440w.webp?source=d16d100b)
+
+详细算法可参考论文：[Triangulation By Ear Clipping]，而 [earcut] 提供了一种 JS 实现：
+
+```ts
+function isEar(ear) {
+    var a = ear.prev,
+        b = ear,
+        c = ear.next;
+
+    if (area(a, b, c) >= 0) return false; // reflex, can't be an ear
+
+    // now make sure we don't have other points inside the potential ear
+    var p = ear.next.next;
+
+    while (p !== ear.prev) {
+        // 处于三角形中，不是 ear
+        if (
+            pointInTriangle(a.x, a.y, b.x, b.y, c.x, c.y, p.x, p.y) &&
+            area(p.prev, p, p.next) >= 0
+        )
+            return false;
+        p = p.next;
+    }
+
+    return true;
+}
+```
 
 使用 [earcut] 完成三角化，输入采样点坐标得到索引数组，甚至还可以计算误差。稍后在与其他三角化方式对比时可以看到，earcut 大幅提升了计算速度但损失一定的精确性：
 
@@ -767,4 +802,4 @@ export function exportRough(
 [Draw a hollow circle in SVG]: https://stackoverflow.com/questions/8193675/draw-a-hollow-circle-in-svg
 [fill-rule]: https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/fill-rule
 [how does fill-rule="evenodd" work on a star SVG]: https://stackoverflow.com/a/46145333/4639324
-[bezier-js]: http://pomax.github.io/bezierjs/
+[Triangulation By Ear Clipping]: https://www.geometrictools.com/Documentation/TriangulationByEarClipping.pdf

@@ -1300,22 +1300,67 @@ call(() => {
 
 ### [WIP] 合并同类折线 {#merge-similar-polylines}
 
-### [WIP] 顶点简化 {#simplify-polyline}
+### 顶点简化 {#simplify-polyline}
 
 对于包含大量顶点的折线（以及后续的 Path 和 Polygon），一个很重要的优化手段就是根据当前的缩放等级进行简化，尽可能减少渲染数据量。简化的依据有二：
 
--   太短的线段 和 太小的多边形 都可以直接过滤掉
--   一根折线中对整体形状影响较小的顶点可以过滤掉
+1. 太短的线段 和 太小的多边形 都可以直接过滤掉
+2. 一根折线中对整体形状影响较小的顶点可以过滤掉
 
 线段顶点简化的基础算法是 [Ramer–Douglas–Peucker algorithm]，思路如下：
 
--   首先保留 Polyline 的首尾两个顶点并连线
--   找到剩余顶点中距离这条线段最远的顶点，保留该距离
--   如果该距离小于阈值，丢弃
--   如果该距离大于阈值，保留。并和首尾两个端点分割成两个子线段
--   分治法处理两个子线段，回到 1
+1. 首先保留 Polyline 的首尾两个顶点并连线
+2. 找到剩余顶点中距离这条线段最远的顶点，保留该距离
+3. 如果该距离小于阈值，丢弃
+4. 如果该距离大于阈值，保留。并和首尾两个端点分割成两个子线段
+5. 分治法处理两个子线段，回到 1
 
-我们可以使用基于该算法封装好的 [simplify-js]。
+下图（来自 wiki）演示了这个过程：红点被丢弃，绿点被保留。​
+
+![Simplifying a piecewise linear curve with the Douglas–Peucker algorithm.](https://upload.wikimedia.org/wikipedia/commons/3/30/Douglas-Peucker_animated.gif)
+
+​ 显然阈值（ε）选取的越大，最后简化后留下的顶点数（n）就越少，Polyline 也就越不平滑：
+
+![The effect of varying epsilon in a parametric implementation of RDP](https://upload.wikimedia.org/wikipedia/commons/6/69/RDP%2C_varying_epsilon.gif)
+
+基于该算法的 JS 实现有很多：[simplify-js]，[turf-simplify]，[geojson-vt] 等等，我们以 geojson-vt 的实现为例：
+
+```ts
+export default function simplify(coords, first, last, sqTolerance) {
+    let maxSqDist = sqTolerance; // 最大距离
+    const mid = (last - first) >> 1; // 找到中点 index
+    let minPosToMid = last - first;
+    let index; // 最大距离顶点 index
+
+    // 两端点
+    const ax = coords[first];
+    const ay = coords[first + 1];
+    const bx = coords[last];
+    const by = coords[last + 1];
+
+    // 找到和线段距离最大的点
+    for (let i = first + 3; i < last; i += 3) {
+        // 计算顶点到线段的距离平方
+        const d = getSqSegDist(coords[i], coords[i + 1], ax, ay, bx, by);
+        if (d > maxSqDist) {
+            index = i;
+            maxSqDist = d;
+        }
+    }
+
+    // 将距离（平方）与阈值进行比较
+    if (maxSqDist > sqTolerance) {
+        // 递归处理前一半线段
+        if (index - first > 3) simplify(coords, first, index, sqTolerance);
+        // 保存最大距离，表示这个顶点需要被保留
+        coords[index + 2] = maxSqDist;
+        // 递归处理后一半线段
+        if (last - index > 3) simplify(coords, index, last, sqTolerance);
+    }
+}
+```
+
+后续在 [课程 25 - 使用折线实现笔刷模式] 中我们也会使用这个方法。
 
 ## 其他问题 {#followup-issues}
 
@@ -1385,4 +1430,7 @@ call(() => {
 [Multiple lines]: https://rreusser.github.io/regl-gpu-lines/docs/multiple.html
 [Offset in bytes into buffer where the vertex data begins]: https://www.w3.org/TR/webgpu/#dom-gpurendercommandsmixin-setvertexbuffer-slot-buffer-offset-size-offset
 [simplify-js]: https://github.com/mourner/simplify-js
+[geojson-vt]: https://github.com/mapbox/geojson-vt
+[turf-simplify]: https://github.com/Turfjs/turf/tree/master/packages/turf-simplify
 [Ramer–Douglas–Peucker algorithm]: https://en.wikipedia.org/wiki/Ramer%E2%80%93Douglas%E2%80%93Peucker_algorithm
+[课程 25 - 使用折线实现笔刷模式]: /zh/guide/lesson-025#use-polyline

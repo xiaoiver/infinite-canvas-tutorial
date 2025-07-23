@@ -295,6 +295,41 @@ SHAPE_DRAWCALL_CTORS.set(Path, [Mesh, SmoothPolyline]);
 
 ### Triangulation with earcut {#earcut}
 
+![RTR 3rd - Tessellation](https://picx.zhimg.com/80/v2-f38400d225d0397f99563c96ce45053d_1440w.webp?source=d16d100b)
+
+So how do you split a triangle? One common method is called `ear clipping`. A vertex is `ear` if the line connecting two of its neighboring vertices does not intersect any side of the polygon.
+Let's take the left-hand side of the figure below as an example. Under this criterion, v2 v4 and v5 are `ear`. We then remove the found `ear` such as v4 and proceed to determine its neighbors v5 and v3, where v5 constitutes an `ear`. Eventually all `ear`s are removed, and the polygon is eventually split into triangles.
+
+![RTR - 12.Polygonal Techniques - Ear clipping
+](https://picx.zhimg.com/80/v2-7c2a99be56ca9e4af6269e2c070b853b_1440w.webp?source=d16d100b)
+
+The detailed algorithm can be found in the paper: [Triangulation By Ear Clipping], while [earcut] provides a JS implementation:
+
+```ts
+function isEar(ear) {
+    var a = ear.prev,
+        b = ear,
+        c = ear.next;
+
+    if (area(a, b, c) >= 0) return false; // reflex, can't be an ear
+
+    // now make sure we don't have other points inside the potential ear
+    var p = ear.next.next;
+
+    while (p !== ear.prev) {
+        // If the poing is in triangle, it's not an ear.
+        if (
+            pointInTriangle(a.x, a.y, b.x, b.y, c.x, c.y, p.x, p.y) &&
+            area(p.prev, p, p.next) >= 0
+        )
+            return false;
+        p = p.next;
+    }
+
+    return true;
+}
+```
+
 Triangulation is done using [earcut], which inputs the coordinates of the sampling points to get an index array, and even calculates the error. As you'll see later when comparing it to other triangulation methods, earcut greatly improves the speed of the calculation but loses some accuracy:
 
 ```ts
@@ -767,3 +802,4 @@ export function exportRough(
 [Draw a hollow circle in SVG]: https://stackoverflow.com/questions/8193675/draw-a-hollow-circle-in-svg
 [fill-rule]: https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/fill-rule
 [how does fill-rule="evenodd" work on a star SVG]: https://stackoverflow.com/a/46145333/4639324
+[Triangulation By Ear Clipping]: https://www.geometrictools.com/Documentation/TriangulationByEarClipping.pdf

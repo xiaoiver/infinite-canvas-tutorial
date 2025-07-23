@@ -1300,22 +1300,64 @@ call(() => {
 
 ### [WIP] Merge similar polylines {#merge-similar-polylines}
 
-### [WIP] Simplify polyline {#simplify-polyline}
+### Simplify polyline {#simplify-polyline}
 
 For polylines (and subsequently Paths and Polygons) that contain a large number of vertices, an important optimization is to simplify them according to the current zoom level, reducing the amount of rendered data as much as possible. The basis for simplification is twofold:
 
--   Segments that are too short and polygons that are too small can be filtered out.
--   Vertices in a polyline that have little impact on the overall shape can be filtered out.
+1. Segments that are too short and polygons that are too small can be filtered out.
+2. Vertices in a polyline that have little impact on the overall shape can be filtered out.
 
 The basic algorithm for segment vertex simplification is the [Ramer–Douglas–Peucker algorithm], which works as follows:
 
--   First keep the first and last vertices of the polyline and connect them.
--   Find the furthest vertex from the segment among the remaining vertices, and keep that distance.
--   If the distance is less than a threshold, discard it.
--   If the distance is greater than the threshold, keep it. If the distance is less than the threshold, discard it. If the distance is greater than the threshold, keep it.
--   The partitioning method handles the two sub-segments, going back to 1.
+1. First keep the first and last vertices of the polyline and connect them.
+2. Find the furthest vertex from the segment among the remaining vertices, and keep that distance.
+3. If the distance is less than a threshold, discard it.
+4. If the distance is greater than the threshold, keep it. If the distance is less than the threshold, discard it. If the distance is greater than the threshold, keep it.
+5. The partitioning method handles the two sub-segments, going back to 1.
 
-We can use [simplify-js], which is based on this algorithm.
+The diagram below (from wiki) demonstrates the process: the red dots are discarded and the green dots are kept.
+
+![Simplifying a piecewise linear curve with the Douglas–Peucker algorithm.](https://upload.wikimedia.org/wikipedia/commons/3/30/Douglas-Peucker_animated.gif)
+
+Obviously, the larger the threshold (ε) is chosen, the fewer the number of vertices (n) left after the final simplification, and the less smooth the Polyline will be:
+
+![The effect of varying epsilon in a parametric implementation of RDP](https://upload.wikimedia.org/wikipedia/commons/6/69/RDP%2C_varying_epsilon.gif)
+
+There are many JS implementations based on this algorithm: [simplify-js], [turf-simplify], [geojson-vt], etc. Let's take the geojson-vt implementation as an example:
+
+```ts
+export default function simplify(coords, first, last, sqTolerance) {
+    let maxSqDist = sqTolerance;
+    const mid = (last - first) >> 1;
+    let minPosToMid = last - first;
+    let index; // index of maximum distance
+
+    const ax = coords[first];
+    const ay = coords[first + 1];
+    const bx = coords[last];
+    const by = coords[last + 1];
+
+    // Find the point with the greatest distance from the line segment
+    for (let i = first + 3; i < last; i += 3) {
+        const d = getSqSegDist(coords[i], coords[i + 1], ax, ay, bx, by);
+        if (d > maxSqDist) {
+            index = i;
+            maxSqDist = d;
+        }
+    }
+
+    if (maxSqDist > sqTolerance) {
+        // Recursively process the first half of the line segment
+        if (index - first > 3) simplify(coords, first, index, sqTolerance);
+        // Preserving the maximum distance indicates that this vertex needs to be preserved
+        coords[index + 2] = maxSqDist;
+        // Half of the line segments after recursive processing
+        if (last - index > 3) simplify(coords, index, last, sqTolerance);
+    }
+}
+```
+
+We'll use this method later in [Lesson 25 - Use polyline in brush mode].
 
 ## Other Issues {#followup-issues}
 
@@ -1384,4 +1426,7 @@ We will introduce in detail how to draw them in the next lesson.
 [Multiple lines]: https://rreusser.github.io/regl-gpu-lines/docs/multiple.html
 [Offset in bytes into buffer where the vertex data begins]: https://www.w3.org/TR/webgpu/#dom-gpurendercommandsmixin-setvertexbuffer-slot-buffer-offset-size-offset
 [simplify-js]: https://github.com/mourner/simplify-js
+[geojson-vt]: https://github.com/mapbox/geojson-vt
+[turf-simplify]: https://github.com/Turfjs/turf/tree/master/packages/turf-simplify
 [Ramer–Douglas–Peucker algorithm]: https://en.wikipedia.org/wiki/Ramer%E2%80%93Douglas%E2%80%93Peucker_algorithm
+[Lesson 25 - Use polyline in brush mode]: /zh/guide/lesson-025#use-polyline
