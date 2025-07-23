@@ -9,6 +9,7 @@ export enum Pen {
   HAND = 'hand',
   DRAW_RECT = 'draw-rect',
   DRAW_ELLIPSE = 'draw-ellipse',
+  DRAW_LINE = 'draw-line',
   VECTOR_NETWORK = 'vector-network',
 }
 

@@ -42,6 +42,7 @@ import {
 } from './RenderTransformer';
 import {
   EllipseSerializedNode,
+  PolylineSerializedNode,
   RectSerializedNode,
   TextSerializedNode,
   distanceBetweenPoints,
@@ -51,10 +52,10 @@ import { DRAW_RECT_Z_INDEX } from '../context';
 const LABEL_WIDTH = 100;
 const LABEL_HEIGHT = 20;
 const LABEL_RADIUS = 4;
-const LABEL_TOP_MARGIN = 10;
+// const LABEL_TOP_MARGIN = 10;
 
 /**
- * Draw a rectangle or ellipse with dragging.
+ * Draw a rectangle, ellipse, line with dragging.
  */
 export class DrawRect extends System {
   private readonly cameras = this.query((q) => q.current.with(Camera).read);
@@ -64,6 +65,7 @@ export class DrawRect extends System {
     {
       rectBrush: RectSerializedNode;
       ellipseBrush: EllipseSerializedNode;
+      lineBrush: PolylineSerializedNode;
       label: RectSerializedNode;
       text: TextSerializedNode;
       x: number;
@@ -126,7 +128,11 @@ export class DrawRect extends System {
       const { inputPoints, api } = canvas.read(Canvas);
       const pen = api.getAppState().penbarSelected[0];
 
-      if (pen !== Pen.DRAW_RECT && pen !== Pen.DRAW_ELLIPSE) {
+      if (
+        pen !== Pen.DRAW_RECT &&
+        pen !== Pen.DRAW_ELLIPSE &&
+        pen !== Pen.DRAW_LINE
+      ) {
         return;
       }
 
@@ -139,6 +145,7 @@ export class DrawRect extends System {
         this.selections.set(camera.__id, {
           rectBrush: undefined,
           ellipseBrush: undefined,
+          lineBrush: undefined,
           label: undefined,
           text: undefined,
           x: 0,
@@ -167,30 +174,57 @@ export class DrawRect extends System {
       });
 
       if (input.pointerUpTrigger) {
-        const { x, y, width, height, rectBrush, ellipseBrush, label } =
-          this.selections.get(camera.__id);
+        const {
+          x,
+          y,
+          width,
+          height,
+          rectBrush,
+          ellipseBrush,
+          lineBrush,
+          label,
+        } = this.selections.get(camera.__id);
 
-        const brush = pen === Pen.DRAW_RECT ? rectBrush : ellipseBrush;
+        const brush =
+          pen === Pen.DRAW_RECT
+            ? rectBrush
+            : pen === Pen.DRAW_ELLIPSE
+            ? ellipseBrush
+            : lineBrush;
 
         api.runAtNextTick(() => {
           api.updateNode(brush, { visibility: 'hidden' });
           api.updateNode(label, { visibility: 'hidden' });
 
-          const node: RectSerializedNode | EllipseSerializedNode = {
-            id: uuidv4(),
-            type: pen === Pen.DRAW_RECT ? 'rect' : 'ellipse',
-            x,
-            y,
-            width,
-            height,
-            rotation: 0,
-            scaleX: 1,
-            scaleY: 1,
-            fill: TRANSFORMER_MASK_FILL_COLOR,
-            fillOpacity: 0.5,
-            stroke: TRANSFORMER_ANCHOR_STROKE_COLOR,
-            strokeWidth: 1,
-          };
+          // @ts-expect-error
+          const node:
+            | RectSerializedNode
+            | EllipseSerializedNode
+            | PolylineSerializedNode = Object.assign(
+            {
+              id: uuidv4(),
+              type:
+                pen === Pen.DRAW_RECT
+                  ? 'rect'
+                  : pen === Pen.DRAW_ELLIPSE
+                  ? 'ellipse'
+                  : 'polyline',
+              fill: TRANSFORMER_MASK_FILL_COLOR,
+              fillOpacity: 0.5,
+              stroke: TRANSFORMER_ANCHOR_STROKE_COLOR,
+              strokeWidth: 1,
+            },
+            pen === Pen.DRAW_LINE
+              ? {
+                  points: `${x},${y} ${x + width},${y + height}`,
+                }
+              : {
+                  x,
+                  y,
+                  width,
+                  height,
+                },
+          );
           api.setPen(Pen.SELECT);
           api.updateNode(node);
           api.selectNodes([node]);
@@ -227,27 +261,47 @@ export class DrawRect extends System {
 
     if (shouldShowSelectionBrush) {
       let brush =
-        pen === Pen.DRAW_RECT ? selection.rectBrush : selection.ellipseBrush;
+        pen === Pen.DRAW_RECT
+          ? selection.rectBrush
+          : pen === Pen.DRAW_ELLIPSE
+          ? selection.ellipseBrush
+          : selection.lineBrush;
       if (!brush) {
-        brush = {
-          id: uuidv4(),
-          type: pen === Pen.DRAW_RECT ? 'rect' : 'ellipse',
-          x: 0,
-          y: 0,
-          width: 0,
-          height: 0,
-          fill: TRANSFORMER_MASK_FILL_COLOR,
-          fillOpacity: 0.5,
-          stroke: TRANSFORMER_ANCHOR_STROKE_COLOR,
-          visibility: 'hidden',
-          zIndex: DRAW_RECT_Z_INDEX,
-          strokeAttenuation: true,
-        };
+        // @ts-expect-error
+        brush = Object.assign(
+          {
+            id: uuidv4(),
+            type:
+              pen === Pen.DRAW_RECT
+                ? 'rect'
+                : pen === Pen.DRAW_ELLIPSE
+                ? 'ellipse'
+                : 'polyline',
+            fill: TRANSFORMER_MASK_FILL_COLOR,
+            fillOpacity: 0.5,
+            stroke: TRANSFORMER_ANCHOR_STROKE_COLOR,
+            visibility: 'hidden',
+            zIndex: DRAW_RECT_Z_INDEX,
+            strokeAttenuation: true,
+          },
+          pen === Pen.DRAW_LINE
+            ? {
+                points: '0,0 0,0',
+              }
+            : {
+                x: 0,
+                y: 0,
+                width: 0,
+                height: 0,
+              },
+        );
         api.updateNode(brush, undefined, false);
         if (pen === Pen.DRAW_RECT) {
           selection.rectBrush = brush as RectSerializedNode;
-        } else {
+        } else if (pen === Pen.DRAW_ELLIPSE) {
           selection.ellipseBrush = brush as EllipseSerializedNode;
+        } else {
+          selection.lineBrush = brush as PolylineSerializedNode;
         }
         api.getEntity(brush).add(UI, { type: UIType.BRUSH });
 
@@ -298,25 +352,32 @@ export class DrawRect extends System {
       let width = cx - x;
       let height = cy - y;
 
-      // when width or height is negative, change the x or y to the opposite side
-      if (width < 0) {
-        x += width;
-        width = -width;
-      }
-      if (height < 0) {
-        y += height;
-        height = -height;
+      if (pen !== Pen.DRAW_LINE) {
+        // when width or height is negative, change the x or y to the opposite side
+        if (width < 0) {
+          x += width;
+          width = -width;
+        }
+        if (height < 0) {
+          y += height;
+          height = -height;
+        }
       }
 
       api.updateNode(
         brush,
-        {
-          visibility: 'visible',
-          x,
-          y,
-          width,
-          height,
-        },
+        pen === Pen.DRAW_LINE
+          ? {
+              visibility: 'visible',
+              points: `${x},${y} ${cx},${cy}`,
+            }
+          : {
+              visibility: 'visible',
+              x,
+              y,
+              width,
+              height,
+            },
         false,
       );
 

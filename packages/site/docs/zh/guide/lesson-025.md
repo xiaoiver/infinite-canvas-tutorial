@@ -153,8 +153,12 @@ if (height < 0) {
 
 -   [Draw with illustration tools]
 -   [p5.brush]
+-   [Real-Time Paint System with WebGL]
+-   [简简单单实现画笔工具，轻松绘制丝滑曲线]
 
 [课程 14 - 画布模式]: /zh/guide/lesson-014
 [课程 18 - 使用 ECS 重构]: /zh/guide/lesson-018
 [Draw with illustration tools]: https://help.figma.com/hc/en-us/articles/31440438150935-Draw-with-illustration-tools
 [p5.brush]: https://github.com/acamposuribe/p5.brush
+[Real-Time Paint System with WebGL]: https://chrisarasin.com/paint-system-webgl
+[简简单单实现画笔工具，轻松绘制丝滑曲线]: https://zhuanlan.zhihu.com/p/701668081

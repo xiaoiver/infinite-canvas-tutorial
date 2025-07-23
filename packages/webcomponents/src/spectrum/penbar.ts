@@ -23,6 +23,10 @@ const PenMap = {
     icon: html`<sp-icon-ellipse slot="icon"></sp-icon-ellipse>`,
     label: 'Draw Ellipse',
   },
+  [Pen.DRAW_LINE]: {
+    icon: html`<sp-icon-line slot="icon"></sp-icon-line>`,
+    label: 'Draw Line',
+  },
   [Pen.VECTOR_NETWORK]: {
     icon: html`<sp-icon-shapes slot="icon"></sp-icon-shapes>`,
     label: 'Vector Network',
