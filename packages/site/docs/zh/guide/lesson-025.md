@@ -61,7 +61,7 @@ export class DrawRect extends System {
             // 鼠标抬起，创建矩形
             const node: RectSerializedNode = {
                 id: uuidv4(),
-                type: 'rect',
+                type: 'rect', // 椭圆绘制模式下改成 'ellipse' 即可
                 x,
                 y,
                 width,
@@ -75,9 +75,75 @@ export class DrawRect extends System {
 }
 ```
 
-### 绘制矩形 {#redraw-rect}
+接下来我们来看在拖拽过程中发生了什么。
+
+### 重绘辅助矩形 {#redraw-rect}
+
+和框选类似，为了避免拖拽一小段距离就开始绘制，我们需要设置一段阈值，在 Viewport 坐标系下计算：
+
+```ts
+handleBrushing(api: API, viewportX: number, viewportY: number) {
+    const camera = api.getCamera();
+    const {
+        pointerDownViewportX,
+        pointerDownViewportY,
+    } = camera.read(ComputedCameraControl);
+
+    // Use a threshold to avoid showing the selection brush when the pointer is moved a little.
+    const shouldShowSelectionBrush =
+        distanceBetweenPoints(
+            viewportX,
+            viewportY,
+            pointerDownViewportX,
+            pointerDownViewportY,
+        ) > 10;
+}
+```
+
+辅助矩形的位置坐标 `x/y` 就是 `pointerdown` 触发时的位置，接下来也需要将 `pointermove` 事件对象的坐标转换到 Canvas 坐标系下计算此时的宽高：
+
+```ts
+const { x: cx, y: cy } = api.viewport2Canvas({
+    x: viewportX,
+    y: viewportY,
+});
+
+let x = pointerDownCanvasX;
+let y = pointerDownCanvasY;
+let width = cx - x;
+let height = cy - y;
+
+api.updateNode(
+    selection.brush,
+    {
+        visibility: 'visible',
+        x,
+        y,
+        width,
+        height,
+    },
+    false,
+);
+```
+
+值得一提的是需要考虑反向拖拽的场景，此时计算出的 `width/height` 可能为负数，相应的 `x/y` 就不再是 `pointerdown` 时的位置，需要重新计算。Figma 也是这么做的：
+
+```ts
+if (width < 0) {
+    x += width;
+    width = -width;
+}
+if (height < 0) {
+    y += height;
+    height = -height;
+}
+```
 
 ### 绘制尺寸标签 {#size-label}
+
+我们希望在绘制过程中实时展示矩形的尺寸，就像 Figma 这样：
+
+![Size label in Figma](/figma-size-label.png)
 
 ## 笔刷模式 {#brush-mode}
 

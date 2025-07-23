@@ -60,30 +60,96 @@ Then as the mouse is dragged, the rectangle is continually redrawn in the target
 export class DrawRect extends System {
     execute() {
         //...
-        // 拖拽，绘制辅助 UI
+        // Draw rect brush when dragging
         this.handleBrushing(api, x, y);
 
         if (input.pointerUpTrigger) {
-            // 鼠标抬起，创建矩形
+            // Create rect when pointerup event triggered
             const node: RectSerializedNode = {
                 id: uuidv4(),
-                type: 'rect',
+                type: 'rect', // Change to 'ellipse' in draw-ellipse mode
                 x,
                 y,
                 width,
                 height,
             };
-            api.setPen(Pen.SELECT); // 模式切换
+            api.setPen(Pen.SELECT); // Switch canvas mode
             api.updateNode(node);
-            api.record(); // 保存历史记录
+            api.record(); // Save to history
         }
     }
 }
 ```
 
+Next we look at what happens during the drag and drop process.
+
 ### Redraw rect {#redraw-rect}
 
+Similar to box selection, in order to avoid dragging a small distance and starting to draw, we need to set a threshold, calculated in the Viewport coordinate system:
+
+```ts
+handleBrushing(api: API, viewportX: number, viewportY: number) {
+    const camera = api.getCamera();
+    const {
+        pointerDownViewportX,
+        pointerDownViewportY,
+    } = camera.read(ComputedCameraControl);
+
+    // Use a threshold to avoid showing the selection brush when the pointer is moved a little.
+    const shouldShowSelectionBrush =
+        distanceBetweenPoints(
+            viewportX,
+            viewportY,
+            pointerDownViewportX,
+            pointerDownViewportY,
+        ) > 10;
+}
+```
+
+The `x/y` coordinates of the auxiliary rectangle are where the `pointerdown` was triggered, and the coordinates of the `pointermove` event object need to be converted to the Canvas coordinate system to compute the width and height:
+
+```ts
+const { x: cx, y: cy } = api.viewport2Canvas({
+    x: viewportX,
+    y: viewportY,
+});
+
+let x = pointerDownCanvasX;
+let y = pointerDownCanvasY;
+let width = cx - x;
+let height = cy - y;
+
+api.updateNode(
+    selection.brush,
+    {
+        visibility: 'visible',
+        x,
+        y,
+        width,
+        height,
+    },
+    false,
+);
+```
+
+It is worth to consider the scenario of reverse dragging, where the calculated `width/height` may be negative, and the corresponding `x/y` will no longer be at the position of the `pointerdown` and will have to be recalculated. Figma does the same:
+
+```ts
+if (width < 0) {
+    x += width;
+    width = -width;
+}
+if (height < 0) {
+    y += height;
+    height = -height;
+}
+```
+
 ### Size label {#size-label}
+
+We want to show the dimensions of the rectangle in real time during the drawing process, like Figma does:
+
+![Size label in Figma](/figma-size-label.png)
 
 ## Brush mode {#brush-mode}
 

@@ -45,6 +45,7 @@ const TRANSFORMER_ANCHOR_RADIUS = 5;
 export const TRANSFORMER_ANCHOR_ROTATE_RADIUS = 20;
 export const TRANSFORMER_ANCHOR_RESIZE_RADIUS = 5;
 // --spectrum-thumbnail-border-color-selected
+export const TRANSFORMER_MASK_FILL_COLOR = '#e0f2ff';
 export const TRANSFORMER_ANCHOR_STROKE_COLOR = '#147af3';
 export const TRANSFORMER_ANCHOR_FILL_COLOR = 'white';
 

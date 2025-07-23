@@ -50,6 +50,7 @@ import { API } from '../API';
 import {
   RenderTransformer,
   TRANSFORMER_ANCHOR_STROKE_COLOR,
+  TRANSFORMER_MASK_FILL_COLOR,
 } from './RenderTransformer';
 import { updateGlobalTransform } from './Transform';
 import { safeAddComponent } from '../history';
@@ -505,9 +506,9 @@ export class Select extends System {
             new UI(UIType.BRUSH),
             new Transform(),
             new Renderable(),
-            new FillSolid('#e0f2ff'), // --spectrum-blue-100
+            new FillSolid(TRANSFORMER_MASK_FILL_COLOR),
             new Opacity({ fillOpacity: 0.5 }),
-            new Stroke({ width: 1, color: TRANSFORMER_ANCHOR_STROKE_COLOR }), // --spectrum-thumbnail-border-color-selected
+            new Stroke({ width: 1, color: TRANSFORMER_ANCHOR_STROKE_COLOR }),
             new Rect(),
             new Visibility('hidden'),
             new ZIndex(Infinity),
@@ -612,6 +613,7 @@ export class Select extends System {
 
         if (selection.mode === SelectionMode.IDLE) {
           selection.mode = SelectionMode.READY_TO_BRUSH;
+          api.selectNodes([]);
         } else if (selection.mode === SelectionMode.READY_TO_SELECT) {
           selection.mode = SelectionMode.SELECT;
         } else if (selection.mode === SelectionMode.READY_TO_MOVE) {
@@ -627,10 +629,10 @@ export class Select extends System {
           } else if (selection.mode === SelectionMode.READY_TO_ROTATE) {
             selection.mode = SelectionMode.ROTATE;
           }
-        } else if (
-          selection.mode === SelectionMode.READY_TO_MOVE_CONTROL_POINT
-        ) {
-          selection.mode = SelectionMode.MOVE_CONTROL_POINT;
+        // } else if (
+        //   selection.mode === SelectionMode.READY_TO_MOVE_CONTROL_POINT
+        // ) {
+        //   selection.mode = SelectionMode.MOVE_CONTROL_POINT;
         }
 
         if (selection.mode === SelectionMode.SELECT) {
@@ -675,11 +677,11 @@ export class Select extends System {
           if (toHighlight) {
             api.highlightNodes([api.getNodeByEntity(toHighlight)]);
 
-            if (selection.mode !== SelectionMode.BRUSH) {
+            if (selection.mode !== SelectionMode.BRUSH && selection.mode !== SelectionMode.MOVE) {
               selection.mode = SelectionMode.READY_TO_SELECT;
             }
           } else if (selection.mode !== SelectionMode.BRUSH) {
-            selection.mode = SelectionMode.READY_TO_BRUSH;
+            selection.mode = SelectionMode.IDLE;
           }
           const { mask, selecteds } = camera.read(Transformable);
 
@@ -712,11 +714,7 @@ export class Select extends System {
               } else if (anchor === AnchorName.INSIDE) {
                 if (toHighlight && toHighlight !== selecteds[0]) {
                   selection.mode = SelectionMode.READY_TO_SELECT;
-                } else if (selection.mode !== SelectionMode.BRUSH) {
-                  selection.mode = SelectionMode.READY_TO_MOVE;
                 }
-                // } else if (anchor === AnchorName.CONTROL) {
-                //   selection.mode = SelectionMode.READY_TO_MOVE_CONTROL_POINT;
               } else {
                 if (toHighlight) {
                   selection.mode = SelectionMode.READY_TO_SELECT;
@@ -786,7 +784,6 @@ export class Select extends System {
           if (selection.brush) {
             selection.brush.write(Visibility).value = 'hidden';
           }
-          api.selectNodes([]);
           selection.mode = SelectionMode.IDLE;
           // TODO: Apply selection
         } else if (selection.mode === SelectionMode.MOVE) {

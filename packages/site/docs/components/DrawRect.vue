@@ -24,6 +24,18 @@ onMounted(async () => {
       ...api.getAppState(),
     });
     api.setPen(Pen.DRAW_RECT);
+    api.updateNode({
+      id: 'draw-rect-1',
+      type: 'rect',
+      x: 100,
+      y: 100,
+      width: 100,
+      height: 100,
+      fill: '#e0f2ff',
+      fillOpacity: 0.5,
+      stroke: '#147af3',
+      strokeWidth: 1,
+    });
   };
 
   canvas.addEventListener(Event.READY, onReady);

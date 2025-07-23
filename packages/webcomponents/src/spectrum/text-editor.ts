@@ -1,5 +1,5 @@
 import { html, css, LitElement } from 'lit';
-import { customElement, property, query, state } from 'lit/decorators.js';
+import { customElement, query, state } from 'lit/decorators.js';
 import { consume } from '@lit/context';
 import {
   AppState,
@@ -76,8 +76,7 @@ export class TextEditor extends LitElement {
 
     if (content.trim() !== '' && content.trim() !== this.node.content) {
       this.api.runAtNextTick(() => {
-        this.api.updateNode({
-          ...this.node,
+        this.api.updateNode(this.node, {
           content,
           visibility: 'visible',
         });
@@ -85,10 +84,13 @@ export class TextEditor extends LitElement {
       });
     } else {
       this.api.runAtNextTick(() => {
-        this.api.updateNode({
-          ...this.node,
-          visibility: 'visible',
-        });
+        this.api.updateNode(
+          this.node,
+          {
+            visibility: 'visible',
+          },
+          false,
+        );
       });
     }
 
@@ -158,10 +160,13 @@ export class TextEditor extends LitElement {
       this.api.deselectNodes([node]);
       this.api.unhighlightNodes([node]);
       // Hide original text node for now.
-      this.api.updateNode({
-        id: node.id,
-        visibility: 'hidden',
-      });
+      this.api.updateNode(
+        node,
+        {
+          visibility: 'hidden',
+        },
+        false,
+      );
     }
 
     if (!this.node) {

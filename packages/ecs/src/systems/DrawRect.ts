@@ -36,26 +36,34 @@ import {
   SizeAttenuation,
 } from '../components';
 import { API } from '../API';
-import { TRANSFORMER_ANCHOR_STROKE_COLOR } from './RenderTransformer';
 import {
+  TRANSFORMER_ANCHOR_STROKE_COLOR,
+  TRANSFORMER_MASK_FILL_COLOR,
+} from './RenderTransformer';
+import {
+  EllipseSerializedNode,
   RectSerializedNode,
   TextSerializedNode,
   distanceBetweenPoints,
 } from '../utils';
-import { DRAW_RECT_Z_INDEX } from '..';
+import { DRAW_RECT_Z_INDEX } from '../context';
 
 const LABEL_WIDTH = 100;
 const LABEL_HEIGHT = 20;
 const LABEL_RADIUS = 4;
 const LABEL_TOP_MARGIN = 10;
 
+/**
+ * Draw a rectangle or ellipse with dragging.
+ */
 export class DrawRect extends System {
   private readonly cameras = this.query((q) => q.current.with(Camera).read);
 
   private selections = new Map<
     number,
     {
-      brush: RectSerializedNode;
+      rectBrush: RectSerializedNode;
+      ellipseBrush: EllipseSerializedNode;
       label: RectSerializedNode;
       text: TextSerializedNode;
       x: number;
@@ -118,7 +126,7 @@ export class DrawRect extends System {
       const { inputPoints, api } = canvas.read(Canvas);
       const pen = api.getAppState().penbarSelected[0];
 
-      if (pen !== Pen.DRAW_RECT) {
+      if (pen !== Pen.DRAW_RECT && pen !== Pen.DRAW_ELLIPSE) {
         return;
       }
 
@@ -129,7 +137,8 @@ export class DrawRect extends System {
 
       if (!this.selections.has(camera.__id)) {
         this.selections.set(camera.__id, {
-          brush: undefined,
+          rectBrush: undefined,
+          ellipseBrush: undefined,
           label: undefined,
           text: undefined,
           x: 0,
@@ -153,22 +162,23 @@ export class DrawRect extends System {
         }
 
         api.runAtNextTick(() => {
-          this.handleBrushing(api, x, y);
+          this.handleBrushing(api, pen, x, y);
         });
       });
 
       if (input.pointerUpTrigger) {
-        const { x, y, width, height, brush, label } = this.selections.get(
-          camera.__id,
-        );
+        const { x, y, width, height, rectBrush, ellipseBrush, label } =
+          this.selections.get(camera.__id);
+
+        const brush = pen === Pen.DRAW_RECT ? rectBrush : ellipseBrush;
 
         api.runAtNextTick(() => {
           api.updateNode(brush, { visibility: 'hidden' });
           api.updateNode(label, { visibility: 'hidden' });
 
-          const node: RectSerializedNode = {
+          const node: RectSerializedNode | EllipseSerializedNode = {
             id: uuidv4(),
-            type: 'rect',
+            type: pen === Pen.DRAW_RECT ? 'rect' : 'ellipse',
             x,
             y,
             width,
@@ -176,7 +186,7 @@ export class DrawRect extends System {
             rotation: 0,
             scaleX: 1,
             scaleY: 1,
-            fill: '#e0f2ff',
+            fill: TRANSFORMER_MASK_FILL_COLOR,
             fillOpacity: 0.5,
             stroke: TRANSFORMER_ANCHOR_STROKE_COLOR,
             strokeWidth: 1,
@@ -190,7 +200,12 @@ export class DrawRect extends System {
     });
   }
 
-  private handleBrushing(api: API, viewportX: number, viewportY: number) {
+  private handleBrushing(
+    api: API,
+    pen: Pen,
+    viewportX: number,
+    viewportY: number,
+  ) {
     const camera = api.getCamera();
     const selection = this.selections.get(camera.__id);
 
@@ -211,15 +226,17 @@ export class DrawRect extends System {
       ) > 10;
 
     if (shouldShowSelectionBrush) {
-      if (!selection.brush) {
-        const brush: RectSerializedNode = {
+      let brush =
+        pen === Pen.DRAW_RECT ? selection.rectBrush : selection.ellipseBrush;
+      if (!brush) {
+        brush = {
           id: uuidv4(),
-          type: 'rect',
+          type: pen === Pen.DRAW_RECT ? 'rect' : 'ellipse',
           x: 0,
           y: 0,
           width: 0,
           height: 0,
-          fill: '#e0f2ff',
+          fill: TRANSFORMER_MASK_FILL_COLOR,
           fillOpacity: 0.5,
           stroke: TRANSFORMER_ANCHOR_STROKE_COLOR,
           visibility: 'hidden',
@@ -227,7 +244,11 @@ export class DrawRect extends System {
           strokeAttenuation: true,
         };
         api.updateNode(brush, undefined, false);
-        selection.brush = brush;
+        if (pen === Pen.DRAW_RECT) {
+          selection.rectBrush = brush as RectSerializedNode;
+        } else {
+          selection.ellipseBrush = brush as EllipseSerializedNode;
+        }
         api.getEntity(brush).add(UI, { type: UIType.BRUSH });
 
         const label: RectSerializedNode = {
@@ -240,7 +261,7 @@ export class DrawRect extends System {
           cornerRadius: LABEL_RADIUS,
           fill: TRANSFORMER_ANCHOR_STROKE_COLOR,
           visibility: 'hidden',
-          zIndex: DRAW_RECT_Z_INDEX,
+          zIndex: DRAW_RECT_Z_INDEX - 1,
           sizeAttenuation: true,
         };
         api.updateNode(label, undefined, false);
@@ -254,57 +275,58 @@ export class DrawRect extends System {
           content: '100x100',
           anchorX: 0,
           anchorY: 0,
-          fill: 'white',
+          fill: 'black',
           fontFamily: 'system-ui',
           fontSize: 12,
           textAlign: 'center',
           textBaseline: 'middle',
           sizeAttenuation: true,
-          zIndex: DRAW_RECT_Z_INDEX,
+          zIndex: DRAW_RECT_Z_INDEX - 2,
         };
         api.updateNode(text, undefined, false);
         selection.text = text;
         api.getEntity(text).add(UI, { type: UIType.LABEL });
       }
 
-      const { x: wx, y: wy } = api.viewport2Canvas({
+      const { x: cx, y: cy } = api.viewport2Canvas({
         x: viewportX,
         y: viewportY,
       });
 
-      selection.x = pointerDownCanvasX;
-      selection.y = pointerDownCanvasY;
-      selection.width = wx - pointerDownCanvasX;
-      selection.height = wy - pointerDownCanvasY;
+      let x = pointerDownCanvasX;
+      let y = pointerDownCanvasY;
+      let width = cx - x;
+      let height = cy - y;
 
       // when width or height is negative, change the x or y to the opposite side
-      if (selection.width < 0) {
-        selection.x += selection.width;
-        selection.width = -selection.width;
+      if (width < 0) {
+        x += width;
+        width = -width;
       }
-      if (selection.height < 0) {
-        selection.y += selection.height;
-        selection.height = -selection.height;
+      if (height < 0) {
+        y += height;
+        height = -height;
       }
 
       api.updateNode(
-        selection.brush,
+        brush,
         {
           visibility: 'visible',
-          x: selection.x,
-          y: selection.y,
-          width: selection.width,
-          height: selection.height,
+          x,
+          y,
+          width,
+          height,
         },
         false,
       );
+
       api.updateNode(
         selection.label,
         {
           visibility: 'visible',
-          x: selection.x + selection.width / 2 - LABEL_WIDTH / 2,
+          x: x + width / 2 - LABEL_WIDTH / 2,
           // Label always appears at the bottom of the brush
-          y: selection.y + selection.height + LABEL_TOP_MARGIN,
+          y: y + height - LABEL_HEIGHT / 2,
         },
         false,
       );
@@ -312,13 +334,17 @@ export class DrawRect extends System {
         selection.text,
         {
           x: 0,
-          y: LABEL_HEIGHT / 2,
-          content: `${Math.round(selection.width)}x${Math.round(
-            selection.height,
-          )}`,
+          y: 0,
+          content: `${Math.round(width)}x${Math.round(height)}`,
         },
         false,
       );
+
+      // Update the selection state
+      selection.x = x;
+      selection.y = y;
+      selection.width = width;
+      selection.height = height;
     }
   }
 }
