@@ -1,0 +1,69 @@
+<svg width="1954.59765625" height="1038" viewBox="-945.548828125 -489.25 1954.59765625 1038"
+    xmlns="http://www.w3.org/2000/svg">
+    <path d="M-60,-6 C0,-6 118,-271 178,-271L302.2578125,-271" stroke="#000000" stroke-width="4" fill="none" />
+    <path d="M-60,-6 C0,-6 118,259 178,259L288.046875,259" stroke="#FF0000" stroke-width="4" fill="none" />
+    <path d="M-408.986328125,-6 L-298,-6 C-238,-6 -120,-6 -60,-6" stroke="#00FF00" stroke-width="4" fill="none" />
+    <g transform="translate(-178, -36)">
+        <rect x="0" y="0" width="236" height="60" fill="grey" />
+        <text x="118" y="30" fill="black" font-family="Arial, monospace" font-size="24" text-anchor="middle"
+            dominant-baseline="middle">Modeling Methods</text>
+    </g>
+    <path d="M302,-271 C362,-271 362,-418 422,-418L585.3984375,-418" stroke="#000000" stroke-width="4" fill="none" />
+    <path d="M302,-271 C362,-271 362,-376 422,-376L648.53125,-376" stroke="#000000" stroke-width="4" fill="none" />
+    <path d="M302,-271 C362,-271 362,-334 422,-334L492.90625,-334" stroke="#000000" stroke-width="4" fill="none" />
+    <path d="M302,-271 C362,-271 362,-292 422,-292L553.375,-292" stroke="#000000" stroke-width="4" fill="none" />
+    <path d="M302,-271 C362,-271 362,-250 422,-250L541.8203125,-250" stroke="#000000" stroke-width="4" fill="none" />
+    <path d="M302,-271 C362,-271 362,-208 422,-208L587.203125,-208" stroke="#000000" stroke-width="4" fill="none" />
+    <path d="M302,-271 C362,-271 362,-166 422,-166L647.6484375,-166" stroke="#000000" stroke-width="4" fill="none" />
+    <path d="M302,-271 C362,-271 362,-124 422,-124L620.9765625,-124" stroke="#000000" stroke-width="4" fill="none" />
+    <text x="178" y="-278" fill="black" font-family="Arial, monospace" font-size="16">Classification</text><text x="422"
+        y="-425" fill="black" font-family="Arial, monospace" font-size="16">Logistic regression</text><text x="422"
+        y="-383" fill="black" font-family="Arial, monospace" font-size="16">Linear discriminant analysis</text><text
+        x="422" y="-341" fill="black" font-family="Arial, monospace" font-size="16">Rules</text><text x="422" y="-299"
+        fill="black" font-family="Arial, monospace" font-size="16">Decision trees</text><text x="422" y="-257"
+        fill="black" font-family="Arial, monospace" font-size="16">Naive Bayes</text><text x="422" y="-215" fill="black"
+        font-family="Arial, monospace" font-size="16">K nearest neighbor</text><text x="422" y="-173" fill="black"
+        font-family="Arial, monospace" font-size="16">Probabilistic neural network</text><text x="422" y="-131"
+        fill="black" font-family="Arial, monospace" font-size="16">Support vector machine</text>
+    <path d="M288,259 C348,259 348,83 408,83L552.703125,83" stroke="#FF0000" stroke-width="4" fill="none" />
+    <path d="M288,259 C348,259 348,291 408,291L499.3671875,291" stroke="#FF0000" stroke-width="4" fill="none" />
+    <path d="M288,259 C348,259 348,436 408,436L502.90625,436" stroke="#FF0000" stroke-width="4" fill="none" /><text
+        x="178" y="252" fill="black" font-family="Arial, monospace" font-size="16">Consensus</text>
+    <path d="M553,83 C613,83 613,-22 673,-22L858.3359375,-22" stroke="#FF0000" stroke-width="4" fill="none" />
+    <path d="M553,83 C613,83 613,20 673,20L899.2421875,20" stroke="#FF0000" stroke-width="4" fill="none" />
+    <path d="M553,83 C613,83 613,62 673,62L859.21875,62" stroke="#FF0000" stroke-width="4" fill="none" />
+    <path d="M553,83 C613,83 613,104 673,104L898.3671875,104" stroke="#FF0000" stroke-width="4" fill="none" />
+    <path d="M553,83 C613,83 613,146 673,146L853.890625,146" stroke="#FF0000" stroke-width="4" fill="none" />
+    <path d="M553,83 C613,83 613,188 673,188L851.2265625,188" stroke="#FF0000" stroke-width="4" fill="none" /><text
+        x="408" y="76" fill="black" font-family="Arial, monospace" font-size="16">Models diversity</text><text x="673"
+        y="-29" fill="black" font-family="Arial, monospace" font-size="16">Different initializations</text><text x="673"
+        y="13" fill="black" font-family="Arial, monospace" font-size="16">Different parameter choices</text><text
+        x="673" y="55" fill="black" font-family="Arial, monospace" font-size="16">Different architectures</text><text
+        x="673" y="97" fill="black" font-family="Arial, monospace" font-size="16">Different modeling methods</text><text
+        x="673" y="139" fill="black" font-family="Arial, monospace" font-size="16">Different training sets</text><text
+        x="673" y="181" fill="black" font-family="Arial, monospace" font-size="16">Different feature sets</text>
+    <path d="M499,291 C559,291 559,270 619,270L782.3828125,270" stroke="#FF0000" stroke-width="4" fill="none" />
+    <path d="M499,291 C559,291 559,312 619,312L761.9296875,312" stroke="#FF0000" stroke-width="4" fill="none" /><text
+        x="408" y="284" fill="black" font-family="Arial, monospace" font-size="16">Methods</text><text x="619" y="263"
+        fill="black" font-family="Arial, monospace" font-size="16">Classifier selection</text><text x="619" y="305"
+        fill="black" font-family="Arial, monospace" font-size="16">Classifier fusion</text>
+    <path d="M503,436 C563,436 563,394 623,394L711.71875,394" stroke="#FF0000" stroke-width="4" fill="none" />
+    <path d="M503,436 C563,436 563,436 623,436L715.265625,436" stroke="#FF0000" stroke-width="4" fill="none" />
+    <path d="M503,436 C563,436 563,478 623,478L722.3828125,478" stroke="#FF0000" stroke-width="4" fill="none" /><text
+        x="408" y="429" fill="black" font-family="Arial, monospace" font-size="16">Common</text><text x="623" y="387"
+        fill="black" font-family="Arial, monospace" font-size="16">Bagging</text><text x="623" y="429" fill="black"
+        font-family="Arial, monospace" font-size="16">Boosting</text><text x="623" y="471" fill="black"
+        font-family="Arial, monospace" font-size="16">AdaBoost</text>
+    <path d="M-736.845703125,-90 L-529,-90 C-469,-90 -469,-6 -409,-6" stroke="#00FF00" stroke-width="4" fill="none" />
+    <path d="M-703.947265625,-48 L-529,-48 C-469,-48 -469,-6 -409,-6" stroke="#00FF00" stroke-width="4" fill="none" />
+    <path d="M-835.548828125,-6 L-529,-6 C-469,-6 -469,-6 -409,-6" stroke="#00FF00" stroke-width="4" fill="none" />
+    <path d="M-804.447265625,36 L-529,36 C-469,36 -469,-6 -409,-6" stroke="#00FF00" stroke-width="4" fill="none" />
+    <path d="M-742.189453125,78 L-529,78 C-469,78 -469,-6 -409,-6" stroke="#00FF00" stroke-width="4" fill="none" /><text
+        x="-409" y="-13" fill="black" font-family="Arial, monospace" font-size="16">Regression</text><text x="-737"
+        y="-97" fill="black" font-family="Arial, monospace" font-size="16">Multiple linear regression</text><text
+        x="-704" y="-55" fill="black" font-family="Arial, monospace" font-size="16">Partial least squares</text><text
+        x="-836" y="-13" fill="black" font-family="Arial, monospace" font-size="16">Multi-layer feed forward neural
+        network</text><text x="-804" y="29" fill="black" font-family="Arial, monospace" font-size="16">General
+        regression neural network</text><text x="-742" y="71" fill="black" font-family="Arial, monospace"
+        font-size="16">Support vector regression</text>
+</svg>

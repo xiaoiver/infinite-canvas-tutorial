@@ -1,7 +1,8 @@
-import { System } from '@lastolivegames/becsy';
+import { Entity, System } from '@lastolivegames/becsy';
 import { vec2 } from 'gl-matrix';
 import { ComputedPoints, Path, Polyline, Stroke } from '../components';
 import { bisect, parsePath } from '../utils';
+import { safeAddComponent } from '../history';
 
 /**
  * Compute the points of the path according to the definition.
@@ -18,34 +19,37 @@ export class ComputePoints extends System {
 
   execute() {
     this.paths.addedOrChanged.forEach((entity) => {
-      const { d } = entity.read(Path);
-
-      const { subPaths } = parsePath(d);
-      const points = subPaths.map((subPath) =>
-        subPath
-          .getPoints()
-          .map((point) => [point[0], point[1]] as [number, number]),
-      );
-
-      if (!entity.has(ComputedPoints)) {
-        entity.add(ComputedPoints);
-      }
-      entity.write(ComputedPoints).points = points;
+      updateComputedPoints(entity);
     });
 
     this.polylines.addedOrChanged.forEach((entity) => {
-      const { points } = entity.read(Polyline);
-      const { alignment, width } = entity.read(Stroke);
-
-      if (!entity.has(ComputedPoints)) {
-        entity.add(ComputedPoints);
-      }
-      entity.write(ComputedPoints).shiftedPoints = maybeShiftPoints(
-        points,
-        alignment,
-        width,
-      );
+      updateComputedPoints(entity);
     });
+  }
+}
+
+export function updateComputedPoints(entity: Entity) {
+  if (entity.has(Path)) {
+    const { d } = entity.read(Path);
+    const { subPaths } = parsePath(d);
+    const points = subPaths.map((subPath) =>
+      subPath
+        .getPoints()
+        .map((point) => [point[0], point[1]] as [number, number]),
+    );
+
+    safeAddComponent(entity, ComputedPoints);
+    entity.write(ComputedPoints).points = points;
+  } else if (entity.has(Polyline)) {
+    const { points } = entity.read(Polyline);
+    const { alignment, width } = entity.read(Stroke);
+
+    safeAddComponent(entity, ComputedPoints);
+    entity.write(ComputedPoints).shiftedPoints = maybeShiftPoints(
+      points,
+      alignment,
+      width,
+    );
   }
 }
 

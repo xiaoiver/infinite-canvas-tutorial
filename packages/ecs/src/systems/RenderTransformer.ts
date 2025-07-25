@@ -55,6 +55,8 @@ export const TRANSFORMER_ANCHOR_FILL_COLOR = 'white';
 export class RenderTransformer extends System {
   private readonly commands = new Commands(this);
 
+  private readonly cameras = this.query((q) => q.added.with(Camera));
+
   private readonly selected = this.query((q) =>
     q.current.and.added.and.removed.with(Selected),
   );
@@ -261,6 +263,10 @@ export class RenderTransformer extends System {
 
   execute() {
     const camerasToUpdate = new Set<Entity>();
+
+    this.cameras.added.forEach((camera) => {
+      camerasToUpdate.add(camera);
+    });
 
     this.selected.added.forEach((selected) => {
       camerasToUpdate.add(selected.read(Selected).camera);

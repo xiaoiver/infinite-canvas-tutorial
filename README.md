@@ -302,7 +302,12 @@ If you want to use it in your own project, you can refer to:
 
 ## Lesson 25 - Draw rect mode and brush [🔗](https://infinitecanvas.cc/guide/lesson-025)
 
-![draw rect mode](./screenshots/lesson25.gif)
+-   Draw shapes mode: draw rect, ellipse, line with dragging
+-   Brush mode
+
+|                Draw rect mode                 |                    Pecil tool                    |
+| :-------------------------------------------: | :----------------------------------------------: |
+| ![draw rect mode](./screenshots/lesson25.gif) | ![dragndrop image](./screenshots/lesson25-2.gif) |
 
 [infinitecanvas]: https://infinitecanvas.tools/
 [Figma]: https://madebyevan.com/figma/building-a-professional-design-tool-on-the-web/

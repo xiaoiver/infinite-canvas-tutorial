@@ -50,6 +50,9 @@ import {
   MaterialDirty,
   GeometryDirty,
   TextDecoration,
+  Parent,
+  UI,
+  ZIndex,
 } from '../components';
 import { paddingMat3 } from '../utils';
 import { GridRenderer } from './GridRenderer';
@@ -106,7 +109,7 @@ export class MeshPipeline extends System {
         Rough,
         FractionalIndex,
         TextDecoration,
-      ).trackMatches,
+      ).trackWrites,
   );
 
   gpuResources: Map<
@@ -138,6 +141,7 @@ export class MeshPipeline extends System {
             GPUResource,
             Camera,
             ComputedCamera,
+            Parent,
             Children,
             Circle,
             Ellipse,
@@ -166,6 +170,8 @@ export class MeshPipeline extends System {
             SizeAttenuation,
             StrokeAttenuation,
             TextDecoration,
+            UI,
+            ZIndex,
           )
           .read.and.using(
             RasterScreenshotRequest,
@@ -343,6 +349,13 @@ export class MeshPipeline extends System {
         });
       }
       this.pendingRenderables.get(camera).remove.push(entity);
+    });
+
+    // Handle some special cases.
+    this.styles.addedChangedOrRemoved.forEach((entity) => {
+      if ((entity.has(Polyline) || entity.has(Path)) && entity.has(Stroke)) {
+        safeAddComponent(entity, GeometryDirty);
+      }
     });
 
     this.canvases.current.forEach((canvas) => {

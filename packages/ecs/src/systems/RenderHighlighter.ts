@@ -22,6 +22,11 @@ import {
   UI,
   UIType,
   ZIndex,
+  ComputedPoints,
+  Canvas,
+  Camera,
+  FractionalIndex,
+  ComputedCamera,
 } from '../components';
 import { Commands } from '../commands';
 import { getSceneRoot, updateGlobalTransform } from './Transform';
@@ -30,6 +35,8 @@ import {
   TRANSFORMER_ANCHOR_STROKE_COLOR,
 } from './RenderTransformer';
 import { HIGHLIGHTER_Z_INDEX } from '../context';
+import { safeAddComponent } from '../history';
+import { updateComputedPoints } from './ComputePoints';
 
 /**
  * Highlight objects when hovering over them like Figma
@@ -53,7 +60,13 @@ export class RenderHighlighter extends System {
     this.query(
       (q) =>
         q
-          .using(ComputedBounds)
+          .using(
+            ComputedBounds,
+            ComputedCamera,
+            Canvas,
+            Camera,
+            FractionalIndex,
+          )
           .read.and.using(
             GlobalTransform,
             UI,
@@ -75,6 +88,7 @@ export class RenderHighlighter extends System {
             SizeAttenuation,
             StrokeAttenuation,
             ToBeDeleted,
+            ComputedPoints,
           ).write,
     );
   }
@@ -105,7 +119,7 @@ export class RenderHighlighter extends System {
     });
   }
 
-  private createOrUpdate(entity: Entity) {
+  createOrUpdate(entity: Entity) {
     let highlighter = this.#highlighters.get(entity);
     if (!highlighter) {
       highlighter = this.commands
@@ -148,9 +162,7 @@ export class RenderHighlighter extends System {
     });
 
     if (entity.has(Circle)) {
-      if (!highlighter.has(Circle)) {
-        highlighter.add(Circle);
-      }
+      safeAddComponent(highlighter, Circle);
 
       const { cx, cy, r } = entity.read(Circle);
       Object.assign(highlighter.write(Circle), {
@@ -159,9 +171,7 @@ export class RenderHighlighter extends System {
         r,
       });
     } else if (entity.has(Ellipse)) {
-      if (!highlighter.has(Ellipse)) {
-        highlighter.add(Ellipse);
-      }
+      safeAddComponent(highlighter, Ellipse);
 
       const { cx, cy, rx, ry } = entity.read(Ellipse);
       Object.assign(highlighter.write(Ellipse), {
@@ -171,35 +181,28 @@ export class RenderHighlighter extends System {
         ry,
       });
     } else if (entity.has(Rect)) {
-      if (!highlighter.has(Rect)) {
-        highlighter.add(Rect);
-      }
+      safeAddComponent(highlighter, Rect);
+
       Object.assign(highlighter.write(Rect), {
         width,
         height,
       });
     } else if (entity.has(Path)) {
-      if (!highlighter.has(Path)) {
-        highlighter.add(Path);
-      }
+      safeAddComponent(highlighter, Path);
 
       const { d } = entity.read(Path);
       Object.assign(highlighter.write(Path), {
         d,
       });
     } else if (entity.has(Polyline)) {
-      if (!highlighter.has(Polyline)) {
-        highlighter.add(Polyline);
-      }
+      safeAddComponent(highlighter, Polyline);
 
       const { points } = entity.read(Polyline);
       Object.assign(highlighter.write(Polyline), {
         points,
       });
     } else if (entity.has(Text)) {
-      if (!highlighter.has(Polyline)) {
-        highlighter.add(Polyline);
-      }
+      safeAddComponent(highlighter, Polyline);
 
       const {
         obb: { width, height },
@@ -213,6 +216,7 @@ export class RenderHighlighter extends System {
     }
 
     updateGlobalTransform(highlighter);
+    updateComputedPoints(highlighter);
 
     return highlighter;
   }

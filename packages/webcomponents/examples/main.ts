@@ -10,8 +10,8 @@ import {
 import { Event, UIPlugin } from '../src';
 import '../src/spectrum';
 
-// const res = await fetch('/maslow-hierarchy.svg');
-const res = await fetch('/test.svg');
+const res = await fetch('/maslow-hierarchy.svg');
+// const res = await fetch('/mindmap.svg');
 // const res = await fetch('/test-camera.svg');
 // const res = await fetch(
 //   '/62f5208ddbc232ac973f53d9cfd91ba463c50b8bfd846349247709fe4a7a9053.svg',
@@ -22,10 +22,10 @@ const $container = document.createElement('div');
 $container.innerHTML = svg;
 const $svg = $container.children[0] as SVGSVGElement;
 
-// const camera = svgSvgElementToComputedCamera($svg);
-// const nodes = svgElementsToSerializedNodes(
-//   Array.from($svg.children) as SVGElement[],
-// );
+const camera = svgSvgElementToComputedCamera($svg);
+const nodes = svgElementsToSerializedNodes(
+  Array.from($svg.children) as SVGElement[],
+);
 
 // console.log('nodes', nodes);
 
@@ -39,7 +39,7 @@ canvas.addEventListener(Event.READY, async (e) => {
     // topbarVisible: false,
     // contextBarVisible: false,
     // penbarVisible: false,
-    taskbarVisible: false,
+    // taskbarVisible: false,
     // rotateEnabled: false,
     // flipEnabled: false,
   });
@@ -47,37 +47,46 @@ canvas.addEventListener(Event.READY, async (e) => {
   api.setPen(Pen.SELECT);
   api.setTaskbars([Task.SHOW_LAYERS_PANEL, Task.SHOW_PROPERTIES_PANEL]);
 
-  const nodes = [
-    {
-      id: '1',
-      // type: 'path',
-      // d: 'M 70 110 C 70 140, 110 140, 110 110',
-      type: 'polyline',
-      points: '0,0 100,100',
-      stroke: 'black',
-      strokeWidth: 2,
-      // fill: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAUAAAAFCAYAAACNbyblAAAAHElEQVQI12P4//8/w38GIAXDIBKE0DHxgljNBAAO9TXL0Y4OHwAAAABJRU5ErkJggg==',
-      // fill: 'blob:http://localhost:8080/cd5e4cd2-3387-4874-b792-128d82644004',
-      // fill: 'radial-gradient(circle at center, red, blue, green 100%)',
-      zIndex: 1,
-    },
-    {
-      id: '2',
-      type: 'text',
-      content: 'Hello',
-      anchorX: 100,
-      anchorY: 100,
-      fontSize: 20,
-      fontFamily: 'Arial',
-      fill: 'black',
-      zIndex: 2,
-    },
-  ];
+  // const nodes = [
+  //   {
+  //     id: '1',
+  //     type: 'path',
+  //     d: 'M 70 110 C 70 140, 110 140, 110 110',
+  //     // type: 'polyline',
+  //     // points: '0,0 100,100',
+  //     stroke: 'black',
+  //     strokeWidth: 2,
+  //     // fill: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAUAAAAFCAYAAACNbyblAAAAHElEQVQI12P4//8/w38GIAXDIBKE0DHxgljNBAAO9TXL0Y4OHwAAAABJRU5ErkJggg==',
+  //     // fill: 'blob:http://localhost:8080/cd5e4cd2-3387-4874-b792-128d82644004',
+  //     // fill: 'radial-gradient(circle at center, red, blue, green 100%)',
+  //     zIndex: 1,
+  //   },
+  //   // {
+  //   //   id: '2',
+  //   //   type: 'text',
+  //   //   content: 'Hello',
+  //   //   anchorX: 100,
+  //   //   anchorY: 100,
+  //   //   fontSize: 20,
+  //   //   fontFamily: 'Arial',
+  //   //   fill: 'black',
+  //   //   zIndex: 2,
+  //   // },
+  //   // {
+  //   //   id: '1',
+  //   //   type: 'rect',
+  //   //   x: 100,
+  //   //   y: 100,
+  //   //   width: 100,
+  //   //   height: 100,
+  //   //   fill: 'green',
+  //   // },
+  // ];
 
   // api.runAtNextTick(() => {
   api.updateNodes(nodes);
   api.record();
-  api.selectNodes([nodes[1]]);
+  api.selectNodes([nodes[0]]);
   // });
 });
 

@@ -8,7 +8,6 @@ import {
   RenderTransformer,
   Select,
   EditVectorNetwork,
-  SetCursor,
   SetupDevice,
   Sort,
   SyncSimpleTransforms,
@@ -17,7 +16,8 @@ import {
   ComputeCamera,
   Last,
   ComputeVisibility,
-  DrawBrush,
+  DrawPencil,
+  MeshPipeline,
 } from '../systems';
 import {
   Highlighted,
@@ -45,18 +45,22 @@ export const PenPlugin: Plugin = () => {
         SyncSimpleTransforms,
         PropagateTransforms,
         Sort,
-        SetCursor,
         ComputeCamera,
         ComputeVisibility,
         CameraControl,
       )
       .before(Last),
   )(Select);
-  system((s) => s.after(Select))(EditVectorNetwork);
-  system((s) => s.after(EditVectorNetwork))(DrawRect);
-  system((s) => s.after(DrawRect))(DrawBrush);
-  system((s) => s.afterWritersOf(Selected))(RenderTransformer);
+  system((s) => s.after(Select).before(Last))(EditVectorNetwork);
+  system((s) => s.after(EditVectorNetwork).before(Last))(DrawRect);
+  system((s) => s.after(DrawRect).before(Last))(DrawPencil);
+  system((s) => s.afterWritersOf(Selected).before(Last, MeshPipeline))(
+    RenderTransformer,
+  );
   system((s) =>
-    s.afterWritersOf(Highlighted).inAnyOrderWith(RenderTransformer),
+    s
+      .afterWritersOf(Highlighted)
+      .inAnyOrderWith(RenderTransformer)
+      .before(Last, MeshPipeline),
   )(RenderHighlighter);
 };

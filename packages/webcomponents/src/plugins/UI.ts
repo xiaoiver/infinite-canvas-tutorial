@@ -11,6 +11,8 @@ import {
   system,
   Select,
   Last,
+  RenderTransformer,
+  RenderHighlighter,
 } from '@infinite-canvas-tutorial/ecs';
 import {
   DownloadScreenshot,
@@ -49,9 +51,11 @@ export const UIPlugin: Plugin = () => {
         ComputeBounds,
         CameraControl,
         Select,
+        RenderTransformer,
+        RenderHighlighter,
       )
       .before(Last),
   )(ZoomLevel);
   system((s) => s.before(PreStartUp))(DownloadScreenshot);
-  system((s) => s.after(PreStartUp))(ListenTransformableStatus);
+  system(PreStartUp)(ListenTransformableStatus);
 };

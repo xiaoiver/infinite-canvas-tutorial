@@ -303,7 +303,12 @@ pnpm run dev
 
 ## 课程 25 - 矩形绘制模式 [🔗](https://infinitecanvas.cc/zh/guide/lesson-025)
 
-![draw rect mode](./screenshots/lesson25.gif)
+-   图形绘制模式：通过拖拽绘制矩形、椭圆和直线
+-   笔刷模式：绘制折线
+
+|                Draw rect mode                 |                    Pecil tool                    |
+| :-------------------------------------------: | :----------------------------------------------: |
+| ![draw rect mode](./screenshots/lesson25.gif) | ![dragndrop image](./screenshots/lesson25-2.gif) |
 
 [infinitecanvas]: https://infinitecanvas.tools/
 [Figma]: https://madebyevan.com/figma/building-a-professional-design-tool-on-the-web/

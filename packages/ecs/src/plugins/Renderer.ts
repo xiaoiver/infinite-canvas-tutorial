@@ -14,12 +14,10 @@ import {
   SetCursor,
   PreUpdate,
   PostUpdate,
-  ComputeCamera,
   StartUp,
   Deleter,
   Last,
   PropagateTransforms,
-  ExportSVG,
   ComputeVisibility,
 } from '../systems';
 import {
@@ -110,20 +108,14 @@ export const RendererPlugin: Plugin = () => {
   system(PreUpdate)(ComputePoints);
   system(PreUpdate)(ComputeRough);
   system(PreUpdate)(ComputeTextMetrics);
+  system(PreUpdate)(ComputeVisibility);
   system(PostUpdate)(ComputeBounds);
-  system((s) => s.after(PropagateTransforms))(ComputeVisibility);
-  system((s) => s.after(PropagateTransforms))(ComputeBounds);
   system(PostUpdate)(Sort);
-  system(PostUpdate)(SetCursor);
-  system((s) => s.after(ComputeCamera, SetupDevice))(MeshPipeline);
-  system((s) =>
-    s.after(
-      Last,
-      PropagateTransforms,
-      ComputeCamera,
-      ComputeVisibility,
-      MeshPipeline,
-      ExportSVG,
-    ),
-  )(Deleter);
+
+  // system((s) => s.after(PropagateTransforms))(ComputeVisibility);
+  system((s) => s.after(PropagateTransforms, Sort))(ComputeBounds);
+
+  system(Last)(SetCursor);
+  system(Last)(MeshPipeline);
+  system(Last)(Deleter);
 };

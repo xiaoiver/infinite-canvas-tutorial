@@ -48,6 +48,7 @@ import {
   distanceBetweenPoints,
 } from '../utils';
 import { DRAW_RECT_Z_INDEX } from '../context';
+import { updateGlobalTransform } from './Transform';
 
 const LABEL_WIDTH = 100;
 const LABEL_HEIGHT = 20;
@@ -192,9 +193,14 @@ export class DrawRect extends System {
             ? ellipseBrush
             : lineBrush;
 
+        // Just click on the canvas, do nothing
+        if (!brush || (width === 0 && height === 0)) {
+          return;
+        }
+
         api.runAtNextTick(() => {
-          api.updateNode(brush, { visibility: 'hidden' });
-          api.updateNode(label, { visibility: 'hidden' });
+          api.updateNode(brush, { visibility: 'hidden' }, false);
+          // api.updateNode(label, { visibility: 'hidden' }, false);
 
           // @ts-expect-error
           const node:
@@ -305,41 +311,41 @@ export class DrawRect extends System {
         }
         api.getEntity(brush).add(UI, { type: UIType.BRUSH });
 
-        const label: RectSerializedNode = {
-          id: uuidv4(),
-          type: 'rect',
-          x: 0,
-          y: 0,
-          width: LABEL_WIDTH,
-          height: LABEL_HEIGHT,
-          cornerRadius: LABEL_RADIUS,
-          fill: TRANSFORMER_ANCHOR_STROKE_COLOR,
-          visibility: 'hidden',
-          zIndex: DRAW_RECT_Z_INDEX - 1,
-          sizeAttenuation: true,
-        };
-        api.updateNode(label, undefined, false);
-        selection.label = label;
-        api.getEntity(label).add(UI, { type: UIType.LABEL });
+        // const label: RectSerializedNode = {
+        //   id: uuidv4(),
+        //   type: 'rect',
+        //   x: 0,
+        //   y: 0,
+        //   width: LABEL_WIDTH,
+        //   height: LABEL_HEIGHT,
+        //   cornerRadius: LABEL_RADIUS,
+        //   fill: TRANSFORMER_ANCHOR_STROKE_COLOR,
+        //   visibility: 'hidden',
+        //   zIndex: DRAW_RECT_Z_INDEX - 1,
+        //   sizeAttenuation: true,
+        // };
+        // api.updateNode(label, undefined, false);
+        // selection.label = label;
+        // api.getEntity(label).add(UI, { type: UIType.LABEL });
 
-        const text: TextSerializedNode = {
-          id: uuidv4(),
-          parentId: label.id,
-          type: 'text',
-          content: '100x100',
-          anchorX: 0,
-          anchorY: 0,
-          fill: 'black',
-          fontFamily: 'system-ui',
-          fontSize: 12,
-          textAlign: 'center',
-          textBaseline: 'middle',
-          sizeAttenuation: true,
-          zIndex: DRAW_RECT_Z_INDEX - 2,
-        };
-        api.updateNode(text, undefined, false);
-        selection.text = text;
-        api.getEntity(text).add(UI, { type: UIType.LABEL });
+        // const text: TextSerializedNode = {
+        //   id: uuidv4(),
+        //   parentId: label.id,
+        //   type: 'text',
+        //   content: '100x100',
+        //   anchorX: 0,
+        //   anchorY: 0,
+        //   fill: 'black',
+        //   fontFamily: 'system-ui',
+        //   fontSize: 12,
+        //   textAlign: 'center',
+        //   textBaseline: 'middle',
+        //   sizeAttenuation: true,
+        //   zIndex: DRAW_RECT_Z_INDEX - 2,
+        // };
+        // api.updateNode(text, undefined, false);
+        // selection.text = text;
+        // api.getEntity(text).add(UI, { type: UIType.LABEL });
       }
 
       const { x: cx, y: cy } = api.viewport2Canvas({
@@ -381,25 +387,25 @@ export class DrawRect extends System {
         false,
       );
 
-      api.updateNode(
-        selection.label,
-        {
-          visibility: 'visible',
-          x: x + width / 2 - LABEL_WIDTH / 2,
-          // Label always appears at the bottom of the brush
-          y: y + height - LABEL_HEIGHT / 2,
-        },
-        false,
-      );
-      api.updateNode(
-        selection.text,
-        {
-          x: 0,
-          y: 0,
-          content: `${Math.round(width)}x${Math.round(height)}`,
-        },
-        false,
-      );
+      // api.updateNode(
+      //   selection.label,
+      //   {
+      //     visibility: 'visible',
+      //     x: x + width / 2 - LABEL_WIDTH / 2,
+      //     // Label always appears at the bottom of the brush
+      //     y: y + height - LABEL_HEIGHT / 2,
+      //   },
+      //   false,
+      // );
+      // api.updateNode(
+      //   selection.text,
+      //   {
+      //     x: 0,
+      //     y: 0,
+      //     content: `${Math.round(width)}x${Math.round(height)}`,
+      //   },
+      //   false,
+      // );
 
       // Update the selection state
       selection.x = x;

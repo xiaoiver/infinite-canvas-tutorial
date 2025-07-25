@@ -1,5 +1,7 @@
 import { System } from '@lastolivegames/becsy';
 import { v4 as uuidv4 } from 'uuid';
+import simplify from 'simplify-js';
+import { IPointData } from '@pixi/math';
 import {
   Camera,
   Canvas,
@@ -35,14 +37,15 @@ import { distanceBetweenPoints } from '../utils/matrix';
 import { DRAW_RECT_Z_INDEX } from '../context';
 import { serializePoints, TRANSFORMER_ANCHOR_STROKE_COLOR } from '..';
 
-export class DrawBrush extends System {
+export class DrawPencil extends System {
   private readonly cameras = this.query((q) => q.current.with(Camera).read);
 
   private selections = new Map<
     number,
     {
       brush: PolylineSerializedNode;
-      points: [number, number][];
+      pointsBeforeSimplify: IPointData[];
+      points: IPointData[];
       lastPointInViewport: [number, number];
     }
   >();
@@ -95,7 +98,7 @@ export class DrawBrush extends System {
       const { inputPoints, api } = canvas.read(Canvas);
       const pen = api.getAppState().penbarSelected[0];
 
-      if (pen !== Pen.BRUSH) {
+      if (pen !== Pen.PENCIL) {
         return;
       }
 
@@ -108,6 +111,7 @@ export class DrawBrush extends System {
       if (!selection) {
         this.selections.set(camera.__id, {
           brush: undefined,
+          pointsBeforeSimplify: [],
           points: [],
           lastPointInViewport: [0, 0],
         });
@@ -116,12 +120,16 @@ export class DrawBrush extends System {
 
       // Clear previous points
       if (input.pointerDownTrigger) {
+        selection.pointsBeforeSimplify = [];
         selection.points = [];
 
         const { pointerDownCanvasX, pointerDownCanvasY } = camera.read(
           ComputedCameraControl,
         );
-        selection.points.push([pointerDownCanvasX, pointerDownCanvasY]);
+        selection.pointsBeforeSimplify.push({
+          x: pointerDownCanvasX,
+          y: pointerDownCanvasY,
+        });
       }
 
       // Dragging
@@ -143,6 +151,29 @@ export class DrawBrush extends System {
       });
 
       if (input.pointerUpTrigger) {
+        const { brush } = this.selections.get(camera.__id);
+
+        // Just click on the canvas, do nothing
+        if (!brush || brush.points.length === 0) {
+          return;
+        }
+
+        api.runAtNextTick(() => {
+          api.updateNode(brush, { visibility: 'hidden' }, false);
+
+          const node: PolylineSerializedNode = {
+            id: uuidv4(),
+            type: 'polyline',
+            points: serializePoints(selection.points.map((p) => [p.x, p.y])),
+            stroke: TRANSFORMER_ANCHOR_STROKE_COLOR,
+            strokeWidth: 1,
+          };
+
+          api.setPen(Pen.SELECT);
+          api.updateNode(node);
+          api.selectNodes([node]);
+          api.record();
+        });
       }
     });
   }
@@ -150,6 +181,7 @@ export class DrawBrush extends System {
   private handleBrushing(api: API, viewportX: number, viewportY: number) {
     const camera = api.getCamera();
     const selection = this.selections.get(camera.__id);
+    const { zoom } = camera.read(ComputedCamera);
 
     const { pointerDownViewportX, pointerDownViewportY } = camera.read(
       ComputedCameraControl,
@@ -194,16 +226,18 @@ export class DrawBrush extends System {
           y: viewportY,
         });
 
-        selection.points.push([cx, cy]);
+        selection.pointsBeforeSimplify.push({ x: cx, y: cy });
         selection.lastPointInViewport = [viewportX, viewportY];
 
-        console.log(selection.points);
+        // choose tolerance based on the camera zoom level
+        const tolerance = 1 / zoom;
+        selection.points = simplify(selection.pointsBeforeSimplify, tolerance);
 
         api.updateNode(
           brush,
           {
             visibility: 'visible',
-            points: serializePoints(selection.points),
+            points: serializePoints(selection.points.map((p) => [p.x, p.y])),
           },
           false,
         );

@@ -2,6 +2,7 @@
 import { Canvas, Rect, Path } from '@infinite-canvas-tutorial/core';
 import { ref, onMounted } from 'vue';
 import { mindmap } from '@antv/hierarchy';
+// import { createMindmap } from './mindmap';
 
 let canvas: Canvas;
 let stats: any;
@@ -102,6 +103,9 @@ onMounted(() => {
       Object.assign(root, {
         isRoot: true
       });
+
+      // const svg = createMindmap(root);
+      // console.log(svg);
 
       const rootNode = mindmap(root, {
         direction: 'H',

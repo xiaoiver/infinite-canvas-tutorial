@@ -18,7 +18,7 @@ import { consume } from '@lit/context';
 import { apiContext } from '../context';
 
 const THUMBNAIL_SIZE = 52;
-// const THUMBNAIL_PADDING = 4;
+const THUMBNAIL_PADDING_RATIO = 0.1;
 @customElement('ic-spectrum-layer-thumbnail')
 export class LayerThumbnail extends LitElement {
   static styles = css`
@@ -80,6 +80,7 @@ export class LayerThumbnail extends LitElement {
     } else if (type === 'polyline') {
       $el = createSVGElement('polyline') as SVGElement;
       $el.setAttribute('points', (this.node as PolylineSerializedNode).points);
+      $el.setAttribute('fill', 'none');
     }
 
     const {
@@ -97,6 +98,8 @@ export class LayerThumbnail extends LitElement {
       $el.setAttribute('transform', transform);
       if (fill) {
         $el.setAttribute('fill', fill);
+      } else {
+        $el.setAttribute('fill', 'none');
       }
       if (stroke) {
         $el.setAttribute('stroke', stroke);
@@ -135,12 +138,17 @@ export class LayerThumbnail extends LitElement {
       defsHTML = $g.children[0].innerHTML;
     }
 
+    const padding = Math.max(width, height) * THUMBNAIL_PADDING_RATIO;
+    const paddedWidth = width + padding * 2;
+    const paddedHeight = height + padding * 2;
+
     return html`<sp-thumbnail size="1000" ?focused=${this.selected}>
       ${when(
         this.node.type === 'text',
         () => html`<sp-icon-text></sp-icon-text>`,
         () => html`<svg
-          viewBox="${-width / 2} ${-height / 2} ${width} ${height}"
+          viewBox="${-paddedWidth / 2} ${-paddedHeight /
+          2} ${paddedWidth} ${paddedHeight}"
         >
           ${unsafeSVG(defsHTML)} ${unsafeSVG($el.outerHTML)}
         </svg>`,

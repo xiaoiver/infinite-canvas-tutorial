@@ -179,8 +179,6 @@ export function svgElementsToSerializedNodes(
         (attributes as TextSerializedNode).decorationThickness = Number(
           decorationThickness.replace('px', ''),
         );
-
-        console.log(element.style.textDecoration, attributes);
       }
 
       // remove prefix and suffix whitespace and newlines

@@ -64,6 +64,7 @@
     "point-to-segment-2d": "^1.0.0",
     "rbush": "^3.0.1",
     "roughjs": "^4.6.6",
+    "simplify-js": "^1.2.4",
     "toposort": "^2.0.2",
     "transformation-matrix": "^3.0.0",
     "uuid": "^11.1.0"

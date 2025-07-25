@@ -7,6 +7,7 @@ head:
 
 <script setup>
 import DrawRect from '../../components/DrawRect.vue'
+import Pencil from '../../components/Pencil.vue'
 </script>
 
 # 课程 25 - 绘制模式与笔刷
@@ -147,13 +148,33 @@ if (height < 0) {
 
 ## 笔刷模式 {#brush-mode}
 
-在 Figma 中称作 [Draw with illustration tools]
+在 Photoshop Web 中进入 Paint 模式后可以选择这个子工具，通过连续拖拽绘制笔迹：
 
-### 折线 {#use-polyline}
+![Brush mode in Photoshop Web](/photoshopweb-brush-mode.png)
 
-首先我们先来看最简单的一种实现，使用折线展示。
+在 Figma 中称作 [Draw with illustration tools]。
 
-为了尽可能减少拖拽过程中产生的顶点，尤其是大量重复的、或者距离较近的顶点，我们使用 [课程 12 - 简化折线的顶点] 中介绍的方法对折线进行简化。
+### 铅笔工具 {#pencil-tool}
+
+首先我们先来看最简单的一种实现，使用折线展示，在 Figma 中称作 Pencil。
+
+为了尽可能减少拖拽过程中产生的顶点，尤其是大量重复的、或者距离较近的顶点，我们使用 [课程 12 - 简化折线的顶点] 中介绍的方法对折线进行简化，选择[simplify-js] 实现。值得注意的是 `tolerance` 这个参数的定义，它会影响简化程度：
+
+> Affects the amount of simplification (in the same metric as the point coordinates).
+
+我们希望根据当前的相机缩放等级设置不同的 `tolerance`，否则在高缩放等级下过度简化造成的抖动会被很容易看出来：
+
+![Over simplified polyline in 4x zoom level](/over-simplified-polyline.gif)
+
+```ts
+import simplify from 'simplify-js';
+
+// choose tolerance based on the camera zoom level
+const tolerance = 1 / zoom;
+selection.points = simplify(selection.pointsBeforeSimplify, tolerance);
+```
+
+<Pencil />
 
 ## 扩展阅读 {#extended-reading}
 
@@ -169,3 +190,4 @@ if (height < 0) {
 [Real-Time Paint System with WebGL]: https://chrisarasin.com/paint-system-webgl
 [简简单单实现画笔工具，轻松绘制丝滑曲线]: https://zhuanlan.zhihu.com/p/701668081
 [课程 12 - 简化折线的顶点]: /zh/guide/lesson-012#simplify-polyline
+[simplify-js]: https://github.com/mourner/simplify-js

@@ -38,6 +38,8 @@ import {
   AnchorName,
   VectorNetwork,
   ComputedCameraControl,
+  ComputedPoints,
+  DropShadow,
 } from '../components';
 import { Commands } from '../commands/Commands';
 import {
@@ -52,6 +54,7 @@ import {
   TRANSFORMER_ANCHOR_STROKE_COLOR,
   TRANSFORMER_MASK_FILL_COLOR,
 } from './RenderTransformer';
+import { ComputeBounds } from './ComputeBounds';
 import { updateGlobalTransform } from './Transform';
 import { safeAddComponent } from '../history';
 
@@ -94,6 +97,7 @@ export interface SelectOBB {
 export class Select extends System {
   private readonly commands = new Commands(this);
 
+  private readonly computeBounds = this.attach(ComputeBounds);
   private readonly renderTransformer = this.attach(RenderTransformer);
 
   private readonly cameras = this.query((q) => q.current.with(Camera).read);
@@ -105,7 +109,7 @@ export class Select extends System {
     this.query(
       (q) =>
         q
-          .using(Canvas, ComputedBounds, ComputedCameraControl)
+          .using(Canvas, ComputedCameraControl)
           .read.update.and.using(
             GlobalTransform,
             InputPoint,
@@ -133,6 +137,9 @@ export class Select extends System {
             StrokeAttenuation,
             Transformable,
             VectorNetwork,
+            ComputedBounds,
+            ComputedPoints,
+            DropShadow,
           ).write,
     );
     this.query((q) => q.using(ComputedCamera, FractionalIndex, RBush).read);
@@ -629,10 +636,10 @@ export class Select extends System {
           } else if (selection.mode === SelectionMode.READY_TO_ROTATE) {
             selection.mode = SelectionMode.ROTATE;
           }
-        // } else if (
-        //   selection.mode === SelectionMode.READY_TO_MOVE_CONTROL_POINT
-        // ) {
-        //   selection.mode = SelectionMode.MOVE_CONTROL_POINT;
+          // } else if (
+          //   selection.mode === SelectionMode.READY_TO_MOVE_CONTROL_POINT
+          // ) {
+          //   selection.mode = SelectionMode.MOVE_CONTROL_POINT;
         }
 
         if (selection.mode === SelectionMode.SELECT) {
@@ -677,7 +684,10 @@ export class Select extends System {
           if (toHighlight) {
             api.highlightNodes([api.getNodeByEntity(toHighlight)]);
 
-            if (selection.mode !== SelectionMode.BRUSH && selection.mode !== SelectionMode.MOVE) {
+            if (
+              selection.mode !== SelectionMode.BRUSH &&
+              selection.mode !== SelectionMode.MOVE
+            ) {
               selection.mode = SelectionMode.READY_TO_SELECT;
             }
           } else if (selection.mode !== SelectionMode.BRUSH) {
@@ -925,8 +935,6 @@ export class Select extends System {
         newLocalTransform,
         oldNode,
       );
-
-      updateGlobalTransform(selected);
     });
   }
 }
