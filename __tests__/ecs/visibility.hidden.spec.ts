@@ -29,6 +29,7 @@ import {
   ZIndex,
   ComputeZIndex,
   ComputedVisibility,
+  UI,
 } from '../../packages/ecs/src';
 import { NodeJSAdapter, sleep } from '../utils';
 
@@ -143,7 +144,9 @@ describe('Visibility', () => {
 
       const camera = cameraEntity.read(Camera);
       expect(camera.canvas.isSame(canvasEntity)).toBeTruthy();
-      expect(cameraEntity.read(Parent).children).toHaveLength(1);
+      expect(
+        cameraEntity.read(Parent).children.filter((c) => !c.has(UI)),
+      ).toHaveLength(1);
       expect(
         cameraEntity.read(Parent).children[0].isSame(parentEntity),
       ).toBeTruthy();
