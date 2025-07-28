@@ -8,6 +8,7 @@ export interface Adapter {
   createTexImageSource: (
     canvas: HTMLCanvasElement | OffscreenCanvas,
   ) => TexImageSource;
+  getWindow: () => typeof globalThis;
   getDocument: () => Document;
   getXMLSerializer: () => XMLSerializer | null;
   getDOMParser: () => DOMParser | null;

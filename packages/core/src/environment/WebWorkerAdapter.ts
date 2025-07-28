@@ -6,6 +6,7 @@ export const WebWorkerAdapter: Adapter = {
   createCanvas: (width?: number, height?: number) =>
     new OffscreenCanvas(width ?? 0, height ?? 0),
   createTexImageSource: (canvas: HTMLCanvasElement | OffscreenCanvas) => canvas,
+  getWindow: () => self,
   getDocument: () => null,
   /**
    * @see https://stackoverflow.com/questions/33641622/dom-manipulation-inside-web-worker

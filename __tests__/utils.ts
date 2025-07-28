@@ -38,6 +38,9 @@ export function getCanvas(width = 100, height = 100) {
 
   const canvas = createCanvas(width, height);
 
+  const dom = new JSDOM();
+  const document = dom.window._document;
+
   const mockedCanvas: HTMLCanvasElement = {
     width,
     height,
@@ -51,8 +54,16 @@ export function getCanvas(width = 100, height = 100) {
         return gl;
       }
     },
-    addEventListener: () => {},
-    removeEventListener: () => {},
+    dispatchEvent: (event) => {
+      document.dispatchEvent(event);
+      return true;
+    },
+    addEventListener: (type, listener) => {
+      document.addEventListener(type, listener);
+    },
+    removeEventListener: (type, listener) => {
+      // document.removeEventListener(type, listener);
+    },
     // @ts-ignore
     toDataURL: (...args) => canvas.toDataURL(...args),
     // @ts-ignore
@@ -109,6 +120,7 @@ export const NodeJSAdapter: Adapter = {
     const png = parsePNG(buffer);
     return png.data;
   },
+  getWindow: () => new JSDOM().window,
   getDocument: () => new JSDOM().window._document,
   // @ts-expect-error compatible with @xmldom/xmldom
   getXMLSerializer: () => new XMLSerializer(),

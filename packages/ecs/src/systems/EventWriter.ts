@@ -1,7 +1,7 @@
 import { co, Entity, System } from '@lastolivegames/becsy';
-import { Canvas, Input } from '../components';
-import { getGlobalThis } from '../utils';
-import { Cursor } from '..';
+import { Canvas, Input, Cursor } from '../components';
+import { safeAddComponent } from '../history';
+import { DOMAdapter } from '../environment';
 
 const DOUBLE_CLICK_DELAY = 300;
 
@@ -44,12 +44,8 @@ export class EventWriter extends System {
 
   execute(): void {
     this.canvases.added.forEach((entity) => {
-      if (!entity.has(Input)) {
-        entity.add(Input);
-      }
-      if (!entity.has(Cursor)) {
-        entity.add(Cursor);
-      }
+      safeAddComponent(entity, Input);
+      safeAddComponent(entity, Cursor);
 
       this.bindEventListeners(entity);
     });
@@ -68,7 +64,7 @@ export class EventWriter extends System {
   private bindEventListeners(entity: Entity): void {
     const { element, api } = entity.read(Canvas);
 
-    const globalThis = getGlobalThis();
+    const globalThis = DOMAdapter.get().getWindow();
     const supportsPointerEvents = !!globalThis.PointerEvent;
     const supportsTouchEvents = 'ontouchstart' in globalThis;
 
@@ -136,10 +132,7 @@ export class EventWriter extends System {
         // detect double click
         const currentTime = performance.now();
         const lastPointerDownTime = input.read(Input).lastPointerDownTime;
-        if (
-          currentTime - lastPointerDownTime <
-          DOUBLE_CLICK_DELAY
-        ) {
+        if (currentTime - lastPointerDownTime < DOUBLE_CLICK_DELAY) {
           this.setInputTrigger(input, 'doubleClickTrigger');
         }
 
