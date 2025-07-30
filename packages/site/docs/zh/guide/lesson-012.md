@@ -1392,6 +1392,7 @@ export default function simplify(coords, first, last, sqTolerance) {
 -   [Instanced Line Rendering Part I]
 -   [Instanced Line Rendering Part II]
 -   [pixijs/graphics-smooth]
+-   [Polar Stroking: New Theory and Methods for Stroking Paths]
 
 [课程 5 - 直线网格]: /zh/guide/lesson-005#lines-grid
 [lineJoin]: https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/lineJoin
@@ -1434,3 +1435,4 @@ export default function simplify(coords, first, last, sqTolerance) {
 [turf-simplify]: https://github.com/Turfjs/turf/tree/master/packages/turf-simplify
 [Ramer–Douglas–Peucker algorithm]: https://en.wikipedia.org/wiki/Ramer%E2%80%93Douglas%E2%80%93Peucker_algorithm
 [课程 25 - 使用折线实现笔刷模式]: /zh/guide/lesson-025#use-polyline
+[Polar Stroking: New Theory and Methods for Stroking Paths]: https://developer.download.nvidia.com/video/siggraph/2020/presentations/sig03-polar-stroking-new-theory-and-methods-for-stroking-paths.pdf

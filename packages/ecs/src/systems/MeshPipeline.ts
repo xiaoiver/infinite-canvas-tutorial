@@ -53,6 +53,7 @@ import {
   Parent,
   UI,
   ZIndex,
+  Brush,
 } from '../components';
 import { paddingMat3 } from '../utils';
 import { GridRenderer } from './GridRenderer';
@@ -71,7 +72,8 @@ export class MeshPipeline extends System {
     (q) =>
       q.added.and.changed
         .with(Renderable)
-        .withAny(Circle, Ellipse, Rect, Polyline, Path, Text).trackWrites,
+        .withAny(Circle, Ellipse, Rect, Polyline, Path, Text, Brush)
+        .trackWrites,
   );
 
   private toBeDeleted = this.query(
@@ -109,7 +111,9 @@ export class MeshPipeline extends System {
         Rough,
         FractionalIndex,
         TextDecoration,
-      ).trackWrites,
+        SizeAttenuation,
+        StrokeAttenuation,
+      ).trackMatches,
   );
 
   gpuResources: Map<

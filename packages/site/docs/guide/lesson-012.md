@@ -1389,6 +1389,7 @@ We will introduce in detail how to draw them in the next lesson.
 -   [Instanced Line Rendering Part I]
 -   [Instanced Line Rendering Part II]
 -   [pixijs/graphics-smooth]
+-   [Polar Stroking: New Theory and Methods for Stroking Paths]
 
 [Lesson 5 - Line Grid]: /guide/lesson-005#lines-grid
 [lineJoin]: https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/lineJoin
@@ -1430,3 +1431,4 @@ We will introduce in detail how to draw them in the next lesson.
 [turf-simplify]: https://github.com/Turfjs/turf/tree/master/packages/turf-simplify
 [Ramer–Douglas–Peucker algorithm]: https://en.wikipedia.org/wiki/Ramer%E2%80%93Douglas%E2%80%93Peucker_algorithm
 [Lesson 25 - Use polyline in brush mode]: /zh/guide/lesson-025#use-polyline
+[Polar Stroking: New Theory and Methods for Stroking Paths]: https://developer.download.nvidia.com/video/siggraph/2020/presentations/sig03-polar-stroking-new-theory-and-methods-for-stroking-paths.pdf

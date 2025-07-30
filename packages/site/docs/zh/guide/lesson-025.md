@@ -8,6 +8,7 @@ head:
 <script setup>
 import DrawRect from '../../components/DrawRect.vue'
 import Pencil from '../../components/Pencil.vue'
+import Brush from '../../components/Brush.vue'
 </script>
 
 # 课程 25 - 绘制模式与笔刷
@@ -146,15 +147,7 @@ if (height < 0) {
 
 ![Size label in Figma](/figma-size-label.png)
 
-## 笔刷模式 {#brush-mode}
-
-在 Photoshop Web 中进入 Paint 模式后可以选择这个子工具，通过连续拖拽绘制笔迹：
-
-![Brush mode in Photoshop Web](/photoshopweb-brush-mode.png)
-
-在 Figma 中称作 [Draw with illustration tools]。
-
-### 铅笔工具 {#pencil-tool}
+## 铅笔工具 {#pencil-tool}
 
 首先我们先来看最简单的一种实现，使用折线展示，在 Figma 中称作 Pencil。
 
@@ -176,9 +169,89 @@ selection.points = simplify(selection.pointsBeforeSimplify, tolerance);
 
 <Pencil />
 
+## 笔刷模式 {#brush-mode}
+
+在 Photoshop Web 中进入 Paint 模式后可以选择这个子工具，通过连续拖拽绘制笔迹：
+
+![Brush mode in Photoshop Web](/photoshopweb-brush-mode.png)
+
+在 Figma 中称作 [Draw with illustration tools]。
+
+如果我们仔细观察这类笔迹，可以看出它是由一组连续的圆点组成，如果这些圆点具有不同的半径，就能呈现粗细可变的效果。在实现时可以将画笔的压力映射到半径上：
+
+![source: https://shenciao.github.io/brush-rendering-tutorial/](https://shenciao.github.io/brush-rendering-tutorial/assets/images/brushes-9e58d24a7f40847be1ad6c1cb9f1b9dc.jpg)
+
+下面我们参考 [Brush Rendering Tutorial] 来实现这一效果。
+
+### 基础实现 {#basic-implementation}
+
+基础数据结构如下：
+
+```ts
+interface BrushPoint {
+    x: number;
+    y: number;
+    radius: number;
+}
+```
+
+折线的 $N$ 个顶点组成了 $N-1$ 条线段，每条线段由两个三角形、4 个顶点组成。在 [课程 12 - 线段主体拉伸] 中，我们介绍过使用 9 个顶点。这里使用完全相同的方法，但无需考虑线段的接头，因此只需要使用 4 个顶点，使用 instanced 绘制：
+
+```ts
+renderPass.drawIndexed(6, points.length - 1); // indices: [0, 1, 2, 0, 2, 3]
+```
+
+我们在 [课程 12 - 线段主体拉伸] 中介绍过，可以将 `a_VertexNum` 传入 Vertex Shader。如果不考虑 WebGL 1 的兼容性，也可以像 [Brush Rendering Tutorial] 这样，直接使用 `gl_VertexID`：
+
+```glsl
+layout(location = ${Location.POINTA}) in vec3 a_PointA;
+layout(location = ${Location.POINTB}) in vec3 a_PointB;
+layout(location = ${Location.VERTEX_NUM}) in float a_VertexNum; // [0, 1, 2, 3]
+```
+
+顺便介绍下其他 `attributes`，`a_PointA` 和 `a_PointB` 除了存储顶点位置坐标，还存储了可变半径。同样我们使用了 `vertexBufferOffsets` 复用同一块 Buffer，`a_PointB` 从 `4 * 3` 的偏移量后开始读取。这样有了顶点序号就可以在 Vertex Shader 中进行拉伸了：
+
+![source: https://shenciao.github.io/brush-rendering-tutorial/Basics/Vanilla/](https://shenciao.github.io/brush-rendering-tutorial/assets/images/coordinate-68714349e3013c769921a0eb25796188.png)
+
+```glsl
+vec2 position;
+vec2 offsetSign;
+float r;
+if (vertexNum < 0.5) {
+    position = p0;
+    r = r0;
+    offsetSign = vec2(-1.0, -1.0);
+} else if (vertexNum < 1.5) {
+    position = p0;
+    r = r0;
+    offsetSign = vec2(-1.0, 1.0);
+}
+```
+
+为了支持可变宽度，拉伸的距离并不总是等于当前点的半径，而是需要根据线段的斜率计算：
+
+![source: https://shenciao.github.io/brush-rendering-tutorial/Basics/Vanilla/](https://shenciao.github.io/brush-rendering-tutorial/assets/images/var-parameters-9d4c6d7aa31d0f61fd39ba9f69eaae6d.png)
+
+效果如下：
+
+<Brush />
+
+### 贴图 {#stamp}
+
+这样的效果还不太像真实的笔触。
+
+![source: https://shenciao.github.io/brush-rendering-tutorial/Basics/Stamp/](https://shenciao.github.io/brush-rendering-tutorial/assets/images/stamp-to-stroke-082a5ddd80c45086b810ed8b9ebcea79.gif)
+
+### 导出 SVG {#export-svg}
+
+Figma 是可以将 Brush 导出 SVG 的。
+
+### 橡皮擦 {#eraser}
+
 ## 扩展阅读 {#extended-reading}
 
 -   [Draw with illustration tools]
+-   [Brush Rendering Tutorial]
 -   [p5.brush]
 -   [Real-Time Paint System with WebGL]
 -   [简简单单实现画笔工具，轻松绘制丝滑曲线]
@@ -191,3 +264,5 @@ selection.points = simplify(selection.pointsBeforeSimplify, tolerance);
 [简简单单实现画笔工具，轻松绘制丝滑曲线]: https://zhuanlan.zhihu.com/p/701668081
 [课程 12 - 简化折线的顶点]: /zh/guide/lesson-012#simplify-polyline
 [simplify-js]: https://github.com/mourner/simplify-js
+[Brush Rendering Tutorial]: https://shenciao.github.io/brush-rendering-tutorial/
+[课程 12 - 线段主体拉伸]: /zh/guide/lesson-012#extrude-segment

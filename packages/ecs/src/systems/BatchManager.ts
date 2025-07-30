@@ -7,9 +7,11 @@ import {
   SmoothPolyline,
   Mesh,
   SDFText,
+  StampBrush,
   // Custom as CustomDrawcall,
 } from '../drawcalls';
 import {
+  Brush,
   Circle,
   Ellipse,
   GeometryDirty,
@@ -64,6 +66,8 @@ function getDrawcallCtors(shape: Entity) {
     }
   } else if (shape.has(Text)) {
     SHAPE_DRAWCALL_CTORS.push(SmoothPolyline, SDFText);
+  } else if (shape.has(Brush)) {
+    SHAPE_DRAWCALL_CTORS.push(StampBrush);
   }
   return SHAPE_DRAWCALL_CTORS;
 }

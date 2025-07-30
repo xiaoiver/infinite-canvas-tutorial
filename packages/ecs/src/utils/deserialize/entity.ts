@@ -27,24 +27,30 @@ import {
   MaterialDirty,
   SizeAttenuation,
   StrokeAttenuation,
+  Brush,
+  Wireframe,
 } from '../../components';
 import {
   AttenuationAttributes,
+  BrushSerializedNode,
   DropShadowAttributes,
   FillAttributes,
   isDataUrl,
+  isUrl,
   NameAttributes,
   PathSerializedNode,
   PolylineSerializedNode,
   RectSerializedNode,
+  serializeBrushPoints,
   SerializedNode,
   serializePoints,
   shiftPath,
   StrokeAttributes,
   TextSerializedNode,
   VisibilityAttributes,
+  WireframeAttributes,
 } from '../serialize';
-import { deserializePoints } from './points';
+import { deserializeBrushPoints, deserializePoints } from './points';
 import { EntityCommands, Commands } from '../../commands';
 import { isGradient } from '../gradient';
 import { isPattern } from '../pattern';
@@ -63,6 +69,8 @@ function inferXYWidthHeight(node: SerializedNode) {
     computeBidi(node.content);
     const metrics = measureText(node);
     bounds = Text.getGeometryBounds(node, metrics);
+  } else if (type === 'brush') {
+    bounds = Brush.getGeometryBounds(node);
   }
 
   if (bounds) {
@@ -79,10 +87,31 @@ function inferXYWidthHeight(node: SerializedNode) {
       );
     } else if (type === 'path') {
       node.d = shiftPath(node.d, -bounds.minX, -bounds.minY);
+    } else if (type === 'brush') {
+      node.points = serializeBrushPoints(
+        deserializeBrushPoints(node.points).map((point) => {
+          return {
+            ...point,
+            x: point.x - bounds.minX,
+            y: point.y - bounds.minY,
+          };
+        }),
+      );
     }
   } else {
     throw new Error('Cannot infer x, y, width or height for node');
   }
+}
+
+async function loadImage(
+  url: string,
+  entity: EntityCommands,
+  commands: Commands,
+) {
+  const image = await load(url, ImageLoader);
+  entity.insert(new FillImage({ src: image as ImageBitmap }));
+  entity.insert(new MaterialDirty());
+  commands.execute();
 }
 
 export function serializedNodesToEntities(
@@ -181,6 +210,16 @@ export function serializedNodesToEntities(
     } else if (type === 'polyline') {
       const { points } = attributes as PolylineSerializedNode;
       entity.insert(new Polyline({ points: deserializePoints(points) }));
+    } else if (type === 'brush') {
+      const { points, brushType, brushStamp } =
+        attributes as BrushSerializedNode;
+      entity.insert(
+        new Brush({
+          points: deserializeBrushPoints(points),
+          type: brushType,
+        }),
+      );
+      loadImage(brushStamp, entity, commands);
     } else if (type === 'path') {
       const { d, fillRule, tessellationMethod } =
         attributes as PathSerializedNode;
@@ -266,14 +305,9 @@ export function serializedNodesToEntities(
     if (fill) {
       if (isGradient(fill)) {
         entity.insert(new FillGradient(fill));
-      } else if (isDataUrl(fill)) {
-        load(fill, ImageLoader).then((image) => {
-          entity.insert(new FillImage({ src: image as ImageBitmap }));
-          entity.insert(new MaterialDirty());
-          commands.execute();
-        });
+      } else if (isDataUrl(fill) || isUrl(fill)) {
+        loadImage(fill, entity, commands);
       } else {
-        // TODO: fetch url image
         try {
           const parsed = JSON.parse(fill) as FillPattern;
           if (isPattern(parsed)) {
@@ -361,6 +395,11 @@ export function serializedNodesToEntities(
     }
     if (strokeAttenuation) {
       entity.insert(new StrokeAttenuation());
+    }
+
+    const { wireframe } = attributes as WireframeAttributes;
+    if (wireframe) {
+      entity.insert(new Wireframe(true));
     }
 
     if (parentId) {

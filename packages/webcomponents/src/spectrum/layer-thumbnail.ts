@@ -7,8 +7,11 @@ import {
   ComputedBounds,
   PathSerializedNode,
   exportFillGradientOrPattern,
+  exportFillImage,
   isGradient,
   isPattern,
+  isDataUrl,
+  isUrl,
   createSVGElement,
   PolylineSerializedNode,
   API,
@@ -105,7 +108,7 @@ export class LayerThumbnail extends LitElement {
         $el.setAttribute('stroke', stroke);
       }
       if (strokeWidth) {
-        $el.setAttribute('stroke-width', strokeWidth.toString());
+        $el.setAttribute('stroke-width', Math.max(strokeWidth, 4).toString());
       }
       if (strokeLinecap) {
         $el.setAttribute('stroke-linecap', strokeLinecap);
@@ -125,6 +128,7 @@ export class LayerThumbnail extends LitElement {
     }
 
     const isGradientOrPattern = isGradient(fill) || isPattern(fill);
+    const isImage = isDataUrl(fill) || isUrl(fill);
     let defsHTML = '';
     if (isGradientOrPattern) {
       const $g = createSVGElement('g') as SVGElement;
@@ -136,6 +140,10 @@ export class LayerThumbnail extends LitElement {
         $g,
       );
       defsHTML = $g.children[0].innerHTML;
+    } else if (isImage) {
+      const $g = createSVGElement('g') as SVGElement;
+      exportFillImage(this.node, $el, $g);
+      defsHTML = $g.children[0].innerHTML;
     }
 
     const padding = Math.max(width, height) * THUMBNAIL_PADDING_RATIO;
@@ -146,12 +154,14 @@ export class LayerThumbnail extends LitElement {
       ${when(
         this.node.type === 'text',
         () => html`<sp-icon-text></sp-icon-text>`,
-        () => html`<svg
-          viewBox="${-paddedWidth / 2} ${-paddedHeight /
-          2} ${paddedWidth} ${paddedHeight}"
-        >
-          ${unsafeSVG(defsHTML)} ${unsafeSVG($el.outerHTML)}
-        </svg>`,
+        () =>
+          $el &&
+          html`<svg
+            viewBox="${-paddedWidth / 2} ${-paddedHeight /
+            2} ${paddedWidth} ${paddedHeight}"
+          >
+            ${unsafeSVG(defsHTML)} ${unsafeSVG($el.outerHTML)}
+          </svg>`,
       )}
     </sp-thumbnail>`;
   }

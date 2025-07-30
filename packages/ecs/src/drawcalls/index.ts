@@ -4,3 +4,4 @@ export * from './ShadowRect';
 export * from './SmoothPolyline';
 export * from './Mesh';
 export * from './SDFText';
+export * from './StampBrush';

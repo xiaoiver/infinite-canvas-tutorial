@@ -1,6 +1,7 @@
 import { Entity, System } from '@lastolivegames/becsy';
 import {
   AABB,
+  Brush,
   Circle,
   ComputedBounds,
   ComputedPoints,
@@ -26,7 +27,7 @@ export class ComputeBounds extends System {
     (q) =>
       q.addedOrChanged
         .with(Renderable, GlobalTransform)
-        .withAny(Transform, Circle, Ellipse, Rect, Polyline, Path, Text)
+        .withAny(Transform, Circle, Ellipse, Rect, Polyline, Path, Text, Brush)
         .trackWrites,
   );
 
@@ -43,6 +44,7 @@ export class ComputeBounds extends System {
           Path,
           ComputedPoints,
           Text,
+          Brush,
           ComputedTextMetrics,
           Stroke,
           DropShadow,
@@ -83,6 +85,9 @@ export class ComputeBounds extends System {
         points: entity.read(ComputedPoints).shiftedPoints,
       });
       renderBounds = Polyline.getRenderBounds(entity.read(Polyline), stroke);
+    } else if (entity.has(Brush)) {
+      geometryBounds = Brush.getGeometryBounds(entity.read(Brush));
+      renderBounds = Brush.getRenderBounds(entity.read(Brush));
     } else if (entity.has(Path)) {
       geometryBounds = Path.getGeometryBounds(
         entity.read(Path),

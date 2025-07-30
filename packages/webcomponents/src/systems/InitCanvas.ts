@@ -1,4 +1,5 @@
 import {
+  Brush,
   Camera,
   Canvas,
   Children,
@@ -28,6 +29,7 @@ import {
   Visibility,
   ZIndex,
   TextDecoration,
+  Wireframe,
 } from '@infinite-canvas-tutorial/ecs';
 import { Event } from '../event';
 import { ExtendedAPI, pendingCanvases } from '../API';
@@ -63,12 +65,14 @@ export class InitCanvas extends System {
             Polyline,
             Path,
             Text,
+            Brush,
             Selected,
             Opacity,
             DropShadow,
             ZIndex,
             Font,
             TextDecoration,
+            Wireframe,
           ).write,
     );
   }

@@ -14,6 +14,7 @@ head:
 <script setup>
 import DrawRect from '../components/DrawRect.vue'
 import Pencil from '../components/Pencil.vue'
+import Brush from '../components/Brush.vue'
 </script>
 
 # Lesson 25 - Drawing mode and brush
@@ -182,9 +183,89 @@ selection.points = simplify(selection.pointsBeforeSimplify, tolerance);
 
 <Pencil />
 
+## Brush mode {#brush-mode}
+
+You can select this sub-tool when you enter Paint mode in Photoshop Web and draw strokes by dragging and dropping continuously:
+
+![Brush mode in Photoshop Web](/photoshopweb-brush-mode.png)
+
+In Figma it is called [Draw with illustration tools].
+
+If we look closely at this type of stroke, we can see that it consists of a set of consecutive dots, which, if they have different radii, can give the effect of variable thickness. This can be realized by mapping the pressure of the brush to the radius:
+
+![source: https://shenciao.github.io/brush-rendering-tutorial/](https://shenciao.github.io/brush-rendering-tutorial/assets/images/brushes-9e58d24a7f40847be1ad6c1cb9f1b9dc.jpg)
+
+Here we refer to [Brush Rendering Tutorial] to realize this effect.
+
+### Basic implementation {#basic-implementation}
+
+The underlying data structure is as follows:
+
+```ts
+interface BrushPoint {
+    x: number;
+    y: number;
+    radius: number;
+}
+```
+
+The $N$ vertices of a polyline form $N-1$ segments, each consisting of two triangles and four vertices. In [Lesson 12 - Extrude segment], we introduced the use of 9 vertices. Here we use the exact same method, but we don't need to take into account the joints of the segments, so we only need to use 4 vertices and draw them using instanced:
+
+```ts
+renderPass.drawIndexed(6, points.length - 1); // indices: [0, 1, 2, 0, 2, 3]
+```
+
+As we saw in [Lesson 12 - Extrude segment], you can pass `a_VertexNum` into the Vertex Shader, or you can use `gl_VertexID` directly as in [Brush Rendering Tutorial] if you don't want to take into account WebGL 1 compatibility:
+
+```glsl
+layout(location = ${Location.POINTA}) in vec3 a_PointA;
+layout(location = ${Location.POINTB}) in vec3 a_PointB;
+layout(location = ${Location.VERTEX_NUM}) in float a_VertexNum; // [0, 1, 2, 3]
+```
+
+By the way the other `attributes`, `a_PointA` and `a_PointB` store variable radii in addition to vertex position coordinates. Again we use `vertexBufferOffsets` to multiplex the same Buffer, and `a_PointB` reads from an offset of `4 * 3`. This way we have the vertex numbers to stretch in the Vertex Shader:
+
+![source: https://shenciao.github.io/brush-rendering-tutorial/Basics/Vanilla/](https://shenciao.github.io/brush-rendering-tutorial/assets/images/coordinate-68714349e3013c769921a0eb25796188.png)
+
+```glsl
+vec2 position;
+vec2 offsetSign;
+float r;
+if (vertexNum < 0.5) {
+    position = p0;
+    r = r0;
+    offsetSign = vec2(-1.0, -1.0);
+} else if (vertexNum < 1.5) {
+    position = p0;
+    r = r0;
+    offsetSign = vec2(-1.0, 1.0);
+}
+```
+
+In order to support variable widths, the stretched distance is not always equal to the radius of the current point, but needs to be calculated based on the slope of the line segment:
+
+![source: https://shenciao.github.io/brush-rendering-tutorial/Basics/Vanilla/](https://shenciao.github.io/brush-rendering-tutorial/assets/images/var-parameters-9d4c6d7aa31d0f61fd39ba9f69eaae6d.png)
+
+The effect is as follows:
+
+<Brush />
+
+### Stamp {#stamp}
+
+This doesn't quite work like a real brushstroke.
+
+![source: https://shenciao.github.io/brush-rendering-tutorial/Basics/Stamp/](https://shenciao.github.io/brush-rendering-tutorial/assets/images/stamp-to-stroke-082a5ddd80c45086b810ed8b9ebcea79.gif)
+
+### Export SVG {#export-svg}
+
+Figma is able to export Brush to SVG.
+
+### Eraser {#eraser}
+
 ## Extended reading {#extended-reading}
 
 -   [Draw with illustration tools]
+-   [Brush Rendering Tutorial]
 -   [p5.brush]
 -   [Real-Time Paint System with WebGL]
 -   [简简单单实现画笔工具，轻松绘制丝滑曲线]
@@ -196,3 +277,6 @@ selection.points = simplify(selection.pointsBeforeSimplify, tolerance);
 [Real-Time Paint System with WebGL]: https://chrisarasin.com/paint-system-webgl
 [简简单单实现画笔工具，轻松绘制丝滑曲线]: https://zhuanlan.zhihu.com/p/701668081
 [Lesson 12 - Simplify polyline]: /guide/lesson-012#simplify-polyline
+[simplify-js]: https://github.com/mourner/simplify-js
+[Brush Rendering Tutorial]: https://shenciao.github.io/brush-rendering-tutorial/
+[Lesson 12 - Extrude segment]: /zh/guide/lesson-012#extrude-segment

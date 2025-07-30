@@ -55,6 +55,7 @@ import {
   MaterialDirty,
   GeometryDirty,
   TextDecoration,
+  Brush,
 } from '../components';
 
 export const RendererPlugin: Plugin = () => {
@@ -99,6 +100,7 @@ export const RendererPlugin: Plugin = () => {
   component(Polyline);
   component(Path);
   component(Text);
+  component(Brush);
   component(ComputedPoints);
   component(ComputedRough);
   component(ComputedTextMetrics);

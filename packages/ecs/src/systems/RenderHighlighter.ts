@@ -27,6 +27,7 @@ import {
   Camera,
   FractionalIndex,
   ComputedCamera,
+  Brush,
 } from '../components';
 import { Commands } from '../commands';
 import { getSceneRoot, updateGlobalTransform } from './Transform';
@@ -84,6 +85,7 @@ export class RenderHighlighter extends System {
             Path,
             Polyline,
             Text,
+            Brush,
             ZIndex,
             SizeAttenuation,
             StrokeAttenuation,
@@ -200,6 +202,13 @@ export class RenderHighlighter extends System {
       const { points } = entity.read(Polyline);
       Object.assign(highlighter.write(Polyline), {
         points,
+      });
+    } else if (entity.has(Brush)) {
+      safeAddComponent(highlighter, Polyline);
+
+      const { points } = entity.read(Brush);
+      Object.assign(highlighter.write(Polyline), {
+        points: points.map((point) => [point.x, point.y]),
       });
     } else if (entity.has(Text)) {
       safeAddComponent(highlighter, Polyline);

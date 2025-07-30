@@ -1,4 +1,5 @@
 import {
+  BrushType,
   DropShadow,
   Ellipse,
   InnerShadow,
@@ -128,6 +129,10 @@ export interface TextDecorationAttributes {
   decorationThickness: TextDecoration['thickness'];
 }
 
+export interface WireframeAttributes {
+  wireframe: boolean;
+}
+
 export interface GSerializedNode extends BaseSerializeNode<'g'> {}
 
 export interface EllipseSerializedNode
@@ -135,7 +140,8 @@ export interface EllipseSerializedNode
     Partial<Pick<Ellipse, 'rx' | 'ry' | 'cx' | 'cy'>>,
     Partial<FillAttributes>,
     Partial<StrokeAttributes>,
-    Partial<AttenuationAttributes> {}
+    Partial<AttenuationAttributes>,
+    Partial<WireframeAttributes> {}
 
 export interface RectSerializedNode
   extends BaseSerializeNode<'rect'>,
@@ -144,7 +150,8 @@ export interface RectSerializedNode
     Partial<StrokeAttributes>,
     Partial<InnerShadowAttributes>,
     Partial<DropShadowAttributes>,
-    Partial<AttenuationAttributes> {}
+    Partial<AttenuationAttributes>,
+    Partial<WireframeAttributes> {}
 
 interface PolylineAttributes {
   points: string;
@@ -153,14 +160,27 @@ export interface PolylineSerializedNode
   extends BaseSerializeNode<'polyline'>,
     Partial<PolylineAttributes>,
     Partial<StrokeAttributes>,
-    Partial<Pick<AttenuationAttributes, 'strokeAttenuation'>> {}
+    Partial<Pick<AttenuationAttributes, 'strokeAttenuation'>>,
+    Partial<WireframeAttributes> {}
 
+export interface BrushAttributes {
+  points: string;
+  brushType: BrushType;
+  brushStamp: string;
+  stroke: Stroke['color'];
+  strokeOpacity: Opacity['strokeOpacity'];
+}
+export interface BrushSerializedNode
+  extends BaseSerializeNode<'brush'>,
+    Partial<BrushAttributes>,
+    Partial<WireframeAttributes> {}
 export interface PathSerializedNode
   extends BaseSerializeNode<'path'>,
     Partial<Pick<Path, 'd' | 'fillRule' | 'tessellationMethod'>>,
     Partial<FillAttributes>,
     Partial<StrokeAttributes>,
-    Partial<AttenuationAttributes> {}
+    Partial<AttenuationAttributes>,
+    Partial<WireframeAttributes> {}
 
 export interface TextSerializedNode
   extends BaseSerializeNode<'text'>,
@@ -201,7 +221,8 @@ export interface TextSerializedNode
     Partial<StrokeAttributes>,
     Partial<DropShadowAttributes>,
     Partial<TextDecorationAttributes>,
-    Partial<AttenuationAttributes> {}
+    Partial<AttenuationAttributes>,
+    Partial<WireframeAttributes> {}
 
 export type SerializedNode =
   | GSerializedNode
@@ -209,4 +230,5 @@ export type SerializedNode =
   | RectSerializedNode
   | PolylineSerializedNode
   | PathSerializedNode
-  | TextSerializedNode;
+  | TextSerializedNode
+  | BrushSerializedNode;

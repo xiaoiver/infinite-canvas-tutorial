@@ -1,3 +1,5 @@
+import { BrushPoint } from '../../components';
+
 /**
  * "0,0 0,34" -> [[0, 0], [0, 34]]
  * "0,0,0,34" -> [[0, 0], [0, 34]]
@@ -22,4 +24,11 @@ export function deserializePoints(points: string) {
   }
 
   return result;
+}
+
+export function deserializeBrushPoints(points: string) {
+  return points.split(' ').map((xyr) => {
+    const [x, y, r] = xyr.split(',').map(Number);
+    return { x, y, radius: r };
+  }) as BrushPoint[];
 }

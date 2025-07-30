@@ -93,6 +93,11 @@ export const defaultAttributes: Record<
     ...fillDefaultAttributes,
     ...strokeDefaultAttributes,
   },
+  brush: {
+    ...commonDefaultAttributes,
+    ...fillDefaultAttributes,
+    ...strokeDefaultAttributes,
+  },
   path: {
     fillRule: 'nonzero',
     ...commonDefaultAttributes,
@@ -984,6 +989,13 @@ const dataUrlRegex =
   /^data:([a-z]+\/[a-z0-9\-\+]+)?(;charset=[a-z0-9\-]+)?(;base64)?,[a-z0-9\!\$&',\(\)\*\+,;=\-\._\~:@\/\?%\s]*$/i;
 export function isDataUrl(url: string) {
   return dataUrlRegex.test(url);
+}
+
+export function isUrl(url: string) {
+  return (
+    url &&
+    (url.startsWith('http') || url.startsWith('https') || url.startsWith('/'))
+  );
 }
 
 function toFixedAndRemoveTrailingZeros(value: number) {
