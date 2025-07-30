@@ -1,5 +1,14 @@
 import { Pen, CheckboardStyle, Theme, ThemeMode } from './components';
-import { SerializedNode } from './utils';
+import {
+  TRANSFORMER_ANCHOR_STROKE_COLOR,
+  TRANSFORMER_MASK_FILL_COLOR,
+} from './systems/RenderTransformer';
+import {
+  FillAttributes,
+  RoughAttributes,
+  SerializedNode,
+  StrokeAttributes,
+} from './utils';
 
 export enum Task {
   SHOW_LAYERS_PANEL = 'show-layers-panel',
@@ -23,6 +32,12 @@ export interface AppState {
   penbarVisible: boolean;
   penbarAll: Pen[];
   penbarSelected: Pen[];
+  penbarDrawRect: Partial<StrokeAttributes & FillAttributes>;
+  penbarDrawEllipse: Partial<StrokeAttributes & FillAttributes>;
+  penbarDrawLine: Partial<StrokeAttributes>;
+  penbarDrawRoughRect: Partial<
+    RoughAttributes & StrokeAttributes & FillAttributes
+  >;
   taskbarVisible: boolean;
   taskbarAll: Task[];
   taskbarSelected: Task[];
@@ -64,11 +79,34 @@ export const getDefaultAppState: () => AppState = () => {
       Pen.DRAW_RECT,
       Pen.DRAW_ELLIPSE,
       Pen.DRAW_LINE,
+      Pen.DRAW_ROUGH_RECT,
       Pen.PENCIL,
       Pen.BRUSH,
       Pen.VECTOR_NETWORK,
     ],
     penbarSelected: [Pen.HAND],
+    penbarDrawRect: {
+      fill: TRANSFORMER_MASK_FILL_COLOR,
+      fillOpacity: 0.5,
+      stroke: TRANSFORMER_ANCHOR_STROKE_COLOR,
+      strokeWidth: 1,
+    },
+    penbarDrawEllipse: {
+      fill: TRANSFORMER_MASK_FILL_COLOR,
+      fillOpacity: 0.5,
+      stroke: TRANSFORMER_ANCHOR_STROKE_COLOR,
+      strokeWidth: 1,
+    },
+    penbarDrawLine: {
+      stroke: TRANSFORMER_ANCHOR_STROKE_COLOR,
+      strokeWidth: 1,
+    },
+    penbarDrawRoughRect: {
+      stroke: 'black',
+      strokeWidth: 10,
+      fill: 'black',
+      roughFillStyle: 'hachure',
+    },
     taskbarVisible: true,
     taskbarAll: [Task.SHOW_LAYERS_PANEL, Task.SHOW_PROPERTIES_PANEL],
     taskbarSelected: [],

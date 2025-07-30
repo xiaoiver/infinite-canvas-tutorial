@@ -13,17 +13,20 @@ import {
   Stroke,
 } from '../components';
 import { generator, parsePath } from '../utils';
+import { safeAddComponent } from '../history';
 
 export class ComputeRough extends System {
-  roughs = this.query((q) => q.addedOrChanged.with(Rough).trackWrites);
+  roughs = this.query(
+    (q) =>
+      q.addedOrChanged
+        .with(Rough)
+        .and.withAny(Circle, Ellipse, Rect, Polyline, Path, FillSolid, Stroke)
+        .trackWrites,
+  );
 
   constructor() {
     super();
     this.query((q) => q.current.with(ComputedRough).write);
-    this.query(
-      (q) =>
-        q.using(Circle, Ellipse, Rect, Polyline, Path, FillSolid, Stroke).read,
-    );
   }
 
   execute() {
@@ -69,10 +72,7 @@ export class ComputeRough extends System {
           fillPoints = points;
         }
       });
-      if (!entity.has(ComputedRough)) {
-        entity.add(ComputedRough);
-      }
-      Object.assign(entity.write(ComputedRough), {
+      safeAddComponent(entity, ComputedRough, {
         drawableSets,
         strokePoints,
         fillPoints,

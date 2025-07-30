@@ -30,6 +30,7 @@ import {
   ZIndex,
   TextDecoration,
   Wireframe,
+  Rough,
 } from '@infinite-canvas-tutorial/ecs';
 import { Event } from '../event';
 import { ExtendedAPI, pendingCanvases } from '../API';
@@ -65,6 +66,7 @@ export class InitCanvas extends System {
             Polyline,
             Path,
             Text,
+            Rough,
             Brush,
             Selected,
             Opacity,

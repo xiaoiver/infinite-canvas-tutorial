@@ -6,6 +6,7 @@ import {
   Opacity,
   Path,
   Rect,
+  Rough,
   Stroke,
   Text,
   TextDecoration,
@@ -27,7 +28,8 @@ export type OrderedSerializedNode = Ordered<SerializedNode>;
 export interface BaseSerializeNode<Type extends string>
   extends Partial<TransformAttributes>,
     Partial<VisibilityAttributes>,
-    Partial<NameAttributes> {
+    Partial<NameAttributes>,
+    Partial<ZIndexAttributes> {
   /**
    * Unique identifier
    */
@@ -44,14 +46,6 @@ export interface BaseSerializeNode<Type extends string>
   type?: Type;
 
   /**
-   * Z index
-   * @see https://developer.mozilla.org/en-US/docs/Web/CSS/z-index
-   */
-  zIndex?: number;
-
-  fractionalIndex?: string;
-
-  /**
    * @see https://github.com/excalidraw/excalidraw/issues/1639
    */
   version?: number;
@@ -59,6 +53,16 @@ export interface BaseSerializeNode<Type extends string>
   isDeleted?: boolean;
 
   updated?: number;
+}
+
+export interface ZIndexAttributes {
+  /**
+   * Z index
+   * @see https://developer.mozilla.org/en-US/docs/Web/CSS/z-index
+   */
+  zIndex?: number;
+
+  fractionalIndex?: string;
 }
 
 export interface NameAttributes {
@@ -133,6 +137,27 @@ export interface WireframeAttributes {
   wireframe: boolean;
 }
 
+export interface RoughAttributes {
+  roughSeed: Rough['seed'];
+  roughRoughness: Rough['roughness'];
+  roughBowing: Rough['bowing'];
+  roughFillStyle: Rough['fillStyle'];
+  roughFillWeight: Rough['fillWeight'];
+  roughHachureAngle: Rough['hachureAngle'];
+  roughHachureGap: Rough['hachureGap'];
+  roughCurveStepCount: Rough['curveStepCount'];
+  roughCurveFitting: Rough['curveFitting'];
+  roughFillLineDash: Rough['fillLineDash'];
+  roughFillLineDashOffset: Rough['fillLineDashOffset'];
+  roughDisableMultiStroke: Rough['disableMultiStroke'];
+  roughDisableMultiStrokeFill: Rough['disableMultiStrokeFill'];
+  roughSimplification: Rough['simplification'];
+  roughDashOffset: Rough['dashOffset'];
+  roughDashGap: Rough['dashGap'];
+  roughZigzagOffset: Rough['zigzagOffset'];
+  roughPreserveVertices: Rough['preserveVertices'];
+}
+
 export interface GSerializedNode extends BaseSerializeNode<'g'> {}
 
 export interface EllipseSerializedNode
@@ -152,6 +177,13 @@ export interface RectSerializedNode
     Partial<DropShadowAttributes>,
     Partial<AttenuationAttributes>,
     Partial<WireframeAttributes> {}
+
+export interface RoughRectSerializedNode
+  extends BaseSerializeNode<'rough-rect'>,
+    Partial<Pick<Rect, 'width' | 'height' | 'cornerRadius'>>,
+    Partial<FillAttributes>,
+    Partial<StrokeAttributes>,
+    Partial<RoughAttributes> {}
 
 interface PolylineAttributes {
   points: string;
@@ -231,4 +263,14 @@ export type SerializedNode =
   | PolylineSerializedNode
   | PathSerializedNode
   | TextSerializedNode
-  | BrushSerializedNode;
+  | BrushSerializedNode
+  | RoughRectSerializedNode;
+
+export type SerializedNodeAttributes = GSerializedNode &
+  EllipseSerializedNode &
+  RectSerializedNode &
+  PolylineSerializedNode &
+  PathSerializedNode &
+  TextSerializedNode &
+  BrushSerializedNode &
+  RoughRectSerializedNode;

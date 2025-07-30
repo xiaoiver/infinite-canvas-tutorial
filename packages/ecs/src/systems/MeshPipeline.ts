@@ -95,25 +95,50 @@ export class MeshPipeline extends System {
     (q) => q.addedChangedOrRemoved.with(RasterScreenshotRequest).trackWrites,
   );
 
-  private styles = this.query(
-    (q) =>
-      q.addedChangedOrRemoved.withAny(
-        FillSolid,
-        FillGradient,
-        FillPattern,
-        FillTexture,
-        FillImage,
-        Stroke,
-        Opacity,
-        InnerShadow,
-        DropShadow,
-        Wireframe,
-        Rough,
-        FractionalIndex,
-        TextDecoration,
-        SizeAttenuation,
-        StrokeAttenuation,
-      ).trackMatches,
+  private fillSolids = this.query(
+    (q) => q.addedChangedOrRemoved.with(FillSolid).trackWrites,
+  );
+  private fillGradients = this.query(
+    (q) => q.addedChangedOrRemoved.with(FillGradient).trackWrites,
+  );
+  private fillPatterns = this.query(
+    (q) => q.addedChangedOrRemoved.with(FillPattern).trackWrites,
+  );
+  private fillTextures = this.query(
+    (q) => q.addedChangedOrRemoved.with(FillTexture).trackWrites,
+  );
+  private fillImages = this.query(
+    (q) => q.addedChangedOrRemoved.with(FillImage).trackWrites,
+  );
+  private strokes = this.query(
+    (q) => q.addedChangedOrRemoved.with(Stroke).trackWrites,
+  );
+  private opacities = this.query(
+    (q) => q.addedChangedOrRemoved.with(Opacity).trackWrites,
+  );
+  private innerShadows = this.query(
+    (q) => q.addedChangedOrRemoved.with(InnerShadow).trackWrites,
+  );
+  private dropShadows = this.query(
+    (q) => q.addedChangedOrRemoved.with(DropShadow).trackWrites,
+  );
+  private wireframes = this.query(
+    (q) => q.addedChangedOrRemoved.with(Wireframe).trackWrites,
+  );
+  private roughs = this.query(
+    (q) => q.addedChangedOrRemoved.with(Rough).trackWrites,
+  );
+  private fractionalIndexes = this.query(
+    (q) => q.addedChangedOrRemoved.with(FractionalIndex).trackWrites,
+  );
+  private textDecorations = this.query(
+    (q) => q.addedChangedOrRemoved.with(TextDecoration).trackWrites,
+  );
+  private sizeAttenuations = this.query(
+    (q) => q.addedChangedOrRemoved.with(SizeAttenuation).trackWrites,
+  );
+  private strokeAttenuations = this.query(
+    (q) => q.addedChangedOrRemoved.with(StrokeAttenuation).trackWrites,
   );
 
   gpuResources: Map<
@@ -320,7 +345,12 @@ export class MeshPipeline extends System {
       }
 
       if (this.renderables.changed.includes(entity)) {
-        if (entity.has(Polyline) || entity.has(Path) || entity.has(Text)) {
+        if (
+          entity.has(Polyline) ||
+          entity.has(Path) ||
+          entity.has(Text) ||
+          entity.has(Rough)
+        ) {
           safeAddComponent(entity, GeometryDirty);
         }
         if (entity.has(Text)) {
@@ -356,8 +386,8 @@ export class MeshPipeline extends System {
     });
 
     // Handle some special cases.
-    this.styles.addedChangedOrRemoved.forEach((entity) => {
-      if ((entity.has(Polyline) || entity.has(Path)) && entity.has(Stroke)) {
+    this.strokes.addedChangedOrRemoved.forEach((entity) => {
+      if (entity.has(Polyline) || entity.has(Path)) {
         safeAddComponent(entity, GeometryDirty);
       }
     });
@@ -379,7 +409,24 @@ export class MeshPipeline extends System {
           toRender = true;
         }
 
-        if (!toRender && !!this.styles.addedChangedOrRemoved.length) {
+        if (
+          !toRender &&
+          (!!this.fillSolids.addedChangedOrRemoved.length ||
+            !!this.fillGradients.addedChangedOrRemoved.length ||
+            !!this.fillPatterns.addedChangedOrRemoved.length ||
+            !!this.fillTextures.addedChangedOrRemoved.length ||
+            !!this.fillImages.addedChangedOrRemoved.length ||
+            !!this.strokes.addedChangedOrRemoved.length ||
+            !!this.opacities.addedChangedOrRemoved.length ||
+            !!this.innerShadows.addedChangedOrRemoved.length ||
+            !!this.dropShadows.addedChangedOrRemoved.length ||
+            !!this.wireframes.addedChangedOrRemoved.length ||
+            !!this.roughs.addedChangedOrRemoved.length ||
+            !!this.fractionalIndexes.addedChangedOrRemoved.length ||
+            !!this.textDecorations.addedChangedOrRemoved.length ||
+            !!this.sizeAttenuations.addedChangedOrRemoved.length ||
+            !!this.strokeAttenuations.addedChangedOrRemoved.length)
+        ) {
           toRender = true;
         }
 

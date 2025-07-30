@@ -16,8 +16,11 @@ import {
   PolylineSerializedNode,
   API,
   EllipseSerializedNode,
+  getRoughOptions,
 } from '@infinite-canvas-tutorial/ecs';
 import { consume } from '@lit/context';
+import rough from 'roughjs';
+import { RoughSVG } from 'roughjs/bin/svg';
 import { apiContext } from '../context';
 
 const THUMBNAIL_SIZE = 52;
@@ -49,6 +52,14 @@ export class LayerThumbnail extends LitElement {
 
   @property({ type: Boolean })
   selected = false;
+
+  #roughSvg: RoughSVG;
+
+  connectedCallback(): void {
+    super.connectedCallback();
+
+    this.#roughSvg = rough.svg(createSVGElement('svg') as SVGSVGElement);
+  }
 
   render() {
     const entity = this.api.getEntity(this.node);
@@ -84,28 +95,45 @@ export class LayerThumbnail extends LitElement {
       $el = createSVGElement('polyline') as SVGElement;
       $el.setAttribute('points', (this.node as PolylineSerializedNode).points);
       $el.setAttribute('fill', 'none');
+    } else if (type === 'rough-rect') {
+      const options = getRoughOptions(this.api.getEntity(this.node));
+      $el = this.#roughSvg.rectangle(minX, minY, width, height, {
+        ...options,
+      });
     }
 
     const {
       fill,
+      fillOpacity,
       stroke,
+      strokeOpacity,
       strokeWidth,
       strokeLinecap,
       strokeLinejoin,
       strokeMiterlimit,
       strokeDasharray,
       strokeDashoffset,
+      opacity,
     } = this.node as EllipseSerializedNode;
 
     if ($el) {
       $el.setAttribute('transform', transform);
+      if (opacity) {
+        $el.setAttribute('opacity', opacity.toString());
+      }
       if (fill) {
         $el.setAttribute('fill', fill);
       } else {
         $el.setAttribute('fill', 'none');
       }
+      if (fillOpacity) {
+        $el.setAttribute('fill-opacity', fillOpacity.toString());
+      }
       if (stroke) {
         $el.setAttribute('stroke', stroke);
+      }
+      if (strokeOpacity) {
+        $el.setAttribute('stroke-opacity', strokeOpacity.toString());
       }
       if (strokeWidth) {
         $el.setAttribute('stroke-width', Math.max(strokeWidth, 4).toString());

@@ -37,23 +37,29 @@ import {
 } from '../components';
 import { API } from '../API';
 import {
-  TRANSFORMER_ANCHOR_STROKE_COLOR,
-  TRANSFORMER_MASK_FILL_COLOR,
-} from './RenderTransformer';
-import {
   EllipseSerializedNode,
+  FillAttributes,
   PolylineSerializedNode,
   RectSerializedNode,
+  RoughAttributes,
+  RoughRectSerializedNode,
+  StrokeAttributes,
   TextSerializedNode,
   distanceBetweenPoints,
 } from '../utils';
 import { DRAW_RECT_Z_INDEX } from '../context';
-import { updateGlobalTransform } from './Transform';
 
-const LABEL_WIDTH = 100;
-const LABEL_HEIGHT = 20;
-const LABEL_RADIUS = 4;
+// const LABEL_WIDTH = 100;
+// const LABEL_HEIGHT = 20;
+// const LABEL_RADIUS = 4;
 // const LABEL_TOP_MARGIN = 10;
+
+const PEN_TO_TYPE = {
+  [Pen.DRAW_RECT]: 'rect',
+  [Pen.DRAW_ELLIPSE]: 'ellipse',
+  [Pen.DRAW_LINE]: 'polyline',
+  [Pen.DRAW_ROUGH_RECT]: 'rough-rect',
+};
 
 /**
  * Draw a rectangle, ellipse, line with dragging.
@@ -65,6 +71,7 @@ export class DrawRect extends System {
     number,
     {
       rectBrush: RectSerializedNode;
+      roughRectBrush: RoughRectSerializedNode;
       ellipseBrush: EllipseSerializedNode;
       lineBrush: PolylineSerializedNode;
       label: RectSerializedNode;
@@ -127,12 +134,23 @@ export class DrawRect extends System {
       }
 
       const { inputPoints, api } = canvas.read(Canvas);
-      const pen = api.getAppState().penbarSelected[0];
+      const appState = api.getAppState();
+      const pen = appState.penbarSelected[0];
+      const defaultDrawParams: Record<
+        Pen.DRAW_RECT | Pen.DRAW_ELLIPSE | Pen.DRAW_LINE | Pen.DRAW_ROUGH_RECT,
+        Partial<RoughAttributes & StrokeAttributes & FillAttributes>
+      > = {
+        [Pen.DRAW_RECT]: appState.penbarDrawRect,
+        [Pen.DRAW_ELLIPSE]: appState.penbarDrawEllipse,
+        [Pen.DRAW_LINE]: appState.penbarDrawLine,
+        [Pen.DRAW_ROUGH_RECT]: appState.penbarDrawRoughRect,
+      };
 
       if (
         pen !== Pen.DRAW_RECT &&
         pen !== Pen.DRAW_ELLIPSE &&
-        pen !== Pen.DRAW_LINE
+        pen !== Pen.DRAW_LINE &&
+        pen !== Pen.DRAW_ROUGH_RECT
       ) {
         return;
       }
@@ -145,6 +163,7 @@ export class DrawRect extends System {
       if (!this.selections.has(camera.__id)) {
         this.selections.set(camera.__id, {
           rectBrush: undefined,
+          roughRectBrush: undefined,
           ellipseBrush: undefined,
           lineBrush: undefined,
           label: undefined,
@@ -170,7 +189,7 @@ export class DrawRect extends System {
         }
 
         api.runAtNextTick(() => {
-          this.handleBrushing(api, pen, x, y);
+          this.handleBrushing(api, pen, x, y, defaultDrawParams[pen]);
         });
       });
 
@@ -181,14 +200,17 @@ export class DrawRect extends System {
           width,
           height,
           rectBrush,
+          roughRectBrush,
           ellipseBrush,
           lineBrush,
-          label,
+          // label,
         } = this.selections.get(camera.__id);
 
         const brush =
           pen === Pen.DRAW_RECT
             ? rectBrush
+            : pen === Pen.DRAW_ROUGH_RECT
+            ? roughRectBrush
             : pen === Pen.DRAW_ELLIPSE
             ? ellipseBrush
             : lineBrush;
@@ -209,17 +231,9 @@ export class DrawRect extends System {
             | PolylineSerializedNode = Object.assign(
             {
               id: uuidv4(),
-              type:
-                pen === Pen.DRAW_RECT
-                  ? 'rect'
-                  : pen === Pen.DRAW_ELLIPSE
-                  ? 'ellipse'
-                  : 'polyline',
-              fill: TRANSFORMER_MASK_FILL_COLOR,
-              fillOpacity: 0.5,
-              stroke: TRANSFORMER_ANCHOR_STROKE_COLOR,
-              strokeWidth: 1,
+              type: PEN_TO_TYPE[pen],
             },
+            defaultDrawParams[pen],
             pen === Pen.DRAW_LINE
               ? {
                   points: `${x},${y} ${x + width},${y + height}`,
@@ -245,6 +259,9 @@ export class DrawRect extends System {
     pen: Pen,
     viewportX: number,
     viewportY: number,
+    defaultDrawParams: Partial<
+      RoughAttributes & StrokeAttributes & FillAttributes
+    >,
   ) {
     const camera = api.getCamera();
     const selection = this.selections.get(camera.__id);
@@ -269,6 +286,8 @@ export class DrawRect extends System {
       let brush =
         pen === Pen.DRAW_RECT
           ? selection.rectBrush
+          : pen === Pen.DRAW_ROUGH_RECT
+          ? selection.roughRectBrush
           : pen === Pen.DRAW_ELLIPSE
           ? selection.ellipseBrush
           : selection.lineBrush;
@@ -277,15 +296,8 @@ export class DrawRect extends System {
         brush = Object.assign(
           {
             id: uuidv4(),
-            type:
-              pen === Pen.DRAW_RECT
-                ? 'rect'
-                : pen === Pen.DRAW_ELLIPSE
-                ? 'ellipse'
-                : 'polyline',
-            fill: TRANSFORMER_MASK_FILL_COLOR,
-            fillOpacity: 0.5,
-            stroke: TRANSFORMER_ANCHOR_STROKE_COLOR,
+            type: PEN_TO_TYPE[pen],
+            ...defaultDrawParams,
             visibility: 'hidden',
             zIndex: DRAW_RECT_Z_INDEX,
             strokeAttenuation: true,
@@ -304,6 +316,8 @@ export class DrawRect extends System {
         api.updateNode(brush, undefined, false);
         if (pen === Pen.DRAW_RECT) {
           selection.rectBrush = brush as RectSerializedNode;
+        } else if (pen === Pen.DRAW_ROUGH_RECT) {
+          selection.roughRectBrush = brush as RoughRectSerializedNode;
         } else if (pen === Pen.DRAW_ELLIPSE) {
           selection.ellipseBrush = brush as EllipseSerializedNode;
         } else {

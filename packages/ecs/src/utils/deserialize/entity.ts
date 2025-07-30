@@ -29,6 +29,7 @@ import {
   StrokeAttenuation,
   Brush,
   Wireframe,
+  Rough,
 } from '../../components';
 import {
   AttenuationAttributes,
@@ -41,6 +42,7 @@ import {
   PathSerializedNode,
   PolylineSerializedNode,
   RectSerializedNode,
+  RoughRectSerializedNode,
   serializeBrushPoints,
   SerializedNode,
   serializePoints,
@@ -204,9 +206,52 @@ export function serializedNodesToEntities(
           ry: height / 2,
         }),
       );
-    } else if (type === 'rect') {
+    } else if (type === 'rect' || type === 'rough-rect') {
       const { cornerRadius } = attributes as RectSerializedNode;
       entity.insert(new Rect({ x: 0, y: 0, width, height, cornerRadius }));
+
+      if (type === 'rough-rect') {
+        const {
+          roughRoughness,
+          roughBowing,
+          roughFillStyle,
+          roughFillWeight,
+          roughHachureAngle,
+          roughHachureGap,
+          roughCurveStepCount,
+          roughCurveFitting,
+          roughFillLineDash,
+          roughFillLineDashOffset,
+          roughDisableMultiStroke,
+          roughDisableMultiStrokeFill,
+          roughSimplification,
+          roughDashOffset,
+          roughDashGap,
+          roughZigzagOffset,
+          roughPreserveVertices,
+        } = attributes as RoughRectSerializedNode;
+        entity.insert(
+          new Rough({
+            roughness: roughRoughness,
+            bowing: roughBowing,
+            fillStyle: roughFillStyle,
+            fillWeight: roughFillWeight,
+            hachureAngle: roughHachureAngle,
+            hachureGap: roughHachureGap,
+            curveStepCount: roughCurveStepCount,
+            curveFitting: roughCurveFitting,
+            fillLineDash: roughFillLineDash,
+            fillLineDashOffset: roughFillLineDashOffset,
+            disableMultiStroke: roughDisableMultiStroke,
+            disableMultiStrokeFill: roughDisableMultiStrokeFill,
+            simplification: roughSimplification,
+            dashOffset: roughDashOffset,
+            dashGap: roughDashGap,
+            zigzagOffset: roughZigzagOffset,
+            preserveVertices: roughPreserveVertices,
+          }),
+        );
+      }
     } else if (type === 'polyline') {
       const { points } = attributes as PolylineSerializedNode;
       entity.insert(new Polyline({ points: deserializePoints(points) }));

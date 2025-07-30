@@ -53,7 +53,11 @@ export class Penbar extends LitElement {
    * Record the last draw pen, so that when the penbar is changed, the last draw pen will be selected.
    */
   @state()
-  lastDrawPen: Pen.DRAW_RECT | Pen.DRAW_ELLIPSE | Pen.DRAW_LINE = Pen.DRAW_RECT;
+  lastDrawPen:
+    | Pen.DRAW_RECT
+    | Pen.DRAW_ELLIPSE
+    | Pen.DRAW_LINE
+    | Pen.DRAW_ROUGH_RECT = Pen.DRAW_RECT;
 
   private binded = false;
 
@@ -64,7 +68,8 @@ export class Penbar extends LitElement {
     if (
       pen === Pen.DRAW_RECT ||
       pen === Pen.DRAW_ELLIPSE ||
-      pen === Pen.DRAW_LINE
+      pen === Pen.DRAW_LINE ||
+      pen === Pen.DRAW_ROUGH_RECT
     ) {
       this.lastDrawPen = pen;
     }
@@ -162,6 +167,11 @@ export class Penbar extends LitElement {
                 this.lastDrawPen === Pen.DRAW_LINE,
                 () => html`<sp-icon-line slot="icon"></sp-icon-line>`,
               )}
+              ${when(
+                this.lastDrawPen === Pen.DRAW_ROUGH_RECT,
+                () =>
+                  html`<sp-icon-rect-select slot="icon"></sp-icon-rect-select>`,
+              )}
             </sp-action-button>
             <sp-popover slot="click-content">
               <sp-menu
@@ -191,6 +201,13 @@ export class Penbar extends LitElement {
                     <sp-icon-line slot="icon"></sp-icon-line>
                     Line
                     <kbd slot="value">L</kbd>
+                  </sp-menu-item>`,
+                )}
+                ${when(
+                  penbarAll.includes(Pen.DRAW_ROUGH_RECT),
+                  () => html` <sp-menu-item value="${Pen.DRAW_ROUGH_RECT}">
+                    <sp-icon-rect-select slot="icon"></sp-icon-rect-select>
+                    Rough Rectangle
                   </sp-menu-item>`,
                 )}
               </sp-menu>

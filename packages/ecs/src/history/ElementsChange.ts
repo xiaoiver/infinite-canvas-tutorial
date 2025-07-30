@@ -11,6 +11,7 @@ import {
   randomInteger,
   SerializedNode,
   deserializePoints,
+  SerializedNodeAttributes,
 } from '../utils';
 import { API } from '../API';
 import {
@@ -33,6 +34,8 @@ import {
   FillPattern,
   StrokeAttenuation,
   SizeAttenuation,
+  TextDecoration,
+  Rough,
 } from '../components';
 
 export type SceneElementsMap = Map<SerializedNode['id'], SerializedNode>;
@@ -586,7 +589,29 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
     content,
     sizeAttenuation,
     strokeAttenuation,
-  } = updates as any;
+    decorationColor,
+    decorationLine,
+    decorationThickness,
+    decorationStyle,
+    roughRoughness,
+    roughBowing,
+    roughFillStyle,
+    roughFillWeight,
+    roughHachureAngle,
+    roughHachureGap,
+    roughCurveStepCount,
+    roughCurveFitting,
+    roughDisableMultiStroke,
+    roughDisableMultiStrokeFill,
+    roughSimplification,
+    roughDashOffset,
+    roughDashGap,
+    roughZigzagOffset,
+    roughPreserveVertices,
+    roughFillLineDash,
+    roughFillLineDashOffset,
+    roughSeed,
+  } = updates as unknown as SerializedNodeAttributes;
 
   if (!isNil(name)) {
     entity.write(Name).value = name;
@@ -663,6 +688,82 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
     } else {
       safeRemoveComponent(entity, StrokeAttenuation);
     }
+  }
+  if (!isNil(decorationColor)) {
+    safeAddComponent(entity, TextDecoration, { color: decorationColor });
+  }
+  if (!isNil(decorationLine)) {
+    safeAddComponent(entity, TextDecoration, { line: decorationLine });
+  }
+  if (!isNil(decorationStyle)) {
+    safeAddComponent(entity, TextDecoration, { style: decorationStyle });
+  }
+  if (!isNil(decorationThickness)) {
+    safeAddComponent(entity, TextDecoration, {
+      thickness: decorationThickness,
+    });
+  }
+  if (!isNil(roughRoughness)) {
+    safeAddComponent(entity, Rough, { roughness: roughRoughness });
+  }
+  if (!isNil(roughBowing)) {
+    safeAddComponent(entity, Rough, { bowing: roughBowing });
+  }
+  if (!isNil(roughFillStyle)) {
+    safeAddComponent(entity, Rough, { fillStyle: roughFillStyle });
+  }
+  if (!isNil(roughFillWeight)) {
+    safeAddComponent(entity, Rough, { fillWeight: roughFillWeight });
+  }
+  if (!isNil(roughHachureAngle)) {
+    safeAddComponent(entity, Rough, { hachureAngle: roughHachureAngle });
+  }
+  if (!isNil(roughHachureGap)) {
+    safeAddComponent(entity, Rough, { hachureGap: roughHachureGap });
+  }
+  if (!isNil(roughCurveStepCount)) {
+    safeAddComponent(entity, Rough, { curveStepCount: roughCurveStepCount });
+  }
+  if (!isNil(roughCurveFitting)) {
+    safeAddComponent(entity, Rough, { curveFitting: roughCurveFitting });
+  }
+  if (!isNil(roughDisableMultiStroke)) {
+    safeAddComponent(entity, Rough, {
+      disableMultiStroke: roughDisableMultiStroke,
+    });
+  }
+  if (!isNil(roughDisableMultiStrokeFill)) {
+    safeAddComponent(entity, Rough, {
+      disableMultiStrokeFill: roughDisableMultiStrokeFill,
+    });
+  }
+  if (!isNil(roughSimplification)) {
+    safeAddComponent(entity, Rough, { simplification: roughSimplification });
+  }
+  if (!isNil(roughDashOffset)) {
+    safeAddComponent(entity, Rough, { dashOffset: roughDashOffset });
+  }
+  if (!isNil(roughDashGap)) {
+    safeAddComponent(entity, Rough, { dashGap: roughDashGap });
+  }
+  if (!isNil(roughZigzagOffset)) {
+    safeAddComponent(entity, Rough, { zigzagOffset: roughZigzagOffset });
+  }
+  if (!isNil(roughPreserveVertices)) {
+    safeAddComponent(entity, Rough, {
+      preserveVertices: roughPreserveVertices,
+    });
+  }
+  if (!isNil(roughFillLineDash)) {
+    safeAddComponent(entity, Rough, { fillLineDash: roughFillLineDash });
+  }
+  if (!isNil(roughFillLineDashOffset)) {
+    safeAddComponent(entity, Rough, {
+      fillLineDashOffset: roughFillLineDashOffset,
+    });
+  }
+  if (!isNil(roughSeed)) {
+    safeAddComponent(entity, Rough, { seed: roughSeed });
   }
 
   if (!isNil(fontSize)) {

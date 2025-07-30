@@ -86,7 +86,7 @@ export class Rough {
    * Default value of the hachureGap is set to four times the strokeWidth of that shape.
    * @see https://github.com/rough-stuff/rough/wiki#hachuregap
    */
-  @field({ type: Type.float32 })
+  @field({ type: Type.float32, default: 0 })
   declare hachureGap: Options['hachureGap'];
 
   /**
@@ -168,6 +168,10 @@ export class Rough {
    */
   @field({ type: Type.boolean, default: false })
   declare preserveVertices: Options['preserveVertices'];
+
+  constructor(options?: Partial<Rough>) {
+    Object.assign(this, options);
+  }
 }
 
 export class ComputedRough {
@@ -223,9 +227,9 @@ export function getRoughOptions(entity: Entity): Options {
     bowing,
     roughness,
     fillStyle,
-    fillWeight,
+    fillWeight: fillWeight > 0 ? fillWeight : width / 2,
     hachureAngle,
-    hachureGap,
+    hachureGap: hachureGap > 0 ? hachureGap : width * 4,
     curveStepCount,
     curveFitting,
     disableMultiStroke,
@@ -235,8 +239,8 @@ export function getRoughOptions(entity: Entity): Options {
     dashGap,
     zigzagOffset,
     preserveVertices,
-    strokeLineDash: dasharray,
-    strokeLineDashOffset: dashoffset,
+    strokeLineDash: [dasharray[0], dasharray[1]],
+    strokeLineDashOffset: dashoffset[0],
     fillLineDash,
     fillLineDashOffset,
   });

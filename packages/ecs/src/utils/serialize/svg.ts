@@ -79,6 +79,16 @@ export const defaultAttributes: Record<
     ...fillDefaultAttributes,
     ...strokeDefaultAttributes,
   },
+  'rough-rect': {
+    x: 0,
+    y: 0,
+    width: 0,
+    height: 0,
+    cornerRadius: 0,
+    ...commonDefaultAttributes,
+    ...fillDefaultAttributes,
+    ...strokeDefaultAttributes,
+  },
   ellipse: {
     cx: 0,
     cy: 0,
