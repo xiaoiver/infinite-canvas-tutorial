@@ -153,15 +153,7 @@ We want to show the dimensions of the rectangle in real time during the drawing 
 
 ![Size label in Figma](/figma-size-label.png)
 
-## Brush mode {#brush-mode}
-
-You can select this sub-tool when you enter Paint mode in Photoshop Web and draw strokes by dragging and dropping continuously:
-
-![Brush mode in Photoshop Web](/photoshopweb-brush-mode.png)
-
-In Figma: [Draw with illustration tools].
-
-### Pencil tool {#pencil-tool}
+## Pencil tool {#pencil-tool}
 
 Let's start by looking at the simplest implementation, using a folded line display, called a Pencil in Figma.
 
