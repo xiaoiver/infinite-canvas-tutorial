@@ -29,6 +29,7 @@ import '@spectrum-web-components/menu/sp-menu-group.js';
 import '@spectrum-web-components/number-field/sp-number-field.js';
 import '@spectrum-web-components/slider/sp-slider.js';
 import '@spectrum-web-components/swatch/sp-swatch.js';
+import '@spectrum-web-components/swatch/sp-swatch-group.js';
 import '@spectrum-web-components/overlay/sp-overlay.js';
 import '@spectrum-web-components/progress-circle/sp-progress-circle.js';
 import '@spectrum-web-components/textfield/sp-textfield.js';
@@ -78,6 +79,7 @@ import '@spectrum-web-components/icons-workflow/icons/sp-icon-line.js';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-annotate-pen.js';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-brush.js';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-rect-select.js';
+import '@spectrum-web-components/icons-workflow/icons/sp-icon-image.js';
 
 export const TOP_NAVBAR_HEIGHT = 48;
 

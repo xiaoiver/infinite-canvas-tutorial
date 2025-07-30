@@ -38,6 +38,7 @@ export interface AppState {
   penbarDrawRoughRect: Partial<
     RoughAttributes & StrokeAttributes & FillAttributes
   >;
+  penbarPencil: Partial<StrokeAttributes>;
   taskbarVisible: boolean;
   taskbarAll: Task[];
   taskbarSelected: Task[];
@@ -60,8 +61,32 @@ export const getDefaultAppState: () => AppState = () => {
     theme: {
       mode: ThemeMode.LIGHT,
       colors: {
-        [ThemeMode.LIGHT]: {},
-        [ThemeMode.DARK]: {},
+        [ThemeMode.LIGHT]: {
+          swatches: [
+            TRANSFORMER_ANCHOR_STROKE_COLOR,
+            TRANSFORMER_MASK_FILL_COLOR,
+            'red',
+            'green',
+            'blue',
+            'yellow',
+            'purple',
+            'orange',
+            'pink',
+          ],
+        },
+        [ThemeMode.DARK]: {
+          swatches: [
+            TRANSFORMER_ANCHOR_STROKE_COLOR,
+            TRANSFORMER_MASK_FILL_COLOR,
+            'red',
+            'green',
+            'blue',
+            'yellow',
+            'purple',
+            'orange',
+            'pink',
+          ],
+        },
       },
     },
     checkboardStyle: CheckboardStyle.GRID,
@@ -80,6 +105,7 @@ export const getDefaultAppState: () => AppState = () => {
       Pen.DRAW_ELLIPSE,
       Pen.DRAW_LINE,
       Pen.DRAW_ROUGH_RECT,
+      Pen.IMAGE,
       Pen.PENCIL,
       Pen.BRUSH,
       Pen.VECTOR_NETWORK,
@@ -106,6 +132,10 @@ export const getDefaultAppState: () => AppState = () => {
       strokeWidth: 10,
       fill: 'black',
       roughFillStyle: 'hachure',
+    },
+    penbarPencil: {
+      stroke: TRANSFORMER_ANCHOR_STROKE_COLOR,
+      strokeWidth: 1,
     },
     taskbarVisible: true,
     taskbarAll: [Task.SHOW_LAYERS_PANEL, Task.SHOW_PROPERTIES_PANEL],

@@ -63,8 +63,12 @@ export class Penbar extends LitElement {
 
   private handlePenChanged(e: CustomEvent) {
     const pen = (e.target as any).selected[0];
-    this.api.setPen(pen);
 
+    if (!this.appState.penbarAll.includes(pen)) {
+      return;
+    }
+
+    this.api.setPen(pen);
     if (
       pen === Pen.DRAW_RECT ||
       pen === Pen.DRAW_ELLIPSE ||
@@ -107,6 +111,38 @@ export class Penbar extends LitElement {
   disconnectedCallback() {
     super.disconnectedCallback();
     document.removeEventListener('keydown', this.handleKeyDown);
+  }
+
+  private handleStrokeWidthChanging(e: Event & { target: HTMLInputElement }) {
+    const nextElementSibling = e.target.nextElementSibling as HTMLInputElement;
+    if (nextElementSibling) {
+      nextElementSibling.value = e.target.value;
+    }
+  }
+
+  private handleStrokeWidthChanged(e: Event & { target: HTMLInputElement }) {
+    const strokeWidth = parseInt(e.target.value);
+    this.api.setAppState({
+      ...this.api.getAppState(),
+      penbarPencil: {
+        ...this.api.getAppState().penbarPencil,
+        strokeWidth,
+      },
+    });
+    this.api.record();
+  }
+
+  private handleStrokeColorChanged(e: Event & { target: HTMLInputElement }) {
+    e.stopPropagation();
+
+    const strokeColor = (e.target as any).selected[0];
+    this.api.setAppState({
+      ...this.api.getAppState(),
+      penbarPencil: {
+        ...this.api.getAppState().penbarPencil,
+        stroke: strokeColor,
+      },
+    });
   }
 
   render() {
@@ -215,6 +251,15 @@ export class Penbar extends LitElement {
           </overlay-trigger>
 
           ${when(
+            penbarAll.includes(Pen.IMAGE),
+            () => html`
+              <sp-action-button value="${Pen.IMAGE}">
+                <sp-icon-image slot="icon"></sp-icon-image>
+                <sp-tooltip self-managed placement="right"> Image </sp-tooltip>
+              </sp-action-button>
+            `,
+          )}
+          ${when(
             penbarAll.includes(Pen.PENCIL),
             () => html`
               <overlay-trigger placement="right">
@@ -228,8 +273,45 @@ export class Penbar extends LitElement {
                     Pencil
                   </sp-tooltip>
                 </sp-action-button>
-                <sp-popover slot="click-content">
-                  <p>TODO: pencil settings</p>
+                <sp-popover slot="click-content" style="padding: 8px;">
+                  <sp-swatch-group
+                    selects="single"
+                    .selected=${[this.appState.penbarPencil.stroke]}
+                    @change=${this.handleStrokeColorChanged}
+                  >
+                    ${this.appState.theme.colors[
+                      this.appState.theme.mode
+                    ].swatches.map(
+                      (color) => html`
+                        <sp-swatch color=${color} size="s"></sp-swatch>
+                      `,
+                    )}
+                  </sp-swatch-group>
+                  <div
+                    class="line"
+                    style="display: flex; align-items: center;justify-content: space-between;"
+                  >
+                    <sp-slider
+                      style="flex: 1;margin-right: 8px;"
+                      label="Stroke width"
+                      label-visibility="text"
+                      value=${this.appState.penbarPencil.strokeWidth}
+                      @input=${this.handleStrokeWidthChanging}
+                      @change=${this.handleStrokeWidthChanged}
+                    ></sp-slider>
+                    <sp-number-field
+                      style="position: relative;top: 10px; width: 80px;"
+                      value=${this.appState.penbarPencil.strokeWidth}
+                      @change=${this.handleStrokeWidthChanged}
+                      hide-stepper
+                      autocomplete="off"
+                      min="0"
+                      format-options='{
+                      "style": "unit",
+                      "unit": "px"
+                    }'
+                    ></sp-number-field>
+                  </div>
                 </sp-popover>
               </overlay-trigger>
             `,

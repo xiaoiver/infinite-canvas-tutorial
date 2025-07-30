@@ -32,10 +32,10 @@ import {
   Name,
 } from '../components';
 import { API } from '../API';
-import { PolylineSerializedNode } from '../utils/serialize';
+import { PolylineSerializedNode, StrokeAttributes } from '../utils/serialize';
 import { distanceBetweenPoints } from '../utils/matrix';
 import { DRAW_RECT_Z_INDEX } from '../context';
-import { serializePoints, TRANSFORMER_ANCHOR_STROKE_COLOR } from '..';
+import { serializePoints } from '../utils/serialize';
 
 export class DrawPencil extends System {
   private readonly cameras = this.query((q) => q.current.with(Camera).read);
@@ -96,7 +96,8 @@ export class DrawPencil extends System {
       }
 
       const { inputPoints, api } = canvas.read(Canvas);
-      const pen = api.getAppState().penbarSelected[0];
+      const appState = api.getAppState();
+      const pen = appState.penbarSelected[0];
 
       if (pen !== Pen.PENCIL) {
         return;
@@ -146,7 +147,7 @@ export class DrawPencil extends System {
         }
 
         api.runAtNextTick(() => {
-          this.handleBrushing(api, x, y);
+          this.handleBrushing(api, x, y, appState.penbarPencil);
         });
       });
 
@@ -165,8 +166,7 @@ export class DrawPencil extends System {
             id: uuidv4(),
             type: 'polyline',
             points: serializePoints(selection.points.map((p) => [p.x, p.y])),
-            stroke: TRANSFORMER_ANCHOR_STROKE_COLOR,
-            strokeWidth: 1,
+            ...appState.penbarPencil,
           };
 
           api.setPen(Pen.SELECT);
@@ -178,7 +178,12 @@ export class DrawPencil extends System {
     });
   }
 
-  private handleBrushing(api: API, viewportX: number, viewportY: number) {
+  private handleBrushing(
+    api: API,
+    viewportX: number,
+    viewportY: number,
+    defaultDrawParams: Partial<StrokeAttributes>,
+  ) {
     const camera = api.getCamera();
     const selection = this.selections.get(camera.__id);
     const { zoom } = camera.read(ComputedCamera);
@@ -203,7 +208,6 @@ export class DrawPencil extends System {
           id: uuidv4(),
           type: 'polyline',
           points: '0,0 0,0',
-          stroke: TRANSFORMER_ANCHOR_STROKE_COLOR,
           visibility: 'hidden',
           zIndex: DRAW_RECT_Z_INDEX,
           strokeAttenuation: true,
@@ -238,6 +242,7 @@ export class DrawPencil extends System {
           {
             visibility: 'visible',
             points: serializePoints(selection.points.map((p) => [p.x, p.y])),
+            ...defaultDrawParams,
           },
           false,
         );

@@ -22,6 +22,11 @@ interface ThemeColors {
    * Stroke color of the selection brush.
    */
   selectionBrushStroke: string;
+
+  /**
+   * Swatches.
+   */
+  swatches: string[];
 }
 
 export class Theme {
@@ -46,12 +51,14 @@ export class Theme {
         grid: '#dedede',
         selectionBrushFill: '#dedede',
         selectionBrushStroke: '#dedede',
+        swatches: [],
       },
       [ThemeMode.DARK]: {
         background: '#121212',
         grid: '#242424',
         selectionBrushFill: '#242424',
         selectionBrushStroke: '#242424',
+        swatches: [],
       },
     },
   })
