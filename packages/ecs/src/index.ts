@@ -48,6 +48,9 @@ export {
   type PolylineSerializedNode,
   type PathSerializedNode,
   type TextSerializedNode,
+  type RoughAttributes,
+  type StrokeAttributes,
+  type FillAttributes,
 } from './utils';
 export { TexturePool } from './resources';
 

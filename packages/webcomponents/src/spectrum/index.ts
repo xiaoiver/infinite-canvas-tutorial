@@ -7,6 +7,8 @@ export * from './layers-panel-item';
 export * from './layer-thumbnail';
 export * from './layer-name';
 export * from './penbar';
+export * from './penbar-pencil-settings';
+export * from './penbar-draw-settings';
 export * from './properties-panel-content';
 export * from './properties-panel';
 export * from './fill-icon';

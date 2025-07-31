@@ -85,7 +85,11 @@ export class Penbar extends LitElement {
           description: 'Image to upload',
         });
         if (file) {
-          createImage(this.api, this.appState, file);
+          const center = this.api.viewport2Canvas({
+            x: this.api.element.clientWidth / 2,
+            y: this.api.element.clientHeight / 2,
+          });
+          createImage(this.api, this.appState, file, center);
           this.api.setPen(Pen.SELECT);
           this.api.record();
         }
@@ -127,44 +131,6 @@ export class Penbar extends LitElement {
   disconnectedCallback() {
     super.disconnectedCallback();
     document.removeEventListener('keydown', this.handleKeyDown);
-  }
-
-  private handlePencilStrokeWidthChanging(
-    e: Event & { target: HTMLInputElement },
-  ) {
-    const nextElementSibling = e.target.nextElementSibling as HTMLInputElement;
-    if (nextElementSibling) {
-      nextElementSibling.value = e.target.value;
-    }
-  }
-
-  private handlePencilStrokeWidthChanged(
-    e: Event & { target: HTMLInputElement },
-  ) {
-    const strokeWidth = parseInt(e.target.value);
-    this.api.setAppState({
-      ...this.api.getAppState(),
-      penbarPencil: {
-        ...this.api.getAppState().penbarPencil,
-        strokeWidth,
-      },
-    });
-    this.api.record();
-  }
-
-  private handlePencilStrokeColorChanged(
-    e: Event & { target: HTMLInputElement },
-  ) {
-    e.stopPropagation();
-
-    const strokeColor = (e.target as any).selected[0];
-    this.api.setAppState({
-      ...this.api.getAppState(),
-      penbarPencil: {
-        ...this.api.getAppState().penbarPencil,
-        stroke: strokeColor,
-      },
-    });
   }
 
   render() {
@@ -231,6 +197,11 @@ export class Penbar extends LitElement {
                   html`<sp-icon-rect-select slot="icon"></sp-icon-rect-select>`,
               )}
             </sp-action-button>
+            <sp-popover slot="hover-content" style="padding: 8px;">
+              <ic-spectrum-penbar-draw-settings
+                .pen=${this.lastDrawPen}
+              ></ic-spectrum-penbar-draw-settings>
+            </sp-popover>
             <sp-popover slot="click-content">
               <sp-menu
                 @change=${this.handlePenChanged}
@@ -296,47 +267,7 @@ export class Penbar extends LitElement {
                   </sp-tooltip>
                 </sp-action-button>
                 <sp-popover slot="hover-content" style="padding: 8px;">
-                  <h4 style="margin: 0; margin-bottom: 8px;">
-                    Pencil settings
-                  </h4>
-                  <sp-swatch-group
-                    selects="single"
-                    .selected=${[this.appState.penbarPencil.stroke]}
-                    @change=${this.handlePencilStrokeColorChanged}
-                  >
-                    ${this.appState.theme.colors[
-                      this.appState.theme.mode
-                    ].swatches.map(
-                      (color) => html`
-                        <sp-swatch color=${color} size="s"></sp-swatch>
-                      `,
-                    )}
-                  </sp-swatch-group>
-                  <div
-                    class="line"
-                    style="display: flex; align-items: center;justify-content: space-between;"
-                  >
-                    <sp-slider
-                      style="flex: 1;margin-right: 8px;"
-                      label="Stroke width"
-                      label-visibility="text"
-                      value=${this.appState.penbarPencil.strokeWidth}
-                      @input=${this.handlePencilStrokeWidthChanging}
-                      @change=${this.handlePencilStrokeWidthChanged}
-                    ></sp-slider>
-                    <sp-number-field
-                      style="position: relative;top: 10px; width: 80px;"
-                      value=${this.appState.penbarPencil.strokeWidth}
-                      @change=${this.handlePencilStrokeWidthChanged}
-                      hide-stepper
-                      autocomplete="off"
-                      min="0"
-                      format-options='{
-                      "style": "unit",
-                      "unit": "px"
-                    }'
-                    ></sp-number-field>
-                  </div>
+                  <ic-spectrum-penbar-pencil-settings></ic-spectrum-penbar-pencil-settings>
                 </sp-popover>
               </overlay-trigger>
             `,

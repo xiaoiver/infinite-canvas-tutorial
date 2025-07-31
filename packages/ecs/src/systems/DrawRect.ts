@@ -297,7 +297,6 @@ export class DrawRect extends System {
           {
             id: uuidv4(),
             type: PEN_TO_TYPE[pen],
-            ...defaultDrawParams,
             visibility: 'hidden',
             zIndex: DRAW_RECT_Z_INDEX,
             strokeAttenuation: true,
@@ -388,10 +387,12 @@ export class DrawRect extends System {
         brush,
         pen === Pen.DRAW_LINE
           ? {
+              ...defaultDrawParams,
               visibility: 'visible',
               points: `${x},${y} ${cx},${cy}`,
             }
           : {
+              ...defaultDrawParams,
               visibility: 'visible',
               x,
               y,
