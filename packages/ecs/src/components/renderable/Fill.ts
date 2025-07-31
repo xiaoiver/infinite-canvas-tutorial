@@ -68,6 +68,8 @@ export class FillTexture {
 export class FillImage {
   @field.object declare src: TexImageSource;
 
+  @field.object declare url: string;
+
   /**
    * @see https://developer.mozilla.org/zh-CN/docs/Web/CSS/object-fit
    * @see https://tympanus.net/codrops/2025/03/11/replicating-css-object-fit-in-webgl/
@@ -79,7 +81,6 @@ export class FillImage {
   declare objectFit: 'contain' | 'cover' | 'fill' | 'none' | 'scale-down';
 
   constructor(value?: Partial<FillImage>) {
-    this.src = value?.src;
-    this.objectFit = value?.objectFit;
+    Object.assign(this, value);
   }
 }

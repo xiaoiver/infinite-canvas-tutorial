@@ -5,6 +5,8 @@ import { when } from 'lit/directives/when.js';
 import { Pen, AppState } from '@infinite-canvas-tutorial/ecs';
 import { apiContext, appStateContext } from '../context';
 import { ExtendedAPI } from '../API';
+import { fileOpen } from '../utils';
+import { createImage } from './context-menu';
 
 // const PenMap = {
 //   [Pen.VECTOR_NETWORK]: {
@@ -61,7 +63,7 @@ export class Penbar extends LitElement {
 
   private binded = false;
 
-  private handlePenChanged(e: CustomEvent) {
+  private async handlePenChanged(e: CustomEvent) {
     const pen = (e.target as any).selected[0];
 
     if (!this.appState.penbarAll.includes(pen)) {
@@ -76,6 +78,20 @@ export class Penbar extends LitElement {
       pen === Pen.DRAW_ROUGH_RECT
     ) {
       this.lastDrawPen = pen;
+    } else if (pen === Pen.IMAGE) {
+      try {
+        const file = await fileOpen({
+          extensions: ['jpg', 'png', 'svg'],
+          description: 'Image to upload',
+        });
+        if (file) {
+          createImage(this.api, this.appState, file);
+          this.api.setPen(Pen.SELECT);
+          this.api.record();
+        }
+      } catch (e) {
+        this.api.setPen(Pen.SELECT);
+      }
     }
   }
 
@@ -113,14 +129,18 @@ export class Penbar extends LitElement {
     document.removeEventListener('keydown', this.handleKeyDown);
   }
 
-  private handleStrokeWidthChanging(e: Event & { target: HTMLInputElement }) {
+  private handlePencilStrokeWidthChanging(
+    e: Event & { target: HTMLInputElement },
+  ) {
     const nextElementSibling = e.target.nextElementSibling as HTMLInputElement;
     if (nextElementSibling) {
       nextElementSibling.value = e.target.value;
     }
   }
 
-  private handleStrokeWidthChanged(e: Event & { target: HTMLInputElement }) {
+  private handlePencilStrokeWidthChanged(
+    e: Event & { target: HTMLInputElement },
+  ) {
     const strokeWidth = parseInt(e.target.value);
     this.api.setAppState({
       ...this.api.getAppState(),
@@ -132,7 +152,9 @@ export class Penbar extends LitElement {
     this.api.record();
   }
 
-  private handleStrokeColorChanged(e: Event & { target: HTMLInputElement }) {
+  private handlePencilStrokeColorChanged(
+    e: Event & { target: HTMLInputElement },
+  ) {
     e.stopPropagation();
 
     const strokeColor = (e.target as any).selected[0];
@@ -273,11 +295,14 @@ export class Penbar extends LitElement {
                     Pencil
                   </sp-tooltip>
                 </sp-action-button>
-                <sp-popover slot="click-content" style="padding: 8px;">
+                <sp-popover slot="hover-content" style="padding: 8px;">
+                  <h4 style="margin: 0; margin-bottom: 8px;">
+                    Pencil settings
+                  </h4>
                   <sp-swatch-group
                     selects="single"
                     .selected=${[this.appState.penbarPencil.stroke]}
-                    @change=${this.handleStrokeColorChanged}
+                    @change=${this.handlePencilStrokeColorChanged}
                   >
                     ${this.appState.theme.colors[
                       this.appState.theme.mode
@@ -296,13 +321,13 @@ export class Penbar extends LitElement {
                       label="Stroke width"
                       label-visibility="text"
                       value=${this.appState.penbarPencil.strokeWidth}
-                      @input=${this.handleStrokeWidthChanging}
-                      @change=${this.handleStrokeWidthChanged}
+                      @input=${this.handlePencilStrokeWidthChanging}
+                      @change=${this.handlePencilStrokeWidthChanged}
                     ></sp-slider>
                     <sp-number-field
                       style="position: relative;top: 10px; width: 80px;"
                       value=${this.appState.penbarPencil.strokeWidth}
-                      @change=${this.handleStrokeWidthChanged}
+                      @change=${this.handlePencilStrokeWidthChanged}
                       hide-stepper
                       autocomplete="off"
                       min="0"

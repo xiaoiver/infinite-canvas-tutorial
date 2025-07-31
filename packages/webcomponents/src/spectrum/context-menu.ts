@@ -77,13 +77,18 @@ async function getDataURL(file: Blob | File): Promise<string> {
   });
 }
 
-async function createImage(
+export async function createImage(
   api: ExtendedAPI,
   appState: AppState,
   file: File,
-  size: { width: number; height: number; zoom: number },
   position?: { x: number; y: number },
 ) {
+  const size = {
+    width: api.element.clientWidth,
+    height: api.element.clientHeight,
+    zoom: appState.cameraZoom,
+  };
+
   const [image, dataURL] = await Promise.all([
     load(file, ImageLoader),
     getDataURL(file),
@@ -190,7 +195,7 @@ export async function executePaste(
   // must be called in the same frame (thus before any awaits) as the paste
   // event else some browsers (FF...) will clear the clipboardData
   // (something something security)
-  let file = event?.clipboardData?.files[0];
+  const file = event?.clipboardData?.files[0];
   const data = await parseClipboard(event, isPlainPaste);
 
   if (!file && !isPlainPaste) {
@@ -210,17 +215,7 @@ export async function executePaste(
   }
 
   if (isSupportedImageFileType(file?.type)) {
-    createImage(
-      api,
-      appState,
-      file,
-      {
-        width: api.element.clientWidth,
-        height: api.element.clientHeight,
-        zoom: appState.cameraZoom,
-      },
-      canvasPosition,
-    );
+    createImage(api, appState, file, canvasPosition);
     return;
   }
 
@@ -570,23 +565,11 @@ export class ContextMenu extends LitElement {
       }),
     );
 
-    const size = {
-      width: this.api.element.clientWidth,
-      height: this.api.element.clientHeight,
-      zoom: this.appState.cameraZoom,
-    };
-
     const url = event.dataTransfer.getData('text/uri-list');
     if (url) {
       try {
         const file = await fetch(url).then((res) => res.blob());
-        createImage(
-          this.api,
-          this.appState,
-          file as File,
-          size,
-          canvasPosition,
-        );
+        createImage(this.api, this.appState, file as File, canvasPosition);
         return;
       } catch (error) {
         console.error(error);
@@ -604,7 +587,7 @@ export class ContextMenu extends LitElement {
           const svg = await file.text();
           createSVG(this.api, this.appState, svg, canvasPosition);
         } else {
-          createImage(this.api, this.appState, file, size, canvasPosition);
+          createImage(this.api, this.appState, file, canvasPosition);
         }
       }
     }

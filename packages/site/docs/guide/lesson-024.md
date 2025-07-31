@@ -357,6 +357,31 @@ In the following example, you can drag and drop the image on the right side or t
 
 <DragNDropImage />
 
+## Uploading from the file system {#upload-from-filesystem}
+
+Of course, there's also the most traditional way to upload from the filesystem: the `<input type="file">` that front-ends are most familiar with. Here we take a page from Excalidraw's [filesystem] implementation and use [browser-fs-access] to try to use the more imperative [File System API], which is automatically downgraded if the browser doesn't support it.
+
+```ts
+if (pen === Pen.IMAGE) {
+    try {
+        const file = await fileOpen({
+            extensions: ['jpg', 'png', 'svg'],
+            description: 'Image to upload',
+        });
+        if (file) {
+            createImage(this.api, this.appState, file);
+            this.api.setPen(Pen.SELECT);
+            this.api.record();
+        }
+    } catch (e) {
+        // User cancels upload and returns to selection mode
+        this.api.setPen(Pen.SELECT);
+    }
+}
+```
+
+You can experience this feature by clicking the “Image” button in the left toolbar.
+
 ## Extended Reading {#extended-reading}
 
 -   [Interact with the clipboard]
@@ -384,3 +409,6 @@ In the following example, you can drag and drop the image on the right side or t
 [files]: https://developer.mozilla.org/en-US/docs/Web/API/DataTransfer/files
 [Dragging Images]: https://developer.mozilla.org/en-US/docs/Web/API/HTML_Drag_and_Drop_API/Recommended_drag_types#dragging_images
 [Prevent the browser's default drag behavior]: https://developer.mozilla.org/en-US/docs/Web/API/HTML_Drag_and_Drop_API/File_drag_and_drop#prevent_the_browsers_default_drag_behavior
+[filesystem]: https://github.com/excalidraw/excalidraw/blob/master/packages/excalidraw/data/filesystem.ts
+[browser-fs-access]: https://www.npmjs.com/package/browser-fs-access
+[File System API]: https://developer.mozilla.org/en-US/docs/Web/API/File_System_API

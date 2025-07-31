@@ -29,6 +29,8 @@ import {
   Camera,
   ComputedTextMetrics,
   TextDecoration,
+  FillImage,
+  FillPattern,
 } from '../../components';
 import { serializePoints } from './points';
 
@@ -149,9 +151,12 @@ export function entityToSerializedNodes(
     (attributes as FillAttributes).fill = entity.read(FillSolid).value;
   } else if (entity.has(FillGradient)) {
     (attributes as FillAttributes).fill = entity.read(FillGradient).value;
+  } else if (entity.has(FillImage)) {
+    (attributes as FillAttributes).fill = entity.read(FillImage).url;
+  } else if (entity.has(FillPattern)) {
+    // TODO: serialize pattern
+    // (attributes as FillAttributes).fill = entity.read(FillPattern).value;
   }
-
-  // TODO: serialize pattern
 
   if (entity.has(Stroke)) {
     const {

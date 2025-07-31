@@ -356,6 +356,31 @@ img.addEventListener('dragstart', (ev) => {
 
 <DragNDropImage />
 
+## 从文件系统上传 {#upload-from-filesystem}
+
+当然还有最传统的从文件系统上传方式：前端最熟悉的 `<input type="file">`。这里我们参考 Excalidraw 的 [filesystem] 实现，使用 [browser-fs-access] 尝试使用更命令式的 [File System API]，如果浏览器不支持会自动降级。
+
+```ts
+if (pen === Pen.IMAGE) {
+    try {
+        const file = await fileOpen({
+            extensions: ['jpg', 'png', 'svg'],
+            description: 'Image to upload',
+        });
+        if (file) {
+            createImage(this.api, this.appState, file);
+            this.api.setPen(Pen.SELECT);
+            this.api.record();
+        }
+    } catch (e) {
+        // 用户取消上传，退回选择模式
+        this.api.setPen(Pen.SELECT);
+    }
+}
+```
+
+可以点击左侧工具栏中的 “图片” 按钮体验这一功能。
+
 ## 扩展阅读 {#extended-reading}
 
 -   [Interact with the clipboard]
@@ -383,3 +408,6 @@ img.addEventListener('dragstart', (ev) => {
 [files]: https://developer.mozilla.org/en-US/docs/Web/API/DataTransfer/files
 [Dragging Images]: https://developer.mozilla.org/en-US/docs/Web/API/HTML_Drag_and_Drop_API/Recommended_drag_types#dragging_images
 [Prevent the browser's default drag behavior]: https://developer.mozilla.org/en-US/docs/Web/API/HTML_Drag_and_Drop_API/File_drag_and_drop#prevent_the_browsers_default_drag_behavior
+[filesystem]: https://github.com/excalidraw/excalidraw/blob/master/packages/excalidraw/data/filesystem.ts
+[browser-fs-access]: https://www.npmjs.com/package/browser-fs-access
+[File System API]: https://developer.mozilla.org/en-US/docs/Web/API/File_System_API

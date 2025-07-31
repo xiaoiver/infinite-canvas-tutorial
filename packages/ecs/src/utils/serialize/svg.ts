@@ -263,6 +263,10 @@ export function serializeNodesToSVGElements(
       //   element.setAttribute('width', `${Math.abs(width)}`);
       //   element.setAttribute('height', `${Math.abs(height)}`);
       // }
+    } else if (type === 'polyline' || type === 'path') {
+      if (!rest.fill) {
+        element.setAttribute('fill', 'none');
+      }
     } else if (type === 'text') {
       let x = 0;
       let y = 0;

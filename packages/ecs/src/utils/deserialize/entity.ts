@@ -111,7 +111,7 @@ async function loadImage(
   commands: Commands,
 ) {
   const image = await load(url, ImageLoader);
-  entity.insert(new FillImage({ src: image as ImageBitmap }));
+  entity.insert(new FillImage({ src: image as ImageBitmap, url }));
   entity.insert(new MaterialDirty());
   commands.execute();
 }
