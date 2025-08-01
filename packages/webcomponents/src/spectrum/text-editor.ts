@@ -146,21 +146,23 @@ export class TextEditor extends LitElement {
       this.node = node;
 
       this.editable.value = node.content;
-      this.editable.style.fontFamily = node.fontFamily;
-      this.editable.style.fontWeight =
-        node.fontWeight && node.fontWeight.toString();
-      this.editable.style.fontSize = `${node.fontSize}px`;
-      this.editable.style.fontStyle = node.fontStyle;
-      this.editable.style.fontVariant = node.fontVariant;
-      this.editable.style.color = node.fill;
-      this.editable.style.opacity = node.opacity && node.opacity.toString();
-      this.editable.style.textAlign = node.textAlign;
-      this.editable.style.width = `${obb.width}px`;
-      this.editable.style.height = `${obb.height}px`;
+      // this.editable.style.fontFamily = node.fontFamily;
+      // this.editable.style.fontWeight =
+      //   node.fontWeight && node.fontWeight.toString();
+      // this.editable.style.fontSize = `${node.fontSize}px`;
+      // this.editable.style.fontStyle = node.fontStyle;
+      // this.editable.style.fontVariant = node.fontVariant;
+      // this.editable.style.color = node.fill;
+      // this.editable.style.opacity = node.opacity && node.opacity.toString();
+      // this.editable.style.textAlign = node.textAlign;
       // TODO: support textBaseline.
       // this.editable.style.textBaseline = node.textBaseline;
-      this.editable.style.letterSpacing =
-        node.letterSpacing && node.letterSpacing.toString();
+      // this.editable.style.letterSpacing =
+      //   node.letterSpacing && node.letterSpacing.toString();
+      this.updateTextareaStyle(node);
+
+      this.editable.style.width = `${obb.width}px`;
+      this.editable.style.height = `${obb.height}px`;
 
       this.api.deselectNodes([node]);
       this.api.unhighlightNodes([node]);
@@ -183,13 +185,11 @@ export class TextEditor extends LitElement {
         content: '',
         anchorX: wx,
         anchorY: wy,
-        fontSize: 16,
-        fontFamily: 'system-ui',
-        // textAlign: 'left',
-        // textBaseline: 'alphabetic',
-        fill: 'black',
+        ...this.appState.penbarText,
       };
       inferXYWidthHeight(this.node);
+
+      this.updateTextareaStyle(this.appState.penbarText);
     }
 
     if (!this.node) {
@@ -298,6 +298,52 @@ export class TextEditor extends LitElement {
       this.editable.style.left = `${x}px`;
       this.editable.style.top = `${y}px`;
       this.editable.style.transform = `scale(${zoom})`;
+    }
+  }
+
+  private updateTextareaStyle(node: Partial<TextSerializedNode>) {
+    const {
+      fontFamily,
+      fontSize,
+      fontWeight,
+      fontStyle,
+      fontVariant,
+      fill,
+      opacity,
+      textAlign,
+      textBaseline,
+      letterSpacing,
+    } = node;
+
+    if (fontFamily) {
+      this.editable.style.fontFamily = fontFamily;
+    }
+    if (fontSize) {
+      this.editable.style.fontSize = `${fontSize}px`;
+    }
+    if (fontWeight) {
+      this.editable.style.fontWeight = fontWeight.toString();
+    }
+    if (fontStyle) {
+      this.editable.style.fontStyle = fontStyle;
+    }
+    if (fontVariant) {
+      this.editable.style.fontVariant = fontVariant;
+    }
+    if (fill) {
+      this.editable.style.color = fill;
+    }
+    if (opacity) {
+      this.editable.style.opacity = opacity.toString();
+    }
+    if (textAlign) {
+      this.editable.style.textAlign = textAlign;
+    }
+    if (textBaseline) {
+      // this.editable.style.textBaseline = textBaseline;
+    }
+    if (letterSpacing) {
+      this.editable.style.letterSpacing = letterSpacing.toString();
     }
   }
 

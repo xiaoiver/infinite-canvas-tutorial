@@ -214,35 +214,38 @@ export interface PathSerializedNode
     Partial<AttenuationAttributes>,
     Partial<WireframeAttributes> {}
 
+export interface TextAttributes
+  extends Partial<
+    Pick<
+      Text,
+      | 'anchorX'
+      | 'anchorY'
+      | 'content'
+      | 'fontFamily'
+      | 'fontSize'
+      | 'fontWeight'
+      | 'fontStyle'
+      | 'fontVariant'
+      | 'letterSpacing'
+      | 'lineHeight'
+      | 'whiteSpace'
+      | 'wordWrap'
+      | 'wordWrapWidth'
+      | 'textOverflow'
+      | 'maxLines'
+      | 'textAlign'
+      | 'textBaseline'
+      | 'leading'
+      | 'bitmapFont'
+      | 'bitmapFontKerning'
+      | 'physical'
+      | 'esdt'
+    >
+  > {}
+
 export interface TextSerializedNode
   extends BaseSerializeNode<'text'>,
-    Partial<
-      Pick<
-        Text,
-        | 'anchorX'
-        | 'anchorY'
-        | 'content'
-        | 'fontFamily'
-        | 'fontSize'
-        | 'fontWeight'
-        | 'fontStyle'
-        | 'fontVariant'
-        | 'letterSpacing'
-        | 'lineHeight'
-        | 'whiteSpace'
-        | 'wordWrap'
-        | 'wordWrapWidth'
-        | 'textOverflow'
-        | 'maxLines'
-        | 'textAlign'
-        | 'textBaseline'
-        | 'leading'
-        | 'bitmapFont'
-        | 'bitmapFontKerning'
-        | 'physical'
-        | 'esdt'
-      >
-    >,
+    Partial<TextAttributes>,
     Partial<{
       fontBoundingBoxAscent: number;
       fontBoundingBoxDescent: number;

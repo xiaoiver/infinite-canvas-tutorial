@@ -8,6 +8,7 @@ import {
   RoughAttributes,
   SerializedNode,
   StrokeAttributes,
+  TextSerializedNode,
 } from './utils';
 
 export enum Task {
@@ -39,6 +40,7 @@ export interface AppState {
     RoughAttributes & StrokeAttributes & FillAttributes
   >;
   penbarPencil: Partial<StrokeAttributes>;
+  penbarText: Partial<TextSerializedNode>;
   taskbarVisible: boolean;
   taskbarAll: Task[];
   taskbarSelected: Task[];
@@ -143,6 +145,11 @@ export const getDefaultAppState: () => AppState = () => {
       stroke: TRANSFORMER_ANCHOR_STROKE_COLOR,
       strokeWidth: 1,
       strokeOpacity: 1,
+    },
+    penbarText: {
+      fontFamily: 'system-ui',
+      fontSize: 16,
+      fill: 'black',
     },
     taskbarVisible: true,
     taskbarAll: [Task.SHOW_LAYERS_PANEL, Task.SHOW_PROPERTIES_PANEL],
