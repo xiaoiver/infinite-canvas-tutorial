@@ -104,6 +104,7 @@ export const getDefaultAppState: () => AppState = () => {
       Pen.DRAW_LINE,
       Pen.DRAW_ROUGH_RECT,
       Pen.IMAGE,
+      Pen.TEXT,
       Pen.PENCIL,
       Pen.BRUSH,
       Pen.VECTOR_NETWORK,

@@ -8,13 +8,6 @@ import { ExtendedAPI } from '../API';
 import { fileOpen } from '../utils';
 import { createImage } from './context-menu';
 
-// const PenMap = {
-//   [Pen.VECTOR_NETWORK]: {
-//     icon: html`<sp-icon-shapes slot="icon"></sp-icon-shapes>`,
-//     label: 'Vector Network',
-//   },
-// };
-
 @customElement('ic-spectrum-penbar')
 export class Penbar extends LitElement {
   static styles = css`
@@ -253,6 +246,15 @@ export class Penbar extends LitElement {
             `,
           )}
           ${when(
+            penbarAll.includes(Pen.TEXT),
+            () => html`
+              <sp-action-button value="${Pen.TEXT}">
+                <sp-icon-text slot="icon"></sp-icon-text>
+                <sp-tooltip self-managed placement="right"> Text </sp-tooltip>
+              </sp-action-button>
+            `,
+          )}
+          ${when(
             penbarAll.includes(Pen.PENCIL),
             () => html`
               <overlay-trigger placement="right">
@@ -278,6 +280,17 @@ export class Penbar extends LitElement {
               <sp-action-button value="${Pen.BRUSH}">
                 <sp-icon-brush slot="icon"></sp-icon-brush>
                 <sp-tooltip self-managed placement="right"> Brush </sp-tooltip>
+              </sp-action-button>
+            `,
+          )}
+          ${when(
+            penbarAll.includes(Pen.VECTOR_NETWORK),
+            () => html`
+              <sp-action-button value="${Pen.VECTOR_NETWORK}">
+                <sp-icon-shapes slot="icon"></sp-icon-shapes>
+                <sp-tooltip self-managed placement="right">
+                  Vector Network
+                </sp-tooltip>
               </sp-action-button>
             `,
           )}

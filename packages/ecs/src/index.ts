@@ -39,6 +39,7 @@ export {
   createPasteEvent,
   readSystemClipboard,
   isSupportedImageFileType,
+  inferXYWidthHeight,
   MIME_TYPES,
   type Gradient,
   type SerializedNode,

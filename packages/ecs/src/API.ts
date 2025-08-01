@@ -176,7 +176,7 @@ export class API {
   }
 
   getEntity(node: SerializedNode) {
-    return this.#idEntityMap.get(node.id).id();
+    return this.#idEntityMap.get(node.id)?.id();
   }
 
   getNodeById(id: string) {
@@ -652,11 +652,7 @@ export class API {
    * @see https://infinitecanvas.cc/guide/lesson-005
    */
   setCheckboardStyle(checkboardStyle: CheckboardStyle) {
-    if (!this.#canvas.has(Grid)) {
-      this.#canvas.add(Grid);
-    }
-
-    Object.assign(this.#canvas.write(Grid), {
+    safeAddComponent(this.#canvas, Grid, {
       checkboardStyle,
     });
 

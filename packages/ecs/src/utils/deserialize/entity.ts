@@ -58,7 +58,7 @@ import { isGradient } from '../gradient';
 import { isPattern } from '../pattern';
 import { computeBidi, measureText } from '../../systems/ComputeTextMetrics';
 
-function inferXYWidthHeight(node: SerializedNode) {
+export function inferXYWidthHeight(node: SerializedNode) {
   const { type } = node;
   let bounds: AABB;
   if (type === 'ellipse') {

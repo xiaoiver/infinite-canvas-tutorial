@@ -76,6 +76,8 @@ export class CameraControl extends System {
 
       if (pen === Pen.HAND) {
         cursor.value = 'grab';
+      } else if (pen === Pen.TEXT) {
+        cursor.value = 'text';
       }
 
       if (input.pointerDownTrigger) {

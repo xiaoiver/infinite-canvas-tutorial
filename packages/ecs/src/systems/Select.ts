@@ -109,8 +109,9 @@ export class Select extends System {
     this.query(
       (q) =>
         q
-          .using(Canvas, ComputedCameraControl)
+          .using(ComputedCameraControl)
           .read.update.and.using(
+            Canvas,
             GlobalTransform,
             InputPoint,
             Input,
@@ -561,12 +562,6 @@ export class Select extends System {
       const pen = api.getAppState().penbarSelected[0];
 
       if (pen !== Pen.SELECT) {
-        // if (selection.brush) {
-        //   // Hide selection brush
-        //   selection.brush.write(Visibility).value = 'hidden';
-        //   selection.brush = undefined;
-        // }
-
         // Clear selection
         api.selectNodes([]);
         api.highlightNodes([]);

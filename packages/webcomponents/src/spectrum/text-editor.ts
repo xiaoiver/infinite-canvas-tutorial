@@ -8,9 +8,11 @@ import {
   ComputedBounds,
   ComputedCamera,
   measureText,
+  Pen,
   Text,
   TextSerializedNode,
   UI,
+  inferXYWidthHeight,
 } from '@infinite-canvas-tutorial/ecs';
 import { v4 as uuidv4 } from 'uuid';
 import { apiContext, appStateContext } from '../context';
@@ -76,10 +78,21 @@ export class TextEditor extends LitElement {
 
     if (content.trim() !== '' && content.trim() !== this.node.content) {
       this.api.runAtNextTick(() => {
-        this.api.updateNode(this.node, {
-          content,
-          visibility: 'visible',
-        });
+        const entity = this.api.getEntity(this.node);
+        if (!entity) {
+          const { x, y, width, height, ...rest } = this.node;
+          this.api.updateNode({
+            ...rest,
+            content,
+            visibility: 'visible',
+          });
+        } else {
+          this.api.updateNode(this.node, {
+            content,
+            visibility: 'visible',
+          });
+        }
+
         this.api.record();
       });
     } else {
@@ -94,11 +107,23 @@ export class TextEditor extends LitElement {
       });
     }
 
+    const isPenSelect = this.appState.penbarSelected.includes(Pen.SELECT);
+    if (!isPenSelect) {
+      this.api.setPen(Pen.SELECT);
+    }
+
     this.editable.style.display = 'none';
     this.editable.value = '';
   };
 
   private handleDblclick = (event: MouseEvent) => {
+    const isPenSelect = this.appState.penbarSelected.includes(Pen.SELECT);
+    const isPenText = this.appState.penbarSelected.includes(Pen.TEXT);
+
+    if (!isPenSelect && !isPenText) {
+      return;
+    }
+
     const { x: vx, y: vy } = this.api.client2Viewport({
       x: event.clientX,
       y: event.clientY,
@@ -113,27 +138,7 @@ export class TextEditor extends LitElement {
 
     this.node = undefined;
 
-    // Create a new text node if blank area is clicked.
-    if (!entity) {
-      return;
-
-      this.node = {
-        id: uuidv4(),
-        type: 'text',
-        content: '',
-        anchorX: wx,
-        anchorY: wy,
-        x: wx,
-        y: wy - 16,
-        width: 0,
-        height: 0,
-        fontSize: 16,
-        fontFamily: 'system-ui',
-        textAlign: 'left',
-        textBaseline: 'alphabetic',
-        fill: 'black',
-      };
-    } else if (entity.has(Text)) {
+    if (isPenSelect && entity && entity.has(Text)) {
       // Edit the existing text node.
       const node = this.api.getNodeByEntity(entity) as TextSerializedNode;
 
@@ -167,6 +172,24 @@ export class TextEditor extends LitElement {
         },
         false,
       );
+    }
+
+    if (isPenText) {
+      // Create a new text node if blank area is clicked.
+      // TODO: use default params in pen text
+      this.node = {
+        id: uuidv4(),
+        type: 'text',
+        content: '',
+        anchorX: wx,
+        anchorY: wy,
+        fontSize: 16,
+        fontFamily: 'system-ui',
+        // textAlign: 'left',
+        // textBaseline: 'alphabetic',
+        fill: 'black',
+      };
+      inferXYWidthHeight(this.node);
     }
 
     if (!this.node) {
