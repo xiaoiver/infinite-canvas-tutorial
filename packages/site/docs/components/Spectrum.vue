@@ -8,19 +8,21 @@ import {
 } from '@infinite-canvas-tutorial/ecs';
 import { ref, onMounted, onUnmounted } from 'vue';
 import { Event, UIPlugin } from '@infinite-canvas-tutorial/webcomponents';
-import WebFont from 'webfontloader';
-
-WebFont.load({
-  google: {
-    families: ['Gaegu'],
-  },
-});
 
 const wrapper = ref<HTMLElement | null>(null);
 let api: any | undefined;
 let onReady: ((api: CustomEvent<any>) => void) | undefined;
 
 onMounted(async () => {
+  import('webfontloader').then((module) => {
+    const WebFont = module.default;
+    WebFont.load({
+      google: {
+        families: ['Gaegu'],
+      },
+    });
+  });
+
   const res = await fetch('/maslow-hierarchy.svg');
   const svg = await res.text();
   // TODO: extract semantic groups inside comments

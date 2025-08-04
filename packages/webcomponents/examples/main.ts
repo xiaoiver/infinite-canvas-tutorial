@@ -83,7 +83,7 @@ canvas.addEventListener(Event.READY, async (e) => {
       // fill: 'blob:http://localhost:8080/cd5e4cd2-3387-4874-b792-128d82644004',
       // fill: 'radial-gradient(circle at center, red, blue, green 100%)',
       zIndex: 1,
-    },
+    } as const,
     // {
     //   id: '2',
     //   type: 'text',
