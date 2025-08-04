@@ -55,10 +55,10 @@ onMounted(async () => {
 
     api.setAppState({
       ...api.getAppState(),
+      penbarSelected: Pen.SELECT,
       penbarVisible: false,
       taskbarVisible: false,
     });
-    api.setPen(Pen.SELECT);
 
     api.updateNodes(nodes);
     api.record();

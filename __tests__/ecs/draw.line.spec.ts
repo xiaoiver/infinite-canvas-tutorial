@@ -85,7 +85,9 @@ describe('Draw line', () => {
           zoom: 1,
         });
 
-        api.setPen(Pen.DRAW_LINE);
+        api.setAppState({
+          penbarSelected: Pen.DRAW_LINE,
+        });
       }
     }
 

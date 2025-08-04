@@ -370,12 +370,12 @@ if (pen === Pen.IMAGE) {
         });
         if (file) {
             createImage(this.api, this.appState, file);
-            this.api.setPen(Pen.SELECT);
+            this.api.setAppState({ penbarSelected: Pen.SELECT });
             this.api.record();
         }
     } catch (e) {
         // User cancels upload and returns to selection mode
-        this.api.setPen(Pen.SELECT);
+        this.api.setAppState({ penbarSelected: Pen.SELECT });
     }
 }
 ```

@@ -30,7 +30,6 @@ import {
   AABB,
   Camera,
   Canvas,
-  CheckboardStyle,
   Children,
   ComputedCamera,
   Cursor,
@@ -159,8 +158,20 @@ export class API {
     return this.stateManagement.getAppState();
   }
 
-  setAppState(appState: AppState) {
-    this.stateManagement.setAppState(appState);
+  setAppState(appState: Partial<AppState>) {
+    const oldAppState = this.getAppState();
+    const { checkboardStyle } = appState;
+
+    if (checkboardStyle && checkboardStyle !== oldAppState.checkboardStyle) {
+      safeAddComponent(this.#canvas, Grid, {
+        checkboardStyle,
+      });
+    }
+
+    this.stateManagement.setAppState({
+      ...oldAppState,
+      ...appState,
+    });
   }
 
   getNodes() {
@@ -644,50 +655,6 @@ export class API {
     Object.assign(this.#canvas.write(Canvas), {
       width,
       height,
-    });
-  }
-
-  /**
-   * Set the checkboard style.
-   * @see https://infinitecanvas.cc/guide/lesson-005
-   */
-  setCheckboardStyle(checkboardStyle: CheckboardStyle) {
-    safeAddComponent(this.#canvas, Grid, {
-      checkboardStyle,
-    });
-
-    const prevAppState = this.getAppState();
-    this.setAppState({
-      ...prevAppState,
-      checkboardStyle,
-    });
-  }
-
-  setPen(pen: Pen) {
-    Object.assign(this.#canvas.write(Canvas), {
-      pen,
-    });
-
-    const prevAppState = this.getAppState();
-    this.setAppState({
-      ...prevAppState,
-      penbarSelected: [pen],
-    });
-  }
-
-  setTaskbars(selected: Task[]) {
-    const prevAppState = this.getAppState();
-    this.setAppState({
-      ...prevAppState,
-      taskbarSelected: selected,
-    });
-  }
-
-  setPropertiesOpened(propertiesOpened: SerializedNode['id'][]) {
-    const prevAppState = this.getAppState();
-    this.setAppState({
-      ...prevAppState,
-      propertiesOpened,
     });
   }
 

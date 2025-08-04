@@ -32,7 +32,7 @@ export interface AppState {
   topbarVisible: boolean;
   penbarVisible: boolean;
   penbarAll: Pen[];
-  penbarSelected: Pen[];
+  penbarSelected: Pen;
   penbarDrawRect: Partial<StrokeAttributes & FillAttributes>;
   penbarDrawEllipse: Partial<StrokeAttributes & FillAttributes>;
   penbarDrawLine: Partial<StrokeAttributes>;
@@ -111,7 +111,7 @@ export const getDefaultAppState: () => AppState = () => {
       Pen.BRUSH,
       Pen.VECTOR_NETWORK,
     ],
-    penbarSelected: [Pen.HAND],
+    penbarSelected: Pen.HAND,
     penbarDrawRect: {
       fill: TRANSFORMER_MASK_FILL_COLOR,
       fillOpacity: 0.5,
@@ -149,6 +149,7 @@ export const getDefaultAppState: () => AppState = () => {
     penbarText: {
       fontFamily: 'system-ui',
       fontSize: 16,
+      fontStyle: 'normal',
       fill: 'black',
     },
     taskbarVisible: true,

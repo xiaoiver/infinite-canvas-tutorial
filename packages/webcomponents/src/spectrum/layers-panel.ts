@@ -84,11 +84,11 @@ export class LayersPanel extends LitElement {
   }
 
   private handleClose() {
-    this.api.setTaskbars(
-      this.appState.taskbarSelected.filter(
+    this.api.setAppState({
+      taskbarSelected: this.appState.taskbarSelected.filter(
         (task) => task !== Task.SHOW_LAYERS_PANEL,
       ),
-    );
+    });
   }
 
   private handleDelete() {

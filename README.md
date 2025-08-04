@@ -173,7 +173,7 @@ If you want to use it in your own project, you can refer to:
 
 <img src="./screenshots/lesson12.png" width="300" alt="Lesson 12 - polyline">
 
-## Lesson 13 - Draw path and hand-drawn shapes [🔗](https://infinitecanvas.cc/guide/lesson-013)
+## Lesson 13 - Draw path and sketchy style [🔗](https://infinitecanvas.cc/guide/lesson-013)
 
 -   Experimenting with SDF
 -   Trying to draw fills using some triangulating methods and strokes using polylines
@@ -193,7 +193,7 @@ If you want to use it in your own project, you can refer to:
 
 <img src="./screenshots/lesson14.png" width="300" alt="Lesson 14 - canvas mode">
 
-## Lesson 15 - Draw text [🔗](https://infinitecanvas.cc/guide/lesson-015)
+## Lesson 15 - Text rendering [🔗](https://infinitecanvas.cc/guide/lesson-015)
 
 -   What's TextMetrics and how to get it in server and browser side
 -   What's shaping? Implement letterSpacing and kerning
@@ -211,7 +211,7 @@ If you want to use it in your own project, you can refer to:
 | :-----------------------------------------------------------: | :--------------------------------------------: |
 | ![Linear, Radial, Conic Gradient](./screenshots/lesson15.png) | ![Mesh Gradient](./screenshots/lesson15-2.png) |
 
-## Lesson 16 - Advanced text features [🔗](https://infinitecanvas.cc/guide/lesson-016)
+## Lesson 16 - Text advanced features [🔗](https://infinitecanvas.cc/guide/lesson-016)
 
 -   Using Bezier curves to render text, shaping with OpenType and Harfbuzz
 -   Render TeX math

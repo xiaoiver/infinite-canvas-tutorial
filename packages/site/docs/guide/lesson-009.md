@@ -6,20 +6,20 @@ head:
           'meta',
           {
               property: 'og:title',
-              content: 'Lesson 9 - Drawing Ellipses and Rectangles',
+              content: 'Lesson 9 - Drawing ellipse and rectangle',
           },
       ]
 ---
 
-# Lesson 9 - Drawing Ellipses and Rectangles
+# Lesson 9 - Drawing ellipse and rectangle
 
 In this lesson, you will learn the following:
 
--   Derive the SDF representations for ellipses and rounded rectangles
--   Add drop and inner shadows to rounded rectangles and other SDFs
+-   Derive the SDF representations for ellipse and rounded rectangle
+-   Add drop and inner shadows to rounded rectangle and other SDFs
 -   Determine whether any point is inside an ellipse or a rounded rectangle
 
-In [Lesson 2], we used SDFs to draw circles, and it is easy to extend this to ellipses and rectangles. [2D distance functions] provide more SDF expressions for 2D graphics:
+In [Lesson 2], we used SDFs to draw circles, and it is easy to extend this to ellipse and rectangle. [2D distance functions] provide more SDF expressions for 2D graphics:
 
 ```glsl
 float sdf_ellipse(vec2 p, vec2 r) {}

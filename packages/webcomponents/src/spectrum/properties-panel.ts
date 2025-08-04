@@ -44,11 +44,11 @@ export class PropertiesPanel extends LitElement {
   api: API;
 
   private handleClose() {
-    this.api.setTaskbars(
-      this.appState.taskbarSelected.filter(
+    this.api.setAppState({
+      taskbarSelected: this.appState.taskbarSelected.filter(
         (task) => task !== Task.SHOW_PROPERTIES_PANEL,
       ),
-    );
+    });
   }
 
   render() {

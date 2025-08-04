@@ -89,7 +89,7 @@ export class EditVectorNetwork extends System {
       }
 
       const { inputPoints, api } = canvas.read(Canvas);
-      const pen = api.getAppState().penbarSelected[0];
+      const pen = api.getAppState().penbarSelected;
 
       if (pen !== Pen.VECTOR_NETWORK) {
         return;

@@ -7,7 +7,7 @@ description: '实现具有高级功能的折线绘制，包括任意线宽、str
 import Wireframe from '../../components/Wireframe.vue';
 </script>
 
-# 课程 12 - 折线
+# 课程 12 - 绘制折线
 
 让我们继续添加基础图形：折线。在这节课中你将学习到以下内容：
 

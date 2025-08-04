@@ -263,13 +263,13 @@ onMounted(async () => {
 
     api.setAppState({
       ...api.getAppState(),
+      penbarSelected: Pen.SELECT,
       contextBarVisible: false,
       penbarVisible: false,
       taskbarVisible: false,
       rotateEnabled: false,
       flipEnabled: false,
     });
-    api.setPen(Pen.SELECT);
 
     const module = await import('webfontloader');
     const WebFont = module.default;

@@ -1,11 +1,8 @@
 import {
   Canvas,
   ComputedCamera,
-  Pen,
   SerializedNode,
-  CheckboardStyle,
   API,
-  Task,
   StateManagement,
   Commands,
 } from '@infinite-canvas-tutorial/ecs';
@@ -38,34 +35,6 @@ export class ExtendedAPI extends API {
 
     this.element.dispatchEvent(
       new CustomEvent(Event.RESIZED, { detail: { width, height } }),
-    );
-  }
-
-  setCheckboardStyle(checkboardStyle: CheckboardStyle) {
-    super.setCheckboardStyle(checkboardStyle);
-
-    this.element.dispatchEvent(
-      new CustomEvent(Event.CHECKBOARD_STYLE_CHANGED, {
-        detail: { checkboardStyle },
-      }),
-    );
-  }
-
-  setPen(pen: Pen) {
-    super.setPen(pen);
-
-    this.element.dispatchEvent(
-      new CustomEvent(Event.PEN_CHANGED, {
-        detail: { selected: [pen] },
-      }),
-    );
-  }
-
-  setTaskbars(selected: Task[]) {
-    super.setTaskbars(selected);
-
-    this.element.dispatchEvent(
-      new CustomEvent(Event.TASK_CHANGED, { detail: { selected } }),
     );
   }
 

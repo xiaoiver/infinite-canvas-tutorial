@@ -22,8 +22,8 @@ onMounted(async () => {
 
     api.setAppState({
       ...api.getAppState(),
+      penbarSelected: Pen.DRAW_RECT,
     });
-    api.setPen(Pen.DRAW_RECT);
     api.updateNode({
       id: 'draw-rect-1',
       type: 'rect',

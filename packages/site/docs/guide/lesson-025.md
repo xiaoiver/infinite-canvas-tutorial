@@ -75,7 +75,7 @@ export class DrawRect extends System {
                 width,
                 height,
             };
-            api.setPen(Pen.SELECT); // Switch canvas mode
+            api.setAppState({ penbarSelected: Pen.SELECT }); // Switch canvas mode
             api.updateNode(node);
             api.record(); // Save to history
         }

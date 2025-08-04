@@ -135,7 +135,7 @@ export class DrawRect extends System {
 
       const { inputPoints, api } = canvas.read(Canvas);
       const appState = api.getAppState();
-      const pen = appState.penbarSelected[0];
+      const pen = appState.penbarSelected;
       const defaultDrawParams: Record<
         Pen.DRAW_RECT | Pen.DRAW_ELLIPSE | Pen.DRAW_LINE | Pen.DRAW_ROUGH_RECT,
         Partial<RoughAttributes & StrokeAttributes & FillAttributes>
@@ -245,7 +245,10 @@ export class DrawRect extends System {
                   height,
                 },
           );
-          api.setPen(Pen.SELECT);
+          api.setAppState({
+            penbarSelected: Pen.SELECT,
+          });
+
           api.updateNode(node);
           api.selectNodes([node]);
           api.record();

@@ -22,8 +22,8 @@ onMounted(async () => {
 
     api.setAppState({
       ...api.getAppState(),
+      penbarSelected: Pen.PENCIL,
     });
-    api.setPen(Pen.PENCIL);
   };
 
   canvas.addEventListener(Event.READY, onReady);

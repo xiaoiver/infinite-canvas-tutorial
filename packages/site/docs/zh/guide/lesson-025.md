@@ -69,7 +69,7 @@ export class DrawRect extends System {
                 width,
                 height,
             };
-            api.setPen(Pen.SELECT); // 模式切换
+            api.setAppState({ penbarSelected: Pen.SELECT }); // 模式切换
             api.updateNode(node);
             api.record(); // 保存历史记录
         }

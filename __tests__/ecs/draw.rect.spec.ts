@@ -85,7 +85,9 @@ describe('Draw rect', () => {
           zoom: 1,
         });
 
-        api.setPen(Pen.DRAW_RECT);
+        api.setAppState({
+          penbarSelected: Pen.DRAW_RECT,
+        });
       }
     }
 

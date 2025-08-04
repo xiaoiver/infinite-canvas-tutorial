@@ -85,7 +85,9 @@ describe('Draw ellipse', () => {
           zoom: 1,
         });
 
-        api.setPen(Pen.DRAW_ELLIPSE);
+        api.setAppState({
+          penbarSelected: Pen.DRAW_ELLIPSE,
+        });
       }
     }
 

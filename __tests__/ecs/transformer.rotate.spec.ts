@@ -102,7 +102,9 @@ describe('Transformer when rotate', () => {
           rotation: Math.PI / 4,
           visibility: 'visible',
         };
-        api.setPen(Pen.SELECT);
+        api.setAppState({
+          penbarSelected: Pen.SELECT,
+        });
         api.updateNodes([node]);
         api.selectNodes([node]);
 
@@ -110,7 +112,7 @@ describe('Transformer when rotate', () => {
           .getEntity({
             id: '1',
           })
-          .hold();
+          ?.hold();
       }
     }
 

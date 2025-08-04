@@ -22,7 +22,9 @@ onMounted(async () => {
     api = e.detail;
 
     api.runAtNextTick(() => {
-      api.setPen(Pen.SELECT);
+      api.setAppState({
+        penbarSelected: Pen.TEXT,
+      });
 
       const nodes = [
         {

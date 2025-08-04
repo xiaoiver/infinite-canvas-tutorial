@@ -119,12 +119,12 @@ describe('Ellipse', () => {
           .getEntity({
             id: '1',
           })
-          .hold();
+          ?.hold();
         childEntity = api
           .getEntity({
             id: '2',
           })
-          .hold();
+          ?.hold();
       }
     }
 

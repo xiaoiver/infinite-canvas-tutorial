@@ -369,12 +369,12 @@ if (pen === Pen.IMAGE) {
         });
         if (file) {
             createImage(this.api, this.appState, file);
-            this.api.setPen(Pen.SELECT);
+            this.api.setAppState({ penbarSelected: Pen.SELECT });
             this.api.record();
         }
     } catch (e) {
         // 用户取消上传，退回选择模式
-        this.api.setPen(Pen.SELECT);
+        this.api.setAppState({ penbarSelected: Pen.SELECT });
     }
 }
 ```

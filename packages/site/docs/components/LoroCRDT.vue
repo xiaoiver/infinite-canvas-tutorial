@@ -172,8 +172,10 @@ onMounted(async () => {
       height: 100,
     } as SerializedNode;
 
-    api.setPen(Pen.SELECT);
-    api.setTaskbars([Task.SHOW_LAYERS_PANEL]);
+    api.setAppState({
+      penbarSelected: Pen.SELECT,
+      taskbarSelected: [Task.SHOW_LAYERS_PANEL],
+    });
 
     api.updateNodes([node]);
     api.record();

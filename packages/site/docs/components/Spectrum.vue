@@ -34,9 +34,10 @@ onMounted(async () => {
     api = e.detail;
 
     api.runAtNextTick(() => {
-
-      api.setPen(Pen.SELECT);
-      api.setTaskbars([Task.SHOW_LAYERS_PANEL]);
+      api.setAppState({
+        penbarSelected: Pen.SELECT,
+        taskbarSelected: [Task.SHOW_LAYERS_PANEL],
+      });
 
       api.updateNodes(nodes);
       api.selectNodes([nodes[0]]);

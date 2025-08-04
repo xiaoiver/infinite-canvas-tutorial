@@ -114,9 +114,13 @@ export class TopNavbar extends LitElement {
   private handleConfigView(event: CustomEvent) {
     const value = (event.target as any).value;
     if (value === 'grid') {
-      this.api.setCheckboardStyle(CheckboardStyle.GRID);
+      this.api.setAppState({
+        checkboardStyle: CheckboardStyle.GRID,
+      });
     } else {
-      this.api.setCheckboardStyle(CheckboardStyle.NONE);
+      this.api.setAppState({
+        checkboardStyle: CheckboardStyle.NONE,
+      });
     }
   }
 

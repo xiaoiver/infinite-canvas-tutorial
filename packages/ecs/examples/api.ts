@@ -1,13 +1,11 @@
 import {
   App,
-  Entity,
   Commands,
   System,
   Transform,
   Parent,
   Children,
   DefaultPlugins,
-  GlobalTransform,
   Camera,
   Grid,
   Theme,
@@ -98,8 +96,10 @@ class StartUpSystem extends System {
       zoom: 1,
     });
 
-    api.setPen(Pen.SELECT);
-    api.setTaskbars([Task.SHOW_LAYERS_PANEL, Task.SHOW_PROPERTIES_PANEL]);
+    api.setAppState({
+      penbarSelected: Pen.SELECT,
+      taskbarSelected: [Task.SHOW_LAYERS_PANEL, Task.SHOW_PROPERTIES_PANEL],
+    });
 
     const node = {
       id: '1',

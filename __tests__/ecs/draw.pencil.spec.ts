@@ -85,7 +85,9 @@ describe('Draw polyline in pencil canvas mode', () => {
           zoom: 1,
         });
 
-        api.setPen(Pen.PENCIL);
+        api.setAppState({
+          penbarSelected: Pen.PENCIL,
+        });
       }
     }
 

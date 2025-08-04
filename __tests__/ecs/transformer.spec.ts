@@ -101,7 +101,9 @@ describe('Transformer', () => {
           height: 100,
           visibility: 'visible',
         };
-        api.setPen(Pen.SELECT);
+        api.setAppState({
+          penbarSelected: Pen.SELECT,
+        });
         api.updateNodes([node]);
         api.selectNodes([node]);
 
@@ -109,7 +111,7 @@ describe('Transformer', () => {
           .getEntity({
             id: '1',
           })
-          .hold();
+          ?.hold();
       }
     }
 

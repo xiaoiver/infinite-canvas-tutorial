@@ -107,9 +107,11 @@ export class TextEditor extends LitElement {
       });
     }
 
-    const isPenSelect = this.appState.penbarSelected.includes(Pen.SELECT);
+    const isPenSelect = this.appState.penbarSelected === Pen.SELECT;
     if (!isPenSelect) {
-      this.api.setPen(Pen.SELECT);
+      this.api.setAppState({
+        penbarSelected: Pen.SELECT,
+      });
     }
 
     this.editable.style.display = 'none';
@@ -117,8 +119,8 @@ export class TextEditor extends LitElement {
   };
 
   private handleDblclick = (event: MouseEvent) => {
-    const isPenSelect = this.appState.penbarSelected.includes(Pen.SELECT);
-    const isPenText = this.appState.penbarSelected.includes(Pen.TEXT);
+    const isPenSelect = this.appState.penbarSelected === Pen.SELECT;
+    const isPenText = this.appState.penbarSelected === Pen.TEXT;
 
     if (!isPenSelect && !isPenText) {
       return;
@@ -146,12 +148,6 @@ export class TextEditor extends LitElement {
       this.node = node;
 
       this.editable.value = node.content;
-      // this.editable.style.fontFamily = node.fontFamily;
-      // this.editable.style.fontWeight =
-      //   node.fontWeight && node.fontWeight.toString();
-      // this.editable.style.fontSize = `${node.fontSize}px`;
-      // this.editable.style.fontStyle = node.fontStyle;
-      // this.editable.style.fontVariant = node.fontVariant;
       // this.editable.style.color = node.fill;
       // this.editable.style.opacity = node.opacity && node.opacity.toString();
       // this.editable.style.textAlign = node.textAlign;

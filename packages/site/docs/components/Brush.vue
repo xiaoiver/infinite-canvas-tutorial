@@ -22,8 +22,8 @@ onMounted(async () => {
 
     api.setAppState({
       ...api.getAppState(),
+      penbarSelected: Pen.SELECT,
     });
-    api.setPen(Pen.SELECT);
 
     // Generate sinewave geometry
     const maxRadius = (1 / 3) * 100;

@@ -9,7 +9,7 @@ head:
 import Wireframe from '../components/Wireframe.vue';
 </script>
 
-# Lesson 12 - Polylines
+# Lesson 12 - Draw polyline
 
 Let's continue adding basic shapes: polylines. In this lesson, you will learn the following:
 

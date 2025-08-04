@@ -63,7 +63,10 @@ export class Penbar extends LitElement {
       return;
     }
 
-    this.api.setPen(pen);
+    this.api.setAppState({
+      penbarSelected: pen,
+    });
+
     if (
       pen === Pen.DRAW_RECT ||
       pen === Pen.DRAW_ELLIPSE ||
@@ -83,11 +86,15 @@ export class Penbar extends LitElement {
             y: this.api.element.clientHeight / 2,
           });
           createImage(this.api, this.appState, file, center);
-          this.api.setPen(Pen.SELECT);
+          this.api.setAppState({
+            penbarSelected: Pen.SELECT,
+          });
           this.api.record();
         }
       } catch (e) {
-        this.api.setPen(Pen.SELECT);
+        this.api.setAppState({
+          penbarSelected: Pen.SELECT,
+        });
       }
     }
   }
@@ -106,7 +113,9 @@ export class Penbar extends LitElement {
       event.preventDefault();
       event.stopPropagation();
 
-      this.api.setPen(pen);
+      this.api.setAppState({
+        penbarSelected: pen,
+      });
       this.lastDrawPen = pen;
     }
   }
@@ -141,7 +150,7 @@ export class Penbar extends LitElement {
           class="penbar"
           vertical
           selects="single"
-          .selected=${penbarSelected}
+          .selected=${[penbarSelected]}
           @change=${this.handlePenChanged}
           emphasized
           quiet
@@ -199,7 +208,7 @@ export class Penbar extends LitElement {
               <sp-menu
                 @change=${this.handlePenChanged}
                 selects="single"
-                .selected=${penbarSelected}
+                .selected=${[penbarSelected]}
               >
                 ${when(
                   penbarAll.includes(Pen.DRAW_RECT),
@@ -248,21 +257,22 @@ export class Penbar extends LitElement {
           ${when(
             penbarAll.includes(Pen.TEXT),
             () => html`
-              <sp-action-button value="${Pen.TEXT}">
-                <sp-icon-text slot="icon"></sp-icon-text>
-                <sp-tooltip self-managed placement="right"> Text </sp-tooltip>
-              </sp-action-button>
+              <overlay-trigger placement="right">
+                <sp-action-button value="${Pen.TEXT}" slot="trigger">
+                  <sp-icon-text slot="icon"></sp-icon-text>
+                  <sp-tooltip self-managed placement="right"> Text </sp-tooltip>
+                </sp-action-button>
+                <sp-popover slot="hover-content" style="padding: 8px;">
+                  <ic-spectrum-penbar-text-settings></ic-spectrum-penbar-text-settings>
+                </sp-popover>
+              </overlay-trigger>
             `,
           )}
           ${when(
             penbarAll.includes(Pen.PENCIL),
             () => html`
               <overlay-trigger placement="right">
-                <sp-action-button
-                  value="${Pen.PENCIL}"
-                  hold-affordance
-                  slot="trigger"
-                >
+                <sp-action-button value="${Pen.PENCIL}" slot="trigger">
                   <sp-icon-annotate-pen slot="icon"></sp-icon-annotate-pen>
                   <sp-tooltip self-managed placement="right">
                     Pencil

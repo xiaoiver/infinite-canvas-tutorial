@@ -6,7 +6,7 @@ head:
           'meta',
           {
               property: 'og:title',
-              content: 'Lesson 16 - Advanced Text Features',
+              content: 'Lesson 16 - Text advanced features',
           },
       ]
 ---
@@ -24,7 +24,7 @@ import PhysicalText from '../components/PhysicalText.vue';
 import TextEditor from '../components/TextEditor.vue';
 </script>
 
-# Lesson 16 - Advanced Text Features
+# Lesson 16 - Text advanced features
 
 In the previous lesson, we introduced the principles of SDF-based text rendering, experimented with ESDT and MSDF to improve rendering quality, and mentioned the advanced text rendering features that CanvasKit provides compared to Canvas.
 

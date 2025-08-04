@@ -6,7 +6,7 @@ head:
           'meta',
           {
               property: 'og:title',
-              content: 'Lesson 13 - Drawing a Path & Hand Drawn Styles',
+              content: 'Lesson 13 - Drawing path and sketchy style',
           },
       ]
 ---
@@ -16,7 +16,7 @@ import Holes from '../components/Holes.vue';
 import FillRule from '../components/FillRule.vue';
 </script>
 
-# Lesson 13 - Drawing a Path & Hand Drawn Styles
+# Lesson 13 - Drawing path and sketchy style
 
 In the previous lesson we introduced the drawing of a polyline, the stroke part of a Path can theoretically be converted to a polyline by sampling, [p5js - bezierDetail()] does this, but for a smooth effect you need to add more sampling points. But the fill part still needs to be implemented. We'll cover that in this lesson:
 

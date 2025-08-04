@@ -52,13 +52,15 @@ export class Taskbar extends LitElement {
   api: API;
 
   private handleTaskChanged(e: CustomEvent) {
-    this.api.setTaskbars((e.target as any).selected);
+    this.api.setAppState({
+      taskbarSelected: (e.target as any).selected,
+    });
   }
 
   render() {
     const { taskbarAll, taskbarSelected, taskbarVisible } = this.appState;
     return when(
-      taskbarVisible && this.appState.penbarSelected[0] !== Pen.HAND,
+      taskbarVisible && this.appState.penbarSelected !== Pen.HAND,
       () => html`
         <sp-action-group
           class="taskbar"

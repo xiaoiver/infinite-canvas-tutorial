@@ -53,12 +53,45 @@ Just like [Figma API] and [Excalidraw API], we provide ours which is also friend
 
 > Instead of only having a GUI or API that humans use, you get an AI interface “for free.” This idea has led to the concept of “MCP-first development”, where you build the MCP server for your app before or alongside the GUI.
 
-### setCheckboardStyle
+### get/setAppState
+
+```ts
+api.getAppState();
+api.setAppState({
+    penbarSelected: Pen.HAND,
+});
+```
+
+#### penbarVisible
+
+#### penbarAll
+
+```ts
+export enum Pen {
+    SELECT = 'select',
+    HAND = 'hand',
+    DRAW_RECT = 'draw-rect',
+    DRAW_ELLIPSE = 'draw-ellipse',
+    DRAW_LINE = 'draw-line',
+    DRAW_ROUGH_RECT = 'draw-rough-rect',
+    IMAGE = 'image',
+    TEXT = 'text',
+    PENCIL = 'pencil',
+    BRUSH = 'brush',
+    VECTOR_NETWORK = 'vector-network',
+}
+```
+
+#### penbarSelected
+
+#### checkboardStyle
 
 Set the checkboard style of grid, refer to [Lesson 5 - Grid].
 
 ```ts
-setCheckboardStyle(checkboardStyle: CheckboardStyle): void;
+api.setAppState({
+    checkboardStyle: CheckboardStyle.GRID,
+});
 ```
 
 Valid values to take include:
@@ -71,24 +104,24 @@ enum CheckboardStyle {
 }
 ```
 
+#### contextMenuVisible
+
+#### contextBarVisible
+
+#### topbarVisible
+
+#### taskbarVisible
+
+#### taskbarAll
+
+#### taskbarSelected
+
 ### setCursor
 
 Set current cursor style, the valid values are detailed: [cursor].
 
 ```ts
 setCursor(cursor: string): void;
-```
-
-### setPen
-
-```ts
-setPen(pen: Pen): void;
-```
-
-### setTaskbars
-
-```ts
-setTaskbars(selected: Task[]): void;
 ```
 
 ### updateNodes
@@ -123,8 +156,6 @@ canvas.addEventListener(Event.READY, (e) => {
 -   ZOOM_CHANGED
 -   SCREENSHOT_REQUESTED
 -   SCREENSHOT_DOWNLOADED
--   PEN_CHANGED
--   TASK_CHANGED
 
 ## Built-in plugin and systems
 

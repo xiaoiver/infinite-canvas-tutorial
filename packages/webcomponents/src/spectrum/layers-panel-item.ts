@@ -91,21 +91,23 @@ export class LayersPanelItem extends LitElement {
           }
 
           if (!this.api.getAppState().propertiesOpened.includes(this.node.id)) {
-            this.api.setPropertiesOpened([
-              ...this.api.getAppState().propertiesOpened,
-              this.node.id,
-            ]);
+            this.api.setAppState({
+              propertiesOpened: [
+                ...this.api.getAppState().propertiesOpened,
+                this.node.id,
+              ],
+            });
           }
         }}
         @sp-closed=${(event: CustomEvent<OverlayOpenCloseDetail>) => {
           if (event.target !== event.currentTarget) {
             return;
           }
-          this.api.setPropertiesOpened(
-            this.api
+          this.api.setAppState({
+            propertiesOpened: this.api
               .getAppState()
               .propertiesOpened.filter((id) => id !== this.node.id),
-          );
+          });
         }}
       >
         <h4>Properties</h4>

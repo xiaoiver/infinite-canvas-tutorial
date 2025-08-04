@@ -45,3 +45,39 @@ import Spectrum from '../components/Spectrum.vue'
 课程 17 之前的效果如下：
 
 <WebGL />
+
+这份教程包含基于 WebGL / WebGPU 的基础 2D 图形渲染实现：
+
+-   [课程 2 - 绘制圆]
+-   [课程 5 - 绘制网格]
+-   [课程 9 - 绘制椭圆和矩形]
+-   [课程 12 - 绘制折线]
+-   [课程 13 - 绘制 Path & 手绘风格]
+-   [课程 15 - 绘制文本]
+-   [课程 16 - 文本的高级特性]
+
+也包含使用 Web Components 技术实现的 UI 组件：
+
+-   [课程 7 - Web UI]
+-   [课程 18 - 使用 ECS 重构]
+-   [课程 24 - 上下文菜单和剪贴板]
+
+还有一些有趣的话题：
+
+-   [课程 17 - 渐变和重复图案]
+-   [课程 19 - 历史记录]
+-   [课程 22 - VectorNetwork]
+
+[课程 2 - 绘制圆]: /zh/guide/lesson-002
+[课程 5 - 绘制网格]: /zh/guide/lesson-005
+[课程 9 - 绘制椭圆和矩形]: /zh/guide/lesson-009
+[课程 12 - 绘制折线]: /zh/guide/lesson-012
+[课程 13 - 绘制 Path & 手绘风格]: /zh/guide/lesson-013
+[课程 15 - 绘制文本]: /zh/guide/lesson-015
+[课程 16 - 文本的高级特性]: /zh/guide/lesson-016
+[课程 7 - Web UI]: /zh/guide/lesson-007
+[课程 18 - 使用 ECS 重构]: /zh/guide/lesson-018
+[课程 19 - 历史记录]: /zh/guide/lesson-019
+[课程 24 - 上下文菜单和剪贴板]: /zh/guide/lesson-024
+[课程 22 - VectorNetwork]: /zh/guide/lesson-022
+[课程 17 - 渐变和重复图案]: /zh/guide/lesson-017

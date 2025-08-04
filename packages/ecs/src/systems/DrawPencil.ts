@@ -97,7 +97,7 @@ export class DrawPencil extends System {
 
       const { inputPoints, api } = canvas.read(Canvas);
       const appState = api.getAppState();
-      const pen = appState.penbarSelected[0];
+      const pen = appState.penbarSelected;
 
       if (pen !== Pen.PENCIL) {
         return;
@@ -169,7 +169,9 @@ export class DrawPencil extends System {
             ...appState.penbarPencil,
           };
 
-          api.setPen(Pen.SELECT);
+          api.setAppState({
+            penbarSelected: Pen.SELECT,
+          });
           api.updateNode(node);
           api.selectNodes([node]);
           api.record();

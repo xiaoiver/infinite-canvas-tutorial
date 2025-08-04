@@ -70,7 +70,7 @@ export interface AppState {
     checkboardStyle: CheckboardStyle;
     cameraZoom: number;
     penbarAll: Pen[];
-    penbarSelected: Pen[];
+    penbarSelected: Pen;
     taskbarAll: Task[];
     taskbarSelected: Task[];
     layersSelected: SerializedNode['id'][];

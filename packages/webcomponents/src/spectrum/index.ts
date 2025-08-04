@@ -9,6 +9,7 @@ export * from './layer-name';
 export * from './penbar';
 export * from './penbar-pencil-settings';
 export * from './penbar-draw-settings';
+export * from './penbar-text-settings';
 export * from './properties-panel-content';
 export * from './properties-panel';
 export * from './fill-icon';

@@ -1,12 +1,9 @@
 import {
-  CheckboardStyle,
-  Pen,
   Screenshot,
   SerializedNode,
-  Task,
-  API,
   TransformableStatus,
 } from '@infinite-canvas-tutorial/ecs';
+import { ExtendedAPI } from './API';
 
 export enum Event {
   READY = 'ic-ready',
@@ -27,14 +24,9 @@ export enum Event {
 
 declare global {
   interface HTMLElementEventMap {
-    [Event.READY]: CustomEvent<API>;
+    [Event.READY]: CustomEvent<ExtendedAPI>;
     [Event.RESIZED]: CustomEvent<{ width: number; height: number }>;
     [Event.ZOOM_CHANGED]: CustomEvent<{ zoom: number }>;
-    [Event.PEN_CHANGED]: CustomEvent<{ selected: Pen[] }>;
-    [Event.CHECKBOARD_STYLE_CHANGED]: CustomEvent<{
-      checkboardStyle: CheckboardStyle;
-    }>;
-    [Event.TASK_CHANGED]: CustomEvent<{ selected: Task[] }>;
     [Event.SCREENSHOT_DOWNLOADED]: CustomEvent<
       Pick<Screenshot, 'dataURL' | 'svg'>
     >;

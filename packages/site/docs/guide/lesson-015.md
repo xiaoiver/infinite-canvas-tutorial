@@ -2,7 +2,7 @@
 outline: deep
 description: 'Master complex text rendering including TextMetrics, shaping with HarfBuzz, text segmentation, BiDi support, SDF atlas generation, and emoji handling for international typography.'
 head:
-    - ['meta', { property: 'og:title', content: 'Lesson 15 - Text Rendering' }]
+    - ['meta', { property: 'og:title', content: 'Lesson 15 - Text rendering' }]
 ---
 
 <script setup>
@@ -12,7 +12,7 @@ import Emoji from '../components/Emoji.vue';
 import Bidi from '../components/Bidi.vue';
 </script>
 
-# Lesson 15 - Text Rendering
+# Lesson 15 - Text rendering
 
 Text rendering is a highly complex process, and the [State of Text Rendering 2024] provides a very detailed introduction, which is highly recommended for reading.
 

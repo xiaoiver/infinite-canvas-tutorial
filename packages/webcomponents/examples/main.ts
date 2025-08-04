@@ -101,8 +101,14 @@ canvas.addEventListener(Event.READY, async (e) => {
   ];
 
   // api.runAtNextTick(() => {
-  api.setPen(Pen.SELECT);
-  api.setTaskbars([Task.SHOW_LAYERS_PANEL]);
+  api.setAppState({
+    penbarSelected: Pen.TEXT,
+    penbarText: {
+      ...api.getAppState().penbarText,
+      fontFamily: 'system-ui',
+    },
+    taskbarSelected: [Task.SHOW_LAYERS_PANEL],
+  });
 
   api.updateNodes(nodes);
   api.selectNodes([nodes[0]]);

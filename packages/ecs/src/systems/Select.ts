@@ -559,7 +559,7 @@ export class Select extends System {
       }
 
       const { inputPoints, api } = canvas.read(Canvas);
-      const pen = api.getAppState().penbarSelected[0];
+      const pen = api.getAppState().penbarSelected;
 
       if (pen !== Pen.SELECT) {
         // Clear selection
@@ -603,7 +603,10 @@ export class Select extends System {
           const selected = selecteds[0];
           if (selected.has(Polyline)) {
             // Enter VectorNetwork edit mode
-            api.setPen(Pen.VECTOR_NETWORK);
+            api.setAppState({
+              penbarSelected: Pen.VECTOR_NETWORK,
+            });
+
             return;
           }
         }
