@@ -65,15 +65,14 @@ export class PenbarTextSettings extends LitElement {
         @change=${this.handleFontFamilyChanged}
         id="font-family"
       >
-        <sp-menu-item value="system-ui" style="font-family: system-ui;"
-          >system-ui</sp-menu-item
-        >
-        <sp-menu-item value="serif" style="font-family: serif;"
-          >serif</sp-menu-item
-        >
-        <sp-menu-item value="monospace" style="font-family: monospace;"
-          >monospace</sp-menu-item
-        >
+        ${penbarText.fontFamilies.map(
+          (fontFamily) =>
+            html`<sp-menu-item
+              value=${fontFamily}
+              style="font-family: ${fontFamily};"
+              >${fontFamily}</sp-menu-item
+            >`,
+        )}
       </sp-picker>
 
       <div

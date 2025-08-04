@@ -71,7 +71,7 @@ And some interesting topics:
 [Lesson 2 - Draw a circle]: /guide/lesson-002
 [Lesson 5 - Grid]: /guide/lesson-005
 [Lesson 9 - Drawing ellipse and rectangle]: /guide/lesson-009
-[Lesson 12 - Draw polylines]: /guide/lesson-012
+[Lesson 12 - Draw polyline]: /guide/lesson-012
 [Lesson 13 - Drawing path and sketchy style]: /guide/lesson-013
 [Lesson 15 - Text rendering]: /guide/lesson-015
 [Lesson 16 - Text advanced features]: /guide/lesson-016

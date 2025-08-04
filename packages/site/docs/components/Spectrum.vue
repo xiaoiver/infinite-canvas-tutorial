@@ -8,6 +8,13 @@ import {
 } from '@infinite-canvas-tutorial/ecs';
 import { ref, onMounted, onUnmounted } from 'vue';
 import { Event, UIPlugin } from '@infinite-canvas-tutorial/webcomponents';
+import WebFont from 'webfontloader';
+
+WebFont.load({
+  google: {
+    families: ['Gaegu'],
+  },
+});
 
 const wrapper = ref<HTMLElement | null>(null);
 let api: any | undefined;
@@ -37,6 +44,9 @@ onMounted(async () => {
       api.setAppState({
         penbarSelected: Pen.SELECT,
         taskbarSelected: [Task.SHOW_LAYERS_PANEL],
+        penbarText: {
+          fontFamilies: ['system-ui', 'serif', 'monospace', 'Gaegu'],
+        },
       });
 
       api.updateNodes(nodes);

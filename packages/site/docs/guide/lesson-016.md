@@ -546,6 +546,10 @@ WebFont.load({
 
 <WebFontLoader />
 
+You can also switch to Text mode and select the `Gaegu` custom font in the home page example:
+
+![WebFont in text pen](/webfont-in-text-pen.png)
+
 ### Material Design on the GPU {#material-design-on-the-gpu}
 
 [Material Design on the GPU] introduce a material effect based on SDF text, using normal maps and lighting to simulate ink spreading on paper. We don't need to consider lighting, just use simplex noise to implement it, and add multiple absorption effects:

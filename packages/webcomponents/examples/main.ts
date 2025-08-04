@@ -10,6 +10,13 @@ import {
 } from '../../ecs';
 import { Event, UIPlugin } from '../src';
 import '../src/spectrum';
+import WebFont from 'webfontloader';
+
+WebFont.load({
+  google: {
+    families: ['Gaegu'],
+  },
+});
 
 const res = await fetch('/test.svg');
 // const res = await fetch('/maslow-hierarchy.svg');
@@ -106,8 +113,10 @@ canvas.addEventListener(Event.READY, async (e) => {
     penbarText: {
       ...api.getAppState().penbarText,
       fontFamily: 'system-ui',
+      fontFamilies: ['system-ui', 'serif', 'monospace', 'Gaegu'],
     },
     taskbarSelected: [Task.SHOW_LAYERS_PANEL],
+    checkboardStyle: CheckboardStyle.GRID,
   });
 
   api.updateNodes(nodes);

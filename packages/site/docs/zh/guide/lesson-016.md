@@ -537,6 +537,10 @@ WebFont.load({
 
 <WebFontLoader />
 
+你也可以在首页的例子中切换到 Text 模式，选择 `Gaegu` 这个自定义字体：
+
+![WebFont in text pen](/webfont-in-text-pen.png)
+
 ### Material Design on the GPU {#material-design-on-the-gpu}
 
 [Material Design on the GPU] 中介绍了一种基于 SDF 文字的材质效果，使用法线贴图配合光照实现墨迹在纸张表面的晕染效果。我们不用考虑光照，直接使用 simplex noise 来实现，叠加多个吸收效果：

@@ -40,7 +40,11 @@ export interface AppState {
     RoughAttributes & StrokeAttributes & FillAttributes
   >;
   penbarPencil: Partial<StrokeAttributes>;
-  penbarText: Partial<TextSerializedNode>;
+  penbarText: Partial<
+    TextSerializedNode & {
+      fontFamilies: string[];
+    }
+  >;
   taskbarVisible: boolean;
   taskbarAll: Task[];
   taskbarSelected: Task[];
@@ -148,6 +152,7 @@ export const getDefaultAppState: () => AppState = () => {
     },
     penbarText: {
       fontFamily: 'system-ui',
+      fontFamilies: ['system-ui', 'serif', 'monospace'],
       fontSize: 16,
       fontStyle: 'normal',
       fill: 'black',
