@@ -21,9 +21,17 @@ onMounted(async () => {
     api = e.detail;
 
     api.setAppState({
-      ...api.getAppState(),
-      penbarSelected: Pen.PENCIL,
-      penbarAll: [Pen.SELECT, Pen.PENCIL],
+      penbarSelected: Pen.DRAW_ARROW,
+      penbarAll: [Pen.SELECT, Pen.DRAW_ARROW],
+    });
+    api.updateNode({
+      id: 'draw-arrow-1',
+      type: 'polyline',
+      points: '100,50 200,50 200,150',
+      stroke: '#147af3',
+      strokeWidth: 1,
+      markerStart: 'line',
+      markerEnd: 'line',
     });
   };
 

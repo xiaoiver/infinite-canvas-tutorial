@@ -23,7 +23,6 @@ export class PenbarPencilSettings extends LitElement {
   private handleStrokeWidthChanged(e: Event & { target: HTMLInputElement }) {
     const strokeWidth = parseInt(e.target.value);
     this.api.setAppState({
-      ...this.api.getAppState(),
       penbarPencil: {
         ...this.api.getAppState().penbarPencil,
         strokeWidth,
@@ -37,7 +36,6 @@ export class PenbarPencilSettings extends LitElement {
 
     const strokeColor = (e.target as any).selected[0];
     this.api.setAppState({
-      ...this.api.getAppState(),
       penbarPencil: {
         ...this.api.getAppState().penbarPencil,
         stroke: strokeColor,

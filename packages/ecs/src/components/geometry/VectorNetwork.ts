@@ -3,8 +3,14 @@
  */
 
 import { Entity, field } from '@lastolivegames/becsy';
-import { Polyline } from '../geometry';
-import { SerializedNode, serializePoints } from '../../utils';
+import { Polyline } from './Polyline';
+import {
+  SerializedNode,
+  serializePoints,
+  VectorNetworkSerializedNode,
+} from '../../utils';
+import { AABB } from '../math';
+import { Stroke } from '../renderable';
 
 interface VectorVertex {
   x: number;
@@ -24,6 +30,53 @@ interface VectorRegion {
 }
 
 export class VectorNetwork {
+  static getGeometryBounds(
+    vectorNetwork:
+      | Partial<VectorNetwork>
+      | Partial<VectorNetworkSerializedNode>,
+  ) {
+    let { vertices } = vectorNetwork;
+
+    if (!vertices || vertices.length < 2) {
+      return new AABB(0, 0, 0, 0);
+    }
+
+    const minX = Math.min(
+      ...vertices.map(({ x }) => (isNaN(x) ? Infinity : x)),
+    );
+    const maxX = Math.max(
+      ...vertices.map(({ x }) => (isNaN(x) ? -Infinity : x)),
+    );
+    const minY = Math.min(
+      ...vertices.map(({ y }) => (isNaN(y) ? Infinity : y)),
+    );
+    const maxY = Math.max(
+      ...vertices.map(({ y }) => (isNaN(y) ? -Infinity : y)),
+    );
+
+    return new AABB(minX, minY, maxX, maxY);
+  }
+
+  static getRenderBounds(vectorNetwork: VectorNetwork, stroke?: Stroke) {
+    const { width, linecap } = stroke ?? {};
+
+    let style_expansion = 0.5;
+    if (linecap === 'square') {
+      style_expansion = Math.SQRT1_2;
+    }
+
+    style_expansion *= width;
+
+    const { minX, minY, maxX, maxY } =
+      VectorNetwork.getGeometryBounds(vectorNetwork);
+    return new AABB(
+      minX - style_expansion,
+      minY - style_expansion,
+      maxX + style_expansion,
+      maxY + style_expansion,
+    );
+  }
+
   static toSerializedNode(
     network: VectorNetwork,
     node: SerializedNode,

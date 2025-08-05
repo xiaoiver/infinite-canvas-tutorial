@@ -56,6 +56,7 @@ import {
   GeometryDirty,
   TextDecoration,
   Brush,
+  Marker,
 } from '../components';
 
 export const RendererPlugin: Plugin = () => {
@@ -90,6 +91,7 @@ export const RendererPlugin: Plugin = () => {
   component(Rough);
   component(Font);
   component(TextDecoration);
+  component(Marker);
 
   /**
    * Geometry

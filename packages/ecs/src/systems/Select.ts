@@ -56,7 +56,7 @@ import {
 } from './RenderTransformer';
 import { ComputeBounds } from './ComputeBounds';
 import { updateGlobalTransform } from './Transform';
-import { safeAddComponent } from '../history';
+import { safeAddComponent, safeRemoveComponent } from '../history';
 
 export enum SelectionMode {
   IDLE = 'IDLE',
@@ -602,6 +602,10 @@ export class Select extends System {
         if (selecteds.length === 1) {
           const selected = selecteds[0];
           if (selected.has(Polyline)) {
+            const vectorNetwork = VectorNetwork.fromEntity(selected);
+            safeAddComponent(selected, VectorNetwork, vectorNetwork);
+            safeRemoveComponent(selected, Polyline);
+
             // Enter VectorNetwork edit mode
             api.setAppState({
               penbarSelected: Pen.VECTOR_NETWORK,

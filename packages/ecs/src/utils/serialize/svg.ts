@@ -1,6 +1,6 @@
 import { isNil, isNumber, isString } from '@antv/util';
 import toposort from 'toposort';
-import { Mat3 } from '../../components';
+import { Marker, Mat3 } from '../../components';
 import {
   shiftPoints,
   fontStringFromTextStyle,
@@ -9,8 +9,10 @@ import {
 import { createSVGElement } from '../browser';
 import {
   InnerShadowAttributes,
+  PathSerializedNode,
   RectSerializedNode,
   SerializedNode,
+  SerializedNodeAttributes,
   StrokeAttributes,
   TextSerializedNode,
 } from './type';
@@ -25,6 +27,7 @@ import {
 import { isPattern, Pattern } from '../pattern';
 import { generateGradientKey, generatePatternKey } from '../../resources';
 import { formatTransform } from '../matrix';
+import { lineArrow } from '../marker';
 
 const strokeDefaultAttributes = {
   strokeOpacity: 1,
@@ -37,6 +40,8 @@ const strokeDefaultAttributes = {
   // strokeDasharray: 'none',
   strokeDasharray: '0,0',
   strokeDashoffset: 0,
+  markerStart: 'none',
+  markerEnd: 'none',
 };
 
 const fillDefaultAttributes = {
@@ -133,6 +138,11 @@ export const defaultAttributes: Record<
   g: {
     ...commonDefaultAttributes,
   },
+  'vector-network': {
+    ...commonDefaultAttributes,
+    ...fillDefaultAttributes,
+    ...strokeDefaultAttributes,
+  },
 };
 
 // @see https://github.com/plouc/nivo/issues/164
@@ -219,8 +229,10 @@ export function serializeNodesToSVGElements(
       hangingBaseline,
       ideographicBaseline,
       textOverflow,
+      markerStart,
+      markerEnd,
       ...rest
-    } = restAttributes as any;
+    } = restAttributes as SerializedNodeAttributes;
 
     Object.entries(rest).forEach(([key, value]) => {
       if (
@@ -306,6 +318,7 @@ export function serializeNodesToSVGElements(
     const innerOrOuterStrokeAlignment =
       innerStrokeAlignment || outerStrokeAlignment;
 
+    const hasMarker = markerStart !== 'none' || markerEnd !== 'none';
     const hasFillImage =
       rest.fill && isString(rest.fill) && isDataUrl(rest.fill);
     const hasFillGradient =
@@ -354,7 +367,8 @@ export function serializeNodesToSVGElements(
       isRough ||
       hasFillImage ||
       hasFillGradient ||
-      hasFillPattern
+      hasFillPattern ||
+      hasMarker
     ) {
       $g = createSVGElement('g');
       if (element) {
@@ -378,6 +392,9 @@ export function serializeNodesToSVGElements(
     }
     if (hasFillGradient || hasFillPattern) {
       exportFillGradientOrPattern(node, element, $g);
+    }
+    if (hasMarker) {
+      exportMarker(node, element, $g);
     }
 
     $g = $g || element;
@@ -902,6 +919,82 @@ export function exportFillGradientOrPattern(
       $el?.setAttribute('filter', `url(#${filterId})`);
       $el?.setAttribute('fill', 'black');
     }
+  }
+}
+
+function createOrUpdateMarker(
+  node: SerializedNode,
+  $def: SVGDefsElement,
+  marker: Marker['start'],
+  isEnd = false,
+) {
+  const patternId = `marker-${marker}-${isEnd ? 'end' : 'start'}`;
+  const $existed = $def.querySelector(`#${patternId}`);
+  if (!$existed) {
+    const $marker = createSVGElement('marker');
+    $marker.setAttribute('id', patternId);
+    $marker.setAttribute('markerWidth', '6');
+    $marker.setAttribute('markerHeight', '6');
+    $marker.setAttribute('viewBox', '-10 -10 20 20');
+    $marker.setAttribute('refX', '0');
+    $marker.setAttribute('refY', '0');
+    if (isEnd) {
+      $marker.setAttribute('orient', 'auto');
+    } else {
+      $marker.setAttribute('orient', 'auto-start-reverse');
+    }
+    $def.appendChild($marker);
+
+    const {
+      stroke,
+      strokeWidth,
+      strokeOpacity,
+      strokeLinecap,
+      strokeLinejoin,
+    } = node as PathSerializedNode;
+
+    if (marker === 'line') {
+      const points = lineArrow(0, 0, 10, Math.PI);
+      const $path = createSVGElement('path');
+      $path.setAttribute('fill', 'none');
+      $path.setAttribute('stroke', stroke);
+      $path.setAttribute('stroke-width', `${strokeWidth}`);
+      if (!isNil(strokeOpacity)) {
+        $path.setAttribute('stroke-opacity', `${strokeOpacity}`);
+      }
+      if (!isNil(strokeLinecap)) {
+        $path.setAttribute('stroke-linecap', strokeLinecap);
+      }
+      if (!isNil(strokeLinejoin)) {
+        $path.setAttribute('stroke-linejoin', strokeLinejoin);
+      }
+      $path.setAttribute(
+        'd',
+        `M ${points[0][0]} ${points[0][1]} L ${points[1][0]} ${points[1][1]} L ${points[2][0]} ${points[2][1]}`,
+      );
+      $marker.appendChild($path);
+    }
+  }
+  return patternId;
+}
+
+export function exportMarker(
+  node: SerializedNode,
+  $el: SVGElement,
+  $g: SVGElement,
+) {
+  const { markerStart, markerEnd } = node as PathSerializedNode;
+
+  const $defs = createSVGElement('defs') as SVGDefsElement;
+  $g.prepend($defs);
+
+  if (markerStart === 'line') {
+    const markerId = createOrUpdateMarker(node, $defs, markerStart);
+    $el?.setAttribute('marker-start', `url(#${markerId})`);
+  }
+  if (markerEnd === 'line') {
+    const markerId = createOrUpdateMarker(node, $defs, markerEnd, true);
+    $el?.setAttribute('marker-end', `url(#${markerId})`);
   }
 }
 

@@ -15,7 +15,6 @@ import {
   createSVGElement,
   PolylineSerializedNode,
   API,
-  EllipseSerializedNode,
   getRoughOptions,
 } from '@infinite-canvas-tutorial/ecs';
 import { consume } from '@lit/context';
@@ -114,7 +113,9 @@ export class LayerThumbnail extends LitElement {
       strokeDasharray,
       strokeDashoffset,
       opacity,
-    } = this.node as EllipseSerializedNode;
+      markerStart,
+      markerEnd,
+    } = this.node as PathSerializedNode;
 
     if ($el) {
       $el.setAttribute('transform', transform);

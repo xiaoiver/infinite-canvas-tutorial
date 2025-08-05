@@ -36,6 +36,7 @@ import {
   SizeAttenuation,
   TextDecoration,
   Rough,
+  Marker,
 } from '../components';
 
 export type SceneElementsMap = Map<SerializedNode['id'], SerializedNode>;
@@ -611,6 +612,8 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
     roughFillLineDash,
     roughFillLineDashOffset,
     roughSeed,
+    markerStart,
+    markerEnd,
   } = updates as unknown as SerializedNodeAttributes;
 
   if (!isNil(name)) {
@@ -764,6 +767,13 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
   }
   if (!isNil(roughSeed)) {
     safeAddComponent(entity, Rough, { seed: roughSeed });
+  }
+
+  if (!isNil(markerStart)) {
+    safeAddComponent(entity, Marker, { start: markerStart });
+  }
+  if (!isNil(markerEnd)) {
+    safeAddComponent(entity, Marker, { end: markerEnd });
   }
 
   if (!isNil(fontSize)) {

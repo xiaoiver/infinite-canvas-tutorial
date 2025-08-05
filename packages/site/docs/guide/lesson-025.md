@@ -13,13 +13,14 @@ head:
 
 <script setup>
 import DrawRect from '../components/DrawRect.vue'
+import DrawArrow from '../components/DrawArrow.vue'
 import Pencil from '../components/Pencil.vue'
 import Brush from '../components/Brush.vue'
 </script>
 
 # Lesson 25 - Drawing mode and brush
 
-在 [Lesson 14 - Canvas mode and auxiliary UI] 中我们介绍了手型和选择模式，在本节课中我们将介绍绘制模式：包括矩形和椭圆，以及更加自由的笔刷模式。
+In [Lesson 14 - Canvas mode and auxiliary UI] we introduced hand and selection modes, and in this lesson we'll introduce drawing modes: rectangles, ellipses, and arrows, as well as the more free-form brush modes.
 
 ## Draw rect mode {#draw-rect-mode}
 
@@ -153,6 +154,68 @@ We want to show the dimensions of the rectangle in real time during the drawing 
 
 ![Size label in Figma](/figma-size-label.png)
 
+## Draw arrow {#draw-arrow}
+
+In addition to basic shapes such as rectangles, ellipses, and polylines, some commonly used composite shapes such as arrows.
+
+Arrows are first declared in SVG using a `<marker>`, usually a `<path>`, and then associated with arrows via the [marker-start] and [marker-end] attributes of the target graphic:
+
+```html
+<defs>
+    <!-- arrowhead marker definition -->
+    <marker
+        id="arrow"
+        viewBox="0 0 10 10"
+        refX="5"
+        refY="5"
+        markerWidth="6"
+        markerHeight="6"
+        orient="auto-start-reverse"
+    >
+        <path d="M 0 0 L 10 5 L 0 10 z" />
+    </marker>
+</defs>
+<!-- Coordinate axes with a arrowhead in both direction -->
+<polyline
+    points="10,10 10,90 90,90"
+    fill="none"
+    stroke="black"
+    marker-start="url(#arrow)"
+    marker-end="url(#arrow)"
+/>
+```
+
+This way of separating the arrow endpoints from the body is very flexible. However, in a graphical editor scenario, it is sufficient to provide some preset common styles. For example, the arrow in Figma is realized by attaching it to the two endpoints of the Path (`start/end point`), with several preset styles such as `line/triangle/diamond`, see [How to Curve an Arrow in Figma].
+
+![Arrow in Figma](/arrow-in-figma.png)
+
+So in declarative usage, it's perfectly acceptable to sacrifice the feature of custom arrow styles and provide a set of built-in arrow style literals that generate the arrow endpoints along with the body when constructing the Polyline / Path. This idea can also be seen in [plot - arrow] rendered using SVG, which doesn't use `<marker>`, but a full `<path>` definition.
+
+```ts
+export interface MarkerAttributes {
+    markerStart: Marker['start'];
+    markerEnd: Marker['end'];
+}
+```
+
+Next, let's look at the geometry construction process.
+
+### Start and end point {#start-end-point}
+
+First you need to find the start and end points of the arrows.
+
+However, the orientation needs to be calculated manually, which is not complicated, along the tangent line.
+
+<DrawArrow />
+
+### Export arrow to SVG {#export-arrow-to-svg}
+
+[orient]
+
+## Draw polygon {#draw-polygon}
+
+[Shape tools - polygons]
+
 ## Pencil tool {#pencil-tool}
 
 Let's start by looking at the simplest implementation, using a folded line display, called a Pencil in Figma.
@@ -248,7 +311,7 @@ This doesn't quite work like a real brushstroke.
 
 ![source: https://shenciao.github.io/brush-rendering-tutorial/Basics/Stamp/](https://shenciao.github.io/brush-rendering-tutorial/assets/images/stamp-to-stroke-082a5ddd80c45086b810ed8b9ebcea79.gif)
 
-### Export SVG {#export-svg}
+### Export SVG {#export-brush-to-svg}
 
 Figma is able to export Brush to SVG.
 
@@ -272,3 +335,9 @@ Figma is able to export Brush to SVG.
 [simplify-js]: https://github.com/mourner/simplify-js
 [Brush Rendering Tutorial]: https://shenciao.github.io/brush-rendering-tutorial/
 [Lesson 12 - Extrude segment]: /zh/guide/lesson-012#extrude-segment
+[How to Curve an Arrow in Figma]: https://imagy.app/how-to-curve-an-arrow-in-figma/
+[marker-start]: https://developer.mozilla.org/en-US/docs/Web/SVG/Reference/Attribute/marker-start
+[marker-end]: https://developer.mozilla.org/en-US/docs/Web/SVG/Reference/Attribute/marker-end
+[Shape tools - polygons]: https://help.figma.com/hc/en-us/articles/360040450133-Shape-tools#polygons
+[plot - arrow]: https://github.com/observablehq/plot/blob/main/src/marks/arrow.js
+[orient]: https://developer.mozilla.org/en-US/docs/Web/SVG/Reference/Attribute/orient

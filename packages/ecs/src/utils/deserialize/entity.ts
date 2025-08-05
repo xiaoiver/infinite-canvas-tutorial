@@ -30,6 +30,8 @@ import {
   Brush,
   Wireframe,
   Rough,
+  VectorNetwork,
+  Marker,
 } from '../../components';
 import {
   AttenuationAttributes,
@@ -38,6 +40,7 @@ import {
   FillAttributes,
   isDataUrl,
   isUrl,
+  MarkerAttributes,
   NameAttributes,
   PathSerializedNode,
   PolylineSerializedNode,
@@ -49,6 +52,7 @@ import {
   shiftPath,
   StrokeAttributes,
   TextSerializedNode,
+  VectorNetworkSerializedNode,
   VisibilityAttributes,
   WireframeAttributes,
 } from '../serialize';
@@ -73,6 +77,8 @@ export function inferXYWidthHeight(node: SerializedNode) {
     bounds = Text.getGeometryBounds(node, metrics);
   } else if (type === 'brush') {
     bounds = Brush.getGeometryBounds(node);
+  } else if (type === 'vector-network') {
+    bounds = VectorNetwork.getGeometryBounds(node);
   }
 
   if (bounds) {
@@ -344,6 +350,10 @@ export function serializedNodesToEntities(
           }),
         );
       }
+    } else if (type === 'vector-network') {
+      const { vertices, segments, regions } =
+        attributes as VectorNetworkSerializedNode;
+      entity.insert(new VectorNetwork({ vertices, segments, regions }));
     }
 
     const { fill, fillOpacity, opacity } = attributes as FillAttributes;
@@ -395,6 +405,11 @@ export function serializedNodesToEntities(
           alignment: strokeAlignment,
         }),
       );
+    }
+
+    const { markerStart, markerEnd } = attributes as MarkerAttributes;
+    if (markerStart || markerEnd) {
+      entity.insert(new Marker({ start: markerStart, end: markerEnd }));
     }
 
     if (opacity || fillOpacity || strokeOpacity) {

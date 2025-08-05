@@ -3,6 +3,7 @@ import {
   DropShadow,
   Ellipse,
   InnerShadow,
+  Marker,
   Opacity,
   Path,
   Rect,
@@ -10,6 +11,7 @@ import {
   Stroke,
   Text,
   TextDecoration,
+  VectorNetwork,
   Visibility,
 } from '../../components';
 
@@ -107,6 +109,11 @@ export interface StrokeAttributes {
   strokeOpacity: Opacity['strokeOpacity'];
 }
 
+export interface MarkerAttributes {
+  markerStart: Marker['start'];
+  markerEnd: Marker['end'];
+}
+
 export interface InnerShadowAttributes {
   innerShadowColor: InnerShadow['color'];
   innerShadowOffsetX: InnerShadow['offsetX'];
@@ -193,7 +200,8 @@ export interface PolylineSerializedNode
     Partial<PolylineAttributes>,
     Partial<StrokeAttributes>,
     Partial<Pick<AttenuationAttributes, 'strokeAttenuation'>>,
-    Partial<WireframeAttributes> {}
+    Partial<WireframeAttributes>,
+    Partial<MarkerAttributes> {}
 
 export interface BrushAttributes {
   points: string;
@@ -212,7 +220,8 @@ export interface PathSerializedNode
     Partial<FillAttributes>,
     Partial<StrokeAttributes>,
     Partial<AttenuationAttributes>,
-    Partial<WireframeAttributes> {}
+    Partial<WireframeAttributes>,
+    Partial<MarkerAttributes> {}
 
 export interface TextAttributes
   extends Partial<
@@ -259,6 +268,15 @@ export interface TextSerializedNode
     Partial<AttenuationAttributes>,
     Partial<WireframeAttributes> {}
 
+export interface VectorNetworkAttributes {
+  vertices: VectorNetwork['vertices'];
+  segments: VectorNetwork['segments'];
+  regions: VectorNetwork['regions'];
+}
+export interface VectorNetworkSerializedNode
+  extends BaseSerializeNode<'vector-network'>,
+    Partial<VectorNetworkAttributes> {}
+
 export type SerializedNode =
   | GSerializedNode
   | EllipseSerializedNode
@@ -267,7 +285,8 @@ export type SerializedNode =
   | PathSerializedNode
   | TextSerializedNode
   | BrushSerializedNode
-  | RoughRectSerializedNode;
+  | RoughRectSerializedNode
+  | VectorNetworkSerializedNode;
 
 export type SerializedNodeAttributes = GSerializedNode &
   EllipseSerializedNode &
@@ -276,4 +295,5 @@ export type SerializedNodeAttributes = GSerializedNode &
   PathSerializedNode &
   TextSerializedNode &
   BrushSerializedNode &
-  RoughRectSerializedNode;
+  RoughRectSerializedNode &
+  VectorNetworkSerializedNode;

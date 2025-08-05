@@ -5,3 +5,4 @@ export * from './Polyline';
 export * from './Rect';
 export * from './Text';
 export * from './Brush';
+export * from './VectorNetwork';

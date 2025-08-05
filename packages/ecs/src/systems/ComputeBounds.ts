@@ -18,6 +18,7 @@ import {
   Stroke,
   Text,
   Transform,
+  VectorNetwork,
 } from '../components';
 import { decompose } from '../utils';
 import { safeAddComponent } from '../history';
@@ -27,8 +28,17 @@ export class ComputeBounds extends System {
     (q) =>
       q.addedOrChanged
         .with(Renderable, GlobalTransform)
-        .withAny(Transform, Circle, Ellipse, Rect, Polyline, Path, Text, Brush)
-        .trackWrites,
+        .withAny(
+          Transform,
+          Circle,
+          Ellipse,
+          Rect,
+          Polyline,
+          Path,
+          Text,
+          Brush,
+          VectorNetwork,
+        ).trackWrites,
   );
 
   constructor() {
@@ -108,6 +118,14 @@ export class ComputeBounds extends System {
         entity.read(ComputedTextMetrics),
         stroke,
         dropShadow,
+      );
+    } else if (entity.has(VectorNetwork)) {
+      geometryBounds = VectorNetwork.getGeometryBounds(
+        entity.read(VectorNetwork),
+      );
+      renderBounds = VectorNetwork.getRenderBounds(
+        entity.read(VectorNetwork),
+        stroke,
       );
     }
 

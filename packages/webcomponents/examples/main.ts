@@ -75,7 +75,11 @@ canvas.addEventListener(Event.READY, async (e) => {
       // width: 100,
       // height: 100,
       stroke: 'black',
-      strokeWidth: 10,
+      strokeWidth: 4,
+      strokeLinecap: 'round',
+      strokeLinejoin: 'round',
+      markerStart: 'line',
+      markerEnd: 'line',
       // fill: 'red',
       // roughFillStyle: 'dots',
       // roughFillWeight: 5,
@@ -109,7 +113,7 @@ canvas.addEventListener(Event.READY, async (e) => {
 
   // api.runAtNextTick(() => {
   api.setAppState({
-    penbarSelected: Pen.TEXT,
+    penbarSelected: Pen.DRAW_ARROW,
     penbarText: {
       ...api.getAppState().penbarText,
       fontFamily: 'system-ui',

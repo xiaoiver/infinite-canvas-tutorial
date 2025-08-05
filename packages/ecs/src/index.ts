@@ -52,6 +52,7 @@ export {
   type RoughAttributes,
   type StrokeAttributes,
   type FillAttributes,
+  type MarkerAttributes,
 } from './utils';
 export { TexturePool } from './resources';
 

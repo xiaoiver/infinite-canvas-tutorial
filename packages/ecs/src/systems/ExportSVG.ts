@@ -32,6 +32,7 @@ import {
   VectorScreenshotRequest,
   Visibility,
   TextDecoration,
+  Marker,
 } from '../components';
 import { DOMAdapter } from '../environment';
 import {
@@ -103,6 +104,7 @@ export class ExportSVG extends System {
             ComputedCamera,
             ComputedTextMetrics,
             TextDecoration,
+            Marker,
           )
           .read.and.using(Screenshot, VectorScreenshotRequest).write,
     );

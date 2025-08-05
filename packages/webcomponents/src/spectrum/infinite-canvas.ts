@@ -80,6 +80,7 @@ import '@spectrum-web-components/icons-workflow/icons/sp-icon-annotate-pen.js';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-brush.js';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-rect-select.js';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-image.js';
+import '@spectrum-web-components/icons-workflow/icons/sp-icon-arrow-up-right.js';
 
 export const TOP_NAVBAR_HEIGHT = 48;
 
@@ -98,6 +99,7 @@ export class InfiniteCanvas extends LitElement {
       position: absolute;
       top: 48px;
       left: 0;
+      bottom: 0;
     }
 
     ic-spectrum-taskbar {
@@ -214,7 +216,7 @@ export class InfiniteCanvas extends LitElement {
   });
 
   render() {
-    const { theme } = this.appStateProvider.value;
+    const { theme, topbarVisible } = this.appStateProvider.value;
 
     const themeWrapper = (content: string | TemplateResult) =>
       html`<sp-theme system="spectrum" color="${theme.mode}" scale="medium"
@@ -233,7 +235,11 @@ export class InfiniteCanvas extends LitElement {
       complete: ($canvas) =>
         themeWrapper(
           html`<ic-spectrum-top-navbar></ic-spectrum-top-navbar>
-            <ic-spectrum-penbar></ic-spectrum-penbar>
+            <ic-spectrum-penbar
+              style=${topbarVisible
+                ? 'height: calc(100% - 48px);'
+                : 'height: 100%;'}
+            ></ic-spectrum-penbar>
             <ic-spectrum-taskbar></ic-spectrum-taskbar>
             <ic-spectrum-context-bar></ic-spectrum-context-bar>
             <ic-spectrum-context-menu></ic-spectrum-context-menu>

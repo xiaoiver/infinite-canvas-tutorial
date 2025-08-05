@@ -18,7 +18,6 @@ export class PenbarTextSettings extends LitElement {
 
     const fillColor = (e.target as any).selected[0];
     this.api.setAppState({
-      ...this.api.getAppState(),
       penbarText: {
         ...this.api.getAppState().penbarText,
         fill: fillColor,
@@ -30,7 +29,6 @@ export class PenbarTextSettings extends LitElement {
     e.stopPropagation();
     const fontFamily = e.target.value;
     this.api.setAppState({
-      ...this.api.getAppState(),
       penbarText: { ...this.api.getAppState().penbarText, fontFamily },
     });
   }
@@ -39,7 +37,6 @@ export class PenbarTextSettings extends LitElement {
     e.stopPropagation();
     const fontSize = (e.target as any).value;
     this.api.setAppState({
-      ...this.api.getAppState(),
       penbarText: { ...this.api.getAppState().penbarText, fontSize },
     });
   }
@@ -48,7 +45,6 @@ export class PenbarTextSettings extends LitElement {
     e.stopPropagation();
     const fontStyle = e.target.value;
     this.api.setAppState({
-      ...this.api.getAppState(),
       penbarText: { ...this.api.getAppState().penbarText, fontStyle },
     });
   }
@@ -77,9 +73,10 @@ export class PenbarTextSettings extends LitElement {
 
       <div
         class="line"
-        style="display: flex; align-items: center;justify-content: space-between;"
+        style="display: flex; align-items: center;justify-content: space-between; gap: 4px;"
       >
         <sp-picker
+          style="flex: 1;"
           label="Font style"
           value=${penbarText.fontStyle}
           @change=${this.handleFontStyleChanged}

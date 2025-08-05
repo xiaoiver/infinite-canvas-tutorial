@@ -19,3 +19,4 @@ export * from './deserialize';
 export * from './easing';
 export * from './cursor';
 export * from './clipboard';
+export * from './marker';

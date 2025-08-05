@@ -54,6 +54,7 @@ import {
   UI,
   ZIndex,
   Brush,
+  Marker,
 } from '../components';
 import { paddingMat3 } from '../utils';
 import { GridRenderer } from './GridRenderer';
@@ -140,6 +141,9 @@ export class MeshPipeline extends System {
   private strokeAttenuations = this.query(
     (q) => q.addedChangedOrRemoved.with(StrokeAttenuation).trackWrites,
   );
+  private markers = this.query(
+    (q) => q.addedChangedOrRemoved.with(Marker).trackWrites,
+  );
 
   gpuResources: Map<
     Entity,
@@ -201,6 +205,7 @@ export class MeshPipeline extends System {
             TextDecoration,
             UI,
             ZIndex,
+            Marker,
           )
           .read.and.using(
             RasterScreenshotRequest,
@@ -386,7 +391,10 @@ export class MeshPipeline extends System {
     });
 
     // Handle some special cases.
-    this.strokes.addedChangedOrRemoved.forEach((entity) => {
+    [
+      ...this.strokes.addedChangedOrRemoved,
+      ...this.markers.addedChangedOrRemoved,
+    ].forEach((entity) => {
       if (entity.has(Polyline) || entity.has(Path)) {
         safeAddComponent(entity, GeometryDirty);
       }
@@ -425,7 +433,8 @@ export class MeshPipeline extends System {
             !!this.fractionalIndexes.addedChangedOrRemoved.length ||
             !!this.textDecorations.addedChangedOrRemoved.length ||
             !!this.sizeAttenuations.addedChangedOrRemoved.length ||
-            !!this.strokeAttenuations.addedChangedOrRemoved.length)
+            !!this.strokeAttenuations.addedChangedOrRemoved.length ||
+            !!this.markers.addedChangedOrRemoved.length)
         ) {
           toRender = true;
         }

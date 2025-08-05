@@ -5,6 +5,7 @@ import {
 } from './systems/RenderTransformer';
 import {
   FillAttributes,
+  MarkerAttributes,
   RoughAttributes,
   SerializedNode,
   StrokeAttributes,
@@ -36,6 +37,7 @@ export interface AppState {
   penbarDrawRect: Partial<StrokeAttributes & FillAttributes>;
   penbarDrawEllipse: Partial<StrokeAttributes & FillAttributes>;
   penbarDrawLine: Partial<StrokeAttributes>;
+  penbarDrawArrow: Partial<StrokeAttributes & MarkerAttributes>;
   penbarDrawRoughRect: Partial<
     RoughAttributes & StrokeAttributes & FillAttributes
   >;
@@ -75,7 +77,6 @@ export const getDefaultAppState: () => AppState = () => {
             'white',
             'red',
             'green',
-            'blue',
             'yellow',
           ],
         },
@@ -87,7 +88,6 @@ export const getDefaultAppState: () => AppState = () => {
             'white',
             'red',
             'green',
-            'blue',
             'yellow',
           ],
         },
@@ -108,6 +108,7 @@ export const getDefaultAppState: () => AppState = () => {
       Pen.DRAW_RECT,
       Pen.DRAW_ELLIPSE,
       Pen.DRAW_LINE,
+      Pen.DRAW_ARROW,
       Pen.DRAW_ROUGH_RECT,
       Pen.IMAGE,
       Pen.TEXT,
@@ -131,9 +132,18 @@ export const getDefaultAppState: () => AppState = () => {
       strokeOpacity: 1,
     },
     penbarDrawLine: {
+      fill: 'none',
       stroke: TRANSFORMER_ANCHOR_STROKE_COLOR,
       strokeWidth: 1,
       strokeOpacity: 1,
+    },
+    penbarDrawArrow: {
+      fill: 'none',
+      stroke: TRANSFORMER_ANCHOR_STROKE_COLOR,
+      strokeWidth: 1,
+      strokeOpacity: 1,
+      markerStart: 'none',
+      markerEnd: 'line',
     },
     penbarDrawRoughRect: {
       fill: 'black',
@@ -146,6 +156,7 @@ export const getDefaultAppState: () => AppState = () => {
       roughFillStyle: 'hachure',
     },
     penbarPencil: {
+      fill: 'none',
       stroke: TRANSFORMER_ANCHOR_STROKE_COLOR,
       strokeWidth: 1,
       strokeOpacity: 1,

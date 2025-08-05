@@ -1,6 +1,7 @@
 import { Entity } from '@lastolivegames/becsy';
 import {
   FillAttributes,
+  MarkerAttributes,
   PathSerializedNode,
   PolylineSerializedNode,
   RectSerializedNode,
@@ -31,6 +32,7 @@ import {
   TextDecoration,
   FillImage,
   FillPattern,
+  Marker,
 } from '../../components';
 import { serializePoints } from './points';
 
@@ -178,6 +180,14 @@ export function entityToSerializedNodes(
       strokeMiterlimit: miterlimit,
       strokeDasharray: `${dasharray[0]},${dasharray[1]}`,
       strokeDashoffset: dashoffset,
+    });
+  }
+
+  if (entity.has(Marker)) {
+    const { start, end } = entity.read(Marker);
+    Object.assign(attributes as MarkerAttributes, {
+      markerStart: start,
+      markerEnd: end,
     });
   }
 

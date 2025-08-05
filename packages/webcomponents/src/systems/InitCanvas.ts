@@ -31,6 +31,8 @@ import {
   TextDecoration,
   Wireframe,
   Rough,
+  VectorNetwork,
+  Marker,
 } from '@infinite-canvas-tutorial/ecs';
 import { Event } from '../event';
 import { ExtendedAPI, pendingCanvases } from '../API';
@@ -68,6 +70,7 @@ export class InitCanvas extends System {
             Text,
             Rough,
             Brush,
+            VectorNetwork,
             Selected,
             Opacity,
             DropShadow,
@@ -75,6 +78,7 @@ export class InitCanvas extends System {
             Font,
             TextDecoration,
             Wireframe,
+            Marker,
           ).write,
     );
   }

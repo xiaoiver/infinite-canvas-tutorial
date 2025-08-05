@@ -32,6 +32,7 @@ import {
   FillSolid,
   GlobalRenderOrder,
   GlobalTransform,
+  Marker,
   Mat3,
   Opacity,
   Path,
@@ -43,6 +44,7 @@ import {
   Text,
   TextDecoration,
 } from '../components';
+import { lineArrow } from '../utils';
 
 const epsilon = 1e-4;
 const circleEllipsePointsNum = 64;
@@ -577,10 +579,39 @@ function getCapType(lineCap: CanvasLineCap) {
   return cap;
 }
 
+function generateMarker(
+  points: number[],
+  markerType: Marker['start'],
+  isStart: boolean,
+) {
+  if (markerType === 'none') {
+    return [];
+  }
+
+  const startPoint = isStart
+    ? [points[0], points[1]]
+    : [points[points.length - 2], points[points.length - 1]];
+  const endPoint = isStart
+    ? [points[2], points[3]]
+    : [points[points.length - 4], points[points.length - 3]];
+  const direction = [endPoint[0] - startPoint[0], endPoint[1] - startPoint[1]];
+  const angle = Math.atan2(direction[1], direction[0]);
+
+  let markerPoints: number[] = [];
+  if (markerType === 'line') {
+    markerPoints = lineArrow(startPoint[0], startPoint[1], 10, angle).flat();
+  }
+
+  return [NaN, NaN, ...markerPoints, NaN, NaN];
+}
+
 export function updateBuffer(object: Entity, useRoughStroke = true) {
   const { linecap, linejoin } = object.has(Stroke)
     ? object.read(Stroke)
     : ({ linecap: 'butt', linejoin: 'miter' } as const);
+  const { start, end } = object.has(Marker)
+    ? object.read(Marker)
+    : ({ start: 'none', end: 'none' } as const);
 
   let points: number[] = [];
 
@@ -602,6 +633,10 @@ export function updateBuffer(object: Entity, useRoughStroke = true) {
       prev.push(cur[0], cur[1]);
       return prev;
     }, [] as number[]);
+
+    const startMarker = generateMarker(points, start, true);
+    const endMarker = generateMarker(points, end, false);
+    points.push(...startMarker, ...endMarker);
   } else if (object.has(Path)) {
     const computed = object.read(ComputedPoints).points;
     points = computed

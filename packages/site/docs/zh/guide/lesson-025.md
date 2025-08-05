@@ -7,13 +7,14 @@ head:
 
 <script setup>
 import DrawRect from '../../components/DrawRect.vue'
+import DrawArrow from '../../components/DrawArrow.vue'
 import Pencil from '../../components/Pencil.vue'
 import Brush from '../../components/Brush.vue'
 </script>
 
 # 课程 25 - 绘制模式与笔刷
 
-在 [课程 14 - 画布模式] 中我们介绍了手型和选择模式，在本节课中我们将介绍绘制模式：包括矩形和椭圆，以及更加自由的笔刷模式。
+在 [课程 14 - 画布模式] 中我们介绍了手型和选择模式，在本节课中我们将介绍绘制模式：包括矩形、椭圆和箭头，以及更加自由的笔刷模式。
 
 ## 矩形绘制模式 {#draw-rect-mode}
 
@@ -147,6 +148,68 @@ if (height < 0) {
 
 ![Size label in Figma](/figma-size-label.png)
 
+## 绘制箭头 {#draw-arrow}
+
+除了矩形、椭圆、折线等基础图形，一些常用的复合图形例如箭头。
+
+在 SVG 中首先使用 `<marker>` 声明箭头，通常是一个 `<path>`，然后通过目标图形的 [marker-start] 和 [marker-end] 属性关联箭头：
+
+```html
+<defs>
+    <!-- arrowhead marker definition -->
+    <marker
+        id="arrow"
+        viewBox="0 0 10 10"
+        refX="5"
+        refY="5"
+        markerWidth="6"
+        markerHeight="6"
+        orient="auto-start-reverse"
+    >
+        <path d="M 0 0 L 10 5 L 0 10 z" />
+    </marker>
+</defs>
+<!-- Coordinate axes with a arrowhead in both direction -->
+<polyline
+    points="10,10 10,90 90,90"
+    fill="none"
+    stroke="black"
+    marker-start="url(#arrow)"
+    marker-end="url(#arrow)"
+/>
+```
+
+这种将箭头端点与主体分离的方式十分灵活。但在图形编辑器场景下，只需要提供一些预设的常见样式即可。例如 Figma 中的箭头就是通过附加在 Path 的两个端点（`start/end point`）上实现的，包括 `line/triangle/diamond` 等若干种预设样式，详见：[How to Curve an Arrow in Figma]
+
+![Arrow in Figma](/arrow-in-figma.png)
+
+因此在声明式用法中，我们完全可以牺牲自定义箭头样式这一特性，提供一系列内置的箭头样式字面量，在构建 Polyline / Path 时将箭头端点和主体一并生成。这种思路在使用 SVG 渲染的 [plot - arrow] 中也可以看到，它并没有使用 `<marker>`，而是一个完整的 `<path>` 定义。
+
+```ts
+export interface MarkerAttributes {
+    markerStart: Marker['start'];
+    markerEnd: Marker['end'];
+}
+```
+
+接下来我们来看具体的构建 geometry 过程。
+
+### 起始点和终点 {#start-end-point}
+
+首先需要找到箭头的起始点和终点。
+
+但朝向需要手动计算，计算方式并不复杂，沿切线即可。
+
+<DrawArrow />
+
+### 导出 SVG {#export-arrow-to-svg}
+
+[orient]
+
+## 绘制多边形 {#draw-polygon}
+
+[Shape tools - polygons]
+
 ## 铅笔工具 {#pencil-tool}
 
 首先我们先来看最简单的一种实现，使用折线展示，在 Figma 中称作 Pencil。
@@ -242,7 +305,7 @@ if (vertexNum < 0.5) {
 
 ![source: https://shenciao.github.io/brush-rendering-tutorial/Basics/Stamp/](https://shenciao.github.io/brush-rendering-tutorial/assets/images/stamp-to-stroke-082a5ddd80c45086b810ed8b9ebcea79.gif)
 
-### 导出 SVG {#export-svg}
+### 导出 SVG {#export-brush-to-svg}
 
 Figma 是可以将 Brush 导出 SVG 的。
 
@@ -266,3 +329,9 @@ Figma 是可以将 Brush 导出 SVG 的。
 [simplify-js]: https://github.com/mourner/simplify-js
 [Brush Rendering Tutorial]: https://shenciao.github.io/brush-rendering-tutorial/
 [课程 12 - 线段主体拉伸]: /zh/guide/lesson-012#extrude-segment
+[How to Curve an Arrow in Figma]: https://imagy.app/how-to-curve-an-arrow-in-figma/
+[marker-start]: https://developer.mozilla.org/en-US/docs/Web/SVG/Reference/Attribute/marker-start
+[marker-end]: https://developer.mozilla.org/en-US/docs/Web/SVG/Reference/Attribute/marker-end
+[Shape tools - polygons]: https://help.figma.com/hc/en-us/articles/360040450133-Shape-tools#polygons
+[plot - arrow]: https://github.com/observablehq/plot/blob/main/src/marks/arrow.js
+[orient]: https://developer.mozilla.org/en-US/docs/Web/SVG/Reference/Attribute/orient

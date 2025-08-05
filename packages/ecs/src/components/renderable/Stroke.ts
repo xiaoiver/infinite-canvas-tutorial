@@ -88,13 +88,6 @@ export class Stroke {
   @field({ type: Type.float32, default: 0 }) declare dashoffset: number;
 
   constructor(props?: Partial<Stroke>) {
-    this.color = props?.color;
-    this.width = props?.width;
-    this.alignment = props?.alignment;
-    this.linecap = props?.linecap;
-    this.linejoin = props?.linejoin;
-    this.miterlimit = props?.miterlimit;
-    this.dasharray = props?.dasharray;
-    this.dashoffset = props?.dashoffset;
+    Object.assign(this, props);
   }
 }

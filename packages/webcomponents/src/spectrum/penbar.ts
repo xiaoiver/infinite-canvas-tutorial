@@ -1,4 +1,4 @@
-import { html, css, LitElement } from 'lit';
+import { html, css, LitElement, PropertyValues } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
 import { consume } from '@lit/context';
 import { when } from 'lit/directives/when.js';
@@ -52,9 +52,24 @@ export class Penbar extends LitElement {
     | Pen.DRAW_RECT
     | Pen.DRAW_ELLIPSE
     | Pen.DRAW_LINE
-    | Pen.DRAW_ROUGH_RECT = Pen.DRAW_RECT;
+    | Pen.DRAW_ARROW
+    | Pen.DRAW_ROUGH_RECT;
 
   private binded = false;
+
+  protected firstUpdated(_changedProperties: PropertyValues): void {
+    setTimeout(() => {
+      const pen = this.appState.penbarSelected;
+      this.lastDrawPen =
+        pen === Pen.DRAW_RECT ||
+        pen === Pen.DRAW_ELLIPSE ||
+        pen === Pen.DRAW_LINE ||
+        pen === Pen.DRAW_ARROW ||
+        pen === Pen.DRAW_ROUGH_RECT
+          ? pen
+          : Pen.DRAW_RECT;
+    }, 100);
+  }
 
   private async handlePenChanged(e: CustomEvent) {
     const pen = (e.target as any).selected[0];
@@ -71,6 +86,7 @@ export class Penbar extends LitElement {
       pen === Pen.DRAW_RECT ||
       pen === Pen.DRAW_ELLIPSE ||
       pen === Pen.DRAW_LINE ||
+      pen === Pen.DRAW_ARROW ||
       pen === Pen.DRAW_ROUGH_RECT
     ) {
       this.lastDrawPen = pen;
@@ -101,14 +117,16 @@ export class Penbar extends LitElement {
 
   private setPenWithKeyboard(
     event: KeyboardEvent,
-    pen: Pen.DRAW_RECT | Pen.DRAW_ELLIPSE | Pen.DRAW_LINE,
+    pen: Pen.DRAW_RECT | Pen.DRAW_ELLIPSE | Pen.DRAW_LINE | Pen.DRAW_ARROW,
     targetKey: string,
+    shiftKey: boolean = false,
   ) {
     if (
       event.key.toUpperCase() === targetKey.toUpperCase() &&
       !event.ctrlKey &&
       !event.metaKey &&
-      !event.altKey
+      !event.altKey &&
+      (!shiftKey || (shiftKey && event.shiftKey))
     ) {
       event.preventDefault();
       event.stopPropagation();
@@ -128,6 +146,7 @@ export class Penbar extends LitElement {
     this.setPenWithKeyboard(event, Pen.DRAW_RECT, 'R');
     this.setPenWithKeyboard(event, Pen.DRAW_LINE, 'L');
     this.setPenWithKeyboard(event, Pen.DRAW_ELLIPSE, 'O');
+    this.setPenWithKeyboard(event, Pen.DRAW_ARROW, 'L', true);
   };
 
   disconnectedCallback() {
@@ -175,76 +194,104 @@ export class Penbar extends LitElement {
               </sp-action-button>
             `,
           )}
-          <overlay-trigger placement="right">
-            <sp-action-button
-              value=${this.lastDrawPen}
-              hold-affordance
-              slot="trigger"
-            >
-              ${when(
-                this.lastDrawPen === Pen.DRAW_RECT,
-                () => html`<sp-icon-rectangle slot="icon"></sp-icon-rectangle>`,
-              )}
-              ${when(
-                this.lastDrawPen === Pen.DRAW_ELLIPSE,
-                () => html`<sp-icon-ellipse slot="icon"></sp-icon-ellipse>`,
-              )}
-              ${when(
-                this.lastDrawPen === Pen.DRAW_LINE,
-                () => html`<sp-icon-line slot="icon"></sp-icon-line>`,
-              )}
-              ${when(
-                this.lastDrawPen === Pen.DRAW_ROUGH_RECT,
-                () =>
-                  html`<sp-icon-rect-select slot="icon"></sp-icon-rect-select>`,
-              )}
-            </sp-action-button>
-            <sp-popover slot="hover-content" style="padding: 8px;">
-              <ic-spectrum-penbar-draw-settings
-                .pen=${this.lastDrawPen}
-              ></ic-spectrum-penbar-draw-settings>
-            </sp-popover>
-            <sp-popover slot="click-content">
-              <sp-menu
-                @change=${this.handlePenChanged}
-                selects="single"
-                .selected=${[penbarSelected]}
-              >
-                ${when(
-                  penbarAll.includes(Pen.DRAW_RECT),
-                  () => html` <sp-menu-item value="${Pen.DRAW_RECT}">
-                    <sp-icon-rectangle slot="icon"></sp-icon-rectangle>
-                    Rectangle
-                    <kbd slot="value">R</kbd>
-                  </sp-menu-item>`,
-                )}
-                ${when(
-                  penbarAll.includes(Pen.DRAW_ELLIPSE),
-                  () => html` <sp-menu-item value="${Pen.DRAW_ELLIPSE}">
-                    <sp-icon-ellipse slot="icon"></sp-icon-ellipse>
-                    Ellipse
-                    <kbd slot="value">O</kbd>
-                  </sp-menu-item>`,
-                )}
-                ${when(
-                  penbarAll.includes(Pen.DRAW_LINE),
-                  () => html` <sp-menu-item value="${Pen.DRAW_LINE}">
-                    <sp-icon-line slot="icon"></sp-icon-line>
-                    Line
-                    <kbd slot="value">L</kbd>
-                  </sp-menu-item>`,
-                )}
-                ${when(
-                  penbarAll.includes(Pen.DRAW_ROUGH_RECT),
-                  () => html` <sp-menu-item value="${Pen.DRAW_ROUGH_RECT}">
-                    <sp-icon-rect-select slot="icon"></sp-icon-rect-select>
-                    Rough Rectangle
-                  </sp-menu-item>`,
-                )}
-              </sp-menu>
-            </sp-popover>
-          </overlay-trigger>
-
+          ${when(
+            penbarAll.includes(Pen.DRAW_RECT) ||
+              penbarAll.includes(Pen.DRAW_ELLIPSE) ||
+              penbarAll.includes(Pen.DRAW_LINE) ||
+              penbarAll.includes(Pen.DRAW_ARROW) ||
+              penbarAll.includes(Pen.DRAW_ROUGH_RECT),
+            () => html`
+              <overlay-trigger placement="right">
+                <sp-action-button
+                  value=${this.lastDrawPen}
+                  hold-affordance
+                  slot="trigger"
+                >
+                  ${when(
+                    this.lastDrawPen === Pen.DRAW_RECT,
+                    () =>
+                      html`<sp-icon-rectangle slot="icon"></sp-icon-rectangle>`,
+                  )}
+                  ${when(
+                    this.lastDrawPen === Pen.DRAW_ELLIPSE,
+                    () => html`<sp-icon-ellipse slot="icon"></sp-icon-ellipse>`,
+                  )}
+                  ${when(
+                    this.lastDrawPen === Pen.DRAW_LINE,
+                    () => html`<sp-icon-line slot="icon"></sp-icon-line>`,
+                  )}
+                  ${when(
+                    this.lastDrawPen === Pen.DRAW_ARROW,
+                    () =>
+                      html`<sp-icon-arrow-up-right
+                        slot="icon"
+                      ></sp-icon-arrow-up-right>`,
+                  )}
+                  ${when(
+                    this.lastDrawPen === Pen.DRAW_ROUGH_RECT,
+                    () =>
+                      html`<sp-icon-rect-select
+                        slot="icon"
+                      ></sp-icon-rect-select>`,
+                  )}
+                </sp-action-button>
+                <sp-popover slot="hover-content" style="padding: 8px;">
+                  <ic-spectrum-penbar-draw-settings
+                    .pen=${this.lastDrawPen}
+                  ></ic-spectrum-penbar-draw-settings>
+                </sp-popover>
+                <sp-popover slot="click-content">
+                  <sp-menu
+                    @change=${this.handlePenChanged}
+                    selects="single"
+                    .selected=${[penbarSelected]}
+                  >
+                    ${when(
+                      penbarAll.includes(Pen.DRAW_RECT),
+                      () => html` <sp-menu-item value="${Pen.DRAW_RECT}">
+                        <sp-icon-rectangle slot="icon"></sp-icon-rectangle>
+                        Rectangle
+                        <kbd slot="value">R</kbd>
+                      </sp-menu-item>`,
+                    )}
+                    ${when(
+                      penbarAll.includes(Pen.DRAW_ELLIPSE),
+                      () => html` <sp-menu-item value="${Pen.DRAW_ELLIPSE}">
+                        <sp-icon-ellipse slot="icon"></sp-icon-ellipse>
+                        Ellipse
+                        <kbd slot="value">O</kbd>
+                      </sp-menu-item>`,
+                    )}
+                    ${when(
+                      penbarAll.includes(Pen.DRAW_LINE),
+                      () => html` <sp-menu-item value="${Pen.DRAW_LINE}">
+                        <sp-icon-line slot="icon"></sp-icon-line>
+                        Line
+                        <kbd slot="value">L</kbd>
+                      </sp-menu-item>`,
+                    )}
+                    ${when(
+                      penbarAll.includes(Pen.DRAW_ARROW),
+                      () => html` <sp-menu-item value="${Pen.DRAW_ARROW}">
+                        <sp-icon-arrow-up-right
+                          slot="icon"
+                        ></sp-icon-arrow-up-right>
+                        Arrow
+                        <kbd slot="value">⇧L</kbd>
+                      </sp-menu-item>`,
+                    )}
+                    ${when(
+                      penbarAll.includes(Pen.DRAW_ROUGH_RECT),
+                      () => html` <sp-menu-item value="${Pen.DRAW_ROUGH_RECT}">
+                        <sp-icon-rect-select slot="icon"></sp-icon-rect-select>
+                        Rough Rectangle
+                      </sp-menu-item>`,
+                    )}
+                  </sp-menu>
+                </sp-popover>
+              </overlay-trigger>
+            `,
+          )}
           ${when(
             penbarAll.includes(Pen.IMAGE),
             () => html`

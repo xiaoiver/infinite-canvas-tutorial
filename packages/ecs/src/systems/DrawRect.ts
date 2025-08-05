@@ -34,6 +34,7 @@ import {
   ComputedCameraControl,
   Name,
   SizeAttenuation,
+  Marker,
 } from '../components';
 import { API } from '../API';
 import {
@@ -58,6 +59,7 @@ const PEN_TO_TYPE = {
   [Pen.DRAW_RECT]: 'rect',
   [Pen.DRAW_ELLIPSE]: 'ellipse',
   [Pen.DRAW_LINE]: 'polyline',
+  [Pen.DRAW_ARROW]: 'polyline',
   [Pen.DRAW_ROUGH_RECT]: 'rough-rect',
 };
 
@@ -74,6 +76,7 @@ export class DrawRect extends System {
       roughRectBrush: RoughRectSerializedNode;
       ellipseBrush: EllipseSerializedNode;
       lineBrush: PolylineSerializedNode;
+      arrowBrush: PolylineSerializedNode;
       label: RectSerializedNode;
       text: TextSerializedNode;
       x: number;
@@ -118,6 +121,7 @@ export class DrawRect extends System {
             SizeAttenuation,
             Transformable,
             Name,
+            Marker,
           ).write,
     );
   }
@@ -137,12 +141,17 @@ export class DrawRect extends System {
       const appState = api.getAppState();
       const pen = appState.penbarSelected;
       const defaultDrawParams: Record<
-        Pen.DRAW_RECT | Pen.DRAW_ELLIPSE | Pen.DRAW_LINE | Pen.DRAW_ROUGH_RECT,
+        | Pen.DRAW_RECT
+        | Pen.DRAW_ELLIPSE
+        | Pen.DRAW_LINE
+        | Pen.DRAW_ARROW
+        | Pen.DRAW_ROUGH_RECT,
         Partial<RoughAttributes & StrokeAttributes & FillAttributes>
       > = {
         [Pen.DRAW_RECT]: appState.penbarDrawRect,
         [Pen.DRAW_ELLIPSE]: appState.penbarDrawEllipse,
         [Pen.DRAW_LINE]: appState.penbarDrawLine,
+        [Pen.DRAW_ARROW]: appState.penbarDrawArrow,
         [Pen.DRAW_ROUGH_RECT]: appState.penbarDrawRoughRect,
       };
 
@@ -150,6 +159,7 @@ export class DrawRect extends System {
         pen !== Pen.DRAW_RECT &&
         pen !== Pen.DRAW_ELLIPSE &&
         pen !== Pen.DRAW_LINE &&
+        pen !== Pen.DRAW_ARROW &&
         pen !== Pen.DRAW_ROUGH_RECT
       ) {
         return;
@@ -166,6 +176,7 @@ export class DrawRect extends System {
           roughRectBrush: undefined,
           ellipseBrush: undefined,
           lineBrush: undefined,
+          arrowBrush: undefined,
           label: undefined,
           text: undefined,
           x: 0,
@@ -203,6 +214,7 @@ export class DrawRect extends System {
           roughRectBrush,
           ellipseBrush,
           lineBrush,
+          arrowBrush,
           // label,
         } = this.selections.get(camera.__id);
 
@@ -213,7 +225,9 @@ export class DrawRect extends System {
             ? roughRectBrush
             : pen === Pen.DRAW_ELLIPSE
             ? ellipseBrush
-            : lineBrush;
+            : pen === Pen.DRAW_LINE
+            ? lineBrush
+            : arrowBrush;
 
         // Just click on the canvas, do nothing
         if (!brush || (width === 0 && height === 0)) {
@@ -234,7 +248,7 @@ export class DrawRect extends System {
               type: PEN_TO_TYPE[pen],
             },
             defaultDrawParams[pen],
-            pen === Pen.DRAW_LINE
+            pen === Pen.DRAW_LINE || pen === Pen.DRAW_ARROW
               ? {
                   points: `${x},${y} ${x + width},${y + height}`,
                 }
@@ -293,7 +307,9 @@ export class DrawRect extends System {
           ? selection.roughRectBrush
           : pen === Pen.DRAW_ELLIPSE
           ? selection.ellipseBrush
-          : selection.lineBrush;
+          : pen === Pen.DRAW_LINE
+          ? selection.lineBrush
+          : selection.arrowBrush;
       if (!brush) {
         // @ts-expect-error
         brush = Object.assign(
@@ -304,7 +320,7 @@ export class DrawRect extends System {
             zIndex: DRAW_RECT_Z_INDEX,
             strokeAttenuation: true,
           },
-          pen === Pen.DRAW_LINE
+          pen === Pen.DRAW_LINE || pen === Pen.DRAW_ARROW
             ? {
                 points: '0,0 0,0',
               }
@@ -322,8 +338,10 @@ export class DrawRect extends System {
           selection.roughRectBrush = brush as RoughRectSerializedNode;
         } else if (pen === Pen.DRAW_ELLIPSE) {
           selection.ellipseBrush = brush as EllipseSerializedNode;
-        } else {
+        } else if (pen === Pen.DRAW_LINE) {
           selection.lineBrush = brush as PolylineSerializedNode;
+        } else {
+          selection.arrowBrush = brush as PolylineSerializedNode;
         }
         api.getEntity(brush).add(UI, { type: UIType.BRUSH });
 
@@ -374,7 +392,7 @@ export class DrawRect extends System {
       let width = cx - x;
       let height = cy - y;
 
-      if (pen !== Pen.DRAW_LINE) {
+      if (pen !== Pen.DRAW_LINE && pen !== Pen.DRAW_ARROW) {
         // when width or height is negative, change the x or y to the opposite side
         if (width < 0) {
           x += width;
@@ -388,7 +406,7 @@ export class DrawRect extends System {
 
       api.updateNode(
         brush,
-        pen === Pen.DRAW_LINE
+        pen === Pen.DRAW_LINE || pen === Pen.DRAW_ARROW
           ? {
               ...defaultDrawParams,
               visibility: 'visible',

@@ -10,6 +10,7 @@ export enum Pen {
   DRAW_RECT = 'draw-rect',
   DRAW_ELLIPSE = 'draw-ellipse',
   DRAW_LINE = 'draw-line',
+  DRAW_ARROW = 'draw-arrow',
   DRAW_ROUGH_RECT = 'draw-rough-rect',
   IMAGE = 'image',
   TEXT = 'text',

@@ -3,8 +3,9 @@ import { customElement, property } from 'lit/decorators.js';
 import { consume } from '@lit/context';
 import {
   AppState,
+  Marker,
+  PolylineSerializedNode,
   SerializedNode,
-  TextSerializedNode,
 } from '@infinite-canvas-tutorial/ecs';
 import { apiContext, appStateContext } from '../context';
 import { ExtendedAPI } from '../API';
@@ -93,6 +94,18 @@ export class StrokeContent extends LitElement {
     this.api.record();
   }
 
+  private handleMarkerStartChanged(e: Event & { target: HTMLInputElement }) {
+    const markerStart = e.target.value as Marker['start'];
+    this.api.updateNode(this.node, { markerStart });
+    this.api.record();
+  }
+
+  private handleMarkerEndChanged(e: Event & { target: HTMLInputElement }) {
+    const markerEnd = e.target.value as Marker['end'];
+    this.api.updateNode(this.node, { markerEnd });
+    this.api.record();
+  }
+
   render() {
     if (!this.node) {
       return html``;
@@ -103,7 +116,9 @@ export class StrokeContent extends LitElement {
       strokeAlignment = 'center',
       strokeLinecap = 'butt',
       strokeLinejoin = 'miter',
-    } = this.node as TextSerializedNode;
+      markerStart = 'none',
+      markerEnd = 'none',
+    } = this.node as PolylineSerializedNode;
 
     return html`<div class="line">
         <sp-slider
@@ -423,6 +438,46 @@ export class StrokeContent extends LitElement {
             </sp-icon>
           </sp-action-button>
         </sp-action-group>
+      </div>
+
+      <div class="line">
+        <sp-field-label for="marker-start" side-aligned="start"
+          >Marker start</sp-field-label
+        >
+        <sp-picker
+          style="width: 80px;"
+          label="Marker start"
+          value=${markerStart}
+          @change=${this.handleMarkerStartChanged}
+          id="marker-start"
+        >
+          ${['none', 'line'].map(
+            (markerType) =>
+              html`<sp-menu-item value=${markerType}
+                >${markerType}</sp-menu-item
+              >`,
+          )}
+        </sp-picker>
+      </div>
+
+      <div class="line">
+        <sp-field-label for="marker-end" side-aligned="start"
+          >Marker end</sp-field-label
+        >
+        <sp-picker
+          style="width: 80px;"
+          label="Marker end"
+          value=${markerEnd}
+          @change=${this.handleMarkerEndChanged}
+          id="marker-end"
+        >
+          ${['none', 'line'].map(
+            (markerType) =>
+              html`<sp-menu-item value=${markerType}
+                >${markerType}</sp-menu-item
+              >`,
+          )}
+        </sp-picker>
       </div>`;
   }
 }

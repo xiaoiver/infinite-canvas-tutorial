@@ -21,8 +21,8 @@ onMounted(async () => {
     api = e.detail;
 
     api.setAppState({
-      ...api.getAppState(),
       penbarSelected: Pen.DRAW_RECT,
+      penbarAll: [Pen.SELECT, Pen.DRAW_RECT],
     });
     api.updateNode({
       id: 'draw-rect-1',

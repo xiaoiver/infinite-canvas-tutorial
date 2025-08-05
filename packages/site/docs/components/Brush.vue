@@ -23,6 +23,7 @@ onMounted(async () => {
     api.setAppState({
       ...api.getAppState(),
       penbarSelected: Pen.SELECT,
+      penbarAll: [Pen.SELECT, Pen.BRUSH],
     });
 
     // Generate sinewave geometry
