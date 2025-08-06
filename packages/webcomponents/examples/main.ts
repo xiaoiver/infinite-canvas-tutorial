@@ -25,16 +25,16 @@ const res = await fetch('/test.svg');
 // const res = await fetch(
 //   '/62f5208ddbc232ac973f53d9cfd91ba463c50b8bfd846349247709fe4a7a9053.svg',
 // );
-const svg = await res.text();
-// TODO: extract semantic groups inside comments
-const $container = document.createElement('div');
-$container.innerHTML = svg;
-const $svg = $container.children[0] as SVGSVGElement;
+// const svg = await res.text();
+// // TODO: extract semantic groups inside comments
+// const $container = document.createElement('div');
+// $container.innerHTML = svg;
+// const $svg = $container.children[0] as SVGSVGElement;
 
-const camera = svgSvgElementToComputedCamera($svg);
-const nodes = svgElementsToSerializedNodes(
-  Array.from($svg.children) as SVGElement[],
-);
+// const camera = svgSvgElementToComputedCamera($svg);
+// const nodes = svgElementsToSerializedNodes(
+//   Array.from($svg.children) as SVGElement[],
+// );
 
 // console.log('nodes', nodes);
 
@@ -62,54 +62,54 @@ canvas.addEventListener(Event.READY, async (e) => {
   //   radius.push(r);
   // }
 
-  const nodes = [
-    {
-      id: '1',
-      // type: 'rough-rect',
-      // type: 'rect',
-      // d: 'M 70 110 C 70 140, 110 140, 110 110',
-      type: 'polyline',
-      points: '0,0 100,100 -100,100',
-      // x: 100,
-      // y: 100,
-      // width: 100,
-      // height: 100,
-      stroke: 'black',
-      strokeWidth: 4,
-      strokeLinecap: 'round',
-      strokeLinejoin: 'round',
-      markerStart: 'line',
-      markerEnd: 'line',
-      // fill: 'red',
-      // roughFillStyle: 'dots',
-      // roughFillWeight: 5,
-      // fill: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAUAAAAFCAYAAACNbyblAAAAHElEQVQI12P4//8/w38GIAXDIBKE0DHxgljNBAAO9TXL0Y4OHwAAAABJRU5ErkJggg==',
-      // fill: 'blob:http://localhost:8080/cd5e4cd2-3387-4874-b792-128d82644004',
-      // fill: 'radial-gradient(circle at center, red, blue, green 100%)',
-      zIndex: 1,
-    } as const,
-    // {
-    //   id: '2',
-    //   type: 'text',
-    //   content: 'Hello',
-    //   anchorX: 100,
-    //   anchorY: 100,
-    //   fontSize: 20,
-    //   fontFamily: 'Arial',
-    //   fill: 'black',
-    //   zIndex: 2,
-    // },
-    // {
-    //   id: '1',
-    //   type: 'brush',
-    //   points: position.map(([x, y], i) => `${x},${y},${radius[i]}`).join(' '),
-    //   brushType: BrushType.STAMP,
-    //   brushStamp: '/brush.jpg',
-    //   stroke: 'red',
-    //   strokeOpacity: 1,
-    //   // wireframe: true,
-    // },
-  ];
+  // const nodes = [
+  //   {
+  //     id: '1',
+  //     // type: 'rough-rect',
+  //     // type: 'rect',
+  //     // d: 'M 70 110 C 70 140, 110 140, 110 110',
+  //     type: 'polyline',
+  //     points: '0,0 100,100 -100,100',
+  //     // x: 100,
+  //     // y: 100,
+  //     // width: 100,
+  //     // height: 100,
+  //     stroke: 'black',
+  //     strokeWidth: 4,
+  //     strokeLinecap: 'round',
+  //     strokeLinejoin: 'round',
+  //     markerStart: 'line',
+  //     markerEnd: 'line',
+  //     // fill: 'red',
+  //     // roughFillStyle: 'dots',
+  //     // roughFillWeight: 5,
+  //     // fill: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAUAAAAFCAYAAACNbyblAAAAHElEQVQI12P4//8/w38GIAXDIBKE0DHxgljNBAAO9TXL0Y4OHwAAAABJRU5ErkJggg==',
+  //     // fill: 'blob:http://localhost:8080/cd5e4cd2-3387-4874-b792-128d82644004',
+  //     // fill: 'radial-gradient(circle at center, red, blue, green 100%)',
+  //     zIndex: 1,
+  //   } as const,
+  //   // {
+  //   //   id: '2',
+  //   //   type: 'text',
+  //   //   content: 'Hello',
+  //   //   anchorX: 100,
+  //   //   anchorY: 100,
+  //   //   fontSize: 20,
+  //   //   fontFamily: 'Arial',
+  //   //   fill: 'black',
+  //   //   zIndex: 2,
+  //   // },
+  //   // {
+  //   //   id: '1',
+  //   //   type: 'brush',
+  //   //   points: position.map(([x, y], i) => `${x},${y},${radius[i]}`).join(' '),
+  //   //   brushType: BrushType.STAMP,
+  //   //   brushStamp: '/brush.jpg',
+  //   //   stroke: 'red',
+  //   //   strokeOpacity: 1,
+  //   //   // wireframe: true,
+  //   // },
+  // ];
 
   // api.runAtNextTick(() => {
   api.setAppState({
@@ -123,8 +123,8 @@ canvas.addEventListener(Event.READY, async (e) => {
     checkboardStyle: CheckboardStyle.GRID,
   });
 
-  api.updateNodes(nodes);
-  api.selectNodes([nodes[0]]);
+  // api.updateNodes(nodes);
+  // api.selectNodes([nodes[0]]);
 
   api.record();
   // });
