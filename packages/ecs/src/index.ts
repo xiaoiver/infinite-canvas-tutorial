@@ -34,6 +34,7 @@ export {
   createSVGElement,
   exportFillGradientOrPattern,
   exportFillImage,
+  exportMarker,
   loadBitmapFont,
   parseClipboard,
   createPasteEvent,

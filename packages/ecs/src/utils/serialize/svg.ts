@@ -42,6 +42,7 @@ const strokeDefaultAttributes = {
   strokeDashoffset: 0,
   markerStart: 'none',
   markerEnd: 'none',
+  markerFactor: 3,
 };
 
 const fillDefaultAttributes = {
@@ -231,6 +232,7 @@ export function serializeNodesToSVGElements(
       textOverflow,
       markerStart,
       markerEnd,
+      markerFactor,
       ...rest
     } = restAttributes as SerializedNodeAttributes;
 
@@ -318,7 +320,9 @@ export function serializeNodesToSVGElements(
     const innerOrOuterStrokeAlignment =
       innerStrokeAlignment || outerStrokeAlignment;
 
-    const hasMarker = markerStart !== 'none' || markerEnd !== 'none';
+    const hasMarker =
+      (markerStart && markerStart !== 'none') ||
+      (markerEnd && markerEnd !== 'none');
     const hasFillImage =
       rest.fill && isString(rest.fill) && isDataUrl(rest.fill);
     const hasFillGradient =
@@ -928,14 +932,35 @@ function createOrUpdateMarker(
   marker: Marker['start'],
   isEnd = false,
 ) {
-  const patternId = `marker-${marker}-${isEnd ? 'end' : 'start'}`;
+  const {
+    stroke,
+    strokeWidth,
+    strokeOpacity,
+    strokeLinecap,
+    strokeLinejoin,
+    markerFactor = 3,
+  } = node as PathSerializedNode;
+
+  const patternId = `marker-${marker}-${
+    isEnd ? 'end' : 'start'
+  }-${strokeWidth}`;
   const $existed = $def.querySelector(`#${patternId}`);
   if (!$existed) {
+    const arrowRadius = strokeWidth * markerFactor;
+    const markerSize = arrowRadius * markerFactor;
+    const viewBoxSize = arrowRadius * markerFactor;
+    const viewBoxOffset = viewBoxSize / markerFactor;
+
     const $marker = createSVGElement('marker');
     $marker.setAttribute('id', patternId);
-    $marker.setAttribute('markerWidth', '6');
-    $marker.setAttribute('markerHeight', '6');
-    $marker.setAttribute('viewBox', '-10 -10 20 20');
+    // @see https://developer.mozilla.org/en-US/docs/Web/SVG/Reference/Attribute/markerUnits
+    $marker.setAttribute('markerUnits', 'userSpaceOnUse');
+    $marker.setAttribute('markerWidth', `${markerSize}`);
+    $marker.setAttribute('markerHeight', `${markerSize}`);
+    $marker.setAttribute(
+      'viewBox',
+      `-${viewBoxOffset} -${viewBoxOffset} ${viewBoxSize} ${viewBoxSize}`,
+    );
     $marker.setAttribute('refX', '0');
     $marker.setAttribute('refY', '0');
     if (isEnd) {
@@ -945,16 +970,8 @@ function createOrUpdateMarker(
     }
     $def.appendChild($marker);
 
-    const {
-      stroke,
-      strokeWidth,
-      strokeOpacity,
-      strokeLinecap,
-      strokeLinejoin,
-    } = node as PathSerializedNode;
-
     if (marker === 'line') {
-      const points = lineArrow(0, 0, 10, Math.PI);
+      const points = lineArrow(0, 0, arrowRadius, Math.PI);
       const $path = createSVGElement('path');
       $path.setAttribute('fill', 'none');
       $path.setAttribute('stroke', stroke);

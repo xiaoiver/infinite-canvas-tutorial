@@ -407,9 +407,16 @@ export function serializedNodesToEntities(
       );
     }
 
-    const { markerStart, markerEnd } = attributes as MarkerAttributes;
+    const { markerStart, markerEnd, markerFactor } =
+      attributes as MarkerAttributes;
     if (markerStart || markerEnd) {
-      entity.insert(new Marker({ start: markerStart, end: markerEnd }));
+      entity.insert(
+        new Marker({
+          start: markerStart,
+          end: markerEnd,
+          factor: markerFactor,
+        }),
+      );
     }
 
     if (opacity || fillOpacity || strokeOpacity) {

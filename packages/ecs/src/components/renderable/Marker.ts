@@ -27,6 +27,12 @@ export class Marker {
   })
   declare end: 'none' | 'line';
 
+  @field({
+    type: Type.float32,
+    default: 3,
+  })
+  declare factor: number;
+
   constructor(props?: Partial<Marker>) {
     Object.assign(this, props);
   }

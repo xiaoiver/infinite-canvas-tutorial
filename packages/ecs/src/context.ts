@@ -144,6 +144,7 @@ export const getDefaultAppState: () => AppState = () => {
       strokeOpacity: 1,
       markerStart: 'none',
       markerEnd: 'line',
+      markerFactor: 3,
     },
     penbarDrawRoughRect: {
       fill: 'black',

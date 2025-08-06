@@ -184,10 +184,11 @@ export function entityToSerializedNodes(
   }
 
   if (entity.has(Marker)) {
-    const { start, end } = entity.read(Marker);
+    const { start, end, factor } = entity.read(Marker);
     Object.assign(attributes as MarkerAttributes, {
       markerStart: start,
       markerEnd: end,
+      markerFactor: factor,
     });
   }
 

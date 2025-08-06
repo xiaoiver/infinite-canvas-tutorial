@@ -614,6 +614,7 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
     roughSeed,
     markerStart,
     markerEnd,
+    markerFactor,
   } = updates as unknown as SerializedNodeAttributes;
 
   if (!isNil(name)) {
@@ -774,6 +775,9 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
   }
   if (!isNil(markerEnd)) {
     safeAddComponent(entity, Marker, { end: markerEnd });
+  }
+  if (!isNil(markerFactor)) {
+    safeAddComponent(entity, Marker, { factor: markerFactor });
   }
 
   if (!isNil(fontSize)) {

@@ -9,7 +9,7 @@ export type ToMatchSVGSnapshotOptions = {
 
 // @see https://jestjs.io/docs/26.x/expect#expectextendmatchers
 export function toMatchSVGSnapshot(
-  dom: SVGElement | null,
+  dom: SVGElement | string | null,
   dir: string,
   name: string,
   options: ToMatchSVGSnapshotOptions = {},
@@ -31,15 +31,19 @@ export function toMatchSVGSnapshot(
   try {
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 
-    actual = dom
-      ? // @ts-expect-error compatible with @xmldom/xmldom
-        format(new XMLSerializer().serializeToString(dom), {
-          parser: 'babel',
-        })
-      : 'null';
+    actual =
+      typeof dom === 'string'
+        ? dom
+        : dom
+        ? // @ts-expect-error compatible with @xmldom/xmldom
+          format(new XMLSerializer().serializeToString(dom), {
+            parser: 'babel',
+          })
+        : 'null';
 
     // Remove ';' after format by babel.
-    if (actual !== 'null') actual = actual.slice(0, -2);
+    if (actual !== 'null' && typeof dom !== 'string')
+      actual = actual.slice(0, -2);
 
     if (!fs.existsSync(expectedPath)) {
       if (process.env.CI === 'true') {

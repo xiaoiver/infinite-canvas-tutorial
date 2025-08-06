@@ -16,6 +16,7 @@ import {
   PolylineSerializedNode,
   API,
   getRoughOptions,
+  exportMarker,
 } from '@infinite-canvas-tutorial/ecs';
 import { consume } from '@lit/context';
 import rough from 'roughjs';
@@ -172,6 +173,10 @@ export class LayerThumbnail extends LitElement {
     } else if (isImage) {
       const $g = createSVGElement('g') as SVGElement;
       exportFillImage(this.node, $el, $g);
+      defsHTML = $g.children[0].innerHTML;
+    } else if (markerStart || markerEnd) {
+      const $g = createSVGElement('g') as SVGElement;
+      exportMarker(this.node, $el, $g);
       defsHTML = $g.children[0].innerHTML;
     }
 

@@ -112,6 +112,7 @@ export interface StrokeAttributes {
 export interface MarkerAttributes {
   markerStart: Marker['start'];
   markerEnd: Marker['end'];
+  markerFactor: Marker['factor'];
 }
 
 export interface InnerShadowAttributes {
