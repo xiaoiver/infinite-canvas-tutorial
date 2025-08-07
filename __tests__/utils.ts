@@ -120,6 +120,7 @@ export const NodeJSAdapter: Adapter = {
     const png = parsePNG(buffer);
     return png.data;
   },
+  createImage: (src: string) => loadImage(__dirname + '/canvas.png') as any,
   getWindow: () => new JSDOM().window,
   getDocument: () => new JSDOM().window._document,
   // @ts-expect-error compatible with @xmldom/xmldom

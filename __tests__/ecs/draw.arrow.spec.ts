@@ -28,7 +28,6 @@ import {
   ZIndex,
   ComputeZIndex,
   Pen,
-  Marker,
 } from '../../packages/ecs/src';
 import { NodeJSAdapter, sleep, createMouseEvent } from '../utils';
 

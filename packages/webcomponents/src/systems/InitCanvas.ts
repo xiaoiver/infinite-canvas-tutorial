@@ -9,6 +9,7 @@ import {
   ComputedCamera,
   Cursor,
   DropShadow,
+  InnerShadow,
   Ellipse,
   FillGradient,
   FillSolid,
@@ -79,6 +80,7 @@ export class InitCanvas extends System {
             TextDecoration,
             Wireframe,
             Marker,
+            InnerShadow,
           ).write,
     );
   }

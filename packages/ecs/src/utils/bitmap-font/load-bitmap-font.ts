@@ -1,9 +1,8 @@
-import { load } from '@loaders.gl/core';
-import { ImageLoader } from '@loaders.gl/images';
 import { BitmapFont } from './BitmapFont';
 import { bitmapFontTextParser } from './bitmap-font-text-parser';
 import { bitmapFontXMLStringParser } from './bitmap-font-xml-string-parser';
 import { bitmapFontJSONParser } from './bitmap-font-json-parser';
+import { DOMAdapter } from '../../environment';
 
 const validExtensions = ['.xml', '.fnt'];
 
@@ -47,7 +46,8 @@ export const loadBitmapFont = {
 
     const images = await Promise.all(
       textureUrls.map(
-        async ({ src }) => (await load(src, ImageLoader)) as ImageBitmap,
+        async ({ src }) =>
+          (await DOMAdapter.get().createImage(src)) as ImageBitmap,
       ),
     );
 

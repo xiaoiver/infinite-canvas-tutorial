@@ -1,5 +1,3 @@
-import { load } from '@loaders.gl/core';
-import { ImageLoader } from '@loaders.gl/images';
 import { isNil } from '@antv/util';
 import toposort from 'toposort';
 import { Entity } from '@lastolivegames/becsy';
@@ -32,12 +30,14 @@ import {
   Rough,
   VectorNetwork,
   Marker,
+  InnerShadow,
 } from '../../components';
 import {
   AttenuationAttributes,
   BrushSerializedNode,
   DropShadowAttributes,
   FillAttributes,
+  InnerShadowAttributes,
   isDataUrl,
   isUrl,
   MarkerAttributes,
@@ -61,6 +61,7 @@ import { EntityCommands, Commands } from '../../commands';
 import { isGradient } from '../gradient';
 import { isPattern } from '../pattern';
 import { computeBidi, measureText } from '../../systems/ComputeTextMetrics';
+import { DOMAdapter } from '../../environment';
 
 export function inferXYWidthHeight(node: SerializedNode) {
   const { type } = node;
@@ -116,7 +117,7 @@ async function loadImage(
   entity: EntityCommands,
   commands: Commands,
 ) {
-  const image = await load(url, ImageLoader);
+  const image = await DOMAdapter.get().createImage(url);
   entity.insert(new FillImage({ src: image as ImageBitmap, url }));
   entity.insert(new MaterialDirty());
   commands.execute();
@@ -442,6 +443,23 @@ export function serializedNodesToEntities(
           blurRadius: dropShadowBlurRadius,
           offsetX: dropShadowOffsetX,
           offsetY: dropShadowOffsetY,
+        }),
+      );
+    }
+
+    const {
+      innerShadowBlurRadius,
+      innerShadowColor,
+      innerShadowOffsetX,
+      innerShadowOffsetY,
+    } = attributes as InnerShadowAttributes;
+    if (innerShadowBlurRadius) {
+      entity.insert(
+        new InnerShadow({
+          color: innerShadowColor,
+          blurRadius: innerShadowBlurRadius,
+          offsetX: innerShadowOffsetX,
+          offsetY: innerShadowOffsetY,
         }),
       );
     }

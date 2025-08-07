@@ -37,9 +37,11 @@ const strokeDefaultAttributes = {
   strokeLinejoin: 'miter',
   strokeAlignment: 'center',
   strokeMiterlimit: 4,
-  // strokeDasharray: 'none',
   strokeDasharray: '0,0',
   strokeDashoffset: 0,
+};
+
+export const markerDefaultAttributes = {
   markerStart: 'none',
   markerEnd: 'none',
   markerFactor: 3,
@@ -108,6 +110,7 @@ export const defaultAttributes: Record<
     ...commonDefaultAttributes,
     ...fillDefaultAttributes,
     ...strokeDefaultAttributes,
+    ...markerDefaultAttributes,
   },
   brush: {
     ...commonDefaultAttributes,
@@ -119,6 +122,7 @@ export const defaultAttributes: Record<
     ...commonDefaultAttributes,
     ...fillDefaultAttributes,
     ...strokeDefaultAttributes,
+    ...markerDefaultAttributes,
   },
   text: {
     fontFamily: 'sans-serif',
@@ -519,28 +523,28 @@ function exportInnerOrOuterStrokeAlignment(
     $stroke.setAttribute('fill', 'none');
 
     if (type === 'ellipse') {
-      const { rx, ry } = attributes;
+      const { width, height } = attributes;
       const offset = innerStrokeAlignment ? -halfStrokeWidth : halfStrokeWidth;
       $stroke.setAttribute(
         'rx',
-        `${toFixedAndRemoveTrailingZeros(rx + offset)}`,
+        `${toFixedAndRemoveTrailingZeros(width / 2 + offset)}`,
       );
       $stroke.setAttribute(
         'ry',
-        `${toFixedAndRemoveTrailingZeros(ry + offset)}`,
+        `${toFixedAndRemoveTrailingZeros(height / 2 + offset)}`,
       );
     } else if (type === 'rect') {
-      const { x, y, width, height, strokeWidth } = attributes;
+      const { width, height, strokeWidth } = attributes;
       $stroke.setAttribute(
         'x',
         `${toFixedAndRemoveTrailingZeros(
-          x + (innerStrokeAlignment ? halfStrokeWidth : -halfStrokeWidth),
+          innerStrokeAlignment ? halfStrokeWidth : -halfStrokeWidth,
         )}`,
       );
       $stroke.setAttribute(
         'y',
         `${toFixedAndRemoveTrailingZeros(
-          y + (innerStrokeAlignment ? halfStrokeWidth : -halfStrokeWidth),
+          innerStrokeAlignment ? halfStrokeWidth : -halfStrokeWidth,
         )}`,
       );
       $stroke.setAttribute(
@@ -566,14 +570,13 @@ function exportInnerOrOuterStrokeAlignment(
  * @see https://stackoverflow.com/questions/69799051/creating-inner-shadow-in-svg
  * @example
  * ```html
- * <g filter="url(#filter)">
+ * <circle filter="url(#filter)">
  *   <defs>
  *     <filter id="filter">
  *       <feOffset dx="10" dy="10"/>
  *     </filter>
  *   </defs>
- *   <circle />
- * </g>
+ * </circle>
  * ```
  */
 export function exportInnerShadow(

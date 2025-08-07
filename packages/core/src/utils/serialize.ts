@@ -1,7 +1,5 @@
 import { Transform } from '@pixi/math';
 import { path2String } from '@antv/util';
-import { ImageLoader } from '@loaders.gl/images';
-import { load } from '@loaders.gl/core';
 import {
   AABB,
   Circle,
@@ -366,7 +364,7 @@ export async function deserializeNode(data: SerializedNode) {
   // create Image from DataURL
   const { fill, points, strokeDasharray } = rest;
   if (fill && isString(fill) && isDataUrl(fill)) {
-    shape.fill = (await load(fill, ImageLoader)) as ImageBitmap;
+    shape.fill = (await DOMAdapter.get().createImage(fill)) as ImageBitmap;
   }
   if (
     fill &&
@@ -374,9 +372,8 @@ export async function deserializeNode(data: SerializedNode) {
     isString(fill.image) &&
     isDataUrl(fill.image)
   ) {
-    (fill as Pattern).image = (await load(
+    (fill as Pattern).image = (await DOMAdapter.get().createImage(
       fill.image,
-      ImageLoader,
     )) as ImageBitmap;
   }
   if (points && isString(points)) {

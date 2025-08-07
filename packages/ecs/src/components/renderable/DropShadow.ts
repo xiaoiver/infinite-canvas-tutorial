@@ -33,9 +33,6 @@ export class DropShadow {
   declare blurRadius: number;
 
   constructor(props?: Partial<DropShadow>) {
-    this.color = props?.color;
-    this.blurRadius = props?.blurRadius;
-    this.offsetX = props?.offsetX;
-    this.offsetY = props?.offsetY;
+    Object.assign(this, props);
   }
 }

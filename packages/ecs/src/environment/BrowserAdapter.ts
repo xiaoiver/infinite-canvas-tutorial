@@ -1,3 +1,5 @@
+import { load } from '@loaders.gl/core';
+import { ImageLoader } from '@loaders.gl/images';
 import { Adapter } from './adapter';
 
 export const BrowserAdapter: Adapter = {
@@ -10,6 +12,7 @@ export const BrowserAdapter: Adapter = {
     return canvas;
   },
   createTexImageSource: (canvas: HTMLCanvasElement | OffscreenCanvas) => canvas,
+  createImage: (src: string) => load(src, ImageLoader),
   getWindow: () => window,
   getDocument: () => document,
   getXMLSerializer: () => new XMLSerializer(),

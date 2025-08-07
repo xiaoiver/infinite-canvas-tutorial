@@ -28,4 +28,8 @@ export class InnerShadow {
    */
   @field({ type: Type.float32, default: 0 })
   declare blurRadius: number;
+
+  constructor(props?: Partial<InnerShadow>) {
+    Object.assign(this, props);
+  }
 }

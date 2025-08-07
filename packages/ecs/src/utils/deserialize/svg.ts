@@ -86,11 +86,18 @@ export function svgElementsToSerializedNodes(
       continue;
     }
 
+    // <g> maybe a single element, so we need to infer it, e.g. a rect with children
     let inferedSingleElement = false;
     if (type === 'g') {
-      inferedSingleElement = true;
-      id = undefined;
-      overrideAttributes = element.attributes;
+      // <g><defs></defs></g> e.g. a <polyline> with an arrow
+      if (
+        Array.from(element.children).filter((child) => child.tagName !== 'defs')
+          .length === 1
+      ) {
+        inferedSingleElement = true;
+        id = undefined;
+        overrideAttributes = element.attributes;
+      }
     }
 
     if (!inferedSingleElement) {

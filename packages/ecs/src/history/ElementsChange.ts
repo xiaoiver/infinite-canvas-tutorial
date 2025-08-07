@@ -37,6 +37,7 @@ import {
   TextDecoration,
   Rough,
   Marker,
+  InnerShadow,
 } from '../components';
 
 export type SceneElementsMap = Map<SerializedNode['id'], SerializedNode>;
@@ -569,6 +570,10 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
     opacity,
     fillOpacity,
     strokeOpacity,
+    innerShadowColor,
+    innerShadowBlurRadius,
+    innerShadowOffsetX,
+    innerShadowOffsetY,
     dropShadowColor,
     dropShadowBlurRadius,
     dropShadowOffsetX,
@@ -678,6 +683,20 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
   }
   if (!isNil(dropShadowOffsetY)) {
     safeAddComponent(entity, DropShadow, { offsetY: dropShadowOffsetY });
+  }
+  if (!isNil(innerShadowColor)) {
+    safeAddComponent(entity, InnerShadow, { color: innerShadowColor });
+  }
+  if (!isNil(innerShadowBlurRadius)) {
+    safeAddComponent(entity, InnerShadow, {
+      blurRadius: innerShadowBlurRadius,
+    });
+  }
+  if (!isNil(innerShadowOffsetX)) {
+    safeAddComponent(entity, InnerShadow, { offsetX: innerShadowOffsetX });
+  }
+  if (!isNil(innerShadowOffsetY)) {
+    safeAddComponent(entity, InnerShadow, { offsetY: innerShadowOffsetY });
   }
   if (!isNil(sizeAttenuation)) {
     if (sizeAttenuation) {

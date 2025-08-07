@@ -613,10 +613,26 @@ function generateMarker(
   return [NaN, NaN, ...markerPoints, NaN, NaN];
 }
 
+function generateMarkerPoints(
+  points: number[],
+  start: Marker['start'],
+  end: Marker['end'],
+  strokeWidth: number,
+  factor: number,
+) {
+  const startMarker = generateMarker(points, start, true, strokeWidth, factor);
+  const endMarker = generateMarker(points, end, false, strokeWidth, factor);
+  return [...startMarker, ...endMarker];
+}
+
 export function updateBuffer(object: Entity, useRoughStroke = true) {
-  const { linecap, linejoin } = object.has(Stroke)
+  const {
+    linecap,
+    linejoin,
+    width: strokeWidth,
+  } = object.has(Stroke)
     ? object.read(Stroke)
-    : ({ linecap: 'butt', linejoin: 'miter' } as const);
+    : ({ linecap: 'butt', linejoin: 'miter', width: 1 } as const);
   const { start, end, factor } = object.has(Marker)
     ? object.read(Marker)
     : ({ start: 'none', end: 'none', factor: 3 } as const);
@@ -642,18 +658,9 @@ export function updateBuffer(object: Entity, useRoughStroke = true) {
       return prev;
     }, [] as number[]);
 
-    const { width: strokeWidth = 1 } = object.has(Stroke)
-      ? object.read(Stroke)
-      : {};
-    const startMarker = generateMarker(
-      points,
-      start,
-      true,
-      strokeWidth,
-      factor,
+    points.push(
+      ...generateMarkerPoints(points, start, end, strokeWidth, factor),
     );
-    const endMarker = generateMarker(points, end, false, strokeWidth, factor);
-    points.push(...startMarker, ...endMarker);
   } else if (object.has(Path)) {
     const computed = object.read(ComputedPoints).points;
     points = computed
@@ -663,6 +670,10 @@ export function updateBuffer(object: Entity, useRoughStroke = true) {
         );
       })
       .flat(2);
+
+    points.push(
+      ...generateMarkerPoints(points, start, end, strokeWidth, factor),
+    );
   } else if (object.has(Rect)) {
     const { x, y, width, height } = object.read(Rect);
     points = [

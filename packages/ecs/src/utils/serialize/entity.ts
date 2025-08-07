@@ -1,6 +1,8 @@
 import { Entity } from '@lastolivegames/becsy';
 import {
+  DropShadowAttributes,
   FillAttributes,
+  InnerShadowAttributes,
   MarkerAttributes,
   PathSerializedNode,
   PolylineSerializedNode,
@@ -33,6 +35,8 @@ import {
   FillImage,
   FillPattern,
   Marker,
+  InnerShadow,
+  DropShadow,
 } from '../../components';
 import { serializePoints } from './points';
 
@@ -198,6 +202,26 @@ export function entityToSerializedNodes(
       opacity,
       fillOpacity,
       strokeOpacity,
+    });
+  }
+
+  if (entity.has(InnerShadow)) {
+    const { color, blurRadius, offsetX, offsetY } = entity.read(InnerShadow);
+    Object.assign(attributes as InnerShadowAttributes, {
+      innerShadowColor: color,
+      innerShadowBlurRadius: blurRadius,
+      innerShadowOffsetX: offsetX,
+      innerShadowOffsetY: offsetY,
+    });
+  }
+
+  if (entity.has(DropShadow)) {
+    const { color, blurRadius, offsetX, offsetY } = entity.read(DropShadow);
+    Object.assign(attributes as DropShadowAttributes, {
+      dropShadowColor: color,
+      dropShadowBlurRadius: blurRadius,
+      dropShadowOffsetX: offsetX,
+      dropShadowOffsetY: offsetY,
     });
   }
 

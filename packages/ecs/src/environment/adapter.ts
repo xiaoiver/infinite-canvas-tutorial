@@ -1,3 +1,4 @@
+import { ImageType } from '@loaders.gl/images';
 import { BrowserAdapter } from './BrowserAdapter';
 
 export interface Adapter {
@@ -8,6 +9,7 @@ export interface Adapter {
   createTexImageSource: (
     canvas: HTMLCanvasElement | OffscreenCanvas,
   ) => TexImageSource;
+  createImage: (src: string) => Promise<ImageType>;
   getWindow: () => typeof globalThis;
   getDocument: () => Document;
   getXMLSerializer: () => XMLSerializer | null;

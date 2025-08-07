@@ -196,15 +196,36 @@ export interface MarkerAttributes {
 
 ### 起始点和终点 {#start-end-point}
 
-首先需要找到箭头的起始点和终点。
-
-但朝向需要手动计算，计算方式并不复杂，沿切线即可。
+首先需要找到箭头的起始点和终点。但朝向需要手动计算，计算方式并不复杂，沿切线即可。
 
 <DrawArrow />
 
 ### 导出 SVG {#export-arrow-to-svg}
 
-[orient]
+SVG 中可以通过 [orient] 属性调整 `<marker>` 的朝向，但需要注意该属性的字面量只有 `'auto'` 和 `'auto-start-reverse'` 两个值
+
+```ts
+if (isEnd) {
+    $marker.setAttribute('orient', 'auto');
+} else {
+    $marker.setAttribute('orient', 'auto-start-reverse');
+}
+```
+
+然后根据 marker 的类型创建 `<path>`，让它继承目标图形的 `stroke` 等属性：
+
+```ts
+if (marker === 'line') {
+    const points = lineArrow(0, 0, arrowRadius, Math.PI);
+    const $path = createSVGElement('path');
+    $path.setAttribute('fill', 'none');
+    $path.setAttribute('stroke', stroke);
+    $path.setAttribute('stroke-width', `${strokeWidth}`);
+    $marker.appendChild($path);
+}
+```
+
+与之相对的，导出的 SVG 也要支持再导入画布。
 
 ## 绘制多边形 {#draw-polygon}
 
