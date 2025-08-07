@@ -271,7 +271,7 @@ export function measureText(
   // TODO: strokeWidth
   const strokeWidth = 0;
 
-  let lineHeight = style.lineHeight ?? 1;
+  let lineHeight = style.lineHeight ?? 0;
   const font = fontStringFromTextStyle(style);
   let fontMetrics: globalThis.TextMetrics & { fontSize: number };
   let scale = 1;

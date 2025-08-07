@@ -285,7 +285,7 @@ export function serializedNodesToEntities(
         fontStyle = 'normal',
         fontVariant = 'normal',
         letterSpacing = 0,
-        lineHeight = 1,
+        lineHeight = 0,
         whiteSpace = 'normal',
         wordWrap = false,
         wordWrapWidth,

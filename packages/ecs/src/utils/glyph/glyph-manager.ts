@@ -32,7 +32,7 @@ export type PositionedGlyph = {
  * of the device. The scale of 2 buys noticeable improvements on HDPI screens
  * at acceptable cost.
  */
-export const SDF_SCALE = 2;
+export const SDF_SCALE = 4;
 export const BASE_FONT_WIDTH = 24 * SDF_SCALE;
 export const BASE_FONT_BUFFER = 3 * SDF_SCALE;
 export const RADIUS = 8 * SDF_SCALE;

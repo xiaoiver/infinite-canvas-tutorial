@@ -212,7 +212,7 @@ if (isEnd) {
 }
 ```
 
-然后根据 marker 的类型创建 `<path>`，让它继承目标图形的 `stroke` 等属性：
+然后根据 marker 的类型创建 `<path>`，让它继承目标图形的 `stroke` 等属性。你可以在 [export arrow] 测试用例中查看导出结果：
 
 ```ts
 if (marker === 'line') {
@@ -356,3 +356,4 @@ Figma 是可以将 Brush 导出 SVG 的。
 [Shape tools - polygons]: https://help.figma.com/hc/en-us/articles/360040450133-Shape-tools#polygons
 [plot - arrow]: https://github.com/observablehq/plot/blob/main/src/marks/arrow.js
 [orient]: https://developer.mozilla.org/en-US/docs/Web/SVG/Reference/Attribute/orient
+[export arrow]: https://github.com/xiaoiver/infinite-canvas-tutorial/blob/master/__tests__/ecs/snapshots/export-arrow.svg

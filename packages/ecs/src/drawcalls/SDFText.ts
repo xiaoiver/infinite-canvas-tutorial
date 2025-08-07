@@ -96,7 +96,7 @@ export class SDFText extends Drawcall {
       fontStyle,
       bitmapFont,
       esdt,
-      content,
+      // content,
       fontSize,
     } = this.shapes[0].read(Text);
     const { font, fontMetrics } = this.shapes[0].read(ComputedTextMetrics);
@@ -104,7 +104,8 @@ export class SDFText extends Drawcall {
       ? this.shapes[0].read(FillSolid)
       : { value: 'black' };
 
-    const hasEmoji = containsEmoji(content);
+    // const hasEmoji = containsEmoji(content);
+    const hasEmoji = true;
 
     const indices: number[] = [];
     const positions: number[] = [];

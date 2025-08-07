@@ -4,10 +4,8 @@ import { consume } from '@lit/context';
 import {
   AppState,
   Canvas,
-  computeBidi,
   ComputedBounds,
   ComputedCamera,
-  measureText,
   Pen,
   Text,
   TextSerializedNode,
@@ -233,13 +231,7 @@ export class TextEditor extends LitElement {
       ...this.node,
       content,
     };
-    computeBidi(content);
-    const metrics = measureText(attributes);
-
-    const { minX, minY, maxX, maxY } = Text.getGeometryBounds(
-      attributes,
-      metrics,
-    );
+    const { minX, minY, maxX, maxY } = Text.getGeometryBounds(attributes);
     const width = maxX - minX;
     const height = maxY - minY;
 

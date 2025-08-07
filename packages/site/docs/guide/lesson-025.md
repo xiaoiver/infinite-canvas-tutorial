@@ -210,7 +210,30 @@ However, the orientation needs to be calculated manually, which is not complicat
 
 ### Export arrow to SVG {#export-arrow-to-svg}
 
-[orient]
+In SVG, you can adjust the orientation of `<marker>` using the [orient] attribute, but note that this attribute only has two literal values: `‘auto’` and `‘auto-start-reverse’`.
+
+```ts
+if (isEnd) {
+    $marker.setAttribute('orient', 'auto');
+} else {
+    $marker.setAttribute('orient', 'auto-start-reverse');
+}
+```
+
+Then create a `<path>` based on the marker type, allowing it to inherit properties such as `stroke` from the target graphic. You can find the whole SVG in [export arrow] test case:
+
+```ts
+if (marker === 'line') {
+    const points = lineArrow(0, 0, arrowRadius, Math.PI);
+    const $path = createSVGElement('path');
+    $path.setAttribute('fill', 'none');
+    $path.setAttribute('stroke', stroke);
+    $path.setAttribute('stroke-width', `${strokeWidth}`);
+    $marker.appendChild($path);
+}
+```
+
+In contrast, exported SVG files must also support re-importing into the canvas.
 
 ## Draw polygon {#draw-polygon}
 
@@ -341,3 +364,4 @@ Figma is able to export Brush to SVG.
 [Shape tools - polygons]: https://help.figma.com/hc/en-us/articles/360040450133-Shape-tools#polygons
 [plot - arrow]: https://github.com/observablehq/plot/blob/main/src/marks/arrow.js
 [orient]: https://developer.mozilla.org/en-US/docs/Web/SVG/Reference/Attribute/orient
+[export arrow]: https://github.com/xiaoiver/infinite-canvas-tutorial/blob/master/__tests__/ecs/snapshots/export-arrow.svg
