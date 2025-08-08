@@ -235,4 +235,124 @@ describe('Deserialize SVGElements to SerializedNodes', () => {
       },
     ]);
   });
+
+  it('should convert <text> correctly', () => {
+    const dom = new JSDOM(
+      `<svg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+      <text id="0" fill="black">Hello world</text>
+    </svg>`,
+    );
+    const document = dom.window.document;
+    const svg = document.querySelector('svg')!;
+    const nodes = svgElementsToSerializedNodes(
+      Array.from(svg.children) as SVGElement[],
+    );
+    expect(nodes).toEqual([
+      {
+        id: '0',
+        parentId: undefined,
+        type: 'text',
+        content: 'Hello world',
+        x: 0,
+        y: 0,
+        width: 59.513671875,
+        height: 13.904296875,
+        visibility: 'inherited',
+        scaleX: 1,
+        scaleY: 1,
+        rotation: 0,
+        opacity: 1,
+        fillOpacity: 1,
+        fill: 'black',
+        strokeOpacity: 1,
+        stroke: 'none',
+        strokeWidth: 1,
+        strokeLinecap: 'butt',
+        strokeLinejoin: 'miter',
+        strokeAlignment: 'center',
+        strokeMiterlimit: 4,
+        strokeDasharray: '0,0',
+        strokeDashoffset: 0,
+        name: 'Hello world',
+        textAlign: 'start',
+        textBaseline: 'alphabetic',
+        whiteSpace: 'normal',
+        leading: 0,
+        letterSpacing: 0,
+        lineHeight: 0,
+        zIndex: 0,
+        fontFamily: 'sans-serif',
+        fontSize: 12,
+        fontStyle: 'normal',
+        fontVariant: 'normal',
+        fontWeight: 'normal',
+        fontBoundingBoxAscent: undefined,
+        fontBoundingBoxDescent: undefined,
+        hangingBaseline: undefined,
+        ideographicBaseline: undefined,
+      },
+    ]);
+  });
+
+  it('should convert <text> correctly', () => {
+    const dom = new JSDOM(
+      `<svg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+      <text id="node-2" x="0" y="15" text-anchor="start" dominant-baseline="alphabetic" font-family="system-ui" font-size="16" font-weight="normal" font-style="normal" font-variant="normal" fill="black" transform="matrix(1,0,0,1,0,-15)">
+        <tspan x="0" dy="0">Hello</tspan>
+        <tspan x="0" dy="18.0703125">world</tspan>
+      </text>
+    </svg>`,
+    );
+    const document = dom.window.document;
+    const svg = document.querySelector('svg')!;
+    const nodes = svgElementsToSerializedNodes(
+      Array.from(svg.children) as SVGElement[],
+    );
+    expect(nodes).toEqual([
+      {
+        content: 'Hello\nworld',
+        dominantBaseline: 'alphabetic',
+        fill: 'black',
+        fillOpacity: 1,
+        fontBoundingBoxAscent: undefined,
+        fontBoundingBoxDescent: undefined,
+        fontFamily: 'system-ui',
+        fontSize: 16,
+        fontStyle: 'normal',
+        fontVariant: 'normal',
+        fontWeight: 'normal',
+        hangingBaseline: undefined,
+        height: 36.140625,
+        id: 'node-2',
+        ideographicBaseline: undefined,
+        leading: 0,
+        letterSpacing: 0,
+        lineHeight: 0,
+        name: 'Hello\nworld',
+        opacity: 1,
+        parentId: undefined,
+        rotation: 0,
+        scaleX: 1,
+        scaleY: 1,
+        stroke: 'none',
+        strokeAlignment: 'center',
+        strokeDasharray: '0,0',
+        strokeDashoffset: 0,
+        strokeLinecap: 'butt',
+        strokeLinejoin: 'miter',
+        strokeMiterlimit: 4,
+        strokeOpacity: 1,
+        strokeWidth: 1,
+        textAlign: 'start',
+        textBaseline: 'alphabetic',
+        type: 'text',
+        visibility: 'inherited',
+        whiteSpace: 'normal',
+        width: 35.5859375,
+        x: 0,
+        y: 0,
+        zIndex: 0,
+      },
+    ]);
+  });
 });

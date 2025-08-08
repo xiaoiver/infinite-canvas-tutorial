@@ -255,7 +255,7 @@ export function measureText(
   }
 
   const { content } = style;
-  const bidiChars = bidiCache[content];
+  const bidiChars = bidiCache[content] ?? content;
 
   const {
     wordWrap,

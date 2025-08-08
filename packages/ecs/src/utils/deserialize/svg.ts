@@ -209,9 +209,19 @@ export function svgElementsToSerializedNodes(
           );
         }
 
-        // remove prefix and suffix whitespace and newlines
-        (attributes as TextSerializedNode).content =
-          element.textContent?.trim();
+        const $tspans = Array.from(element.children).filter(
+          (c) => c.tagName === 'tspan',
+        );
+        if ($tspans.length > 0) {
+          (attributes as TextSerializedNode).content = $tspans
+            .map(($tspan) => $tspan.textContent)
+            .join('\n');
+        } else {
+          // remove prefix and suffix whitespace and newlines
+          (attributes as TextSerializedNode).content =
+            element.textContent?.trim();
+        }
+
         const dominantBaseline =
           element.attributes.getNamedItem('dominant-baseline')?.value;
         if (dominantBaseline) {

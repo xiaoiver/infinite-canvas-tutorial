@@ -5,6 +5,7 @@ import {
   shiftPoints,
   fontStringFromTextStyle,
   sortByFractionalIndex,
+  measureText,
 } from '../../systems';
 import { createSVGElement } from '../browser';
 import {
@@ -416,10 +417,11 @@ export function serializeNodesToSVGElements(
       $g.setAttribute('ry', `${cornerRadius}`);
     }
     if (isRough) {
+      // TODO:
       // exportRough(node, $g);
     }
     if (content) {
-      exportText(node, $g, element);
+      exportText(node as TextSerializedNode, $g, element);
     }
 
     const matrix = Mat3.from_scale_angle_translation(
@@ -1023,7 +1025,7 @@ export function exportMarker(
  * @see https://developer.mozilla.org/en-US/docs/Web/SVG/Element/text#example
  */
 export function exportText(
-  attributes: SerializedNode,
+  attributes: TextSerializedNode,
   $g: SVGElement,
   element: SVGElement,
 ) {
@@ -1039,8 +1041,22 @@ export function exportText(
     decorationStyle,
     decorationColor,
     decorationThickness,
-  } = attributes as TextSerializedNode;
-  $g.textContent = content;
+  } = attributes;
+
+  const { lineHeight } = measureText(attributes);
+
+  const lines = content.split('\n');
+  if (lines.length > 1) {
+    lines.forEach((line, i) => {
+      const $tspan = createSVGElement('tspan');
+      $tspan.textContent = line;
+      $tspan.setAttribute('x', '0');
+      $tspan.setAttribute('dy', `${i * lineHeight}`);
+      $g.appendChild($tspan);
+    });
+  } else {
+    $g.textContent = content;
+  }
 
   // <text>
   if ($g === element) {
