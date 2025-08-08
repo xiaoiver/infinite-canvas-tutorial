@@ -306,9 +306,9 @@ pnpm run dev
 -   图形绘制模式：通过拖拽绘制矩形、椭圆、直线和箭头
 -   笔刷模式：绘制折线
 
-|                Draw rect mode                 |                    Pecil tool                    |                 Draw arrow                  |
-| :-------------------------------------------: | :----------------------------------------------: | :-----------------------------------------: |
-| ![draw rect mode](./screenshots/lesson25.gif) | ![dragndrop image](./screenshots/lesson25-2.gif) | ![draw arrow](./screenshots/lesson25-3.gif) |
+|                Draw rect mode                 |                 Pencil tool                  |                 Draw arrow                  |
+| :-------------------------------------------: | :------------------------------------------: | :-----------------------------------------: |
+| ![draw rect mode](./screenshots/lesson25.gif) | ![pencil tool](./screenshots/lesson25-2.gif) | ![draw arrow](./screenshots/lesson25-3.gif) |
 
 [infinitecanvas]: https://infinitecanvas.tools/
 [Figma]: https://madebyevan.com/figma/building-a-professional-design-tool-on-the-web/

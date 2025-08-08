@@ -305,9 +305,9 @@ If you want to use it in your own project, you can refer to:
 -   Draw shapes mode: draw rect, ellipse, line and arrow with dragging
 -   Brush mode
 
-|                Draw rect mode                 |                    Pecil tool                    |                 Draw arrow                  |
-| :-------------------------------------------: | :----------------------------------------------: | :-----------------------------------------: |
-| ![draw rect mode](./screenshots/lesson25.gif) | ![dragndrop image](./screenshots/lesson25-2.gif) | ![draw arrow](./screenshots/lesson25-3.gif) |
+|                Draw rect mode                 |                 Pencil tool                  |                 Draw arrow                  |
+| :-------------------------------------------: | :------------------------------------------: | :-----------------------------------------: |
+| ![draw rect mode](./screenshots/lesson25.gif) | ![pencil tool](./screenshots/lesson25-2.gif) | ![draw arrow](./screenshots/lesson25-3.gif) |
 
 [infinitecanvas]: https://infinitecanvas.tools/
 [Figma]: https://madebyevan.com/figma/building-a-professional-design-tool-on-the-web/
