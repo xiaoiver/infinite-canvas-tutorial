@@ -106,6 +106,9 @@ export function inferXYWidthHeight(node: SerializedNode) {
           };
         }),
       );
+    } else if (type === 'text') {
+      node.anchorX -= bounds.minX;
+      node.anchorY -= bounds.minY;
     }
   } else {
     throw new Error('Cannot infer x, y, width or height for node');
@@ -278,6 +281,8 @@ export function serializedNodesToEntities(
       entity.insert(new Path({ d, fillRule, tessellationMethod }));
     } else if (type === 'text') {
       const {
+        anchorX,
+        anchorY,
         content,
         fontFamily,
         fontSize,
@@ -301,19 +306,19 @@ export function serializedNodesToEntities(
         // ideographicBaseline = 0,
       } = attributes as TextSerializedNode;
 
-      let anchorX = 0;
-      let anchorY = 0;
-      if (textAlign === 'center') {
-        anchorX = width / 2;
-      } else if (textAlign === 'right' || textAlign === 'end') {
-        anchorX = width;
-      }
+      // let anchorX = 0;
+      // let anchorY = 0;
+      // if (textAlign === 'center') {
+      //   anchorX = width / 2;
+      // } else if (textAlign === 'right' || textAlign === 'end') {
+      //   anchorX = width;
+      // }
 
-      if (textBaseline === 'middle') {
-        anchorY = height / 2;
-      } else if (textBaseline === 'alphabetic' || textBaseline === 'hanging') {
-        anchorY = height;
-      }
+      // if (textBaseline === 'middle') {
+      //   anchorY = height / 2;
+      // } else if (textBaseline === 'alphabetic' || textBaseline === 'hanging') {
+      //   anchorY = height;
+      // }
 
       const bitmapFonts = fonts.map((font) => font.read(Font).bitmapFont);
       const bitmapFont = bitmapFonts.find(

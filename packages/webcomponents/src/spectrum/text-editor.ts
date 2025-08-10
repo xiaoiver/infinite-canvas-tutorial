@@ -78,9 +78,8 @@ export class TextEditor extends LitElement {
       this.api.runAtNextTick(() => {
         const entity = this.api.getEntity(this.node);
         if (!entity) {
-          const { x, y, width, height, ...rest } = this.node;
           this.api.updateNode({
-            ...rest,
+            ...this.node,
             content,
             visibility: 'visible',
           });
@@ -172,7 +171,6 @@ export class TextEditor extends LitElement {
 
     if (isPenText) {
       // Create a new text node if blank area is clicked.
-      // TODO: use default params in pen text
       this.node = {
         id: uuidv4(),
         type: 'text',

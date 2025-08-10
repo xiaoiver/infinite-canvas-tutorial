@@ -80,7 +80,7 @@ canvas.addEventListener(Event.READY, async (e) => {
       id: '1',
       type: 'text',
       fill: 'black',
-      content: 'Hello\nworld',
+      content: '中\n国',
       fontSize: 16,
       fontFamily: 'system-ui',
       anchorX: 100,
@@ -111,7 +111,7 @@ canvas.addEventListener(Event.READY, async (e) => {
   });
 
   api.updateNodes(nodes);
-  api.selectNodes([nodes[0]]);
+  // api.selectNodes([nodes[0]]);
 
   api.record();
   // });
