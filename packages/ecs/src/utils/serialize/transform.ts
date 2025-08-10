@@ -92,8 +92,8 @@ export function fixTransform(transform: string, attributes: SerializedNode) {
   } else if (type === 'path') {
     attributes.d = shiftPath(attributes.d, -minX, -minY);
   } else if (type === 'text') {
-    delete attributes.anchorX;
-    delete attributes.anchorY;
+    attributes.anchorX -= minX;
+    attributes.anchorY -= minY;
   }
 
   // @ts-ignore
