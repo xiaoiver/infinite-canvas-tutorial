@@ -100,6 +100,17 @@ export class LayerThumbnail extends LitElement {
       $el = this.#roughSvg.rectangle(minX, minY, width, height, {
         ...options,
       });
+    } else if (type === 'rough-ellipse') {
+      const options = getRoughOptions(this.api.getEntity(this.node));
+      $el = this.#roughSvg.ellipse(
+        minX + width / 2,
+        minY + height / 2,
+        width,
+        height,
+        {
+          ...options,
+        },
+      );
     }
 
     const {

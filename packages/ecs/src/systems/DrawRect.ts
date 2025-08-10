@@ -43,6 +43,7 @@ import {
   PolylineSerializedNode,
   RectSerializedNode,
   RoughAttributes,
+  RoughEllipseSerializedNode,
   RoughRectSerializedNode,
   StrokeAttributes,
   TextSerializedNode,
@@ -61,7 +62,8 @@ const PEN_TO_TYPE = {
   [Pen.DRAW_LINE]: 'polyline',
   [Pen.DRAW_ARROW]: 'polyline',
   [Pen.DRAW_ROUGH_RECT]: 'rough-rect',
-};
+  [Pen.DRAW_ROUGH_ELLIPSE]: 'rough-ellipse',
+} as const;
 
 /**
  * Draw a rectangle, ellipse, line with dragging.
@@ -74,6 +76,7 @@ export class DrawRect extends System {
     {
       rectBrush: RectSerializedNode;
       roughRectBrush: RoughRectSerializedNode;
+      roughEllipseBrush: RoughEllipseSerializedNode;
       ellipseBrush: EllipseSerializedNode;
       lineBrush: PolylineSerializedNode;
       arrowBrush: PolylineSerializedNode;
@@ -145,7 +148,8 @@ export class DrawRect extends System {
         | Pen.DRAW_ELLIPSE
         | Pen.DRAW_LINE
         | Pen.DRAW_ARROW
-        | Pen.DRAW_ROUGH_RECT,
+        | Pen.DRAW_ROUGH_RECT
+        | Pen.DRAW_ROUGH_ELLIPSE,
         Partial<RoughAttributes & StrokeAttributes & FillAttributes>
       > = {
         [Pen.DRAW_RECT]: appState.penbarDrawRect,
@@ -153,6 +157,7 @@ export class DrawRect extends System {
         [Pen.DRAW_LINE]: appState.penbarDrawLine,
         [Pen.DRAW_ARROW]: appState.penbarDrawArrow,
         [Pen.DRAW_ROUGH_RECT]: appState.penbarDrawRoughRect,
+        [Pen.DRAW_ROUGH_ELLIPSE]: appState.penbarDrawRoughEllipse,
       };
 
       if (
@@ -160,7 +165,8 @@ export class DrawRect extends System {
         pen !== Pen.DRAW_ELLIPSE &&
         pen !== Pen.DRAW_LINE &&
         pen !== Pen.DRAW_ARROW &&
-        pen !== Pen.DRAW_ROUGH_RECT
+        pen !== Pen.DRAW_ROUGH_RECT &&
+        pen !== Pen.DRAW_ROUGH_ELLIPSE
       ) {
         return;
       }
@@ -173,10 +179,11 @@ export class DrawRect extends System {
       if (!this.selections.has(camera.__id)) {
         this.selections.set(camera.__id, {
           rectBrush: undefined,
-          roughRectBrush: undefined,
           ellipseBrush: undefined,
           lineBrush: undefined,
           arrowBrush: undefined,
+          roughRectBrush: undefined,
+          roughEllipseBrush: undefined,
           label: undefined,
           text: undefined,
           x: 0,
@@ -212,6 +219,7 @@ export class DrawRect extends System {
           height,
           rectBrush,
           roughRectBrush,
+          roughEllipseBrush,
           ellipseBrush,
           lineBrush,
           arrowBrush,
@@ -223,6 +231,8 @@ export class DrawRect extends System {
             ? rectBrush
             : pen === Pen.DRAW_ROUGH_RECT
             ? roughRectBrush
+            : pen === Pen.DRAW_ROUGH_ELLIPSE
+            ? roughEllipseBrush
             : pen === Pen.DRAW_ELLIPSE
             ? ellipseBrush
             : pen === Pen.DRAW_LINE
@@ -238,10 +248,11 @@ export class DrawRect extends System {
           api.updateNode(brush, { visibility: 'hidden' }, false);
           // api.updateNode(label, { visibility: 'hidden' }, false);
 
-          // @ts-expect-error
           const node:
             | RectSerializedNode
             | EllipseSerializedNode
+            | RoughEllipseSerializedNode
+            | RoughRectSerializedNode
             | PolylineSerializedNode = Object.assign(
             {
               id: uuidv4(),
@@ -309,6 +320,8 @@ export class DrawRect extends System {
           ? selection.ellipseBrush
           : pen === Pen.DRAW_LINE
           ? selection.lineBrush
+          : pen === Pen.DRAW_ROUGH_ELLIPSE
+          ? selection.roughEllipseBrush
           : selection.arrowBrush;
       if (!brush) {
         // @ts-expect-error
@@ -340,6 +353,8 @@ export class DrawRect extends System {
           selection.ellipseBrush = brush as EllipseSerializedNode;
         } else if (pen === Pen.DRAW_LINE) {
           selection.lineBrush = brush as PolylineSerializedNode;
+        } else if (pen === Pen.DRAW_ROUGH_ELLIPSE) {
+          selection.roughEllipseBrush = brush as RoughEllipseSerializedNode;
         } else {
           selection.arrowBrush = brush as PolylineSerializedNode;
         }

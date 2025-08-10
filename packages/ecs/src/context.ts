@@ -41,6 +41,9 @@ export interface AppState {
   penbarDrawRoughRect: Partial<
     RoughAttributes & StrokeAttributes & FillAttributes
   >;
+  penbarDrawRoughEllipse: Partial<
+    RoughAttributes & StrokeAttributes & FillAttributes
+  >;
   penbarPencil: Partial<StrokeAttributes>;
   penbarText: Partial<
     TextSerializedNode & {
@@ -110,6 +113,7 @@ export const getDefaultAppState: () => AppState = () => {
       Pen.DRAW_LINE,
       Pen.DRAW_ARROW,
       Pen.DRAW_ROUGH_RECT,
+      Pen.DRAW_ROUGH_ELLIPSE,
       Pen.IMAGE,
       Pen.TEXT,
       Pen.PENCIL,
@@ -147,9 +151,19 @@ export const getDefaultAppState: () => AppState = () => {
       markerFactor: 3,
     },
     penbarDrawRoughRect: {
-      fill: 'black',
+      fill: '#000',
       fillOpacity: 1,
-      stroke: 'black',
+      stroke: '#000',
+      strokeWidth: 10,
+      strokeOpacity: 1,
+      roughBowing: 1,
+      roughRoughness: 1,
+      roughFillStyle: 'hachure',
+    },
+    penbarDrawRoughEllipse: {
+      fill: '#000',
+      fillOpacity: 1,
+      stroke: '#000',
       strokeWidth: 10,
       strokeOpacity: 1,
       roughBowing: 1,
@@ -167,7 +181,7 @@ export const getDefaultAppState: () => AppState = () => {
       fontFamilies: ['system-ui', 'serif', 'monospace'],
       fontSize: 16,
       fontStyle: 'normal',
-      fill: 'black',
+      fill: '#000',
     },
     taskbarVisible: true,
     taskbarAll: [Task.SHOW_LAYERS_PANEL, Task.SHOW_PROPERTIES_PANEL],

@@ -98,6 +98,15 @@ export const defaultAttributes: Record<
     ...fillDefaultAttributes,
     ...strokeDefaultAttributes,
   },
+  'rough-ellipse': {
+    cx: 0,
+    cy: 0,
+    rx: 0,
+    ry: 0,
+    ...commonDefaultAttributes,
+    ...fillDefaultAttributes,
+    ...strokeDefaultAttributes,
+  },
   ellipse: {
     cx: 0,
     cy: 0,

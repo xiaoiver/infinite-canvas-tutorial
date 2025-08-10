@@ -45,7 +45,7 @@ import {
   PathSerializedNode,
   PolylineSerializedNode,
   RectSerializedNode,
-  RoughRectSerializedNode,
+  RoughAttributes,
   serializeBrushPoints,
   SerializedNode,
   serializePoints,
@@ -124,6 +124,49 @@ async function loadImage(
   entity.insert(new FillImage({ src: image as ImageBitmap, url }));
   entity.insert(new MaterialDirty());
   commands.execute();
+}
+
+function serializeRough(attributes: RoughAttributes, entity: EntityCommands) {
+  const {
+    roughRoughness,
+    roughBowing,
+    roughFillStyle,
+    roughFillWeight,
+    roughHachureAngle,
+    roughHachureGap,
+    roughCurveStepCount,
+    roughCurveFitting,
+    roughFillLineDash,
+    roughFillLineDashOffset,
+    roughDisableMultiStroke,
+    roughDisableMultiStrokeFill,
+    roughSimplification,
+    roughDashOffset,
+    roughDashGap,
+    roughZigzagOffset,
+    roughPreserveVertices,
+  } = attributes;
+  entity.insert(
+    new Rough({
+      roughness: roughRoughness,
+      bowing: roughBowing,
+      fillStyle: roughFillStyle,
+      fillWeight: roughFillWeight,
+      hachureAngle: roughHachureAngle,
+      hachureGap: roughHachureGap,
+      curveStepCount: roughCurveStepCount,
+      curveFitting: roughCurveFitting,
+      fillLineDash: roughFillLineDash,
+      fillLineDashOffset: roughFillLineDashOffset,
+      disableMultiStroke: roughDisableMultiStroke,
+      disableMultiStrokeFill: roughDisableMultiStrokeFill,
+      simplification: roughSimplification,
+      dashOffset: roughDashOffset,
+      dashGap: roughDashGap,
+      zigzagOffset: roughZigzagOffset,
+      preserveVertices: roughPreserveVertices,
+    }),
+  );
 }
 
 export function serializedNodesToEntities(
@@ -207,7 +250,7 @@ export function serializedNodesToEntities(
       entity.insert(new Renderable());
     }
 
-    if (type === 'ellipse') {
+    if (type === 'ellipse' || type === 'rough-ellipse') {
       entity.insert(
         new Ellipse({
           cx: width / 2,
@@ -216,51 +259,16 @@ export function serializedNodesToEntities(
           ry: height / 2,
         }),
       );
+
+      if (type === 'rough-ellipse') {
+        serializeRough(attributes as RoughAttributes, entity);
+      }
     } else if (type === 'rect' || type === 'rough-rect') {
       const { cornerRadius } = attributes as RectSerializedNode;
       entity.insert(new Rect({ x: 0, y: 0, width, height, cornerRadius }));
 
       if (type === 'rough-rect') {
-        const {
-          roughRoughness,
-          roughBowing,
-          roughFillStyle,
-          roughFillWeight,
-          roughHachureAngle,
-          roughHachureGap,
-          roughCurveStepCount,
-          roughCurveFitting,
-          roughFillLineDash,
-          roughFillLineDashOffset,
-          roughDisableMultiStroke,
-          roughDisableMultiStrokeFill,
-          roughSimplification,
-          roughDashOffset,
-          roughDashGap,
-          roughZigzagOffset,
-          roughPreserveVertices,
-        } = attributes as RoughRectSerializedNode;
-        entity.insert(
-          new Rough({
-            roughness: roughRoughness,
-            bowing: roughBowing,
-            fillStyle: roughFillStyle,
-            fillWeight: roughFillWeight,
-            hachureAngle: roughHachureAngle,
-            hachureGap: roughHachureGap,
-            curveStepCount: roughCurveStepCount,
-            curveFitting: roughCurveFitting,
-            fillLineDash: roughFillLineDash,
-            fillLineDashOffset: roughFillLineDashOffset,
-            disableMultiStroke: roughDisableMultiStroke,
-            disableMultiStrokeFill: roughDisableMultiStrokeFill,
-            simplification: roughSimplification,
-            dashOffset: roughDashOffset,
-            dashGap: roughDashGap,
-            zigzagOffset: roughZigzagOffset,
-            preserveVertices: roughPreserveVertices,
-          }),
-        );
+        serializeRough(attributes as RoughAttributes, entity);
       }
     } else if (type === 'polyline') {
       const { points } = attributes as PolylineSerializedNode;

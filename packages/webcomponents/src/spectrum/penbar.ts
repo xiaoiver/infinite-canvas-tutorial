@@ -53,7 +53,8 @@ export class Penbar extends LitElement {
     | Pen.DRAW_ELLIPSE
     | Pen.DRAW_LINE
     | Pen.DRAW_ARROW
-    | Pen.DRAW_ROUGH_RECT;
+    | Pen.DRAW_ROUGH_RECT
+    | Pen.DRAW_ROUGH_ELLIPSE;
 
   private binded = false;
 
@@ -65,7 +66,8 @@ export class Penbar extends LitElement {
         pen === Pen.DRAW_ELLIPSE ||
         pen === Pen.DRAW_LINE ||
         pen === Pen.DRAW_ARROW ||
-        pen === Pen.DRAW_ROUGH_RECT
+        pen === Pen.DRAW_ROUGH_RECT ||
+        pen === Pen.DRAW_ROUGH_ELLIPSE
           ? pen
           : Pen.DRAW_RECT;
     }, 100);
@@ -87,7 +89,8 @@ export class Penbar extends LitElement {
       pen === Pen.DRAW_ELLIPSE ||
       pen === Pen.DRAW_LINE ||
       pen === Pen.DRAW_ARROW ||
-      pen === Pen.DRAW_ROUGH_RECT
+      pen === Pen.DRAW_ROUGH_RECT ||
+      pen === Pen.DRAW_ROUGH_ELLIPSE
     ) {
       this.lastDrawPen = pen;
     } else if (pen === Pen.IMAGE) {
@@ -199,7 +202,8 @@ export class Penbar extends LitElement {
               penbarAll.includes(Pen.DRAW_ELLIPSE) ||
               penbarAll.includes(Pen.DRAW_LINE) ||
               penbarAll.includes(Pen.DRAW_ARROW) ||
-              penbarAll.includes(Pen.DRAW_ROUGH_RECT),
+              penbarAll.includes(Pen.DRAW_ROUGH_RECT) ||
+              penbarAll.includes(Pen.DRAW_ROUGH_ELLIPSE),
             () => html`
               <overlay-trigger placement="right">
                 <sp-action-button
@@ -233,6 +237,10 @@ export class Penbar extends LitElement {
                       html`<sp-icon-rect-select
                         slot="icon"
                       ></sp-icon-rect-select>`,
+                  )}
+                  ${when(
+                    this.lastDrawPen === Pen.DRAW_ROUGH_ELLIPSE,
+                    () => html`<sp-icon-ellipse slot="icon"></sp-icon-ellipse>`,
                   )}
                 </sp-action-button>
                 <sp-popover slot="hover-content" style="padding: 8px;">
@@ -285,6 +293,15 @@ export class Penbar extends LitElement {
                       () => html` <sp-menu-item value="${Pen.DRAW_ROUGH_RECT}">
                         <sp-icon-rect-select slot="icon"></sp-icon-rect-select>
                         Rough Rectangle
+                      </sp-menu-item>`,
+                    )}
+                    ${when(
+                      penbarAll.includes(Pen.DRAW_ROUGH_ELLIPSE),
+                      () => html` <sp-menu-item
+                        value="${Pen.DRAW_ROUGH_ELLIPSE}"
+                      >
+                        <sp-icon-ellipse slot="icon"></sp-icon-ellipse>
+                        Rough Ellipse
                       </sp-menu-item>`,
                     )}
                   </sp-menu>

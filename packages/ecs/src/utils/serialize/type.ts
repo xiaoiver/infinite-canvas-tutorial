@@ -193,6 +193,13 @@ export interface RoughRectSerializedNode
     Partial<StrokeAttributes>,
     Partial<RoughAttributes> {}
 
+export interface RoughEllipseSerializedNode
+  extends BaseSerializeNode<'rough-ellipse'>,
+    Partial<Pick<Ellipse, 'rx' | 'ry' | 'cx' | 'cy'>>,
+    Partial<FillAttributes>,
+    Partial<StrokeAttributes>,
+    Partial<RoughAttributes> {}
+
 interface PolylineAttributes {
   points: string;
 }
@@ -287,6 +294,7 @@ export type SerializedNode =
   | TextSerializedNode
   | BrushSerializedNode
   | RoughRectSerializedNode
+  | RoughEllipseSerializedNode
   | VectorNetworkSerializedNode;
 
 export type SerializedNodeAttributes = GSerializedNode &
@@ -297,4 +305,5 @@ export type SerializedNodeAttributes = GSerializedNode &
   TextSerializedNode &
   BrushSerializedNode &
   RoughRectSerializedNode &
+  RoughEllipseSerializedNode &
   VectorNetworkSerializedNode;
