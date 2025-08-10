@@ -107,8 +107,8 @@ export function inferXYWidthHeight(node: SerializedNode) {
         }),
       );
     } else if (type === 'text') {
-      node.anchorX -= bounds.minX;
-      node.anchorY -= bounds.minY;
+      node.anchorX = (node.anchorX ?? 0) - bounds.minX;
+      node.anchorY = (node.anchorY ?? 0) - bounds.minY;
     }
   } else {
     throw new Error('Cannot infer x, y, width or height for node');
