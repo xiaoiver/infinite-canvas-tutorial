@@ -43,6 +43,7 @@ import {
   StrokeAttenuation,
   Text,
   TextDecoration,
+  VectorNetwork,
 } from '../components';
 import { lineArrow } from '../utils';
 
@@ -60,6 +61,7 @@ export class SmoothPolyline extends Drawcall {
   static check(shape: Entity) {
     return (
       shape.has(Polyline) ||
+      shape.has(VectorNetwork) ||
       (shape.has(Rough) &&
         shape.hasSomeOf(Circle, Ellipse, Rect, Polyline, Path)) ||
       (shape.hasSomeOf(Rect, Circle, Ellipse) &&
@@ -91,7 +93,7 @@ export class SmoothPolyline extends Drawcall {
   get instanceCount() {
     const instance = this.shapes[0];
     if (
-      instance.hasSomeOf(Polyline, Path, Text) ||
+      instance.hasSomeOf(Polyline, Path, Text, VectorNetwork) ||
       (instance.has(Rough) &&
         instance.hasSomeOf(Circle, Ellipse, Rect, Polyline, Path))
     ) {
@@ -436,6 +438,7 @@ export class SmoothPolyline extends Drawcall {
     super.destroy();
     if (this.program) {
       this.#uniformBuffer?.destroy();
+      this.#uniformBuffer = null;
     }
   }
 
@@ -661,6 +664,18 @@ export function updateBuffer(object: Entity, useRoughStroke = true) {
     points.push(
       ...generateMarkerPoints(points, start, end, strokeWidth, factor),
     );
+  } else if (object.has(VectorNetwork)) {
+    const { vertices, segments } = object.read(VectorNetwork);
+    for (let i = 0; i < segments.length; i++) {
+      if (i > 0) {
+        points.push(NaN, NaN);
+      }
+
+      const segment = segments[i];
+      const start = vertices[segment.start];
+      const end = vertices[segment.end];
+      points.push(start.x, start.y, end.x, end.y);
+    }
   } else if (object.has(Path)) {
     const computed = object.read(ComputedPoints).points;
     points = computed

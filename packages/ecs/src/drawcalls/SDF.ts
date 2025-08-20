@@ -452,6 +452,8 @@ export class SDF extends Drawcall {
     if (this.program) {
       this.#uniformBuffer?.destroy();
       this.#texture?.destroy?.();
+      this.#uniformBuffer = null;
+      this.#texture = null;
     }
   }
 

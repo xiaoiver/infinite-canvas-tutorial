@@ -54,7 +54,6 @@ import {
   TRANSFORMER_ANCHOR_STROKE_COLOR,
   TRANSFORMER_MASK_FILL_COLOR,
 } from './RenderTransformer';
-import { ComputeBounds } from './ComputeBounds';
 import { updateGlobalTransform } from './Transform';
 import { safeAddComponent, safeRemoveComponent } from '../history';
 
@@ -97,7 +96,6 @@ export interface SelectOBB {
 export class Select extends System {
   private readonly commands = new Commands(this);
 
-  private readonly computeBounds = this.attach(ComputeBounds);
   private readonly renderTransformer = this.attach(RenderTransformer);
 
   private readonly cameras = this.query((q) => q.current.with(Camera).read);
@@ -563,7 +561,9 @@ export class Select extends System {
 
       if (pen !== Pen.SELECT) {
         // Clear selection
-        api.selectNodes([]);
+        if (pen !== Pen.VECTOR_NETWORK) {
+          api.selectNodes([]);
+        }
         api.highlightNodes([]);
 
         return;
@@ -603,8 +603,11 @@ export class Select extends System {
           const selected = selecteds[0];
           if (selected.has(Polyline)) {
             const vectorNetwork = VectorNetwork.fromEntity(selected);
-            safeAddComponent(selected, VectorNetwork, vectorNetwork);
             safeRemoveComponent(selected, Polyline);
+
+            api.runAtNextTick(() => {
+              safeAddComponent(selected, VectorNetwork, vectorNetwork);
+            });
 
             // Enter VectorNetwork edit mode
             api.setAppState({

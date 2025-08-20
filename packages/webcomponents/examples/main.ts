@@ -36,13 +36,13 @@ const nodes = svgElementsToSerializedNodes(
   Array.from($svg.children) as SVGElement[],
 );
 
-console.log('nodes', nodes);
+// console.log('nodes', nodes);
 
 const canvas = document.querySelector<HTMLElement>('#canvas1')!;
 canvas.addEventListener(Event.READY, async (e) => {
   const api = e.detail;
 
-  // // Generate sinewave geometry
+  // Generate sinewave geometry
   // const maxRadius = (1 / 3) * 100;
   // const segmentCount = 32;
 
@@ -62,52 +62,56 @@ canvas.addEventListener(Event.READY, async (e) => {
   //   radius.push(r);
   // }
 
-  // const nodes = [
-  //   // {
-  //   //   id: '1',
-  //   //   type: 'rect',
-  //   //   fill: 'red',
-  //   //   innerShadowBlurRadius: 10,
-  //   //   innerShadowColor: 'black',
-  //   //   innerShadowOffsetX: 10,
-  //   //   innerShadowOffsetY: 10,
-  //   //   x: 50,
-  //   //   y: 50,
-  //   //   width: 100,
-  //   //   height: 100,
-  //   // } as const,
-  //   {
-  //     id: '1',
-  //     type: 'text',
-  //     fill: 'black',
-  //     content: '中\n国',
-  //     fontSize: 16,
-  //     fontFamily: 'system-ui',
-  //     anchorX: 100,
-  //     anchorY: 100,
-  //   },
-  //   // {
-  //   //   id: '1',
-  //   //   type: 'brush',
-  //   //   points: position.map(([x, y], i) => `${x},${y},${radius[i]}`).join(' '),
-  //   //   brushType: BrushType.STAMP,
-  //   //   brushStamp: '/brush.jpg',
-  //   //   stroke: 'red',
-  //   //   strokeOpacity: 1,
-  //   //   // wireframe: true,
-  //   // },
-  // ];
+  const nodes = [
+    {
+      id: '1',
+      type: 'polyline',
+      stroke: 'red',
+      strokeWidth: 10,
+      points: '100,100 200,200 300,200',
+    } as const,
+    // {
+    //   id: '1',
+    //   type: 'text',
+    //   fill: 'black',
+    //   content: 'Hello world',
+    //   fontSize: 16,
+    //   fontFamily: 'system-ui',
+    //   textAlign: 'center',
+    //   anchorX: 100,
+    //   anchorY: 100,
+    // },
+    // {
+    //   id: '1',
+    //   type: 'brush',
+    //   points: position.map(([x, y], i) => `${x},${y},${radius[i]}`).join(' '),
+    //   brushType: BrushType.STAMP,
+    //   brushStamp: '/brush.jpg',
+    //   stroke: 'red',
+    //   strokeOpacity: 1,
+    //   // wireframe: true,
+    // },
+  ];
 
   // api.runAtNextTick(() => {
   api.setAppState({
     penbarSelected: Pen.SELECT,
-    // penbarText: {
-    //   ...api.getAppState().penbarText,
-    //   fontFamily: 'system-ui',
-    //   fontFamilies: ['system-ui', 'serif', 'monospace', 'Gaegu'],
-    // },
-    taskbarSelected: [Task.SHOW_LAYERS_PANEL],
+    penbarText: {
+      ...api.getAppState().penbarText,
+      fontFamily: 'system-ui',
+      fontFamilies: ['system-ui', 'serif', 'monospace', 'Gaegu'],
+    },
+    // taskbarSelected: [Task.SHOW_LAYERS_PANEL],
     checkboardStyle: CheckboardStyle.GRID,
+
+    // checkboardStyle: CheckboardStyle.NONE,
+    // penbarSelected: Pen.SELECT,
+    // topbarVisible: false,
+    // contextBarVisible: false,
+    // penbarVisible: false,
+    // taskbarVisible: false,
+    // rotateEnabled: false,
+    // flipEnabled: false,
   });
 
   api.updateNodes(nodes);

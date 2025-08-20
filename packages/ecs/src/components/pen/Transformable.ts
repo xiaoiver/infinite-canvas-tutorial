@@ -1,7 +1,6 @@
 import { Entity, field, Type } from '@lastolivegames/becsy';
 import { Selected } from './Selected';
 import { Highlighted } from './Highlighted';
-import { Anchor } from './Anchor';
 
 export enum TransformableStatus {
   IDLE = 'idle',
@@ -30,10 +29,7 @@ export class Transformable {
   @field.ref declare blAnchor: Entity;
   @field.ref declare brAnchor: Entity;
 
-  /**
-   * Control points in curve
-   */
-  @field.backrefs(Anchor, 'camera') declare controlPoints: Entity[];
+  @field.ref declare controlPoints: Entity[];
 
   /**
    * Selected list

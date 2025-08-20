@@ -28,15 +28,18 @@ import {
   FractionalIndex,
   ComputedCamera,
   Brush,
+  Pen,
+  Transformable,
+  Visibility,
 } from '../components';
 import { Commands } from '../commands';
-import { getSceneRoot, updateGlobalTransform } from './Transform';
+import { updateGlobalTransform } from './Transform';
 import {
   TRANSFORMER_ANCHOR_FILL_COLOR,
   TRANSFORMER_ANCHOR_STROKE_COLOR,
 } from './RenderTransformer';
 import { HIGHLIGHTER_Z_INDEX } from '../context';
-import { safeAddComponent } from '../history';
+import { safeAddComponent, safeRemoveComponent } from '../history';
 import { updateComputedPoints } from './ComputePoints';
 
 /**
@@ -45,14 +48,19 @@ import { updateComputedPoints } from './ComputePoints';
 export class RenderHighlighter extends System {
   private readonly commands = new Commands(this);
 
+  private readonly cameras = this.query((q) =>
+    q.current.and.added.with(Camera),
+  );
+
   private readonly highlighted = this.query((q) =>
-    q.current.and.added.and.removed.with(Highlighted),
+    q.added.and.removed.with(Highlighted),
   );
 
   private readonly bounds = this.query(
     (q) => q.changed.with(ComputedBounds).trackWrites,
   );
 
+  // Only one highlighter per camera
   #highlighters = new WeakMap<Entity, Entity>();
 
   constructor() {
@@ -67,8 +75,10 @@ export class RenderHighlighter extends System {
             Canvas,
             Camera,
             FractionalIndex,
+            Transformable,
           )
           .read.and.using(
+            Canvas,
             GlobalTransform,
             UI,
             Highlighted,
@@ -91,38 +101,77 @@ export class RenderHighlighter extends System {
             StrokeAttenuation,
             ToBeDeleted,
             ComputedPoints,
+            Visibility,
           ).write,
     );
   }
 
   execute() {
-    this.highlighted.added.forEach((entity) => {
-      // Group
-      if (!entity.has(ComputedBounds)) {
+    this.cameras.current.forEach((camera) => {
+      if (!camera.has(Camera)) {
         return;
       }
 
-      this.createOrUpdate(entity);
-    });
+      const { canvas } = camera.read(Camera);
+      if (!canvas) {
+        return;
+      }
 
-    this.highlighted.removed.forEach((entity) => {
-      if (this.#highlighters.has(entity)) {
-        const highlighter = this.#highlighters.get(entity);
-
-        highlighter.add(ToBeDeleted);
-        this.#highlighters.delete(entity);
+      const { api } = canvas.read(Canvas);
+      const pen = api.getAppState().penbarSelected;
+      if (pen !== Pen.SELECT) {
+        // Clear highlighter
+        const highlighter = this.#highlighters.get(camera);
+        if (highlighter) {
+          highlighter.write(Visibility).value = 'hidden';
+        }
+        return;
       }
     });
+
+    const camerasToUpdate = new Set<Entity>();
+    this.cameras.added.forEach((camera) => {
+      camerasToUpdate.add(camera);
+    });
+
+    this.highlighted.added.forEach((highlighted) => {
+      // Group
+      if (!highlighted.has(ComputedBounds)) {
+        return;
+      }
+      camerasToUpdate.add(highlighted.read(Highlighted).camera);
+    });
+
+    this.highlighted.removed.forEach((highlighted) => {
+      this.accessRecentlyDeletedData();
+      camerasToUpdate.add(highlighted.read(Highlighted).camera);
+    });
+    // Backrefs field Transformable.highlighteds not configured to track recently deleted refs
+    this.accessRecentlyDeletedData(false);
 
     this.bounds.changed.forEach((entity) => {
-      if (this.#highlighters.has(entity)) {
-        this.createOrUpdate(entity);
+      if (entity.has(Highlighted)) {
+        camerasToUpdate.add(entity.read(Highlighted).camera);
       }
+    });
+
+    camerasToUpdate.forEach((camera) => {
+      if (!camera) {
+        return;
+      }
+      // const { canvas } = camera.read(Camera);
+      // if (!canvas) {
+      //   return;
+      // }
+      // const { api } = canvas.read(Canvas);
+      // api.runAtNextTick(() => {
+      this.createOrUpdate(camera);
+      // });
     });
   }
 
-  createOrUpdate(entity: Entity) {
-    let highlighter = this.#highlighters.get(entity);
+  createOrUpdate(camera: Entity) {
+    let highlighter = this.#highlighters.get(camera);
     if (!highlighter) {
       highlighter = this.commands
         .spawn(
@@ -134,19 +183,35 @@ export class RenderHighlighter extends System {
           new Stroke({ width: 2, color: TRANSFORMER_ANCHOR_STROKE_COLOR }), // --spectrum-thumbnail-border-color-selected
           new ZIndex(HIGHLIGHTER_Z_INDEX),
           new StrokeAttenuation(),
+          new Visibility(),
         )
         .id()
         .hold();
 
+      this.commands
+        .entity(camera)
+        .appendChild(this.commands.entity(highlighter));
       this.commands.execute();
 
-      const camera = this.commands.entity(getSceneRoot(entity));
-      camera.appendChild(this.commands.entity(highlighter));
-
-      this.commands.execute();
-
-      this.#highlighters.set(entity, highlighter);
+      this.#highlighters.set(camera, highlighter);
     }
+
+    const { highlighteds } = camera.read(Transformable);
+    const entity = highlighteds[0];
+
+    if (!entity) {
+      highlighter.write(Visibility).value = 'hidden';
+      return;
+    }
+
+    safeRemoveComponent(highlighter, GlobalTransform);
+    safeRemoveComponent(highlighter, Circle);
+    safeRemoveComponent(highlighter, Ellipse);
+    safeRemoveComponent(highlighter, Rect);
+    safeRemoveComponent(highlighter, Path);
+    safeRemoveComponent(highlighter, Polyline);
+
+    highlighter.write(Visibility).value = 'visible';
 
     const {
       obb: { x, y, width, height, rotation, scaleX, scaleY },
@@ -226,7 +291,5 @@ export class RenderHighlighter extends System {
 
     updateGlobalTransform(highlighter);
     updateComputedPoints(highlighter);
-
-    return highlighter;
   }
 }

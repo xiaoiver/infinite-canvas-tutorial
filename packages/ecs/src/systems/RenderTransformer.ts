@@ -32,6 +32,8 @@ import {
   Polyline,
   VectorNetwork,
   FractionalIndex,
+  Canvas,
+  Pen,
 } from '../components';
 import { Commands } from '../commands';
 import { updateGlobalTransform } from './Transform';
@@ -55,7 +57,9 @@ export const TRANSFORMER_ANCHOR_FILL_COLOR = 'white';
 export class RenderTransformer extends System {
   private readonly commands = new Commands(this);
 
-  private readonly cameras = this.query((q) => q.added.with(Camera));
+  private readonly cameras = this.query((q) =>
+    q.current.and.added.with(Camera),
+  );
 
   private readonly selected = this.query((q) =>
     q.current.and.added.and.removed.with(Selected),
@@ -73,6 +77,7 @@ export class RenderTransformer extends System {
         q
           .using(ComputedBounds, Camera, FractionalIndex, Polyline)
           .read.and.using(
+            Canvas,
             GlobalTransform,
             Transformable,
             UI,
@@ -102,70 +107,6 @@ export class RenderTransformer extends System {
     safeAddComponent(camera, Transformable);
 
     const transformable = camera.write(Transformable);
-
-    // if (camera.has(SelectVectorNetwork)) {
-    //   if (transformable.mask) {
-    //     transformable.mask.write(Visibility).value = 'hidden';
-    //   }
-
-    //   if (transformable.selecteds.length !== 1) {
-    //     transformable.controlPoints.forEach((controlPoint) => {
-    //       controlPoint.write(Visibility).value = 'hidden';
-    //     });
-    //     return;
-    //   }
-    //   const selected = transformable.selecteds[0];
-    //   const vn = VectorNetwork.fromEntity(selected);
-    //   if (!vn) {
-    //     return;
-    //   }
-
-    //   safeAddComponent(selected, VectorNetwork, vn);
-
-    //   const { vertices, segments } = vn;
-    //   const toCreateAnchorNumber =
-    //     vertices.length - transformable.controlPoints.length;
-    //   if (toCreateAnchorNumber > 0) {
-    //     for (let i = 0; i < toCreateAnchorNumber; i++) {
-    //       const anchor = this.createAnchor(
-    //         camera,
-    //         vertices[i].x,
-    //         vertices[i].y,
-    //         AnchorName.CONTROL,
-    //       );
-    //       this.commands
-    //         .entity(camera)
-    //         .appendChild(this.commands.entity(anchor));
-    //     }
-    //     this.commands.execute();
-    //   } else {
-    //     // Remove redundant control points
-    //     for (let i = 0; i < Math.abs(toCreateAnchorNumber); i++) {
-    //       const anchor = transformable.controlPoints.pop();
-    //       if (anchor) {
-    //         anchor.add(ToBeDeleted);
-    //       }
-    //     }
-    //   }
-
-    //   const matrix = Mat3.toGLMat3(selected.read(GlobalTransform).matrix);
-    //   transformable.controlPoints.forEach((controlPoint, i) => {
-    //     const { x, y } = vertices[i];
-    //     const transformed = vec2.transformMat3(vec2.create(), [x, y], matrix);
-    //     Object.assign(controlPoint.write(Circle), {
-    //       cx: transformed[0],
-    //       cy: transformed[1],
-    //     });
-    //     controlPoint.write(Visibility).value = 'visible';
-    //     updateGlobalTransform(controlPoint);
-    //   });
-    // } else if (camera.has(SelectOBB)) {
-    // if (transformable.controlPoints) {
-    //   transformable.controlPoints.forEach((controlPoint) => {
-    //     controlPoint.add(ToBeDeleted);
-    //   });
-    // }
-
     if (!transformable.mask) {
       const mask = this.commands
         .spawn(
@@ -262,8 +203,33 @@ export class RenderTransformer extends System {
   }
 
   execute() {
-    const camerasToUpdate = new Set<Entity>();
+    this.cameras.current.forEach((camera) => {
+      if (!camera.has(Camera)) {
+        return;
+      }
 
+      const { canvas } = camera.read(Camera);
+      if (!canvas) {
+        return;
+      }
+
+      const { api } = canvas.read(Canvas);
+      const pen = api.getAppState().penbarSelected;
+      if (pen !== Pen.SELECT) {
+        // Clear transformer
+        const { mask } = camera.read(Transformable);
+        mask.write(Visibility).value = 'hidden';
+      }
+      if (pen !== Pen.VECTOR_NETWORK) {
+        const { controlPoints } = camera.read(Transformable);
+        controlPoints &&
+          controlPoints.forEach((controlPoint) => {
+            controlPoint.write(Visibility).value = 'hidden';
+          });
+      }
+    });
+
+    const camerasToUpdate = new Set<Entity>();
     this.cameras.added.forEach((camera) => {
       camerasToUpdate.add(camera);
     });

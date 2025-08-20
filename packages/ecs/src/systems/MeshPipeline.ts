@@ -55,6 +55,7 @@ import {
   ZIndex,
   Brush,
   Marker,
+  VectorNetwork,
 } from '../components';
 import { paddingMat3 } from '../utils';
 import { GridRenderer } from './GridRenderer';
@@ -71,10 +72,24 @@ export class MeshPipeline extends System {
 
   private renderables = this.query(
     (q) =>
-      q.added.and.changed
+      q.added.and.changed.and.removed
         .with(Renderable)
-        .withAny(Circle, Ellipse, Rect, Polyline, Path, Text, Brush)
-        .trackWrites,
+        .withAny(
+          Circle,
+          Ellipse,
+          Rect,
+          Polyline,
+          Path,
+          Text,
+          Brush,
+          VectorNetwork,
+        ).trackWrites,
+  );
+
+  private polylines = this.query((q) => q.added.and.removed.with(Polyline));
+  private paths = this.query((q) => q.added.and.removed.with(Path));
+  private vectorNetworks = this.query((q) =>
+    q.added.and.removed.with(VectorNetwork),
   );
 
   private toBeDeleted = this.query(
@@ -158,9 +173,9 @@ export class MeshPipeline extends System {
   private pendingRenderables: WeakMap<
     Entity,
     {
-      add: Entity[];
-      remove: Entity[];
-    }
+      type: 'add' | 'remove';
+      entity: Entity;
+    }[]
   > = new WeakMap();
 
   constructor() {
@@ -308,11 +323,12 @@ export class MeshPipeline extends System {
     gridRenderer.render(device, renderPass, uniformBuffer, uniformLegacyObject);
 
     if (this.pendingRenderables.has(camera)) {
-      this.pendingRenderables.get(camera).add.forEach((entity) => {
-        batchManager.add(entity);
-      });
-      this.pendingRenderables.get(camera).remove.forEach((entity) => {
-        batchManager.remove(entity, !entity.has(Culled));
+      this.pendingRenderables.get(camera).forEach(({ type, entity }) => {
+        if (type === 'remove') {
+          batchManager.remove(entity, !entity.has(Culled));
+        } else {
+          batchManager.add(entity);
+        }
       });
       this.pendingRenderables.delete(camera);
     }
@@ -338,6 +354,9 @@ export class MeshPipeline extends System {
     new Set([
       ...this.renderables.added,
       ...this.renderables.changed,
+      ...this.polylines.added,
+      ...this.paths.added,
+      ...this.vectorNetworks.added,
       ...this.culleds.removed,
     ]).forEach((entity) => {
       const camera = getSceneRoot(entity);
@@ -365,29 +384,32 @@ export class MeshPipeline extends System {
 
       // The gpu resources is not ready for the camera.
       if (!this.pendingRenderables.has(camera)) {
-        this.pendingRenderables.set(camera, {
-          add: [],
-          remove: [],
-        });
+        this.pendingRenderables.set(camera, []);
       }
-      this.pendingRenderables.get(camera).add.push(entity);
+      this.pendingRenderables.get(camera).push({
+        type: 'add',
+        entity,
+      });
     });
 
     new Set([
       ...this.toBeDeleted.addedOrChanged,
-      // ...this.renderables.removed,
+      ...this.renderables.removed,
+      ...this.polylines.removed,
+      ...this.paths.removed,
+      ...this.vectorNetworks.removed,
       ...this.culleds.addedOrChanged,
     ]).forEach((entity) => {
       const camera = getSceneRoot(entity);
 
       // The gpu resources is not ready for the camera.
       if (!this.pendingRenderables.has(camera)) {
-        this.pendingRenderables.set(camera, {
-          add: [],
-          remove: [],
-        });
+        this.pendingRenderables.set(camera, []);
       }
-      this.pendingRenderables.get(camera).remove.push(entity);
+      this.pendingRenderables.get(camera).push({
+        type: 'remove',
+        entity,
+      });
     });
 
     // Handle some special cases.
@@ -409,8 +431,8 @@ export class MeshPipeline extends System {
       const { cameras } = canvas.read(Canvas);
       cameras.forEach((camera) => {
         if (!toRender && this.pendingRenderables.get(camera)) {
-          const { add, remove } = this.pendingRenderables.get(camera);
-          toRender = !!(add.length || remove.length);
+          const pendingRenderables = this.pendingRenderables.get(camera);
+          toRender = !!pendingRenderables.length;
         }
 
         if (!toRender && this.cameras.addedOrChanged.includes(camera)) {

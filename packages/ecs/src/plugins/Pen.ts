@@ -7,7 +7,6 @@ import {
   RenderHighlighter,
   RenderTransformer,
   Select,
-  EditVectorNetwork,
   SetupDevice,
   Sort,
   SyncSimpleTransforms,
@@ -51,8 +50,7 @@ export const PenPlugin: Plugin = () => {
       )
       .before(Last),
   )(Select);
-  system((s) => s.after(Select).before(Last))(EditVectorNetwork);
-  system((s) => s.after(EditVectorNetwork).before(Last))(DrawRect);
+  system((s) => s.after(Select).before(Last))(DrawRect);
   system((s) => s.after(DrawRect).before(Last))(DrawPencil);
   system((s) => s.afterWritersOf(Selected).before(Last, MeshPipeline))(
     RenderTransformer,

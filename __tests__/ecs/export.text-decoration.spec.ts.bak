@@ -99,6 +99,8 @@ describe('Export SVG', () => {
             type: 'text',
             fill: 'black',
             content: 'Test',
+            anchorX: 50,
+            anchorY: 50,
             fontSize: 16,
             fontFamily: 'sans-serif',
             // decorationColor: 'black',

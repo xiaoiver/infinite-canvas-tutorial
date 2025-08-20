@@ -22,6 +22,7 @@ import {
   Renderable,
   Rough,
   Text,
+  VectorNetwork,
 } from '../components';
 import { TexturePool } from '../resources';
 import { RenderCache } from '../utils';
@@ -68,6 +69,8 @@ function getDrawcallCtors(shape: Entity) {
     SHAPE_DRAWCALL_CTORS.push(SmoothPolyline, SDFText);
   } else if (shape.has(Brush)) {
     SHAPE_DRAWCALL_CTORS.push(StampBrush);
+  } else if (shape.has(VectorNetwork)) {
+    SHAPE_DRAWCALL_CTORS.push(SmoothPolyline);
   }
   return SHAPE_DRAWCALL_CTORS;
 }
@@ -98,6 +101,7 @@ export class BatchManager {
     | 'rough-rect'
     | 'rough-polyline'
     | 'rough-path'
+    | 'vector-network'
     | 'text',
     Drawcall[][]
   > = Object.create(null);
@@ -141,7 +145,25 @@ export class BatchManager {
   private getOrCreateNonBatchableDrawcalls(shape: Entity) {
     let existed = this.#nonBatchableDrawcallsCache.get(shape);
     if (!existed) {
-      existed = this.createDrawcalls(shape) || [];
+      existed = this.createDrawcalls(shape);
+      this.#nonBatchableDrawcallsCache.set(shape, existed);
+    } else {
+      const newDrawcalls = this.createDrawcalls(shape);
+      if (
+        newDrawcalls.length !== existed.length ||
+        newDrawcalls.some((drawcall, index) => {
+          return drawcall.constructor !== existed[index].constructor;
+        })
+      ) {
+        existed = newDrawcalls;
+        debugger;
+        this.remove(shape);
+        this.add(shape, existed);
+        // existed.forEach((drawcall) => {
+        //   drawcall.destroy();
+        // });
+        // existed = newDrawcalls;
+      }
       this.#nonBatchableDrawcallsCache.set(shape, existed);
     }
 
@@ -174,6 +196,10 @@ export class BatchManager {
           : 'path'
         : shape.has(Text)
         ? 'text'
+        : shape.has(VectorNetwork)
+        ? 'vector-network'
+        : shape.has(Brush)
+        ? 'brush'
         : undefined;
 
       let instancedDrawcalls = this.#instancesCache[geometryCtor];
@@ -204,12 +230,13 @@ export class BatchManager {
     return existed;
   }
 
-  add(shape: Entity) {
-    let drawcalls: Drawcall[];
-    if (shape.read(Renderable).batchable) {
-      drawcalls = this.getOrCreateBatchableDrawcalls(shape);
-    } else {
-      drawcalls = this.getOrCreateNonBatchableDrawcalls(shape);
+  add(shape: Entity, drawcalls?: Drawcall[]) {
+    if (!drawcalls) {
+      if (shape.read(Renderable).batchable) {
+        drawcalls = this.getOrCreateBatchableDrawcalls(shape);
+      } else {
+        drawcalls = this.getOrCreateNonBatchableDrawcalls(shape);
+      }
     }
     if (this.#drawcallsToFlush.indexOf(drawcalls[0]) === -1) {
       this.#drawcallsToFlush.push(...drawcalls);
@@ -233,10 +260,13 @@ export class BatchManager {
         if (destroy) {
           drawcall.destroy();
         }
-        this.#drawcallsToFlush.splice(
-          this.#drawcallsToFlush.indexOf(drawcall),
-          1,
-        );
+
+        if (this.#drawcallsToFlush.includes(drawcall)) {
+          this.#drawcallsToFlush.splice(
+            this.#drawcallsToFlush.indexOf(drawcall),
+            1,
+          );
+        }
       });
 
       if (destroy) {
@@ -311,8 +341,6 @@ export class BatchManager {
     this.#drawcallsToFlush.forEach((drawcall) => {
       drawcall.submit(renderPass, uniformBuffer, uniformLegacyObject);
     });
-
-    // console.log('flush', this.#drawcallsToFlush);
   }
 
   stats() {

@@ -61,7 +61,7 @@ export class TopNavbar extends LitElement {
   private actionMenu: LitElement;
 
   protected firstUpdated(_changedProperties: PropertyValues): void {
-    this.actionMenu.addEventListener('sp-opened', this.handleOpen);
+    this.actionMenu?.addEventListener('sp-opened', this.handleOpen);
   }
 
   connectedCallback() {
