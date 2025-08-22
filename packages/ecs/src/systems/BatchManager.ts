@@ -156,13 +156,8 @@ export class BatchManager {
         })
       ) {
         existed = newDrawcalls;
-        debugger;
         this.remove(shape);
         this.add(shape, existed);
-        // existed.forEach((drawcall) => {
-        //   drawcall.destroy();
-        // });
-        // existed = newDrawcalls;
       }
       this.#nonBatchableDrawcallsCache.set(shape, existed);
     }

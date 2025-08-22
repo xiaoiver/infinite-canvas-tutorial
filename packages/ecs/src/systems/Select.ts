@@ -566,7 +566,9 @@ export class Select extends System {
         }
         api.highlightNodes([]);
 
-        return;
+        if (pen !== Pen.VECTOR_NETWORK) {
+          return;
+        }
       }
 
       const input = canvas.write(Input);
@@ -708,33 +710,34 @@ export class Select extends System {
               this.renderTransformer.hitTest(api, { x, y }) || {};
 
             if (anchor) {
-              // if (anchor === AnchorName.CONTROL) {
-              //   cursor.value = 'move';
-              //   (selection as SelectVectorNetwork).activeControlPointIndex =
-              //     index;
-              // } else {
-              const { rotation, scale } = mask.read(Transform);
-              cursor.value = getCursor(
-                cursorName,
-                rotation,
-                '',
-                Math.sign(scale[0] * scale[1]) < 0,
-              );
-              selection.resizingAnchorName = anchor;
-
-              if (cursorName.includes('rotate')) {
-                selection.mode = SelectionMode.READY_TO_ROTATE;
-              } else if (cursorName.includes('resize')) {
-                selection.mode = SelectionMode.READY_TO_RESIZE;
-              } else if (anchor === AnchorName.INSIDE) {
-                if (toHighlight && toHighlight !== selecteds[0]) {
-                  selection.mode = SelectionMode.READY_TO_SELECT;
-                }
+              if (anchor === AnchorName.CONTROL) {
+                // cursor.value = 'move';
+                // (selection as SelectVectorNetwork).activeControlPointIndex =
+                //   index;
               } else {
-                if (toHighlight) {
-                  selection.mode = SelectionMode.READY_TO_SELECT;
-                } else if (selection.mode !== SelectionMode.BRUSH) {
-                  selection.mode = SelectionMode.IDLE;
+                const { rotation, scale } = mask.read(Transform);
+                cursor.value = getCursor(
+                  cursorName,
+                  rotation,
+                  '',
+                  Math.sign(scale[0] * scale[1]) < 0,
+                );
+                selection.resizingAnchorName = anchor;
+
+                if (cursorName.includes('rotate')) {
+                  selection.mode = SelectionMode.READY_TO_ROTATE;
+                } else if (cursorName.includes('resize')) {
+                  selection.mode = SelectionMode.READY_TO_RESIZE;
+                } else if (anchor === AnchorName.INSIDE) {
+                  if (toHighlight && toHighlight !== selecteds[0]) {
+                    selection.mode = SelectionMode.READY_TO_SELECT;
+                  }
+                } else {
+                  if (toHighlight) {
+                    selection.mode = SelectionMode.READY_TO_SELECT;
+                  } else if (selection.mode !== SelectionMode.BRUSH) {
+                    selection.mode = SelectionMode.IDLE;
+                  }
                 }
               }
             }
@@ -896,50 +899,20 @@ export class Select extends System {
         newLocalTransform,
       );
 
-      // if (width < 0) {
-      //   if (this.#resizingAnchorName.includes('right')) {
-      //     this.#resizingAnchorName = this.#resizingAnchorName.replace(
-      //       'right',
-      //       'left',
-      //     ) as AnchorName;
-      //   } else if (this.#resizingAnchorName.includes('left')) {
-      //     this.#resizingAnchorName = this.#resizingAnchorName.replace(
-      //       'left',
-      //       'right',
-      //     ) as AnchorName;
-      //   }
-      // }
-
-      // if (height < 0) {
-      //   if (this.#resizingAnchorName.includes('top')) {
-      //     this.#resizingAnchorName = this.#resizingAnchorName.replace(
-      //       'top',
-      //       'bottom',
-      //     ) as AnchorName;
-      //   } else if (this.#resizingAnchorName.includes('bottom')) {
-      //     this.#resizingAnchorName = this.#resizingAnchorName.replace(
-      //       'bottom',
-      //       'top',
-      //     ) as AnchorName;
-      //   }
-      // }
-
       const { rotation, translation } = decompose(newLocalTransform);
-      api.updateNodeOBB(
-        node,
-        {
-          x: translation[0],
-          y: translation[1],
-          width: Math.max(Math.abs(width), epsilon),
-          height: Math.max(Math.abs(height), epsilon),
-          rotation,
-          scaleX: oldAttrs.scaleX * (Math.sign(width) || 1),
-          scaleY: oldAttrs.scaleY * (Math.sign(height) || 1),
-        },
-        false,
-        newLocalTransform,
-        oldNode,
-      );
+
+      const obb = {
+        x: translation[0],
+        y: translation[1],
+        width: Math.max(Math.abs(width), epsilon),
+        height: Math.max(Math.abs(height), epsilon),
+        rotation,
+        scaleX: oldAttrs.scaleX * (Math.sign(width) || 1),
+        scaleY: oldAttrs.scaleY * (Math.sign(height) || 1),
+      };
+      api.updateNodeOBB(node, obb, false, newLocalTransform, oldNode);
+      selection.obb.scaleX = obb.scaleX;
+      selection.obb.scaleY = obb.scaleY;
     });
   }
 }

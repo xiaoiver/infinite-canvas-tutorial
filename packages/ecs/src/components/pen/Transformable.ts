@@ -22,14 +22,17 @@ export class Transformable {
   @field.ref declare mask: Entity;
 
   /**
-   * Anchors
+   * Anchors in rectangle
    */
   @field.ref declare tlAnchor: Entity;
   @field.ref declare trAnchor: Entity;
   @field.ref declare blAnchor: Entity;
   @field.ref declare brAnchor: Entity;
 
-  @field.ref declare controlPoints: Entity[];
+  /**
+   * Anchors in vector network
+   */
+  @field.object declare controlPoints: Entity[];
 
   /**
    * Selected list

@@ -23,4 +23,3 @@ export * from './RenderTransformer';
 export * from './RenderHighlighter';
 export * from './DrawRect';
 export * from './DrawPencil';
-export * from './EditVectorNetwork';

@@ -18,8 +18,8 @@ WebFont.load({
   },
 });
 
-// const res = await fetch('/test.svg');
-const res = await fetch('/maslow-hierarchy.svg');
+const res = await fetch('/test.svg');
+// const res = await fetch('/maslow-hierarchy.svg');
 // const res = await fetch('/mindmap.svg');
 // const res = await fetch('/test-camera.svg');
 // const res = await fetch(
@@ -62,39 +62,61 @@ canvas.addEventListener(Event.READY, async (e) => {
   //   radius.push(r);
   // }
 
-  const nodes = [
-    {
-      id: '1',
-      type: 'polyline',
-      stroke: 'red',
-      strokeWidth: 10,
-      points: '100,100 200,200 300,200',
-    } as const,
-    // {
-    //   id: '1',
-    //   type: 'text',
-    //   fill: 'black',
-    //   content: 'Hello world',
-    //   fontSize: 16,
-    //   fontFamily: 'system-ui',
-    //   textAlign: 'center',
-    //   anchorX: 100,
-    //   anchorY: 100,
-    // },
-    // {
-    //   id: '1',
-    //   type: 'brush',
-    //   points: position.map(([x, y], i) => `${x},${y},${radius[i]}`).join(' '),
-    //   brushType: BrushType.STAMP,
-    //   brushStamp: '/brush.jpg',
-    //   stroke: 'red',
-    //   strokeOpacity: 1,
-    //   // wireframe: true,
-    // },
-  ];
+  // const nodes = [
+  //   // {
+  //   //   id: '1',
+  //   //   type: 'vector-network',
+  //   //   stroke: 'red',
+  //   //   strokeWidth: 10,
+  //   //   vertices: [
+  //   //     { x: 100, y: 100 },
+  //   //     { x: 200, y: 200 },
+  //   //     { x: 300, y: 200 },
+  //   //   ],
+  //   //   segments: [
+  //   //     {
+  //   //       start: 0,
+  //   //       end: 1,
+  //   //     },
+  //   //     {
+  //   //       start: 1,
+  //   //       end: 2,
+  //   //     },
+  //   //   ],
+  //   // } as const,
+  //   {
+  //     id: '1',
+  //     type: 'polyline',
+  //     stroke: 'red',
+  //     strokeWidth: 10,
+  //     points: '100,100 200,200 300,200',
+  //   } as const,
+  //   // {
+  //   //   id: '1',
+  //   //   type: 'text',
+  //   //   fill: 'black',
+  //   //   content: 'Hello world',
+  //   //   fontSize: 16,
+  //   //   fontFamily: 'system-ui',
+  //   //   textAlign: 'center',
+  //   //   anchorX: 100,
+  //   //   anchorY: 100,
+  //   // },
+  //   // {
+  //   //   id: '1',
+  //   //   type: 'brush',
+  //   //   points: position.map(([x, y], i) => `${x},${y},${radius[i]}`).join(' '),
+  //   //   brushType: BrushType.STAMP,
+  //   //   brushStamp: '/brush.jpg',
+  //   //   stroke: 'red',
+  //   //   strokeOpacity: 1,
+  //   //   // wireframe: true,
+  //   // },
+  // ];
 
   // api.runAtNextTick(() => {
   api.setAppState({
+    // penbarSelected: Pen.VECTOR_NETWORK,
     penbarSelected: Pen.SELECT,
     penbarText: {
       ...api.getAppState().penbarText,
@@ -115,7 +137,7 @@ canvas.addEventListener(Event.READY, async (e) => {
   });
 
   api.updateNodes(nodes);
-  // api.selectNodes([nodes[0]]);
+  api.selectNodes([nodes[0]]);
 
   api.record();
   // });
