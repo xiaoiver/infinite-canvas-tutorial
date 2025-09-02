@@ -8,7 +8,6 @@ import {
 import {
   defaultAttributes,
   PathSerializedNode,
-  PolylineSerializedNode,
   SerializedNode,
   fixTransform,
   TextSerializedNode,
@@ -137,6 +136,10 @@ export function svgElementsToSerializedNodes(
           attributeName === 'cy' ||
           attributeName === 'x' ||
           attributeName === 'y' ||
+          attributeName === 'x1' ||
+          attributeName === 'y1' ||
+          attributeName === 'x2' ||
+          attributeName === 'y2' ||
           attributeName === 'rx' ||
           attributeName === 'ry' ||
           attributeName === 'r' ||
@@ -237,21 +240,6 @@ export function svgElementsToSerializedNodes(
         delete attributes.y;
         // @ts-ignore
         delete attributes.style;
-      } else if (type === 'line') {
-        type = 'polyline';
-        // @ts-ignore
-        const { x1, y1, x2, y2 } = attributes;
-        (
-          attributes as PolylineSerializedNode
-        ).points = `${x1},${y1} ${x2},${y2}`;
-        // @ts-ignore
-        delete attributes.x1;
-        // @ts-ignore
-        delete attributes.y1;
-        // @ts-ignore
-        delete attributes.x2;
-        // @ts-ignore
-        delete attributes.y2;
       } else if (type === 'polygon') {
         type = 'path';
         // @ts-ignore

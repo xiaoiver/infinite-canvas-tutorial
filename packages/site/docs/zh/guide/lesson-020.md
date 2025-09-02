@@ -208,6 +208,8 @@ api.updateNodes(nodes);
 
 <!-- <LoroCRDT /> -->
 
+## 端到端加密 {#end-to-end-encryption}
+
 ## 扩展阅读 {#extended-reading}
 
 -   [How Figma’s multiplayer technology works]
@@ -216,6 +218,8 @@ api.updateNodes(nodes);
 -   [CRDTs: The Hard Parts]
 -   [An Interactive Intro to CRDTs]
 -   [The Full Spectrum of Collaboration]
+-   [Homomorphically Encrypting CRDTs]
+-   [End-to-End Encryption in the Browser]
 
 [What are CRDTs]: https://loro.dev/docs/concepts/crdt
 [CRDTs: The Hard Parts]: https://www.youtube.com/watch?v=x7drE24geUw
@@ -242,3 +246,5 @@ api.updateNodes(nodes);
 [Movable tree CRDTs and Loro's implementation]: https://loro.dev/blog/movable-tree
 [课程 14]: /zh/guide/lesson-014#z-index
 [localeCompare]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/localeCompare
+[Homomorphically Encrypting CRDTs]: https://jakelazaroff.com/words/homomorphically-encrypted-crdts/
+[End-to-End Encryption in the Browser]: https://plus.excalidraw.com/blog/end-to-end-encryption

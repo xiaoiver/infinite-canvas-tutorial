@@ -31,6 +31,7 @@ import {
   VectorNetwork,
   Marker,
   InnerShadow,
+  Line,
 } from '../../components';
 import {
   AttenuationAttributes,
@@ -40,6 +41,7 @@ import {
   InnerShadowAttributes,
   isDataUrl,
   isUrl,
+  LineSerializedNode,
   MarkerAttributes,
   NameAttributes,
   PathSerializedNode,
@@ -70,6 +72,8 @@ export function inferXYWidthHeight(node: SerializedNode) {
     bounds = Ellipse.getGeometryBounds(node);
   } else if (type === 'polyline') {
     bounds = Polyline.getGeometryBounds(node);
+  } else if (type === 'line') {
+    bounds = Line.getGeometryBounds(node);
   } else if (type === 'path') {
     bounds = Path.getGeometryBounds(node);
   } else if (type === 'text') {
@@ -94,6 +98,11 @@ export function inferXYWidthHeight(node: SerializedNode) {
           return [point[0] - bounds.minX, point[1] - bounds.minY];
         }),
       );
+    } else if (type === 'line') {
+      node.x1 = node.x1 - bounds.minX;
+      node.y1 = node.y1 - bounds.minY;
+      node.x2 = node.x2 - bounds.minX;
+      node.y2 = node.y2 - bounds.minY;
     } else if (type === 'path') {
       node.d = shiftPath(node.d, -bounds.minX, -bounds.minY);
     } else if (type === 'brush') {
@@ -273,6 +282,9 @@ export function serializedNodesToEntities(
     } else if (type === 'polyline') {
       const { points } = attributes as PolylineSerializedNode;
       entity.insert(new Polyline({ points: deserializePoints(points) }));
+    } else if (type === 'line') {
+      const { x1, y1, x2, y2 } = attributes as LineSerializedNode;
+      entity.insert(new Line({ x1, y1, x2, y2 }));
     } else if (type === 'brush') {
       const { points, brushType, brushStamp } =
         attributes as BrushSerializedNode;

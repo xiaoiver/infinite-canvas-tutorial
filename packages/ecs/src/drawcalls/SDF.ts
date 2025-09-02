@@ -410,6 +410,13 @@ export class SDF extends Drawcall {
         matrix.m22,
       ] as mat3;
 
+      // if (this.shapes[0].has(Rect)) {
+      //   const { x, width } = this.shapes[0].read(Rect);
+      //   const { children } = (this.shapes[0].has(Parent) &&
+      //     this.shapes[0].read(Parent)) || { children: [] };
+      //   console.log(children.length, x, width, matrix.m20);
+      // }
+
       this.#uniformBuffer.setSubData(
         0,
         new Uint8Array(

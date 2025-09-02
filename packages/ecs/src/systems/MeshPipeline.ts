@@ -32,6 +32,7 @@ import {
   GPUResource,
   Grid,
   InnerShadow,
+  Line,
   Opacity,
   Path,
   Polyline,
@@ -78,6 +79,7 @@ export class MeshPipeline extends System {
           Circle,
           Ellipse,
           Rect,
+          Line,
           Polyline,
           Path,
           Text,
@@ -86,6 +88,7 @@ export class MeshPipeline extends System {
         ).trackWrites,
   );
 
+  private lines = this.query((q) => q.added.and.removed.with(Line));
   private polylines = this.query((q) => q.added.and.removed.with(Polyline));
   private paths = this.query((q) => q.added.and.removed.with(Path));
   private vectorNetworks = this.query((q) =>
@@ -194,6 +197,7 @@ export class MeshPipeline extends System {
             Circle,
             Ellipse,
             Rect,
+            Line,
             Polyline,
             Path,
             ComputedPoints,
@@ -355,6 +359,7 @@ export class MeshPipeline extends System {
       ...this.renderables.added,
       ...this.renderables.changed,
       ...this.polylines.added,
+      ...this.lines.added,
       ...this.paths.added,
       ...this.vectorNetworks.added,
       ...this.culleds.removed,
@@ -370,6 +375,7 @@ export class MeshPipeline extends System {
 
       if (this.renderables.changed.includes(entity)) {
         if (
+          entity.has(Line) ||
           entity.has(Polyline) ||
           entity.has(Path) ||
           entity.has(Text) ||
@@ -396,6 +402,7 @@ export class MeshPipeline extends System {
       ...this.toBeDeleted.addedOrChanged,
       ...this.renderables.removed,
       ...this.polylines.removed,
+      ...this.lines.removed,
       ...this.paths.removed,
       ...this.vectorNetworks.removed,
       ...this.culleds.addedOrChanged,
@@ -417,7 +424,7 @@ export class MeshPipeline extends System {
       ...this.strokes.addedChangedOrRemoved,
       ...this.markers.addedChangedOrRemoved,
     ].forEach((entity) => {
-      if (entity.has(Polyline) || entity.has(Path)) {
+      if (entity.has(Polyline) || entity.has(Path) || entity.has(Line)) {
         safeAddComponent(entity, GeometryDirty);
       }
     });

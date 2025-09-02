@@ -3,6 +3,7 @@ import {
   DropShadowAttributes,
   FillAttributes,
   InnerShadowAttributes,
+  LineSerializedNode,
   MarkerAttributes,
   PathSerializedNode,
   PolylineSerializedNode,
@@ -37,6 +38,7 @@ import {
   Marker,
   InnerShadow,
   DropShadow,
+  Line,
 } from '../../components';
 import { serializePoints } from './points';
 
@@ -69,6 +71,13 @@ export function entityToSerializedNodes(
     type = 'rect';
     const { cornerRadius } = entity.read(Rect);
     (attributes as RectSerializedNode).cornerRadius = cornerRadius;
+  } else if (entity.has(Line)) {
+    type = 'line';
+    const { x1, y1, x2, y2 } = entity.read(Line);
+    (attributes as LineSerializedNode).x1 = x1;
+    (attributes as LineSerializedNode).y1 = y1;
+    (attributes as LineSerializedNode).x2 = x2;
+    (attributes as LineSerializedNode).y2 = y2;
   } else if (entity.has(Polyline)) {
     type = 'polyline';
     const { points } = entity.read(Polyline);

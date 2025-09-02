@@ -16,7 +16,7 @@ description: '实现图形变换器，支持调整大小和旋转功能。学习
 
 ## 序列化变换矩阵和尺寸信息 {#serialize-transform-dimension}
 
-在 Figma 中图形局部坐标系下的变换矩阵和尺寸信息如下。我们知道对于 2D 图形的变换矩阵 mat3 可以分解成 translation, scale 和 rotation 三部分。其中 X/Y 对应 translation，scale 我们放到[翻转](#flip)这一小节介绍。
+在 Figma 中图形局部坐标系下的变换矩阵和尺寸信息如下。我们知道对于 2D 图形的变换矩阵 mat3 可以分解成 translation, scale 和 rotation 三部分。其中 X/Y 对应 translation，scale 我们放到[翻转](#flip)这一小节介绍。[fig-file-parser]
 
 ![source: https://help.figma.com/hc/en-us/articles/360039956914-Adjust-alignment-rotation-position-and-dimensions](https://help.figma.com/hc/article_attachments/29799649003671)
 
@@ -477,3 +477,4 @@ if (e.key === 'ArrowUp') {
 [Gist - point to line 2d]: https://gist.github.com/mattdesl/47412d930dcd8cd765c871a65532ffac
 [课程 6 - 坐标系转换]: /zh/guide/lesson-006#coordinates
 [SerializedNode]: /zh/guide/lesson-010#shape-to-serialized-node
+[fig-file-parser]: https://madebyevan.com/figma/fig-file-parser

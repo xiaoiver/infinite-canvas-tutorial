@@ -9,6 +9,7 @@ import {
   DropShadow,
   Ellipse,
   GlobalTransform,
+  Line,
   Mat3,
   OBB,
   Path,
@@ -33,6 +34,7 @@ export class ComputeBounds extends System {
           Circle,
           Ellipse,
           Rect,
+          Line,
           Polyline,
           Path,
           Text,
@@ -50,6 +52,7 @@ export class ComputeBounds extends System {
           Circle,
           Ellipse,
           Rect,
+          Line,
           Polyline,
           Path,
           ComputedPoints,
@@ -89,6 +92,9 @@ export class ComputeBounds extends System {
         stroke,
         dropShadow,
       );
+    } else if (entity.has(Line)) {
+      geometryBounds = Line.getGeometryBounds(entity.read(Line));
+      renderBounds = Line.getRenderBounds(entity.read(Line), stroke);
     } else if (entity.has(Polyline)) {
       geometryBounds = Polyline.getGeometryBounds({
         ...entity.read(Polyline),

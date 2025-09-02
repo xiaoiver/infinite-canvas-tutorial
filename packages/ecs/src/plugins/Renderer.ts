@@ -57,6 +57,7 @@ import {
   TextDecoration,
   Brush,
   Marker,
+  Line,
 } from '../components';
 
 export const RendererPlugin: Plugin = () => {
@@ -99,6 +100,7 @@ export const RendererPlugin: Plugin = () => {
   component(Circle);
   component(Ellipse);
   component(Rect);
+  component(Line);
   component(Polyline);
   component(Path);
   component(Text);

@@ -38,9 +38,7 @@ animate(values, { x: 200, color: '#00f' });
 
 <https://github.com/3b1b/manim>
 
--   [A major breakthrough in real-time vector graphics]
--   [Art meets technology: the next step in bringing our characters to life]
--   [Canvas vs WebGL]
+-   [Discussion in HN]
 
 ## SVG 路径动画
 
@@ -49,6 +47,9 @@ animate(values, { x: 200, color: '#00f' });
 ## 扩展阅读
 
 -   [Magic Animator]
+-   [A major breakthrough in real-time vector graphics]
+-   [Art meets technology: the next step in bringing our characters to life]
+-   [Canvas vs WebGL]
 
 [Improvements to Web Animations API]: https://motion.dev/docs/improvements-to-the-web-animations-api-dx
 [A major breakthrough in real-time vector graphics]: https://rive.app/renderer
@@ -56,3 +57,5 @@ animate(values, { x: 200, color: '#00f' });
 [Canvas vs WebGL]: https://rive.app/community/doc/canvas-vs-webgl/docanjXoQ1uT
 [vectalign]: https://github.com/bonnyfone/vectalign
 [Magic Animator]: https://magicanimator.com/
+[fliiipbook]: https://www.fliiipbook.com/
+[Discussion in HN]: https://news.ycombinator.com/item?id=44994071

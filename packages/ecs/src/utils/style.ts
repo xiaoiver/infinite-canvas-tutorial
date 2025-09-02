@@ -8,6 +8,7 @@ import {
   Stroke,
   ComputedTextMetrics,
   TextDecoration,
+  Line,
 } from '../components';
 import { SerializedNode } from './serialize/type';
 
@@ -74,6 +75,8 @@ export function getGeometryBounds(
     return Ellipse.getGeometryBounds(node);
   } else if (type === 'polyline') {
     return Polyline.getGeometryBounds(node);
+  } else if (type === 'line') {
+    return Line.getGeometryBounds(node);
   } else if (type === 'path') {
     return Path.getGeometryBounds(node);
   } else if (type === 'text') {

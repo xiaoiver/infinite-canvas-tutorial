@@ -94,6 +94,11 @@ export function fixTransform(transform: string, attributes: SerializedNode) {
   } else if (type === 'text') {
     attributes.anchorX = (attributes.anchorX ?? 0) - minX;
     attributes.anchorY = (attributes.anchorY ?? 0) - minY;
+  } else if (type === 'line') {
+    attributes.x1 = attributes.x1 - minX;
+    attributes.y1 = attributes.y1 - minY;
+    attributes.x2 = attributes.x2 - minX;
+    attributes.y2 = attributes.y2 - minY;
   }
 
   // @ts-ignore

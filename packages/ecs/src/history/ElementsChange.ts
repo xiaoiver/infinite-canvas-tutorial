@@ -38,6 +38,7 @@ import {
   Rough,
   Marker,
   InnerShadow,
+  Line,
 } from '../components';
 
 export type SceneElementsMap = Map<SerializedNode['id'], SerializedNode>;
@@ -620,6 +621,10 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
     markerStart,
     markerEnd,
     markerFactor,
+    x1,
+    y1,
+    x2,
+    y2,
   } = updates as unknown as SerializedNodeAttributes;
 
   if (!isNil(name)) {
@@ -819,16 +824,6 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
   }
   // TODO: Other text properties e.g. fontFamily
 
-  if (!isNil(width)) {
-    if (entity.has(Rect)) {
-      entity.write(Rect).width = width;
-    }
-  }
-  if (!isNil(height)) {
-    if (entity.has(Rect)) {
-      entity.write(Rect).height = height;
-    }
-  }
   if (!isNil(x)) {
     entity.write(Transform).translation.x = x;
   }
@@ -873,6 +868,18 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
     if (entity.has(Path)) {
       entity.write(Path).d = d;
     }
+  }
+  if (!isNil(x1)) {
+    entity.write(Line).x1 = x1;
+  }
+  if (!isNil(y1)) {
+    entity.write(Line).y1 = y1;
+  }
+  if (!isNil(x2)) {
+    entity.write(Line).x2 = x2;
+  }
+  if (!isNil(y2)) {
+    entity.write(Line).y2 = y2;
   }
 
   if (isNil(element.version)) {

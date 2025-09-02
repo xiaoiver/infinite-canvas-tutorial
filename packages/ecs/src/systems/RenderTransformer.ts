@@ -225,7 +225,7 @@ export class RenderTransformer extends System {
       const { mask, tlAnchor, trAnchor, blAnchor, brAnchor } =
         camera.read(Transformable);
 
-      if (width === 0 || height === 0) {
+      if (width === 0 && height === 0) {
         mask.write(Visibility).value = 'hidden';
         return;
       }

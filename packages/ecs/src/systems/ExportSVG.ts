@@ -33,6 +33,7 @@ import {
   Visibility,
   TextDecoration,
   Marker,
+  Line,
 } from '../components';
 import { DOMAdapter } from '../environment';
 import {
@@ -87,6 +88,7 @@ export class ExportSVG extends System {
             Ellipse,
             Rect,
             Polyline,
+            Line,
             Path,
             Text,
             Stroke,

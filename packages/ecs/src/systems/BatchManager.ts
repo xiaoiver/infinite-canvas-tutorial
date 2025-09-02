@@ -15,6 +15,7 @@ import {
   Circle,
   Ellipse,
   GeometryDirty,
+  Line,
   MaterialDirty,
   Path,
   Polyline,
@@ -57,6 +58,8 @@ function getDrawcallCtors(shape: Entity) {
     } else {
       SHAPE_DRAWCALL_CTORS.push(ShadowRect, SDF, SmoothPolyline);
     }
+  } else if (shape.has(Line)) {
+    SHAPE_DRAWCALL_CTORS.push(SmoothPolyline);
   } else if (shape.has(Polyline)) {
     SHAPE_DRAWCALL_CTORS.push(SmoothPolyline);
   } else if (shape.has(Path)) {
@@ -93,6 +96,7 @@ export class BatchManager {
     | 'circle'
     | 'ellipse'
     | 'rect'
+    | 'line'
     | 'polyline'
     | 'path'
     | 'text'
@@ -185,6 +189,10 @@ export class BatchManager {
         ? shape.has(Rough)
           ? 'rough-polyline'
           : 'polyline'
+        : shape.has(Line)
+        ? shape.has(Rough)
+          ? 'rough-line'
+          : 'line'
         : shape.has(Path)
         ? shape.has(Rough)
           ? 'rough-path'

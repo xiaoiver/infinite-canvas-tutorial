@@ -143,6 +143,53 @@ describe('Deserialize SVGElements to SerializedNodes', () => {
     ]);
   });
 
+  it('should convert <line> correctly', () => {
+    const dom = new JSDOM(
+      `<svg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+      <line id="0" x2="100" y2="100" stroke="red" stroke-width="10" stroke-linecap="round" />
+    </svg>`,
+    );
+    const document = dom.window.document;
+    const svg = document.querySelector('svg')!;
+    const nodes = svgElementsToSerializedNodes(
+      Array.from(svg.children) as SVGElement[],
+    );
+    expect(nodes).toEqual([
+      {
+        id: '0',
+        parentId: undefined,
+        type: 'line',
+        x1: 0,
+        y1: 0,
+        x2: 100,
+        y2: 100,
+        x: 0,
+        y: 0,
+        width: 100,
+        height: 100,
+        visibility: 'inherited',
+        scaleX: 1,
+        scaleY: 1,
+        rotation: 0,
+        opacity: 1,
+        strokeOpacity: 1,
+        stroke: 'red',
+        strokeWidth: 10,
+        strokeLinecap: 'round',
+        strokeLinejoin: 'miter',
+        strokeAlignment: 'center',
+        strokeMiterlimit: 4,
+        strokeDasharray: '0,0',
+        strokeDashoffset: 0,
+        markerStart: 'none',
+        markerEnd: 'none',
+        markerFactor: 3,
+        name: 'Layer 0',
+        zIndex: 0,
+      },
+    ]);
+  });
+
   it('should convert <polyline> correctly', () => {
     const dom = new JSDOM(
       `<svg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">

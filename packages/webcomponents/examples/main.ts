@@ -36,7 +36,7 @@ const nodes = svgElementsToSerializedNodes(
   Array.from($svg.children) as SVGElement[],
 );
 
-// console.log('nodes', nodes);
+console.log('nodes', nodes);
 
 const canvas = document.querySelector<HTMLElement>('#canvas1')!;
 canvas.addEventListener(Event.READY, async (e) => {

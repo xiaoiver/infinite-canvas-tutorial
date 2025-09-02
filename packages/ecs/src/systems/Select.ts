@@ -170,7 +170,7 @@ export class Select extends System {
     const camera = api.getCamera();
     camera.write(Transformable).status = TransformableStatus.MOVING;
 
-    const { selecteds } = camera.read(Transformable);
+    const { selecteds, mask } = camera.read(Transformable);
     selecteds.forEach((selected) => {
       // Hide transformer and highlighter
       if (selected.has(Highlighted)) {
@@ -184,7 +184,7 @@ export class Select extends System {
       });
     });
 
-    this.renderTransformer.createOrUpdate(camera);
+    updateGlobalTransform(mask);
   }
 
   private handleSelectedMoved(api: API, selection: SelectOBB) {
@@ -843,7 +843,7 @@ export class Select extends System {
     const { selecteds } = camera.read(Transformable);
 
     const { width, height } = newAttrs;
-    const epsilon = 1;
+    const epsilon = 0.01;
 
     const oldAttrs = {
       x: selection.obb.x,

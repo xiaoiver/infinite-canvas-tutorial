@@ -3,6 +3,7 @@ import {
   DropShadow,
   Ellipse,
   InnerShadow,
+  Line,
   Marker,
   Opacity,
   Path,
@@ -199,6 +200,11 @@ export interface RoughEllipseSerializedNode
     Partial<FillAttributes>,
     Partial<StrokeAttributes>,
     Partial<RoughAttributes> {}
+export interface LineSerializedNode
+  extends BaseSerializeNode<'line'>,
+    Partial<Pick<Line, 'x1' | 'y1' | 'x2' | 'y2'>>,
+    Partial<StrokeAttributes>,
+    Partial<Pick<AttenuationAttributes, 'strokeAttenuation'>> {}
 
 interface PolylineAttributes {
   points: string;
@@ -289,6 +295,7 @@ export type SerializedNode =
   | GSerializedNode
   | EllipseSerializedNode
   | RectSerializedNode
+  | LineSerializedNode
   | PolylineSerializedNode
   | PathSerializedNode
   | TextSerializedNode
@@ -300,6 +307,7 @@ export type SerializedNode =
 export type SerializedNodeAttributes = GSerializedNode &
   EllipseSerializedNode &
   RectSerializedNode &
+  LineSerializedNode &
   PolylineSerializedNode &
   PathSerializedNode &
   TextSerializedNode &

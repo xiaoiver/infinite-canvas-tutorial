@@ -32,6 +32,7 @@ import {
   FillSolid,
   GlobalRenderOrder,
   GlobalTransform,
+  Line,
   Marker,
   Mat3,
   Opacity,
@@ -60,10 +61,11 @@ const strokeAlignmentMap = {
 export class SmoothPolyline extends Drawcall {
   static check(shape: Entity) {
     return (
+      shape.has(Line) ||
       shape.has(Polyline) ||
       shape.has(VectorNetwork) ||
       (shape.has(Rough) &&
-        shape.hasSomeOf(Circle, Ellipse, Rect, Polyline, Path)) ||
+        shape.hasSomeOf(Circle, Ellipse, Rect, Polyline, Path, Line)) ||
       (shape.hasSomeOf(Rect, Circle, Ellipse) &&
         shape.has(Stroke) &&
         shape.read(Stroke).dasharray[0] > 0 &&
@@ -93,9 +95,9 @@ export class SmoothPolyline extends Drawcall {
   get instanceCount() {
     const instance = this.shapes[0];
     if (
-      instance.hasSomeOf(Polyline, Path, Text, VectorNetwork) ||
+      instance.hasSomeOf(Polyline, Path, Text, VectorNetwork, Line) ||
       (instance.has(Rough) &&
-        instance.hasSomeOf(Circle, Ellipse, Rect, Polyline, Path))
+        instance.hasSomeOf(Circle, Ellipse, Rect, Polyline, Path, Line))
     ) {
       return this.pointsBuffer.length / strideFloats - 3;
     } else if (instance.has(Rect)) {
@@ -116,7 +118,8 @@ export class SmoothPolyline extends Drawcall {
         shape.has(Rough) &&
           ((shape.hasSomeOf(Circle, Ellipse, Path) && this.index === 2) ||
             (shape.has(Rect) && this.index !== 2) ||
-            shape.has(Polyline)),
+            shape.has(Polyline) ||
+            shape.has(Line)),
       );
 
       pointsBuffer.push(...pBuffer);
@@ -660,10 +663,9 @@ export function updateBuffer(object: Entity, useRoughStroke = true) {
       prev.push(cur[0], cur[1]);
       return prev;
     }, [] as number[]);
-
-    points.push(
-      ...generateMarkerPoints(points, start, end, strokeWidth, factor),
-    );
+  } else if (object.has(Line)) {
+    const { x1, y1, x2, y2 } = object.read(Line);
+    points = [x1, y1, x2, y2];
   } else if (object.has(VectorNetwork)) {
     const { vertices, segments } = object.read(VectorNetwork);
     for (let i = 0; i < segments.length; i++) {
@@ -685,10 +687,6 @@ export function updateBuffer(object: Entity, useRoughStroke = true) {
         );
       })
       .flat(2);
-
-    points.push(
-      ...generateMarkerPoints(points, start, end, strokeWidth, factor),
-    );
   } else if (object.has(Rect)) {
     const { x, y, width, height } = object.read(Rect);
     points = [
@@ -785,6 +783,12 @@ export function updateBuffer(object: Entity, useRoughStroke = true) {
 
       points.push(...linePoints);
     });
+  }
+
+  if (object.has(Line) || object.has(Polyline) || object.has(Path)) {
+    points.push(
+      ...generateMarkerPoints(points, start, end, strokeWidth, factor),
+    );
   }
 
   const jointType = getJointType(linejoin);
