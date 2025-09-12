@@ -81,8 +81,8 @@ export class ContextBar extends LitElement {
       return [0, 0];
     }
 
-    const { bounds } = entity.read(ComputedBounds);
-    const { minX, minY, maxX, maxY } = bounds;
+    const { renderWorldBounds } = entity.read(ComputedBounds);
+    const { minX, minY, maxX, maxY } = renderWorldBounds;
     const tl = this.api.canvas2Viewport({ x: minX, y: minY });
     const br = this.api.canvas2Viewport({ x: maxX, y: maxY });
 

@@ -144,12 +144,12 @@ export class ViewportCulling extends System {
 
       const bulk: RBushNodeAABB[] = [];
       entities.forEach((entity) => {
-        const { bounds } = entity.read(ComputedBounds);
+        const { renderWorldBounds } = entity.read(ComputedBounds);
         const rBushNodeAABB: RBushNodeAABB = {
-          minX: bounds.minX,
-          minY: bounds.minY,
-          maxX: bounds.maxX,
-          maxY: bounds.maxY,
+          minX: renderWorldBounds.minX,
+          minY: renderWorldBounds.minY,
+          maxX: renderWorldBounds.maxX,
+          maxY: renderWorldBounds.maxY,
           entity,
         };
         bulk.push(rBushNodeAABB);

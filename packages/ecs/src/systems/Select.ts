@@ -650,22 +650,12 @@ export class Select extends System {
         }
 
         if (selection.mode === SelectionMode.SELECT) {
-          if (input.shiftKey) {
-            // Add to selection
-          } else {
-            // Single selection
-            const toSelect = this.getTopmostEntity(
-              api,
-              x,
-              y,
-              (e) => !e.has(UI),
-            );
+          const toSelect = this.getTopmostEntity(api, x, y, (e) => !e.has(UI));
 
-            if (toSelect) {
-              const selected = api.getNodeByEntity(toSelect);
-              if (selected) {
-                api.selectNodes([selected]);
-              }
+          if (toSelect) {
+            const selected = api.getNodeByEntity(toSelect);
+            if (selected) {
+              api.selectNodes([selected], input.shiftKey); // single or multi select
             }
           }
 
@@ -821,6 +811,13 @@ export class Select extends System {
           //   selection.mode = SelectionMode.READY_TO_MOVE_CONTROL_POINT;
         }
       }
+
+      Object.assign(input, {
+        wheelTrigger: false,
+        ctrlKey: false,
+        metaKey: false,
+        shiftKey: false,
+      });
     });
   }
 

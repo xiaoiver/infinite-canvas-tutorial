@@ -325,6 +325,10 @@ canvas.theme = Theme.DARK;
 
 后续我们就不再详细介绍 UI 部分的实现了。
 
+## 扩展阅读 {#extended-reading}
+
+-   [Discussion about Lit on HN]
+
 [Shoelace]: https://shoelace.style/
 [VitePress]: https://vitepress.dev/
 [Vue 的接入方式]: https://shoelace.style/frameworks/vue
@@ -344,3 +348,4 @@ canvas.theme = Theme.DARK;
 [Themes]: https://shoelace.style/getting-started/themes
 [Grid]: /zh/guide/lesson-005
 [Theme colors in DGM.js]: https://dgmjs.dev/api-core/variables/themecolors
+[Discussion about Lit on HN]: https://news.ycombinator.com/item?id=45112720

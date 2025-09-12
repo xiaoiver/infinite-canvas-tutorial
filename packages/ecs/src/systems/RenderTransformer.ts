@@ -573,70 +573,53 @@ export class RenderTransformer extends System {
     }
   }
 
+  /**
+   * Get the OBB of the selected nodes.
+   */
   getOBB(camera: Entity): OBB {
     const { selecteds } = camera.read(Transformable);
 
-    if (selecteds.length === 1) {
-      const selected = selecteds[0];
-      if (selected.has(ComputedBounds)) {
-        const { obb } = selected.read(ComputedBounds);
+    // Single selected, keep the original OBB include rotation & scale.
+    if (selecteds.length === 1 && selecteds[0].has(ComputedBounds)) {
+      const { obb } = selecteds[0].read(ComputedBounds);
+      return obb;
+    }
 
-        return {
-          x: obb.x,
-          y: obb.y,
-          width: obb.width,
-          height: obb.height,
-          rotation: obb.rotation,
-          scaleX: obb.scaleX,
-          scaleY: obb.scaleY,
-        };
-      }
-    } else {
-      // const rotation = mask.read(Transform).rotation;
-      // const totalPoints: [number, number][] = [];
-      // selecteds.forEach((selected) => {
-      //   const { geometryBounds } = selected.read(ComputedBounds);
-      //   const { minX, minY, maxX, maxY } = geometryBounds;
-      //   const points = [
-      //     [minX, minY],
-      //     [maxX, minY],
-      //     [maxX, maxY],
-      //     [minX, maxY],
-      //   ];
-      //   const matrix = Mat3.toGLMat3(selected.read(GlobalTransform).matrix);
-      //   points.forEach(function (point: [number, number]) {
-      //     const transformed = vec2.transformMat3(vec2.create(), point, matrix);
-      //     totalPoints.push([transformed[0], transformed[1]]);
-      //   });
-      // });
-      // const tr = mat3.create();
-      // mat3.rotate(tr, tr, -rotation);
-      // let minX: number = Infinity,
-      //   minY: number = Infinity,
-      //   maxX: number = -Infinity,
-      //   maxY: number = -Infinity;
-      // totalPoints.forEach(function (point) {
-      //   const transformed = vec2.transformMat3(vec2.create(), point, tr);
-      //   if (minX === undefined) {
-      //     minX = maxX = transformed[0];
-      //     minY = maxY = transformed[1];
-      //   }
-      //   minX = Math.min(minX, transformed[0]);
-      //   minY = Math.min(minY, transformed[1]);
-      //   maxX = Math.max(maxX, transformed[0]);
-      //   maxY = Math.max(maxY, transformed[1]);
-      // });
-      // mat3.invert(tr, tr);
-      // // const p = vec2.transformMat3(vec2.create(), [minX, minY], tr);
-      // const nodeRect = {
-      //   // x: p[0],
-      //   // y: p[1],
-      //   width: maxX - minX,
-      //   height: maxY - minY,
-      //   rotation,
-      // };
-      // // this.#nodeRectCache.set(camera, nodeRect);
-      // return nodeRect;
+    if (selecteds.length > 1) {
+      // Merge all the OBBs into one without rotation & scale.
+      const { minX, minY, maxX, maxY } = selecteds
+        .map((selected) => {
+          if (selected.has(ComputedBounds)) {
+            const { geometryWorldBounds } = selected.read(ComputedBounds);
+            return {
+              minX: geometryWorldBounds.minX,
+              minY: geometryWorldBounds.minY,
+              maxX: geometryWorldBounds.maxX,
+              maxY: geometryWorldBounds.maxY,
+            };
+          }
+        })
+        .reduce(
+          (acc, bound) => {
+            return {
+              minX: Math.min(acc.minX, bound.minX),
+              minY: Math.min(acc.minY, bound.minY),
+              maxX: Math.max(acc.maxX, bound.maxX),
+              maxY: Math.max(acc.maxY, bound.maxY),
+            };
+          },
+          { minX: Infinity, minY: Infinity, maxX: -Infinity, maxY: -Infinity },
+        );
+
+      return {
+        x: minX,
+        y: minY,
+        width: maxX - minX,
+        height: maxY - minY,
+        rotation: 0,
+        scaleX: 1,
+        scaleY: 1,
+      };
     }
 
     return {

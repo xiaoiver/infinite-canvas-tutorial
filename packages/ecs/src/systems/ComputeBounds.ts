@@ -157,11 +157,14 @@ export class ComputeBounds extends System {
       const matrix = entity.read(GlobalTransform).matrix;
       const { translation, rotation, scale } = decompose(Mat3.toGLMat3(matrix));
 
-      const { renderBounds } = entity.read(ComputedBounds);
+      const { geometryBounds, renderBounds } = entity.read(ComputedBounds);
+
+      const geometryWorldBounds = new AABB();
+      geometryWorldBounds.addBounds(geometryBounds, matrix);
 
       // apply global transform
-      const bounds = new AABB();
-      bounds.addBounds(renderBounds, matrix);
+      const renderWorldBounds = new AABB();
+      renderWorldBounds.addBounds(renderBounds, matrix);
 
       const obb = new OBB({
         x: translation[0],
@@ -173,7 +176,11 @@ export class ComputeBounds extends System {
         scaleY: scale[1],
       });
 
-      Object.assign(entity.write(ComputedBounds), { bounds, obb });
+      Object.assign(entity.write(ComputedBounds), {
+        renderWorldBounds,
+        geometryWorldBounds,
+        obb,
+      });
     }
   }
 }

@@ -325,6 +325,10 @@ canvas.theme = Theme.DARK;
 
 We won't go into the details of the UI implementation later.
 
+## Extended reading {#extended-reading}
+
+-   [Discussion about Lit on HN]
+
 [Shoelace]: https://shoelace.style/
 [VitePress]: https://vitepress.dev/
 [Vue instructions]: https://shoelace.style/frameworks/vue
@@ -344,3 +348,4 @@ We won't go into the details of the UI implementation later.
 [Themes]: https://shoelace.style/getting-started/themes
 [Grid]: /guide/lesson-005
 [Theme colors in DGM.js]: https://dgmjs.dev/api-core/variables/themecolors
+[Discussion about Lit on HN]: https://news.ycombinator.com/item?id=45112720

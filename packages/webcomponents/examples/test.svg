@@ -7,8 +7,10 @@
     </defs>
     <!-- Background -->
     <!-- <rect width="200" height="100" fill="url(#gradient)" transform="scale(-1 1)" /> -->
-    <!-- <rect width="0.01" height="100" fill="url(#gradient)" /> -->
+    <rect width="200" height="100" fill="url(#gradient)" />
 
-    <line x1="0" y1="0" x2="0" y2="400" stroke="black" stroke-width="10" stroke-linecap="round" />
+    <rect x="100" y="100" width="200" height="100" fill="url(#gradient)" />
+
+    <!-- <line x1="0" y1="0" x2="0" y2="400" stroke="black" stroke-width="10" stroke-linecap="round" /> -->
     <!-- <polyline points="0,0 0,400" stroke="black" fill="none" /> -->
 </svg>

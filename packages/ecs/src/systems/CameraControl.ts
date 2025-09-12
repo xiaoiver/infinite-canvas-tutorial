@@ -176,13 +176,6 @@ export class CameraControl extends System {
           });
         }
       }
-
-      Object.assign(input, {
-        wheelTrigger: false,
-        ctrlKey: false,
-        metaKey: false,
-        shiftKey: false,
-      });
     });
   }
 
