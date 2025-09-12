@@ -651,11 +651,18 @@ export class Select extends System {
 
         if (selection.mode === SelectionMode.SELECT) {
           const toSelect = this.getTopmostEntity(api, x, y, (e) => !e.has(UI));
-
           if (toSelect) {
             const selected = api.getNodeByEntity(toSelect);
             if (selected) {
-              api.selectNodes([selected], input.shiftKey); // single or multi select
+              if (
+                api.getAppState().layersSelected.length > 1 &&
+                api.getAppState().layersSelected.includes(selected.id)
+              ) {
+                // deselect if already selected in a group
+                api.deselectNodes([selected]);
+              } else {
+                api.selectNodes([selected], input.shiftKey); // single or multi select
+              }
             }
           }
 
@@ -676,11 +683,13 @@ export class Select extends System {
           selection.pointerMoveViewportY = y;
 
           api.highlightNodes([]);
+
+          // const topmost = this.getTopmostEntity(api, x, y, (e) => true);
+          // It's transformer itself.
+
           // Highlight the topmost non-ui element
           toHighlight = this.getTopmostEntity(api, x, y, (e) => !e.has(UI));
           if (toHighlight) {
-            api.highlightNodes([api.getNodeByEntity(toHighlight)]);
-
             if (
               selection.mode !== SelectionMode.BRUSH &&
               selection.mode !== SelectionMode.MOVE
@@ -719,8 +728,22 @@ export class Select extends System {
                 } else if (cursorName.includes('resize')) {
                   selection.mode = SelectionMode.READY_TO_RESIZE;
                 } else if (anchor === AnchorName.INSIDE) {
-                  if (toHighlight && toHighlight !== selecteds[0]) {
+                  // Only in single transformer, we can select other objects.
+                  if (
+                    toHighlight &&
+                    toHighlight !== selecteds[0] &&
+                    selecteds.length === 1
+                  ) {
                     selection.mode = SelectionMode.READY_TO_SELECT;
+                  } else {
+                    // In group can toggle selection.
+                    if (input.shiftKey) {
+                      selection.mode = SelectionMode.READY_TO_SELECT;
+                    } else {
+                      // Disable highlight, only allow move.
+                      toHighlight = undefined;
+                      selection.mode = SelectionMode.READY_TO_MOVE;
+                    }
                   }
                 } else {
                   if (toHighlight) {
@@ -731,6 +754,10 @@ export class Select extends System {
                 }
               }
             }
+          }
+
+          if (toHighlight) {
+            api.highlightNodes([api.getNodeByEntity(toHighlight)]);
           }
         }
       }

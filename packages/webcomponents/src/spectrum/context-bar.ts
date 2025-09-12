@@ -136,43 +136,53 @@ export class ContextBar extends LitElement {
     }
 
     const { layersSelected, contextBarVisible } = this.appState;
-    const node = layersSelected[0] && this.api.getNodeById(layersSelected[0]);
-    const isText = node?.type === 'text';
 
     return html`${when(contextBarVisible && layersSelected.length > 0, () => {
-      const [left, top] = this.calculatePosition(node);
+      // Only single selection need context bar for now.
+      if (layersSelected.length === 1) {
+        const node =
+          layersSelected[0] && this.api.getNodeById(layersSelected[0]);
+        const isText = node?.type === 'text';
 
-      return html` <div class="wrapper" style="left: ${left}px; top: ${top}px;">
-        <div class="bar">
-          <ic-spectrum-fill-action-button
-            .node=${node}
-          ></ic-spectrum-fill-action-button>
-          ${when(
-            !isText,
-            () => html`<ic-spectrum-stroke-action-button
-                .node=${node}
-              ></ic-spectrum-stroke-action-button>
-              <sp-action-button quiet size="m" id="stroke-options">
-                <sp-tooltip self-managed placement="bottom">
-                  Stroke options
-                </sp-tooltip>
-                <sp-icon-stroke-width slot="icon"></sp-icon-stroke-width>
-              </sp-action-button>
-              <sp-overlay
-                trigger="stroke-options@click"
-                placement="bottom"
-                type="auto"
-              >
-                <sp-popover dialog>
-                  <h4>Stroke options</h4>
-                  <ic-spectrum-stroke-content
-                    .node=${node}
-                  ></ic-spectrum-stroke-content>
-                </sp-popover>
-              </sp-overlay>`,
-          )}
-        </div>
-      </div>`;
+        const [left, top] = this.calculatePosition(node);
+
+        return html` <div
+          class="wrapper"
+          style="left: ${left}px; top: ${top}px;"
+        >
+          <div class="bar">
+            <ic-spectrum-fill-action-button
+              .node=${node}
+            ></ic-spectrum-fill-action-button>
+            ${when(
+              !isText,
+              () => html`<ic-spectrum-stroke-action-button
+                  .node=${node}
+                ></ic-spectrum-stroke-action-button>
+                <sp-action-button quiet size="m" id="stroke-options">
+                  <sp-tooltip self-managed placement="bottom">
+                    Stroke options
+                  </sp-tooltip>
+                  <sp-icon-stroke-width slot="icon"></sp-icon-stroke-width>
+                </sp-action-button>
+                <sp-overlay
+                  trigger="stroke-options@click"
+                  placement="bottom"
+                  type="auto"
+                >
+                  <sp-popover dialog>
+                    <h4>Stroke options</h4>
+                    <ic-spectrum-stroke-content
+                      .node=${node}
+                    ></ic-spectrum-stroke-content>
+                  </sp-popover>
+                </sp-overlay>`,
+            )}
+          </div>
+        </div>`;
+      } else {
+        return html``;
+      }
     })}`;
   }
 }
