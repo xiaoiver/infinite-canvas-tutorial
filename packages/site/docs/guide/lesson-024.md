@@ -382,6 +382,63 @@ if (pen === Pen.IMAGE) {
 
 You can experience this feature by clicking the “Image” button in the left toolbar.
 
+## Export selected shapes {#export-selected-shapes}
+
+Beyond [Lesson 10 - Exporting canvas contents to image], the more commonly used export functionality targets selected graphics. We continue using the [File System API] to export selected graphics as SVG and PNG format images and save them locally.
+
+### Export to SVG {#export-selected-shapes-to-svg}
+
+Unlike exporting the entire canvas, we need to calculate the bounding box of the selected shapes. By adjusting the SVG's viewport to an appropriate size via `viewBox`, we ensure that all selected shapes are inherently contained within the viewport.
+
+```ts
+import { serializeNodesToSVGElements } from '@infinite-canvas-tutorial/ecs';
+import { fileSave } from './filesystem';
+
+// 1. Calculate bounds of SVG
+const bounds = api.getBounds(nodes);
+const width = bounds.maxX - bounds.minX;
+const height = bounds.maxY - bounds.minY;
+const $svg = createSVGElement('svg');
+$svg.setAttribute('width', `${width}`);
+$svg.setAttribute('height', `${height}`);
+$svg.setAttribute(
+    'viewBox',
+    `${bounds.minX - padding} ${bounds.minY - padding} ${width + padding * 2} ${
+        height + padding * 2 // add padding with viewBox
+    }`,
+);
+
+// 2. SerializedNodes -> SVGElement[]
+serializeNodesToSVGElements(nodes).forEach((element) => {
+    $svg.appendChild(element);
+});
+
+// 3. Create blob and save to filesystem
+fileSave(
+    new Blob([toSVG($svg)], {
+        type: MIME_TYPES.svg,
+    }),
+);
+```
+
+### Export to PNG {#export-selected-shapes-to-png}
+
+To export non-vector graphics, we still use `HTMLCanvasElement.toDataURL()`, but the drawing must be done on a temporary `<canvas>` element.
+
+### Embed scene matadata {#embed-scene-metadata}
+
+In addition to graphical information, scene matadata can also be embedded into the exported output. The image below is from Excalidraw.
+
+![Export image in excalidraw](/export-image-in-excalidraw.png)
+
+```ts
+// https://github.com/excalidraw/excalidraw/blob/master/packages/excalidraw/data/index.ts#L176-L178
+encodePngMetadata({
+    blob,
+    metadata: serializeAsJSON(elements, appState, files, 'local'),
+});
+```
+
 ## Extended Reading {#extended-reading}
 
 -   [Interact with the clipboard]
@@ -412,3 +469,4 @@ You can experience this feature by clicking the “Image” button in the left t
 [filesystem]: https://github.com/excalidraw/excalidraw/blob/master/packages/excalidraw/data/filesystem.ts
 [browser-fs-access]: https://www.npmjs.com/package/browser-fs-access
 [File System API]: https://developer.mozilla.org/en-US/docs/Web/API/File_System_API
+[Lesson 10 - Exporting canvas contents to image]: /guide/lesson-010#export-canvas-to-image

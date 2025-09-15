@@ -14,6 +14,7 @@ import {
   SerializedNode,
   DOMAdapter,
   MIME_TYPES,
+  ExportFormat,
 } from '@infinite-canvas-tutorial/ecs';
 import { html, render } from '@spectrum-web-components/base';
 import { VirtualTrigger, openOverlay } from '@spectrum-web-components/overlay';
@@ -22,6 +23,7 @@ import { load } from '@loaders.gl/core';
 import { ImageLoader } from '@loaders.gl/images';
 import { apiContext, appStateContext } from '../context';
 import { ExtendedAPI } from '../API';
+import { exportSVG } from '../utils';
 
 const ZINDEX_OFFSET = 0.0001;
 
@@ -310,6 +312,21 @@ export class ContextMenu extends LitElement {
     }
   };
 
+  private handleExport = (event: CustomEvent) => {
+    const format = (event.target as any).value as ExportFormat;
+    if (format === ExportFormat.SVG) {
+      exportSVG(
+        this.api,
+        this.api
+          .getAppState()
+          .layersSelected.map((id) => this.api.getNodeById(id)),
+      );
+
+      // TODO copy svg to clipboard
+    } else if (format === ExportFormat.PNG) {
+    }
+  };
+
   private contextMenuTemplate() {
     const { layersSelected, contextMenuVisible } = this.appState;
 
@@ -406,6 +423,27 @@ export class ContextMenu extends LitElement {
               ></sp-icon-layers-send-to-back>
               Send to back
               <kbd slot="value">⌥⌘[</kbd>
+            </sp-menu-item>
+            <sp-menu-divider></sp-menu-divider>
+            <sp-menu-item>
+              Export as...
+              <sp-menu slot="submenu" @change=${this.handleExport}>
+                <sp-menu-item
+                  value=${ExportFormat.SVG}
+                  ?disabled=${isSelectedEmpty}
+                  >SVG</sp-menu-item
+                >
+                <sp-menu-item
+                  value=${ExportFormat.PNG}
+                  ?disabled=${isSelectedEmpty}
+                  >PNG</sp-menu-item
+                >
+                <sp-menu-item
+                  value=${ExportFormat.JPEG}
+                  ?disabled=${isSelectedEmpty}
+                  >JPEG</sp-menu-item
+                >
+              </sp-menu>
             </sp-menu-item>
           </sp-menu>
         </sp-popover>`,

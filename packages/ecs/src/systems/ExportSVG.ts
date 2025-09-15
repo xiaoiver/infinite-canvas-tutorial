@@ -40,6 +40,7 @@ import {
   createSVGElement,
   entityToSerializedNodes,
   serializeNodesToSVGElements,
+  toSVGDataURL,
 } from '../utils';
 
 interface SVGOptions {
@@ -123,7 +124,7 @@ export class ExportSVG extends System {
 
       this.setScreenshotTrigger(
         canvas,
-        this.toSVGDataURL($svg),
+        toSVGDataURL($svg),
         serializer.serializeToString($svg),
         download,
       );
@@ -174,27 +175,6 @@ export class ExportSVG extends System {
       $namespace.appendChild(element);
     });
     return $namespace;
-  }
-
-  private toSVGDataURL($svg: SVGElement) {
-    const svgDocType = DOMAdapter.get()
-      .getDocument()
-      .implementation.createDocumentType(
-        'svg',
-        '-//W3C//DTD SVG 1.1//EN',
-        'http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd',
-      );
-    const svgDoc = DOMAdapter.get()
-      .getDocument()
-      .implementation.createDocument(
-        'http://www.w3.org/2000/svg',
-        'svg',
-        svgDocType,
-      );
-    svgDoc.replaceChild($svg, svgDoc.documentElement);
-    return `data:image/svg+xml;charset=utf8,${encodeURIComponent(
-      DOMAdapter.get().getXMLSerializer().serializeToString(svgDoc),
-    )}`;
   }
 
   private drawLinesGrid($namespace: SVGElement, gridColor: string) {

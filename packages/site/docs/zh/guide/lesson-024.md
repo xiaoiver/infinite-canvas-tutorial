@@ -381,6 +381,63 @@ if (pen === Pen.IMAGE) {
 
 可以点击左侧工具栏中的 “图片” 按钮体验这一功能。
 
+## 导出选中图形 {#export-selected-shapes}
+
+除了 [课程 10 - 将画布内容导出成图片]，更常用的导出功能是针对选中图形进行。我们继续使用 [File System API]，将选中图形导出成 SVG 和 PNG 格式的图片，并保存到本地。
+
+### 导出 SVG {#export-selected-shapes-to-svg}
+
+和导出整个画布不同，我们需要计算选中图形的包围盒，通过 `viewBox` 将 SVG 的 viewport 调整到合适的大小，确保选中的图形都被默认包含在视口内。
+
+```ts
+import { serializeNodesToSVGElements } from '@infinite-canvas-tutorial/ecs';
+import { fileSave } from './filesystem';
+
+// 1. Calculate bounds of SVG
+const bounds = api.getBounds(nodes);
+const width = bounds.maxX - bounds.minX;
+const height = bounds.maxY - bounds.minY;
+const $svg = createSVGElement('svg');
+$svg.setAttribute('width', `${width}`);
+$svg.setAttribute('height', `${height}`);
+$svg.setAttribute(
+    'viewBox',
+    `${bounds.minX - padding} ${bounds.minY - padding} ${width + padding * 2} ${
+        height + padding * 2 // add padding with viewBox
+    }`,
+);
+
+// 2. SerializedNodes -> SVGElement[]
+serializeNodesToSVGElements(nodes).forEach((element) => {
+    $svg.appendChild(element);
+});
+
+// 3. Create blob and save to filesystem
+fileSave(
+    new Blob([toSVG($svg)], {
+        type: MIME_TYPES.svg,
+    }),
+);
+```
+
+### 导出 PNG {#export-selected-shapes-to-png}
+
+导出非矢量图我们仍使用 [HTMLCanvasElement.toDataURL()]，但需要绘制在临时的 `<canvas>` 中。
+
+### 内嵌场景信息 {#embed-scene-metadata}
+
+除了图形信息，还可以将场景信息也嵌入到导出产物中，下图来自 Excalidraw
+
+![Export image in excalidraw](/export-image-in-excalidraw.png)
+
+```ts
+// https://github.com/excalidraw/excalidraw/blob/master/packages/excalidraw/data/index.ts#L176-L178
+encodePngMetadata({
+    blob,
+    metadata: serializeAsJSON(elements, appState, files, 'local'),
+});
+```
+
 ## 扩展阅读 {#extended-reading}
 
 -   [Interact with the clipboard]
@@ -411,3 +468,5 @@ if (pen === Pen.IMAGE) {
 [filesystem]: https://github.com/excalidraw/excalidraw/blob/master/packages/excalidraw/data/filesystem.ts
 [browser-fs-access]: https://www.npmjs.com/package/browser-fs-access
 [File System API]: https://developer.mozilla.org/en-US/docs/Web/API/File_System_API
+[课程 10 - 将画布内容导出成图片]: /zh/guide/lesson-010#export-canvas-to-image
+[HTMLCanvasElement.toDataURL()]: https://developer.mozilla.org/zh-CN/docs/Web/API/HTMLCanvasElement/toDataURL

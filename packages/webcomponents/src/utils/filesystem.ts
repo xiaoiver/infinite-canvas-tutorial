@@ -1,16 +1,12 @@
-import { MIME_TYPES } from '@infinite-canvas-tutorial/ecs';
-import { fileOpen as _fileOpen } from 'browser-fs-access';
+/**
+ * borrow from https://github.com/excalidraw/excalidraw/blob/master/packages/excalidraw/data/filesystem.ts#L80
+ */
 
-export async function checkWebGPUSupport() {
-  if ('gpu' in navigator) {
-    const gpu = await navigator.gpu.requestAdapter();
-    if (!gpu) {
-      throw new Error('No WebGPU adapter available.');
-    }
-  } else {
-    throw new Error('WebGPU is not supported by the browser.');
-  }
-}
+import { MIME_TYPES } from '@infinite-canvas-tutorial/ecs';
+import {
+  fileOpen as _fileOpen,
+  fileSave as _fileSave,
+} from 'browser-fs-access';
 
 export const debounce = <T extends any[]>(
   fn: (...args: T) => void,
@@ -110,4 +106,29 @@ export const fileOpen = <M extends boolean | undefined = false>(opts: {
       };
     },
   }) as Promise<RetType>;
+};
+
+export const fileSave = (
+  blob: Blob | Promise<Blob>,
+  opts: {
+    /** supply without the extension */
+    name: string;
+    /** file extension */
+    extension: FILE_EXTENSION;
+    mimeTypes?: string[];
+    description: string;
+    /** existing FileSystemHandle */
+    fileHandle?: FileSystemFileHandle | null;
+  },
+) => {
+  return _fileSave(
+    blob,
+    {
+      fileName: `${opts.name}.${opts.extension}`,
+      description: opts.description,
+      extensions: [`.${opts.extension}`],
+      mimeTypes: opts.mimeTypes,
+    },
+    opts.fileHandle,
+  );
 };

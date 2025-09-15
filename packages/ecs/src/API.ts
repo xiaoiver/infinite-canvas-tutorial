@@ -9,7 +9,7 @@ import {
   StoreIncrementEvent,
 } from './history/Store';
 import { Commands, EntityCommands } from './commands';
-import { AppState, getDefaultAppState, Task } from './context';
+import { AppState, getDefaultAppState } from './context';
 import {
   BitmapFont,
   copyTextToClipboard,
@@ -31,6 +31,7 @@ import {
   Camera,
   Canvas,
   Children,
+  ComputedBounds,
   ComputedCamera,
   Cursor,
   Font,
@@ -43,7 +44,6 @@ import {
   OBB,
   Parent,
   Path,
-  Pen,
   Polyline,
   RasterScreenshotRequest,
   RBush,
@@ -961,6 +961,20 @@ export class API {
     }
 
     this.updateNode(node, diff);
+  }
+
+  /**
+   * Get the bounds of the nodes.
+   */
+  getBounds(nodes: SerializedNode[]) {
+    const bounds = new AABB();
+    nodes.forEach((node) => {
+      const entity = this.#idEntityMap.get(node.id)?.id();
+      if (entity && entity.has(ComputedBounds)) {
+        bounds.addBounds(entity.read(ComputedBounds).renderWorldBounds);
+      }
+    });
+    return bounds;
   }
 
   deleteNodesById(ids: SerializedNode['id'][]) {

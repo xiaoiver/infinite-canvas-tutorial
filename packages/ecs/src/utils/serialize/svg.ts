@@ -29,6 +29,7 @@ import { isPattern, Pattern } from '../pattern';
 import { generateGradientKey, generatePatternKey } from '../../resources';
 import { formatTransform } from '../matrix';
 import { lineArrow } from '../marker';
+import { DOMAdapter } from '../../environment';
 
 const strokeDefaultAttributes = {
   strokeOpacity: 1,
@@ -1161,4 +1162,27 @@ export function isUrl(url: string) {
 
 function toFixedAndRemoveTrailingZeros(value: number) {
   return value.toFixed(3).replace(/\.?0+$/, '');
+}
+
+export function toSVG($svg: SVGElement) {
+  const svgDocType = DOMAdapter.get()
+    .getDocument()
+    .implementation.createDocumentType(
+      'svg',
+      '-//W3C//DTD SVG 1.1//EN',
+      'http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd',
+    );
+  const svgDoc = DOMAdapter.get()
+    .getDocument()
+    .implementation.createDocument(
+      'http://www.w3.org/2000/svg',
+      'svg',
+      svgDocType,
+    );
+  svgDoc.replaceChild($svg, svgDoc.documentElement);
+  return DOMAdapter.get().getXMLSerializer().serializeToString(svgDoc);
+}
+
+export function toSVGDataURL($svg: SVGElement) {
+  return `data:image/svg+xml;charset=utf8,${encodeURIComponent(toSVG($svg))}`;
 }
