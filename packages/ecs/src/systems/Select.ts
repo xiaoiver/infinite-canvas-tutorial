@@ -78,7 +78,15 @@ export interface SelectOBB {
   resizingAnchorName: AnchorName;
   selectedNodes: SerializedNode[];
 
-  obb: OBB;
+  obb: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    rotation: number;
+    scaleX: number;
+    scaleY: number;
+  };
   sin: number;
   cos: number;
 
@@ -257,6 +265,7 @@ export class Select extends System {
   ) {
     const camera = api.getCamera();
     const { resizingAnchorName, obb, cos, sin } = selection;
+    const { rotation, scaleX, scaleY } = obb;
 
     camera.write(Transformable).status = TransformableStatus.RESIZING;
 
@@ -428,11 +437,11 @@ export class Select extends System {
     const { cx: brCx, cy: brCy } = brAnchor.read(Circle);
 
     {
-      const { flipEnabled } = api.getAppState();
       const width = brCx - tlCx;
       const height = brCy - tlCy;
 
       const { x, y } = api.transformer2Canvas({ x: tlCx, y: tlCy });
+
       this.fitSelected(
         api,
         {
@@ -440,9 +449,9 @@ export class Select extends System {
           y,
           width,
           height,
-          rotation: obb.rotation,
-          scaleX: obb.scaleX,
-          scaleY: obb.scaleY,
+          rotation,
+          scaleX,
+          scaleY,
         },
         selection,
       );
@@ -850,7 +859,16 @@ export class Select extends System {
 
   private saveSelectedOBB(api: API, selection: SelectOBB) {
     const camera = api.getCamera();
-    selection.obb = this.renderTransformer.getOBB(camera);
+    const obb = this.renderTransformer.getOBB(camera);
+    selection.obb = {
+      x: obb.x,
+      y: obb.y,
+      width: obb.width,
+      height: obb.height,
+      rotation: obb.rotation,
+      scaleX: obb.scaleX,
+      scaleY: obb.scaleY,
+    };
     const { width, height } = selection.obb;
     const hypotenuse = Math.sqrt(Math.pow(width, 2) + Math.pow(height, 2));
     selection.sin = Math.abs(height / hypotenuse);
@@ -863,12 +881,9 @@ export class Select extends System {
 
   private fitSelected(api: API, newAttrs: OBB, selection: SelectOBB) {
     const camera = api.getCamera();
-
     const { selecteds } = camera.read(Transformable);
-
     const { width, height } = newAttrs;
     const epsilon = 0.01;
-
     const oldAttrs = {
       x: selection.obb.x,
       y: selection.obb.y,
@@ -878,7 +893,6 @@ export class Select extends System {
       scaleX: selection.obb.scaleX,
       scaleY: selection.obb.scaleY,
     };
-
     const baseSize = 10000000;
     const oldTr = mat3.create();
     mat3.translate(oldTr, oldTr, [oldAttrs.x, oldAttrs.y]);
@@ -888,13 +902,26 @@ export class Select extends System {
       oldAttrs.height / baseSize,
     ]);
     const newTr = mat3.create();
-    mat3.translate(newTr, newTr, [newAttrs.x, newAttrs.y]);
-    mat3.rotate(newTr, newTr, newAttrs.rotation);
-    mat3.scale(newTr, newTr, [
-      newAttrs.width / baseSize,
-      newAttrs.height / baseSize,
-    ]);
+    const newScaleX = newAttrs.width / baseSize;
+    const newScaleY = newAttrs.height / baseSize;
 
+    const { flipEnabled } = api.getAppState();
+    if (flipEnabled) {
+      mat3.translate(newTr, newTr, [newAttrs.x, newAttrs.y]);
+      mat3.rotate(newTr, newTr, newAttrs.rotation);
+      mat3.scale(newTr, newTr, [newScaleX, newScaleY]);
+    } else {
+      mat3.translate(newTr, newTr, [newAttrs.x, newAttrs.y]);
+      mat3.rotate(newTr, newTr, newAttrs.rotation);
+      mat3.translate(newTr, newTr, [
+        newAttrs.width < 0 ? newAttrs.width : 0,
+        newAttrs.height < 0 ? newAttrs.height : 0,
+      ]);
+      mat3.scale(newTr, newTr, [Math.abs(newScaleX), Math.abs(newScaleY)]);
+    }
+
+    // Borrow from Konva.js
+    // @see https://github.com/konvajs/konva/blob/9a9bd00cd377a6d12cce3ee7c9fbf906afa55de5/src/shapes/Transformer.ts#L1103
     // [delta transform] = [new transform] * [old transform inverted]
     const delta = mat3.multiply(
       newTr,
@@ -905,7 +932,6 @@ export class Select extends System {
     selecteds.forEach((selected) => {
       const node = api.getNodeByEntity(selected);
       const oldNode = selection.selectedNodes.find((n) => n.id === node.id);
-
       // for each node we have the same [delta transform]
       // the equations is
       // [delta transform] * [parent transform] * [old local transform] = [parent transform] * [new local transform]
@@ -923,17 +949,18 @@ export class Select extends System {
         newLocalTransform,
       );
 
-      const { rotation, translation } = decompose(newLocalTransform);
+      const { rotation, translation, scale } = decompose(newLocalTransform);
 
       const obb = {
         x: translation[0],
         y: translation[1],
-        width: Math.max(Math.abs(width), epsilon),
-        height: Math.max(Math.abs(height), epsilon),
+        width: Math.max(oldNode.width * scale[0], epsilon),
+        height: Math.max(oldNode.height * scale[1], epsilon),
         rotation,
         scaleX: oldAttrs.scaleX * (Math.sign(width) || 1),
         scaleY: oldAttrs.scaleY * (Math.sign(height) || 1),
       };
+
       api.updateNodeOBB(node, obb, false, newLocalTransform, oldNode);
       selection.obb.scaleX = obb.scaleX;
       selection.obb.scaleY = obb.scaleY;

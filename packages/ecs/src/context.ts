@@ -189,8 +189,8 @@ export const getDefaultAppState: () => AppState = () => {
     layersSelected: [],
     layersHighlighted: [],
     propertiesOpened: [],
-    rotateEnabled: true,
-    flipEnabled: true,
+    rotateEnabled: false,
+    flipEnabled: false,
   };
 };
 

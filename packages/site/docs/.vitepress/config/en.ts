@@ -115,6 +115,10 @@ export const en = defineConfig({
                 text: 'Lesson 025 - Drawing mode and brush',
                 link: 'lesson-025',
               },
+              {
+                text: 'Lesson 026 - Selection tool',
+                link: 'lesson-026',
+              },
             ],
           },
         ],
