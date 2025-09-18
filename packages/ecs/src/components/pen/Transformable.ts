@@ -1,6 +1,5 @@
 import { Entity, field, Type } from '@lastolivegames/becsy';
 import { Selected } from './Selected';
-import { Highlighted } from './Highlighted';
 
 export enum TransformableStatus {
   IDLE = 'idle',
@@ -37,12 +36,7 @@ export class Transformable {
   /**
    * Selected list
    */
-  @field.backrefs(Selected, 'camera') declare selecteds: Entity[];
-
-  /**
-   * Highlighted list
-   */
-  @field.backrefs(Highlighted, 'camera') declare highlighteds: Entity[];
+  @field.backrefs(Selected, 'camera', false) declare selecteds: Entity[];
 
   @field({
     type: Type.staticString([

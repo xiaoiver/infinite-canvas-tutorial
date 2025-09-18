@@ -33,7 +33,7 @@ import {
   Visibility,
 } from '../components';
 import { Commands } from '../commands';
-import { updateGlobalTransform } from './Transform';
+import { getSceneRoot, updateGlobalTransform } from './Transform';
 import {
   TRANSFORMER_ANCHOR_FILL_COLOR,
   TRANSFORMER_ANCHOR_STROKE_COLOR,
@@ -60,7 +60,7 @@ export class RenderHighlighter extends System {
     (q) => q.changed.with(ComputedBounds).trackWrites,
   );
 
-  // Only one highlighter per camera
+  // entity -> highlighter
   #highlighters = new WeakMap<Entity, Entity>();
 
   constructor() {
@@ -120,58 +120,31 @@ export class RenderHighlighter extends System {
       const { api } = canvas.read(Canvas);
       const pen = api.getAppState().penbarSelected;
       if (pen !== Pen.SELECT) {
-        // Clear highlighter
-        const highlighter = this.#highlighters.get(camera);
-        if (highlighter) {
-          highlighter.write(Visibility).value = 'hidden';
-        }
+        api.highlightNodes([]);
         return;
       }
-    });
-
-    const camerasToUpdate = new Set<Entity>();
-    this.cameras.added.forEach((camera) => {
-      camerasToUpdate.add(camera);
     });
 
     this.highlighted.added.forEach((highlighted) => {
-      // Group
-      if (!highlighted.has(ComputedBounds)) {
-        return;
-      }
-      camerasToUpdate.add(highlighted.read(Highlighted).camera);
+      const camera = getSceneRoot(highlighted);
+      this.createOrUpdate(highlighted, camera);
     });
 
     this.highlighted.removed.forEach((highlighted) => {
-      this.accessRecentlyDeletedData();
-      camerasToUpdate.add(highlighted.read(Highlighted).camera);
+      const camera = getSceneRoot(highlighted);
+      this.remove(highlighted, camera);
     });
-    // Backrefs field Transformable.highlighteds not configured to track recently deleted refs
-    this.accessRecentlyDeletedData(false);
 
     this.bounds.changed.forEach((entity) => {
       if (entity.has(Highlighted)) {
-        camerasToUpdate.add(entity.read(Highlighted).camera);
+        const camera = getSceneRoot(entity);
+        this.createOrUpdate(entity, camera);
       }
-    });
-
-    camerasToUpdate.forEach((camera) => {
-      if (!camera) {
-        return;
-      }
-      // const { canvas } = camera.read(Camera);
-      // if (!canvas) {
-      //   return;
-      // }
-      // const { api } = canvas.read(Canvas);
-      // api.runAtNextTick(() => {
-      this.createOrUpdate(camera);
-      // });
     });
   }
 
-  createOrUpdate(camera: Entity) {
-    let highlighter = this.#highlighters.get(camera);
+  createOrUpdate(entity: Entity, camera: Entity) {
+    let highlighter = this.#highlighters.get(entity);
     if (!highlighter) {
       highlighter = this.commands
         .spawn(
@@ -187,21 +160,11 @@ export class RenderHighlighter extends System {
         )
         .id()
         .hold();
-
       this.commands
         .entity(camera)
         .appendChild(this.commands.entity(highlighter));
       this.commands.execute();
-
-      this.#highlighters.set(camera, highlighter);
-    }
-
-    const { highlighteds } = camera.read(Transformable);
-    const entity = highlighteds[0];
-
-    if (!entity) {
-      highlighter.write(Visibility).value = 'hidden';
-      return;
+      this.#highlighters.set(entity, highlighter);
     }
 
     safeRemoveComponent(highlighter, GlobalTransform);
@@ -210,7 +173,6 @@ export class RenderHighlighter extends System {
     safeRemoveComponent(highlighter, Rect);
     safeRemoveComponent(highlighter, Path);
     safeRemoveComponent(highlighter, Polyline);
-
     highlighter.write(Visibility).value = 'visible';
 
     const {
@@ -227,10 +189,8 @@ export class RenderHighlighter extends System {
         y: scaleY,
       },
     });
-
     if (entity.has(Circle)) {
       safeAddComponent(highlighter, Circle);
-
       const { cx, cy, r } = entity.read(Circle);
       Object.assign(highlighter.write(Circle), {
         cx,
@@ -239,7 +199,6 @@ export class RenderHighlighter extends System {
       });
     } else if (entity.has(Ellipse)) {
       safeAddComponent(highlighter, Ellipse);
-
       const { cx, cy, rx, ry } = entity.read(Ellipse);
       Object.assign(highlighter.write(Ellipse), {
         cx,
@@ -249,35 +208,30 @@ export class RenderHighlighter extends System {
       });
     } else if (entity.has(Rect)) {
       safeAddComponent(highlighter, Rect);
-
       Object.assign(highlighter.write(Rect), {
         width,
         height,
       });
     } else if (entity.has(Path)) {
       safeAddComponent(highlighter, Path);
-
       const { d } = entity.read(Path);
       Object.assign(highlighter.write(Path), {
         d,
       });
     } else if (entity.has(Polyline)) {
       safeAddComponent(highlighter, Polyline);
-
       const { points } = entity.read(Polyline);
       Object.assign(highlighter.write(Polyline), {
         points,
       });
     } else if (entity.has(Brush)) {
       safeAddComponent(highlighter, Polyline);
-
       const { points } = entity.read(Brush);
       Object.assign(highlighter.write(Polyline), {
         points: points.map((point) => [point.x, point.y]),
       });
     } else if (entity.has(Text)) {
       safeAddComponent(highlighter, Polyline);
-
       const {
         obb: { width, height },
       } = entity.read(ComputedBounds);
@@ -288,8 +242,12 @@ export class RenderHighlighter extends System {
         ],
       });
     }
-
     updateGlobalTransform(highlighter);
     updateComputedPoints(highlighter);
+  }
+
+  remove(entity: Entity, camera: Entity) {
+    const highlighter = this.#highlighters.get(entity);
+    highlighter.write(Visibility).value = 'hidden';
   }
 }

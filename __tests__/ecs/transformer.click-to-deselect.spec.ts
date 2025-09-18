@@ -24,23 +24,23 @@ import {
   system,
   API,
   Name,
-  Rect,
-  DropShadow,
+  Ellipse,
   ZIndex,
   ComputeZIndex,
+  Pen,
   RectSerializedNode,
   Selected,
-  Pen,
+  Rect,
 } from '../../packages/ecs/src';
-import { NodeJSAdapter, sleep } from '../utils';
+import { NodeJSAdapter, sleep, createMouseEvent } from '../utils';
 
 DOMAdapter.set(NodeJSAdapter);
 
-describe('Transformer when rotate', () => {
-  it('should render transformer correctly', async () => {
+describe('Transformer', () => {
+  it('should click empty area to deselect rect correctly', async () => {
     const app = new App();
 
-    let $canvas: HTMLCanvasElement;
+    let $canvas: HTMLCanvasElement | undefined;
     let canvasEntity: Entity | undefined;
     let cameraEntity: Entity | undefined;
     let entity: Entity | undefined;
@@ -69,9 +69,9 @@ describe('Transformer when rotate', () => {
             Rect,
             Visibility,
             Name,
-            DropShadow,
             ZIndex,
             Selected,
+            Ellipse,
           ).write,
       );
 
@@ -94,13 +94,14 @@ describe('Transformer when rotate', () => {
         const node: RectSerializedNode = {
           id: '1',
           type: 'rect',
+          stroke: 'black',
+          strokeWidth: 10,
           fill: 'red',
+          visibility: 'visible',
           x: 50,
           y: 50,
           width: 100,
-          height: 100,
-          rotation: Math.PI / 4,
-          visibility: 'visible',
+          height: 50,
         };
         api.setAppState({
           penbarSelected: Pen.SELECT,
@@ -122,24 +123,18 @@ describe('Transformer when rotate', () => {
 
     await sleep(300);
 
-    if (canvasEntity && cameraEntity && entity) {
-      const canvas = canvasEntity.read(Canvas);
-      expect(canvas.devicePixelRatio).toBe(1);
-      expect(canvas.width).toBe(200);
-      expect(canvas.height).toBe(200);
-      expect(canvas.renderer).toBe('webgl');
-      expect(canvas.cameras).toHaveLength(1);
-
-      const camera = cameraEntity.read(Camera);
-      expect(camera.canvas.isSame(canvasEntity)).toBeTruthy();
-      expect(cameraEntity.read(Parent).children).toHaveLength(2);
-      expect(cameraEntity.read(Parent).children[0].isSame(entity)).toBeTruthy();
+    if ($canvas) {
+      $canvas.dispatchEvent(
+        createMouseEvent('mousedown', { clientX: 0, clientY: 0 }), // deselect
+      );
     }
+
+    await sleep(300);
 
     const dir = `${__dirname}/snapshots`;
     await expect($canvas!.getContext('webgl1')).toMatchWebGLSnapshot(
       dir,
-      'transformer-rotate',
+      'transformer-click-to-deselect',
     );
 
     await app.exit();

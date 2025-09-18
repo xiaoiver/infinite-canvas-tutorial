@@ -56,11 +56,37 @@ export class RenderTransformer extends System {
 
 <MultiSelection />
 
-## 框选 {#brush-selection}
+## 框选 {#marquee-selection}
+
+下图来自 [Select layers and objects in Figma]
+
+![Selection marquee in Figma](https://d33v4339jhl8k0.cloudfront.net/docs/assets/5aa962fe2c7d3a2c4983093d/images/5c8042ec04286350d088ba04/file-tAFIn9Cimd.gif)
+
+这个框选工具被称作 “marquee”，详见：[Make selections with the Rectangular Marquee tool]
+
+在框选结束（鼠标抬起）时进行最终选择，这里使用了 [课程 8 - 使用空间索引加速] 中介绍的快速拾取方法：
+
+```ts
+const { x, y, width, height } = selection.brush.read(Rect);
+const minX = Math.min(x, x + width);
+const minY = Math.min(y, y + height);
+const maxX = Math.max(x, x + width);
+const maxY = Math.max(y, y + height);
+const selecteds = api
+    .elementsFromBBox(minX, minY, maxX, maxY) // 使用空间索引
+    .filter((e) => !e.has(UI))
+    .map((e) => api.getNodeByEntity(e));
+api.selectNodes(selecteds);
+```
+
+而在框选过程中，我们也希望实时展示选中情况，此时按 <kbd>Esc</kbd> 可以取消选择。
 
 ## 套索工具 {#lasso-selection}
 
 [课程 14 - 选择模式]: /zh/guide/lesson-014#select-mode
 [课程 21 - Transformer]: /zh/guide/lesson-021
 [课程 21 - 变换图形]: /zh/guide/lesson-021#transform-shape
+[Select layers and objects in Figma]: https://help.figma.com/hc/en-us/articles/360040449873-Select-layers-and-objects
+[Make selections with the Rectangular Marquee tool]: https://helpx.adobe.com/photoshop/using/tool-techniques/rectangular-marquee-tool.html
+[课程 8 - 使用空间索引加速]: /zh/guide/lesson-008#using-spatial-indexing
 [lasso-tool-figma]: https://github.com/kernel-picnic/lasso-tool-figma

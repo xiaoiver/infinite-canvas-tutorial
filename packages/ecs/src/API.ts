@@ -753,7 +753,7 @@ export class API {
     layersHighlighted.forEach((id) => {
       const entity = this.#idEntityMap.get(id)?.id();
       if (entity && !entity.has(Highlighted)) {
-        entity.add(Highlighted, { camera: this.#camera });
+        entity.add(Highlighted);
       }
     });
   }

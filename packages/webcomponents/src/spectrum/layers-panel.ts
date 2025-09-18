@@ -151,7 +151,8 @@ export class LayersPanel extends LitElement {
   }
 
   render() {
-    const { layersSelected, taskbarSelected } = this.appState;
+    const { layersSelected, layersHighlighted, taskbarSelected } =
+      this.appState;
 
     const sortedNodes = this.nodes
       .map((node) => {
@@ -270,6 +271,7 @@ export class LayersPanel extends LitElement {
                 draggable
                 @click=${(e: MouseEvent) => this.handleSelect(e, node.id)}
                 ?selected=${layersSelected.includes(node.id)}
+                ?highlighted=${layersHighlighted.includes(node.id)}
                 ?child=${!!node.parentId}
               ></ic-spectrum-layers-panel-item>`;
             })}

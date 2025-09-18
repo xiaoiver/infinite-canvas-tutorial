@@ -49,6 +49,13 @@ export class LayersPanelItem extends LitElement {
       );
     }
 
+    :host([highlighted]) {
+      background-color: var(
+        --spectrum-treeview-item-background-color-hover,
+        var(--spectrum-alias-background-color-hover-overlay)
+      );
+    }
+
     :host([child]) > span {
       padding-left: 24px;
     }
@@ -67,6 +74,9 @@ export class LayersPanelItem extends LitElement {
 
   @property({ type: Boolean })
   selected = false;
+
+  @property({ type: Boolean })
+  highlighted = false;
 
   @consume({ context: apiContext, subscribe: true })
   api: API;

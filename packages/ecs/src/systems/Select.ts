@@ -50,7 +50,8 @@ import {
 } from '../utils';
 import { API } from '../API';
 import {
-  RenderTransformer,
+  getOBB,
+  hitTest,
   TRANSFORMER_ANCHOR_STROKE_COLOR,
   TRANSFORMER_MASK_FILL_COLOR,
 } from './RenderTransformer';
@@ -103,8 +104,6 @@ export interface SelectOBB {
  */
 export class Select extends System {
   private readonly commands = new Commands(this);
-
-  private readonly renderTransformer = this.attach(RenderTransformer);
 
   private readonly cameras = this.query((q) => q.current.with(Camera).read);
 
@@ -174,7 +173,6 @@ export class Select extends System {
     ex: number,
     ey: number,
   ) {
-    api.highlightNodes([]);
     const camera = api.getCamera();
     camera.write(Transformable).status = TransformableStatus.MOVING;
 
@@ -232,8 +230,6 @@ export class Select extends System {
 
     let delta = Math.atan2(-y, x) + Math.PI / 2;
 
-    // const obb = this.renderTransformer.getOBB(camera);
-
     // const {
     //   scale: { sx, sy },
     //   rotation: { angle },
@@ -268,8 +264,6 @@ export class Select extends System {
     const { rotation, scaleX, scaleY } = obb;
 
     camera.write(Transformable).status = TransformableStatus.RESIZING;
-
-    api.highlightNodes([]);
 
     const { tlAnchor, trAnchor, blAnchor, brAnchor } =
       camera.read(Transformable);
@@ -456,8 +450,6 @@ export class Select extends System {
         selection,
       );
     }
-
-    this.renderTransformer.createOrUpdate(camera);
   }
 
   private handleSelectedResized(api: API, selection: SelectOBB) {
@@ -693,9 +685,6 @@ export class Select extends System {
 
           api.highlightNodes([]);
 
-          // const topmost = this.getTopmostEntity(api, x, y, (e) => true);
-          // It's transformer itself.
-
           // Highlight the topmost non-ui element
           toHighlight = this.getTopmostEntity(api, x, y, (e) => !e.has(UI));
           if (toHighlight) {
@@ -714,8 +703,7 @@ export class Select extends System {
 
           // Hit test with transformer
           if (selecteds.length >= 1) {
-            const { anchor, cursor: cursorName } =
-              this.renderTransformer.hitTest(api, { x, y }) || {};
+            const { anchor, cursor: cursorName } = hitTest(api, { x, y }) || {};
 
             if (anchor) {
               if (anchor === AnchorName.CONTROL) {
@@ -829,7 +817,19 @@ export class Select extends System {
             selection.brush.write(Visibility).value = 'hidden';
           }
           selection.mode = SelectionMode.IDLE;
-          // TODO: Apply selection
+          // Apply selection
+          if (selection.brush) {
+            const { x, y, width, height } = selection.brush.read(Rect);
+            const minX = Math.min(x, x + width);
+            const minY = Math.min(y, y + height);
+            const maxX = Math.max(x, x + width);
+            const maxY = Math.max(y, y + height);
+            const selecteds = api
+              .elementsFromBBox(minX, minY, maxX, maxY)
+              .filter((e) => !e.has(UI))
+              .map((e) => api.getNodeByEntity(e));
+            api.selectNodes(selecteds);
+          }
         } else if (selection.mode === SelectionMode.MOVE) {
           this.handleSelectedMoved(api, selection);
           selection.mode = SelectionMode.READY_TO_MOVE;
@@ -859,7 +859,7 @@ export class Select extends System {
 
   private saveSelectedOBB(api: API, selection: SelectOBB) {
     const camera = api.getCamera();
-    const obb = this.renderTransformer.getOBB(camera);
+    const obb = getOBB(camera);
     selection.obb = {
       x: obb.x,
       y: obb.y,
