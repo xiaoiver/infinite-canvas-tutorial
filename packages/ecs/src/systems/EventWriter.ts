@@ -182,6 +182,8 @@ export class EventWriter extends System {
       if (e.key === 'Alt') {
         input.write(Input).altKey = true;
       }
+
+      input.write(Input).key = e.key;
     };
 
     const onKeyUp = (e: KeyboardEvent) => {

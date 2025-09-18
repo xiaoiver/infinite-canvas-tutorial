@@ -689,9 +689,15 @@ export class API {
     }
 
     const prevAppState = this.getAppState();
+    // remove duplicates
     const layersSelected = preserveSelection
-      ? [...prevAppState.layersSelected, ...nodes.map((node) => node.id)]
-      : nodes.map((node) => node.id);
+      ? [
+          ...prevAppState.layersSelected,
+          ...nodes.map((node) => node.id),
+        ].filter((id, index, self) => self.indexOf(id) === index)
+      : nodes
+          .map((node) => node.id)
+          .filter((id, index, self) => self.indexOf(id) === index);
     if (updateAppState) {
       this.setAppState({
         ...prevAppState,
@@ -740,9 +746,15 @@ export class API {
     }
 
     const prevAppState = this.getAppState();
+    // remove duplicates
     const layersHighlighted = preserveSelection
-      ? [...prevAppState.layersHighlighted, ...nodes.map((node) => node.id)]
-      : nodes.map((node) => node.id);
+      ? [
+          ...prevAppState.layersHighlighted,
+          ...nodes.map((node) => node.id),
+        ].filter((id, index, self) => self.indexOf(id) === index)
+      : nodes
+          .map((node) => node.id)
+          .filter((id, index, self) => self.indexOf(id) === index);
     if (updateAppState) {
       this.setAppState({
         ...prevAppState,

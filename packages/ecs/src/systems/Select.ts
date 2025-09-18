@@ -543,6 +543,9 @@ export class Select extends System {
         height: wy - pointerDownCanvasY,
       });
       updateGlobalTransform(selection.brush);
+
+      // Select elements in the brush
+      this.applyBrushSelection(api, selection, true);
     }
   }
 
@@ -722,8 +725,10 @@ export class Select extends System {
 
                 if (cursorName.includes('rotate')) {
                   selection.mode = SelectionMode.READY_TO_ROTATE;
+                  toHighlight = undefined;
                 } else if (cursorName.includes('resize')) {
                   selection.mode = SelectionMode.READY_TO_RESIZE;
+                  toHighlight = undefined;
                 } else if (anchor === AnchorName.INSIDE) {
                   // Only in single transformer, we can select other objects.
                   if (
@@ -739,7 +744,10 @@ export class Select extends System {
                     } else {
                       // Disable highlight, only allow move.
                       toHighlight = undefined;
-                      selection.mode = SelectionMode.READY_TO_MOVE;
+
+                      if (selection.mode !== SelectionMode.BRUSH) {
+                        selection.mode = SelectionMode.READY_TO_MOVE;
+                      }
                     }
                   }
                 } else {
@@ -810,25 +818,18 @@ export class Select extends System {
         inputPoint.prevPoint = input.pointerViewport;
       });
 
+      if (input.key === 'Escape') {
+        api.selectNodes([]);
+        api.highlightNodes([]);
+        if (selection.mode === SelectionMode.BRUSH) {
+          this.hideBrush(selection);
+        }
+      }
+
       if (input.pointerUpTrigger) {
         if (selection.mode === SelectionMode.BRUSH) {
-          if (selection.brush) {
-            selection.brush.write(Visibility).value = 'hidden';
-          }
-          selection.mode = SelectionMode.IDLE;
-          // Apply selection
-          if (selection.brush) {
-            const { x, y, width, height } = selection.brush.read(Rect);
-            const minX = Math.min(x, x + width);
-            const minY = Math.min(y, y + height);
-            const maxX = Math.max(x, x + width);
-            const maxY = Math.max(y, y + height);
-            const selecteds = api
-              .elementsFromBBox(minX, minY, maxX, maxY)
-              .filter((e) => !e.has(UI))
-              .map((e) => api.getNodeByEntity(e));
-            api.selectNodes(selecteds);
-          }
+          this.hideBrush(selection);
+          this.applyBrushSelection(api, selection, false);
         } else if (selection.mode === SelectionMode.MOVE) {
           this.handleSelectedMoved(api, selection);
           selection.mode = SelectionMode.READY_TO_MOVE;
@@ -852,8 +853,39 @@ export class Select extends System {
         ctrlKey: false,
         metaKey: false,
         shiftKey: false,
+        key: undefined,
       });
     });
+  }
+
+  private hideBrush(selection: SelectOBB) {
+    if (selection.brush) {
+      selection.brush.write(Visibility).value = 'hidden';
+    }
+    selection.mode = SelectionMode.IDLE;
+  }
+
+  private applyBrushSelection(
+    api: API,
+    selection: SelectOBB,
+    needHighlight: boolean,
+  ) {
+    if (selection.brush) {
+      const { x, y, width, height } = selection.brush.read(Rect);
+      const minX = Math.min(x, x + width);
+      const minY = Math.min(y, y + height);
+      const maxX = Math.max(x, x + width);
+      const maxY = Math.max(y, y + height);
+      const selecteds = api
+        .elementsFromBBox(minX, minY, maxX, maxY)
+        .filter((e) => !e.has(UI))
+        .map((e) => api.getNodeByEntity(e));
+      api.selectNodes(selecteds);
+
+      if (needHighlight) {
+        api.highlightNodes(selecteds);
+      }
+    }
   }
 
   private saveSelectedOBB(api: API, selection: SelectOBB) {

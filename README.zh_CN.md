@@ -310,6 +310,12 @@ pnpm run dev
 | :-------------------------------------------: | :------------------------------------------: | :-----------------------------------------: |
 | ![draw rect mode](./screenshots/lesson25.gif) | ![pencil tool](./screenshots/lesson25-2.gif) | ![draw arrow](./screenshots/lesson25-3.gif) |
 
+## 课程 26 - 选择工具 [🔗](https://infinitecanvas.cc/zh/guide/lesson-026)
+
+-   点按单选、Shift 多选
+-   拖拽框选
+-   套索工具
+
 [infinitecanvas]: https://infinitecanvas.tools/
 [Figma]: https://madebyevan.com/figma/building-a-professional-design-tool-on-the-web/
 [Modyfi]: https://digest.browsertech.com/archive/browsertech-digest-how-modyfi-is-building-with/

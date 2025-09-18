@@ -1,25 +1,24 @@
 ---
 outline: deep
-description: '实现选择工具。'
-head:
-    - ['meta', { property: 'og:title', content: '课程 26 - 选择工具' }]
+description: 'Implement selection tools.'
+publish: false
 ---
 
 <script setup>
-import MultiSelection from '../../components/MultiSelection.vue'
+import MultiSelection from '../components/MultiSelection.vue'
 </script>
 
-# 课程 26 - 选择工具
+# Lesson 26 - Selection Tools
 
-在 [课程 14 - 选择模式] 中我们仅实现了简单的点击图形单独选中的功能。本节课我们会继续完善这个选择工具，增加多选、框选和套索功能。
+In [Lesson 14 - Selection Mode] we only implemented simple click-to-select functionality for individual shapes. In this lesson, we will continue to improve the selection tool by adding multi-selection, marquee selection, and lasso functionality.
 
-## 多选 {#multi-selection}
+## Multi-Selection {#multi-selection}
 
-在点击单独选择的基础上，通过按住 <kbd>Shift</kbd> 可以在当前选择的基础上，新增/删除另外的图形。
+Based on individual click selection, holding <kbd>Shift</kbd> allows adding/removing additional shapes to the current selection.
 
 ![Hold <kbd>Shift</kbd> to select multiple layers in Figma](https://d33v4339jhl8k0.cloudfront.net/docs/assets/5aa962fe2c7d3a2c4983093d/images/5c8042572c7d3a0cb93253d5/file-TQrRIcwMNR.gif)
 
-在选择模式中，我们根据 `input.shiftKey` 即 <kbd>Shift</kbd> 的按下状态，决定是否需要保留当前的选择：如果未按下则切换单选；如果按下则将目标图形加入已有的选择中：
+In selection mode, we determine whether to preserve the current selection based on the `input.shiftKey` state (whether <kbd>Shift</kbd> is pressed): if not pressed, switch to single selection; if pressed, add the target shape to the existing selection:
 
 ```ts
 if (selection.mode === SelectionMode.SELECT) {
@@ -32,7 +31,7 @@ if (selection.mode === SelectionMode.SELECT) {
 }
 ```
 
-在 [课程 21 - Transformer] 中我们实现了单个图形，接下来需要为多个选中的图形增加一个 Group 展示。和单选的 Transformer 不同，多选形成的 Group 不需要考虑 `rotation` 和 `scale`。
+In [Lesson 21 - Transformer] we implemented single shape selection. Next, we need to add a Group display for multiple selected shapes. Unlike the single-selection Transformer, the multi-selection Group doesn't need to consider `rotation` and `scale`.
 
 ```ts
 export class RenderTransformer extends System {
@@ -53,19 +52,19 @@ export class RenderTransformer extends System {
 }
 ```
 
-效果如下，Resize 时对选中的所有图形进行变换的逻辑已经在 [课程 21 - 变换图形] 中介绍过，这里不再赘述：
+The effect is as follows. The logic for transforming all selected shapes during resize was already introduced in [Lesson 21 - Transform Shapes], so we won't repeat it here:
 
 <MultiSelection />
 
-## 框选 {#marquee-selection}
+## Marquee Selection {#marquee-selection}
 
-下图来自 [Select layers and objects in Figma]
+The following image is from [Select layers and objects in Figma]
 
 ![Selection marquee in Figma](https://d33v4339jhl8k0.cloudfront.net/docs/assets/5aa962fe2c7d3a2c4983093d/images/5c8042ec04286350d088ba04/file-tAFIn9Cimd.gif)
 
-这个框选工具被称作 “marquee”，详见：[Make selections with the Rectangular Marquee tool]，我们把形成的矩形区域称作 Brush。
+This marquee selection tool is called "marquee", see: [Make selections with the Rectangular Marquee tool]. We call the formed rectangular area a Brush.
 
-在框选结束（鼠标抬起）时，首先需要隐藏 Brush 矩形（在下一小节我们会看到它的实现），然后使用 [课程 8 - 使用空间索引加速] 中介绍的快速拾取方法。值得注意的是，由于该矩形的宽高有可能为负数（取决于拖拽方向），我们需要进行一些计算保证 BBox 是合法的：
+When marquee selection ends (mouse up), we first need to hide the Brush rectangle (we'll see its implementation in the next section), then use the fast picking method introduced in [Lesson 8 - Using Spatial Indexing for Acceleration]. It's worth noting that since the rectangle's width and height might be negative (depending on drag direction), we need to perform some calculations to ensure the BBox is valid:
 
 ```ts
 if (input.pointerUpTrigger) {
@@ -89,7 +88,7 @@ if (input.pointerUpTrigger) {
 }
 ```
 
-在框选过程中，我们也希望实时通过高亮和 Transformer 展示选中情况，在上面的拾取和选中逻辑基础上，增加高亮：
+During the marquee selection process, we also want to show the selection status in real-time through highlighting and Transformer. Based on the picking and selection logic above, we add highlighting:
 
 ![Highlight when brushing](/brush.gif)
 
@@ -101,9 +100,9 @@ if (needHighlight) {
 }
 ```
 
-## 通过 Esc 取消选择 {#deselect-with-esc}
+## Deselect with Esc {#deselect-with-esc}
 
-选中状态下按 <kbd>Esc</kbd> 会取消选择，另外在框选过程中需要隐藏掉 Brush：
+Pressing <kbd>Esc</kbd> in selected state will cancel the selection. Additionally, during marquee selection, we need to hide the Brush:
 
 ```ts
 if (input.key === 'Escape') {
@@ -114,14 +113,14 @@ if (input.key === 'Escape') {
 }
 ```
 
-## [WIP] 套索工具 {#lasso-selection}
+## [WIP] Lasso Tool {#lasso-selection}
 
 [lasso-tool-figma]
 
-[课程 14 - 选择模式]: /zh/guide/lesson-014#select-mode
-[课程 21 - Transformer]: /zh/guide/lesson-021
-[课程 21 - 变换图形]: /zh/guide/lesson-021#transform-shape
+[Lesson 14 - Selection Mode]: /guide/lesson-014#select-mode
+[Lesson 21 - Transformer]: /guide/lesson-021
+[Lesson 21 - Transform Shapes]: /guide/lesson-021#transform-shape
 [Select layers and objects in Figma]: https://help.figma.com/hc/en-us/articles/360040449873-Select-layers-and-objects
 [Make selections with the Rectangular Marquee tool]: https://helpx.adobe.com/photoshop/using/tool-techniques/rectangular-marquee-tool.html
-[课程 8 - 使用空间索引加速]: /zh/guide/lesson-008#using-spatial-indexing
+[Lesson 8 - Using Spatial Indexing for Acceleration]: /guide/lesson-008#using-spatial-indexing
 [lasso-tool-figma]: https://github.com/kernel-picnic/lasso-tool-figma

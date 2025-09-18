@@ -309,6 +309,14 @@ If you want to use it in your own project, you can refer to:
 | :-------------------------------------------: | :------------------------------------------: | :-----------------------------------------: |
 | ![draw rect mode](./screenshots/lesson25.gif) | ![pencil tool](./screenshots/lesson25-2.gif) | ![draw arrow](./screenshots/lesson25-3.gif) |
 
+## Lesson 26 - 选择工具 [🔗](https://infinitecanvas.cc/guide/lesson-026)
+
+multi-selection, , and lasso functionality
+
+-   Single and multi-selection with Shift keypress
+-   Marquee selection
+-   Lasso tool
+
 [infinitecanvas]: https://infinitecanvas.tools/
 [Figma]: https://madebyevan.com/figma/building-a-professional-design-tool-on-the-web/
 [Modyfi]: https://digest.browsertech.com/archive/browsertech-digest-how-modyfi-is-building-with/

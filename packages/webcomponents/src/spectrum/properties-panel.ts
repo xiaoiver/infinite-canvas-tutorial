@@ -32,6 +32,11 @@ export class PropertiesPanel extends LitElement {
       justify-content: space-between;
       margin: 0;
     }
+
+    .container {
+      padding: var(--spectrum-global-dimension-size-100);
+      padding-top: 0;
+    }
   `;
 
   @consume({ context: appStateContext, subscribe: true })
@@ -53,23 +58,37 @@ export class PropertiesPanel extends LitElement {
 
   render() {
     const { layersSelected, taskbarSelected } = this.appState;
-    const node = this.api?.getNodeById(layersSelected[0]);
+    const enabled = taskbarSelected.includes(Task.SHOW_PROPERTIES_PANEL);
 
-    return taskbarSelected.includes(Task.SHOW_PROPERTIES_PANEL)
-      ? html`<section>
-          <h4>
-            Properties
-            <sp-action-button quiet size="s" @click=${this.handleClose}>
-              <sp-icon-close slot="icon"></sp-icon-close>
-            </sp-action-button>
-          </h4>
-          <div class="container">
-            <ic-spectrum-properties-panel-content
-              .node=${node}
-            ></ic-spectrum-properties-panel-content>
-          </div>
-        </section>`
-      : null;
+    if (!enabled) {
+      return null;
+    }
+
+    // Display selected panel
+    if (layersSelected.length > 1) {
+      return html`<section>
+        <h4>
+          Properties
+          <sp-action-button quiet size="s" @click=${this.handleClose}>
+            <sp-icon-close slot="icon"></sp-icon-close>
+          </sp-action-button>
+        </h4>
+        <div class="container">${layersSelected.length} selected</div>
+      </section>`;
+    }
+
+    const node = this.api?.getNodeById(layersSelected[0]);
+    return html`<section>
+      <h4>
+        Properties
+        <sp-action-button quiet size="s" @click=${this.handleClose}>
+          <sp-icon-close slot="icon"></sp-icon-close>
+        </sp-action-button>
+      </h4>
+      <ic-spectrum-properties-panel-content
+        .node=${node}
+      ></ic-spectrum-properties-panel-content>
+    </section>`;
   }
 }
 
