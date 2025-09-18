@@ -76,6 +76,7 @@ export const zh = defineConfig({
               { text: '课程24 - 上下文菜单和剪贴板', link: 'lesson-024' },
               { text: '课程25 - 绘制模式与笔刷', link: 'lesson-025' },
               { text: '课程26 - 选择工具', link: 'lesson-026' },
+              { text: '课程27 - 吸附与对齐', link: 'lesson-027' },
             ],
           },
         ],

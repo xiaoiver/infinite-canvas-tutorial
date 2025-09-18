@@ -309,9 +309,7 @@ If you want to use it in your own project, you can refer to:
 | :-------------------------------------------: | :------------------------------------------: | :-----------------------------------------: |
 | ![draw rect mode](./screenshots/lesson25.gif) | ![pencil tool](./screenshots/lesson25-2.gif) | ![draw arrow](./screenshots/lesson25-3.gif) |
 
-## Lesson 26 - 选择工具 [🔗](https://infinitecanvas.cc/guide/lesson-026)
-
-multi-selection, , and lasso functionality
+## Lesson 26 - Selection tools [🔗](https://infinitecanvas.cc/guide/lesson-026)
 
 -   Single and multi-selection with Shift keypress
 -   Marquee selection

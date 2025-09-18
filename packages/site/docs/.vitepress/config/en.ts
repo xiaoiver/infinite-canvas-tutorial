@@ -119,6 +119,10 @@ export const en = defineConfig({
                 text: 'Lesson 026 - Selection tool',
                 link: 'lesson-026',
               },
+              {
+                text: 'Lesson 027 - Snap and align',
+                link: 'lesson-027',
+              },
             ],
           },
         ],
