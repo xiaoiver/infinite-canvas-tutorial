@@ -118,7 +118,7 @@ export class RenderTransformer extends System {
       const { selecteds } = camera.read(Transformable);
       const selected = selecteds[0];
 
-      const { vertices, segments } = selected.read(VectorNetwork);
+      const { vertices } = selected.read(VectorNetwork);
 
       const toCreateAnchorNumber =
         vertices.length - (transformable.controlPoints?.length ?? 0);
@@ -386,6 +386,7 @@ export function getOBB(camera: Entity): OBB {
           };
         }
       })
+      .filter((bound) => bound !== undefined) // Group has no geometryWorldBounds
       .reduce(
         (acc, bound) => {
           return {

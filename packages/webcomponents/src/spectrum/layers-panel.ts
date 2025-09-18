@@ -47,6 +47,8 @@ export class LayersPanel extends LitElement {
       height: 300px;
       overflow: hidden;
       overflow-y: auto;
+      scroll-behavior: smooth;
+      scroll-padding: 8px;
     }
   `;
 
@@ -69,11 +71,30 @@ export class LayersPanel extends LitElement {
       if (selected.length > 0) {
         const scrollToId = this.generateLayersPanelItemId(selected[0]);
         const scrollToElement = this.shadowRoot.querySelector(`#${scrollToId}`);
-        if (scrollToElement) {
-          scrollToElement.scrollIntoView({
-            behavior: 'smooth',
-            block: 'center',
-          });
+        const container = this.shadowRoot.querySelector('.container');
+
+        if (scrollToElement && container) {
+          // 计算元素相对于容器的位置
+          const elementTop = (scrollToElement as HTMLElement).offsetTop;
+          const elementHeight = (scrollToElement as HTMLElement).offsetHeight;
+          const containerHeight = container.clientHeight;
+
+          // 如果元素不在视口内，则滚动到合适位置
+          const currentScrollTop = container.scrollTop;
+          const elementBottom = elementTop + elementHeight;
+          const visibleTop = currentScrollTop;
+          const visibleBottom = currentScrollTop + containerHeight;
+
+          if (elementTop < visibleTop || elementBottom > visibleBottom) {
+            // 计算目标滚动位置，让元素在视口中央
+            const targetScrollTop =
+              elementTop - (containerHeight - elementHeight) / 2;
+
+            container.scrollTo({
+              top: Math.max(0, targetScrollTop),
+              behavior: 'smooth',
+            });
+          }
         }
       }
     });
