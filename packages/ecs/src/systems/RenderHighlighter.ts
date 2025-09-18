@@ -144,6 +144,10 @@ export class RenderHighlighter extends System {
   }
 
   createOrUpdate(entity: Entity, camera: Entity) {
+    if (!entity.has(ComputedBounds)) {
+      return;
+    }
+
     let highlighter = this.#highlighters.get(entity);
     if (!highlighter) {
       highlighter = this.commands

@@ -118,6 +118,13 @@ export class CameraControl extends System {
         }
       }
 
+      // Pointdown on canvas, then pointerup outside of canvas, inputPoints will not be deleted
+      if (inputPoints.length > 1) {
+        inputPoints.forEach((point) => {
+          point.delete();
+        });
+      }
+
       inputPoints.forEach((point) => {
         const inputPoint = point.write(InputPoint);
         const {

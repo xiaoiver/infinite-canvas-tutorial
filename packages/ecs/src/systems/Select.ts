@@ -811,7 +811,6 @@ export class Select extends System {
       });
 
       if (input.pointerUpTrigger) {
-        api.highlightNodes([]);
         if (selection.mode === SelectionMode.BRUSH) {
           if (selection.brush) {
             selection.brush.write(Visibility).value = 'hidden';

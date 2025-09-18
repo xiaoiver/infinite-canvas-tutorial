@@ -89,25 +89,21 @@ export class EventWriter extends System {
     };
 
     const onPointerMove = (e: PointerEvent) => {
-      try {
-        // @see https://stackoverflow.com/questions/49500339/cant-prevent-touchmove-from-scrolling-window-on-ios
-        // ev.preventDefault();
+      // @see https://stackoverflow.com/questions/49500339/cant-prevent-touchmove-from-scrolling-window-on-ios
+      // ev.preventDefault();
 
-        // if (pointerIds.size > 1 || !pointerIds.has(e.pointerId)) return;
-        const viewport = api.client2Viewport({
-          x: e.clientX,
-          y: e.clientY,
-        });
+      // if (pointerIds.size > 1 || !pointerIds.has(e.pointerId)) return;
+      const viewport = api.client2Viewport({
+        x: e.clientX,
+        y: e.clientY,
+      });
 
-        Object.assign(input.write(Input), {
-          pointerClient: [e.clientX, e.clientY],
-          pointerViewport: [viewport.x, viewport.y],
-        });
+      Object.assign(input.write(Input), {
+        pointerClient: [e.clientX, e.clientY],
+        pointerViewport: [viewport.x, viewport.y],
+      });
 
-        syncCtrlShiftAltMeta(e);
-      } catch (error) {
-        console.log('Pointer move error', error);
-      }
+      syncCtrlShiftAltMeta(e);
     };
 
     const onPointerUp = (e: PointerEvent) => {
@@ -116,59 +112,27 @@ export class EventWriter extends System {
     };
 
     const onPointerDown = (e: PointerEvent) => {
-      try {
-        const mouseButtons = [0, 1, 2];
+      const mouseButtons = [0, 1, 2];
 
-        if (e.pointerType === 'mouse' && !mouseButtons.includes(e.button))
-          return;
+      if (e.pointerType === 'mouse' && !mouseButtons.includes(e.button)) return;
 
-        pointerIds.add(e.pointerId);
+      pointerIds.add(e.pointerId);
 
-        // ignore right click for now
-        if (pointerIds.size > 1 || e.button === 2) {
-          return;
-        }
-
-        // detect double click
-        const currentTime = performance.now();
-        const lastPointerDownTime = input.read(Input).lastPointerDownTime;
-        if (currentTime - lastPointerDownTime < DOUBLE_CLICK_DELAY) {
-          this.setInputTrigger(input, 'doubleClickTrigger');
-        }
-
-        this.setInputTrigger(input, 'pointerDownTrigger');
-
-        if (pointerIds.size === 1) {
-          const viewport = api.client2Viewport({
-            x: e.clientX,
-            y: e.clientY,
-          });
-          Object.assign(input.write(Input), {
-            pointerClient: [e.clientX, e.clientY],
-            pointerViewport: [viewport.x, viewport.y],
-            lastPointerDownTime: currentTime,
-          });
-        }
-
-        syncCtrlShiftAltMeta(e);
-      } catch (error) {
-        console.log('Pointer down error', error);
+      // ignore right click for now
+      if (pointerIds.size > 1 || e.button === 2) {
+        return;
       }
-    };
 
-    const onPointerCancel = (e: PointerEvent) => {
-      pointerIds.delete(e.pointerId);
-    };
+      // detect double click
+      const currentTime = performance.now();
+      const lastPointerDownTime = input.read(Input).lastPointerDownTime;
+      if (currentTime - lastPointerDownTime < DOUBLE_CLICK_DELAY) {
+        this.setInputTrigger(input, 'doubleClickTrigger');
+      }
 
-    const onPointerWheel = (e: WheelEvent) => {
-      try {
-        e.preventDefault();
-        input.write(Input).wheelTrigger = true;
-        input.write(Input).deltaX = e.deltaX;
-        input.write(Input).deltaY = e.deltaY;
+      this.setInputTrigger(input, 'pointerDownTrigger');
 
-        syncCtrlShiftAltMeta(e);
-
+      if (pointerIds.size === 1) {
         const viewport = api.client2Viewport({
           x: e.clientX,
           y: e.clientY,
@@ -176,10 +140,33 @@ export class EventWriter extends System {
         Object.assign(input.write(Input), {
           pointerClient: [e.clientX, e.clientY],
           pointerViewport: [viewport.x, viewport.y],
+          lastPointerDownTime: currentTime,
         });
-      } catch (error) {
-        console.log('Pointer wheel error', error);
       }
+
+      syncCtrlShiftAltMeta(e);
+    };
+
+    const onPointerCancel = (e: PointerEvent) => {
+      pointerIds.delete(e.pointerId);
+    };
+
+    const onPointerWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      input.write(Input).wheelTrigger = true;
+      input.write(Input).deltaX = e.deltaX;
+      input.write(Input).deltaY = e.deltaY;
+
+      syncCtrlShiftAltMeta(e);
+
+      const viewport = api.client2Viewport({
+        x: e.clientX,
+        y: e.clientY,
+      });
+      Object.assign(input.write(Input), {
+        pointerClient: [e.clientX, e.clientY],
+        pointerViewport: [viewport.x, viewport.y],
+      });
     };
 
     const onKeyDown = (e: KeyboardEvent) => {

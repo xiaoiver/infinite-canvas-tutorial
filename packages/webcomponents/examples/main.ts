@@ -18,8 +18,8 @@ WebFont.load({
   },
 });
 
-// const res = await fetch('/test.svg');
-const res = await fetch('/maslow-hierarchy.svg');
+const res = await fetch('/test.svg');
+// const res = await fetch('/maslow-hierarchy.svg');
 // const res = await fetch('/mindmap.svg');
 // const res = await fetch('/test-camera.svg');
 // const res = await fetch(
@@ -137,7 +137,7 @@ canvas.addEventListener(Event.READY, async (e) => {
   });
 
   api.updateNodes(nodes);
-  api.selectNodes(nodes);
+  // api.selectNodes(nodes);
 
   api.record();
   // });

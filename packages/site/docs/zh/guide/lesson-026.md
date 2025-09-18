@@ -67,16 +67,28 @@ export class RenderTransformer extends System {
 在框选结束（鼠标抬起）时进行最终选择，这里使用了 [课程 8 - 使用空间索引加速] 中介绍的快速拾取方法：
 
 ```ts
-const { x, y, width, height } = selection.brush.read(Rect);
-const minX = Math.min(x, x + width);
-const minY = Math.min(y, y + height);
-const maxX = Math.max(x, x + width);
-const maxY = Math.max(y, y + height);
-const selecteds = api
-    .elementsFromBBox(minX, minY, maxX, maxY) // 使用空间索引
-    .filter((e) => !e.has(UI))
-    .map((e) => api.getNodeByEntity(e));
-api.selectNodes(selecteds);
+if (input.pointerUpTrigger) {
+    if (selection.mode === SelectionMode.BRUSH) {
+        if (selection.brush) {
+            // Hide brush
+            selection.brush.write(Visibility).value = 'hidden';
+        }
+        selection.mode = SelectionMode.IDLE;
+
+        if (selection.brush) {
+            const { x, y, width, height } = selection.brush.read(Rect);
+            const minX = Math.min(x, x + width);
+            const minY = Math.min(y, y + height);
+            const maxX = Math.max(x, x + width);
+            const maxY = Math.max(y, y + height);
+            const selecteds = api
+                .elementsFromBBox(minX, minY, maxX, maxY) // Use space index
+                .filter((e) => !e.has(UI))
+                .map((e) => api.getNodeByEntity(e));
+            api.selectNodes(selecteds); // Finish selection
+        }
+    }
+}
 ```
 
 而在框选过程中，我们也希望实时展示选中情况，此时按 <kbd>Esc</kbd> 可以取消选择。
