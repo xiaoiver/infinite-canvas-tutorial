@@ -116,7 +116,16 @@ if (input.key === 'Escape') {
 
 ## [WIP] 套索工具 {#lasso-selection}
 
-[lasso-tool-figma]
+相较于框选工具，套索工具可以通过不规则的多边形完成更精细的选取。
+
+-   [Feature Request: Lasso Selection (free selection) in Excalidraw]
+-   [lasso-tool-figma]
+
+### 绘制套索 {#draw-lasso}
+
+在 [课程 25 - 铅笔工具] 中我们已经介绍过如何自由绘制折线。
+
+### 多边形的相交性检测 {#polygon-intersection}
 
 [课程 14 - 选择模式]: /zh/guide/lesson-014#select-mode
 [课程 21 - Transformer]: /zh/guide/lesson-021
@@ -125,3 +134,5 @@ if (input.key === 'Escape') {
 [Make selections with the Rectangular Marquee tool]: https://helpx.adobe.com/photoshop/using/tool-techniques/rectangular-marquee-tool.html
 [课程 8 - 使用空间索引加速]: /zh/guide/lesson-008#using-spatial-indexing
 [lasso-tool-figma]: https://github.com/kernel-picnic/lasso-tool-figma
+[Feature Request: Lasso Selection (free selection) in Excalidraw]: https://github.com/excalidraw/excalidraw/issues/6350
+[课程 25 - 铅笔工具]: /zh/guide/lesson-025#pencil-tool

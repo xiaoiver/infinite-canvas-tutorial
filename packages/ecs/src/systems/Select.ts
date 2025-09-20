@@ -47,6 +47,7 @@ import {
   distanceBetweenPoints,
   getCursor,
   SerializedNode,
+  snapToGrid,
 } from '../utils';
 import { API } from '../API';
 import {
@@ -780,14 +781,23 @@ export class Select extends System {
           return;
         }
 
-        const { x: sx, y: sy } = api.viewport2Canvas({
+        let { x: sx, y: sy } = api.viewport2Canvas({
           x: prevX,
           y: prevY,
         });
-        const { x: ex, y: ey } = api.viewport2Canvas({
+        let { x: ex, y: ey } = api.viewport2Canvas({
           x,
           y,
         });
+
+        const { snapToPixelGridEnabled, snapToPixelGridSize } =
+          api.getAppState();
+        if (snapToPixelGridEnabled) {
+          sx = snapToGrid(sx, snapToPixelGridSize);
+          sy = snapToGrid(sy, snapToPixelGridSize);
+          ex = snapToGrid(ex, snapToPixelGridSize);
+          ey = snapToGrid(ey, snapToPixelGridSize);
+        }
 
         if (
           selection.mode === SelectionMode.READY_TO_BRUSH ||

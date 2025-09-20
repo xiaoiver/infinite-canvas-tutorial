@@ -64,6 +64,17 @@ export interface AppState {
    * Allow flip in transformer
    */
   flipEnabled: boolean;
+
+  /**
+   * Allow snap to pixel grid
+   */
+  snapToPixelGridEnabled: boolean;
+  snapToPixelGridSize: number;
+
+  /**
+   * Allow snap to objects
+   */
+  snapToObjectsEnabled: boolean;
 }
 
 export const getDefaultAppState: () => AppState = () => {
@@ -191,6 +202,9 @@ export const getDefaultAppState: () => AppState = () => {
     propertiesOpened: [],
     rotateEnabled: false,
     flipEnabled: false,
+    snapToPixelGridEnabled: false,
+    snapToPixelGridSize: 10,
+    snapToObjectsEnabled: false,
   };
 };
 

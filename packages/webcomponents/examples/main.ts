@@ -125,7 +125,8 @@ canvas.addEventListener(Event.READY, async (e) => {
     },
     // taskbarSelected: [Task.SHOW_LAYERS_PANEL],
     checkboardStyle: CheckboardStyle.GRID,
-
+    snapToPixelGridEnabled: true,
+    snapToPixelGridSize: 10,
     // checkboardStyle: CheckboardStyle.NONE,
     // penbarSelected: Pen.SELECT,
     // topbarVisible: false,
