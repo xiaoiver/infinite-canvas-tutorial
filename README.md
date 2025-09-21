@@ -319,9 +319,9 @@ If you want to use it in your own project, you can refer to:
 
 -   Snap to pixel grid
 
-|                     Snap to pixel grid                      |     |
-| :---------------------------------------------------------: | :-: |
-| ![snap to pixel grid](./screenshots/snap-to-pixel-grid.gif) |     |
+|                Snap to pixel grid                 |     |
+| :-----------------------------------------------: | :-: |
+| ![snap to pixel grid](./screenshots/lesson27.gif) |     |
 
 [infinitecanvas]: https://infinitecanvas.tools/
 [Figma]: https://madebyevan.com/figma/building-a-professional-design-tool-on-the-web/

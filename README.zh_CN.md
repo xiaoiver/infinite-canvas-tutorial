@@ -320,9 +320,9 @@ pnpm run dev
 
 -   网格吸附
 
-|                          网格吸附                           |     |
-| :---------------------------------------------------------: | :-: |
-| ![snap to pixel grid](./screenshots/snap-to-pixel-grid.gif) |     |
+|                     网格吸附                      |     |
+| :-----------------------------------------------: | :-: |
+| ![snap to pixel grid](./screenshots/lesson27.gif) |     |
 
 [infinitecanvas]: https://infinitecanvas.tools/
 [Figma]: https://madebyevan.com/figma/building-a-professional-design-tool-on-the-web/

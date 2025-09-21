@@ -127,6 +127,9 @@ export class InfiniteCanvas extends LitElement {
   shaderCompilerPath =
     'https://unpkg.com/@antv/g-device-api@1.6.8/dist/pkg/glsl_wgsl_compiler_bg.wasm';
 
+  @property()
+  theme: 'dark' | 'light' = 'light';
+
   @property({ type: Object, attribute: 'app-state' })
   appState: AppState;
 
@@ -146,6 +149,10 @@ export class InfiniteCanvas extends LitElement {
       this.handleResize(entries),
     );
     this.updateComplete.then(() => this.resizeObserver.observe(this));
+
+    this.addEventListener('theme-change', (e: CustomEvent) => {
+      this.theme = e.detail.isDark ? 'dark' : 'light';
+    });
   }
 
   disconnectedCallback() {
@@ -216,10 +223,10 @@ export class InfiniteCanvas extends LitElement {
   });
 
   render() {
-    const { theme, topbarVisible } = this.appStateProvider.value;
+    const { topbarVisible } = this.appStateProvider.value;
 
     const themeWrapper = (content: string | TemplateResult) =>
-      html`<sp-theme system="spectrum" color="${theme.mode}" scale="medium"
+      html`<sp-theme system="spectrum" color="${this.theme}" scale="medium"
         >${typeof content === 'string' ? html`${content}` : content}</sp-theme
       >`;
 

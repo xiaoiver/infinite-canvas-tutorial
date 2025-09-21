@@ -12,7 +12,7 @@ import MultiSelection from '../components/MultiSelection.vue'
 
 In [Lesson 14 - Selection Mode] we only implemented simple click-to-select functionality for individual shapes. In this lesson, we will continue to improve the selection tool by adding multi-selection, marquee selection, and lasso functionality.
 
-## Multi-Selection {#multi-selection}
+## Multi-selection {#multi-selection}
 
 Based on individual click selection, holding <kbd>Shift</kbd> allows adding/removing additional shapes to the current selection.
 
@@ -56,7 +56,7 @@ The effect is as follows. The logic for transforming all selected shapes during 
 
 <MultiSelection />
 
-## Marquee Selection {#marquee-selection}
+## Marquee selection {#marquee-selection}
 
 The following image is from [Select layers and objects in Figma]
 
@@ -113,7 +113,7 @@ if (input.key === 'Escape') {
 }
 ```
 
-## [WIP] Lasso Tool {#lasso-selection}
+## [WIP] Lasso selection {#lasso-selection}
 
 [lasso-tool-figma]
 

@@ -124,6 +124,38 @@ export class TopNavbar extends LitElement {
     }
   }
 
+  private handleConfigPreferences(event: CustomEvent) {
+    const selected = (event.target as any).selected;
+    this.api.setAppState({
+      snapToPixelGridEnabled: selected.includes('snapToPixelGrid'),
+      snapToObjectsEnabled: selected.includes('snapToObjects'),
+    });
+  }
+
+  private handleConfigTheme(event: CustomEvent) {
+    const selected = (event.target as any).selected[0];
+    let isDark = false;
+    if (selected === 'system') {
+      isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    } else {
+      isDark = selected === 'dark';
+    }
+
+    this.dispatchEvent(
+      new CustomEvent('theme-change', {
+        detail: {
+          isDark,
+        },
+        bubbles: true,
+        composed: true,
+      }),
+    );
+
+    this.api.setAppState({
+      themeMode: selected,
+    });
+  }
+
   private handleUndo() {
     this.api.undo();
   }
@@ -210,6 +242,43 @@ export class TopNavbar extends LitElement {
                   @change=${this.handleConfigView}
                 >
                   <sp-menu-item value="grid"> Grid </sp-menu-item>
+                </sp-menu>
+              </sp-menu-item>
+              <sp-menu-item>
+                Preferences
+                <sp-menu
+                  slot="submenu"
+                  selects="multiple"
+                  .selected=${[
+                    this.appState.snapToPixelGridEnabled
+                      ? 'snapToPixelGrid'
+                      : undefined,
+                    this.appState.snapToObjectsEnabled
+                      ? 'snapToObjects'
+                      : undefined,
+                  ].filter(Boolean)}
+                  @change=${this.handleConfigPreferences}
+                >
+                  <sp-menu-item value="snapToPixelGrid">
+                    Snap to pixel grid
+                  </sp-menu-item>
+                  <sp-menu-item value="snapToObjects">
+                    Snap to objects
+                  </sp-menu-item>
+                  <sp-menu-divider></sp-menu-divider>
+                  <sp-menu-item>
+                    Theme
+                    <sp-menu
+                      slot="submenu"
+                      selects="single"
+                      .selected=${[this.appState.themeMode]}
+                      @change=${this.handleConfigTheme}
+                    >
+                      <sp-menu-item value="light"> Light </sp-menu-item>
+                      <sp-menu-item value="dark"> Dark </sp-menu-item>
+                      <sp-menu-item value="system"> System </sp-menu-item>
+                    </sp-menu>
+                  </sp-menu-item>
                 </sp-menu>
               </sp-menu-item>
               <sp-menu-divider></sp-menu-divider>

@@ -23,6 +23,7 @@ export enum Task {
  */
 export interface AppState {
   theme: Theme;
+  themeMode: ThemeMode;
   checkboardStyle: CheckboardStyle;
   cameraZoom: number;
   cameraX: number;
@@ -80,6 +81,7 @@ export interface AppState {
 export const getDefaultAppState: () => AppState = () => {
   return {
     // TODO: Flatten theme
+    themeMode: ThemeMode.LIGHT,
     theme: {
       mode: ThemeMode.LIGHT,
       colors: {
