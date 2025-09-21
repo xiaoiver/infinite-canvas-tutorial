@@ -11,6 +11,8 @@ import SnapToPixelGrid from '../../components/SnapToPixelGrid.vue'
 
 # 课程 27 - 吸附与对齐
 
+吸附是一种常见于图形编辑器应用中的功能，其核心思想是在元素移动、绘制或缩放时，自动将其边界或锚点对齐到最近的像素网格线或者其他图形上，本节课我们就来介绍它们的实现。
+
 ## 网格吸附 {#snap-to-pixel-grid}
 
 在 [课程 5 - 绘制网格] 中我们介绍了如何高效绘制直线网格，在一些拖拽交互例如移动和绘制时，吸附到网格的最小单位，能保证图形的位置或者几何信息为整数。这个功能在 Figma 中被称为 “Snap to pixel grid”，在“用户偏好设置”中可以开启。
@@ -24,7 +26,7 @@ export interface AppState {
 }
 ```
 
-实现这一功能，首先需要计算捕捉点的坐标。当用户拖动、缩放、绘制图形时，获取当前的坐标（如 x, y），然后将该坐标四舍五入到最近的整数（像素点）或者指定的 grid 间距：
+实现这一功能，首先需要计算世界坐标系下点的坐标。当用户拖动、缩放、绘制图形时，获取当前的坐标（如 x, y），然后将该坐标四舍五入到最近的整数（像素点）或者指定的 grid 间距：
 
 ```ts
 // Snap to custom grid (e.g. 10px)
@@ -33,7 +35,7 @@ function snapToGrid(value, gridSize = 10) {
 }
 ```
 
-然后在所有需要计算点坐标的 System 里（例如 Select）中，都应用这个处理函数：
+然后在所有需要计算世界坐标系下点的坐标的 System 里（例如 Select、DrawRect）中，都应用这个处理函数：
 
 ```ts
 let { x: sx, y: sy } = api.viewport2Canvas({
@@ -59,7 +61,7 @@ if (snapToPixelGridEnabled) {
 }
 ```
 
-在下面的例子中，我们将 `snapToPixelGridSize` 设置成 10，你可以通过拖拽感受效果：
+在下面的例子中，我们将 `snapToPixelGridSize` 设置成 10，你可以通过拖拽移动、绘制来感受效果：
 
 <SnapToPixelGrid />
 

@@ -8,7 +8,7 @@ publish: false
 import MultiSelection from '../components/MultiSelection.vue'
 </script>
 
-# Lesson 26 - Selection Tools
+# Lesson 26 - Selection tool
 
 In [Lesson 14 - Selection Mode] we only implemented simple click-to-select functionality for individual shapes. In this lesson, we will continue to improve the selection tool by adding multi-selection, marquee selection, and lasso functionality.
 

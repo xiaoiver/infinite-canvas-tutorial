@@ -3,6 +3,7 @@ import {
     App,
     Pen,
     DefaultPlugins,
+    RectSerializedNode,
 } from '@infinite-canvas-tutorial/ecs';
 import { ref, onMounted, onUnmounted } from 'vue';
 import { Event, UIPlugin } from '@infinite-canvas-tutorial/webcomponents';
@@ -27,6 +28,23 @@ onMounted(async () => {
             snapToPixelGridEnabled: true,
             snapToPixelGridSize: 10,
         });
+
+        const node: RectSerializedNode = {
+            id: 'snap-to-pixel-grid-1',
+            type: 'rect',
+            x: 200,
+            y: 100,
+            width: 200,
+            height: 100,
+            fill: '#e0f2ff',
+            fillOpacity: 0.5,
+            stroke: '#147af3',
+            strokeWidth: 1,
+        };
+
+        api.updateNode(node);
+        api.selectNodes([node]);
+        api.record();
     };
 
     canvas.addEventListener(Event.READY, onReady);

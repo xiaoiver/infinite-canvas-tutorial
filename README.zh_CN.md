@@ -316,6 +316,14 @@ pnpm run dev
 -   拖拽框选
 -   套索工具
 
+## 课程 27 - 吸附与对齐 [🔗](https://infinitecanvas.cc/zh/guide/lesson-027)
+
+-   网格吸附
+
+|                          网格吸附                           |     |
+| :---------------------------------------------------------: | :-: |
+| ![snap to pixel grid](./screenshots/snap-to-pixel-grid.gif) |     |
+
 [infinitecanvas]: https://infinitecanvas.tools/
 [Figma]: https://madebyevan.com/figma/building-a-professional-design-tool-on-the-web/
 [Modyfi]: https://digest.browsertech.com/archive/browsertech-digest-how-modyfi-is-building-with/

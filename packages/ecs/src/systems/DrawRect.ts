@@ -48,6 +48,7 @@ import {
   StrokeAttributes,
   TextSerializedNode,
   distanceBetweenPoints,
+  snapToGrid,
 } from '../utils';
 import { DRAW_RECT_Z_INDEX } from '../context';
 
@@ -397,13 +398,21 @@ export class DrawRect extends System {
         // api.getEntity(text).add(UI, { type: UIType.LABEL });
       }
 
-      const { x: cx, y: cy } = api.viewport2Canvas({
+      let { x: cx, y: cy } = api.viewport2Canvas({
         x: viewportX,
         y: viewportY,
       });
-
       let x = pointerDownCanvasX;
       let y = pointerDownCanvasY;
+
+      const { snapToPixelGridEnabled, snapToPixelGridSize } = api.getAppState();
+      if (snapToPixelGridEnabled) {
+        x = snapToGrid(x, snapToPixelGridSize);
+        y = snapToGrid(y, snapToPixelGridSize);
+        cx = snapToGrid(cx, snapToPixelGridSize);
+        cy = snapToGrid(cy, snapToPixelGridSize);
+      }
+
       let width = cx - x;
       let height = cy - y;
 
