@@ -294,6 +294,10 @@ Finally, when writing component styles, use CSS variables instead of fixed value
 }
 ```
 
+In the follow-up [Lesson 18 - Refactor with ECS], we replaced the Web Components implementation from Shoelace to Spectrum, which also provides a light/dark theme toggle feature:
+
+![Dark theme after lesson 18](/spectrum-theme-dark.png)
+
 ### Canvas background and grid {#theme-in-canvas}
 
 The background and [Grid] of the canvas also need to be associated with the theme color. Reference [Theme colors in DGM.js], we support passing in the color values for the light and dark themes when creating the canvas:
@@ -328,6 +332,7 @@ We won't go into the details of the UI implementation later.
 ## Extended reading {#extended-reading}
 
 -   [Discussion about Lit on HN]
+-   [Change themes in Figma]
 
 [Shoelace]: https://shoelace.style/
 [VitePress]: https://vitepress.dev/
@@ -349,3 +354,5 @@ We won't go into the details of the UI implementation later.
 [Grid]: /guide/lesson-005
 [Theme colors in DGM.js]: https://dgmjs.dev/api-core/variables/themecolors
 [Discussion about Lit on HN]: https://news.ycombinator.com/item?id=45112720
+[Lesson 18 - Refactor with ECS]: /guide/lesson-018
+[Change themes in Figma]: https://help.figma.com/hc/en-us/articles/5576781786647-Change-themes-in-Figma

@@ -294,9 +294,13 @@ this.classList.toggle('sl-theme-dark', this.theme === 'dark');
 }
 ```
 
+后续 [课程 18 - 使用 ECS 重构]，我们把 Web Components 的实现从 Shoelace 更换为了 Spectrum，后者也提供了明暗主题切换功能：
+
+![课程 18 之后我们实现的暗色主题](/spectrum-theme-dark.png)
+
 ### 画布组件 {#theme-in-canvas}
 
-画布的背景和 [Grid] 也需要关联上主题颜色。参考 [Theme colors in DGM.js]，我们支持在创建画布时传入明暗主题的颜色值：
+画布的背景和 [Grid] 也可以关联上主题颜色。参考 [Theme colors in DGM.js]，我们支持在创建画布时传入明暗主题的颜色值：
 
 ```ts
 enum Theme {
@@ -328,6 +332,7 @@ canvas.theme = Theme.DARK;
 ## 扩展阅读 {#extended-reading}
 
 -   [Discussion about Lit on HN]
+-   [Change themes in Figma]
 
 [Shoelace]: https://shoelace.style/
 [VitePress]: https://vitepress.dev/
@@ -349,3 +354,5 @@ canvas.theme = Theme.DARK;
 [Grid]: /zh/guide/lesson-005
 [Theme colors in DGM.js]: https://dgmjs.dev/api-core/variables/themecolors
 [Discussion about Lit on HN]: https://news.ycombinator.com/item?id=45112720
+[课程 18 - 使用 ECS 重构]: /zh/guide/lesson-018
+[Change themes in Figma]: https://help.figma.com/hc/en-us/articles/5576781786647-Change-themes-in-Figma

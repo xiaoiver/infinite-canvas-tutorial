@@ -989,6 +989,17 @@ export class API {
     return bounds;
   }
 
+  getGeometryBounds(nodes: SerializedNode[]) {
+    const bounds = new AABB();
+    nodes.forEach((node) => {
+      const entity = this.#idEntityMap.get(node.id)?.id();
+      if (entity && entity.has(ComputedBounds)) {
+        bounds.addBounds(entity.read(ComputedBounds).geometryWorldBounds);
+      }
+    });
+    return bounds;
+  }
+
   deleteNodesById(ids: SerializedNode['id'][]) {
     const nodes = this.getNodes();
     const deletedNodes: SerializedNode[] = [];

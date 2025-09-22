@@ -19,6 +19,8 @@ import SnapToPixelGrid from '../../components/SnapToPixelGrid.vue'
 
 ![source: [Snap to grid in Excalidraw] ](https://user-images.githubusercontent.com/490574/85198268-4ff5f300-b322-11ea-897e-602ef5936995.gif)
 
+我们在应用状态中增加两个配置项：
+
 ```ts
 export interface AppState {
     snapToPixelGridEnabled: boolean; // [!code ++]
@@ -69,14 +71,52 @@ if (snapToPixelGridEnabled) {
 
 Excalidraw 中的 snapping 功能实现分为以下几个关键步骤：
 
--   检查当前操作是否允许吸附（isSnappingEnabled）
--   计算所有可吸附的点和间隙（getPointSnaps/getGapSnaps）
--   拖拽/缩放时实时计算吸附偏移和辅助线（snapDraggedElements/snapResizingElements）
--   把 snapLines 传递到 UI 层，canvas 上渲染辅助线（renderSnaps.ts）
+-   [isSnappingEnabled] 检查当前操作是否允许吸附
+-   [getPointSnaps] 计算所有可吸附的点和间隙
+-   [snapDraggedElements] / [snapResizingElements] 拖拽/缩放时实时计算吸附偏移和辅助线
+-   [renderSnaps] 把 snapLines 传递到 UI 层，canvas 上渲染辅助线
 
 下面我们参考以上步骤来实现。
 
 ### 检查是否允许吸附 {#is-snapping-enabled}
+
+我们在应用状态中增加以下配置项：
+
+```ts
+export interface AppState {
+    snapToObjectsEnabled: boolean; // [!code ++]
+}
+```
+
+### 计算可吸附点 {#get-point-snaps}
+
+可吸附点分成两类：被选中的图形与其他图形。对于选中的一个或多个图形，常用的可吸附点包括包围盒的四个角和中心：
+
+```ts
+const { minX, minY, maxX, maxY } = api.getBounds(
+    selected.map((id) => api.getNodeById(id)),
+);
+const boundsWidth = maxX - minX;
+const boundsHeight = maxY - minY;
+const selectionSnapPoints = [
+    new Point(minX, minY), // 4 corners
+    new Point(maxX, minY),
+    new Point(minX, maxY),
+    new Point(maxX, maxY),
+    new Point(minX + boundsWidth / 2, minY + boundsHeight / 2), // center
+];
+```
+
+考虑性能，我们应该尽量减少被选中图形吸附点与其他所有图形吸附点的检测次数。类似问题我们在 [课程 8 - 使用空间索引加速] 中已经介绍过了，只检索视口范围内的图形即可。
+
+```ts
+const unculled = api
+    .getNodes()
+    .map((node) => api.getEntity(node))
+    .filter((entity) => !entity.has(Culled));
+```
+
+### 渲染辅助线 {#render-snap-lines}
 
 ## 扩展阅读 {#extended-reading}
 
@@ -85,4 +125,11 @@ Excalidraw 中的 snapping 功能实现分为以下几个关键步骤：
 
 [课程 5 - 绘制网格]: /zh/guide/lesson-005
 [How to snap shapes positions on dragging with Konva?]: https://konvajs.org/docs/sandbox/Objects_Snapping.html
+[Snap to grid in Excalidraw]: https://github.com/excalidraw/excalidraw/issues/521
 [Custom snapping in tldraw]: https://tldraw.dev/examples/bounds-snapping-shape
+[isSnappingEnabled]: https://github.com/excalidraw/excalidraw/blob/master/packages/excalidraw/snapping.ts#L162C14-L162C31
+[getPointSnaps]: https://github.com/excalidraw/excalidraw/blob/master/packages/excalidraw/snapping.ts#L636
+[snapDraggedElements]: https://github.com/excalidraw/excalidraw/blob/master/packages/excalidraw/snapping.ts#L692
+[snapResizingElements]: https://github.com/excalidraw/excalidraw/blob/master/packages/excalidraw/snapping.ts#L1108C14-L1108C34
+[renderSnaps]: https://github.com/excalidraw/excalidraw/blob/master/packages/excalidraw/renderer/renderSnaps.ts
+[课程 8 - 使用空间索引加速]: /zh/guide/lesson-008#using-spatial-indexing

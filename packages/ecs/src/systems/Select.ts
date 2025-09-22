@@ -40,6 +40,7 @@ import {
   ComputedCameraControl,
   ComputedPoints,
   DropShadow,
+  Culled,
 } from '../components';
 import { Commands } from '../commands/Commands';
 import {
@@ -47,6 +48,7 @@ import {
   distanceBetweenPoints,
   getCursor,
   SerializedNode,
+  snapDraggedElements,
   snapToGrid,
 } from '../utils';
 import { API } from '../API';
@@ -115,7 +117,7 @@ export class Select extends System {
     this.query(
       (q) =>
         q
-          .using(ComputedCameraControl)
+          .using(ComputedCameraControl, Culled)
           .read.update.and.using(
             Canvas,
             GlobalTransform,
@@ -809,6 +811,8 @@ export class Select extends System {
           cursor.value = 'grabbing';
 
           this.handleSelectedMoving(api, sx, sy, ex, ey);
+
+          snapDraggedElements([ex - sx, ey - sy], api);
         } else if (selection.mode === SelectionMode.RESIZE) {
           this.handleSelectedResizing(
             api,

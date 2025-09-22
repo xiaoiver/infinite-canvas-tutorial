@@ -12,6 +12,7 @@ export class LayerName extends LitElement {
     :host {
       display: flex;
       align-items: center;
+      color: canvastext;
     }
 
     sp-textfield {

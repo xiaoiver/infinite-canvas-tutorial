@@ -31,6 +31,7 @@ export class PropertiesPanel extends LitElement {
       align-items: center;
       justify-content: space-between;
       margin: 0;
+      color: canvastext;
     }
 
     .container {
