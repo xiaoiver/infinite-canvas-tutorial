@@ -7,6 +7,7 @@ export enum UIType {
   HIGHLIGHTER = 'highlighter',
   BRUSH = 'brush',
   LABEL = 'label',
+  SNAP_POINT = 'snap-point',
 }
 
 /**
@@ -22,6 +23,7 @@ export class UI {
       UIType.HIGHLIGHTER,
       UIType.BRUSH,
       UIType.LABEL,
+      UIType.SNAP_POINT,
     ]),
     default: UIType.UNKNOWN,
   })

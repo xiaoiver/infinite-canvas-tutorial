@@ -41,6 +41,9 @@ import {
   ComputedPoints,
   DropShadow,
   Culled,
+  SnapPoint,
+  Snap,
+  ToBeDeleted,
 } from '../components';
 import { Commands } from '../commands/Commands';
 import {
@@ -55,11 +58,13 @@ import { API } from '../API';
 import {
   getOBB,
   hitTest,
+  TRANSFORMER_ANCHOR_FILL_COLOR,
   TRANSFORMER_ANCHOR_STROKE_COLOR,
   TRANSFORMER_MASK_FILL_COLOR,
 } from './RenderTransformer';
 import { updateGlobalTransform } from './Transform';
 import { safeAddComponent, safeRemoveComponent } from '../history';
+import { HIGHLIGHTER_Z_INDEX } from '../context';
 
 export enum SelectionMode {
   IDLE = 'IDLE',
@@ -149,6 +154,9 @@ export class Select extends System {
             ComputedBounds,
             ComputedPoints,
             DropShadow,
+            Snap,
+            SnapPoint,
+            ToBeDeleted,
           ).write,
     );
     this.query((q) => q.using(ComputedCamera, FractionalIndex, RBush).read);
@@ -178,6 +186,14 @@ export class Select extends System {
   ) {
     const camera = api.getCamera();
     camera.write(Transformable).status = TransformableStatus.MOVING;
+
+    const { snapOffset, snapLines } = snapDraggedElements(api, [
+      ex - sx,
+      ey - sy,
+    ]);
+    // console.log('snapLines', snapLines);
+
+    // this.createSnapPoints(camera, snapLines);
 
     const { selecteds, mask } = camera.read(Transformable);
     selecteds.forEach((selected) => {
@@ -265,6 +281,13 @@ export class Select extends System {
     const camera = api.getCamera();
     const { resizingAnchorName, obb, cos, sin } = selection;
     const { rotation, scaleX, scaleY } = obb;
+
+    // Use the lock aspect ratio of the selected node if there is only one
+    const { layersSelected } = api.getAppState();
+    if (layersSelected.length === 1) {
+      const node = api.getNodeById(layersSelected[0]);
+      lockAspectRatio = node.lockAspectRatio ?? lockAspectRatio;
+    }
 
     camera.write(Transformable).status = TransformableStatus.RESIZING;
 
@@ -410,6 +433,30 @@ export class Select extends System {
       tlAnchor.write(Circle).cx = x;
     } else if (anchorName === AnchorName.MIDDLE_RIGHT) {
       brAnchor.write(Circle).cx = x;
+    }
+
+    if (lockAspectRatio) {
+      if (
+        anchorName === AnchorName.MIDDLE_LEFT ||
+        anchorName === AnchorName.MIDDLE_RIGHT
+      ) {
+        const newWidth = brAnchor.read(Circle).cx - tlAnchor.read(Circle).cx;
+        const tan = sin / cos;
+        const newHeight = newWidth * tan;
+        const deltaY = newHeight - (prevBrAnchorY - prevTlAnchorY);
+        brAnchor.write(Circle).cy = brAnchor.read(Circle).cy + deltaY / 2;
+        tlAnchor.write(Circle).cy = tlAnchor.read(Circle).cy - deltaY / 2;
+      } else if (
+        anchorName === AnchorName.TOP_CENTER ||
+        anchorName === AnchorName.BOTTOM_CENTER
+      ) {
+        const newHeight = brAnchor.read(Circle).cy - tlAnchor.read(Circle).cy;
+        const tan = sin / cos;
+        const newWidth = newHeight / tan;
+        const deltaX = newWidth - (prevBrAnchorX - prevTlAnchorX);
+        brAnchor.write(Circle).cx = brAnchor.read(Circle).cx + deltaX / 2;
+        tlAnchor.write(Circle).cx = tlAnchor.read(Circle).cx - deltaX / 2;
+      }
     }
 
     if (centeredScaling) {
@@ -811,8 +858,6 @@ export class Select extends System {
           cursor.value = 'grabbing';
 
           this.handleSelectedMoving(api, sx, sy, ex, ey);
-
-          snapDraggedElements([ex - sx, ey - sy], api);
         } else if (selection.mode === SelectionMode.RESIZE) {
           this.handleSelectedResizing(
             api,
@@ -1006,9 +1051,36 @@ export class Select extends System {
         scaleY: oldAttrs.scaleY * (Math.sign(height) || 1),
       };
 
-      api.updateNodeOBB(node, obb, false, newLocalTransform, oldNode);
+      api.updateNodeOBB(
+        node,
+        obb,
+        node.lockAspectRatio,
+        newLocalTransform,
+        oldNode,
+      );
       selection.obb.scaleX = obb.scaleX;
       selection.obb.scaleY = obb.scaleY;
+    });
+  }
+
+  private createSnapPoints(
+    camera: Entity,
+    snapLines: { type: string; points: [number, number][] }[],
+  ) {
+    safeAddComponent(camera, Snap);
+    camera.read(Snap).points.forEach((point) => {
+      point.add(ToBeDeleted);
+      point.remove(SnapPoint);
+    });
+
+    snapLines.forEach(({ type, points }) => {
+      if (type === 'points') {
+        const snapPoint = this.commands.spawn(new SnapPoint()).id().hold();
+        this.commands.execute();
+        snapPoint.write(SnapPoint).camera = camera;
+        snapPoint.write(SnapPoint).points = points;
+        this.commands.execute();
+      }
     });
   }
 }

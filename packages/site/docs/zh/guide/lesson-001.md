@@ -74,7 +74,7 @@ renderer = Inputs.select(['webgl', 'webgpu'], { label: 'renderer' });
 -   每个 `<canvas>` 创建的上下文数目不再有限制。
 -   开发体验提升。包括更友好的错误信息以及为 GPU 对象添加自定义标签。
 
-目前 WebGPU 的生态已经延伸到了 JavaScript、C++ 和 Rust 中，很多 Web 端渲染引擎（例如 Three.js、Babylon.js）都正在或者已完成了对它的接入。这里特别提及 [wgpu]，除了游戏引擎 [bevy]，像 [Modyfi] 这样的 Web 端创意类设计工具也已经将其用于生产环境，并有着非常好的表现。下图来自：[WebGPU Ecosystem]
+目前 WebGPU 的生态已经延伸到了 JavaScript、C++ 和 Rust 中，很多 Web 端渲染引擎（例如 Three.js、Babylon.js）都正在或者已完成了对它的接入。这里特别提及 [wgpu]，除了游戏引擎 [bevy]，像 [Figma]、[Modyfi] 这样的 Web 端创意类设计工具也已经将其用于生产环境，并有着非常好的表现。下图来自：[WebGPU Ecosystem]
 
 ![WebGPU ecosystem in 2023](https://developer.chrome.com/static/blog/webgpu-ecosystem/image/diagram-the-webgpu-ecosy-384594168a61_1920.png)
 
@@ -107,6 +107,10 @@ fn main(@location(0) a_Position: vec4<f32>) -> VertexOutput {
     a_Position_1 = a_Position;
 }
 ```
+
+最近我读到了这篇文章：[Figma rendering: Powered by WebGPU]，发现 Figma 也采用了类似的实现方案完成 WebGPU 的升级：
+
+> We maintain our existing GLSL shaders, written in WebGL 1–compliant format. The shader processor then automatically handles translating them to WGSL. This involves parsing the shaders, making the necessary translations to convert them to a newer version of GLSL, then running the open-source tool naga to convert them to WGSL.
 
 好了，关于硬件抽象层部分已经介绍地够多了，如果对其中的实现细节感兴趣可以直接参考 [@antv/g-device-api] 源码。在本节课最后一小节中我们会使用到其中的部分 API。
 
@@ -525,3 +529,4 @@ const canvas = await new Canvas({
 [Extensions in Tiptap]: https://tiptap.dev/docs/editor/core-concepts/extensions#what-are-extensions
 [Basic draw loop]: https://skia.org/docs/user/modules/quickstart/#basic-draw-loop
 [Three.js Shading Language]: https://github.com/mrdoob/three.js/wiki/Three.js-Shading-Language
+[Figma rendering: Powered by WebGPU]: https://www.figma.com/blog/figma-rendering-powered-by-webgpu/

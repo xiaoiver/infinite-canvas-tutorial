@@ -21,5 +21,6 @@ export * from './ComputeZIndex';
 export * from './Deleter';
 export * from './RenderTransformer';
 export * from './RenderHighlighter';
+export * from './RenderSnap';
 export * from './DrawRect';
 export * from './DrawPencil';

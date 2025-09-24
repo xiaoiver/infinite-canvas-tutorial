@@ -19,3 +19,4 @@ export * from './GeometryDirty';
 export * from './MaterialDirty';
 export * from './TextDecoration';
 export * from './Marker';
+export * from './LockAspectRatio';

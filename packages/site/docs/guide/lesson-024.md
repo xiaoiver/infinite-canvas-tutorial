@@ -234,6 +234,7 @@ async function createImage(api: ExtendedAPI, appState: AppState, file: File) {
             width,
             height,
             fill: dataURL,
+            lockAspectRatio: true,
         },
     ]);
 }

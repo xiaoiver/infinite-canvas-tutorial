@@ -56,6 +56,11 @@ export interface BaseSerializeNode<Type extends string>
   isDeleted?: boolean;
 
   updated?: number;
+
+  /**
+   * Lock aspect ratio like image.
+   */
+  lockAspectRatio?: boolean;
 }
 
 export interface ZIndexAttributes {

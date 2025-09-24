@@ -116,6 +116,55 @@ const unculled = api
     .filter((entity) => !entity.has(Culled));
 ```
 
+### 计算间隙 {#get-gap-snaps}
+
+画布中除了当前被选中的图形，其他图形两两又肯恩形成一组间隙，Excalidraw 代码中的图很形象，以 `horizontalGap` 为例：
+
+```ts
+// https://github.com/excalidraw/excalidraw/blob/f55ecb96cc8db9a2417d48cd8077833c3822d64e/packages/excalidraw/snapping.ts#L65C1-L81C3
+export type Gap = {
+    //  start side ↓     length
+    // ┌───────────┐◄───────────────►
+    // │           │-----------------┌───────────┐
+    // │  start    │       ↑         │           │
+    // │  element  │    overlap      │  end      │
+    // │           │       ↓         │  element  │
+    // └───────────┘-----------------│           │
+    //                               └───────────┘
+    //                               ↑ end side
+    startBounds: Bounds;
+    endBounds: Bounds;
+    startSide: [GlobalPoint, GlobalPoint];
+    endSide: [GlobalPoint, GlobalPoint];
+    overlap: InclusiveRange;
+    length: number;
+};
+```
+
+如果被选中图形的包围盒与 Gap 没有重叠，则跳过检测。
+
+```ts
+for (const gap of horizontalGaps) {
+    if (!rangesOverlap([minY, maxY], gap.overlap)) {
+        continue;
+    }
+}
+```
+
+依次检测中心点、右侧和左侧边缘：
+
+```ts
+// center
+if (gapIsLargerThanSelection && Math.abs(centerOffset) <= minOffset[0]) {
+}
+// side right
+if (Math.abs(sideOffsetRight) <= minOffset[0]) {
+}
+// side left
+if (Math.abs(sideOffsetLeft) <= minOffset[0]) {
+}
+```
+
 ### 渲染辅助线 {#render-snap-lines}
 
 ## 扩展阅读 {#extended-reading}

@@ -17,6 +17,7 @@ import {
   ComputeVisibility,
   DrawPencil,
   MeshPipeline,
+  RenderSnap,
 } from '../systems';
 import {
   Highlighted,
@@ -25,6 +26,8 @@ import {
   Transformable,
   UI,
   VectorNetwork,
+  SnapPoint,
+  Snap,
 } from '../components';
 
 export const PenPlugin: Plugin = () => {
@@ -33,6 +36,8 @@ export const PenPlugin: Plugin = () => {
   component(Highlighted);
   component(Transformable);
   component(Anchor);
+  component(SnapPoint);
+  component(Snap);
   component(VectorNetwork);
 
   system((s) =>
@@ -61,4 +66,10 @@ export const PenPlugin: Plugin = () => {
       .inAnyOrderWith(RenderTransformer)
       .before(Last, MeshPipeline),
   )(RenderHighlighter);
+  system((s) =>
+    s
+      .afterWritersOf(SnapPoint)
+      .inAnyOrderWith(RenderHighlighter, RenderTransformer)
+      .before(Last, MeshPipeline, DrawRect),
+  )(RenderSnap);
 };

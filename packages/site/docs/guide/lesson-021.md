@@ -18,7 +18,7 @@ We also chose to use the name Transformer, which looks very similar to the shape
 
 ## Serializing Transform Matrix and Dimension Information {#serialize-transform-dimension}
 
-In Figma, the local transform matrix and dimension information for shapes are as follows. We know that for 2D shapes, the mat3 transform matrix can be decomposed into translation, scale, and rotation parts. Among them, X/Y corresponds to translation, and scale will be introduced in the [flip](#flip) section.
+In Figma, the local transform matrix and dimension information for shapes are as follows. We know that for 2D shapes, the mat3 transform matrix can be decomposed into translation, scale, and rotation parts. Among them, X/Y corresponds to translation, and scale will be introduced in the [flip](#flip) section. [fig-file-parser]
 
 ![source: https://help.figma.com/hc/en-us/articles/360039956914-Adjust-alignment-rotation-position-and-dimensions](https://help.figma.com/hc/article_attachments/29799649003671)
 
@@ -390,6 +390,33 @@ if (lockAspectRatio) {
 }
 ```
 
+It's worth noting that Konva.js does not support dragging all four edges while preserving the aspect ratio. In such cases, you need to disable these four anchor points. For details, see: [Is there a way to keep the image aspect ratio on transform?].
+
+However, we can easily achieve this. Taking dragging the right edge anchor point as an example:
+
+1. First, set the X coordinate of the bottom-right anchor point
+2. Since the X coordinate of the top-left anchor point remains unchanged, the transformed width can be calculated
+3. With the aspect ratio locked, the transformed height is also determined, allowing calculation of the transformed height
+4. Based on the height difference before and after transformation, set the Y coordinates of the top-left and bottom-right anchor points
+
+```ts
+if (anchorName === AnchorName.MIDDLE_RIGHT) {
+    // 1.
+    brAnchor.write(Circle).cx = x;
+
+    if (lockAspectRatio) {
+        // 2.
+        const newWidth = brAnchor.read(Circle).cx - tlAnchor.read(Circle).cx;
+        const tan = sin / cos;
+        const newHeight = newWidth * tan; // 3.
+        const deltaY = newHeight - (prevBrAnchorY - prevTlAnchorY);
+        // 4.
+        brAnchor.write(Circle).cy = brAnchor.read(Circle).cy + deltaY / 2;
+        tlAnchor.write(Circle).cy = tlAnchor.read(Circle).cy - deltaY / 2;
+    }
+}
+```
+
 During dragging, we can show the diagonal line in real-time to give users a clear hint (usually a dashed line).
 
 ### Centered Scaling {#centered-scaling}
@@ -421,7 +448,7 @@ if (centeredScaling) {
 }
 ```
 
-### Flip {#flip}
+### [WIP] Flip {#flip}
 
 When dragging an anchor point or edge to the opposite direction, flipping occurs. The following is the effect in Figma, note the change in Rotation:
 
@@ -431,7 +458,7 @@ We use a gradient background to show this flipping effect more clearly:
 
 ![Flip a rect with gradient fill](/rotate-when-flipped.png)
 
-## Rotation {#rotation}
+## [WIP] Rotation {#rotation}
 
 Figma
 
@@ -479,3 +506,5 @@ if (e.key === 'ArrowUp') {
 [Gist - point to line 2d]: https://gist.github.com/mattdesl/47412d930dcd8cd765c871a65532ffac
 [Lesson 6 - Coordinate System Conversion]: /guide/lesson-006#coordinates
 [SerializedNode]: /guide/lesson-010#shape-to-serialized-node
+[fig-file-parser]: https://madebyevan.com/figma/fig-file-parser
+[Is there a way to keep the image aspect ratio on transform?]: https://github.com/konvajs/react-konva/issues/407

@@ -39,6 +39,7 @@ import {
   InnerShadow,
   DropShadow,
   Line,
+  LockAspectRatio,
 } from '../../components';
 import { serializePoints } from './points';
 
@@ -255,6 +256,10 @@ export function entityToSerializedNodes(
   // serialize visibility
   if (entity.has(Visibility)) {
     attributes.visibility = entity.read(Visibility).value;
+  }
+
+  if (entity.has(LockAspectRatio)) {
+    attributes.lockAspectRatio = true;
   }
 
   if (entity.has(FractionalIndex)) {

@@ -116,6 +116,7 @@ export async function createImage(
       width,
       height,
       fill: dataURL,
+      lockAspectRatio: true,
     },
   ]);
 }

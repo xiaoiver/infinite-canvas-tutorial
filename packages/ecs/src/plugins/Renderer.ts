@@ -58,6 +58,7 @@ import {
   Brush,
   Marker,
   Line,
+  LockAspectRatio,
 } from '../components';
 
 export const RendererPlugin: Plugin = () => {
@@ -67,6 +68,7 @@ export const RendererPlugin: Plugin = () => {
   component(GPUResource);
   component(Renderable);
   component(Name);
+  component(LockAspectRatio);
   component(Wireframe);
   component(GlobalRenderOrder);
   component(Visibility);

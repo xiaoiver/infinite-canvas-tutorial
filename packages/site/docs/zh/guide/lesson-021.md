@@ -344,7 +344,7 @@ const delta = mat3.multiply(newTr, newTr, mat3.invert(mat3.create(), oldTr));
 
 ### 锁定长宽比 {#lock-aspect-ratio}
 
-仍然以拖拽左上角锚点为例，锁定长宽比时就不能直接设置它的位置，需要在固定住右下角锚点位置不变的情况下，根据拖拽开始时图形的长宽比重新计算左上角锚点的位置。
+不同于其他图形，对于图片我们常常希望能锁定长宽比。仍然以拖拽左上角锚点为例，锁定长宽比时就不能直接设置它的位置，需要在固定住右下角锚点位置不变的情况下，根据拖拽开始时图形的长宽比重新计算左上角锚点的位置。
 
 首先记录拖拽锚点开始时选中图形的 OBB 和长宽比，等价于对角线的斜率：
 
@@ -388,7 +388,34 @@ if (lockAspectRatio) {
 }
 ```
 
-在拖拽过程中可以实时展示出对角线，给用户明显的提示（一般是虚线）。
+值得一提的是在 Konva.js 中，并不支持拖拽四条边保持长宽比，此时需要禁止掉这四个锚点，详见：[Is there a way to keep the image aspect ratio on transform?]。
+
+但我们可以很轻松地实现，以拖拽右侧边的锚点为例：
+
+1. 先设置右下锚点的 X 坐标
+2. 由于左侧锚点的 X 坐标不变，这样可以计算出变换后的宽度
+3. 由于长宽比被锁定，变换后的高度也就确定了，这样可以计算出变换后的高度
+4. 根据变换前后的高度差，设置左上和右下锚点的 Y 坐标
+
+```ts
+if (anchorName === AnchorName.MIDDLE_RIGHT) {
+    // 1.
+    brAnchor.write(Circle).cx = x;
+
+    if (lockAspectRatio) {
+        // 2.
+        const newWidth = brAnchor.read(Circle).cx - tlAnchor.read(Circle).cx;
+        const tan = sin / cos;
+        const newHeight = newWidth * tan; // 3.
+        const deltaY = newHeight - (prevBrAnchorY - prevTlAnchorY);
+        // 4.
+        brAnchor.write(Circle).cy = brAnchor.read(Circle).cy + deltaY / 2;
+        tlAnchor.write(Circle).cy = tlAnchor.read(Circle).cy - deltaY / 2;
+    }
+}
+```
+
+最后，在拖拽过程中可以实时展示出对角线，给用户明显的提示（一般是虚线）。
 
 ### 中心缩放 {#centered-scaling}
 
@@ -419,7 +446,7 @@ if (centeredScaling) {
 }
 ```
 
-### 翻转 {#flip}
+### [WIP] 翻转 {#flip}
 
 当拖拽锚点或者边到反方向时，会出现翻转现象，下图为 Figma 中的效果，注意 Rotation 的变化：
 
@@ -429,7 +456,7 @@ if (centeredScaling) {
 
 ![Flip a rect with gradient fill](/rotate-when-flipped.png)
 
-## 旋转 {#rotation}
+## [WIP] 旋转 {#rotation}
 
 Figma
 
@@ -478,3 +505,4 @@ if (e.key === 'ArrowUp') {
 [课程 6 - 坐标系转换]: /zh/guide/lesson-006#coordinates
 [SerializedNode]: /zh/guide/lesson-010#shape-to-serialized-node
 [fig-file-parser]: https://madebyevan.com/figma/fig-file-parser
+[Is there a way to keep the image aspect ratio on transform?]: https://github.com/konvajs/react-konva/issues/407

@@ -111,6 +111,10 @@ fn main(@location(0) a_Position: vec4<f32>) -> VertexOutput {
 }
 ```
 
+Recently I came across this article: [Figma rendering: Powered by WebGPU], and discovered that Figma has also adopted a similar implementation approach to complete its WebGPU upgrade:
+
+> We maintain our existing GLSL shaders, written in WebGL 1–compliant format. The shader processor then automatically handles translating them to WGSL. This involves parsing the shaders, making the necessary translations to convert them to a newer version of GLSL, then running the open-source tool naga to convert them to WGSL.
+
 Well, enough about the hardware abstraction layer, if you are interested in the implementation details you can directly refer to the [@antv/g-device-api] source code. We will use some of this API in the last subsection of this lesson.
 
 ## Design the canvas API
@@ -528,3 +532,4 @@ More on the plug-in design pattern:
 [Extensions in Tiptap]: https://tiptap.dev/docs/editor/core-concepts/extensions#what-are-extensions
 [Basic draw loop]: https://skia.org/docs/user/modules/quickstart/#basic-draw-loop
 [Three.js Shading Language]: https://github.com/mrdoob/three.js/wiki/Three.js-Shading-Language
+[Figma rendering: Powered by WebGPU]: https://www.figma.com/blog/figma-rendering-powered-by-webgpu/

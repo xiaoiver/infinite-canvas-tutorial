@@ -32,6 +32,7 @@ import {
   Marker,
   InnerShadow,
   Line,
+  LockAspectRatio,
 } from '../../components';
 import {
   AttenuationAttributes,
@@ -494,6 +495,11 @@ export function serializedNodesToEntities(
 
     const { name } = attributes as NameAttributes;
     entity.insert(new Name(name));
+
+    const { lockAspectRatio } = attributes;
+    if (lockAspectRatio) {
+      entity.insert(new LockAspectRatio());
+    }
 
     const { zIndex } = attributes;
     entity.insert(new ZIndex(zIndex));

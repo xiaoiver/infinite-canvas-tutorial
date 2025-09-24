@@ -39,6 +39,7 @@ import {
   Marker,
   InnerShadow,
   Line,
+  LockAspectRatio,
 } from '../components';
 
 export type SceneElementsMap = Map<SerializedNode['id'], SerializedNode>;
@@ -625,10 +626,18 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
     y1,
     x2,
     y2,
+    lockAspectRatio,
   } = updates as unknown as SerializedNodeAttributes;
 
   if (!isNil(name)) {
     entity.write(Name).value = name;
+  }
+  if (!isNil(lockAspectRatio)) {
+    if (lockAspectRatio) {
+      safeAddComponent(entity, LockAspectRatio);
+    } else {
+      safeRemoveComponent(entity, LockAspectRatio);
+    }
   }
   if (!isNil(zIndex)) {
     entity.write(ZIndex).value = zIndex;
