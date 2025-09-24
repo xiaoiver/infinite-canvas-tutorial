@@ -34,6 +34,7 @@ import {
   TextDecoration,
   Marker,
   Line,
+  LockAspectRatio,
 } from '../components';
 import { DOMAdapter } from '../environment';
 import {
@@ -108,6 +109,7 @@ export class ExportSVG extends System {
             ComputedTextMetrics,
             TextDecoration,
             Marker,
+            LockAspectRatio,
           )
           .read.and.using(Screenshot, VectorScreenshotRequest).write,
     );
