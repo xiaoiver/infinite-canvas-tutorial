@@ -51,20 +51,18 @@ import {
   distanceBetweenPoints,
   getCursor,
   SerializedNode,
-  snapDraggedElements,
+  // snapDraggedElements,
   snapToGrid,
 } from '../utils';
 import { API } from '../API';
 import {
   getOBB,
   hitTest,
-  TRANSFORMER_ANCHOR_FILL_COLOR,
   TRANSFORMER_ANCHOR_STROKE_COLOR,
   TRANSFORMER_MASK_FILL_COLOR,
 } from './RenderTransformer';
 import { updateGlobalTransform } from './Transform';
 import { safeAddComponent, safeRemoveComponent } from '../history';
-import { HIGHLIGHTER_Z_INDEX } from '../context';
 
 export enum SelectionMode {
   IDLE = 'IDLE',
@@ -187,10 +185,10 @@ export class Select extends System {
     const camera = api.getCamera();
     camera.write(Transformable).status = TransformableStatus.MOVING;
 
-    const { snapOffset, snapLines } = snapDraggedElements(api, [
-      ex - sx,
-      ey - sy,
-    ]);
+    // const { snapOffset, snapLines } = snapDraggedElements(api, [
+    //   ex - sx,
+    //   ey - sy,
+    // ]);
     // console.log('snapLines', snapLines);
 
     // this.createSnapPoints(camera, snapLines);

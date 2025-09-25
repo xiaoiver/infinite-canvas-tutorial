@@ -4,6 +4,7 @@ import VueMacros from 'unplugin-vue-macros/vite';
 import { genjiAttrs } from 'genji-theme-vitepress/config';
 import config from 'genji-theme-vitepress/config';
 import implicitFigures from 'markdown-it-implicit-figures';
+import mathjax3 from 'markdown-it-mathjax3';
 import { RssPlugin } from 'vitepress-plugin-rss';
 import wasm from 'vite-plugin-wasm';
 import topLevelAwait from 'vite-plugin-top-level-await';
