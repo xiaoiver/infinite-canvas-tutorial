@@ -15,7 +15,7 @@ description: '介绍无限画布的概念，包括高扩展性、缩放功能和
 
 作为一个前端，我对其中涉及到的渲染技术很感兴趣。尽管 [tldraw]、[excalidraw] 等普遍使用易用性更高的 Canvas2D / SVG 技术，但 JS 和 Rust 生态中也有很多编辑器、设计工具使用更底层的渲染技术对 2D 图形进行 GPU 加速，以获得更好的性能和体验：
 
--   [Figma] 使用 C++ 编写了一个 tile-based 的渲染引擎，编译成 WASM 后调用 WebGL 渲染
+-   [Figma] 使用 C++ 编写了一个 tile-based 的渲染引擎，编译成 WASM 后调用 WebGL 或 WebGPU 渲染
 -   [Modyfi] 使用了 Rust 生态中的 [wgpu]，同样编译成 WASM 后调用 WebGL2 渲染
 -   [Zed] 使用 GPUI 渲染矩形、阴影、文本、图片等 UI。
 -   [vello] 和 [xilem] 实验性地使用了 Compute Shader 进行 2D 渲染。

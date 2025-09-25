@@ -205,6 +205,7 @@ export class Select extends System {
         x: node.x + ex - sx,
         y: node.y + ey - sy,
       });
+      updateGlobalTransform(selected);
     });
 
     updateGlobalTransform(mask);
@@ -1058,6 +1059,8 @@ export class Select extends System {
       );
       selection.obb.scaleX = obb.scaleX;
       selection.obb.scaleY = obb.scaleY;
+
+      updateGlobalTransform(selected);
     });
   }
 

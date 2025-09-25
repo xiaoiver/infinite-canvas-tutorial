@@ -14,7 +14,7 @@ The [infinitecanvas] showcases numerous examples ranging from design tools to cr
 
 As a front-end developer, I am very interested in the rendering technologies involved. Although tldraw, excalidraw, and others generally use more user-friendly technologies like Canvas2D/SVG, there are also many editors and design tools in the JS and Rust ecosystems that use more low-level rendering technologies for 2D graphics with GPU acceleration to achieve better performance and experience:
 
--   [Figma] uses a tile-based rendering engine written in C++, compiled into WASM and then calls WebGL for rendering.
+-   [Figma] uses a tile-based rendering engine written in C++, compiled into WASM and then calls WebGL and WebGPU for rendering.
 -   [Modyfi] uses [wgpu] from the Rust ecosystem, also compiled into WASM and then calls WebGL2 for rendering.
 -   [Zed] uses GPUI to render rectangles, shadows, text, images, and other UI elements.
 -   [Vello] and [xilem] experimentally use Compute Shader for 2D rendering.
