@@ -1,4 +1,5 @@
 import { Entity, field, Type } from '@lastolivegames/becsy';
+import { SerializedNode } from '../utils';
 
 export type DataURLType =
   | 'image/png'
@@ -44,6 +45,11 @@ export class RasterScreenshotRequest {
    * Whether to download the image.
    */
   @field.boolean declare download: boolean;
+
+  /**
+   * Nodes to export.
+   */
+  @field.object declare nodes: SerializedNode[];
 }
 
 export class VectorScreenshotRequest {
@@ -61,6 +67,11 @@ export class VectorScreenshotRequest {
    * Whether to download the image.
    */
   @field.boolean declare download: boolean;
+
+  /**
+   * Nodes to export.
+   */
+  @field.object declare nodes: SerializedNode[];
 }
 
 export class Screenshot {

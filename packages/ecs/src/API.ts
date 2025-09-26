@@ -1160,17 +1160,19 @@ export class API {
     this.#history.clear();
   }
 
-  export(format: ExportFormat, download = true) {
+  export(format: ExportFormat, download = true, nodes: SerializedNode[] = []) {
     if (format === ExportFormat.SVG) {
       safeAddComponent(this.#canvas, VectorScreenshotRequest, {
         canvas: this.#canvas,
         download,
+        nodes,
       });
     } else if (format === ExportFormat.PNG || format === ExportFormat.JPEG) {
       safeAddComponent(this.#canvas, RasterScreenshotRequest, {
         canvas: this.#canvas,
         type: `image/${format}`,
         download,
+        nodes,
       });
     }
 

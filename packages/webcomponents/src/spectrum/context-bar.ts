@@ -8,6 +8,7 @@ import {
   ComputedBounds,
   TransformableStatus,
   SerializedNode,
+  isDataUrl,
 } from '@infinite-canvas-tutorial/ecs';
 import { apiContext, appStateContext } from '../context';
 import { ExtendedAPI } from '../API';
@@ -43,20 +44,6 @@ export class ContextBar extends LitElement {
         var(--spectrum-drop-shadow-color) 0px var(--spectrum-drop-shadow-y)
           var(--spectrum-drop-shadow-blur)
       );
-    }
-
-    sp-popover {
-      padding: 0;
-    }
-
-    h4 {
-      margin: 0;
-      padding: 8px;
-      padding-bottom: 0;
-    }
-
-    ic-spectrum-stroke-content {
-      padding: 8px;
     }
   `;
 
@@ -142,45 +129,31 @@ export class ContextBar extends LitElement {
       if (layersSelected.length === 1) {
         const node =
           layersSelected[0] && this.api.getNodeById(layersSelected[0]);
-        const isText = node?.type === 'text';
+
+        const isImage =
+          node.type === 'rect' &&
+          (node.fill.endsWith('.jpg') ||
+            node.fill.endsWith('.png') ||
+            isDataUrl(node.fill));
 
         const [left, top] = this.calculatePosition(node);
 
-        return html` <div
+        return html`<div
           class="wrapper"
           style="left: ${left}px; top: ${top}px;"
         >
           <div class="bar">
-            <ic-spectrum-fill-action-button
-              .node=${node}
-            ></ic-spectrum-fill-action-button>
             ${when(
-              !isText,
-              () => html`<ic-spectrum-stroke-action-button
-                  .node=${node}
-                ></ic-spectrum-stroke-action-button>
-                <sp-action-button quiet size="m" id="stroke-options">
-                  <sp-tooltip self-managed placement="bottom">
-                    Stroke options
-                  </sp-tooltip>
-                  <sp-icon-stroke-width slot="icon"></sp-icon-stroke-width>
-                </sp-action-button>
-                <sp-overlay
-                  trigger="stroke-options@click"
-                  placement="bottom"
-                  type="auto"
-                >
-                  <sp-popover dialog>
-                    <h4>Stroke options</h4>
-                    <ic-spectrum-stroke-content
-                      .node=${node}
-                    ></ic-spectrum-stroke-content>
-                  </sp-popover>
-                </sp-overlay>`,
+              isImage,
+              () => html`<ic-spectrum-context-image-edit-bar .node=${node} />`,
+              () => html`<ic-spectrum-context-common-bar .node=${node} />`,
             )}
           </div>
         </div>`;
       } else {
+        // Image edit bar
+        // if (layersSelected.some(id => this.api.getNodeById(id)?.type === 'image')) {
+
         return html``;
       }
     })}`;

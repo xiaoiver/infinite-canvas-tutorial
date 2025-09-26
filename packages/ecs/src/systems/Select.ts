@@ -44,6 +44,7 @@ import {
   SnapPoint,
   Snap,
   ToBeDeleted,
+  Brush,
 } from '../components';
 import { Commands } from '../commands/Commands';
 import {
@@ -63,6 +64,7 @@ import {
 } from './RenderTransformer';
 import { updateGlobalTransform } from './Transform';
 import { safeAddComponent, safeRemoveComponent } from '../history';
+import { updateComputedPoints } from './ComputePoints';
 
 export enum SelectionMode {
   IDLE = 'IDLE',
@@ -120,7 +122,7 @@ export class Select extends System {
     this.query(
       (q) =>
         q
-          .using(ComputedCameraControl, Culled)
+          .using(ComputedCameraControl, Culled, Brush)
           .read.update.and.using(
             Canvas,
             GlobalTransform,
@@ -206,6 +208,7 @@ export class Select extends System {
         y: node.y + ey - sy,
       });
       updateGlobalTransform(selected);
+      updateComputedPoints(selected);
     });
 
     updateGlobalTransform(mask);
@@ -794,7 +797,10 @@ export class Select extends System {
                       // Disable highlight, only allow move.
                       toHighlight = undefined;
 
-                      if (selection.mode !== SelectionMode.BRUSH) {
+                      if (
+                        selection.mode !== SelectionMode.BRUSH &&
+                        selection.mode !== SelectionMode.MOVE
+                      ) {
                         selection.mode = SelectionMode.READY_TO_MOVE;
                       }
                     }
@@ -1061,6 +1067,7 @@ export class Select extends System {
       selection.obb.scaleY = obb.scaleY;
 
       updateGlobalTransform(selected);
+      updateComputedPoints(selected);
     });
   }
 

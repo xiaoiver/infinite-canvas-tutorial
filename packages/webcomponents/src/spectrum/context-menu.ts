@@ -23,7 +23,6 @@ import { load } from '@loaders.gl/core';
 import { ImageLoader } from '@loaders.gl/images';
 import { apiContext, appStateContext } from '../context';
 import { ExtendedAPI } from '../API';
-import { exportSVG } from '../utils';
 
 const ZINDEX_OFFSET = 0.0001;
 
@@ -315,17 +314,10 @@ export class ContextMenu extends LitElement {
 
   private handleExport = (event: CustomEvent) => {
     const format = (event.target as any).value as ExportFormat;
-    if (format === ExportFormat.SVG) {
-      exportSVG(
-        this.api,
-        this.api
-          .getAppState()
-          .layersSelected.map((id) => this.api.getNodeById(id)),
-      );
-
-      // TODO copy svg to clipboard
-    } else if (format === ExportFormat.PNG) {
-    }
+    const nodes = this.api
+      .getAppState()
+      .layersSelected.map((id) => this.api.getNodeById(id));
+    this.api.export(format, true, nodes);
   };
 
   private contextMenuTemplate() {
