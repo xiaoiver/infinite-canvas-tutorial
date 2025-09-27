@@ -8,17 +8,20 @@ import {
 } from '@infinite-canvas-tutorial/ecs';
 import { ref, onMounted, onUnmounted } from 'vue';
 import { Event, UIPlugin } from '@infinite-canvas-tutorial/webcomponents';
-import WebFont from 'webfontloader';
 
 const wrapper = ref<HTMLElement | null>(null);
 let api: any | undefined;
 let onReady: ((api: CustomEvent<any>) => void) | undefined;
 
 onMounted(async () => {
-  WebFont.load({
-    google: {
-      families: ['Gaegu'],
-    },
+
+  import('webfontloader').then((module) => {
+    const WebFont = module.default;
+    WebFont.load({
+      google: {
+        families: ['Gaegu'],
+      },
+    });
   });
 
   const canvas = wrapper.value;
