@@ -330,6 +330,8 @@ pnpm run dev
 -   常用后处理
 -   使用 AI 生图工具例如 Nano banana 进行背景移除
 
+![when canvas meets chat](./screenshots/lesson28.png)
+
 [infinitecanvas]: https://infinitecanvas.tools/
 [Figma]: https://madebyevan.com/figma/building-a-professional-design-tool-on-the-web/
 [Modyfi]: https://digest.browsertech.com/archive/browsertech-digest-how-modyfi-is-building-with/

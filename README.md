@@ -329,6 +329,8 @@ If you want to use it in your own project, you can refer to:
 -   Common post-processing
 -   Use Nano banana to edit image, e.g remove background
 
+![when canvas meets chat](./screenshots/lesson28.png)
+
 [infinitecanvas]: https://infinitecanvas.tools/
 [Figma]: https://madebyevan.com/figma/building-a-professional-design-tool-on-the-web/
 [Modyfi]: https://digest.browsertech.com/archive/browsertech-digest-how-modyfi-is-building-with/
