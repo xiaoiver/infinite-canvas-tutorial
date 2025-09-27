@@ -37,6 +37,7 @@ export {
   exportFillImage,
   exportMarker,
   toSVG,
+  toSVGDataURL,
   loadBitmapFont,
   parseClipboard,
   createPasteEvent,

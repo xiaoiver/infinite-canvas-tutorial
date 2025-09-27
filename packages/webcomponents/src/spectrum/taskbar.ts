@@ -10,10 +10,17 @@ const TaskMap = {
   [Task.SHOW_LAYERS_PANEL]: {
     icon: html`<sp-icon-layers slot="icon"></sp-icon-layers>`,
     label: 'Show layers panel',
+    panel: html`<ic-spectrum-layers-panel></ic-spectrum-layers-panel>`,
   },
   [Task.SHOW_PROPERTIES_PANEL]: {
     icon: html`<sp-icon-properties slot="icon"></sp-icon-properties>`,
     label: 'Show properties panel',
+    panel: html`<ic-spectrum-properties-panel></ic-spectrum-properties-panel>`,
+  },
+  [Task.SHOW_CHAT_PANEL]: {
+    icon: html`<sp-icon-chat slot="icon"></sp-icon-chat>`,
+    label: 'Show chat panel',
+    panel: html`<ic-spectrum-chat-panel></ic-spectrum-chat-panel>`,
   },
 };
 
@@ -79,8 +86,10 @@ export class Taskbar extends LitElement {
           })}
         </sp-action-group>
         <div class="panels">
-          <ic-spectrum-layers-panel></ic-spectrum-layers-panel>
-          <ic-spectrum-properties-panel></ic-spectrum-properties-panel>
+          ${map(taskbarAll, (task) => {
+            const { panel } = TaskMap[task];
+            return panel;
+          })}
         </div>
       `,
     );

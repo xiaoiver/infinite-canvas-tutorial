@@ -319,10 +319,16 @@ pnpm run dev
 ## 课程 27 - 吸附与对齐 [🔗](https://infinitecanvas.cc/zh/guide/lesson-027)
 
 -   网格吸附
+-   对象吸附
 
 |                     网格吸附                      |     |
 | :-----------------------------------------------: | :-: |
 | ![snap to pixel grid](./screenshots/lesson27.gif) |     |
+
+## 课程 28 - 图像编辑 [🔗](https://infinitecanvas.cc/zh/guide/lesson-028)
+
+-   常用后处理
+-   使用 AI 生图工具例如 Nano banana 进行背景移除
 
 [infinitecanvas]: https://infinitecanvas.tools/
 [Figma]: https://madebyevan.com/figma/building-a-professional-design-tool-on-the-web/

@@ -39,6 +39,7 @@ import '@spectrum-web-components/picker/sp-picker.js';
 import '@spectrum-web-components/overlay/overlay-trigger.js';
 
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-add.js';
+import '@spectrum-web-components/icons-workflow/icons/sp-icon-add-to.js';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-delete.js';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-remove.js';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-text.js';
@@ -81,6 +82,10 @@ import '@spectrum-web-components/icons-workflow/icons/sp-icon-brush.js';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-rect-select.js';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-image.js';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-arrow-up-right.js';
+import '@spectrum-web-components/icons-workflow/icons/sp-icon-chat.js';
+import '@spectrum-web-components/icons-workflow/icons/sp-icon-send.js';
+import '@spectrum-web-components/icons-workflow/icons/sp-icon-find-and-replace.js';
+import '@spectrum-web-components/icons-workflow/icons/sp-icon-polygon-select.js';
 
 export const TOP_NAVBAR_HEIGHT = 48;
 
@@ -191,7 +196,8 @@ export class InfiniteCanvas extends LitElement {
       };
       this.nodesProvider.value = this.nodes;
 
-      const { topbarVisible, cameraZoom } = this.appStateProvider.value;
+      const { topbarVisible, cameraZoom, cameraX, cameraY, cameraRotation } =
+        this.appStateProvider.value;
 
       const $canvas = document.createElement('canvas');
       $canvas.style.width = '100%';
@@ -214,6 +220,9 @@ export class InfiniteCanvas extends LitElement {
         },
         camera: {
           zoom: cameraZoom,
+          x: cameraX,
+          y: cameraY,
+          rotation: cameraRotation,
         },
       });
 

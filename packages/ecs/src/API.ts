@@ -160,12 +160,44 @@ export class API {
 
   setAppState(appState: Partial<AppState>) {
     const oldAppState = this.getAppState();
-    const { checkboardStyle } = appState;
+    const { checkboardStyle, cameraZoom, cameraX, cameraY, cameraRotation } =
+      appState;
 
     if (checkboardStyle && checkboardStyle !== oldAppState.checkboardStyle) {
       safeAddComponent(this.#canvas, Grid, {
         checkboardStyle,
       });
+    }
+
+    if (
+      (cameraZoom && cameraZoom !== oldAppState.cameraZoom) ||
+      (cameraX && cameraX !== oldAppState.cameraX) ||
+      (cameraY && cameraY !== oldAppState.cameraY) ||
+      (cameraRotation && cameraRotation !== oldAppState.cameraRotation)
+    ) {
+      if (this.#camera.has(ComputedCamera)) {
+        this.gotoLandmark(
+          {
+            zoom: cameraZoom ?? 1,
+            x: cameraX ?? 0,
+            y: cameraY ?? 0,
+            rotation: cameraRotation ?? 0,
+          },
+          { duration: 0 },
+        );
+      } else {
+        this.runAtNextTick(() => {
+          this.gotoLandmark(
+            {
+              zoom: cameraZoom ?? 1,
+              x: cameraX ?? 0,
+              y: cameraY ?? 0,
+              rotation: cameraRotation ?? 0,
+            },
+            { duration: 0 },
+          );
+        });
+      }
     }
 
     this.stateManagement.setAppState({

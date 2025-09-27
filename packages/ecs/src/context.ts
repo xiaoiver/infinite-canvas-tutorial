@@ -15,6 +15,7 @@ import {
 export enum Task {
   SHOW_LAYERS_PANEL = 'show-layers-panel',
   SHOW_PROPERTIES_PANEL = 'show-properties-panel',
+  SHOW_CHAT_PANEL = 'show-chat-panel',
 }
 
 /**
@@ -54,6 +55,7 @@ export interface AppState {
   taskbarVisible: boolean;
   taskbarAll: Task[];
   taskbarSelected: Task[];
+  taskbarChatMessages: Message[];
   layersSelected: SerializedNode['id'][];
   layersHighlighted: SerializedNode['id'][];
   propertiesOpened: SerializedNode['id'][];
@@ -199,6 +201,7 @@ export const getDefaultAppState: () => AppState = () => {
     taskbarVisible: true,
     taskbarAll: [Task.SHOW_LAYERS_PANEL, Task.SHOW_PROPERTIES_PANEL],
     taskbarSelected: [],
+    taskbarChatMessages: [],
     layersSelected: [],
     layersHighlighted: [],
     propertiesOpened: [],
@@ -215,3 +218,16 @@ export const SIBLINGS_MIN_Z_INDEX = -1000000;
 export const TRANSFORMER_Z_INDEX = SIBLINGS_MAX_Z_INDEX * 10;
 export const HIGHLIGHTER_Z_INDEX = TRANSFORMER_Z_INDEX - 1;
 export const DRAW_RECT_Z_INDEX = HIGHLIGHTER_Z_INDEX - 10;
+export interface Message {
+  role: 'user' | 'assistant';
+  content: string;
+  references?: {
+    id: string;
+  }[];
+  images?: {
+    url: string;
+  }[];
+  suggestions?: {
+    text: string;
+  }[];
+}

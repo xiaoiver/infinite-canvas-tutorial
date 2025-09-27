@@ -123,6 +123,10 @@ export const en = defineConfig({
                 text: 'Lesson 027 - Snap and align',
                 link: 'lesson-027',
               },
+              {
+                text: 'Lesson 028 - Image processing',
+                link: 'lesson-028',
+              },
             ],
           },
         ],
@@ -352,6 +356,7 @@ export const en = defineConfig({
             link: 'pythagorean-theorem',
           },
           { text: 'A textual artistic effect', link: 'signature' },
+          { text: 'When canvas meets chat', link: 'when-canvas-meets-chat' },
         ],
       },
     },

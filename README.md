@@ -318,10 +318,16 @@ If you want to use it in your own project, you can refer to:
 ## Lesson 27 - Selection tools [🔗](https://infinitecanvas.cc/guide/lesson-027)
 
 -   Snap to pixel grid
+-   Snap to objects
 
 |                Snap to pixel grid                 |     |
 | :-----------------------------------------------: | :-: |
 | ![snap to pixel grid](./screenshots/lesson27.gif) |     |
+
+## Lesson 28 - Image processing [🔗](https://infinitecanvas.cc/guide/lesson-028)
+
+-   Common post-processing
+-   Use Nano banana to edit image, e.g remove background
 
 [infinitecanvas]: https://infinitecanvas.tools/
 [Figma]: https://madebyevan.com/figma/building-a-professional-design-tool-on-the-web/

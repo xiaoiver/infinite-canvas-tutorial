@@ -45,6 +45,7 @@ import {
   serializeNodesToSVGElements,
   toSVGDataURL,
 } from '../utils';
+import { API } from '..';
 
 interface SVGOptions {
   grid: boolean;
@@ -146,15 +147,11 @@ export class ExportSVG extends System {
     const { grid: gridColor, background: backgroundColor } = colors[mode];
     const hasNodes = nodes && nodes.length;
 
-    const $namespace = createSVGElement('svg');
-
-    let bounds: AABB;
     if (hasNodes) {
-      // Get bounds of nodes.
-      bounds = api.getBounds(nodes);
-      width = bounds.maxX - bounds.minX;
-      height = bounds.maxY - bounds.minY;
+      return toSVGElement(api, nodes, padding);
     }
+
+    const $namespace = createSVGElement('svg');
     $namespace.setAttribute('width', `${width}`);
     $namespace.setAttribute('height', `${height}`);
 
@@ -164,22 +161,12 @@ export class ExportSVG extends System {
     }
 
     {
-      if (hasNodes) {
-        // add padding with viewBox
-        $namespace.setAttribute(
-          'viewBox',
-          `${bounds.minX - padding} ${bounds.minY - padding} ${
-            width + padding * 2
-          } ${height + padding * 2}`,
-        );
-      } else {
-        // Calculate viewBox according to the camera's transform.
-        const { x, y, zoom } = cameras[0].read(ComputedCamera);
-        $namespace.setAttribute(
-          'viewBox',
-          `${x} ${y} ${width / zoom} ${height / zoom}`,
-        );
-      }
+      // Calculate viewBox according to the camera's transform.
+      const { x, y, zoom } = cameras[0].read(ComputedCamera);
+      $namespace.setAttribute(
+        'viewBox',
+        `${x} ${y} ${width / zoom} ${height / zoom}`,
+      );
     }
 
     if (gridEnabled) {
@@ -190,22 +177,16 @@ export class ExportSVG extends System {
       }
     }
 
-    if (hasNodes) {
-      serializeNodesToSVGElements(nodes).forEach((element) => {
-        $namespace.appendChild(element);
-      });
-    } else {
-      serializeNodesToSVGElements(
-        cameras[0]
-          .read(Parent)
-          .children.map((child) =>
-            entityToSerializedNodes(child, (entity) => !entity.has(UI)),
-          )
-          .flat(),
-      ).forEach((element) => {
-        $namespace.appendChild(element);
-      });
-    }
+    serializeNodesToSVGElements(
+      cameras[0]
+        .read(Parent)
+        .children.map((child) =>
+          entityToSerializedNodes(child, (entity) => !entity.has(UI)),
+        )
+        .flat(),
+    ).forEach((element) => {
+      $namespace.appendChild(element);
+    });
     return $namespace;
   }
 
@@ -304,4 +285,32 @@ export class ExportSVG extends System {
     $rect.setAttribute('fill', 'url(#dots-grid)');
     $namespace.appendChild($rect);
   }
+}
+
+export function toSVGElement(
+  api: API,
+  nodes: SerializedNode[],
+  padding: number = 0,
+) {
+  const $namespace = createSVGElement('svg');
+
+  let bounds: AABB;
+  // Get bounds of nodes.
+  bounds = api.getBounds(nodes);
+  const width = bounds.maxX - bounds.minX;
+  const height = bounds.maxY - bounds.minY;
+  $namespace.setAttribute('width', `${width}`);
+  $namespace.setAttribute('height', `${height}`);
+  // add padding with viewBox
+  $namespace.setAttribute(
+    'viewBox',
+    `${bounds.minX - padding} ${bounds.minY - padding} ${width + padding * 2} ${
+      height + padding * 2
+    }`,
+  );
+
+  serializeNodesToSVGElements(nodes).forEach((element) => {
+    $namespace.appendChild(element);
+  });
+  return $namespace;
 }

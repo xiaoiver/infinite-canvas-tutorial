@@ -133,6 +133,7 @@ export class ContextBar extends LitElement {
         const isImage =
           node.type === 'rect' &&
           (node.fill.endsWith('.jpg') ||
+            node.fill.endsWith('.jpeg') ||
             node.fill.endsWith('.png') ||
             isDataUrl(node.fill));
 

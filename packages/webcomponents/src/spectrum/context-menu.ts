@@ -175,6 +175,7 @@ export async function executePaste(
   event?: ClipboardEvent,
   position?: { x: number; y: number },
 ) {
+  // FIXME: Paste text inside a textfield
   if (!document.hasFocus()) {
     return;
   }
