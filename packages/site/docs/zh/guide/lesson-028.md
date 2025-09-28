@@ -5,6 +5,10 @@ head:
     - ['meta', { property: 'og:title', content: '课程 28 - 与 AI 结合' }]
 ---
 
+<script setup>
+import WhenCanvasMeetsChat from '../../components/WhenCanvasMeetsChat.vue'
+</script>
+
 # 课程 28 - 与 AI 结合
 
 如今 GPT 4o（gpt-image-1）和 Nano banana（gemini-2.5-flash-image）大幅降低了图片编辑的门槛。从人机交互上看，聊天框和画布结合的形式正变得越来越流行，和模型的聊天记录天然体现了图片的修改历史，而可自由拖拽的画布让选择图片与并行处理变得自然，详见 [UI for AI]。
@@ -19,15 +23,23 @@ Recraft 也正在测试聊天框功能。以我的观察，画布与聊天框正
 
 本节课中我们会先回顾下传统基于 Shader 后处理的图像处理手段，再结合 Nano banana 丰富我们的图片编辑功能。
 
+<WhenCanvasMeetsChat />
+
 ## 基于后处理的效果 {#post-processing}
 
 基于 Shader 可以实现常见的图像处理效果，例如高斯模糊、Perlin 噪音、Glitch 等，当然还有最近火热的“液态玻璃”：
 
 ![source: https://help.figma.com/hc/en-us/articles/360041488473-Apply-effects-to-layers](/figma-liquid-glass.png)
 
+![Adjust in Photoshop Web](/adjust-ps-web.png)
+
+### Brightness {#brightness}
+
 ## 接入模型 {#client-sdk}
 
-这里我们选择 [fal.ai]，这样的聚合类 SDK 还有很多例如 [OpenRouter]，以生图接口为例，只需要传入 prompt 就可以得到生成图片的 URL 和原始的模型文本响应：
+为了使用 Nano banana，我选择了 [fal.ai]，而没有选择 Google 官方的 [generative-ai]。理由是统一的 API 更便于我对比其他生图模型的效果，例如 [qwen-image-edit] 或者 [FLUX.1 Kontext]。
+
+这样的聚合类 SDK 还有很多例如 [OpenRouter]，以生图接口为例，只需要传入 prompt 就可以得到生成图片的 URL 和原始的模型文本响应：
 
 ```ts
 import { fal } from '@fal-ai/client';
@@ -40,7 +52,13 @@ const result = await fal.subscribe('fal-ai/gemini-25-flash-image', {
 console.log(result.data); // { image: [{ url: 'https://...' }]; description: 'Sure, this is your image:' }
 ```
 
-图片修改接口接受的参数也是一组图片的 URL，因此 [fal.ai] 也提供了文件上传接口。
+图片修改接口接受的参数也是一组图片的 URL，即使传递了编码后的 DataURL 也会收到类似 “无法读取图片信息” 的警告。因此 [fal.ai] 提供了文件上传接口，我们可以选择当本地图片被添加到画布中时开启上传。
+
+### API 设计 {#api-design}
+
+### 加入聊天框 {#chatbox}
+
+聊天框提供了画布之外的另一个起始点。
 
 ## Inpainting {#inpainting}
 
@@ -60,7 +78,16 @@ console.log(result.data); // { image: [{ url: 'https://...' }]; description: 'Su
 2. AI inpainting 利用 SAM 这样的分割模型自动
 3. Creative flexibility
 
+### 生成 mask {#create-mask}
+
+我们可以提供多种交互方式让用户生成 mask：
+
+1. [课程 26 - 选择工具] 中介绍的框选
+2. [课程 25 - 绘制模式与笔刷] 中介绍的笔刷工具
+
 ### 通过 WebGPU 使用 SAM {#use-sam-via-webgpu}
+
+除了让用户尽可能精细地表达修改区域，如果能通过更简单的方式，例如点选就完成区域的选择就更好了。
 
 ![Smart select in Midjourney](/midjourney-smart-select.jpeg)
 
@@ -94,3 +121,8 @@ console.log(result.data); // { image: [{ url: 'https://...' }]; description: 'Su
 [Image Segmentation in the Browser with Segment Anything Model 2]: https://medium.com/@geronimo7/in-browser-image-segmentation-with-segment-anything-model-2-c72680170d92
 [fal.ai]: https://fal.ai/
 [OpenRouter]: https://openrouter.ai/
+[qwen-image-edit]: https://fal.ai/models/fal-ai/qwen-image-edit
+[FLUX.1 Kontext]: https://fal.ai/models/fal-ai/flux-pro/kontext
+[generative-ai]: https://cloud.google.com/vertex-ai/generative-ai/docs/learn/model-versions
+[课程 26 - 选择工具]: /zh/guide/lesson-026#marquee-selection
+[课程 25 - 绘制模式与笔刷]: /zh/guide/lesson-025#brush-mode

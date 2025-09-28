@@ -8,6 +8,10 @@ head:
       ]
 ---
 
+<script setup>
+import WhenCanvasMeetsChat from '../components/WhenCanvasMeetsChat.vue'
+</script>
+
 # Lesson 28 - Integrating with AI
 
 Today, GPT 4o (gpt-image-1) and Nano banana (gemini-2.5-flash-image) have significantly lowered the barrier to image editing. From a human-computer interaction perspective, the combination of chat interfaces and canvas is becoming increasingly popular. Chat history with models naturally reflects the modification history of images, while freely draggable canvas makes image selection and parallel processing natural. For more details, see [UI for AI].
@@ -22,15 +26,23 @@ Recraft is also testing chat functionality. In my observation, canvas and chat a
 
 In this lesson, we'll first review traditional image processing methods based on Shader post-processing, then combine with Nano banana to enrich our image editing functionality.
 
+<WhenCanvasMeetsChat />
+
 ## Post-processing Effects {#post-processing}
 
 Based on Shaders, common image processing effects can be achieved, such as Gaussian blur, Perlin noise, Glitch, and of course, the recently popular "liquid glass":
 
 ![source: https://help.figma.com/hc/en-us/articles/360041488473-Apply-effects-to-layers](/figma-liquid-glass.png)
 
+![Adjust in Photoshop Web](/adjust-ps-web.png)
+
+### Brightness {#brightness}
+
 ## Integrating Models {#client-sdk}
 
-Here we choose [fal.ai]. There are many such aggregation SDKs, such as [OpenRouter]. Taking the image generation interface as an example, you only need to pass in a prompt to get the generated image URL and the original model text response:
+To use Nano banana, I chose [fal.ai] over Google's official [generative-ai]. The reason is that a unified API makes it easier for me to compare the effects of other image generation models, such as [qwen-image-edit] or [FLUX.1 Kontext].
+
+There are many other aggregated SDKs like [OpenRouter]. Taking the image generation interface as an example, you only need to pass in a prompt to receive the URL for the generated image and the original model text response:
 
 ```ts
 import { fal } from '@fal-ai/client';
@@ -43,7 +55,13 @@ const result = await fal.subscribe('fal-ai/gemini-25-flash-image', {
 console.log(result.data); // { image: [{ url: 'https://...' }]; description: 'Sure, this is your image:' }
 ```
 
-Image modification interfaces also accept a set of image URLs as parameters, so [fal.ai] also provides file upload interfaces.
+The image edit API also accepts a set of image URLs as parameters. Even when passing encoded DataURLs, warnings like “Unable to read image information” may still appear. Therefore, [fal.ai] provides a file upload interface, allowing us to enable uploads when local images are added to the canvas.
+
+### API Design {#api-design}
+
+### Chatbox {#chatbox}
+
+The chat box provides another starting point beyond the canvas.
 
 ## Inpainting {#inpainting}
 
@@ -63,7 +81,16 @@ This is where the importance of editors becomes apparent. Even simple editing fe
 2. AI inpainting using segmentation models like SAM automatically
 3. Creative flexibility
 
+### Create mask {#create-mask}
+
+We offer multiple interactive methods for users to generate masks:
+
+1. [Lesson 26 - Selection tool]
+2. [Lesson 25 - Drawing mode and brush]
+
 ### Using SAM via WebGPU {#use-sam-via-webgpu}
+
+In addition to allowing users to define the modification area as precisely as possible, it would be even better if area selection could be accomplished through simpler methods, such as clicking to select.
 
 ![Smart select in Midjourney](/midjourney-smart-select.jpeg)
 
@@ -97,3 +124,8 @@ Currently, GPT 4o only supports three fixed sizes, while Nano banana needs some 
 [Image Segmentation in the Browser with Segment Anything Model 2]: https://medium.com/@geronimo7/in-browser-image-segmentation-with-segment-anything-model-2-c72680170d92
 [fal.ai]: https://fal.ai/
 [OpenRouter]: https://openrouter.ai/
+[qwen-image-edit]: https://fal.ai/models/fal-ai/qwen-image-edit
+[FLUX.1 Kontext]: https://fal.ai/models/fal-ai/flux-pro/kontext
+[generative-ai]: https://cloud.google.com/vertex-ai/generative-ai/docs/learn/model-versions
+[Lesson 26 - Selection tool]: /guide/lesson-026#marquee-selection
+[Lesson 25 - Drawing mode and brush]: /guide/lesson-025#brush-mode
