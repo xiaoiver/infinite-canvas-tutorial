@@ -325,10 +325,13 @@ pnpm run dev
 | :-----------------------------------------------: | :-: |
 | ![snap to pixel grid](./screenshots/lesson27.gif) |     |
 
-## 课程 28 - 图像编辑 [🔗](https://infinitecanvas.cc/zh/guide/lesson-028)
+## 课程 28 - 与 AI 结合 [🔗](https://infinitecanvas.cc/zh/guide/lesson-028)
 
--   常用后处理
--   使用 AI 生图工具例如 Nano banana 进行背景移除
+-   图片编辑中的常用后处理
+-   与 AI 能力结合
+    -   使用聊天框
+    -   使用 Nano banana 进行图片生成与编辑
+    -   通过 WebGPU 使用 SAM
 
 ![when canvas meets chat](./screenshots/lesson28.png)
 

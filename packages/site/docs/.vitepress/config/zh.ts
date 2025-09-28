@@ -77,7 +77,7 @@ export const zh = defineConfig({
               { text: '课程25 - 绘制模式与笔刷', link: 'lesson-025' },
               { text: '课程26 - 选择工具', link: 'lesson-026' },
               { text: '课程27 - 吸附与对齐', link: 'lesson-027' },
-              { text: '课程28 - 图像处理', link: 'lesson-028' },
+              { text: '课程28 - 与 AI 结合', link: 'lesson-028' },
             ],
           },
         ],

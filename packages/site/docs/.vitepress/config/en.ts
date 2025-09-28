@@ -124,7 +124,7 @@ export const en = defineConfig({
                 link: 'lesson-027',
               },
               {
-                text: 'Lesson 028 - Image processing',
+                text: 'Lesson 028 - Integrating with AI',
                 link: 'lesson-028',
               },
             ],

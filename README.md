@@ -324,10 +324,13 @@ If you want to use it in your own project, you can refer to:
 | :-----------------------------------------------: | :-: |
 | ![snap to pixel grid](./screenshots/lesson27.gif) |     |
 
-## Lesson 28 - Image processing [🔗](https://infinitecanvas.cc/guide/lesson-028)
+## Lesson 28 - Integrating with AI [🔗](https://infinitecanvas.cc/guide/lesson-028)
 
 -   Common post-processing
--   Use Nano banana to edit image, e.g remove background
+-   Integrating with AI
+    -   Use chatbox
+    -   Use Nano banana to edit image, e.g remove background
+    -   Use SAM with WebGPU
 
 ![when canvas meets chat](./screenshots/lesson28.png)
 

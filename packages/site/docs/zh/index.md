@@ -35,12 +35,12 @@ features:
 
 <script setup>
 import WebGL from '../components/WebGL.vue'
-import Spectrum from '../components/Spectrum.vue'
+import WhenCanvasMeetsChat from '../components/WhenCanvasMeetsChat.vue'
 </script>
 
 在课程 17 之后我们使用了 ECS 进行了重构，并使用 spectrum 编写 UI：
 
-<Spectrum />
+<WhenCanvasMeetsChat />
 
 课程 17 之前的效果如下：
 
