@@ -315,7 +315,7 @@ If you want to use it in your own project, you can refer to:
 -   Marquee selection
 -   Lasso tool
 
-## Lesson 27 - Selection tools [🔗](https://infinitecanvas.cc/guide/lesson-027)
+## Lesson 27 - Snap and alignment [🔗](https://infinitecanvas.cc/guide/lesson-027)
 
 -   Snap to pixel grid
 -   Snap to objects
