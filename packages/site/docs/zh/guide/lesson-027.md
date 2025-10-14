@@ -80,13 +80,17 @@ Excalidraw 中的 snapping 功能实现分为以下几个关键步骤：
 
 ### 检查是否允许吸附 {#is-snapping-enabled}
 
-我们在应用状态中增加以下配置项：
+我们在应用状态中增加以下配置项，同样可以在“偏好菜单”中开启：
 
 ```ts
 export interface AppState {
     snapToObjectsEnabled: boolean; // [!code ++]
 }
 ```
+
+在拖拽移动和绘制图形时触发：
+
+![source: https://github.com/excalidraw/excalidraw/issues/263#issuecomment-577605528](https://user-images.githubusercontent.com/5153846/72973602-d804ba80-3dcd-11ea-9717-05448160044c.gif)
 
 ### 计算可吸附点 {#get-point-snaps}
 
@@ -110,15 +114,23 @@ const selectionSnapPoints = [
 考虑性能，我们应该尽量减少被选中图形吸附点与其他所有图形吸附点的检测次数。类似问题我们在 [课程 8 - 使用空间索引加速] 中已经介绍过了，只检索视口范围内的图形即可。
 
 ```ts
-const unculled = api
+const unculledAndUnselected = api
     .getNodes()
     .map((node) => api.getEntity(node))
-    .filter((entity) => !entity.has(Culled));
+    .filter((entity) => !entity.has(Culled) && !entity.has(Selected));
+```
+
+同样计算出这些图形的参考点：
+
+```ts
+const referenceSnapPoints: [number, number][] = unculledAndUnselected
+    .map((entity) => getElementsCorners(api, [api.getNodeByEntity(entity).id]))
+    .flat();
 ```
 
 ### 计算间隙 {#get-gap-snaps}
 
-画布中除了当前被选中的图形，其他图形两两又肯恩形成一组间隙，Excalidraw 代码中的图很形象，以 `horizontalGap` 为例：
+画布中除了当前被选中的图形，其他图形两两又可能形成一组间隙，Excalidraw 代码中的图很形象，以 `horizontalGap` 为例：
 
 ```ts
 // https://github.com/excalidraw/excalidraw/blob/f55ecb96cc8db9a2417d48cd8077833c3822d64e/packages/excalidraw/snapping.ts#L65C1-L81C3

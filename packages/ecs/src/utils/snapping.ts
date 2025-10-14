@@ -87,13 +87,13 @@ const getPointSnaps = (
     return [];
   }
 
-  const unculled = api
+  const unculledAndUnselected = api
     .getNodes()
     .map((node) => api.getEntity(node))
-    .filter((entity) => !entity.has(Culled));
+    .filter((entity) => !entity.has(Culled) && !entity.has(Selected));
 
   // Snap points of other elements.
-  const referenceSnapPoints: [number, number][] = unculled
+  const referenceSnapPoints: [number, number][] = unculledAndUnselected
     .map((entity) => getElementsCorners(api, [api.getNodeByEntity(entity).id]))
     .flat();
 
@@ -542,4 +542,49 @@ const dedupePoints = (points: [number, number][]): [number, number][] => {
   }
 
   return Array.from(map.values());
+};
+
+export const calculateOffset = (
+  commonBounds: [number, number],
+  dragOffset: { x: number; y: number },
+  snapOffset: { x: number; y: number },
+  gridSize: number,
+): { x: number; y: number } => {
+  const [x, y] = commonBounds;
+  let nextX = x + dragOffset.x + snapOffset.x;
+  let nextY = y + dragOffset.y + snapOffset.y;
+
+  if (snapOffset.x === 0 || snapOffset.y === 0) {
+    const [nextGridX, nextGridY] = getGridPoint(
+      x + dragOffset.x,
+      y + dragOffset.y,
+      gridSize,
+    );
+
+    if (snapOffset.x === 0) {
+      nextX = nextGridX;
+    }
+
+    if (snapOffset.y === 0) {
+      nextY = nextGridY;
+    }
+  }
+  return {
+    x: nextX - x,
+    y: nextY - y,
+  };
+};
+
+export const getGridPoint = (
+  x: number,
+  y: number,
+  gridSize: number,
+): [number, number] => {
+  if (gridSize) {
+    return [
+      Math.round(x / gridSize) * gridSize,
+      Math.round(y / gridSize) * gridSize,
+    ];
+  }
+  return [x, y];
 };

@@ -493,9 +493,9 @@ call(() => {
 });
 ```
 
-### 选择性开启剔除 {#disable-culling}
+### Disable culling {#disable-culling}
 
-开启剔除会带来，在某些场景下反而会增大性能开销。
+Enabling culling may actually increase performance overhead in certain scenarios.
 
 [Wikipedia Datamap]
 

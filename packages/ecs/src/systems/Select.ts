@@ -48,10 +48,12 @@ import {
 } from '../components';
 import { Commands } from '../commands/Commands';
 import {
+  calculateOffset,
   decompose,
   distanceBetweenPoints,
   getCursor,
   SerializedNode,
+  snapDraggedElements,
   // snapDraggedElements,
   snapToGrid,
 } from '../utils';
@@ -187,11 +189,20 @@ export class Select extends System {
     const camera = api.getCamera();
     camera.write(Transformable).status = TransformableStatus.MOVING;
 
-    // const { snapOffset, snapLines } = snapDraggedElements(api, [
-    //   ex - sx,
-    //   ey - sy,
-    // ]);
-    // console.log('snapLines', snapLines);
+    const { snapOffset, snapLines } = snapDraggedElements(api, [
+      ex - sx,
+      ey - sy,
+    ]);
+
+    const offset = calculateOffset(
+      [sx, sy],
+      {
+        x: ex - sx,
+        y: ey - sy,
+      },
+      snapOffset,
+      api.getAppState().snapToPixelGridSize,
+    );
 
     // this.createSnapPoints(camera, snapLines);
 
@@ -204,8 +215,8 @@ export class Select extends System {
       const node = api.getNodeByEntity(selected);
 
       api.updateNodeOBB(node, {
-        x: node.x + ex - sx,
-        y: node.y + ey - sy,
+        x: node.x + offset.x,
+        y: node.y + offset.y,
       });
       updateGlobalTransform(selected);
       updateComputedPoints(selected);
