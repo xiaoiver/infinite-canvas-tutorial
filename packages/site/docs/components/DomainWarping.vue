@@ -6,7 +6,6 @@ import { vert, frag } from './shaders/domain-warping';
 import { paddingUniforms } from './utils';
 
 let canvas;
-let stats;
 let render;
 let counter = 0;
 
@@ -18,17 +17,6 @@ onMounted(() => {
   const $canvas = wrapper.value;
 
   if (!$canvas) return;
-
-  import('stats.js').then(m => {
-    const Stats = m.default;
-    stats = new Stats();
-    stats.showPanel(0);
-    const $stats = stats.dom;
-    $stats.style.position = 'absolute';
-    $stats.style.left = '0px';
-    $stats.style.top = '0px';
-    $canvas.parentElement.appendChild($stats);
-  });
 
   $canvas.addEventListener('ic-ready', (e) => {
     canvas = e.detail;
@@ -161,8 +149,6 @@ onMounted(() => {
   });
 
   $canvas.addEventListener('ic-frame', (e) => {
-    stats?.update();
-
     render();
   });
 });

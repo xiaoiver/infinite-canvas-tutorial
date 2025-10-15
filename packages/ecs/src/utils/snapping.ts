@@ -407,10 +407,7 @@ export const snapDraggedElements = (api: API, dragOffset: [number, number]) => {
     api.getAppState();
   if (!snapToObjectsEnabled) {
     return {
-      snapOffset: {
-        x: 0,
-        y: 0,
-      },
+      snapOffset: [0, 0] as [number, number],
       snapLines: [],
     };
   }
@@ -442,10 +439,10 @@ export const snapDraggedElements = (api: API, dragOffset: [number, number]) => {
   // using the nearest snaps to figure out how
   // much the elements need to be offset to be snapped
   // to some reference elements
-  const snapOffset = {
-    x: nearestSnapsX[0]?.offset ?? 0,
-    y: nearestSnapsY[0]?.offset ?? 0,
-  };
+  const snapOffset: [number, number] = [
+    nearestSnapsX[0]?.offset ?? 0,
+    nearestSnapsY[0]?.offset ?? 0,
+  ];
 
   // console.log('dragOffset', dragOffset);
   // console.log('snapOffset', snapOffset);
@@ -546,33 +543,30 @@ const dedupePoints = (points: [number, number][]): [number, number][] => {
 
 export const calculateOffset = (
   commonBounds: [number, number],
-  dragOffset: { x: number; y: number },
-  snapOffset: { x: number; y: number },
+  dragOffset: [number, number],
+  snapOffset: [number, number],
   gridSize: number,
-): { x: number; y: number } => {
+): [number, number] => {
   const [x, y] = commonBounds;
-  let nextX = x + dragOffset.x + snapOffset.x;
-  let nextY = y + dragOffset.y + snapOffset.y;
+  let nextX = x + dragOffset[0] + snapOffset[0];
+  let nextY = y + dragOffset[1] + snapOffset[1];
 
-  if (snapOffset.x === 0 || snapOffset.y === 0) {
+  if (snapOffset[0] === 0 || snapOffset[1] === 0) {
     const [nextGridX, nextGridY] = getGridPoint(
-      x + dragOffset.x,
-      y + dragOffset.y,
+      x + dragOffset[0],
+      y + dragOffset[1],
       gridSize,
     );
 
-    if (snapOffset.x === 0) {
+    if (snapOffset[0] === 0) {
       nextX = nextGridX;
     }
 
-    if (snapOffset.y === 0) {
+    if (snapOffset[1] === 0) {
       nextY = nextGridY;
     }
   }
-  return {
-    x: nextX - x,
-    y: nextY - y,
-  };
+  return [nextX - x, nextY - y];
 };
 
 export const getGridPoint = (

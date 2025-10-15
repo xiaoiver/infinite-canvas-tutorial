@@ -14,8 +14,6 @@ const MAX_POINTS = 10;
 const palettes = Array.from({ length: 4 }, () => [Math.random(), Math.random(), Math.random()]);
 const positions = Array.from({ length: 4 }, () => [Math.random(), Math.random()]);
 
-let stats;
-
 const wrapper = ref(null);
 const u_NoiseRatio = ref(0.1);
 const u_NoiseTime = ref(0);
@@ -76,17 +74,6 @@ onMounted(() => {
   const $canvas = wrapper.value;
 
   if (!$canvas) return;
-
-  import('stats.js').then(m => {
-    const Stats = m.default;
-    stats = new Stats();
-    stats.showPanel(0);
-    const $stats = stats.dom;
-    $stats.style.position = 'absolute';
-    $stats.style.left = '0px';
-    $stats.style.top = '0px';
-    $canvas.parentElement.appendChild($stats);
-  });
 
   $canvas.addEventListener('ic-ready', (e) => {
     canvas = e.detail;
@@ -229,10 +216,6 @@ onMounted(() => {
     };
 
     render();
-  });
-
-  $canvas.addEventListener('ic-frame', (e) => {
-    stats?.update();
   });
 });
 </script>

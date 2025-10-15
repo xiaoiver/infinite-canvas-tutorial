@@ -87,7 +87,7 @@ export enum SelectionMode {
 export interface SelectOBB {
   mode: SelectionMode;
   resizingAnchorName: AnchorName;
-  selectedNodes: SerializedNode[];
+  nodes: SerializedNode[];
 
   obb: {
     x: number;
@@ -189,17 +189,25 @@ export class Select extends System {
     const camera = api.getCamera();
     camera.write(Transformable).status = TransformableStatus.MOVING;
 
-    const { snapOffset, snapLines } = snapDraggedElements(api, [
-      ex - sx,
-      ey - sy,
-    ]);
+    const selection = this.selections.get(camera.__id);
+
+    const {
+      pointerDownViewportX,
+      pointerDownViewportY,
+      pointerDownCanvasX,
+      pointerDownCanvasY,
+    } = camera.read(ComputedCameraControl);
+
+    const dragOffset: [number, number] = [
+      ex - pointerDownCanvasX,
+      ey - pointerDownCanvasY,
+    ];
+
+    const { snapOffset, snapLines } = snapDraggedElements(api, dragOffset);
 
     const offset = calculateOffset(
-      [sx, sy],
-      {
-        x: ex - sx,
-        y: ey - sy,
-      },
+      [pointerDownCanvasX, pointerDownCanvasY],
+      dragOffset,
       snapOffset,
       api.getAppState().snapToPixelGridSize,
     );
@@ -214,10 +222,13 @@ export class Select extends System {
       }
       const node = api.getNodeByEntity(selected);
 
-      api.updateNodeOBB(node, {
-        x: node.x + offset.x,
-        y: node.y + offset.y,
-      });
+      const oldNode = selection.nodes.find((n) => n.id === node.id);
+      if (oldNode) {
+        api.updateNodeOBB(node, {
+          x: oldNode.x + offset[0],
+          y: oldNode.y + offset[1],
+        });
+      }
       updateGlobalTransform(selected);
       updateComputedPoints(selected);
     });
@@ -647,7 +658,7 @@ export class Select extends System {
         this.selections.set(camera.__id, {
           mode: SelectionMode.IDLE,
           resizingAnchorName: AnchorName.INSIDE,
-          selectedNodes: [],
+          nodes: [],
           obb: {
             x: 0,
             y: 0,
@@ -980,9 +991,7 @@ export class Select extends System {
     selection.sin = Math.abs(height / hypotenuse);
     selection.cos = Math.abs(width / hypotenuse);
 
-    selection.selectedNodes = api.getAppState().layersSelected.map((id) => {
-      return { ...api.getNodeById(id) };
-    });
+    selection.nodes = [...api.getNodes()];
   }
 
   private fitSelected(api: API, newAttrs: OBB, selection: SelectOBB) {
@@ -1037,7 +1046,7 @@ export class Select extends System {
 
     selecteds.forEach((selected) => {
       const node = api.getNodeByEntity(selected);
-      const oldNode = selection.selectedNodes.find((n) => n.id === node.id);
+      const oldNode = selection.nodes.find((n) => n.id === node.id);
       // for each node we have the same [delta transform]
       // the equations is
       // [delta transform] * [parent transform] * [old local transform] = [parent transform] * [new local transform]
