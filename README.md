@@ -237,6 +237,7 @@ If you want to use it in your own project, you can refer to:
     -   Simulate random
     -   Value Noise and Gradient Noise
     -   Voronoi, FBM and Domain Warping
+    -   Server-side rendering in AWS lambda function
 -   Export SVG
 -   Use CanvasPattern to implement repeating patterns
 

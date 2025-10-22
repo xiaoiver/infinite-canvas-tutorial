@@ -237,6 +237,7 @@ pnpm run dev
     -   模拟随机
     -   Value Noise 和 Gradient Noise
     -   Voronoi、FBM 和 Domain Warping
+    -   在 AWS lambda function 中完成服务端渲染
 -   导出 SVG
 -   使用 CanvasPattern 实现重复图案
 

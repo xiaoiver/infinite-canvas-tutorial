@@ -33,6 +33,8 @@ Recraft 也正在测试聊天框功能。以我的观察，画布与聊天框正
 
 ![Adjust in Photoshop Web](/adjust-ps-web.png)
 
+更多效果详见：[Paper Shaders]
+
 ### Brightness {#brightness}
 
 ## 接入模型 {#client-sdk}
@@ -126,3 +128,4 @@ console.log(result.data); // { image: [{ url: 'https://...' }]; description: 'Su
 [generative-ai]: https://cloud.google.com/vertex-ai/generative-ai/docs/learn/model-versions
 [课程 26 - 选择工具]: /zh/guide/lesson-026#marquee-selection
 [课程 25 - 绘制模式与笔刷]: /zh/guide/lesson-025#brush-mode
+[Paper Shaders]: https://shaders.paper.design/

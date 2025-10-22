@@ -212,6 +212,8 @@ export class Select extends System {
       api.getAppState().snapToPixelGridSize,
     );
 
+    // console.log('offset', offset);
+
     // this.createSnapPoints(camera, snapLines);
 
     const { selecteds, mask } = camera.read(Transformable);

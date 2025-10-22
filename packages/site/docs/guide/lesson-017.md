@@ -351,19 +351,59 @@ f(p) = fbm( p + fbm( p + fbm( p )) )
 
 <DomainWarping />
 
-## Exporting Gradients to SVG {#export-gradient-to-svg}
+### Server-side rendering {#server-side-rendering}
 
-### Linear Gradient {#linear-gradient}
+Finally, let's explore server-side rendering, such as generating album covers on the server. In [Lesson 11 - Server-side rendering], we introduced `headless-gl`. Now we need to create a Lambda function on AWS that performs server-side rendering using a custom Layer containing `headless-gl`.
 
-SVG provides [linearGradient] and [radialGradient], but their supported attributes are quite different from [CanvasGradient].
+![aws-lambda-layer](/aws-lambda-layer.png)
 
-### Conic Gradient {#conic-gradient}
+Let's build the Layer locally using the Amazon Linux 2023 image, since our target runtime environment is Node.js 20.x:
 
-Refer to [SVG angular gradient] for an approximate implementation. The [CSS conic-gradient() polyfill] approach is to render using Canvas and export as dataURL, then reference it with `<image>`.
+```bash
+docker run -it amazonlinux:2023 bash
+```
 
-### Multiple Gradient Overlay {#multiple-gradient-overlay}
+Then run the following command in the container to install some dependencies required by `headless-gl`:
 
-For multiple gradient overlays, in Canvas API, you can set `fillStyle` multiple times for overlaying. In declarative SVG, you can use multiple `<feBlend>` to achieve this.
+```bash
+dnf update -y
+dnf install -y git make gcc-c++ python3 mesa-libGL-devel mesa-libEGL-devel libX11-devel libXext-devel
+curl -fsSL https://rpm.nodesource.com/setup_20.x | bash -
+dnf install -y nodejs
+```
+
+Then create the layer directory structure:
+
+```bash
+mkdir -p /opt/headless-gl-layer/nodejs
+cd /opt/headless-gl-layer/nodejs
+```
+
+Then build and install from source:
+
+```bash
+npm install gl --build-from-source
+```
+
+Assuming your current directory is `/opt/headless-gl-layer`, execute:
+
+```bash
+cd /opt/headless-gl-layer
+zip -r9 /opt/headless-gl-layer.zip .
+```
+
+Then upload to S3 to complete the creation of the layer:
+
+```bash
+aws lambda publish-layer-version \
+  --layer-name headless-gl-layer \
+  --description "Headless GL for Node.js on AL2 arm64" \
+  --compatible-runtimes nodejs20.x \
+  --compatible-architectures arm64 \
+  --content S3Bucket=<your-bucket>,S3Key=headless-gl-layer.zip
+```
+
+You can now select this Layer in the AWS console to add it to your function.
 
 ## Implementing Patterns {#pattern}
 
@@ -386,9 +426,25 @@ The string-based `transform` needs to be parsed into `mat3`, and then passed to 
 
 <Pattern />
 
+## Exporting Gradients to SVG {#export-gradient-to-svg}
+
+### Linear Gradient {#linear-gradient}
+
+SVG provides [linearGradient] and [radialGradient], but their supported attributes are quite different from [CanvasGradient].
+
+### Conic Gradient {#conic-gradient}
+
+Refer to [SVG angular gradient] for an approximate implementation. The [CSS conic-gradient() polyfill] approach is to render using Canvas and export as dataURL, then reference it with `<image>`.
+
+### Multiple Gradient Overlay {#multiple-gradient-overlay}
+
+For multiple gradient overlays, in Canvas API, you can set `fillStyle` multiple times for overlaying. In declarative SVG, you can use multiple `<feBlend>` to achieve this.
+
 ## Extended Reading {#extended-reading}
 
 -   [A flowing WebGL gradient, deconstructed]
+-   [Running on lambda error]
+-   [Static Mesh Gradient]
 
 [CanvasGradient]: https://developer.mozilla.org/en-US/docs/Web/API/CanvasGradient
 [Device]: /reference/canvas#getdevice
@@ -422,3 +478,6 @@ The string-based `transform` needs to be parsed into `mat3`, and then passed to 
 [2d-snoise-clear]: https://thebookofshaders.com/edit.php#11/2d-snoise-clear.frag
 [lygia/generative]: https://lygia.xyz/generative
 [A flowing WebGL gradient, deconstructed]: https://alexharri.com/blog/webgl-gradients
+[Running on lambda error]: https://github.com/stackgl/headless-gl/issues/187
+[Static Mesh Gradient]: https://shaders.paper.design/static-mesh-gradient
+[Lesson 11 - Server-side rendering]: /guide/lesson-011#server-side-rendering
