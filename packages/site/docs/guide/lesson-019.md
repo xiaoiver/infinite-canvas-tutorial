@@ -60,7 +60,7 @@ export class HistoryEntry {
 }
 ```
 
-## Desgin states {#design-states}
+## Design states {#design-states}
 
 Referring to Excalidraw, we split the system state into `AppState` and `Elements`. The former includes the state of the canvas as well as the UI components, such as the current theme, the camera zoom level, the toolbar configurations and selections, etc.
 
@@ -228,7 +228,7 @@ export class History {
 
 Now we can look at how to design the `AppStateChange` and `ElementsChange` data structures for `Change`, allowing us to use a generic `entry.inverse()` instead of describing each changeable attribute with `add/removeFill` `add/removeStroke` and so on.
 
-## Desgin change structure {#design-change-structure}
+## Design change structure {#design-change-structure}
 
 The `Change` interface in Excalidraw is very simple:
 
