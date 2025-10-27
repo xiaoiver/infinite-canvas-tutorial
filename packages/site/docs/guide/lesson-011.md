@@ -422,6 +422,81 @@ Runs as follows, for details: [E2E action]
 
 ![Playwright sharding](/playwright-sharding.png)
 
+#### AWS lambda function
+
+Now we need to create a Lambda function on AWS that performs server-side rendering using a custom Layer containing `headless-gl`.
+
+![aws-lambda-layer](/aws-lambda-layer.png)
+
+Let's build the Layer locally using the Amazon Linux 2023 image, since our target runtime environment is Node.js 20.x:
+
+```bash
+# Lambda runtime compatible base
+FROM amazonlinux:2023
+
+# Enable Node.js 20 and essential build tools
+RUN yum update -y && \
+    yum install -y \
+      gcc \
+      gcc-c++ \
+      make \
+      python3 \
+      pkgconf-pkg-config \
+      mesa-libGL-devel \
+      mesa-libEGL-devel \
+      mesa-libGLU-devel \
+      mesa-libOSMesa-devel \
+      libXi-devel \
+      libXext-devel \
+      libX11-devel \
+      libxcb-devel \
+      libXau-devel \
+      libXdmcp-devel && \
+    ln -sf /usr/bin/python3 /usr/bin/python
+
+WORKDIR /build
+
+# Create nodejs directory (Lambda Layer structure)
+RUN mkdir -p nodejs
+
+# Install Node.js (Amazon Linux 2023 default no Node)
+RUN curl -fsSL https://rpm.nodesource.com/setup_20.x | bash - && \
+    yum install -y nodejs
+
+# Install headless-gl and dependencies
+RUN npm install --prefix ./nodejs gl --build-from-source
+
+# Copy mesa libraries (optional but helps ensure runtime success)
+RUN mkdir -p lib64 && \
+    cp /usr/lib64/libGL.so.* lib64/ && \
+    cp /usr/lib64/libGLU.so.* lib64/ && \
+    cp /usr/lib64/libOSMesa.so.* lib64/ && \
+    cp /usr/lib64/libX11.so.* lib64/ && \
+    cp /usr/lib64/libXau.so.* lib64/ && \
+    cp /usr/lib64/libXi.so.* lib64/ && \
+    cp /usr/lib64/libxcb.so.* lib64/ && \
+    cp /usr/lib64/libXdmcp.so.* lib64/ && \
+    cp /usr/lib64/libXext.so.* lib64/ || true
+
+# Package final layer zip (AWS expects nodejs/ at root)
+RUN zip -r9 /opt/headless-gl-layer.zip nodejs lib64
+
+CMD ["bash"]
+```
+
+Then upload to S3 to complete the creation of the layer:
+
+```bash
+aws lambda publish-layer-version \
+  --layer-name headless-gl-layer \
+  --description "Headless GL for Node.js on AL2 arm64" \
+  --compatible-runtimes nodejs20.x \
+  --compatible-architectures arm64 \
+  --content S3Bucket=<your-bucket>,S3Key=headless-gl-layer.zip
+```
+
+You can now select this Layer in the AWS console to add it to your function.
+
 ## E2E test {#e2e-test}
 
 [Playwright Components (experimental)] supports component-level testing of UI frameworks such as React, Svelte, Vue, and others. Compared to writing test cases using `@playwright/test`, a `mount` method has been added to the parameter object:

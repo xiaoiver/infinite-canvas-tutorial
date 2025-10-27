@@ -6,7 +6,6 @@ import {
   Ellipse,
   FillSolid,
   GlobalTransform,
-  Highlighted,
   Opacity,
   Parent,
   Path,
@@ -28,19 +27,14 @@ import {
   FractionalIndex,
   ComputedCamera,
   Brush,
-  Pen,
   Transformable,
   Visibility,
   SnapPoint,
 } from '../components';
 import { Commands } from '../commands';
-import { getSceneRoot, updateGlobalTransform } from './Transform';
-import {
-  TRANSFORMER_ANCHOR_FILL_COLOR,
-  TRANSFORMER_ANCHOR_STROKE_COLOR,
-} from './RenderTransformer';
+import { updateGlobalTransform } from './Transform';
+import { TRANSFORMER_ANCHOR_STROKE_COLOR } from './RenderTransformer';
 import { HIGHLIGHTER_Z_INDEX } from '../context';
-import { safeAddComponent, safeRemoveComponent } from '../history';
 import { updateComputedPoints } from './ComputePoints';
 
 /**
@@ -104,7 +98,6 @@ export class RenderSnap extends System {
       const pointEntities = this.createPoints(camera, points);
       this.pointsEntities.set(point.__id, pointEntities);
     });
-
     this.points.removed.forEach((point) => {
       // const { camera } = point.read(SnapPoint);
       const pointEntities = this.pointsEntities.get(point.__id);
@@ -119,13 +112,12 @@ export class RenderSnap extends System {
 
   createPoints(camera: Entity, points: [number, number][]) {
     const pointEntities = points.map((p) => {
-      console.log('p', p);
       const point = this.commands
         .spawn(
           new UI(UIType.SNAP_POINT),
           new Transform(),
           new Renderable(),
-          new Stroke({ width: 2, color: TRANSFORMER_ANCHOR_STROKE_COLOR }), // --spectrum-thumbnail-border-color-selected
+          new Stroke({ width: 2, color: TRANSFORMER_ANCHOR_STROKE_COLOR }),
           new ZIndex(HIGHLIGHTER_Z_INDEX),
           new StrokeAttenuation(),
           new SizeAttenuation(),
@@ -133,11 +125,11 @@ export class RenderSnap extends System {
           // new Path({
           //   d: `M ${p[0]} ${p[1]} L ${p[0]} ${p[1]}`,
           // }),
-          new Circle({
-            cx: p[0],
-            cy: p[1],
-            r: 10,
-          }),
+          // new Circle({
+          //   cx: p[0],
+          //   cy: p[1],
+          //   r: 10,
+          // }),
         )
         .id()
         .hold();
@@ -149,6 +141,31 @@ export class RenderSnap extends System {
       return point;
     });
 
-    return pointEntities;
+    const line = this.commands
+      .spawn(
+        new UI(UIType.SNAP_LINE),
+        new Transform(),
+        new Renderable(),
+        new Stroke({
+          width: 2,
+          color: TRANSFORMER_ANCHOR_STROKE_COLOR,
+          dasharray: [5, 5],
+        }),
+        new ZIndex(HIGHLIGHTER_Z_INDEX),
+        new StrokeAttenuation(),
+        new SizeAttenuation(),
+        new Visibility(),
+        new Polyline({
+          points,
+        }),
+      )
+      .id()
+      .hold();
+    this.commands.entity(camera).appendChild(this.commands.entity(line));
+    this.commands.execute();
+    updateGlobalTransform(line);
+    updateComputedPoints(line);
+
+    return [...pointEntities, line];
   }
 }

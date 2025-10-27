@@ -191,12 +191,9 @@ export class Select extends System {
 
     const selection = this.selections.get(camera.__id);
 
-    const {
-      pointerDownViewportX,
-      pointerDownViewportY,
-      pointerDownCanvasX,
-      pointerDownCanvasY,
-    } = camera.read(ComputedCameraControl);
+    const { pointerDownCanvasX, pointerDownCanvasY } = camera.read(
+      ComputedCameraControl,
+    );
 
     const dragOffset: [number, number] = [
       ex - pointerDownCanvasX,
@@ -206,15 +203,13 @@ export class Select extends System {
     const { snapOffset, snapLines } = snapDraggedElements(api, dragOffset);
 
     const offset = calculateOffset(
-      [pointerDownCanvasX, pointerDownCanvasY],
+      [selection.obb.x, selection.obb.y],
       dragOffset,
       snapOffset,
       api.getAppState().snapToPixelGridSize,
     );
 
-    // console.log('offset', offset);
-
-    // this.createSnapPoints(camera, snapLines);
+    this.createSnapPoints(camera, snapLines);
 
     const { selecteds, mask } = camera.read(Transformable);
     selecteds.forEach((selected) => {
@@ -254,6 +249,13 @@ export class Select extends System {
     camera.write(Transformable).status = TransformableStatus.MOVED;
 
     this.saveSelectedOBB(api, selection);
+
+    if (camera.has(Snap)) {
+      [...camera.read(Snap).points].forEach((point) => {
+        point.add(ToBeDeleted);
+        point.remove(SnapPoint);
+      });
+    }
   }
 
   private handleSelectedRotating(
@@ -1098,19 +1100,21 @@ export class Select extends System {
     snapLines: { type: string; points: [number, number][] }[],
   ) {
     safeAddComponent(camera, Snap);
-    camera.read(Snap).points.forEach((point) => {
+
+    [...camera.read(Snap).points].forEach((point) => {
       point.add(ToBeDeleted);
       point.remove(SnapPoint);
     });
 
     snapLines.forEach(({ type, points }) => {
       if (type === 'points') {
-        const snapPoint = this.commands.spawn(new SnapPoint()).id().hold();
+        const snapPoint = this.commands.spawn(new SnapPoint()).id();
         this.commands.execute();
         snapPoint.write(SnapPoint).camera = camera;
         snapPoint.write(SnapPoint).points = points;
-        this.commands.execute();
       }
     });
+
+    this.commands.execute();
   }
 }

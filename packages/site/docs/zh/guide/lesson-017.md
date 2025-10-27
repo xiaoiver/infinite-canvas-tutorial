@@ -346,60 +346,6 @@ f(p) = fbm( p + fbm( p + fbm( p )) )
 
 <DomainWarping />
 
-### 服务端渲染 {#server-side-rendering}
-
-最后我们来看看如何在服务端渲染，例如在服务端为专辑生成封面。在 [课程 11 - 服务端渲染] 中我们介绍过 `headless-gl`，现在需要在 AWS 上创建一个 Lambda function，通过一个包含 `headless-gl` 的自定义 Layer 完成服务端渲染。
-
-![aws-lambda-layer](/aws-lambda-layer.png)
-
-让我们在本地使用 Amazon Linux 2023 镜像来构建 Layer，因为我们的目标运行环境是 Node.js 20.x：
-
-```bash
-docker run -it amazonlinux:2023 bash
-```
-
-然后在容器中执行以下命令，安装 `headless-gl` 需要的一些依赖：
-
-```bash
-dnf update -y
-dnf install -y git make gcc-c++ python3 mesa-libGL-devel mesa-libEGL-devel libX11-devel libXext-devel
-curl -fsSL https://rpm.nodesource.com/setup_20.x | bash -
-dnf install -y nodejs
-```
-
-然后创建 layer 目录结构：
-
-```bash
-mkdir -p /opt/headless-gl-layer/nodejs
-cd /opt/headless-gl-layer/nodejs
-```
-
-再从源码构建安装：
-
-```bash
-npm install gl --build-from-source
-```
-
-假设你当前目录是 `/opt/headless-gl-layer` 执行：
-
-```bash
-cd /opt/headless-gl-layer
-zip -r9 /opt/headless-gl-layer.zip .
-```
-
-然后上传到 S3 完成 Layer 的创建：
-
-```bash
-aws lambda publish-layer-version \
-  --layer-name headless-gl-layer \
-  --description "Headless GL for Node.js on AL2 arm64" \
-  --compatible-runtimes nodejs20.x \
-  --compatible-architectures arm64 \
-  --content S3Bucket=<your-bucket>,S3Key=headless-gl-layer.zip
-```
-
-现在 AWS 的控制台上就可以选择这个 Layer 添加到 function 中了。
-
 ## 实现重复图案 {#pattern}
 
 我们可以使用 Canvas API 提供的 [createPattern] 创建，支持如下语法：
@@ -442,7 +388,6 @@ SVG 提供了 [linearGradient] 和 [radialGradient]，但支持的属性和 [Can
 ## 扩展阅读 {#extended-reading}
 
 -   [A flowing WebGL gradient, deconstructed]
--   [Running on lambda error]
 -   [Static Mesh Gradient]
 
 [CanvasGradient]: https://developer.mozilla.org/en-US/docs/Web/API/CanvasGradient
@@ -477,6 +422,4 @@ SVG 提供了 [linearGradient] 和 [radialGradient]，但支持的属性和 [Can
 [2d-snoise-clear]: https://thebookofshaders.com/edit.php#11/2d-snoise-clear.frag
 [lygia/generative]: https://lygia.xyz/generative
 [A flowing WebGL gradient, deconstructed]: https://alexharri.com/blog/webgl-gradients
-[Running on lambda error]: https://github.com/stackgl/headless-gl/issues/187
 [Static Mesh Gradient]: https://shaders.paper.design/static-mesh-gradient
-[课程 11 - 服务端渲染]: /zh/guide/lesson-011#server-side-rendering

@@ -8,6 +8,7 @@ export enum UIType {
   BRUSH = 'brush',
   LABEL = 'label',
   SNAP_POINT = 'snap-point',
+  SNAP_LINE = 'snap-line',
 }
 
 /**
@@ -24,6 +25,7 @@ export class UI {
       UIType.BRUSH,
       UIType.LABEL,
       UIType.SNAP_POINT,
+      UIType.SNAP_LINE,
     ]),
     default: UIType.UNKNOWN,
   })

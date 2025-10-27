@@ -351,60 +351,6 @@ f(p) = fbm( p + fbm( p + fbm( p )) )
 
 <DomainWarping />
 
-### Server-side rendering {#server-side-rendering}
-
-Finally, let's explore server-side rendering, such as generating album covers on the server. In [Lesson 11 - Server-side rendering], we introduced `headless-gl`. Now we need to create a Lambda function on AWS that performs server-side rendering using a custom Layer containing `headless-gl`.
-
-![aws-lambda-layer](/aws-lambda-layer.png)
-
-Let's build the Layer locally using the Amazon Linux 2023 image, since our target runtime environment is Node.js 20.x:
-
-```bash
-docker run -it amazonlinux:2023 bash
-```
-
-Then run the following command in the container to install some dependencies required by `headless-gl`:
-
-```bash
-dnf update -y
-dnf install -y git make gcc-c++ python3 mesa-libGL-devel mesa-libEGL-devel libX11-devel libXext-devel
-curl -fsSL https://rpm.nodesource.com/setup_20.x | bash -
-dnf install -y nodejs
-```
-
-Then create the layer directory structure:
-
-```bash
-mkdir -p /opt/headless-gl-layer/nodejs
-cd /opt/headless-gl-layer/nodejs
-```
-
-Then build and install from source:
-
-```bash
-npm install gl --build-from-source
-```
-
-Assuming your current directory is `/opt/headless-gl-layer`, execute:
-
-```bash
-cd /opt/headless-gl-layer
-zip -r9 /opt/headless-gl-layer.zip .
-```
-
-Then upload to S3 to complete the creation of the layer:
-
-```bash
-aws lambda publish-layer-version \
-  --layer-name headless-gl-layer \
-  --description "Headless GL for Node.js on AL2 arm64" \
-  --compatible-runtimes nodejs20.x \
-  --compatible-architectures arm64 \
-  --content S3Bucket=<your-bucket>,S3Key=headless-gl-layer.zip
-```
-
-You can now select this Layer in the AWS console to add it to your function.
-
 ## Implementing Patterns {#pattern}
 
 We can use Canvas API's [createPattern] to create patterns, supporting the following syntax:
@@ -443,7 +389,6 @@ For multiple gradient overlays, in Canvas API, you can set `fillStyle` multiple 
 ## Extended Reading {#extended-reading}
 
 -   [A flowing WebGL gradient, deconstructed]
--   [Running on lambda error]
 -   [Static Mesh Gradient]
 
 [CanvasGradient]: https://developer.mozilla.org/en-US/docs/Web/API/CanvasGradient
@@ -478,6 +423,4 @@ For multiple gradient overlays, in Canvas API, you can set `fillStyle` multiple 
 [2d-snoise-clear]: https://thebookofshaders.com/edit.php#11/2d-snoise-clear.frag
 [lygia/generative]: https://lygia.xyz/generative
 [A flowing WebGL gradient, deconstructed]: https://alexharri.com/blog/webgl-gradients
-[Running on lambda error]: https://github.com/stackgl/headless-gl/issues/187
 [Static Mesh Gradient]: https://shaders.paper.design/static-mesh-gradient
-[Lesson 11 - Server-side rendering]: /guide/lesson-011#server-side-rendering

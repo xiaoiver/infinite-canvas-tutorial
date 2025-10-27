@@ -10,7 +10,7 @@ description: '搭建包含Jest单元测试、视觉回归测试的完整测试�
 -   基于 Jest 的测试环境搭建，包含本地和 CI 环境
 -   使用单元测试提升代码覆盖率
 -   视觉回归测试
-    -   基于 headless-gl 的 WebGL1 服务端渲染方案
+    -   基于 headless-gl 的 WebGL1 服务端渲染方案，CI 环境和 AWS Lambda function
     -   基于 Playwright 的 WebGL2 / WebGPU 端到端测试方案
 -   E2E 测试
 -   浏览器兼容性测试
@@ -326,6 +326,81 @@ expect(dragstartHandler).not.toBeCalled();
 ```
 
 完整代码详见：[github workflows - test]
+
+#### AWS lambda function
+
+在 AWS 上创建一个 Lambda function，通过一个包含 `headless-gl` 的自定义 Layer 完成服务端渲染。
+
+![aws-lambda-layer](/aws-lambda-layer.png)
+
+让我们在本地使用 Amazon Linux 2023 镜像来构建 Layer，因为我们的目标运行环境是 Node.js 20.x：
+
+```bash
+# Lambda runtime compatible base
+FROM amazonlinux:2023
+
+# Enable Node.js 20 and essential build tools
+RUN yum update -y && \
+    yum install -y \
+      gcc \
+      gcc-c++ \
+      make \
+      python3 \
+      pkgconf-pkg-config \
+      mesa-libGL-devel \
+      mesa-libEGL-devel \
+      mesa-libGLU-devel \
+      mesa-libOSMesa-devel \
+      libXi-devel \
+      libXext-devel \
+      libX11-devel \
+      libxcb-devel \
+      libXau-devel \
+      libXdmcp-devel && \
+    ln -sf /usr/bin/python3 /usr/bin/python
+
+WORKDIR /build
+
+# Create nodejs directory (Lambda Layer structure)
+RUN mkdir -p nodejs
+
+# Install Node.js (Amazon Linux 2023 default no Node)
+RUN curl -fsSL https://rpm.nodesource.com/setup_20.x | bash - && \
+    yum install -y nodejs
+
+# Install headless-gl and dependencies
+RUN npm install --prefix ./nodejs gl --build-from-source
+
+# Copy mesa libraries (optional but helps ensure runtime success)
+RUN mkdir -p lib64 && \
+    cp /usr/lib64/libGL.so.* lib64/ && \
+    cp /usr/lib64/libGLU.so.* lib64/ && \
+    cp /usr/lib64/libOSMesa.so.* lib64/ && \
+    cp /usr/lib64/libX11.so.* lib64/ && \
+    cp /usr/lib64/libXau.so.* lib64/ && \
+    cp /usr/lib64/libXi.so.* lib64/ && \
+    cp /usr/lib64/libxcb.so.* lib64/ && \
+    cp /usr/lib64/libXdmcp.so.* lib64/ && \
+    cp /usr/lib64/libXext.so.* lib64/ || true
+
+# Package final layer zip (AWS expects nodejs/ at root)
+RUN zip -r9 /opt/headless-gl-layer.zip nodejs lib64
+
+CMD ["bash"]
+```
+
+然后上传到 S3 完成 Layer 的创建：
+
+```bash
+aws lambda publish-layer-version \
+  --layer-name headless-gl-layer \
+  --description "Headless GL for Node.js on AL2 arm64" \
+  --compatible-runtimes nodejs20.x \
+  --compatible-architectures arm64 \
+  --content S3Bucket=<your-bucket>,S3Key=headless-gl-layer.zip
+```
+
+现在 AWS 的控制台上就可以选择这个 Layer 添加到 function 中了。
 
 ### 无头浏览器 {#headless-browser}
 
@@ -663,3 +738,4 @@ worker.onmessage = function (event) {
 [Playwright Components (experimental)]: https://playwright.dev/docs/test-components
 [Web Components]: /zh/guide/lesson-007
 [browserstack-local]: https://github.com/browserstack/browserstack-local-nodejs
+[Running on lambda error]: https://github.com/stackgl/headless-gl/issues/187
