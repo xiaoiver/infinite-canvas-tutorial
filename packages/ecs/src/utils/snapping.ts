@@ -54,7 +54,7 @@ export type Snaps = Snap[];
 
 const VISIBLE_GAPS_LIMIT_PER_AXIS = 99999;
 
-const SNAP_DISTANCE = 8;
+const SNAP_DISTANCE = 10;
 // snap distance with zoom value taken into consideration
 export const getSnapDistance = (zoomValue: number) => {
   return SNAP_DISTANCE / zoomValue;
@@ -403,8 +403,12 @@ const getVisibleGaps = (api: API) => {
 };
 
 export const snapDraggedElements = (api: API, dragOffset: [number, number]) => {
-  const { snapToObjectsEnabled, cameraZoom, layersSelected } =
-    api.getAppState();
+  const {
+    snapToObjectsEnabled,
+    snapToPixelGridSize,
+    cameraZoom,
+    layersSelected,
+  } = api.getAppState();
   if (!snapToObjectsEnabled) {
     return {
       snapOffset: [0, 0] as [number, number],
@@ -443,11 +447,6 @@ export const snapDraggedElements = (api: API, dragOffset: [number, number]) => {
     nearestSnapsX[0]?.offset ?? 0,
     nearestSnapsY[0]?.offset ?? 0,
   ];
-
-  // console.log('dragOffset', dragOffset);
-  // console.log('snapOffset', snapOffset);
-  // console.log('nearestSnapsX', nearestSnapsX);
-  // console.log('nearestSnapsY', nearestSnapsY);
 
   const pointSnapLines = createPointSnapLines(nearestSnapsX, nearestSnapsY);
 

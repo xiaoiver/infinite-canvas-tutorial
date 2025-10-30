@@ -478,6 +478,7 @@ void main() {
   vec4 strokeColor = u_StrokeColor;
   float opacity = u_Opacity.x;
   float strokeOpacity = u_Opacity.z;
+  bool strokeAttenuation = u_Opacity.w > 0.5;
   float strokeAlignment = u_ZIndexStrokeWidth.w;
   float alpha = 1.0;
 
@@ -533,8 +534,15 @@ void main() {
   float u_Dash = u_StrokeDash.x;
   float u_Gap = u_StrokeDash.y;
   float u_DashOffset = u_StrokeDash.z;
+
+  float scalingFactor = v_ScalingFactor;
+  float travelScalingFactor = 1.0;
+  if (strokeAttenuation) {
+    travelScalingFactor = u_ZoomScale;
+  }
+
   if (u_Dash + u_Gap > 1.0) {
-    float travel = mod(v_Travel + u_Gap * v_ScalingFactor * 0.5 + u_DashOffset, u_Dash * v_ScalingFactor + u_Gap * v_ScalingFactor) - (u_Gap * v_ScalingFactor * 0.5);
+    float travel = mod(v_Travel * travelScalingFactor + u_Gap * scalingFactor * 0.5 + u_DashOffset, u_Dash * scalingFactor + u_Gap * scalingFactor) - (u_Gap * scalingFactor * 0.5);
     float left = max(travel - 0.5, -0.5);
     float right = min(travel + 0.5, u_Gap * v_ScalingFactor + 0.5);
     alpha *= antialias(max(0.0, right - left));

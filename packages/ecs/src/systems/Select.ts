@@ -52,6 +52,7 @@ import {
   decompose,
   distanceBetweenPoints,
   getCursor,
+  getGridPoint,
   SerializedNode,
   snapDraggedElements,
   // snapDraggedElements,
@@ -186,6 +187,7 @@ export class Select extends System {
     ex: number,
     ey: number,
   ) {
+    const { snapToPixelGridSize } = api.getAppState();
     const camera = api.getCamera();
     camera.write(Transformable).status = TransformableStatus.MOVING;
 
@@ -194,20 +196,26 @@ export class Select extends System {
     const { pointerDownCanvasX, pointerDownCanvasY } = camera.read(
       ComputedCameraControl,
     );
+    const [gridEx, gridEy] = getGridPoint(ex, ey, snapToPixelGridSize);
+    const [gridPointerDownCanvasX, gridPointerDownCanvasY] = getGridPoint(
+      pointerDownCanvasX,
+      pointerDownCanvasY,
+      snapToPixelGridSize,
+    );
 
     const dragOffset: [number, number] = [
-      ex - pointerDownCanvasX,
-      ey - pointerDownCanvasY,
+      gridEx - gridPointerDownCanvasX,
+      gridEy - gridPointerDownCanvasY,
     ];
 
     const { snapOffset, snapLines } = snapDraggedElements(api, dragOffset);
 
-    const offset = calculateOffset(
-      [selection.obb.x, selection.obb.y],
-      dragOffset,
-      snapOffset,
-      api.getAppState().snapToPixelGridSize,
-    );
+    // const offset = calculateOffset(
+    //   [selection.obb.x, selection.obb.y],
+    //   dragOffset,
+    //   snapOffset,
+    //   snapToPixelGridSize,
+    // );
 
     this.createSnapPoints(camera, snapLines);
 
@@ -222,8 +230,8 @@ export class Select extends System {
       const oldNode = selection.nodes.find((n) => n.id === node.id);
       if (oldNode) {
         api.updateNodeOBB(node, {
-          x: oldNode.x + offset[0],
-          y: oldNode.y + offset[1],
+          x: oldNode.x + dragOffset[0],
+          y: oldNode.y + dragOffset[1],
         });
       }
       updateGlobalTransform(selected);

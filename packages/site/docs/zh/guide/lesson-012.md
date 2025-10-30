@@ -644,10 +644,28 @@ v_Travel = a_Travel + dot(pos - pointA, vec2(-norm.y, norm.x));
 ```glsl
 in float v_Travel;
 
+/**
+虚线模式重复单元：
+┌─────────────────┬─────────┬─────────────────┐
+│   Gap/2         │  Dash   │   Gap/2         │
+│  (透明)          │ (不透明) │  (透明)         │
+└─────────────────┴─────────┴─────────────────┘
+       ↑                          ↑
+      -0.5                   Dash+0.5
+   (抗锯齿边界)            (抗锯齿边界)
+ */
 float u_Dash = u_StrokeDash.x;
 float u_Gap = u_StrokeDash.y;
 float u_DashOffset = u_StrokeDash.z;
 if (u_Dash + u_Gap > 1.0) {
+    /**
+    travel 值的含义：
+  < -0.5          : 间隔区域（alpha = 0）
+  -0.5 ~ 0        : 虚线起始边缘（平滑过渡）
+  0 ~ Dash        : 虚线段（alpha = 1）
+  Dash ~ Dash+0.5 : 虚线结束边缘（平滑过渡）
+  > Dash+0.5      : 间隔区域（alpha = 0）
+     */
   float travel = mod(v_Travel + u_Gap * v_ScalingFactor * 0.5 + u_DashOffset, u_Dash * v_ScalingFactor + u_Gap * v_ScalingFactor) - (u_Gap * v_ScalingFactor * 0.5);
   float left = max(travel - 0.5, -0.5);
   float right = min(travel + 0.5, u_Gap * v_ScalingFactor + 0.5);

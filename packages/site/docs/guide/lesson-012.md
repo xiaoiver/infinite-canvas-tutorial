@@ -644,10 +644,28 @@ In the Fragment Shader, pass in the values of `stroke-dasharray` and `stroke-das
 ```glsl
 in float v_Travel;
 
+/**
+虚线模式重复单元：
+┌─────────────────┬─────────┬─────────────────┐
+│   Gap/2         │  Dash   │   Gap/2         │
+│  (Transparent)  │ (Opaque)│  (Transparent)  │
+└─────────────────┴─────────┴─────────────────┘
+       ↑                          ↑
+      -0.5                   Dash+0.5
+   (antialias)            (antialias)
+ */
 float u_Dash = u_StrokeDash.x;
 float u_Gap = u_StrokeDash.y;
 float u_DashOffset = u_StrokeDash.z;
 if (u_Dash + u_Gap > 1.0) {
+    /**
+    value of travel:
+  < -0.5          : gap region (alpha = 0)
+  -0.5 ~ 0        : dash start edge (smooth transition)
+  0 ~ Dash        : dash segment (alpha = 1)
+  Dash ~ Dash+0.5 : dash end edge (smooth transition)
+  > Dash+0.5      : gap region (alpha = 0)
+     */
   float travel = mod(v_Travel + u_Gap * v_ScalingFactor * 0.5 + u_DashOffset, u_Dash * v_ScalingFactor + u_Gap * v_ScalingFactor) - (u_Gap * v_ScalingFactor * 0.5);
   float left = max(travel - 0.5, -0.5);
   float right = min(travel + 0.5, u_Gap * v_ScalingFactor + 0.5);
