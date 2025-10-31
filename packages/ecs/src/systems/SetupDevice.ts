@@ -8,7 +8,7 @@ import {
   WebGPUDeviceContribution,
 } from '@antv/g-device-api';
 import { Canvas, GPUResource, Grid, Theme } from '../components';
-import { RenderCache } from '../utils';
+import { isBrowser, RenderCache } from '../utils';
 import { TexturePool } from '../resources';
 
 /**
@@ -21,6 +21,11 @@ export class SetupDevice extends System {
   );
 
   #texturePool: TexturePool;
+
+  /**
+   * Used for rendering and exporting the shapes in canvas to image(PNG, JPEG, etc.).
+   */
+  #offscreenElement: HTMLCanvasElement | OffscreenCanvas;
 
   constructor() {
     super();
@@ -55,41 +60,35 @@ export class SetupDevice extends System {
         element,
       } = canvas.read(Canvas);
 
-      const holder = canvas.hold();
-
-      const widthDPR = width * devicePixelRatio;
-      const heightDPR = height * devicePixelRatio;
-
-      let deviceContribution: DeviceContribution;
-      if (renderer === 'webgl') {
-        deviceContribution = new WebGLDeviceContribution({
-          targets: ['webgl2', 'webgl1'],
-          antialias: true,
-          shaderDebug: true,
-          trackResources: false,
-          onContextCreationError: () => {},
-          onContextLost: () => {},
-          onContextRestored(e) {},
-        });
-      } else {
-        deviceContribution = new WebGPUDeviceContribution({
+      if (!this.#offscreenElement && isBrowser) {
+        this.#offscreenElement = document.createElement('canvas');
+        this.#offscreenElement.width = width;
+        this.#offscreenElement.height = height;
+        await this.createGPUResource(
+          renderer,
           shaderCompilerPath,
-          onContextLost: () => {},
-        });
+          this.#offscreenElement,
+          width,
+          height,
+          devicePixelRatio,
+        );
       }
 
-      const swapChain = await deviceContribution.createSwapChain(
-        element as HTMLCanvasElement,
-      );
-
-      swapChain.configureSwapChain(widthDPR, heightDPR);
-      const device = swapChain.getDevice();
-      const [renderTarget, depthRenderTarget] = this.createRenderTarget(
+      const holder = canvas.hold();
+      const {
         device,
-        widthDPR,
-        heightDPR,
+        swapChain,
+        renderTarget,
+        depthRenderTarget,
+        renderCache,
+      } = await this.createGPUResource(
+        renderer,
+        shaderCompilerPath,
+        element,
+        width,
+        height,
+        devicePixelRatio,
       );
-      const renderCache = new RenderCache(device);
 
       this.addGPUResource(holder, {
         device,
@@ -144,6 +143,57 @@ export class SetupDevice extends System {
     });
 
     this.#texturePool.destroy();
+  }
+
+  private async createGPUResource(
+    renderer: 'webgl' | 'webgpu',
+    shaderCompilerPath: string,
+    element: HTMLCanvasElement | OffscreenCanvas,
+    width: number,
+    height: number,
+    devicePixelRatio: number,
+  ) {
+    const widthDPR = width * devicePixelRatio;
+    const heightDPR = height * devicePixelRatio;
+
+    let deviceContribution: DeviceContribution;
+    if (renderer === 'webgl') {
+      deviceContribution = new WebGLDeviceContribution({
+        targets: ['webgl2', 'webgl1'],
+        antialias: true,
+        shaderDebug: true,
+        trackResources: false,
+        onContextCreationError: () => {},
+        onContextLost: () => {},
+        onContextRestored(e) {},
+      });
+    } else {
+      deviceContribution = new WebGPUDeviceContribution({
+        shaderCompilerPath,
+        onContextLost: () => {},
+      });
+    }
+
+    const swapChain = await deviceContribution.createSwapChain(
+      element as HTMLCanvasElement,
+    );
+
+    swapChain.configureSwapChain(widthDPR, heightDPR);
+    const device = swapChain.getDevice();
+    const [renderTarget, depthRenderTarget] = this.createRenderTarget(
+      device,
+      widthDPR,
+      heightDPR,
+    );
+    const renderCache = new RenderCache(device);
+
+    return {
+      device,
+      swapChain,
+      renderTarget,
+      depthRenderTarget,
+      renderCache,
+    };
   }
 
   private createRenderTarget(device: Device, width: number, height: number) {
