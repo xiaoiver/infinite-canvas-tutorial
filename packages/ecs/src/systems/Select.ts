@@ -649,7 +649,17 @@ export class Select extends System {
       const { inputPoints, api } = canvas.read(Canvas);
       const pen = api.getAppState().penbarSelected;
 
+      const input = canvas.write(Input);
+
       if (pen !== Pen.SELECT) {
+        Object.assign(input, {
+          wheelTrigger: false,
+          ctrlKey: false,
+          metaKey: false,
+          shiftKey: false,
+          key: undefined,
+        });
+
         // Clear selection
         if (pen !== Pen.VECTOR_NETWORK) {
           api.selectNodes([]);
@@ -661,7 +671,6 @@ export class Select extends System {
         }
       }
 
-      const input = canvas.write(Input);
       const cursor = canvas.write(Cursor);
 
       safeAddComponent(camera, Transformable);
