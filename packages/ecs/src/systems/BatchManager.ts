@@ -23,6 +23,7 @@ import {
   Renderable,
   Rough,
   Text,
+  UI,
   VectorNetwork,
 } from '../components';
 import { TexturePool } from '../resources';
@@ -276,6 +277,26 @@ export class BatchManager {
         this.#nonBatchableDrawcallsCache.delete(shape);
       }
     }
+  }
+
+  #hidedUIs: Drawcall[] = [];
+  hideUIs() {
+    [...this.#drawcallsToFlush].forEach((drawcall) => {
+      if (drawcall.shapes.some((shape) => shape.has(UI))) {
+        this.#drawcallsToFlush.splice(
+          this.#drawcallsToFlush.indexOf(drawcall),
+          1,
+        );
+        this.#hidedUIs.push(drawcall);
+      }
+    });
+  }
+
+  showUIs() {
+    this.#hidedUIs.forEach((drawcall) => {
+      this.#drawcallsToFlush.push(drawcall);
+    });
+    this.#hidedUIs = [];
   }
 
   destroy() {

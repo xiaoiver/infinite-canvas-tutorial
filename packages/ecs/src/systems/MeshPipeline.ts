@@ -58,13 +58,23 @@ import {
   Marker,
   VectorNetwork,
 } from '../components';
-import { paddingMat3 } from '../utils';
+import { paddingMat3, SerializedNode } from '../utils';
 import { GridRenderer } from './GridRenderer';
 import { BatchManager } from './BatchManager';
 import { getSceneRoot } from './Transform';
 import { safeAddComponent } from '../history';
+import { SetupDevice } from './SetupDevice';
+
+type GPURenderer = {
+  uniformBuffer: Buffer;
+  uniformLegacyObject: Record<string, unknown>;
+  gridRenderer: GridRenderer;
+  batchManager: BatchManager;
+};
 
 export class MeshPipeline extends System {
+  private setupDevice = this.attach(SetupDevice);
+
   private canvases = this.query((q) => q.current.with(Canvas).read);
 
   private cameras = this.query(
@@ -163,7 +173,7 @@ export class MeshPipeline extends System {
     (q) => q.addedChangedOrRemoved.with(Marker).trackWrites,
   );
 
-  gpuResources: Map<
+  renderers: Map<
     Entity,
     {
       uniformBuffer: Buffer;
@@ -253,49 +263,61 @@ export class MeshPipeline extends System {
     canvas.remove(RasterScreenshotRequest);
   }
 
+  private createRenderer(gpuResource: GPUResource) {
+    const { device, renderCache, texturePool } = gpuResource;
+    return {
+      uniformBuffer: device.createBuffer({
+        viewOrSize: (16 * 3 + 4 * 5) * Float32Array.BYTES_PER_ELEMENT,
+        usage: BufferUsage.UNIFORM,
+        hint: BufferFrequencyHint.DYNAMIC,
+      }),
+      uniformLegacyObject: null,
+      gridRenderer: new GridRenderer(),
+      batchManager: new BatchManager(device, renderCache, texturePool),
+    };
+  }
+
   private renderCamera(canvas: Entity, camera: Entity, sort = false) {
     if (!canvas.has(GPUResource)) {
       return;
     }
 
-    const {
-      swapChain,
-      device,
-      renderTarget,
-      depthRenderTarget,
-      renderCache,
-      texturePool,
-    } = canvas.read(GPUResource);
-
     const request = canvas.has(RasterScreenshotRequest)
       ? canvas.read(RasterScreenshotRequest)
       : null;
-
-    const { type, encoderOptions, grid, download } = request ?? {
+    const { type, encoderOptions, grid, download, nodes } = request ?? {
       type: 'image/png',
       encoderOptions: 1,
       grid: false,
+      nodes: [],
     };
+    const shouldRenderGrid = !request || grid;
+    const shouldRenderPartially = nodes.length > 0;
+
+    let renderer: GPURenderer;
+    let gpuResource: GPUResource;
+    if (shouldRenderPartially) {
+      // Render to offscreen canvas.
+      gpuResource = this.setupDevice.getOffscreenGPUResource();
+      renderer = this.createRenderer(gpuResource);
+    } else {
+      gpuResource = canvas.read(GPUResource);
+      if (!this.renderers.get(camera)) {
+        this.renderers.set(camera, this.createRenderer(gpuResource));
+      }
+      renderer = this.renderers.get(camera);
+      const { batchManager } = renderer;
+      if (request) {
+        batchManager.hideUIs();
+      }
+    }
+
+    const { swapChain, device, renderTarget, depthRenderTarget } = gpuResource;
+    const { uniformBuffer, uniformLegacyObject, gridRenderer, batchManager } =
+      renderer;
 
     const { width, height } = swapChain.getCanvas();
     const onscreenTexture = swapChain.getOnscreenTexture();
-
-    const shouldRenderGrid = !request || grid;
-
-    // console.log(request, grid);
-
-    if (!this.gpuResources.get(camera)) {
-      this.gpuResources.set(camera, {
-        uniformBuffer: device.createBuffer({
-          viewOrSize: (16 * 3 + 4 * 5) * Float32Array.BYTES_PER_ELEMENT,
-          usage: BufferUsage.UNIFORM,
-          hint: BufferFrequencyHint.DYNAMIC,
-        }),
-        uniformLegacyObject: null,
-        gridRenderer: new GridRenderer(),
-        batchManager: new BatchManager(device, renderCache, texturePool),
-      });
-    }
 
     const [buffer, legacyObject] = this.updateUniform(
       canvas,
@@ -303,13 +325,10 @@ export class MeshPipeline extends System {
       shouldRenderGrid,
       swapChain,
     );
-    this.gpuResources.set(camera, {
-      ...this.gpuResources.get(camera),
+    this.renderers.set(camera, {
+      ...this.renderers.get(camera),
       uniformLegacyObject: legacyObject,
     });
-
-    const { uniformBuffer, uniformLegacyObject, gridRenderer, batchManager } =
-      this.gpuResources.get(camera);
 
     uniformBuffer.setSubData(0, new Uint8Array(buffer.buffer));
 
@@ -326,15 +345,23 @@ export class MeshPipeline extends System {
 
     gridRenderer.render(device, renderPass, uniformBuffer, uniformLegacyObject);
 
-    if (this.pendingRenderables.has(camera)) {
-      this.pendingRenderables.get(camera).forEach(({ type, entity }) => {
-        if (type === 'remove') {
-          batchManager.remove(entity, !entity.has(Culled));
-        } else {
-          batchManager.add(entity);
-        }
+    if (shouldRenderPartially) {
+      const { api } = canvas.read(Canvas);
+      nodes.forEach((node: SerializedNode) => {
+        const entity = api.getEntity(node);
+        batchManager.add(entity);
       });
-      this.pendingRenderables.delete(camera);
+    } else {
+      if (this.pendingRenderables.has(camera)) {
+        this.pendingRenderables.get(camera).forEach(({ type, entity }) => {
+          if (type === 'remove') {
+            batchManager.remove(entity, !entity.has(Culled));
+          } else {
+            batchManager.add(entity);
+          }
+        });
+        this.pendingRenderables.delete(camera);
+      }
     }
 
     if (sort) {
@@ -351,6 +378,7 @@ export class MeshPipeline extends System {
         encoderOptions,
       );
       this.setScreenshotTrigger(canvas, dataURL, download);
+      batchManager.showUIs();
     }
   }
 
@@ -476,7 +504,7 @@ export class MeshPipeline extends System {
   }
 
   finalize() {
-    this.gpuResources.forEach(({ gridRenderer, batchManager }) => {
+    this.renderers.forEach(({ gridRenderer, batchManager }) => {
       gridRenderer.destroy();
       batchManager.clear();
       batchManager.destroy();

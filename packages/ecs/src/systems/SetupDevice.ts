@@ -26,6 +26,7 @@ export class SetupDevice extends System {
    * Used for rendering and exporting the shapes in canvas to image(PNG, JPEG, etc.).
    */
   #offscreenElement: HTMLCanvasElement | OffscreenCanvas;
+  #offscreenGPUResource: GPUResource;
 
   constructor() {
     super();
@@ -39,6 +40,10 @@ export class SetupDevice extends System {
   ): Generator {
     canvas.add(GPUResource, gpuResource);
     yield;
+  }
+
+  getOffscreenGPUResource() {
+    return this.#offscreenGPUResource;
   }
 
   execute() {
@@ -62,16 +67,19 @@ export class SetupDevice extends System {
 
       if (!this.#offscreenElement && isBrowser) {
         this.#offscreenElement = document.createElement('canvas');
-        this.#offscreenElement.width = width;
-        this.#offscreenElement.height = height;
-        await this.createGPUResource(
-          renderer,
-          shaderCompilerPath,
-          this.#offscreenElement,
-          width,
-          height,
-          devicePixelRatio,
-        );
+        this.#offscreenElement.width = width * devicePixelRatio;
+        this.#offscreenElement.height = height * devicePixelRatio;
+        this.#offscreenGPUResource = {
+          ...(await this.createGPUResource(
+            renderer,
+            shaderCompilerPath,
+            this.#offscreenElement,
+            width,
+            height,
+            devicePixelRatio,
+          )),
+          texturePool: this.#texturePool,
+        };
       }
 
       const holder = canvas.hold();
