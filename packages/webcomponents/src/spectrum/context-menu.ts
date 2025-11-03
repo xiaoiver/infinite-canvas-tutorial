@@ -15,6 +15,7 @@ import {
   DOMAdapter,
   MIME_TYPES,
   ExportFormat,
+  isUrl,
 } from '@infinite-canvas-tutorial/ecs';
 import { html, render } from '@spectrum-web-components/base';
 import { VirtualTrigger, openOverlay } from '@spectrum-web-components/overlay';
@@ -23,6 +24,7 @@ import { load } from '@loaders.gl/core';
 import { ImageLoader } from '@loaders.gl/images';
 import { apiContext, appStateContext } from '../context';
 import { ExtendedAPI } from '../API';
+import { extractExternalUrlMetadata } from '../utils/url';
 
 const ZINDEX_OFFSET = 0.0001;
 
@@ -241,12 +243,22 @@ export async function executePaste(
 
     updateAndSelectNodes(api, appState, nodes);
   } else if (data.text) {
-    // const nonEmptyLines = data.text
-    // .replace(/\r?\n|\r/g, '\n')
-    // .split(/\n+/)
-    // .map((s) => s.trim())
-    // .filter(Boolean);
-    createText(api, appState, data.text, canvasPosition);
+    if (isUrl(data.text)) {
+      // TODO: youtube, figma, google maps, etc.
+
+      // Plain url, extract metadata
+      const meta = await extractExternalUrlMetadata(data.text);
+      console.log(meta);
+
+      // TODO: create bookmark asset
+    } else {
+      // const nonEmptyLines = data.text
+      // .replace(/\r?\n|\r/g, '\n')
+      // .split(/\n+/)
+      // .map((s) => s.trim())
+      // .filter(Boolean);
+      createText(api, appState, data.text, canvasPosition);
+    }
   }
 }
 
