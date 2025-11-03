@@ -83,6 +83,15 @@ canvas.addEventListener(Event.READY, async (e) => {
       width: 100,
       height: 100,
     } as const,
+    {
+      id: '3',
+      type: 'html',
+      html: '<div>hello</div>',
+      x: 400,
+      y: 100,
+      width: 100,
+      height: 100,
+    } as const,
     // {
     //   id: '1',
     //   name: 'A swimming dog',

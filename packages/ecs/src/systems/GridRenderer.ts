@@ -95,8 +95,9 @@ export class GridRenderer {
         ],
       });
     }
-
-    this.#program.setUniformsLegacy(uniformLegacyObject);
+    if (uniformLegacyObject) {
+      this.#program.setUniformsLegacy(uniformLegacyObject);
+    }
     renderPass.setBindings(this.#bindings);
     renderPass.setPipeline(this.#pipeline);
     renderPass.setVertexInput(

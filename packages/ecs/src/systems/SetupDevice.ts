@@ -150,6 +150,16 @@ export class SetupDevice extends System {
       this.destroyCanvas(canvas);
     });
 
+    if (this.#offscreenElement) {
+      const { device, renderTarget, depthRenderTarget, renderCache } =
+        this.#offscreenGPUResource;
+      renderCache.destroy();
+      renderTarget.destroy();
+      depthRenderTarget.destroy();
+      device.destroy();
+      device.checkForLeaks();
+    }
+
     this.#texturePool.destroy();
   }
 

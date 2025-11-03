@@ -1,17 +1,45 @@
 ---
 outline: deep
-description: '探索MCP（模型上下文协议）在设计工具中的应用。学习如何为应用构建AI界面，实现MCP优先的开发模式。'
-publish: false
+description: ''
 ---
 
-# 课程 29 - MCP
+# 课程 29 - 嵌入 HTML 内容
 
-来自 [MCP: What It Is and Why It Matters]：
+有时候我们希望在画布中嵌入 HTML 内容，例如 YouTube 播放器、CodeSandbox 组件、ShaderToy 等等。
 
-> Instead of only having a GUI or API that humans use, you get an AI interface “for free.” This idea has led to the concept of “MCP-first development”, where you build the MCP server for your app before or alongside the GUI.
+## HTML
 
-[Figma MCP Server] 可以操作 [Figma API]
+Excalidraw 并不支持在画布中嵌入 HTML 内容，但 tldraw 支持 [TLEmbedShape]。它在网页中将一个 HTML 容器（含 iframe 或其他元素）和画布 `<svg>` 元素并排或叠加显示，而不是“完全”在单一画布内部。
 
-[MCP: What It Is and Why It Matters]: https://addyo.substack.com/p/mcp-what-it-is-and-why-it-matters
-[Figma MCP Server]: https://github.com/GLips/Figma-Context-MCP
-[Figma API]: https://www.figma.com/developers/api
+![HTML external content in tldraw](/html-in-tldraw.png)
+
+在 [External content sources] 例子中，我们可以看到 tldraw 是这样支持 HTML 内容的：
+
+```ts
+class DangerousHtmlExample extends BaseBoxShapeUtil<IDangerousHtmlShape> {
+    static override type = 'html' as const;
+
+    override getDefaultProps() {
+        return {
+            type: 'html',
+            w: 500,
+            h: 300,
+            html: '<div>hello</div>',
+        };
+    }
+}
+```
+
+我们也增加一种可序列化图形：
+
+```ts
+export interface HtmlAttributes {
+    html: string;
+}
+export interface HtmlSerializedNode
+    extends BaseSerializeNode<'html'>,
+        Partial<HtmlAttributes> {}
+```
+
+[External content sources]: https://tldraw.dev/examples/external-content-sources
+[TLEmbedShape]: https://tldraw.dev/reference/tlschema/TLEmbedShape

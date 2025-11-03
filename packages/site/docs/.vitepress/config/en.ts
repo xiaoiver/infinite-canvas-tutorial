@@ -127,6 +127,10 @@ export const en = defineConfig({
                 text: 'Lesson 028 - Integrating with AI',
                 link: 'lesson-028',
               },
+              {
+                text: 'Lesson 029 - Embedding HTML content',
+                link: 'lesson-029',
+              },
             ],
           },
         ],

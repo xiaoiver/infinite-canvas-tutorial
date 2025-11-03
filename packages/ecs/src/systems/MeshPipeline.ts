@@ -282,6 +282,9 @@ export class MeshPipeline extends System {
       return;
     }
 
+    let renderer: GPURenderer;
+    let gpuResource = canvas.read(GPUResource);
+
     const request = canvas.has(RasterScreenshotRequest)
       ? canvas.read(RasterScreenshotRequest)
       : null;
@@ -294,30 +297,26 @@ export class MeshPipeline extends System {
     const shouldRenderGrid = !request || grid;
     const shouldRenderPartially = nodes.length > 0;
 
-    let renderer: GPURenderer;
-    let gpuResource: GPUResource;
     if (shouldRenderPartially) {
       // Render to offscreen canvas.
       gpuResource = this.setupDevice.getOffscreenGPUResource();
       renderer = this.createRenderer(gpuResource);
     } else {
-      gpuResource = canvas.read(GPUResource);
       if (!this.renderers.get(camera)) {
         this.renderers.set(camera, this.createRenderer(gpuResource));
       }
       renderer = this.renderers.get(camera);
-      const { batchManager } = renderer;
-      if (request) {
-        batchManager.hideUIs();
-      }
     }
 
     const { swapChain, device, renderTarget, depthRenderTarget } = gpuResource;
-    const { uniformBuffer, uniformLegacyObject, gridRenderer, batchManager } =
-      renderer;
+    const { uniformBuffer, gridRenderer, batchManager } = renderer;
 
     const { width, height } = swapChain.getCanvas();
     const onscreenTexture = swapChain.getOnscreenTexture();
+
+    if (request) {
+      batchManager.hideUIs();
+    }
 
     const [buffer, legacyObject] = this.updateUniform(
       canvas,
@@ -325,10 +324,7 @@ export class MeshPipeline extends System {
       shouldRenderGrid,
       swapChain,
     );
-    this.renderers.set(camera, {
-      ...this.renderers.get(camera),
-      uniformLegacyObject: legacyObject,
-    });
+    renderer.uniformLegacyObject = legacyObject;
 
     uniformBuffer.setSubData(0, new Uint8Array(buffer.buffer));
 
@@ -343,7 +339,7 @@ export class MeshPipeline extends System {
     });
     renderPass.setViewport(0, 0, width, height);
 
-    gridRenderer.render(device, renderPass, uniformBuffer, uniformLegacyObject);
+    gridRenderer.render(device, renderPass, uniformBuffer, legacyObject);
 
     if (shouldRenderPartially) {
       const { api } = canvas.read(Canvas);
@@ -367,7 +363,7 @@ export class MeshPipeline extends System {
     if (sort) {
       batchManager.sort();
     }
-    batchManager.flush(renderPass, uniformBuffer, uniformLegacyObject);
+    batchManager.flush(renderPass, uniformBuffer, legacyObject);
 
     device.submitPass(renderPass);
     device.endFrame();

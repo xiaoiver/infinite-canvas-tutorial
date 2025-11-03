@@ -296,6 +296,13 @@ export interface VectorNetworkSerializedNode
   extends BaseSerializeNode<'vector-network'>,
     Partial<VectorNetworkAttributes> {}
 
+export interface HtmlAttributes {
+  html: string;
+}
+export interface HtmlSerializedNode
+  extends BaseSerializeNode<'html'>,
+    Partial<HtmlAttributes> {}
+
 export type SerializedNode =
   | GSerializedNode
   | EllipseSerializedNode
@@ -307,7 +314,8 @@ export type SerializedNode =
   | BrushSerializedNode
   | RoughRectSerializedNode
   | RoughEllipseSerializedNode
-  | VectorNetworkSerializedNode;
+  | VectorNetworkSerializedNode
+  | HtmlSerializedNode;
 
 export type SerializedNodeAttributes = GSerializedNode &
   EllipseSerializedNode &
@@ -319,4 +327,5 @@ export type SerializedNodeAttributes = GSerializedNode &
   BrushSerializedNode &
   RoughRectSerializedNode &
   RoughEllipseSerializedNode &
-  VectorNetworkSerializedNode;
+  VectorNetworkSerializedNode &
+  HtmlSerializedNode;

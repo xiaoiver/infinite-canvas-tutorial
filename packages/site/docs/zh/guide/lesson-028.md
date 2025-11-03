@@ -117,6 +117,14 @@ console.log(result.data); // { image: [{ url: 'https://...' }]; description: 'Su
 
 目前 GPT 4o 仅支持三种固定尺寸，而 Nano banana 想实现任意图片尺寸输出需要借助一些 hack 手段，例如传入一张指定尺寸的空白图作为参考图并在 prompt 中强调。我们可以通过画布操作让它变的十分自然：用户只需要拖拽到合适的尺寸即可，应用通过 Canvas API 自动生成这个空白的参考图。
 
+## MCP
+
+来自 [MCP: What It Is and Why It Matters]：
+
+> Instead of only having a GUI or API that humans use, you get an AI interface “for free.” This idea has led to the concept of “MCP-first development”, where you build the MCP server for your app before or alongside the GUI.
+
+[Figma MCP Server] 可以操作 [Figma API]
+
 [课程 21 - Transformer]: /zh/guide/lesson-021
 [UI for AI]: https://medium.com/ui-for-ai
 [课程 1 - 硬件抽象层]: /zh/guide/lesson-001#hardware-abstraction-layers
@@ -129,3 +137,6 @@ console.log(result.data); // { image: [{ url: 'https://...' }]; description: 'Su
 [课程 26 - 选择工具]: /zh/guide/lesson-026#marquee-selection
 [课程 25 - 绘制模式与笔刷]: /zh/guide/lesson-025#brush-mode
 [Paper Shaders]: https://shaders.paper.design/
+[MCP: What It Is and Why It Matters]: https://addyo.substack.com/p/mcp-what-it-is-and-why-it-matters
+[Figma MCP Server]: https://github.com/GLips/Figma-Context-MCP
+[Figma API]: https://www.figma.com/developers/api
