@@ -27,7 +27,6 @@ import {
 } from '../gradient';
 import { isPattern, Pattern } from '../pattern';
 import { generateGradientKey, generatePatternKey } from '../../resources';
-import { formatTransform } from '../matrix';
 import { lineArrow } from '../marker';
 import { DOMAdapter } from '../../environment';
 
@@ -167,6 +166,13 @@ export const defaultAttributes: Record<
     ...commonDefaultAttributes,
     ...fillDefaultAttributes,
     ...strokeDefaultAttributes,
+  },
+  html: {
+    x: 0,
+    y: 0,
+    width: 0,
+    height: 0,
+    html: '',
   },
 };
 
@@ -863,7 +869,7 @@ function create$Pattern(
   // @see https://developer.mozilla.org/zh-CN/docs/Web/SVG/Element/pattern
   const $pattern = createSVGElement('pattern') as SVGPatternElement;
   if (transform) {
-    $pattern.setAttribute('patternTransform', formatTransform(transform));
+    $pattern.setAttribute('patternTransform', transform);
   }
   $pattern.setAttribute('patternUnits', 'userSpaceOnUse');
 

@@ -24,3 +24,4 @@ export * from './RenderHighlighter';
 export * from './RenderSnap';
 export * from './DrawRect';
 export * from './DrawPencil';
+export * from './RenderHTML';

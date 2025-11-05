@@ -6,6 +6,7 @@ import {
   SerializedNode,
   AppState,
   getDefaultAppState,
+  toDomPrecision,
 } from '@infinite-canvas-tutorial/ecs';
 
 import { apiContext, appStateContext, nodesContext } from '../context';
@@ -206,12 +207,28 @@ export class InfiniteCanvas extends LitElement {
         : '100%';
       $canvas.tabIndex = 0; // Make canvas focusable
 
+      const $htmlLayer = document.createElement('div');
+      $htmlLayer.style.position = 'absolute';
+      $htmlLayer.style.top = '0px';
+      $htmlLayer.style.left = '0px';
+      $htmlLayer.style.height = '1px';
+      $htmlLayer.style.width = '1px';
+      $htmlLayer.style.contain = 'layout style size';
+      $htmlLayer.style.userSelect = 'none';
+      $htmlLayer.style.outline = 'none';
+      $htmlLayer.style.transform = `scale(${toDomPrecision(
+        cameraZoom,
+      )}) translate(${toDomPrecision(-cameraX)}px, ${toDomPrecision(
+        -cameraY,
+      )}px)`;
+
       const { width, height } = this.getBoundingClientRect();
 
       pendingCanvases.push({
         container: this,
         canvas: {
           element: $canvas,
+          htmlLayer: $htmlLayer,
           width,
           height: topbarVisible ? height - TOP_NAVBAR_HEIGHT : height,
           devicePixelRatio: window.devicePixelRatio,
@@ -226,7 +243,7 @@ export class InfiniteCanvas extends LitElement {
         },
       });
 
-      return $canvas;
+      return [$canvas, $htmlLayer] as const;
     },
     args: () => [this.renderer, this.shaderCompilerPath] as const,
   });
@@ -248,9 +265,10 @@ export class InfiniteCanvas extends LitElement {
             size="s"
           ></sp-progress-circle>`,
         ),
-      complete: ($canvas) =>
+      complete: ([$canvas, $htmlLayer]) =>
         themeWrapper(
-          html`<ic-spectrum-top-navbar></ic-spectrum-top-navbar>
+          html`${$htmlLayer}<ic-spectrum-top-navbar
+            ></ic-spectrum-top-navbar>${$canvas}
             <ic-spectrum-penbar
               style=${topbarVisible
                 ? 'height: calc(100% - 48px);'
@@ -259,8 +277,7 @@ export class InfiniteCanvas extends LitElement {
             <ic-spectrum-taskbar></ic-spectrum-taskbar>
             <ic-spectrum-context-bar></ic-spectrum-context-bar>
             <ic-spectrum-context-menu></ic-spectrum-context-menu>
-            <ic-spectrum-text-editor></ic-spectrum-text-editor>
-            ${$canvas}`,
+            <ic-spectrum-text-editor></ic-spectrum-text-editor>`,
         ),
       error: (e: Error) => {
         console.error(e);

@@ -28,6 +28,11 @@ export class Canvas {
   @field.object declare element: HTMLCanvasElement | OffscreenCanvas;
 
   /**
+   * The HTML layer element.
+   */
+  @field.object declare htmlLayer: HTMLDivElement;
+
+  /**
    * The width of the canvas.
    */
   @field({ type: Type.float32, default: 0 }) declare width: number;

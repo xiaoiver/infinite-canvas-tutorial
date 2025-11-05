@@ -33,12 +33,14 @@ import {
   InnerShadow,
   Line,
   LockAspectRatio,
+  HTML,
 } from '../../components';
 import {
   AttenuationAttributes,
   BrushSerializedNode,
   DropShadowAttributes,
   FillAttributes,
+  HtmlSerializedNode,
   InnerShadowAttributes,
   isDataUrl,
   isUrl,
@@ -381,6 +383,9 @@ export function serializedNodesToEntities(
       const { vertices, segments, regions } =
         attributes as VectorNetworkSerializedNode;
       entity.insert(new VectorNetwork({ vertices, segments, regions }));
+    } else if (type === 'html') {
+      const { html } = attributes as HtmlSerializedNode;
+      entity.insert(new HTML({ x: 0, y: 0, width, height, html }));
     }
 
     const { fill, fillOpacity, opacity } = attributes as FillAttributes;

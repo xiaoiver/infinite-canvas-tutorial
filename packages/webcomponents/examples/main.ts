@@ -86,7 +86,7 @@ canvas.addEventListener(Event.READY, async (e) => {
     {
       id: '3',
       type: 'html',
-      html: '<div>hello</div>',
+      html: '<div style="background-color: red;">hello</div>',
       x: 400,
       y: 100,
       width: 100,

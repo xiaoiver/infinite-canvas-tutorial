@@ -21,6 +21,7 @@ export enum ExportFormat {
 export class TopNavbar extends LitElement {
   static styles = css`
     .top-navbar {
+      position: relative;
       display: flex;
       justify-content: space-between;
       padding: var(--spectrum-global-dimension-size-100);

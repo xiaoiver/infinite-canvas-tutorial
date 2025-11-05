@@ -11,23 +11,13 @@ description: ''
 
 Excalidraw 并不支持在画布中嵌入 HTML 内容，但 tldraw 支持 [TLEmbedShape]。它在网页中将一个 HTML 容器（含 iframe 或其他元素）和画布 `<svg>` 元素并排或叠加显示，而不是“完全”在单一画布内部。
 
-HTMLContainer 的职责是把“普通 DOM”内容放到编辑器的合适层（通常是 editor 的 container），并处理与 shape 的位移/缩放/旋转同步（shape 的 transform -> DOM transform）以保证 DOM 元素在画布上的位置和 shape 对齐。
-
-```css
-.tl-html-container {
-    position: absolute;
-    inset: 0px;
-    height: 100%;
-    width: 100%;
-    pointer-events: none;
-    stroke-linecap: round;
-    stroke-linejoin: round;
-    transform-origin: top left;
-    color: var(--tl-color-text-1);
-}
-```
-
 ![HTML external content in tldraw](/html-in-tldraw.png)
+
+### 相机同步 {#sync-camera}
+
+在 [课程 4 - 相机] 中，我们介绍了相机的一系列重要参数：平移、旋转和缩放。现在我们需要把相机参数映射为 HTML 容器的 CSS transform，实现画布与 HTML 容器的同步。
+
+### HTML 图形
 
 在 [External content sources] 例子中，我们可以看到 tldraw 是这样支持 HTML 内容的：
 
@@ -43,6 +33,20 @@ class DangerousHtmlExample extends BaseBoxShapeUtil<IDangerousHtmlShape> {
             html: '<div>hello</div>',
         };
     }
+}
+```
+
+```css
+.tl-html-container {
+    position: absolute;
+    inset: 0px;
+    height: 100%;
+    width: 100%;
+    pointer-events: none;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    transform-origin: top left;
+    color: var(--tl-color-text-1);
 }
 ```
 
@@ -126,3 +130,4 @@ const handlePasteFromEventClipboardData = async () => {
 [External content sources]: https://tldraw.dev/examples/external-content-sources
 [TLEmbedShape]: https://tldraw.dev/reference/tlschema/TLEmbedShape
 [课程 24 - 读取剪贴板]: /zh/guide/lesson-024#clipboard-read
+[课程 4 - 相机]: /zh/guide/lesson-004

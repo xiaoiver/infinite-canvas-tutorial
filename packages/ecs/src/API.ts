@@ -272,6 +272,10 @@ export class API {
     return this.#camera;
   }
 
+  getHtmlLayer() {
+    return this.#canvas.read(Canvas).htmlLayer as HTMLDivElement;
+  }
+
   /**
    * Create a new canvas.
    */

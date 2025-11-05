@@ -150,3 +150,7 @@ export const rangeIntersection = (
 
   return null;
 };
+
+export function toDomPrecision(v: number) {
+  return Math.round(v * 1e4) / 1e4;
+}

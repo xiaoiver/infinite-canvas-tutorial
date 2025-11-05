@@ -9,6 +9,7 @@ import {
   ScreenshotPlugin,
   PenPlugin,
   CullingPlugin,
+  HTMLPlugin,
 } from './plugins';
 
 export * from './API';
@@ -38,6 +39,7 @@ export {
   exportMarker,
   toSVG,
   toSVGDataURL,
+  toDomPrecision,
   loadBitmapFont,
   parseClipboard,
   createPasteEvent,
@@ -83,4 +85,5 @@ export const DefaultPlugins: Plugin[] = [
   RendererPlugin,
   ScreenshotPlugin,
   PenPlugin,
+  HTMLPlugin,
 ];

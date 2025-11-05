@@ -4,6 +4,7 @@ import {
   ComputedCamera,
   System,
   Transform,
+  toDomPrecision,
 } from '@infinite-canvas-tutorial/ecs';
 import { Event } from '../event';
 import { ExtendedAPI } from '../API';
@@ -45,6 +46,10 @@ export class ZoomLevel extends System {
         cameraY: y,
         cameraRotation: rotation,
       });
+
+      api.getHtmlLayer().style.transform = `scale(${toDomPrecision(
+        zoom,
+      )}) translate(${toDomPrecision(-x)}px, ${toDomPrecision(-y)}px)`;
 
       if (zoom !== this.#zoomEvent.detail.zoom) {
         this.#zoomEvent.detail.zoom = zoom;
