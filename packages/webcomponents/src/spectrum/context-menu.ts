@@ -478,9 +478,9 @@ export class ContextMenu extends LitElement {
       notImmediatelyClosable: true,
       type: 'auto',
     });
-    trigger.insertAdjacentElement('afterend', overlay);
+    trigger.insertAdjacentElement('afterend', overlay as unknown as Element);
 
-    this.renderRoot.appendChild(overlay);
+    this.renderRoot.appendChild(overlay as unknown as Element);
   };
 
   private handleCopy = (event: ClipboardEvent) => {
