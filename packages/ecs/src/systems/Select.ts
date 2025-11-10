@@ -45,6 +45,7 @@ import {
   Snap,
   ToBeDeleted,
   Brush,
+  HTML,
 } from '../components';
 import { Commands } from '../commands/Commands';
 import {
@@ -143,6 +144,7 @@ export class Select extends System {
             FillSolid,
             Opacity,
             Stroke,
+            HTML,
             Rect,
             Circle,
             Ellipse,

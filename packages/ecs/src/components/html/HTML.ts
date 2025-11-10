@@ -1,6 +1,17 @@
 import { field, Type } from '@lastolivegames/becsy';
+import { AABB } from '../math';
 
 export class HTML {
+  static getGeometryBounds(html: Partial<HTML>) {
+    const { x = 0, y = 0, width = 0, height = 0 } = html;
+    return new AABB(
+      Math.min(x, x + width),
+      Math.min(y, y + height),
+      Math.max(x, x + width),
+      Math.max(y, y + height),
+    );
+  }
+
   @field({ type: Type.object, default: '' }) declare html: string;
 
   /**

@@ -34,6 +34,7 @@ import {
   Line,
   LockAspectRatio,
   HTML,
+  HTMLContainer,
 } from '../../components';
 import {
   AttenuationAttributes,
@@ -386,6 +387,7 @@ export function serializedNodesToEntities(
     } else if (type === 'html') {
       const { html } = attributes as HtmlSerializedNode;
       entity.insert(new HTML({ x: 0, y: 0, width, height, html }));
+      entity.insert(new HTMLContainer());
     }
 
     const { fill, fillOpacity, opacity } = attributes as FillAttributes;

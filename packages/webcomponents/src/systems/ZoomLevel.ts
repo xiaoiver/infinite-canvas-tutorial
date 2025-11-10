@@ -47,9 +47,17 @@ export class ZoomLevel extends System {
         cameraRotation: rotation,
       });
 
-      api.getHtmlLayer().style.transform = `scale(${toDomPrecision(
-        zoom,
-      )}) translate(${toDomPrecision(-x)}px, ${toDomPrecision(-y)}px)`;
+      const cosR = Math.cos(rotation);
+      const sinR = Math.sin(rotation);
+
+      const a = toDomPrecision(zoom * cosR);
+      const b = toDomPrecision(-zoom * sinR);
+      const c = toDomPrecision(zoom * sinR);
+      const d = toDomPrecision(zoom * cosR);
+      const e = toDomPrecision(-zoom * (cosR * x + sinR * y));
+      const f = toDomPrecision(zoom * (sinR * x - cosR * y));
+
+      api.getHtmlLayer().style.transform = `matrix(${a}, ${b}, ${c}, ${d}, ${e}, ${f})`;
 
       if (zoom !== this.#zoomEvent.detail.zoom) {
         this.#zoomEvent.detail.zoom = zoom;

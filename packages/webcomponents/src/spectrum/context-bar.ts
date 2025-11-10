@@ -137,6 +137,11 @@ export class ContextBar extends LitElement {
             node.fill.endsWith('.png') ||
             isDataUrl(node.fill));
 
+        const isHTML = node.type === 'html';
+        if (isHTML) {
+          return html``;
+        }
+
         const [left, top] = this.calculatePosition(node);
 
         return html`<div

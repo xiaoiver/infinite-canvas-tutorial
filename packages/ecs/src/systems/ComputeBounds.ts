@@ -9,6 +9,7 @@ import {
   DropShadow,
   Ellipse,
   GlobalTransform,
+  HTML,
   Line,
   Mat3,
   OBB,
@@ -61,6 +62,7 @@ export class ComputeBounds extends System {
           ComputedTextMetrics,
           Stroke,
           DropShadow,
+          HTML,
         ).read,
     );
   }
@@ -133,6 +135,9 @@ export class ComputeBounds extends System {
         entity.read(VectorNetwork),
         stroke,
       );
+    } else if (entity.has(HTML)) {
+      geometryBounds = HTML.getGeometryBounds(entity.read(HTML));
+      renderBounds = geometryBounds;
     }
 
     const hitArea = entity.has(Renderable)

@@ -209,7 +209,7 @@ export class InfiniteCanvas extends LitElement {
 
       const $htmlLayer = document.createElement('div');
       $htmlLayer.style.position = 'absolute';
-      $htmlLayer.style.top = '0px';
+      $htmlLayer.style.top = topbarVisible ? `${TOP_NAVBAR_HEIGHT}px` : '0px';
       $htmlLayer.style.left = '0px';
       $htmlLayer.style.height = '1px';
       $htmlLayer.style.width = '1px';

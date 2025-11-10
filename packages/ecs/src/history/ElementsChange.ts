@@ -40,6 +40,7 @@ import {
   InnerShadow,
   Line,
   LockAspectRatio,
+  HTML,
 } from '../components';
 
 export type SceneElementsMap = Map<SerializedNode['id'], SerializedNode>;
@@ -856,6 +857,8 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
         rx: width / 2,
         cx: width / 2,
       });
+    } else if (entity.has(HTML)) {
+      entity.write(HTML).width = width;
     }
   }
   if (!isNil(height)) {
@@ -866,6 +869,8 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
         ry: height / 2,
         cy: height / 2,
       });
+    } else if (entity.has(HTML)) {
+      entity.write(HTML).height = height;
     }
   }
   if (!isNil(points)) {

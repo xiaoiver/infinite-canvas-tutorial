@@ -127,7 +127,15 @@ const handlePasteFromEventClipboardData = async () => {
 };
 ```
 
+## 导出成 SVG 或图片 {#export-svg-or-image}
+
+在 [课程 10 - 图片导入导出] 中我们介绍过导出画布内容成 SVG 或者 PNG 等格式的图片。对于 HTML 内容可以使用社区内比较成熟的方案，例如 [html-to-image]
+
+> This library uses a feature of SVG that allows having arbitrary HTML content inside of the \<foreignObject\> tag.
+
 [External content sources]: https://tldraw.dev/examples/external-content-sources
 [TLEmbedShape]: https://tldraw.dev/reference/tlschema/TLEmbedShape
 [课程 24 - 读取剪贴板]: /zh/guide/lesson-024#clipboard-read
 [课程 4 - 相机]: /zh/guide/lesson-004
+[课程 10 - 图片导入导出]: /zh/guide/lesson-010
+[html-to-image]: https://github.com/bubkoo/html-to-image
