@@ -25,6 +25,7 @@ import { ImageLoader } from '@loaders.gl/images';
 import { apiContext, appStateContext } from '../context';
 import { ExtendedAPI } from '../API';
 import { extractExternalUrlMetadata } from '../utils/url';
+import { measureHTML } from '../utils';
 
 const ZINDEX_OFFSET = 0.0001;
 
@@ -171,6 +172,27 @@ function createText(
   ]);
 }
 
+function createHTML(
+  api: ExtendedAPI,
+  appState: AppState,
+  html: string,
+  position?: { x: number; y: number },
+) {
+  const { width, height } = measureHTML(html);
+
+  updateAndSelectNodes(api, appState, [
+    {
+      id: uuidv4(),
+      type: 'html',
+      x: position?.x ?? 0,
+      y: position?.y ?? 0,
+      width,
+      height,
+      html,
+    },
+  ]);
+}
+
 export async function executePaste(
   api: ExtendedAPI,
   appState: AppState,
@@ -195,16 +217,15 @@ export async function executePaste(
     canvasPosition = api.viewport2Canvas(api.client2Viewport(position));
   }
 
-  const isPlainPaste = false;
-
   // must be called in the same frame (thus before any awaits) as the paste
   // event else some browsers (FF...) will clear the clipboardData
   // (something something security)
   const file = event?.clipboardData?.files[0];
-  const data = await parseClipboard(event, isPlainPaste);
+  const data = await parseClipboard(event, false);
 
-  if (!file && !isPlainPaste) {
-    if (data.mixedContent) {
+  if (!file) {
+    if (data.html) {
+      createHTML(api, appState, data.html, canvasPosition);
       // return this.addElementsFromMixedContentPaste(data.mixedContent, {
       //   isPlainPaste,
       //   sceneX,
@@ -212,53 +233,45 @@ export async function executePaste(
       // });
     } else if (data.text) {
       const string = data.text.trim();
-      if (string.startsWith('<svg') && string.endsWith('</svg>')) {
+      if (isUrl(data.text)) {
+        // TODO: youtube, figma, google maps, etc.
+
+        // Plain url, extract metadata
+        const meta = await extractExternalUrlMetadata(data.text);
+        console.log(meta);
+
+        // TODO: create bookmark asset
+      } else if (string.startsWith('<svg') && string.endsWith('</svg>')) {
         createSVG(api, appState, string, canvasPosition);
-        return;
-      }
-    }
-  }
-
-  if (isSupportedImageFileType(file?.type)) {
-    createImage(api, appState, file, canvasPosition);
-    return;
-  }
-
-  if (data.elements) {
-    const nodes = data.elements.map((node) => {
-      node.id = uuidv4();
-      if (node.zIndex) {
-        node.zIndex += ZINDEX_OFFSET;
-      }
-
-      if (canvasPosition) {
-        node.x = canvasPosition.x;
-        node.y = canvasPosition.y;
       } else {
-        node.x += 10;
-        node.y += 10;
+        // const nonEmptyLines = data.text
+        // .replace(/\r?\n|\r/g, '\n')
+        // .split(/\n+/)
+        // .map((s) => s.trim())
+        // .filter(Boolean);
+        createText(api, appState, data.text, canvasPosition);
       }
-      return node;
-    });
+    } else if (data.elements) {
+      const nodes = data.elements.map((node) => {
+        node.id = uuidv4();
+        if (node.zIndex) {
+          node.zIndex += ZINDEX_OFFSET;
+        }
 
-    updateAndSelectNodes(api, appState, nodes);
-  } else if (data.text) {
-    if (isUrl(data.text)) {
-      // TODO: youtube, figma, google maps, etc.
+        if (canvasPosition) {
+          node.x = canvasPosition.x;
+          node.y = canvasPosition.y;
+        } else {
+          node.x += 10;
+          node.y += 10;
+        }
+        return node;
+      });
 
-      // Plain url, extract metadata
-      const meta = await extractExternalUrlMetadata(data.text);
-      console.log(meta);
-
-      // TODO: create bookmark asset
-    } else {
-      // const nonEmptyLines = data.text
-      // .replace(/\r?\n|\r/g, '\n')
-      // .split(/\n+/)
-      // .map((s) => s.trim())
-      // .filter(Boolean);
-      createText(api, appState, data.text, canvasPosition);
+      updateAndSelectNodes(api, appState, nodes);
     }
+  } else if (isSupportedImageFileType(file?.type)) {
+    createImage(api, appState, file, canvasPosition);
   }
 }
 

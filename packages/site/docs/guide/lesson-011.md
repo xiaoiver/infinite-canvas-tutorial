@@ -706,6 +706,7 @@ Anyway, rendering the canvas in WebWorker requires additional handling of commun
 
 -   [How can I use headless-gl with a continuous integration service?]
 -   [Playwright Components (experimental)]
+-   [Canvas Lambda Layer]
 
 [node-canvas]: https://github.com/Automattic/node-canvas
 [headless-gl]: https://github.com/stackgl/headless-gl
@@ -746,3 +747,4 @@ Anyway, rendering the canvas in WebWorker requires additional handling of commun
 [Playwright Components (experimental)]: https://playwright.dev/docs/test-components
 [Web Components]: /guide/lesson-007
 [browserstack-local]: https://github.com/browserstack/browserstack-local-nodejs
+[Canvas Lambda Layer]: https://github.com/ShivamJoker/Canvas-Lambda-Layer

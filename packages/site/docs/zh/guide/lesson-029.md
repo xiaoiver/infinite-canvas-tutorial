@@ -1,7 +1,13 @@
 ---
 outline: deep
 description: ''
+head:
+    - ['meta', { property: 'og:title', content: '课程 29 - 嵌入 HTML 内容' }]
 ---
+
+<script setup>
+import HTML from '../../components/HTML.vue'
+</script>
 
 # 课程 29 - 嵌入 HTML 内容
 
@@ -36,21 +42,7 @@ class DangerousHtmlExample extends BaseBoxShapeUtil<IDangerousHtmlShape> {
 }
 ```
 
-```css
-.tl-html-container {
-    position: absolute;
-    inset: 0px;
-    height: 100%;
-    width: 100%;
-    pointer-events: none;
-    stroke-linecap: round;
-    stroke-linejoin: round;
-    transform-origin: top left;
-    color: var(--tl-color-text-1);
-}
-```
-
-我们也增加一种可序列化图形：
+我们也增加一种可序列化图形，除了通用的属性 `x/y/width/height` 之外，最重要的属性就是 `innerHTML` 内容：
 
 ```ts
 export interface HtmlAttributes {
@@ -59,6 +51,22 @@ export interface HtmlAttributes {
 export interface HtmlSerializedNode
     extends BaseSerializeNode<'html'>,
         Partial<HtmlAttributes> {}
+```
+
+当位置发生改变时，需要通过 CSS Transform 同步：
+
+```ts
+const { matrix } = entity.read(GlobalTransform);
+
+$child.style.transform = `matrix(${toDomPrecision(
+    matrix.m00,
+)}, ${toDomPrecision(matrix.m01)}, ${toDomPrecision(
+    matrix.m10,
+)}, ${toDomPrecision(matrix.m11)}, ${toDomPrecision(
+    matrix.m20,
+)}, ${toDomPrecision(matrix.m21)})`;
+$child.style.width = `${toDomPrecision(width)}px`;
+$child.style.height = `${toDomPrecision(height)}px`;
 ```
 
 ## 粘贴 URL
@@ -113,19 +121,53 @@ export async function defaultHandleExternalUrlAsset() {
 }
 ```
 
-## 粘贴 HTML 内容
+### iframe
+
+## 粘贴 HTML 内容 {#paste-html}
+
+从 VSCode 中复制的代码块是 HTML 片段：
+
+```html
+<meta charset="utf-8" />
+<div
+    style="color: #e4e4e4;background-color: #181818;font-family: Menlo, Monaco, 'Courier New', monospace;font-weight: normal;font-size: 12px;line-height: 18px;white-space: pre;"
+>
+    <div><span style="color: #d6d6dd;">### iframe</span></div>
+</div>
+```
+
+我们可以尝试从剪贴板中读取它：
 
 ```ts
-// @see https://github.com/tldraw/tldraw/blob/ef0eba14c5a8baf4f36b3659ac9af98256d3b5dd/packages/tldraw/src/lib/ui/hooks/useClipboardEvents.ts#L200-L204
-const handlePasteFromEventClipboardData = async () => {
-    if (item.type === 'text/html') {
-        things.push({
-            type: 'html',
-            source: new Promise((r) => item.getAsString(r)) as Promise<string>,
-        });
-    }
-};
+const html = event.clipboardData?.getData(MIME_TYPES.html); // text/html
 ```
+
+然后就可以根据内容创建。为了获取尺寸，可以把 HTML 内容插入一个隐藏元素，然后让浏览器排版，最后读取它的 `offsetWidth` / `offsetHeight`
+
+```ts
+function createHTML(
+    api: ExtendedAPI,
+    appState: AppState,
+    html: string,
+    position?: { x: number; y: number },
+) {
+    const { width, height } = measureHTML(html);
+
+    updateAndSelectNodes(api, appState, [
+        {
+            id: uuidv4(),
+            type: 'html',
+            x: position?.x ?? 0,
+            y: position?.y ?? 0,
+            width,
+            height,
+            html,
+        },
+    ]);
+}
+```
+
+<HTML />
 
 ## 导出成 SVG 或图片 {#export-svg-or-image}
 

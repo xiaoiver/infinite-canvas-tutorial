@@ -68,6 +68,7 @@ import { isGradient } from '../gradient';
 import { isPattern } from '../pattern';
 import { computeBidi, measureText } from '../../systems/ComputeTextMetrics';
 import { DOMAdapter } from '../../environment';
+import { safeAddComponent } from '../../history';
 
 export function inferXYWidthHeight(node: SerializedNode) {
   const { type } = node;
@@ -134,9 +135,11 @@ async function loadImage(
   commands: Commands,
 ) {
   const image = await DOMAdapter.get().createImage(url);
-  entity.insert(new FillImage({ src: image as ImageBitmap, url }));
-  entity.insert(new MaterialDirty());
-  commands.execute();
+  safeAddComponent(entity.entity, FillImage, {
+    src: image as ImageBitmap,
+    url,
+  });
+  safeAddComponent(entity.entity, MaterialDirty);
 }
 
 function serializeRough(attributes: RoughAttributes, entity: EntityCommands) {

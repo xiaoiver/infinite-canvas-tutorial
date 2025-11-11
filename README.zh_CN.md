@@ -336,6 +336,15 @@ pnpm run dev
 
 ![when canvas meets chat](./screenshots/lesson28.png)
 
+## 课程 29 - 嵌入 HTML 内容 [🔗](https://infinitecanvas.cc/zh/guide/lesson-029)
+
+-   创建 HTML 容器，同步相机
+-   粘贴 URL，使用书签和 iframe 展示
+-   粘贴 HTML 内容
+-   导出图片
+
+![embed HTML content](./screenshots/lesson29.png)
+
 [infinitecanvas]: https://infinitecanvas.tools/
 [Figma]: https://madebyevan.com/figma/building-a-professional-design-tool-on-the-web/
 [Modyfi]: https://digest.browsertech.com/archive/browsertech-digest-how-modyfi-is-building-with/

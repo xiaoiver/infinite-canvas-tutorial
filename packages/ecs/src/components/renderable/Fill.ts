@@ -9,7 +9,7 @@ export class FillSolid {
    * Default to `black`.
    * @see https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/fill
    */
-  @field({ type: Type.dynamicString(20), default: 'black' })
+  @field({ type: Type.object, default: 'black' })
   declare value: string;
 
   constructor(value?: string) {

@@ -287,6 +287,10 @@ export const zh = defineConfig({
                 text: '绘制矩形',
                 link: 'draw-rect',
               },
+              {
+                text: '嵌入 HTML 内容',
+                link: 'html',
+              },
             ],
           },
         ],

@@ -342,6 +342,10 @@ export const en = defineConfig({
                 text: 'Draw rect',
                 link: 'draw-rect',
               },
+              {
+                text: 'Embed HTML content',
+                link: 'html',
+              },
             ],
           },
         ],

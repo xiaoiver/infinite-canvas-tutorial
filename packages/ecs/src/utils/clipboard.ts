@@ -120,17 +120,18 @@ export async function copyTextToClipboard(
 export interface ClipboardData {
   elements?: readonly SerializedNode[];
   text?: string;
-  mixedContent?: PastedMixedContent;
+  html?: string;
   files?: File[];
 }
+
 export type PastedMixedContent = { type: 'text' | 'imageUrl'; value: string }[];
 type ParsedClipboardEventTextData =
   | { type: 'text'; value: string }
-  | { type: 'mixedContent'; value: PastedMixedContent };
+  | { type: 'html'; value: string };
 
 const maybeParseHTMLPaste = (
   event: ClipboardEvent,
-): { type: 'mixedContent'; value: PastedMixedContent } | null => {
+): ParsedClipboardEventTextData | null => {
   const html = event.clipboardData?.getData(MIME_TYPES.html);
 
   if (!html) {
@@ -143,7 +144,8 @@ const maybeParseHTMLPaste = (
     const content = parseHTMLTree(doc.body);
 
     if (content.length) {
-      return { type: 'mixedContent', value: content };
+      // return { type: 'mixedContent', value: content };
+      return { type: 'html', value: html };
     }
   } catch (error: any) {
     console.error(`error in parseHTMLFromPaste: ${error.message}`);
@@ -163,18 +165,17 @@ const parseClipboardEventTextData = async (
     const mixedContent = !isPlainPaste && event && maybeParseHTMLPaste(event);
 
     if (mixedContent) {
-      if (mixedContent.value.every((item) => item.type === 'text')) {
-        return {
-          type: 'text',
-          value:
-            event.clipboardData?.getData(MIME_TYPES.text) ||
-            mixedContent.value
-              .map((item) => item.value)
-              .join('\n')
-              .trim(),
-        };
-      }
-
+      //   if (mixedContent.value.every((item) => item.type === 'text')) {
+      //     return {
+      //       type: 'text',
+      //       value:
+      //         event.clipboardData?.getData(MIME_TYPES.text) ||
+      //         mixedContent.value
+      //           .map((item) => item.value)
+      //           .join('\n')
+      //           .trim(),
+      //     };
+      //   }
       return mixedContent;
     }
 
@@ -211,9 +212,9 @@ export const parseClipboard = async (
     isPlainPaste,
   );
 
-  if (parsedEventData.type === 'mixedContent') {
+  if (parsedEventData.type === 'html') {
     return {
-      mixedContent: parsedEventData.value,
+      html: parsedEventData.value,
     };
   }
 

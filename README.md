@@ -335,6 +335,15 @@ If you want to use it in your own project, you can refer to:
 
 ![when canvas meets chat](./screenshots/lesson28.png)
 
+## Lesson 29 - Embedding HTML content [🔗](https://infinitecanvas.cc/guide/lesson-029)
+
+-   Create HTML container and sync camera with CSS transform
+-   Paste URL, display with bookmark and iframe
+-   Paste HTML content
+-   Export to image
+
+![embed HTML content](./screenshots/lesson29.png)
+
 [infinitecanvas]: https://infinitecanvas.tools/
 [Figma]: https://madebyevan.com/figma/building-a-professional-design-tool-on-the-web/
 [Modyfi]: https://digest.browsertech.com/archive/browsertech-digest-how-modyfi-is-building-with/

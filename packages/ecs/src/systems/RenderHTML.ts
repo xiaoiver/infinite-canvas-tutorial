@@ -83,7 +83,5 @@ export class RenderHTML extends System {
     )}, ${toDomPrecision(matrix.m21)})`;
     $child.style.width = `${toDomPrecision(width)}px`;
     $child.style.height = `${toDomPrecision(height)}px`;
-
-    console.log('update');
   }
 }

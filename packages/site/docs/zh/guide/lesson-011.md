@@ -698,6 +698,7 @@ worker.onmessage = function (event) {
 
 -   [How can I use headless-gl with a continuous integration service?]
 -   [Playwright Components (experimental)]
+-   [Canvas Lambda Layer]
 
 [node-canvas]: https://github.com/Automattic/node-canvas
 [headless-gl]: https://github.com/stackgl/headless-gl
@@ -739,3 +740,4 @@ worker.onmessage = function (event) {
 [Web Components]: /zh/guide/lesson-007
 [browserstack-local]: https://github.com/browserstack/browserstack-local-nodejs
 [Running on lambda error]: https://github.com/stackgl/headless-gl/issues/187
+[Canvas Lambda Layer]: https://github.com/ShivamJoker/Canvas-Lambda-Layer
