@@ -8,6 +8,7 @@ import {
   ComputedTextMetrics,
   DropShadow,
   Ellipse,
+  Embed,
   GlobalTransform,
   HTML,
   Line,
@@ -63,6 +64,7 @@ export class ComputeBounds extends System {
           Stroke,
           DropShadow,
           HTML,
+          Embed,
         ).read,
     );
   }
@@ -137,6 +139,9 @@ export class ComputeBounds extends System {
       );
     } else if (entity.has(HTML)) {
       geometryBounds = HTML.getGeometryBounds(entity.read(HTML));
+      renderBounds = geometryBounds;
+    } else if (entity.has(Embed)) {
+      geometryBounds = Embed.getGeometryBounds(entity.read(Embed));
       renderBounds = geometryBounds;
     }
 

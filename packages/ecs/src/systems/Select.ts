@@ -46,6 +46,7 @@ import {
   ToBeDeleted,
   Brush,
   HTML,
+  Embed,
 } from '../components';
 import { Commands } from '../commands/Commands';
 import {
@@ -145,6 +146,7 @@ export class Select extends System {
             Opacity,
             Stroke,
             HTML,
+            Embed,
             Rect,
             Circle,
             Ellipse,

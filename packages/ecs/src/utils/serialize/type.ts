@@ -303,6 +303,13 @@ export interface HtmlSerializedNode
   extends BaseSerializeNode<'html'>,
     Partial<HtmlAttributes> {}
 
+export interface EmbedAttributes {
+  url: string;
+}
+export interface EmbedSerializedNode
+  extends BaseSerializeNode<'embed'>,
+    Partial<EmbedAttributes> {}
+
 export type SerializedNode =
   | GSerializedNode
   | EllipseSerializedNode
@@ -315,7 +322,8 @@ export type SerializedNode =
   | RoughRectSerializedNode
   | RoughEllipseSerializedNode
   | VectorNetworkSerializedNode
-  | HtmlSerializedNode;
+  | HtmlSerializedNode
+  | EmbedSerializedNode;
 
 export type SerializedNodeAttributes = GSerializedNode &
   EllipseSerializedNode &
@@ -328,4 +336,5 @@ export type SerializedNodeAttributes = GSerializedNode &
   RoughRectSerializedNode &
   RoughEllipseSerializedNode &
   VectorNetworkSerializedNode &
-  HtmlSerializedNode;
+  HtmlSerializedNode &
+  EmbedSerializedNode;

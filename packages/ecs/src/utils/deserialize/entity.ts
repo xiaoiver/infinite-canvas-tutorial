@@ -35,11 +35,13 @@ import {
   LockAspectRatio,
   HTML,
   HTMLContainer,
+  Embed,
 } from '../../components';
 import {
   AttenuationAttributes,
   BrushSerializedNode,
   DropShadowAttributes,
+  EmbedSerializedNode,
   FillAttributes,
   HtmlSerializedNode,
   InnerShadowAttributes,
@@ -390,6 +392,10 @@ export function serializedNodesToEntities(
     } else if (type === 'html') {
       const { html } = attributes as HtmlSerializedNode;
       entity.insert(new HTML({ x: 0, y: 0, width, height, html }));
+      entity.insert(new HTMLContainer());
+    } else if (type === 'embed') {
+      const { url } = attributes as EmbedSerializedNode;
+      entity.insert(new Embed({ x: 0, y: 0, width, height, url }));
       entity.insert(new HTMLContainer());
     }
 

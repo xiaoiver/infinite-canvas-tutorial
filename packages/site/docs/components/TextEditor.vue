@@ -24,10 +24,12 @@ onMounted(async () => {
     api.runAtNextTick(() => {
       api.setAppState({
         penbarSelected: Pen.TEXT,
+        penbarAll: [Pen.HAND, Pen.SELECT, Pen.TEXT],
       });
 
       const nodes = [
         {
+          id: '1',
           type: 'text',
           content: 'Hello, world!',
           anchorX: 200,

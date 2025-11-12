@@ -174,6 +174,13 @@ export const defaultAttributes: Record<
     height: 0,
     html: '',
   },
+  embed: {
+    x: 0,
+    y: 0,
+    width: 0,
+    height: 0,
+    url: '',
+  },
 };
 
 // @see https://github.com/plouc/nivo/issues/164

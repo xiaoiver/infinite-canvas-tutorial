@@ -92,6 +92,16 @@ canvas.addEventListener(Event.READY, async (e) => {
       width: 100,
       height: 100,
     } as const,
+    {
+      id: '4',
+      type: 'embed',
+      url: 'https://www.youtube.com/watch?v=37fvFffAmf8',
+      x: 500,
+      y: 100,
+      width: 800,
+      height: 450,
+      lockAspectRatio: true,
+    } as const,
     // {
     //   id: '1',
     //   name: 'A swimming dog',

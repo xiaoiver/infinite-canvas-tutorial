@@ -41,6 +41,7 @@ import {
   Line,
   LockAspectRatio,
   HTML,
+  Embed,
 } from '../components';
 
 export type SceneElementsMap = Map<SerializedNode['id'], SerializedNode>;
@@ -859,6 +860,8 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
       });
     } else if (entity.has(HTML)) {
       entity.write(HTML).width = width;
+    } else if (entity.has(Embed)) {
+      entity.write(Embed).width = width;
     }
   }
   if (!isNil(height)) {
@@ -871,6 +874,8 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
       });
     } else if (entity.has(HTML)) {
       entity.write(HTML).height = height;
+    } else if (entity.has(Embed)) {
+      entity.write(Embed).height = height;
     }
   }
   if (!isNil(points)) {

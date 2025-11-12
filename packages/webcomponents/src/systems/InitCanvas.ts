@@ -38,6 +38,7 @@ import {
   LockAspectRatio,
   HTML,
   HTMLContainer,
+  Embed,
 } from '@infinite-canvas-tutorial/ecs';
 import { Event } from '../event';
 import { ExtendedAPI, pendingCanvases } from '../API';
@@ -89,6 +90,7 @@ export class InitCanvas extends System {
             LockAspectRatio,
             HTML,
             HTMLContainer,
+            Embed,
           ).write,
     );
   }
