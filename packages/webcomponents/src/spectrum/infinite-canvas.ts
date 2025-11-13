@@ -103,15 +103,21 @@ export class InfiniteCanvas extends LitElement {
 
     ic-spectrum-penbar {
       position: absolute;
-      top: 48px;
+      top: 0;
       left: 0;
       bottom: 0;
     }
 
     ic-spectrum-taskbar {
       position: absolute;
-      top: 48px;
+      top: 0;
       right: 0;
+    }
+
+    ic-spectrum-text-editor {
+      position: absolute;
+      top: 0;
+      left: 0;
     }
 
     canvas {
@@ -271,13 +277,21 @@ export class InfiniteCanvas extends LitElement {
             ></ic-spectrum-top-navbar>${$canvas}
             <ic-spectrum-penbar
               style=${topbarVisible
-                ? 'height: calc(100% - 48px);'
-                : 'height: 100%;'}
+                ? `top: ${TOP_NAVBAR_HEIGHT}px; height: calc(100% - ${TOP_NAVBAR_HEIGHT}px);`
+                : 'top: 0; height: 100%;'}
             ></ic-spectrum-penbar>
-            <ic-spectrum-taskbar></ic-spectrum-taskbar>
+            <ic-spectrum-taskbar
+              style=${`top: ${
+                topbarVisible ? TOP_NAVBAR_HEIGHT : 0
+              }px; right: 0;`}
+            ></ic-spectrum-taskbar>
             <ic-spectrum-context-bar></ic-spectrum-context-bar>
             <ic-spectrum-context-menu></ic-spectrum-context-menu>
-            <ic-spectrum-text-editor></ic-spectrum-text-editor>`,
+            <ic-spectrum-text-editor
+              style=${`top: ${
+                topbarVisible ? TOP_NAVBAR_HEIGHT : 0
+              }px; left: 0;`}
+            ></ic-spectrum-text-editor>`,
         ),
       error: (e: Error) => {
         console.error(e);
