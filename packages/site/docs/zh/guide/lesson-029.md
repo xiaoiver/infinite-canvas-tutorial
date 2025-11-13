@@ -12,7 +12,7 @@ import Iframe from '../../components/Iframe.vue'
 
 # 课程 29 - 嵌入 HTML 内容
 
-有时候我们希望在画布中嵌入 HTML 内容，例如 VSCode 代码块、YouTube 播放器、CodeSandbox 组件、ShaderToy 等等。
+有时候我们希望在画布中嵌入 HTML 内容，例如 VS Code 代码块、YouTube 播放器、CodeSandbox 组件、ShaderToy 等等。
 
 ## 创建 HTML 容器 {#create-html-container}
 
@@ -91,6 +91,30 @@ $child.style.width = `${toDomPrecision(width)}px`;
 $child.style.height = `${toDomPrecision(height)}px`;
 ```
 
+### 剔除 {#culling}
+
+在 [课程 8 - 剔除] 中我们已经介绍过，完全处于视口之外的 HTML 内容应该被隐藏，这可以通过 `display: none;` 实现。
+
+```ts
+export class RenderHTML extends System {
+    private readonly culled = this.query(
+        (q) => q.with(HTML).addedChangedOrRemoved.with(Culled).trackWrites,
+    );
+
+    execute() {
+        this.culled.addedChangedOrRemoved.forEach((entity) => {
+            entity.read(HTMLContainer).element.style.display = entity.has(
+                Culled,
+            )
+                ? 'none'
+                : 'block';
+        });
+    }
+}
+```
+
+但如果仅是部分处于画布之外呢？
+
 下面我们介绍如何展示 HTML 内容。
 
 ## 粘贴 URL {#paste-url}
@@ -153,7 +177,7 @@ export async function defaultHandleExternalUrlAsset() {
 
 ## 粘贴 HTML 内容 {#paste-html}
 
-从 VSCode 中复制的代码块是 HTML 片段：
+从 VS Code 中复制的代码块是 HTML 片段：
 
 ```html
 <meta charset="utf-8" />
@@ -216,3 +240,4 @@ function createHTML(
 [课程 10 - 图片导入导出]: /zh/guide/lesson-010
 [html-to-image]: https://github.com/bubkoo/html-to-image
 [课程 16 - 使用原生输入框]: /zh/guide/lesson-016#textarea
+[课程 8 - 剔除]: /zh/guide/lesson-008#culling

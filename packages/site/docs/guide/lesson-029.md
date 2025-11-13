@@ -97,11 +97,35 @@ $child.style.width = `${toDomPrecision(width)}px`;
 $child.style.height = `${toDomPrecision(height)}px`;
 ```
 
+### Culling {#culling}
+
+In [Lesson 8 - Culling], we discussed that HTML content entirely outside the viewport should be hidden, which can be achieved using `display: none;`.
+
+```ts
+export class RenderHTML extends System {
+    private readonly culled = this.query(
+        (q) => q.with(HTML).addedChangedOrRemoved.with(Culled).trackWrites,
+    );
+
+    execute() {
+        this.culled.addedChangedOrRemoved.forEach((entity) => {
+            entity.read(HTMLContainer).element.style.display = entity.has(
+                Culled,
+            )
+                ? 'none'
+                : 'block';
+        });
+    }
+}
+```
+
+But what if only part of it is outside the canvas?
+
 Let's see how to display HTML content.
 
 ## Paste URL {#paste-url}
 
-In [Lesson 24 - Reading from Clipboard], we covered how to handle images and text content from the clipboard.
+In [Lesson 24 - Reading from clipboard], we covered how to handle images and text content from the clipboard.
 
 URLs are special text. In tldraw:
 
@@ -159,7 +183,7 @@ export async function defaultHandleExternalUrlAsset() {
 
 ## Paste HTML content {#paste-html}
 
-Code blocks copied from VSCode are HTML fragments:
+Code blocks copied from VS Code are HTML fragments:
 
 ```html
 <meta charset="utf-8" />
@@ -205,6 +229,10 @@ function createHTML(
 
 ## Interact with HTML content {#interact-with-HTML-content}
 
+Some HTML content is interactive, such as embedding a YouTube player into the canvas while still allowing playback. However, setting `pointer-events: none;` on the HTML container prevents video playback. A common solution is to use a double-click interaction to enter edit mode, distinguishing it from the canvas's default single-click behavior for selecting shapes.In fact, in [Lesson 16 - Text input], we also used double-clicking a Text shape to enter edit mode. Here, we formally add an `editing` property to shapes.
+
+Translated with DeepL.com (free version)
+
 ## Export as SVG or Image {#export-svg-or-image}
 
 In [Lesson 10 - Import and export images], we showed how to export the canvas content as SVG or PNG images. For HTML content you can rely on mature community solutions such as [html-to-image].
@@ -213,7 +241,9 @@ In [Lesson 10 - Import and export images], we showed how to export the canvas co
 
 [External content sources]: https://tldraw.dev/examples/external-content-sources
 [TLEmbedShape]: https://tldraw.dev/reference/tlschema/TLEmbedShape
-[Lesson 24 - Reading from Clipboard]: /guide/lesson-024#clipboard-read
+[Lesson 24 - Reading from clipboard]: /guide/lesson-024#clipboard-read
 [Lesson 4 - Camera]: /guide/lesson-004
 [Lesson 10 - Import and export images]: /guide/lesson-010
 [html-to-image]: https://github.com/bubkoo/html-to-image
+[Lesson 16 - Text input]: /guide/lesson-016#textarea
+[Lesson 8 - Culling]: /guide/lesson-008#culling
