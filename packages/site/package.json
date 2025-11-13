@@ -25,6 +25,7 @@
   },
   "dependencies": {
     "@loaders.gl/core": "^4.2.2",
+    "@loaders.gl/ply": "^4.2.2",
     "@loaders.gl/images": "^4.2.2",
     "@loaders.gl/arrow": "^4.2.2",
     "@infinite-canvas-tutorial/core": "workspace:*",
@@ -58,6 +59,7 @@
     "d3-hierarchy": "^3.1.2",
     "deep-equal": "^2.2.3",
     "genji-theme-vitepress": "^0.2.1",
+    "gl-matrix": "^3.4.3",
     "harfbuzzjs": "^0.3.1",
     "lil-gui": "^0.19.2",
     "loro-crdt": "^1.4.2",

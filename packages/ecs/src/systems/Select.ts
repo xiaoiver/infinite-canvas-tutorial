@@ -683,7 +683,7 @@ export class Select extends System {
         this.selections.set(camera.__id, {
           mode: SelectionMode.IDLE,
           resizingAnchorName: AnchorName.INSIDE,
-          nodes: [],
+          nodes: api.getNodes(),
           obb: {
             x: 0,
             y: 0,

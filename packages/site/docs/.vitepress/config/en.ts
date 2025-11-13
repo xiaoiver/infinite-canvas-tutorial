@@ -346,6 +346,10 @@ export const en = defineConfig({
                 text: 'Embed HTML content',
                 link: 'html',
               },
+              {
+                text: 'Embed YouTube',
+                link: 'iframe',
+              },
             ],
           },
         ],
@@ -365,6 +369,7 @@ export const en = defineConfig({
           },
           { text: 'A textual artistic effect', link: 'signature' },
           { text: 'When canvas meets chat', link: 'when-canvas-meets-chat' },
+          { text: 'Audio visualizer', link: 'audio-visualizer' },
         ],
       },
     },

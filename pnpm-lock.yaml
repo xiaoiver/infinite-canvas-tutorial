@@ -710,6 +710,9 @@ importers:
       '@loaders.gl/images':
         specifier: ^4.2.2
         version: 4.3.3(@loaders.gl/core@4.3.3)
+      '@loaders.gl/ply':
+        specifier: ^4.2.2
+        version: 4.3.4(@loaders.gl/core@4.3.3)
     devDependencies:
       '@ant-design/icons-vue':
         specifier: ^7.0.1
@@ -1831,6 +1834,16 @@ packages:
     peerDependencies:
       '@loaders.gl/core': ^4.3.0
 
+  '@loaders.gl/loader-utils@4.3.4':
+    resolution: {integrity: sha512-tjMZvlKQSaMl2qmYTAxg+ySR6zd6hQn5n3XaU8+Ehp90TD3WzxvDKOMNDqOa72fFmIV+KgPhcmIJTpq4lAdC4Q==}
+    peerDependencies:
+      '@loaders.gl/core': ^4.3.0
+
+  '@loaders.gl/ply@4.3.4':
+    resolution: {integrity: sha512-9/ijcIK2xP0cgSM3BmoS5JXfRXe6PKuIGHNteqJHhrQ5nwx1UrupmsYPXj58FykYVZx6PTBshMs9OmIXvPHduw==}
+    peerDependencies:
+      '@loaders.gl/core': ^4.3.0
+
   '@loaders.gl/schema@4.3.2':
     resolution: {integrity: sha512-/GWvJ5Cx82BUBihCHoo5obeETdPljg1vnlDynOkuAT3T+n6A1sJYFauMNeDiLlQuM29Up6Vi4WndpfNp94QJuw==}
     peerDependencies:
@@ -1838,6 +1851,11 @@ packages:
 
   '@loaders.gl/schema@4.3.3':
     resolution: {integrity: sha512-zacc9/8je+VbuC6N/QRfiTjRd+BuxsYlddLX1u5/X/cg9s36WZZBlU1oNKUgTYe8eO6+qLyYx77yi+9JbbEehw==}
+    peerDependencies:
+      '@loaders.gl/core': ^4.3.0
+
+  '@loaders.gl/schema@4.3.4':
+    resolution: {integrity: sha512-1YTYoatgzr/6JTxqBLwDiD3AVGwQZheYiQwAimWdRBVB0JAzych7s1yBuE0CVEzj4JDPKOzVAz8KnU1TiBvJGw==}
     peerDependencies:
       '@loaders.gl/core': ^4.3.0
 
@@ -1853,6 +1871,11 @@ packages:
 
   '@loaders.gl/worker-utils@4.3.3':
     resolution: {integrity: sha512-eg45Ux6xqsAfqPUqJkhmbFZh9qfmYuPfA+34VcLtfeXIwAngeP6o4SrTmm9LWLGUKiSh47anCEV1p7borDgvGQ==}
+    peerDependencies:
+      '@loaders.gl/core': ^4.3.0
+
+  '@loaders.gl/worker-utils@4.3.4':
+    resolution: {integrity: sha512-EbsszrASgT85GH3B7jkx7YXfQyIYo/rlobwMx6V3ewETapPUwdSAInv+89flnk5n2eu2Lpdeh+2zS6PvqbL2RA==}
     peerDependencies:
       '@loaders.gl/core': ^4.3.0
 
@@ -7964,12 +7987,31 @@ snapshots:
       '@probe.gl/log': 4.1.0
       '@probe.gl/stats': 4.1.0
 
+  '@loaders.gl/loader-utils@4.3.4(@loaders.gl/core@4.3.3)':
+    dependencies:
+      '@loaders.gl/core': 4.3.3
+      '@loaders.gl/schema': 4.3.4(@loaders.gl/core@4.3.3)
+      '@loaders.gl/worker-utils': 4.3.4(@loaders.gl/core@4.3.3)
+      '@probe.gl/log': 4.1.0
+      '@probe.gl/stats': 4.1.0
+
+  '@loaders.gl/ply@4.3.4(@loaders.gl/core@4.3.3)':
+    dependencies:
+      '@loaders.gl/core': 4.3.3
+      '@loaders.gl/loader-utils': 4.3.4(@loaders.gl/core@4.3.3)
+      '@loaders.gl/schema': 4.3.4(@loaders.gl/core@4.3.3)
+
   '@loaders.gl/schema@4.3.2(@loaders.gl/core@4.3.3)':
     dependencies:
       '@loaders.gl/core': 4.3.3
       '@types/geojson': 7946.0.16
 
   '@loaders.gl/schema@4.3.3(@loaders.gl/core@4.3.3)':
+    dependencies:
+      '@loaders.gl/core': 4.3.3
+      '@types/geojson': 7946.0.16
+
+  '@loaders.gl/schema@4.3.4(@loaders.gl/core@4.3.3)':
     dependencies:
       '@loaders.gl/core': 4.3.3
       '@types/geojson': 7946.0.16
@@ -7986,6 +8028,10 @@ snapshots:
       '@loaders.gl/core': 4.3.3
 
   '@loaders.gl/worker-utils@4.3.3(@loaders.gl/core@4.3.3)':
+    dependencies:
+      '@loaders.gl/core': 4.3.3
+
+  '@loaders.gl/worker-utils@4.3.4(@loaders.gl/core@4.3.3)':
     dependencies:
       '@loaders.gl/core': 4.3.3
 

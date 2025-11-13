@@ -138,7 +138,8 @@ export class ContextBar extends LitElement {
             isDataUrl(node.fill));
 
         const isHTML = node.type === 'html';
-        if (isHTML) {
+        const isEmbed = node.type === 'embed';
+        if (isHTML || isEmbed) {
           return html``;
         }
 

@@ -13,6 +13,7 @@ head:
 
 <script setup>
 import HTML from '../components/HTML.vue'
+import Iframe from '../components/Iframe.vue'
 </script>
 
 # Lesson 29 - Embedding HTML content
@@ -25,11 +26,32 @@ Excalidraw does not support embedding HTML content on the canvas, but tldraw sup
 
 ![HTML external content in tldraw](/html-in-tldraw.png)
 
-### Camera Synchronization {#sync-camera}
+The container is divided into two layers:
+
+-   The HTML layer exists alongside the `<canvas>` as its sibling node, containing all HTML containers and handling camera synchronization.
+-   The HTML container serves as the container for each `html` / `embed` shape and handles positioning for individual shapes.
+
+### Camera synchronization {#sync-camera}
 
 In [Lesson 4 - Camera], we introduced a series of important camera parameters: translation, rotation, and zoom. Now we need to map the camera parameters to the HTML container's CSS transform so the canvas and HTML container stay in sync.
 
-### HTML Shape
+```ts
+const { cameraZoom, cameraX, cameraY } = this.appStateProvider.value;
+
+$htmlLayer.style.transform = `scale(${toDomPrecision(
+    cameraZoom,
+)}) translate(${toDomPrecision(-cameraX)}px, ${toDomPrecision(-cameraY)}px)`;
+```
+
+Use `position: absolute;` in HTML layer, relative to the root element:
+
+```ts
+$htmlLayer.style.position = 'absolute';
+$htmlLayer.style.top = topbarVisible ? `${TOP_NAVBAR_HEIGHT}px` : '0px';
+$htmlLayer.style.left = '0px';
+```
+
+### HTML shape {#html-shape}
 
 In the [External content sources] example, we can see how tldraw supports HTML content:
 
@@ -75,7 +97,9 @@ $child.style.width = `${toDomPrecision(width)}px`;
 $child.style.height = `${toDomPrecision(height)}px`;
 ```
 
-## Paste URL
+Let's see how to display HTML content.
+
+## Paste URL {#paste-url}
 
 In [Lesson 24 - Reading from Clipboard], we covered how to handle images and text content from the clipboard.
 
@@ -127,9 +151,13 @@ export async function defaultHandleExternalUrlAsset() {
 }
 ```
 
-### iframe
+### iframe {#iframe}
 
-## Paste HTML Content {#paste-html}
+<Iframe />
+
+### Image URL {#image-url}
+
+## Paste HTML content {#paste-html}
 
 Code blocks copied from VSCode are HTML fragments:
 
@@ -174,6 +202,8 @@ function createHTML(
 ```
 
 <HTML />
+
+## Interact with HTML content {#interact-with-HTML-content}
 
 ## Export as SVG or Image {#export-svg-or-image}
 

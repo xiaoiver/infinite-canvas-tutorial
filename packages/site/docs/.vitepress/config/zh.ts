@@ -291,6 +291,10 @@ export const zh = defineConfig({
                 text: '嵌入 HTML 内容',
                 link: 'html',
               },
+              {
+                text: '嵌入 YouTube',
+                link: 'iframe',
+              },
             ],
           },
         ],
@@ -310,6 +314,7 @@ export const zh = defineConfig({
           },
           { text: '一种字体生成艺术效果', link: 'signature' },
           { text: '当画布遇到 Chat', link: 'when-canvas-meets-chat' },
+          { text: '音频可视化', link: 'audio-visualizer' },
         ],
       },
     },

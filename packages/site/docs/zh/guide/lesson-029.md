@@ -7,11 +7,12 @@ head:
 
 <script setup>
 import HTML from '../../components/HTML.vue'
+import Iframe from '../../components/Iframe.vue'
 </script>
 
 # 课程 29 - 嵌入 HTML 内容
 
-有时候我们希望在画布中嵌入 HTML 内容，例如 YouTube 播放器、CodeSandbox 组件、ShaderToy 等等。
+有时候我们希望在画布中嵌入 HTML 内容，例如 VSCode 代码块、YouTube 播放器、CodeSandbox 组件、ShaderToy 等等。
 
 ## 创建 HTML 容器 {#create-html-container}
 
@@ -19,11 +20,32 @@ Excalidraw 并不支持在画布中嵌入 HTML 内容，但 tldraw 支持 [TLEmb
 
 ![HTML external content in tldraw](/html-in-tldraw.png)
 
+容器分成两层：
+
+-   HTML layer 作为 `<canvas>` 的兄弟节点存在，包含所有 HTML container，负责相机同步
+-   HTML container 作为每个 `html` / `embed` 图形的容器，负责单个图形的定位
+
 ### 相机同步 {#sync-camera}
 
 在 [课程 4 - 相机] 中，我们介绍了相机的一系列重要参数：平移、旋转和缩放。现在我们需要把相机参数映射为 HTML 容器的 CSS transform，实现画布与 HTML 容器的同步。
 
-### HTML 图形
+```ts
+const { cameraZoom, cameraX, cameraY } = this.appStateProvider.value;
+
+$htmlLayer.style.transform = `scale(${toDomPrecision(
+    cameraZoom,
+)}) translate(${toDomPrecision(-cameraX)}px, ${toDomPrecision(-cameraY)}px)`;
+```
+
+同时使用绝对定位，相对整个画布容器：
+
+```ts
+$htmlLayer.style.position = 'absolute';
+$htmlLayer.style.top = topbarVisible ? `${TOP_NAVBAR_HEIGHT}px` : '0px';
+$htmlLayer.style.left = '0px';
+```
+
+### HTML 图形容器 {#html-container}
 
 在 [External content sources] 例子中，我们可以看到 tldraw 是这样支持 HTML 内容的：
 
@@ -69,7 +91,9 @@ $child.style.width = `${toDomPrecision(width)}px`;
 $child.style.height = `${toDomPrecision(height)}px`;
 ```
 
-## 粘贴 URL
+下面我们介绍如何展示 HTML 内容。
+
+## 粘贴 URL {#paste-url}
 
 在 [课程 24 - 读取剪贴板] 中，我们介绍过如何处理剪贴板中的图片和文本内容。
 
@@ -121,7 +145,11 @@ export async function defaultHandleExternalUrlAsset() {
 }
 ```
 
-### iframe
+### iframe {#iframe}
+
+<Iframe />
+
+### 图片 URL {#image-url}
 
 ## 粘贴 HTML 内容 {#paste-html}
 
@@ -169,6 +197,12 @@ function createHTML(
 
 <HTML />
 
+## 与 HTML 内容交互 {#interact-with-HTML-content}
+
+有些 HTML 内容是可以交互的，例如将 YouTube 播放器嵌入画布后仍希望能够播放。但我们在 HTML 容器上设置了 `pointer-events: none;`，这会阻止视频的播放。常用的办法是采用双击进入编辑模式的交互方式，用来与画布默认的单击选中图形行为区分开。
+
+其实之前在 [课程 16 - 使用原生输入框] 中，我们也是通过双击 Text 图形进入编辑模式的。这里我们正式为图形添加一个 `editing` 属性。
+
 ## 导出成 SVG 或图片 {#export-svg-or-image}
 
 在 [课程 10 - 图片导入导出] 中我们介绍过导出画布内容成 SVG 或者 PNG 等格式的图片。对于 HTML 内容可以使用社区内比较成熟的方案，例如 [html-to-image]
@@ -181,3 +215,4 @@ function createHTML(
 [课程 4 - 相机]: /zh/guide/lesson-004
 [课程 10 - 图片导入导出]: /zh/guide/lesson-010
 [html-to-image]: https://github.com/bubkoo/html-to-image
+[课程 16 - 使用原生输入框]: /zh/guide/lesson-016#textarea

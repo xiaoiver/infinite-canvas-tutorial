@@ -69,7 +69,7 @@ export function getGeometryBounds(
   metrics?: Partial<ComputedTextMetrics>,
 ) {
   const { type } = node;
-  if (type === 'rect') {
+  if (type === 'rect' || type === 'html' || type === 'embed') {
     return Rect.getGeometryBounds(node);
   } else if (type === 'ellipse') {
     return Ellipse.getGeometryBounds(node);
