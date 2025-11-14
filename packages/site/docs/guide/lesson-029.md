@@ -99,7 +99,7 @@ $child.style.height = `${toDomPrecision(height)}px`;
 
 ### Culling {#culling}
 
-In [Lesson 8 - Culling], we discussed that HTML content entirely outside the viewport should be hidden, which can be achieved using `display: none;`.
+In [Lesson 8 - Culling], we discussed that HTML content entirely outside the viewport should be hidden, which can be achieved using `display: none;`. We use the method introduced in [Lesson 18 - ECS] to track all entities containing HTML components where the Culled component has changed, using System's query approach.
 
 ```ts
 export class RenderHTML extends System {
@@ -119,7 +119,23 @@ export class RenderHTML extends System {
 }
 ```
 
-But what if only part of it is outside the canvas?
+But what if only part of it is outside the canvas? It is worth noting that tldraw sets the following CSS properties on the `.tl-canvas` container:
+
+```css
+.tl-canvas {
+    overflow: clip;
+    content-visibility: auto;
+    touch-action: none;
+    contain: strict;
+}
+```
+
+| CSS property                 | Problem to solve                                                                                             |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| **overflow: clip**           | Disable scrolling to ensure coordinate system stability and prevent scroll offset from corrupting rendering. |
+| **content-visibility: auto** | Optimize the performance of DOM elements outside the viewport (such as selections, remote cursors, etc.)     |
+| **touch-action: none**       | Completely take control of touch operations to avoid interference from the browser's default gestures.       |
+| **contain: strict**          | Treat the canvas as an independent rendering island to reduce reflow and repaint overhead.                   |
 
 Let's see how to display HTML content.
 
@@ -247,3 +263,4 @@ In [Lesson 10 - Import and export images], we showed how to export the canvas co
 [html-to-image]: https://github.com/bubkoo/html-to-image
 [Lesson 16 - Text input]: /guide/lesson-016#textarea
 [Lesson 8 - Culling]: /guide/lesson-008#culling
+[Lesson 18 - ECS]: /guide/lesson-018

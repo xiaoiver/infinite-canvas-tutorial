@@ -93,7 +93,7 @@ $child.style.height = `${toDomPrecision(height)}px`;
 
 ### 剔除 {#culling}
 
-在 [课程 8 - 剔除] 中我们已经介绍过，完全处于视口之外的 HTML 内容应该被隐藏，这可以通过 `display: none;` 实现。
+在 [课程 8 - 剔除] 中我们已经介绍过，完全处于视口之外的 HTML 内容应该被隐藏，这可以通过 `display: none;` 实现。我们使用 [课程 18 - ECS] 中介绍过的方式，使用 System 的查询方式追踪所有包含 HTML 组件，且 Culled 组件发生变化的实体。
 
 ```ts
 export class RenderHTML extends System {
@@ -113,7 +113,23 @@ export class RenderHTML extends System {
 }
 ```
 
-但如果仅是部分处于画布之外呢？
+但如果仅是部分处于画布之外呢？值得注意的是 tldraw 在 `.tl-canvas` 容器上设置了以下 CSS 属性：
+
+```css
+.tl-canvas {
+    overflow: clip;
+    content-visibility: auto;
+    touch-action: none;
+    contain: strict;
+}
+```
+
+| 属性                         | 解决的问题                                         |
+| ---------------------------- | -------------------------------------------------- |
+| **overflow: clip**           | 禁止滚动，确保坐标系稳定，避免 scroll 偏移污染渲染 |
+| **content-visibility: auto** | 优化视口外 DOM（如选区、远程光标等）性能           |
+| **touch-action: none**       | 完全接管触控操作，避免浏览器默认手势干扰           |
+| **contain: strict**          | 把画布作为独立渲染岛，减少重排和重绘开销           |
 
 下面我们介绍如何展示 HTML 内容。
 
@@ -241,3 +257,4 @@ function createHTML(
 [html-to-image]: https://github.com/bubkoo/html-to-image
 [课程 16 - 使用原生输入框]: /zh/guide/lesson-016#textarea
 [课程 8 - 剔除]: /zh/guide/lesson-008#culling
+[课程 18 - ECS]: /zh/guide/lesson-018

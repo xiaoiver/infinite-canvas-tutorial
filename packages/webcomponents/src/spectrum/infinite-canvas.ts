@@ -97,6 +97,11 @@ export class InfiniteCanvas extends LitElement {
       display: block;
       position: relative;
 
+      overflow: clip;
+      content-visibility: auto;
+      touch-action: none;
+      contain: strict;
+
       --mod-popover-content-area-spacing-vertical: 0;
       --spectrum-popover-content-area-spacing-vertical: 0;
     }
