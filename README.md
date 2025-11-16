@@ -266,6 +266,10 @@ If you want to use it in your own project, you can refer to:
 ## Lesson 20 - Collaboration [🔗](https://infinitecanvas.cc/guide/lesson-020)
 
 -   Implement collaboration through CRDT
+-   Listen and apply changes in scenegraph
+-   Multiplayer cursor
+
+<img src="./screenshots/lesson20.gif" width="300" alt="Lesson 20 - collaboration">
 
 ## Lesson 21 - Transformer [🔗](https://infinitecanvas.cc/guide/lesson-021)
 

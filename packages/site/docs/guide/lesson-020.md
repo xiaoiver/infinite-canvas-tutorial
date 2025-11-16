@@ -5,9 +5,9 @@ head:
     - ['meta', { property: 'og:title', content: 'Lesson 20 - Collaboration' }]
 ---
 
-<!-- <script setup>
+<script setup>
 import LoroCRDT from '../components/LoroCRDT.vue';
-</script> -->
+</script>
 
 # Lesson 20 - Collaboration
 
@@ -121,7 +121,7 @@ Loro's built-in Tree includes the Fractional Index algorithm, see: [Movable tree
 
 > We integrated the Fractional Index algorithm into Loro and combined it with the movable tree, making the child nodes of the movable tree sortable.
 
-在[课程 14]中，我们希望通过 `ZIndex` 干预渲染次序，在编辑器 UI 中会以“调整图层次序”、“上移”、“下移”这样的功能呈现。因此当 `ZIndex` 首次被添加或发生修改时，我们首先遍历场景图，对子节点按照 `ZIndex` 排序，得到排序后的数组后根据一前一后两个兄弟节点，更新当前节点的 fractional index
+In [Lesson 14], we aim to manipulate the rendering order through `ZIndex`. In the editor UI, this functionality manifests as features like “Adjust Layer Order,” “Move Up,” and “Move Down.” Therefore, when `ZIndex` is first added or modified, we first traverse the scene graph, sorting child nodes by `ZIndex`. After obtaining the sorted array, we update the current node's fractional index based on its two immediate sibling nodes.
 
 ```ts
 class ComputeZIndex extends System {
@@ -163,7 +163,7 @@ class ComputeZIndex extends System {
 }
 ```
 
-这样在渲染前就可以根据 fractional index 排序，值得一提的是不可以直接使用 [localeCompare] 比较：
+This allows sorting based on fractional indices before rendering. It's worth noting that you cannot directly use `[localeCompare]` for comparison:
 
 ```ts
 export function sortByFractionalIndex(a: Entity, b: Entity) {
@@ -184,6 +184,8 @@ export function sortByFractionalIndex(a: Entity, b: Entity) {
 
 ### Listen to Scene Graph Changes {#listen-scene-graph-change}
 
+In Excalidraw, you can use the `onChange` hook to monitor changes to all shapes in the scene:
+
 ```tsx
 <Excalidraw
     onChange={(elements) => {
@@ -192,9 +194,18 @@ export function sortByFractionalIndex(a: Entity, b: Entity) {
 />
 ```
 
+When the history records changed, we invoke this hook:
+
 ```ts
+export class API {
+    onchange: (snapshot: {
+        appState: AppState;
+        nodes: SerializedNode[];
+    }) => void;
+}
+
 api.onchange = (snapshot) => {
-    const { appState, elements } = snapshot;
+    const { appState, nodes } = snapshot;
 };
 ```
 
@@ -206,11 +217,21 @@ Referring to [Excalidraw updateScene], we can also provide an `updateNodes` meth
 api.updateNodes(nodes);
 ```
 
-<!-- <LoroCRDT /> -->
+<div style="display:flex;flex-direction:row;">
+<div style="flex: 1;">
+<LoroCRDT />
+</div>
+<div style="flex: 1;">
+<LoroCRDT />
+</div>
+</div>
 
-<br />
+## End to end encryption {#end-to-end-encryption}
 
-<!-- <LoroCRDT /> -->
+## Multiplayer cursors {#multiplayer-cursors}
+
+-   [Building Figma Multiplayer Cursors]
+-   [How to animate multiplayer cursors]
 
 ## Extended Reading {#extended-reading}
 
@@ -220,6 +241,8 @@ api.updateNodes(nodes);
 -   [CRDTs: The Hard Parts]
 -   [An Interactive Intro to CRDTs]
 -   [The Full Spectrum of Collaboration]
+-   [Homomorphically Encrypting CRDTs]
+-   [End-to-End Encryption in the Browser]
 
 [What are CRDTs]: https://loro.dev/docs/concepts/crdt
 [CRDTs: The Hard Parts]: https://www.youtube.com/watch?v=x7drE24geUw
@@ -244,3 +267,9 @@ api.updateNodes(nodes);
 [Excalidraw updateScene]: https://docs.excalidraw.com/docs/@excalidraw/excalidraw/api/props/excalidraw-api#updatescene
 [fractional-indexing]: https://github.com/rocicorp/fractional-indexing
 [Movable tree CRDTs and Loro's implementation]: https://loro.dev/blog/movable-tree
+[Lesson 14]: /guide/lesson-014#z-index
+[localeCompare]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/localeCompare
+[Homomorphically Encrypting CRDTs]: https://jakelazaroff.com/words/homomorphically-encrypted-crdts/
+[End-to-End Encryption in the Browser]: https://plus.excalidraw.com/blog/end-to-end-encryption
+[Building Figma Multiplayer Cursors]: https://mskelton.dev/blog/building-figma-multiplayer-cursors
+[How to animate multiplayer cursors]: https://liveblocks.io/blog/how-to-animate-multiplayer-cursors

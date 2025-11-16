@@ -140,6 +140,8 @@ export class API {
   #history = new History();
   #store = new Store(this);
 
+  onchange: (snapshot: { appState: AppState; nodes: SerializedNode[] }) => void;
+
   constructor(
     private readonly stateManagement: StateManagement,
     private readonly commands: Commands,
@@ -147,10 +149,15 @@ export class API {
     this.#store.onStoreIncrementEmitter.on(StoreIncrementEvent, (event) => {
       this.#history.record(event.elementsChange, event.appStateChange);
 
-      this.stateManagement.onChange?.({
-        appState: this.getAppState(),
-        nodes: this.getNodes(),
-      });
+      const snapshot = {
+        appState: this.stateManagement.getAppState(),
+        nodes: this.stateManagement.getNodes(),
+      };
+      this.stateManagement.onChange?.(snapshot);
+
+      if (this.onchange) {
+        this.onchange(snapshot);
+      }
     });
   }
 

@@ -259,6 +259,11 @@ canvas.addEventListener(Event.READY, async (e) => {
     // },
   ];
 
+  api.onchange = (snapshot) => {
+    const { appState, nodes } = snapshot;
+    console.log(appState, nodes);
+  };
+
   // api.runAtNextTick(() => {
   api.setAppState({
     cameraX: 0,

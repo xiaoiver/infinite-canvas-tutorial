@@ -967,7 +967,10 @@ export class Select extends System {
         } else if (selection.mode === SelectionMode.MOVE) {
           this.handleSelectedMoved(api, selection);
           selection.mode = SelectionMode.READY_TO_MOVE;
-        } else if (selection.mode === SelectionMode.RESIZE) {
+        } else if (
+          selection.mode === SelectionMode.RESIZE ||
+          selection.mode === SelectionMode.READY_TO_RESIZE
+        ) {
           this.handleSelectedResized(api, selection);
           selection.mode = SelectionMode.READY_TO_RESIZE;
         } else if (selection.mode === SelectionMode.ROTATE) {

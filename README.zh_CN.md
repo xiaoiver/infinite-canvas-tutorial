@@ -266,6 +266,10 @@ pnpm run dev
 ## 课程 20 - 协同 [🔗](https://infinitecanvas.cc/zh/guide/lesson-020)
 
 -   通过 CRDT 实现协同
+-   监听并应用场景图变更
+-   多人光标
+
+<img src="./screenshots/lesson20.gif" width="300" alt="Lesson 20 - collaboration">
 
 ## 课程 21 - Transformer [🔗](https://infinitecanvas.cc/zh/guide/lesson-021)
 

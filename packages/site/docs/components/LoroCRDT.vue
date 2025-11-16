@@ -20,21 +20,6 @@ function convertSceneGraphToLoroTree(node: SerializedNode, doc: LoroDoc) {
 
   const loroNode = tree.createNode();
   loroNode.data.set('data', node);
-
-  // const traverse = (node: SerializedNode, loroNode: LoroTreeNode) => {
-  //   const loroChildNode = loroNode.createNode();
-
-  //   loroChildNode.data.set('uid', node.uid);
-  //   loroChildNode.data.set('type', node.type);
-  //   loroChildNode.data.set('attributes', node.attributes);
-
-  //   node.children?.forEach((child) => {
-  //     traverse(child, loroChildNode);
-  //   });
-  // };
-
-  // traverse(serializeNode(sceenGraph), tree.createNode());  
-
   return tree;
 }
 
@@ -144,22 +129,16 @@ onMounted(async () => {
 
   onReady = (e) => {
     api = e.detail;
-    // api.onchange = (snapshot) => {
-    //   const { appState } = snapshot;
+    api.onchange = (snapshot) => {
+      const { appState } = snapshot;
 
-    //   const elements = Array.from(snapshot.elements.values());
+      const elements = Array.from(snapshot.nodes.values());
 
-    //   const v = getVersion(elements);
-
-    //   // if (lastVersion === v) {
-    //   // local change, should detect and record the diff to loro doc
-    //   if (recordLocalOps(docElements, elements)) {
-    //     doc.commit();
-    //   }
-    //   // }
-
-    //   // lastVersion = v;
-    // }
+      const v = getVersion(elements);
+      if (recordLocalOps(docElements, elements)) {
+        doc.commit();
+      }
+    }
 
     const node = {
       type: 'rect',
@@ -174,7 +153,9 @@ onMounted(async () => {
 
     api.setAppState({
       penbarSelected: Pen.SELECT,
-      taskbarSelected: [Task.SHOW_LAYERS_PANEL],
+      penbarAll: [Pen.SELECT],
+      taskbarAll: [],
+      // taskbarSelected: [Task.SHOW_LAYERS_PANEL],
     });
 
     api.updateNodes([node]);

@@ -3,9 +3,9 @@ outline: deep
 description: '使用CRDT（无冲突复制数据类型）实现多用户协同编辑。基于Loro实现本地优先软件原则，支持分数索引和实时同步。'
 ---
 
-<!-- <script setup>
+<script setup>
 import LoroCRDT from '../../components/LoroCRDT.vue';
-</script> -->
+</script>
 
 # 课程 20 - 协同
 
@@ -180,6 +180,8 @@ export function sortByFractionalIndex(a: Entity, b: Entity) {
 
 ### 监听场景图变更 {#listen-scene-graph-change}
 
+在 Excalidraw 中可以通过 `onChange` 钩子监听场景中所有图形的变化：
+
 ```tsx
 <Excalidraw
     onChange={(elements) => {
@@ -188,9 +190,18 @@ export function sortByFractionalIndex(a: Entity, b: Entity) {
 />
 ```
 
+在上一节介绍的历史记录发生改变时，我们就调用这个钩子：
+
 ```ts
+export class API {
+    onchange: (snapshot: {
+        appState: AppState;
+        nodes: SerializedNode[];
+    }) => void;
+}
+
 api.onchange = (snapshot) => {
-    const { appState, elements } = snapshot;
+    const { appState, nodes } = snapshot;
 };
 ```
 
@@ -202,13 +213,21 @@ api.onchange = (snapshot) => {
 api.updateNodes(nodes);
 ```
 
-<!-- <LoroCRDT /> -->
-
-<br />
-
-<!-- <LoroCRDT /> -->
+<div style="display:flex;flex-direction:row;">
+<div style="flex: 1;">
+<LoroCRDT />
+</div>
+<div style="flex: 1;">
+<LoroCRDT />
+</div>
+</div>
 
 ## 端到端加密 {#end-to-end-encryption}
+
+## 多人光标 {#multiplayer-cursors}
+
+-   [Building Figma Multiplayer Cursors]
+-   [How to animate multiplayer cursors]
 
 ## 扩展阅读 {#extended-reading}
 
@@ -248,3 +267,5 @@ api.updateNodes(nodes);
 [localeCompare]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/localeCompare
 [Homomorphically Encrypting CRDTs]: https://jakelazaroff.com/words/homomorphically-encrypted-crdts/
 [End-to-End Encryption in the Browser]: https://plus.excalidraw.com/blog/end-to-end-encryption
+[Building Figma Multiplayer Cursors]: https://mskelton.dev/blog/building-figma-multiplayer-cursors
+[How to animate multiplayer cursors]: https://liveblocks.io/blog/how-to-animate-multiplayer-cursors
