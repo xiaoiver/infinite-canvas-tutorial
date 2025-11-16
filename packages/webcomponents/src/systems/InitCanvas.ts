@@ -39,6 +39,7 @@ import {
   HTML,
   HTMLContainer,
   Embed,
+  Editable,
 } from '@infinite-canvas-tutorial/ecs';
 import { Event } from '../event';
 import { ExtendedAPI, pendingCanvases } from '../API';
@@ -91,6 +92,7 @@ export class InitCanvas extends System {
             HTML,
             HTMLContainer,
             Embed,
+            Editable,
           ).write,
     );
   }

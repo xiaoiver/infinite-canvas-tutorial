@@ -185,7 +185,17 @@ export async function defaultHandleExternalUrlAsset() {
 }
 ```
 
-### iframe {#iframe}
+### 使用 iframe 渲染 {#render-with-iframe}
+
+很多站点都提供了分享后内嵌到网页的控件，以 YouTube 为例，需要将播放链接通过一定的规则转换成可嵌入链接，随后就可以用 `<iframe>` 展示了：
+
+```ts
+// 输入的 URL 为 https://www.youtube.com/watch?v=37fvFffAmf8
+const embedUrl = `https://www.youtube.com/embed/${videoId}${search}`;
+
+const $iframe = document.createElement('iframe');
+$iframe.src = embedUrl;
+```
 
 <Iframe />
 
@@ -241,7 +251,54 @@ function createHTML(
 
 有些 HTML 内容是可以交互的，例如将 YouTube 播放器嵌入画布后仍希望能够播放。但我们在 HTML 容器上设置了 `pointer-events: none;`，这会阻止视频的播放。常用的办法是采用双击进入编辑模式的交互方式，用来与画布默认的单击选中图形行为区分开。
 
-其实之前在 [课程 16 - 使用原生输入框] 中，我们也是通过双击 Text 图形进入编辑模式的。这里我们正式为图形添加一个 `editing` 属性。
+其实之前在 [课程 16 - 使用原生输入框] 中，我们也是通过双击 Text 图形进入编辑模式的。这里我们正式为图形添加一个 `isEditing` 属性，开启这个属性时去除 HTML 容器上的 `pointer-events: none;` 样式。
+
+```ts
+export interface BaseSerializeNode<Type extends string> {
+    editable? boolean;
+    isEditing?: boolean;
+}
+```
+
+```ts
+class RenderHTML extends System {
+    private readonly editables = this.query(
+        (q) => q.withAny(HTML, Embed).addedOrChanged.with(Editable).trackWrites,
+    );
+
+    execute() {
+        this.editables.addedOrChanged.forEach((entity) => {
+            const { element } = entity.read(HTMLContainer);
+            const { isEditing } = entity.read(Editable);
+            element.style.pointerEvents = isEditing ? 'auto' : 'none';
+        });
+    }
+}
+```
+
+在双击选中的图形后进入编辑模式，单击其他区域退出编辑模式：
+
+```ts
+if (input.doubleClickTrigger) {
+    selection.mode = SelectionMode.EDITING;
+    api.updateNode(api.getNodeByEntity(selected), { isEditing: true });
+}
+
+if (input.pointerDownTrigger) {
+    if (selection.mode === SelectionMode.EDITING) {
+        const toSelect = this.getTopmostEntity(api, x, y, (e) => !e.has(UI));
+        if (selection.editing && toSelect !== selection.editing) {
+            api.updateNode(api.getNodeByEntity(selection.editing), {
+                isEditing: false,
+            });
+            selection.editing = undefined;
+            selection.mode = SelectionMode.SELECT;
+        }
+    }
+}
+```
+
+你可以双击上面的 YouTube 播放器例子，进入编辑模式后就可以播放视频了。
 
 ## 导出成 SVG 或图片 {#export-svg-or-image}
 

@@ -86,7 +86,8 @@ canvas.addEventListener(Event.READY, async (e) => {
     {
       id: '3',
       type: 'html',
-      html: '<div style="background-color: red; height: 100%; width: 100%;">hello</div>',
+      editable: true,
+      html: '<div style="background-color: red; height: 100%; width: 100%;">hello <input type="text" /></div>',
       x: 400,
       y: 100,
       width: 100,

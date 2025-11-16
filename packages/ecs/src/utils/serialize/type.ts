@@ -32,7 +32,8 @@ export interface BaseSerializeNode<Type extends string>
   extends Partial<TransformAttributes>,
     Partial<VisibilityAttributes>,
     Partial<NameAttributes>,
-    Partial<ZIndexAttributes> {
+    Partial<ZIndexAttributes>,
+    Partial<EditableAttributes> {
   /**
    * Unique identifier
    */
@@ -61,6 +62,11 @@ export interface BaseSerializeNode<Type extends string>
    * Lock aspect ratio like image.
    */
   lockAspectRatio?: boolean;
+}
+
+export interface EditableAttributes {
+  editable?: boolean;
+  isEditing?: boolean;
 }
 
 export interface ZIndexAttributes {

@@ -21,3 +21,4 @@ export * from './cursor';
 export * from './clipboard';
 export * from './marker';
 export * from './snapping';
+export * from './embed';

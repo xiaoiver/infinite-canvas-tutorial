@@ -59,6 +59,7 @@ import {
   Marker,
   Line,
   LockAspectRatio,
+  Editable,
 } from '../components';
 
 export const RendererPlugin: Plugin = () => {
@@ -78,6 +79,7 @@ export const RendererPlugin: Plugin = () => {
   component(StrokeAttenuation);
   component(GeometryDirty);
   component(MaterialDirty);
+  component(Editable);
 
   /**
    * Style

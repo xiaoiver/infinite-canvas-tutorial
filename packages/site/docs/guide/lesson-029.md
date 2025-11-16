@@ -191,7 +191,17 @@ export async function defaultHandleExternalUrlAsset() {
 }
 ```
 
-### iframe {#iframe}
+### Render with iframe {#render-with-iframe}
+
+Many websites provide sharing controls that embed content into web pages. Take YouTube as an example: you need to convert the playback link into an embeddable link using specific rules, after which you can display it using an `<iframe>`:
+
+```ts
+// Input URL: https://www.youtube.com/watch?v=37fvFffAmf8
+const embedUrl = `https://www.youtube.com/embed/${videoId}${search}`;
+
+const $iframe = document.createElement('iframe');
+$iframe.src = embedUrl;
+```
 
 <Iframe />
 
@@ -245,9 +255,56 @@ function createHTML(
 
 ## Interact with HTML content {#interact-with-HTML-content}
 
-Some HTML content is interactive, such as embedding a YouTube player into the canvas while still allowing playback. However, setting `pointer-events: none;` on the HTML container prevents video playback. A common solution is to use a double-click interaction to enter edit mode, distinguishing it from the canvas's default single-click behavior for selecting shapes.In fact, in [Lesson 16 - Text input], we also used double-clicking a Text shape to enter edit mode. Here, we formally add an `editing` property to shapes.
+Some HTML content is interactive, such as embedding a YouTube player into the canvas while still allowing playback. However, setting `pointer-events: none;` on the HTML container prevents video playback. A common solution is to use a double-click interaction to enter edit mode, distinguishing it from the canvas's default single-click behavior for selecting shapes.
 
-Translated with DeepL.com (free version)
+In fact, in [Lesson 16 - Text input], we also used double-clicking a Text shape to enter edit mode. Here, we formally add an `isEditing` property to shapes.
+
+```ts
+export interface BaseSerializeNode<Type extends string> {
+    editable? boolean;
+    isEditing?: boolean;
+}
+```
+
+```ts
+class RenderHTML extends System {
+    private readonly editables = this.query(
+        (q) => q.withAny(HTML, Embed).addedOrChanged.with(Editable).trackWrites,
+    );
+
+    execute() {
+        this.editables.addedOrChanged.forEach((entity) => {
+            const { element } = entity.read(HTMLContainer);
+            const { isEditing } = entity.read(Editable);
+            element.style.pointerEvents = isEditing ? 'auto' : 'none';
+        });
+    }
+}
+```
+
+Double-click the selected shape to enter edit mode. Click elsewhere to exit edit mode.
+
+```ts
+if (input.doubleClickTrigger) {
+    selection.mode = SelectionMode.EDITING;
+    api.updateNode(api.getNodeByEntity(selected), { isEditing: true });
+}
+
+if (input.pointerDownTrigger) {
+    if (selection.mode === SelectionMode.EDITING) {
+        const toSelect = this.getTopmostEntity(api, x, y, (e) => !e.has(UI));
+        if (selection.editing && toSelect !== selection.editing) {
+            api.updateNode(api.getNodeByEntity(selection.editing), {
+                isEditing: false,
+            });
+            selection.editing = undefined;
+            selection.mode = SelectionMode.SELECT;
+        }
+    }
+}
+```
+
+Double-click the YouTube player example above to enter edit mode, where you can play the video.
 
 ## Export as SVG or Image {#export-svg-or-image}
 

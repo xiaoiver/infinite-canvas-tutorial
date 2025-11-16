@@ -24,7 +24,8 @@ onMounted(async () => {
       ...api.getAppState(),
       cameraZoom: 0.5,
       penbarSelected: Pen.SELECT,
-      penbarVisible: false,
+      penbarAll: [Pen.HAND, Pen.SELECT],
+      penbarVisible: true,
       taskbarVisible: false,
     });
 

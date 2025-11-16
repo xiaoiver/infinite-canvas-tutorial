@@ -9,6 +9,7 @@ import {
   Mat3,
   Embed,
   Culled,
+  Editable,
 } from '../components';
 import { getSceneRoot } from '../systems';
 import {
@@ -17,6 +18,7 @@ import {
   isBrowser,
   safeParseUrl,
   toDomPrecision,
+  convertYoutubeEmbedUrl,
 } from '../utils';
 
 export class RenderHTML extends System {
@@ -31,6 +33,10 @@ export class RenderHTML extends System {
   private readonly culled = this.query(
     (q) =>
       q.withAny(HTML, Embed).addedChangedOrRemoved.with(Culled).trackWrites,
+  );
+
+  private readonly editables = this.query(
+    (q) => q.withAny(HTML, Embed).addedOrChanged.with(Editable).trackWrites,
   );
 
   constructor() {
@@ -52,6 +58,19 @@ export class RenderHTML extends System {
       entity.read(HTMLContainer).element.style.display = entity.has(Culled)
         ? 'none'
         : 'block';
+    });
+
+    this.editables.addedOrChanged.forEach((entity) => {
+      const { element } = entity.read(HTMLContainer);
+      const { isEditing } = entity.read(Editable);
+      element.style.pointerEvents = isEditing ? 'auto' : 'none';
+
+      if (entity.has(Embed)) {
+        const $iframe = element.querySelector('iframe');
+        if ($iframe) {
+          $iframe.style.pointerEvents = isEditing ? 'auto' : 'none';
+        }
+      }
     });
 
     this.htmls.added.forEach((entity) => {
@@ -116,36 +135,7 @@ export class RenderHTML extends System {
       let embedUrl = url;
       const urlObj = safeParseUrl(url);
       if (urlObj) {
-        const hostname = urlObj.hostname.replace(/^www./, '');
-        if (hostname === 'youtu.be') {
-          const videoId = urlObj.pathname.split('/').filter(Boolean)[0];
-          const searchParams = new URLSearchParams(urlObj.search);
-          const timeStart = searchParams.get('t');
-          if (timeStart) {
-            searchParams.set('start', timeStart);
-            searchParams.delete('t');
-          }
-          const search = searchParams.toString()
-            ? '?' + searchParams.toString()
-            : '';
-          embedUrl = `https://www.youtube.com/embed/${videoId}${search}`;
-        } else if (
-          (hostname === 'youtube.com' || hostname === 'm.youtube.com') &&
-          urlObj.pathname.match(/^\/watch/)
-        ) {
-          const videoId = urlObj.searchParams.get('v');
-          const searchParams = new URLSearchParams(urlObj.search);
-          searchParams.delete('v');
-          const timeStart = searchParams.get('t');
-          if (timeStart) {
-            searchParams.set('start', timeStart);
-            searchParams.delete('t');
-          }
-          const search = searchParams.toString()
-            ? '?' + searchParams.toString()
-            : '';
-          embedUrl = `https://www.youtube.com/embed/${videoId}${search}`;
-        }
+        embedUrl = convertYoutubeEmbedUrl(urlObj);
       }
 
       const $iframe = document.createElement('iframe');

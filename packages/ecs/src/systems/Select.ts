@@ -47,6 +47,7 @@ import {
   Brush,
   HTML,
   Embed,
+  Editable,
 } from '../components';
 import { Commands } from '../commands/Commands';
 import {
@@ -85,6 +86,7 @@ export enum SelectionMode {
   ROTATE = 'ROTATE',
   READY_TO_MOVE_CONTROL_POINT = 'READY_TO_MOVE_CONTROL_POINT',
   MOVE_CONTROL_POINT = 'MOVE_CONTROL_POINT',
+  EDITING = 'EDITING',
 }
 
 export interface SelectOBB {
@@ -108,6 +110,8 @@ export interface SelectOBB {
   pointerMoveViewportY: number;
 
   brush: Entity;
+
+  editing: Entity;
 }
 
 /**
@@ -164,6 +168,7 @@ export class Select extends System {
             Snap,
             SnapPoint,
             ToBeDeleted,
+            Editable,
           ).write,
     );
     this.query((q) => q.using(ComputedCamera, FractionalIndex, RBush).read);
@@ -698,6 +703,7 @@ export class Select extends System {
           pointerMoveViewportX: 0,
           pointerMoveViewportY: 0,
           brush: undefined,
+          editing: undefined,
         });
       }
 
@@ -706,6 +712,14 @@ export class Select extends System {
         const { selecteds } = camera.read(Transformable);
         if (selecteds.length === 1) {
           const selected = selecteds[0];
+
+          const selection = this.selections.get(camera.__id);
+          selection.mode = SelectionMode.EDITING;
+
+          // Enter edit mode
+          api.updateNode(api.getNodeByEntity(selected), { isEditing: true });
+          selection.editing = selected;
+
           if (selected.has(Polyline)) {
             const vectorNetwork = VectorNetwork.fromEntity(selected);
             safeRemoveComponent(selected, Polyline);
@@ -771,6 +785,15 @@ export class Select extends System {
 
           if (api.getAppState().layersSelected.length > 0) {
             selection.mode = SelectionMode.MOVE;
+          }
+        } else if (selection.mode === SelectionMode.EDITING) {
+          const toSelect = this.getTopmostEntity(api, x, y, (e) => !e.has(UI));
+          if (selection.editing && toSelect !== selection.editing) {
+            api.updateNode(api.getNodeByEntity(selection.editing), {
+              isEditing: false,
+            });
+            selection.editing = undefined;
+            selection.mode = SelectionMode.SELECT;
           }
         }
       }
