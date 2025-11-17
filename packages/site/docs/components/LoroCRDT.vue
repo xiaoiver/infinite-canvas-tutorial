@@ -25,27 +25,27 @@ function convertSceneGraphToLoroTree(node: SerializedNode, doc: LoroDoc) {
 
 function recordLocalOps(
   loroList: LoroList,
-  elements: readonly { version?: number; isDeleted?: boolean }[],
+  nodes: readonly { version?: number; isDeleted?: boolean }[],
 ): boolean {
-  elements = elements.filter((e) => !e.isDeleted);
+  nodes = nodes.filter((e) => !e.isDeleted);
   let changed = false;
-  for (let i = loroList.length; i < elements.length; i++) {
+  for (let i = loroList.length; i < nodes.length; i++) {
     loroList.insertContainer(i, new LoroMap());
     changed = true;
   }
-  if (elements.length < loroList.length) {
-    loroList.delete(elements.length, loroList.length - elements.length);
+  if (nodes.length < loroList.length) {
+    loroList.delete(nodes.length, loroList.length - nodes.length);
     changed = true;
   }
 
-  const n = elements.length;
+  const n = nodes.length;
   for (let i = 0; i < n; i++) {
     const map = loroList.get(i) as LoroMap | undefined;
     if (!map) {
       break;
     }
 
-    const elem = elements[i];
+    const elem = nodes[i];
     if (map.get("version") === elem.version) {
       continue;
     }
@@ -53,7 +53,7 @@ function recordLocalOps(
     for (const [key, value] of Object.entries(elem)) {
       const src = map.get(key);
       if (
-        (typeof src === "object" && !deepEqual(map.get(key), value)) ||
+        (typeof src === 'object' && !deepEqual(map.get(key), value)) ||
         src !== value
       ) {
         changed = true;
@@ -94,7 +94,7 @@ onMounted(async () => {
 
   doc = new LoroDoc();
   const data = localStorage.getItem("store");
-  const docElements = doc.getList("elements");
+  const docNodes = doc.getList("nodes");
   let lastVersion: VersionVector | undefined = undefined;
 
   doc.subscribe((e) => {
@@ -119,23 +119,15 @@ onMounted(async () => {
     }
 
     if (e.by !== "local") {
-
-
-      // console.log(docElements.toJSON());
-
-      api.updateNode(docElements.toJSON()[0]);
+      api.updateNodes(docNodes.toJSON());
     }
   });
 
   onReady = (e) => {
     api = e.detail;
     api.onchange = (snapshot) => {
-      const { appState } = snapshot;
-
-      const elements = Array.from(snapshot.nodes.values());
-
-      const v = getVersion(elements);
-      if (recordLocalOps(docElements, elements)) {
+      const { appState, nodes } = snapshot;
+      if (recordLocalOps(docNodes, nodes)) {
         doc.commit();
       }
     }
@@ -155,6 +147,7 @@ onMounted(async () => {
       penbarSelected: Pen.SELECT,
       penbarAll: [Pen.SELECT],
       taskbarAll: [],
+      taskbarVisible: false,
       // taskbarSelected: [Task.SHOW_LAYERS_PANEL],
     });
 

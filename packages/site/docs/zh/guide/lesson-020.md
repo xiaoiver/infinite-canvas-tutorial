@@ -213,6 +213,57 @@ api.onchange = (snapshot) => {
 api.updateNodes(nodes);
 ```
 
+下面我们以 Loro 为例，使用 [BroadcastChannel] 支持同源下多个标签页间通讯的特性，模拟多个用户协同编辑的效果。每当画布内容发生变化时发送消息给其他页面，而每当接收到来自其他页面的消息时，完成同步。因此需要同时承担消息发送者和接受者的角色。先来看作为消息接收端的代码实现：
+
+首先创建一个 [LoroDoc]，使用 [List] 结构存储图形列表，接收到消息时将数据导入到 LoroDoc 中，可参考 [Exporting and Importing]：
+
+```ts
+import { LoroDoc } from 'loro-crdt';
+
+const channel = new BroadcastChannel('loro-crdt');
+const doc = new LoroDoc();
+const docNodes = doc.getList('nodes');
+
+channel.onmessage = (e) => {
+    const bytes = new Uint8Array(e.data);
+    doc.import(bytes);
+};
+```
+
+更进一步的，将 `docNodes` 转换成 JS 对象后，调用画布 API `updateNodes` 完成场景的更新：
+
+```ts
+doc.subscribe((e) => {
+    if (e.by !== 'local') {
+        api.updateNodes(docNodes.toJSON());
+    }
+});
+```
+
+再来看消息发送端的实现。通过 `onchange` 钩子订阅画布场景图的变化，记录到文档后提交变更，其他窗口就会触发上一步的场景更新：
+
+```ts
+api.onchange = (snapshot) => {
+    const { appState, nodes } = snapshot;
+    if (recordLocalOps(docElements, nodes)) {
+        doc.commit();
+    }
+};
+```
+
+在提交本地变更过程中：
+
+```ts
+function recordLocalOps(
+    loroList: LoroList,
+    nodes: readonly { version?: number; isDeleted?: boolean }[],
+): boolean {
+    nodes = nodes.filter((e) => !e.isDeleted); // 首先排除掉被删除的图形
+}
+```
+
+你可以在下面的例子中，在左右侧窗口中任意拖动、resize 或者改变矩形的颜色，另一个窗口会同步这些修改：
+
 <div style="display:flex;flex-direction:row;">
 <div style="flex: 1;">
 <LoroCRDT />
@@ -269,3 +320,6 @@ api.updateNodes(nodes);
 [End-to-End Encryption in the Browser]: https://plus.excalidraw.com/blog/end-to-end-encryption
 [Building Figma Multiplayer Cursors]: https://mskelton.dev/blog/building-figma-multiplayer-cursors
 [How to animate multiplayer cursors]: https://liveblocks.io/blog/how-to-animate-multiplayer-cursors
+[List]: https://loro.dev/docs/tutorial/list
+[LoroDoc]: https://loro.dev/docs/tutorial/loro_doc
+[Exporting and Importing]: https://loro.dev/docs/tutorial/loro_doc#exporting-and-importing

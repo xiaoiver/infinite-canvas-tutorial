@@ -217,6 +217,57 @@ Referring to [Excalidraw updateScene], we can also provide an `updateNodes` meth
 api.updateNodes(nodes);
 ```
 
+Below, we use Loro as an example to simulate the effect of multiple users collaborating on editing. We leverage the [BroadcastChannel] feature to enable communication between multiple tabs within the same origin. Whenever the canvas content changes, a message is sent to other pages. Upon receiving a message from another page, synchronization is completed. Therefore, each page must simultaneously act as both a message sender and receiver.
+
+First, let's examine the code implementation for the message receiver: First, create a [LoroDoc] instance. Use a [List] structure to store the graphic list. Upon receiving a message, import the data into the LoroDoc. For reference, see [Exporting and Importing].
+
+```ts
+import { LoroDoc } from 'loro-crdt';
+
+const channel = new BroadcastChannel('loro-crdt');
+const doc = new LoroDoc();
+const docNodes = doc.getList('nodes');
+
+channel.onmessage = (e) => {
+    const bytes = new Uint8Array(e.data);
+    doc.import(bytes);
+};
+```
+
+Furthermore, after converting `docNodes` into a JavaScript object, call the canvas API `updateNodes` to complete the scene update:
+
+```ts
+doc.subscribe((e) => {
+    if (e.by !== 'local') {
+        api.updateNodes(docNodes.toJSON());
+    }
+});
+```
+
+Now let's examine the implementation on the message-sending side. By subscribing to changes in the canvas scene graph via the `onchange` hook, changes are recorded to the document and submitted. This triggers the previous scene update in other windows:
+
+```ts
+api.onchange = (snapshot) => {
+    const { appState, nodes } = snapshot;
+    if (recordLocalOps(docElements, nodes)) {
+        doc.commit();
+    }
+};
+```
+
+During the submission of local changes:
+
+```ts
+function recordLocalOps(
+    loroList: LoroList,
+    nodes: readonly { version?: number; isDeleted?: boolean }[],
+): boolean {
+    nodes = nodes.filter((e) => !e.isDeleted); // 首先排除掉被删除的图形
+}
+```
+
+In the example below, you can freely drag, resize, or change the color of the rectangle in either the left or right window, and the other window will synchronize these modifications:
+
 <div style="display:flex;flex-direction:row;">
 <div style="flex: 1;">
 <LoroCRDT />
@@ -273,3 +324,6 @@ api.updateNodes(nodes);
 [End-to-End Encryption in the Browser]: https://plus.excalidraw.com/blog/end-to-end-encryption
 [Building Figma Multiplayer Cursors]: https://mskelton.dev/blog/building-figma-multiplayer-cursors
 [How to animate multiplayer cursors]: https://liveblocks.io/blog/how-to-animate-multiplayer-cursors
+[List]: https://loro.dev/docs/tutorial/list
+[LoroDoc]: https://loro.dev/docs/tutorial/loro_doc
+[Exporting and Importing]: https://loro.dev/docs/tutorial/loro_doc#exporting-and-importing
