@@ -266,7 +266,8 @@ If you want to use it in your own project, you can refer to:
 ## Lesson 20 - Collaboration [🔗](https://infinitecanvas.cc/guide/lesson-020)
 
 -   Implement collaboration through CRDT
--   Listen and apply changes in scenegraph
+-   An example of collaborative editing using Loro
+-   End-to-End encrypted CRDTs
 -   Multiplayer cursor
 
 <img src="./screenshots/lesson20.gif" width="300" alt="Lesson 20 - collaboration">
@@ -346,7 +347,7 @@ If you want to use it in your own project, you can refer to:
 -   Paste HTML content
 -   Export to image
 
-|                  VSCode snippet                   |                Embeded YouTube                 |
+|                  VS Code snippet                  |                Embeded YouTube                 |
 | :-----------------------------------------------: | :--------------------------------------------: |
 | ![embed HTML content](./screenshots/lesson29.png) | ![embed YouTube](./screenshots/lesson29-2.png) |
 

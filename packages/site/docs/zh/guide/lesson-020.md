@@ -9,6 +9,13 @@ import LoroCRDT from '../../components/LoroCRDT.vue';
 
 # 课程 20 - 协同
 
+在上节课中我们介绍了历史记录功能的实现，本节课中我们将基于此实现协同编辑的功能，包括以下话题：
+
+-   CRDT 的分类与实现
+-   一个基于 Loro 实现协同编辑的例子
+-   端到端加密的 CRDT
+-   多人光标的实现
+
 ## CRDT {#crdt}
 
 什么是 CRDT 呢？下面的介绍来自 [What are CRDTs]，Google Docs / Figma / Tiptap 的协同功能都是基于它实现的，这篇文章还详细对比了 CRDT 和 OT 的特点：
@@ -81,7 +88,7 @@ Y.js 及其他语言的移植版本无疑是最著名的 CRDT 实现，下文来
 
 下面我们参考 [Loro Excalidraw Example] 和 [dgmjs-plugin-yjs]，使用 [BroadcastChannel] 支持同源下多个标签页间通讯的特性，模拟多个用户协同编辑的效果。
 
-## 实现 {#implementation}
+## 基于 Loro 的实现 {#implementation-with-loro}
 
 正如前文提到的，场景图可以看作一个 "movable tree"，可能的冲突包括新增、删除和移动这三种场景。[Movable tree CRDTs and Loro's implementation] 一文详细介绍了这三种场景下 Loro 的实现思路。比如删除和移动同一个节点，此时两种结果都可以接受，取决于服务端接收到消息的顺序。但有些操作场景同步后会造成环，比如两个用户分别进行 `B -> C` 和 `C -> B` 操作，破坏树本身的结构定义。
 
@@ -273,7 +280,81 @@ function recordLocalOps(
 </div>
 </div>
 
+### 同步服务器 {#sync-server}
+
+上面基于 BroadcastChannel 的实现毕竟只是一个简单的实例。
+
+[firestore]
+
 ## 端到端加密 {#end-to-end-encryption}
+
+现在我们可以将文档存储为 CRDT，然后使用某种同步服务器来合并更新并转发它们，我们希望这个文件是私密的。
+
+在 [End-to-End Encryption in the Browser] 一文中，Excalidraw 介绍了一种简单的端到端加密方式，允许各种客户端进行通信，但让服务器无法读取通信内容。将加密内容放在服务器无法读取的链接 hash 部分，仅在客户端进行解码：<https://excalidraw.com/#json=5645858175451136,8w-G0ZXiOfRYAn7VWpANxw>
+
+接下来我们分析下 Excalidraw 是如何使用 Web Crypto API 实现相关功能。
+
+### 生成密钥 {#generate-key}
+
+通过 [generateKey] API 选择 [AES-GCM] 算法生成一个随机密钥，`extractable` 参数表示后续支持通过 [exportKey] 导出外部可移植格式的密钥，例如这里选择 [JSON Web Key] `'jwk'` 格式：
+
+```ts
+// @see https://github.com/excalidraw/excalidraw/blob/7f66e1fe897873713ba04410534be2d97b9139af/packages/excalidraw/data/encryption.ts#L17
+export const generateEncryptionKey = async <
+    T extends 'string' | 'cryptoKey' = 'string',
+>(
+    returnAs?: T,
+): Promise<T extends 'cryptoKey' ? CryptoKey : string> => {
+    const key = await window.crypto.subtle.generateKey(
+        {
+            name: 'AES-GCM',
+            length: ENCRYPTION_KEY_BITS,
+        },
+        true, // extractable
+        ['encrypt', 'decrypt'],
+    );
+    return (
+        returnAs === 'cryptoKey'
+            ? key
+            : (await window.crypto.subtle.exportKey('jwk', key)).k
+    ) as T extends 'cryptoKey' ? CryptoKey : string;
+};
+```
+
+### 加密解密数据 {#encrypt-decrypt-data}
+
+首先生成加密安全的随机数：
+
+```ts
+export const createIV = () => {
+    const arr = new Uint8Array(IV_LENGTH_BYTES);
+    return window.crypto.getRandomValues(arr);
+};
+```
+
+然后使用这个私钥对序列化后的场景数据进行加密，再从客户端上传到 Firebase 或者 AWS S3 云端存储：
+
+```ts
+// @see https://github.com/excalidraw/excalidraw/blob/7f66e1fe897873713ba04410534be2d97b9139af/excalidraw-app/components/ExportToExcalidrawPlus.tsx#L42
+const encryptionKey = (await generateEncryptionKey())!;
+const encryptedData = await encryptData(
+    // 使用 iv 加密
+    encryptionKey,
+    serializeAsJSON(elements, appState, files, 'database'), // 序列化数据
+);
+const blob = new Blob(
+    [encryptedData.iv, new Uint8Array(encryptedData.encryptedBuffer)],
+    {
+        type: MIME_TYPES.binary,
+    },
+);
+
+// 上传文件到 Firebase / AWS S3
+```
+
+### 同态加密的 CRDT {#homomorphically-encrypting-crdt}
+
+[Homomorphically Encrypting CRDTs]
 
 ## 多人光标 {#multiplayer-cursors}
 
@@ -288,8 +369,6 @@ function recordLocalOps(
 -   [CRDTs: The Hard Parts]
 -   [An Interactive Intro to CRDTs]
 -   [The Full Spectrum of Collaboration]
--   [Homomorphically Encrypting CRDTs]
--   [End-to-End Encryption in the Browser]
 
 [What are CRDTs]: https://loro.dev/docs/concepts/crdt
 [CRDTs: The Hard Parts]: https://www.youtube.com/watch?v=x7drE24geUw
@@ -323,3 +402,8 @@ function recordLocalOps(
 [List]: https://loro.dev/docs/tutorial/list
 [LoroDoc]: https://loro.dev/docs/tutorial/loro_doc
 [Exporting and Importing]: https://loro.dev/docs/tutorial/loro_doc#exporting-and-importing
+[generateKey]: https://developer.mozilla.org/en-US/docs/Web/API/SubtleCrypto/generateKey
+[exportKey]: https://developer.mozilla.org/en-US/docs/Web/API/SubtleCrypto/exportKey
+[AES-GCM]: https://developer.mozilla.org/en-US/docs/Web/API/SubtleCrypto/encrypt#aes-gcm
+[JSON Web Key]: https://developer.mozilla.org/zh-CN/docs/Web/API/SubtleCrypto/importKey#json_web_key
+[firestore]: https://firebase.google.com/docs/firestore

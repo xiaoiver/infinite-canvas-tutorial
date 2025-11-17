@@ -13,6 +13,11 @@ import LoroCRDT from '../components/LoroCRDT.vue';
 
 In this lesson, we'll explore how to implement multi-user collaborative editing functionality.
 
+-   Classification and implementation of CRDTs
+-   An example of collaborative editing using Loro
+-   End-to-End encrypted CRDTs
+-   Implementation of multiplayer cursors
+
 ## CRDT {#crdt}
 
 What is CRDT? The following introduction comes from [What are CRDTs]. The collaborative features of Google Docs / Figma / Tiptap are all implemented based on it. This article also compares the characteristics of CRDT and OT in detail:
@@ -277,7 +282,81 @@ In the example below, you can freely drag, resize, or change the color of the re
 </div>
 </div>
 
+### Sync server {#sync-server}
+
+The implementation based on BroadcastChannel above is, after all, just a simple example.
+
+[firestore]
+
 ## End to end encryption {#end-to-end-encryption}
+
+Now we can store documents as CRDTs and use some kind of synchronization server to merge updates and forward them, while ensuring this file remains private.
+
+In the paper [End-to-End Encryption in the Browser], Excalidraw introduces a simple end-to-end encryption approach that enables communication between various clients while preventing the server from reading the content. The encrypted data is placed in the link hash portion, which the server cannot read, and is decoded only on the client side: <https://excalidraw.com/#json=5645858175451136,8w-G0ZXiOfRYAn7VWpANxw>
+
+Next, we'll analyze how Excalidraw utilizes the Web Crypto API to implement its functionality.
+
+### Generate key {#generate-key}
+
+Use the [generateKey] API to select the [AES-GCM] algorithm and generate a random key. The `extractable` parameter indicates that the key can later be exported in an externally portable format via the [exportKey] API. For example, here we select the [JSON Web Key] `‘jwk’` format:
+
+```ts
+// @see https://github.com/excalidraw/excalidraw/blob/7f66e1fe897873713ba04410534be2d97b9139af/packages/excalidraw/data/encryption.ts#L17
+export const generateEncryptionKey = async <
+    T extends 'string' | 'cryptoKey' = 'string',
+>(
+    returnAs?: T,
+): Promise<T extends 'cryptoKey' ? CryptoKey : string> => {
+    const key = await window.crypto.subtle.generateKey(
+        {
+            name: 'AES-GCM',
+            length: ENCRYPTION_KEY_BITS,
+        },
+        true, // extractable
+        ['encrypt', 'decrypt'],
+    );
+    return (
+        returnAs === 'cryptoKey'
+            ? key
+            : (await window.crypto.subtle.exportKey('jwk', key)).k
+    ) as T extends 'cryptoKey' ? CryptoKey : string;
+};
+```
+
+### Encrypt decrypt data {#encrypt-decrypt-data}
+
+First, generate cryptographically secure random numbers:
+
+```ts
+export const createIV = () => {
+    const arr = new Uint8Array(IV_LENGTH_BYTES);
+    return window.crypto.getRandomValues(arr);
+};
+```
+
+Then use this private key to encrypt the serialized scene data, and upload it from the client to cloud storage such as Firebase or AWS S3:
+
+```ts
+// @see https://github.com/excalidraw/excalidraw/blob/7f66e1fe897873713ba04410534be2d97b9139af/excalidraw-app/components/ExportToExcalidrawPlus.tsx#L42
+const encryptionKey = (await generateEncryptionKey())!;
+const encryptedData = await encryptData(
+    // 使用 iv 加密
+    encryptionKey,
+    serializeAsJSON(elements, appState, files, 'database'), // 序列化数据
+);
+const blob = new Blob(
+    [encryptedData.iv, new Uint8Array(encryptedData.encryptedBuffer)],
+    {
+        type: MIME_TYPES.binary,
+    },
+);
+
+// Upload blob to Firebase / AWS S3
+```
+
+### Homomorphically Encrypting CRDT {#homomorphically-encrypting-crdt}
+
+[Homomorphically Encrypting CRDTs]
 
 ## Multiplayer cursors {#multiplayer-cursors}
 
@@ -292,8 +371,6 @@ In the example below, you can freely drag, resize, or change the color of the re
 -   [CRDTs: The Hard Parts]
 -   [An Interactive Intro to CRDTs]
 -   [The Full Spectrum of Collaboration]
--   [Homomorphically Encrypting CRDTs]
--   [End-to-End Encryption in the Browser]
 
 [What are CRDTs]: https://loro.dev/docs/concepts/crdt
 [CRDTs: The Hard Parts]: https://www.youtube.com/watch?v=x7drE24geUw
@@ -319,7 +396,6 @@ In the example below, you can freely drag, resize, or change the color of the re
 [fractional-indexing]: https://github.com/rocicorp/fractional-indexing
 [Movable tree CRDTs and Loro's implementation]: https://loro.dev/blog/movable-tree
 [Lesson 14]: /guide/lesson-014#z-index
-[localeCompare]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/localeCompare
 [Homomorphically Encrypting CRDTs]: https://jakelazaroff.com/words/homomorphically-encrypted-crdts/
 [End-to-End Encryption in the Browser]: https://plus.excalidraw.com/blog/end-to-end-encryption
 [Building Figma Multiplayer Cursors]: https://mskelton.dev/blog/building-figma-multiplayer-cursors
@@ -327,3 +403,8 @@ In the example below, you can freely drag, resize, or change the color of the re
 [List]: https://loro.dev/docs/tutorial/list
 [LoroDoc]: https://loro.dev/docs/tutorial/loro_doc
 [Exporting and Importing]: https://loro.dev/docs/tutorial/loro_doc#exporting-and-importing
+[generateKey]: https://developer.mozilla.org/en-US/docs/Web/API/SubtleCrypto/generateKey
+[exportKey]: https://developer.mozilla.org/en-US/docs/Web/API/SubtleCrypto/exportKey
+[AES-GCM]: https://developer.mozilla.org/en-US/docs/Web/API/SubtleCrypto/encrypt#aes-gcm
+[JSON Web Key]: https://developer.mozilla.org/zh-CN/docs/Web/API/SubtleCrypto/importKey#json_web_key
+[firestore]: https://firebase.google.com/docs/firestore

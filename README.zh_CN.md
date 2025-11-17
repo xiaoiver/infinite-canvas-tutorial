@@ -265,9 +265,10 @@ pnpm run dev
 
 ## 课程 20 - 协同 [🔗](https://infinitecanvas.cc/zh/guide/lesson-020)
 
--   通过 CRDT 实现协同
--   监听并应用场景图变更
--   多人光标
+-   CRDT 的分类与实现
+-   一个基于 Loro 实现协同编辑的例子
+-   端到端加密的 CRDT
+-   多人光标的实现
 
 <img src="./screenshots/lesson20.gif" width="300" alt="Lesson 20 - collaboration">
 
@@ -347,7 +348,7 @@ pnpm run dev
 -   粘贴 HTML 内容
 -   导出图片
 
-|                  VSCode snippet                   |                Embeded YouTube                 |
+|                  VS Code snippet                  |                Embeded YouTube                 |
 | :-----------------------------------------------: | :--------------------------------------------: |
 | ![embed HTML content](./screenshots/lesson29.png) | ![embed YouTube](./screenshots/lesson29-2.png) |
 
