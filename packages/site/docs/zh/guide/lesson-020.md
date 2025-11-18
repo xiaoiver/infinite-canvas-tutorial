@@ -5,6 +5,7 @@ description: '使用CRDT（无冲突复制数据类型）实现多用户协同�
 
 <script setup>
 import LoroCRDT from '../../components/LoroCRDT.vue';
+import YjsCRDT from '../../components/YjsCRDT.vue';
 </script>
 
 # 课程 20 - 协同
@@ -280,11 +281,57 @@ function recordLocalOps(
 </div>
 </div>
 
-### 同步服务器 {#sync-server}
+## 基于 Yjs 的实现 {#implement-with-yjs}
 
-上面基于 BroadcastChannel 的实现毕竟只是一个简单的实例。
+首先监听本地画布变化，将图形列表及其属性对象同步到本地的 `Y.Doc` 中：
 
-[firestore]
+```ts
+api.onchange = (snapshot) => {
+    const { appState, nodes } = snapshot;
+    doc.transact(() => {
+        // 写入 Y.Doc
+    }, local);
+};
+```
+
+然后监听 `Y.Doc` 的变更，通过 `origin` 区分变更来自本地还是远端。如果来自本地则发送同步消息；如果来自远端则更新画布内容。
+
+```ts
+doc.on('update', (update, origin) => {
+    if (origin === local) {
+        channel.postMessage(update);
+    }
+
+    if (origin !== local) {
+        const nodes = yArray.toArray().map((node) => node.toJSON());
+        api.updateNodes(nodes);
+    }
+});
+```
+
+<div style="display:flex;flex-direction:row;">
+<div style="flex: 1;">
+<YjsCRDT />
+</div>
+<div style="flex: 1;">
+<YjsCRDT />
+</div>
+</div>
+
+## 同步服务器 {#sync-server}
+
+上面基于 BroadcastChannel 的实现毕竟只是一个简单的实例。下面我们基于 [liveblocks] 和 Yjs 实现一个更实际的例子。
+
+```ts
+import { createClient } from '@liveblocks/client';
+import { getYjsProviderForRoom } from '@liveblocks/yjs';
+
+const client = createClient({});
+const { room, leave } = client.enterRoom('my-room-id', {});
+
+const yProvider = getYjsProviderForRoom(room);
+const yDoc = yProvider.getYDoc();
+```
 
 ## 端到端加密 {#end-to-end-encryption}
 
@@ -332,7 +379,7 @@ export const createIV = () => {
 };
 ```
 
-然后使用这个私钥对序列化后的场景数据进行加密，再从客户端上传到 Firebase 或者 AWS S3 云端存储：
+然后使用这个私钥对序列化后的场景数据进行加密，再从客户端上传到 [firestore] 或者 AWS S3 云端存储：
 
 ```ts
 // @see https://github.com/excalidraw/excalidraw/blob/7f66e1fe897873713ba04410534be2d97b9139af/excalidraw-app/components/ExportToExcalidrawPlus.tsx#L42
@@ -358,6 +405,7 @@ const blob = new Blob(
 
 ## 多人光标 {#multiplayer-cursors}
 
+-   [Awareness & Presence]
 -   [Building Figma Multiplayer Cursors]
 -   [How to animate multiplayer cursors]
 
@@ -407,3 +455,5 @@ const blob = new Blob(
 [AES-GCM]: https://developer.mozilla.org/en-US/docs/Web/API/SubtleCrypto/encrypt#aes-gcm
 [JSON Web Key]: https://developer.mozilla.org/zh-CN/docs/Web/API/SubtleCrypto/importKey#json_web_key
 [firestore]: https://firebase.google.com/docs/firestore
+[liveblocks]: https://liveblocks.io/multiplayer-editing
+[Awareness & Presence]: https://docs.yjs.dev/getting-started/adding-awareness

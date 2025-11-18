@@ -184,68 +184,73 @@ export const zh = defineConfig({
                 link: 'fill-rule',
               },
               {
-                text: '使用 SDF 绘制文本',
-                link: 'sdf-text',
-              },
-              {
-                text: '使用 Bitmap Font 绘制文本',
-                link: 'bitmap-font',
-              },
-              {
-                text: '使用 MSDF 绘制文本',
-                link: 'msdf-text',
-              },
-              {
-                text: '绘制表情符号',
-                link: 'emoji',
-              },
-              {
-                text: '绘制双向文字',
-                link: 'bidi',
-              },
-              {
-                text: '使用 HarfBuzz 进行 Shaping',
-                link: 'harfbuzz',
-              },
-              {
-                text: '使用 Opentype.js 进行 Shaping',
-                link: 'opentype',
-              },
-              {
-                text: '文本基线',
-                link: 'text-baseline',
-              },
-              {
-                text: '文本阴影',
-                link: 'text-dropshadow',
-              },
-              {
-                text: '文本描边',
-                link: 'text-stroke',
-              },
-              {
-                text: '文本装饰',
-                link: 'text-decoration',
-              },
-              {
-                text: '文本路径',
-                link: 'text-path',
-              },
-              {
-                text: '晕染效果的文本',
-                link: 'physical-text',
-              },
-              {
-                text: '加载 Web 字体',
-                link: 'web-font-loader',
-              },
-              {
-                text: '渲染 TeX 公式',
-                link: 'tex-math',
-              },
-              {
-                text: '文本编辑器',
-                link: 'text-editor',
+                text: '文本',
+                items: [
+                  {
+                    text: '使用 SDF 绘制文本',
+                    link: 'sdf-text',
+                  },
+                  {
+                    text: '使用 Bitmap Font 绘制文本',
+                    link: 'bitmap-font',
+                  },
+                  {
+                    text: '使用 MSDF 绘制文本',
+                    link: 'msdf-text',
+                  },
+                  {
+                    text: '绘制表情符号',
+                    link: 'emoji',
+                  },
+                  {
+                    text: '绘制双向文字',
+                    link: 'bidi',
+                  },
+                  {
+                    text: '使用 HarfBuzz 进行 Shaping',
+                    link: 'harfbuzz',
+                  },
+                  {
+                    text: '使用 Opentype.js 进行 Shaping',
+                    link: 'opentype',
+                  },
+                  {
+                    text: '文本基线',
+                    link: 'text-baseline',
+                  },
+                  {
+                    text: '文本阴影',
+                    link: 'text-dropshadow',
+                  },
+                  {
+                    text: '文本描边',
+                    link: 'text-stroke',
+                  },
+                  {
+                    text: '文本装饰',
+                    link: 'text-decoration',
+                  },
+                  {
+                    text: '文本路径',
+                    link: 'text-path',
+                  },
+                  {
+                    text: '晕染效果的文本',
+                    link: 'physical-text',
+                  },
+                  {
+                    text: '加载 Web 字体',
+                    link: 'web-font-loader',
+                  },
+                  {
+                    text: '渲染 TeX 公式',
+                    link: 'tex-math',
+                  },
+                  {
+                    text: '文本编辑器',
+                    link: 'text-editor',
+                  },
+                ],
               },
               {
                 text: 'Web Animations API',
@@ -272,28 +277,51 @@ export const zh = defineConfig({
                 link: 'pattern',
               },
               {
-                text: '思维导图',
-                link: 'mindmap',
-              },
-              {
-                text: '树形图',
-                link: 'tree',
-              },
-              {
-                text: 'FlexTree',
-                link: 'flextree',
+                text: '思维导图和布局',
+                items: [
+                  {
+                    text: '思维导图',
+                    link: 'mindmap',
+                  },
+                  {
+                    text: '树形图',
+                    link: 'tree',
+                  },
+                  {
+                    text: 'FlexTree',
+                    link: 'flextree',
+                  },
+                ],
               },
               {
                 text: '绘制矩形',
                 link: 'draw-rect',
               },
               {
-                text: '嵌入 HTML 内容',
-                link: 'html',
+                text: 'HTML 和嵌入内容',
+                items: [
+                  {
+                    text: 'HTML 内容',
+                    link: 'html',
+                  },
+                  {
+                    text: 'YouTube',
+                    link: 'iframe',
+                  },
+                ],
               },
               {
-                text: '嵌入 YouTube',
-                link: 'iframe',
+                text: '协同',
+                items: [
+                  {
+                    text: 'Loro',
+                    link: 'loro',
+                  },
+                  {
+                    text: 'Yjs',
+                    link: 'yjs',
+                  },
+                ],
               },
             ],
           },

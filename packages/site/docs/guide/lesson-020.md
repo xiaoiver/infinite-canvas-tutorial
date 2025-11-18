@@ -7,6 +7,7 @@ head:
 
 <script setup>
 import LoroCRDT from '../components/LoroCRDT.vue';
+import YjsCRDT from '../components/YjsCRDT.vue';
 </script>
 
 # Lesson 20 - Collaboration
@@ -90,7 +91,7 @@ Since we don't need to deal with merging text or rich text in collaborative stat
 
 Now let's refer to [Loro Excalidraw Example] and [dgmjs-plugin-yjs], using [BroadcastChannel]'s feature of supporting communication between multiple tabs under the same origin to simulate the effect of multiple users collaborating.
 
-## Implementation {#implementation}
+## Implement with Loro {#implement-with-loro}
 
 As mentioned earlier, the scene graph can be viewed as a "movable tree", with possible conflicts including three scenarios: addition, deletion, and movement. [Movable tree CRDTs and Loro's implementation] details Loro's implementation approach for these three scenarios. For instance, when deleting and moving the same node, both results are acceptable, depending on the order in which the server receives the messages. However, some operation scenarios may create cycles after synchronization, such as when two users perform `B -> C` and `C -> B` operations respectively, breaking the tree's structural definition.
 
@@ -282,11 +283,57 @@ In the example below, you can freely drag, resize, or change the color of the re
 </div>
 </div>
 
-### Sync server {#sync-server}
+## Implement with Yjs {#implement-with-yjs}
 
-The implementation based on BroadcastChannel above is, after all, just a simple example.
+First, monitor changes to the local canvas and synchronize the list of shapes and their property objects to the local `Y.Doc`:
 
-[firestore]
+```ts
+api.onchange = (snapshot) => {
+    const { appState, nodes } = snapshot;
+    doc.transact(() => {
+        // 写入 Y.Doc
+    }, local);
+};
+```
+
+Then listen for changes to `Y.Doc`, distinguishing between local and remote changes via `origin`. If the change originates locally, send a synchronization message; if it originates remotely, update the canvas content.
+
+```ts
+doc.on('update', (update, origin) => {
+    if (origin === local) {
+        channel.postMessage(update);
+    }
+
+    if (origin !== local) {
+        const nodes = yArray.toArray().map((node) => node.toJSON());
+        api.updateNodes(nodes);
+    }
+});
+```
+
+<div style="display:flex;flex-direction:row;">
+<div style="flex: 1;">
+<YjsCRDT />
+</div>
+<div style="flex: 1;">
+<YjsCRDT />
+</div>
+</div>
+
+## Sync server {#sync-server}
+
+The implementation based on BroadcastChannel above is, after all, just a simple example. Next we will implement a more practical example with [liveblocks] and Yjs.
+
+```ts
+import { createClient } from '@liveblocks/client';
+import { getYjsProviderForRoom } from '@liveblocks/yjs';
+
+const client = createClient({});
+const { room, leave } = client.enterRoom('my-room-id', {});
+
+const yProvider = getYjsProviderForRoom(room);
+const yDoc = yProvider.getYDoc();
+```
 
 ## End to end encryption {#end-to-end-encryption}
 
@@ -334,7 +381,7 @@ export const createIV = () => {
 };
 ```
 
-Then use this private key to encrypt the serialized scene data, and upload it from the client to cloud storage such as Firebase or AWS S3:
+Then use this private key to encrypt the serialized scene data, and upload it from the client to cloud storage such as [firestore] or AWS S3:
 
 ```ts
 // @see https://github.com/excalidraw/excalidraw/blob/7f66e1fe897873713ba04410534be2d97b9139af/excalidraw-app/components/ExportToExcalidrawPlus.tsx#L42
@@ -360,6 +407,7 @@ const blob = new Blob(
 
 ## Multiplayer cursors {#multiplayer-cursors}
 
+-   [Awareness & Presence]
 -   [Building Figma Multiplayer Cursors]
 -   [How to animate multiplayer cursors]
 
@@ -408,3 +456,5 @@ const blob = new Blob(
 [AES-GCM]: https://developer.mozilla.org/en-US/docs/Web/API/SubtleCrypto/encrypt#aes-gcm
 [JSON Web Key]: https://developer.mozilla.org/zh-CN/docs/Web/API/SubtleCrypto/importKey#json_web_key
 [firestore]: https://firebase.google.com/docs/firestore
+[liveblocks]: https://liveblocks.io/multiplayer-editing
+[Awareness & Presence]: https://docs.yjs.dev/getting-started/adding-awareness

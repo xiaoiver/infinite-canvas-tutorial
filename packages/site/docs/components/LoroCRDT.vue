@@ -15,14 +15,6 @@ import { Event, UIPlugin } from '@infinite-canvas-tutorial/webcomponents';
 import { LoroDoc, LoroList, LoroMap, OpId, VersionVector } from "loro-crdt";
 import deepEqual from "deep-equal";
 
-function convertSceneGraphToLoroTree(node: SerializedNode, doc: LoroDoc) {
-  const tree = doc.getTree("scene-graph");
-
-  const loroNode = tree.createNode();
-  loroNode.data.set('data', node);
-  return tree;
-}
-
 function recordLocalOps(
   loroList: LoroList,
   nodes: readonly { version?: number; isDeleted?: boolean }[],
@@ -153,9 +145,6 @@ onMounted(async () => {
 
     api.updateNodes([node]);
     api.record();
-
-    convertSceneGraphToLoroTree(node, doc);
-    console.log(doc.toJSON());
   };
   canvas.addEventListener(Event.READY, onReady);
 

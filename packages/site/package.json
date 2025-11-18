@@ -48,6 +48,8 @@
   "devDependencies": {
     "@ant-design/icons-vue": "^7.0.1",
     "@antv/hierarchy": "^0.6.14",
+    "@liveblocks/client": "^3.10.1",
+    "@liveblocks/yjs": "^3.10.1",
     "@shoelace-style/shoelace": "^2.0.0",
     "@tweakpane/core": "^2.0.5",
     "@vitejs/plugin-vue-jsx": "^4.1.1",
@@ -63,6 +65,7 @@
     "harfbuzzjs": "^0.3.1",
     "lil-gui": "^0.19.2",
     "loro-crdt": "^1.4.2",
+    "yjs": "^13.6.20",
     "mathjax-full": "^3.2.2",
     "markdown-it-implicit-figures": "^0.12.0",
     "markdown-it-mathjax3": "^4.3.2",

@@ -266,9 +266,9 @@ If you want to use it in your own project, you can refer to:
 ## Lesson 20 - Collaboration [🔗](https://infinitecanvas.cc/guide/lesson-020)
 
 -   Implement collaboration through CRDT
--   An example of collaborative editing using Loro
--   End-to-End encrypted CRDTs
--   Multiplayer cursor
+-   Examples of collaborative editing using [Loro] and [Yjs]
+-   End-to-end encrypted CRDTs
+-   Multiplayer cursors
 
 <img src="./screenshots/lesson20.gif" width="300" alt="Lesson 20 - collaboration">
 
@@ -374,3 +374,5 @@ If you want to use it in your own project, you can refer to:
 [Spectrum]: https://opensource.adobe.com/spectrum-web-components
 [@infinite-canvas-tutorial/ecs]: https://www.npmjs.com/package/@infinite-canvas-tutorial/ecs
 [@infinite-canvas-tutorial/webcomponents]: https://www.npmjs.com/package/@infinite-canvas-tutorial/webcomponents
+[Loro]: http://loro.dev/
+[Yjs]: https://docs.yjs.dev/

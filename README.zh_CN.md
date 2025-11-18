@@ -266,7 +266,7 @@ pnpm run dev
 ## 课程 20 - 协同 [🔗](https://infinitecanvas.cc/zh/guide/lesson-020)
 
 -   CRDT 的分类与实现
--   一个基于 Loro 实现协同编辑的例子
+-   基于 [Loro] 和 [Yjs] 实现协同编辑的例子
 -   端到端加密的 CRDT
 -   多人光标的实现
 
@@ -377,3 +377,5 @@ pnpm run dev
 [Spectrum]: https://opensource.adobe.com/spectrum-web-components
 [@infinite-canvas-tutorial/ecs]: https://www.npmjs.com/package/@infinite-canvas-tutorial/ecs
 [@infinite-canvas-tutorial/webcomponents]: https://www.npmjs.com/package/@infinite-canvas-tutorial/webcomponents
+[Loro]: http://loro.dev/
+[Yjs]: https://docs.yjs.dev/

@@ -239,68 +239,73 @@ export const en = defineConfig({
                 link: 'fill-rule',
               },
               {
-                text: 'Use SDF to draw text',
-                link: 'sdf-text',
-              },
-              {
-                text: 'Use Bitmap Font to draw text',
-                link: 'bitmap-font',
-              },
-              {
-                text: 'Use MSDF to draw text',
-                link: 'msdf-text',
-              },
-              {
-                text: 'Draw emoji',
-                link: 'emoji',
-              },
-              {
-                text: 'Draw bidirectional text',
-                link: 'bidi',
-              },
-              {
-                text: 'Shaping with HarfBuzz',
-                link: 'harfbuzz',
-              },
-              {
-                text: 'Shaping with Opentype.js',
-                link: 'opentype',
-              },
-              {
-                text: 'Text baseline',
-                link: 'text-baseline',
-              },
-              {
-                text: 'Text drop shadow',
-                link: 'text-dropshadow',
-              },
-              {
-                text: 'Text stroke',
-                link: 'text-stroke',
-              },
-              {
-                text: 'Text decoration',
-                link: 'text-decoration',
-              },
-              {
-                text: 'Text path',
-                link: 'text-path',
-              },
-              {
-                text: 'Physical text',
-                link: 'physical-text',
-              },
-              {
-                text: 'Load web font',
-                link: 'web-font-loader',
-              },
-              {
-                text: 'Render TeX math',
-                link: 'tex-math',
-              },
-              {
-                text: 'Text editor',
-                link: 'text-editor',
+                text: 'Text',
+                items: [
+                  {
+                    text: 'Use SDF to draw text',
+                    link: 'sdf-text',
+                  },
+                  {
+                    text: 'Use Bitmap Font to draw text',
+                    link: 'bitmap-font',
+                  },
+                  {
+                    text: 'Use MSDF to draw text',
+                    link: 'msdf-text',
+                  },
+                  {
+                    text: 'Draw emoji',
+                    link: 'emoji',
+                  },
+                  {
+                    text: 'Draw bidirectional text',
+                    link: 'bidi',
+                  },
+                  {
+                    text: 'Shaping with HarfBuzz',
+                    link: 'harfbuzz',
+                  },
+                  {
+                    text: 'Shaping with Opentype.js',
+                    link: 'opentype',
+                  },
+                  {
+                    text: 'Text baseline',
+                    link: 'text-baseline',
+                  },
+                  {
+                    text: 'Text drop shadow',
+                    link: 'text-dropshadow',
+                  },
+                  {
+                    text: 'Text stroke',
+                    link: 'text-stroke',
+                  },
+                  {
+                    text: 'Text decoration',
+                    link: 'text-decoration',
+                  },
+                  {
+                    text: 'Text path',
+                    link: 'text-path',
+                  },
+                  {
+                    text: 'Physical text',
+                    link: 'physical-text',
+                  },
+                  {
+                    text: 'Load web font',
+                    link: 'web-font-loader',
+                  },
+                  {
+                    text: 'Render TeX math',
+                    link: 'tex-math',
+                  },
+                  {
+                    text: 'Text editor',
+                    link: 'text-editor',
+                  },
+                ],
               },
               {
                 text: 'Web Animations API',
@@ -327,28 +332,51 @@ export const en = defineConfig({
                 link: 'pattern',
               },
               {
-                text: 'Mindmap',
-                link: 'mindmap',
-              },
-              {
-                text: 'Tree',
-                link: 'tree',
-              },
-              {
-                text: 'FlexTree',
-                link: 'flextree',
+                text: 'Mindmap and layout',
+                items: [
+                  {
+                    text: 'Mindmap',
+                    link: 'mindmap',
+                  },
+                  {
+                    text: 'Tree',
+                    link: 'tree',
+                  },
+                  {
+                    text: 'FlexTree',
+                    link: 'flextree',
+                  },
+                ],
               },
               {
                 text: 'Draw rect',
                 link: 'draw-rect',
               },
               {
-                text: 'Embed HTML content',
-                link: 'html',
+                text: 'HTML and embeded content',
+                items: [
+                  {
+                    text: 'HTML content',
+                    link: 'html',
+                  },
+                  {
+                    text: 'YouTube',
+                    link: 'iframe',
+                  },
+                ],
               },
               {
-                text: 'Embed YouTube',
-                link: 'iframe',
+                text: 'Collaboration',
+                items: [
+                  {
+                    text: 'Loro',
+                    link: 'loro',
+                  },
+                  {
+                    text: 'Yjs',
+                    link: 'yjs',
+                  },
+                ],
               },
             ],
           },
