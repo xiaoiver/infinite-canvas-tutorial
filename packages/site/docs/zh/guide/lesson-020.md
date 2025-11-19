@@ -6,7 +6,6 @@ description: '使用CRDT（无冲突复制数据类型）实现多用户协同�
 <script setup>
 import LoroCRDT from '../../components/LoroCRDT.vue';
 import YjsCRDT from '../../components/YjsCRDT.vue';
-import Liveblocks from '../../components/Liveblocks.vue';
 </script>
 
 # 课程 20 - 协同
@@ -227,26 +226,32 @@ doc.on('update', (update, origin) => {
 
 ## 使用 Liveblocks 作为服务端 {#use-liveblocks-as-backend}
 
-上面基于 BroadcastChannel 的实现毕竟只是一个简单的实例。下面我们基于 [liveblocks] 和 Yjs 实现一个更实际的，基于服务端实时协同的例子。
+上面基于 BroadcastChannel 的实现毕竟只是一个简单的实例。下面我们基于 [liveblocks] 和 Yjs 实现一个更实际的，基于服务端实时协同的例子。以上一节 Yjs 的实现为基础，配合开箱即用的 API 很容易实现。
 
 ```ts
 import { createClient } from '@liveblocks/client';
 import { getYjsProviderForRoom } from '@liveblocks/yjs';
 
-const client = createClient({});
+const client = createClient({
+    publicApiKey: 'pk_dev...',
+});
 const { room, leave } = client.enterRoom('my-room-id', {});
 
-const yProvider = getYjsProviderForRoom(room);
+const yProvider = getYjsProviderForRoom(room, {
+    // Enable V2 encoding for better performance with LiveMaps
+    // https://liveblocks.io/docs/guides/yjs-best-practices-and-tips#Enable-experimental-V2-encoding-for-Y.Maps
+    useV2Encoding_experimental: true,
+});
 const yDoc = yProvider.getYDoc();
 ```
 
 可以在多个浏览器窗口中打开这个示例：[Example with Liveblocks]
 
-<Liveblocks />
+![Collaboration between multiple windows](/liveblocks.gif)
 
-## 本地优先 {#local-first}
+## 使用 IndexedDB 支持离线 {#offline-support-with-indexeddb}
 
-`offlineSupport_experimental`
+在创建房间时，[liveblocks] 也提供了 `offlineSupport_experimental` 配置项很方便地实现离线功能：
 
 > Enable offline support using IndexedDB. This means the after the first load, documents will be stored locally and load instantly.
 
@@ -328,11 +333,43 @@ const blob = new Blob(
 
 [Homomorphically Encrypting CRDTs]
 
-## 多人光标 {#multiplayer-cursors}
+## Awareness 和 Presence {#awareness-presence}
 
--   [Awareness & Presence]
--   [Building Figma Multiplayer Cursors]
--   [How to animate multiplayer cursors]
+Yjs 提供了 [Awareness & Presence] 特性，用来共享光标位置和状态信息，感知到其他协同用户的存在。这部分信息并不会存储在 Yjs 文档中，因为不需要跨会话持久化，但可以以 JSON 对象形式传播给所有用户，当用户离线时会将自己的状态删除。
+
+![source: https://liveblocks.io/docs/ready-made-features/presence#Examples-using-Presence](https://liveblocks.io/_next/image?url=%2Fimages%2Fexamples%2Fthumbnails%2Flive-cursors-chat.jpg&w=828&q=90)
+
+### 使用 Liveblocks 作为服务端 {#backend}
+
+作为 Yjs 的 Provider 实现，[liveblocks] 也在 Room API 中提供了 Presence 特性。我们可以监听画布上的 `pointermove` 事件，通过 [updatePresence] 进行广播：
+
+```ts
+// Send cursor coordinates on movement
+function onPointerMove(event) {
+    room.updatePresence({
+        cursor: {
+            x: event.clientX,
+            y: event.clientY,
+        },
+    });
+}
+```
+
+这样在客户端就可以订阅其他人的状态改变了，用来渲染他们的鼠标位置：
+
+```ts
+room.subscribe('others', (others) => {
+    others.toArray(); // [{ cursor: {} }, { cursor: {} }, ...]
+});
+```
+
+当然我们可以通过 throttling 降低更新频率，毕竟没必要真的“实时”展示其他人的鼠标位置，但这会引发下一个问题。
+
+### 更流畅的鼠标动画 {#smoothly-rendering-cursors}
+
+[How to animate multiplayer cursors] 展示了使用 throttling 降低更新频率后，其他用户鼠标位置卡顿的表现，类似刷新率从 60FPS 降低到 20FPS 一样。
+
+解决办法是让鼠标在前后相邻两个位置间平滑而非阶跃移动。幸运的是 tldraw 提供了 [perfect-cursors] 替我们处理好了这一切。
 
 ## fractional-indexing
 
@@ -437,6 +474,7 @@ export function sortByFractionalIndex(a: Entity, b: Entity) {
 -   [CRDTs: The Hard Parts]
 -   [An Interactive Intro to CRDTs]
 -   [The Full Spectrum of Collaboration]
+-   [Building Figma Multiplayer Cursors]
 
 [What are CRDTs]: https://loro.dev/docs/concepts/crdt
 [CRDTs: The Hard Parts]: https://www.youtube.com/watch?v=x7drE24geUw
@@ -480,3 +518,5 @@ export function sortByFractionalIndex(a: Entity, b: Entity) {
 [Example with Loro]: /zh/example/loro
 [Example with Yjs]: /zh/example/yjs
 [Example with Liveblocks]: /example/liveblocks
+[updatePresence]: https://liveblocks.io/docs/api-reference/liveblocks-client#Room.updatePresence
+[perfect-cursors]: https://github.com/steveruizok/perfect-cursors

@@ -8,7 +8,6 @@ head:
 <script setup>
 import LoroCRDT from '../components/LoroCRDT.vue';
 import YjsCRDT from '../components/YjsCRDT.vue';
-import Liveblocks from '../components/Liveblocks.vue';
 </script>
 
 # Lesson 20 - Collaboration
@@ -19,7 +18,7 @@ In this lesson, we'll explore how to implement multi-user collaborative editing 
 -   Using Loro / Yjs and [BroadcastChannel] to simulate collaboration on localhost
 -   Using [liveblocks] to implement collaborative editing between servers and multiple clients
 -   End-to-end encrypted CRDTs
--   Implementation of multiplayer cursors
+-   Awareness and presence, including multiplayer cursors
 
 ## CRDT {#crdt}
 
@@ -238,13 +237,31 @@ import { getYjsProviderForRoom } from '@liveblocks/yjs';
 const client = createClient({});
 const { room, leave } = client.enterRoom('my-room-id', {});
 
-const yProvider = getYjsProviderForRoom(room);
+const yProvider = getYjsProviderForRoom(room, {
+    // Enable V2 encoding for better performance with LiveMaps
+    // https://liveblocks.io/docs/guides/yjs-best-practices-and-tips#Enable-experimental-V2-encoding-for-Y.Maps
+    useV2Encoding_experimental: true,
+});
 const yDoc = yProvider.getYDoc();
 ```
 
 You can open this example in multiple browser windows: [Example with Liveblocks]
 
-<Liveblocks />
+![Collaboration between multiple windows](/liveblocks.gif)
+
+## Offline support with IndexedDB {#offline-support-with-indexeddb}
+
+When creating a room, [liveblocks] also provides the `offlineSupport_experimental` configuration option to conveniently enable offline functionality:
+
+> Enable offline support using IndexedDB. This means the after the first load, documents will be stored locally and load instantly.
+
+```ts
+import { getYjsProviderForRoom } from '@liveblocks/yjs';
+
+const yProvider = getYjsProviderForRoom(room, {
+    offlineSupport_experimental: true,
+});
+```
 
 ## End to end encryption {#end-to-end-encryption}
 
@@ -316,11 +333,43 @@ const blob = new Blob(
 
 [Homomorphically Encrypting CRDTs]
 
-## Multiplayer cursors {#multiplayer-cursors}
+## Awareness & Presence {#awareness-presence}
 
--   [Awareness & Presence]
--   [Building Figma Multiplayer Cursors]
--   [How to animate multiplayer cursors]
+Yjs provides an [Awareness & Presence] feature to share cursor position and status information, enabling users to perceive the presence of other collaborative participants. This information is not stored within Yjs documents, as it does not require cross-session persistence. However, it can be propagated to all users as a JSON object, and users will remove their own status when offline.
+
+![source: https://liveblocks.io/docs/ready-made-features/presence#Examples-using-Presence](https://liveblocks.io/_next/image?url=%2Fimages%2Fexamples%2Fthumbnails%2Flive-cursors-chat.jpg&w=828&q=90)
+
+### Use Liveblocks as backend {#backend}
+
+As a Provider implementation for Yjs, [liveblocks] also provides the Presence feature in the Room API. We can listen for `pointermove` events on the canvas and broadcast them using [updatePresence]:
+
+```ts
+// Send cursor coordinates on movement
+function onPointerMove(event) {
+    room.updatePresence({
+        cursor: {
+            x: event.clientX,
+            y: event.clientY,
+        },
+    });
+}
+```
+
+This allows clients to subscribe to other users' status changes, which are used to render their mouse positions:
+
+```ts
+room.subscribe('others', (others) => {
+    others.toArray(); // [{ cursor: {} }, { cursor: {} }, ...]
+});
+```
+
+Of course, we can reduce the update frequency through throttling—after all, there's no real need to display others' mouse positions in “real time.” But this raises the next issue.
+
+### Smoothly rendering cursors {#smoothly-rendering-cursors}
+
+[How to animate multiplayer cursors] demonstrates how other users experience mouse cursor stuttering after throttling reduces the update frequency, similar to dropping the refresh rate from 60FPS to 20FPS.
+
+The solution is to make the mouse move smoothly between adjacent positions rather than in steps. Fortunately, tldraw provides the [perfect-cursors] feature that handles all of this for us.
 
 ## fractional-indexing
 
@@ -425,6 +474,7 @@ export function sortByFractionalIndex(a: Entity, b: Entity) {
 -   [CRDTs: The Hard Parts]
 -   [An Interactive Intro to CRDTs]
 -   [The Full Spectrum of Collaboration]
+-   [Building Figma Multiplayer Cursors]
 
 [What are CRDTs]: https://loro.dev/docs/concepts/crdt
 [CRDTs: The Hard Parts]: https://www.youtube.com/watch?v=x7drE24geUw
@@ -467,3 +517,5 @@ export function sortByFractionalIndex(a: Entity, b: Entity) {
 [Example with Loro]: /example/loro
 [Example with Yjs]: /example/yjs
 [Example with Liveblocks]: /example/liveblocks
+[updatePresence]: https://liveblocks.io/docs/api-reference/liveblocks-client#Room.updatePresence
+[perfect-cursors]: https://github.com/steveruizok/perfect-cursors
