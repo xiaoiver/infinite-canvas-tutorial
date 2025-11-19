@@ -8,6 +8,7 @@ head:
 <script setup>
 import LoroCRDT from '../components/LoroCRDT.vue';
 import YjsCRDT from '../components/YjsCRDT.vue';
+import Liveblocks from '../components/Liveblocks.vue';
 </script>
 
 # Lesson 20 - Collaboration
@@ -226,7 +227,7 @@ doc.on('update', (update, origin) => {
 </div>
 </div>
 
-## Sync server {#sync-server}
+## Use Liveblocks as backend {#use-liveblocks-as-backend}
 
 The implementation based on BroadcastChannel above is, after all, just a simple example. Next we will implement a more practical example with [liveblocks] and Yjs.
 
@@ -240,6 +241,10 @@ const { room, leave } = client.enterRoom('my-room-id', {});
 const yProvider = getYjsProviderForRoom(room);
 const yDoc = yProvider.getYDoc();
 ```
+
+You can open this example in multiple browser windows: [Example with Liveblocks]
+
+<Liveblocks />
 
 ## End to end encryption {#end-to-end-encryption}
 
@@ -461,3 +466,4 @@ export function sortByFractionalIndex(a: Entity, b: Entity) {
 [Awareness & Presence]: https://docs.yjs.dev/getting-started/adding-awareness
 [Example with Loro]: /example/loro
 [Example with Yjs]: /example/yjs
+[Example with Liveblocks]: /example/liveblocks

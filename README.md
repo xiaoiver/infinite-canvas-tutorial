@@ -271,7 +271,9 @@ If you want to use it in your own project, you can refer to:
 -   End-to-end encrypted CRDTs
 -   Multiplayer cursors
 
-<img src="./screenshots/lesson20.gif" width="300" alt="Lesson 20 - collaboration">
+|                BroadcastChannel with Loro or Yjs                 |                 Liveblocks as backend                  |
+| :--------------------------------------------------------------: | :----------------------------------------------------: |
+| ![BroadcastChannel with Loro or Yjs](./screenshots/lesson20.gif) | ![Liveblocks as backend](./screenshots/lesson20-2.gif) |
 
 ## Lesson 21 - Transformer [🔗](https://infinitecanvas.cc/guide/lesson-021)
 

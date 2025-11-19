@@ -6,6 +6,7 @@ description: '使用CRDT（无冲突复制数据类型）实现多用户协同�
 <script setup>
 import LoroCRDT from '../../components/LoroCRDT.vue';
 import YjsCRDT from '../../components/YjsCRDT.vue';
+import Liveblocks from '../../components/Liveblocks.vue';
 </script>
 
 # 课程 20 - 协同
@@ -224,9 +225,9 @@ doc.on('update', (update, origin) => {
 </div>
 </div>
 
-## 同步服务器 {#sync-server}
+## 使用 Liveblocks 作为服务端 {#use-liveblocks-as-backend}
 
-上面基于 BroadcastChannel 的实现毕竟只是一个简单的实例。下面我们基于 [liveblocks] 和 Yjs 实现一个更实际的例子。
+上面基于 BroadcastChannel 的实现毕竟只是一个简单的实例。下面我们基于 [liveblocks] 和 Yjs 实现一个更实际的，基于服务端实时协同的例子。
 
 ```ts
 import { createClient } from '@liveblocks/client';
@@ -237,6 +238,24 @@ const { room, leave } = client.enterRoom('my-room-id', {});
 
 const yProvider = getYjsProviderForRoom(room);
 const yDoc = yProvider.getYDoc();
+```
+
+可以在多个浏览器窗口中打开这个示例：[Example with Liveblocks]
+
+<Liveblocks />
+
+## 本地优先 {#local-first}
+
+`offlineSupport_experimental`
+
+> Enable offline support using IndexedDB. This means the after the first load, documents will be stored locally and load instantly.
+
+```ts
+import { getYjsProviderForRoom } from '@liveblocks/yjs';
+
+const yProvider = getYjsProviderForRoom(room, {
+    offlineSupport_experimental: true,
+});
 ```
 
 ## 端到端加密 {#end-to-end-encryption}
@@ -460,3 +479,4 @@ export function sortByFractionalIndex(a: Entity, b: Entity) {
 [Awareness & Presence]: https://docs.yjs.dev/getting-started/adding-awareness
 [Example with Loro]: /zh/example/loro
 [Example with Yjs]: /zh/example/yjs
+[Example with Liveblocks]: /example/liveblocks

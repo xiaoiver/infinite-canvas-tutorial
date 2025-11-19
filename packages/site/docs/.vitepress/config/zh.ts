@@ -321,6 +321,10 @@ export const zh = defineConfig({
                     text: 'Yjs',
                     link: 'yjs',
                   },
+                  {
+                    text: 'Liveblocks',
+                    link: 'liveblocks',
+                  },
                 ],
               },
             ],

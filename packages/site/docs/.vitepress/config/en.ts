@@ -376,6 +376,10 @@ export const en = defineConfig({
                     text: 'Yjs',
                     link: 'yjs',
                   },
+                  {
+                    text: 'Liveblocks',
+                    link: 'liveblocks',
+                  },
                 ],
               },
             ],
