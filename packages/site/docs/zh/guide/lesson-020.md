@@ -13,7 +13,8 @@ import YjsCRDT from '../../components/YjsCRDT.vue';
 在上节课中我们介绍了历史记录功能的实现，本节课中我们将基于此实现协同编辑的功能，包括以下话题：
 
 -   CRDT 的分类与实现
--   一个基于 Loro 实现协同编辑的例子
+-   基于 Loro / Yjs 和 [BroadcastChannel] 本地模拟实现协同编辑
+-   基于 [liveblocks] 实现服务器和多客户端的协同编辑
 -   端到端加密的 CRDT
 -   多人光标的实现
 
@@ -87,106 +88,11 @@ Y.js 及其他语言的移植版本无疑是最著名的 CRDT 实现，下文来
 -   Automerge 提供了 [Simple Values]，支持 JSON 中的全部合法类型，甚至还包括 `Date`
 -   Loro 也提供了 [Map]
 
+## 基于 BroadcastChannel 在本地模拟 {#simulate-with-broadcast-channel}
+
 下面我们参考 [Loro Excalidraw Example] 和 [dgmjs-plugin-yjs]，使用 [BroadcastChannel] 支持同源下多个标签页间通讯的特性，模拟多个用户协同编辑的效果。
 
-## 基于 Loro 的实现 {#implementation-with-loro}
-
-正如前文提到的，场景图可以看作一个 "movable tree"，可能的冲突包括新增、删除和移动这三种场景。[Movable tree CRDTs and Loro's implementation] 一文详细介绍了这三种场景下 Loro 的实现思路。比如删除和移动同一个节点，此时两种结果都可以接受，取决于服务端接收到消息的顺序。但有些操作场景同步后会造成环，比如两个用户分别进行 `B -> C` 和 `C -> B` 操作，破坏树本身的结构定义。
-
-![Deletion and Movement of the Same Node](https://loro.dev/_next/image?url=%2F_next%2Fstatic%2Fmedia%2Fmove-delete-dark.17378273.png&w=3840&q=75)
-
-```ts
-import { Loro, LoroTree, LoroTreeNode } from 'loro-crdt';
-
-let doc = new Loro();
-let tree: LoroTree = doc.getTree('tree');
-let root: LoroTreeNode = tree.createNode();
-```
-
-### fractional-indexing
-
-[Realtime editing of ordered sequences] 中介绍了 Figma 使用 [fractional-indexing] 反映元素在场景图中的位置。
-
-![An example sequence of objects being edited](https://cdn.sanity.io/images/599r6htc/regionalized/dc3ac373a86b1d25629d651e2b75100dc3d9fbb9-1400x1144.png?w=804&q=75&fit=max&auto=format&dpr=2)
-
-Excalidraw 也使用了同样的实现：
-
-```ts
-// @see https://github.com/excalidraw/excalidraw/blob/9ee0b8ffcbd3664a47748a93262860321a203821/packages/excalidraw/fractionalIndex.ts#L380
-import { generateNKeysBetween } from 'fractional-indexing';
-const fractionalIndices = generateNKeysBetween(
-    elements[lowerBoundIndex]?.index,
-    elements[upperBoundIndex]?.index,
-    indices.length,
-) as FractionalIndex[];
-```
-
-Loro 提供的 Tree 内置了 Fractional Index 算法，详见：[Movable tree CRDTs and Loro's implementation]。
-
-> We integrated the Fractional Index algorithm into Loro and combined it with the movable tree, making the child nodes of the movable tree sortable.
-
-在[课程 14]中，我们希望通过 `ZIndex` 干预渲染次序，在编辑器 UI 中会以“调整图层次序”、“上移”、“下移”这样的功能呈现。因此当 `ZIndex` 首次被添加或发生修改时，我们首先遍历场景图，对子节点按照 `ZIndex` 排序，得到排序后的数组后根据一前一后两个兄弟节点，更新当前节点的 fractional index
-
-```ts
-class ComputeZIndex extends System {
-    private readonly zIndexes = this.query(
-        (q) => q.addedOrChanged.with(ZIndex).trackWrites,
-    );
-
-    execute() {
-        this.zIndexes.addedOrChanged.forEach((entity) => {
-            // Travese scenegraph, sort children by z-index
-            const descendants = getDescendants(
-                getSceneRoot(entity),
-                sortByZIndex,
-            );
-            const index = descendants.indexOf(entity);
-            const prev = descendants[index - 1] || null;
-            const next = descendants[index + 1] || null;
-            const prevFractionalIndex =
-                (prev?.has(FractionalIndex) &&
-                    prev.read(FractionalIndex)?.value) ||
-                null;
-            const nextFractionalIndex =
-                (next?.has(FractionalIndex) &&
-                    next.read(FractionalIndex)?.value) ||
-                null;
-
-            // Generate fractional index with prev and next node
-            const key = generateKeyBetween(
-                prevFractionalIndex, // a0
-                nextFractionalIndex, // a2
-            );
-
-            if (!entity.has(FractionalIndex)) {
-                entity.add(FractionalIndex);
-            }
-            entity.write(FractionalIndex).value = key; // a1
-        });
-    }
-}
-```
-
-这样在渲染前就可以根据 fractional index 排序，值得一提的是不可以直接使用 [localeCompare] 比较：
-
-```ts
-export function sortByFractionalIndex(a: Entity, b: Entity) {
-    if (a.has(FractionalIndex) && b.has(FractionalIndex)) {
-        const aFractionalIndex = a.read(FractionalIndex).value;
-        const bFractionalIndex = b.read(FractionalIndex).value;
-
-        // Can't use localeCompare here.
-        // @see https://github.com/rocicorp/fractional-indexing/issues/20
-        if (aFractionalIndex < bFractionalIndex) return -1;
-        if (aFractionalIndex > bFractionalIndex) return 1;
-        return 0;
-    }
-
-    return 0;
-}
-```
-
-### 监听场景图变更 {#listen-scene-graph-change}
+### 基于 Loro 的实现 {#implementation-with-loro}
 
 在 Excalidraw 中可以通过 `onChange` 钩子监听场景中所有图形的变化：
 
@@ -212,8 +118,6 @@ api.onchange = (snapshot) => {
     const { appState, nodes } = snapshot;
 };
 ```
-
-### 应用场景图变更 {#apply-scene-graph-change}
 
 参考 [Excalidraw updateScene]，我们也可以提供一个 `updateNodes` 方法，用于更新场景图。
 
@@ -270,7 +174,7 @@ function recordLocalOps(
 }
 ```
 
-你可以在下面的例子中，在左右侧窗口中任意拖动、resize 或者改变矩形的颜色，另一个窗口会同步这些修改：
+你可以在下面的例子中，在左右侧窗口中任意拖动、resize 或者改变矩形的颜色，另一个窗口会同步这些修改：[Example with Loro]
 
 <div style="display:flex;flex-direction:row;">
 <div style="flex: 1;">
@@ -281,7 +185,7 @@ function recordLocalOps(
 </div>
 </div>
 
-## 基于 Yjs 的实现 {#implement-with-yjs}
+### 基于 Yjs 的实现 {#implement-with-yjs}
 
 首先监听本地画布变化，将图形列表及其属性对象同步到本地的 `Y.Doc` 中：
 
@@ -308,6 +212,8 @@ doc.on('update', (update, origin) => {
     }
 });
 ```
+
+[Example with Yjs]
 
 <div style="display:flex;flex-direction:row;">
 <div style="flex: 1;">
@@ -409,6 +315,101 @@ const blob = new Blob(
 -   [Building Figma Multiplayer Cursors]
 -   [How to animate multiplayer cursors]
 
+## fractional-indexing
+
+正如前文提到的，场景图可以看作一个 "movable tree"，可能的冲突包括新增、删除和移动这三种场景。[Movable tree CRDTs and Loro's implementation] 一文详细介绍了这三种场景下 Loro 的实现思路。比如删除和移动同一个节点，此时两种结果都可以接受，取决于服务端接收到消息的顺序。但有些操作场景同步后会造成环，比如两个用户分别进行 `B -> C` 和 `C -> B` 操作，破坏树本身的结构定义。
+
+![Deletion and Movement of the Same Node](https://loro.dev/_next/image?url=%2F_next%2Fstatic%2Fmedia%2Fmove-delete-dark.17378273.png&w=3840&q=75)
+
+```ts
+import { Loro, LoroTree, LoroTreeNode } from 'loro-crdt';
+
+let doc = new Loro();
+let tree: LoroTree = doc.getTree('tree');
+let root: LoroTreeNode = tree.createNode();
+```
+
+[Realtime editing of ordered sequences] 中介绍了 Figma 使用 [fractional-indexing] 反映元素在场景图中的位置。
+
+![An example sequence of objects being edited](https://cdn.sanity.io/images/599r6htc/regionalized/dc3ac373a86b1d25629d651e2b75100dc3d9fbb9-1400x1144.png?w=804&q=75&fit=max&auto=format&dpr=2)
+
+Excalidraw 也使用了同样的实现：
+
+```ts
+// @see https://github.com/excalidraw/excalidraw/blob/9ee0b8ffcbd3664a47748a93262860321a203821/packages/excalidraw/fractionalIndex.ts#L380
+import { generateNKeysBetween } from 'fractional-indexing';
+const fractionalIndices = generateNKeysBetween(
+    elements[lowerBoundIndex]?.index,
+    elements[upperBoundIndex]?.index,
+    indices.length,
+) as FractionalIndex[];
+```
+
+Loro 提供的 Tree 内置了 Fractional Index 算法，详见：[Movable tree CRDTs and Loro's implementation]。
+
+> We integrated the Fractional Index algorithm into Loro and combined it with the movable tree, making the child nodes of the movable tree sortable.
+
+在[课程 14]中，我们希望通过 `ZIndex` 干预渲染次序，在编辑器 UI 中会以“调整图层次序”、“上移”、“下移”这样的功能呈现。因此当 `ZIndex` 首次被添加或发生修改时，我们首先遍历场景图，对子节点按照 `ZIndex` 排序，得到排序后的数组后根据一前一后两个兄弟节点，更新当前节点的 fractional index
+
+```ts
+class ComputeZIndex extends System {
+    private readonly zIndexes = this.query(
+        (q) => q.addedOrChanged.with(ZIndex).trackWrites,
+    );
+
+    execute() {
+        this.zIndexes.addedOrChanged.forEach((entity) => {
+            // Travese scenegraph, sort children by z-index
+            const descendants = getDescendants(
+                getSceneRoot(entity),
+                sortByZIndex,
+            );
+            const index = descendants.indexOf(entity);
+            const prev = descendants[index - 1] || null;
+            const next = descendants[index + 1] || null;
+            const prevFractionalIndex =
+                (prev?.has(FractionalIndex) &&
+                    prev.read(FractionalIndex)?.value) ||
+                null;
+            const nextFractionalIndex =
+                (next?.has(FractionalIndex) &&
+                    next.read(FractionalIndex)?.value) ||
+                null;
+
+            // Generate fractional index with prev and next node
+            const key = generateKeyBetween(
+                prevFractionalIndex, // a0
+                nextFractionalIndex, // a2
+            );
+
+            if (!entity.has(FractionalIndex)) {
+                entity.add(FractionalIndex);
+            }
+            entity.write(FractionalIndex).value = key; // a1
+        });
+    }
+}
+```
+
+这样在渲染前就可以根据 fractional index 排序，值得一提的是不可以直接使用 [localeCompare] 比较：
+
+```ts
+export function sortByFractionalIndex(a: Entity, b: Entity) {
+    if (a.has(FractionalIndex) && b.has(FractionalIndex)) {
+        const aFractionalIndex = a.read(FractionalIndex).value;
+        const bFractionalIndex = b.read(FractionalIndex).value;
+
+        // Can't use localeCompare here.
+        // @see https://github.com/rocicorp/fractional-indexing/issues/20
+        if (aFractionalIndex < bFractionalIndex) return -1;
+        if (aFractionalIndex > bFractionalIndex) return 1;
+        return 0;
+    }
+
+    return 0;
+}
+```
+
 ## 扩展阅读 {#extended-reading}
 
 -   [How Figma’s multiplayer technology works]
@@ -457,3 +458,5 @@ const blob = new Blob(
 [firestore]: https://firebase.google.com/docs/firestore
 [liveblocks]: https://liveblocks.io/multiplayer-editing
 [Awareness & Presence]: https://docs.yjs.dev/getting-started/adding-awareness
+[Example with Loro]: /zh/example/loro
+[Example with Yjs]: /zh/example/yjs

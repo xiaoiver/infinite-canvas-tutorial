@@ -266,7 +266,8 @@ If you want to use it in your own project, you can refer to:
 ## Lesson 20 - Collaboration [🔗](https://infinitecanvas.cc/guide/lesson-020)
 
 -   Implement collaboration through CRDT
--   Examples of collaborative editing using [Loro] and [Yjs]
+-   Using [Loro] / [Yjs] and BroadcastChannel to simulate collaboration on localhost
+-   Using liveblocks to implement collaborative editing between servers and multiple clients
 -   End-to-end encrypted CRDTs
 -   Multiplayer cursors
 
@@ -375,4 +376,3 @@ If you want to use it in your own project, you can refer to:
 [@infinite-canvas-tutorial/ecs]: https://www.npmjs.com/package/@infinite-canvas-tutorial/ecs
 [@infinite-canvas-tutorial/webcomponents]: https://www.npmjs.com/package/@infinite-canvas-tutorial/webcomponents
 [Loro]: http://loro.dev/
-[Yjs]: https://docs.yjs.dev/

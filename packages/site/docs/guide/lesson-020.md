@@ -15,8 +15,9 @@ import YjsCRDT from '../components/YjsCRDT.vue';
 In this lesson, we'll explore how to implement multi-user collaborative editing functionality.
 
 -   Classification and implementation of CRDTs
--   An example of collaborative editing using Loro
--   End-to-End encrypted CRDTs
+-   Using Loro / Yjs and [BroadcastChannel] to simulate collaboration on localhost
+-   Using [liveblocks] to implement collaborative editing between servers and multiple clients
+-   End-to-end encrypted CRDTs
 -   Implementation of multiplayer cursors
 
 ## CRDT {#crdt}
@@ -89,106 +90,11 @@ Since we don't need to deal with merging text or rich text in collaborative stat
 -   Automerge provides [Simple Values], supporting all legal types in JSON, even including `Date`
 -   Loro also provides [Map]
 
+## Simulate with BroadcastChannel {#simulate-with-broadcast-channel}
+
 Now let's refer to [Loro Excalidraw Example] and [dgmjs-plugin-yjs], using [BroadcastChannel]'s feature of supporting communication between multiple tabs under the same origin to simulate the effect of multiple users collaborating.
 
-## Implement with Loro {#implement-with-loro}
-
-As mentioned earlier, the scene graph can be viewed as a "movable tree", with possible conflicts including three scenarios: addition, deletion, and movement. [Movable tree CRDTs and Loro's implementation] details Loro's implementation approach for these three scenarios. For instance, when deleting and moving the same node, both results are acceptable, depending on the order in which the server receives the messages. However, some operation scenarios may create cycles after synchronization, such as when two users perform `B -> C` and `C -> B` operations respectively, breaking the tree's structural definition.
-
-![Deletion and Movement of the Same Node](https://loro.dev/_next/image?url=%2F_next%2Fstatic%2Fmedia%2Fmove-delete-dark.17378273.png&w=3840&q=75)
-
-```ts
-import { Loro, LoroTree, LoroTreeNode } from 'loro-crdt';
-
-let doc = new Loro();
-let tree: LoroTree = doc.getTree('tree');
-let root: LoroTreeNode = tree.createNode();
-```
-
-### fractional-indexing
-
-[Realtime editing of ordered sequences] introduces how Figma uses [fractional-indexing] to reflect element positions in the scene graph.
-
-![An example sequence of objects being edited](https://cdn.sanity.io/images/599r6htc/regionalized/dc3ac373a86b1d25629d651e2b75100dc3d9fbb9-1400x1144.png?w=804&q=75&fit=max&auto=format&dpr=2)
-
-Excalidraw also uses the same implementation:
-
-```ts
-// @see https://github.com/excalidraw/excalidraw/blob/9ee0b8ffcbd3664a47748a93262860321a203821/packages/excalidraw/fractionalIndex.ts#L380
-import { generateNKeysBetween } from 'fractional-indexing';
-const fractionalIndices = generateNKeysBetween(
-    elements[lowerBoundIndex]?.index,
-    elements[upperBoundIndex]?.index,
-    indices.length,
-) as FractionalIndex[];
-```
-
-Loro's built-in Tree includes the Fractional Index algorithm, see: [Movable tree CRDTs and Loro's implementation].
-
-> We integrated the Fractional Index algorithm into Loro and combined it with the movable tree, making the child nodes of the movable tree sortable.
-
-In [Lesson 14], we aim to manipulate the rendering order through `ZIndex`. In the editor UI, this functionality manifests as features like “Adjust Layer Order,” “Move Up,” and “Move Down.” Therefore, when `ZIndex` is first added or modified, we first traverse the scene graph, sorting child nodes by `ZIndex`. After obtaining the sorted array, we update the current node's fractional index based on its two immediate sibling nodes.
-
-```ts
-class ComputeZIndex extends System {
-    private readonly zIndexes = this.query(
-        (q) => q.addedOrChanged.with(ZIndex).trackWrites,
-    );
-
-    execute() {
-        this.zIndexes.addedOrChanged.forEach((entity) => {
-            // Travese scenegraph, sort children by z-index
-            const descendants = getDescendants(
-                getSceneRoot(entity),
-                sortByZIndex,
-            );
-            const index = descendants.indexOf(entity);
-            const prev = descendants[index - 1] || null;
-            const next = descendants[index + 1] || null;
-            const prevFractionalIndex =
-                (prev?.has(FractionalIndex) &&
-                    prev.read(FractionalIndex)?.value) ||
-                null;
-            const nextFractionalIndex =
-                (next?.has(FractionalIndex) &&
-                    next.read(FractionalIndex)?.value) ||
-                null;
-
-            // Generate fractional index with prev and next node
-            const key = generateKeyBetween(
-                prevFractionalIndex, // a0
-                nextFractionalIndex, // a2
-            );
-
-            if (!entity.has(FractionalIndex)) {
-                entity.add(FractionalIndex);
-            }
-            entity.write(FractionalIndex).value = key; // a1
-        });
-    }
-}
-```
-
-This allows sorting based on fractional indices before rendering. It's worth noting that you cannot directly use `[localeCompare]` for comparison:
-
-```ts
-export function sortByFractionalIndex(a: Entity, b: Entity) {
-    if (a.has(FractionalIndex) && b.has(FractionalIndex)) {
-        const aFractionalIndex = a.read(FractionalIndex).value;
-        const bFractionalIndex = b.read(FractionalIndex).value;
-
-        // Can't use localeCompare here.
-        // @see https://github.com/rocicorp/fractional-indexing/issues/20
-        if (aFractionalIndex < bFractionalIndex) return -1;
-        if (aFractionalIndex > bFractionalIndex) return 1;
-        return 0;
-    }
-
-    return 0;
-}
-```
-
-### Listen to Scene Graph Changes {#listen-scene-graph-change}
+### Example with Loro {#example-with-loro}
 
 In Excalidraw, you can use the `onChange` hook to monitor changes to all shapes in the scene:
 
@@ -214,8 +120,6 @@ api.onchange = (snapshot) => {
     const { appState, nodes } = snapshot;
 };
 ```
-
-### Apply Scene Graph Changes {#apply-scene-graph-change}
 
 Referring to [Excalidraw updateScene], we can also provide an `updateNodes` method to update the scene graph.
 
@@ -272,7 +176,7 @@ function recordLocalOps(
 }
 ```
 
-In the example below, you can freely drag, resize, or change the color of the rectangle in either the left or right window, and the other window will synchronize these modifications:
+In the example below, you can freely drag, resize, or change the color of the rectangle in either the left or right window, and the other window will synchronize these modifications: [Example with Loro]
 
 <div style="display:flex;flex-direction:row;">
 <div style="flex: 1;">
@@ -283,7 +187,7 @@ In the example below, you can freely drag, resize, or change the color of the re
 </div>
 </div>
 
-## Implement with Yjs {#implement-with-yjs}
+### Example with Yjs {#example-with-yjs}
 
 First, monitor changes to the local canvas and synchronize the list of shapes and their property objects to the local `Y.Doc`:
 
@@ -310,6 +214,8 @@ doc.on('update', (update, origin) => {
     }
 });
 ```
+
+[Example with Yjs]
 
 <div style="display:flex;flex-direction:row;">
 <div style="flex: 1;">
@@ -411,6 +317,101 @@ const blob = new Blob(
 -   [Building Figma Multiplayer Cursors]
 -   [How to animate multiplayer cursors]
 
+## fractional-indexing
+
+As mentioned earlier, the scene graph can be viewed as a "movable tree", with possible conflicts including three scenarios: addition, deletion, and movement. [Movable tree CRDTs and Loro's implementation] details Loro's implementation approach for these three scenarios. For instance, when deleting and moving the same node, both results are acceptable, depending on the order in which the server receives the messages. However, some operation scenarios may create cycles after synchronization, such as when two users perform `B -> C` and `C -> B` operations respectively, breaking the tree's structural definition.
+
+![Deletion and Movement of the Same Node](https://loro.dev/_next/image?url=%2F_next%2Fstatic%2Fmedia%2Fmove-delete-dark.17378273.png&w=3840&q=75)
+
+```ts
+import { Loro, LoroTree, LoroTreeNode } from 'loro-crdt';
+
+let doc = new Loro();
+let tree: LoroTree = doc.getTree('tree');
+let root: LoroTreeNode = tree.createNode();
+```
+
+[Realtime editing of ordered sequences] introduces how Figma uses [fractional-indexing] to reflect element positions in the scene graph.
+
+![An example sequence of objects being edited](https://cdn.sanity.io/images/599r6htc/regionalized/dc3ac373a86b1d25629d651e2b75100dc3d9fbb9-1400x1144.png?w=804&q=75&fit=max&auto=format&dpr=2)
+
+Excalidraw also uses the same implementation:
+
+```ts
+// @see https://github.com/excalidraw/excalidraw/blob/9ee0b8ffcbd3664a47748a93262860321a203821/packages/excalidraw/fractionalIndex.ts#L380
+import { generateNKeysBetween } from 'fractional-indexing';
+const fractionalIndices = generateNKeysBetween(
+    elements[lowerBoundIndex]?.index,
+    elements[upperBoundIndex]?.index,
+    indices.length,
+) as FractionalIndex[];
+```
+
+Loro's built-in Tree includes the Fractional Index algorithm, see: [Movable tree CRDTs and Loro's implementation].
+
+> We integrated the Fractional Index algorithm into Loro and combined it with the movable tree, making the child nodes of the movable tree sortable.
+
+In [Lesson 14], we aim to manipulate the rendering order through `ZIndex`. In the editor UI, this functionality manifests as features like “Adjust Layer Order,” “Move Up,” and “Move Down.” Therefore, when `ZIndex` is first added or modified, we first traverse the scene graph, sorting child nodes by `ZIndex`. After obtaining the sorted array, we update the current node's fractional index based on its two immediate sibling nodes.
+
+```ts
+class ComputeZIndex extends System {
+    private readonly zIndexes = this.query(
+        (q) => q.addedOrChanged.with(ZIndex).trackWrites,
+    );
+
+    execute() {
+        this.zIndexes.addedOrChanged.forEach((entity) => {
+            // Travese scenegraph, sort children by z-index
+            const descendants = getDescendants(
+                getSceneRoot(entity),
+                sortByZIndex,
+            );
+            const index = descendants.indexOf(entity);
+            const prev = descendants[index - 1] || null;
+            const next = descendants[index + 1] || null;
+            const prevFractionalIndex =
+                (prev?.has(FractionalIndex) &&
+                    prev.read(FractionalIndex)?.value) ||
+                null;
+            const nextFractionalIndex =
+                (next?.has(FractionalIndex) &&
+                    next.read(FractionalIndex)?.value) ||
+                null;
+
+            // Generate fractional index with prev and next node
+            const key = generateKeyBetween(
+                prevFractionalIndex, // a0
+                nextFractionalIndex, // a2
+            );
+
+            if (!entity.has(FractionalIndex)) {
+                entity.add(FractionalIndex);
+            }
+            entity.write(FractionalIndex).value = key; // a1
+        });
+    }
+}
+```
+
+This allows sorting based on fractional indices before rendering. It's worth noting that you cannot directly use `[localeCompare]` for comparison:
+
+```ts
+export function sortByFractionalIndex(a: Entity, b: Entity) {
+    if (a.has(FractionalIndex) && b.has(FractionalIndex)) {
+        const aFractionalIndex = a.read(FractionalIndex).value;
+        const bFractionalIndex = b.read(FractionalIndex).value;
+
+        // Can't use localeCompare here.
+        // @see https://github.com/rocicorp/fractional-indexing/issues/20
+        if (aFractionalIndex < bFractionalIndex) return -1;
+        if (aFractionalIndex > bFractionalIndex) return 1;
+        return 0;
+    }
+
+    return 0;
+}
+```
+
 ## Extended Reading {#extended-reading}
 
 -   [How Figma's multiplayer technology works]
@@ -458,3 +459,5 @@ const blob = new Blob(
 [firestore]: https://firebase.google.com/docs/firestore
 [liveblocks]: https://liveblocks.io/multiplayer-editing
 [Awareness & Presence]: https://docs.yjs.dev/getting-started/adding-awareness
+[Example with Loro]: /example/loro
+[Example with Yjs]: /example/yjs
