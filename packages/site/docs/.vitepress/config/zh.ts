@@ -325,6 +325,10 @@ export const zh = defineConfig({
                     text: 'Liveblocks',
                     link: 'liveblocks',
                   },
+                  {
+                    text: '多人光标',
+                    link: 'perfect-cursors',
+                  },
                 ],
               },
             ],

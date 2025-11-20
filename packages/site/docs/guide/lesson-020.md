@@ -8,6 +8,7 @@ head:
 <script setup>
 import LoroCRDT from '../components/LoroCRDT.vue';
 import YjsCRDT from '../components/YjsCRDT.vue';
+import PerfectCursors from '../components/PerfectCursors.vue';
 </script>
 
 # Lesson 20 - Collaboration
@@ -341,35 +342,70 @@ Yjs provides an [Awareness & Presence] feature to share cursor position and stat
 
 ### Use Liveblocks as backend {#backend}
 
-As a Provider implementation for Yjs, [liveblocks] also provides the Presence feature in the Room API. We can listen for `pointermove` events on the canvas and broadcast them using [updatePresence]:
+As a Provider implementation for Yjs, [liveblocks] also provides the Presence feature in the Room API. We can listen for `pointermove` events on the canvas and broadcast them using [updatePresence]. It is important to note that you must convert to the world coordinate system before saving. For details, see [Lesson 6 - Coordinates]::
 
 ```ts
-// Send cursor coordinates on movement
 function onPointerMove(event) {
+    const { x, y } = api.viewport2Canvas({
+        x: event.offsetX,
+        y: event.offsetY,
+    });
     room.updatePresence({
         cursor: {
-            x: event.clientX,
-            y: event.clientY,
+            x
+            y,
         },
     });
 }
 ```
 
-This allows clients to subscribe to other users' status changes, which are used to render their mouse positions:
+This allows clients to subscribe to other users' status changes, which are used to render their mouse positions. Here, the mouse position needs to be converted from the world coordinate system to the viewport coordinate system:
 
 ```ts
 room.subscribe('others', (others) => {
-    others.toArray(); // [{ cursor: {} }, { cursor: {} }, ...]
+    others.forEach((other) => {
+        // [{ cursor: {} }, { cursor: {} }, ...]
+        const { x, y } = api.canvas2Viewport({
+            x: other.presence.cursor.x,
+            y: other.presence.cursor.y,
+        });
+        // Render cursor with [x, y]
+    });
 });
 ```
 
 Of course, we can reduce the update frequency through throttling—after all, there's no real need to display others' mouse positions in “real time.” But this raises the next issue.
 
+```ts
+const client = createClient({
+    throttle: 16, // [!code ++]
+    publicApiKey:
+        'pk_dev_MYcFNShiwPwRDvuvhklopMg6SAkdASzz6QrOMQIlu86NkcuXVNxP06aXrxi9qo7M',
+});
+```
+
 ### Smoothly rendering cursors {#smoothly-rendering-cursors}
 
 [How to animate multiplayer cursors] demonstrates how other users experience mouse cursor stuttering after throttling reduces the update frequency, similar to dropping the refresh rate from 60FPS to 20FPS.
 
+![Jank cursor](/jank-cursor.gif)
+
 The solution is to make the mouse move smoothly between adjacent positions rather than in steps. Fortunately, tldraw provides the [perfect-cursors] feature that handles all of this for us.
+
+[Example with perfect-cursors]
+
+<div style="display:flex;flex-direction:row;">
+<div style="flex: 1;">
+<PerfectCursors />
+</div>
+<div style="flex: 1;">
+<PerfectCursors />
+</div>
+</div>
+
+### Other features {#other-features}
+
+Figma comments.
 
 ## fractional-indexing
 
@@ -447,7 +483,7 @@ class ComputeZIndex extends System {
 }
 ```
 
-This allows sorting based on fractional indices before rendering. It's worth noting that you cannot directly use `[localeCompare]` for comparison:
+This allows sorting based on fractional indices before rendering. It's worth noting that you cannot directly use [localeCompare] for comparison:
 
 ```ts
 export function sortByFractionalIndex(a: Entity, b: Entity) {
@@ -500,6 +536,7 @@ export function sortByFractionalIndex(a: Entity, b: Entity) {
 [fractional-indexing]: https://github.com/rocicorp/fractional-indexing
 [Movable tree CRDTs and Loro's implementation]: https://loro.dev/blog/movable-tree
 [Lesson 14]: /guide/lesson-014#z-index
+[localeCompare]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/localeCompare
 [Homomorphically Encrypting CRDTs]: https://jakelazaroff.com/words/homomorphically-encrypted-crdts/
 [End-to-End Encryption in the Browser]: https://plus.excalidraw.com/blog/end-to-end-encryption
 [Building Figma Multiplayer Cursors]: https://mskelton.dev/blog/building-figma-multiplayer-cursors
@@ -519,3 +556,5 @@ export function sortByFractionalIndex(a: Entity, b: Entity) {
 [Example with Liveblocks]: /example/liveblocks
 [updatePresence]: https://liveblocks.io/docs/api-reference/liveblocks-client#Room.updatePresence
 [perfect-cursors]: https://github.com/steveruizok/perfect-cursors
+[Lesson 6 - Coordinates]: /guide/lesson-006#coordinates
+[Example with perfect-cursors]: /example/perfect-cursors

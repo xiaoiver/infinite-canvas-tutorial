@@ -271,9 +271,9 @@ pnpm run dev
 -   端到端加密的 CRDT
 -   多人光标的实现
 
-|                BroadcastChannel with Loro or Yjs                 |                 Liveblocks as backend                  |
-| :--------------------------------------------------------------: | :----------------------------------------------------: |
-| ![BroadcastChannel with Loro or Yjs](./screenshots/lesson20.gif) | ![Liveblocks as backend](./screenshots/lesson20-2.gif) |
+|                BroadcastChannel with Loro or Yjs                 |                 Liveblocks as backend                  |                 Multiplayer cursors                  |
+| :--------------------------------------------------------------: | :----------------------------------------------------: | :--------------------------------------------------: |
+| ![BroadcastChannel with Loro or Yjs](./screenshots/lesson20.gif) | ![Liveblocks as backend](./screenshots/lesson20-2.gif) | ![Multiplayer cursors](./screenshots/lesson20-3.gif) |
 
 ## 课程 21 - Transformer [🔗](https://infinitecanvas.cc/zh/guide/lesson-021)
 

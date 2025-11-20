@@ -6,6 +6,7 @@ description: '使用CRDT（无冲突复制数据类型）实现多用户协同�
 <script setup>
 import LoroCRDT from '../../components/LoroCRDT.vue';
 import YjsCRDT from '../../components/YjsCRDT.vue';
+import PerfectCursors from '../../components/PerfectCursors.vue';
 </script>
 
 # 课程 20 - 协同
@@ -341,35 +342,70 @@ Yjs 提供了 [Awareness & Presence] 特性，用来共享光标位置和状态�
 
 ### 使用 Liveblocks 作为服务端 {#backend}
 
-作为 Yjs 的 Provider 实现，[liveblocks] 也在 Room API 中提供了 Presence 特性。我们可以监听画布上的 `pointermove` 事件，通过 [updatePresence] 进行广播：
+作为 Yjs 的 Provider 实现，[liveblocks] 也在 Room API 中提供了 Presence 特性。我们可以监听画布上的 `pointermove` 事件，通过 [updatePresence] 进行广播。值得注意的是这里需要转换到世界坐标系下再保存，详见 [课程 6 - 坐标系转换]：
 
 ```ts
-// Send cursor coordinates on movement
 function onPointerMove(event) {
+    const { x, y } = api.viewport2Canvas({
+        x: event.offsetX,
+        y: event.offsetY,
+    });
     room.updatePresence({
         cursor: {
-            x: event.clientX,
-            y: event.clientY,
+            x
+            y,
         },
     });
 }
 ```
 
-这样在客户端就可以订阅其他人的状态改变了，用来渲染他们的鼠标位置：
+这样在客户端就可以订阅其他人的状态改变了，用来渲染他们的鼠标位置，这里需要再将鼠标位置从世界坐标系转换到视口坐标系：
 
 ```ts
 room.subscribe('others', (others) => {
-    others.toArray(); // [{ cursor: {} }, { cursor: {} }, ...]
+    others.forEach((other) => {
+        // [{ cursor: {} }, { cursor: {} }, ...]
+        const { x, y } = api.canvas2Viewport({
+            x: other.presence.cursor.x,
+            y: other.presence.cursor.y,
+        });
+        // Render cursor with [x, y]
+    });
 });
 ```
 
 当然我们可以通过 throttling 降低更新频率，毕竟没必要真的“实时”展示其他人的鼠标位置，但这会引发下一个问题。
 
+```ts
+const client = createClient({
+    throttle: 16, // [!code ++]
+    publicApiKey:
+        'pk_dev_MYcFNShiwPwRDvuvhklopMg6SAkdASzz6QrOMQIlu86NkcuXVNxP06aXrxi9qo7M',
+});
+```
+
 ### 更流畅的鼠标动画 {#smoothly-rendering-cursors}
 
 [How to animate multiplayer cursors] 展示了使用 throttling 降低更新频率后，其他用户鼠标位置卡顿的表现，类似刷新率从 60FPS 降低到 20FPS 一样。
 
+![Jank cursor](/jank-cursor.gif)
+
 解决办法是让鼠标在前后相邻两个位置间平滑而非阶跃移动。幸运的是 tldraw 提供了 [perfect-cursors] 替我们处理好了这一切。
+
+[Example with perfect-cursors]
+
+<div style="display:flex;flex-direction:row;">
+<div style="flex: 1;">
+<PerfectCursors />
+</div>
+<div style="flex: 1;">
+<PerfectCursors />
+</div>
+</div>
+
+### 其他特性 {#other-features}
+
+例如 Figma 的评论功能。
 
 ## fractional-indexing
 
@@ -520,3 +556,5 @@ export function sortByFractionalIndex(a: Entity, b: Entity) {
 [Example with Liveblocks]: /example/liveblocks
 [updatePresence]: https://liveblocks.io/docs/api-reference/liveblocks-client#Room.updatePresence
 [perfect-cursors]: https://github.com/steveruizok/perfect-cursors
+[课程 6 - 坐标系转换]: /zh/guide/lesson-006#coordinates
+[Example with perfect-cursors]: /zh/example/perfect-cursors

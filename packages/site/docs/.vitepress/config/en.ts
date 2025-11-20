@@ -380,6 +380,10 @@ export const en = defineConfig({
                     text: 'Liveblocks',
                     link: 'liveblocks',
                   },
+                  {
+                    text: 'Perfect Cursors',
+                    link: 'perfect-cursors',
+                  },
                 ],
               },
             ],

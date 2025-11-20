@@ -23,6 +23,13 @@ const yDoc = yProvider.getYDoc();
 
 You can open this example in multiple browser windows.
 
+<div style="display:flex;flex-direction:row;">
+<div style="flex: 1;">
 <Liveblocks />
+</div>
+<div style="flex: 1;">
+<Liveblocks />
+</div>
+</div>
 
 [liveblocks]: https://liveblocks.io/multiplayer-editing
