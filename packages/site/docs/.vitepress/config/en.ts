@@ -384,6 +384,10 @@ export const en = defineConfig({
                     text: 'Perfect Cursors',
                     link: 'perfect-cursors',
                   },
+                  {
+                    text: 'Comments Overlay',
+                    link: 'comments-overlay',
+                  },
                 ],
               },
             ],

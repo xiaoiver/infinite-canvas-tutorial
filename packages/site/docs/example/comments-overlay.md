@@ -3,10 +3,10 @@ publish: false
 ---
 
 <script setup>
-import PerfectCursors from '../components/PerfectCursors.vue'
+import CommentsOverlay from '../components/CommentsOverlay.vue'
 </script>
 
-Use [liveblocks] Yjs and [perfect-cursors] implementing multiplayer cursors.
+Use [liveblocks] Yjs implementing comments overlay.
 
 ```ts
 import { createClient } from '@liveblocks/client';
@@ -26,12 +26,11 @@ const yDoc = yProvider.getYDoc();
 
 <div style="display:flex;flex-direction:row;">
 <div style="flex: 1;">
-<PerfectCursors />
+<CommentsOverlay />
 </div>
 <div style="flex: 1;">
-<PerfectCursors />
+<CommentsOverlay />
 </div>
 </div>
 
 [liveblocks]: https://liveblocks.io/multiplayer-editing
-[perfect-cursors]: https://github.com/steveruizok/perfect-cursors

@@ -117,6 +117,10 @@ console.log(result.data); // { image: [{ url: 'https://...' }]; description: 'Su
 
 目前 GPT 4o 仅支持三种固定尺寸，而 Nano banana 想实现任意图片尺寸输出需要借助一些 hack 手段，例如传入一张指定尺寸的空白图作为参考图并在 prompt 中强调。我们可以通过画布操作让它变的十分自然：用户只需要拖拽到合适的尺寸即可，应用通过 Canvas API 自动生成这个空白的参考图。
 
+## 自动分层 {#layer-separation}
+
+[Editing Text in Images with AI]: https://medium.com/data-science/editing-text-in-images-with-ai-03dee75d8b9c
+
 ## MCP
 
 来自 [MCP: What It Is and Why It Matters]：
@@ -140,3 +144,4 @@ console.log(result.data); // { image: [{ url: 'https://...' }]; description: 'Su
 [MCP: What It Is and Why It Matters]: https://addyo.substack.com/p/mcp-what-it-is-and-why-it-matters
 [Figma MCP Server]: https://github.com/GLips/Figma-Context-MCP
 [Figma API]: https://www.figma.com/developers/api
+[Editing Text in Images with AI]: https://medium.com/data-science/editing-text-in-images-with-ai-03dee75d8b9c

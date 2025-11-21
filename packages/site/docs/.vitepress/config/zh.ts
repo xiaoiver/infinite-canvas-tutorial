@@ -329,6 +329,10 @@ export const zh = defineConfig({
                     text: '多人光标',
                     link: 'perfect-cursors',
                   },
+                  {
+                    text: '多人评论',
+                    link: 'comments-overlay',
+                  },
                 ],
               },
             ],

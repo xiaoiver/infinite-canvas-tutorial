@@ -143,6 +143,10 @@ export class ContextBar extends LitElement {
           return html``;
         }
 
+        const isEditing = node.isEditing;
+
+        console.log('isEditing', isEditing);
+
         const [left, top] = this.calculatePosition(node);
 
         return html`<div
@@ -151,7 +155,7 @@ export class ContextBar extends LitElement {
         >
           <div class="bar">
             ${when(
-              isImage,
+              isImage && isEditing,
               () => html`<ic-spectrum-context-image-edit-bar .node=${node} />`,
               () => html`<ic-spectrum-context-common-bar .node=${node} />`,
             )}

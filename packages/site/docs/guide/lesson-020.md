@@ -403,9 +403,36 @@ The solution is to make the mouse move smoothly between adjacent positions rathe
 </div>
 </div>
 
-### Other features {#other-features}
+Additionally, we can use [framer-motion], which supports declarative syntax (compatible with React/Vue) and employs its built-in Spring easing function to achieve similar effects. For details, see: [Example with framer-motion].
+
+```vue
+// Cursor.vue
+<script lang="ts" setup>
+import { motion } from 'motion-v';
+</script>
+<template>
+    <motion.div
+        class="Cursor"
+        aria-hidden="true"
+        :initial="{ x, y }"
+        :animate="{ x, y }"
+        :transition="{
+            type: 'spring',
+            damping: 20,
+            mass: 0.4,
+            stiffness: 400,
+        }"
+    >
+        <svg path="..."></svg>
+    </motion.div>
+</template>
+```
+
+### Comments overlay {#comments-overlay}
 
 Figma comments.
+
+[Liveblocks Comments]
 
 ## fractional-indexing
 
@@ -558,3 +585,5 @@ export function sortByFractionalIndex(a: Entity, b: Entity) {
 [perfect-cursors]: https://github.com/steveruizok/perfect-cursors
 [Lesson 6 - Coordinates]: /guide/lesson-006#coordinates
 [Example with perfect-cursors]: /example/perfect-cursors
+[Example with framer-motion]: https://liveblocks.io/examples/overlay-comments/nextjs-comments-overlay
+[Liveblocks Comments]: https://liveblocks.io/docs/ready-made-features/comments

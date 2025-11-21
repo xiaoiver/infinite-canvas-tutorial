@@ -63,36 +63,36 @@ canvas.addEventListener(Event.READY, async (e) => {
   // }
 
   const nodes = [
-    {
-      id: '1',
-      name: 'A swimming dog',
-      type: 'rect',
-      fill: 'red',
-      x: 100,
-      y: 100,
-      width: 100,
-      height: 100,
-    } as const,
-    {
-      id: '2',
-      name: 'A swimming dog',
-      type: 'rect',
-      fill: 'green',
-      x: 300,
-      y: 100,
-      width: 100,
-      height: 100,
-    } as const,
-    {
-      id: '3',
-      type: 'html',
-      editable: true,
-      html: '<div style="background-color: red; height: 100%; width: 100%;">hello <input type="text" /></div>',
-      x: 400,
-      y: 100,
-      width: 100,
-      height: 100,
-    } as const,
+    // {
+    //   id: '1',
+    //   name: 'A swimming dog',
+    //   type: 'rect',
+    //   fill: 'red',
+    //   x: 100,
+    //   y: 100,
+    //   width: 100,
+    //   height: 100,
+    // } as const,
+    // {
+    //   id: '2',
+    //   name: 'A swimming dog',
+    //   type: 'rect',
+    //   fill: 'green',
+    //   x: 300,
+    //   y: 100,
+    //   width: 100,
+    //   height: 100,
+    // } as const,
+    // {
+    //   id: '3',
+    //   type: 'html',
+    //   editable: true,
+    //   html: '<div style="background-color: red; height: 100%; width: 100%;">hello <input type="text" /></div>',
+    //   x: 400,
+    //   y: 100,
+    //   width: 100,
+    //   height: 100,
+    // } as const,
     // {
     //   id: '4',
     //   type: 'embed',
@@ -103,17 +103,17 @@ canvas.addEventListener(Event.READY, async (e) => {
     //   height: 450,
     //   lockAspectRatio: true,
     // } as const,
-    // {
-    //   id: '1',
-    //   name: 'A swimming dog',
-    //   type: 'rect',
-    //   fill: 'https://v3b.fal.media/files/b/tiger/v1lf1EcPP1X1pw_YOKM4o.jpg',
-    //   x: 200,
-    //   y: 150,
-    //   width: 1024,
-    //   height: 1024,
-    //   lockAspectRatio: true,
-    // } as const,
+    {
+      id: '1',
+      name: 'A swimming dog',
+      type: 'rect',
+      fill: 'https://v3b.fal.media/files/b/tiger/v1lf1EcPP1X1pw_YOKM4o.jpg',
+      x: 100,
+      y: 100,
+      width: 400,
+      height: 400,
+      lockAspectRatio: true,
+    } as const,
     // {
     //   id: '2',
     //   name: 'A swimming cat',
@@ -261,7 +261,6 @@ canvas.addEventListener(Event.READY, async (e) => {
 
   api.onchange = (snapshot) => {
     const { appState, nodes } = snapshot;
-    console.log(appState, nodes);
   };
 
   // api.runAtNextTick(() => {

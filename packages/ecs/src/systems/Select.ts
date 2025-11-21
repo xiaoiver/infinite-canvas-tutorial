@@ -732,15 +732,32 @@ export class Select extends System {
             api.setAppState({
               penbarSelected: Pen.VECTOR_NETWORK,
             });
-
-            return;
           }
+
+          return;
         }
       }
 
       const selection = this.selections.get(camera.__id);
       if (input.pointerDownTrigger) {
         const [x, y] = input.pointerViewport;
+
+        if (selection.editing) {
+          if (selection.mode === SelectionMode.IDLE) {
+            if (selection.editing) {
+              api.updateNode(api.getNodeByEntity(selection.editing), {
+                isEditing: false,
+              });
+
+              selection.editing = undefined;
+              selection.mode = SelectionMode.SELECT;
+
+              return;
+            }
+          }
+
+          return;
+        }
 
         if (selection.mode === SelectionMode.IDLE) {
           selection.mode = SelectionMode.READY_TO_BRUSH;
@@ -785,15 +802,6 @@ export class Select extends System {
 
           if (api.getAppState().layersSelected.length > 0) {
             selection.mode = SelectionMode.MOVE;
-          }
-        } else if (selection.mode === SelectionMode.EDITING) {
-          const toSelect = this.getTopmostEntity(api, x, y, (e) => !e.has(UI));
-          if (selection.editing && toSelect !== selection.editing) {
-            api.updateNode(api.getNodeByEntity(selection.editing), {
-              isEditing: false,
-            });
-            selection.editing = undefined;
-            selection.mode = SelectionMode.SELECT;
           }
         }
       }

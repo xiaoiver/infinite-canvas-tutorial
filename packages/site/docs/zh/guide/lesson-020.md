@@ -403,9 +403,36 @@ const client = createClient({
 </div>
 </div>
 
-### 其他特性 {#other-features}
+另外我们也可以使用 [framer-motion]，通过声明式的方式（支持 React / Vue），使用它内置的 Spring 缓动函数实现类似的效果，详见：[Example with framer-motion]。
+
+```vue
+// Cursor.vue
+<script lang="ts" setup>
+import { motion } from 'motion-v';
+</script>
+<template>
+    <motion.div
+        class="Cursor"
+        aria-hidden="true"
+        :initial="{ x, y }"
+        :animate="{ x, y }"
+        :transition="{
+            type: 'spring',
+            damping: 20,
+            mass: 0.4,
+            stiffness: 400,
+        }"
+    >
+        <svg path="..."></svg>
+    </motion.div>
+</template>
+```
+
+### 评论 {#comments-overlay}
 
 例如 Figma 的评论功能。
+
+[Liveblocks Comments]
 
 ## fractional-indexing
 
@@ -558,3 +585,5 @@ export function sortByFractionalIndex(a: Entity, b: Entity) {
 [perfect-cursors]: https://github.com/steveruizok/perfect-cursors
 [课程 6 - 坐标系转换]: /zh/guide/lesson-006#coordinates
 [Example with perfect-cursors]: /zh/example/perfect-cursors
+[Example with framer-motion]: https://liveblocks.io/examples/overlay-comments/nextjs-comments-overlay
+[Liveblocks Comments]: https://liveblocks.io/docs/ready-made-features/comments

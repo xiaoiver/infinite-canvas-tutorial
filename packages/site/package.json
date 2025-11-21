@@ -69,6 +69,7 @@
     "mathjax-full": "^3.2.2",
     "markdown-it-implicit-figures": "^0.12.0",
     "markdown-it-mathjax3": "^4.3.2",
+    "motion-v": "^1.7.4",
     "motion": "^11.18.0",
     "openai": "^4.8.0",
     "opentype.js": "^1.3.4",

@@ -118,6 +118,18 @@ Or expanding outward:
 
 Currently, GPT 4o only supports three fixed sizes, while Nano banana needs some hack methods to achieve arbitrary image size output, such as passing in a blank image of a specified size as a reference and emphasizing it in the prompt. We can make this very natural through canvas operations: users only need to drag to the appropriate size, and the application automatically generates this blank reference image through the Canvas API.
 
+## Layer separation {#layer-separation}
+
+[Editing Text in Images with AI]: https://medium.com/data-science/editing-text-in-images-with-ai-03dee75d8b9c
+
+## MCP
+
+[MCP: What It Is and Why It Matters]：
+
+> Instead of only having a GUI or API that humans use, you get an AI interface “for free.” This idea has led to the concept of “MCP-first development”, where you build the MCP server for your app before or alongside the GUI.
+
+[Figma MCP Server] 可以操作 [Figma API]
+
 [Lesson 21 - Transformer]: /guide/lesson-021
 [UI for AI]: https://medium.com/ui-for-ai
 [Lesson 1 - Hardware abstraction layers]: /guide/lesson-001#hardware-abstraction-layers
@@ -129,3 +141,8 @@ Currently, GPT 4o only supports three fixed sizes, while Nano banana needs some 
 [generative-ai]: https://cloud.google.com/vertex-ai/generative-ai/docs/learn/model-versions
 [Lesson 26 - Selection tool]: /guide/lesson-026#marquee-selection
 [Lesson 25 - Drawing mode and brush]: /guide/lesson-025#brush-mode
+[Paper Shaders]: https://shaders.paper.design/
+[MCP: What It Is and Why It Matters]: https://addyo.substack.com/p/mcp-what-it-is-and-why-it-matters
+[Figma MCP Server]: https://github.com/GLips/Figma-Context-MCP
+[Figma API]: https://www.figma.com/developers/api
+[Editing Text in Images with AI]: https://medium.com/data-science/editing-text-in-images-with-ai-03dee75d8b9c

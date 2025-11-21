@@ -24,8 +24,6 @@ const yProvider = getYjsProviderForRoom(room);
 const yDoc = yProvider.getYDoc();
 ```
 
-可以在多个浏览器窗口中打开这个示例
-
 <div style="display:flex;flex-direction:row;">
 <div style="flex: 1;">
 <PerfectCursors />
