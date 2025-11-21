@@ -51,6 +51,7 @@ export default defineConfig({
         '@antv/hierarchy',
         'ant-design-vue',
         '@ant-design/icons-vue',
+        'perfect-cursors',
       ],
     },
     plugins: [

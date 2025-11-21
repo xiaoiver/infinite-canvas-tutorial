@@ -17,7 +17,7 @@ import PerfectCursors from '../../components/PerfectCursors.vue';
 -   基于 Loro / Yjs 和 [BroadcastChannel] 本地模拟实现协同编辑
 -   基于 [liveblocks] 实现服务器和多客户端的协同编辑
 -   端到端加密的 CRDT
--   多人光标的实现
+-   基于 Yjs 实现感知特性：多人光标和评论
 
 ## CRDT {#crdt}
 

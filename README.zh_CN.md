@@ -269,11 +269,15 @@ pnpm run dev
 -   基于 [Loro] 和 [Yjs] 在本地模拟协同编辑
 -   基于 [liveblocks] 和 Yjs 实现真实的服务端客户端协同编辑
 -   端到端加密的 CRDT
--   多人光标的实现
+-   感知特性的实现：多人光标和评论的实现
 
-|                BroadcastChannel with Loro or Yjs                 |                 Liveblocks as backend                  |                 Multiplayer cursors                  |
-| :--------------------------------------------------------------: | :----------------------------------------------------: | :--------------------------------------------------: |
-| ![BroadcastChannel with Loro or Yjs](./screenshots/lesson20.gif) | ![Liveblocks as backend](./screenshots/lesson20-2.gif) | ![Multiplayer cursors](./screenshots/lesson20-3.gif) |
+|                  BroadcastChannel 和 Loro / Yjs                  |               使用 Liveblocks 作为服务端               |
+| :--------------------------------------------------------------: | :----------------------------------------------------: |
+| ![BroadcastChannel with Loro or Yjs](./screenshots/lesson20.gif) | ![Liveblocks as backend](./screenshots/lesson20-2.gif) |
+
+|                       多人光标                       | 多人评论 |
+| :--------------------------------------------------: | :------: |
+| ![Multiplayer cursors](./screenshots/lesson20-3.gif) |          |
 
 ## 课程 21 - Transformer [🔗](https://infinitecanvas.cc/zh/guide/lesson-021)
 

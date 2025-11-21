@@ -6,7 +6,7 @@ publish: false
 import PerfectCursors from '../components/PerfectCursors.vue'
 </script>
 
-基于 [liveblocks] 和 Yjs 实现一个更实际的，基于服务端实时协同的例子。
+Use [liveblocks] Yjs and [perfect-cursors] implementing multiplayer cursors.
 
 ```ts
 import { createClient } from '@liveblocks/client';
@@ -29,3 +29,4 @@ const yDoc = yProvider.getYDoc();
 <PerfectCursors />
 
 [liveblocks]: https://liveblocks.io/multiplayer-editing
+[perfect-cursors]: https://github.com/steveruizok/perfect-cursors

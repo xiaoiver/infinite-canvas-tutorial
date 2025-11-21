@@ -6,7 +6,7 @@ publish: false
 import PerfectCursors from '../../components/PerfectCursors.vue'
 </script>
 
-基于 [liveblocks] 和 Yjs 实现一个更实际的，基于服务端实时协同的例子。
+基于 [liveblocks] Yjs 和 [perfect-cursors] 实现多人光标。
 
 ```ts
 import { createClient } from '@liveblocks/client';
@@ -36,3 +36,4 @@ const yDoc = yProvider.getYDoc();
 </div>
 
 [liveblocks]: https://liveblocks.io/multiplayer-editing
+[perfect-cursors]: https://github.com/steveruizok/perfect-cursors

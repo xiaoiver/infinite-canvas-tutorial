@@ -269,11 +269,15 @@ If you want to use it in your own project, you can refer to:
 -   Using [Loro] / [Yjs] and BroadcastChannel to simulate collaboration on localhost
 -   Using [liveblocks] to implement collaborative editing between servers and multiple clients
 -   End-to-end encrypted CRDTs
--   Awareness & Presence: multiplayer cursors
+-   Awareness & Presence: multiplayer cursors and comments
 
-|                BroadcastChannel with Loro or Yjs                 |                 Liveblocks as backend                  |                 Multiplayer cursors                  |
-| :--------------------------------------------------------------: | :----------------------------------------------------: | :--------------------------------------------------: |
-| ![BroadcastChannel with Loro or Yjs](./screenshots/lesson20.gif) | ![Liveblocks as backend](./screenshots/lesson20-2.gif) | ![Multiplayer cursors](./screenshots/lesson20-3.gif) |
+|                BroadcastChannel with Loro or Yjs                 |                 Liveblocks as backend                  |
+| :--------------------------------------------------------------: | :----------------------------------------------------: |
+| ![BroadcastChannel with Loro or Yjs](./screenshots/lesson20.gif) | ![Liveblocks as backend](./screenshots/lesson20-2.gif) |
+
+|                 Multiplayer cursors                  | Comments |
+| :--------------------------------------------------: | :------: |
+| ![Multiplayer cursors](./screenshots/lesson20-3.gif) |          |
 
 ## Lesson 21 - Transformer [🔗](https://infinitecanvas.cc/guide/lesson-021)
 

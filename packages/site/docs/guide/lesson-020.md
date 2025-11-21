@@ -19,7 +19,7 @@ In this lesson, we'll explore how to implement multi-user collaborative editing 
 -   Using Loro / Yjs and [BroadcastChannel] to simulate collaboration on localhost
 -   Using [liveblocks] to implement collaborative editing between servers and multiple clients
 -   End-to-end encrypted CRDTs
--   Awareness and presence, including multiplayer cursors
+-   Awareness and presence, including multiplayer cursors and comments
 
 ## CRDT {#crdt}
 
