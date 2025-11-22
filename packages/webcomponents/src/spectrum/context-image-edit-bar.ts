@@ -1,9 +1,11 @@
+import { v4 as uuidv4 } from 'uuid';
 import { consume } from '@lit/context';
 import { AppState, RectSerializedNode } from '@infinite-canvas-tutorial/ecs';
 import { html, css, LitElement } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { apiContext, appStateContext } from '../context';
 import { ExtendedAPI } from '../API';
+import { createOrEditImage } from '../providers/fal';
 
 @customElement('ic-spectrum-context-image-edit-bar')
 export class ContextImageEditBar extends LitElement {
@@ -25,12 +27,38 @@ export class ContextImageEditBar extends LitElement {
   @state()
   removingBackground: boolean;
 
-  private removeBackground() {
+  private async removeBackground() {
     this.removingBackground = true;
 
-    // const $canvas = this.api.getCanvas().read(Canvas).element;
+    // 先创建一个空白元素
+    let newImage: RectSerializedNode;
+    this.api.runAtNextTick(() => {
+      newImage = {
+        id: uuidv4(),
+        type: 'rect',
+        fill: this.node.fill,
+        lockAspectRatio: true,
+        x: this.node.x + this.node.width + 50,
+        y: this.node.y,
+        width: this.node.width,
+        height: this.node.height,
+      };
+      this.api.updateNode(newImage);
+    });
 
-    this.removingBackground = false;
+    const { images } = await createOrEditImage(
+      true,
+      'Remove background from the image',
+      [this.node.fill],
+    );
+    if (images.length > 0) {
+      this.api.runAtNextTick(() => {
+        this.api.updateNode(newImage, { fill: images[0].url });
+
+        this.api.record();
+        this.removingBackground = false;
+      });
+    }
   }
 
   render() {

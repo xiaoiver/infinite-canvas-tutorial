@@ -131,17 +131,13 @@ export function inferXYWidthHeight(node: SerializedNode) {
   }
 }
 
-async function loadImage(
-  url: string,
-  entity: EntityCommands,
-  commands: Commands,
-) {
+export async function loadImage(url: string, entity: Entity) {
   const image = await DOMAdapter.get().createImage(url);
-  safeAddComponent(entity.entity, FillImage, {
+  safeAddComponent(entity, FillImage, {
     src: image as ImageBitmap,
     url,
   });
-  safeAddComponent(entity.entity, MaterialDirty);
+  safeAddComponent(entity, MaterialDirty);
 }
 
 function serializeRough(attributes: RoughAttributes, entity: EntityCommands) {
@@ -303,7 +299,7 @@ export function serializedNodesToEntities(
           type: brushType,
         }),
       );
-      loadImage(brushStamp, entity, commands);
+      loadImage(brushStamp, entity.id());
     } else if (type === 'path') {
       const { d, fillRule, tessellationMethod } =
         attributes as PathSerializedNode;
@@ -404,7 +400,7 @@ export function serializedNodesToEntities(
       if (isGradient(fill)) {
         entity.insert(new FillGradient(fill));
       } else if (isDataUrl(fill) || isUrl(fill)) {
-        loadImage(fill, entity, commands);
+        loadImage(fill, entity.id());
       } else {
         try {
           const parsed = JSON.parse(fill) as FillPattern;

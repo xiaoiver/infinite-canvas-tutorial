@@ -12,6 +12,9 @@ import {
   SerializedNode,
   deserializePoints,
   SerializedNodeAttributes,
+  isDataUrl,
+  isUrl,
+  loadImage,
 } from '../utils';
 import { API } from '../API';
 import {
@@ -658,6 +661,13 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
 
       safeAddComponent(entity, MaterialDirty);
       safeAddComponent(entity, FillGradient, { value: fill });
+    } else if (isDataUrl(fill) || isUrl(fill)) {
+      safeRemoveComponent(entity, FillSolid);
+      safeRemoveComponent(entity, FillGradient);
+      safeRemoveComponent(entity, FillPattern);
+
+      safeAddComponent(entity, MaterialDirty);
+      loadImage(fill, entity);
     } else {
       if (entity.has(FillGradient)) {
         safeAddComponent(entity, MaterialDirty);

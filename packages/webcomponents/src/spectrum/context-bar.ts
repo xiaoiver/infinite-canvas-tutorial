@@ -145,8 +145,6 @@ export class ContextBar extends LitElement {
 
         const isEditing = node.isEditing;
 
-        console.log('isEditing', isEditing);
-
         const [left, top] = this.calculatePosition(node);
 
         return html`<div

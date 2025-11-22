@@ -345,7 +345,9 @@ If you want to use it in your own project, you can refer to:
     -   Use Nano banana to edit image, e.g remove background
     -   Use SAM with WebGPU
 
-![when canvas meets chat](./screenshots/lesson28.png)
+|                      Use chatbox                      |                 Remove background                  |
+| :---------------------------------------------------: | :------------------------------------------------: |
+| ![when canvas meets chat](./screenshots/lesson28.png) | ![remove background](./screenshots/lesson28-2.png) |
 
 ## Lesson 29 - Embedding HTML content [🔗](https://infinitecanvas.cc/guide/lesson-029)
 

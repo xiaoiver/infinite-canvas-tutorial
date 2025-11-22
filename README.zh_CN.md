@@ -346,7 +346,9 @@ pnpm run dev
     -   使用 Nano banana 进行图片生成与编辑
     -   通过 WebGPU 使用 SAM
 
-![when canvas meets chat](./screenshots/lesson28.png)
+|                     与聊天框结合                      |                      清除背景                      |
+| :---------------------------------------------------: | :------------------------------------------------: |
+| ![when canvas meets chat](./screenshots/lesson28.png) | ![remove background](./screenshots/lesson28-2.png) |
 
 ## 课程 29 - 嵌入 HTML 内容 [🔗](https://infinitecanvas.cc/zh/guide/lesson-029)
 
