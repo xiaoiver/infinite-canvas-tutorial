@@ -1,4 +1,4 @@
-import { Buffer, Device, RenderPass } from '@antv/g-device-api';
+import { Buffer, Device, RenderPass, SwapChain } from '@antv/g-device-api';
 import { Entity } from '@lastolivegames/becsy';
 import {
   Drawcall,
@@ -113,6 +113,7 @@ export class BatchManager {
 
   constructor(
     private readonly device: Device,
+    private readonly swapChain: SwapChain,
     private readonly renderCache: RenderCache,
     private readonly texturePool: TexturePool,
   ) {}
@@ -137,6 +138,7 @@ export class BatchManager {
       // @ts-ignore
       const drawcall = new DrawcallCtor(
         this.device,
+        this.swapChain,
         this.renderCache,
         this.texturePool,
         instanced,

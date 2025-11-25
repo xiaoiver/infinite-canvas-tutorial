@@ -46,6 +46,7 @@ import {
   HTML,
   Embed,
   Editable,
+  Filter,
 } from '../components';
 
 export type SceneElementsMap = Map<SerializedNode['id'], SerializedNode>;
@@ -635,6 +636,7 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
     lockAspectRatio,
     editable,
     isEditing,
+    filter,
   } = updates as unknown as SerializedNodeAttributes;
 
   if (!isNil(name)) {
@@ -924,6 +926,10 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
   if (!isNil(isEditing)) {
     safeAddComponent(entity, Editable);
     entity.write(Editable).isEditing = !!isEditing;
+  }
+
+  if (!isNil(filter)) {
+    safeAddComponent(entity, Filter, { filter });
   }
 
   if (isNil(element.version)) {

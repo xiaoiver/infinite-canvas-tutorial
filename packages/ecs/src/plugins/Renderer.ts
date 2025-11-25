@@ -60,6 +60,7 @@ import {
   Line,
   LockAspectRatio,
   Editable,
+  Filter,
 } from '../components';
 
 export const RendererPlugin: Plugin = () => {
@@ -97,6 +98,7 @@ export const RendererPlugin: Plugin = () => {
   component(Font);
   component(TextDecoration);
   component(Marker);
+  component(Filter);
 
   /**
    * Geometry

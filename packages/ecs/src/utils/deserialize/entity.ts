@@ -36,6 +36,7 @@ import {
   HTML,
   HTMLContainer,
   Embed,
+  Filter,
 } from '../../components';
 import {
   AttenuationAttributes,
@@ -43,6 +44,7 @@ import {
   DropShadowAttributes,
   EmbedSerializedNode,
   FillAttributes,
+  FilterAttributes,
   HtmlSerializedNode,
   InnerShadowAttributes,
   isDataUrl,
@@ -528,6 +530,11 @@ export function serializedNodesToEntities(
     const { wireframe } = attributes as WireframeAttributes;
     if (wireframe) {
       entity.insert(new Wireframe(true));
+    }
+
+    const { filter } = attributes as FilterAttributes;
+    if (filter) {
+      entity.insert(new Filter({ filter }));
     }
 
     if (parentId) {

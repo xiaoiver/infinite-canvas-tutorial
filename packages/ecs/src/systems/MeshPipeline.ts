@@ -57,6 +57,7 @@ import {
   Brush,
   Marker,
   VectorNetwork,
+  Filter,
 } from '../components';
 import { paddingMat3, SerializedNode } from '../utils';
 import { GridRenderer } from './GridRenderer';
@@ -172,6 +173,9 @@ export class MeshPipeline extends System {
   private markers = this.query(
     (q) => q.addedChangedOrRemoved.with(Marker).trackWrites,
   );
+  private filters = this.query(
+    (q) => q.addedChangedOrRemoved.with(Filter).trackWrites,
+  );
 
   renderers: Map<
     Entity,
@@ -264,7 +268,7 @@ export class MeshPipeline extends System {
   }
 
   private createRenderer(gpuResource: GPUResource) {
-    const { device, renderCache, texturePool } = gpuResource;
+    const { device, swapChain, renderCache, texturePool } = gpuResource;
     return {
       uniformBuffer: device.createBuffer({
         viewOrSize: (16 * 3 + 4 * 5) * Float32Array.BYTES_PER_ELEMENT,
@@ -273,7 +277,12 @@ export class MeshPipeline extends System {
       }),
       uniformLegacyObject: null,
       gridRenderer: new GridRenderer(),
-      batchManager: new BatchManager(device, renderCache, texturePool),
+      batchManager: new BatchManager(
+        device,
+        swapChain,
+        renderCache,
+        texturePool,
+      ),
     };
   }
 
@@ -487,7 +496,8 @@ export class MeshPipeline extends System {
             !!this.textDecorations.addedChangedOrRemoved.length ||
             !!this.sizeAttenuations.addedChangedOrRemoved.length ||
             !!this.strokeAttenuations.addedChangedOrRemoved.length ||
-            !!this.markers.addedChangedOrRemoved.length)
+            !!this.markers.addedChangedOrRemoved.length ||
+            !!this.filters.addedChangedOrRemoved.length)
         ) {
           toRender = true;
         }

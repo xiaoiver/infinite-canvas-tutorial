@@ -2,6 +2,7 @@ import { Entity } from '@lastolivegames/becsy';
 import {
   DropShadowAttributes,
   FillAttributes,
+  FilterAttributes,
   InnerShadowAttributes,
   LineSerializedNode,
   MarkerAttributes,
@@ -40,6 +41,7 @@ import {
   DropShadow,
   Line,
   LockAspectRatio,
+  Filter,
 } from '../../components';
 import { serializePoints } from './points';
 
@@ -233,6 +235,10 @@ export function entityToSerializedNodes(
       dropShadowOffsetX: offsetX,
       dropShadowOffsetY: offsetY,
     });
+  }
+
+  if (entity.has(Filter)) {
+    (attributes as FilterAttributes).filter = entity.read(Filter).filter;
   }
 
   // serialize transform

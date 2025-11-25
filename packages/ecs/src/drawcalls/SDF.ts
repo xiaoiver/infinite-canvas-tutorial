@@ -17,11 +17,18 @@ import {
   TransparentBlack,
   Texture,
   StencilOp,
+  TransparentWhite,
+  Program,
+  RenderPipeline,
+  InputLayout,
+  RenderTarget,
 } from '@antv/g-device-api';
 import { mat3 } from 'gl-matrix';
 import { Entity } from '@lastolivegames/becsy';
 import { Drawcall, ZINDEX_FACTOR } from './Drawcall';
 import { vert, frag, Location } from '../shaders/sdf';
+import { vert as postProcessingVert } from '../shaders/post-processing/vert';
+import { frag as brightness } from '../shaders/post-processing/brightness';
 import { paddingMat3, parseColor, parseGradient } from '../utils';
 import {
   Circle,
@@ -41,6 +48,7 @@ import {
   SizeAttenuation,
   StrokeAttenuation,
   Stroke,
+  Filter,
 } from '../components';
 
 const strokeAlignmentMap = {
@@ -54,6 +62,15 @@ export class SDF extends Drawcall {
 
   #uniformBuffer: Buffer;
   #texture: Texture;
+
+  #filterProgram: Program;
+  #filterPipeline: RenderPipeline;
+  #filterInputLayout: InputLayout;
+  #filterVertexBuffer: Buffer;
+  #filterTexture: Texture;
+  #filterRenderTarget: RenderTarget;
+  #filterTextureWidth: number;
+  #filterTextureHeight: number;
 
   static useDash(shape: Entity) {
     const { dasharray } = shape.has(Stroke)
@@ -93,6 +110,10 @@ export class SDF extends Drawcall {
     }
 
     if (SDF.useDash(shape) !== SDF.useDash(this.shapes[0])) {
+      return false;
+    }
+
+    if (this.shapes[0].has(Filter) || shape.has(Filter)) {
       return false;
     }
 
@@ -300,44 +321,122 @@ export class SDF extends Drawcall {
 
       const instance = this.shapes[0];
 
-      if (instance.has(FillGradient) || instance.has(FillPattern)) {
-        const { minX, minY, maxX, maxY } =
-          instance.read(ComputedBounds).geometryBounds;
-        const width = maxX - minX;
-        const height = maxY - minY;
+      if (instance.has(Filter)) {
+        let width = 0;
+        let height = 0;
+        if (this.shapes[0].has(Rect)) {
+          const { minX, minY, maxX, maxY } = Rect.getGeometryBounds(
+            this.shapes[0].read(Rect),
+          );
+          width = maxX - minX;
+          height = maxY - minY;
+        }
+        this.#filterTextureWidth = width;
+        this.#filterTextureHeight = height;
+        this.#filterTexture = this.device.createTexture({
+          format: Format.U8_RGBA_NORM,
+          width,
+          height,
+          usage: TextureUsage.RENDER_TARGET,
+        });
 
-        const canvas = instance.has(FillPattern)
-          ? this.texturePool.getOrCreatePattern({
-              pattern: instance.read(FillPattern),
-              width,
-              height,
-            })
-          : this.texturePool.getOrCreateGradient({
-              gradients: parseGradient(instance.read(FillGradient).value),
-              min: [minX, minY],
-              width,
-              height,
-            });
-        const texture = this.device.createTexture({
-          format: Format.U8_RGBA_NORM,
-          width: 128,
-          height: 128,
-          usage: TextureUsage.SAMPLED,
+        this.#filterRenderTarget = this.device.createRenderTargetFromTexture(
+          this.#filterTexture,
+        );
+
+        const diagnosticDerivativeUniformityHeader =
+          this.device.queryVendorInfo().platformString === 'WebGPU'
+            ? 'diagnostic(off,derivative_uniformity);\n'
+            : '';
+
+        this.#filterProgram = this.renderCache.createProgram({
+          vertex: {
+            glsl: postProcessingVert,
+          },
+          fragment: {
+            glsl: brightness,
+            postprocess: (fs) => diagnosticDerivativeUniformityHeader + fs,
+          },
         });
-        texture.setImageData([canvas]);
-        this.#texture = texture;
-      } else if (instance.has(FillTexture)) {
-        this.#texture = instance.read(FillTexture).value;
-      } else if (instance.has(FillImage)) {
-        const src = instance.read(FillImage).src as ImageBitmap;
-        const texture = this.device.createTexture({
-          format: Format.U8_RGBA_NORM,
-          width: src.width,
-          height: src.height,
-          usage: TextureUsage.SAMPLED,
+
+        this.#filterVertexBuffer = this.device.createBuffer({
+          viewOrSize: new Float32Array([
+            0, 0.5, -1, -1, -0.5, -0.5, -1, 1, 0.5, -0.5, 1, 1,
+          ]),
+          usage: BufferUsage.VERTEX,
+          hint: BufferFrequencyHint.DYNAMIC,
         });
-        texture.setImageData([src]);
-        this.#texture = texture;
+
+        this.#filterInputLayout = this.device.createInputLayout({
+          vertexBufferDescriptors: [
+            {
+              arrayStride: 4 * 4,
+              stepMode: VertexStepMode.VERTEX,
+              attributes: [
+                {
+                  shaderLocation: 0,
+                  offset: 0,
+                  format: Format.F32_RG,
+                },
+                {
+                  shaderLocation: 1,
+                  offset: 4 * 2,
+                  format: Format.F32_RG,
+                },
+              ],
+            },
+          ],
+          indexBufferFormat: null,
+          program: this.#filterProgram,
+        });
+
+        this.#filterPipeline = this.device.createRenderPipeline({
+          inputLayout: this.#filterInputLayout,
+          program: this.#filterProgram,
+          colorAttachmentFormats: [Format.U8_RGBA_NORM],
+        });
+
+        this.#texture = this.#filterTexture;
+      } else {
+        if (instance.has(FillGradient) || instance.has(FillPattern)) {
+          const { minX, minY, maxX, maxY } =
+            instance.read(ComputedBounds).geometryBounds;
+          const width = maxX - minX;
+          const height = maxY - minY;
+
+          const canvas = instance.has(FillPattern)
+            ? this.texturePool.getOrCreatePattern({
+                pattern: instance.read(FillPattern),
+                width,
+                height,
+              })
+            : this.texturePool.getOrCreateGradient({
+                gradients: parseGradient(instance.read(FillGradient).value),
+                min: [minX, minY],
+                width,
+                height,
+              });
+          const texture = this.device.createTexture({
+            format: Format.U8_RGBA_NORM,
+            width: 128,
+            height: 128,
+            usage: TextureUsage.SAMPLED,
+          });
+          texture.setImageData([canvas]);
+          this.#texture = texture;
+        } else if (instance.has(FillTexture)) {
+          this.#texture = instance.read(FillTexture).value;
+        } else if (instance.has(FillImage)) {
+          const src = instance.read(FillImage).src as ImageBitmap;
+          const texture = this.device.createTexture({
+            format: Format.U8_RGBA_NORM,
+            width: src.width,
+            height: src.height,
+            usage: TextureUsage.SAMPLED,
+          });
+          texture.setImageData([src]);
+          this.#texture = texture;
+        }
       }
 
       const sampler = this.renderCache.createSampler({
@@ -364,6 +463,8 @@ export class SDF extends Drawcall {
     renderPass: RenderPass,
     sceneUniformLegacyObject: Record<string, unknown>,
   ) {
+    const hasFilter = this.shapes[0].has(Filter);
+
     if (this.instanced) {
       const instancedData: number[] = [];
       this.shapes.forEach((shape, i, total) => {
@@ -410,13 +511,6 @@ export class SDF extends Drawcall {
         matrix.m22,
       ] as mat3;
 
-      // if (this.shapes[0].has(Rect)) {
-      //   const { x, width } = this.shapes[0].read(Rect);
-      //   const { children } = (this.shapes[0].has(Parent) &&
-      //     this.shapes[0].read(Parent)) || { children: [] };
-      //   console.log(children.length, x, width, matrix.m20);
-      // }
-
       this.#uniformBuffer.setSubData(
         0,
         new Uint8Array(
@@ -438,6 +532,35 @@ export class SDF extends Drawcall {
 
     if (this.useWireframe && this.geometryDirty) {
       this.generateWireframe();
+    }
+
+    if (hasFilter) {
+      console.log('filter');
+      const filterRenderPass = this.device.createRenderPass({
+        colorAttachment: [this.#filterRenderTarget],
+        colorResolveTo: [null],
+        colorClearColor: [TransparentWhite],
+        colorStore: [true],
+        depthStencilAttachment: null,
+        depthStencilResolveTo: null,
+      });
+      // this.program.setUniformsLegacy(sceneUniformLegacyObject);
+      filterRenderPass.setViewport(
+        0,
+        0,
+        this.#filterTextureWidth,
+        this.#filterTextureHeight,
+      );
+      filterRenderPass.setPipeline(this.#filterPipeline);
+      filterRenderPass.setVertexInput(
+        this.#filterInputLayout,
+        [{ buffer: this.#filterVertexBuffer }],
+        null,
+      );
+      filterRenderPass.draw(3);
+      this.device.submitPass(filterRenderPass);
+      const { width, height } = this.swapChain.getCanvas();
+      renderPass.setViewport(0, 0, width, height);
     }
 
     this.program.setUniformsLegacy(sceneUniformLegacyObject);

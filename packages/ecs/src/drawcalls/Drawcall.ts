@@ -11,6 +11,7 @@ import {
   BufferFrequencyHint,
   VertexStepMode,
   Format,
+  SwapChain,
 } from '@antv/g-device-api';
 import { Entity } from '@lastolivegames/becsy';
 import { RenderCache, uid } from '../utils';
@@ -21,6 +22,7 @@ import {
   FillImage,
   FillPattern,
   FillTexture,
+  Filter,
   Wireframe,
 } from '../components';
 
@@ -69,6 +71,7 @@ export abstract class Drawcall {
 
   constructor(
     protected device: Device,
+    protected swapChain: SwapChain,
     protected renderCache: RenderCache,
     protected texturePool: TexturePool,
     protected instanced: boolean,
@@ -165,11 +168,13 @@ export abstract class Drawcall {
   }
 
   protected get useFillImage() {
-    return this.shapes[0]?.hasSomeOf(
-      FillImage,
-      FillTexture,
-      FillGradient,
-      FillPattern,
+    return (
+      this.shapes[0]?.hasSomeOf(
+        FillImage,
+        FillTexture,
+        FillGradient,
+        FillPattern,
+      ) || this.shapes[0]?.has(Filter)
     );
   }
 

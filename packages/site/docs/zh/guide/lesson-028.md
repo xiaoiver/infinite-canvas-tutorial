@@ -33,9 +33,13 @@ Recraft 也正在测试聊天框功能。以我的观察，画布与聊天框正
 
 ![Adjust in Photoshop Web](/adjust-ps-web.png)
 
-更多效果详见：[Paper Shaders]
+更多效果详见：[Paper Shaders]。
+
+在实现中，[Pixi.js filters] 会根据对象的包围盒计算应用区域，将对象渲染到一个临时的渲染纹理（render texture）上，然后再对该纹理应用着色器效果。
 
 ### Brightness {#brightness}
+
+我们可以使用 [CSS filter] 语法，例如 `filter: brightness(0.4);`
 
 ## 接入模型 {#client-sdk}
 
@@ -61,6 +65,29 @@ console.log(result.data); // { image: [{ url: 'https://...' }]; description: 'Su
 ### 加入聊天框 {#chatbox}
 
 聊天框提供了画布之外的另一个起始点。
+
+### 清除背景 {#remove-background}
+
+双击图片进入编辑模式后，在 prompt 中让 Nano banana 智能地移除背景，生成过程中可以加入 loading 效果，完成后将新图片 URL 替换：
+
+```ts
+private async removeBackground() {
+    this.removingBackground = true;
+    const { images } = await createOrEditImage(
+        true,
+        'Remove background from the image',
+        [this.node.fill],
+    );
+    if (images.length > 0) {
+        this.api.runAtNextTick(() => {
+        this.api.updateNode(newImage, { fill: images[0].url });
+
+        this.api.record();
+        this.removingBackground = false;
+        });
+    }
+}
+```
 
 ## Inpainting {#inpainting}
 
@@ -119,7 +146,40 @@ console.log(result.data); // { image: [{ url: 'https://...' }]; description: 'Su
 
 ## 自动分层 {#layer-separation}
 
-[Editing Text in Images with AI]: https://medium.com/data-science/editing-text-in-images-with-ai-03dee75d8b9c
+-   [Editing Text in Images with AI]
+-   [Move Anything with Layered Scene Diffusion]
+
+### 分离背景与文字 {#split-background-text}
+
+首先使用 OCR 类工具识别文字区域，并生成 mask。然后去除掉 mask 让模型重新生成图片，进行常规的 inpainting 流程，就得到了不带文字的背景图片。
+
+[FLUX-Text: A Simple and Advanced Diffusion Transformer Baseline for Scene Text Editing]
+
+![text editing with flux-text](/flux-text.png)
+
+### 字体识别 {#font-recognition}
+
+接下来需要识别文字区域中字体、字号等样式属性。
+
+[TextStyleBrush: Transfer of Text Aesthetics from a Single Example]
+
+Adobe Photoshop 提供了 [Match fonts] 功能：
+
+![Select a font from the list of similar fonts in the Match Fonts dialog box](https://helpx-prod.scene7.com/is/image/HelpxProd/A-sample-document-showing-an-image-with-the-text-s?$pjpeg$&jpegSize=300&wid=1600)
+
+[whatfontis] 提供了公开的 API，可以在图片的指定区域在字体库中匹配最接近的字体；
+
+```json
+[
+    {
+        "title": "Abril Fatface",
+        "url": "https://www.whatfontis.com/FF_Abril-Fatface.font",
+        "image": "https://www.whatfontis.com/img16/A/B/FF_Abril-FatfaceA.png"
+    }
+]
+```
+
+最后将各部分图层叠加。
 
 ## MCP
 
@@ -145,3 +205,10 @@ console.log(result.data); // { image: [{ url: 'https://...' }]; description: 'Su
 [Figma MCP Server]: https://github.com/GLips/Figma-Context-MCP
 [Figma API]: https://www.figma.com/developers/api
 [Editing Text in Images with AI]: https://medium.com/data-science/editing-text-in-images-with-ai-03dee75d8b9c
+[CSS filter]: https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/filter
+[Pixi.js filters]: https://github.com/pixijs/filters
+[whatfontis]: https://www.whatfontis.com/API-identify-fonts-from-image.html#font_Examples_good
+[Match fonts]: https://helpx.adobe.com/photoshop/desktop/text-typography/select-manage-fonts/match-fonts.html
+[FLUX-Text: A Simple and Advanced Diffusion Transformer Baseline for Scene Text Editing]: https://arxiv.org/pdf/2505.03329
+[TextStyleBrush: Transfer of Text Aesthetics from a Single Example]: https://arxiv.org/pdf/2106.08385
+[Move Anything with Layered Scene Diffusion]: https://openaccess.thecvf.com/content/CVPR2024/papers/Ren_Move_Anything_with_Layered_Scene_Diffusion_CVPR_2024_paper.pdf

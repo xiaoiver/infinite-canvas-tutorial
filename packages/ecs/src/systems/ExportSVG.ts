@@ -36,6 +36,7 @@ import {
   Line,
   LockAspectRatio,
   AABB,
+  Filter,
 } from '../components';
 import { DOMAdapter } from '../environment';
 import {
@@ -115,6 +116,7 @@ export class ExportSVG extends System {
             TextDecoration,
             Marker,
             LockAspectRatio,
+            Filter,
           )
           .read.and.using(Screenshot, VectorScreenshotRequest).write,
     );

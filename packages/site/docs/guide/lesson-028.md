@@ -36,7 +36,13 @@ Based on Shaders, common image processing effects can be achieved, such as Gauss
 
 ![Adjust in Photoshop Web](/adjust-ps-web.png)
 
+For more effects, see: [Paper Shaders].
+
+In implementation, [Pixi.js filters] calculate the application area based on the object's bounding box, render the object onto a temporary render texture, and then apply shader effects to that texture.
+
 ### Brightness {#brightness}
+
+We can use the [CSS filter] syntax, for example `filter: brightness(0.4);`
 
 ## Integrating Models {#client-sdk}
 
@@ -62,6 +68,29 @@ The image edit API also accepts a set of image URLs as parameters. Even when pas
 ### Chatbox {#chatbox}
 
 The chat box provides another starting point beyond the canvas.
+
+### Remove background {#remove-background}
+
+Double click image to enter edit mode:
+
+```ts
+private async removeBackground() {
+    this.removingBackground = true;
+    const { images } = await createOrEditImage(
+        true,
+        'Remove background from the image',
+        [this.node.fill],
+    );
+    if (images.length > 0) {
+        this.api.runAtNextTick(() => {
+        this.api.updateNode(newImage, { fill: images[0].url });
+
+        this.api.record();
+        this.removingBackground = false;
+        });
+    }
+}
+```
 
 ## Inpainting {#inpainting}
 
@@ -120,7 +149,25 @@ Currently, GPT 4o only supports three fixed sizes, while Nano banana needs some 
 
 ## Layer separation {#layer-separation}
 
-[Editing Text in Images with AI]: https://medium.com/data-science/editing-text-in-images-with-ai-03dee75d8b9c
+[Editing Text in Images with AI]
+
+### Font recognition {#font-recognition}
+
+Adobe Photoshop provides [Match fonts]:
+
+![Select a font from the list of similar fonts in the Match Fonts dialog box](https://helpx-prod.scene7.com/is/image/HelpxProd/A-sample-document-showing-an-image-with-the-text-s?$pjpeg$&jpegSize=300&wid=1600)
+
+[whatfontis] provides a public API that matches the closest font in its font library to a specified area within an image.
+
+```json
+[
+    {
+        "title": "Abril Fatface",
+        "url": "https://www.whatfontis.com/FF_Abril-Fatface.font",
+        "image": "https://www.whatfontis.com/img16/A/B/FF_Abril-FatfaceA.png"
+    }
+]
+```
 
 ## MCP
 
@@ -146,3 +193,7 @@ Currently, GPT 4o only supports three fixed sizes, while Nano banana needs some 
 [Figma MCP Server]: https://github.com/GLips/Figma-Context-MCP
 [Figma API]: https://www.figma.com/developers/api
 [Editing Text in Images with AI]: https://medium.com/data-science/editing-text-in-images-with-ai-03dee75d8b9c
+[CSS filter]: https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/filter
+[Pixi.js filters]: https://github.com/pixijs/filters
+[whatfontis]: https://www.whatfontis.com/API-identify-fonts-from-image.html#font_Examples_good
+[Match fonts]: https://helpx.adobe.com/photoshop/desktop/text-typography/select-manage-fonts/match-fonts.html

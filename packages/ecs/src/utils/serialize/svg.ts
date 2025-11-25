@@ -270,6 +270,7 @@ export function serializeNodesToSVGElements(
       markerStart,
       markerEnd,
       markerFactor,
+      filter,
       ...rest
     } = restAttributes as SerializedNodeAttributes;
 

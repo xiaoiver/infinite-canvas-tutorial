@@ -178,6 +178,14 @@ export interface RoughAttributes {
   roughPreserveVertices: Rough['preserveVertices'];
 }
 
+export interface FilterAttributes {
+  /**
+   * The filter CSS property applies graphical effects like blur or color shift to an element. Filters are commonly used to adjust the rendering of images.
+   * @see https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/filter
+   */
+  filter: string;
+}
+
 export interface GSerializedNode extends BaseSerializeNode<'g'> {}
 
 export interface EllipseSerializedNode
@@ -186,7 +194,8 @@ export interface EllipseSerializedNode
     Partial<FillAttributes>,
     Partial<StrokeAttributes>,
     Partial<AttenuationAttributes>,
-    Partial<WireframeAttributes> {}
+    Partial<WireframeAttributes>,
+    Partial<FilterAttributes> {}
 
 export interface RectSerializedNode
   extends BaseSerializeNode<'rect'>,
@@ -196,7 +205,8 @@ export interface RectSerializedNode
     Partial<InnerShadowAttributes>,
     Partial<DropShadowAttributes>,
     Partial<AttenuationAttributes>,
-    Partial<WireframeAttributes> {}
+    Partial<WireframeAttributes>,
+    Partial<FilterAttributes> {}
 
 export interface RoughRectSerializedNode
   extends BaseSerializeNode<'rough-rect'>,
@@ -246,7 +256,8 @@ export interface PathSerializedNode
     Partial<StrokeAttributes>,
     Partial<AttenuationAttributes>,
     Partial<WireframeAttributes>,
-    Partial<MarkerAttributes> {}
+    Partial<MarkerAttributes>,
+    Partial<FilterAttributes> {}
 
 export interface TextAttributes
   extends Partial<
