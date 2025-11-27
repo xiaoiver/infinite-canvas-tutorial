@@ -428,11 +428,41 @@ import { motion } from 'motion-v';
 </template>
 ```
 
-### Comments overlay {#comments-overlay}
+## Comments overlay {#comments-overlay}
 
-Figma comments.
+In collaborative editing scenarios, real-time chat and comments are crucial. Within Figma, comment bubbles can be placed anywhere on the canvas. Additionally, at low zoom levels, comments are aggregated to provide an overview of the comment cluster. As the zoom level increases, more granular clusters appear, ultimately revealing the distribution of each individual comment bubble. For details, see: [Guide to comments in Figma].
 
-[Liveblocks Comments]
+![Comments in Figma](https://help.figma.com/hc/article_attachments/31566555250071)
+
+### Data structure {#data-structure}
+
+Next, we'll implement similar functionality based on [Liveblocks Comments]. First, let's examine the data structure: Thread and Comment maintain a one-to-many relationship.
+
+![source: https://liveblocks.io/docs/ready-made-features/comments/concepts#Threads](https://liveblocks.io/_next/image?url=%2Fassets%2Fcomments%2Fcomment-thread-room-relation-dark.jpg&w=1920&q=100)
+
+```ts
+interface Thread {
+    id: string;
+    roomId: string; // liveblocks room
+    createdAt: Date;
+    comments: Comment[];
+    metadata: {
+        x: number; // x position in canvas coordinates
+        y: number;
+    };
+}
+```
+
+### Cluster {#cluster}
+
+In the above point aggregation scenarios, we need to address two key challenges:
+
+1. How to aggregate? Given a point, how do we find all points within a specified radius centered on that point?
+2. After aggregation, given a bounding box (e.g., the current viewport), how do we locate all aggregated features contained within it?
+
+For these two problems (radius & range queries), brute-force traversal of every point is inherently inefficient when dealing with massive point datasets. To achieve efficient search, we must employ spatial indexes.
+
+[kdbush]
 
 ## fractional-indexing
 
@@ -587,3 +617,6 @@ export function sortByFractionalIndex(a: Entity, b: Entity) {
 [Example with perfect-cursors]: /example/perfect-cursors
 [Example with framer-motion]: https://liveblocks.io/examples/overlay-comments/nextjs-comments-overlay
 [Liveblocks Comments]: https://liveblocks.io/docs/ready-made-features/comments
+[framer-motion]: https://www.npmjs.com/package/framer-motion
+[Guide to comments in Figma]: https://help.figma.com/hc/en-us/articles/360039825314-Guide-to-comments-in-Figma
+[kdbush]: https://github.com/mourner/kdbush

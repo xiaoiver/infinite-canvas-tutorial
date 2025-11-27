@@ -368,6 +368,17 @@ export class Penbar extends LitElement {
               </sp-action-button>
             `,
           )}
+          ${when(
+            penbarAll.includes(Pen.COMMENT),
+            () => html`
+              <sp-action-button value="${Pen.COMMENT}">
+                <sp-icon-comment slot="icon"></sp-icon-comment>
+                <sp-tooltip self-managed placement="right">
+                  Comment
+                </sp-tooltip>
+              </sp-action-button>
+            `,
+          )}
         </sp-action-group>
       `,
     );

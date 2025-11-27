@@ -428,11 +428,41 @@ import { motion } from 'motion-v';
 </template>
 ```
 
-### 评论 {#comments-overlay}
+## 评论 {#comments-overlay}
 
-例如 Figma 的评论功能。
+在协同编辑场景下，即时的聊天和评论十分重要。在 Figma 中可以在画布的任意位置留下评论气泡。另外在低缩放等级下采用聚合的方式展示评论集合的概览，而随着缩放等级的提升，将出现更多更小的集合，直至最终每个评论气泡的分布被展示出来。详见：[Guide to comments in Figma]。
 
-[Liveblocks Comments]
+![Comments in Figma](https://help.figma.com/hc/article_attachments/31566555250071)
+
+### 数据结构 {#data-structure}
+
+下面我们基于 [Liveblocks Comments] 实现类似的功能。先来看数据结构，Thread 和 Comment 之间是一对多关系。
+
+![source: https://liveblocks.io/docs/ready-made-features/comments/concepts#Threads](https://liveblocks.io/_next/image?url=%2Fassets%2Fcomments%2Fcomment-thread-room-relation-dark.jpg&w=1920&q=100)
+
+```ts
+interface Thread {
+    id: string;
+    roomId: string; // liveblocks room
+    createdAt: Date;
+    comments: Comment[];
+    metadata: {
+        x: number; // x position in canvas coordinates
+        y: number;
+    };
+}
+```
+
+### 点聚合 {#cluster}
+
+在以上点聚合的场景中，我们有两个问题需要解决：
+
+1. 如何聚合？即给定一个点，以此为圆心，如何找到一定半径范围内所有点？
+2. 聚合完毕后，给定一个包围盒（例如当前视口），如何找到其中包含的聚合后的要素？
+
+对于这两个问题（radius & range query），在海量点数据下，如果使用暴力遍历每个点的方法必然是低效的。为了高效搜索，我们需要使用空间索引。
+
+[kdbush]
 
 ## fractional-indexing
 
@@ -587,3 +617,6 @@ export function sortByFractionalIndex(a: Entity, b: Entity) {
 [Example with perfect-cursors]: /zh/example/perfect-cursors
 [Example with framer-motion]: https://liveblocks.io/examples/overlay-comments/nextjs-comments-overlay
 [Liveblocks Comments]: https://liveblocks.io/docs/ready-made-features/comments
+[framer-motion]: https://www.npmjs.com/package/framer-motion
+[Guide to comments in Figma]: https://help.figma.com/hc/en-us/articles/360039825314-Guide-to-comments-in-Figma
+[kdbush]: https://github.com/mourner/kdbush

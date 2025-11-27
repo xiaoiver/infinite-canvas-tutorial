@@ -17,7 +17,11 @@ export class SetCursor extends System {
       const cursor = entity.read(Cursor);
       const { element } = entity.read(Canvas);
 
-      if (isBrowser && element instanceof HTMLCanvasElement) {
+      if (
+        isBrowser &&
+        element instanceof HTMLCanvasElement &&
+        element.style.cursor !== cursor.value
+      ) {
         element.style.cursor = cursor.value;
       }
     });

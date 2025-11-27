@@ -21,25 +21,9 @@ Recraft 也正在测试聊天框功能。以我的观察，画布与聊天框正
 
 ![Recraft chat](/recraft-chat.png)
 
-本节课中我们会先回顾下传统基于 Shader 后处理的图像处理手段，再结合 Nano banana 丰富我们的图片编辑功能。
+本节课中我们会结合 Nano banana 丰富我们的图片编辑功能。
 
 <WhenCanvasMeetsChat />
-
-## 基于后处理的效果 {#post-processing}
-
-基于 Shader 可以实现常见的图像处理效果，例如高斯模糊、Perlin 噪音、Glitch 等，当然还有最近火热的“液态玻璃”：
-
-![source: https://help.figma.com/hc/en-us/articles/360041488473-Apply-effects-to-layers](/figma-liquid-glass.png)
-
-![Adjust in Photoshop Web](/adjust-ps-web.png)
-
-更多效果详见：[Paper Shaders]。
-
-在实现中，[Pixi.js filters] 会根据对象的包围盒计算应用区域，将对象渲染到一个临时的渲染纹理（render texture）上，然后再对该纹理应用着色器效果。
-
-### Brightness {#brightness}
-
-我们可以使用 [CSS filter] 语法，例如 `filter: brightness(0.4);`
 
 ## 接入模型 {#client-sdk}
 
@@ -200,13 +184,10 @@ Adobe Photoshop 提供了 [Match fonts] 功能：
 [generative-ai]: https://cloud.google.com/vertex-ai/generative-ai/docs/learn/model-versions
 [课程 26 - 选择工具]: /zh/guide/lesson-026#marquee-selection
 [课程 25 - 绘制模式与笔刷]: /zh/guide/lesson-025#brush-mode
-[Paper Shaders]: https://shaders.paper.design/
 [MCP: What It Is and Why It Matters]: https://addyo.substack.com/p/mcp-what-it-is-and-why-it-matters
 [Figma MCP Server]: https://github.com/GLips/Figma-Context-MCP
 [Figma API]: https://www.figma.com/developers/api
 [Editing Text in Images with AI]: https://medium.com/data-science/editing-text-in-images-with-ai-03dee75d8b9c
-[CSS filter]: https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/filter
-[Pixi.js filters]: https://github.com/pixijs/filters
 [whatfontis]: https://www.whatfontis.com/API-identify-fonts-from-image.html#font_Examples_good
 [Match fonts]: https://helpx.adobe.com/photoshop/desktop/text-typography/select-manage-fonts/match-fonts.html
 [FLUX-Text: A Simple and Advanced Diffusion Transformer Baseline for Scene Text Editing]: https://arxiv.org/pdf/2505.03329

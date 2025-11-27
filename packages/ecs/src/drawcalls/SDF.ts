@@ -11,23 +11,18 @@ import {
   CompareFunction,
   TextureUsage,
   BindingsDescriptor,
-  AddressMode,
-  FilterMode,
-  MipmapFilterMode,
   TransparentBlack,
   Texture,
   StencilOp,
   TransparentWhite,
-  Program,
-  RenderPipeline,
-  InputLayout,
   RenderTarget,
+  Bindings,
 } from '@antv/g-device-api';
 import { mat3 } from 'gl-matrix';
 import { Entity } from '@lastolivegames/becsy';
 import { Drawcall, ZINDEX_FACTOR } from './Drawcall';
 import { vert, frag, Location } from '../shaders/sdf';
-import { vert as postProcessingVert } from '../shaders/post-processing/vert';
+import { vert as postProcessingVert } from '../shaders/post-processing/fullscreen';
 import { frag as brightness } from '../shaders/post-processing/brightness';
 import { paddingMat3, parseColor, parseGradient } from '../utils';
 import {
@@ -63,14 +58,10 @@ export class SDF extends Drawcall {
   #uniformBuffer: Buffer;
   #texture: Texture;
 
-  #filterProgram: Program;
-  #filterPipeline: RenderPipeline;
-  #filterInputLayout: InputLayout;
-  #filterVertexBuffer: Buffer;
-  #filterTexture: Texture;
-  #filterRenderTarget: RenderTarget;
-  #filterTextureWidth: number;
-  #filterTextureHeight: number;
+  #inputRenderTarget: RenderTarget;
+  #prePassBindings: Bindings;
+  #inputRenderTargetWidth: number;
+  #inputRenderTargetHeight: number;
 
   static useDash(shape: Entity) {
     const { dasharray } = shape.has(Stroke)
@@ -300,6 +291,8 @@ export class SDF extends Drawcall {
     });
     this.device.setResourceName(this.pipeline, 'SDFPipeline');
 
+    const hasFilter = this.shapes[0].has(Filter);
+
     const bindings: BindingsDescriptor = {
       pipeline: this.pipeline,
       uniformBufferBindings: [
@@ -321,7 +314,10 @@ export class SDF extends Drawcall {
 
       const instance = this.shapes[0];
 
-      if (instance.has(Filter)) {
+      let outputTexture: Texture;
+      let outputRenderTarget: RenderTarget;
+
+      if (hasFilter) {
         let width = 0;
         let height = 0;
         if (this.shapes[0].has(Rect)) {
@@ -331,129 +327,101 @@ export class SDF extends Drawcall {
           width = maxX - minX;
           height = maxY - minY;
         }
-        this.#filterTextureWidth = width;
-        this.#filterTextureHeight = height;
-        this.#filterTexture = this.device.createTexture({
+        this.#inputRenderTargetWidth = width;
+        this.#inputRenderTargetHeight = height;
+
+        const inputTexture = this.device.createTexture({
           format: Format.U8_RGBA_NORM,
           width,
           height,
           usage: TextureUsage.RENDER_TARGET,
         });
+        this.#inputRenderTarget =
+          this.device.createRenderTargetFromTexture(inputTexture);
 
-        this.#filterRenderTarget = this.device.createRenderTargetFromTexture(
-          this.#filterTexture,
+        const { texture, renderTarget } = this.createPostProcessing(
+          postProcessingVert,
+          brightness,
+          inputTexture,
+          width,
+          height,
         );
-
-        const diagnosticDerivativeUniformityHeader =
-          this.device.queryVendorInfo().platformString === 'WebGPU'
-            ? 'diagnostic(off,derivative_uniformity);\n'
-            : '';
-
-        this.#filterProgram = this.renderCache.createProgram({
-          vertex: {
-            glsl: postProcessingVert,
-          },
-          fragment: {
-            glsl: brightness,
-            postprocess: (fs) => diagnosticDerivativeUniformityHeader + fs,
-          },
-        });
-
-        this.#filterVertexBuffer = this.device.createBuffer({
-          viewOrSize: new Float32Array([
-            0, 0.5, -1, -1, -0.5, -0.5, -1, 1, 0.5, -0.5, 1, 1,
-          ]),
-          usage: BufferUsage.VERTEX,
-          hint: BufferFrequencyHint.DYNAMIC,
-        });
-
-        this.#filterInputLayout = this.device.createInputLayout({
-          vertexBufferDescriptors: [
-            {
-              arrayStride: 4 * 4,
-              stepMode: VertexStepMode.VERTEX,
-              attributes: [
-                {
-                  shaderLocation: 0,
-                  offset: 0,
-                  format: Format.F32_RG,
-                },
-                {
-                  shaderLocation: 1,
-                  offset: 4 * 2,
-                  format: Format.F32_RG,
-                },
-              ],
-            },
-          ],
-          indexBufferFormat: null,
-          program: this.#filterProgram,
-        });
-
-        this.#filterPipeline = this.device.createRenderPipeline({
-          inputLayout: this.#filterInputLayout,
-          program: this.#filterProgram,
-          colorAttachmentFormats: [Format.U8_RGBA_NORM],
-        });
-
-        this.#texture = this.#filterTexture;
-      } else {
-        if (instance.has(FillGradient) || instance.has(FillPattern)) {
-          const { minX, minY, maxX, maxY } =
-            instance.read(ComputedBounds).geometryBounds;
-          const width = maxX - minX;
-          const height = maxY - minY;
-
-          const canvas = instance.has(FillPattern)
-            ? this.texturePool.getOrCreatePattern({
-                pattern: instance.read(FillPattern),
-                width,
-                height,
-              })
-            : this.texturePool.getOrCreateGradient({
-                gradients: parseGradient(instance.read(FillGradient).value),
-                min: [minX, minY],
-                width,
-                height,
-              });
-          const texture = this.device.createTexture({
-            format: Format.U8_RGBA_NORM,
-            width: 128,
-            height: 128,
-            usage: TextureUsage.SAMPLED,
-          });
-          texture.setImageData([canvas]);
-          this.#texture = texture;
-        } else if (instance.has(FillTexture)) {
-          this.#texture = instance.read(FillTexture).value;
-        } else if (instance.has(FillImage)) {
-          const src = instance.read(FillImage).src as ImageBitmap;
-          const texture = this.device.createTexture({
-            format: Format.U8_RGBA_NORM,
-            width: src.width,
-            height: src.height,
-            usage: TextureUsage.SAMPLED,
-          });
-          texture.setImageData([src]);
-          this.#texture = texture;
-        }
+        outputTexture = texture;
+        outputRenderTarget = renderTarget;
       }
 
-      const sampler = this.renderCache.createSampler({
-        addressModeU: AddressMode.CLAMP_TO_EDGE,
-        addressModeV: AddressMode.CLAMP_TO_EDGE,
-        minFilter: FilterMode.POINT,
-        magFilter: FilterMode.BILINEAR,
-        mipmapFilter: MipmapFilterMode.LINEAR,
-        lodMinClamp: 0,
-        lodMaxClamp: 0,
-      });
+      if (instance.has(FillGradient) || instance.has(FillPattern)) {
+        const { minX, minY, maxX, maxY } =
+          instance.read(ComputedBounds).geometryBounds;
+        const width = maxX - minX;
+        const height = maxY - minY;
+
+        const canvas = instance.has(FillPattern)
+          ? this.texturePool.getOrCreatePattern({
+              pattern: instance.read(FillPattern),
+              width,
+              height,
+            })
+          : this.texturePool.getOrCreateGradient({
+              gradients: parseGradient(instance.read(FillGradient).value),
+              min: [minX, minY],
+              width,
+              height,
+            });
+        const texture = this.device.createTexture({
+          format: Format.U8_RGBA_NORM,
+          width: 128,
+          height: 128,
+          usage: TextureUsage.SAMPLED,
+        });
+        texture.setImageData([canvas]);
+        this.#texture = texture;
+      } else if (instance.has(FillTexture)) {
+        this.#texture = instance.read(FillTexture).value;
+      } else if (instance.has(FillImage)) {
+        const src = instance.read(FillImage).src as ImageBitmap;
+        const texture = this.device.createTexture({
+          format: Format.U8_RGBA_NORM,
+          width: src.width,
+          height: src.height,
+          usage: TextureUsage.SAMPLED,
+        });
+        texture.setImageData([src]);
+        this.#texture = texture;
+      }
+
       bindings.samplerBindings = [
         {
-          texture: this.#texture,
-          sampler,
+          texture: outputTexture ?? this.#texture,
+          sampler: this.createSampler(),
         },
       ];
+
+      if (hasFilter) {
+        const bindings: BindingsDescriptor = {
+          pipeline: this.pipeline,
+          uniformBufferBindings: [
+            {
+              buffer: uniformBuffer,
+            },
+          ],
+        };
+        if (!this.instanced) {
+          bindings.uniformBufferBindings!.push({
+            buffer: this.#uniformBuffer,
+          });
+        }
+        if (this.#texture) {
+          bindings.samplerBindings = [
+            {
+              texture: this.#texture,
+              sampler: this.createSampler(),
+            },
+          ];
+        }
+
+        this.#prePassBindings = this.renderCache.createBindings(bindings);
+      }
     }
 
     this.bindings = this.renderCache.createBindings(bindings);
@@ -468,7 +436,7 @@ export class SDF extends Drawcall {
     if (this.instanced) {
       const instancedData: number[] = [];
       this.shapes.forEach((shape, i, total) => {
-        const [buffer] = this.generateBuffer(shape, i, total.length);
+        const [buffer] = this.generateBuffer(shape, i, total.length, false);
         instancedData.push(...buffer);
       });
       this.vertexBufferDatas[1] = new Float32Array(instancedData);
@@ -498,7 +466,12 @@ export class SDF extends Drawcall {
       );
     } else {
       const { matrix } = this.shapes[0].read(GlobalTransform);
-      const [buffer, legacyObject] = this.generateBuffer(this.shapes[0], 0, 1);
+      const [buffer, legacyObject] = this.generateBuffer(
+        this.shapes[0],
+        0,
+        1,
+        hasFilter,
+      );
       const u_ModelMatrix = [
         matrix.m00,
         matrix.m01,
@@ -535,31 +508,33 @@ export class SDF extends Drawcall {
     }
 
     if (hasFilter) {
-      console.log('filter');
-      const filterRenderPass = this.device.createRenderPass({
-        colorAttachment: [this.#filterRenderTarget],
+      const { width, height } = this.swapChain.getCanvas();
+
+      // Render to input RenderTarget
+      const prePassRenderPass = this.device.createRenderPass({
+        colorAttachment: [this.#inputRenderTarget],
         colorResolveTo: [null],
         colorClearColor: [TransparentWhite],
         colorStore: [true],
         depthStencilAttachment: null,
         depthStencilResolveTo: null,
       });
-      // this.program.setUniformsLegacy(sceneUniformLegacyObject);
-      filterRenderPass.setViewport(
-        0,
-        0,
-        this.#filterTextureWidth,
-        this.#filterTextureHeight,
-      );
-      filterRenderPass.setPipeline(this.#filterPipeline);
-      filterRenderPass.setVertexInput(
-        this.#filterInputLayout,
-        [{ buffer: this.#filterVertexBuffer }],
-        null,
-      );
-      filterRenderPass.draw(3);
-      this.device.submitPass(filterRenderPass);
-      const { width, height } = this.swapChain.getCanvas();
+      prePassRenderPass.setViewport(0, 0, width, height);
+      this.program.setUniformsLegacy(sceneUniformLegacyObject);
+      prePassRenderPass.setPipeline(this.pipeline);
+      const vertexBuffers = this.vertexBuffers.map((buffer) => ({ buffer }));
+      if (this.useWireframe) {
+        vertexBuffers.push({ buffer: this.barycentricBuffer });
+      }
+      prePassRenderPass.setVertexInput(this.inputLayout, vertexBuffers, {
+        buffer: this.indexBuffer,
+      });
+      prePassRenderPass.setBindings(this.#prePassBindings);
+      prePassRenderPass.drawIndexed(6, this.shapes.length);
+      this.device.submitPass(prePassRenderPass);
+
+      this.renderPostProcessing();
+
       renderPass.setViewport(0, 0, width, height);
     }
 
@@ -591,6 +566,7 @@ export class SDF extends Drawcall {
     shape: Entity,
     index: number,
     total: number,
+    usePostProcessing: boolean,
   ): [number[], Record<string, unknown>] {
     const globalRenderOrder = shape.has(GlobalRenderOrder)
       ? shape.read(GlobalRenderOrder).value
@@ -676,7 +652,12 @@ export class SDF extends Drawcall {
       type;
     const u_Opacity = [opacity, fillOpacity, strokeOpacity, compressed];
     const u_InnerShadowColor = [isr / 255, isg / 255, isb / 255, iso];
-    const u_InnerShadow = [offsetX, offsetY, blurRadius, 0];
+    const u_InnerShadow = [
+      offsetX,
+      offsetY,
+      blurRadius,
+      usePostProcessing ? 1 : 0,
+    ];
 
     return [
       [

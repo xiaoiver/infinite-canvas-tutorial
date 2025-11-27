@@ -24,25 +24,9 @@ Recraft is also testing chat functionality. In my observation, canvas and chat a
 
 ![Recraft chat](/recraft-chat.png)
 
-In this lesson, we'll first review traditional image processing methods based on Shader post-processing, then combine with Nano banana to enrich our image editing functionality.
+In this lesson, we'll combine with Nano banana to enrich our image editing functionality.
 
 <WhenCanvasMeetsChat />
-
-## Post-processing Effects {#post-processing}
-
-Based on Shaders, common image processing effects can be achieved, such as Gaussian blur, Perlin noise, Glitch, and of course, the recently popular "liquid glass":
-
-![source: https://help.figma.com/hc/en-us/articles/360041488473-Apply-effects-to-layers](/figma-liquid-glass.png)
-
-![Adjust in Photoshop Web](/adjust-ps-web.png)
-
-For more effects, see: [Paper Shaders].
-
-In implementation, [Pixi.js filters] calculate the application area based on the object's bounding box, render the object onto a temporary render texture, and then apply shader effects to that texture.
-
-### Brightness {#brightness}
-
-We can use the [CSS filter] syntax, for example `filter: brightness(0.4);`
 
 ## Integrating Models {#client-sdk}
 
@@ -149,9 +133,22 @@ Currently, GPT 4o only supports three fixed sizes, while Nano banana needs some 
 
 ## Layer separation {#layer-separation}
 
-[Editing Text in Images with AI]
+-   [Editing Text in Images with AI]
+-   [Move Anything with Layered Scene Diffusion]
+
+### Split background and text {#split-background-text}
+
+First, use an OCR-like tool to identify text regions and generate a mask. Then, remove the mask and have the model regenerate the image through a standard inpainting process to obtain a background image without text.
+
+[FLUX-Text: A Simple and Advanced Diffusion Transformer Baseline for Scene Text Editing]
+
+![text editing with flux-text](/flux-text.png)
 
 ### Font recognition {#font-recognition}
+
+Next, we need to identify the style attributes such as font and font size within the text area.
+
+[TextStyleBrush: Transfer of Text Aesthetics from a Single Example]
 
 Adobe Photoshop provides [Match fonts]:
 
@@ -169,13 +166,15 @@ Adobe Photoshop provides [Match fonts]:
 ]
 ```
 
+Finally, overlay all the layers.
+
 ## MCP
 
 [MCP: What It Is and Why It Matters]：
 
 > Instead of only having a GUI or API that humans use, you get an AI interface “for free.” This idea has led to the concept of “MCP-first development”, where you build the MCP server for your app before or alongside the GUI.
 
-[Figma MCP Server] 可以操作 [Figma API]
+[Figma MCP Server] can manipulate [Figma API].
 
 [Lesson 21 - Transformer]: /guide/lesson-021
 [UI for AI]: https://medium.com/ui-for-ai
@@ -188,12 +187,12 @@ Adobe Photoshop provides [Match fonts]:
 [generative-ai]: https://cloud.google.com/vertex-ai/generative-ai/docs/learn/model-versions
 [Lesson 26 - Selection tool]: /guide/lesson-026#marquee-selection
 [Lesson 25 - Drawing mode and brush]: /guide/lesson-025#brush-mode
-[Paper Shaders]: https://shaders.paper.design/
 [MCP: What It Is and Why It Matters]: https://addyo.substack.com/p/mcp-what-it-is-and-why-it-matters
 [Figma MCP Server]: https://github.com/GLips/Figma-Context-MCP
 [Figma API]: https://www.figma.com/developers/api
 [Editing Text in Images with AI]: https://medium.com/data-science/editing-text-in-images-with-ai-03dee75d8b9c
-[CSS filter]: https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/filter
-[Pixi.js filters]: https://github.com/pixijs/filters
 [whatfontis]: https://www.whatfontis.com/API-identify-fonts-from-image.html#font_Examples_good
 [Match fonts]: https://helpx.adobe.com/photoshop/desktop/text-typography/select-manage-fonts/match-fonts.html
+[FLUX-Text: A Simple and Advanced Diffusion Transformer Baseline for Scene Text Editing]: https://arxiv.org/pdf/2505.03329
+[TextStyleBrush: Transfer of Text Aesthetics from a Single Example]: https://arxiv.org/pdf/2106.08385
+[Move Anything with Layered Scene Diffusion]: https://openaccess.thecvf.com/content/CVPR2024/papers/Ren_Move_Anything_with_Layered_Scene_Diffusion_CVPR_2024_paper.pdf

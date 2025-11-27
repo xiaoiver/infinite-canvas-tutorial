@@ -95,6 +95,7 @@ void main() {
   float strokeWidth;
   float strokeAlignment;
   float shapeSizeAttenuation;
+  float usePostProcessing;
 
   #ifdef USE_INSTANCES
     model = mat3(a_Abcd.x, a_Abcd.y, 0, a_Abcd.z, a_Abcd.w, 0, a_Txty.x, a_Txty.y, 1);
@@ -125,6 +126,7 @@ void main() {
     strokeWidth = u_ZIndexStrokeWidth.y;
     strokeAlignment = u_ZIndexStrokeWidth.w;
     shapeSizeAttenuation = u_Opacity.w;
+    usePostProcessing = u_InnerShadow.w;
   #endif
  
   float compressed = shapeSizeAttenuation;
@@ -157,10 +159,17 @@ void main() {
     v_Uv = (a_FragCoord * radius / size + 1.0) / 2.0;
   #endif
 
-  gl_Position = vec4((u_ProjectionMatrix 
-    * u_ViewMatrix
-    * model 
-    * vec3(position.xy + v_FragCoord * scale, 1)).xy, zIndex, 1);
+  // if (usePostProcessing > 0.5) {
+  //   gl_Position = vec4((u_ProjectionMatrix 
+  //     * u_ViewMatrix
+  //     * model 
+  //     * vec3(position.xy + v_FragCoord * scale, 1)).xy, zIndex, 1);
+  // } else {
+    gl_Position = vec4((u_ProjectionMatrix 
+      * u_ViewMatrix
+      * model 
+      * vec3(position.xy + v_FragCoord * scale, 1)).xy, zIndex, 1);
+  // }
 }
 `;
 

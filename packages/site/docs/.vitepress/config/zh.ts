@@ -79,6 +79,7 @@ export const zh = defineConfig({
               { text: '课程27 - 吸附与对齐', link: 'lesson-027' },
               { text: '课程28 - 与 AI 结合', link: 'lesson-028' },
               { text: '课程29 - 嵌入 HTML 内容', link: 'lesson-029' },
+              { text: '课程30 - 后处理与渲染图', link: 'lesson-030' },
             ],
           },
         ],

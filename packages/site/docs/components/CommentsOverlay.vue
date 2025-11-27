@@ -87,6 +87,15 @@ let cursors: Ref<Record<string, {
 let unsubscribeMyPresence: () => void;
 let unsubscribeOthers: () => void;
 
+const __getUsersFromDB__ = async (userIds: string[]) => {
+  console.log(userIds);
+
+  return [
+    { name: "Marc", avatar: "https://example.com/marc.png" },
+    { name: "Nimesh", avatar: "https://example.com/nimesh.png" },
+  ];
+};
+
 onMounted(async () => {
   const canvas = wrapper.value;
   if (!canvas) {
@@ -96,8 +105,17 @@ onMounted(async () => {
   const client = createClient({
     // throttle: 16,
     publicApiKey: 'pk_dev_MYcFNShiwPwRDvuvhklopMg6SAkdASzz6QrOMQIlu86NkcuXVNxP06aXrxi9qo7M',
+    // @see https://liveblocks.io/docs/api-reference/liveblocks-client#createClientResolveUsers
+    resolveUsers: async ({ userIds }) => {
+      const usersData = await __getUsersFromDB__(userIds);
+
+      return usersData.map((userData) => ({
+        name: userData.name,
+        avatar: userData.avatar,
+      }));
+    },
   });
-  const { room: roomInstance, leave } = client.enterRoom('my-room-id', {
+  const { room: roomInstance, leave } = client.enterRoom('my-comments-room-id', {
     initialPresence: { cursor: null },
   });
   room = roomInstance;

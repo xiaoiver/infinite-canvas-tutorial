@@ -275,9 +275,9 @@ pnpm run dev
 | :--------------------------------------------------------------: | :----------------------------------------------------: |
 | ![BroadcastChannel with Loro or Yjs](./screenshots/lesson20.gif) | ![Liveblocks as backend](./screenshots/lesson20-2.gif) |
 
-|                       多人光标                       | 多人评论 |
-| :--------------------------------------------------: | :------: |
-| ![Multiplayer cursors](./screenshots/lesson20-3.gif) |          |
+|                       多人光标                       |                 多人评论                  |
+| :--------------------------------------------------: | :---------------------------------------: |
+| ![Multiplayer cursors](./screenshots/lesson20-3.gif) | ![Comments](./screenshots/lesson20-4.png) |
 
 ## 课程 21 - Transformer [🔗](https://infinitecanvas.cc/zh/guide/lesson-021)
 

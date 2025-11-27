@@ -56,7 +56,7 @@ export type CursorValue =
 export class Cursor {
   @field.ref declare canvas: Entity;
 
-  @field({ type: Type.dynamicString(2000), default: 'default' }) declare value:
+  @field({ type: Type.object, default: 'default' }) declare value:
     | CursorValue
     | string;
 

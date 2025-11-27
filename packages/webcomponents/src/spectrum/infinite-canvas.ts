@@ -10,7 +10,6 @@ import {
 } from '@infinite-canvas-tutorial/ecs';
 
 import { apiContext, appStateContext, nodesContext } from '../context';
-import { checkWebGPUSupport } from '../utils';
 import { pendingCanvases } from '../API';
 
 import '@spectrum-web-components/theme/sp-theme.js';
@@ -87,6 +86,7 @@ import '@spectrum-web-components/icons-workflow/icons/sp-icon-chat.js';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-send.js';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-find-and-replace.js';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-polygon-select.js';
+import '@spectrum-web-components/icons-workflow/icons/sp-icon-comment.js';
 
 export const TOP_NAVBAR_HEIGHT = 48;
 
@@ -197,10 +197,10 @@ export class InfiniteCanvas extends LitElement {
   }
 
   private initCanvas = new Task(this, {
-    task: async ([renderer, shaderCompilerPath]) => {
-      if (renderer === 'webgpu') {
-        await checkWebGPUSupport();
-      }
+    task: ([renderer, shaderCompilerPath]) => {
+      // if (renderer === 'webgpu') {
+      //   await checkWebGPUSupport();
+      // }
 
       this.appStateProvider.value = {
         ...getDefaultAppState(),
@@ -296,7 +296,12 @@ export class InfiniteCanvas extends LitElement {
               style=${`top: ${
                 topbarVisible ? TOP_NAVBAR_HEIGHT : 0
               }px; left: 0;`}
-            ></ic-spectrum-text-editor>`,
+            ></ic-spectrum-text-editor>
+            <ic-spectrum-comments
+              style=${`top: ${
+                topbarVisible ? TOP_NAVBAR_HEIGHT : 0
+              }px; left: 0;`}
+            ></ic-spectrum-comments>`,
         ),
       error: (e: Error) => {
         console.error(e);

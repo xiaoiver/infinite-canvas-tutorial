@@ -16,6 +16,7 @@ import {
   RenderSnap,
 } from '@infinite-canvas-tutorial/ecs';
 import {
+  Comment,
   DownloadScreenshot,
   InitCanvas,
   ListenTransformableStatus,
@@ -37,6 +38,12 @@ export const UIPlugin: Plugin = () => {
   });
   Object.defineProperty(DownloadScreenshot, 'name', {
     value: 'DownloadScreenshot',
+  });
+  Object.defineProperty(ListenTransformableStatus, 'name', {
+    value: 'ListenTransformableStatus',
+  });
+  Object.defineProperty(Comment, 'name', {
+    value: 'Comment',
   });
 
   system((s) => s.after(PreStartUp).before(ZoomLevel).beforeWritersOf(Canvas))(
@@ -60,4 +67,5 @@ export const UIPlugin: Plugin = () => {
   )(ZoomLevel);
   system((s) => s.before(PreStartUp))(DownloadScreenshot);
   system(PreStartUp)(ListenTransformableStatus);
+  system(PreStartUp)(Comment);
 };

@@ -763,6 +763,7 @@ export function exportRough(
 -   [WebGL 3D Geometry - Lathe]
 -   [Fun with WebGL 2.0 : 027 : Bezier Curves in 3D]
 -   [GPU-accelerated Path Rendering]
+-   [Making plot sketchy]
 
 [Paths]: https://developer.mozilla.org/en-US/docs/Web/SVG/Tutorial/Paths
 [Quadratic Bezier - distance 2D]: https://www.shadertoy.com/view/MlKcDD
@@ -803,3 +804,4 @@ export function exportRough(
 [fill-rule]: https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/fill-rule
 [how does fill-rule="evenodd" work on a star SVG]: https://stackoverflow.com/a/46145333/4639324
 [Triangulation By Ear Clipping]: https://www.geometrictools.com/Documentation/TriangulationByEarClipping.pdf
+[Making plot sketchy]: https://observablehq.com/@jwolondon/making-plot-sketchy

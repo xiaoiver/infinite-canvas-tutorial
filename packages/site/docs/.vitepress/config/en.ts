@@ -131,6 +131,10 @@ export const en = defineConfig({
                 text: 'Lesson 029 - Embedding HTML content',
                 link: 'lesson-029',
               },
+              {
+                text: 'Lesson 030 - Post-processing and render graph',
+                link: 'lesson-030',
+              },
             ],
           },
         ],

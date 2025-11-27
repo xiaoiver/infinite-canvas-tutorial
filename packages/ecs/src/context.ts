@@ -134,6 +134,7 @@ export const getDefaultAppState: () => AppState = () => {
       Pen.PENCIL,
       Pen.BRUSH,
       Pen.VECTOR_NETWORK,
+      Pen.COMMENT,
     ],
     penbarSelected: Pen.HAND,
     penbarDrawRect: {
