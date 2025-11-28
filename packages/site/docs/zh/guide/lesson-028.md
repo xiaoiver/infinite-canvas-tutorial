@@ -133,6 +133,26 @@ private async removeBackground() {
 -   [Editing Text in Images with AI]
 -   [Move Anything with Layered Scene Diffusion]
 
+### 矢量化 {#raster-to-vector}
+
+很多在线和开源工具提供了基于传统图像处理的方案：
+
+-   Recraft [AI image vectorizer]
+-   Lottiefiles [Raster to Vector converter]
+-   [vtracer]
+
+但这种方案对于文本处理效果并不好：
+
+![Raster to vector in lottiefiles. source: https://lottiefiles.com/tools/raster-to-vector](/lottiefiles-raster-vector.png)
+
+原因是该算法通常分成以下几个阶段，第一阶段并不会区分文本和适合矢量化的图形：
+
+1. "Path walking" 将像素转换成 Path
+2. 将 Path 简化成 polygon
+3. 尝试对 polygon 进行平滑操作
+
+![source: https://www.visioncortex.org/vtracer-docs#path-walking](https://www.visioncortex.org/public/vtracer/WalkerOptim.svg)
+
 ### 分离背景与文字 {#split-background-text}
 
 首先使用 OCR 类工具识别文字区域，并生成 mask。然后去除掉 mask 让模型重新生成图片，进行常规的 inpainting 流程，就得到了不带文字的背景图片。
@@ -193,3 +213,6 @@ Adobe Photoshop 提供了 [Match fonts] 功能：
 [FLUX-Text: A Simple and Advanced Diffusion Transformer Baseline for Scene Text Editing]: https://arxiv.org/pdf/2505.03329
 [TextStyleBrush: Transfer of Text Aesthetics from a Single Example]: https://arxiv.org/pdf/2106.08385
 [Move Anything with Layered Scene Diffusion]: https://openaccess.thecvf.com/content/CVPR2024/papers/Ren_Move_Anything_with_Layered_Scene_Diffusion_CVPR_2024_paper.pdf
+[Raster to Vector converter]: https://lottiefiles.com/tools/raster-to-vector
+[AI image vectorizer]: https://www.recraft.ai/ai-image-vectorizer
+[vtracer]: https://github.com/visioncortex/vtracer

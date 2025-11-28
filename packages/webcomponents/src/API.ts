@@ -9,6 +9,29 @@ import {
 import { type LitElement } from 'lit';
 import { Event } from './event';
 
+export interface Comment {
+  type: 'comment';
+  threadId: string;
+  id: string;
+  roomId: string;
+  userId: string;
+  createdAt: Date;
+  editedAt: Date;
+  text: string;
+}
+
+export interface Thread {
+  type: 'thread';
+  id: string;
+  roomId: string;
+  createdAt: Date;
+  comments: Comment[];
+  metadata: {
+    x: number;
+    y: number;
+  };
+}
+
 /**
  * Since the canvas is created in the system, we need to store them here for later use.
  */
@@ -100,5 +123,18 @@ export class ExtendedAPI extends API {
   destroy() {
     super.destroy();
     this.element.dispatchEvent(new CustomEvent(Event.DESTROY));
+  }
+
+  /**
+   * Threads and comments
+   * @see https://liveblocks.io/docs/ready-made-features/comments
+   */
+
+  #threads: Thread[] = [];
+  setThreads(threads: Thread[]) {
+    this.#threads = threads;
+  }
+  getThreads() {
+    return this.#threads;
   }
 }

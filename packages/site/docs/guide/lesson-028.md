@@ -136,6 +136,26 @@ Currently, GPT 4o only supports three fixed sizes, while Nano banana needs some 
 -   [Editing Text in Images with AI]
 -   [Move Anything with Layered Scene Diffusion]
 
+### Raster to vector {#raster-to-vector}
+
+Many online and open-source tools offer solutions based on traditional image processing:
+
+-   Recraft [AI image vectorizer]
+-   Lottiefiles [Raster to Vector converter]
+-   [vtracer]
+
+However, this approach does not yield satisfactory results for text processing:
+
+![Raster to vector in lottiefiles. source: https://lottiefiles.com/tools/raster-to-vector](/lottiefiles-raster-vector.png)
+
+The reason is that this algorithm is typically divided into the following stages, with the first stage not distinguishing between text and graphics suitable for vectorization:
+
+1. “Path walking” converts pixels into paths
+2. Paths are simplified into polygons
+3. Attempts are made to smooth the polygons
+
+![source: https://www.visioncortex.org/vtracer-docs#path-walking](https://www.visioncortex.org/public/vtracer/WalkerOptim.svg)
+
 ### Split background and text {#split-background-text}
 
 First, use an OCR-like tool to identify text regions and generate a mask. Then, remove the mask and have the model regenerate the image through a standard inpainting process to obtain a background image without text.
@@ -196,3 +216,6 @@ Finally, overlay all the layers.
 [FLUX-Text: A Simple and Advanced Diffusion Transformer Baseline for Scene Text Editing]: https://arxiv.org/pdf/2505.03329
 [TextStyleBrush: Transfer of Text Aesthetics from a Single Example]: https://arxiv.org/pdf/2106.08385
 [Move Anything with Layered Scene Diffusion]: https://openaccess.thecvf.com/content/CVPR2024/papers/Ren_Move_Anything_with_Layered_Scene_Diffusion_CVPR_2024_paper.pdf
+[Raster to Vector converter]: https://lottiefiles.com/tools/raster-to-vector
+[AI image vectorizer]: https://www.recraft.ai/ai-image-vectorizer
+[vtracer]: https://github.com/visioncortex/vtracer

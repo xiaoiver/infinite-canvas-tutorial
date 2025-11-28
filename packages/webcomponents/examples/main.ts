@@ -323,6 +323,33 @@ canvas.addEventListener(Event.READY, async (e) => {
   api.updateNodes(nodes);
   // api.selectNodes([nodes[0]]);
 
+  const threadId = `${Date.now()}`;
+  const commentId = `${Date.now()}`;
+  api.setThreads([
+    {
+      type: 'thread',
+      id: threadId,
+      roomId: 'my-room-id',
+      createdAt: new Date(),
+      comments: [
+        {
+          type: 'comment',
+          threadId,
+          id: commentId,
+          roomId: 'my-room-id',
+          userId: 'alicia@example.com',
+          createdAt: new Date(),
+          editedAt: new Date(),
+          text: 'Hello, world!',
+        },
+      ],
+      metadata: {
+        x: 500,
+        y: 200,
+      },
+    },
+  ]);
+
   // api.record();
   // });
 });

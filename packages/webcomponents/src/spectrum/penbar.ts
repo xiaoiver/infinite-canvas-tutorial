@@ -2,7 +2,7 @@ import { html, css, LitElement, PropertyValues } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
 import { consume } from '@lit/context';
 import { when } from 'lit/directives/when.js';
-import { Pen, AppState } from '@infinite-canvas-tutorial/ecs';
+import { AppState, Pen } from '@infinite-canvas-tutorial/ecs';
 import { apiContext, appStateContext } from '../context';
 import { ExtendedAPI } from '../API';
 import { fileOpen } from '../utils';
@@ -58,25 +58,33 @@ export class Penbar extends LitElement {
 
   private binded = false;
 
-  protected firstUpdated(_changedProperties: PropertyValues): void {
-    setTimeout(() => {
-      const pen = this.appState.penbarSelected;
-      this.lastDrawPen =
-        pen === Pen.DRAW_RECT ||
-        pen === Pen.DRAW_ELLIPSE ||
-        pen === Pen.DRAW_LINE ||
-        pen === Pen.DRAW_ARROW ||
-        pen === Pen.DRAW_ROUGH_RECT ||
-        pen === Pen.DRAW_ROUGH_ELLIPSE
-          ? pen
-          : Pen.DRAW_RECT;
-    }, 100);
+  private previousPen: Pen;
+  private previousPenbarVisible: boolean;
+
+  shouldUpdate(changedProperties: PropertyValues) {
+    for (const prop of changedProperties.keys()) {
+      if (prop !== 'appState') return true;
+    }
+
+    const newPen = this.appState.penbarSelected;
+    if (newPen !== this.previousPen) {
+      this.previousPen = newPen;
+      return true;
+    }
+
+    const newPenbarVisible = this.appState.penbarVisible;
+    if (newPenbarVisible !== this.previousPenbarVisible) {
+      this.previousPenbarVisible = newPenbarVisible;
+      return true;
+    }
+
+    return false;
   }
 
   private async handlePenChanged(e: CustomEvent) {
     const pen = (e.target as any).selected[0];
 
-    if (!this.appState.penbarAll.includes(pen)) {
+    if (!this.api.getAppState().penbarAll.includes(pen)) {
       return;
     }
 
@@ -104,7 +112,7 @@ export class Penbar extends LitElement {
             x: this.api.element.clientWidth / 2,
             y: this.api.element.clientHeight / 2,
           });
-          createImage(this.api, this.appState, file, center);
+          createImage(this.api, this.api.getAppState(), file, center);
           this.api.setAppState({
             penbarSelected: Pen.SELECT,
           });
@@ -158,13 +166,28 @@ export class Penbar extends LitElement {
   }
 
   render() {
-    // FIXME: wait for the element to be ready.
-    if (this.api?.element && !this.binded) {
-      document.addEventListener('keydown', this.handleKeyDown);
-      this.binded = true;
+    if (!this.api) {
+      return;
     }
 
-    const { penbarAll, penbarSelected, penbarVisible } = this.appState;
+    // FIXME: wait for the element to be ready.
+    if (this.api.element && !this.binded) {
+      document.addEventListener('keydown', this.handleKeyDown);
+      this.binded = true;
+
+      const pen = this.api.getAppState().penbarSelected;
+      this.lastDrawPen =
+        pen === Pen.DRAW_RECT ||
+        pen === Pen.DRAW_ELLIPSE ||
+        pen === Pen.DRAW_LINE ||
+        pen === Pen.DRAW_ARROW ||
+        pen === Pen.DRAW_ROUGH_RECT ||
+        pen === Pen.DRAW_ROUGH_ELLIPSE
+          ? pen
+          : Pen.DRAW_RECT;
+    }
+
+    const { penbarAll, penbarSelected, penbarVisible } = this.api.getAppState();
     return when(
       penbarVisible,
       () => html`

@@ -460,9 +460,70 @@ interface Thread {
 1. 如何聚合？即给定一个点，以此为圆心，如何找到一定半径范围内所有点？
 2. 聚合完毕后，给定一个包围盒（例如当前视口），如何找到其中包含的聚合后的要素？
 
-对于这两个问题（radius & range query），在海量点数据下，如果使用暴力遍历每个点的方法必然是低效的。为了高效搜索，我们需要使用空间索引。
+对于这两个问题（radius & range query），在海量点数据下，如果使用暴力遍历每个点的方法必然是低效的。为了高效搜索，我们需要使用空间索引，例如 [kdbush]。尽管我们不是 GIS 场景，但仍可以参考 [supercluster] 的实现。
 
-[kdbush]
+在点聚合场景中，k-d 树的节点除了原始的 Point 要素，还有聚合生成的点集合要素，后者需要一个聚合后的中心点。这个中心点的数据结构如下：
+
+```ts
+// createPointCluster
+data.push(
+    x,
+    y, // projected point coordinates
+    Infinity, // the last zoom the point was processed at
+    i, // index of the source feature in the original input array
+    -1, // parent cluster id
+    1, // number of points in a cluster
+);
+```
+
+在创建索引阶段，我们需要为每个缩放等级都构建一棵 k-d tree：
+
+```ts
+// supercluster/index.js
+
+// maxZoom 最大缩放等级
+// minZoom 最小缩放等级
+let clusters = [];
+for (let i = 0; i < points.length; i++) {
+    clusters.push(createPointCluster(points[i], i));
+}
+// 创建根 k-d 树
+this.trees[maxZoom + 1] = new KDBush(
+    clusters,
+    getX,
+    getY,
+    nodeSize,
+    Float32Array,
+);
+// 为每个缩放等级创建一棵 k-d 树
+for (let z = maxZoom; z >= minZoom; z--) {
+    // 创建点聚合，后面详细介绍
+    clusters = this._cluster(clusters, z);
+    this.trees[z] = new KDBush(clusters, getX, getY, nodeSize, Float32Array);
+}
+```
+
+聚合一定范围的点需要解决两个问题：
+
+1. 使用 k-d tree 的 radius 查询一定半径内的所有邻居，kdbush 中提供了 within 方法
+2. 使用范围内的点坐标生成聚合点的坐标，权重为每个子集合包含的点数目
+
+```ts
+getClusters(bbox, zoom) {
+// 取得缩放等级对应的 k-d tree
+    const tree = this.trees[this._limitZoom(zoom)];
+// 查询包围盒包含的要素索引数组
+    const ids = tree.range(minX, minY, maxX, maxY);
+    const clusters = [];
+    for (const id of ids) {
+// 通过索引找到 k-d 树节点
+        const c = tree.points[id];
+// 如果该节点是点集合，创建对应的 GeoJSON feature；如果只是单个点，直接返回
+        clusters.push(c.numPoints ? getClusterJSON(c) : this.points[c.index]);
+    }
+    return clusters;
+}
+```
 
 ## fractional-indexing
 

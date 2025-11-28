@@ -1,10 +1,10 @@
-import { html, css, LitElement } from 'lit';
+import { html, css, LitElement, PropertyValues } from 'lit';
 import { customElement } from 'lit/decorators.js';
 import { map } from 'lit/directives/map.js';
 import { when } from 'lit/directives/when.js';
 import { consume } from '@lit/context';
 import { apiContext, appStateContext } from '../context';
-import { Pen, AppState, Task, API } from '@infinite-canvas-tutorial/ecs';
+import { Pen, Task, API, AppState } from '@infinite-canvas-tutorial/ecs';
 
 const TaskMap = {
   [Task.SHOW_LAYERS_PANEL]: {
@@ -58,16 +58,37 @@ export class Taskbar extends LitElement {
   @consume({ context: apiContext, subscribe: true })
   api: API;
 
+  private previousPen: Pen;
+
   private handleTaskChanged(e: CustomEvent) {
     this.api.setAppState({
       taskbarSelected: (e.target as any).selected,
     });
   }
 
+  shouldUpdate(changedProperties: PropertyValues) {
+    for (const prop of changedProperties.keys()) {
+      if (prop !== 'appState') return true;
+    }
+
+    const newPen = this.appState.penbarSelected;
+    if (newPen !== this.previousPen) {
+      this.previousPen = newPen;
+      return true;
+    }
+
+    return false;
+  }
+
   render() {
-    const { taskbarAll, taskbarSelected, taskbarVisible } = this.appState;
+    if (!this.api) {
+      return;
+    }
+
+    const { taskbarAll, taskbarSelected, taskbarVisible, penbarSelected } =
+      this.api.getAppState();
     return when(
-      taskbarVisible && this.appState.penbarSelected !== Pen.HAND,
+      taskbarVisible && penbarSelected !== Pen.HAND,
       () => html`
         <sp-action-group
           class="taskbar"
