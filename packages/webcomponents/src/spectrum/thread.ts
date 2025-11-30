@@ -1,5 +1,6 @@
 import { css, html, LitElement } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
+import { when } from 'lit/directives/when.js';
 
 @customElement('ic-spectrum-thread')
 export class Thread extends LitElement {
@@ -58,15 +59,31 @@ export class Thread extends LitElement {
   @property()
   y: number;
 
+  @property()
+  cluster: any;
+
   render() {
+    const firstComment = this.cluster.comments?.[0];
+
     return html`
       <div
         class="thread"
         style="position: absolute; left: ${this.x}px; top: ${this.y}px;"
       >
-        <div class="avatar">
-          <img src="https://ui-avatars.com/api/?name=Alicia" alt="Avatar" />
-        </div>
+        ${when(
+          firstComment,
+          () =>
+            html`
+              <div class="avatar">
+                <img src=${firstComment.avatar} alt="Avatar" />
+              </div>
+            `,
+        )}
+        ${when(
+          !firstComment,
+          () =>
+            html`<div class="avatar">${this.cluster.properties?.count}</div> `,
+        )}
       </div>
     `;
   }

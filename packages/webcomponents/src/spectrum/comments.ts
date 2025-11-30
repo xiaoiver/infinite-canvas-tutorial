@@ -31,14 +31,18 @@ export class Comments extends LitElement {
   private previousCameraY?: number;
 
   cluster = new Cluster({
-    maxZoom: 4,
+    maxZoom: 16,
   });
 
   private updateClusters() {
     if (this.cluster.points?.length > 0) {
+      const { cameraZoom } = this.api.getAppState();
+      const { minX, minY, maxX, maxY } = this.api.getViewportBounds();
+
+      // Convert [0, 4] to [0, 16]
       this.clusters = this.cluster.getClusters(
-        [-Infinity, -Infinity, Infinity, Infinity],
-        this.api.getAppState().cameraZoom,
+        [minX, minY, maxX, maxY],
+        cameraZoom * 4,
       );
     }
   }
@@ -97,6 +101,7 @@ export class Comments extends LitElement {
             createdAt: new Date(),
             editedAt: new Date(),
             text: 'Hello, world!',
+            avatar: 'https://ui-avatars.com/api/?name=Alicia',
           },
         ],
         metadata: {
@@ -109,7 +114,11 @@ export class Comments extends LitElement {
     this.cluster.load(
       this.api
         .getThreads()
-        .map(({ metadata }) => ({ x: metadata.x, y: metadata.y })),
+        .map(({ metadata, ...rest }) => ({
+          x: metadata.x,
+          y: metadata.y,
+          ...rest,
+        })),
     );
 
     this.updateClusters();
@@ -128,9 +137,11 @@ export class Comments extends LitElement {
       this.binded = true;
 
       this.cluster.load(
-        this.api
-          .getThreads()
-          .map(({ metadata }) => ({ x: metadata.x, y: metadata.y })),
+        this.api.getThreads().map(({ metadata, ...rest }) => ({
+          x: metadata.x,
+          y: metadata.y,
+          ...rest,
+        })),
       );
 
       this.updateClusters();
@@ -146,6 +157,7 @@ export class Comments extends LitElement {
           <ic-spectrum-thread
             x=${viewportPositions[i].x}
             y=${viewportPositions[i].y}
+            .cluster=${cluster}
           ></ic-spectrum-thread>
         `,
       )}

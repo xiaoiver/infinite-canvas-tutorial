@@ -277,7 +277,7 @@ If you want to use it in your own project, you can refer to:
 
 |                 Multiplayer cursors                  |                 Comments                  |
 | :--------------------------------------------------: | :---------------------------------------: |
-| ![Multiplayer cursors](./screenshots/lesson20-3.gif) | ![Comments](./screenshots/lesson20-4.png) |
+| ![Multiplayer cursors](./screenshots/lesson20-3.gif) | ![Comments](./screenshots/lesson20-4.gif) |
 
 ## Lesson 21 - Transformer [🔗](https://infinitecanvas.cc/guide/lesson-021)
 

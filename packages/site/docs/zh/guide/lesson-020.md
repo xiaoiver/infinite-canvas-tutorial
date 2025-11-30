@@ -525,6 +525,18 @@ getClusters(bbox, zoom) {
 }
 ```
 
+### 展示聚合后的评论 {#display-clusters}
+
+按视口范围查询聚合后的点：
+
+```ts
+const { cameraZoom } = this.api.getAppState();
+const { minX, minY, maxX, maxY } = this.api.getViewportBounds();
+this.clusters = this.cluster.getClusters([minX, minY, maxX, maxY], cameraZoom);
+```
+
+![Comments in cluster](/comments-cluster.gif)
+
 ## fractional-indexing
 
 正如前文提到的，场景图可以看作一个 "movable tree"，可能的冲突包括新增、删除和移动这三种场景。[Movable tree CRDTs and Loro's implementation] 一文详细介绍了这三种场景下 Loro 的实现思路。比如删除和移动同一个节点，此时两种结果都可以接受，取决于服务端接收到消息的顺序。但有些操作场景同步后会造成环，比如两个用户分别进行 `B -> C` 和 `C -> B` 操作，破坏树本身的结构定义。
@@ -681,3 +693,4 @@ export function sortByFractionalIndex(a: Entity, b: Entity) {
 [framer-motion]: https://www.npmjs.com/package/framer-motion
 [Guide to comments in Figma]: https://help.figma.com/hc/en-us/articles/360039825314-Guide-to-comments-in-Figma
 [kdbush]: https://github.com/mourner/kdbush
+[supercluster]: https://github.com/mapbox/supercluster

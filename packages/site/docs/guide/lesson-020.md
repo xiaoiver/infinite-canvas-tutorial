@@ -460,9 +460,80 @@ In the above point aggregation scenarios, we need to address two key challenges:
 1. How to aggregate? Given a point, how do we find all points within a specified radius centered on that point?
 2. After aggregation, given a bounding box (e.g., the current viewport), how do we locate all aggregated features contained within it?
 
-For these two problems (radius & range queries), brute-force traversal of every point is inherently inefficient when dealing with massive point datasets. To achieve efficient search, we must employ spatial indexes.
+For these two problems (radius & range queries), brute-force traversal of every point is inherently inefficient when dealing with massive point datasets. To achieve efficient search, we must employ spatial indexes like [kdbush]. Although we are not in a GIS context, we can still draw inspiration from the implementation of [supercluster].
 
-[kdbush]
+In point aggregation scenarios, k-d tree nodes contain not only the original Point features but also aggregated point sets. The latter require an aggregated center point, whose data structure is as follows:
+
+```ts
+// createPointCluster
+data.push(
+    x,
+    y, // projected point coordinates
+    Infinity, // the last zoom the point was processed at
+    i, // index of the source feature in the original input array
+    -1, // parent cluster id
+    1, // number of points in a cluster
+);
+```
+
+During the index creation phase, we need to construct a k-d tree for each zoom level:
+
+```ts
+// supercluster/index.js
+
+// maxZoom
+// minZoom
+let clusters = [];
+for (let i = 0; i < points.length; i++) {
+    clusters.push(createPointCluster(points[i], i));
+}
+// Create root k-d tree
+this.trees[maxZoom + 1] = new KDBush(
+    clusters,
+    getX,
+    getY,
+    nodeSize,
+    Float32Array,
+);
+for (let z = maxZoom; z >= minZoom; z--) {
+    clusters = this._cluster(clusters, z);
+    this.trees[z] = new KDBush(clusters, getX, getY, nodeSize, Float32Array);
+}
+```
+
+Aggregating points within a specified range requires addressing two issues:
+
+1. Querying all neighbors within a given radius using the radius of a k-d tree. The `within` method provided in kdbush serves this purpose.
+2. Generating the coordinates of the aggregated point using the coordinates of points within the range, weighted by the number of points contained in each subset.
+
+```ts
+getClusters(bbox, zoom) {
+// Get k-d tree on current zoom level
+    const tree = this.trees[this._limitZoom(zoom)];
+// Query the index array of features contained within the bounding box
+    const ids = tree.range(minX, minY, maxX, maxY);
+    const clusters = [];
+    for (const id of ids) {
+// Locate a k-d tree node via index
+        const c = tree.points[id];
+// If the node is a point set, create the corresponding GeoJSON feature; if it is a single point, return it directly.
+        clusters.push(c.numPoints ? getClusterJSON(c) : this.points[c.index]);
+    }
+    return clusters;
+}
+```
+
+### Display clusters {#display-clusters}
+
+Query aggregated points within the viewport range:
+
+```ts
+const { cameraZoom } = this.api.getAppState();
+const { minX, minY, maxX, maxY } = this.api.getViewportBounds();
+this.clusters = this.cluster.getClusters([minX, minY, maxX, maxY], cameraZoom);
+```
+
+![Comments in cluster](/comments-cluster.gif)
 
 ## fractional-indexing
 
@@ -620,3 +691,4 @@ export function sortByFractionalIndex(a: Entity, b: Entity) {
 [framer-motion]: https://www.npmjs.com/package/framer-motion
 [Guide to comments in Figma]: https://help.figma.com/hc/en-us/articles/360039825314-Guide-to-comments-in-Figma
 [kdbush]: https://github.com/mourner/kdbush
+[supercluster]: https://github.com/mapbox/supercluster

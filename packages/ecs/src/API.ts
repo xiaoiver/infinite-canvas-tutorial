@@ -444,6 +444,34 @@ export class API {
       .reverse();
   }
 
+  getViewportBounds() {
+    const { width, height } = this.#canvas.read(Canvas);
+    // tl, tr, br, bl
+    const tl = this.viewport2Canvas({
+      x: 0,
+      y: 0,
+    });
+    const tr = this.viewport2Canvas({
+      x: width,
+      y: 0,
+    });
+    const br = this.viewport2Canvas({
+      x: width,
+      y: height,
+    });
+    const bl = this.viewport2Canvas({
+      x: 0,
+      y: height,
+    });
+
+    return {
+      minX: Math.min(tl.x, tr.x, br.x, bl.x),
+      minY: Math.min(tl.y, tr.y, br.y, bl.y),
+      maxX: Math.max(tl.x, tr.x, br.x, bl.x),
+      maxY: Math.max(tl.y, tr.y, br.y, bl.y),
+    };
+  }
+
   /**
    * Create a new landmark.
    */

@@ -10,19 +10,24 @@ const DEFAULT_OPTIONS = {
   minZoom: 0, // min zoom to generate clusters on
   maxZoom: 16, // max zoom level to cluster the points on
   minPoints: 2, // minimum points to form a cluster
-  radius: 40, // cluster radius in pixels
-  extent: 512, // tile extent (radius is calculated relative to it)
+  radius: 256, // cluster radius in pixels
   nodeSize: 64, // size of the KD-tree leaf node, affects performance
   // a reduce function for calculating custom cluster properties
   reduce: null, // (accumulated, props) => { accumulated.sum += props.sum; }
   map: (props) => props, // props => ({sum: props.my_value})
 };
 
+export interface ClusterPoint {
+  x: number;
+  y: number;
+  properties?: any;
+}
+
 export class Cluster {
   #trees: KDBush[] = [];
   #stride: number;
 
-  points: { x: number; y: number; properties?: any }[];
+  points: ClusterPoint[];
   clusterProps: any[] = [];
 
   constructor(private options: Partial<typeof DEFAULT_OPTIONS> = {}) {
@@ -101,8 +106,8 @@ export class Cluster {
   }
 
   private cluster(tree: KDBush, zoom: number) {
-    const { radius, extent, reduce, minPoints } = this.options;
-    const r = radius / (extent * Math.pow(2, zoom));
+    const { radius, reduce, minPoints } = this.options;
+    const r = radius / Math.pow(2, zoom);
     const data = tree.data;
     const nextData = [];
     const stride = this.#stride;

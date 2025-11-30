@@ -277,7 +277,7 @@ pnpm run dev
 
 |                       多人光标                       |                 多人评论                  |
 | :--------------------------------------------------: | :---------------------------------------: |
-| ![Multiplayer cursors](./screenshots/lesson20-3.gif) | ![Comments](./screenshots/lesson20-4.png) |
+| ![Multiplayer cursors](./screenshots/lesson20-3.gif) | ![Comments](./screenshots/lesson20-4.gif) |
 
 ## 课程 21 - Transformer [🔗](https://infinitecanvas.cc/zh/guide/lesson-021)
 

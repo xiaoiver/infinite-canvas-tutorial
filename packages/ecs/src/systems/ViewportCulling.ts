@@ -13,7 +13,6 @@ import {
   RBush,
 } from '../components';
 import { getDescendants, getSceneRoot } from './Transform';
-import { API } from '..';
 
 export class ViewportCulling extends System {
   bounds = this.query(
@@ -79,7 +78,12 @@ export class ViewportCulling extends System {
 
     this.cameras.addedOrChanged.forEach((camera) => {
       const { api } = camera.read(Camera).canvas.read(Canvas);
-      this.updateViewport(camera, api);
+      const { minX, minY, maxX, maxY } = api.getViewportBounds();
+      const viewport = this.getOrCreateViewport(camera);
+      viewport.minX = minX;
+      viewport.minY = minY;
+      viewport.maxX = maxX;
+      viewport.maxY = maxY;
 
       // Recalcaulate all renderables' culled status under this camera.
       getDescendants(camera).forEach((child) => {
@@ -202,32 +206,5 @@ export class ViewportCulling extends System {
       viewport = this.#cameraViewportMap.get(camera);
     }
     return viewport;
-  }
-
-  private updateViewport(camera: Entity, api: API) {
-    const { width, height } = camera.read(Camera).canvas.read(Canvas);
-    // tl, tr, br, bl
-    const tl = api.viewport2Canvas({
-      x: 0,
-      y: 0,
-    });
-    const tr = api.viewport2Canvas({
-      x: width,
-      y: 0,
-    });
-    const br = api.viewport2Canvas({
-      x: width,
-      y: height,
-    });
-    const bl = api.viewport2Canvas({
-      x: 0,
-      y: height,
-    });
-
-    const viewport = this.getOrCreateViewport(camera);
-    viewport.minX = Math.min(tl.x, tr.x, br.x, bl.x);
-    viewport.minY = Math.min(tl.y, tr.y, br.y, bl.y);
-    viewport.maxX = Math.max(tl.x, tr.x, br.x, bl.x);
-    viewport.maxY = Math.max(tl.y, tr.y, br.y, bl.y);
   }
 }

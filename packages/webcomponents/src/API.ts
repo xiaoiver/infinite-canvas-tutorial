@@ -18,6 +18,7 @@ export interface Comment {
   createdAt: Date;
   editedAt: Date;
   text: string;
+  avatar: string;
 }
 
 export interface Thread {
