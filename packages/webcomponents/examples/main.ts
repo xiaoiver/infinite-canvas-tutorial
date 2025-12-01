@@ -114,7 +114,7 @@ canvas.addEventListener(Event.READY, async (e) => {
       width: 400,
       height: 400,
       lockAspectRatio: true,
-      // filter: 'brightness(0.4)',
+      filter: 'brightness(0.4)',
     } as const,
     // {
     //   id: '2',
@@ -323,56 +323,56 @@ canvas.addEventListener(Event.READY, async (e) => {
   api.updateNodes(nodes);
   // api.selectNodes([nodes[0]]);
 
-  const threadId = `${Date.now()}`;
-  const commentId = `${Date.now()}`;
-  api.setThreads([
-    {
-      type: 'thread',
-      id: threadId,
-      roomId: 'my-room-id',
-      createdAt: new Date(),
-      comments: [
-        {
-          type: 'comment',
-          threadId,
-          id: commentId,
-          roomId: 'my-room-id',
-          userId: 'alicia@example.com',
-          createdAt: new Date(),
-          editedAt: new Date(),
-          text: 'Hello, world!',
-          avatar: 'https://ui-avatars.com/api/?name=Alicia',
-        },
-      ],
-      metadata: {
-        x: 500,
-        y: 200,
-      },
-    },
-    {
-      type: 'thread',
-      id: threadId,
-      roomId: 'my-room-id',
-      createdAt: new Date(),
-      comments: [
-        {
-          type: 'comment',
-          threadId,
-          id: commentId,
-          roomId: 'my-room-id',
-          userId: 'alicia@example.com',
-          createdAt: new Date(),
-          editedAt: new Date(),
-          text: 'Hello, world!',
-          avatar: 'https://ui-avatars.com/api/?name=Bob',
-        },
-      ],
-      metadata: {
-        x: 600,
-        y: 200,
-      },
-    },
-  ]);
+  // const threadId = `${Date.now()}`;
+  // const commentId = `${Date.now()}`;
+  // api.setThreads([
+  //   {
+  //     type: 'thread',
+  //     id: threadId,
+  //     roomId: 'my-room-id',
+  //     createdAt: new Date(),
+  //     comments: [
+  //       {
+  //         type: 'comment',
+  //         threadId,
+  //         id: commentId,
+  //         roomId: 'my-room-id',
+  //         userId: 'alicia@example.com',
+  //         createdAt: new Date(),
+  //         editedAt: new Date(),
+  //         text: 'Hello, world!',
+  //         avatar: 'https://ui-avatars.com/api/?name=Alicia',
+  //       },
+  //     ],
+  //     metadata: {
+  //       x: 500,
+  //       y: 200,
+  //     },
+  //   },
+  //   {
+  //     type: 'thread',
+  //     id: threadId,
+  //     roomId: 'my-room-id',
+  //     createdAt: new Date(),
+  //     comments: [
+  //       {
+  //         type: 'comment',
+  //         threadId,
+  //         id: commentId,
+  //         roomId: 'my-room-id',
+  //         userId: 'alicia@example.com',
+  //         createdAt: new Date(),
+  //         editedAt: new Date(),
+  //         text: 'Hello, world!',
+  //         avatar: 'https://ui-avatars.com/api/?name=Bob',
+  //       },
+  //     ],
+  //     metadata: {
+  //       x: 600,
+  //       y: 200,
+  //     },
+  //   },
+  // ]);
 
   // api.record();
   // });

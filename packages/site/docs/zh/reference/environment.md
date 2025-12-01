@@ -11,10 +11,14 @@ export interface Adapter {
         width?: number,
         height?: number,
     ) => HTMLCanvasElement | OffscreenCanvas;
+    createTexImageSource: (
+        canvas: HTMLCanvasElement | OffscreenCanvas,
+    ) => TexImageSource;
+    createImage: (src: string) => Promise<ImageType>;
+    getWindow: () => typeof globalThis;
     getDocument: () => Document;
     getXMLSerializer: () => XMLSerializer | null;
     getDOMParser: () => DOMParser | null;
-    setCursor: (canvas: Canvas, cursor: Cursor) => void;
     splitGraphemes: (s: string) => string[];
     requestAnimationFrame: (callback: FrameRequestCallback) => number;
     cancelAnimationFrame: (handle: number) => void;
@@ -26,7 +30,7 @@ export interface Adapter {
 [WebWorker 示例]
 
 ```ts
-import { DOMAdapter, WebWorkerAdapter } from '@infinite-canvas-tutorial/core';
+import { DOMAdapter, WebWorkerAdapter } from '@infinite-canvas-tutorial/ecs';
 
 DOMAdapter.set(WebWorkerAdapter);
 ```
@@ -34,7 +38,7 @@ DOMAdapter.set(WebWorkerAdapter);
 我们未提供内置的 Node.js 适配器，但完全可以参考 [SSR 单元测试中使用的 NodeJSAdapter]
 
 ```ts
-import { DOMAdapter } from '@infinite-canvas-tutorial/core';
+import { DOMAdapter } from '@infinite-canvas-tutorial/ecs';
 
 const NodeJSAdapter: Adapter = {
     createCanvas: (width?: number, height?: number) =>
@@ -56,7 +60,72 @@ createCanvas: (width?: number, height?: number) =>
     HTMLCanvasElement | OffscreenCanvas;
 ```
 
-在浏览器环境中使用 `document.createElement('canvas')` 创建，在 WebWorker 环境中使用 `OffscreenCanvas` 创建，在 Node.js 环境中使用 headless-gl 和 node-canvas 创建。
+在浏览器环境中使用 `document.createElement('canvas')` 创建，在 WebWorker 环境中使用 `OffscreenCanvas` 创建，在 Node.js 环境中使用 [headless-gl] 和 [node-canvas] 创建。
+
+## createTexImageSource
+
+在实现 Gradient 和 Pattern 时，需要将 `<canvas>` 转换成 TexImageSource 后调用 WebGL API，在浏览器环境中直接返回即可。详见：[课程 17 - 渐变和重复图案]
+
+在 NodeJS 环境可以使用 [pngparse-sync] 将 [node-canvas] 中的 Image 转换成 [headless-gl] 需要的图片格式：
+
+```ts
+import parsePNG from 'pngparse-sync';
+
+export const NodeJSAdapter: Adapter = {
+  createTexImageSource: (canvas) => {
+    // convert Image in node-canvas to ImageData in headless-gl
+    const buffer = canvas.toBuffer();
+    const png = parsePNG(buffer);
+    return png.data;
+  },
+```
+
+## createImage
+
+根据图片 `src` 创建图片 [ImageBitmap]，在浏览器环境使用 [loaders.gl]：
+
+```ts
+import { load } from '@loaders.gl/core';
+
+export const BrowserAdapter: Adapter = {
+    createImage: (src: string) => load(src, ImageLoader),
+};
+```
+
+在 NodeJS 环境可以使用 [get-pixels] 通过 URL 加载图片，传入 [headless-gl] 中：
+
+```ts
+import getPixels from 'get-pixels';
+
+export const NodeJSAdapter: Adapter = {
+    createImage: (src: string) => loadImage(__dirname + '/canvas.png') as any,
+};
+
+export function loadImage(path: string) {
+    // Load local image instead of fetching remote URL.
+    // @see https://github.com/stackgl/headless-gl/pull/53/files#diff-55563b6c0b90b80aed19c83df1c51e80fd45d2fbdad6cc047ee86e98f65da3e9R83
+    return new Promise((resolve, reject) => {
+        getPixels(path, function (err, image) {
+            if (err) {
+                reject('Bad image path');
+            } else {
+                image.width = image.shape[0];
+                image.height = image.shape[1];
+                resolve(image);
+            }
+        });
+    });
+}
+```
+
+## getWindow
+
+在浏览器环境返回 `window`，在 WebWorker 中返回 `self`：
+
+```ts
+getWindow: () => window,
+getWindow: () => self,
+```
 
 ## getDocument
 
@@ -88,14 +157,6 @@ import { DOMParser, XMLSerializer } from '@xmldom/xmldom';
 
 ```ts
 getDOMParser: () => DOMParser | null;
-```
-
-## setCursor
-
-设置画布的鼠标样式。在浏览器环境中使用 `$canvas.style.cursor` 设置，在 WebWorker 和 Node.js 中无法设置。
-
-```ts
-setCursor: (canvas: Canvas, cursor: Cursor) => void;
 ```
 
 ## splitGraphemes
@@ -133,3 +194,10 @@ splitGraphemes: (s: string) => {
 [Bitmap Font 示例]: /zh/example/bitmap-font
 [Intl.Segmenter]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Intl/Segmenter
 [grapheme-splitter]: https://github.com/orling/grapheme-splitter
+[课程 17 - 渐变和重复图案]: /zh/guide/lesson-017
+[ImageBitmap]: https://developer.mozilla.org/en-US/docs/Web/API/ImageBitmap
+[loaders.gl]: https://github.com/visgl/loaders.gl
+[node-canvas]: https://github.com/Automattic/node-canvas
+[headless-gl]: https://github.com/stackgl/headless-gl
+[pngparse-sync]: https://github.com/mikolalysenko/pngparse-sync
+[get-pixels]: https://github.com/scijs/get-pixels

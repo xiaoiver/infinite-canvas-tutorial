@@ -147,20 +147,25 @@ export const en = defineConfig({
             link: 'environment',
           },
           {
-            text: 'Canvas',
-            link: 'canvas',
+            text: 'Create app',
+            link: 'create-app',
           },
           {
-            text: 'Camera',
-            link: 'camera',
-          },
-          {
-            text: 'UI',
-            link: 'ui',
-          },
-          {
-            text: 'Image exporter',
-            link: 'image-exporter',
+            text: 'API',
+            items: [
+              {
+                text: 'Canvas',
+                link: 'canvas',
+              },
+              {
+                text: 'Camera',
+                link: 'camera',
+              },
+              {
+                text: 'Export image',
+                link: 'export-image',
+              },
+            ],
           },
           {
             text: 'Shape',

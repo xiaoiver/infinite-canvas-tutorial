@@ -277,6 +277,29 @@ class Delta<T> {
 }
 ```
 
+## 应用变更 {#apply-changes}
+
+```ts
+export class ElementsChange implements Change<SceneElementsMap> {
+    applyTo(
+        elements: SceneElementsMap,
+        snapshot: Map<string, SerializedNode>,
+    ): [SceneElementsMap, boolean] {
+        this.updated.forEach((delta, id) => {
+            const { inserted, deleted } = delta;
+            const element = nextElements.get(id);
+            if (element) {
+                Object.keys(deleted).forEach((key) => {
+                    delete element[key];
+                });
+                Object.assign(element, inserted);
+                this.api.updateNode(element, delta.inserted);
+            }
+        });
+    }
+}
+```
+
 [How Figma’s multiplayer technology works]: https://www.figma.com/blog/how-figmas-multiplayer-technology-works/
 [UI Algorithms: A Tiny Undo Stack]: https://blog.julik.nl/2025/03/a-tiny-undo-stack
 [JavaScript-Undo-Manager]: https://github.com/ArthurClemens/JavaScript-Undo-Manager

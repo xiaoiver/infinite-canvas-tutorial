@@ -3,165 +3,215 @@ outline: deep
 publish: false
 ---
 
-从 `@infinite-canvas-tutorial/core` 中导入 `Canvas` 类。
+在 [获取 API] 后，可以调用相关方法：
+
+## get/setAppState
+
+控制整个画布应用的状态，例如在运行时切换明暗主题：
 
 ```ts
-import { Canvas } from '@infinite-canvas-tutorial/core';
-const canvas = new Canvas({});
+api.setAppState({
+    theme: ThemeMode.LIGHT,
+});
 ```
 
-## constructor
-
-Canvas 的构造函数参数：
+或者隐藏右侧 taskbar：
 
 ```ts
-export interface CanvasConfig {
-    canvas: HTMLCanvasElement | OffscreenCanvas;
-    renderer?: 'webgl' | 'webgpu';
-    shaderCompilerPath?: string;
-    devicePixelRatio?: number;
-    theme?: Theme;
-    themeColors?: {
-        [Theme.LIGHT]: {
-            background: string;
-            grid: string;
-        };
-        [Theme.DARK]: {
-            background: string;
-            grid: string;
-        };
-    };
-    checkboardStyle?: CheckboardStyle;
-    mode?: CanvasMode;
-    plugins?: Partial<{
-        selector: Partial<SelectorPluginOptions>;
-        dragndrop: Partial<DragndropPluginOptions>;
-    }>;
+api.setAppState({
+    taskbarVisible: false,
+});
+```
+
+完整状态如下：
+
+```ts
+export interface AppState {
+    theme: Theme;
+    themeMode: ThemeMode;
+    checkboardStyle: CheckboardStyle;
+    cameraZoom: number;
+    cameraX: number;
+    cameraY: number;
+    cameraRotation: number;
+    contextBarVisible: boolean;
+    contextMenuVisible: boolean;
+    topbarVisible: boolean;
+    penbarVisible: boolean;
+    penbarAll: Pen[];
+    penbarSelected: Pen;
+    penbarDrawRect: Partial<StrokeAttributes & FillAttributes>;
+    penbarDrawEllipse: Partial<StrokeAttributes & FillAttributes>;
+    penbarDrawLine: Partial<StrokeAttributes>;
+    penbarDrawArrow: Partial<StrokeAttributes & MarkerAttributes>;
+    penbarDrawRoughRect: Partial<
+        RoughAttributes & StrokeAttributes & FillAttributes
+    >;
+    penbarDrawRoughEllipse: Partial<
+        RoughAttributes & StrokeAttributes & FillAttributes
+    >;
+    penbarPencil: Partial<StrokeAttributes>;
+    penbarText: Partial<
+        TextSerializedNode & {
+            fontFamilies: string[];
+        }
+    >;
+    taskbarVisible: boolean;
+    taskbarAll: Task[];
+    taskbarSelected: Task[];
+    taskbarChatMessages: Message[];
+    layersSelected: SerializedNode['id'][];
+    layersHighlighted: SerializedNode['id'][];
+    propertiesOpened: SerializedNode['id'][];
+    /**
+     * Allow rotate in transformer
+     */
+    rotateEnabled: boolean;
+    /**
+     * Allow flip in transformer
+     */
+    flipEnabled: boolean;
+
+    /**
+     * Allow snap to pixel grid
+     */
+    snapToPixelGridEnabled: boolean;
+    snapToPixelGridSize: number;
+
+    /**
+     * Allow snap to objects
+     */
+    snapToObjectsEnabled: boolean;
 }
 ```
 
-### canvas
+## get/setNodes
 
-在浏览器环境传入 `HTMLCanvasElement`，在 WebWorker 环境传入 `OffscreenCanvas`，在 Node.js 环境可以使用 `node-canvas`。
+获取或者设置画布中的图形。
 
-### renderer
+```ts
+api.setNodes(nodes);
+```
 
-指定渲染器，可选值为 `webgl` 和 `webgpu`，默认值为 `webgl`。
+## getNodeById
 
-### shaderCompilerPath
+通过 id 获取图形：
 
-指定 WebGPU 着色器编译器路径，默认值为 `https://unpkg.com/@antv/g-device-api@1.6.8/dist/pkg/glsl_wgsl_compiler_bg.wasm`。
+```ts
+api.getNodeById('1'); // { id: '1', ... }
+```
 
-### devicePixelRatio
+## getCanvas
 
-指定设备像素比，默认值为 `window.devicePixelRatio`。
+获取 Canvas Entity，随后可以获取关联的一系列 Component：
 
-### theme
+```ts
+const entity = api.getCanvas();
+```
 
-指定明暗主题，可选值为 `Theme.LIGHT` 和 `Theme.DARK`，默认值为 `Theme.LIGHT`。
+例如获取画布对应的 DOM 元素：
 
-### themeColors
+```ts
+const { element } = entity.read(Canvas); // HTMLCanvasElement | OffscreenCanvas
+```
 
-指定主题颜色，默认值为
+下面我们介绍这些 Component
 
-```js
+### Canvas
+
+核心组件
+
+-   `element` 画布对应的 DOM 元素 `HTMLCanvasElement | OffscreenCanvas`
+-   `htmlLayer` HTML 容器元素 `HTMLDivElement`
+-   `width` 画布宽度
+-   `height` 画布高度
+-   `renderer` 渲染器，可选值为 `'webgl' | 'webgpu'`，默认为 `'webgl'`
+-   `shaderCompilerPath` 运行时将 GLSL 转译成 WGSL
+-   `devicePixelRatio` 默认为 `1`，详见：[devicePixelRatio]
+
+### Theme
+
+详见：[课程 7 - 明暗主题]
+
+```ts
+entity.read(Theme).mode; // ThemeMode.LIGHT
+```
+
+-   `mode` `ThemeMode.LIGHT | ThemeMode.DARK`
+-   `colors`
+
+```ts
 {
-    [Theme.LIGHT]: {
+    [ThemeMode.LIGHT]: {
         background: '#fbfbfb',
         grid: '#dedede',
+        selectionBrushFill: '#dedede',
+        selectionBrushStroke: '#dedede',
+        swatches: [],
     },
-    [Theme.DARK]: {
+    [ThemeMode.DARK]: {
         background: '#121212',
         grid: '#242424',
+        selectionBrushFill: '#242424',
+        selectionBrushStroke: '#242424',
+        swatches: [],
     },
 }
 ```
 
-### checkboardStyle
+### Grid
 
-指定网格样式，可选值为 `CheckboardStyle.NONE`、`CheckboardStyle.GRID` 和 `CheckboardStyle.DOTS`，默认值为 `CheckboardStyle.GRID`。
-
-### mode
-
-指定画布模式，可选值为 `CanvasMode.HAND` 和 `CanvasMode.SELECT`，默认值为 `CanvasMode.HAND`。
-
-### plugins
-
-内置插件的配置。
-
-#### dragndrop
-
--   `overlap` 如何判定拖拽元素是否在目标元素上，取值包括：
-    -   `pointer` – 拖拽元素的指针必须位于目标元素上 (默认)
-    -   `center` – 拖拽元素的中心必须位于目标元素上
--   `dragstartTimeThreshold` 触发 `dragstart` 事件的阈值，单位为毫秒。
--   `dragstartDistanceThreshold` 触发 `dragstart` 事件的阈值，单位为像素。
-
-#### selector
-
--   `selectionBrushSortMode` 框选元素的排序方式，取值包括：
-    -   `directional` – 按照框选方向排序
-    -   `behavior` – 按照框选行为排序
--   `selectionBrushStyle` 框选元素的样式，由于使用 [Path] 绘制，因此支持所有 [Path] 的样式，除了 [d]。
-
-## render
-
-手动创建一个动画循环不断调用 `render` 方法。
+在画布中绘制网格作为背景，详见：[课程 5 - 绘制网格]
 
 ```ts
-const animate = () => {
-    canvas.render();
-    requestAnimationFrame(animate);
-};
-animate();
+enum CheckboardStyle {
+    NONE = 'none',
+    GRID = 'grid',
+    DOTS = 'dots',
+}
 ```
 
-## resize
-
-重新设置画布的大小。
+`checkboardStyle` 默认值为 `CheckboardStyle.GRID`
 
 ```ts
-canvas.resize(100, 200);
+entity.read(Grid).checkboardStyle; // CheckboardStyle.GRID
 ```
 
-## destroy
+### Cursor
 
-销毁画布。
+鼠标样式，详见：[CSS cursor]
 
 ```ts
-canvas.destroy();
+entity.read(Cursor).value; // 'default'
 ```
 
-## appendChild
+### GPUResource
 
-向画布中添加元素。类似 [Node.appendChild]
+保存一系列 GPU 相关资源
+
+-   `device` 详见 [@antv/g-device-api]
+-   `swapChain` 详见：[课程 1 - SwapChain]
+-   `renderTarget`
+-   `depthRenderTarget`
+-   `renderCache`
+-   `texturePool`
+
+### Screenshot
+
+详见：[导出图片]
 
 ```ts
-canvas.appendChild(circle);
+const { dataURL } = entity.read(Screenshot); // 'data:'
 ```
 
-## removeChild
+## getHtmlLayer
 
-从画布中移除一个元素。类似 [Node.removeChild]
-
-```ts
-canvas.removeChild(circle);
-```
-
-## elementsFromPoint
-
-获取世界坐标系下，处于指定点的所有图形。方法签名如下，参考：[Document.elementsFromPoint]
+获取 HTML 内容容器，详见：[课程 29 - HTML 容器]
 
 ```ts
-elementsFromPoint(x: number, y: number): Shape[]
-```
-
-## elementFromPoint
-
-获取世界坐标系下，处于指定点最上方的一个图形。方法签名如下，参考：[Document.elementFromPoint]
-
-```ts
-elementFromPoint(x: number, y: number): Shape
+api.getHtmlLayer(); // HTMLDivElement
+// 等价于
+api.getCanvas().read(Canvas).htmlLayer;
 ```
 
 ## client2Viewport
@@ -180,103 +230,12 @@ client2Viewport({ x, y }: IPointData): IPointData
 viewport2Client({ x, y }: IPointData): IPointData
 ```
 
-## zoomIn
-
-通过相机放大画布。
-
-```ts
-canvas.zoomIn();
-```
-
-## zoomOut
-
-通过相机缩小画布。
-
-```ts
-canvas.zoomOut();
-```
-
-## checkboardStyle
-
-获取或者设置画布网格样式，默认值为 `CheckboardStyle.GRID`。
-
-```ts
-export enum CheckboardStyle {
-    NONE,
-    GRID,
-    DOTS,
-}
-
-canvas.checkboardStyle = CheckboardStyle.DOTS;
-```
-
-## theme
-
-获取或者设置画布主题，默认值为 `Theme.LIGHT`。
-
-```ts
-canvas.theme = Theme.DARK;
-```
-
-## getDOM
-
-获取创建的 Canvas DOM 元素。在不同环境下，返回的 DOM 元素不同。
-
-```ts
-const canvas = new Canvas({
-    canvas: document.createElement('canvas'),
-});
-const dom = canvas.getDOM(); // 返回 HTMLCanvasElement
-```
-
-## getDPR
-
-获取画布的设备像素比。
-
-```ts
-const dpr = canvas.getDPR(); // 2
-```
-
-## getDevice
-
-获取画布设备，随后使用它的 API 创建各种底层 GPU 对象，参考：[Device]。
-
-```ts
-const device = canvas.getDevice();
-```
-
-## toDataURL
-
-返回画布导出图片的 DataURL，参考：[HTMLCanvasElement.toDataURL]。
-
-```ts
-const dataURL = await canvas.toDataURL();
-```
-
-参数为：
-
-```ts
-export interface DataURLOptions {
-    /**
-     * The default type is image/png.
-     */
-    type: DataURLType;
-    /**
-     * The image quality between 0 and 1 for image/jpeg and image/webp.
-     */
-    encoderOptions: number;
-    /**
-     * Whether to draw grid on the image.
-     */
-    grid: boolean;
-}
-```
-
-[Node.appendChild]: https://developer.mozilla.org/en-US/docs/Web/API/Node/appendChild
-[Node.removeChild]: https://developer.mozilla.org/en-US/docs/Web/API/Node/removeChild
-[HTMLCanvasElement.toDataURL]: https://developer.mozilla.org/en-US/docs/Web/API/HTMLCanvasElement/toDataURL
-[Document.elementsFromPoint]: https://developer.mozilla.org/zh-CN/docs/Web/API/Document/elementsFromPoint
-[Document.elementFromPoint]: https://developer.mozilla.org/zh-CN/docs/Web/API/Document/elementFromPoint
-[Path]: /zh/reference/path
-[d]: /zh/reference/path#d
-[Device]: https://github.com/antvis/g-device-api
+[获取 API]: /zh/reference/create-app#use-api
+[课程 29 - HTML 容器]: /zh/guide/lesson-029#create-html-container
+[devicePixelRatio]: https://developer.mozilla.org/en-US/docs/Web/API/Window/devicePixelRatio
+[CSS cursor]: https://developer.mozilla.org/en-US/docs/Web/CSS/cursor
+[课程 5 - 绘制网格]: /zh/guide/lesson-005
+[课程 7 - 明暗主题]: /zh/guide/lesson-007#theme
+[导出图片]: /zh/reference/export-image
+[课程 1 - SwapChain]: /zh/guide/lesson-001#swapchain
+[@antv/g-device-api]: https://github.com/antvis/g-device-api

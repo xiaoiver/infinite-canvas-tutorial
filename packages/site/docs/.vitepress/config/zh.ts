@@ -92,20 +92,25 @@ export const zh = defineConfig({
             link: 'environment',
           },
           {
-            text: '画布',
-            link: 'canvas',
+            text: '创建应用',
+            link: 'create-app',
           },
           {
-            text: 'UI 组件',
-            link: 'ui',
-          },
-          {
-            text: '相机',
-            link: 'camera',
-          },
-          {
-            text: '图片导出器',
-            link: 'image-exporter',
+            text: 'API',
+            items: [
+              {
+                text: '画布',
+                link: 'canvas',
+              },
+              {
+                text: '相机',
+                link: 'camera',
+              },
+              {
+                text: '导出图片',
+                link: 'export-image',
+              },
+            ],
           },
           {
             text: '图形',

@@ -3,164 +3,216 @@ outline: deep
 publish: false
 ---
 
-Import the `Canvas` class from `@infinite-canvas-tutorial/core`.
+After [Getting the API], you can call the related methods:
+
+## get/setAppState
+
+Control the state of the entire canvas application, such as switching between light and dark themes at runtime:
 
 ```ts
-import { Canvas } from '@infinite-canvas-tutorial/core';
-const canvas = new Canvas({});
+api.setAppState({
+    theme: ThemeMode.LIGHT,
+});
 ```
 
-## constructor
+Or hide taskbar on the right side:
 
 ```ts
-export interface CanvasConfig {
-    canvas: HTMLCanvasElement | OffscreenCanvas;
-    renderer?: 'webgl' | 'webgpu';
-    shaderCompilerPath?: string;
-    devicePixelRatio?: number;
-    theme?: Theme;
-    themeColors?: {
-        [Theme.LIGHT]: {
-            background: string;
-            grid: string;
-        };
-        [Theme.DARK]: {
-            background: string;
-            grid: string;
-        };
-    };
-    checkboardStyle?: CheckboardStyle;
-    mode?: CanvasMode;
+api.setAppState({
+    taskbarVisible: false,
+});
+```
+
+The complete state is as follows:
+
+```ts
+export interface AppState {
+    theme: Theme;
+    themeMode: ThemeMode;
+    checkboardStyle: CheckboardStyle;
+    cameraZoom: number;
+    cameraX: number;
+    cameraY: number;
+    cameraRotation: number;
+    contextBarVisible: boolean;
+    contextMenuVisible: boolean;
+    topbarVisible: boolean;
+    penbarVisible: boolean;
+    penbarAll: Pen[];
+    penbarSelected: Pen;
+    penbarDrawRect: Partial<StrokeAttributes & FillAttributes>;
+    penbarDrawEllipse: Partial<StrokeAttributes & FillAttributes>;
+    penbarDrawLine: Partial<StrokeAttributes>;
+    penbarDrawArrow: Partial<StrokeAttributes & MarkerAttributes>;
+    penbarDrawRoughRect: Partial<
+        RoughAttributes & StrokeAttributes & FillAttributes
+    >;
+    penbarDrawRoughEllipse: Partial<
+        RoughAttributes & StrokeAttributes & FillAttributes
+    >;
+    penbarPencil: Partial<StrokeAttributes>;
+    penbarText: Partial<
+        TextSerializedNode & {
+            fontFamilies: string[];
+        }
+    >;
+    taskbarVisible: boolean;
+    taskbarAll: Task[];
+    taskbarSelected: Task[];
+    taskbarChatMessages: Message[];
+    layersSelected: SerializedNode['id'][];
+    layersHighlighted: SerializedNode['id'][];
+    propertiesOpened: SerializedNode['id'][];
+    /**
+     * Allow rotate in transformer
+     */
+    rotateEnabled: boolean;
+    /**
+     * Allow flip in transformer
+     */
+    flipEnabled: boolean;
+
+    /**
+     * Allow snap to pixel grid
+     */
+    snapToPixelGridEnabled: boolean;
+    snapToPixelGridSize: number;
+
+    /**
+     * Allow snap to objects
+     */
+    snapToObjectsEnabled: boolean;
 }
 ```
 
-### canvas
+## get/setNodes
 
-Pass in `HTMLCanvasElement` in the browser environment, `OffscreenCanvas` in the WebWorker environment, and `node-canvas` in the Node.js environment.
+Get or set the shapes in the canvas.
 
-### renderer
+```ts
+api.setNodes(nodes);
+```
 
-Set the renderer, optional values are `webgl` and `webgpu`, default value is `webgl`.
+## getNodeById
 
-### shaderCompilerPath
+```ts
+api.getNodeById('1'); // { id: '1', ... }
+```
 
-Set the WebGPU shader compiler path, default value is `https://unpkg.com/@antv/g-device-api@1.6.8/dist/pkg/glsl_wgsl_compiler_bg.wasm`.
+## getCanvas
 
-### devicePixelRatio
+Obtain the Canvas Entity, after which you can retrieve the associated set of Components:
 
-Set the device pixel ratio, default value is `window.devicePixelRatio`.
+```ts
+const entity = api.getCanvas();
+```
 
-### theme
+For example, to obtain the DOM element corresponding to the canvas:
 
-Set the theme, optional values are `Theme.LIGHT` and `Theme.DARK`, default value is `Theme.LIGHT`.
+```ts
+const { element } = entity.read(Canvas); // HTMLCanvasElement | OffscreenCanvas
+```
 
-### themeColors
+Below we introduce these components.
 
-Set the theme colors, default value is
+### Canvas
 
-```js
+-   `element` DOM element of canvas `HTMLCanvasElement | OffscreenCanvas`
+-   `htmlLayer` HTML container element `HTMLDivElement`
+-   `width`
+-   `height`
+-   `renderer` renderer, the available values are `'webgl' | 'webgpu'`, default to `'webgl'`
+-   `shaderCompilerPath` Convert GLSL to WGSL
+-   `devicePixelRatio` Default to `1`, see: [devicePixelRatio]
+
+### Theme
+
+See: [Lesson 7 - Theme]
+
+```ts
+entity.read(Theme).mode; // ThemeMode.LIGHT
+```
+
+-   `mode` `ThemeMode.LIGHT | ThemeMode.DARK`
+-   `colors`
+
+```ts
 {
-    [Theme.LIGHT]: {
+    [ThemeMode.LIGHT]: {
         background: '#fbfbfb',
         grid: '#dedede',
+        selectionBrushFill: '#dedede',
+        selectionBrushStroke: '#dedede',
+        swatches: [],
     },
-    [Theme.DARK]: {
+    [ThemeMode.DARK]: {
         background: '#121212',
         grid: '#242424',
+        selectionBrushFill: '#242424',
+        selectionBrushStroke: '#242424',
+        swatches: [],
     },
 }
 ```
 
-### checkboardStyle
+### Grid
 
-Set the grid style, optional values are `CheckboardStyle.NONE`、`CheckboardStyle.GRID` and `CheckboardStyle.DOTS`, default value is `CheckboardStyle.GRID`.
-
-### mode
-
-Set the canvas mode, optional values are `CanvasMode.HAND` and `CanvasMode.SELECT`, default value is `CanvasMode.HAND`.
-
-### plugins
-
-内置插件的配置。
-
-#### dragndrop
-
--   `overlap` How drops are checked for.
-    -   `pointer` – the pointer must be over the dropzone (default)
-    -   `center` – the draggable element’s center must be over the dropzone
--   `dragstartTimeThreshold` `number` Threshold for triggering `dragstart` event in milliseconds.
--   `dragstartDistanceThreshold` `number` Threshold for triggering `dragstart` event in pixels.
-
-#### selector
-
--   `selectionBrushSortMode` How to sort selected shapes.
-    -   `directional` – Sort by direction
-    -   `behavior` – Sort by behavior
--   `selectionBrushStyle` Style of the selection brush. Any style except [d] that can be applied to a [Path].
-
-## render
-
-Creates an animation loop for rendering the canvas.
+Draw a grid as the background on the canvas. For details, see: [Lesson 5 - Draw grid]
 
 ```ts
-const animate = () => {
-    canvas.render();
-    requestAnimationFrame(animate);
-};
-animate();
+enum CheckboardStyle {
+    NONE = 'none',
+    GRID = 'grid',
+    DOTS = 'dots',
+}
 ```
 
-## resize
-
-Resizes the canvas.
+`checkboardStyle` 默认值为 `CheckboardStyle.GRID`
 
 ```ts
-canvas.resize(100, 200);
+entity.read(Grid).checkboardStyle; // CheckboardStyle.GRID
 ```
 
-## destroy
+### Cursor
 
-Destroys the canvas.
+see: [CSS cursor]
 
 ```ts
-canvas.destroy();
+entity.read(Cursor).value; // 'default'
 ```
 
-## appendChild
+### GPUResource
 
-Adds an element to the canvas. Similar to [Node.appendChild]
+Save a series of GPU-related resources
+
+-   `device` see: [@antv/g-device-api]
+-   `swapChain` see: [Lesson 1 - SwapChain]
+-   `renderTarget`
+-   `depthRenderTarget`
+-   `renderCache`
+-   `texturePool`
+
+### Screenshot
+
+see: [Export image]
 
 ```ts
-canvas.appendChild(circle);
+const { dataURL } = entity.read(Screenshot); // 'data:'
 ```
 
-## removeChild
+## getHtmlLayer
 
-Removes an element from the canvas. Similar to [Node.removeChild]
-
-```ts
-canvas.removeChild(circle);
-```
-
-## elementsFromPoint
-
-Gets all shapes at the specified point in world coordinates. Method signature as follows, reference: [Document.elementsFromPoint]
+Retrieve the HTML content container. For details, see: [Lesson 29 - HTML container]
 
 ```ts
-elementsFromPoint(x: number, y: number): Shape[]
-```
-
-## elementFromPoint
-
-Gets the topmost shape at the specified point in world coordinates. Method signature as follows, reference: [Document.elementFromPoint]
-
-```ts
-elementFromPoint(x: number, y: number): Shape
+api.getHtmlLayer(); // HTMLDivElement
+// equivalent to
+api.getCanvas().read(Canvas).htmlLayer;
 ```
 
 ## client2Viewport
 
-Converts a point from client coordinates to viewport coordinates.
+Convert points in the viewport coordinate system to points in the client coordinate system.
 
 ```ts
 client2Viewport({ x, y }: IPointData): IPointData
@@ -168,109 +220,18 @@ client2Viewport({ x, y }: IPointData): IPointData
 
 ## viewport2Client
 
-Converts a point from viewport coordinates to client coordinates.
+Convert points in the viewport coordinate system to points in the client coordinate system.
 
 ```ts
 viewport2Client({ x, y }: IPointData): IPointData
 ```
 
-## zoomIn
-
-Zooms in the canvas using the camera.
-
-```ts
-canvas.zoomIn();
-```
-
-## zoomOut
-
-Zooms out the canvas using the camera.
-
-```ts
-canvas.zoomOut();
-```
-
-## checkboardStyle
-
-Gets or sets the canvas grid style, default value is `CheckboardStyle.GRID`.
-
-```ts
-export enum CheckboardStyle {
-    NONE,
-    GRID,
-    DOTS,
-}
-
-canvas.checkboardStyle = CheckboardStyle.DOTS;
-```
-
-## theme
-
-Gets or sets the canvas theme, default value is `Theme.LIGHT`.
-
-```ts
-canvas.theme = Theme.DARK;
-```
-
-## getDOM
-
-Gets the created Canvas DOM element. The returned DOM element varies depending on the environment.
-
-```ts
-const canvas = new Canvas({
-    canvas: document.createElement('canvas'),
-});
-const dom = canvas.getDOM(); // returns HTMLCanvasElement
-```
-
-## getDPR
-
-Gets the device pixel ratio of the canvas.
-
-```ts
-const dpr = canvas.getDPR(); // 2
-```
-
-## getDevice
-
-Gets the canvas device, then use its API to create various low-level GPU objects, reference: [Device].
-
-```ts
-const device = canvas.getDevice();
-```
-
-## toDataURL
-
-Returns a DataURL of the exported canvas image, reference: [HTMLCanvasElement.toDataURL].
-
-```ts
-const dataURL = await canvas.toDataURL();
-```
-
-Parameters:
-
-```ts
-export interface DataURLOptions {
-    /**
-     * The default type is image/png.
-     */
-    type: DataURLType;
-    /**
-     * The image quality between 0 and 1 for image/jpeg and image/webp.
-     */
-    encoderOptions: number;
-    /**
-     * Whether to draw grid on the image.
-     */
-    grid: boolean;
-}
-```
-
-[Node.appendChild]: https://developer.mozilla.org/en-US/docs/Web/API/Node/appendChild
-[Node.removeChild]: https://developer.mozilla.org/en-US/docs/Web/API/Node/removeChild
-[HTMLCanvasElement.toDataURL]: https://developer.mozilla.org/en-US/docs/Web/API/HTMLCanvasElement/toDataURL
-[Document.elementsFromPoint]: https://developer.mozilla.org/zh-CN/docs/Web/API/Document/elementsFromPoint
-[Document.elementFromPoint]: https://developer.mozilla.org/zh-CN/docs/Web/API/Document/elementFromPoint
-[Path]: /reference/path
-[d]: /reference/path#d
-[Device]: https://github.com/antvis/g-device-api
+[Getting the API]: /reference/create-app#use-api
+[Lesson 29 - HTML container]: /guide/lesson-029#create-html-container
+[devicePixelRatio]: https://developer.mozilla.org/en-US/docs/Web/API/Window/devicePixelRatio
+[CSS cursor]: https://developer.mozilla.org/en-US/docs/Web/CSS/cursor
+[Lesson 5 - Draw grid]: /guide/lesson-005
+[Lesson 7 - Theme]: /guide/lesson-007#theme
+[Export image]: /reference/export-image
+[Lesson 1 - SwapChain]: /guide/lesson-001#swapchain
+[@antv/g-device-api]: https://github.com/antvis/g-device-api
