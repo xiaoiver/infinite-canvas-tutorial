@@ -283,6 +283,10 @@ export const zh = defineConfig({
                 link: 'pattern',
               },
               {
+                text: '图像处理',
+                link: 'image-processing',
+              },
+              {
                 text: '思维导图和布局',
                 items: [
                   {

@@ -1,9 +1,7 @@
+import { random } from './random';
+
 export const fbm = /* wgsl */ `
-  float random (in vec2 st) {
-    return fract(sin(dot(st.xy,
-                        vec2(12.9898,78.233)))*
-        43758.5453123);
-  }
+  ${random}
 
   // Based on Morgan McGuire @morgan3d
   // https://www.shadertoy.com/view/4dS3Wd

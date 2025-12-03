@@ -534,7 +534,7 @@ export function serializedNodesToEntities(
 
     const { filter } = attributes as FilterAttributes;
     if (filter) {
-      entity.insert(new Filter({ filter }));
+      entity.insert(new Filter({ value: filter }));
     }
 
     if (parentId) {

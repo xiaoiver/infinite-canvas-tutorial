@@ -336,7 +336,11 @@ export class SDFText extends Drawcall {
     this.bindings = this.renderCache.createBindings(bindings);
   }
 
-  render(renderPass: RenderPass, uniformLegacyObject: Record<string, unknown>) {
+  render(
+    renderPass: RenderPass,
+    uniformBuffer: Buffer,
+    uniformLegacyObject: Record<string, unknown>,
+  ) {
     // if (
     //   this.shapes.some((shape) => shape.renderDirtyFlag) ||
     //   this.geometryDirty

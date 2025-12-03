@@ -361,6 +361,15 @@ pnpm run dev
 | :-----------------------------------------------: | :--------------------------------------------: |
 | ![embed HTML content](./screenshots/lesson29.png) | ![embed YouTube](./screenshots/lesson29-2.png) |
 
+## 课程 30 - 图像后处理与渲染图 [🔗](https://infinitecanvas.cc/zh/guide/lesson-030)
+
+-   图像后处理，例如噪声、亮度调整等效果
+-   渲染图
+
+|                Image processing                 |     |
+| :---------------------------------------------: | :-: |
+| ![image processing](./screenshots/lesson30.png) |     |
+
 [infinitecanvas]: https://infinitecanvas.tools/
 [Figma]: https://madebyevan.com/figma/building-a-professional-design-tool-on-the-web/
 [Modyfi]: https://digest.browsertech.com/archive/browsertech-digest-how-modyfi-is-building-with/

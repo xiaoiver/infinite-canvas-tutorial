@@ -263,6 +263,7 @@ export class Mesh extends Drawcall {
 
   render(
     renderPass: RenderPass,
+    uniformBuffer: Buffer,
     sceneUniformLegacyObject: Record<string, unknown>,
   ) {
     if (this.points.length === 0) {

@@ -378,6 +378,7 @@ export class SmoothPolyline extends Drawcall {
 
   render(
     renderPass: RenderPass,
+    uniformBuffer: Buffer,
     sceneUniformLegacyObject: Record<string, unknown>,
   ) {
     if (this.instanceCount <= 0) {

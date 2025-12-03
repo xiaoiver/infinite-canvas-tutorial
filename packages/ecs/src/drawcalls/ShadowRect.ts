@@ -226,6 +226,7 @@ export class ShadowRect extends Drawcall {
 
   render(
     renderPass: RenderPass,
+    uniformBuffer: Buffer,
     sceneUniformLegacyObject: Record<string, unknown>,
   ) {
     // if (

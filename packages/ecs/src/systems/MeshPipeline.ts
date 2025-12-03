@@ -65,6 +65,7 @@ import { BatchManager } from './BatchManager';
 import { getSceneRoot } from './Transform';
 import { safeAddComponent } from '../history';
 import { SetupDevice } from './SetupDevice';
+import { API } from '../API';
 
 type GPURenderer = {
   uniformBuffer: Buffer;
@@ -267,7 +268,7 @@ export class MeshPipeline extends System {
     canvas.remove(RasterScreenshotRequest);
   }
 
-  private createRenderer(gpuResource: GPUResource) {
+  private createRenderer(gpuResource: GPUResource, api: API) {
     const { device, swapChain, renderCache, texturePool } = gpuResource;
     return {
       uniformBuffer: device.createBuffer({
@@ -282,6 +283,7 @@ export class MeshPipeline extends System {
         swapChain,
         renderCache,
         texturePool,
+        api,
       ),
     };
   }
@@ -293,6 +295,8 @@ export class MeshPipeline extends System {
 
     let renderer: GPURenderer;
     let gpuResource = canvas.read(GPUResource);
+
+    const { api } = canvas.read(Canvas);
 
     const request = canvas.has(RasterScreenshotRequest)
       ? canvas.read(RasterScreenshotRequest)
@@ -309,10 +313,10 @@ export class MeshPipeline extends System {
     if (shouldRenderPartially) {
       // Render to offscreen canvas.
       gpuResource = this.setupDevice.getOffscreenGPUResource();
-      renderer = this.createRenderer(gpuResource);
+      renderer = this.createRenderer(gpuResource, api);
     } else {
       if (!this.renderers.get(camera)) {
-        this.renderers.set(camera, this.createRenderer(gpuResource));
+        this.renderers.set(camera, this.createRenderer(gpuResource, api));
       }
       renderer = this.renderers.get(camera);
     }

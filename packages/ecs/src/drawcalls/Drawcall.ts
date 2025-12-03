@@ -1,3 +1,6 @@
+import { vert as postProcessingVert } from '../shaders/post-processing/fullscreen';
+import { vert as bigTriangleVert } from '../shaders/post-processing/big-triangle';
+import { frag as copyFrag } from '../shaders/post-processing/copy';
 import {
   Buffer,
   Device,
@@ -30,9 +33,34 @@ import {
   FillPattern,
   FillTexture,
   Filter,
-  Rect,
   Wireframe,
 } from '../components';
+import { API } from '../API';
+import { FilterObject } from '../utils/filter';
+import { frag as noiseFrag } from '../shaders/post-processing/noise';
+import { frag as brightnessFrag } from '../shaders/post-processing/brightness';
+import { frag as contrastFrag } from '../shaders/post-processing/contrast';
+
+const FRAG_MAP = {
+  noise: {
+    shader: noiseFrag,
+    parse: (params: string) => {
+      return [parseFloat(params)];
+    },
+  },
+  brightness: {
+    shader: brightnessFrag,
+    parse: (params: string) => {
+      return [parseFloat(params)];
+    },
+  },
+  contrast: {
+    shader: contrastFrag,
+    parse: (params: string) => {
+      return [parseFloat(params)];
+    },
+  },
+};
 
 // TODO: Use a more efficient way to manage Z index.
 export const ZINDEX_FACTOR = 100000;
@@ -81,13 +109,22 @@ export abstract class Drawcall {
   #filterPipeline: RenderPipeline;
   #filterInputLayout: InputLayout;
   #filterVertexBuffer: Buffer;
+  #filterIndexBuffer: Buffer;
+  #filterUniformBuffer: Buffer;
   #filterTexture: Texture;
   #filterRenderTarget: RenderTarget;
   #filterBindings: Bindings;
-  #filterTextureWidth: number;
-  #filterTextureHeight: number;
-  // #inputTexture: Texture;
-  // #inputRenderTarget: RenderTarget;
+  #filterWidth: number;
+  #filterHeight: number;
+
+  #bigTriangleProgram: Program;
+  #bigTrianglePipeline: RenderPipeline;
+  #bigTriangleInputLayout: InputLayout;
+  #bigTriangleVertexBuffer: Buffer;
+  #bigTriangleTexture: Texture;
+  #bigTriangleRenderTarget: RenderTarget;
+  #bigTriangleBindings: Bindings;
+  #bigTriangleUniformBuffer: Buffer;
 
   constructor(
     protected device: Device,
@@ -96,12 +133,14 @@ export abstract class Drawcall {
     protected texturePool: TexturePool,
     protected instanced: boolean,
     protected index: number,
+    protected api: API,
   ) {}
 
   abstract createGeometry(): void;
   abstract createMaterial(define: string, uniformBuffer: Buffer): void;
   abstract render(
     renderPass: RenderPass,
+    uniformBuffer: Buffer,
     uniformLegacyObject: Record<string, unknown>,
   ): void;
 
@@ -151,7 +190,7 @@ export abstract class Drawcall {
       this.createMaterial(defines, uniformBuffer);
     }
 
-    this.render(renderPass, uniformLegacyObject);
+    this.render(renderPass, uniformBuffer, uniformLegacyObject);
 
     if (this.geometryDirty) {
       this.geometryDirty = false;
@@ -297,16 +336,15 @@ export abstract class Drawcall {
   }
 
   protected createPostProcessing(
-    vert: string,
-    frag: string,
+    filters: FilterObject[],
     inputTexture: Texture,
     width: number,
     height: number,
   ) {
-    this.#filterTextureWidth = width;
-    this.#filterTextureHeight = height;
+    this.#filterWidth = width;
+    this.#filterHeight = height;
     this.#filterTexture = this.device.createTexture({
-      format: Format.U8_RGBA_NORM,
+      format: Format.U8_RGBA_RT,
       width,
       height,
       usage: TextureUsage.RENDER_TARGET,
@@ -322,16 +360,27 @@ export abstract class Drawcall {
 
     this.#filterProgram = this.renderCache.createProgram({
       vertex: {
-        glsl: vert,
+        glsl: postProcessingVert,
       },
       fragment: {
-        glsl: frag,
+        glsl: copyFrag,
         postprocess: (fs) => diagnosticDerivativeUniformityHeader + fs,
       },
     });
 
+    this.#filterUniformBuffer = this.device.createBuffer({
+      viewOrSize: Float32Array.BYTES_PER_ELEMENT * (4 * 3),
+      usage: BufferUsage.UNIFORM,
+      hint: BufferFrequencyHint.DYNAMIC,
+    });
+
+    this.#filterIndexBuffer = this.device.createBuffer({
+      viewOrSize: new Uint32Array([0, 1, 2, 0, 2, 3]),
+      usage: BufferUsage.INDEX,
+      hint: BufferFrequencyHint.STATIC,
+    });
     this.#filterVertexBuffer = this.device.createBuffer({
-      viewOrSize: new Float32Array([1, 3, -3, -1, 1, -1]),
+      viewOrSize: new Float32Array([0, 0, 1, 0, 1, 1, 0, 1]),
       usage: BufferUsage.VERTEX,
       hint: BufferFrequencyHint.DYNAMIC,
     });
@@ -350,18 +399,24 @@ export abstract class Drawcall {
           ],
         },
       ],
-      indexBufferFormat: null,
+      indexBufferFormat: Format.U32_R,
       program: this.#filterProgram,
     });
 
     this.#filterPipeline = this.device.createRenderPipeline({
       inputLayout: this.#filterInputLayout,
       program: this.#filterProgram,
-      colorAttachmentFormats: [Format.U8_RGBA_NORM],
+      colorAttachmentFormats: [Format.U8_RGBA_RT],
     });
+    this.device.setResourceName(this.#filterPipeline, 'FilterPipeline');
 
     this.#filterBindings = this.renderCache.createBindings({
       pipeline: this.#filterPipeline,
+      uniformBufferBindings: [
+        {
+          buffer: this.#filterUniformBuffer,
+        },
+      ],
       samplerBindings: [
         {
           texture: inputTexture,
@@ -370,13 +425,174 @@ export abstract class Drawcall {
       ],
     });
 
+    filters.forEach((filter) => {
+      const frag = FRAG_MAP[filter.name].shader;
+      const params = FRAG_MAP[filter.name].parse(filter.params);
+
+      this.#bigTriangleUniformBuffer = this.device.createBuffer({
+        viewOrSize: Float32Array.BYTES_PER_ELEMENT * 4,
+        usage: BufferUsage.UNIFORM,
+        hint: BufferFrequencyHint.DYNAMIC,
+      });
+      this.#bigTriangleUniformBuffer.setSubData(
+        0,
+        new Uint8Array(new Float32Array([...params]).buffer),
+      );
+
+      this.#bigTriangleTexture = this.device.createTexture({
+        format: Format.U8_RGBA_RT,
+        width,
+        height,
+        usage: TextureUsage.RENDER_TARGET,
+      });
+      this.#bigTriangleRenderTarget = this.device.createRenderTargetFromTexture(
+        this.#bigTriangleTexture,
+      );
+
+      this.#bigTriangleProgram = this.renderCache.createProgram({
+        vertex: {
+          glsl: bigTriangleVert,
+        },
+        fragment: {
+          glsl: frag,
+          postprocess: (fs) => diagnosticDerivativeUniformityHeader + fs,
+        },
+      });
+
+      this.#bigTriangleVertexBuffer = this.device.createBuffer({
+        viewOrSize: new Float32Array([1, 3, -3, -1, 1, -1]),
+        usage: BufferUsage.VERTEX,
+        hint: BufferFrequencyHint.DYNAMIC,
+      });
+
+      this.#bigTriangleInputLayout = this.device.createInputLayout({
+        vertexBufferDescriptors: [
+          {
+            arrayStride: 4 * 2,
+            stepMode: VertexStepMode.VERTEX,
+            attributes: [
+              {
+                shaderLocation: 0,
+                offset: 0,
+                format: Format.F32_RG,
+              },
+            ],
+          },
+        ],
+        indexBufferFormat: null,
+        program: this.#bigTriangleProgram,
+      });
+
+      this.#bigTrianglePipeline = this.device.createRenderPipeline({
+        inputLayout: this.#bigTriangleInputLayout,
+        program: this.#bigTriangleProgram,
+        colorAttachmentFormats: [Format.U8_RGBA_RT],
+      });
+
+      this.#bigTriangleBindings = this.renderCache.createBindings({
+        pipeline: this.#bigTrianglePipeline,
+        samplerBindings: [
+          {
+            texture: this.#filterTexture,
+            sampler: this.createSampler(),
+          },
+        ],
+        uniformBufferBindings: [
+          {
+            buffer: this.#bigTriangleUniformBuffer,
+          },
+        ],
+      });
+    });
+
     return {
-      texture: this.#filterTexture,
-      renderTarget: this.#filterRenderTarget,
+      texture: this.#bigTriangleTexture,
     };
   }
 
-  protected renderPostProcessing() {
+  protected renderPostProcessing(
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    widthInCanvasCoords: number,
+    heightInCanvasCoords: number,
+    zoomScale: number,
+  ) {
+    let resized = false;
+    if (this.#filterWidth !== width || this.#filterHeight !== height) {
+      this.#filterRenderTarget.destroy();
+      this.#filterTexture.destroy();
+      this.#filterTexture = this.device.createTexture({
+        format: Format.U8_RGBA_RT,
+        width,
+        height,
+        usage: TextureUsage.RENDER_TARGET,
+      });
+      this.#filterRenderTarget = this.device.createRenderTargetFromTexture(
+        this.#filterTexture,
+      );
+      this.#bigTriangleRenderTarget.destroy();
+      this.#bigTriangleTexture.destroy();
+      this.#bigTriangleBindings.destroy();
+      this.#bigTriangleTexture = this.device.createTexture({
+        format: Format.U8_RGBA_RT,
+        width,
+        height,
+        usage: TextureUsage.RENDER_TARGET,
+      });
+      this.#bigTriangleRenderTarget = this.device.createRenderTargetFromTexture(
+        this.#bigTriangleTexture,
+      );
+      this.#bigTriangleBindings = this.renderCache.createBindings({
+        pipeline: this.#bigTrianglePipeline,
+        samplerBindings: [
+          {
+            texture: this.#filterTexture,
+            sampler: this.createSampler(),
+          },
+        ],
+        uniformBufferBindings: [
+          {
+            buffer: this.#bigTriangleUniformBuffer,
+          },
+        ],
+      });
+      this.#filterWidth = width;
+      this.#filterHeight = height;
+      resized = true;
+    }
+
+    const { width: canvasWidth, height: canvasHeight } =
+      this.swapChain.getCanvas();
+
+    const inputSize: number[] = [];
+    const outputFrame: number[] = [];
+    const outputTexture: number[] = [];
+    inputSize[0] = canvasWidth / 2;
+    inputSize[1] = canvasHeight / 2;
+    inputSize[2] = 1 / inputSize[0];
+    inputSize[3] = 1 / inputSize[1];
+
+    outputFrame[0] = x;
+    outputFrame[1] = y;
+    outputFrame[2] = width;
+    outputFrame[3] = height;
+
+    outputTexture[0] = widthInCanvasCoords;
+    outputTexture[1] = heightInCanvasCoords;
+    outputTexture[2] = zoomScale;
+    const buffer = [...inputSize, ...outputFrame, ...outputTexture];
+    this.#filterUniformBuffer.setSubData(
+      0,
+      new Uint8Array(new Float32Array([...buffer]).buffer),
+    );
+
+    this.#filterProgram.setUniformsLegacy({
+      u_InputSize: inputSize,
+      u_OutputFrame: outputFrame,
+      u_OutputTexture: outputTexture,
+    });
     const filterRenderPass = this.device.createRenderPass({
       colorAttachment: [this.#filterRenderTarget],
       colorResolveTo: [null],
@@ -385,22 +601,39 @@ export abstract class Drawcall {
       depthStencilAttachment: null,
       depthStencilResolveTo: null,
     });
+
     // this.program.setUniformsLegacy(sceneUniformLegacyObject);
-    filterRenderPass.setViewport(
-      0,
-      0,
-      this.#filterTextureWidth,
-      this.#filterTextureHeight,
-    );
+    filterRenderPass.setViewport(0, 0, width, height);
     filterRenderPass.setPipeline(this.#filterPipeline);
     filterRenderPass.setVertexInput(
       this.#filterInputLayout,
       [{ buffer: this.#filterVertexBuffer }],
-      null,
+      { buffer: this.#filterIndexBuffer },
     );
     filterRenderPass.setBindings(this.#filterBindings);
-    filterRenderPass.draw(3);
+    filterRenderPass.drawIndexed(6, 1);
     this.device.submitPass(filterRenderPass);
+
+    const bigTriangleRenderPass = this.device.createRenderPass({
+      colorAttachment: [this.#bigTriangleRenderTarget],
+      colorResolveTo: [null],
+      colorClearColor: [TransparentWhite],
+      colorStore: [true],
+      depthStencilAttachment: null,
+      depthStencilResolveTo: null,
+    });
+    bigTriangleRenderPass.setViewport(0, 0, width, height);
+    bigTriangleRenderPass.setPipeline(this.#bigTrianglePipeline);
+    bigTriangleRenderPass.setVertexInput(
+      this.#bigTriangleInputLayout,
+      [{ buffer: this.#bigTriangleVertexBuffer }],
+      null,
+    );
+    bigTriangleRenderPass.setBindings(this.#bigTriangleBindings);
+    bigTriangleRenderPass.draw(3);
+    this.device.submitPass(bigTriangleRenderPass);
+
+    return { resized, texture: this.#bigTriangleTexture };
   }
 
   protected createSampler() {

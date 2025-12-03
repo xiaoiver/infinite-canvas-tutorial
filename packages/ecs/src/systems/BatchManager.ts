@@ -30,6 +30,7 @@ import { TexturePool } from '../resources';
 import { RenderCache } from '../utils';
 import { sortByFractionalIndex } from './Sort';
 import { safeRemoveComponent } from '../history';
+import { API } from '../API';
 
 /**
  * Since a shape may have multiple drawcalls, we need to cache them and maintain an 1-to-many relationship.
@@ -116,6 +117,7 @@ export class BatchManager {
     private readonly swapChain: SwapChain,
     private readonly renderCache: RenderCache,
     private readonly texturePool: TexturePool,
+    private readonly api: API,
   ) {}
 
   private collectDrawcallCtors(shape: Entity) {
@@ -143,6 +145,7 @@ export class BatchManager {
         this.texturePool,
         instanced,
         index,
+        this.api,
       ) as Drawcall;
       drawcall.add(shape);
       return drawcall;

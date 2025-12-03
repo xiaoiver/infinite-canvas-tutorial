@@ -929,7 +929,7 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
   }
 
   if (!isNil(filter)) {
-    safeAddComponent(entity, Filter, { filter });
+    safeAddComponent(entity, Filter, { value: filter });
   }
 
   if (isNil(element.version)) {

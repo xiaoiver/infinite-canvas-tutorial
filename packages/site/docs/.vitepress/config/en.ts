@@ -341,6 +341,10 @@ export const en = defineConfig({
                 link: 'pattern',
               },
               {
+                text: 'Image processing',
+                link: 'image-processing',
+              },
+              {
                 text: 'Mindmap and layout',
                 items: [
                   {

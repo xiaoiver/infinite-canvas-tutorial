@@ -26,6 +26,11 @@ export class Comment extends System {
   execute(): void {
     this.cameras.current.forEach((camera) => {
       const { canvas } = camera.read(Camera);
+
+      if (!canvas) {
+        return;
+      }
+
       const api = canvas.read(Canvas).api as ExtendedAPI;
 
       const pen = api.getAppState().penbarSelected;

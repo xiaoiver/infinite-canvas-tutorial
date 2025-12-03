@@ -313,6 +313,7 @@ export class StampBrush extends Drawcall {
 
   render(
     renderPass: RenderPass,
+    uniformBuffer: Buffer,
     sceneUniformLegacyObject: Record<string, unknown>,
   ) {
     const instance = this.shapes[0];

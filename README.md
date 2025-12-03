@@ -360,6 +360,15 @@ If you want to use it in your own project, you can refer to:
 | :-----------------------------------------------: | :--------------------------------------------: |
 | ![embed HTML content](./screenshots/lesson29.png) | ![embed YouTube](./screenshots/lesson29-2.png) |
 
+## Lesson 30 - Image processing and render graph [🔗](https://infinitecanvas.cc/guide/lesson-030)
+
+-   Image processing, including brightness, noise, etc.
+-   Render graph
+
+|                Image processing                 |     |
+| :---------------------------------------------: | :-: |
+| ![image processing](./screenshots/lesson30.png) |     |
+
 [infinitecanvas]: https://infinitecanvas.tools/
 [Figma]: https://madebyevan.com/figma/building-a-professional-design-tool-on-the-web/
 [Modyfi]: https://digest.browsertech.com/archive/browsertech-digest-how-modyfi-is-building-with/

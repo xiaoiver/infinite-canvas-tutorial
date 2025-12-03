@@ -17,13 +17,12 @@ import {
   TransparentWhite,
   RenderTarget,
   Bindings,
+  RenderPipeline,
 } from '@antv/g-device-api';
 import { mat3 } from 'gl-matrix';
 import { Entity } from '@lastolivegames/becsy';
 import { Drawcall, ZINDEX_FACTOR } from './Drawcall';
 import { vert, frag, Location } from '../shaders/sdf';
-import { vert as postProcessingVert } from '../shaders/post-processing/fullscreen';
-import { frag as brightness } from '../shaders/post-processing/brightness';
 import { paddingMat3, parseColor, parseGradient } from '../utils';
 import {
   Circle,
@@ -45,6 +44,7 @@ import {
   Stroke,
   Filter,
 } from '../components';
+import { extractFilters } from '../utils/filter';
 
 const strokeAlignmentMap = {
   center: 0,
@@ -59,9 +59,9 @@ export class SDF extends Drawcall {
   #texture: Texture;
 
   #inputRenderTarget: RenderTarget;
+  #inputDepthRenderTarget: RenderTarget;
+  #inputPipeline: RenderPipeline;
   #prePassBindings: Bindings;
-  #inputRenderTargetWidth: number;
-  #inputRenderTargetHeight: number;
 
   static useDash(shape: Entity) {
     const { dasharray } = shape.has(Stroke)
@@ -315,39 +315,81 @@ export class SDF extends Drawcall {
       const instance = this.shapes[0];
 
       let outputTexture: Texture;
-      let outputRenderTarget: RenderTarget;
 
       if (hasFilter) {
-        let width = 0;
-        let height = 0;
-        if (this.shapes[0].has(Rect)) {
-          const { minX, minY, maxX, maxY } = Rect.getGeometryBounds(
-            this.shapes[0].read(Rect),
-          );
-          width = maxX - minX;
-          height = maxY - minY;
-        }
-        this.#inputRenderTargetWidth = width;
-        this.#inputRenderTargetHeight = height;
+        this.#inputPipeline = this.renderCache.createRenderPipeline({
+          inputLayout: this.inputLayout,
+          program: this.program,
+          colorAttachmentFormats: [Format.U8_RGBA_RT],
+          depthStencilAttachmentFormat: null,
+          megaStateDescriptor: {
+            attachmentsState: [
+              {
+                channelWriteMask: ChannelWriteMask.ALL,
+                rgbBlendState: {
+                  blendMode: BlendMode.ADD,
+                  blendSrcFactor: BlendFactor.SRC_ALPHA,
+                  blendDstFactor: BlendFactor.ONE_MINUS_SRC_ALPHA,
+                },
+                alphaBlendState: {
+                  blendMode: BlendMode.ADD,
+                  blendSrcFactor: BlendFactor.ONE,
+                  blendDstFactor: BlendFactor.ONE_MINUS_SRC_ALPHA,
+                },
+              },
+            ],
+            blendConstant: TransparentBlack,
+            depthWrite: false,
+            depthCompare: CompareFunction.ALWAYS,
+            stencilWrite: false,
+            stencilFront: {
+              compare: CompareFunction.ALWAYS,
+              passOp: StencilOp.KEEP,
+              failOp: StencilOp.KEEP,
+              depthFailOp: StencilOp.KEEP,
+            },
+            stencilBack: {
+              compare: CompareFunction.ALWAYS,
+              passOp: StencilOp.KEEP,
+              failOp: StencilOp.KEEP,
+              depthFailOp: StencilOp.KEEP,
+            },
+          },
+        });
 
+        const { minX, minY, maxX, maxY } =
+          this.shapes[0].read(ComputedBounds).renderWorldBounds;
+        const width = Math.round(maxX - minX);
+        const height = Math.round(maxY - minY);
+
+        const { width: canvasWidth, height: canvasHeight } =
+          this.swapChain.getCanvas();
         const inputTexture = this.device.createTexture({
-          format: Format.U8_RGBA_NORM,
-          width,
-          height,
+          format: Format.U8_RGBA_RT,
+          width: canvasWidth,
+          height: canvasHeight,
           usage: TextureUsage.RENDER_TARGET,
         });
         this.#inputRenderTarget =
           this.device.createRenderTargetFromTexture(inputTexture);
+        this.#inputDepthRenderTarget =
+          this.device.createRenderTargetFromTexture(
+            this.device.createTexture({
+              format: Format.D24_S8,
+              width: canvasWidth,
+              height: canvasHeight,
+              usage: TextureUsage.RENDER_TARGET,
+            }),
+          );
 
-        const { texture, renderTarget } = this.createPostProcessing(
-          postProcessingVert,
-          brightness,
+        const filter = extractFilters(this.shapes[0].read(Filter).value);
+        const { texture } = this.createPostProcessing(
+          filter,
           inputTexture,
           width,
           height,
         );
         outputTexture = texture;
-        outputRenderTarget = renderTarget;
       }
 
       if (instance.has(FillGradient) || instance.has(FillPattern)) {
@@ -399,7 +441,7 @@ export class SDF extends Drawcall {
 
       if (hasFilter) {
         const bindings: BindingsDescriptor = {
-          pipeline: this.pipeline,
+          pipeline: this.#inputPipeline,
           uniformBufferBindings: [
             {
               buffer: uniformBuffer,
@@ -429,6 +471,7 @@ export class SDF extends Drawcall {
 
   render(
     renderPass: RenderPass,
+    uniformBuffer: Buffer,
     sceneUniformLegacyObject: Record<string, unknown>,
   ) {
     const hasFilter = this.shapes[0].has(Filter);
@@ -436,7 +479,7 @@ export class SDF extends Drawcall {
     if (this.instanced) {
       const instancedData: number[] = [];
       this.shapes.forEach((shape, i, total) => {
-        const [buffer] = this.generateBuffer(shape, i, total.length, false);
+        const [buffer] = this.generateBuffer(shape, i, total.length);
         instancedData.push(...buffer);
       });
       this.vertexBufferDatas[1] = new Float32Array(instancedData);
@@ -466,12 +509,7 @@ export class SDF extends Drawcall {
       );
     } else {
       const { matrix } = this.shapes[0].read(GlobalTransform);
-      const [buffer, legacyObject] = this.generateBuffer(
-        this.shapes[0],
-        0,
-        1,
-        hasFilter,
-      );
+      const [buffer, legacyObject] = this.generateBuffer(this.shapes[0], 0, 1);
       const u_ModelMatrix = [
         matrix.m00,
         matrix.m01,
@@ -516,12 +554,14 @@ export class SDF extends Drawcall {
         colorResolveTo: [null],
         colorClearColor: [TransparentWhite],
         colorStore: [true],
+        // depthStencilAttachment: this.#inputDepthRenderTarget,
+        // depthClearValue: 1,
         depthStencilAttachment: null,
         depthStencilResolveTo: null,
       });
       prePassRenderPass.setViewport(0, 0, width, height);
       this.program.setUniformsLegacy(sceneUniformLegacyObject);
-      prePassRenderPass.setPipeline(this.pipeline);
+      prePassRenderPass.setPipeline(this.#inputPipeline);
       const vertexBuffers = this.vertexBuffers.map((buffer) => ({ buffer }));
       if (this.useWireframe) {
         vertexBuffers.push({ buffer: this.barycentricBuffer });
@@ -533,8 +573,43 @@ export class SDF extends Drawcall {
       prePassRenderPass.drawIndexed(6, this.shapes.length);
       this.device.submitPass(prePassRenderPass);
 
-      this.renderPostProcessing();
+      const { minX, minY, maxX, maxY } =
+        this.shapes[0].read(ComputedBounds).renderWorldBounds;
 
+      const tl = this.api.canvas2Viewport({ x: minX, y: minY });
+      const br = this.api.canvas2Viewport({ x: maxX, y: maxY });
+
+      const { resized, texture } = this.renderPostProcessing(
+        tl.x,
+        tl.y,
+        Math.round(br.x - tl.x),
+        Math.round(br.y - tl.y),
+        Math.round(maxX - minX),
+        Math.round(maxY - minY),
+        this.api.getAppState().cameraZoom,
+      );
+
+      if (resized) {
+        const bindings: BindingsDescriptor = {
+          pipeline: this.pipeline,
+          uniformBufferBindings: [
+            {
+              buffer: uniformBuffer,
+            },
+          ],
+        };
+        bindings.uniformBufferBindings!.push({
+          buffer: this.#uniformBuffer,
+        });
+        bindings.samplerBindings = [
+          {
+            texture,
+            sampler: this.createSampler(),
+          },
+        ];
+
+        this.bindings = this.renderCache.createBindings(bindings);
+      }
       renderPass.setViewport(0, 0, width, height);
     }
 
@@ -566,7 +641,6 @@ export class SDF extends Drawcall {
     shape: Entity,
     index: number,
     total: number,
-    usePostProcessing: boolean,
   ): [number[], Record<string, unknown>] {
     const globalRenderOrder = shape.has(GlobalRenderOrder)
       ? shape.read(GlobalRenderOrder).value
@@ -652,12 +726,7 @@ export class SDF extends Drawcall {
       type;
     const u_Opacity = [opacity, fillOpacity, strokeOpacity, compressed];
     const u_InnerShadowColor = [isr / 255, isg / 255, isb / 255, iso];
-    const u_InnerShadow = [
-      offsetX,
-      offsetY,
-      blurRadius,
-      usePostProcessing ? 1 : 0,
-    ];
+    const u_InnerShadow = [offsetX, offsetY, blurRadius, 0];
 
     return [
       [

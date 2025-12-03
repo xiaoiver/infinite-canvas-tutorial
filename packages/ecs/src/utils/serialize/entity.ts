@@ -238,7 +238,7 @@ export function entityToSerializedNodes(
   }
 
   if (entity.has(Filter)) {
-    (attributes as FilterAttributes).filter = entity.read(Filter).filter;
+    (attributes as FilterAttributes).filter = entity.read(Filter).value;
   }
 
   // serialize transform
