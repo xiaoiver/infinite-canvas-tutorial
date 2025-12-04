@@ -72,6 +72,8 @@ this.#bigTriangleVertexBuffer = this.device.createBuffer({
 });
 ```
 
+Vertex shader 非常简单，只需要正确映射 `v_Uv` 纹理坐标即可：
+
 ```glsl
 void main() {
   v_Uv = 0.5 * (a_Position + 1.0);
