@@ -5,7 +5,6 @@ import { html, css, LitElement } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { apiContext, appStateContext } from '../context';
 import { ExtendedAPI } from '../API';
-import { createOrEditImage } from '../providers/fal';
 
 @customElement('ic-spectrum-context-image-edit-bar')
 export class ContextImageEditBar extends LitElement {
@@ -46,7 +45,7 @@ export class ContextImageEditBar extends LitElement {
       this.api.updateNode(newImage);
     });
 
-    const { images } = await createOrEditImage(
+    const { images } = await this.api.createOrEditImage(
       true,
       'Remove background from the image',
       [this.node.fill],
