@@ -138,4 +138,17 @@ export class ExtendedAPI extends API {
   getThreads() {
     return this.#threads;
   }
+
+  // AI APIs
+  async createOrEditImage(
+    isEdit: boolean,
+    prompt: string,
+    image_urls: string[],
+  ): Promise<{ images: { url: string }[]; description: string }> {
+    throw new Error('Not implemented');
+  }
+
+  async upload(file: File): Promise<string> {
+    throw new Error('Not implemented');
+  }
 }

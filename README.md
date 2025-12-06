@@ -339,11 +339,9 @@ If you want to use it in your own project, you can refer to:
 
 ## Lesson 28 - Integrating with AI [🔗](https://infinitecanvas.cc/guide/lesson-028)
 
--   Common post-processing
--   Integrating with AI
-    -   Use chatbox
-    -   Use Nano banana to edit image, e.g remove background
-    -   Use SAM with WebGPU
+-   Use chatbox
+-   Use Nano banana to edit image, e.g remove background
+-   Use SAM with WebGPU
 
 |                      Use chatbox                      |                 Remove background                  |
 | :---------------------------------------------------: | :------------------------------------------------: |

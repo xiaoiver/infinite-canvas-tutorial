@@ -5,7 +5,6 @@ import { customElement, state } from 'lit/decorators.js';
 import {
   Task,
   AppState,
-  API,
   RectSerializedNode,
   toSVGDataURL,
   toSVGElement,
@@ -14,8 +13,7 @@ import { apiContext, appStateContext } from '../context';
 import { v4 as uuidv4 } from 'uuid';
 import { load } from '@loaders.gl/core';
 import { ImageLoader } from '@loaders.gl/images';
-import { createOrEditImage } from '../providers/fal';
-import { fal } from '@fal-ai/client';
+import { ExtendedAPI } from '../API';
 
 @customElement('ic-spectrum-chat-panel')
 export class ChatPanel extends LitElement {
@@ -125,7 +123,7 @@ export class ChatPanel extends LitElement {
   appState: AppState;
 
   @consume({ context: apiContext, subscribe: true })
-  api: API;
+  api: ExtendedAPI;
 
   @state()
   userMessageSending = false;
@@ -217,14 +215,14 @@ export class ChatPanel extends LitElement {
                 const file = new File([blob], `${node.id}.png`, {
                   type: blob.type,
                 });
-                const url = await fal.storage.upload(file);
+                const url = await this.api.upload(file);
                 return url;
               }
             })
             .filter((url) => !!url),
         )
       : undefined;
-    const { images, description } = await createOrEditImage(
+    const { images, description } = await this.api.createOrEditImage(
       isEdit,
       messageContent,
       image_urls,
@@ -274,7 +272,7 @@ export class ChatPanel extends LitElement {
       );
       this.api.runAtNextTick(() => {
         const newImages: RectSerializedNode[] = [];
-        const { minX, minY, maxX, maxY } = bounds ?? {
+        const { minX, maxY } = bounds ?? {
           minX: 0,
           minY: 0,
           maxX: 0,

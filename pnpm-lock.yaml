@@ -720,6 +720,9 @@ importers:
       '@antv/hierarchy':
         specifier: ^0.6.14
         version: 0.6.14
+      '@fal-ai/client':
+        specifier: ^1.6.2
+        version: 1.6.2
       '@liveblocks/client':
         specifier: ^3.10.1
         version: 3.10.1(@types/json-schema@7.0.15)
@@ -865,9 +868,6 @@ importers:
       '@antv/util':
         specifier: ^3.3.10
         version: 3.3.10
-      '@fal-ai/client':
-        specifier: ^1.6.2
-        version: 1.6.2
       '@infinite-canvas-tutorial/ecs':
         specifier: workspace:*
         version: link:../ecs

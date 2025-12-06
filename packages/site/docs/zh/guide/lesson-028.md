@@ -15,11 +15,11 @@ import WhenCanvasMeetsChat from '../../components/WhenCanvasMeetsChat.vue'
 
 下图为 Lovart 的产品界面，底层使用了我们在 [课程 21 - Transformer] 中提及的 Konva.js。虽然以图片编辑为主，但并没有放弃图形编辑器中的常用功能，例如左下角默认隐藏了图层列表，左侧工具栏也可以插入一些基础图形。
 
-![Lovart](/lovart.png)
+![Chat & canvas in Lovart](/lovart.png)
 
 Recraft 也正在测试聊天框功能。以我的观察，画布与聊天框正在成为这类编辑器的两大入口：
 
-![Recraft chat](/recraft-chat.png)
+![Chat & canvas in Recraft](/recraft-chat.png)
 
 本节课中我们会结合 Nano banana 丰富我们的图片编辑功能。
 
@@ -45,6 +45,31 @@ console.log(result.data); // { image: [{ url: 'https://...' }]; description: 'Su
 图片修改接口接受的参数也是一组图片的 URL，即使传递了编码后的 DataURL 也会收到类似 “无法读取图片信息” 的警告。因此 [fal.ai] 提供了文件上传接口，我们可以选择当本地图片被添加到画布中时开启上传。
 
 ### API 设计 {#api-design}
+
+我们需要一个负责生成和修改图片的 API，这两种情况下参数应该完全一致：一个 prompt 和参考图列表
+
+```ts
+import { fal } from '@fal-ai/client';
+
+api.createOrEditImage = async (
+    isEdit: boolean,
+    prompt: string,
+    image_urls: string[],
+): Promise<{ images: { url: string }[]; description: string }> => {
+    const result = await fal.subscribe(
+        isEdit
+            ? 'fal-ai/gemini-25-flash-image/edit'
+            : 'fal-ai/gemini-25-flash-image',
+        {
+            input: {
+                prompt,
+                image_urls,
+            },
+        },
+    );
+    return result.data;
+};
+```
 
 ### 加入聊天框 {#chatbox}
 

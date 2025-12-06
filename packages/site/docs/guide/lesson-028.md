@@ -49,6 +49,31 @@ The image edit API also accepts a set of image URLs as parameters. Even when pas
 
 ### API Design {#api-design}
 
+We require an API responsible for generating and modifying images. In both scenarios, the parameters should be identical: a prompt and a list of reference images.
+
+```ts
+import { fal } from '@fal-ai/client';
+
+api.createOrEditImage = async (
+    isEdit: boolean,
+    prompt: string,
+    image_urls: string[],
+): Promise<{ images: { url: string }[]; description: string }> => {
+    const result = await fal.subscribe(
+        isEdit
+            ? 'fal-ai/gemini-25-flash-image/edit'
+            : 'fal-ai/gemini-25-flash-image',
+        {
+            input: {
+                prompt,
+                image_urls,
+            },
+        },
+    );
+    return result.data;
+};
+```
+
 ### Chatbox {#chatbox}
 
 The chat box provides another starting point beyond the canvas.
