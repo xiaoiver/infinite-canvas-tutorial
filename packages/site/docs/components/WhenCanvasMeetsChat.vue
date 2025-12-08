@@ -8,20 +8,13 @@ import {
 } from '@infinite-canvas-tutorial/ecs';
 import { ref, onMounted, onUnmounted } from 'vue';
 import { Event, UIPlugin } from '@infinite-canvas-tutorial/webcomponents';
-import { fal } from '@fal-ai/client';
+import { FalAIPlugin } from '@infinite-canvas-tutorial/fal-ai';
 
 const wrapper = ref<HTMLElement | null>(null);
 let api: any | undefined;
 let onReady: ((api: CustomEvent<any>) => void) | undefined;
 
 onMounted(async () => {
-  // FIXME: Dangerous !!!
-  // use https://developers.cloudflare.com/workers/configuration/environment-variables/
-  fal.config({
-    credentials:
-      '5e973660-e3f7-492f-ae94-fb9c499252aa:143cc831830ba6cd4fe9fdb01a8564d0',
-  });
-
   import('webfontloader').then((module) => {
     const WebFont = module.default;
     WebFont.load({
@@ -38,29 +31,6 @@ onMounted(async () => {
 
   onReady = async (e) => {
     api = e.detail;
-
-    api.upload = async (file: File) => {
-      return await fal.storage.upload(file);
-    };
-
-    api.createOrEditImage = async (
-      isEdit: boolean,
-      prompt: string,
-      image_urls: string[],
-    ): Promise<{ images: { url: string }[]; description: string }> => {
-      const result = await fal.subscribe(
-        isEdit
-          ? 'fal-ai/gemini-25-flash-image/edit'
-          : 'fal-ai/gemini-25-flash-image',
-        {
-          input: {
-            prompt,
-            image_urls,
-          },
-        },
-      );
-      return result.data;
-    };
 
     const nodes = [
       {
@@ -230,7 +200,7 @@ onMounted(async () => {
   if (!(window as any).worldInited) {
     (window as any).worldInited = true;
     await import('@infinite-canvas-tutorial/webcomponents/spectrum');
-    new App().addPlugins(...DefaultPlugins, UIPlugin).run();
+    new App().addPlugins(...DefaultPlugins, UIPlugin, FalAIPlugin).run();
   } else {
     // 等待组件更新完成后检查API是否已经准备好
     setTimeout(() => {

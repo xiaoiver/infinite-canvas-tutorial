@@ -1,0 +1,150 @@
+---
+outline: deep
+publish: false
+---
+
+Various AI functionalities are provided by implementing relevant interfaces. For details, see: [Lesson 28 - Integration with AI]. In practice, these functionalities should be encapsulated on the server side and provided to applications via API.
+
+## upload
+
+When calling model capabilities, some static resources such as images must be in a form accessible to the model. This interface can upload local files such as File to obtain a publicly accessible URL:
+
+```ts
+upload(file: File): Promise<string> {}
+```
+
+A demonstration-only example using [fal.ai] is shown below, as it requires placing the KEY on the frontend:
+
+```ts
+import { fal } from '@fal-ai/client';
+
+// Dangerous operation!
+fal.config({
+    credentials: '5e973660...',
+});
+
+api.upload = async (file: File) => {
+    return await fal.storage.upload(file);
+};
+```
+
+A more reasonable example using AWS S3 is shown below. Place the KEY on the server side:
+
+```ts
+// backend-api.js
+const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
+const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
+
+// Initialize S3 Client (backend environment typically reads credentials from environment variables)
+const s3Client = new S3Client({
+    region: 'us-east-1', // Your bucket region
+    credentials: {
+        accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+    },
+});
+```
+
+After obtaining the signed upload URL on the frontend, upload the File directly to S3:
+
+```ts
+// 1. Request backend to get Presigned URL
+const response = await fetch('/api/get-upload-url', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+        fileName: file.name,
+        fileType: file.type,
+    }),
+});
+
+const { uploadUrl, key } = await response.json();
+
+// 2. Upload file directly to S3 (Key point: Content-Type must match)
+await fetch(uploadUrl, {
+    method: 'PUT',
+    headers: {
+        'Content-Type': file.type,
+    },
+    body: file,
+});
+
+// 3. Construct final access URL (assuming Bucket is publicly readable)
+const finalUrl = `https://your-bucket-name.s3.us-east-1.amazonaws.com/${key}`;
+```
+
+## createOrEditImage
+
+Provides the ability to generate or edit images. During editing, images will have a generating state:
+
+```ts
+createOrEditImage(
+    isEdit: boolean,
+    prompt: string,
+    image_urls: string[],
+): Promise<{ images: { url: string }[]; description: string }> {}
+```
+
+Parameter descriptions:
+
+-   `isEdit` Whether it is in edit mode
+-   `prompt` Description when generating images
+-   `image_urls` Reference image list, can be empty
+
+An example using [fal.ai] is shown below:
+
+```ts
+import { fal } from '@fal-ai/client';
+
+api.createOrEditImage = async (
+    isEdit: boolean,
+    prompt: string,
+    image_urls: string[],
+): Promise<{ images: { url: string }[]; description: string }> => {
+    const result = await fal.subscribe(
+        isEdit
+            ? 'fal-ai/gemini-25-flash-image/edit'
+            : 'fal-ai/gemini-25-flash-image',
+        {
+            input: {
+                prompt,
+                image_urls,
+            },
+        },
+    );
+    return result.data;
+};
+```
+
+## encodeImage
+
+Encode images using SAM for subsequent inference:
+
+```ts
+import { Tensor } from 'onnxruntime-web';
+
+const { float32Array, shape } = canvasToFloat32Array(
+    resizeCanvas(image, imageSize),
+);
+const imgTensor = new Tensor('float32', float32Array, shape);
+
+await sam.encodeImage(imgTensor);
+```
+
+## segmentImage
+
+Segment images using SAM to generate masks
+
+```ts
+segmentImage(params: {
+    points: {
+        x: number;
+        y: number;
+        xNormalized: number;
+        yNormalized: number;
+    }[],
+}): Promise<any> {}
+```
+
+[Lesson 28 - Integration with AI]: /guide/lesson-028
+[fal.ai]: https://fal.ai/

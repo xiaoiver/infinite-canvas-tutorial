@@ -1,10 +1,15 @@
 import { v4 as uuidv4 } from 'uuid';
 import { consume } from '@lit/context';
 import { AppState, RectSerializedNode } from '@infinite-canvas-tutorial/ecs';
-import { html, css, LitElement } from 'lit';
+import { html, css, LitElement, PropertyValues } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { apiContext, appStateContext } from '../context';
 import { ExtendedAPI } from '../API';
+
+enum ImageEditMode {
+  IDLE = 'idle',
+  POINT_SEGMENT = 'point-segment',
+}
 
 @customElement('ic-spectrum-context-image-edit-bar')
 export class ContextImageEditBar extends LitElement {
@@ -25,6 +30,33 @@ export class ContextImageEditBar extends LitElement {
 
   @state()
   removingBackground: boolean;
+
+  @state()
+  encodingImage: boolean;
+
+  private binded = false;
+
+  private mode: ImageEditMode = ImageEditMode.IDLE;
+
+  previouseEditingPoints: [number, number][];
+
+  shouldUpdate(changedProperties: PropertyValues) {
+    for (const prop of changedProperties.keys()) {
+      if (prop !== 'appState') return true;
+    }
+
+    const newEditingPoints = this.appState.editingPoints;
+    if (newEditingPoints !== this.previouseEditingPoints) {
+      this.previouseEditingPoints = newEditingPoints;
+
+      if (this.mode === ImageEditMode.POINT_SEGMENT) {
+        this.segmentWithPoints(newEditingPoints);
+      }
+      return true;
+    }
+
+    return false;
+  }
 
   private async removeBackground() {
     this.removingBackground = true;
@@ -60,7 +92,44 @@ export class ContextImageEditBar extends LitElement {
     }
   }
 
+  private async startSmartSelect() {
+    this.encodingImage = true;
+    await this.api.encodeImage(this.node.fill);
+    this.mode = ImageEditMode.POINT_SEGMENT;
+    this.encodingImage = false;
+  }
+
+  private async segmentWithPoints(points: [number, number][]) {
+    // convert points in canvas coordinages to local coordinates
+    const selectedNode = this.api.getNodeById(
+      this.api.getAppState().layersSelected[0],
+    );
+
+    const canvasPoints = points.map((point) => {
+      const { x, y } = this.api.viewport2Canvas({ x: point[0], y: point[1] });
+      return {
+        x,
+        y,
+        xNormalized: (x - selectedNode.x) / selectedNode.width,
+        yNormalized: (y - selectedNode.y) / selectedNode.height,
+      };
+    });
+
+    const result = await this.api.segmentImage({ points: canvasPoints });
+    console.log('segmentWithPoints', result);
+  }
+
   render() {
+    if (!this.api) {
+      return;
+    }
+
+    // FIXME: wait for the element to be ready.
+    if (this.api.element && !this.binded) {
+      // document.addEventListener('keydown', this.handleKeyDown);
+      this.binded = true;
+    }
+
     return html`<sp-action-button
         quiet
         size="m"
@@ -102,7 +171,12 @@ export class ContextImageEditBar extends LitElement {
           </svg>
         </sp-icon>
       </sp-action-button>
-      <sp-action-button quiet size="m">
+      <sp-action-button
+        quiet
+        size="m"
+        ?disabled="${this.encodingImage}"
+        @click="${this.startSmartSelect}"
+      >
         <sp-tooltip self-managed placement="bottom"> Smart select </sp-tooltip>
         <sp-icon-polygon-select slot="icon"></sp-icon-polygon-select>
       </sp-action-button>`;

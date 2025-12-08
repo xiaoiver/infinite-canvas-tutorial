@@ -165,6 +165,10 @@ export const en = defineConfig({
                 text: 'Export image',
                 link: 'export-image',
               },
+              {
+                text: 'AI',
+                link: 'ai',
+              },
             ],
           },
           {
@@ -422,6 +426,10 @@ export const en = defineConfig({
           },
           { text: 'A textual artistic effect', link: 'signature' },
           { text: 'When canvas meets chat', link: 'when-canvas-meets-chat' },
+          {
+            text: 'Use SAM in WebWorker for image segmentation',
+            link: 'sam-in-worker',
+          },
           { text: 'Audio visualizer', link: 'audio-visualizer' },
         ],
       },

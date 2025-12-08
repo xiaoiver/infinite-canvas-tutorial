@@ -110,6 +110,10 @@ export const zh = defineConfig({
                 text: '导出图片',
                 link: 'export-image',
               },
+              {
+                text: 'AI',
+                link: 'ai',
+              },
             ],
           },
           {
@@ -364,6 +368,10 @@ export const zh = defineConfig({
           },
           { text: '一种字体生成艺术效果', link: 'signature' },
           { text: '当画布遇到 Chat', link: 'when-canvas-meets-chat' },
+          {
+            text: '在 WebWorker 中使用 SAM 进行图像分割',
+            link: 'sam-in-worker',
+          },
           { text: '音频可视化', link: 'audio-visualizer' },
         ],
       },

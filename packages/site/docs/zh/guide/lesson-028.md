@@ -131,7 +131,13 @@ private async removeBackground() {
 
 在 [课程 1 - 硬件抽象层] 中我们就介绍过 WebGPU 的优势（Figma 也在近日升级了渲染引擎），除了渲染更是在 Compute Shader 的支持上让浏览器端 GPGPU 成为可能。
 
-[Image Segmentation in the Browser with Segment Anything Model 2]
+-   [Image Segmentation in the Browser with Segment Anything Model 2]
+-   [Segment Anything 2, in WebGPU]
+-   [Request for Official ONNX Export + TensorRT Conversion Scripts for SAM3]
+
+### 端侧模型 LaMa {#use-lama}
+
+[Client-Side Image Inpainting with ONNX and Next.js] 介绍了如何在端侧使用 [LaMa] 模型完成
 
 ### 合并多张图片 {#combine-multiple-images}
 
@@ -210,6 +216,10 @@ Adobe Photoshop 提供了 [Match fonts] 功能：
 
 最后将各部分图层叠加。
 
+## Upscaler {#upscaler}
+
+![Image upscaler with LiteRT.js](/image-upscaler.jpg)
+
 ## MCP
 
 来自 [MCP: What It Is and Why It Matters]：
@@ -241,3 +251,7 @@ Adobe Photoshop 提供了 [Match fonts] 功能：
 [Raster to Vector converter]: https://lottiefiles.com/tools/raster-to-vector
 [AI image vectorizer]: https://www.recraft.ai/ai-image-vectorizer
 [vtracer]: https://github.com/visioncortex/vtracer
+[Segment Anything 2, in WebGPU]: https://lucasgelfond.online/software/webgpu-sam2/
+[LaMa]: https://github.com/advimman/lama
+[Client-Side Image Inpainting with ONNX and Next.js]: https://medium.com/@geronimo7/client-side-image-inpainting-with-onnx-and-next-js-3d9508dfd059
+[Request for Official ONNX Export + TensorRT Conversion Scripts for SAM3]: https://github.com/facebookresearch/sam3/issues/224

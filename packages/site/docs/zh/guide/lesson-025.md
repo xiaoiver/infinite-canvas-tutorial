@@ -332,6 +332,11 @@ Figma 是可以将 Brush 导出 SVG 的。
 
 ### 橡皮擦 {#eraser}
 
+### Perfect freehand {#perfect-freehand}
+
+-   [perfect-freehand]
+-   [Perfect Freehand Drawing Issue]
+
 ## 扩展阅读 {#extended-reading}
 
 -   [Draw with illustration tools]
@@ -357,3 +362,5 @@ Figma 是可以将 Brush 导出 SVG 的。
 [plot - arrow]: https://github.com/observablehq/plot/blob/main/src/marks/arrow.js
 [orient]: https://developer.mozilla.org/en-US/docs/Web/SVG/Reference/Attribute/orient
 [export arrow]: https://github.com/xiaoiver/infinite-canvas-tutorial/blob/master/__tests__/ecs/snapshots/export-arrow.svg
+[perfect-freehand]: https://github.com/steveruizok/perfect-freehand
+[Perfect Freehand Drawing Issue]: https://github.com/excalidraw/excalidraw/issues/4802

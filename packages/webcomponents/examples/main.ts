@@ -42,6 +42,14 @@ const canvas = document.querySelector<HTMLElement>('#canvas1')!;
 canvas.addEventListener(Event.READY, async (e) => {
   const api = e.detail;
 
+  api.createOrEditImage = async (
+    isEdit: boolean,
+    prompt: string,
+    image_urls: string[],
+  ): Promise<{ images: { url: string }[]; description: string }> => {
+    return { images: image_urls, description: '' };
+  };
+
   // Generate sinewave geometry
   // const maxRadius = (1 / 3) * 100;
   // const segmentCount = 32;
@@ -114,7 +122,7 @@ canvas.addEventListener(Event.READY, async (e) => {
       width: 400,
       height: 400,
       lockAspectRatio: true,
-      filter: 'noise(0.6)',
+      // filter: 'noise(0.6)',
     } as const,
     // {
     //   id: '2',

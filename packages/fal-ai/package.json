@@ -1,0 +1,55 @@
+{
+  "name": "@infinite-canvas-tutorial/fal-ai",
+  "version": "0.0.1-alpha.39",
+  "description": "Use fal.ai in client side",
+  "main": "lib/index.js",
+  "module": "esm/index.js",
+  "types": "lib/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./lib/index.d.ts",
+      "import": "./esm/index.js",
+      "require": "./lib/index.js"
+    }
+  },
+  "files": [
+    "package.json",
+    "esm",
+    "lib",
+    "README.md"
+  ],
+  "keywords": [
+    "whiteboard",
+    "infinite canvas",
+    "webgl",
+    "webgpu",
+    "webcomponents",
+    "shoelace",
+    "spectrum"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/xiaoiver/infinite-canvas-tutorial"
+  },
+  "license": "MIT",
+  "author": {
+    "name": "xiaoiver",
+    "url": "https://github.com/xiaoiver"
+  },
+  "scripts": {
+    "dev": "vite dev",
+    "deploy": "vite build",
+    "preview": "vite preview",
+    "build:cjs": "rimraf ./lib && tsc --module commonjs --outDir lib",
+    "build:esm": "rimraf ./esm && tsc --module ESNext --outDir esm",
+    "build": "run-p build:*",
+    "watch": "rimraf ./esm && tsc --module ESNext --outDir esm --watch"
+  },
+  "dependencies": {
+    "@infinite-canvas-tutorial/ecs": "workspace:*",
+    "@fal-ai/client": "^1.6.2"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

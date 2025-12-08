@@ -229,6 +229,7 @@ export class Select extends System {
     this.createSnapPoints(camera, snapLines);
 
     const { selecteds, mask } = camera.read(Transformable);
+
     selecteds.forEach((selected) => {
       // Hide transformer and highlighter
       if (selected.has(Highlighted)) {
@@ -744,16 +745,19 @@ export class Select extends System {
 
         if (selection.editing) {
           if (selection.mode === SelectionMode.IDLE) {
-            if (selection.editing) {
-              api.updateNode(api.getNodeByEntity(selection.editing), {
-                isEditing: false,
-              });
+            api.updateNode(api.getNodeByEntity(selection.editing), {
+              isEditing: false,
+            });
 
-              selection.editing = undefined;
-              selection.mode = SelectionMode.SELECT;
-
-              return;
-            }
+            selection.editing = undefined;
+            selection.mode = SelectionMode.SELECT;
+            api.setAppState({
+              editingPoints: [],
+            });
+          } else if (selection.mode === SelectionMode.READY_TO_MOVE) {
+            api.setAppState({
+              editingPoints: [...api.getAppState().editingPoints, [x, y]],
+            });
           }
 
           return;

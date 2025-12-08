@@ -1,3 +1,4 @@
+import path from 'path';
 import { defineConfig } from 'vitepress';
 import vueJsx from '@vitejs/plugin-vue-jsx';
 import VueMacros from 'unplugin-vue-macros/vite';
@@ -45,6 +46,18 @@ export default defineConfig({
     build: {
       chunkSizeWarningLimit: 800,
     },
+    resove: {
+      alias: {
+        'onnxruntime-web/all': path.join(
+          __dirname,
+          'node_modules/onnxruntime-web/dist/ort.all.bundle.min.mjs',
+        ),
+      },
+    },
+    optimizeDeps: {
+      exclude: ['onnxruntime-web'],
+    },
+    assetsInclude: ['**/*.onnx'],
     ssr: {
       noExternal: [
         '@antv/g-device-api',
@@ -52,6 +65,7 @@ export default defineConfig({
         'ant-design-vue',
         '@ant-design/icons-vue',
         'perfect-cursors',
+        'onnxruntime-web',
       ],
     },
     plugins: [

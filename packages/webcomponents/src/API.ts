@@ -151,4 +151,19 @@ export class ExtendedAPI extends API {
   async upload(file: File): Promise<string> {
     throw new Error('Not implemented');
   }
+
+  async encodeImage(image: string): Promise<string> {
+    throw new Error('Not implemented');
+  }
+
+  async segmentImage(params: {
+    points: {
+      x: number;
+      y: number;
+      xNormalized: number;
+      yNormalized: number;
+    }[];
+  }): Promise<any> {
+    throw new Error('Not implemented');
+  }
 }
