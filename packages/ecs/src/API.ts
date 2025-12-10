@@ -1279,4 +1279,32 @@ export class API {
   runAtNextTick(fn: () => any) {
     pendingAPICallings.push(fn);
   }
+
+  // AI APIs
+  async createOrEditImage(
+    isEdit: boolean,
+    prompt: string,
+    image_urls: string[],
+  ): Promise<{ images: { url: string }[]; description: string }> {
+    throw new Error('Not implemented');
+  }
+
+  async upload(file: File): Promise<string> {
+    throw new Error('Not implemented');
+  }
+
+  async encodeImage(image: string): Promise<void> {
+    throw new Error('Not implemented');
+  }
+
+  async segmentImage(params: {
+    points: {
+      x: number;
+      y: number;
+      xNormalized: number;
+      yNormalized: number;
+    }[];
+  }): Promise<any> {
+    throw new Error('Not implemented');
+  }
 }

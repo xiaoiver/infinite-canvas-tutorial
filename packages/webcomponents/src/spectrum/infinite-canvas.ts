@@ -301,7 +301,8 @@ export class InfiniteCanvas extends LitElement {
               style=${`top: ${
                 topbarVisible ? TOP_NAVBAR_HEIGHT : 0
               }px; left: 0;`}
-            ></ic-spectrum-comments>`,
+            ></ic-spectrum-comments>
+            <ic-spectrum-mask></ic-spectrum-mask>`,
         ),
       error: (e: Error) => {
         console.error(e);

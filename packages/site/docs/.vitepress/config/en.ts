@@ -172,6 +172,13 @@ export const en = defineConfig({
             ],
           },
           {
+            text: 'Plugins',
+            items: [
+              { text: 'fal.ai', link: 'fal' },
+              { text: 'Segment Anything Model', link: 'sam' },
+            ],
+          },
+          {
             text: 'Shape',
             items: [
               { text: 'Shape', link: 'shape' },

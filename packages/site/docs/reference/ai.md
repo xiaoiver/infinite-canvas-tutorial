@@ -13,6 +13,8 @@ When calling model capabilities, some static resources such as images must be in
 upload(file: File): Promise<string> {}
 ```
 
+### fal.ai
+
 A demonstration-only example using [fal.ai] is shown below, as it requires placing the KEY on the frontend:
 
 ```ts
@@ -27,6 +29,8 @@ api.upload = async (file: File) => {
     return await fal.storage.upload(file);
 };
 ```
+
+### AWS S3
 
 A more reasonable example using AWS S3 is shown below. Place the KEY on the server side:
 
@@ -91,6 +95,8 @@ Parameter descriptions:
 -   `prompt` Description when generating images
 -   `image_urls` Reference image list, can be empty
 
+### fal.ai
+
 An example using [fal.ai] is shown below:
 
 ```ts
@@ -116,21 +122,6 @@ api.createOrEditImage = async (
 };
 ```
 
-## encodeImage
-
-Encode images using SAM for subsequent inference:
-
-```ts
-import { Tensor } from 'onnxruntime-web';
-
-const { float32Array, shape } = canvasToFloat32Array(
-    resizeCanvas(image, imageSize),
-);
-const imgTensor = new Tensor('float32', float32Array, shape);
-
-await sam.encodeImage(imgTensor);
-```
-
 ## segmentImage
 
 Segment images using SAM to generate masks
@@ -144,6 +135,54 @@ segmentImage(params: {
         yNormalized: number;
     }[],
 }): Promise<any> {}
+```
+
+### fal.ai
+
+```ts
+const result = await fal.subscribe('fal-ai/sam-3/image', {
+    input: {
+        image_url:
+            'https://raw.githubusercontent.com/facebookresearch/segment-anything-2/main/notebooks/images/truck.jpg',
+    },
+});
+```
+
+### ONNX
+
+Decode in WebWorker:
+
+```ts
+// WebWorker
+decodingResults = await sam.decode(points); // Tensor [B=1, Masks, W, H]
+```
+
+Use segment result in main thread:
+
+```ts
+const maskTensors = data.masks;
+const [bs, noMasks, width, height] = maskTensors.dims;
+const maskScores = data.iou_predictions.cpuData;
+const bestMaskIdx = maskScores.indexOf(Math.max(...maskScores));
+const bestMaskArray = sliceTensor(maskTensors, bestMaskIdx);
+let bestMaskCanvas = float32ArrayToCanvas(bestMaskArray, width, height);
+```
+
+## encodeImage
+
+### ONNX
+
+Encode images using SAM for subsequent inference:
+
+```ts
+import { Tensor } from 'onnxruntime-web';
+
+const { float32Array, shape } = canvasToFloat32Array(
+    resizeCanvas(image, imageSize),
+);
+const imgTensor = new Tensor('float32', float32Array, shape);
+
+await sam.encodeImage(imgTensor);
 ```
 
 [Lesson 28 - Integration with AI]: /guide/lesson-028

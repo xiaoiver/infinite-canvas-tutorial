@@ -29,3 +29,4 @@ export * from './text-editor';
 export * from './chat-panel';
 export * from './comments';
 export * from './thread';
+export * from './mask';

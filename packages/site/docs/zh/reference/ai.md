@@ -13,6 +13,8 @@ publish: false
 upload(file: File): Promise<string> {}
 ```
 
+### fal.ai
+
 一个仅用于演示的、使用 [fal.ai] 的例子如下，因为它需要将 KEY 放在前端：
 
 ```ts
@@ -27,6 +29,8 @@ api.upload = async (file: File) => {
     return await fal.storage.upload(file);
 };
 ```
+
+### AWS S3
 
 一个更合理的、使用 AWS S3 的例子如下。将 KEY 放在服务端：
 
@@ -91,6 +95,8 @@ createOrEditImage(
 -   `prompt` 生成图片时的描述
 -   `image_urls` 参考图列表，可以为空
 
+### fal.ai
+
 一个使用 [fal.ai] 的例子如下：
 
 ```ts
@@ -116,21 +122,6 @@ api.createOrEditImage = async (
 };
 ```
 
-## encodeImage
-
-使用 SAM 对图片进行编码，用于后续的推理：
-
-```ts
-import { Tensor } from 'onnxruntime-web';
-
-const { float32Array, shape } = canvasToFloat32Array(
-    resizeCanvas(image, imageSize),
-);
-const imgTensor = new Tensor('float32', float32Array, shape);
-
-await sam.encodeImage(imgTensor);
-```
-
 ## segmentImage
 
 使用 SAM 分割图片，生成 mask
@@ -144,6 +135,56 @@ segmentImage(params: {
         yNormalized: number;
     }[],
 }): Promise<any> {}
+```
+
+### fal.ai
+
+```ts
+const result = await fal.subscribe('fal-ai/sam-3/image', {
+    input: {
+        image_url:
+            'https://raw.githubusercontent.com/facebookresearch/segment-anything-2/main/notebooks/images/truck.jpg',
+    },
+});
+```
+
+### ONNX
+
+为了不阻塞主线程，可以放在 WebWorker 中执行。
+
+```ts
+// WebWorker
+decodingResults = await sam.decode(points); // Tensor [B=1, Masks, W, H]
+```
+
+在主线程接收分割结果：
+
+```ts
+const maskTensors = data.masks;
+const [bs, noMasks, width, height] = maskTensors.dims;
+const maskScores = data.iou_predictions.cpuData;
+const bestMaskIdx = maskScores.indexOf(Math.max(...maskScores));
+const bestMaskArray = sliceTensor(maskTensors, bestMaskIdx);
+let bestMaskCanvas = float32ArrayToCanvas(bestMaskArray, width, height);
+```
+
+## encodeImage
+
+在端侧推理前对图片进行编码，同样可以在 WebWorker 中进行。
+
+### ONNX
+
+使用 SAM 对图片进行编码，用于后续的推理：
+
+```ts
+import { Tensor } from 'onnxruntime-web';
+
+const { float32Array, shape } = canvasToFloat32Array(
+    resizeCanvas(image, imageSize),
+);
+const imgTensor = new Tensor('float32', float32Array, shape);
+
+await sam.encodeImage(imgTensor);
 ```
 
 [课程 28 - 与 AI 结合]: /zh/guide/lesson-028

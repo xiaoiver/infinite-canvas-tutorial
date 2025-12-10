@@ -117,6 +117,16 @@ export const zh = defineConfig({
             ],
           },
           {
+            text: '插件',
+            items: [
+              {
+                text: 'fal.ai',
+                link: 'fal',
+              },
+              { text: 'Segment Anything Model', link: 'sam' },
+            ],
+          },
+          {
             text: '图形',
             items: [
               { text: 'Shape', link: 'shape' },

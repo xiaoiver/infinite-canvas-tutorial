@@ -1,4 +1,7 @@
-# @infinite-canvas-tutorial/sam
+---
+outline: deep
+publish: false
+---
 
 Use SAM to implement [AI API]
 
@@ -16,6 +19,14 @@ We have implemented the following optimizations:
 -   Utilized the [ORT model format] to reduce the size of downloaded models during runtime
 -   Employed WebGPU for faster inference speeds. For details, see: [Using the WebGPU Execution Provider]
 -   Executed within WebWorkers to avoid blocking the main thread
+
+Since we use `import.meta` to import worker code, which is a feature of ESModule, so we need to use the following config in `tsconfig.json`:
+
+```json
+"compilerOptions": {
+    "module": "ESNext"
+}
+```
 
 [AI API]: /reference/ai
 [How to add machine learning to your web application with ONNX Runtime]: https://onnxruntime.ai/docs/tutorials/web/
