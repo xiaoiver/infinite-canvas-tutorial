@@ -756,7 +756,7 @@ export class Select extends System {
             });
           } else if (selection.mode === SelectionMode.READY_TO_MOVE) {
             api.setAppState({
-              editingPoints: [...api.getAppState().editingPoints, [x, y]],
+              editingPoints: [[x, y]],
             });
           }
 

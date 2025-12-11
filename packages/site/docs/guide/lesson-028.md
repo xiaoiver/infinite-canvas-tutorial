@@ -132,9 +132,22 @@ In addition to allowing users to define the modification area as precisely as po
 
 ![Smart select in Midjourney](/midjourney-smart-select.jpeg)
 
-In [Lesson 1 - Hardware abstraction layers], we introduced the advantages of WebGPU (Figma also recently upgraded its rendering engine). Beyond rendering, it makes browser-side GPGPU possible with Compute Shader support.
+In [Lesson 1 - Hardware abstraction layers], we introduced the advantages of WebGPU (Figma also recently upgraded its rendering engine). Beyond rendering, it makes browser-side GPGPU possible with Compute Shader support. ONNX provides a web-based runtime, enabling real-time inference directly in the browser without consuming any tokens. For details, see: [How to add machine learning to your web application with ONNX Runtime].
 
-[Image Segmentation in the Browser with Segment Anything Model 2]
+We refer to this article: [Image Segmentation in the Browser with Segment Anything Model 2] and implemented the following optimizations:
+
+-   Utilized the [ORT model format] to reduce the size of downloaded models during runtime
+-   Employed WebGPU for faster inference speeds. For details, see: [Using the WebGPU Execution Provider]
+-   Executed within WebWorkers to avoid blocking the main thread
+
+We wrap them up in [SAM plugin]. Here's our example: [Use SAM in WebWorker].
+
+![SAM in WebWorker](/sam.gif)
+
+For other practices and SAM3-related materials, please refer to:
+
+-   [Segment Anything 2, in WebGPU]
+-   [Request for Official ONNX Export + TensorRT Conversion Scripts for SAM3]
 
 ### Combining Multiple Images {#combine-multiple-images}
 
@@ -244,3 +257,12 @@ Finally, overlay all the layers.
 [Raster to Vector converter]: https://lottiefiles.com/tools/raster-to-vector
 [AI image vectorizer]: https://www.recraft.ai/ai-image-vectorizer
 [vtracer]: https://github.com/visioncortex/vtracer
+[Segment Anything 2, in WebGPU]: https://lucasgelfond.online/software/webgpu-sam2/
+[LaMa]: https://github.com/advimman/lama
+[Client-Side Image Inpainting with ONNX and Next.js]: https://medium.com/@geronimo7/client-side-image-inpainting-with-onnx-and-next-js-3d9508dfd059
+[Request for Official ONNX Export + TensorRT Conversion Scripts for SAM3]: https://github.com/facebookresearch/sam3/issues/224
+[Use SAM in WebWorker]: /experiment/sam-in-worker
+[SAM plugin]: /reference/sam
+[How to add machine learning to your web application with ONNX Runtime]: https://onnxruntime.ai/docs/tutorials/web/
+[ORT model format]: https://onnxruntime.ai/docs/performance/model-optimizations/ort-format-models.html
+[Using the WebGPU Execution Provider]: https://onnxruntime.ai/docs/tutorials/web/ep-webgpu.html

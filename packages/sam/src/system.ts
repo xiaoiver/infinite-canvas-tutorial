@@ -1,15 +1,14 @@
 import { Canvas, System } from '@infinite-canvas-tutorial/ecs';
 import {
   canvasToFloat32Array,
-  float32ArrayToCanvas,
   image2Canvas,
   resizeCanvas,
-  sliceTensor,
+  sliceTensorMask,
 } from './utils';
 
 // resize+pad all images to 1024x1024
 const imageSize = { w: 1024, h: 1024 };
-const maskSize = { w: 256, h: 256 };
+// const maskSize = { w: 256, h: 256 };
 
 export class SAMSystem extends System {
   private readonly canvases = this.query((q) => q.added.with(Canvas));
@@ -36,6 +35,7 @@ export class SAMSystem extends System {
             }
             originalOnMessage?.call(this.worker, event);
           };
+
           this.worker.postMessage({
             type: 'encodeImage',
             data: canvasToFloat32Array(resizeCanvas(canvas, imageSize)),
@@ -43,25 +43,22 @@ export class SAMSystem extends System {
         });
       };
 
-      api.segmentImage = async (params: {
-        points: {
-          x: number;
-          y: number;
-          xNormalized: number;
-          yNormalized: number;
-        }[];
-      }) => {
-        const { points } = params;
-        if (points.length === 0) {
+      api.segmentImage = async (input) => {
+        const { point_prompts } = input;
+        if (point_prompts.length === 0) {
           return;
         }
 
-        const { xNormalized, yNormalized } = points[0];
+        const selectedNode = api.getNodeById(
+          api.getAppState().layersSelected[0],
+        );
+
+        const { x, y, label } = point_prompts[0];
         // input image will be resized to 1024x1024 -> normalize mouse pos to 1024x1024
         const point = {
-          x: xNormalized * imageSize.w,
-          y: yNormalized * imageSize.h,
-          label: 0,
+          x: (x / selectedNode.width) * imageSize.w,
+          y: (y / selectedNode.width) * imageSize.h,
+          label,
         };
 
         return new Promise((resolve, reject) => {
@@ -71,19 +68,17 @@ export class SAMSystem extends System {
             if (type == 'decodeMaskResult') {
               // SAM2 returns 3 mask along with scores -> select best one
               const maskTensors = data.masks;
-              const [bs, noMasks, width, height] = maskTensors.dims;
               const maskScores = data.iou_predictions.cpuData;
               const bestMaskIdx = maskScores.indexOf(Math.max(...maskScores));
-              const bestMaskArray = sliceTensor(maskTensors, bestMaskIdx);
-              let bestMaskCanvas = float32ArrayToCanvas(
-                bestMaskArray,
-                width,
-                height,
-              );
-              bestMaskCanvas = resizeCanvas(bestMaskCanvas, imageSize);
+              const maskCanvas = sliceTensorMask(maskTensors, bestMaskIdx);
+
+              const maskCanvasResized = resizeCanvas(maskCanvas, {
+                w: imageSize.w,
+                h: imageSize.h,
+              });
 
               this.worker.onmessage = originalOnMessage;
-              resolve(data);
+              resolve({ image: maskCanvasResized });
             }
             originalOnMessage?.call(this.worker, event);
           };
@@ -109,7 +104,7 @@ export class SAMSystem extends System {
           const { type, data } = event.data;
 
           if (type == 'pong') {
-            const { success, device } = data;
+            const { success } = data;
             if (success) {
               api.setAppState({ loading: false, loadingMessage: '' });
             } else {

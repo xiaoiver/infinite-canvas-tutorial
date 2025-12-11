@@ -810,9 +810,6 @@ importers:
       motion-v:
         specifier: ^1.7.4
         version: 1.7.4(@vueuse/core@12.8.2(typescript@5.8.3))(vue@3.5.13(typescript@5.8.3))
-      onnxruntime-web:
-        specifier: ^1.23.2
-        version: 1.23.2
       openai:
         specifier: ^4.8.0
         version: 4.86.1(encoding@0.1.13)(ws@8.18.1)

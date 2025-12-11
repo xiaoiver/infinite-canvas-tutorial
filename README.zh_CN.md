@@ -342,11 +342,15 @@ pnpm run dev
 
 -   使用聊天框
 -   使用 Nano banana 进行图片生成与编辑
--   通过 WebGPU 使用 SAM
+-   通过 ONNX 的 WebGPU 运行时使用 SAM 在端侧进行推理
 
 |                     与聊天框结合                      |                      清除背景                      |
 | :---------------------------------------------------: | :------------------------------------------------: |
 | ![when canvas meets chat](./screenshots/lesson28.png) | ![remove background](./screenshots/lesson28-2.png) |
+
+|            在 WebWorker 中使用 ONNX 和 SAM 分割图片            |     |
+| :------------------------------------------------------------: | :-: |
+| ![use onnx and sam in webworker](./screenshots/lesson28-3.gif) |     |
 
 ## 课程 29 - 嵌入 HTML 内容 [🔗](https://infinitecanvas.cc/zh/guide/lesson-029)
 

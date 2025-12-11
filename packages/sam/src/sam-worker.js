@@ -4,7 +4,7 @@ import * as ort from 'onnxruntime-web/all';
 const ENCODER_URL =
   'https://huggingface.co/g-ronimo/sam2-tiny/resolve/main/sam2_hiera_tiny_encoder.with_runtime_opt.ort';
 const DECODER_URL =
-  'https://huggingface.co/g-ronimo/sam2-tiny/resolve/main/sam2_hiera_tiny_decoder_pr1.onnx';
+  'https://huggingface.co/g-ronimo/sam2-tiny/resolve/main/sam2_hiera_tiny_decoder.onnx';
 
 class SAM2 {
   bufferEncoder = null;
@@ -124,50 +124,21 @@ class SAM2 {
 
   async decode(points, masks) {
     const [session, device] = await this.getDecoderSession();
-
-    const flatPoints = points.map((point) => {
-      return [point.x, point.y];
-    });
-
-    const flatLabels = points.map((point) => {
-      return point.label;
-    });
-
-    console.log({
-      flatPoints,
-      flatLabels,
-      masks,
-    });
-
-    let mask_input, has_mask_input;
-    if (masks) {
-      mask_input = masks;
-      has_mask_input = new ort.Tensor('float32', [1], [1]);
-    } else {
-      // dummy data
-      mask_input = new ort.Tensor(
-        'float32',
-        new Float32Array(256 * 256),
-        [1, 1, 256, 256],
-      );
-      has_mask_input = new ort.Tensor('float32', [0], [1]);
-    }
+    const point = points[0];
 
     const inputs = {
       image_embed: this.image_encoded.image_embed,
       high_res_feats_0: this.image_encoded.high_res_feats_0,
       high_res_feats_1: this.image_encoded.high_res_feats_1,
-      point_coords: new ort.Tensor('float32', flatPoints.flat(), [
-        1,
-        flatPoints.length,
-        2,
-      ]),
-      point_labels: new ort.Tensor('float32', flatLabels, [
-        1,
-        flatLabels.length,
-      ]),
-      mask_input: mask_input,
-      has_mask_input: has_mask_input,
+      point_coords: new Tensor('float32', [point.x, point.y], [1, 1, 2]),
+      point_labels: new Tensor('float32', [point.label], [1, 1]),
+      mask_input: new Tensor(
+        'float32',
+        new Float32Array(256 * 256),
+        [1, 1, 256, 256],
+      ),
+      has_mask_input: new Tensor('float32', [0], [1]),
+      orig_im_size: new Tensor('int32', [1024, 1024], [2]),
     };
 
     return await session.run(inputs);

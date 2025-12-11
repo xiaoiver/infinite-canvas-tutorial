@@ -17,6 +17,13 @@ We have implemented the following optimizations:
 -   Employed WebGPU for faster inference speeds. For details, see: [Using the WebGPU Execution Provider]
 -   Executed within WebWorkers to avoid blocking the main thread
 
+```ts
+const ENCODER_URL =
+    'https://huggingface.co/g-ronimo/sam2-tiny/resolve/main/sam2_hiera_tiny_encoder.with_runtime_opt.ort';
+const DECODER_URL =
+    'https://huggingface.co/g-ronimo/sam2-tiny/resolve/main/sam2_hiera_tiny_decoder_pr1.onnx';
+```
+
 [AI API]: /reference/ai
 [How to add machine learning to your web application with ONNX Runtime]: https://onnxruntime.ai/docs/tutorials/web/
 [ORT model format]: https://onnxruntime.ai/docs/performance/model-optimizations/ort-format-models.html

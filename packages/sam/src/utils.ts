@@ -163,3 +163,31 @@ export function float32ArrayToCanvas(
 
   return canvas;
 }
+
+export function sliceTensorMask(maskTensor, maskIdx) {
+  const [bs, noMasks, width, height] = maskTensor.dims;
+  const stride = width * height;
+  const start = stride * maskIdx,
+    end = start + stride;
+
+  const maskData = maskTensor.cpuData.slice(start, end);
+
+  const C = 4; // 4 channels, RGBA
+  const imageData = new Uint8ClampedArray(stride * C);
+  for (let srcIdx = 0; srcIdx < maskData.length; srcIdx++) {
+    const trgIdx = srcIdx * C;
+    const maskedPx = maskData[srcIdx] > 0;
+    imageData[trgIdx] = maskedPx ? 255 : 0;
+    imageData[trgIdx + 1] = 0;
+    imageData[trgIdx + 2] = 0;
+    imageData[trgIdx + 3] = maskedPx ? 150 : 0; // alpha
+  }
+
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d');
+  canvas.height = height;
+  canvas.width = width;
+  ctx.putImageData(new ImageData(imageData, width, height), 0, 0);
+
+  return canvas;
+}

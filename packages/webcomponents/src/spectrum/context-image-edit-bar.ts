@@ -40,6 +40,8 @@ export class ContextImageEditBar extends LitElement {
 
   previouseEditingPoints: [number, number][];
 
+  private maskCanvas: HTMLCanvasElement;
+
   shouldUpdate(changedProperties: PropertyValues) {
     for (const prop of changedProperties.keys()) {
       if (prop !== 'appState') return true;
@@ -51,6 +53,11 @@ export class ContextImageEditBar extends LitElement {
 
       if (this.mode === ImageEditMode.POINT_SEGMENT) {
         this.segmentWithPoints(newEditingPoints);
+      }
+
+      if (newEditingPoints.length === 0) {
+        this.maskCanvas?.remove();
+        this.maskCanvas = undefined;
       }
       return true;
     }
@@ -100,23 +107,40 @@ export class ContextImageEditBar extends LitElement {
   }
 
   private async segmentWithPoints(points: [number, number][]) {
+    if (points.length === 0) {
+      return;
+    }
+
     // convert points in canvas coordinages to local coordinates
     const selectedNode = this.api.getNodeById(
       this.api.getAppState().layersSelected[0],
     );
 
-    const canvasPoints = points.map((point) => {
-      const { x, y } = this.api.viewport2Canvas({ x: point[0], y: point[1] });
-      return {
-        x,
-        y,
-        xNormalized: (x - selectedNode.x) / selectedNode.width,
-        yNormalized: (y - selectedNode.y) / selectedNode.height,
-      };
+    const point = points[0];
+    const { x, y } = this.api.viewport2Canvas({ x: point[0], y: point[1] });
+
+    if (this.maskCanvas) {
+      this.maskCanvas.remove();
+    }
+
+    const { image } = await this.api.segmentImage({
+      point_prompts: [
+        {
+          x: x - selectedNode.x,
+          y: y - selectedNode.y,
+          label: 1,
+        },
+      ],
     });
 
-    const result = await this.api.segmentImage({ points: canvasPoints });
-    console.log('segmentWithPoints', result);
+    this.maskCanvas = image;
+    this.maskCanvas.style.position = 'absolute';
+    this.maskCanvas.style.left = `${selectedNode.x}px`;
+    this.maskCanvas.style.top = `${selectedNode.y}px`;
+    this.maskCanvas.style.width = `${selectedNode.width}px`;
+    this.maskCanvas.style.height = `${selectedNode.height}px`;
+    this.maskCanvas.style.pointerEvents = 'none';
+    this.api.getHtmlLayer().appendChild(this.maskCanvas);
   }
 
   render() {
@@ -126,7 +150,6 @@ export class ContextImageEditBar extends LitElement {
 
     // FIXME: wait for the element to be ready.
     if (this.api.element && !this.binded) {
-      // document.addEventListener('keydown', this.handleKeyDown);
       this.binded = true;
     }
 

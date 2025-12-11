@@ -1297,14 +1297,34 @@ export class API {
     throw new Error('Not implemented');
   }
 
-  async segmentImage(params: {
-    points: {
-      x: number;
-      y: number;
-      xNormalized: number;
-      yNormalized: number;
-    }[];
-  }): Promise<any> {
+  async segmentImage(
+    input: Partial<{
+      prompt: string;
+      point_prompts: PointPrompt[];
+      box_prompts: BoxPrompt[];
+    }>,
+  ): Promise<{
+    /**
+     * Primary segmented mask preview
+     */
+    image: HTMLCanvasElement;
+  }> {
     throw new Error('Not implemented');
   }
+}
+
+export interface PointPrompt {
+  x: number;
+  y: number;
+  /**
+   * 1 for foreground, 0 for background
+   */
+  label: number;
+}
+
+export interface BoxPrompt {
+  x_min: number;
+  y_min: number;
+  x_max: number;
+  y_max: number;
 }
