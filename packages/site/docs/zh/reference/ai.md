@@ -127,14 +127,42 @@ api.createOrEditImage = async (
 使用 SAM 分割图片，生成 mask
 
 ```ts
-segmentImage(params: {
-    points: {
-        x: number;
-        y: number;
-        xNormalized: number;
-        yNormalized: number;
-    }[],
-}): Promise<any> {}
+segmentImage(
+    input: Partial<{
+        prompt: string;
+        point_prompts: PointPrompt[];
+        box_prompts: BoxPrompt[];
+    }>,
+): Promise<{
+    /**
+     * Primary segmented mask preview
+     */
+    image: HTMLCanvasElement;
+}> {}
+```
+
+参数说明如下：
+
+-   `prompt` 文本 prompt
+-   `point_prompts` 目标点列表
+-   `box_prompts` 目标包围盒列表
+
+```ts
+interface PointPrompt {
+    x: number;
+    y: number;
+    /**
+     * 1 for foreground, 0 for background
+     */
+    label: number;
+}
+
+interface BoxPrompt {
+    x_min: number;
+    y_min: number;
+    x_max: number;
+    y_max: number;
+}
 ```
 
 ### fal.ai
@@ -171,6 +199,10 @@ let bestMaskCanvas = float32ArrayToCanvas(bestMaskArray, width, height);
 ## encodeImage
 
 在端侧推理前对图片进行编码，同样可以在 WebWorker 中进行。
+
+```ts
+encodeImage(image: string): Promise<void> {}
+```
 
 ### ONNX
 

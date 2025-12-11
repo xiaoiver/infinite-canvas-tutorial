@@ -137,6 +137,45 @@ segmentImage(params: {
 }): Promise<any> {}
 ```
 
+```ts
+segmentImage(
+    input: Partial<{
+        prompt: string;
+        point_prompts: PointPrompt[];
+        box_prompts: BoxPrompt[];
+    }>,
+): Promise<{
+    /**
+     * Primary segmented mask preview
+     */
+    image: HTMLCanvasElement;
+}> {}
+```
+
+Parameter descriptions are as follows:
+
+-   `prompt`: Text prompt
+-   `point_prompts`: List of target points
+-   `box_prompts`: List of target bounding boxes
+
+```ts
+interface PointPrompt {
+    x: number;
+    y: number;
+    /**
+     * 1 for foreground, 0 for background
+     */
+    label: number;
+}
+
+interface BoxPrompt {
+    x_min: number;
+    y_min: number;
+    x_max: number;
+    y_max: number;
+}
+```
+
 ### fal.ai
 
 ```ts
@@ -169,6 +208,12 @@ let bestMaskCanvas = float32ArrayToCanvas(bestMaskArray, width, height);
 ```
 
 ## encodeImage
+
+Encoding images prior to edge-side inference can also be performed in a WebWorker.
+
+```ts
+encodeImage(image: string): Promise<void> {}
+```
 
 ### ONNX
 
