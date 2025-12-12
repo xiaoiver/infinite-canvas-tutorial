@@ -129,6 +129,7 @@ api.createOrEditImage = async (
 ```ts
 segmentImage(
     input: Partial<{
+        image_url: string;
         prompt: string;
         point_prompts: PointPrompt[];
         box_prompts: BoxPrompt[];
@@ -143,6 +144,7 @@ segmentImage(
 
 参数说明如下：
 
+-   `image_url` 原始图片地址
 -   `prompt` 文本 prompt
 -   `point_prompts` 目标点列表
 -   `box_prompts` 目标包围盒列表

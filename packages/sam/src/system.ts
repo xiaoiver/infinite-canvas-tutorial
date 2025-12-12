@@ -5,6 +5,8 @@ import {
   resizeCanvas,
   sliceTensorMask,
 } from './utils';
+// @ts-expect-error - import.meta is only available in ES modules, but this code will run in ES module environments
+import workerUrl from './sam-worker.js?worker&url';
 
 // resize+pad all images to 1024x1024
 const imageSize = { w: 1024, h: 1024 };
@@ -94,11 +96,15 @@ export class SAMSystem extends System {
       };
 
       if (!this.worker) {
-        // @ts-ignore - import.meta is only available in ES modules, but this code will run in ES module environments
-        const workerUrl = new URL('./sam-worker.js', import.meta.url);
-        this.worker = new Worker(workerUrl, {
-          type: 'module',
-        });
+        try {
+          // @ts-ignore - import.meta is only available in ES modules, but this code will run in ES module environments
+          // const workerUrl = new URL('./sam-worker.js', import.meta.url);
+          this.worker = new Worker(workerUrl, {
+            type: 'module',
+          });
+        } catch (error) {
+          console.error('Failed to create SAM worker:', error);
+        }
 
         this.worker.onmessage = (event) => {
           const { type, data } = event.data;

@@ -38,7 +38,18 @@ export class FalAISystem extends System {
         return result.data;
       };
 
-      // TODO: add segmentImage & encodeImage
+      api.segmentImage = async (input) => {
+        const { image_url } = input;
+        const result = await fal.subscribe('fal-ai/sam-3/image', {
+          input: {
+            image_url,
+          },
+        });
+        return { image: result.data.image };
+      };
+
+      // Do nothing here
+      api.encodeImage = async (image: string) => {};
     });
   }
 }

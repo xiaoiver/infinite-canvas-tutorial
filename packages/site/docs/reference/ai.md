@@ -140,6 +140,7 @@ segmentImage(params: {
 ```ts
 segmentImage(
     input: Partial<{
+        image_url: string;
         prompt: string;
         point_prompts: PointPrompt[];
         box_prompts: BoxPrompt[];
@@ -154,6 +155,7 @@ segmentImage(
 
 Parameter descriptions are as follows:
 
+-   `image_url` Original image URL
 -   `prompt`: Text prompt
 -   `point_prompts`: List of target points
 -   `box_prompts`: List of target bounding boxes

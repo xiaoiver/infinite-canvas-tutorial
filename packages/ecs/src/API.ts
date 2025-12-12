@@ -1299,6 +1299,7 @@ export class API {
 
   async segmentImage(
     input: Partial<{
+      image_url: string;
       prompt: string;
       point_prompts: PointPrompt[];
       box_prompts: BoxPrompt[];
