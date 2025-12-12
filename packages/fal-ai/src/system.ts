@@ -15,12 +15,10 @@ export class FalAISystem extends System {
     this.canvases.added.forEach((canvas) => {
       const { api } = canvas.read(Canvas);
 
-      // @ts-expect-error - TODO: fix this
       api.upload = async (file: File) => {
         return await fal.storage.upload(file);
       };
 
-      // @ts-expect-error - TODO: fix this
       api.createOrEditImage = async (
         isEdit: boolean,
         prompt: string,
@@ -39,6 +37,8 @@ export class FalAISystem extends System {
         );
         return result.data;
       };
+
+      // TODO: add segmentImage & encodeImage
     });
   }
 }
