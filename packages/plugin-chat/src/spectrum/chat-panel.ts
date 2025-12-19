@@ -9,11 +9,15 @@ import {
   toSVGDataURL,
   toSVGElement,
 } from '@infinite-canvas-tutorial/ecs';
-import { apiContext, appStateContext } from '../context';
 import { v4 as uuidv4 } from 'uuid';
 import { load } from '@loaders.gl/core';
 import { ImageLoader } from '@loaders.gl/images';
-import { ExtendedAPI } from '../API';
+import {
+  ExtendedAPI,
+  apiContext,
+  appStateContext,
+} from '@infinite-canvas-tutorial/webcomponents';
+import '@spectrum-web-components/icons-workflow/icons/sp-icon-chat.js';
 
 @customElement('ic-spectrum-chat-panel')
 export class ChatPanel extends LitElement {

@@ -119,6 +119,7 @@ export const zh = defineConfig({
           {
             text: '插件',
             items: [
+              { text: 'Chat', link: 'chat' },
               {
                 text: 'fal.ai',
                 link: 'fal',

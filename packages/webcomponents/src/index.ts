@@ -3,3 +3,5 @@ export * from './event';
 export * from './utils';
 export * from './API';
 export * from './context';
+
+export { registerTask } from './spectrum/taskbar';

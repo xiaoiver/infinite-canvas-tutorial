@@ -1,4 +1,4 @@
-import { html, css, LitElement, PropertyValues } from 'lit';
+import { html, css, LitElement, PropertyValues, TemplateResult } from 'lit';
 import { customElement } from 'lit/decorators.js';
 import { map } from 'lit/directives/map.js';
 import { when } from 'lit/directives/when.js';
@@ -23,6 +23,19 @@ const TaskMap = {
     panel: html`<ic-spectrum-chat-panel></ic-spectrum-chat-panel>`,
   },
 };
+
+export function registerTask(
+  task: Task,
+  icon: TemplateResult<1>,
+  label: string,
+  panel: TemplateResult<1>,
+) {
+  TaskMap[task] = {
+    icon,
+    label,
+    panel,
+  };
+}
 
 @customElement('ic-spectrum-taskbar')
 export class Taskbar extends LitElement {

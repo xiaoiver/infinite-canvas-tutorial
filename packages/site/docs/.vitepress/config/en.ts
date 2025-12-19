@@ -174,6 +174,7 @@ export const en = defineConfig({
           {
             text: 'Plugins',
             items: [
+              { text: 'Chat', link: 'chat' },
               { text: 'fal.ai', link: 'fal' },
               { text: 'Segment Anything Model', link: 'sam' },
             ],

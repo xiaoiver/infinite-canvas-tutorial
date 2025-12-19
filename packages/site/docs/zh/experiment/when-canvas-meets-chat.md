@@ -1,5 +1,4 @@
 ---
-publish: false
 layout: 'doc'
 aside: false
 ---

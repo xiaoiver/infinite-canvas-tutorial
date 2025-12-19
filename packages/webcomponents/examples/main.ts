@@ -285,35 +285,35 @@ canvas.addEventListener(Event.READY, async (e) => {
       fontFamilies: ['system-ui', 'serif', 'monospace', 'Gaegu'],
     },
     taskbarAll: [
-      // Task.SHOW_CHAT_PANEL,
+      Task.SHOW_CHAT_PANEL,
       Task.SHOW_LAYERS_PANEL,
       Task.SHOW_PROPERTIES_PANEL,
     ],
     // taskbarSelected: [Task.SHOW_CHAT_PANEL, Task.SHOW_LAYERS_PANEL],
-    // taskbarChatMessages: [
-    //   {
-    //     role: 'user',
-    //     content:
-    //       "An action shot of a black lab swimming in an inground suburban swimming pool. The camera is placed meticulously on the water line, dividing the image in half, revealing both the dogs head above water holding a tennis ball in it's mouth, and it's paws paddling underwater.",
-    //   },
-    //   {
-    //     role: 'assistant',
-    //     content: 'Sure! Here is your image:',
-    //     images: [
-    //       {
-    //         url: 'https://v3b.fal.media/files/b/tiger/v1lf1EcPP1X1pw_YOKM4o.jpg',
-    //       },
-    //     ],
-    //     suggestions: [
-    //       {
-    //         text: 'Replace the puppy with a kitten.',
-    //       },
-    //       {
-    //         text: 'Remove the background.',
-    //       },
-    //     ],
-    //   },
-    // ],
+    taskbarChatMessages: [
+      {
+        role: 'user',
+        content:
+          "An action shot of a black lab swimming in an inground suburban swimming pool. The camera is placed meticulously on the water line, dividing the image in half, revealing both the dogs head above water holding a tennis ball in it's mouth, and it's paws paddling underwater.",
+      },
+      {
+        role: 'assistant',
+        content: 'Sure! Here is your image:',
+        images: [
+          {
+            url: 'https://v3b.fal.media/files/b/tiger/v1lf1EcPP1X1pw_YOKM4o.jpg',
+          },
+        ],
+        suggestions: [
+          {
+            text: 'Replace the puppy with a kitten.',
+          },
+          {
+            text: 'Remove the background.',
+          },
+        ],
+      },
+    ],
     checkboardStyle: CheckboardStyle.GRID,
     snapToPixelGridEnabled: true,
     snapToPixelGridSize: 1,

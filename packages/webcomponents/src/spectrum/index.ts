@@ -26,7 +26,6 @@ export * from './stroke-action-button';
 export * from './stroke-content';
 export * from './text-content';
 export * from './text-editor';
-export * from './chat-panel';
 export * from './comments';
 export * from './thread';
 export * from './mask';

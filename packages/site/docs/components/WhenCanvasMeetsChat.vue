@@ -9,6 +9,7 @@ import {
 import { ref, onMounted, onUnmounted } from 'vue';
 import { Event, UIPlugin } from '@infinite-canvas-tutorial/webcomponents';
 import { FalAIPlugin } from '@infinite-canvas-tutorial/fal-ai';
+import { ChatPlugin } from '@infinite-canvas-tutorial/chat';
 
 const wrapper = ref<HTMLElement | null>(null);
 let api: any | undefined;
@@ -200,7 +201,7 @@ onMounted(async () => {
   if (!(window as any).worldInited) {
     (window as any).worldInited = true;
     await import('@infinite-canvas-tutorial/webcomponents/spectrum');
-    new App().addPlugins(...DefaultPlugins, UIPlugin, FalAIPlugin.configure({
+    new App().addPlugins(...DefaultPlugins, UIPlugin, ChatPlugin, FalAIPlugin.configure({
       credentials: 'your-fal-ai-credentials-here',
     })).run();
   } else {
