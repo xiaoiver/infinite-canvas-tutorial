@@ -280,15 +280,6 @@ importers:
         specifier: ^2.0.7
         version: 2.0.7
 
-  packages/fal-ai:
-    dependencies:
-      '@fal-ai/client':
-        specifier: ^1.6.2
-        version: 1.6.2
-      '@infinite-canvas-tutorial/ecs':
-        specifier: workspace:*
-        version: link:../ecs
-
   packages/lesson_001:
     dependencies:
       '@antv/g-device-api':
@@ -660,7 +651,25 @@ importers:
         specifier: ^3.0.0
         version: 3.0.0
 
-  packages/sam:
+  packages/plugin-fal-ai:
+    dependencies:
+      '@fal-ai/client':
+        specifier: ^1.6.2
+        version: 1.6.2
+      '@infinite-canvas-tutorial/ecs':
+        specifier: workspace:*
+        version: link:../ecs
+
+  packages/plugin-lama:
+    dependencies:
+      '@infinite-canvas-tutorial/ecs':
+        specifier: workspace:*
+        version: link:../ecs
+      onnxruntime-web:
+        specifier: ^1.23.2
+        version: 1.23.2
+
+  packages/plugin-sam:
     dependencies:
       '@infinite-canvas-tutorial/ecs':
         specifier: workspace:*
@@ -679,7 +688,7 @@ importers:
         version: link:../ecs
       '@infinite-canvas-tutorial/fal-ai':
         specifier: workspace:*
-        version: link:../fal-ai
+        version: link:../plugin-fal-ai
       '@infinite-canvas-tutorial/lesson1':
         specifier: workspace:*
         version: link:../lesson_001
@@ -718,7 +727,7 @@ importers:
         version: link:../lesson_009
       '@infinite-canvas-tutorial/sam':
         specifier: workspace:*
-        version: link:../sam
+        version: link:../plugin-sam
       '@infinite-canvas-tutorial/ui':
         specifier: workspace:*
         version: link:../ui

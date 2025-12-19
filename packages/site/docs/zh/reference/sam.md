@@ -1,6 +1,5 @@
 ---
 outline: deep
-publish: false
 ---
 
 使用 SAM 实现 [AI 相关 API] 中的分割图片部分
@@ -10,6 +9,10 @@ import { SAMPlugin } from '@infinite-canvas-tutorial/sam';
 
 new App().addPlugins(...DefaultPlugins, UIPlugin, SAMPlugin).run();
 ```
+
+![Segment Anything Model](/sam.gif)
+
+### SAM 2
 
 ONNX 提供了 Web 端的运行时，这样就可以在浏览器端进行实时推理，不需要消耗任何 token。详见：[How to add machine learning to your web application with ONNX Runtime]
 
@@ -27,7 +30,12 @@ ONNX 提供了 Web 端的运行时，这样就可以在浏览器端进行实时�
 }
 ```
 
+### [WIP] SAM 3
+
+[Request for Official ONNX Export + TensorRT Conversion Scripts for SAM3]
+
 [AI 相关 API]: /zh/reference/ai
 [How to add machine learning to your web application with ONNX Runtime]: https://onnxruntime.ai/docs/tutorials/web/
 [ORT model format]: https://onnxruntime.ai/docs/performance/model-optimizations/ort-format-models.html
 [Using the WebGPU Execution Provider]: https://onnxruntime.ai/docs/tutorials/web/ep-webgpu.html
+[Request for Official ONNX Export + TensorRT Conversion Scripts for SAM3]: https://github.com/facebookresearch/sam3/issues/224

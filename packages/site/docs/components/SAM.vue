@@ -4,6 +4,7 @@ import {
   Pen,
   DefaultPlugins,
   RectSerializedNode,
+  Task,
 } from '@infinite-canvas-tutorial/ecs';
 import { ref, onMounted, onUnmounted } from 'vue';
 import { Event, UIPlugin } from '@infinite-canvas-tutorial/webcomponents';
@@ -43,6 +44,8 @@ onMounted(async () => {
       ...api.getAppState(),
       penbarSelected: Pen.SELECT,
       penbarAll: [Pen.SELECT, Pen.DRAW_RECT],
+      taskbarVisible: true,
+      taskbarAll: [Task.SHOW_LAYERS_PANEL, Task.SHOW_PROPERTIES_PANEL],
     });
 
     const node: RectSerializedNode = {

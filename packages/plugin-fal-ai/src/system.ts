@@ -1,13 +1,6 @@
 import { Canvas, System } from '@infinite-canvas-tutorial/ecs';
 import { fal } from '@fal-ai/client';
 
-// // FIXME: Dangerous !!!
-// // use https://developers.cloudflare.com/workers/configuration/environment-variables/
-// fal.config({
-//   credentials:
-//     '5e973660-e3f7-492f-ae94-fb9c499252aa:143cc831830ba6cd4fe9fdb01a8564d0',
-// });
-
 export class FalAISystem extends System {
   private readonly canvases = this.query((q) => q.added.with(Canvas));
 

@@ -1,6 +1,5 @@
 ---
 outline: deep
-publish: false
 ---
 
 Use SAM to implement [AI API]
@@ -10,6 +9,10 @@ import { SAMPlugin } from '@infinite-canvas-tutorial/sam';
 
 new App().addPlugins(...DefaultPlugins, UIPlugin, SAMPlugin).run();
 ```
+
+![Segment Anything Model](/sam.gif)
+
+### SAM 2
 
 ONNX provides a web-based runtime, enabling real-time inference directly in the browser without consuming any tokens. For details, see:
 [How to add machine learning to your web application with ONNX Runtime]
@@ -28,7 +31,12 @@ Since we use `import.meta` to import worker code, which is a feature of ESModule
 }
 ```
 
+### [WIP] SAM 3
+
+[Request for Official ONNX Export + TensorRT Conversion Scripts for SAM3]
+
 [AI API]: /reference/ai
 [How to add machine learning to your web application with ONNX Runtime]: https://onnxruntime.ai/docs/tutorials/web/
 [ORT model format]: https://onnxruntime.ai/docs/performance/model-optimizations/ort-format-models.html
 [Using the WebGPU Execution Provider]: https://onnxruntime.ai/docs/tutorials/web/ep-webgpu.html
+[Request for Official ONNX Export + TensorRT Conversion Scripts for SAM3]: https://github.com/facebookresearch/sam3/issues/224
