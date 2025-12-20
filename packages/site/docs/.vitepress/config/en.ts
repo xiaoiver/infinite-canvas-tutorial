@@ -381,6 +381,10 @@ export const en = defineConfig({
                     link: 'draw-rect',
                   },
                   {
+                    text: 'Arrow tool',
+                    link: 'draw-arrow',
+                  },
+                  {
                     text: 'Pencil tool',
                     link: 'pencil',
                   },

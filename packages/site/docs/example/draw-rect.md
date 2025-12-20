@@ -6,6 +6,4 @@ publish: false
 import DrawRect from '../components/DrawRect.vue'
 </script>
 
-Draw rect by drag.
-
 <DrawRect />

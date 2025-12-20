@@ -326,6 +326,10 @@ export const zh = defineConfig({
                     link: 'draw-rect',
                   },
                   {
+                    text: '箭头工具',
+                    link: 'draw-arrow',
+                  },
+                  {
                     text: '铅笔工具',
                     link: 'pencil',
                   },
