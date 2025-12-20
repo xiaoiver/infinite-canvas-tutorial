@@ -30,6 +30,7 @@ import '@spectrum-web-components/number-field/sp-number-field.js';
 import '@spectrum-web-components/slider/sp-slider.js';
 import '@spectrum-web-components/swatch/sp-swatch.js';
 import '@spectrum-web-components/swatch/sp-swatch-group.js';
+import '@spectrum-web-components/switch/sp-switch.js';
 import '@spectrum-web-components/overlay/sp-overlay.js';
 import '@spectrum-web-components/progress-circle/sp-progress-circle.js';
 import '@spectrum-web-components/textfield/sp-textfield.js';

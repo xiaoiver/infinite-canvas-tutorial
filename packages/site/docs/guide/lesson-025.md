@@ -15,6 +15,7 @@ head:
 import DrawRect from '../components/DrawRect.vue'
 import DrawArrow from '../components/DrawArrow.vue'
 import Pencil from '../components/Pencil.vue'
+import PencilFreehand from '../components/PencilFreehand.vue'
 import Brush from '../components/Brush.vue'
 </script>
 
@@ -254,12 +255,30 @@ We want to set the `tolerance` differently depending on the current camera zoom 
 ```ts
 import simplify from 'simplify-js';
 
-// choose tolerance based on the camera zoom level
-const tolerance = 1 / zoom;
-selection.points = simplify(selection.pointsBeforeSimplify, tolerance);
+export class DrawPencil extends System {
+    private handleBrushing() {
+        // choose tolerance based on the camera zoom level
+        const tolerance = 1 / zoom;
+        selection.points = simplify(selection.pointsBeforeSimplify, tolerance);
+    }
+}
 ```
 
 <Pencil />
+
+### Perfect freehand {#perfect-freehand}
+
+Since the line width is fixed, it lacks a sense of “flexibility.” To create a hand-drawn feel, lines can be made to vary with pressure. For this purpose, we can use [perfect-freehand]. It's worth noting that this feature is not yet integrated into Excalidraw; see: [Perfect Freehand Drawing Issue].
+Because the line width is variable, the final drawn shape is no longer a Polyline but a Path:
+
+```ts
+import { getStroke } from 'perfect-freehand';
+
+const outlinePoints = getStroke(points);
+const d = getSvgPathFromStroke(outlinePoints); // 'M 0 0 L...'
+```
+
+<PencilFreehand />
 
 ## Brush mode {#brush-mode}
 

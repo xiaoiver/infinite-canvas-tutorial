@@ -108,58 +108,56 @@ export class Mesh extends Drawcall {
 
     const points = rawPoints.flat(2);
 
-    if (points.length === 0) {
-      return;
-    }
+    if (points.length > 0) {
+      if (tessellationMethod === TesselationMethod.EARCUT) {
+        let holes = [];
+        let contours = [];
+        const indices = [];
+        let indexOffset = 0;
 
-    if (tessellationMethod === TesselationMethod.EARCUT) {
-      let holes = [];
-      let contours = [];
-      const indices = [];
-      let indexOffset = 0;
+        let firstClockWise = isClockWise(rawPoints[0]);
 
-      let firstClockWise = isClockWise(rawPoints[0]);
+        rawPoints.forEach((points) => {
+          const isHole = isClockWise(points) !== firstClockWise;
+          if (isHole) {
+            holes.push(contours.length);
+          } else {
+            firstClockWise = isClockWise(points);
 
-      rawPoints.forEach((points) => {
-        const isHole = isClockWise(points) !== firstClockWise;
-        if (isHole) {
-          holes.push(contours.length);
-        } else {
-          firstClockWise = isClockWise(points);
-
-          if (holes.length > 0) {
-            indices.push(
-              ...earcut(contours.flat(), holes).map((i) => i + indexOffset),
-            );
-            indexOffset += contours.length;
-            holes = [];
-            contours = [];
+            if (holes.length > 0) {
+              indices.push(
+                ...earcut(contours.flat(), holes).map((i) => i + indexOffset),
+              );
+              indexOffset += contours.length;
+              holes = [];
+              contours = [];
+            }
           }
+          contours.push(...points);
+        });
+
+        if (contours.length) {
+          indices.push(
+            ...earcut(contours.flat(), holes).map((i) => i + indexOffset),
+          );
         }
-        contours.push(...points);
-      });
 
-      if (contours.length) {
-        indices.push(
-          ...earcut(contours.flat(), holes).map((i) => i + indexOffset),
+        this.indexBufferData = new Uint32Array(indices);
+        this.points = points;
+        // const err = deviation(vertices, holes, dimensions, indices);
+      } else if (tessellationMethod === TesselationMethod.LIBTESS) {
+        const newPoints = triangulate(rawPoints, instance.read(Path).fillRule);
+        this.indexBufferData = new Uint32Array(
+          new Array(newPoints.length / 2).fill(undefined).map((_, i) => i),
         );
+        this.points = newPoints;
       }
-
-      this.indexBufferData = new Uint32Array(indices);
-      this.points = points;
-      // const err = deviation(vertices, holes, dimensions, indices);
-    } else if (tessellationMethod === TesselationMethod.LIBTESS) {
-      const newPoints = triangulate(rawPoints, instance.read(Path).fillRule);
-      this.indexBufferData = new Uint32Array(
-        new Array(newPoints.length / 2).fill(undefined).map((_, i) => i),
-      );
-      this.points = newPoints;
     }
 
     if (this.vertexBuffers[0]) {
       this.vertexBuffers[0].destroy();
     }
-    this.vertexBufferDatas[0] = new Float32Array(this.points);
+    this.vertexBufferDatas[0] = new Float32Array(this.points ?? []);
     this.vertexBuffers[0] = this.device.createBuffer({
       viewOrSize: this.vertexBufferDatas[0],
       usage: BufferUsage.VERTEX,
@@ -170,7 +168,7 @@ export class Mesh extends Drawcall {
       this.indexBuffer.destroy();
     }
     this.indexBuffer = this.device.createBuffer({
-      viewOrSize: this.indexBufferData,
+      viewOrSize: this.indexBufferData ?? new Uint32Array([]),
       usage: BufferUsage.INDEX,
       hint: BufferFrequencyHint.STATIC,
     });
@@ -191,10 +189,6 @@ export class Mesh extends Drawcall {
   }
 
   createMaterial(defines: string, uniformBuffer: Buffer): void {
-    if (this.points.length === 0) {
-      return;
-    }
-
     this.createProgram(vert, frag, defines);
     if (!this.#uniformBuffer) {
       this.#uniformBuffer = this.device.createBuffer({
@@ -287,6 +281,7 @@ export class Mesh extends Drawcall {
       matrix.m21,
       matrix.m22,
     ] as mat3;
+
     this.#uniformBuffer.setSubData(
       0,
       new Uint8Array(

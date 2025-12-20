@@ -148,10 +148,6 @@ export class SmoothPolyline extends Drawcall {
     this.pointsBuffer = pointsBuffer;
     this.travelBuffer = travelBuffer;
 
-    if (this.instanceCount <= 0) {
-      return;
-    }
-
     if (this.#segmentsBuffer) {
       this.#segmentsBuffer.destroy();
     }
@@ -303,10 +299,6 @@ export class SmoothPolyline extends Drawcall {
   }
 
   createMaterial(defines: string, uniformBuffer: Buffer): void {
-    if (this.instanceCount <= 0) {
-      return;
-    }
-
     this.createProgram(vert, frag, defines);
 
     if (!this.#uniformBuffer) {

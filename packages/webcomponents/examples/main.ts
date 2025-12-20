@@ -284,6 +284,10 @@ canvas.addEventListener(Event.READY, async (e) => {
       fontFamily: 'system-ui',
       fontFamilies: ['system-ui', 'serif', 'monospace', 'Gaegu'],
     },
+    penbarPencil: {
+      ...api.getAppState().penbarPencil,
+      freehand: true,
+    },
     taskbarAll: [
       Task.SHOW_CHAT_PANEL,
       Task.SHOW_LAYERS_PANEL,

@@ -80,7 +80,7 @@ export class Path {
    *
    * @see https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/d
    */
-  @field({ type: Type.dynamicString(2000) }) declare d: string;
+  @field({ type: Type.object }) declare d: string;
 
   /**
    * The fill rule to use for rendering the path.

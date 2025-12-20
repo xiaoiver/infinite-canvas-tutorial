@@ -9,6 +9,7 @@ head:
 import DrawRect from '../../components/DrawRect.vue'
 import DrawArrow from '../../components/DrawArrow.vue'
 import Pencil from '../../components/Pencil.vue'
+import PencilFreehand from '../../components/PencilFreehand.vue'
 import Brush from '../../components/Brush.vue'
 </script>
 
@@ -246,12 +247,31 @@ if (marker === 'line') {
 ```ts
 import simplify from 'simplify-js';
 
-// choose tolerance based on the camera zoom level
-const tolerance = 1 / zoom;
-selection.points = simplify(selection.pointsBeforeSimplify, tolerance);
+export class DrawPencil extends System {
+    private handleBrushing() {
+        // choose tolerance based on the camera zoom level
+        const tolerance = 1 / zoom;
+        selection.points = simplify(selection.pointsBeforeSimplify, tolerance);
+    }
+}
 ```
 
 <Pencil />
+
+### Perfect freehand {#perfect-freehand}
+
+由于线宽是固定的，显得不够“灵动”。为了营造一些手写感，可以让线条跟随压力变化。为此我们可以使用 [perfect-freehand]，值得一提的是在 Excalidraw 中还未接入，详见：[Perfect Freehand Drawing Issue]。
+
+由于线宽可变，最终绘制出来的图形不再是 Polyline 而是 Path：
+
+```ts
+import { getStroke } from 'perfect-freehand';
+
+const outlinePoints = getStroke(points);
+const d = getSvgPathFromStroke(outlinePoints); // 'M 0 0 L...'
+```
+
+<PencilFreehand />
 
 ## 笔刷模式 {#brush-mode}
 
@@ -331,11 +351,6 @@ if (vertexNum < 0.5) {
 Figma 是可以将 Brush 导出 SVG 的。
 
 ### 橡皮擦 {#eraser}
-
-### Perfect freehand {#perfect-freehand}
-
--   [perfect-freehand]
--   [Perfect Freehand Drawing Issue]
 
 ## 扩展阅读 {#extended-reading}
 

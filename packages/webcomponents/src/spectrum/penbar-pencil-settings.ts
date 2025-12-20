@@ -43,6 +43,16 @@ export class PenbarPencilSettings extends LitElement {
     });
   }
 
+  private handleFreehandChanged(e: Event & { target: HTMLInputElement }) {
+    const freehand = (e.target as any).checked;
+    this.api.setAppState({
+      penbarPencil: {
+        ...this.api.getAppState().penbarPencil,
+        freehand,
+      },
+    });
+  }
+
   render() {
     const { penbarPencil, theme } = this.appState;
 
@@ -82,6 +92,17 @@ export class PenbarPencilSettings extends LitElement {
         "unit": "px"
       }'
         ></sp-number-field>
+      </div>
+      <div
+        class="line"
+        style="display: flex; align-items: center;justify-content: space-between;"
+      >
+        <sp-switch
+          label="Freehand"
+          .checked=${penbarPencil.freehand}
+          @change=${this.handleFreehandChanged}
+          >Freehand</sp-switch
+        >
       </div>`;
   }
 }

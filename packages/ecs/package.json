@@ -60,6 +60,7 @@
     "fractional-indexing": "^3.2.0",
     "gl-matrix": "^3.4.3",
     "libtess": "^1.2.2",
+    "perfect-freehand": "^1.2.2",
     "potpack": "^2.0.0",
     "point-to-segment-2d": "^1.0.0",
     "rbush": "^3.0.1",

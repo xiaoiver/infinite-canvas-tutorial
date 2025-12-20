@@ -1,3 +1,4 @@
+import { getStroke } from 'perfect-freehand';
 import { System } from '@lastolivegames/becsy';
 import { v4 as uuidv4 } from 'uuid';
 import simplify from 'simplify-js';
@@ -32,10 +33,15 @@ import {
   Name,
 } from '../components';
 import { API } from '../API';
-import { PolylineSerializedNode, StrokeAttributes } from '../utils/serialize';
+import {
+  PathSerializedNode,
+  PolylineSerializedNode,
+  StrokeAttributes,
+} from '../utils/serialize';
 import { distanceBetweenPoints } from '../utils/matrix';
 import { DRAW_RECT_Z_INDEX } from '../context';
 import { serializePoints } from '../utils/serialize';
+import { getSvgPathFromStroke } from '../utils';
 
 const PENCIL_CURSOR =
   'url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAACXBIWXMAAAsTAAALEwEAmpwYAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAKOSURBVHgB7VY7jBJRFH2Dk2VgIYp8AobYSEFCY2JpY0NBZ2MtJoSSBAjh0wANnZQmUEJNAR0lgcYWAwQsVLZhlV/4GJCded47wopZ0HVn2G04yQl5P865nzczhBxxxBHSwVxzbicURAa4XC5lt9tNU0o/wu9bGJ/8jwkpYBKJBAfCnzKZDNXr9bRQKMCQfna73dyhTTB+v18FYt1oNEo5juOr1So9PT3lcYzzhzRxRXw0GqEoHQ6H4nht4sshTFyKh8Nhqlar+clkQgVBoDzPiybQDJrIZrO00+m8IzLij8i1Wi0PBmir1RKF0cDGBJbDZDKJWbDZbEoiQxaupB0jb7fbFNZos9kUhTETWAboBaFUKtF6vZ6Hdcm3YmfNUQzZaDREE2hmOp3iupBMJulisTg3Go1PYe2BFAN7G2475VgGLAeURYCrieLfoATP4fxjIEduiL+Kb1KOxHKAASEej4viBoPhBZx/AtTeNPpriW91/WXkcogrvF6vGjv4TsTxIPz3h1gsduviCCafz7/BjmZZlscrdZviYgaKxWImFArRYDB4cPFdr2NmtVoReJCQ2Wz2a5NCQUCXMAxDxuMxsVgsNBKJMMC+1Wp91e/3z2DbVyAeoESiAZxjITKiUql+uwLxwWBAzGazbOIIdsccnc/nPfioIE6nk4Iws1wuxWzkcjmaSqWYQCAgi7gY2I45jcPhsMEzvFoulzWVSoVAvQma8Hg8BOp9ZrfbX/d6PRQ/lyK+zwA+Nh+CiWc+n++lTqd7BD1xAeVga7Xa+3Q6XVQqlVMwJFl8nwHsAQ3wPlANxFfpPeAP4AXwO3AAXAAFIhH7rgyaOFmLs+t9/NrExoikyP9lYN8eWUSP2MZP4geL9VfezEoAAAAASUVORK5CYII=") 4 28, pointer';
@@ -48,7 +54,7 @@ export class DrawPencil extends System {
   private selections = new Map<
     number,
     {
-      brush: PolylineSerializedNode;
+      brush: PolylineSerializedNode | PathSerializedNode;
       pointsBeforeSimplify: IPointData[];
       points: IPointData[];
       lastPointInViewport: [number, number];
@@ -103,6 +109,7 @@ export class DrawPencil extends System {
       const { inputPoints, api } = canvas.read(Canvas);
       const appState = api.getAppState();
       const pen = appState.penbarSelected;
+      const { freehand } = appState.penbarPencil;
 
       if (pen !== Pen.PENCIL) {
         return;
@@ -160,19 +167,36 @@ export class DrawPencil extends System {
         const { brush } = this.selections.get(camera.__id);
 
         // Just click on the canvas, do nothing
-        if (!brush || brush.points.length === 0) {
+        if (!brush || (brush as PolylineSerializedNode).points?.length === 0) {
           return;
         }
 
         api.runAtNextTick(() => {
           api.updateNode(brush, { visibility: 'hidden' }, false);
 
-          const node: PolylineSerializedNode = {
+          const node: PathSerializedNode | PolylineSerializedNode = {
             id: uuidv4(),
-            type: 'polyline',
-            points: serializePoints(selection.points.map((p) => [p.x, p.y])),
             ...appState.penbarPencil,
           };
+          const points: [number, number][] = selection.points.map((p) => [
+            p.x,
+            p.y,
+          ]);
+
+          if (freehand) {
+            const outlinePoints = getStroke(points, {
+              size: appState.penbarPencil.strokeWidth,
+              thinning: 0.7,
+            });
+            const d = getSvgPathFromStroke(outlinePoints);
+            node.type = 'path';
+            (node as PathSerializedNode).d = d;
+            (node as PathSerializedNode).fill = appState.penbarPencil.stroke;
+            (node as PathSerializedNode).strokeWidth = 0;
+          } else {
+            node.type = 'polyline';
+            (node as PolylineSerializedNode).points = serializePoints(points);
+          }
 
           api.setAppState({
             penbarSelected: Pen.SELECT,
@@ -191,6 +215,7 @@ export class DrawPencil extends System {
     viewportY: number,
     defaultDrawParams: Partial<StrokeAttributes>,
   ) {
+    const { freehand } = api.getAppState().penbarPencil;
     const camera = api.getCamera();
     const selection = this.selections.get(camera.__id);
     const { zoom } = camera.read(ComputedCamera);
@@ -211,14 +236,24 @@ export class DrawPencil extends System {
     if (shouldShowSelectionBrush) {
       let brush = selection.brush;
       if (!brush) {
-        brush = {
-          id: uuidv4(),
-          type: 'polyline',
-          points: '0,0 0,0',
-          visibility: 'hidden',
-          zIndex: DRAW_RECT_Z_INDEX,
-          strokeAttenuation: true,
-        } as PolylineSerializedNode;
+        brush = freehand
+          ? {
+              id: uuidv4(),
+              type: 'path',
+              d: 'M 0 0 L 0 0',
+              visibility: 'hidden',
+              strokeWidth: 0,
+              zIndex: DRAW_RECT_Z_INDEX,
+              strokeAttenuation: true,
+            }
+          : {
+              id: uuidv4(),
+              type: 'polyline',
+              points: '0,0 0,0',
+              visibility: 'hidden',
+              zIndex: DRAW_RECT_Z_INDEX,
+              strokeAttenuation: true,
+            };
         api.updateNode(brush, undefined, false);
         api.getEntity(brush).add(UI, { type: UIType.BRUSH });
         selection.brush = brush;
@@ -243,14 +278,25 @@ export class DrawPencil extends System {
         // choose tolerance based on the camera zoom level
         const tolerance = 1 / zoom;
         selection.points = simplify(selection.pointsBeforeSimplify, tolerance);
+        // selection.points = selection.pointsBeforeSimplify;
 
+        const points: [number, number][] = selection.points.map((p) => [
+          p.x,
+          p.y,
+        ]);
         api.updateNode(
           brush,
-          {
-            visibility: 'visible',
-            points: serializePoints(selection.points.map((p) => [p.x, p.y])),
-            ...defaultDrawParams,
-          },
+          freehand
+            ? {
+                visibility: 'visible',
+                d: getSvgPathFromStroke(points),
+                ...defaultDrawParams,
+              }
+            : {
+                visibility: 'visible',
+                points: serializePoints(points),
+                ...defaultDrawParams,
+              },
           false,
         );
       }

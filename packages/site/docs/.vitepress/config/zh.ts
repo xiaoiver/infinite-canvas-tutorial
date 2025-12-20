@@ -319,8 +319,21 @@ export const zh = defineConfig({
                 ],
               },
               {
-                text: '绘制矩形',
-                link: 'draw-rect',
+                text: '绘制图形工具',
+                items: [
+                  {
+                    text: '矩形工具',
+                    link: 'draw-rect',
+                  },
+                  {
+                    text: '铅笔工具',
+                    link: 'pencil',
+                  },
+                  {
+                    text: '铅笔工具（自由绘制）',
+                    link: 'pencil-freehand',
+                  },
+                ],
               },
               {
                 text: 'HTML 和嵌入内容',

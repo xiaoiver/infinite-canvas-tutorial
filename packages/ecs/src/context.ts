@@ -46,7 +46,11 @@ export interface AppState {
   penbarDrawRoughEllipse: Partial<
     RoughAttributes & StrokeAttributes & FillAttributes
   >;
-  penbarPencil: Partial<StrokeAttributes>;
+  penbarPencil: Partial<
+    StrokeAttributes & {
+      freehand: boolean;
+    }
+  >;
   penbarText: Partial<
     TextSerializedNode & {
       fontFamilies: string[];

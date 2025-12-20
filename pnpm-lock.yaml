@@ -239,6 +239,9 @@ importers:
       libtess:
         specifier: ^1.2.2
         version: 1.2.2
+      perfect-freehand:
+        specifier: ^1.2.2
+        version: 1.2.2
       point-to-segment-2d:
         specifier: ^1.0.0
         version: 1.0.0
@@ -1007,6 +1010,9 @@ importers:
         specifier: ^1.8.0
         version: 1.10.0
       '@spectrum-web-components/swatch':
+        specifier: ^1.8.0
+        version: 1.10.0
+      '@spectrum-web-components/switch':
         specifier: ^1.8.0
         version: 1.10.0
       '@spectrum-web-components/textfield':
@@ -2341,6 +2347,9 @@ packages:
   '@spectrum-web-components/button@1.10.0':
     resolution: {integrity: sha512-pYlirfDQsMhnwc4PhGtF7NZyWv40NK8GCFuxveBgSrHxwgD3V9sCu7iKV/toFUJk2L98DwwRrhialjtl+CAANQ==}
 
+  '@spectrum-web-components/checkbox@1.10.0':
+    resolution: {integrity: sha512-NSdi+7GXzrVbhS3n1uec7N+TPYjbk0tP0pMVSt/IDjNeIamaMKg9kjriOnjwtr7pgqklJh5Ye1S5lQvsLNqqGQ==}
+
   '@spectrum-web-components/clear-button@1.10.0':
     resolution: {integrity: sha512-Dez9/8MA8hOYuxEdxoVp88xUSHVbnuPkAxuXJOOpOldsSi0SilLHh/dCVU6aBDYILzfxrpn3yZNoyuBBt+VKvA==}
 
@@ -2430,6 +2439,9 @@ packages:
 
   '@spectrum-web-components/swatch@1.10.0':
     resolution: {integrity: sha512-Eh6Uk/G+wsTLysxDy0NoVTBL/s5c53avsgJWGL8/N6pQXlZUOmMMgwUDLBiX8lCUBlU465LYy1jXLdKWvDKxMg==}
+
+  '@spectrum-web-components/switch@1.10.0':
+    resolution: {integrity: sha512-nrO4M0Jupfs4A5WS9EMU5hUe4dDKSYbJx5c9WKh5tDq9MeFVdpdekM+WwnE8Y8OsyQWIddiqgv/JaN0/QYaNMg==}
 
   '@spectrum-web-components/textfield@1.10.0':
     resolution: {integrity: sha512-4Zuamro9LJgnsUFQQgCXFyxQQ7j1lw3zyOPFl+0i3NtRXDkcuntNRVyZEsxGJWRESZ6gnH7CEPUpCzS6SwG5SA==}
@@ -5728,6 +5740,9 @@ packages:
   perfect-debounce@1.0.0:
     resolution: {integrity: sha512-xCy9V055GLEqoFaHoC1SoLIaLmWctgCUaBaWxDZ7/Zx4CTyX7cJQLJOok/orfjZAh9kEYpjJa4d0KcJmCbctZA==}
 
+  perfect-freehand@1.2.2:
+    resolution: {integrity: sha512-eh31l019WICQ03pkF3FSzHxB8n07ItqIQ++G5UV8JX0zVOXzgTGCqnRR0jJ2h9U8/2uW4W4mtGJELt9kEV0CFQ==}
+
   performance-now@2.1.0:
     resolution: {integrity: sha512-7EAHlyLHI56VEIdK57uwHdHKIaAGbnXPiw0yWbarQZOKaKpvUIgW0jWRVLiatnM+XXlSwsanIBH/hzGMJulMow==}
 
@@ -8650,6 +8665,13 @@ snapshots:
       '@spectrum-web-components/reactive-controllers': 1.10.0
       '@spectrum-web-components/shared': 1.10.0
 
+  '@spectrum-web-components/checkbox@1.10.0':
+    dependencies:
+      '@spectrum-web-components/base': 1.10.0
+      '@spectrum-web-components/icon': 1.10.0
+      '@spectrum-web-components/icons-ui': 1.10.0
+      '@spectrum-web-components/shared': 1.10.0
+
   '@spectrum-web-components/clear-button@1.10.0':
     dependencies:
       '@spectrum-web-components/base': 1.10.0
@@ -8855,6 +8877,11 @@ snapshots:
       '@spectrum-web-components/opacity-checkerboard': 1.10.0
       '@spectrum-web-components/reactive-controllers': 1.10.0
       '@spectrum-web-components/shared': 1.10.0
+
+  '@spectrum-web-components/switch@1.10.0':
+    dependencies:
+      '@spectrum-web-components/base': 1.10.0
+      '@spectrum-web-components/checkbox': 1.10.0
 
   '@spectrum-web-components/textfield@1.10.0':
     dependencies:
@@ -12801,6 +12828,8 @@ snapshots:
       '@tldraw/vec': 1.9.2
 
   perfect-debounce@1.0.0: {}
+
+  perfect-freehand@1.2.2: {}
 
   performance-now@2.1.0: {}
 
