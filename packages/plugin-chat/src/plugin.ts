@@ -3,6 +3,8 @@ import { registerTask } from '@infinite-canvas-tutorial/webcomponents';
 import { html } from 'lit';
 
 export const ChatPlugin: Plugin = () => {
+  import('./spectrum/chat-panel');
+
   registerTask(
     Task.SHOW_CHAT_PANEL,
     html`<sp-icon-chat slot="icon"></sp-icon-chat>`,

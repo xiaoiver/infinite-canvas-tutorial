@@ -45,8 +45,8 @@ import { getSvgPathFromStroke } from '../utils';
 
 const PENCIL_CURSOR =
   'url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAACXBIWXMAAAsTAAALEwEAmpwYAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAKOSURBVHgB7VY7jBJRFH2Dk2VgIYp8AobYSEFCY2JpY0NBZ2MtJoSSBAjh0wANnZQmUEJNAR0lgcYWAwQsVLZhlV/4GJCded47wopZ0HVn2G04yQl5P865nzczhBxxxBHSwVxzbicURAa4XC5lt9tNU0o/wu9bGJ/8jwkpYBKJBAfCnzKZDNXr9bRQKMCQfna73dyhTTB+v18FYt1oNEo5juOr1So9PT3lcYzzhzRxRXw0GqEoHQ6H4nht4sshTFyKh8Nhqlar+clkQgVBoDzPiybQDJrIZrO00+m8IzLij8i1Wi0PBmir1RKF0cDGBJbDZDKJWbDZbEoiQxaupB0jb7fbFNZos9kUhTETWAboBaFUKtF6vZ6Hdcm3YmfNUQzZaDREE2hmOp3iupBMJulisTg3Go1PYe2BFAN7G2475VgGLAeURYCrieLfoATP4fxjIEduiL+Kb1KOxHKAASEej4viBoPhBZx/AtTeNPpriW91/WXkcogrvF6vGjv4TsTxIPz3h1gsduviCCafz7/BjmZZlscrdZviYgaKxWImFArRYDB4cPFdr2NmtVoReJCQ2Wz2a5NCQUCXMAxDxuMxsVgsNBKJMMC+1Wp91e/3z2DbVyAeoESiAZxjITKiUql+uwLxwWBAzGazbOIIdsccnc/nPfioIE6nk4Iws1wuxWzkcjmaSqWYQCAgi7gY2I45jcPhsMEzvFoulzWVSoVAvQma8Hg8BOp9ZrfbX/d6PRQ/lyK+zwA+Nh+CiWc+n++lTqd7BD1xAeVga7Xa+3Q6XVQqlVMwJFl8nwHsAQ3wPlANxFfpPeAP4AXwO3AAXAAFIhH7rgyaOFmLs+t9/NrExoikyP9lYN8eWUSP2MZP4geL9VfezEoAAAAASUVORK5CYII=") 4 28, pointer';
-const BRUSH_CURSOR =
-  'url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAACXBIWXMAAAsTAAALEwEAmpwYAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAMpSURBVHgB7VZNSBtREJ5sQv6MIdHaGm3THEpjW6o92JjoQW859CJY66HtRYREEA1CqBeLB0UoXqrUgzcPueihVMzFW7VoRUgRakURFRT8gZZi0pIY903nrausloKQjS0lHwz7suzL+3bmm28W4B+D5g/rrEE4f2BPT495ZWXlIfwFMtDW1laSTqe/jY6OIuHz2NjY45mZmQqXy2W8DCKaaDQa6OrqQpvNJubl5WE4HMahoSHc3NxkOzs7r+TnBFARZ0qwt7dXtLGxAcPDw8Ls7Czo9XqYm5sDt9uNHR0d4VQq9YmeY6AiiTMEKO0afuj+/j6Ul5dDb28vRCIRSCaTQjweZ93d3Q8mJiZC9CyCStCdJyAtNL+Xenx8XMjPz4e+vr5H9PM1qARlBlCn02kpzVLqlWCMAWkCDAYDJBKJMrqlBZUEqSSgX11d/eDxeGB6ehpPDubgGdnd3YWjoyOwWq1X19bWIs3NzQ55n2qdYS4oKLhB9U7QGskLUIna2lpOSoqamhokct9DoZBDTQJcD0UktCB1AgqCwCgbrKWlBYuLi6WDFxYWJDKBQIA5nU6+/CLvVaUr+JvYKG41NDQ8EUUxPjk5iYODg9wPWGVlpXT44eGhdLXb7WJ/fz8S2ZeK/RmDZ+EKxR2TyeSrrq5+1tnZ+YJMKEXmdFqOxsZGrKurQxIrknekybxcoGIpuMKtFNcpuOLvzs/Pv21vb0efzydypywtLZWIkHOixWJhlK1lea9qBqWRiZgoSkic3q2treWBgQGuBba0tHSajaamJrG1tVX1UihhpHI46VpGIny3vb2N5AcsGAwyToB8QyoFtWaaJqkLsjSwzEaj8SZd79fX1z+nc3/4/X50OBwiWTQuLi4iueRJKbSQBfC3MlDwvr9H49m/vr4e45OSfrOpqSkkgiIJEquqqq6ByhNTCd4lNirBbbpWjIyMvDk4OBBpcEmjm3Twnu5bIEtZOAHPhlnWhdvr9T4l1/wYi8WihYWFHjhu4wtnIBPB8InF29UOx28sUiQpvlL8vOifZKpYrUyE64PrISWHat8LF4UGLuvDNYcccvjv8Au1hn6W8NMbDwAAAABJRU5ErkJggg==") 4 28, pointer';
+// const BRUSH_CURSOR =
+//   'url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAACXBIWXMAAAsTAAALEwEAmpwYAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAMpSURBVHgB7VZNSBtREJ5sQv6MIdHaGm3THEpjW6o92JjoQW859CJY66HtRYREEA1CqBeLB0UoXqrUgzcPueihVMzFW7VoRUgRakURFRT8gZZi0pIY903nrausloKQjS0lHwz7suzL+3bmm28W4B+D5g/rrEE4f2BPT495ZWXlIfwFMtDW1laSTqe/jY6OIuHz2NjY45mZmQqXy2W8DCKaaDQa6OrqQpvNJubl5WE4HMahoSHc3NxkOzs7r+TnBFARZ0qwt7dXtLGxAcPDw8Ls7Czo9XqYm5sDt9uNHR0d4VQq9YmeY6AiiTMEKO0afuj+/j6Ul5dDb28vRCIRSCaTQjweZ93d3Q8mJiZC9CyCStCdJyAtNL+Xenx8XMjPz4e+vr5H9PM1qARlBlCn02kpzVLqlWCMAWkCDAYDJBKJMrqlBZUEqSSgX11d/eDxeGB6ehpPDubgGdnd3YWjoyOwWq1X19bWIs3NzQ55n2qdYS4oKLhB9U7QGskLUIna2lpOSoqamhokct9DoZBDTQJcD0UktCB1AgqCwCgbrKWlBYuLi6WDFxYWJDKBQIA5nU6+/CLvVaUr+JvYKG41NDQ8EUUxPjk5iYODg9wPWGVlpXT44eGhdLXb7WJ/fz8S2ZeK/RmDZ+EKxR2TyeSrrq5+1tnZ+YJMKEXmdFqOxsZGrKurQxIrknekybxcoGIpuMKtFNcpuOLvzs/Pv21vb0efzydypywtLZWIkHOixWJhlK1lea9qBqWRiZgoSkic3q2treWBgQGuBba0tHSajaamJrG1tVX1UihhpHI46VpGIny3vb2N5AcsGAwyToB8QyoFtWaaJqkLsjSwzEaj8SZd79fX1z+nc3/4/X50OBwiWTQuLi4iueRJKbSQBfC3MlDwvr9H49m/vr4e45OSfrOpqSkkgiIJEquqqq6ByhNTCd4lNirBbbpWjIyMvDk4OBBpcEmjm3Twnu5bIEtZOAHPhlnWhdvr9T4l1/wYi8WihYWFHjhu4wtnIBPB8InF29UOx28sUiQpvlL8vOifZKpYrUyE64PrISWHat8LF4UGLuvDNYcccvjv8Au1hn6W8NMbDwAAAABJRU5ErkJggg==") 4 28, pointer';
 
 export class DrawPencil extends System {
   private readonly cameras = this.query((q) => q.current.with(Camera).read);
@@ -192,7 +192,6 @@ export class DrawPencil extends System {
             node.type = 'path';
             (node as PathSerializedNode).d = d;
             (node as PathSerializedNode).fill = appState.penbarPencil.stroke;
-            (node as PathSerializedNode).strokeWidth = 0;
           } else {
             node.type = 'polyline';
             (node as PolylineSerializedNode).points = serializePoints(points);
@@ -240,9 +239,8 @@ export class DrawPencil extends System {
           ? {
               id: uuidv4(),
               type: 'path',
-              d: 'M 0 0 L 0 0',
+              d: 'M 0 0 L 1 1',
               visibility: 'hidden',
-              strokeWidth: 0,
               zIndex: DRAW_RECT_Z_INDEX,
               strokeAttenuation: true,
             }
@@ -291,6 +289,7 @@ export class DrawPencil extends System {
                 visibility: 'visible',
                 d: getSvgPathFromStroke(points),
                 ...defaultDrawParams,
+                fill: defaultDrawParams.stroke,
               }
             : {
                 visibility: 'visible',
