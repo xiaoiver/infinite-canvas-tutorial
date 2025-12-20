@@ -31,6 +31,7 @@ import {
   ZIndex,
   ComputedCameraControl,
   Name,
+  TesselationMethod,
 } from '../components';
 import { API } from '../API';
 import {
@@ -41,7 +42,7 @@ import {
 import { distanceBetweenPoints } from '../utils/matrix';
 import { DRAW_RECT_Z_INDEX } from '../context';
 import { serializePoints } from '../utils/serialize';
-import { getSvgPathFromStroke } from '../utils';
+import { getFlatSvgPathFromStroke } from '../utils';
 
 const PENCIL_CURSOR =
   'url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAACXBIWXMAAAsTAAALEwEAmpwYAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAKOSURBVHgB7VY7jBJRFH2Dk2VgIYp8AobYSEFCY2JpY0NBZ2MtJoSSBAjh0wANnZQmUEJNAR0lgcYWAwQsVLZhlV/4GJCded47wopZ0HVn2G04yQl5P865nzczhBxxxBHSwVxzbicURAa4XC5lt9tNU0o/wu9bGJ/8jwkpYBKJBAfCnzKZDNXr9bRQKMCQfna73dyhTTB+v18FYt1oNEo5juOr1So9PT3lcYzzhzRxRXw0GqEoHQ6H4nht4sshTFyKh8Nhqlar+clkQgVBoDzPiybQDJrIZrO00+m8IzLij8i1Wi0PBmir1RKF0cDGBJbDZDKJWbDZbEoiQxaupB0jb7fbFNZos9kUhTETWAboBaFUKtF6vZ6Hdcm3YmfNUQzZaDREE2hmOp3iupBMJulisTg3Go1PYe2BFAN7G2475VgGLAeURYCrieLfoATP4fxjIEduiL+Kb1KOxHKAASEej4viBoPhBZx/AtTeNPpriW91/WXkcogrvF6vGjv4TsTxIPz3h1gsduviCCafz7/BjmZZlscrdZviYgaKxWImFArRYDB4cPFdr2NmtVoReJCQ2Wz2a5NCQUCXMAxDxuMxsVgsNBKJMMC+1Wp91e/3z2DbVyAeoESiAZxjITKiUql+uwLxwWBAzGazbOIIdsccnc/nPfioIE6nk4Iws1wuxWzkcjmaSqWYQCAgi7gY2I45jcPhsMEzvFoulzWVSoVAvQma8Hg8BOp9ZrfbX/d6PRQ/lyK+zwA+Nh+CiWc+n++lTqd7BD1xAeVga7Xa+3Q6XVQqlVMwJFl8nwHsAQ3wPlANxFfpPeAP4AXwO3AAXAAFIhH7rgyaOFmLs+t9/NrExoikyP9lYN8eWUSP2MZP4geL9VfezEoAAAAASUVORK5CYII=") 4 28, pointer';
@@ -184,14 +185,14 @@ export class DrawPencil extends System {
           ]);
 
           if (freehand) {
-            const outlinePoints = getStroke(points, {
-              size: appState.penbarPencil.strokeWidth,
-              thinning: 0.7,
-            });
-            const d = getSvgPathFromStroke(outlinePoints);
+            const outlinePoints = getStroke(points);
+            const d = getFlatSvgPathFromStroke(outlinePoints);
             node.type = 'path';
             (node as PathSerializedNode).d = d;
             (node as PathSerializedNode).fill = appState.penbarPencil.stroke;
+            (node as PathSerializedNode).strokeWidth = 0;
+            (node as PathSerializedNode).tessellationMethod =
+              TesselationMethod.LIBTESS;
           } else {
             node.type = 'polyline';
             (node as PolylineSerializedNode).points = serializePoints(points);
@@ -242,7 +243,7 @@ export class DrawPencil extends System {
               d: 'M 0 0 L 1 1',
               visibility: 'hidden',
               zIndex: DRAW_RECT_Z_INDEX,
-              strokeAttenuation: true,
+              ...defaultDrawParams,
             }
           : {
               id: uuidv4(),
@@ -251,6 +252,7 @@ export class DrawPencil extends System {
               visibility: 'hidden',
               zIndex: DRAW_RECT_Z_INDEX,
               strokeAttenuation: true,
+              ...defaultDrawParams,
             };
         api.updateNode(brush, undefined, false);
         api.getEntity(brush).add(UI, { type: UIType.BRUSH });
@@ -276,20 +278,26 @@ export class DrawPencil extends System {
         // choose tolerance based on the camera zoom level
         const tolerance = 1 / zoom;
         selection.points = simplify(selection.pointsBeforeSimplify, tolerance);
-        // selection.points = selection.pointsBeforeSimplify;
 
         const points: [number, number][] = selection.points.map((p) => [
           p.x,
           p.y,
         ]);
+
+        if (points.length <= 2) {
+          return;
+        }
+
         api.updateNode(
           brush,
           freehand
             ? {
                 visibility: 'visible',
-                d: getSvgPathFromStroke(points),
+                d: getFlatSvgPathFromStroke(getStroke(points)),
                 ...defaultDrawParams,
+                strokeWidth: 0,
                 fill: defaultDrawParams.stroke,
+                tessellationMethod: TesselationMethod.LIBTESS,
               }
             : {
                 visibility: 'visible',

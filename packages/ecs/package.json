@@ -63,6 +63,7 @@
     "perfect-freehand": "^1.2.2",
     "potpack": "^2.0.0",
     "point-to-segment-2d": "^1.0.0",
+    "polygon-clipping": "^0.15.7",
     "rbush": "^3.0.1",
     "roughjs": "^4.6.6",
     "simplify-js": "^1.2.4",

@@ -320,9 +320,13 @@ pnpm run dev
 -   铅笔模式，支持自由可变线宽
 -   笔刷模式：绘制折线
 
-|                Draw rect mode                 |                 Pencil tool                  |                 Draw arrow                  |
-| :-------------------------------------------: | :------------------------------------------: | :-----------------------------------------: |
-| ![draw rect mode](./screenshots/lesson25.gif) | ![pencil tool](./screenshots/lesson25-2.gif) | ![draw arrow](./screenshots/lesson25-3.gif) |
+|                Draw rect mode                 |                 Draw arrow                  |
+| :-------------------------------------------: | :-----------------------------------------: |
+| ![draw rect mode](./screenshots/lesson25.gif) | ![draw arrow](./screenshots/lesson25-3.gif) |
+
+|                 Pencil tool                  |          Pencil tool with freehand           |
+| :------------------------------------------: | :------------------------------------------: |
+| ![pencil tool](./screenshots/lesson25-2.gif) | ![pencil tool](./screenshots/lesson25-4.png) |
 
 ## 课程 26 - 选择工具 [🔗](https://infinitecanvas.cc/zh/guide/lesson-026)
 

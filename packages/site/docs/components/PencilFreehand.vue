@@ -25,6 +25,7 @@ onMounted(async () => {
       penbarSelected: Pen.PENCIL,
       penbarAll: [Pen.SELECT, Pen.PENCIL],
       penbarPencil: {
+        ...api.getAppState().penbarPencil,
         freehand: true,
       },
     });
