@@ -6,7 +6,7 @@ import {
   sliceTensorMask,
 } from './utils';
 // @ts-expect-error - import.meta is only available in ES modules, but this code will run in ES module environments
-import workerUrl from './sam-worker.js?worker&url';
+import workerUrl from './worker.js?worker&url';
 
 // resize+pad all images to 1024x1024
 const imageSize = { w: 1024, h: 1024 };

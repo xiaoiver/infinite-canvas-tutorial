@@ -40,8 +40,8 @@
     "dev": "vite dev",
     "deploy": "vite build",
     "preview": "vite preview",
-    "build:cjs": "rimraf ./lib && tsc --module commonjs --outDir lib",
-    "build:esm": "rimraf ./esm && tsc --module ESNext --outDir esm",
+    "build:cjs": "rimraf ./lib && tsc --module commonjs --outDir lib && cp src/worker.js lib/worker.js",
+    "build:esm": "rimraf ./esm && tsc --module ESNext --outDir esm && cp src/worker.js esm/worker.js",
     "build": "run-p build:*",
     "watch": "rimraf ./esm && tsc --module ESNext --outDir esm --watch"
   },

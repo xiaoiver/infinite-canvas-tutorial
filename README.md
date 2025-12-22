@@ -352,9 +352,9 @@ If you want to use it in your own project, you can refer to:
 | :---------------------------------------------------: | :------------------------------------------------: |
 | ![when canvas meets chat](./screenshots/lesson28.png) | ![remove background](./screenshots/lesson28-2.png) |
 
-|         Use SAM with ONNX WebGPU runtime in WebWorker          |     |
-| :------------------------------------------------------------: | :-: |
-| ![use onnx and sam in webworker](./screenshots/lesson28-3.gif) |     |
+|         Use SAM with ONNX WebGPU runtime in WebWorker          |        Decompose into layers with Qwen-Image-Layered         |
+| :------------------------------------------------------------: | :----------------------------------------------------------: |
+| ![use onnx and sam in webworker](./screenshots/lesson28-3.gif) | ![decompose image into layers](./screenshots/lesson28-4.gif) |
 
 ## Lesson 29 - Embedding HTML content [🔗](https://infinitecanvas.cc/guide/lesson-029)
 

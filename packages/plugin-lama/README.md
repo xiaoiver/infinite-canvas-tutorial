@@ -18,7 +18,7 @@ ONNX provides a web-based runtime, enabling real-time inference directly in the 
 We use the following syntax so that vite will build webworker correctly.
 
 ```ts
-import workerUrl from './sam-worker.js?worker&url';
+import workerUrl from './worker.js?worker&url';
 ```
 
 [AI API]: /reference/ai

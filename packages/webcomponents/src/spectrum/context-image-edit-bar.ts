@@ -34,13 +34,20 @@ export class ContextImageEditBar extends LitElement {
   @state()
   encodingImage: boolean;
 
+  @state()
+  removingByMask: boolean;
+
+  @state()
+  decomposingImage: boolean;
+
+  @state()
+  maskCanvas: HTMLCanvasElement;
+
   private binded = false;
 
   private mode: ImageEditMode = ImageEditMode.IDLE;
 
   previouseEditingPoints: [number, number][];
-
-  private maskCanvas: HTMLCanvasElement;
 
   shouldUpdate(changedProperties: PropertyValues) {
     for (const prop of changedProperties.keys()) {
@@ -124,6 +131,7 @@ export class ContextImageEditBar extends LitElement {
     }
 
     const { image } = await this.api.segmentImage({
+      image_url: '',
       point_prompts: [
         {
           x: x - selectedNode.x,
@@ -143,6 +151,62 @@ export class ContextImageEditBar extends LitElement {
     this.api.getHtmlLayer().appendChild(this.maskCanvas);
   }
 
+  private async removeByMask() {
+    this.removingByMask = true;
+
+    // convert points in canvas coordinages to local coordinates
+    const selectedNode = this.api.getNodeById(
+      this.api.getAppState().layersSelected[0],
+    );
+    await this.api.removeByMask(
+      (selectedNode as RectSerializedNode).fill,
+      this.maskCanvas,
+    );
+    this.removingByMask = false;
+  }
+
+  private async decomposeImage() {
+    this.decomposingImage = true;
+    // const { images } = await this.api.decomposeImage({
+    //   image_url: this.node.fill,
+    // });
+    const images = [
+      {
+        url: 'https://v3b.fal.media/files/b/0a86d42c/7T3zJKciQ1cCzqR3ADLif.png',
+      },
+      {
+        url: 'https://v3b.fal.media/files/b/0a86d42c/KVt5pIhe2dU-qZNC2Njo2.png',
+      },
+      {
+        url: 'https://v3b.fal.media/files/b/0a86d42c/3BMMGMaHyA3Y7Q_kamIJ_.png',
+      },
+      {
+        url: 'https://v3b.fal.media/files/b/0a86d42c/AY1BjZxhqS1jl-Pw2S1Tx.png',
+      },
+    ];
+    if (images.length > 0) {
+      this.api.runAtNextTick(() => {
+        for (const image of images) {
+          const newImage = {
+            id: uuidv4(),
+            type: 'rect',
+            fill: image.url,
+            lockAspectRatio: true,
+            x: this.node.x + this.node.width + 50,
+            y: this.node.y,
+            width: this.node.width,
+            height: this.node.height,
+          } as RectSerializedNode;
+          this.api.updateNode(newImage, { fill: image.url });
+        }
+        this.api.record();
+      });
+    }
+    this.decomposingImage = false;
+
+    this.mode = ImageEditMode.IDLE;
+  }
+
   render() {
     if (!this.api) {
       return;
@@ -151,6 +215,19 @@ export class ContextImageEditBar extends LitElement {
     // FIXME: wait for the element to be ready.
     if (this.api.element && !this.binded) {
       this.binded = true;
+    }
+
+    if (this.mode === ImageEditMode.POINT_SEGMENT) {
+      return html`<sp-action-button
+        quiet
+        size="m"
+        ?disabled="${!this.maskCanvas}"
+        ?loading="${this.removingByMask}"
+        @click="${this.removeByMask}"
+      >
+        <sp-tooltip self-managed placement="bottom">Remove</sp-tooltip>
+        <sp-icon-delete slot="icon"></sp-icon-delete>
+      </sp-action-button>`;
     }
 
     return html`<sp-action-button
@@ -202,6 +279,15 @@ export class ContextImageEditBar extends LitElement {
       >
         <sp-tooltip self-managed placement="bottom"> Smart select </sp-tooltip>
         <sp-icon-polygon-select slot="icon"></sp-icon-polygon-select>
+      </sp-action-button>
+      <sp-action-button
+        quiet
+        size="m"
+        ?disabled="${this.decomposingImage}"
+        @click="${this.decomposeImage}"
+      >
+        <sp-tooltip self-managed placement="bottom"> Decompose </sp-tooltip>
+        <sp-icon-layers slot="icon"></sp-icon-layers>
       </sp-action-button>`;
   }
 }

@@ -149,6 +149,12 @@ For other practices and SAM3-related materials, please refer to:
 -   [Segment Anything 2, in WebGPU]
 -   [Request for Official ONNX Export + TensorRT Conversion Scripts for SAM3]
 
+The mask obtained through SAM can be used as a reference image to feed into the raw image model.
+
+### Using LaMa {#use-lama}
+
+[Client-Side Image Inpainting with ONNX and Next.js] explains how to use the [LaMa] model on the client side.
+
 ### Combining Multiple Images {#combine-multiple-images}
 
 Using canvas allows us to obtain additional positional information about images, which is often difficult to describe with language. For example, we can drag a teacup to any position on a desktop and composite an image.
@@ -201,6 +207,10 @@ First, use an OCR-like tool to identify text regions and generate a mask. Then, 
 [FLUX-Text: A Simple and Advanced Diffusion Transformer Baseline for Scene Text Editing]
 
 ![text editing with flux-text](/flux-text.png)
+
+Using the open-source [Qwen-Image-Layered] enables layer decomposition. In the [fal.ai plugin], we achieved the following effect:
+
+![Qwen-Image-Layered](/decompose-layers.gif)
 
 ### Font recognition {#font-recognition}
 
@@ -263,6 +273,8 @@ Finally, overlay all the layers.
 [Request for Official ONNX Export + TensorRT Conversion Scripts for SAM3]: https://github.com/facebookresearch/sam3/issues/224
 [Use SAM in WebWorker]: /experiment/sam-in-worker
 [SAM plugin]: /reference/sam
+[fal.ai plugin]: /reference/fal
 [How to add machine learning to your web application with ONNX Runtime]: https://onnxruntime.ai/docs/tutorials/web/
 [ORT model format]: https://onnxruntime.ai/docs/performance/model-optimizations/ort-format-models.html
 [Using the WebGPU Execution Provider]: https://onnxruntime.ai/docs/tutorials/web/ep-webgpu.html
+[Qwen-Image-Layered]: https://arxiv.org/pdf/2512.15603

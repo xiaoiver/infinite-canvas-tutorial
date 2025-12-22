@@ -147,6 +147,8 @@ private async removeBackground() {
 -   [Segment Anything 2, in WebGPU]
 -   [Request for Official ONNX Export + TensorRT Conversion Scripts for SAM3]
 
+通过 SAM 得到的 Mask 可以作为参考图传给生图模型
+
 ### 端侧模型 LaMa {#use-lama}
 
 [Client-Side Image Inpainting with ONNX and Next.js] 介绍了如何在端侧使用 [LaMa] 模型完成
@@ -171,7 +173,7 @@ private async removeBackground() {
 
 目前 GPT 4o 仅支持三种固定尺寸，而 Nano banana 想实现任意图片尺寸输出需要借助一些 hack 手段，例如传入一张指定尺寸的空白图作为参考图并在 prompt 中强调。我们可以通过画布操作让它变的十分自然：用户只需要拖拽到合适的尺寸即可，应用通过 Canvas API 自动生成这个空白的参考图。
 
-## 自动分层 {#layer-separation}
+## 图层分解 {#layer-separation}
 
 -   [Editing Text in Images with AI]
 -   [Move Anything with Layered Scene Diffusion]
@@ -203,6 +205,10 @@ private async removeBackground() {
 [FLUX-Text: A Simple and Advanced Diffusion Transformer Baseline for Scene Text Editing]
 
 ![text editing with flux-text](/flux-text.png)
+
+使用开源的 [Qwen-Image-Layered] 可以实现图层分解，在 [fal.ai plugin] 中我们实现了如下效果：
+
+![Qwen-Image-Layered](/decompose-layers.gif)
 
 ### 字体识别 {#font-recognition}
 
@@ -269,6 +275,8 @@ Adobe Photoshop 提供了 [Match fonts] 功能：
 [Request for Official ONNX Export + TensorRT Conversion Scripts for SAM3]: https://github.com/facebookresearch/sam3/issues/224
 [在 WebWorker 中使用 SAM 分割图像]: /zh/experiment/sam-in-worker
 [SAM plugin]: /zh/reference/sam
+[fal.ai plugin]: /zh/reference/fal
 [How to add machine learning to your web application with ONNX Runtime]: https://onnxruntime.ai/docs/tutorials/web/
 [ORT model format]: https://onnxruntime.ai/docs/performance/model-optimizations/ort-format-models.html
 [Using the WebGPU Execution Provider]: https://onnxruntime.ai/docs/tutorials/web/ep-webgpu.html
+[Qwen-Image-Layered]: https://arxiv.org/pdf/2512.15603

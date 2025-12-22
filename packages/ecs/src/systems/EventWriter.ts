@@ -101,6 +101,7 @@ export class EventWriter extends System {
       Object.assign(input.write(Input), {
         pointerClient: [e.clientX, e.clientY],
         pointerViewport: [viewport.x, viewport.y],
+        pressure: e.pressure,
       });
 
       syncCtrlShiftAltMeta(e);
@@ -141,6 +142,7 @@ export class EventWriter extends System {
           pointerClient: [e.clientX, e.clientY],
           pointerViewport: [viewport.x, viewport.y],
           lastPointerDownTime: currentTime,
+          pressure: e.pressure,
         });
       }
 

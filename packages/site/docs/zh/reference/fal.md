@@ -9,6 +9,7 @@ publish: false
 -   [createOrEditImage] 使用 Gemini 3 Pro 生成或编辑图片
 -   [encodeImage] 无需实现
 -   [segmentImage] 使用 SAM 分割图片
+-   [decomposeImage] 使用 Qwen-Image-Layered 将图片分解成多个图层
 
 ```ts
 import { FalAIPlugin } from '@infinite-canvas-tutorial/fal-ai';
@@ -30,3 +31,4 @@ new App()
 [createOrEditImage]: /zh/reference/ai#createoreditimage
 [encodeImage]: /reference/ai#encodeimage
 [segmentImage]: /zh/reference/ai#segmentimage
+[decomposeImage]: /zh/reference/ai#decomposeimage

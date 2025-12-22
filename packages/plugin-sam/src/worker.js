@@ -1,6 +1,11 @@
 import { Tensor } from 'onnxruntime-web';
 import * as ort from 'onnxruntime-web/all';
 
+// ort.env.wasm.numThreads=0
+// ort.env.wasm.simd = false;
+ort.env.wasm.wasmPaths =
+  'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.23.2/dist/';
+
 const ENCODER_URL =
   'https://huggingface.co/g-ronimo/sam2-tiny/resolve/main/sam2_hiera_tiny_encoder.with_runtime_opt.ort';
 const DECODER_URL =

@@ -51,6 +51,17 @@ export class FalAISystem extends System {
 
       // Do nothing here
       api.encodeImage = async (image: string) => {};
+
+      api.decomposeImage = async (input) => {
+        const { image_url, num_layers } = input;
+        const result = await fal.subscribe('fal-ai/qwen-image-layered', {
+          input: {
+            image_url,
+            num_layers,
+          },
+        });
+        return result.data;
+      };
     });
   }
 }

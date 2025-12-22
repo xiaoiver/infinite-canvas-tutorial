@@ -9,6 +9,7 @@ Use [fal.ai] to implement [AI API]
 -   [createOrEditImage] Use Gemini 3 Pro to create or edit image
 -   [encodeImage] Do nothing here
 -   [segmentImage] Use SAM to segment image
+-   [decomposeImage] Use Qwen-Image-Layered to decompose image into multiple layers
 
 ```ts
 import { FalAIPlugin } from '@infinite-canvas-tutorial/fal-ai';
@@ -30,3 +31,4 @@ new App()
 [createOrEditImage]: /reference/ai#createoreditimage
 [encodeImage]: /reference/ai#encodeimage
 [segmentImage]: /reference/ai#segmentimage
+[decomposeImage]: /reference/ai#decomposeimage

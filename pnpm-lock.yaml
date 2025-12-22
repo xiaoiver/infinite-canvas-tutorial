@@ -731,6 +731,9 @@ importers:
       '@infinite-canvas-tutorial/fal-ai':
         specifier: workspace:*
         version: link:../plugin-fal-ai
+      '@infinite-canvas-tutorial/lama':
+        specifier: workspace:*
+        version: link:../plugin-lama
       '@infinite-canvas-tutorial/lesson1':
         specifier: workspace:*
         version: link:../lesson_001

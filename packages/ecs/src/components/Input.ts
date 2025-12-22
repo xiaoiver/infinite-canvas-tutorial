@@ -27,6 +27,8 @@ export class Input {
   @field.float32 declare deltaX: number;
 
   @field.float32 declare deltaY: number;
+
+  @field.float32 declare pressure: number;
 }
 
 export class InputPoint {

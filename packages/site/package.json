@@ -34,6 +34,7 @@
     "@infinite-canvas-tutorial/webcomponents": "workspace:*",
     "@infinite-canvas-tutorial/fal-ai": "workspace:*",
     "@infinite-canvas-tutorial/sam": "workspace:*",
+    "@infinite-canvas-tutorial/lama": "workspace:*",
     "@infinite-canvas-tutorial/chat": "workspace:*",
     "@infinite-canvas-tutorial/lesson1": "workspace:*",
     "@infinite-canvas-tutorial/lesson2": "workspace:*",

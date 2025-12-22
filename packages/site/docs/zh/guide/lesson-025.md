@@ -228,7 +228,7 @@ if (marker === 'line') {
 
 与之相对的，导出的 SVG 也要支持再导入画布。
 
-## 绘制多边形 {#draw-polygon}
+## [WIP] 绘制多边形 {#draw-polygon}
 
 [Shape tools - polygons]
 
@@ -272,6 +272,22 @@ const d = getSvgPathFromStroke(outlinePoints); // 'M 0 0 L...'
 ```
 
 <PencilFreehand />
+
+默认情况下 [perfect-freehand] 是通过相邻点的距离计算可变的线宽，来模拟笔触的快慢。在带有压力感应的输入设备(pen or stylus)场景下，可以将事件自带的 [pressure] 映射上去：
+
+```ts
+export class Input {
+    @field.float32 declare pressure: number; // [!code ++]
+}
+```
+
+此时就可以关闭默认的模拟行为：
+
+```ts
+const outlinePoints = getStroke(inputPoints, {
+    simulatePressure: false,
+});
+```
 
 ## 笔刷模式 {#brush-mode}
 
@@ -350,7 +366,7 @@ if (vertexNum < 0.5) {
 
 Figma 是可以将 Brush 导出 SVG 的。
 
-### 橡皮擦 {#eraser}
+## [WIP] 橡皮擦 {#eraser}
 
 ## 扩展阅读 {#extended-reading}
 
@@ -379,3 +395,4 @@ Figma 是可以将 Brush 导出 SVG 的。
 [export arrow]: https://github.com/xiaoiver/infinite-canvas-tutorial/blob/master/__tests__/ecs/snapshots/export-arrow.svg
 [perfect-freehand]: https://github.com/steveruizok/perfect-freehand
 [Perfect Freehand Drawing Issue]: https://github.com/excalidraw/excalidraw/issues/4802
+[pressure]: https://developer.mozilla.org/docs/Web/API/PointerEvent/pressure

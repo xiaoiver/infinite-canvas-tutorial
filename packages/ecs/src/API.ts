@@ -1281,6 +1281,10 @@ export class API {
   }
 
   // AI APIs
+
+  /**
+   * Create or edit an image with a prompt.
+   */
   async createOrEditImage(
     isEdit: boolean,
     prompt: string,
@@ -1289,27 +1293,53 @@ export class API {
     throw new Error('Not implemented');
   }
 
+  /**
+   * Upload the file to CDN and return an URL.
+   */
   async upload(file: File): Promise<string> {
     throw new Error('Not implemented');
   }
 
-  async encodeImage(image: string): Promise<void> {
+  /**
+   * Encode image before segmenting.
+   */
+  async encodeImage(image_url: string): Promise<void> {
     throw new Error('Not implemented');
   }
 
-  async segmentImage(
-    input: Partial<{
-      image_url: string;
-      prompt: string;
-      point_prompts: PointPrompt[];
-      box_prompts: BoxPrompt[];
-    }>,
-  ): Promise<{
+  /**
+   * Segment the image into a mask.
+   */
+  async segmentImage(input: {
+    image_url: string;
+    prompt?: string;
+    point_prompts?: PointPrompt[];
+    box_prompts?: BoxPrompt[];
+  }): Promise<{
     /**
      * Primary segmented mask preview
      */
     image: HTMLCanvasElement;
   }> {
+    throw new Error('Not implemented');
+  }
+
+  /**
+   * Split the image into multiple layers.
+   */
+  async decomposeImage(input: {
+    image_url: string;
+    num_layers?: number;
+  }): Promise<{
+    images: { url: string }[];
+  }> {
+    throw new Error('Not implemented');
+  }
+
+  async removeByMask(
+    image_url: string,
+    mask: HTMLCanvasElement,
+  ): Promise<HTMLCanvasElement> {
     throw new Error('Not implemented');
   }
 }

@@ -191,7 +191,7 @@ const result = await fal.subscribe('fal-ai/sam-3/image', {
 
 ### ONNX
 
-Decode in WebWorker:
+Decode in WebWorker, see [SAM Plugin]:
 
 ```ts
 // WebWorker
@@ -219,7 +219,7 @@ encodeImage(image: string): Promise<void> {}
 
 ### ONNX
 
-Encode images using SAM for subsequent inference:
+Encode images using SAM for subsequent inference, see [SAM Plugin]:
 
 ```ts
 import { Tensor } from 'onnxruntime-web';
@@ -232,5 +232,35 @@ const imgTensor = new Tensor('float32', float32Array, shape);
 await sam.encodeImage(imgTensor);
 ```
 
+## decomposeImage
+
+Decompose an image into multiple layers.
+
+```ts
+decomposeImage(input: {
+    image_url: string;
+    num_layers?: number;
+}): Promise<{
+    images: { url: string }[];
+}> {}
+```
+
+## removeByMask
+
+Remove objects in mask area.
+
+```ts
+removeByMask(
+    image_url: string,
+    mask: HTMLCanvasElement,
+): Promise<HTMLCanvasElement> {}
+```
+
+### ONNX
+
+Remove objects in mask area with LaMa, see: [LaMa Plugin]
+
 [Lesson 28 - Integration with AI]: /guide/lesson-028
 [fal.ai]: https://fal.ai/
+[SAM Plugin]: /reference/sam
+[LaMa Plugin]: /reference/lama
