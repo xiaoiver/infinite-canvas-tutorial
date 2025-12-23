@@ -1289,7 +1289,7 @@ export class API {
     isEdit: boolean,
     prompt: string,
     image_urls: string[],
-  ): Promise<{ images: { url: string }[]; description: string }> {
+  ): Promise<{ images: Image[]; description: string }> {
     throw new Error('Not implemented');
   }
 
@@ -1319,7 +1319,7 @@ export class API {
     /**
      * Primary segmented mask preview
      */
-    image: HTMLCanvasElement;
+    image: Image;
   }> {
     throw new Error('Not implemented');
   }
@@ -1331,17 +1331,39 @@ export class API {
     image_url: string;
     num_layers?: number;
   }): Promise<{
-    images: { url: string }[];
+    images: Image[];
   }> {
     throw new Error('Not implemented');
   }
 
-  async removeByMask(
-    image_url: string,
-    mask: HTMLCanvasElement,
-  ): Promise<HTMLCanvasElement> {
+  /**
+   * Upscale the image.
+   */
+  async upscaleImage(input: {
+    image_url: string;
+    scale_factor?: number;
+  }): Promise<Image> {
     throw new Error('Not implemented');
   }
+
+  async removeByMask(input: {
+    image_url: string;
+    mask: HTMLCanvasElement;
+  }): Promise<Image> {
+    throw new Error('Not implemented');
+  }
+}
+
+export interface Image {
+  /**
+   * The URL where the file can be downloaded from.
+   */
+  url?: string;
+
+  /**
+   * HTMLCanvasElement object.
+   */
+  canvas?: HTMLCanvasElement;
 }
 
 export interface PointPrompt {

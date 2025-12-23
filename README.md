@@ -347,14 +347,16 @@ If you want to use it in your own project, you can refer to:
 -   Use chatbox
 -   Use Nano banana to edit image, e.g remove background
 -   Use SAM with ONNX WebGPU runtime in WebWorker
+-   Use Qwen-Image-Layered to decompose an image into multiple layers
+-   Use UpscalerJS to upscale an image to 2X
 
 |                      Use chatbox                      |                 Remove background                  |
 | :---------------------------------------------------: | :------------------------------------------------: |
 | ![when canvas meets chat](./screenshots/lesson28.png) | ![remove background](./screenshots/lesson28-2.png) |
 
-|         Use SAM with ONNX WebGPU runtime in WebWorker          |        Decompose into layers with Qwen-Image-Layered         |
-| :------------------------------------------------------------: | :----------------------------------------------------------: |
-| ![use onnx and sam in webworker](./screenshots/lesson28-3.gif) | ![decompose image into layers](./screenshots/lesson28-4.gif) |
+|         Use SAM with ONNX WebGPU runtime in WebWorker          |        Decompose into layers with Qwen-Image-Layered         |         Upscale image with UpscalerJS          |
+| :------------------------------------------------------------: | :----------------------------------------------------------: | :--------------------------------------------: |
+| ![use onnx and sam in webworker](./screenshots/lesson28-3.gif) | ![decompose image into layers](./screenshots/lesson28-4.gif) | ![upscale image](./screenshots/lesson28-5.png) |
 
 ## Lesson 29 - Embedding HTML content [🔗](https://infinitecanvas.cc/guide/lesson-029)
 

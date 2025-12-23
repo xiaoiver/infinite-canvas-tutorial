@@ -87,6 +87,7 @@ import '@spectrum-web-components/icons-workflow/icons/sp-icon-send.js';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-find-and-replace.js';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-polygon-select.js';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-comment.js';
+import '@spectrum-web-components/icons-workflow/icons/sp-icon-image-auto-mode.js';
 
 export const TOP_NAVBAR_HEIGHT = 48;
 

@@ -9,6 +9,7 @@ import {
 import { ref, onMounted, onUnmounted } from 'vue';
 import { Event, UIPlugin } from '@infinite-canvas-tutorial/webcomponents';
 import { SAMPlugin } from '@infinite-canvas-tutorial/sam';
+// import { UpscalerPlugin } from '@infinite-canvas-tutorial/upscaler';
 
 const wrapper = ref<HTMLElement | null>(null);
 let api: any | undefined;
@@ -38,7 +39,8 @@ onMounted(async () => {
       y: 50,
       width: 200,
       height: 200,
-      fill: 'https://v3b.fal.media/files/b/tiger/v1lf1EcPP1X1pw_YOKM4o.jpg',
+      // fill: 'https://v3b.fal.media/files/b/tiger/v1lf1EcPP1X1pw_YOKM4o.jpg',
+      fill: '/image_in.png'
     };
 
     api.updateNode(node);

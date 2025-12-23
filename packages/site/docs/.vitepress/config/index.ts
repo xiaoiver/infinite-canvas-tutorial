@@ -47,14 +47,6 @@ export default defineConfig({
     },
     // @see https://github.com/adobe/spectrum-web-components/issues/4268
     define: { 'window.__swc.DEBUG': 'false' },
-    // resolve: {
-    //   alias: {
-    //     'onnxruntime-web/all': path.join(
-    //       __dirname,
-    //       'node_modules/onnxruntime-web/dist/ort.all.bundle.min.mjs',
-    //     ),
-    //   },
-    // },
     ssr: {
       noExternal: [
         '@antv/g-device-api',

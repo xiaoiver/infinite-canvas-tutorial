@@ -41,6 +41,9 @@ export class ContextImageEditBar extends LitElement {
   decomposingImage: boolean;
 
   @state()
+  upscalingImage: boolean;
+
+  @state()
   maskCanvas: HTMLCanvasElement;
 
   private binded = false;
@@ -141,7 +144,7 @@ export class ContextImageEditBar extends LitElement {
       ],
     });
 
-    this.maskCanvas = image;
+    this.maskCanvas = image.canvas!;
     this.maskCanvas.style.position = 'absolute';
     this.maskCanvas.style.left = `${selectedNode.x}px`;
     this.maskCanvas.style.top = `${selectedNode.y}px`;
@@ -158,10 +161,10 @@ export class ContextImageEditBar extends LitElement {
     const selectedNode = this.api.getNodeById(
       this.api.getAppState().layersSelected[0],
     );
-    await this.api.removeByMask(
-      (selectedNode as RectSerializedNode).fill,
-      this.maskCanvas,
-    );
+    await this.api.removeByMask({
+      image_url: (selectedNode as RectSerializedNode).fill,
+      mask: this.maskCanvas!,
+    });
     this.removingByMask = false;
   }
 
@@ -205,6 +208,36 @@ export class ContextImageEditBar extends LitElement {
     this.decomposingImage = false;
 
     this.mode = ImageEditMode.IDLE;
+  }
+
+  private async upscaleImage() {
+    this.upscalingImage = true;
+
+    const selectedNode = this.api.getNodeById(
+      this.api.getAppState().layersSelected[0],
+    );
+
+    const image = await this.api.upscaleImage({
+      image_url: (selectedNode as RectSerializedNode).fill,
+    });
+    const url = image.url ?? image.canvas?.toDataURL();
+
+    this.api.runAtNextTick(() => {
+      const newImage = {
+        id: uuidv4(),
+        type: 'rect',
+        fill: url,
+        lockAspectRatio: true,
+        x: this.node.x + this.node.width + 50,
+        y: this.node.y,
+        width: this.node.width,
+        height: this.node.height,
+      } as RectSerializedNode;
+      this.api.updateNode(newImage, { fill: url });
+      this.api.record();
+    });
+
+    this.upscalingImage = false;
   }
 
   render() {
@@ -288,7 +321,16 @@ export class ContextImageEditBar extends LitElement {
       >
         <sp-tooltip self-managed placement="bottom"> Decompose </sp-tooltip>
         <sp-icon-layers slot="icon"></sp-icon-layers>
-      </sp-action-button>`;
+      </sp-action-button>
+      <sp-action-button
+        quiet
+        size="m"
+        ?disabled="${this.upscalingImage}"
+        @click="${this.upscaleImage}"
+      >
+        <sp-tooltip self-managed placement="bottom"> Upscale </sp-tooltip>
+        <sp-icon-image-auto-mode slot="icon"></sp-icon-image-auto-mode>
+      </sp-action-button> `;
   }
 }
 

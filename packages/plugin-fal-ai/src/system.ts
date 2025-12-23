@@ -1,5 +1,6 @@
 import { Canvas, System } from '@infinite-canvas-tutorial/ecs';
 import { fal } from '@fal-ai/client';
+import { imageToCanvas } from './utils';
 
 export class FalAISystem extends System {
   private readonly canvases = this.query((q) => q.added.with(Canvas));
@@ -41,12 +42,8 @@ export class FalAISystem extends System {
 
         // Convert Image to HTMLCanvasElement
         const image = result.data.image as unknown as HTMLImageElement;
-        const canvas = document.createElement('canvas');
-        canvas.width = image.width;
-        canvas.height = image.height;
-        const ctx = canvas.getContext('2d')!;
-        ctx.drawImage(image, 0, 0);
-        return { image: canvas };
+        const canvas = await imageToCanvas(image);
+        return { image: { canvas } };
       };
 
       // Do nothing here
@@ -61,6 +58,18 @@ export class FalAISystem extends System {
           },
         });
         return result.data;
+      };
+
+      api.upscaleImage = async (input) => {
+        const { image_url, scale_factor } = input;
+        // fal-ai/drct-super-resolution
+        const result = await fal.subscribe('fal-ai/seedvr/upscale/image', {
+          input: {
+            image_url,
+            upscale_factor: scale_factor || 2,
+          },
+        });
+        return result.data.image;
       };
     });
   }

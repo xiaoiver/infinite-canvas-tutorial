@@ -86,7 +86,7 @@ createOrEditImage(
     isEdit: boolean,
     prompt: string,
     image_urls: string[],
-): Promise<{ images: { url: string }[]; description: string }> {}
+): Promise<{ images: Image[]; description: string }> {}
 ```
 
 参数说明如下：
@@ -94,6 +94,13 @@ createOrEditImage(
 -   `isEdit` 是否是编辑模式
 -   `prompt` 生成图片时的描述
 -   `image_urls` 参考图列表，可以为空
+
+```ts
+interface Image {
+    url?: string;
+    canvas?: HTMLCanvasElement;
+}
+```
 
 ### fal.ai
 
@@ -106,7 +113,7 @@ api.createOrEditImage = async (
     isEdit: boolean,
     prompt: string,
     image_urls: string[],
-): Promise<{ images: { url: string }[]; description: string }> => {
+): Promise<{ images: Image[]; description: string }> => {
     const result = await fal.subscribe(
         isEdit
             ? 'fal-ai/gemini-25-flash-image/edit'
@@ -138,7 +145,7 @@ segmentImage(
     /**
      * Primary segmented mask preview
      */
-    image: HTMLCanvasElement;
+    image: Image;
 }> {}
 ```
 
@@ -230,7 +237,7 @@ decomposeImage(input: {
     image_url: string;
     num_layers?: number;
 }): Promise<{
-    images: { url: string }[];
+    images: Image[];
 }> {}
 ```
 
@@ -239,10 +246,10 @@ decomposeImage(input: {
 擦除 Mask 区域的内容
 
 ```ts
-removeByMask(
-    image_url: string,
-    mask: HTMLCanvasElement,
-): Promise<HTMLCanvasElement> {}
+removeByMask(input: {
+    image_url: string;
+    mask: HTMLCanvasElement;
+}): Promise<Image> {}
 ```
 
 ### ONNX

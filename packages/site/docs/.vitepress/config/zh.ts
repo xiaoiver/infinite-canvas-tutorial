@@ -126,6 +126,7 @@ export const zh = defineConfig({
               },
               { text: 'Segment Anything Model', link: 'sam' },
               { text: 'LaMa', link: 'lama' },
+              { text: 'UpscalerJS', link: 'upscaler' },
             ],
           },
           {

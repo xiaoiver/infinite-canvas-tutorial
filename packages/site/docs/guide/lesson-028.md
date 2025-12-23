@@ -1,6 +1,6 @@
 ---
 outline: deep
-description: 'Integrating with AI, using chat dialogs with image generation models such as GPT 4o and Nano banana'
+description: 'Integrating with AI, using chat dialogs with image generation models such as GPT 4o and Nano banana. Use SAM to segment image in WebWorker, use LaMa for inpainting and upscale image with UpscalerJS.'
 head:
     - [
           'meta',
@@ -236,6 +236,18 @@ Adobe Photoshop provides [Match fonts]:
 
 Finally, overlay all the layers.
 
+## Upscale image {#upscale-image}
+
+We can upscale image with model, such as [SeedVR2] in fal.ai. In browser side, we can use [UpscalerJS] in webworker, see our [upscaler plugin], which uses `@upscalerjs/esrgan-medium 4x` model by default.
+
+![@upscalerjs/esrgan-medium 4x](/upscaler.png)
+
+### Other browser runtime {#other-browser-runtime}
+
+[UpscalerJS] uses tensorflow.js, you can choose [super-resolution-js] with ONNX runtime, or a new runtime called LiteRT:
+
+![Image upscaler with LiteRT.js](/image-upscaler.jpg)
+
 ## MCP
 
 [MCP: What It Is and Why It Matters]：
@@ -274,7 +286,11 @@ Finally, overlay all the layers.
 [Use SAM in WebWorker]: /experiment/sam-in-worker
 [SAM plugin]: /reference/sam
 [fal.ai plugin]: /reference/fal
+[upscaler plugin]: /reference/upscaler
 [How to add machine learning to your web application with ONNX Runtime]: https://onnxruntime.ai/docs/tutorials/web/
 [ORT model format]: https://onnxruntime.ai/docs/performance/model-optimizations/ort-format-models.html
 [Using the WebGPU Execution Provider]: https://onnxruntime.ai/docs/tutorials/web/ep-webgpu.html
 [Qwen-Image-Layered]: https://arxiv.org/pdf/2512.15603
+[SeedVR2]: https://huggingface.co/ByteDance-Seed/SeedVR2-7B
+[UpscalerJS]: https://upscalerjs.com/documentation/guides/browser/performance/webworker
+[super-resolution-js]: https://github.com/josephrocca/super-resolution-js

@@ -86,7 +86,7 @@ createOrEditImage(
     isEdit: boolean,
     prompt: string,
     image_urls: string[],
-): Promise<{ images: { url: string }[]; description: string }> {}
+): Promise<{ images: Image[]; description: string }> {}
 ```
 
 Parameter descriptions:
@@ -94,6 +94,13 @@ Parameter descriptions:
 -   `isEdit` Whether it is in edit mode
 -   `prompt` Description when generating images
 -   `image_urls` Reference image list, can be empty
+
+```ts
+interface Image {
+    url?: string;
+    canvas?: HTMLCanvasElement;
+}
+```
 
 ### fal.ai
 
@@ -106,7 +113,7 @@ api.createOrEditImage = async (
     isEdit: boolean,
     prompt: string,
     image_urls: string[],
-): Promise<{ images: { url: string }[]; description: string }> => {
+): Promise<{ images: Image[]; description: string }> => {
     const result = await fal.subscribe(
         isEdit
             ? 'fal-ai/gemini-25-flash-image/edit'
@@ -127,17 +134,6 @@ api.createOrEditImage = async (
 Segment images using SAM to generate masks
 
 ```ts
-segmentImage(params: {
-    points: {
-        x: number;
-        y: number;
-        xNormalized: number;
-        yNormalized: number;
-    }[],
-}): Promise<any> {}
-```
-
-```ts
 segmentImage(
     input: Partial<{
         image_url: string;
@@ -149,7 +145,7 @@ segmentImage(
     /**
      * Primary segmented mask preview
      */
-    image: HTMLCanvasElement;
+    image: Image;
 }> {}
 ```
 
@@ -241,7 +237,7 @@ decomposeImage(input: {
     image_url: string;
     num_layers?: number;
 }): Promise<{
-    images: { url: string }[];
+    images: Image[];
 }> {}
 ```
 
@@ -250,10 +246,10 @@ decomposeImage(input: {
 Remove objects in mask area.
 
 ```ts
-removeByMask(
-    image_url: string,
-    mask: HTMLCanvasElement,
-): Promise<HTMLCanvasElement> {}
+removeByMask(input: {
+    image_url: string;
+    mask: HTMLCanvasElement;
+}): Promise<Image> {}
 ```
 
 ### ONNX

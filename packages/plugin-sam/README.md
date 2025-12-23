@@ -33,7 +33,7 @@ const DECODER_URL =
 We use the following syntax so that vite will build webworker correctly.
 
 ```ts
-import workerUrl from './sam-worker.js?worker&url';
+import workerUrl from './worker.js?worker&url';
 ```
 
 [AI API]: /reference/ai

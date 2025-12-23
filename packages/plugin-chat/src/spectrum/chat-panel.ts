@@ -250,7 +250,9 @@ export class ChatPanel extends LitElement {
     this.appState.taskbarChatMessages.push({
       role: 'assistant',
       content: description,
-      images,
+      images: images.map((image) => ({
+        url: image.url ?? image.canvas?.toDataURL(),
+      })),
     });
     this.userMessageSending = false;
 

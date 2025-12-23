@@ -178,6 +178,7 @@ export const en = defineConfig({
               { text: 'fal.ai', link: 'fal' },
               { text: 'Segment Anything Model', link: 'sam' },
               { text: 'LaMa', link: 'lama' },
+              { text: 'UpscalerJS', link: 'upscaler' },
             ],
           },
           {

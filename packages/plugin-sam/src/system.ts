@@ -80,7 +80,7 @@ export class SAMSystem extends System {
               });
 
               this.worker.onmessage = originalOnMessage;
-              resolve({ image: maskCanvasResized });
+              resolve({ image: { canvas: maskCanvasResized } });
             }
             originalOnMessage?.call(this.worker, event);
           };
@@ -115,7 +115,7 @@ export class SAMSystem extends System {
               api.setAppState({ loading: false, loadingMessage: '' });
             } else {
               api.setAppState({ loading: false, loadingMessage: '' });
-              console.error('Failed to load SAM models');
+              console.error('Failed to load SAM model');
             }
           } else if (
             type == 'downloadInProgress' ||
@@ -133,7 +133,7 @@ export class SAMSystem extends System {
 
         api.setAppState({
           loading: true,
-          loadingMessage: 'Loading SAM models...',
+          loadingMessage: 'Loading SAM model...',
         });
         this.worker.postMessage({ type: 'ping' });
       }

@@ -19,7 +19,11 @@ export class LaMaSystem extends System {
     this.canvases.added.forEach((canvas) => {
       const { api } = canvas.read(Canvas);
 
-      api.removeByMask = async (image_url: string, mask: HTMLCanvasElement) => {
+      api.removeByMask = async (input: {
+        image_url: string;
+        mask: HTMLCanvasElement;
+      }) => {
+        const { image_url, mask } = input;
         api.setAppState({
           loading: true,
           loadingMessage: 'Removing by mask...',
@@ -38,12 +42,12 @@ export class LaMaSystem extends System {
               api.setAppState({ loading: false, loadingMessage: '' });
 
               this.worker.onmessage = originalOnMessage;
-              resolve(
-                resizeCanvas(imgCanvas, {
+              resolve({
+                canvas: resizeCanvas(imgCanvas, {
                   w: image.width,
                   h: image.height,
                 }),
-              );
+              });
             }
             originalOnMessage?.call(this.worker, event);
           };
