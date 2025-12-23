@@ -1027,7 +1027,8 @@ export class Select extends System {
       const maxY = Math.max(y, y + height);
       const selecteds = api
         .elementsFromBBox(minX, minY, maxX, maxY)
-        .filter((e) => !e.has(UI))
+        // Only select direct children of the camera
+        .filter((e) => !e.has(UI) && e.read(Children).parent.has(Camera))
         .map((e) => api.getNodeByEntity(e));
       api.selectNodes(selecteds);
 

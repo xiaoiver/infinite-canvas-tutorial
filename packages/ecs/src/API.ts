@@ -1113,6 +1113,24 @@ export class API {
     return children;
   }
 
+  getParent(node: SerializedNode) {
+    const entity = this.getEntity(node);
+    if (!entity.has(Children)) {
+      return undefined;
+    }
+
+    return entity.read(Children).parent;
+  }
+
+  getChildren(node: SerializedNode) {
+    const entity = this.getEntity(node);
+    if (!entity.has(Parent)) {
+      return [];
+    }
+
+    return entity.read(Parent).children;
+  }
+
   /**
    * Bring current node to the front in its context.
    * The context is the parent of the node.

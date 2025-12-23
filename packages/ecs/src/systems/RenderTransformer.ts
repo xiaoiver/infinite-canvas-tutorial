@@ -368,7 +368,8 @@ export function getOBB(camera: Entity): OBB {
 
   // Single selected, keep the original OBB include rotation & scale.
   if (selecteds.length === 1 && selecteds[0].has(ComputedBounds)) {
-    const { obb } = selecteds[0].read(ComputedBounds);
+    const selected = selecteds[0];
+    const { obb } = selected.read(ComputedBounds);
     return obb;
   }
 

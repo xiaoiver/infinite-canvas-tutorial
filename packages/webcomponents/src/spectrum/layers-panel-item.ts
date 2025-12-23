@@ -56,10 +56,6 @@ export class LayersPanelItem extends LitElement {
       );
     }
 
-    :host([child]) > span {
-      padding-left: 24px;
-    }
-
     h4 {
       padding: var(--spectrum-global-dimension-size-100);
       display: flex;
@@ -71,6 +67,9 @@ export class LayersPanelItem extends LitElement {
 
   @property()
   node: SerializedNode;
+
+  @property({ type: Number })
+  depth = 0;
 
   @property({ type: Boolean })
   selected = false;
@@ -137,7 +136,7 @@ export class LayersPanelItem extends LitElement {
       this.selected &&
       !this.appState.taskbarSelected.includes(Task.SHOW_PROPERTIES_PANEL);
 
-    return html`<span>
+    return html`<span style="padding-left: calc(24px * ${this.depth});">
         <sp-action-button quiet size="s" @click=${this.handleToggleVisibility}>
           ${when(
             isVisible,

@@ -58,6 +58,7 @@ import {
   Marker,
   VectorNetwork,
   Filter,
+  Transform,
 } from '../components';
 import { paddingMat3, SerializedNode } from '../utils';
 import { GridRenderer } from './GridRenderer';
@@ -97,6 +98,7 @@ export class MeshPipeline extends System {
           Text,
           Brush,
           VectorNetwork,
+          Transform,
         ).trackWrites,
   );
 

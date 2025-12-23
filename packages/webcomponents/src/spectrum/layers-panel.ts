@@ -173,18 +173,17 @@ export class LayersPanel extends LitElement {
   }
 
   render() {
-    const { layersSelected, layersHighlighted, taskbarSelected } =
-      this.appState;
+    const { layersSelected, taskbarSelected } = this.appState;
 
     const sortedNodes = this.nodes
+      .filter((node) => node.parentId === undefined)
       .map((node) => {
         return this.api.getEntity(node);
       })
       .sort(sortByFractionalIndex)
       .map((entity) => {
         return this.api.getNodeByEntity(entity);
-      })
-      .reverse();
+      });
 
     const isSelectedEmpty = layersSelected.length === 0;
     let bringForwardDisabled = false;
@@ -285,21 +284,34 @@ export class LayersPanel extends LitElement {
           </sp-action-group>
           <div class="container">
             ${map(sortedNodes, (node) => {
-              // TODO: hierarchy
-              // TODO: virtual scroll for better performance
-              return html`<ic-spectrum-layers-panel-item
-                id=${this.generateLayersPanelItemId(node)}
-                .node=${node}
-                draggable
-                @click=${(e: MouseEvent) => this.handleSelect(e, node.id)}
-                ?selected=${layersSelected.includes(node.id)}
-                ?highlighted=${layersHighlighted.includes(node.id)}
-                ?child=${!!node.parentId}
-              ></ic-spectrum-layers-panel-item>`;
+              return this.renderParentNode(node);
             })}
           </div>
         </section>`
       : null;
+  }
+
+  private renderParentNode(node: SerializedNode, depth = 0) {
+    const children = this.api.getChildren(node);
+    const sortedNodes = children.sort(sortByFractionalIndex).map((entity) => {
+      return this.api.getNodeByEntity(entity);
+    });
+
+    const { layersSelected, layersHighlighted } = this.appState;
+
+    return html`<ic-spectrum-layers-panel-item
+        id=${this.generateLayersPanelItemId(node)}
+        .node=${node}
+        .depth=${depth}
+        draggable
+        @click=${(e: MouseEvent) => this.handleSelect(e, node.id)}
+        ?selected=${layersSelected.includes(node.id)}
+        ?highlighted=${layersHighlighted.includes(node.id)}
+      ></ic-spectrum-layers-panel-item>
+      ${map(sortedNodes, (node) => {
+        // TODO: virtual scroll for better performance
+        return this.renderParentNode(node, depth + 1);
+      })}`;
   }
 }
 
