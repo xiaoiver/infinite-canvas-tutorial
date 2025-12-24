@@ -158,29 +158,7 @@ export class LayersPanelItem extends LitElement {
       this.selected &&
       !this.appState.taskbarSelected.includes(Task.SHOW_PROPERTIES_PANEL);
 
-    return html`<span style="padding-left: calc(24px * ${this.depth});">
-        ${when(
-          this.hasChildren,
-          () => html`
-            <sp-action-button quiet size="s" @click=${this.handleToggleExpand}>
-              ${when(
-                isExpanded,
-                () =>
-                  html`<sp-icon-chevron-down
-                    slot="icon"
-                  ></sp-icon-chevron-down>`,
-                () =>
-                  html`<sp-icon-chevron-right
-                    slot="icon"
-                  ></sp-icon-chevron-right>`,
-              )}
-              <sp-tooltip self-managed placement="left">
-                ${isExpanded ? 'Collapse' : 'Expand'}
-              </sp-tooltip>
-            </sp-action-button>
-          `,
-          () => html`<span style="width: 24px;"></span>`,
-        )}
+    return html`
         <sp-action-button quiet size="s" @click=${this.handleToggleVisibility}>
           ${when(
             isVisible,
@@ -192,11 +170,12 @@ export class LayersPanelItem extends LitElement {
           )}
           <sp-tooltip self-managed placement="left"> Hide layer </sp-tooltip>
         </sp-action-button>
+        <span style="padding-left: calc(24px * ${this.depth});"></span>
         <ic-spectrum-layer-thumbnail
           .node=${this.node}
           ?selected=${this.selected}
         ></ic-spectrum-layer-thumbnail>
-      </span>
+      
       <ic-spectrum-layer-name
         .node=${this.node}></ic-spectrum-layer-name>
       <div 
@@ -220,6 +199,29 @@ export class LayersPanelItem extends LitElement {
           >
         </sp-action-button>
       </div>
+      <span>
+      ${when(
+        this.hasChildren,
+        () => html`
+          <sp-action-button quiet size="s" @click=${this.handleToggleExpand}>
+            ${when(
+              isExpanded,
+              () =>
+                html`<sp-icon-chevron-down slot="icon"></sp-icon-chevron-down>`,
+              () =>
+                html`<sp-icon-chevron-right
+                  slot="icon"
+                ></sp-icon-chevron-right>`,
+            )}
+            <sp-tooltip self-managed placement="left">
+              ${isExpanded ? 'Collapse' : 'Expand'}
+            </sp-tooltip>
+          </sp-action-button>
+        `,
+        () => html``,
+      )}
+      </span>
+      
     </span>`;
   }
 }

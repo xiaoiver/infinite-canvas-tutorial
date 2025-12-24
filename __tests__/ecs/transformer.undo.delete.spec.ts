@@ -34,6 +34,7 @@ import {
   EllipseSerializedNode,
   ToBeDeleted,
   Transformable,
+  Highlighted,
 } from '../../packages/ecs/src';
 import { NodeJSAdapter, sleep } from '../utils';
 
@@ -81,6 +82,7 @@ describe('Transformer', () => {
             Ellipse,
             ToBeDeleted,
             Transformable,
+            Highlighted,
           ).write,
       );
 
