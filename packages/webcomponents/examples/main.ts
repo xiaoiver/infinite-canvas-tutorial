@@ -7,6 +7,7 @@ import {
   Task,
   CheckboardStyle,
   BrushType,
+  inferXYWidthHeight,
 } from '../../ecs';
 import { Event, UIPlugin } from '../src';
 import '../src/spectrum';
@@ -78,44 +79,47 @@ canvas.addEventListener(Event.READY, async (e) => {
 
   // api.updateNodes(nodes);
 
-  api.updateNodes([
-    {
-      id: 'rect-1',
-      type: 'rect',
-      x: 0,
-      y: 0,
-      width: 200,
-      height: 200,
-      fill: 'grey',
-    },
-    {
-      id: 'rect-2',
-      type: 'rect',
-      parentId: 'rect-1',
-      x: 50,
-      y: 50,
-      width: 100,
-      height: 100,
-      fill: 'blue',
-    },
-    {
-      id: 'rect-3',
-      type: 'rect',
-      parentId: 'rect-2',
-      x: 150,
-      y: 150,
-      width: 50,
-      height: 50,
-      fill: 'yellow',
-    },
-  ]);
+  const node1 = {
+    id: 'rect-1',
+    type: 'rect',
+    x: 0,
+    y: 0,
+    width: 200,
+    height: 200,
+    fill: 'grey',
+  };
+  const node2 = {
+    id: 'text-1',
+    type: 'text',
+    parentId: 'rect-1',
+    anchorX: 10,
+    anchorY: 50,
+    content: 'Hello',
+    fill: 'black',
+    fontSize: 30,
+    fontFamily: 'system-ui',
+  };
+  const node3 = {
+    id: 'rect-2',
+    type: 'rect',
+    x: 100,
+    y: 100,
+    width: 200,
+    height: 200,
+    fill: 'red',
+  };
+
+  api.updateNodes([node1, node2, node3]);
 
   setTimeout(() => {
-    api.updateNode({
-      id: 'rect-1',
-      x: 100,
-      y: 100,
-    });
+    api.updateNode(
+      node2,
+      inferXYWidthHeight({
+        ...node2,
+        anchorX: 100,
+        anchorY: 100,
+      }),
+    );
   }, 2000);
 });
 

@@ -131,6 +131,8 @@ export function inferXYWidthHeight(node: SerializedNode) {
   } else {
     throw new Error('Cannot infer x, y, width or height for node');
   }
+
+  return node;
 }
 
 export async function loadImage(url: string, entity: Entity) {

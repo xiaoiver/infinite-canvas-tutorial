@@ -1,6 +1,7 @@
 import { html, css, LitElement } from 'lit';
 import { consume } from '@lit/context';
 import { map } from 'lit/directives/map.js';
+import { when } from 'lit/directives/when.js';
 import { customElement } from 'lit/decorators.js';
 import {
   SerializedNode,
@@ -297,21 +298,29 @@ export class LayersPanel extends LitElement {
       return this.api.getNodeByEntity(entity);
     });
 
-    const { layersSelected, layersHighlighted } = this.appState;
+    const { layersSelected, layersHighlighted, layersExpanded } = this.appState;
+    const hasChildren = sortedNodes.length > 0;
+    const isExpanded = layersExpanded.includes(node.id);
 
     return html`<ic-spectrum-layers-panel-item
         id=${this.generateLayersPanelItemId(node)}
         .node=${node}
         .depth=${depth}
+        .hasChildren=${hasChildren}
         draggable
         @click=${(e: MouseEvent) => this.handleSelect(e, node.id)}
         ?selected=${layersSelected.includes(node.id)}
         ?highlighted=${layersHighlighted.includes(node.id)}
       ></ic-spectrum-layers-panel-item>
-      ${map(sortedNodes, (node) => {
-        // TODO: virtual scroll for better performance
-        return this.renderParentNode(node, depth + 1);
-      })}`;
+      ${when(
+        hasChildren && isExpanded,
+        () => html`
+          ${map(sortedNodes, (node) => {
+            // TODO: virtual scroll for better performance
+            return this.renderParentNode(node, depth + 1);
+          })}
+        `,
+      )}`;
   }
 }
 

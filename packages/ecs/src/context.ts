@@ -62,6 +62,7 @@ export interface AppState {
   taskbarChatMessages: Message[];
   layersSelected: SerializedNode['id'][];
   layersHighlighted: SerializedNode['id'][];
+  layersExpanded: SerializedNode['id'][];
   propertiesOpened: SerializedNode['id'][];
   /**
    * Allow rotate in transformer
@@ -221,6 +222,7 @@ export const getDefaultAppState: () => AppState = () => {
     layersSelected: [],
     layersHighlighted: [],
     propertiesOpened: [],
+    layersExpanded: [],
     rotateEnabled: false,
     flipEnabled: false,
     snapToPixelGridEnabled: false,

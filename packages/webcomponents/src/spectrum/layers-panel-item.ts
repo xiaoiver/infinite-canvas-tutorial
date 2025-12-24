@@ -77,11 +77,30 @@ export class LayersPanelItem extends LitElement {
   @property({ type: Boolean })
   highlighted = false;
 
+  @property({ type: Boolean })
+  hasChildren = false;
+
   @consume({ context: apiContext, subscribe: true })
   api: API;
 
   @consume({ context: appStateContext, subscribe: true })
   appState: AppState;
+
+  private handleToggleExpand(e: Event) {
+    e.stopPropagation();
+    const { layersExpanded } = this.api.getAppState();
+    const isExpanded = layersExpanded.includes(this.node.id);
+
+    if (isExpanded) {
+      this.api.setAppState({
+        layersExpanded: layersExpanded.filter((id) => id !== this.node.id),
+      });
+    } else {
+      this.api.setAppState({
+        layersExpanded: [...layersExpanded, this.node.id],
+      });
+    }
+  }
 
   private handleToggleVisibility() {
     const isVisible = this.node.visibility !== 'hidden';
@@ -132,11 +151,36 @@ export class LayersPanelItem extends LitElement {
     const isOpen = this.api
       .getAppState()
       .propertiesOpened.includes(this.node.id);
+    const isExpanded = this.api
+      .getAppState()
+      .layersExpanded.includes(this.node.id);
     const showProperties =
       this.selected &&
       !this.appState.taskbarSelected.includes(Task.SHOW_PROPERTIES_PANEL);
 
     return html`<span style="padding-left: calc(24px * ${this.depth});">
+        ${when(
+          this.hasChildren,
+          () => html`
+            <sp-action-button quiet size="s" @click=${this.handleToggleExpand}>
+              ${when(
+                isExpanded,
+                () =>
+                  html`<sp-icon-chevron-down
+                    slot="icon"
+                  ></sp-icon-chevron-down>`,
+                () =>
+                  html`<sp-icon-chevron-right
+                    slot="icon"
+                  ></sp-icon-chevron-right>`,
+              )}
+              <sp-tooltip self-managed placement="left">
+                ${isExpanded ? 'Collapse' : 'Expand'}
+              </sp-tooltip>
+            </sp-action-button>
+          `,
+          () => html`<span style="width: 24px;"></span>`,
+        )}
         <sp-action-button quiet size="s" @click=${this.handleToggleVisibility}>
           ${when(
             isVisible,
