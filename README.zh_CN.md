@@ -319,14 +319,15 @@ pnpm run dev
 -   图形绘制模式：通过拖拽绘制矩形、椭圆、直线和箭头
 -   铅笔模式，支持自由可变线宽
 -   笔刷模式：绘制折线
+-   橡皮擦工具，尝试支持非原子化效果
 
 |                Draw rect mode                 |                 Draw arrow                  |
 | :-------------------------------------------: | :-----------------------------------------: |
 | ![draw rect mode](./screenshots/lesson25.gif) | ![draw arrow](./screenshots/lesson25-3.gif) |
 
-|                 Pencil tool                  |          Pencil tool with freehand           |
-| :------------------------------------------: | :------------------------------------------: |
-| ![pencil tool](./screenshots/lesson25-2.gif) | ![pencil tool](./screenshots/lesson25-4.png) |
+|                 Pencil tool                  |          Pencil tool with freehand           |                    Eraser                    |
+| :------------------------------------------: | :------------------------------------------: | :------------------------------------------: |
+| ![pencil tool](./screenshots/lesson25-2.gif) | ![pencil tool](./screenshots/lesson25-4.png) | ![eraser tool](./screenshots/lesson25-5.gif) |
 
 ## 课程 26 - 选择工具 [🔗](https://infinitecanvas.cc/zh/guide/lesson-026)
 

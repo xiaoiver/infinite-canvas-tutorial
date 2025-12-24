@@ -1,7 +1,6 @@
 import { getStroke } from 'perfect-freehand';
-import { System } from '@lastolivegames/becsy';
+import { Entity, System } from '@lastolivegames/becsy';
 import { v4 as uuidv4 } from 'uuid';
-import simplify from 'simplify-js';
 import { IPointData } from '@pixi/math';
 import {
   Camera,
@@ -37,19 +36,16 @@ import { API } from '../API';
 import {
   PathSerializedNode,
   PolylineSerializedNode,
-  StrokeAttributes,
+  SerializedNode,
 } from '../utils/serialize';
 import { distanceBetweenPoints } from '../utils/matrix';
 import { DRAW_RECT_Z_INDEX } from '../context';
-import { serializePoints } from '../utils/serialize';
 import { getFlatSvgPathFromStroke } from '../utils';
 
-const PENCIL_CURSOR =
-  'url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAACXBIWXMAAAsTAAALEwEAmpwYAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAKOSURBVHgB7VY7jBJRFH2Dk2VgIYp8AobYSEFCY2JpY0NBZ2MtJoSSBAjh0wANnZQmUEJNAR0lgcYWAwQsVLZhlV/4GJCded47wopZ0HVn2G04yQl5P865nzczhBxxxBHSwVxzbicURAa4XC5lt9tNU0o/wu9bGJ/8jwkpYBKJBAfCnzKZDNXr9bRQKMCQfna73dyhTTB+v18FYt1oNEo5juOr1So9PT3lcYzzhzRxRXw0GqEoHQ6H4nht4sshTFyKh8Nhqlar+clkQgVBoDzPiybQDJrIZrO00+m8IzLij8i1Wi0PBmir1RKF0cDGBJbDZDKJWbDZbEoiQxaupB0jb7fbFNZos9kUhTETWAboBaFUKtF6vZ6Hdcm3YmfNUQzZaDREE2hmOp3iupBMJulisTg3Go1PYe2BFAN7G2475VgGLAeURYCrieLfoATP4fxjIEduiL+Kb1KOxHKAASEej4viBoPhBZx/AtTeNPpriW91/WXkcogrvF6vGjv4TsTxIPz3h1gsduviCCafz7/BjmZZlscrdZviYgaKxWImFArRYDB4cPFdr2NmtVoReJCQ2Wz2a5NCQUCXMAxDxuMxsVgsNBKJMMC+1Wp91e/3z2DbVyAeoESiAZxjITKiUql+uwLxwWBAzGazbOIIdsccnc/nPfioIE6nk4Iws1wuxWzkcjmaSqWYQCAgi7gY2I45jcPhsMEzvFoulzWVSoVAvQma8Hg8BOp9ZrfbX/d6PRQ/lyK+zwA+Nh+CiWc+n++lTqd7BD1xAeVga7Xa+3Q6XVQqlVMwJFl8nwHsAQ3wPlANxFfpPeAP4AXwO3AAXAAFIhH7rgyaOFmLs+t9/NrExoikyP9lYN8eWUSP2MZP4geL9VfezEoAAAAASUVORK5CYII=") 4 28, pointer';
-// const BRUSH_CURSOR =
-//   'url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAACXBIWXMAAAsTAAALEwEAmpwYAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAMpSURBVHgB7VZNSBtREJ5sQv6MIdHaGm3THEpjW6o92JjoQW859CJY66HtRYREEA1CqBeLB0UoXqrUgzcPueihVMzFW7VoRUgRakURFRT8gZZi0pIY903nrausloKQjS0lHwz7suzL+3bmm28W4B+D5g/rrEE4f2BPT495ZWXlIfwFMtDW1laSTqe/jY6OIuHz2NjY45mZmQqXy2W8DCKaaDQa6OrqQpvNJubl5WE4HMahoSHc3NxkOzs7r+TnBFARZ0qwt7dXtLGxAcPDw8Ls7Czo9XqYm5sDt9uNHR0d4VQq9YmeY6AiiTMEKO0afuj+/j6Ul5dDb28vRCIRSCaTQjweZ93d3Q8mJiZC9CyCStCdJyAtNL+Xenx8XMjPz4e+vr5H9PM1qARlBlCn02kpzVLqlWCMAWkCDAYDJBKJMrqlBZUEqSSgX11d/eDxeGB6ehpPDubgGdnd3YWjoyOwWq1X19bWIs3NzQ55n2qdYS4oKLhB9U7QGskLUIna2lpOSoqamhokct9DoZBDTQJcD0UktCB1AgqCwCgbrKWlBYuLi6WDFxYWJDKBQIA5nU6+/CLvVaUr+JvYKG41NDQ8EUUxPjk5iYODg9wPWGVlpXT44eGhdLXb7WJ/fz8S2ZeK/RmDZ+EKxR2TyeSrrq5+1tnZ+YJMKEXmdFqOxsZGrKurQxIrknekybxcoGIpuMKtFNcpuOLvzs/Pv21vb0efzydypywtLZWIkHOixWJhlK1lea9qBqWRiZgoSkic3q2treWBgQGuBba0tHSajaamJrG1tVX1UihhpHI46VpGIny3vb2N5AcsGAwyToB8QyoFtWaaJqkLsjSwzEaj8SZd79fX1z+nc3/4/X50OBwiWTQuLi4iueRJKbSQBfC3MlDwvr9H49m/vr4e45OSfrOpqSkkgiIJEquqqq6ByhNTCd4lNirBbbpWjIyMvDk4OBBpcEmjm3Twnu5bIEtZOAHPhlnWhdvr9T4l1/wYi8WihYWFHjhu4wtnIBPB8InF29UOx28sUiQpvlL8vOifZKpYrUyE64PrISWHat8LF4UGLuvDNYcccvjv8Au1hn6W8NMbDwAAAABJRU5ErkJggg==") 4 28, pointer';
+const ERASER_CURSOR =
+  'url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAACXBIWXMAAAsTAAALEwEAmpwYAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAKTSURBVHgB7ZUxjNJQGMdfMR4qnMggIRKT83RQE3EgYYKNwfEGExIGJi9OLEwyycRAwg6jGziJEFYYCIM6wEAQIRAgIXAuBCGV49rn9/VaUxqKXLkmDvyTf2j7aH//9/W9r4Tstdde2sVseU0/eCgUerlcLguU0u+FQuFUHDMQnSXAW63WGwBTv9/POxwOvlar0W63m9U7hABvt9tv5/M5NZlMF8FgkGazWQqXuVwuR3u9Xl6vEH/hs9mMGo1GLhwOU0lQEV1DrMxcDuc4TjAKxnUJsREuSRkCFiXtdDof5M/YCa4suxyuDNFsNoUQGDiVSnmIRq3M3Gw2c263WwDA1qNqksa8Xi9NJpM0k8m8JxoqsAK3WCycwWDAWdFoNKpaAZ7nhV/ckvBfnmVZGolETuD4YCc4wzAUA2wKIcHr9boA7/f7tFKpfIRjO/jOznAEo9eFUMKhISH8Exw/FgPc2BreaDRO1eBqITCAHF4ul7EjPgU/BBvJtgoEAsf4QLvdzqvBlSHi8Ti2YDX4LXIFMel0OlQsFlcAmyz7j2a4vEsxUPoDm82Gx/y/boQKESgWgRC44JjhcPjZ4/G8g6EZ+Cf4N7mizOAH0HDOsKwYQq0K+HrEV8QNBgNarVa/EI1ll+smBnA6na9gZmwsFlsbYg38G1x/Bj7aBS7pEPzI5XKdYIhEIoEwXuoBUhir1UrH4zE2nK9w/hzvAd8m1yBcE/fAT6ASr0ejURt32WQyofgtQE+nU9wo5/l8Hvf5C/CxCNf0wWFUQtwF38df+ADZfD7f0WKxEAbhnJRKpR+wYEfkcsGdgVmiUWqpMQTO6hCAZoDjudTNLkT/En1OLtfHtQaQxiSwvJUKn1oxhGbwXv+N/gDk8Y8/v/PEpgAAAABJRU5ErkJggg==") 4 28, pointer';
 
-export class DrawPencil extends System {
+export class DrawEraser extends System {
   private readonly cameras = this.query((q) => q.current.with(Camera).read);
 
   private selections = new Map<
@@ -59,6 +55,8 @@ export class DrawPencil extends System {
       pointsBeforeSimplify: IPointData[];
       points: IPointData[];
       lastPointInViewport: [number, number];
+      selected: Set<Entity>;
+      selectedOpacityMap: Map<SerializedNode['id'], number>;
     }
   >();
 
@@ -110,16 +108,15 @@ export class DrawPencil extends System {
       const { inputPoints, api } = canvas.read(Canvas);
       const appState = api.getAppState();
       const pen = appState.penbarSelected;
-      const { freehand } = appState.penbarPencil;
 
-      if (pen !== Pen.PENCIL) {
+      if (pen !== Pen.ERASER) {
         return;
       }
 
       const input = canvas.write(Input);
       const cursor = canvas.write(Cursor);
 
-      cursor.value = PENCIL_CURSOR;
+      cursor.value = ERASER_CURSOR;
 
       let selection = this.selections.get(camera.__id);
       if (!selection) {
@@ -128,6 +125,8 @@ export class DrawPencil extends System {
           pointsBeforeSimplify: [],
           points: [],
           lastPointInViewport: [0, 0],
+          selected: new Set(),
+          selectedOpacityMap: new Map(),
         });
         selection = this.selections.get(camera.__id);
       }
@@ -136,6 +135,8 @@ export class DrawPencil extends System {
       if (input.pointerDownTrigger) {
         selection.pointsBeforeSimplify = [];
         selection.points = [];
+        selection.selected.clear();
+        selection.selectedOpacityMap.clear();
 
         const { pointerDownCanvasX, pointerDownCanvasY } = camera.read(
           ComputedCameraControl,
@@ -146,8 +147,19 @@ export class DrawPencil extends System {
         });
       }
 
+      // Cancel erasing
       if (input.key === 'Escape') {
-        // TODO: cancel drawing pencil
+        selection.pointsBeforeSimplify = [];
+        selection.points = [];
+        selection.selected.clear();
+        // restore the opacity of the selected nodes.
+        selection.selectedOpacityMap.forEach((opacity, id) => {
+          const node = api.getNodeById(id);
+          if (node) {
+            api.updateNode(node, { opacity });
+          }
+        });
+        selection.selectedOpacityMap.clear();
       }
 
       // Dragging
@@ -164,12 +176,12 @@ export class DrawPencil extends System {
         }
 
         api.runAtNextTick(() => {
-          this.handleBrushing(api, x, y, appState.penbarPencil);
+          this.handleBrushing(api, x, y);
         });
       });
 
       if (input.pointerUpTrigger) {
-        const { brush } = this.selections.get(camera.__id);
+        const { brush, selected } = this.selections.get(camera.__id);
 
         // Just click on the canvas, do nothing
         if (!brush || (brush as PolylineSerializedNode).points?.length === 0) {
@@ -178,51 +190,27 @@ export class DrawPencil extends System {
 
         api.runAtNextTick(() => {
           api.updateNode(brush, { visibility: 'hidden' }, false);
-
-          const node: PathSerializedNode | PolylineSerializedNode = {
-            id: uuidv4(),
-            ...appState.penbarPencil,
-          };
-          const points: [number, number][] = selection.points.map((p) => [
-            p.x,
-            p.y,
-          ]);
-
-          if (freehand) {
-            const outlinePoints = getStroke(points);
-            const d = getFlatSvgPathFromStroke(outlinePoints);
-            node.type = 'path';
-            (node as PathSerializedNode).d = d;
-            (node as PathSerializedNode).fill = appState.penbarPencil.stroke;
-            (node as PathSerializedNode).strokeWidth = 0;
-            (node as PathSerializedNode).tessellationMethod =
-              TesselationMethod.LIBTESS;
-          } else {
-            node.type = 'polyline';
-            (node as PolylineSerializedNode).points = serializePoints(points);
-          }
-
           api.setAppState({
             penbarSelected: Pen.SELECT,
           });
-          api.updateNode(node);
-          api.selectNodes([node]);
-          api.record();
+
+          const toDelete = Array.from(selected)
+            .map((e) => api.getNodeByEntity(e)?.id)
+            .filter((id) => id !== undefined);
+
+          if (toDelete.length > 0) {
+            // Delete all selected nodes
+            api.deleteNodesById(toDelete);
+            api.record();
+          }
         });
       }
     });
   }
 
-  private handleBrushing(
-    api: API,
-    viewportX: number,
-    viewportY: number,
-    defaultDrawParams: Partial<StrokeAttributes>,
-  ) {
-    const { freehand } = api.getAppState().penbarPencil;
+  private handleBrushing(api: API, viewportX: number, viewportY: number) {
     const camera = api.getCamera();
     const selection = this.selections.get(camera.__id);
-    const { zoom } = camera.read(ComputedCamera);
 
     const { pointerDownViewportX, pointerDownViewportY } = camera.read(
       ComputedCameraControl,
@@ -240,24 +228,13 @@ export class DrawPencil extends System {
     if (shouldShowSelectionBrush) {
       let brush = selection.brush;
       if (!brush) {
-        brush = freehand
-          ? {
-              id: uuidv4(),
-              type: 'path',
-              d: 'M 0 0 L 1 1',
-              visibility: 'hidden',
-              zIndex: DRAW_RECT_Z_INDEX,
-              ...defaultDrawParams,
-            }
-          : {
-              id: uuidv4(),
-              type: 'polyline',
-              points: '0,0 0,0',
-              visibility: 'hidden',
-              zIndex: DRAW_RECT_Z_INDEX,
-              strokeAttenuation: true,
-              ...defaultDrawParams,
-            };
+        brush = {
+          id: uuidv4(),
+          type: 'path',
+          d: 'M 0 0 L 1 1',
+          visibility: 'hidden',
+          zIndex: DRAW_RECT_Z_INDEX,
+        };
         api.updateNode(brush, undefined, false);
         api.getEntity(brush).add(UI, { type: UIType.BRUSH });
         selection.brush = brush;
@@ -276,12 +253,37 @@ export class DrawPencil extends System {
           y: viewportY,
         });
 
+        const selected = api
+          .elementsFromBBox(cx, cy, cx, cy)
+          .filter((e) => !e.has(UI));
+        selected.forEach((e) => selection.selected.add(e));
+
+        selection.selected.values().forEach((e) => {
+          const node = api.getNodeByEntity(e);
+          if (node) {
+            if (!selection.selectedOpacityMap.has(node.id)) {
+              // Save the opacity of the selected nodes.
+              selection.selectedOpacityMap.set(
+                node.id,
+                (node as PathSerializedNode).opacity ?? 1,
+              );
+            }
+            api.updateNode(node, {
+              opacity: 0.2,
+            });
+          }
+        });
+
         selection.pointsBeforeSimplify.push({ x: cx, y: cy });
         selection.lastPointInViewport = [viewportX, viewportY];
 
         // choose tolerance based on the camera zoom level
-        const tolerance = 1 / zoom;
-        selection.points = simplify(selection.pointsBeforeSimplify, tolerance);
+        selection.points = selection.pointsBeforeSimplify.slice(-4);
+
+        // Clear pointsBeforeSimplify after 2 seconds
+        // setTimeout(() => {
+        //   selection.pointsBeforeSimplify = [];
+        // }, 2000);
 
         const points: [number, number][] = selection.points.map((p) => [
           p.x,
@@ -294,20 +296,17 @@ export class DrawPencil extends System {
 
         api.updateNode(
           brush,
-          freehand
-            ? {
-                visibility: 'visible',
-                d: getFlatSvgPathFromStroke(getStroke(points)),
-                ...defaultDrawParams,
-                strokeWidth: 0,
-                fill: defaultDrawParams.stroke,
-                tessellationMethod: TesselationMethod.LIBTESS,
-              }
-            : {
-                visibility: 'visible',
-                points: serializePoints(points),
-                ...defaultDrawParams,
-              },
+          {
+            visibility: 'visible',
+            d: getFlatSvgPathFromStroke(
+              getStroke(points, {
+                thinning: 0.2,
+              }),
+            ),
+            strokeWidth: 0,
+            fill: 'grey',
+            tessellationMethod: TesselationMethod.LIBTESS,
+          },
           false,
         );
       }

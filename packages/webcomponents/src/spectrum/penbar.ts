@@ -381,6 +381,15 @@ export class Penbar extends LitElement {
             `,
           )}
           ${when(
+            penbarAll.includes(Pen.ERASER),
+            () => html`
+              <sp-action-button value="${Pen.ERASER}">
+                <sp-icon-erase slot="icon"></sp-icon-erase>
+                <sp-tooltip self-managed placement="right"> Eraser </sp-tooltip>
+              </sp-action-button>
+            `,
+          )}
+          ${when(
             penbarAll.includes(Pen.VECTOR_NETWORK),
             () => html`
               <sp-action-button value="${Pen.VECTOR_NETWORK}">

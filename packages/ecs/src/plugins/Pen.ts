@@ -2,7 +2,6 @@ import { component, system } from '@lastolivegames/becsy';
 import { Plugin } from './types';
 import {
   ComputeBounds,
-  EventWriter,
   PropagateTransforms,
   RenderHighlighter,
   RenderTransformer,
@@ -18,6 +17,7 @@ import {
   DrawPencil,
   MeshPipeline,
   RenderSnap,
+  DrawEraser,
 } from '../systems';
 import {
   Highlighted,
@@ -44,7 +44,6 @@ export const PenPlugin: Plugin = () => {
     s
       .after(
         ComputeBounds,
-        EventWriter,
         SetupDevice,
         SyncSimpleTransforms,
         PropagateTransforms,
@@ -57,6 +56,7 @@ export const PenPlugin: Plugin = () => {
   )(Select);
   system((s) => s.after(Select).before(Last))(DrawRect);
   system((s) => s.after(DrawRect).before(Last))(DrawPencil);
+  system((s) => s.after(DrawPencil).before(Last))(DrawEraser);
   system((s) => s.afterWritersOf(Selected).before(Last, MeshPipeline))(
     RenderTransformer,
   );

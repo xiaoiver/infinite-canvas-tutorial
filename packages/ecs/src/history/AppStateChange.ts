@@ -92,25 +92,33 @@ export class AppStateChange implements Change<AppState> {
       const { layersHighlighted, layersSelected } = nextAppState;
       if (layersSelected.length > 0) {
         this.api.selectNodes(
-          layersSelected.map((id) => this.api.getNodeById(id)),
+          layersSelected
+            .map((id) => this.api.getNodeById(id))
+            .filter((node) => node !== undefined),
           false,
           false,
         );
       } else {
         this.api.deselectNodes(
-          prevLayersSelected.map((id) => this.api.getNodeById(id)),
+          prevLayersSelected
+            .map((id) => this.api.getNodeById(id))
+            .filter((node) => node !== undefined),
         );
       }
 
       if (layersHighlighted.length > 0) {
         this.api.highlightNodes(
-          layersHighlighted.map((id) => this.api.getNodeById(id)),
+          layersHighlighted
+            .map((id) => this.api.getNodeById(id))
+            .filter((node) => node !== undefined),
           false,
           false,
         );
       } else {
         this.api.unhighlightNodes(
-          prevLayersHighlighted.map((id) => this.api.getNodeById(id)),
+          prevLayersHighlighted
+            .map((id) => this.api.getNodeById(id))
+            .filter((node) => node !== undefined),
         );
       }
     }

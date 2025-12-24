@@ -366,7 +366,36 @@ if (vertexNum < 0.5) {
 
 Figma 是可以将 Brush 导出 SVG 的。
 
-## [WIP] 橡皮擦 {#eraser}
+## 橡皮擦 {#eraser}
+
+Excalidraw 支持 [freedraw eraser]，选中橡皮擦工具后，按下鼠标后经过的图形会“虚化”，表示即将被删除，抬起鼠标完成擦除。
+
+在实现中，我们使用上一节介绍过的 Perfect freehand 绘制拖动的轨迹，但仅保存最近的 4 个点。同时实时检测经过的图形，设置它们的透明度（但记得保存原有的透明度，以备取消时回复），在鼠标抬起时删除选中的图形：
+
+```ts
+export class DrawEraser extends System {
+    execute() {
+        if (input.pointerUpTrigger) {
+            api.runAtNextTick(() => {
+                api.updateNode(brush, { visibility: 'hidden' }, false);
+                api.setAppState({
+                    penbarSelected: Pen.SELECT,
+                });
+                api.deleteNodesById(
+                    Array.from(selected).map((e) => api.getNodeByEntity(e)?.id),
+                );
+                api.record();
+            });
+        }
+    }
+}
+```
+
+![Eraser tool](/eraser.gif)
+
+### 非原子化 {#non-atomic}
+
+以整个图形为单位擦除在大多数场景下都足够使用了，但在手绘类场景中非原子化的擦除更实用，例如将一条直线从中间断开。Excalidraw 暂时没有支持这一特性，详见：[non-atomic erasing for linear & freedraw shapes]，FigJam 也是这样。
 
 ## 扩展阅读 {#extended-reading}
 
@@ -396,3 +425,5 @@ Figma 是可以将 Brush 导出 SVG 的。
 [perfect-freehand]: https://github.com/steveruizok/perfect-freehand
 [Perfect Freehand Drawing Issue]: https://github.com/excalidraw/excalidraw/issues/4802
 [pressure]: https://developer.mozilla.org/docs/Web/API/PointerEvent/pressure
+[freedraw eraser]: https://github.com/excalidraw/excalidraw/issues/3682
+[non-atomic erasing for linear & freedraw shapes]: https://github.com/excalidraw/excalidraw/issues/4904

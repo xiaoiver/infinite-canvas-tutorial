@@ -51,7 +51,6 @@ import {
 } from '../components';
 import { Commands } from '../commands/Commands';
 import {
-  calculateOffset,
   decompose,
   distanceBetweenPoints,
   getCursor,
@@ -131,12 +130,10 @@ export class Select extends System {
     this.query(
       (q) =>
         q
-          .using(ComputedCameraControl, Culled, Brush)
+          .using(Canvas, ComputedCameraControl, Culled, Brush, Input)
           .read.update.and.using(
-            Canvas,
             GlobalTransform,
             InputPoint,
-            Input,
             Cursor,
             Camera,
             UI,
@@ -659,19 +656,11 @@ export class Select extends System {
       const { inputPoints, api } = canvas.read(Canvas);
       const pen = api.getAppState().penbarSelected;
 
-      const input = canvas.write(Input);
+      const input = canvas.read(Input);
 
       if (pen !== Pen.SELECT) {
-        Object.assign(input, {
-          wheelTrigger: false,
-          ctrlKey: false,
-          metaKey: false,
-          shiftKey: false,
-          key: undefined,
-        });
-
         // Clear selection
-        if (pen !== Pen.VECTOR_NETWORK) {
+        if (pen !== Pen.VECTOR_NETWORK && pen !== Pen.ERASER) {
           api.selectNodes([]);
         }
         api.highlightNodes([]);
@@ -899,7 +888,10 @@ export class Select extends System {
           }
 
           if (toHighlight) {
-            api.highlightNodes([api.getNodeByEntity(toHighlight)]);
+            const node = api.getNodeByEntity(toHighlight);
+            if (node) {
+              api.highlightNodes([node]);
+            }
           }
         }
       }
@@ -996,14 +988,6 @@ export class Select extends System {
           //   selection.mode = SelectionMode.READY_TO_MOVE_CONTROL_POINT;
         }
       }
-
-      Object.assign(input, {
-        wheelTrigger: false,
-        ctrlKey: false,
-        metaKey: false,
-        shiftKey: false,
-        key: undefined,
-      });
     });
   }
 

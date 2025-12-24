@@ -194,6 +194,10 @@ export class DrawRect extends System {
         });
       }
 
+      if (input.key === 'Escape') {
+        // TODO: cancel drawing rect
+      }
+
       // Dragging
       inputPoints.forEach((point) => {
         const inputPoint = point.write(InputPoint);

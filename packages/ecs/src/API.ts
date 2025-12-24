@@ -1082,6 +1082,7 @@ export class API {
     });
 
     this.deselectNodes(deletedNodes);
+    this.unhighlightNodes(deletedNodes);
 
     deletedNodes.forEach((node) => {
       const entity = this.#idEntityMap.get(node.id);

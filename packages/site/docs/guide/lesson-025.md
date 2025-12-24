@@ -373,7 +373,36 @@ This doesn't quite work like a real brushstroke.
 
 Figma is able to export Brush to SVG.
 
-## [WIP] 橡皮擦 {#eraser}
+## Eraser {#eraser}
+
+Excalidraw supports the [freedraw eraser]. After selecting the eraser tool, shapes traced by the mouse cursor will appear “faded,” indicating they are about to be erased. Lifting the mouse completes the erasure.
+
+In the implementation, we use the Perfect freehand technique introduced in the previous section to draw the drag path, but only store the most recent 4 points. Simultaneously, we detect the shapes passed over in real time, setting their opacity (but remember to save the original opacity for restoration upon cancellation), and remove the selected shapes when the mouse is lifted:
+
+```ts
+export class DrawEraser extends System {
+    execute() {
+        if (input.pointerUpTrigger) {
+            api.runAtNextTick(() => {
+                api.updateNode(brush, { visibility: 'hidden' }, false);
+                api.setAppState({
+                    penbarSelected: Pen.SELECT,
+                });
+                api.deleteNodesById(
+                    Array.from(selected).map((e) => api.getNodeByEntity(e)?.id),
+                );
+                api.record();
+            });
+        }
+    }
+}
+```
+
+![Eraser tool](/eraser.gif)
+
+### Non-atomic {#non-atomic}
+
+Erasing entire shapes is sufficient for most scenarios, but non-atomic erasing proves more practical in freehand drawing contexts—such as breaking a straight line midway. Excalidraw currently lacks this feature; see: [non-atomic erasing for linear & freedraw shapes]. FigJam shares this limitation.
 
 ## Extended reading {#extended-reading}
 
@@ -403,3 +432,5 @@ Figma is able to export Brush to SVG.
 [perfect-freehand]: https://github.com/steveruizok/perfect-freehand
 [Perfect Freehand Drawing Issue]: https://github.com/excalidraw/excalidraw/issues/4802
 [pressure]: https://developer.mozilla.org/docs/Web/API/PointerEvent/pressure
+[freedraw eraser]: https://github.com/excalidraw/excalidraw/issues/3682
+[non-atomic erasing for linear & freedraw shapes]: https://github.com/excalidraw/excalidraw/issues/4904

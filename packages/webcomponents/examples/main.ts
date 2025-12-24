@@ -88,17 +88,17 @@ canvas.addEventListener(Event.READY, async (e) => {
     height: 200,
     fill: 'grey',
   };
-  const node2 = {
-    id: 'text-1',
-    type: 'text',
-    parentId: 'rect-1',
-    anchorX: 10,
-    anchorY: 50,
-    content: 'Hello',
-    fill: 'black',
-    fontSize: 30,
-    fontFamily: 'system-ui',
-  };
+  // const node2 = {
+  //   id: 'text-1',
+  //   type: 'text',
+  //   parentId: 'rect-1',
+  //   anchorX: 10,
+  //   anchorY: 50,
+  //   content: 'Hello',
+  //   fill: 'black',
+  //   fontSize: 30,
+  //   fontFamily: 'system-ui',
+  // };
   const node3 = {
     id: 'rect-2',
     type: 'rect',
@@ -109,18 +109,8 @@ canvas.addEventListener(Event.READY, async (e) => {
     fill: 'red',
   };
 
-  api.updateNodes([node1, node2, node3]);
-
-  setTimeout(() => {
-    api.updateNode(
-      node2,
-      inferXYWidthHeight({
-        ...node2,
-        anchorX: 100,
-        anchorY: 100,
-      }),
-    );
-  }, 2000);
+  api.updateNodes([node1, node3]);
+  api.record();
 });
 
 try {

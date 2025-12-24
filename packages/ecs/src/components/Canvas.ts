@@ -19,6 +19,7 @@ export enum Pen {
   BRUSH = 'brush',
   VECTOR_NETWORK = 'vector-network',
   COMMENT = 'comment',
+  ERASER = 'eraser',
 }
 
 export class Canvas {
