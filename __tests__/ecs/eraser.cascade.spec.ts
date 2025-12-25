@@ -34,7 +34,7 @@ import { NodeJSAdapter, sleep, createMouseEvent } from '../utils';
 DOMAdapter.set(NodeJSAdapter);
 
 describe('Eraser', () => {
-  it('should erase rect correctly', async () => {
+  it('should erase rect cascade correctly', async () => {
     const app = new App();
 
     let $canvas: HTMLCanvasElement | undefined;
@@ -97,8 +97,8 @@ describe('Eraser', () => {
             fill: 'red',
           },
           {
-            // Do not erase this rect
             id: 'rect-2',
+            parentId: 'rect-1',
             type: 'rect',
             x: 0,
             y: 0,
@@ -122,7 +122,7 @@ describe('Eraser', () => {
 
     if ($canvas) {
       $canvas.dispatchEvent(
-        createMouseEvent('mousedown', { clientX: 50, clientY: 50 }),
+        createMouseEvent('mousedown', { clientX: 100, clientY: 100 }),
       );
       await sleep(100);
       $canvas.dispatchEvent(
@@ -139,7 +139,7 @@ describe('Eraser', () => {
     const dir = `${__dirname}/snapshots`;
     await expect($canvas!.getContext('webgl1')).toMatchWebGLSnapshot(
       dir,
-      'eraser',
+      'eraser-cascade',
     );
 
     await app.exit();

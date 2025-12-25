@@ -41,6 +41,7 @@ import {
 import { distanceBetweenPoints } from '../utils/matrix';
 import { DRAW_RECT_Z_INDEX } from '../context';
 import { getFlatSvgPathFromStroke } from '../utils';
+import { getDescendants } from './Transform';
 
 const ERASER_CURSOR =
   'url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAACXBIWXMAAAsTAAALEwEAmpwYAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAKTSURBVHgB7ZUxjNJQGMdfMR4qnMggIRKT83RQE3EgYYKNwfEGExIGJi9OLEwyycRAwg6jGziJEFYYCIM6wEAQIRAgIXAuBCGV49rn9/VaUxqKXLkmDvyTf2j7aH//9/W9r4Tstdde2sVseU0/eCgUerlcLguU0u+FQuFUHDMQnSXAW63WGwBTv9/POxwOvlar0W63m9U7hABvt9tv5/M5NZlMF8FgkGazWQqXuVwuR3u9Xl6vEH/hs9mMGo1GLhwOU0lQEV1DrMxcDuc4TjAKxnUJsREuSRkCFiXtdDof5M/YCa4suxyuDNFsNoUQGDiVSnmIRq3M3Gw2c263WwDA1qNqksa8Xi9NJpM0k8m8JxoqsAK3WCycwWDAWdFoNKpaAZ7nhV/ckvBfnmVZGolETuD4YCc4wzAUA2wKIcHr9boA7/f7tFKpfIRjO/jOznAEo9eFUMKhISH8Exw/FgPc2BreaDRO1eBqITCAHF4ul7EjPgU/BBvJtgoEAsf4QLvdzqvBlSHi8Ti2YDX4LXIFMel0OlQsFlcAmyz7j2a4vEsxUPoDm82Gx/y/boQKESgWgRC44JjhcPjZ4/G8g6EZ+Cf4N7mizOAH0HDOsKwYQq0K+HrEV8QNBgNarVa/EI1ll+smBnA6na9gZmwsFlsbYg38G1x/Bj7aBS7pEPzI5XKdYIhEIoEwXuoBUhir1UrH4zE2nK9w/hzvAd8m1yBcE/fAT6ASr0ejURt32WQyofgtQE+nU9wo5/l8Hvf5C/CxCNf0wWFUQtwF38df+ADZfD7f0WKxEAbhnJRKpR+wYEfkcsGdgVmiUWqpMQTO6hCAZoDjudTNLkT/En1OLtfHtQaQxiSwvJUKn1oxhGbwXv+N/gDk8Y8/v/PEpgAAAABJRU5ErkJggg==") 4 28, pointer';
@@ -256,7 +257,12 @@ export class DrawEraser extends System {
         const selected = api
           .elementsFromBBox(cx, cy, cx, cy)
           .filter((e) => !e.has(UI));
-        selected.forEach((e) => selection.selected.add(e));
+        selected.forEach((e) => {
+          selection.selected.add(e);
+          getDescendants(e).forEach((e) => {
+            selection.selected.add(e);
+          });
+        });
 
         selection.selected.forEach((e) => {
           const node = api.getNodeByEntity(e);
