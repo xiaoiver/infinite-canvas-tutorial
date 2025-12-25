@@ -10,7 +10,7 @@ Various AI functionalities are provided by implementing relevant interfaces. For
 When calling model capabilities, some static resources such as images must be in a form accessible to the model. This interface can upload local files such as File to obtain a publicly accessible URL:
 
 ```ts
-upload(file: File): Promise<string> {}
+upload(file: File): Promise<string>;
 ```
 
 ### fal.ai
@@ -86,7 +86,7 @@ createOrEditImage(
     isEdit: boolean,
     prompt: string,
     image_urls: string[],
-): Promise<{ images: Image[]; description: string }> {}
+): Promise<{ images: Image[]; description: string }>;
 ```
 
 Parameter descriptions:
@@ -146,7 +146,7 @@ segmentImage(
      * Primary segmented mask preview
      */
     image: Image;
-}> {}
+}>;
 ```
 
 Parameter descriptions are as follows:
@@ -210,7 +210,7 @@ let bestMaskCanvas = float32ArrayToCanvas(bestMaskArray, width, height);
 Encoding images prior to edge-side inference can also be performed in a WebWorker.
 
 ```ts
-encodeImage(image: string): Promise<void> {}
+encodeImage(image: string): Promise<void>;
 ```
 
 ### ONNX
@@ -238,8 +238,34 @@ decomposeImage(input: {
     num_layers?: number;
 }): Promise<{
     images: Image[];
-}> {}
+}>;
 ```
+
+### fal.ai
+
+Use Qwen-Image-Layered
+
+```ts
+const result = await fal.subscribe('fal-ai/qwen-image-layered', {
+    input: {
+        image_url,
+        num_layers,
+    },
+});
+```
+
+## upscaleImage
+
+```ts
+ upscaleImage(input: {
+    image_url: string;
+    scale_factor?: number;
+}): Promise<Image>;
+```
+
+### Tensorflow
+
+Use [upscalerjs] based on tensorflow.js, see: [Upscaler Plugin]
 
 ## removeByMask
 
@@ -249,7 +275,7 @@ Remove objects in mask area.
 removeByMask(input: {
     image_url: string;
     mask: HTMLCanvasElement;
-}): Promise<Image> {}
+}): Promise<Image>;
 ```
 
 ### ONNX
@@ -260,3 +286,5 @@ Remove objects in mask area with LaMa, see: [LaMa Plugin]
 [fal.ai]: https://fal.ai/
 [SAM Plugin]: /reference/sam
 [LaMa Plugin]: /reference/lama
+[Upscaler Plugin]: /reference/upscaler
+[upscalerjs]: https://upscalerjs.com/

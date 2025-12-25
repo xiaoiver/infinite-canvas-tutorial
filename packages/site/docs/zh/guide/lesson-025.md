@@ -395,7 +395,27 @@ export class DrawEraser extends System {
 
 ### 非原子化 {#non-atomic}
 
-以整个图形为单位擦除在大多数场景下都足够使用了，但在手绘类场景中非原子化的擦除更实用，例如将一条直线从中间断开。Excalidraw 暂时没有支持这一特性，详见：[non-atomic erasing for linear & freedraw shapes]，FigJam 也是这样。
+以整个图形为单位擦除在大多数场景下都足够使用了，但在手绘类场景中非原子化的擦除更实用，例如将一条直线从中间断开。Excalidraw 暂时没有支持这一特性，详见：[non-atomic erasing for linear & freedraw shapes]，FigJam 也是这样。如果画布是基于 Canvas 或者 SVG 渲染的，确实无法实现这种像素级擦除效果。
+
+由于我们的画布是基于 WebGL / WebGPU 实现的，最适合的技术就是 stencil buffer。首先将橡皮擦的路径绘制在 stencil buffer 中，然后以它作为 mask 重绘场景。以 OpenGL 为例（WebGL 完全类似）：
+
+```c++
+// 1. Disable color/depth writes, enable stencil, and draw the eraser shape:
+//    This writes “1” into the stencil where the eraser stamp is drawn.
+glColorMask(false,false,false,false);
+glDepthMask(false);
+glEnable(GL_STENCIL_TEST);
+glStencilFunc(GL_ALWAYS, 1, 0xFF);
+glStencilOp(GL_REPLACE, GL_REPLACE, GL_REPLACE);
+// draw eraser brush geometry here (e.g. a textured quad or circle)
+
+glColorMask(true,true,true,true);
+glDepthMask(true);
+// 2. Now render the shapes with stencil test=EQUAL, so only pixels where stencil==1 pass:
+glStencilFunc(GL_EQUAL, 1, 0xFF);
+glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
+// draw all scene objects (they will only appear where eraser just wrote 1)
+```
 
 ## 扩展阅读 {#extended-reading}
 

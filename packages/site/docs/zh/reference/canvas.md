@@ -1,6 +1,5 @@
 ---
 outline: deep
-publish: false
 ---
 
 在 [获取 API] 后，可以调用相关方法：

@@ -162,6 +162,10 @@ export const en = defineConfig({
                 link: 'camera',
               },
               {
+                text: 'Pen',
+                link: 'pen',
+              },
+              {
                 text: 'Export image',
                 link: 'export-image',
               },

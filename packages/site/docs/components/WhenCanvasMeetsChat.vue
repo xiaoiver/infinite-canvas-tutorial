@@ -139,7 +139,7 @@ onMounted(async () => {
       cameraZoom: 0.35,
       // penbarSelected: Pen.VECTOR_NETWORK,
       penbarSelected: Pen.SELECT,
-      penbarAll: [Pen.HAND, Pen.SELECT, Pen.DRAW_RECT, Pen.DRAW_ELLIPSE, Pen.DRAW_LINE, Pen.DRAW_ARROW, Pen.DRAW_ROUGH_RECT, Pen.DRAW_ROUGH_ELLIPSE, Pen.IMAGE, Pen.TEXT, Pen.PENCIL],
+      penbarAll: [Pen.HAND, Pen.SELECT, Pen.DRAW_RECT, Pen.DRAW_ELLIPSE, Pen.DRAW_LINE, Pen.DRAW_ARROW, Pen.DRAW_ROUGH_RECT, Pen.DRAW_ROUGH_ELLIPSE, Pen.IMAGE, Pen.TEXT, Pen.PENCIL, Pen.ERASER],
       penbarText: {
         ...api.getAppState().penbarText,
         fontFamily: 'system-ui',

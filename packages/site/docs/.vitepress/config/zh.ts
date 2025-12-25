@@ -107,6 +107,10 @@ export const zh = defineConfig({
                 link: 'camera',
               },
               {
+                text: '画笔工具',
+                link: 'pen',
+              },
+              {
                 text: '导出图片',
                 link: 'export-image',
               },

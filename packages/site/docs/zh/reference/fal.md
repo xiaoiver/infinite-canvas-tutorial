@@ -1,6 +1,5 @@
 ---
 outline: deep
-publish: false
 ---
 
 使用 [fal.ai] 实现 [AI 相关 API]，包括：

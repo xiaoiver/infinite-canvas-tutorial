@@ -10,7 +10,7 @@ publish: false
 在调用模型能力时，一些静态资源例如图片必须是模型可访问的形式。该接口可以将本地文件例如 File 上传得到一个公网可访问的 URL：
 
 ```ts
-upload(file: File): Promise<string> {}
+upload(file: File): Promise<string>;
 ```
 
 ### fal.ai
@@ -86,7 +86,7 @@ createOrEditImage(
     isEdit: boolean,
     prompt: string,
     image_urls: string[],
-): Promise<{ images: Image[]; description: string }> {}
+): Promise<{ images: Image[]; description: string }>;
 ```
 
 参数说明如下：
@@ -146,7 +146,7 @@ segmentImage(
      * Primary segmented mask preview
      */
     image: Image;
-}> {}
+}>;
 ```
 
 参数说明如下：
@@ -210,7 +210,7 @@ let bestMaskCanvas = float32ArrayToCanvas(bestMaskArray, width, height);
 在端侧推理前对图片进行编码，同样可以在 WebWorker 中进行。
 
 ```ts
-encodeImage(image_url: string): Promise<void> {}
+encodeImage(image_url: string): Promise<void>;
 ```
 
 ### ONNX
@@ -238,8 +238,34 @@ decomposeImage(input: {
     num_layers?: number;
 }): Promise<{
     images: Image[];
-}> {}
+}>;
 ```
+
+### fal.ai
+
+使用 Qwen-Image-Layered 将图片分解成多个图层：
+
+```ts
+const result = await fal.subscribe('fal-ai/qwen-image-layered', {
+    input: {
+        image_url,
+        num_layers,
+    },
+});
+```
+
+## upscaleImage
+
+```ts
+ upscaleImage(input: {
+    image_url: string;
+    scale_factor?: number;
+}): Promise<Image>;
+```
+
+### Tensorflow
+
+使用 [upscalerjs] 实现，基于 tensorflow.js，详见：[Upscaler 插件]
 
 ## removeByMask
 
@@ -249,7 +275,7 @@ decomposeImage(input: {
 removeByMask(input: {
     image_url: string;
     mask: HTMLCanvasElement;
-}): Promise<Image> {}
+}): Promise<Image>;
 ```
 
 ### ONNX
@@ -260,3 +286,5 @@ removeByMask(input: {
 [fal.ai]: https://fal.ai/
 [SAM 插件]: /zh/reference/sam
 [LaMa 插件]: /zh/reference/lama
+[Upscaler 插件]: /zh/reference/upscaler
+[upscalerjs]: https://upscalerjs.com/

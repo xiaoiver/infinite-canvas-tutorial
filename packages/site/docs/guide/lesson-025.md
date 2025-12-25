@@ -402,7 +402,27 @@ export class DrawEraser extends System {
 
 ### Non-atomic {#non-atomic}
 
-Erasing entire shapes is sufficient for most scenarios, but non-atomic erasing proves more practical in freehand drawing contexts—such as breaking a straight line midway. Excalidraw currently lacks this feature; see: [non-atomic erasing for linear & freedraw shapes]. FigJam shares this limitation.
+Erasing entire shapes is sufficient for most scenarios, but non-atomic erasing proves more practical in freehand drawing contexts—such as breaking a straight line midway. Excalidraw currently lacks this feature; see: [non-atomic erasing for linear & freedraw shapes]. FigJam shares this limitation. If the canvas is rendered using Canvas or SVG, achieving this pixel-level erasure effect is indeed impossible.
+
+Since our canvas is implemented using WebGL/WebGPU, the most suitable technique is the stencil buffer. First, draw the eraser's path onto the stencil buffer, then use it as a mask to redraw the scene. Taking OpenGL as an example (WebGL is entirely analogous):
+
+```c++
+// 1. Disable color/depth writes, enable stencil, and draw the eraser shape:
+//    This writes “1” into the stencil where the eraser stamp is drawn.
+glColorMask(false,false,false,false);
+glDepthMask(false);
+glEnable(GL_STENCIL_TEST);
+glStencilFunc(GL_ALWAYS, 1, 0xFF);
+glStencilOp(GL_REPLACE, GL_REPLACE, GL_REPLACE);
+// draw eraser brush geometry here (e.g. a textured quad or circle)
+
+glColorMask(true,true,true,true);
+glDepthMask(true);
+// 2. Now render the shapes with stencil test=EQUAL, so only pixels where stencil==1 pass:
+glStencilFunc(GL_EQUAL, 1, 0xFF);
+glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
+// draw all scene objects (they will only appear where eraser just wrote 1)
+```
 
 ## Extended reading {#extended-reading}
 

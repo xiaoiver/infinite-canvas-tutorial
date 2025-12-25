@@ -109,7 +109,7 @@ canvas.addEventListener(Event.READY, async (e) => {
     fill: 'red',
   };
 
-  api.updateNodes([node1, node2, node3]);
+  api.updateNodes([node1]);
   api.record();
 });
 
