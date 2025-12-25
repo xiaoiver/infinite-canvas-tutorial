@@ -258,7 +258,7 @@ export class DrawEraser extends System {
           .filter((e) => !e.has(UI));
         selected.forEach((e) => selection.selected.add(e));
 
-        selection.selected.values().forEach((e) => {
+        selection.selected.forEach((e) => {
           const node = api.getNodeByEntity(e);
           if (node) {
             if (!selection.selectedOpacityMap.has(node.id)) {
