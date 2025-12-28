@@ -79,7 +79,7 @@ Finally, we will use the above features to realize a simple model of the Solar S
 
 ## Transform
 
-[CSS Transform] provides these transform: `translate` `scale` `rotate` and `skew`.
+[CSS Transform] provides these transforms: `translate` `scale` `rotate` and `skew`.
 The matrices behind these transformations can be found in [Transformations - LearnOpenGL]. Since our scene contains only 2D graphics, we only need a 3x3 matrix, and since the last row of `[0, 0, 1]` is fixed, we actually only need to store 6 elements of the matrix:
 
 ```bash
@@ -635,7 +635,7 @@ When updating the local transformation matrix, the version number is used to det
 updateTransform(parentTransform: Transform): void {
     const lt = this.localTransform;
     if (this._localID !== this._currentLocalID) {
-        // 执行实际矩阵运算
+        // Perform actual matrix operations
         lt.a = this._cx * this.scale.x;
         // ...
         this._currentLocalID = this._localID;
