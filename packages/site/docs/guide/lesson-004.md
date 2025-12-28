@@ -426,7 +426,7 @@ We need to record the following variables:
 -   `startCameraY` - the camera's Y coordinate in world space
 -   `startPos` - the current mouse position in world space, which is obtained by transforming the coordinates in NDC (Normalized Device Coordinates) space with the inverse of the camera's projection matrix
 
-When the mouse is released, unbind the event listeners which will ends the drag interaction.
+When the mouse is released, unbind the event listeners which will end the drag interaction.
 
 ```ts
 function handleMouseUp(e) {
@@ -480,7 +480,7 @@ In the camera rotation mode, the distance moved by the mouse will be taken as th
 
 ```ts
 function rotateCamera(e: MouseEvent) {
-    // convert moved distance to ratation
+    // convert moved distance to rotation
     const delta = (e.clientX - startMousePos[0]) / 100;
 
     // create matrix with pivot
@@ -613,8 +613,8 @@ Now, let's design the API for switching to `Landmark`. Referencing the [Web Anim
 
 -   `easing` Supports `ease` `linear` same as CSS
 -   `duration` Passing `0` will skip animation.
--   `onframe` Callback at the frame duration the animation
--   `onfinish` Callback when aniamtion ends
+-   `onframe` Callback at each frame during the animation
+-   `onfinish` Callback when animation ends
 
 ```ts
 export class Camera {
@@ -725,7 +725,7 @@ Go back to the example at the top of the page and give it a try. Click the butto
 [WebGL 3D - Cameras]: https://webglfundamentals.org/webgl/lessons/webgl-3d-camera.html
 [How to implement zoom from mouse in 2D WebGL]: https://webglfundamentals.org/webgl/lessons/webgl-qna-how-to-implement-zoom-from-mouse-in-2d-webgl.html
 [gl-matrix]: https://github.com/toji/gl-matrix
-[alignment issue]: /zh/guide/lesson-003.html#对齐问题
+[alignment issue]: /guide/lesson-003.html#alignment
 [OrthographicCamera.zoom]: https://threejs.org/docs/#api/en/cameras/OrthographicCamera.zoom
 [Rotate canvas]: https://forum.figma.com/t/rotate-canvas/42818
 [infinitecanvas]: https://infinitecanvas.tools
