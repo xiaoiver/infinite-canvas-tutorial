@@ -130,7 +130,7 @@ export abstract class Shape {
 }
 ```
 
-The following figure from [Fundamentals of Computer Graphics 4th Edition] shows the local (object) coordinate system being transformed by a model transformation to the world coordinate system, then by a camera transformation to the camera coordinate system, then by a projection transformation to the clipping coordinate system (clip space/NDC), and finally by a viewport Then the camera transform to the camera coordinate system, then the projection transform to the clipping coordinate system (clip space/NDC) and finally the viewport transform to the screen coordinate system (screen/pixel space). We will introduce the camera later, for now we only need to care about the model transformation.
+The following figure from [Fundamentals of Computer Graphics 4th Edition] shows the local (object) coordinate system being transformed by a model transformation to the world coordinate system, then by a camera transformation to the camera coordinate system, then by a projection transformation to the clipping coordinate system (clip space/NDC), and finally by a viewport transformation to the screen coordinate system (screen/pixel space). We will introduce the camera later, for now we only need to care about the model transformation.
 
 ![coordinates](/coordinates.png)
 
