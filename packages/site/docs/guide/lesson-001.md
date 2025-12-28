@@ -12,7 +12,7 @@ head:
 
 In this lesson you will learn the following:
 
--   Hardware abstraction layers(HAL) based on WebGL1/2 and WebGPUs
+-   Hardware abstraction layers (HAL) based on WebGL1/2 and WebGPUs
 -   Designing our Canvas API
 -   Implementing a simple plug-in system
 -   Implementing a rendering plugin based on the HAL
@@ -262,7 +262,7 @@ How does the main application invoke plugin execution? Let's take a look at the 
 
 -   In the main application, a series of hooks are defined. These hooks can be synchronous or asynchronous, and can be serial or parallel. If they are synchronous and serial, they are similar to the common event listeners we are familiar with. In the example below, `run` is a synchronous serial hook.
 -   Each plugin listens to the lifecycle events it cares about when it registers. In the example below, `apply` will be called during registration.
--   The main application triggers the hooks."
+-   The main application triggers the hooks.
 
 ```ts
 class ConsoleLogOnBuildWebpackPlugin {
@@ -470,7 +470,7 @@ Finally, add the plugin to the list of plugins in the canvas:
 
 Since we haven't drawn any graphics yet and the canvas is blank, how do we know what the underlying WebGL / WebGPU commands are calling? Debugging on the web side can be done using the Chrome plugins: [Spector.js] and [WebGPU Inspector].
 
-The image below shows the first frame command captured using Spector.js, and you can see that we have created a series of GPU objects such as FrameBuffer, Texture, etc. The following image shows the first frame command captured using Spector.js:
+The following image shows the first frame command captured using Spector.js, and you can see that we have created a series of GPU objects such as FrameBuffer, Texture, etc:
 
 ![Spector.js snapshot](/spectorjs.png)
 
