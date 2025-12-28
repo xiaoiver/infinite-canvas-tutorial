@@ -195,10 +195,16 @@ await canvas.init();
 canvas.render();
 ```
 
-대신 저는 [Async Constructor Pattern in JavaScript]와 Web Animations API의 [Animation: ready property]에서 영감을 받은 다음과 같은 패턴을 선호합니다. `new`를 통한 인스턴스 생성은 즉시 이루어지되, 초기화 완료 시점을 `initialized` 프로미스로 추적하는 방식입니다.
+대신 저는 [Async Constructor Pattern in JavaScript]에서 영감을 받은 다음과 같은 패턴을 선호합니다. `new`를 통한 인스턴스 생성은 즉시 이루어지되, 초기화 완료 시점을 `initialized` 프로미스로 추적하는 방식입니다.
 
 ```ts
 const canvas = await new Canvas().initialized;
+```
+
+실제로 이 디자인 패턴은 Web Animations API의 [Animation: ready property]에서도 사용되고 있습니다.
+
+```ts
+animation.ready.then(() => {});
 ```
 
 ### 실제 구현 {#implementation}
@@ -304,92 +310,188 @@ export interface Plugin {
 }
 ```
 
-이제 캔버스 초기화 과정에서 플러그인들을 로드하고 각 시점에 맞는 훅을 트리거하기만 하면 됩니다.
+캔버스 초기화 과정에서 `apply` 메서드를 호출하고 컨텍스트를 전달하면 플러그인 등록이 완료되며, 동기 및 비동기 초기화 훅이 트리거됩니다. 다음 섹션에서 구현할 렌더링 플러그인이 비동기 초기화를 담당합니다.
+
+```ts{8}
+import { Renderer } from './plugins';
+
+this.#instancePromise = (async () => {
+  const { hooks } = this.#pluginContext;
+  [new Renderer()].forEach((plugin) => {
+    plugin.apply(this.#pluginContext);
+  });
+  hooks.init.call();
+  await hooks.initAsync.promise();
+  return this;
+})();
+```
+
+이제 첫 번째 플러그인을 구현하는 데 필요한 모든 지식을 갖추었습니다.
 
 ## 렌더러 플러그인 구현 {#renderer-plugin}
 
 본격적으로 WebGL과 WebGPU를 지원하는 첫 번째 플러그인인 '렌더러 플러그인'을 만들어 보겠습니다.
 
+WebGL과 WebGPU를 지원하기 위해 캔버스 생성자에서 `renderer` 파라미터를 통해 설정할 수 있도록 하고, 이를 플러그인 컨텍스트에 전달합니다.
+
+```ts{3}
+constructor(config: {
+  canvas: HTMLCanvasElement;
+  renderer?: 'webgl' | 'webgpu';
+}) {}
+
+this.#pluginContext = {
+  canvas,
+  renderer,
+};
+```
+
+다음으로 렌더링 플러그인에서 하드웨어 추상화 레이어를 어떻게 사용하는지 설명하겠습니다.
+
 ### 스왑체인 (SwapChain) 이해하기 {#swapchain}
 
-WebGL에서는 컨텍스트 초기화 시 '기본 프레임버퍼(Default Framebuffer)'가 자동으로 생성됩니다. 별도의 설정을 하지 않으면 렌더링 결과는 이곳의 컬러 버퍼에 기록되어 화면에 출력됩니다.
+OpenGL / WebGL에서는 [Default Framebuffer]가 일반적인 Framebuffer Object (FBO)와 다릅니다. 컨텍스트 초기화 시 자동으로 생성되며, 별도의 FBO를 지정하지 않고 그리기 명령을 호출하면 OpenGL이 자동으로 렌더링 결과를 Default Framebuffer에 기록합니다. 여기서 컬러 버퍼의 내용이 최종적으로 화면에 표시됩니다.
 
-하지만 Vulkan이나 WebGPU에서는 **스왑체인(SwapChain)**이라는 개념이 등장합니다. GPU가 렌더링 결과를 기록하는 '백버퍼'와 현재 화면에 표시 중인 '프론트버퍼'를 서로 교체(Swap)하며 동작하는 방식입니다.
+하지만 Vulkan에서는 대신 [SwapChain]을 사용합니다. 다음 [Canvas Context and Swap Chain]의 이미지는 동작 방식을 보여줍니다. GPU가 렌더링 결과를 백버퍼에 기록하고, 프론트버퍼는 화면에 표시하는 데 사용되며, 이 둘을 서로 교체할 수 있습니다.
 
 ![Double buffering](https://res.cloudinary.com/dx1kpewvo/image/upload/v1670938992/2022-12-19/webgpu_swap_1_nnce5v.png)
 
-이러한 더블 버퍼링 메커니즘은 화면이 갱신되는 도중에 새로운 데이터가 쓰여 화면이 찢어지는 현상(Tearing)을 방지합니다. HAL 라이브러리인 `g-device-api`는 이러한 복잡한 과정을 캡슐화하여 제공하므로, 우리는 다음과 같이 렌더러 설정에 맞춰 스왑체인과 디바이스를 생성해주기만 하면 됩니다.
+이러한 더블 버퍼링 메커니즘이 없으면 화면이 갱신되는 동시에 GPU가 렌더링 결과를 기록하여 화면이 찢어지는 현상(Tearing)이 발생할 가능성이 높습니다. 따라서 수직 동기화(V-Sync)를 사용하여 디스플레이가 업데이트를 허용하지 않도록 강제해야 합니다. 다음 [Canvas Context and Swap Chain]의 이미지는 이 과정의 타이밍을 보여줍니다.
 
-```ts
+![Double buffering and V-Sync](https://res.cloudinary.com/dx1kpewvo/image/upload/v1671030455/2022-12-19/webgpu_swap_5_asrq42.png)
+
+WebGPU에서 사용자는 일반적으로 SwapChain에 직접 접근하지 않으며, [GPUCanvasContext]에 통합되어 있습니다. WebGPU 설계를 따르는 [wgpu]도 SwapChain을 [Surface]에 결합하여 사용자가 직접 접근할 수 없도록 했습니다. 그러나 우리의 하드웨어 추상화 레이어는 여전히 이 개념을 캡슐화에 사용합니다. 이를 통해 `renderer` 파라미터를 기반으로 플러그인 초기화 시 SwapChain과 Device를 생성할 수 있습니다.
+
+```ts{13}
+import {
+  WebGLDeviceContribution,
+  WebGPUDeviceContribution,
+} from '@antv/g-device-api';
+import type { SwapChain, DeviceContribution, Device } from '@antv/g-device-api';
+
 export class Renderer implements Plugin {
-    apply(context: PluginContext) {
-        const { hooks, canvas, renderer } = context;
+  apply(context: PluginContext) {
+    const { hooks, canvas, renderer } = context;
 
-        hooks.initAsync.tapPromise(async () => {
-            let deviceContribution: DeviceContribution;
-            if (renderer === 'webgl') {
-                deviceContribution = new WebGLDeviceContribution();
-            } else {
-                deviceContribution = new WebGPUDeviceContribution();
-            }
+    hooks.initAsync.tapPromise(async () => {
+      let deviceContribution: DeviceContribution;
+      if (renderer === 'webgl') {
+        deviceContribution = new WebGLDeviceContribution();
+      } else {
+        deviceContribution = new WebGPUDeviceContribution();
+      }
+      const { width, height } = canvas;
+      const swapChain = await deviceContribution.createSwapChain(canvas);
+      swapChain.configureSwapChain(width, height);
 
-            const swapChain = await deviceContribution.createSwapChain(canvas);
-            swapChain.configureSwapChain(canvas.width, canvas.height);
-
-            this.#swapChain = swapChain;
-            this.#device = swapChain.getDevice();
-        });
-    }
+      this.#swapChain = swapChain;
+      this.#device = swapChain.getDevice();
+    });
+  }
 }
 ```
 
 ### 고해상도 대응: devicePixelRatio {#devicepixelratio}
 
-디스플레이의 물리적 픽셀과 CSS 픽셀의 비율인 [devicePixelRatio] 대응도 중요합니다. 캔버스의 크기를 설정할 때는 이 비율을 곱해 실제 픽셀 크기를 맞춰줘야 선명한 화면을 얻을 수 있습니다.
+[devicePixelRatio]는 하나의 CSS 픽셀을 그리기 위해 사용해야 하는 실제 화면 픽셀의 수를 나타냅니다. 일반적으로 다음 코드로 `<canvas>`를 설정합니다.
 
 ```ts
-const scale = window.devicePixelRatio;
-$canvas.width = Math.floor(width * scale); // 실제 픽셀
-$canvas.height = Math.floor(height * scale);
+const $canvas = document.getElementById('canvas');
 $canvas.style.width = `${width}px`; // CSS 픽셀
+$canvas.style.height = `${height}px`;
+
+const scale = window.devicePixelRatio;
+$canvas.width = Math.floor(width * scale); // 화면 픽셀
+$canvas.height = Math.floor(height * scale);
 ```
 
-이때 `window.devicePixelRatio`를 직접 쓰기보다는, SSR이나 WebWorker 환경 등을 고려해 설정값으로 전달받거나 `globalThis`에서 가져오는 방식이 더 안전합니다.
+캔버스의 너비와 높이, 그래픽 크기를 설명할 때는 CSS 픽셀을 사용하고, SwapChain을 생성할 때는 화면의 실제 픽셀을 사용합니다. `resize`에서 전달되는 너비와 높이도 CSS 픽셀을 사용하므로 변환이 필요합니다.
 
-```ts
+```ts{3}
 hooks.resize.tap((width, height) => {
-    this.#swapChain.configureSwapChain(
-        width * devicePixelRatio,
-        height * devicePixelRatio,
-    );
+  this.#swapChain.configureSwapChain(
+    width * devicePixelRatio,
+    height * devicePixelRatio,
+  );
 });
 ```
 
-나머지 훅(자원 해제, 프레임 시작/종료 등) 역시 동일한 방식으로 구현하여 플러그인 리스트에 추가하면 렌더러 준비가 끝납니다.
+그렇다면 [devicePixelRatio]를 어떻게 가져올까요? 물론 `window.devicePixelRatio`를 사용할 수 있으며, 대부분의 경우 문제가 없습니다. 하지만 실행 환경에 `window` 객체가 없다면 어떻게 될까요? 예를 들어:
+
+-   Node.js 서버 사이드 렌더링. 예: [headless-gl] 사용
+-   [OffscreenCanvas]를 사용한 WebWorker에서의 렌더링
+-   미니 프로그램과 같은 비표준 브라우저 환경
+
+따라서 캔버스 생성 시 전달받을 수 있도록 지원하고, 전달되지 않으면 [globalThis]에서 가져오는 것이 좋습니다. Canvas 생성자 파라미터를 다음과 같이 수정합니다.
+
+```ts{2}
+export interface CanvasConfig {
+  devicePixelRatio?: number;
+}
+
+const { devicePixelRatio } = config;
+const globalThis = getGlobalThis();
+this.#pluginContext = {
+  devicePixelRatio: devicePixelRatio ?? globalThis.devicePixelRatio,
+};
+```
+
+나머지 훅들은 다음과 같이 구현합니다.
+
+```ts
+hooks.destroy.tap(() => {
+    this.#device.destroy();
+});
+
+hooks.beginFrame.tap(() => {
+    this.#device.beginFrame();
+});
+
+hooks.endFrame.tap(() => {
+    this.#device.endFrame();
+});
+```
+
+마지막으로 캔버스의 플러그인 리스트에 플러그인을 추가합니다.
+
+```ts{1}
+[new Renderer(), ...plugins].forEach((plugin) => {
+  plugin.apply(this.#pluginContext);
+});
+```
 
 ## 데모 및 디버깅 {#demo}
 
 아직 아무것도 그리지 않아 캔버스는 비어있지만, 내부적으로 WebGL/WebGPU 명령이 잘 호출되고 있는지 확인할 수 있습니다. Chrome의 [Spector.js]나 [WebGPU Inspector] 확장을 사용해 보세요.
 
-Spector.js로 캡처해보면 첫 프레임부터 FrameBuffer, Texture 등 다양한 GPU 객체들이 정상적으로 생성된 것을 확인할 수 있습니다.
+Spector.js로 캡처한 첫 프레임 명령을 보면 FrameBuffer, Texture 등 다양한 GPU 객체들이 정상적으로 생성된 것을 확인할 수 있습니다.
 
 ![Spector.js snapshot](/spectorjs.png)
 
-WebGPU로 전환한 후 WebGPU Inspector를 통해 살펴봐도 각 프레임마다 적절한 명령들이 실행되는 것을 볼 수 있습니다.
+WebGPU 렌더링으로 전환한 후:
+
+```ts{3}
+const canvas = await new Canvas({
+  canvas: $canvas,
+  renderer: 'webgpu',
+}).initialized;
+```
+
+WebGPU Inspector를 열어 현재 생성한 GPU 객체들과 각 프레임마다 호출되는 명령들을 확인할 수 있습니다.
 
 ![WebGPU inspector snapshot](/webgpu-inspector.png)
 
 ## 더 읽어보기 {#extended-reading}
 
-그래픽스 기초 지식이 필요하다면 다음 자료를 먼저 살펴보는 것을 추천합니다.
+WebGL에 대한 기초 지식이 전혀 없다면 먼저 학습하는 것을 추천합니다.
 
 -   [WebGL Fundamentals]
 -   [WebGPU Fundamentals]
 
-플러그인 설계 패턴에 대해 더 깊이 알고 싶다면:
+플러그인 설계 패턴에 대해 더 알아보기:
 
 -   [Intro to Plugin Oriented Programming]
--   [Introducing: Penpot Plugin System] - Penpot의 플러그인 시스템 사례
+-   [Introducing: Penpot Plugin System]
 -   [Extensions in Tiptap]
 
 [WebGPU Ecosystem]: https://developer.chrome.com/blog/webgpu-ecosystem/
@@ -410,6 +512,14 @@ WebGPU로 전환한 후 WebGPU Inspector를 통해 살펴봐도 각 프레임마
 [WebGL Fundamentals]: https://webglfundamentals.org/
 [WebGPU Fundamentals]: https://webgpufundamentals.org/
 [devicePixelRatio]: https://developer.mozilla.org/zh-CN/docs/Web/API/Window/devicePixelRatio
+[headless-gl]: https://github.com/stackgl/headless-gl
+[OffscreenCanvas]: https://developer.mozilla.org/zh-CN/docs/Web/API/OffscreenCanvas
+[SwapChain]: https://vulkan-tutorial.com/Drawing_a_triangle/Presentation/Swap_chain
+[Default Framebuffer]: https://www.khronos.org/opengl/wiki/Default_Framebuffer
+[globalThis]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/globalThis
+[Surface]: https://docs.rs/wgpu/latest/wgpu/struct.Surface.html
+[GPUCanvasContext]: https://gpuweb.github.io/gpuweb/#canvas-context
+[Canvas Context and Swap Chain]: https://carmencincotti.com/2022-12-19/how-to-render-a-webgpu-triangle-series-part-three-video/#bonus-content-swap-chain
 [Introducing: Penpot Plugin System]: https://www.smashingmagazine.com/2024/11/open-source-meets-design-tooling-penpot/
 [Performant Game Loops in JavaScript]: https://www.aleksandrhovhannisyan.com/blog/javascript-game-loop/
 [Extensions in Tiptap]: https://tiptap.dev/docs/editor/core-concepts/extensions#what-are-extensions
