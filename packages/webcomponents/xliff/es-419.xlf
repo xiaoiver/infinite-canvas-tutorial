@@ -1,0 +1,347 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xliff version="1.2" xmlns="urn:oasis:names:tc:xliff:document:1.2">
+<file target-language="es-419" source-language="en" original="lit-localize-inputs" datatype="plaintext">
+<body>
+<trans-unit id="sa10f310edb35fa9f">
+  <source>Main menu</source>
+  <target>Menú principal</target>
+</trans-unit>
+<trans-unit id="s64ef2a6c2dd1d3d1">
+  <source>Edit</source>
+  <target>Editar</target>
+</trans-unit>
+<trans-unit id="s8f4be9f086eb530f">
+  <source>Undo</source>
+  <target>Deshacer</target>
+</trans-unit>
+<trans-unit id="s7417792bbe720149">
+  <source>Redo</source>
+  <target>Rehacer</target>
+</trans-unit>
+<trans-unit id="s0bc31719aa7a8f43">
+  <source>Cut</source>
+  <target>Cortar</target>
+</trans-unit>
+<trans-unit id="s3687049d1af562c4">
+  <source>Copy</source>
+  <target>Copiar</target>
+</trans-unit>
+<trans-unit id="sd374c80e17e18808">
+  <source>Paste</source>
+  <target>Pegar</target>
+</trans-unit>
+<trans-unit id="s7f59f507e02a2f38">
+  <source>View</source>
+  <target>Vista</target>
+</trans-unit>
+<trans-unit id="s25e1a07e454c2c11">
+  <source>Grid</source>
+  <target>Cuadrícula</target>
+</trans-unit>
+<trans-unit id="s2b5047d39b9baf3d">
+  <source>Preferences</source>
+  <target>Preferencias</target>
+</trans-unit>
+<trans-unit id="sde8c8a798dcf817e">
+  <source>Snap to pixel grid</source>
+  <target>Ajustar a la cuadrícula de píxeles</target>
+</trans-unit>
+<trans-unit id="sf245b01cbeb198d2">
+  <source>Snap to objects</source>
+  <target>Ajustar a los objetos</target>
+</trans-unit>
+<trans-unit id="saab875d8cfcfe712">
+  <source>Theme</source>
+  <target>Tema</target>
+</trans-unit>
+<trans-unit id="s3b0ab4b52326316f">
+  <source>Light</source>
+  <target>Claro</target>
+</trans-unit>
+<trans-unit id="sac895c732f350ac5">
+  <source>Dark</source>
+  <target>Oscuro</target>
+</trans-unit>
+<trans-unit id="sa81e2cdaf6921adc">
+  <source>System</source>
+  <target>Sistema</target>
+</trans-unit>
+<trans-unit id="sefcf950b3cc4fc3b">
+  <source>Language</source>
+  <target>Idioma</target>
+</trans-unit>
+<trans-unit id="sc6198c727ea45695">
+  <source>Export as...</source>
+  <target>Exportar como...</target>
+</trans-unit>
+<trans-unit id="sd799c9af108e2290">
+  <source>Hand (Panning tool)</source>
+  <target>Mano (Herramienta de panorámica)</target>
+</trans-unit>
+<trans-unit id="sfc63e31ac7c956ed">
+  <source>Select</source>
+  <target>Seleccionar</target>
+</trans-unit>
+<trans-unit id="s5d0b63df0bad8c2e">
+  <source>Rectangle</source>
+  <target>Rectángulo</target>
+</trans-unit>
+<trans-unit id="sbadcfb6aa6ef38b1">
+  <source>Ellipse</source>
+  <target>Elipse</target>
+</trans-unit>
+<trans-unit id="s3cf8a6b47fddf8e7">
+  <source>Line</source>
+  <target>Línea</target>
+</trans-unit>
+<trans-unit id="s6b2fedc1891a9da6">
+  <source>Arrow</source>
+  <target>Flecha</target>
+</trans-unit>
+<trans-unit id="s7d3b22d8d4ef60bb">
+  <source>Rough Rectangle</source>
+  <target>Rectángulo aproximado</target>
+</trans-unit>
+<trans-unit id="s28f28c14a55e4f10">
+  <source>Rough Ellipse</source>
+  <target>Elipse aproximada</target>
+</trans-unit>
+<trans-unit id="s3d93f9ea0c5a13fa">
+  <source>Image</source>
+  <target>Imagen</target>
+</trans-unit>
+<trans-unit id="s2492f5fb1b05b45e">
+  <source>Text</source>
+  <target>Texto</target>
+</trans-unit>
+<trans-unit id="s8ab8b542cf922884">
+  <source>Pencil</source>
+  <target>Lápiz</target>
+</trans-unit>
+<trans-unit id="s085cd8fee92a2cc5">
+  <source>Eraser</source>
+  <target>Borrador</target>
+</trans-unit>
+<trans-unit id="s45b997b8418a2e04">
+  <source>Vector Network</source>
+  <target>Red de vectores</target>
+</trans-unit>
+<trans-unit id="saf84ec86139d349e">
+  <source>Comment</source>
+  <target>Comentario</target>
+</trans-unit>
+<trans-unit id="s339a83e6b14d0040">
+  <source>Show layers panel</source>
+  <target>Mostrar panel de capas</target>
+</trans-unit>
+<trans-unit id="sf25aa8ec7344cdb3">
+  <source>Show properties panel</source>
+  <target>Mostrar panel de propiedades</target>
+</trans-unit>
+<trans-unit id="s785c1d045a714d04">
+  <source>Show chat panel</source>
+  <target>Mostrar panel de chat</target>
+</trans-unit>
+<trans-unit id="s5a25a7e3c9796a64">
+  <source>Zoom level</source>
+  <target>Nivel de zoom</target>
+</trans-unit>
+<trans-unit id="s236ae937cbcd6a39">
+  <source>Zoom in</source>
+  <target>Zoom en</target>
+</trans-unit>
+<trans-unit id="sc65ea2cf2f21a13a">
+  <source>Zoom out</source>
+  <target>Zoom out</target>
+</trans-unit>
+<trans-unit id="s2ea30e6262e90c5b">
+  <source>Fit to screen</source>
+  <target>Ajustar a la pantalla</target>
+</trans-unit>
+<trans-unit id="sc8e3236a45f0802c">
+  <source>Fill screen</source>
+  <target>Rellenar pantalla</target>
+</trans-unit>
+<trans-unit id="sff55687397582193">
+  <source>Full screen mode</source>
+  <target>Modo de pantalla completa</target>
+</trans-unit>
+<trans-unit id="s8af61807443f32a4">
+  <source>Actions</source>
+  <target>Acciones</target>
+</trans-unit>
+<trans-unit id="s76dd3d4d23b41377">
+  <source>Bring to front</source>
+  <target>Poner al frente</target>
+</trans-unit>
+<trans-unit id="sa00beff1c266a23e">
+  <source>Bring forward</source>
+  <target>Mover hacia adelante</target>
+</trans-unit>
+<trans-unit id="scf95cea4c1c02d8c">
+  <source>Send backward</source>
+  <target>Mover hacia atrás</target>
+</trans-unit>
+<trans-unit id="s4cc9f4ff64eba0af">
+  <source>Send to back</source>
+  <target>Poner al fondo</target>
+</trans-unit>
+<trans-unit id="s989ff35d84e27a5c">
+  <source>Draw shapes settings</source>
+  <target>Configuración de formas</target>
+</trans-unit>
+<trans-unit id="sd1f81984eeb7c0e8">
+  <source>Fill</source>
+  <target>Relleno</target>
+</trans-unit>
+<trans-unit id="sd13d49dfe04dc9cd">
+  <source>Fill opacity</source>
+  <target>Opacidad de relleno</target>
+</trans-unit>
+<trans-unit id="s2199c9ac949fc21c">
+  <source>Stroke opacity</source>
+  <target>Opacidad de trazo</target>
+</trans-unit>
+<trans-unit id="s6916349d10819d4f">
+  <source>Marker start</source>
+  <target>Inicio del marcador</target>
+</trans-unit>
+<trans-unit id="s8f44ededf3e037fa">
+  <source>Marker end</source>
+  <target>Fin del marcador</target>
+</trans-unit>
+<trans-unit id="s43ca35f701ac4dc6">
+  <source>Rough fill style</source>
+  <target>Estilo de relleno aproximado</target>
+</trans-unit>
+<trans-unit id="s0758584e2fcf954d">
+  <source>Bowing</source>
+  <target>Curvatura</target>
+</trans-unit>
+<trans-unit id="sdea02d9fafe208b5">
+  <source>Roughness</source>
+  <target>Rugosidad</target>
+</trans-unit>
+<trans-unit id="sc9a0ae887b3b77f1">
+  <source>Pencil settings</source>
+  <target>Configuración de lápiz</target>
+</trans-unit>
+<trans-unit id="s8e5cbbecf3c94675">
+  <source>Stroke</source>
+  <target>Trazo</target>
+</trans-unit>
+<trans-unit id="se615f6ce0dd01061">
+  <source>Stroke width</source>
+  <target>Ancho de trazo</target>
+</trans-unit>
+<trans-unit id="se21075c9ff8fd932">
+  <source>Freehand</source>
+  <target>Libre</target>
+</trans-unit>
+<trans-unit id="sb31aa3d1a0e4711f">
+  <source>Text settings</source>
+  <target>Configuración de texto</target>
+</trans-unit>
+<trans-unit id="sd7086c4425c53c80">
+  <source>Font family</source>
+  <target>Familia de fuentes</target>
+</trans-unit>
+<trans-unit id="s619e62c94211a6f5">
+  <source>Font style</source>
+  <target>Estilo de fuente</target>
+</trans-unit>
+<trans-unit id="s61053f0e3ebbd272">
+  <source>normal</source>
+  <target>normal</target>
+</trans-unit>
+<trans-unit id="s69d5e5f057d8992d">
+  <source>italic</source>
+  <target>cursiva</target>
+</trans-unit>
+<trans-unit id="s6b7d7afabc24ff1c">
+  <source>Properties</source>
+  <target>Propiedades</target>
+</trans-unit>
+<trans-unit id="sb02c013623255598">
+  <source>Hide layer</source>
+  <target>Ocultar capa</target>
+</trans-unit>
+<trans-unit id="s3380c967f057d8ef">
+  <source>Layer properties</source>
+  <target>Propiedades de la capa</target>
+</trans-unit>
+<trans-unit id="s4993444bfd3f3e5e">
+  <source>Collapse</source>
+  <target>Colapsar</target>
+</trans-unit>
+<trans-unit id="s3b151ca64eb26ec1">
+  <source>Expand</source>
+  <target>Expandir</target>
+</trans-unit>
+<trans-unit id="sdab38385e185e9bf">
+  <source>Layers</source>
+  <target>Capas</target>
+</trans-unit>
+<trans-unit id="sb4990f30bbe56683">
+  <source>Add new layer</source>
+  <target>Agregar nueva capa</target>
+</trans-unit>
+<trans-unit id="sbd264e4b79b2cfbf">
+  <source>Arrange layers</source>
+  <target>Ordenar capas</target>
+</trans-unit>
+<trans-unit id="sdc673e73b5c13aea">
+  <source>Delete</source>
+  <target>Eliminar</target>
+</trans-unit>
+<trans-unit id="sc1fff4f356dfb2fb">
+  <source>Transform</source>
+  <target>Transformar</target>
+</trans-unit>
+<trans-unit id="sf2fa69d773a97b01">
+  <source>Constrain aspect ratio</source>
+  <target>Restringir relación de aspecto</target>
+</trans-unit>
+<trans-unit id="scd55b9dcfe91c343">
+  <source>Do not constrain aspect ratio</source>
+  <target>No restringir relación de aspecto</target>
+</trans-unit>
+<trans-unit id="sed0bedf5d19de4e7">
+  <source>Inner</source>
+  <target>Interior</target>
+</trans-unit>
+<trans-unit id="sb38d497d992ab4a4">
+  <source>Center</source>
+  <target>Centro</target>
+</trans-unit>
+<trans-unit id="sc44e5bc0e203fb73">
+  <source>Stroke linecap</source>
+  <target>Capotrazo</target>
+</trans-unit>
+<trans-unit id="s2a06dda7e4216288">
+  <source>Butt</source>
+  <target>Butt</target>
+</trans-unit>
+<trans-unit id="s43f1ffa8263b3f7b">
+  <source>Round</source>
+  <target>Redondo</target>
+</trans-unit>
+<trans-unit id="s6641c258b0b51b26">
+  <source>Square</source>
+  <target>Cuadrado</target>
+</trans-unit>
+<trans-unit id="sd8010f8973be1ea1">
+  <source>Stroke linejoin</source>
+  <target>Unión de trazo</target>
+</trans-unit>
+<trans-unit id="s97ec20c95ae99c86">
+  <source>Miter</source>
+  <target>Miter</target>
+</trans-unit>
+<trans-unit id="sdc2bdbc5221a288b">
+  <source>Bevel</source>
+  <target>Bisel</target>
+</trans-unit>
+</body>
+</file>
+</xliff>
