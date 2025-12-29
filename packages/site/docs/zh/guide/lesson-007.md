@@ -11,6 +11,7 @@ description: '使用Lit和Shoelace构建框架无关的Web UI组件。创建可�
 -   实现画布组件，监听页面宽高变换
 -   实现缩放组件
 -   实现明暗主题
+-   应用 Lit 的国际化方案
 
 <div style="width: 100%; height: 200px;">
   <ic-canvas-lesson7 />
@@ -329,6 +330,78 @@ canvas.theme = Theme.DARK;
 
 后续我们就不再详细介绍 UI 部分的实现了。
 
+## 国际化 {#i18n}
+
+Lit 提供了完整的 [Localization] 方案，配合工具就可以自动化完成。
+
+### 构建语言模版 {#build-localized-template}
+
+首先需要使用 `msg` 方法包裹需要国际化的字符串，以主菜单为例：
+
+```ts
+import { msg, str } from '@lit/localize';
+
+<sp-tooltip slot="tooltip" self-managed placement="bottom">
+    ${msg(str`Main menu`)}
+</sp-tooltip>;
+```
+
+然后执行如下命令从源代码中提取使用到的语言字符串：
+
+```bash
+lit-localize extract
+```
+
+此时会得到一系列 `xlf` 文件，将这些 `xlf` 文件发送给翻译服务（当然也可以手动翻译），就可以得到类似如下结果：
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<xliff version="1.2" xmlns="urn:oasis:names:tc:xliff:document:1.2">
+<file target-language="zh-Hans" source-language="en" original="lit-localize-inputs" datatype="plaintext">
+<body>
+<trans-unit id="sa10f310edb35fa9f">
+  <source>Main menu</source>
+  <target>主菜单</target>
+</trans-unit>
+</body>
+</file>
+</xliff>
+```
+
+然后执行如下命令就可以将翻译后的字符串编译成组件，放置在源码文件夹下：
+
+```bash
+lit-localize build
+```
+
+### 运行时切换语言 {#switch-locale}
+
+本网站使用 Vitepress 构建，你可以在右上角看到一个切换语言的组件。
+
+```ts
+import { localized } from '@lit/localize';
+
+@customElement('ic-spectrum-top-navbar')
+@localized()
+export class TopNavbar extends LitElement {}
+```
+
+运行时可以按需加载：
+
+```ts
+import { configureLocalization } from '@lit/localize';
+// Generated via output.localeCodesModule
+import { sourceLocale, targetLocales } from './generated/locale-codes.js';
+
+export const { getLocale, setLocale } = configureLocalization({
+    sourceLocale,
+    targetLocales,
+    loadLocale: (locale) => import(`/locales/${locale}.js`),
+});
+```
+
+为了演示方便我们采用 [static imports]，当然这样会加载所有的语言文件，影响首屏加载时间。
+
 ## 扩展阅读 {#extended-reading}
 
 -   [Discussion about Lit on HN]
@@ -356,3 +429,5 @@ canvas.theme = Theme.DARK;
 [Discussion about Lit on HN]: https://news.ycombinator.com/item?id=45112720
 [课程 18 - 使用 ECS 重构]: /zh/guide/lesson-018
 [Change themes in Figma]: https://help.figma.com/hc/en-us/articles/5576781786647-Change-themes-in-Figma
+[Localization]: https://lit.dev/docs/localization/overview/
+[static imports]: https://lit.dev/docs/localization/runtime-mode/#static-imports

@@ -4,8 +4,10 @@ import { consume } from '@lit/context';
 import { AppState } from '@infinite-canvas-tutorial/ecs';
 import { apiContext, appStateContext } from '../context';
 import { ExtendedAPI } from '../API';
+import { localized, msg, str } from '@lit/localize';
 
 @customElement('ic-spectrum-penbar-pencil-settings')
+@localized()
 export class PenbarPencilSettings extends LitElement {
   @consume({ context: appStateContext, subscribe: true })
   appState: AppState;
@@ -56,8 +58,10 @@ export class PenbarPencilSettings extends LitElement {
   render() {
     const { penbarPencil, theme } = this.appState;
 
-    return html`<h4 style="margin: 0; margin-bottom: 8px;">Pencil settings</h4>
-      <sp-field-label for="stroke">Stroke</sp-field-label>
+    return html`<h4 style="margin: 0; margin-bottom: 8px;">
+        ${msg(str`Pencil settings`)}
+      </h4>
+      <sp-field-label for="stroke">${msg(str`Stroke`)}</sp-field-label>
       <sp-swatch-group
         id="stroke"
         selects="single"
@@ -74,7 +78,7 @@ export class PenbarPencilSettings extends LitElement {
       >
         <sp-slider
           style="flex: 1;margin-right: 8px;"
-          label="Stroke width"
+          label=${msg(str`Stroke width`)}
           label-visibility="text"
           value=${penbarPencil.strokeWidth}
           @input=${this.handleStrokeWidthChanging}
@@ -98,10 +102,10 @@ export class PenbarPencilSettings extends LitElement {
         style="display: flex; align-items: center;justify-content: space-between;"
       >
         <sp-switch
-          label="Freehand"
+          label=${msg(str`Freehand`)}
           .checked=${penbarPencil.freehand}
           @change=${this.handleFreehandChanged}
-          >Freehand</sp-switch
+          >${msg(str`Freehand`)}</sp-switch
         >
       </div>`;
   }

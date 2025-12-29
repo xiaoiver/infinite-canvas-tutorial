@@ -366,6 +366,10 @@ if (vertexNum < 0.5) {
 
 Figma 是可以将 Brush 导出 SVG 的。
 
+## [WIP] 激光笔 {#laser}
+
+在画布中进行演示功能时，激光笔是一个必备的功能。Excalidraw 支持，详见：[laser pointer]，我们也可以直接使用 [@excalidraw/laser-pointer]。
+
 ## 橡皮擦 {#eraser}
 
 Excalidraw 支持 [freedraw eraser]，选中橡皮擦工具后，按下鼠标后经过的图形会“虚化”，表示即将被删除，抬起鼠标完成擦除。
@@ -447,3 +451,5 @@ glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
 [pressure]: https://developer.mozilla.org/docs/Web/API/PointerEvent/pressure
 [freedraw eraser]: https://github.com/excalidraw/excalidraw/issues/3682
 [non-atomic erasing for linear & freedraw shapes]: https://github.com/excalidraw/excalidraw/issues/4904
+[laser pointer]: https://github.com/excalidraw/excalidraw/issues/5351
+[@excalidraw/laser-pointer]: https://www.npmjs.com/package/@excalidraw/laser-pointer

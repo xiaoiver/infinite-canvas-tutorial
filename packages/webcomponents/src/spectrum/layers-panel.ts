@@ -14,7 +14,10 @@ import {
 import { apiContext, appStateContext, nodesContext } from '../context';
 import { Event } from '../event';
 import { ExtendedAPI } from '../API';
+import { localized, msg, str } from '@lit/localize';
+
 @customElement('ic-spectrum-layers-panel')
+@localized()
 export class LayersPanel extends LitElement {
   static styles = css`
     section {
@@ -214,7 +217,7 @@ export class LayersPanel extends LitElement {
     return taskbarSelected.includes(Task.SHOW_LAYERS_PANEL)
       ? html`<section>
           <h4>
-            Layers
+            ${msg(str`Layers`)}
             <sp-action-button quiet size="s" @click=${this.handleClose}>
               <sp-icon-close slot="icon"></sp-icon-close>
             </sp-action-button>
@@ -222,20 +225,20 @@ export class LayersPanel extends LitElement {
           <sp-action-group class="actions">
             <sp-action-button quiet size="s" disabled @click=${this.handleAdd}>
               <sp-tooltip self-managed placement="bottom">
-                Add new layer
+                ${msg(str`Add new layer`)}
               </sp-tooltip>
               <sp-icon-add slot="icon"></sp-icon-add>
             </sp-action-button>
 
             <sp-action-menu
-              label="Arrange layers"
+              label=${msg(str`Arrange layers`)}
               quiet
               size="s"
               .disabled=${layersSelected.length === 0}
             >
               <sp-icon-show-all-layers slot="icon"></sp-icon-show-all-layers>
               <sp-menu-group>
-                <span slot="header">Arrange layers</span>
+                <span slot="header">${msg(str`Arrange layers`)}</span>
                 <sp-menu-item
                   ?disabled=${isSelectedEmpty || bringForwardDisabled}
                   @click=${this.handleBringToFront}
@@ -243,14 +246,14 @@ export class LayersPanel extends LitElement {
                   <sp-icon-layers-bring-to-front
                     slot="icon"
                   ></sp-icon-layers-bring-to-front>
-                  Bring to front
+                  ${msg(str`Bring to front`)}
                 </sp-menu-item>
                 <sp-menu-item
                   ?disabled=${isSelectedEmpty || bringForwardDisabled}
                   @click=${this.handleBringForward}
                 >
                   <sp-icon-layers-forward slot="icon"></sp-icon-layers-forward>
-                  Bring forward
+                  ${msg(str`Bring forward`)}
                 </sp-menu-item>
                 <sp-menu-item
                   ?disabled=${isSelectedEmpty || sendBackwardDisabled}
@@ -259,7 +262,7 @@ export class LayersPanel extends LitElement {
                   <sp-icon-layers-backward
                     slot="icon"
                   ></sp-icon-layers-backward>
-                  Send backward
+                  ${msg(str`Send backward`)}
                 </sp-menu-item>
                 <sp-menu-item
                   ?disabled=${isSelectedEmpty || sendBackwardDisabled}
@@ -268,7 +271,7 @@ export class LayersPanel extends LitElement {
                   <sp-icon-layers-send-to-back
                     slot="icon"
                   ></sp-icon-layers-send-to-back>
-                  Send to back
+                  ${msg(str`Send to back`)}
                 </sp-menu-item>
               </sp-menu-group>
             </sp-action-menu>
@@ -279,7 +282,9 @@ export class LayersPanel extends LitElement {
               @click=${this.handleDelete}
               .disabled=${layersSelected.length === 0}
             >
-              <sp-tooltip self-managed placement="bottom"> Delete </sp-tooltip>
+              <sp-tooltip self-managed placement="bottom">
+                ${msg(str`Delete`)}
+              </sp-tooltip>
               <sp-icon-delete slot="icon"></sp-icon-delete>
             </sp-action-button>
           </sp-action-group>

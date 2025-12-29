@@ -23,6 +23,7 @@ export enum Task {
  * @see https://docs.excalidraw.com/docs/@excalidraw/excalidraw/api/props/initialdata
  */
 export interface AppState {
+  language: string;
   theme: Theme;
   themeMode: ThemeMode;
   checkboardStyle: CheckboardStyle;
@@ -56,6 +57,7 @@ export interface AppState {
       fontFamilies: string[];
     }
   >;
+  penbarEraser: Partial<FillAttributes>;
   taskbarVisible: boolean;
   taskbarAll: Task[];
   taskbarSelected: Task[];
@@ -98,6 +100,7 @@ export interface AppState {
 
 export const getDefaultAppState: () => AppState = () => {
   return {
+    language: 'en',
     // TODO: Flatten theme
     themeMode: ThemeMode.LIGHT,
     theme: {
@@ -215,6 +218,9 @@ export const getDefaultAppState: () => AppState = () => {
       fontSize: 16,
       fontStyle: 'normal',
       fill: '#000',
+    },
+    penbarEraser: {
+      fill: 'grey',
     },
     taskbarVisible: true,
     taskbarAll: [Task.SHOW_LAYERS_PANEL, Task.SHOW_PROPERTIES_PANEL],

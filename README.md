@@ -125,6 +125,7 @@ If you want to use it in your own project, you can refer to:
 -   Implementing a canvas component
 -   Implementing a zoom toolbar component
 -   Implementing a dark theme
+-   I18n with Lit localization
 
 ## Lesson 8 - Optimize performance [🔗](https://infinitecanvas.cc/guide/lesson-008)
 

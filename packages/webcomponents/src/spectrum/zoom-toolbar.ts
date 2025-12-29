@@ -4,6 +4,7 @@ import { customElement } from 'lit/decorators.js';
 import { AppState } from '@infinite-canvas-tutorial/ecs';
 import { apiContext, appStateContext } from '../context';
 import { ExtendedAPI } from '../API';
+import { localized, msg, str } from '@lit/localize';
 
 const ZOOM_STEPS = [
   0.02, 0.05, 0.1, 0.15, 0.2, 0.33, 0.5, 0.75, 1, 1.25, 1.5, 2, 2.5, 3, 4,
@@ -18,6 +19,7 @@ export const findZoomFloor = (zoom: number) => {
 };
 
 @customElement('ic-spectrum-zoom-toolbar')
+@localized()
 export class ZoomToolbar extends LitElement {
   static styles = css`
     sp-menu-item {
@@ -118,20 +120,20 @@ export class ZoomToolbar extends LitElement {
 
   render() {
     return html`
-      <sp-action-menu size="m" label="Zoom level">
+      <sp-action-menu size="m" label=${msg(str`Zoom level`)}>
         <sp-tooltip slot="tooltip" self-managed placement="bottom">
-          Zoom level
+          ${msg(str`Zoom level`)}
         </sp-tooltip>
         <span slot="label">
           <span>${Math.round(this.appState.cameraZoom * 100)}</span>%</span
         >
         <sp-icon-chevron-down slot="icon" size="l"></sp-icon-chevron-down>
         <sp-menu-item @click=${this.zoomIn}>
-          Zoom in
+          ${msg(str`Zoom in`)}
           <kbd slot="value">⌘+</kbd>
         </sp-menu-item>
         <sp-menu-item @click=${this.zoomOut}>
-          Zoom out
+          ${msg(str`Zoom out`)}
           <kbd slot="value">⌘-</kbd>
         </sp-menu-item>
         <sp-menu-divider></sp-menu-divider>
@@ -144,13 +146,15 @@ export class ZoomToolbar extends LitElement {
           <kbd slot="value">⌘2</kbd>
         </sp-menu-item>
         <sp-menu-item @click=${this.fitToScreen}>
-          Fit to screen
+          ${msg(str`Fit to screen`)}
           <kbd slot="value">⌘0</kbd>
         </sp-menu-item>
-        <sp-menu-item @click=${this.fillScreen}> Fill screen </sp-menu-item>
+        <sp-menu-item @click=${this.fillScreen}>
+          ${msg(str`Fill screen`)}
+        </sp-menu-item>
         <sp-menu-divider></sp-menu-divider>
         <sp-menu-item @click=${this.toggleFullScreen}>
-          Full screen mode
+          ${msg(str`Full screen mode`)}
           <kbd slot="value">F</kbd>
         </sp-menu-item>
       </sp-action-menu>

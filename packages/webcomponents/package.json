@@ -48,12 +48,15 @@
     "build:cjs": "rimraf ./lib && tsc --module commonjs --outDir lib",
     "build:esm": "rimraf ./esm && tsc --module ESNext --outDir esm",
     "build": "run-p build:*",
-    "watch": "rimraf ./esm && tsc --module ESNext --outDir esm --watch"
+    "watch": "rimraf ./esm && tsc --module ESNext --outDir esm --watch",
+    "localize:extract": "lit-localize extract",
+    "localize:build": "lit-localize build"
   },
   "dependencies": {
     "@antv/util": "^3.3.10",
     "@infinite-canvas-tutorial/ecs": "workspace:*",
     "@lit/context": "^1.1.2",
+    "@lit/localize": "^0.12.2",
     "@lit/task": "^1.0.1",
     "@loaders.gl/core": "^4.2.2",
     "@loaders.gl/images": "^4.2.2",
@@ -91,6 +94,7 @@
     "uuid": "^11.1.0"
   },
   "devDependencies": {
+    "@lit/localize-tools": "^0.8.1",
     "@types/d3-color": "^3.1.0",
     "@types/kdbush": "^3.0.5",
     "webfontloader": "^1.6.28"

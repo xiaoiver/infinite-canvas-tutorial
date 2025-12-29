@@ -211,6 +211,7 @@ export class DrawEraser extends System {
 
   private handleBrushing(api: API, viewportX: number, viewportY: number) {
     const camera = api.getCamera();
+    const appState = api.getAppState();
     const selection = this.selections.get(camera.__id);
 
     const { pointerDownViewportX, pointerDownViewportY } = camera.read(
@@ -310,7 +311,7 @@ export class DrawEraser extends System {
               }),
             ),
             strokeWidth: 0,
-            fill: 'grey',
+            fill: appState.penbarEraser.fill,
             tessellationMethod: TesselationMethod.LIBTESS,
           },
           false,

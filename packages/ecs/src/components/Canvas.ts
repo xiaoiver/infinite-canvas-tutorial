@@ -20,6 +20,7 @@ export enum Pen {
   VECTOR_NETWORK = 'vector-network',
   COMMENT = 'comment',
   ERASER = 'eraser',
+  LASSO = 'lasso',
 }
 
 export class Canvas {

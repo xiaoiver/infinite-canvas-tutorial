@@ -189,8 +189,7 @@ export class DrawPencil extends System {
           ]);
 
           if (freehand) {
-            const outlinePoints = getStroke(points);
-            const d = getFlatSvgPathFromStroke(outlinePoints);
+            const d = getFlatSvgPathFromStroke(getStroke(points));
             node.type = 'path';
             (node as PathSerializedNode).d = d;
             (node as PathSerializedNode).fill = appState.penbarPencil.stroke;
