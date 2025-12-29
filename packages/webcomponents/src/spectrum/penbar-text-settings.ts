@@ -4,8 +4,10 @@ import { consume } from '@lit/context';
 import { AppState } from '@infinite-canvas-tutorial/ecs';
 import { apiContext, appStateContext } from '../context';
 import { ExtendedAPI } from '../API';
+import { localized, msg, str } from '@lit/localize';
 
 @customElement('ic-spectrum-penbar-text-settings')
+@localized()
 export class PenbarTextSettings extends LitElement {
   @consume({ context: appStateContext, subscribe: true })
   appState: AppState;
@@ -52,11 +54,13 @@ export class PenbarTextSettings extends LitElement {
   render() {
     const { penbarText, theme } = this.appState;
 
-    return html`<h4 style="margin: 0; margin-bottom: 8px;">Text settings</h4>
+    return html`<h4 style="margin: 0; margin-bottom: 8px;">
+        ${msg(str`Text settings`)}
+      </h4>
       <sp-field-label for="font-family">Typography</sp-field-label>
       <sp-picker
         style="width: 100%; margin-bottom: 4px;"
-        label="Font family"
+        label=${msg(str`Font family`)}
         value=${penbarText.fontFamily}
         @change=${this.handleFontFamilyChanged}
         id="font-family"
@@ -77,13 +81,13 @@ export class PenbarTextSettings extends LitElement {
       >
         <sp-picker
           style="flex: 1;"
-          label="Font style"
+          label=${msg(str`Font style`)}
           value=${penbarText.fontStyle}
           @change=${this.handleFontStyleChanged}
           id="font-style"
         >
-          <sp-menu-item value="normal">normal</sp-menu-item>
-          <sp-menu-item value="italic">italic</sp-menu-item>
+          <sp-menu-item value="normal">${msg(str`normal`)}</sp-menu-item>
+          <sp-menu-item value="italic">${msg(str`italic`)}</sp-menu-item>
         </sp-picker>
 
         <sp-number-field
@@ -95,7 +99,7 @@ export class PenbarTextSettings extends LitElement {
         ></sp-number-field>
       </div>
 
-      <sp-field-label for="fill">Fill</sp-field-label>
+      <sp-field-label for="fill">${msg(str`Fill`)}</sp-field-label>
       <sp-swatch-group
         id="fill"
         selects="single"

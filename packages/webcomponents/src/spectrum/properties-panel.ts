@@ -8,7 +8,9 @@ import {
   API,
 } from '@infinite-canvas-tutorial/ecs';
 import { apiContext, appStateContext, nodesContext } from '../context';
+import { localized, msg, str } from '@lit/localize';
 @customElement('ic-spectrum-properties-panel')
+@localized()
 export class PropertiesPanel extends LitElement {
   static styles = css`
     section {
@@ -69,7 +71,7 @@ export class PropertiesPanel extends LitElement {
     if (layersSelected.length > 1) {
       return html`<section>
         <h4>
-          Properties
+          ${msg(str`Properties`)}
           <sp-action-button quiet size="s" @click=${this.handleClose}>
             <sp-icon-close slot="icon"></sp-icon-close>
           </sp-action-button>

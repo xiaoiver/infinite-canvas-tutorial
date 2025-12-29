@@ -9,8 +9,9 @@ import {
 } from '@infinite-canvas-tutorial/ecs';
 import { apiContext, appStateContext } from '../context';
 import { ExtendedAPI } from '../API';
-
+import { localized, msg, str } from '@lit/localize';
 @customElement('ic-spectrum-stroke-content')
+@localized()
 export class StrokeContent extends LitElement {
   static styles = css`
     :host {
@@ -122,7 +123,7 @@ export class StrokeContent extends LitElement {
 
     return html`<div class="line">
         <sp-slider
-          label="Stroke width"
+          label=${msg(str`Stroke width`)}
           label-visibility="text"
           value=${strokeWidth}
           @input=${this.handleStrokeWidthChanging}
@@ -154,7 +155,9 @@ export class StrokeContent extends LitElement {
           @change=${this.handleStrokeAlignmentChanged}
         >
           <sp-action-button value="inner">
-            <sp-tooltip self-managed placement="bottom"> Inner </sp-tooltip>
+            <sp-tooltip self-managed placement="bottom">
+              ${msg(str`Inner`)}
+            </sp-tooltip>
             <sp-icon slot="icon">
               <svg
                 role="img"
@@ -182,7 +185,9 @@ export class StrokeContent extends LitElement {
             </sp-icon>
           </sp-action-button>
           <sp-action-button value="center">
-            <sp-tooltip self-managed placement="bottom"> Center </sp-tooltip>
+            <sp-tooltip self-managed placement="bottom">
+              ${msg(str`Center`)}
+            </sp-tooltip>
             <sp-icon slot="icon">
               <svg
                 role="img"
@@ -246,7 +251,7 @@ export class StrokeContent extends LitElement {
 
       <div class="line">
         <sp-field-label for="stroke-linecap" side-aligned="start"
-          >Stroke linecap</sp-field-label
+          >${msg(str`Stroke linecap`)}</sp-field-label
         >
         <sp-action-group
           id="stroke-linecap"
@@ -256,7 +261,9 @@ export class StrokeContent extends LitElement {
           @change=${this.handleStrokeLinecapChanged}
         >
           <sp-action-button value="butt">
-            <sp-tooltip self-managed placement="bottom"> Butt </sp-tooltip>
+            <sp-tooltip self-managed placement="bottom">
+              ${msg(str`Butt`)}
+            </sp-tooltip>
             <sp-icon slot="icon">
               <svg
                 role="img"
@@ -284,7 +291,9 @@ export class StrokeContent extends LitElement {
             </sp-icon>
           </sp-action-button>
           <sp-action-button value="round">
-            <sp-tooltip self-managed placement="bottom"> Round </sp-tooltip>
+            <sp-tooltip self-managed placement="bottom">
+              ${msg(str`Round`)}
+            </sp-tooltip>
             <sp-icon slot="icon">
               <svg
                 role="img"
@@ -312,7 +321,9 @@ export class StrokeContent extends LitElement {
             </sp-icon>
           </sp-action-button>
           <sp-action-button value="square">
-            <sp-tooltip self-managed placement="bottom"> Square </sp-tooltip>
+            <sp-tooltip self-managed placement="bottom">
+              ${msg(str`Square`)}
+            </sp-tooltip>
             <sp-icon slot="icon">
               <svg
                 role="img"
@@ -344,7 +355,7 @@ export class StrokeContent extends LitElement {
 
       <div class="line">
         <sp-field-label for="stroke-linejoin" side-aligned="start"
-          >Stroke linejoin</sp-field-label
+          >${msg(str`Stroke linejoin`)}</sp-field-label
         >
         <sp-action-group
           id="stroke-linejoin"
@@ -354,7 +365,9 @@ export class StrokeContent extends LitElement {
           @change=${this.handleStrokeLinejoinChanged}
         >
           <sp-action-button value="miter">
-            <sp-tooltip self-managed placement="bottom"> Miter </sp-tooltip>
+            <sp-tooltip self-managed placement="bottom">
+              ${msg(str`Miter`)}
+            </sp-tooltip>
             <sp-icon slot="icon">
               <svg
                 role="img"
@@ -382,7 +395,9 @@ export class StrokeContent extends LitElement {
             </sp-icon>
           </sp-action-button>
           <sp-action-button value="round">
-            <sp-tooltip self-managed placement="bottom"> Round </sp-tooltip>
+            <sp-tooltip self-managed placement="bottom">
+              ${msg(str`Round`)}
+            </sp-tooltip>
             <sp-icon slot="icon">
               <svg
                 role="img"
@@ -410,7 +425,9 @@ export class StrokeContent extends LitElement {
             </sp-icon>
           </sp-action-button>
           <sp-action-button value="bevel">
-            <sp-tooltip self-managed placement="bottom"> Bevel </sp-tooltip>
+            <sp-tooltip self-managed placement="bottom">
+              ${msg(str`Bevel`)}
+            </sp-tooltip>
             <sp-icon slot="icon">
               <svg
                 role="img"
@@ -442,11 +459,11 @@ export class StrokeContent extends LitElement {
 
       <div class="line">
         <sp-field-label for="marker-start" side-aligned="start"
-          >Marker start</sp-field-label
+          >${msg(str`Marker start`)}</sp-field-label
         >
         <sp-picker
           style="width: 80px;"
-          label="Marker start"
+          label=${msg(str`Marker start`)}
           value=${markerStart}
           @change=${this.handleMarkerStartChanged}
           id="marker-start"
@@ -462,11 +479,11 @@ export class StrokeContent extends LitElement {
 
       <div class="line">
         <sp-field-label for="marker-end" side-aligned="start"
-          >Marker end</sp-field-label
+          >${msg(str`Marker end`)}</sp-field-label
         >
         <sp-picker
           style="width: 80px;"
-          label="Marker end"
+          label=${msg(str`Marker end`)}
           value=${markerEnd}
           @change=${this.handleMarkerEndChanged}
           id="marker-end"

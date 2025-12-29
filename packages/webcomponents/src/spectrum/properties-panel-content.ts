@@ -6,8 +6,9 @@ import { when } from 'lit/directives/when.js';
 import { RAD_TO_DEG } from '@pixi/math';
 import { apiContext, appStateContext } from '../context';
 import { ExtendedAPI } from '../API';
-
+import { localized, msg, str } from '@lit/localize';
 @customElement('ic-spectrum-properties-panel-content')
+@localized()
 export class PropertiesPanelContent extends LitElement {
   static styles = css`
     :host {
@@ -148,7 +149,7 @@ export class PropertiesPanelContent extends LitElement {
     const { width, height, x, y, rotation } = this.node;
     const angle = rotation * RAD_TO_DEG;
 
-    return html`<sp-accordion-item label="Transform" open>
+    return html`<sp-accordion-item label=${msg(str`Transform`)} open>
       <div class="content">
         <div class="line">
           <div>
@@ -255,8 +256,8 @@ export class PropertiesPanelContent extends LitElement {
           <sp-tooltip self-managed placement="bottom">
             ${when(
               this.lockAspectRatio,
-              () => 'Constrain aspect ratio',
-              () => 'Do not constrain aspect ratio',
+              () => msg(str`Constrain aspect ratio`),
+              () => msg(str`Do not constrain aspect ratio`),
             )}
           </sp-tooltip>
           ${when(

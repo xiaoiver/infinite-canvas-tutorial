@@ -329,6 +329,78 @@ canvas.theme = Theme.DARK;
 
 We won't go into the details of the UI implementation later.
 
+## Internationalization {#i18n}
+
+Lit provides [Localization] solution, it can be automated with the right tools.
+
+### Build localized template {#build-localized-template}
+
+First, you need to wrap strings requiring internationalization using the `msg` method. Taking the main menu as an example:
+
+```ts
+import { msg, str } from '@lit/localize';
+
+<sp-tooltip slot="tooltip" self-managed placement="bottom">
+    ${msg(str`Main menu`)}
+</sp-tooltip>;
+```
+
+Then execute the following command to extract the language strings used from the source code:
+
+```bash
+lit-localize extract
+```
+
+At this point, you will obtain a series of `xlf` files. Send these `xlf` files to a translation service (or translate them manually, of course), and you will receive results similar to the following:
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<xliff version="1.2" xmlns="urn:oasis:names:tc:xliff:document:1.2">
+<file target-language="zh-Hans" source-language="en" original="lit-localize-inputs" datatype="plaintext">
+<body>
+<trans-unit id="sa10f310edb35fa9f">
+  <source>Main menu</source>
+  <target>主菜单</target>
+</trans-unit>
+</body>
+</file>
+</xliff>
+```
+
+Then execute the following command to compile the translated strings into components and place them in the source code folder:
+
+```bash
+lit-localize build
+```
+
+### Switch locale {#switch-locale}
+
+This website is built using Vitepress. You can find a language switch component in the top-right corner.
+
+```ts
+import { localized } from '@lit/localize';
+
+@customElement('ic-spectrum-top-navbar')
+@localized()
+export class TopNavbar extends LitElement {}
+```
+
+Can be loaded on demand at runtime:
+
+```ts
+import { configureLocalization } from '@lit/localize';
+// Generated via output.localeCodesModule
+import { sourceLocale, targetLocales } from './generated/locale-codes.js';
+
+export const { getLocale, setLocale } = configureLocalization({
+    sourceLocale,
+    targetLocales,
+    loadLocale: (locale) => import(`/locales/${locale}.js`),
+});
+```
+
+For demonstration purposes, we've opted to use [static imports]. Of course, this approach loads all language files, impacting the time to first content.
+
 ## Extended reading {#extended-reading}
 
 -   [Discussion about Lit on HN]
@@ -356,3 +428,5 @@ We won't go into the details of the UI implementation later.
 [Discussion about Lit on HN]: https://news.ycombinator.com/item?id=45112720
 [Lesson 18 - Refactor with ECS]: /guide/lesson-018
 [Change themes in Figma]: https://help.figma.com/hc/en-us/articles/5576781786647-Change-themes-in-Figma
+[Localization]: https://lit.dev/docs/localization/overview/
+[static imports]: https://lit.dev/docs/localization/runtime-mode/#static-imports

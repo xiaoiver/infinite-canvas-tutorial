@@ -13,8 +13,10 @@ import {
   trigger,
 } from '@spectrum-web-components/overlay';
 import { apiContext, appStateContext } from '../context';
+import { msg, str, localized } from '@lit/localize';
 
 @customElement('ic-spectrum-layers-panel-item')
+@localized()
 export class LayersPanelItem extends LitElement {
   static styles = css`
     :host {
@@ -138,7 +140,7 @@ export class LayersPanelItem extends LitElement {
           });
         }}
       >
-        <h4>Properties</h4>
+        <h4>${msg(str`Properties`)}</h4>
         <ic-spectrum-properties-panel-content
           .node=${this.node}
         ></ic-spectrum-properties-panel-content>
@@ -168,7 +170,9 @@ export class LayersPanelItem extends LitElement {
                 slot="icon"
               ></sp-icon-visibility-off>`,
           )}
-          <sp-tooltip self-managed placement="left"> Hide layer </sp-tooltip>
+          <sp-tooltip self-managed placement="left">
+            ${msg(str`Hide layer`)}
+          </sp-tooltip>
         </sp-action-button>
         <span style="padding-left: calc(24px * ${this.depth});"></span>
         <ic-spectrum-layer-thumbnail
@@ -195,7 +199,7 @@ export class LayersPanelItem extends LitElement {
     )}>
           <sp-icon-properties slot="icon"></sp-icon-properties>
           <sp-tooltip self-managed placement="bottom">
-            Layer properties</sp-tooltip
+            ${msg(str`Layer properties`)}</sp-tooltip
           >
         </sp-action-button>
       </div>
@@ -214,7 +218,7 @@ export class LayersPanelItem extends LitElement {
                 ></sp-icon-chevron-right>`,
             )}
             <sp-tooltip self-managed placement="left">
-              ${isExpanded ? 'Collapse' : 'Expand'}
+              ${isExpanded ? msg(str`Collapse`) : msg(str`Expand`)}
             </sp-tooltip>
           </sp-action-button>
         `,

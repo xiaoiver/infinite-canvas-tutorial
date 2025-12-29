@@ -5,21 +5,22 @@ import { when } from 'lit/directives/when.js';
 import { consume } from '@lit/context';
 import { apiContext, appStateContext } from '../context';
 import { Pen, Task, API, AppState } from '@infinite-canvas-tutorial/ecs';
+import { localized, msg, str } from '@lit/localize';
 
 const TaskMap = {
   [Task.SHOW_LAYERS_PANEL]: {
     icon: html`<sp-icon-layers slot="icon"></sp-icon-layers>`,
-    label: 'Show layers panel',
+    label: msg(str`Show layers panel`),
     panel: html`<ic-spectrum-layers-panel></ic-spectrum-layers-panel>`,
   },
   [Task.SHOW_PROPERTIES_PANEL]: {
     icon: html`<sp-icon-properties slot="icon"></sp-icon-properties>`,
-    label: 'Show properties panel',
+    label: msg(str`Show properties panel`),
     panel: html`<ic-spectrum-properties-panel></ic-spectrum-properties-panel>`,
   },
   [Task.SHOW_CHAT_PANEL]: {
     icon: html`<sp-icon-chat slot="icon"></sp-icon-chat>`,
-    label: 'Show chat panel',
+    label: msg(str`Show chat panel`),
     panel: html`<ic-spectrum-chat-panel></ic-spectrum-chat-panel>`,
   },
 };
@@ -38,6 +39,7 @@ export function registerTask(
 }
 
 @customElement('ic-spectrum-taskbar')
+@localized()
 export class Taskbar extends LitElement {
   static styles = css`
     .taskbar {

@@ -5,9 +5,11 @@ outline: deep
 <script setup>
 import TextEditor from '../components/TextEditor.vue';
 import DrawRect from '../components/DrawRect.vue';
+import DrawEllipse from '../components/DrawEllipse.vue';
 import DrawArrow from '../components/DrawArrow.vue';
 import Pencil from '../components/Pencil.vue';
 import PencilFreehand from '../components/PencilFreehand.vue';
+import Eraser from '../components/Eraser.vue';
 </script>
 
 The Brush Tool offers a range of drawing-related functions. Its state can be controlled via AppState:
@@ -114,6 +116,8 @@ strokeOpacity: 1,
 
 Draw an ellipse by dragging.
 
+<DrawEllipse />
+
 The default style is as follows:
 
 ```ts
@@ -201,6 +205,16 @@ strokeOpacity: 1,
 see: [Perfect freehand]
 
 <PencilFreehand />
+
+## penbarEraser
+
+The default style is as follows:
+
+```ts
+fill: 'grey',
+```
+
+<Eraser />
 
 [Loading Web Fonts]: /zh/guide/lesson-016#load-web-font
 [Perfect freehand]: /zh/guide/lesson-025#perfect-freehand

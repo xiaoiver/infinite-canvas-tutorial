@@ -7,8 +7,10 @@ import { apiContext, appStateContext } from '../context';
 import { ExtendedAPI } from '../API';
 import { fileOpen } from '../utils';
 import { createImage } from './context-menu';
+import { localized, msg, str } from '@lit/localize';
 
 @customElement('ic-spectrum-penbar')
+@localized()
 export class Penbar extends LitElement {
   static styles = css`
     .penbar {
@@ -206,7 +208,7 @@ export class Penbar extends LitElement {
               <sp-action-button value="${Pen.HAND}">
                 <sp-icon-hand slot="icon"></sp-icon-hand>
                 <sp-tooltip self-managed placement="right">
-                  Hand (Panning tool)
+                  ${msg(str`Hand (Panning tool)`)}
                 </sp-tooltip>
               </sp-action-button>
             `,
@@ -216,7 +218,9 @@ export class Penbar extends LitElement {
             () => html`
               <sp-action-button value="${Pen.SELECT}">
                 <sp-icon-select slot="icon"></sp-icon-select>
-                <sp-tooltip self-managed placement="right"> Select </sp-tooltip>
+                <sp-tooltip self-managed placement="right">
+                  ${msg(str`Select`)}
+                </sp-tooltip>
               </sp-action-button>
             `,
           )}
@@ -281,7 +285,7 @@ export class Penbar extends LitElement {
                       penbarAll.includes(Pen.DRAW_RECT),
                       () => html` <sp-menu-item value="${Pen.DRAW_RECT}">
                         <sp-icon-rectangle slot="icon"></sp-icon-rectangle>
-                        Rectangle
+                        ${msg(str`Rectangle`)}
                         <kbd slot="value">R</kbd>
                       </sp-menu-item>`,
                     )}
@@ -289,7 +293,7 @@ export class Penbar extends LitElement {
                       penbarAll.includes(Pen.DRAW_ELLIPSE),
                       () => html` <sp-menu-item value="${Pen.DRAW_ELLIPSE}">
                         <sp-icon-ellipse slot="icon"></sp-icon-ellipse>
-                        Ellipse
+                        ${msg(str`Ellipse`)}
                         <kbd slot="value">O</kbd>
                       </sp-menu-item>`,
                     )}
@@ -297,7 +301,7 @@ export class Penbar extends LitElement {
                       penbarAll.includes(Pen.DRAW_LINE),
                       () => html` <sp-menu-item value="${Pen.DRAW_LINE}">
                         <sp-icon-line slot="icon"></sp-icon-line>
-                        Line
+                        ${msg(str`Line`)}
                         <kbd slot="value">L</kbd>
                       </sp-menu-item>`,
                     )}
@@ -307,7 +311,7 @@ export class Penbar extends LitElement {
                         <sp-icon-arrow-up-right
                           slot="icon"
                         ></sp-icon-arrow-up-right>
-                        Arrow
+                        ${msg(str`Arrow`)}
                         <kbd slot="value">⇧L</kbd>
                       </sp-menu-item>`,
                     )}
@@ -315,7 +319,7 @@ export class Penbar extends LitElement {
                       penbarAll.includes(Pen.DRAW_ROUGH_RECT),
                       () => html` <sp-menu-item value="${Pen.DRAW_ROUGH_RECT}">
                         <sp-icon-rect-select slot="icon"></sp-icon-rect-select>
-                        Rough Rectangle
+                        ${msg(str`Rough Rectangle`)}
                       </sp-menu-item>`,
                     )}
                     ${when(
@@ -324,7 +328,7 @@ export class Penbar extends LitElement {
                         value="${Pen.DRAW_ROUGH_ELLIPSE}"
                       >
                         <sp-icon-ellipse slot="icon"></sp-icon-ellipse>
-                        Rough Ellipse
+                        ${msg(str`Rough Ellipse`)}
                       </sp-menu-item>`,
                     )}
                   </sp-menu>
@@ -337,7 +341,9 @@ export class Penbar extends LitElement {
             () => html`
               <sp-action-button value="${Pen.IMAGE}">
                 <sp-icon-image slot="icon"></sp-icon-image>
-                <sp-tooltip self-managed placement="right"> Image </sp-tooltip>
+                <sp-tooltip self-managed placement="right">
+                  ${msg(str`Image`)}
+                </sp-tooltip>
               </sp-action-button>
             `,
           )}
@@ -347,7 +353,9 @@ export class Penbar extends LitElement {
               <overlay-trigger placement="right">
                 <sp-action-button value="${Pen.TEXT}" slot="trigger">
                   <sp-icon-text slot="icon"></sp-icon-text>
-                  <sp-tooltip self-managed placement="right"> Text </sp-tooltip>
+                  <sp-tooltip self-managed placement="right">
+                    ${msg(str`Text`)}
+                  </sp-tooltip>
                 </sp-action-button>
                 <sp-popover slot="hover-content" style="padding: 8px;">
                   <ic-spectrum-penbar-text-settings></ic-spectrum-penbar-text-settings>
@@ -362,7 +370,7 @@ export class Penbar extends LitElement {
                 <sp-action-button value="${Pen.PENCIL}" slot="trigger">
                   <sp-icon-annotate-pen slot="icon"></sp-icon-annotate-pen>
                   <sp-tooltip self-managed placement="right">
-                    Pencil
+                    ${msg(str`Pencil`)}
                   </sp-tooltip>
                 </sp-action-button>
                 <sp-popover slot="hover-content" style="padding: 8px;">
@@ -385,7 +393,9 @@ export class Penbar extends LitElement {
             () => html`
               <sp-action-button value="${Pen.ERASER}">
                 <sp-icon-erase slot="icon"></sp-icon-erase>
-                <sp-tooltip self-managed placement="right"> Eraser </sp-tooltip>
+                <sp-tooltip self-managed placement="right">
+                  ${msg(str`Eraser`)}
+                </sp-tooltip>
               </sp-action-button>
             `,
           )}
@@ -395,7 +405,7 @@ export class Penbar extends LitElement {
               <sp-action-button value="${Pen.VECTOR_NETWORK}">
                 <sp-icon-shapes slot="icon"></sp-icon-shapes>
                 <sp-tooltip self-managed placement="right">
-                  Vector Network
+                  ${msg(str`Vector Network`)}
                 </sp-tooltip>
               </sp-action-button>
             `,
@@ -406,7 +416,7 @@ export class Penbar extends LitElement {
               <sp-action-button value="${Pen.COMMENT}">
                 <sp-icon-comment slot="icon"></sp-icon-comment>
                 <sp-tooltip self-managed placement="right">
-                  Comment
+                  ${msg(str`Comment`)}
                 </sp-tooltip>
               </sp-action-button>
             `,

@@ -12,8 +12,10 @@ import {
 } from '@infinite-canvas-tutorial/ecs';
 import { apiContext, appStateContext } from '../context';
 import { ExtendedAPI } from '../API';
+import { msg, str, localized } from '@lit/localize';
 
 @customElement('ic-spectrum-penbar-draw-settings')
+@localized()
 export class PenbarDrawSettings extends LitElement {
   static styles = css`
     .line {
@@ -243,7 +245,7 @@ export class PenbarDrawSettings extends LitElement {
   render() {
     const { theme } = this.appState;
     return html`<h4 style="margin: 0; margin-bottom: 8px;">
-        Draw shapes settings
+        ${msg(str`Draw shapes settings`)}
       </h4>
 
       <div style="display: flex; flex-direction: column; gap: 4px;">
@@ -253,7 +255,7 @@ export class PenbarDrawSettings extends LitElement {
             this.pen === Pen.DRAW_ROUGH_RECT,
           () => html`
             <div>
-              <sp-field-label for="fill">Fill</sp-field-label>
+              <sp-field-label for="fill">${msg(str`Fill`)}</sp-field-label>
               <sp-swatch-group
                 id="fill"
                 selects="single"
@@ -273,7 +275,7 @@ export class PenbarDrawSettings extends LitElement {
                 min="0"
                 max="1"
                 style="flex: 1;margin-right: 8px;"
-                label="Fill opacity"
+                label=${msg(str`Fill opacity`)}
                 label-visibility="text"
                 value=${(this.penbarDraw as FillAttributes).fillOpacity}
                 @input=${this.handleFillOpacityChanging}
@@ -293,7 +295,7 @@ export class PenbarDrawSettings extends LitElement {
         )}
 
         <div>
-          <sp-field-label for="stroke">Stroke</sp-field-label>
+          <sp-field-label for="stroke">${msg(str`Stroke`)}</sp-field-label>
           <sp-swatch-group
             id="stroke"
             selects="single"
@@ -312,7 +314,7 @@ export class PenbarDrawSettings extends LitElement {
             min="0"
             max="100"
             style="flex: 1;margin-right: 8px;"
-            label="Stroke width"
+            label=${msg(str`Stroke width`)}
             label-visibility="text"
             value=${this.penbarDraw.strokeWidth}
             @input=${this.handleStrokeWidthChanging}
@@ -338,7 +340,7 @@ export class PenbarDrawSettings extends LitElement {
             min="0"
             max="1"
             style="flex: 1;margin-right: 8px;"
-            label="Stroke opacity"
+            label=${msg(str`Stroke opacity`)}
             label-visibility="text"
             value=${this.penbarDraw.strokeOpacity}
             @input=${this.handleStrokeOpacityChanging}
@@ -360,11 +362,11 @@ export class PenbarDrawSettings extends LitElement {
           () => html`
             <div class="line">
               <sp-field-label for="marker-start" side-aligned="start"
-                >Marker start</sp-field-label
+                >${msg(str`Marker start`)}</sp-field-label
               >
               <sp-picker
                 style="width: 80px;"
-                label="Marker start"
+                label=${msg(str`Marker start`)}
                 value=${(this.penbarDraw as MarkerAttributes).markerStart}
                 @change=${this.handleMarkerStartChanged}
                 id="marker-start"
@@ -380,11 +382,11 @@ export class PenbarDrawSettings extends LitElement {
 
             <div class="line">
               <sp-field-label for="marker-end" side-aligned="start"
-                >Marker end</sp-field-label
+                >${msg(str`Marker end`)}</sp-field-label
               >
               <sp-picker
                 style="width: 80px;"
-                label="Marker end"
+                label=${msg(str`Marker end`)}
                 value=${(this.penbarDraw as MarkerAttributes).markerEnd}
                 @change=${this.handleMarkerEndChanged}
                 id="marker-end"
@@ -404,10 +406,10 @@ export class PenbarDrawSettings extends LitElement {
           () => html`
             <div>
               <sp-field-label for="rough-fill-style"
-                >Rough fill style</sp-field-label
+                >${msg(str`Rough fill style`)}</sp-field-label
               >
               <sp-picker
-                label="Rough fill style"
+                label=${msg(str`Rough fill style`)}
                 value=${(this.penbarDraw as RoughAttributes).roughFillStyle}
                 @change=${this.handleRoughFillStyleChanged}
                 id="rough-fill-style"
@@ -427,7 +429,7 @@ export class PenbarDrawSettings extends LitElement {
                 min="0"
                 max="10"
                 style="flex: 1;margin-right: 8px;"
-                label="Bowing"
+                label=${msg(str`Bowing`)}
                 label-visibility="text"
                 value=${(this.penbarDraw as RoughAttributes).roughBowing}
                 @input=${this.handleRoughBowingChanging}
@@ -450,7 +452,7 @@ export class PenbarDrawSettings extends LitElement {
                 min="0"
                 max="10"
                 style="flex: 1;margin-right: 8px;"
-                label="Roughness"
+                label=${msg(str`Roughness`)}
                 label-visibility="text"
                 value=${(this.penbarDraw as RoughAttributes).roughRoughness}
                 @input=${this.handleRoughRoughnessChanging}

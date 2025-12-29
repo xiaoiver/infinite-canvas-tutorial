@@ -1,3 +1,4 @@
+import { localized, msg, str } from '@lit/localize';
 import { css, LitElement } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
 import { when } from 'lit/directives/when.js';
@@ -279,6 +280,7 @@ export async function executePaste(
  * @see https://opensource.adobe.com/spectrum-web-components/components/imperative-api/#using-a-virtual-trigger
  */
 @customElement('ic-spectrum-context-menu')
+@localized()
 export class ContextMenu extends LitElement {
   static styles = css`
     sp-popover {
@@ -389,21 +391,21 @@ export class ContextMenu extends LitElement {
             event.target.dispatchEvent(new Event('close', { bubbles: true }));
           }}
         >
-          <h4>Actions</h4>
+          <h4>${msg(str`Actions`)}</h4>
           <sp-menu @change=${this.handleExecuteAction}>
             <sp-menu-item ?disabled=${isSelectedEmpty} value="copy">
               <sp-icon-copy slot="icon"></sp-icon-copy>
-              Copy
+              ${msg(str`Copy`)}
               <kbd slot="value">⌘C</kbd>
             </sp-menu-item>
             <sp-menu-item ?disabled=${this.isClipboardEmpty} value="paste">
               <sp-icon-paste slot="icon"></sp-icon-paste>
-              Paste
+              ${msg(str`Paste`)}
               <kbd slot="value">⌘V</kbd>
             </sp-menu-item>
             <sp-menu-item ?disabled=${isSelectedEmpty} value="cut">
               <sp-icon-cut slot="icon"></sp-icon-cut>
-              Cut
+              ${msg(str`Cut`)}
               <kbd slot="value">⌘X</kbd>
             </sp-menu-item>
             <sp-menu-divider></sp-menu-divider>
@@ -414,7 +416,7 @@ export class ContextMenu extends LitElement {
               <sp-icon-layers-bring-to-front
                 slot="icon"
               ></sp-icon-layers-bring-to-front>
-              Bring to front
+              ${msg(str`Bring to front`)}
               <kbd slot="value">⌥⌘]</kbd>
             </sp-menu-item>
             <sp-menu-item
@@ -422,7 +424,7 @@ export class ContextMenu extends LitElement {
               value="bring-forward"
             >
               <sp-icon-layers-forward slot="icon"></sp-icon-layers-forward>
-              Bring forward
+              ${msg(str`Bring forward`)}
               <kbd slot="value">⌘]</kbd>
             </sp-menu-item>
             <sp-menu-item
@@ -430,7 +432,7 @@ export class ContextMenu extends LitElement {
               value="send-backward"
             >
               <sp-icon-layers-backward slot="icon"></sp-icon-layers-backward>
-              Send backward
+              ${msg(str`Send backward`)}
               <kbd slot="value">⌘[</kbd>
             </sp-menu-item>
             <sp-menu-item
@@ -440,12 +442,12 @@ export class ContextMenu extends LitElement {
               <sp-icon-layers-send-to-back
                 slot="icon"
               ></sp-icon-layers-send-to-back>
-              Send to back
+              ${msg(str`Send to back`)}
               <kbd slot="value">⌥⌘[</kbd>
             </sp-menu-item>
             <sp-menu-divider></sp-menu-divider>
             <sp-menu-item>
-              Export as...
+              ${msg(str`Export as...`)}
               <sp-menu slot="submenu" @change=${this.handleExport}>
                 <sp-menu-item
                   value=${ExportFormat.SVG}
