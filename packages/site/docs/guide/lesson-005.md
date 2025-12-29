@@ -172,7 +172,7 @@ for (let y = top; y < bottom; y++) {
 }
 ```
 
-How do we draw straight lines in WebGL? I have previously written a piece on [在 WebGL 中绘制直线]. In a nutshell, if we don't consider the joints, we only need to stretch outwards on both sides along the normal direction, using two triangles to draw:
+How do we draw straight lines in WebGL? I have previously written a piece on [Drawing Straight Lines in WebGL (Chinese)]. In a nutshell, if we don't consider the joints, we only need to stretch outwards on both sides along the normal direction, using two triangles to draw:
 
 ![extrude line](https://pica.zhimg.com/70/v2-afa28c8cf89369a162816f21b7f53314_1440w.avis?source=172ae18b&biz_tag=Post)
 
@@ -413,9 +413,9 @@ In the shaders used in Figma / FigJam, the brightness of colors is also calculat
 A weight vector `weights` has been defined, with weights set according to the non-linear characteristics of the human eye's perception of brightness for different colors. This is commonly used to calculate brightness values in the RGB color space.
 
 ```glsl{2}
-vec3 gridColor; // 存储最终调整后的颜色值
+vec3 gridColor; // Store the final adjusted color value
 vec3 weights = vec3(0.299, 0.587, 0.114);
-float c2 = dot(rgb * rgb, weights); // 计算了RGB颜色值的加权平方和，这个值c2是颜色亮度的一个估计值
+float c2 = dot(rgb * rgb, weights); // Calculate weighted sum of squares of RGB, c2 is an estimate of color brightness
 float luminance = sqrt(c2);
 ```
 
@@ -497,7 +497,7 @@ Therefore, when wireframe is enabled, the reused indices need to be expanded. Fo
 
 ```ts
 let cursor = 0;
-const uniqueIndices = new Uint32Array(indiceNum); // 重新分配索引
+const uniqueIndices = new Uint32Array(indiceNum); // Reallocate indices
 for (let i = 0; i < indiceNum; i++) {
     const ii = this.#indexBufferData[i];
     for (let j = 0; j < bufferDatas.length; j++) {
@@ -505,7 +505,7 @@ for (let i = 0; i < indiceNum; i++) {
         const size = arrayStride / 4;
         for (let k = 0; k < size; k++) {
             bufferDatas[j][cursor * size + k] =
-                originalVertexBuffers[j][ii * size + k]; // 重新分配顶点数据
+                originalVertexBuffers[j][ii * size + k]; // Reallocate vertex data
         }
     }
     uniqueIndices[i] = cursor;
@@ -525,16 +525,16 @@ import Wireframe from '../components/Wireframe.vue'
 
 -   [thetamath]
 -   [The Best Darn Grid Shader (Yet)]
--   [WebGL 绘制网格]
--   [如何使用 WebGL 绘制平面网格线]
+-   [Drawing Grid in WebGL (Chinese)]
+-   [How to Draw Plane Grid Lines with WebGL (Chinese)]
 -   [How to Code a Subtle Shader Background Effect with React Three Fiber]
 -   [Love, derivatives and loops]
 
 [thetamath]: http://thetamath.com/app/y=x%5E(3)-x
 [GridHelper - Three.js]: https://threejs.org/docs/#api/en/helpers/GridHelper
-[WebGL 绘制网格]: https://zhuanlan.zhihu.com/p/66637363
-[如何使用 WebGL 绘制平面网格线]: https://www.zhihu.com/question/325261675/answer/3149510989
-[在 WebGL 中绘制直线]: https://zhuanlan.zhihu.com/p/59541559
+[Drawing Grid in WebGL (Chinese)]: https://zhuanlan.zhihu.com/p/66637363
+[How to Draw Plane Grid Lines with WebGL (Chinese)]: https://www.zhihu.com/question/325261675/answer/3149510989
+[Drawing Straight Lines in WebGL (Chinese)]: https://zhuanlan.zhihu.com/p/59541559
 [Triangle strip]: https://en.wikipedia.org/wiki/Triangle_strip
 [Building Flexible and Powerful Cross-Sections with GridPaper and WebGL]: https://medium.com/life-at-propeller/building-flexible-and-powerful-cross-sections-with-gridpaper-and-webgl-c5b3b9929c71
 [vertexAttribPointer]: https://developer.mozilla.org/en-US/docs/Web/API/WebGLRenderingContext/vertexAttribPointer

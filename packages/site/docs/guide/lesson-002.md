@@ -505,7 +505,7 @@ To make it easier for developers to get a sense of how drastically the pixel has
 
 -   `dFdx` Calculates how much the value of a parameter attribute has changed over the span of one pixel in the horizontal direction of the screen.
 -   `dFdy` Calculates how much the value of a parameter attribute has changed over a one-pixel span in the vertical direction of the screen.
--   `fwidth` calculates `abs(dFdx) + abs(dFdy)
+-   `fwidth` calculates `abs(dFdx) + abs(dFdy)`
 
 Therefore, we have two ways to calculate how much a parameter changes within a pixel - are there any differences between them?
 
