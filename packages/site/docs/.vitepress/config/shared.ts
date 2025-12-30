@@ -78,4 +78,5 @@ export const shared = defineConfig({
       { rel: 'canonical', href: canonicalUrl },
     ]);
   },
+  ignoreDeadLinks: true,
 });

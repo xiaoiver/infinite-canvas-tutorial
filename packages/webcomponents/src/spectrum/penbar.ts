@@ -1,13 +1,40 @@
-import { html, css, LitElement, PropertyValues } from 'lit';
+import { html, css, LitElement, PropertyValues, TemplateResult } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
 import { consume } from '@lit/context';
 import { when } from 'lit/directives/when.js';
+import { map } from 'lit/directives/map.js';
 import { AppState, Pen } from '@infinite-canvas-tutorial/ecs';
 import { apiContext, appStateContext } from '../context';
 import { ExtendedAPI } from '../API';
 import { fileOpen } from '../utils';
 import { createImage } from './context-menu';
 import { localized, msg, str } from '@lit/localize';
+
+const PenMap = {
+  [Pen.BRUSH]: {
+    icon: html`<sp-icon-brush slot="icon"></sp-icon-brush>`,
+    label: msg(str`Brush`),
+  },
+  [Pen.ERASER]: {
+    icon: html`<sp-icon-erase slot="icon"></sp-icon-erase>`,
+    label: msg(str`Eraser`),
+  },
+  [Pen.VECTOR_NETWORK]: {
+    icon: html`<sp-icon-vector-draw slot="icon"></sp-icon-vector-draw>`,
+    label: msg(str`Vector Network`),
+  },
+  [Pen.COMMENT]: {
+    icon: html`<sp-icon-comment slot="icon"></sp-icon-comment>`,
+    label: msg(str`Comment`),
+  },
+};
+
+export function registerPen(pen: Pen, icon: TemplateResult<1>, label: string) {
+  PenMap[pen] = {
+    icon,
+    label,
+  };
+}
 
 @customElement('ic-spectrum-penbar')
 @localized()
@@ -379,48 +406,22 @@ export class Penbar extends LitElement {
               </overlay-trigger>
             `,
           )}
-          ${when(
-            penbarAll.includes(Pen.BRUSH),
-            () => html`
-              <sp-action-button value="${Pen.BRUSH}">
-                <sp-icon-brush slot="icon"></sp-icon-brush>
-                <sp-tooltip self-managed placement="right"> Brush </sp-tooltip>
-              </sp-action-button>
-            `,
-          )}
-          ${when(
-            penbarAll.includes(Pen.ERASER),
-            () => html`
-              <sp-action-button value="${Pen.ERASER}">
-                <sp-icon-erase slot="icon"></sp-icon-erase>
+          ${map(penbarAll, (task) => {
+            const { icon, label } = PenMap[task] || {};
+
+            if (!icon || !label) {
+              return html``;
+            }
+
+            return html`
+              <sp-action-button value="${task}">
+                ${icon}
                 <sp-tooltip self-managed placement="right">
-                  ${msg(str`Eraser`)}
+                  ${label}
                 </sp-tooltip>
               </sp-action-button>
-            `,
-          )}
-          ${when(
-            penbarAll.includes(Pen.VECTOR_NETWORK),
-            () => html`
-              <sp-action-button value="${Pen.VECTOR_NETWORK}">
-                <sp-icon-shapes slot="icon"></sp-icon-shapes>
-                <sp-tooltip self-managed placement="right">
-                  ${msg(str`Vector Network`)}
-                </sp-tooltip>
-              </sp-action-button>
-            `,
-          )}
-          ${when(
-            penbarAll.includes(Pen.COMMENT),
-            () => html`
-              <sp-action-button value="${Pen.COMMENT}">
-                <sp-icon-comment slot="icon"></sp-icon-comment>
-                <sp-tooltip self-managed placement="right">
-                  ${msg(str`Comment`)}
-                </sp-tooltip>
-              </sp-action-button>
-            `,
-          )}
+            `;
+          })}
         </sp-action-group>
       `,
     );

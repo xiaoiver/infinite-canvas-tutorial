@@ -21,6 +21,7 @@ export enum Pen {
   COMMENT = 'comment',
   ERASER = 'eraser',
   LASSO = 'lasso',
+  LASER_POINTER = 'laser-pointer',
 }
 
 export class Canvas {
@@ -31,9 +32,14 @@ export class Canvas {
   @field.object declare element: HTMLCanvasElement | OffscreenCanvas;
 
   /**
-   * The HTML layer element.
+   * The HTML layer element, contains elements which will be affected by the camera.
    */
   @field.object declare htmlLayer: HTMLDivElement;
+
+  /**
+   * The SVG layer element, contains elements like laser pointer which will not be affected by the camera.
+   */
+  @field.object declare svgLayer: HTMLDivElement;
 
   /**
    * The width of the canvas.

@@ -82,9 +82,7 @@ export function getSvgPathFromStroke(points: number[][], closed = true) {
   const len = points.length;
 
   if (len < 4) {
-    return `M${points[0][0].toFixed(2)},${points[0][1].toFixed(2)} ${points
-      .map((p) => `L${p[0].toFixed(2)},${p[1].toFixed(2)}`)
-      .join('')}`;
+    return ``;
   }
 
   let a = points[0];
@@ -121,7 +119,12 @@ export function getFlatSvgPathFromStroke(stroke: number[][]) {
 
   faces.forEach((face) =>
     face.forEach((points) => {
-      d.push(getSvgPathFromStroke(points, false));
+      d.push(
+        getSvgPathFromStroke(points, false) ||
+          `M${points[0][0].toFixed(2)},${points[0][1].toFixed(2)} ${points
+            .map((p) => `L${p[0].toFixed(2)},${p[1].toFixed(2)}`)
+            .join('')}`,
+      );
     }),
   );
 

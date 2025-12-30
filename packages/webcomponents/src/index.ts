@@ -6,3 +6,4 @@ export * from './context';
 export * from './i18n';
 
 export { registerTask } from './spectrum/taskbar';
+export { registerPen } from './spectrum/penbar';

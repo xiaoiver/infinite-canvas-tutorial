@@ -46,6 +46,7 @@ export {
   readSystemClipboard,
   isSupportedImageFileType,
   inferXYWidthHeight,
+  getSvgPathFromStroke,
   MIME_TYPES,
   IMAGE_MIME_TYPES,
   type Gradient,

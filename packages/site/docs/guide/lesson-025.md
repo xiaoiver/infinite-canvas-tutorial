@@ -17,6 +17,7 @@ import DrawArrow from '../components/DrawArrow.vue'
 import Pencil from '../components/Pencil.vue'
 import PencilFreehand from '../components/PencilFreehand.vue'
 import Brush from '../components/Brush.vue'
+import LaserPointer from '../components/LaserPointer.vue'
 </script>
 
 # Lesson 25 - Drawing mode and brush
@@ -373,6 +374,18 @@ This doesn't quite work like a real brushstroke.
 
 Figma is able to export Brush to SVG.
 
+## Laser pointer {#laser-pointer}
+
+When implementing presentation features on the canvas, a laser pointer is an essential function. Excalidraw supports this capability, as detailed in: [laser pointer]. We can directly utilize its encapsulated [@excalidraw/laser-pointer] module, which generates a trajectory path based on a set of input point coordinates. This functionality also leverages [perfect-freehand] at its core.
+
+This feature differs from previously drawn shapes on the canvas in the following ways:
+
+1. Laser pointer trajectory rendering occurs within the viewport coordinate system, independent of the current canvas zoom level. This allows implementation within a standalone HTML container. See: [Lesson 29 - HTML container]
+2. Traces automatically fade after a set duration
+3. Designed for multi-user collaboration scenarios. See: [Lesson 20 - Awareness and Presence]
+
+<LaserPointer />
+
 ## Eraser {#eraser}
 
 Excalidraw supports the [freedraw eraser]. After selecting the eraser tool, shapes traced by the mouse cursor will appear “faded,” indicating they are about to be erased. Lifting the mouse completes the erasure.
@@ -454,3 +467,7 @@ glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
 [pressure]: https://developer.mozilla.org/docs/Web/API/PointerEvent/pressure
 [freedraw eraser]: https://github.com/excalidraw/excalidraw/issues/3682
 [non-atomic erasing for linear & freedraw shapes]: https://github.com/excalidraw/excalidraw/issues/4904
+[laser pointer]: https://github.com/excalidraw/excalidraw/issues/5351
+[@excalidraw/laser-pointer]: https://www.npmjs.com/package/@excalidraw/laser-pointer
+[Lesson 29 - HTML container]: /guide/lesson-029#create-html-container
+[Lesson 20 - Awareness and Presence]: /guide/lesson-020#awareness-presence

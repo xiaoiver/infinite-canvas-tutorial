@@ -3,14 +3,10 @@ import {
   App,
   Pen,
   DefaultPlugins,
-  RectSerializedNode,
-  Task,
 } from '@infinite-canvas-tutorial/ecs';
 import { ref, onMounted, onUnmounted } from 'vue';
 import { Event, UIPlugin } from '@infinite-canvas-tutorial/webcomponents';
 import { LaserPointerPlugin } from '@infinite-canvas-tutorial/laser-pointer';
-import { LaMaPlugin } from '@infinite-canvas-tutorial/lama';
-import { SAMPlugin } from '@infinite-canvas-tutorial/sam';
 
 const wrapper = ref<HTMLElement | null>(null);
 let api: any | undefined;
@@ -26,26 +22,21 @@ onMounted(async () => {
     api = e.detail;
 
     api.setAppState({
-      ...api.getAppState(),
-      penbarSelected: Pen.SELECT,
-      penbarAll: [Pen.SELECT, Pen.DRAW_RECT],
-      taskbarVisible: true,
-      taskbarAll: [Task.SHOW_LAYERS_PANEL, Task.SHOW_PROPERTIES_PANEL],
+      penbarSelected: Pen.LASER_POINTER,
+      penbarAll: [Pen.SELECT, Pen.DRAW_RECT, Pen.LASER_POINTER],
     });
-
-    const node: RectSerializedNode = {
-      id: 'lama-1',
+    api.updateNode({
+      id: 'draw-rect-1',
       type: 'rect',
-      x: 50,
-      y: 50,
-      width: 200,
-      height: 200,
-      fill: 'https://v3b.fal.media/files/b/0a86d421/6xSMYtyW-fm2ciM6dHEgB.png',
-    };
-
-    api.updateNode(node);
-    api.selectNodes([node]);
-    api.record();
+      x: 100,
+      y: 100,
+      width: 100,
+      height: 100,
+      fill: '#e0f2ff',
+      fillOpacity: 0.5,
+      stroke: '#147af3',
+      strokeWidth: 1,
+    });
   };
 
   canvas.addEventListener(Event.READY, onReady);
@@ -54,7 +45,7 @@ onMounted(async () => {
   if (!(window as any).worldInited) {
     (window as any).worldInited = true;
     await import('@infinite-canvas-tutorial/webcomponents/spectrum');
-    new App().addPlugins(...DefaultPlugins, UIPlugin, SAMPlugin, LaMaPlugin).run();
+    new App().addPlugins(...DefaultPlugins, UIPlugin, LaserPointerPlugin).run();
   } else {
     // 等待组件更新完成后检查API是否已经准备好
     setTimeout(() => {
@@ -102,5 +93,5 @@ onUnmounted(async () => {
 </script>
 
 <template>
-  <ic-spectrum-canvas ref="wrapper" style="width: 100%; height: 400px"></ic-spectrum-canvas>
+  <ic-spectrum-canvas ref="wrapper" style="width: 100%; height: 300px"></ic-spectrum-canvas>
 </template>

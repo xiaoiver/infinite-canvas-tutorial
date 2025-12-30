@@ -183,6 +183,7 @@ export const en = defineConfig({
               { text: 'Segment Anything Model', link: 'sam' },
               { text: 'LaMa', link: 'lama' },
               { text: 'UpscalerJS', link: 'upscaler' },
+              { text: 'Laser pointer', link: 'laser-pointer' },
             ],
           },
           {
@@ -397,6 +398,10 @@ export const en = defineConfig({
                   {
                     text: 'Pencil tool (freehand)',
                     link: 'pencil-freehand',
+                  },
+                  {
+                    text: 'Laser pointer tool',
+                    link: 'laser-pointer',
                   },
                 ],
               },

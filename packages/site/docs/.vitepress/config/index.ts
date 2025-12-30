@@ -59,6 +59,12 @@ export default defineConfig({
         'onnxruntime-web',
       ],
     },
+    optimizeDeps: {
+      exclude: [
+        '@spectrum-web-components',
+        '@infinite-canvas-tutorial/webcomponents',
+      ],
+    },
     plugins: [
       VueMacros({
         plugins: {

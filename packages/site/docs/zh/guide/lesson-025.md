@@ -11,6 +11,7 @@ import DrawArrow from '../../components/DrawArrow.vue'
 import Pencil from '../../components/Pencil.vue'
 import PencilFreehand from '../../components/PencilFreehand.vue'
 import Brush from '../../components/Brush.vue'
+import LaserPointer from '../../components/LaserPointer.vue'
 </script>
 
 # 课程 25 - 绘制模式与笔刷
@@ -366,9 +367,17 @@ if (vertexNum < 0.5) {
 
 Figma 是可以将 Brush 导出 SVG 的。
 
-## [WIP] 激光笔 {#laser}
+## 激光笔 {#laser-pointer}
 
-在画布中进行演示功能时，激光笔是一个必备的功能。Excalidraw 支持，详见：[laser pointer]，我们也可以直接使用 [@excalidraw/laser-pointer]。
+在画布中进行演示功能时，激光笔是一个必备的功能。Excalidraw 支持这一功能，详见：[laser pointer]，我们可以直接使用它封装好的 [@excalidraw/laser-pointer]，根据传入的一组点坐标生成轨迹路径，底层使用的也是 [perfect-freehand]。
+
+这一特性与之前在画布上绘制的图形不同：
+
+1. 绘制激光笔的轨迹发生在视口坐标系下，和当前画布缩放等级无关，因此可以在一个独立的 HTML 容器中完成，详见：[课程 29 - HTML 容器]
+2. 轨迹在一定时间后自动消失
+3. 考虑多人协同场景，详见：[课程 20 - Awareness 和 Presence]
+
+<LaserPointer />
 
 ## 橡皮擦 {#eraser}
 
@@ -397,7 +406,7 @@ export class DrawEraser extends System {
 
 ![Eraser tool](/eraser.gif)
 
-### 非原子化 {#non-atomic}
+### [WIP] 非原子化 {#non-atomic}
 
 以整个图形为单位擦除在大多数场景下都足够使用了，但在手绘类场景中非原子化的擦除更实用，例如将一条直线从中间断开。Excalidraw 暂时没有支持这一特性，详见：[non-atomic erasing for linear & freedraw shapes]，FigJam 也是这样。如果画布是基于 Canvas 或者 SVG 渲染的，确实无法实现这种像素级擦除效果。
 
@@ -453,3 +462,5 @@ glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
 [non-atomic erasing for linear & freedraw shapes]: https://github.com/excalidraw/excalidraw/issues/4904
 [laser pointer]: https://github.com/excalidraw/excalidraw/issues/5351
 [@excalidraw/laser-pointer]: https://www.npmjs.com/package/@excalidraw/laser-pointer
+[课程 29 - HTML 容器]: /zh/guide/lesson-029#create-html-container
+[课程 20 - Awareness 和 Presence]: /zh/guide/lesson-020#awareness-presence

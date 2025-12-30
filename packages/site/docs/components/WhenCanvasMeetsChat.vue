@@ -8,8 +8,9 @@ import {
 } from '@infinite-canvas-tutorial/ecs';
 import { ref, onMounted, onUnmounted } from 'vue';
 import { Event, UIPlugin } from '@infinite-canvas-tutorial/webcomponents';
-import { FalAIPlugin } from '@infinite-canvas-tutorial/fal-ai';
 import { ChatPlugin } from '@infinite-canvas-tutorial/chat';
+import { LaserPointerPlugin } from '@infinite-canvas-tutorial/laser-pointer';
+import { FalAIPlugin } from '@infinite-canvas-tutorial/fal-ai';
 
 const wrapper = ref<HTMLElement | null>(null);
 let api: any | undefined;
@@ -139,7 +140,7 @@ onMounted(async () => {
       cameraZoom: 0.35,
       // penbarSelected: Pen.VECTOR_NETWORK,
       penbarSelected: Pen.SELECT,
-      penbarAll: [Pen.HAND, Pen.SELECT, Pen.DRAW_RECT, Pen.DRAW_ELLIPSE, Pen.DRAW_LINE, Pen.DRAW_ARROW, Pen.DRAW_ROUGH_RECT, Pen.DRAW_ROUGH_ELLIPSE, Pen.IMAGE, Pen.TEXT, Pen.PENCIL, Pen.ERASER],
+      penbarAll: [Pen.HAND, Pen.SELECT, Pen.DRAW_RECT, Pen.DRAW_ELLIPSE, Pen.DRAW_LINE, Pen.DRAW_ARROW, Pen.DRAW_ROUGH_RECT, Pen.DRAW_ROUGH_ELLIPSE, Pen.IMAGE, Pen.TEXT, Pen.PENCIL, Pen.ERASER, Pen.LASER_POINTER],
       penbarText: {
         ...api.getAppState().penbarText,
         fontFamily: 'system-ui',
@@ -201,7 +202,7 @@ onMounted(async () => {
   if (!(window as any).worldInited) {
     (window as any).worldInited = true;
     await import('@infinite-canvas-tutorial/webcomponents/spectrum');
-    new App().addPlugins(...DefaultPlugins, UIPlugin, ChatPlugin, FalAIPlugin.configure({
+    new App().addPlugins(...DefaultPlugins, UIPlugin, ChatPlugin, LaserPointerPlugin, FalAIPlugin.configure({
       credentials: 'your-fal-ai-credentials-here',
     })).run();
   } else {

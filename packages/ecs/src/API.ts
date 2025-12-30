@@ -283,6 +283,10 @@ export class API {
     return this.#canvas.read(Canvas).htmlLayer as HTMLDivElement;
   }
 
+  getSvgLayer() {
+    return this.#canvas.read(Canvas).svgLayer as HTMLDivElement;
+  }
+
   /**
    * Create a new canvas.
    */

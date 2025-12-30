@@ -12,6 +12,7 @@ import {
 } from '@infinite-canvas-tutorial/ecs';
 import { ref, onMounted, onUnmounted } from 'vue';
 import { Event, UIPlugin } from '@infinite-canvas-tutorial/webcomponents';
+import { LaserPointerPlugin } from '@infinite-canvas-tutorial/laser-pointer';
 import * as Y from 'yjs';
 import deepEqual from "deep-equal";
 
@@ -156,7 +157,7 @@ onMounted(async () => {
   if (!(window as any).worldInited) {
     (window as any).worldInited = true;
     await import('@infinite-canvas-tutorial/webcomponents/spectrum');
-    new App().addPlugins(...DefaultPlugins, UIPlugin).run();
+    new App().addPlugins(...DefaultPlugins, UIPlugin, LaserPointerPlugin).run();
   }
 });
 
