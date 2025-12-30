@@ -10,6 +10,7 @@ import {
 import { ref, onMounted, onUnmounted } from 'vue';
 import { Event, UIPlugin } from '@infinite-canvas-tutorial/webcomponents';
 import { LaserPointerPlugin } from '@infinite-canvas-tutorial/laser-pointer';
+
 import * as Y from 'yjs';
 import deepEqual from "deep-equal";
 

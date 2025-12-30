@@ -9,6 +9,7 @@ import { ref, onMounted, onUnmounted } from 'vue';
 import { Event, UIPlugin } from '@infinite-canvas-tutorial/webcomponents';
 import { LaserPointerPlugin } from '@infinite-canvas-tutorial/laser-pointer';
 
+
 const wrapper = ref<HTMLElement | null>(null);
 let api: any | undefined;
 let onReady: ((api: CustomEvent<any>) => void) | undefined;

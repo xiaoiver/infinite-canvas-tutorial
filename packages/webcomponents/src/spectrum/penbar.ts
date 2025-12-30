@@ -27,14 +27,18 @@ const PenMap = {
     icon: html`<sp-icon-comment slot="icon"></sp-icon-comment>`,
     label: msg(str`Comment`),
   },
+  [Pen.LASER_POINTER]: {
+    icon: html`<sp-icon-events slot="icon"></sp-icon-events>`,
+    label: msg(str`Laser Pointer`),
+  },
 };
 
-export function registerPen(pen: Pen, icon: TemplateResult<1>, label: string) {
-  PenMap[pen] = {
-    icon,
-    label,
-  };
-}
+// export function registerPen(pen: Pen, icon: TemplateResult<1>, label: string) {
+//   PenMap[pen] = {
+//     icon,
+//     label,
+//   };
+// }
 
 @customElement('ic-spectrum-penbar')
 @localized()

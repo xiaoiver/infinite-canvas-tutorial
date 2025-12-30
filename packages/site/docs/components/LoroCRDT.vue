@@ -13,6 +13,7 @@ import {
 import { ref, onMounted, onUnmounted } from 'vue';
 import { Event, UIPlugin } from '@infinite-canvas-tutorial/webcomponents';
 import { LaserPointerPlugin } from '@infinite-canvas-tutorial/laser-pointer';
+
 import { LoroDoc, LoroList, LoroMap, OpId, VersionVector } from "loro-crdt";
 import deepEqual from "deep-equal";
 

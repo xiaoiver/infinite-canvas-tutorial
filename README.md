@@ -320,6 +320,7 @@ If you want to use it in your own project, you can refer to:
 -   Pencil mode, including freehand
 -   Brush mode
 -   Eraser tool, try to support non-atomic effect
+-   Laser pointer tool for presentation
 
 |                Draw rect mode                 |                 Draw arrow                  |
 | :-------------------------------------------: | :-----------------------------------------: |
