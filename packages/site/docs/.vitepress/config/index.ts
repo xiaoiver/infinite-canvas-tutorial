@@ -11,6 +11,7 @@ import topLevelAwait from 'vite-plugin-top-level-await';
 import { shared } from './shared';
 import { en } from './en';
 import { zh } from './zh';
+import { ko } from './ko';
 
 export default defineConfig({
   markdown: {
@@ -32,6 +33,7 @@ export default defineConfig({
       ...en,
     },
     zh: { label: '简体中文', ...zh },
+    ko: { label: '한국어', ...ko },
   },
   vue: {
     template: {
