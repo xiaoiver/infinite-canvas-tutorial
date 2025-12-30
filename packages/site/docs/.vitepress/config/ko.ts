@@ -48,7 +48,7 @@ export const ko = defineConfig({
               },
               { text: '강의 002 - 원 그리기', link: 'lesson-002' },
               {
-                text: '강의 003 - 씬 그래프와 변형',
+                text: '강의 003 - 씬 그래프와 변환',
                 link: 'lesson-003',
               },
               { text: '강의 004 - 카메라', link: 'lesson-004' },
