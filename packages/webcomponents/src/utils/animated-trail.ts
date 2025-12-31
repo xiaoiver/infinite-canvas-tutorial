@@ -174,13 +174,9 @@ export class AnimatedTrail implements Trail {
   }
 
   private drawTrail(trail: LaserPointer): string {
-    const { laserPointerSize } = this.api.getAppState();
-
-    const _stroke = trail
-      .getStrokeOutline(laserPointerSize ?? trail.options.size)
-      .map(([x, y]) => {
-        return [x, y];
-      });
+    const _stroke = trail.getStrokeOutline(trail.options.size).map(([x, y]) => {
+      return [x, y];
+    });
 
     const stroke = this.trailAnimation
       ? _stroke.slice(0, _stroke.length / 2)

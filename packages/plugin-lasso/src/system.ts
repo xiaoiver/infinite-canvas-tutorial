@@ -1,12 +1,15 @@
 import {
+  Camera,
   Canvas,
+  ComputedCamera,
   Cursor,
   Input,
   InputPoint,
   Pen,
+  RBush,
   System,
 } from '@infinite-canvas-tutorial/ecs';
-import { LaserTrails } from './laser-trails';
+import { LassoTrail } from './lasso-trail';
 import {
   ExtendedAPI,
   SVG_NS,
@@ -14,7 +17,7 @@ import {
 } from '@infinite-canvas-tutorial/webcomponents';
 import { html } from 'lit';
 import { msg, str } from '@lit/localize';
-export class LaserPointerSystem extends System {
+export class LassoSystem extends System {
   private readonly canvases = this.query((q) =>
     q.added.and.current.with(Canvas),
   );
@@ -22,7 +25,7 @@ export class LaserPointerSystem extends System {
   private selections = new Map<
     number,
     {
-      laserTrails: LaserTrails;
+      lassoTrail: LassoTrail;
       svgSVGElement: SVGSVGElement;
     }
   >();
@@ -32,16 +35,21 @@ export class LaserPointerSystem extends System {
   constructor() {
     super();
 
-    this.query((q) => q.using(Canvas, InputPoint, Input, Cursor).write);
+    this.query(
+      (q) =>
+        q
+          .using(Canvas, InputPoint, Input, Cursor)
+          .write.and.using(Camera, ComputedCamera, RBush).read,
+    );
   }
 
   execute() {
     this.canvases.added.forEach((canvas) => {
       const { api } = canvas.read(Canvas);
       (api as ExtendedAPI).registerPen(
-        Pen.LASER_POINTER,
-        html`<sp-icon-events slot="icon"></sp-icon-events>`,
-        msg(str`Laser Pointer`),
+        Pen.LASSO,
+        html`<sp-icon-region-select slot="icon"></sp-icon-region-select>`,
+        msg(str`Lasso`),
       );
     });
 
@@ -51,7 +59,7 @@ export class LaserPointerSystem extends System {
       const pen = appState.penbarSelected;
       const camera = api.getCamera();
 
-      if (pen !== Pen.LASER_POINTER) {
+      if (pen !== Pen.LASSO) {
         return;
       }
 
@@ -63,7 +71,7 @@ export class LaserPointerSystem extends System {
       let selection = this.selections.get(camera.__id);
       if (!selection) {
         this.selections.set(camera.__id, {
-          laserTrails: new LaserTrails(this.handler, api),
+          lassoTrail: new LassoTrail(this.handler, api),
           svgSVGElement: document.createElementNS(
             SVG_NS,
             'svg',
@@ -80,14 +88,14 @@ export class LaserPointerSystem extends System {
       // Clear previous points
       if (input.pointerDownTrigger) {
         const [x, y] = input.pointerViewport;
-        selection.laserTrails.start(selection.svgSVGElement);
-        selection.laserTrails.startPath(x, y);
+        selection.lassoTrail.start(selection.svgSVGElement);
+        selection.lassoTrail.startPath(x, y);
       }
 
       // Cancel erasing
       if (input.key === 'Escape') {
-        selection.laserTrails.clearTrails();
-        selection.laserTrails.stop();
+        selection.lassoTrail.clearTrails();
+        selection.lassoTrail.stop();
       }
 
       // Dragging
@@ -103,18 +111,18 @@ export class LaserPointerSystem extends System {
           return;
         }
 
-        selection.laserTrails.addPointToPath(x, y);
+        selection.lassoTrail.addPointToPath(x, y);
       });
 
       if (input.pointerUpTrigger) {
-        selection.laserTrails.endPath();
+        selection.lassoTrail.endPath();
       }
     });
   }
 
   finalize(): void {
-    this.selections.forEach(({ laserTrails, svgSVGElement }) => {
-      laserTrails.stop();
+    this.selections.forEach(({ lassoTrail, svgSVGElement }) => {
+      lassoTrail.stop();
       svgSVGElement.remove();
     });
     this.selections.clear();

@@ -132,6 +132,7 @@ export const zh = defineConfig({
               { text: 'LaMa', link: 'lama' },
               { text: 'UpscalerJS', link: 'upscaler' },
               { text: '激光笔', link: 'laser-pointer' },
+              { text: '套索工具', link: 'lasso' },
             ],
           },
           {
@@ -347,6 +348,10 @@ export const zh = defineConfig({
                   {
                     text: '激光笔工具',
                     link: 'laser-pointer',
+                  },
+                  {
+                    text: '套索工具',
+                    link: 'lasso',
                   },
                 ],
               },

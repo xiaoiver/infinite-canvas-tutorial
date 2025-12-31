@@ -8,7 +8,11 @@ export const ko = defineConfig({
   keywords: ['무한 캔버스', '캔버스', 'webgl', 'webgpu', 'ecs'],
   themeConfig: {
     nav: [
-      { text: '가이드', link: '/ko/guide/lesson-001', activeMatch: '/ko/guide/' },
+      {
+        text: '가이드',
+        link: '/ko/guide/lesson-001',
+        activeMatch: '/ko/guide/',
+      },
       {
         text: '예제',
         link: '/ko/example/solar-system',
@@ -183,6 +187,8 @@ export const ko = defineConfig({
               { text: 'Segment Anything Model', link: 'sam' },
               { text: 'LaMa', link: 'lama' },
               { text: 'UpscalerJS', link: 'upscaler' },
+              { text: 'Laser pointer', link: 'laser-pointer' },
+              { text: 'Lasso', link: 'lasso' },
             ],
           },
           {
@@ -398,6 +404,14 @@ export const ko = defineConfig({
                     text: '연필 도구 (자유 곡선)',
                     link: 'pencil-freehand',
                   },
+                  {
+                    text: '레이저 포인터',
+                    link: 'laser-pointer',
+                  },
+                  {
+                    text: '로프 도구',
+                    link: 'lasso',
+                  },
                 ],
               },
               {
@@ -477,4 +491,3 @@ export const ko = defineConfig({
     },
   },
 });
-

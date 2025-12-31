@@ -403,6 +403,10 @@ export const en = defineConfig({
                     text: 'Laser pointer tool',
                     link: 'laser-pointer',
                   },
+                  {
+                    text: 'Lasso tool',
+                    link: 'lasso',
+                  },
                 ],
               },
               {

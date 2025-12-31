@@ -191,6 +191,8 @@ export class Penbar extends LitElement {
     }
 
     const pens = this.api.getPens();
+
+    console.log('pens', pens);
     const { penbarAll, penbarSelected, penbarVisible } = this.api.getAppState();
     return when(
       penbarVisible,

@@ -114,18 +114,63 @@ if (input.key === 'Escape') {
 }
 ```
 
-## [WIP] 套索工具 {#lasso-selection}
+## 套索工具 {#lasso-selection}
 
 相较于框选工具，套索工具可以通过不规则的多边形完成更精细的选取。
 
 -   [Feature Request: Lasso Selection (free selection) in Excalidraw]
 -   [lasso-tool-figma]
 
+在基于 AI 的图像编辑中，套索也可以更精细地创建 mask 完成 inpainting。下图为 Figma 的效果，选择后可以擦除或者分离图层：
+
+![source: https://help.figma.com/hc/en-us/articles/24004542669463-Make-or-edit-an-image-with-AI#h_01KBJQAF0G6X98H5JJ8GBAPTGP](https://help.figma.com/hc/article_attachments/36912285044247)
+
 ### 绘制套索 {#draw-lasso}
 
-在 [课程 25 - 铅笔工具] 中我们已经介绍过如何自由绘制折线。
+在 [课程 25 - 铅笔工具] 中我们已经介绍过如何自由绘制折线。我们依然在 SVG 容器中绘制套索路径，一般采用带有动画效果（蚂蚁线）的虚线表示。
+
+首先将视口坐标系下的点坐标转换到 Canvas 坐标系下。然后根据当前的相机缩放等级对路径进行简化，显然在高缩放等级下需要更精细的选择粒度，反之亦然。另外更少的顶点既能提升渲染性能，也能提升后续的相交性检测效率：
+
+```ts
+import simplify from 'simplify-js';
+
+let lassoPath = super
+    .getCurrentTrail()
+    ?.originalPoints?.map((p) => ({ x: p[0], y: p[1] }));
+
+const simplifyDistance = 5 / this.api.getAppState().cameraZoom;
+selectByLassoPath(simplify(lassoPath, simplifyDistance).map((p) => [p.x, p.y]));
+```
 
 ### 多边形的相交性检测 {#polygon-intersection}
+
+现在我们创建了一个 Path，需要获取场景中与之相交的图形。依旧先使用 [课程 8 - 使用空间索引加速]
+
+```ts
+function selectByLassoPath(api: API, lassoPath: [number, number][]) {
+    const lassoBounds = lassoPath.reduce(
+        (acc, item) => {
+            return [
+                Math.min(acc[0], item[0]),
+                Math.min(acc[1], item[1]),
+                Math.max(acc[2], item[0]),
+                Math.max(acc[3], item[1]),
+            ];
+        },
+        [Infinity, Infinity, -Infinity, -Infinity],
+    ) as [number, number, number, number];
+
+    // Hit-test with rbush
+    const elements = api.elementsFromBBox(
+        lassoBounds[0],
+        lassoBounds[1],
+        lassoBounds[2],
+        lassoBounds[3],
+    );
+
+    // TODO: filter locked elements
+}
+```
 
 [课程 14 - 选择模式]: /zh/guide/lesson-014#select-mode
 [课程 21 - Transformer]: /zh/guide/lesson-021

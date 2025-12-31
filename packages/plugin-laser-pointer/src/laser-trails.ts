@@ -1,8 +1,10 @@
 import { API } from '@infinite-canvas-tutorial/ecs';
 import type { LaserPointerOptions } from '@excalidraw/laser-pointer';
-import { AnimatedTrail } from './animated-trail';
-import type { Trail } from './animated-trail';
-import type { AnimationFrameHandler } from './animation-frame-handler';
+import { AnimatedTrail } from '@infinite-canvas-tutorial/webcomponents';
+import type {
+  Trail,
+  AnimationFrameHandler,
+} from '@infinite-canvas-tutorial/webcomponents';
 
 /**
  * Exponential ease-out method
@@ -31,7 +33,9 @@ export class LaserTrails implements Trail {
   }
 
   private getTrailOptions() {
+    const { laserPointerSize } = this.api.getAppState();
     return {
+      size: laserPointerSize ?? 2,
       simplify: 0,
       streamline: 0.4,
       sizeMapping: (c) => {
