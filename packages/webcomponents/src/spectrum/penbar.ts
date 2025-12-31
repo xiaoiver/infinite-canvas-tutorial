@@ -1,4 +1,4 @@
-import { html, css, LitElement, PropertyValues, TemplateResult } from 'lit';
+import { html, css, LitElement, PropertyValues } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
 import { consume } from '@lit/context';
 import { when } from 'lit/directives/when.js';
@@ -9,36 +9,6 @@ import { ExtendedAPI } from '../API';
 import { fileOpen } from '../utils';
 import { createImage } from './context-menu';
 import { localized, msg, str } from '@lit/localize';
-
-const PenMap = {
-  [Pen.BRUSH]: {
-    icon: html`<sp-icon-brush slot="icon"></sp-icon-brush>`,
-    label: msg(str`Brush`),
-  },
-  [Pen.ERASER]: {
-    icon: html`<sp-icon-erase slot="icon"></sp-icon-erase>`,
-    label: msg(str`Eraser`),
-  },
-  [Pen.VECTOR_NETWORK]: {
-    icon: html`<sp-icon-vector-draw slot="icon"></sp-icon-vector-draw>`,
-    label: msg(str`Vector Network`),
-  },
-  [Pen.COMMENT]: {
-    icon: html`<sp-icon-comment slot="icon"></sp-icon-comment>`,
-    label: msg(str`Comment`),
-  },
-  [Pen.LASER_POINTER]: {
-    icon: html`<sp-icon-events slot="icon"></sp-icon-events>`,
-    label: msg(str`Laser Pointer`),
-  },
-};
-
-// export function registerPen(pen: Pen, icon: TemplateResult<1>, label: string) {
-//   PenMap[pen] = {
-//     icon,
-//     label,
-//   };
-// }
 
 @customElement('ic-spectrum-penbar')
 @localized()
@@ -220,6 +190,7 @@ export class Penbar extends LitElement {
           : Pen.DRAW_RECT;
     }
 
+    const pens = this.api.getPens();
     const { penbarAll, penbarSelected, penbarVisible } = this.api.getAppState();
     return when(
       penbarVisible,
@@ -411,7 +382,7 @@ export class Penbar extends LitElement {
             `,
           )}
           ${map(penbarAll, (task) => {
-            const { icon, label } = PenMap[task] || {};
+            const { icon, label } = pens[task] || {};
 
             if (!icon || !label) {
               return html``;

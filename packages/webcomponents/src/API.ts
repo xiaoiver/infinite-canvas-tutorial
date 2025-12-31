@@ -1,3 +1,4 @@
+import { msg, str } from '@lit/localize';
 import {
   Canvas,
   ComputedCamera,
@@ -5,8 +6,9 @@ import {
   API,
   StateManagement,
   Commands,
+  Pen,
 } from '@infinite-canvas-tutorial/ecs';
-import { type LitElement } from 'lit';
+import { type LitElement, type TemplateResult, html } from 'lit';
 import { Event } from './event';
 
 export interface Comment {
@@ -41,6 +43,25 @@ export const pendingCanvases: {
   canvas: Partial<Canvas>;
   camera: Partial<ComputedCamera>;
 }[] = [];
+
+const PenMap = {
+  [Pen.BRUSH]: {
+    icon: html`<sp-icon-brush slot="icon"></sp-icon-brush>`,
+    label: msg(str`Brush`),
+  },
+  [Pen.ERASER]: {
+    icon: html`<sp-icon-erase slot="icon"></sp-icon-erase>`,
+    label: msg(str`Eraser`),
+  },
+  [Pen.VECTOR_NETWORK]: {
+    icon: html`<sp-icon-vector-draw slot="icon"></sp-icon-vector-draw>`,
+    label: msg(str`Vector Network`),
+  },
+  [Pen.COMMENT]: {
+    icon: html`<sp-icon-comment slot="icon"></sp-icon-comment>`,
+    label: msg(str`Comment`),
+  },
+};
 
 /**
  * Emit CustomEvents for the canvas.
@@ -137,5 +158,21 @@ export class ExtendedAPI extends API {
   }
   getThreads() {
     return this.#threads;
+  }
+
+  /**
+   * UIs
+   */
+  registerPen(pen: Pen, icon: TemplateResult<1>, label: string) {
+    PenMap[pen] = {
+      icon,
+      label,
+    };
+  }
+  unregisterPen(pen: Pen) {
+    delete PenMap[pen];
+  }
+  getPens() {
+    return PenMap;
   }
 }
