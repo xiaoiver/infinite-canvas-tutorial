@@ -1,4 +1,5 @@
-import { API } from '@infinite-canvas-tutorial/ecs';
+import { isPolygonsIntersect } from '@antv/util';
+import { API, Rect } from '@infinite-canvas-tutorial/ecs';
 
 export function selectByLassoPath(api: API, lassoPath: [number, number][]) {
   const lassoBounds = lassoPath.reduce(
@@ -20,5 +21,30 @@ export function selectByLassoPath(api: API, lassoPath: [number, number][]) {
     lassoBounds[3],
   );
 
-  console.log('elements', elements);
+  // TODO: filter locked elements
+  const selectedElements = [];
+
+  elements.forEach((e) => {
+    const points = [];
+    if (e.has(Rect)) {
+      // FIXME: Account for the global transform
+      const { x, y, width, height } = api.getNodeByEntity(e);
+      points.push(
+        [x, y],
+        [x + width, y],
+        [x + width, y + height],
+        [x, y + height],
+      );
+    }
+
+    if (points.length === 0) {
+      return;
+    }
+
+    if (isPolygonsIntersect(lassoPath, points)) {
+      selectedElements.push(e);
+    }
+  });
+
+  return selectedElements;
 }

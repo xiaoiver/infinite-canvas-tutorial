@@ -48,6 +48,7 @@
     "localize:build": "lit-localize build"
   },
   "dependencies": {
+    "@antv/util": "^3.3.10",
     "@excalidraw/laser-pointer": "^1.3.2",
     "@infinite-canvas-tutorial/ecs": "workspace:*",
     "@infinite-canvas-tutorial/webcomponents": "workspace:*",

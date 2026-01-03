@@ -6,6 +6,7 @@ publish: false
 
 <script setup>
 import MultiSelection from '../components/MultiSelection.vue'
+import Lasso from '../components/Lasso.vue'
 </script>
 
 # Lesson 26 - Selection tool
@@ -113,9 +114,100 @@ if (input.key === 'Escape') {
 }
 ```
 
-## [WIP] Lasso selection {#lasso-selection}
+## Lasso selection {#lasso-selection}
 
-[lasso-tool-figma]
+Compared to the Rectangular Marquee Tool, the Lasso Tool enables more precise selections by creating irregular polygons.
+
+-   [Feature Request: Lasso Selection (free selection) in Excalidraw]
+-   [lasso-tool-figma]
+
+In AI-based image editing, the lasso tool can also create masks with greater precision to perform inpainting. The image below shows the effect in Figma, where selected areas can be erased or separated into layers:
+
+![source: https://help.figma.com/hc/en-us/articles/24004542669463-Make-or-edit-an-image-with-AI#h_01KBJQAF0G6X98H5JJ8GBAPTGP](https://help.figma.com/hc/article_attachments/36912285044247)
+
+### Draw lasso {#draw-lasso}
+
+In [Lesson 25 - Pencil Tool], we covered how to freely draw polyline paths. We continue to draw lasso paths within the SVG container, typically represented by dashed lines with animation effects (ant line).
+
+```html
+<path d="...">
+    <animate
+        attribute-name="stroke-dashoffset"
+        stroke-dasharray="7 7"
+        stroke-dashoffset="10"
+        from="0"
+        to="-14"
+        dur="0.3s"
+    />
+</path>
+```
+
+First, convert the point coordinates from the viewport coordinate system to the canvas coordinate system. Then simplify the path based on the current camera zoom level—obviously requiring finer selection granularity at high zoom levels and vice versa. Additionally, fewer vertices improve both rendering performance and the efficiency of subsequent intersection detection:
+
+```ts
+import simplify from 'simplify-js';
+
+let lassoPath = super
+    .getCurrentTrail()
+    ?.originalPoints?.map((p) => ({ x: p[0], y: p[1] }));
+
+const simplifyDistance = 5 / this.api.getAppState().cameraZoom;
+selectByLassoPath(simplify(lassoPath, simplifyDistance).map((p) => [p.x, p.y]));
+```
+
+<Lasso />
+
+### Intersection detection of polygons {#polygon-intersection}
+
+Now that we've created a Path, we need to retrieve the geometry intersecting it in the scene. As before, we'll start by using [Lesson 8 - Using Spatial Indexing for Acceleration].
+
+```ts
+function selectByLassoPath(api: API, lassoPath: [number, number][]) {
+    const lassoBounds = lassoPath.reduce(
+        (acc, item) => {
+            return [
+                Math.min(acc[0], item[0]),
+                Math.min(acc[1], item[1]),
+                Math.max(acc[2], item[0]),
+                Math.max(acc[3], item[1]),
+            ];
+        },
+        [Infinity, Infinity, -Infinity, -Infinity],
+    ) as [number, number, number, number];
+
+    // Hit-test with rbush
+    const elements = api.elementsFromBBox(
+        lassoBounds[0],
+        lassoBounds[1],
+        lassoBounds[2],
+        lassoBounds[3],
+    );
+
+    // TODO: filter locked elements
+}
+```
+
+After passing the rapid bounding box detection, two scenarios must be handled: the lasso is entirely within the graphic; the lasso intersects with the graphic.
+
+```ts
+function isPolygonsIntersect(points1: number[][], points2: number[][]) {
+    let isIn = false;
+    // Determine whether a point lies inside a polygon. If any point is inside another polygon, return true.
+    points2.forEach((point) => {
+        if (isPointInPolygon(points1, point[0], point[1])) {
+            isIn = true;
+            return false;
+        }
+    });
+    if (isIn) {
+        return true;
+    }
+}
+```
+
+## Extended reading {#extended-reading}
+
+-   [How do I determine if two convex polygons intersect?]
 
 [Lesson 14 - Selection Mode]: /guide/lesson-014#select-mode
 [Lesson 21 - Transformer]: /guide/lesson-021
@@ -124,3 +216,6 @@ if (input.key === 'Escape') {
 [Make selections with the Rectangular Marquee tool]: https://helpx.adobe.com/photoshop/using/tool-techniques/rectangular-marquee-tool.html
 [Lesson 8 - Using Spatial Indexing for Acceleration]: /guide/lesson-008#using-spatial-indexing
 [lasso-tool-figma]: https://github.com/kernel-picnic/lasso-tool-figma
+[Feature Request: Lasso Selection (free selection) in Excalidraw]: https://github.com/excalidraw/excalidraw/issues/6350
+[Lesson 25 - Pencil tool]: /guide/lesson-025#pencil-tool
+[How do I determine if two convex polygons intersect?]: https://stackoverflow.com/questions/753140/how-do-i-determine-if-two-convex-polygons-intersect

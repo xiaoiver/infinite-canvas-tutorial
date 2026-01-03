@@ -9,6 +9,7 @@ import {
 import { ref, onMounted, onUnmounted } from 'vue';
 import { Event, UIPlugin } from '@infinite-canvas-tutorial/webcomponents';
 import { LaserPointerPlugin } from '@infinite-canvas-tutorial/laser-pointer';
+import { LassoPlugin } from '@infinite-canvas-tutorial/lasso';
 import { ChatPlugin } from '@infinite-canvas-tutorial/chat';
 import { FalAIPlugin } from '@infinite-canvas-tutorial/fal-ai';
 

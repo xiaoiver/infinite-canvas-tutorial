@@ -336,6 +336,10 @@ If you want to use it in your own project, you can refer to:
 -   Marquee selection
 -   Lasso tool
 
+|                Marquee selection                 |                 Lasso selection                  |
+| :----------------------------------------------: | :----------------------------------------------: |
+| ![marquee selection](./screenshots/lesson26.gif) | ![lasso selection](./screenshots/lesson26-2.gif) |
+
 ## Lesson 27 - Snap and alignment [🔗](https://infinitecanvas.cc/guide/lesson-027)
 
 -   Snap to pixel grid

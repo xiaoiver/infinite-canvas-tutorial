@@ -2,7 +2,12 @@
  * Borrow from https://github.com/excalidraw/excalidraw/blob/master/packages/excalidraw/lasso/index.ts
  */
 
-import { API } from '@infinite-canvas-tutorial/ecs';
+import {
+  API,
+  Pen,
+  TRANSFORMER_ANCHOR_STROKE_COLOR,
+  TRANSFORMER_MASK_FILL_COLOR,
+} from '@infinite-canvas-tutorial/ecs';
 import { AnimatedTrail } from '@infinite-canvas-tutorial/webcomponents';
 import type { AnimationFrameHandler } from '@infinite-canvas-tutorial/webcomponents';
 import { selectByLassoPath } from './utils';
@@ -17,6 +22,13 @@ export const easeOut = (k: number) => {
 
 export class LassoTrail extends AnimatedTrail {
   constructor(animationFrameHandler: AnimationFrameHandler, api: API) {
+    const {
+      lassoTrailStroke = TRANSFORMER_ANCHOR_STROKE_COLOR,
+      lassoTrailStrokeDasharray,
+      lassoTrailStrokeDashoffset,
+      lassoTrailFill = TRANSFORMER_MASK_FILL_COLOR,
+      lassoTrailFillOpacity = 0.5,
+    } = api.getAppState();
     super(animationFrameHandler, api, {
       animateTrail: true,
       streamline: 0.4,
@@ -34,8 +46,11 @@ export class LassoTrail extends AnimatedTrail {
 
         return Math.min(easeOut(l), easeOut(t));
       },
-      fill: () => 'rgba(105,101,219,0.05)',
-      stroke: () => 'rgba(105,101,219)',
+      fill: () => lassoTrailFill,
+      stroke: () => lassoTrailStroke,
+      fillOpacity: () => lassoTrailFillOpacity,
+      strokeDasharray: lassoTrailStrokeDasharray,
+      strokeDashoffset: lassoTrailStrokeDashoffset,
     });
   }
 
@@ -80,10 +95,22 @@ export class LassoTrail extends AnimatedTrail {
         this.api.viewport2Canvas({ x: p[0], y: p[1] }),
       );
 
-    const simplifyDistance = 5 / this.api.getAppState().cameraZoom;
-    selectByLassoPath(
-      this.api,
-      simplify(lassoPath, simplifyDistance).map((p) => [p.x, p.y]),
-    );
+    if (lassoPath) {
+      const simplifyDistance = 5 / this.api.getAppState().cameraZoom;
+      const selectedElements = selectByLassoPath(
+        this.api,
+        simplify(lassoPath, simplifyDistance).map((p) => [p.x, p.y]),
+      );
+
+      if (selectedElements.length > 0) {
+        this.api.setAppState({
+          penbarSelected: Pen.SELECT,
+        });
+        this.api.selectNodes(
+          selectedElements.map((e) => this.api.getNodeByEntity(e)),
+        );
+        this.api.record();
+      }
+    }
   }
 }

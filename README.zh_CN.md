@@ -337,6 +337,10 @@ pnpm run dev
 -   拖拽框选
 -   套索工具
 
+|                Marquee selection                 |                 Lasso selection                  |
+| :----------------------------------------------: | :----------------------------------------------: |
+| ![marquee selection](./screenshots/lesson26.gif) | ![lasso selection](./screenshots/lesson26-2.gif) |
+
 ## 课程 27 - 吸附与对齐 [🔗](https://infinitecanvas.cc/zh/guide/lesson-027)
 
 -   网格吸附

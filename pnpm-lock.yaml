@@ -744,6 +744,9 @@ importers:
 
   packages/plugin-lasso:
     dependencies:
+      '@antv/util':
+        specifier: ^3.3.10
+        version: 3.3.10
       '@excalidraw/laser-pointer':
         specifier: ^1.3.2
         version: 1.3.2

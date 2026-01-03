@@ -20,7 +20,10 @@ export interface Trail {
 export interface AnimatedTrailOptions {
   fill: (trail: AnimatedTrail) => string;
   stroke?: (trail: AnimatedTrail) => string;
+  fillOpacity?: (trail: AnimatedTrail) => number;
   animateTrail?: boolean;
+  strokeDasharray?: string;
+  strokeDashoffset?: string;
 }
 
 export class AnimatedTrail implements Trail {
@@ -41,11 +44,13 @@ export class AnimatedTrail implements Trail {
 
     this.trailElement = document.createElementNS(SVG_NS, 'path');
     if (this.options.animateTrail) {
+      const { strokeDasharray = '7 7', strokeDashoffset = '10' } = this.options;
+
       this.trailAnimation = document.createElementNS(SVG_NS, 'animate');
       // TODO: make this configurable
       this.trailAnimation.setAttribute('attributeName', 'stroke-dashoffset');
-      this.trailElement.setAttribute('stroke-dasharray', '7 7');
-      this.trailElement.setAttribute('stroke-dashoffset', '10');
+      this.trailElement.setAttribute('stroke-dasharray', strokeDasharray);
+      this.trailElement.setAttribute('stroke-dashoffset', strokeDashoffset);
       this.trailAnimation.setAttribute('from', '0');
       this.trailAnimation.setAttribute('to', `-14`);
       this.trailAnimation.setAttribute('dur', '0.3s');
@@ -164,6 +169,10 @@ export class AnimatedTrail implements Trail {
       this.trailElement.setAttribute(
         'stroke',
         (this.options.stroke ?? (() => 'black'))(this),
+      );
+      this.trailElement.setAttribute(
+        'fill-opacity',
+        (this.options.fillOpacity ?? (() => 0.5))(this).toString(),
       );
     } else {
       this.trailElement.setAttribute(

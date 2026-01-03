@@ -7,7 +7,10 @@ import {
   InputPoint,
   Pen,
   RBush,
+  Rect,
+  Selected,
   System,
+  Transformable,
 } from '@infinite-canvas-tutorial/ecs';
 import { LassoTrail } from './lasso-trail';
 import {
@@ -38,8 +41,8 @@ export class LassoSystem extends System {
     this.query(
       (q) =>
         q
-          .using(Canvas, InputPoint, Input, Cursor)
-          .write.and.using(Camera, ComputedCamera, RBush).read,
+          .using(Canvas, InputPoint, Input, Cursor, Selected, Transformable)
+          .write.and.using(Camera, ComputedCamera, RBush, Rect).read,
     );
   }
 
@@ -58,8 +61,13 @@ export class LassoSystem extends System {
       const appState = api.getAppState();
       const pen = appState.penbarSelected;
       const camera = api.getCamera();
+      let selection = this.selections.get(camera.__id);
 
       if (pen !== Pen.LASSO) {
+        // Clear selection
+        if (selection) {
+          selection.lassoTrail.clearTrails();
+        }
         return;
       }
 
@@ -68,7 +76,6 @@ export class LassoSystem extends System {
 
       cursor.value = 'default';
 
-      let selection = this.selections.get(camera.__id);
       if (!selection) {
         this.selections.set(camera.__id, {
           lassoTrail: new LassoTrail(this.handler, api),

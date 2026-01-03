@@ -9,6 +9,7 @@ import {
 import { ref, onMounted, onUnmounted } from 'vue';
 import { Event, UIPlugin } from '@infinite-canvas-tutorial/webcomponents';
 import { LaserPointerPlugin } from '@infinite-canvas-tutorial/laser-pointer';
+import { LassoPlugin } from '@infinite-canvas-tutorial/lasso';
 
 const wrapper = ref<HTMLElement | null>(null);
 let api: any | undefined;
@@ -65,7 +66,7 @@ onMounted(async () => {
   if (!(window as any).worldInited) {
     (window as any).worldInited = true;
     await import('@infinite-canvas-tutorial/webcomponents/spectrum');
-    new App().addPlugins(...DefaultPlugins, UIPlugin, LaserPointerPlugin).run();
+    new App().addPlugins(...DefaultPlugins, UIPlugin, LaserPointerPlugin, LassoPlugin).run();
   } else {
     // 当App已经初始化时，需要等待canvas组件准备好并检查API
     await import('@infinite-canvas-tutorial/webcomponents/spectrum');

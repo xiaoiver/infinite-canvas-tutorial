@@ -7,6 +7,7 @@ head:
 
 <script setup>
 import MultiSelection from '../../components/MultiSelection.vue'
+import Lasso from '../../components/Lasso.vue'
 </script>
 
 # 课程 26 - 选择工具
@@ -129,6 +130,19 @@ if (input.key === 'Escape') {
 
 在 [课程 25 - 铅笔工具] 中我们已经介绍过如何自由绘制折线。我们依然在 SVG 容器中绘制套索路径，一般采用带有动画效果（蚂蚁线）的虚线表示。
 
+```html
+<path d="...">
+    <animate
+        attribute-name="stroke-dashoffset"
+        stroke-dasharray="7 7"
+        stroke-dashoffset="10"
+        from="0"
+        to="-14"
+        dur="0.3s"
+    />
+</path>
+```
+
 首先将视口坐标系下的点坐标转换到 Canvas 坐标系下。然后根据当前的相机缩放等级对路径进行简化，显然在高缩放等级下需要更精细的选择粒度，反之亦然。另外更少的顶点既能提升渲染性能，也能提升后续的相交性检测效率：
 
 ```ts
@@ -141,6 +155,8 @@ let lassoPath = super
 const simplifyDistance = 5 / this.api.getAppState().cameraZoom;
 selectByLassoPath(simplify(lassoPath, simplifyDistance).map((p) => [p.x, p.y]));
 ```
+
+<Lasso />
 
 ### 多边形的相交性检测 {#polygon-intersection}
 
@@ -172,6 +188,28 @@ function selectByLassoPath(api: API, lassoPath: [number, number][]) {
 }
 ```
 
+通过快速包围盒检测后，接下来需要处理两种情况：套索完全在图形内；套索与图形相交。
+
+```ts
+function isPolygonsIntersect(points1: number[][], points2: number[][]) {
+    let isIn = false;
+    // 判定点是否在多边形内部，一旦有一个点在另一个多边形内，则返回
+    points2.forEach((point) => {
+        if (isPointInPolygon(points1, point[0], point[1])) {
+            isIn = true;
+            return false;
+        }
+    });
+    if (isIn) {
+        return true;
+    }
+}
+```
+
+## 扩展阅读 {#extended-reading}
+
+-   [How do I determine if two convex polygons intersect?]
+
 [课程 14 - 选择模式]: /zh/guide/lesson-014#select-mode
 [课程 21 - Transformer]: /zh/guide/lesson-021
 [课程 21 - 变换图形]: /zh/guide/lesson-021#transform-shape
@@ -181,3 +219,4 @@ function selectByLassoPath(api: API, lassoPath: [number, number][]) {
 [lasso-tool-figma]: https://github.com/kernel-picnic/lasso-tool-figma
 [Feature Request: Lasso Selection (free selection) in Excalidraw]: https://github.com/excalidraw/excalidraw/issues/6350
 [课程 25 - 铅笔工具]: /zh/guide/lesson-025#pencil-tool
+[How do I determine if two convex polygons intersect?]: https://stackoverflow.com/questions/753140/how-do-i-determine-if-two-convex-polygons-intersect
