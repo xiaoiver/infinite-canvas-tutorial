@@ -8,12 +8,9 @@ import {
 } from '@infinite-canvas-tutorial/ecs';
 import { LaserTrails } from './laser-trails';
 import {
-  ExtendedAPI,
   SVG_NS,
   AnimationFrameHandler,
 } from '@infinite-canvas-tutorial/webcomponents';
-import { html } from 'lit';
-import { msg, str } from '@lit/localize';
 export class LaserPointerSystem extends System {
   private readonly canvases = this.query((q) =>
     q.added.and.current.with(Canvas),
@@ -36,15 +33,6 @@ export class LaserPointerSystem extends System {
   }
 
   execute() {
-    this.canvases.added.forEach((canvas) => {
-      const { api } = canvas.read(Canvas);
-      (api as ExtendedAPI).registerPen(
-        Pen.LASER_POINTER,
-        html`<sp-icon-events slot="icon"></sp-icon-events>`,
-        msg(str`Laser Pointer`),
-      );
-    });
-
     this.canvases.current.forEach((canvas) => {
       const { inputPoints, api } = canvas.read(Canvas);
       const appState = api.getAppState();

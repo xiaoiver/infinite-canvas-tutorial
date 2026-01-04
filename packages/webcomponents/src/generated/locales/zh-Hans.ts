@@ -10,7 +10,6 @@
 
     export const templates = {
       's0758584e2fcf954d': str`弯曲`,
-'s085cd8fee92a2cc5': str`橡皮擦`,
 's0bc31719aa7a8f43': str`剪切`,
 's2199c9ac949fc21c': str`描边透明度`,
 's236ae937cbcd6a39': str`放大`,
@@ -29,7 +28,6 @@
 's3d93f9ea0c5a13fa': str`图片`,
 's43ca35f701ac4dc6': str`手绘填充样式`,
 's43f1ffa8263b3f7b': str`圆头`,
-'s45b997b8418a2e04': str`矢量网络`,
 's4993444bfd3f3e5e': str`折叠`,
 's4cc9f4ff64eba0af': str`置底`,
 's5a25a7e3c9796a64': str`缩放级别`,
@@ -59,7 +57,6 @@
 'sa81e2cdaf6921adc': str`系统`,
 'saab875d8cfcfe712': str`主题`,
 'sac895c732f350ac5': str`暗色`,
-'saf84ec86139d349e': str`注释`,
 'sb02c013623255598': str`隐藏图层`,
 'sb31aa3d1a0e4711f': str`文本设置`,
 'sb38d497d992ab4a4': str`居中`,

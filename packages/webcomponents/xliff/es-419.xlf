@@ -118,18 +118,6 @@
   <source>Pencil</source>
   <target>Lápiz</target>
 </trans-unit>
-<trans-unit id="s085cd8fee92a2cc5">
-  <source>Eraser</source>
-  <target>Borrador</target>
-</trans-unit>
-<trans-unit id="s45b997b8418a2e04">
-  <source>Vector Network</source>
-  <target>Red de vectores</target>
-</trans-unit>
-<trans-unit id="saf84ec86139d349e">
-  <source>Comment</source>
-  <target>Comentario</target>
-</trans-unit>
 <trans-unit id="s339a83e6b14d0040">
   <source>Show layers panel</source>
   <target>Mostrar panel de capas</target>

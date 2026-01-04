@@ -14,12 +14,9 @@ import {
 } from '@infinite-canvas-tutorial/ecs';
 import { LassoTrail } from './lasso-trail';
 import {
-  ExtendedAPI,
   SVG_NS,
   AnimationFrameHandler,
 } from '@infinite-canvas-tutorial/webcomponents';
-import { html } from 'lit';
-import { msg, str } from '@lit/localize';
 export class LassoSystem extends System {
   private readonly canvases = this.query((q) =>
     q.added.and.current.with(Canvas),
@@ -47,15 +44,6 @@ export class LassoSystem extends System {
   }
 
   execute() {
-    this.canvases.added.forEach((canvas) => {
-      const { api } = canvas.read(Canvas);
-      (api as ExtendedAPI).registerPen(
-        Pen.LASSO,
-        html`<sp-icon-region-select slot="icon"></sp-icon-region-select>`,
-        msg(str`Lasso`),
-      );
-    });
-
     this.canvases.current.forEach((canvas) => {
       const { inputPoints, api } = canvas.read(Canvas);
       const appState = api.getAppState();

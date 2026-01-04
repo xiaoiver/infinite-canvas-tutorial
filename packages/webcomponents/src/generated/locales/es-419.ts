@@ -10,7 +10,6 @@
 
     export const templates = {
       's0758584e2fcf954d': str`Curvatura`,
-'s085cd8fee92a2cc5': str`Borrador`,
 's0bc31719aa7a8f43': str`Cortar`,
 's2199c9ac949fc21c': str`Opacidad de trazo`,
 's236ae937cbcd6a39': str`Zoom en`,
@@ -29,7 +28,6 @@
 's3d93f9ea0c5a13fa': str`Imagen`,
 's43ca35f701ac4dc6': str`Estilo de relleno aproximado`,
 's43f1ffa8263b3f7b': str`Redondo`,
-'s45b997b8418a2e04': str`Red de vectores`,
 's4993444bfd3f3e5e': str`Colapsar`,
 's4cc9f4ff64eba0af': str`Poner al fondo`,
 's5a25a7e3c9796a64': str`Nivel de zoom`,
@@ -59,7 +57,6 @@
 'sa81e2cdaf6921adc': str`Sistema`,
 'saab875d8cfcfe712': str`Tema`,
 'sac895c732f350ac5': str`Oscuro`,
-'saf84ec86139d349e': str`Comentario`,
 'sb02c013623255598': str`Ocultar capa`,
 'sb31aa3d1a0e4711f': str`Configuración de texto`,
 'sb38d497d992ab4a4': str`Centro`,
