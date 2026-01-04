@@ -375,7 +375,7 @@ lit-localize build
 
 ### Switch locale {#switch-locale}
 
-This website is built using Vitepress. You can find a language switch component in the top-right corner.
+This website is built using VitePress. You can find a language switch component in the top-right corner.
 
 ```ts
 import { localized } from '@lit/localize';
@@ -419,10 +419,19 @@ Reserve expandable positions within Lit components using `<slot>`:
 export class Penbar extends LitElement {
     render() {
         return html`<sp-action-group class="penbar">
-            <slot></slot>
+            <slot name="penbar-item"></slot>
         </sp-action-group>`;
     }
 }
+```
+
+It is worth noting that when passing a `<slot>` through the component tree, a named slot must be used in the parent component.
+
+```html
+<!-- ic-spectrum-canvas -->
+<ic-spectrum-penbar>
+    <slot name="penbar-item" slot="penbar-item"></slot>
+</ic-spectrum-penbar>
 ```
 
 ## Extended reading {#extended-reading}

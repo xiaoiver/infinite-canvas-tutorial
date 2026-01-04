@@ -30,6 +30,7 @@ import {
   Pen,
 } from '../../packages/ecs/src';
 import { NodeJSAdapter, sleep, createMouseEvent } from '../utils';
+import { EraserPlugin } from '../../packages/plugin-eraser/src';
 
 DOMAdapter.set(NodeJSAdapter);
 
@@ -114,7 +115,7 @@ describe('Eraser', () => {
       }
     }
 
-    app.addPlugins(...DefaultPlugins, MyPlugin);
+    app.addPlugins(...DefaultPlugins, MyPlugin, EraserPlugin);
 
     await app.run();
 

@@ -378,7 +378,7 @@ lit-localize build
 
 ### 运行时切换语言 {#switch-locale}
 
-本网站使用 Vitepress 构建，你可以在右上角看到一个切换语言的组件。
+本网站使用 VitePress 构建，你可以在右上角看到一个切换语言的组件。
 
 ```ts
 import { localized } from '@lit/localize';
@@ -422,10 +422,19 @@ export const { getLocale, setLocale } = configureLocalization({
 export class Penbar extends LitElement {
     render() {
         return html`<sp-action-group class="penbar">
-            <slot></slot>
+            <slot name="penbar-item"></slot>
         </sp-action-group>`;
     }
 }
+```
+
+值得注意的是，当需要在组件树中传递 `<slot>` 时，需要在父组件中使用 named slot
+
+```html
+<!-- ic-spectrum-canvas -->
+<ic-spectrum-penbar>
+    <slot name="penbar-item" slot="penbar-item"></slot>
+</ic-spectrum-penbar>
 ```
 
 ## 扩展阅读 {#extended-reading}
