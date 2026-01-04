@@ -155,6 +155,7 @@ export const getDefaultAppState: () => AppState = () => {
       Pen.ERASER,
       // Pen.VECTOR_NETWORK,
       Pen.COMMENT,
+      Pen.LASER_POINTER,
     ],
     penbarSelected: Pen.HAND,
     penbarDrawRect: {

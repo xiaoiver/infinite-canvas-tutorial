@@ -10,6 +10,7 @@ import { ref, onMounted, onUnmounted } from 'vue';
 import { Event, UIPlugin } from '@infinite-canvas-tutorial/webcomponents';
 import { LaserPointerPlugin } from '@infinite-canvas-tutorial/laser-pointer';
 import { LassoPlugin } from '@infinite-canvas-tutorial/lasso';
+import { EraserPlugin } from '@infinite-canvas-tutorial/eraser';
 import { ChatPlugin } from '@infinite-canvas-tutorial/chat';
 import { FalAIPlugin } from '@infinite-canvas-tutorial/fal-ai';
 
@@ -203,7 +204,11 @@ onMounted(async () => {
   if (!(window as any).worldInited) {
     (window as any).worldInited = true;
     await import('@infinite-canvas-tutorial/webcomponents/spectrum');
-    new App().addPlugins(...DefaultPlugins, UIPlugin, ChatPlugin, LaserPointerPlugin, FalAIPlugin.configure({
+    await import('@infinite-canvas-tutorial/lasso/spectrum');
+    await import('@infinite-canvas-tutorial/eraser/spectrum');
+    await import('@infinite-canvas-tutorial/laser-pointer/spectrum');
+    await import('@infinite-canvas-tutorial/chat/spectrum');
+    new App().addPlugins(...DefaultPlugins, UIPlugin, LaserPointerPlugin, LassoPlugin, EraserPlugin, FalAIPlugin.configure({
       credentials: 'your-fal-ai-credentials-here',
     })).run();
   } else {
@@ -253,5 +258,11 @@ onUnmounted(async () => {
 </script>
 
 <template>
-  <ic-spectrum-canvas ref="wrapper" style="width: 100%; height: 900px"></ic-spectrum-canvas>
+  <ic-spectrum-canvas ref="wrapper" style="width: 100%; height: 900px">
+    <ic-spectrum-penbar-laser-pointer slot="penbar-item" />
+    <!-- <ic-spectrum-penbar-lasso slot="penbar-item" /> -->
+    <ic-spectrum-penbar-eraser slot="penbar-item" />
+    <ic-spectrum-taskbar-chat slot="taskbar-item" />
+    <ic-spectrum-taskbar-chat-panel slot="taskbar-panel" />
+  </ic-spectrum-canvas>
 </template>

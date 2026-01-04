@@ -1,42 +1,10 @@
-import { html, css, LitElement, PropertyValues, TemplateResult } from 'lit';
+import { html, css, LitElement } from 'lit';
 import { customElement } from 'lit/decorators.js';
-import { map } from 'lit/directives/map.js';
 import { when } from 'lit/directives/when.js';
 import { consume } from '@lit/context';
-import { apiContext, appStateContext } from '../context';
-import { Pen, Task, API, AppState } from '@infinite-canvas-tutorial/ecs';
+import { apiContext } from '../context';
+import { Pen, Task, API } from '@infinite-canvas-tutorial/ecs';
 import { localized, msg, str } from '@lit/localize';
-
-const TaskMap = {
-  [Task.SHOW_LAYERS_PANEL]: {
-    icon: html`<sp-icon-layers slot="icon"></sp-icon-layers>`,
-    label: msg(str`Show layers panel`),
-    panel: html`<ic-spectrum-layers-panel></ic-spectrum-layers-panel>`,
-  },
-  [Task.SHOW_PROPERTIES_PANEL]: {
-    icon: html`<sp-icon-properties slot="icon"></sp-icon-properties>`,
-    label: msg(str`Show properties panel`),
-    panel: html`<ic-spectrum-properties-panel></ic-spectrum-properties-panel>`,
-  },
-  [Task.SHOW_CHAT_PANEL]: {
-    icon: html`<sp-icon-chat slot="icon"></sp-icon-chat>`,
-    label: msg(str`Show chat panel`),
-    panel: html`<ic-spectrum-chat-panel></ic-spectrum-chat-panel>`,
-  },
-};
-
-export function registerTask(
-  task: Task,
-  icon: TemplateResult<1>,
-  label: string,
-  panel: TemplateResult<1>,
-) {
-  TaskMap[task] = {
-    icon,
-    label,
-    panel,
-  };
-}
 
 @customElement('ic-spectrum-taskbar')
 @localized()
@@ -67,32 +35,13 @@ export class Taskbar extends LitElement {
     }
   `;
 
-  @consume({ context: appStateContext, subscribe: true })
-  appState: AppState;
-
   @consume({ context: apiContext, subscribe: true })
   api: API;
-
-  private previousPen: Pen;
 
   private handleTaskChanged(e: CustomEvent) {
     this.api.setAppState({
       taskbarSelected: (e.target as any).selected,
     });
-  }
-
-  shouldUpdate(changedProperties: PropertyValues) {
-    for (const prop of changedProperties.keys()) {
-      if (prop !== 'appState') return true;
-    }
-
-    const newPen = this.appState.penbarSelected;
-    if (newPen !== this.previousPen) {
-      this.previousPen = newPen;
-      return true;
-    }
-
-    return false;
   }
 
   render() {
@@ -102,6 +51,7 @@ export class Taskbar extends LitElement {
 
     const { taskbarAll, taskbarSelected, taskbarVisible, penbarSelected } =
       this.api.getAppState();
+
     return when(
       taskbarVisible && penbarSelected !== Pen.HAND,
       () => html`
@@ -113,19 +63,24 @@ export class Taskbar extends LitElement {
           .selected=${taskbarSelected}
           @change=${this.handleTaskChanged}
         >
-          ${map(taskbarAll, (task) => {
-            const { icon, label } = TaskMap[task];
-            return html`<sp-action-button value="${task}">
-              ${icon}
-              <sp-tooltip self-managed placement="left"> ${label} </sp-tooltip>
-            </sp-action-button>`;
-          })}
+          <sp-action-button value="${Task.SHOW_LAYERS_PANEL}">
+            <sp-icon-layers slot="icon"></sp-icon-layers>
+            <sp-tooltip self-managed placement="left">
+              ${msg(str`Show layers panel`)}
+            </sp-tooltip>
+          </sp-action-button>
+          <sp-action-button value="${Task.SHOW_PROPERTIES_PANEL}">
+            <sp-icon-properties slot="icon"></sp-icon-properties>
+            <sp-tooltip self-managed placement="left">
+              ${msg(str`Show properties panel`)}
+            </sp-tooltip>
+          </sp-action-button>
+          <slot name="taskbar-item"></slot>
         </sp-action-group>
         <div class="panels">
-          ${map(taskbarAll, (task) => {
-            const { panel } = TaskMap[task];
-            return panel;
-          })}
+          <ic-spectrum-layers-panel></ic-spectrum-layers-panel>
+          <ic-spectrum-properties-panel></ic-spectrum-properties-panel>
+          <slot name="taskbar-panel"></slot>
         </div>
       `,
     );

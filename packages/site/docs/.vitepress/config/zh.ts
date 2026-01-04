@@ -133,6 +133,7 @@ export const zh = defineConfig({
               { text: 'UpscalerJS', link: 'upscaler' },
               { text: '激光笔', link: 'laser-pointer' },
               { text: '套索工具', link: 'lasso' },
+              { text: '橡皮擦工具', link: 'eraser' },
             ],
           },
           {

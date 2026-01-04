@@ -17,6 +17,21 @@ const app = new App().addPlugins(...DefaultPlugins, UIPlugin, ChatPlugin);
 app.run();
 ```
 
+然后引入 Spectrum UI：
+
+```ts
+import '@infinite-canvas-tutorial/chat/spectrum';
+```
+
+最后在 HTML 中通过 `<slot>` 使用组件：
+
+```html
+<ic-spectrum-canvas>
+    <ic-spectrum-taskbar-chat slot="taskbar-item" />
+    <ic-spectrum-taskbar-chat-panel slot="taskbar-panel" />
+</ic-spectrum-canvas>
+```
+
 ## 消息格式 {#message-structure}
 
 我们使用如下消息格式：

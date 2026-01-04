@@ -18,9 +18,7 @@ import {
   AnimationFrameHandler,
 } from '@infinite-canvas-tutorial/webcomponents';
 export class LassoSystem extends System {
-  private readonly canvases = this.query((q) =>
-    q.added.and.current.with(Canvas),
-  );
+  private readonly cameras = this.query((q) => q.current.with(Camera).read);
 
   private selections = new Map<
     number,
@@ -44,11 +42,20 @@ export class LassoSystem extends System {
   }
 
   execute() {
-    this.canvases.current.forEach((canvas) => {
+    this.cameras.current.forEach((camera) => {
+      if (!camera.has(Camera)) {
+        return;
+      }
+
+      const { canvas } = camera.read(Camera);
+      if (!canvas) {
+        return;
+      }
+
       const { inputPoints, api } = canvas.read(Canvas);
       const appState = api.getAppState();
       const pen = appState.penbarSelected;
-      const camera = api.getCamera();
+
       let selection = this.selections.get(camera.__id);
 
       if (pen !== Pen.LASSO) {

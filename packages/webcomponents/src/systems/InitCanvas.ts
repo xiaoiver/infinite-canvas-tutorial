@@ -1,3 +1,6 @@
+import { configureLocalization } from '@lit/localize';
+// Generated via output.localeCodesModule
+import { sourceLocale, targetLocales } from '../generated/locale-codes';
 import {
   Brush,
   Camera,
@@ -46,6 +49,7 @@ import { Event } from '../event';
 import { ExtendedAPI, pendingCanvases } from '../API';
 import { LitStateManagement } from '../context';
 import { InfiniteCanvas } from '../spectrum/infinite-canvas';
+import { localizedTemplates } from '../i18n';
 
 export class InitCanvas extends System {
   private readonly commands = new Commands(this);
@@ -99,6 +103,10 @@ export class InitCanvas extends System {
     );
   }
 
+  // configureLocalization can only be called once, so we need to store the setLocale and getLocale functions in instance variables.
+  #setLocale;
+  #getLocale;
+
   execute() {
     if (pendingCanvases.length) {
       pendingCanvases.forEach(({ container, canvas, camera }) => {
@@ -114,6 +122,19 @@ export class InitCanvas extends System {
 
         api.createCanvas({ ...canvas, api });
         api.createCamera(camera);
+
+        try {
+          const { getLocale, setLocale } = configureLocalization({
+            sourceLocale,
+            targetLocales,
+            loadLocale: async (locale) => localizedTemplates.get(locale),
+          });
+          this.#setLocale = setLocale;
+          this.#getLocale = getLocale;
+        } catch (e) {}
+
+        api.setLocale = this.#setLocale;
+        api.getLocale = this.#getLocale;
 
         this.commands.execute();
 

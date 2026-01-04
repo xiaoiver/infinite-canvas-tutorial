@@ -289,7 +289,10 @@ onMounted(async () => {
   if (!(window as any).worldInited) {
     (window as any).worldInited = true;
     await import('@infinite-canvas-tutorial/webcomponents/spectrum');
-    new App().addPlugins(...DefaultPlugins, UIPlugin, LaserPointerPlugin, LassoPlugin).run();
+    await import('@infinite-canvas-tutorial/lasso/spectrum');
+    await import('@infinite-canvas-tutorial/eraser/spectrum');
+    await import('@infinite-canvas-tutorial/laser-pointer/spectrum');
+    new App().addPlugins(...DefaultPlugins, UIPlugin, LaserPointerPlugin, LassoPlugin, EraserPlugin).run();
   }
 });
 

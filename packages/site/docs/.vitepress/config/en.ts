@@ -184,6 +184,8 @@ export const en = defineConfig({
               { text: 'LaMa', link: 'lama' },
               { text: 'UpscalerJS', link: 'upscaler' },
               { text: 'Laser pointer', link: 'laser-pointer' },
+              { text: 'Lasso', link: 'lasso' },
+              { text: 'Eraser', link: 'eraser' },
             ],
           },
           {

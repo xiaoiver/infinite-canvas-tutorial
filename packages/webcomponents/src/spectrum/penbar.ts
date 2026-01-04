@@ -1,14 +1,13 @@
 import { html, css, LitElement, PropertyValues } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
 import { consume } from '@lit/context';
+import { localized, msg, str } from '@lit/localize';
 import { when } from 'lit/directives/when.js';
-import { map } from 'lit/directives/map.js';
 import { AppState, Pen } from '@infinite-canvas-tutorial/ecs';
 import { apiContext, appStateContext } from '../context';
 import { ExtendedAPI } from '../API';
 import { fileOpen } from '../utils';
 import { createImage } from './context-menu';
-import { localized, msg, str } from '@lit/localize';
 
 @customElement('ic-spectrum-penbar')
 @localized()
@@ -65,10 +64,6 @@ export class Penbar extends LitElement {
   private previousPenbarVisible: boolean;
 
   shouldUpdate(changedProperties: PropertyValues) {
-    for (const prop of changedProperties.keys()) {
-      if (prop !== 'appState') return true;
-    }
-
     const newPen = this.appState.penbarSelected;
     if (newPen !== this.previousPen) {
       this.previousPen = newPen;
@@ -81,7 +76,7 @@ export class Penbar extends LitElement {
       return true;
     }
 
-    return false;
+    return super.shouldUpdate(changedProperties);
   }
 
   private async handlePenChanged(e: CustomEvent) {
@@ -190,7 +185,6 @@ export class Penbar extends LitElement {
           : Pen.DRAW_RECT;
     }
 
-    const pens = this.api.getPens();
     const { penbarAll, penbarSelected, penbarVisible } = this.api.getAppState();
     return when(
       penbarVisible,
@@ -381,22 +375,7 @@ export class Penbar extends LitElement {
               </overlay-trigger>
             `,
           )}
-          ${map(penbarAll, (task) => {
-            const { icon, label } = pens[task] || {};
-
-            if (!icon || !label) {
-              return html``;
-            }
-
-            return html`
-              <sp-action-button value="${task}">
-                ${icon}
-                <sp-tooltip self-managed placement="right">
-                  ${label}
-                </sp-tooltip>
-              </sp-action-button>
-            `;
-          })}
+          <slot name="penbar-item"></slot>
         </sp-action-group>
       `,
     );

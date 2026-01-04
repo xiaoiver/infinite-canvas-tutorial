@@ -8,6 +8,7 @@ import { ref, onMounted, onUnmounted } from 'vue';
 import { Event, UIPlugin } from '@infinite-canvas-tutorial/webcomponents';
 import { LaserPointerPlugin } from '@infinite-canvas-tutorial/laser-pointer';
 import { LassoPlugin } from '@infinite-canvas-tutorial/lasso';
+import { EraserPlugin } from '@infinite-canvas-tutorial/eraser';
 
 const wrapper = ref<HTMLElement | null>(null);
 let api: any | undefined;
@@ -46,7 +47,10 @@ onMounted(async () => {
   if (!(window as any).worldInited) {
     (window as any).worldInited = true;
     await import('@infinite-canvas-tutorial/webcomponents/spectrum');
-    new App().addPlugins(...DefaultPlugins, UIPlugin, LaserPointerPlugin, LassoPlugin).run();
+    await import('@infinite-canvas-tutorial/lasso/spectrum');
+    await import('@infinite-canvas-tutorial/eraser/spectrum');
+    await import('@infinite-canvas-tutorial/laser-pointer/spectrum');
+    new App().addPlugins(...DefaultPlugins, UIPlugin, LaserPointerPlugin, LassoPlugin, EraserPlugin).run();
   } else {
     // 等待组件更新完成后检查API是否已经准备好
     setTimeout(() => {
@@ -94,5 +98,7 @@ onUnmounted(async () => {
 </script>
 
 <template>
-  <ic-spectrum-canvas ref="wrapper" style="width: 100%; height: 300px"></ic-spectrum-canvas>
+  <ic-spectrum-canvas ref="wrapper" style="width: 100%; height: 300px">
+    <ic-spectrum-penbar-lasso slot="penbar-item" />
+  </ic-spectrum-canvas>
 </template>

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xliff version="1.2" xmlns="urn:oasis:names:tc:xliff:document:1.2">
+<file target-language="zh-Hans" source-language="en" original="lit-localize-inputs" datatype="plaintext">
+<body>
+<trans-unit id="sf7e841c0c81d1f2d">
+  <source>Laser pointer</source>
+  <target>激光笔</target>
+</trans-unit>
+</body>
+</file>
+</xliff>

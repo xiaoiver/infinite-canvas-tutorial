@@ -11,7 +11,6 @@ import {
 import { apiContext, appStateContext } from '../context';
 import { ExtendedAPI } from '../API';
 import { executeCopy, executeCut, executePaste } from './context-menu';
-import { setLocale } from '../i18n';
 
 export enum ExportFormat {
   SVG = 'svg',
@@ -191,7 +190,7 @@ export class TopNavbar extends LitElement {
     this.api.setAppState({
       language: selected,
     });
-    setLocale(selected);
+    this.api.setLocale(selected);
   }
 
   render() {

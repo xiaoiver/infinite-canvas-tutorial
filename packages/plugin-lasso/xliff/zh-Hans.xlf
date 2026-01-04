@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xliff version="1.2" xmlns="urn:oasis:names:tc:xliff:document:1.2">
+<file target-language="zh-Hans" source-language="en" original="lit-localize-inputs" datatype="plaintext">
+<body>
+<trans-unit id="sd36b71f79a5df019">
+  <source>Lasso</source>
+  <target>套索</target>
+</trans-unit>
+</body>
+</file>
+</xliff>

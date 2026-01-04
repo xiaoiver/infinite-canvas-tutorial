@@ -16,8 +16,6 @@ import {
   ComputeVisibility,
   DrawPencil,
   MeshPipeline,
-  RenderSnap,
-  DrawEraser,
 } from '../systems';
 import {
   Highlighted,
@@ -56,7 +54,6 @@ export const PenPlugin: Plugin = () => {
   )(Select);
   system((s) => s.after(Select).before(Last))(DrawRect);
   system((s) => s.after(DrawRect).before(Last))(DrawPencil);
-  system((s) => s.after(DrawPencil).before(Last))(DrawEraser);
   system((s) => s.afterWritersOf(Selected).before(Last, MeshPipeline))(
     RenderTransformer,
   );
@@ -66,10 +63,4 @@ export const PenPlugin: Plugin = () => {
       .inAnyOrderWith(RenderTransformer)
       .before(Last, MeshPipeline),
   )(RenderHighlighter);
-  system((s) =>
-    s
-      .afterWritersOf(SnapPoint)
-      .inAnyOrderWith(RenderHighlighter, RenderTransformer)
-      .before(Last, MeshPipeline, DrawRect),
-  )(RenderSnap);
 };

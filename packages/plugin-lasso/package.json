@@ -10,6 +10,11 @@
       "types": "./lib/index.d.ts",
       "import": "./esm/index.js",
       "require": "./lib/index.js"
+    },
+    "./spectrum": {
+      "types": "./lib/spectrum/index.d.ts",
+      "import": "./esm/spectrum/index.js",
+      "require": "./lib/spectrum/index.js"
     }
   },
   "files": [

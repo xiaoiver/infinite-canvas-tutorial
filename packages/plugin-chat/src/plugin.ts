@@ -1,14 +1,3 @@
-import { Plugin, Task } from '@infinite-canvas-tutorial/ecs';
-import { registerTask } from '@infinite-canvas-tutorial/webcomponents';
-import { html } from 'lit';
+import { Plugin } from '@infinite-canvas-tutorial/ecs';
 
-export const ChatPlugin: Plugin = () => {
-  import('./spectrum/chat-panel');
-
-  registerTask(
-    Task.SHOW_CHAT_PANEL,
-    html`<sp-icon-chat slot="icon"></sp-icon-chat>`,
-    'Show chat panel',
-    html`<ic-spectrum-chat-panel></ic-spectrum-chat-panel>`,
-  );
-};
+export const ChatPlugin: Plugin = () => {};

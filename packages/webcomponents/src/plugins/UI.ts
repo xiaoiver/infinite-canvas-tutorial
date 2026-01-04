@@ -13,7 +13,6 @@ import {
   Last,
   RenderTransformer,
   RenderHighlighter,
-  RenderSnap,
 } from '@infinite-canvas-tutorial/ecs';
 import {
   Comment,
@@ -61,7 +60,6 @@ export const UIPlugin: Plugin = () => {
         Select,
         RenderTransformer,
         RenderHighlighter,
-        RenderSnap,
       )
       .before(Last),
   )(ZoomLevel);

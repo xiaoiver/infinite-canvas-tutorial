@@ -2,17 +2,18 @@ import {
   Plugin,
   Last,
   system,
-  DrawEraser,
+  DrawPencil,
   RenderTransformer,
   RenderHighlighter,
+  Cursor,
 } from '@infinite-canvas-tutorial/ecs';
-import { LaserPointerSystem } from './system';
+import { DrawLaserPointer } from './system';
 
 export const LaserPointerPlugin: Plugin = () => {
   system((s) =>
     s
-      .after(DrawEraser)
-      .before(Last)
-      .before(RenderTransformer, RenderHighlighter),
-  )(LaserPointerSystem);
+      .after(DrawPencil)
+      .inAnyOrderWithWritersOf(Cursor)
+      .before(Last, RenderHighlighter, RenderTransformer),
+  )(DrawLaserPointer);
 };

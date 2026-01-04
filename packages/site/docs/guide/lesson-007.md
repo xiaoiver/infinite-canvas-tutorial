@@ -401,10 +401,35 @@ export const { getLocale, setLocale } = configureLocalization({
 
 For demonstration purposes, we've opted to use [static imports]. Of course, this approach loads all language files, impacting the time to first content.
 
+## Composite with slot {#composite-with-slot}
+
+In the subsequent [Lesson 18 - Refactor with ECS], we implemented a toolbar on the left side of the canvas. If we want to add a new tool to the toolbar, we can easily achieve this using the `<slot>` element from Web Components.
+
+In many extensible plugins (such as the [Eraser plugin]), we've implemented similar usage:
+
+```html
+<ic-spectrum-canvas>
+    <ic-spectrum-penbar-eraser slot="penbar-item"><ic-spectrum-penbar-eraser />
+</ic-spectrum-canvas>
+```
+
+Reserve expandable positions within Lit components using `<slot>`:
+
+```ts
+export class Penbar extends LitElement {
+    render() {
+        return html`<sp-action-group class="penbar">
+            <slot></slot>
+        </sp-action-group>`;
+    }
+}
+```
+
 ## Extended reading {#extended-reading}
 
 -   [Discussion about Lit on HN]
 -   [Change themes in Figma]
+-   [Using templates and slots]
 
 [Shoelace]: https://shoelace.style/
 [VitePress]: https://vitepress.dev/
@@ -430,3 +455,5 @@ For demonstration purposes, we've opted to use [static imports]. Of course, this
 [Change themes in Figma]: https://help.figma.com/hc/en-us/articles/5576781786647-Change-themes-in-Figma
 [Localization]: https://lit.dev/docs/localization/overview/
 [static imports]: https://lit.dev/docs/localization/runtime-mode/#static-imports
+[Using templates and slots]: https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_templates_and_slots
+[Eraser plugin]: /reference/eraser

@@ -16,3 +16,17 @@ const app = new App().addPlugins(
 );
 app.run();
 ```
+
+Then import the Spectrum UI like this:
+
+```ts
+import '@infinite-canvas-tutorial/laser-pointer/spectrum';
+```
+
+And declare this penbar item in HTML like this:
+
+```html
+<ic-spectrum-canvas>
+    <ic-spectrum-penbar-laser-pointer slot="penbar-item"><ic-spectrum-penbar-laser-pointer />
+</ic-spectrum-canvas>
+```

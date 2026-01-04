@@ -14,6 +14,7 @@ import { ref, onMounted, onUnmounted } from 'vue';
 import { Event, UIPlugin } from '@infinite-canvas-tutorial/webcomponents';
 import { LaserPointerPlugin } from '@infinite-canvas-tutorial/laser-pointer';
 import { LassoPlugin } from '@infinite-canvas-tutorial/lasso';
+import { EraserPlugin } from '@infinite-canvas-tutorial/eraser';
 
 import { LoroDoc, LoroList, LoroMap, OpId, VersionVector } from "loro-crdt";
 import deepEqual from "deep-equal";
@@ -155,7 +156,10 @@ onMounted(async () => {
   if (!(window as any).worldInited) {
     (window as any).worldInited = true;
     await import('@infinite-canvas-tutorial/webcomponents/spectrum');
-    new App().addPlugins(...DefaultPlugins, UIPlugin, LaserPointerPlugin, LassoPlugin).run();
+    await import('@infinite-canvas-tutorial/lasso/spectrum');
+    await import('@infinite-canvas-tutorial/eraser/spectrum');
+    await import('@infinite-canvas-tutorial/laser-pointer/spectrum');
+    new App().addPlugins(...DefaultPlugins, UIPlugin, LaserPointerPlugin, LassoPlugin, EraserPlugin).run();
   }
 });
 

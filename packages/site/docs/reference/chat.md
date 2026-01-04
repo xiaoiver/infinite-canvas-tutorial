@@ -17,6 +17,21 @@ const app = new App().addPlugins(...DefaultPlugins, UIPlugin, ChatPlugin);
 app.run();
 ```
 
+Import Spectrum UI like this:
+
+```ts
+import '@infinite-canvas-tutorial/chat/spectrum';
+```
+
+Use components in HTML with `<slot>`:
+
+```html
+<ic-spectrum-canvas>
+    <ic-spectrum-taskbar-chat slot="taskbar-item" />
+    <ic-spectrum-taskbar-chat-panel slot="taskbar-panel" />
+</ic-spectrum-canvas>
+```
+
 ## Message structure {#message-structure}
 
 ```ts

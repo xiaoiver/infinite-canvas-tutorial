@@ -1,15 +1,12 @@
-import { getStroke } from 'perfect-freehand';
-import { Entity, System } from '@lastolivegames/becsy';
-import { v4 as uuidv4 } from 'uuid';
-import { IPointData } from '@pixi/math';
 import {
+  Entity,
+  System,
   Camera,
   Canvas,
   Children,
   ComputedBounds,
   ComputedCamera,
   Cursor,
-  FillSolid,
   GlobalTransform,
   Highlighted,
   Input,
@@ -17,31 +14,25 @@ import {
   Opacity,
   Parent,
   Pen,
-  Polyline,
   Renderable,
   Selected,
-  Stroke,
-  StrokeAttenuation,
   Transform,
   Transformable,
   UI,
-  UIType,
-  Visibility,
-  ZIndex,
   ComputedCameraControl,
   Name,
-  TesselationMethod,
-} from '../components';
-import { API } from '../API';
+  API,
+  getDescendants,
+  distanceBetweenPoints,
+  type SerializedNode,
+  type PathSerializedNode,
+  DOMAdapter,
+} from '@infinite-canvas-tutorial/ecs';
+import { EraserTrail } from './eraser-trail';
 import {
-  PathSerializedNode,
-  PolylineSerializedNode,
-  SerializedNode,
-} from '../utils/serialize';
-import { distanceBetweenPoints } from '../utils/matrix';
-import { DRAW_RECT_Z_INDEX } from '../context';
-import { getFlatSvgPathFromStroke } from '../utils';
-import { getDescendants } from './Transform';
+  AnimationFrameHandler,
+  SVG_NS,
+} from '@infinite-canvas-tutorial/webcomponents';
 
 const ERASER_CURSOR =
   'url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAACXBIWXMAAAsTAAALEwEAmpwYAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAKTSURBVHgB7ZUxjNJQGMdfMR4qnMggIRKT83RQE3EgYYKNwfEGExIGJi9OLEwyycRAwg6jGziJEFYYCIM6wEAQIRAgIXAuBCGV49rn9/VaUxqKXLkmDvyTf2j7aH//9/W9r4Tstdde2sVseU0/eCgUerlcLguU0u+FQuFUHDMQnSXAW63WGwBTv9/POxwOvlar0W63m9U7hABvt9tv5/M5NZlMF8FgkGazWQqXuVwuR3u9Xl6vEH/hs9mMGo1GLhwOU0lQEV1DrMxcDuc4TjAKxnUJsREuSRkCFiXtdDof5M/YCa4suxyuDNFsNoUQGDiVSnmIRq3M3Gw2c263WwDA1qNqksa8Xi9NJpM0k8m8JxoqsAK3WCycwWDAWdFoNKpaAZ7nhV/ckvBfnmVZGolETuD4YCc4wzAUA2wKIcHr9boA7/f7tFKpfIRjO/jOznAEo9eFUMKhISH8Exw/FgPc2BreaDRO1eBqITCAHF4ul7EjPgU/BBvJtgoEAsf4QLvdzqvBlSHi8Ti2YDX4LXIFMel0OlQsFlcAmyz7j2a4vEsxUPoDm82Gx/y/boQKESgWgRC44JjhcPjZ4/G8g6EZ+Cf4N7mizOAH0HDOsKwYQq0K+HrEV8QNBgNarVa/EI1ll+smBnA6na9gZmwsFlsbYg38G1x/Bj7aBS7pEPzI5XKdYIhEIoEwXuoBUhir1UrH4zE2nK9w/hzvAd8m1yBcE/fAT6ASr0ejURt32WQyofgtQE+nU9wo5/l8Hvf5C/CxCNf0wWFUQtwF38df+ADZfD7f0WKxEAbhnJRKpR+wYEfkcsGdgVmiUWqpMQTO6hCAZoDjudTNLkT/En1OLtfHtQaQxiSwvJUKn1oxhGbwXv+N/gDk8Y8/v/PEpgAAAABJRU5ErkJggg==") 4 28, pointer';
@@ -52,14 +43,15 @@ export class DrawEraser extends System {
   private selections = new Map<
     number,
     {
-      brush: PolylineSerializedNode | PathSerializedNode;
-      pointsBeforeSimplify: IPointData[];
-      points: IPointData[];
+      trail: EraserTrail;
+      svgSVGElement: SVGSVGElement;
       lastPointInViewport: [number, number];
       selected: Set<Entity>;
       selectedOpacityMap: Map<SerializedNode['id'], number>;
     }
   >();
+
+  private readonly handler = new AnimationFrameHandler();
 
   constructor() {
     super();
@@ -82,13 +74,7 @@ export class DrawEraser extends System {
             Parent,
             Children,
             Renderable,
-            FillSolid,
             Opacity,
-            Stroke,
-            Polyline,
-            Visibility,
-            ZIndex,
-            StrokeAttenuation,
             Transformable,
             Name,
           ).write,
@@ -122,36 +108,38 @@ export class DrawEraser extends System {
       let selection = this.selections.get(camera.__id);
       if (!selection) {
         this.selections.set(camera.__id, {
-          brush: undefined,
-          pointsBeforeSimplify: [],
-          points: [],
+          trail: new EraserTrail(this.handler, api),
+          svgSVGElement: DOMAdapter.get()
+            .getDocument()
+            .createElementNS(SVG_NS, 'svg'),
           lastPointInViewport: [0, 0],
           selected: new Set(),
           selectedOpacityMap: new Map(),
         });
         selection = this.selections.get(camera.__id);
+
+        // Default is hidden
+        selection.svgSVGElement.style.overflow = 'visible';
+        selection.svgSVGElement.style.position = 'absolute';
+
+        api.getSvgLayer().appendChild(selection.svgSVGElement);
       }
 
       // Clear previous points
       if (input.pointerDownTrigger) {
-        selection.pointsBeforeSimplify = [];
-        selection.points = [];
         selection.selected.clear();
         selection.selectedOpacityMap.clear();
 
-        const { pointerDownCanvasX, pointerDownCanvasY } = camera.read(
-          ComputedCameraControl,
-        );
-        selection.pointsBeforeSimplify.push({
-          x: pointerDownCanvasX,
-          y: pointerDownCanvasY,
-        });
+        const [x, y] = input.pointerViewport;
+        selection.trail.start(selection.svgSVGElement);
+        selection.trail.startPath(x, y);
       }
 
       // Cancel erasing
       if (input.key === 'Escape') {
-        selection.pointsBeforeSimplify = [];
-        selection.points = [];
+        selection.trail.clearTrails();
+        selection.trail.stop();
+
         selection.selected.clear();
         // restore the opacity of the selected nodes.
         selection.selectedOpacityMap.forEach((opacity, id) => {
@@ -176,21 +164,20 @@ export class DrawEraser extends System {
           return;
         }
 
+        selection.trail.addPointToPath(x, y);
+
         api.runAtNextTick(() => {
           this.handleBrushing(api, x, y);
         });
       });
 
       if (input.pointerUpTrigger) {
-        const { brush, selected } = this.selections.get(camera.__id);
-
-        // Just click on the canvas, do nothing
-        if (!brush || (brush as PolylineSerializedNode).points?.length === 0) {
-          return;
-        }
+        // Hide eraser trail
+        selection.trail.endPath();
+        selection.trail.stop();
+        const { selected } = this.selections.get(camera.__id);
 
         api.runAtNextTick(() => {
-          api.updateNode(brush, { visibility: 'hidden' }, false);
           api.setAppState({
             penbarSelected: Pen.SELECT,
           });
@@ -211,7 +198,6 @@ export class DrawEraser extends System {
 
   private handleBrushing(api: API, viewportX: number, viewportY: number) {
     const camera = api.getCamera();
-    const appState = api.getAppState();
     const selection = this.selections.get(camera.__id);
 
     const { pointerDownViewportX, pointerDownViewportY } = camera.read(
@@ -228,20 +214,6 @@ export class DrawEraser extends System {
       ) > 10;
 
     if (shouldShowSelectionBrush) {
-      let brush = selection.brush;
-      if (!brush) {
-        brush = {
-          id: uuidv4(),
-          type: 'path',
-          d: 'M 0 0 L 1 1',
-          visibility: 'hidden',
-          zIndex: DRAW_RECT_Z_INDEX,
-        };
-        api.updateNode(brush, undefined, false);
-        api.getEntity(brush).add(UI, { type: UIType.BRUSH });
-        selection.brush = brush;
-      }
-
       if (
         distanceBetweenPoints(
           viewportX,
@@ -281,41 +253,7 @@ export class DrawEraser extends System {
           }
         });
 
-        selection.pointsBeforeSimplify.push({ x: cx, y: cy });
         selection.lastPointInViewport = [viewportX, viewportY];
-
-        // choose tolerance based on the camera zoom level
-        selection.points = selection.pointsBeforeSimplify.slice(-4);
-
-        // Clear pointsBeforeSimplify after 2 seconds
-        // setTimeout(() => {
-        //   selection.pointsBeforeSimplify = [];
-        // }, 2000);
-
-        const points: [number, number][] = selection.points.map((p) => [
-          p.x,
-          p.y,
-        ]);
-
-        if (points.length <= 2) {
-          return;
-        }
-
-        api.updateNode(
-          brush,
-          {
-            visibility: 'visible',
-            d: getFlatSvgPathFromStroke(
-              getStroke(points, {
-                thinning: 0.2,
-              }),
-            ),
-            strokeWidth: 0,
-            fill: appState.penbarEraser.fill,
-            tessellationMethod: TesselationMethod.LIBTESS,
-          },
-          false,
-        );
       }
     }
   }

@@ -374,6 +374,8 @@ lit-localize extract
 lit-localize build
 ```
 
+需要注意的是，需要保证 `msg` 在 `render` 函数可触发的范围内，因此很多动态写法无法生效。
+
 ### 运行时切换语言 {#switch-locale}
 
 本网站使用 Vitepress 构建，你可以在右上角看到一个切换语言的组件。
@@ -402,10 +404,35 @@ export const { getLocale, setLocale } = configureLocalization({
 
 为了演示方便我们采用 [static imports]，当然这样会加载所有的语言文件，影响首屏加载时间。
 
+## 使用 Slot 组合组件 {#composite-with-slot}
+
+在后续的 [课程 18 - 使用 ECS 重构] 中，我们在画布左侧实现了一个工具列表。假如我们想给工具列表新增一个工具，利用 WebComponents 的 `<slot>` 可以很方便的做到这一点。
+
+在很多可扩展插件（例如 [橡皮擦插件]）中，我们实现了类似的用法：
+
+```html
+<ic-spectrum-canvas>
+    <ic-spectrum-penbar-eraser slot="penbar-item"><ic-spectrum-penbar-eraser />
+</ic-spectrum-canvas>
+```
+
+在 Lit 组件中通过 `<slot>` 预留可扩展的位置：
+
+```ts
+export class Penbar extends LitElement {
+    render() {
+        return html`<sp-action-group class="penbar">
+            <slot></slot>
+        </sp-action-group>`;
+    }
+}
+```
+
 ## 扩展阅读 {#extended-reading}
 
 -   [Discussion about Lit on HN]
 -   [Change themes in Figma]
+-   [Using templates and slots]
 
 [Shoelace]: https://shoelace.style/
 [VitePress]: https://vitepress.dev/
@@ -431,3 +458,5 @@ export const { getLocale, setLocale } = configureLocalization({
 [Change themes in Figma]: https://help.figma.com/hc/en-us/articles/5576781786647-Change-themes-in-Figma
 [Localization]: https://lit.dev/docs/localization/overview/
 [static imports]: https://lit.dev/docs/localization/runtime-mode/#static-imports
+[Using templates and slots]: https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_templates_and_slots
+[橡皮擦插件]: /zh/reference/eraser

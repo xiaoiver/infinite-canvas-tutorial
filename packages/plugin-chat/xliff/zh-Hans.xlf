@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xliff version="1.2" xmlns="urn:oasis:names:tc:xliff:document:1.2">
+<file target-language="zh-Hans" source-language="en" original="lit-localize-inputs" datatype="plaintext">
+<body>
+<trans-unit id="s785c1d045a714d04">
+  <source>Show chat panel</source>
+  <target>显示聊天面板</target>
+</trans-unit>
+<trans-unit id="s1d318e9d0ccba86b">
+  <source>Chat</source>
+  <target>聊天</target>
+</trans-unit>
+</body>
+</file>
+</xliff>

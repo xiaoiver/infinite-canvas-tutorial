@@ -153,4 +153,14 @@ export class ExtendedAPI extends API {
   getThreads() {
     return this.#threads;
   }
+
+  /**
+   * I18n
+   */
+  setLocale(locale: string) {
+    throw new Error('Method not implemented.');
+  }
+  getLocale() {
+    throw new Error('Method not implemented.');
+  }
 }

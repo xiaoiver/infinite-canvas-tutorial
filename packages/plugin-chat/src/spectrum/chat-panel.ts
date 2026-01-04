@@ -17,9 +17,11 @@ import {
   apiContext,
   appStateContext,
 } from '@infinite-canvas-tutorial/webcomponents';
+import { localized, msg, str } from '@lit/localize';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-chat.js';
 
-@customElement('ic-spectrum-chat-panel')
+@customElement('ic-spectrum-taskbar-chat-panel')
+@localized()
 export class ChatPanel extends LitElement {
   static styles = css`
     :host {
@@ -335,7 +337,7 @@ export class ChatPanel extends LitElement {
       @pointerdown.stop
     >
       <h4>
-        Chat
+        ${msg(str`Chat`)}
         <sp-action-button quiet size="s" @click=${this.handleClose}>
           <sp-icon-close slot="icon"></sp-icon-close>
         </sp-action-button>
@@ -442,4 +444,10 @@ async function svgToPng(
     img.onerror = reject;
     img.src = svgDataUrl;
   });
+}
+
+declare global {
+  interface HTMLElementTagNameMap {
+    'ic-spectrum-taskbar-chat-panel': ChatPanel;
+  }
 }
