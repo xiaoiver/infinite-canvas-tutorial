@@ -41,8 +41,6 @@ import {
   ComputedPoints,
   DropShadow,
   Culled,
-  SnapPoint,
-  Snap,
   ToBeDeleted,
   Brush,
   HTML,
@@ -51,13 +49,14 @@ import {
 } from '../components';
 import { Commands } from '../commands/Commands';
 import {
+  calculateOffset,
+  createSVGElement,
   decompose,
   distanceBetweenPoints,
   getCursor,
   getGridPoint,
   SerializedNode,
   snapDraggedElements,
-  // snapDraggedElements,
   snapToGrid,
 } from '../utils';
 import { API } from '../API';
@@ -111,6 +110,8 @@ export interface SelectOBB {
   brush: Entity;
 
   editing: Entity;
+
+  svgSVGElement: SVGSVGElement;
 }
 
 /**
@@ -162,8 +163,6 @@ export class Select extends System {
             ComputedBounds,
             ComputedPoints,
             DropShadow,
-            Snap,
-            SnapPoint,
             ToBeDeleted,
             Editable,
           ).write,
@@ -216,14 +215,14 @@ export class Select extends System {
 
     const { snapOffset, snapLines } = snapDraggedElements(api, dragOffset);
 
-    // const offset = calculateOffset(
-    //   [selection.obb.x, selection.obb.y],
-    //   dragOffset,
-    //   snapOffset,
-    //   snapToPixelGridSize,
-    // );
+    const offset = calculateOffset(
+      [selection.obb.x, selection.obb.y],
+      dragOffset,
+      snapOffset,
+      snapToPixelGridSize,
+    );
 
-    this.createSnapPoints(camera, snapLines);
+    this.renderSnapLines(api, snapLines);
 
     const { selecteds, mask } = camera.read(Transformable);
 
@@ -265,12 +264,7 @@ export class Select extends System {
 
     this.saveSelectedOBB(api, selection);
 
-    if (camera.has(Snap)) {
-      [...camera.read(Snap).points].forEach((point) => {
-        point.add(ToBeDeleted);
-        point.remove(SnapPoint);
-      });
-    }
+    this.clearSnapLines(api);
   }
 
   private handleSelectedRotating(
@@ -675,7 +669,7 @@ export class Select extends System {
       safeAddComponent(camera, Transformable);
 
       if (!this.selections.has(camera.__id)) {
-        this.selections.set(camera.__id, {
+        const selection = {
           mode: SelectionMode.IDLE,
           resizingAnchorName: AnchorName.INSIDE,
           nodes: api.getNodes(),
@@ -694,7 +688,14 @@ export class Select extends System {
           pointerMoveViewportY: 0,
           brush: undefined,
           editing: undefined,
-        });
+          svgSVGElement: createSVGElement('svg') as SVGSVGElement,
+        };
+        this.selections.set(camera.__id, selection);
+
+        selection.svgSVGElement.style.overflow = 'visible';
+        selection.svgSVGElement.style.position = 'absolute';
+
+        api.getSvgLayer().appendChild(selection.svgSVGElement);
       }
 
       if (input.doubleClickTrigger) {
@@ -1139,26 +1140,54 @@ export class Select extends System {
     });
   }
 
-  private createSnapPoints(
-    camera: Entity,
+  private clearSnapLines(api: API) {
+    const { svgSVGElement } = this.selections.get(api.getCamera().__id);
+    svgSVGElement.innerHTML = '';
+  }
+
+  private renderSnapLines(
+    api: API,
     snapLines: { type: string; points: [number, number][] }[],
   ) {
-    safeAddComponent(camera, Snap);
-
-    [...camera.read(Snap).points].forEach((point) => {
-      point.add(ToBeDeleted);
-      point.remove(SnapPoint);
-    });
+    const { svgSVGElement } = this.selections.get(api.getCamera().__id);
+    this.clearSnapLines(api);
 
     snapLines.forEach(({ type, points }) => {
       if (type === 'points') {
-        const snapPoint = this.commands.spawn(new SnapPoint()).id();
-        this.commands.execute();
-        snapPoint.write(SnapPoint).camera = camera;
-        snapPoint.write(SnapPoint).points = points;
+        const pointsInViewport = points.map((p) =>
+          api.canvas2Viewport({ x: p[0], y: p[1] }),
+        );
+
+        const line = createSVGElement('polyline') as SVGPolylineElement;
+        line.setAttribute(
+          'points',
+          pointsInViewport.map((p) => `${p.x},${p.y}`).join(' '),
+        );
+        line.setAttribute('stroke', 'orange');
+        line.setAttribute('stroke-width', '1');
+        svgSVGElement.appendChild(line);
+
+        pointsInViewport.forEach((p) => {
+          // cross point
+          const tlbr = createSVGElement('line') as SVGLineElement;
+          tlbr.setAttribute('x1', `${p.x - 4}`);
+          tlbr.setAttribute('y1', `${p.y - 4}`);
+          tlbr.setAttribute('x2', `${p.x + 4}`);
+          tlbr.setAttribute('y2', `${p.y + 4}`);
+          tlbr.setAttribute('stroke', 'orange');
+          tlbr.setAttribute('stroke-width', '1');
+          svgSVGElement.appendChild(tlbr);
+
+          const trbl = createSVGElement('line') as SVGLineElement;
+          trbl.setAttribute('x1', `${p.x - 4}`);
+          trbl.setAttribute('y1', `${p.y + 4}`);
+          trbl.setAttribute('x2', `${p.x + 4}`);
+          trbl.setAttribute('y2', `${p.y - 4}`);
+          trbl.setAttribute('stroke', 'orange');
+          trbl.setAttribute('stroke-width', '1');
+          svgSVGElement.appendChild(trbl);
+        });
       }
     });
-
-    this.commands.execute();
   }
 }

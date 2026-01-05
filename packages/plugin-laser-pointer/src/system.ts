@@ -2,17 +2,14 @@ import {
   Camera,
   Canvas,
   Cursor,
-  DOMAdapter,
   Input,
   InputPoint,
   Pen,
   System,
+  createSVGElement,
 } from '@infinite-canvas-tutorial/ecs';
 import { LaserTrails } from './laser-trails';
-import {
-  SVG_NS,
-  AnimationFrameHandler,
-} from '@infinite-canvas-tutorial/webcomponents';
+import { AnimationFrameHandler } from '@infinite-canvas-tutorial/webcomponents';
 export class DrawLaserPointer extends System {
   private readonly cameras = this.query((q) => q.current.with(Camera).read);
 
@@ -60,9 +57,7 @@ export class DrawLaserPointer extends System {
       if (!selection) {
         this.selections.set(camera.__id, {
           laserTrails: new LaserTrails(this.handler, api),
-          svgSVGElement: DOMAdapter.get()
-            .getDocument()
-            .createElementNS(SVG_NS, 'svg'),
+          svgSVGElement: createSVGElement('svg') as SVGSVGElement,
         });
         selection = this.selections.get(camera.__id);
 

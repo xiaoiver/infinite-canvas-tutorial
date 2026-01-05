@@ -9,7 +9,6 @@ import DrawEllipse from '../../components/DrawEllipse.vue';
 import DrawArrow from '../../components/DrawArrow.vue';
 import Pencil from '../../components/Pencil.vue';
 import PencilFreehand from '../../components/PencilFreehand.vue';
-import Eraser from '../../components/Eraser.vue';
 </script>
 
 画笔工具提供一系列绘制相关的功能，可以通过 AppState 控制画笔工具的状态：
@@ -205,16 +204,6 @@ strokeOpacity: 1,
 详见：[Perfect freehand]
 
 <PencilFreehand />
-
-## penbarEraser
-
-默认样式如下：
-
-```ts
-fill: 'grey',
-```
-
-<Eraser />
 
 [加载 Web 字体]: /zh/guide/lesson-016#load-web-font
 [Perfect freehand]: /zh/guide/lesson-025#perfect-freehand

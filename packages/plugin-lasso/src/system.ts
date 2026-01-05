@@ -11,12 +11,10 @@ import {
   Selected,
   System,
   Transformable,
+  createSVGElement,
 } from '@infinite-canvas-tutorial/ecs';
 import { LassoTrail } from './lasso-trail';
-import {
-  SVG_NS,
-  AnimationFrameHandler,
-} from '@infinite-canvas-tutorial/webcomponents';
+import { AnimationFrameHandler } from '@infinite-canvas-tutorial/webcomponents';
 export class LassoSystem extends System {
   private readonly cameras = this.query((q) => q.current.with(Camera).read);
 
@@ -74,10 +72,7 @@ export class LassoSystem extends System {
       if (!selection) {
         this.selections.set(camera.__id, {
           lassoTrail: new LassoTrail(this.handler, api),
-          svgSVGElement: document.createElementNS(
-            SVG_NS,
-            'svg',
-          ) as SVGSVGElement,
+          svgSVGElement: createSVGElement('svg') as SVGSVGElement,
         });
         selection = this.selections.get(camera.__id);
 

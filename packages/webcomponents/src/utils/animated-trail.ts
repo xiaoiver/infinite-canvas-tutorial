@@ -3,10 +3,12 @@
  */
 
 import { LaserPointer, LaserPointerOptions } from '@excalidraw/laser-pointer';
-import { API, getSvgPathFromStroke } from '@infinite-canvas-tutorial/ecs';
+import {
+  API,
+  getSvgPathFromStroke,
+  createSVGElement,
+} from '@infinite-canvas-tutorial/ecs';
 import { AnimationFrameHandler } from './animation-frame-handler';
-
-export const SVG_NS = 'http://www.w3.org/2000/svg';
 
 export interface Trail {
   start(container: SVGSVGElement): void;
@@ -42,11 +44,11 @@ export class AnimatedTrail implements Trail {
   ) {
     this.animationFrameHandler.register(this, this.onFrame.bind(this));
 
-    this.trailElement = document.createElementNS(SVG_NS, 'path');
+    this.trailElement = createSVGElement('path') as SVGPathElement;
     if (this.options.animateTrail) {
       const { strokeDasharray = '7 7', strokeDashoffset = '10' } = this.options;
 
-      this.trailAnimation = document.createElementNS(SVG_NS, 'animate');
+      this.trailAnimation = createSVGElement('animate') as SVGAnimateElement;
       // TODO: make this configurable
       this.trailAnimation.setAttribute('attributeName', 'stroke-dashoffset');
       this.trailElement.setAttribute('stroke-dasharray', strokeDasharray);

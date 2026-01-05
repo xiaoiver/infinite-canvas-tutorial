@@ -179,6 +179,28 @@ if (Math.abs(sideOffsetLeft) <= minOffset[0]) {
 
 ### 渲染辅助线 {#render-snap-lines}
 
+和 [课程 26 - 套索工具] 中类似，辅助线也可以绘制在 SVG 容器中。
+
+```ts
+renderSnapLines(
+    api: API,
+    snapLines: { type: string; points: [number, number][] }[],
+) {
+    const { svgSVGElement } = this.selections.get(api.getCamera().__id);
+    this.clearSnapLines(api);
+
+    snapLines.forEach(({ type, points }) => {
+        if (type === 'points') {
+            const pointsInViewport = points.map((p) =>
+                api.canvas2Viewport({ x: p[0], y: p[1] }),
+            );
+            const line = createSVGElement('polyline') as SVGPolylineElement;
+            svgSVGElement.appendChild(line);
+        }
+    });
+}
+```
+
 ## 扩展阅读 {#extended-reading}
 
 -   [How to snap shapes positions on dragging with Konva?]
@@ -194,3 +216,4 @@ if (Math.abs(sideOffsetLeft) <= minOffset[0]) {
 [snapResizingElements]: https://github.com/excalidraw/excalidraw/blob/master/packages/excalidraw/snapping.ts#L1108C14-L1108C34
 [renderSnaps]: https://github.com/excalidraw/excalidraw/blob/master/packages/excalidraw/renderer/renderSnaps.ts
 [课程 8 - 使用空间索引加速]: /zh/guide/lesson-008#using-spatial-indexing
+[课程 26 - 套索工具]: /zh/guide/lesson-026#lasso-selection

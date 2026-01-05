@@ -57,7 +57,6 @@ export interface AppState {
       fontFamilies: string[];
     }
   >;
-  penbarEraser: Partial<FillAttributes>;
   taskbarVisible: boolean;
   taskbarAll: Task[];
   taskbarSelected: Task[];
@@ -219,9 +218,6 @@ export const getDefaultAppState: () => AppState = () => {
       fontSize: 16,
       fontStyle: 'normal',
       fill: '#000',
-    },
-    penbarEraser: {
-      fill: 'grey',
     },
     taskbarVisible: true,
     taskbarAll: [Task.SHOW_LAYERS_PANEL, Task.SHOW_PROPERTIES_PANEL],

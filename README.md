@@ -345,9 +345,9 @@ If you want to use it in your own project, you can refer to:
 -   Snap to pixel grid
 -   Snap to objects
 
-|                Snap to pixel grid                 |     |
-| :-----------------------------------------------: | :-: |
-| ![snap to pixel grid](./screenshots/lesson27.gif) |     |
+|                Snap to pixel grid                 |                 Snap to objects                 |
+| :-----------------------------------------------: | :---------------------------------------------: |
+| ![snap to pixel grid](./screenshots/lesson27.gif) | ![snap to object](./screenshots/lesson27-2.png) |
 
 ## Lesson 28 - Integrating with AI [🔗](https://infinitecanvas.cc/guide/lesson-028)
 

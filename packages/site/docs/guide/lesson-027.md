@@ -177,6 +177,28 @@ if (Math.abs(sideOffsetLeft) <= minOffset[0]) {
 
 ### Render snap lines {#render-snap-lines}
 
+Render snap lines in SVG container, see: [Lesson 26 - Lasso selection].
+
+```ts
+renderSnapLines(
+    api: API,
+    snapLines: { type: string; points: [number, number][] }[],
+) {
+    const { svgSVGElement } = this.selections.get(api.getCamera().__id);
+    this.clearSnapLines(api);
+
+    snapLines.forEach(({ type, points }) => {
+        if (type === 'points') {
+            const pointsInViewport = points.map((p) =>
+                api.canvas2Viewport({ x: p[0], y: p[1] }),
+            );
+            const line = createSVGElement('polyline') as SVGPolylineElement;
+            svgSVGElement.appendChild(line);
+        }
+    });
+}
+```
+
 ## Extended reading {#extended-reading}
 
 -   [How to snap shapes positions on dragging with Konva?]
@@ -192,3 +214,4 @@ if (Math.abs(sideOffsetLeft) <= minOffset[0]) {
 [snapResizingElements]: https://github.com/excalidraw/excalidraw/blob/master/packages/excalidraw/snapping.ts#L1108C14-L1108C34
 [renderSnaps]: https://github.com/excalidraw/excalidraw/blob/master/packages/excalidraw/renderer/renderSnaps.ts
 [Lesson 8 - Using spatial indexing]: /guide/lesson-008#using-spatial-indexing
+[Lesson 26 - Lasso selection]: /guide/lesson-026#lasso-selection

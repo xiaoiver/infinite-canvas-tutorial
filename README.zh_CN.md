@@ -346,9 +346,9 @@ pnpm run dev
 -   网格吸附
 -   对象吸附
 
-|                     网格吸附                      |     |
-| :-----------------------------------------------: | :-: |
-| ![snap to pixel grid](./screenshots/lesson27.gif) |     |
+|                     网格吸附                      |                    对象吸附                     |
+| :-----------------------------------------------: | :---------------------------------------------: |
+| ![snap to pixel grid](./screenshots/lesson27.gif) | ![snap to object](./screenshots/lesson27-2.png) |
 
 ## 课程 28 - 与 AI 结合 [🔗](https://infinitecanvas.cc/zh/guide/lesson-028)
 

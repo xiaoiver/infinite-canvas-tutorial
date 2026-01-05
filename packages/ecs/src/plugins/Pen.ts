@@ -24,8 +24,6 @@ import {
   Transformable,
   UI,
   VectorNetwork,
-  SnapPoint,
-  Snap,
 } from '../components';
 
 export const PenPlugin: Plugin = () => {
@@ -34,8 +32,6 @@ export const PenPlugin: Plugin = () => {
   component(Highlighted);
   component(Transformable);
   component(Anchor);
-  component(SnapPoint);
-  component(Snap);
   component(VectorNetwork);
 
   system((s) =>

@@ -27,7 +27,7 @@ import '@infinite-canvas-tutorial/lasso/spectrum';
 
 ```html
 <ic-spectrum-canvas>
-    <ic-spectrum-lasso slot="penbar-item"><ic-spectrum-lasso />
+    <ic-spectrum-penbar-lasso slot="penbar-item"><ic-spectrum-penbar-lasso />
 </ic-spectrum-canvas>
 ```
 
