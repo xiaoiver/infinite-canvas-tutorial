@@ -55,6 +55,7 @@ import {
   distanceBetweenPoints,
   getCursor,
   getGridPoint,
+  isBrowser,
   SerializedNode,
   snapDraggedElements,
   snapToGrid,
@@ -222,7 +223,9 @@ export class Select extends System {
       snapToPixelGridSize,
     );
 
-    this.renderSnapLines(api, snapLines);
+    if (isBrowser) {
+      this.renderSnapLines(api, snapLines);
+    }
 
     const { selecteds, mask } = camera.read(Transformable);
 
@@ -264,7 +267,9 @@ export class Select extends System {
 
     this.saveSelectedOBB(api, selection);
 
-    this.clearSnapLines(api);
+    if (isBrowser) {
+      this.clearSnapLines(api);
+    }
   }
 
   private handleSelectedRotating(
@@ -695,7 +700,9 @@ export class Select extends System {
         selection.svgSVGElement.style.overflow = 'visible';
         selection.svgSVGElement.style.position = 'absolute';
 
-        api.getSvgLayer().appendChild(selection.svgSVGElement);
+        if (isBrowser) {
+          api.getSvgLayer().appendChild(selection.svgSVGElement);
+        }
       }
 
       if (input.doubleClickTrigger) {
