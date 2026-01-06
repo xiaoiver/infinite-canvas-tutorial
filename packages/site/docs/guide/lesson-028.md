@@ -238,7 +238,11 @@ Finally, overlay all the layers.
 
 ## Upscale image {#upscale-image}
 
-We can upscale image with model, such as [SeedVR2] in fal.ai. In browser side, we can use [UpscalerJS] in webworker, see our [upscaler plugin], which uses `@upscalerjs/esrgan-medium 4x` model by default.
+We can upscale image with model, the following diff picture comes from [Topaz Gigapixel]:
+
+![source: https://www.adobe.com/products/photoshop/image-upscaler.html](https://www.adobe.com/products/photoshop/media_1bef0720b9cf0858149ccc837fa56e1ed726defe6.jpg?width=2000&format=webply&optimize=medium)
+
+We can use [fal-ai/topaz/upscale/image] or [SeedVR2] in fal.ai. In browser side, we can use [UpscalerJS] in webworker, see our [upscaler plugin], which uses `@upscalerjs/esrgan-medium 4x` model by default.
 
 ![@upscalerjs/esrgan-medium 4x](/upscaler.png)
 
@@ -294,3 +298,5 @@ We can upscale image with model, such as [SeedVR2] in fal.ai. In browser side, w
 [SeedVR2]: https://huggingface.co/ByteDance-Seed/SeedVR2-7B
 [UpscalerJS]: https://upscalerjs.com/documentation/guides/browser/performance/webworker
 [super-resolution-js]: https://github.com/josephrocca/super-resolution-js
+[Topaz Gigapixel]: https://www.topazlabs.com/topaz-gigapixel
+[fal-ai/topaz/upscale/image]: https://fal.ai/models/fal-ai/topaz/upscale/image/api

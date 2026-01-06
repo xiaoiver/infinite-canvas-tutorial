@@ -39,6 +39,7 @@ onMounted(async () => {
       stroke: '#147af3',
       strokeWidth: 1,
     });
+    api.record();
   };
 
   canvas.addEventListener(Event.READY, onReady);

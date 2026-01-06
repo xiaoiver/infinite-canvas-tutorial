@@ -236,7 +236,11 @@ Adobe Photoshop 提供了 [Match fonts] 功能：
 
 ## 提升图片分辨率 {#upscale-image}
 
-利用模型可以提升图片的分辨率。在 fal.ai 上可以直接使用 [SeedVR2]，在浏览器端我们可以在 WebWorker 中使用 [UpscalerJS]，它默认使用 `@upscalerjs/esrgan-medium 4x` 模型。相关功能详见：[upscaler plugin]，效果如下：
+利用模型可以提升图片的分辨率，下图展示了 [Topaz Gigapixel] 模型的效果：
+
+![source: https://www.adobe.com/products/photoshop/image-upscaler.html](https://www.adobe.com/products/photoshop/media_1bef0720b9cf0858149ccc837fa56e1ed726defe6.jpg?width=2000&format=webply&optimize=medium)
+
+在 fal.ai 上可以直接使用 [fal-ai/topaz/upscale/image] 或者 [SeedVR2]，在浏览器端我们可以在 WebWorker 中使用 [UpscalerJS]，它默认使用 `@upscalerjs/esrgan-medium 4x` 模型。相关功能详见：[upscaler plugin]，效果如下：
 
 ![@upscalerjs/esrgan-medium 4x](/upscaler.png)
 
@@ -292,3 +296,5 @@ Adobe Photoshop 提供了 [Match fonts] 功能：
 [SeedVR2]: https://huggingface.co/ByteDance-Seed/SeedVR2-7B
 [UpscalerJS]: https://upscalerjs.com/documentation/guides/browser/performance/webworker
 [super-resolution-js]: https://github.com/josephrocca/super-resolution-js
+[Topaz Gigapixel]: https://www.topazlabs.com/topaz-gigapixel
+[fal-ai/topaz/upscale/image]: https://fal.ai/models/fal-ai/topaz/upscale/image/api

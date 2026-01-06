@@ -117,9 +117,7 @@ Render Graph（有时称为 FrameGraph）是一种将渲染过程抽象为有向
 
 ![Frame graph example](/frame-graph.png)
 
-### 实现 {#implementation}
-
-[Render graph in bevy]
+在 [Render graph in bevy] 中用法如下：
 
 ```rs
 // @see https://docs.rs/bevy/latest/bevy/render/render_graph/struct.RenderGraph.html
@@ -127,6 +125,84 @@ let mut graph = RenderGraph::default();
 graph.add_node(Labels::A, MyNode);
 graph.add_node(Labels::B, MyNode);
 graph.add_node_edge(Labels::B, Labels::A);
+```
+
+### 设计思路 {#design-concept}
+
+我们参考 [noclip] 的渲染图实现，它采用了三阶段设计：
+
+1. 构建阶段（Graph Building）：声明式定义渲染流程。我们在下一小节使用方式会看到它。
+2. 调度阶段（Scheduling）：自动分配和复用资源。其中又可以分解成一下阶段：
+
+-   统计阶段：遍历所有 Pass，统计每个 RenderTarget 和 ResolveTexture 的引用次数
+-   分配阶段：按需分配资源。首次使用时从对象池获取或创建，相同规格的资源可复用，引用计数归零时回收到对象池
+-   释放阶段：引用计数归零时回收到对象池
+
+3. 执行阶段（Execution）：按顺序执行渲染通道
+
+图数据结构如下。存储渲染图的声明式描述，不包含实际资源，只记录 Pass 和 RenderTarget 的 ID 关系：
+
+```ts
+class GraphImpl {
+    renderTargetDescriptions: Readonly<RGRenderTargetDescription>[] = [];
+    resolveTextureRenderTargetIDs: number[] = [];
+    passes: RenderGraphPass[] = [];
+}
+```
+
+### 使用方式 {#usage}
+
+在每一次需要重绘时，创建一个新的 RenderGraphBuilder 用于构建 DAG，目前这个简单的 DAG 中包括一个主流程渲染 Pass，它将渲染结果输出到一个 ColorRT 和 DepthRT 中。后续我们会通过 `pushPass` 增加其他 Pass，可以将 ColorRT 作为输入进一步消费，最终这个 ColorRT 将被渲染到屏幕上。主要的渲染逻辑写在 `pass.exec` 的回调函数中，这个函数接收一个 `RenderPass` 对象，详见：[课程 2]。
+
+```ts
+const builder = renderGraph.newGraphBuilder();
+builder.pushPass((pass) => {
+    pass.setDebugName('Main Render Pass');
+    pass.attachRenderTargetID(RGAttachmentSlot.Color0, mainColorTargetID);
+    pass.attachRenderTargetID(RGAttachmentSlot.DepthStencil, mainDepthTargetID);
+    pass.exec((renderPass) => {
+        // 渲染网格
+        // 渲染场景中的各种图形
+    });
+});
+builder.resolveRenderTargetToExternalTexture(
+    mainColorTargetID,
+    onscreenTexture,
+);
+renderGraph.execute();
+```
+
+### FXAA {#fxaa}
+
+现在我们在主渲染流程（Main Render Pass）之外新建一个 FXAA Pass 用于快速抗锯齿。检测边缘方向，沿边缘方向进行多采样混合，并用亮度范围进行校验，避免过度模糊。相比 MSAA 更轻量，适合实时渲染。
+
+该方法会使用 NTSC 权重 `0.299R + 0.587G + 0.114B` 将 RGB 转为灰度，用于边缘检测。
+
+```glsl
+float MonochromeNTSC(vec3 t_Color) {
+  // NTSC primaries.
+  return dot(t_Color.rgb, vec3(0.299, 0.587, 0.114));
+}
+```
+
+回到渲染图的声明式语法。首先拿到上一步的 ColorRT
+
+```ts
+builder.pushPass((pass) => {
+    pass.setDebugName('FXAA');
+    pass.attachRenderTargetID(RGAttachmentSlot.Color0, mainColorTargetID);
+
+    const mainColorResolveTextureID =
+        builder.resolveRenderTarget(mainColorTargetID);
+    pass.attachResolveTexture(mainColorResolveTextureID);
+
+    pass.exec((passRenderer, scope) => {
+        postProcessingRenderer.render(
+            passRenderer,
+            scope.getResolveTextureForID(mainColorResolveTextureID),
+        );
+    });
+});
 ```
 
 [Paper Shaders]: https://shaders.paper.design/
@@ -137,3 +213,5 @@ graph.add_node_edge(Labels::B, Labels::A);
 [FrameGraph: Extensible Rendering Architecture in Frostbite]: https://www.gdcvault.com/play/1024612/FrameGraph-Extensible-Rendering-Architecture-in
 [Why Talking About Render Graphs]: https://logins.github.io/graphics/2021/05/31/RenderGraphs.html
 [Render graph in bevy]: https://github.com/bevyengine/bevy/discussions/2524
+[noclip]: https://github.com/magcius/noclip.website
+[课程 2]: /zh/guide/lesson-002

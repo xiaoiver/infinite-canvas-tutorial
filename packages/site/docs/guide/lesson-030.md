@@ -119,8 +119,6 @@ Render Graph（有时称为 FrameGraph）是一种将渲染过程抽象为有向
 
 ![Frame graph example](/frame-graph.png)
 
-### Implementation {#implementation}
-
 [Render graph in bevy]
 
 ```rs
@@ -131,6 +129,84 @@ graph.add_node(Labels::B, MyNode);
 graph.add_node_edge(Labels::B, Labels::A);
 ```
 
+### Design concept {#design-concept}
+
+We reference the render graph implementation from [noclip], which employs a three-phase design:
+
+1.  Graph Building Phase: Declaratively defines the rendering pipeline. We'll see how it's used in the next subsection.
+2.  Scheduling Phase: Automatically allocates and reuses resources. This can be further broken down into:
+
+-   Statistics Phase: Traverse all passes to count references for each RenderTarget and ResolveTexture
+-   Allocation Phase: Allocate resources on demand. Retrieve from the object pool or create on first use. Reuse resources with identical specifications. Return to the object pool when reference count reaches zero.
+-   Release Phase: Return to the object pool when reference count reaches zero.
+
+3. Execution Phase: Execute rendering passes sequentially.
+
+The data structure for the render graph is as follows. It stores a declarative description of the render graph, containing no actual resources. It only records the ID relationships between Passes and Render Targets.
+
+```ts
+class GraphImpl {
+    renderTargetDescriptions: Readonly<RGRenderTargetDescription>[] = [];
+    resolveTextureRenderTargetIDs: number[] = [];
+    passes: RenderGraphPass[] = [];
+}
+```
+
+### Usage {#usage}
+
+Each time a repaint is required, a new RenderGraphBuilder is created to construct the DAG. Currently, this simple DAG includes a main rendering pass that outputs results to a ColorRT and DepthRT. Subsequently, we will add additional passes using `pushPass`. The ColorRT can be consumed as input, and ultimately this ColorRT will be rendered to the screen. The main rendering logic is written in the callback function of `pass.exec`, which receives a `RenderPass` object. For details, see: [Lesson 2].
+
+```ts
+const builder = renderGraph.newGraphBuilder();
+builder.pushPass((pass) => {
+    pass.setDebugName('Main Render Pass');
+    pass.attachRenderTargetID(RGAttachmentSlot.Color0, mainColorTargetID);
+    pass.attachRenderTargetID(RGAttachmentSlot.DepthStencil, mainDepthTargetID);
+    pass.exec((renderPass) => {
+        // Render grid
+        // Render shapes in current scene
+    });
+});
+builder.resolveRenderTargetToExternalTexture(
+    mainColorTargetID,
+    onscreenTexture,
+);
+renderGraph.execute();
+```
+
+### FXAA {#fxaa}
+
+We now create a separate FXAA pass outside the main render pass for fast anti-aliasing. It detects edge directions, performs multi-sample blending along edge directions, and applies brightness range validation to prevent excessive blurring. Compared to MSAA, it is lighter and better suited for real-time rendering.
+
+This method converts RGB to grayscale using NTSC weights `0.299R + 0.587G + 0.114B` for edge detection.
+
+```glsl
+float MonochromeNTSC(vec3 t_Color) {
+  // NTSC primaries.
+  return dot(t_Color.rgb, vec3(0.299, 0.587, 0.114));
+}
+```
+
+Returning to the declarative syntax of the render graph. First, obtain the ColorRT from the previous step.
+
+```ts
+builder.pushPass((pass) => {
+    pass.setDebugName('FXAA');
+    pass.attachRenderTargetID(RGAttachmentSlot.Color0, mainColorTargetID);
+
+    const mainColorResolveTextureID =
+        builder.resolveRenderTarget(mainColorTargetID);
+    pass.attachResolveTexture(mainColorResolveTextureID);
+
+    pass.exec((passRenderer, scope) => {
+        postProcessingRenderer.render(
+            passRenderer,
+            scope.getResolveTextureForID(mainColorResolveTextureID),
+        );
+    });
+});
+```
+
 [Paper Shaders]: https://shaders.paper.design/
 [Pixi.js filters]: https://github.com/pixijs/filters
 [CSS filter]: https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/filter
@@ -139,3 +215,5 @@ graph.add_node_edge(Labels::B, Labels::A);
 [FrameGraph: Extensible Rendering Architecture in Frostbite]: https://www.gdcvault.com/play/1024612/FrameGraph-Extensible-Rendering-Architecture-in
 [Why Talking About Render Graphs]: https://logins.github.io/graphics/2021/05/31/RenderGraphs.html
 [Render graph in bevy]: https://github.com/bevyengine/bevy/discussions/2524
+[noclip]: https://github.com/magcius/noclip.website
+[Lesson 2]: /guide/lesson-002

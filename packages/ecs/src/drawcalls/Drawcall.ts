@@ -1,6 +1,3 @@
-import { vert as postProcessingVert } from '../shaders/post-processing/fullscreen';
-import { vert as bigTriangleVert } from '../shaders/post-processing/big-triangle';
-import { frag as copyFrag } from '../shaders/post-processing/copy';
 import {
   Buffer,
   Device,
@@ -37,6 +34,9 @@ import {
 } from '../components';
 import { API } from '../API';
 import { FilterObject } from '../utils/filter';
+import { vert as postProcessingVert } from '../shaders/post-processing/fullscreen';
+import { vert as bigTriangleVert } from '../shaders/post-processing/big-triangle';
+import { frag as copyFrag } from '../shaders/post-processing/copy';
 import { frag as noiseFrag } from '../shaders/post-processing/noise';
 import { frag as brightnessFrag } from '../shaders/post-processing/brightness';
 import { frag as contrastFrag } from '../shaders/post-processing/contrast';
@@ -602,7 +602,6 @@ export abstract class Drawcall {
       depthStencilResolveTo: null,
     });
 
-    // this.program.setUniformsLegacy(sceneUniformLegacyObject);
     filterRenderPass.setViewport(0, 0, width, height);
     filterRenderPass.setPipeline(this.#filterPipeline);
     filterRenderPass.setVertexInput(

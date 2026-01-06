@@ -1,18 +1,12 @@
 import type {
-  Color,
-  ComputePass,
   QueryPool,
   RenderPass,
   RenderTarget,
   Texture,
 } from '@antv/g-device-api';
+import type { RGRenderTargetDescription } from './RenderTargetDescription';
 
-export interface GfxRenderAttachmentView {
-  level: number;
-  z: number;
-}
-
-export enum GfxrAttachmentSlot {
+export enum RGAttachmentSlot {
   Color0 = 0,
   Color1 = 1,
   Color2 = 2,
@@ -21,75 +15,44 @@ export enum GfxrAttachmentSlot {
   DepthStencil,
 }
 
-export interface GfxrAttachmentClearDescriptor {
-  clearColor: Readonly<Color> | 'load';
-  clearDepth: number | 'load';
-  clearStencil: number | 'load';
+export interface RGPassScope {
+  getResolveTextureForID: (id: number) => Texture;
+  getRenderTargetAttachment: (slot: RGAttachmentSlot) => RenderTarget | null;
+  getRenderTargetTexture: (slot: RGAttachmentSlot) => Texture | null;
 }
 
-export const noopClearDescriptor: GfxrAttachmentClearDescriptor = {
-  clearColor: 'load',
-  clearDepth: 'load',
-  clearStencil: 'load',
-};
-
-export interface GfxrPassScope {
-  /**
-   * Retrieve the resolve texture resource for a given resolve texture ID. This is guaranteed to be
-   * a single-sampled texture which can be bound to a shader's texture binding.
-   *
-   * @param id A resolve texture ID, as returned by {@see GfxrGraphBuilder::resolveRenderTarget},
-   * {@see GfxrGraphBuilder::resolveRenderTargetPassAttachmentSlot}, or
-   * {@see GfxrGraphBuilder::resolveRenderTargetToExternalTexture}.
-   */
-  getResolveTextureForID(id: number): Texture;
-
-  /**
-   * Retrieve the underlying texture resource for a given attachment slot {@param slot}. This is not
-   * guaranteed to be a single-sampled texture; to resolve the resource, see {@see getResolveTextureForID}.
-   */
-  getRenderTargetTexture(slot: GfxrAttachmentSlot): Texture | null;
-}
-
+export type PassSetupFunc = (renderPass: IRenderGraphPass) => void;
 export type PassExecFunc = (
   passRenderer: RenderPass,
-  scope: GfxrPassScope,
+  scope: RGPassScope,
 ) => void;
-export type ComputePassExecFunc = (
-  pass: ComputePass,
-  scope: GfxrPassScope,
-) => void;
-export type PassPostFunc = (scope: GfxrPassScope) => void;
+export type PassPostFunc = (scope: RGPassScope) => void;
 
-declare const isRenderTargetID: unique symbol;
-export type GfxrRenderTargetID = number & { [isRenderTargetID]: true };
-
-declare const isResolveTextureID: unique symbol;
-export type GfxrResolveTextureID = number & { [isResolveTextureID]: true };
-
-interface GfxrPassBase {
+export interface IRenderGraphPass {
   /**
-   * Set the debug name of a given pass. Strongly encouraged.
+   * Set the debug name of a given pass.
    */
-  setDebugName(debugName: string): void;
+  setDebugName: (debugName: string) => void;
 
   /**
-   * Attach the resolve texture ID to the given pass. All resolve textures used within the pass
-   * must be attached before-hand in order for the scheduler to properly allocate our resolve texture.
+   * Set whether to output a debug thumbnail. false by default.
    */
-  attachResolveTexture(resolveTextureID: GfxrResolveTextureID): void;
+  pushDebugThumbnail: (attachmentSlot: RGAttachmentSlot) => void;
 
   /**
-   * Set the pass's post callback. This will be immediately right after the pass is submitted,
-   * allowing you to do additional custom work once the pass has been done. This is expected to be
-   * seldomly used.
+   * Attach the given renderTargetID to the given attachmentSlot.
+   * This determines which render targets this pass will render to.
    */
-  post(func: PassPostFunc): void;
+  attachRenderTargetID: (
+    attachmentSlot: RGAttachmentSlot,
+    renderTargetID: number,
+  ) => void;
 
-  addExtraRef(renderTargetID: GfxrAttachmentSlot): void;
-}
+  /**
+   * Attach the occlusion query pool used by this rendering pass.
+   */
+  attachOcclusionQueryPool: (queryPool: QueryPool) => void;
 
-export interface GfxrPass extends GfxrPassBase {
   /**
    * Set the viewport for the given render pass in *normalized* coordinates (0..1).
    * Not required; defaults to full viewport.
@@ -97,63 +60,114 @@ export interface GfxrPass extends GfxrPassBase {
   setViewport(x: number, y: number, w: number, h: number): void;
 
   /**
-   * Attach the given render target with ID {@param renderTargetID} to the given attachment slot.
-   *
-   * This determines which render targets this pass will render to.
+   * Attach the resolve texture ID to the given pass. All resolve textures used within the pass
+   * must be attached before-hand in order for the scheduler to properly allocate our resolve texture.
    */
-  attachRenderTargetID(
-    attachmentSlot: GfxrAttachmentSlot,
-    renderTargetID: GfxrRenderTargetID,
-    view?: GfxRenderAttachmentView,
-  ): void;
+  attachResolveTexture: (resolveTextureID: number) => void;
 
   /**
-   * Attach the given texture {@param texture} to the given attachment slot, with the given view.
-   *
-   * This will write directly to the given texture. Note that this completely bypasses the render target system;
-   * and as such, resolve textures and other features will not exist here.
+   * Set the pass's execution callback.
    */
-  attachTexture(
-    attachmentSlot: GfxrAttachmentSlot,
+  exec: (func: PassExecFunc) => void;
+
+  /**
+   * Set the pass's post callback
+   */
+  post: (func: PassPostFunc) => void;
+
+  addExtraRef: (renderTargetID: RGAttachmentSlot) => void;
+}
+
+export interface RGGraphBuilder {
+  /**
+   * Add a new pass. {@param setupFunc} will be called *immediately* to set up the
+   * pass. This is wrapped in a function simply to limit the scope of a pass. It
+   * is possible I might change this in the future to limit the allocations caused
+   * by closures.
+   */
+  pushPass: (setupFunc: PassSetupFunc) => void;
+
+  /**
+   * Tell the system about a render target with the given descriptions. Render targets
+   * are "virtual", and is only backed by an actual device resource when inside of a pass.
+   * This allows render targets to be reused without the user having to track any of this
+   * logic.
+   *
+   * When a pass has a render target ID attached, the created {@see GfxRenderPass} will have
+   * the render targets already bound. To use a render target as an input to a rendering
+   * algorithm, it must first be "resolved" to a texture. Use {@see resolveRenderTarget} to
+   * get a resolved texture ID corresponding to a given render target.
+   *
+   * To retrieve actual backing resource for a given render target ID inside of a pass,
+   * use the {@see GfxrPassScope} given to the pass's execution or post callbacks, however
+   * this usage should be rarer than the resolve case.
+   */
+  createRenderTargetID: (
+    desc: Readonly<RGRenderTargetDescription>,
+    debugName: string,
+  ) => number;
+
+  /**
+   * Resolve the render target in slot {@param attachmentSlot} of pass {@param pass}, and return
+   * the resolve texture ID.
+   *
+   * To bind the image of a render target in a rendering pass, it first must be "resolved" to
+   * a texture. Please remember to attach the resolve texture to a pass where it is used with
+   * {@see GfxrPassScope::attachResolveTexture}. When in the pass's execution or post callbacks,
+   * you can retrieve a proper {@param GfxTexture} for a resolve texture ID with
+   * {@see GfxrPassScope::getResolveTextureForID}}.
+   */
+  resolveRenderTargetPassAttachmentSlot: (
+    pass: IRenderGraphPass,
+    attachmentSlot: RGAttachmentSlot,
+  ) => number;
+
+  /**
+   * Resolve the render target ID {@param renderTargetID}, and return the resolve texture ID.
+   *
+   * To bind the image of a render target in a rendering pass, it first must be "resolved" to
+   * a texture. Please remember to attach the resolve texture to a pass where it is used with
+   * {@see GfxrPassScope::attachResolveTexture}. When in the pass's execution or post callbacks,
+   * you can retrieve a proper {@param GfxTexture} for a resolve texture ID with
+   * {@see GfxrPassScope::getResolveTextureForID}}.
+   *
+   * This just looks up the last pass that drew to the render target {@param renderTargetID},
+   * and then calls {@see resolveRenderTargetPassAttachmentSlot} using the information it found.
+   */
+  resolveRenderTarget: (renderTargetID: number) => number;
+
+  /**
+   * Specify that the render target ID {@param renderTargetID} should be resolved to an
+   * externally-provided texture. The texture must have been allocated by the user, and it must
+   * match the dimensions of the render target.
+   *
+   * Warning: This API might change in the near future.
+   */
+  resolveRenderTargetToExternalTexture: (
+    renderTargetID: number,
     texture: Texture,
-    view?: GfxRenderAttachmentView,
-    clearDescriptor?: GfxrAttachmentClearDescriptor,
-  ): void;
+  ) => void;
 
   /**
-   * Attach the occlusion query pool used by this rendering pass.
+   * Return the description that a render target was created with. This allows the creator to
+   * not have to pass information to any dependent modules to derive from it.
    */
-  attachOcclusionQueryPool(queryPool: QueryPool): void;
+  getRenderTargetDescription: (
+    renderTargetID: number,
+  ) => Readonly<RGRenderTargetDescription>;
 
   /**
-   * Set the pass's execution callback. This will be called with the {@see GfxRenderPass} for the
-   * pass, along with the {@see GfxrPassScope} to access any resources that the system has allocated.
+   * Internal API.
    */
-  exec(func: PassExecFunc): void;
+  getDebug: () => RGGraphBuilderDebug;
 }
 
-export interface GfxrComputePass extends GfxrPassBase {
-  /**
-   * Set the pass's execution callback. This will be called with the {@see GfxRenderPass} for the
-   * pass, along with the {@see GfxrPassScope} to access any resources that the system has allocated.
-   */
-  exec(func: ComputePassExecFunc): void;
-}
-
-export interface GfxRenderPassAttachment {
-  renderTarget: RenderTarget;
-  view: GfxRenderAttachmentView;
-  resolveTo: Texture | null;
-  resolveView: GfxRenderAttachmentView | null;
-  store: boolean;
-}
-
-export interface GfxRenderPassAttachmentColor extends GfxRenderPassAttachment {
-  clearColor: Color | 'load';
-}
-
-export interface GfxRenderPassAttachmentDepthStencil
-  extends GfxRenderPassAttachment {
-  clearDepth: number | 'load';
-  clearStencil: number | 'load';
+export interface RGGraphBuilderDebug {
+  getPasses: () => IRenderGraphPass[];
+  getPassDebugThumbnails: (pass: IRenderGraphPass) => boolean[];
+  getPassRenderTargetID: (
+    pass: IRenderGraphPass,
+    slot: RGAttachmentSlot,
+  ) => number;
+  getRenderTargetIDDebugName: (renderTargetID: number) => string;
 }

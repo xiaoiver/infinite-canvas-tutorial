@@ -10,6 +10,7 @@ import {
 import { Canvas, GPUResource, Grid, Theme } from '../components';
 import { isBrowser, RenderCache } from '../utils';
 import { TexturePool } from '../resources';
+import { RenderGraph } from '../render-graph/RenderGraph';
 
 /**
  * Usually the first built-in system to run.
@@ -83,27 +84,21 @@ export class SetupDevice extends System {
       }
 
       const holder = canvas.hold();
-      const {
-        device,
-        swapChain,
-        renderTarget,
-        depthRenderTarget,
-        renderCache,
-      } = await this.createGPUResource(
-        renderer,
-        shaderCompilerPath,
-        element,
-        width,
-        height,
-        devicePixelRatio,
-      );
+      const { device, swapChain, renderCache, renderGraph } =
+        await this.createGPUResource(
+          renderer,
+          shaderCompilerPath,
+          element,
+          width,
+          height,
+          devicePixelRatio,
+        );
 
       this.addGPUResource(holder, {
         device,
         swapChain,
-        renderTarget,
-        depthRenderTarget,
         renderCache,
+        renderGraph,
         texturePool: this.#texturePool,
       });
     });
@@ -117,26 +112,8 @@ export class SetupDevice extends System {
       const widthDPR = width * devicePixelRatio;
       const heightDPR = height * devicePixelRatio;
 
-      const {
-        swapChain,
-        device,
-        renderTarget: oldRenderTarget,
-        depthRenderTarget: oldDepthRenderTarget,
-      } = canvas.read(GPUResource);
+      const { swapChain } = canvas.read(GPUResource);
       swapChain.configureSwapChain(widthDPR, heightDPR);
-
-      oldRenderTarget.destroy();
-      oldDepthRenderTarget.destroy();
-      const [renderTarget, depthRenderTarget] = this.createRenderTarget(
-        device,
-        widthDPR,
-        heightDPR,
-      );
-
-      Object.assign(canvas.write(GPUResource), {
-        renderTarget,
-        depthRenderTarget,
-      });
     });
 
     this.canvases.removed.forEach((canvas) => {
@@ -151,11 +128,9 @@ export class SetupDevice extends System {
     });
 
     if (this.#offscreenElement) {
-      const { device, renderTarget, depthRenderTarget, renderCache } =
-        this.#offscreenGPUResource;
+      const { device, renderCache, renderGraph } = this.#offscreenGPUResource;
       renderCache.destroy();
-      renderTarget.destroy();
-      depthRenderTarget.destroy();
+      renderGraph.destroy();
       device.destroy();
       device.checkForLeaks();
     }
@@ -198,19 +173,14 @@ export class SetupDevice extends System {
 
     swapChain.configureSwapChain(widthDPR, heightDPR);
     const device = swapChain.getDevice();
-    const [renderTarget, depthRenderTarget] = this.createRenderTarget(
-      device,
-      widthDPR,
-      heightDPR,
-    );
     const renderCache = new RenderCache(device);
+    const renderGraph = new RenderGraph(device);
 
     return {
       device,
       swapChain,
-      renderTarget,
-      depthRenderTarget,
       renderCache,
+      renderGraph,
     };
   }
 
@@ -236,11 +206,9 @@ export class SetupDevice extends System {
   }
 
   private destroyCanvas(canvas: Entity) {
-    const { device, renderTarget, depthRenderTarget, renderCache } =
-      canvas.read(GPUResource);
+    const { device, renderCache, renderGraph } = canvas.read(GPUResource);
     renderCache.destroy();
-    renderTarget.destroy();
-    depthRenderTarget.destroy();
+    renderGraph.destroy();
     device.destroy();
     device.checkForLeaks();
   }

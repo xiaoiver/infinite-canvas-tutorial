@@ -5,7 +5,7 @@ import {
   BufferFrequencyHint,
   BufferUsage,
   SwapChain,
-  TransparentBlack,
+  TransparentWhite,
 } from '@antv/g-device-api';
 import {
   Camera,
@@ -67,12 +67,23 @@ import { getSceneRoot } from './Transform';
 import { safeAddComponent } from '../history';
 import { SetupDevice } from './SetupDevice';
 import { API } from '../API';
+import { RGAttachmentSlot } from '../render-graph/interface';
+import {
+  AntialiasingMode,
+  makeAttachmentClearDescriptor,
+  makeBackbufferDescSimple,
+  opaqueWhiteFullClearRenderPassDescriptor,
+} from '../render-graph/utils';
+import { RenderGraph } from '../render-graph/RenderGraph';
+import { PostProcessingRenderer } from './PostProcessingRenderer';
 
 type GPURenderer = {
   uniformBuffer: Buffer;
   uniformLegacyObject: Record<string, unknown>;
   gridRenderer: GridRenderer;
   batchManager: BatchManager;
+  postProcessingRenderer: PostProcessingRenderer;
+  renderGraph: RenderGraph;
 };
 
 export class MeshPipeline extends System {
@@ -180,15 +191,7 @@ export class MeshPipeline extends System {
     (q) => q.addedChangedOrRemoved.with(Filter).trackWrites,
   );
 
-  renderers: Map<
-    Entity,
-    {
-      uniformBuffer: Buffer;
-      uniformLegacyObject: Record<string, unknown>;
-      gridRenderer: GridRenderer;
-      batchManager: BatchManager;
-    }
-  > = new Map();
+  renderers: Map<Entity, GPURenderer> = new Map();
 
   private pendingRenderables: WeakMap<
     Entity,
@@ -271,7 +274,8 @@ export class MeshPipeline extends System {
   }
 
   private createRenderer(gpuResource: GPUResource, api: API) {
-    const { device, swapChain, renderCache, texturePool } = gpuResource;
+    const { device, swapChain, renderCache, texturePool, renderGraph } =
+      gpuResource;
     return {
       uniformBuffer: device.createBuffer({
         viewOrSize: (16 * 3 + 4 * 5) * Float32Array.BYTES_PER_ELEMENT,
@@ -280,6 +284,13 @@ export class MeshPipeline extends System {
       }),
       uniformLegacyObject: null,
       gridRenderer: new GridRenderer(),
+      postProcessingRenderer: new PostProcessingRenderer(
+        device,
+        swapChain,
+        renderCache,
+        texturePool,
+        api,
+      ),
       batchManager: new BatchManager(
         device,
         swapChain,
@@ -287,6 +298,7 @@ export class MeshPipeline extends System {
         texturePool,
         api,
       ),
+      renderGraph,
     };
   }
 
@@ -323,8 +335,13 @@ export class MeshPipeline extends System {
       renderer = this.renderers.get(camera);
     }
 
-    const { swapChain, device, renderTarget, depthRenderTarget } = gpuResource;
-    const { uniformBuffer, gridRenderer, batchManager } = renderer;
+    const { swapChain, device, renderCache, renderGraph } = gpuResource;
+    const {
+      uniformBuffer,
+      gridRenderer,
+      batchManager,
+      postProcessingRenderer,
+    } = renderer;
 
     const { width, height } = swapChain.getCanvas();
     const onscreenTexture = swapChain.getOnscreenTexture();
@@ -343,45 +360,89 @@ export class MeshPipeline extends System {
 
     uniformBuffer.setSubData(0, new Uint8Array(buffer.buffer));
 
-    device.beginFrame();
+    const renderInput = {
+      backbufferWidth: width,
+      backbufferHeight: height,
+      antialiasingMode: AntialiasingMode.None,
+    };
 
-    const renderPass = device.createRenderPass({
-      colorAttachment: [renderTarget],
-      colorResolveTo: [onscreenTexture],
-      colorClearColor: [TransparentBlack],
-      depthStencilAttachment: depthRenderTarget,
-      depthClearValue: 1,
-    });
-    renderPass.setViewport(0, 0, width, height);
+    const mainColorDesc = makeBackbufferDescSimple(
+      RGAttachmentSlot.Color0,
+      renderInput,
+      makeAttachmentClearDescriptor(TransparentWhite),
+    );
+    const mainDepthDesc = makeBackbufferDescSimple(
+      RGAttachmentSlot.DepthStencil,
+      renderInput,
+      opaqueWhiteFullClearRenderPassDescriptor,
+    );
 
-    gridRenderer.render(device, renderPass, uniformBuffer, legacyObject);
+    const builder = renderGraph.newGraphBuilder();
 
-    if (shouldRenderPartially) {
-      const { api } = canvas.read(Canvas);
-      nodes.forEach((node: SerializedNode) => {
-        const entity = api.getEntity(node);
-        batchManager.add(entity);
-      });
-    } else {
-      if (this.pendingRenderables.has(camera)) {
-        this.pendingRenderables.get(camera).forEach(({ type, entity }) => {
-          if (type === 'remove') {
-            batchManager.remove(entity, !entity.has(Culled));
-          } else {
+    const mainColorTargetID = builder.createRenderTargetID(
+      mainColorDesc,
+      'Main Color',
+    );
+    const mainDepthTargetID = builder.createRenderTargetID(
+      mainDepthDesc,
+      'Main Depth',
+    );
+    builder.pushPass((pass) => {
+      pass.setDebugName('Main Render Pass');
+      pass.attachRenderTargetID(RGAttachmentSlot.Color0, mainColorTargetID);
+      pass.attachRenderTargetID(
+        RGAttachmentSlot.DepthStencil,
+        mainDepthTargetID,
+      );
+      pass.exec((renderPass) => {
+        gridRenderer.render(device, renderPass, uniformBuffer, legacyObject);
+        if (shouldRenderPartially) {
+          const { api } = canvas.read(Canvas);
+          nodes.forEach((node: SerializedNode) => {
+            const entity = api.getEntity(node);
             batchManager.add(entity);
+          });
+        } else {
+          if (this.pendingRenderables.has(camera)) {
+            this.pendingRenderables.get(camera).forEach(({ type, entity }) => {
+              if (type === 'remove') {
+                batchManager.remove(entity, !entity.has(Culled));
+              } else {
+                batchManager.add(entity);
+              }
+            });
+            this.pendingRenderables.delete(camera);
           }
-        });
-        this.pendingRenderables.delete(camera);
-      }
-    }
+        }
 
-    if (sort) {
-      batchManager.sort();
-    }
-    batchManager.flush(renderPass, uniformBuffer, legacyObject);
+        if (sort) {
+          batchManager.sort();
+        }
+        batchManager.flush(renderPass, uniformBuffer, legacyObject);
+      });
+    });
 
-    device.submitPass(renderPass);
-    device.endFrame();
+    builder.pushPass((pass) => {
+      pass.setDebugName('FXAA');
+      pass.attachRenderTargetID(RGAttachmentSlot.Color0, mainColorTargetID);
+
+      const mainColorResolveTextureID =
+        builder.resolveRenderTarget(mainColorTargetID);
+      pass.attachResolveTexture(mainColorResolveTextureID);
+
+      pass.exec((passRenderer, scope) => {
+        postProcessingRenderer.render(
+          passRenderer,
+          scope.getResolveTextureForID(mainColorResolveTextureID),
+        );
+      });
+    });
+
+    builder.resolveRenderTargetToExternalTexture(
+      mainColorTargetID,
+      onscreenTexture,
+    );
+    renderGraph.execute();
 
     if (request) {
       const dataURL = (swapChain.getCanvas() as HTMLCanvasElement).toDataURL(
@@ -516,11 +577,15 @@ export class MeshPipeline extends System {
   }
 
   finalize() {
-    this.renderers.forEach(({ gridRenderer, batchManager }) => {
-      gridRenderer.destroy();
-      batchManager.clear();
-      batchManager.destroy();
-    });
+    this.renderers.forEach(
+      ({ gridRenderer, batchManager, renderGraph, postProcessingRenderer }) => {
+        gridRenderer.destroy();
+        postProcessingRenderer.destroy();
+        batchManager.clear();
+        batchManager.destroy();
+        renderGraph.destroy();
+      },
+    );
   }
 
   private updateUniform(
