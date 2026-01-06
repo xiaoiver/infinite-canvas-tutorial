@@ -422,21 +422,21 @@ export class MeshPipeline extends System {
       });
     });
 
-    builder.pushPass((pass) => {
-      pass.setDebugName('FXAA');
-      pass.attachRenderTargetID(RGAttachmentSlot.Color0, mainColorTargetID);
+    // builder.pushPass((pass) => {
+    //   pass.setDebugName('FXAA');
+    //   pass.attachRenderTargetID(RGAttachmentSlot.Color0, mainColorTargetID);
 
-      const mainColorResolveTextureID =
-        builder.resolveRenderTarget(mainColorTargetID);
-      pass.attachResolveTexture(mainColorResolveTextureID);
+    //   const mainColorResolveTextureID =
+    //     builder.resolveRenderTarget(mainColorTargetID);
+    //   pass.attachResolveTexture(mainColorResolveTextureID);
 
-      pass.exec((passRenderer, scope) => {
-        postProcessingRenderer.render(
-          passRenderer,
-          scope.getResolveTextureForID(mainColorResolveTextureID),
-        );
-      });
-    });
+    //   pass.exec((passRenderer, scope) => {
+    //     postProcessingRenderer.render(
+    //       passRenderer,
+    //       scope.getResolveTextureForID(mainColorResolveTextureID),
+    //     );
+    //   });
+    // });
 
     builder.resolveRenderTargetToExternalTexture(
       mainColorTargetID,
