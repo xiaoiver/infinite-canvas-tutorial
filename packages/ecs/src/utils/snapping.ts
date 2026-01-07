@@ -397,12 +397,8 @@ const getVisibleGaps = (api: API) => {
 };
 
 export const snapDraggedElements = (api: API, dragOffset: [number, number]) => {
-  const {
-    snapToObjectsEnabled,
-    snapToPixelGridSize,
-    snapToObjectsDistance,
-    layersSelected,
-  } = api.getAppState();
+  const { snapToObjectsEnabled, snapToObjectsDistance, layersSelected } =
+    api.getAppState();
   if (!snapToObjectsEnabled) {
     return {
       snapOffset: [0, 0] as [number, number],

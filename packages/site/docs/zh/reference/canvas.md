@@ -70,17 +70,6 @@ export interface AppState {
      * Allow flip in transformer
      */
     flipEnabled: boolean;
-
-    /**
-     * Allow snap to pixel grid
-     */
-    snapToPixelGridEnabled: boolean;
-    snapToPixelGridSize: number;
-
-    /**
-     * Allow snap to objects
-     */
-    snapToObjectsEnabled: boolean;
 }
 ```
 
@@ -99,6 +88,14 @@ export interface AppState {
 ### snapToObjectDistance
 
 开启对象吸附后，最小判定距离，默认值为 `8`
+
+### snapLineStroke
+
+辅助线颜色，默认值为 `orange`
+
+### snapLineStrokeWidth
+
+辅助线宽度，默认值为 `1`
 
 ## get/setNodes
 

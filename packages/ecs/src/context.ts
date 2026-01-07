@@ -89,6 +89,8 @@ export interface AppState {
    * Snip distance for objects
    */
   snapToObjectsDistance: number;
+  snapLineStroke: string;
+  snapLineStrokeWith: number;
 
   /**
    * Points in editing mode.
@@ -238,6 +240,8 @@ export const getDefaultAppState: () => AppState = () => {
     snapToPixelGridSize: 10,
     snapToObjectsEnabled: false,
     snapToObjectsDistance: 8,
+    snapLineStroke: 'orange',
+    snapLineStrokeWith: 1,
     editingPoints: [],
     loading: false,
     loadingMessage: '',

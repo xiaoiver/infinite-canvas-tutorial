@@ -191,28 +191,34 @@ export class Select extends System {
     ex: number,
     ey: number,
   ) {
-    const { snapToPixelGridSize } = api.getAppState();
+    const { snapToPixelGridSize, snapToPixelGridEnabled } = api.getAppState();
     const camera = api.getCamera();
     camera.write(Transformable).status = TransformableStatus.MOVING;
 
     const selection = this.selections.get(camera.__id);
-    const [gridSx, gridSy] = getGridPoint(sx, sy, snapToPixelGridSize);
-    const [gridEx, gridEy] = getGridPoint(ex, ey, snapToPixelGridSize);
 
-    const dragOffset: [number, number] = [gridEx - gridSx, gridEy - gridSy];
+    let offset: [number, number] = [0, 0];
+    if (snapToPixelGridEnabled) {
+      const [gridSx, gridSy] = getGridPoint(sx, sy, snapToPixelGridSize);
+      const [gridEx, gridEy] = getGridPoint(ex, ey, snapToPixelGridSize);
 
-    const { snapOffset, snapLines } = snapDraggedElements(api, dragOffset);
+      const dragOffset: [number, number] = [gridEx - gridSx, gridEy - gridSy];
 
-    const offset = calculateOffset(
-      // FIXME: retrieve OBB right now
-      [selection.obb.x, selection.obb.y],
-      dragOffset,
-      snapOffset,
-      snapToPixelGridSize,
-    );
+      const { snapOffset, snapLines } = snapDraggedElements(api, dragOffset);
 
-    if (isBrowser) {
-      this.renderSnapLines(selection, snapLines, api);
+      const obb = getOBB(camera);
+      offset = calculateOffset(
+        [obb.x, obb.y],
+        dragOffset,
+        snapOffset,
+        snapToPixelGridSize,
+      );
+
+      if (isBrowser) {
+        this.renderSnapLines(selection, snapLines, api);
+      }
+    } else {
+      offset = [ex - sx, ey - sy];
     }
 
     const { selecteds, mask } = camera.read(Transformable);
@@ -1158,6 +1164,7 @@ export class Select extends System {
     snapLines: { type: string; points: [number, number][] }[],
     api: API,
   ) {
+    const { snapLineStroke, snapLineStrokeWith } = api.getAppState();
     const { snapContainer } = selection;
     this.clearSnapLines(selection);
 
@@ -1172,8 +1179,8 @@ export class Select extends System {
           'points',
           pointsInViewport.map((p) => `${p.x},${p.y}`).join(' '),
         );
-        line.setAttribute('stroke', 'orange');
-        line.setAttribute('stroke-width', '1');
+        line.setAttribute('stroke', snapLineStroke);
+        line.setAttribute('stroke-width', `${snapLineStrokeWith}`);
         snapContainer.appendChild(line);
 
         pointsInViewport.forEach((p) => {
@@ -1183,8 +1190,8 @@ export class Select extends System {
           tlbr.setAttribute('y1', `${p.y - 4}`);
           tlbr.setAttribute('x2', `${p.x + 4}`);
           tlbr.setAttribute('y2', `${p.y + 4}`);
-          tlbr.setAttribute('stroke', 'orange');
-          tlbr.setAttribute('stroke-width', '1');
+          tlbr.setAttribute('stroke', snapLineStroke);
+          tlbr.setAttribute('stroke-width', `${snapLineStrokeWith}`);
           snapContainer.appendChild(tlbr);
 
           const trbl = createSVGElement('line') as SVGLineElement;
@@ -1192,8 +1199,8 @@ export class Select extends System {
           trbl.setAttribute('y1', `${p.y + 4}`);
           trbl.setAttribute('x2', `${p.x + 4}`);
           trbl.setAttribute('y2', `${p.y - 4}`);
-          trbl.setAttribute('stroke', 'orange');
-          trbl.setAttribute('stroke-width', '1');
+          trbl.setAttribute('stroke', snapLineStroke);
+          trbl.setAttribute('stroke-width', `${snapLineStrokeWith}`);
           snapContainer.appendChild(trbl);
         });
       }

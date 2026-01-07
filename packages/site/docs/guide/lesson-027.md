@@ -7,6 +7,7 @@ head:
 
 <script setup>
 import SnapToPixelGrid from '../components/SnapToPixelGrid.vue'
+import SnapToObjects from '../components/SnapToObjects.vue'
 </script>
 
 # Lesson 27 - Snap and align
@@ -198,6 +199,8 @@ renderSnapLines(
     });
 }
 ```
+
+<SnapToObjects />
 
 ## Extended reading {#extended-reading}
 

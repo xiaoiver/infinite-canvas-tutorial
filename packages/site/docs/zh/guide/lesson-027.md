@@ -7,6 +7,7 @@ head:
 
 <script setup>
 import SnapToPixelGrid from '../../components/SnapToPixelGrid.vue'
+import SnapToObjects from '../../components/SnapToObjects.vue'
 </script>
 
 # 课程 27 - 吸附与对齐
@@ -200,6 +201,8 @@ renderSnapLines(
     });
 }
 ```
+
+<SnapToObjects />
 
 ## 扩展阅读 {#extended-reading}
 

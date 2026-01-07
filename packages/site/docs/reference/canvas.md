@@ -71,17 +71,6 @@ export interface AppState {
      * Allow flip in transformer
      */
     flipEnabled: boolean;
-
-    /**
-     * Allow snap to pixel grid
-     */
-    snapToPixelGridEnabled: boolean;
-    snapToPixelGridSize: number;
-
-    /**
-     * Allow snap to objects
-     */
-    snapToObjectsEnabled: boolean;
 }
 ```
 
@@ -100,6 +89,14 @@ To enable object snapping. Default value is `false`
 ### snapToObjectDistance
 
 After enabling object snapping, the minimum detection distance defaults to `8`.
+
+### snapLineStroke
+
+Color of snap lines. Default value is `orange`
+
+### snapLineStrokeWidth
+
+Stroke width of snap lines. Default value is `1`
 
 ## get/setNodes
 

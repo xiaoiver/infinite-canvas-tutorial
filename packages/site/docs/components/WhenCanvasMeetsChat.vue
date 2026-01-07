@@ -182,6 +182,7 @@ onMounted(async () => {
       snapToPixelGridEnabled: true,
       snapToPixelGridSize: 10,
       snapToObjectsEnabled: true,
+      snapToObjectsDistance: 8,
       // checkboardStyle: CheckboardStyle.NONE,
       // penbarSelected: Pen.SELECT,
       // topbarVisible: false,
