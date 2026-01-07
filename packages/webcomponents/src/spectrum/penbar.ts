@@ -160,7 +160,9 @@ export class Penbar extends LitElement {
 
   disconnectedCallback() {
     super.disconnectedCallback();
-    document.removeEventListener('keydown', this.handleKeyDown);
+    this.api
+      .getCanvasElement()
+      .removeEventListener('keydown', this.handleKeyDown);
   }
 
   render() {
@@ -170,7 +172,9 @@ export class Penbar extends LitElement {
 
     // FIXME: wait for the element to be ready.
     if (this.api.element && !this.binded) {
-      document.addEventListener('keydown', this.handleKeyDown);
+      this.api
+        .getCanvasElement()
+        .addEventListener('keydown', this.handleKeyDown);
       this.binded = true;
 
       const pen = this.api.getAppState().penbarSelected;

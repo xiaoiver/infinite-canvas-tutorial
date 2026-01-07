@@ -84,6 +84,22 @@ export interface AppState {
 }
 ```
 
+### snapToPixelGridEnabled
+
+是否开启网格吸附，详见：[课程 27 - 吸附与对齐]。默认值为 `false`
+
+### snapToPixelGridSize
+
+开启网格吸附后的最小间距，默认值为 `10`
+
+### snapToObjectsEnabled
+
+是否开启对象吸附，默认值为 `false`
+
+### snapToObjectDistance
+
+开启对象吸附后，最小判定距离，默认值为 `8`
+
 ## get/setNodes
 
 获取或者设置画布中的图形。
@@ -213,6 +229,20 @@ api.getHtmlLayer(); // HTMLDivElement
 api.getCanvas().read(Canvas).htmlLayer;
 ```
 
+## getSvgLayer
+
+获取 SVG 内容容器，框选组件、套索、橡皮擦轨迹、激光笔都会放在这个容器内。
+
+```ts
+api.getSvgLayer(); // HTMLDivElement
+// 等价于
+api.getCanvas().read(Canvas).svgLayer;
+```
+
+## getCanvasElement
+
+获取 `<canvas>` 元素
+
 ## client2Viewport
 
 将客户端坐标系下的点转换为视口坐标系下的点。
@@ -238,3 +268,4 @@ viewport2Client({ x, y }: IPointData): IPointData
 [导出图片]: /zh/reference/export-image
 [课程 1 - SwapChain]: /zh/guide/lesson-001#swapchain
 [@antv/g-device-api]: https://github.com/antvis/g-device-api
+[课程 27 - 吸附与对齐]: /zh/guide/lesson-027

@@ -241,7 +241,7 @@ export class TextEditor extends LitElement {
     event.preventDefault();
     event.stopPropagation();
 
-    const $canvas = this.api.getCanvas().read(Canvas).element;
+    const $canvas = this.api.getCanvasElement();
     if ($canvas) {
       const newWheelEvent = new WheelEvent('wheel', {
         deltaX: event.deltaX,
@@ -266,7 +266,7 @@ export class TextEditor extends LitElement {
   disconnectedCallback() {
     super.disconnectedCallback();
     if (this.api && this.api.getCanvas().has(Canvas)) {
-      const $canvas = this.api.getCanvas().read(Canvas).element;
+      const $canvas = this.api.getCanvasElement();
       $canvas?.removeEventListener('dblclick', this.handleDblclick);
     }
   }
@@ -336,7 +336,7 @@ export class TextEditor extends LitElement {
   render() {
     // FIXME: wait for the element to be ready.
     if (this.api?.element && !this.binded) {
-      const $canvas = this.api.getCanvas().read(Canvas).element;
+      const $canvas = this.api.getCanvasElement();
       $canvas?.addEventListener('dblclick', this.handleDblclick);
       this.binded = true;
     }

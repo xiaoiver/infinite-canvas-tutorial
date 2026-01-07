@@ -279,6 +279,10 @@ export class API {
     return this.#camera;
   }
 
+  getCanvasElement() {
+    return this.#canvas.read(Canvas).element as HTMLCanvasElement;
+  }
+
   getHtmlLayer() {
     return this.#canvas.read(Canvas).htmlLayer as HTMLDivElement;
   }
@@ -338,8 +342,7 @@ export class API {
    * @see https://developer.mozilla.org/zh-CN/docs/Web/API/MouseEvent/offsetX
    */
   client2Viewport({ x, y }: IPointData): IPointData {
-    const $el = this.#canvas.read(Canvas).element as HTMLCanvasElement;
-    const { scaleX, scaleY, bbox } = getScale($el);
+    const { scaleX, scaleY, bbox } = getScale(this.getCanvasElement());
     return {
       x: (x - (bbox?.left || 0)) / scaleX,
       y: (y - (bbox?.top || 0)) / scaleY,
@@ -347,8 +350,7 @@ export class API {
   }
 
   viewport2Client({ x, y }: IPointData): IPointData {
-    const $el = this.#canvas.read(Canvas).element as HTMLCanvasElement;
-    const { scaleX, scaleY, bbox } = getScale($el);
+    const { scaleX, scaleY, bbox } = getScale(this.getCanvasElement());
     return {
       x: (x + (bbox?.left || 0)) * scaleX,
       y: (y + (bbox?.top || 0)) * scaleY,

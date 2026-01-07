@@ -54,12 +54,6 @@ export type Snaps = Snap[];
 
 const VISIBLE_GAPS_LIMIT_PER_AXIS = 99999;
 
-const SNAP_DISTANCE = 10;
-// snap distance with zoom value taken into consideration
-export const getSnapDistance = (zoomValue: number) => {
-  return SNAP_DISTANCE / zoomValue;
-};
-
 const getElementsCorners = (api: API, elements: string[]) => {
   const { minX, minY, maxX, maxY } = api.getGeometryBounds(
     elements.map((id) => api.getNodeById(id)),
@@ -406,7 +400,7 @@ export const snapDraggedElements = (api: API, dragOffset: [number, number]) => {
   const {
     snapToObjectsEnabled,
     snapToPixelGridSize,
-    cameraZoom,
+    snapToObjectsDistance,
     layersSelected,
   } = api.getAppState();
   if (!snapToObjectsEnabled) {
@@ -422,8 +416,10 @@ export const snapDraggedElements = (api: API, dragOffset: [number, number]) => {
   dragOffset[1] = round(dragOffset[1]);
   const nearestSnapsX: Snaps = [];
   const nearestSnapsY: Snaps = [];
-  const snapDistance = getSnapDistance(cameraZoom);
-  const minOffset = [snapDistance, snapDistance] as [number, number];
+  const minOffset = [snapToObjectsDistance, snapToObjectsDistance] as [
+    number,
+    number,
+  ];
 
   // Snap points itself.
   const selectionSnapPoints = getElementsCorners(api, selected);
@@ -438,7 +434,7 @@ export const snapDraggedElements = (api: API, dragOffset: [number, number]) => {
   );
 
   // Get gap snaps
-  getGapSnaps(api, dragOffset, nearestSnapsX, nearestSnapsY, minOffset);
+  // getGapSnaps(api, dragOffset, nearestSnapsX, nearestSnapsY, minOffset);
 
   // using the nearest snaps to figure out how
   // much the elements need to be offset to be snapped

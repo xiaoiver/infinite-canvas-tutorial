@@ -18,6 +18,7 @@ import Pencil from '../components/Pencil.vue'
 import PencilFreehand from '../components/PencilFreehand.vue'
 import Brush from '../components/Brush.vue'
 import LaserPointer from '../components/LaserPointer.vue'
+import Eraser from '../components/Eraser.vue'
 </script>
 
 # Lesson 25 - Drawing mode and brush
@@ -411,9 +412,9 @@ export class DrawEraser extends System {
 }
 ```
 
-![Eraser tool](/eraser.gif)
+<Eraser />
 
-### Non-atomic {#non-atomic}
+### [WIP] Non-atomic {#non-atomic}
 
 Erasing entire shapes is sufficient for most scenarios, but non-atomic erasing proves more practical in freehand drawing contexts—such as breaking a straight line midway. Excalidraw currently lacks this feature; see: [non-atomic erasing for linear & freedraw shapes]. FigJam shares this limitation. If the canvas is rendered using Canvas or SVG, achieving this pixel-level erasure effect is indeed impossible.
 

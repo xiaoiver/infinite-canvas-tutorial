@@ -12,6 +12,7 @@ import Pencil from '../../components/Pencil.vue'
 import PencilFreehand from '../../components/PencilFreehand.vue'
 import Brush from '../../components/Brush.vue'
 import LaserPointer from '../../components/LaserPointer.vue'
+import Eraser from '../../components/Eraser.vue'
 </script>
 
 # 课程 25 - 绘制模式与笔刷
@@ -404,7 +405,7 @@ export class DrawEraser extends System {
 }
 ```
 
-![Eraser tool](/eraser.gif)
+<Eraser />
 
 ### [WIP] 非原子化 {#non-atomic}
 

@@ -72,6 +72,8 @@ canvas.addEventListener(Event.READY, async (e) => {
     checkboardStyle: CheckboardStyle.GRID,
     snapToPixelGridEnabled: true,
     snapToPixelGridSize: 10,
+    // snapToPixelGridEnabled: false,
+    // snapToPixelGridSize: 0,
     snapToObjectsEnabled: true,
     // checkboardStyle: CheckboardStyle.NONE,
     // penbarSelected: Pen.SELECT,

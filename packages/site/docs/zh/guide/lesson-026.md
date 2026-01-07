@@ -102,6 +102,8 @@ if (needHighlight) {
 }
 ```
 
+当然对于这种在视口空间的组件，我们也可以使用 SVG 实现，在后续的套索工具中将看到。
+
 ## 通过 Esc 取消选择 {#deselect-with-esc}
 
 选中状态下按 <kbd>Esc</kbd> 会取消选择，另外在框选过程中需要隐藏掉 Brush：
@@ -114,6 +116,10 @@ if (input.key === 'Escape') {
     }
 }
 ```
+
+## 锁定与解锁 {#lock-and-unlock-layers}
+
+锁定的图层无法被选中，详见：[Lock and unlock layers]
 
 ## 套索工具 {#lasso-selection}
 
@@ -220,3 +226,4 @@ function isPolygonsIntersect(points1: number[][], points2: number[][]) {
 [Feature Request: Lasso Selection (free selection) in Excalidraw]: https://github.com/excalidraw/excalidraw/issues/6350
 [课程 25 - 铅笔工具]: /zh/guide/lesson-025#pencil-tool
 [How do I determine if two convex polygons intersect?]: https://stackoverflow.com/questions/753140/how-do-i-determine-if-two-convex-polygons-intersect
+[Lock and unlock layers]: https://help.figma.com/hc/en-us/articles/360041596573-Lock-and-unlock-layers

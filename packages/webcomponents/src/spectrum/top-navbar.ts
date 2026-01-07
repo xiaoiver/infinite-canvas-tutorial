@@ -63,13 +63,10 @@ export class TopNavbar extends LitElement {
   @query('sp-action-menu', true)
   private actionMenu: LitElement;
 
+  private binded = false;
+
   protected firstUpdated(_changedProperties: PropertyValues): void {
     this.actionMenu?.addEventListener('sp-opened', this.handleOpen);
-  }
-
-  connectedCallback() {
-    super.connectedCallback();
-    document.addEventListener('keydown', this.handleKeyDown);
   }
 
   disconnectedCallback() {
@@ -194,6 +191,12 @@ export class TopNavbar extends LitElement {
   }
 
   render() {
+    // FIXME: wait for the element to be ready.
+    if (this.api?.element && !this.binded) {
+      this.api.element.addEventListener('keydown', this.handleKeyDown);
+      this.binded = true;
+    }
+
     const isSelectedEmpty = this.appState.layersSelected.length === 0;
 
     return when(

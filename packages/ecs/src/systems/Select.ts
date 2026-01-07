@@ -32,7 +32,6 @@ import {
   Transformable,
   TransformableStatus,
   UI,
-  UIType,
   Visibility,
   ZIndex,
   AnchorName,
@@ -108,11 +107,10 @@ export interface SelectOBB {
   pointerMoveViewportX: number;
   pointerMoveViewportY: number;
 
-  brush: Entity;
+  brushContainer: SVGSVGElement;
+  snapContainer: SVGSVGElement;
 
   editing: Entity;
-
-  svgSVGElement: SVGSVGElement;
 }
 
 /**
@@ -198,25 +196,15 @@ export class Select extends System {
     camera.write(Transformable).status = TransformableStatus.MOVING;
 
     const selection = this.selections.get(camera.__id);
-
-    const { pointerDownCanvasX, pointerDownCanvasY } = camera.read(
-      ComputedCameraControl,
-    );
+    const [gridSx, gridSy] = getGridPoint(sx, sy, snapToPixelGridSize);
     const [gridEx, gridEy] = getGridPoint(ex, ey, snapToPixelGridSize);
-    const [gridPointerDownCanvasX, gridPointerDownCanvasY] = getGridPoint(
-      pointerDownCanvasX,
-      pointerDownCanvasY,
-      snapToPixelGridSize,
-    );
 
-    const dragOffset: [number, number] = [
-      gridEx - gridPointerDownCanvasX,
-      gridEy - gridPointerDownCanvasY,
-    ];
+    const dragOffset: [number, number] = [gridEx - gridSx, gridEy - gridSy];
 
     const { snapOffset, snapLines } = snapDraggedElements(api, dragOffset);
 
     const offset = calculateOffset(
+      // FIXME: retrieve OBB right now
       [selection.obb.x, selection.obb.y],
       dragOffset,
       snapOffset,
@@ -224,7 +212,7 @@ export class Select extends System {
     );
 
     if (isBrowser) {
-      this.renderSnapLines(api, snapLines);
+      this.renderSnapLines(selection, snapLines, api);
     }
 
     const { selecteds, mask } = camera.read(Transformable);
@@ -235,14 +223,10 @@ export class Select extends System {
         selected.remove(Highlighted);
       }
       const node = api.getNodeByEntity(selected);
-
-      const oldNode = selection.nodes.find((n) => n.id === node.id);
-      if (oldNode) {
-        api.updateNodeOBB(node, {
-          x: oldNode.x + dragOffset[0],
-          y: oldNode.y + dragOffset[1],
-        });
-      }
+      api.updateNodeOBB(node, {
+        x: node.x + offset[0],
+        y: node.y + offset[1],
+      });
       updateGlobalTransform(selected);
       updateComputedPoints(selected);
     });
@@ -268,7 +252,7 @@ export class Select extends System {
     this.saveSelectedOBB(api, selection);
 
     if (isBrowser) {
-      this.clearSnapLines(api);
+      this.clearSnapLines(selection);
     }
   }
 
@@ -582,12 +566,9 @@ export class Select extends System {
     const camera = api.getCamera();
     const selection = this.selections.get(camera.__id);
 
-    const {
-      pointerDownViewportX,
-      pointerDownViewportY,
-      pointerDownCanvasX,
-      pointerDownCanvasY,
-    } = camera.read(ComputedCameraControl);
+    const { pointerDownViewportX, pointerDownViewportY } = camera.read(
+      ComputedCameraControl,
+    );
 
     // Use a threshold to avoid showing the selection brush when the pointer is moved a little.
     const shouldShowSelectionBrush =
@@ -599,42 +580,14 @@ export class Select extends System {
       ) > 10;
 
     if (shouldShowSelectionBrush) {
-      if (!selection.brush) {
-        selection.brush = this.commands
-          .spawn(
-            new UI(UIType.BRUSH),
-            new Transform(),
-            new Renderable(),
-            new FillSolid(TRANSFORMER_MASK_FILL_COLOR),
-            new Opacity({ fillOpacity: 0.5 }),
-            new Stroke({ width: 1, color: TRANSFORMER_ANCHOR_STROKE_COLOR }),
-            new Rect(),
-            new Visibility('hidden'),
-            new ZIndex(Infinity),
-            new StrokeAttenuation(),
-          )
-          .id()
-          .hold();
-
-        const camera = this.commands.entity(api.getCamera());
-        camera.appendChild(this.commands.entity(selection.brush));
-        this.commands.execute();
-      }
-
-      selection.brush.write(Visibility).value = 'visible';
-
-      const { x: wx, y: wy } = api.viewport2Canvas({
-        x: viewportX,
-        y: viewportY,
-      });
-
-      Object.assign(selection.brush.write(Rect), {
-        x: pointerDownCanvasX,
-        y: pointerDownCanvasY,
-        width: wx - pointerDownCanvasX,
-        height: wy - pointerDownCanvasY,
-      });
-      updateGlobalTransform(selection.brush);
+      this.renderBrush(
+        selection,
+        // <rect> attribute height: A negative value is not valid. So we need to use the absolute value.
+        Math.min(pointerDownViewportX, viewportX),
+        Math.min(pointerDownViewportY, viewportY),
+        Math.abs(viewportX - pointerDownViewportX),
+        Math.abs(viewportY - pointerDownViewportY),
+      );
 
       // Select elements in the brush
       this.applyBrushSelection(api, selection, true);
@@ -691,17 +644,19 @@ export class Select extends System {
           cos: 0,
           pointerMoveViewportX: 0,
           pointerMoveViewportY: 0,
-          brush: undefined,
+          brushContainer: createSVGElement('svg') as SVGSVGElement,
           editing: undefined,
-          svgSVGElement: createSVGElement('svg') as SVGSVGElement,
+          snapContainer: createSVGElement('svg') as SVGSVGElement,
         };
         this.selections.set(camera.__id, selection);
 
-        selection.svgSVGElement.style.overflow = 'visible';
-        selection.svgSVGElement.style.position = 'absolute';
-
         if (isBrowser) {
-          api.getSvgLayer().appendChild(selection.svgSVGElement);
+          selection.brushContainer.style.overflow = 'visible';
+          selection.brushContainer.style.position = 'absolute';
+          selection.snapContainer.style.overflow = 'visible';
+          selection.snapContainer.style.position = 'absolute';
+          api.getSvgLayer().appendChild(selection.brushContainer);
+          api.getSvgLayer().appendChild(selection.snapContainer);
         }
       }
 
@@ -999,11 +954,12 @@ export class Select extends System {
     });
   }
 
-  private hideBrush(selection: SelectOBB) {
-    if (selection.brush) {
-      selection.brush.write(Visibility).value = 'hidden';
-    }
-    selection.mode = SelectionMode.IDLE;
+  finalize(): void {
+    this.selections.forEach(({ brushContainer, snapContainer }) => {
+      brushContainer.remove();
+      snapContainer.remove();
+    });
+    this.selections.clear();
   }
 
   private applyBrushSelection(
@@ -1011,19 +967,27 @@ export class Select extends System {
     selection: SelectOBB,
     needHighlight: boolean,
   ) {
-    if (selection.brush) {
-      const { x, y, width, height } = selection.brush.read(Rect);
-      const minX = Math.min(x, x + width);
-      const minY = Math.min(y, y + height);
-      const maxX = Math.max(x, x + width);
-      const maxY = Math.max(y, y + height);
+    if (selection.brushContainer) {
+      const brush = selection.brushContainer.firstChild as SVGRectElement;
+      const x = parseFloat(brush.getAttribute('x') || '0');
+      const y = parseFloat(brush.getAttribute('y') || '0');
+      const width = parseFloat(brush.getAttribute('width') || '0');
+      const height = parseFloat(brush.getAttribute('height') || '0');
+      const { x: minX, y: minY } = api.viewport2Canvas({
+        x,
+        y,
+      });
+      const { x: maxX, y: maxY } = api.viewport2Canvas({
+        x: x + width,
+        y: y + height,
+      });
       const selecteds = api
         .elementsFromBBox(minX, minY, maxX, maxY)
         // Only select direct children of the camera
         .filter((e) => !e.has(UI) && e.read(Children).parent.has(Camera))
+        // TODO: locked layers should not be selected
         .map((e) => api.getNodeByEntity(e));
       api.selectNodes(selecteds);
-
       if (needHighlight) {
         api.highlightNodes(selecteds);
       }
@@ -1147,17 +1111,55 @@ export class Select extends System {
     });
   }
 
-  private clearSnapLines(api: API) {
-    const { svgSVGElement } = this.selections.get(api.getCamera().__id);
-    svgSVGElement.innerHTML = '';
+  private hideBrush(selection: SelectOBB) {
+    if (selection.brushContainer) {
+      selection.brushContainer.setAttribute('visibility', 'hidden');
+    }
+    selection.mode = SelectionMode.IDLE;
+  }
+
+  private renderBrush(
+    selection: SelectOBB,
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+  ) {
+    const { brushContainer } = selection;
+    brushContainer.setAttribute('visibility', 'visible');
+
+    let brush = brushContainer.firstChild as SVGRectElement;
+    if (!brush) {
+      brush = createSVGElement('rect') as SVGRectElement;
+      brush.setAttribute('x', '0');
+      brush.setAttribute('y', '0');
+      brush.setAttribute('width', '0');
+      brush.setAttribute('height', '0');
+      brush.setAttribute('opacity', '0.5');
+      brush.setAttribute('fill', TRANSFORMER_MASK_FILL_COLOR);
+      brush.setAttribute('stroke', TRANSFORMER_ANCHOR_STROKE_COLOR);
+      brush.setAttribute('stroke-width', '1');
+      brushContainer.appendChild(brush);
+    }
+
+    brush.setAttribute('x', x.toString());
+    brush.setAttribute('y', y.toString());
+    brush.setAttribute('width', width.toString());
+    brush.setAttribute('height', height.toString());
+  }
+
+  private clearSnapLines(selection: SelectOBB) {
+    const { snapContainer } = selection;
+    snapContainer.innerHTML = '';
   }
 
   private renderSnapLines(
-    api: API,
+    selection: SelectOBB,
     snapLines: { type: string; points: [number, number][] }[],
+    api: API,
   ) {
-    const { svgSVGElement } = this.selections.get(api.getCamera().__id);
-    this.clearSnapLines(api);
+    const { snapContainer } = selection;
+    this.clearSnapLines(selection);
 
     snapLines.forEach(({ type, points }) => {
       if (type === 'points') {
@@ -1172,7 +1174,7 @@ export class Select extends System {
         );
         line.setAttribute('stroke', 'orange');
         line.setAttribute('stroke-width', '1');
-        svgSVGElement.appendChild(line);
+        snapContainer.appendChild(line);
 
         pointsInViewport.forEach((p) => {
           // cross point
@@ -1183,7 +1185,7 @@ export class Select extends System {
           tlbr.setAttribute('y2', `${p.y + 4}`);
           tlbr.setAttribute('stroke', 'orange');
           tlbr.setAttribute('stroke-width', '1');
-          svgSVGElement.appendChild(tlbr);
+          snapContainer.appendChild(tlbr);
 
           const trbl = createSVGElement('line') as SVGLineElement;
           trbl.setAttribute('x1', `${p.x - 4}`);
@@ -1192,7 +1194,7 @@ export class Select extends System {
           trbl.setAttribute('y2', `${p.y - 4}`);
           trbl.setAttribute('stroke', 'orange');
           trbl.setAttribute('stroke-width', '1');
-          svgSVGElement.appendChild(trbl);
+          snapContainer.appendChild(trbl);
         });
       }
     });

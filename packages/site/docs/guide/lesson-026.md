@@ -101,6 +101,8 @@ if (needHighlight) {
 }
 ```
 
+Of course, for components within the viewport space, we can also implement them using SVG, as we'll see in the subsequent Lasso tool.
+
 ## Deselect with Esc {#deselect-with-esc}
 
 Pressing <kbd>Esc</kbd> in selected state will cancel the selection. Additionally, during marquee selection, we need to hide the Brush:
@@ -113,6 +115,10 @@ if (input.key === 'Escape') {
     }
 }
 ```
+
+## Lock and unlock layers {#lock-and-unlock-layers}
+
+Locked layers cannot be selected. For details, see: [Lock and unlock layers]
 
 ## Lasso selection {#lasso-selection}
 
@@ -219,3 +225,4 @@ function isPolygonsIntersect(points1: number[][], points2: number[][]) {
 [Feature Request: Lasso Selection (free selection) in Excalidraw]: https://github.com/excalidraw/excalidraw/issues/6350
 [Lesson 25 - Pencil tool]: /guide/lesson-025#pencil-tool
 [How do I determine if two convex polygons intersect?]: https://stackoverflow.com/questions/753140/how-do-i-determine-if-two-convex-polygons-intersect
+[Lock and unlock layers]: https://help.figma.com/hc/en-us/articles/360041596573-Lock-and-unlock-layers
