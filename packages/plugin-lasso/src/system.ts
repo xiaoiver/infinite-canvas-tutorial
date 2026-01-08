@@ -11,7 +11,11 @@ import {
   Selected,
   System,
   Transformable,
+  FractionalIndex,
   createSVGElement,
+  UI,
+  Polyline,
+  Ellipse,
 } from '@infinite-canvas-tutorial/ecs';
 import { LassoTrail } from './lasso-trail';
 import { AnimationFrameHandler } from '@infinite-canvas-tutorial/webcomponents';
@@ -34,8 +38,16 @@ export class LassoSystem extends System {
     this.query(
       (q) =>
         q
-          .using(Canvas, InputPoint, Input, Cursor, Selected, Transformable)
-          .write.and.using(Camera, ComputedCamera, RBush, Rect).read,
+          .using(Canvas, InputPoint, Input, Cursor, Selected, Transformable, UI)
+          .write.and.using(
+            Camera,
+            ComputedCamera,
+            RBush,
+            Rect,
+            Polyline,
+            Ellipse,
+            FractionalIndex,
+          ).read,
     );
   }
 

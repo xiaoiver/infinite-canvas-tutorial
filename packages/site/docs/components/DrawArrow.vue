@@ -38,7 +38,11 @@ onMounted(async () => {
     api.updateNode({
       id: 'draw-arrow-1',
       type: 'polyline',
-      points: '100,50 200,50 200,150',
+      x: 100,
+      y: 100,
+      width: 100,
+      height: 100,
+      points: '0,0 100,0 100,100',
       stroke: '#147af3',
       strokeWidth: 4,
       markerStart: 'line',

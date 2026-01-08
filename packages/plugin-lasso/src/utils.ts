@@ -1,5 +1,11 @@
 import { isPolygonsIntersect } from '@antv/util';
-import { API, Rect } from '@infinite-canvas-tutorial/ecs';
+import {
+  API,
+  Ellipse,
+  Polyline,
+  Rect,
+  UI,
+} from '@infinite-canvas-tutorial/ecs';
 
 export function selectByLassoPath(api: API, lassoPath: [number, number][]) {
   const lassoBounds = lassoPath.reduce(
@@ -14,12 +20,14 @@ export function selectByLassoPath(api: API, lassoPath: [number, number][]) {
     [Infinity, Infinity, -Infinity, -Infinity],
   ) as [number, number, number, number];
 
-  const elements = api.elementsFromBBox(
-    lassoBounds[0],
-    lassoBounds[1],
-    lassoBounds[2],
-    lassoBounds[3],
-  );
+  const elements = api
+    .elementsFromBBox(
+      lassoBounds[0],
+      lassoBounds[1],
+      lassoBounds[2],
+      lassoBounds[3],
+    )
+    .filter((e) => !e.has(UI));
 
   // TODO: filter locked elements
   const selectedElements = [];
@@ -35,6 +43,12 @@ export function selectByLassoPath(api: API, lassoPath: [number, number][]) {
         [x + width, y + height],
         [x, y + height],
       );
+    } else if (e.has(Polyline)) {
+      points.push(
+        ...e.read(Polyline).points.map((p: [number, number]) => [p[0], p[1]]),
+      );
+    } else if (e.has(Ellipse)) {
+      // FIXME: Account for more shapes.
     }
 
     if (points.length === 0) {

@@ -27,8 +27,8 @@ onMounted(async () => {
       penbarSelected: Pen.LASSO,
       penbarAll: [Pen.SELECT, Pen.DRAW_RECT, Pen.LASSO],
     });
-    api.updateNode({
-      id: 'draw-rect-1',
+    api.updateNodes([{
+      id: 'lasso-rect-1',
       type: 'rect',
       x: 100,
       y: 100,
@@ -38,7 +38,17 @@ onMounted(async () => {
       fillOpacity: 0.5,
       stroke: '#147af3',
       strokeWidth: 1,
-    });
+    }, {
+      id: 'lasso-polyline',
+      type: 'polyline',
+      x: 300,
+      y: 100,
+      width: 100,
+      height: 100,
+      points: '0,0 100,100 0,100',
+      stroke: '#147af3',
+      strokeWidth: 1,
+    }]);
   };
 
   canvas.addEventListener(Event.READY, onReady);
