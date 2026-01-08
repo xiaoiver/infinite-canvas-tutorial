@@ -15,13 +15,6 @@ export class PenbarPencilSettings extends LitElement {
   @consume({ context: apiContext, subscribe: true })
   api: ExtendedAPI;
 
-  private handleStrokeWidthChanging(e: Event & { target: HTMLInputElement }) {
-    const nextElementSibling = e.target.nextElementSibling as HTMLInputElement;
-    if (nextElementSibling) {
-      nextElementSibling.value = e.target.value;
-    }
-  }
-
   private handleStrokeWidthChanged(e: Event & { target: HTMLInputElement }) {
     const strokeWidth = parseInt(e.target.value);
     this.api.setAppState({
@@ -72,30 +65,22 @@ export class PenbarPencilSettings extends LitElement {
           (color) => html` <sp-swatch color=${color} size="s"></sp-swatch> `,
         )}
       </sp-swatch-group>
-      <div
-        class="line"
-        style="display: flex; align-items: center;justify-content: space-between;"
-      >
+      <div class="line" style="display: flex; align-items: center;">
         <sp-slider
-          style="flex: 1;margin-right: 8px;"
+          style="flex: 1;"
+          size="s"
           label=${msg(str`Stroke width`)}
-          label-visibility="text"
-          value=${penbarPencil.strokeWidth}
-          @input=${this.handleStrokeWidthChanging}
-          @change=${this.handleStrokeWidthChanged}
-        ></sp-slider>
-        <sp-number-field
-          style="position: relative;top: 10px; width: 80px;"
-          value=${penbarPencil.strokeWidth}
-          @change=${this.handleStrokeWidthChanged}
-          hide-stepper
-          autocomplete="off"
+          max="20"
           min="0"
+          value=${penbarPencil.strokeWidth}
+          step="1"
+          editable
           format-options='{
         "style": "unit",
         "unit": "px"
       }'
-        ></sp-number-field>
+          @change=${this.handleStrokeWidthChanged}
+        ></sp-slider>
       </div>
       <div
         class="line"

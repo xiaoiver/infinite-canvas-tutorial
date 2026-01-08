@@ -1,7 +1,11 @@
 import { html, css, LitElement } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { consume } from '@lit/context';
-import { SerializedNode, AppState } from '@infinite-canvas-tutorial/ecs';
+import {
+  SerializedNode,
+  AppState,
+  FillAttributes,
+} from '@infinite-canvas-tutorial/ecs';
 import { when } from 'lit/directives/when.js';
 import { RAD_TO_DEG } from '@pixi/math';
 import { apiContext, appStateContext } from '../context';
@@ -96,6 +100,13 @@ export class PropertiesPanelContent extends LitElement {
 
   @state()
   lockAspectRatio: boolean = true;
+
+  private handleFillOpacityChanged(e: Event & { target: HTMLInputElement }) {
+    this.api.updateNode(this.node, {
+      fillOpacity: parseFloat(e.target.value),
+    });
+    this.api.record();
+  }
 
   private handleWidthChanged(e: Event & { target: HTMLInputElement }) {
     this.api.updateNodeOBB(
@@ -313,7 +324,7 @@ export class PropertiesPanelContent extends LitElement {
                 <div class="content style-group">
                   <div class="line">
                     <sp-field-label for="style" side-aligned="start"
-                      >Style</sp-field-label
+                      >${msg(str`Style`)}</sp-field-label
                     >
                     <div>
                       <ic-spectrum-fill-action-button
@@ -321,11 +332,25 @@ export class PropertiesPanelContent extends LitElement {
                       ></ic-spectrum-fill-action-button>
                       ${when(
                         !isText,
-                        () => html`<ic-spectrum-stroke-action-button
+                        () => html` <ic-spectrum-stroke-action-button
                           .node=${this.node}
                         ></ic-spectrum-stroke-action-button>`,
                       )}
                     </div>
+                  </div>
+
+                  <div class="line">
+                    <sp-slider
+                      style="flex: 1;"
+                      label=${msg(str`Fill opacity`)}
+                      size="s"
+                      max="1"
+                      min="0"
+                      value=${(this.node as FillAttributes).fillOpacity ?? 1}
+                      step="0.01"
+                      editable
+                      @change=${this.handleFillOpacityChanged}
+                    ></sp-slider>
                   </div>
 
                   ${when(

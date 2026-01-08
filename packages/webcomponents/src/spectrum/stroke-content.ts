@@ -42,7 +42,6 @@ export class StrokeContent extends LitElement {
 
     sp-slider {
       flex: 1;
-      margin-right: 8px;
     }
 
     .stroke-width-field {
@@ -60,17 +59,18 @@ export class StrokeContent extends LitElement {
   @property()
   node: SerializedNode;
 
-  private handleStrokeWidthChanging(e: Event & { target: HTMLInputElement }) {
-    const nextElementSibling = e.target.nextElementSibling as HTMLInputElement;
-    if (nextElementSibling) {
-      nextElementSibling.value = e.target.value;
-    }
-  }
-
   private handleStrokeWidthChanged(e: Event & { target: HTMLInputElement }) {
     const strokeWidth = parseInt(e.target.value);
     this.api.updateNode(this.node, {
       strokeWidth,
+    });
+    this.api.record();
+  }
+
+  private handleStrokeOpacityChanged(e: Event & { target: HTMLInputElement }) {
+    const strokeOpacity = parseFloat(e.target.value);
+    this.api.updateNode(this.node, {
+      strokeOpacity,
     });
     this.api.record();
   }
@@ -114,6 +114,7 @@ export class StrokeContent extends LitElement {
 
     const {
       strokeWidth,
+      strokeOpacity,
       strokeAlignment = 'center',
       strokeLinecap = 'butt',
       strokeLinejoin = 'miter',
@@ -124,23 +125,31 @@ export class StrokeContent extends LitElement {
     return html`<div class="line">
         <sp-slider
           label=${msg(str`Stroke width`)}
-          label-visibility="text"
+          size="s"
+          max="20"
+          min="0"
           value=${strokeWidth}
-          @input=${this.handleStrokeWidthChanging}
+          step="1"
+          editable
+          format-options='{
+            "style": "unit",
+            "unit": "px"
+          }'
           @change=${this.handleStrokeWidthChanged}
         ></sp-slider>
-        <sp-number-field
-          class="stroke-width-field"
-          value=${strokeWidth}
-          @change=${this.handleStrokeWidthChanged}
-          hide-stepper
-          autocomplete="off"
+      </div>
+
+      <div class="line">
+        <sp-slider
+          label=${msg(str`Stroke opacity`)}
+          size="s"
+          max="1"
           min="0"
-          format-options='{
-          "style": "unit",
-          "unit": "px"
-        }'
-        ></sp-number-field>
+          value=${strokeOpacity}
+          step="0.01"
+          editable
+          @change=${this.handleStrokeOpacityChanged}
+        ></sp-slider>
       </div>
 
       <div class="line">

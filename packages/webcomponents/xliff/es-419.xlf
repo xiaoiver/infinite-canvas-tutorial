@@ -126,10 +126,6 @@
   <source>Show properties panel</source>
   <target>Mostrar panel de propiedades</target>
 </trans-unit>
-<trans-unit id="s785c1d045a714d04">
-  <source>Show chat panel</source>
-  <target>Mostrar panel de chat</target>
-</trans-unit>
 <trans-unit id="s5a25a7e3c9796a64">
   <source>Zoom level</source>
   <target>Nivel de zoom</target>
@@ -329,6 +325,10 @@
 <trans-unit id="sdc2bdbc5221a288b">
   <source>Bevel</source>
   <target>Bisel</target>
+</trans-unit>
+<trans-unit id="s7f326a142e856656">
+  <source>Style</source>
+  <target>Estilo</target>
 </trans-unit>
 </body>
 </file>

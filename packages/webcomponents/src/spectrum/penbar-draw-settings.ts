@@ -40,7 +40,6 @@ export class PenbarDrawSettings extends LitElement {
 
     sp-slider {
       flex: 1;
-      margin-right: 8px;
     }
 
     .stroke-width-field {
@@ -63,12 +62,6 @@ export class PenbarDrawSettings extends LitElement {
     | Pen.DRAW_ARROW
     | Pen.DRAW_ROUGH_RECT;
 
-  private handleStrokeWidthChanging(e: Event & { target: HTMLInputElement }) {
-    const nextElementSibling = e.target.nextElementSibling as HTMLInputElement;
-    if (nextElementSibling) {
-      nextElementSibling.value = e.target.value;
-    }
-  }
   private handleStrokeWidthChanged(e: Event & { target: HTMLInputElement }) {
     const strokeWidth = parseInt(e.target.value);
     this.api.setAppState({
@@ -80,12 +73,6 @@ export class PenbarDrawSettings extends LitElement {
     this.api.record();
   }
 
-  private handleStrokeOpacityChanging(e: Event & { target: HTMLInputElement }) {
-    const nextElementSibling = e.target.nextElementSibling as HTMLInputElement;
-    if (nextElementSibling) {
-      nextElementSibling.value = e.target.value;
-    }
-  }
   private handleStrokeOpacityChanged(e: Event & { target: HTMLInputElement }) {
     const strokeOpacity = parseFloat(e.target.value);
     this.api.setAppState({
@@ -109,12 +96,6 @@ export class PenbarDrawSettings extends LitElement {
     });
   }
 
-  private handleFillOpacityChanging(e: Event & { target: HTMLInputElement }) {
-    const nextElementSibling = e.target.nextElementSibling as HTMLInputElement;
-    if (nextElementSibling) {
-      nextElementSibling.value = e.target.value;
-    }
-  }
   private handleFillOpacityChanged(e: Event & { target: HTMLInputElement }) {
     const fillOpacity = parseFloat(e.target.value);
     this.api.setAppState({
@@ -153,12 +134,6 @@ export class PenbarDrawSettings extends LitElement {
     this.api.record();
   }
 
-  private handleRoughBowingChanging(e: Event & { target: HTMLInputElement }) {
-    const nextElementSibling = e.target.nextElementSibling as HTMLInputElement;
-    if (nextElementSibling) {
-      nextElementSibling.value = e.target.value;
-    }
-  }
   private handleRoughBowingChanged(e: Event & { target: HTMLInputElement }) {
     const roughBowing = parseFloat(e.target.value);
     this.api.setAppState({
@@ -170,14 +145,6 @@ export class PenbarDrawSettings extends LitElement {
     this.api.record();
   }
 
-  private handleRoughRoughnessChanging(
-    e: Event & { target: HTMLInputElement },
-  ) {
-    const nextElementSibling = e.target.nextElementSibling as HTMLInputElement;
-    if (nextElementSibling) {
-      nextElementSibling.value = e.target.value;
-    }
-  }
   private handleRoughRoughnessChanged(e: Event & { target: HTMLInputElement }) {
     const roughRoughness = parseFloat(e.target.value);
     this.api.setAppState({
@@ -271,25 +238,15 @@ export class PenbarDrawSettings extends LitElement {
 
             <div class="line">
               <sp-slider
-                step="0.1"
-                min="0"
-                max="1"
-                style="flex: 1;margin-right: 8px;"
                 label=${msg(str`Fill opacity`)}
-                label-visibility="text"
+                size="s"
+                max="1"
+                min="0"
                 value=${(this.penbarDraw as FillAttributes).fillOpacity}
-                @input=${this.handleFillOpacityChanging}
+                step="0.01"
+                editable
                 @change=${this.handleFillOpacityChanged}
               ></sp-slider>
-              <sp-number-field
-                style="position: relative;top: 10px; width: 80px;"
-                value=${(this.penbarDraw as FillAttributes).fillOpacity}
-                @change=${this.handleFillOpacityChanged}
-                hide-stepper
-                autocomplete="off"
-                min="0"
-                max="1"
-              ></sp-number-field>
             </div>
           `,
         )}
@@ -310,51 +267,32 @@ export class PenbarDrawSettings extends LitElement {
         </div>
         <div class="line">
           <sp-slider
-            step="1"
-            min="0"
-            max="100"
-            style="flex: 1;margin-right: 8px;"
             label=${msg(str`Stroke width`)}
-            label-visibility="text"
+            size="s"
+            max="20"
+            min="0"
             value=${this.penbarDraw.strokeWidth}
-            @input=${this.handleStrokeWidthChanging}
+            step="1"
+            editable
+            format-options='{
+              "style": "unit",
+              "unit": "px"
+            }'
             @change=${this.handleStrokeWidthChanged}
           ></sp-slider>
-          <sp-number-field
-            style="position: relative;top: 10px; width: 80px;"
-            value=${this.penbarDraw.strokeWidth}
-            @change=${this.handleStrokeWidthChanged}
-            hide-stepper
-            autocomplete="off"
-            min="0"
-            format-options='{
-        "style": "unit",
-        "unit": "px"
-      }'
-          ></sp-number-field>
         </div>
 
         <div class="line">
           <sp-slider
-            step="0.1"
-            min="0"
-            max="1"
-            style="flex: 1;margin-right: 8px;"
+            size="s"
             label=${msg(str`Stroke opacity`)}
-            label-visibility="text"
+            max="1"
+            min="0"
             value=${this.penbarDraw.strokeOpacity}
-            @input=${this.handleStrokeOpacityChanging}
+            step="0.01"
+            editable
             @change=${this.handleStrokeOpacityChanged}
           ></sp-slider>
-          <sp-number-field
-            style="position: relative;top: 10px; width: 80px;"
-            value=${this.penbarDraw.strokeOpacity}
-            @change=${this.handleStrokeOpacityChanged}
-            hide-stepper
-            autocomplete="off"
-            min="0"
-            max="1"
-          ></sp-number-field>
         </div>
 
         ${when(
@@ -425,48 +363,28 @@ export class PenbarDrawSettings extends LitElement {
 
             <div class="line">
               <sp-slider
+                size="s"
+                label=${msg(str`Bowing`)}
+                value=${(this.penbarDraw as RoughAttributes).roughBowing}
                 step="0.1"
                 min="0"
                 max="10"
-                style="flex: 1;margin-right: 8px;"
-                label=${msg(str`Bowing`)}
-                label-visibility="text"
-                value=${(this.penbarDraw as RoughAttributes).roughBowing}
-                @input=${this.handleRoughBowingChanging}
+                editable
                 @change=${this.handleRoughBowingChanged}
               ></sp-slider>
-              <sp-number-field
-                style="position: relative;top: 10px; width: 80px;"
-                value=${(this.penbarDraw as RoughAttributes).roughBowing}
-                @change=${this.handleRoughBowingChanged}
-                hide-stepper
-                autocomplete="off"
-                min="0"
-                max="10"
-              ></sp-number-field>
             </div>
 
             <div class="line">
               <sp-slider
+                size="s"
+                label=${msg(str`Roughness`)}
+                value=${(this.penbarDraw as RoughAttributes).roughRoughness}
                 step="0.1"
                 min="0"
                 max="10"
-                style="flex: 1;margin-right: 8px;"
-                label=${msg(str`Roughness`)}
-                label-visibility="text"
-                value=${(this.penbarDraw as RoughAttributes).roughRoughness}
-                @input=${this.handleRoughRoughnessChanging}
+                editable
                 @change=${this.handleRoughRoughnessChanged}
               ></sp-slider>
-              <sp-number-field
-                style="position: relative;top: 10px; width: 80px;"
-                value=${(this.penbarDraw as RoughAttributes).roughRoughness}
-                @change=${this.handleRoughRoughnessChanged}
-                hide-stepper
-                autocomplete="off"
-                min="0"
-                max="10"
-              ></sp-number-field>
             </div>
           `,
         )}
