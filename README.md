@@ -343,11 +343,11 @@ If you want to use it in your own project, you can refer to:
 ## Lesson 27 - Snap and alignment [🔗](https://infinitecanvas.cc/guide/lesson-027)
 
 -   Snap to pixel grid
--   Snap to objects
+-   Snap to objects, display snap points & gap lines
 
-|                Snap to pixel grid                 |                 Snap to objects                 |
-| :-----------------------------------------------: | :---------------------------------------------: |
-| ![snap to pixel grid](./screenshots/lesson27.gif) | ![snap to object](./screenshots/lesson27-2.png) |
+|                Snap to pixel grid                 |                 Snap to objects                  |
+| :-----------------------------------------------: | :----------------------------------------------: |
+| ![snap to pixel grid](./screenshots/lesson27.gif) | ![snap to objects](./screenshots/lesson27-2.gif) |
 
 ## Lesson 28 - Integrating with AI [🔗](https://infinitecanvas.cc/guide/lesson-028)
 

@@ -40,7 +40,7 @@ onMounted(async () => {
             type: 'rect',
             x: 100,
             y: 100,
-            width: 200,
+            width: 100,
             height: 100,
             fill: '#e0f2ff',
             fillOpacity: 0.5,
@@ -52,7 +52,19 @@ onMounted(async () => {
             type: 'rect',
             x: 400,
             y: 50,
-            width: 200,
+            width: 100,
+            height: 100,
+            fill: '#e0f2ff',
+            fillOpacity: 0.5,
+            stroke: '#147af3',
+            strokeWidth: 1,
+        };
+        const node3: RectSerializedNode = {
+            id: 'snap-to-objects-3',
+            type: 'rect',
+            x: 250,
+            y: 100,
+            width: 100,
             height: 100,
             fill: '#e0f2ff',
             fillOpacity: 0.5,
@@ -60,8 +72,8 @@ onMounted(async () => {
             strokeWidth: 1,
         };
 
-        api.updateNodes([node1, node2]);
-        api.selectNodes([node1]);
+        api.updateNodes([node1, node2, node3]);
+        api.selectNodes([node3]);
         api.record();
     };
 

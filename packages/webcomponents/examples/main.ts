@@ -117,7 +117,17 @@ canvas.addEventListener(Event.READY, async (e) => {
     fill: 'red',
   };
 
-  api.updateNodes([node1, node3]);
+  const node4 = {
+    id: 'rect-3',
+    type: 'rect',
+    x: 100,
+    y: 100,
+    width: 100,
+    height: 100,
+    fill: 'green',
+  };
+
+  api.updateNodes([node1, node3, node4]);
   api.record();
 });
 

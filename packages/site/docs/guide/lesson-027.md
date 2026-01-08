@@ -96,18 +96,18 @@ Triggered when dragging and moving or drawing shapes:
 Snap points are divided into two categories: selected shapes and other shapes. For one or more selected shapes, common snap points include the four corners and the center of the bounding box:
 
 ```ts
-const { minX, minY, maxX, maxY } = api.getBounds(
-    selected.map((id) => api.getNodeById(id)),
+const { minX, minY, maxX, maxY } = api.getGeometryBounds(
+    elements.map((id) => api.getNodeById(id)),
 );
 const boundsWidth = maxX - minX;
 const boundsHeight = maxY - minY;
-const selectionSnapPoints = [
-    new Point(minX, minY), // 4 corners
-    new Point(maxX, minY),
-    new Point(minX, maxY),
-    new Point(maxX, maxY),
-    new Point(minX + boundsWidth / 2, minY + boundsHeight / 2), // center
-];
+return [
+    [minX, minY], // corners
+    [maxX, minY],
+    [minX, maxY],
+    [maxX, maxY],
+    [minX + boundsWidth / 2, minY + boundsHeight / 2], // center
+] as [number, number][];
 ```
 
 Considering performance, we should minimize the number of times we detect the attachment points of the selected shape relative to all other shapes. We've already covered similar issues in [Lesson 8 - Using spatial indexing], where we only retrieve shapes within the viewport.
@@ -125,6 +125,43 @@ Similarly, calculate the reference points for these shapes:
 const referenceSnapPoints: [number, number][] = unculledAndUnselected
     .map((entity) => getElementsCorners(api, [api.getNodeByEntity(entity).id]))
     .flat();
+```
+
+Next, compare the snap points of the selected shape with those of other shapes one by one. Identify the pair of points that are closer horizontally or vertically, and record the distance difference between them as the subsequent snap distance:
+
+```ts
+nearestSnapsX.push({
+    type: 'point',
+    points: [thisSnapPoint, otherSnapPoint],
+    offset: offsetX,
+});
+minOffset[0] = Math.abs(offsetX);
+```
+
+Once all snap points have been calculated, this minimum distance can be used as the snap distance. It is important to note that the graph has not yet moved according to the snap distance at this stage. Therefore, we need to assume the graph has already moved to its final position and perform another round of calculations:
+
+```ts
+// 1st round
+getPointSnaps();
+const snapOffset: [number, number] = [
+    nearestSnapsX[0]?.offset ?? 0,
+    nearestSnapsY[0]?.offset ?? 0,
+];
+
+// Clear the min offset
+minOffset[0] = 0;
+minOffset[1] = 0;
+nearestSnapsX.length = 0;
+nearestSnapsY.length = 0;
+const newDragOffset: [number, number] = [
+    round(dragOffset[0] + snapOffset[0]),
+    round(dragOffset[1] + snapOffset[1]),
+];
+
+// 2nd round, a new offset must be considered.
+getPointSnaps(newDragOffset);
+
+// Render snap lines
 ```
 
 ### Get gap snaps {#get-gap-snaps}
@@ -176,9 +213,23 @@ if (Math.abs(sideOffsetLeft) <= minOffset[0]) {
 }
 ```
 
+If the condition is met, record it. During the process, continuously record the minimum distance:
+
+```ts
+const snap: GapSnap = {
+    type: 'gap',
+    direction: 'center_horizontal',
+    gap,
+    offset: centerOffset,
+};
+nearestSnapsX.push(snap);
+```
+
 ### Render snap lines {#render-snap-lines}
 
 Render snap lines in SVG container, see: [Lesson 26 - Lasso selection].
+
+Snap points are typically represented by a “cross,” and the lines connecting these points can be rendered using `<line>`.
 
 ```ts
 renderSnapLines(
@@ -199,6 +250,20 @@ renderSnapLines(
     });
 }
 ```
+
+Regarding the display of gap snap lines, Excalidraw's documentation is highly illustrative. Building upon this, we can add text labels indicating distance below auxiliary lines (horizontal direction) or to the right of them (vertical direction), similar to how Figma handles it:
+
+```ts
+// a horizontal gap snap line
+// |–––––––||–––––––|
+// ^    ^   ^       ^
+// \    \   \       \
+// (1)  (2) (3)     (4)
+```
+
+![Display gap snap lines and distance labels](/snap-to-objects.gif)
+
+You can move the middle rectangle in the example below to experience the effect:
 
 <SnapToObjects />
 

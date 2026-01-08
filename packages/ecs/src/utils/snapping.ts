@@ -10,6 +10,20 @@ const round = (x: number) => {
   return Math.round(x * 10 ** decimalPlaces) / 10 ** decimalPlaces;
 };
 
+const dedupePoints = (points: [number, number][]): [number, number][] => {
+  const map = new Map<string, [number, number]>();
+
+  for (const point of points) {
+    const key = point.join(',');
+
+    if (!map.has(key)) {
+      map.set(key, point);
+    }
+  }
+
+  return Array.from(map.values());
+};
+
 type PointPair = [[number, number], [number, number]];
 
 export type PointSnap = {
@@ -52,12 +66,36 @@ export type GapSnap = {
 export type Snap = GapSnap | PointSnap;
 export type Snaps = Snap[];
 
+export type PointSnapLine = {
+  type: 'points';
+  points: [number, number][];
+};
+export type GapSnapLine = {
+  type: 'gap';
+  direction: 'horizontal' | 'vertical';
+  points: PointPair;
+};
+
+export type SnapLine = PointSnapLine | GapSnapLine;
+
 const VISIBLE_GAPS_LIMIT_PER_AXIS = 99999;
 
-const getElementsCorners = (api: API, elements: string[]) => {
-  const { minX, minY, maxX, maxY } = api.getGeometryBounds(
+const getElementsCorners = (
+  api: API,
+  elements: string[],
+  dragOffset?: [number, number],
+) => {
+  let { minX, minY, maxX, maxY } = api.getGeometryBounds(
     elements.map((id) => api.getNodeById(id)),
   );
+
+  if (dragOffset) {
+    minX += dragOffset[0];
+    minY += dragOffset[1];
+    maxX += dragOffset[0];
+    maxY += dragOffset[1];
+  }
+
   const boundsWidth = maxX - minX;
   const boundsHeight = maxY - minY;
   return [
@@ -417,10 +455,9 @@ export const snapDraggedElements = (api: API, dragOffset: [number, number]) => {
     number,
   ];
 
-  // Snap points itself.
   const selectionSnapPoints = getElementsCorners(api, selected);
 
-  // Get point snaps
+  // get the nearest horizontal and vertical point and gap snaps
   getPointSnaps(
     api,
     selectionSnapPoints,
@@ -430,7 +467,7 @@ export const snapDraggedElements = (api: API, dragOffset: [number, number]) => {
   );
 
   // Get gap snaps
-  // getGapSnaps(api, dragOffset, nearestSnapsX, nearestSnapsY, minOffset);
+  getGapSnaps(api, dragOffset, nearestSnapsX, nearestSnapsY, minOffset);
 
   // using the nearest snaps to figure out how
   // much the elements need to be offset to be snapped
@@ -440,14 +477,44 @@ export const snapDraggedElements = (api: API, dragOffset: [number, number]) => {
     nearestSnapsY[0]?.offset ?? 0,
   ];
 
+  // once the elements are snapped
+  // and moved to the snapped position
+  // we want to use the element's snapped position
+  // to update nearest snaps so that we can create
+  // point and gap snap lines correctly without any shifting
+
+  minOffset[0] = 0;
+  minOffset[1] = 0;
+  nearestSnapsX.length = 0;
+  nearestSnapsY.length = 0;
+  const newDragOffset: [number, number] = [
+    round(dragOffset[0] + snapOffset[0]),
+    round(dragOffset[1] + snapOffset[1]),
+  ];
+
+  getPointSnaps(
+    api,
+    getElementsCorners(api, selected, newDragOffset),
+    nearestSnapsX,
+    nearestSnapsY,
+    minOffset,
+  );
+
+  getGapSnaps(api, newDragOffset, nearestSnapsX, nearestSnapsY, minOffset);
+
   const pointSnapLines = createPointSnapLines(nearestSnapsX, nearestSnapsY);
+
+  const gapSnapLines = createGapSnapLines(
+    api,
+    newDragOffset,
+    [...nearestSnapsX, ...nearestSnapsY].filter(
+      (snap) => snap.type === 'gap',
+    ) as GapSnap[],
+  );
 
   return {
     snapOffset,
-    snapLines: [
-      ...pointSnapLines,
-      // ...gapSnapLines
-    ],
+    snapLines: [...pointSnapLines, ...gapSnapLines],
   };
 };
 
@@ -518,18 +585,206 @@ const createPointSnapLines = (nearestSnapsX: Snaps, nearestSnapsY: Snaps) => {
     );
 };
 
-const dedupePoints = (points: [number, number][]): [number, number][] => {
-  const map = new Map<string, [number, number]>();
+const createGapSnapLines = (
+  api: API,
+  dragOffset: [number, number],
+  gapSnaps: GapSnap[],
+) => {
+  const gapSnapLines: GapSnapLine[] = [];
 
-  for (const point of points) {
-    const key = point.join(',');
+  let { minX, minY, maxX, maxY } = api.getGeometryBounds(
+    api.getAppState().layersSelected.map((id) => api.getNodeById(id)),
+  );
+  minX += dragOffset[0];
+  minY += dragOffset[1];
+  maxX += dragOffset[0];
+  maxY += dragOffset[1];
 
-    if (!map.has(key)) {
-      map.set(key, point);
+  for (const gapSnap of gapSnaps) {
+    const {
+      minX: startMinX,
+      minY: startMinY,
+      maxX: startMaxX,
+      maxY: startMaxY,
+    } = gapSnap.gap.startBounds;
+    const {
+      minX: endMinX,
+      minY: endMinY,
+      maxX: endMaxX,
+      maxY: endMaxY,
+    } = gapSnap.gap.endBounds;
+
+    const verticalIntersection = rangeIntersection(
+      [minY, maxY],
+      gapSnap.gap.overlap,
+    );
+
+    const horizontalGapIntersection = rangeIntersection(
+      [minX, maxX],
+      gapSnap.gap.overlap,
+    );
+
+    switch (gapSnap.direction) {
+      case 'center_horizontal': {
+        if (verticalIntersection) {
+          const gapLineY =
+            (verticalIntersection[0] + verticalIntersection[1]) / 2;
+
+          gapSnapLines.push(
+            {
+              type: 'gap',
+              direction: 'horizontal',
+              points: [
+                [gapSnap.gap.startSide[0][0], gapLineY],
+                [minX, gapLineY],
+              ],
+            },
+            {
+              type: 'gap',
+              direction: 'horizontal',
+              points: [
+                [maxX, gapLineY],
+                [gapSnap.gap.endSide[0][0], gapLineY],
+              ],
+            },
+          );
+        }
+        break;
+      }
+      case 'center_vertical': {
+        if (horizontalGapIntersection) {
+          const gapLineX =
+            (horizontalGapIntersection[0] + horizontalGapIntersection[1]) / 2;
+
+          gapSnapLines.push(
+            {
+              type: 'gap',
+              direction: 'vertical',
+              points: [
+                [gapLineX, gapSnap.gap.startSide[0][1]],
+                [gapLineX, minY],
+              ],
+            },
+            {
+              type: 'gap',
+              direction: 'vertical',
+              points: [
+                [gapLineX, maxY],
+                [gapLineX, gapSnap.gap.endSide[0][1]],
+              ],
+            },
+          );
+        }
+        break;
+      }
+      case 'side_right': {
+        if (verticalIntersection) {
+          const gapLineY =
+            (verticalIntersection[0] + verticalIntersection[1]) / 2;
+
+          gapSnapLines.push(
+            {
+              type: 'gap',
+              direction: 'horizontal',
+              points: [
+                [startMaxX, gapLineY],
+                [endMinX, gapLineY],
+              ],
+            },
+            {
+              type: 'gap',
+              direction: 'horizontal',
+              points: [
+                [endMaxX, gapLineY],
+                [minX, gapLineY],
+              ],
+            },
+          );
+        }
+        break;
+      }
+      case 'side_left': {
+        if (verticalIntersection) {
+          const gapLineY =
+            (verticalIntersection[0] + verticalIntersection[1]) / 2;
+
+          gapSnapLines.push(
+            {
+              type: 'gap',
+              direction: 'horizontal',
+              points: [
+                [maxX, gapLineY],
+                [startMinX, gapLineY],
+              ],
+            },
+            {
+              type: 'gap',
+              direction: 'horizontal',
+              points: [
+                [startMaxX, gapLineY],
+                [endMinX, gapLineY],
+              ],
+            },
+          );
+        }
+        break;
+      }
+      case 'side_top': {
+        if (horizontalGapIntersection) {
+          const gapLineX =
+            (horizontalGapIntersection[0] + horizontalGapIntersection[1]) / 2;
+
+          gapSnapLines.push(
+            {
+              type: 'gap',
+              direction: 'vertical',
+              points: [
+                [gapLineX, maxY],
+                [gapLineX, startMinY],
+              ],
+            },
+            {
+              type: 'gap',
+              direction: 'vertical',
+              points: [
+                [gapLineX, startMaxY],
+                [gapLineX, endMinY],
+              ],
+            },
+          );
+        }
+        break;
+      }
+      case 'side_bottom': {
+        if (horizontalGapIntersection) {
+          const gapLineX =
+            (horizontalGapIntersection[0] + horizontalGapIntersection[1]) / 2;
+
+          gapSnapLines.push(
+            {
+              type: 'gap',
+              direction: 'vertical',
+              points: [
+                [gapLineX, startMaxY],
+                [gapLineX, endMinY],
+              ],
+            },
+            {
+              type: 'gap',
+              direction: 'vertical',
+              points: [
+                [gapLineX, endMaxY],
+                [gapLineX, minY],
+              ],
+            },
+          );
+        }
+        break;
+      }
     }
   }
 
-  return Array.from(map.values());
+  return gapSnapLines;
 };
 
 export const calculateOffset = (

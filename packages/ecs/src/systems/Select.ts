@@ -52,6 +52,7 @@ import {
   createSVGElement,
   decompose,
   distanceBetweenPoints,
+  GapSnapLine,
   getCursor,
   getGridPoint,
   isBrowser,
@@ -975,6 +976,9 @@ export class Select extends System {
   ) {
     if (selection.brushContainer) {
       const brush = selection.brushContainer.firstChild as SVGRectElement;
+      if (!brush) {
+        return;
+      }
       const x = parseFloat(brush.getAttribute('x') || '0');
       const y = parseFloat(brush.getAttribute('y') || '0');
       const width = parseFloat(brush.getAttribute('width') || '0');
@@ -1164,11 +1168,13 @@ export class Select extends System {
     snapLines: { type: string; points: [number, number][] }[],
     api: API,
   ) {
-    const { snapLineStroke, snapLineStrokeWith } = api.getAppState();
+    const { snapLineStroke, snapLineStrokeWith, cameraZoom } =
+      api.getAppState();
     const { snapContainer } = selection;
     this.clearSnapLines(selection);
 
-    snapLines.forEach(({ type, points }) => {
+    snapLines.forEach((snapLine) => {
+      const { type, points } = snapLine;
       if (type === 'points') {
         const pointsInViewport = points.map((p) =>
           api.canvas2Viewport({ x: p[0], y: p[1] }),
@@ -1203,7 +1209,145 @@ export class Select extends System {
           trbl.setAttribute('stroke-width', `${snapLineStrokeWith}`);
           snapContainer.appendChild(trbl);
         });
+      } else if (type === 'gap') {
+        // @see https://github.com/excalidraw/excalidraw/blob/master/packages/excalidraw/renderer/renderSnaps.ts#L123
+        const { x: fromX, y: fromY } = api.canvas2Viewport({
+          x: points[0][0],
+          y: points[0][1],
+        });
+        const { x: toX, y: toY } = api.canvas2Viewport({
+          x: points[1][0],
+          y: points[1][1],
+        });
+        const distance = Math.sqrt(
+          Math.pow(points[0][0] - points[1][0], 2) +
+            Math.pow(points[0][1] - points[1][1], 2),
+        );
+        const from = [fromX, fromY] as [number, number];
+        const to = [toX, toY] as [number, number];
+        const { direction } = snapLine as GapSnapLine;
+
+        // a horizontal gap snap line
+        // |–––––––||–––––––|
+        // ^    ^   ^       ^
+        // \    \   \       \
+        // (1)  (2) (3)     (4)
+
+        const FULL = 8;
+        const HALF = FULL / 2;
+        const QUARTER = FULL / 4;
+        // (1)
+        if (direction === 'horizontal') {
+          const halfPoint = [(from[0] + to[0]) / 2, from[1]];
+
+          this.renderSnapLine(
+            [from[0], from[1] - FULL],
+            [from[0], from[1] + FULL],
+            api,
+            snapContainer,
+          );
+
+          // (3)
+          this.renderSnapLine(
+            [halfPoint[0] - QUARTER, halfPoint[1] - HALF],
+            [halfPoint[0] - QUARTER, halfPoint[1] + HALF],
+            api,
+            snapContainer,
+          );
+          this.renderSnapLine(
+            [halfPoint[0] + QUARTER, halfPoint[1] - HALF],
+            [halfPoint[0] + QUARTER, halfPoint[1] + HALF],
+            api,
+            snapContainer,
+          );
+
+          // (4)
+          this.renderSnapLine(
+            [to[0], to[1] - FULL],
+            [to[0], to[1] + FULL],
+            api,
+            snapContainer,
+          );
+
+          // (2)
+          this.renderSnapLine(from, to, api, snapContainer);
+
+          // Render distance label below (3)
+
+          const label = createSVGElement('text') as SVGTextElement;
+          label.setAttribute('x', `${halfPoint[0]}`);
+          label.setAttribute('y', `${halfPoint[1] + 16}`);
+          label.setAttribute('text-anchor', 'middle');
+          label.setAttribute('dominant-baseline', 'middle');
+          label.textContent = `${distance.toFixed(0)}`;
+          label.setAttribute('fill', snapLineStroke);
+          label.setAttribute('font-size', '12');
+          snapContainer.appendChild(label);
+        } else {
+          const halfPoint = [from[0], (from[1] + to[1]) / 2];
+
+          this.renderSnapLine(
+            [from[0] - FULL, from[1]],
+            [from[0] + FULL, from[1]],
+            api,
+            snapContainer,
+          );
+
+          // (3)
+          this.renderSnapLine(
+            [halfPoint[0] - HALF, halfPoint[1] - QUARTER],
+            [halfPoint[0] + HALF, halfPoint[1] - QUARTER],
+            api,
+            snapContainer,
+          );
+          this.renderSnapLine(
+            [halfPoint[0] - HALF, halfPoint[1] + QUARTER],
+            [halfPoint[0] + HALF, halfPoint[1] + QUARTER],
+            api,
+            snapContainer,
+          );
+
+          // (4)
+          this.renderSnapLine(
+            [to[0] - FULL, to[1]],
+            [to[0] + FULL, to[1]],
+            api,
+            snapContainer,
+          );
+
+          // (2)
+          this.renderSnapLine(from, to, api, snapContainer);
+
+          // Render distance label to the right of (3)
+          const label = createSVGElement('text') as SVGTextElement;
+          label.setAttribute('x', `${halfPoint[0] + 16}`);
+          label.setAttribute('y', `${halfPoint[1]}`);
+          label.setAttribute('text-anchor', 'start');
+          label.setAttribute('dominant-baseline', 'middle');
+          label.textContent = `${distance.toFixed(0)}`;
+          label.setAttribute('fill', snapLineStroke);
+          label.setAttribute('font-size', '12');
+          snapContainer.appendChild(label);
+        }
       }
     });
+  }
+
+  private renderSnapLine(
+    from: [number, number],
+    to: [number, number],
+    api: API,
+    snapContainer: SVGSVGElement,
+  ) {
+    const { snapLineStroke, snapLineStrokeWith } = api.getAppState();
+    const line = createSVGElement('line') as SVGLineElement;
+
+    line.setAttribute('x1', `${from[0]}`);
+    line.setAttribute('y1', `${from[1]}`);
+    line.setAttribute('x2', `${to[0]}`);
+    line.setAttribute('y2', `${to[1]}`);
+    line.setAttribute('stroke', snapLineStroke);
+    line.setAttribute('stroke-width', `${snapLineStrokeWith}`);
+    snapContainer.appendChild(line);
   }
 }

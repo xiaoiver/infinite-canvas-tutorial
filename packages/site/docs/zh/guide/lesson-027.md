@@ -98,18 +98,18 @@ export interface AppState {
 可吸附点分成两类：被选中的图形与其他图形。对于选中的一个或多个图形，常用的可吸附点包括包围盒的四个角和中心：
 
 ```ts
-const { minX, minY, maxX, maxY } = api.getBounds(
-    selected.map((id) => api.getNodeById(id)),
+const { minX, minY, maxX, maxY } = api.getGeometryBounds(
+    elements.map((id) => api.getNodeById(id)),
 );
 const boundsWidth = maxX - minX;
 const boundsHeight = maxY - minY;
-const selectionSnapPoints = [
-    new Point(minX, minY), // 4 corners
-    new Point(maxX, minY),
-    new Point(minX, maxY),
-    new Point(maxX, maxY),
-    new Point(minX + boundsWidth / 2, minY + boundsHeight / 2), // center
-];
+return [
+    [minX, minY], // corners
+    [maxX, minY],
+    [minX, maxY],
+    [maxX, maxY],
+    [minX + boundsWidth / 2, minY + boundsHeight / 2], // center
+] as [number, number][];
 ```
 
 考虑性能，我们应该尽量减少被选中图形吸附点与其他所有图形吸附点的检测次数。类似问题我们在 [课程 8 - 使用空间索引加速] 中已经介绍过了，只检索视口范围内的图形即可。
@@ -121,12 +121,49 @@ const unculledAndUnselected = api
     .filter((entity) => !entity.has(Culled) && !entity.has(Selected));
 ```
 
-同样计算出这些图形的参考点：
+同样计算出这些图形的可吸附参考点：
 
 ```ts
 const referenceSnapPoints: [number, number][] = unculledAndUnselected
     .map((entity) => getElementsCorners(api, [api.getNodeByEntity(entity).id]))
     .flat();
+```
+
+接下来用被选中图形的可吸附点与其他图形的依次对比，找到在水平或者垂直方向上更接近的一组点，记录下两者的距离差作为后续的吸附距离：
+
+```ts
+nearestSnapsX.push({
+    type: 'point',
+    points: [thisSnapPoint, otherSnapPoint],
+    offset: offsetX,
+});
+minOffset[0] = Math.abs(offsetX);
+```
+
+当所有可吸附点都计算完成后，就可以用这个最小距离作为吸附距离了。值得注意的是此时图形还没有根据吸附距离移动，因此我们需要假设图形已经移动到最终位置，再计算一轮：
+
+```ts
+// 计算第一轮的吸附距离
+getPointSnaps();
+const snapOffset: [number, number] = [
+    nearestSnapsX[0]?.offset ?? 0,
+    nearestSnapsY[0]?.offset ?? 0,
+];
+
+// 清空
+minOffset[0] = 0;
+minOffset[1] = 0;
+nearestSnapsX.length = 0;
+nearestSnapsY.length = 0;
+const newDragOffset: [number, number] = [
+    round(dragOffset[0] + snapOffset[0]),
+    round(dragOffset[1] + snapOffset[1]),
+];
+
+// 再进行一轮计算，但需要考虑新的偏移量
+getPointSnaps(newDragOffset);
+
+// 渲染最终的辅助线
 ```
 
 ### 计算间隙 {#get-gap-snaps}
@@ -178,9 +215,23 @@ if (Math.abs(sideOffsetLeft) <= minOffset[0]) {
 }
 ```
 
+如果满足条件则记录，过程中持续记录最小距离：
+
+```ts
+const snap: GapSnap = {
+    type: 'gap',
+    direction: 'center_horizontal',
+    gap,
+    offset: centerOffset,
+};
+nearestSnapsX.push(snap);
+```
+
 ### 渲染辅助线 {#render-snap-lines}
 
-和 [课程 26 - 套索工具] 中类似，辅助线也可以绘制在 SVG 容器中。
+和 [课程 26 - 套索工具] 中类似，在视口坐标系下的辅助线也可以绘制在 SVG 容器中。
+
+可吸附点通常使用“叉”表示，点之间的连线使用 `<line>` 渲染即可。
 
 ```ts
 renderSnapLines(
@@ -201,6 +252,20 @@ renderSnapLines(
     });
 }
 ```
+
+对于间隔线的展示，excalidraw 的注释非常形象，我们在此基础上可以在辅助线的下方（水平方向）或者右侧（垂直方向）增加表示距离的文本标签（类似 Figma 那样）：
+
+```ts
+// a horizontal gap snap line
+// |–––––––||–––––––|
+// ^    ^   ^       ^
+// \    \   \       \
+// (1)  (2) (3)     (4)
+```
+
+![Display gap snap lines and distance labels](/snap-to-objects.gif)
+
+你可以在下面的例子中移动中间的矩形体验效果：
 
 <SnapToObjects />
 

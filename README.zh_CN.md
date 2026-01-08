@@ -344,11 +344,11 @@ pnpm run dev
 ## 课程 27 - 吸附与对齐 [🔗](https://infinitecanvas.cc/zh/guide/lesson-027)
 
 -   网格吸附
--   对象吸附
+-   对象吸附，展示参考点与辅助线
 
-|                     网格吸附                      |                    对象吸附                     |
-| :-----------------------------------------------: | :---------------------------------------------: |
-| ![snap to pixel grid](./screenshots/lesson27.gif) | ![snap to object](./screenshots/lesson27-2.png) |
+|                     网格吸附                      |                     对象吸附                      |
+| :-----------------------------------------------: | :-----------------------------------------------: |
+| ![snap to pixel grid](./screenshots/lesson27.gif) | ![snap to objects](./screenshots/lesson27-2.gifg) |
 
 ## 课程 28 - 与 AI 结合 [🔗](https://infinitecanvas.cc/zh/guide/lesson-028)
 
