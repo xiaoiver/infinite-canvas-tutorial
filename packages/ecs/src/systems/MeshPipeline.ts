@@ -60,8 +60,8 @@ import {
   Filter,
   Transform,
 } from '../components';
-import { paddingMat3, SerializedNode } from '../utils';
-import { GridRenderer } from './GridRenderer';
+import { paddingMat3, parseEffect, SerializedNode } from '../utils';
+import { GridRenderer } from '../render-graph/GridRenderer';
 import { BatchManager } from './BatchManager';
 import { getSceneRoot } from './Transform';
 import { safeAddComponent } from '../history';
@@ -75,7 +75,7 @@ import {
   opaqueWhiteFullClearRenderPassDescriptor,
 } from '../render-graph/utils';
 import { RenderGraph } from '../render-graph/RenderGraph';
-import { PostProcessingRenderer } from './PostProcessingRenderer';
+import { PostProcessingRenderer } from '../render-graph/PostProcessingRenderer';
 
 type GPURenderer = {
   uniformBuffer: Buffer;
@@ -288,8 +288,6 @@ export class MeshPipeline extends System {
         device,
         swapChain,
         renderCache,
-        texturePool,
-        api,
       ),
       batchManager: new BatchManager(
         device,
@@ -311,6 +309,7 @@ export class MeshPipeline extends System {
     let gpuResource = canvas.read(GPUResource);
 
     const { api } = canvas.read(Canvas);
+    const { filter } = api.getAppState();
 
     const request = canvas.has(RasterScreenshotRequest)
       ? canvas.read(RasterScreenshotRequest)
@@ -418,25 +417,28 @@ export class MeshPipeline extends System {
         if (sort) {
           batchManager.sort();
         }
-        batchManager.flush(renderPass, uniformBuffer, legacyObject);
+        batchManager.flush(renderPass, uniformBuffer, legacyObject, builder);
       });
     });
 
-    // builder.pushPass((pass) => {
-    //   pass.setDebugName('FXAA');
-    //   pass.attachRenderTargetID(RGAttachmentSlot.Color0, mainColorTargetID);
+    parseEffect(filter).forEach((effect) => {
+      builder.pushPass((pass) => {
+        pass.setDebugName(effect.type.toUpperCase());
+        pass.attachRenderTargetID(RGAttachmentSlot.Color0, mainColorTargetID);
 
-    //   const mainColorResolveTextureID =
-    //     builder.resolveRenderTarget(mainColorTargetID);
-    //   pass.attachResolveTexture(mainColorResolveTextureID);
+        const mainColorResolveTextureID =
+          builder.resolveRenderTarget(mainColorTargetID);
+        pass.attachResolveTexture(mainColorResolveTextureID);
 
-    //   pass.exec((passRenderer, scope) => {
-    //     postProcessingRenderer.render(
-    //       passRenderer,
-    //       scope.getResolveTextureForID(mainColorResolveTextureID),
-    //     );
-    //   });
-    // });
+        pass.exec((passRenderer, scope) => {
+          postProcessingRenderer.render(
+            passRenderer,
+            scope.getResolveTextureForID(mainColorResolveTextureID),
+            effect,
+          );
+        });
+      });
+    });
 
     builder.resolveRenderTargetToExternalTexture(
       mainColorTargetID,

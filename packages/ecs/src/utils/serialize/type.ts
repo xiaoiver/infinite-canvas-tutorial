@@ -62,6 +62,11 @@ export interface BaseSerializeNode<Type extends string>
    * Lock aspect ratio like image.
    */
   lockAspectRatio?: boolean;
+
+  /**
+   * Locked layer cannot be interactive.
+   */
+  locked?: boolean;
 }
 
 export interface EditableAttributes {

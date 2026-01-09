@@ -23,3 +23,4 @@ export * from './marker';
 export * from './snapping';
 export * from './embed';
 export * from './encryption';
+export * from './filter';

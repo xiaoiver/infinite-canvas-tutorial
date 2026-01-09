@@ -108,6 +108,10 @@ void main() {
 
 <ImageProcessing />
 
+### Noise {#noise}
+
+[Spline - Noise Layer]
+
 ## 渲染图 {#render-graph}
 
 Render Graph（有时称为 FrameGraph）是一种将渲染过程抽象为有向无环图（DAG）的现代渲染架构。在这一架构下，每个渲染 Pass 以及它们使用的资源都被视为图节点与边，通过图结构自动管理资源状态转换、同步和生命周期。
@@ -205,6 +209,10 @@ builder.pushPass((pass) => {
 });
 ```
 
+## 扩展阅读 {#extended-reading}
+
+-   [Blob Tracking]
+
 [Paper Shaders]: https://shaders.paper.design/
 [Pixi.js filters]: https://github.com/pixijs/filters
 [CSS filter]: https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/filter
@@ -215,3 +223,5 @@ builder.pushPass((pass) => {
 [Render graph in bevy]: https://github.com/bevyengine/bevy/discussions/2524
 [noclip]: https://github.com/magcius/noclip.website
 [课程 2]: /zh/guide/lesson-002
+[Spline - Noise Layer]: https://docs.spline.design/materials-shading/noise-layer
+[Blob Tracking]: https://www.shadertoy.com/view/3fBXDD

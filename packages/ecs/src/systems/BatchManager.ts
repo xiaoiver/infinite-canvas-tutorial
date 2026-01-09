@@ -1,4 +1,5 @@
 import { Buffer, Device, RenderPass, SwapChain } from '@antv/g-device-api';
+import { type RGGraphBuilder } from '../render-graph/interface';
 import { Entity } from '@lastolivegames/becsy';
 import {
   Drawcall,
@@ -337,6 +338,7 @@ export class BatchManager {
     renderPass: RenderPass,
     uniformBuffer: Buffer,
     uniformLegacyObject: Record<string, unknown>,
+    builder: RGGraphBuilder,
   ) {
     const geometryDirtyDrawcalls: Drawcall[] = [];
     const materialDirtyDrawcalls: Drawcall[] = [];
@@ -368,7 +370,7 @@ export class BatchManager {
       safeRemoveComponent(shape, MaterialDirty),
     );
     this.#drawcallsToFlush.forEach((drawcall) => {
-      drawcall.submit(renderPass, uniformBuffer, uniformLegacyObject);
+      drawcall.submit(renderPass, uniformBuffer, uniformLegacyObject, builder);
     });
   }
 

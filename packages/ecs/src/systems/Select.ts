@@ -801,56 +801,54 @@ export class Select extends System {
           if (selecteds.length >= 1) {
             const { anchor, cursor: cursorName } = hitTest(api, { x, y }) || {};
 
-            if (anchor) {
-              if (anchor === AnchorName.CONTROL) {
-                // cursor.value = 'move';
-                // (selection as SelectVectorNetwork).activeControlPointIndex =
-                //   index;
-              } else {
-                const { rotation, scale } = mask.read(Transform);
-                cursor.value = getCursor(
-                  cursorName,
-                  rotation,
-                  '',
-                  Math.sign(scale[0] * scale[1]) < 0,
-                );
-                selection.resizingAnchorName = anchor;
+            if (selection.mode !== SelectionMode.BRUSH) {
+              if (anchor) {
+                if (anchor === AnchorName.CONTROL) {
+                  // cursor.value = 'move';
+                  // (selection as SelectVectorNetwork).activeControlPointIndex =
+                  //   index;
+                } else {
+                  const { rotation, scale } = mask.read(Transform);
+                  cursor.value = getCursor(
+                    cursorName,
+                    rotation,
+                    '',
+                    Math.sign(scale[0] * scale[1]) < 0,
+                  );
+                  selection.resizingAnchorName = anchor;
 
-                if (cursorName.includes('rotate')) {
-                  selection.mode = SelectionMode.READY_TO_ROTATE;
-                  toHighlight = undefined;
-                } else if (cursorName.includes('resize')) {
-                  selection.mode = SelectionMode.READY_TO_RESIZE;
-                  toHighlight = undefined;
-                } else if (anchor === AnchorName.INSIDE) {
-                  // Only in single transformer, we can select other objects.
-                  if (
-                    toHighlight &&
-                    toHighlight !== selecteds[0] &&
-                    selecteds.length === 1
-                  ) {
-                    selection.mode = SelectionMode.READY_TO_SELECT;
-                  } else {
-                    // In group can toggle selection.
-                    if (input.shiftKey) {
+                  if (cursorName.includes('rotate')) {
+                    selection.mode = SelectionMode.READY_TO_ROTATE;
+                    toHighlight = undefined;
+                  } else if (cursorName.includes('resize')) {
+                    selection.mode = SelectionMode.READY_TO_RESIZE;
+                    toHighlight = undefined;
+                  } else if (anchor === AnchorName.INSIDE) {
+                    // Only in single transformer, we can select other objects.
+                    if (
+                      toHighlight &&
+                      toHighlight !== selecteds[0] &&
+                      selecteds.length === 1
+                    ) {
                       selection.mode = SelectionMode.READY_TO_SELECT;
                     } else {
-                      // Disable highlight, only allow move.
-                      toHighlight = undefined;
+                      // In group can toggle selection.
+                      if (input.shiftKey) {
+                        selection.mode = SelectionMode.READY_TO_SELECT;
+                      } else {
+                        // Disable highlight, only allow move.
+                        toHighlight = undefined;
 
-                      if (
-                        selection.mode !== SelectionMode.BRUSH &&
-                        selection.mode !== SelectionMode.MOVE
-                      ) {
-                        selection.mode = SelectionMode.READY_TO_MOVE;
+                        if (
+                          // selection.mode !== SelectionMode.BRUSH &&
+                          selection.mode !== SelectionMode.MOVE
+                        ) {
+                          selection.mode = SelectionMode.READY_TO_MOVE;
+                        }
                       }
                     }
-                  }
-                } else {
-                  if (toHighlight) {
+                  } else if (toHighlight) {
                     selection.mode = SelectionMode.READY_TO_SELECT;
-                  } else if (selection.mode !== SelectionMode.BRUSH) {
-                    selection.mode = SelectionMode.IDLE;
                   }
                 }
               }

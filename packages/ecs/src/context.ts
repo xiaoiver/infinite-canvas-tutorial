@@ -102,6 +102,11 @@ export interface AppState {
    */
   loading: boolean;
   loadingMessage: string;
+
+  /**
+   * Global effects
+   */
+  filter: string;
 }
 
 export const getDefaultAppState: () => AppState = () => {
@@ -245,6 +250,7 @@ export const getDefaultAppState: () => AppState = () => {
     editingPoints: [],
     loading: false,
     loadingMessage: '',
+    filter: 'fxaa()',
   };
 };
 

@@ -1,31 +1,66 @@
 /**
- * CSS Filter 对象接口
+ * CSS Filter / Effect
  */
 export interface FilterObject {
   name: string;
   params: string;
 }
 
+export type Effect =
+  | BrightnessEffect
+  | DropShadowEffect
+  | BlurEffect
+  | NoiseEffect
+  | FXAA;
+
+export interface BrightnessEffect {
+  type: 'brightness';
+  value: number;
+}
+
+export interface DropShadowEffect {
+  type: 'drop-shadow';
+  x: number;
+  y: number;
+  blur: number;
+  spread: number;
+  color: string;
+}
+
+export interface BlurEffect {
+  type: 'blur';
+  value: number;
+}
+
+export interface NoiseEffect {
+  type: 'noise';
+  value: number;
+}
+
+export interface FXAA {
+  type: 'fxaa';
+}
+
 /**
  * 从 CSS filter 字符串中解析出一个或多个 filter 对象
  *
  * @example
- * extractFilters('blur(5px)')
- * // => [{ name: 'blur', params: '5px' }]
+ * parseEffect('blur(5px)')
+ * // => [{ name: 'blur', value: 5 }]
  *
  * @example
- * extractFilters('drop-shadow(3px 3px red) sepia(100%)')
- * // => [{ name: 'drop-shadow', params: '3px 3px red' }, { name: 'sepia', params: '100%' }]
+ * parseEffect('drop-shadow(3px 3px red) sepia(100%)')
+ * // => [{ name: 'drop-shadow', x: 3, y: 3, blur: 0, spread: 0, color: 'red' }, { name: 'sepia', value: 100 }]
  *
  * @example
- * extractFilters('blur(5px) brightness(0.4) drop-shadow(16px 16px 20px blue)')
+ * parseEffect('blur(5px) brightness(0.4) drop-shadow(16px 16px 20px blue)')
  * // => [
- * //   { name: 'blur', params: '5px' },
- * //   { name: 'brightness', params: '0.4' },
- * //   { name: 'drop-shadow', params: '16px 16px 20px blue' }
+ * //   { name: 'blur', value: 5 },
+ * //   { name: 'brightness', value: 0.4 },
+ * //   { name: 'drop-shadow', x: 16, y: 16, blur: 20, spread: 0, color: 'blue' }
  * // ]
  */
-export function extractFilters(filter: string): FilterObject[] {
+export function parseEffect(filter: string): Effect[] {
   if (!filter || typeof filter !== 'string') {
     return [];
   }
@@ -120,5 +155,27 @@ export function extractFilters(filter: string): FilterObject[] {
     }
   }
 
-  return filters;
+  // Convert filters to effects
+  const effects: Effect[] = [];
+  for (const filter of filters) {
+    if (filter.name === 'blur') {
+      effects.push({ type: 'blur', value: parseFloat(filter.params) });
+    } else if (filter.name === 'brightness') {
+      effects.push({ type: 'brightness', value: parseFloat(filter.params) });
+    } else if (filter.name === 'drop-shadow') {
+      const [x, y, blur, spread, color] = filter.params.split(' ');
+      effects.push({
+        type: 'drop-shadow',
+        x: parseFloat(x),
+        y: parseFloat(y),
+        blur: parseFloat(blur),
+        spread: parseFloat(spread),
+        color,
+      });
+    } else if (filter.name === 'noise') {
+      effects.push({ type: 'noise', value: parseFloat(filter.params) });
+    }
+  }
+
+  return effects;
 }

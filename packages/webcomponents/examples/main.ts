@@ -83,6 +83,7 @@ canvas.addEventListener(Event.READY, async (e) => {
     // taskbarVisible: false,
     // rotateEnabled: false,
     // flipEnabled: false,
+    // filter: 'noise(0.5)',
   });
 
   // api.updateNodes(nodes);
@@ -94,40 +95,43 @@ canvas.addEventListener(Event.READY, async (e) => {
     y: 0,
     width: 200,
     height: 200,
-    fill: 'grey',
+    // fill: 'grey',
+    fill: 'https://v3b.fal.media/files/b/tiger/v1lf1EcPP1X1pw_YOKM4o.jpg',
+    // filter: 'noise(0.5)',
   };
-  const node2 = {
-    id: 'text-1',
-    type: 'text',
-    parentId: 'rect-1',
-    anchorX: 10,
-    anchorY: 50,
-    content: 'Hello',
-    fill: 'black',
-    fontSize: 30,
-    fontFamily: 'system-ui',
-  };
-  const node3 = {
-    id: 'rect-2',
-    type: 'rect',
-    x: 100,
-    y: 100,
-    width: 200,
-    height: 200,
-    fill: 'red',
-  };
+  // const node2 = {
+  //   id: 'text-1',
+  //   type: 'text',
+  //   parentId: 'rect-1',
+  //   anchorX: 10,
+  //   anchorY: 50,
+  //   content: 'Hello',
+  //   fill: 'black',
+  //   fontSize: 30,
+  //   fontFamily: 'system-ui',
+  // };
+  // const node3 = {
+  //   id: 'rect-2',
+  //   type: 'rect',
+  //   x: 100,
+  //   y: 100,
+  //   width: 200,
+  //   height: 200,
+  //   fill: 'red',
+  // };
 
-  const node4 = {
-    id: 'rect-3',
-    type: 'rect',
-    x: 100,
-    y: 100,
-    width: 100,
-    height: 100,
-    fill: 'green',
-  };
+  // const node4 = {
+  //   id: 'rect-3',
+  //   type: 'rect',
+  //   x: 100,
+  //   y: 100,
+  //   width: 100,
+  //   height: 100,
+  //   fill: 'green',
+  // };
 
-  api.updateNodes([node1, node3, node4]);
+  // api.updateNodes([node1, node3, node4]);
+  api.updateNode(node1);
   api.record();
 });
 

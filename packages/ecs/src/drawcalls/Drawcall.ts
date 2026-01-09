@@ -21,10 +21,11 @@ import {
   TransparentWhite,
 } from '@antv/g-device-api';
 import { Entity } from '@lastolivegames/becsy';
-import { RenderCache, uid } from '../utils';
+import { RenderCache, Effect, uid } from '../utils';
 import { Location } from '../shaders/wireframe';
 import { TexturePool } from '../resources';
 import {
+  ComputedBounds,
   FillGradient,
   FillImage,
   FillPattern,
@@ -33,32 +34,29 @@ import {
   Wireframe,
 } from '../components';
 import { API } from '../API';
-import { FilterObject } from '../utils/filter';
 import { vert as postProcessingVert } from '../shaders/post-processing/fullscreen';
 import { vert as bigTriangleVert } from '../shaders/post-processing/big-triangle';
 import { frag as copyFrag } from '../shaders/post-processing/copy';
 import { frag as noiseFrag } from '../shaders/post-processing/noise';
 import { frag as brightnessFrag } from '../shaders/post-processing/brightness';
 import { frag as contrastFrag } from '../shaders/post-processing/contrast';
+import {
+  AntialiasingMode,
+  makeAttachmentClearDescriptor,
+  makeBackbufferDescSimple,
+  opaqueWhiteFullClearRenderPassDescriptor,
+} from '../render-graph/utils';
+import { RGAttachmentSlot, RGGraphBuilder } from '../render-graph/interface';
 
 const FRAG_MAP = {
   noise: {
     shader: noiseFrag,
-    parse: (params: string) => {
-      return [parseFloat(params)];
-    },
   },
   brightness: {
     shader: brightnessFrag,
-    parse: (params: string) => {
-      return [parseFloat(params)];
-    },
   },
   contrast: {
     shader: contrastFrag,
-    parse: (params: string) => {
-      return [parseFloat(params)];
-    },
   },
 };
 
@@ -171,6 +169,7 @@ export abstract class Drawcall {
     renderPass: RenderPass,
     uniformBuffer: Buffer,
     uniformLegacyObject: Record<string, unknown>,
+    builder: RGGraphBuilder,
   ) {
     if (this.geometryDirty) {
       this.createGeometry();
@@ -188,6 +187,59 @@ export abstract class Drawcall {
         defines += '#define USE_WIREFRAME\n';
       }
       this.createMaterial(defines, uniformBuffer);
+    }
+
+    // Handle post processing effects
+    const hasFilter = this.shapes[0]?.has(Filter);
+    if (hasFilter) {
+      const { width, height } = this.swapChain.getCanvas();
+      const renderInput = {
+        backbufferWidth: width,
+        backbufferHeight: height,
+        antialiasingMode: AntialiasingMode.None,
+      };
+      const mainColorDesc = makeBackbufferDescSimple(
+        RGAttachmentSlot.Color0,
+        renderInput,
+        makeAttachmentClearDescriptor(TransparentWhite),
+      );
+      const mainDepthDesc = makeBackbufferDescSimple(
+        RGAttachmentSlot.DepthStencil,
+        renderInput,
+        opaqueWhiteFullClearRenderPassDescriptor,
+      );
+      const mainColorTargetID = builder.createRenderTargetID(
+        mainColorDesc,
+        'Main Color',
+      );
+      const mainDepthTargetID = builder.createRenderTargetID(
+        mainDepthDesc,
+        'Main Depth',
+      );
+      // TODO: one or multiple passes per effect
+      builder.pushPass((pass) => {
+        pass.setDebugName('Offscreen Pass');
+        pass.attachRenderTargetID(RGAttachmentSlot.Color0, mainColorTargetID);
+        pass.attachRenderTargetID(
+          RGAttachmentSlot.DepthStencil,
+          mainDepthTargetID,
+        );
+        pass.exec((renderPass) => {
+          // this.render(renderPass, uniformBuffer, uniformLegacyObject);
+        });
+      });
+
+      builder.pushPass((pass) => {
+        const { minX, minY, maxX, maxY } =
+          this.shapes[0].read(ComputedBounds).renderWorldBounds;
+
+        const tl = this.api.canvas2Viewport({ x: minX, y: minY });
+        const br = this.api.canvas2Viewport({ x: maxX, y: maxY });
+      });
+
+      // Use Sprite
+
+      // drawcall.submit(renderPass, uniformBuffer, uniformLegacyObject);
     }
 
     this.render(renderPass, uniformBuffer, uniformLegacyObject);
@@ -227,13 +279,11 @@ export abstract class Drawcall {
   }
 
   protected get useFillImage() {
-    return (
-      this.shapes[0]?.hasSomeOf(
-        FillImage,
-        FillTexture,
-        FillGradient,
-        FillPattern,
-      ) || this.shapes[0]?.has(Filter)
+    return this.shapes[0]?.hasSomeOf(
+      FillImage,
+      FillTexture,
+      FillGradient,
+      FillPattern,
     );
   }
 
@@ -336,11 +386,13 @@ export abstract class Drawcall {
   }
 
   protected createPostProcessing(
-    filters: FilterObject[],
+    effects: Effect[],
     inputTexture: Texture,
     width: number,
     height: number,
   ) {
+    console.log('create post..');
+
     this.#filterWidth = width;
     this.#filterHeight = height;
     this.#filterTexture = this.device.createTexture({
@@ -425,9 +477,17 @@ export abstract class Drawcall {
       ],
     });
 
-    filters.forEach((filter) => {
-      const frag = FRAG_MAP[filter.name].shader;
-      const params = FRAG_MAP[filter.name].parse(filter.params);
+    effects.forEach((effect) => {
+      const frag = FRAG_MAP[effect.type].shader;
+      const params: number[] = [];
+      if (effect.type === 'drop-shadow') {
+        // FIXME: color, spread, blur
+        params.push(effect.x, effect.y);
+      } else if (effect.type === 'fxaa') {
+        params.push(0);
+      } else {
+        params.push(effect.value);
+      }
 
       this.#bigTriangleUniformBuffer = this.device.createBuffer({
         viewOrSize: Float32Array.BYTES_PER_ELEMENT * 4,
@@ -519,6 +579,8 @@ export abstract class Drawcall {
     heightInCanvasCoords: number,
     zoomScale: number,
   ) {
+    console.log('render post..');
+
     let resized = false;
     if (this.#filterWidth !== width || this.#filterHeight !== height) {
       this.#filterRenderTarget.destroy();
