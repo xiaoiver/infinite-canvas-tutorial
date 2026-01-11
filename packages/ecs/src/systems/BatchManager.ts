@@ -63,6 +63,9 @@ function getDrawcallCtors(shape: Entity) {
     }
   } else if (shape.has(Line)) {
     SHAPE_DRAWCALL_CTORS.push(SmoothPolyline);
+    if (shape.has(Rough)) {
+      SHAPE_DRAWCALL_CTORS.push(Mesh, SmoothPolyline, SmoothPolyline);
+    }
   } else if (shape.has(Polyline)) {
     SHAPE_DRAWCALL_CTORS.push(SmoothPolyline);
   } else if (shape.has(Path)) {
@@ -106,6 +109,7 @@ export class BatchManager {
     | 'rough-circle'
     | 'rough-ellipse'
     | 'rough-rect'
+    | 'rough-line'
     | 'rough-polyline'
     | 'rough-path'
     | 'vector-network'

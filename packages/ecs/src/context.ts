@@ -37,6 +37,7 @@ export interface AppState {
   penbarVisible: boolean;
   penbarAll: Pen[];
   penbarSelected: Pen;
+  penbarDrawSizeLabelVisible: boolean;
   penbarDrawRect: Partial<StrokeAttributes & FillAttributes>;
   penbarDrawEllipse: Partial<StrokeAttributes & FillAttributes>;
   penbarDrawLine: Partial<StrokeAttributes>;
@@ -47,6 +48,7 @@ export interface AppState {
   penbarDrawRoughEllipse: Partial<
     RoughAttributes & StrokeAttributes & FillAttributes
   >;
+  penbarDrawRoughLine: Partial<RoughAttributes & StrokeAttributes>;
   penbarPencil: Partial<
     StrokeAttributes & {
       freehand: boolean;
@@ -159,6 +161,7 @@ export const getDefaultAppState: () => AppState = () => {
       Pen.DRAW_ARROW,
       Pen.DRAW_ROUGH_RECT,
       Pen.DRAW_ROUGH_ELLIPSE,
+      Pen.DRAW_ROUGH_LINE,
       Pen.IMAGE,
       Pen.TEXT,
       Pen.PENCIL,
@@ -169,6 +172,7 @@ export const getDefaultAppState: () => AppState = () => {
       Pen.LASER_POINTER,
     ],
     penbarSelected: Pen.HAND,
+    penbarDrawSizeLabelVisible: true,
     penbarDrawRect: {
       fill: TRANSFORMER_MASK_FILL_COLOR,
       fillOpacity: 0.5,
@@ -199,24 +203,32 @@ export const getDefaultAppState: () => AppState = () => {
       markerFactor: 3,
     },
     penbarDrawRoughRect: {
-      fill: '#000',
+      fill: TRANSFORMER_ANCHOR_STROKE_COLOR,
       fillOpacity: 1,
-      stroke: '#000',
-      strokeWidth: 10,
+      stroke: TRANSFORMER_ANCHOR_STROKE_COLOR,
+      strokeWidth: 4,
       strokeOpacity: 1,
       roughBowing: 1,
       roughRoughness: 1,
       roughFillStyle: 'hachure',
     },
     penbarDrawRoughEllipse: {
-      fill: '#000',
+      fill: TRANSFORMER_ANCHOR_STROKE_COLOR,
       fillOpacity: 1,
-      stroke: '#000',
-      strokeWidth: 10,
+      stroke: TRANSFORMER_ANCHOR_STROKE_COLOR,
+      strokeWidth: 4,
       strokeOpacity: 1,
       roughBowing: 1,
       roughRoughness: 1,
       roughFillStyle: 'hachure',
+    },
+    penbarDrawRoughLine: {
+      fill: 'none',
+      stroke: TRANSFORMER_ANCHOR_STROKE_COLOR,
+      strokeWidth: 1,
+      strokeOpacity: 1,
+      roughBowing: 1,
+      roughRoughness: 4,
     },
     penbarPencil: {
       fill: 'none',

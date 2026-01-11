@@ -151,9 +151,32 @@ if (height < 0) {
 
 ![Size label in Figma](/figma-size-label.png)
 
+同样，这类视口空间的标注图形放在 SVG 容器中很合适，正如下文会介绍的激光笔和橡皮擦。矩形标签使用 CSS 样式设置背景颜色、padding、居中等等，文本内容使用包围盒的宽高：
+
+```ts
+label.style.visibility = 'visible';
+label.style.top = `${y + height}px`;
+label.style.left = `${x + width / 2}px`;
+label.innerText = `${Math.round(width)} × ${Math.round(height)}`;
+```
+
+如果绘制的是直线，标签可以沿着直线方向旋转，但需要让文本始终正向展示，你可以在下一节的箭头例子中体验：
+
+```ts
+label.style.top = `${y + height / 2}px`;
+const rad = Math.atan2(height, width);
+let deg = rad * (180 / Math.PI);
+if (deg >= 90 && deg <= 180) {
+    deg = deg - 180;
+} else if (deg <= -90 && deg >= -180) {
+    deg = deg + 180;
+}
+label.style.transform = `translate(-50%, -50%) rotate(${deg}deg)`;
+```
+
 ## 绘制箭头 {#draw-arrow}
 
-除了矩形、椭圆、折线等基础图形，一些常用的复合图形例如箭头。
+除了矩形、椭圆、折线等基础图形，箭头这样的复合图形也很常用。我们暂时不涉及箭头的绑定关系（被箭头首尾关联的图形发生移动，箭头的朝向也跟着改变），后面放到单独的一章中介绍，这里仅关注箭头的绘制方式。
 
 在 SVG 中首先使用 `<marker>` 声明箭头，通常是一个 `<path>`，然后通过目标图形的 [marker-start] 和 [marker-end] 属性关联箭头：
 

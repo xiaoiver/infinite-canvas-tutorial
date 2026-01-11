@@ -1010,7 +1010,7 @@ export class API {
     }
 
     if (delta) {
-      if (node.type === 'polyline') {
+      if (node.type === 'polyline' || node.type === 'rough-polyline') {
         const { strokeAlignment = 'center', strokeWidth = 1 } = node;
         const shiftedPoints = maybeShiftPoints(
           deserializePoints((oldNode as PolylineSerializedNode)?.points).map(

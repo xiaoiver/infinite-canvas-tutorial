@@ -79,9 +79,9 @@ export function inferXYWidthHeight(node: SerializedNode) {
   let bounds: AABB;
   if (type === 'ellipse') {
     bounds = Ellipse.getGeometryBounds(node);
-  } else if (type === 'polyline') {
+  } else if (type === 'polyline' || type === 'rough-polyline') {
     bounds = Polyline.getGeometryBounds(node);
-  } else if (type === 'line') {
+  } else if (type === 'line' || type === 'rough-line') {
     bounds = Line.getGeometryBounds(node);
   } else if (type === 'path') {
     bounds = Path.getGeometryBounds(node);
@@ -101,13 +101,13 @@ export function inferXYWidthHeight(node: SerializedNode) {
     node.width = bounds.maxX - bounds.minX;
     node.height = bounds.maxY - bounds.minY;
 
-    if (type === 'polyline') {
+    if (type === 'polyline' || type === 'rough-polyline') {
       node.points = serializePoints(
         deserializePoints(node.points).map((point) => {
           return [point[0] - bounds.minX, point[1] - bounds.minY];
         }),
       );
-    } else if (type === 'line') {
+    } else if (type === 'line' || type === 'rough-line') {
       node.x1 = node.x1 - bounds.minX;
       node.y1 = node.y1 - bounds.minY;
       node.x2 = node.x2 - bounds.minX;
@@ -284,16 +284,21 @@ export function serializedNodesToEntities(
     } else if (type === 'rect' || type === 'rough-rect') {
       const { cornerRadius } = attributes as RectSerializedNode;
       entity.insert(new Rect({ x: 0, y: 0, width, height, cornerRadius }));
-
       if (type === 'rough-rect') {
         serializeRough(attributes as RoughAttributes, entity);
       }
-    } else if (type === 'polyline') {
+    } else if (type === 'polyline' || type === 'rough-polyline') {
       const { points } = attributes as PolylineSerializedNode;
       entity.insert(new Polyline({ points: deserializePoints(points) }));
-    } else if (type === 'line') {
+      if (type === 'rough-polyline') {
+        serializeRough(attributes as RoughAttributes, entity);
+      }
+    } else if (type === 'line' || type === 'rough-line') {
       const { x1, y1, x2, y2 } = attributes as LineSerializedNode;
       entity.insert(new Line({ x1, y1, x2, y2 }));
+      if (type === 'rough-line') {
+        serializeRough(attributes as RoughAttributes, entity);
+      }
     } else if (type === 'brush') {
       const { points, brushType, brushStamp } =
         attributes as BrushSerializedNode;

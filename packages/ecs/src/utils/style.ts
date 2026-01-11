@@ -69,13 +69,18 @@ export function getGeometryBounds(
   metrics?: Partial<ComputedTextMetrics>,
 ) {
   const { type } = node;
-  if (type === 'rect' || type === 'html' || type === 'embed') {
+  if (
+    type === 'rect' ||
+    type === 'rough-rect' ||
+    type === 'html' ||
+    type === 'embed'
+  ) {
     return Rect.getGeometryBounds(node);
-  } else if (type === 'ellipse') {
+  } else if (type === 'ellipse' || type === 'rough-ellipse') {
     return Ellipse.getGeometryBounds(node);
-  } else if (type === 'polyline') {
+  } else if (type === 'polyline' || type === 'rough-polyline') {
     return Polyline.getGeometryBounds(node);
-  } else if (type === 'line') {
+  } else if (type === 'line' || type === 'rough-line') {
     return Line.getGeometryBounds(node);
   } else if (type === 'path') {
     return Path.getGeometryBounds(node);

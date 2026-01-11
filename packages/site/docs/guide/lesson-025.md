@@ -157,9 +157,32 @@ We want to show the dimensions of the rectangle in real time during the drawing 
 
 ![Size label in Figma](/figma-size-label.png)
 
+Similarly, annotations in this type of viewport space are well-suited for placement within SVG containers, as demonstrated by the laser pointer and eraser tools described below. Rectangular labels utilize CSS styles to set background color, padding, centering, and other properties, while text content employs the bounding box's width and height:
+
+```ts
+label.style.visibility = 'visible';
+label.style.top = `${y + height}px`;
+label.style.left = `${x + width / 2}px`;
+label.innerText = `${Math.round(width)} × ${Math.round(height)}`;
+```
+
+If drawing a straight line, labels can rotate along the line's direction while ensuring text always faces forward. You can experience this in the arrow example in the next section:
+
+```ts
+label.style.top = `${y + height / 2}px`;
+const rad = Math.atan2(height, width);
+let deg = rad * (180 / Math.PI);
+if (deg >= 90 && deg <= 180) {
+    deg = deg - 180;
+} else if (deg <= -90 && deg >= -180) {
+    deg = deg + 180;
+}
+label.style.transform = `translate(-50%, -50%) rotate(${deg}deg)`;
+```
+
 ## Draw arrow {#draw-arrow}
 
-In addition to basic shapes such as rectangles, ellipses, and polylines, some commonly used composite shapes such as arrows.
+Beyond basic shapes like rectangles, ellipses, and polylines, composite shapes such as arrows are also commonly used. We will not cover arrow binding relationships (where the arrow's direction changes when the shapes connected by its head and tail move) at this time; this topic will be addressed in a separate chapter. Here, we focus solely on how arrows are drawn.
 
 Arrows are first declared in SVG using a `<marker>`, usually a `<path>`, and then associated with arrows via the [marker-start] and [marker-end] attributes of the target graphic:
 

@@ -1,7 +1,11 @@
 import { field, Type } from '@lastolivegames/becsy';
 import { AABB } from '../math';
 import { Stroke } from '../renderable';
-import { deserializePoints, PolylineSerializedNode } from '../../utils';
+import {
+  deserializePoints,
+  PolylineSerializedNode,
+  RoughPolylineSerializedNode,
+} from '../../utils';
 
 /**
  * Basic shape that creates straight lines connecting several points.
@@ -10,7 +14,10 @@ import { deserializePoints, PolylineSerializedNode } from '../../utils';
  */
 export class Polyline {
   static getGeometryBounds(
-    polyline: Partial<Polyline> | Partial<PolylineSerializedNode>,
+    polyline:
+      | Partial<Polyline>
+      | Partial<PolylineSerializedNode>
+      | Partial<RoughPolylineSerializedNode>,
   ) {
     let { points } = polyline;
 
