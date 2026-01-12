@@ -22,6 +22,12 @@ export class EventDisposer extends System {
 
       const input = canvas.write(Input);
 
+      const { inputPoints } = canvas.read(Canvas);
+      inputPoints.forEach((point) => {
+        const inputPoint = point.write(InputPoint);
+        inputPoint.prevPoint = input.pointerViewport;
+      });
+
       Object.assign(input, {
         wheelTrigger: false,
         ctrlKey: false,

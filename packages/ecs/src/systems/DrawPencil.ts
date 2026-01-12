@@ -42,7 +42,7 @@ import {
 import { distanceBetweenPoints } from '../utils/matrix';
 import { DRAW_RECT_Z_INDEX } from '../context';
 import { serializePoints } from '../utils/serialize';
-import { getFlatSvgPathFromStroke } from '../utils';
+import { getFlatSvgPathFromStroke, isBrowser } from '../utils';
 
 const PENCIL_CURSOR =
   'url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAACXBIWXMAAAsTAAALEwEAmpwYAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAKOSURBVHgB7VY7jBJRFH2Dk2VgIYp8AobYSEFCY2JpY0NBZ2MtJoSSBAjh0wANnZQmUEJNAR0lgcYWAwQsVLZhlV/4GJCded47wopZ0HVn2G04yQl5P865nzczhBxxxBHSwVxzbicURAa4XC5lt9tNU0o/wu9bGJ/8jwkpYBKJBAfCnzKZDNXr9bRQKMCQfna73dyhTTB+v18FYt1oNEo5juOr1So9PT3lcYzzhzRxRXw0GqEoHQ6H4nht4sshTFyKh8Nhqlar+clkQgVBoDzPiybQDJrIZrO00+m8IzLij8i1Wi0PBmir1RKF0cDGBJbDZDKJWbDZbEoiQxaupB0jb7fbFNZos9kUhTETWAboBaFUKtF6vZ6Hdcm3YmfNUQzZaDREE2hmOp3iupBMJulisTg3Go1PYe2BFAN7G2475VgGLAeURYCrieLfoATP4fxjIEduiL+Kb1KOxHKAASEej4viBoPhBZx/AtTeNPpriW91/WXkcogrvF6vGjv4TsTxIPz3h1gsduviCCafz7/BjmZZlscrdZviYgaKxWImFArRYDB4cPFdr2NmtVoReJCQ2Wz2a5NCQUCXMAxDxuMxsVgsNBKJMMC+1Wp91e/3z2DbVyAeoESiAZxjITKiUql+uwLxwWBAzGazbOIIdsccnc/nPfioIE6nk4Iws1wuxWzkcjmaSqWYQCAgi7gY2I45jcPhsMEzvFoulzWVSoVAvQma8Hg8BOp9ZrfbX/d6PRQ/lyK+zwA+Nh+CiWc+n++lTqd7BD1xAeVga7Xa+3Q6XVQqlVMwJFl8nwHsAQ3wPlANxFfpPeAP4AXwO3AAXAAFIhH7rgyaOFmLs+t9/NrExoikyP9lYN8eWUSP2MZP4geL9VfezEoAAAAASUVORK5CYII=") 4 28, pointer';
@@ -146,10 +146,6 @@ export class DrawPencil extends System {
         });
       }
 
-      if (input.key === 'Escape') {
-        // TODO: cancel drawing pencil
-      }
-
       // Dragging
       inputPoints.forEach((point) => {
         const inputPoint = point.write(InputPoint);
@@ -157,8 +153,6 @@ export class DrawPencil extends System {
           prevPoint: [prevX, prevY],
         } = inputPoint;
         const [x, y] = input.pointerViewport;
-
-        // TODO: If the pointer is not moved, change the selection mode to SELECT
         if (prevX === x && prevY === y) {
           return;
         }
@@ -168,8 +162,20 @@ export class DrawPencil extends System {
         });
       });
 
+      if (input.key === 'Escape') {
+        const { brush } = selection;
+        api.updateNode(brush, { visibility: 'hidden' }, false);
+      }
+
       if (input.pointerUpTrigger) {
         const { brush } = this.selections.get(camera.__id);
+
+        if (
+          isBrowser &&
+          (brush as PathSerializedNode).visibility === 'hidden'
+        ) {
+          return;
+        }
 
         // Just click on the canvas, do nothing
         if (!brush || (brush as PolylineSerializedNode).points?.length === 0) {

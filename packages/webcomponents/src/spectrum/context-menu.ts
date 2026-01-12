@@ -572,26 +572,45 @@ export class ContextMenu extends LitElement {
       return;
     }
 
-    const selected = this.api.getNodeById(layersSelected[0]);
     if (event.key === 'ArrowUp') {
       event.preventDefault();
-      this.api.updateNodeOBB(selected, { y: selected.y - 10 });
+      layersSelected.forEach((id) => {
+        const node = this.api.getNodeById(id);
+        if (node) {
+          this.api.updateNodeOBB(node, { y: node.y - 10 });
+        }
+      });
       this.api.record();
     } else if (event.key === 'ArrowDown') {
       event.preventDefault();
-      this.api.updateNodeOBB(selected, { y: selected.y + 10 });
+      layersSelected.forEach((id) => {
+        const node = this.api.getNodeById(id);
+        if (node) {
+          this.api.updateNodeOBB(node, { y: node.y + 10 });
+        }
+      });
       this.api.record();
     } else if (event.key === 'ArrowLeft') {
       event.preventDefault();
-      this.api.updateNodeOBB(selected, { x: selected.x - 10 });
+      layersSelected.forEach((id) => {
+        const node = this.api.getNodeById(id);
+        if (node) {
+          this.api.updateNodeOBB(node, { x: node.x - 10 });
+        }
+      });
       this.api.record();
     } else if (event.key === 'ArrowRight') {
       event.preventDefault();
-      this.api.updateNodeOBB(selected, { x: selected.x + 10 });
+      layersSelected.forEach((id) => {
+        const node = this.api.getNodeById(id);
+        if (node) {
+          this.api.updateNodeOBB(node, { x: node.x + 10 });
+        }
+      });
       this.api.record();
     } else if (event.key === 'Backspace') {
       event.preventDefault();
-      this.api.deleteNodesById([selected.id]);
+      this.api.deleteNodesById(layersSelected);
       this.api.record();
     } else if (event.key === 'Escape') {
       event.preventDefault();

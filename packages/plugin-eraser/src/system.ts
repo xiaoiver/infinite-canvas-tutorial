@@ -153,8 +153,6 @@ export class DrawEraser extends System {
           prevPoint: [prevX, prevY],
         } = inputPoint;
         const [x, y] = input.pointerViewport;
-
-        // TODO: If the pointer is not moved, change the selection mode to SELECT
         if (prevX === x && prevY === y) {
           return;
         }

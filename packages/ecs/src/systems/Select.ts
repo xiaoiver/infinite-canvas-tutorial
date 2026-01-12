@@ -316,7 +316,7 @@ export class Select extends System {
     const { rotation, scaleX, scaleY } = obb;
 
     // Use the lock aspect ratio of the selected node if there is only one
-    const { layersSelected } = api.getAppState();
+    const { layersSelected, flipEnabled } = api.getAppState();
     if (layersSelected.length === 1) {
       const node = api.getNodeById(layersSelected[0]);
       lockAspectRatio = node.lockAspectRatio ?? lockAspectRatio;
@@ -516,6 +516,10 @@ export class Select extends System {
     {
       const width = brCx - tlCx;
       const height = brCy - tlCy;
+
+      if (!flipEnabled && (width <= 0 || height <= 0)) {
+        return;
+      }
 
       const { x, y } = api.transformer2Canvas({ x: tlCx, y: tlCy });
 
@@ -871,8 +875,6 @@ export class Select extends System {
           prevPoint: [prevX, prevY],
         } = inputPoint;
         const [x, y] = input.pointerViewport;
-
-        // TODO: If the pointer is not moved, change the selection mode to SELECT
         if (prevX === x && prevY === y) {
           return;
         }
@@ -919,9 +921,6 @@ export class Select extends System {
           // } else if (selection.mode === SelectionMode.MOVE_CONTROL_POINT) {
           // this.handleSelectedMovingControlPoint(api, sx, sy, ex, ey);
         }
-
-        // FIXME: This should be done in the last relative system
-        inputPoint.prevPoint = input.pointerViewport;
       });
 
       if (input.key === 'Escape') {

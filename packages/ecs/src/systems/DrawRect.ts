@@ -43,7 +43,6 @@ import {
   RectSerializedNode,
   RoughAttributes,
   RoughEllipseSerializedNode,
-  RoughLineSerializedNode,
   RoughPolylineSerializedNode,
   RoughRectSerializedNode,
   StrokeAttributes,
@@ -64,29 +63,28 @@ const PEN_TO_TYPE = {
   [Pen.DRAW_ROUGH_LINE]: 'rough-polyline',
 } as const;
 
+interface DrawRectSelection {
+  rectBrush: RectSerializedNode;
+  ellipseBrush: EllipseSerializedNode;
+  lineBrush: PolylineSerializedNode;
+  arrowBrush: PolylineSerializedNode;
+  roughRectBrush: RoughRectSerializedNode;
+  roughEllipseBrush: RoughEllipseSerializedNode;
+  roughLineBrush: RoughPolylineSerializedNode;
+  label: HTMLDivElement;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
 /**
  * Draw a rectangle, ellipse, line with dragging.
  */
 export class DrawRect extends System {
   private readonly cameras = this.query((q) => q.current.with(Camera).read);
 
-  private selections = new Map<
-    number,
-    {
-      rectBrush: RectSerializedNode;
-      ellipseBrush: EllipseSerializedNode;
-      lineBrush: PolylineSerializedNode;
-      arrowBrush: PolylineSerializedNode;
-      roughRectBrush: RoughRectSerializedNode;
-      roughEllipseBrush: RoughEllipseSerializedNode;
-      roughLineBrush: RoughPolylineSerializedNode;
-      label: HTMLDivElement;
-      x: number;
-      y: number;
-      width: number;
-      height: number;
-    }
-  >();
+  private selections = new Map<number, DrawRectSelection>();
 
   constructor() {
     super();
@@ -200,10 +198,6 @@ export class DrawRect extends System {
         }
       }
 
-      if (input.key === 'Escape') {
-        // TODO: cancel drawing rect
-      }
-
       // Dragging
       inputPoints.forEach((point) => {
         const inputPoint = point.write(InputPoint);
@@ -212,6 +206,7 @@ export class DrawRect extends System {
         } = inputPoint;
         const [x, y] = input.pointerViewport;
 
+        // Prev and current point are the same, do nothing
         if (prevX === x && prevY === y) {
           return;
         }
@@ -221,35 +216,19 @@ export class DrawRect extends System {
         });
       });
 
-      if (input.pointerUpTrigger) {
-        const {
-          x,
-          y,
-          width,
-          height,
-          rectBrush,
-          ellipseBrush,
-          lineBrush,
-          arrowBrush,
-          roughRectBrush,
-          roughLineBrush,
-          roughEllipseBrush,
-        } = this.selections.get(camera.__id);
+      if (input.key === 'Escape') {
+        this.hideBrush(api, selection);
+      }
 
-        const brush =
-          pen === Pen.DRAW_RECT
-            ? rectBrush
-            : pen === Pen.DRAW_ROUGH_RECT
-            ? roughRectBrush
-            : pen === Pen.DRAW_ROUGH_ELLIPSE
-            ? roughEllipseBrush
-            : pen === Pen.DRAW_ELLIPSE
-            ? ellipseBrush
-            : pen === Pen.DRAW_LINE
-            ? lineBrush
-            : pen === Pen.DRAW_ROUGH_LINE
-            ? roughLineBrush
-            : arrowBrush;
+      if (input.pointerUpTrigger) {
+        const selection = this.selections.get(camera.__id);
+        if (isBrowser && selection.label.style.visibility === 'hidden') {
+          return;
+        }
+
+        const { x, y, width, height } = selection;
+
+        const brush = this.getBrush(selection, pen);
 
         // Just click on the canvas, do nothing
         if (!brush || (width === 0 && height === 0)) {
@@ -257,8 +236,7 @@ export class DrawRect extends System {
         }
 
         api.runAtNextTick(() => {
-          api.updateNode(brush, { visibility: 'hidden' }, false);
-          selection.label.style.visibility = 'hidden';
+          this.hideBrush(api, selection);
 
           const node:
             | RectSerializedNode
@@ -464,8 +442,13 @@ export class DrawRect extends System {
       if (api.getAppState().penbarDrawSizeLabelVisible) {
         label.style.visibility = 'visible';
       }
-      label.style.top = `${y + height}px`;
-      label.style.left = `${x + width / 2}px`;
+
+      const { x: viewportX2, y: viewportY2 } = api.canvas2Viewport({
+        x: x + width / 2,
+        y: y + height,
+      });
+      label.style.top = `${viewportY2}px`;
+      label.style.left = `${viewportX2}px`;
       label.innerText = `${Math.round(Math.abs(width))} × ${Math.round(
         Math.abs(height),
       )}`;
@@ -475,7 +458,12 @@ export class DrawRect extends System {
         pen === Pen.DRAW_ARROW ||
         pen === Pen.DRAW_ROUGH_LINE
       ) {
-        label.style.top = `${y + height / 2}px`;
+        const { x: viewportX2, y: viewportY2 } = api.canvas2Viewport({
+          x: x + width / 2,
+          y: y + height / 2,
+        });
+        label.style.top = `${viewportY2}px`;
+        label.style.left = `${viewportX2}px`;
         const rad = Math.atan2(height, width);
         let deg = rad * (180 / Math.PI);
         if (deg >= 90 && deg <= 180) {
@@ -493,5 +481,39 @@ export class DrawRect extends System {
       selection.width = width;
       selection.height = height;
     }
+  }
+
+  private hideBrush(api: API, selection: DrawRectSelection) {
+    const pen = api.getAppState().penbarSelected;
+    const brush = this.getBrush(selection, pen);
+    api.updateNode(brush, { visibility: 'hidden' }, false);
+    selection.label.style.visibility = 'hidden';
+  }
+
+  private getBrush(selection: DrawRectSelection, pen: Pen) {
+    const {
+      rectBrush,
+      roughRectBrush,
+      roughEllipseBrush,
+      ellipseBrush,
+      lineBrush,
+      roughLineBrush,
+      arrowBrush,
+    } = selection;
+    const brush =
+      pen === Pen.DRAW_RECT
+        ? rectBrush
+        : pen === Pen.DRAW_ROUGH_RECT
+        ? roughRectBrush
+        : pen === Pen.DRAW_ROUGH_ELLIPSE
+        ? roughEllipseBrush
+        : pen === Pen.DRAW_ELLIPSE
+        ? ellipseBrush
+        : pen === Pen.DRAW_LINE
+        ? lineBrush
+        : pen === Pen.DRAW_ROUGH_LINE
+        ? roughLineBrush
+        : arrowBrush;
+    return brush;
   }
 }
