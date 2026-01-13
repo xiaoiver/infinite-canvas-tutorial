@@ -180,6 +180,20 @@ if (deg >= 90 && deg <= 180) {
 label.style.transform = `translate(-50%, -50%) rotate(${deg}deg)`;
 ```
 
+### Draw perfect square with shift {#draw-square-with-shift}
+
+Hold down <kbd>Shift</kbd> when dragging to create perfect squares, circles and polygons. At this point, the minimum absolute value of the width and height is used as the side length of the square.
+
+```ts
+if (isSquare) {
+    if (Math.abs(width) > Math.abs(height)) {
+        width = Math.sign(width) * Math.abs(height);
+    } else {
+        height = Math.sign(height) * Math.abs(width);
+    }
+}
+```
+
 ## Draw arrow {#draw-arrow}
 
 Beyond basic shapes like rectangles, ellipses, and polylines, composite shapes such as arrows are also commonly used. We will not cover arrow binding relationships (where the arrow's direction changes when the shapes connected by its head and tail move) at this time; this topic will be addressed in a separate chapter. Here, we focus solely on how arrows are drawn.

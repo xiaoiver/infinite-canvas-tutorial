@@ -174,6 +174,20 @@ if (deg >= 90 && deg <= 180) {
 label.style.transform = `translate(-50%, -50%) rotate(${deg}deg)`;
 ```
 
+### 按住 Shift 绘制正方形 {#draw-square-with-shift}
+
+最后，按住 <kbd>Shift</kbd> 可以以相同的宽高绘制正方形（正圆），此时使用宽高绝对值的最小值作为正方形的边长。
+
+```ts
+if (isSquare) {
+    if (Math.abs(width) > Math.abs(height)) {
+        width = Math.sign(width) * Math.abs(height);
+    } else {
+        height = Math.sign(height) * Math.abs(width);
+    }
+}
+```
+
 ## 绘制箭头 {#draw-arrow}
 
 除了矩形、椭圆、折线等基础图形，箭头这样的复合图形也很常用。我们暂时不涉及箭头的绑定关系（被箭头首尾关联的图形发生移动，箭头的朝向也跟着改变），后面放到单独的一章中介绍，这里仅关注箭头的绘制方式。

@@ -162,9 +162,9 @@ export class Penbar extends LitElement {
 
   disconnectedCallback() {
     super.disconnectedCallback();
-    this.api
-      .getCanvasElement()
-      .removeEventListener('keydown', this.handleKeyDown);
+    // this.api
+    //   .getCanvasElement()
+    //   .removeEventListener('keydown', this.handleKeyDown);
   }
 
   render() {

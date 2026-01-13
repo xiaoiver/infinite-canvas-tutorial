@@ -18,17 +18,16 @@ let onReady: ((api: CustomEvent<any>) => void) | undefined;
 
 onMounted(async () => {
   const canvas = wrapper.value;
-  const img = imgWrapper.value;
-  if (!canvas || !img) {
+  if (!canvas) {
     return;
   }
 
-  // @see https://developer.mozilla.org/en-US/docs/Web/API/HTML_Drag_and_Drop_API/Recommended_drag_types#dragging_images
-  img.addEventListener("dragstart", (ev) => {
-    const dt = ev.dataTransfer;
-    dt?.setData("text/uri-list", img.src);
-    dt?.setData("text/plain", img.src);
-  });
+  // // @see https://developer.mozilla.org/en-US/docs/Web/API/HTML_Drag_and_Drop_API/Recommended_drag_types#dragging_images
+  // img.addEventListener("dragstart", (ev) => {
+  //   const dt = ev.dataTransfer;
+  //   dt?.setData("text/uri-list", img.src);
+  //   dt?.setData("text/plain", img.src);
+  // });
 
   onReady = async (e) => {
     api = e.detail;

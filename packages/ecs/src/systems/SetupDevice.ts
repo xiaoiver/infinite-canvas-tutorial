@@ -1,9 +1,6 @@
 import { co, Entity, System } from '@lastolivegames/becsy';
 import {
-  Device,
   DeviceContribution,
-  Format,
-  TextureUsage,
   WebGLDeviceContribution,
   WebGPUDeviceContribution,
 } from '@antv/g-device-api';
@@ -182,27 +179,6 @@ export class SetupDevice extends System {
       renderCache,
       renderGraph,
     };
-  }
-
-  private createRenderTarget(device: Device, width: number, height: number) {
-    const renderTarget = device.createRenderTargetFromTexture(
-      device.createTexture({
-        format: Format.U8_RGBA_RT,
-        width,
-        height,
-        usage: TextureUsage.RENDER_TARGET,
-      }),
-    );
-    const depthRenderTarget = device.createRenderTargetFromTexture(
-      device.createTexture({
-        format: Format.D24_S8,
-        width,
-        height,
-        usage: TextureUsage.RENDER_TARGET,
-      }),
-    );
-
-    return [renderTarget, depthRenderTarget];
   }
 
   private destroyCanvas(canvas: Entity) {

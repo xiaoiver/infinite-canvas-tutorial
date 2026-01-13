@@ -71,7 +71,7 @@ canvas.addEventListener(Event.READY, async (e) => {
     ],
     checkboardStyle: CheckboardStyle.GRID,
     snapToPixelGridEnabled: true,
-    snapToPixelGridSize: 1,
+    snapToPixelGridSize: 10,
     // snapToPixelGridEnabled: false,
     // snapToPixelGridSize: 0,
     snapToObjectsEnabled: true,
@@ -132,8 +132,8 @@ canvas.addEventListener(Event.READY, async (e) => {
   // };
 
   // api.updateNodes([node1, node3, node4]);
-  api.updateNode(node1);
-  api.record();
+  // api.updateNode(node1);
+  // api.record();
 });
 
 try {

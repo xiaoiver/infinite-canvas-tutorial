@@ -190,8 +190,10 @@ export class InfiniteCanvas extends LitElement {
 
     if (width && height) {
       const $canvas = this.shadowRoot?.querySelector('canvas');
-      $canvas.width = width * dpr;
-      $canvas.height = (height - (topbarVisible ? TOP_NAVBAR_HEIGHT : 0)) * dpr;
+      $canvas.width = Math.round(width * dpr);
+      $canvas.height = Math.round(
+        (height - (topbarVisible ? TOP_NAVBAR_HEIGHT : 0)) * dpr,
+      );
 
       this.apiProvider.value?.resizeCanvas(
         $canvas.width / dpr,
@@ -256,8 +258,10 @@ export class InfiniteCanvas extends LitElement {
           element: $canvas,
           htmlLayer: $htmlLayer,
           svgLayer: $svgLayer,
-          width,
-          height: topbarVisible ? height - TOP_NAVBAR_HEIGHT : height,
+          width: Math.round(width),
+          height: Math.round(
+            topbarVisible ? height - TOP_NAVBAR_HEIGHT : height,
+          ),
           devicePixelRatio: window.devicePixelRatio,
           renderer,
           shaderCompilerPath,

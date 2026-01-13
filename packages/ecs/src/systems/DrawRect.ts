@@ -204,15 +204,16 @@ export class DrawRect extends System {
         const {
           prevPoint: [prevX, prevY],
         } = inputPoint;
-        const [x, y] = input.pointerViewport;
+        let [x, y] = input.pointerViewport;
 
         // Prev and current point are the same, do nothing
         if (prevX === x && prevY === y) {
           return;
         }
 
+        const isSquare = input.shiftKey;
         api.runAtNextTick(() => {
-          this.handleBrushing(api, pen, x, y, defaultDrawParams[pen]);
+          this.handleBrushing(api, pen, x, y, defaultDrawParams[pen], isSquare);
         });
       });
 
@@ -290,6 +291,7 @@ export class DrawRect extends System {
     defaultDrawParams: Partial<
       RoughAttributes & StrokeAttributes & FillAttributes
     >,
+    isSquare = false,
   ) {
     const camera = api.getCamera();
     const selection = this.selections.get(camera.__id);
@@ -405,6 +407,13 @@ export class DrawRect extends System {
         pen !== Pen.DRAW_ARROW &&
         pen !== Pen.DRAW_ROUGH_LINE
       ) {
+        if (isSquare) {
+          if (Math.abs(width) > Math.abs(height)) {
+            width = Math.sign(width) * Math.abs(height);
+          } else {
+            height = Math.sign(height) * Math.abs(width);
+          }
+        }
         // when width or height is negative, change the x or y to the opposite side
         if (width < 0) {
           x += width;

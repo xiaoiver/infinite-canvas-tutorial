@@ -104,8 +104,8 @@ export class InitCanvas extends System {
   }
 
   // configureLocalization can only be called once, so we need to store the setLocale and getLocale functions in instance variables.
-  #setLocale;
-  #getLocale;
+  #setLocale: (locale: string) => Promise<void>;
+  #getLocale: () => string;
 
   execute() {
     if (pendingCanvases.length) {

@@ -717,9 +717,9 @@ export class ContextMenu extends LitElement {
     document.removeEventListener('copy', this.handleCopy);
     document.removeEventListener('cut', this.handleCut);
     document.removeEventListener('paste', this.handlePaste);
-    this.api
-      .getCanvasElement()
-      .removeEventListener('keydown', this.handleKeyDown);
+    // this.api
+    //   .getCanvasElement()
+    //   .removeEventListener('keydown', this.handleKeyDown);
   }
 
   render() {
