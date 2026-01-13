@@ -484,6 +484,20 @@ if (e.key === 'ArrowUp') {
 }
 ```
 
+## 直线的 Transformer {#transformer-for-line}
+
+最后，直线仅需要两个锚点，我们之前介绍的基于矩形包围盒的一系列处理都可以大幅简化。
+
+```ts
+export class Transformable {
+    @field.ref declare lineMask: Entity;
+    @field.ref declare x1y1Anchor: Entity;
+    @field.ref declare x2y2Anchor: Entity;
+}
+```
+
+![Transformer for line](/line-transformer.gif)
+
 ## 扩展阅读 {#extended-reading}
 
 -   [图形编辑器开发：自定义光标]

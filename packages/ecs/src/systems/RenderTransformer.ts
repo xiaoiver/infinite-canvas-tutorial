@@ -167,108 +167,28 @@ export class RenderTransformer extends System {
         updateGlobalTransform(controlPoint);
       });
     } else {
-      if (!transformable.mask) {
-        const mask = this.commands
-          .spawn(
-            new UI(UIType.TRANSFORMER_MASK),
-            new Transform(),
-            new Renderable(),
-            new FillSolid(TRANSFORMER_ANCHOR_FILL_COLOR),
-            new Opacity({ fillOpacity: 0 }),
-            new Stroke({ width: 1, color: TRANSFORMER_ANCHOR_STROKE_COLOR }),
-            new Rect(),
-            new StrokeAttenuation(),
-            new ZIndex(TRANSFORMER_Z_INDEX),
-            new Visibility(),
-          )
-          .id()
-          .hold();
-
-        const tlAnchor = this.createAnchor(camera, 0, 0, AnchorName.TOP_LEFT);
-        const trAnchor = this.createAnchor(camera, 0, 0, AnchorName.TOP_RIGHT);
-        const blAnchor = this.createAnchor(
-          camera,
-          0,
-          0,
-          AnchorName.BOTTOM_LEFT,
-        );
-        const brAnchor = this.createAnchor(
-          camera,
-          0,
-          0,
-          AnchorName.BOTTOM_RIGHT,
-        );
-
-        Object.assign(transformable, {
-          mask,
-          tlAnchor,
-          trAnchor,
-          blAnchor,
-          brAnchor,
-        });
-
-        this.commands
-          .entity(mask)
-          .appendChild(this.commands.entity(tlAnchor))
-          .appendChild(this.commands.entity(trAnchor))
-          .appendChild(this.commands.entity(blAnchor))
-          .appendChild(this.commands.entity(brAnchor));
-
-        this.commands.entity(camera).appendChild(this.commands.entity(mask));
-        this.commands.execute();
+      if (!transformable.lineMask) {
+        this.createLineMask(camera, transformable);
       }
 
-      const { x, y, width, height, rotation, scaleX, scaleY } = getOBB(camera);
+      if (!transformable.mask) {
+        this.createRectMask(camera, transformable);
+      }
 
-      const { mask, tlAnchor, trAnchor, blAnchor, brAnchor } =
-        camera.read(Transformable);
-
-      if (width === 0 && height === 0) {
+      const { selecteds, mask, lineMask } = camera.read(Transformable);
+      if (selecteds.length === 0) {
         mask.write(Visibility).value = 'hidden';
+        lineMask.write(Visibility).value = 'hidden';
         return;
       }
 
-      mask.write(Visibility).value = 'visible';
-
-      Object.assign(mask.write(Rect), {
-        x: 0,
-        y: 0,
-        width,
-        height,
-      });
-      Object.assign(mask.write(Transform), {
-        translation: {
-          x,
-          y,
-        },
-        rotation,
-        scale: {
-          x: scaleX,
-          y: scaleY,
-        },
-      });
-
-      Object.assign(tlAnchor.write(Circle), {
-        cx: 0,
-        cy: 0,
-      });
-
-      Object.assign(trAnchor.write(Circle), {
-        cx: width,
-        cy: 0,
-      });
-
-      Object.assign(blAnchor.write(Circle), {
-        cx: 0,
-        cy: height,
-      });
-
-      Object.assign(brAnchor.write(Circle), {
-        cx: width,
-        cy: height,
-      });
-
-      updateGlobalTransform(mask);
+      if (useLineMask(camera)) {
+        mask.write(Visibility).value = 'hidden';
+        this.updateLineMask(camera);
+      } else {
+        lineMask.write(Visibility).value = 'hidden';
+        this.updateRectMask(camera);
+      }
     }
   }
 
@@ -291,6 +211,10 @@ export class RenderTransformer extends System {
           const { mask } = camera.read(Transformable);
           if (mask) {
             mask.write(Visibility).value = 'hidden';
+          }
+          const { lineMask } = camera.read(Transformable);
+          if (lineMask) {
+            lineMask.write(Visibility).value = 'hidden';
           }
         }
         if (pen !== Pen.VECTOR_NETWORK) {
@@ -358,6 +282,174 @@ export class RenderTransformer extends System {
 
     return anchor;
   }
+
+  private createRectMask(camera: Entity, transformable: Transformable) {
+    const mask = this.commands
+      .spawn(
+        new UI(UIType.TRANSFORMER_MASK),
+        new Transform(),
+        new Renderable(),
+        new FillSolid(TRANSFORMER_ANCHOR_FILL_COLOR),
+        new Opacity({ fillOpacity: 0 }),
+        new Stroke({ width: 1, color: TRANSFORMER_ANCHOR_STROKE_COLOR }),
+        new Rect(),
+        new StrokeAttenuation(),
+        new ZIndex(TRANSFORMER_Z_INDEX),
+        new Visibility(),
+      )
+      .id()
+      .hold();
+
+    const tlAnchor = this.createAnchor(camera, 0, 0, AnchorName.TOP_LEFT);
+    const trAnchor = this.createAnchor(camera, 0, 0, AnchorName.TOP_RIGHT);
+    const blAnchor = this.createAnchor(camera, 0, 0, AnchorName.BOTTOM_LEFT);
+    const brAnchor = this.createAnchor(camera, 0, 0, AnchorName.BOTTOM_RIGHT);
+
+    this.commands
+      .entity(mask)
+      .appendChild(this.commands.entity(tlAnchor))
+      .appendChild(this.commands.entity(trAnchor))
+      .appendChild(this.commands.entity(blAnchor))
+      .appendChild(this.commands.entity(brAnchor));
+
+    this.commands.entity(camera).appendChild(this.commands.entity(mask));
+    this.commands.execute();
+
+    Object.assign(transformable, {
+      mask,
+      tlAnchor,
+      trAnchor,
+      blAnchor,
+      brAnchor,
+    });
+  }
+
+  private updateRectMask(camera: Entity) {
+    const { x, y, width, height, rotation, scaleX, scaleY } = getOBB(camera);
+
+    const { tlAnchor, trAnchor, blAnchor, brAnchor, mask } =
+      camera.read(Transformable);
+
+    // if (width === 0 && height === 0) {
+    //   mask.write(Visibility).value = 'hidden';
+    //   return;
+    // }
+
+    mask.write(Visibility).value = 'visible';
+
+    Object.assign(mask.write(Rect), {
+      x: 0,
+      y: 0,
+      width,
+      height,
+    });
+    Object.assign(mask.write(Transform), {
+      translation: {
+        x,
+        y,
+      },
+      rotation,
+      scale: {
+        x: scaleX,
+        y: scaleY,
+      },
+    });
+
+    Object.assign(tlAnchor.write(Circle), {
+      cx: 0,
+      cy: 0,
+    });
+
+    Object.assign(trAnchor.write(Circle), {
+      cx: width,
+      cy: 0,
+    });
+
+    Object.assign(blAnchor.write(Circle), {
+      cx: 0,
+      cy: height,
+    });
+
+    Object.assign(brAnchor.write(Circle), {
+      cx: width,
+      cy: height,
+    });
+
+    updateGlobalTransform(mask);
+  }
+
+  private createLineMask(camera: Entity, transformable: Transformable) {
+    const lineMask = this.commands
+      .spawn(
+        new UI(UIType.TRANSFORMER_MASK),
+        new Transform(),
+        new Renderable(),
+        new Opacity({ opacity: 0 }),
+        new Rect(),
+        new ZIndex(TRANSFORMER_Z_INDEX),
+        new Visibility(),
+      )
+      .id()
+      .hold();
+    const x1y1Anchor = this.createAnchor(camera, 0, 0, AnchorName.X1Y1);
+    const x2y2Anchor = this.createAnchor(camera, 0, 0, AnchorName.X2Y2);
+
+    Object.assign(transformable, {
+      lineMask,
+      x1y1Anchor,
+      x2y2Anchor,
+    });
+
+    this.commands
+      .entity(lineMask)
+      .appendChild(this.commands.entity(x1y1Anchor))
+      .appendChild(this.commands.entity(x2y2Anchor));
+
+    this.commands.entity(camera).appendChild(this.commands.entity(lineMask));
+    this.commands.execute();
+  }
+
+  private updateLineMask(camera: Entity) {
+    const { lineMask, x1y1Anchor, x2y2Anchor, selecteds } =
+      camera.read(Transformable);
+    const { x, y, width, height, rotation, scaleX, scaleY } = getOBB(camera);
+
+    const selected = selecteds[0];
+    const { points } = selected.read(Polyline);
+
+    const point1 = points[0];
+    const point2 = points[1];
+
+    lineMask.write(Visibility).value = 'visible';
+
+    Object.assign(lineMask.write(Rect), {
+      x: 0,
+      y: 0,
+      width,
+      height,
+    });
+    Object.assign(lineMask.write(Transform), {
+      translation: {
+        x,
+        y,
+      },
+      rotation,
+      scale: {
+        x: scaleX,
+        y: scaleY,
+      },
+    });
+
+    Object.assign(x1y1Anchor.write(Circle), {
+      cx: point1[0],
+      cy: point1[1],
+    });
+    Object.assign(x2y2Anchor.write(Circle), {
+      cx: point2[0],
+      cy: point2[1],
+    });
+    updateGlobalTransform(lineMask);
+  }
 }
 
 /**
@@ -422,6 +514,21 @@ export function getOBB(camera: Entity): OBB {
   };
 }
 
+function useLineMask(camera: Entity) {
+  const { selecteds } = camera.read(Transformable);
+
+  // Single selected line
+  if (
+    selecteds.length === 1 &&
+    selecteds[0].has(Polyline) &&
+    selecteds[0].read(Polyline).points.length === 2
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
 /**
  * Hit test with transformer, return anchor name and cursor.
  */
@@ -429,8 +536,17 @@ export function hitTest(api: API, { x, y }: IPointData) {
   const camera = api.getCamera();
   const { rotateEnabled, penbarSelected } = api.getAppState();
   const point = [x, y] as [number, number];
-  const { tlAnchor, trAnchor, blAnchor, brAnchor, controlPoints } =
-    camera.read(Transformable);
+  const {
+    tlAnchor,
+    trAnchor,
+    blAnchor,
+    brAnchor,
+    controlPoints,
+    mask,
+    lineMask,
+    x1y1Anchor,
+    x2y2Anchor,
+  } = camera.read(Transformable);
 
   if (penbarSelected === Pen.VECTOR_NETWORK) {
     for (let i = 0; i < controlPoints.length; i++) {
@@ -455,41 +571,51 @@ export function hitTest(api: API, { x, y }: IPointData) {
       index: -1,
     };
   } else {
-    const { x: tlX, y: tlY } = api.canvas2Viewport(
-      api.transformer2Canvas({
-        x: tlAnchor.read(Circle).cx,
-        y: tlAnchor.read(Circle).cy,
-      }),
-    );
-    const { x: trX, y: trY } = api.canvas2Viewport(
-      api.transformer2Canvas({
-        x: trAnchor.read(Circle).cx,
-        y: trAnchor.read(Circle).cy,
-      }),
-    );
-    const { x: blX, y: blY } = api.canvas2Viewport(
-      api.transformer2Canvas({
-        x: blAnchor.read(Circle).cx,
-        y: blAnchor.read(Circle).cy,
-      }),
-    );
-    const { x: brX, y: brY } = api.canvas2Viewport(
-      api.transformer2Canvas({
-        x: brAnchor.read(Circle).cx,
-        y: brAnchor.read(Circle).cy,
-      }),
-    );
+    if (useLineMask(camera)) {
+      const { x: x1y1X, y: x1y1Y } = api.canvas2Viewport(
+        api.transformer2Canvas(
+          {
+            x: x1y1Anchor.read(Circle).cx,
+            y: x1y1Anchor.read(Circle).cy,
+          },
+          lineMask,
+        ),
+      );
+      const { x: x2y2X, y: x2y2Y } = api.canvas2Viewport(
+        api.transformer2Canvas(
+          {
+            x: x2y2Anchor.read(Circle).cx,
+            y: x2y2Anchor.read(Circle).cy,
+          },
+          lineMask,
+        ),
+      );
 
-    const isInside = inside(point, [
-      [tlX, tlY],
-      [trX, trY],
-      [brX, brY],
-      [blX, blY],
-    ]);
+      const isInside = inside(point, [
+        [x1y1X, x1y1Y],
+        [x1y1X, x2y2Y],
+        [x2y2X, x1y1Y],
+        [x2y2X, x2y2Y],
+      ]);
 
-    // Text's transform is not supported yet.
-    const { selecteds } = camera.read(Transformable);
-    if (selecteds.length === 1 && selecteds[0].has(Text)) {
+      const distanceToX1y1 = distanceBetweenPoints(x, y, x1y1X, x1y1Y);
+      const distanceToX2y2 = distanceBetweenPoints(x, y, x2y2X, x2y2Y);
+      const minDistanceToAnchors = Math.min(distanceToX1y1, distanceToX2y2);
+
+      if (minDistanceToAnchors <= TRANSFORMER_ANCHOR_RESIZE_RADIUS) {
+        if (minDistanceToAnchors === distanceToX1y1) {
+          return {
+            anchor: AnchorName.X1Y1,
+            cursor: 'crosshair',
+          };
+        } else if (minDistanceToAnchors === distanceToX2y2) {
+          return {
+            anchor: AnchorName.X2Y2,
+            cursor: 'crosshair',
+          };
+        }
+      }
+
       if (isInside) {
         return {
           anchor: AnchorName.INSIDE,
@@ -501,135 +627,195 @@ export function hitTest(api: API, { x, y }: IPointData) {
           cursor: 'default',
         };
       }
-    }
-
-    const distanceToTL = distanceBetweenPoints(x, y, tlX, tlY);
-    const distanceToTR = distanceBetweenPoints(x, y, trX, trY);
-    const distanceToBL = distanceBetweenPoints(x, y, blX, blY);
-    const distanceToBR = distanceBetweenPoints(x, y, brX, brY);
-
-    const minDistanceToAnchors = Math.min(
-      distanceToTL,
-      distanceToTR,
-      distanceToBL,
-      distanceToBR,
-    );
-
-    if (minDistanceToAnchors <= TRANSFORMER_ANCHOR_RESIZE_RADIUS) {
-      if (minDistanceToAnchors === distanceToTL) {
-        return {
-          anchor: AnchorName.TOP_LEFT,
-          cursor: 'nwse-resize',
-        };
-      } else if (minDistanceToAnchors === distanceToTR) {
-        return {
-          anchor: AnchorName.TOP_RIGHT,
-          cursor: 'nesw-resize',
-        };
-      } else if (minDistanceToAnchors === distanceToBL) {
-        return {
-          anchor: AnchorName.BOTTOM_LEFT,
-          cursor: 'nesw-resize',
-        };
-      } else if (minDistanceToAnchors === distanceToBR) {
-        return {
-          anchor: AnchorName.BOTTOM_RIGHT,
-          cursor: 'nwse-resize',
-        };
-      }
-    } else if (
-      rotateEnabled &&
-      !isInside &&
-      minDistanceToAnchors <= TRANSFORMER_ANCHOR_ROTATE_RADIUS
-    ) {
-      if (minDistanceToAnchors === distanceToTL) {
-        return {
-          anchor: AnchorName.TOP_LEFT,
-          cursor: 'nwse-rotate',
-        };
-      } else if (minDistanceToAnchors === distanceToTR) {
-        return {
-          anchor: AnchorName.TOP_RIGHT,
-          cursor: 'nesw-rotate',
-        };
-      } else if (minDistanceToAnchors === distanceToBL) {
-        return {
-          anchor: AnchorName.BOTTOM_LEFT,
-          cursor: 'swne-rotate',
-        };
-      } else if (minDistanceToAnchors === distanceToBR) {
-        return {
-          anchor: AnchorName.BOTTOM_RIGHT,
-          cursor: 'senw-rotate',
-        };
-      }
-    }
-
-    const distanceToTopEdge = distanceBetweenPointAndLineSegment(
-      point,
-      [tlX, tlY],
-      [trX, trY],
-    );
-
-    const distanceToBottomEdge = distanceBetweenPointAndLineSegment(
-      point,
-      [blX, blY],
-      [brX, brY],
-    );
-
-    const distanceToLeftEdge = distanceBetweenPointAndLineSegment(
-      point,
-      [tlX, tlY],
-      [blX, blY],
-    );
-
-    const distanceToRightEdge = distanceBetweenPointAndLineSegment(
-      point,
-      [trX, trY],
-      [brX, brY],
-    );
-
-    const minDistanceToEdges = Math.min(
-      distanceToTopEdge,
-      distanceToBottomEdge,
-      distanceToLeftEdge,
-      distanceToRightEdge,
-    );
-
-    if (minDistanceToEdges <= TRANSFORMER_ANCHOR_RESIZE_RADIUS) {
-      if (minDistanceToEdges === distanceToTopEdge) {
-        return {
-          anchor: AnchorName.TOP_CENTER,
-          cursor: 'ns-resize',
-        };
-      } else if (minDistanceToEdges === distanceToBottomEdge) {
-        return {
-          anchor: AnchorName.BOTTOM_CENTER,
-          cursor: 'ns-resize',
-        };
-      } else if (minDistanceToEdges === distanceToLeftEdge) {
-        return {
-          anchor: AnchorName.MIDDLE_LEFT,
-          cursor: 'ew-resize',
-        };
-      } else if (minDistanceToEdges === distanceToRightEdge) {
-        return {
-          anchor: AnchorName.MIDDLE_RIGHT,
-          cursor: 'ew-resize',
-        };
-      }
-    }
-
-    if (isInside) {
-      return {
-        anchor: AnchorName.INSIDE,
-        cursor: 'default',
-      };
     } else {
-      return {
-        anchor: AnchorName.OUTSIDE,
-        cursor: 'default',
-      };
+      const { x: tlX, y: tlY } = api.canvas2Viewport(
+        api.transformer2Canvas(
+          {
+            x: tlAnchor.read(Circle).cx,
+            y: tlAnchor.read(Circle).cy,
+          },
+          mask,
+        ),
+      );
+      const { x: trX, y: trY } = api.canvas2Viewport(
+        api.transformer2Canvas(
+          {
+            x: trAnchor.read(Circle).cx,
+            y: trAnchor.read(Circle).cy,
+          },
+          mask,
+        ),
+      );
+      const { x: blX, y: blY } = api.canvas2Viewport(
+        api.transformer2Canvas(
+          {
+            x: blAnchor.read(Circle).cx,
+            y: blAnchor.read(Circle).cy,
+          },
+          mask,
+        ),
+      );
+      const { x: brX, y: brY } = api.canvas2Viewport(
+        api.transformer2Canvas(
+          {
+            x: brAnchor.read(Circle).cx,
+            y: brAnchor.read(Circle).cy,
+          },
+          mask,
+        ),
+      );
+
+      const isInside = inside(point, [
+        [tlX, tlY],
+        [trX, trY],
+        [brX, brY],
+        [blX, blY],
+      ]);
+
+      // Text's transform is not supported yet.
+      const { selecteds } = camera.read(Transformable);
+      if (selecteds.length === 1 && selecteds[0].has(Text)) {
+        if (isInside) {
+          return {
+            anchor: AnchorName.INSIDE,
+            cursor: 'default',
+          };
+        } else {
+          return {
+            anchor: AnchorName.OUTSIDE,
+            cursor: 'default',
+          };
+        }
+      }
+
+      const distanceToTL = distanceBetweenPoints(x, y, tlX, tlY);
+      const distanceToTR = distanceBetweenPoints(x, y, trX, trY);
+      const distanceToBL = distanceBetweenPoints(x, y, blX, blY);
+      const distanceToBR = distanceBetweenPoints(x, y, brX, brY);
+
+      const minDistanceToAnchors = Math.min(
+        distanceToTL,
+        distanceToTR,
+        distanceToBL,
+        distanceToBR,
+      );
+
+      if (minDistanceToAnchors <= TRANSFORMER_ANCHOR_RESIZE_RADIUS) {
+        if (minDistanceToAnchors === distanceToTL) {
+          return {
+            anchor: AnchorName.TOP_LEFT,
+            cursor: 'nwse-resize',
+          };
+        } else if (minDistanceToAnchors === distanceToTR) {
+          return {
+            anchor: AnchorName.TOP_RIGHT,
+            cursor: 'nesw-resize',
+          };
+        } else if (minDistanceToAnchors === distanceToBL) {
+          return {
+            anchor: AnchorName.BOTTOM_LEFT,
+            cursor: 'nesw-resize',
+          };
+        } else if (minDistanceToAnchors === distanceToBR) {
+          return {
+            anchor: AnchorName.BOTTOM_RIGHT,
+            cursor: 'nwse-resize',
+          };
+        }
+      } else if (
+        rotateEnabled &&
+        !isInside &&
+        minDistanceToAnchors <= TRANSFORMER_ANCHOR_ROTATE_RADIUS
+      ) {
+        if (minDistanceToAnchors === distanceToTL) {
+          return {
+            anchor: AnchorName.TOP_LEFT,
+            cursor: 'nwse-rotate',
+          };
+        } else if (minDistanceToAnchors === distanceToTR) {
+          return {
+            anchor: AnchorName.TOP_RIGHT,
+            cursor: 'nesw-rotate',
+          };
+        } else if (minDistanceToAnchors === distanceToBL) {
+          return {
+            anchor: AnchorName.BOTTOM_LEFT,
+            cursor: 'swne-rotate',
+          };
+        } else if (minDistanceToAnchors === distanceToBR) {
+          return {
+            anchor: AnchorName.BOTTOM_RIGHT,
+            cursor: 'senw-rotate',
+          };
+        }
+      }
+
+      const distanceToTopEdge = distanceBetweenPointAndLineSegment(
+        point,
+        [tlX, tlY],
+        [trX, trY],
+      );
+
+      const distanceToBottomEdge = distanceBetweenPointAndLineSegment(
+        point,
+        [blX, blY],
+        [brX, brY],
+      );
+
+      const distanceToLeftEdge = distanceBetweenPointAndLineSegment(
+        point,
+        [tlX, tlY],
+        [blX, blY],
+      );
+
+      const distanceToRightEdge = distanceBetweenPointAndLineSegment(
+        point,
+        [trX, trY],
+        [brX, brY],
+      );
+
+      const minDistanceToEdges = Math.min(
+        distanceToTopEdge,
+        distanceToBottomEdge,
+        distanceToLeftEdge,
+        distanceToRightEdge,
+      );
+
+      if (minDistanceToEdges <= TRANSFORMER_ANCHOR_RESIZE_RADIUS) {
+        if (minDistanceToEdges === distanceToTopEdge) {
+          return {
+            anchor: AnchorName.TOP_CENTER,
+            cursor: 'ns-resize',
+          };
+        } else if (minDistanceToEdges === distanceToBottomEdge) {
+          return {
+            anchor: AnchorName.BOTTOM_CENTER,
+            cursor: 'ns-resize',
+          };
+        } else if (minDistanceToEdges === distanceToLeftEdge) {
+          return {
+            anchor: AnchorName.MIDDLE_LEFT,
+            cursor: 'ew-resize',
+          };
+        } else if (minDistanceToEdges === distanceToRightEdge) {
+          return {
+            anchor: AnchorName.MIDDLE_RIGHT,
+            cursor: 'ew-resize',
+          };
+        }
+      }
+
+      if (isInside) {
+        return {
+          anchor: AnchorName.INSIDE,
+          cursor: 'default',
+        };
+      } else {
+        return {
+          anchor: AnchorName.OUTSIDE,
+          cursor: 'default',
+        };
+      }
     }
   }
 }

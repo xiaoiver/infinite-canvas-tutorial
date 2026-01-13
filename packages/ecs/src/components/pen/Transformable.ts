@@ -16,9 +16,14 @@ export enum TransformableStatus {
  */
 export class Transformable {
   /**
-   * Transformer
+   * Transformer for shapes has an OBB
    */
   @field.ref declare mask: Entity;
+
+  /**
+   * Transformer for lines
+   */
+  @field.ref declare lineMask: Entity;
 
   /**
    * Anchors in rectangle
@@ -27,6 +32,12 @@ export class Transformable {
   @field.ref declare trAnchor: Entity;
   @field.ref declare blAnchor: Entity;
   @field.ref declare brAnchor: Entity;
+
+  /**
+   * Anchors in line or arrow
+   */
+  @field.ref declare x1y1Anchor: Entity;
+  @field.ref declare x2y2Anchor: Entity;
 
   /**
    * Anchors in vector network

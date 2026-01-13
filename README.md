@@ -286,9 +286,9 @@ If you want to use it in your own project, you can refer to:
 -   Rotate and change the rotation origin
 -   Nudge shapes with arrow key
 
-|                Rotate anchor                 |                 Resize anchor                  |
-| :------------------------------------------: | :--------------------------------------------: |
-| ![Rotate anchor](./screenshots/lesson21.png) | ![Resize anchor](./screenshots/lesson21-2.png) |
+|                Rotate anchor                 |                 Resize anchor                  |                 Line transformer                  |
+| :------------------------------------------: | :--------------------------------------------: | :-----------------------------------------------: |
+| ![Rotate anchor](./screenshots/lesson21.png) | ![Resize anchor](./screenshots/lesson21-2.png) | ![Line transformer](./screenshots/lesson21-3.gif) |
 
 ## Lesson 22 - VectorNetwork [🔗](https://infinitecanvas.cc/guide/lesson-022)
 

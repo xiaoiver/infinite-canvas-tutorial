@@ -257,10 +257,6 @@ export class Select extends System {
     camera.write(Transformable).status = TransformableStatus.MOVED;
 
     this.saveSelectedOBB(api, selection);
-
-    if (isBrowser) {
-      this.clearSnapLines(selection);
-    }
   }
 
   private handleSelectedRotating(
@@ -269,13 +265,17 @@ export class Select extends System {
     anchorNodeY: number,
   ) {
     const camera = api.getCamera();
+    const { mask } = camera.read(Transformable);
     camera.write(Transformable).status = TransformableStatus.ROTATING;
     const { obb } = this.selections.get(camera.__id);
 
-    const sl = api.canvas2Transformer({
-      x: anchorNodeX,
-      y: anchorNodeY,
-    });
+    const sl = api.canvas2Transformer(
+      {
+        x: anchorNodeX,
+        y: anchorNodeY,
+      },
+      mask,
+    );
 
     const x = sl.x - obb.width / 2;
     const y = sl.y - obb.height / 2;
@@ -324,218 +324,262 @@ export class Select extends System {
 
     camera.write(Transformable).status = TransformableStatus.RESIZING;
 
-    const { tlAnchor, trAnchor, blAnchor, brAnchor } =
-      camera.read(Transformable);
-    const prevTlAnchorX = tlAnchor.read(Circle).cx;
-    const prevTlAnchorY = tlAnchor.read(Circle).cy;
-    const prevBrAnchorX = brAnchor.read(Circle).cx;
-    const prevBrAnchorY = brAnchor.read(Circle).cy;
-    const { x, y } = api.canvas2Transformer({
-      x: canvasX,
-      y: canvasY,
-    });
+    if (
+      resizingAnchorName === AnchorName.X1Y1 ||
+      resizingAnchorName === AnchorName.X2Y2
+    ) {
+      const { x1y1Anchor, x2y2Anchor, lineMask } = camera.read(Transformable);
+      const { x, y } = api.canvas2Transformer(
+        {
+          x: canvasX,
+          y: canvasY,
+        },
+        lineMask,
+      );
 
-    let anchor: Entity;
-    const anchorName = resizingAnchorName;
-    if (anchorName === AnchorName.TOP_LEFT) {
-      anchor = tlAnchor;
-    } else if (anchorName === AnchorName.TOP_RIGHT) {
-      anchor = trAnchor;
-    } else if (anchorName === AnchorName.BOTTOM_LEFT) {
-      anchor = blAnchor;
-    } else if (anchorName === AnchorName.BOTTOM_RIGHT) {
-      anchor = brAnchor;
-    }
+      if (resizingAnchorName === AnchorName.X1Y1) {
+        Object.assign(x1y1Anchor.write(Circle), {
+          cx: x,
+          cy: y,
+        });
+      } else if (resizingAnchorName === AnchorName.X2Y2) {
+        Object.assign(x2y2Anchor.write(Circle), {
+          cx: x,
+          cy: y,
+        });
+      }
 
-    if (anchor) {
-      Object.assign(anchor.write(Circle), {
-        cx: x,
-        cy: y,
+      const node = api.getNodeById(layersSelected[0]);
+      const { cx: x1y1Cx, cy: x1y1Cy } = x1y1Anchor.read(Circle);
+      const { cx: x2y2Cx, cy: x2y2Cy } = x2y2Anchor.read(Circle);
+      const points = [
+        [x1y1Cx, x1y1Cy],
+        [x2y2Cx, x2y2Cy],
+      ];
+      api.updateNode(node, {
+        points: points.map((point) => point.join(',')).join(' '),
       });
-    }
 
-    let newHypotenuse: number;
+      const selected = api.getEntity(node);
+      updateGlobalTransform(selected);
+      updateComputedPoints(selected);
+    } else {
+      const { tlAnchor, trAnchor, blAnchor, brAnchor, mask } =
+        camera.read(Transformable);
+      const prevTlAnchorX = tlAnchor.read(Circle).cx;
+      const prevTlAnchorY = tlAnchor.read(Circle).cy;
+      const prevBrAnchorX = brAnchor.read(Circle).cx;
+      const prevBrAnchorY = brAnchor.read(Circle).cy;
+      const { x, y } = api.canvas2Transformer(
+        {
+          x: canvasX,
+          y: canvasY,
+        },
+        mask,
+      );
 
-    if (anchorName === AnchorName.TOP_LEFT) {
+      let anchor: Entity;
+      const anchorName = resizingAnchorName;
+      if (anchorName === AnchorName.TOP_LEFT) {
+        anchor = tlAnchor;
+      } else if (anchorName === AnchorName.TOP_RIGHT) {
+        anchor = trAnchor;
+      } else if (anchorName === AnchorName.BOTTOM_LEFT) {
+        anchor = blAnchor;
+      } else if (anchorName === AnchorName.BOTTOM_RIGHT) {
+        anchor = brAnchor;
+      }
+
+      if (anchor) {
+        Object.assign(anchor.write(Circle), {
+          cx: x,
+          cy: y,
+        });
+      }
+
+      let newHypotenuse: number;
+
+      if (anchorName === AnchorName.TOP_LEFT) {
+        if (lockAspectRatio) {
+          const comparePoint = centeredScaling
+            ? {
+                x: obb.width / 2,
+                y: obb.height / 2,
+              }
+            : {
+                x: brAnchor.read(Circle).cx,
+                y: brAnchor.read(Circle).cy,
+              };
+          newHypotenuse = Math.sqrt(
+            Math.pow(comparePoint.x - x, 2) + Math.pow(comparePoint.y - y, 2),
+          );
+
+          const { cx, cy } = tlAnchor.read(Circle);
+          const reverseX = cx > comparePoint.x ? -1 : 1;
+          const reverseY = cy > comparePoint.y ? -1 : 1;
+
+          Object.assign(tlAnchor.write(Circle), {
+            cx: comparePoint.x - newHypotenuse * cos * reverseX,
+            cy: comparePoint.y - newHypotenuse * sin * reverseY,
+          });
+        }
+      } else if (anchorName === AnchorName.TOP_RIGHT) {
+        if (lockAspectRatio) {
+          const comparePoint = centeredScaling
+            ? {
+                x: obb.width / 2,
+                y: obb.height / 2,
+              }
+            : {
+                x: blAnchor.read(Circle).cx,
+                y: blAnchor.read(Circle).cy,
+              };
+
+          newHypotenuse = Math.sqrt(
+            Math.pow(x - comparePoint.x, 2) + Math.pow(comparePoint.y - y, 2),
+          );
+
+          const { cx, cy } = trAnchor.read(Circle);
+          const reverseX = cx < comparePoint.x ? -1 : 1;
+          const reverseY = cy > comparePoint.y ? -1 : 1;
+
+          Object.assign(trAnchor.write(Circle), {
+            cx: comparePoint.x + newHypotenuse * cos * reverseX,
+            cy: comparePoint.y - newHypotenuse * sin * reverseY,
+          });
+        }
+
+        tlAnchor.write(Circle).cy = trAnchor.read(Circle).cy;
+        brAnchor.write(Circle).cx = trAnchor.read(Circle).cx;
+      } else if (anchorName === AnchorName.BOTTOM_LEFT) {
+        if (lockAspectRatio) {
+          const comparePoint = centeredScaling
+            ? {
+                x: obb.width / 2,
+                y: obb.height / 2,
+              }
+            : {
+                x: trAnchor.read(Circle).cx,
+                y: trAnchor.read(Circle).cy,
+              };
+
+          newHypotenuse = Math.sqrt(
+            Math.pow(comparePoint.x - x, 2) + Math.pow(y - comparePoint.y, 2),
+          );
+
+          const reverseX = comparePoint.x < x ? -1 : 1;
+          const reverseY = y < comparePoint.y ? -1 : 1;
+
+          Object.assign(blAnchor.write(Circle), {
+            cx: comparePoint.x - newHypotenuse * cos * reverseX,
+            cy: comparePoint.y + newHypotenuse * sin * reverseY,
+          });
+        }
+
+        tlAnchor.write(Circle).cx = blAnchor.read(Circle).cx;
+        brAnchor.write(Circle).cy = blAnchor.read(Circle).cy;
+      } else if (anchorName === AnchorName.BOTTOM_RIGHT) {
+        if (lockAspectRatio) {
+          const comparePoint = centeredScaling
+            ? {
+                x: obb.width / 2,
+                y: obb.height / 2,
+              }
+            : {
+                x: tlAnchor.read(Circle).cx,
+                y: tlAnchor.read(Circle).cy,
+              };
+
+          newHypotenuse = Math.sqrt(
+            Math.pow(x - comparePoint.x, 2) + Math.pow(y - comparePoint.y, 2),
+          );
+
+          const reverseX = brAnchor.read(Circle).cx < comparePoint.x ? -1 : 1;
+          const reverseY = brAnchor.read(Circle).cy < comparePoint.y ? -1 : 1;
+          Object.assign(brAnchor.write(Circle), {
+            cx: comparePoint.x + newHypotenuse * cos * reverseX,
+            cy: comparePoint.y + newHypotenuse * sin * reverseY,
+          });
+        }
+      } else if (anchorName === AnchorName.TOP_CENTER) {
+        tlAnchor.write(Circle).cy = y;
+      } else if (anchorName === AnchorName.BOTTOM_CENTER) {
+        brAnchor.write(Circle).cy = y;
+      } else if (anchorName === AnchorName.MIDDLE_LEFT) {
+        tlAnchor.write(Circle).cx = x;
+      } else if (anchorName === AnchorName.MIDDLE_RIGHT) {
+        brAnchor.write(Circle).cx = x;
+      }
+
       if (lockAspectRatio) {
-        const comparePoint = centeredScaling
-          ? {
-              x: obb.width / 2,
-              y: obb.height / 2,
-            }
-          : {
-              x: brAnchor.read(Circle).cx,
-              y: brAnchor.read(Circle).cy,
-            };
-        newHypotenuse = Math.sqrt(
-          Math.pow(comparePoint.x - x, 2) + Math.pow(comparePoint.y - y, 2),
-        );
+        if (
+          anchorName === AnchorName.MIDDLE_LEFT ||
+          anchorName === AnchorName.MIDDLE_RIGHT
+        ) {
+          const newWidth = brAnchor.read(Circle).cx - tlAnchor.read(Circle).cx;
+          const tan = sin / cos;
+          const newHeight = newWidth * tan;
+          const deltaY = newHeight - (prevBrAnchorY - prevTlAnchorY);
+          brAnchor.write(Circle).cy = brAnchor.read(Circle).cy + deltaY / 2;
+          tlAnchor.write(Circle).cy = tlAnchor.read(Circle).cy - deltaY / 2;
+        } else if (
+          anchorName === AnchorName.TOP_CENTER ||
+          anchorName === AnchorName.BOTTOM_CENTER
+        ) {
+          const newHeight = brAnchor.read(Circle).cy - tlAnchor.read(Circle).cy;
+          const tan = sin / cos;
+          const newWidth = newHeight / tan;
+          const deltaX = newWidth - (prevBrAnchorX - prevTlAnchorX);
+          brAnchor.write(Circle).cx = brAnchor.read(Circle).cx + deltaX / 2;
+          tlAnchor.write(Circle).cx = tlAnchor.read(Circle).cx - deltaX / 2;
+        }
+      }
 
-        const { cx, cy } = tlAnchor.read(Circle);
-        const reverseX = cx > comparePoint.x ? -1 : 1;
-        const reverseY = cy > comparePoint.y ? -1 : 1;
+      if (centeredScaling) {
+        const topOffsetX = tlAnchor.read(Circle).cx - prevTlAnchorX;
+        const topOffsetY = tlAnchor.read(Circle).cy - prevTlAnchorY;
+
+        const bottomOffsetX = brAnchor.read(Circle).cx - prevBrAnchorX;
+        const bottomOffsetY = brAnchor.read(Circle).cy - prevBrAnchorY;
+
+        Object.assign(brAnchor.write(Circle), {
+          cx: brAnchor.read(Circle).cx - topOffsetX,
+          cy: brAnchor.read(Circle).cy - topOffsetY,
+        });
 
         Object.assign(tlAnchor.write(Circle), {
-          cx: comparePoint.x - newHypotenuse * cos * reverseX,
-          cy: comparePoint.y - newHypotenuse * sin * reverseY,
+          cx: tlAnchor.read(Circle).cx - bottomOffsetX,
+          cy: tlAnchor.read(Circle).cy - bottomOffsetY,
         });
       }
-    } else if (anchorName === AnchorName.TOP_RIGHT) {
-      if (lockAspectRatio) {
-        const comparePoint = centeredScaling
-          ? {
-              x: obb.width / 2,
-              y: obb.height / 2,
-            }
-          : {
-              x: blAnchor.read(Circle).cx,
-              y: blAnchor.read(Circle).cy,
-            };
 
-        newHypotenuse = Math.sqrt(
-          Math.pow(x - comparePoint.x, 2) + Math.pow(comparePoint.y - y, 2),
+      const { cx: tlCx, cy: tlCy } = tlAnchor.read(Circle);
+      const { cx: brCx, cy: brCy } = brAnchor.read(Circle);
+
+      {
+        const width = brCx - tlCx;
+        const height = brCy - tlCy;
+
+        if (!flipEnabled && (width <= 0 || height <= 0)) {
+          return;
+        }
+
+        const { x, y } = api.transformer2Canvas({ x: tlCx, y: tlCy }, mask);
+
+        this.fitSelected(
+          api,
+          {
+            x,
+            y,
+            width,
+            height,
+            rotation,
+            scaleX,
+            scaleY,
+          },
+          selection,
         );
-
-        const { cx, cy } = trAnchor.read(Circle);
-        const reverseX = cx < comparePoint.x ? -1 : 1;
-        const reverseY = cy > comparePoint.y ? -1 : 1;
-
-        Object.assign(trAnchor.write(Circle), {
-          cx: comparePoint.x + newHypotenuse * cos * reverseX,
-          cy: comparePoint.y - newHypotenuse * sin * reverseY,
-        });
       }
-
-      tlAnchor.write(Circle).cy = trAnchor.read(Circle).cy;
-      brAnchor.write(Circle).cx = trAnchor.read(Circle).cx;
-    } else if (anchorName === AnchorName.BOTTOM_LEFT) {
-      if (lockAspectRatio) {
-        const comparePoint = centeredScaling
-          ? {
-              x: obb.width / 2,
-              y: obb.height / 2,
-            }
-          : {
-              x: trAnchor.read(Circle).cx,
-              y: trAnchor.read(Circle).cy,
-            };
-
-        newHypotenuse = Math.sqrt(
-          Math.pow(comparePoint.x - x, 2) + Math.pow(y - comparePoint.y, 2),
-        );
-
-        const reverseX = comparePoint.x < x ? -1 : 1;
-        const reverseY = y < comparePoint.y ? -1 : 1;
-
-        Object.assign(blAnchor.write(Circle), {
-          cx: comparePoint.x - newHypotenuse * cos * reverseX,
-          cy: comparePoint.y + newHypotenuse * sin * reverseY,
-        });
-      }
-
-      tlAnchor.write(Circle).cx = blAnchor.read(Circle).cx;
-      brAnchor.write(Circle).cy = blAnchor.read(Circle).cy;
-    } else if (anchorName === AnchorName.BOTTOM_RIGHT) {
-      if (lockAspectRatio) {
-        const comparePoint = centeredScaling
-          ? {
-              x: obb.width / 2,
-              y: obb.height / 2,
-            }
-          : {
-              x: tlAnchor.read(Circle).cx,
-              y: tlAnchor.read(Circle).cy,
-            };
-
-        newHypotenuse = Math.sqrt(
-          Math.pow(x - comparePoint.x, 2) + Math.pow(y - comparePoint.y, 2),
-        );
-
-        const reverseX = brAnchor.read(Circle).cx < comparePoint.x ? -1 : 1;
-        const reverseY = brAnchor.read(Circle).cy < comparePoint.y ? -1 : 1;
-        Object.assign(brAnchor.write(Circle), {
-          cx: comparePoint.x + newHypotenuse * cos * reverseX,
-          cy: comparePoint.y + newHypotenuse * sin * reverseY,
-        });
-      }
-    } else if (anchorName === AnchorName.TOP_CENTER) {
-      tlAnchor.write(Circle).cy = y;
-    } else if (anchorName === AnchorName.BOTTOM_CENTER) {
-      brAnchor.write(Circle).cy = y;
-    } else if (anchorName === AnchorName.MIDDLE_LEFT) {
-      tlAnchor.write(Circle).cx = x;
-    } else if (anchorName === AnchorName.MIDDLE_RIGHT) {
-      brAnchor.write(Circle).cx = x;
-    }
-
-    if (lockAspectRatio) {
-      if (
-        anchorName === AnchorName.MIDDLE_LEFT ||
-        anchorName === AnchorName.MIDDLE_RIGHT
-      ) {
-        const newWidth = brAnchor.read(Circle).cx - tlAnchor.read(Circle).cx;
-        const tan = sin / cos;
-        const newHeight = newWidth * tan;
-        const deltaY = newHeight - (prevBrAnchorY - prevTlAnchorY);
-        brAnchor.write(Circle).cy = brAnchor.read(Circle).cy + deltaY / 2;
-        tlAnchor.write(Circle).cy = tlAnchor.read(Circle).cy - deltaY / 2;
-      } else if (
-        anchorName === AnchorName.TOP_CENTER ||
-        anchorName === AnchorName.BOTTOM_CENTER
-      ) {
-        const newHeight = brAnchor.read(Circle).cy - tlAnchor.read(Circle).cy;
-        const tan = sin / cos;
-        const newWidth = newHeight / tan;
-        const deltaX = newWidth - (prevBrAnchorX - prevTlAnchorX);
-        brAnchor.write(Circle).cx = brAnchor.read(Circle).cx + deltaX / 2;
-        tlAnchor.write(Circle).cx = tlAnchor.read(Circle).cx - deltaX / 2;
-      }
-    }
-
-    if (centeredScaling) {
-      const topOffsetX = tlAnchor.read(Circle).cx - prevTlAnchorX;
-      const topOffsetY = tlAnchor.read(Circle).cy - prevTlAnchorY;
-
-      const bottomOffsetX = brAnchor.read(Circle).cx - prevBrAnchorX;
-      const bottomOffsetY = brAnchor.read(Circle).cy - prevBrAnchorY;
-
-      Object.assign(brAnchor.write(Circle), {
-        cx: brAnchor.read(Circle).cx - topOffsetX,
-        cy: brAnchor.read(Circle).cy - topOffsetY,
-      });
-
-      Object.assign(tlAnchor.write(Circle), {
-        cx: tlAnchor.read(Circle).cx - bottomOffsetX,
-        cy: tlAnchor.read(Circle).cy - bottomOffsetY,
-      });
-    }
-
-    const { cx: tlCx, cy: tlCy } = tlAnchor.read(Circle);
-    const { cx: brCx, cy: brCy } = brAnchor.read(Circle);
-
-    {
-      const width = brCx - tlCx;
-      const height = brCy - tlCy;
-
-      if (!flipEnabled && (width <= 0 || height <= 0)) {
-        return;
-      }
-
-      const { x, y } = api.transformer2Canvas({ x: tlCx, y: tlCy });
-
-      this.fitSelected(
-        api,
-        {
-          x,
-          y,
-          width,
-          height,
-          rotation,
-          scaleX,
-          scaleY,
-        },
-        selection,
-      );
     }
   }
 
@@ -813,18 +857,23 @@ export class Select extends System {
                   //   index;
                 } else {
                   const { rotation, scale } = mask.read(Transform);
-                  cursor.value = getCursor(
-                    cursorName,
-                    rotation,
-                    '',
-                    Math.sign(scale[0] * scale[1]) < 0,
-                  );
+                  cursor.value =
+                    getCursor(
+                      cursorName,
+                      rotation,
+                      '',
+                      Math.sign(scale[0] * scale[1]) < 0,
+                    ) ?? cursorName;
                   selection.resizingAnchorName = anchor;
 
                   if (cursorName.includes('rotate')) {
                     selection.mode = SelectionMode.READY_TO_ROTATE;
                     toHighlight = undefined;
-                  } else if (cursorName.includes('resize')) {
+                  } else if (
+                    cursorName.includes('resize') ||
+                    anchor === AnchorName.X1Y1 ||
+                    anchor === AnchorName.X2Y2
+                  ) {
                     selection.mode = SelectionMode.READY_TO_RESIZE;
                     toHighlight = undefined;
                   } else if (anchor === AnchorName.INSIDE) {
@@ -953,6 +1002,10 @@ export class Select extends System {
           //     selection as SelectVectorNetwork,
           //   );
           //   selection.mode = SelectionMode.READY_TO_MOVE_CONTROL_POINT;
+        }
+
+        if (isBrowser) {
+          this.clearSnapLines(selection);
         }
       }
     });

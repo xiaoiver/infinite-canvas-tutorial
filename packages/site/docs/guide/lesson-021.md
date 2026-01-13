@@ -486,6 +486,20 @@ if (e.key === 'ArrowUp') {
 }
 ```
 
+## Transformer for line {#transformer-for-line}
+
+Finally, a straight line requires only two anchor points, allowing the series of operations based on the bounding rectangle we previously introduced to be significantly simplified.
+
+```ts
+export class Transformable {
+    @field.ref declare lineMask: Entity;
+    @field.ref declare x1y1Anchor: Entity;
+    @field.ref declare x2y2Anchor: Entity;
+}
+```
+
+![Transformer for line](/line-transformer.gif)
+
 ## Extended Reading {#extended-reading}
 
 -   [Graphics Editor Development: Custom Cursor]

@@ -286,9 +286,9 @@ pnpm run dev
 -   实现旋转，移动旋转中心
 -   使用方向键移动图形
 
-|                Rotate anchor                 |                 Resize anchor                  |
-| :------------------------------------------: | :--------------------------------------------: |
-| ![Rotate anchor](./screenshots/lesson21.png) | ![Resize anchor](./screenshots/lesson21-2.png) |
+|                Rotate anchor                 |                 Resize anchor                  |                 Line transformer                  |
+| :------------------------------------------: | :--------------------------------------------: | :-----------------------------------------------: |
+| ![Rotate anchor](./screenshots/lesson21.png) | ![Resize anchor](./screenshots/lesson21-2.png) | ![Line transformer](./screenshots/lesson21-3.gif) |
 
 ## 课程 22 - VectorNetwork [🔗](https://infinitecanvas.cc/zh/guide/lesson-022)
 

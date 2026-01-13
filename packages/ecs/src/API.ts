@@ -50,7 +50,6 @@ import {
   Selected,
   ToBeDeleted,
   Transform,
-  Transformable,
   UI,
   VectorNetwork,
   VectorScreenshotRequest,
@@ -404,8 +403,7 @@ export class API {
   /**
    * Calculate anchor's position in canvas coordinate, account for transformer's transform.
    */
-  transformer2Canvas(point: IPointData) {
-    const { mask } = this.#camera.read(Transformable);
+  transformer2Canvas(point: IPointData, mask: Entity) {
     const matrix = Mat3.toGLMat3(mask.read(GlobalTransform).matrix);
     const [x, y] = vec2.transformMat3(
       vec2.create(),
@@ -418,8 +416,7 @@ export class API {
     };
   }
 
-  canvas2Transformer(point: IPointData) {
-    const { mask } = this.#camera.read(Transformable);
+  canvas2Transformer(point: IPointData, mask: Entity) {
     const matrix = Mat3.toGLMat3(mask.read(GlobalTransform).matrix);
     const invMatrix = mat3.invert(mat3.create(), matrix);
     const [x, y] = vec2.transformMat3(

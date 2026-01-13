@@ -55,5 +55,5 @@ export function getCursor(
   color = 'black',
   flip = false,
 ) {
-  return CURSORS[cursor](RAD_TO_DEG * rotation, flip, color);
+  return CURSORS[cursor]?.(RAD_TO_DEG * rotation, flip, color);
 }
