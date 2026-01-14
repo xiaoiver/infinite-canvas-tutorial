@@ -114,7 +114,6 @@ export class InfiniteCanvas extends LitElement {
       position: absolute;
       top: 0;
       left: 0;
-      bottom: 0;
     }
 
     ic-spectrum-taskbar {
@@ -301,9 +300,9 @@ export class InfiniteCanvas extends LitElement {
           html`${$svgLayer}${$htmlLayer}<ic-spectrum-top-navbar
             ></ic-spectrum-top-navbar>${$canvas}
             <ic-spectrum-penbar
-              style=${topbarVisible
-                ? `top: ${TOP_NAVBAR_HEIGHT}px; height: calc(100% - ${TOP_NAVBAR_HEIGHT}px);`
-                : 'top: 0; height: 100%;'}
+              style=${`top: ${
+                topbarVisible ? TOP_NAVBAR_HEIGHT : 0
+              }px; left: 0;`}
             >
               <slot name="penbar-item" slot="penbar-item"></slot>
             </ic-spectrum-penbar>

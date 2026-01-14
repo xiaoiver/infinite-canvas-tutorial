@@ -46,7 +46,7 @@ export class PostProcessingRenderer {
   render(renderPass: RenderPass, texture: Texture, effect: Effect) {
     if (!this.#bigTriangleProgram) {
       this.#bigTriangleUniformBuffer = this.device.createBuffer({
-        viewOrSize: Float32Array.BYTES_PER_ELEMENT * 4,
+        viewOrSize: Float32Array.BYTES_PER_ELEMENT * 4 * 4,
         usage: BufferUsage.UNIFORM,
         hint: BufferFrequencyHint.DYNAMIC,
       });

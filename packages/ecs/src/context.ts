@@ -262,7 +262,7 @@ export const getDefaultAppState: () => AppState = () => {
     editingPoints: [],
     loading: false,
     loadingMessage: '',
-    filter: 'fxaa()',
+    filter: '',
   };
 };
 

@@ -131,7 +131,7 @@ describe('Transformer', () => {
 
       const camera = cameraEntity.read(Camera);
       expect(camera.canvas.isSame(canvasEntity)).toBeTruthy();
-      expect(cameraEntity.read(Parent).children).toHaveLength(2);
+      expect(cameraEntity.read(Parent).children).toHaveLength(3);
       expect(cameraEntity.read(Parent).children[0].isSame(entity)).toBeTruthy();
     }
 

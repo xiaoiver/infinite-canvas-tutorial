@@ -70,6 +70,8 @@ import {
 import { updateGlobalTransform } from './Transform';
 import { safeAddComponent, safeRemoveComponent } from '../history';
 import { updateComputedPoints } from './ComputePoints';
+import { DOMAdapter } from '../environment';
+import { hideLabel, initLabel, showLabel } from '..';
 
 export enum SelectionMode {
   IDLE = 'IDLE',
@@ -110,6 +112,7 @@ export interface SelectOBB {
 
   brushContainer: SVGSVGElement;
   snapContainer: SVGSVGElement;
+  label: HTMLDivElement;
 
   editing: Entity;
 }
@@ -239,6 +242,13 @@ export class Select extends System {
     });
 
     updateGlobalTransform(mask);
+
+    // showLabel(selection.label, api, {
+    //   x: .x,
+    //   y: obb.y,
+    //   width: obb.width,
+    //   height: obb.height,
+    // });
   }
 
   private handleSelectedMoved(api: API, selection: SelectOBB) {
@@ -257,6 +267,7 @@ export class Select extends System {
     camera.write(Transformable).status = TransformableStatus.MOVED;
 
     this.saveSelectedOBB(api, selection);
+    hideLabel(selection.label);
   }
 
   private handleSelectedRotating(
@@ -264,24 +275,20 @@ export class Select extends System {
     anchorNodeX: number,
     anchorNodeY: number,
   ) {
-    const camera = api.getCamera();
-    const { mask } = camera.read(Transformable);
-    camera.write(Transformable).status = TransformableStatus.ROTATING;
-    const { obb } = this.selections.get(camera.__id);
-
-    const sl = api.canvas2Transformer(
-      {
-        x: anchorNodeX,
-        y: anchorNodeY,
-      },
-      mask,
-    );
-
-    const x = sl.x - obb.width / 2;
-    const y = sl.y - obb.height / 2;
-
-    let delta = Math.atan2(-y, x) + Math.PI / 2;
-
+    // const camera = api.getCamera();
+    // const { mask } = camera.read(Transformable);
+    // camera.write(Transformable).status = TransformableStatus.ROTATING;
+    // const { obb } = this.selections.get(camera.__id);
+    // const sl = api.canvas2Transformer(
+    //   {
+    //     x: anchorNodeX,
+    //     y: anchorNodeY,
+    //   },
+    //   mask,
+    // );
+    // const x = sl.x - obb.width / 2;
+    // const y = sl.y - obb.height / 2;
+    // let delta = Math.atan2(-y, x) + Math.PI / 2;
     // const {
     //   scale: { sx, sy },
     //   rotation: { angle },
@@ -289,7 +296,6 @@ export class Select extends System {
     // } = decomposeTSR(
     //   rotateDEG(delta * RAD_TO_DEG, this.#center[0], this.#center[1]),
     // );
-
     // this.fitSelected(api, {
     //   x: obb.minX,
     //   y: obb.minY,
@@ -312,7 +318,7 @@ export class Select extends System {
     selection: SelectOBB,
   ) {
     const camera = api.getCamera();
-    const { resizingAnchorName, obb, cos, sin } = selection;
+    const { resizingAnchorName, obb, cos, sin, label } = selection;
     const { rotation, scaleX, scaleY } = obb;
 
     // Use the lock aspect ratio of the selected node if there is only one
@@ -337,12 +343,14 @@ export class Select extends System {
         lineMask,
       );
 
-      if (resizingAnchorName === AnchorName.X1Y1) {
+      const isX1Y1 = resizingAnchorName === AnchorName.X1Y1;
+      const isX2Y2 = resizingAnchorName === AnchorName.X2Y2;
+      if (isX1Y1) {
         Object.assign(x1y1Anchor.write(Circle), {
           cx: x,
           cy: y,
         });
-      } else if (resizingAnchorName === AnchorName.X2Y2) {
+      } else if (isX2Y2) {
         Object.assign(x2y2Anchor.write(Circle), {
           cx: x,
           cy: y,
@@ -363,6 +371,27 @@ export class Select extends System {
       const selected = api.getEntity(node);
       updateGlobalTransform(selected);
       updateComputedPoints(selected);
+
+      {
+        const cx = canvasX;
+        const cy = canvasY;
+        const { x, y } = api.transformer2Canvas(
+          {
+            x: isX1Y1 ? x2y2Cx : x1y1Cx,
+            y: isX1Y1 ? x2y2Cy : x1y1Cy,
+          },
+          lineMask,
+        );
+        const width = cx - x;
+        const height = cy - y;
+        showLabel(label, api, {
+          x,
+          y,
+          width,
+          height,
+          rotate: true,
+        });
+      }
     } else {
       const { tlAnchor, trAnchor, blAnchor, brAnchor, mask } =
         camera.read(Transformable);
@@ -579,6 +608,8 @@ export class Select extends System {
           },
           selection,
         );
+
+        showLabel(label, api, { x, y, width, height });
       }
     }
   }
@@ -598,6 +629,8 @@ export class Select extends System {
     });
 
     this.saveSelectedOBB(api, selection);
+
+    hideLabel(selection.label);
   }
 
   private handleSelectedRotated(api: API, selection: SelectOBB) {
@@ -700,8 +733,9 @@ export class Select extends System {
           pointerMoveViewportX: 0,
           pointerMoveViewportY: 0,
           brushContainer: createSVGElement('svg') as SVGSVGElement,
-          editing: undefined,
           snapContainer: createSVGElement('svg') as SVGSVGElement,
+          label: DOMAdapter.get().getDocument().createElement('div'),
+          editing: undefined,
         };
         this.selections.set(camera.__id, selection);
 
@@ -712,6 +746,10 @@ export class Select extends System {
           selection.snapContainer.style.position = 'absolute';
           api.getSvgLayer().appendChild(selection.brushContainer);
           api.getSvgLayer().appendChild(selection.snapContainer);
+
+          const { label } = selection;
+          initLabel(label);
+          api.getSvgLayer().appendChild(selection.label);
         }
       }
 
@@ -1012,9 +1050,10 @@ export class Select extends System {
   }
 
   finalize(): void {
-    this.selections.forEach(({ brushContainer, snapContainer }) => {
+    this.selections.forEach(({ brushContainer, snapContainer, label }) => {
       brushContainer.remove();
       snapContainer.remove();
+      label.remove();
     });
     this.selections.clear();
   }
@@ -1218,8 +1257,7 @@ export class Select extends System {
     snapLines: { type: string; points: [number, number][] }[],
     api: API,
   ) {
-    const { snapLineStroke, snapLineStrokeWith, cameraZoom } =
-      api.getAppState();
+    const { snapLineStroke, snapLineStrokeWith } = api.getAppState();
     const { snapContainer } = selection;
     this.clearSnapLines(selection);
 

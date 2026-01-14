@@ -13,6 +13,7 @@ head:
 
 <script setup>
 import ImageProcessing from '../components/ImageProcessing.vue'
+import GlobalEffects from '../components/GlobalEffects.vue'
 </script>
 
 # Lesson 30 - Post-processing and render graph
@@ -110,6 +111,10 @@ void main() {
 
 <ImageProcessing />
 
+### Noise {#noise}
+
+[Spline - Noise Layer]
+
 ## Render graph {#render-graph}
 
 Render Graph（有时称为 FrameGraph）是一种将渲染过程抽象为有向无环图（DAG）的现代渲染架构。在这一架构下，每个渲染 Pass 以及它们使用的资源都被视为图节点与边，通过图结构自动管理资源状态转换、同步和生命周期。
@@ -133,12 +138,12 @@ graph.add_node_edge(Labels::B, Labels::A);
 
 We reference the render graph implementation from [noclip], which employs a three-phase design:
 
-1.  Graph Building Phase: Declaratively defines the rendering pipeline. We'll see how it's used in the next subsection.
-2.  Scheduling Phase: Automatically allocates and reuses resources. This can be further broken down into:
+1. Graph Building Phase: Declaratively defines the rendering pipeline. We'll see how it's used in the next subsection.
+2. Scheduling Phase: Automatically allocates and reuses resources. This can be further broken down into:
 
--   Statistics Phase: Traverse all passes to count references for each RenderTarget and ResolveTexture
--   Allocation Phase: Allocate resources on demand. Retrieve from the object pool or create on first use. Reuse resources with identical specifications. Return to the object pool when reference count reaches zero.
--   Release Phase: Return to the object pool when reference count reaches zero.
+    - Statistics Phase: Traverse all passes to count references for each RenderTarget and ResolveTexture
+    - Allocation Phase: Allocate resources on demand. Retrieve from the object pool or create on first use. Reuse resources with identical specifications. Return to the object pool when reference count reaches zero.
+    - Release Phase: Return to the object pool when reference count reaches zero.
 
 3. Execution Phase: Execute rendering passes sequentially.
 
@@ -207,6 +212,20 @@ builder.pushPass((pass) => {
 });
 ```
 
+We apply 3 post processing effects for the whole canvas:
+
+```ts
+api.setAppState({
+    filter: 'fxaa() noise(0.6) brightness(0.8)',
+});
+```
+
+<GlobalEffects />
+
+## Extended reading {#extended-reading}
+
+-   [Blob Tracking]
+
 [Paper Shaders]: https://shaders.paper.design/
 [Pixi.js filters]: https://github.com/pixijs/filters
 [CSS filter]: https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/filter
@@ -217,3 +236,5 @@ builder.pushPass((pass) => {
 [Render graph in bevy]: https://github.com/bevyengine/bevy/discussions/2524
 [noclip]: https://github.com/magcius/noclip.website
 [Lesson 2]: /guide/lesson-002
+[Spline - Noise Layer]: https://docs.spline.design/materials-shading/noise-layer
+[Blob Tracking]: https://www.shadertoy.com/view/3fBXDD

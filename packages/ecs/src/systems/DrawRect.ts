@@ -194,6 +194,8 @@ export class DrawRect extends System {
         this.selections.set(camera.__id, selection);
 
         if (isBrowser) {
+          const { label } = selection;
+          initLabel(label);
           api.getSvgLayer().appendChild(selection.label);
         }
       }
@@ -204,7 +206,7 @@ export class DrawRect extends System {
         const {
           prevPoint: [prevX, prevY],
         } = inputPoint;
-        let [x, y] = input.pointerViewport;
+        const [x, y] = input.pointerViewport;
 
         // Prev and current point are the same, do nothing
         if (prevX === x && prevY === y) {
@@ -367,21 +369,6 @@ export class DrawRect extends System {
           selection.arrowBrush = brush as PolylineSerializedNode;
         }
         api.getEntity(brush).add(UI, { type: UIType.BRUSH });
-
-        if (isBrowser) {
-          const { label } = selection;
-          label.style.position = 'absolute';
-          label.style.top = '0';
-          label.style.left = '0';
-          label.style.display = 'flex';
-          label.style.alignItems = 'center';
-          label.style.justifyContent = 'center';
-          label.style.padding = '4px';
-          label.style.borderRadius = '4px';
-          label.style.transform = 'translate(-50%, 8px)';
-          label.style.backgroundColor = TRANSFORMER_ANCHOR_STROKE_COLOR;
-          label.style.color = 'white';
-        }
       }
 
       let { x: cx, y: cy } = api.viewport2Canvas({
@@ -402,11 +389,12 @@ export class DrawRect extends System {
       let width = cx - x;
       let height = cy - y;
 
-      if (
-        pen !== Pen.DRAW_LINE &&
-        pen !== Pen.DRAW_ARROW &&
-        pen !== Pen.DRAW_ROUGH_LINE
-      ) {
+      const isLine =
+        pen === Pen.DRAW_LINE ||
+        pen === Pen.DRAW_ARROW ||
+        pen === Pen.DRAW_ROUGH_LINE;
+
+      if (!isLine) {
         if (isSquare) {
           if (Math.abs(width) > Math.abs(height)) {
             width = Math.sign(width) * Math.abs(height);
@@ -448,41 +436,7 @@ export class DrawRect extends System {
 
       const { label } = selection;
 
-      if (api.getAppState().penbarDrawSizeLabelVisible) {
-        label.style.visibility = 'visible';
-      }
-
-      const { x: viewportX2, y: viewportY2 } = api.canvas2Viewport({
-        x: x + width / 2,
-        y: y + height,
-      });
-      label.style.top = `${viewportY2}px`;
-      label.style.left = `${viewportX2}px`;
-      label.innerText = `${Math.round(Math.abs(width))} × ${Math.round(
-        Math.abs(height),
-      )}`;
-
-      if (
-        pen === Pen.DRAW_LINE ||
-        pen === Pen.DRAW_ARROW ||
-        pen === Pen.DRAW_ROUGH_LINE
-      ) {
-        const { x: viewportX2, y: viewportY2 } = api.canvas2Viewport({
-          x: x + width / 2,
-          y: y + height / 2,
-        });
-        label.style.top = `${viewportY2}px`;
-        label.style.left = `${viewportX2}px`;
-        const rad = Math.atan2(height, width);
-        let deg = rad * (180 / Math.PI);
-        if (deg >= 90 && deg <= 180) {
-          deg = deg - 180;
-        } else if (deg <= -90 && deg >= -180) {
-          deg = deg + 180;
-        }
-        // Rotate the label to the direction of the line
-        label.style.transform = `translate(-50%, -50%) rotate(${deg}deg)`;
-      }
+      showLabel(label, api, { x, y, width, height, rotate: isLine });
 
       // Update the selection state
       selection.x = x;
@@ -496,7 +450,7 @@ export class DrawRect extends System {
     const pen = api.getAppState().penbarSelected;
     const brush = this.getBrush(selection, pen);
     api.updateNode(brush, { visibility: 'hidden' }, false);
-    selection.label.style.visibility = 'hidden';
+    hideLabel(selection.label);
   }
 
   private getBrush(selection: DrawRectSelection, pen: Pen) {
@@ -524,5 +478,75 @@ export class DrawRect extends System {
         ? roughLineBrush
         : arrowBrush;
     return brush;
+  }
+}
+
+export function initLabel(label: HTMLDivElement) {
+  if (isBrowser) {
+    label.style.position = 'absolute';
+    label.style.top = '0';
+    label.style.left = '0';
+    label.style.display = 'flex';
+    label.style.alignItems = 'center';
+    label.style.justifyContent = 'center';
+    label.style.padding = '4px';
+    label.style.borderRadius = '4px';
+    label.style.backgroundColor = TRANSFORMER_ANCHOR_STROKE_COLOR;
+    label.style.color = 'white';
+    label.style.visibility = 'hidden';
+  }
+}
+
+export function hideLabel(label: HTMLDivElement) {
+  if (isBrowser) {
+    label.style.visibility = 'hidden';
+  }
+}
+
+export function showLabel(
+  label: HTMLDivElement,
+  api: API,
+  {
+    x,
+    y,
+    width,
+    height,
+    rotate,
+  }: { x: number; y: number; width: number; height: number; rotate?: boolean },
+) {
+  if (isBrowser) {
+    if (api.getAppState().penbarDrawSizeLabelVisible) {
+      label.style.visibility = 'visible';
+    }
+
+    label.innerText = `${Math.round(Math.abs(width))} × ${Math.round(
+      Math.abs(height),
+    )}`;
+
+    if (rotate) {
+      const { x: viewportX2, y: viewportY2 } = api.canvas2Viewport({
+        x: x + width / 2,
+        y: y + height / 2,
+      });
+      label.style.top = `${viewportY2}px`;
+      label.style.left = `${viewportX2}px`;
+      const rad = Math.atan2(height, width);
+      let deg = rad * (180 / Math.PI);
+      if (deg >= 90 && deg <= 180) {
+        deg = deg - 180;
+      } else if (deg <= -90 && deg >= -180) {
+        deg = deg + 180;
+      }
+      // Rotate the label to the direction of the line
+      label.style.transform = `translate(-50%, -50%) rotate(${deg}deg)`;
+    } else {
+      const { x: viewportX2, y: viewportY2 } = api.canvas2Viewport({
+        x: x + width / 2,
+        y: y + height,
+      });
+      label.style.top = `${viewportY2}px`;
+      label.style.left = `${viewportX2}px`;
+      label.style.transform = 'translate(-50%, 8px)';
+    }
   }
 }

@@ -11,7 +11,8 @@ export type Effect =
   | DropShadowEffect
   | BlurEffect
   | NoiseEffect
-  | FXAA;
+  | FXAA
+  | RainEffect;
 
 export interface BrightnessEffect {
   type: 'brightness';
@@ -39,6 +40,10 @@ export interface NoiseEffect {
 
 export interface FXAA {
   type: 'fxaa';
+}
+
+export interface RainEffect {
+  type: 'rain';
 }
 
 /**
@@ -76,7 +81,7 @@ export function parseEffect(filter: string): Effect[] {
 
   while (i < len) {
     // 提取 filter 名称（直到遇到 '('）
-    let nameStart = i;
+    const nameStart = i;
     while (i < len && filter[i] !== '(' && !/\s/.test(filter[i])) {
       i++;
     }
@@ -105,7 +110,7 @@ export function parseEffect(filter: string): Effect[] {
     i++;
 
     // 提取参数（需要处理嵌套括号，比如 url() 中的内容）
-    let paramsStart = i;
+    const paramsStart = i;
     let depth = 1;
     let inString = false;
     let stringChar = '';
@@ -174,6 +179,10 @@ export function parseEffect(filter: string): Effect[] {
       });
     } else if (filter.name === 'noise') {
       effects.push({ type: 'noise', value: parseFloat(filter.params) });
+    } else if (filter.name === 'rain') {
+      effects.push({ type: 'rain' });
+    } else if (filter.name === 'fxaa') {
+      effects.push({ type: 'fxaa' });
     }
   }
 
