@@ -16,6 +16,11 @@ export enum BrushType {
   STAMP = 'stamp',
 }
 
+export enum StampMode {
+  EQUI_DISTANCE = 'equi_distance',
+  RATIO_DISTANCE = 'ratio_distance',
+}
+
 export class Brush {
   static getGeometryBounds(
     brush: Partial<Brush> | Partial<BrushSerializedNode>,
@@ -74,6 +79,34 @@ export class Brush {
     default: [],
   })
   declare points: BrushPoint[];
+
+  /**
+   * The interval between stamps.
+   */
+  @field({ type: Type.float32, default: 20 }) declare stampInterval: number;
+
+  /**
+   * The mode of stamp placement. Default to EQUI_DISTANCE.
+   */
+  @field({
+    type: Type.staticString([
+      StampMode.EQUI_DISTANCE,
+      StampMode.RATIO_DISTANCE,
+    ]),
+    default: StampMode.RATIO_DISTANCE,
+  })
+  declare stampMode: StampMode;
+
+  /**
+   * The noise factor of stamp. Default to 0.4.
+   */
+  @field({ type: Type.float32, default: 0.4 }) declare stampNoiseFactor: number;
+
+  /**
+   * The rotation factor of stamp. Default to 0.75.
+   */
+  @field({ type: Type.float32, default: 0.75 })
+  declare stampRotationFactor: number;
 
   constructor(props?: Partial<Brush>) {
     Object.assign(this, props);

@@ -1,6 +1,6 @@
 import { Entity, System } from '@lastolivegames/becsy';
 import { vec2 } from 'gl-matrix';
-import { Brush, ComputedPoints, Path, Polyline, Stroke } from '../components';
+import { ComputedPoints, Path, Polyline, Stroke } from '../components';
 import { bisect, parsePath } from '../utils';
 import { safeAddComponent } from '../history';
 
@@ -10,7 +10,6 @@ import { safeAddComponent } from '../history';
 export class ComputePoints extends System {
   paths = this.query((q) => q.addedOrChanged.with(Path).trackWrites);
   polylines = this.query((q) => q.addedOrChanged.with(Polyline).trackWrites);
-  brushes = this.query((q) => q.addedOrChanged.with(Brush).trackWrites);
 
   constructor() {
     super();
@@ -41,7 +40,7 @@ export function updateComputedPoints(entity: Entity) {
 
     safeAddComponent(entity, ComputedPoints);
     entity.write(ComputedPoints).points = points;
-  } else if (entity.has(Polyline) || entity.has(Brush)) {
+  } else if (entity.has(Polyline)) {
     const { points } = entity.read(Polyline);
     const { alignment, width } = entity.read(Stroke);
 

@@ -3,7 +3,7 @@ import {
   App,
   Pen,
   DefaultPlugins,
-  BrushType
+  BrushType,
 } from '@infinite-canvas-tutorial/ecs';
 import { ref, onMounted, onUnmounted } from 'vue';
 import { Event, UIPlugin } from '@infinite-canvas-tutorial/webcomponents';
@@ -56,7 +56,8 @@ onMounted(async () => {
         id: '1',
         type: 'brush',
         points: position.map(([x, y], i) => `${x},${y},${radius[i]}`).join(' '),
-        brushType: BrushType.VANILLA,
+        brushType: BrushType.STAMP,
+        brushStamp: '/stamp.png',
         stroke: 'grey',
         strokeWidth: 10,
         strokeOpacity: 1,

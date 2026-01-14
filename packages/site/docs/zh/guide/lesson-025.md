@@ -11,6 +11,7 @@ import DrawArrow from '../../components/DrawArrow.vue'
 import Pencil from '../../components/Pencil.vue'
 import PencilFreehand from '../../components/PencilFreehand.vue'
 import Brush from '../../components/Brush.vue'
+import BrushWithStamp from '../../components/BrushWithStamp.vue'
 import LaserPointer from '../../components/LaserPointer.vue'
 import Eraser from '../../components/Eraser.vue'
 </script>
@@ -340,11 +341,13 @@ const outlinePoints = getStroke(inputPoints, {
 
 ![source: https://shenciao.github.io/brush-rendering-tutorial/](https://shenciao.github.io/brush-rendering-tutorial/assets/images/brushes-9e58d24a7f40847be1ad6c1cb9f1b9dc.jpg)
 
-下面我们参考 [Brush Rendering Tutorial] 来实现这一效果。
+下面我们参考 [Brush Rendering Tutorial] 来实现这一效果，作者介绍了一种不依赖顶点密度、沿折线均匀放置圆点（贴图）的方法。
+
+![source: https://shenciao.github.io/brush-rendering-tutorial/Basics/Stamp/#locate-stamps](https://shenciao.github.io/brush-rendering-tutorial/assets/images/stamp-position-1645edccb9edc05441593af193fc4ed0.png)
 
 ### 基础实现 {#basic-implementation}
 
-基础数据结构如下：
+基础数据结构如下，序列化后形成 `points: 'x1,y1,r1 x2,y2,r2...'` 这样的三元组列表：
 
 ```ts
 interface BrushPoint {
@@ -391,17 +394,52 @@ if (vertexNum < 0.5) {
 
 ![source: https://shenciao.github.io/brush-rendering-tutorial/Basics/Vanilla/](https://shenciao.github.io/brush-rendering-tutorial/assets/images/var-parameters-9d4c6d7aa31d0f61fd39ba9f69eaae6d.png)
 
+```glsl
+int MAX_i = 128; float currIndex = startIndex;
+float A = 0.0;
+for(int i = 0; i < MAX_i; i++){
+    // Blend opacity
+    A = A * (1.0-opacity) + opacity;
+}
+```
+
 效果如下：
 
 <Brush />
 
 ### 贴图 {#stamp}
 
-这样的效果还不太像真实的笔触。
+这样的效果还不太像真实的笔触，我们新增 `brushStamp` 属性表示贴图链接，它仅提供透明度的来源，笔刷颜色仍通过 `stroke` 控制：
 
-![source: https://shenciao.github.io/brush-rendering-tutorial/Basics/Stamp/](https://shenciao.github.io/brush-rendering-tutorial/assets/images/stamp-to-stroke-082a5ddd80c45086b810ed8b9ebcea79.gif)
+```ts
+api.updateNodes([
+    {
+        id: '1',
+        type: 'brush',
+        brushType: BrushType.STAMP,
+        brushStamp: '/stamp.png',
+        points: position.map(([x, y], i) => `${x},${y},${radius[i]}`).join(' '),
+        stroke: 'grey',
+    },
+]);
+```
 
-### 导出 SVG {#export-brush-to-svg}
+<BrushWithStamp />
+
+目前贴图的方向都是固定的，我们可以为贴图添加随机旋转角度：
+
+```glsl
+float angle = rotationFactor*radians(360.0*fract(sin(currIndex)*1.0));
+pToCurrStamp *= rotate(angle);
+```
+
+还可以在混合透明度时使用噪音影响因子：
+
+```glsl
+float opacityNoise = noiseFactor*fbm(textureCoordinate*50.0);
+```
+
+### [WIP] 导出 SVG {#export-brush-to-svg}
 
 Figma 是可以将 Brush 导出 SVG 的。
 

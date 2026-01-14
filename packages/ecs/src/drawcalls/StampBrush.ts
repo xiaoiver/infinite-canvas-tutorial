@@ -32,6 +32,7 @@ import {
   Stroke,
   Mat3,
   Brush,
+  StampMode,
 } from '../components';
 
 const brushTypeMap = {
@@ -382,7 +383,13 @@ export class StampBrush extends Drawcall {
   }
 
   private generateBuffer(shape: Entity): [number[], Record<string, unknown>] {
-    const { type } = shape.read(Brush);
+    const {
+      type,
+      stampInterval,
+      stampMode,
+      stampNoiseFactor,
+      stampRotationFactor,
+    } = shape.read(Brush);
     const brushType = brushTypeMap[type];
 
     const globalRenderOrder = shape.has(GlobalRenderOrder)
@@ -407,10 +414,10 @@ export class StampBrush extends Drawcall {
     ];
     const u_Opacity = [opacity, 0, strokeOpacity, 0];
     const u_Stamp = [
-      1, // uniform float stampInterval;
-      0, // uniform float noiseFactor;
-      0, // uniform float rotationFactor;
-      1, // uniform int stampMode;
+      stampInterval,
+      stampNoiseFactor,
+      stampRotationFactor,
+      stampMode === StampMode.EQUI_DISTANCE ? 0 : 1,
     ];
 
     return [

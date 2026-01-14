@@ -63,7 +63,9 @@ void main() {
 
 ### 全屏三角形 {#big-triangle}
 
-这里就可以使用全屏三角形了，相比 Quad 可以减少一个顶点：
+这里就可以使用全屏三角形了，相比 Quad 可以减少一个顶点，详见：[Optimizing Triangles for a Full-screen Pass]
+
+![The blue rectangle represents the viewport. Red is the bounds of the geometry](https://wallisc.github.io/assets/FullscreenPass/1tri.jpg)
 
 ```ts
 this.#bigTriangleVertexBuffer = this.device.createBuffer({
@@ -234,3 +236,4 @@ api.setAppState({
 [课程 2]: /zh/guide/lesson-002
 [Spline - Noise Layer]: https://docs.spline.design/materials-shading/noise-layer
 [Blob Tracking]: https://www.shadertoy.com/view/3fBXDD
+[Optimizing Triangles for a Full-screen Pass]: https://wallisc.github.io/rendering/2021/04/18/Fullscreen-Pass.html

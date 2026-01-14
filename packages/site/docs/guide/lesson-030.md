@@ -65,7 +65,9 @@ void main() {
 
 ### Big triangle {#big-triangle}
 
-Here we can use a full-screen triangle, which reduces one vertex compared to a Quad:
+Here we can use a full-screen triangle, which reduces one vertex compared to a Quad, see: [Optimizing Triangles for a Full-screen Pass]
+
+![The blue rectangle represents the viewport. Red is the bounds of the geometry](https://wallisc.github.io/assets/FullscreenPass/1tri.jpg)
 
 ```ts
 this.#bigTriangleVertexBuffer = this.device.createBuffer({
@@ -238,3 +240,4 @@ api.setAppState({
 [Lesson 2]: /guide/lesson-002
 [Spline - Noise Layer]: https://docs.spline.design/materials-shading/noise-layer
 [Blob Tracking]: https://www.shadertoy.com/view/3fBXDD
+[Optimizing Triangles for a Full-screen Pass]: https://wallisc.github.io/rendering/2021/04/18/Fullscreen-Pass.html

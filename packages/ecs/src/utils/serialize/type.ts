@@ -9,6 +9,7 @@ import {
   Path,
   Rect,
   Rough,
+  StampMode,
   Stroke,
   Text,
   TextDecoration,
@@ -258,6 +259,10 @@ export interface BrushAttributes {
   points: string;
   brushType: BrushType;
   brushStamp: string;
+  stampInterval: number;
+  stampMode: StampMode;
+  stampNoiseFactor: number;
+  stampRotationFactor: number;
   stroke: Stroke['color'];
   strokeOpacity: Opacity['strokeOpacity'];
 }

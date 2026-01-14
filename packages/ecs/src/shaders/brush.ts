@@ -102,9 +102,11 @@ export const vert = /* wgsl */ `
       offsetSign = vec2(1.0, -1.0);
     }
 
+    // Apply the half angle formula from cos(theta) to tan(theta/2)
     float tanHalfTheta = sqrt((1.0+cosTheta) / (1.0-cosTheta));
     float cotHalfTheta = 1.0 / tanHalfTheta;
     float normalTanValue = vec4(tanHalfTheta, tanHalfTheta, cotHalfTheta, cotHalfTheta)[gl_VertexID];
+    // Corner case: The small circle is very close to the big one, casuing large offset in the normal direction, discard the edge
     if(normalTanValue > 10.0 || normalTanValue < 0.1) return;
     
     vec2 trapzoidVertexPosition = position + 
@@ -160,8 +162,7 @@ export const frag = /* wgsl */ `
 
   float x2n(float x){
     float stampInterval = u_Stamp.x;
-    // int stampMode = int(u_Stamp.w);
-    int stampMode = 1;
+    int stampMode = int(u_Stamp.w);
     if(stampMode == EquiDistance) return x / stampInterval;
     if(stampMode == RatioDistance){
       float L = distance(p0, p1);
@@ -172,8 +173,7 @@ export const frag = /* wgsl */ `
 
   float n2x(float n){
     float stampInterval = u_Stamp.x;
-    // int stampMode = int(u_Stamp.w);
-    int stampMode = 1;
+    int stampMode = int(u_Stamp.w);
     if(stampMode == EquiDistance) return n * stampInterval;
     if(stampMode == RatioDistance){
       float L = distance(p0, p1);
@@ -201,13 +201,6 @@ export const frag = /* wgsl */ `
     opacity = u_Opacity.x;
     strokeOpacity = u_Opacity.z;
 
-    #ifdef USE_FILLIMAGE
-      strokeColor = texture(SAMPLER_2D(u_Texture), p);
-    #endif
-  
-    // based on the target alpha compositing mode.
-    strokeColor.a *= strokeOpacity;
-
     vec2 tangent = normalize(p1 - p0);
     vec2 normal = vec2(-tangent.y, tangent.x);
 
@@ -227,16 +220,14 @@ export const frag = /* wgsl */ `
     if(d0cos < cosTheta && d0 > r0) discard;
     if(d1cos > cosTheta && d1 > r1) discard;
     
-    outputColor = strokeColor;
-    outputColor.a *= opacity;
-
-    float alpha = outputColor.a;
+    vec4 color = strokeColor;
 
     if (brushType < 0.5) {
       // Vanilla brush
       if(d0 < r0 && d1 < r1) discard;
-      float A = (d0 < r0 || d1 < r1) ? 1.0 - sqrt(1.0 - alpha) : alpha;
-      outputColor = vec4(outputColor.rgb, A);
+      float A = (d0 < r0 || d1 < r1) ? 1.0 - sqrt(1.0 - color.a) : color.a;
+      outputColor = vec4(color.rgb, A);
+      return;
     } else if (brushType < 1.5) {
       // Stamp brush
       // The method here is not published yet, it should be explained in a 10min video.
@@ -244,6 +235,7 @@ export const frag = /* wgsl */ `
       // We set a quadratic polynomial to calculate the effect range, the range on polyline edge footprint can touch the current pixel.
       // Two roots of the quadratic polynomial are the effectRangeFront and effectRangeBack.
       // Formulas from SIGGRAPH 2022 Talk - A Fast & Robust Solution for Cubic & Higher-Order Polynomials
+      // The quadratic equation
       float a, b, c, delta;
       a = 1.0 - pow(cosTheta, 2.0);
       b = 2.0 * (r0 * cosTheta - pLocal.x);
@@ -251,6 +243,9 @@ export const frag = /* wgsl */ `
       delta = pow(b, 2.0) - 4.0*a*c;
       if(delta <= 0.0) discard; // This should never happen.
       
+      // Solve the quadratic equation
+      // Need to learn how to solve a quadratic equation? Check this talk by Cem Yuksel:
+      // https://www.youtube.com/watch?v=ok0EZ0fBCMA
       float tempMathBlock = b + sign(b) * sqrt(delta);
       float x1 = -2.0 * c / tempMathBlock;
       float x2 = -tempMathBlock / (2.0*a);
@@ -260,9 +255,9 @@ export const frag = /* wgsl */ `
       float stampInterval = u_Stamp.x;
       float noiseFactor = u_Stamp.y;
       float rotationFactor = u_Stamp.z;
-      // int stampMode = int(u_Stamp.w);
-      int stampMode = 1;
 
+      // With the distance to the polyline's first vertex, we can compute a "stamp index" value.
+      // which indicate the number of stamps from the first vertex to current point.
       // We stamp on polyline every time the stamp index comes to an integer.
       float index0 = l0/stampInterval; // The stamp index of vertex0.
       float startIndex, endIndex;
@@ -277,9 +272,10 @@ export const frag = /* wgsl */ `
       endIndex = index1 < backIndex ? index1 : backIndex;
       if(startIndex > endIndex) discard;
 
-      // The main loop to sample and blend color from the footprint.
+      // The main loop to sample and blend color from the footprint, from startIndex to endIndex
       int MAX_i = 128; float currIndex = startIndex;
       float A = 0.0;
+      // vec4 currColor = vec4(0.0,0.0,0.0,1e-10);    // set alpha as 1e-10 to avoid numerical error
       for(int i = 0; i < MAX_i; i++){
           float currStampLocalX = n2x(currIndex - index0);
           // Apply roation and sample the footprint.
@@ -293,17 +289,16 @@ export const frag = /* wgsl */ `
           #ifdef USE_FILLIMAGE
             opacity = texture(SAMPLER_2D(u_Texture), textureCoordinate).a;
           #endif
-
           // Blend opacity.
           float opacityNoise = noiseFactor*fbm(textureCoordinate*50.0);
-          opacity = clamp(opacity - opacityNoise, 0.0, 1.0) * alpha;
+          opacity = clamp(opacity - opacityNoise, 0.0, 1.0) * color.a;
           A = A * (1.0-opacity) + opacity;
 
           currIndex += 1.0;
           if(currIndex > endIndex) break;
       }
       if(A < 1e-4) discard;
-      outputColor = vec4(outputColor.rgb, A);
+      outputColor = vec4(color.rgb, A);
     }
   
     ${wireframe_frag}

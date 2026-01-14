@@ -17,6 +17,7 @@ import DrawArrow from '../components/DrawArrow.vue'
 import Pencil from '../components/Pencil.vue'
 import PencilFreehand from '../components/PencilFreehand.vue'
 import Brush from '../components/Brush.vue'
+import BrushWithStamp from '../components/BrushWithStamp.vue'
 import LaserPointer from '../components/LaserPointer.vue'
 import Eraser from '../components/Eraser.vue'
 </script>
@@ -398,17 +399,52 @@ In order to support variable widths, the stretched distance is not always equal 
 
 ![source: https://shenciao.github.io/brush-rendering-tutorial/Basics/Vanilla/](https://shenciao.github.io/brush-rendering-tutorial/assets/images/var-parameters-9d4c6d7aa31d0f61fd39ba9f69eaae6d.png)
 
+```glsl
+int MAX_i = 128; float currIndex = startIndex;
+float A = 0.0;
+for(int i = 0; i < MAX_i; i++){
+    // Blend opacity
+    A = A * (1.0-opacity) + opacity;
+}
+```
+
 The effect is as follows:
 
 <Brush />
 
 ### Stamp {#stamp}
 
-This doesn't quite work like a real brushstroke.
+This doesn't quite work like a real brushstroke. We add `brushStamp` property for stamp image url, but it just control the opacity of the brush, `stroke` still effects the color.
 
-![source: https://shenciao.github.io/brush-rendering-tutorial/Basics/Stamp/](https://shenciao.github.io/brush-rendering-tutorial/assets/images/stamp-to-stroke-082a5ddd80c45086b810ed8b9ebcea79.gif)
+```ts
+api.updateNodes([
+    {
+        id: '1',
+        type: 'brush',
+        brushType: BrushType.STAMP,
+        brushStamp: '/stamp.png',
+        points: position.map(([x, y], i) => `${x},${y},${radius[i]}`).join(' '),
+        stroke: 'grey',
+    },
+]);
+```
 
-### Export SVG {#export-brush-to-svg}
+<BrushWithStamp />
+
+Currently, all textures are applied in a fixed orientation. We can add random rotation angles to textures:
+
+```glsl
+float angle = rotationFactor*radians(360.0*fract(sin(currIndex)*1.0));
+pToCurrStamp *= rotate(angle);
+```
+
+We can also use noise factor when blend opacity:
+
+```glsl
+float opacityNoise = noiseFactor*fbm(textureCoordinate*50.0);
+```
+
+### [WIP] Export SVG {#export-brush-to-svg}
 
 Figma is able to export Brush to SVG.
 

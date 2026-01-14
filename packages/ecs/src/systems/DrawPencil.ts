@@ -164,7 +164,9 @@ export class DrawPencil extends System {
 
       if (input.key === 'Escape') {
         const { brush } = selection;
-        api.updateNode(brush, { visibility: 'hidden' }, false);
+        if (brush) {
+          api.updateNode(brush, { visibility: 'hidden' }, false);
+        }
       }
 
       if (input.pointerUpTrigger) {

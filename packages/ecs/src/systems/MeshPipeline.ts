@@ -478,7 +478,8 @@ export class MeshPipeline extends System {
           entity.has(Polyline) ||
           entity.has(Path) ||
           entity.has(Text) ||
-          entity.has(Rough)
+          entity.has(Rough) ||
+          entity.has(Brush)
         ) {
           safeAddComponent(entity, GeometryDirty);
         }

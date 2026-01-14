@@ -158,6 +158,7 @@ export class Select extends System {
             Text,
             Path,
             Polyline,
+            Brush,
             Visibility,
             ZIndex,
             StrokeAttenuation,

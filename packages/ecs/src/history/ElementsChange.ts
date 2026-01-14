@@ -15,6 +15,7 @@ import {
   isDataUrl,
   isUrl,
   loadImage,
+  deserializeBrushPoints,
 } from '../utils';
 import { API } from '../API';
 import {
@@ -47,6 +48,7 @@ import {
   Embed,
   Editable,
   Filter,
+  Brush,
 } from '../components';
 
 export type SceneElementsMap = Map<SerializedNode['id'], SerializedNode>;
@@ -896,6 +898,8 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
   if (!isNil(points)) {
     if (entity.has(Polyline)) {
       entity.write(Polyline).points = deserializePoints(points);
+    } else if (entity.has(Brush)) {
+      entity.write(Brush).points = deserializeBrushPoints(points);
     }
   }
   if (!isNil(d)) {

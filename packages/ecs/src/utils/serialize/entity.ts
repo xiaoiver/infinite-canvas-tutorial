@@ -1,5 +1,6 @@
 import { Entity } from '@lastolivegames/becsy';
 import {
+  BrushSerializedNode,
   DropShadowAttributes,
   FillAttributes,
   FilterAttributes,
@@ -42,6 +43,7 @@ import {
   Line,
   LockAspectRatio,
   Filter,
+  Brush,
 } from '../../components';
 import { serializePoints } from './points';
 
@@ -161,6 +163,24 @@ export function entityToSerializedNodes(
         decorationThickness: thickness,
       });
     }
+  } else if (entity.has(Brush)) {
+    type = 'brush';
+    const {
+      points,
+      type: brushType,
+      stampInterval,
+      stampMode,
+      stampNoiseFactor,
+      stampRotationFactor,
+    } = entity.read(Brush);
+    Object.assign(attributes as BrushSerializedNode, {
+      points,
+      brushType,
+      stampInterval,
+      stampMode,
+      stampNoiseFactor,
+      stampRotationFactor,
+    });
   } else {
     type = 'g';
   }

@@ -449,7 +449,9 @@ export class DrawRect extends System {
   private hideBrush(api: API, selection: DrawRectSelection) {
     const pen = api.getAppState().penbarSelected;
     const brush = this.getBrush(selection, pen);
-    api.updateNode(brush, { visibility: 'hidden' }, false);
+    if (brush) {
+      api.updateNode(brush, { visibility: 'hidden' }, false);
+    }
     hideLabel(selection.label);
   }
 

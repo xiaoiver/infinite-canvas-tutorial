@@ -300,15 +300,29 @@ export function serializedNodesToEntities(
         serializeRough(attributes as RoughAttributes, entity);
       }
     } else if (type === 'brush') {
-      const { points, brushType, brushStamp } =
-        attributes as BrushSerializedNode;
+      const {
+        points,
+        brushType,
+        brushStamp,
+        stampInterval,
+        stampMode,
+        stampNoiseFactor,
+        stampRotationFactor,
+      } = attributes as BrushSerializedNode;
       entity.insert(
         new Brush({
           points: deserializeBrushPoints(points),
           type: brushType,
+          stampInterval,
+          stampMode,
+          stampNoiseFactor,
+          stampRotationFactor,
         }),
       );
-      loadImage(brushStamp, entity.id());
+
+      if (brushStamp) {
+        loadImage(brushStamp, entity.id());
+      }
     } else if (type === 'path') {
       const { d, fillRule, tessellationMethod } =
         attributes as PathSerializedNode;
