@@ -28,7 +28,7 @@ onMounted(async () => {
       ...api.getAppState(),
       penbarSelected: Pen.SELECT,
       penbarAll: [Pen.HAND, Pen.SELECT],
-      filter: 'noise(0) brightness(1)',
+      filter: 'fxaa() brightness(0.8) noise(0.1)',
     });
 
     api.updateNodes([

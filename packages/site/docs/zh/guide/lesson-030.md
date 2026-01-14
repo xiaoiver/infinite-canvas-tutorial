@@ -212,7 +212,7 @@ builder.pushPass((pass) => {
 
 ```ts
 api.setAppState({
-    filter: 'fxaa() noise(0.6) brightness(0.8)',
+    filter: 'fxaa() brightness(0.8) noise(0.1)',
 });
 ```
 

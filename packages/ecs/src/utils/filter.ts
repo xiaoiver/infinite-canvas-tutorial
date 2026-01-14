@@ -11,8 +11,7 @@ export type Effect =
   | DropShadowEffect
   | BlurEffect
   | NoiseEffect
-  | FXAA
-  | RainEffect;
+  | FXAA;
 
 export interface BrightnessEffect {
   type: 'brightness';
@@ -40,10 +39,6 @@ export interface NoiseEffect {
 
 export interface FXAA {
   type: 'fxaa';
-}
-
-export interface RainEffect {
-  type: 'rain';
 }
 
 /**
@@ -179,8 +174,6 @@ export function parseEffect(filter: string): Effect[] {
       });
     } else if (filter.name === 'noise') {
       effects.push({ type: 'noise', value: parseFloat(filter.params) });
-    } else if (filter.name === 'rain') {
-      effects.push({ type: 'rain' });
     } else if (filter.name === 'fxaa') {
       effects.push({ type: 'fxaa' });
     }

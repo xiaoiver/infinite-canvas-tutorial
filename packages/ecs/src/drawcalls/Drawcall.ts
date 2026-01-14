@@ -577,8 +577,6 @@ export abstract class Drawcall {
     heightInCanvasCoords: number,
     zoomScale: number,
   ) {
-    console.log('render post..');
-
     let resized = false;
     if (this.#filterWidth !== width || this.#filterHeight !== height) {
       this.#filterRenderTarget.destroy();

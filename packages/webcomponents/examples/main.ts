@@ -75,6 +75,7 @@ canvas.addEventListener(Event.READY, async (e) => {
     // snapToPixelGridEnabled: false,
     // snapToPixelGridSize: 0,
     snapToObjectsEnabled: true,
+    filter: 'brightness(0.8) noise(0.1)',
     // penbarDrawSizeLabelVisible: true,
     // checkboardStyle: CheckboardStyle.NONE,
     // penbarSelected: Pen.SELECT,
