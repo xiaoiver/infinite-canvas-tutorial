@@ -1,7 +1,6 @@
+import { getStrokePoints } from 'perfect-freehand';
 import { System } from '@lastolivegames/becsy';
 import { v4 as uuidv4 } from 'uuid';
-import simplify from 'simplify-js';
-import { IPointData } from '@pixi/math';
 import {
   Camera,
   Canvas,
@@ -33,10 +32,13 @@ import {
   Brush,
 } from '../components';
 import { API } from '../API';
-import { BrushSerializedNode, StrokeAttributes } from '../utils/serialize';
+import {
+  BrushSerializedNode,
+  serializeBrushPoints,
+  StrokeAttributes,
+} from '../utils/serialize';
 import { distanceBetweenPoints } from '../utils/matrix';
 import { DRAW_RECT_Z_INDEX } from '../context';
-import { serializePoints } from '../utils/serialize';
 import { isBrowser } from '../utils';
 
 const BRUSH_CURSOR =
@@ -49,8 +51,7 @@ export class DrawBrush extends System {
     number,
     {
       brush: BrushSerializedNode;
-      pointsBeforeSimplify: IPointData[];
-      points: IPointData[];
+      points: { x: number; y: number; radius: number }[];
       lastPointInViewport: [number, number];
     }
   >();
@@ -111,6 +112,7 @@ export class DrawBrush extends System {
 
       const input = canvas.write(Input);
       const cursor = canvas.write(Cursor);
+      const pressure = input.pressure;
 
       cursor.value = BRUSH_CURSOR;
 
@@ -118,7 +120,6 @@ export class DrawBrush extends System {
       if (!selection) {
         this.selections.set(camera.__id, {
           brush: undefined,
-          pointsBeforeSimplify: [],
           points: [],
           lastPointInViewport: [0, 0],
         });
@@ -127,15 +128,14 @@ export class DrawBrush extends System {
 
       // Clear previous points
       if (input.pointerDownTrigger) {
-        selection.pointsBeforeSimplify = [];
         selection.points = [];
-
         const { pointerDownCanvasX, pointerDownCanvasY } = camera.read(
           ComputedCameraControl,
         );
-        selection.pointsBeforeSimplify.push({
+        selection.points.push({
           x: pointerDownCanvasX,
           y: pointerDownCanvasY,
+          radius: pressure,
         });
       }
 
@@ -151,7 +151,7 @@ export class DrawBrush extends System {
         }
 
         api.runAtNextTick(() => {
-          this.handleBrushing(api, x, y, appState.penbarPencil);
+          this.handleBrushing(api, x, y, pressure, appState.penbarBrush);
         });
       });
 
@@ -180,14 +180,9 @@ export class DrawBrush extends System {
           const node: BrushSerializedNode = {
             id: uuidv4(),
             type: 'brush',
+            points: brush.points,
             ...appState.penbarBrush,
           };
-          const points: [number, number][] = selection.points.map((p) => [
-            p.x,
-            p.y,
-          ]);
-
-          node.points = serializePoints(points);
 
           api.setAppState({
             penbarSelected: Pen.SELECT,
@@ -204,11 +199,11 @@ export class DrawBrush extends System {
     api: API,
     viewportX: number,
     viewportY: number,
+    pressure: number,
     defaultDrawParams: Partial<StrokeAttributes>,
   ) {
     const camera = api.getCamera();
     const selection = this.selections.get(camera.__id);
-    const { zoom } = camera.read(ComputedCamera);
 
     const { pointerDownViewportX, pointerDownViewportY } = camera.read(
       ComputedCameraControl,
@@ -229,7 +224,7 @@ export class DrawBrush extends System {
         brush = {
           id: uuidv4(),
           type: 'brush',
-          points: '0,0,0 0,0,0',
+          points: '0,0,0',
           visibility: 'hidden',
           zIndex: DRAW_RECT_Z_INDEX,
           ...defaultDrawParams,
@@ -252,27 +247,28 @@ export class DrawBrush extends System {
           y: viewportY,
         });
 
-        selection.pointsBeforeSimplify.push({ x: cx, y: cy });
+        selection.points.push({
+          x: cx,
+          y: cy,
+          radius: pressure,
+        });
         selection.lastPointInViewport = [viewportX, viewportY];
-
-        // choose tolerance based on the camera zoom level
-        const tolerance = 1 / zoom;
-        selection.points = simplify(selection.pointsBeforeSimplify, tolerance);
-
-        const points: [number, number][] = selection.points.map((p) => [
-          p.x,
-          p.y,
-        ]);
-
-        if (points.length <= 2) {
+        if (selection.points.length <= 1) {
           return;
         }
 
+        const strokePoints = getStrokePoints(selection.points);
         api.updateNode(
           brush,
           {
             visibility: 'visible',
-            points: serializePoints(points),
+            points: serializeBrushPoints(
+              strokePoints.map(({ point, pressure }) => ({
+                x: point[0],
+                y: point[1],
+                radius: pressure * defaultDrawParams.strokeWidth,
+              })),
+            ),
             ...defaultDrawParams,
           },
           false,

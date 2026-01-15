@@ -319,13 +319,13 @@ pnpm run dev
 
 -   图形绘制模式：通过拖拽绘制矩形、椭圆、直线和箭头
 -   铅笔模式，支持自由可变线宽
--   笔刷模式：绘制折线
+-   笔刷模式：绘制折线、贴图
 -   橡皮擦工具，尝试支持非原子化效果
 -   用于演示的激光笔工具
 
-|                Draw rect mode                 |                 Draw arrow                  |
-| :-------------------------------------------: | :-----------------------------------------: |
-| ![draw rect mode](./screenshots/lesson25.gif) | ![draw arrow](./screenshots/lesson25-3.gif) |
+|                Draw rect mode                 |                 Draw arrow                  |                 Brush                  |
+| :-------------------------------------------: | :-----------------------------------------: | :------------------------------------: |
+| ![draw rect mode](./screenshots/lesson25.gif) | ![draw arrow](./screenshots/lesson25-3.gif) | ![brush](./screenshots/lesson25-6.gif) |
 
 |                 Pencil tool                  |          Pencil tool with freehand           |                    Eraser                    |
 | :------------------------------------------: | :------------------------------------------: | :------------------------------------------: |

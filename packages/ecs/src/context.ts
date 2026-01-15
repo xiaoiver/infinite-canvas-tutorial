@@ -247,13 +247,13 @@ export const getDefaultAppState: () => AppState = () => {
     },
     penbarBrush: {
       brushType: BrushType.STAMP,
-      brushStamp: '/stamp.png',
+      brushStamp: '/stamp1.png',
       stampInterval: 0.4,
       stampMode: StampMode.RATIO_DISTANCE,
       stampNoiseFactor: 0.4,
       stampRotationFactor: 0.75,
       stroke: TRANSFORMER_ANCHOR_STROKE_COLOR,
-      strokeWidth: 1,
+      strokeWidth: 20,
       strokeOpacity: 1,
     },
     penbarText: {

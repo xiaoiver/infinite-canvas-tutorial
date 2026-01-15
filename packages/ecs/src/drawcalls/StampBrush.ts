@@ -52,37 +52,10 @@ export class StampBrush extends Drawcall {
   get instanceCount() {
     const instance = this.shapes[0];
     const { points } = instance.read(Brush);
-    return points.length - 1;
+    return points.length;
   }
 
-  validate(shape: Entity) {
-    const result = super.validate(shape);
-    if (!result) {
-      return false;
-    }
-
-    if (this.shapes.length === 0) {
-      return true;
-    }
-
-    if (
-      this.shapes[0].read(Brush).points.length !==
-      shape.read(Brush).points.length
-    ) {
-      return false;
-    }
-
-    const isInstanceFillImage = this.shapes[0].has(FillImage);
-    const isShapeFillImage = shape.has(FillImage);
-
-    if (isInstanceFillImage !== isShapeFillImage) {
-      return false;
-    }
-
-    if (isInstanceFillImage && isShapeFillImage) {
-      return this.shapes[0].read(FillImage).src === shape.read(FillImage).src;
-    }
-
+  validate(_: Entity) {
     return true;
   }
 

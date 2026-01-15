@@ -53,7 +53,7 @@ onMounted(async () => {
 
     api.updateNodes([
       {
-        id: '1',
+        id: 'brush-1',
         type: 'brush',
         points: position.map(([x, y], i) => `${x},${y},${radius[i]}`).join(' '),
         brushType: BrushType.VANILLA,
