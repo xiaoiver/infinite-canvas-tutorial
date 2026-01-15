@@ -12,9 +12,9 @@ import {
 } from '../../ecs';
 import { Event, UIPlugin } from '../src';
 import '../src/spectrum';
-import { LaserPointerPlugin } from '../../plugin-laser-pointer';
-import { EraserPlugin } from '../../plugin-eraser';
-import { LassoPlugin } from '../../plugin-lasso';
+import { LaserPointerPlugin } from '../../plugin-laser-pointer/src';
+import { EraserPlugin } from '../../plugin-eraser/src';
+import { LassoPlugin } from '../../plugin-lasso/src';
 import '../../plugin-laser-pointer/src/spectrum';
 import '../../plugin-eraser/src/spectrum';
 import '../../plugin-lasso/src/spectrum';

@@ -275,7 +275,6 @@ export const frag = /* wgsl */ `
       // The main loop to sample and blend color from the footprint, from startIndex to endIndex
       int MAX_i = 128; float currIndex = startIndex;
       float A = 0.0;
-      // vec4 currColor = vec4(0.0,0.0,0.0,1e-10);    // set alpha as 1e-10 to avoid numerical error
       for(int i = 0; i < MAX_i; i++){
           float currStampLocalX = n2x(currIndex - index0);
           // Apply roation and sample the footprint.

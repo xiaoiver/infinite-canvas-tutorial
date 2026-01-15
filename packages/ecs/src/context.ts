@@ -1,9 +1,17 @@
-import { Pen, CheckboardStyle, Theme, ThemeMode } from './components';
+import {
+  Pen,
+  CheckboardStyle,
+  Theme,
+  ThemeMode,
+  BrushType,
+  StampMode,
+} from './components';
 import {
   TRANSFORMER_ANCHOR_STROKE_COLOR,
   TRANSFORMER_MASK_FILL_COLOR,
 } from './systems/RenderTransformer';
 import {
+  BrushAttributes,
   FillAttributes,
   MarkerAttributes,
   RoughAttributes,
@@ -54,6 +62,7 @@ export interface AppState {
       freehand: boolean;
     }
   >;
+  penbarBrush: Partial<BrushAttributes & StrokeAttributes>;
   penbarText: Partial<
     TextSerializedNode & {
       fontFamilies: string[];
@@ -165,7 +174,7 @@ export const getDefaultAppState: () => AppState = () => {
       Pen.IMAGE,
       Pen.TEXT,
       Pen.PENCIL,
-      // Pen.BRUSH,
+      Pen.BRUSH,
       Pen.ERASER,
       // Pen.VECTOR_NETWORK,
       Pen.COMMENT,
@@ -232,6 +241,17 @@ export const getDefaultAppState: () => AppState = () => {
     },
     penbarPencil: {
       fill: 'none',
+      stroke: TRANSFORMER_ANCHOR_STROKE_COLOR,
+      strokeWidth: 1,
+      strokeOpacity: 1,
+    },
+    penbarBrush: {
+      brushType: BrushType.STAMP,
+      brushStamp: '/stamp.png',
+      stampInterval: 0.4,
+      stampMode: StampMode.RATIO_DISTANCE,
+      stampNoiseFactor: 0.4,
+      stampRotationFactor: 0.75,
       stroke: TRANSFORMER_ANCHOR_STROKE_COLOR,
       strokeWidth: 1,
       strokeOpacity: 1,

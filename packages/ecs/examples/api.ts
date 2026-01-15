@@ -22,6 +22,7 @@ import {
   Wireframe,
   Opacity,
   Visibility,
+  ZIndex,
   Canvas,
   system,
   PreStartUp,
@@ -32,6 +33,7 @@ import {
   FillGradient,
   Selected,
   RectSerializedNode,
+  ComputeZIndex,
 } from '../src';
 import { Task } from '../src/context';
 
@@ -49,6 +51,7 @@ resize(window.innerWidth, window.innerHeight);
 
 const MyPlugin = () => {
   system(PreStartUp)(StartUpSystem);
+  system((s) => s.before(ComputeZIndex))(StartUpSystem);
 };
 
 class StartUpSystem extends System {
@@ -78,6 +81,7 @@ class StartUpSystem extends System {
         Wireframe,
         Opacity,
         Visibility,
+        ZIndex,
         Name,
         Selected,
       ).write,

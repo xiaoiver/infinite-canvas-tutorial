@@ -24,6 +24,7 @@ import {
   Wireframe,
   Opacity,
   Visibility,
+  ZIndex,
   Canvas,
   system,
   PreStartUp,
@@ -78,6 +79,7 @@ class StartUpSystem extends System {
         Wireframe,
         Opacity,
         Visibility,
+        ZIndex,
       ).write,
   );
 

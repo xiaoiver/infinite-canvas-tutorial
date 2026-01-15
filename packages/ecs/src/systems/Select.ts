@@ -745,12 +745,16 @@ export class Select extends System {
           selection.brushContainer.style.position = 'absolute';
           selection.snapContainer.style.overflow = 'visible';
           selection.snapContainer.style.position = 'absolute';
-          api.getSvgLayer().appendChild(selection.brushContainer);
-          api.getSvgLayer().appendChild(selection.snapContainer);
 
-          const { label } = selection;
-          initLabel(label);
-          api.getSvgLayer().appendChild(selection.label);
+          const $svgLayer = api.getSvgLayer();
+          if ($svgLayer) {
+            $svgLayer.appendChild(selection.brushContainer);
+            $svgLayer.appendChild(selection.snapContainer);
+
+            const { label } = selection;
+            initLabel(label);
+            $svgLayer.appendChild(selection.label);
+          }
         }
       }
 

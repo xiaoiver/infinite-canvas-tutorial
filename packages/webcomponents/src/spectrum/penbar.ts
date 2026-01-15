@@ -394,6 +394,19 @@ export class Penbar extends LitElement {
               </overlay-trigger>
             `,
           )}
+          ${when(
+            penbarAll.includes(Pen.BRUSH),
+            () => html`
+              <overlay-trigger placement="right">
+                <sp-action-button value="${Pen.BRUSH}" slot="trigger">
+                  <sp-icon-brush slot="icon"></sp-icon-brush>
+                  <sp-tooltip self-managed placement="right">
+                    ${msg(str`Brush`)}
+                  </sp-tooltip>
+                </sp-action-button>
+              </overlay-trigger>
+            `,
+          )}
           <slot name="penbar-item"></slot>
         </sp-action-group>
       `,
