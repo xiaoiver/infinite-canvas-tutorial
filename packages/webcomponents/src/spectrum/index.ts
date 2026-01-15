@@ -8,6 +8,7 @@ export * from './layer-thumbnail';
 export * from './layer-name';
 export * from './penbar';
 export * from './penbar-pencil-settings';
+export * from './penbar-brush-settings';
 export * from './penbar-draw-settings';
 export * from './penbar-text-settings';
 export * from './properties-panel-content';

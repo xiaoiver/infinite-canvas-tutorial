@@ -404,6 +404,9 @@ export class Penbar extends LitElement {
                     ${msg(str`Brush`)}
                   </sp-tooltip>
                 </sp-action-button>
+                <sp-popover slot="hover-content" style="padding: 8px;">
+                  <ic-spectrum-penbar-brush-settings></ic-spectrum-penbar-brush-settings>
+                </sp-popover>
               </overlay-trigger>
             `,
           )}

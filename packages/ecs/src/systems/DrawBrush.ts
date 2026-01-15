@@ -32,11 +32,7 @@ import {
   Brush,
 } from '../components';
 import { API } from '../API';
-import {
-  BrushSerializedNode,
-  serializeBrushPoints,
-  StrokeAttributes,
-} from '../utils/serialize';
+import { BrushSerializedNode, serializeBrushPoints } from '../utils/serialize';
 import { distanceBetweenPoints } from '../utils/matrix';
 import { DRAW_RECT_Z_INDEX } from '../context';
 import { isBrowser } from '../utils';
@@ -151,7 +147,7 @@ export class DrawBrush extends System {
         }
 
         api.runAtNextTick(() => {
-          this.handleBrushing(api, x, y, pressure, appState.penbarBrush);
+          this.handleBrushing(api, x, y, pressure);
         });
       });
 
@@ -200,10 +196,10 @@ export class DrawBrush extends System {
     viewportX: number,
     viewportY: number,
     pressure: number,
-    defaultDrawParams: Partial<StrokeAttributes>,
   ) {
     const camera = api.getCamera();
     const selection = this.selections.get(camera.__id);
+    const defaultDrawParams = api.getAppState().penbarBrush;
 
     const { pointerDownViewportX, pointerDownViewportY } = camera.read(
       ComputedCameraControl,
