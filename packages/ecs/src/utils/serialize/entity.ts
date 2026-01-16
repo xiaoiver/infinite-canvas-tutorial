@@ -1,5 +1,6 @@
 import { Entity } from '@lastolivegames/becsy';
 import {
+  AttenuationAttributes,
   BrushSerializedNode,
   DropShadowAttributes,
   FillAttributes,
@@ -44,6 +45,8 @@ import {
   LockAspectRatio,
   Filter,
   Brush,
+  StrokeAttenuation,
+  SizeAttenuation,
 } from '../../components';
 import { serializePoints } from './points';
 
@@ -259,6 +262,13 @@ export function entityToSerializedNodes(
 
   if (entity.has(Filter)) {
     (attributes as FilterAttributes).filter = entity.read(Filter).value;
+  }
+
+  if (entity.has(SizeAttenuation)) {
+    (attributes as AttenuationAttributes).sizeAttenuation = true;
+  }
+  if (entity.has(StrokeAttenuation)) {
+    (attributes as AttenuationAttributes).strokeAttenuation = true;
   }
 
   // serialize transform

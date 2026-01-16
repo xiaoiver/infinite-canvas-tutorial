@@ -285,6 +285,8 @@ export function serializeNodesToSVGElements(
       markerEnd,
       markerFactor,
       filter,
+      sizeAttenuation,
+      strokeAttenuation,
       ...rest
     } = restAttributes as SerializedNodeAttributes;
 
@@ -365,6 +367,13 @@ export function serializeNodesToSVGElements(
 
     if (textBaseline) {
       element.setAttribute('dominant-baseline', BASELINE_MAP[textBaseline]);
+    }
+
+    if (sizeAttenuation) {
+      element.setAttribute('vector-effect', 'non-scaling-size');
+    }
+    if (strokeAttenuation) {
+      element.setAttribute('vector-effect', 'non-scaling-stroke');
     }
 
     const innerStrokeAlignment = strokeAlignment === 'inner';

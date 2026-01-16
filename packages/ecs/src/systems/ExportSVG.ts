@@ -35,8 +35,9 @@ import {
   Marker,
   Line,
   LockAspectRatio,
-  AABB,
   Filter,
+  SizeAttenuation,
+  StrokeAttenuation,
 } from '../components';
 import { DOMAdapter } from '../environment';
 import {
@@ -117,6 +118,8 @@ export class ExportSVG extends System {
             Marker,
             LockAspectRatio,
             Filter,
+            SizeAttenuation,
+            StrokeAttenuation,
           )
           .read.and.using(Screenshot, VectorScreenshotRequest).write,
     );
@@ -143,7 +146,7 @@ export class ExportSVG extends System {
   private toSVG(canvas: Entity, options: Partial<SVGOptions> = {}) {
     const { grid: gridEnabled, nodes, padding = 0 } = options;
     const { cameras, api } = canvas.read(Canvas);
-    let { width, height } = canvas.read(Canvas);
+    const { width, height } = canvas.read(Canvas);
     const { mode, colors } = canvas.read(Theme);
     const { checkboardStyle } = canvas.read(Grid);
     const { grid: gridColor, background: backgroundColor } = colors[mode];
@@ -296,9 +299,8 @@ export function toSVGElement(
 ) {
   const $namespace = createSVGElement('svg');
 
-  let bounds: AABB;
   // Get bounds of nodes.
-  bounds = api.getBounds(nodes);
+  const bounds = api.getBounds(nodes);
   const width = bounds.maxX - bounds.minX;
   const height = bounds.maxY - bounds.minY;
   $namespace.setAttribute('width', `${width}`);

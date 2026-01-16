@@ -251,7 +251,10 @@ gl_Position = vec4((u_ProjectionMatrix
 
 ### 导出 SVG {#export-svg}
 
-由于该属性与相机缩放相关，因此在导出 SVG 时需要额外处理，暂不支持。
+由于该属性与相机缩放相关，因此在导出 SVG 时需要额外处理，好在 SVG 中支持 [vector-effect] 属性：
+
+-   `non-scaling-size` 对应 `sizeAttenuation`，但浏览器并没有实现
+-   `non-scaling-stroke` 对应 `strokeAttenuation`
 
 ## 画布模式 {#canvas-mode}
 
@@ -558,3 +561,4 @@ const { rgb, opacity } = rgbaToRgbAndOpacity(strokeAndOpacity); // with d3-color
 [Drag'n'Drop with mouse events]: https://javascript.info/mouse-drag-and-drop
 [Drawer - Contained to an Element]: https://shoelace.style/components/drawer#contained-to-an-element
 [sl-color-picker]: https://shoelace.style/components/color-picker
+[vector-effect]: https://developer.mozilla.org/en-US/docs/Web/SVG/Reference/Attribute/vector-effect

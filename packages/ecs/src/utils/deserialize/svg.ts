@@ -11,6 +11,7 @@ import {
   SerializedNode,
   fixTransform,
   TextSerializedNode,
+  AttenuationAttributes,
 } from '../serialize';
 import { deserializePoints } from './points';
 
@@ -262,6 +263,14 @@ export function svgElementsToSerializedNodes(
       const visibility = element.getAttribute('visibility');
       if (visibility) {
         attributes.visibility = visibility as Visibility['value'];
+      }
+
+      const vectorEffect = element.getAttribute('vector-effect');
+      if (vectorEffect) {
+        (attributes as AttenuationAttributes).sizeAttenuation =
+          vectorEffect === 'non-scaling-size';
+        (attributes as AttenuationAttributes).strokeAttenuation =
+          vectorEffect === 'non-scaling-stroke';
       }
 
       attributes.name =

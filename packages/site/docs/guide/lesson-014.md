@@ -255,7 +255,10 @@ gl_Position = vec4((u_ProjectionMatrix
 
 ### Exporting SVG {#export-svg}
 
-Since this property is related to camera zooming, additional processing is required when exporting SVG, which is not supported for now.
+Since this property is related to camera zooming, additional processing is required when exporting SVG, which provides [vector-effect]:
+
+-   `non-scaling-size` -> `sizeAttenuation`, but these have no implementations and are considered at-risk.
+-   `non-scaling-stroke` -> `strokeAttenuation`
 
 ## Canvas mode {#canvas-mode}
 
@@ -609,3 +612,4 @@ Of course, there are many functions that need to be implemented under the select
 [Drag'n'Drop with mouse events]: https://javascript.info/mouse-drag-and-drop
 [Drawer - Contained to an Element]: https://shoelace.style/components/drawer#contained-to-an-element
 [sl-color-picker]: https://shoelace.style/components/color-picker
+[vector-effect]: https://developer.mozilla.org/en-US/docs/Web/SVG/Reference/Attribute/vector-effect
