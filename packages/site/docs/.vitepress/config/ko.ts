@@ -405,6 +405,10 @@ export const ko = defineConfig({
                     link: 'pencil-freehand',
                   },
                   {
+                    text: '붓 도구',
+                    link: 'brush-with-stamp',
+                  },
+                  {
                     text: '레이저 포인터',
                     link: 'laser-pointer',
                   },

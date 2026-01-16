@@ -330,6 +330,38 @@
   <source>Style</source>
   <target>Estilo</target>
 </trans-unit>
+<trans-unit id="sf9caa9d2834ca145">
+  <source>Add effect</source>
+  <target>Agregar efecto</target>
+</trans-unit>
+<trans-unit id="s3432f264e3842154">
+  <source>Brush settings</source>
+  <target>Configuración de la brocha</target>
+</trans-unit>
+<trans-unit id="s907beeab990a87fd">
+  <source>Stamp interval</source>
+  <target>Intervalo de la estampa</target>
+</trans-unit>
+<trans-unit id="sc5a8d5d810289b4d">
+  <source>Stamp noise factor</source>
+  <target>Factor de ruido de la estampa</target>
+</trans-unit>
+<trans-unit id="s523c7cbcb15f81f9">
+  <source>Stamp rotation factor</source>
+  <target>Factor de rotación de la estampa</target>
+</trans-unit>
+<trans-unit id="sdb2935f115d362c8">
+  <source>Rough Line</source>
+  <target>Línea aproximada</target>
+</trans-unit>
+<trans-unit id="sc68faf840d65e073">
+  <source>Brush</source>
+  <target>Brocha</target>
+</trans-unit>
+<trans-unit id="sd004bbafa47097e5">
+  <source>Effects</source>
+  <target>Efectos</target>
+</trans-unit>
 </body>
 </file>
 </xliff>

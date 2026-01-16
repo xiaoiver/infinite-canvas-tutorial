@@ -51,20 +51,21 @@ onMounted(async () => {
       radius.push(r);
     }
 
+    const node = {
+      id: '1',
+      type: 'brush',
+      // brushType: BrushType.VANILLA,
+      brushType: BrushType.STAMP,
+      brushStamp: '/stamp1.png',
+      stampInterval: 0.4,
+      // brushStamp: '/brush.jpg',
+      points: position.map(([x, y], i) => `${x},${y},${radius[i]}`).join(' '),
+      stroke: 'red',
+      strokeWidth: 10,
+      strokeOpacity: 1,
+    };
     api.updateNodes([
-      {
-        id: '1',
-        type: 'brush',
-        // brushType: BrushType.VANILLA,
-        brushType: BrushType.STAMP,
-        brushStamp: '/stamp1.png',
-        stampInterval: 0.4,
-        // brushStamp: '/brush.jpg',
-        points: position.map(([x, y], i) => `${x},${y},${radius[i]}`).join(' '),
-        stroke: 'red',
-        strokeWidth: 10,
-        strokeOpacity: 1,
-      },
+      node,
     ]);
   };
 

@@ -9,6 +9,7 @@ import DrawEllipse from '../../components/DrawEllipse.vue';
 import DrawArrow from '../../components/DrawArrow.vue';
 import Pencil from '../../components/Pencil.vue';
 import PencilFreehand from '../../components/PencilFreehand.vue';
+import BrushWithStamp from '../../components/BrushWithStamp.vue';
 </script>
 
 画笔工具提供一系列绘制相关的功能，可以通过 AppState 控制画笔工具的状态：
@@ -204,6 +205,24 @@ strokeOpacity: 1,
 详见：[Perfect freehand]
 
 <PencilFreehand />
+
+## penbarBrush
+
+Stamp 贴图提供透明度，默认值为：
+
+```ts
+brushType: BrushType.STAMP, // BrushType.VANILLA 纯色模式
+brushStamp: '/stamp1.png',
+stampMode: StampMode.RATIO_DISTANCE, // 贴图模式，按比例
+stampInterval: 0.4, // 控制间隔比例
+stampNoiseFactor: 0.4, // 每个 stamp 的随机影响因子
+stampRotationFactor: 0.75, // 每个 stamp 的旋转影响因子
+stroke: TRANSFORMER_ANCHOR_STROKE_COLOR,
+strokeWidth: 20,
+strokeOpacity: 1,
+```
+
+<BrushWithStamp />
 
 [加载 Web 字体]: /zh/guide/lesson-016#load-web-font
 [Perfect freehand]: /zh/guide/lesson-025#perfect-freehand

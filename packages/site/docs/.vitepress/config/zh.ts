@@ -347,6 +347,10 @@ export const zh = defineConfig({
                     link: 'pencil-freehand',
                   },
                   {
+                    text: '画笔工具',
+                    link: 'brush-with-stamp',
+                  },
+                  {
                     text: '激光笔工具',
                     link: 'laser-pointer',
                   },

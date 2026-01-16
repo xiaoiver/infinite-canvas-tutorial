@@ -9,6 +9,7 @@ import DrawEllipse from '../components/DrawEllipse.vue';
 import DrawArrow from '../components/DrawArrow.vue';
 import Pencil from '../components/Pencil.vue';
 import PencilFreehand from '../components/PencilFreehand.vue';
+import BrushWithStamp from '../components/BrushWithStamp.vue';
 </script>
 
 The Brush Tool offers a range of drawing-related functions. Its state can be controlled via AppState:
@@ -204,6 +205,24 @@ strokeOpacity: 1,
 see: [Perfect freehand]
 
 <PencilFreehand />
+
+## penbarBrush
+
+Apply opacity with stamp. The default style is as follows:
+
+```ts
+brushType: BrushType.STAMP, // BrushType.VANILLA
+brushStamp: '/stamp1.png',
+stampMode: StampMode.RATIO_DISTANCE, // 贴图模式，按比例
+stampInterval: 0.4,
+stampNoiseFactor: 0.4,
+stampRotationFactor: 0.75,
+stroke: TRANSFORMER_ANCHOR_STROKE_COLOR,
+strokeWidth: 20,
+strokeOpacity: 1,
+```
+
+<BrushWithStamp />
 
 [Loading Web Fonts]: /zh/guide/lesson-016#load-web-font
 [Perfect freehand]: /zh/guide/lesson-025#perfect-freehand

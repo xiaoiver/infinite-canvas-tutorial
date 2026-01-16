@@ -330,6 +330,38 @@
   <source>Style</source>
   <target>样式</target>
 </trans-unit>
+<trans-unit id="sf9caa9d2834ca145">
+  <source>Add effect</source>
+  <target>添加效果</target>
+</trans-unit>
+<trans-unit id="s3432f264e3842154">
+  <source>Brush settings</source>
+  <target>画笔设置</target>
+</trans-unit>
+<trans-unit id="s907beeab990a87fd">
+  <source>Stamp interval</source>
+  <target>贴图间隔</target>
+</trans-unit>
+<trans-unit id="sc5a8d5d810289b4d">
+  <source>Stamp noise factor</source>
+  <target>贴图噪点因子</target>
+</trans-unit>
+<trans-unit id="s523c7cbcb15f81f9">
+  <source>Stamp rotation factor</source>
+  <target>贴图旋转因子</target>
+</trans-unit>
+<trans-unit id="sdb2935f115d362c8">
+  <source>Rough Line</source>
+  <target>手绘线条</target>
+</trans-unit>
+<trans-unit id="sc68faf840d65e073">
+  <source>Brush</source>
+  <target>画笔</target>
+</trans-unit>
+<trans-unit id="sd004bbafa47097e5">
+  <source>Effects</source>
+  <target>效果</target>
+</trans-unit>
 </body>
 </file>
 </xliff>

@@ -75,6 +75,8 @@ export class PenbarBrushSettings extends LitElement {
     this.api.record();
   }
 
+  private handleStampChanged(e: Event & { target: HTMLInputElement }) {}
+
   render() {
     const { penbarBrush, theme } = this.appState;
 
@@ -92,6 +94,24 @@ export class PenbarBrushSettings extends LitElement {
           (color) => html` <sp-swatch color=${color} size="s"></sp-swatch> `,
         )}
       </sp-swatch-group>
+
+      <div class="line">
+        <sp-picker
+          style="width: 100%; margin-bottom: 4px; margin-top: 4px;"
+          label=${msg(str`Stamp`)}
+          value=${penbarBrush.stamp}
+          @change=${this.handleStampChanged}
+          id="font-family"
+        >
+          ${penbarBrush.stamps.map(
+            (stamp) =>
+              html`<sp-menu-item value=${stamp}>
+                <img src=${stamp} style="width: 20px; height: 20px;" />
+                ${stamp}
+              </sp-menu-item>`,
+          )}
+        </sp-picker>
+      </div>
       <div class="line" style="display: flex; align-items: center;">
         <sp-slider
           style="flex: 1;"

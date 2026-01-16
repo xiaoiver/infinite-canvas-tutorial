@@ -402,6 +402,10 @@ export const en = defineConfig({
                     link: 'pencil-freehand',
                   },
                   {
+                    text: 'Brush tool',
+                    link: 'brush-with-stamp',
+                  },
+                  {
                     text: 'Laser pointer tool',
                     link: 'laser-pointer',
                   },

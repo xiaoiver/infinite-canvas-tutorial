@@ -62,7 +62,13 @@ export interface AppState {
       freehand: boolean;
     }
   >;
-  penbarBrush: Partial<BrushAttributes & StrokeAttributes>;
+  penbarBrush: Partial<
+    BrushAttributes &
+      StrokeAttributes & {
+        stamps: { src: string; name: string; preview: string }[];
+        stamp: string;
+      }
+  >;
   penbarText: Partial<
     TextSerializedNode & {
       fontFamilies: string[];
@@ -246,6 +252,19 @@ export const getDefaultAppState: () => AppState = () => {
       strokeOpacity: 1,
     },
     penbarBrush: {
+      stamps: [
+        {
+          src: '/stamp1.png',
+          name: 'Stamp 1',
+          preview: '/stamp1.png',
+        },
+        {
+          src: '/stamp2.png',
+          name: 'Stamp 2',
+          preview: '/stamp2.png',
+        },
+      ],
+      stamp: '/stamp1.png',
       brushType: BrushType.STAMP,
       brushStamp: '/stamp1.png',
       stampInterval: 0.4,
