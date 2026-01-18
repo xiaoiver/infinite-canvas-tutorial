@@ -32,7 +32,7 @@ export declare type ExcalidrawLinearElement = _ExcalidrawElementBase &
     }>;
 ```
 
-如上所示，每条箭头具有可选的 `startBinding` 和 `endBinding` 字段（类型 `PointBinding` 或 `null`），以及起止箭头样式（`startArrowhead/endArrowhead`）。`PointBinding` 中的 `elementId` 指向被连接的图形（可绑定元素，如矩形、椭圆、文本、图片等），`focus` 和 `gap` 则用于定位连接点（一个浮点索引和偏移距离）。例如，下面是一个箭头元素在 JSON 中的示例：
+如上所示，每条箭头具有可选的 `startBinding` 和 `endBinding` 字段，它们与 `points` 处在不同的语义层级，前者为语义约束，而后者 `points` 为几何表示，当两者同时存在时，`points` 需要被重新计算。以及起止箭头样式（`startArrowhead/endArrowhead`）。`PointBinding` 中的 `elementId` 指向被连接的图形（可绑定元素，如矩形、椭圆、文本、图片等），`focus` 和 `gap` 则用于定位连接点（一个浮点索引和偏移距离）。例如，下面是一个箭头元素在 JSON 中的示例：
 
 ```ts
 {

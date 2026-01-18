@@ -89,17 +89,25 @@ canvas.addEventListener(Event.READY, async (e) => {
     // filter: 'noise(0.5)',
   });
 
-  // const node1 = {
-  //   id: 'rect-1',
-  //   type: 'rect',
-  //   x: 0,
-  //   y: 0,
-  //   width: 200,
-  //   height: 200,
-  //   // fill: 'grey',
-  //   fill: 'https://v3b.fal.media/files/b/tiger/v1lf1EcPP1X1pw_YOKM4o.jpg',
-  //   // filter: 'noise(0.5)',
-  // };
+  const node1 = {
+    id: 'rect-1',
+    type: 'rect',
+    x: 0,
+    y: 0,
+    width: 200,
+    height: 200,
+    fill: 'grey',
+    // fill: 'https://v3b.fal.media/files/b/tiger/v1lf1EcPP1X1pw_YOKM4o.jpg',
+    // filter: 'noise(0.5)',
+  };
+  const node2 = {
+    type: 'line',
+    fromId: 'rect-1',
+    toId: 'rect-2',
+    stroke: 'black',
+    strokeWidth: 10,
+    markerEnd: 'line',
+  };
   // const node2 = {
   //   id: 'text-1',
   //   type: 'text',
@@ -111,15 +119,15 @@ canvas.addEventListener(Event.READY, async (e) => {
   //   fontSize: 30,
   //   fontFamily: 'system-ui',
   // };
-  // const node3 = {
-  //   id: 'rect-2',
-  //   type: 'rect',
-  //   x: 100,
-  //   y: 100,
-  //   width: 200,
-  //   height: 200,
-  //   fill: 'red',
-  // };
+  const node3 = {
+    id: 'rect-2',
+    type: 'rect',
+    x: 300,
+    y: 200,
+    width: 200,
+    height: 200,
+    fill: 'red',
+  };
 
   // const node4 = {
   //   id: 'rect-3',
@@ -131,43 +139,43 @@ canvas.addEventListener(Event.READY, async (e) => {
   //   fill: 'green',
   // };
 
-  // Generate sinewave geometry
-  const maxRadius = (1 / 3) * 100;
-  const segmentCount = 32;
+  // // Generate sinewave geometry
+  // const maxRadius = (1 / 3) * 100;
+  // const segmentCount = 32;
 
-  const position: [number, number][] = [];
-  const radius: number[] = [];
+  // const position: [number, number][] = [];
+  // const radius: number[] = [];
 
-  const gr = (1 + Math.sqrt(5)) / 2; // golden ratio
-  const pi = Math.PI;
+  // const gr = (1 + Math.sqrt(5)) / 2; // golden ratio
+  // const pi = Math.PI;
 
-  for (let i = 0; i <= segmentCount; ++i) {
-    let a = i / segmentCount;
-    let x = -pi + 2 * pi * a;
-    let y = Math.sin(x) / gr;
-    let r = Math.cos(x / 2.0) * maxRadius;
+  // for (let i = 0; i <= segmentCount; ++i) {
+  //   let a = i / segmentCount;
+  //   let x = -pi + 2 * pi * a;
+  //   let y = Math.sin(x) / gr;
+  //   let r = Math.cos(x / 2.0) * maxRadius;
 
-    position.push([x * 100 + 360, y * 100 + 120]);
-    radius.push(r);
-  }
+  //   position.push([x * 100 + 360, y * 100 + 120]);
+  //   radius.push(r);
+  // }
 
-  api.updateNodes([
-    {
-      id: '1',
-      type: 'brush',
-      // brushType: BrushType.VANILLA,
-      brushType: BrushType.STAMP,
-      brushStamp: '/stamp1.png',
-      stampInterval: 0.4,
-      // brushStamp: '/brush.jpg',
-      points: position.map(([x, y], i) => `${x},${y},${radius[i]}`).join(' '),
-      stroke: 'red',
-      strokeWidth: 10,
-      strokeOpacity: 1,
-    },
-  ]);
+  // api.updateNodes([
+  //   {
+  //     id: '1',
+  //     type: 'brush',
+  //     // brushType: BrushType.VANILLA,
+  //     brushType: BrushType.STAMP,
+  //     brushStamp: '/stamp1.png',
+  //     stampInterval: 0.4,
+  //     // brushStamp: '/brush.jpg',
+  //     points: position.map(([x, y], i) => `${x},${y},${radius[i]}`).join(' '),
+  //     stroke: 'red',
+  //     strokeWidth: 10,
+  //     strokeOpacity: 1,
+  //   },
+  // ]);
 
-  // api.updateNodes([node1, node3, node4]);
+  api.updateNodes([node1, node3, node2]);
   // api.updateNode(node1);
   // api.record();
 });

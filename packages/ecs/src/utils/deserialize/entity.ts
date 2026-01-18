@@ -77,7 +77,9 @@ import { safeAddComponent } from '../../history';
 export function inferXYWidthHeight(node: SerializedNode) {
   const { type } = node;
   let bounds: AABB;
-  if (type === 'ellipse') {
+  if (type === 'rect') {
+    bounds = Rect.getGeometryBounds(node);
+  } else if (type === 'ellipse') {
     bounds = Ellipse.getGeometryBounds(node);
   } else if (type === 'polyline' || type === 'rough-polyline') {
     bounds = Polyline.getGeometryBounds(node);
@@ -133,6 +135,27 @@ export function inferXYWidthHeight(node: SerializedNode) {
   }
 
   return node;
+}
+
+export function inferPointsWithFromIdAndToId(
+  from: SerializedNode,
+  to: SerializedNode,
+  attributes: LineSerializedNode,
+) {
+  inferXYWidthHeight(from);
+  inferXYWidthHeight(to);
+  const startBinding = {
+    x: from.x + from.width / 2,
+    y: from.y + from.height / 2,
+  };
+  const endBinding = {
+    x: to.x + to.width / 2,
+    y: to.y + to.height / 2,
+  };
+  attributes.x1 = startBinding.x;
+  attributes.y1 = startBinding.y;
+  attributes.x2 = endBinding.x;
+  attributes.y2 = endBinding.y;
 }
 
 export async function loadImage(url: string, entity: Entity) {
@@ -227,6 +250,23 @@ export function serializedNodesToEntities(
 
     const entity = commands.spawn();
     idEntityMap.set(id, entity);
+
+    // Infer points with fromId and toId first
+    if (type === 'line') {
+      const { fromId, toId } = attributes as LineSerializedNode;
+      if (fromId && toId) {
+        // TODO: lazy serialize the nodes
+        const fromNode = nodes.find((node) => node.id === fromId);
+        const toNode = nodes.find((node) => node.id === toId);
+        if (fromNode && toNode) {
+          inferPointsWithFromIdAndToId(
+            fromNode,
+            toNode,
+            attributes as LineSerializedNode,
+          );
+        }
+      }
+    }
 
     // Make sure the entity has a width and height
     if (
