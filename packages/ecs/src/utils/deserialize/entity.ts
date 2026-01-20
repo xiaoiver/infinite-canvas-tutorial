@@ -37,6 +37,8 @@ import {
   HTMLContainer,
   Embed,
   Filter,
+  Binding,
+  Binded,
 } from '../../components';
 import {
   AttenuationAttributes,
@@ -231,6 +233,17 @@ export function serializedNodesToEntities(
   const edges = nodes
     .filter((node) => !isNil(node.parentId))
     .map((node) => [node.parentId, node.id] as [string, string]);
+
+  // bindings should also be sorted
+  nodes.forEach((node) => {
+    if (node.type === 'line') {
+      if (node.fromId && node.toId) {
+        edges.push([node.fromId, node.id]);
+        edges.push([node.toId, node.id]);
+      }
+    }
+  });
+
   const sorted = toposort.array(vertices, edges);
 
   if (!idEntityMap) {
@@ -248,14 +261,13 @@ export function serializedNodesToEntities(
     const { parentId, type } = node;
     const attributes = node;
 
-    const entity = commands.spawn();
-    idEntityMap.set(id, entity);
+    const entityCommands = commands.spawn();
+    idEntityMap.set(id, entityCommands);
 
     // Infer points with fromId and toId first
     if (type === 'line') {
       const { fromId, toId } = attributes as LineSerializedNode;
       if (fromId && toId) {
-        // TODO: lazy serialize the nodes
         const fromNode = nodes.find((node) => node.id === fromId);
         const toNode = nodes.find((node) => node.id === toId);
         if (fromNode && toNode) {
@@ -265,6 +277,20 @@ export function serializedNodesToEntities(
             attributes as LineSerializedNode,
           );
         }
+
+        const fromEntityCommands = idEntityMap.get(fromId);
+        const fromEntity = fromEntityCommands?.id().hold();
+        const toEntityCommands = idEntityMap.get(toId);
+        const toEntity = toEntityCommands?.id().hold();
+
+        safeAddComponent(fromEntity, Binded);
+        safeAddComponent(toEntity, Binded);
+        entityCommands.insert(
+          new Binding({
+            from: fromEntity,
+            to: toEntity,
+          }),
+        );
       }
     }
 
@@ -290,7 +316,7 @@ export function serializedNodesToEntities(
 
     const { x, y, width, height, rotation, scaleX, scaleY } = attributes;
 
-    entity.insert(
+    entityCommands.insert(
       new Transform({
         translation: {
           x,
@@ -305,11 +331,11 @@ export function serializedNodesToEntities(
     );
 
     if (type !== 'g') {
-      entity.insert(new Renderable());
+      entityCommands.insert(new Renderable());
     }
 
     if (type === 'ellipse' || type === 'rough-ellipse') {
-      entity.insert(
+      entityCommands.insert(
         new Ellipse({
           cx: width / 2,
           cy: height / 2,
@@ -319,25 +345,29 @@ export function serializedNodesToEntities(
       );
 
       if (type === 'rough-ellipse') {
-        serializeRough(attributes as RoughAttributes, entity);
+        serializeRough(attributes as RoughAttributes, entityCommands);
       }
     } else if (type === 'rect' || type === 'rough-rect') {
       const { cornerRadius } = attributes as RectSerializedNode;
-      entity.insert(new Rect({ x: 0, y: 0, width, height, cornerRadius }));
+      entityCommands.insert(
+        new Rect({ x: 0, y: 0, width, height, cornerRadius }),
+      );
       if (type === 'rough-rect') {
-        serializeRough(attributes as RoughAttributes, entity);
+        serializeRough(attributes as RoughAttributes, entityCommands);
       }
     } else if (type === 'polyline' || type === 'rough-polyline') {
       const { points } = attributes as PolylineSerializedNode;
-      entity.insert(new Polyline({ points: deserializePoints(points) }));
+      entityCommands.insert(
+        new Polyline({ points: deserializePoints(points) }),
+      );
       if (type === 'rough-polyline') {
-        serializeRough(attributes as RoughAttributes, entity);
+        serializeRough(attributes as RoughAttributes, entityCommands);
       }
     } else if (type === 'line' || type === 'rough-line') {
       const { x1, y1, x2, y2 } = attributes as LineSerializedNode;
-      entity.insert(new Line({ x1, y1, x2, y2 }));
+      entityCommands.insert(new Line({ x1, y1, x2, y2 }));
       if (type === 'rough-line') {
-        serializeRough(attributes as RoughAttributes, entity);
+        serializeRough(attributes as RoughAttributes, entityCommands);
       }
     } else if (type === 'brush') {
       const {
@@ -349,7 +379,7 @@ export function serializedNodesToEntities(
         stampNoiseFactor,
         stampRotationFactor,
       } = attributes as BrushSerializedNode;
-      entity.insert(
+      entityCommands.insert(
         new Brush({
           points: deserializeBrushPoints(points),
           type: brushType,
@@ -361,12 +391,12 @@ export function serializedNodesToEntities(
       );
 
       if (brushStamp) {
-        loadImage(brushStamp, entity.id());
+        loadImage(brushStamp, entityCommands.id());
       }
     } else if (type === 'path') {
       const { d, fillRule, tessellationMethod } =
         attributes as PathSerializedNode;
-      entity.insert(new Path({ d, fillRule, tessellationMethod }));
+      entityCommands.insert(new Path({ d, fillRule, tessellationMethod }));
     } else if (type === 'text') {
       const {
         anchorX,
@@ -413,7 +443,7 @@ export function serializedNodesToEntities(
         (font) => font.fontFamily === fontFamily,
       );
 
-      entity.insert(
+      entityCommands.insert(
         new Text({
           anchorX,
           anchorY,
@@ -435,7 +465,7 @@ export function serializedNodesToEntities(
       );
 
       if (decorationLine !== 'none' && decorationThickness > 0) {
-        entity.insert(
+        entityCommands.insert(
           new TextDecoration({
             color: decorationColor,
             line: decorationLine,
@@ -447,31 +477,31 @@ export function serializedNodesToEntities(
     } else if (type === 'vector-network') {
       const { vertices, segments, regions } =
         attributes as VectorNetworkSerializedNode;
-      entity.insert(new VectorNetwork({ vertices, segments, regions }));
+      entityCommands.insert(new VectorNetwork({ vertices, segments, regions }));
     } else if (type === 'html') {
       const { html } = attributes as HtmlSerializedNode;
-      entity.insert(new HTML({ x: 0, y: 0, width, height, html }));
-      entity.insert(new HTMLContainer());
+      entityCommands.insert(new HTML({ x: 0, y: 0, width, height, html }));
+      entityCommands.insert(new HTMLContainer());
     } else if (type === 'embed') {
       const { url } = attributes as EmbedSerializedNode;
-      entity.insert(new Embed({ x: 0, y: 0, width, height, url }));
-      entity.insert(new HTMLContainer());
+      entityCommands.insert(new Embed({ x: 0, y: 0, width, height, url }));
+      entityCommands.insert(new HTMLContainer());
     }
 
     const { fill, fillOpacity, opacity } = attributes as FillAttributes;
     if (fill) {
       if (isGradient(fill)) {
-        entity.insert(new FillGradient(fill));
+        entityCommands.insert(new FillGradient(fill));
       } else if (isDataUrl(fill) || isUrl(fill)) {
-        loadImage(fill, entity.id());
+        loadImage(fill, entityCommands.id());
       } else {
         try {
           const parsed = JSON.parse(fill) as FillPattern;
           if (isPattern(parsed)) {
-            entity.insert(new FillPattern(parsed));
+            entityCommands.insert(new FillPattern(parsed));
           }
         } catch (e) {
-          entity.insert(new FillSolid(fill));
+          entityCommands.insert(new FillSolid(fill));
         }
       }
     }
@@ -488,7 +518,7 @@ export function serializedNodesToEntities(
       strokeAlignment,
     } = attributes as StrokeAttributes;
     if (stroke) {
-      entity.insert(
+      entityCommands.insert(
         new Stroke({
           color: stroke,
           width: strokeWidth,
@@ -512,7 +542,7 @@ export function serializedNodesToEntities(
     const { markerStart, markerEnd, markerFactor } =
       attributes as MarkerAttributes;
     if (markerStart || markerEnd) {
-      entity.insert(
+      entityCommands.insert(
         new Marker({
           start: markerStart,
           end: markerEnd,
@@ -522,7 +552,7 @@ export function serializedNodesToEntities(
     }
 
     if (opacity || fillOpacity || strokeOpacity) {
-      entity.insert(
+      entityCommands.insert(
         new Opacity({
           opacity,
           fillOpacity,
@@ -538,7 +568,7 @@ export function serializedNodesToEntities(
       dropShadowOffsetY,
     } = attributes as DropShadowAttributes;
     if (dropShadowBlurRadius) {
-      entity.insert(
+      entityCommands.insert(
         new DropShadow({
           color: dropShadowColor,
           blurRadius: dropShadowBlurRadius,
@@ -555,7 +585,7 @@ export function serializedNodesToEntities(
       innerShadowOffsetY,
     } = attributes as InnerShadowAttributes;
     if (innerShadowBlurRadius) {
-      entity.insert(
+      entityCommands.insert(
         new InnerShadow({
           color: innerShadowColor,
           blurRadius: innerShadowBlurRadius,
@@ -566,43 +596,43 @@ export function serializedNodesToEntities(
     }
 
     const { visibility } = attributes as VisibilityAttributes;
-    entity.insert(new Visibility(visibility));
+    entityCommands.insert(new Visibility(visibility));
 
     const { name } = attributes as NameAttributes;
-    entity.insert(new Name(name));
+    entityCommands.insert(new Name(name));
 
     const { lockAspectRatio } = attributes;
     if (lockAspectRatio) {
-      entity.insert(new LockAspectRatio());
+      entityCommands.insert(new LockAspectRatio());
     }
 
     const { zIndex } = attributes;
-    entity.insert(new ZIndex(zIndex));
+    entityCommands.insert(new ZIndex(zIndex));
 
     const { sizeAttenuation, strokeAttenuation } =
       attributes as AttenuationAttributes;
     if (sizeAttenuation) {
-      entity.insert(new SizeAttenuation());
+      entityCommands.insert(new SizeAttenuation());
     }
     if (strokeAttenuation) {
-      entity.insert(new StrokeAttenuation());
+      entityCommands.insert(new StrokeAttenuation());
     }
 
     const { wireframe } = attributes as WireframeAttributes;
     if (wireframe) {
-      entity.insert(new Wireframe(true));
+      entityCommands.insert(new Wireframe(true));
     }
 
     const { filter } = attributes as FilterAttributes;
     if (filter) {
-      entity.insert(new Filter({ value: filter }));
+      entityCommands.insert(new Filter({ value: filter }));
     }
 
     if (parentId) {
-      idEntityMap.get(parentId)?.appendChild(entity);
+      idEntityMap.get(parentId)?.appendChild(entityCommands);
     }
 
-    entities.push(entity.id().hold());
+    entities.push(entityCommands.id().hold());
   }
 
   return { entities, idEntityMap };

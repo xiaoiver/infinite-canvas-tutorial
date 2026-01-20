@@ -380,6 +380,10 @@ export const en = defineConfig({
                     text: 'FlexTree',
                     link: 'flextree',
                   },
+                  {
+                    text: 'Binding between shapes',
+                    link: 'binding',
+                  },
                 ],
               },
               {

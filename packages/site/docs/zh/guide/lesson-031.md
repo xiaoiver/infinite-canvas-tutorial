@@ -4,6 +4,10 @@ description: ''
 publish: false
 ---
 
+<script setup>
+import Binding from '../../components/Binding.vue'
+</script>
+
 # 课程 31 - 图形间的连接关系
 
 在 [课程 23 - 思维导图] 中，我们仅关注了节点和边的布局算法，并没有深入交互，例如移动节点时绑定的边也要跟着移动。同样在 [课程 25 - 绘制箭头] 中，直线和箭头的属性中也不包含绑定信息，这节课我们将补全这一点。
@@ -78,5 +82,136 @@ export declare type ExcalidrawLinearElement = _ExcalidrawElementBase &
 
 这里 `fromId/toId` 字段以形状 ID 的方式关联箭头与目标，`props` 中存储了连接细节（如锚点、对齐选项等）
 
+### antv/g6 {#antv-g6}
+
+连接关系是逻辑的，不是几何的，通过 `type` 和连线路由算法计算路径：
+
+```ts
+interface EdgeConfig {
+    id?: string;
+    source: string; // 源节点 ID
+    target: string; // 目标节点 ID
+
+    sourceAnchor?: number; // 源节点锚点索引
+    targetAnchor?: number; // 目标节点锚点索引
+
+    type?: string; // line / polyline / cubic / loop ...
+    style?: ShapeStyle;
+}
+```
+
+在节点上声明锚点，坐标是归一化的：
+
+```ts
+anchorPoints: [
+    [0.5, 0], // top
+    [1, 0.5], // right
+    [0.5, 1], // bottom
+    [0, 0.5], // left
+];
+```
+
+在边上使用锚点索引，和 tldraw 的 `normalizedAnchor` 非常像，但 G6 把锚点定义权放在节点上
+
+```ts
+{
+    source: 'nodeA',
+    target: 'nodeB',
+    sourceAnchor: 1,
+    targetAnchor: 3,
+}
+```
+
+### mxGraph {#mxgraph}
+
+mxGraph 有完整的连接约束系统，定义在节点图形上，表示允许连接的点：
+
+```ts
+class mxConnectionConstraint {
+    point: mxPoint | null; // (0.5, 0) = 上中 (1, 0.5) = 右中
+    perimeter: boolean; // 表示沿形状边界投射
+}
+```
+
+### 我们的设计 {#our-design}
+
+类似 [课程 18 - 定义父子组件]，我们可以实现双向绑定关系：
+
+```ts
+class Binding {
+    @field.ref declare from: Entity;
+    @field.ref declare to: Entity;
+}
+
+class Binded {
+    @field.backrefs(Binding, 'from') declare fromBindings: Entity[];
+    @field.backrefs(Binding, 'to') declare toBindings: Entity[];
+}
+```
+
+声明一个从 `rect-1` 指向 `rect-2` 的箭头方法如下：
+
+```ts
+const edge = {
+    id: 'line-1',
+    type: 'line',
+    fromId: 'rect-1',
+    toId: 'rect-2',
+    stroke: 'black',
+    strokeWidth: 10,
+    markerEnd: 'line',
+};
+```
+
+## 自动更新 {#auto-update}
+
+当连接的图形位置发生变化时，需要重新计算绑定边的路径。我们可以查询所有持有 `Binded` 组件的图形，监听它们的包围盒变化，此时更新绑定的边：
+
+```ts
+class RenderBindings extends System {
+    private readonly boundeds = this.query(
+        (q) => q.with(Binded).changed.with(ComputedBounds).trackWrites,
+    );
+
+    execute() {
+        const bindingsToUpdate = new Set<Entity>();
+        this.boundeds.changed.forEach((entity) => {
+            const { fromBindings, toBindings } = entity.read(Binded);
+            [...fromBindings, ...toBindings].forEach((binding) => {
+                bindingsToUpdate.add(binding);
+            });
+        });
+        // 重新计算绑定边的路径并渲染
+    }
+}
+```
+
+在下面的例子中，你可以尝试拖动节点，边会重新计算路径并重绘：
+
+<Binding />
+
+目前边的起点和终点都是被连接图形的包围盒中心，和 tldraw 中 `isPrecise` 等于 `false` 时效果一致，表示不精确绑定。
+而大多数情况下，我们希望箭头不穿过所连接的图形，而是优雅地停靠在图形边缘。
+
+## 边界算法 {#perimeter}
+
+对于图形的边界，drawio 提供了 `perimeter` 属性，改变它会导致连线，详见：[Change the shape perimeter]
+
+![Perimeter styles and port constraints](https://drawio-app.com/wp-content/uploads/2019/02/drawio-perimeter-constraint-styles.png)
+
+## 路由规则 {#router}
+
+自动选出口方向、插入拐点、避开节点包围盒：
+
+```ts
+┌──────┐        ┌──────┐
+│ Node │ ─┐     │ Node │
+└──────┘  └────▶└──────┘
+```
+
+![Connector styles](https://drawio-app.com/wp-content/uploads/2019/02/drawio-connector-styles.png)
+
 [课程 23 - 思维导图]: /zh/guide/lesson-023
 [课程 25 - 绘制箭头]: /zh/guide/lesson-025#draw-arrow
+[课程 18 - 定义父子组件]: /zh/guide/lesson-018#定义-component
+[Change the shape perimeter]: https://www.drawio.com/doc/faq/shape-perimeter-change

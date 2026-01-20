@@ -17,6 +17,7 @@ import {
   DrawPencil,
   MeshPipeline,
   DrawBrush,
+  RenderBindings,
 } from '../systems';
 import {
   Highlighted,
@@ -49,7 +50,8 @@ export const PenPlugin: Plugin = () => {
       )
       .before(Last),
   )(Select);
-  system((s) => s.after(Select).before(Last))(DrawRect);
+  system((s) => s.after(Select).before(Last))(RenderBindings);
+  system((s) => s.after(RenderBindings).before(Last))(DrawRect);
   system((s) => s.after(DrawRect).before(Last))(DrawBrush);
   system((s) => s.after(DrawBrush).before(Last))(DrawPencil);
   system((s) => s.afterWritersOf(Selected).before(Last, MeshPipeline))(

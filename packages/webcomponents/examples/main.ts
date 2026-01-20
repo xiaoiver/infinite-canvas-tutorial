@@ -100,10 +100,20 @@ canvas.addEventListener(Event.READY, async (e) => {
     // fill: 'https://v3b.fal.media/files/b/tiger/v1lf1EcPP1X1pw_YOKM4o.jpg',
     // filter: 'noise(0.5)',
   };
-  const node2 = {
+  const edge1 = {
+    id: 'line-1',
     type: 'line',
     fromId: 'rect-1',
     toId: 'rect-2',
+    stroke: 'black',
+    strokeWidth: 10,
+    markerEnd: 'line',
+  };
+  const edge2 = {
+    id: 'line-2',
+    type: 'line',
+    fromId: 'rect-2',
+    toId: 'rect-3',
     stroke: 'black',
     strokeWidth: 10,
     markerEnd: 'line',
@@ -119,7 +129,7 @@ canvas.addEventListener(Event.READY, async (e) => {
   //   fontSize: 30,
   //   fontFamily: 'system-ui',
   // };
-  const node3 = {
+  const node2 = {
     id: 'rect-2',
     type: 'rect',
     x: 300,
@@ -129,15 +139,15 @@ canvas.addEventListener(Event.READY, async (e) => {
     fill: 'red',
   };
 
-  // const node4 = {
-  //   id: 'rect-3',
-  //   type: 'rect',
-  //   x: 100,
-  //   y: 100,
-  //   width: 100,
-  //   height: 100,
-  //   fill: 'green',
-  // };
+  const node3 = {
+    id: 'rect-3',
+    type: 'rect',
+    x: 100,
+    y: 300,
+    width: 100,
+    height: 100,
+    fill: 'green',
+  };
 
   // // Generate sinewave geometry
   // const maxRadius = (1 / 3) * 100;
@@ -175,7 +185,7 @@ canvas.addEventListener(Event.READY, async (e) => {
   //   },
   // ]);
 
-  api.updateNodes([node1, node3, node2]);
+  api.updateNodes([node1, node2, node3, edge1, edge2]);
   // api.updateNode(node1);
   // api.record();
 });

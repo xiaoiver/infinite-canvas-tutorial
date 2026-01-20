@@ -326,6 +326,10 @@ export const zh = defineConfig({
                     text: 'FlexTree',
                     link: 'flextree',
                   },
+                  {
+                    text: '图形间的绑定关系',
+                    link: 'binding',
+                  },
                 ],
               },
               {
