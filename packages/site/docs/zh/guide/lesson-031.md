@@ -199,6 +199,42 @@ class RenderBindings extends System {
 
 ![Perimeter styles and port constraints](https://drawio-app.com/wp-content/uploads/2019/02/drawio-perimeter-constraint-styles.png)
 
+```ts
+// 注意一般 next 传入的是“对方中心点”，orthogonal 通常选 false
+var pointA = graph.view.getPerimeterPoint(stateA, centerB, false, 0);
+var pointB = graph.view.getPerimeterPoint(stateB, centerA, false, 0);
+```
+
+以矩形的边界算法为例：
+
+```ts
+function rectanglePerimeter(
+    bounds: { x: number; y: number; width: number; height: number },
+    vertex: SerializedNode,
+    next: IPointData,
+    orthogonal: boolean,
+): IPointData {
+    const { x, y, width, height } = bounds;
+    const cx = x + width / 2;
+    const cy = y + height / 2;
+    const dx = next.x - cx;
+    const dy = next.y - cy;
+    const alpha = Math.atan2(dy, dx);
+    const p: IPointData = { x: 0, y: 0 };
+    const pi = Math.PI;
+    const pi2 = Math.PI / 2;
+    const beta = pi2 - alpha;
+    const t = Math.atan2(height, width);
+    if (alpha < -pi + t || alpha > pi - t) {
+        // Left edge
+        p.x = x;
+        p.y = cy - (width * Math.tan(alpha)) / 2;
+    }
+    // 省略其他三条边
+    return p;
+}
+```
+
 ## 路由规则 {#router}
 
 自动选出口方向、插入拐点、避开节点包围盒：

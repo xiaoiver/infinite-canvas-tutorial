@@ -75,6 +75,7 @@ import { isPattern } from '../pattern';
 import { computeBidi, measureText } from '../../systems/ComputeTextMetrics';
 import { DOMAdapter } from '../../environment';
 import { safeAddComponent } from '../../history';
+import { rectanglePerimeter } from '../perimeter';
 
 export function inferXYWidthHeight(node: SerializedNode) {
   const { type } = node;
@@ -146,14 +147,25 @@ export function inferPointsWithFromIdAndToId(
 ) {
   inferXYWidthHeight(from);
   inferXYWidthHeight(to);
-  const startBinding = {
+
+  const fromCenter = {
     x: from.x + from.width / 2,
     y: from.y + from.height / 2,
   };
-  const endBinding = {
-    x: to.x + to.width / 2,
-    y: to.y + to.height / 2,
-  };
+  const toCenter = { x: to.x + to.width / 2, y: to.y + to.height / 2 };
+  const startBinding = rectanglePerimeter(
+    { x: from.x, y: from.y, width: from.width, height: from.height },
+    from,
+    { x: toCenter.x, y: toCenter.y },
+    false,
+  );
+  const endBinding = rectanglePerimeter(
+    { x: to.x, y: to.y, width: to.width, height: to.height },
+    to,
+    { x: fromCenter.x, y: fromCenter.y },
+    false,
+  );
+
   attributes.x1 = startBinding.x;
   attributes.y1 = startBinding.y;
   attributes.x2 = endBinding.x;
