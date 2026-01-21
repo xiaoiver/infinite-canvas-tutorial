@@ -2,12 +2,11 @@ import { IPointData } from '@pixi/math';
 import { SerializedNode } from '../serialize';
 
 export function rectanglePerimeter(
-  bounds: { x: number; y: number; width: number; height: number },
   vertex: SerializedNode,
   next: IPointData,
   orthogonal: boolean,
 ): IPointData {
-  const { x, y, width, height } = bounds;
+  const { x, y, width, height } = vertex;
   const cx = x + width / 2;
   const cy = y + height / 2;
   const dx = next.x - cx;

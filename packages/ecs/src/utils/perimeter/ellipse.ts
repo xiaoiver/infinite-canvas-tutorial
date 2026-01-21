@@ -2,13 +2,11 @@ import { IPointData } from '@pixi/math';
 import { SerializedNode } from '../serialize';
 
 export function ellipsePerimeter(
-  bounds: { x: number; y: number; width: number; height: number },
   vertex: SerializedNode,
   next: IPointData,
   orthogonal: boolean,
 ): IPointData {
-  const { x, y, width, height } = bounds;
-
+  const { x, y, width, height } = vertex;
   const a = width / 2;
   const b = height / 2;
   const cx = x + a;

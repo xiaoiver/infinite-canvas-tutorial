@@ -135,6 +135,10 @@ export const en = defineConfig({
                 text: 'Lesson 030 - Post-processing and render graph',
                 link: 'lesson-030',
               },
+              {
+                text: 'Lesson 031 - Bindings between shapes',
+                link: 'lesson-031',
+              }
             ],
           },
         ],

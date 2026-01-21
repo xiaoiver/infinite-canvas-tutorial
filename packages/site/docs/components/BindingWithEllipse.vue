@@ -40,7 +40,7 @@ onMounted(async () => {
     };
     const node2 = {
       id: 'rect-2',
-      type: 'rect',
+      type: 'ellipse',
       x: 300,
       y: 0,
       width: 100,

@@ -1,6 +1,7 @@
 import { isNil } from '@antv/util';
 import toposort from 'toposort';
 import { Entity } from '@lastolivegames/becsy';
+import { IPointData } from '@pixi/math';
 import {
   Ellipse,
   FillSolid,
@@ -75,69 +76,76 @@ import { isPattern } from '../pattern';
 import { computeBidi, measureText } from '../../systems/ComputeTextMetrics';
 import { DOMAdapter } from '../../environment';
 import { safeAddComponent } from '../../history';
-import { rectanglePerimeter } from '../perimeter';
+import { ellipsePerimeter, rectanglePerimeter } from '../perimeter';
 
 export function inferXYWidthHeight(node: SerializedNode) {
-  const { type } = node;
-  let bounds: AABB;
-  if (type === 'rect') {
-    bounds = Rect.getGeometryBounds(node);
-  } else if (type === 'ellipse') {
-    bounds = Ellipse.getGeometryBounds(node);
-  } else if (type === 'polyline' || type === 'rough-polyline') {
-    bounds = Polyline.getGeometryBounds(node);
-  } else if (type === 'line' || type === 'rough-line') {
-    bounds = Line.getGeometryBounds(node);
-  } else if (type === 'path') {
-    bounds = Path.getGeometryBounds(node);
-  } else if (type === 'text') {
-    computeBidi(node.content);
-    const metrics = measureText(node);
-    bounds = Text.getGeometryBounds(node, metrics);
-  } else if (type === 'brush') {
-    bounds = Brush.getGeometryBounds(node);
-  } else if (type === 'vector-network') {
-    bounds = VectorNetwork.getGeometryBounds(node);
-  }
-
-  if (bounds) {
-    node.x = bounds.minX;
-    node.y = bounds.minY;
-    node.width = bounds.maxX - bounds.minX;
-    node.height = bounds.maxY - bounds.minY;
-
-    if (type === 'polyline' || type === 'rough-polyline') {
-      node.points = serializePoints(
-        deserializePoints(node.points).map((point) => {
-          return [point[0] - bounds.minX, point[1] - bounds.minY];
-        }),
-      );
+  if (
+    isNil(node.width) ||
+    isNil(node.height) ||
+    isNil(node.x) ||
+    isNil(node.y)
+  ) {
+    const { type } = node;
+    let bounds: AABB;
+    if (type === 'rect') {
+      bounds = Rect.getGeometryBounds(node);
+    } else if (type === 'ellipse') {
+      bounds = Ellipse.getGeometryBounds(node);
+    } else if (type === 'polyline' || type === 'rough-polyline') {
+      bounds = Polyline.getGeometryBounds(node);
     } else if (type === 'line' || type === 'rough-line') {
-      node.x1 = node.x1 - bounds.minX;
-      node.y1 = node.y1 - bounds.minY;
-      node.x2 = node.x2 - bounds.minX;
-      node.y2 = node.y2 - bounds.minY;
+      bounds = Line.getGeometryBounds(node);
     } else if (type === 'path') {
-      node.d = shiftPath(node.d, -bounds.minX, -bounds.minY);
-    } else if (type === 'brush') {
-      node.points = serializeBrushPoints(
-        deserializeBrushPoints(node.points).map((point) => {
-          return {
-            ...point,
-            x: point.x - bounds.minX,
-            y: point.y - bounds.minY,
-          };
-        }),
-      );
+      bounds = Path.getGeometryBounds(node);
     } else if (type === 'text') {
-      node.anchorX = (node.anchorX ?? 0) - bounds.minX;
-      node.anchorY = (node.anchorY ?? 0) - bounds.minY;
+      computeBidi(node.content);
+      const metrics = measureText(node);
+      bounds = Text.getGeometryBounds(node, metrics);
+    } else if (type === 'brush') {
+      bounds = Brush.getGeometryBounds(node);
+    } else if (type === 'vector-network') {
+      bounds = VectorNetwork.getGeometryBounds(node);
     }
-  } else {
-    throw new Error('Cannot infer x, y, width or height for node');
-  }
 
-  return node;
+    if (bounds) {
+      node.x = bounds.minX;
+      node.y = bounds.minY;
+      node.width = bounds.maxX - bounds.minX;
+      node.height = bounds.maxY - bounds.minY;
+
+      if (type === 'polyline' || type === 'rough-polyline') {
+        node.points = serializePoints(
+          deserializePoints(node.points).map((point) => {
+            return [point[0] - bounds.minX, point[1] - bounds.minY];
+          }),
+        );
+      } else if (type === 'line' || type === 'rough-line') {
+        node.x1 = node.x1 - bounds.minX;
+        node.y1 = node.y1 - bounds.minY;
+        node.x2 = node.x2 - bounds.minX;
+        node.y2 = node.y2 - bounds.minY;
+      } else if (type === 'path') {
+        node.d = shiftPath(node.d, -bounds.minX, -bounds.minY);
+      } else if (type === 'brush') {
+        node.points = serializeBrushPoints(
+          deserializeBrushPoints(node.points).map((point) => {
+            return {
+              ...point,
+              x: point.x - bounds.minX,
+              y: point.y - bounds.minY,
+            };
+          }),
+        );
+      } else if (type === 'text') {
+        node.anchorX = (node.anchorX ?? 0) - bounds.minX;
+        node.anchorY = (node.anchorY ?? 0) - bounds.minY;
+      }
+    } else {
+      throw new Error('Cannot infer x, y, width or height for node');
+    }
+
+    return node;
+  }
 }
 
 export function inferPointsWithFromIdAndToId(
@@ -153,18 +161,44 @@ export function inferPointsWithFromIdAndToId(
     y: from.y + from.height / 2,
   };
   const toCenter = { x: to.x + to.width / 2, y: to.y + to.height / 2 };
-  const startBinding = rectanglePerimeter(
-    { x: from.x, y: from.y, width: from.width, height: from.height },
-    from,
-    { x: toCenter.x, y: toCenter.y },
-    false,
-  );
-  const endBinding = rectanglePerimeter(
-    { x: to.x, y: to.y, width: to.width, height: to.height },
-    to,
-    { x: fromCenter.x, y: fromCenter.y },
-    false,
-  );
+  const perimeterFrom = from.type === 'ellipse' ? ellipsePerimeter : rectanglePerimeter;  
+  const perimeterTo = to.type === 'ellipse' ? ellipsePerimeter : rectanglePerimeter;
+
+  let startBinding: IPointData;
+  let endBinding: IPointData;
+
+  if (attributes.orthogonal) {
+    // 在正交模式下，需要迭代计算以确保两个绑定点能够对齐
+    // 先使用中心点计算初始绑定点
+    startBinding = perimeterFrom(
+      from,
+      { x: toCenter.x, y: toCenter.y },
+      attributes.orthogonal,
+    );
+    // 使用第一个绑定点的坐标来计算第二个绑定点
+    endBinding = perimeterTo(
+      to,
+      { x: startBinding.x, y: startBinding.y },
+      attributes.orthogonal,
+    );
+    // 使用第二个绑定点的坐标重新计算第一个绑定点，以确保对齐
+    startBinding = perimeterFrom(
+      from,
+      { x: endBinding.x, y: endBinding.y },
+      attributes.orthogonal,
+    );
+  } else {
+    startBinding = perimeterFrom(
+      from,
+      { x: toCenter.x, y: toCenter.y },
+      attributes.orthogonal,
+    );
+    endBinding = perimeterTo(
+      to,
+      { x: fromCenter.x, y: fromCenter.y },
+      attributes.orthogonal,
+    );
+  }
 
   attributes.x1 = startBinding.x;
   attributes.y1 = startBinding.y;
@@ -307,14 +341,7 @@ export function serializedNodesToEntities(
     }
 
     // Make sure the entity has a width and height
-    if (
-      isNil(attributes.width) ||
-      isNil(attributes.height) ||
-      isNil(attributes.x) ||
-      isNil(attributes.y)
-    ) {
-      inferXYWidthHeight(attributes);
-    }
+    inferXYWidthHeight(attributes);
 
     if (isNil(attributes.rotation)) {
       attributes.rotation = 0;

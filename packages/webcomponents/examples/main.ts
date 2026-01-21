@@ -75,7 +75,7 @@ canvas.addEventListener(Event.READY, async (e) => {
     snapToPixelGridSize: 10,
     // snapToPixelGridEnabled: false,
     // snapToPixelGridSize: 0,
-    snapToObjectsEnabled: true,
+    // snapToObjectsEnabled: true,
     // filter: 'brightness(0.8) noise(0.1)',
     // penbarDrawSizeLabelVisible: true,
     // checkboardStyle: CheckboardStyle.NONE,
@@ -108,6 +108,7 @@ canvas.addEventListener(Event.READY, async (e) => {
     stroke: 'black',
     strokeWidth: 10,
     markerEnd: 'line',
+    orthogonal: true,
   };
   const edge2 = {
     id: 'line-2',
@@ -117,6 +118,7 @@ canvas.addEventListener(Event.READY, async (e) => {
     stroke: 'black',
     strokeWidth: 10,
     markerEnd: 'line',
+    orthogonal: true,
   };
   // const node2 = {
   //   id: 'text-1',
@@ -131,7 +133,8 @@ canvas.addEventListener(Event.READY, async (e) => {
   // };
   const node2 = {
     id: 'rect-2',
-    type: 'rect',
+    // type: 'rect',
+    type: 'ellipse',
     x: 300,
     y: 200,
     width: 200,

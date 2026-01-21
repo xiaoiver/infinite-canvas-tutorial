@@ -6,6 +6,8 @@ publish: false
 
 <script setup>
 import Binding from '../../components/Binding.vue'
+import BindingWithEllipse from '../../components/BindingWithEllipse.vue'
+import BindingOrthogonal from '../../components/BindingOrthogonal.vue'
 </script>
 
 # 课程 31 - 图形间的连接关系
@@ -205,35 +207,121 @@ var pointA = graph.view.getPerimeterPoint(stateA, centerB, false, 0);
 var pointB = graph.view.getPerimeterPoint(stateB, centerA, false, 0);
 ```
 
-以矩形的边界算法为例：
+### 矩形边界算法 {#rectangle-perimeter}
+
+矩形的边界算法是最常用的。以下实现中 `vertex` 为源节点，`next` 为目标节点的包围盒中心。
+首先从源节点和目标节点包围盒的中心做一条连线，然后判断目标点离源节点包围盒的哪条边更近，包围盒的两条对角线将平面划分成了四个区域，左侧边界的范围是 $[-\pi+t, \pi-t]$ 之外的区域（即代码中 `alpha < -pi + t || alpha > pi - t` 的判断）：
 
 ```ts
 function rectanglePerimeter(
-    bounds: { x: number; y: number; width: number; height: number },
     vertex: SerializedNode,
     next: IPointData,
     orthogonal: boolean,
 ): IPointData {
-    const { x, y, width, height } = bounds;
-    const cx = x + width / 2;
+    const { x, y, width, height } = vertex;
+    const cx = x + width / 2; // 源节点中心
     const cy = y + height / 2;
     const dx = next.x - cx;
     const dy = next.y - cy;
-    const alpha = Math.atan2(dy, dx);
+    const alpha = Math.atan2(dy, dx); // 源节点中心到目标节点中心连线的斜率
     const p: IPointData = { x: 0, y: 0 };
     const pi = Math.PI;
     const pi2 = Math.PI / 2;
     const beta = pi2 - alpha;
-    const t = Math.atan2(height, width);
+    const t = Math.atan2(height, width); // 对角线划分了四个区域
     if (alpha < -pi + t || alpha > pi - t) {
-        // Left edge
+        // 与左侧边缘相交
         p.x = x;
-        p.y = cy - (width * Math.tan(alpha)) / 2;
+        p.y = cy - (width * Math.tan(alpha)) / 2; // 计算交点
     }
     // 省略其他三条边
     return p;
 }
 ```
+
+最后计算连线与该边的交点作为最终连线的出发点。例如我们确定了连线会经过“左侧边”时：
+
+1. 确定 $x$ 坐标： 既然是左边缘，交点的 $x$ 坐标必然等于矩形的左边界值 vertex.x。
+2. 计算 $y$ 偏移量：
+    1. 从中心到左边缘的水平距离是 width / 2。
+    2. 利用正切公式：$\tan(\alpha) = \frac{\Delta y}{\Delta x}$。
+    3. 在左侧，$\Delta x = -(\text{width} / 2)$。
+    4. 所以垂直偏移量 $\Delta y = \Delta x \cdot \tan(\alpha) = -\frac{\text{width}}{2} \cdot \tan(\alpha)$。
+3. 最终坐标： `p.y = cy + Δy`，即代码中的 `cy - (width * Math.tan(alpha)) / 2`。
+
+draw.io 还提供了另一个选项 `orthogonal`，表示计算的线需要正交对齐（即与 x 或 y 轴对齐），线只考虑水平或垂直延伸。此时就不能使用对方的中心点作为参考了：
+
+```ts
+if (orthogonal) {
+    if (next.x >= x && next.x <= x + width) {
+        p.x = next.x;
+    } else if (next.y >= y && next.y <= y + height) {
+        p.y = next.y;
+    }
+    if (next.x < x) {
+        p.x = x;
+    } else if (next.x > x + width) {
+        p.x = x + width;
+    }
+    if (next.y < y) {
+        p.y = y;
+    } else if (next.y > y + height) {
+        p.y = y + height;
+    }
+}
+```
+
+<BindingOrthogonal />
+
+### 椭圆边界算法 {#ellipse-perimeter}
+
+对于椭圆节点，需要计算直线和它的交点：
+
+```ts
+const d = dy / dx;
+const h = cy - d * cx;
+const e = a * a * d * d + b * b;
+const f = -2 * cx * e;
+const g = a * a * d * d * cx * cx + b * b * cx * cx - a * a * b * b;
+const det = Math.sqrt(f * f - 4 * e * g);
+
+const xout1 = (-f + det) / (2 * e);
+const xout2 = (-f - det) / (2 * e);
+const yout1 = d * xout1 + h;
+const yout2 = d * xout2 + h;
+const dist1 = Math.sqrt(Math.pow(xout1 - px, 2) + Math.pow(yout1 - py, 2));
+const dist2 = Math.sqrt(Math.pow(xout2 - px, 2) + Math.pow(yout2 - py, 2));
+
+let xout = 0;
+let yout = 0;
+if (dist1 < dist2) {
+    xout = xout1;
+    yout = yout1;
+} else {
+    xout = xout2;
+    yout = yout2;
+}
+return { x: xout, y: yout };
+```
+
+连线经过中心 $(cx, cy)$，其方程为 $y = d \cdot x + h$：
+
+-   斜率 $d = \frac{dy}{dx}$
+-   截距 $h = cy - d \cdot cx$
+
+将直线方程代入椭圆标准方程：
+
+$$\frac{(x-cx)^2}{a^2} + \frac{(d \cdot x + h - cy)^2}{b^2} = 1$$
+
+展开并整理成关于 $x$ 的一元二次方程形式 $ex^2 + fx + g = 0$。代码中的 e, f, g 分别对应：
+
+-   $e$: 二次项系数
+-   $f$: 一次项系数
+-   $g$: 常数项
+
+求根公式： 使用判别式 $det = \sqrt{f^2 - 4eg}$ 算出两个交点 $xout1$ 和 $xout2$。两点选一： 射线穿过椭圆会产生两个交点（一前一后）。代码通过计算两个交点到目标点 next 的距离（dist1 和 dist2），选择距离最近的那个点。
+
+<BindingWithEllipse />
 
 ## 路由规则 {#router}
 
@@ -246,6 +334,8 @@ function rectanglePerimeter(
 ```
 
 ![Connector styles](https://drawio-app.com/wp-content/uploads/2019/02/drawio-connector-styles.png)
+
+## 编辑器 {#editor}
 
 [课程 23 - 思维导图]: /zh/guide/lesson-023
 [课程 25 - 绘制箭头]: /zh/guide/lesson-025#draw-arrow

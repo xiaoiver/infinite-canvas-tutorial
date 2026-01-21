@@ -91,6 +91,10 @@ export class RenderBindings extends System {
       const toNode = api.getNodeByEntity(to);
 
       inferPointsWithFromIdAndToId(fromNode, toNode, edge);
+      delete edge.x;
+      delete edge.y;
+      delete edge.width;
+      delete edge.height;
       inferXYWidthHeight(edge);
 
       api.updateNode(edge, {

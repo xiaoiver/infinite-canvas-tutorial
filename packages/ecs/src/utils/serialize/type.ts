@@ -130,6 +130,7 @@ export interface StrokeAttributes {
 export interface BindingAttributes {
   fromId: string;
   toId: string;
+  orthogonal: boolean;
 }
 
 export interface MarkerAttributes {

@@ -64,6 +64,7 @@ onMounted(async () => {
       stroke: 'black',
       strokeWidth: 10,
       markerEnd: 'line',
+      orthogonal: true,
     };
     const edge2 = {
       id: 'line-2',
@@ -73,6 +74,7 @@ onMounted(async () => {
       stroke: 'black',
       strokeWidth: 10,
       markerEnd: 'line',
+      orthogonal: true,
     };
 
     api.updateNodes([
