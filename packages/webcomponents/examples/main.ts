@@ -108,7 +108,7 @@ canvas.addEventListener(Event.READY, async (e) => {
     stroke: 'black',
     strokeWidth: 10,
     markerEnd: 'line',
-    orthogonal: true,
+    // orthogonal: true,
   };
   const edge2 = {
     id: 'line-2',
@@ -118,7 +118,7 @@ canvas.addEventListener(Event.READY, async (e) => {
     stroke: 'black',
     strokeWidth: 10,
     markerEnd: 'line',
-    orthogonal: true,
+    // orthogonal: true,
   };
   // const node2 = {
   //   id: 'text-1',

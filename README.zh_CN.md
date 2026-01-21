@@ -387,6 +387,16 @@ pnpm run dev
 | :---------------------------------------------: | :-: |
 | ![image processing](./screenshots/lesson30.png) |     |
 
+## 课程 31 - 图形间的绑定关系 [🔗](https://infinitecanvas.cc/zh/guide/lesson-031)
+
+-   分析 excalidraw、tldraw、drawio 和 g6 中的数据结构设计
+-   连线边界算法，包括矩形和椭圆边界
+-   连线的路由规则
+
+|                Bindings                 |     |
+| :-------------------------------------: | :-: |
+| ![bindings](./screenshots/lesson31.gif) |     |
+
 [infinitecanvas]: https://infinitecanvas.tools/
 [Figma]: https://madebyevan.com/figma/building-a-professional-design-tool-on-the-web/
 [Modyfi]: https://digest.browsertech.com/archive/browsertech-digest-how-modyfi-is-building-with/
