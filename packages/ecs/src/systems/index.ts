@@ -26,3 +26,4 @@ export * from './DrawRect';
 export * from './DrawPencil';
 export * from './DrawBrush';
 export * from './RenderHTML';
+export * from './RenderBindings';

@@ -383,6 +383,10 @@ export const ko = defineConfig({
                     text: 'FlexTree',
                     link: 'flextree',
                   },
+                  {
+                    text: '그래프 간 바인딩',
+                    link: 'binding',
+                  },
                 ],
               },
               {

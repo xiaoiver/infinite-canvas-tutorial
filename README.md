@@ -386,6 +386,16 @@ If you want to use it in your own project, you can refer to:
 | :---------------------------------------------: | :-: |
 | ![image processing](./screenshots/lesson30.png) |     |
 
+## Lesson 31 - Bindings between shapes [🔗](https://infinitecanvas.cc/guide/lesson-031)
+
+-   Analyze the data-structure design in excalidraw, tldraw, drawio and g6
+-   Perimeter algorithm, including rectangle and ellipse
+-   Routing rules
+
+|                Bindings                 |     |
+| :-------------------------------------: | :-: |
+| ![bindings](./screenshots/lesson31.gif) |     |
+
 [infinitecanvas]: https://infinitecanvas.tools/
 [Figma]: https://madebyevan.com/figma/building-a-professional-design-tool-on-the-web/
 [Modyfi]: https://digest.browsertech.com/archive/browsertech-digest-how-modyfi-is-building-with/

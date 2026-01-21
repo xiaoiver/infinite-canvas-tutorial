@@ -127,6 +127,12 @@ export interface StrokeAttributes {
   strokeOpacity: Opacity['strokeOpacity'];
 }
 
+export interface BindingAttributes {
+  fromId: string;
+  toId: string;
+  orthogonal: boolean;
+}
+
 export interface MarkerAttributes {
   markerStart: Marker['start'];
   markerEnd: Marker['end'];
@@ -242,7 +248,8 @@ export interface LineSerializedNode
   extends BaseSerializeNode<'line'>,
     Partial<Pick<Line, 'x1' | 'y1' | 'x2' | 'y2'>>,
     Partial<StrokeAttributes>,
-    Partial<Pick<AttenuationAttributes, 'strokeAttenuation'>> {}
+    Partial<Pick<AttenuationAttributes, 'strokeAttenuation'>>,
+    Partial<BindingAttributes> {}
 
 interface PolylineAttributes {
   points: string;
