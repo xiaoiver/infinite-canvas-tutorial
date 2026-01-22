@@ -59,19 +59,6 @@ export class RenderBindings extends System {
   }
 
   execute() {
-    // this.cameras.current.forEach((camera) => {
-    //   if (!camera.has(Camera)) {
-    //     return;
-    //   }
-
-    //   const { canvas } = camera.read(Camera);
-    //   if (!canvas) {
-    //     return;
-    //   }
-
-    //   const { api } = canvas.read(Canvas);
-    // });
-
     const bindingsToUpdate = new Set<Entity>();
     this.boundeds.changed.forEach((entity) => {
       const { fromBindings, toBindings } = entity.read(Binded);

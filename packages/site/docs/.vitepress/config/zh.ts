@@ -81,6 +81,7 @@ export const zh = defineConfig({
               { text: '课程29 - 嵌入 HTML 内容', link: 'lesson-029' },
               { text: '课程30 - 后处理与渲染图', link: 'lesson-030' },
               { text: '课程31 - 图形间的连接关系', link: 'lesson-031' },
+              { text: '课程32 - 文本生成图表', link: 'lesson-032' },
             ],
           },
         ],

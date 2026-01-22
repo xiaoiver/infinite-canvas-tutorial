@@ -97,6 +97,12 @@ canvas.addEventListener(Event.READY, async (e) => {
     width: 200,
     height: 200,
     fill: 'grey',
+    constraints: [
+      {
+        point: [0, 0],
+        perimeter: true,
+      }
+    ]
     // fill: 'https://v3b.fal.media/files/b/tiger/v1lf1EcPP1X1pw_YOKM4o.jpg',
     // filter: 'noise(0.5)',
   };
