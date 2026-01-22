@@ -135,7 +135,60 @@ class mxConnectionConstraint {
 }
 ```
 
-### 我们的设计 {#our-design}
+### JSON Canvas Spec {#json-canvas-spec}
+
+Obsidian 开放了 [JSON Canvas Spec]，结构上和 `antv/g6` 很类似，在顶层存储了节点和边数组：
+
+```json
+{
+    "nodes": [],
+    "edges": []
+}
+```
+
+边的结构如下，不包含几何信息，只有逻辑上的连接关系：
+
+```json
+{
+    "id": "f67890123456789a",
+    "fromNode": "6f0ad84f44ce9c17",
+    "toNode": "a1b2c3d4e5f67890"
+}
+```
+
+## 我们的设计 {#our-design}
+
+在 Schema 上我们更多参考 mxGraph 的设计。逻辑关系在边上通过 `fromId` 和 `toId` 体现，此时就不需要 `x1/y1` 之类的几何信息。一个连接了 `rect-1` 和 `rect-2` 的箭头声明如下：
+
+```ts
+const edge1 = {
+    id: 'line-1',
+    type: 'line',
+    fromId: 'rect-1',
+    toId: 'rect-2',
+    stroke: 'black',
+    strokeWidth: 10,
+    markerEnd: 'line',
+};
+```
+
+同时约束关系体现在节点上，类似 [mxConnectionConstraint]：
+
+```ts
+interface ConstraintAttributes {
+    /**
+     * Normalized point, relative to bounding box top-left.
+     */
+    point: [number, number];
+    /**
+     * Use perimeter.
+     */
+    perimeter: boolean;
+    name?: string;
+    dx?: number;
+    dy?: number;
+}
+```
 
 类似 [课程 18 - 定义父子组件]，我们可以实现双向绑定关系：
 
@@ -149,20 +202,6 @@ class Binded {
     @field.backrefs(Binding, 'from') declare fromBindings: Entity[];
     @field.backrefs(Binding, 'to') declare toBindings: Entity[];
 }
-```
-
-声明一个从 `rect-1` 指向 `rect-2` 的箭头方法如下：
-
-```ts
-const edge = {
-    id: 'line-1',
-    type: 'line',
-    fromId: 'rect-1',
-    toId: 'rect-2',
-    stroke: 'black',
-    strokeWidth: 10,
-    markerEnd: 'line',
-};
 ```
 
 ## 自动更新 {#auto-update}
@@ -323,6 +362,33 @@ $$\frac{(x-cx)^2}{a^2} + \frac{(d \cdot x + h - cy)^2}{b^2} = 1$$
 
 <BindingWithEllipse />
 
+## 定义约束 {#constraint}
+
+约束表示这个节点允许你从哪些位置、以什么规则连线，它不是一个“点”，而是一个规则对象。
+
+```ts
+class mxConnectionConstraint {
+    point: mxPoint | null; // 归一化坐标 (0~1)
+    perimeter: boolean; // 是否投射到边界
+    name?: string; // 可选，端口名
+}
+```
+
+在 draw.io 的编辑器中我们能看到图形上许多“蓝色连接点”：
+
+```ts
+mxRectangleShape.prototype.getConstraints = function (style) {
+    return [
+        new mxConnectionConstraint(new mxPoint(0.5, 0), true), // top
+        new mxConnectionConstraint(new mxPoint(1, 0.5), true), // right
+        new mxConnectionConstraint(new mxPoint(0.5, 1), true), // bottom
+        new mxConnectionConstraint(new mxPoint(0, 0.5), true), // left
+    ];
+};
+```
+
+获取候选约束，选择最近的约束，将约束转为几何点。如果需要投射到边界，就进入上一节介绍过的边界算法计算逻辑。
+
 ## 路由规则 {#router}
 
 自动选出口方向、插入拐点、避开节点包围盒：
@@ -337,7 +403,15 @@ $$\frac{(x-cx)^2}{a^2} + \frac{(d \cdot x + h - cy)^2}{b^2} = 1$$
 
 ## 编辑器 {#editor}
 
+选中边时，拖拽时高亮可停靠的锚点。
+
+### 展示锚点 {#display-anchors}
+
+选中节点时，展示可用的锚点，从锚点可以发起连线。
+
 [课程 23 - 思维导图]: /zh/guide/lesson-023
 [课程 25 - 绘制箭头]: /zh/guide/lesson-025#draw-arrow
 [课程 18 - 定义父子组件]: /zh/guide/lesson-018#定义-component
 [Change the shape perimeter]: https://www.drawio.com/doc/faq/shape-perimeter-change
+[JSON Canvas Spec]: https://jsoncanvas.org/spec/1.0/
+[mxConnectionConstraint]: https://github.com/jgraph/drawio/blob/81a267568da862d3c99970758c09a8e768dea973/src/main/webapp/mxgraph/src/view/mxConnectionConstraint.js#L23

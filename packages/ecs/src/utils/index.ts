@@ -24,4 +24,4 @@ export * from './snapping';
 export * from './embed';
 export * from './encryption';
 export * from './filter';
-export * from './perimeter';
+export * from './binding';

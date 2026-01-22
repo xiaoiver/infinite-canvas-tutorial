@@ -127,6 +127,21 @@ export interface StrokeAttributes {
   strokeOpacity: Opacity['strokeOpacity'];
 }
 
+export interface ConstraintAttributes {
+  /**
+   * Normalized point, relative to bounding box top-left.
+   */
+  point: [number, number];
+  perimeter: boolean;
+  name?: string;
+  dx?: number;
+  dy?: number;
+}
+
+export interface BindedAttributes {
+  constraints: ConstraintAttributes[];
+}
+
 export interface BindingAttributes {
   fromId: string;
   toId: string;
@@ -218,7 +233,8 @@ export interface RectSerializedNode
     Partial<DropShadowAttributes>,
     Partial<AttenuationAttributes>,
     Partial<WireframeAttributes>,
-    Partial<FilterAttributes> {}
+    Partial<FilterAttributes>,
+    Partial<BindedAttributes> {}
 
 export interface RoughRectSerializedNode
   extends BaseSerializeNode<'rough-rect'>,

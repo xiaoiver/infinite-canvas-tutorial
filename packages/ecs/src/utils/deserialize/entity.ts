@@ -76,7 +76,7 @@ import { isPattern } from '../pattern';
 import { computeBidi, measureText } from '../../systems/ComputeTextMetrics';
 import { DOMAdapter } from '../../environment';
 import { safeAddComponent } from '../../history';
-import { ellipsePerimeter, rectanglePerimeter } from '../perimeter';
+import { updateFloatingTerminalPoints } from '../binding';
 
 export function inferXYWidthHeight(node: SerializedNode) {
   if (
@@ -151,59 +151,22 @@ export function inferXYWidthHeight(node: SerializedNode) {
 export function inferPointsWithFromIdAndToId(
   from: SerializedNode,
   to: SerializedNode,
-  attributes: LineSerializedNode,
+  edge: LineSerializedNode,
 ) {
   inferXYWidthHeight(from);
   inferXYWidthHeight(to);
 
-  const fromCenter = {
-    x: from.x + from.width / 2,
-    y: from.y + from.height / 2,
-  };
-  const toCenter = { x: to.x + to.width / 2, y: to.y + to.height / 2 };
-  const perimeterFrom = from.type === 'ellipse' ? ellipsePerimeter : rectanglePerimeter;  
-  const perimeterTo = to.type === 'ellipse' ? ellipsePerimeter : rectanglePerimeter;
-
-  let startBinding: IPointData;
-  let endBinding: IPointData;
-
-  if (attributes.orthogonal) {
-    // 在正交模式下，需要迭代计算以确保两个绑定点能够对齐
-    // 先使用中心点计算初始绑定点
-    startBinding = perimeterFrom(
-      from,
-      { x: toCenter.x, y: toCenter.y },
-      attributes.orthogonal,
-    );
-    // 使用第一个绑定点的坐标来计算第二个绑定点
-    endBinding = perimeterTo(
-      to,
-      { x: startBinding.x, y: startBinding.y },
-      attributes.orthogonal,
-    );
-    // 使用第二个绑定点的坐标重新计算第一个绑定点，以确保对齐
-    startBinding = perimeterFrom(
-      from,
-      { x: endBinding.x, y: endBinding.y },
-      attributes.orthogonal,
-    );
-  } else {
-    startBinding = perimeterFrom(
-      from,
-      { x: toCenter.x, y: toCenter.y },
-      attributes.orthogonal,
-    );
-    endBinding = perimeterTo(
-      to,
-      { x: fromCenter.x, y: fromCenter.y },
-      attributes.orthogonal,
-    );
-  }
-
-  attributes.x1 = startBinding.x;
-  attributes.y1 = startBinding.y;
-  attributes.x2 = endBinding.x;
-  attributes.y2 = endBinding.y;
+  const state = edge as SerializedNode & { absolutePoints: (IPointData | null)[] };
+  state.absolutePoints = [null, null];
+  // updateFixedTerminalPoints(edge, from, to, true);
+  // updatePoints(edge, geo.points, from, to);
+  updateFloatingTerminalPoints(state, from, to);
+  
+  edge.x1 = state.absolutePoints[0].x;
+  edge.y1 = state.absolutePoints[0].y;
+  edge.x2 = state.absolutePoints[1].x;
+  edge.y2 = state.absolutePoints[1].y;
+  delete state.absolutePoints;
 }
 
 export async function loadImage(url: string, entity: Entity) {
