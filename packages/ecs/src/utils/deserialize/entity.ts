@@ -76,7 +76,7 @@ import { isPattern } from '../pattern';
 import { computeBidi, measureText } from '../../systems/ComputeTextMetrics';
 import { DOMAdapter } from '../../environment';
 import { safeAddComponent } from '../../history';
-import { updateFloatingTerminalPoints } from '../binding';
+import { updateFixedTerminalPoints, updateFloatingTerminalPoints, updatePoints } from '../binding';
 
 export function inferXYWidthHeight(node: SerializedNode) {
   if (
@@ -158,8 +158,8 @@ export function inferPointsWithFromIdAndToId(
 
   const state = edge as SerializedNode & { absolutePoints: (IPointData | null)[] };
   state.absolutePoints = [null, null];
-  // updateFixedTerminalPoints(edge, from, to, true);
-  // updatePoints(edge, geo.points, from, to);
+  updateFixedTerminalPoints(state, from, to);
+  updatePoints(state, null, from, to);
   updateFloatingTerminalPoints(state, from, to);
   
   edge.x1 = state.absolutePoints[0].x;
