@@ -99,8 +99,8 @@ canvas.addEventListener(Event.READY, async (e) => {
     fill: 'grey',
     constraints: [
       {
-        point: [0, 0],
-        perimeter: true,
+        x: 0.5,
+        y: 0.5,
       }
     ]
     // fill: 'https://v3b.fal.media/files/b/tiger/v1lf1EcPP1X1pw_YOKM4o.jpg',
@@ -114,6 +114,9 @@ canvas.addEventListener(Event.READY, async (e) => {
     stroke: 'black',
     strokeWidth: 10,
     markerEnd: 'line',
+    exitX: 0.5,
+    exitY: 0.5,
+    exitPerimeter: true,
     // orthogonal: true,
   };
   const edge2 = {
