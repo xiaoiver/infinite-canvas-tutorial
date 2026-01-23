@@ -45,6 +45,7 @@ import {
   AttenuationAttributes,
   BrushSerializedNode,
   DropShadowAttributes,
+  EdgeSerializedNode,
   EmbedSerializedNode,
   FillAttributes,
   FilterAttributes,
@@ -156,12 +157,12 @@ export function inferPointsWithFromIdAndToId(
   inferXYWidthHeight(from);
   inferXYWidthHeight(to);
 
-  const state = edge as SerializedNode & { absolutePoints: (IPointData | null)[] };
+  const state = edge as LineSerializedNode & { absolutePoints: (IPointData | null)[] };
   state.absolutePoints = [null, null];
   updateFixedTerminalPoints(state, from, to);
   updatePoints(state, null, from, to);
   updateFloatingTerminalPoints(state, from, to);
-  
+
   edge.x1 = state.absolutePoints[0].x;
   edge.y1 = state.absolutePoints[0].y;
   edge.x2 = state.absolutePoints[1].x;
@@ -245,10 +246,11 @@ export function serializedNodesToEntities(
 
   // bindings should also be sorted
   nodes.forEach((node) => {
-    if (node.type === 'line') {
-      if (node.fromId && node.toId) {
-        edges.push([node.fromId, node.id]);
-        edges.push([node.toId, node.id]);
+    if (node.type === 'line' || node.type === 'polyline' || node.type === 'path') {
+      const { fromId, toId } = node as EdgeSerializedNode;
+      if (fromId && toId) {
+        edges.push([fromId, node.id]);
+        edges.push([toId, node.id]);
       }
     }
   });
@@ -275,7 +277,7 @@ export function serializedNodesToEntities(
 
     // Infer points with fromId and toId first
     if (type === 'line') {
-      const { fromId, toId } = attributes as LineSerializedNode;
+      const { fromId, toId } = attributes as EdgeSerializedNode;
       if (fromId && toId) {
         const fromNode = nodes.find((node) => node.id === fromId);
         const toNode = nodes.find((node) => node.id === toId);
@@ -529,9 +531,9 @@ export function serializedNodesToEntities(
             strokeDasharray === 'none'
               ? [0, 0]
               : ((strokeDasharray?.includes(',')
-                  ? strokeDasharray?.split(',')
-                  : strokeDasharray?.split(' ')
-                )?.map(Number) as [number, number]),
+                ? strokeDasharray?.split(',')
+                : strokeDasharray?.split(' ')
+              )?.map(Number) as [number, number]),
           linecap: strokeLinecap,
           linejoin: strokeLinejoin,
           miterlimit: strokeMiterlimit,

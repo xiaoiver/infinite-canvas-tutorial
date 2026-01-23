@@ -8,6 +8,7 @@ publish: false
 import Binding from '../../components/Binding.vue'
 import BindingWithEllipse from '../../components/BindingWithEllipse.vue'
 import BindingOrthogonal from '../../components/BindingOrthogonal.vue'
+import BindingConstraint from '../../components/BindingConstraint.vue'
 </script>
 
 # 课程 31 - 图形间的连接关系
@@ -364,7 +365,11 @@ $$\frac{(x-cx)^2}{a^2} + \frac{(d \cdot x + h - cy)^2}{b^2} = 1$$
 
 ## 定义约束 {#constraint}
 
-约束表示这个节点允许你从哪些位置、以什么规则连线，它不是一个“点”，而是一个规则对象。
+至此，我们实现了在边上仅通过 `fromId` 和 `toId` 表达逻辑连接关系的实现。边和节点的连接点是浮动的，在 mxGraph 中称作 `FloatingTerminalPoint`。但有时我们希望边从节点的固定位置离开、从被连接图形的固定位置进入，在 mxGraph 称作 `FixedTerminalPoint`，此时就需要通过约束定义，分成节点和边两部分。
+
+### 节点约束 {#constraint-on-node}
+
+节点约束表示允许你从哪些位置、以什么规则连线，它不是一个“点”，而是一个规则对象，在 mxGraph 中定义如下：
 
 ```ts
 class mxConnectionConstraint {
@@ -374,7 +379,7 @@ class mxConnectionConstraint {
 }
 ```
 
-在 draw.io 的编辑器中我们能看到图形上许多“蓝色连接点”：
+在配套的 draw.io 的编辑器中我们能看到图形上许多“蓝色连接点”，它们就是通过重载图形上的约束定义的：
 
 ```ts
 mxRectangleShape.prototype.getConstraints = function (style) {
@@ -387,7 +392,49 @@ mxRectangleShape.prototype.getConstraints = function (style) {
 };
 ```
 
+我们的约束定义如下，在节点上可以声明一组约束：
+
+```ts
+export interface ConstraintAttributes {
+    x?: number;
+    y?: number;
+    perimeter?: boolean;
+    dx?: number;
+    dy?: number;
+}
+
+export interface BindedAttributes {
+    constraints: ConstraintAttributes[];
+}
+```
+
 获取候选约束，选择最近的约束，将约束转为几何点。如果需要投射到边界，就进入上一节介绍过的边界算法计算逻辑。
+
+### 边约束 {#constraint-on-edge}
+
+在边上也需要定义从节点的哪个锚点上离开或进入，在交互操作上对应将边的端点拖拽到节点的锚点上，此时 `entryX/entryY` 就需要拷贝锚点约束的 `x/y` 字段：
+
+```ts
+interface BindingAttributes {
+    fromId: string;
+    toId: string;
+    orthogonal: boolean;
+    exitX: number; // [!code ++]
+    exitY: number; // [!code ++]
+    exitPerimeter: boolean; // [!code ++]
+    exitDx: number; // [!code ++]
+    exitDy: number; // [!code ++]
+    entryX: number; // [!code ++]
+    entryY: number; // [!code ++]
+    entryPerimeter: boolean; // [!code ++]
+    entryDx: number; // [!code ++]
+    entryDy: number; // [!code ++]
+}
+```
+
+在下面的例子中，我们分别在灰色和绿色矩形上各定义了一个锚点 `[1, 0]` 和 `[0, 1]`
+
+<BindingConstraint />
 
 ## 路由规则 {#router}
 
@@ -401,13 +448,20 @@ mxRectangleShape.prototype.getConstraints = function (style) {
 
 ![Connector styles](https://drawio-app.com/wp-content/uploads/2019/02/drawio-connector-styles.png)
 
-## 编辑器 {#editor}
+## [WIP] 导出 SVG {#export-svg}
 
-选中边时，拖拽时高亮可停靠的锚点。
+在导出时，就不能只保存几何信息了，还需要将逻辑关系也一并持久化。
 
-### 展示锚点 {#display-anchors}
+```html
+<line x1="0" y1="0" data-binding="" />
+```
 
-选中节点时，展示可用的锚点，从锚点可以发起连线。
+## [WIP] 编辑器 {#editor}
+
+### 高亮锚点 {#highlight-anchors}
+
+-   选中节点时，展示可用的锚点，从锚点可以发起连线。
+-   选中边时，拖拽时高亮可停靠的锚点。
 
 [课程 23 - 思维导图]: /zh/guide/lesson-023
 [课程 25 - 绘制箭头]: /zh/guide/lesson-025#draw-arrow

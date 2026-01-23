@@ -8,6 +8,7 @@ publish: false
 import Binding from '../components/Binding.vue'
 import BindingWithEllipse from '../components/BindingWithEllipse.vue'
 import BindingOrthogonal from '../components/BindingOrthogonal.vue'
+import BindingConstraint from '../components/BindingConstraint.vue'
 </script>
 
 # Lesson 31 - Bindings between shapes
@@ -323,6 +324,79 @@ Quadratic formula: Use the discriminant $det = \sqrt{f^2 - 4eg}$ to calculate th
 
 <BindingWithEllipse />
 
+## Constraint {#constraint}
+
+At this point, we have implemented logical connections on edges using only `fromId` and `toId`. The connection points for edges and nodes are floating, referred to as `FloatingTerminalPoint` in mxGraph. However, sometimes we want edges to depart from a fixed position on a node and enter from a fixed position on the connected shape, termed `FixedTerminalPoint` in mxGraph. In such cases, we need to define constraints, splitting the process into separate parts for nodes and edges.
+
+### Constraint on node {#constraint-on-node}
+
+Node constraints define where and how connections can be made. They are not “points” but rule objects, defined in mxGraph as follows:
+
+```ts
+class mxConnectionConstraint {
+    point: mxPoint | null; // 归一化坐标 (0~1)
+    perimeter: boolean; // 是否投射到边界
+    name?: string; // 可选，端口名
+}
+```
+
+In the accompanying draw.io editor, we can see numerous “blue connection points” on the diagram. These are defined by overriding the constraints on the diagram:
+
+```ts
+mxRectangleShape.prototype.getConstraints = function (style) {
+    return [
+        new mxConnectionConstraint(new mxPoint(0.5, 0), true), // top
+        new mxConnectionConstraint(new mxPoint(1, 0.5), true), // right
+        new mxConnectionConstraint(new mxPoint(0.5, 1), true), // bottom
+        new mxConnectionConstraint(new mxPoint(0, 0.5), true), // left
+    ];
+};
+```
+
+Our constraints are defined as follows: A set of constraints can be declared on a node:
+
+```ts
+export interface ConstraintAttributes {
+    x?: number;
+    y?: number;
+    perimeter?: boolean;
+    dx?: number;
+    dy?: number;
+}
+
+export interface BindedAttributes {
+    constraints: ConstraintAttributes[];
+}
+```
+
+Retrieve candidate constraints, select the nearest constraint, and convert the constraint into a geometric point. If projection onto the boundary is required, proceed to the boundary algorithm computation logic introduced in the previous section.
+
+### Constraint on edge {#constraint-on-edge}
+
+You also need to define which anchor point of the node the edge will enter or exit from. During interaction, this corresponds to dragging the edge's endpoint onto the node's anchor point. At this point, `entryX/entryY` must copy the `x/y` field from the anchor point constraint:
+
+```ts
+interface BindingAttributes {
+    fromId: string;
+    toId: string;
+    orthogonal: boolean;
+    exitX: number; // [!code ++]
+    exitY: number; // [!code ++]
+    exitPerimeter: boolean; // [!code ++]
+    exitDx: number; // [!code ++]
+    exitDy: number; // [!code ++]
+    entryX: number; // [!code ++]
+    entryY: number; // [!code ++]
+    entryPerimeter: boolean; // [!code ++]
+    entryDx: number; // [!code ++]
+    entryDy: number; // [!code ++]
+}
+```
+
+In the following example, we have defined anchor points `[1, 0]` and `[0, 1]` on the gray and green rectangles respectively.
+
+<BindingConstraint />
+
 ## Routing Rules {#router}
 
 Automatically select exit direction, insert turning points, avoid node bounding boxes:
@@ -335,7 +409,20 @@ Automatically select exit direction, insert turning points, avoid node bounding 
 
 ![Connector styles](https://drawio-app.com/wp-content/uploads/2019/02/drawio-connector-styles.png)
 
-## Editor {#editor}
+## [WIP] Export SVG {#export-svg}
+
+When exporting, it is no longer sufficient to save only geometric information; logical relationships must also be persisted.
+
+```html
+<line x1="0" y1="0" data-binding="" />
+```
+
+## [WIP] Editor {#editor}
+
+### Highlight anchors {#highlight-anchors}
+
+-   When a node is selected, display available anchor points from which connections can be initiated.
+-   When an edge is selected, highlight dockable anchor points during dragging.
 
 [Lesson 23 - Mindmap]: /zh/guide/lesson-023
 [Lesson 25 - Drawing arrows]: /zh/guide/lesson-025#draw-arrow

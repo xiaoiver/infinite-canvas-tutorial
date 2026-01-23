@@ -31,10 +31,10 @@ export type OrderedSerializedNode = Ordered<SerializedNode>;
  */
 export interface BaseSerializeNode<Type extends string>
   extends Partial<TransformAttributes>,
-    Partial<VisibilityAttributes>,
-    Partial<NameAttributes>,
-    Partial<ZIndexAttributes>,
-    Partial<EditableAttributes> {
+  Partial<VisibilityAttributes>,
+  Partial<NameAttributes>,
+  Partial<ZIndexAttributes>,
+  Partial<EditableAttributes> {
   /**
    * Unique identifier
    */
@@ -131,8 +131,9 @@ export interface ConstraintAttributes {
   /**
    * Normalized point, relative to bounding box top-left.
    */
-  point: [number, number];
-  perimeter: boolean;
+  x?: number;
+  y?: number;
+  perimeter?: boolean;
   name?: string;
   dx?: number;
   dy?: number;
@@ -146,6 +147,16 @@ export interface BindingAttributes {
   fromId: string;
   toId: string;
   orthogonal: boolean;
+  exitX: number;
+  exitY: number;
+  exitPerimeter: boolean;
+  exitDx: number;
+  exitDy: number;
+  entryX: number;
+  entryY: number;
+  entryPerimeter: boolean;
+  entryDx: number;
+  entryDy: number;
 }
 
 export interface MarkerAttributes {
@@ -213,70 +224,79 @@ export interface FilterAttributes {
   filter: string;
 }
 
-export interface GSerializedNode extends BaseSerializeNode<'g'> {}
+export interface GSerializedNode extends BaseSerializeNode<'g'> { }
 
 export interface EllipseSerializedNode
   extends BaseSerializeNode<'ellipse'>,
-    Partial<Pick<Ellipse, 'rx' | 'ry' | 'cx' | 'cy'>>,
-    Partial<FillAttributes>,
-    Partial<StrokeAttributes>,
-    Partial<AttenuationAttributes>,
-    Partial<WireframeAttributes>,
-    Partial<FilterAttributes> {}
+  Partial<Pick<Ellipse, 'rx' | 'ry' | 'cx' | 'cy'>>,
+  Partial<FillAttributes>,
+  Partial<StrokeAttributes>,
+  Partial<AttenuationAttributes>,
+  Partial<WireframeAttributes>,
+  Partial<FilterAttributes>,
+  Partial<BindedAttributes> { }
 
 export interface RectSerializedNode
   extends BaseSerializeNode<'rect'>,
-    Partial<Pick<Rect, 'width' | 'height' | 'cornerRadius'>>,
-    Partial<FillAttributes>,
-    Partial<StrokeAttributes>,
-    Partial<InnerShadowAttributes>,
-    Partial<DropShadowAttributes>,
-    Partial<AttenuationAttributes>,
-    Partial<WireframeAttributes>,
-    Partial<FilterAttributes>,
-    Partial<BindedAttributes> {}
+  Partial<Pick<Rect, 'width' | 'height' | 'cornerRadius'>>,
+  Partial<FillAttributes>,
+  Partial<StrokeAttributes>,
+  Partial<InnerShadowAttributes>,
+  Partial<DropShadowAttributes>,
+  Partial<AttenuationAttributes>,
+  Partial<WireframeAttributes>,
+  Partial<FilterAttributes>,
+  Partial<BindedAttributes> { }
 
 export interface RoughRectSerializedNode
   extends BaseSerializeNode<'rough-rect'>,
-    Partial<Pick<Rect, 'width' | 'height' | 'cornerRadius'>>,
-    Partial<FillAttributes>,
-    Partial<StrokeAttributes>,
-    Partial<RoughAttributes> {}
+  Partial<Pick<Rect, 'width' | 'height' | 'cornerRadius'>>,
+  Partial<FillAttributes>,
+  Partial<StrokeAttributes>,
+  Partial<RoughAttributes>,
+  Partial<BindedAttributes> { }
 
 export interface RoughEllipseSerializedNode
   extends BaseSerializeNode<'rough-ellipse'>,
-    Partial<Pick<Ellipse, 'rx' | 'ry' | 'cx' | 'cy'>>,
-    Partial<FillAttributes>,
-    Partial<StrokeAttributes>,
-    Partial<RoughAttributes> {}
+  Partial<Pick<Ellipse, 'rx' | 'ry' | 'cx' | 'cy'>>,
+  Partial<FillAttributes>,
+  Partial<StrokeAttributes>,
+  Partial<RoughAttributes>,
+  Partial<BindedAttributes> { }
 
 export interface RoughLineSerializedNode
   extends BaseSerializeNode<'rough-line'>,
-    Partial<Pick<Line, 'x1' | 'y1' | 'x2' | 'y2'>>,
-    Partial<StrokeAttributes>,
-    Partial<Pick<AttenuationAttributes, 'strokeAttenuation'>> {}
+  Partial<Pick<Line, 'x1' | 'y1' | 'x2' | 'y2'>>,
+  Partial<StrokeAttributes>,
+  Partial<Pick<AttenuationAttributes, 'strokeAttenuation'>>,
+  Partial<MarkerAttributes>,
+  Partial<BindingAttributes> { }
 export interface RoughPolylineSerializedNode
   extends BaseSerializeNode<'rough-polyline'>,
-    Partial<PolylineAttributes>,
-    Partial<StrokeAttributes>,
-    Partial<RoughAttributes> {}
+  Partial<PolylineAttributes>,
+  Partial<StrokeAttributes>,
+  Partial<RoughAttributes>,
+  Partial<MarkerAttributes>,
+  Partial<BindingAttributes> { }
 export interface LineSerializedNode
   extends BaseSerializeNode<'line'>,
-    Partial<Pick<Line, 'x1' | 'y1' | 'x2' | 'y2'>>,
-    Partial<StrokeAttributes>,
-    Partial<Pick<AttenuationAttributes, 'strokeAttenuation'>>,
-    Partial<BindingAttributes> {}
+  Partial<Pick<Line, 'x1' | 'y1' | 'x2' | 'y2'>>,
+  Partial<StrokeAttributes>,
+  Partial<Pick<AttenuationAttributes, 'strokeAttenuation'>>,
+  Partial<MarkerAttributes>,
+  Partial<BindingAttributes> { }
 
 interface PolylineAttributes {
   points: string;
 }
 export interface PolylineSerializedNode
   extends BaseSerializeNode<'polyline'>,
-    Partial<PolylineAttributes>,
-    Partial<StrokeAttributes>,
-    Partial<Pick<AttenuationAttributes, 'strokeAttenuation'>>,
-    Partial<WireframeAttributes>,
-    Partial<MarkerAttributes> {}
+  Partial<PolylineAttributes>,
+  Partial<StrokeAttributes>,
+  Partial<Pick<AttenuationAttributes, 'strokeAttenuation'>>,
+  Partial<WireframeAttributes>,
+  Partial<MarkerAttributes>,
+  Partial<BindingAttributes> { }
 
 export interface BrushAttributes {
   points: string;
@@ -291,17 +311,20 @@ export interface BrushAttributes {
 }
 export interface BrushSerializedNode
   extends BaseSerializeNode<'brush'>,
-    Partial<BrushAttributes>,
-    Partial<WireframeAttributes> {}
+  Partial<BrushAttributes>,
+  Partial<WireframeAttributes>,
+  Partial<BindedAttributes> { }
 export interface PathSerializedNode
   extends BaseSerializeNode<'path'>,
-    Partial<Pick<Path, 'd' | 'fillRule' | 'tessellationMethod'>>,
-    Partial<FillAttributes>,
-    Partial<StrokeAttributes>,
-    Partial<AttenuationAttributes>,
-    Partial<WireframeAttributes>,
-    Partial<MarkerAttributes>,
-    Partial<FilterAttributes> {}
+  Partial<Pick<Path, 'd' | 'fillRule' | 'tessellationMethod'>>,
+  Partial<FillAttributes>,
+  Partial<StrokeAttributes>,
+  Partial<AttenuationAttributes>,
+  Partial<WireframeAttributes>,
+  Partial<MarkerAttributes>,
+  Partial<FilterAttributes>,
+  Partial<BindingAttributes>,
+  Partial<BindedAttributes> { }
 
 export interface TextAttributes
   extends Partial<
@@ -330,23 +353,24 @@ export interface TextAttributes
       | 'physical'
       | 'esdt'
     >
-  > {}
+  > { }
 
 export interface TextSerializedNode
   extends BaseSerializeNode<'text'>,
-    Partial<TextAttributes>,
-    Partial<{
-      fontBoundingBoxAscent: number;
-      fontBoundingBoxDescent: number;
-      hangingBaseline: number;
-      ideographicBaseline: number;
-    }>,
-    Partial<FillAttributes>,
-    Partial<StrokeAttributes>,
-    Partial<DropShadowAttributes>,
-    Partial<TextDecorationAttributes>,
-    Partial<AttenuationAttributes>,
-    Partial<WireframeAttributes> {}
+  Partial<TextAttributes>,
+  Partial<{
+    fontBoundingBoxAscent: number;
+    fontBoundingBoxDescent: number;
+    hangingBaseline: number;
+    ideographicBaseline: number;
+  }>,
+  Partial<FillAttributes>,
+  Partial<StrokeAttributes>,
+  Partial<DropShadowAttributes>,
+  Partial<TextDecorationAttributes>,
+  Partial<AttenuationAttributes>,
+  Partial<WireframeAttributes>,
+  Partial<BindedAttributes> { }
 
 export interface VectorNetworkAttributes {
   vertices: VectorNetwork['vertices'];
@@ -355,21 +379,23 @@ export interface VectorNetworkAttributes {
 }
 export interface VectorNetworkSerializedNode
   extends BaseSerializeNode<'vector-network'>,
-    Partial<VectorNetworkAttributes> {}
+  Partial<VectorNetworkAttributes> { }
 
 export interface HtmlAttributes {
   html: string;
 }
 export interface HtmlSerializedNode
   extends BaseSerializeNode<'html'>,
-    Partial<HtmlAttributes> {}
+  Partial<HtmlAttributes> { }
 
 export interface EmbedAttributes {
   url: string;
 }
 export interface EmbedSerializedNode
   extends BaseSerializeNode<'embed'>,
-    Partial<EmbedAttributes> {}
+  Partial<EmbedAttributes> { }
+
+export type EdgeSerializedNode = LineSerializedNode | PolylineSerializedNode | PathSerializedNode;
 
 export type SerializedNode =
   | GSerializedNode
