@@ -698,6 +698,43 @@ importers:
         specifier: ^0.8.1
         version: 0.8.1
 
+  packages/plugin-d2:
+    dependencies:
+      '@antv/util':
+        specifier: ^3.3.10
+        version: 3.3.10
+      '@infinite-canvas-tutorial/ecs':
+        specifier: workspace:*
+        version: link:../ecs
+      '@infinite-canvas-tutorial/webcomponents':
+        specifier: workspace:*
+        version: link:../webcomponents
+      '@lit/context':
+        specifier: ^1.1.2
+        version: 1.1.2
+      '@lit/localize':
+        specifier: ^0.12.2
+        version: 0.12.2
+      '@lit/task':
+        specifier: ^1.0.1
+        version: 1.0.1
+      '@spectrum-web-components/icon':
+        specifier: ^1.10.0
+        version: 1.10.0
+      '@spectrum-web-components/icons-workflow':
+        specifier: ^1.10.0
+        version: 1.10.0
+      '@terrastruct/d2':
+        specifier: ^0.1.33
+        version: 0.1.33
+      lit:
+        specifier: ^3.1.3
+        version: 3.2.1
+    devDependencies:
+      '@lit/localize-tools':
+        specifier: ^0.8.1
+        version: 0.8.1
+
   packages/plugin-eraser:
     dependencies:
       '@infinite-canvas-tutorial/ecs':
@@ -893,6 +930,9 @@ importers:
       '@infinite-canvas-tutorial/core':
         specifier: workspace:*
         version: link:../core
+      '@infinite-canvas-tutorial/d2':
+        specifier: workspace:*
+        version: link:../plugin-d2
       '@infinite-canvas-tutorial/ecs':
         specifier: workspace:*
         version: link:../ecs
@@ -2816,6 +2856,9 @@ packages:
   '@tensorflow/tfjs@4.11.0':
     resolution: {integrity: sha512-s6Vbz3IvMz2zNbH8/VptpRXzkwVjmuzT48esYLXJxMKtTcob4m5Srdxo7B+eJSDrWYkutXruiivaWmihFmu5rA==}
     hasBin: true
+
+  '@terrastruct/d2@0.1.33':
+    resolution: {integrity: sha512-eK5hyfGIJFolC7sUsiKvWdY9xGFctTe3d+PSijo09IYDso8psztC+A4SammizXtlwYZpnnW0AtDjfBYauceSeA==}
 
   '@tldraw/vec@1.9.2':
     resolution: {integrity: sha512-k9vH52MRpJHjVcaahWu6VqvhLeE9h1qL5Z2gLobS9zTMpUJ59kBQPNo0VPzPlDYBpXdS4GxuB4jYQMnKvuPAZg==}
@@ -9871,6 +9914,8 @@ snapshots:
     transitivePeerDependencies:
       - encoding
       - seedrandom
+
+  '@terrastruct/d2@0.1.33': {}
 
   '@tldraw/vec@1.9.2': {}
 

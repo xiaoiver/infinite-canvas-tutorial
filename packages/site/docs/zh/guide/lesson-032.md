@@ -7,6 +7,7 @@ publish: false
 <script setup>
 import Mermaid from '../../components/Mermaid.vue'
 import MermaidRough from '../../components/MermaidRough.vue'
+import D2 from '../../components/D2.vue'
 </script>
 
 # 课程 32 - 文本生成图表
@@ -89,6 +90,27 @@ nodes.forEach((node) => {
 ```
 
 <MermaidRough />
+
+## D2 {#d2}
+
+相比 Mermaid，D2 提供了很方便的解析器。
+
+```ts
+import { D2 } from '@terrastruct/d2';
+
+const d2 = new D2();
+const { diagram, graph } = await d2.compile(definition);
+const { connections, shapes } = diagram;
+const {
+    theme: { colors },
+} = graph;
+```
+
+```d2
+x -> y: hello world
+```
+
+<D2 />
 
 ## 扩展阅读 {#extended-reading}
 
