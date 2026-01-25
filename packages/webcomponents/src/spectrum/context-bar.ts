@@ -80,9 +80,9 @@ export class ContextBar extends LitElement {
         Math.max(
           0,
           tl.y +
-            (br.y - tl.y) +
-            (topbarVisible ? TOP_NAVBAR_HEIGHT : 0) +
-            CONTEXT_BAR_MARGIN_BOTTOM,
+          (br.y - tl.y) +
+          (topbarVisible ? TOP_NAVBAR_HEIGHT : 0) +
+          CONTEXT_BAR_MARGIN_BOTTOM,
         ),
       ),
     ];
@@ -132,9 +132,9 @@ export class ContextBar extends LitElement {
 
         const isImage =
           node.type === 'rect' &&
-          (node.fill.endsWith('.jpg') ||
-            node.fill.endsWith('.jpeg') ||
-            node.fill.endsWith('.png') ||
+          (node.fill?.endsWith('.jpg') ||
+            node.fill?.endsWith('.jpeg') ||
+            node.fill?.endsWith('.png') ||
             isDataUrl(node.fill));
 
         const isHTML = node.type === 'html';
@@ -153,10 +153,10 @@ export class ContextBar extends LitElement {
         >
           <div class="bar">
             ${when(
-              isImage && isEditing,
-              () => html`<ic-spectrum-context-image-edit-bar .node=${node} />`,
-              () => html`<ic-spectrum-context-common-bar .node=${node} />`,
-            )}
+          isImage && isEditing,
+          () => html`<ic-spectrum-context-image-edit-bar .node=${node} />`,
+          () => html`<ic-spectrum-context-common-bar .node=${node} />`,
+        )}
           </div>
         </div>`;
       } else {

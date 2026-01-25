@@ -397,6 +397,14 @@ pnpm run dev
 | :-------------------------------------: | :-: |
 | ![bindings](./screenshots/lesson31.gif) |     |
 
+## 课程 32 - 文本生成图表 [🔗](https://infinitecanvas.cc/zh/guide/lesson-032)
+
+-   解析 Mermaid 并绘制
+
+|                Mermaid flowchart                 |     |
+| :----------------------------------------------: | :-: |
+| ![mermaid flowchart](./screenshots/lesson32.png) |     |
+
 [infinitecanvas]: https://infinitecanvas.tools/
 [Figma]: https://madebyevan.com/figma/building-a-professional-design-tool-on-the-web/
 [Modyfi]: https://digest.browsertech.com/archive/browsertech-digest-how-modyfi-is-building-with/

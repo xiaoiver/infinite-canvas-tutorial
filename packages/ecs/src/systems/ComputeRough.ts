@@ -1,11 +1,14 @@
 import { System } from '@lastolivegames/becsy';
 import { Drawable } from 'roughjs/bin/core';
 import {
+  Canvas,
   Circle,
   ComputedRough,
   Ellipse,
   FillSolid,
+  FractionalIndex,
   getRoughOptions,
+  Line,
   Path,
   Polyline,
   Rect,
@@ -20,13 +23,14 @@ export class ComputeRough extends System {
     (q) =>
       q.addedOrChanged
         .with(Rough)
-        .and.withAny(Circle, Ellipse, Rect, Polyline, Path, FillSolid, Stroke)
+        .and.withAny(Circle, Ellipse, Rect, Line, Polyline, Path, FillSolid, Stroke)
         .trackWrites,
   );
 
   constructor() {
     super();
     this.query((q) => q.current.with(ComputedRough).write);
+    this.query((q) => q.using(Canvas, FractionalIndex).read);
   }
 
   execute() {
@@ -43,6 +47,9 @@ export class ComputeRough extends System {
       } else if (entity.has(Rect)) {
         const { x, y, width, height } = entity.read(Rect);
         drawable = generator.rectangle(x, y, width, height, roughOptions);
+      } else if (entity.has(Line)) {
+        const { x1, y1, x2, y2 } = entity.read(Line);
+        drawable = generator.line(x1, y1, x2, y2, roughOptions);
       } else if (entity.has(Polyline)) {
         const { points } = entity.read(Polyline);
         drawable = generator.linearPath(points, roughOptions);

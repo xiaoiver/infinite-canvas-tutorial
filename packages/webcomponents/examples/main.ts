@@ -108,7 +108,7 @@ canvas.addEventListener(Event.READY, async (e) => {
   };
   const edge1 = {
     id: 'line-1',
-    type: 'line',
+    type: 'rough-line',
     fromId: 'rect-1',
     toId: 'rect-2',
     stroke: 'black',
@@ -197,7 +197,7 @@ canvas.addEventListener(Event.READY, async (e) => {
   //   },
   // ]);
 
-  api.updateNodes([node1, node2, node3, edge1, edge2]);
+  api.updateNodes([node1, node2, edge1]);
   // api.updateNode(node1);
   // api.record();
 });

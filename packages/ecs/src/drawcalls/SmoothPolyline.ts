@@ -116,10 +116,10 @@ export class SmoothPolyline extends Drawcall {
       const { pointsBuffer: pBuffer, travelBuffer: tBuffer } = updateBuffer(
         shape,
         shape.has(Rough) &&
-          ((shape.hasSomeOf(Circle, Ellipse, Path) && this.index === 2) ||
-            (shape.has(Rect) && this.index !== 2) ||
-            shape.has(Polyline) ||
-            shape.has(Line)),
+        ((shape.hasSomeOf(Circle, Ellipse, Path) && this.index === 2) ||
+          (shape.has(Rect) && this.index !== 2) ||
+          shape.has(Polyline) ||
+          shape.has(Line)),
       );
 
       pointsBuffer.push(...pBuffer);
@@ -456,8 +456,8 @@ export class SmoothPolyline extends Drawcall {
       dasharray,
       dashoffset,
     } = shape.has(Stroke)
-      ? shape.read(Stroke)
-      : {
+        ? shape.read(Stroke)
+        : {
           color: null,
           width: 0,
           alignment: 'center',
@@ -630,8 +630,8 @@ export function updateBuffer(object: Entity, useRoughStroke = true) {
     linejoin,
     width: strokeWidth,
   } = object.has(Stroke)
-    ? object.read(Stroke)
-    : ({ linecap: 'butt', linejoin: 'miter', width: 1 } as const);
+      ? object.read(Stroke)
+      : ({ linecap: 'butt', linejoin: 'miter', width: 1 } as const);
   const { start, end, factor } = object.has(Marker)
     ? object.read(Marker)
     : ({ start: 'none', end: 'none', factor: 3 } as const);
@@ -641,7 +641,7 @@ export function updateBuffer(object: Entity, useRoughStroke = true) {
   if (
     object.has(Rough) &&
     object.has(ComputedRough) &&
-    object.hasSomeOf(Circle, Ellipse, Rect, Polyline, Path)
+    object.hasSomeOf(Circle, Ellipse, Rect, Line, Polyline, Path)
   ) {
     const { strokePoints, fillPoints } = object.read(ComputedRough);
     points = (useRoughStroke ? strokePoints : fillPoints)
@@ -732,9 +732,8 @@ export function updateBuffer(object: Entity, useRoughStroke = true) {
           //   wave_count % 2 != 0 ? quarterWave : -quarterWave,
           //   quarterWave * 2,
           //   0);
-          d += ` Q ${x_start + quarterWave} ${
-            wave_count % 2 != 0 ? quarterWave : -quarterWave
-          } ${x_start + quarterWave * 2} 0`;
+          d += ` Q ${x_start + quarterWave} ${wave_count % 2 != 0 ? quarterWave : -quarterWave
+            } ${x_start + quarterWave * 2} 0`;
 
           x_start += quarterWave * 2;
           ++wave_count;
@@ -835,7 +834,7 @@ export function updateBuffer(object: Entity, useRoughStroke = true) {
         if (!(zCommand && i >= points.length - stridePoints)) {
           dist += Math.sqrt(
             Math.pow(points[i] - points[i - stridePoints], 2) +
-              Math.pow(points[i + 1] - points[i + 1 - stridePoints], 2),
+            Math.pow(points[i + 1] - points[i + 1 - stridePoints], 2),
           );
           travelBuffer.push(dist);
         }

@@ -102,7 +102,7 @@ export class DefaultStateManagement implements StateManagement {
     this.#nodes = nodes;
   }
 
-  onChange(snapshot: { appState: AppState; nodes: SerializedNode[] }) {}
+  onChange(snapshot: { appState: AppState; nodes: SerializedNode[] }) { }
 }
 
 export const mapToArray = <T extends { id: string } | string>(
@@ -317,7 +317,7 @@ export class API {
    * Create a new camera.
    */
   createCamera(cameraProps: Partial<ComputedCamera>) {
-    const { zoom } = cameraProps;
+    const { zoom, x, y } = cameraProps;
     this.#camera = this.commands
       .spawn(
         new Camera({
@@ -327,6 +327,10 @@ export class API {
           scale: {
             x: 1 / zoom,
             y: 1 / zoom,
+          },
+          translation: {
+            x,
+            y,
           },
         }),
       )
@@ -770,12 +774,12 @@ export class API {
     // remove duplicates
     const layersSelected = preserveSelection
       ? [
-          ...prevAppState.layersSelected,
-          ...nodes.map((node) => node.id),
-        ].filter((id, index, self) => self.indexOf(id) === index)
+        ...prevAppState.layersSelected,
+        ...nodes.map((node) => node.id),
+      ].filter((id, index, self) => self.indexOf(id) === index)
       : nodes
-          .map((node) => node.id)
-          .filter((id, index, self) => self.indexOf(id) === index);
+        .map((node) => node.id)
+        .filter((id, index, self) => self.indexOf(id) === index);
     if (updateAppState) {
       this.setAppState({
         ...prevAppState,
@@ -827,12 +831,12 @@ export class API {
     // remove duplicates
     const layersHighlighted = preserveSelection
       ? [
-          ...prevAppState.layersHighlighted,
-          ...nodes.map((node) => node.id),
-        ].filter((id, index, self) => self.indexOf(id) === index)
+        ...prevAppState.layersHighlighted,
+        ...nodes.map((node) => node.id),
+      ].filter((id, index, self) => self.indexOf(id) === index)
       : nodes
-          .map((node) => node.id)
-          .filter((id, index, self) => self.indexOf(id) === index);
+        .map((node) => node.id)
+        .filter((id, index, self) => self.indexOf(id) === index);
     if (updateAppState) {
       this.setAppState({
         ...prevAppState,
@@ -968,7 +972,7 @@ export class API {
     }
   }
 
-  updateNodeVectorNetwork(node: SerializedNode, vectorNetwork: VectorNetwork) {}
+  updateNodeVectorNetwork(node: SerializedNode, vectorNetwork: VectorNetwork) { }
 
   updateNodeOBB(
     node: SerializedNode,

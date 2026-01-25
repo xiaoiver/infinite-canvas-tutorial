@@ -250,13 +250,19 @@ Adobe Photoshop 提供了 [Match fonts] 功能：
 
 ![Image upscaler with LiteRT.js](/image-upscaler.jpg)
 
-## MCP
+## [WIP] MCP
 
 来自 [MCP: What It Is and Why It Matters]：
 
 > Instead of only having a GUI or API that humans use, you get an AI interface “for free.” This idea has led to the concept of “MCP-first development”, where you build the MCP server for your app before or alongside the GUI.
 
 [Figma MCP Server] 可以操作 [Figma API]
+
+### pencil.dev
+
+The bi-directional MCP vector canvas you’ve been dreaming about. see [pencil.dev]
+
+> Pencil doesn’t provide just MCP reading tools, but also full write access + many other handy tools to fully operate the canvas. This is the real magic. You can plug-in the whole world of MCPs, bring in data from other sources like databases, APIs, chart data, Playwright/Puppeteer or plugin other agents easily. You are in charge!
 
 [课程 21 - Transformer]: /zh/guide/lesson-021
 [UI for AI]: https://medium.com/ui-for-ai
@@ -298,3 +304,4 @@ Adobe Photoshop 提供了 [Match fonts] 功能：
 [super-resolution-js]: https://github.com/josephrocca/super-resolution-js
 [Topaz Gigapixel]: https://www.topazlabs.com/topaz-gigapixel
 [fal-ai/topaz/upscale/image]: https://fal.ai/models/fal-ai/topaz/upscale/image/api
+[pencil.dev]: https://www.pencil.dev/

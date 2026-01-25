@@ -136,6 +136,7 @@ export const zh = defineConfig({
               { text: '激光笔', link: 'laser-pointer' },
               { text: '套索工具', link: 'lasso' },
               { text: '橡皮擦工具', link: 'eraser' },
+              { text: 'Mermaid', link: 'mermaid' },
             ],
           },
           {
@@ -432,6 +433,7 @@ export const zh = defineConfig({
             link: 'lama-in-worker',
           },
           { text: '音频可视化', link: 'audio-visualizer' },
+          { text: 'Mermaid', link: 'mermaid' },
         ],
       },
     },

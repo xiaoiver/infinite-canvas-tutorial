@@ -278,6 +278,15 @@ export interface RoughPolylineSerializedNode
   Partial<RoughAttributes>,
   Partial<MarkerAttributes>,
   Partial<BindingAttributes> { }
+
+export interface RoughPathSerializedNode
+  extends BaseSerializeNode<'rough-path'>,
+  Partial<PathAttributes>,
+  Partial<FillAttributes>,
+  Partial<StrokeAttributes>,
+  Partial<RoughAttributes>,
+  Partial<MarkerAttributes>,
+  Partial<BindingAttributes> { }
 export interface LineSerializedNode
   extends BaseSerializeNode<'line'>,
   Partial<Pick<Line, 'x1' | 'y1' | 'x2' | 'y2'>>,
@@ -314,9 +323,15 @@ export interface BrushSerializedNode
   Partial<BrushAttributes>,
   Partial<WireframeAttributes>,
   Partial<BindedAttributes> { }
+
+interface PathAttributes {
+  d: string;
+  fillRule: Path['fillRule'];
+  tessellationMethod: Path['tessellationMethod'];
+}
 export interface PathSerializedNode
   extends BaseSerializeNode<'path'>,
-  Partial<Pick<Path, 'd' | 'fillRule' | 'tessellationMethod'>>,
+  Partial<PathAttributes>,
   Partial<FillAttributes>,
   Partial<StrokeAttributes>,
   Partial<AttenuationAttributes>,
@@ -410,6 +425,7 @@ export type SerializedNode =
   | RoughEllipseSerializedNode
   | RoughLineSerializedNode
   | RoughPolylineSerializedNode
+  | RoughPathSerializedNode
   | VectorNetworkSerializedNode
   | HtmlSerializedNode
   | EmbedSerializedNode;
@@ -426,6 +442,7 @@ export type SerializedNodeAttributes = GSerializedNode &
   RoughEllipseSerializedNode &
   RoughLineSerializedNode &
   RoughPolylineSerializedNode &
+  RoughPathSerializedNode &
   VectorNetworkSerializedNode &
   HtmlSerializedNode &
   EmbedSerializedNode;

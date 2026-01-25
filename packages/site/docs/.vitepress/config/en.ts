@@ -190,6 +190,7 @@ export const en = defineConfig({
               { text: 'Laser pointer', link: 'laser-pointer' },
               { text: 'Lasso', link: 'lasso' },
               { text: 'Eraser', link: 'eraser' },
+              { text: 'Mermaid', link: 'mermaid' },
             ],
           },
           {
@@ -489,6 +490,7 @@ export const en = defineConfig({
             link: 'lama-in-worker',
           },
           { text: 'Audio visualizer', link: 'audio-visualizer' },
+          { text: 'Mermaid', link: 'mermaid' },
         ],
       },
     },

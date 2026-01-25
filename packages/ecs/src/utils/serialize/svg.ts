@@ -121,6 +121,12 @@ export const defaultAttributes: Record<
     ...strokeDefaultAttributes,
     ...markerDefaultAttributes,
   },
+  'rough-path': {
+    ...commonDefaultAttributes,
+    ...fillDefaultAttributes,
+    ...strokeDefaultAttributes,
+    ...markerDefaultAttributes,
+  },
   ellipse: {
     cx: 0,
     cy: 0,
@@ -778,9 +784,8 @@ function createOrUpdateGradient(
       .sort((a, b) => a.offset.value - b.offset.value)
       .forEach(({ offset, color }) => {
         // TODO: support absolute unit like `px`
-        innerHTML += `<stop offset="${
-          offset.value / 100
-        }" stop-color="${color}"></stop>`;
+        innerHTML += `<stop offset="${offset.value / 100
+          }" stop-color="${color}"></stop>`;
       });
     $existed.innerHTML = innerHTML;
     $existed.id = gradientId;
@@ -1002,9 +1007,8 @@ function createOrUpdateMarker(
     markerFactor = 3,
   } = node as PathSerializedNode;
 
-  const patternId = `marker-${marker}-${
-    isEnd ? 'end' : 'start'
-  }-${strokeWidth}`;
+  const patternId = `marker-${marker}-${isEnd ? 'end' : 'start'
+    }-${strokeWidth}`;
   const $existed = $def.querySelector(`#${patternId}`);
   if (!$existed) {
     const arrowRadius = strokeWidth * markerFactor;
@@ -1153,7 +1157,7 @@ export function exportText(
     $g.setAttribute(
       'style',
       styleCSSText +
-        `text-decoration: ${decorationStyle} ${decorationLine} ${decorationColor} ${decorationThickness}px;`,
+      `text-decoration: ${decorationStyle} ${decorationLine} ${decorationColor} ${decorationThickness}px;`,
     );
   }
 }

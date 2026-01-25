@@ -436,9 +436,14 @@ interface BindingAttributes {
 
 <BindingConstraint />
 
-## 路由规则 {#router}
+## [WIP] 路由规则 {#router}
 
-自动选出口方向、插入拐点、避开节点包围盒：
+mxGraph 使用 EdgeStyle 函数来实现路由规则，这些函数负责：
+
+-   自动选择出口方向
+-   插入拐点（Waypoints）
+-   避开节点包围盒
+-   计算正交/直角路径
 
 ```ts
 ┌──────┐        ┌──────┐

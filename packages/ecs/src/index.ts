@@ -57,6 +57,7 @@ export {
   type OrderedSerializedNode,
   type EllipseSerializedNode,
   type RectSerializedNode,
+  type LineSerializedNode,
   type PolylineSerializedNode,
   type PathSerializedNode,
   type TextSerializedNode,
@@ -64,6 +65,8 @@ export {
   type StrokeAttributes,
   type FillAttributes,
   type MarkerAttributes,
+  type BindingAttributes,
+  type BindedAttributes
 } from './utils';
 export { TexturePool } from './resources';
 
