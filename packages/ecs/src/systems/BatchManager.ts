@@ -63,9 +63,6 @@ function getDrawcallCtors(shape: Entity) {
     }
   } else if (shape.has(Line)) {
     SHAPE_DRAWCALL_CTORS.push(SmoothPolyline);
-    if (shape.has(Rough)) {
-      SHAPE_DRAWCALL_CTORS.push(Mesh, SmoothPolyline, SmoothPolyline);
-    }
   } else if (shape.has(Polyline)) {
     SHAPE_DRAWCALL_CTORS.push(SmoothPolyline);
   } else if (shape.has(Path)) {
@@ -123,7 +120,7 @@ export class BatchManager {
     private readonly renderCache: RenderCache,
     private readonly texturePool: TexturePool,
     private readonly api: API,
-  ) {}
+  ) { }
 
   private collectDrawcallCtors(shape: Entity) {
     return getDrawcallCtors(shape)
@@ -189,32 +186,32 @@ export class BatchManager {
           ? 'rough-circle'
           : 'circle'
         : shape.has(Ellipse)
-        ? shape.has(Rough)
-          ? 'rough-ellipse'
-          : 'ellipse'
-        : shape.has(Rect)
-        ? shape.has(Rough)
-          ? 'rough-rect'
-          : 'rect'
-        : shape.has(Polyline)
-        ? shape.has(Rough)
-          ? 'rough-polyline'
-          : 'polyline'
-        : shape.has(Line)
-        ? shape.has(Rough)
-          ? 'rough-line'
-          : 'line'
-        : shape.has(Path)
-        ? shape.has(Rough)
-          ? 'rough-path'
-          : 'path'
-        : shape.has(Text)
-        ? 'text'
-        : shape.has(VectorNetwork)
-        ? 'vector-network'
-        : shape.has(Brush)
-        ? 'brush'
-        : undefined;
+          ? shape.has(Rough)
+            ? 'rough-ellipse'
+            : 'ellipse'
+          : shape.has(Rect)
+            ? shape.has(Rough)
+              ? 'rough-rect'
+              : 'rect'
+            : shape.has(Polyline)
+              ? shape.has(Rough)
+                ? 'rough-polyline'
+                : 'polyline'
+              : shape.has(Line)
+                ? shape.has(Rough)
+                  ? 'rough-line'
+                  : 'line'
+                : shape.has(Path)
+                  ? shape.has(Rough)
+                    ? 'rough-path'
+                    : 'path'
+                  : shape.has(Text)
+                    ? 'text'
+                    : shape.has(VectorNetwork)
+                      ? 'vector-network'
+                      : shape.has(Brush)
+                        ? 'brush'
+                        : undefined;
 
       let instancedDrawcalls = this.#instancesCache[geometryCtor];
       if (!instancedDrawcalls) {

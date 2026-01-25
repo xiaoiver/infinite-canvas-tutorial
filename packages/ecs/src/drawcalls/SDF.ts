@@ -390,16 +390,16 @@ export class SDF extends Drawcall {
 
         const canvas = instance.has(FillPattern)
           ? this.texturePool.getOrCreatePattern({
-              pattern: instance.read(FillPattern),
-              width,
-              height,
-            })
+            pattern: instance.read(FillPattern),
+            width,
+            height,
+          })
           : this.texturePool.getOrCreateGradient({
-              gradients: parseGradient(instance.read(FillGradient).value),
-              min: [minX, minY],
-              width,
-              height,
-            });
+            gradients: parseGradient(instance.read(FillGradient).value),
+            min: [minX, minY],
+            width,
+            height,
+          });
         const texture = this.device.createTexture({
           format: Format.U8_RGBA_NORM,
           width: 128,
@@ -647,16 +647,16 @@ export class SDF extends Drawcall {
       width,
       alignment,
     } = shape.has(Stroke)
-      ? shape.read(Stroke)
-      : { color: null, width: 0, alignment: 'center' };
+        ? shape.read(Stroke)
+        : { color: null, width: 0, alignment: 'center' };
     const {
       color: innerShadowColor,
       offsetX,
       offsetY,
       blurRadius,
     } = shape.has(InnerShadow)
-      ? shape.read(InnerShadow)
-      : {
+        ? shape.read(InnerShadow)
+        : {
           color: null,
           offsetX: 0,
           offsetY: 0,

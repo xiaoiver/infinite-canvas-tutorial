@@ -59,6 +59,7 @@ import {
   VectorNetwork,
   Filter,
   Transform,
+  Mat3,
 } from '../components';
 import { Effect, paddingMat3, parseEffect, SerializedNode } from '../utils';
 import { GridRenderer } from '../render-graph/GridRenderer';
@@ -629,10 +630,10 @@ export class MeshPipeline extends System {
     const u_ZoomScale = zoom;
     const u_CheckboardStyle = shouldRenderGrid
       ? [
-          CheckboardStyle.NONE,
-          CheckboardStyle.GRID,
-          CheckboardStyle.DOTS,
-        ].indexOf(checkboardStyle)
+        CheckboardStyle.NONE,
+        CheckboardStyle.GRID,
+        CheckboardStyle.DOTS,
+      ].indexOf(checkboardStyle)
       : 0;
     const u_Viewport = [width, height];
 
@@ -647,9 +648,9 @@ export class MeshPipeline extends System {
       ...u_Viewport,
     ]);
     const legacyObject = {
-      u_ProjectionMatrix,
-      u_ViewMatrix,
-      u_ViewProjectionInvMatrix,
+      u_ProjectionMatrix: Mat3.toGLMat3(u_ProjectionMatrix),
+      u_ViewMatrix: Mat3.toGLMat3(u_ViewMatrix),
+      u_ViewProjectionInvMatrix: Mat3.toGLMat3(u_ViewProjectionInvMatrix),
       u_BackgroundColor,
       u_GridColor,
       u_ZoomScale,

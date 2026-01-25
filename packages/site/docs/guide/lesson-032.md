@@ -5,43 +5,43 @@ publish: false
 ---
 
 <script setup>
-import Mermaid from '../../components/Mermaid.vue'
-import MermaidRough from '../../components/MermaidRough.vue'
+import Mermaid from '../components/Mermaid.vue'
+import MermaidRough from '../components/MermaidRough.vue'
 </script>
 
-# 课程 32 - 文本生成图表
+# Lesson 32 - Text to diagram
 
-在上节课中我们支持了图形间的连接关系表达，这意味着很多类型的图表我们都可以渲染了。大模型对于很多基于文本语法的图表支持度非常好，例如 [mermaid]、[D2] 和 [draw.io]
+In the previous session, we enabled the expression of connections between graphics, meaning we can now render many types of diagrams. Large models offer excellent support for numerous text-based diagramming languages, such as [mermaid], [D2], and [draw.io].
 
 ## Mermaid {#mermaid}
 
-excalidraw 提供了 [mermaid-to-excalidraw/api]，如果对内部实现感兴趣可以阅读官方的文章：[How the Parser works under the hood ?]
+Excalidraw provides the [mermaid-to-excalidraw/api]. If you're interested in its internal implementation, you can read the official documentation: [How the Parser works under the hood ?]
 
 ![the high level overview at how the parse works](https://github.com/excalidraw/excalidraw/assets/11256141/8e060de7-b867-44ad-864b-0c1b24466b67)
 
-总之 excalidraw 仅支持少部分的 mermaid 图表类型，解析 mermaid 渲染器的 SVG 结果转换成内部场景图表达，并利用解析器得到的 Diagram JSON 获取节点间的关系。
+In summary, Excalidraw supports only a limited subset of Mermaid diagram types. It parses the SVG output from the Mermaid renderer, converts it into an internal scene diagram representation, and uses the Diagram JSON obtained from the parser to retrieve relationships between nodes.
 
-以下面最简单的 Mermaid 流程图为例：
+Take the simplest Mermaid flowchart below as an example:
 
 ```mermaid
 flowchart LR
  start-->stop
 ```
 
-首先使用 Mermaid 被废弃的 API 解析文本，得到图表类型、节点和边的逻辑关系信息，但并不包含几何信息：
+First, Mermaid's deprecated API is used to parse the text, extracting chart types, nodes, and edge relationships, but without geometric information:
 
 ```ts
 import mermaid, { MermaidConfig } from 'mermaid';
 const diagram = await mermaid.mermaidAPI.getDiagramFromText(definition); // "flowchart LR..."
 ```
 
-然后使用 Mermaid 的渲染方法将 SVG 渲染到页面的一个隐藏容器中，这也能看到该方法的局限性：只能在浏览器环境执行。从 SVG 的渲染结果中获取节点和边的几何信息，使用上一步中获得的节点和边 ID：
+Then use Mermaid's rendering method to render the SVG into a hidden container on the page. This also reveals the limitations of this approach: it can only be executed in a browser environment. Extract the node and edge geometric information from the rendered SVG output, using the node and edge IDs obtained in the previous step:
 
 ```ts
 const { svg } = await mermaid.render('mermaid-to-excalidraw', definition);
 ```
 
-最后转换成我们的画布接受的场景图，节点上的文本创建单独的子节点：
+Finally, convert it into a scene graph accepted by our canvas, with text on nodes creating separate child nodes:
 
 ```ts
 function convertFlowchartToSerializedNodes(
@@ -74,7 +74,7 @@ function convertFlowchartToSerializedNodes(
 
 <Mermaid />
 
-简单地替换图形的类型，就可以实现手绘风格的渲染：
+Simply replacing the type of graphics can achieve hand-drawn style rendering:
 
 ```ts
 nodes.forEach((node) => {
@@ -90,7 +90,7 @@ nodes.forEach((node) => {
 
 <MermaidRough />
 
-## 扩展阅读 {#extended-reading}
+## Extended reading {#extended-reading}
 
 -   [Discussion in HN]
 

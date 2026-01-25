@@ -397,7 +397,7 @@ In the following example, we have defined anchor points `[1, 0]` and `[0, 1]` on
 
 <BindingConstraint />
 
-## Routing Rules {#router}
+## [WIP] Routing rules {#router}
 
 Automatically select exit direction, insert turning points, avoid node bounding boxes:
 

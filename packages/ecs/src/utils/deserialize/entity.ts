@@ -96,7 +96,7 @@ export function inferXYWidthHeight(node: SerializedNode) {
       bounds = Polyline.getGeometryBounds(node);
     } else if (type === 'line' || type === 'rough-line') {
       bounds = Line.getGeometryBounds(node);
-    } else if (type === 'path') {
+    } else if (type === 'path' || type === 'rough-path') {
       bounds = Path.getGeometryBounds(node);
     } else if (type === 'text') {
       computeBidi(node.content);
@@ -125,7 +125,7 @@ export function inferXYWidthHeight(node: SerializedNode) {
         node.y1 = node.y1 - bounds.minY;
         node.x2 = node.x2 - bounds.minX;
         node.y2 = node.y2 - bounds.minY;
-      } else if (type === 'path') {
+      } else if (type === 'path' || type === 'rough-path') {
         node.d = shiftPath(node.d, -bounds.minX, -bounds.minY);
       } else if (type === 'brush') {
         node.points = serializeBrushPoints(
@@ -276,7 +276,7 @@ export function serializedNodesToEntities(
     idEntityMap.set(id, entityCommands);
 
     // Infer points with fromId and toId first
-    if (type === 'line') {
+    if (type === 'line' || type === 'rough-line') {
       const { fromId, toId } = attributes as EdgeSerializedNode;
       if (fromId && toId) {
         const fromNode = nodes.find((node) => node.id === fromId);

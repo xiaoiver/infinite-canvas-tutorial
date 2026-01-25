@@ -396,6 +396,14 @@ If you want to use it in your own project, you can refer to:
 | :-------------------------------------: | :-: |
 | ![bindings](./screenshots/lesson31.gif) |     |
 
+## Lesson 32 - Text to diagram [🔗](https://infinitecanvas.cc/guide/lesson-032)
+
+-   Parse Mermaid and render in our canvas
+
+|                Mermaid flowchart                 |     |
+| :----------------------------------------------: | :-: |
+| ![mermaid flowchart](./screenshots/lesson32.png) |     |
+
 [infinitecanvas]: https://infinitecanvas.tools/
 [Figma]: https://madebyevan.com/figma/building-a-professional-design-tool-on-the-web/
 [Modyfi]: https://digest.browsertech.com/archive/browsertech-digest-how-modyfi-is-building-with/

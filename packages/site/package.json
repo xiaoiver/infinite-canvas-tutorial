@@ -40,6 +40,7 @@
     "@infinite-canvas-tutorial/laser-pointer": "workspace:*",
     "@infinite-canvas-tutorial/lasso": "workspace:*",
     "@infinite-canvas-tutorial/eraser": "workspace:*",
+    "@infinite-canvas-tutorial/mermaid": "workspace:*",
     "@infinite-canvas-tutorial/lesson1": "workspace:*",
     "@infinite-canvas-tutorial/lesson2": "workspace:*",
     "@infinite-canvas-tutorial/lesson3": "workspace:*",

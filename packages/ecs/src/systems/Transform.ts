@@ -122,7 +122,7 @@ export function getDescendants(
 
 export function updateGlobalTransform(entity: Entity): void {
   const parentWorldTransform = entity.has(Children)
-    ? entity.read(Children).parent.read(GlobalTransform).matrix
+    ? (entity.read(Children).parent.has(Camera) ? Mat3.IDENTITY : entity.read(Children).parent.read(GlobalTransform).matrix)
     : Mat3.IDENTITY;
   const localTransform = entity.read(Transform);
   const worldTransform = parentWorldTransform.mul_mat3(
