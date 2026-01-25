@@ -7,6 +7,7 @@ publish: false
 <script setup>
 import Mermaid from '../components/Mermaid.vue'
 import MermaidRough from '../components/MermaidRough.vue'
+import D2 from '../components/D2.vue'
 </script>
 
 # Lesson 32 - Text to diagram
@@ -89,6 +90,27 @@ nodes.forEach((node) => {
 ```
 
 <MermaidRough />
+
+## D2 {#d2}
+
+D2 provides out-of-box parser compared with mermaid:
+
+```ts
+import { D2 } from '@terrastruct/d2';
+
+const d2 = new D2();
+const { diagram, graph } = await d2.compile(definition);
+const { connections, shapes } = diagram;
+const {
+    theme: { colors },
+} = graph;
+```
+
+```d2
+x -> y: hello world
+```
+
+<D2 />
 
 ## Extended reading {#extended-reading}
 

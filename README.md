@@ -399,10 +399,11 @@ If you want to use it in your own project, you can refer to:
 ## Lesson 32 - Text to diagram [🔗](https://infinitecanvas.cc/guide/lesson-032)
 
 -   Parse Mermaid and render in our canvas
+-   Parse D2 and render in our canvas
 
-|                Mermaid flowchart                 |     |
-| :----------------------------------------------: | :-: |
-| ![mermaid flowchart](./screenshots/lesson32.png) |     |
+|                Mermaid flowchart                 |                                               |
+| :----------------------------------------------: | :-------------------------------------------: |
+| ![mermaid flowchart](./screenshots/lesson32.png) | ![d2 flowchart](./screenshots/lesson32-2.png) |
 
 [infinitecanvas]: https://infinitecanvas.tools/
 [Figma]: https://madebyevan.com/figma/building-a-professional-design-tool-on-the-web/
