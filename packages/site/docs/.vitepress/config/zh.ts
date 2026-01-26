@@ -82,6 +82,7 @@ export const zh = defineConfig({
               { text: '课程30 - 后处理与渲染图', link: 'lesson-030' },
               { text: '课程31 - 图形间的连接关系', link: 'lesson-031' },
               { text: '课程32 - 文本生成图表', link: 'lesson-032' },
+              { text: '课程33 - 布局引擎', link: 'lesson-033' },
             ],
           },
         ],
@@ -138,6 +139,7 @@ export const zh = defineConfig({
               { text: '橡皮擦工具', link: 'eraser' },
               { text: 'Mermaid', link: 'mermaid' },
               { text: 'D2', link: 'd2' },
+              { text: 'Yoga', link: 'yoga' },
             ],
           },
           {

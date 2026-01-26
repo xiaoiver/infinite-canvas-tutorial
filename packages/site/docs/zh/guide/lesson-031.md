@@ -445,13 +445,28 @@ mxGraph 使用 EdgeStyle 函数来实现路由规则，这些函数负责：
 -   避开节点包围盒
 -   计算正交/直角路径
 
+![Connector styles](https://drawio-app.com/wp-content/uploads/2019/02/drawio-connector-styles.png)
+
+在编辑器初始化时注册这些函数：
+
+```ts
+mxStyleRegistry.putValue(mxConstants.EDGESTYLE_ORTHOGONAL, mxEdgeStyle.OrthConnector);
+```
+
+### OrthConnector {orth-connector}
+
+[OrthConnector] 是最常见的路由算法：
+
+1. 确定源和目标的【出口/入口方向】
+2. 根据方向组合查找【预定义路由模式】
+3. 应用路由模式生成【拐点序列】
+4. 处理【避障】和【优化】
+
 ```ts
 ┌──────┐        ┌──────┐
 │ Node │ ─┐     │ Node │
 └──────┘  └────▶└──────┘
 ```
-
-![Connector styles](https://drawio-app.com/wp-content/uploads/2019/02/drawio-connector-styles.png)
 
 ## [WIP] 导出 SVG {#export-svg}
 
@@ -474,3 +489,4 @@ mxGraph 使用 EdgeStyle 函数来实现路由规则，这些函数负责：
 [Change the shape perimeter]: https://www.drawio.com/doc/faq/shape-perimeter-change
 [JSON Canvas Spec]: https://jsoncanvas.org/spec/1.0/
 [mxConnectionConstraint]: https://github.com/jgraph/drawio/blob/81a267568da862d3c99970758c09a8e768dea973/src/main/webapp/mxgraph/src/view/mxConnectionConstraint.js#L23
+[OrthConnector]: https://github.com/jgraph/drawio/blob/dev/src/main/webapp/mxgraph/src/view/mxEdgeStyle.js#L1067

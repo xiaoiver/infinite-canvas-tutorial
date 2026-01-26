@@ -16,6 +16,7 @@ import {
   VectorNetwork,
   Visibility,
 } from '../../components';
+import { EdgeStyle } from '../binding';
 
 // @see https://dev.to/themuneebh/typescript-branded-types-in-depth-overview-and-use-cases-60e
 export type FractionalIndex = string & { _brand: 'franctionalIndex' };
@@ -157,6 +158,7 @@ export interface BindingAttributes {
   entryPerimeter: boolean;
   entryDx: number;
   entryDy: number;
+  edgeStyle: EdgeStyle;
 }
 
 export interface MarkerAttributes {

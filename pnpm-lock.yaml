@@ -735,6 +735,40 @@ importers:
         specifier: ^0.8.1
         version: 0.8.1
 
+  packages/plugin-drawio:
+    dependencies:
+      '@antv/util':
+        specifier: ^3.3.10
+        version: 3.3.10
+      '@infinite-canvas-tutorial/ecs':
+        specifier: workspace:*
+        version: link:../ecs
+      '@infinite-canvas-tutorial/webcomponents':
+        specifier: workspace:*
+        version: link:../webcomponents
+      '@lit/context':
+        specifier: ^1.1.2
+        version: 1.1.2
+      '@lit/localize':
+        specifier: ^0.12.2
+        version: 0.12.2
+      '@lit/task':
+        specifier: ^1.0.1
+        version: 1.0.1
+      '@spectrum-web-components/icon':
+        specifier: ^1.10.0
+        version: 1.10.0
+      '@spectrum-web-components/icons-workflow':
+        specifier: ^1.10.0
+        version: 1.10.0
+      lit:
+        specifier: ^3.1.3
+        version: 3.2.1
+    devDependencies:
+      '@lit/localize-tools':
+        specifier: ^0.8.1
+        version: 0.8.1
+
   packages/plugin-eraser:
     dependencies:
       '@infinite-canvas-tutorial/ecs':
@@ -922,6 +956,15 @@ importers:
         specifier: latest
         version: 1.0.0-beta.19(@tensorflow/tfjs@4.11.0(encoding@0.1.13)(seedrandom@3.0.5))
 
+  packages/plugin-yoga:
+    dependencies:
+      '@infinite-canvas-tutorial/ecs':
+        specifier: workspace:*
+        version: link:../ecs
+      yoga-layout:
+        specifier: ^3.2.1
+        version: 3.2.1
+
   packages/site:
     dependencies:
       '@infinite-canvas-tutorial/chat':
@@ -1002,6 +1045,9 @@ importers:
       '@infinite-canvas-tutorial/webcomponents':
         specifier: workspace:*
         version: link:../webcomponents
+      '@infinite-canvas-tutorial/yoga':
+        specifier: workspace:*
+        version: link:../plugin-yoga
       '@loaders.gl/arrow':
         specifier: ^4.2.2
         version: 4.3.2(@loaders.gl/core@4.3.3)
@@ -7822,6 +7868,9 @@ packages:
   yocto-queue@1.2.1:
     resolution: {integrity: sha512-AyeEbWOu/TAXdxlV9wmGcR0+yh2j3vYPGOECcIj2S7MkrLyC7ne+oye2BKTItt0ii2PHk4cDy+95+LshzbXnGg==}
     engines: {node: '>=12.20'}
+
+  yoga-layout@3.2.1:
+    resolution: {integrity: sha512-0LPOt3AxKqMdFBZA3HBAt/t/8vIKq7VaQYbuA8WxCgung+p9TVyKRYdpvCb80HcdTN2NkbIKbhNwKUfm3tQywQ==}
 
   zwitch@2.0.4:
     resolution: {integrity: sha512-bXE4cR/kVZhKZX/RjPEflHaKVhUVl85noU3v6b8apfQEc1x4A+zBxjZ4lN8LqGd6WZ3dl98pY4o717VFmoPp+A==}
@@ -15730,5 +15779,7 @@ snapshots:
   yocto-queue@0.1.0: {}
 
   yocto-queue@1.2.1: {}
+
+  yoga-layout@3.2.1: {}
 
   zwitch@2.0.4: {}

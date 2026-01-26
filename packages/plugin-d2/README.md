@@ -1,16 +1,12 @@
-# @infinite-canvas-tutorial/mermaid
-
-<https://docs.excalidraw.com/docs/@excalidraw/mermaid-to-excalidraw/codebase/parser/>
+# @infinite-canvas-tutorial/d2
 
 ## Getting started
 
-Add this plugin with configuration (similar to tiptap's plugin system):
-
 ```ts
-import { App, DefaultPlugins } from '@infinite-canvas-tutorial/ecs';
-import { UIPlugin } from '@infinite-canvas-tutorial/webcomponents';
-import { MermaidPlugin } from '@infinite-canvas-tutorial/mermaid';
+import { parseD2ToSerializedNodes } from '@infinite-canvas-tutorial/d2';
 
-const app = new App().addPlugins(...DefaultPlugins, UIPlugin, MermaidPlugin);
-app.run();
+const nodes = await parseD2ToSerializedNodes('x -> y: hello world');
+api.runAtNextTick(() => {
+    api.updateNodes(nodes);
+});
 ```

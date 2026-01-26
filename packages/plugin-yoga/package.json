@@ -1,0 +1,55 @@
+{
+  "name": "@infinite-canvas-tutorial/yoga",
+  "version": "0.0.1-alpha.39",
+  "description": "Use Yoga for layout",
+  "main": "lib/index.js",
+  "module": "esm/index.js",
+  "types": "lib/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./lib/index.d.ts",
+      "import": "./esm/index.js",
+      "require": "./lib/index.js"
+    }
+  },
+  "files": [
+    "package.json",
+    "esm",
+    "lib",
+    "README.md"
+  ],
+  "keywords": [
+    "whiteboard",
+    "infinite canvas",
+    "webgl",
+    "webgpu",
+    "webcomponents",
+    "shoelace",
+    "spectrum"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/xiaoiver/infinite-canvas-tutorial"
+  },
+  "license": "MIT",
+  "author": {
+    "name": "xiaoiver",
+    "url": "https://github.com/xiaoiver"
+  },
+  "scripts": {
+    "dev": "vite dev",
+    "deploy": "vite build",
+    "preview": "vite preview",
+    "build:cjs": "rimraf ./lib && tsc --module commonjs --outDir lib && cp src/worker.js lib/worker.js",
+    "build:esm": "rimraf ./esm && tsc --module ESNext --outDir esm && cp src/worker.js esm/worker.js",
+    "build": "run-p build:*",
+    "watch": "rimraf ./esm && tsc --module ESNext --outDir esm --watch"
+  },
+  "dependencies": {
+    "@infinite-canvas-tutorial/ecs": "workspace:*",
+    "yoga-layout": "^3.2.1"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

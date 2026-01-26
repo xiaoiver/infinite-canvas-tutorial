@@ -2,8 +2,9 @@ import { isNil } from "@antv/util";
 import type { IPointData } from "@pixi/math";
 import type { BindingAttributes, ConstraintAttributes, EdgeSerializedNode, SerializedNode } from "../serialize/type";
 import { getPerimeterPoint } from "./perimeter";
+import { EdgeStyle, orthConnector } from "./edge-style";
 
-type EdgeState = EdgeSerializedNode & { absolutePoints: (IPointData | null)[] };
+export type EdgeState = EdgeSerializedNode & { absolutePoints: (IPointData | null)[] };
 
 /**
  * Returns an <mxConnectionConstraint> that describes the given connection
@@ -174,6 +175,10 @@ function setAbsoluteTerminalPoint(edge: EdgeState, point: IPointData | null, sou
   }
 }
 
+function getEdgeStyle(edge: EdgeState, points: IPointData[], source: SerializedNode, target: SerializedNode) {
+
+}
+
 /**
  * Updates the absolute points in the given state using the specified array
  * of Points as the relative points.
@@ -187,10 +192,13 @@ export function updatePoints(edge: EdgeState, points: IPointData[], source: Seri
     pts.push(edge.absolutePoints[0]);
 
     // edgeStyle
-    const edgeStyle = null;
-
-    if (!isNil(edgeStyle)) {
+    // const edgeStyle = getEdgeStyle(edge, points, source, target);
+    if (!isNil(edge.edgeStyle)) {
       // Calculate control points based on edgeStyle
+      // @see https://github.com/jgraph/drawio/blob/81a267568da862d3c99970758c09a8e768dea973/src/main/webapp/mxgraph/src/view/mxGraphView.js#L1459
+      if (edge.edgeStyle === EdgeStyle.ORTHOGONAL) {
+        orthConnector(edge, source, target, points, pts);
+      }
     } else if (!isNil(points)) {
       for (let i = 0; i < points.length; i++) {
         if (!isNil(points[i])) {

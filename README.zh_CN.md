@@ -402,9 +402,13 @@ pnpm run dev
 -   解析 Mermaid 并绘制
 -   解析 D2 并绘制
 
-|                Mermaid flowchart                 |                      D2                       |
+|                Mermaid flowchart                 |                     D2 flowchart                      |
 | :----------------------------------------------: | :-------------------------------------------: |
 | ![mermaid flowchart](./screenshots/lesson32.png) | ![d2 flowchart](./screenshots/lesson32-2.png) |
+
+## 课程 33 - 布局引擎 [🔗](https://infinitecanvas.cc/zh/guide/lesson-033)
+
+-   基于 Yoga 实现 Flexbox 布局
 
 [infinitecanvas]: https://infinitecanvas.tools/
 [Figma]: https://madebyevan.com/figma/building-a-professional-design-tool-on-the-web/
