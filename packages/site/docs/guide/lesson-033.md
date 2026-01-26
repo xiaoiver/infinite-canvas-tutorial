@@ -1,20 +1,20 @@
 ---
 outline: deep
-description: '集成Flex布局系统，支持Yoga排版引擎。探索WebGL环境下的布局引擎构建，实现响应式界面设计。'
+description: 'Integrated Flex layout system with support for the Yoga typesetting engine. Exploring layout engine development within the WebGL environment to achieve responsive interface design.'
 publish: false
 ---
 
-# 课程 33 - 布局引擎
+# Lesson 33 - Layout engine
 
-浏览器实现了若干布局，例如 Flexbox、Grid、Block，很容易实现类似“居中”这样的效果，无需手动计算指定节点位置。
+Browsers implement several layout systems, such as Flexbox, Grid, and Block, making it easy to achieve effects like “centering” without manually calculating node positions.
 
-对于脱离了 DOM 的无限画布类应用，就只能自己实现一套布局引擎逻辑了。Figma 实现了 Auto layout，其中 `Grid` 目前处于测试阶段，而 `Vertical` 和 `Horizontal` 就对应了 CSS 的 `flex-direction` 属性，详见：[Figma - Guide to auto layout]
+For infinite canvas-like applications operating outside the DOM, you must implement your own layout engine logic. Figma has implemented Auto Layout, where `Grid` is currently in beta, while `Vertical` and `Horizontal` correspond to CSS's `flex-direction` property. For details, see: [Figma - Guide to auto layout]
 
 ![source: https://www.figma.com/community/file/1284819663700490015](/figma-flexbox.png)
 
 ![source: https://developer.mozilla.org/en-US/docs/Web/CSS/Guides/Flexible_box_layout/Basic_concepts](https://developer.mozilla.org/en-US/docs/Web/CSS/Guides/Flexible_box_layout/Basic_concepts/basics1.svg)
 
-在本节课中我们将实现 Flexbox 布局，在节点上支持 CSS 同名属性：
+In this lesson, we will implement Flexbox layouts and support CSS properties with the same names on nodes:
 
 ```ts
 const parent = {
@@ -39,13 +39,13 @@ const child = {
 
 ## Yoga {#yoga}
 
-在前端使用 [Yoga] 排版引擎只能通过 WASM，目前有几个可用的实现：
+Using the [Yoga] layout engine in the frontend is only possible via WASM. Currently, there are several available implementations:
 
--   [yoga-layout-prebuilt] 已经很久没有更新了
--   [yoga-wasm-web] 早期 [satori] 使用它将 HTML 转换成 SVG，计算布局。[taffy] 也有相关 [示例](https://github.com/DioxusLabs/taffy/pull/394#issuecomment-1476430705)
--   [yoga-layout] 推荐使用，我们的实现也基于它
+-   [yoga-layout-prebuilt] It's been a long time since the last update.
+-   [yoga-wasm-web] Early [satori] used it to convert HTML into SVG and compute layouts. [taffy] also has related [example](https://github.com/DioxusLabs/taffy/pull/394#issuecomment-1476430705)
+-   [yoga-layout] We recommend using it, and our implementation is also based on it.
 
-值得一提的是，Yoga 也适用于 3D 空间，前提是指定应用平面，详见：[react-three-flex]
+It is worth noting that Yoga also applies to 3D space, provided that a plane is specified. For details, see:[react-three-flex]
 
 > Another important difference with DOM Flexbox is that you have to specify the plane of the container in 3D. The elements will be positioned in the 2D plane given by the two axes, using width and height calculated along the two axes.
 
@@ -53,7 +53,7 @@ const child = {
 
 ### pixijs/layout
 
-[pixijs/layout] 也是基于 Yoga 实现的，类似的实现还有 [pixi-flex-layout]
+[pixijs/layout] is also implemented using Yoga. Similar implementations include: [pixi-flex-layout]
 
 ```ts
 const container = new Container({layout: {
@@ -68,7 +68,7 @@ const container = new Container({layout: {
 
 ### troika-flex-layout
 
-[troika-flex-layout]，使用 [yoga-layout-prebuilt] 在 WebWorker 中计算：
+[troika-flex-layout], computed in a WebWorker using [yoga-layout-prebuilt]:
 
 ```ts
 import { requestFlexLayout } from 'troika-flex-layout'
@@ -99,25 +99,25 @@ requestFlexLayout(styleTree, results => {
 })
 ```
 
-## Yoga 之外的选择 {#alternatives-to-yoga}
+## Alternatives to Yoga {#alternatives-to-yoga}
 
-纯 JS 实现：
+Pure JS implementations:
 
--   [Motion Canvas Layouts] 基于浏览器原生的 Flexbox 实现，无需重新实现复杂的布局算法
+-   [Motion Canvas Layouts] Native browser-based Flexbox implementation, eliminating the need to reimplement complex layout algorithms
 -   [Simplifying WebGL: Building an Effective Layout Engine]
 
-Rust 实现：
+Rust implementations:
 
--   [stretch] 实现了 Flexbox，也提供了 `stretch-layout` WASM 绑定，但已经很久没有维护了
--   [taffy] 一个用 Rust 编写的高性能 UI 布局库，目前实现了几种 CSS 布局算法，包括了 Flexbox、Grid 和 Block。但暂时没有 WASM 绑定，详见：[taffy wasm bindings]
+-   [stretch] implements Flexbox and provides a `stretch-layout` WASM binding, but it has not been maintained for a long time.
+-   [taffy] A high-performance UI layout library written in Rust, currently implementing several CSS layout algorithms including Flexbox, Grid, and Block. However, WASM bindings are not yet available. For details, see: [taffy wasm bindings]
 
-## [WIP] 我们的实现 {#our-implementation}
+## [WIP] Our implementation {#our-implementation}
 
-需要构造一棵平行于场景图的布局树。
+A layout tree parallel to the scene graph needs to be constructed.
 
-### 在 WebWorker 中计算布局 {#calculate-layout-in-webworker}
+### Calculating layout in WebWorker {#calculate-layout-in-webworker}
 
-## 扩展阅读 {#extended-reading}
+## Extended reading {#extended-reading}
 
 -   [Simplifying WebGL: Building an Effective Layout Engine]
 -   [clay]

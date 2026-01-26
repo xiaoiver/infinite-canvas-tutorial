@@ -1,4 +1,4 @@
-import { D2 } from '@terrastruct/d2';
+import { D2, Shape, Text } from '@terrastruct/d2';
 import { LineSerializedNode, SerializedNode, TextSerializedNode } from '@infinite-canvas-tutorial/ecs';
 
 export const parseD2ToSerializedNodes = async (definition: string) => {
@@ -8,8 +8,7 @@ export const parseD2ToSerializedNodes = async (definition: string) => {
   const { theme: { colors } } = graph;
 
   const nodes: SerializedNode[] = [];
-  shapes.forEach((shape) => {
-    // @ts-expect-error D2 types are not fully compatible with our types
+  shapes.forEach((shape: Shape & Text) => {
     const { id, type, pos, width, height, fill, stroke, strokeWidth, opacity, label, fontSize, color } = shape;
     const node: SerializedNode = {
       id,
@@ -41,10 +40,10 @@ export const parseD2ToSerializedNodes = async (definition: string) => {
       };
       nodes.push(labelNode);
     }
-  })
+  });
 
   connections.forEach((connection) => {
-    const { id, src, dst, stroke, strokeWidth } = connection;
+    const { id, src, dst, stroke, strokeWidth, label, fontSize, color } = connection;
     const edge: LineSerializedNode = {
       id,
       type: 'line',
@@ -55,6 +54,23 @@ export const parseD2ToSerializedNodes = async (definition: string) => {
       markerEnd: 'line',
     };
     nodes.push(edge);
+
+    if (label) {
+      const labelNode: TextSerializedNode = {
+        id: id + '-text',
+        parentId: id,
+        type: 'text',
+        anchorX: 0, // TODO: layout
+        anchorY: 0,
+        content: label,
+        fontSize,
+        fontFamily: 'sans-serif',
+        fill: colors.neutrals[color.toLowerCase()],
+        textAlign: 'center',
+        textBaseline: 'middle',
+      };
+      nodes.push(labelNode);
+    }
   });
   return nodes;
 }

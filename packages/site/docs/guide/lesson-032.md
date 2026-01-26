@@ -112,6 +112,14 @@ x -> y: hello world
 
 <D2 />
 
+## [WIP] drawio {#drawio}
+
+```ts
+import { parseDrawIO } from "mxgraphdata";
+const mxfile = await parseDrawIO(xml);
+console.log(mxfile.diagram);
+```
+
 ## Extended reading {#extended-reading}
 
 -   [Discussion in HN]
