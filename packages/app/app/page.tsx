@@ -10,10 +10,10 @@ const Canvas = dynamic(() => import('../components/canvas'), {
 export default function Home() {
   return (
     <div className="flex min-h-screen items-center justify-center text-black">
-      <div className="w-1/2 h-screen">
+      <div className="flex-1 h-screen">
         <Canvas />
       </div>
-      <div className="w-1/2 h-screen">
+      <div className="w-[240px] h-screen">
         <Chat />
       </div>
     </div>

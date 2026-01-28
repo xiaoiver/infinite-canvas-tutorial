@@ -6,7 +6,6 @@ import {
   DefaultPlugins,
   Task,
   CheckboardStyle,
-  API,
   SerializedNode,
 } from '@infinite-canvas-tutorial/ecs';
 import { Event, UIPlugin, ExtendedAPI } from '@infinite-canvas-tutorial/webcomponents';
@@ -24,7 +23,7 @@ import '@infinite-canvas-tutorial/laser-pointer/spectrum';
 
 export default function Canvas() {
   const canvasRef = useRef<HTMLDivElement>(null);
-  const [api, setApi] = useState<ExtendedAPI | null>(null);
+  const [, setApi] = useState<ExtendedAPI | null>(null);
 
   const onReady = (e: CustomEvent<any>) => {
     const api = e.detail as ExtendedAPI;
@@ -172,7 +171,7 @@ export default function Canvas() {
       ],
       checkboardStyle: CheckboardStyle.GRID,
       snapToPixelGridEnabled: true,
-      snapToPixelGridSize: 10,
+      snapToPixelGridSize: 1,
       snapToObjectsEnabled: true,
       snapToObjectsDistance: 8,
       // checkboardStyle: CheckboardStyle.NONE,

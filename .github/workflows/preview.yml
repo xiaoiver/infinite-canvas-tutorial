@@ -36,16 +36,6 @@ jobs:
 
       - name: Install Vercel CLI
         run: npm install --global vercel@latest
-      - name: Copy build output to .vercel/output
-        run: |
-          mkdir -p .vercel/output
-          cp -r packages/app/.next/* .vercel/output/
           
-      - name: Upload build output
-        uses: actions/upload-artifact@v4
-        with:
-          name: vercel-output
-          path: .vercel/output
-          
-      - name: Deploy Project Artifacts to Vercel
-        run: vercel deploy --prebuilt --token=${{ secrets.VERCEL_TOKEN }}
+      - name: Deploy app to Vercel
+        run: vercel packages/app --token=${{ secrets.VERCEL_TOKEN }}
