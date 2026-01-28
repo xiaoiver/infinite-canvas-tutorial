@@ -267,11 +267,28 @@ export class API {
         },
         entity.rotation,
         {
-          x: entity.x,
-          y: entity.y,
+          x: entity.x as number,
+          y: entity.y as number,
         },
       ),
     );
+  }
+
+  getAbsoluteTransformAndSize(node: SerializedNode) {
+    const entity = this.getEntity(node);
+    const { width, height } = entity.read(ComputedBounds).obb;
+    const { translation, rotation, scale } = entity.read(Transform);
+
+    return {
+      id: node.id,
+      x: translation.x,
+      y: translation.y,
+      width,
+      height,
+      rotation,
+      scaleX: scale[0],
+      scaleY: scale[1],
+    };
   }
 
   getCanvas() {
@@ -876,6 +893,7 @@ export class API {
     node: SerializedNode,
     diff?: Partial<SerializedNode>,
     updateAppState = true,
+    skipOverrideKeys: string[] = [],
   ) {
     const entity = this.#idEntityMap.get(node.id)?.id();
     const nodes = this.getNodes();
@@ -907,7 +925,7 @@ export class API {
         this.setNodes([...nodes, node]);
       }
     } else {
-      const updated = mutateElement(entity, node, diff ?? node);
+      const updated = mutateElement(entity, node, diff ?? node, skipOverrideKeys);
       const index = nodes.findIndex((n) => n.id === updated.id);
 
       this.commands.execute();
@@ -1001,14 +1019,14 @@ export class API {
     }
     if (!isNil(width)) {
       if (lockAspectRatio) {
-        const aspectRatio = node.width / node.height;
+        const aspectRatio = (node.width as number) / (node.height as number);
         diff.height = width / aspectRatio;
       }
       diff.width = width;
     }
     if (!isNil(height)) {
       if (lockAspectRatio) {
-        const aspectRatio = node.width / node.height;
+        const aspectRatio = (node.width as number) / (node.height as number);
         diff.width = height * aspectRatio;
       }
       diff.height = height;

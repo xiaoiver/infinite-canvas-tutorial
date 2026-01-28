@@ -277,8 +277,8 @@ export class TextEditor extends LitElement {
       const { zoom } = camera.read(ComputedCamera);
 
       const { x, y } = this.api.canvas2Viewport({
-        x: this.node.x,
-        y: this.node.y,
+        x: this.node.x as number,
+        y: this.node.y as number,
       });
 
       this.editable.style.left = `${x}px`;

@@ -39,6 +39,7 @@ export interface AppState {
   cameraX: number;
   cameraY: number;
   cameraRotation: number;
+  cameraZoomFactor: number;
   contextBarVisible: boolean;
   contextMenuVisible: boolean;
   topbarVisible: boolean;
@@ -64,10 +65,10 @@ export interface AppState {
   >;
   penbarBrush: Partial<
     BrushAttributes &
-      StrokeAttributes & {
-        stamps: { src: string; name: string; preview: string }[];
-        stamp: string;
-      }
+    StrokeAttributes & {
+      stamps: { src: string; name: string; preview: string }[];
+      stamp: string;
+    }
   >;
   penbarText: Partial<
     TextSerializedNode & {
@@ -163,6 +164,7 @@ export const getDefaultAppState: () => AppState = () => {
     cameraX: 0,
     cameraY: 0,
     cameraRotation: 0,
+    cameraZoomFactor: 0.02,
     contextBarVisible: true,
     contextMenuVisible: true,
     topbarVisible: true,

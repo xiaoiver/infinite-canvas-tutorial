@@ -259,12 +259,13 @@ export class CameraControl extends System {
     dist: number,
   ) => {
     const { zoom } = camera.read(ComputedCamera);
+    const { cameraZoomFactor } = api.getAppState();
 
     // multiply the wheel movement by the current zoom level
     // so we zoom less when zoomed in and more when zoomed out
     const newZoom = Math.max(
       MIN_ZOOM,
-      Math.min(MAX_ZOOM, zoom * Math.pow(2, dist * -0.01)),
+      Math.min(MAX_ZOOM, zoom * Math.pow(2, dist * -cameraZoomFactor)),
     );
 
     api.gotoLandmark(

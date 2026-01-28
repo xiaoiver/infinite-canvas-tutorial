@@ -234,8 +234,8 @@ export function svgElementsToSerializedNodes(
         }
 
         const { x, y } = attributes;
-        (attributes as TextSerializedNode).anchorX = x;
-        (attributes as TextSerializedNode).anchorY = y;
+        (attributes as TextSerializedNode).anchorX = x as number;
+        (attributes as TextSerializedNode).anchorY = y as number;
 
         delete attributes.x;
         delete attributes.y;

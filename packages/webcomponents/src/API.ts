@@ -95,8 +95,9 @@ export class ExtendedAPI extends API {
     node: SerializedNode,
     diff?: Partial<SerializedNode>,
     updateAppState = true,
+    skipOverrideKeys: string[] = [],
   ) {
-    super.updateNode(node, diff, updateAppState);
+    super.updateNode(node, diff, updateAppState, skipOverrideKeys);
 
     if (updateAppState) {
       this.element.dispatchEvent(

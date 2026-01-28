@@ -8,6 +8,18 @@ outline: deep
 api.createLandmark();
 ```
 
+## 相机状态 {#get-set-camera-state}
+
+通过 `get/setAppState` 可以获取或者设置相机状态：
+
+```ts
+cameraZoom: number;
+cameraX: number;
+cameraY: number;
+cameraRotation: number;
+cameraZoomFactor: number; // 缩放速度
+```
+
 ## createLandmark
 
 创建一个代表相机状态的 Landmark
