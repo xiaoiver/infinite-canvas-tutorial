@@ -12,14 +12,12 @@ import { Event, UIPlugin, ExtendedAPI } from '@infinite-canvas-tutorial/webcompo
 import { LaserPointerPlugin } from '@infinite-canvas-tutorial/laser-pointer';
 import { LassoPlugin } from '@infinite-canvas-tutorial/lasso';
 import { EraserPlugin } from '@infinite-canvas-tutorial/eraser';
-// import { ChatPlugin } from '@infinite-canvas-tutorial/chat';
 import { FalAIPlugin } from '@infinite-canvas-tutorial/fal-ai';
 import { useEffect, useRef, useState } from 'react';
 import '@infinite-canvas-tutorial/webcomponents/spectrum';
 import '@infinite-canvas-tutorial/lasso/spectrum';
 import '@infinite-canvas-tutorial/eraser/spectrum';
 import '@infinite-canvas-tutorial/laser-pointer/spectrum';
-// import '@infinite-canvas-tutorial/chat/spectrum';
 
 export default function Canvas() {
   const canvasRef = useRef<HTMLDivElement>(null);

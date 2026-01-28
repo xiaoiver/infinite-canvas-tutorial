@@ -134,12 +134,6 @@ importers:
       '@ai-sdk/react':
         specifier: 3.0.59
         version: 3.0.59(react@19.2.3)(zod@4.3.6)
-      '@infinite-canvas-tutorial/chat':
-        specifier: workspace:*
-        version: link:../plugin-chat
-      '@infinite-canvas-tutorial/d2':
-        specifier: workspace:*
-        version: link:../plugin-d2
       '@infinite-canvas-tutorial/ecs':
         specifier: workspace:*
         version: link:../ecs
@@ -149,30 +143,18 @@ importers:
       '@infinite-canvas-tutorial/fal-ai':
         specifier: workspace:*
         version: link:../plugin-fal-ai
-      '@infinite-canvas-tutorial/lama':
-        specifier: workspace:*
-        version: link:../plugin-lama
       '@infinite-canvas-tutorial/laser-pointer':
         specifier: workspace:*
         version: link:../plugin-laser-pointer
       '@infinite-canvas-tutorial/lasso':
         specifier: workspace:*
         version: link:../plugin-lasso
-      '@infinite-canvas-tutorial/mermaid':
-        specifier: workspace:*
-        version: link:../plugin-mermaid
       '@infinite-canvas-tutorial/sam':
         specifier: workspace:*
         version: link:../plugin-sam
-      '@infinite-canvas-tutorial/upscaler':
-        specifier: workspace:*
-        version: link:../plugin-upscaler
       '@infinite-canvas-tutorial/webcomponents':
         specifier: workspace:*
         version: link:../webcomponents
-      '@infinite-canvas-tutorial/yoga':
-        specifier: workspace:*
-        version: link:../plugin-yoga
       '@loaders.gl/core':
         specifier: ^4.2.2
         version: 4.3.3
