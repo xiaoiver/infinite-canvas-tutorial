@@ -16,3 +16,4 @@ __tests__/ssr/**/*-actual.svg
 test-results
 playwright-report
 playwright/.cache
+.vercel
