@@ -27,7 +27,7 @@ jobs:
         run: pnpm install --no-frozen-lockfile
 
       - name: Build
-        run: pnpm build
+        run: pnpm -r --filter '!@infinite-canvas-tutorial/app' run build
 
       - name: Publish to Cloudflare Pages
         uses: cloudflare/pages-action@v1
