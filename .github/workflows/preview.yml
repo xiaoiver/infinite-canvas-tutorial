@@ -24,7 +24,12 @@ jobs:
           cache: 'pnpm'
 
       - name: Install dependencies
-        run: pnpm install --no-frozen-lockfile
+        run: |
+          # 临时移除 gl 依赖以避免安装
+          sed -i.bak '/"gl":/d' package.json
+          pnpm install --no-frozen-lockfile
+          # 恢复 package.json
+          mv package.json.bak package.json
 
       - name: Build
         run: pnpm -r --filter '!@infinite-canvas-tutorial/site' run build
