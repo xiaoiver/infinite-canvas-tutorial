@@ -38,4 +38,4 @@ jobs:
         run: npm install --global vercel@latest
           
       - name: Deploy app to Vercel
-        run: vercel packages/app --token=${{ secrets.VERCEL_TOKEN }}
+        run: vercel --token=${{ secrets.VERCEL_TOKEN }}
