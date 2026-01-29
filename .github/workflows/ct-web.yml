@@ -22,7 +22,7 @@ jobs:
         run: pnpm exec playwright install --with-deps
 
       - name: Build
-        run: pnpm build
+        run: pnpm -r --filter '!@infinite-canvas-tutorial/app' run build
 
       - name: Run Playwright tests
         run: pnpm test:ui

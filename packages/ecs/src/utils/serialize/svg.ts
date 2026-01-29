@@ -309,21 +309,21 @@ export function serializeNodesToSVGElements(
     });
 
     if (type === 'ellipse') {
-      element.setAttribute('cx', `${toFixedAndRemoveTrailingZeros(width / 2)}`);
+      element.setAttribute('cx', `${isString(width) ? width : toFixedAndRemoveTrailingZeros(width / 2)}`);
       element.setAttribute(
         'cy',
-        `${toFixedAndRemoveTrailingZeros(height / 2)}`,
+        `${isString(height) ? height : toFixedAndRemoveTrailingZeros(height / 2)}`,
       );
-      element.setAttribute('rx', `${toFixedAndRemoveTrailingZeros(width / 2)}`);
+      element.setAttribute('rx', `${isString(width) ? width : toFixedAndRemoveTrailingZeros(width / 2)}`);
       element.setAttribute(
         'ry',
-        `${toFixedAndRemoveTrailingZeros(height / 2)}`,
+        `${isString(height) ? height : toFixedAndRemoveTrailingZeros(height / 2)}`,
       );
     } else if (type === 'rect') {
-      element.setAttribute('width', `${toFixedAndRemoveTrailingZeros(width)}`);
+      element.setAttribute('width', `${isString(width) ? width : toFixedAndRemoveTrailingZeros(width)}`);
       element.setAttribute(
         'height',
-        `${toFixedAndRemoveTrailingZeros(height)}`,
+        `${isString(height) ? height : toFixedAndRemoveTrailingZeros(height)}`,
       );
       // const { width, height, x, y } = node;
       // // Handle negative size of rect.
@@ -345,13 +345,13 @@ export function serializeNodesToSVGElements(
       let x = 0;
       let y = 0;
       if (textAlign === 'center') {
-        x = width / 2;
+        x = width as number / 2;
       } else if (textAlign === 'right' || textAlign === 'end') {
-        x = width;
+        x = width as number;
       }
 
       if (textBaseline === 'middle') {
-        y = height / 2;
+        y = height as number / 2;
       } else if (textBaseline === 'alphabetic' || textBaseline === 'hanging') {
         y = fontBoundingBoxAscent;
       }
@@ -493,8 +493,8 @@ export function serializeNodesToSVGElements(
       },
       rotation,
       {
-        x,
-        y,
+        x: x as number,
+        y: y as number,
       },
     );
     const a = matrix.m00;
@@ -591,11 +591,11 @@ function exportInnerOrOuterStrokeAlignment(
       const offset = innerStrokeAlignment ? -halfStrokeWidth : halfStrokeWidth;
       $stroke.setAttribute(
         'rx',
-        `${toFixedAndRemoveTrailingZeros(width / 2 + offset)}`,
+        `${toFixedAndRemoveTrailingZeros(width as number / 2 + offset)}`,
       );
       $stroke.setAttribute(
         'ry',
-        `${toFixedAndRemoveTrailingZeros(height / 2 + offset)}`,
+        `${toFixedAndRemoveTrailingZeros(height as number / 2 + offset)}`,
       );
     } else if (type === 'rect') {
       const { width, height, strokeWidth } = attributes;
@@ -614,13 +614,13 @@ function exportInnerOrOuterStrokeAlignment(
       $stroke.setAttribute(
         'width',
         `${toFixedAndRemoveTrailingZeros(
-          width + (innerStrokeAlignment ? -strokeWidth : strokeWidth),
+          width as number + (innerStrokeAlignment ? -strokeWidth : strokeWidth),
         )}`,
       );
       $stroke.setAttribute(
         'height',
         `${toFixedAndRemoveTrailingZeros(
-          height + (innerStrokeAlignment ? -strokeWidth : strokeWidth),
+          height as number + (innerStrokeAlignment ? -strokeWidth : strokeWidth),
         )}`,
       );
     }
@@ -733,11 +733,11 @@ export function exportDropShadow(
   const $feDropShadow = createSVGElement('feDropShadow');
   $feDropShadow.setAttribute(
     'dx',
-    `${((dropShadowOffsetX || 0) / 2) * Math.sign(width)}`,
+    `${((dropShadowOffsetX || 0) / 2) * Math.sign(width as number)}`,
   );
   $feDropShadow.setAttribute(
     'dy',
-    `${((dropShadowOffsetY || 0) / 2) * Math.sign(height)}`,
+    `${((dropShadowOffsetY || 0) / 2) * Math.sign(height as number)}`,
   );
   $feDropShadow.setAttribute(
     'stdDeviation',
@@ -762,9 +762,9 @@ function createOrUpdateGradient(
 
   const gradientId = generateGradientKey({
     ...gradient,
-    min: [x, y],
-    width,
-    height,
+    min: [x as number, y as number],
+    width: width as number,
+    height: height as number,
   });
   let $existed = $def.querySelector(`#${gradientId}`);
 
@@ -795,9 +795,9 @@ function createOrUpdateGradient(
   if (gradient.type === 'linear-gradient') {
     const { angle } = gradient;
     const { x1, y1, x2, y2 } = computeLinearGradient(
-      [x, y],
-      width,
-      height,
+      [x as number, y as number],
+      width as number,
+      height as number,
       angle,
     );
 
@@ -811,7 +811,7 @@ function createOrUpdateGradient(
       x: xx,
       y: yy,
       r,
-    } = computeRadialGradient([x, y], width, height, cx, cy, size);
+    } = computeRadialGradient([x as number, y as number], width as number, height as number, cx, cy, size);
 
     $existed.setAttribute('cx', `${xx}`);
     $existed.setAttribute('cy', `${yy}`);
@@ -918,15 +918,15 @@ function create$Pattern(
 
   // There is no equivalent to CSS no-repeat for SVG patterns
   // @see https://stackoverflow.com/a/33481956
-  let patternWidth = width;
-  let patternHeight = height;
+  let patternWidth = width as number;
+  let patternHeight = height as number;
   if (repetition === 'repeat-x') {
-    patternHeight = nodeHeight;
+    patternHeight = nodeHeight as number;
   } else if (repetition === 'repeat-y') {
-    patternWidth = nodeWidth;
+    patternWidth = nodeWidth as number;
   } else if (repetition === 'no-repeat') {
-    patternWidth = nodeWidth;
-    patternHeight = nodeHeight;
+    patternWidth = nodeWidth as number;
+    patternHeight = nodeHeight as number;
   }
   $pattern.setAttribute('width', `${patternWidth}`);
   $pattern.setAttribute('height', `${patternHeight}`);

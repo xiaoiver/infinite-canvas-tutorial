@@ -75,7 +75,7 @@ export function getGeometryBounds(
     type === 'html' ||
     type === 'embed'
   ) {
-    return Rect.getGeometryBounds(node);
+    return Rect.getGeometryBounds(node as Partial<Rect>);
   } else if (type === 'ellipse' || type === 'rough-ellipse') {
     return Ellipse.getGeometryBounds(node);
   } else if (type === 'polyline' || type === 'rough-polyline') {

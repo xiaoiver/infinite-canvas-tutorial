@@ -1,3 +1,4 @@
+// @ts-expect-error
 import { loadYoga } from 'yoga-layout/load';
 
 const YOGA_VALUE_MAPPINGS = {
@@ -42,43 +43,46 @@ const sides = ['Top', 'Right', 'Bottom', 'Left']
 
 // Create functions for setting each supported style property on a Yoga node
 const YOGA_SETTERS = Object.create(null)
-// Simple properties
-;[
-  'width',
-  'height',
-  'minWidth',
-  'minHeight',
-  'maxWidth',
-  'maxHeight',
-  'aspectRatio',
-  ['flexDirection', YOGA_VALUE_MAPPINGS.direction],
-  'flex',
-  ['flexWrap', YOGA_VALUE_MAPPINGS.wrap],
-  'flexBasis',
-  'flexGrow',
-  'flexShrink',
-  ['alignContent', YOGA_VALUE_MAPPINGS.align],
-  ['alignItems', YOGA_VALUE_MAPPINGS.align],
-  ['alignSelf', YOGA_VALUE_MAPPINGS.align],
-  ['justifyContent', YOGA_VALUE_MAPPINGS.justify]
-].forEach(styleProp => {
-  let mapping = null
-  if (Array.isArray(styleProp)) {
-    mapping = styleProp[1]
-    styleProp = styleProp[0]
-  }
-  const setter = `set${styleProp.charAt(0).toUpperCase()}${styleProp.substr(1)}`
-  YOGA_SETTERS[styleProp] = mapping ?
-    (yogaNode, value) => {
-      if (mapping.hasOwnProperty(value)) {
-        value = Yoga[mapping[value]]
+  // Simple properties
+  ;[
+    'width',
+    'height',
+    'minWidth',
+    'minHeight',
+    'maxWidth',
+    'maxHeight',
+    'aspectRatio',
+    ['flexDirection', YOGA_VALUE_MAPPINGS.direction],
+    'flex',
+    ['flexWrap', YOGA_VALUE_MAPPINGS.wrap],
+    'flexBasis',
+    'flexGrow',
+    'flexShrink',
+    ['alignContent', YOGA_VALUE_MAPPINGS.align],
+    ['alignItems', YOGA_VALUE_MAPPINGS.align],
+    ['alignSelf', YOGA_VALUE_MAPPINGS.align],
+    ['justifyContent', YOGA_VALUE_MAPPINGS.justify]
+  ].forEach(styleProp => {
+    let mapping = null
+    if (Array.isArray(styleProp)) {
+      mapping = styleProp[1]
+      // @ts-expect-error
+      styleProp = styleProp[0]
+    }
+    // @ts-expect-error
+    const setter = `set${styleProp.charAt(0).toUpperCase()}${styleProp.substr(1)}`
+    // @ts-expect-error
+    YOGA_SETTERS[styleProp] = mapping ?
+      (yogaNode, value) => {
+        if (mapping.hasOwnProperty(value)) {
+          value = Yoga[mapping[value]]
+          yogaNode[setter](value)
+        }
+      } :
+      (yogaNode, value) => {
         yogaNode[setter](value)
       }
-    } :
-    (yogaNode, value) => {
-      yogaNode[setter](value)
-    }
-})
+  })
 
 // Position-related properties
 YOGA_SETTERS.position = (yogaNode, value) => {
@@ -91,20 +95,20 @@ sides.forEach(side => {
   }
 })
 
-// Multi-side properties
-;[
-  'margin',
-  'padding',
-  'border'
-].forEach(styleProp => {
-  sides.forEach(side => {
-    const edgeConst = YOGA_VALUE_MAPPINGS.edge[side.toLowerCase()]
-    const setter = `set${styleProp.charAt(0).toUpperCase()}${styleProp.substr(1)}`
-    YOGA_SETTERS[`${styleProp}${side}`] = (yogaNode, value) => {
-      yogaNode[setter](Yoga[edgeConst], value)
-    }
+  // Multi-side properties
+  ;[
+    'margin',
+    'padding',
+    'border'
+  ].forEach(styleProp => {
+    sides.forEach(side => {
+      const edgeConst = YOGA_VALUE_MAPPINGS.edge[side.toLowerCase()]
+      const setter = `set${styleProp.charAt(0).toUpperCase()}${styleProp.substr(1)}`
+      YOGA_SETTERS[`${styleProp}${side}`] = (yogaNode, value) => {
+        yogaNode[setter](Yoga[edgeConst], value)
+      }
+    })
   })
-})
 
 function walkStyleTree(styleTree, callback) {
   callback(styleTree);
@@ -175,17 +179,21 @@ self.onmessage = async (e) => {
 
   if (type === 'ping') {
     Yoga = await loadYoga();
-    self.postMessage({ 
-      type: 'pong', 
+    self.postMessage({
+      type: 'pong',
       data: {
         success: true,
       },
     });
   } else if (type === 'process') {
-    process(Yoga, data, (results) => {
-      self.postMessage({ 
-        type: 'processDone', 
-        data: results,
+    const { styleTree, cameraId } = data;
+    process(Yoga, styleTree, (results) => {
+      self.postMessage({
+        type: 'processDone',
+        data: {
+          cameraId,
+          styleTree: results
+        },
       });
     });
   }

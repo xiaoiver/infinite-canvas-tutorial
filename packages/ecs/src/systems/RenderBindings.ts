@@ -1,6 +1,6 @@
 import { Entity, System } from '@lastolivegames/becsy';
-import { Camera } from '../components/camera';
 import {
+  Camera,
   Binded,
   Binding,
   Canvas,
