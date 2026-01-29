@@ -33,62 +33,62 @@ export default function Canvas() {
     apiRef.current = api;
 
     const nodes: SerializedNode[] = [
-      // {
-      //   id: '1',
-      //   name: 'A swimming dog',
-      //   type: 'rect',
-      //   fill: 'https://v3b.fal.media/files/b/tiger/v1lf1EcPP1X1pw_YOKM4o.jpg',
-      //   x: 200,
-      //   y: 150,
-      //   width: 1024,
-      //   height: 1024,
-      //   lockAspectRatio: true,
-      // } as const,
-      // {
-      //   id: '2',
-      //   name: 'A swimming cat',
-      //   type: 'rect',
-      //   fill: 'https://v3b.fal.media/files/b/koala/0RQAsrw5rRX015XQUd4HX.jpg',
-      //   x: 200 + 1200,
-      //   y: 150,
-      //   width: 1024,
-      //   height: 1024,
-      //   lockAspectRatio: true,
-      // } as const,
-      // {
-      //   id: '3',
-      //   name: 'A swimming dog without background',
-      //   type: 'rect',
-      //   fill: 'https://v3b.fal.media/files/b/panda/Xo61xntJdsl8_txn9WC-5.jpg',
-      //   x: 200 + 2400,
-      //   y: 150,
-      //   width: 1024,
-      //   height: 1024,
-      //   lockAspectRatio: true,
-      // } as const,
-      // {
-      //   id: '4',
-      //   type: 'text',
-      //   name: 'Enter your desired modifications in Chat.',
-      //   fill: 'black',
-      //   content: 'Enter your desired modifications in Chat.',
-      //   fontSize: 66,
-      //   fontFamily: 'Gaegu',
-      //   anchorX: 200,
-      //   anchorY: 100,
-      // } as const,
-      // {
-      //   id: '5',
-      //   type: 'text',
-      //   name: 'Or select multiple images(😂 even my hand-drawn fish!) \nat once and combine them.',
-      //   fill: 'black',
-      //   content:
-      //     'Or select multiple images(😂 even my hand-drawn fish!) \nat once and combine them.',
-      //   fontSize: 66,
-      //   fontFamily: 'Gaegu',
-      //   anchorX: 200,
-      //   anchorY: 1300,
-      // } as const,
+      {
+        id: '1',
+        name: 'A swimming dog',
+        type: 'rect',
+        fill: 'https://v3b.fal.media/files/b/tiger/v1lf1EcPP1X1pw_YOKM4o.jpg',
+        x: 200,
+        y: 150,
+        width: 1024,
+        height: 1024,
+        lockAspectRatio: true,
+      } as const,
+      {
+        id: '2',
+        name: 'A swimming cat',
+        type: 'rect',
+        fill: 'https://v3b.fal.media/files/b/koala/0RQAsrw5rRX015XQUd4HX.jpg',
+        x: 200 + 1200,
+        y: 150,
+        width: 1024,
+        height: 1024,
+        lockAspectRatio: true,
+      } as const,
+      {
+        id: '3',
+        name: 'A swimming dog without background',
+        type: 'rect',
+        fill: 'https://v3b.fal.media/files/b/panda/Xo61xntJdsl8_txn9WC-5.jpg',
+        x: 200 + 2400,
+        y: 150,
+        width: 1024,
+        height: 1024,
+        lockAspectRatio: true,
+      } as const,
+      {
+        id: '4',
+        type: 'text',
+        name: 'Enter your desired modifications in Chat.',
+        fill: 'black',
+        content: 'Enter your desired modifications in Chat.',
+        fontSize: 66,
+        fontFamily: 'Gaegu',
+        anchorX: 200,
+        anchorY: 100,
+      } as const,
+      {
+        id: '5',
+        type: 'text',
+        name: 'Or select multiple images(😂 even my hand-drawn fish!) \nat once and combine them.',
+        fill: 'black',
+        content:
+          'Or select multiple images(😂 even my hand-drawn fish!) \nat once and combine them.',
+        fontSize: 66,
+        fontFamily: 'Gaegu',
+        anchorX: 200,
+        anchorY: 1300,
+      } as const,
       {
         id: '6',
         type: 'polyline', 
@@ -97,38 +97,38 @@ export default function Canvas() {
         stroke: '#147af3',
         strokeWidth: 18,
       } as const,
-      // {
-      //   id: '7',
-      //   type: 'rect',
-      //   name: 'A dog with a hand-drawn fish',
-      //   fill: 'https://v3.fal.media/files/penguin/9UH5Fgin7zc1u6NGGItGB.jpeg',
-      //   x: 1400,
-      //   y: 1400,
-      //   width: 1408,
-      //   height: 736,
-      // } as const,
-      // {
-      //   id: '8',
-      //   type: 'polyline',
-      //   points: '1100,1400 1215.69,1461.46 1324.16,1537.39',
-      //   stroke: '#147af3',
-      //   strokeWidth: 18,
-      //   strokeLinecap: 'round',
-      //   strokeLinejoin: 'round',
-      //   markerEnd: 'line',
-      // },
-      // {
-      //   id: '9',
-      //   type: 'text',
-      //   name: 'Smart inpainting & outpainting are on the way.',
-      //   fill: 'black',
-      //   content:
-      //     "Smart inpainting & outpainting are on the way.\nYou can easily select the tennis ball in dog's mouth and replace it with a golf ball.\nAlternatively, you can resize the image by dragging it and add more content inside.",
-      //   fontSize: 66,
-      //   fontFamily: 'Gaegu',
-      //   anchorX: 200,
-      //   anchorY: 2300,
-      // } as const,
+      {
+        id: '7',
+        type: 'rect',
+        name: 'A dog with a hand-drawn fish',
+        fill: 'https://v3.fal.media/files/penguin/9UH5Fgin7zc1u6NGGItGB.jpeg',
+        x: 1400,
+        y: 1400,
+        width: 1408,
+        height: 736,
+      } as const,
+      {
+        id: '8',
+        type: 'polyline',
+        points: '1100,1400 1215.69,1461.46 1324.16,1537.39',
+        stroke: '#147af3',
+        strokeWidth: 18,
+        strokeLinecap: 'round',
+        strokeLinejoin: 'round',
+        markerEnd: 'line',
+      },
+      {
+        id: '9',
+        type: 'text',
+        name: 'Smart inpainting & outpainting are on the way.',
+        fill: 'black',
+        content:
+          "Smart inpainting & outpainting are on the way.\nYou can easily select the tennis ball in dog's mouth and replace it with a golf ball.\nAlternatively, you can resize the image by dragging it and add more content inside.",
+        fontSize: 66,
+        fontFamily: 'Gaegu',
+        anchorX: 200,
+        anchorY: 2300,
+      } as const,
     ];
 
     api.setAppState({
@@ -180,27 +180,28 @@ export default function Canvas() {
       const files = await Promise.all(selectedNodes.map(async node => {
         const base64 = (node as any).fill as string;
 
-        if (!base64) {
-          return null;
+        try {
+        
+          // 将 base64 字符串转换为 Blob
+          const base64Data = base64.includes(',') 
+            ? base64.split(',')[1] 
+            : base64;
+          const byteCharacters = atob(base64Data);
+          const byteNumbers = new Array(byteCharacters.length);
+          for (let i = 0; i < byteCharacters.length; i++) {
+            byteNumbers[i] = byteCharacters.charCodeAt(i);
+          }
+          const byteArray = new Uint8Array(byteNumbers);
+          
+          // 从 data URL 中提取 MIME 类型，默认为 image/png
+          const mimeType = base64.match(/data:([^;]+);/)?.[1] || 'image/png';
+          const blob = new Blob([byteArray], { type: mimeType });
+          
+          // 从 Blob 创建 File 对象
+          return new File([blob], `image-${node.id}.png`, { type: mimeType });
+        } catch (error) {
+          return new File([], `file`, { type: 'application/octet-stream' });
         }
-        
-        // 将 base64 字符串转换为 Blob
-        const base64Data = base64.includes(',') 
-          ? base64.split(',')[1] 
-          : base64;
-        const byteCharacters = atob(base64Data);
-        const byteNumbers = new Array(byteCharacters.length);
-        for (let i = 0; i < byteCharacters.length; i++) {
-          byteNumbers[i] = byteCharacters.charCodeAt(i);
-        }
-        const byteArray = new Uint8Array(byteNumbers);
-        
-        // 从 data URL 中提取 MIME 类型，默认为 image/png
-        const mimeType = base64.match(/data:([^;]+);/)?.[1] || 'image/png';
-        const blob = new Blob([byteArray], { type: mimeType });
-        
-        // 从 Blob 创建 File 对象
-        return new File([blob], `image-${node.id}.png`, { type: mimeType });
       }));
 
       if (files.length > 0) {
