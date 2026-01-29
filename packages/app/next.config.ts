@@ -2,7 +2,7 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   /* config options here */
-  reactStrictMode: false,
+  // reactStrictMode: false,
   // 告诉 Next.js 包含这些本地包
   transpilePackages: [
     "@infinite-canvas-tutorial/ecs",

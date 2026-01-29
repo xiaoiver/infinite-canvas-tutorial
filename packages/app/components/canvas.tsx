@@ -13,22 +13,24 @@ import { LaserPointerPlugin } from '@infinite-canvas-tutorial/laser-pointer';
 import { LassoPlugin } from '@infinite-canvas-tutorial/lasso';
 import { EraserPlugin } from '@infinite-canvas-tutorial/eraser';
 import { FalAIPlugin } from '@infinite-canvas-tutorial/fal-ai';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import '@infinite-canvas-tutorial/webcomponents/spectrum';
 import '@infinite-canvas-tutorial/lasso/spectrum';
 import '@infinite-canvas-tutorial/eraser/spectrum';
 import '@infinite-canvas-tutorial/laser-pointer/spectrum';
 import { usePromptInputAttachments } from './ai-elements/prompt-input';
 
+let appRunning = false;
+
 export default function Canvas() {
   const canvasRef = useRef<HTMLDivElement>(null);
-  const [, setApi] = useState<ExtendedAPI | null>(null);
+  const apiRef = useRef<ExtendedAPI | null>(null);
 
   const attachments = usePromptInputAttachments();
 
   const onReady = (e: CustomEvent<any>) => {
     const api = e.detail as ExtendedAPI;
-    setApi(api);
+    apiRef.current = api;
 
     const nodes: SerializedNode[] = [
       // {
@@ -165,32 +167,70 @@ export default function Canvas() {
     api.record();
   };
 
-  const onSelectedNodesChanged = (e: CustomEvent<any>) => {
-    const selectedNodes = e.detail.selected as SerializedNode[];
-    console.log(selectedNodes);
+  const onSelectedNodesChanged = async (e: CustomEvent<any>) => {
+    const currentApi = apiRef.current;
+    if (!currentApi) {
+      return;
+    }
+
+    const selectedNodes = currentApi.getAppState().layersSelected.map(id => currentApi.getNodeById(id));
 
     try {
-      attachments.files.push(...selectedNodes.map(node => ({
-        id: node.id,
-        type: "file" as const,
-        url: "",
-        mediaType: "application/pdf",
-        filename: "document.pdf",
-      })));
-    } catch (error) {}
+      attachments.clear();
+      const files = await Promise.all(selectedNodes.map(async node => {
+        const base64 = (node as any).fill as string;
+
+        if (!base64) {
+          return null;
+        }
+        
+        // 将 base64 字符串转换为 Blob
+        const base64Data = base64.includes(',') 
+          ? base64.split(',')[1] 
+          : base64;
+        const byteCharacters = atob(base64Data);
+        const byteNumbers = new Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) {
+          byteNumbers[i] = byteCharacters.charCodeAt(i);
+        }
+        const byteArray = new Uint8Array(byteNumbers);
+        
+        // 从 data URL 中提取 MIME 类型，默认为 image/png
+        const mimeType = base64.match(/data:([^;]+);/)?.[1] || 'image/png';
+        const blob = new Blob([byteArray], { type: mimeType });
+        
+        // 从 Blob 创建 File 对象
+        return new File([blob], `image-${node.id}.png`, { type: mimeType });
+      }));
+
+      if (files.length > 0) {
+        attachments.add(files.filter(Boolean) as File[]);
+      }
+    } catch (error) {
+      console.error('Failed to convert base64 to File:', error);
+    }
   };
 
   useEffect(() => {
-    new App().addPlugins(...DefaultPlugins, UIPlugin
-      , LaserPointerPlugin, LassoPlugin, EraserPlugin, FalAIPlugin.configure({
-      credentials: 'your-fal-ai-credentials-here',
-    })
-  ).run();
+    if (!appRunning) {
+      new App().addPlugins(...DefaultPlugins, UIPlugin
+        , LaserPointerPlugin, LassoPlugin, EraserPlugin, FalAIPlugin.configure({
+        credentials: 'your-fal-ai-credentials-here',
+      })
+    ).run();
+      appRunning = true;
+    }
   }, []);
 
   useEffect(() => {
     canvasRef.current?.addEventListener(Event.READY, onReady);
     canvasRef.current?.addEventListener(Event.SELECTED_NODES_CHANGED, onSelectedNodesChanged);
+
+    return () => {
+      apiRef.current?.destroy();
+      canvasRef.current?.removeEventListener(Event.READY, onReady);
+      canvasRef.current?.removeEventListener(Event.SELECTED_NODES_CHANGED, onSelectedNodesChanged);
+    }
   }, []);
 
   return ( 
