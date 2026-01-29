@@ -38,7 +38,6 @@ jobs:
         run: npm install --global vercel@latest
       
       - name: Build and Deploy to Vercel
-        working-directory: ./packages/app
         run: |
           npx vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
           npx vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
