@@ -31,14 +31,11 @@ jobs:
           # 恢复 package.json
           mv package.json.bak package.json
 
-      - name: Build
-        run: pnpm -r --filter '!@infinite-canvas-tutorial/app' --filter '!@infinite-canvas-tutorial/core' --filter '!@infinite-canvas-tutorial/ui' --filter '!@infinite-canvas-tutorial/site' --filter '!@infinite-canvas-tutorial/lesson*' run build
-
       - name: Install Vercel CLI
         run: npm install --global vercel@latest
       
       - name: Build and Deploy to Vercel
         run: |
           npx vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
-          npx vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
+          npx vercel build --prod --token=${{ secrets.VERCEL_TOKEN }} --skip-install
           npx vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }}
