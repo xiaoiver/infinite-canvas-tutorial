@@ -13,6 +13,7 @@ const nextConfig: NextConfig = {
     "@infinite-canvas-tutorial/lasso",
     "@infinite-canvas-tutorial/eraser",
   ],
+  output: 'standalone',
 };
 
 export default nextConfig;
