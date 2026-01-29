@@ -29,6 +29,9 @@ jobs:
           sed -i.bak '/"gl":/d' package.json
           pnpm install --no-frozen-lockfile
 
+      - name: Build dependencies
+        run: pnpm -r --filter '!@infinite-canvas-tutorial/app' --filter '!@infinite-canvas-tutorial/core' --filter '!@infinite-canvas-tutorial/ui' --filter '!@infinite-canvas-tutorial/site' --filter '!@infinite-canvas-tutorial/lesson*' run build
+
       - name: Install Vercel CLI
         run: npm install --global vercel@latest
       

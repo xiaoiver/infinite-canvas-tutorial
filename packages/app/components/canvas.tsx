@@ -169,13 +169,15 @@ export default function Canvas() {
     const selectedNodes = e.detail.selected as SerializedNode[];
     console.log(selectedNodes);
 
-    attachments.add(selectedNodes.map(node => ({
-      id: node.id,
-      type: "file" as const,
-      url: "https://images.unsplash.com/photo-1682687220742-aba13b6e50ba?w=400&h=400&fit=crop",
-      mediaType: "image/jpeg",
-      filename: "ocean-sunset.jpg",
-    } as unknown as File)));
+    try {
+      attachments.files.push(...selectedNodes.map(node => ({
+        id: node.id,
+        type: "file" as const,
+        url: "",
+        mediaType: "application/pdf",
+        filename: "document.pdf",
+      })));
+    } catch (error) {}
   };
 
   useEffect(() => {
