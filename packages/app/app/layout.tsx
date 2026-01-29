@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Gaegu } from "next/font/google";
 import "./globals.css";
+import { AuthProvider } from "@/contexts/auth-context";
 
 const gaegu = Gaegu({
   variable: "--font-gaegu",
@@ -23,7 +24,9 @@ export default function RootLayout({
       <body
         className={`${gaegu.variable} antialiased`}
       >
-        {children}
+        <AuthProvider>
+          {children}
+        </AuthProvider>
       </body>
     </html>
   );

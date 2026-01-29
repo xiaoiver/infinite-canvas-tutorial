@@ -26,6 +26,8 @@
   },
   "dependencies": {
     "@ai-sdk/react": "3.0.59",
+    "@supabase/ssr": "^0.8.0",
+    "@supabase/supabase-js": "^2.93.3",
     "@infinite-canvas-tutorial/ecs": "workspace:*",
     "@infinite-canvas-tutorial/eraser": "workspace:*",
     "@infinite-canvas-tutorial/fal-ai": "workspace:*",

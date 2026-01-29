@@ -197,10 +197,10 @@ export default function Canvas() {
           const mimeType = base64.match(/data:([^;]+);/)?.[1] || 'image/png';
           const blob = new Blob([byteArray], { type: mimeType });
           
-          // 从 Blob 创建 File 对象
-          return new File([blob], `image-${node.id}.png`, { type: mimeType });
+          // 从 Blob 创建 File 对象，使用 node.id 作为文件名
+          return new File([blob], node.id, { type: mimeType });
         } catch (error) {
-          return new File([], `file`, { type: 'application/octet-stream' });
+          return new File([], node.id, { type: 'application/octet-stream' });
         }
       }));
 
