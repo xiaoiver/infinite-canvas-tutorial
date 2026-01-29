@@ -18,13 +18,14 @@ import '@infinite-canvas-tutorial/webcomponents/spectrum';
 import '@infinite-canvas-tutorial/lasso/spectrum';
 import '@infinite-canvas-tutorial/eraser/spectrum';
 import '@infinite-canvas-tutorial/laser-pointer/spectrum';
-// import { usePromptInputAttachments } from './ai-elements/prompt-input';
+import { PromptInputProvider } from './ai-elements/prompt-input';
+import { usePromptInputAttachments } from './ai-elements/prompt-input';
 
 export default function Canvas() {
   const canvasRef = useRef<HTMLDivElement>(null);
   const [, setApi] = useState<ExtendedAPI | null>(null);
 
-  // const attachments = usePromptInputAttachments();
+  const attachments = usePromptInputAttachments();
 
   const onReady = (e: CustomEvent<any>) => {
     const api = e.detail as ExtendedAPI;
@@ -212,11 +213,13 @@ export default function Canvas() {
   }, []);
 
   return (
-    <ic-spectrum-canvas ref={canvasRef} className="w-full h-full">
-      <ic-spectrum-penbar-laser-pointer slot="penbar-item" />
-      <ic-spectrum-penbar-eraser slot="penbar-item" />
-      {/* <ic-spectrum-taskbar-chat slot="taskbar-item" />
-      <ic-spectrum-taskbar-chat-panel slot="taskbar-panel" /> */}
-    </ic-spectrum-canvas>
+    <PromptInputProvider>
+      <ic-spectrum-canvas ref={canvasRef} className="w-full h-full">
+        <ic-spectrum-penbar-laser-pointer slot="penbar-item" />
+        <ic-spectrum-penbar-eraser slot="penbar-item" />
+        {/* <ic-spectrum-taskbar-chat slot="taskbar-item" />
+        <ic-spectrum-taskbar-chat-panel slot="taskbar-panel" /> */}
+      </ic-spectrum-canvas>
+    </PromptInputProvider>
   );
 }

@@ -468,7 +468,7 @@ export const VoiceSelectorPreview = ({
       className={cn("size-6", className)}
       disabled={loading}
       onClick={handleClick}
-      size="icon-sm"
+      size="icon"
       type="button"
       variant="outline"
       {...props}
