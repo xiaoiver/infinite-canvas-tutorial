@@ -43,7 +43,7 @@ Using the [Yoga] layout engine in the frontend is only possible via WASM. Curren
 
 -   [yoga-layout-prebuilt] It's been a long time since the last update.
 -   [yoga-wasm-web] Early [satori] used it to convert HTML into SVG and compute layouts. [taffy] also has related [example](https://github.com/DioxusLabs/taffy/pull/394#issuecomment-1476430705)
--   [yoga-layout] We recommend using it, and our implementation is also based on it.
+-   [yoga-layout] We recommend using it, and our implementation is also based on it. [react-pdf/yoga] also use it.
 
 It is worth noting that Yoga also applies to 3D space, provided that a plane is specified. For details, see:[react-three-flex]
 
@@ -51,7 +51,7 @@ It is worth noting that Yoga also applies to 3D space, provided that a plane is 
 
 ![axes_orientation](https://github.com/pmndrs/react-three-flex/raw/master/docs/axes_orientation.png)
 
-### pixijs/layout
+### pixijs/layout {#pixijs-layout}
 
 [pixijs/layout] is also implemented using Yoga. Similar implementations include: [pixi-flex-layout]
 
@@ -66,7 +66,7 @@ const container = new Container({layout: {
 }});
 ```
 
-### troika-flex-layout
+### troika-flex-layout {#troika-flex-layout}
 
 [troika-flex-layout], computed in a WebWorker using [yoga-layout-prebuilt]:
 
@@ -141,3 +141,4 @@ A layout tree parallel to the scene graph needs to be constructed.
 [stretch]: https://github.com/vislyhq/stretch
 [taffy wasm bindings]: https://github.com/DioxusLabs/taffy/pull/394
 [Figma - Guide to auto layout]: https://help.figma.com/hc/en-us/articles/360040451373-Guide-to-auto-layout
+[react-pdf/yoga]: https://github.com/diegomura/react-pdf/blob/master/packages/layout/src/yoga/index.ts

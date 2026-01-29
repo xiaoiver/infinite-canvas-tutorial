@@ -54,12 +54,12 @@ export class SAMSystem extends System {
         const selectedNode = api.getNodeById(
           api.getAppState().layersSelected[0],
         );
-
+        const { width, height } = api.getAbsoluteTransformAndSize(selectedNode);
         const { x, y, label } = point_prompts[0];
         // input image will be resized to 1024x1024 -> normalize mouse pos to 1024x1024
         const point = {
-          x: (x / selectedNode.width) * imageSize.w,
-          y: (y / selectedNode.width) * imageSize.h,
+          x: (x / width) * imageSize.w,
+          y: (y / height) * imageSize.h,
           label,
         };
 

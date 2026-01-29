@@ -205,28 +205,28 @@ export class ChatPanel extends LitElement {
     const bounds = isEdit ? this.api.getBounds(selectedNodes) : undefined;
     const image_urls = isEdit
       ? await Promise.all(
-          selectedNodes
-            .map(async (node) => {
-              if (node.type === 'rect') {
-                return node.fill;
-              } else {
-                const dataURL = toSVGDataURL(toSVGElement(this.api, [node]));
-                const pngDataURL = await svgToPng(
-                  dataURL,
-                  node.width,
-                  node.height,
-                );
-                const res = await fetch(pngDataURL);
-                const blob = await res.blob();
-                const file = new File([blob], `${node.id}.png`, {
-                  type: blob.type,
-                });
-                const url = await this.api.upload(file);
-                return url;
-              }
-            })
-            .filter((url) => !!url),
-        )
+        selectedNodes
+          .map(async (node) => {
+            if (node.type === 'rect') {
+              return node.fill;
+            } else {
+              const dataURL = toSVGDataURL(toSVGElement(this.api, [node]));
+              const pngDataURL = await svgToPng(
+                dataURL,
+                node.width as number,
+                node.height as number,
+              );
+              const res = await fetch(pngDataURL);
+              const blob = await res.blob();
+              const file = new File([blob], `${node.id}.png`, {
+                type: blob.type,
+              });
+              const url = await this.api.upload(file);
+              return url;
+            }
+          })
+          .filter((url) => !!url),
+      )
       : undefined;
     const { images, description } = await this.api.createOrEditImage(
       isEdit,
@@ -344,63 +344,63 @@ export class ChatPanel extends LitElement {
       </h4>
       <div class="messages">
         ${this.appState.taskbarChatMessages.map(
-          (message) =>
-            html`${when(
-              message.role === 'user',
-              () => html`<div class="user-message">
+      (message) =>
+        html`${when(
+          message.role === 'user',
+          () => html`<div class="user-message">
                   <div class="user-message-content">${message.content}</div>
                 </div>
                 <div class="user-message-references">
                   ${message.references?.map(
-                    (reference) => html`<ic-spectrum-layer-thumbnail
+            (reference) => html`<ic-spectrum-layer-thumbnail
                       .node=${this.api.getNodeById(reference.id)}
                     ></ic-spectrum-layer-thumbnail>`,
-                  )}
+          )}
                 </div>`,
-              () =>
-                html`<div class="assistant-message">
+          () =>
+            html`<div class="assistant-message">
                   <div class="assistant-message-content">
                     ${message.content}
                   </div>
                   <div class="assistant-message-images">
                     ${message.images?.map(
-                      (image) => html`<sp-thumbnail
+              (image) => html`<sp-thumbnail
                         size="1000"
                         ?focused=${this.appState.layersSelected
-                          .map((id) => this.api.getNodeById(id))
-                          .filter((node) => node.type === 'rect')
-                          .map((node) => node.fill)
-                          .includes(image.url)}
+                  .map((id) => this.api.getNodeById(id))
+                  .filter((node) => node.type === 'rect')
+                  .map((node) => node.fill)
+                  .includes(image.url)}
                       >
                         <img src="${image.url}" alt="Demo Image" />
                       </sp-thumbnail>`,
-                    )}
+            )}
                   </div>
                   <div class="assistant-message-suggestions">
                     ${message.suggestions?.map(
-                      (suggestion) =>
-                        html`<sp-action-button
+              (suggestion) =>
+                html`<sp-action-button
                           size="s"
                           .disabled=${this.userMessageSending}
                           @click=${() =>
-                            this.handleSuggestionClick(suggestion.text)}
+                    this.handleSuggestionClick(suggestion.text)}
                         >
                           ${suggestion.text}</sp-action-button
                         >`,
-                    )}
+            )}
                   </div>
                 </div>`,
-            )}`,
-        )}
+        )}`,
+    )}
         ${when(
-          this.userMessageSending,
-          () =>
-            html`<sp-progress-circle
+      this.userMessageSending,
+      () =>
+        html`<sp-progress-circle
               label="Generating content"
               indeterminate
               size="s"
             ></sp-progress-circle>`,
-        )}
+    )}
       </div>
       <div class="input-container">
         <sp-textfield

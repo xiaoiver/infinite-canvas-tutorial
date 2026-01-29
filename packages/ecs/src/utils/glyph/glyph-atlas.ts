@@ -1,7 +1,24 @@
 import potpack from 'potpack';
 import type { GlyphMetrics, StyleGlyph } from './alpha-image';
 import { RGBAImage } from './alpha-image';
-import { SDF_SCALE } from './glyph-manager';
+
+/**
+ * SDF_SCALE controls the pixel density of locally generated glyphs relative
+ * to "normal" SDFs which are generated at 24pt font and a "pixel ratio" of 1.
+ * The GlyphManager will generate glyphs SDF_SCALE times as large,
+ * but with the same glyph metrics, and the quad generation code will scale them
+ * back down so they display at the same size.
+ *
+ * The choice of SDF_SCALE is a trade-off between performance and quality.
+ * Glyph generation time grows quadratically with the the scale, while quality
+ * improvements drop off rapidly when the scale is higher than the pixel ratio
+ * of the device. The scale of 2 buys noticeable improvements on HDPI screens
+ * at acceptable cost.
+ */
+export const SDF_SCALE = 4;
+export const BASE_FONT_WIDTH = 24 * SDF_SCALE;
+export const BASE_FONT_BUFFER = 3 * SDF_SCALE;
+export const RADIUS = 8 * SDF_SCALE;
 
 export const glyphPadding = 1;
 /**

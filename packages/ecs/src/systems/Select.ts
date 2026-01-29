@@ -93,7 +93,16 @@ export enum SelectionMode {
 export interface SelectOBB {
   mode: SelectionMode;
   resizingAnchorName: AnchorName;
-  nodes: SerializedNode[];
+  nodes: {
+    id: string;
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    rotation: number;
+    scaleX: number;
+    scaleY: number;
+  }[];
 
   obb: {
     x: number;
@@ -234,9 +243,10 @@ export class Select extends System {
         selected.remove(Highlighted);
       }
       const node = api.getNodeByEntity(selected);
+      const { x, y } = selected.read(Transform).translation;
       api.updateNodeOBB(node, {
-        x: node.x + offset[0],
-        y: node.y + offset[1],
+        x: x + offset[0],
+        y: y + offset[1],
       });
       updateGlobalTransform(selected);
       updateComputedPoints(selected);
@@ -433,13 +443,13 @@ export class Select extends System {
         if (lockAspectRatio) {
           const comparePoint = centeredScaling
             ? {
-                x: obb.width / 2,
-                y: obb.height / 2,
-              }
+              x: obb.width / 2,
+              y: obb.height / 2,
+            }
             : {
-                x: brAnchor.read(Circle).cx,
-                y: brAnchor.read(Circle).cy,
-              };
+              x: brAnchor.read(Circle).cx,
+              y: brAnchor.read(Circle).cy,
+            };
           newHypotenuse = Math.sqrt(
             Math.pow(comparePoint.x - x, 2) + Math.pow(comparePoint.y - y, 2),
           );
@@ -457,13 +467,13 @@ export class Select extends System {
         if (lockAspectRatio) {
           const comparePoint = centeredScaling
             ? {
-                x: obb.width / 2,
-                y: obb.height / 2,
-              }
+              x: obb.width / 2,
+              y: obb.height / 2,
+            }
             : {
-                x: blAnchor.read(Circle).cx,
-                y: blAnchor.read(Circle).cy,
-              };
+              x: blAnchor.read(Circle).cx,
+              y: blAnchor.read(Circle).cy,
+            };
 
           newHypotenuse = Math.sqrt(
             Math.pow(x - comparePoint.x, 2) + Math.pow(comparePoint.y - y, 2),
@@ -485,13 +495,13 @@ export class Select extends System {
         if (lockAspectRatio) {
           const comparePoint = centeredScaling
             ? {
-                x: obb.width / 2,
-                y: obb.height / 2,
-              }
+              x: obb.width / 2,
+              y: obb.height / 2,
+            }
             : {
-                x: trAnchor.read(Circle).cx,
-                y: trAnchor.read(Circle).cy,
-              };
+              x: trAnchor.read(Circle).cx,
+              y: trAnchor.read(Circle).cy,
+            };
 
           newHypotenuse = Math.sqrt(
             Math.pow(comparePoint.x - x, 2) + Math.pow(y - comparePoint.y, 2),
@@ -512,13 +522,13 @@ export class Select extends System {
         if (lockAspectRatio) {
           const comparePoint = centeredScaling
             ? {
-                x: obb.width / 2,
-                y: obb.height / 2,
-              }
+              x: obb.width / 2,
+              y: obb.height / 2,
+            }
             : {
-                x: tlAnchor.read(Circle).cx,
-                y: tlAnchor.read(Circle).cy,
-              };
+              x: tlAnchor.read(Circle).cx,
+              y: tlAnchor.read(Circle).cy,
+            };
 
           newHypotenuse = Math.sqrt(
             Math.pow(x - comparePoint.x, 2) + Math.pow(y - comparePoint.y, 2),
@@ -719,7 +729,10 @@ export class Select extends System {
         const selection = {
           mode: SelectionMode.IDLE,
           resizingAnchorName: AnchorName.INSIDE,
-          nodes: api.getNodes(),
+          nodes: api.getNodes().map(node => ({
+            ...node,
+            ...api.getAbsoluteTransformAndSize(node)
+          })),
           obb: {
             x: 0,
             y: 0,
@@ -1114,8 +1127,10 @@ export class Select extends System {
     const hypotenuse = Math.sqrt(Math.pow(width, 2) + Math.pow(height, 2));
     selection.sin = Math.abs(height / hypotenuse);
     selection.cos = Math.abs(width / hypotenuse);
-
-    selection.nodes = [...api.getNodes()];
+    selection.nodes = [...api.getNodes().map(node => ({
+      ...node,
+      ...api.getAbsoluteTransformAndSize(node)
+    }))];
   }
 
   private fitSelected(api: API, newAttrs: OBB, selection: SelectOBB) {
@@ -1314,7 +1329,7 @@ export class Select extends System {
         });
         const distance = Math.sqrt(
           Math.pow(points[0][0] - points[1][0], 2) +
-            Math.pow(points[0][1] - points[1][1], 2),
+          Math.pow(points[0][1] - points[1][1], 2),
         );
         const from = [fromX, fromY] as [number, number];
         const to = [toX, toY] as [number, number];

@@ -75,7 +75,16 @@ export class PenbarBrushSettings extends LitElement {
     this.api.record();
   }
 
-  private handleStampChanged(e: Event & { target: HTMLInputElement }) {}
+  private handleStampChanged(e: Event & { target: HTMLInputElement }) {
+    const stamp = (e.target as any).value;
+    this.api.setAppState({
+      penbarBrush: {
+        ...this.api.getAppState().penbarBrush,
+        stamp,
+      },
+    });
+    this.api.record();
+  }
 
   render() {
     const { penbarBrush, theme } = this.appState;
@@ -91,8 +100,8 @@ export class PenbarBrushSettings extends LitElement {
         @change=${this.handleStrokeColorChanged}
       >
         ${theme.colors[theme.mode].swatches.map(
-          (color) => html` <sp-swatch color=${color} size="s"></sp-swatch> `,
-        )}
+      (color) => html` <sp-swatch color=${color} size="s"></sp-swatch> `,
+    )}
       </sp-swatch-group>
 
       <div class="line">
@@ -104,12 +113,12 @@ export class PenbarBrushSettings extends LitElement {
           id="font-family"
         >
           ${penbarBrush.stamps.map(
-            (stamp) =>
-              html`<sp-menu-item value=${stamp}>
-                <img src=${stamp} style="width: 20px; height: 20px;" />
-                ${stamp}
+      (stamp) =>
+        html`<sp-menu-item value=${stamp.src} style="display: flex; align-items: center; gap: 4px;">
+                <img src=${stamp.src} style="width: 20px; height: 20px;" />
+                <span>${stamp.name}</span>
               </sp-menu-item>`,
-          )}
+    )}
         </sp-picker>
       </div>
       <div class="line" style="display: flex; align-items: center;">

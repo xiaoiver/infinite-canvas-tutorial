@@ -2,6 +2,7 @@
 node_modules
 esm
 lib
+!packages/app/lib
 dist
 examples/dist
 rust/target
@@ -16,3 +17,4 @@ __tests__/ssr/**/*-actual.svg
 test-results
 playwright-report
 playwright/.cache
+.vercel

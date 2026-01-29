@@ -92,12 +92,13 @@ export interface NameAttributes {
 
 /**
  * Friendly to transformer.
+ * Allow percentage values for x/y, width/height.
  */
 export interface TransformAttributes {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
+  x: number | string;
+  y: number | string;
+  width: number | string;
+  height: number | string;
   rotation: number;
   scaleX: number;
   scaleY: number;
@@ -126,6 +127,18 @@ export interface StrokeAttributes {
   strokeDasharray: string;
   strokeDashoffset: Stroke['dashoffset'];
   strokeOpacity: Opacity['strokeOpacity'];
+}
+
+export interface FlexboxLayoutAttributes {
+  display: 'flex';
+  alignItems: 'center' | 'flex-start' | 'flex-end' | 'stretch' | 'baseline';
+  justifyContent: 'center' | 'flex-start' | 'flex-end' | 'space-between' | 'space-around' | 'space-evenly';
+  flexDirection: 'row' | 'row-reverse' | 'column' | 'column-reverse';
+  flexWrap: 'nowrap' | 'wrap' | 'wrap-reverse';
+  flexGrow: number;
+  flexShrink: number;
+  flexBasis: number;
+  flex: number;
 }
 
 export interface ConstraintAttributes {
@@ -240,7 +253,8 @@ export interface EllipseSerializedNode
 
 export interface RectSerializedNode
   extends BaseSerializeNode<'rect'>,
-  Partial<Pick<Rect, 'width' | 'height' | 'cornerRadius'>>,
+  Partial<Pick<Rect, 'cornerRadius'>>,
+  Partial<{ x: number | string; y: number | string; width: number | string; height: number | string }>,
   Partial<FillAttributes>,
   Partial<StrokeAttributes>,
   Partial<InnerShadowAttributes>,
@@ -252,7 +266,8 @@ export interface RectSerializedNode
 
 export interface RoughRectSerializedNode
   extends BaseSerializeNode<'rough-rect'>,
-  Partial<Pick<Rect, 'width' | 'height' | 'cornerRadius'>>,
+  Partial<Pick<Rect, 'cornerRadius'>>,
+  Partial<{ x: number | string; y: number | string; width: number | string; height: number | string }>,
   Partial<FillAttributes>,
   Partial<StrokeAttributes>,
   Partial<RoughAttributes>,

@@ -86,8 +86,8 @@ export class ContextImageEditBar extends LitElement {
         type: 'rect',
         fill: this.node.fill,
         lockAspectRatio: true,
-        x: this.node.x + this.node.width + 50,
-        y: this.node.y,
+        x: (this.node.x as number) + (this.node.width as number) + 50,
+        y: (this.node.y as number),
         width: this.node.width,
         height: this.node.height,
       };
@@ -137,8 +137,8 @@ export class ContextImageEditBar extends LitElement {
       image_url: '',
       point_prompts: [
         {
-          x: x - selectedNode.x,
-          y: y - selectedNode.y,
+          x: x - (selectedNode.x as number),
+          y: y - (selectedNode.y as number),
           label: 1,
         },
       ],
@@ -195,8 +195,8 @@ export class ContextImageEditBar extends LitElement {
             type: 'rect',
             fill: image.url,
             lockAspectRatio: true,
-            x: this.node.x + this.node.width + 50,
-            y: this.node.y,
+            x: (this.node.x as number) + (this.node.width as number) + 50,
+            y: (this.node.y as number),
             width: this.node.width,
             height: this.node.height,
           } as RectSerializedNode;
@@ -228,8 +228,8 @@ export class ContextImageEditBar extends LitElement {
         type: 'rect',
         fill: url,
         lockAspectRatio: true,
-        x: this.node.x + this.node.width + 50,
-        y: this.node.y,
+        x: (this.node.x as number) + (this.node.width as number) + 50,
+        y: (this.node.y as number),
         width: this.node.width,
         height: this.node.height,
       } as RectSerializedNode;

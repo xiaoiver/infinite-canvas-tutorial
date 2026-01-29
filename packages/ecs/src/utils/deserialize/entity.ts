@@ -1,4 +1,4 @@
-import { isNil } from '@antv/util';
+import { isNil, isString } from '@antv/util';
 import toposort from 'toposort';
 import { Entity } from '@lastolivegames/becsy';
 import { IPointData } from '@pixi/math';
@@ -80,6 +80,11 @@ import { safeAddComponent } from '../../history';
 import { updateFixedTerminalPoints, updateFloatingTerminalPoints, updatePoints } from '../binding';
 
 export function inferXYWidthHeight(node: SerializedNode) {
+  const { x, y, width, height } = node;
+  if (isString(x) || isString(y) || isString(width) || isString(height)) {
+    return node;
+  }
+
   if (
     isNil(node.width) ||
     isNil(node.height) ||
@@ -89,7 +94,7 @@ export function inferXYWidthHeight(node: SerializedNode) {
     const { type } = node;
     let bounds: AABB;
     if (type === 'rect') {
-      bounds = Rect.getGeometryBounds(node);
+      bounds = Rect.getGeometryBounds(node as Partial<Rect>);
     } else if (type === 'ellipse') {
       bounds = Ellipse.getGeometryBounds(node);
     } else if (type === 'polyline' || type === 'rough-polyline') {
@@ -157,11 +162,11 @@ export function inferPointsWithFromIdAndToId(
   inferXYWidthHeight(from);
   inferXYWidthHeight(to);
 
-  const state = edge as LineSerializedNode & { absolutePoints: (IPointData | null)[] };
+  const state = edge as LineSerializedNode & { width: number; height: number; x: number; y: number } & { absolutePoints: (IPointData | null)[] };
   state.absolutePoints = [null, null];
-  updateFixedTerminalPoints(state, from, to);
-  updatePoints(state, null, from, to);
-  updateFloatingTerminalPoints(state, from, to);
+  updateFixedTerminalPoints(state, from as SerializedNode & { width: number; height: number; x: number; y: number }, to as SerializedNode & { width: number; height: number; x: number; y: number });
+  updatePoints(state, null, from as SerializedNode & { width: number; height: number; x: number; y: number }, to as SerializedNode & { width: number; height: number; x: number; y: number });
+  updateFloatingTerminalPoints(state, from as SerializedNode & { width: number; height: number; x: number; y: number }, to as SerializedNode & { width: number; height: number; x: number; y: number });
 
   edge.x1 = state.absolutePoints[0].x;
   edge.y1 = state.absolutePoints[0].y;
@@ -308,23 +313,17 @@ export function serializedNodesToEntities(
     // Make sure the entity has a width and height
     inferXYWidthHeight(attributes);
 
-    if (isNil(attributes.rotation)) {
-      attributes.rotation = 0;
-    }
-    if (isNil(attributes.scaleX)) {
-      attributes.scaleX = 1;
-    }
-    if (isNil(attributes.scaleY)) {
-      attributes.scaleY = 1;
-    }
-
-    const { x, y, width, height, rotation, scaleX, scaleY } = attributes;
+    const { x, y, width, height, rotation = 0, scaleX = 1, scaleY = 1 } = attributes;
+    const absoluteX = isString(x) ? 0 : x;
+    const absoluteY = isString(y) ? 0 : y;
+    const absoluteWidth = isString(width) ? 0 : width;
+    const absoluteHeight = isString(height) ? 0 : height;
 
     entityCommands.insert(
       new Transform({
         translation: {
-          x,
-          y,
+          x: absoluteX,
+          y: absoluteY,
         },
         rotation,
         scale: {
@@ -341,10 +340,10 @@ export function serializedNodesToEntities(
     if (type === 'ellipse' || type === 'rough-ellipse') {
       entityCommands.insert(
         new Ellipse({
-          cx: width / 2,
-          cy: height / 2,
-          rx: width / 2,
-          ry: height / 2,
+          cx: absoluteWidth / 2,
+          cy: absoluteHeight / 2,
+          rx: absoluteWidth / 2,
+          ry: absoluteHeight / 2,
         }),
       );
 
@@ -354,7 +353,7 @@ export function serializedNodesToEntities(
     } else if (type === 'rect' || type === 'rough-rect') {
       const { cornerRadius } = attributes as RectSerializedNode;
       entityCommands.insert(
-        new Rect({ x: 0, y: 0, width, height, cornerRadius }),
+        new Rect({ x: 0, y: 0, width: absoluteWidth, height: absoluteHeight, cornerRadius }),
       );
       if (type === 'rough-rect') {
         serializeRough(attributes as RoughAttributes, entityCommands);
@@ -484,11 +483,11 @@ export function serializedNodesToEntities(
       entityCommands.insert(new VectorNetwork({ vertices, segments, regions }));
     } else if (type === 'html') {
       const { html } = attributes as HtmlSerializedNode;
-      entityCommands.insert(new HTML({ x: 0, y: 0, width, height, html }));
+      entityCommands.insert(new HTML({ x: 0, y: 0, width: absoluteWidth, height: absoluteHeight, html }));
       entityCommands.insert(new HTMLContainer());
     } else if (type === 'embed') {
       const { url } = attributes as EmbedSerializedNode;
-      entityCommands.insert(new Embed({ x: 0, y: 0, width, height, url }));
+      entityCommands.insert(new Embed({ x: 0, y: 0, width: absoluteWidth, height: absoluteHeight, url }));
       entityCommands.insert(new HTMLContainer());
     }
 

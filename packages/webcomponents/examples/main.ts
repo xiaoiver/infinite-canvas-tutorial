@@ -15,6 +15,7 @@ import '../src/spectrum';
 import { LaserPointerPlugin } from '../../plugin-laser-pointer/src';
 import { EraserPlugin } from '../../plugin-eraser/src';
 import { LassoPlugin } from '../../plugin-lasso/src';
+import { YogaPlugin } from '../../plugin-yoga/src';
 import '../../plugin-laser-pointer/src/spectrum';
 import '../../plugin-eraser/src/spectrum';
 import '../../plugin-lasso/src/spectrum';
@@ -89,116 +90,102 @@ canvas.addEventListener(Event.READY, async (e) => {
     // filter: 'noise(0.5)',
   });
 
-  const node1 = {
-    id: 'rect-1',
+  // const node1 = {
+  //   id: 'rect-1',
+  //   type: 'rect',
+  //   x: 0,
+  //   y: 0,
+  //   width: 200,
+  //   height: 200,
+  //   fill: 'grey',
+  //   constraints: [
+  //     {
+  //       x: 0.5,
+  //       y: 0.5,
+  //     }
+  //   ]
+  //   // fill: 'https://v3b.fal.media/files/b/tiger/v1lf1EcPP1X1pw_YOKM4o.jpg',
+  //   // filter: 'noise(0.5)',
+  // };
+  // const edge1 = {
+  //   id: 'line-1',
+  //   // type: 'rough-line',
+  //   type: 'line',
+  //   fromId: 'rect-1',
+  //   toId: 'rect-2',
+  //   stroke: 'black',
+  //   strokeWidth: 10,
+  //   markerEnd: 'line',
+  //   exitX: 0.5,
+  //   exitY: 0.5,
+  //   exitPerimeter: true,
+  //   // orthogonal: true,
+  // };
+  // const edge2 = {
+  //   id: 'line-2',
+  //   type: 'line',
+  //   fromId: 'rect-2',
+  //   toId: 'rect-3',
+  //   stroke: 'black',
+  //   strokeWidth: 10,
+  //   markerEnd: 'line',
+  //   // orthogonal: true,
+  // };
+  // // const node2 = {
+  // //   id: 'text-1',
+  // //   type: 'text',
+  // //   parentId: 'rect-1',
+  // //   anchorX: 10,
+  // //   anchorY: 50,
+  // //   content: 'Hello',
+  // //   fill: 'black',
+  // //   fontSize: 30,
+  // //   fontFamily: 'system-ui',
+  // // };
+  // const node2 = {
+  //   id: 'rect-2',
+  //   // type: 'rect',
+  //   type: 'ellipse',
+  //   x: 300,
+  //   y: 200,
+  //   width: 200,
+  //   height: 200,
+  //   fill: 'red',
+  // };
+
+  // const node3 = {
+  //   id: 'rect-3',
+  //   type: 'rect',
+  //   x: 100,
+  //   y: 300,
+  //   width: 100,
+  //   height: 100,
+  //   fill: 'green',
+  // };
+
+  // api.updateNodes([node1, node2, node3, edge1, edge2]);
+
+  const parent = {
+    id: 'parent',
     type: 'rect',
-    x: 0,
-    y: 0,
+    x: 100,
+    y: 100,
     width: 200,
     height: 200,
     fill: 'grey',
-    constraints: [
-      {
-        x: 0.5,
-        y: 0.5,
-      }
-    ]
-    // fill: 'https://v3b.fal.media/files/b/tiger/v1lf1EcPP1X1pw_YOKM4o.jpg',
-    // filter: 'noise(0.5)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
   };
-  const edge1 = {
-    id: 'line-1',
-    // type: 'rough-line',
-    type: 'line',
-    fromId: 'rect-1',
-    toId: 'rect-2',
-    stroke: 'black',
-    strokeWidth: 10,
-    markerEnd: 'line',
-    exitX: 0.5,
-    exitY: 0.5,
-    exitPerimeter: true,
-    // orthogonal: true,
-  };
-  const edge2 = {
-    id: 'line-2',
-    type: 'line',
-    fromId: 'rect-2',
-    toId: 'rect-3',
-    stroke: 'black',
-    strokeWidth: 10,
-    markerEnd: 'line',
-    // orthogonal: true,
-  };
-  // const node2 = {
-  //   id: 'text-1',
-  //   type: 'text',
-  //   parentId: 'rect-1',
-  //   anchorX: 10,
-  //   anchorY: 50,
-  //   content: 'Hello',
-  //   fill: 'black',
-  //   fontSize: 30,
-  //   fontFamily: 'system-ui',
-  // };
-  const node2 = {
-    id: 'rect-2',
-    // type: 'rect',
-    type: 'ellipse',
-    x: 300,
-    y: 200,
-    width: 200,
-    height: 200,
-    fill: 'red',
-  };
-
-  const node3 = {
-    id: 'rect-3',
+  const child = {
+    id: 'child',
+    parentId: 'parent',
     type: 'rect',
-    x: 100,
-    y: 300,
-    width: 100,
-    height: 100,
-    fill: 'green',
+    fill: 'red',
+    width: '50%',
+    height: '50%',
   };
-
-  // // Generate sinewave geometry
-  // const maxRadius = (1 / 3) * 100;
-  // const segmentCount = 32;
-
-  // const position: [number, number][] = [];
-  // const radius: number[] = [];
-
-  // const gr = (1 + Math.sqrt(5)) / 2; // golden ratio
-  // const pi = Math.PI;
-
-  // for (let i = 0; i <= segmentCount; ++i) {
-  //   let a = i / segmentCount;
-  //   let x = -pi + 2 * pi * a;
-  //   let y = Math.sin(x) / gr;
-  //   let r = Math.cos(x / 2.0) * maxRadius;
-
-  //   position.push([x * 100 + 360, y * 100 + 120]);
-  //   radius.push(r);
-  // }
-
-  // api.updateNodes([
-  //   {
-  //     id: '1',
-  //     type: 'brush',
-  //     // brushType: BrushType.VANILLA,
-  //     brushType: BrushType.STAMP,
-  //     brushStamp: '/stamp1.png',
-  //     stampInterval: 0.4,
-  //     // brushStamp: '/brush.jpg',
-  //     points: position.map(([x, y], i) => `${x},${y},${radius[i]}`).join(' '),
-  //     stroke: 'red',
-  //     strokeWidth: 10,
-  //     strokeOpacity: 1,
-  //   },
-  // ]);
-
-  api.updateNodes([node1, node2, node3, edge1, edge2]);
+  api.updateNodes([parent, child]);
   // api.updateNode(node1);
   // api.record();
 });
@@ -209,6 +196,7 @@ try {
     UIPlugin,
     EraserPlugin,
     LaserPointerPlugin,
+    YogaPlugin
   );
   app.run();
 } catch (e) {

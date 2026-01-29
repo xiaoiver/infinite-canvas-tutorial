@@ -99,8 +99,7 @@ export class DrawBrush extends System {
       }
 
       const { inputPoints, api } = canvas.read(Canvas);
-      const appState = api.getAppState();
-      const pen = appState.penbarSelected;
+      const pen = api.getAppState().penbarSelected;
 
       if (pen !== Pen.BRUSH) {
         return;
@@ -171,13 +170,15 @@ export class DrawBrush extends System {
         }
 
         api.runAtNextTick(() => {
+          const { stamps, stamp, ...rest } = api.getAppState().penbarBrush;
           api.updateNode(brush, { visibility: 'hidden' }, false);
 
           const node: BrushSerializedNode = {
             id: uuidv4(),
             type: 'brush',
             points: brush.points,
-            ...appState.penbarBrush,
+            brushStamp: stamp, // Use stamp from current settings
+            ...rest,
           };
 
           api.setAppState({
@@ -200,6 +201,7 @@ export class DrawBrush extends System {
     const camera = api.getCamera();
     const selection = this.selections.get(camera.__id);
     const defaultDrawParams = api.getAppState().penbarBrush;
+    const { stamps, stamp, ...rest } = defaultDrawParams;
 
     const { pointerDownViewportX, pointerDownViewportY } = camera.read(
       ComputedCameraControl,
@@ -223,7 +225,7 @@ export class DrawBrush extends System {
           points: '0,0,0',
           visibility: 'hidden',
           zIndex: DRAW_RECT_Z_INDEX,
-          ...defaultDrawParams,
+          ...rest,
         };
         api.updateNode(brush, undefined, false);
         api.getEntity(brush).add(UI, { type: UIType.BRUSH });
@@ -262,10 +264,11 @@ export class DrawBrush extends System {
               strokePoints.map(({ point, pressure }) => ({
                 x: point[0],
                 y: point[1],
-                radius: pressure * defaultDrawParams.strokeWidth,
+                radius: pressure * rest.strokeWidth,
               })),
             ),
-            ...defaultDrawParams,
+            brushStamp: stamp, // Use stamp from current settings
+            ...rest,
           },
           false,
         );

@@ -209,7 +209,7 @@ export async function executePaste(
     let types;
     try {
       types = await readSystemClipboard();
-    } catch (error: any) {}
+    } catch (error: any) { }
     event = createPasteEvent({ types });
   }
 
@@ -263,8 +263,8 @@ export async function executePaste(
           node.x = canvasPosition.x;
           node.y = canvasPosition.y;
         } else {
-          node.x += 10;
-          node.y += 10;
+          node.x = (node.x as number) + 10;
+          node.y = (node.y as number) + 10;
         }
         return node;
       });
@@ -577,7 +577,7 @@ export class ContextMenu extends LitElement {
       layersSelected.forEach((id) => {
         const node = this.api.getNodeById(id);
         if (node) {
-          this.api.updateNodeOBB(node, { y: node.y - 10 });
+          this.api.updateNodeOBB(node, { y: (node.y as number) - 10 });
         }
       });
       this.api.record();
@@ -586,7 +586,7 @@ export class ContextMenu extends LitElement {
       layersSelected.forEach((id) => {
         const node = this.api.getNodeById(id);
         if (node) {
-          this.api.updateNodeOBB(node, { y: node.y + 10 });
+          this.api.updateNodeOBB(node, { y: (node.y as number) + 10 });
         }
       });
       this.api.record();
@@ -595,7 +595,7 @@ export class ContextMenu extends LitElement {
       layersSelected.forEach((id) => {
         const node = this.api.getNodeById(id);
         if (node) {
-          this.api.updateNodeOBB(node, { x: node.x - 10 });
+          this.api.updateNodeOBB(node, { x: (node.x as number) - 10 });
         }
       });
       this.api.record();
@@ -604,7 +604,7 @@ export class ContextMenu extends LitElement {
       layersSelected.forEach((id) => {
         const node = this.api.getNodeById(id);
         if (node) {
-          this.api.updateNodeOBB(node, { x: node.x + 10 });
+          this.api.updateNodeOBB(node, { x: (node.x as number) + 10 });
         }
       });
       this.api.record();

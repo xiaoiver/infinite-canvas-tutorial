@@ -43,7 +43,7 @@ const child = {
 
 -   [yoga-layout-prebuilt] 已经很久没有更新了
 -   [yoga-wasm-web] 早期 [satori] 使用它将 HTML 转换成 SVG，计算布局。[taffy] 也有相关 [示例](https://github.com/DioxusLabs/taffy/pull/394#issuecomment-1476430705)
--   [yoga-layout] 推荐使用，我们的实现也基于它
+-   [yoga-layout] 推荐使用。[react-pdf/yoga] 使用的就是它，我们的实现也基于它
 
 值得一提的是，Yoga 也适用于 3D 空间，前提是指定应用平面，详见：[react-three-flex]
 
@@ -51,7 +51,7 @@ const child = {
 
 ![axes_orientation](https://github.com/pmndrs/react-three-flex/raw/master/docs/axes_orientation.png)
 
-### pixijs/layout
+### pixijs/layout {#pixijs-layout}
 
 [pixijs/layout] 也是基于 Yoga 实现的，类似的实现还有 [pixi-flex-layout]
 
@@ -66,7 +66,7 @@ const container = new Container({layout: {
 }});
 ```
 
-### troika-flex-layout
+### troika-flex-layout {#troika-flex-layout}
 
 [troika-flex-layout]，使用 [yoga-layout-prebuilt] 在 WebWorker 中计算：
 
@@ -141,3 +141,4 @@ Rust 实现：
 [stretch]: https://github.com/vislyhq/stretch
 [taffy wasm bindings]: https://github.com/DioxusLabs/taffy/pull/394
 [Figma - Guide to auto layout]: https://help.figma.com/hc/en-us/articles/360040451373-Guide-to-auto-layout
+[react-pdf/yoga]: https://github.com/diegomura/react-pdf/blob/master/packages/layout/src/yoga/index.ts

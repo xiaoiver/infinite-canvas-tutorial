@@ -9,6 +9,17 @@ For camera-related content, refer to: [Lesson 4 - Camera]. After [Getting the AP
 api.createLandmark();
 ```
 
+
+## get/setState {#get-set-camera-state}
+
+```ts
+cameraZoom: number;
+cameraX: number;
+cameraY: number;
+cameraRotation: number;
+cameraZoomFactor: number; // zoom in/out speed
+```
+
 ## createLandmark
 
 Create a Landmark that represents the camera state

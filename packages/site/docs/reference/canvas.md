@@ -34,6 +34,7 @@ export interface AppState {
     cameraX: number;
     cameraY: number;
     cameraRotation: number;
+    cameraZoomFactor: number;
     contextBarVisible: boolean;
     contextMenuVisible: boolean;
     topbarVisible: boolean;

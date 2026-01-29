@@ -1,6 +1,5 @@
 import { css, html, LitElement } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
-import { when } from 'lit/directives/when.js';
 import { unsafeSVG } from 'lit/directives/unsafe-svg.js';
 import {
   SerializedNode,
@@ -195,19 +194,22 @@ export class LayerThumbnail extends LitElement {
     const paddedWidth = width + padding * 2;
     const paddedHeight = height + padding * 2;
 
+    let thumbnail;
+    if (this.node.type === 'text') {
+      thumbnail = html`<sp-icon-text></sp-icon-text>`;
+    } else if (this.node.type === 'brush') {
+      thumbnail = html`<img src="${this.node.brushStamp}" />`;
+    } else {
+      thumbnail = $el && html`<svg
+        viewBox="${-paddedWidth / 2} ${-paddedHeight /
+        2} ${paddedWidth} ${paddedHeight}"
+      >
+        ${unsafeSVG(defsHTML)} ${unsafeSVG($el.outerHTML)}
+      </svg>`;
+    }
+
     return html`<sp-thumbnail size="1000" ?focused=${this.selected}>
-      ${when(
-        this.node.type === 'text',
-        () => html`<sp-icon-text></sp-icon-text>`,
-        () =>
-          $el &&
-          html`<svg
-            viewBox="${-paddedWidth / 2} ${-paddedHeight /
-            2} ${paddedWidth} ${paddedHeight}"
-          >
-            ${unsafeSVG(defsHTML)} ${unsafeSVG($el.outerHTML)}
-          </svg>`,
-      )}
+      ${thumbnail}
     </sp-thumbnail>`;
   }
 }
