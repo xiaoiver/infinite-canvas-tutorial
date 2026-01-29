@@ -18,7 +18,6 @@ import '@infinite-canvas-tutorial/webcomponents/spectrum';
 import '@infinite-canvas-tutorial/lasso/spectrum';
 import '@infinite-canvas-tutorial/eraser/spectrum';
 import '@infinite-canvas-tutorial/laser-pointer/spectrum';
-import { PromptInputProvider } from './ai-elements/prompt-input';
 import { usePromptInputAttachments } from './ai-elements/prompt-input';
 
 export default function Canvas() {
@@ -133,7 +132,6 @@ export default function Canvas() {
     api.setAppState({
       cameraX: 0,
       cameraZoom: 0.35,
-      // penbarSelected: Pen.VECTOR_NETWORK,
       penbarSelected: Pen.SELECT,
       penbarAll: [Pen.HAND, Pen.SELECT, Pen.DRAW_RECT, Pen.DRAW_ELLIPSE, Pen.DRAW_LINE, Pen.DRAW_ARROW, Pen.DRAW_ROUGH_RECT, Pen.DRAW_ROUGH_ELLIPSE, Pen.IMAGE, Pen.TEXT, Pen.PENCIL, Pen.BRUSH, Pen.ERASER, Pen.LASER_POINTER],
       penbarText: {
@@ -142,35 +140,10 @@ export default function Canvas() {
         fontFamilies: ['system-ui', 'serif', 'monospace', 'Gaegu'],
       },
       taskbarAll: [
-        Task.SHOW_CHAT_PANEL,
         Task.SHOW_LAYERS_PANEL,
         Task.SHOW_PROPERTIES_PANEL,
       ],
-      taskbarSelected: [Task.SHOW_CHAT_PANEL, Task.SHOW_LAYERS_PANEL],
-      taskbarChatMessages: [
-        {
-          role: 'user',
-          content:
-            "An action shot of a black lab swimming in an inground suburban swimming pool. The camera is placed meticulously on the water line, dividing the image in half, revealing both the dogs head above water holding a tennis ball in it's mouth, and it's paws paddling underwater.",
-        },
-        {
-          role: 'assistant',
-          content: 'Sure! Here is your image:',
-          images: [
-            {
-              url: 'https://v3b.fal.media/files/b/tiger/v1lf1EcPP1X1pw_YOKM4o.jpg',
-            },
-          ],
-          suggestions: [
-            {
-              text: 'Replace the puppy with a kitten.',
-            },
-            {
-              text: 'Remove the background.',
-            },
-          ],
-        },
-      ],
+      taskbarSelected: [ Task.SHOW_LAYERS_PANEL],
       checkboardStyle: CheckboardStyle.GRID,
       snapToPixelGridEnabled: true,
       snapToPixelGridSize: 1,
@@ -196,7 +169,13 @@ export default function Canvas() {
     const selectedNodes = e.detail.selected as SerializedNode[];
     console.log(selectedNodes);
 
-    // attachments.add(selectedNodes.map(node => new File([node.fill], node.id + '.png', { type: 'image/png' })));
+    attachments.add(selectedNodes.map(node => ({
+      id: node.id,
+      type: "file" as const,
+      url: "https://images.unsplash.com/photo-1682687220742-aba13b6e50ba?w=400&h=400&fit=crop",
+      mediaType: "image/jpeg",
+      filename: "ocean-sunset.jpg",
+    } as unknown as File)));
   };
 
   useEffect(() => {
@@ -212,14 +191,12 @@ export default function Canvas() {
     canvasRef.current?.addEventListener(Event.SELECTED_NODES_CHANGED, onSelectedNodesChanged);
   }, []);
 
-  return (
-    <PromptInputProvider>
+  return ( 
       <ic-spectrum-canvas ref={canvasRef} className="w-full h-full">
         <ic-spectrum-penbar-laser-pointer slot="penbar-item" />
         <ic-spectrum-penbar-eraser slot="penbar-item" />
         {/* <ic-spectrum-taskbar-chat slot="taskbar-item" />
         <ic-spectrum-taskbar-chat-panel slot="taskbar-panel" /> */}
       </ic-spectrum-canvas>
-    </PromptInputProvider>
   );
 }

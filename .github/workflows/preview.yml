@@ -32,7 +32,7 @@ jobs:
           mv package.json.bak package.json
 
       - name: Build
-        run: pnpm -r --filter '!@infinite-canvas-tutorial/site' --filter '!@infinite-canvas-tutorial/lesson*' run build
+        run: pnpm -r --filter '!@infinite-canvas-tutorial/core' --filter '!@infinite-canvas-tutorial/ui' --filter '!@infinite-canvas-tutorial/site' --filter '!@infinite-canvas-tutorial/lesson*' run build
 
       - name: Install Vercel CLI
         run: npm install --global vercel@latest
