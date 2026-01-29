@@ -28,8 +28,6 @@ jobs:
           # 临时移除 gl 依赖以避免安装
           sed -i.bak '/"gl":/d' package.json
           pnpm install --no-frozen-lockfile
-          # 恢复 package.json
-          mv package.json.bak package.json
 
       - name: Install Vercel CLI
         run: npm install --global vercel@latest
