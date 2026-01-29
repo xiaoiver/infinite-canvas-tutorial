@@ -18,10 +18,13 @@ import '@infinite-canvas-tutorial/webcomponents/spectrum';
 import '@infinite-canvas-tutorial/lasso/spectrum';
 import '@infinite-canvas-tutorial/eraser/spectrum';
 import '@infinite-canvas-tutorial/laser-pointer/spectrum';
+// import { usePromptInputAttachments } from './ai-elements/prompt-input';
 
 export default function Canvas() {
   const canvasRef = useRef<HTMLDivElement>(null);
   const [, setApi] = useState<ExtendedAPI | null>(null);
+
+  // const attachments = usePromptInputAttachments();
 
   const onReady = (e: CustomEvent<any>) => {
     const api = e.detail as ExtendedAPI;
@@ -188,6 +191,13 @@ export default function Canvas() {
     api.record();
   };
 
+  const onSelectedNodesChanged = (e: CustomEvent<any>) => {
+    const selectedNodes = e.detail.selected as SerializedNode[];
+    console.log(selectedNodes);
+
+    // attachments.add(selectedNodes.map(node => new File([node.fill], node.id + '.png', { type: 'image/png' })));
+  };
+
   useEffect(() => {
     new App().addPlugins(...DefaultPlugins, UIPlugin
       , LaserPointerPlugin, LassoPlugin, EraserPlugin, FalAIPlugin.configure({
@@ -198,6 +208,7 @@ export default function Canvas() {
 
   useEffect(() => {
     canvasRef.current?.addEventListener(Event.READY, onReady);
+    canvasRef.current?.addEventListener(Event.SELECTED_NODES_CHANGED, onSelectedNodesChanged);
   }, []);
 
   return (

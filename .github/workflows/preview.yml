@@ -32,10 +32,19 @@ jobs:
           mv package.json.bak package.json
 
       - name: Build
-        run: pnpm -r --filter '!@infinite-canvas-tutorial/site' --filter '!@infinite-canvas-tutorial/app' --filter '!@infinite-canvas-tutorial/lesson*' run build
+        run: pnpm -r --filter '!@infinite-canvas-tutorial/site' --filter '!@infinite-canvas-tutorial/lesson*' run build
 
       - name: Install Vercel CLI
         run: npm install --global vercel@latest
-          
+
+      - name: Copy app build output to .vercel/output
+        run: |
+          mkdir -p .vercel/output
+          cp -r packages/app/.next/* .vercel/output/
+      
+      - name: Compress app build output
+        run: |
+          tar -czvf app.tgz .vercel/output
+
       - name: Deploy app to Vercel
-        run: vercel --token=${{ secrets.VERCEL_TOKEN }}
+        run: vercel --prebuilt --archive=tgz --token=${{ secrets.VERCEL_TOKEN }}
