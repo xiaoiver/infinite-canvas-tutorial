@@ -2,6 +2,7 @@
 node_modules
 esm
 lib
+!packages/app/lib
 dist
 examples/dist
 rust/target
