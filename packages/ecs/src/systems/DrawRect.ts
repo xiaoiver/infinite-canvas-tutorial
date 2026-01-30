@@ -248,24 +248,25 @@ export class DrawRect extends System {
             | RoughEllipseSerializedNode
             | RoughRectSerializedNode
             | RoughPolylineSerializedNode = Object.assign(
-            {
-              id: uuidv4(),
-              type: PEN_TO_TYPE[pen],
-            },
-            defaultDrawParams[pen],
-            pen === Pen.DRAW_LINE ||
-              pen === Pen.DRAW_ARROW ||
-              pen === Pen.DRAW_ROUGH_LINE
-              ? {
+              {
+                id: uuidv4(),
+                type: PEN_TO_TYPE[pen],
+                version: 0,
+              },
+              defaultDrawParams[pen],
+              pen === Pen.DRAW_LINE ||
+                pen === Pen.DRAW_ARROW ||
+                pen === Pen.DRAW_ROUGH_LINE
+                ? {
                   points: `${x},${y} ${x + width},${y + height}`,
                 }
-              : {
+                : {
                   x,
                   y,
                   width,
                   height,
                 },
-          );
+            );
           api.setAppState({
             penbarSelected: Pen.SELECT,
           });
@@ -319,16 +320,16 @@ export class DrawRect extends System {
         pen === Pen.DRAW_RECT
           ? selection.rectBrush
           : pen === Pen.DRAW_ROUGH_RECT
-          ? selection.roughRectBrush
-          : pen === Pen.DRAW_ELLIPSE
-          ? selection.ellipseBrush
-          : pen === Pen.DRAW_LINE
-          ? selection.lineBrush
-          : pen === Pen.DRAW_ROUGH_ELLIPSE
-          ? selection.roughEllipseBrush
-          : pen === Pen.DRAW_ROUGH_LINE
-          ? selection.roughLineBrush
-          : selection.arrowBrush;
+            ? selection.roughRectBrush
+            : pen === Pen.DRAW_ELLIPSE
+              ? selection.ellipseBrush
+              : pen === Pen.DRAW_LINE
+                ? selection.lineBrush
+                : pen === Pen.DRAW_ROUGH_ELLIPSE
+                  ? selection.roughEllipseBrush
+                  : pen === Pen.DRAW_ROUGH_LINE
+                    ? selection.roughLineBrush
+                    : selection.arrowBrush;
       if (!brush) {
         // @ts-expect-error
         brush = Object.assign(
@@ -343,14 +344,14 @@ export class DrawRect extends System {
             pen === Pen.DRAW_ARROW ||
             pen === Pen.DRAW_ROUGH_LINE
             ? {
-                points: '0,0 0,0',
-              }
+              points: '0,0 0,0',
+            }
             : {
-                x: 0,
-                y: 0,
-                width: 0,
-                height: 0,
-              },
+              x: 0,
+              y: 0,
+              width: 0,
+              height: 0,
+            },
         );
         api.updateNode(brush, undefined, false);
         if (pen === Pen.DRAW_RECT) {
@@ -419,18 +420,18 @@ export class DrawRect extends System {
           pen === Pen.DRAW_ARROW ||
           pen === Pen.DRAW_ROUGH_LINE
           ? {
-              ...defaultDrawParams,
-              visibility: 'visible',
-              points: `${x},${y} ${cx},${cy}`,
-            }
+            ...defaultDrawParams,
+            visibility: 'visible',
+            points: `${x},${y} ${cx},${cy}`,
+          }
           : {
-              ...defaultDrawParams,
-              visibility: 'visible',
-              x,
-              y,
-              width,
-              height,
-            },
+            ...defaultDrawParams,
+            visibility: 'visible',
+            x,
+            y,
+            width,
+            height,
+          },
         false,
       );
 
@@ -469,16 +470,16 @@ export class DrawRect extends System {
       pen === Pen.DRAW_RECT
         ? rectBrush
         : pen === Pen.DRAW_ROUGH_RECT
-        ? roughRectBrush
-        : pen === Pen.DRAW_ROUGH_ELLIPSE
-        ? roughEllipseBrush
-        : pen === Pen.DRAW_ELLIPSE
-        ? ellipseBrush
-        : pen === Pen.DRAW_LINE
-        ? lineBrush
-        : pen === Pen.DRAW_ROUGH_LINE
-        ? roughLineBrush
-        : arrowBrush;
+          ? roughRectBrush
+          : pen === Pen.DRAW_ROUGH_ELLIPSE
+            ? roughEllipseBrush
+            : pen === Pen.DRAW_ELLIPSE
+              ? ellipseBrush
+              : pen === Pen.DRAW_LINE
+                ? lineBrush
+                : pen === Pen.DRAW_ROUGH_LINE
+                  ? roughLineBrush
+                  : arrowBrush;
     return brush;
   }
 }

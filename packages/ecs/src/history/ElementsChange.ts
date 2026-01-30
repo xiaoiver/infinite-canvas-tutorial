@@ -498,8 +498,8 @@ export class ElementsChange implements Change<SceneElementsMap> {
     );
 
     const addedElements = applyDeltas(this.added);
-    const removedElements = applyDeltas(this.removed);
-    const updatedElements = applyDeltas(this.updated);
+    // const removedElements = applyDeltas(this.removed);
+    // const updatedElements = applyDeltas(this.updated);
 
     if (this.api) {
       this.added.forEach((delta, id) => {
@@ -687,7 +687,6 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
   }
   if (!isNil(brushStamp)) {
     if (isDataUrl(brushStamp) || isUrl(brushStamp)) {
-      console.log('loadImage', brushStamp);
       loadImage(brushStamp, entity);
     }
   }
