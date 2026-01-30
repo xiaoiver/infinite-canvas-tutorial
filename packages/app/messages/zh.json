@@ -1,0 +1,38 @@
+{
+  "common": {
+    "loading": "加载中...",
+    "error": "错误",
+    "success": "成功",
+    "cancel": "取消",
+    "confirm": "确认",
+    "save": "保存",
+    "delete": "删除",
+    "edit": "编辑",
+    "close": "关闭"
+  },
+  "auth": {
+    "title": "用户登录",
+    "description": "使用您的账户登录或注册新账户",
+    "login": "登录",
+    "logout": "退出",
+    "email": "邮箱",
+    "password": "密码",
+    "signIn": "登录",
+    "signUp": "注册",
+    "signingIn": "登录中...",
+    "signingUp": "注册中...",
+    "signInWithGoogle": "使用 Google 登录",
+    "redirecting": "正在跳转...",
+    "or": "或",
+    "signUpSuccess": "注册成功！请检查您的邮箱以验证账户。"
+  },
+  "theme": {
+    "light": "浅色",
+    "dark": "深色",
+    "system": "跟随系统"
+  },
+  "language": {
+    "chinese": "中文",
+    "english": "English"
+  }
+}

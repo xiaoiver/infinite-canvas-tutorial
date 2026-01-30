@@ -176,6 +176,7 @@ export class DrawBrush extends System {
           const node: BrushSerializedNode = {
             id: uuidv4(),
             type: 'brush',
+            version: 0,
             points: brush.points,
             brushStamp: stamp, // Use stamp from current settings
             ...rest,

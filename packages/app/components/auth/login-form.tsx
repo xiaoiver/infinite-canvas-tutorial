@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useTranslations } from 'next-intl'
 import { useAuth } from '@/contexts/auth-context'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -15,6 +16,7 @@ export function LoginForm() {
   const [loading, setLoading] = useState(false)
   const [googleLoading, setGoogleLoading] = useState(false)
   const { signIn, signUp, signInWithGoogle } = useAuth()
+  const t = useTranslations('auth')
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -37,7 +39,7 @@ export function LoginForm() {
     if (error) {
       setError(error.message)
     } else {
-      setError('注册成功！请检查您的邮箱以验证账户。')
+      setError(t('signUpSuccess'))
     }
     setLoading(false)
   }
@@ -54,13 +56,12 @@ export function LoginForm() {
   }
 
   return (
-    <div className="flex items-center justify-center min-h-screen">
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle>用户登录</CardTitle>
-          <CardDescription>使用您的账户登录或注册新账户</CardDescription>
-        </CardHeader>
-        <CardContent>
+    <Card className="w-full border-0 shadow-none">
+      <CardHeader>
+        <CardTitle>{t('title')}</CardTitle>
+        <CardDescription>{t('description')}</CardDescription>
+      </CardHeader>
+      <CardContent>
           <div className="space-y-4">
             <Button
               type="button"
@@ -87,27 +88,27 @@ export function LoginForm() {
                   fill="#EA4335"
                 />
               </svg>
-              {googleLoading ? '正在跳转...' : '使用 Google 登录'}
+              {googleLoading ? t('redirecting') : t('signInWithGoogle')}
             </Button>
             <div className="relative">
               <div className="absolute inset-0 flex items-center">
                 <Separator />
               </div>
               <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-background px-2 text-muted-foreground">或</span>
+                <span className="bg-background px-2 text-muted-foreground">{t('or')}</span>
               </div>
             </div>
           </div>
           <Tabs defaultValue="login" className="w-full mt-4">
             <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="login">登录</TabsTrigger>
-              <TabsTrigger value="signup">注册</TabsTrigger>
+              <TabsTrigger value="login">{t('login')}</TabsTrigger>
+              <TabsTrigger value="signup">{t('signUp')}</TabsTrigger>
             </TabsList>
             <TabsContent value="login">
               <form onSubmit={handleSignIn} className="space-y-4 mt-4">
                 <div className="space-y-2">
                   <label htmlFor="login-email" className="text-sm font-medium">
-                    邮箱
+                    {t('email')}
                   </label>
                   <Input
                     id="login-email"
@@ -120,7 +121,7 @@ export function LoginForm() {
                 </div>
                 <div className="space-y-2">
                   <label htmlFor="login-password" className="text-sm font-medium">
-                    密码
+                    {t('password')}
                   </label>
                   <Input
                     id="login-password"
@@ -135,7 +136,7 @@ export function LoginForm() {
                   <div className="text-sm text-red-500">{error}</div>
                 )}
                 <Button type="submit" className="w-full" disabled={loading}>
-                  {loading ? '登录中...' : '登录'}
+                  {loading ? t('signingIn') : t('login')}
                 </Button>
               </form>
             </TabsContent>
@@ -143,7 +144,7 @@ export function LoginForm() {
               <form onSubmit={handleSignUp} className="space-y-4 mt-4">
                 <div className="space-y-2">
                   <label htmlFor="signup-email" className="text-sm font-medium">
-                    邮箱
+                    {t('email')}
                   </label>
                   <Input
                     id="signup-email"
@@ -156,7 +157,7 @@ export function LoginForm() {
                 </div>
                 <div className="space-y-2">
                   <label htmlFor="signup-password" className="text-sm font-medium">
-                    密码
+                    {t('password')}
                   </label>
                   <Input
                     id="signup-password"
@@ -169,19 +170,18 @@ export function LoginForm() {
                   />
                 </div>
                 {error && (
-                  <div className={`text-sm ${error.includes('成功') ? 'text-green-500' : 'text-red-500'}`}>
+                  <div className={`text-sm ${error === t('signUpSuccess') ? 'text-green-500' : 'text-red-500'}`}>
                     {error}
                   </div>
                 )}
                 <Button type="submit" className="w-full" disabled={loading}>
-                  {loading ? '注册中...' : '注册'}
+                  {loading ? t('signingUp') : t('signUp')}
                 </Button>
               </form>
             </TabsContent>
           </Tabs>
         </CardContent>
       </Card>
-    </div>
   )
 }
 

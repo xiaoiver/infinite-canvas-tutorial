@@ -187,6 +187,7 @@ export class DrawPencil extends System {
 
           const node: PathSerializedNode | PolylineSerializedNode = {
             id: uuidv4(),
+            version: 0,
             ...appState.penbarPencil,
           };
           const points: [number, number][] = selection.points.map((p) => [
@@ -247,22 +248,22 @@ export class DrawPencil extends System {
       if (!brush) {
         brush = freehand
           ? {
-              id: uuidv4(),
-              type: 'path',
-              d: 'M 0 0 L 1 1',
-              visibility: 'hidden',
-              zIndex: DRAW_RECT_Z_INDEX,
-              ...defaultDrawParams,
-            }
+            id: uuidv4(),
+            type: 'path',
+            d: 'M 0 0 L 1 1',
+            visibility: 'hidden',
+            zIndex: DRAW_RECT_Z_INDEX,
+            ...defaultDrawParams,
+          }
           : {
-              id: uuidv4(),
-              type: 'polyline',
-              points: '0,0 0,0',
-              visibility: 'hidden',
-              zIndex: DRAW_RECT_Z_INDEX,
-              strokeAttenuation: true,
-              ...defaultDrawParams,
-            };
+            id: uuidv4(),
+            type: 'polyline',
+            points: '0,0 0,0',
+            visibility: 'hidden',
+            zIndex: DRAW_RECT_Z_INDEX,
+            strokeAttenuation: true,
+            ...defaultDrawParams,
+          };
         api.updateNode(brush, undefined, false);
         api.getEntity(brush).add(UI, { type: UIType.BRUSH });
         selection.brush = brush;
@@ -301,18 +302,18 @@ export class DrawPencil extends System {
           brush,
           freehand
             ? {
-                visibility: 'visible',
-                d: getFlatSvgPathFromStroke(getStroke(points)),
-                ...defaultDrawParams,
-                strokeWidth: 0,
-                fill: defaultDrawParams.stroke,
-                tessellationMethod: TesselationMethod.LIBTESS,
-              }
+              visibility: 'visible',
+              d: getFlatSvgPathFromStroke(getStroke(points)),
+              ...defaultDrawParams,
+              strokeWidth: 0,
+              fill: defaultDrawParams.stroke,
+              tessellationMethod: TesselationMethod.LIBTESS,
+            }
             : {
-                visibility: 'visible',
-                points: serializePoints(points),
-                ...defaultDrawParams,
-              },
+              visibility: 'visible',
+              points: serializePoints(points),
+              ...defaultDrawParams,
+            },
           false,
         );
       }

@@ -1,5 +1,6 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
+import { routing } from '@/i18n/routing'
 
 export async function updateSession(request: NextRequest) {
     let supabaseResponse = NextResponse.next({
@@ -36,30 +37,24 @@ export async function updateSession(request: NextRequest) {
     } = await supabase.auth.getUser()
 
     // 允许访问登录页面、认证回调和静态资源
-    const isAuthRoute = 
-        request.nextUrl.pathname.startsWith('/login') ||
-        request.nextUrl.pathname.startsWith('/auth') ||
-        request.nextUrl.pathname === '/'
+    // 支持 locale 路径（如 /zh/login, /en/login）
+    const pathname = request.nextUrl.pathname;
+    const localePattern = routing.locales.join('|');
+    const isAuthRoute =
+        pathname.includes('/login') ||
+        pathname.startsWith('/auth/callback') ||
+        pathname.startsWith('/auth/v1/callback') ||
+        pathname.match(new RegExp(`^/(${localePattern})/?$`)) // 匹配根路径或带 locale 的根路径
 
     if (!user && !isAuthRoute) {
         // 未登录用户重定向到登录页
+        // 尝试从路径中提取 locale，如果没有则使用默认 locale
+        const localeMatch = pathname.match(new RegExp(`^/(${localePattern})`));
+        const locale = localeMatch ? localeMatch[1] : routing.defaultLocale;
         const url = request.nextUrl.clone()
-        url.pathname = '/login'
+        url.pathname = `/${locale}/login`
         return NextResponse.redirect(url)
     }
-
-    // IMPORTANT: You *must* return the supabaseResponse object as it is. If you're
-    // creating a new response object with NextResponse.next() make sure to:
-    // 1. Pass the request in it, like so:
-    //    const myNewResponse = NextResponse.next({ request })
-    // 2. Copy over the cookies, like so:
-    //    myNewResponse.cookies.setAll(supabaseResponse.cookies.getAll())
-    // 3. Change the myNewResponse object to fit your needs, but avoid changing
-    //    the cookies!
-    // 4. Finally:
-    //    return myNewResponse
-    // If this is not done, you may be causing the browser and server to go out
-    // of sync and terminate the user's session prematurely.
 
     return supabaseResponse
 }
