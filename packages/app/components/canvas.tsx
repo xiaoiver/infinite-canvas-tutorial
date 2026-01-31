@@ -7,6 +7,7 @@ import {
   Task,
   CheckboardStyle,
   SerializedNode,
+  ThemeMode,
 } from '@infinite-canvas-tutorial/ecs';
 import { Event, UIPlugin, ExtendedAPI } from '@infinite-canvas-tutorial/webcomponents';
 import { LaserPointerPlugin } from '@infinite-canvas-tutorial/laser-pointer';
@@ -23,6 +24,8 @@ import * as Y from 'yjs';
 import { IndexeddbPersistence } from 'y-indexeddb';
 //@ts-ignore
 import deepEqual from 'deep-equal';
+import { useTheme } from 'next-themes';
+import { useParams } from 'next/navigation';
 
 const DEFAULT_NODES: SerializedNode[] = [
   {
@@ -136,6 +139,8 @@ let appRunning = false;
 
 // 用于标识本地操作的唯一标识符
 const local = Math.random().toString();
+
+
 // 全局 Yjs 文档和数组引用
 let doc: Y.Doc | null = null;
 let yArray: Y.Array<Y.Map<any>> | null = null;
@@ -188,17 +193,21 @@ function recordLocalOps(
   }, local);
 }
 
-
-
 export default function Canvas() {
   const canvasRef = useRef<HTMLDivElement>(null);
   const apiRef = useRef<ExtendedAPI | null>(null);
+  const { resolvedTheme } = useTheme();
+  const params = useParams();
+  const locale = params.locale as string;
 
   const attachments = usePromptInputAttachments();
 
   const onReady = async (e: CustomEvent<any>) => {
     const api = e.detail as ExtendedAPI;
     apiRef.current = api;
+
+    apiRef.current.setLocale(locale);
+    apiRef.current.setThemeMode(resolvedTheme === 'dark' ? ThemeMode.DARK : ThemeMode.LIGHT);
 
     // 初始化 Yjs 文档和 IndexedDB 持久化
     if (!doc) {
@@ -234,6 +243,8 @@ export default function Canvas() {
     const nodes: SerializedNode[] = savedNodes.length > 0 ? savedNodes : DEFAULT_NODES;
 
     api.setAppState({
+      language: locale,
+      themeMode: resolvedTheme === 'dark' ? ThemeMode.DARK : ThemeMode.LIGHT,
       cameraZoom: 0.35,
       topbarVisible: false,
       penbarSelected: Pen.SELECT,
@@ -285,7 +296,6 @@ export default function Canvas() {
         const base64 = (node as any).fill as string;
 
         try {
-        
           // 将 base64 字符串转换为 Blob
           const base64Data = base64.includes(',') 
             ? base64.split(',')[1] 
@@ -346,6 +356,12 @@ export default function Canvas() {
       canvasRef.current?.removeEventListener(Event.SELECTED_NODES_CHANGED, onSelectedNodesChanged);
     }
   }, []);
+
+  useEffect(() => {
+    if (apiRef.current && resolvedTheme) {
+      apiRef.current.setThemeMode(resolvedTheme === 'dark' ? ThemeMode.DARK : ThemeMode.LIGHT);
+    }
+  }, [resolvedTheme]);
 
   return ( 
       <ic-spectrum-canvas ref={canvasRef} className="w-full h-full" app-state='{"topbarVisible":false}'>

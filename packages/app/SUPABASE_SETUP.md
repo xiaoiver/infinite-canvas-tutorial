@@ -81,6 +81,42 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
 
     **注意**：确保重定向 URI 与 Supabase 提供的完全匹配，包括协议（https）和路径。
 
+### 启用 GitHub OAuth 登录
+
+1. 在 Supabase 项目仪表板中，进入 **Authentication** > **Providers**
+2. 找到 **GitHub** 提供商并点击启用
+3. 配置 GitHub OAuth：
+
+#### 在 GitHub 中创建 OAuth App
+
+1. 访问 [GitHub Developer Settings](https://github.com/settings/developers)
+2. 点击 **OAuth Apps** > **New OAuth App**
+3. 填写应用信息：
+
+    - **Application name**: 您的应用名称（例如：My App）
+    - **Homepage URL**: `http://localhost:3000` (开发环境) 或您的生产环境 URL
+    - **Authorization callback URL**:
+
+        ```plaintext
+        https://<your-project-ref>.supabase.co/auth/v1/callback
+        ```
+
+        （您可以在 Supabase 项目的 **Authentication** > **Providers** > **GitHub** 页面找到这个 URL）
+
+4. 点击 **Register application**
+5. 复制 **Client ID**
+6. 点击 **Generate a new client secret** 生成并复制 **Client secret**
+
+7. 在 Supabase 中配置：
+    - 回到 Supabase 的 **Authentication** > **Providers** > **GitHub** 页面
+    - 粘贴 **Client ID** 和 **Client Secret**
+    - 点击 **Save**
+
+**注意**：
+
+-   确保回调 URL 与 Supabase 提供的完全匹配，包括协议（https）和路径
+-   如果您的应用需要访问用户的私有仓库，可以在 GitHub OAuth App 设置中配置相应的权限范围
+
 ## 5. 运行应用
 
 ```bash
@@ -95,6 +131,7 @@ pnpm dev
 -   ✅ 用户注册（邮箱 + 密码）
 -   ✅ 用户登录（邮箱 + 密码）
 -   ✅ Google OAuth 登录
+-   ✅ GitHub OAuth 登录
 -   ✅ 会话管理
 -   ✅ 路由保护（未登录用户自动重定向到登录页）
 -   ✅ 认证状态监听
@@ -122,7 +159,14 @@ pnpm dev
     - 在弹出窗口中选择 Google 账户
     - 授权后自动登录
 
-4. **登出**：
+4. **使用 GitHub 登录**：
+
+    - 访问应用首页
+    - 点击"使用 GitHub 登录"按钮
+    - 在弹出窗口中选择 GitHub 账户
+    - 授权后自动登录
+
+5. **登出**：
     - 点击右上角的用户头像
     - 在下拉菜单中选择"登出"
 
@@ -136,13 +180,13 @@ pnpm dev
 
 ### 添加其他认证方式
 
-Supabase 支持多种认证提供商（GitHub、Apple、Discord 等）。您可以在 Supabase 仪表板中启用这些提供商，然后在代码中使用类似的方式添加登录方法。
+Supabase 支持多种认证提供商（Apple、Discord、Twitter 等）。您可以在 Supabase 仪表板中启用这些提供商，然后在代码中使用类似的方式添加登录方法。
 
-例如，要添加 GitHub 登录：
+例如，要添加其他 OAuth 提供商：
 
-1. 在 Supabase 中启用 GitHub 提供商
-2. 在 `auth-context.tsx` 中添加 `signInWithGitHub` 方法
-3. 在 `login-form.tsx` 中添加 GitHub 登录按钮
+1. 在 Supabase 中启用相应的提供商
+2. 在 `auth-context.tsx` 中添加对应的登录方法（如 `signInWithApple`）
+3. 在 `login-form.tsx` 中添加相应的登录按钮
 
 ## 故障排除
 
@@ -163,9 +207,16 @@ Supabase 支持多种认证提供商（GitHub、Apple、Discord 等）。您可�
     - 确认 Supabase URL 和密钥配置正确
 
 4. **Google 登录失败**
+
     - 确认已在 Supabase 中正确配置 Google OAuth 凭据
     - 检查 Google Cloud Console 中的重定向 URI 是否与 Supabase 提供的完全匹配
     - 确保 Google+ API 已启用
+    - 检查浏览器控制台是否有错误信息
+
+5. **GitHub 登录失败**
+    - 确认已在 Supabase 中正确配置 GitHub OAuth 凭据
+    - 检查 GitHub OAuth App 中的回调 URL 是否与 Supabase 提供的完全匹配
+    - 确保 Client ID 和 Client Secret 正确复制（注意不要有多余的空格）
     - 检查浏览器控制台是否有错误信息
 
 ## 参考资源

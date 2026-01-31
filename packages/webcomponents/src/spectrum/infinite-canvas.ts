@@ -37,6 +37,7 @@ import '@spectrum-web-components/textfield/sp-textfield.js';
 import '@spectrum-web-components/thumbnail/sp-thumbnail.js';
 import '@spectrum-web-components/tooltip/sp-tooltip.js';
 import '@spectrum-web-components/picker/sp-picker.js';
+import '@spectrum-web-components/popover/sp-popover.js';
 import '@spectrum-web-components/overlay/overlay-trigger.js';
 
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-add.js';
@@ -171,7 +172,7 @@ export class InfiniteCanvas extends LitElement {
     this.updateComplete.then(() => this.resizeObserver.observe(this));
 
     this.addEventListener('theme-change', (e: CustomEvent) => {
-      this.theme = e.detail.isDark ? 'dark' : 'light';
+      this.theme = e.detail.themeMode;
     });
   }
 
@@ -300,16 +301,14 @@ export class InfiniteCanvas extends LitElement {
           html`${$svgLayer}${$htmlLayer}<ic-spectrum-top-navbar
             ></ic-spectrum-top-navbar>${$canvas}
             <ic-spectrum-penbar
-              style=${`top: ${
-                topbarVisible ? TOP_NAVBAR_HEIGHT : 0
-              }px; left: 0;`}
+              style=${`top: ${topbarVisible ? TOP_NAVBAR_HEIGHT : 0
+            }px; left: 0;`}
             >
               <slot name="penbar-item" slot="penbar-item"></slot>
             </ic-spectrum-penbar>
             <ic-spectrum-taskbar
-              style=${`top: ${
-                topbarVisible ? TOP_NAVBAR_HEIGHT : 0
-              }px; right: 0;`}
+              style=${`top: ${topbarVisible ? TOP_NAVBAR_HEIGHT : 0
+            }px; right: 0;`}
             >
               <slot name="taskbar-item" slot="taskbar-item"></slot>
               <slot name="taskbar-panel" slot="taskbar-panel"></slot>
@@ -317,14 +316,12 @@ export class InfiniteCanvas extends LitElement {
             <ic-spectrum-context-bar></ic-spectrum-context-bar>
             <ic-spectrum-context-menu></ic-spectrum-context-menu>
             <ic-spectrum-text-editor
-              style=${`top: ${
-                topbarVisible ? TOP_NAVBAR_HEIGHT : 0
-              }px; left: 0;`}
+              style=${`top: ${topbarVisible ? TOP_NAVBAR_HEIGHT : 0
+            }px; left: 0;`}
             ></ic-spectrum-text-editor>
             <ic-spectrum-comments
-              style=${`top: ${
-                topbarVisible ? TOP_NAVBAR_HEIGHT : 0
-              }px; left: 0;`}
+              style=${`top: ${topbarVisible ? TOP_NAVBAR_HEIGHT : 0
+            }px; left: 0;`}
             ></ic-spectrum-comments>
             <ic-spectrum-mask></ic-spectrum-mask>`,
         ),

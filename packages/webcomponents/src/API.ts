@@ -5,6 +5,7 @@ import {
   API,
   StateManagement,
   Commands,
+  ThemeMode,
 } from '@infinite-canvas-tutorial/ecs';
 import { type LitElement } from 'lit';
 import { Event } from './event';
@@ -163,5 +164,21 @@ export class ExtendedAPI extends API {
   }
   getLocale() {
     throw new Error('Method not implemented.');
+  }
+
+  setThemeMode(themeMode: ThemeMode) {
+    this.element.dispatchEvent(
+      new CustomEvent('theme-change', {
+        detail: {
+          themeMode,
+        },
+        bubbles: true,
+        composed: true,
+      }),
+    );
+
+    this.setAppState({
+      themeMode,
+    });
   }
 }

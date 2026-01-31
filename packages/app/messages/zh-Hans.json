@@ -22,6 +22,7 @@
     "signingIn": "登录中...",
     "signingUp": "注册中...",
     "signInWithGoogle": "使用 Google 登录",
+    "signInWithGitHub": "使用 GitHub 登录",
     "redirecting": "正在跳转...",
     "or": "或",
     "signUpSuccess": "注册成功！请检查您的邮箱以验证账户。"
@@ -33,6 +34,7 @@
   },
   "language": {
     "chinese": "中文",
-    "english": "English"
+    "english": "English",
+    "spanish": "Español"
   }
 }

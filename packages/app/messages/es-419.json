@@ -1,0 +1,40 @@
+{
+  "common": {
+    "loading": "Cargando...",
+    "error": "Error",
+    "success": "Éxito",
+    "cancel": "Cancelar",
+    "confirm": "Confirmar",
+    "save": "Guardar",
+    "delete": "Eliminar",
+    "edit": "Editar",
+    "close": "Cerrar"
+  },
+  "auth": {
+    "title": "Inicio de sesión",
+    "description": "Inicia sesión o crea una nueva cuenta con tus credenciales",
+    "login": "Iniciar sesión",
+    "logout": "Cerrar sesión",
+    "email": "Correo electrónico",
+    "password": "Contraseña",
+    "signIn": "Iniciar sesión",
+    "signUp": "Registrarse",
+    "signingIn": "Iniciando sesión...",
+    "signingUp": "Registrando...",
+    "signInWithGoogle": "Iniciar sesión con Google",
+    "signInWithGitHub": "Iniciar sesión con GitHub",
+    "redirecting": "Redirigiendo...",
+    "or": "O",
+    "signUpSuccess": "¡Registro exitoso! Por favor revisa tu correo electrónico para verificar tu cuenta."
+  },
+  "theme": {
+    "light": "Claro",
+    "dark": "Oscuro",
+    "system": "Sistema"
+  },
+  "language": {
+    "chinese": "中文",
+    "english": "English",
+    "spanish": "Español"
+  }
+}
