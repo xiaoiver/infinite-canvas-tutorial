@@ -1,11 +1,9 @@
-import { PromptInputProvider } from '@/components/ai-elements/prompt-input';
-import { Topbar } from '@/components/layout/topbar';
-
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
-import HomeClient from './home-client';
+import { Topbar } from '@/components/layout/topbar';
+import { LoginForm } from '@/components/auth/login-form';
 
-export default async function Home({
+export default async function LoginPage({
   params,
 }: {
   params: Promise<{ locale: string }>;
@@ -24,13 +22,14 @@ export default async function Home({
   }
 
   return (
-    <PromptInputProvider>
-      <div className="flex flex-col h-screen">
-        <Topbar />
-        <HomeClient />
+    <div className="flex flex-col h-screen">
+      <Topbar />
+      <div className="flex-1 flex items-center justify-center p-4">
+        <div className="w-full max-w-md">
+          <LoginForm />
+        </div>
       </div>
-    </PromptInputProvider>
+    </div>
   );
 }
-
 

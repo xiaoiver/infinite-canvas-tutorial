@@ -14,7 +14,7 @@ import { LaserPointerPlugin } from '@infinite-canvas-tutorial/laser-pointer';
 import { LassoPlugin } from '@infinite-canvas-tutorial/lasso';
 import { EraserPlugin } from '@infinite-canvas-tutorial/eraser';
 import { FalAIPlugin } from '@infinite-canvas-tutorial/fal-ai';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useCallback } from 'react';
 import '@infinite-canvas-tutorial/webcomponents/spectrum';
 import '@infinite-canvas-tutorial/lasso/spectrum';
 import '@infinite-canvas-tutorial/eraser/spectrum';
@@ -26,114 +26,6 @@ import { IndexeddbPersistence } from 'y-indexeddb';
 import deepEqual from 'deep-equal';
 import { useTheme } from 'next-themes';
 import { useParams } from 'next/navigation';
-
-const DEFAULT_NODES: SerializedNode[] = [
-  {
-    id: '1',
-    name: 'A swimming dog',
-    type: 'rect',
-    fill: 'https://v3b.fal.media/files/b/tiger/v1lf1EcPP1X1pw_YOKM4o.jpg',
-    x: 200,
-    y: 150,
-    width: 1024,
-    height: 1024,
-    lockAspectRatio: true,
-    version: 0,
-  } as const,
-  {
-    id: '2',
-    name: 'A swimming cat',
-    type: 'rect',
-    fill: 'https://v3b.fal.media/files/b/koala/0RQAsrw5rRX015XQUd4HX.jpg',
-    x: 200 + 1200,
-    y: 150,
-    width: 1024,
-    height: 1024,
-    lockAspectRatio: true,
-    version: 0,
-  } as const,
-  {
-    id: '3',
-    name: 'A swimming dog without background',
-    type: 'rect',
-    fill: 'https://v3b.fal.media/files/b/panda/Xo61xntJdsl8_txn9WC-5.jpg',
-    x: 200 + 2400,
-    y: 150,
-    width: 1024,
-    height: 1024,
-    lockAspectRatio: true,
-    version: 0,
-  } as const,
-  {
-    id: '4',
-    type: 'text',
-    name: 'Enter your desired modifications in Chat.',
-    fill: 'black',
-    content: 'Enter your desired modifications in Chat.',
-    fontSize: 66,
-    fontFamily: 'Gaegu',
-    anchorX: 200,
-    anchorY: 100,
-    version: 0,
-  } as const,
-  {
-    id: '5',
-    type: 'text',
-    name: 'Or select multiple images(😂 even my hand-drawn fish!) \nat once and combine them.',
-    fill: 'black',
-    content:
-      'Or select multiple images(😂 even my hand-drawn fish!) \nat once and combine them.',
-    fontSize: 66,
-    fontFamily: 'Gaegu',
-    anchorX: 200,
-    anchorY: 1300,
-    version: 0,
-  } as const,
-  {
-    id: '6',
-    type: 'polyline', 
-    points:
-      '200,1676.46 228.35,1598.48 270.88,1531.14 295.69,1499.24 324.05,1474.43 359.49,1460.25 394.94,1453.16 437.47,1453.16 476.46,1460.25 511.90,1477.97 604.06,1555.95 703.30,1616.20 742.29,1619.75 760.01,1587.85 752.92,1552.40 752.92,1513.42 742.29,1470.88 724.57,1438.98 713.93,1400 682.03,1417.72 565.07,1573.67 504.81,1619.75 430.38,1655.19 355.95,1680 238.98,1683.55 224.81,1648.10 277.97,1594.94 313.42,1591.39 309.87,1626.84 274.43,1633.93 256.71,1602.03',
-    stroke: '#147af3',
-    strokeWidth: 18,
-    version: 0,
-  } as const,
-  {
-    id: '7',
-    type: 'rect',
-    name: 'A dog with a hand-drawn fish',
-    fill: 'https://v3.fal.media/files/penguin/9UH5Fgin7zc1u6NGGItGB.jpeg',
-    x: 1400,
-    y: 1400,
-    width: 1408,
-    height: 736,
-    version: 0,
-  } as const,
-  {
-    id: '8',
-    type: 'polyline',
-    points: '1100,1400 1215.69,1461.46 1324.16,1537.39',
-    stroke: '#147af3',
-    strokeWidth: 18,
-    strokeLinecap: 'round',
-    strokeLinejoin: 'round',
-    markerEnd: 'line',
-    version: 0,
-  },
-  {
-    id: '9',
-    type: 'text',
-    name: 'Smart inpainting & outpainting are on the way.',
-    fill: 'black',
-    content:
-      "Smart inpainting & outpainting are on the way.\nYou can easily select the tennis ball in dog's mouth and replace it with a golf ball.\nAlternatively, you can resize the image by dragging it and add more content inside.",
-    fontSize: 66,
-    fontFamily: 'Gaegu',
-    anchorX: 200,
-    anchorY: 2300,
-    version: 0,
-  } as const,
-];
 
 let appRunning = false;
 
@@ -193,14 +85,91 @@ function recordLocalOps(
   }, local);
 }
 
-export default function Canvas() {
+// Throttle 函数：限制函数执行频率
+function throttle<T extends (...args: any[]) => any>(
+  func: T,
+  delay: number
+): (...args: Parameters<T>) => void {
+  let timeoutId: ReturnType<typeof setTimeout> | null = null;
+  let lastExecTime = 0;
+  let lastArgs: Parameters<T> | null = null;
+
+  return function (...args: Parameters<T>) {
+    const currentTime = Date.now();
+
+    // 保存最新的参数
+    lastArgs = args;
+
+    // 如果距离上次执行已经超过 delay，立即执行
+    if (currentTime - lastExecTime >= delay) {
+      func(...args);
+      lastExecTime = currentTime;
+      lastArgs = null;
+    } else {
+      // 否则，设置定时器在剩余时间后执行
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+      const remainingTime = delay - (currentTime - lastExecTime);
+      timeoutId = setTimeout(() => {
+        if (lastArgs) {
+          func(...lastArgs);
+          lastExecTime = Date.now();
+          lastArgs = null;
+        }
+        timeoutId = null;
+      }, remainingTime);
+    }
+  };
+}
+
+export default function Canvas({ id = 'default', initialData }: { id?: string, initialData?: SerializedNode[] }) {
   const canvasRef = useRef<HTMLDivElement>(null);
   const apiRef = useRef<ExtendedAPI | null>(null);
+  const projectIdRef = useRef<string>(id);
   const { resolvedTheme } = useTheme();
   const params = useParams();
   const locale = params.locale as string;
 
   const attachments = usePromptInputAttachments();
+
+  // 更新 projectIdRef 当 id 改变时
+  useEffect(() => {
+    projectIdRef.current = id;
+  }, [id]);
+
+  // 保存画布数据到数据库的函数
+  const saveCanvasData = useCallback(async (nodes: SerializedNode[]) => {
+    const projectId = projectIdRef.current;
+    // 如果 id 是 'default'，说明不是项目页面，不需要保存
+    if (projectId === 'default') {
+      return;
+    }
+
+    try {
+      const canvasData = JSON.stringify(nodes);
+      const response = await fetch(`/api/projects/${projectId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          canvasData,
+        }),
+      });
+
+      if (!response.ok) {
+        console.error('Failed to save canvas data:', await response.text());
+      }
+    } catch (error) {
+      console.error('Error saving canvas data:', error);
+    }
+  }, []);
+
+  // 创建 throttle 版本的保存函数，每 1 秒最多执行一次
+  const throttledSaveCanvasData = useRef(
+    throttle(saveCanvasData, 1000)
+  ).current;
 
   const onReady = async (e: CustomEvent<any>) => {
     const api = e.detail as ExtendedAPI;
@@ -215,7 +184,7 @@ export default function Canvas() {
       yArray = doc.getArray("nodes");
       
       // 创建 IndexedDB provider 用于本地持久化
-      indexeddbProvider = new IndexeddbPersistence('infinite-canvas-scene', doc);
+      indexeddbProvider = new IndexeddbPersistence(`infinite-canvas-data-${id}`, doc);
       
       // 等待 IndexedDB 加载完成
       await new Promise<void>((resolve) => {
@@ -224,12 +193,15 @@ export default function Canvas() {
         });
       });
 
-      // 设置 API 的 onchange 回调，将画布变化同步到 Yjs
+      // 设置 API 的 onchange 回调，将画布变化同步到 Yjs 并保存到数据库
       api.onchange = (snapshot) => {
         const { nodes } = snapshot;
         if (yArray) {
           recordLocalOps(yArray, nodes);
         }
+        // 将 nodes 转换为 SerializedNode[] 并保存到数据库（使用 throttle 限制频率）
+        const serializedNodes = nodes.filter((node) => !node.isDeleted) as SerializedNode[];
+        throttledSaveCanvasData(serializedNodes);
       };
     }
 
@@ -240,7 +212,7 @@ export default function Canvas() {
     }
 
     // 如果没有保存的节点，使用默认节点
-    const nodes: SerializedNode[] = savedNodes.length > 0 ? savedNodes : DEFAULT_NODES;
+    const nodes: SerializedNode[] = savedNodes.length > 0 ? savedNodes : initialData || [];
 
     api.setAppState({
       language: locale,
