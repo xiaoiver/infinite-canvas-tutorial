@@ -11,8 +11,8 @@
 
 ### 国际化 (i18n)
 
--   ✅ 支持中文（zh）和英文（en）
--   ✅ 基于路由的语言切换（`/zh/...` 和 `/en/...`）
+-   ✅ 支持英文（en）、中文（zh-Hans）和西班牙语拉丁美洲（es-419）
+-   ✅ 基于路由的语言切换（`/en/...`、`/zh-Hans/...` 和 `/es-419/...`）
 -   ✅ 自动语言检测和重定向
 -   ✅ 类型安全的翻译消息
 -   ✅ 类型安全的导航 helpers
@@ -81,13 +81,14 @@ export function MyComponent() {
 
 ## 添加新的翻译
 
-1. 编辑 `messages/zh.json` 添加中文翻译
-2. 编辑 `messages/en.json` 添加英文翻译
+1. 编辑 `messages/en.json` 添加英文翻译
+2. 编辑 `messages/zh-Hans.json` 添加中文翻译
+3. 编辑 `messages/es-419.json` 添加西班牙语翻译
 
 例如：
 
 ```json
-// messages/zh.json
+// messages/zh-Hans.json
 {
   "common": {
     "welcome": "欢迎"
@@ -117,8 +118,9 @@ packages/app/
 │   ├── routing.ts            # 路由配置（定义语言和路由策略）
 │   └── navigation.ts         # 导航 helpers（类型安全的导航 API）
 ├── messages/                  # 翻译文件目录
-│   ├── zh.json               # 中文翻译
-│   └── en.json               # 英文翻译
+│   ├── en.json               # 英文翻译
+│   ├── zh-Hans.json          # 中文翻译
+│   └── es-419.json           # 西班牙语拉丁美洲翻译
 ├── proxy.ts                   # Next.js proxy（处理 i18n 路由和认证）
 ├── next.config.ts            # Next.js 配置（指向 i18n/request.ts）
 ├── app/
@@ -150,7 +152,7 @@ packages/app/
 
 ```typescript
 export const routing = defineRouting({
-    locales: ['en', 'zh'],
+    locales: ['en', 'zh-Hans', 'es-419'],
     defaultLocale: 'en',
     localePrefix: 'always', // 始终在路由中显示 locale 前缀
 });
@@ -161,7 +163,7 @@ export const routing = defineRouting({
 -   `locales`: 支持的语言列表
 -   `defaultLocale`: 默认语言（当无法检测语言时使用）
 -   `localePrefix`:
-    -   `'always'` - 始终在 URL 中显示语言前缀（如 `/en/`, `/zh/`）
+    -   `'always'` - 始终在 URL 中显示语言前缀（如 `/en/`, `/zh-Hans/`, `/es-419/`）
     -   `'as-needed'` - 仅在非默认语言时显示前缀
     -   `'never'` - 不在 URL 中显示前缀（使用 cookie 管理）
 
@@ -195,7 +197,7 @@ export default getRequestConfig(async ({ requestLocale }) => {
 
 ```typescript
 export const routing = defineRouting({
-    locales: ['en', 'zh'],
+    locales: ['en', 'zh-Hans', 'es-419'],
     defaultLocale: 'en',
     localePrefix: 'always',
 });
@@ -222,13 +224,15 @@ export const { Link, redirect, usePathname, useRouter, getPathname } =
 
 -   `/` → 自动重定向到 `/en/`（默认语言）
 -   `/en/` - 英文首页
--   `/zh/` - 中文首页
+-   `/zh-Hans/` - 中文首页
+-   `/es-419/` - 西班牙语首页
 -   `/en/login` - 英文登录页
--   `/zh/login` - 中文登录页
+-   `/zh-Hans/login` - 中文登录页
+-   `/es-419/login` - 西班牙语登录页
 
 ## 注意事项
 
-1. **路由前缀**: 所有页面路由都需要包含语言前缀（如 `/zh/` 或 `/en/`）
+1. **路由前缀**: 所有页面路由都需要包含语言前缀（如 `/en/`、`/zh-Hans/` 或 `/es-419/`）
 2. **自动重定向**: Proxy 会自动处理语言检测和重定向
 3. **类型安全**: 使用 `@/i18n/navigation` 中的导航 helpers 可以获得类型安全
 4. **主题切换**: 使用 `next-themes`，支持 SSR 和客户端切换

@@ -37,7 +37,7 @@ export async function updateSession(request: NextRequest) {
     } = await supabase.auth.getUser()
 
     // 允许访问登录页面、认证回调和静态资源
-    // 支持 locale 路径（如 /zh/login, /en/login）
+    // 支持 locale 路径（如 /zh-Hans/login, /en/login）
     const pathname = request.nextUrl.pathname;
     const localePattern = routing.locales.join('|');
     const isAuthRoute =

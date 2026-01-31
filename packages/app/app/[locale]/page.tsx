@@ -1,5 +1,7 @@
 'use client';
 
+import { ThemeToggle } from '@/components/ui/theme-toggle'
+import { LocaleSwitcher } from '@/components/ui/locale-switcher'
 import { useState, useEffect } from 'react';
 import { PromptInputProvider } from '@/components/ai-elements/prompt-input';
 import Chat from '@/components/chat';
@@ -12,6 +14,7 @@ import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
+  DialogTitle,
 } from '@/components/ui/dialog';
 import {
   DropdownMenu,
@@ -76,13 +79,15 @@ export default function Home() {
             {/* 右侧：Github 图标和登录按钮 */}
             <div className="flex items-center gap-2">
               <Link
-                href="https://github.com"
+                href="https://github.com/xiaoiver/infinite-canvas-tutorial"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center justify-center rounded-md hover:bg-accent hover:text-accent-foreground h-9 w-9"
               >
                 <Github className="h-5 w-5" />
               </Link>
+              <ThemeToggle />
+              <LocaleSwitcher />
               {user ? (
                 <UserMenu />
               ) : (
@@ -107,10 +112,9 @@ export default function Home() {
 
       {/* 登录弹窗 */}
       <Dialog open={loginDialogOpen} onOpenChange={setLoginDialogOpen}>
-        <DialogContent className="max-w-md p-0">
-          <div className="p-6">
-            <LoginForm />
-          </div>
+        <DialogTitle className="sr-only">Login</DialogTitle>
+        <DialogContent className="max-w-md p-0 overflow-hidden">
+          <LoginForm />
         </DialogContent>
       </Dialog>
     </PromptInputProvider>

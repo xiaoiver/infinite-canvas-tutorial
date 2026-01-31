@@ -8,12 +8,15 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from './dropdown-menu';
-import { Globe } from 'lucide-react';
+import { Check, Globe } from 'lucide-react';
 import { useRouter, usePathname } from '@/i18n/navigation';
+import { useParams } from 'next/navigation';
 
 export function LocaleSwitcher() {
   const router = useRouter();
   const pathname = usePathname();
+  const params = useParams();
+  const currentLocale = params.locale as string;
   const t = useTranslations('language');
 
   const switchLocale = (newLocale: string) => {
@@ -31,11 +34,29 @@ export function LocaleSwitcher() {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuItem onClick={() => switchLocale('zh')}>
+        <DropdownMenuItem onClick={() => switchLocale('en')}>
+          <Check
+            className={`mr-2 h-4 w-4 ${
+              currentLocale === 'en' ? 'opacity-100' : 'opacity-0'
+            }`}
+          />
+          {t('english')}
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => switchLocale('zh-Hans')}>
+          <Check
+            className={`mr-2 h-4 w-4 ${
+              currentLocale === 'zh-Hans' ? 'opacity-100' : 'opacity-0'
+            }`}
+          />
           {t('chinese')}
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => switchLocale('en')}>
-          {t('english')}
+        <DropdownMenuItem onClick={() => switchLocale('es-419')}>
+          <Check
+            className={`mr-2 h-4 w-4 ${
+              currentLocale === 'es-419' ? 'opacity-100' : 'opacity-0'
+            }`}
+          />
+          {t('spanish')}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
