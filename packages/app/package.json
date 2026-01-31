@@ -22,7 +22,10 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
     "@ai-sdk/react": "3.0.59",
@@ -84,9 +87,13 @@
     "next-themes": "^0.4.6",
     "yjs": "^13.6.20",
     "y-indexeddb": "^9.0.12",
-    "deep-equal": "^2.2.2"
+    "deep-equal": "^2.2.2",
+    "drizzle-orm": "^0.45.1",
+    "postgres": "^3.4.5",
+    "date-fns": "^3.6.0"
   },
   "devDependencies": {
+    "drizzle-kit": "^0.31.8",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",

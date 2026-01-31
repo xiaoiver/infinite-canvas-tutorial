@@ -1,6 +1,5 @@
 {
   "private": true,
-  "type": "module",
   "description": "An infinite canvas tutorial",
   "keywords": [
     "infinite canvas",

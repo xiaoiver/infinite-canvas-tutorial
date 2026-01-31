@@ -25,7 +25,9 @@
     "signInWithGitHub": "Iniciar sesión con GitHub",
     "redirecting": "Redirigiendo...",
     "or": "O",
-    "signUpSuccess": "¡Registro exitoso! Por favor revisa tu correo electrónico para verificar tu cuenta."
+    "signUpSuccess": "¡Registro exitoso! Por favor revisa tu correo electrónico para verificar tu cuenta.",
+    "loginRequired": "Inicio de sesión requerido",
+    "loginToUseChat": "Por favor inicia sesión para usar la función de chat"
   },
   "theme": {
     "light": "Claro",
@@ -36,5 +38,23 @@
     "chinese": "中文",
     "english": "English",
     "spanish": "Español"
+  },
+  "projects": {
+    "title": "Mis Proyectos",
+    "description": "Administra todos tus proyectos",
+    "createProject": "Crear Proyecto",
+    "createDescription": "Crea un nuevo proyecto para comenzar",
+    "projectName": "Nombre del Proyecto",
+    "projectNamePlaceholder": "Ingresa el nombre del proyecto",
+    "projectDescription": "Descripción del Proyecto",
+    "projectDescriptionPlaceholder": "Ingresa la descripción del proyecto (opcional)",
+    "noProjects": "Aún no has creado ningún proyecto",
+    "createFirstProject": "Crea Tu Primer Proyecto",
+    "deleteConfirm": "¿Estás seguro de que deseas eliminar este proyecto? Esta acción no se puede deshacer.",
+    "editProject": "Editar Proyecto",
+    "editDescription": "Actualiza el nombre y la descripción del proyecto",
+    "rename": "Renombrar",
+    "renameDescription": "Actualiza el nombre del proyecto",
+    "modified": "Modificado"
   }
 }

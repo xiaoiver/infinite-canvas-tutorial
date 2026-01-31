@@ -28,7 +28,7 @@ export function LocaleSwitcher() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon" className="h-9 w-9">
+        <Button variant="ghost" size="icon" className="h-8 w-8 cursor-pointer">
           <Globe className="h-4 w-4" />
           <span className="sr-only">切换语言</span>
         </Button>

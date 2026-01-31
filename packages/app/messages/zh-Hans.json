@@ -25,7 +25,9 @@
     "signInWithGitHub": "使用 GitHub 登录",
     "redirecting": "正在跳转...",
     "or": "或",
-    "signUpSuccess": "注册成功！请检查您的邮箱以验证账户。"
+    "signUpSuccess": "注册成功！请检查您的邮箱以验证账户。",
+    "loginRequired": "需要登录",
+    "loginToUseChat": "请登录以使用聊天功能"
   },
   "theme": {
     "light": "浅色",
@@ -36,5 +38,23 @@
     "chinese": "中文",
     "english": "English",
     "spanish": "Español"
+  },
+  "projects": {
+    "title": "我的项目",
+    "description": "管理您的所有项目",
+    "createProject": "创建项目",
+    "createDescription": "创建一个新项目来开始您的工作",
+    "projectName": "项目名称",
+    "projectNamePlaceholder": "输入项目名称",
+    "projectDescription": "项目描述",
+    "projectDescriptionPlaceholder": "输入项目描述（可选）",
+    "noProjects": "您还没有创建任何项目",
+    "createFirstProject": "创建第一个项目",
+    "deleteConfirm": "确定要删除这个项目吗？此操作无法撤销。",
+    "editProject": "编辑项目",
+    "editDescription": "修改项目的名称和描述",
+    "rename": "重命名",
+    "renameDescription": "修改项目的名称",
+    "modified": "修改于"
   }
 }
