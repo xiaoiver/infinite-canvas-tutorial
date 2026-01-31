@@ -56,5 +56,14 @@
     "rename": "Renombrar",
     "renameDescription": "Actualiza el nombre del proyecto",
     "modified": "Modificado"
+  },
+  "zoom": {
+    "zoomIn": "Acercar",
+    "zoomOut": "Alejar",
+    "zoomTo50": "Zoom al 50%",
+    "zoomTo100": "Zoom al 100%",
+    "zoomTo200": "Zoom al 200%",
+    "fitToProject": "Ajustar al Proyecto",
+    "fitToSelection": "Ajustar a la Selección"
   }
 }
