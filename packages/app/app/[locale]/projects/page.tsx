@@ -2,13 +2,14 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { getUserProjects } from '@/lib/db/projects';
 import { ProjectsListClient } from './projects-list-client';
+import { SerializedNode } from '@infinite-canvas-tutorial/ecs';
 
 type Project = {
   id: string;
   userId: string;
   name: string;
   description: string | null;
-  canvasData: string | null;
+  canvasData: SerializedNode[] | null;
   createdAt: string;
   updatedAt: string;
 };

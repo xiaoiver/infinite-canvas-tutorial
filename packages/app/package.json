@@ -61,6 +61,7 @@
     "@streamdown/code": "^1.0.1",
     "@streamdown/math": "^1.0.1",
     "@streamdown/mermaid": "^1.0.1",
+    "@vercel/blob": "^2.0.1",
     "@xyflow/react": "^12.10.0",
     "ai": "6.0.57",
     "ansi-to-react": "^6.2.6",
@@ -68,6 +69,7 @@
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
     "embla-carousel-react": "^8.6.0",
+    "lodash-es": "^4.17.23",
     "lucide-react": "^0.545.0",
     "media-chrome": "^4.17.2",
     "motion": "^11.18.0",
@@ -95,6 +97,7 @@
   "devDependencies": {
     "drizzle-kit": "^0.31.8",
     "@tailwindcss/postcss": "^4",
+    "@types/lodash-es": "^4.17.12",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",

@@ -132,3 +132,15 @@ export const fileSave = (
     opts.fileHandle,
   );
 };
+
+export async function getDataURL(file: Blob | File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataURL = reader.result as string;
+      resolve(dataURL);
+    };
+    reader.onerror = (error) => reject(error);
+    reader.readAsDataURL(file);
+  });
+}

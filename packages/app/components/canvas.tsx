@@ -1,5 +1,7 @@
 'use client';
 
+import { throttle } from 'lodash-es';
+import { upload } from '@vercel/blob/client';
 import {
   App,
   Pen,
@@ -13,12 +15,7 @@ import { Event, UIPlugin, ExtendedAPI } from '@infinite-canvas-tutorial/webcompo
 import { LaserPointerPlugin } from '@infinite-canvas-tutorial/laser-pointer';
 import { LassoPlugin } from '@infinite-canvas-tutorial/lasso';
 import { EraserPlugin } from '@infinite-canvas-tutorial/eraser';
-import { FalAIPlugin } from '@infinite-canvas-tutorial/fal-ai';
 import { useEffect, useRef, useCallback, useState } from 'react';
-import '@infinite-canvas-tutorial/webcomponents/spectrum';
-import '@infinite-canvas-tutorial/lasso/spectrum';
-import '@infinite-canvas-tutorial/eraser/spectrum';
-import '@infinite-canvas-tutorial/laser-pointer/spectrum';
 import { usePromptInputAttachments } from './ai-elements/prompt-input';
 import * as Y from 'yjs';
 import { IndexeddbPersistence } from 'y-indexeddb';
@@ -95,44 +92,6 @@ function recordLocalOps(
   }, local);
 }
 
-// Throttle 函数：限制函数执行频率
-function throttle<T extends (...args: any[]) => any>(
-  func: T,
-  delay: number
-): (...args: Parameters<T>) => void {
-  let timeoutId: ReturnType<typeof setTimeout> | null = null;
-  let lastExecTime = 0;
-  let lastArgs: Parameters<T> | null = null;
-
-  return function (...args: Parameters<T>) {
-    const currentTime = Date.now();
-
-    // 保存最新的参数
-    lastArgs = args;
-
-    // 如果距离上次执行已经超过 delay，立即执行
-    if (currentTime - lastExecTime >= delay) {
-      func(...args);
-      lastExecTime = currentTime;
-      lastArgs = null;
-    } else {
-      // 否则，设置定时器在剩余时间后执行
-      if (timeoutId) {
-        clearTimeout(timeoutId);
-      }
-      const remainingTime = delay - (currentTime - lastExecTime);
-      timeoutId = setTimeout(() => {
-        if (lastArgs) {
-          func(...lastArgs);
-          lastExecTime = Date.now();
-          lastArgs = null;
-        }
-        timeoutId = null;
-      }, remainingTime);
-    }
-  };
-}
-
 export default function Canvas({ id = 'default', initialData }: { id?: string, initialData?: SerializedNode[] }) {
   const canvasRef = useRef<HTMLDivElement>(null);
   const apiRef = useRef<ExtendedAPI | null>(null);
@@ -163,14 +122,13 @@ export default function Canvas({ id = 'default', initialData }: { id?: string, i
     }
 
     try {
-      const canvasData = JSON.stringify(nodes);
       const response = await fetch(`/api/projects/${projectId}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          canvasData,
+          canvasData: nodes,
         }),
       });
 
@@ -199,8 +157,15 @@ export default function Canvas({ id = 'default', initialData }: { id?: string, i
     const api = e.detail as ExtendedAPI;
     apiRef.current = api;
 
-    apiRef.current.setLocale(locale);
-    apiRef.current.setThemeMode(resolvedTheme === 'dark' ? ThemeMode.DARK : ThemeMode.LIGHT);
+    api.setLocale(locale);
+    api.setThemeMode(resolvedTheme === 'dark' ? ThemeMode.DARK : ThemeMode.LIGHT);
+    api.upload = async (file: File) => {
+      const blob = await upload(file.name, file, {
+        access: 'public',
+        handleUploadUrl: '/api/assets/upload',
+      });
+      return blob.url;
+    };
     
     // 初始化工具条状态
     const appState = api.getAppState();
@@ -244,7 +209,7 @@ export default function Canvas({ id = 'default', initialData }: { id?: string, i
     }
 
     // 如果没有保存的节点，使用默认节点
-    const nodes: SerializedNode[] = savedNodes.length > 0 ? savedNodes : initialData || [];
+    const nodes: SerializedNode[] = initialData || savedNodes;
 
     api.setAppState({
       language: locale,
@@ -268,19 +233,15 @@ export default function Canvas({ id = 'default', initialData }: { id?: string, i
       snapToPixelGridSize: 1,
       snapToObjectsEnabled: true,
       snapToObjectsDistance: 8,
-      // contextBarVisible: false,
+      contextBarVisible: false,
       rotateEnabled: false,
       flipEnabled: false,
     });
 
     api.runAtNextTick(() => {
-      // 只有在没有保存的节点时才更新（避免覆盖从 IndexedDB 加载的数据）
-      if (savedNodes.length === 0) {
-        api.updateNodes(nodes);
+      api.updateNodes(nodes);
+      if (nodes.length > 0) {
         api.selectNodes([nodes[0]]);
-      } else {
-        // 如果有保存的节点，确保它们被正确加载
-        api.updateNodes(savedNodes);
       }
       api.record();
     });
@@ -297,13 +258,16 @@ export default function Canvas({ id = 'default', initialData }: { id?: string, i
     try {
       attachments.clear();
       const files = await Promise.all(selectedNodes.map(async node => {
-        const base64 = (node as any).fill as string;
+        const base64OrURL = (node as any).fill as string;
 
-        try {
+        const isDataURL = base64OrURL.startsWith('data:');
+        const isURL = base64OrURL.startsWith('http');
+
+        if (isDataURL) {
           // 将 base64 字符串转换为 Blob
-          const base64Data = base64.includes(',') 
-            ? base64.split(',')[1] 
-            : base64;
+          const base64Data = base64OrURL.includes(',') 
+            ? base64OrURL.split(',')[1] 
+            : base64OrURL;
           const byteCharacters = atob(base64Data);
           const byteNumbers = new Array(byteCharacters.length);
           for (let i = 0; i < byteCharacters.length; i++) {
@@ -312,14 +276,17 @@ export default function Canvas({ id = 'default', initialData }: { id?: string, i
           const byteArray = new Uint8Array(byteNumbers);
           
           // 从 data URL 中提取 MIME 类型，默认为 image/png
-          const mimeType = base64.match(/data:([^;]+);/)?.[1] || 'image/png';
+          const mimeType = base64OrURL.match(/data:([^;]+);/)?.[1] || 'image/png';
           const blob = new Blob([byteArray], { type: mimeType });
           
           // 从 Blob 创建 File 对象，使用 node.id 作为文件名
           return new File([blob], node.id, { type: mimeType });
-        } catch (error) {
-          return new File([], node.id, { type: 'application/octet-stream' });
+        } else if (isURL) {
+          const response = await fetch(base64OrURL);
+          const blob = await response.blob();
+          return new File([blob], node.id, { type: blob.type });
         }
+        return new File([], node.id, { type: 'image/png' });
       }));
 
       if (files.length > 0) {
@@ -333,9 +300,7 @@ export default function Canvas({ id = 'default', initialData }: { id?: string, i
   useEffect(() => {
     if (!appRunning) {
       new App().addPlugins(...DefaultPlugins, UIPlugin
-        , LaserPointerPlugin, LassoPlugin, EraserPlugin, FalAIPlugin.configure({
-        credentials: 'your-fal-ai-credentials-here',
-      })
+        , LaserPointerPlugin, LassoPlugin, EraserPlugin
     ).run();
       appRunning = true;
     }
@@ -510,6 +475,13 @@ export default function Canvas({ id = 'default', initialData }: { id?: string, i
     }
   }, [resolvedTheme]);
 
+  useEffect(() => {
+    import('@infinite-canvas-tutorial/webcomponents/spectrum');
+    import('@infinite-canvas-tutorial/lasso/spectrum');
+    import('@infinite-canvas-tutorial/eraser/spectrum');
+    import('@infinite-canvas-tutorial/laser-pointer/spectrum');
+  }, []);
+
   return ( 
     <div className="relative w-full h-full" onKeyDown={handleCanvasKeyDown}>
       <ic-spectrum-canvas ref={canvasRef} className="w-full h-full" app-state='{"topbarVisible":false}'>
@@ -546,7 +518,7 @@ export default function Canvas({ id = 'default', initialData }: { id?: string, i
             <DropdownMenuTrigger asChild>
               <Button
                 variant="ghost"
-                className="h-8 px-2 gap-1 text-sm font-medium"
+                className="h-7 px-2 gap-1 text-sm font-medium"
               >
                 <span className="min-w-[50px] text-center">
                   {Math.round(zoomLevel * 100)}%
@@ -554,7 +526,7 @@ export default function Canvas({ id = 'default', initialData }: { id?: string, i
                 <ChevronDown className="h-3 w-3" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-48">
+            <DropdownMenuContent align="end" className="w-48" alignOffset={-5} sideOffset={8}>
               <DropdownMenuItem onClick={handleZoomIn}>
                 {t('zoomIn')}
                 <span className="ml-auto text-xs text-muted-foreground">⌘+</span>

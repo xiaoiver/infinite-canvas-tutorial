@@ -12,7 +12,6 @@ import {
   isSupportedImageFileType,
   UI,
   ZIndex,
-  SerializedNode,
   DOMAdapter,
   MIME_TYPES,
   ExportFormat,
@@ -21,12 +20,11 @@ import {
 import { html, render } from '@spectrum-web-components/base';
 import { VirtualTrigger, openOverlay } from '@spectrum-web-components/overlay';
 import { v4 as uuidv4 } from 'uuid';
-import { load } from '@loaders.gl/core';
-import { ImageLoader } from '@loaders.gl/images';
 import { apiContext, appStateContext } from '../context';
 import { ExtendedAPI } from '../API';
 import { extractExternalUrlMetadata } from '../utils/url';
 import { measureHTML } from '../utils';
+import { updateAndSelectNodes } from '../utils/common';
 
 const ZINDEX_OFFSET = 0.0001;
 
@@ -50,78 +48,6 @@ export function executeCut(
   // delete nodes
   api.deleteNodesById(appState.layersSelected);
   api.record();
-}
-
-function updateAndSelectNodes(
-  api: ExtendedAPI,
-  appState: AppState,
-  nodes: SerializedNode[],
-) {
-  api.runAtNextTick(() => {
-    api.updateNodes(nodes);
-    api.record();
-
-    setTimeout(() => {
-      api.unhighlightNodes(
-        appState.layersHighlighted.map((id) => api.getNodeById(id)),
-      );
-      api.selectNodes([nodes[0]]);
-    }, 100);
-  });
-}
-
-async function getDataURL(file: Blob | File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const dataURL = reader.result as string;
-      resolve(dataURL);
-    };
-    reader.onerror = (error) => reject(error);
-    reader.readAsDataURL(file);
-  });
-}
-
-export async function createImage(
-  api: ExtendedAPI,
-  appState: AppState,
-  file: File,
-  position?: { x: number; y: number },
-) {
-  const size = {
-    width: api.element.clientWidth,
-    height: api.element.clientHeight,
-    zoom: appState.cameraZoom,
-  };
-
-  const [image, dataURL] = await Promise.all([
-    load(file, ImageLoader),
-    getDataURL(file),
-  ]);
-
-  // Heuristic to calculate the size of the image.
-  // @see https://github.com/excalidraw/excalidraw/blob/master/packages/excalidraw/components/App.tsx#L10059
-  const minHeight = Math.max(size.height - 120, 160);
-  // max 65% of canvas height, clamped to <300px, vh - 120px>
-  const maxHeight = Math.min(
-    minHeight,
-    Math.floor(size.height * 0.5) / size.zoom,
-  );
-  const height = Math.min(image.height, maxHeight);
-  const width = height * (image.width / image.height);
-
-  updateAndSelectNodes(api, appState, [
-    {
-      id: uuidv4(),
-      type: 'rect',
-      x: (position?.x ?? 0) - width / 2,
-      y: (position?.y ?? 0) - height / 2,
-      width,
-      height,
-      fill: dataURL,
-      lockAspectRatio: true,
-    },
-  ]);
 }
 
 function createSVG(
@@ -272,7 +198,7 @@ export async function executePaste(
       updateAndSelectNodes(api, appState, nodes);
     }
   } else if (isSupportedImageFileType(file?.type)) {
-    createImage(api, appState, file, canvasPosition);
+    await api.createImageFromFile(file, canvasPosition);
   }
 }
 
@@ -647,7 +573,7 @@ export class ContextMenu extends LitElement {
     if (url) {
       try {
         const file = await fetch(url).then((res) => res.blob());
-        createImage(this.api, this.appState, file as File, canvasPosition);
+        await this.api.createImageFromFile(file as File, canvasPosition);
         return;
       } catch (error) {
         console.error(error);
@@ -665,7 +591,7 @@ export class ContextMenu extends LitElement {
           const svg = await file.text();
           createSVG(this.api, this.appState, svg, canvasPosition);
         } else {
-          createImage(this.api, this.appState, file, canvasPosition);
+          await this.api.createImageFromFile(file, canvasPosition);
         }
       }
     }

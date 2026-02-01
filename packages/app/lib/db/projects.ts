@@ -1,6 +1,6 @@
 import { eq, desc } from 'drizzle-orm';
 import { db, type Project, type NewProject } from './index';
-import { projects } from './schema';
+import { projects, chats } from './schema';
 
 /**
  * 获取用户的所有项目
@@ -35,18 +35,35 @@ export async function getProjectById(projectId: string, userId: string): Promise
 
 /**
  * 创建新项目
+ * 会自动创建一个默认的 chat（标题为空）
  */
 export async function createProject(data: Omit<NewProject, 'id' | 'createdAt' | 'updatedAt'>): Promise<Project> {
-  const result = await db
-    .insert(projects)
-    .values({
-      ...data,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    })
-    .returning();
+  // 使用事务确保原子性
+  return await db.transaction(async (tx) => {
+    // 创建项目
+    const projectResult = await tx
+      .insert(projects)
+      .values({
+        ...data,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .returning();
 
-  return result[0];
+    const project = projectResult[0];
+
+    // 创建默认 chat（标题为空）
+    await tx
+      .insert(chats)
+      .values({
+        projectId: project.id,
+        title: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+
+    return project;
+  });
 }
 
 /**
