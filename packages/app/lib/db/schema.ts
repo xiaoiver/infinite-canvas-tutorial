@@ -35,6 +35,24 @@ export const messages = pgTable('messages', {
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 });
 
+// 定义 tools 表（存储 message 中的 tool call）
+export const tools = pgTable('tools', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  messageId: uuid('message_id').notNull(), // 关联到 messages(id)
+  toolCallId: text('tool_call_id').notNull(), // Tool call 的唯一标识符
+  toolType: text('tool_type').notNull(), // Tool 类型：'tool-${NAME}' 或 'dynamic-tool'
+  toolName: text('tool_name'), // Tool 名称（对于 dynamic-tool）
+  state: text('state').notNull(), // Tool 状态：'input-streaming' | 'input-available' | 'approval-requested' | 'approval-responded' | 'output-available' | 'output-error' | 'output-denied'
+  input: jsonb('input'), // Tool 输入参数（JSON）
+  output: jsonb('output'), // Tool 输出结果（JSON）
+  errorText: text('error_text'), // 错误信息（如果有）
+  title: text('title'), // Tool 标题
+  providerExecuted: boolean('provider_executed'), // 是否由 provider 执行
+  callProviderMetadata: jsonb('call_provider_metadata'), // Provider 元数据
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
 // 定义关系（用于 Drizzle 的查询功能）
 export const projectsRelations = relations(projects, ({ many }) => ({
   chats: many(chats),
@@ -48,10 +66,18 @@ export const chatsRelations = relations(chats, ({ one, many }) => ({
   messages: many(messages),
 }));
 
-export const messagesRelations = relations(messages, ({ one }) => ({
+export const messagesRelations = relations(messages, ({ one, many }) => ({
   chat: one(chats, {
     fields: [messages.chatId],
     references: [chats.id],
+  }),
+  tools: many(tools),
+}));
+
+export const toolsRelations = relations(tools, ({ one }) => ({
+  message: one(messages, {
+    fields: [tools.messageId],
+    references: [messages.id],
   }),
 }));
 

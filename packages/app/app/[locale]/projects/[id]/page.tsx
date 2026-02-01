@@ -101,7 +101,7 @@ export default async function ProjectDetailPage({
       if (chats.length > 0) {
         const firstChat = chats[0];
         const dbMessages = await getChatMessages(firstChat.id, user.id);
-        initialMessages = convertMessagesToUIMessages(dbMessages);
+        initialMessages = await convertMessagesToUIMessages(dbMessages, user.id);
       }
     }
   } catch (err) {

@@ -1,7 +1,9 @@
 import { streamText, UIMessage, convertToModelMessages, type InferUITools, stepCountIs, } from 'ai';
 import { createClient } from '@/lib/supabase/server';
 import { createMessage, getNextSeq } from '@/lib/db/messages';
-import { convertUIMessageToDBMessage } from '@/lib/db/utils';
+import { createTool, createTools, updateToolByCallId } from '@/lib/db/tools';
+import { convertUIMessageToDBMessage, convertToolPartToDBTool } from '@/lib/db/utils';
+import type { ToolUIPart, DynamicToolUIPart } from 'ai';
 
 import { generateImageTool } from '@/tools/generate-image';
 
@@ -88,7 +90,22 @@ export async function POST(req: Request) {
               chatId,
               assistantSeq
             );
-            await createMessage(dbMessage, user.id);
+            const savedMessage = await createMessage(dbMessage, user.id);
+
+            // 保存 tool calls 到数据库
+            if (savedMessage) {
+              const toolParts = assistantMessage.parts.filter(
+                (part): part is ToolUIPart | DynamicToolUIPart =>
+                  part.type.startsWith('tool-') || part.type === 'dynamic-tool'
+              );
+
+              if (toolParts.length > 0) {
+                const dbTools = toolParts.map((toolPart) =>
+                  convertToolPartToDBTool(toolPart, savedMessage.id)
+                );
+                await createTools(dbTools, user.id);
+              }
+            }
           }
         } catch (error) {
           console.error('Error saving assistant message:', error);

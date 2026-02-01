@@ -56,9 +56,17 @@ import {
   SourcesContent,
   SourcesTrigger,
 } from "@/components/ai-elements/sources";
+import {
+  Tool,
+  ToolContent,
+  ToolHeader,
+  ToolInput,
+  ToolOutput,
+  type ToolPart,
+} from "@/components/ai-elements/tool";
 import { Suggestion, Suggestions } from "@/components/ai-elements/suggestion";
 import { cn } from "@/lib/utils";
-import type { ToolUIPart } from "ai";
+import type { ToolUIPart, DynamicToolUIPart } from "ai";
 import { CheckIcon, Copy, GlobeIcon, MicIcon, RefreshCcw } from "lucide-react";
 import { useCallback, useState } from "react";
 import { toast } from "sonner";
@@ -212,6 +220,66 @@ const Chat = ({
                         </Reasoning>
                       );
                     default:
+                      // 处理 tool parts (tool-* 或 dynamic-tool)
+                      if (part.type.startsWith('tool-') || part.type === 'dynamic-tool') {
+                        const toolPart = part as ToolPart;
+                        const isCompleted = toolPart.state === 'output-available';
+                        const isError = toolPart.state === 'output-error';
+                        const isDenied = toolPart.state === 'output-denied';
+                        // 如果 tool 已完成、出错或被拒绝，默认展开
+                        const defaultOpen = isCompleted || isError || isDenied;
+                        
+                        // 根据 tool 类型渲染不同的 ToolHeader
+                        if (toolPart.type === 'dynamic-tool') {
+                          const dynamicTool = toolPart as DynamicToolUIPart;
+                          return (
+                            <Tool
+                              key={`${message.id}-${i}`}
+                              defaultOpen={defaultOpen}
+                            >
+                              <ToolHeader
+                                type="dynamic-tool"
+                                state={dynamicTool.state}
+                                toolName={dynamicTool.toolName}
+                                title={dynamicTool.title}
+                              />
+                              <ToolContent>
+                                {dynamicTool.input !== undefined && (
+                                  <ToolInput input={dynamicTool.input} />
+                                )}
+                                <ToolOutput
+                                  output={dynamicTool.output}
+                                  errorText={dynamicTool.errorText}
+                                />
+                              </ToolContent>
+                            </Tool>
+                          );
+                        } else {
+                          // 静态 tool (tool-${NAME})
+                          const staticTool = toolPart as ToolUIPart;
+                          return (
+                            <Tool
+                              key={`${message.id}-${i}`}
+                              defaultOpen={defaultOpen}
+                            >
+                              <ToolHeader
+                                type={staticTool.type}
+                                state={staticTool.state}
+                                title={staticTool.title}
+                              />
+                              <ToolContent>
+                                {staticTool.input !== undefined && (
+                                  <ToolInput input={staticTool.input} />
+                                )}
+                                <ToolOutput
+                                  output={staticTool.output}
+                                  errorText={staticTool.errorText}
+                                />
+                              </ToolContent>
+                            </Tool>
+                          );
+                        }
+                      }
                       return null;
                   }
                 })}

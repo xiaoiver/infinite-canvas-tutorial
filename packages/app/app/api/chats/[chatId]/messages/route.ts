@@ -5,7 +5,7 @@ import { NextResponse } from 'next/server';
 
 /**
  * GET /api/chats/[chatId]/messages
- * 获取指定聊天的所有消息
+ * 获取指定聊天的所有消息（包括 tool calls）
  */
 export async function GET(
   request: Request,
@@ -24,7 +24,7 @@ export async function GET(
 
     const { chatId } = await params;
     const dbMessages = await getChatMessages(chatId, user.id);
-    const uiMessages = convertMessagesToUIMessages(dbMessages);
+    const uiMessages = await convertMessagesToUIMessages(dbMessages, user.id);
 
     return NextResponse.json(uiMessages);
   } catch (error) {
