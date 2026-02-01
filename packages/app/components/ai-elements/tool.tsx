@@ -24,7 +24,7 @@ export type ToolProps = ComponentProps<typeof Collapsible>;
 
 export const Tool = ({ className, ...props }: ToolProps) => (
   <Collapsible
-    className={cn("group not-prose mb-4 w-full rounded-md border", className)}
+    className={cn("group not-prose my-2 w-full rounded-md border", className)}
     {...props}
   />
 );
@@ -118,8 +118,8 @@ export type ToolInputProps = ComponentProps<"div"> & {
 };
 
 export const ToolInput = ({ className, input, ...props }: ToolInputProps) => (
-  <div className={cn("space-y-2 overflow-hidden p-4", className)} {...props}>
-    <h4 className="font-medium text-muted-foreground text-xs uppercase tracking-wide">
+  <div className={cn("space-y-2 overflow-hidden p-2 pt-0", className)} {...props}>
+    <h4 className="font-medium text-muted-foreground text-xs tracking-wide">
       Parameters
     </h4>
     <div className="rounded-md bg-muted/50">

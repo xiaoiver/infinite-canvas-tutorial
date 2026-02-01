@@ -15,7 +15,7 @@ import { Event, UIPlugin, ExtendedAPI } from '@infinite-canvas-tutorial/webcompo
 import { LaserPointerPlugin } from '@infinite-canvas-tutorial/laser-pointer';
 import { LassoPlugin } from '@infinite-canvas-tutorial/lasso';
 import { EraserPlugin } from '@infinite-canvas-tutorial/eraser';
-import { useEffect, useRef, useCallback, useState } from 'react';
+import { useEffect, useRef, useCallback, useState, forwardRef, useImperativeHandle } from 'react';
 import { usePromptInputAttachments } from './ai-elements/prompt-input';
 import * as Y from 'yjs';
 import { IndexeddbPersistence } from 'y-indexeddb';
@@ -33,6 +33,16 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { FileUIPart } from 'ai';
+import { load } from '@loaders.gl/core';
+import { ImageLoader } from '@loaders.gl/images';
+import { RectSerializedNode } from '@infinite-canvas-tutorial/ecs';
+
+// 定义暴露给父组件的 API 接口
+export interface CanvasAPI {
+  getApi: () => ExtendedAPI | null;
+  insertImages: (imageUrls: string[], position?: { x: number; y: number }) => Promise<void>;
+}
 
 let appRunning = false;
 
@@ -92,7 +102,12 @@ function recordLocalOps(
   }, local);
 }
 
-export default function Canvas({ id = 'default', initialData }: { id?: string, initialData?: SerializedNode[] }) {
+interface CanvasProps {
+  id?: string;
+  initialData?: SerializedNode[];
+}
+
+const Canvas = forwardRef<CanvasAPI, CanvasProps>(({ id = 'default', initialData }, ref) => {
   const canvasRef = useRef<HTMLDivElement>(null);
   const apiRef = useRef<ExtendedAPI | null>(null);
   const projectIdRef = useRef<string>(id);
@@ -160,6 +175,7 @@ export default function Canvas({ id = 'default', initialData }: { id?: string, i
     api.setLocale(locale);
     api.setThemeMode(resolvedTheme === 'dark' ? ThemeMode.DARK : ThemeMode.LIGHT);
     api.upload = async (file: File) => {
+      // TODO: if already uploaded, return the url directly
       const blob = await upload(file.name, file, {
         access: 'public',
         handleUploadUrl: '/api/assets/upload',
@@ -247,6 +263,29 @@ export default function Canvas({ id = 'default', initialData }: { id?: string, i
     });
   };
 
+  // 插入图片的方法
+  const insertImages = useCallback(async (imageUrls: string[], position?: { x: number; y: number }) => {
+    const api = apiRef.current;
+    if (!api) {
+      console.warn('Canvas API is not ready yet');
+      return;
+    }
+
+    try {
+      await Promise.all(imageUrls.map(async (imageUrl) => {
+        await api.createImageFromFile(imageUrl, position);
+      }));
+    } catch (error) {
+      console.error('Failed to insert images:', error);
+    }
+  }, []);
+
+  // 使用 useImperativeHandle 暴露 API 给父组件
+  useImperativeHandle(ref, () => ({
+    getApi: () => apiRef.current,
+    insertImages,
+  }), [insertImages]);
+
   const onSelectedNodesChanged = async (e: CustomEvent<any>) => {
     const currentApi = apiRef.current;
     if (!currentApi) {
@@ -257,36 +296,52 @@ export default function Canvas({ id = 'default', initialData }: { id?: string, i
 
     try {
       attachments.clear();
-      const files = await Promise.all(selectedNodes.map(async node => {
-        const base64OrURL = (node as any).fill as string;
+      const files: (File | FileUIPart)[] = await Promise.all(selectedNodes.map(async node => {
+        // Image 
+        if (node.type === 'rect') {
+          const base64OrURL = (node as any).fill as string;
+          const isDataURL = base64OrURL.startsWith('data:');
+          const isURL = base64OrURL.startsWith('http');
 
-        const isDataURL = base64OrURL.startsWith('data:');
-        const isURL = base64OrURL.startsWith('http');
-
-        if (isDataURL) {
-          // 将 base64 字符串转换为 Blob
-          const base64Data = base64OrURL.includes(',') 
-            ? base64OrURL.split(',')[1] 
-            : base64OrURL;
-          const byteCharacters = atob(base64Data);
-          const byteNumbers = new Array(byteCharacters.length);
-          for (let i = 0; i < byteCharacters.length; i++) {
-            byteNumbers[i] = byteCharacters.charCodeAt(i);
+          if (isDataURL) {
+            // 将 base64 字符串转换为 Blob
+            const base64Data = base64OrURL.includes(',') 
+              ? base64OrURL.split(',')[1] 
+              : base64OrURL;
+            const byteCharacters = atob(base64Data);
+            const byteNumbers = new Array(byteCharacters.length);
+            for (let i = 0; i < byteCharacters.length; i++) {
+              byteNumbers[i] = byteCharacters.charCodeAt(i);
+            }
+            const byteArray = new Uint8Array(byteNumbers);
+            
+            // 从 data URL 中提取 MIME 类型，默认为 image/png
+            const mimeType = base64OrURL.match(/data:([^;]+);/)?.[1] || 'image/png';
+            const blob = new Blob([byteArray], { type: mimeType });
+            
+            // 从 Blob 创建 File 对象，使用 node.id 作为文件名
+            return new File([blob], node.id, { type: mimeType });
+          } else if (isURL) {
+            // fetch HEAD to get the MIME type
+            const response = await fetch(base64OrURL, { method: 'HEAD' });
+            const mediaType = response.headers.get('content-type') || 'image/png';
+            const filename = base64OrURL.split('/').pop()?.split('?')[0] || node.id;
+            return {
+              id: node.id,
+              type: 'file' as const,
+              url: base64OrURL,
+              mediaType,
+              filename,
+            } as FileUIPart;
           }
-          const byteArray = new Uint8Array(byteNumbers);
-          
-          // 从 data URL 中提取 MIME 类型，默认为 image/png
-          const mimeType = base64OrURL.match(/data:([^;]+);/)?.[1] || 'image/png';
-          const blob = new Blob([byteArray], { type: mimeType });
-          
-          // 从 Blob 创建 File 对象，使用 node.id 作为文件名
-          return new File([blob], node.id, { type: mimeType });
-        } else if (isURL) {
-          const response = await fetch(base64OrURL);
-          const blob = await response.blob();
-          return new File([blob], node.id, { type: blob.type });
         }
-        return new File([], node.id, { type: 'image/png' });
+        return {
+          id: node.id,
+          type: 'file' as const,
+          url: 'shape', // TODO: should create mask later
+          mediaType: 'application/octet-stream',
+          filename: node.id,
+        } as FileUIPart;
       }));
 
       if (files.length > 0) {
@@ -564,4 +619,8 @@ export default function Canvas({ id = 'default', initialData }: { id?: string, i
       </div>
     </div>
   );
-}
+});
+
+Canvas.displayName = 'Canvas';
+
+export default Canvas;
