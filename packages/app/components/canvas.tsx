@@ -175,6 +175,7 @@ const Canvas = forwardRef<CanvasAPI, CanvasProps>(({ id = 'default', initialData
     api.setLocale(locale);
     api.setThemeMode(resolvedTheme === 'dark' ? ThemeMode.DARK : ThemeMode.LIGHT);
     api.upload = async (file: File) => {
+      // TODO: if already uploaded, return the url directly
       const blob = await upload(file.name, file, {
         access: 'public',
         handleUploadUrl: '/api/assets/upload',

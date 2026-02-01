@@ -572,8 +572,7 @@ export class ContextMenu extends LitElement {
     const url = event.dataTransfer.getData('text/uri-list');
     if (url) {
       try {
-        const file = await fetch(url).then((res) => res.blob());
-        await this.api.createImageFromFile(file as File, canvasPosition);
+        await this.api.createImageFromFile(url, canvasPosition);
         return;
       } catch (error) {
         console.error(error);

@@ -265,19 +265,17 @@ export function ProjectDetailClient({
 
         {project && (
           <PromptInputProvider>
-<ResizablePanelGroup direction="horizontal" id={`project-detail-${project.id}`}>
-          <ResizablePanel minSize={400}>
-          {/* <div className="flex-1 h-full"> */}
+          <ResizablePanelGroup direction="horizontal" id={`project-detail-${project.id}`}>
+          <ResizablePanel defaultSize={800}>
             <Canvas ref={canvasRef} id={project.id} initialData={project.canvasData || undefined} />
-            {/* </div> */}
           </ResizablePanel>
           <ResizableHandle
             className="translate-x-px border-none [&>div]:shrink-0"
             withHandle
           />
-          <ResizablePanel minSize={400}>
+          <ResizablePanel defaultSize={400} className="h-full flex flex-col">
             {/* Chat 列表侧边栏 */}
-            <div className="border-b p-2">
+            <div className="border-b p-2 ">
               <div className="flex items-center justify-between mb-2">
                 <h3 className="text-sm font-semibold">Chats</h3>
                 <Button
@@ -470,8 +468,8 @@ export function ProjectDetailClient({
                 <p className="text-sm text-muted-foreground">No chat selected</p>
               </div>
             )}
-        </ResizablePanel>
-        </ResizablePanelGroup>
+          </ResizablePanel>
+          </ResizablePanelGroup>
 
           {/* <div className="flex-1 h-full">
             <Canvas ref={canvasRef} id={project.id} initialData={project.canvasData || undefined} />

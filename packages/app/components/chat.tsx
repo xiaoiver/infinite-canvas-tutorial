@@ -193,21 +193,23 @@ const Chat = ({
                               {part.text}
                             </MessageResponse>
                           </MessageContent>
-                          {message.role === 'assistant' && i === messages.length - 1 && (
+                          {message.role === 'assistant' && (
                             <MessageActions>
                               <MessageAction
                                 onClick={() => regenerate()}
                                 label="Retry"
+                                size="icon"
                               >
-                                <RefreshCcw className="size-3" />
+                                <RefreshCcw className="size-2" />
                               </MessageAction>
                               <MessageAction
                                 onClick={() =>
                                   navigator.clipboard.writeText(part.text)
                                 }
                                 label="Copy"
+                                size="icon"
                               >
-                                <Copy className="size-3" />
+                                <Copy className="size-1" />
                               </MessageAction>
                             </MessageActions>
                           )}
