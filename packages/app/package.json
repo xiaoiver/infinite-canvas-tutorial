@@ -92,7 +92,8 @@
     "deep-equal": "^2.2.2",
     "drizzle-orm": "^0.45.1",
     "postgres": "^3.4.5",
-    "date-fns": "^3.6.0"
+    "date-fns": "^3.6.0",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "drizzle-kit": "^0.31.8",

@@ -29,6 +29,7 @@ import { SerializedNode } from '@infinite-canvas-tutorial/ecs';
 import { PromptInputProvider } from '@/components/ai-elements/prompt-input';
 import { UIMessage } from '@ai-sdk/react';
 import { cn } from '@/lib/utils';
+import { Loader } from '@/components/ai-elements/loader';
 
 type Project = {
   id: string;
@@ -262,7 +263,7 @@ export function ProjectDetailClient({
                   <Plus className="h-4 w-4" />
                 </Button>
               </div>
-              <ScrollArea className="h-[120px]">
+              <ScrollArea className="h-[68px]">
                 <div className="space-y-1">
                   {chats.map((chat) => (
                     <button
@@ -284,37 +285,35 @@ export function ProjectDetailClient({
                 </div>
               </ScrollArea>
             </div>
-            {/* Chat 组件 */}
-            <div className="flex-1 min-h-0">
-              {loadingMessages ? (
-                <div className="flex items-center justify-center h-full">
-                  <p className="text-sm text-muted-foreground">Loading messages...</p>
-                </div>
-              ) : selectedChatId ? (
-                <Chat 
-                  initialMessages={messages} 
-                  chatId={selectedChatId}
-                  onMessagesChange={async () => {
-                    // 当消息更新时，重新加载 messages
-                    if (selectedChatId) {
-                      try {
-                        const response = await fetch(`/api/chats/${selectedChatId}/messages`);
-                        if (response.ok) {
-                          const data = await response.json();
-                          setMessages(data);
-                        }
-                      } catch (err) {
-                        console.error('Failed to reload messages:', err);
+
+            {loadingMessages ? (
+              <div className="flex items-center justify-center h-full">
+                <Loader />
+              </div>
+            ) : selectedChatId ? (
+              <Chat 
+                initialMessages={messages} 
+                chatId={selectedChatId!}
+                onMessagesChange={async () => {
+                  // 当消息更新时，重新加载 messages
+                  if (selectedChatId) {
+                    try {
+                      const response = await fetch(`/api/chats/${selectedChatId}/messages`);
+                      if (response.ok) {
+                        const data = await response.json();
+                        setMessages(data);
                       }
+                    } catch (err) {
+                      console.error('Failed to reload messages:', err);
                     }
-                  }}
-                />
-              ) : (
-                <div className="flex items-center justify-center h-full">
-                  <p className="text-sm text-muted-foreground">No chat selected</p>
-                </div>
-              )}
-            </div>
+                  }
+                }}
+              />
+            ) : (
+              <div className="flex items-center justify-center h-full">
+                <p className="text-sm text-muted-foreground">No chat selected</p>
+              </div>
+            )}
           </div>
           </PromptInputProvider>
         )}

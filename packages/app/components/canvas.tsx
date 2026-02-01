@@ -231,7 +231,7 @@ export default function Canvas({ id = 'default', initialData }: { id?: string, i
       checkboardStyle: CheckboardStyle.GRID,
       snapToPixelGridEnabled: true,
       snapToPixelGridSize: 1,
-      snapToObjectsEnabled: true,
+      snapToObjectsEnabled: false,
       snapToObjectsDistance: 8,
       contextBarVisible: false,
       rotateEnabled: false,

@@ -332,6 +332,9 @@ importers:
       yjs:
         specifier: ^13.6.20
         version: 13.6.27
+      zod:
+        specifier: ^4.3.6
+        version: 4.3.6
     devDependencies:
       '@tailwindcss/postcss':
         specifier: ^4
