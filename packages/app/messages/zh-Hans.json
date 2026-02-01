@@ -56,5 +56,14 @@
     "rename": "重命名",
     "renameDescription": "修改项目的名称",
     "modified": "修改于"
+  },
+  "zoom": {
+    "zoomIn": "放大",
+    "zoomOut": "缩小",
+    "zoomTo50": "缩放至50%",
+    "zoomTo100": "缩放至100%",
+    "zoomTo200": "缩放至200%",
+    "fitToProject": "适应项目",
+    "fitToSelection": "适应选中"
   }
 }

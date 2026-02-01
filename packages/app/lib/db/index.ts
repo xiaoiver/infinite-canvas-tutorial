@@ -26,4 +26,10 @@ export { schema };
 // 导出类型
 export type Project = typeof schema.projects.$inferSelect;
 export type NewProject = typeof schema.projects.$inferInsert;
+export type Chat = typeof schema.chats.$inferSelect;
+export type NewChat = typeof schema.chats.$inferInsert;
+export type Message = typeof schema.messages.$inferSelect;
+export type NewMessage = typeof schema.messages.$inferInsert;
+export type Tool = typeof schema.tools.$inferSelect;
+export type NewTool = typeof schema.tools.$inferInsert;
 

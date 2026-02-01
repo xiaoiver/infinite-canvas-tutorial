@@ -33,13 +33,14 @@ import {
 import { Plus, Calendar, Trash2, Edit2, MoreHorizontal, Clock } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { zhCN, enUS, es } from 'date-fns/locale';
+import { SerializedNode } from '@infinite-canvas-tutorial/ecs';
 
 type Project = {
   id: string;
   userId: string;
   name: string;
   description: string | null;
-  canvasData: string | null;
+  canvasData: SerializedNode[] | null;
   createdAt: string;
   updatedAt: string;
 };

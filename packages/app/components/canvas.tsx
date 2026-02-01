@@ -1,5 +1,7 @@
 'use client';
 
+import { throttle } from 'lodash-es';
+import { upload } from '@vercel/blob/client';
 import {
   App,
   Pen,
@@ -13,12 +15,7 @@ import { Event, UIPlugin, ExtendedAPI } from '@infinite-canvas-tutorial/webcompo
 import { LaserPointerPlugin } from '@infinite-canvas-tutorial/laser-pointer';
 import { LassoPlugin } from '@infinite-canvas-tutorial/lasso';
 import { EraserPlugin } from '@infinite-canvas-tutorial/eraser';
-import { FalAIPlugin } from '@infinite-canvas-tutorial/fal-ai';
-import { useEffect, useRef, useCallback } from 'react';
-import '@infinite-canvas-tutorial/webcomponents/spectrum';
-import '@infinite-canvas-tutorial/lasso/spectrum';
-import '@infinite-canvas-tutorial/eraser/spectrum';
-import '@infinite-canvas-tutorial/laser-pointer/spectrum';
+import { useEffect, useRef, useCallback, useState } from 'react';
 import { usePromptInputAttachments } from './ai-elements/prompt-input';
 import * as Y from 'yjs';
 import { IndexeddbPersistence } from 'y-indexeddb';
@@ -26,6 +23,16 @@ import { IndexeddbPersistence } from 'y-indexeddb';
 import deepEqual from 'deep-equal';
 import { useTheme } from 'next-themes';
 import { useParams } from 'next/navigation';
+import { useTranslations } from 'next-intl';
+import { Button } from '@/components/ui/button';
+import { Undo2, Redo2, ChevronDown } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 let appRunning = false;
 
@@ -85,44 +92,6 @@ function recordLocalOps(
   }, local);
 }
 
-// Throttle 函数：限制函数执行频率
-function throttle<T extends (...args: any[]) => any>(
-  func: T,
-  delay: number
-): (...args: Parameters<T>) => void {
-  let timeoutId: ReturnType<typeof setTimeout> | null = null;
-  let lastExecTime = 0;
-  let lastArgs: Parameters<T> | null = null;
-
-  return function (...args: Parameters<T>) {
-    const currentTime = Date.now();
-
-    // 保存最新的参数
-    lastArgs = args;
-
-    // 如果距离上次执行已经超过 delay，立即执行
-    if (currentTime - lastExecTime >= delay) {
-      func(...args);
-      lastExecTime = currentTime;
-      lastArgs = null;
-    } else {
-      // 否则，设置定时器在剩余时间后执行
-      if (timeoutId) {
-        clearTimeout(timeoutId);
-      }
-      const remainingTime = delay - (currentTime - lastExecTime);
-      timeoutId = setTimeout(() => {
-        if (lastArgs) {
-          func(...lastArgs);
-          lastExecTime = Date.now();
-          lastArgs = null;
-        }
-        timeoutId = null;
-      }, remainingTime);
-    }
-  };
-}
-
 export default function Canvas({ id = 'default', initialData }: { id?: string, initialData?: SerializedNode[] }) {
   const canvasRef = useRef<HTMLDivElement>(null);
   const apiRef = useRef<ExtendedAPI | null>(null);
@@ -130,8 +99,14 @@ export default function Canvas({ id = 'default', initialData }: { id?: string, i
   const { resolvedTheme } = useTheme();
   const params = useParams();
   const locale = params.locale as string;
+  const t = useTranslations('zoom');
 
   const attachments = usePromptInputAttachments();
+  
+  // 工具条状态
+  const [zoomLevel, setZoomLevel] = useState<number>(1);
+  const [canUndo, setCanUndo] = useState<boolean>(false);
+  const [canRedo, setCanRedo] = useState<boolean>(false);
 
   // 更新 projectIdRef 当 id 改变时
   useEffect(() => {
@@ -147,14 +122,13 @@ export default function Canvas({ id = 'default', initialData }: { id?: string, i
     }
 
     try {
-      const canvasData = JSON.stringify(nodes);
       const response = await fetch(`/api/projects/${projectId}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          canvasData,
+          canvasData: nodes,
         }),
       });
 
@@ -171,12 +145,33 @@ export default function Canvas({ id = 'default', initialData }: { id?: string, i
     throttle(saveCanvasData, 1000)
   ).current;
 
+  // 更新 undo/redo 状态
+  const updateHistoryState = useCallback(() => {
+    if (apiRef.current) {
+      setCanUndo(!apiRef.current.isUndoStackEmpty());
+      setCanRedo(!apiRef.current.isRedoStackEmpty());
+    }
+  }, []);
+
   const onReady = async (e: CustomEvent<any>) => {
     const api = e.detail as ExtendedAPI;
     apiRef.current = api;
 
-    apiRef.current.setLocale(locale);
-    apiRef.current.setThemeMode(resolvedTheme === 'dark' ? ThemeMode.DARK : ThemeMode.LIGHT);
+    api.setLocale(locale);
+    api.setThemeMode(resolvedTheme === 'dark' ? ThemeMode.DARK : ThemeMode.LIGHT);
+    api.upload = async (file: File) => {
+      const blob = await upload(file.name, file, {
+        access: 'public',
+        handleUploadUrl: '/api/assets/upload',
+      });
+      return blob.url;
+    };
+    
+    // 初始化工具条状态
+    const appState = api.getAppState();
+    setZoomLevel(appState.cameraZoom || 1);
+    setCanUndo(!api.isUndoStackEmpty());
+    setCanRedo(!api.isRedoStackEmpty());
 
     // 初始化 Yjs 文档和 IndexedDB 持久化
     if (!doc) {
@@ -202,6 +197,8 @@ export default function Canvas({ id = 'default', initialData }: { id?: string, i
         // 将 nodes 转换为 SerializedNode[] 并保存到数据库（使用 throttle 限制频率）
         const serializedNodes = nodes.filter((node) => !node.isDeleted) as SerializedNode[];
         throttledSaveCanvasData(serializedNodes);
+        // 更新 undo/redo 状态
+        updateHistoryState();
       };
     }
 
@@ -212,7 +209,7 @@ export default function Canvas({ id = 'default', initialData }: { id?: string, i
     }
 
     // 如果没有保存的节点，使用默认节点
-    const nodes: SerializedNode[] = savedNodes.length > 0 ? savedNodes : initialData || [];
+    const nodes: SerializedNode[] = initialData || savedNodes;
 
     api.setAppState({
       language: locale,
@@ -234,21 +231,17 @@ export default function Canvas({ id = 'default', initialData }: { id?: string, i
       checkboardStyle: CheckboardStyle.GRID,
       snapToPixelGridEnabled: true,
       snapToPixelGridSize: 1,
-      snapToObjectsEnabled: true,
+      snapToObjectsEnabled: false,
       snapToObjectsDistance: 8,
-      // contextBarVisible: false,
+      contextBarVisible: false,
       rotateEnabled: false,
       flipEnabled: false,
     });
 
     api.runAtNextTick(() => {
-      // 只有在没有保存的节点时才更新（避免覆盖从 IndexedDB 加载的数据）
-      if (savedNodes.length === 0) {
-        api.updateNodes(nodes);
+      api.updateNodes(nodes);
+      if (nodes.length > 0) {
         api.selectNodes([nodes[0]]);
-      } else {
-        // 如果有保存的节点，确保它们被正确加载
-        api.updateNodes(savedNodes);
       }
       api.record();
     });
@@ -265,13 +258,16 @@ export default function Canvas({ id = 'default', initialData }: { id?: string, i
     try {
       attachments.clear();
       const files = await Promise.all(selectedNodes.map(async node => {
-        const base64 = (node as any).fill as string;
+        const base64OrURL = (node as any).fill as string;
 
-        try {
+        const isDataURL = base64OrURL.startsWith('data:');
+        const isURL = base64OrURL.startsWith('http');
+
+        if (isDataURL) {
           // 将 base64 字符串转换为 Blob
-          const base64Data = base64.includes(',') 
-            ? base64.split(',')[1] 
-            : base64;
+          const base64Data = base64OrURL.includes(',') 
+            ? base64OrURL.split(',')[1] 
+            : base64OrURL;
           const byteCharacters = atob(base64Data);
           const byteNumbers = new Array(byteCharacters.length);
           for (let i = 0; i < byteCharacters.length; i++) {
@@ -280,14 +276,17 @@ export default function Canvas({ id = 'default', initialData }: { id?: string, i
           const byteArray = new Uint8Array(byteNumbers);
           
           // 从 data URL 中提取 MIME 类型，默认为 image/png
-          const mimeType = base64.match(/data:([^;]+);/)?.[1] || 'image/png';
+          const mimeType = base64OrURL.match(/data:([^;]+);/)?.[1] || 'image/png';
           const blob = new Blob([byteArray], { type: mimeType });
           
           // 从 Blob 创建 File 对象，使用 node.id 作为文件名
           return new File([blob], node.id, { type: mimeType });
-        } catch (error) {
-          return new File([], node.id, { type: 'application/octet-stream' });
+        } else if (isURL) {
+          const response = await fetch(base64OrURL);
+          const blob = await response.blob();
+          return new File([blob], node.id, { type: blob.type });
         }
+        return new File([], node.id, { type: 'image/png' });
       }));
 
       if (files.length > 0) {
@@ -301,17 +300,157 @@ export default function Canvas({ id = 'default', initialData }: { id?: string, i
   useEffect(() => {
     if (!appRunning) {
       new App().addPlugins(...DefaultPlugins, UIPlugin
-        , LaserPointerPlugin, LassoPlugin, EraserPlugin, FalAIPlugin.configure({
-        credentials: 'your-fal-ai-credentials-here',
-      })
+        , LaserPointerPlugin, LassoPlugin, EraserPlugin
     ).run();
       appRunning = true;
+    }
+  }, []);
+
+  // 监听缩放变化
+  const onZoomChanged = useCallback((e: CustomEvent<{ zoom: number }>) => {
+    setZoomLevel(e.detail.zoom);
+  }, []);
+
+  // 处理撤销
+  const handleUndo = useCallback(() => {
+    if (apiRef.current && !apiRef.current.isUndoStackEmpty()) {
+      apiRef.current.undo();
+      // 延迟更新状态，等待 API 处理完成
+      setTimeout(updateHistoryState, 0);
+    }
+  }, [updateHistoryState]);
+
+  // 处理重做
+  const handleRedo = useCallback(() => {
+    if (apiRef.current && !apiRef.current.isRedoStackEmpty()) {
+      apiRef.current.redo();
+      // 延迟更新状态，等待 API 处理完成
+      setTimeout(updateHistoryState, 0);
+    }
+  }, [updateHistoryState]);
+
+  // 缩放相关的辅助函数
+  const ZOOM_STEPS = [0.02, 0.05, 0.1, 0.15, 0.2, 0.33, 0.5, 0.75, 1, 1.25, 1.5, 2, 2.5, 3, 4];
+  const findZoomCeil = (zoom: number) => {
+    return ZOOM_STEPS.find((step) => step > zoom) || ZOOM_STEPS[ZOOM_STEPS.length - 1];
+  };
+  const findZoomFloor = (zoom: number) => {
+    return [...ZOOM_STEPS].reverse().find((step) => step < zoom) || ZOOM_STEPS[0];
+  };
+
+  // 处理缩放
+  const handleZoomIn = useCallback(() => {
+    if (apiRef.current) {
+      const currentZoom = apiRef.current.getAppState().cameraZoom;
+      apiRef.current.zoomTo(findZoomCeil(currentZoom));
+    }
+  }, []);
+
+  const handleZoomOut = useCallback(() => {
+    if (apiRef.current) {
+      const currentZoom = apiRef.current.getAppState().cameraZoom;
+      apiRef.current.zoomTo(findZoomFloor(currentZoom));
+    }
+  }, []);
+
+  const handleZoomTo50 = useCallback(() => {
+    if (apiRef.current) {
+      apiRef.current.zoomTo(0.5);
+    }
+  }, []);
+
+  const handleZoomTo100 = useCallback(() => {
+    if (apiRef.current) {
+      apiRef.current.zoomTo(1);
+    }
+  }, []);
+
+  const handleZoomTo200 = useCallback(() => {
+    if (apiRef.current) {
+      apiRef.current.zoomTo(2);
+    }
+  }, []);
+
+  const handleFitToProject = useCallback(() => {
+    if (apiRef.current) {
+      apiRef.current.fitToScreen();
+    }
+  }, []);
+
+  const handleFitToSelection = useCallback(() => {
+    if (!apiRef.current) {
+      return;
+    }
+    const selectedIds = apiRef.current.getAppState().layersSelected;
+    if (selectedIds.length === 0) {
+      return;
+    }
+    const selectedNodes = selectedIds
+      .map(id => apiRef.current!.getNodeById(id))
+      .filter(Boolean) as SerializedNode[];
+    if (selectedNodes.length === 0) {
+      return;
+    }
+    const bounds = apiRef.current.getBounds(selectedNodes);
+    // 检查边界是否有效
+    if (bounds.minX > bounds.maxX || bounds.minY > bounds.maxY) {
+      return;
+    }
+    const width = bounds.maxX - bounds.minX;
+    const height = bounds.maxY - bounds.minY;
+    if (width <= 0 || height <= 0) {
+      return;
+    }
+    // 获取 canvas element 的尺寸
+    const canvasElement = apiRef.current.getCanvasElement();
+    const canvasWidth = canvasElement.clientWidth || canvasElement.width;
+    const canvasHeight = canvasElement.clientHeight || canvasElement.height;
+    if (canvasWidth <= 0 || canvasHeight <= 0) {
+      return;
+    }
+    const scaleX = canvasWidth / width;
+    const scaleY = canvasHeight / height;
+    const newZoom = Math.min(scaleX, scaleY);
+    const centerX = (bounds.minX + bounds.maxX) / 2;
+    const centerY = (bounds.minY + bounds.maxY) / 2;
+    const currentZoom = apiRef.current.getAppState().cameraZoom;
+    apiRef.current.gotoLandmark(
+      apiRef.current.createLandmark({
+        x: centerX - canvasWidth / 2 / currentZoom,
+        y: centerY - canvasHeight / 2 / currentZoom,
+      }),
+      {
+        duration: 0,
+        onfinish: () => {
+          apiRef.current?.zoomTo(newZoom);
+        },
+      },
+    );
+  }, []);
+
+  const handleCanvasKeyDown = useCallback((e: React.KeyboardEvent<HTMLDivElement>) => {
+    if ((e.key === '+' || e.key === '=') && e.metaKey) {
+      e.preventDefault();
+      handleZoomIn();
+    } else if ((e.key === '-' || e.key === '_') && e.metaKey) {
+      e.preventDefault();
+      handleZoomOut();
+    } else if (e.key === '1' && e.metaKey) {
+      e.preventDefault();
+      handleZoomTo100();
+    } else if (e.key === '2' && e.metaKey) {
+      e.preventDefault();
+      handleZoomTo200();
+    } else if (e.key === '0' && e.metaKey) {
+      e.preventDefault();
+      handleFitToProject();
     }
   }, []);
 
   useEffect(() => {
     canvasRef.current?.addEventListener(Event.READY, onReady);
     canvasRef.current?.addEventListener(Event.SELECTED_NODES_CHANGED, onSelectedNodesChanged);
+    canvasRef.current?.addEventListener(Event.ZOOM_CHANGED, onZoomChanged as EventListener);
 
     return () => {
       // 清理资源
@@ -326,8 +465,9 @@ export default function Canvas({ id = 'default', initialData }: { id?: string, i
       }
       canvasRef.current?.removeEventListener(Event.READY, onReady);
       canvasRef.current?.removeEventListener(Event.SELECTED_NODES_CHANGED, onSelectedNodesChanged);
+      canvasRef.current?.removeEventListener(Event.ZOOM_CHANGED, onZoomChanged as EventListener);
     }
-  }, []);
+  }, [onZoomChanged]);
 
   useEffect(() => {
     if (apiRef.current && resolvedTheme) {
@@ -335,12 +475,93 @@ export default function Canvas({ id = 'default', initialData }: { id?: string, i
     }
   }, [resolvedTheme]);
 
+  useEffect(() => {
+    import('@infinite-canvas-tutorial/webcomponents/spectrum');
+    import('@infinite-canvas-tutorial/lasso/spectrum');
+    import('@infinite-canvas-tutorial/eraser/spectrum');
+    import('@infinite-canvas-tutorial/laser-pointer/spectrum');
+  }, []);
+
   return ( 
+    <div className="relative w-full h-full" onKeyDown={handleCanvasKeyDown}>
       <ic-spectrum-canvas ref={canvasRef} className="w-full h-full" app-state='{"topbarVisible":false}'>
         <ic-spectrum-penbar-laser-pointer slot="penbar-item" />
         <ic-spectrum-penbar-eraser slot="penbar-item" />
         {/* <ic-spectrum-taskbar-chat slot="taskbar-item" />
         <ic-spectrum-taskbar-chat-panel slot="taskbar-panel" /> */}
+        
       </ic-spectrum-canvas>
+      <div className="absolute bottom-0 right-0 flex items-center gap-2 p-4 z-50">
+        <div className="flex items-center gap-1 bg-background/80 backdrop-blur-sm border rounded-lg shadow-lg p-1">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleUndo}
+            disabled={!canUndo}
+            className="h-8 w-8"
+            title="撤销 (⌘Z)"
+          >
+            <Undo2 className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleRedo}
+            disabled={!canRedo}
+            className="h-8 w-8"
+            title="重做 (⇧⌘Z)"
+          >
+            <Redo2 className="h-4 w-4" />
+          </Button>
+          <div className="h-6 w-px bg-border mx-1" />
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                className="h-7 px-2 gap-1 text-sm font-medium"
+              >
+                <span className="min-w-[50px] text-center">
+                  {Math.round(zoomLevel * 100)}%
+                </span>
+                <ChevronDown className="h-3 w-3" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48" alignOffset={-5} sideOffset={8}>
+              <DropdownMenuItem onClick={handleZoomIn}>
+                {t('zoomIn')}
+                <span className="ml-auto text-xs text-muted-foreground">⌘+</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleZoomOut}>
+                {t('zoomOut')}
+                <span className="ml-auto text-xs text-muted-foreground">⌘-</span>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={handleZoomTo50}>
+                {t('zoomTo50')}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleZoomTo100}>
+                {t('zoomTo100')}
+                <span className="ml-auto text-xs text-muted-foreground">⌘1</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleZoomTo200}>
+                {t('zoomTo200')}
+                <span className="ml-auto text-xs text-muted-foreground">⌘2</span>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={handleFitToProject}>
+                {t('fitToProject')}
+                <span className="ml-auto text-xs text-muted-foreground">⌘0</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem 
+                onClick={handleFitToSelection}
+                disabled={!apiRef.current || apiRef.current.getAppState().layersSelected.length === 0}
+              >
+                {t('fitToSelection')}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </div>
+    </div>
   );
 }

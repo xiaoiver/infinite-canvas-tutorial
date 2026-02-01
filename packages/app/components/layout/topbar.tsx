@@ -84,14 +84,9 @@ export function Topbar({ leftMenuItems, centerContent }: TopbarProps) {
                 {menuItems.map((item, index) => (
                   <DropdownMenuItem
                     key={index}
-                    onClick={item.href ? undefined : item.onClick}
-                    asChild={item.href ? true : false}
+                    onClick={item.onClick}
                   >
-                    {item.href ? (
-                      <Link href={item.href}>{item.label}</Link>
-                    ) : (
-                      <span>{item.label}</span>
-                    )}
+                    <span>{item.label}</span>
                   </DropdownMenuItem>
                 ))}
               </DropdownMenuContent>

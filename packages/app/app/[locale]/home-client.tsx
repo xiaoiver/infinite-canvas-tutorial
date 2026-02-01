@@ -1,7 +1,7 @@
 "use client";
 
 import { SerializedNode } from '@infinite-canvas-tutorial/ecs';
-import Chat, { MessageType } from '@/components/chat';
+import Chat from '@/components/chat';
 import Canvas from '@/components/canvas';
 import { nanoid } from 'nanoid';
 import { useAuth } from '@/contexts/auth-context';
@@ -9,6 +9,7 @@ import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { Lock } from 'lucide-react';
 import { useRouter } from '@/i18n/navigation';
+import type { UIMessage } from 'ai';
 
 const DEFAULT_NODES: SerializedNode[] = [
   {
@@ -118,186 +119,24 @@ const DEFAULT_NODES: SerializedNode[] = [
   } as const,
 ];
 
-const DEFAULT_MESSAGES: MessageType[] = [
+const DEFAULT_MESSAGES: UIMessage[] = [
   {
-    key: nanoid(),
-    from: "user",
-    versions: [
+    id: nanoid(),
+    role: "user",
+    parts: [
       {
-        id: nanoid(),
-        content: "Can you explain how to use React hooks effectively?",
+        type: "text",
+        text: "Can you explain how to use React hooks effectively?",
       },
     ],
   },
   {
-    key: nanoid(),
-    from: "assistant",
-    sources: [
+    id: nanoid(),
+    role: "assistant",
+    parts: [
       {
-        href: "https://react.dev/reference/react",
-        title: "React Documentation",
-      },
-      {
-        href: "https://react.dev/reference/react-dom",
-        title: "React DOM Documentation",
-      },
-    ],
-    tools: [
-      {
-        name: "mcp",
-        description: "Searching React documentation",
-        status: "input-available",
-        parameters: {
-          query: "React hooks best practices",
-          source: "react.dev",
-        },
-        result: `{
-  "query": "React hooks best practices",
-  "results": [
-    {
-      "title": "Rules of Hooks",
-      "url": "https://react.dev/warnings/invalid-hook-call-warning",
-      "snippet": "Hooks must be called at the top level of your React function components or custom hooks. Don't call hooks inside loops, conditions, or nested functions."
-    },
-    {
-      "title": "useState Hook",
-      "url": "https://react.dev/reference/react/useState",
-      "snippet": "useState is a React Hook that lets you add state to your function components. It returns an array with two values: the current state and a function to update it."
-    },
-    {
-      "title": "useEffect Hook",
-      "url": "https://react.dev/reference/react/useEffect",
-      "snippet": "useEffect lets you synchronize a component with external systems. It runs after render and can be used to perform side effects like data fetching."
-    }
-  ]
-}`,
-        error: undefined,
-      },
-    ],
-    versions: [
-      {
-        id: nanoid(),
-        content: `# React Hooks Best Practices
-
-React hooks are a powerful feature that let you use state and other React features without writing classes. Here are some tips for using them effectively:
-
-## Rules of Hooks
-
-1. **Only call hooks at the top level** of your component or custom hooks
-2. **Don't call hooks inside loops, conditions, or nested functions**
-
-## Common Hooks
-
-- **useState**: For local component state
-- **useEffect**: For side effects like data fetching
-- **useContext**: For consuming context
-- **useReducer**: For complex state logic
-- **useCallback**: For memoizing functions
-- **useMemo**: For memoizing values
-
-## Example of useState and useEffect
-
-\`\`\`jsx
-function ProfilePage({ userId }) {
-  const [user, setUser] = useState(null);
-
-  useEffect(() => {
-    // This runs after render and when userId changes
-    fetchUser(userId).then(userData => {
-      setUser(userData);
-    });
-  }, [userId]);
-
-  return user ? <Profile user={user} /> : <Loading />;
-}
-\`\`\`
-
-Would you like me to explain any specific hook in more detail?`,
-      },
-    ],
-  },
-  {
-    key: nanoid(),
-    from: "user",
-    versions: [
-      {
-        id: nanoid(),
-        content:
-          "Yes, could you explain useCallback and useMemo in more detail? When should I use one over the other?",
-      },
-      {
-        id: nanoid(),
-        content:
-          "I'm particularly interested in understanding the performance implications of useCallback and useMemo. Could you break down when each is most appropriate?",
-      },
-      {
-        id: nanoid(),
-        content:
-          "Thanks for the overview! Could you dive deeper into the specific use cases where useCallback and useMemo make the biggest difference in React applications?",
-      },
-    ],
-  },
-  {
-    key: nanoid(),
-    from: "assistant",
-    reasoning: {
-      content: `The user is asking for a detailed explanation of useCallback and useMemo. I should provide a clear and concise explanation of each hook's purpose and how they differ.
-
-The useCallback hook is used to memoize functions to prevent unnecessary re-renders of child components that receive functions as props.
-
-The useMemo hook is used to memoize values to avoid expensive recalculations on every render.
-
-Both hooks help with performance optimization, but they serve different purposes.`,
-      duration: 10,
-    },
-    versions: [
-      {
-        id: nanoid(),
-        content: `## useCallback vs useMemo
-
-Both hooks help with performance optimization, but they serve different purposes:
-
-### useCallback
-
-\`useCallback\` memoizes **functions** to prevent unnecessary re-renders of child components that receive functions as props.
-
-\`\`\`jsx
-// Without useCallback - a new function is created on every render
-const handleClick = () => {
-  console.log(count);
-};
-
-// With useCallback - the function is only recreated when dependencies change
-const handleClick = useCallback(() => {
-  console.log(count);
-}, [count]);
-\`\`\`
-
-### useMemo
-
-\`useMemo\` memoizes **values** to avoid expensive recalculations on every render.
-
-\`\`\`jsx
-// Without useMemo - expensive calculation runs on every render
-const sortedList = expensiveSort(items);
-
-// With useMemo - calculation only runs when items change
-const sortedList = useMemo(() => expensiveSort(items), [items]);
-\`\`\`
-
-### When to use which?
-
-- Use **useCallback** when:
-  - Passing callbacks to optimized child components that rely on reference equality
-  - Working with event handlers that you pass to child components
-
-- Use **useMemo** when:
-  - You have computationally expensive calculations
-  - You want to avoid recreating objects that are used as dependencies for other hooks
-
-### Performance Note
-
-Don't overuse these hooks! They come with their own overhead. Only use them when you have identified a genuine performance issue.`,
+        type: "text",
+        text: "React hooks are a powerful feature that let you use state and other React features without writing classes. Here are some tips for using them effectively:",
       },
     ],
   },
