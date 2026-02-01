@@ -151,7 +151,7 @@ export function PromptInputProvider({
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const openRef = useRef<() => void>(() => undefined);
 
-  const add = useCallback((files: File[] | FileList) => {
+  const add = useCallback((files: (File | FileUIPart)[] | FileList) => {
     const incoming = Array.from(files);
     if (incoming.length === 0) {
       return;
@@ -162,9 +162,9 @@ export function PromptInputProvider({
         incoming.map((file) => ({
           id: nanoid(),
           type: "file" as const,
-          url: URL.createObjectURL(file),
-          mediaType: file.type,
-          filename: file.name,
+          url: (file as FileUIPart).url ? (file as FileUIPart).url : URL.createObjectURL(file as File),
+          mediaType: (file as FileUIPart).mediaType ? (file as FileUIPart).mediaType : file.type,
+          filename: (file as FileUIPart).filename ? (file as FileUIPart).filename : (file as File).name,
         }))
       )
     );

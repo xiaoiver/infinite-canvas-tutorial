@@ -13,6 +13,7 @@ import { Event } from './event';
 import { ImageLoader } from '@loaders.gl/images';
 import { load } from '@loaders.gl/core';
 import { getDataURL, updateAndSelectNodes } from './utils';
+import { isString } from '@antv/util';
 
 export interface Comment {
   type: 'comment';
@@ -186,7 +187,7 @@ export class ExtendedAPI extends API {
     });
   }
 
-  async createImageFromFile(file: File, position?: { x: number; y: number }) {
+  async createImageFromFile(file: File | string, position?: { x: number; y: number }) {
     const size = {
       width: this.element.clientWidth,
       height: this.element.clientHeight,
@@ -195,11 +196,11 @@ export class ExtendedAPI extends API {
 
     const [image, dataURL] = await Promise.all([
       load(file, ImageLoader),
-      getDataURL(file),
+      isString(file) ? Promise.resolve(file) : getDataURL(file),
     ]);
 
     let cdnUrl: string;
-    if (this.upload) {
+    if (!isString(file) && this.upload) {
       cdnUrl = await this.upload(file);
     }
 

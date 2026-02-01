@@ -64,10 +64,13 @@ function convertChat(chat: any): Chat | null {
 
 export default async function ProjectDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string; locale: string }>;
+  searchParams: Promise<{ chatId?: string }>;
 }) {
   const { id, locale } = await params;
+  const { chatId } = await searchParams;
 
   // 获取用户信息
   const supabase = await createClient();
@@ -97,10 +100,14 @@ export default async function ProjectDetailPage({
       const dbChats = await getProjectChats(id, user.id);
       chats = dbChats.map(convertChat).filter((chat): chat is Chat => chat !== null);
       
-      // 如果有 chats，加载第一个 chat 的 messages
+      // 如果有 chats，加载指定的 chat 或第一个 chat 的 messages
       if (chats.length > 0) {
-        const firstChat = chats[0];
-        const dbMessages = await getChatMessages(firstChat.id, user.id);
+        // 如果 URL 中有 chatId，尝试加载该 chat；否则加载第一个 chat
+        const targetChatId = chatId && chats.some(chat => chat.id === chatId) 
+          ? chatId 
+          : chats[0].id;
+        
+        const dbMessages = await getChatMessages(targetChatId, user.id);
         initialMessages = await convertMessagesToUIMessages(dbMessages, user.id);
       }
     }
@@ -113,12 +120,18 @@ export default async function ProjectDetailPage({
     redirect(`/${locale}/projects`);
   }
 
+  // 确定初始选中的 chatId（优先使用 URL 中的，否则使用第一个）
+  const initialSelectedChatId = chatId && chats.some(chat => chat.id === chatId)
+    ? chatId
+    : (chats.length > 0 ? chats[0].id : null);
+
   return (
     <ProjectDetailClient 
       initialProject={project} 
       initialError={error} 
       initialChats={chats}
       initialMessages={initialMessages}
+      initialSelectedChatId={initialSelectedChatId}
       locale={locale} 
     />
   );

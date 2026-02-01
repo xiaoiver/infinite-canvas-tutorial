@@ -64,12 +64,11 @@ import {
   ToolOutput,
   type ToolPart,
 } from "@/components/ai-elements/tool";
-import { Suggestion, Suggestions } from "@/components/ai-elements/suggestion";
+import { ImageGallery } from "@/components/ai-elements/image-gallery";
 import { cn } from "@/lib/utils";
 import type { ToolUIPart, DynamicToolUIPart } from "ai";
-import { CheckIcon, Copy, GlobeIcon, MicIcon, RefreshCcw } from "lucide-react";
-import { useCallback, useState } from "react";
-import { toast } from "sonner";
+import { Copy, GlobeIcon, RefreshCcw } from "lucide-react";
+import { useState } from "react";
 import { useChat, UIMessage } from '@ai-sdk/react';
 import { Loader } from "./ai-elements/loader";
 
@@ -111,22 +110,28 @@ const Chat = ({
   className, 
   initialMessages,
   chatId,
-  onMessagesChange,
+  onFinish,
+  onData,
 }: { 
   className?: string;
   initialMessages?: UIMessage[];
   chatId?: string;
-  onMessagesChange?: () => void;
+  onFinish?: (options: { message: UIMessage }) => void;
+  onData?: (options: { data: any }) => void;
 }) => {
   const [input, setInput] = useState('');
   const [model, setModel] = useState<string>(models[0].value);
   const [webSearch, setWebSearch] = useState(false);
   const { messages, sendMessage, status, regenerate } = useChat({
     messages: initialMessages,
-    onFinish: async ({ message }) => {
-      // 消息发送完成后，通知父组件更新
-      if (onMessagesChange) {
-        onMessagesChange();
+    onData: (data) => {
+      if (onData) {
+        onData(data);
+      }
+    },
+    onFinish: async (message) => {
+      if (onFinish) {
+        onFinish(message);
       }
     },
   });
@@ -152,7 +157,7 @@ const Chat = ({
     setInput('');
   };
   return (
-    <div className="relative flex-1 min-h-0 p-4">
+    <div className={cn("relative flex-1 min-h-0 p-4", className)}>
       <div className="flex flex-col h-full">
         <Conversation className="h-full flex-1 min-h-0">
           <ConversationContent>
@@ -232,6 +237,36 @@ const Chat = ({
                         // 根据 tool 类型渲染不同的 ToolHeader
                         if (toolPart.type === 'dynamic-tool') {
                           const dynamicTool = toolPart as DynamicToolUIPart;
+                          
+                          // 检查是否是 generateImage tool
+                          if (dynamicTool.toolName === 'generateImage') {
+                            const images = (dynamicTool.output as { images: string[] })?.images || [];
+                            return (
+                              <Tool
+                                key={`${message.id}-${i}`}
+                                defaultOpen={defaultOpen}
+                              >
+                                <ToolHeader
+                                  type="dynamic-tool"
+                                  state={dynamicTool.state}
+                                  toolName={dynamicTool.toolName}
+                                  title={dynamicTool.title}
+                                />
+                                <ToolContent>
+                                  {dynamicTool.input !== undefined && (
+                                    <ToolInput input={dynamicTool.input} />
+                                  )}
+                                  <div className="p-4 flex gap-2">
+                                    <ImageGallery
+                                      images={images}
+                                      alt={dynamicTool.title || 'Generated Image'}
+                                    />
+                                  </div>
+                                </ToolContent>
+                              </Tool>
+                            );
+                          }
+                          
                           return (
                             <Tool
                               key={`${message.id}-${i}`}
@@ -257,6 +292,34 @@ const Chat = ({
                         } else {
                           // 静态 tool (tool-${NAME})
                           const staticTool = toolPart as ToolUIPart;
+
+                          if (staticTool.type.startsWith('tool-generateImage')) {
+                            const images = (staticTool.output as { images: string[] })?.images || [];
+                            return (
+                              <Tool
+                                key={`${message.id}-${i}`}
+                                defaultOpen={defaultOpen}
+                              >
+                                <ToolHeader
+                                  type={staticTool.type}
+                                  state={staticTool.state}
+                                  title={staticTool.title}
+                                />
+                                <ToolContent>
+                                  {staticTool.input !== undefined && (
+                                    <ToolInput input={staticTool.input} />
+                                  )}
+                                  <div className="p-2 pt-0 flex flex-col gap-2">
+                                    <ImageGallery
+                                      images={images}
+                                      alt={staticTool.title || 'Generated Image'}
+                                    />
+                                  </div>
+                                </ToolContent>
+                              </Tool>
+                            );
+                          }
+
                           return (
                             <Tool
                               key={`${message.id}-${i}`}

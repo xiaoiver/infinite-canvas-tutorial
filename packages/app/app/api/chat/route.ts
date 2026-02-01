@@ -1,7 +1,7 @@
 import { streamText, UIMessage, convertToModelMessages, type InferUITools, stepCountIs, } from 'ai';
 import { createClient } from '@/lib/supabase/server';
 import { createMessage, getNextSeq } from '@/lib/db/messages';
-import { createTool, createTools, updateToolByCallId } from '@/lib/db/tools';
+import { createTools } from '@/lib/db/tools';
 import { convertUIMessageToDBMessage, convertToolPartToDBTool } from '@/lib/db/utils';
 import type { ToolUIPart, DynamicToolUIPart } from 'ai';
 
@@ -69,7 +69,9 @@ export async function POST(req: Request) {
     model: webSearch ? 'perplexity/sonar' : model,
     messages: await convertToModelMessages(messages),
     system:
-      'You are a helpful assistant that can answer questions and help with tasks',
+      'You are a helpful assistant that can answer questions and help with tasks. ' +
+      'When using tools that generate images, do NOT include image URLs in your response message. ' +
+      'The tool output component will automatically display the generated images, so there is no need to mention them in your text response.',
     stopWhen: stepCountIs(5),
     tools,
   });
@@ -82,7 +84,15 @@ export async function POST(req: Request) {
       // 流式响应完成后，保存助手回复到数据库
       if (chatId && userMessageSeq !== null) {
         try {
-          const assistantMessage = event.responseMessage;
+          // 优先从 event.messages 中获取最后一条助手消息（包含完整的 tool parts）
+          // 如果找不到，则使用 event.responseMessage
+          const allAssistantMessages = event.messages.filter(
+            (msg) => msg.role === 'assistant'
+          );
+          const assistantMessage = allAssistantMessages.length > 0
+            ? allAssistantMessages[allAssistantMessages.length - 1]
+            : event.responseMessage;
+
           if (assistantMessage && assistantMessage.role === 'assistant') {
             const assistantSeq = userMessageSeq + 1;
             const dbMessage = convertUIMessageToDBMessage(
@@ -94,22 +104,27 @@ export async function POST(req: Request) {
 
             // 保存 tool calls 到数据库
             if (savedMessage) {
-              const toolParts = assistantMessage.parts.filter(
+              const toolParts = (assistantMessage.parts || []).filter(
                 (part): part is ToolUIPart | DynamicToolUIPart =>
-                  part.type.startsWith('tool-') || part.type === 'dynamic-tool'
+                  (typeof part.type === 'string' && part.type.startsWith('tool-')) ||
+                  part.type === 'dynamic-tool'
               );
 
               if (toolParts.length > 0) {
-                const dbTools = toolParts.map((toolPart) =>
-                  convertToolPartToDBTool(toolPart, savedMessage.id)
-                );
+                const dbTools = toolParts.map((toolPart) => {
+                  return convertToolPartToDBTool(toolPart, savedMessage.id);
+                });
+
                 await createTools(dbTools, user.id);
               }
             }
           }
         } catch (error) {
           console.error('Error saving assistant message:', error);
+          console.error('Error stack:', error instanceof Error ? error.stack : 'No stack');
         }
+      } else {
+        console.log('Skipping save: chatId =', chatId, 'userMessageSeq =', userMessageSeq);
       }
     },
   });
