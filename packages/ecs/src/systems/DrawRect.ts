@@ -51,7 +51,7 @@ import {
   snapToGrid,
 } from '../utils';
 import { DRAW_RECT_Z_INDEX } from '../context';
-import { DOMAdapter, TRANSFORMER_ANCHOR_STROKE_COLOR } from '..';
+import { DOMAdapter, Event, TRANSFORMER_ANCHOR_STROKE_COLOR } from '..';
 
 const PEN_TO_TYPE = {
   [Pen.DRAW_RECT]: 'rect',
@@ -274,6 +274,18 @@ export class DrawRect extends System {
           api.updateNode(node);
           api.selectNodes([node]);
           api.record();
+
+          if (isBrowser) {
+            // FIXME: Use the correct event name
+            // @ts-ignore
+            api.element.dispatchEvent(
+              new CustomEvent('ic-rect-drawn', {
+                detail: {
+                  node,
+                },
+              }),
+            );
+          }
         });
       }
     });

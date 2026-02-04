@@ -38,9 +38,15 @@ export default async function LocaleLayout({
 
   return (
     <html lang={locale} suppressHydrationWarning>
-      <body className={`${gaegu.variable} antialiased`}>
+      {/** suppressHydrationWarning on body, see: https://github.com/shadcn-ui/ui/issues/6757 */}
+      <body className={`${gaegu.variable} antialiased`} suppressHydrationWarning>
         <NextIntlClientProvider messages={messages}>
-          <ThemeProvider>
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="system"
+            enableSystem
+            disableTransitionOnChange
+          >
             <AuthProvider>
               {children}
             </AuthProvider>

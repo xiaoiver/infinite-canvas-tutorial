@@ -1,20 +1,12 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+## How to deploy
 
-## Getting Started
+This application is deployed on vercel.
 
-First, run the development server:
+### Auth with Supabase
 
-```bash
-pnpm dev
+[SUPABASE_SETUP](./SUPABASE_SETUP.md)
+
+```env
+NEXT_PUBLIC_SUPABASE_ANON_KEY="sb_..."
+NEXT_PUBLIC_SUPABASE_URL="https://...supabase.co"
 ```
-
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!

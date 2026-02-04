@@ -22,6 +22,9 @@ import {
 import { Github, Menu } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
+import { useAtomValue } from 'jotai';
+import { isSingleImageAtom } from '@/atoms/canvas-selection';
+import { ImageToolbar } from '@/components/image-toolbar';
 
 interface TopbarProps {
   /** 左侧菜单项，可选 */
@@ -40,6 +43,8 @@ export function Topbar({ leftMenuItems, centerContent }: TopbarProps) {
   const router = useRouter();
   const pathname = usePathname();
   const [loginDialogOpen, setLoginDialogOpen] = useState(false);
+  const t = useTranslations('toolbar');
+  const isSingleImage = useAtomValue(isSingleImageAtom);
 
   // 登录成功后自动关闭弹窗
   useEffect(() => {
@@ -51,14 +56,14 @@ export function Topbar({ leftMenuItems, centerContent }: TopbarProps) {
   // 默认菜单项
   const defaultMenuItems = [
     {
-      label: '首页',
+      label: t('home'),
       onClick: () => {
         const locale = pathname?.split('/')[1] || 'zh-Hans';
         router.push(`/${locale}`);
       },
     },
     {
-      label: '我的项目',
+      label: t('myProjects'),
       onClick: () => {
         const locale = pathname?.split('/')[1] || 'zh-Hans';
         router.push(`/${locale}/projects`);
@@ -93,12 +98,17 @@ export function Topbar({ leftMenuItems, centerContent }: TopbarProps) {
             </DropdownMenu>
           </div>
 
-          {/* 中间内容 */}
-          {centerContent && (
-            <div className="absolute left-1/2 transform -translate-x-1/2">
-              {centerContent}
-            </div>
-          )}
+          {/* 中间内容区域 */}
+          <div className="absolute left-1/2 transform -translate-x-1/2 flex items-center gap-4">
+            {/* 图片编辑工具条 - 优先显示 */}
+            <ImageToolbar />
+            {/* 如果没有图片编辑工具条，显示中间内容 */}
+            {!isSingleImage && centerContent && (
+              <div>
+                {centerContent}
+              </div>
+            )}
+          </div>
 
           {/* 右侧：Github 图标和登录按钮 */}
           <div className="flex items-center gap-1.5">

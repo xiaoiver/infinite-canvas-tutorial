@@ -1,6 +1,9 @@
 import { put } from '@vercel/blob';
 import { FilePart, generateText, tool } from 'ai';
-import z, { nanoid } from 'zod';
+import z from 'zod';
+import { nanoid } from 'nanoid';
+import { getModelStringForCapability } from '@/lib/models/get-model';
+import { createClient } from '@/lib/supabase/server';
 
 /**
  * When building a chatbot, you may want to allow the user to generate an image.
@@ -24,8 +27,19 @@ export const generateImageTool = tool({
     const lastMessage = messages[messages.length - 1];
     const imageDataURLs = (lastMessage.content as (FilePart)[]).filter((part) => part.type === 'file' && part.mediaType.startsWith('image/')).map((part) => part.data);
 
+    // 获取用户配置的图像生成模型
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    let imageModel = 'google/gemini-2.5-flash-image'; // 默认模型
+    if (user) {
+      const userImageModel = await getModelStringForCapability(user.id, 'image');
+      if (userImageModel) {
+        imageModel = userImageModel;
+      }
+    }
+
     const result = await generateText({
-      model: 'google/gemini-2.5-flash-image',
+      model: imageModel,
       prompt: [
         {
           role: 'user',
@@ -56,12 +70,13 @@ export const generateImageTool = tool({
 
         // 1. 去掉 base64 前缀（例如 "data:image/png;base64,"）
         const base64Data = base64.replace(/^data:image\/\w+;base64,/, "");
+        const suffix = file.mediaType.split('/')[1];
 
         // 2. 转换为 Buffer
         const fileBuffer = Buffer.from(base64Data, 'base64');
 
         // Upload with Vercel Blob
-        const fileName = `${nanoid()}`;
+        const fileName = `${nanoid()}.${suffix}`;
         const blob = await put(fileName, fileBuffer, {
           access: 'public',
           addRandomSuffix: true,

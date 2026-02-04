@@ -22,6 +22,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import type * as ScrollAreaPrimitive from '@radix-ui/react-scroll-area';
 import { ChevronDown, Edit2, Trash2, MessageSquare, Plus } from 'lucide-react';
 import Chat from '@/components/chat';
 import Canvas, { CanvasAPI } from '@/components/canvas';
@@ -75,6 +76,7 @@ export function ProjectDetailClient({
   const router = useRouter();
   const searchParams = useSearchParams();
   const t = useTranslations('projects');
+  const tChats = useTranslations('chats');
   const commonT = useTranslations('common');
 
   const [project, setProject] = useState<Project | null>(initialProject);
@@ -92,6 +94,7 @@ export function ProjectDetailClient({
   const [editingChatTitle, setEditingChatTitle] = useState('');
   const editingInputRef = useRef<HTMLInputElement>(null);
   const canvasRef = useRef<CanvasAPI>(null);
+  const chatListScrollRef = useRef<React.ElementRef<typeof ScrollAreaPrimitive.Root>>(null);
 
   // 当 URL 中的 chatId 变化时，同步到 selectedChatId（用于浏览器前进/后退或直接输入 URL）
   useEffect(() => {
@@ -136,6 +139,22 @@ export function ProjectDetailClient({
 
     loadMessages();
   }, [selectedChatId, project?.id, locale, router]); // 不依赖 searchParams，避免循环
+
+  // 当 chats 列表变化时，滚动到底部
+  useEffect(() => {
+    if (chatListScrollRef.current && chats.length > 0) {
+      // 使用 requestAnimationFrame 和 setTimeout 确保 DOM 更新完成后再滚动
+      requestAnimationFrame(() => {
+        setTimeout(() => {
+          // 查找 ScrollArea 的 viewport 元素
+          const viewport = chatListScrollRef.current?.querySelector('[data-radix-scroll-area-viewport]') as HTMLElement;
+          if (viewport) {
+            viewport.scrollTop = viewport.scrollHeight;
+          }
+        }, 0);
+      });
+    }
+  }, [chats.length]);
 
   // 打开重命名对话框
   const handleOpenRenameDialog = () => {
@@ -216,7 +235,6 @@ export function ProjectDetailClient({
         </DropdownMenuTrigger>
         <DropdownMenuContent align="center">
           <DropdownMenuItem onClick={handleOpenRenameDialog}>
-            <Edit2 className="mr-2 h-4 w-4" />
             {t('rename')}
           </DropdownMenuItem>
           <DropdownMenuSeparator />
@@ -224,7 +242,6 @@ export function ProjectDetailClient({
             onClick={handleDeleteProject}
             className="text-destructive focus:text-destructive"
           >
-            <Trash2 className="mr-2 h-4 w-4" />
             {commonT('delete')}
           </DropdownMenuItem>
         </DropdownMenuContent>
@@ -265,7 +282,7 @@ export function ProjectDetailClient({
 
         {project && (
           <PromptInputProvider>
-          <ResizablePanelGroup direction="horizontal" id={`project-detail-${project.id}`}>
+          <ResizablePanelGroup direction="horizontal">
           <ResizablePanel defaultSize={800}>
             <Canvas ref={canvasRef} id={project.id} initialData={project.canvasData || undefined} />
           </ResizablePanel>
@@ -274,10 +291,11 @@ export function ProjectDetailClient({
             withHandle
           />
           <ResizablePanel defaultSize={400} className="h-full flex flex-col">
+          <ResizablePanelGroup direction="vertical">
+            <ResizablePanel defaultSize={100} className="flex flex-col">
             {/* Chat 列表侧边栏 */}
-            <div className="border-b p-2 ">
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="text-sm font-semibold">Chats</h3>
+              <div className="flex items-center justify-between p-2 border-b">
+                <h3 className="text-sm font-semibold pl-2">{tChats('title')}</h3>
                 <Button
                   variant="ghost"
                   size="sm"
@@ -304,7 +322,7 @@ export function ProjectDetailClient({
                   <Plus className="h-4 w-4" />
                 </Button>
               </div>
-              <ScrollArea className="h-[68px]">
+              <ScrollArea className="flex-1 min-h-0 p-2" ref={chatListScrollRef}>
                 <div className="space-y-1">
                   {chats.map((chat) => (
                     <div
@@ -442,8 +460,12 @@ export function ProjectDetailClient({
                   ))}
                 </div>
               </ScrollArea>
-            </div>
-
+            </ResizablePanel>
+          <ResizableHandle
+            className="translate-y-py border-none [&>div]:shrink-0"
+            withHandle
+          />
+          <ResizablePanel defaultSize={600} className="h-full flex flex-col">
             {loadingMessages ? (
               <div className="flex items-center justify-center h-full">
                 <Loader />
@@ -468,6 +490,8 @@ export function ProjectDetailClient({
                 <p className="text-sm text-muted-foreground">No chat selected</p>
               </div>
             )}
+            </ResizablePanel>
+          </ResizablePanelGroup>
           </ResizablePanel>
           </ResizablePanelGroup>
 

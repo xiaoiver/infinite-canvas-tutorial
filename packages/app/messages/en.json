@@ -57,6 +57,9 @@
     "renameDescription": "Update the project name",
     "modified": "Modified"
   },
+  "chats": {
+    "title": "Chats"
+  },
   "zoom": {
     "zoomIn": "Zoom In",
     "zoomOut": "Zoom Out",
@@ -65,5 +68,63 @@
     "zoomTo200": "Zoom to 200%",
     "fitToProject": "Fit to Project",
     "fitToSelection": "Fit to Selection"
+  },
+  "toolbar": {
+    "home": "Home",
+    "myProjects": "My Projects",
+    "editArea": "Edit Area",
+    "drawRectMask": "Draw Rect Mask"
+  },
+  "settings": {
+    "title": "Settings",
+    "apiKeys": {
+      "title": "API Keys Management",
+      "description": "Add and manage API Keys for various AI Providers",
+      "addNew": "Add New API Key",
+      "provider": "Provider",
+      "selectProvider": "Select Provider",
+      "apiKey": "API Key",
+      "apiKeyPlaceholder": "Enter API Key",
+      "label": "Label (Optional)",
+      "labelPlaceholder": "e.g., Work OpenAI",
+      "setAsDefault": "Set as Default",
+      "add": "Add",
+      "addedKeys": "Added API Keys",
+      "noKeys": "No API Keys",
+      "default": "Default",
+      "fillProviderAndKey": "Please fill in Provider and API Key",
+      "addFailed": "Failed to add",
+      "addFailedWithError": "Failed to add: {error}",
+      "deleteConfirm": "Are you sure you want to delete this API Key?",
+      "deleteFailed": "Failed to delete",
+      "cancel": "Cancel",
+      "adding": "Adding...",
+      "copy": "Copy",
+      "edit": "Edit",
+      "editKey": "Edit API Key",
+      "editDescription": "Update API Key information",
+      "update": "Update",
+      "updating": "Updating...",
+      "updateSuccess": "Updated successfully",
+      "updateFailed": "Failed to update",
+      "updateFailedWithError": "Failed to update: {error}",
+      "delete": "Delete"
+    },
+    "capabilities": {
+      "text": "Text",
+      "chat": "Chat",
+      "image": "Image",
+      "title": "Capability Settings",
+      "description": "Configure independent models and parameters for different AI capabilities",
+      "provider": "Provider",
+      "selectProvider": "Select Provider",
+      "model": "Model",
+      "selectModel": "Select Model",
+      "saveConfig": "Save",
+      "selectProviderAndModel": "Please select Provider and Model",
+      "saveSuccess": "Saved successfully",
+      "saveFailed": "Failed to save",
+      "saveFailedWithError": "Failed to save: {error}"
+    }
   }
 }

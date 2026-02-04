@@ -57,6 +57,9 @@
     "renameDescription": "Actualiza el nombre del proyecto",
     "modified": "Modificado"
   },
+  "chats": {
+    "title": "Chats"
+  },
   "zoom": {
     "zoomIn": "Acercar",
     "zoomOut": "Alejar",
@@ -65,5 +68,63 @@
     "zoomTo200": "Zoom al 200%",
     "fitToProject": "Ajustar al Proyecto",
     "fitToSelection": "Ajustar a la Selección"
+  },
+  "toolbar": {
+    "home": "Inicio",
+    "myProjects": "Mis Proyectos",
+    "editArea": "Editar Área",
+    "drawRectMask": "Máscara de Rectángulo"
+  },
+  "settings": {
+    "title": "Configuración",
+    "apiKeys": {
+      "title": "Gestión de API Keys",
+      "description": "Agregar y administrar API Keys para varios Proveedores de IA",
+      "addNew": "Agregar Nueva API Key",
+      "provider": "Proveedor",
+      "selectProvider": "Seleccionar Proveedor",
+      "apiKey": "API Key",
+      "apiKeyPlaceholder": "Ingresar API Key",
+      "label": "Etiqueta (Opcional)",
+      "labelPlaceholder": "ej., OpenAI de Trabajo",
+      "setAsDefault": "Establecer como Predeterminado",
+      "add": "Agregar",
+      "addedKeys": "API Keys Agregadas",
+      "noKeys": "No hay API Keys",
+      "default": "Predeterminado",
+      "fillProviderAndKey": "Por favor complete el Proveedor y la API Key",
+      "addFailed": "Error al agregar",
+      "addFailedWithError": "Error al agregar: {error}",
+      "deleteConfirm": "¿Estás seguro de que deseas eliminar esta API Key?",
+      "deleteFailed": "Error al eliminar",
+      "cancel": "Cancelar",
+      "adding": "Agregando...",
+      "copy": "Copiar",
+      "edit": "Editar",
+      "editKey": "Editar API Key",
+      "editDescription": "Actualizar información de la API Key",
+      "update": "Actualizar",
+      "updating": "Actualizando...",
+      "updateSuccess": "Actualizado exitosamente",
+      "updateFailed": "Error al actualizar",
+      "updateFailedWithError": "Error al actualizar: {error}",
+      "delete": "Eliminar"
+    },
+    "capabilities": {
+      "text": "Texto",
+      "chat": "Chat",
+      "image": "Imagen",
+      "title": "Configuración de Capacidades",
+      "description": "Configurar modelos y parámetros independientes para diferentes capacidades de IA",
+      "provider": "Proveedor",
+      "selectProvider": "Seleccionar Proveedor",
+      "model": "Modelo",
+      "selectModel": "Seleccionar Modelo",
+      "saveConfig": "Guardar",
+      "selectProviderAndModel": "Por favor seleccione el Proveedor y el Modelo",
+      "saveSuccess": "Guardado exitosamente",
+      "saveFailed": "Error al guardar",
+      "saveFailedWithError": "Error al guardar: {error}"
+    }
   }
 }

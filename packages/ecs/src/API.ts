@@ -925,7 +925,7 @@ export class API {
         this.setNodes([...nodes, node]);
       }
     } else {
-      const updated = mutateElement(entity, node, diff ?? node, skipOverrideKeys);
+      const updated = mutateElement(entity, node, diff ?? node, skipOverrideKeys, this);
       const index = nodes.findIndex((n) => n.id === updated.id);
 
       this.commands.execute();
@@ -1123,10 +1123,25 @@ export class API {
   deleteNodesById(ids: SerializedNode['id'][]) {
     const nodes = this.getNodes();
     const deletedNodes: SerializedNode[] = [];
+
+    // 递归收集所有子节点及其后代
+    const collectChildrenRecursively = (node: SerializedNode) => {
+      deletedNodes.push(node);
+      nodes.splice(nodes.indexOf(node), 1);
+
+      this.getChildren(node).forEach((child) => {
+        const childNode = this.getNodeByEntity(child);
+        if (childNode) {
+          collectChildrenRecursively(childNode);
+        }
+      });
+    };
+
     ids.forEach((id) => {
       const index = nodes.findIndex((n) => id === n.id);
       if (index !== -1) {
-        deletedNodes.push(...nodes.splice(index, 1));
+        const node = nodes[index];
+        collectChildrenRecursively(node);
       }
     });
 
@@ -1179,6 +1194,11 @@ export class API {
     }
 
     return entity.read(Parent).children;
+  }
+
+  reparentNode(node: SerializedNode, parent: SerializedNode) {
+    // Modify x,y to be relative to the parent
+    this.updateNode(node, { parentId: parent.id, x: (node.x as number) - (parent.x as number), y: (node.y as number) - (parent.y as number) });
   }
 
   /**
@@ -1364,9 +1384,7 @@ export class API {
   /**
    * Upload the file to CDN and return an URL.
    */
-  async upload(file: File): Promise<string> {
-    throw new Error('Not implemented');
-  }
+  upload: (file: File) => Promise<string>;
 
   /**
    * Encode image before segmenting.

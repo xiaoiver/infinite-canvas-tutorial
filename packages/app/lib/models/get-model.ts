@@ -1,0 +1,79 @@
+/**
+ * 统一的模型获取函数
+ * 根据用户 ID 和能力类型，返回配置好的模型实例
+ */
+
+import { createClient } from '@/lib/supabase/server';
+import { getUserCapabilityPreference } from '@/lib/db/user-preferences';
+import { getUserProviderKeys } from '@/lib/db/user-preferences';
+import type { Capability } from './capabilities';
+
+/**
+ * 获取用户为指定能力配置的模型信息
+ */
+export async function getModelForCapability(
+  userId: string,
+  capability: Capability
+): Promise<{
+  provider: string;
+  model: string;
+  apiKey: string;
+  config?: Record<string, any>;
+} | null> {
+  // 获取用户的能力偏好
+  const preference = await getUserCapabilityPreference(userId, capability);
+
+  if (!preference) {
+    return null;
+  }
+
+  // 获取 API Key
+  let apiKey: string | null = null;
+
+  if (preference.providerKeyId) {
+    // 如果指定了 providerKeyId，使用该 key
+    const keys = await getUserProviderKeys(userId);
+    const key = keys.find((k) => k.id === preference.providerKeyId);
+    if (key) {
+      // TODO: 在实际应用中，这里应该解密 API key
+      // 目前假设 apiKeyEncrypted 就是 API key（未加密）
+      apiKey = key.apiKeyEncrypted;
+    }
+  } else {
+    // 如果没有指定 providerKeyId，使用该 provider 的默认 key
+    const keys = await getUserProviderKeys(userId);
+    const defaultKey = keys.find(
+      (k) => k.provider === preference.provider
+    );
+    if (defaultKey) {
+      apiKey = defaultKey.apiKeyEncrypted;
+    }
+  }
+
+  if (!apiKey) {
+    return null;
+  }
+
+  return {
+    provider: preference.provider,
+    model: preference.model,
+    apiKey,
+    config: preference.config as Record<string, any> | undefined,
+  };
+}
+
+/**
+ * 获取用户为指定能力配置的模型字符串（用于 AI SDK）
+ * 格式：provider/model
+ */
+export async function getModelStringForCapability(
+  userId: string,
+  capability: Capability
+): Promise<string | null> {
+  const modelInfo = await getModelForCapability(userId, capability);
+  if (!modelInfo) {
+    return null;
+  }
+  return modelInfo.model; // model 已经是 'provider/model' 格式
+}
+

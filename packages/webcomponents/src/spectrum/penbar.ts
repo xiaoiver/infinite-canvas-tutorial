@@ -106,12 +106,13 @@ export class Penbar extends LitElement {
           extensions: ['jpg', 'png', 'svg', 'webp'],
           description: 'Image to upload',
         });
+
         if (file) {
           const center = this.api.viewport2Canvas({
             x: this.api.element.clientWidth / 2,
             y: this.api.element.clientHeight / 2,
           });
-          await this.api.createImageFromFile(file, center);
+          await this.api.createImageFromFile(file, { position: center });
           this.api.setAppState({
             penbarSelected: Pen.SELECT,
           });
