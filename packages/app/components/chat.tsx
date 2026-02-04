@@ -1,24 +1,12 @@
 "use client";
 
 import {
-  Attachment,
-  AttachmentPreview,
-  AttachmentRemove,
-  Attachments,
-} from "@/components/ai-elements/attachments";
-import {
   Conversation,
   ConversationContent,
   ConversationScrollButton,
 } from "@/components/ai-elements/conversation";
 import {
   Message,
-  MessageBranch,
-  MessageBranchContent,
-  MessageBranchNext,
-  MessageBranchPage,
-  MessageBranchPrevious,
-  MessageBranchSelector,
   MessageContent,
   MessageResponse,
   MessageActions,
@@ -31,19 +19,12 @@ import {
   PromptInputActionMenuContent,
   PromptInputActionMenuTrigger,
   PromptInputBody,
-  PromptInputButton,
   PromptInputFooter,
   PromptInputHeader,
   type PromptInputMessage,
-  PromptInputSelect,
-  PromptInputSelectContent,
-  PromptInputSelectItem,
-  PromptInputSelectTrigger,
-  PromptInputSelectValue,
   PromptInputSubmit,
   PromptInputTextarea,
   PromptInputTools,
-  usePromptInputAttachments,
 } from "@/components/ai-elements/prompt-input";
 import {
   Reasoning,
@@ -67,44 +48,16 @@ import {
 import { ImageGallery } from "@/components/ai-elements/image-gallery";
 import { cn } from "@/lib/utils";
 import type { ToolUIPart, DynamicToolUIPart } from "ai";
-import { Copy, GlobeIcon, RefreshCcw } from "lucide-react";
+import { Copy, RefreshCcw, AlertTriangle } from "lucide-react";
 import { useState } from "react";
 import { useChat, UIMessage } from '@ai-sdk/react';
 import { Loader } from "./ai-elements/loader";
-
-const models = [
-  {
-    name: 'GPT 4o',
-    value: 'openai/gpt-4o',
-  },
-  {
-    name: 'Deepseek R1',
-    value: 'deepseek/deepseek-r1',
-  },
-];
-
-const PromptInputAttachmentsDisplay = () => {
-  const attachments = usePromptInputAttachments();
-
-  if (attachments.files.length === 0) {
-    return null;
-  }
-
-  return (
-    <Attachments variant="inline">
-      {attachments.files.map((attachment) => (
-        <Attachment
-          data={attachment}
-          key={attachment.id}
-          onRemove={() => attachments.remove(attachment.id)}
-        >
-          <AttachmentPreview />
-          <AttachmentRemove />
-        </Attachment>
-      ))}
-    </Attachments>
-  );
-};
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import Link from "next/link";
+import { getChatErrorCode, type ChatErrorCode } from "@/lib/errors";
+import { useParams } from "next/navigation";
+import PromptInputAttachmentsDisplay from "./prompt-input-display";
+import { useTranslations } from 'next-intl';
 
 const Chat = ({ 
   className, 
@@ -120,9 +73,11 @@ const Chat = ({
   onData?: (options: { data: any }) => void;
 }) => {
   const [input, setInput] = useState('');
-  const [model, setModel] = useState<string>(models[0].value);
-  const [webSearch, setWebSearch] = useState(false);
-  const { messages, sendMessage, status, regenerate } = useChat({
+  const params = useParams();
+  const locale = params?.locale as string || 'en';
+  const t = useTranslations('auth');
+
+  const { messages, sendMessage, status, error, regenerate } = useChat({
     messages: initialMessages,
     onData: (data) => {
       if (onData) {
@@ -135,27 +90,94 @@ const Chat = ({
       }
     },
   });
-  const handleSubmit = (message: PromptInputMessage) => {
+
+  const errorCode = getChatErrorCode(error);
+
+  const handleSubmit = async (message: PromptInputMessage) => {
     const hasText = Boolean(message.text);
     const hasAttachments = Boolean(message.files?.length);
     if (!(hasText || hasAttachments)) {
       return;
     }
-    sendMessage(
-      { 
-        text: message.text || 'Sent with attachments',
-        files: message.files 
-      },
-      {
-        body: {
-          model: model,
-          webSearch: webSearch,
-          chatId: chatId, // 传递 chatId 到 API
+    
+    try {
+      sendMessage(
+        { 
+          text: message.text || 'Sent with attachments',
+          files: message.files 
         },
-      },
-    );
-    setInput('');
+        {
+          body: {
+            // model: model,
+            // webSearch: webSearch,
+            chatId: chatId, // 传递 chatId 到 API
+          },
+        },
+      );
+      setInput('');
+    } catch (err) {
+      console.error('Error sending message:', err);
+    }
   };
+
+  const getErrorTitle = (errorCode: ChatErrorCode | null) => {
+    switch (errorCode) {
+      case 'AUTHENTICATION_ERROR':
+        return 'API Key 认证失败';
+      case 'MODEL_NOT_FOUND':
+        return '未找到模型';
+      case 'UNAUTHORIZED':
+        return '未授权';
+      case 'INTERNAL_ERROR':
+      default:
+        return '发生错误';
+    }
+  };
+  
+  const getErrorAction = (errorCode: ChatErrorCode | null) => {
+    switch (errorCode) {
+      case 'AUTHENTICATION_ERROR':
+      case 'MODEL_NOT_FOUND':
+        return (
+          <Link 
+            href={`/${locale}/settings`}
+            className="text-sm font-medium underline underline-offset-4 hover:no-underline"
+          >
+            {t('settings')}
+          </Link>
+        );
+      case 'UNAUTHORIZED':
+        return (
+          <Link 
+            href={`/${locale}/login`}
+            className="text-sm font-medium underline underline-offset-4 hover:no-underline"
+          >
+            {t('login')}
+          </Link>
+        );
+      default:
+        return null;
+    }
+  };
+
+  const renderErrorAlert = () => {
+    if (!error) return null;
+  
+    return (
+      <div className="mb-4">
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>{getErrorTitle(errorCode)}</AlertTitle>
+          <AlertDescription className="mt-2">
+            <div className="mt-3">
+              {getErrorAction(errorCode)}
+            </div>
+          </AlertDescription>
+        </Alert>
+      </div>
+    );
+  };
+  
   return (
     <div className={cn("relative flex-1 min-h-0 p-4", className)}>
       <div className="flex flex-col h-full">
@@ -351,6 +373,7 @@ const Chat = ({
               </div>
             ))}
             {status === 'submitted' && <Loader />}
+            {renderErrorAlert()}
           </ConversationContent>
           <ConversationScrollButton />
         </Conversation>
@@ -372,30 +395,6 @@ const Chat = ({
                   <PromptInputActionAddAttachments />
                 </PromptInputActionMenuContent>
               </PromptInputActionMenu>
-              <PromptInputButton
-                variant={webSearch ? 'default' : 'ghost'}
-                onClick={() => setWebSearch(!webSearch)}
-              >
-                <GlobeIcon size={16} />
-                <span>Search</span>
-              </PromptInputButton>
-              <PromptInputSelect
-                onValueChange={(value) => {
-                  setModel(value);
-                }}
-                value={model}
-              >
-                <PromptInputSelectTrigger>
-                  <PromptInputSelectValue />
-                </PromptInputSelectTrigger>
-                <PromptInputSelectContent>
-                  {models.map((model) => (
-                    <PromptInputSelectItem key={model.value} value={model.value}>
-                      {model.name}
-                    </PromptInputSelectItem>
-                  ))}
-                </PromptInputSelectContent>
-              </PromptInputSelect>
             </PromptInputTools>
             <PromptInputSubmit disabled={!input && !status} status={status} />
           </PromptInputFooter>

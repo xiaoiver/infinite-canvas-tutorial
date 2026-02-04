@@ -198,7 +198,7 @@ export async function executePaste(
       updateAndSelectNodes(api, appState, nodes);
     }
   } else if (isSupportedImageFileType(file?.type)) {
-    await api.createImageFromFile(file, canvasPosition);
+    await api.createImageFromFile(file, { position: canvasPosition });
   }
 }
 
@@ -572,7 +572,7 @@ export class ContextMenu extends LitElement {
     const url = event.dataTransfer.getData('text/uri-list');
     if (url) {
       try {
-        await this.api.createImageFromFile(url, canvasPosition);
+        await this.api.createImageFromFile(url, { position: canvasPosition });
         return;
       } catch (error) {
         console.error(error);
@@ -590,7 +590,7 @@ export class ContextMenu extends LitElement {
           const svg = await file.text();
           createSVG(this.api, this.appState, svg, canvasPosition);
         } else {
-          await this.api.createImageFromFile(file, canvasPosition);
+          await this.api.createImageFromFile(file, { position: canvasPosition });
         }
       }
     }

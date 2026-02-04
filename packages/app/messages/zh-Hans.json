@@ -57,6 +57,9 @@
     "renameDescription": "修改项目的名称",
     "modified": "修改于"
   },
+  "chats": {
+    "title": "对话"
+  },
   "zoom": {
     "zoomIn": "放大",
     "zoomOut": "缩小",
@@ -65,5 +68,63 @@
     "zoomTo200": "缩放至200%",
     "fitToProject": "适应项目",
     "fitToSelection": "适应选中"
+  },
+  "toolbar": {
+    "home": "首页",
+    "myProjects": "我的项目",
+    "editArea": "编辑区域",
+    "drawRectMask": "矩形遮罩"
+  },
+  "settings": {
+    "title": "设置",
+    "apiKeys": {
+      "title": "API Keys 管理",
+      "description": "添加和管理各个 AI Provider 的 API Keys",
+      "addNew": "添加新的 API Key",
+      "provider": "Provider",
+      "selectProvider": "选择 Provider",
+      "apiKey": "API Key",
+      "apiKeyPlaceholder": "输入 API Key",
+      "label": "标签（可选）",
+      "labelPlaceholder": "例如：工作用 OpenAI",
+      "setAsDefault": "设为默认",
+      "add": "添加",
+      "addedKeys": "已添加的 API Keys",
+      "noKeys": "暂无 API Keys",
+      "default": "默认",
+      "fillProviderAndKey": "请填写 Provider 和 API Key",
+      "addFailed": "添加失败",
+      "addFailedWithError": "添加失败: {error}",
+      "deleteConfirm": "确定要删除这个 API Key 吗？",
+      "deleteFailed": "删除失败",
+      "cancel": "取消",
+      "adding": "添加中...",
+      "copy": "复制",
+      "edit": "编辑",
+      "editKey": "编辑 API Key",
+      "editDescription": "修改 API Key 的信息",
+      "update": "更新",
+      "updating": "更新中...",
+      "updateSuccess": "更新成功",
+      "updateFailed": "更新失败",
+      "updateFailedWithError": "更新失败: {error}",
+      "delete": "删除"
+    },
+    "capabilities": {
+      "text": "文本",
+      "chat": "对话",
+      "image": "图像",
+      "title": "能力配置",
+      "description": "为不同的 AI 能力配置独立的模型和参数",
+      "provider": "Provider",
+      "selectProvider": "选择 Provider",
+      "model": "Model",
+      "selectModel": "选择 Model",
+      "saveConfig": "保存",
+      "selectProviderAndModel": "请选择 Provider 和 Model",
+      "saveSuccess": "保存成功",
+      "saveFailed": "保存失败",
+      "saveFailedWithError": "保存失败: {error}"
+    }
   }
 }

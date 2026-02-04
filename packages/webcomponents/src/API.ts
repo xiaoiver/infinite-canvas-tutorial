@@ -7,6 +7,7 @@ import {
   StateManagement,
   Commands,
   ThemeMode,
+  DOMAdapter,
 } from '@infinite-canvas-tutorial/ecs';
 import { type LitElement } from 'lit';
 import { Event } from './event';
@@ -187,7 +188,13 @@ export class ExtendedAPI extends API {
     });
   }
 
-  async createImageFromFile(file: File | string, position?: { x: number; y: number }) {
+  async createImageFromFile(file: File | string, {
+    position,
+    heuristicResize,
+  }: Partial<{
+    position: { x: number; y: number };
+    heuristicResize: boolean;
+  }> = {}) {
     const size = {
       width: this.element.clientWidth,
       height: this.element.clientHeight,
@@ -199,21 +206,25 @@ export class ExtendedAPI extends API {
       isString(file) ? Promise.resolve(file) : getDataURL(file),
     ]);
 
-    let cdnUrl: string;
+    let cdnUrl = dataURL;
     if (!isString(file) && this.upload) {
       cdnUrl = await this.upload(file);
     }
 
-    // Heuristic to calculate the size of the image.
-    // @see https://github.com/excalidraw/excalidraw/blob/master/packages/excalidraw/components/App.tsx#L10059
-    const minHeight = Math.max(size.height - 120, 160);
-    // max 65% of canvas height, clamped to <300px, vh - 120px>
-    const maxHeight = Math.min(
-      minHeight,
-      Math.floor(size.height * 0.5) / size.zoom,
-    );
-    const height = Math.min(image.height, maxHeight);
-    const width = height * (image.width / image.height);
+    let height = image.height;
+    let width = image.width;
+    if (heuristicResize) {
+      // Heuristic to calculate the size of the image.
+      // @see https://github.com/excalidraw/excalidraw/blob/master/packages/excalidraw/components/App.tsx#L10059
+      const minHeight = Math.max(size.height - 120, 160);
+      // max 65% of canvas height, clamped to <300px, vh - 120px>
+      const maxHeight = Math.min(
+        minHeight,
+        Math.floor(size.height * 0.5) / size.zoom,
+      );
+      height = Math.min(image.height, maxHeight);
+      width = height * (image.width / image.height);
+    }
 
     updateAndSelectNodes(this, this.getAppState(), [
       {
@@ -223,9 +234,33 @@ export class ExtendedAPI extends API {
         y: (position?.y ?? 0) - height / 2,
         width,
         height,
-        fill: cdnUrl ?? dataURL,
+        fill: cdnUrl,
         lockAspectRatio: true,
       },
     ]);
+  }
+
+  /**
+   * Used by image model to edit with.
+   */
+  createMask(nodes: SerializedNode[], relativeTo: { x: number; y: number; width: number; height: number }): HTMLCanvasElement {
+    const canvas = DOMAdapter.get().createCanvas(relativeTo.width, relativeTo.height) as HTMLCanvasElement;
+    const ctx = canvas.getContext('2d')!;
+
+    // 在图像处理和 AI 掩码（Mask）中，数值通常映射在 0 到 1 之间：
+    // 白色 (White, 值为 1 或 255)： 代表“激活”或“满分”。模型会识别这个区域，并在这里进行扩散生成。
+    // 黑色 (Black, 值为 0)： 代表“屏蔽”或“零分”。模型会忽略这个区域，或者说将其锁定，保持原图不动。
+    ctx.clearRect(0, 0, relativeTo.width, relativeTo.height);
+    ctx.fillStyle = 'black';
+    ctx.fillRect(0, 0, relativeTo.width, relativeTo.height);
+    ctx.fillStyle = 'white';
+    nodes.forEach(node => {
+      if (node.type === 'rect') {
+        const { x, y, width, height } = node;
+        ctx.fillRect(x as number, y as number, width as number, height as number);
+      }
+    });
+
+    return canvas;
   }
 }

@@ -173,21 +173,44 @@ canvas.addEventListener(Event.READY, async (e) => {
     width: 200,
     height: 200,
     fill: 'grey',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
+    // display: 'flex',
+    // alignItems: 'center',
+    // justifyContent: 'center',
   };
+
   const child = {
     id: 'child',
     parentId: 'parent',
     type: 'rect',
     fill: 'red',
-    width: '50%',
-    height: '50%',
-  };
+    x: 0,
+    y: 0,
+    width: 100,
+    height: 100,
+  }
+  // const child = {
+  //   id: 'child',
+  //   parentId: 'parent',
+  //   type: 'rect',
+  //   fill: 'red',
+  //   width: '50%',
+  //   height: '50%',
+  // };
   api.updateNodes([parent, child]);
+  api.selectNodes([parent]);
+  api.record();
   // api.updateNode(node1);
-  // api.record();
+
+  setTimeout(() => {
+    api.deleteNodesById([parent.id]);
+    api.record();
+
+    // setTimeout(() => {
+    //   api.undo();
+    // }, 1000);
+    // api.undo();
+    // api.updateNode(child, { parentId: 'parent', x: 50, y: 50 });
+  }, 1000);
 });
 
 try {

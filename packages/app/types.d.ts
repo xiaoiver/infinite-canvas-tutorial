@@ -23,6 +23,12 @@ declare module 'react' {
                 React.HTMLAttributes<HTMLElement>,
                 HTMLElement
             >;
+            'ic-spectrum-context-image-edit-bar': React.DetailedHTMLProps<
+                React.HTMLAttributes<HTMLElement> & {
+                    node: any;
+                },
+                HTMLElement
+            >;
         }
     }
 }

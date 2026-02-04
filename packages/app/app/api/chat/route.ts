@@ -1,11 +1,15 @@
-import { streamText, UIMessage, convertToModelMessages, type InferUITools, stepCountIs, } from 'ai';
+import { createOpenAI } from '@ai-sdk/openai';
+import { createGoogleGenerativeAI } from '@ai-sdk/google';
+import { streamText, UIMessage, convertToModelMessages, type InferUITools, stepCountIs, createGateway } from 'ai';
 import { createClient } from '@/lib/supabase/server';
 import { createMessage, getNextSeq } from '@/lib/db/messages';
 import { createTools } from '@/lib/db/tools';
 import { convertUIMessageToDBMessage, convertToolPartToDBTool } from '@/lib/db/utils';
-import type { ToolUIPart, DynamicToolUIPart } from 'ai';
-
+import type { ToolUIPart, DynamicToolUIPart, LanguageModel } from 'ai';
+import { getModelForCapability } from '@/lib/models/get-model';
 import { generateImageTool } from '@/tools/generate-image';
+import { NextResponse } from 'next/server';
+import { ChatErrorCode, isAuthenticationError } from '@/lib/errors';
 
 const tools = {
   generateImage: generateImageTool,
@@ -15,16 +19,42 @@ export type ChatTools = InferUITools<typeof tools>;
 // Allow streaming responses up to 30 seconds
 export const maxDuration = 30;
 
+// 错误响应接口
+export interface ChatErrorResponse {
+  error: string;
+  errorCode: ChatErrorCode;
+  details?: string;
+}
+
+/**
+ * 创建错误响应
+ */
+function createErrorResponse(
+  errorCode: ChatErrorCode,
+  message: string,
+  details?: string,
+  status: number = 500
+): NextResponse<ChatErrorResponse> {
+  return NextResponse.json(
+    {
+      error: message,
+      errorCode,
+      ...(details && { details }),
+    },
+    { status }
+  );
+}
+
 export async function POST(req: Request) {
   const {
     messages,
-    model,
-    webSearch,
+    // model,
+    // webSearch,
     chatId,
   }: {
     messages: UIMessage[];
-    model: string;
-    webSearch: boolean;
+    // model: string;
+    // webSearch: boolean;
     chatId?: string;
   } = await req.json();
 
@@ -36,7 +66,12 @@ export async function POST(req: Request) {
   } = await supabase.auth.getUser();
 
   if (authError || !user) {
-    return new Response('Unauthorized', { status: 401 });
+    return createErrorResponse(
+      'UNAUTHORIZED',
+      '用户未授权，请先登录',
+      authError?.message,
+      401
+    );
   }
 
   // 如果有 chatId，保存用户消息到数据库
@@ -65,16 +100,100 @@ export async function POST(req: Request) {
     }
   }
 
-  const result = streamText({
-    model: webSearch ? 'perplexity/sonar' : model,
-    messages: await convertToModelMessages(messages),
-    system:
-      'You are a helpful assistant that can answer questions and help with tasks. ' +
-      'When using tools that generate images, do NOT include image URLs in your response message. ' +
-      'The tool output component will automatically display the generated images, so there is no need to mention them in your text response.',
-    stopWhen: stepCountIs(5),
-    tools,
-  });
+  // 如果用户没有指定 model，尝试从 capability preference 获取
+  const modelInfo = await getModelForCapability(user.id, 'chat');
+  if (!modelInfo) {
+    return createErrorResponse(
+      'MODEL_NOT_FOUND',
+      '未找到可用的模型，请在设置中配置模型',
+      'No model configured for chat capability'
+    );
+  }
+
+  const { provider, model, apiKey, config } = modelInfo;
+  let languageModel: LanguageModel | undefined;
+
+  try {
+    if (provider === 'gateway') {
+      const gateway = createGateway({
+        apiKey,
+      });
+      languageModel = gateway(model);
+    } else if (provider === 'openai') {
+      const openai = createOpenAI({
+        apiKey,
+      });
+      languageModel = openai(model);
+    } else if (provider === 'google') {
+      const google = createGoogleGenerativeAI({
+        apiKey,
+      });
+      languageModel = google(model);
+    }
+  } catch (error) {
+    console.error('Error creating language model:', error);
+
+    // 判断是否是认证错误
+    if (isAuthenticationError(error)) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      return createErrorResponse(
+        'AUTHENTICATION_ERROR',
+        'API Key 认证失败，请检查设置中的 API Key 是否正确',
+        errorMessage
+      );
+    }
+
+    // 其他错误
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    return createErrorResponse(
+      'INTERNAL_ERROR',
+      '创建语言模型时发生错误',
+      errorMessage
+    );
+  }
+
+  if (!languageModel) {
+    return createErrorResponse(
+      'INTERNAL_ERROR',
+      '无法创建语言模型实例',
+      'Language model creation returned undefined'
+    );
+  }
+
+  let result;
+  try {
+    result = streamText({
+      model: languageModel,
+      messages: await convertToModelMessages(messages),
+      system:
+        // TODO: System prompt is configurable
+        'You are a helpful assistant that can answer questions and help with tasks. ' +
+        'When using tools that generate images, do NOT include image URLs in your response message. ' +
+        'The tool output component will automatically display the generated images, so there is no need to mention them in your text response.',
+      stopWhen: stepCountIs(5),
+      tools,
+    });
+  } catch (error) {
+    console.error('Error in streamText:', error);
+
+    // 判断是否是认证错误（可能在 streamText 调用时抛出）
+    if (isAuthenticationError(error)) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      return createErrorResponse(
+        'AUTHENTICATION_ERROR',
+        'API Key 认证失败，请检查设置中的 API Key 是否正确',
+        errorMessage
+      );
+    }
+
+    // 其他错误
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    return createErrorResponse(
+      'INTERNAL_ERROR',
+      '启动流式响应时发生错误',
+      errorMessage
+    );
+  }
 
   // send sources and reasoning back to the client
   return result.toUIMessageStreamResponse({

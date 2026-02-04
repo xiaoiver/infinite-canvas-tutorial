@@ -11,11 +11,14 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { useTranslations } from 'next-intl'
+import { useTranslations, useLocale } from 'next-intl'
+import Link from 'next/link'
 
 export function UserMenu() {
   const { user, signOut } = useAuth()
   const t = useTranslations('auth')
+  const tSettings = useTranslations('settings')
+  const locale = useLocale()
 
   if (!user) return null
 
@@ -40,12 +43,15 @@ export function UserMenu() {
         <DropdownMenuContent className="w-56" align="end" forceMount>
           <DropdownMenuLabel className="font-normal">
             <div className="flex flex-col space-y-1">
-              <p className="text-sm font-medium leading-none">{t('login')}</p>
-              <p className="text-xs leading-none text-muted-foreground">
+              <p className="text-sm leading-none text-muted-foreground">
                 {user.email}
               </p>
             </div>
           </DropdownMenuLabel>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem asChild>
+            <Link href={`/${locale}/settings`}>{tSettings('title')}</Link>
+          </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={handleSignOut}>
             {t('logout')}

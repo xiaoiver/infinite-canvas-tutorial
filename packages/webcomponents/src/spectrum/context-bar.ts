@@ -129,6 +129,9 @@ export class ContextBar extends LitElement {
       if (layersSelected.length === 1) {
         const node =
           layersSelected[0] && this.api.getNodeById(layersSelected[0]);
+        if (!node) {
+          return html``;
+        }
 
         const isImage =
           node.type === 'rect' &&

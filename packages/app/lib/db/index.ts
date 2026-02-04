@@ -32,4 +32,10 @@ export type Message = typeof schema.messages.$inferSelect;
 export type NewMessage = typeof schema.messages.$inferInsert;
 export type Tool = typeof schema.tools.$inferSelect;
 export type NewTool = typeof schema.tools.$inferInsert;
+export type UserProviderKey = typeof schema.userProviderKeys.$inferSelect;
+export type NewUserProviderKey = typeof schema.userProviderKeys.$inferInsert;
+export type UserCapabilityPreference = typeof schema.userCapabilityPreferences.$inferSelect;
+export type NewUserCapabilityPreference = typeof schema.userCapabilityPreferences.$inferInsert;
+export type UserPreference = typeof schema.userPreferences.$inferSelect;
+export type NewUserPreference = typeof schema.userPreferences.$inferInsert;
 

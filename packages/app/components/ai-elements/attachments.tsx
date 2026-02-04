@@ -226,7 +226,7 @@ export const AttachmentPreview = ({
     ) : (
       <img
         alt={filename || "Image"}
-        className="size-full rounded object-cover"
+        className="size-full object-contain"
         height={20}
         src={url}
         width={20}
@@ -264,8 +264,8 @@ export const AttachmentPreview = ({
       className={cn(
         "flex shrink-0 items-center justify-center overflow-hidden",
         variant === "grid" && "size-full bg-muted",
-        variant === "inline" && "size-5 rounded bg-background",
-        variant === "list" && "size-12 rounded bg-muted",
+        variant === "inline" && "size-5 bg-background",
+        variant === "list" && "size-12 bg-muted",
         className
       )}
       {...props}
