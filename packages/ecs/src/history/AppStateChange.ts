@@ -12,7 +12,7 @@ export class AppStateChange implements Change<AppState> {
   private constructor(
     private readonly delta: Delta<AppState>,
     private readonly api: API,
-  ) {}
+  ) { }
 
   static empty() {
     return new AppStateChange(Delta.create({}, {}), undefined);
@@ -98,7 +98,8 @@ export class AppStateChange implements Change<AppState> {
           false,
           false,
         );
-      } else {
+      }
+      if (prevLayersSelected.length > 0) {
         this.api.deselectNodes(
           prevLayersSelected
             .map((id) => this.api.getNodeById(id))
@@ -114,7 +115,9 @@ export class AppStateChange implements Change<AppState> {
           false,
           false,
         );
-      } else {
+      }
+
+      if (prevLayersHighlighted.length > 0) {
         this.api.unhighlightNodes(
           prevLayersHighlighted
             .map((id) => this.api.getNodeById(id))

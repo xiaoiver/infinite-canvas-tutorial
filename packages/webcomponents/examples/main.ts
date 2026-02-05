@@ -51,6 +51,11 @@ const canvas = document.querySelector<HTMLElement>('#canvas1')!;
 canvas.addEventListener(Event.READY, async (e) => {
   const api = e.detail;
 
+  // api.onchange = (e) => {
+  //   const { appState, nodes } = e;
+  //   console.log('selected', appState.layersSelected);
+  // };
+
   // api.runAtNextTick(() => {
   api.setAppState({
     cameraX: 0,

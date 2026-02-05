@@ -24,32 +24,28 @@ import {
   system,
   API,
   Name,
-  Rect,
-  DropShadow,
+  Ellipse,
   ZIndex,
   ComputeZIndex,
-  Selected,
   Pen,
-  Ellipse,
-  EllipseSerializedNode,
-  ToBeDeleted,
-  Transformable,
-  Highlighted,
+  RectSerializedNode,
+  Selected,
+  Rect,
 } from '../../packages/ecs/src';
-import { NodeJSAdapter, sleep } from '../utils';
+import { NodeJSAdapter, sleep, createMouseEvent } from '../utils';
 
 DOMAdapter.set(NodeJSAdapter);
 
-describe('Hierarchy', () => {
-  it('should undo deleting node and its children correctly', async () => {
+describe('Select and Undo', () => {
+  it('should select and undo correctly', async () => {
     const app = new App();
 
-    let api: API;
-    let $canvas: HTMLCanvasElement;
+    let $canvas: HTMLCanvasElement | undefined;
     let canvasEntity: Entity | undefined;
     let cameraEntity: Entity | undefined;
-    let parent: EllipseSerializedNode;
-    let child: EllipseSerializedNode;
+    let api: API;
+    let parent: RectSerializedNode;
+    let child: RectSerializedNode;
 
     const MyPlugin: Plugin = () => {
       system(PreStartUp)(StartUpSystem);
@@ -75,13 +71,9 @@ describe('Hierarchy', () => {
             Rect,
             Visibility,
             Name,
-            DropShadow,
             ZIndex,
             Selected,
             Ellipse,
-            ToBeDeleted,
-            Transformable,
-            Highlighted,
           ).write,
       );
 
@@ -103,11 +95,8 @@ describe('Hierarchy', () => {
 
         parent = {
           id: 'parent',
-          type: 'ellipse',
-          stroke: 'black',
-          strokeWidth: 10,
+          type: 'rect',
           fill: 'red',
-          visibility: 'visible',
           x: 50,
           y: 50,
           width: 100,
@@ -116,11 +105,8 @@ describe('Hierarchy', () => {
         child = {
           id: 'child',
           parentId: 'parent',
-          type: 'ellipse',
-          stroke: 'black',
-          strokeWidth: 10,
+          type: 'rect',
           fill: 'green',
-          visibility: 'visible',
           x: 0,
           y: 0,
           width: 50,
@@ -140,32 +126,17 @@ describe('Hierarchy', () => {
     await app.run();
 
     await sleep(300);
-
-    api.deleteNodesById([parent.id]);
+    api.selectNodes([child]);
     api.record();
-
     await sleep(300);
 
     api.undo();
-
     await sleep(300);
-
-    if (canvasEntity && cameraEntity) {
-      const canvas = canvasEntity.read(Canvas);
-      expect(canvas.devicePixelRatio).toBe(1);
-      expect(canvas.width).toBe(200);
-      expect(canvas.height).toBe(200);
-      expect(canvas.renderer).toBe('webgl');
-      expect(canvas.cameras).toHaveLength(1);
-
-      const camera = cameraEntity.read(Camera);
-      expect(camera.canvas.isSame(canvasEntity)).toBeTruthy();
-    }
 
     const dir = `${__dirname}/snapshots`;
     await expect($canvas!.getContext('webgl1')).toMatchWebGLSnapshot(
       dir,
-      'hierarchy-undo-delete',
+      'transformer-select-undo',
     );
 
     await app.exit();
