@@ -86,7 +86,7 @@ canvas.addEventListener(Event.READY, async (e) => {
     // penbarVisible: false,
     // taskbarVisible: false,
     // rotateEnabled: false,
-    // flipEnabled: false,
+    flipEnabled: false,
     // filter: 'noise(0.5)',
   });
 
@@ -199,18 +199,6 @@ canvas.addEventListener(Event.READY, async (e) => {
   api.updateNodes([parent, child]);
   api.selectNodes([parent]);
   api.record();
-  // api.updateNode(node1);
-
-  setTimeout(() => {
-    api.deleteNodesById([parent.id]);
-    api.record();
-
-    // setTimeout(() => {
-    //   api.undo();
-    // }, 1000);
-    // api.undo();
-    // api.updateNode(child, { parentId: 'parent', x: 50, y: 50 });
-  }, 1000);
 });
 
 try {
