@@ -431,10 +431,34 @@ export class Select extends System {
       }
 
       if (anchor) {
-        Object.assign(anchor.write(Circle), {
-          cx: x,
-          cy: y,
-        });
+        if (!flipEnabled) {
+          if (anchor === tlAnchor) {
+            Object.assign(anchor.write(Circle), {
+              cx: Math.min(x, trAnchor.read(Circle).cx),
+              cy: Math.min(y, blAnchor.read(Circle).cy),
+            });
+          } else if (anchor === trAnchor) {
+            Object.assign(anchor.write(Circle), {
+              cx: Math.max(x, tlAnchor.read(Circle).cx),
+              cy: Math.min(y, blAnchor.read(Circle).cy),
+            });
+          } else if (anchor === blAnchor) {
+            Object.assign(anchor.write(Circle), {
+              cx: Math.min(x, trAnchor.read(Circle).cx),
+              cy: Math.max(y, tlAnchor.read(Circle).cy),
+            });
+          } else if (anchor === brAnchor) {
+            Object.assign(anchor.write(Circle), {
+              cx: Math.max(x, tlAnchor.read(Circle).cx),
+              cy: Math.max(y, tlAnchor.read(Circle).cy),
+            });
+          }
+        } else {
+          Object.assign(anchor.write(Circle), {
+            cx: x,
+            cy: y,
+          });
+        }
       }
 
       let newHypotenuse: number;
@@ -542,13 +566,30 @@ export class Select extends System {
           });
         }
       } else if (anchorName === AnchorName.TOP_CENTER) {
+        if (!flipEnabled) {
+          tlAnchor.write(Circle).cy = Math.min(y, brAnchor.read(Circle).cy);
+        } else {
+          tlAnchor.write(Circle).cy = y;
+        }
         tlAnchor.write(Circle).cy = y;
       } else if (anchorName === AnchorName.BOTTOM_CENTER) {
-        brAnchor.write(Circle).cy = y;
+        if (!flipEnabled) {
+          brAnchor.write(Circle).cy = Math.max(y, tlAnchor.read(Circle).cy);
+        } else {
+          brAnchor.write(Circle).cy = y;
+        }
       } else if (anchorName === AnchorName.MIDDLE_LEFT) {
-        tlAnchor.write(Circle).cx = x;
+        if (!flipEnabled) {
+          tlAnchor.write(Circle).cx = Math.min(x, brAnchor.read(Circle).cx);
+        } else {
+          tlAnchor.write(Circle).cx = x;
+        }
       } else if (anchorName === AnchorName.MIDDLE_RIGHT) {
-        brAnchor.write(Circle).cx = x;
+        if (!flipEnabled) {
+          brAnchor.write(Circle).cx = Math.max(x, tlAnchor.read(Circle).cx);
+        } else {
+          brAnchor.write(Circle).cx = x;
+        }
       }
 
       if (lockAspectRatio) {
