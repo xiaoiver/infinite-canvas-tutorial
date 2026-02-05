@@ -8,6 +8,7 @@ import {
   Commands,
   ThemeMode,
   DOMAdapter,
+  deserializePoints,
 } from '@infinite-canvas-tutorial/ecs';
 import { type LitElement } from 'lit';
 import { Event } from './event';
@@ -254,10 +255,26 @@ export class ExtendedAPI extends API {
     ctx.fillStyle = 'black';
     ctx.fillRect(0, 0, relativeTo.width, relativeTo.height);
     ctx.fillStyle = 'white';
+    ctx.strokeStyle = 'white';
     nodes.forEach(node => {
       if (node.type === 'rect') {
         const { x, y, width, height } = node;
         ctx.fillRect(x as number, y as number, width as number, height as number);
+      } else if (node.type === 'path') {
+
+      } else if (node.type === 'polyline') {
+        const { points, strokeWidth, strokeLinecap, strokeLinejoin, x, y } = node;
+        deserializePoints(points).forEach((point, index) => {
+          if (index === 0) {
+            ctx.moveTo(point[0] + (x as number), point[1] + (y as number));
+          } else {
+            ctx.lineTo(point[0] + (x as number), point[1] + (y as number));
+          }
+        });
+        ctx.lineWidth = strokeWidth;
+        ctx.lineCap = strokeLinecap;
+        ctx.lineJoin = strokeLinejoin;
+        ctx.stroke();
       }
     });
 

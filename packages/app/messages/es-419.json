@@ -55,7 +55,19 @@
     "editDescription": "Actualiza el nombre y la descripción del proyecto",
     "rename": "Renombrar",
     "renameDescription": "Actualiza el nombre del proyecto",
-    "modified": "Modificado"
+    "modified": "Modificado",
+    "exportAs": "Exportar como...",
+    "exportAsSVG": "SVG",
+    "exportAsPNG": "PNG",
+    "exportAsJPEG": "JPEG",
+    "edit": "Editar",
+    "undo": "Deshacer",
+    "redo": "Rehacer",
+    "cut": "Cortar",
+    "copy": "Copiar",
+    "paste": "Pegar",
+    "preferences": "Preferencias",
+    "grid": "Cuadrícula"
   },
   "chats": {
     "title": "Chats"
@@ -73,7 +85,8 @@
     "home": "Inicio",
     "myProjects": "Mis Proyectos",
     "editArea": "Editar Área",
-    "drawRectMask": "Máscara de Rectángulo"
+    "drawRectMask": "Máscara de Rectángulo",
+    "drawPencilFreehandMask": "Máscara de Pencil Freehand"
   },
   "settings": {
     "title": "Configuración",

@@ -10,6 +10,9 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
   Dialog,
@@ -25,8 +28,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import type * as ScrollAreaPrimitive from '@radix-ui/react-scroll-area';
 import { ChevronDown, Edit2, Trash2, MessageSquare, Plus } from 'lucide-react';
 import Chat from '@/components/chat';
-import Canvas, { CanvasAPI } from '@/components/canvas';
-import { SerializedNode } from '@infinite-canvas-tutorial/ecs';
+import Canvas from '@/components/canvas';
+import { ExportFormat, readSystemClipboard, SerializedNode } from '@infinite-canvas-tutorial/ecs';
 import { PromptInputProvider } from '@/components/ai-elements/prompt-input';
 import { UIMessage } from '@ai-sdk/react';
 import { cn } from '@/lib/utils';
@@ -37,6 +40,11 @@ import {
   ResizablePanel,
   ResizablePanelGroup,
 } from "@/components/ui/resizable";
+import { canvasApiAtom } from '@/atoms/canvas-selection';
+import { useAtomValue } from 'jotai';
+import { Kbd, KbdGroup } from '@/components/ui/kbd';
+import { executeCopy, executePaste, executeCut } from '@infinite-canvas-tutorial/webcomponents/spectrum';
+import { CheckboardStyle } from '@infinite-canvas-tutorial/ecs';
 
 type Project = {
   id: string;
@@ -93,8 +101,11 @@ export function ProjectDetailClient({
   const [editingChatId, setEditingChatId] = useState<string | null>(null);
   const [editingChatTitle, setEditingChatTitle] = useState('');
   const editingInputRef = useRef<HTMLInputElement>(null);
-  const canvasRef = useRef<CanvasAPI>(null);
   const chatListScrollRef = useRef<React.ElementRef<typeof ScrollAreaPrimitive.Root>>(null);
+  const canvasApi = useAtomValue(canvasApiAtom);
+  const [isClipboardEmpty, setIsClipboardEmpty] = useState(true);
+
+  const isSelectedEmpty = canvasApi?.getAppState().layersSelected.length === 0;
 
   // 当 URL 中的 chatId 变化时，同步到 selectedChatId（用于浏览器前进/后退或直接输入 URL）
   useEffect(() => {
@@ -221,6 +232,128 @@ export function ProjectDetailClient({
     }
   };
 
+  const handleUndo = () => {
+    if (!canvasApi) return;
+    canvasApi.undo();
+  };
+
+  const handleRedo = () => {
+    if (!canvasApi) return;
+    canvasApi.redo();
+  };
+
+  const handleCut = () => {
+    if (!canvasApi) return;
+    executeCut(canvasApi, canvasApi.getAppState());
+  };
+
+  const handleCopy = () => {
+    if (!canvasApi) return;
+    executeCopy(canvasApi, canvasApi.getAppState());
+  };
+
+  const handlePaste = () => {
+    if (!canvasApi) return;
+    executePaste(canvasApi, canvasApi.getAppState());
+  };
+
+  const handleExport = (format: ExportFormat) => {
+    if (!canvasApi) return;
+    const nodes = canvasApi
+      .getAppState()
+      .layersSelected.map((id) => canvasApi.getNodeById(id));
+    canvasApi.export(format, true, nodes);
+  };
+
+  const handleEditOpenChange = () => {
+    readSystemClipboard().then((clipboard) => {
+      setIsClipboardEmpty(Object.keys(clipboard).length === 0);
+    });
+  };
+
+  const handleConfigView = () => {
+    if (!canvasApi) return;
+    canvasApi.setAppState({
+      checkboardStyle: canvasApi.getAppState().checkboardStyle === CheckboardStyle.GRID ? CheckboardStyle.NONE : CheckboardStyle.GRID,
+    });
+  };
+
+  const renderDropdownMenu = () => {
+    return (<>
+    <DropdownMenuSeparator />
+      <DropdownMenuSub onOpenChange={handleEditOpenChange}>
+        <DropdownMenuSubTrigger>
+          {t('edit')}
+        </DropdownMenuSubTrigger>
+        <DropdownMenuSubContent className="w-40">
+          <DropdownMenuItem className="flex items-center justify-between" disabled={canvasApi?.isUndoStackEmpty()} onClick={handleUndo}>
+            {t('undo')}
+            <KbdGroup>
+              <Kbd>⌘</Kbd>
+              <Kbd>Z</Kbd>
+            </KbdGroup>
+          </DropdownMenuItem>
+          <DropdownMenuItem className="flex items-center justify-between" disabled={canvasApi?.isRedoStackEmpty()} onClick={handleRedo}>
+            {t('redo')}
+            <KbdGroup>
+              <Kbd>⇧</Kbd>
+              <Kbd>⌘</Kbd>
+              <Kbd>Z</Kbd>
+            </KbdGroup>
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem className="flex items-center justify-between" disabled={isSelectedEmpty} onClick={handleCut}>
+            {t('cut')}
+            <KbdGroup>
+              <Kbd>⌘</Kbd>
+              <Kbd>X</Kbd>
+            </KbdGroup>
+          </DropdownMenuItem>
+          <DropdownMenuItem className="flex items-center justify-between" disabled={isSelectedEmpty} onClick={handleCopy}>
+            {t('copy')}
+            <KbdGroup>
+              <Kbd>⌘</Kbd>
+              <Kbd>C</Kbd>
+            </KbdGroup>
+          </DropdownMenuItem>
+          <DropdownMenuItem className="flex items-center justify-between" disabled={isClipboardEmpty} onClick={handlePaste}>
+            {t('paste')}
+            <KbdGroup>
+              <Kbd>⌘</Kbd>
+              <Kbd>V</Kbd>
+            </KbdGroup>
+          </DropdownMenuItem>
+        </DropdownMenuSubContent>
+      </DropdownMenuSub>
+      <DropdownMenuSub>
+        <DropdownMenuSubTrigger>
+          {t('preferences')}
+        </DropdownMenuSubTrigger>
+        <DropdownMenuSubContent>
+          <DropdownMenuItem onClick={() => handleConfigView()}>
+            {t('grid')}
+          </DropdownMenuItem>
+        </DropdownMenuSubContent>
+      </DropdownMenuSub>
+      <DropdownMenuSub>
+        <DropdownMenuSubTrigger>
+          {t('exportAs')}
+        </DropdownMenuSubTrigger>
+        <DropdownMenuSubContent>
+          <DropdownMenuItem onClick={() => handleExport(ExportFormat.SVG)}>
+            {t('exportAsSVG')}
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => handleExport(ExportFormat.PNG)}>
+            {t('exportAsPNG')}
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => handleExport(ExportFormat.JPEG)}>
+            {t('exportAsJPEG')}
+          </DropdownMenuItem>
+        </DropdownMenuSubContent>
+      </DropdownMenuSub>
+    </>);
+  };
+
   // 渲染项目名称下拉菜单
   const renderProjectNameMenu = () => {
     if (!project) return null;
@@ -272,7 +405,9 @@ export function ProjectDetailClient({
 
   return (
     <div className="flex flex-col h-screen">
-      <Topbar centerContent={renderProjectNameMenu()} />
+      <Topbar 
+        leftMenuContent={renderDropdownMenu()}
+        centerContent={renderProjectNameMenu()} />
       <div className="flex-1 flex min-h-0">
         {error && (
           <div className="mb-4 p-4 bg-destructive/10 text-destructive rounded-md">
@@ -284,7 +419,7 @@ export function ProjectDetailClient({
           <PromptInputProvider>
           <ResizablePanelGroup direction="horizontal">
           <ResizablePanel defaultSize={800}>
-            <Canvas ref={canvasRef} id={project.id} initialData={project.canvasData || undefined} />
+            <Canvas id={project.id} initialData={project.canvasData || undefined} />
           </ResizablePanel>
           <ResizableHandle
             className="translate-x-px border-none [&>div]:shrink-0"
@@ -294,12 +429,12 @@ export function ProjectDetailClient({
           <ResizablePanelGroup direction="vertical">
             <ResizablePanel defaultSize={100} className="flex flex-col">
             {/* Chat 列表侧边栏 */}
-              <div className="flex items-center justify-between p-2 border-b">
-                <h3 className="text-sm font-semibold pl-2">{tChats('title')}</h3>
+              <div className="flex items-center justify-between p-2 py-1 border-b">
+                <h3 className="text-sm font-semibold">{tChats('title')}</h3>
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-7 w-7 p-0"
+                  className="h-8 w-8 p-0"
                   onClick={async () => {
                     // 创建新 chat
                     try {
@@ -479,8 +614,10 @@ export function ProjectDetailClient({
                   if (generateImagePart) {
                     const images = (generateImagePart.output as { images: string[] })?.images || [];
                     // Insert into canvas
-                    if (images.length > 0 && canvasRef.current) {
-                      await canvasRef.current.insertImages(images);
+                    if (images.length > 0 && canvasApi) {
+                      await Promise.all(images.map(async (imageUrl) => {
+                        await canvasApi.createImageFromFile(imageUrl, { position: { x: 0, y: 0 } });
+                      }));
                     }
                   }
                 }}

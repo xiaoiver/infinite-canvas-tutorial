@@ -179,7 +179,7 @@ const Chat = ({
   };
   
   return (
-    <div className={cn("relative flex-1 min-h-0 p-4", className)}>
+    <div className={cn("relative flex-1 min-h-0 p-2", className)}>
       <div className="flex flex-col h-full">
         <Conversation className="h-full flex-1 min-h-0">
           <ConversationContent>

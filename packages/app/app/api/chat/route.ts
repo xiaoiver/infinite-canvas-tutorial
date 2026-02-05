@@ -1,12 +1,10 @@
-import { createOpenAI } from '@ai-sdk/openai';
-import { createGoogleGenerativeAI } from '@ai-sdk/google';
-import { streamText, UIMessage, convertToModelMessages, type InferUITools, stepCountIs, createGateway } from 'ai';
+import { streamText, UIMessage, convertToModelMessages, type InferUITools, stepCountIs } from 'ai';
 import { createClient } from '@/lib/supabase/server';
 import { createMessage, getNextSeq } from '@/lib/db/messages';
 import { createTools } from '@/lib/db/tools';
 import { convertUIMessageToDBMessage, convertToolPartToDBTool } from '@/lib/db/utils';
 import type { ToolUIPart, DynamicToolUIPart, LanguageModel } from 'ai';
-import { getModelForCapability } from '@/lib/models/get-model';
+import { createLanguageModel, getModelForCapability } from '@/lib/models/get-model';
 import { generateImageTool } from '@/tools/generate-image';
 import { NextResponse } from 'next/server';
 import { ChatErrorCode, isAuthenticationError } from '@/lib/errors';
@@ -110,26 +108,9 @@ export async function POST(req: Request) {
     );
   }
 
-  const { provider, model, apiKey, config } = modelInfo;
   let languageModel: LanguageModel | undefined;
-
   try {
-    if (provider === 'gateway') {
-      const gateway = createGateway({
-        apiKey,
-      });
-      languageModel = gateway(model);
-    } else if (provider === 'openai') {
-      const openai = createOpenAI({
-        apiKey,
-      });
-      languageModel = openai(model);
-    } else if (provider === 'google') {
-      const google = createGoogleGenerativeAI({
-        apiKey,
-      });
-      languageModel = google(model);
-    }
+    languageModel = createLanguageModel(modelInfo);
   } catch (error) {
     console.error('Error creating language model:', error);
 

@@ -252,6 +252,8 @@ export const getDefaultAppState: () => AppState = () => {
       stroke: TRANSFORMER_ANCHOR_STROKE_COLOR,
       strokeWidth: 1,
       strokeOpacity: 1,
+      strokeLinecap: 'round',
+      strokeLinejoin: 'round',
     },
     penbarBrush: {
       stamps: [

@@ -55,7 +55,19 @@
     "editDescription": "修改项目的名称和描述",
     "rename": "重命名",
     "renameDescription": "修改项目的名称",
-    "modified": "修改于"
+    "modified": "修改于",
+    "exportAs": "导出为...",
+    "exportAsSVG": "SVG",
+    "exportAsPNG": "PNG",
+    "exportAsJPEG": "JPEG",
+    "edit": "编辑",
+    "undo": "撤销",
+    "redo": "重做",
+    "cut": "剪切",
+    "copy": "复制",
+    "paste": "粘贴",
+    "preferences": "偏好设置",
+    "grid": "网格"
   },
   "chats": {
     "title": "对话"
@@ -73,7 +85,8 @@
     "home": "首页",
     "myProjects": "我的项目",
     "editArea": "编辑区域",
-    "drawRectMask": "矩形遮罩"
+    "drawRectMask": "矩形遮罩",
+    "drawPencilFreehandMask": "铅笔自由手绘遮罩"
   },
   "settings": {
     "title": "设置",

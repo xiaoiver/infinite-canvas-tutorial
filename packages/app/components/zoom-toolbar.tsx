@@ -13,6 +13,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Kbd, KbdGroup } from './ui/kbd';
 
 // 缩放相关的常量
 const ZOOM_STEPS = [0.02, 0.05, 0.1, 0.15, 0.2, 0.33, 0.5, 0.75, 1, 1.25, 1.5, 2, 2.5, 3, 4];
@@ -215,7 +216,7 @@ export default function ZoomToolbar({ canvasApi, canvasRef }: ZoomToolbarProps) 
   }, [canvasApi, updateHistoryState]);
 
   return (
-    <div className="absolute bottom-0 right-0 flex items-center gap-2 p-4 z-50">
+    <div className="absolute bottom-0 right-0 flex items-center gap-2 z-50 p-1 pb-2">
       <div className="flex items-center gap-1 bg-background/80 backdrop-blur-sm border rounded-lg shadow-lg p-1">
         <Button
           variant="ghost"
@@ -242,7 +243,7 @@ export default function ZoomToolbar({ canvasApi, canvasRef }: ZoomToolbarProps) 
           <DropdownMenuTrigger asChild>
             <Button
               variant="ghost"
-              className="h-7 px-2 gap-1 text-sm font-medium"
+              className="h-7 p-0 pr-2 gap-1 text-sm font-medium"
             >
               <span className="min-w-[50px] text-center">
                 {Math.round(zoomLevel * 100)}%
@@ -251,33 +252,49 @@ export default function ZoomToolbar({ canvasApi, canvasRef }: ZoomToolbarProps) 
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-48" alignOffset={-5} sideOffset={8}>
-            <DropdownMenuItem onClick={handleZoomIn}>
+            <DropdownMenuItem className="flex items-center justify-between" onClick={handleZoomIn}>
               {t('zoomIn')}
-              <span className="ml-auto text-xs text-muted-foreground">⌘+</span>
+              <KbdGroup>
+                <Kbd>⌘</Kbd>
+                <Kbd>+</Kbd>
+              </KbdGroup>
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={handleZoomOut}>
+            <DropdownMenuItem className="flex items-center justify-between" onClick={handleZoomOut}>
               {t('zoomOut')}
-              <span className="ml-auto text-xs text-muted-foreground">⌘-</span>
+              <KbdGroup>
+                <Kbd>⌘</Kbd>
+                <Kbd>-</Kbd>
+              </KbdGroup>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={handleZoomTo50}>
               {t('zoomTo50')}
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={handleZoomTo100}>
+            <DropdownMenuItem className="flex items-center justify-between" onClick={handleZoomTo100}>
               {t('zoomTo100')}
-              <span className="ml-auto text-xs text-muted-foreground">⌘1</span>
+              <KbdGroup>
+                <Kbd>⌘</Kbd>
+                <Kbd>1</Kbd>
+              </KbdGroup>
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={handleZoomTo200}>
+            <DropdownMenuItem className="flex items-center justify-between" onClick={handleZoomTo200}>
               {t('zoomTo200')}
-              <span className="ml-auto text-xs text-muted-foreground">⌘2</span>
+              <KbdGroup>
+                <Kbd>⌘</Kbd>
+                <Kbd>2</Kbd>
+              </KbdGroup>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem 
               onClick={handleFitToProject}
               disabled={!canvasApi || canvasApi.getNodes().length === 0}
+              className="flex items-center justify-between"
             >
               {t('fitToProject')}
-              <span className="ml-auto text-xs text-muted-foreground">⌘0</span>
+              <KbdGroup>
+                <Kbd>⌘</Kbd>
+                <Kbd>0</Kbd>
+              </KbdGroup>
             </DropdownMenuItem>
             <DropdownMenuItem 
               onClick={handleFitToSelection}
