@@ -55,7 +55,19 @@
     "editDescription": "Update the project name and description",
     "rename": "Rename",
     "renameDescription": "Update the project name",
-    "modified": "Modified"
+    "modified": "Modified",
+    "exportAs": "Export as...",
+    "exportAsSVG": "SVG",
+    "exportAsPNG": "PNG",
+    "exportAsJPEG": "JPEG",
+    "edit": "Edit",
+    "undo": "Undo",
+    "redo": "Redo",
+    "cut": "Cut",
+    "copy": "Copy",
+    "paste": "Paste",
+    "preferences": "Preferences",
+    "grid": "Grid"
   },
   "chats": {
     "title": "Chats"
@@ -73,7 +85,8 @@
     "home": "Home",
     "myProjects": "My Projects",
     "editArea": "Edit Area",
-    "drawRectMask": "Draw Rect Mask"
+    "drawRectMask": "Draw Rect Mask",
+    "drawPencilFreehandMask": "Draw Pencil Freehand Mask"
   },
   "settings": {
     "title": "Settings",

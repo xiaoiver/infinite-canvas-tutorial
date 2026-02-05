@@ -3,13 +3,13 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
-import { SquareDashed } from 'lucide-react';
-import { useAtom, useAtomValue, useSetAtom } from 'jotai';
+import { Pencil, SquareDashed } from 'lucide-react';
+import { useAtom, useAtomValue } from 'jotai';
 import { isSingleImageAtom, selectedNodesAtom, canvasApiAtom, targetImageAtom } from '@/atoms/canvas-selection';
-import { Pen, RectSerializedNode, SerializedNode } from '@infinite-canvas-tutorial/ecs';
+import { PathSerializedNode, Pen, RectSerializedNode, SerializedNode } from '@infinite-canvas-tutorial/ecs';
 import { Event } from '@infinite-canvas-tutorial/webcomponents';
 
-type Tool = 'draw-rect-mask';
+type Tool = 'draw-rect-mask' | 'draw-pencil-freehand-mask';
 
 export function ImageToolbar() {
   const [selectedTool, setSelectedTool] = useState<Tool | null>(null);
@@ -19,20 +19,6 @@ export function ImageToolbar() {
   const [targetImage, setTargetImage] = useAtom(targetImageAtom);
   const t = useTranslations('toolbar');
 
-  // // 当选择工具时，如果 targetImage 为 null，则设置为当前的 selectedImageNode
-  // useEffect(() => {
-  //   if (selectedTool && !targetImage && selectedImageNode) {
-  //     setTargetImage(selectedImageNode);
-  //   }
-  // }, [selectedTool, selectedImageNode, targetImage, setTargetImage]);
-
-  // // 当取消选择工具时，更新 targetImage 为当前的 selectedImageNode
-  // useEffect(() => {
-  //   if (!selectedTool && selectedImageNode) {
-  //     setTargetImage(selectedImageNode);
-  //   }
-  // }, [selectedTool, selectedImageNode, setTargetImage]);
-
   const handleRectDrawn = useCallback((e: CustomEvent<{ node: SerializedNode }>) => {
     const rect = e.detail.node as RectSerializedNode;
     if (targetImage) {
@@ -41,7 +27,6 @@ export function ImageToolbar() {
       rect.usage = 'mask';
 
       if (canvasApi) {
-        // 继续保持工具在矩形绘制状态，默认行为会切换成 Select 工具
         canvasApi.setAppState({ penbarSelected: Pen.DRAW_RECT });
         canvasApi.reparentNode(rect, targetImage);
         canvasApi.record();
@@ -49,13 +34,29 @@ export function ImageToolbar() {
     }
   }, [targetImage]);
 
+  const handlePencilDrawn = useCallback((e: CustomEvent<{ node: SerializedNode }>) => {
+    const pencil = e.detail.node as PathSerializedNode;
+    if (targetImage) {
+      // @ts-expect-error
+      pencil.usage = 'mask';
+
+      if (canvasApi) {
+        canvasApi.setAppState({ penbarSelected: Pen.PENCIL });
+        canvasApi.reparentNode(pencil, targetImage);
+        canvasApi.record();
+      }
+    }
+  }, [targetImage]);
+  
   useEffect(() => {
     if (canvasApi) {
       canvasApi.element.addEventListener(Event.RECT_DRAWN, handleRectDrawn);
+      canvasApi.element.addEventListener(Event.PENCIL_DRAWN, handlePencilDrawn);
     }
     return () => {
       if (canvasApi) {
         canvasApi.element.removeEventListener(Event.RECT_DRAWN, handleRectDrawn);
+        canvasApi.element.removeEventListener(Event.PENCIL_DRAWN, handlePencilDrawn);
       }
     };
   }, [canvasApi, handleRectDrawn]);
@@ -66,20 +67,33 @@ export function ImageToolbar() {
       setSelectedTool(null);
       if (canvasApi) {
         canvasApi.setAppState({ penbarSelected: Pen.SELECT });
+        // 恢复选择之前的图形
+        if (targetImage) {
+          canvasApi.selectNodes([targetImage]);
+        }
+        setTargetImage(null);
       }
       return;
     }
-    
+
     setSelectedTool(tool as Tool);
-    // 当选择工具时，如果 targetImage 为 null，立即设置为当前的 selectedImageNode
-    // if (!targetImage && selectedImageNode) {
-    //   setTargetImage(selectedImageNode);
-    // }
+    setTargetImage(selectedNodes?.[0] as RectSerializedNode);
+
     if (canvasApi) {
+      
+
       if (tool === 'draw-rect-mask') {
         canvasApi.setAppState({ penbarSelected: Pen.DRAW_RECT });
+      } else if (tool === 'draw-pencil-freehand-mask') {
+        canvasApi.setAppState({ penbarSelected: Pen.PENCIL, penbarPencil: { 
+          ...canvasApi.getAppState().penbarPencil,
+          strokeWidth: 40 } });
       } else {
         canvasApi.setAppState({ penbarSelected: Pen.SELECT });
+      }
+
+      if (selectedNodes) {
+        canvasApi.highlightNodes(selectedNodes);
       }
     }
   };
@@ -100,6 +114,10 @@ export function ImageToolbar() {
       <ToggleGroupItem value="draw-rect-mask" aria-label="Draw rect mask tool">
         <SquareDashed />
         {t('drawRectMask')}
+      </ToggleGroupItem>
+      <ToggleGroupItem value="draw-pencil-freehand-mask" aria-label="Draw pencil freehand mask tool">
+        <Pencil />
+        {t('drawPencilFreehandMask')}
       </ToggleGroupItem>
     </ToggleGroup>
   );

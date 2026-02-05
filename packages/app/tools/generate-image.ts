@@ -1,14 +1,15 @@
-import { put } from '@vercel/blob';
-import { FilePart, generateText, tool } from 'ai';
+import { FilePart, generateText, generateImage, tool } from 'ai';
 import z from 'zod';
-import { nanoid } from 'nanoid';
-import { getModelStringForCapability } from '@/lib/models/get-model';
+import { createImageModel, createLanguageModel, getModelForCapability, ModelInfo } from '@/lib/models/get-model';
 import { createClient } from '@/lib/supabase/server';
+import { uploadImage } from '@/lib/blob';
 
 /**
  * When building a chatbot, you may want to allow the user to generate an image.
  * This can be done by creating a tool that generates an image using the generateImage function from the AI SDK.
+ * @see https://ai-sdk.dev/docs/reference/ai-sdk-core/generate-image
  * @see https://ai-sdk.dev/cookbook/next/generate-image-with-chat-prompt
+ * @see https://vercel.com/changelog/nano-banana-pro-gemini-3-pro-image-now-available-in-the-ai-gateway
  * 
  * Image optimization:
  * @see https://vercel.com/docs/image-optimization
@@ -17,72 +18,159 @@ import { createClient } from '@/lib/supabase/server';
  * @see https://ai-sdk.dev/cookbook/node/call-tools-with-image-prompt
  */
 
+const QUALITY_IMAGE_SIZE_MAP: Record<'low' | 'standard' | 'high', string> = {
+  low: '1K',
+  standard: '2K',
+  high: '4K',
+};
+
+function buildGoogleProviderOptions(
+  model: string,
+  options: {
+    quality?: 'low' | 'standard' | 'high';
+    size?: string; // 如 '1024x1024', '1024x768'
+    aspectRatio?: string; // 如 '16:9', '1:1', '4:3'
+  }
+): Record<string, any> {
+  return {
+    responseModalities: ['TEXT', 'IMAGE'],
+    imageConfig: {
+      // Only Gemini 3 Pro supports image size
+      // @see https://ai.google.dev/gemini-api/docs/image-generation
+      imageSize: model.includes('3-pro') ? QUALITY_IMAGE_SIZE_MAP[options.quality ?? 'standard'] : undefined,
+      aspectRatio: options.aspectRatio,
+    }
+  }
+}
+
+/**
+ * 根据 provider 类型和通用参数生成对应的 providerOptions
+ * 不同 provider 的参数格式不同，这里进行统一映射
+ */
+function buildProviderOptions(
+  modelInfo: ModelInfo,
+  options: {
+    quality?: 'low' | 'standard' | 'high';
+    size?: string; // 如 '1024x1024', '1024x768'
+    aspectRatio?: string; // 如 '16:9', '1:1', '4:3'
+  }
+): Record<string, any> {
+  const providerOptions: Record<string, any> = {};
+  const { provider, model } = modelInfo;
+
+  switch (provider) {
+    case 'google':
+      providerOptions.google = buildGoogleProviderOptions(model, options);
+      break;
+
+    case 'openai':
+      // OpenAI DALL-E 模型参数
+      if (options.size || options.quality) {
+        providerOptions.openai = {};
+        if (options.size) {
+          providerOptions.openai.size = options.size;
+        }
+        if (options.quality) {
+          providerOptions.openai.quality = options.quality === 'high' ? 'hd' : 'standard';
+        }
+      }
+      break;
+
+    case 'gateway':
+      // @see https://vercel.com/docs/ai-gateway/capabilities/image-generation/ai-sdk#openai-models-with-image-generation-tool
+      if (model.startsWith('google/')) {
+        providerOptions.google = buildGoogleProviderOptions(model, options);
+      }
+      break;
+
+    default:
+      console.warn(`Unknown provider: ${provider}, using default options`);
+      break;
+  }
+
+  return providerOptions;
+}
+
 export const generateImageTool = tool({
   description: 'Generate or edit images based on a text prompt and optionally reference images. The generated or edited images will be automatically displayed in the tool output component. Do NOT include image URLs in your response message - the images are already shown in the tool interface.',
   inputSchema: z.object({
     prompt: z.string().describe('The prompt to generate the image from'),
+    quality: z.enum(['low', 'standard', 'high']).optional().describe('Image quality: low (faster, lower quality), standard (balanced), or high (slower, higher quality)'),
+    size: z.string().optional().describe('Image size in format "WIDTHxHEIGHT", e.g., "1024x1024", "1024x768". Supported sizes vary by provider.'),
+    aspectRatio: z.string().optional().describe('Aspect ratio, e.g., "16:9", "1:1", "4:3". Some providers support this instead of size.'),
     // referenceImages: z.array(z.string()).describe('Reference images to use for the generation').optional(),
   }),
-  execute: async ({ prompt }, { messages }) => {
+  execute: async ({ prompt, quality = 'standard', size, aspectRatio }, { messages }) => {
     const lastMessage = messages[messages.length - 1];
     const imageDataURLs = (lastMessage.content as (FilePart)[]).filter((part) => part.type === 'file' && part.mediaType.startsWith('image/')).map((part) => part.data);
 
-    // 获取用户配置的图像生成模型
+    // 获取用户配置的图像生成模型（包括 provider 信息）
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
-    let imageModel = 'google/gemini-2.5-flash-image'; // 默认模型
-    if (user) {
-      const userImageModel = await getModelStringForCapability(user.id, 'image');
-      if (userImageModel) {
-        imageModel = userImageModel;
-      }
+
+    if (!user) {
+      return { error: 'User not found' };
     }
 
-    const result = await generateText({
-      model: imageModel,
-      prompt: [
-        {
-          role: 'user',
-          content: [
-            {
-              type: 'text',
-              text: prompt,
-            },
-            ...(imageDataURLs?.map(url => ({
-              type: 'image' as const,
-              image: new URL(url.toString()),
-            })) || []),
-          ]
-        }
-      ],
-      providerOptions: {
-        google: {
-          quality: 'low'
-        }
-      }
-    });
+    const modelInfo = await getModelForCapability(user.id, 'image');
+    if (!modelInfo) {
+      return { error: 'No image model configured' };
+    }
 
     const imageUrls: string[] = [];
-    // Save generated images
-    for (const file of result.files) {
-      if (file.mediaType.startsWith('image/')) {
-        const base64 = file.base64;
+    const providerOptions = buildProviderOptions(modelInfo, {
+      quality,
+      size,
+      aspectRatio,
+    });
 
-        // 1. 去掉 base64 前缀（例如 "data:image/png;base64,"）
-        const base64Data = base64.replace(/^data:image\/\w+;base64,/, "");
-        const suffix = file.mediaType.split('/')[1];
+    // Note that this is a multi-modal model and therefore uses generateText for the actual image generation.
+    if (modelInfo.model.includes('gemini')) {
+      const languageModel = createLanguageModel(modelInfo);
+      if (!languageModel) {
+        return { error: 'Failed to create language model' };
+      }
+      const result = await generateText({
+        model: languageModel,
+        prompt: [
+          {
+            role: 'user',
+            content: [
+              {
+                type: 'text',
+                text: prompt,
+              },
+              ...(imageDataURLs?.map(url => ({
+                type: 'image' as const,
+                image: new URL(url.toString()),
+              })) || []),
+            ]
+          }
+        ],
+        providerOptions: Object.keys(providerOptions).length > 0 ? providerOptions : undefined,
+      });
 
-        // 2. 转换为 Buffer
-        const fileBuffer = Buffer.from(base64Data, 'base64');
-
-        // Upload with Vercel Blob
-        const fileName = `${nanoid()}.${suffix}`;
-        const blob = await put(fileName, fileBuffer, {
-          access: 'public',
-          addRandomSuffix: true,
-        });
-
-        imageUrls.push(blob.url);
+      // Save generated images
+      for (const file of result.files) {
+        if (file.mediaType.startsWith('image/')) {
+          const url = await uploadImage(file);
+          imageUrls.push(url);
+        }
+      }
+    } else {
+      const imageModel = createImageModel(modelInfo);
+      if (!imageModel) {
+        return { error: 'Failed to create image model' };
+      }
+      const { images } = await generateImage({
+        model: imageModel,
+        prompt,
+        size: size as `${number}x${number}`,
+        aspectRatio: aspectRatio as `${number}:${number}`,
+      });
+      for (const image of images) {
+        const url = await uploadImage(image);
+        imageUrls.push(url);
       }
     }
 

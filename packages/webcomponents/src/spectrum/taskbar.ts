@@ -53,7 +53,7 @@ export class Taskbar extends LitElement {
       this.api.getAppState();
 
     return when(
-      taskbarVisible && penbarSelected !== Pen.HAND,
+      taskbarVisible,
       () => html`
         <sp-action-group
           class="taskbar"

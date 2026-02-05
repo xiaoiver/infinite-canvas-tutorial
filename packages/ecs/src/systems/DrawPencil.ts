@@ -214,6 +214,18 @@ export class DrawPencil extends System {
           api.updateNode(node);
           api.selectNodes([node]);
           api.record();
+
+          if (isBrowser) {
+            // FIXME: Use the correct event name
+            // @ts-ignore
+            api.element.dispatchEvent(
+              new CustomEvent('ic-pencil-drawn', {
+                detail: {
+                  node,
+                },
+              }),
+            );
+          }
         });
       }
     });
@@ -261,7 +273,6 @@ export class DrawPencil extends System {
             points: '0,0 0,0',
             visibility: 'hidden',
             zIndex: DRAW_RECT_Z_INDEX,
-            strokeAttenuation: true,
             ...defaultDrawParams,
           };
         api.updateNode(brush, undefined, false);

@@ -38,7 +38,7 @@ export class LayerThumbnail extends LitElement {
       overflow: hidden;
     }
 
-    sp-icon-text {
+    sp-icon-text, sp-icon-code {
       display: block;
     }
   `;
@@ -197,6 +197,8 @@ export class LayerThumbnail extends LitElement {
     let thumbnail;
     if (this.node.type === 'text') {
       thumbnail = html`<sp-icon-text></sp-icon-text>`;
+    } else if (this.node.type === 'embed' || this.node.type === 'html') {
+      thumbnail = html`<sp-icon-code></sp-icon-code>`;
     } else if (this.node.type === 'brush') {
       thumbnail = html`<img src="${this.node.brushStamp}" />`;
     } else {
