@@ -34,13 +34,12 @@ import { PromptInputProvider } from '@/components/ai-elements/prompt-input';
 import { UIMessage } from '@ai-sdk/react';
 import { cn } from '@/lib/utils';
 import { Loader } from '@/components/ai-elements/loader';
-import { ToolUIPart } from 'ai';
 import {
   ResizableHandle,
   ResizablePanel,
   ResizablePanelGroup,
 } from "@/components/ui/resizable";
-import { canvasApiAtom } from '@/atoms/canvas-selection';
+import { canvasApiAtom, selectedNodesAtom } from '@/atoms/canvas-selection';
 import { useAtomValue } from 'jotai';
 import { Kbd, KbdGroup } from '@/components/ui/kbd';
 import { executeCopy, executePaste, executeCut } from '@infinite-canvas-tutorial/webcomponents/spectrum';
@@ -103,6 +102,7 @@ export function ProjectDetailClient({
   const editingInputRef = useRef<HTMLInputElement>(null);
   const chatListScrollRef = useRef<React.ElementRef<typeof ScrollAreaPrimitive.Root>>(null);
   const canvasApi = useAtomValue(canvasApiAtom);
+  const selectedNodes = useAtomValue(selectedNodesAtom);
   const [isClipboardEmpty, setIsClipboardEmpty] = useState(true);
 
   const isSelectedEmpty = canvasApi?.getAppState().layersSelected.length === 0;
@@ -609,35 +609,16 @@ export function ProjectDetailClient({
               <Chat 
                 initialMessages={messages} 
                 chatId={selectedChatId!}
-                onFinish={async ({ message }) => {
-                  const generateImagePart = message.parts.find((part) => part.type === 'tool-generateImage') as ToolUIPart;
-                  if (generateImagePart) {
-                    const images = (generateImagePart.output as { images: string[] })?.images || [];
-                    // Insert into canvas
-                    if (images.length > 0 && canvasApi) {
-                      await Promise.all(images.map(async (imageUrl) => {
-                        await canvasApi.createImageFromFile(imageUrl, { position: { x: 0, y: 0 } });
-                      }));
-                    }
-                  }
-                }}
               />
             ) : (
               <div className="flex items-center justify-center h-full">
-                <p className="text-sm text-muted-foreground">No chat selected</p>
+                <p className="text-sm text-muted-foreground">{tChats('noChatSelected')}</p>
               </div>
             )}
             </ResizablePanel>
           </ResizablePanelGroup>
           </ResizablePanel>
           </ResizablePanelGroup>
-
-          {/* <div className="flex-1 h-full">
-            <Canvas ref={canvasRef} id={project.id} initialData={project.canvasData || undefined} />
-          </div>
-          <div className="w-[400px] h-full flex flex-col border-l">
-            
-          </div> */}
           </PromptInputProvider>
         )}
       </div>

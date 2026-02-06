@@ -16,6 +16,7 @@ import { uploadImage } from '@/lib/blob';
  * 
  * Edit image:
  * @see https://ai-sdk.dev/cookbook/node/call-tools-with-image-prompt
+ * @see https://ai.google.dev/gemini-api/docs/image-generation
  */
 
 const QUALITY_IMAGE_SIZE_MAP: Record<'low' | 'standard' | 'high', string> = {
@@ -92,17 +93,19 @@ function buildProviderOptions(
 }
 
 export const generateImageTool = tool({
-  description: 'Generate or edit images based on a text prompt and optionally reference images. The generated or edited images will be automatically displayed in the tool output component. Do NOT include image URLs in your response message - the images are already shown in the tool interface.',
+  description: 'Generate or edit images based on a text prompt and optionally reference images. The generated or edited images will be automatically displayed in the tool output component. Do NOT include image URLs in your response message - the images are already shown in the tool interface. You can insert the generated images into the canvas by using the insertImage tool by default.',
   inputSchema: z.object({
     prompt: z.string().describe('The prompt to generate the image from'),
-    quality: z.enum(['low', 'standard', 'high']).optional().describe('Image quality: low (faster, lower quality), standard (balanced), or high (slower, higher quality)'),
+    quality: z.enum(['low', 'standard', 'high']).optional().describe('Image quality: low (faster, lower quality), standard (balanced), or high (slower, higher quality). Default to standard.'),
     size: z.string().optional().describe('Image size in format "WIDTHxHEIGHT", e.g., "1024x1024", "1024x768". Supported sizes vary by provider.'),
     aspectRatio: z.string().optional().describe('Aspect ratio, e.g., "16:9", "1:1", "4:3". Some providers support this instead of size.'),
     // referenceImages: z.array(z.string()).describe('Reference images to use for the generation').optional(),
   }),
   execute: async ({ prompt, quality = 'standard', size, aspectRatio }, { messages }) => {
     const lastMessage = messages[messages.length - 1];
-    const imageDataURLs = (lastMessage.content as (FilePart)[]).filter((part) => part.type === 'file' && part.mediaType.startsWith('image/')).map((part) => part.data);
+    const imageDataURLs = (lastMessage.content as FilePart[]).filter((part) => part.type === 'file' && part.mediaType.startsWith('image/')).map((part) => part.data);
+    // @ts-expect-error DataUIPart is not FilePart
+    const maskDataURLs = (lastMessage.content as FilePart[]).filter((part) => part.type === 'data-mask').map((part) => part.data);
 
     // 获取用户配置的图像生成模型（包括 provider 信息）
     const supabase = await createClient();
@@ -130,6 +133,8 @@ export const generateImageTool = tool({
       if (!languageModel) {
         return { error: 'Failed to create language model' };
       }
+
+      await new Promise((resolve) => setTimeout(resolve, 5000));
       const result = await generateText({
         model: languageModel,
         prompt: [
@@ -144,6 +149,14 @@ export const generateImageTool = tool({
                 type: 'image' as const,
                 image: new URL(url.toString()),
               })) || []),
+              ...(maskDataURLs.length > 0 ? [{
+                type: 'text' as const,
+                text: 'Use the following mask(s) to generate the image.',
+              }] : []),
+              ...(maskDataURLs?.map(url => ({
+                type: 'image' as const,
+                image: new URL(url.toString()),
+              })) || [])
             ]
           }
         ],

@@ -8,7 +8,9 @@
     "save": "Guardar",
     "delete": "Eliminar",
     "edit": "Editar",
-    "close": "Cerrar"
+    "close": "Cerrar",
+    "result": "Resultado",
+    "parameters": "Parámetros"
   },
   "auth": {
     "title": "Inicio de sesión",
@@ -70,7 +72,9 @@
     "grid": "Cuadrícula"
   },
   "chats": {
-    "title": "Chats"
+    "title": "Chats",
+    "noChatSelected": "No hay chat seleccionado",
+    "unknownError": "Ocurrió un error desconocido"
   },
   "zoom": {
     "zoomIn": "Acercar",
@@ -86,7 +90,10 @@
     "myProjects": "Mis Proyectos",
     "editArea": "Editar Área",
     "drawRectMask": "Máscara de Rectángulo",
-    "drawPencilFreehandMask": "Máscara de Pencil Freehand"
+    "drawPencilFreehandMask": "Máscara de Pencil Freehand",
+    "drawLassoMask": "Máscara de Lasso",
+    "splitLayers": "Dividir Capas",
+    "vectorize": "Vectorizar"
   },
   "settings": {
     "title": "Configuración",

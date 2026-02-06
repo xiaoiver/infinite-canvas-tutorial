@@ -15,7 +15,7 @@ import { useAtomValue } from "jotai";
 import { isDataUrl, isUrl, SerializedNode } from "@infinite-canvas-tutorial/ecs";
 import { useEffect } from "react";
 import { usePromptInputAttachments } from "./ai-elements/prompt-input";
-import { FileUIPart } from "ai";
+import { DataUIPart, FileUIPart } from "ai";
 import { ExtendedAPI } from "@infinite-canvas-tutorial/webcomponents";
 
 const PromptInputAttachmentsDisplay = () => {
@@ -50,6 +50,8 @@ const PromptInputAttachmentsDisplay = () => {
       {attachments.files.map((attachment) => {
         const mediaCategory = getMediaCategory(attachment);
         const label = getAttachmentLabel(attachment);
+        const imageUrl = attachment.type === "file" ? attachment.url : attachment.type === "data-mask" ? attachment.data : undefined;
+        const mediaType = attachment.type === "file" ? attachment.mediaType : attachment.type === "data-mask" ? 'image/png' : undefined;
 
         return <AttachmentHoverCard key={attachment.id}>
           <AttachmentHoverCardTrigger asChild>
@@ -70,14 +72,13 @@ const PromptInputAttachmentsDisplay = () => {
           <AttachmentHoverCardContent>
             <div className="space-y-3">
               {mediaCategory === "image" &&
-                attachment.type === "file" &&
-                attachment.url && (
+                imageUrl && (
                   <div className="flex max-h-96 w-80 items-center justify-center overflow-hidden rounded-md border">
                     <img
                       alt={label}
                       className="max-h-full max-w-full object-contain"
                       height={384}
-                      src={attachment.url}
+                      src={imageUrl}
                       width={320}
                     />
                   </div>
@@ -86,9 +87,9 @@ const PromptInputAttachmentsDisplay = () => {
                 <h4 className="font-semibold text-sm leading-none truncate max-w-[300px]">
                   {label}
                 </h4>
-                {attachment.mediaType && (
+                {mediaType && (
                   <p className="font-mono text-muted-foreground text-xs">
-                    {attachment.mediaType}
+                    {mediaType}
                   </p>
                 )}
               </div>
@@ -102,7 +103,7 @@ const PromptInputAttachmentsDisplay = () => {
 
 export default PromptInputAttachmentsDisplay;
 
-async function convertToFiles(api: ExtendedAPI, node: SerializedNode, files: (FileUIPart | File)[] = [], parent?: SerializedNode): Promise<(FileUIPart | File)[]> {
+async function convertToFiles(api: ExtendedAPI, node: SerializedNode, files: (FileUIPart | DataUIPart<{ mask: string }> | File)[] = [], parent?: SerializedNode): Promise<(FileUIPart | DataUIPart<{ mask: string }> | File)[]> {
   if ((node as any).usage === 'mask') {
     const relativeTo = { x: node.x as number, y: node.y as number, width: node.width as number, height: node.height as number };
     if (node.parentId && parent) {
@@ -119,11 +120,9 @@ async function convertToFiles(api: ExtendedAPI, node: SerializedNode, files: (Fi
 
     files.push({
       id: node.id,
-      type: 'file' as const,
-      url: maskUrl,
-      mediaType: maskUrl ? 'image/png' :'application/octet-stream',
-      filename: `MASK-${node.id}.png`,
-    } as FileUIPart);
+      type: 'data-mask' as const,
+      data: maskUrl,
+    } as DataUIPart<{ mask: string }>);
   } else {
     // Image
     const base64OrURL = (node as any).fill as string;
