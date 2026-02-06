@@ -1,5 +1,6 @@
 "use client";
 
+import { nanoid } from 'nanoid';
 import {
   Conversation,
   ConversationContent,
@@ -47,7 +48,7 @@ import {
 } from "@/components/ai-elements/tool";
 import { ImageGallery } from "@/components/ai-elements/image-gallery";
 import { cn } from "@/lib/utils";
-import type { ToolUIPart, DynamicToolUIPart } from "ai";
+import { ToolUIPart, DynamicToolUIPart, ChatOnToolCallCallback, lastAssistantMessageIsCompleteWithToolCalls, FileUIPart, DataUIPart } from "ai";
 import { Copy, RefreshCcw, AlertTriangle } from "lucide-react";
 import { useState } from "react";
 import { useChat, UIMessage } from '@ai-sdk/react';
@@ -58,30 +59,84 @@ import { getChatErrorCode, type ChatErrorCode } from "@/lib/errors";
 import { useParams } from "next/navigation";
 import PromptInputAttachmentsDisplay from "./prompt-input-display";
 import { useTranslations } from 'next-intl';
+import { canvasApiAtom, selectedNodesAtom } from "@/atoms/canvas-selection";
+import { useAtomValue } from "jotai";
+import { SerializedNode } from "@infinite-canvas-tutorial/ecs";
 
 const Chat = ({ 
   className, 
   initialMessages,
   chatId,
   onFinish,
-  onData,
+  onToolCall,
 }: { 
   className?: string;
   initialMessages?: UIMessage[];
   chatId?: string;
   onFinish?: (options: { message: UIMessage }) => void;
-  onData?: (options: { data: any }) => void;
+  onToolCall?: ChatOnToolCallCallback;
 }) => {
   const [input, setInput] = useState('');
   const params = useParams();
   const locale = params?.locale as string || 'en';
   const t = useTranslations('auth');
+  const tChats = useTranslations('chats');
+  const canvasApi = useAtomValue(canvasApiAtom);
+  const selectedNodes = useAtomValue(selectedNodesAtom);
 
-  const { messages, sendMessage, status, error, regenerate } = useChat({
+  const { messages, sendMessage, status, error, regenerate, addToolOutput } = useChat({
     messages: initialMessages,
-    onData: (data) => {
-      if (onData) {
-        onData(data);
+    sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithToolCalls,
+    // client-side tools @see https://ai-sdk.dev/docs/ai-sdk-ui/chatbot-tool-usage#client-side-page
+    // e.g. screenshot current canvas and send to chat
+    onToolCall: async ({ toolCall }) => {
+      // Check if it's a dynamic tool first for proper type narrowing
+      if (toolCall.dynamic) {
+        return;
+      }
+
+      // Find appropriate node to insert image beside
+      if (toolCall.toolName === 'insertImage') {
+        const { imageUrl, width, height } = (toolCall.input as { imageUrl: string, width: number, height: number });
+        if (canvasApi) {
+          const selectedNode = selectedNodes?.[0];
+          const position = { x: 0, y: 0 };
+          if (selectedNode) {
+            position.x = (selectedNode.x as number) + (selectedNode.width as number) + Number(width) / 2 + 40;
+            position.y = selectedNode.y as number + Number(height) / 2;
+          }
+          await canvasApi.createImageFromFile(imageUrl, { position });
+          canvasApi.record();
+        }
+        addToolOutput({
+          tool: 'insertImage',
+          toolCallId: toolCall.toolCallId,
+          output: 'done',
+          state: 'output-available',
+        });
+      } else if (toolCall.toolName === 'drawElement') {
+        const { type, x, y, width, height, d, points, x1, y1, x2, y2, fill, stroke, strokeWidth, strokeOpacity, strokeAlignment, strokeLineCap, strokeLineJoin, strokeMiterLimit, strokeDasharray, strokeDashoffset, strokeLinecap, strokeLinejoin } = (toolCall.input as { type: string, x: number, y: number, width: number, height: number, d: string, points: string, x1: number, y1: number, x2: number, y2: number, fill: string, stroke: string, strokeWidth: number, strokeOpacity: number, strokeAlignment: string, strokeLineCap: string, strokeLineJoin: string, strokeMiterLimit: number, strokeDasharray: string, strokeDashoffset: number, strokeLinecap: string, strokeLinejoin: string });
+        if (canvasApi) {
+          const node: SerializedNode = {
+            id: nanoid(),
+            type: type as SerializedNode['type'],
+            x,
+            y,
+            width,
+            height,
+            fill,
+            stroke,
+            strokeWidth,
+          }
+          canvasApi.updateNodes([node]);
+          canvasApi.record();
+        }
+        addToolOutput({
+          tool: 'drawElement',
+          toolCallId: toolCall.toolCallId,
+          output: 'done',
+          state: 'output-available',
+        });
       }
     },
     onFinish: async (message) => {
@@ -104,7 +159,14 @@ const Chat = ({
       sendMessage(
         { 
           text: message.text || 'Sent with attachments',
-          files: message.files 
+          files: message.files as unknown as FileList,
+          // parts: [{
+          //   type: 'text',
+          //   text: message.text || 'Sent with attachments',
+          // }, ...message.files.map((file) => ({
+          //   type: 'file',
+          //   file: file,
+          // }))]
         },
         {
           body: {
@@ -170,7 +232,7 @@ const Chat = ({
           <AlertTitle>{getErrorTitle(errorCode)}</AlertTitle>
           <AlertDescription className="mt-2">
             <div className="mt-3">
-              {getErrorAction(errorCode)}
+              {getErrorAction(errorCode) || tChats('unknownError')}
             </div>
           </AlertDescription>
         </Alert>
@@ -179,7 +241,7 @@ const Chat = ({
   };
   
   return (
-    <div className={cn("relative flex-1 min-h-0 p-2", className)}>
+    <div className={cn("relative flex-1 min-h-0 p-4", className)}>
       <div className="flex flex-col h-full">
         <Conversation className="h-full flex-1 min-h-0">
           <ConversationContent>

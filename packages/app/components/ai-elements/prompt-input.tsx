@@ -34,7 +34,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import type { ChatStatus, FileUIPart, SourceDocumentUIPart } from "ai";
+import type { ChatStatus, DataUIPart, FileUIPart, SourceDocumentUIPart } from "ai";
 import {
   CornerDownLeftIcon,
   ImageIcon,
@@ -70,8 +70,8 @@ import {
 // ============================================================================
 
 export interface AttachmentsContext {
-  files: (FileUIPart & { id: string })[];
-  add: (files: File[] | FileList) => void;
+  files: ((FileUIPart | DataUIPart<{ mask: string }>) & { id: string })[];
+  add: (files: (File | FileUIPart | DataUIPart<{ mask: string }>)[] | FileList) => void;
   remove: (id: string) => void;
   clear: () => void;
   openFileDialog: () => void;
@@ -146,12 +146,12 @@ export function PromptInputProvider({
 
   // ----- attachments state (global when wrapped)
   const [attachmentFiles, setAttachmentFiles] = useState<
-    (FileUIPart & { id: string })[]
+    ((FileUIPart | DataUIPart<{ mask: string }>) & { id: string })[]
   >([]);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const openRef = useRef<() => void>(() => undefined);
 
-  const add = useCallback((files: (File | FileUIPart)[] | FileList) => {
+  const add = useCallback((files: (File | FileUIPart | DataUIPart<{ mask: string }>)[] | FileList) => {
     const incoming = Array.from(files);
     if (incoming.length === 0) {
       return;
@@ -159,13 +159,30 @@ export function PromptInputProvider({
 
     setAttachmentFiles((prev) =>
       prev.concat(
-        incoming.map((file) => ({
-          id: nanoid(),
-          type: "file" as const,
-          url: (file as FileUIPart).url ? (file as FileUIPart).url : URL.createObjectURL(file as File),
-          mediaType: (file as FileUIPart).mediaType ? (file as FileUIPart).mediaType : file.type,
-          filename: (file as FileUIPart).filename ? (file as FileUIPart).filename : (file as File).name,
-        }))
+        incoming.map((file) => {
+          if (file.type === 'file') {
+            return {
+              id: nanoid(),
+              type: "file" as const,
+              url: (file as FileUIPart).url ? (file as FileUIPart).url : URL.createObjectURL(file as File),
+              mediaType: (file as FileUIPart).mediaType ? (file as FileUIPart).mediaType : file.type,
+              filename: (file as FileUIPart).filename ? (file as FileUIPart).filename : (file as File).name,
+            };
+          } else if (file.type === 'data-mask') {
+            return {
+              id: nanoid(),
+              type: "data-mask" as const,
+              data: (file as DataUIPart<{ mask: string }>).data,
+            }
+          }
+          return {
+            id: nanoid(),
+            type: "file" as const,
+            url: (file as FileUIPart).url ? (file as FileUIPart).url : URL.createObjectURL(file as File),
+            mediaType: (file as FileUIPart).mediaType ? (file as FileUIPart).mediaType : file.type,
+            filename: (file as FileUIPart).filename ? (file as FileUIPart).filename : (file as File).name,
+          };
+        })
       )
     );
   }, []);
@@ -173,7 +190,7 @@ export function PromptInputProvider({
   const remove = useCallback((id: string) => {
     setAttachmentFiles((prev) => {
       const found = prev.find((f) => f.id === id);
-      if (found?.url) {
+      if (found?.type === "file" && found.url) {
         URL.revokeObjectURL(found.url);
       }
       return prev.filter((f) => f.id !== id);
@@ -183,7 +200,7 @@ export function PromptInputProvider({
   const clear = useCallback(() => {
     setAttachmentFiles((prev) => {
       for (const f of prev) {
-        if (f.url) {
+        if (f.type === "file" && f.url) {
           URL.revokeObjectURL(f.url);
         }
       }
@@ -199,7 +216,7 @@ export function PromptInputProvider({
   useEffect(
     () => () => {
       for (const f of attachmentsRef.current) {
-        if (f.url) {
+        if (f.type === "file" && f.url) {
           URL.revokeObjectURL(f.url);
         }
       }
@@ -323,7 +340,7 @@ export const PromptInputActionAddAttachments = ({
 
 export interface PromptInputMessage {
   text: string;
-  files: FileUIPart[];
+  files: (FileUIPart | DataUIPart<{ mask: string }>)[];
 }
 
 export type PromptInputProps = Omit<
@@ -624,7 +641,7 @@ export const PromptInput = ({
     () => () => {
       if (!usingProvider) {
         for (const f of filesRef.current) {
-          if (f.url) {
+          if (f.type === "file" && f.url) {
             URL.revokeObjectURL(f.url);
           }
         }
@@ -662,6 +679,7 @@ export const PromptInput = ({
   const attachmentsCtx = useMemo<AttachmentsContext>(
     () => ({
       files: files.map((item) => ({ ...item, id: item.id })),
+      // @ts-expect-error add is not typed correctly
       add,
       remove,
       clear: clearAttachments,
@@ -708,7 +726,7 @@ export const PromptInput = ({
     // Convert blob URLs to data URLs asynchronously
     Promise.all(
       files.map(async ({ id, ...item }) => {
-        if (item.url?.startsWith("blob:")) {
+        if (item.type === "file" && item.url?.startsWith("blob:")) {
           const dataUrl = await convertBlobUrlToDataUrl(item.url);
           // If conversion failed, keep the original blob URL
           return {
@@ -719,7 +737,7 @@ export const PromptInput = ({
         return item;
       })
     )
-      .then((convertedFiles: FileUIPart[]) => {
+      .then((convertedFiles: (FileUIPart | DataUIPart<{ mask: string }>)[]) => {
         try {
           const result = onSubmit({ text, files: convertedFiles }, event);
 

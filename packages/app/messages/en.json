@@ -8,7 +8,9 @@
     "save": "Save",
     "delete": "Delete",
     "edit": "Edit",
-    "close": "Close"
+    "close": "Close",
+    "result": "Result",
+    "parameters": "Parameters"
   },
   "auth": {
     "title": "User Login",
@@ -70,7 +72,9 @@
     "grid": "Grid"
   },
   "chats": {
-    "title": "Chats"
+    "title": "Chats",
+    "noChatSelected": "No chat selected",
+    "unknownError": "An unknown error occurred"
   },
   "zoom": {
     "zoomIn": "Zoom In",
@@ -86,7 +90,10 @@
     "myProjects": "My Projects",
     "editArea": "Edit Area",
     "drawRectMask": "Draw Rect Mask",
-    "drawPencilFreehandMask": "Draw Pencil Freehand Mask"
+    "drawPencilFreehandMask": "Draw Pencil Freehand Mask",
+    "drawLassoMask": "Draw Lasso Mask",
+    "splitLayers": "Split Layers",
+    "vectorize": "Vectorize"
   },
   "settings": {
     "title": "Settings",

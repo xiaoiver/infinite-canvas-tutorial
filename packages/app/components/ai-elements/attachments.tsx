@@ -7,7 +7,7 @@ import {
   HoverCardTrigger,
 } from "@/components/ui/hover-card";
 import { cn } from "@/lib/utils";
-import type { FileUIPart, SourceDocumentUIPart } from "ai";
+import type { DataUIPart, FileUIPart, SourceDocumentUIPart } from "ai";
 import {
   FileTextIcon,
   GlobeIcon,
@@ -25,7 +25,7 @@ import { createContext, useContext, useMemo } from "react";
 // ============================================================================
 
 export type AttachmentData =
-  | (FileUIPart & { id: string })
+  | ((FileUIPart | DataUIPart<{ mask: string }>) & { id: string })
   | (SourceDocumentUIPart & { id: string });
 
 export type AttachmentMediaCategory =
@@ -47,6 +47,8 @@ export const getMediaCategory = (
 ): AttachmentMediaCategory => {
   if (data.type === "source-document") {
     return "source";
+  } else if (data.type === "data-mask") {
+    return "image";
   }
 
   const mediaType = data.mediaType ?? "";
@@ -70,6 +72,8 @@ export const getMediaCategory = (
 export const getAttachmentLabel = (data: AttachmentData): string => {
   if (data.type === "source-document") {
     return data.title || data.filename || "Source";
+  } else if (data.type === "data-mask") {
+    return "Mask";
   }
 
   const category = getMediaCategory(data);
@@ -238,8 +242,8 @@ export const AttachmentPreview = ({
   );
 
   const renderContent = () => {
-    if (mediaCategory === "image" && data.type === "file" && data.url) {
-      return renderImage(data.url, data.filename, variant === "grid");
+    if (mediaCategory === "image" && ((data.type === "file" && data.url) || (data.type === "data-mask" && data.data))) {
+      return renderImage(data.type === "file" ? data.url : data.data, data.type === "file" ? data.filename : undefined, variant === "grid");
     }
 
     if (mediaCategory === "video" && data.type === "file" && data.url) {
@@ -298,7 +302,7 @@ export const AttachmentInfo = ({
   return (
     <div className={cn("min-w-0 flex-1", className)} {...props}>
       <span className="block truncate">{label}</span>
-      {showMediaType && data.mediaType && (
+      {showMediaType && data.type === "file" && data.mediaType && (
         <span className="block truncate text-muted-foreground text-xs">
           {data.mediaType}
         </span>

@@ -8,7 +8,9 @@
     "save": "保存",
     "delete": "删除",
     "edit": "编辑",
-    "close": "关闭"
+    "close": "关闭",
+    "result": "结果",
+    "parameters": "参数"
   },
   "auth": {
     "title": "用户登录",
@@ -70,7 +72,9 @@
     "grid": "网格"
   },
   "chats": {
-    "title": "对话"
+    "title": "对话",
+    "noChatSelected": "没有选择对话",
+    "unknownError": "发生未知错误"
   },
   "zoom": {
     "zoomIn": "放大",
@@ -86,7 +90,10 @@
     "myProjects": "我的项目",
     "editArea": "编辑区域",
     "drawRectMask": "矩形遮罩",
-    "drawPencilFreehandMask": "铅笔自由手绘遮罩"
+    "drawPencilFreehandMask": "铅笔自由绘制遮罩",
+    "drawLassoMask": "套索遮罩",
+    "splitLayers": "分割图层",
+    "vectorize": "矢量化"
   },
   "settings": {
     "title": "设置",
