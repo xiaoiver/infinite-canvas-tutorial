@@ -13,51 +13,78 @@ import {
 import { canvasApiAtom, selectedNodesAtom } from "@/atoms/canvas-selection";
 import { useAtomValue } from "jotai";
 import { isDataUrl, isUrl, SerializedNode } from "@infinite-canvas-tutorial/ecs";
-import { useEffect } from "react";
-import { usePromptInputAttachments } from "./ai-elements/prompt-input";
+import { useEffect, useRef } from "react";
+import { usePromptInputController } from "./ai-elements/prompt-input";
 import { DataUIPart, FileUIPart } from "ai";
 import { ExtendedAPI } from "@infinite-canvas-tutorial/webcomponents";
 
 const PromptInputAttachmentsDisplay = () => {
   const canvasApi = useAtomValue(canvasApiAtom);
   const selectedNodes = useAtomValue(selectedNodesAtom);
-  const attachments = usePromptInputAttachments();
+  const controller = usePromptInputController();
+  const lastProcessedNodesRef = useRef<string>('');
 
   useEffect(() => {
-    if (!selectedNodes || !canvasApi) {
+    if (!selectedNodes || !canvasApi || selectedNodes.length === 0) {
+      // Clear attachments when no nodes are selected
+      if (controller.attachments.files.length > 0) {
+        controller.attachments.clear();
+      }
+      lastProcessedNodesRef.current = '';
       return;
     }
 
-    (async () => {
-      try {
-        attachments.clear();
-        const files = (await Promise.all(selectedNodes.map(node => convertToFiles(canvasApi, node)))).flat();
-        if (files.length > 0) {
-          attachments.add(files.filter(Boolean) as File[]);
-        }
-      } catch (error) {
-        console.error('Failed to convert base64 to File:', error);
-      }
-    })();
-  }, [canvasApi, selectedNodes]);
+    // Create a stable key from selected nodes to detect changes
+    const currentNodeIds = selectedNodes.map(node => node.id).sort().join(',');
+    
+    // Skip if we've already processed these exact nodes
+    if (currentNodeIds === lastProcessedNodesRef.current) {
+      return;
+    }
 
-  if (attachments.files.length === 0) {
+    lastProcessedNodesRef.current = currentNodeIds;
+
+    try {
+      controller.attachments.clear();
+      const files = selectedNodes.map(node => convertToFiles(canvasApi, node)).flat();
+      if (files.length > 0) {
+        files.filter(Boolean).forEach(file => {
+          // @ts-expect-error id is not typed correctly
+          if (!controller.attachments.files.find(f => f.id === file.id)) {
+            controller.attachments.add([file]);
+          }
+        });
+      }
+    } catch (error) {
+      console.error('Failed to convert base64 to File:', error);
+    }
+  }, [canvasApi, selectedNodes, controller]);
+
+  if (controller.attachments.files.length === 0) {
     return null;
   }
 
+  const handleRemoveAttachment = (id: string) => {
+    controller.attachments.remove(id);
+
+    // Deselect from canvas
+    if (canvasApi) {
+      canvasApi.deselectNodes([canvasApi.getNodeById(id)]);
+    }
+  };
+
   return (
     <Attachments variant="inline">
-      {attachments.files.map((attachment) => {
+      {controller.attachments.files.map((attachment) => {
         const mediaCategory = getMediaCategory(attachment);
         const label = getAttachmentLabel(attachment);
         const imageUrl = attachment.type === "file" ? attachment.url : attachment.type === "data-mask" ? attachment.data : undefined;
         const mediaType = attachment.type === "file" ? attachment.mediaType : attachment.type === "data-mask" ? 'image/png' : undefined;
-
         return <AttachmentHoverCard key={attachment.id}>
           <AttachmentHoverCardTrigger asChild>
             <Attachment
               data={attachment}
-              onRemove={() => attachments.remove(attachment.id)}
+              onRemove={() => handleRemoveAttachment(attachment.id)}
               className="max-w-30"
             >
               <div className="relative size-5 shrink-0">
@@ -103,10 +130,13 @@ const PromptInputAttachmentsDisplay = () => {
 
 export default PromptInputAttachmentsDisplay;
 
-async function convertToFiles(api: ExtendedAPI, node: SerializedNode, files: (FileUIPart | DataUIPart<{ mask: string }> | File)[] = [], parent?: SerializedNode): Promise<(FileUIPart | DataUIPart<{ mask: string }> | File)[]> {
+function convertToFiles(api: ExtendedAPI, node: SerializedNode, files: (FileUIPart | DataUIPart<{ mask: string }> | File)[] = [], parent?: SerializedNode): (FileUIPart | DataUIPart<{ mask: string }> | File)[] {
   if ((node as any).usage === 'mask') {
     const relativeTo = { x: node.x as number, y: node.y as number, width: node.width as number, height: node.height as number };
-    if (node.parentId && parent) {
+    if (node.parentId) {
+      if (!parent) {
+        parent = api.getNodeById(node.parentId);
+      }
       relativeTo.x = parent.x as number;
       relativeTo.y = parent.y as number;
       relativeTo.width = parent.width as number;
@@ -147,9 +177,18 @@ async function convertToFiles(api: ExtendedAPI, node: SerializedNode, files: (Fi
         files.push(new File([blob], node.id, { type: mimeType }));
       } else if (isUrl(base64OrURL)) {
         // fetch HEAD to get the MIME type
-        const response = await fetch(base64OrURL, { method: 'HEAD' });
-        const mediaType = response.headers.get('content-type') || 'image/png';
+        // const response = await fetch(base64OrURL, { method: 'HEAD' });
+        // const mediaType = response.headers.get('content-type') || 'image/png';
         const filename = base64OrURL.split('/').pop()?.split('?')[0] || node.id;
+        const suffix = base64OrURL.split('/').pop()?.split('?')[0]?.split('.').pop();
+        let mediaType = 'image/png';
+        if (suffix === 'jpg' || suffix === 'jpeg') {
+          mediaType = 'image/jpeg';
+        } else if (suffix === 'gif') {
+          mediaType = 'image/gif';
+        } else if (suffix === 'webp') {
+          mediaType = 'image/webp';
+        }
         files.push({
           id: node.id,
           type: 'file' as const,

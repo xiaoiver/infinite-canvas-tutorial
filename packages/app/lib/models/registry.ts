@@ -102,6 +102,13 @@ export const PROVIDERS: ProviderInfo[] = [
       { value: 'deepseek/deepseek-chat', label: 'DeepSeek Chat', provider: 'deepseek', capabilities: ['text', 'chat'] },
     ],
   },
+  {
+    value: 'fal',
+    label: 'Fal.ai',
+    models: [
+      { value: 'fal-ai/qwen-image-layered', label: 'Qwen Image Layered', provider: 'fal', capabilities: ['image-layered'] },
+    ],
+  },
   // {
   //     value: 'perplexity',
   //     label: 'Perplexity',

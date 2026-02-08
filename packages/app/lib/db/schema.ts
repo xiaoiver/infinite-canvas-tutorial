@@ -99,7 +99,7 @@ export const userProviderKeys = pgTable('user_provider_keys', {
 export const userCapabilityPreferences = pgTable('user_capability_preferences', {
   id: uuid('id').defaultRandom().primaryKey(),
   userId: uuid('user_id').notNull(), // 关联到 auth.users(id)
-  capability: text('capability').notNull(), // 'text' | 'chat' | 'image'
+  capability: text('capability').notNull(), // 'text' | 'chat' | 'image' | 'image-layered'
   provider: text('provider').notNull(), // 当前选中的 provider
   model: text('model').notNull(), // e.g. 'gpt-4.1-mini', 'claude-3-5-sonnet', 'gpt-image-1'
   providerKeyId: uuid('provider_key_id'), // 明确绑定到某个 key（可选）

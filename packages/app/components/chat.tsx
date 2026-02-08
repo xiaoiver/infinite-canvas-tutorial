@@ -148,6 +148,21 @@ const Chat = ({
 
   const errorCode = getChatErrorCode(error);
 
+  const handleFileChanged = async (files: (FileUIPart | DataUIPart<{ mask: string }> | File)[]) => {
+    if (canvasApi) {
+      const center = canvasApi.viewport2Canvas({
+        x: canvasApi.element.clientWidth / 2,
+        y: canvasApi.element.clientHeight / 2,
+      });
+
+      // Insert image to canvas
+      await Promise.all(files.map(async file => {
+        await canvasApi.createImageFromFile(file as File, { position: center });
+      }));
+      canvasApi.record();
+    }
+  };
+
   const handleSubmit = async (message: PromptInputMessage) => {
     const hasText = Boolean(message.text);
     const hasAttachments = Boolean(message.files?.length);
@@ -160,13 +175,6 @@ const Chat = ({
         { 
           text: message.text || 'Sent with attachments',
           files: message.files as unknown as FileList,
-          // parts: [{
-          //   type: 'text',
-          //   text: message.text || 'Sent with attachments',
-          // }, ...message.files.map((file) => ({
-          //   type: 'file',
-          //   file: file,
-          // }))]
         },
         {
           body: {
@@ -282,18 +290,18 @@ const Chat = ({
                               <MessageAction
                                 onClick={() => regenerate()}
                                 label="Retry"
-                                size="icon"
+                                size="icon-sm"
                               >
-                                <RefreshCcw className="size-2" />
+                                <RefreshCcw />
                               </MessageAction>
                               <MessageAction
                                 onClick={() =>
                                   navigator.clipboard.writeText(part.text)
                                 }
                                 label="Copy"
-                                size="icon"
+                                size="icon-sm"
                               >
-                                <Copy className="size-1" />
+                                <Copy />
                               </MessageAction>
                             </MessageActions>
                           )}
@@ -439,7 +447,12 @@ const Chat = ({
           </ConversationContent>
           <ConversationScrollButton />
         </Conversation>
-        <PromptInput onSubmit={handleSubmit} className="mt-4" globalDrop multiple>
+        <PromptInput 
+          accept="image/*"
+          maxFileSize={10 * 1024 * 1024} // 10MB
+          maxFiles={10}
+          onFileChanged={handleFileChanged}
+          onSubmit={handleSubmit} className="mt-4" globalDrop multiple>
           <PromptInputHeader>
             <PromptInputAttachmentsDisplay />
           </PromptInputHeader>
@@ -454,7 +467,7 @@ const Chat = ({
               <PromptInputActionMenu>
                 <PromptInputActionMenuTrigger />
                 <PromptInputActionMenuContent>
-                  <PromptInputActionAddAttachments />
+                  <PromptInputActionAddAttachments label={tChats('uploadImages')} />
                 </PromptInputActionMenuContent>
               </PromptInputActionMenu>
             </PromptInputTools>

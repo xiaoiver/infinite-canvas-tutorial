@@ -27,6 +27,7 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import type * as ScrollAreaPrimitive from '@radix-ui/react-scroll-area';
 import { ChevronDown, Edit2, Trash2, MessageSquare, Plus } from 'lucide-react';
+import { toast } from 'sonner';
 import Chat from '@/components/chat';
 import Canvas from '@/components/canvas';
 import { ExportFormat, readSystemClipboard, SerializedNode } from '@infinite-canvas-tutorial/ecs';
@@ -40,7 +41,7 @@ import {
   ResizablePanelGroup,
 } from "@/components/ui/resizable";
 import { canvasApiAtom, selectedNodesAtom } from '@/atoms/canvas-selection';
-import { useAtomValue } from 'jotai';
+import { useAtom, useAtomValue } from 'jotai';
 import { Kbd, KbdGroup } from '@/components/ui/kbd';
 import { executeCopy, executePaste, executeCut } from '@infinite-canvas-tutorial/webcomponents/spectrum';
 import { CheckboardStyle } from '@infinite-canvas-tutorial/ecs';
@@ -97,12 +98,17 @@ export function ProjectDetailClient({
   const [renameDialogOpen, setRenameDialogOpen] = useState(false);
   const [renameProjectName, setRenameProjectName] = useState('');
   const [renaming, setRenaming] = useState(false);
+  const [deleteProjectDialogOpen, setDeleteProjectDialogOpen] = useState(false);
+  const [deletingProject, setDeletingProject] = useState(false);
+  const [deleteChatDialogOpen, setDeleteChatDialogOpen] = useState(false);
+  const [chatToDelete, setChatToDelete] = useState<string | null>(null);
+  const [deletingChat, setDeletingChat] = useState(false);
   const [editingChatId, setEditingChatId] = useState<string | null>(null);
   const [editingChatTitle, setEditingChatTitle] = useState('');
   const editingInputRef = useRef<HTMLInputElement>(null);
   const chatListScrollRef = useRef<React.ElementRef<typeof ScrollAreaPrimitive.Root>>(null);
-  const canvasApi = useAtomValue(canvasApiAtom);
-  const selectedNodes = useAtomValue(selectedNodesAtom);
+  const [canvasApi, setCanvasApi] = useAtom(canvasApiAtom);
+  const [selectedNodes, setSelectedNodes] = useAtom(selectedNodesAtom);
   const [isClipboardEmpty, setIsClipboardEmpty] = useState(true);
 
   const isSelectedEmpty = canvasApi?.getAppState().layersSelected.length === 0;
@@ -167,6 +173,13 @@ export function ProjectDetailClient({
     }
   }, [chats.length]);
 
+  useEffect(() => {
+    return () => {
+      setCanvasApi(null);
+      setSelectedNodes([]);
+    };
+  }, []);
+
   // 打开重命名对话框
   const handleOpenRenameDialog = () => {
     if (project) {
@@ -201,22 +214,27 @@ export function ProjectDetailClient({
       const updatedProject = await response.json();
       setProject(updatedProject);
       setRenameDialogOpen(false);
+      toast.success(t('renameSuccess') || '项目重命名成功');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to rename project');
+      const errorMessage = err instanceof Error ? err.message : 'Failed to rename project';
+      setError(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setRenaming(false);
     }
+  };
+
+  // 打开删除项目对话框
+  const handleOpenDeleteProjectDialog = () => {
+    setDeleteProjectDialogOpen(true);
   };
 
   // 删除项目
   const handleDeleteProject = async () => {
     if (!project) return;
 
-    if (!confirm(t('deleteConfirm'))) {
-      return;
-    }
-
     try {
+      setDeletingProject(true);
       const response = await fetch(`/api/projects/${project.id}`, {
         method: 'DELETE',
       });
@@ -225,10 +243,59 @@ export function ProjectDetailClient({
         throw new Error('Failed to delete project');
       }
 
+      toast.success(t('deleteSuccess') || '项目删除成功');
       // 删除成功后跳转到项目列表
       router.push(`/${locale}/projects`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete project');
+      const errorMessage = err instanceof Error ? err.message : 'Failed to delete project';
+      setError(errorMessage);
+      toast.error(errorMessage);
+      setDeleteProjectDialogOpen(false);
+    } finally {
+      setDeletingProject(false);
+    }
+  };
+
+  // 删除聊天记录
+  const handleDeleteChat = async () => {
+    if (!chatToDelete || !project) return;
+
+    try {
+      setDeletingChat(true);
+      const response = await fetch(`/api/chats/${chatToDelete}`, {
+        method: 'DELETE',
+      });
+      
+      if (response.ok) {
+        // 从列表中移除
+        const newChats = chats.filter(c => c.id !== chatToDelete);
+        setChats(newChats);
+        // 如果删除的是当前选中的 chat，清除选中状态
+        if (selectedChatId === chatToDelete) {
+          if (newChats.length > 0) {
+            // 如果有其他 chat，选中第一个
+            setSelectedChatId(newChats[0].id);
+          } else {
+            // 如果没有其他 chat，清除选中状态并更新 URL
+            setSelectedChatId(null);
+            const params = new URLSearchParams(searchParams.toString());
+            params.delete('chatId');
+            const newUrl = `/${locale}/projects/${project.id}?${params.toString()}`;
+            router.replace(newUrl, { scroll: false });
+          }
+        }
+        toast.success(tChats('deleteSuccess') || '聊天记录删除成功');
+        setDeleteChatDialogOpen(false);
+        setChatToDelete(null);
+      } else {
+        throw new Error('Failed to delete chat');
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to delete chat';
+      console.error('Failed to delete chat:', err);
+      toast.error(errorMessage);
+    } finally {
+      setDeletingChat(false);
     }
   };
 
@@ -372,7 +439,7 @@ export function ProjectDetailClient({
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem
-            onClick={handleDeleteProject}
+            onClick={handleOpenDeleteProjectDialog}
             className="text-destructive focus:text-destructive"
           >
             {commonT('delete')}
@@ -552,39 +619,10 @@ export function ProjectDetailClient({
                             variant="ghost"
                             size="sm"
                             className="h-7 w-7 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                            onClick={async (e) => {
+                            onClick={(e) => {
                               e.stopPropagation();
-                              if (!confirm('确定要删除这个聊天记录吗？')) {
-                                return;
-                              }
-                              try {
-                                const response = await fetch(`/api/chats/${chat.id}`, {
-                                  method: 'DELETE',
-                                });
-                                if (response.ok) {
-                                  // 从列表中移除
-                                  const newChats = chats.filter(c => c.id !== chat.id);
-                                  setChats(newChats);
-                                  // 如果删除的是当前选中的 chat，清除选中状态
-                                  if (selectedChatId === chat.id) {
-                                    if (newChats.length > 0) {
-                                      // 如果有其他 chat，选中第一个
-                                      setSelectedChatId(newChats[0].id);
-                                    } else {
-                                      // 如果没有其他 chat，清除选中状态并更新 URL
-                                      setSelectedChatId(null);
-                                      const params = new URLSearchParams(searchParams.toString());
-                                      params.delete('chatId');
-                                      const newUrl = `/${locale}/projects/${project.id}?${params.toString()}`;
-                                      router.replace(newUrl, { scroll: false });
-                                    }
-                                  }
-                                } else {
-                                  console.error('Failed to delete chat');
-                                }
-                              } catch (err) {
-                                console.error('Failed to delete chat:', err);
-                              }
+                              setChatToDelete(chat.id);
+                              setDeleteChatDialogOpen(true);
                             }}
                           >
                             <Trash2 className="h-3 w-3" />
@@ -660,6 +698,65 @@ export function ProjectDetailClient({
               disabled={renaming || !renameProjectName.trim()}
             >
               {renaming ? commonT('loading') : commonT('save')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 删除项目对话框 */}
+      <Dialog open={deleteProjectDialogOpen} onOpenChange={setDeleteProjectDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t('deleteProject')}</DialogTitle>
+            <DialogDescription>
+              {t('deleteConfirm')}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setDeleteProjectDialogOpen(false)}
+              disabled={deletingProject}
+            >
+              {commonT('cancel')}
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDeleteProject}
+              disabled={deletingProject}
+            >
+              {deletingProject ? commonT('loading') : commonT('delete')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 删除聊天记录对话框 */}
+      <Dialog open={deleteChatDialogOpen} onOpenChange={setDeleteChatDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{tChats('deleteChat') }</DialogTitle>
+            <DialogDescription>
+              {tChats('deleteConfirm')}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setDeleteChatDialogOpen(false);
+                setChatToDelete(null);
+              }}
+              disabled={deletingChat}
+            >
+              {commonT('cancel')}
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDeleteChat}
+              disabled={deletingChat}
+            >
+              {deletingChat ? commonT('loading') : commonT('delete')}
             </Button>
           </DialogFooter>
         </DialogContent>

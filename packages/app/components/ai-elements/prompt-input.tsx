@@ -71,7 +71,7 @@ import {
 
 export interface AttachmentsContext {
   files: ((FileUIPart | DataUIPart<{ mask: string }>) & { id: string })[];
-  add: (files: (File | FileUIPart | DataUIPart<{ mask: string }>)[] | FileList) => void;
+  add: (files: (File | FileUIPart | DataUIPart<{ mask: string }>)[] | FileList, skipOnFileChanged?: boolean) => void;
   remove: (id: string) => void;
   clear: () => void;
   openFileDialog: () => void;
@@ -162,7 +162,8 @@ export function PromptInputProvider({
         incoming.map((file) => {
           if (file.type === 'file') {
             return {
-              id: nanoid(),
+              // @ts-expect-error id is not typed correctly
+              id: file.id,
               type: "file" as const,
               url: (file as FileUIPart).url ? (file as FileUIPart).url : URL.createObjectURL(file as File),
               mediaType: (file as FileUIPart).mediaType ? (file as FileUIPart).mediaType : file.type,
@@ -170,13 +171,15 @@ export function PromptInputProvider({
             };
           } else if (file.type === 'data-mask') {
             return {
-              id: nanoid(),
+              // @ts-expect-error id is not typed correctly
+              id: file.id,
               type: "data-mask" as const,
               data: (file as DataUIPart<{ mask: string }>).data,
             }
           }
           return {
-            id: nanoid(),
+            // @ts-expect-error id is not typed correctly
+            id: (file as FileUIPart).id,
             type: "file" as const,
             url: (file as FileUIPart).url ? (file as FileUIPart).url : URL.createObjectURL(file as File),
             mediaType: (file as FileUIPart).mediaType ? (file as FileUIPart).mediaType : file.type,
@@ -320,7 +323,7 @@ export type PromptInputActionAddAttachmentsProps = ComponentProps<
 };
 
 export const PromptInputActionAddAttachments = ({
-  label = "Add photos or files",
+  label,
   ...props
 }: PromptInputActionAddAttachmentsProps) => {
   const attachments = usePromptInputAttachments();
@@ -328,8 +331,7 @@ export const PromptInputActionAddAttachments = ({
   return (
     <DropdownMenuItem
       {...props}
-      onSelect={(e) => {
-        e.preventDefault();
+      onSelect={() => {
         attachments.openFileDialog();
       }}
     >
@@ -364,6 +366,7 @@ export type PromptInputProps = Omit<
     message: PromptInputMessage,
     event: FormEvent<HTMLFormElement>
   ) => void | Promise<void>;
+  onFileChanged: (files: (FileUIPart | DataUIPart<{ mask: string }> | File)[]) => void;
 };
 
 export const PromptInput = ({
@@ -376,6 +379,7 @@ export const PromptInput = ({
   maxFileSize,
   onError,
   onSubmit,
+  onFileChanged,
   children,
   ...props
 }: PromptInputProps) => {
@@ -491,7 +495,7 @@ export const PromptInput = ({
 
   // Wrapper that validates files before calling provider's add
   const addWithProviderValidation = useCallback(
-    (fileList: File[] | FileList) => {
+    async (fileList: File[] | FileList, skipOnFileChanged = false) => {
       const incoming = Array.from(fileList);
       const accepted = incoming.filter((f) => matchesAccept(f));
       if (incoming.length && accepted.length === 0) {
@@ -525,9 +529,12 @@ export const PromptInput = ({
           message: "Too many files. Some were not added.",
         });
       }
-
       if (capped.length > 0) {
         controller?.attachments.add(capped);
+      }
+
+      if (onFileChanged && !skipOnFileChanged) {
+        onFileChanged(capped || []);
       }
     },
     [matchesAccept, maxFileSize, maxFiles, onError, files.length, controller]

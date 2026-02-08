@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/select';
 import { Save } from 'lucide-react';
 import { useTranslations } from 'next-intl';
+import { toast } from 'sonner';
 import { ALL_CAPABILITIES, isValidCapability, type Capability } from '@/lib/models/capabilities';
 
 interface Provider {
@@ -103,7 +104,7 @@ export function CapabilitySettings({
       }
     };
 
-    ALL_CAPABILITIES.filter(capability => capability === 'chat' || capability === 'image').forEach((capability) => {
+    ALL_CAPABILITIES.forEach((capability) => {
       loadModelsForCapability(capability);
     });
   }, [providerKeys]);
@@ -111,7 +112,7 @@ export function CapabilitySettings({
   const handleSaveCapability = async (capability: Capability) => {
     const pref = preferences[capability];
     if (!pref || !pref.provider || !pref.model) {
-      alert(t('selectProviderAndModel'));
+      toast.error(t('selectProviderAndModel'));
       return;
     }
 
@@ -140,14 +141,14 @@ export function CapabilitySettings({
           ...prev,
           [capability]: saved,
         }));
-        alert(t('saveSuccess'));
+        toast.success(t('saveSuccess'));
       } else {
         const error = await res.json();
-        alert(t('saveFailedWithError', { error: error.error }));
+        toast.error(t('saveFailedWithError', { error: error.error }));
       }
     } catch (error) {
       console.error('Failed to save capability preference:', error);
-      alert(t('saveFailed'));
+      toast.error(t('saveFailed'));
     } finally {
       setSaving(false);
     }
@@ -177,7 +178,7 @@ export function CapabilitySettings({
 
       <div className="border rounded-lg overflow-hidden">
         <div className="divide-y">
-          {ALL_CAPABILITIES.filter(capability => capability === 'chat' || capability === 'image').map((capability) => {
+          {ALL_CAPABILITIES.map((capability) => {
             const pref = preferences[capability] || { capability, provider: '', model: '' };
             
             // 获取该 capability 对应的模型列表（已按 capability 过滤）

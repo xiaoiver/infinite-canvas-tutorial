@@ -144,6 +144,8 @@ export class API {
   #store = new Store(this);
 
   onchange: (snapshot: { appState: AppState; nodes: SerializedNode[] }) => void;
+  onNodesChange: (nodes: SerializedNode[]) => void;
+  onAppStateChange: (appState: AppState) => void;
 
   constructor(
     private readonly stateManagement: StateManagement,
@@ -158,7 +160,17 @@ export class API {
       };
       this.stateManagement.onChange?.(snapshot);
 
-      if (this.onchange) {
+      // 分别触发 nodes 和 appState 的变化回调
+      if (!event.elementsChange.isEmpty() && this.onNodesChange) {
+        this.onNodesChange(snapshot.nodes);
+      }
+
+      if (!event.appStateChange.isEmpty() && this.onAppStateChange) {
+        this.onAppStateChange(snapshot.appState);
+      }
+
+      // 保持向后兼容：如果设置了 onchange，当有任何变化时都会触发
+      if (this.onchange && (!event.elementsChange.isEmpty() || !event.appStateChange.isEmpty())) {
         this.onchange(snapshot);
       }
     });

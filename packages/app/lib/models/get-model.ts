@@ -5,6 +5,7 @@
 
 import { createOpenAI } from '@ai-sdk/openai';
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
+import { createFal } from '@ai-sdk/fal';
 import { getUserCapabilityPreference } from '@/lib/db/user-preferences';
 import { getUserProviderKeys } from '@/lib/db/user-preferences';
 import type { Capability } from './capabilities';
@@ -121,6 +122,11 @@ export function createImageModel(modelInfo: ModelInfo): ImageModel | undefined {
       apiKey,
     });
     imageModel = google.imageModel(model);
+  } else if (provider === 'fal') {
+    const falProvider = createFal({
+      apiKey,
+    });
+    imageModel = falProvider.image(model);
   }
   return imageModel;
 }

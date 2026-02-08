@@ -8,15 +8,17 @@ import { createLanguageModel, getModelForCapability } from '@/lib/models/get-mod
 import { generateImageTool } from '@/tools/generate-image';
 import { insertImageTool } from '@/tools/insert-image';
 import { drawElementTool } from '@/tools/draw-element';
-import { splitLayersTool } from '@/tools/split-layers';
+import { decomposeImageTool } from '@/tools/decompose-image';
+import { vectorizeImageTool } from '@/tools/vectorize-image';
 import { NextResponse } from 'next/server';
 import { ChatErrorCode, isAuthenticationError } from '@/lib/errors';
 
 const tools = {
   generateImage: generateImageTool,
   insertImage: insertImageTool,
+  decomposeImage: decomposeImageTool,
+  vectorizeImage: vectorizeImageTool,
   drawElement: drawElementTool,
-  splitLayers: splitLayersTool,
 };
 export type ChatTools = InferUITools<typeof tools>;
 
@@ -24,7 +26,7 @@ type CustomUIMessage = UIMessage<
   never,
   {
     url: { url: string; title: string; content: string };
-    mask: { mask: string };
+    mask: string;
   }
 >;
 
@@ -159,17 +161,12 @@ export async function POST(req: Request) {
     tools,
     // @see https://ai-sdk.dev/docs/reference/ai-sdk-ui/convert-to-model-messages#custom-data-part-conversion
     convertDataPart: (part) => {
-      console.log('part', part);
-      if (part.type === 'data-url') {
-        return {
-          type: 'text',
-          text: `[Reference: ${part.data.title}](${part.data.url})\n\n${part.data.content}`,
-        };
-      }
       if (part.type === 'data-mask') {
         return {
-          type: 'text',
-          text: `[Mask](${part.data})`,
+          type: 'file',
+          mediaType: 'image/png',
+          data: part.data,
+          filename: 'mask',
         };
       }
     },
@@ -186,7 +183,8 @@ export async function POST(req: Request) {
         // TODO: System prompt is configurable
         'You are a helpful assistant that can answer questions and help with tasks. ' +
         'When using tools that generate images, do NOT include image URLs in your response message. ' +
-        'The tool output component will automatically display the generated images, so there is no need to mention them in your text response.',
+        'The tool output component will automatically display the generated images, so there is no need to mention them in your text response.' +
+        'When an image is generated, you can insert it into the canvas by using the insertImage tool.',
       stopWhen: stepCountIs(5),
       tools,
     });

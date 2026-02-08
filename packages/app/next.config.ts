@@ -5,7 +5,7 @@ const withNextIntl = createNextIntlPlugin('./i18n/request.ts');
 
 const nextConfig: NextConfig = {
   /* config options here */
-  // reactStrictMode: false,
+  reactStrictMode: false,
   // 告诉 Next.js 包含这些本地包
   transpilePackages: [
     "@infinite-canvas-tutorial/ecs",
@@ -17,6 +17,7 @@ const nextConfig: NextConfig = {
     "@infinite-canvas-tutorial/eraser",
   ],
   output: 'standalone',
+  serverExternalPackages: ['@neplex/vectorizer'],
 };
 
 export default withNextIntl(nextConfig);

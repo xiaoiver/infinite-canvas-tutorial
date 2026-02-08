@@ -22,8 +22,6 @@ import {
 import { Github, Menu } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
-import { useAtomValue } from 'jotai';
-import { isSingleImageAtom } from '@/atoms/canvas-selection';
 import { ImageToolbar } from '@/components/image-toolbar';
 import { ColorToolbar } from '../color-toolbar';
 
@@ -46,7 +44,6 @@ export function Topbar({ leftMenuItems, leftMenuContent, centerContent }: Topbar
   const pathname = usePathname();
   const [loginDialogOpen, setLoginDialogOpen] = useState(false);
   const t = useTranslations('toolbar');
-  const isSingleImage = useAtomValue(isSingleImageAtom);
 
   // 登录成功后自动关闭弹窗
   useEffect(() => {
