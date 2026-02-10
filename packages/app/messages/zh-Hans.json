@@ -10,7 +10,9 @@
     "edit": "编辑",
     "close": "关闭",
     "result": "结果",
-    "parameters": "参数"
+    "parameters": "参数",
+    "collapse": "折叠",
+    "expand": "展开"
   },
   "auth": {
     "title": "用户登录",
@@ -71,7 +73,9 @@
     "copy": "复制",
     "paste": "粘贴",
     "preferences": "偏好设置",
-    "grid": "网格"
+    "grid": "网格",
+    "snapToPixelGrid": "像素网格对齐",
+    "snapToObjects": "对象对齐"
   },
   "chats": {
     "title": "对话",
@@ -80,7 +84,9 @@
     "deleteChat": "删除聊天记录",
     "deleteConfirm": "确定要删除这个聊天记录吗？此操作无法撤销。",
     "deleteSuccess": "聊天记录删除成功",
-    "uploadImages": "上传图片"
+    "uploadImages": "上传图片",
+    "decomposeImageDescription": "将图像分解为多个图层。",
+    "vectorizeImageDescription": "将图像矢量化。"
   },
   "zoom": {
     "zoomIn": "放大",
@@ -102,7 +108,10 @@
     "vectorize": "矢量化",
     "drawRectMaskDescription": "拖动以在图像上绘制矩形遮罩。",
     "drawPencilFreehandMaskDescription": "在图像上自由绘制遮罩。",
-    "drawLassoMaskDescription": "在图像上绘制套索遮罩。"
+    "drawLassoMaskDescription": "在图像上绘制套索遮罩。",
+    "drawSmartClickMask": "在图像上点击智能选择区域",
+    "insertIntoCanvas": "插入到画布",
+    "download": "下载"
   },
   "settings": {
     "title": "设置",

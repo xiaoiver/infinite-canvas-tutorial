@@ -1,6 +1,5 @@
 "use client";
 
-import { nanoid } from 'nanoid';
 import {
   Conversation,
   ConversationContent,
@@ -48,9 +47,9 @@ import {
 } from "@/components/ai-elements/tool";
 import { ImageGallery } from "@/components/ai-elements/image-gallery";
 import { cn } from "@/lib/utils";
-import { ToolUIPart, DynamicToolUIPart, ChatOnToolCallCallback, lastAssistantMessageIsCompleteWithToolCalls, FileUIPart, DataUIPart } from "ai";
+import { ToolUIPart, DynamicToolUIPart, ChatOnToolCallCallback, lastAssistantMessageIsCompleteWithToolCalls, FileUIPart, DataUIPart, ImagePart, InferUITool, ToolCallPart } from "ai";
 import { Copy, RefreshCcw, AlertTriangle } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useChat, UIMessage } from '@ai-sdk/react';
 import { Loader } from "./ai-elements/loader";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -60,8 +59,14 @@ import { useParams } from "next/navigation";
 import PromptInputAttachmentsDisplay from "./prompt-input-display";
 import { useTranslations } from 'next-intl';
 import { canvasApiAtom, selectedNodesAtom } from "@/atoms/canvas-selection";
-import { useAtomValue } from "jotai";
-import { SerializedNode } from "@infinite-canvas-tutorial/ecs";
+import { sendMessageAtom } from "@/atoms/chat";
+import { useAtomValue, useSetAtom } from "jotai";
+import { MaskPart, ShapePart } from '@/lib/file';
+import { wrapToolCall } from '@/tools/wrapper';
+import { GenerateImageOutput, GenerateImageUITool } from '@/components/tools/generate-image-output';
+import { insertImage } from '@/tools/insert-image-impl';
+import { DecomposeImageOutput, DecomposeImageUITool } from "@/components/tools/decompose-image-output";
+import { VectorizeImageOutput, VectorizeImageUITool } from "@/components/tools/vectorize-image-output";
 
 const Chat = ({ 
   className, 
@@ -82,73 +87,46 @@ const Chat = ({
   const t = useTranslations('auth');
   const tChats = useTranslations('chats');
   const canvasApi = useAtomValue(canvasApiAtom);
-  const selectedNodes = useAtomValue(selectedNodesAtom);
+  const setSendMessage = useSetAtom(sendMessageAtom);
 
   const { messages, sendMessage, status, error, regenerate, addToolOutput } = useChat({
     messages: initialMessages,
     sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithToolCalls,
-    // client-side tools @see https://ai-sdk.dev/docs/ai-sdk-ui/chatbot-tool-usage#client-side-page
-    // e.g. screenshot current canvas and send to chat
     onToolCall: async ({ toolCall }) => {
       // Check if it's a dynamic tool first for proper type narrowing
-      if (toolCall.dynamic) {
+      if (toolCall.dynamic || !canvasApi) {
         return;
       }
 
-      // Find appropriate node to insert image beside
+      // client-side tools @see https://ai-sdk.dev/docs/ai-sdk-ui/chatbot-tool-usage#client-side-page
+      // e.g. insert image into canvas
       if (toolCall.toolName === 'insertImage') {
-        const { imageUrl, width, height } = (toolCall.input as { imageUrl: string, width: number, height: number });
-        if (canvasApi) {
-          const selectedNode = selectedNodes?.[0];
-          const position = { x: 0, y: 0 };
-          if (selectedNode) {
-            position.x = (selectedNode.x as number) + (selectedNode.width as number) + Number(width) / 2 + 40;
-            position.y = selectedNode.y as number + Number(height) / 2;
-          }
-          await canvasApi.createImageFromFile(imageUrl, { position });
-          canvasApi.record();
-        }
-        addToolOutput({
-          tool: 'insertImage',
-          toolCallId: toolCall.toolCallId,
-          output: 'done',
-          state: 'output-available',
-        });
-      } else if (toolCall.toolName === 'drawElement') {
-        const { type, x, y, width, height, d, points, x1, y1, x2, y2, fill, stroke, strokeWidth, strokeOpacity, strokeAlignment, strokeLineCap, strokeLineJoin, strokeMiterLimit, strokeDasharray, strokeDashoffset, strokeLinecap, strokeLinejoin } = (toolCall.input as { type: string, x: number, y: number, width: number, height: number, d: string, points: string, x1: number, y1: number, x2: number, y2: number, fill: string, stroke: string, strokeWidth: number, strokeOpacity: number, strokeAlignment: string, strokeLineCap: string, strokeLineJoin: string, strokeMiterLimit: number, strokeDasharray: string, strokeDashoffset: number, strokeLinecap: string, strokeLinejoin: string });
-        if (canvasApi) {
-          const node: SerializedNode = {
-            id: nanoid(),
-            type: type as SerializedNode['type'],
-            x,
-            y,
-            width,
-            height,
-            fill,
-            stroke,
-            strokeWidth,
-          }
-          canvasApi.updateNodes([node]);
-          canvasApi.record();
-        }
-        addToolOutput({
-          tool: 'drawElement',
-          toolCallId: toolCall.toolCallId,
-          output: 'done',
-          state: 'output-available',
-        });
+        await wrapToolCall(async () => {
+          const nodeId = await insertImage(canvasApi, toolCall.input as { image: string, width: number, height: number });
+          return {
+            nodeId,
+          };
+        }, chatId, toolCall as ToolCallPart, addToolOutput);
       }
     },
-    onFinish: async (message) => {
+    onFinish: async (options) => {
       if (onFinish) {
-        onFinish(message);
+        onFinish(options);
       }
     },
   });
 
+  // 将 sendMessage 设置到 atom 中，以便其他组件可以使用
+  useEffect(() => {
+    setSendMessage(() => sendMessage);
+    return () => {
+      setSendMessage(null);
+    };
+  }, [sendMessage, setSendMessage]);
+
   const errorCode = getChatErrorCode(error);
 
-  const handleFileChanged = async (files: (FileUIPart | DataUIPart<{ mask: string }> | File)[]) => {
+  const handleFileChanged = async (files: (FileUIPart | MaskPart | ShapePart | File)[]) => {
     if (canvasApi) {
       const center = canvasApi.viewport2Canvas({
         x: canvasApi.element.clientWidth / 2,
@@ -180,7 +158,7 @@ const Chat = ({
           body: {
             // model: model,
             // webSearch: webSearch,
-            chatId: chatId, // 传递 chatId 到 API
+            chatId,
           },
         },
       );
@@ -386,34 +364,6 @@ const Chat = ({
                         } else {
                           // 静态 tool (tool-${NAME})
                           const staticTool = toolPart as ToolUIPart;
-
-                          if (staticTool.type.startsWith('tool-generateImage')) {
-                            const images = (staticTool.output as { images: string[] })?.images || [];
-                            return (
-                              <Tool
-                                key={`${message.id}-${i}`}
-                                defaultOpen={defaultOpen}
-                              >
-                                <ToolHeader
-                                  type={staticTool.type}
-                                  state={staticTool.state}
-                                  title={staticTool.title}
-                                />
-                                <ToolContent>
-                                  {staticTool.input !== undefined && (
-                                    <ToolInput input={staticTool.input} />
-                                  )}
-                                  <div className="p-2 pt-0 flex flex-col gap-2">
-                                    <ImageGallery
-                                      images={images}
-                                      alt={staticTool.title || 'Generated Image'}
-                                    />
-                                  </div>
-                                </ToolContent>
-                              </Tool>
-                            );
-                          }
-
                           return (
                             <Tool
                               key={`${message.id}-${i}`}
@@ -432,6 +382,9 @@ const Chat = ({
                                   output={staticTool.output}
                                   errorText={staticTool.errorText}
                                 />
+                                {staticTool.type === 'tool-generateImage' ? <GenerateImageOutput output={staticTool.output as GenerateImageUITool['output']} /> 
+                                : staticTool.type === 'tool-decomposeImage' ? <DecomposeImageOutput output={staticTool.output as DecomposeImageUITool['output']} /> 
+                                : staticTool.type === 'tool-vectorizeImage' ? <VectorizeImageOutput output={staticTool.output as VectorizeImageUITool['output']} /> : null}
                               </ToolContent>
                             </Tool>
                           );
@@ -480,3 +433,4 @@ const Chat = ({
 };
 
 export default Chat;
+

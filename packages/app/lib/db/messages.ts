@@ -55,6 +55,37 @@ export async function getMessageById(messageId: string, userId: string): Promise
 }
 
 /**
+ * 根据 chatId 和 seq 获取消息（用于检测 regenerate 操作）
+ */
+export async function getMessageByChatIdAndSeq(
+  chatId: string,
+  seq: number,
+  userId: string
+): Promise<Message | null> {
+  const result = await db
+    .select({
+      message: messages,
+      chat: chats,
+      project: projects,
+    })
+    .from(messages)
+    .innerJoin(chats, eq(messages.chatId, chats.id))
+    .innerJoin(projects, eq(chats.projectId, projects.id))
+    .where(eq(messages.chatId, chatId))
+    .where(eq(messages.seq, seq))
+    .limit(1);
+
+  const row = result[0];
+
+  // 确保用户只能访问自己项目下的消息
+  if (row && row.project.userId === userId) {
+    return row.message;
+  }
+
+  return null;
+}
+
+/**
  * 创建新消息
  */
 export async function createMessage(
@@ -201,6 +232,36 @@ export async function deleteChatMessages(chatId: string, userId: string): Promis
     .where(eq(messages.chatId, chatId));
 
   return true;
+}
+
+/**
+ * 获取聊天的最新助手消息（用于客户端工具创建时找到对应的 messageId）
+ */
+export async function getLatestAssistantMessage(chatId: string, userId: string): Promise<Message | null> {
+  // 验证聊天记录属于该用户的项目
+  const chat = await db
+    .select({
+      chat: chats,
+      project: projects,
+    })
+    .from(chats)
+    .innerJoin(projects, eq(chats.projectId, projects.id))
+    .where(eq(chats.id, chatId))
+    .limit(1);
+
+  if (!chat[0] || chat[0].project.userId !== userId) {
+    return null;
+  }
+
+  const result = await db
+    .select()
+    .from(messages)
+    .where(eq(messages.chatId, chatId))
+    .where(eq(messages.role, 'assistant'))
+    .orderBy(desc(messages.seq))
+    .limit(1);
+
+  return result[0] || null;
 }
 
 /**

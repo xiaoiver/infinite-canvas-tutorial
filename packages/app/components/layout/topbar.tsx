@@ -19,7 +19,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Github, Menu } from 'lucide-react';
+import { BookText, Github, Menu } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
 import { ImageToolbar } from '@/components/image-toolbar';
@@ -118,6 +118,14 @@ export function Topbar({ leftMenuItems, leftMenuContent, centerContent }: Topbar
               className="inline-flex items-center justify-center rounded-md hover:bg-accent hover:text-accent-foreground h-8 w-8"
             >
               <Github className="h-4 w-4" />
+            </Link>
+            <Link
+              href="https://infinitecanvas.cc"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center justify-center rounded-md hover:bg-accent hover:text-accent-foreground h-8 w-8"
+            >
+              <BookText className="h-4 w-4" />
             </Link>
             <ThemeToggle />
             <LocaleSwitcher />

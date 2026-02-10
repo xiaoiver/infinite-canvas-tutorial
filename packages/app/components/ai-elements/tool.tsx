@@ -20,6 +20,7 @@ import type { ComponentProps, ReactNode } from "react";
 import { isValidElement } from "react";
 import { CodeBlock } from "./code-block";
 import { useTranslations } from "next-intl";
+import { CodeCollapsibleWrapper } from "../code-block-wrapper";
 
 export type ToolProps = ComponentProps<typeof Collapsible>;
 
@@ -123,14 +124,17 @@ export type ToolInputProps = ComponentProps<"div"> & {
 export const ToolInput = ({ className, input, ...props }: ToolInputProps) => {
   const t = useTranslations('common');
   return (
-    <div className={cn("space-y-2 overflow-hidden p-2 pt-0", className)} {...props}>
-      <h4 className="font-medium text-muted-foreground text-xs tracking-wide">
+    <div className={cn("p-2", className)} {...props}>
+      <h4 className="font-medium text-muted-foreground text-xs tracking-wide mb-1">
         {t('parameters')}
       </h4>
-      <div className="rounded-md bg-muted/50">
-        <CodeBlock code={JSON.stringify(input, null, 2)} language="json" />
+      <div className="">
+        <CodeCollapsibleWrapper>
+          <CodeBlock code={JSON.stringify(input, null, 2)} language="json" />
+        </CodeCollapsibleWrapper>
       </div>
     </div>
+    
   );
 };
 
@@ -153,25 +157,31 @@ export const ToolOutput = ({
 
   let Output = <div>{output as ReactNode}</div>;
 
-  if (typeof output === "object" && !isValidElement(output)) {
+  if (output === null) {
+    Output = <></>;
+  } else if (typeof output === "object" && !isValidElement(output)) {
     Output = (
-      <CodeBlock code={JSON.stringify(output, null, 2)} language="json" />
+      <div className="">
+        <CodeCollapsibleWrapper>
+          <CodeBlock code={JSON.stringify(output, null, 2)} language="json" />
+        </CodeCollapsibleWrapper>
+      </div>
     );
   } else if (typeof output === "string") {
     Output = <CodeBlock code={output} language="json" />;
   }
 
   return (
-    <div className={cn("space-y-2 p-2", className)} {...props}>
-      <h4 className="font-medium text-muted-foreground text-xs tracking-wide">
+    <div className={cn("p-2", className)} {...props}>
+      <h4 className="font-medium text-muted-foreground text-xs tracking-wide mb-1">
         {errorText ? t('error') : t('result')}
       </h4>
       <div
         className={cn(
-          "overflow-x-auto rounded-md text-xs [&_table]:w-full",
+          "text-sm [&_table]:w-full rounded-md",
           errorText
             ? "bg-destructive/10 text-destructive"
-            : "bg-muted/50 text-foreground"
+            : "text-foreground"
         )}
       >
         {errorText && <div className="p-2">{errorText}</div>}

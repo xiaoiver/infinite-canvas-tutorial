@@ -12,11 +12,11 @@ import {
 } from "@/components/ai-elements/attachments";
 import { canvasApiAtom, selectedNodesAtom } from "@/atoms/canvas-selection";
 import { useAtomValue } from "jotai";
-import { isDataUrl, isUrl, SerializedNode } from "@infinite-canvas-tutorial/ecs";
 import { useEffect, useRef } from "react";
 import { usePromptInputController } from "./ai-elements/prompt-input";
-import { DataUIPart, FileUIPart } from "ai";
-import { ExtendedAPI } from "@infinite-canvas-tutorial/webcomponents";
+import { convertToFiles, MaskPart } from "@/lib/file";
+import { FileUIPart } from "ai";
+
 
 const PromptInputAttachmentsDisplay = () => {
   const canvasApi = useAtomValue(canvasApiAtom);
@@ -78,8 +78,8 @@ const PromptInputAttachmentsDisplay = () => {
       {controller.attachments.files.map((attachment) => {
         const mediaCategory = getMediaCategory(attachment);
         const label = getAttachmentLabel(attachment);
-        const imageUrl = attachment.type === "file" ? attachment.url : attachment.type === "data-mask" ? attachment.data : undefined;
-        const mediaType = attachment.type === "file" ? attachment.mediaType : attachment.type === "data-mask" ? 'image/png' : undefined;
+        const imageUrl = attachment.type === "file" ? (attachment as FileUIPart).url : attachment.type === "data-mask" ? (attachment as MaskPart).data : undefined;
+        const mediaType = attachment.type === "file" ? (attachment as FileUIPart).mediaType : attachment.type === "data-mask" ? 'image/png' : undefined;
         return <AttachmentHoverCard key={attachment.id}>
           <AttachmentHoverCardTrigger asChild>
             <Attachment
@@ -130,86 +130,3 @@ const PromptInputAttachmentsDisplay = () => {
 
 export default PromptInputAttachmentsDisplay;
 
-function convertToFiles(api: ExtendedAPI, node: SerializedNode, files: (FileUIPart | DataUIPart<{ mask: string }> | File)[] = [], parent?: SerializedNode): (FileUIPart | DataUIPart<{ mask: string }> | File)[] {
-  if ((node as any).usage === 'mask') {
-    const relativeTo = { x: node.x as number, y: node.y as number, width: node.width as number, height: node.height as number };
-    if (node.parentId) {
-      if (!parent) {
-        parent = api.getNodeById(node.parentId);
-      }
-      relativeTo.x = parent.x as number;
-      relativeTo.y = parent.y as number;
-      relativeTo.width = parent.width as number;
-      relativeTo.height = parent.height as number;
-    }
-    const mask = api.createMask([node], relativeTo);
-    let maskUrl = 'shape';
-    if (mask) {
-      maskUrl = (mask as HTMLCanvasElement).toDataURL();
-    }
-
-    files.push({
-      id: node.id,
-      type: 'data-mask' as const,
-      data: maskUrl,
-    } as DataUIPart<{ mask: string }>);
-  } else {
-    // Image
-    const base64OrURL = (node as any).fill as string;
-    if (isDataUrl(base64OrURL) || isUrl(base64OrURL)) {
-      if (isDataUrl(base64OrURL)) {
-        // 将 base64 字符串转换为 Blob
-        const base64Data = base64OrURL.includes(',') 
-          ? base64OrURL.split(',')[1] 
-          : base64OrURL;
-        const byteCharacters = atob(base64Data);
-        const byteNumbers = new Array(byteCharacters.length);
-        for (let i = 0; i < byteCharacters.length; i++) {
-          byteNumbers[i] = byteCharacters.charCodeAt(i);
-        }
-        const byteArray = new Uint8Array(byteNumbers);
-        
-        // 从 data URL 中提取 MIME 类型，默认为 image/png
-        const mimeType = base64OrURL.match(/data:([^;]+);/)?.[1] || 'image/png';
-        const blob = new Blob([byteArray], { type: mimeType });
-        
-        // 从 Blob 创建 File 对象，使用 node.id 作为文件名
-        files.push(new File([blob], node.id, { type: mimeType }));
-      } else if (isUrl(base64OrURL)) {
-        // fetch HEAD to get the MIME type
-        // const response = await fetch(base64OrURL, { method: 'HEAD' });
-        // const mediaType = response.headers.get('content-type') || 'image/png';
-        const filename = base64OrURL.split('/').pop()?.split('?')[0] || node.id;
-        const suffix = base64OrURL.split('/').pop()?.split('?')[0]?.split('.').pop();
-        let mediaType = 'image/png';
-        if (suffix === 'jpg' || suffix === 'jpeg') {
-          mediaType = 'image/jpeg';
-        } else if (suffix === 'gif') {
-          mediaType = 'image/gif';
-        } else if (suffix === 'webp') {
-          mediaType = 'image/webp';
-        }
-        files.push({
-          id: node.id,
-          type: 'file' as const,
-          url: base64OrURL,
-          mediaType,
-          filename,
-        } as FileUIPart);
-      }
-    } else {
-      // TODO: use api.export
-      files.push({
-        id: node.id,
-        type: 'file' as const,
-        url: 'shape',
-        mediaType: 'application/octet-stream',
-        filename: node.id,
-      } as FileUIPart);
-    }
-  }
-
-  api.getChildren(node).forEach(child => convertToFiles(api, api.getNodeByEntity(child), files, node));
-
-  return files;
-}

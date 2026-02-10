@@ -236,15 +236,44 @@ export async function updateTool(
 
 /**
  * 根据 toolCallId 更新 tool call（用于流式更新）
+ * 如果工具不存在，会尝试创建它（需要提供 messageId 和 toolName）
  */
 export async function updateToolByCallId(
   toolCallId: string,
   userId: string,
-  data: Partial<Omit<NewTool, 'id' | 'messageId' | 'toolCallId' | 'createdAt' | 'updatedAt'>>
+  data: Partial<Omit<NewTool, 'id' | 'messageId' | 'toolCallId' | 'createdAt' | 'updatedAt'>>,
+  options?: {
+    messageId?: string;
+    toolName?: string;
+    toolType?: string;
+    input?: any;
+  }
 ): Promise<Tool | null> {
   // 首先验证 tool call 属于该用户的项目
   const existingTool = await getToolByCallId(toolCallId, userId);
+  
   if (!existingTool) {
+    // 如果工具不存在，尝试创建它（需要提供 messageId 和 toolName）
+    if (options?.messageId && options?.toolName) {
+      const toolType = options.toolType || `tool-${options.toolName}`;
+      const newToolData: Omit<NewTool, 'id' | 'createdAt' | 'updatedAt'> = {
+        messageId: options.messageId,
+        toolCallId,
+        toolType,
+        toolName: toolType === 'dynamic-tool' ? options.toolName : undefined,
+        state: data.state || 'output-available',
+        input: options.input !== undefined ? options.input : null,
+        output: data.output !== undefined ? data.output : null,
+        errorText: data.errorText !== undefined ? data.errorText : null,
+        title: data.title !== undefined ? data.title : null,
+        providerExecuted: data.providerExecuted !== undefined ? data.providerExecuted : null,
+        callProviderMetadata: data.callProviderMetadata !== undefined ? data.callProviderMetadata : null,
+      };
+      
+      return await createTool(newToolData, userId);
+    }
+    
+    // 如果工具不存在且没有提供创建所需的信息，返回 null
     return null;
   }
 

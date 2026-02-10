@@ -31,4 +31,7 @@ export const drawElementTool = tool({
     strokeLinecap: z.enum(['butt', 'round', 'square']).describe('The stroke linecap.').optional(),
     strokeLinejoin: z.enum(['miter', 'round', 'bevel']).describe('The stroke linejoin.').optional(),
   }),
+  outputSchema: z.object({
+    nodeId: z.string().describe('The node id of the element drawn on the canvas').optional(),
+  }),
 });

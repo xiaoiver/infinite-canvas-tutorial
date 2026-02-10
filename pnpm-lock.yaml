@@ -1167,6 +1167,9 @@ importers:
       simplify-js:
         specifier: ^1.2.4
         version: 1.2.4
+      uuid:
+        specifier: ^11.1.0
+        version: 11.1.0
     devDependencies:
       '@lit/localize-tools':
         specifier: ^0.8.1

@@ -3,6 +3,7 @@ import z from 'zod';
 import { createImageModel, createLanguageModel, getModelForCapability, ModelInfo } from '@/lib/models/get-model';
 import { createClient } from '@/lib/supabase/server';
 import { uploadImage } from '@/lib/blob';
+import { getImagesFromLastMessage, getMaskFromLastMessage } from '@/lib/file';
 
 /**
  * When building a chatbot, you may want to allow the user to generate an image.
@@ -116,13 +117,16 @@ Do NOT include image URLs in your response message - the images are already show
     quality: z.enum(['low', 'standard', 'high']).optional().describe('Image quality: low (faster, lower quality), standard (balanced), or high (slower, higher quality). Default to standard.'),
     size: z.string().optional().describe('Image size in format "WIDTHxHEIGHT", e.g., "1024x1024", "1024x768". Supported sizes vary by provider.'),
     aspectRatio: z.string().optional().describe('Aspect ratio, e.g., "16:9", "1:1", "4:3". Some providers support this instead of size.'),
-    // referenceImages: z.array(z.string()).describe('Reference images to use for the generation').optional(),
   }),
-  execute: async ({ instruction, quality = 'standard', size, aspectRatio }, { messages }) => {
-    const lastMessage = messages[messages.length - 1];
-    const imageDataURLs = (lastMessage.content as FilePart[]).filter((part) => part.type === 'file' && part.filename !== 'mask' && part.mediaType.startsWith('image/')).map((part) => part.data);
-    const maskDataURLs = (lastMessage.content as FilePart[]).filter((part) => part.filename === 'mask').map((part) => part.data);
-
+  execute: async ({ instruction, quality = 'standard', size, aspectRatio }, { messages }): Promise<{
+    type: 'content',
+    value: {
+      type: 'image-url',
+      url: string;
+    }[];
+  } | {
+    error: string;
+  }> => {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
 
@@ -134,6 +138,9 @@ Do NOT include image URLs in your response message - the images are already show
     if (!modelInfo) {
       return { error: 'No image model configured' };
     }
+
+    const imageDataURLs = getImagesFromLastMessage(messages);
+    const maskDataURLs = getMaskFromLastMessage(messages);
 
     const imageUrls: string[] = [];
     const providerOptions = buildProviderOptions(modelInfo, {
@@ -173,7 +180,7 @@ Do NOT include image URLs in your response message - the images are already show
         }
       ] as ModelMessage[];
 
-      console.log('prompt', JSON.stringify(promptMessages));
+      // console.log('prompt', JSON.stringify(promptMessages));
 
       const result = await generateText({
         model: languageModel,
@@ -206,7 +213,15 @@ Do NOT include image URLs in your response message - the images are already show
       }
     }
 
-    return { images: imageUrls };
+    return {
+      type: 'content',
+      value: [
+        ...imageUrls.map(imageUrl => ({
+          type: 'image-url' as const,
+          url: imageUrl,
+        })),
+      ]
+    };
 
     // return {
     //   images: [

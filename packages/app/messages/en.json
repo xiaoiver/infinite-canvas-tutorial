@@ -10,7 +10,9 @@
     "edit": "Edit",
     "close": "Close",
     "result": "Result",
-    "parameters": "Parameters"
+    "parameters": "Parameters",
+    "collapse": "Collapse",
+    "expand": "Expand"
   },
   "auth": {
     "title": "User Login",
@@ -71,7 +73,9 @@
     "copy": "Copy",
     "paste": "Paste",
     "preferences": "Preferences",
-    "grid": "Grid"
+    "grid": "Grid",
+    "snapToPixelGrid": "Snap to Pixel Grid",
+    "snapToObjects": "Snap to Objects"
   },
   "chats": {
     "title": "Chats",
@@ -80,7 +84,9 @@
     "deleteChat": "Delete Chat",
     "deleteConfirm": "Are you sure you want to delete this chat? This action cannot be undone.",
     "deleteSuccess": "Chat deleted successfully",
-    "uploadImages": "Upload Images"
+    "uploadImages": "Upload Images",
+    "decomposeImageDescription": "Decompose the image into multiple layers.",
+    "vectorizeImageDescription": "Vectorize the image."
   },
   "zoom": {
     "zoomIn": "Zoom In",
@@ -102,7 +108,10 @@
     "vectorize": "Vectorize",
     "drawRectMaskDescription": "Drag to draw a rect mask on the image.",
     "drawPencilFreehandMaskDescription": "Draw a pencil freehand mask on the image.",
-    "drawLassoMaskDescription": "Draw a lasso mask on the image."
+    "drawLassoMaskDescription": "Draw a lasso mask on the image.",
+    "drawSmartClickMask": "Click to select area with SAM",
+    "insertIntoCanvas": "Insert into Canvas",
+    "download": "Download"
   },
   "settings": {
     "title": "Settings",

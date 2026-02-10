@@ -6,8 +6,9 @@ import {
   HoverCardContent,
   HoverCardTrigger,
 } from "@/components/ui/hover-card";
+import { MaskPart, ShapePart } from "@/lib/file";
 import { cn } from "@/lib/utils";
-import type { DataUIPart, FileUIPart, SourceDocumentUIPart } from "ai";
+import type { DataUIPart, FileUIPart, ImagePart, SourceDocumentUIPart } from "ai";
 import {
   FileTextIcon,
   GlobeIcon,
@@ -25,7 +26,7 @@ import { createContext, useContext, useMemo } from "react";
 // ============================================================================
 
 export type AttachmentData =
-  | ((FileUIPart | DataUIPart<{ mask: string }>) & { id: string })
+  | ((FileUIPart | MaskPart | ShapePart | File) & { id: string })
   | (SourceDocumentUIPart & { id: string });
 
 export type AttachmentMediaCategory =
@@ -51,7 +52,7 @@ export const getMediaCategory = (
     return "image";
   }
 
-  const mediaType = data.mediaType ?? "";
+  const mediaType = (data as FileUIPart).mediaType ?? "";
 
   if (mediaType.startsWith("image/")) {
     return "image";
@@ -71,13 +72,13 @@ export const getMediaCategory = (
 
 export const getAttachmentLabel = (data: AttachmentData): string => {
   if (data.type === "source-document") {
-    return data.title || data.filename || "Source";
+    return (data as SourceDocumentUIPart).title || (data as SourceDocumentUIPart).filename || "Source";
   } else if (data.type === "data-mask") {
     return "Mask";
   }
 
   const category = getMediaCategory(data);
-  return data.filename || (category === "image" ? "Image" : "Attachment");
+  return (data as FileUIPart).filename || (category === "image" ? "Image" : "Attachment");
 };
 
 // ============================================================================
@@ -242,12 +243,12 @@ export const AttachmentPreview = ({
   );
 
   const renderContent = () => {
-    if (mediaCategory === "image" && ((data.type === "file" && data.url) || (data.type === "data-mask" && data.data))) {
-      return renderImage(data.type === "file" ? data.url : data.data, data.type === "file" ? data.filename : undefined, variant === "grid");
+    if (mediaCategory === "image" && ((data.type === "file" && (data as FileUIPart).url) || (data.type === "data-mask" && (data as MaskPart).data))) {
+      return renderImage(data.type === "file" ? (data as FileUIPart).url : (data as MaskPart).data, data.type === "file" ? (data as FileUIPart).filename : undefined, variant === "grid");
     }
 
-    if (mediaCategory === "video" && data.type === "file" && data.url) {
-      return <video className="size-full object-cover" muted src={data.url} />;
+    if (mediaCategory === "video" && data.type === "file" && (data as FileUIPart).url) {
+      return <video className="size-full object-cover" muted src={(data as FileUIPart).url} />;
     }
 
     const iconMap: Record<AttachmentMediaCategory, typeof ImageIcon> = {
@@ -302,9 +303,9 @@ export const AttachmentInfo = ({
   return (
     <div className={cn("min-w-0 flex-1", className)} {...props}>
       <span className="block truncate">{label}</span>
-      {showMediaType && data.type === "file" && data.mediaType && (
+      {showMediaType && data.type === "file" && (data as FileUIPart).mediaType && (
         <span className="block truncate text-muted-foreground text-xs">
-          {data.mediaType}
+          {(data as FileUIPart).mediaType}
         </span>
       )}
     </div>

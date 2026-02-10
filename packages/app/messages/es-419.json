@@ -10,7 +10,9 @@
     "edit": "Editar",
     "close": "Cerrar",
     "result": "Resultado",
-    "parameters": "Parámetros"
+    "parameters": "Parámetros",
+    "collapse": "Colapsar",
+    "expand": "Expandir"
   },
   "auth": {
     "title": "Inicio de sesión",
@@ -71,7 +73,9 @@
     "copy": "Copiar",
     "paste": "Pegar",
     "preferences": "Preferencias",
-    "grid": "Cuadrícula"
+    "grid": "Cuadrícula",
+    "snapToPixelGrid": "Snap to Pixel Grid",
+    "snapToObjects": "Snap to Objects"
   },
   "chats": {
     "title": "Chats",
@@ -80,7 +84,9 @@
     "deleteChat": "Eliminar Chat",
     "deleteConfirm": "¿Estás seguro de que deseas eliminar este chat? Esta acción no se puede deshacer.",
     "deleteSuccess": "Chat eliminado exitosamente",
-    "uploadImages": "Cargar Imágenes"
+    "uploadImages": "Cargar Imágenes",
+    "decomposeImageDescription": "Descomponer la imagen en múltiples capas.",
+    "vectorizeImageDescription": "Vectorizar la imagen."
   },
   "zoom": {
     "zoomIn": "Acercar",
@@ -102,7 +108,10 @@
     "vectorize": "Vectorizar",
     "drawRectMaskDescription": "Arrastre para dibujar una máscara de rectángulo en la imagen.",
     "drawPencilFreehandMaskDescription": "Dibujar una máscara de pencil freehand en la imagen.",
-    "drawLassoMaskDescription": "Dibujar una máscara de lasso en la imagen."
+    "drawLassoMaskDescription": "Dibujar una máscara de lasso en la imagen.",
+    "drawSmartClickMask": "Haga clic para seleccionar el área con SAM",
+    "insertIntoCanvas": "Insertar en el Canvas",
+    "download": "Descargar"
   },
   "settings": {
     "title": "Configuración",

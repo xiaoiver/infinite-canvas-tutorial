@@ -23,6 +23,7 @@ export enum Event {
   COMMENT_ADDED = 'ic-comment-added',
   RECT_DRAWN = 'ic-rect-drawn',
   PENCIL_DRAWN = 'ic-pencil-drawn',
+  LASSO_DRAWN = 'ic-lasso-drawn',
 }
 
 declare global {
@@ -53,6 +54,9 @@ declare global {
       node: SerializedNode;
     }>;
     [Event.PENCIL_DRAWN]: CustomEvent<{
+      node: SerializedNode;
+    }>;
+    [Event.LASSO_DRAWN]: CustomEvent<{
       node: SerializedNode;
     }>;
   }

@@ -75,6 +75,16 @@ export interface AppState {
       fontFamilies: string[];
     }
   >;
+  penbarLasso: Partial<
+    FillAttributes & StrokeAttributes & {
+      mode: 'draw' | 'select';
+      trailStroke: string;
+      trailFill: string;
+      trailFillOpacity: number;
+      trailStrokeDasharray: string;
+      trailStrokeDashoffset: string;
+    }
+  >;
   taskbarVisible: boolean;
   taskbarAll: Task[];
   taskbarSelected: Task[];
@@ -285,6 +295,17 @@ export const getDefaultAppState: () => AppState = () => {
       fontSize: 16,
       fontStyle: 'normal',
       fill: '#000',
+    },
+    penbarLasso: {
+      mode: 'select',
+      trailFill: TRANSFORMER_MASK_FILL_COLOR,
+      trailFillOpacity: 0.5,
+      trailStroke: TRANSFORMER_ANCHOR_STROKE_COLOR,
+      fill: TRANSFORMER_MASK_FILL_COLOR,
+      fillOpacity: 0.5,
+      stroke: TRANSFORMER_ANCHOR_STROKE_COLOR,
+      strokeWidth: 1,
+      strokeOpacity: 1,
     },
     taskbarVisible: true,
     taskbarAll: [Task.SHOW_LAYERS_PANEL, Task.SHOW_PROPERTIES_PANEL],

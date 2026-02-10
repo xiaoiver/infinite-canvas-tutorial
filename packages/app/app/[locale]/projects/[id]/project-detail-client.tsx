@@ -26,7 +26,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import type * as ScrollAreaPrimitive from '@radix-ui/react-scroll-area';
-import { ChevronDown, Edit2, Trash2, MessageSquare, Plus } from 'lucide-react';
+import { ChevronDown, Edit2, Trash2, MessageSquare, Plus, Check } from 'lucide-react';
 import { toast } from 'sonner';
 import Chat from '@/components/chat';
 import Canvas from '@/components/canvas';
@@ -41,7 +41,8 @@ import {
   ResizablePanelGroup,
 } from "@/components/ui/resizable";
 import { canvasApiAtom, selectedNodesAtom } from '@/atoms/canvas-selection';
-import { useAtom, useAtomValue } from 'jotai';
+import { chatIdAtom } from '@/atoms/chat';
+import { useAtom, useAtomValue, useSetAtom } from 'jotai';
 import { Kbd, KbdGroup } from '@/components/ui/kbd';
 import { executeCopy, executePaste, executeCut } from '@infinite-canvas-tutorial/webcomponents/spectrum';
 import { CheckboardStyle } from '@infinite-canvas-tutorial/ecs';
@@ -105,13 +106,20 @@ export function ProjectDetailClient({
   const [deletingChat, setDeletingChat] = useState(false);
   const [editingChatId, setEditingChatId] = useState<string | null>(null);
   const [editingChatTitle, setEditingChatTitle] = useState('');
+  const [addingChat, setAddingChat] = useState(false);
   const editingInputRef = useRef<HTMLInputElement>(null);
   const chatListScrollRef = useRef<React.ElementRef<typeof ScrollAreaPrimitive.Root>>(null);
   const [canvasApi, setCanvasApi] = useAtom(canvasApiAtom);
   const [selectedNodes, setSelectedNodes] = useAtom(selectedNodesAtom);
+  const setChatId = useSetAtom(chatIdAtom);
   const [isClipboardEmpty, setIsClipboardEmpty] = useState(true);
 
   const isSelectedEmpty = canvasApi?.getAppState().layersSelected.length === 0;
+
+  // 将 selectedChatId 同步到 atom，以便其他组件可以使用
+  useEffect(() => {
+    setChatId(selectedChatId);
+  }, [selectedChatId, setChatId]);
 
   // 当 URL 中的 chatId 变化时，同步到 selectedChatId（用于浏览器前进/后退或直接输入 URL）
   useEffect(() => {
@@ -338,11 +346,45 @@ export function ProjectDetailClient({
     });
   };
 
-  const handleConfigView = () => {
+  const handleToggleGridCheckboardStyle = () => {
     if (!canvasApi) return;
     canvasApi.setAppState({
       checkboardStyle: canvasApi.getAppState().checkboardStyle === CheckboardStyle.GRID ? CheckboardStyle.NONE : CheckboardStyle.GRID,
     });
+  };
+
+  const handleToggleSnapToPixelGridEnabled = () => {
+    if (!canvasApi) return;
+    canvasApi.setAppState({
+      snapToPixelGridEnabled: !canvasApi.getAppState().snapToPixelGridEnabled,
+    });
+  };
+
+  const handleToggleSnapToObjectsEnabled = () => {
+    if (!canvasApi) return;
+    canvasApi.setAppState({
+      snapToObjectsEnabled: !canvasApi.getAppState().snapToObjectsEnabled,
+    });
+  };
+
+  const handleAddChat = async (projectId: string) => {
+    try {
+      setAddingChat(true);
+      const response = await fetch(`/api/projects/${projectId}/chats`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: null }),
+      });
+      if (response.ok) {
+        const newChat = await response.json();
+        setChats([...chats, newChat]);
+        setSelectedChatId(newChat.id);
+      }
+    } catch (err) {
+      console.error('Failed to create chat:', err);
+    } finally {
+      setAddingChat(false);
+    }
   };
 
   const renderDropdownMenu = () => {
@@ -397,8 +439,29 @@ export function ProjectDetailClient({
           {t('preferences')}
         </DropdownMenuSubTrigger>
         <DropdownMenuSubContent>
-          <DropdownMenuItem onClick={() => handleConfigView()}>
+          <DropdownMenuItem onClick={() => handleToggleGridCheckboardStyle()}>
+            <Check
+              className={`mr-2 h-4 w-4 ${
+                canvasApi?.getAppState().checkboardStyle === CheckboardStyle.GRID ? 'opacity-100' : 'opacity-0'
+              }`}
+            />
             {t('grid')}
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => handleToggleSnapToPixelGridEnabled()}>
+            <Check
+              className={`mr-2 h-4 w-4 ${
+                canvasApi?.getAppState().snapToPixelGridEnabled ? 'opacity-100' : 'opacity-0'
+              }`}
+            />
+            {t('snapToPixelGrid')}
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => handleToggleSnapToObjectsEnabled()}>
+            <Check
+              className={`mr-2 h-4 w-4 ${
+                canvasApi?.getAppState().snapToObjectsEnabled ? 'opacity-100' : 'opacity-0'
+              }`}
+            />
+            {t('snapToObjects')}
           </DropdownMenuItem>
         </DropdownMenuSubContent>
       </DropdownMenuSub>
@@ -502,24 +565,8 @@ export function ProjectDetailClient({
                   variant="ghost"
                   size="sm"
                   className="h-8 w-8 p-0"
-                  onClick={async () => {
-                    // 创建新 chat
-                    try {
-                      const response = await fetch(`/api/projects/${project.id}/chats`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ title: null }),
-                      });
-                      if (response.ok) {
-                        const newChat = await response.json();
-                        setChats([...chats, newChat]);
-                        // setSelectedChatId 会触发 useEffect，自动更新 URL
-                        setSelectedChatId(newChat.id);
-                      }
-                    } catch (err) {
-                      console.error('Failed to create chat:', err);
-                    }
-                  }}
+                  onClick={() => handleAddChat(project?.id || '')}
+                  disabled={addingChat}
                 >
                   <Plus className="h-4 w-4" />
                 </Button>

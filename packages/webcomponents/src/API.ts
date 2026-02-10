@@ -9,13 +9,14 @@ import {
   ThemeMode,
   DOMAdapter,
   deserializePoints,
+  RectSerializedNode,
 } from '@infinite-canvas-tutorial/ecs';
 import { type LitElement } from 'lit';
 import { Event } from './event';
 import { ImageLoader } from '@loaders.gl/images';
 import { load } from '@loaders.gl/core';
 import { getDataURL, updateAndSelectNodes } from './utils';
-import { isString } from '@antv/util';
+import { isString, path2Absolute } from '@antv/util';
 
 export interface Comment {
   type: 'comment';
@@ -227,18 +228,20 @@ export class ExtendedAPI extends API {
       width = height * (image.width / image.height);
     }
 
+    const node: RectSerializedNode = {
+      id: uuidv4(),
+      type: 'rect',
+      x: (position?.x ?? 0) - width / 2,
+      y: (position?.y ?? 0) - height / 2,
+      width,
+      height,
+      fill: cdnUrl,
+      lockAspectRatio: true,
+    };
     updateAndSelectNodes(this, this.getAppState(), [
-      {
-        id: uuidv4(),
-        type: 'rect',
-        x: (position?.x ?? 0) - width / 2,
-        y: (position?.y ?? 0) - height / 2,
-        width,
-        height,
-        fill: cdnUrl,
-        lockAspectRatio: true,
-      },
+      node,
     ]);
+    return node;
   }
 
   /**
@@ -261,7 +264,23 @@ export class ExtendedAPI extends API {
         const { x, y, width, height } = node;
         ctx.fillRect(x as number, y as number, width as number, height as number);
       } else if (node.type === 'path') {
-
+        const { d, fill, stroke, strokeWidth, x, y } = node;
+        ctx.fillStyle = fill;
+        ctx.beginPath();
+        path2Absolute(d).forEach(([command, ...data]) => {
+          if (command === 'M') {
+            ctx.moveTo(data[0] + (x as number), data[1] + (y as number));
+          } else if (command === 'L') {
+            ctx.lineTo(data[0] + (x as number), data[1] + (y as number));
+          } else if (command === 'C') {
+            ctx.bezierCurveTo(data[0] + (x as number), data[1] + (y as number), data[2] + (x as number), data[3] + (y as number), data[4] + (x as number), data[5] + (y as number));
+          }
+        });
+        ctx.closePath();
+        ctx.fill();
+        ctx.strokeStyle = stroke;
+        ctx.lineWidth = strokeWidth;
+        ctx.stroke();
       } else if (node.type === 'polyline') {
         const { points, strokeWidth, strokeLinecap, strokeLinejoin, x, y } = node;
         deserializePoints(points).forEach((point, index) => {
@@ -277,6 +296,58 @@ export class ExtendedAPI extends API {
         ctx.stroke();
       }
     });
+
+    return canvas;
+  }
+
+  renderToCanvas(node: SerializedNode, options: { canvas?: HTMLCanvasElement, width?: number, height?: number } = {}): HTMLCanvasElement {
+    let { canvas, width = node.width as number, height = node.height as number } = options;
+    if (!canvas) {
+      canvas = DOMAdapter.get().createCanvas(width, height) as HTMLCanvasElement;
+    }
+
+    const ctx = canvas.getContext('2d')!;
+    if (node.type === 'rect' || node.type === 'rough-rect') {
+      const { x, y, width, height, strokeWidth, strokeLinecap, strokeLinejoin, fill, stroke } = node;
+      ctx.fillStyle = fill;
+      ctx.fillRect(x as number, y as number, width as number, height as number);
+      ctx.strokeStyle = stroke;
+      ctx.lineWidth = strokeWidth;
+      ctx.lineCap = strokeLinecap;
+      ctx.lineJoin = strokeLinejoin;
+      ctx.stroke();
+    } else if (node.type === 'ellipse' || node.type === 'rough-ellipse') {
+      const { x, y, width, height, strokeWidth, strokeLinecap, strokeLinejoin, fill, stroke } = node;
+      ctx.fillStyle = fill;
+      ctx.ellipse(x as number, y as number, width as number, height as number, 0, 0, 2 * Math.PI);
+      ctx.strokeStyle = stroke;
+      ctx.lineWidth = strokeWidth;
+      ctx.lineCap = strokeLinecap;
+      ctx.lineJoin = strokeLinejoin;
+      ctx.stroke();
+    } else if (node.type === 'path' || node.type === 'rough-path') {
+      const { d, fill, stroke, strokeWidth } = node;
+      ctx.fillStyle = fill;
+      ctx.beginPath();
+      path2Absolute(d).forEach(([command, ...data]) => {
+        if (command === 'M') {
+          ctx.moveTo(data[0], data[1]);
+        } else if (command === 'L') {
+          ctx.lineTo(data[0], data[1]);
+        } else if (command === 'C') {
+          ctx.bezierCurveTo(data[0], data[1], data[2], data[3], data[4], data[5]);
+        }
+      });
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = stroke;
+      ctx.lineWidth = strokeWidth;
+      ctx.stroke();
+      ctx.closePath();
+    } else if (node.type === 'polyline' || node.type === 'rough-polyline') {
+      const { points, strokeWidth, strokeLinecap, strokeLinejoin, x, y } = node;
+    }
+    this.getChildren(node).forEach(child => this.renderToCanvas(this.getNodeByEntity(child), { canvas }));
 
     return canvas;
   }

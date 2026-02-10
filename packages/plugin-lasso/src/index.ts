@@ -18,12 +18,13 @@ localizedTemplates.set('zh-Hans', {
   },
 });
 
-declare module '@infinite-canvas-tutorial/ecs' {
-  interface AppState {
-    lassoTrailStroke: string;
-    lassoTrailFill: string;
-    lassoTrailFillOpacity: number;
-    lassoTrailStrokeDasharray: string;
-    lassoTrailStrokeDashoffset: string;
-  }
-}
+// declare module '@infinite-canvas-tutorial/ecs' {
+//   interface AppState {
+//     lassoMode: 'draw' | 'select';
+//     lassoTrailStroke: string;
+//     lassoTrailFill: string;
+//     lassoTrailFillOpacity: number;
+//     lassoTrailStrokeDasharray: string;
+//     lassoTrailStrokeDashoffset: string;
+//   }
+// }

@@ -5,6 +5,8 @@
 [![Build Status](https://github.com/xiaoiver/infinite-canvas-tutorial/actions/workflows/unit-ssr.yml/badge.svg)](https://github.com/xiaoiver/infinite-canvas-tutorial/actions/workflows/unit-ssr.yml)
 [![Coverage Status](https://coveralls.io/repos/github/xiaoiver/infinite-canvas-tutorial/badge.svg?branch=master)](https://coveralls.io/github/xiaoiver/infinite-canvas-tutorial?branch=master)
 
+Online app: [app.infinitecanvas.cc](app.infinitecanvas.cc)
+
 > [My free course in Gumroad]. Feel free to rate!
 
 [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/U7U71DK7IM)
@@ -401,7 +403,7 @@ If you want to use it in your own project, you can refer to:
 -   Parse Mermaid and render in our canvas
 -   Parse D2 and render in our canvas
 
-|                Mermaid flowchart                 |               D2 flowchart                                |
+|                Mermaid flowchart                 |                 D2 flowchart                  |
 | :----------------------------------------------: | :-------------------------------------------: |
 | ![mermaid flowchart](./screenshots/lesson32.png) | ![d2 flowchart](./screenshots/lesson32-2.png) |
 
