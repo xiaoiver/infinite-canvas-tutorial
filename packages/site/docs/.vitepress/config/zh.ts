@@ -16,6 +16,7 @@ export const zh = defineConfig({
   ],
   themeConfig: {
     nav: [
+      { text: '应用', link: 'https://app.infinitecanvas.cc/' },
       { text: '课程', link: '/zh/guide/lesson-001', activeMatch: '/zh/guide/' },
       {
         text: '案例',

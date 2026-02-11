@@ -40,6 +40,7 @@ import {
   Filter,
   Binding,
   Binded,
+  Locked,
 } from '../../components';
 import {
   AttenuationAttributes,
@@ -624,6 +625,11 @@ export function serializedNodesToEntities(
     const { wireframe } = attributes as WireframeAttributes;
     if (wireframe) {
       entityCommands.insert(new Wireframe(true));
+    }
+
+    const { locked } = attributes;
+    if (locked) {
+      entityCommands.insert(new Locked());
     }
 
     const { filter } = attributes as FilterAttributes;

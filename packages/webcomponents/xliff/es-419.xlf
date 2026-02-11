@@ -362,6 +362,22 @@
   <source>Effects</source>
   <target>Efectos</target>
 </trans-unit>
+<trans-unit id="s33ef4300ba7aa421">
+  <source>Show layer</source>
+  <target>Mostrar capa</target>
+</trans-unit>
+<trans-unit id="s090c9a788879fbe0">
+  <source>Unlock layer</source>
+  <target>Desbloquear capa</target>
+</trans-unit>
+<trans-unit id="s6002611a64140aab">
+  <source>Lock layer</source>
+  <target>Bloquear capa</target>
+</trans-unit>
+<trans-unit id="sae3b9113b7db93a4">
+  <source>Stamp</source>
+  <target>Estampa</target>
+</trans-unit>
 </body>
 </file>
 </xliff>

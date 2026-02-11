@@ -46,6 +46,7 @@ import {
   Filter,
   Binding,
   Binded,
+  Locked,
 } from '@infinite-canvas-tutorial/ecs';
 import { Event } from '../event';
 import { ExtendedAPI, pendingCanvases } from '../API';
@@ -103,6 +104,7 @@ export class InitCanvas extends System {
             Filter,
             Binding,
             Binded,
+            Locked,
           ).write,
     );
   }

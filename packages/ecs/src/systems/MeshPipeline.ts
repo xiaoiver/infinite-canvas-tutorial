@@ -60,6 +60,7 @@ import {
   Filter,
   Transform,
   Mat3,
+  Locked,
 } from '../components';
 import { Effect, paddingMat3, parseEffect, SerializedNode } from '../utils';
 import { GridRenderer } from '../render-graph/GridRenderer';
@@ -246,6 +247,7 @@ export class MeshPipeline extends System {
             UI,
             ZIndex,
             Marker,
+            Locked,
           )
           .read.and.using(
             RasterScreenshotRequest,

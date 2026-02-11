@@ -24,7 +24,7 @@ export class LayersPanelItem extends LitElement {
       height: 64px;
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 4px;
       padding: 0 4px;
       cursor: pointer;
     }
@@ -112,6 +112,14 @@ export class LayersPanelItem extends LitElement {
     this.api.record();
   }
 
+  private handleToggleLocked() {
+    const isLocked = !!this.node.locked;
+    this.api.updateNode(this.node, {
+      locked: !isLocked,
+    });
+    this.api.record();
+  }
+
   private renderOverlayContent = () => {
     return html`
       <sp-popover
@@ -150,6 +158,7 @@ export class LayersPanelItem extends LitElement {
 
   render() {
     const isVisible = this.node.visibility !== 'hidden';
+    const isLocked = !!this.node.locked;
     const isOpen = this.api
       .getAppState()
       .propertiesOpened.includes(this.node.id);
@@ -170,8 +179,21 @@ export class LayersPanelItem extends LitElement {
                 slot="icon"
               ></sp-icon-visibility-off>`,
           )}
-          <sp-tooltip self-managed placement="left">
-            ${msg(str`Hide layer`)}
+          <sp-tooltip self-managed placement="bottom">
+            ${isVisible ? msg(str`Hide layer`) : msg(str`Show layer`)}
+          </sp-tooltip>
+        </sp-action-button>
+        <sp-action-button quiet size="s" @click=${this.handleToggleLocked}>
+          ${when(
+            isLocked,
+            () => html`<sp-icon-lock-closed slot="icon"></sp-icon-lock-closed>`,
+            () =>
+              html`<sp-icon-lock-open
+                slot="icon"
+              ></sp-icon-lock-open>`,
+          )}
+          <sp-tooltip self-managed placement="bottom">
+            ${isLocked ? msg(str`Unlock layer`) : msg(str`Lock layer`)}
           </sp-tooltip>
         </sp-action-button>
         <span style="padding-left: calc(24px * ${this.depth});"></span>

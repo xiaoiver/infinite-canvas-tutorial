@@ -8,6 +8,7 @@ export const ko = defineConfig({
   keywords: ['무한 캔버스', '캔버스', 'webgl', 'webgpu', 'ecs'],
   themeConfig: {
     nav: [
+      { text: 'App', link: 'https://app.infinitecanvas.cc/' },
       {
         text: '가이드',
         link: '/ko/guide/lesson-001',

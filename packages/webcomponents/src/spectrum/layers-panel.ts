@@ -144,8 +144,11 @@ export class LayersPanel extends LitElement {
     }
 
     const node = this.api.getNodeById(id);
-    this.api.selectNodes([node], e.shiftKey);
-    this.api.record();
+
+    if (!node.locked) {
+      this.api.selectNodes([node], e.shiftKey);
+      this.api.record();
+    }
   }
 
   private handleBringToFront() {

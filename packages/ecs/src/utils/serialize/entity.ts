@@ -47,6 +47,7 @@ import {
   Brush,
   StrokeAttenuation,
   SizeAttenuation,
+  Locked,
 } from '../../components';
 import { serializePoints } from './points';
 
@@ -269,6 +270,9 @@ export function entityToSerializedNodes(
   }
   if (entity.has(StrokeAttenuation)) {
     (attributes as AttenuationAttributes).strokeAttenuation = true;
+  }
+  if (entity.has(Locked)) {
+    attributes.locked = true;
   }
 
   // serialize transform
