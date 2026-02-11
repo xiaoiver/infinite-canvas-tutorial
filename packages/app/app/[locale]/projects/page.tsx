@@ -12,6 +12,7 @@ type Project = {
   canvasData: SerializedNode[] | null;
   createdAt: string;
   updatedAt: string;
+  chatCount: number;
 };
 
 // 将数据库返回的 Project 类型转换为页面需要的类型
@@ -28,6 +29,7 @@ function convertProjects(dbProjects: any[]): Project[] {
     updatedAt: project.updatedAt instanceof Date 
       ? project.updatedAt.toISOString() 
       : project.updatedAt,
+    chatCount: Number(project.chatCount) || 0,
   }));
 }
 

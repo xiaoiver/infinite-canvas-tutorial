@@ -75,7 +75,9 @@
     "preferences": "Preferencias",
     "grid": "Cuadrícula",
     "snapToPixelGrid": "Snap to Pixel Grid",
-    "snapToObjects": "Snap to Objects"
+    "snapToObjects": "Snap to Objects",
+    "shapesCount": "{count} formas",
+    "chatsCount": "{count} chats"
   },
   "chats": {
     "title": "Chats",
@@ -153,6 +155,7 @@
       "chat": "Chat",
       "image": "Imagen",
       "image-layered": "Imagen en Capas",
+      "vectorize": "Vectorizar",
       "title": "Configuración de Capacidades",
       "description": "Configurar modelos y parámetros independientes para diferentes capacidades de IA",
       "provider": "Proveedor",
@@ -160,10 +163,25 @@
       "model": "Modelo",
       "selectModel": "Seleccionar Modelo",
       "saveConfig": "Guardar",
+      "deleteConfig": "Eliminar",
       "selectProviderAndModel": "Por favor seleccione el Proveedor y el Modelo",
       "saveSuccess": "Guardado exitosamente",
       "saveFailed": "Error al guardar",
-      "saveFailedWithError": "Error al guardar: {error}"
+      "saveFailedWithError": "Error al guardar: {error}",
+      "deleteSuccess": "Eliminado exitosamente",
+      "deleteFailed": "Error al eliminar",
+      "deleteFailedWithError": "Error al eliminar: {error}",
+      "deleteConfirm": "¿Está seguro de que desea eliminar esta configuración de capacidad?",
+      "vectorizeInfoPrefix": "Si no está configurado, se usará",
+      "vectorizeInfoSuffix": ".",
+      "imageLayeredInfo": "Actualmente solo qwen-image-layered en fal.ai es compatible."
     }
+  },
+  "onboarding": {
+    "step1": "Configurar sus API Keys",
+    "step2": "Crear su primer proyecto",
+    "step3": "Chatear con el canvas",
+    "step1Description": "Agrega API Keys para diferentes proveedores de IA para habilitar capacidades de IA. Solo configura las capacidades 'Chat' y 'Imagen' para usar la mayoría de las funciones del canvas. Vercel AI Gateway ofrece $5 de uso gratuito cuando te registras en una nueva cuenta.",
+    "step3Description": "Puedes cargar o generar imágenes y chatear con ellas."
   }
 }

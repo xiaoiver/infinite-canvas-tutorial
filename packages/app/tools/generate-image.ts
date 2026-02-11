@@ -149,79 +149,87 @@ Do NOT include image URLs in your response message - the images are already show
       aspectRatio,
     });
 
-    // Note that this is a multi-modal model and therefore uses generateText for the actual image generation.
-    if (modelInfo.model.includes('gemini')) {
-      const languageModel = createLanguageModel(modelInfo);
-      if (!languageModel) {
-        return { error: 'Failed to create language model' };
-      }
+    try {
 
-      const promptMessages = [
-        {
-          role: 'user',
-          content: [
-            {
-              type: 'text',
-              text: instruction,
-            },
-            ...(imageDataURLs?.map(url => ({
-              type: 'image' as const,
-              image: new URL(url.toString()),
-            })) || []),
-            ...(maskDataURLs.length > 0 ? [{
-              type: 'text' as const,
-              text: 'Use the following mask area(s) to in-paint the image.',
-            }] : []),
-            ...(maskDataURLs?.map(url => ({
-              type: 'image' as const,
-              image: new URL(url.toString()),
-            })) || [])
-          ]
+      // Note that this is a multi-modal model and therefore uses generateText for the actual image generation.
+      if (modelInfo.model.includes('gemini')) {
+        const languageModel = createLanguageModel(modelInfo);
+        if (!languageModel) {
+          return { error: 'Failed to create language model' };
         }
-      ] as ModelMessage[];
 
-      // console.log('prompt', JSON.stringify(promptMessages));
+        const promptMessages = [
+          {
+            role: 'user',
+            content: [
+              {
+                type: 'text',
+                text: instruction,
+              },
+              ...(imageDataURLs?.map(url => ({
+                type: 'image' as const,
+                image: new URL(url.toString()),
+              })) || []),
+              ...(maskDataURLs.length > 0 ? [{
+                type: 'text' as const,
+                text: 'Use the following mask area(s) to in-paint the image.',
+              }] : []),
+              ...(maskDataURLs?.map(url => ({
+                type: 'image' as const,
+                image: new URL(url.toString()),
+              })) || [])
+            ]
+          }
+        ] as ModelMessage[];
 
-      const result = await generateText({
-        model: languageModel,
-        prompt: promptMessages,
-        providerOptions: Object.keys(providerOptions).length > 0 ? providerOptions : undefined,
-      });
+        // console.log('prompt', JSON.stringify(promptMessages));
 
-      // Save generated images
-      for (const file of result.files) {
-        if (file.mediaType.startsWith('image/')) {
-          const url = await uploadImage(file);
+        const result = await generateText({
+          model: languageModel,
+          prompt: promptMessages,
+          providerOptions: Object.keys(providerOptions).length > 0 ? providerOptions : undefined,
+        });
+
+        // Save generated images
+        for (const file of result.files) {
+          if (file.mediaType.startsWith('image/')) {
+            const url = await uploadImage(file);
+            imageUrls.push(url);
+          }
+        }
+      } else {
+        const imageModel = createImageModel(modelInfo);
+        if (!imageModel) {
+          return { error: 'Failed to create image model' };
+        }
+        const { images } = await generateImage({
+          model: imageModel,
+          prompt: instruction,
+          size: size as `${number}x${number}`,
+          // recraft: "This model does not support aspect ratio. Use `size` instead."
+          aspectRatio: modelInfo.model.includes('recraft') ? undefined : aspectRatio as `${number}:${number}`,
+          providerOptions: Object.keys(providerOptions).length > 0 ? providerOptions : undefined,
+        });
+
+        for (const image of images) {
+          const url = await uploadImage(image);
           imageUrls.push(url);
         }
       }
-    } else {
-      const imageModel = createImageModel(modelInfo);
-      if (!imageModel) {
-        return { error: 'Failed to create image model' };
-      }
-      const { images } = await generateImage({
-        model: imageModel,
-        prompt: instruction,
-        size: size as `${number}x${number}`,
-        aspectRatio: aspectRatio as `${number}:${number}`,
-        providerOptions: Object.keys(providerOptions).length > 0 ? providerOptions : undefined,
-      });
-      for (const image of images) {
-        const url = await uploadImage(image);
-        imageUrls.push(url);
-      }
-    }
 
-    return {
-      type: 'content',
-      value: [
-        ...imageUrls.map(imageUrl => ({
-          type: 'image-url' as const,
-          url: imageUrl,
-        })),
-      ]
-    };
+      return {
+        type: 'content',
+        value: [
+          ...imageUrls.map(imageUrl => ({
+            type: 'image-url' as const,
+            url: imageUrl,
+          })),
+        ]
+      };
+    } catch (error) {
+      console.error('Error generating image:', error);
+      return { error: 'Failed to generate image' };
+    }
 
     // return {
     //   images: [

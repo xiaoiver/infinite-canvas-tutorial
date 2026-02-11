@@ -7,10 +7,21 @@ const IMAGE_MARGIN = 40;
 export async function insertImage(canvasApi: ExtendedAPI, input: { image: string, width: number, height: number }) {
   const { image, width, height } = input || {};
   const selectedNode = canvasApi.getNodeById(canvasApi.getAppState().layersSelected?.[0]);
-  const { x = 0, y = 0, width: selectedNodeWidth = 0, height: selectedNodeHeight = 0 } = selectedNode as RectSerializedNode || {};
-  
+
   let nodeId: string | undefined;
   if (image) {
+    let center = { x: 0, y: 0 };
+    if (selectedNode) {
+      const { x = 0, y = 0, width: selectedNodeWidth = 0, height: selectedNodeHeight = 0 } = selectedNode as RectSerializedNode || {};
+      center.x = Number(x) + Number(selectedNodeWidth) + IMAGE_MARGIN + width / 2;
+      center.y = Number(y) + Number(selectedNodeHeight) / 2;
+    } else {
+      center = canvasApi.viewport2Canvas({
+        x: canvasApi.element.clientWidth / 2,
+        y: canvasApi.element.clientHeight / 2,
+      });
+    }
+
     const suffix = image.split('.').pop();
     if (suffix === 'svg') {
       const svg = await fetch(image).then((res) => res.text());
@@ -23,8 +34,8 @@ export async function insertImage(canvasApi: ExtendedAPI, input: { image: string
       const root: RectSerializedNode = {
         id: nanoid(),
         type: 'rect',
-        x: (x as number) + (selectedNodeWidth as number) + IMAGE_MARGIN,
-        y: y,
+        x: center.x - width / 2,
+        y: center.y - height / 2,
         width,
         height
       };
@@ -36,12 +47,7 @@ export async function insertImage(canvasApi: ExtendedAPI, input: { image: string
       });
       nodeId = root.id;
     } else {
-      const position = { x: 0, y: 0 };
-      if (selectedNode) {
-        position.x = (x as number) + (selectedNodeWidth as number) + Number(width) / 2 + IMAGE_MARGIN;
-        position.y = (y as number) + Number(height) / 2;
-      }
-      const node = await canvasApi.createImageFromFile(image, { position });
+      const node = await canvasApi.createImageFromFile(image, { position: center });
       nodeId = node.id;
       canvasApi.record();
     }

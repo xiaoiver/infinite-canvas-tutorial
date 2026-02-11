@@ -10,6 +10,7 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible"
 import { useTranslations } from "next-intl"
+import { ChevronsDownUpIcon, ChevronsUpDownIcon } from "lucide-react"
 
 export function CodeCollapsibleWrapper({
   className,
@@ -26,13 +27,13 @@ export function CodeCollapsibleWrapper({
       {...props}
     >
       <CollapsibleTrigger asChild>
-        <div className="absolute top-1 right-1 z-10 flex items-center">
+        <div className="absolute top-[-24px] right-0 z-10 flex items-center">
           <Button
             variant="ghost"
-            size="sm"
-            className="text-muted-foreground text-xs rounded-md"
+            size="icon-sm"
+            className="text-muted-foreground text-xs h-6 w-6"
           >
-            {isOpened ? t('collapse') : t('expand')}
+            {isOpened ? <ChevronsUpDownIcon /> : <ChevronsDownUpIcon />}
           </Button>
         </div>
       </CollapsibleTrigger>

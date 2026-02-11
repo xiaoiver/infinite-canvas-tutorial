@@ -75,7 +75,9 @@
     "preferences": "Preferences",
     "grid": "Grid",
     "snapToPixelGrid": "Snap to Pixel Grid",
-    "snapToObjects": "Snap to Objects"
+    "snapToObjects": "Snap to Objects",
+    "shapesCount": "{count} shapes",
+    "chatsCount": "{count} chats"
   },
   "chats": {
     "title": "Chats",
@@ -153,6 +155,7 @@
       "chat": "Chat",
       "image": "Image",
       "image-layered": "Image Layered",
+      "vectorize": "Vectorize",
       "title": "Capability Settings",
       "description": "Configure independent models and parameters for different AI capabilities",
       "provider": "Provider",
@@ -160,10 +163,25 @@
       "model": "Model",
       "selectModel": "Select Model",
       "saveConfig": "Save",
+      "deleteConfig": "Delete",
       "selectProviderAndModel": "Please select Provider and Model",
       "saveSuccess": "Saved successfully",
       "saveFailed": "Failed to save",
-      "saveFailedWithError": "Failed to save: {error}"
+      "saveFailedWithError": "Failed to save: {error}",
+      "deleteSuccess": "Deleted successfully",
+      "deleteFailed": "Failed to delete",
+      "deleteFailedWithError": "Failed to delete: {error}",
+      "deleteConfirm": "Are you sure you want to delete this capability configuration?",
+      "vectorizeInfoPrefix": "If not configured,",
+      "vectorizeInfoSuffix": "will be used.",
+      "imageLayeredInfo": "Currently only qwen-image-layered on fal.ai is supported."
     }
+  },
+  "onboarding": {
+    "step1": "Configure your API keys",
+    "step2": "Create your first project",
+    "step3": "Chat with canvas",
+    "step1Description": "Add API keys for different AI providers to enable AI capabilities. Only configure the 'Chat' and 'Image' capabilities to use most of the canvas features.",
+    "step3Description": "You can upload or generate images and chat with them."
   }
 }

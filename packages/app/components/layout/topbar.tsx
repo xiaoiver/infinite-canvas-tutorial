@@ -19,7 +19,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { BookText, Github, Menu } from 'lucide-react';
+import { BookText, ExternalLinkIcon, Github, Menu } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
 import { ImageToolbar } from '@/components/image-toolbar';
@@ -68,6 +68,16 @@ export function Topbar({ leftMenuItems, leftMenuContent, centerContent }: Topbar
         router.push(`/${locale}/projects`);
       },
     },
+    {
+      label: 'GitHub',
+      href: 'https://github.com/xiaoiver/infinite-canvas-tutorial',
+      icon: Github,
+    },
+    {
+      label: 'Documentation',
+      href: 'https://infinitecanvas.cc',
+      icon: BookText,
+    },
   ];
 
   const menuItems = leftMenuItems || defaultMenuItems;
@@ -85,14 +95,37 @@ export function Topbar({ leftMenuItems, leftMenuContent, centerContent }: Topbar
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start">
-                {menuItems.map((item, index) => (
-                  <DropdownMenuItem
-                    key={index}
-                    onClick={item.onClick}
-                  >
-                    <span>{item.label}</span>
-                  </DropdownMenuItem>
-                ))}
+                {menuItems.map((item, index) => {
+                  const content = (
+                    <>
+                      <span>{item.label}</span>
+                      {item.href && <ExternalLinkIcon className="size-4 shrink-0" />}
+                    </>
+                  );
+
+                  if (item.href) {
+                    return (
+                      <DropdownMenuItem key={index} asChild>
+                        <Link
+                          href={item.href}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          {content}
+                        </Link>
+                      </DropdownMenuItem>
+                    );
+                  }
+
+                  return (
+                    <DropdownMenuItem
+                      key={index}
+                      onClick={item.onClick}
+                    >
+                      {content}
+                    </DropdownMenuItem>
+                  );
+                })}
                 {leftMenuContent}
               </DropdownMenuContent>
             </DropdownMenu>
@@ -109,24 +142,8 @@ export function Topbar({ leftMenuItems, leftMenuContent, centerContent }: Topbar
             )}
           </div>
 
-          {/* 右侧：Github 图标和登录按钮 */}
+          {/* 右侧：主题切换、语言切换和登录按钮 */}
           <div className="flex items-center gap-1.5">
-            <Link
-              href="https://github.com/xiaoiver/infinite-canvas-tutorial"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center justify-center rounded-md hover:bg-accent hover:text-accent-foreground h-8 w-8"
-            >
-              <Github className="h-4 w-4" />
-            </Link>
-            <Link
-              href="https://infinitecanvas.cc"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center justify-center rounded-md hover:bg-accent hover:text-accent-foreground h-8 w-8"
-            >
-              <BookText className="h-4 w-4" />
-            </Link>
             <ThemeToggle />
             <LocaleSwitcher />
             {user ? (

@@ -34,6 +34,7 @@ import { Plus, Calendar, Trash2, Edit2, MoreHorizontal, Clock } from 'lucide-rea
 import { formatDistanceToNow } from 'date-fns';
 import { zhCN, enUS, es } from 'date-fns/locale';
 import { SerializedNode } from '@infinite-canvas-tutorial/ecs';
+import { OnboardingStepper } from '@/components/onboarding-stepper';
 
 type Project = {
   id: string;
@@ -43,6 +44,7 @@ type Project = {
   canvasData: SerializedNode[] | null;
   createdAt: string;
   updatedAt: string;
+  chatCount: number;
 };
 
 interface ProjectsListClientProps {
@@ -429,7 +431,9 @@ export function ProjectsListClient({
                       </CardDescription>
                     )}
                   </CardHeader>
-                  <CardContent className="flex-1">
+                  <CardContent className="flex-1 space-y-2">
+                    <div>{t('shapesCount', { count: project.canvasData?.length || 0 })}</div>
+                    <div>{t('chatsCount', { count: project.chatCount || 0 })}</div>
                   </CardContent>
                   <CardFooter>
                     <div className="flex items-center text-sm text-muted-foreground">
@@ -446,6 +450,9 @@ export function ProjectsListClient({
               ))}
             </div>
           )}
+        </div>
+        <div className="container pb-8 px-4 max-w-6xl">
+          <OnboardingStepper className="w-full" />
         </div>
       </div>
     </div>

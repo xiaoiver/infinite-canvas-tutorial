@@ -231,29 +231,123 @@ const Chat = ({
       <div className="flex flex-col h-full">
         <Conversation className="h-full flex-1 min-h-0">
           <ConversationContent>
-            {messages.map((message) => (
-              <div key={message.id}>
-                {message.role === 'assistant' && message.parts.filter((part) => part.type === 'source-url').length > 0 && (
-                  <Sources>
-                    <SourcesTrigger
-                      count={
-                        message.parts.filter(
-                          (part) => part.type === 'source-url',
-                        ).length
+            {messages.map((message) => {
+              // 将 parts 分为文本部分和 tool 部分
+              const textParts = message.parts.filter((part) => part.type === 'text' || part.type === 'reasoning');
+              const toolParts = message.parts.filter((part) => part.type.startsWith('tool-') || part.type === 'dynamic-tool');
+              const sourceParts = message.parts.filter((part) => part.type === 'source-url');
+              
+              return (
+                <div key={message.id}>
+                  {message.role === 'assistant' && sourceParts.length > 0 && (
+                    <Sources>
+                      <SourcesTrigger count={sourceParts.length} />
+                      {sourceParts.map((part, i) => (
+                        <SourcesContent key={`${message.id}-source-${i}`}>
+                          <Source
+                            key={`${message.id}-source-${i}`}
+                            href={part.url}
+                            title={part.url}
+                          />
+                        </SourcesContent>
+                      ))}
+                    </Sources>
+                  )}
+                  {/* 先渲染 tool 部分 */}
+                  {toolParts.map((part, i) => {
+                    const toolPart = part as ToolPart;
+                    const isCompleted = toolPart.state === 'output-available';
+                    const isError = toolPart.state === 'output-error';
+                    const isDenied = toolPart.state === 'output-denied';
+                    // 如果 tool 已完成、出错或被拒绝，默认展开
+                    const defaultOpen = isCompleted || isError || isDenied;
+                    
+                    // 根据 tool 类型渲染不同的 ToolHeader
+                    if (toolPart.type === 'dynamic-tool') {
+                      const dynamicTool = toolPart as DynamicToolUIPart;
+                      
+                      // 检查是否是 generateImage tool
+                      if (dynamicTool.toolName === 'generateImage') {
+                        const images = (dynamicTool.output as { images: string[] })?.images || [];
+                        return (
+                          <Tool
+                            key={`${message.id}-tool-${i}`}
+                            defaultOpen={defaultOpen}
+                          >
+                            <ToolHeader
+                              type="dynamic-tool"
+                              state={dynamicTool.state}
+                              toolName={dynamicTool.toolName}
+                              title={dynamicTool.title}
+                            />
+                            <ToolContent>
+                              {dynamicTool.input !== undefined && (
+                                <ToolInput input={dynamicTool.input} />
+                              )}
+                              <div className="p-4 flex gap-2">
+                                <ImageGallery
+                                  images={images}
+                                  alt={dynamicTool.title || 'Generated Image'}
+                                />
+                              </div>
+                            </ToolContent>
+                          </Tool>
+                        );
                       }
-                    />
-                    {message.parts.filter((part) => part.type === 'source-url').map((part, i) => (
-                      <SourcesContent key={`${message.id}-${i}`}>
-                        <Source
-                          key={`${message.id}-${i}`}
-                          href={part.url}
-                          title={part.url}
-                        />
-                      </SourcesContent>
-                    ))}
-                  </Sources>
-                )}
-                {message.parts.map((part, i) => {
+                      
+                      return (
+                        <Tool
+                          key={`${message.id}-tool-${i}`}
+                          defaultOpen={defaultOpen}
+                        >
+                          <ToolHeader
+                            type="dynamic-tool"
+                            state={dynamicTool.state}
+                            toolName={dynamicTool.toolName}
+                            title={dynamicTool.title}
+                          />
+                          <ToolContent>
+                            {dynamicTool.input !== undefined && (
+                              <ToolInput input={dynamicTool.input} />
+                            )}
+                            <ToolOutput
+                              output={dynamicTool.output}
+                              errorText={dynamicTool.errorText}
+                            />
+                          </ToolContent>
+                        </Tool>
+                      );
+                    } else {
+                      // 静态 tool (tool-${NAME})
+                      const staticTool = toolPart as ToolUIPart;
+                      return (
+                        <Tool
+                          key={`${message.id}-tool-${i}`}
+                          defaultOpen={defaultOpen}
+                        >
+                          <ToolHeader
+                            type={staticTool.type}
+                            state={staticTool.state}
+                            title={staticTool.title}
+                          />
+                          <ToolContent>
+                            {staticTool.input !== undefined && (
+                              <ToolInput input={staticTool.input} />
+                            )}
+                            <ToolOutput
+                              output={staticTool.output}
+                              errorText={staticTool.errorText}
+                            />
+                            {staticTool.type === 'tool-generateImage' ? <GenerateImageOutput output={staticTool.output as GenerateImageUITool['output']} /> 
+                            : staticTool.type === 'tool-decomposeImage' ? <DecomposeImageOutput output={staticTool.output as DecomposeImageUITool['output']} /> 
+                            : staticTool.type === 'tool-vectorizeImage' ? <VectorizeImageOutput output={staticTool.output as VectorizeImageUITool['output']} /> : null}
+                          </ToolContent>
+                        </Tool>
+                      );
+                    }
+                  })}
+                  {/* 然后渲染文本部分 */}
+                  {textParts.map((part, i) => {
                   switch (part.type) {
                     case 'text':
                       return (
@@ -290,111 +384,19 @@ const Chat = ({
                         <Reasoning
                           key={`${message.id}-${i}`}
                           className="w-full"
-                          isStreaming={status === 'streaming' && i === message.parts.length - 1 && message.id === messages.at(-1)?.id}
+                          isStreaming={status === 'streaming' && i === textParts.length - 1 && message.id === messages.at(-1)?.id}
                         >
                           <ReasoningTrigger />
                           <ReasoningContent>{part.text}</ReasoningContent>
                         </Reasoning>
                       );
                     default:
-                      // 处理 tool parts (tool-* 或 dynamic-tool)
-                      if (part.type.startsWith('tool-') || part.type === 'dynamic-tool') {
-                        const toolPart = part as ToolPart;
-                        const isCompleted = toolPart.state === 'output-available';
-                        const isError = toolPart.state === 'output-error';
-                        const isDenied = toolPart.state === 'output-denied';
-                        // 如果 tool 已完成、出错或被拒绝，默认展开
-                        const defaultOpen = isCompleted || isError || isDenied;
-                        
-                        // 根据 tool 类型渲染不同的 ToolHeader
-                        if (toolPart.type === 'dynamic-tool') {
-                          const dynamicTool = toolPart as DynamicToolUIPart;
-                          
-                          // 检查是否是 generateImage tool
-                          if (dynamicTool.toolName === 'generateImage') {
-                            const images = (dynamicTool.output as { images: string[] })?.images || [];
-                            return (
-                              <Tool
-                                key={`${message.id}-${i}`}
-                                defaultOpen={defaultOpen}
-                              >
-                                <ToolHeader
-                                  type="dynamic-tool"
-                                  state={dynamicTool.state}
-                                  toolName={dynamicTool.toolName}
-                                  title={dynamicTool.title}
-                                />
-                                <ToolContent>
-                                  {dynamicTool.input !== undefined && (
-                                    <ToolInput input={dynamicTool.input} />
-                                  )}
-                                  <div className="p-4 flex gap-2">
-                                    <ImageGallery
-                                      images={images}
-                                      alt={dynamicTool.title || 'Generated Image'}
-                                    />
-                                  </div>
-                                </ToolContent>
-                              </Tool>
-                            );
-                          }
-                          
-                          return (
-                            <Tool
-                              key={`${message.id}-${i}`}
-                              defaultOpen={defaultOpen}
-                            >
-                              <ToolHeader
-                                type="dynamic-tool"
-                                state={dynamicTool.state}
-                                toolName={dynamicTool.toolName}
-                                title={dynamicTool.title}
-                              />
-                              <ToolContent>
-                                {dynamicTool.input !== undefined && (
-                                  <ToolInput input={dynamicTool.input} />
-                                )}
-                                <ToolOutput
-                                  output={dynamicTool.output}
-                                  errorText={dynamicTool.errorText}
-                                />
-                              </ToolContent>
-                            </Tool>
-                          );
-                        } else {
-                          // 静态 tool (tool-${NAME})
-                          const staticTool = toolPart as ToolUIPart;
-                          return (
-                            <Tool
-                              key={`${message.id}-${i}`}
-                              defaultOpen={defaultOpen}
-                            >
-                              <ToolHeader
-                                type={staticTool.type}
-                                state={staticTool.state}
-                                title={staticTool.title}
-                              />
-                              <ToolContent>
-                                {staticTool.input !== undefined && (
-                                  <ToolInput input={staticTool.input} />
-                                )}
-                                <ToolOutput
-                                  output={staticTool.output}
-                                  errorText={staticTool.errorText}
-                                />
-                                {staticTool.type === 'tool-generateImage' ? <GenerateImageOutput output={staticTool.output as GenerateImageUITool['output']} /> 
-                                : staticTool.type === 'tool-decomposeImage' ? <DecomposeImageOutput output={staticTool.output as DecomposeImageUITool['output']} /> 
-                                : staticTool.type === 'tool-vectorizeImage' ? <VectorizeImageOutput output={staticTool.output as VectorizeImageUITool['output']} /> : null}
-                              </ToolContent>
-                            </Tool>
-                          );
-                        }
-                      }
                       return null;
                   }
-                })}
-              </div>
-            ))}
+                  })}
+                </div>
+              );
+            })}
             {status === 'submitted' && <Loader />}
             {renderErrorAlert()}
           </ConversationContent>

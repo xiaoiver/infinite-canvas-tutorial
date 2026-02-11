@@ -1,5 +1,7 @@
 import { uploadSVG } from '@/lib/blob';
 import { getImagesFromLastMessage } from '@/lib/file';
+import { fal } from '@fal-ai/client';
+import { getModelForCapability } from '@/lib/models/get-model';
 import { createClient } from '@/lib/supabase/server';
 import { tool } from 'ai';
 import z from 'zod';
@@ -29,26 +31,43 @@ export const vectorizeImageTool = tool({
       return { error: 'No image found in the last user message' };
     }
 
-    const { vectorize } = await import('@neplex/vectorizer');
+    const modelInfo = await getModelForCapability(user.id, 'vectorize');
 
     try {
-      const src = await fetch(new URL(imageDataURLs[0].toString())).then((res) => res.arrayBuffer());
-      const svg = await vectorize(Buffer.from(src), {
-        colorMode: colorMode === 'color' ? ColorMode.Color : ColorMode.Binary,
-        colorPrecision: 6,
-        filterSpeckle: 4,
-        spliceThreshold: 45,
-        cornerThreshold: 60,
-        hierarchical: Hierarchical.Stacked,
-        mode: PathSimplifyMode.Spline,
-        layerDifference: 5,
-        lengthThreshold: 5,
-        maxIterations: 2,
-        pathPrecision: 5,
-      });
+      let svgUrl: string | undefined;
+      if (!modelInfo) {
+        // Use default vectorizer
+        const { vectorize } = await import('@neplex/vectorizer');
+        const src = await fetch(new URL(imageDataURLs[0].toString())).then((res) => res.arrayBuffer());
+        const svg = await vectorize(Buffer.from(src), {
+          colorMode: colorMode === 'color' ? ColorMode.Color : ColorMode.Binary,
+          colorPrecision: 6,
+          filterSpeckle: 4,
+          spliceThreshold: 45,
+          cornerThreshold: 60,
+          hierarchical: Hierarchical.Stacked,
+          mode: PathSimplifyMode.Spline,
+          layerDifference: 5,
+          lengthThreshold: 5,
+          maxIterations: 2,
+          pathPrecision: 5,
+        });
 
-      // Upload SVG to vercel blob
-      const svgUrl = await uploadSVG(svg);
+        // Upload SVG to vercel blob
+        svgUrl = await uploadSVG(svg);
+      } else {
+        const { apiKey, model } = modelInfo;
+        fal.config({
+          credentials: apiKey
+        });
+        const result = await fal.subscribe(model, {
+          input: {
+            image_url: imageDataURLs[0],
+          },
+        });
+        svgUrl = result.data.image.url;
+      }
+
       return {
         type: 'content',
         value: [

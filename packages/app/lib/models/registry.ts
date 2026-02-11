@@ -37,6 +37,7 @@ export const PROVIDERS: ProviderInfo[] = [
       { value: 'google/gemini-2.5-pro', label: 'Gemini 2.5 Pro', provider: 'gateway', capabilities: ['text', 'chat'] },
       { value: 'google/gemini-2.5-flash', label: 'Gemini 2.5 Flash', provider: 'gateway', capabilities: ['text', 'chat'] },
       { value: 'google/gemini-2.5-flash-image', label: 'Gemini 2.5 Flash Image', provider: 'gateway', capabilities: ['image'] },
+      { value: 'recraft/recraft-v3', label: 'Recraft V3', provider: 'gateway', capabilities: ['image'] },
     ],
   },
   {
@@ -76,68 +77,16 @@ export const PROVIDERS: ProviderInfo[] = [
       { value: 'google/gemini-2.5-flash-image', label: 'Gemini 2.5 Flash Image', provider: 'google', capabilities: ['image'] },
     ],
   },
-  // {
-  //     value: 'groq',
-  //     label: 'Groq',
-  //     models: [
-  //         { value: 'groq/llama-3.1-70b-versatile', label: 'Llama 3.1 70B Versatile', provider: 'groq', capabilities: ['text', 'chat'] },
-  //         { value: 'groq/llama-3.1-8b-instant', label: 'Llama 3.1 8B Instant', provider: 'groq', capabilities: ['text', 'chat'] },
-  //         { value: 'groq/mixtral-8x7b-32768', label: 'Mixtral 8x7B', provider: 'groq', capabilities: ['text', 'chat'] },
-  //     ],
-  // },
-  // {
-  //     value: 'openrouter',
-  //     label: 'OpenRouter',
-  //     models: [
-  //         { value: 'openrouter/openai/gpt-4o', label: 'GPT-4o (via OpenRouter)', provider: 'openrouter', capabilities: ['text', 'chat', 'vision'] },
-  //         { value: 'openrouter/anthropic/claude-3.5-sonnet', label: 'Claude 3.5 Sonnet (via OpenRouter)', provider: 'openrouter', capabilities: ['text', 'chat', 'vision'] },
-  //         { value: 'openrouter/google/gemini-pro', label: 'Gemini Pro (via OpenRouter)', provider: 'openrouter', capabilities: ['text', 'chat', 'vision'] },
-  //     ],
-  // },
-  {
-    value: 'deepseek',
-    label: 'DeepSeek',
-    models: [
-      { value: 'deepseek/deepseek-r1', label: 'DeepSeek R1', provider: 'deepseek', capabilities: ['text', 'chat'] },
-      { value: 'deepseek/deepseek-chat', label: 'DeepSeek Chat', provider: 'deepseek', capabilities: ['text', 'chat'] },
-    ],
-  },
   {
     value: 'fal',
     label: 'Fal.ai',
     models: [
       { value: 'fal-ai/qwen-image-layered', label: 'Qwen Image Layered', provider: 'fal', capabilities: ['image-layered'] },
+      { value: 'fal-ai/recraft/vectorize', label: 'Recraft Vectorize', provider: 'fal', capabilities: ['vectorize'] },
+      // It seems that Star Vector is not working for now.
+      // { value: 'fal-ai/star-vector', label: 'Star Vector', provider: 'fal', capabilities: ['vectorize'] },
     ],
   },
-  // {
-  //     value: 'perplexity',
-  //     label: 'Perplexity',
-  //     models: [
-  //         { value: 'perplexity/sonar', label: 'Perplexity Sonar', provider: 'perplexity', capabilities: ['text', 'chat'] },
-  //         { value: 'perplexity/sonar-pro', label: 'Perplexity Sonar Pro', provider: 'perplexity', capabilities: ['text', 'chat'] },
-  //     ],
-  // },
-  // {
-  //     value: 'mistral',
-  //     label: 'Mistral AI',
-  //     models: [
-  //         { value: 'mistral/mistral-large-latest', label: 'Mistral Large', provider: 'mistral', capabilities: ['text', 'chat'] },
-  //         { value: 'mistral/mistral-medium-latest', label: 'Mistral Medium', provider: 'mistral', capabilities: ['text', 'chat'] },
-  //         { value: 'mistral/mistral-small-latest', label: 'Mistral Small', provider: 'mistral', capabilities: ['text', 'chat'] },
-  //     ],
-  // },
-  // {
-  //     value: 'xai',
-  //     label: 'xAI Grok',
-  //     models: [
-  //         { value: 'xai/grok-4-fast-reasoning', label: 'Grok 4 Fast Reasoning', provider: 'xai', capabilities: ['text', 'chat', 'vision'] },
-  //         { value: 'xai/grok-4', label: 'Grok 4', provider: 'xai', capabilities: ['text', 'chat', 'vision'] },
-  //         { value: 'xai/grok-3', label: 'Grok 3', provider: 'xai', capabilities: ['text', 'chat'] },
-  //         { value: 'xai/grok-3-fast', label: 'Grok 3 Fast', provider: 'xai', capabilities: ['text', 'chat'] },
-  //         { value: 'xai/grok-3-mini', label: 'Grok 3 Mini', provider: 'xai', capabilities: ['text', 'chat'] },
-  //         { value: 'xai/grok-2-vision-1212', label: 'Grok 2 Vision', provider: 'xai', capabilities: ['text', 'chat', 'vision'] },
-  //     ],
-  // },
 ];
 
 /**

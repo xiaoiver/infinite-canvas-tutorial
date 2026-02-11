@@ -1,4 +1,4 @@
-import { eq, desc, asc } from 'drizzle-orm';
+import { eq, desc, asc, and } from 'drizzle-orm';
 import { db, type Message, type NewMessage } from './index';
 import { messages, chats, projects } from './schema';
 
@@ -71,8 +71,12 @@ export async function getMessageByChatIdAndSeq(
     .from(messages)
     .innerJoin(chats, eq(messages.chatId, chats.id))
     .innerJoin(projects, eq(chats.projectId, projects.id))
-    .where(eq(messages.chatId, chatId))
-    .where(eq(messages.seq, seq))
+    .where(
+      and(
+        eq(messages.chatId, chatId),
+        eq(messages.seq, seq)
+      )
+    )
     .limit(1);
 
   const row = result[0];
@@ -256,8 +260,12 @@ export async function getLatestAssistantMessage(chatId: string, userId: string):
   const result = await db
     .select()
     .from(messages)
-    .where(eq(messages.chatId, chatId))
-    .where(eq(messages.role, 'assistant'))
+    .where(
+      and(
+        eq(messages.chatId, chatId),
+        eq(messages.role, 'assistant')
+      )
+    )
     .orderBy(desc(messages.seq))
     .limit(1);
 
