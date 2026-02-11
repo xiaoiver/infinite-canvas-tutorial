@@ -10,6 +10,7 @@
 
     export const templates = {
       's0758584e2fcf954d': str`Curvatura`,
+'s090c9a788879fbe0': str`Desbloquear capa`,
 's0bc31719aa7a8f43': str`Cortar`,
 's2199c9ac949fc21c': str`Opacidad de trazo`,
 's236ae937cbcd6a39': str`Zoom en`,
@@ -21,6 +22,7 @@
 's2ea30e6262e90c5b': str`Ajustar a la pantalla`,
 's3380c967f057d8ef': str`Propiedades de la capa`,
 's339a83e6b14d0040': str`Mostrar panel de capas`,
+'s33ef4300ba7aa421': str`Mostrar capa`,
 's3432f264e3842154': str`Configuración de la brocha`,
 's3687049d1af562c4': str`Copiar`,
 's3b0ab4b52326316f': str`Claro`,
@@ -34,6 +36,7 @@
 's523c7cbcb15f81f9': str`Factor de rotación de la estampa`,
 's5a25a7e3c9796a64': str`Nivel de zoom`,
 's5d0b63df0bad8c2e': str`Rectángulo`,
+'s6002611a64140aab': str`Bloquear capa`,
 's61053f0e3ebbd272': str`normal`,
 's619e62c94211a6f5': str`Estilo de fuente`,
 's64ef2a6c2dd1d3d1': str`Editar`,
@@ -60,6 +63,7 @@
 'sa81e2cdaf6921adc': str`Sistema`,
 'saab875d8cfcfe712': str`Tema`,
 'sac895c732f350ac5': str`Oscuro`,
+'sae3b9113b7db93a4': str`Estampa`,
 'sb02c013623255598': str`Ocultar capa`,
 'sb31aa3d1a0e4711f': str`Configuración de texto`,
 'sb38d497d992ab4a4': str`Centro`,

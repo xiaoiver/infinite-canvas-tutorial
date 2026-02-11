@@ -70,7 +70,8 @@ canvas.addEventListener(Event.READY, async (e) => {
     cameraX: 0,
     // cameraZoom: 0.35,
     // penbarSelected: Pen.VECTOR_NETWORK,
-    penbarSelected: Pen.LASSO,
+    // penbarSelected: Pen.LASSO,
+    penbarSelected: Pen.SELECT,
     penbarLasso: {
       ...api.getAppState().penbarLasso,
       mode: 'draw',
@@ -108,23 +109,24 @@ canvas.addEventListener(Event.READY, async (e) => {
     // filter: 'noise(0.5)',
   });
 
-  // const node1 = {
-  //   id: 'rect-1',
-  //   type: 'rect',
-  //   x: 0,
-  //   y: 0,
-  //   width: 200,
-  //   height: 200,
-  //   fill: 'grey',
-  //   constraints: [
-  //     {
-  //       x: 0.5,
-  //       y: 0.5,
-  //     }
-  //   ]
-  //   // fill: 'https://v3b.fal.media/files/b/tiger/v1lf1EcPP1X1pw_YOKM4o.jpg',
-  //   // filter: 'noise(0.5)',
-  // };
+  const node1 = {
+    id: 'rect-1',
+    type: 'rect',
+    locked: true,
+    x: 0,
+    y: 0,
+    width: 200,
+    height: 200,
+    fill: 'grey',
+    constraints: [
+      {
+        x: 0.5,
+        y: 0.5,
+      }
+    ]
+    // fill: 'https://v3b.fal.media/files/b/tiger/v1lf1EcPP1X1pw_YOKM4o.jpg',
+    // filter: 'noise(0.5)',
+  };
   // const edge1 = {
   //   id: 'line-1',
   //   // type: 'rough-line',
@@ -214,11 +216,11 @@ canvas.addEventListener(Event.READY, async (e) => {
   //   width: '50%',
   //   height: '50%',
   // };
-  // api.updateNodes([parent, child]);
-  // api.selectNodes([parent]);
-  // api.record();
+  api.updateNodes([parent, child]);
+  api.selectNodes([parent]);
+  api.record();
 
-  // api.updateNodes([root, ...nodes]);
+  // api.updateNodes([node1]);
 });
 
 try {

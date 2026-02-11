@@ -8,6 +8,7 @@ export const en = defineConfig({
   keywords: ['infinite canvas', 'canvas', 'webgl', 'webgpu', 'ecs'],
   themeConfig: {
     nav: [
+      { text: 'App', link: 'https://app.infinitecanvas.cc/' },
       { text: 'Guide', link: '/guide/lesson-001', activeMatch: '/guide/' },
       {
         text: 'Example',

@@ -6,7 +6,7 @@ hero:
     name: 무한 캔버스 튜토리얼
     tagline: 무한 캔버스를 단계별로 구축해 보세요.
     image:
-        src: /canvas.png
+        src: /app.png
         alt: 무한 캔버스
     actions:
         - theme: brand
@@ -32,19 +32,6 @@ features:
     - title: 풍부한 그래픽
       details: 스티커 메모, 도형 및 펜 도구
 ---
-
-<script setup>
-import WebGL from '../components/WebGL.vue'
-import WhenCanvasMeetsChat from '../components/WhenCanvasMeetsChat.vue'
-</script>
-
-강의 17 이후에는 ECS 아키텍처와 UI를 위해 spectrum을 사용합니다:
-
-<WhenCanvasMeetsChat />
-
-강의 17 이전의 결과물은 다음과 같았습니다:
-
-<WebGL />
 
 이 튜토리얼은 WebGL / WebGPU 기반의 기본적인 2D 그래픽 렌더링 구현을 다룹니다:
 

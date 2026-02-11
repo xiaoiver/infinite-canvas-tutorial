@@ -362,6 +362,22 @@
   <source>Effects</source>
   <target>效果</target>
 </trans-unit>
+<trans-unit id="s33ef4300ba7aa421">
+  <source>Show layer</source>
+  <target>展示图层</target>
+</trans-unit>
+<trans-unit id="s090c9a788879fbe0">
+  <source>Unlock layer</source>
+  <target>解锁图层</target>
+</trans-unit>
+<trans-unit id="s6002611a64140aab">
+  <source>Lock layer</source>
+  <target>锁定图层</target>
+</trans-unit>
+<trans-unit id="sae3b9113b7db93a4">
+  <source>Stamp</source>
+  <target>笔刷贴图</target>
+</trans-unit>
 </body>
 </file>
 </xliff>

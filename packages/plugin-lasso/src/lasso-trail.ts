@@ -2,17 +2,11 @@
  * Borrow from https://github.com/excalidraw/excalidraw/blob/master/packages/excalidraw/lasso/index.ts
  */
 
-import { v4 as uuidv4 } from 'uuid';
 import {
   API,
-  isBrowser,
-  PathSerializedNode,
   Pen,
-  TesselationMethod,
   TRANSFORMER_ANCHOR_STROKE_COLOR,
   TRANSFORMER_MASK_FILL_COLOR,
-  updateComputedPoints,
-  updateGlobalTransform,
 } from '@infinite-canvas-tutorial/ecs';
 import { AnimatedTrail } from '@infinite-canvas-tutorial/webcomponents';
 import type { AnimationFrameHandler } from '@infinite-canvas-tutorial/webcomponents';
@@ -75,50 +69,12 @@ export class LassoTrail extends AnimatedTrail {
   };
 
   endPath(): void {
-    this.points = [];
-
     super.endPath();
     super.clearTrails();
+  }
 
-    const { mode, stroke, fill, fillOpacity, strokeWidth, strokeOpacity } = this.api.getAppState().penbarLasso;
-
-    if (mode === 'draw' && this.points?.length > 0) {
-      if (isBrowser) {
-        const node: PathSerializedNode = {
-          id: uuidv4(),
-          type: 'path',
-          version: 0,
-          d: `M${this.points[0][0]},${this.points[0][1]}L${this.points.slice(1).map((p) => `${p[0]},${p[1]}`).join(' ')}Z`,
-          fill,
-          fillOpacity,
-          stroke,
-          strokeWidth,
-          strokeOpacity,
-          tessellationMethod: TesselationMethod.LIBTESS,
-        };
-        this.api.setAppState({
-          penbarSelected: Pen.SELECT,
-        });
-        this.api.updateNode(node);
-        this.api.selectNodes([node]);
-        this.api.record();
-
-        const entity = this.api.getEntity(node);
-        if (entity) {
-          updateGlobalTransform(entity);
-          updateComputedPoints(entity);
-        }
-        // FIXME: Use the correct event name
-        // @ts-ignore
-        this.api.element.dispatchEvent(
-          new CustomEvent('ic-rect-drawn', {
-            detail: {
-              node,
-            },
-          }),
-        );
-      }
-    }
+  getPoints() {
+    return this.points;
   }
 
   private updateSelection() {
@@ -133,9 +89,7 @@ export class LassoTrail extends AnimatedTrail {
       const points = simplify(lassoPath, simplifyDistance).map((p) => [p.x, p.y]) as [number, number][];
       this.points = points;
 
-      if (this.api.getAppState().penbarLasso.mode === 'draw') {
-
-      } else {
+      if (this.api.getAppState().penbarLasso.mode === 'select') {
         const selectedElements = selectByLassoPath(
           this.api,
           points,

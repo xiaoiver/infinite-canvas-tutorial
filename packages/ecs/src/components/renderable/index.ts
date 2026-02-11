@@ -22,3 +22,4 @@ export * from './Marker';
 export * from './LockAspectRatio';
 export * from './Editable';
 export * from './Filter';
+export * from './Locked';

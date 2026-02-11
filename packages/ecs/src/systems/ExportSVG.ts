@@ -38,6 +38,7 @@ import {
   Filter,
   SizeAttenuation,
   StrokeAttenuation,
+  Locked
 } from '../components';
 import { DOMAdapter } from '../environment';
 import {
@@ -120,6 +121,7 @@ export class ExportSVG extends System {
             Filter,
             SizeAttenuation,
             StrokeAttenuation,
+            Locked,
           )
           .read.and.using(Screenshot, VectorScreenshotRequest).write,
     );

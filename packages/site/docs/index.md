@@ -6,10 +6,13 @@ hero:
     name: An infinite canvas tutorial
     tagline: Build an infinite canvas step by step.
     image:
-        src: /canvas.png
+        src: /app.png
         alt: Infinite Canvas
     actions:
         - theme: brand
+          text: App
+          link: https://app.infinitecanvas.cc/
+        - theme: alt
           text: Guide
           link: /guide/lesson-001
         - theme: alt
@@ -25,26 +28,13 @@ hero:
 features:
     - title: High-Performance Rendering
       details: Underlying rendering using WebGL & WebGPU
-    - title: Interactive
-      details: Executable code blocks via <a href="https://genji-md.dev">genji</a>
     - title: Works with all frameworks
       details: UIs implemented with Web Components
-    - title: Rich graphics
-      details: Stickies, shapes and pen
+    - title: Integrating with AI
+      details: Generate, decompose and vectorize image with AI via vercel ai-sdk
+    - title: Interactive
+      details: Executable code blocks via <a href="https://genji-md.dev">genji</a>
 ---
-
-<script setup>
-import WebGL from './components/WebGL.vue'
-import WhenCanvasMeetsChat from './components/WhenCanvasMeetsChat.vue'
-</script>
-
-After lesson 17 we use the ECS architecture and spectrum for UI:
-
-<WhenCanvasMeetsChat />
-
-Our product results prior to lesson 17 were as follows:
-
-<WebGL />
 
 This tutorial covers a basic 2D graphics rendering implementation based on WebGL / WebGPU:
 
@@ -55,6 +45,7 @@ This tutorial covers a basic 2D graphics rendering implementation based on WebGL
 -   [Lesson 13 - Drawing path and sketchy style]
 -   [Lesson 15 - Text rendering]
 -   [Lesson 16 - Text advanced features]
+-   [Lesson 25 - Drawing mode and brush]
 
 Also includes UI components implemented using Web Components technology:
 
@@ -67,6 +58,10 @@ And some interesting topics:
 -   [Lesson 17 - Gradient and pattern]
 -   [Lesson 19 - History]
 -   [Lesson 22 - VectorNetwork]
+
+The most important thing:
+
+-   [Lesson 28 - Integrating with AI]
 
 [Lesson 2 - Draw a circle]: /guide/lesson-002
 [Lesson 5 - Grid]: /guide/lesson-005
@@ -81,3 +76,5 @@ And some interesting topics:
 [Lesson 24 - Context menu and clipboard]: /guide/lesson-024
 [Lesson 22 - VectorNetwork]: /guide/lesson-022
 [Lesson 17 - Gradient and pattern]: /guide/lesson-017
+[Lesson 25 - Drawing mode and brush]: /guide/lesson-025
+[Lesson 28 - Integrating with AI]: /guide/lesson-028

@@ -61,6 +61,7 @@ import {
   LockAspectRatio,
   Editable,
   Filter,
+  Locked
 } from '../components';
 
 export const RendererPlugin: Plugin = () => {
@@ -81,6 +82,7 @@ export const RendererPlugin: Plugin = () => {
   component(GeometryDirty);
   component(MaterialDirty);
   component(Editable);
+  component(Locked);
 
   /**
    * Style

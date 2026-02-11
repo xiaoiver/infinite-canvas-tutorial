@@ -6,10 +6,13 @@ hero:
     name: 一个无限画布教程
     tagline: 一步步构建一个可用的无限画布
     image:
-        src: /canvas.png
+        src: /app.png
         alt: Infinite Canvas
     actions:
         - theme: brand
+          text: 应用
+          link: https://app.infinitecanvas.cc/
+        - theme: alt
           text: 课程列表
           link: /zh/guide/lesson-001
         - theme: alt
@@ -25,26 +28,13 @@ hero:
 features:
     - title: 高性能渲染
       details: 使用 WebGL & WebGPU
-    - title: 可交互
-      details: 基于 <a href="https://genji-md.dev">genji</a> 实现的可交互代码块
     - title: 框架无关
       details: 基于 Web Components 实现的 UI 组件
-    - title: 丰富的图形
-      details: 2D 图形、便签、画笔
+    - title: 集成 AI 能力
+      details: 使用 vercel ai-sdk，生成、分解、矢量化图片并与画布聊天
+    - title: 可交互
+      details: 基于 <a href="https://genji-md.dev">genji</a> 实现的可交互代码块
 ---
-
-<script setup>
-import WebGL from '../components/WebGL.vue'
-import WhenCanvasMeetsChat from '../components/WhenCanvasMeetsChat.vue'
-</script>
-
-在课程 17 之后我们使用了 ECS 进行了重构，并使用 spectrum 编写 UI：
-
-<WhenCanvasMeetsChat />
-
-课程 17 之前的效果如下：
-
-<WebGL />
 
 这份教程包含基于 WebGL / WebGPU 的基础 2D 图形渲染实现：
 
@@ -55,6 +45,7 @@ import WhenCanvasMeetsChat from '../components/WhenCanvasMeetsChat.vue'
 -   [课程 13 - 绘制 Path & 手绘风格]
 -   [课程 15 - 绘制文本]
 -   [课程 16 - 文本的高级特性]
+-   [课程 25 - 绘制模式和笔刷]
 
 也包含使用 Web Components 技术实现的 UI 组件：
 
@@ -67,6 +58,10 @@ import WhenCanvasMeetsChat from '../components/WhenCanvasMeetsChat.vue'
 -   [课程 17 - 渐变和重复图案]
 -   [课程 19 - 历史记录]
 -   [课程 22 - VectorNetwork]
+
+以及最重要的：
+
+-   [课程 28 - 集成 AI 能力]
 
 [课程 2 - 绘制圆]: /zh/guide/lesson-002
 [课程 5 - 绘制网格]: /zh/guide/lesson-005
@@ -81,3 +76,5 @@ import WhenCanvasMeetsChat from '../components/WhenCanvasMeetsChat.vue'
 [课程 24 - 上下文菜单和剪贴板]: /zh/guide/lesson-024
 [课程 22 - VectorNetwork]: /zh/guide/lesson-022
 [课程 17 - 渐变和重复图案]: /zh/guide/lesson-017
+[课程 25 - 绘制模式和笔刷]: /zh/guide/lesson-025
+[课程 28 - 集成 AI 能力]: /zh/guide/lesson-028

@@ -45,6 +45,7 @@ import {
   HTML,
   Embed,
   Editable,
+  Locked,
 } from '../components';
 import { Commands } from '../commands/Commands';
 import {
@@ -56,7 +57,6 @@ import {
   getCursor,
   getGridPoint,
   isBrowser,
-  SerializedNode,
   snapDraggedElements,
   snapToGrid,
 } from '../utils';
@@ -68,7 +68,7 @@ import {
   TRANSFORMER_MASK_FILL_COLOR,
 } from './RenderTransformer';
 import { updateGlobalTransform } from './Transform';
-import { safeAddComponent, safeRemoveComponent } from '../history';
+import { safeAddComponent } from '../history';
 import { updateComputedPoints } from './ComputePoints';
 import { DOMAdapter } from '../environment';
 import { hideLabel, initLabel, showLabel } from '..';
@@ -143,7 +143,7 @@ export class Select extends System {
     this.query(
       (q) =>
         q
-          .using(Canvas, ComputedCameraControl, Culled, Brush, Input)
+          .using(Canvas, ComputedCameraControl, Culled, Brush, Input, Locked)
           .read.update.and.using(
             GlobalTransform,
             InputPoint,

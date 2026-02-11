@@ -1,3 +1,4 @@
+import { v4 as uuidv4 } from 'uuid';
 import {
   Camera,
   Canvas,
@@ -34,6 +35,13 @@ import {
   GlobalTransform,
   ComputedBounds,
   ComputedPoints,
+  isBrowser,
+  TesselationMethod,
+  PathSerializedNode,
+  TRANSFORMER_ANCHOR_STROKE_COLOR,
+  TRANSFORMER_MASK_FILL_COLOR,
+  updateComputedPoints,
+  updateGlobalTransform,
 } from '@infinite-canvas-tutorial/ecs';
 import { LassoTrail } from './lasso-trail';
 import { AnimationFrameHandler } from '@infinite-canvas-tutorial/webcomponents';
@@ -164,6 +172,47 @@ export class LassoSystem extends System {
 
       if (input.pointerUpTrigger) {
         selection.lassoTrail.endPath();
+
+        const { mode, stroke, fill, fillOpacity, strokeWidth, strokeOpacity } = appState.penbarLasso;
+
+        const points = selection.lassoTrail.getPoints();
+        if (mode === 'draw' && points?.length > 0) {
+          if (isBrowser) {
+            const node: PathSerializedNode = {
+              id: uuidv4(),
+              type: 'path',
+              version: 0,
+              d: `M${points[0][0]},${points[0][1]}L${points.slice(1).map((p) => `${p[0]},${p[1]}`).join(' ')}Z`,
+              fill,
+              fillOpacity,
+              stroke,
+              strokeWidth,
+              strokeOpacity,
+              tessellationMethod: TesselationMethod.LIBTESS,
+            };
+            api.setAppState({
+              penbarSelected: Pen.SELECT,
+            });
+            api.updateNode(node);
+            api.selectNodes([node]);
+            api.record();
+
+            const entity = api.getEntity(node);
+            if (entity) {
+              updateGlobalTransform(entity);
+              updateComputedPoints(entity);
+            }
+            // FIXME: Use the correct event name
+            // @ts-ignore
+            api.element.dispatchEvent(
+              new CustomEvent('ic-rect-drawn', {
+                detail: {
+                  node,
+                },
+              }),
+            );
+          }
+        }
       }
     });
   }

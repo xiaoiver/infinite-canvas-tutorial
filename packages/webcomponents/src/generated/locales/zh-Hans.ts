@@ -10,6 +10,7 @@
 
     export const templates = {
       's0758584e2fcf954d': str`弯曲`,
+'s090c9a788879fbe0': str`解锁图层`,
 's0bc31719aa7a8f43': str`剪切`,
 's2199c9ac949fc21c': str`描边透明度`,
 's236ae937cbcd6a39': str`放大`,
@@ -21,6 +22,7 @@
 's2ea30e6262e90c5b': str`适应屏幕`,
 's3380c967f057d8ef': str`图层属性`,
 's339a83e6b14d0040': str`显示图层面板`,
+'s33ef4300ba7aa421': str`展示图层`,
 's3432f264e3842154': str`画笔设置`,
 's3687049d1af562c4': str`复制`,
 's3b0ab4b52326316f': str`亮色`,
@@ -34,6 +36,7 @@
 's523c7cbcb15f81f9': str`贴图旋转因子`,
 's5a25a7e3c9796a64': str`缩放级别`,
 's5d0b63df0bad8c2e': str`矩形`,
+'s6002611a64140aab': str`锁定图层`,
 's61053f0e3ebbd272': str`正常`,
 's619e62c94211a6f5': str`字体样式`,
 's64ef2a6c2dd1d3d1': str`编辑`,
@@ -60,6 +63,7 @@
 'sa81e2cdaf6921adc': str`系统`,
 'saab875d8cfcfe712': str`主题`,
 'sac895c732f350ac5': str`暗色`,
+'sae3b9113b7db93a4': str`笔刷贴图`,
 'sb02c013623255598': str`隐藏图层`,
 'sb31aa3d1a0e4711f': str`文本设置`,
 'sb38d497d992ab4a4': str`居中`,

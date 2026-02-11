@@ -44,6 +44,7 @@ import {
   Highlighted,
   Landmark,
   LandmarkAnimationEffectTiming,
+  Locked,
   Mat3,
   OBB,
   Parent,
@@ -479,7 +480,7 @@ export class API {
     // Sort by fractional index
     return rBushNodes
       .map((node) => node.entity)
-      .filter((entity) => entity.__valid)
+      .filter((entity) => entity.__valid && !entity.has(Locked))
       .sort(sortByFractionalIndex)
       .reverse();
   }
