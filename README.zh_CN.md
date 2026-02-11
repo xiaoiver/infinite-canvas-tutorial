@@ -5,6 +5,8 @@
 [![Build Status](https://github.com/xiaoiver/infinite-canvas-tutorial/actions/workflows/unit-ssr.yml/badge.svg)](https://github.com/xiaoiver/infinite-canvas-tutorial/actions/workflows/unit-ssr.yml)
 [![Coverage Status](https://coveralls.io/repos/github/xiaoiver/infinite-canvas-tutorial/badge.svg?branch=master)](https://coveralls.io/github/xiaoiver/infinite-canvas-tutorial?branch=master)
 
+在线体验：[app.infinitecanvas.cc](app.infinitecanvas.cc)
+
 > [我在 Gumroad 上的免费课程]，欢迎评分！
 
 [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/U7U71DK7IM)
@@ -402,7 +404,7 @@ pnpm run dev
 -   解析 Mermaid 并绘制
 -   解析 D2 并绘制
 
-|                Mermaid flowchart                 |                     D2 flowchart                      |
+|                Mermaid flowchart                 |                 D2 flowchart                  |
 | :----------------------------------------------: | :-------------------------------------------: |
 | ![mermaid flowchart](./screenshots/lesson32.png) | ![d2 flowchart](./screenshots/lesson32-2.png) |
 

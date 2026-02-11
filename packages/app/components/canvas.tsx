@@ -19,7 +19,7 @@ import { EraserPlugin } from '@infinite-canvas-tutorial/eraser';
 import { useEffect, useRef, useCallback } from 'react';
 import { useTheme } from 'next-themes';
 import { useParams } from 'next/navigation';
-import { useAtom, useSetAtom } from 'jotai';
+import { useAtom } from 'jotai';
 import { selectedNodesAtom, canvasApiAtom } from '@/atoms/canvas-selection';
 import { CanvasYjsManager } from '@/lib/yjs/canvas-yjs-manager';
 import ZoomToolbar from './zoom-toolbar';
@@ -39,7 +39,7 @@ const Canvas = ({ id = 'default', initialData }: CanvasProps) => {
   const params = useParams();
   const locale = params.locale as string;
 
-  const setSelectedNodes = useSetAtom(selectedNodesAtom);
+  const [selectedNodes, setSelectedNodes] = useAtom(selectedNodesAtom);
   const [canvasApi, setCanvasApi] = useAtom(canvasApiAtom);
 
   // 更新 projectIdRef 当 id 改变时
@@ -99,9 +99,8 @@ const Canvas = ({ id = 'default', initialData }: CanvasProps) => {
       yjsManagerRef.current = new CanvasYjsManager(id);
       await yjsManagerRef.current.waitForSync();
 
-      // 设置 API 的 onchange 回调，将画布变化同步到 Yjs 并保存到数据库
-      api.onchange = (snapshot) => {
-        const { nodes } = snapshot;
+      // 设置 API 的 onNodesChange 回调，将画布变化同步到 Yjs 并保存到数据库
+      api.onNodesChange = (nodes) => {
         if (yjsManagerRef.current) {
           yjsManagerRef.current.recordLocalOps(nodes);
         }
@@ -151,8 +150,18 @@ const Canvas = ({ id = 'default', initialData }: CanvasProps) => {
     });
   };
 
-  const onSelectedNodesChanged = async (e: CustomEvent<any>) => {
-    setSelectedNodes(e.detail.selected);
+  const onSelectedNodesChanged = (e: CustomEvent<any>) => {
+    const newSelectedNodes = e.detail.selected;
+
+    // console.log('onSelectedNodesChanged... ', newSelectedNodes, selectedNodes);
+    // If the selected nodes are the same as the previous selected nodes, do nothing
+    // if (
+    //   newSelectedNodes.length === 0 && selectedNodes.length === 0
+    // ) {
+    //   return;
+    // }
+    
+    setSelectedNodes(newSelectedNodes);
   };
 
   useEffect(() => {

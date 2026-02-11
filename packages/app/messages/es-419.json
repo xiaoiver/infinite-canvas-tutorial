@@ -10,7 +10,9 @@
     "edit": "Editar",
     "close": "Cerrar",
     "result": "Resultado",
-    "parameters": "Parámetros"
+    "parameters": "Parámetros",
+    "collapse": "Colapsar",
+    "expand": "Expandir"
   },
   "auth": {
     "title": "Inicio de sesión",
@@ -52,6 +54,8 @@
     "projectDescriptionPlaceholder": "Ingresa la descripción del proyecto (opcional)",
     "noProjects": "Aún no has creado ningún proyecto",
     "createFirstProject": "Crea Tu Primer Proyecto",
+    "deleteProject": "Eliminar Proyecto",
+    "deleteSuccess": "Proyecto eliminado exitosamente",
     "deleteConfirm": "¿Estás seguro de que deseas eliminar este proyecto? Esta acción no se puede deshacer.",
     "editProject": "Editar Proyecto",
     "editDescription": "Actualiza el nombre y la descripción del proyecto",
@@ -69,12 +73,22 @@
     "copy": "Copiar",
     "paste": "Pegar",
     "preferences": "Preferencias",
-    "grid": "Cuadrícula"
+    "grid": "Cuadrícula",
+    "snapToPixelGrid": "Snap to Pixel Grid",
+    "snapToObjects": "Snap to Objects",
+    "shapesCount": "{count} formas",
+    "chatsCount": "{count} chats"
   },
   "chats": {
     "title": "Chats",
     "noChatSelected": "No hay chat seleccionado",
-    "unknownError": "Ocurrió un error desconocido"
+    "unknownError": "Ocurrió un error desconocido",
+    "deleteChat": "Eliminar Chat",
+    "deleteConfirm": "¿Estás seguro de que deseas eliminar este chat? Esta acción no se puede deshacer.",
+    "deleteSuccess": "Chat eliminado exitosamente",
+    "uploadImages": "Cargar Imágenes",
+    "decomposeImageDescription": "Descomponer la imagen en múltiples capas.",
+    "vectorizeImageDescription": "Vectorizar la imagen."
   },
   "zoom": {
     "zoomIn": "Acercar",
@@ -93,7 +107,13 @@
     "drawPencilFreehandMask": "Máscara de Pencil Freehand",
     "drawLassoMask": "Máscara de Lasso",
     "splitLayers": "Dividir Capas",
-    "vectorize": "Vectorizar"
+    "vectorize": "Vectorizar",
+    "drawRectMaskDescription": "Arrastre para dibujar una máscara de rectángulo en la imagen.",
+    "drawPencilFreehandMaskDescription": "Dibujar una máscara de pencil freehand en la imagen.",
+    "drawLassoMaskDescription": "Dibujar una máscara de lasso en la imagen.",
+    "drawSmartClickMask": "Haga clic para seleccionar el área con SAM",
+    "insertIntoCanvas": "Insertar en el Canvas",
+    "download": "Descargar"
   },
   "settings": {
     "title": "Configuración",
@@ -134,6 +154,8 @@
       "text": "Texto",
       "chat": "Chat",
       "image": "Imagen",
+      "image-layered": "Imagen en Capas",
+      "vectorize": "Vectorizar",
       "title": "Configuración de Capacidades",
       "description": "Configurar modelos y parámetros independientes para diferentes capacidades de IA",
       "provider": "Proveedor",
@@ -141,10 +163,25 @@
       "model": "Modelo",
       "selectModel": "Seleccionar Modelo",
       "saveConfig": "Guardar",
+      "deleteConfig": "Eliminar",
       "selectProviderAndModel": "Por favor seleccione el Proveedor y el Modelo",
       "saveSuccess": "Guardado exitosamente",
       "saveFailed": "Error al guardar",
-      "saveFailedWithError": "Error al guardar: {error}"
+      "saveFailedWithError": "Error al guardar: {error}",
+      "deleteSuccess": "Eliminado exitosamente",
+      "deleteFailed": "Error al eliminar",
+      "deleteFailedWithError": "Error al eliminar: {error}",
+      "deleteConfirm": "¿Está seguro de que desea eliminar esta configuración de capacidad?",
+      "vectorizeInfoPrefix": "Si no está configurado, se usará",
+      "vectorizeInfoSuffix": ".",
+      "imageLayeredInfo": "Actualmente solo qwen-image-layered en fal.ai es compatible."
     }
+  },
+  "onboarding": {
+    "step1": "Configurar sus API Keys",
+    "step2": "Crear su primer proyecto",
+    "step3": "Chatear con el canvas",
+    "step1Description": "Agrega API Keys para diferentes proveedores de IA para habilitar capacidades de IA. Solo configura las capacidades 'Chat' y 'Imagen' para usar la mayoría de las funciones del canvas. Vercel AI Gateway ofrece $5 de uso gratuito cuando te registras en una nueva cuenta.",
+    "step3Description": "Puedes cargar o generar imágenes y chatear con ellas."
   }
 }

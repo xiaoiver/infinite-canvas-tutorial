@@ -34,17 +34,26 @@ const res = await fetch('/test.svg');
 // const res = await fetch(
 //   '/62f5208ddbc232ac973f53d9cfd91ba463c50b8bfd846349247709fe4a7a9053.svg',
 // );
-const svg = await res.text();
+// const svg = await res.text();
 // TODO: extract semantic groups inside comments
-const $container = document.createElement('div');
-$container.innerHTML = svg;
-const $svg = $container.children[0] as SVGSVGElement;
+// const $container = document.createElement('div');
+// $container.innerHTML = svg;
+// const $svg = $container.children[0] as SVGSVGElement;
 
 // const camera = svgSvgElementToComputedCamera($svg);
 // const nodes = svgElementsToSerializedNodes(
 //   Array.from($svg.children) as SVGElement[],
 // );
 
+// const root = {
+//   id: 'root',
+//   type: 'rect',
+//   x: 0,
+//   y: 0,
+//   width: 1000,
+//   height: 1000
+// };
+// nodes.forEach((node) => node.parentId = root.id);
 // console.log('nodes', nodes);
 
 const canvas = document.querySelector<HTMLElement>('#canvas1')!;
@@ -61,7 +70,11 @@ canvas.addEventListener(Event.READY, async (e) => {
     cameraX: 0,
     // cameraZoom: 0.35,
     // penbarSelected: Pen.VECTOR_NETWORK,
-    penbarSelected: Pen.SELECT,
+    penbarSelected: Pen.LASSO,
+    penbarLasso: {
+      ...api.getAppState().penbarLasso,
+      mode: 'draw',
+    },
     penbarText: {
       ...api.getAppState().penbarText,
       fontFamily: 'system-ui',
@@ -201,9 +214,11 @@ canvas.addEventListener(Event.READY, async (e) => {
   //   width: '50%',
   //   height: '50%',
   // };
-  api.updateNodes([parent, child]);
-  api.selectNodes([parent]);
-  api.record();
+  // api.updateNodes([parent, child]);
+  // api.selectNodes([parent]);
+  // api.record();
+
+  // api.updateNodes([root, ...nodes]);
 });
 
 try {
@@ -212,6 +227,7 @@ try {
     UIPlugin,
     EraserPlugin,
     LaserPointerPlugin,
+    LassoPlugin,
     YogaPlugin
   );
   app.run();

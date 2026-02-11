@@ -19,3 +19,13 @@ export async function uploadImage(image: GeneratedFile) {
   });
   return blob.url;
 }
+
+export async function uploadSVG(svg: string) {
+  const fileBuffer = Buffer.from(svg, 'utf-8');
+  const fileName = `${nanoid()}.svg`;
+  const blob = await put(fileName, fileBuffer, {
+    access: 'public',
+    addRandomSuffix: true,
+  });
+  return blob.url;
+}

@@ -243,10 +243,11 @@ export default function ZoomToolbar({ canvasApi, canvasRef }: ZoomToolbarProps) 
           <DropdownMenuTrigger asChild>
             <Button
               variant="ghost"
-              className="h-7 p-0 pr-2 gap-1 text-sm font-medium"
+              className="h-7 px-0! pr-2! gap-1 text-sm font-medium"
             >
               <span className="min-w-[50px] text-center">
-                {Math.round(zoomLevel * 100)}%
+                <span className="w-8 inline-block text-center">{Math.round(zoomLevel * 100)}</span>
+                <span>%</span>
               </span>
               <ChevronDown className="h-3 w-3" />
             </Button>

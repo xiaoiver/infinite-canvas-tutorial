@@ -10,7 +10,9 @@
     "edit": "编辑",
     "close": "关闭",
     "result": "结果",
-    "parameters": "参数"
+    "parameters": "参数",
+    "collapse": "折叠",
+    "expand": "展开"
   },
   "auth": {
     "title": "用户登录",
@@ -52,6 +54,8 @@
     "projectDescriptionPlaceholder": "输入项目描述（可选）",
     "noProjects": "您还没有创建任何项目",
     "createFirstProject": "创建第一个项目",
+    "deleteProject": "删除项目",
+    "deleteSuccess": "项目删除成功",
     "deleteConfirm": "确定要删除这个项目吗？此操作无法撤销。",
     "editProject": "编辑项目",
     "editDescription": "修改项目的名称和描述",
@@ -69,12 +73,22 @@
     "copy": "复制",
     "paste": "粘贴",
     "preferences": "偏好设置",
-    "grid": "网格"
+    "grid": "网格",
+    "snapToPixelGrid": "像素网格对齐",
+    "snapToObjects": "对象对齐",
+    "shapesCount": "{count} 个图形",
+    "chatsCount": "{count} 个对话"
   },
   "chats": {
     "title": "对话",
     "noChatSelected": "没有选择对话",
-    "unknownError": "发生未知错误"
+    "unknownError": "发生未知错误",
+    "deleteChat": "删除聊天记录",
+    "deleteConfirm": "确定要删除这个聊天记录吗？此操作无法撤销。",
+    "deleteSuccess": "聊天记录删除成功",
+    "uploadImages": "上传图片",
+    "decomposeImageDescription": "将图像分解为多个图层。",
+    "vectorizeImageDescription": "将图像矢量化。"
   },
   "zoom": {
     "zoomIn": "放大",
@@ -93,7 +107,13 @@
     "drawPencilFreehandMask": "铅笔自由绘制遮罩",
     "drawLassoMask": "套索遮罩",
     "splitLayers": "分割图层",
-    "vectorize": "矢量化"
+    "vectorize": "矢量化",
+    "drawRectMaskDescription": "拖动以在图像上绘制矩形遮罩。",
+    "drawPencilFreehandMaskDescription": "在图像上自由绘制遮罩。",
+    "drawLassoMaskDescription": "在图像上绘制套索遮罩。",
+    "drawSmartClickMask": "在图像上点击智能选择区域",
+    "insertIntoCanvas": "插入到画布",
+    "download": "下载"
   },
   "settings": {
     "title": "设置",
@@ -134,6 +154,8 @@
       "text": "文本",
       "chat": "对话",
       "image": "图像",
+      "image-layered": "图像分层",
+      "vectorize": "矢量化",
       "title": "能力配置",
       "description": "为不同的 AI 能力配置独立的模型和参数",
       "provider": "Provider",
@@ -141,10 +163,25 @@
       "model": "Model",
       "selectModel": "选择 Model",
       "saveConfig": "保存",
+      "deleteConfig": "删除",
       "selectProviderAndModel": "请选择 Provider 和 Model",
       "saveSuccess": "保存成功",
       "saveFailed": "保存失败",
-      "saveFailedWithError": "保存失败: {error}"
+      "saveFailedWithError": "保存失败: {error}",
+      "deleteSuccess": "删除成功",
+      "deleteFailed": "删除失败",
+      "deleteFailedWithError": "删除失败: {error}",
+      "deleteConfirm": "确定要删除此能力配置吗？",
+      "vectorizeInfoPrefix": "如果未配置，将使用",
+      "vectorizeInfoSuffix": "。",
+      "imageLayeredInfo": "目前仅支持 fal.ai 上的 qwen-image-layered。"
     }
+  },
+  "onboarding": {
+    "step1": "配置您的 API Keys",
+    "step2": "创建您的第一个项目",
+    "step3": "与画布对话",
+    "step1Description": "添加不同的 AI 提供商的 API Keys 以启用 AI 能力。只需要配置“对话”和“图像”能力即可使用画布的绝大部分功能。Vercel AI Gateway 提供了 $5 的免费使用额度。",
+    "step3Description": "您可以上传或生成图像并与它们对话。"
   }
 }

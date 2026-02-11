@@ -137,6 +137,9 @@ importers:
 
   packages/app:
     dependencies:
+      '@ai-sdk/fal':
+        specifier: ^2.0.18
+        version: 2.0.18(zod@4.3.6)
       '@ai-sdk/google':
         specifier: ^3.0.20
         version: 3.0.20(zod@4.3.6)
@@ -146,15 +149,15 @@ importers:
       '@ai-sdk/react':
         specifier: ^3.0.75
         version: 3.0.75(react@19.2.3)(zod@4.3.6)
+      '@fal-ai/client':
+        specifier: ^1.9.0
+        version: 1.9.0
       '@infinite-canvas-tutorial/ecs':
         specifier: workspace:*
         version: link:../ecs
       '@infinite-canvas-tutorial/eraser':
         specifier: workspace:*
         version: link:../plugin-eraser
-      '@infinite-canvas-tutorial/fal-ai':
-        specifier: workspace:*
-        version: link:../plugin-fal-ai
       '@infinite-canvas-tutorial/laser-pointer':
         specifier: workspace:*
         version: link:../plugin-laser-pointer
@@ -173,6 +176,9 @@ importers:
       '@loaders.gl/images':
         specifier: ^4.2.2
         version: 4.3.3(@loaders.gl/core@4.3.3)
+      '@neplex/vectorizer':
+        specifier: ^0.0.5
+        version: 0.0.5
       '@radix-ui/react-accordion':
         specifier: ^1.2.12
         version: 1.2.12(@types/react-dom@19.2.3(@types/react@19.2.10))(@types/react@19.2.10)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
@@ -1161,6 +1167,9 @@ importers:
       simplify-js:
         specifier: ^1.2.4
         version: 1.2.4
+      uuid:
+        specifier: ^11.1.0
+        version: 11.1.0
     devDependencies:
       '@lit/localize-tools':
         specifier: ^0.8.1
@@ -1621,6 +1630,12 @@ importers:
         version: 1.6.28
 
 packages:
+
+  '@ai-sdk/fal@2.0.18':
+    resolution: {integrity: sha512-KUb9KGtzq/O5iaX6oO0OnehnCDmHr9R70mOGw6+xztpbK7MlXeNfFrc/vxlmzo59CrlAQj7PCmylS/Pao9H2Eg==}
+    engines: {node: '>=18'}
+    peerDependencies:
+      zod: ^3.25.76 || ^4.1.8
 
   '@ai-sdk/gateway@3.0.25':
     resolution: {integrity: sha512-j0AQeA7hOVqwImykQlganf/Euj3uEXf0h3G0O4qKTDpEwE+EZGIPnVimCWht5W91lAetPZSfavDyvfpuPDd2PQ==}
@@ -2566,6 +2581,10 @@ packages:
     resolution: {integrity: sha512-y89jNGAZUpvt+IZfsIczULN95fGQlPxTt2c9bNFWkKe6OBnhOY+qHHH7IO4XgCsbmCwgfzzaSHUItx1nQ3ifHQ==}
     engines: {node: '>=18.0.0'}
 
+  '@fal-ai/client@1.9.0':
+    resolution: {integrity: sha512-okIXfgrjiRlens0CGbg50LFR0cZYfIG+DehC5ObTQUwSziOzqlytkFDi98dqbgvtfu4Ecbtjz90rj5/EVSEZog==}
+    engines: {node: '>=18.0.0'}
+
   '@floating-ui/core@1.6.0':
     resolution: {integrity: sha512-PcF++MykgmTj3CIyOQbKA/hDzOAiqI3mhuoN44WRCopIs1sgoDoU4oty4Jtqaj/y3oDU6fnVSm4QG0a3t5i0+g==}
 
@@ -3104,6 +3123,89 @@ packages:
 
   '@napi-rs/wasm-runtime@0.2.6':
     resolution: {integrity: sha512-z8YVS3XszxFTO73iwvFDNpQIzdMmSDTP/mB3E/ucR37V3Sx57hSExcXyMoNwaucWxnsWf4xfbZv0iZ30jr0M4Q==}
+
+  '@neplex/vectorizer-android-arm-eabi@0.0.5':
+    resolution: {integrity: sha512-UqT68l9qjG1w5qeZ8g9FMGZ1YKkejyE7mHIh4otIj2lXYWQ0z0cfH1gZn4SQb47l2SLGEGJsGdqQLEM1nKdIwQ==}
+    engines: {node: '>= 10'}
+    cpu: [arm]
+    os: [android]
+
+  '@neplex/vectorizer-android-arm64@0.0.5':
+    resolution: {integrity: sha512-OFdfqI00O1oOokeREv0EzKRQVok3Pngsrk9AbUwkV/kpoKY0bYNaRIK1JnddW3nCwgQQxzXxUnahyhPXhoL0xA==}
+    engines: {node: '>= 10'}
+    cpu: [arm64]
+    os: [android]
+
+  '@neplex/vectorizer-darwin-arm64@0.0.5':
+    resolution: {integrity: sha512-1Z3PjAufy20eZsy8BOq6u32Gz2JNAWgaqNO1IDhZpA5CBZzGvpk77GM7FtcOsC/O1Tb3Q/puKHIDCYs8tKFYyQ==}
+    engines: {node: '>= 10'}
+    cpu: [arm64]
+    os: [darwin]
+
+  '@neplex/vectorizer-darwin-x64@0.0.5':
+    resolution: {integrity: sha512-rOASaDXqbTvipNFk2DjTjaiiqXteE54Y9DyWz4OfEDT8oOdOL66qqKM6rfn5fUEiDstxPmb30BzPDKz74JCJ3g==}
+    engines: {node: '>= 10'}
+    cpu: [x64]
+    os: [darwin]
+
+  '@neplex/vectorizer-freebsd-x64@0.0.5':
+    resolution: {integrity: sha512-jVC1v3645mSLwqBVuXeEY9FWas9253zwV5CsFcDNPL8Eues81m2npt/FBMD/+MluaASAAXrQG0Ree41ACBbwzw==}
+    engines: {node: '>= 10'}
+    cpu: [x64]
+    os: [freebsd]
+
+  '@neplex/vectorizer-linux-arm-gnueabihf@0.0.5':
+    resolution: {integrity: sha512-iF6npMyuJv75860m7Pb8mwvcBpzoVLddSPJoIpq9ocxeABgWiqt8oaxLnt9fby+OheRLMAu/+hRGT9Kvkf7Pfg==}
+    engines: {node: '>= 10'}
+    cpu: [arm]
+    os: [linux]
+
+  '@neplex/vectorizer-linux-arm64-gnu@0.0.5':
+    resolution: {integrity: sha512-qByFaIeOecgoywgyYc5KyvfeQVtTvazjSZkOegdWDCyK9KmuFps9NHS2gJIYcd/gIUnlwnkkXWCYgd7ClSBM8g==}
+    engines: {node: '>= 10'}
+    cpu: [arm64]
+    os: [linux]
+
+  '@neplex/vectorizer-linux-arm64-musl@0.0.5':
+    resolution: {integrity: sha512-r2a85bAkgwSxAbQTSHnzXaDZCyABgVTYf6f0OSh1oGHHIc9pC97VUZbmQLtGFeIQLQR9j4nKjF1MlOHmnV4EDA==}
+    engines: {node: '>= 10'}
+    cpu: [arm64]
+    os: [linux]
+
+  '@neplex/vectorizer-linux-x64-gnu@0.0.5':
+    resolution: {integrity: sha512-8pdPe27RNXHwkvYiK3vj5b3/Yi8rWgJzUsBdT/Jm2bjk5c32wiV454yT0fLZQjRB1DCAK2DvyHjf6eZ0R9HaJg==}
+    engines: {node: '>= 10'}
+    cpu: [x64]
+    os: [linux]
+
+  '@neplex/vectorizer-linux-x64-musl@0.0.5':
+    resolution: {integrity: sha512-VP/DHuX40I/9KzSFRctxksXzJBGwbPE/E30NCAcPA1mS6iApovWsZe3la5dA9A5kStaKh9wTJcZuVEGL8tGIMg==}
+    engines: {node: '>= 10'}
+    cpu: [x64]
+    os: [linux]
+
+  '@neplex/vectorizer-win32-arm64-msvc@0.0.5':
+    resolution: {integrity: sha512-VfQRITnqvjABiIcnx5b/9XjyktTbpDHzY2nVt5wplOqGM88f6fPn2JYiia7IEdv2BA/1+oN/Bcw75eq12mW8Ug==}
+    engines: {node: '>= 10'}
+    cpu: [arm64]
+    os: [win32]
+
+  '@neplex/vectorizer-win32-ia32-msvc@0.0.5':
+    resolution: {integrity: sha512-q1R7Hnz3DK6Ls/XqRoanWEmRj3Goj5BKeayroaIzJy0uMAvpBhzcKw8hbkwIo0Cusm71Pnuninl+8MzfeQRo1w==}
+    engines: {node: '>= 10'}
+    cpu: [ia32]
+    os: [win32]
+
+  '@neplex/vectorizer-win32-x64-msvc@0.0.5':
+    resolution: {integrity: sha512-At6NLzjv5pXHnXAgDjhhC7qV4suuCWK+lYBH05mdxY4dnvPyhIA3J+uvqNbvI2D5951fTXkF8JoLf6TyAQleVQ==}
+    engines: {node: '>= 10'}
+    cpu: [x64]
+    os: [win32]
+
+  '@neplex/vectorizer@0.0.5':
+    resolution: {integrity: sha512-lGXsEYK3xqAQ1U/kKNr3m7ml5cFZMYPfuCD3gj/g+1fqRjO7ornjS39TjY89EgvZFLWOWQEUzo2QCEgIUPlGyg==}
+    engines: {node: '>= 10'}
+    hasBin: true
 
   '@next/env@16.1.5':
     resolution: {integrity: sha512-CRSCPJiSZoi4Pn69RYBDI9R7YK2g59vLexPQFXY0eyw+ILevIenCywzg+DqmlBik9zszEnw2HLFOUlLAcJbL7g==}
@@ -6440,6 +6542,10 @@ packages:
   commander@11.1.0:
     resolution: {integrity: sha512-yPVavfyCcRhmorC7rWlkHn15b4wDVgVmBA7kV4QVBsF7kv/9TKJAbAXVTxvTnwP8HHKjRCJDClKbciiYS7p0DQ==}
     engines: {node: '>=16'}
+
+  commander@13.1.0:
+    resolution: {integrity: sha512-/rFeCpNJQbhSZjGVwO9RFV3xPqbnERS8MmIQzCtD/zl6gpJuV/bMLuN92oG3F7d8oDEHHRrujSXNUr8fpjntKw==}
+    engines: {node: '>=18'}
 
   commander@14.0.3:
     resolution: {integrity: sha512-H+y0Jo/T1RZ9qPP4Eh1pkcQcLRglraJaSLoyOtHxu6AapkjWVCy2Sit1QQ4x3Dng8qDlSsZEet7g5Pq06MvTgw==}
@@ -11927,6 +12033,12 @@ packages:
 
 snapshots:
 
+  '@ai-sdk/fal@2.0.18(zod@4.3.6)':
+    dependencies:
+      '@ai-sdk/provider': 3.0.7
+      '@ai-sdk/provider-utils': 4.0.13(zod@4.3.6)
+      zod: 4.3.6
+
   '@ai-sdk/gateway@3.0.25(zod@4.3.6)':
     dependencies:
       '@ai-sdk/provider': 3.0.5
@@ -13158,6 +13270,12 @@ snapshots:
       eventsource-parser: 1.1.2
       robot3: 0.4.1
 
+  '@fal-ai/client@1.9.0':
+    dependencies:
+      '@msgpack/msgpack': 3.1.2
+      eventsource-parser: 1.1.2
+      robot3: 0.4.1
+
   '@floating-ui/core@1.6.0':
     dependencies:
       '@floating-ui/utils': 0.2.10
@@ -13849,6 +13967,64 @@ snapshots:
       '@emnapi/runtime': 1.3.1
       '@tybys/wasm-util': 0.9.0
     optional: true
+
+  '@neplex/vectorizer-android-arm-eabi@0.0.5':
+    optional: true
+
+  '@neplex/vectorizer-android-arm64@0.0.5':
+    optional: true
+
+  '@neplex/vectorizer-darwin-arm64@0.0.5':
+    optional: true
+
+  '@neplex/vectorizer-darwin-x64@0.0.5':
+    optional: true
+
+  '@neplex/vectorizer-freebsd-x64@0.0.5':
+    optional: true
+
+  '@neplex/vectorizer-linux-arm-gnueabihf@0.0.5':
+    optional: true
+
+  '@neplex/vectorizer-linux-arm64-gnu@0.0.5':
+    optional: true
+
+  '@neplex/vectorizer-linux-arm64-musl@0.0.5':
+    optional: true
+
+  '@neplex/vectorizer-linux-x64-gnu@0.0.5':
+    optional: true
+
+  '@neplex/vectorizer-linux-x64-musl@0.0.5':
+    optional: true
+
+  '@neplex/vectorizer-win32-arm64-msvc@0.0.5':
+    optional: true
+
+  '@neplex/vectorizer-win32-ia32-msvc@0.0.5':
+    optional: true
+
+  '@neplex/vectorizer-win32-x64-msvc@0.0.5':
+    optional: true
+
+  '@neplex/vectorizer@0.0.5':
+    dependencies:
+      commander: 13.1.0
+      picocolors: 1.1.1
+    optionalDependencies:
+      '@neplex/vectorizer-android-arm-eabi': 0.0.5
+      '@neplex/vectorizer-android-arm64': 0.0.5
+      '@neplex/vectorizer-darwin-arm64': 0.0.5
+      '@neplex/vectorizer-darwin-x64': 0.0.5
+      '@neplex/vectorizer-freebsd-x64': 0.0.5
+      '@neplex/vectorizer-linux-arm-gnueabihf': 0.0.5
+      '@neplex/vectorizer-linux-arm64-gnu': 0.0.5
+      '@neplex/vectorizer-linux-arm64-musl': 0.0.5
+      '@neplex/vectorizer-linux-x64-gnu': 0.0.5
+      '@neplex/vectorizer-linux-x64-musl': 0.0.5
+      '@neplex/vectorizer-win32-arm64-msvc': 0.0.5
+      '@neplex/vectorizer-win32-ia32-msvc': 0.0.5
+      '@neplex/vectorizer-win32-x64-msvc': 0.0.5
 
   '@next/env@16.1.5': {}
 
@@ -17726,6 +17902,8 @@ snapshots:
       typical: 7.2.0
 
   commander@11.1.0: {}
+
+  commander@13.1.0: {}
 
   commander@14.0.3: {}
 

@@ -12,52 +12,79 @@ import {
 } from "@/components/ai-elements/attachments";
 import { canvasApiAtom, selectedNodesAtom } from "@/atoms/canvas-selection";
 import { useAtomValue } from "jotai";
-import { isDataUrl, isUrl, SerializedNode } from "@infinite-canvas-tutorial/ecs";
-import { useEffect } from "react";
-import { usePromptInputAttachments } from "./ai-elements/prompt-input";
-import { DataUIPart, FileUIPart } from "ai";
-import { ExtendedAPI } from "@infinite-canvas-tutorial/webcomponents";
+import { useEffect, useRef } from "react";
+import { usePromptInputController } from "./ai-elements/prompt-input";
+import { convertToFiles, MaskPart } from "@/lib/file";
+import { FileUIPart } from "ai";
+
 
 const PromptInputAttachmentsDisplay = () => {
   const canvasApi = useAtomValue(canvasApiAtom);
   const selectedNodes = useAtomValue(selectedNodesAtom);
-  const attachments = usePromptInputAttachments();
+  const controller = usePromptInputController();
+  const lastProcessedNodesRef = useRef<string>('');
 
   useEffect(() => {
-    if (!selectedNodes || !canvasApi) {
+    if (!selectedNodes || !canvasApi || selectedNodes.length === 0) {
+      // Clear attachments when no nodes are selected
+      if (controller.attachments.files.length > 0) {
+        controller.attachments.clear();
+      }
+      lastProcessedNodesRef.current = '';
       return;
     }
 
-    (async () => {
-      try {
-        attachments.clear();
-        const files = (await Promise.all(selectedNodes.map(node => convertToFiles(canvasApi, node)))).flat();
-        if (files.length > 0) {
-          attachments.add(files.filter(Boolean) as File[]);
-        }
-      } catch (error) {
-        console.error('Failed to convert base64 to File:', error);
-      }
-    })();
-  }, [canvasApi, selectedNodes]);
+    // Create a stable key from selected nodes to detect changes
+    const currentNodeIds = selectedNodes.map(node => node.id).sort().join(',');
+    
+    // Skip if we've already processed these exact nodes
+    if (currentNodeIds === lastProcessedNodesRef.current) {
+      return;
+    }
 
-  if (attachments.files.length === 0) {
+    lastProcessedNodesRef.current = currentNodeIds;
+
+    try {
+      controller.attachments.clear();
+      const files = selectedNodes.map(node => convertToFiles(canvasApi, node)).flat();
+      if (files.length > 0) {
+        files.filter(Boolean).forEach(file => {
+          // @ts-expect-error id is not typed correctly
+          if (!controller.attachments.files.find(f => f.id === file.id)) {
+            controller.attachments.add([file]);
+          }
+        });
+      }
+    } catch (error) {
+      console.error('Failed to convert base64 to File:', error);
+    }
+  }, [canvasApi, selectedNodes, controller]);
+
+  if (controller.attachments.files.length === 0) {
     return null;
   }
 
+  const handleRemoveAttachment = (id: string) => {
+    controller.attachments.remove(id);
+
+    // Deselect from canvas
+    if (canvasApi) {
+      canvasApi.deselectNodes([canvasApi.getNodeById(id)]);
+    }
+  };
+
   return (
     <Attachments variant="inline">
-      {attachments.files.map((attachment) => {
+      {controller.attachments.files.map((attachment) => {
         const mediaCategory = getMediaCategory(attachment);
         const label = getAttachmentLabel(attachment);
-        const imageUrl = attachment.type === "file" ? attachment.url : attachment.type === "data-mask" ? attachment.data : undefined;
-        const mediaType = attachment.type === "file" ? attachment.mediaType : attachment.type === "data-mask" ? 'image/png' : undefined;
-
+        const imageUrl = attachment.type === "file" ? (attachment as FileUIPart).url : attachment.type === "data-mask" ? (attachment as MaskPart).data : undefined;
+        const mediaType = attachment.type === "file" ? (attachment as FileUIPart).mediaType : attachment.type === "data-mask" ? 'image/png' : undefined;
         return <AttachmentHoverCard key={attachment.id}>
           <AttachmentHoverCardTrigger asChild>
             <Attachment
               data={attachment}
-              onRemove={() => attachments.remove(attachment.id)}
+              onRemove={() => handleRemoveAttachment(attachment.id)}
               className="max-w-30"
             >
               <div className="relative size-5 shrink-0">
@@ -103,74 +130,3 @@ const PromptInputAttachmentsDisplay = () => {
 
 export default PromptInputAttachmentsDisplay;
 
-async function convertToFiles(api: ExtendedAPI, node: SerializedNode, files: (FileUIPart | DataUIPart<{ mask: string }> | File)[] = [], parent?: SerializedNode): Promise<(FileUIPart | DataUIPart<{ mask: string }> | File)[]> {
-  if ((node as any).usage === 'mask') {
-    const relativeTo = { x: node.x as number, y: node.y as number, width: node.width as number, height: node.height as number };
-    if (node.parentId && parent) {
-      relativeTo.x = parent.x as number;
-      relativeTo.y = parent.y as number;
-      relativeTo.width = parent.width as number;
-      relativeTo.height = parent.height as number;
-    }
-    const mask = api.createMask([node], relativeTo);
-    let maskUrl = 'shape';
-    if (mask) {
-      maskUrl = (mask as HTMLCanvasElement).toDataURL();
-    }
-
-    files.push({
-      id: node.id,
-      type: 'data-mask' as const,
-      data: maskUrl,
-    } as DataUIPart<{ mask: string }>);
-  } else {
-    // Image
-    const base64OrURL = (node as any).fill as string;
-    if (isDataUrl(base64OrURL) || isUrl(base64OrURL)) {
-      if (isDataUrl(base64OrURL)) {
-        // 将 base64 字符串转换为 Blob
-        const base64Data = base64OrURL.includes(',') 
-          ? base64OrURL.split(',')[1] 
-          : base64OrURL;
-        const byteCharacters = atob(base64Data);
-        const byteNumbers = new Array(byteCharacters.length);
-        for (let i = 0; i < byteCharacters.length; i++) {
-          byteNumbers[i] = byteCharacters.charCodeAt(i);
-        }
-        const byteArray = new Uint8Array(byteNumbers);
-        
-        // 从 data URL 中提取 MIME 类型，默认为 image/png
-        const mimeType = base64OrURL.match(/data:([^;]+);/)?.[1] || 'image/png';
-        const blob = new Blob([byteArray], { type: mimeType });
-        
-        // 从 Blob 创建 File 对象，使用 node.id 作为文件名
-        files.push(new File([blob], node.id, { type: mimeType }));
-      } else if (isUrl(base64OrURL)) {
-        // fetch HEAD to get the MIME type
-        const response = await fetch(base64OrURL, { method: 'HEAD' });
-        const mediaType = response.headers.get('content-type') || 'image/png';
-        const filename = base64OrURL.split('/').pop()?.split('?')[0] || node.id;
-        files.push({
-          id: node.id,
-          type: 'file' as const,
-          url: base64OrURL,
-          mediaType,
-          filename,
-        } as FileUIPart);
-      }
-    } else {
-      // TODO: use api.export
-      files.push({
-        id: node.id,
-        type: 'file' as const,
-        url: 'shape',
-        mediaType: 'application/octet-stream',
-        filename: node.id,
-      } as FileUIPart);
-    }
-  }
-
-  api.getChildren(node).forEach(child => convertToFiles(api, api.getNodeByEntity(child), files, node));
-
-  return files;
-}

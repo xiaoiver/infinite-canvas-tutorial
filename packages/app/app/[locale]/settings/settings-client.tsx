@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/select';
 import { Trash2, Eye, EyeOff, Copy, Check, Pencil } from 'lucide-react';
 import { useTranslations } from 'next-intl';
+import { toast } from 'sonner';
 import {
   Dialog,
   DialogContent,
@@ -83,7 +84,7 @@ export default function SettingsClient({
 
   const handleAddProviderKey = async () => {
     if (!newKeyProvider || !newKeyValue) {
-      alert(tApiKeys('fillProviderAndKey'));
+      toast.error(tApiKeys('fillProviderAndKey'));
       return;
     }
 
@@ -109,37 +110,47 @@ export default function SettingsClient({
         setNewKeyValue('');
         setNewKeyLabel('');
         setShowAddForm(false);
+        toast.success(tApiKeys('addSuccess') || 'API Key 添加成功');
       } else {
         const error = await res.json();
-        alert(tApiKeys('addFailedWithError', { error: error.error }));
+        toast.error(tApiKeys('addFailedWithError', { error: error.error }));
       }
     } catch (error) {
       console.error('Failed to add provider key:', error);
-      alert(tApiKeys('addFailed'));
+      toast.error(tApiKeys('addFailed'));
     } finally {
       setSaving(false);
     }
   };
 
   const handleDeleteProviderKey = async (id: string) => {
-    if (!confirm(tApiKeys('deleteConfirm'))) {
-      return;
-    }
+    toast(tApiKeys('deleteConfirm'), {
+      action: {
+        label: tApiKeys('delete') || '删除',
+        onClick: async () => {
+          try {
+            const res = await fetch(`/api/user/provider-keys/${id}`, {
+              method: 'DELETE',
+            });
 
-    try {
-      const res = await fetch(`/api/user/provider-keys/${id}`, {
-        method: 'DELETE',
-      });
-
-      if (res.ok) {
-        setProviderKeys(providerKeys.filter((k) => k.id !== id));
-      } else {
-        alert(tApiKeys('deleteFailed'));
-      }
-    } catch (error) {
-      console.error('Failed to delete provider key:', error);
-      alert(tApiKeys('deleteFailed'));
-    }
+            if (res.ok) {
+              setProviderKeys(providerKeys.filter((k) => k.id !== id));
+              toast.success(tApiKeys('deleteSuccess') || '删除成功');
+            } else {
+              toast.error(tApiKeys('deleteFailed'));
+            }
+          } catch (error) {
+            console.error('Failed to delete provider key:', error);
+            toast.error(tApiKeys('deleteFailed'));
+          }
+        },
+      },
+      cancel: {
+        label: tApiKeys('cancel') || '取消',
+        onClick: () => {},
+      },
+      duration: Infinity, // 保持显示直到用户操作
+    });
   };
 
   const handleCopyKey = async (id: string, value: string) => {
@@ -168,7 +179,7 @@ export default function SettingsClient({
 
   const handleUpdateProviderKey = async () => {
     if (!editingId || !editKeyProvider || !editKeyValue) {
-      alert(tApiKeys('fillProviderAndKey'));
+      toast.error(tApiKeys('fillProviderAndKey'));
       return;
     }
 
@@ -192,14 +203,14 @@ export default function SettingsClient({
         setEditKeyProvider('');
         setEditKeyValue('');
         setEditKeyLabel('');
-        alert(tApiKeys('updateSuccess'));
+        toast.success(tApiKeys('updateSuccess'));
       } else {
         const error = await res.json();
-        alert(tApiKeys('updateFailedWithError', { error: error.error }));
+        toast.error(tApiKeys('updateFailedWithError', { error: error.error }));
       }
     } catch (error) {
       console.error('Failed to update provider key:', error);
-      alert(tApiKeys('updateFailed'));
+      toast.error(tApiKeys('updateFailed'));
     } finally {
       setSaving(false);
     }

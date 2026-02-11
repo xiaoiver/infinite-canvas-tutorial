@@ -1,15 +1,26 @@
-import { eq, desc } from 'drizzle-orm';
+import { eq, desc, sql } from 'drizzle-orm';
 import { db, type Project, type NewProject } from './index';
 import { projects, chats } from './schema';
 
 /**
- * 获取用户的所有项目
+ * 获取用户的所有项目（包含 chat 数量）
  */
-export async function getUserProjects(userId: string): Promise<Project[]> {
+export async function getUserProjects(userId: string): Promise<(Project & { chatCount: number })[]> {
   return await db
-    .select()
+    .select({
+      id: projects.id,
+      userId: projects.userId,
+      name: projects.name,
+      description: projects.description,
+      canvasData: projects.canvasData,
+      createdAt: projects.createdAt,
+      updatedAt: projects.updatedAt,
+      chatCount: sql<number>`COALESCE(COUNT(${chats.id}), 0)`.as('chatCount'),
+    })
     .from(projects)
+    .leftJoin(chats, eq(chats.projectId, projects.id))
     .where(eq(projects.userId, userId))
+    .groupBy(projects.id)
     .orderBy(desc(projects.createdAt));
 }
 
@@ -37,7 +48,7 @@ export async function getProjectById(projectId: string, userId: string): Promise
  * 创建新项目
  * 会自动创建一个默认的 chat（标题为空）
  */
-export async function createProject(data: Omit<NewProject, 'id' | 'createdAt' | 'updatedAt'>): Promise<Project> {
+export async function createProject(data: Omit<NewProject, 'id' | 'createdAt' | 'updatedAt'>): Promise<Project & { chatCount: number }> {
   // 使用事务确保原子性
   return await db.transaction(async (tx) => {
     // 创建项目
@@ -62,7 +73,11 @@ export async function createProject(data: Omit<NewProject, 'id' | 'createdAt' | 
         updatedAt: new Date(),
       });
 
-    return project;
+    // 返回项目，包含 chatCount（新项目总是有 1 个默认 chat）
+    return {
+      ...project,
+      chatCount: 1,
+    };
   });
 }
 

@@ -30,6 +30,7 @@ export {
   isPattern,
   isDataUrl,
   isUrl,
+  isBrowser,
   parseGradient,
   parseEffect,
   serializePoints,

@@ -1,9 +1,9 @@
 import { atom } from 'jotai';
-import { isDataUrl, isUrl, RectSerializedNode } from '@infinite-canvas-tutorial/ecs';
+import { isDataUrl, isUrl } from '@infinite-canvas-tutorial/ecs';
 import { ExtendedAPI } from '@infinite-canvas-tutorial/webcomponents';
 import { SerializedNode } from '@infinite-canvas-tutorial/ecs';
 
-export const selectedNodesAtom = atom<SerializedNode[] | null>(null);
+export const selectedNodesAtom = atom<SerializedNode[]>([]);
 
 export const isSingleImageAtom = atom((get) => {
     const selectedNodes = get(selectedNodesAtom);
@@ -15,6 +15,5 @@ export const isSingleImageAtom = atom((get) => {
 
 export const canvasApiAtom = atom<ExtendedAPI | null>(null);
 
-// 目标图片节点（用于编辑工具）
-export const targetImageAtom = atom<RectSerializedNode | null>(null);
+// export const stopTriggerSelectedNodesAtom = atom<boolean>(false);
 

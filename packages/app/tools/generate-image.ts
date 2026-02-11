@@ -1,8 +1,9 @@
-import { FilePart, generateText, generateImage, tool } from 'ai';
+import { FilePart, generateText, generateImage, tool, ModelMessage } from 'ai';
 import z from 'zod';
 import { createImageModel, createLanguageModel, getModelForCapability, ModelInfo } from '@/lib/models/get-model';
 import { createClient } from '@/lib/supabase/server';
 import { uploadImage } from '@/lib/blob';
+import { getImagesFromLastMessage, getMaskFromLastMessage } from '@/lib/file';
 
 /**
  * When building a chatbot, you may want to allow the user to generate an image.
@@ -65,7 +66,6 @@ function buildProviderOptions(
       break;
 
     case 'openai':
-      // OpenAI DALL-E 模型参数
       if (options.size || options.quality) {
         providerOptions.openai = {};
         if (options.size) {
@@ -84,6 +84,18 @@ function buildProviderOptions(
       }
       break;
 
+    case 'fal':
+      if (options.size || options.aspectRatio) {
+        providerOptions.fal = {};
+        if (options.size) {
+          providerOptions.fal.size = options.size;
+        }
+        if (options.aspectRatio) {
+          providerOptions.fal.aspectRatio = options.aspectRatio;
+        }
+      }
+      break;
+
     default:
       console.warn(`Unknown provider: ${provider}, using default options`);
       break;
@@ -93,21 +105,28 @@ function buildProviderOptions(
 }
 
 export const generateImageTool = tool({
-  description: 'Generate or edit images based on a text prompt and optionally reference images. The generated or edited images will be automatically displayed in the tool output component. Do NOT include image URLs in your response message - the images are already shown in the tool interface. You can insert the generated images into the canvas by using the insertImage tool by default.',
+  description: `Generate or edit images based on a text prompt and optionally mask areas.
+The generated or edited images will be automatically displayed in the tool output component.
+Do NOT include image URLs in your response message - the images are already shown in the tool interface.`,
   inputSchema: z.object({
-    prompt: z.string().describe('The prompt to generate the image from'),
+    mode: z.enum(['generate', 'edit']).describe('Whether to generate a new image or edit an existing one'),
+    operation: z.enum(['erase', 'inpaint', 'outpaint', 'replace']).optional(),
+    instruction: z.string().describe(
+      'The user instruction. Keep it concise and literal.'
+    ),
     quality: z.enum(['low', 'standard', 'high']).optional().describe('Image quality: low (faster, lower quality), standard (balanced), or high (slower, higher quality). Default to standard.'),
     size: z.string().optional().describe('Image size in format "WIDTHxHEIGHT", e.g., "1024x1024", "1024x768". Supported sizes vary by provider.'),
     aspectRatio: z.string().optional().describe('Aspect ratio, e.g., "16:9", "1:1", "4:3". Some providers support this instead of size.'),
-    // referenceImages: z.array(z.string()).describe('Reference images to use for the generation').optional(),
   }),
-  execute: async ({ prompt, quality = 'standard', size, aspectRatio }, { messages }) => {
-    const lastMessage = messages[messages.length - 1];
-    const imageDataURLs = (lastMessage.content as FilePart[]).filter((part) => part.type === 'file' && part.mediaType.startsWith('image/')).map((part) => part.data);
-    // @ts-expect-error DataUIPart is not FilePart
-    const maskDataURLs = (lastMessage.content as FilePart[]).filter((part) => part.type === 'data-mask').map((part) => part.data);
-
-    // 获取用户配置的图像生成模型（包括 provider 信息）
+  execute: async ({ instruction, quality = 'standard', size, aspectRatio }, { messages }): Promise<{
+    type: 'content',
+    value: {
+      type: 'image-url',
+      url: string;
+    }[];
+  } | {
+    error: string;
+  }> => {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
 
@@ -120,6 +139,9 @@ export const generateImageTool = tool({
       return { error: 'No image model configured' };
     }
 
+    const imageDataURLs = getImagesFromLastMessage(messages);
+    const maskDataURLs = getMaskFromLastMessage(messages);
+
     const imageUrls: string[] = [];
     const providerOptions = buildProviderOptions(modelInfo, {
       quality,
@@ -127,23 +149,22 @@ export const generateImageTool = tool({
       aspectRatio,
     });
 
-    // Note that this is a multi-modal model and therefore uses generateText for the actual image generation.
-    if (modelInfo.model.includes('gemini')) {
-      const languageModel = createLanguageModel(modelInfo);
-      if (!languageModel) {
-        return { error: 'Failed to create language model' };
-      }
+    try {
 
-      await new Promise((resolve) => setTimeout(resolve, 5000));
-      const result = await generateText({
-        model: languageModel,
-        prompt: [
+      // Note that this is a multi-modal model and therefore uses generateText for the actual image generation.
+      if (modelInfo.model.includes('gemini')) {
+        const languageModel = createLanguageModel(modelInfo);
+        if (!languageModel) {
+          return { error: 'Failed to create language model' };
+        }
+
+        const promptMessages = [
           {
             role: 'user',
             content: [
               {
                 type: 'text',
-                text: prompt,
+                text: instruction,
               },
               ...(imageDataURLs?.map(url => ({
                 type: 'image' as const,
@@ -151,7 +172,7 @@ export const generateImageTool = tool({
               })) || []),
               ...(maskDataURLs.length > 0 ? [{
                 type: 'text' as const,
-                text: 'Use the following mask(s) to generate the image.',
+                text: 'Use the following mask area(s) to in-paint the image.',
               }] : []),
               ...(maskDataURLs?.map(url => ({
                 type: 'image' as const,
@@ -159,35 +180,56 @@ export const generateImageTool = tool({
               })) || [])
             ]
           }
-        ],
-        providerOptions: Object.keys(providerOptions).length > 0 ? providerOptions : undefined,
-      });
+        ] as ModelMessage[];
 
-      // Save generated images
-      for (const file of result.files) {
-        if (file.mediaType.startsWith('image/')) {
-          const url = await uploadImage(file);
+        // console.log('prompt', JSON.stringify(promptMessages));
+
+        const result = await generateText({
+          model: languageModel,
+          prompt: promptMessages,
+          providerOptions: Object.keys(providerOptions).length > 0 ? providerOptions : undefined,
+        });
+
+        // Save generated images
+        for (const file of result.files) {
+          if (file.mediaType.startsWith('image/')) {
+            const url = await uploadImage(file);
+            imageUrls.push(url);
+          }
+        }
+      } else {
+        const imageModel = createImageModel(modelInfo);
+        if (!imageModel) {
+          return { error: 'Failed to create image model' };
+        }
+        const { images } = await generateImage({
+          model: imageModel,
+          prompt: instruction,
+          size: size as `${number}x${number}`,
+          // recraft: "This model does not support aspect ratio. Use `size` instead."
+          aspectRatio: modelInfo.model.includes('recraft') ? undefined : aspectRatio as `${number}:${number}`,
+          providerOptions: Object.keys(providerOptions).length > 0 ? providerOptions : undefined,
+        });
+
+        for (const image of images) {
+          const url = await uploadImage(image);
           imageUrls.push(url);
         }
       }
-    } else {
-      const imageModel = createImageModel(modelInfo);
-      if (!imageModel) {
-        return { error: 'Failed to create image model' };
-      }
-      const { images } = await generateImage({
-        model: imageModel,
-        prompt,
-        size: size as `${number}x${number}`,
-        aspectRatio: aspectRatio as `${number}:${number}`,
-      });
-      for (const image of images) {
-        const url = await uploadImage(image);
-        imageUrls.push(url);
-      }
-    }
 
-    return { images: imageUrls };
+      return {
+        type: 'content',
+        value: [
+          ...imageUrls.map(imageUrl => ({
+            type: 'image-url' as const,
+            url: imageUrl,
+          })),
+        ]
+      };
+    } catch (error) {
+      console.error('Error generating image:', error);
+      return { error: 'Failed to generate image' };
+    }
 
     // return {
     //   images: [

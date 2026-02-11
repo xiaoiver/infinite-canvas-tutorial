@@ -196,21 +196,23 @@ export class LayersPanel extends LitElement {
     if (layersSelected.length === 1) {
       const node = this.api.getNodeById(layersSelected[0]);
 
-      const children = this.api
-        .getSiblings(node)
-        .filter((child) => !child.has(UI));
-      const maxZIndex = Math.max(
-        ...children.map((child) => child.read(ZIndex).value),
-      );
-      const minZIndex = Math.min(
-        ...children.map((child) => child.read(ZIndex).value),
-      );
+      if (node) {
+        const children = this.api
+          .getSiblings(node)
+          .filter((child) => !child.has(UI));
+        const maxZIndex = Math.max(
+          ...children.map((child) => child.read(ZIndex).value),
+        );
+        const minZIndex = Math.min(
+          ...children.map((child) => child.read(ZIndex).value),
+        );
 
-      if (node.zIndex === maxZIndex) {
-        bringForwardDisabled = true;
-      }
-      if (node.zIndex === minZIndex) {
-        sendBackwardDisabled = true;
+        if (node.zIndex === maxZIndex) {
+          bringForwardDisabled = true;
+        }
+        if (node.zIndex === minZIndex) {
+          sendBackwardDisabled = true;
+        }
       }
     }
 

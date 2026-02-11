@@ -16,6 +16,24 @@ import {
   UI,
   Polyline,
   Ellipse,
+  Transform,
+  Marker,
+  Name,
+  SizeAttenuation,
+  StrokeAttenuation,
+  ZIndex,
+  Visibility,
+  Path,
+  Stroke,
+  Opacity,
+  FillSolid,
+  Renderable,
+  Children,
+  Parent,
+  Highlighted,
+  GlobalTransform,
+  ComputedBounds,
+  ComputedPoints,
 } from '@infinite-canvas-tutorial/ecs';
 import { LassoTrail } from './lasso-trail';
 import { AnimationFrameHandler } from '@infinite-canvas-tutorial/webcomponents';
@@ -38,7 +56,30 @@ export class LassoSystem extends System {
     this.query(
       (q) =>
         q
-          .using(Canvas, InputPoint, Input, Cursor, Selected, Transformable, UI)
+          .using(Canvas,
+            GlobalTransform,
+            InputPoint,
+            Input,
+            Cursor,
+            Camera,
+            UI,
+            Selected,
+            Highlighted,
+            Transform,
+            Parent,
+            Children,
+            Renderable,
+            FillSolid,
+            Opacity,
+            Stroke,
+            Path,
+            Polyline,
+            Visibility,
+            ZIndex,
+            Transformable,
+            Name,
+            Marker,
+            ComputedPoints,)
           .write.and.using(
             Camera,
             ComputedCamera,

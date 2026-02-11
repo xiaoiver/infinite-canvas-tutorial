@@ -1,12 +1,15 @@
 "use client";
 
-import { useState } from "react";
 import { cn } from "@/lib/utils";
-import { Download, X, ZoomIn } from "lucide-react";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { ArrowLeft, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PhotoProvider, PhotoView } from 'react-photo-view';
 import 'react-photo-view/dist/react-photo-view.css';
+import { TooltipContent, Tooltip, TooltipTrigger, TooltipProvider } from "../ui/tooltip";
+import { useTranslations } from "next-intl";
+import { insertImage } from "@/tools/insert-image-impl";
+import { canvasApiAtom } from "@/atoms/canvas-selection";
+import { useAtomValue } from "jotai";
 
 export type ImageGalleryProps = {
   images: string[];
@@ -67,11 +70,14 @@ export const ImageGallery = ({
 
 export const ImageToolbar = ({ 
   className,
-  imageUrl 
+  imageUrl,
 }: { 
   className?: string;
   imageUrl: string;
 }) => {
+  const t = useTranslations('toolbar');
+  const canvasApi = useAtomValue(canvasApiAtom);
+
   const handleDownload = (e: React.MouseEvent) => {
     e.stopPropagation(); // 阻止触发 PhotoView 的点击事件
     const link = document.createElement('a');
@@ -83,16 +89,58 @@ export const ImageToolbar = ({
     document.body.removeChild(link);
   };
 
+  const handleInsertIntoCanvas = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (canvasApi) {
+      const image = new Image();
+      image.src = imageUrl;
+      image.onload = () => {
+        const width = image.width;
+        const height = image.height;
+        insertImage(canvasApi, { image: imageUrl, width, height });
+      };
+      image.onerror = () => {
+        console.error('Failed to load image');
+      };
+    }
+  };
+
   return (
     <div className={cn("flex gap-2", className)}>
-      <Button 
-        variant="outline" 
-        size="icon"
-        className="h-6 w-6"
-        onClick={handleDownload}
-      >
-        <Download className="size-3" />
-      </Button>
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="outline" 
+              size="icon"
+              className="h-6 w-6"
+              onClick={handleInsertIntoCanvas}
+            >
+              <ArrowLeft className="size-3" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            {t('insertIntoCanvas')}
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="outline" 
+              size="icon"
+              className="h-6 w-6"
+              onClick={handleDownload}
+            >
+              <Download className="size-3" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            {t('download')}
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
     </div>
   );
 };

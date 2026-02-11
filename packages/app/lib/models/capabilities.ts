@@ -5,7 +5,9 @@
 export type Capability =
   | 'text'        // generateText / streamText
   | 'chat'        // chat / UIMessage
-  | 'image';      // generateImage
+  | 'image'      // generateImage
+  | 'image-layered' // decomposeImage
+  | 'vectorize'; // vectorizeImage
 // | 'embedding'   // embeddings
 
 /**
@@ -26,6 +28,8 @@ export const ALL_CAPABILITIES: Capability[] = [
   'text',
   'chat',
   'image',
+  'image-layered',
+  'vectorize',
   // 'embedding',
 ];
 

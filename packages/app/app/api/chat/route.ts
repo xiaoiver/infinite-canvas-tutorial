@@ -1,6 +1,6 @@
 import { streamText, UIMessage, convertToModelMessages, type InferUITools, stepCountIs } from 'ai';
 import { createClient } from '@/lib/supabase/server';
-import { createMessage, getNextSeq } from '@/lib/db/messages';
+import { createMessage, getNextSeq, getMessageByChatIdAndSeq, deleteMessage } from '@/lib/db/messages';
 import { createTools } from '@/lib/db/tools';
 import { convertUIMessageToDBMessage, convertToolPartToDBTool } from '@/lib/db/utils';
 import type { ToolUIPart, DynamicToolUIPart, LanguageModel } from 'ai';
@@ -8,15 +8,17 @@ import { createLanguageModel, getModelForCapability } from '@/lib/models/get-mod
 import { generateImageTool } from '@/tools/generate-image';
 import { insertImageTool } from '@/tools/insert-image';
 import { drawElementTool } from '@/tools/draw-element';
-import { splitLayersTool } from '@/tools/split-layers';
+import { decomposeImageTool } from '@/tools/decompose-image';
+import { vectorizeImageTool } from '@/tools/vectorize-image';
 import { NextResponse } from 'next/server';
 import { ChatErrorCode, isAuthenticationError } from '@/lib/errors';
 
 const tools = {
   generateImage: generateImageTool,
   insertImage: insertImageTool,
-  drawElement: drawElementTool,
-  splitLayers: splitLayersTool,
+  decomposeImage: decomposeImageTool,
+  vectorizeImage: vectorizeImageTool,
+  // drawElement: drawElementTool,
 };
 export type ChatTools = InferUITools<typeof tools>;
 
@@ -24,7 +26,7 @@ type CustomUIMessage = UIMessage<
   never,
   {
     url: { url: string; title: string; content: string };
-    mask: { mask: string };
+    mask: string;
   }
 >;
 
@@ -159,17 +161,12 @@ export async function POST(req: Request) {
     tools,
     // @see https://ai-sdk.dev/docs/reference/ai-sdk-ui/convert-to-model-messages#custom-data-part-conversion
     convertDataPart: (part) => {
-      console.log('part', part);
-      if (part.type === 'data-url') {
-        return {
-          type: 'text',
-          text: `[Reference: ${part.data.title}](${part.data.url})\n\n${part.data.content}`,
-        };
-      }
       if (part.type === 'data-mask') {
         return {
-          type: 'text',
-          text: `[Mask](${part.data})`,
+          type: 'file',
+          mediaType: 'image/png',
+          data: part.data,
+          filename: 'mask',
         };
       }
     },
@@ -186,9 +183,40 @@ export async function POST(req: Request) {
         // TODO: System prompt is configurable
         'You are a helpful assistant that can answer questions and help with tasks. ' +
         'When using tools that generate images, do NOT include image URLs in your response message. ' +
-        'The tool output component will automatically display the generated images, so there is no need to mention them in your text response.',
+        'The tool output component will automatically display the generated images, so there is no need to mention them in your text response.' +
+        'When an image is generated, decomposed, or vectorized, you can insert it into the canvas by using the insertImage tool.',
       stopWhen: stepCountIs(5),
       tools,
+      onAbort: async ({ steps }) => {
+        // 当流被中止时（例如用户断开连接或点击停止按钮），执行清理操作
+        if (chatId) {
+          try {
+            console.log(`Stream aborted for chat ${chatId} after ${steps.length} steps`);
+            
+            // 如果用户消息已保存但流被中止，可以选择：
+            // 1. 保留用户消息（用户已经发送了，可能想重新发送）
+            // 2. 删除用户消息（因为对话未完成）
+            // 这里我们选择保留用户消息，因为用户可能想重新发送或继续对话
+            
+            // 如果需要删除未完成的用户消息，可以取消下面的注释：
+            // if (userMessageSeq !== null) {
+            //   const userMessage = await getMessageByChatIdAndSeq(chatId, userMessageSeq, user.id);
+            //   if (userMessage && userMessage.role === 'user') {
+            //     await deleteMessage(userMessage.id, user.id);
+            //     console.log(`Deleted incomplete user message with seq ${userMessageSeq}`);
+            //   }
+            // }
+            
+            // 如果有部分完成的步骤，可以在这里处理
+            // 例如：保存部分完成的助手消息、清理临时数据等
+            if (steps.length > 0) {
+              console.log(`Stream had ${steps.length} completed steps before abort`);
+            }
+          } catch (error) {
+            console.error('Error handling stream abort:', error);
+          }
+        }
+      },
     });
   } catch (error) {
     console.error('Error in streamText:', error);
@@ -218,27 +246,53 @@ export async function POST(req: Request) {
     sendReasoning: true,
     onFinish: async (event) => {
       // 流式响应完成后，保存助手回复到数据库
-      if (chatId && userMessageSeq !== null) {
-        try {
-          // 优先从 event.messages 中获取最后一条助手消息（包含完整的 tool parts）
-          // 如果找不到，则使用 event.responseMessage
-          const allAssistantMessages = event.messages.filter(
-            (msg) => msg.role === 'assistant'
-          );
-          const assistantMessage = allAssistantMessages.length > 0
-            ? allAssistantMessages[allAssistantMessages.length - 1]
-            : event.responseMessage;
+      // 即使工具报错，也应该保存助手消息和工具调用状态（包括错误状态）
+      if (chatId) {
+        try {          
+          // 优先使用 event.responseMessage，因为它包含最完整的响应信息
+          // 如果 responseMessage 不存在，则从 event.messages 中获取最后一条助手消息
+          let assistantMessage = event.responseMessage;
+          
+          if (!assistantMessage || assistantMessage.role !== 'assistant') {
+            const allAssistantMessages = (event.messages || []).filter(
+              (msg) => msg.role === 'assistant'
+            );
+            
+            if (allAssistantMessages.length > 0) {
+              assistantMessage = allAssistantMessages[allAssistantMessages.length - 1];
+            }
+          }
 
           if (assistantMessage && assistantMessage.role === 'assistant') {
-            const assistantSeq = userMessageSeq + 1;
+            // 如果 userMessageSeq 为 null，说明用户消息保存失败，需要重新获取下一个 seq
+            let assistantSeq: number;
+            if (userMessageSeq !== null) {
+              assistantSeq = userMessageSeq + 1;
+            } else {
+              // 用户消息保存失败，重新获取下一个 seq
+              // 这可能会跳过用户消息的 seq，但至少能保存助手消息
+              assistantSeq = await getNextSeq(chatId, user.id);
+              if (assistantSeq === 0) {
+                return;
+              }
+            }
+            
+            // 检查是否已经存在相同 seq 的 assistant message（regenerate 情况）
+            // 如果存在，先删除旧的 message（关联的 tool calls 会通过外键 CASCADE 自动删除）
+            const existingMessage = await getMessageByChatIdAndSeq(chatId, assistantSeq, user.id);
+            if (existingMessage && existingMessage.role === 'assistant') {
+              await deleteMessage(existingMessage.id, user.id);
+            }
+            
             const dbMessage = convertUIMessageToDBMessage(
               assistantMessage,
               chatId,
               assistantSeq
             );
+            
             const savedMessage = await createMessage(dbMessage, user.id);
 
-            // 保存 tool calls 到数据库
+            // 保存 tool calls 到数据库（包括错误状态）
             if (savedMessage) {
               const toolParts = (assistantMessage.parts || []).filter(
                 (part): part is ToolUIPart | DynamicToolUIPart =>
@@ -251,16 +305,17 @@ export async function POST(req: Request) {
                   return convertToolPartToDBTool(toolPart, savedMessage.id);
                 });
 
-                await createTools(dbTools, user.id);
+                const savedTools = await createTools(dbTools, user.id);
+                
+                if (savedTools.length !== dbTools.length) {
+                  console.error('Saved tools count does not match expected count');
+                }
               }
             }
           }
         } catch (error) {
           console.error('Error saving assistant message:', error);
-          console.error('Error stack:', error instanceof Error ? error.stack : 'No stack');
         }
-      } else {
-        console.log('Skipping save: chatId =', chatId, 'userMessageSeq =', userMessageSeq);
       }
     },
   });
