@@ -451,7 +451,7 @@ export function ProjectsListClient({
             </div>
           )}
         </div>
-        <div className="container pb-8 px-4 max-w-6xl">
+        <div className="container mx-auto pb-8 px-4 max-w-6xl">
           <OnboardingStepper className="w-full" />
         </div>
       </div>
