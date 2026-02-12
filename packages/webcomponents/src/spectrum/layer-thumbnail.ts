@@ -16,6 +16,7 @@ import {
   API,
   getRoughOptions,
   exportMarker,
+  LineSerializedNode,
 } from '@infinite-canvas-tutorial/ecs';
 import { consume } from '@lit/context';
 import rough from 'roughjs';
@@ -94,6 +95,12 @@ export class LayerThumbnail extends LitElement {
       $el = createSVGElement('polyline') as SVGElement;
       $el.setAttribute('points', (this.node as PolylineSerializedNode).points);
       $el.setAttribute('fill', 'none');
+    } else if (type === 'line') {
+      $el = createSVGElement('line') as SVGElement;
+      $el.setAttribute('x1', `${(this.node as LineSerializedNode).x1}`);
+      $el.setAttribute('y1', `${(this.node as LineSerializedNode).y1}`);
+      $el.setAttribute('x2', `${(this.node as LineSerializedNode).x2}`);
+      $el.setAttribute('y2', `${(this.node as LineSerializedNode).y2}`);
     } else if (type === 'rough-rect') {
       const options = getRoughOptions(this.api.getEntity(this.node));
       $el = this.#roughSvg.rectangle(minX, minY, width, height, {

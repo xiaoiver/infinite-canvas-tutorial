@@ -35,6 +35,7 @@ import {
   Canvas,
   Pen,
   Mat3,
+  Line,
 } from '../components';
 import { Commands } from '../commands';
 import { updateGlobalTransform } from './Transform';
@@ -77,7 +78,7 @@ export class RenderTransformer extends System {
     this.query(
       (q) =>
         q
-          .using(ComputedBounds, Camera, FractionalIndex, Polyline)
+          .using(ComputedBounds, Camera, FractionalIndex, Polyline, Line)
           .read.and.using(
             Canvas,
             GlobalTransform,
@@ -415,10 +416,17 @@ export class RenderTransformer extends System {
     const { x, y, width, height, rotation, scaleX, scaleY } = getOBB(camera);
 
     const selected = selecteds[0];
-    const { points } = selected.read(Polyline);
-
-    const point1 = points[0];
-    const point2 = points[1];
+    let point1: [number, number];
+    let point2: [number, number];
+    if (selected.has(Polyline)) {
+      const { points } = selected.read(Polyline);
+      point1 = points[0];
+      point2 = points[1];
+    } else if (selected.has(Line)) {
+      const { x1, y1, x2, y2 } = selected.read(Line);
+      point1 = [x1, y1];
+      point2 = [x2, y2];
+    }
 
     lineMask.write(Visibility).value = 'visible';
 
@@ -520,8 +528,9 @@ function useLineMask(camera: Entity) {
   // Single selected line
   if (
     selecteds.length === 1 &&
-    selecteds[0].has(Polyline) &&
-    selecteds[0].read(Polyline).points.length === 2
+    ((selecteds[0].has(Polyline) &&
+    selecteds[0].read(Polyline).points.length === 2) || 
+    (selecteds[0].has(Line)))
   ) {
     return true;
   }

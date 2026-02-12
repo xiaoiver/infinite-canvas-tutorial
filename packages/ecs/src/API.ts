@@ -19,6 +19,7 @@ import {
   EASING_FUNCTION,
   getScale,
   isEntity,
+  LineSerializedNode,
   parsePath,
   PathSerializedNode,
   PolylineSerializedNode,
@@ -44,6 +45,7 @@ import {
   Highlighted,
   Landmark,
   LandmarkAnimationEffectTiming,
+  Line,
   Locked,
   Mat3,
   OBB,
@@ -1071,7 +1073,7 @@ export class API {
         (diff as PolylineSerializedNode).points = serializePoints(
           shiftedPoints.map((point) => [point[0] - minX, point[1] - minY]),
         );
-      } else if (node.type === 'path') {
+      } else if (node.type === 'path' || node.type === 'rough-path') {
         const d = transformPath((oldNode as PathSerializedNode).d, delta);
         const { subPaths } = parsePath(d);
         const points = subPaths.map((subPath) =>
@@ -1082,6 +1084,15 @@ export class API {
         // @ts-ignore
         const { minX, minY } = Path.getGeometryBounds({ d }, { points });
         (diff as PathSerializedNode).d = shiftPath(d, -minX, -minY);
+      } else if (node.type === 'line' || node.type === 'rough-line') {
+        const { x1, y1, x2, y2 } = oldNode as LineSerializedNode;
+        const [newX1, newY1] = vec2.transformMat3(vec2.create(), [x1, y1], delta);
+        const [newX2, newY2] = vec2.transformMat3(vec2.create(), [x2, y2], delta);
+        const { minX, minY } = Line.getGeometryBounds({ x1: newX1, y1: newY1, x2: newX2, y2: newY2 });
+        (diff as LineSerializedNode).x1 = newX1 - minX;
+        (diff as LineSerializedNode).y1 = newY1 - minY;
+        (diff as LineSerializedNode).x2 = newX2 - minX;
+        (diff as LineSerializedNode).y2 = newY2 - minY;
       } else if (node.type === 'brush') {
         const shiftedPoints = deserializeBrushPoints(
           (oldNode as BrushSerializedNode)?.points,

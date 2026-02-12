@@ -127,87 +127,100 @@ canvas.addEventListener(Event.READY, async (e) => {
     // fill: 'https://v3b.fal.media/files/b/tiger/v1lf1EcPP1X1pw_YOKM4o.jpg',
     // filter: 'noise(0.5)',
   };
-  // const edge1 = {
-  //   id: 'line-1',
-  //   // type: 'rough-line',
-  //   type: 'line',
-  //   fromId: 'rect-1',
-  //   toId: 'rect-2',
-  //   stroke: 'black',
-  //   strokeWidth: 10,
-  //   markerEnd: 'line',
-  //   exitX: 0.5,
-  //   exitY: 0.5,
-  //   exitPerimeter: true,
-  //   // orthogonal: true,
-  // };
-  // const edge2 = {
-  //   id: 'line-2',
-  //   type: 'line',
-  //   fromId: 'rect-2',
-  //   toId: 'rect-3',
-  //   stroke: 'black',
-  //   strokeWidth: 10,
-  //   markerEnd: 'line',
-  //   // orthogonal: true,
-  // };
-  // // const node2 = {
-  // //   id: 'text-1',
-  // //   type: 'text',
-  // //   parentId: 'rect-1',
-  // //   anchorX: 10,
-  // //   anchorY: 50,
-  // //   content: 'Hello',
-  // //   fill: 'black',
-  // //   fontSize: 30,
-  // //   fontFamily: 'system-ui',
-  // // };
+  const edge1 = {
+    id: 'line-1',
+    // type: 'rough-line',
+    type: 'line',
+    fromId: 'rect-1',
+    toId: 'rect-2',
+    stroke: 'black',
+    strokeWidth: 10,
+    markerEnd: 'line',
+    exitX: 0.5,
+    exitY: 0.5,
+    exitPerimeter: true,
+    // orthogonal: true,
+  };
+  const edge2 = {
+    id: 'line-2',
+    type: 'line',
+    fromId: 'rect-2',
+    toId: 'rect-3',
+    stroke: 'black',
+    strokeWidth: 10,
+    markerEnd: 'line',
+    // orthogonal: true,
+  };
   // const node2 = {
-  //   id: 'rect-2',
-  //   // type: 'rect',
-  //   type: 'ellipse',
-  //   x: 300,
-  //   y: 200,
-  //   width: 200,
-  //   height: 200,
-  //   fill: 'red',
+  //   id: 'text-1',
+  //   type: 'text',
+  //   parentId: 'rect-1',
+  //   anchorX: 10,
+  //   anchorY: 50,
+  //   content: 'Hello',
+  //   fill: 'black',
+  //   fontSize: 30,
+  //   fontFamily: 'system-ui',
   // };
-
-  // const node3 = {
-  //   id: 'rect-3',
-  //   type: 'rect',
-  //   x: 100,
-  //   y: 300,
-  //   width: 100,
-  //   height: 100,
-  //   fill: 'green',
-  // };
-
-  // api.updateNodes([node1, node2, node3, edge1, edge2]);
-
-  const parent = {
-    id: 'parent',
-    type: 'rect',
-    x: 100,
-    y: 100,
+  const node2 = {
+    id: 'rect-2',
+    // type: 'rect',
+    type: 'ellipse',
+    x: 300,
+    y: 200,
     width: 200,
     height: 200,
-    fill: 'grey',
-    // display: 'flex',
-    // alignItems: 'center',
-    // justifyContent: 'center',
+    fill: 'red',
   };
 
-  const child = {
-    id: 'child',
-    parentId: 'parent',
+  const node3 = {
+    id: 'rect-3',
     type: 'rect',
-    fill: 'red',
-    x: 0,
-    y: 0,
+    x: 100,
+    y: 300,
     width: 100,
     height: 100,
-  }
+    fill: 'green',
+  };
+
+  const edge3 = {
+    id: 'line-3',
+    type: 'line',
+    x1: 100,
+    y1: 300,
+    x2: 200,
+    y2: 400,
+    stroke: 'black',
+    strokeWidth: 10,
+    markerEnd: 'line',
+    // orthogonal: true,
+  };
+
+  api.updateNodes([node1, node2, node3, edge1, edge2, edge3]);
+
+  // const parent = {
+  //   id: 'parent',
+  //   type: 'rect',
+  //   x: 100,
+  //   y: 100,
+  //   width: 200,
+  //   height: 200,
+  //   fill: 'grey',
+  //   // display: 'flex',
+  //   // alignItems: 'center',
+  //   // justifyContent: 'center',
+  // };
+
+  // const child = {
+  //   id: 'child',
+  //   parentId: 'parent',
+  //   type: 'rect',
+  //   fill: 'red',
+  //   x: 0,
+  //   y: 0,
+  //   width: 100,
+  //   height: 100,
+  // }
   // const child = {
   //   id: 'child',
   //   parentId: 'parent',
@@ -216,9 +229,9 @@ canvas.addEventListener(Event.READY, async (e) => {
   //   width: '50%',
   //   height: '50%',
   // };
-  api.updateNodes([parent, child]);
-  api.selectNodes([parent]);
-  api.record();
+  // api.updateNodes([parent, child]);
+  // api.selectNodes([parent]);
+  // api.record();
 
   // api.updateNodes([node1]);
 });

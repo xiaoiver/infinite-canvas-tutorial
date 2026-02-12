@@ -346,6 +346,25 @@ export class ExtendedAPI extends API {
       ctx.closePath();
     } else if (node.type === 'polyline' || node.type === 'rough-polyline') {
       const { points, strokeWidth, strokeLinecap, strokeLinejoin, x, y } = node;
+      deserializePoints(points).forEach((point, index) => {
+        if (index === 0) {
+          ctx.moveTo(point[0] + (x as number), point[1] + (y as number));
+        } else {
+          ctx.lineTo(point[0] + (x as number), point[1] + (y as number));
+        }
+      });
+      ctx.lineWidth = strokeWidth;
+      ctx.lineCap = strokeLinecap;
+      ctx.lineJoin = strokeLinejoin;
+      ctx.stroke();
+    } else if (node.type === 'line' || node.type === 'rough-line') {
+      const { x1, y1, x2, y2, strokeWidth, strokeLinecap, strokeLinejoin, stroke } = node;
+      ctx.moveTo(x1 as number, y1 as number);
+      ctx.lineTo(x2 as number, y2 as number);
+      ctx.lineWidth = strokeWidth;
+      ctx.lineCap = strokeLinecap;
+      ctx.lineJoin = strokeLinejoin;
+      ctx.stroke();
     }
     this.getChildren(node).forEach(child => this.renderToCanvas(this.getNodeByEntity(child), { canvas }));
 

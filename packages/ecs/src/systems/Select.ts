@@ -46,6 +46,7 @@ import {
   Embed,
   Editable,
   Locked,
+  Line,
 } from '../components';
 import { Commands } from '../commands/Commands';
 import {
@@ -167,6 +168,7 @@ export class Select extends System {
             Text,
             Path,
             Polyline,
+            Line,
             Brush,
             Visibility,
             ZIndex,
@@ -375,9 +377,19 @@ export class Select extends System {
         [x1y1Cx, x1y1Cy],
         [x2y2Cx, x2y2Cy],
       ];
-      api.updateNode(node, {
-        points: points.map((point) => point.join(',')).join(' '),
-      });
+
+      if (node.type === 'line' || node.type === 'rough-line') {
+        api.updateNode(node, {
+          x1: x1y1Cx,
+          y1: x1y1Cy,
+          x2: x2y2Cx,
+          y2: x2y2Cy,
+        });
+      } else {
+        api.updateNode(node, {
+          points: points.map((point) => point.join(',')).join(' '),
+        });
+      }
 
       const selected = api.getEntity(node);
       updateGlobalTransform(selected);
