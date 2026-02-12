@@ -17,6 +17,7 @@ import {
   Visibility,
 } from '../../components';
 import { EdgeStyle } from '../binding';
+import { DIRECTION_EAST, DIRECTION_NORTH, DIRECTION_SOUTH, DIRECTION_WEST } from '../binding/constants';
 
 // @see https://dev.to/themuneebh/typescript-branded-types-in-depth-overview-and-use-cases-60e
 export type FractionalIndex = string & { _brand: 'franctionalIndex' };
@@ -155,6 +156,17 @@ export interface ConstraintAttributes {
 
 export interface BindedAttributes {
   constraints: ConstraintAttributes[];
+  /**
+	 * Variable: STYLE_PORT_CONSTRAINT
+	 * 
+	 * Defines the direction(s) that edges are allowed to connect to cells in.
+	 * Possible values are "DIRECTION_NORTH, DIRECTION_SOUTH, 
+	 * DIRECTION_EAST" and "DIRECTION_WEST". Value is
+	 * "portConstraint".
+   * 
+   * e.g. "north,south"
+	 */
+  portConstraint: string;
 }
 
 export interface BindingAttributes {
@@ -171,7 +183,21 @@ export interface BindingAttributes {
   entryPerimeter: boolean;
   entryDx: number;
   entryDy: number;
+  /**
+   * Affect the routing rules. e.g. orth connector.
+   * 
+   * @example
+   * ┌──────┐        ┌──────┐
+   * │ Node │ ─┐     │ Node │
+   * └──────┘  └────▶└──────┘
+   */
   edgeStyle: EdgeStyle;
+  sourceJettySize: number;
+  targetJettySize: number;
+  jettySize: number;
+
+  sourcePortConstraint: typeof DIRECTION_NORTH | typeof DIRECTION_SOUTH | typeof DIRECTION_EAST | typeof DIRECTION_WEST;
+  targetPortConstraint: typeof DIRECTION_NORTH | typeof DIRECTION_SOUTH | typeof DIRECTION_EAST | typeof DIRECTION_WEST;
 }
 
 export interface MarkerAttributes {
@@ -303,7 +329,8 @@ export interface RoughPathSerializedNode
   Partial<StrokeAttributes>,
   Partial<RoughAttributes>,
   Partial<MarkerAttributes>,
-  Partial<BindingAttributes> { }
+  Partial<BindingAttributes>,
+  Partial<BindedAttributes> { }
 export interface LineSerializedNode
   extends BaseSerializeNode<'line'>,
   Partial<Pick<Line, 'x1' | 'y1' | 'x2' | 'y2'>>,
@@ -418,16 +445,19 @@ export interface HtmlAttributes {
 }
 export interface HtmlSerializedNode
   extends BaseSerializeNode<'html'>,
-  Partial<HtmlAttributes> { }
+  Partial<HtmlAttributes>,
+  Partial<BindedAttributes> { }
 
 export interface EmbedAttributes {
   url: string;
 }
 export interface EmbedSerializedNode
   extends BaseSerializeNode<'embed'>,
-  Partial<EmbedAttributes> { }
+  Partial<EmbedAttributes>,
+  Partial<BindedAttributes> { }
 
-export type EdgeSerializedNode = LineSerializedNode | PolylineSerializedNode | PathSerializedNode;
+export type NodeSerializedNode = EllipseSerializedNode | RectSerializedNode | PathSerializedNode | TextSerializedNode | BrushSerializedNode | RoughRectSerializedNode | RoughEllipseSerializedNode | RoughPathSerializedNode | HtmlSerializedNode | EmbedSerializedNode;
+export type EdgeSerializedNode = LineSerializedNode | PolylineSerializedNode | RoughLineSerializedNode | RoughPolylineSerializedNode | PathSerializedNode | RoughPathSerializedNode;
 
 export type SerializedNode =
   | GSerializedNode

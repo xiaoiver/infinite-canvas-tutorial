@@ -5,9 +5,9 @@
 [![Build Status](https://github.com/xiaoiver/infinite-canvas-tutorial/actions/workflows/unit-ssr.yml/badge.svg)](https://github.com/xiaoiver/infinite-canvas-tutorial/actions/workflows/unit-ssr.yml)
 [![Coverage Status](https://coveralls.io/repos/github/xiaoiver/infinite-canvas-tutorial/badge.svg?branch=master)](https://coveralls.io/github/xiaoiver/infinite-canvas-tutorial?branch=master)
 
-在线体验：[app.infinitecanvas.cc](app.infinitecanvas.cc)
+[在线体验] | [自部署指南]
 
-> [我在 Gumroad 上的免费课程]，欢迎评分！
+[我在 Gumroad 上的免费课程]，欢迎评分！
 
 [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/U7U71DK7IM)
 
@@ -394,10 +394,11 @@ pnpm run dev
 -   分析 excalidraw、tldraw、drawio 和 g6 中的数据结构设计
 -   连线边界算法，包括矩形和椭圆边界
 -   连线的路由规则
+    -   Orth Connector
 
-|                Bindings                 |     |
-| :-------------------------------------: | :-: |
-| ![bindings](./screenshots/lesson31.gif) |     |
+|                Bindings                 |                 Orth Connector                  |
+| :-------------------------------------: | :---------------------------------------------: |
+| ![bindings](./screenshots/lesson31.gif) | ![orth connector](./screenshots/lesson31-2.png) |
 
 ## 课程 32 - 文本生成图表 [🔗](https://infinitecanvas.cc/zh/guide/lesson-032)
 
@@ -412,7 +413,9 @@ pnpm run dev
 
 -   基于 Yoga 实现 Flexbox 布局
 
+[在线体验]: app.infinitecanvas.cc
 [infinitecanvas]: https://infinitecanvas.tools/
+[自部署指南]: /packages/app/README.md
 [Figma]: https://madebyevan.com/figma/building-a-professional-design-tool-on-the-web/
 [Modyfi]: https://digest.browsertech.com/archive/browsertech-digest-how-modyfi-is-building-with/
 [rnote]: https://github.com/flxzt/rnote
