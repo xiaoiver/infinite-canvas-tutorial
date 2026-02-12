@@ -5,9 +5,9 @@
 [![Build Status](https://github.com/xiaoiver/infinite-canvas-tutorial/actions/workflows/unit-ssr.yml/badge.svg)](https://github.com/xiaoiver/infinite-canvas-tutorial/actions/workflows/unit-ssr.yml)
 [![Coverage Status](https://coveralls.io/repos/github/xiaoiver/infinite-canvas-tutorial/badge.svg?branch=master)](https://coveralls.io/github/xiaoiver/infinite-canvas-tutorial?branch=master)
 
-Online app: [app.infinitecanvas.cc](app.infinitecanvas.cc)
+[Online App] | [Self-Deployment Guide]
 
-> [My free course in Gumroad]. Feel free to rate!
+[My free course in Gumroad]. Feel free to rate!
 
 [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/U7U71DK7IM)
 
@@ -393,10 +393,11 @@ If you want to use it in your own project, you can refer to:
 -   Analyze the data-structure design in excalidraw, tldraw, drawio and g6
 -   Perimeter algorithm, including rectangle and ellipse
 -   Routing rules
+    -   Orth Connector
 
-|                Bindings                 |     |
-| :-------------------------------------: | :-: |
-| ![bindings](./screenshots/lesson31.gif) |     |
+|                Bindings                 |                 Orth Connector                  |
+| :-------------------------------------: | :---------------------------------------------: |
+| ![bindings](./screenshots/lesson31.gif) | ![orth connector](./screenshots/lesson31-2.png) |
 
 ## Lesson 32 - Text to diagram [🔗](https://infinitecanvas.cc/guide/lesson-032)
 
@@ -411,7 +412,9 @@ If you want to use it in your own project, you can refer to:
 
 -   Implement Flexbox layout with Yoga
 
+[Online App]: app.infinitecanvas.cc
 [infinitecanvas]: https://infinitecanvas.tools/
+[Self-Deployment Guide]: /packages/app/README.md
 [Figma]: https://madebyevan.com/figma/building-a-professional-design-tool-on-the-web/
 [Modyfi]: https://digest.browsertech.com/archive/browsertech-digest-how-modyfi-is-building-with/
 [rnote]: https://github.com/flxzt/rnote

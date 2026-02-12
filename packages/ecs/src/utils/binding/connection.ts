@@ -1,6 +1,6 @@
 import { isNil } from "@antv/util";
 import type { IPointData } from "@pixi/math";
-import type { BindingAttributes, ConstraintAttributes, EdgeSerializedNode, SerializedNode } from "../serialize/type";
+import type { BindingAttributes, ConstraintAttributes, EdgeSerializedNode, NodeSerializedNode, SerializedNode } from "../serialize/type";
 import { getPerimeterPoint } from "./perimeter";
 import { EdgeStyle, orthConnector } from "./edge-style";
 
@@ -185,7 +185,7 @@ function getEdgeStyle(edge: EdgeState, points: IPointData[], source: SerializedN
  * 
  * @see https://github.com/jgraph/drawio/blob/81a267568da862d3c99970758c09a8e768dea973/src/main/webapp/mxgraph/src/view/mxGraphView.js#L1435C1-L1448C76
  */
-export function updatePoints(edge: EdgeState, points: IPointData[], source: SerializedNode, target: SerializedNode) {
+export function updatePoints(edge: EdgeState, points: IPointData[], source: NodeSerializedNode, target: NodeSerializedNode) {
   if (edge !== null && edge.absolutePoints !== null &&
     edge.absolutePoints.length > 0) {
     const pts: IPointData[] = [];

@@ -9,6 +9,7 @@ import Binding from '../components/Binding.vue'
 import BindingWithEllipse from '../components/BindingWithEllipse.vue'
 import BindingOrthogonal from '../components/BindingOrthogonal.vue'
 import BindingConstraint from '../components/BindingConstraint.vue'
+import BindingRouteOrthConnector from '../components/BindingRouteOrthConnector.vue'
 </script>
 
 # Lesson 31 - Bindings between shapes
@@ -397,9 +398,34 @@ In the following example, we have defined anchor points `[1, 0]` and `[0, 1]` on
 
 <BindingConstraint />
 
-## [WIP] Routing rules {#router}
+## Routing rules {#routing rules}
 
-Automatically select exit direction, insert turning points, avoid node bounding boxes:
+mxGraph uses EdgeStyle functions to implement routing rules, which are responsible for:
+
+-   Automatically selecting exit directions
+-   Inserting waypoints
+-   Avoiding node bounding boxes
+-   Calculating orthogonal/right-angle paths
+
+![Connector styles](https://drawio-app.com/wp-content/uploads/2019/02/drawio-connector-styles.png)
+
+Register these functions during editor initialization:
+
+```ts
+mxStyleRegistry.putValue(
+    mxConstants.EDGESTYLE_ORTHOGONAL,
+    mxEdgeStyle.OrthConnector,
+);
+```
+
+### OrthConnector {orth-connector}
+
+[OrthConnector] is the most common routing algorithm, with the core objective of creating a path between the source and destination nodes that consists solely of horizontal and vertical line segments, avoiding diagonal lines. The specific steps are as follows:
+
+1. Determine the exit/entry direction for the source and destination
+2. Search for predefined routing patterns based on direction combinations
+3. Apply routing patterns to generate a sequence of turning points
+4. Handle obstacle avoidance and optimization
 
 ```ts
 ┌──────┐        ┌──────┐
@@ -407,7 +433,116 @@ Automatically select exit direction, insert turning points, avoid node bounding 
 └──────┘  └────▶└──────┘
 ```
 
-![Connector styles](https://drawio-app.com/wp-content/uploads/2019/02/drawio-connector-styles.png)
+<BindingRouteOrthConnector />
+
+#### Preferred port selections {#preferred-port-selections}
+
+First, consider the case with no port constraints. The initial step is to determine the target's quadrant position relative to the source. By comparing the geometric center points of both, we obtain:
+
+```ts
+// 0 | 1
+// -----
+// 3 | 2
+
+let dx = sourceCenX - targetCenX;
+let dy = sourceCenY - targetCenY;
+let quad = 0;
+if (dx < 0) {
+    if (dy < 0) {
+        quad = 2;
+    } else {
+        quad = 1;
+    }
+}
+// Other circumstances omitted.
+```
+
+Next comes the most complex part: determining which direction edges should depart from the source node and enter the destination node.
+
+First, calculate the distance between nodes:
+
+```ts
+        sourceTopDist
+             ↑
+    [Source] |
+             ↓
+        sourceBottomDist
+             ↑
+             | [Target]
+
+sourceLeftDist ← [Source] → sourceRightDist → [Target]
+```
+
+Then determine the preferred direction using a strategy that favors the direction with greater available space:
+
+-   If the distance to the left ≥ the distance to the right, the source node prefers to move west (left).
+-   If the distance to the top ≥ the distance to the bottom, the source node prefers to move north (up).
+-   The target node's preferred direction is the opposite direction of the source node.
+
+```ts
+var dirPref = [];
+var horPref = [];
+var vertPref = [];
+
+horPref[0] =
+    sourceLeftDist >= sourceRightDist
+        ? mxConstants.DIRECTION_MASK_WEST
+        : mxConstants.DIRECTION_MASK_EAST;
+vertPref[0] =
+    sourceTopDist >= sourceBottomDist
+        ? mxConstants.DIRECTION_MASK_NORTH
+        : mxConstants.DIRECTION_MASK_SOUTH;
+
+horPref[1] = mxUtils.reversePortConstraints(horPref[0]);
+vertPref[1] = mxUtils.reversePortConstraints(vertPref[0]);
+
+var preferredHorizDist =
+    sourceLeftDist >= sourceRightDist ? sourceLeftDist : sourceRightDist;
+var preferredVertDist =
+    sourceTopDist >= sourceBottomDist ? sourceTopDist : sourceBottomDist;
+```
+
+#### Choose route patterns {#choose-route-patterns}
+
+Based on the directional indices of the source and destination, select a route pattern from the predefined `routePatterns` to ensure quality, encoded using a bitmask:
+
+-   Low 4 bits: Direction (1=West, 2=North, 4=East, 8=South)
+-   Bits 5-8: Which side of the edge
+-   Bit 9: Whether to use the center point
+-   Bit 10: Whether to associate with the source node
+-   Bit 11: Whether to associate with the destination node
+
+```ts
+routePatterns: [
+    [ [ 513, 2308, 2081, 2562 ], [ 513, 1090, 514, 2184, 2114, 2561 ],
+        [ 513, 1090, 514, 2564, 2184, 2562 ],
+        [ 513, 2308, 2561, 1090, 514, 2568, 2308 ] ],
+    // ... more patterns
+],
+```
+
+#### Generate waypoints {#generate-waypoints}
+
+Iterate through the routing patterns and generate actual path points based on direction.
+
+```ts
+for (var i = 0; i < routePattern.length; i++)
+{
+    var nextDirection = routePattern[i] & 0xF;
+
+    // Rotate the index of this direction by the quad
+    var directionIndex = nextDirection == mxConstants.DIRECTION_MASK_EAST ? 3
+            : nextDirection;
+
+    directionIndex += quad;
+
+    if (directionIndex > 4)
+    {
+        directionIndex -= 4;
+    }
+```
+
+Finally, optimize adjacent points that are very close in the optimized path. For this part, we continue to use [simplify-js], which was already introduced in [Lesson 12 - Simplifying polyline].
 
 ## [WIP] Export SVG {#export-svg}
 
@@ -428,3 +563,6 @@ When exporting, it is no longer sufficient to save only geometric information; l
 [Lesson 25 - Drawing arrows]: /zh/guide/lesson-025#draw-arrow
 [Lesson 18 - Defining Parent-Child Components]: /zh/guide/lesson-018#定义-component
 [Change the shape perimeter]: https://www.drawio.com/doc/faq/shape-perimeter-change
+[OrthConnector]: https://github.com/jgraph/drawio/blob/dev/src/main/webapp/mxgraph/src/view/mxEdgeStyle.js#L1067
+[simplify-js]: https://github.com/mourner/simplify-js
+[Lesson 12 - Simplifying polyline]: /guide/lesson-012#simplify-polyline

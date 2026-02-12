@@ -18,9 +18,13 @@ import {
   Transformable,
   UI,
   ZIndex,
+  Polyline,
+  Path,
 } from '../components';
 import { getSceneRoot, updateGlobalTransform } from './Transform';
 import {
+  EdgeSerializedNode,
+  EdgeState,
   inferPointsWithFromIdAndToId,
   inferXYWidthHeight,
   LineSerializedNode,
@@ -53,7 +57,7 @@ export class RenderBindings extends System {
             HTML,
             Embed,
           )
-          .read.and.using(GlobalTransform, Transform, Transformable, Line)
+          .read.and.using(GlobalTransform, Transform, Transformable, Line, Polyline, Path)
           .write,
     );
   }
@@ -73,7 +77,7 @@ export class RenderBindings extends System {
       const { canvas } = camera.read(Camera);
       const { api } = canvas.read(Canvas);
 
-      const edge = api.getNodeByEntity(binding) as LineSerializedNode;
+      const edge = api.getNodeByEntity(binding) as EdgeState;
       const fromNode = api.getNodeByEntity(from);
       const toNode = api.getNodeByEntity(to);
 
@@ -84,16 +88,26 @@ export class RenderBindings extends System {
       delete edge.height;
       inferXYWidthHeight(edge);
 
-      api.updateNode(edge, {
-        x1: edge.x1,
-        y1: edge.y1,
-        x2: edge.x2,
-        y2: edge.y2,
-        x: edge.x,
-        y: edge.y,
-        width: edge.width,
-        height: edge.height,
-      });
+      if (edge.type === 'line' || edge.type === 'rough-line') {
+        api.updateNode(edge, {
+          x1: edge.x1,
+          y1: edge.y1,
+          x2: edge.x2,
+          y2: edge.y2,
+          x: edge.x,
+          y: edge.y,
+          width: edge.width,
+          height: edge.height,
+        });
+      } else if (edge.type === 'polyline' || edge.type === 'rough-polyline') {
+        api.updateNode(edge, {
+          points: edge.points,
+          x: edge.x,
+          y: edge.y,
+          width: edge.width,
+          height: edge.height,
+        });
+      }
 
       updateGlobalTransform(binding);
     });

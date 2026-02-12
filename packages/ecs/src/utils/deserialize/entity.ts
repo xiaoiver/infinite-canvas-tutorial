@@ -57,6 +57,7 @@ import {
   LineSerializedNode,
   MarkerAttributes,
   NameAttributes,
+  NodeSerializedNode,
   PathSerializedNode,
   PolylineSerializedNode,
   RectSerializedNode,
@@ -78,7 +79,8 @@ import { isPattern } from '../pattern';
 import { computeBidi, measureText } from '../../systems/ComputeTextMetrics';
 import { DOMAdapter } from '../../environment';
 import { safeAddComponent } from '../../history';
-import { updateFixedTerminalPoints, updateFloatingTerminalPoints, updatePoints } from '../binding';
+import { EdgeState, updateFixedTerminalPoints, updateFloatingTerminalPoints, updatePoints } from '../binding';
+import simplify from 'simplify-js';
 
 export function inferXYWidthHeight(node: SerializedNode) {
   const { x, y, width, height } = node;
@@ -158,21 +160,29 @@ export function inferXYWidthHeight(node: SerializedNode) {
 export function inferPointsWithFromIdAndToId(
   from: SerializedNode,
   to: SerializedNode,
-  edge: LineSerializedNode,
+  edge: EdgeState,
 ) {
   inferXYWidthHeight(from);
   inferXYWidthHeight(to);
 
-  const state = edge as LineSerializedNode & { width: number; height: number; x: number; y: number } & { absolutePoints: (IPointData | null)[] };
+  const state = edge as PolylineSerializedNode & { width: number; height: number; x: number; y: number } & { absolutePoints: (IPointData | null)[] };
   state.absolutePoints = [null, null];
   updateFixedTerminalPoints(state, from as SerializedNode & { width: number; height: number; x: number; y: number }, to as SerializedNode & { width: number; height: number; x: number; y: number });
-  updatePoints(state, null, from as SerializedNode & { width: number; height: number; x: number; y: number }, to as SerializedNode & { width: number; height: number; x: number; y: number });
+  updatePoints(state, null, from as NodeSerializedNode & { width: number; height: number; x: number; y: number }, to as NodeSerializedNode & { width: number; height: number; x: number; y: number });
   updateFloatingTerminalPoints(state, from as SerializedNode & { width: number; height: number; x: number; y: number }, to as SerializedNode & { width: number; height: number; x: number; y: number });
 
-  edge.x1 = state.absolutePoints[0].x;
-  edge.y1 = state.absolutePoints[0].y;
-  edge.x2 = state.absolutePoints[1].x;
-  edge.y2 = state.absolutePoints[1].y;
+  state.absolutePoints = simplify(state.absolutePoints);
+
+  if (edge.type === 'line' || edge.type === 'rough-line') {
+    edge.x1 = state.absolutePoints[0].x;
+    edge.y1 = state.absolutePoints[0].y;
+    edge.x2 = state.absolutePoints[1].x;
+    edge.y2 = state.absolutePoints[1].y;
+  } else if (edge.type === 'polyline' || edge.type === 'rough-polyline') {
+    edge.points = serializePoints(state.absolutePoints.map((point) => {
+      return [point.x, point.y];
+    }));
+  }
   delete state.absolutePoints;
 }
 
@@ -282,7 +292,7 @@ export function serializedNodesToEntities(
     idEntityMap.set(id, entityCommands);
 
     // Infer points with fromId and toId first
-    if (type === 'line' || type === 'rough-line') {
+    if (type === 'line' || type === 'rough-line' || type === 'polyline' || type === 'rough-polyline') {
       const { fromId, toId } = attributes as EdgeSerializedNode;
       if (fromId && toId) {
         const fromNode = nodes.find((node) => node.id === fromId);
@@ -291,7 +301,7 @@ export function serializedNodesToEntities(
           inferPointsWithFromIdAndToId(
             fromNode,
             toNode,
-            attributes as LineSerializedNode,
+            attributes as EdgeState,
           );
         }
 

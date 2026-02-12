@@ -9,6 +9,7 @@ import Binding from '../../components/Binding.vue'
 import BindingWithEllipse from '../../components/BindingWithEllipse.vue'
 import BindingOrthogonal from '../../components/BindingOrthogonal.vue'
 import BindingConstraint from '../../components/BindingConstraint.vue'
+import BindingRouteOrthConnector from '../../components/BindingRouteOrthConnector.vue'
 </script>
 
 # 课程 31 - 图形间的连接关系
@@ -436,7 +437,7 @@ interface BindingAttributes {
 
 <BindingConstraint />
 
-## [WIP] 路由规则 {#router}
+## 路由规则 {#routing rules}
 
 mxGraph 使用 EdgeStyle 函数来实现路由规则，这些函数负责：
 
@@ -450,23 +451,137 @@ mxGraph 使用 EdgeStyle 函数来实现路由规则，这些函数负责：
 在编辑器初始化时注册这些函数：
 
 ```ts
-mxStyleRegistry.putValue(mxConstants.EDGESTYLE_ORTHOGONAL, mxEdgeStyle.OrthConnector);
+mxStyleRegistry.putValue(
+    mxConstants.EDGESTYLE_ORTHOGONAL,
+    mxEdgeStyle.OrthConnector,
+);
 ```
 
 ### OrthConnector {orth-connector}
 
-[OrthConnector] 是最常见的路由算法：
+[OrthConnector] 是最常见的路由算法，核心目标是在源节点和目标节点之间创建一条只包含水平和垂直线段的路径，避免斜线。具体步骤如下：
 
-1. 确定源和目标的【出口/入口方向】
-2. 根据方向组合查找【预定义路由模式】
-3. 应用路由模式生成【拐点序列】
-4. 处理【避障】和【优化】
+1. 确定源和目标的出口/入口方向
+2. 根据方向组合查找预定义路由模式
+3. 应用路由模式生成拐点序列
+4. 处理避障和优化
 
 ```ts
 ┌──────┐        ┌──────┐
 │ Node │ ─┐     │ Node │
 └──────┘  └────▶└──────┘
 ```
+
+<BindingRouteOrthConnector />
+
+#### 确定出入口方向 {#preferred-port-selections}
+
+先来看无任何端口约束的情况。首先需要确定目标相对于源的象限位置，通过比较两者的几何中心点可得：
+
+```ts
+// 0 | 1
+// -----
+// 3 | 2
+
+let dx = sourceCenX - targetCenX;
+let dy = sourceCenY - targetCenY;
+let quad = 0;
+if (dx < 0) {
+    if (dy < 0) {
+        quad = 2;
+    } else {
+        quad = 1;
+    }
+}
+// 省略其他情况
+```
+
+接下来是最复杂的部分，确定边应该从哪个方向离开源节点和进入目标节点。
+
+首先计算节点间的距离：
+
+```ts
+        sourceTopDist
+             ↑
+    [Source] |
+             ↓
+        sourceBottomDist
+             ↑
+             | [Target]
+
+sourceLeftDist ← [Source] → sourceRightDist → [Target]
+```
+
+然后确定首选方向，采用选择空间更大的方向的策略：
+
+-   如果左侧距离 ≥ 右侧距离，源节点首选向西（左）
+-   如果顶部距离 ≥ 底部距离，源节点首选向北（上）
+-   目标节点的首选方向是源节点的相反方向
+
+```ts
+var dirPref = [];
+var horPref = [];
+var vertPref = [];
+
+horPref[0] =
+    sourceLeftDist >= sourceRightDist
+        ? mxConstants.DIRECTION_MASK_WEST
+        : mxConstants.DIRECTION_MASK_EAST;
+vertPref[0] =
+    sourceTopDist >= sourceBottomDist
+        ? mxConstants.DIRECTION_MASK_NORTH
+        : mxConstants.DIRECTION_MASK_SOUTH;
+
+horPref[1] = mxUtils.reversePortConstraints(horPref[0]);
+vertPref[1] = mxUtils.reversePortConstraints(vertPref[0]);
+
+var preferredHorizDist =
+    sourceLeftDist >= sourceRightDist ? sourceLeftDist : sourceRightDist;
+var preferredVertDist =
+    sourceTopDist >= sourceBottomDist ? sourceTopDist : sourceBottomDist;
+```
+
+#### 路由模式选择 {#choose-route-patterns}
+
+根据源和目标的方向索引，从预定义的 `routePatterns` 中选择路由模式来保证质量，使用位掩码编码：
+
+-   低 4 位：方向（1=西, 2=北, 4=东, 8=南）
+-   第 5-8 位：边的哪一侧
+-   第 9 位：是否使用中心点
+-   第 10 位：是否关联源节点
+-   第 11 位：是否关联目标节点
+
+```ts
+routePatterns: [
+    [ [ 513, 2308, 2081, 2562 ], [ 513, 1090, 514, 2184, 2114, 2561 ],
+        [ 513, 1090, 514, 2564, 2184, 2562 ],
+        [ 513, 2308, 2561, 1090, 514, 2568, 2308 ] ],
+    // ... 更多模式
+],
+```
+
+#### 生成实际路径点 {#generate-waypoints}
+
+遍历路由模式，根据方向生成实际的路径点。
+
+```ts
+for (var i = 0; i < routePattern.length; i++)
+{
+    var nextDirection = routePattern[i] & 0xF;
+
+    // Rotate the index of this direction by the quad
+    var directionIndex = nextDirection == mxConstants.DIRECTION_MASK_EAST ? 3
+            : nextDirection;
+
+    directionIndex += quad;
+
+    if (directionIndex > 4)
+    {
+        directionIndex -= 4;
+    }
+```
+
+最后优化路径中距离很近的相邻点，这部分我们继续使用 [simplify-js]，在 [课程 12 - 简化折线的顶点] 中已经介绍过了。
 
 ## [WIP] 导出 SVG {#export-svg}
 
@@ -490,3 +605,5 @@ mxStyleRegistry.putValue(mxConstants.EDGESTYLE_ORTHOGONAL, mxEdgeStyle.OrthConne
 [JSON Canvas Spec]: https://jsoncanvas.org/spec/1.0/
 [mxConnectionConstraint]: https://github.com/jgraph/drawio/blob/81a267568da862d3c99970758c09a8e768dea973/src/main/webapp/mxgraph/src/view/mxConnectionConstraint.js#L23
 [OrthConnector]: https://github.com/jgraph/drawio/blob/dev/src/main/webapp/mxgraph/src/view/mxEdgeStyle.js#L1067
+[simplify-js]: https://github.com/mourner/simplify-js
+[课程 12 - 简化折线的顶点]: /zh/guide/lesson-012#simplify-polyline

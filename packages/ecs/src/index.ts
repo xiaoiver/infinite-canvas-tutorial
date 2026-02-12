@@ -52,6 +52,7 @@ export {
   distanceBetweenPoints,
   MIME_TYPES,
   IMAGE_MIME_TYPES,
+  EdgeStyle,
   type Gradient,
   type Effect,
   type SerializedNode,
