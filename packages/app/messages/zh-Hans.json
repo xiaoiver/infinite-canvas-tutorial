@@ -88,7 +88,9 @@
     "deleteSuccess": "聊天记录删除成功",
     "uploadImages": "上传图片",
     "decomposeImageDescription": "将图像分解为多个图层。",
-    "vectorizeImageDescription": "将图像矢量化。"
+    "vectorizeImageDescription": "将图像矢量化。",
+    "insertImageSuccess": "图片插入成功",
+    "insertSVGImageSuccess": "SVG 插入成功，您可以在图层列表中解锁图层以进行编辑"
   },
   "zoom": {
     "zoomIn": "放大",
@@ -106,7 +108,7 @@
     "drawRectMask": "矩形遮罩",
     "drawPencilFreehandMask": "铅笔自由绘制遮罩",
     "drawLassoMask": "套索遮罩",
-    "splitLayers": "分割图层",
+    "decomposeImage": "分割图层",
     "vectorize": "矢量化",
     "drawRectMaskDescription": "拖动以在图像上绘制矩形遮罩。",
     "drawPencilFreehandMaskDescription": "在图像上自由绘制遮罩。",

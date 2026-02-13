@@ -118,7 +118,7 @@ canvas.addEventListener(Event.READY, async (e) => {
     y: 0,
     width: 200,
     height: 200,
-    fill: 'grey',
+    fill: '/brush.jpg',
     // constraints: [
     //   {
     //     x: 0.5,

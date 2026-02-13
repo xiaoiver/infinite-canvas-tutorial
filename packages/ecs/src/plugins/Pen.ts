@@ -27,6 +27,7 @@ import {
   UI,
   VectorNetwork,
 } from '../components';
+import { DrawPoint } from '../systems/DrawPoint';
 
 export const PenPlugin: Plugin = () => {
   component(UI);
@@ -53,7 +54,8 @@ export const PenPlugin: Plugin = () => {
   system((s) => s.after(Select).before(Last))(RenderBindings);
   system((s) => s.after(RenderBindings).before(Last))(DrawRect);
   system((s) => s.after(DrawRect).before(Last))(DrawBrush);
-  system((s) => s.after(DrawBrush).before(Last))(DrawPencil);
+  system((s) => s.after(DrawBrush).before(Last))(DrawPoint);
+  system((s) => s.after(DrawPoint).before(Last))(DrawPencil);
   system((s) => s.afterWritersOf(Selected).before(Last, MeshPipeline))(
     RenderTransformer,
   );

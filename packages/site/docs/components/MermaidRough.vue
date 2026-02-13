@@ -37,6 +37,9 @@ onMounted(async () => {
       } else if (node.type === 'line') {
         // @ts-expect-error change type
         node.type = 'rough-line';
+      }else if (node.type === 'polyline') {
+        // @ts-expect-error change type
+        node.type = 'rough-polyline';
       } else if (node.type === 'text') {
         node.fontFamily = 'Gaegu';
       }

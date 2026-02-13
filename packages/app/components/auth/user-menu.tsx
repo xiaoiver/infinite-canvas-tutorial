@@ -13,12 +13,14 @@ import {
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { useTranslations, useLocale } from 'next-intl'
 import Link from 'next/link'
+import { useRouter } from '@/i18n/navigation'
 
 export function UserMenu() {
   const { user, signOut } = useAuth()
   const t = useTranslations('auth')
   const tSettings = useTranslations('settings')
   const locale = useLocale()
+  const router = useRouter()
 
   if (!user) return null
 
@@ -28,6 +30,7 @@ export function UserMenu() {
 
   const handleSignOut = async () => {
     await signOut()
+    router.push(`/${locale}`)
   }
 
   return (

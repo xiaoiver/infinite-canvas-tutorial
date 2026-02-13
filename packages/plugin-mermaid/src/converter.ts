@@ -1,4 +1,4 @@
-import { EllipseSerializedNode, LineSerializedNode, PathSerializedNode, RectSerializedNode, SerializedNode, TextSerializedNode } from "@infinite-canvas-tutorial/ecs";
+import { EdgeStyle, EllipseSerializedNode, PathSerializedNode, PolylineSerializedNode, RectSerializedNode, SerializedNode, TextSerializedNode } from "@infinite-canvas-tutorial/ecs";
 import { VERTEX_TYPE, type Edge, type ParsedMermaidData, type Vertex } from "./interfaces";
 import { getText } from "./utils";
 
@@ -94,14 +94,15 @@ function convertFlowchartToSerializedNodes(vertices: Map<string, Vertex>, edges:
     //   point.y - reflectionPoints[0].y,
     // ]);
 
-    const serializedNode: LineSerializedNode = {
+    const serializedNode: PolylineSerializedNode = {
       id: edge.id,
-      type: 'line',
+      type: 'polyline',
       fromId: edge.start,
       toId: edge.end,
       stroke: 'black',
       strokeWidth: 2,
       markerEnd: 'line',
+      edgeStyle: EdgeStyle.ORTHOGONAL,
     };
 
     serializedNodes.push(serializedNode);

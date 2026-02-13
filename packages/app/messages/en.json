@@ -88,7 +88,9 @@
     "deleteSuccess": "Chat deleted successfully",
     "uploadImages": "Upload Images",
     "decomposeImageDescription": "Decompose the image into multiple layers.",
-    "vectorizeImageDescription": "Vectorize the image."
+    "vectorizeImageDescription": "Vectorize the image.",
+    "insertImageSuccess": "Image inserted successfully",
+    "insertSVGImageSuccess": "SVG inserted successfully, you can unlock the layers in the layer list to edit"
   },
   "zoom": {
     "zoomIn": "Zoom In",
@@ -106,7 +108,7 @@
     "drawRectMask": "Draw Rect Mask",
     "drawPencilFreehandMask": "Draw Pencil Freehand Mask",
     "drawLassoMask": "Draw Lasso Mask",
-    "splitLayers": "Split Layers",
+    "decomposeImage": "Decompose Image",
     "vectorize": "Vectorize",
     "drawRectMaskDescription": "Drag to draw a rect mask on the image.",
     "drawPencilFreehandMaskDescription": "Draw a pencil freehand mask on the image.",

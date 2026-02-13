@@ -29,6 +29,7 @@ import { isPattern, Pattern } from '../pattern';
 import { generateGradientKey, generatePatternKey } from '../../resources';
 import { lineArrow } from '../marker';
 import { DOMAdapter } from '../../environment';
+import { imageToCanvas } from './image';
 
 const strokeDefaultAttributes = {
   strokeOpacity: 1,
@@ -213,9 +214,9 @@ const BASELINE_MAP: Record<string, string> = {
   hanging: 'hanging',
 };
 
-export function serializeNodesToSVGElements(
+export async function serializeNodesToSVGElements(
   nodes: SerializedNode[],
-): SVGElement[] {
+): Promise<SVGElement[]> {
   const elements: SVGElement[] = [];
 
   const idSerializedNodeMap = new Map<string, SerializedNode>();
@@ -293,6 +294,9 @@ export function serializeNodesToSVGElements(
       filter,
       sizeAttenuation,
       strokeAttenuation,
+      version,
+      versionNonce,
+      updated,
       ...rest
     } = restAttributes as SerializedNodeAttributes;
 
@@ -391,7 +395,7 @@ export function serializeNodesToSVGElements(
       (markerStart && markerStart !== 'none') ||
       (markerEnd && markerEnd !== 'none');
     const hasFillImage =
-      rest.fill && isString(rest.fill) && isDataUrl(rest.fill);
+      rest.fill && isString(rest.fill) && (isUrl(rest.fill) || isDataUrl(rest.fill));
     const hasFillGradient =
       rest.fill && isString(rest.fill) && isGradient(rest.fill);
     const hasFillPattern = rest.fill && isPattern(rest.fill);
@@ -459,7 +463,7 @@ export function serializeNodesToSVGElements(
     }
     // avoid `fill="[object ImageBitmap]"`
     if (hasFillImage) {
-      exportFillImage(node, element, $g);
+      await exportFillImage(node, element, $g);
     }
     if (hasFillGradient || hasFillPattern) {
       exportFillGradientOrPattern(node, element, $g);
@@ -1162,7 +1166,7 @@ export function exportText(
   }
 }
 
-export function exportFillImage(
+export async function exportFillImage(
   node: SerializedNode,
   element: SVGElement,
   $g: SVGElement,
@@ -1174,7 +1178,14 @@ export function exportFillImage(
   $pattern.setAttribute('width', '1');
   $pattern.setAttribute('height', '1');
   const $image = createSVGElement('image');
-  $image.setAttribute('href', (node as any).fill as string);
+
+  let fill = (node as any).fill as string;
+  if (isUrl(fill)) {
+    // Convert url to dataURL
+    fill = (await imageToCanvas(fill)).toDataURL();
+  }
+
+  $image.setAttribute('href', fill);
   $image.setAttribute('x', '0');
   $image.setAttribute('y', '0');
   // use geometry bounds of shape.

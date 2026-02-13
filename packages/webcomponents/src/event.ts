@@ -24,6 +24,7 @@ export enum Event {
   RECT_DRAWN = 'ic-rect-drawn',
   PENCIL_DRAWN = 'ic-pencil-drawn',
   LASSO_DRAWN = 'ic-lasso-drawn',
+  POINT_DRAWN = 'ic-point-drawn',
 }
 
 declare global {
@@ -58,6 +59,10 @@ declare global {
     }>;
     [Event.LASSO_DRAWN]: CustomEvent<{
       node: SerializedNode;
+    }>;
+    [Event.POINT_DRAWN]: CustomEvent<{
+      x: number;
+      y: number;
     }>;
   }
 }

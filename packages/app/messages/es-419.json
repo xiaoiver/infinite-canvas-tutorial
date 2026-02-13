@@ -88,7 +88,9 @@
     "deleteSuccess": "Chat eliminado exitosamente",
     "uploadImages": "Cargar Imágenes",
     "decomposeImageDescription": "Descomponer la imagen en múltiples capas.",
-    "vectorizeImageDescription": "Vectorizar la imagen."
+    "vectorizeImageDescription": "Vectorizar la imagen.",
+    "insertImageSuccess": "Imagen insertada exitosamente",
+    "insertSVGImageSuccess": "SVG insertado exitosamente, puedes desbloquear las capas en la lista de capas para editar"
   },
   "zoom": {
     "zoomIn": "Acercar",
@@ -106,7 +108,7 @@
     "drawRectMask": "Máscara de Rectángulo",
     "drawPencilFreehandMask": "Máscara de Pencil Freehand",
     "drawLassoMask": "Máscara de Lasso",
-    "splitLayers": "Dividir Capas",
+    "decomposeImage": "Descomponer Imagen",
     "vectorize": "Vectorizar",
     "drawRectMaskDescription": "Arrastre para dibujar una máscara de rectángulo en la imagen.",
     "drawPencilFreehandMaskDescription": "Dibujar una máscara de pencil freehand en la imagen.",

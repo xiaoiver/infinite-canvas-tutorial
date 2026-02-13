@@ -164,9 +164,6 @@ importers:
       '@infinite-canvas-tutorial/lasso':
         specifier: workspace:*
         version: link:../plugin-lasso
-      '@infinite-canvas-tutorial/sam':
-        specifier: workspace:*
-        version: link:../plugin-sam
       '@infinite-canvas-tutorial/webcomponents':
         specifier: workspace:*
         version: link:../webcomponents
@@ -317,6 +314,9 @@ importers:
       next-themes:
         specifier: ^0.4.6
         version: 0.4.6(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+      onnxruntime-web:
+        specifier: ^1.23.2
+        version: 1.23.2
       postgres:
         specifier: ^3.4.5
         version: 3.4.8
