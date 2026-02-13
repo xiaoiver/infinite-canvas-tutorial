@@ -1,4 +1,4 @@
-import { RectSerializedNode, SerializedNode, svgElementsToSerializedNodes } from "@infinite-canvas-tutorial/ecs";
+import { RectSerializedNode, svgElementsToSerializedNodes } from "@infinite-canvas-tutorial/ecs";
 import { ExtendedAPI } from "@infinite-canvas-tutorial/webcomponents";
 import { nanoid } from "nanoid";
 
@@ -9,6 +9,7 @@ export async function insertImage(canvasApi: ExtendedAPI, input: { image: string
   const selectedNode = canvasApi.getNodeById(canvasApi.getAppState().layersSelected?.[0]);
 
   let nodeId: string | undefined;
+  let suffix: string | undefined;
   if (image) {
     let center = { x: 0, y: 0 };
     if (selectedNode) {
@@ -22,7 +23,7 @@ export async function insertImage(canvasApi: ExtendedAPI, input: { image: string
       });
     }
 
-    const suffix = image.split('.').pop();
+    suffix = image.split('.').pop();
     if (suffix === 'svg') {
       const svg = await fetch(image).then((res) => res.text());
       const $container = document.createElement('div');
@@ -39,7 +40,10 @@ export async function insertImage(canvasApi: ExtendedAPI, input: { image: string
         width,
         height
       };
-      nodes.forEach((node) => node.parentId = root.id);
+      nodes.forEach((node) => {
+        node.parentId = root.id;
+        node.locked = true;
+      });
 
       canvasApi.runAtNextTick(() => {
         canvasApi.updateNodes([root, ...nodes]);
@@ -53,5 +57,5 @@ export async function insertImage(canvasApi: ExtendedAPI, input: { image: string
     }
   }
 
-  return nodeId;
+  return { nodeId, suffix };
 }

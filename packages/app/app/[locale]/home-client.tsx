@@ -156,7 +156,7 @@ export default function HomeClient() {
       <div className="flex-1 h-full">
         <Canvas initialData={DEFAULT_NODES}/>
       </div>
-      <div className="w-[400px] h-full relative">
+      <div className="w-[400px] h-full flex flex-col relative">
         <Chat initialMessages={DEFAULT_MESSAGES} />
         {!loading && !user && (
           <div className="absolute inset-0 bg-background/10 backdrop-blur-xs flex items-center justify-center z-50">

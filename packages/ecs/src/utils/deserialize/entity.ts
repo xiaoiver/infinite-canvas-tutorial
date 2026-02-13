@@ -96,9 +96,9 @@ export function inferXYWidthHeight(node: SerializedNode) {
   ) {
     const { type } = node;
     let bounds: AABB;
-    if (type === 'rect') {
+    if (type === 'rect' || type === 'html' || type === 'embed') {
       bounds = Rect.getGeometryBounds(node as Partial<Rect>);
-    } else if (type === 'ellipse') {
+    } else if (type === 'ellipse' || type === 'rough-ellipse') {
       bounds = Ellipse.getGeometryBounds(node);
     } else if (type === 'polyline' || type === 'rough-polyline') {
       bounds = Polyline.getGeometryBounds(node);
@@ -285,8 +285,12 @@ export function serializedNodesToEntities(
       continue;
     }
 
-    const { parentId, type } = node;
     const attributes = node;
+    if (!attributes.type) {
+      attributes.type = 'rect';
+    }
+
+    const { parentId, type } = node;
 
     const entityCommands = commands.spawn();
     idEntityMap.set(id, entityCommands);

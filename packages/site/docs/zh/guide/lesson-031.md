@@ -448,14 +448,15 @@ mxGraph 使用 EdgeStyle 函数来实现路由规则，这些函数负责：
 
 ![Connector styles](https://drawio-app.com/wp-content/uploads/2019/02/drawio-connector-styles.png)
 
-在编辑器初始化时注册这些函数：
-
-```ts
-mxStyleRegistry.putValue(
-    mxConstants.EDGESTYLE_ORTHOGONAL,
-    mxEdgeStyle.OrthConnector,
-);
-```
+| 连接器           | 特点                             | 适用场景                          |
+| ---------------- | -------------------------------- | --------------------------------- |
+| OrthConnector    | 自动生成正交边，支持复杂约束     | 流程图、组织结构图等自动生成布局  |
+| SegmentConnector | 支持用户自定义控制点，灵活可交互 | 用户需要手动调整正交边的路径      |
+| ElbowConnector   | 单个 L 形转折点                  | 简单的 2 段路径（例如面包屑导航） |
+| SideToSide       | 水平方向优先的连接               | 源和目标节点水平分布              |
+| TopToBottom      | 垂直方向优先的连接               | 源和目标节点垂直分布              |
+| EntityRelation   | 数据库关系图专用，生成灵活的路径 | 数据库 ER 图，双向关系            |
+| Loop             | 实现自环连接                     | 状态图或自动机图表的自循环关系    |
 
 ### OrthConnector {orth-connector}
 

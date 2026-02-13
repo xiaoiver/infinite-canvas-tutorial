@@ -7,6 +7,7 @@ import { API } from '../API';
 export enum Pen {
   SELECT = 'select',
   HAND = 'hand',
+  DRAW_POINT = 'draw-point',
   DRAW_RECT = 'draw-rect',
   DRAW_ELLIPSE = 'draw-ellipse',
   DRAW_LINE = 'draw-line',

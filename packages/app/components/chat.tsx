@@ -67,6 +67,7 @@ import { GenerateImageOutput, GenerateImageUITool } from '@/components/tools/gen
 import { insertImage } from '@/tools/insert-image-impl';
 import { DecomposeImageOutput, DecomposeImageUITool } from "@/components/tools/decompose-image-output";
 import { VectorizeImageOutput, VectorizeImageUITool } from "@/components/tools/vectorize-image-output";
+import { toast } from "sonner";
 
 const Chat = ({ 
   className, 
@@ -102,7 +103,13 @@ const Chat = ({
       // e.g. insert image into canvas
       if (toolCall.toolName === 'insertImage') {
         await wrapToolCall(async () => {
-          const nodeId = await insertImage(canvasApi, toolCall.input as { image: string, width: number, height: number });
+          const { nodeId, suffix } = await insertImage(canvasApi, toolCall.input as { image: string, width: number, height: number });
+
+          if (suffix === 'svg') {
+            toast.success(tChats('insertSVGImageSuccess'));
+          } else {
+            toast.success(tChats('insertImageSuccess'));
+          }
           return {
             nodeId,
           };

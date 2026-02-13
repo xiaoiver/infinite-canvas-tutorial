@@ -1,7 +1,7 @@
 import { Entity } from '@lastolivegames/becsy';
 import { IPointData } from '@pixi/math';
 import { mat3, vec2 } from 'gl-matrix';
-import { isNil } from '@antv/util';
+import { isNil, path2Absolute } from '@antv/util';
 import {
   CaptureUpdateAction,
   CaptureUpdateActionType,
@@ -14,9 +14,11 @@ import {
   BitmapFont,
   BrushSerializedNode,
   copyTextToClipboard,
+  createSVGElement,
   deserializeBrushPoints,
   deserializePoints,
   EASING_FUNCTION,
+  entityToSerializedNodes,
   getScale,
   isEntity,
   LineSerializedNode,
@@ -26,6 +28,7 @@ import {
   serializeBrushPoints,
   SerializedNode,
   serializedNodesToEntities,
+  serializeNodesToSVGElements,
   serializePoints,
   shiftPath,
   transformPath,
@@ -35,6 +38,7 @@ import {
   Brush,
   Camera,
   Canvas,
+  CheckboardStyle,
   Children,
   ComputedBounds,
   ComputedCamera,
@@ -55,6 +59,7 @@ import {
   RasterScreenshotRequest,
   RBush,
   Selected,
+  Theme,
   ToBeDeleted,
   Transform,
   UI,
@@ -64,8 +69,11 @@ import {
 } from './components';
 import { History, mutateElement, safeAddComponent } from './history';
 import {
+  drawDotsGrid,
+  drawLinesGrid,
   maybeShiftPoints,
   sortByFractionalIndex,
+  toSVGElement,
   updateMatrix,
 } from './systems';
 import { DOMAdapter } from './environment';
@@ -1360,6 +1368,137 @@ export class API {
     }
 
     this.commands.execute();
+  }
+
+  /**
+   * Render nodes or the whole scene to SVG.
+   */
+  async renderToSVG(options: Partial<{
+    grid: boolean;
+    nodes?: SerializedNode[];
+    padding?: number;
+  }> = {}) {
+    const canvas = this.#canvas;
+    const { grid: gridEnabled, nodes, padding = 0 } = options;
+    const { cameras, api } = canvas.read(Canvas);
+    const { width, height } = canvas.read(Canvas);
+    const { mode, colors } = canvas.read(Theme);
+    const { checkboardStyle } = canvas.read(Grid);
+    const { grid: gridColor, background: backgroundColor } = colors[mode];
+    const hasNodes = nodes && nodes.length;
+
+    if (hasNodes) {
+      return toSVGElement(api, nodes, padding);
+    }
+
+    const $namespace = createSVGElement('svg');
+    $namespace.setAttribute('width', `${width}`);
+    $namespace.setAttribute('height', `${height}`);
+
+    if (checkboardStyle !== CheckboardStyle.NONE) {
+      // @see https://www.geeksforgeeks.org/how-to-set-the-svg-background-color/
+      $namespace.setAttribute('style', `background-color: ${backgroundColor}`);
+    }
+
+    {
+      // Calculate viewBox according to the camera's transform.
+      const { x, y, zoom } = cameras[0].read(ComputedCamera);
+      $namespace.setAttribute(
+        'viewBox',
+        `${x} ${y} ${width / zoom} ${height / zoom}`,
+      );
+    }
+
+    if (gridEnabled) {
+      if (checkboardStyle === CheckboardStyle.GRID) {
+        drawLinesGrid($namespace, gridColor);
+      } else if (checkboardStyle === CheckboardStyle.DOTS) {
+        drawDotsGrid($namespace, gridColor);
+      }
+    }
+
+    (await serializeNodesToSVGElements(
+      cameras[0]
+        .read(Parent)
+        .children.map((child) =>
+          entityToSerializedNodes(child, (entity) => !entity.has(UI)),
+        )
+        .flat(),
+    )).forEach((element) => {
+      $namespace.appendChild(element);
+    });
+    return $namespace;
+  }
+
+  renderToCanvas(node: SerializedNode, options: { canvas?: HTMLCanvasElement, width?: number, height?: number } = {}): HTMLCanvasElement {
+    let { canvas, width = node.width as number, height = node.height as number } = options;
+    if (!canvas) {
+      canvas = DOMAdapter.get().createCanvas(width, height) as HTMLCanvasElement;
+    }
+
+    const ctx = canvas.getContext('2d')!;
+    if (node.type === 'rect' || node.type === 'rough-rect') {
+      const { x, y, width, height, strokeWidth, strokeLinecap, strokeLinejoin, fill, stroke } = node;
+      ctx.fillStyle = fill;
+      ctx.fillRect(x as number, y as number, width as number, height as number);
+      ctx.strokeStyle = stroke;
+      ctx.lineWidth = strokeWidth;
+      ctx.lineCap = strokeLinecap;
+      ctx.lineJoin = strokeLinejoin;
+      ctx.stroke();
+    } else if (node.type === 'ellipse' || node.type === 'rough-ellipse') {
+      const { x, y, width, height, strokeWidth, strokeLinecap, strokeLinejoin, fill, stroke } = node;
+      ctx.fillStyle = fill;
+      ctx.ellipse(x as number, y as number, width as number, height as number, 0, 0, 2 * Math.PI);
+      ctx.strokeStyle = stroke;
+      ctx.lineWidth = strokeWidth;
+      ctx.lineCap = strokeLinecap;
+      ctx.lineJoin = strokeLinejoin;
+      ctx.stroke();
+    } else if (node.type === 'path' || node.type === 'rough-path') {
+      const { d, fill, stroke, strokeWidth } = node;
+      ctx.fillStyle = fill;
+      ctx.beginPath();
+      path2Absolute(d).forEach(([command, ...data]) => {
+        if (command === 'M') {
+          ctx.moveTo(data[0], data[1]);
+        } else if (command === 'L') {
+          ctx.lineTo(data[0], data[1]);
+        } else if (command === 'C') {
+          ctx.bezierCurveTo(data[0], data[1], data[2], data[3], data[4], data[5]);
+        }
+      });
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = stroke;
+      ctx.lineWidth = strokeWidth;
+      ctx.stroke();
+      ctx.closePath();
+    } else if (node.type === 'polyline' || node.type === 'rough-polyline') {
+      const { points, strokeWidth, strokeLinecap, strokeLinejoin, x, y } = node;
+      deserializePoints(points).forEach((point, index) => {
+        if (index === 0) {
+          ctx.moveTo(point[0] + (x as number), point[1] + (y as number));
+        } else {
+          ctx.lineTo(point[0] + (x as number), point[1] + (y as number));
+        }
+      });
+      ctx.lineWidth = strokeWidth;
+      ctx.lineCap = strokeLinecap;
+      ctx.lineJoin = strokeLinejoin;
+      ctx.stroke();
+    } else if (node.type === 'line' || node.type === 'rough-line') {
+      const { x1, y1, x2, y2, strokeWidth, strokeLinecap, strokeLinejoin, stroke } = node;
+      ctx.moveTo(x1 as number, y1 as number);
+      ctx.lineTo(x2 as number, y2 as number);
+      ctx.lineWidth = strokeWidth;
+      ctx.lineCap = strokeLinecap;
+      ctx.lineJoin = strokeLinejoin;
+      ctx.stroke();
+    }
+    this.getChildren(node).forEach(child => this.renderToCanvas(this.getNodeByEntity(child), { canvas }));
+
+    return canvas;
   }
 
   /**

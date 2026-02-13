@@ -1,6 +1,5 @@
-import { Canvas, System } from '@infinite-canvas-tutorial/ecs';
+import { Canvas, System, imageToCanvas } from '@infinite-canvas-tutorial/ecs';
 import { fal } from '@fal-ai/client';
-import { imageToCanvas } from './utils';
 
 export class FalAISystem extends System {
   private readonly canvases = this.query((q) => q.added.with(Canvas));

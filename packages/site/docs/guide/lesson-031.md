@@ -409,14 +409,15 @@ mxGraph uses EdgeStyle functions to implement routing rules, which are responsib
 
 ![Connector styles](https://drawio-app.com/wp-content/uploads/2019/02/drawio-connector-styles.png)
 
-Register these functions during editor initialization:
-
-```ts
-mxStyleRegistry.putValue(
-    mxConstants.EDGESTYLE_ORTHOGONAL,
-    mxEdgeStyle.OrthConnector,
-);
-```
+| Connector        | Features                                                                 | Use Cases                                                          |
+| ---------------- | ------------------------------------------------------------------------ | ------------------------------------------------------------------ |
+| OrthConnector    | Automatically generates orthogonal edges with complex constraint support | Flowcharts, organizational charts, and other auto-layout scenarios |
+| SegmentConnector | Supports user-defined control points, flexible and interactive           | When users need to manually adjust orthogonal edge paths           |
+| ElbowConnector   | Single L-shaped turning point                                            | Simple 2-segment paths (e.g., breadcrumb navigation)               |
+| SideToSide       | Horizontal direction priority connection                                 | When source and target nodes are horizontally distributed          |
+| TopToBottom      | Vertical direction priority connection                                   | When source and target nodes are vertically distributed            |
+| EntityRelation   | Database relationship diagram specific, generates flexible paths         | Database ER diagrams, bidirectional relationships                  |
+| Loop             | Implements self-loop connections                                         | Self-loop relationships in state diagrams or automaton charts      |
 
 ### OrthConnector {orth-connector}
 
