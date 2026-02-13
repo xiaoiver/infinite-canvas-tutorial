@@ -210,7 +210,7 @@ export class ChatPanel extends LitElement {
             if (node.type === 'rect') {
               return node.fill;
             } else {
-              const dataURL = toSVGDataURL(toSVGElement(this.api, [node]));
+              const dataURL = toSVGDataURL(await toSVGElement(this.api, [node]));
               const pngDataURL = await svgToPng(
                 dataURL,
                 node.width as number,
