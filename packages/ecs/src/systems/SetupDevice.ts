@@ -44,6 +44,22 @@ export class SetupDevice extends System {
     return this.#offscreenGPUResource;
   }
 
+  /**
+   * Resize the offscreen canvas for partial export (e.g. export selected nodes to PNG).
+   * Call with pixel dimensions (logical size × devicePixelRatio).
+   */
+  resizeOffscreen(pixelWidth: number, pixelHeight: number): void {
+    if (!this.#offscreenElement || !this.#offscreenGPUResource) {
+      return;
+    }
+    this.#offscreenElement.width = pixelWidth;
+    this.#offscreenElement.height = pixelHeight;
+    this.#offscreenGPUResource.swapChain.configureSwapChain(
+      pixelWidth,
+      pixelHeight,
+    );
+  }
+
   execute() {
     this.canvases.added.forEach(async (canvas) => {
       if (!canvas.has(Theme)) {
