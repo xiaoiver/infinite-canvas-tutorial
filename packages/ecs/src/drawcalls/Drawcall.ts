@@ -19,18 +19,22 @@ import {
   FilterMode,
   TextureUsage,
   TransparentWhite,
+  StencilOp,
+  CompareFunction,
 } from '@antv/g-device-api';
 import { Entity } from '@lastolivegames/becsy';
 import { RenderCache, Effect, uid } from '../utils';
 import { Location } from '../shaders/wireframe';
 import { TexturePool } from '../resources';
 import {
+  Children,
   ComputedBounds,
   FillGradient,
   FillImage,
   FillPattern,
   FillTexture,
   Filter,
+  ClipMode,
   Wireframe,
 } from '../components';
 import { API } from '../API';
@@ -62,6 +66,9 @@ const FRAG_MAP = {
 
 // TODO: Use a more efficient way to manage Z index.
 export const ZINDEX_FACTOR = 100000;
+
+/** Stencil reference value for clipChildren: write (useStencil) and test (parentAsStencil) must use the same value. 0–255 for 8-bit stencil. */
+export const STENCIL_CLIP_REF = 1;
 
 export abstract class Drawcall {
   uid = uid();
@@ -155,9 +162,8 @@ export abstract class Drawcall {
 
   validate(shape: Entity) {
     if (
-      (this.shapes[0]?.has(Wireframe) &&
-        this.shapes[0]?.read(Wireframe).enabled) !==
-      (shape.has(Wireframe) && shape.read(Wireframe).enabled)
+      this.useStencil ||
+      this.useWireframe
     ) {
       return false;
     }
@@ -185,6 +191,9 @@ export abstract class Drawcall {
       }
       if (this.useWireframe) {
         defines += '#define USE_WIREFRAME\n';
+      }
+      if (this.useStencil) {
+        defines += '#define USE_STENCIL\n';
       }
       this.createMaterial(defines, uniformBuffer);
     }
@@ -270,6 +279,45 @@ export abstract class Drawcall {
 
   count() {
     return this.shapes.length;
+  }
+
+  protected get stencilDescriptor() {
+    return {
+      stencilWrite: this.useStencil,
+      stencilFront: this.useStencil ? {
+        compare: CompareFunction.ALWAYS,
+        passOp: StencilOp.REPLACE,
+      } : this.parentClipMode ? {
+          compare: this.parentClipMode === 'clip' ? CompareFunction.EQUAL : CompareFunction.NOTEQUAL,
+          passOp: StencilOp.KEEP,
+      } : {
+        compare: CompareFunction.ALWAYS,
+        passOp: StencilOp.KEEP,
+        failOp: StencilOp.KEEP,
+        depthFailOp: StencilOp.KEEP,
+      },
+      stencilBack: this.useStencil ? {
+        compare: CompareFunction.ALWAYS,
+        passOp: StencilOp.REPLACE,
+      } : this.parentClipMode ? {
+        compare: this.parentClipMode === 'clip' ? CompareFunction.EQUAL : CompareFunction.NOTEQUAL,
+        passOp: StencilOp.KEEP,
+      } : {
+        compare: CompareFunction.ALWAYS,
+        passOp: StencilOp.KEEP,
+        failOp: StencilOp.KEEP,
+        depthFailOp: StencilOp.KEEP,
+      },
+    };
+  }
+
+  protected get useStencil() {
+    return this.shapes[0]?.has(ClipMode);
+  }
+
+  protected get parentClipMode() {
+    const parent = this.shapes[0].has(Children) && this.shapes[0].read(Children).parent;
+    return parent?.has(ClipMode) ? parent.read(ClipMode).value : null;
   }
 
   protected get useWireframe() {

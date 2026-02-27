@@ -2,7 +2,8 @@
  * @see https://shenciao.github.io/brush-rendering-tutorial/Basics/Basics/
  */
 import { field, Type } from '@lastolivegames/becsy';
-import { BrushSerializedNode, deserializeBrushPoints } from '../../utils';
+import { deserializeBrushPoints } from '../../utils';
+import type { BrushSerializedNode } from '../../types/serialized-node';
 import { AABB } from '../math';
 
 export interface BrushPoint {

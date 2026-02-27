@@ -7,12 +7,9 @@ import {
 } from '../../components';
 import {
   defaultAttributes,
-  PathSerializedNode,
-  SerializedNode,
   fixTransform,
-  TextSerializedNode,
-  AttenuationAttributes,
 } from '../serialize';
+import { PathSerializedNode, SerializedNode, TextSerializedNode, AttenuationAttributes } from '../../types/serialized-node';
 import { deserializePoints } from './points';
 
 const DOMINANT_BASELINE_MAP: Record<string, string> = {

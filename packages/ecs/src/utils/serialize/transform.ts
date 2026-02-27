@@ -10,7 +10,7 @@ import {
   Matrix,
   rotateDEG,
 } from 'transformation-matrix';
-import { SerializedNode } from './type';
+import { SerializedNode } from '../../types/serialized-node';
 import { serializePoints } from './points';
 import { deserializePoints } from '../deserialize';
 import { getGeometryBounds } from '../style';

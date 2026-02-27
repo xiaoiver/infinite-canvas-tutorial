@@ -13,7 +13,7 @@ import {
   StencilOp,
 } from '@antv/g-device-api';
 import { mat3 } from 'gl-matrix';
-import { Drawcall, ZINDEX_FACTOR } from './Drawcall';
+import { Drawcall, ZINDEX_FACTOR, STENCIL_CLIP_REF } from './Drawcall';
 import { vert, frag, Location } from '../shaders/shadow_rect';
 import { paddingMat3, parseColor } from '../utils';
 import { DropShadow, GlobalTransform, Mat3, Rect, Stroke } from '../components';
@@ -310,6 +310,9 @@ export class ShadowRect extends Drawcall {
       buffer: this.indexBuffer,
     });
     renderPass.setBindings(this.bindings);
+    if (this.useStencil || this.parentClipMode) {
+      renderPass.setStencilReference(STENCIL_CLIP_REF);
+    }
     renderPass.drawIndexed(6, this.shapes.length);
   }
 

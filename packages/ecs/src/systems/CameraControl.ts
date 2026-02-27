@@ -74,9 +74,7 @@ export class CameraControl extends System {
       const y = transform.translation.y;
       const rotation = transform.rotation;
 
-      if (pen === Pen.HAND) {
-        cursor.value = 'grab';
-      } else if (pen === Pen.TEXT) {
+      if (pen === Pen.TEXT) {
         cursor.value = 'text';
       }
 

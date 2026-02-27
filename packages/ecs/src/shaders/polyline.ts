@@ -553,8 +553,10 @@ void main() {
 
   ${wireframe_frag}
   
+  #ifndef USE_STENCIL
   if (outputColor.a < epsilon) {
     discard;
   }
+  #endif
 }
 `;

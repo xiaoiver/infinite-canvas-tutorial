@@ -14,10 +14,11 @@ import {
   TransparentBlack,
   Texture,
   StencilOp,
+  CullMode,
 } from '@antv/g-device-api';
 import { mat3 } from 'gl-matrix';
 import { Entity } from '@lastolivegames/becsy';
-import { Drawcall, ZINDEX_FACTOR } from './Drawcall';
+import { Drawcall, ZINDEX_FACTOR, STENCIL_CLIP_REF } from './Drawcall';
 import { vert, frag, Location } from '../shaders/sdf';
 import { paddingMat3, parseColor, parseGradient } from '../utils';
 import {
@@ -262,21 +263,10 @@ export class SDF extends Drawcall {
           },
         ],
         blendConstant: TransparentBlack,
+        cullMode: CullMode.NONE,
         depthWrite: true,
         depthCompare: CompareFunction.GREATER,
-        stencilWrite: false,
-        stencilFront: {
-          compare: CompareFunction.ALWAYS,
-          passOp: StencilOp.KEEP,
-          failOp: StencilOp.KEEP,
-          depthFailOp: StencilOp.KEEP,
-        },
-        stencilBack: {
-          compare: CompareFunction.ALWAYS,
-          passOp: StencilOp.KEEP,
-          failOp: StencilOp.KEEP,
-          depthFailOp: StencilOp.KEEP,
-        },
+        ...this.stencilDescriptor,
       },
     });
     this.device.setResourceName(this.pipeline, 'SDFPipeline');
@@ -587,6 +577,10 @@ export class SDF extends Drawcall {
       buffer: this.indexBuffer,
     });
     renderPass.setBindings(this.bindings);
+
+    if (this.useStencil || this.parentClipMode) {
+      renderPass.setStencilReference(STENCIL_CLIP_REF);
+    }
     renderPass.drawIndexed(6, this.shapes.length);
   }
 

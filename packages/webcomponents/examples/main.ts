@@ -110,6 +110,27 @@ canvas.addEventListener(Event.READY, async (e) => {
     // filter: 'noise(0.5)',
   });
 
+  const frame = {
+    id: 'frame-1',
+    type: 'ellipse',
+    clipMode: 'erase',
+    x: 100,
+    y: 100,
+    width: 200,
+    height: 200,
+    fill: 'none',
+  };
+  const child = {
+    id: 'rect-1',
+    type: 'rect',
+    parentId: 'frame-1',
+    x: -50,
+    y: -50,
+    width: 100,
+    height: 100,
+    fill: 'red',
+  };
+
   const node1 = {
     id: 'rect-1',
     type: 'rect',
@@ -127,7 +148,7 @@ canvas.addEventListener(Event.READY, async (e) => {
     // ]
     // fill: 'https://v3b.fal.media/files/b/tiger/v1lf1EcPP1X1pw_YOKM4o.jpg',
     // filter: 'noise(0.5)',
-  };
+  } as const;
   const edge1 = {
     id: 'line-1',
     // type: 'rough-line',
@@ -152,7 +173,7 @@ canvas.addEventListener(Event.READY, async (e) => {
     markerEnd: 'line',
     edgeStyle: EdgeStyle.ORTHOGONAL,
     // orthogonal: true,
-  };
+  } as const;
   // const node2 = {
   //   id: 'text-1',
   //   type: 'text',
@@ -173,7 +194,7 @@ canvas.addEventListener(Event.READY, async (e) => {
     width: 200,
     height: 200,
     fill: 'red',
-  };
+  } as const;
 
   const node3 = {
     id: 'rect-3',
@@ -183,9 +204,9 @@ canvas.addEventListener(Event.READY, async (e) => {
     width: 100,
     height: 100,
     fill: 'green',
-  };
+  } as const;
 
-  api.updateNodes([node1, node3, edge2]);
+  api.updateNodes([frame, child]);
 
   // const parent = {
   //   id: 'parent',
@@ -229,10 +250,10 @@ try {
   const app = new App().addPlugins(
     ...DefaultPlugins,
     UIPlugin,
-    EraserPlugin,
-    LaserPointerPlugin,
-    LassoPlugin,
-    YogaPlugin
+    // EraserPlugin,
+    // LaserPointerPlugin,
+    // LassoPlugin,
+    // YogaPlugin
   );
   app.run();
 } catch (e) {

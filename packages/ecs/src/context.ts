@@ -10,7 +10,7 @@ import {
   TRANSFORMER_ANCHOR_STROKE_COLOR,
   TRANSFORMER_MASK_FILL_COLOR,
 } from './systems/RenderTransformer';
-import {
+import type {
   BrushAttributes,
   FillAttributes,
   MarkerAttributes,
@@ -18,7 +18,7 @@ import {
   SerializedNode,
   StrokeAttributes,
   TextSerializedNode,
-} from './utils';
+} from './types/serialized-node';
 
 export enum Task {
   SHOW_LAYERS_PANEL = 'show-layers-panel',

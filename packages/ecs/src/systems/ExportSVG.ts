@@ -37,15 +37,16 @@ import {
   Filter,
   SizeAttenuation,
   StrokeAttenuation,
-  Locked
+  Locked,
+  ClipMode,
 } from '../components';
 import { DOMAdapter } from '../environment';
 import {
   createSVGElement,
-  SerializedNode,
   serializeNodesToSVGElements,
   toSVGDataURL,
 } from '../utils';
+import type { SerializedNode } from '../types/serialized-node';
 import { API } from '..';
 
 export class ExportSVG extends System {
@@ -114,6 +115,7 @@ export class ExportSVG extends System {
             SizeAttenuation,
             StrokeAttenuation,
             Locked,
+            ClipMode,
           )
           .read.and.using(Screenshot, VectorScreenshotRequest).write,
     );

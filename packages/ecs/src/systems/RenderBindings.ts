@@ -23,11 +23,9 @@ import {
 } from '../components';
 import { getSceneRoot, updateGlobalTransform } from './Transform';
 import {
-  EdgeSerializedNode,
   EdgeState,
   inferPointsWithFromIdAndToId,
   inferXYWidthHeight,
-  LineSerializedNode,
 } from '../utils';
 
 export class RenderBindings extends System {

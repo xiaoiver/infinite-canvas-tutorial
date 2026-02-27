@@ -148,6 +148,10 @@ export const en = defineConfig({
                 text: 'Lesson 033 - Layout engine',
                 link: 'lesson-033',
               },
+              {
+                text: 'Lesson 034 - Frame and clip',
+                link: 'lesson-034',
+              },
             ],
           },
         ],

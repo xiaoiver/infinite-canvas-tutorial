@@ -10,7 +10,7 @@ import {
   TextDecoration,
   Line,
 } from '../components';
-import { SerializedNode } from './serialize/type';
+import { SerializedNode } from '../types/serialized-node';
 
 export function strokeOffset(stroke?: Stroke) {
   if (!stroke) {

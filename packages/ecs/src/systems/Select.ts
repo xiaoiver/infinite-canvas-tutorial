@@ -1063,7 +1063,6 @@ export class Select extends System {
           selection.mode = SelectionMode.BRUSH;
         } else if (selection.mode === SelectionMode.MOVE) {
           cursor.value = 'grabbing';
-
           this.handleSelectedMoving(api, sx, sy, ex, ey);
         } else if (selection.mode === SelectionMode.RESIZE) {
           this.handleSelectedResizing(
@@ -1112,6 +1111,8 @@ export class Select extends System {
           //   );
           //   selection.mode = SelectionMode.READY_TO_MOVE_CONTROL_POINT;
         }
+
+        cursor.value = 'default';
 
         if (isBrowser) {
           this.clearSnapLines(selection);

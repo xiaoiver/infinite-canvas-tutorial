@@ -1,11 +1,11 @@
 import { field, Type } from '@lastolivegames/becsy';
 import { AABB } from '../math';
 import { Stroke } from '../renderable';
-import {
-  deserializePoints,
+import type {
   PolylineSerializedNode,
   RoughPolylineSerializedNode,
-} from '../../utils';
+} from '../../types/serialized-node';
+import { deserializePoints } from '../../utils';
 
 /**
  * Basic shape that creates straight lines connecting several points.

@@ -8,7 +8,7 @@ import { AppStateChange } from './AppStateChange';
 import { ElementsChange } from './ElementsChange';
 import { Snapshot } from './Snapshot';
 import { API } from '../API';
-import { SerializedNode } from '../utils';
+import { SerializedNode } from '../types/serialized-node';
 
 export const StoreIncrementEvent = 'storeIncrement';
 

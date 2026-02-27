@@ -4,11 +4,11 @@
 
 import { Entity, field } from '@lastolivegames/becsy';
 import { Polyline } from './Polyline';
-import {
-  SerializedNode,
-  serializePoints,
+import type {
   VectorNetworkSerializedNode,
-} from '../../utils';
+  SerializedNode,
+} from '../../types/serialized-node';
+import { serializePoints } from '../../utils';
 import { AABB } from '../math';
 import { Stroke } from '../renderable';
 

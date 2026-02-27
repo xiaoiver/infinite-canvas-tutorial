@@ -12,7 +12,6 @@ import { Commands, EntityCommands } from './commands';
 import { AppState, getDefaultAppState } from './context';
 import {
   BitmapFont,
-  BrushSerializedNode,
   copyTextToClipboard,
   createSVGElement,
   deserializeBrushPoints,
@@ -21,18 +20,16 @@ import {
   entityToSerializedNodes,
   getScale,
   isEntity,
-  LineSerializedNode,
   parsePath,
-  PathSerializedNode,
-  PolylineSerializedNode,
+  resolveSerializedNodes,
   serializeBrushPoints,
-  SerializedNode,
   serializedNodesToEntities,
   serializeNodesToSVGElements,
   serializePoints,
   shiftPath,
   transformPath,
 } from './utils';
+import type { BrushSerializedNode, LineSerializedNode, PathSerializedNode, PolylineSerializedNode, SerializedNode, SerializedNodeInput } from './types/serialized-node';
 import {
   AABB,
   Brush,
@@ -83,7 +80,8 @@ export interface StateManagement {
   getAppState: () => AppState;
   setAppState: (appState: AppState) => void;
   getNodes: () => SerializedNode[];
-  setNodes: (nodes: SerializedNode[]) => void;
+  /** Accepts nodes with x/y/width/height as number or string (e.g. '50%'); they are resolved to numbers internally. */
+  setNodes: (nodes: SerializedNodeInput[]) => void;
   onChange: (snapshot: { appState: AppState; nodes: SerializedNode[] }) => void;
 }
 
@@ -109,8 +107,8 @@ export class DefaultStateManagement implements StateManagement {
     return this.#nodes;
   }
 
-  setNodes(nodes: SerializedNode[]) {
-    this.#nodes = nodes;
+  setNodes(nodes: SerializedNodeInput[]) {
+    this.#nodes = resolveSerializedNodes(Array.isArray(nodes) ? nodes : []);
   }
 
   onChange(snapshot: { appState: AppState; nodes: SerializedNode[] }) { }
@@ -243,7 +241,7 @@ export class API {
     return this.stateManagement.getNodes();
   }
 
-  setNodes(nodes: SerializedNode[]) {
+  setNodes(nodes: SerializedNodeInput[]) {
     this.stateManagement.setNodes(JSON.parse(JSON.stringify(nodes)));
   }
 
@@ -290,8 +288,8 @@ export class API {
         },
         entity.rotation,
         {
-          x: entity.x as number,
-          y: entity.y as number,
+          x: entity.x ?? 0,
+          y: entity.y ?? 0,
         },
       ),
     );
@@ -1042,14 +1040,14 @@ export class API {
     }
     if (!isNil(width)) {
       if (lockAspectRatio) {
-        const aspectRatio = (node.width as number) / (node.height as number);
+        const aspectRatio = (node.width ?? 0) / (node.height ?? 1);
         diff.height = width / aspectRatio;
       }
       diff.width = width;
     }
     if (!isNil(height)) {
       if (lockAspectRatio) {
-        const aspectRatio = (node.width as number) / (node.height as number);
+        const aspectRatio = (node.width ?? 0) / (node.height ?? 1);
         diff.width = height * aspectRatio;
       }
       diff.height = height;
@@ -1230,7 +1228,7 @@ export class API {
 
   reparentNode(node: SerializedNode, parent: SerializedNode) {
     // Modify x,y to be relative to the parent
-    this.updateNode(node, { parentId: parent.id, x: (node.x as number) - (parent.x as number), y: (node.y as number) - (parent.y as number) });
+    this.updateNode(node, { parentId: parent.id, x: (node.x ?? 0) - (parent.x ?? 0), y: (node.y ?? 0) - (parent.y ?? 0) });
   }
 
   /**
@@ -1431,7 +1429,7 @@ export class API {
   }
 
   renderToCanvas(node: SerializedNode, options: { canvas?: HTMLCanvasElement, width?: number, height?: number } = {}): HTMLCanvasElement {
-    let { canvas, width = node.width as number, height = node.height as number } = options;
+    let { canvas, width = node.width ?? 0, height = node.height ?? 0 } = options;
     if (!canvas) {
       canvas = DOMAdapter.get().createCanvas(width, height) as HTMLCanvasElement;
     }
@@ -1440,7 +1438,7 @@ export class API {
     if (node.type === 'rect' || node.type === 'rough-rect') {
       const { x, y, width, height, strokeWidth, strokeLinecap, strokeLinejoin, fill, stroke } = node;
       ctx.fillStyle = fill;
-      ctx.fillRect(x as number, y as number, width as number, height as number);
+      ctx.fillRect(x ?? 0, y ?? 0, width ?? 0, height ?? 0);
       ctx.strokeStyle = stroke;
       ctx.lineWidth = strokeWidth;
       ctx.lineCap = strokeLinecap;
@@ -1449,7 +1447,7 @@ export class API {
     } else if (node.type === 'ellipse' || node.type === 'rough-ellipse') {
       const { x, y, width, height, strokeWidth, strokeLinecap, strokeLinejoin, fill, stroke } = node;
       ctx.fillStyle = fill;
-      ctx.ellipse(x as number, y as number, width as number, height as number, 0, 0, 2 * Math.PI);
+      ctx.ellipse(x ?? 0, y ?? 0, width ?? 0, height ?? 0, 0, 0, 2 * Math.PI);
       ctx.strokeStyle = stroke;
       ctx.lineWidth = strokeWidth;
       ctx.lineCap = strokeLinecap;
@@ -1478,9 +1476,9 @@ export class API {
       const { points, strokeWidth, strokeLinecap, strokeLinejoin, x, y } = node;
       deserializePoints(points).forEach((point, index) => {
         if (index === 0) {
-          ctx.moveTo(point[0] + (x as number), point[1] + (y as number));
+          ctx.moveTo(point[0] + (x ?? 0), point[1] + (y ?? 0));
         } else {
-          ctx.lineTo(point[0] + (x as number), point[1] + (y as number));
+          ctx.lineTo(point[0] + (x ?? 0), point[1] + (y ?? 0));
         }
       });
       ctx.lineWidth = strokeWidth;
@@ -1489,8 +1487,8 @@ export class API {
       ctx.stroke();
     } else if (node.type === 'line' || node.type === 'rough-line') {
       const { x1, y1, x2, y2, strokeWidth, strokeLinecap, strokeLinejoin, stroke } = node;
-      ctx.moveTo(x1 as number, y1 as number);
-      ctx.lineTo(x2 as number, y2 as number);
+      ctx.moveTo(x1 ?? 0, y1 ?? 0);
+      ctx.lineTo(x2 ?? 0, y2 ?? 0);
       ctx.lineWidth = strokeWidth;
       ctx.lineCap = strokeLinecap;
       ctx.lineJoin = strokeLinejoin;

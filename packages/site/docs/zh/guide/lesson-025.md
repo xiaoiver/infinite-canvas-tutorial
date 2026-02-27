@@ -482,7 +482,7 @@ export class DrawEraser extends System {
 
 <Eraser />
 
-### [WIP] 非原子化 {#non-atomic}
+### 非原子化 {#non-atomic}
 
 以整个图形为单位擦除在大多数场景下都足够使用了，但在手绘类场景中非原子化的擦除更实用，例如将一条直线从中间断开。Excalidraw 暂时没有支持这一特性，详见：[non-atomic erasing for linear & freedraw shapes]，FigJam 也是这样。如果画布是基于 Canvas 或者 SVG 渲染的，确实无法实现这种像素级擦除效果。
 
@@ -505,6 +505,8 @@ glStencilFunc(GL_EQUAL, 1, 0xFF);
 glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
 // draw all scene objects (they will only appear where eraser just wrote 1)
 ```
+
+这部分我们放在 [课程 34 - Frame 与裁切] 中介绍。
 
 ## 扩展阅读 {#extended-reading}
 
@@ -540,3 +542,4 @@ glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
 [@excalidraw/laser-pointer]: https://www.npmjs.com/package/@excalidraw/laser-pointer
 [课程 29 - HTML 容器]: /zh/guide/lesson-029#create-html-container
 [课程 20 - Awareness 和 Presence]: /zh/guide/lesson-020#awareness-presence
+[课程 34 - Frame 与裁切]: /zh/guide/lesson-034

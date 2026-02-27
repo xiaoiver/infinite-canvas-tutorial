@@ -38,7 +38,7 @@ import {
   PathSerializedNode,
   PolylineSerializedNode,
   StrokeAttributes,
-} from '../utils/serialize';
+} from '../types/serialized-node';
 import { distanceBetweenPoints } from '../utils/matrix';
 import { DRAW_RECT_Z_INDEX } from '../context';
 import { serializePoints } from '../utils/serialize';

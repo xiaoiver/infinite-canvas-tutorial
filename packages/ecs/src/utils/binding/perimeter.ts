@@ -1,5 +1,5 @@
 import { IPointData } from '@pixi/math';
-import { SerializedNode } from '../serialize';
+import { SerializedNode } from '../../types/serialized-node';
 
 export function getPerimeterPoint(vertex: SerializedNode & { width: number; height: number; x: number; y: number }, point: IPointData, orthogonal: boolean): IPointData {
   const perimeter = vertex.type === 'ellipse' ? ellipsePerimeter : rectanglePerimeter;

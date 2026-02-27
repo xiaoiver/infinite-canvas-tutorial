@@ -487,7 +487,7 @@ export class DrawEraser extends System {
 
 <Eraser />
 
-### [WIP] Non-atomic {#non-atomic}
+### Non-atomic {#non-atomic}
 
 Erasing entire shapes is sufficient for most scenarios, but non-atomic erasing proves more practical in freehand drawing contexts—such as breaking a straight line midway. Excalidraw currently lacks this feature; see: [non-atomic erasing for linear & freedraw shapes]. FigJam shares this limitation. If the canvas is rendered using Canvas or SVG, achieving this pixel-level erasure effect is indeed impossible.
 
@@ -510,6 +510,8 @@ glStencilFunc(GL_EQUAL, 1, 0xFF);
 glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
 // draw all scene objects (they will only appear where eraser just wrote 1)
 ```
+
+We'll introduce this later in [Lesson 34 - Frame and clip].
 
 ## Extended reading {#extended-reading}
 
@@ -545,3 +547,4 @@ glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
 [@excalidraw/laser-pointer]: https://www.npmjs.com/package/@excalidraw/laser-pointer
 [Lesson 29 - HTML container]: /guide/lesson-029#create-html-container
 [Lesson 20 - Awareness and Presence]: /guide/lesson-020#awareness-presence
+[Lesson 34 - Frame and clip]: /guide/lesson-034

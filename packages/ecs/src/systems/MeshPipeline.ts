@@ -62,8 +62,10 @@ import {
   Transform,
   Mat3,
   Locked,
+  ClipMode,
 } from '../components';
-import { Effect, paddingMat3, parseEffect, SerializedNode } from '../utils';
+import { Effect, paddingMat3, parseEffect } from '../utils';
+import type { SerializedNode } from '../types/serialized-node';
 import { GridRenderer } from '../render-graph/GridRenderer';
 import { BatchManager } from './BatchManager';
 import { getSceneRoot } from './Transform';
@@ -193,6 +195,9 @@ export class MeshPipeline extends System {
   private filters = this.query(
     (q) => q.addedChangedOrRemoved.with(Filter).trackWrites,
   );
+  private clipModes = this.query(
+    (q) => q.addedChangedOrRemoved.with(ClipMode).trackWrites,
+  );
 
   renderers: Map<Entity, GPURenderer> = new Map();
 
@@ -249,6 +254,7 @@ export class MeshPipeline extends System {
             ZIndex,
             Marker,
             Locked,
+            ClipMode,
           )
           .read.and.using(
             RasterScreenshotRequest,
@@ -624,7 +630,8 @@ export class MeshPipeline extends System {
             !!this.sizeAttenuations.addedChangedOrRemoved.length ||
             !!this.strokeAttenuations.addedChangedOrRemoved.length ||
             !!this.markers.addedChangedOrRemoved.length ||
-            !!this.filters.addedChangedOrRemoved.length)
+            !!this.filters.addedChangedOrRemoved.length ||
+            !!this.clipModes.addedChangedOrRemoved.length)
         ) {
           toRender = true;
         }

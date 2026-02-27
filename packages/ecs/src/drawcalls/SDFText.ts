@@ -19,7 +19,7 @@ import {
 } from '@antv/g-device-api';
 import { Entity } from '@lastolivegames/becsy';
 import { mat3 } from 'gl-matrix';
-import { Drawcall, ZINDEX_FACTOR } from './Drawcall';
+import { Drawcall, ZINDEX_FACTOR, STENCIL_CLIP_REF } from './Drawcall';
 import { vert, frag, physical_frag, Location } from '../shaders/sdf_text';
 import {
   BASE_FONT_WIDTH,
@@ -394,6 +394,9 @@ export class SDFText extends Drawcall {
       buffer: this.indexBuffer,
     });
     renderPass.setBindings(this.bindings);
+    if (this.useStencil || this.parentClipMode) {
+      renderPass.setStencilReference(STENCIL_CLIP_REF);
+    }
     renderPass.drawIndexed(this.indexBufferData.length);
   }
 

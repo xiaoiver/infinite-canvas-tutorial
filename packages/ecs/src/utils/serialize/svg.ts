@@ -16,7 +16,7 @@ import {
   SerializedNodeAttributes,
   StrokeAttributes,
   TextSerializedNode,
-} from './type';
+} from '../../types/serialized-node';
 import { serializePoints } from './points';
 import {
   computeLinearGradient,
@@ -349,13 +349,13 @@ export async function serializeNodesToSVGElements(
       let x = 0;
       let y = 0;
       if (textAlign === 'center') {
-        x = width as number / 2;
+        x = (width ?? 0) / 2;
       } else if (textAlign === 'right' || textAlign === 'end') {
-        x = width as number;
+        x = width ?? 0;
       }
 
       if (textBaseline === 'middle') {
-        y = height as number / 2;
+        y = (height ?? 0) / 2;
       } else if (textBaseline === 'alphabetic' || textBaseline === 'hanging') {
         y = fontBoundingBoxAscent;
       }
@@ -497,8 +497,8 @@ export async function serializeNodesToSVGElements(
       },
       rotation,
       {
-        x: x as number,
-        y: y as number,
+        x: x ?? 0,
+        y: y ?? 0,
       },
     );
     const a = matrix.m00;
@@ -595,11 +595,11 @@ function exportInnerOrOuterStrokeAlignment(
       const offset = innerStrokeAlignment ? -halfStrokeWidth : halfStrokeWidth;
       $stroke.setAttribute(
         'rx',
-        `${toFixedAndRemoveTrailingZeros(width as number / 2 + offset)}`,
+        `${toFixedAndRemoveTrailingZeros((width ?? 0) / 2 + offset)}`,
       );
       $stroke.setAttribute(
         'ry',
-        `${toFixedAndRemoveTrailingZeros(height as number / 2 + offset)}`,
+        `${toFixedAndRemoveTrailingZeros((height ?? 0) / 2 + offset)}`,
       );
     } else if (type === 'rect') {
       const { width, height, strokeWidth } = attributes;
@@ -618,13 +618,13 @@ function exportInnerOrOuterStrokeAlignment(
       $stroke.setAttribute(
         'width',
         `${toFixedAndRemoveTrailingZeros(
-          width as number + (innerStrokeAlignment ? -strokeWidth : strokeWidth),
+          (width ?? 0) + (innerStrokeAlignment ? -strokeWidth : strokeWidth),
         )}`,
       );
       $stroke.setAttribute(
         'height',
         `${toFixedAndRemoveTrailingZeros(
-          height as number + (innerStrokeAlignment ? -strokeWidth : strokeWidth),
+          (height ?? 0) + (innerStrokeAlignment ? -strokeWidth : strokeWidth),
         )}`,
       );
     }
@@ -737,11 +737,11 @@ export function exportDropShadow(
   const $feDropShadow = createSVGElement('feDropShadow');
   $feDropShadow.setAttribute(
     'dx',
-    `${((dropShadowOffsetX || 0) / 2) * Math.sign(width as number)}`,
+    `${((dropShadowOffsetX || 0) / 2) * Math.sign(width ?? 0)}`,
   );
   $feDropShadow.setAttribute(
     'dy',
-    `${((dropShadowOffsetY || 0) / 2) * Math.sign(height as number)}`,
+    `${((dropShadowOffsetY || 0) / 2) * Math.sign(height ?? 0)}`,
   );
   $feDropShadow.setAttribute(
     'stdDeviation',
@@ -766,9 +766,9 @@ function createOrUpdateGradient(
 
   const gradientId = generateGradientKey({
     ...gradient,
-    min: [x as number, y as number],
-    width: width as number,
-    height: height as number,
+    min: [x ?? 0, y ?? 0],
+    width: width ?? 0,
+    height: height ?? 0,
   });
   let $existed = $def.querySelector(`#${gradientId}`);
 
@@ -799,9 +799,9 @@ function createOrUpdateGradient(
   if (gradient.type === 'linear-gradient') {
     const { angle } = gradient;
     const { x1, y1, x2, y2 } = computeLinearGradient(
-      [x as number, y as number],
-      width as number,
-      height as number,
+      [x ?? 0, y ?? 0],
+      width ?? 0,
+      height ?? 0,
       angle,
     );
 
@@ -815,7 +815,7 @@ function createOrUpdateGradient(
       x: xx,
       y: yy,
       r,
-    } = computeRadialGradient([x as number, y as number], width as number, height as number, cx, cy, size);
+    } = computeRadialGradient([x ?? 0, y ?? 0], width ?? 0, height ?? 0, cx, cy, size);
 
     $existed.setAttribute('cx', `${xx}`);
     $existed.setAttribute('cy', `${yy}`);
@@ -922,15 +922,15 @@ function create$Pattern(
 
   // There is no equivalent to CSS no-repeat for SVG patterns
   // @see https://stackoverflow.com/a/33481956
-  let patternWidth = width as number;
-  let patternHeight = height as number;
+  let patternWidth = width ?? 0;
+  let patternHeight = height ?? 0;
   if (repetition === 'repeat-x') {
-    patternHeight = nodeHeight as number;
+    patternHeight = nodeHeight ?? 0;
   } else if (repetition === 'repeat-y') {
-    patternWidth = nodeWidth as number;
+    patternWidth = nodeWidth ?? 0;
   } else if (repetition === 'no-repeat') {
-    patternWidth = nodeWidth as number;
-    patternHeight = nodeHeight as number;
+    patternWidth = nodeWidth ?? 0;
+    patternHeight = nodeHeight ?? 0;
   }
   $pattern.setAttribute('width', `${patternWidth}`);
   $pattern.setAttribute('height', `${patternHeight}`);
