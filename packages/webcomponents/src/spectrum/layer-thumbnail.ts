@@ -39,7 +39,7 @@ export class LayerThumbnail extends LitElement {
       overflow: hidden;
     }
 
-    sp-icon-text, sp-icon-code {
+    sp-icon-text, sp-icon-code, sp-icon-crop {
       display: block;
     }
   `;
@@ -208,6 +208,8 @@ export class LayerThumbnail extends LitElement {
       thumbnail = html`<sp-icon-code></sp-icon-code>`;
     } else if (this.node.type === 'brush') {
       thumbnail = html`<img src="${this.node.brushStamp}" />`;
+    } else if (this.node.clipMode) {
+      thumbnail = html`<sp-icon-crop></sp-icon-crop>`;
     } else {
       thumbnail = $el && html`<svg
         viewBox="${-paddedWidth / 2} ${-paddedHeight /

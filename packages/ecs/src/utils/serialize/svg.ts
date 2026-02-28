@@ -297,6 +297,7 @@ export async function serializeNodesToSVGElements(
       version,
       versionNonce,
       updated,
+      clipMode,
       ...rest
     } = restAttributes as SerializedNodeAttributes;
 
@@ -399,6 +400,8 @@ export async function serializeNodesToSVGElements(
     const hasFillGradient =
       rest.fill && isString(rest.fill) && isGradient(rest.fill);
     const hasFillPattern = rest.fill && isPattern(rest.fill);
+    const hasClipMode = !!clipMode;
+    // const hasParentClipOrMask = !!(parentId && idSerializedNodeMap.get(parentId)?.clipMode);
     const isRough = false;
     const hasChildren = edges.some(([parentId]) => parentId === id);
 
@@ -443,7 +446,8 @@ export async function serializeNodesToSVGElements(
       hasFillImage ||
       hasFillGradient ||
       hasFillPattern ||
-      hasMarker
+      hasMarker ||
+      hasClipMode
     ) {
       $g = createSVGElement('g');
       if (element) {
@@ -470,6 +474,9 @@ export async function serializeNodesToSVGElements(
     }
     if (hasMarker) {
       exportMarker(node, element, $g);
+    }
+    if (hasClipMode) {
+      await exportClipOrMask(node, element, $g);
     }
 
     $g = $g || element;
@@ -526,8 +533,6 @@ export async function serializeNodesToSVGElements(
     if (parentId) {
       const parent = idSVGElementMap.get(parentId);
       if (parent) {
-        // parent.childNodes
-
         parent.appendChild($g);
       }
     } else {
@@ -1083,6 +1088,55 @@ export function exportMarker(
     $el?.setAttribute('marker-end', `url(#${markerId})`);
   }
 }
+
+async function createOrUpdateClipPath(
+  node: SerializedNode,
+  $defs: SVGDefsElement,
+) {
+  const clipPathId = `clip-path-${node.id}`;
+  const $existed = $defs.querySelector(`#${clipPathId}`);
+  if (!$existed) {
+    const $clipPath = createSVGElement('clipPath') as SVGClipPathElement;
+    $clipPath.setAttribute('id', clipPathId);
+
+    const { clipMode, ... rest } = node;
+
+    const [$parentNode] = await serializeNodesToSVGElements([rest]);
+
+    /**
+     * clipPath is a sibling of the node itself, so we need to remove the transform attribute.
+     * 
+     * <defs>
+     *   <clipPath id="clip-path-frame-1">
+     *     <ellipse id="node-frame-1" fill="green" cx="100" cy="100" rx="100" ry="100"/>
+     *   </clipPath>
+     * </defs>
+     * <ellipse id="node-frame-1" fill="green" cx="100" cy="100" rx="100" ry="100"/>
+     */
+    $parentNode.removeAttribute('id');
+    $parentNode.removeAttribute('transform');
+    $clipPath.appendChild($parentNode);
+    $defs.appendChild($clipPath);
+  }
+  return clipPathId;
+}
+
+export async function exportClipOrMask(
+  node: SerializedNode,
+  $el: SVGElement,
+  $g: SVGElement,
+) {
+  const { clipMode } = node;
+  const $defs = createSVGElement('defs') as SVGDefsElement;
+  $g.prepend($defs);
+
+  if (clipMode === 'clip') {
+    const clipPathId = await createOrUpdateClipPath(node, $defs);
+    $g.setAttribute('clip-path', `url(#${clipPathId})`);
+  } else if (clipMode === 'erase') {
+  }
+}
+
 
 /**
  * use <text> and <tspan> to render text.

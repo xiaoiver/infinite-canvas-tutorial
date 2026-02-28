@@ -17,7 +17,6 @@ import {
   deserializeBrushPoints,
   deserializePoints,
   EASING_FUNCTION,
-  entityToSerializedNodes,
   getScale,
   isEntity,
   parsePath,
@@ -1133,7 +1132,17 @@ export class API {
     nodes.forEach((node) => {
       const entity = this.#idEntityMap.get(node.id)?.id();
       if (entity && entity.has(ComputedBounds)) {
-        bounds.addBounds(entity.read(ComputedBounds).renderWorldBounds);
+        // Account for parent's clip
+        const parentEntity = this.getParent(node);
+        const parent = this.getNodeByEntity(parentEntity);
+        if (parent && parent.clipMode) {
+          if (parent.clipMode === 'clip') {
+            // Parent's clip
+            bounds.addBounds(parentEntity.read(ComputedBounds).renderWorldBounds);
+          }
+        } else {
+          bounds.addBounds(entity.read(ComputedBounds).renderWorldBounds);
+        }
       }
     });
     return bounds;
@@ -1224,6 +1233,17 @@ export class API {
     }
 
     return entity.read(Parent).children;
+  }
+
+  getChildrenRecursively(node: SerializedNode): SerializedNode[] {
+    const children = this.getChildren(node);
+    return children.flatMap((child) => {
+      const childNode = this.getNodeByEntity(child);
+      if (!childNode) {
+        return [];
+      }
+      return [childNode, ...this.getChildrenRecursively(childNode)];
+    });
   }
 
   reparentNode(node: SerializedNode, parent: SerializedNode) {
@@ -1371,13 +1391,12 @@ export class API {
   /**
    * Render nodes or the whole scene to SVG.
    */
-  async renderToSVG(options: Partial<{
+  async renderToSVG(nodes: SerializedNode[], options: Partial<{
     grid: boolean;
-    nodes?: SerializedNode[];
     padding?: number;
   }> = {}) {
     const canvas = this.#canvas;
-    const { grid: gridEnabled, nodes, padding = 0 } = options;
+    const { grid: gridEnabled, padding = 0 } = options;
     const { cameras, api } = canvas.read(Canvas);
     const { width, height } = canvas.read(Canvas);
     const { mode, colors } = canvas.read(Theme);
@@ -1416,12 +1435,7 @@ export class API {
     }
 
     (await serializeNodesToSVGElements(
-      cameras[0]
-        .read(Parent)
-        .children.map((child) =>
-          entityToSerializedNodes(child, (entity) => !entity.has(UI)),
-        )
-        .flat(),
+      api.getNodes()
     )).forEach((element) => {
       $namespace.appendChild(element);
     });

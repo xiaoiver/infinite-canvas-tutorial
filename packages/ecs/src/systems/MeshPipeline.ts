@@ -454,6 +454,7 @@ export class MeshPipeline extends System {
         gridRenderer.render(device, renderPass, uniformBuffer, legacyObject);
         if (shouldRenderPartially) {
           const { api } = canvas.read(Canvas);
+          // Add clip parent if exists.
           nodes.forEach((node: SerializedNode) => {
             const entity = api.getEntity(node);
             batchManager.add(entity);

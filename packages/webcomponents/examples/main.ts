@@ -116,8 +116,8 @@ canvas.addEventListener(Event.READY, async (e) => {
     clipMode: 'erase',
     x: 100,
     y: 100,
-    width: 200,
-    height: 200,
+    width: 100,
+    height: 100,
     fill: 'none',
   };
   const child = {
@@ -126,8 +126,8 @@ canvas.addEventListener(Event.READY, async (e) => {
     parentId: 'frame-1',
     x: -50,
     y: -50,
-    width: 100,
-    height: 100,
+    width: 200,
+    height: 200,
     fill: 'red',
   };
 
@@ -250,10 +250,10 @@ try {
   const app = new App().addPlugins(
     ...DefaultPlugins,
     UIPlugin,
-    // EraserPlugin,
-    // LaserPointerPlugin,
-    // LassoPlugin,
-    // YogaPlugin
+    EraserPlugin,
+    LaserPointerPlugin,
+    LassoPlugin,
+    YogaPlugin
   );
   app.run();
 } catch (e) {

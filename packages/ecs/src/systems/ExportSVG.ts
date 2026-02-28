@@ -128,7 +128,7 @@ export class ExportSVG extends System {
       );
 
       const { api } = canvas.read(Canvas);
-      const $svg = await api.renderToSVG({ grid, nodes });
+      const $svg = await api.renderToSVG(nodes, { grid });
       const serializer = DOMAdapter.get().getXMLSerializer();
 
       this.setScreenshotTrigger(
@@ -146,6 +146,10 @@ export async function toSVGElement(
   nodes: SerializedNode[],
   padding: number = 0,
 ) {
+  // Remove duplicate nodes with Set
+  const uniqueNodes = new Set(nodes);
+  nodes = Array.from(uniqueNodes);
+
   const $namespace = createSVGElement('svg');
 
   // Get bounds of nodes.

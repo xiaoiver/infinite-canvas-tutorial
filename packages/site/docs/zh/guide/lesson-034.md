@@ -116,6 +116,42 @@ renderPass.setStencilReference(STENCIL_CLIP_REF);
 
 每个 Frame 对应一个 `<g>`，并设置 `clip-path` 或 `<clipPath>` 引用该 Frame 的矩形；子元素放在该 `<g>` 内。
 
+```html
+<g
+    xmlns="http://www.w3.org/2000/svg"
+    clip-path="url(#clip-path-frame-1)"
+    transform="matrix(1,0,0,1,100,100)"
+>
+    <defs>
+        <clipPath id="clip-path-frame-1">
+            <ellipse
+                id="node-frame-1"
+                fill="green"
+                cx="100"
+                cy="100"
+                rx="100"
+                ry="100"
+            />
+        </clipPath>
+    </defs>
+    <ellipse
+        id="node-frame-1"
+        fill="green"
+        cx="100"
+        cy="100"
+        rx="100"
+        ry="100"
+    />
+    <rect
+        id="node-rect-1"
+        fill="red"
+        width="100"
+        height="100"
+        transform="matrix(1,0,0,1,-50,-50)"
+    />
+</g>
+```
+
 ## 扩展阅读 {#extended-reading}
 
 -   [Shape clipping in tldraw]
