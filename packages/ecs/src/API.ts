@@ -1135,11 +1135,15 @@ export class API {
         // Account for parent's clip
         const parentEntity = this.getParent(node);
         const parent = this.getNodeByEntity(parentEntity);
-        if (parent && parent.clipMode) {
-          if (parent.clipMode === 'clip') {
-            // Parent's clip
-            bounds.addBounds(parentEntity.read(ComputedBounds).renderWorldBounds);
-          }
+        if (parent && parent.clipMode && parent.clipMode === 'clip') {
+          // Union node's bounds with parent's clip bounds
+          const { minX, minY, maxX, maxY } = entity.read(ComputedBounds).renderWorldBounds;
+          const { minX: parentMinX, minY: parentMinY, maxX: parentMaxX, maxY: parentMaxY } = parentEntity.read(ComputedBounds).renderWorldBounds;
+          const isectMinX = Math.max(minX, parentMinX);
+          const isectMinY = Math.max(minY, parentMinY);
+          const isectMaxX = Math.min(maxX, parentMaxX);
+          const isectMaxY = Math.min(maxY, parentMaxY);
+          bounds.addFrame(isectMinX, isectMinY, isectMaxX, isectMaxY);
         } else {
           bounds.addBounds(entity.read(ComputedBounds).renderWorldBounds);
         }

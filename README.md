@@ -412,6 +412,10 @@ If you want to use it in your own project, you can refer to:
 
 -   Implement Flexbox layout with Yoga
 
+## Lesson 34 - Frame and Clipping [🔗](https://infinitecanvas.cc/guide/lesson-034)
+
+-   Implement clip and mask effect with stencil buffer
+
 [Online App]: app.infinitecanvas.cc
 [infinitecanvas]: https://infinitecanvas.tools/
 [Self-Deployment Guide]: /packages/app/README.md

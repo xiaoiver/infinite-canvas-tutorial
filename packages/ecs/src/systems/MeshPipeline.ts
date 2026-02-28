@@ -455,7 +455,16 @@ export class MeshPipeline extends System {
         if (shouldRenderPartially) {
           const { api } = canvas.read(Canvas);
           // Add clip parent if exists.
+          const clipParents = new Set<Entity>();
           nodes.forEach((node: SerializedNode) => {
+            const parentNode = node.parentId && api.getNodeById(node.parentId);
+            const parentEntity = parentNode && api.getEntity(parentNode);
+            const needRenderClipParent = parentNode && !nodes.includes(parentNode) && parentNode.clipMode && !clipParents.has(parentEntity);
+            if (needRenderClipParent) {
+              clipParents.add(parentEntity);
+              batchManager.add(parentEntity);
+            }
+
             const entity = api.getEntity(node);
             batchManager.add(entity);
           });

@@ -413,6 +413,10 @@ pnpm run dev
 
 -   基于 Yoga 实现 Flexbox 布局
 
+## 课程 34 - Frame 与裁切 [🔗](https://infinitecanvas.cc/zh/guide/lesson-034)
+
+-   基于 Stencil buffer 实现 clip 与 mask 两种效果
+
 [在线体验]: app.infinitecanvas.cc
 [infinitecanvas]: https://infinitecanvas.tools/
 [自部署指南]: /packages/app/README.md

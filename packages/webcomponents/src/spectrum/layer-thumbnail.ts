@@ -55,6 +55,9 @@ export class LayerThumbnail extends LitElement {
 
   #roughSvg: RoughSVG;
 
+  /** 缓存图片 fill 的 defs HTML，因为 exportFillImage 是异步的 */
+  #imageDefsCache = new Map<string, string>();
+
   connectedCallback(): void {
     super.connectedCallback();
 
@@ -188,9 +191,20 @@ export class LayerThumbnail extends LitElement {
       );
       defsHTML = $g.children[0].innerHTML;
     } else if (isImage) {
-      const $g = createSVGElement('g') as SVGElement;
-      exportFillImage(this.node, $el, $g);
-      defsHTML = $g.children[0].innerHTML;
+      const cacheKey = `${this.node.id}:${fill}`;
+      const cached = this.#imageDefsCache.get(cacheKey);
+      if (cached !== undefined) {
+        defsHTML = cached;
+        $el.setAttribute('fill', `url(#image-fill_${this.node.id})`);
+      } else {
+        const $g = createSVGElement('g') as SVGElement;
+        exportFillImage(this.node, $el, $g).then(() => {
+          const html = $g.children[0]?.innerHTML ?? '';
+          this.#imageDefsCache.set(cacheKey, html);
+          this.requestUpdate();
+        });
+        defsHTML = '';
+      }
     } else if (markerStart || markerEnd) {
       const $g = createSVGElement('g') as SVGElement;
       exportMarker(this.node, $el, $g);

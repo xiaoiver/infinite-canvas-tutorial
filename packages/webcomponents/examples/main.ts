@@ -112,8 +112,8 @@ canvas.addEventListener(Event.READY, async (e) => {
 
   const frame = {
     id: 'frame-1',
-    type: 'ellipse',
-    clipMode: 'erase',
+    type: 'rect',
+    clipMode: 'clip',
     x: 100,
     y: 100,
     width: 100,
@@ -124,12 +124,22 @@ canvas.addEventListener(Event.READY, async (e) => {
     id: 'rect-1',
     type: 'rect',
     parentId: 'frame-1',
-    x: -50,
-    y: -50,
+    x: 0,
+    y: 0,
+    width: 200,
+    height: 200,
+    fill: '/brush.jpg',
+  };
+  const child2 = {
+    id: 'rect-2',
+    type: 'rect',
+    parentId: 'frame-1',
+    x: 0,
+    y: 0,
     width: 200,
     height: 200,
     fill: 'red',
-  };
+  }
 
   const node1 = {
     id: 'rect-1',
@@ -206,7 +216,7 @@ canvas.addEventListener(Event.READY, async (e) => {
     fill: 'green',
   } as const;
 
-  api.updateNodes([frame, child]);
+  api.updateNodes([frame, child, child2]);
 
   // const parent = {
   //   id: 'parent',

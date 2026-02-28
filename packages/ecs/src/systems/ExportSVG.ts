@@ -146,8 +146,17 @@ export async function toSVGElement(
   nodes: SerializedNode[],
   padding: number = 0,
 ) {
+  const clipParentNodes = new Set<SerializedNode>();
+  nodes.forEach((node) => {
+    const parentEntity = api.getParent(node);
+    const parent = api.getNodeByEntity(parentEntity);
+    if (parent && parent.clipMode && !clipParentNodes.has(parent)) {
+      clipParentNodes.add(parent);
+    }
+  });
+
   // Remove duplicate nodes with Set
-  const uniqueNodes = new Set(nodes);
+  const uniqueNodes = new Set([...nodes]);
   nodes = Array.from(uniqueNodes);
 
   const $namespace = createSVGElement('svg');
@@ -165,6 +174,8 @@ export async function toSVGElement(
       height + padding * 2
     }`,
   );
+
+  nodes = [...clipParentNodes, ...nodes];
 
   (await serializeNodesToSVGElements(nodes)).forEach((element) => {
     $namespace.appendChild(element);

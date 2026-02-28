@@ -1092,20 +1092,20 @@ export function exportMarker(
 async function createOrUpdateClipPath(
   node: SerializedNode,
   $defs: SVGDefsElement,
+  isMask = false,
 ) {
-  const clipPathId = `clip-path-${node.id}`;
+  const clipPathId = isMask ? `mask-${node.id}` : `clip-path-${node.id}`;
   const $existed = $defs.querySelector(`#${clipPathId}`);
   if (!$existed) {
-    const $clipPath = createSVGElement('clipPath') as SVGClipPathElement;
+    const $clipPath = createSVGElement(isMask ? 'mask' : 'clipPath') as SVGClipPathElement;
     $clipPath.setAttribute('id', clipPathId);
 
     const { clipMode, ... rest } = node;
-
     const [$parentNode] = await serializeNodesToSVGElements([rest]);
 
     /**
      * clipPath is a sibling of the node itself, so we need to remove the transform attribute.
-     * 
+     *
      * <defs>
      *   <clipPath id="clip-path-frame-1">
      *     <ellipse id="node-frame-1" fill="green" cx="100" cy="100" rx="100" ry="100"/>
@@ -1115,6 +1115,20 @@ async function createOrUpdateClipPath(
      */
     $parentNode.removeAttribute('id');
     $parentNode.removeAttribute('transform');
+
+    if (isMask) {
+      // erase：mask 中白色=显示、黑色=隐藏。需要「白底 + 擦除形状为黑」才能擦掉内容
+      const $whiteRect = createSVGElement('rect');
+      $whiteRect.setAttribute('x', '-10000');
+      $whiteRect.setAttribute('y', '-10000');
+      $whiteRect.setAttribute('width', '20000');
+      $whiteRect.setAttribute('height', '20000');
+      $whiteRect.setAttribute('fill', 'white');
+      $clipPath.appendChild($whiteRect);
+      $parentNode.setAttribute('fill', 'black');
+      $parentNode.setAttribute('stroke', 'black');
+    }
+
     $clipPath.appendChild($parentNode);
     $defs.appendChild($clipPath);
   }
@@ -1134,6 +1148,8 @@ export async function exportClipOrMask(
     const clipPathId = await createOrUpdateClipPath(node, $defs);
     $g.setAttribute('clip-path', `url(#${clipPathId})`);
   } else if (clipMode === 'erase') {
+    const maskId = await createOrUpdateClipPath(node, $defs, true);
+    $g.setAttribute('mask', `url(#${maskId})`);
   }
 }
 
@@ -1229,6 +1245,7 @@ export async function exportFillImage(
   const $pattern = createSVGElement('pattern');
   $pattern.id = `image-fill_${node.id}`;
   $pattern.setAttribute('patternUnits', 'objectBoundingBox');
+  $pattern.setAttribute('patternContentUnits', 'objectBoundingBox');
   $pattern.setAttribute('width', '1');
   $pattern.setAttribute('height', '1');
   const $image = createSVGElement('image');
@@ -1242,14 +1259,13 @@ export async function exportFillImage(
   $image.setAttribute('href', fill);
   $image.setAttribute('x', '0');
   $image.setAttribute('y', '0');
-  // use geometry bounds of shape.
-  const { width: nodeWidth, height: nodeHeight } = node;
-  $image.setAttribute('width', `${nodeWidth}`);
-  $image.setAttribute('height', `${nodeHeight}`);
+  $image.setAttribute('width', '1');
+  $image.setAttribute('height', '1');
+  // 按 node 宽高填充，不保持图片原始宽高比
+  $image.setAttribute('preserveAspectRatio', 'none');
   $pattern.appendChild($image);
   $defs.appendChild($pattern);
   $g.appendChild($defs);
-
   element.setAttribute('fill', `url(#${$pattern.id})`);
 }
 
