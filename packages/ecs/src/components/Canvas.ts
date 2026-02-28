@@ -24,6 +24,7 @@ export enum Pen {
   ERASER = 'eraser',
   LASSO = 'lasso',
   LASER_POINTER = 'laser-pointer',
+  CROP = 'crop',
 }
 
 export class Canvas {

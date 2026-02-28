@@ -201,12 +201,23 @@ $parentNode.setAttribute('stroke', 'black');
 </defs>
 ```
 
+## 裁切图片 {#crop-an-image}
+
+裁切最常用应用于图片，详见：[Crop an image]
+
+![crop an image in Figma](https://help.figma.com/hc/article_attachments/34351829050391)
+
+值得注意的是在编辑器中，裁切通常都会保留原始的图片，因此被裁剪仅仅只是展示效果，便于重新调整裁切区域：
+
+> Cropping is a non-destructive action, meaning that the cropped area does not get deleted. This allows you to make changes to the cropped area, if needed.
+
 ## 扩展阅读 {#extended-reading}
 
 -   [Shape clipping in tldraw]
 -   [Frame properties in Figma]
 -   [Stencil Testing in WebGPU and wgpu]
 -   [Clipping and masking in SVG]
+-   [Crop an image]
 
 [Structural shapes]: https://tldraw.dev/sdk-features/default-shapes#Structural-shapes
 [Shape clipping in tldraw]: https://tldraw.dev/sdk-features/shape-clipping
@@ -217,3 +228,4 @@ $parentNode.setAttribute('stroke', 'black');
 [\<clipPath\>]: https://developer.mozilla.org/en-US/docs/Web/SVG/Reference/Element/clipPath
 [Clipping and masking in SVG]: https://developer.mozilla.org/en-US/docs/Web/SVG/Tutorials/SVG_from_scratch/Clipping_and_masking
 [课程 2 - SDF]: /zh/guide/lesson-002#sdf
+[Crop an image]: https://help.figma.com/hc/en-us/articles/360040675194-Crop-an-image
