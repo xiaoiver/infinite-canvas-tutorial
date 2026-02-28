@@ -1,6 +1,7 @@
 import { AppState, getDefaultAppState } from '../context';
 import { isShallowEqual } from './Delta';
-import { randomInteger, SerializedNode } from '../utils';
+import { randomInteger } from '../utils';
+import { SerializedNode } from '../types/serialized-node';
 import { getUpdatedTimestamp } from './ElementsChange';
 
 type OrderedExcalidrawElement = SerializedNode;

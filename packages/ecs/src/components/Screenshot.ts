@@ -1,5 +1,5 @@
 import { Entity, field, Type } from '@lastolivegames/becsy';
-import { SerializedNode } from '../utils';
+import type { SerializedNode } from '../types/serialized-node';
 
 export type DataURLType =
   | 'image/png'

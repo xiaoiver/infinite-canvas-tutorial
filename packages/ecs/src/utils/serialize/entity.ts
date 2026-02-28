@@ -15,7 +15,7 @@ import {
   StrokeAttributes,
   TextDecorationAttributes,
   TextSerializedNode,
-} from './type';
+} from '../../types/serialized-node';
 import {
   Children,
   Circle,

@@ -1,5 +1,6 @@
 import {
   BrushType,
+  ClipModeValue,
   DropShadow,
   Ellipse,
   InnerShadow,
@@ -15,16 +16,9 @@ import {
   TextDecoration,
   VectorNetwork,
   Visibility,
-} from '../../components';
-import { EdgeStyle } from '../binding';
-import { DIRECTION_EAST, DIRECTION_NORTH, DIRECTION_SOUTH, DIRECTION_WEST } from '../binding/constants';
-
-// @see https://dev.to/themuneebh/typescript-branded-types-in-depth-overview-and-use-cases-60e
-export type FractionalIndex = string & { _brand: 'franctionalIndex' };
-export type Ordered<TElement extends SerializedNode> = TElement & {
-  index: FractionalIndex;
-};
-export type OrderedSerializedNode = Ordered<SerializedNode>;
+} from '../components';
+import { EdgeStyle } from '../utils/binding';
+import { DIRECTION_EAST, DIRECTION_NORTH, DIRECTION_SOUTH, DIRECTION_WEST } from '../utils/binding/constants';
 
 /**
  * Refer SVG attributes
@@ -46,6 +40,11 @@ export interface BaseSerializeNode<Type extends string>
    * Parent unique identifier
    */
   parentId?: string;
+
+  /**
+   * Clip children
+   */
+  clipMode?: ClipModeValue;
 
   /**
    * Shape type
@@ -93,9 +92,24 @@ export interface NameAttributes {
 
 /**
  * Friendly to transformer.
- * Allow percentage values for x/y, width/height.
+ * Resolved transform: after parsing/loading, x/y/width/height are always numbers.
+ * @see TransformAttributesInput for the wire format (number | string for percentage support).
  */
 export interface TransformAttributes {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  rotation: number;
+  scaleX: number;
+  scaleY: number;
+}
+
+/**
+ * Wire/input format: allows percentage strings (e.g. '50%') for x/y/width/height.
+ * Use resolveSerializedNodes() to convert to SerializedNode (number only) at load boundary.
+ */
+export interface TransformAttributesInput {
   x: number | string;
   y: number | string;
   width: number | string;
@@ -280,7 +294,6 @@ export interface EllipseSerializedNode
 export interface RectSerializedNode
   extends BaseSerializeNode<'rect'>,
   Partial<Pick<Rect, 'cornerRadius'>>,
-  Partial<{ x: number | string; y: number | string; width: number | string; height: number | string }>,
   Partial<FillAttributes>,
   Partial<StrokeAttributes>,
   Partial<InnerShadowAttributes>,
@@ -293,7 +306,6 @@ export interface RectSerializedNode
 export interface RoughRectSerializedNode
   extends BaseSerializeNode<'rough-rect'>,
   Partial<Pick<Rect, 'cornerRadius'>>,
-  Partial<{ x: number | string; y: number | string; width: number | string; height: number | string }>,
   Partial<FillAttributes>,
   Partial<StrokeAttributes>,
   Partial<RoughAttributes>,
@@ -493,3 +505,14 @@ export type SerializedNodeAttributes = GSerializedNode &
   VectorNetworkSerializedNode &
   HtmlSerializedNode &
   EmbedSerializedNode;
+
+/**
+ * Input/wire format: same as SerializedNode but x/y/width/height may be string (e.g. '50%').
+ * Use resolveSerializedNodes() when loading from JSON or external API, then use SerializedNode elsewhere.
+ */
+export type SerializedNodeInput = Omit<SerializedNode, 'x' | 'y' | 'width' | 'height'> & {
+  x?: number | string;
+  y?: number | string;
+  width?: number | string;
+  height?: number | string;
+};

@@ -1,6 +1,6 @@
 import { isNil } from "@antv/util";
 import type { IPointData } from "@pixi/math";
-import type { BindingAttributes, ConstraintAttributes, EdgeSerializedNode, NodeSerializedNode, SerializedNode } from "../serialize/type";
+import type { BindingAttributes, ConstraintAttributes, EdgeSerializedNode, NodeSerializedNode, SerializedNode } from "../../types/serialized-node";
 import { getPerimeterPoint } from "./perimeter";
 import { EdgeStyle, orthConnector } from "./edge-style";
 

@@ -37,15 +37,16 @@ import {
   Filter,
   SizeAttenuation,
   StrokeAttenuation,
-  Locked
+  Locked,
+  ClipMode,
 } from '../components';
 import { DOMAdapter } from '../environment';
 import {
   createSVGElement,
-  SerializedNode,
   serializeNodesToSVGElements,
   toSVGDataURL,
 } from '../utils';
+import type { SerializedNode } from '../types/serialized-node';
 import { API } from '..';
 
 export class ExportSVG extends System {
@@ -114,6 +115,7 @@ export class ExportSVG extends System {
             SizeAttenuation,
             StrokeAttenuation,
             Locked,
+            ClipMode,
           )
           .read.and.using(Screenshot, VectorScreenshotRequest).write,
     );
@@ -126,7 +128,7 @@ export class ExportSVG extends System {
       );
 
       const { api } = canvas.read(Canvas);
-      const $svg = await api.renderToSVG({ grid, nodes });
+      const $svg = await api.renderToSVG(nodes, { grid });
       const serializer = DOMAdapter.get().getXMLSerializer();
 
       this.setScreenshotTrigger(
@@ -144,6 +146,19 @@ export async function toSVGElement(
   nodes: SerializedNode[],
   padding: number = 0,
 ) {
+  const clipParentNodes = new Set<SerializedNode>();
+  nodes.forEach((node) => {
+    const parentEntity = api.getParent(node);
+    const parent = api.getNodeByEntity(parentEntity);
+    if (parent && parent.clipMode && !clipParentNodes.has(parent)) {
+      clipParentNodes.add(parent);
+    }
+  });
+
+  // Remove duplicate nodes with Set
+  const uniqueNodes = new Set([...nodes]);
+  nodes = Array.from(uniqueNodes);
+
   const $namespace = createSVGElement('svg');
 
   // Get bounds of nodes.
@@ -159,6 +174,8 @@ export async function toSVGElement(
       height + padding * 2
     }`,
   );
+
+  nodes = [...clipParentNodes, ...nodes];
 
   (await serializeNodesToSVGElements(nodes)).forEach((element) => {
     $namespace.appendChild(element);

@@ -1,5 +1,5 @@
 import { IPointData } from "@pixi/math";
-import { NodeSerializedNode } from "../serialize";
+import { NodeSerializedNode } from "../../types/serialized-node";
 import { EdgeState } from "./connection";
 import { DIRECTION_MASK_ALL, DIRECTION_MASK_EAST, DIRECTION_MASK_NORTH, DIRECTION_MASK_SOUTH, DIRECTION_MASK_WEST } from "./constants";
 import { getPortConstraints, reversePortConstraints } from "./port";
@@ -111,15 +111,15 @@ export function orthConnector(state: EdgeState, source: NodeSerializedNode, targ
   const pe = pts[pts.length - 1];
 
   // Extract geometry information from the source and target nodes
-  let sourceX = (source != null ? source.x : p0.x) as number;
-  let sourceY = (source != null ? source.y : p0.y) as number;
-  let sourceWidth = (source != null ? source.width : 1) as number;
-  let sourceHeight = (source != null ? source.height : 1) as number;
+  let sourceX = source != null ? (source.x ?? 0) : p0.x;
+  let sourceY = source != null ? (source.y ?? 0) : p0.y;
+  let sourceWidth = source != null ? (source.width ?? 1) : 1;
+  let sourceHeight = source != null ? (source.height ?? 1) : 1;
 
-  let targetX = (target != null ? target.x : pe.x) as number;
-  let targetY = (target != null ? target.y : pe.y) as number;
-  let targetWidth = (target != null ? target.width : 1) as number;
-  let targetHeight = (target != null ? target.height : 1) as number;
+  let targetX = target != null ? (target.x ?? 0) : pe.x;
+  let targetY = target != null ? (target.y ?? 0) : pe.y;
+  let targetWidth = target != null ? (target.width ?? 1) : 1;
+  let targetHeight = target != null ? (target.height ?? 1) : 1;
 
   // Calculate jetty size
   let sourceBuffer = getJettySize(state, true);

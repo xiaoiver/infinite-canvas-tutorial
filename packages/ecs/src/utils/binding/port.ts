@@ -1,4 +1,4 @@
-import { NodeSerializedNode } from "../serialize";
+import { NodeSerializedNode } from "../../types/serialized-node";
 import { EdgeState } from "./connection";
 import { DIRECTION_EAST, DIRECTION_MASK_EAST, DIRECTION_MASK_NONE, DIRECTION_MASK_NORTH, DIRECTION_MASK_SOUTH, DIRECTION_MASK_WEST, DIRECTION_NORTH, DIRECTION_SOUTH, DIRECTION_WEST } from "./constants";
 

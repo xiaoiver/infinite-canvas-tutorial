@@ -32,7 +32,8 @@ import {
   Brush,
 } from '../components';
 import { API } from '../API';
-import { BrushSerializedNode, serializeBrushPoints } from '../utils/serialize';
+import { serializeBrushPoints } from '../utils';
+import { BrushSerializedNode } from '../types/serialized-node';
 import { distanceBetweenPoints } from '../utils/matrix';
 import { DRAW_RECT_Z_INDEX } from '../context';
 import { isBrowser } from '../utils';

@@ -7,14 +7,13 @@ import { Lasso, Layers, Loader2, MousePointerClick, Pencil, PenTool, SquareDashe
 import { useAtomValue } from 'jotai';
 import { isSingleImageAtom, selectedNodesAtom, canvasApiAtom } from '@/atoms/canvas-selection';
 import { sendMessageAtom, chatIdAtom } from '@/atoms/chat';
-import { PathSerializedNode, Pen, RectSerializedNode, SerializedNode, TRANSFORMER_MASK_FILL_COLOR } from '@infinite-canvas-tutorial/ecs';
+import { PathSerializedNode, Pen, RectSerializedNode, SerializedNode, TRANSFORMER_MASK_FILL_COLOR, HtmlSerializedNode } from '@infinite-canvas-tutorial/ecs';
 import { Event } from '@infinite-canvas-tutorial/webcomponents';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
 import { Button } from './ui/button';
 import { convertToFiles } from '@/lib/file';
 import { FileUIPart } from 'ai';
 import { canvasToFloat32Array, image2Canvas, resizeCanvas, sliceTensorMask } from '@/lib/sam/utils';
-import { HtmlSerializedNode } from '../../ecs/lib/utils';
 
 const imageSize = { w: 1024, h: 1024 };
 export type ImageTool = 'draw-rect-mask' | 'draw-pencil-freehand-mask' | 'draw-lasso-mask' | 'draw-smart-click-mask';

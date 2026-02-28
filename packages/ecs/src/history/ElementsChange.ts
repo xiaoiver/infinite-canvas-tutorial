@@ -9,14 +9,13 @@ import { newElementWith } from './Snapshot';
 import {
   isGradient,
   randomInteger,
-  SerializedNode,
   deserializePoints,
-  SerializedNodeAttributes,
   isDataUrl,
   isUrl,
   loadImage,
   deserializeBrushPoints,
 } from '../utils';
+import type { SerializedNode, SerializedNodeAttributes } from '../types/serialized-node';
 import { API } from '../API';
 import {
   Name,
@@ -52,7 +51,9 @@ import {
   Children,
   Parent,
   Locked,
+  ClipMode,
 } from '../components';
+import { getDescendants } from '../systems';
 
 export type SceneElementsMap = Map<SerializedNode['id'], SerializedNode>;
 
@@ -648,7 +649,8 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
     isEditing,
     locked,
     filter,
-    brushStamp
+    brushStamp,
+    clipMode,
   } = updates as unknown as SerializedNodeAttributes;
 
   if (!isNil(parentId)) {
@@ -704,6 +706,14 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
     if (isDataUrl(brushStamp) || isUrl(brushStamp)) {
       loadImage(brushStamp, entity);
     }
+  }
+  if (!isNil(clipMode)) {
+    safeAddComponent(entity, ClipMode, { value: clipMode });
+    safeAddComponent(entity, MaterialDirty);
+    // Should mark children cascade as dirty
+    getDescendants(entity).forEach((child) => {
+      safeAddComponent(child, MaterialDirty);
+    });
   }
   if (!isNil(stroke)) {
     safeAddComponent(entity, Stroke, { color: stroke });

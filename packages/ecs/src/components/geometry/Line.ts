@@ -1,7 +1,7 @@
 import { field, Type } from '@lastolivegames/becsy';
 import { AABB } from '../math';
 import { Stroke } from '../renderable';
-import { LineSerializedNode } from '../../utils';
+import type { LineSerializedNode } from '../../types/serialized-node';
 
 /**
  * @see https://developer.mozilla.org/en-US/docs/Web/SVG/Element/line

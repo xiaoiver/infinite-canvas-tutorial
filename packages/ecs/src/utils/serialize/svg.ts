@@ -16,7 +16,7 @@ import {
   SerializedNodeAttributes,
   StrokeAttributes,
   TextSerializedNode,
-} from './type';
+} from '../../types/serialized-node';
 import { serializePoints } from './points';
 import {
   computeLinearGradient,
@@ -297,6 +297,7 @@ export async function serializeNodesToSVGElements(
       version,
       versionNonce,
       updated,
+      clipMode,
       ...rest
     } = restAttributes as SerializedNodeAttributes;
 
@@ -349,13 +350,13 @@ export async function serializeNodesToSVGElements(
       let x = 0;
       let y = 0;
       if (textAlign === 'center') {
-        x = width as number / 2;
+        x = (width ?? 0) / 2;
       } else if (textAlign === 'right' || textAlign === 'end') {
-        x = width as number;
+        x = width ?? 0;
       }
 
       if (textBaseline === 'middle') {
-        y = height as number / 2;
+        y = (height ?? 0) / 2;
       } else if (textBaseline === 'alphabetic' || textBaseline === 'hanging') {
         y = fontBoundingBoxAscent;
       }
@@ -399,6 +400,8 @@ export async function serializeNodesToSVGElements(
     const hasFillGradient =
       rest.fill && isString(rest.fill) && isGradient(rest.fill);
     const hasFillPattern = rest.fill && isPattern(rest.fill);
+    const hasClipMode = !!clipMode;
+    // const hasParentClipOrMask = !!(parentId && idSerializedNodeMap.get(parentId)?.clipMode);
     const isRough = false;
     const hasChildren = edges.some(([parentId]) => parentId === id);
 
@@ -443,7 +446,8 @@ export async function serializeNodesToSVGElements(
       hasFillImage ||
       hasFillGradient ||
       hasFillPattern ||
-      hasMarker
+      hasMarker ||
+      hasClipMode
     ) {
       $g = createSVGElement('g');
       if (element) {
@@ -471,6 +475,9 @@ export async function serializeNodesToSVGElements(
     if (hasMarker) {
       exportMarker(node, element, $g);
     }
+    if (hasClipMode) {
+      await exportClipOrMask(node, element, $g);
+    }
 
     $g = $g || element;
 
@@ -497,8 +504,8 @@ export async function serializeNodesToSVGElements(
       },
       rotation,
       {
-        x: x as number,
-        y: y as number,
+        x: x ?? 0,
+        y: y ?? 0,
       },
     );
     const a = matrix.m00;
@@ -526,8 +533,6 @@ export async function serializeNodesToSVGElements(
     if (parentId) {
       const parent = idSVGElementMap.get(parentId);
       if (parent) {
-        // parent.childNodes
-
         parent.appendChild($g);
       }
     } else {
@@ -595,11 +600,11 @@ function exportInnerOrOuterStrokeAlignment(
       const offset = innerStrokeAlignment ? -halfStrokeWidth : halfStrokeWidth;
       $stroke.setAttribute(
         'rx',
-        `${toFixedAndRemoveTrailingZeros(width as number / 2 + offset)}`,
+        `${toFixedAndRemoveTrailingZeros((width ?? 0) / 2 + offset)}`,
       );
       $stroke.setAttribute(
         'ry',
-        `${toFixedAndRemoveTrailingZeros(height as number / 2 + offset)}`,
+        `${toFixedAndRemoveTrailingZeros((height ?? 0) / 2 + offset)}`,
       );
     } else if (type === 'rect') {
       const { width, height, strokeWidth } = attributes;
@@ -618,13 +623,13 @@ function exportInnerOrOuterStrokeAlignment(
       $stroke.setAttribute(
         'width',
         `${toFixedAndRemoveTrailingZeros(
-          width as number + (innerStrokeAlignment ? -strokeWidth : strokeWidth),
+          (width ?? 0) + (innerStrokeAlignment ? -strokeWidth : strokeWidth),
         )}`,
       );
       $stroke.setAttribute(
         'height',
         `${toFixedAndRemoveTrailingZeros(
-          height as number + (innerStrokeAlignment ? -strokeWidth : strokeWidth),
+          (height ?? 0) + (innerStrokeAlignment ? -strokeWidth : strokeWidth),
         )}`,
       );
     }
@@ -737,11 +742,11 @@ export function exportDropShadow(
   const $feDropShadow = createSVGElement('feDropShadow');
   $feDropShadow.setAttribute(
     'dx',
-    `${((dropShadowOffsetX || 0) / 2) * Math.sign(width as number)}`,
+    `${((dropShadowOffsetX || 0) / 2) * Math.sign(width ?? 0)}`,
   );
   $feDropShadow.setAttribute(
     'dy',
-    `${((dropShadowOffsetY || 0) / 2) * Math.sign(height as number)}`,
+    `${((dropShadowOffsetY || 0) / 2) * Math.sign(height ?? 0)}`,
   );
   $feDropShadow.setAttribute(
     'stdDeviation',
@@ -766,9 +771,9 @@ function createOrUpdateGradient(
 
   const gradientId = generateGradientKey({
     ...gradient,
-    min: [x as number, y as number],
-    width: width as number,
-    height: height as number,
+    min: [x ?? 0, y ?? 0],
+    width: width ?? 0,
+    height: height ?? 0,
   });
   let $existed = $def.querySelector(`#${gradientId}`);
 
@@ -799,9 +804,9 @@ function createOrUpdateGradient(
   if (gradient.type === 'linear-gradient') {
     const { angle } = gradient;
     const { x1, y1, x2, y2 } = computeLinearGradient(
-      [x as number, y as number],
-      width as number,
-      height as number,
+      [x ?? 0, y ?? 0],
+      width ?? 0,
+      height ?? 0,
       angle,
     );
 
@@ -815,7 +820,7 @@ function createOrUpdateGradient(
       x: xx,
       y: yy,
       r,
-    } = computeRadialGradient([x as number, y as number], width as number, height as number, cx, cy, size);
+    } = computeRadialGradient([x ?? 0, y ?? 0], width ?? 0, height ?? 0, cx, cy, size);
 
     $existed.setAttribute('cx', `${xx}`);
     $existed.setAttribute('cy', `${yy}`);
@@ -922,15 +927,15 @@ function create$Pattern(
 
   // There is no equivalent to CSS no-repeat for SVG patterns
   // @see https://stackoverflow.com/a/33481956
-  let patternWidth = width as number;
-  let patternHeight = height as number;
+  let patternWidth = width ?? 0;
+  let patternHeight = height ?? 0;
   if (repetition === 'repeat-x') {
-    patternHeight = nodeHeight as number;
+    patternHeight = nodeHeight ?? 0;
   } else if (repetition === 'repeat-y') {
-    patternWidth = nodeWidth as number;
+    patternWidth = nodeWidth ?? 0;
   } else if (repetition === 'no-repeat') {
-    patternWidth = nodeWidth as number;
-    patternHeight = nodeHeight as number;
+    patternWidth = nodeWidth ?? 0;
+    patternHeight = nodeHeight ?? 0;
   }
   $pattern.setAttribute('width', `${patternWidth}`);
   $pattern.setAttribute('height', `${patternHeight}`);
@@ -1084,6 +1089,71 @@ export function exportMarker(
   }
 }
 
+async function createOrUpdateClipPath(
+  node: SerializedNode,
+  $defs: SVGDefsElement,
+  isMask = false,
+) {
+  const clipPathId = isMask ? `mask-${node.id}` : `clip-path-${node.id}`;
+  const $existed = $defs.querySelector(`#${clipPathId}`);
+  if (!$existed) {
+    const $clipPath = createSVGElement(isMask ? 'mask' : 'clipPath') as SVGClipPathElement;
+    $clipPath.setAttribute('id', clipPathId);
+
+    const { clipMode, ... rest } = node;
+    const [$parentNode] = await serializeNodesToSVGElements([rest]);
+
+    /**
+     * clipPath is a sibling of the node itself, so we need to remove the transform attribute.
+     *
+     * <defs>
+     *   <clipPath id="clip-path-frame-1">
+     *     <ellipse id="node-frame-1" fill="green" cx="100" cy="100" rx="100" ry="100"/>
+     *   </clipPath>
+     * </defs>
+     * <ellipse id="node-frame-1" fill="green" cx="100" cy="100" rx="100" ry="100"/>
+     */
+    $parentNode.removeAttribute('id');
+    $parentNode.removeAttribute('transform');
+
+    if (isMask) {
+      // erase：mask 中白色=显示、黑色=隐藏。需要「白底 + 擦除形状为黑」才能擦掉内容
+      const $whiteRect = createSVGElement('rect');
+      $whiteRect.setAttribute('x', '-10000');
+      $whiteRect.setAttribute('y', '-10000');
+      $whiteRect.setAttribute('width', '20000');
+      $whiteRect.setAttribute('height', '20000');
+      $whiteRect.setAttribute('fill', 'white');
+      $clipPath.appendChild($whiteRect);
+      $parentNode.setAttribute('fill', 'black');
+      $parentNode.setAttribute('stroke', 'black');
+    }
+
+    $clipPath.appendChild($parentNode);
+    $defs.appendChild($clipPath);
+  }
+  return clipPathId;
+}
+
+export async function exportClipOrMask(
+  node: SerializedNode,
+  $el: SVGElement,
+  $g: SVGElement,
+) {
+  const { clipMode } = node;
+  const $defs = createSVGElement('defs') as SVGDefsElement;
+  $g.prepend($defs);
+
+  if (clipMode === 'clip') {
+    const clipPathId = await createOrUpdateClipPath(node, $defs);
+    $g.setAttribute('clip-path', `url(#${clipPathId})`);
+  } else if (clipMode === 'erase') {
+    const maskId = await createOrUpdateClipPath(node, $defs, true);
+    $g.setAttribute('mask', `url(#${maskId})`);
+  }
+}
+
+
 /**
  * use <text> and <tspan> to render text.
  * @see https://developer.mozilla.org/en-US/docs/Web/SVG/Element/text#example
@@ -1175,6 +1245,7 @@ export async function exportFillImage(
   const $pattern = createSVGElement('pattern');
   $pattern.id = `image-fill_${node.id}`;
   $pattern.setAttribute('patternUnits', 'objectBoundingBox');
+  $pattern.setAttribute('patternContentUnits', 'objectBoundingBox');
   $pattern.setAttribute('width', '1');
   $pattern.setAttribute('height', '1');
   const $image = createSVGElement('image');
@@ -1188,14 +1259,13 @@ export async function exportFillImage(
   $image.setAttribute('href', fill);
   $image.setAttribute('x', '0');
   $image.setAttribute('y', '0');
-  // use geometry bounds of shape.
-  const { width: nodeWidth, height: nodeHeight } = node;
-  $image.setAttribute('width', `${nodeWidth}`);
-  $image.setAttribute('height', `${nodeHeight}`);
+  $image.setAttribute('width', '1');
+  $image.setAttribute('height', '1');
+  // 按 node 宽高填充，不保持图片原始宽高比
+  $image.setAttribute('preserveAspectRatio', 'none');
   $pattern.appendChild($image);
   $defs.appendChild($pattern);
   $g.appendChild($defs);
-
   element.setAttribute('fill', `url(#${$pattern.id})`);
 }
 

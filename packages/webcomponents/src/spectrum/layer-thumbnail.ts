@@ -39,7 +39,7 @@ export class LayerThumbnail extends LitElement {
       overflow: hidden;
     }
 
-    sp-icon-text, sp-icon-code {
+    sp-icon-text, sp-icon-code, sp-icon-crop {
       display: block;
     }
   `;
@@ -54,6 +54,9 @@ export class LayerThumbnail extends LitElement {
   selected = false;
 
   #roughSvg: RoughSVG;
+
+  /** 缓存图片 fill 的 defs HTML，因为 exportFillImage 是异步的 */
+  #imageDefsCache = new Map<string, string>();
 
   connectedCallback(): void {
     super.connectedCallback();
@@ -188,9 +191,20 @@ export class LayerThumbnail extends LitElement {
       );
       defsHTML = $g.children[0].innerHTML;
     } else if (isImage) {
-      const $g = createSVGElement('g') as SVGElement;
-      exportFillImage(this.node, $el, $g);
-      defsHTML = $g.children[0].innerHTML;
+      const cacheKey = `${this.node.id}:${fill}`;
+      const cached = this.#imageDefsCache.get(cacheKey);
+      if (cached !== undefined) {
+        defsHTML = cached;
+        $el.setAttribute('fill', `url(#image-fill_${this.node.id})`);
+      } else {
+        const $g = createSVGElement('g') as SVGElement;
+        exportFillImage(this.node, $el, $g).then(() => {
+          const html = $g.children[0]?.innerHTML ?? '';
+          this.#imageDefsCache.set(cacheKey, html);
+          this.requestUpdate();
+        });
+        defsHTML = '';
+      }
     } else if (markerStart || markerEnd) {
       const $g = createSVGElement('g') as SVGElement;
       exportMarker(this.node, $el, $g);
@@ -208,6 +222,8 @@ export class LayerThumbnail extends LitElement {
       thumbnail = html`<sp-icon-code></sp-icon-code>`;
     } else if (this.node.type === 'brush') {
       thumbnail = html`<img src="${this.node.brushStamp}" />`;
+    } else if (this.node.clipMode) {
+      thumbnail = html`<sp-icon-crop></sp-icon-crop>`;
     } else {
       thumbnail = $el && html`<svg
         viewBox="${-paddedWidth / 2} ${-paddedHeight /

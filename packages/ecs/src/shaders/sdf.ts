@@ -387,7 +387,16 @@ void main() {
 
   ${wireframe_frag}
 
+#ifdef USE_STENCIL
+  // Stencil pass: discard by geometry (SDF distance), not alpha. Include the same
+  // anti-alias band as the normal pass (fwidth(distance)) so the stencil boundary
+  // matches the visible shape and avoids edge holes.
+  float outerBoundary = (strokeAlignment < 1.5) ? 0.0 : strokeWidth;
+  if (distance > outerBoundary)
+    discard;
+#else
   if (outputColor.a < epsilon)
     discard;
+#endif
 }
 `;

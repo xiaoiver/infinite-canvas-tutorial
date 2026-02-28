@@ -37,21 +37,13 @@ import {
 } from '../components';
 import { API } from '../API';
 import {
-  EllipseSerializedNode,
-  FillAttributes,
-  PolylineSerializedNode,
-  RectSerializedNode,
-  RoughAttributes,
-  RoughEllipseSerializedNode,
-  RoughPolylineSerializedNode,
-  RoughRectSerializedNode,
-  StrokeAttributes,
   distanceBetweenPoints,
   isBrowser,
   snapToGrid,
 } from '../utils';
+import type { EllipseSerializedNode, FillAttributes, PolylineSerializedNode, RectSerializedNode, RoughAttributes, RoughEllipseSerializedNode, RoughPolylineSerializedNode, RoughRectSerializedNode, StrokeAttributes } from '../types/serialized-node';
 import { DRAW_RECT_Z_INDEX } from '../context';
-import { DOMAdapter, Event, TRANSFORMER_ANCHOR_STROKE_COLOR } from '..';
+import { DOMAdapter, TRANSFORMER_ANCHOR_STROKE_COLOR } from '..';
 
 const PEN_TO_TYPE = {
   [Pen.DRAW_RECT]: 'rect',

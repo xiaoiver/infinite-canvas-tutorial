@@ -21,7 +21,7 @@ import {
 } from '@antv/g-device-api';
 import { Entity } from '@lastolivegames/becsy';
 import { mat3 } from 'gl-matrix';
-import { Drawcall, ZINDEX_FACTOR } from './Drawcall';
+import { Drawcall, ZINDEX_FACTOR, STENCIL_CLIP_REF } from './Drawcall';
 import { vert, frag, Location } from '../shaders/brush';
 import { distanceBetweenPoints, paddingMat3, parseColor } from '../utils';
 import {
@@ -344,6 +344,9 @@ export class StampBrush extends Drawcall {
       buffer: this.indexBuffer,
     });
     renderPass.setBindings(this.bindings);
+    if (this.useStencil || this.parentClipMode) {
+      renderPass.setStencilReference(STENCIL_CLIP_REF);
+    }
     renderPass.drawIndexed(6, this.instanceCount);
   }
 

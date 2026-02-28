@@ -61,7 +61,8 @@ import {
   LockAspectRatio,
   Editable,
   Filter,
-  Locked
+  Locked,
+  ClipMode
 } from '../components';
 
 export const RendererPlugin: Plugin = () => {
@@ -101,6 +102,7 @@ export const RendererPlugin: Plugin = () => {
   component(TextDecoration);
   component(Marker);
   component(Filter);
+  component(ClipMode);
 
   /**
    * Geometry

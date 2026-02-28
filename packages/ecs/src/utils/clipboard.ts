@@ -2,7 +2,7 @@
  * borrow from https://github.com/excalidraw/excalidraw/blob/master/packages/excalidraw/clipboard.ts#L212
  */
 
-import { SerializedNode } from './serialize';
+import type { SerializedNode } from '../types/serialized-node';
 
 export const IMAGE_MIME_TYPES = {
   svg: 'image/svg+xml',
