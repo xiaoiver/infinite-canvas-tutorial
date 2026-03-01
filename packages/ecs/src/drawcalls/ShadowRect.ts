@@ -10,7 +10,6 @@ import {
   VertexStepMode,
   CompareFunction,
   TransparentBlack,
-  StencilOp,
 } from '@antv/g-device-api';
 import { mat3 } from 'gl-matrix';
 import { Drawcall, ZINDEX_FACTOR, STENCIL_CLIP_REF } from './Drawcall';
@@ -184,19 +183,7 @@ export class ShadowRect extends Drawcall {
         blendConstant: TransparentBlack,
         depthWrite: false,
         depthCompare: CompareFunction.GREATER,
-        stencilWrite: false,
-        stencilFront: {
-          compare: CompareFunction.ALWAYS,
-          passOp: StencilOp.KEEP,
-          failOp: StencilOp.KEEP,
-          depthFailOp: StencilOp.KEEP,
-        },
-        stencilBack: {
-          compare: CompareFunction.ALWAYS,
-          passOp: StencilOp.KEEP,
-          failOp: StencilOp.KEEP,
-          depthFailOp: StencilOp.KEEP,
-        },
+        ...this.stencilDescriptor,
       },
     });
 

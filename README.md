@@ -415,6 +415,12 @@ If you want to use it in your own project, you can refer to:
 ## Lesson 34 - Frame and Clipping [🔗](https://infinitecanvas.cc/guide/lesson-034)
 
 -   Implement clip and mask effect with stencil buffer
+-   Crop an image
+-   Non-atomic eraser
+
+|                 Crop an image                  |                     Brush with eraser                     |
+| :--------------------------------------------: | :-------------------------------------------------------: |
+| ![crop image](./screenshots/crop-an-image.gif) | ![brush with eraser](./screenshots/brush-with-eraser.png) |
 
 [Online App]: app.infinitecanvas.cc
 [infinitecanvas]: https://infinitecanvas.tools/

@@ -9,9 +9,11 @@
     /* eslint-disable @typescript-eslint/no-explicit-any */
 
     export const templates = {
-      's0758584e2fcf954d': str`Curvatura`,
+      's06f6c6f99db6b552': str`Original`,
+'s0758584e2fcf954d': str`Curvatura`,
 's090c9a788879fbe0': str`Desbloquear capa`,
 's0bc31719aa7a8f43': str`Cortar`,
+'s1c1c31804e8fa7dd': str`Aspecto de recorte`,
 's2199c9ac949fc21c': str`Opacidad de trazo`,
 's236ae937cbcd6a39': str`Zoom en`,
 's2492f5fb1b05b45e': str`Texto`,
@@ -25,8 +27,10 @@
 's33ef4300ba7aa421': str`Mostrar capa`,
 's3432f264e3842154': str`Configuración de la brocha`,
 's3687049d1af562c4': str`Copiar`,
+'s399d689c8b389917': str`Recortar`,
 's3b0ab4b52326316f': str`Claro`,
 's3b151ca64eb26ec1': str`Expandir`,
+'s3bb9ed9dd24e9172': str`Horizontal`,
 's3cf8a6b47fddf8e7': str`Línea`,
 's3d93f9ea0c5a13fa': str`Imagen`,
 's43ca35f701ac4dc6': str`Estilo de relleno aproximado`,
@@ -64,6 +68,7 @@
 'saab875d8cfcfe712': str`Tema`,
 'sac895c732f350ac5': str`Oscuro`,
 'sae3b9113b7db93a4': str`Estampa`,
+'safd96a5026e4555a': str`Vertical`,
 'sb02c013623255598': str`Ocultar capa`,
 'sb31aa3d1a0e4711f': str`Configuración de texto`,
 'sb38d497d992ab4a4': str`Centro`,

@@ -26,6 +26,11 @@ export class Transformable {
   @field.ref declare lineMask: Entity;
 
   /**
+   * Transformer for cropping elements
+   */
+  @field.ref declare cropMask: Entity;
+
+  /**
    * Anchors in rectangle
    */
   @field.ref declare tlAnchor: Entity;

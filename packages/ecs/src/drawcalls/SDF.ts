@@ -15,6 +15,7 @@ import {
   Texture,
   StencilOp,
   CullMode,
+  InputLayout,
 } from '@antv/g-device-api';
 import { mat3 } from 'gl-matrix';
 import { Entity } from '@lastolivegames/becsy';
@@ -418,35 +419,72 @@ export class SDF extends Drawcall {
           sampler: this.createSampler(),
         },
       ];
-
-      // if (hasFilter) {
-      //   const bindings: BindingsDescriptor = {
-      //     pipeline: this.#inputPipeline,
-      //     uniformBufferBindings: [
-      //       {
-      //         buffer: uniformBuffer,
-      //       },
-      //     ],
-      //   };
-      //   if (!this.instanced) {
-      //     bindings.uniformBufferBindings!.push({
-      //       buffer: this.#uniformBuffer,
-      //     });
-      //   }
-      //   if (this.#texture) {
-      //     bindings.samplerBindings = [
-      //       {
-      //         texture: this.#texture,
-      //         sampler: this.createSampler(),
-      //       },
-      //     ];
-      //   }
-
-      //   this.#prePassBindings = this.renderCache.createBindings(bindings);
-      // }
     }
 
     this.bindings = this.renderCache.createBindings(bindings);
+
+    if (this.parentClipMode === 'soft') {
+      const diagnosticDerivativeUniformityHeader =
+        this.device.queryVendorInfo().platformString === 'WebGPU'
+          ? 'diagnostic(off,derivative_uniformity);\n'
+          : '';
+      const definesOutside = defines + '\n#define USE_SOFT_CLIP_OUTSIDE\n';
+      const programOutside = this.renderCache.createProgram({
+        vertex: { glsl: definesOutside + vert },
+        fragment: {
+          glsl: definesOutside + frag,
+          postprocess: (fs: string) => diagnosticDerivativeUniformityHeader + fs,
+        },
+      });
+      const vertexBufferDescriptorsForOutside = [...this.vertexBufferDescriptors];
+      if (this.useWireframe) {
+        vertexBufferDescriptorsForOutside.push(this.barycentricBufferDescriptor);
+      }
+      const inputLayoutOutside = this.renderCache.createInputLayout({
+        vertexBufferDescriptors: vertexBufferDescriptorsForOutside,
+        indexBufferFormat: Format.U32_R,
+        program: programOutside,
+      });
+      this.inputLayoutSoftClipOutside = inputLayoutOutside;
+      this.pipelineSoftClipOutside = this.renderCache.createRenderPipeline({
+        inputLayout: inputLayoutOutside,
+        program: programOutside,
+        colorAttachmentFormats: [Format.U8_RGBA_RT],
+        depthStencilAttachmentFormat: Format.D24_S8,
+        megaStateDescriptor: {
+          attachmentsState: [
+            {
+              channelWriteMask: ChannelWriteMask.ALL,
+              rgbBlendState: {
+                blendMode: BlendMode.ADD,
+                blendSrcFactor: BlendFactor.SRC_ALPHA,
+                blendDstFactor: BlendFactor.ONE_MINUS_SRC_ALPHA,
+              },
+              alphaBlendState: {
+                blendMode: BlendMode.ADD,
+                blendSrcFactor: BlendFactor.ONE,
+                blendDstFactor: BlendFactor.ONE_MINUS_SRC_ALPHA,
+              },
+            },
+          ],
+          blendConstant: TransparentBlack,
+          cullMode: CullMode.NONE,
+          depthWrite: true,
+          depthCompare: CompareFunction.GREATER,
+          ...this.stencilDescriptorForSoftOutside,
+        },
+      });
+      this.device.setResourceName(this.pipelineSoftClipOutside, 'SDFPipelineSoftClipOutside');
+      this.programSoftClipOutside = programOutside;
+      const bindingsOutside: BindingsDescriptor = {
+        pipeline: this.pipelineSoftClipOutside,
+        uniformBufferBindings: [...bindings.uniformBufferBindings!],
+      };
+      if (bindings.samplerBindings) {
+        bindingsOutside.samplerBindings = bindings.samplerBindings;
+      }
+      this.bindingsSoftClipOutside = this.renderCache.createBindings(bindingsOutside);
+    }
   }
 
   render(
@@ -455,6 +493,7 @@ export class SDF extends Drawcall {
     sceneUniformLegacyObject: Record<string, unknown>,
   ) {
     // const hasFilter = this.shapes[0].has(Filter);
+    let drawLegacy: Record<string, unknown> = { ...sceneUniformLegacyObject };
 
     if (this.instanced) {
       const instancedData: number[] = [];
@@ -519,6 +558,7 @@ export class SDF extends Drawcall {
         uniformLegacyObject.u_FillImage = this.#texture;
       }
       this.program.setUniformsLegacy(uniformLegacyObject);
+      drawLegacy = { ...uniformLegacyObject, ...sceneUniformLegacyObject };
     }
 
     if (this.useWireframe && this.geometryDirty) {
@@ -566,7 +606,7 @@ export class SDF extends Drawcall {
     //   renderPass.setViewport(0, 0, width, height);
     // }
 
-    this.program.setUniformsLegacy(sceneUniformLegacyObject);
+    this.program.setUniformsLegacy(drawLegacy);
     renderPass.setPipeline(this.pipeline);
 
     const vertexBuffers = this.vertexBuffers.map((buffer) => ({ buffer }));
@@ -582,6 +622,18 @@ export class SDF extends Drawcall {
       renderPass.setStencilReference(STENCIL_CLIP_REF);
     }
     renderPass.drawIndexed(6, this.shapes.length);
+
+    if (this.parentClipMode === 'soft' && this.pipelineSoftClipOutside && this.bindingsSoftClipOutside && this.programSoftClipOutside) {
+      const outsideAlpha = this.parentOutsideAlpha;
+      this.programSoftClipOutside.setUniformsLegacy({ ...drawLegacy, u_AlphaScale: outsideAlpha });
+      renderPass.setPipeline(this.pipelineSoftClipOutside);
+      renderPass.setVertexInput(this.inputLayoutSoftClipOutside, vertexBuffers, {
+        buffer: this.indexBuffer,
+      });
+      renderPass.setBindings(this.bindingsSoftClipOutside);
+      renderPass.setStencilReference(STENCIL_CLIP_REF);
+      renderPass.drawIndexed(6, this.shapes.length);
+    }
   }
 
   destroy(): void {

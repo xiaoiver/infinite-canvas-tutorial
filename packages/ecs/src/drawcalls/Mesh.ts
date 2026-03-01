@@ -12,7 +12,6 @@ import {
   BindingsDescriptor,
   TransparentBlack,
   Texture,
-  StencilOp,
   PrimitiveTopology,
 } from '@antv/g-device-api';
 import { Entity } from '@lastolivegames/becsy';
@@ -223,19 +222,7 @@ export class Mesh extends Drawcall {
         blendConstant: TransparentBlack,
         depthWrite: true,
         depthCompare: CompareFunction.GREATER,
-        stencilWrite: false,
-        stencilFront: {
-          compare: CompareFunction.ALWAYS,
-          passOp: StencilOp.KEEP,
-          failOp: StencilOp.KEEP,
-          depthFailOp: StencilOp.KEEP,
-        },
-        stencilBack: {
-          compare: CompareFunction.ALWAYS,
-          passOp: StencilOp.KEEP,
-          failOp: StencilOp.KEEP,
-          depthFailOp: StencilOp.KEEP,
-        },
+        ...this.stencilDescriptor,
       },
     });
     this.device.setResourceName(this.pipeline, 'MeshPipeline');

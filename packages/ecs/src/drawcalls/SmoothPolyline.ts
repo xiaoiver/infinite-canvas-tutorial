@@ -10,7 +10,6 @@ import {
   VertexStepMode,
   CompareFunction,
   TransparentBlack,
-  StencilOp,
 } from '@antv/g-device-api';
 import { Entity } from '@lastolivegames/becsy';
 import { mat3 } from 'gl-matrix';
@@ -339,19 +338,7 @@ export class SmoothPolyline extends Drawcall {
         blendConstant: TransparentBlack,
         depthWrite: false,
         depthCompare: CompareFunction.GREATER,
-        stencilWrite: false,
-        stencilFront: {
-          compare: CompareFunction.ALWAYS,
-          passOp: StencilOp.KEEP,
-          failOp: StencilOp.KEEP,
-          depthFailOp: StencilOp.KEEP,
-        },
-        stencilBack: {
-          compare: CompareFunction.ALWAYS,
-          passOp: StencilOp.KEEP,
-          failOp: StencilOp.KEEP,
-          depthFailOp: StencilOp.KEEP,
-        },
+        ...this.stencilDescriptor,
       },
     });
 

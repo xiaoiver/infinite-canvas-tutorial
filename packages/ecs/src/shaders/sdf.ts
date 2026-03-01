@@ -398,5 +398,9 @@ void main() {
   if (outputColor.a < epsilon)
     discard;
 #endif
+
+#ifdef USE_SOFT_CLIP_OUTSIDE
+  outputColor *= 0.15;
+#endif
 }
 `;

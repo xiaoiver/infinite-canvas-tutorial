@@ -86,6 +86,12 @@ export abstract class Drawcall {
 
   protected program: Program;
   protected pipeline: RenderPipeline;
+  /** When parent ClipMode is 'soft': program/pipeline for drawing outside the mask at reduced alpha. */
+  protected programSoftClipOutside: Program | null = null;
+  protected pipelineSoftClipOutside: RenderPipeline | null = null;
+  protected inputLayoutSoftClipOutside: InputLayout | null = null;
+  protected bindingsSoftClipOutside: Bindings | null = null;
+
   protected inputLayout: InputLayout;
   protected bindings: Bindings;
 
@@ -288,7 +294,7 @@ export abstract class Drawcall {
         compare: CompareFunction.ALWAYS,
         passOp: StencilOp.REPLACE,
       } : this.parentClipMode ? {
-          compare: this.parentClipMode === 'clip' ? CompareFunction.EQUAL : CompareFunction.NOTEQUAL,
+          compare: this.parentClipMode === 'erase' ? CompareFunction.NOTEQUAL : CompareFunction.EQUAL,
           passOp: StencilOp.KEEP,
       } : {
         compare: CompareFunction.ALWAYS,
@@ -300,13 +306,28 @@ export abstract class Drawcall {
         compare: CompareFunction.ALWAYS,
         passOp: StencilOp.REPLACE,
       } : this.parentClipMode ? {
-        compare: this.parentClipMode === 'clip' ? CompareFunction.EQUAL : CompareFunction.NOTEQUAL,
+        compare: this.parentClipMode === 'erase' ? CompareFunction.NOTEQUAL : CompareFunction.EQUAL,
         passOp: StencilOp.KEEP,
       } : {
         compare: CompareFunction.ALWAYS,
         passOp: StencilOp.KEEP,
         failOp: StencilOp.KEEP,
         depthFailOp: StencilOp.KEEP,
+      },
+    };
+  }
+
+  /** Stencil descriptor for the second pass when parent ClipMode is 'soft' (draw outside at reduced alpha). */
+  protected get stencilDescriptorForSoftOutside() {
+    return {
+      stencilWrite: false,
+      stencilFront: {
+        compare: CompareFunction.NOTEQUAL,
+        passOp: StencilOp.KEEP,
+      },
+      stencilBack: {
+        compare: CompareFunction.NOTEQUAL,
+        passOp: StencilOp.KEEP,
       },
     };
   }
@@ -318,6 +339,12 @@ export abstract class Drawcall {
   protected get parentClipMode() {
     const parent = this.shapes[0].has(Children) && this.shapes[0].read(Children).parent;
     return parent?.has(ClipMode) ? parent.read(ClipMode).value : null;
+  }
+
+  /** When parent ClipMode is 'soft', alpha for content outside the mask (0–1). */
+  protected get parentOutsideAlpha() {
+    const parent = this.shapes[0].has(Children) && this.shapes[0].read(Children).parent;
+    return parent?.has(ClipMode) ? parent.read(ClipMode).outsideAlpha : 0.5;
   }
 
   protected get useWireframe() {

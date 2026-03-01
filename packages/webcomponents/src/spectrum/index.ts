@@ -11,6 +11,7 @@ export * from './penbar-pencil-settings';
 export * from './penbar-brush-settings';
 export * from './penbar-draw-settings';
 export * from './penbar-text-settings';
+export * from './penbar-crop';
 export * from './properties-panel-content';
 export * from './properties-panel';
 export * from './fill-icon';
