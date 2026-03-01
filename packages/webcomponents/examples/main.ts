@@ -110,36 +110,27 @@ canvas.addEventListener(Event.READY, async (e) => {
     // filter: 'noise(0.5)',
   });
 
-  const frame = {
-    id: 'frame-1',
-    type: 'rect',
-    clipMode: 'clip',
-    x: 100,
-    y: 100,
-    width: 100,
-    height: 100,
-    fill: 'none',
-  };
+  // const frame = {
+  //   id: 'frame-1',
+  //   type: 'rect',
+  //   clipMode: 'clip',
+  //   x: 100,
+  //   y: 100,
+  //   width: 100,
+  //   height: 100,
+  //   fill: 'none',
+  // };
   const child = {
-    id: 'rect-1',
+    id: 'child-1',
     type: 'rect',
-    parentId: 'frame-1',
-    x: 0,
-    y: 0,
+    // parentId: 'frame-1',
+    x: 200,
+    y: 200,
     width: 200,
     height: 200,
-    fill: '/brush.jpg',
+    fill: '/canvas.png',
+    lockAspectRatio: true,
   };
-  const child2 = {
-    id: 'rect-2',
-    type: 'rect',
-    parentId: 'frame-1',
-    x: 0,
-    y: 0,
-    width: 200,
-    height: 200,
-    fill: 'red',
-  }
 
   const node1 = {
     id: 'rect-1',
@@ -216,7 +207,7 @@ canvas.addEventListener(Event.READY, async (e) => {
     fill: 'green',
   } as const;
 
-  api.updateNodes([frame, child, child2]);
+  api.updateNodes([child, node1]);
 
   // const parent = {
   //   id: 'parent',

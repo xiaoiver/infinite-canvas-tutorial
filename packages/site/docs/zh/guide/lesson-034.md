@@ -7,6 +7,9 @@ publish: false
 <script setup>
 import ClipPath from '../../components/ClipPath.vue'
 import Mask from '../../components/Mask.vue'
+import ClipPathSoft from '../../components/ClipPathSoft.vue'
+import Cropping from '../../components/Cropping.vue'
+import BrushWithEraser from '../../components/BrushWithEraser.vue'
 </script>
 
 # 课程 34 - Frame 与裁切
@@ -108,6 +111,8 @@ renderPass.setStencilReference(STENCIL_CLIP_REF);
 
 <Mask />
 
+<BrushWithEraser />
+
 ## 导出成图片 {#export-as-image}
 
 在导出被裁剪的单个元素为图片时，需要计算自身包围盒与父包围盒的交集，作为渲染到 OffscreenCanvas 的尺寸，或者在导出 SVG 时设置为 `viewbox` 的大小：
@@ -201,12 +206,77 @@ $parentNode.setAttribute('stroke', 'black');
 </defs>
 ```
 
+## 裁切图片 {#crop-an-image}
+
+裁切最常用应用于图片，详见：[Crop an image] 和 [image cropping in excalidraw]
+
+![crop an image in Figma](https://help.figma.com/hc/article_attachments/34351829050391)
+
+值得注意的是在编辑器中，裁切通常都会保留原始的图片，因此被裁剪仅仅只是展示效果，便于重新调整裁切区域：
+
+> Cropping is a non-destructive action, meaning that the cropped area does not get deleted. This allows you to make changes to the cropped area, if needed.
+
+### 裁剪部分的半透明效果 {#use-soft-clip-outside}
+
+在进入裁剪模式后，还需要展示原始的图片内容，通过透明度表示被裁切的部分。我们为 `clipMode` 再增加一种模式 `'soft'`，用来展示这种效果：
+
+<ClipPathSoft />
+
+实现原理如下，我们实际上对被裁剪图形渲染了两遍，第一遍（`compare: CompareFunction.EQUAL`）是正常被裁剪的部分和之前介绍的一样，第二遍（`compare: CompareFunction.NOTEQUAL`）应用了固定的透明度：
+
+```glsl
+#ifdef USE_SOFT_CLIP_OUTSIDE
+  outputColor *= 0.15;
+#endif
+```
+
+### 增加交互 {#interaction}
+
+接下来我们为裁剪区域增加交互让其可编辑，进入裁剪模式后，可交互部分有两个：
+
+-   固定裁剪区域，拖拽被裁剪图形
+-   调整裁剪区域大小
+
+<Cropping />
+
+参考 Figma 的交互设计，选中图形后通过右键菜单可以进入裁剪模式，此时会为选中的元素创建一个裁剪父元素：
+
+```ts
+const children = layersSelected.map((id) => this.api.getNodeById(id));
+const bounds = this.api.getBounds(children);
+const { minX, minY, maxX, maxY } = bounds;
+// create a clip parent for all the selected nodes
+const clipParent: RectSerializedNode = {
+    id: uuidv4(),
+    type: 'rect',
+    clipMode: 'clip',
+    x: minX,
+    y: minY,
+    width: maxX - minX,
+    height: maxY - minY,
+};
+
+this.api.runAtNextTick(() => {
+    this.api.updateNodes([clipParent]);
+    // clipParent -> children
+    children.forEach((child) => {
+        this.api.reparentNode(child, clipParent);
+    });
+    this.api.setAppState({
+        layersCropping: [clipParent.id],
+        penbarSelected: Pen.SELECT,
+    });
+    this.api.record();
+});
+```
+
 ## 扩展阅读 {#extended-reading}
 
 -   [Shape clipping in tldraw]
 -   [Frame properties in Figma]
 -   [Stencil Testing in WebGPU and wgpu]
 -   [Clipping and masking in SVG]
+-   [Crop an image]
 
 [Structural shapes]: https://tldraw.dev/sdk-features/default-shapes#Structural-shapes
 [Shape clipping in tldraw]: https://tldraw.dev/sdk-features/shape-clipping
@@ -217,3 +287,5 @@ $parentNode.setAttribute('stroke', 'black');
 [\<clipPath\>]: https://developer.mozilla.org/en-US/docs/Web/SVG/Reference/Element/clipPath
 [Clipping and masking in SVG]: https://developer.mozilla.org/en-US/docs/Web/SVG/Tutorials/SVG_from_scratch/Clipping_and_masking
 [课程 2 - SDF]: /zh/guide/lesson-002#sdf
+[Crop an image]: https://help.figma.com/hc/en-us/articles/360040675194-Crop-an-image
+[image cropping in excalidraw]: https://github.com/excalidraw/excalidraw/pull/8613

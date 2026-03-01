@@ -7,6 +7,9 @@ publish: false
 <script setup>
 import ClipPath from '../components/ClipPath.vue'
 import Mask from '../components/Mask.vue'
+import ClipPathSoft from '../components/ClipPathSoft.vue'
+import Cropping from '../components/Cropping.vue'
+import BrushWithEraser from '../components/BrushWithEraser.vue'
 </script>
 
 # Lesson 34 - Frame and Clipping
@@ -108,6 +111,8 @@ In the Fragment Shader, when using the stencil buffer we must skip the usual alp
 
 <Mask />
 
+<BrushWithEraser />
+
 ## Export as image {#export-as-image}
 
 When exporting a single clipped element as an image, we need the intersection of its bounds with the parent’s bounds as the size for rendering to OffscreenCanvas, or as the `viewBox` size when exporting SVG:
@@ -201,6 +206,70 @@ The resulting SVG structure:
 </defs>
 ```
 
+## Crop an image {#crop-an-image}
+
+Cropping is most commonly used for images. See [Crop an image] and [image cropping in excalidraw] for more details.
+
+![crop an image in Figma](https://help.figma.com/hc/article_attachments/34351829050391)
+
+It's worth noting that in editors, cropping usually preserves the original image, so the cropped area is only hidden visually, making it easy to readjust the crop region:
+
+> Cropping is a non-destructive action, meaning that the cropped area does not get deleted. This allows you to make changes to the cropped area, if needed.
+
+### Semi-transparent effect for cropped area {#use-soft-clip-outside}
+
+After entering crop mode, the original image content still needs to be displayed, with the cropped area indicated by transparency. We add another mode `'soft'` to `clipMode` to achieve this effect:
+
+<ClipPathSoft />
+
+The implementation principle is as follows: we actually render the clipped shape twice. The first pass (`compare: CompareFunction.EQUAL`) renders the normally clipped part as described before, and the second pass (`compare: CompareFunction.NOTEQUAL`) applies a fixed transparency:
+
+```glsl
+#ifdef USE_SOFT_CLIP_OUTSIDE
+  outputColor *= 0.15;
+#endif
+```
+
+### Adding interaction {#interaction}
+
+Next, we add interaction to make the crop region editable. After entering crop mode, there are two interactive parts:
+
+-   Fix the crop region and drag the cropped graphic
+-   Adjust the crop region size
+
+<Cropping />
+
+Referencing Figma's interaction design, after selecting a shape, you can enter crop mode through the context menu. At this point, a clipping parent element is created for the selected elements:
+
+```ts
+const children = layersSelected.map((id) => this.api.getNodeById(id));
+const bounds = this.api.getBounds(children);
+const { minX, minY, maxX, maxY } = bounds;
+// create a clip parent for all the selected nodes
+const clipParent: RectSerializedNode = {
+    id: uuidv4(),
+    type: 'rect',
+    clipMode: 'clip',
+    x: minX,
+    y: minY,
+    width: maxX - minX,
+    height: maxY - minY,
+};
+
+this.api.runAtNextTick(() => {
+    this.api.updateNodes([clipParent]);
+    // clipParent -> children
+    children.forEach((child) => {
+        this.api.reparentNode(child, clipParent);
+    });
+    this.api.setAppState({
+        layersCropping: [clipParent.id],
+        penbarSelected: Pen.SELECT,
+    });
+    this.api.record();
+});
+```
+
 ## Extended reading {#extended-reading}
 
 -   [Shape clipping in tldraw]
@@ -217,3 +286,5 @@ The resulting SVG structure:
 [\<clipPath\>]: https://developer.mozilla.org/en-US/docs/Web/SVG/Reference/Element/clipPath
 [Clipping and masking in SVG]: https://developer.mozilla.org/en-US/docs/Web/SVG/Tutorials/SVG_from_scratch/Clipping_and_masking
 [Lesson 2 - SDF]: /guide/lesson-002#sdf
+[Crop an image]: https://help.figma.com/hc/en-us/articles/360040675194-Crop-an-image
+[image cropping in excalidraw]: https://github.com/excalidraw/excalidraw/pull/8613

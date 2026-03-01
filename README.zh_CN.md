@@ -416,6 +416,12 @@ pnpm run dev
 ## 课程 34 - Frame 与裁切 [🔗](https://infinitecanvas.cc/zh/guide/lesson-034)
 
 -   基于 Stencil buffer 实现 clip 与 mask 两种效果
+-   裁剪图片
+-   非原子化橡皮擦
+
+|                 Crop an image                  |                     Brush with eraser                     |
+| :--------------------------------------------: | :-------------------------------------------------------: |
+| ![crop image](./screenshots/crop-an-image.gif) | ![brush with eraser](./screenshots/brush-with-eraser.png) |
 
 [在线体验]: app.infinitecanvas.cc
 [infinitecanvas]: https://infinitecanvas.tools/

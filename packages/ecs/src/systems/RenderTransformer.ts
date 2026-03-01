@@ -167,6 +167,17 @@ export class RenderTransformer extends System {
         controlPoint.write(Visibility).value = 'visible';
         updateGlobalTransform(controlPoint);
       });
+    // } else if (pen === Pen.CROP) {
+    //   if (!transformable.cropMask) {
+    //     this.createCropMask(camera, transformable);
+    //   }
+    //   const { cropMask } = camera.read(Transformable);
+    //   const { layersCropping } = api.getAppState();
+    //   if (layersCropping.length === 0) {
+    //     cropMask.write(Visibility).value = 'hidden';
+    //     return;
+    //   }
+    //   this.updateCropMask(camera);
     } else {
       if (!transformable.lineMask) {
         this.createLineMask(camera, transformable);
@@ -282,6 +293,14 @@ export class RenderTransformer extends System {
     }
 
     return anchor;
+  }
+
+  private createCropMask(camera: Entity, transformable: Transformable) {
+
+  }
+
+  private updateCropMask(camera: Entity) {
+
   }
 
   private createRectMask(camera: Entity, transformable: Transformable) {

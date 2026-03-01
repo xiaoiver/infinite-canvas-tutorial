@@ -122,11 +122,9 @@ export class ContextBar extends LitElement {
       );
     }
 
-    const { layersSelected, contextBarVisible } = this.appState;
-
-    return html`${when(contextBarVisible && layersSelected.length > 0, () => {
-      // Only single selection need context bar for now.
-      if (layersSelected.length === 1) {
+    const { layersSelected, layersCropping, contextBarVisible } = this.appState;
+    return html`${when(contextBarVisible, () => {
+      if (layersSelected.length === 1 && layersCropping.length === 0) {
         const node =
           layersSelected[0] && this.api.getNodeById(layersSelected[0]);
         if (!node) {

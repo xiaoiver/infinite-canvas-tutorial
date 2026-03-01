@@ -46,6 +46,8 @@ features:
 -   [课程 15 - 绘制文本]
 -   [课程 16 - 文本的高级特性]
 -   [课程 25 - 绘制模式和笔刷]
+-   [课程 30 - 后处理与渲染图]
+-   [课程 34 - Frame 与裁切]
 
 也包含使用 Web Components 技术实现的 UI 组件：
 
@@ -78,3 +80,5 @@ features:
 [课程 17 - 渐变和重复图案]: /zh/guide/lesson-017
 [课程 25 - 绘制模式和笔刷]: /zh/guide/lesson-025
 [课程 28 - 集成 AI 能力]: /zh/guide/lesson-028
+[课程 30 - 后处理与渲染图]: /zh/guide/lesson-030
+[课程 34 - Frame 与裁切]: /zh/guide/lesson-034

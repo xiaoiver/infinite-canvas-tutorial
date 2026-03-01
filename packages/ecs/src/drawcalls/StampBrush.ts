@@ -12,7 +12,6 @@ import {
   BindingsDescriptor,
   TransparentBlack,
   Texture,
-  StencilOp,
   PrimitiveTopology,
   TextureUsage,
   MipmapFilterMode,
@@ -217,19 +216,7 @@ export class StampBrush extends Drawcall {
         blendConstant: TransparentBlack,
         depthWrite: true,
         depthCompare: CompareFunction.GREATER,
-        stencilWrite: false,
-        stencilFront: {
-          compare: CompareFunction.ALWAYS,
-          passOp: StencilOp.KEEP,
-          failOp: StencilOp.KEEP,
-          depthFailOp: StencilOp.KEEP,
-        },
-        stencilBack: {
-          compare: CompareFunction.ALWAYS,
-          passOp: StencilOp.KEEP,
-          failOp: StencilOp.KEEP,
-          depthFailOp: StencilOp.KEEP,
-        },
+        ...this.stencilDescriptor,
       },
     });
     this.device.setResourceName(this.pipeline, 'BrushPipeline');

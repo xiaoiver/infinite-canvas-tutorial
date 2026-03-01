@@ -378,6 +378,26 @@
   <source>Stamp</source>
   <target>笔刷贴图</target>
 </trans-unit>
+<trans-unit id="s399d689c8b389917">
+  <source>Crop</source>
+  <target>裁剪</target>
+</trans-unit>
+<trans-unit id="s1c1c31804e8fa7dd">
+  <source>Clip Aspect</source>
+  <target>裁剪比例</target>
+</trans-unit>
+<trans-unit id="s06f6c6f99db6b552">
+  <source>Original</source>
+  <target>原始</target>
+</trans-unit>
+<trans-unit id="s3bb9ed9dd24e9172">
+  <source>Landscape</source>
+  <target>横屏</target>
+</trans-unit>
+<trans-unit id="safd96a5026e4555a">
+  <source>Portrait</source>
+  <target>竖屏</target>
+</trans-unit>
 </body>
 </file>
 </xliff>

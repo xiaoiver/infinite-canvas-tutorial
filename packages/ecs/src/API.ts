@@ -475,7 +475,7 @@ export class API {
   /**
    * Search entites within a bounding box. Use rbush under the hood to accelerate the search.
    */
-  elementsFromBBox(minX: number, minY: number, maxX: number, maxY: number) {
+  elementsFromBBox(minX: number, minY: number, maxX: number, maxY: number, shouldFilterLocked = true) {
     const rBush = this.#camera.read(RBush).value;
     const rBushNodes = rBush.search({
       minX,
@@ -487,7 +487,7 @@ export class API {
     // Sort by fractional index
     return rBushNodes
       .map((node) => node.entity)
-      .filter((entity) => entity.__valid && !entity.has(Locked))
+      .filter((entity) => entity.__valid && (!shouldFilterLocked || !entity.has(Locked)))
       .sort(sortByFractionalIndex)
       .reverse();
   }
@@ -904,6 +904,42 @@ export class API {
         (id) => !nodes.map((node) => node.id).includes(id),
       ),
     });
+  }
+
+  applyCrop() {
+    const [croppingNodeId] = this.getAppState().layersCropping;
+    const node = this.getNodeById(croppingNodeId);
+    if (node && node.clipMode === 'soft') {
+      this.updateNode(node, { clipMode: 'clip', locked: false });
+    }
+    // Lock all children
+    const children = this.getChildren(node);
+    children.forEach((child) => {
+      this.updateNode(this.getNodeByEntity(child), { locked: true });
+    });
+    this.setAppState({
+      layersCropping: [],
+    });
+    this.selectNodes([node]);
+    this.record();
+  }
+
+  cancelCrop() {
+    const [croppingNodeId] = this.getAppState().layersCropping;
+    const node = this.getNodeById(croppingNodeId);
+    if (node && node.clipMode === 'soft') {
+      this.updateNode(node, { clipMode: 'clip', locked: false });
+    }
+    // Lock all children
+    const children = this.getChildren(node);
+    children.forEach((child) => {
+      this.updateNode(this.getNodeByEntity(child), { locked: true });
+    });
+    this.setAppState({
+      layersCropping: [],
+    });
+    this.selectNodes([node]);
+    this.record();
   }
 
   /**

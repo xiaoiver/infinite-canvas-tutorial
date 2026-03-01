@@ -9,9 +9,11 @@
     /* eslint-disable @typescript-eslint/no-explicit-any */
 
     export const templates = {
-      's0758584e2fcf954d': str`弯曲`,
+      's06f6c6f99db6b552': str`原始`,
+'s0758584e2fcf954d': str`弯曲`,
 's090c9a788879fbe0': str`解锁图层`,
 's0bc31719aa7a8f43': str`剪切`,
+'s1c1c31804e8fa7dd': str`裁剪比例`,
 's2199c9ac949fc21c': str`描边透明度`,
 's236ae937cbcd6a39': str`放大`,
 's2492f5fb1b05b45e': str`文本`,
@@ -25,8 +27,10 @@
 's33ef4300ba7aa421': str`展示图层`,
 's3432f264e3842154': str`画笔设置`,
 's3687049d1af562c4': str`复制`,
+'s399d689c8b389917': str`裁剪`,
 's3b0ab4b52326316f': str`亮色`,
 's3b151ca64eb26ec1': str`展开`,
+'s3bb9ed9dd24e9172': str`横屏`,
 's3cf8a6b47fddf8e7': str`线条`,
 's3d93f9ea0c5a13fa': str`图片`,
 's43ca35f701ac4dc6': str`手绘填充样式`,
@@ -64,6 +68,7 @@
 'saab875d8cfcfe712': str`主题`,
 'sac895c732f350ac5': str`暗色`,
 'sae3b9113b7db93a4': str`笔刷贴图`,
+'safd96a5026e4555a': str`竖屏`,
 'sb02c013623255598': str`隐藏图层`,
 'sb31aa3d1a0e4711f': str`文本设置`,
 'sb38d497d992ab4a4': str`居中`,

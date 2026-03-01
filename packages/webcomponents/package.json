@@ -74,6 +74,7 @@
     "@spectrum-web-components/color-area": "^1.11.0",
     "@spectrum-web-components/color-wheel": "^1.11.0",
     "@spectrum-web-components/color-field": "^1.11.0",
+    "@spectrum-web-components/divider": "^1.11.0",
     "@spectrum-web-components/icon": "^1.11.0",
     "@spectrum-web-components/icons-workflow": "^1.11.0",
     "@spectrum-web-components/menu": "^1.11.0",

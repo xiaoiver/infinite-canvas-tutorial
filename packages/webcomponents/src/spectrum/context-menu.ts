@@ -16,6 +16,8 @@ import {
   MIME_TYPES,
   ExportFormat,
   isUrl,
+  Pen,
+  RectSerializedNode,
 } from '@infinite-canvas-tutorial/ecs';
 import { html, render } from '@spectrum-web-components/base';
 import { VirtualTrigger, openOverlay } from '@spectrum-web-components/overlay';
@@ -263,6 +265,12 @@ export class ContextMenu extends LitElement {
       this.executeSendBackward();
     } else if (value === 'send-to-back') {
       this.executeSendToBack();
+    } else if (value === 'toggle-visibility') {
+      this.executeToggleVisibility();
+    } else if (value === 'toggle-lock') {
+      this.executeToggleLock();
+    } else if (value === 'crop') {
+      this.executeCrop();
     }
   };
 
@@ -289,9 +297,16 @@ export class ContextMenu extends LitElement {
       });
     }
 
+    // Locked element or unselected element should also be included in the context menu
+    // const { x, y } = this.lastContextMenuPosition;
+    // const canvasPosition = this.api.viewport2Canvas({ x, y });
+    // const [topmost] = this.api.elementsFromBBox(canvasPosition.x, canvasPosition.y, canvasPosition.x, canvasPosition.y, false);
+
     const isSelectedEmpty = layersSelected.length === 0;
     let bringForwardDisabled = false;
     let sendBackwardDisabled = false;
+    let isLocked = false;
+    let isVisible = true;
 
     if (layersSelected.length === 1) {
       const node = this.api.getNodeById(layersSelected[0]);
@@ -311,6 +326,8 @@ export class ContextMenu extends LitElement {
       if (node.zIndex === minZIndex) {
         sendBackwardDisabled = true;
       }
+      isLocked = node.locked;
+      isVisible = node.visibility !== 'hidden';
     }
 
     return html`${when(
@@ -338,6 +355,17 @@ export class ContextMenu extends LitElement {
               <sp-icon-cut slot="icon"></sp-icon-cut>
               ${msg(str`Cut`)}
               <kbd slot="value">⌘X</kbd>
+            </sp-menu-item>
+            <sp-menu-divider></sp-menu-divider>
+            <sp-menu-item ?disabled=${isSelectedEmpty} value="toggle-visibility">
+              ${when(isVisible, () => html`<sp-icon-visibility slot="icon"></sp-icon-visibility>`, () => html`<sp-icon-visibility-off slot="icon"></sp-icon-visibility-off>`)}
+              ${isVisible ? msg(str`Hide layer`) : msg(str`Show layer`)}
+              <kbd slot="value">⌘H</kbd>
+            </sp-menu-item>
+            <sp-menu-item ?disabled=${isSelectedEmpty} value="toggle-lock">
+              ${when(isLocked, () => html`<sp-icon-lock-closed slot="icon"></sp-icon-lock-closed>`, () => html`<sp-icon-lock-open slot="icon"></sp-icon-lock-open>`)}
+              ${isLocked ? msg(str`Unlock layer`) : msg(str`Lock layer`)}
+              <kbd slot="value">⌘L</kbd>
             </sp-menu-item>
             <sp-menu-divider></sp-menu-divider>
             <sp-menu-item
@@ -377,6 +405,11 @@ export class ContextMenu extends LitElement {
               <kbd slot="value">⌥⌘[</kbd>
             </sp-menu-item>
             <sp-menu-divider></sp-menu-divider>
+            <sp-menu-item ?disabled=${isSelectedEmpty} value="crop">
+              <sp-icon-crop slot="icon"></sp-icon-crop>
+              ${msg(str`Crop`)}
+              <kbd slot="value">⌘K</kbd>
+            </sp-menu-item>
             <sp-menu-item>
               ${msg(str`Export as...`)}
               <sp-menu slot="submenu" @change=${this.handleExport}>
@@ -631,6 +664,72 @@ export class ContextMenu extends LitElement {
       this.api.sendToBack(node);
       this.api.record();
     }
+  }
+
+  private executeToggleVisibility() {
+    const node = this.api.getNodeById(this.appState.layersSelected[0]);
+    if (node) {
+      this.api.updateNode(node, {
+        visibility: node.visibility === 'hidden' ? 'visible' : 'hidden',
+      });
+      this.api.record();
+    }
+  }
+
+  private executeToggleLock() {
+    const node = this.api.getNodeById(this.appState.layersSelected[0]);
+    if (node) {
+      const isLocked = !!node.locked;
+      this.api.updateNode(node, {
+        locked: !isLocked,
+      });
+      this.api.record();
+    }
+  }
+
+  private executeCrop() {
+    const { layersSelected } = this.api.getAppState();
+
+    if (layersSelected.length === 1) {
+      const node = this.api.getNodeById(layersSelected[0]);
+      if (node.clipMode) {
+        this.api.setAppState({
+          layersCropping: layersSelected,
+          penbarSelected: Pen.SELECT,
+        });
+        // already is a clipping node, do nothing
+        return;
+      }
+    }
+
+    const children = layersSelected.map((id) => this.api.getNodeById(id));
+    const bounds = this.api.getBounds(children);
+    const { minX, minY, maxX, maxY } = bounds;
+    // create a clip parent for all the selected nodes
+    const clipParent: RectSerializedNode = {
+      id: uuidv4(),
+      type: 'rect',
+      clipMode: 'clip',
+      x: minX,
+      y: minY,
+      width: maxX - minX,
+      height: maxY - minY,
+    };
+
+    this.api.runAtNextTick(() => {
+      this.api.updateNodes([clipParent]);
+
+      children.forEach((child) => {
+        this.api.reparentNode(child, clipParent);
+      });
+      
+      this.api.setAppState({
+        layersCropping: [clipParent.id],
+        penbarSelected: Pen.SELECT,
+      });
+
+      this.api.record();
+    });
   }
 
   disconnectedCallback() {

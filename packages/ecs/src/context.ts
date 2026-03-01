@@ -94,6 +94,11 @@ export interface AppState {
   layersExpanded: SerializedNode['id'][];
   propertiesOpened: SerializedNode['id'][];
   /**
+   * Like croppingElementId in Excalidraw
+   * @see https://github.com/excalidraw/excalidraw/pull/8613
+   */
+  layersCropping: SerializedNode['id'][];
+  /**
    * Allow rotate in transformer
    */
   rotateEnabled: boolean;
@@ -313,6 +318,7 @@ export const getDefaultAppState: () => AppState = () => {
     taskbarChatMessages: [],
     layersSelected: [],
     layersHighlighted: [],
+    layersCropping: [],
     propertiesOpened: [],
     layersExpanded: [],
     rotateEnabled: false,

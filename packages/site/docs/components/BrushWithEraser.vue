@@ -4,6 +4,7 @@ import {
   Pen,
   DefaultPlugins,
   BrushType,
+  inferXYWidthHeight,
 } from '@infinite-canvas-tutorial/ecs';
 import { ref, onMounted, onUnmounted } from 'vue';
 import { Event, UIPlugin } from '@infinite-canvas-tutorial/webcomponents';
@@ -27,6 +28,8 @@ onMounted(async () => {
 
     api.setAppState({
       ...api.getAppState(),
+      cameraX: -100,
+      cameraY: 100,
       penbarSelected: Pen.SELECT,
       penbarAll: [Pen.SELECT, Pen.BRUSH],
     });
@@ -51,21 +54,35 @@ onMounted(async () => {
       radius.push(r);
     }
 
+    const clipParent = {
+      id: 'brush-with-eraser-1',
+      type: 'path',
+      clipMode: 'erase',
+      // vertical stripes, width 100, height 200, gap 50
+      d: 'M 0 0 L 50 0 L 50 200 L 0 200 Z M 100 0 L 150 0 L 150 200 L 100 200 Z M 200 0 L 250 0 L 250 200 L 200 200 Z',
+      fill: 'none',
+    };
+
     const node = {
-      id: 'brush-with-stamp-1',
+      id: 'brush-with-eraser-2',
       type: 'brush',
+      parentId: 'brush-with-eraser-1',
       // brushType: BrushType.VANILLA,
       brushType: BrushType.STAMP,
       brushStamp: '/stamp1.png',
       stampInterval: 0.4,
       // brushStamp: '/brush.jpg',
-      points: position.map(([x, y], i) => `${x},${y},${radius[i]}`).join(' '),
+      points: position.map(([x, y], i) => `${x - 200},${y + 20},${radius[i]}`).join(' '),
       stroke: 'red',
       strokeWidth: 10,
       strokeOpacity: 1,
     };
+
+    inferXYWidthHeight(node);
+    inferXYWidthHeight(clipParent);
+
     api.updateNodes([
-      node,
+      clipParent, node,
     ]);
   };
 

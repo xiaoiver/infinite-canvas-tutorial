@@ -3,14 +3,13 @@ import {
   App,
   Pen,
   DefaultPlugins,
-  BrushType,
+  TRANSFORMER_ANCHOR_STROKE_COLOR
 } from '@infinite-canvas-tutorial/ecs';
 import { ref, onMounted, onUnmounted } from 'vue';
 import { Event, UIPlugin } from '@infinite-canvas-tutorial/webcomponents';
 import { LaserPointerPlugin } from '@infinite-canvas-tutorial/laser-pointer';
 import { LassoPlugin } from '@infinite-canvas-tutorial/lasso';
 import { EraserPlugin } from '@infinite-canvas-tutorial/eraser';
-
 
 const wrapper = ref<HTMLElement | null>(null);
 let api: any | undefined;
@@ -28,45 +27,37 @@ onMounted(async () => {
     api.setAppState({
       ...api.getAppState(),
       penbarSelected: Pen.SELECT,
-      penbarAll: [Pen.SELECT, Pen.BRUSH],
+      penbarAll: [Pen.SELECT, Pen.HAND],
+      layersCropping: ['parent-1'],
     });
 
-    // Generate sinewave geometry
-    const maxRadius = (1 / 3) * 100;
-    const segmentCount = 32;
-
-    const position: [number, number][] = [];
-    const radius: number[] = [];
-
-    const gr = (1 + Math.sqrt(5)) / 2; // golden ratio
-    const pi = Math.PI;
-
-    for (let i = 0; i <= segmentCount; ++i) {
-      let a = i / segmentCount;
-      let x = -pi + 2 * pi * a;
-      let y = Math.sin(x) / gr;
-      let r = Math.cos(x / 2.0) * maxRadius;
-
-      position.push([x * 100 + 360, y * 100 + 120]);
-      radius.push(r);
-    }
-
-    const node = {
-      id: 'brush-with-stamp-1',
-      type: 'brush',
-      // brushType: BrushType.VANILLA,
-      brushType: BrushType.STAMP,
-      brushStamp: '/stamp1.png',
-      stampInterval: 0.4,
-      // brushStamp: '/brush.jpg',
-      points: position.map(([x, y], i) => `${x},${y},${radius[i]}`).join(' '),
-      stroke: 'red',
-      strokeWidth: 10,
-      strokeOpacity: 1,
+    const parent = {
+      id: 'parent-1',
+      type: 'rect',
+      clipMode: 'clip',
+      x: 100,
+      y: 50,
+      width: 100,
+      height: 100,
+      fill: 'none',
     };
+    const child = {
+      id: 'rect-1',
+      type: 'rect',
+      parentId: 'parent-1',
+      x: 0,
+      y: 0,
+      width: 200,
+      height: 200,
+      fill: '/canvas.png',
+      locked: true,
+      lockAspectRatio: true,
+    };
+
     api.updateNodes([
-      node,
+      parent, child,
     ]);
+    api.selectNodes([parent]);
   };
 
   canvas.addEventListener(Event.READY, onReady);
