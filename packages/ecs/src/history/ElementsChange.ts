@@ -546,7 +546,7 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
   entity: Entity,
   element: TElement,
   updates: ElementUpdate<TElement>,
-  // skipOverrideKeys: string[] = [],
+  skipOverrideKeys: string[] = [],
   api: API,
 ): TElement => {
   let didChange = false;
@@ -554,9 +554,9 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
   for (const key in updates) {
     const value = (updates as any)[key];
     // if (typeof value !== 'undefined') {
-    //   if (!skipOverrideKeys.includes(key)) {
+      if (!skipOverrideKeys.includes(key)) {
         (element as any)[key] = value;
-      // }
+      }
       didChange = true;
     // }
   }

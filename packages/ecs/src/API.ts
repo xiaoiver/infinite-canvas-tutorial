@@ -980,7 +980,7 @@ export class API {
         this.setNodes([...nodes, node]);
       }
     } else {
-      const updated = mutateElement(entity, node, diff ?? node, this);
+      const updated = mutateElement(entity, node, diff ?? node, [], this);
       const index = nodes.findIndex((n) => n.id === updated.id);
 
       this.commands.execute();
