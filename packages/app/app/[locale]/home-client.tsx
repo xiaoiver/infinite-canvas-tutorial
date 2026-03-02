@@ -23,6 +23,7 @@ const DEFAULT_NODES: SerializedNode[] = [
     height: 1024,
     lockAspectRatio: true,
     version: 0,
+    zIndex: 0,
   } as const,
   {
     id: '2',
@@ -35,6 +36,7 @@ const DEFAULT_NODES: SerializedNode[] = [
     height: 1024,
     lockAspectRatio: true,
     version: 0,
+    zIndex: 0,
   } as const,
   {
     id: '3',
@@ -47,6 +49,7 @@ const DEFAULT_NODES: SerializedNode[] = [
     height: 1024,
     lockAspectRatio: true,
     version: 0,
+    zIndex: 0,
   } as const,
   {
     id: '4',
@@ -59,6 +62,7 @@ const DEFAULT_NODES: SerializedNode[] = [
     anchorX: 200,
     anchorY: 100,
     version: 0,
+    zIndex: 0,
   } as const,
   {
     id: '5',
@@ -72,6 +76,7 @@ const DEFAULT_NODES: SerializedNode[] = [
     anchorX: 200,
     anchorY: 1300,
     version: 0,
+    zIndex: 0,
   } as const,
   {
     id: '6',
@@ -81,6 +86,7 @@ const DEFAULT_NODES: SerializedNode[] = [
     stroke: '#147af3',
     strokeWidth: 18,
     version: 0,
+    zIndex: 0,
   } as const,
   {
     id: '7',
@@ -92,6 +98,7 @@ const DEFAULT_NODES: SerializedNode[] = [
     width: 1408,
     height: 736,
     version: 0,
+    zIndex: 0,
   } as const,
   {
     id: '8',
@@ -103,6 +110,7 @@ const DEFAULT_NODES: SerializedNode[] = [
     strokeLinejoin: 'round',
     markerEnd: 'line',
     version: 0,
+    zIndex: 0,
   },
   {
     id: '9',
@@ -116,6 +124,7 @@ const DEFAULT_NODES: SerializedNode[] = [
     anchorX: 200,
     anchorY: 2300,
     version: 0,
+    zIndex: 0,
   } as const,
 ];
 
