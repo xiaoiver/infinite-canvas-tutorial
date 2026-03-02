@@ -4,7 +4,7 @@ export const bitmapFontXMLParser = {
   test(data: string | XMLDocument | BitmapFontData): boolean {
     const xml = data as Document;
 
-    return (
+    return !!(
       typeof xml !== 'string' &&
       'getElementsByTagName' in xml &&
       xml.getElementsByTagName('page').length &&

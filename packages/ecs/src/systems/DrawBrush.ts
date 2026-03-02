@@ -178,6 +178,7 @@ export class DrawBrush extends System {
             id: uuidv4(),
             type: 'brush',
             version: 0,
+            zIndex: 0,
             points: brush.points,
             brushStamp: stamp, // Use stamp from current settings
             ...rest,

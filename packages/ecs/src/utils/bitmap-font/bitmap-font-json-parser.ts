@@ -87,7 +87,12 @@ export const bitmapFontJSONParser = {
       const second = kerningNode.second;
       const amount = kerningNode.amount;
 
-      data.chars[map[second]].kerning[map[first]] = amount; // * 10000;
+      const secondLetter = map[second];
+      const firstLetter = map[first];
+      const targetChar = secondLetter != null ? data.chars[secondLetter] : undefined;
+      if (targetChar != null && firstLetter != null) {
+        targetChar.kerning[firstLetter] = amount; // * 10000;
+      }
     }
 
     return data;

@@ -100,6 +100,7 @@ describe('Export SVG', () => {
             y1: 0,
             x2: 100,
             y2: 100,
+            zIndex: 0,
           },
         ]);
       }

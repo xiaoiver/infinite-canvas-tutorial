@@ -44,12 +44,12 @@ describe('Hierarchy', () => {
   it('should undo deleting node and its children correctly', async () => {
     const app = new App();
 
-    let api: API;
+    let api: API | undefined;
     let $canvas: HTMLCanvasElement;
     let canvasEntity: Entity | undefined;
     let cameraEntity: Entity | undefined;
-    let parent: EllipseSerializedNode;
-    let child: EllipseSerializedNode;
+    let parent: EllipseSerializedNode | undefined;
+    let child: EllipseSerializedNode | undefined;
 
     const MyPlugin: Plugin = () => {
       system(PreStartUp)(StartUpSystem);
@@ -112,6 +112,7 @@ describe('Hierarchy', () => {
           y: 50,
           width: 100,
           height: 100,
+          zIndex: 0,
         };
         child = {
           id: 'child',
@@ -125,6 +126,7 @@ describe('Hierarchy', () => {
           y: 0,
           width: 50,
           height: 50,
+          zIndex: 0,
         };
         api.setAppState({
           penbarSelected: Pen.SELECT,
@@ -141,12 +143,14 @@ describe('Hierarchy', () => {
 
     await sleep(300);
 
-    api.deleteNodesById([parent.id]);
-    api.record();
+    if (api && parent) {
+      api.deleteNodesById([parent.id]);
+      api.record();
 
-    await sleep(300);
+      await sleep(300);
 
-    api.undo();
+      api.undo();
+    }
 
     await sleep(300);
 

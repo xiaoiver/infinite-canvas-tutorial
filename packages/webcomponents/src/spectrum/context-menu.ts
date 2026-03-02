@@ -167,7 +167,7 @@ export async function executePaste(
 
         // Plain url, extract metadata
         const meta = await extractExternalUrlMetadata(data.text);
-        console.log(meta);
+        // console.log(meta);
 
         // TODO: create bookmark asset
       } else if (string.startsWith('<svg') && string.endsWith('</svg>')) {

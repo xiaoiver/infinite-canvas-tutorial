@@ -102,6 +102,7 @@ describe('Locked', () => {
           y: 50,
           width: 100,
           height: 100,
+          zIndex: 0,
         };
         api.setAppState({
           penbarSelected: Pen.SELECT,
@@ -109,9 +110,7 @@ describe('Locked', () => {
         api.updateNodes([node]);
 
         entity = api
-          .getEntity({
-            id: '1',
-          })
+          .getEntity(node)
           ?.hold();
       }
     }

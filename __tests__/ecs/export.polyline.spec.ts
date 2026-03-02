@@ -97,6 +97,7 @@ describe('Export SVG', () => {
             type: 'polyline',
             stroke: 'black',
             points: '0,0 100,100 200,0',
+            zIndex: 0,
           },
         ]);
       }

@@ -110,6 +110,7 @@ describe('Bindings', () => {
                 y: 0.5,
               },
             ],
+            zIndex: 0,
           },
           {
             id: 'rect-2',
@@ -125,6 +126,7 @@ describe('Bindings', () => {
                 y: 1.0,
               },
             ],
+            zIndex: 1,
           },
           {
             id: 'line-1',
@@ -138,6 +140,7 @@ describe('Bindings', () => {
             exitY: 0.5,
             entryX: 0.0,
             entryY: 1.0,
+            zIndex: 2,
           }
         ]);
       }

@@ -949,7 +949,6 @@ export class API {
     node: SerializedNode,
     diff?: Partial<SerializedNode>,
     updateAppState = true,
-    skipOverrideKeys: string[] = [],
   ) {
     const entity = this.#idEntityMap.get(node.id)?.id();
     const nodes = this.getNodes();
@@ -981,7 +980,7 @@ export class API {
         this.setNodes([...nodes, node]);
       }
     } else {
-      const updated = mutateElement(entity, node, diff ?? node, skipOverrideKeys, this);
+      const updated = mutateElement(entity, node, diff ?? node, this);
       const index = nodes.findIndex((n) => n.id === updated.id);
 
       this.commands.execute();

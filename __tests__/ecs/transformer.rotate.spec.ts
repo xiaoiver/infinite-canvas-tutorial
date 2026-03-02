@@ -101,6 +101,7 @@ describe('Transformer when rotate', () => {
           height: 100,
           rotation: Math.PI / 4,
           visibility: 'visible',
+          zIndex: 0,
         };
         api.setAppState({
           penbarSelected: Pen.SELECT,
@@ -109,9 +110,7 @@ describe('Transformer when rotate', () => {
         api.selectNodes([node]);
 
         entity = api
-          .getEntity({
-            id: '1',
-          })
+          .getEntity(node)
           ?.hold();
       }
     }

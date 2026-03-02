@@ -244,6 +244,7 @@ export class DrawRect extends System {
                 id: uuidv4(),
                 type: PEN_TO_TYPE[pen],
                 version: 0,
+                zIndex: 0,
               },
               defaultDrawParams[pen],
               pen === Pen.DRAW_LINE ||

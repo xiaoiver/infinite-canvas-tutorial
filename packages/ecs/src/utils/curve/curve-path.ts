@@ -37,7 +37,7 @@ export class CurvePath extends Curve {
   // 3. Get t for the curve
   // 4. Return curve.getPointAt(t')
 
-  getPoint(t: number, optionalTarget) {
+  getPoint(t: number, optionalTarget?: any) {
     const d = t * this.getLength();
     const curveLengths = this.getCurveLengths();
     let i = 0;

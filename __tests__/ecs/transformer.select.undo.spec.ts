@@ -43,9 +43,9 @@ describe('Select and Undo', () => {
     let $canvas: HTMLCanvasElement | undefined;
     let canvasEntity: Entity | undefined;
     let cameraEntity: Entity | undefined;
-    let api: API;
-    let parent: RectSerializedNode;
-    let child: RectSerializedNode;
+    let api: API | undefined;
+    let parent: RectSerializedNode | undefined;
+    let child: RectSerializedNode | undefined;
 
     const MyPlugin: Plugin = () => {
       system(PreStartUp)(StartUpSystem);
@@ -101,6 +101,7 @@ describe('Select and Undo', () => {
           y: 50,
           width: 100,
           height: 100,
+          zIndex: 0,
         };
         child = {
           id: 'child',
@@ -111,6 +112,7 @@ describe('Select and Undo', () => {
           y: 0,
           width: 50,
           height: 50,
+          zIndex: 0,
         };
         api.setAppState({
           penbarSelected: Pen.SELECT,
@@ -124,14 +126,15 @@ describe('Select and Undo', () => {
     app.addPlugins(...DefaultPlugins, MyPlugin);
 
     await app.run();
+    if (api && child) {
+    await sleep(300);
+      api.selectNodes([child]);
+      api.record();
+      await sleep(300);
 
-    await sleep(300);
-    api.selectNodes([child]);
-    api.record();
-    await sleep(300);
-
-    api.undo();
-    await sleep(300);
+      api.undo();
+      await sleep(300);
+    }
 
     const dir = `${__dirname}/snapshots`;
     await expect($canvas!.getContext('webgl1')).toMatchWebGLSnapshot(

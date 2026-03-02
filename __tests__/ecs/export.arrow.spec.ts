@@ -105,6 +105,7 @@ describe('Export SVG', () => {
             markerEnd: 'line',
             markerFactor: 3,
             points: '50,50 100,100 150,50',
+            zIndex: 0,
           },
         ]);
       }
