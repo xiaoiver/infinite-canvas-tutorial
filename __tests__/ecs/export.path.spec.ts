@@ -100,6 +100,7 @@ describe('Export SVG', () => {
             strokeLinejoin: 'round',
             strokeLinecap: 'round',
             d: 'M 0 0 L 100 100 L 200 0',
+            zIndex: 0,
           },
         ]);
       }

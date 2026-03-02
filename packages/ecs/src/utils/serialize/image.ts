@@ -53,7 +53,7 @@ export async function imageToCanvas(
     img.crossOrigin = 'anonymous';
     return new Promise<HTMLCanvasElement>((resolve, reject) => {
       img.onload = () => {
-        const canvas = document.createElement('canvas');
+        const canvas = DOMAdapter.get().getDocument().createElement('canvas');
         canvas.width = img.width;
         canvas.height = img.height;
         const ctx = canvas.getContext('2d')!;
@@ -65,7 +65,7 @@ export async function imageToCanvas(
       };
     });
   } else {
-    const canvas = document.createElement('canvas');
+    const canvas = DOMAdapter.get().getDocument().createElement('canvas');
     canvas.width = image.width;
     canvas.height = image.height;
     const ctx = canvas.getContext('2d')!;

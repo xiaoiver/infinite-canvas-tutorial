@@ -103,6 +103,7 @@ describe('Attenuation', () => {
             sizeAttenuation: true,
             strokeAttenuation: true,
             visibility: 'visible',
+            zIndex: 0,
           },
         ]);
       }

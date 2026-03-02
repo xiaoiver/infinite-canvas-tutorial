@@ -61,7 +61,8 @@
     "@lit/context": "^1.1.2",
     "@lit/localize": "^0.12.2",
     "@lit/task": "^1.0.1",
-    "lit": "^3.1.3"
+    "lit": "^3.1.3",
+    "mxgraphdata": "0.1.2"
   },
   "devDependencies": {
     "@lit/localize-tools": "^0.8.1"

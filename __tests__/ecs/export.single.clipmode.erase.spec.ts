@@ -104,6 +104,7 @@ describe('Export SVG', () => {
           y: 50,
           width: 200,
           height: 200,
+          zIndex: 0,
         };
 
         api.updateNodes([
@@ -116,6 +117,7 @@ describe('Export SVG', () => {
             y: 50,
             width: 100,
             height: 100,
+            zIndex: 0,
           },
           node,
         ]);

@@ -21,6 +21,7 @@ export const parseD2ToSerializedNodes = async (definition: string) => {
       stroke: colors[stroke.toLowerCase()],
       strokeWidth,
       opacity,
+      zIndex: 0,
     };
     nodes.push(node);
 
@@ -37,6 +38,7 @@ export const parseD2ToSerializedNodes = async (definition: string) => {
         fill: colors.neutrals[color.toLowerCase()],
         textAlign: 'center',
         textBaseline: 'middle',
+        zIndex: 0,
       };
       nodes.push(labelNode);
     }
@@ -52,6 +54,7 @@ export const parseD2ToSerializedNodes = async (definition: string) => {
       stroke: colors[stroke.toLowerCase()],
       strokeWidth,
       markerEnd: 'line',
+      zIndex: 0,
     };
     nodes.push(edge);
 
@@ -68,6 +71,7 @@ export const parseD2ToSerializedNodes = async (definition: string) => {
         fill: colors.neutrals[color.toLowerCase()],
         textAlign: 'center',
         textBaseline: 'middle',
+        zIndex: 0,
       };
       nodes.push(labelNode);
     }

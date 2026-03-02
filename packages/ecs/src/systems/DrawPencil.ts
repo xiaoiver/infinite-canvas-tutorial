@@ -188,6 +188,7 @@ export class DrawPencil extends System {
           const node: PathSerializedNode | PolylineSerializedNode = {
             id: uuidv4(),
             version: 0,
+            zIndex: 0,
             ...appState.penbarPencil,
           };
           const points: [number, number][] = selection.points.map((p) => [

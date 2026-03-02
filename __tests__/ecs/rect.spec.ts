@@ -29,6 +29,7 @@ import {
   ZIndex,
   ComputeZIndex,
   UI,
+  RectSerializedNode,
 } from '../../packages/ecs/src';
 import { NodeJSAdapter, sleep } from '../utils';
 
@@ -89,48 +90,44 @@ describe('Rect', () => {
           zoom: 1,
         });
 
+        const node1: RectSerializedNode = {
+          id: '1',
+          type: 'rect',
+          fill: 'red',
+          x: 50,
+          y: 50,
+          width: 100,
+          height: 100,
+          zIndex: 0,
+        };
+
+        const node2: RectSerializedNode = {
+          id: '2',
+          parentId: '1',
+          type: 'rect',
+          fill: 'green',
+          x: 50,
+          y: 50,
+          width: 50,
+          height: 50,
+          stroke: 'black',
+          strokeWidth: 10,
+          strokeAlignment: 'center',
+          strokeDasharray: '10 10',
+          dropShadowColor: 'black',
+          dropShadowBlurRadius: 10,
+          dropShadowOffsetX: 10,
+          dropShadowOffsetY: 10,
+          zIndex: 0,
+        };
+
         api.updateNodes([
-          {
-            id: '1',
-            type: 'rect',
-            fill: 'red',
-            x: 50,
-            y: 50,
-            width: 100,
-            height: 100,
-            visibility: 'visible',
-          },
-          {
-            id: '2',
-            parentId: '1',
-            type: 'rect',
-            fill: 'green',
-            x: 50,
-            y: 50,
-            width: 50,
-            height: 50,
-            stroke: 'black',
-            strokeWidth: 10,
-            strokeAlignment: 'center',
-            strokeDasharray: '10 10',
-            dropShadowColor: 'black',
-            dropShadowBlurRadius: 10,
-            dropShadowOffsetX: 10,
-            dropShadowOffsetY: 10,
-            visibility: 'visible',
-          },
+          node1,
+          node2,
         ]);
 
-        parentEntity = api
-          .getEntity({
-            id: '1',
-          })
-          ?.hold();
-        childEntity = api
-          .getEntity({
-            id: '2',
-          })
-          ?.hold();
+        parentEntity = api.getEntity(node1)?.hold();
+        childEntity = api.getEntity(node2)?.hold();
       }
     }
 

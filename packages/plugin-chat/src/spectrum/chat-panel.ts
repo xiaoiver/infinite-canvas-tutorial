@@ -297,6 +297,7 @@ export class ChatPanel extends LitElement {
             y: maxY + 30,
             width: loadedImages[index].width,
             height: loadedImages[index].height,
+            zIndex: 0,
           };
           newImages.push(newImage);
         });

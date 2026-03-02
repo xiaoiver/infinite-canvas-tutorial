@@ -177,6 +177,7 @@ export class TextEditor extends LitElement {
         content: '',
         anchorX: wx,
         anchorY: wy,
+        zIndex: 0,
         ...this.appState.penbarText,
       };
       inferXYWidthHeight(this.node);

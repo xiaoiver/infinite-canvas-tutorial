@@ -630,7 +630,7 @@ export function serializedNodesToEntities(
     }
 
     const { zIndex } = attributes;
-    entityCommands.insert(new ZIndex(zIndex));
+    entityCommands.insert(new ZIndex(zIndex ?? 0));
 
     const { sizeAttenuation, strokeAttenuation } =
       attributes as AttenuationAttributes;

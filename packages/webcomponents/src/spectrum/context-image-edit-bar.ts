@@ -90,6 +90,7 @@ export class ContextImageEditBar extends LitElement {
         y: (this.node.y as number),
         width: this.node.width,
         height: this.node.height,
+        zIndex: 0,
       };
       this.api.updateNode(newImage);
     });

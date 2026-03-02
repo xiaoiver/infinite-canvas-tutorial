@@ -29,7 +29,7 @@ export interface BaseSerializeNode<Type extends string>
   extends Partial<TransformAttributes>,
   Partial<VisibilityAttributes>,
   Partial<NameAttributes>,
-  Partial<ZIndexAttributes>,
+  ZIndexAttributes,
   Partial<EditableAttributes> {
   /**
    * Unique identifier
@@ -81,11 +81,10 @@ export interface ZIndexAttributes {
    * Z index
    * @see https://developer.mozilla.org/en-US/docs/Web/CSS/z-index
    */
-  zIndex?: number;
+  zIndex: number;
 
   fractionalIndex?: string;
 }
-
 export interface NameAttributes {
   name: string;
 }

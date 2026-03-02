@@ -8,6 +8,7 @@ publish: false
 import Mermaid from '../../components/Mermaid.vue'
 import MermaidRough from '../../components/MermaidRough.vue'
 import D2 from '../../components/D2.vue'
+import Drawio from '../../components/Drawio.vue'
 </script>
 
 # 课程 32 - 文本生成图表
@@ -115,10 +116,12 @@ x -> y: hello world
 ## [WIP] drawio {#drawio}
 
 ```ts
-import { parseDrawIO } from "mxgraphdata";
+import { parseDrawIO } from 'mxgraphdata';
 const mxfile = await parseDrawIO(xml);
 console.log(mxfile.diagram);
 ```
+
+<Drawio />
 
 ## 扩展阅读 {#extended-reading}
 

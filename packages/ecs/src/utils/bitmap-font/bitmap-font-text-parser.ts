@@ -117,7 +117,7 @@ export const bitmapFontTextParser = {
 
   parse(txt: string): BitmapFontData {
     // Retrieve data item
-    const items = txt.match(/^[a-z]+\s+.+$/gm);
+    const items = txt.match(/^[a-z][a-zA-Z]*\s+.+$/gm);
     const rawData: BitmapFontRawData = {
       info: [],
       common: [],
@@ -131,7 +131,7 @@ export const bitmapFontTextParser = {
 
     for (const i in items) {
       // Extract item name
-      const name = items[i].match(/^[a-z]+/gm)[0] as keyof BitmapFontRawData;
+      const name = items[i].match(/^[a-z][a-zA-Z]*/gm)![0] as keyof BitmapFontRawData;
 
       // Extract item attribute list as string ex.: "width=10"
       const attributeList = items[i].match(/[a-zA-Z]+=([^\s"']+|"([^"]*)")/gm);

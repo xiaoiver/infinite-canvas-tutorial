@@ -30,6 +30,7 @@ import {
   ComputeZIndex,
   UI,
   ClipMode,
+  RectSerializedNode,
 } from '../../packages/ecs/src';
 import { NodeJSAdapter, sleep } from '../utils';
 
@@ -91,39 +92,37 @@ describe('ClipMode', () => {
           zoom: 1,
         });
 
+        const node1: RectSerializedNode = {
+          id: 'clip-parent',
+          type: 'rect',
+          fill: 'none',
+          clipMode: 'soft',
+          x: 50,
+          y: 50,
+          width: 100,
+          height: 100,
+          zIndex: 0,
+        };
+        const node2: RectSerializedNode = {
+          id: 'clip-child',
+          parentId: 'clip-parent',
+          type: 'rect',
+          fill: 'green',
+          x: 50,
+          y: 50,
+          width: 200,
+          height: 200,
+          zIndex: 0,
+        };
         api.updateNodes([
-          {
-            id: 'clip-parent',
-            type: 'rect',
-            fill: 'none',
-            clipMode: 'soft',
-            x: 50,
-            y: 50,
-            width: 100,
-            height: 100,
-          },
-          {
-            id: 'clip-child',
-            parentId: 'clip-parent',
-            type: 'rect',
-            fill: 'green',
-            x: 50,
-            y: 50,
-            width: 200,
-            height: 200,
-          },
+          node1,
+          node2,
         ]);
 
         parentEntity = api
-          .getEntity({
-            id: 'clip-parent',
-          })
-          ?.hold();
+          .getEntity(node1)?.hold();
         childEntity = api
-          .getEntity({
-            id: 'clip-child',
-          })
-          ?.hold();
+          .getEntity(node2)?.hold();
       }
     }
 

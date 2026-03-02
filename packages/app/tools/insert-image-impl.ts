@@ -38,7 +38,8 @@ export async function insertImage(canvasApi: ExtendedAPI, input: { image: string
         x: center.x - width / 2,
         y: center.y - height / 2,
         width,
-        height
+        height,
+        zIndex: 0,
       };
       nodes.forEach((node) => {
         node.parentId = root.id;

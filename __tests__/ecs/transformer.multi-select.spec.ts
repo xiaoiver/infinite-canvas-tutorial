@@ -101,6 +101,7 @@ describe('Transformer', () => {
           y: 50,
           width: 30,
           height: 30,
+          zIndex: 0,
         };
         const node2: RectSerializedNode = {
           id: '2',
@@ -113,6 +114,7 @@ describe('Transformer', () => {
           y: 150,
           width: 30,
           height: 30,
+          zIndex: 1,
         };
         api.setAppState({
           penbarSelected: Pen.SELECT,

@@ -29,6 +29,7 @@ import {
   ComputeZIndex,
   Ellipse,
   UI,
+  EllipseSerializedNode,
 } from '../../packages/ecs/src';
 import { NodeJSAdapter, sleep } from '../utils';
 
@@ -88,9 +89,8 @@ describe('Hierarchy', () => {
           zoom: 1,
         });
 
-        api.updateNodes([
-          {
-            id: '1',
+        const node1: EllipseSerializedNode = {
+          id: '1',
             type: 'ellipse',
             fill: 'red',
             x: 0,
@@ -98,9 +98,10 @@ describe('Hierarchy', () => {
             width: 200,
             height: 200,
             visibility: 'visible',
-          },
-          {
-            id: '2',
+            zIndex: 0,
+        };
+        const node2: EllipseSerializedNode = {
+          id: '2',
             parentId: '1',
             type: 'ellipse',
             fill: 'green',
@@ -113,19 +114,16 @@ describe('Hierarchy', () => {
             strokeAlignment: 'center',
             strokeDasharray: '10 10',
             visibility: 'visible',
-          },
+            zIndex: 0,
+        };
+
+        api.updateNodes([
+          node1,
+          node2,
         ]);
 
-        parentEntity = api
-          .getEntity({
-            id: '1',
-          })
-          ?.hold();
-        childEntity = api
-          .getEntity({
-            id: '2',
-          })
-          ?.hold();
+        parentEntity = api.getEntity(node1)?.hold();
+        childEntity = api.getEntity(node2)?.hold();
       }
     }
 

@@ -237,6 +237,7 @@ export class ExtendedAPI extends API {
       height,
       fill: cdnUrl,
       lockAspectRatio: true,
+      zIndex: 0,
     };
     updateAndSelectNodes(this, this.getAppState(), [
       node,

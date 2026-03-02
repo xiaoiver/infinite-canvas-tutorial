@@ -75,6 +75,7 @@ import { safeAddComponent } from '../history';
 import { updateComputedPoints } from './ComputePoints';
 import { DOMAdapter } from '../environment';
 import { hideLabel, initLabel, showLabel } from '..';
+import type { SerializedNode } from '../types/serialized-node';
 
 export enum SelectionMode {
   IDLE = 'IDLE',
@@ -96,16 +97,7 @@ export enum SelectionMode {
 export interface SelectOBB {
   mode: SelectionMode;
   resizingAnchorName: AnchorName;
-  nodes: {
-    id: string;
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-    rotation: number;
-    scaleX: number;
-    scaleY: number;
-  }[];
+  nodes: SerializedNode[];
 
   obb: {
     x: number;

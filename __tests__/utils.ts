@@ -2,7 +2,7 @@ import _gl from 'gl';
 import { createCanvas } from 'canvas';
 import getPixels from 'get-pixels';
 import { JSDOM } from 'jsdom';
-import { XMLSerializer } from '@xmldom/xmldom';
+import { XMLSerializer, DOMParser } from '@xmldom/xmldom';
 import GraphemeSplitter from 'grapheme-splitter';
 import parsePNG from 'pngparse-sync';
 import { Adapter } from '../packages/core/src/environment';
@@ -125,7 +125,8 @@ export const NodeJSAdapter: Adapter = {
   getDocument: () => new JSDOM().window._document,
   // @ts-expect-error compatible with @xmldom/xmldom
   getXMLSerializer: () => new XMLSerializer(),
-  getDOMParser: () => null,
+  // @ts-expect-error compatible with @xmldom/xmldom
+  getDOMParser: () => new DOMParser(),
   setCursor: () => {},
   splitGraphemes: (s: string) => {
     const splitter = new GraphemeSplitter();

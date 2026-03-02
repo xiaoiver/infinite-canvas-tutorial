@@ -97,6 +97,7 @@ function createText(
       fontSize: 16,
       fontFamily: 'system-ui',
       fill: 'black',
+      zIndex: 0,
     },
   ]);
 }
@@ -118,6 +119,7 @@ function createHTML(
       width,
       height,
       html,
+      zIndex: 0,
     },
   ]);
 }
@@ -167,7 +169,7 @@ export async function executePaste(
 
         // Plain url, extract metadata
         const meta = await extractExternalUrlMetadata(data.text);
-        console.log(meta);
+        // console.log(meta);
 
         // TODO: create bookmark asset
       } else if (string.startsWith('<svg') && string.endsWith('</svg>')) {
@@ -714,6 +716,7 @@ export class ContextMenu extends LitElement {
       y: minY,
       width: maxX - minX,
       height: maxY - minY,
+      zIndex: 0,
     };
 
     this.api.runAtNextTick(() => {

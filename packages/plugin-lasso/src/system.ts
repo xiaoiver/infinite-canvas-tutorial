@@ -189,6 +189,7 @@ export class LassoSystem extends System {
               strokeWidth,
               strokeOpacity,
               tessellationMethod: TesselationMethod.LIBTESS,
+              zIndex: 0,
             };
             api.setAppState({
               penbarSelected: Pen.SELECT,

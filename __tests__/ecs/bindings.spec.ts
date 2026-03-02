@@ -104,6 +104,7 @@ describe('Bindings', () => {
             y: 0,
             width: 50,
             height: 50,
+            zIndex: 0,
           },
           {
             id: 'rect-2',
@@ -113,6 +114,7 @@ describe('Bindings', () => {
             y: 100,
             width: 50,
             height: 50,
+            zIndex: 1,
           },
           {
             id: 'line-1',
@@ -122,6 +124,7 @@ describe('Bindings', () => {
             stroke: 'black',
             strokeWidth: 4,
             markerEnd: 'line',
+            zIndex: 2,
           }
         ]);
       }
