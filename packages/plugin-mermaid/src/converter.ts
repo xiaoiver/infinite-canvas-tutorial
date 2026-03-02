@@ -33,6 +33,7 @@ function convertFlowchartToSerializedNodes(vertices: Map<string, Vertex>, edges:
       height: vertex.height,
       stroke: 'black',
       strokeWidth: 2,
+      zIndex: 0,
     };
 
     switch (vertex.type) {
@@ -72,6 +73,7 @@ function convertFlowchartToSerializedNodes(vertices: Map<string, Vertex>, edges:
       fill: 'black',
       textAlign: 'center',
       textBaseline: 'middle',
+      zIndex: 0,
     };
     serializedNodes.push(textSerializedNode);
   });
@@ -103,6 +105,7 @@ function convertFlowchartToSerializedNodes(vertices: Map<string, Vertex>, edges:
       strokeWidth: 2,
       markerEnd: 'line',
       edgeStyle: EdgeStyle.ORTHOGONAL,
+      zIndex: 0,
     };
 
     serializedNodes.push(serializedNode);
