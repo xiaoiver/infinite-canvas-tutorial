@@ -15,8 +15,9 @@ import {
   Rough,
   Stroke,
 } from '../components';
-import { generator, parsePath } from '../utils';
+import { deserializePoints, generator, inferXYWidthHeight, parsePath, serializePoints, shiftPath } from '../utils';
 import { safeAddComponent } from '../history';
+import { SerializedNode } from '../types/serialized-node';
 
 export class ComputeRough extends System {
   roughs = this.query(
@@ -36,7 +37,42 @@ export class ComputeRough extends System {
   execute() {
     this.roughs.addedOrChanged.forEach((entity) => {
       let drawable: Drawable;
-      const roughOptions = getRoughOptions(entity);
+
+      const rough = entity.read(Rough);
+      const fillComponent = entity.has(FillSolid)
+        ? entity.read(FillSolid)
+        : { value: 'none' };
+      const strokeComponent = entity.has(Stroke)
+        ? entity.read(Stroke)
+        : { color: 'none', width: 0, dasharray: [], dashoffset: 0 };
+      const { color, width, dasharray, dashoffset } = strokeComponent;
+      const { value: fill } = fillComponent;
+
+      const roughOptions = getRoughOptions({
+        // @ts-ignore
+        fill,
+        stroke: color,
+        strokeWidth: width,
+        strokeDasharray: [dasharray[0], dasharray[1]].join(','),
+        strokeDashoffset: dashoffset,
+        roughSeed: rough.seed,
+        roughRoughness: rough.roughness,
+        roughBowing: rough.bowing,
+        roughFillStyle: rough.fillStyle,
+        roughFillWeight: rough.fillWeight,
+        roughHachureAngle: rough.hachureAngle,
+        roughHachureGap: rough.hachureGap,
+        roughCurveStepCount: rough.curveStepCount,
+        roughCurveFitting: rough.curveFitting,
+        roughFillLineDash: rough.fillLineDash,
+        roughFillLineDashOffset: rough.fillLineDashOffset,
+        roughDisableMultiStroke: rough.disableMultiStroke,
+        roughDisableMultiStrokeFill: rough.disableMultiStrokeFill,
+        roughSimplification: rough.simplification,
+        roughDashOffset: rough.dashOffset,
+        roughDashGap: rough.dashGap,
+        roughZigzagOffset: rough.zigzagOffset,
+      });
 
       if (entity.has(Circle)) {
         const { cx, cy, r } = entity.read(Circle);
@@ -87,4 +123,29 @@ export class ComputeRough extends System {
       });
     });
   }
+}
+
+export function computeDrawableSets(node: SerializedNode) {
+  let drawable: Drawable;
+
+  const roughOptions = getRoughOptions(node);
+
+  const { x, y, width, height, type } = node;
+  if (type === 'ellipse' || type === 'rough-ellipse') {
+    const { cx, cy, rx, ry } = node;
+    drawable = generator.ellipse(cx - x, cy - y, rx * 2, ry * 2, roughOptions);
+  } else if (type === 'rect' || type === 'rough-rect') {
+    drawable = generator.rectangle(0, 0, width, height, roughOptions);
+  } else if (type === 'line' || type === 'rough-line') {
+    const { x1, y1, x2, y2 } = node;
+    drawable = generator.line(x1 - x, y1 - y, x2 - x, y2 - y, roughOptions);
+  } else if (type === 'polyline' || type === 'rough-polyline') {
+    const { points } = node;
+    drawable = generator.linearPath(deserializePoints(points), roughOptions);
+  } else if (type === 'path' || type === 'rough-path') {
+    const { d } = node;
+    drawable = generator.path(shiftPath(d, -x, -y), roughOptions);
+  }
+
+  return drawable.sets;
 }

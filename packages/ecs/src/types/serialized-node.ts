@@ -154,6 +154,15 @@ export interface FlexboxLayoutAttributes {
   flexShrink: number;
   flexBasis: number;
   flex: number;
+  padding: number;
+  margin: number;
+  gap: number;
+  rowGap: number;
+  columnGap: number;
+  minWidth: number;
+  maxWidth: number;
+  minHeight: number;
+  maxHeight: number;
 }
 
 export interface ConstraintAttributes {

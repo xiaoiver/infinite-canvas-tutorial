@@ -418,10 +418,13 @@ export function serializedNodesToEntities(
       if (brushStamp) {
         loadImage(brushStamp, entityCommands.id());
       }
-    } else if (type === 'path') {
+    } else if (type === 'path' || type === 'rough-path') {
       const { d, fillRule, tessellationMethod } =
         attributes as PathSerializedNode;
       entityCommands.insert(new Path({ d, fillRule, tessellationMethod }));
+      if (type === 'rough-path') {
+        serializeRough(attributes as RoughAttributes, entityCommands);
+      }
     } else if (type === 'text') {
       const {
         anchorX,

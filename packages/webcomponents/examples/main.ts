@@ -115,57 +115,49 @@ canvas.addEventListener(Event.READY, async (e) => {
     type: 'rect',
     x: 100,
     y: 100,
-    fill: 'grey',
-    display: 'flex',
+    fill: 'hsl(214.82, 100%, 50%)',
+    // display: 'flex',
     width: 200,
     height: 250,
-    padding: 10,
-    flexWrap: 'wrap',
-    gap: 10,
+    // padding: 10,
+    // flexWrap: 'wrap',
+    // gap: 10,
     zIndex: 0,
   } as const;
 
-  const child = {
-    id: 'child',
-    parentId: 'parent',
-    type: 'rect',
-    fill: 'red',
-    width: 50,
-    height: 50,
-    zIndex: 1,
-  } as const;
+  // const child = {
+  //   id: 'child',
+  //   parentId: 'parent',
+  //   type: 'rect',
+  //   fill: 'red',
+  //   width: 50,
+  //   height: 50,
+  //   zIndex: 1,
+  // } as const;
 
-  const child2 = {
-    id: 'child2',
-    parentId: 'parent',
-    type: 'rect',
-    fill: 'red',
-    width: 50,
-    height: 50,
-    zIndex: 1,
-  } as const;
+  // const child2 = {
+  //   id: 'child3',
+  //   parentId: 'parent',
+  //   type: 'text',
+  //   content: 'Hello',
+  //   fill: 'blue',
+  //   fontSize: 20,
+  //   fontFamily: 'system-ui',
+  //   zIndex: 2,
+  // } as const;
 
   const child3 = {
     id: 'child3',
     parentId: 'parent',
-    type: 'rect',
+    type: 'rough-path',
+    d: 'M 100 100 L 200 200 L 300 100 Z',
     fill: 'red',
-    width: 50,
-    height: 50,
-    zIndex: 1,
+    stroke: 'black',
+    strokeWidth: 10,
+    zIndex: 3,
   } as const;
 
-  const child4 = {
-    id: 'child4',
-    parentId: 'parent',
-    type: 'rect',
-    fill: 'red',
-    width: 50,
-    height: 50,
-    zIndex: 1,
-  } as const;
-
-  api.updateNodes([parent, child, child2, child3, child4]);
+  api.updateNodes([parent, child3]);
   api.selectNodes([parent]);
   api.record();
 

@@ -46,6 +46,7 @@ import {
   createSVGElement,
   serializeNodesToSVGElements,
   toSVGDataURL,
+  createFontFacesStyleElement,
 } from '../utils';
 import type { SerializedNode } from '../types/serialized-node';
 import { API } from '..';
@@ -176,6 +177,15 @@ export async function toSVGElement(
       height + padding * 2
     }`,
   );
+
+  // Inline font faces so exported SVG is self-contained (see Excalidraw export.ts).
+  const doc = $namespace.ownerDocument;
+  const $fontStyle = await createFontFacesStyleElement(nodes, doc);
+  if ($fontStyle) {
+    const $defs = createSVGElement('defs');
+    $defs.appendChild($fontStyle);
+    $namespace.appendChild($defs);
+  }
 
   nodes = [...clipParentNodes, ...nodes];
 
