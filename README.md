@@ -412,6 +412,14 @@ If you want to use it in your own project, you can refer to:
 ## Lesson 33 - Layout engine [🔗](https://infinitecanvas.cc/guide/lesson-033)
 
 -   Implement Flexbox layout with Yoga
+    -   AlignItems & JustifyContent
+    -   Gap
+    -   Flex Basis, Grow, and Shrink
+    -   Min/Max Width and Height
+
+|                   Gap                   |          AlignItems & JustifyContent           |
+| :-------------------------------------: | :--------------------------------------------: |
+| ![Yoga gap](./screenshots/yoga-gap.gif) | ![Yoga gap](./screenshots/yoga-alignitems.gif) |
 
 ## Lesson 34 - Frame and clip [🔗](https://infinitecanvas.cc/guide/lesson-034)
 

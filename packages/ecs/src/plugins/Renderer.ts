@@ -62,7 +62,8 @@ import {
   Editable,
   Filter,
   Locked,
-  ClipMode
+  ClipMode,
+  Flex
 } from '../components';
 
 export const RendererPlugin: Plugin = () => {
@@ -84,6 +85,7 @@ export const RendererPlugin: Plugin = () => {
   component(MaterialDirty);
   component(Editable);
   component(Locked);
+  component(Flex);
 
   /**
    * Style

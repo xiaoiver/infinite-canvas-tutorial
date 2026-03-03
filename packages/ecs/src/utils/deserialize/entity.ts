@@ -42,6 +42,7 @@ import {
   Binded,
   Locked,
   ClipMode,
+  Flex,
 } from '../../components';
 import type {
   AttenuationAttributes,
@@ -67,6 +68,7 @@ import type {
   StrokeAttributes,
   VisibilityAttributes,
   WireframeAttributes,
+  FlexboxLayoutAttributes,
 } from '../../types/serialized-node';
 import {  
   isDataUrl,
@@ -658,6 +660,11 @@ export function serializedNodesToEntities(
     const { filter } = attributes as FilterAttributes;
     if (filter) {
       entityCommands.insert(new Filter({ value: filter }));
+    }
+
+    const { display } = attributes as FlexboxLayoutAttributes;
+    if (display === 'flex') {
+      entityCommands.insert(new Flex());
     }
 
     if (parentId) {

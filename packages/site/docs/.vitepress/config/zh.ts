@@ -141,6 +141,7 @@ export const zh = defineConfig({
               { text: '橡皮擦工具', link: 'eraser' },
               { text: 'Mermaid', link: 'mermaid' },
               { text: 'D2', link: 'd2' },
+              { text: 'Drawio', link: 'drawio' },
               { text: 'Yoga', link: 'yoga' },
             ],
           },

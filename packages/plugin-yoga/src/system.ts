@@ -14,8 +14,11 @@ import {
   getSceneRoot,
   Entity,
   API,
+  Rect,
+  ComputedCamera,
+  Flex,
 } from '@infinite-canvas-tutorial/ecs';
-// import workerUrl from './worker.js?worker&url';
+import { YogaLayoutApplied } from './YogaLayoutApplied';
 // @ts-expect-error - import.meta is only available in ES modules, but this code will run in ES module environments
 import { loadYoga } from 'yoga-layout/load';
 
@@ -28,31 +31,48 @@ interface StyleTreeNode {
   width?: number | string;
   height?: number | string;
   children: StyleTreeNode[];
+  /** 内边距：数字为四边同值，[v,h] 为上下/左右，[t,r,b,l] 为四边 */
+  padding?: number | number[];
+  /** 外边距，同上 */
+  margin?: number | number[];
+  /** 子项之间的间距（Yoga 2.0+），同 CSS gap */
+  gap?: number;
+  /** 行间距 */
+  rowGap?: number;
+  /** 列间距 */
+  columnGap?: number;
+}
+
+/** Yoga 算出的布局结果：节点 id -> 位置与尺寸 */
+interface LayoutResults {
+  [nodeId: string]: { x: number; y: number; width: number; height: number };
 }
 
 export class YogaSystem extends System {
-  private readonly canvases = this.query((q) => q.added.with(Canvas));
+  private readonly cameras = this.query((q) => q.added.with(Camera));
   private readonly cameraEntities = this.query((q) => q.current.with(Camera));
 
-  private readonly tranforms = this.query((q) => q.added.with(Transform));
-
-  // private readonly bounds = this.query(
-  //   (q) => q.addedOrChanged.with(ComputedBounds).without(UI).trackWrites,
-  // );
-
   private readonly bounds = this.query(
-    (q) => q.addedOrChanged.and.removed.with(ComputedBounds).trackWrites,
+    (q) => q.addedOrChanged.and.removed.with(ComputedBounds).trackWrites.and.with(Flex),
   );
 
-  private worker: Worker | null = null;
-  private workerInited = false;
-  private syncRequested = false;
-  private cameras: Set<Entity> | null = null;
+  private readonly yogaLayoutApplied = this.query((q) =>
+    q.current.with(YogaLayoutApplied),
+  );
 
   /**
    * Each camera has a style tree.
    */
   private styleTrees: Map<number, StyleTreeNode> = new Map();
+
+  /**
+   * Cache previous frame's bounds per entity to detect position vs size change.
+   * Key: entity.__id, Value: { minX, minY, width, height } from renderWorldBounds.
+   */
+  private previousBoundsByEntity: Map<
+    number,
+    { minX: number; minY: number; width: number; height: number }
+  > = new Map();
 
   constructor() {
     super();
@@ -62,6 +82,7 @@ export class YogaSystem extends System {
         q
           .using(
             ComputedBounds,
+            ComputedCamera,
             Camera,
             Canvas,
             FractionalIndex,
@@ -70,22 +91,21 @@ export class YogaSystem extends System {
             UI,
             ZIndex,
           )
-          .read.and.using(GlobalTransform, Transform, Transformable)
+          .read.and.using(GlobalTransform, Transform, Transformable, Rect, YogaLayoutApplied)
           .write,
     );
   }
 
   async prepare() {
     Yoga = await loadYoga();
+    registerGapSetters();
   }
 
   execute() {
-    this.canvases.added.forEach((canvas) => {
-      const { api } = canvas.read(Canvas);
-      const camera = api.getCamera();
-
-      if (!this.styleTrees.has(camera.__id)) {
-        this.styleTrees.set(camera.__id, {
+    this.cameras.added.forEach((camera) => {
+      const cameraId = camera.__id;
+      if (!this.styleTrees.has(cameraId)) {
+        this.styleTrees.set(cameraId, {
           id: 'root',
           top: -Infinity,
           left: -Infinity,
@@ -95,114 +115,108 @@ export class YogaSystem extends System {
         });
       }
 
-      // if (!this.worker) {
-      //   try {
-      //     // @ts-ignore - import.meta is only available in ES modules, but this code will run in ES module environments
-      //     // const workerUrl = new URL('./sam-worker.js', import.meta.url);
-      //     this.worker = new Worker(workerUrl, {
-      //       type: 'module',
-      //     });
-      //   } catch (error) {
-      //     console.error('Failed to create Yoga worker:', error);
-      //   }
+      const { api } = camera.read(Camera).canvas.read(Canvas);
+      const styleTree = this.styleTrees.get(cameraId);
+      camera.read(Parent).children.filter((child) => !child.has(UI)).forEach((child) => {
+        constructStyleTree(api, child, styleTree);
+      });
 
-      //   this.worker.onmessage = (event) => {
-      //     const { type, data } = event.data;
-
-      //     if (type == 'pong') {
-      //       const { success } = data;
-      //       if (success) {
-      //         api.setAppState({ loading: false, loadingMessage: '' });
-      //         this.workerInited = true;
-      //       } else {
-      //         api.setAppState({ loading: false, loadingMessage: '' });
-      //         console.error('Failed to load Yoga');
-      //       }
-      //     } else if (type == 'processDone') {
-      //       const { cameraId, styleTree } = data;
-      //       this.updateCameraLayout(cameraId, styleTree);
-      //     }
-      //   };
-
-      //   this.worker.onerror = (error) => {
-      //     console.error('Worker error:', error);
-      //     api.setAppState({ loading: false, loadingMessage: '' });
-      //   };
-
-      //   api.setAppState({
-      //     loading: true,
-      //     loadingMessage: 'Loading Yoga...',
-      //   });
-      //   this.worker.postMessage({ type: 'ping' });
-      // }
+      process(Yoga, styleTree, (results) => {
+        this.updateCameraLayout(cameraId, results);
+      });
     });
 
-    // this.tranforms.added.forEach((transform) => {
-    //   const entity = transform.entity;
-    //   const camera = getSceneRoot(entity);
-    //   if (camera) {
-    //     this.styleTrees.get(camera.__id)?.children.push({
-    //       id: entity.__id,
-    //     });
-    //   }
-    // });
+    const cameras = new Set<Entity>();
+    this.bounds.addedOrChanged.forEach((entity) => {
+      if (entity.has(YogaLayoutApplied)) return;
+      const { positionChanged, sizeChanged } = this.detectBoundsChangeKind(entity);
+      if (sizeChanged) {
+        const camera = getSceneRoot(entity);
+        cameras.add(camera);
+        const { api } = camera.read(Camera).canvas.read(Canvas);
+        const subtreeRoot = this.buildSubtreeForFlex(api, entity);
+        if (subtreeRoot) {
+          process(Yoga, subtreeRoot, (results) => {
+            this.updateCameraLayout(camera.__id, results, subtreeRoot.id);
+          });
+        }
+      }
+    });
 
-    // const cameras = new Set<Entity>();
-    // this.bounds.addedOrChanged.forEach((entity) => {
-    //   const camera = getSceneRoot(entity);
-    //   cameras.add(camera);
+    this.bounds.removed.forEach((entity) => {
+      this.previousBoundsByEntity.delete(entity.__id);
+    });
 
-    //   console.log('changed...', entity.__id)
-    // });
+    this.yogaLayoutApplied.current.forEach((entity) => {
+      entity.remove(YogaLayoutApplied);
+    });
+  }
 
-    // const toSync = cameras.size > 0;
-    // if (toSync || this.syncRequested) {
-    //   if (this.workerInited) {
-    //     this.syncRequested = false;
-    //     this.cameras.forEach((camera) => {
-    //       const { api } = camera.read(Camera).canvas.read(Canvas);
-    //       const root: StyleTreeNode = {
-    //         id: 'root',
-    //         top: -Infinity,
-    //         left: -Infinity,
-    //         width: Infinity,
-    //         height: Infinity,
-    //         children: [],
-    //       };
-    //       camera.read(Parent).children.filter((child) => !child.has(UI)).forEach((child) => {
-    //         constructStyleTree(api, child, root);
-    //       });
+  /**
+   * 以当前 Flex 节点为根，构建包含其所有子节点的 style 子树，并设好根节点的宽高供 Yoga 计算。
+   * 用于在 bounds 变化时只对该子树跑 layout 并只更新这些节点。
+   */
+  private buildSubtreeForFlex(api: API, flexEntity: Entity): StyleTreeNode | null {
+    const parentTree: StyleTreeNode = { id: '_', children: [] };
+    constructStyleTree(api, flexEntity, parentTree);
+    if (parentTree.children.length === 0) return null;
+    const subtreeRoot = parentTree.children[0];
+    const b = flexEntity.read(ComputedBounds).renderWorldBounds;
+    subtreeRoot.width = b.maxX - b.minX;
+    subtreeRoot.height = b.maxY - b.minY;
+    return subtreeRoot;
+  }
 
-    //       console.log('processing', root);
-    //       this.worker.postMessage({ type: 'process', data: { styleTree: root, cameraId: camera.__id } });
-    //     });
-    //   } else {
-    //     this.syncRequested = true;
+  /**
+   * 判断当前帧 bounds 相对上一帧是位置变了还是尺寸变了。
+   * - added：没有上一帧，返回 { positionChanged: true, sizeChanged: true }（可按业务改为 false）
+   * - changed：与缓存的上一帧比较 minX/minY 为位置，width/height 为尺寸
+   */
+  private detectBoundsChangeKind(entity: Entity): {
+    positionChanged: boolean;
+    sizeChanged: boolean;
+  } {
+    const id = entity.__id;
+    const b = entity.read(ComputedBounds).renderWorldBounds;
+    const minX = b.minX;
+    const minY = b.minY;
+    const width = b.maxX - b.minX;
+    const height = b.maxY - b.minY;
+    const current = { minX, minY, width, height };
 
-    //     if (!this.cameras) {
-    //       this.cameras = cameras;
-    //     }
-    //   }
-    // }
-    // bindingsToUpdate.forEach((binding) => {
+    const prev = this.previousBoundsByEntity.get(id);
+    this.previousBoundsByEntity.set(id, current);
+
+    if (!prev) {
+      return { positionChanged: true, sizeChanged: true };
+    }
+
+    const positionChanged =
+      prev.minX !== current.minX || prev.minY !== current.minY;
+    const sizeChanged =
+      prev.width !== current.width || prev.height !== current.height;
+    return { positionChanged, sizeChanged };
   }
 
   finalize(): void {
-    if (this.worker) {
-      this.worker.terminate();
-      this.worker = null;
-    }
+    // if (this.worker) {
+    //   this.worker.terminate();
+    //   this.worker = null;
+    // }
   }
 
-  private updateCameraLayout(cameraId: number, styleTree: StyleTreeNode): void {
+  private updateCameraLayout(cameraId: number, results: LayoutResults, skipRootId?: string): void {
     this.cameraEntities.current.forEach((camera) => {
       if (camera.__id === cameraId) {
         const { api } = camera.read(Camera).canvas.read(Canvas);
-        Object.keys(styleTree).forEach((key) => {
+        Object.keys(results).forEach((key) => {
+          if (skipRootId != null && key === skipRootId) return;
           const node = api.getNodeById(key);
           if (node) {
-            const { x, y, width, height } = styleTree[key];
+            const { x, y, width, height } = results[key];
             api.updateNode(node, { x, y, width, height }, false, ['x', 'y', 'width', 'height']);
+            const entity = api.getEntity(node);
+            if (entity && !entity.has(YogaLayoutApplied)) entity.add(YogaLayoutApplied);
           }
         });
       }
@@ -336,6 +350,44 @@ sides.forEach(side => {
     })
   })
 
+  // 简写：padding / margin 单值或数组，同 CSS
+  const setPaddingOrMargin = (styleProp: 'padding' | 'margin') => {
+    const setter = styleProp === 'padding' ? 'setPadding' : 'setMargin'
+    const edgeKeys = ['top', 'right', 'bottom', 'left']
+    YOGA_SETTERS[styleProp] = (yogaNode: unknown, value: number | number[]) => {
+      const vals = Array.isArray(value)
+        ? value.length === 1
+          ? [value[0], value[0], value[0], value[0]]
+          : value.length === 2
+            ? [value[0], value[1], value[0], value[1]]
+            : value.length === 4
+              ? value
+              : [value[0], value[0], value[0], value[0]]
+        : [value, value, value, value]
+      edgeKeys.forEach((key, i) => {
+        const edgeConst = YOGA_VALUE_MAPPINGS.edge[key]
+        yogaNode[setter](Yoga[edgeConst], vals[i])
+      })
+    }
+  }
+  setPaddingOrMargin('padding')
+  setPaddingOrMargin('margin')
+
+// Gap（Yoga 2.0+）：flex 子项之间的行/列间距，需在 Yoga 加载后注册
+function registerGapSetters() {
+  // GUTTER_ALL : 2, GUTTER_COLUMN: 0, GUTTER_ROW: 1
+  YOGA_SETTERS.gap = (yogaNode: unknown, value: number) => {
+    (yogaNode as { setGap: (g: number, v: number) => void }).setGap(Yoga.GUTTER_ROW, value);
+    (yogaNode as { setGap: (g: number, v: number) => void }).setGap(Yoga.GUTTER_COLUMN, value);
+  };
+  YOGA_SETTERS.rowGap = (yogaNode: unknown, value: number) => {
+    (yogaNode as { setGap: (g: number, v: number) => void }).setGap(Yoga.GUTTER_ROW, value);
+  };
+  YOGA_SETTERS.columnGap = (yogaNode: unknown, value: number) => {
+    (yogaNode as { setGap: (g: number, v: number) => void }).setGap(Yoga.GUTTER_COLUMN, value);
+  };
+}
+
 function walkStyleTree(styleTree, callback) {
   callback(styleTree);
   if (styleTree.children) {
@@ -345,7 +397,7 @@ function walkStyleTree(styleTree, callback) {
   }
 }
 
-function process(Yoga, styleTree, callback) {
+function process(Yoga, styleTree: StyleTreeNode, callback: (results: LayoutResults) => void) {
   // Init common node config
   const yogaConfig = Yoga.Config.create();
   yogaConfig.setPointScaleFactor(0); //disable value rounding

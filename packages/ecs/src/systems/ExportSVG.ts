@@ -39,6 +39,7 @@ import {
   StrokeAttenuation,
   Locked,
   ClipMode,
+  Flex,
 } from '../components';
 import { DOMAdapter } from '../environment';
 import {
@@ -116,6 +117,7 @@ export class ExportSVG extends System {
             StrokeAttenuation,
             Locked,
             ClipMode,
+            Flex,
           )
           .read.and.using(Screenshot, VectorScreenshotRequest).write,
     );

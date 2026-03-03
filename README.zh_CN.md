@@ -413,6 +413,14 @@ pnpm run dev
 ## 课程 33 - 布局引擎 [🔗](https://infinitecanvas.cc/zh/guide/lesson-033)
 
 -   基于 Yoga 实现 Flexbox 布局
+    -   AlignItems & JustifyContent
+    -   Gap
+    -   Flex Basis, Grow, and Shrink
+    -   Min/Max Width and Height
+
+|                   Gap                   |          AlignItems & JustifyContent           |
+| :-------------------------------------: | :--------------------------------------------: |
+| ![Yoga gap](./screenshots/yoga-gap.gif) | ![Yoga gap](./screenshots/yoga-alignitems.gif) |
 
 ## 课程 34 - Frame 与裁切 [🔗](https://infinitecanvas.cc/zh/guide/lesson-034)
 
