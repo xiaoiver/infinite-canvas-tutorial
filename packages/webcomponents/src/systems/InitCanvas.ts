@@ -48,6 +48,7 @@ import {
   Binded,
   Locked,
   ClipMode,
+  Flex,
 } from '@infinite-canvas-tutorial/ecs';
 import { Event } from '../event';
 import { ExtendedAPI, pendingCanvases } from '../API';
@@ -107,6 +108,7 @@ export class InitCanvas extends System {
             Binded,
             Locked,
             ClipMode,
+            Flex,
           ).write,
     );
   }

@@ -30,7 +30,8 @@ export interface BaseSerializeNode<Type extends string>
   Partial<VisibilityAttributes>,
   Partial<NameAttributes>,
   ZIndexAttributes,
-  Partial<EditableAttributes> {
+  Partial<EditableAttributes>,
+  Partial<FlexboxLayoutAttributes> {
   /**
    * Unique identifier
    */
@@ -504,14 +505,3 @@ export type SerializedNodeAttributes = GSerializedNode &
   VectorNetworkSerializedNode &
   HtmlSerializedNode &
   EmbedSerializedNode;
-
-/**
- * Input/wire format: same as SerializedNode but x/y/width/height may be string (e.g. '50%').
- * Use resolveSerializedNodes() when loading from JSON or external API, then use SerializedNode elsewhere.
- */
-export type SerializedNodeInput = Omit<SerializedNode, 'x' | 'y' | 'width' | 'height'> & {
-  x?: number | string;
-  y?: number | string;
-  width?: number | string;
-  height?: number | string;
-};

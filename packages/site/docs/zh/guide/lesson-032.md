@@ -1,6 +1,6 @@
 ---
 outline: deep
-description: ''
+description: '学习在无限画布中从文本生成图表：用 Mermaid 流程图、D2 与 draw.io 语法解析并渲染为场景图，结合 mermaid-to-excalidraw、@terrastruct/d2 与 mxgraph 实现手绘风格图表。'
 publish: false
 ---
 

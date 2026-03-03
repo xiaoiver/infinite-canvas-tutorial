@@ -63,6 +63,7 @@ import {
   Mat3,
   Locked,
   ClipMode,
+  Flex,
 } from '../components';
 import { Effect, paddingMat3, parseEffect } from '../utils';
 import type { SerializedNode } from '../types/serialized-node';
@@ -255,6 +256,7 @@ export class MeshPipeline extends System {
             Marker,
             Locked,
             ClipMode,
+            Flex,
           )
           .read.and.using(
             RasterScreenshotRequest,

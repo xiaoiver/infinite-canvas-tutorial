@@ -3,6 +3,7 @@ import {
   App,
   Pen,
   DefaultPlugins,
+  TRANSFORMER_MASK_FILL_COLOR,
 } from '@infinite-canvas-tutorial/ecs';
 import { ref, onMounted, onUnmounted } from 'vue';
 import { Event, UIPlugin } from '@infinite-canvas-tutorial/webcomponents';
@@ -30,26 +31,43 @@ onMounted(async () => {
     });
 
     const parent = {
-      id: 'parent',
+      id: 'yoga-align-items-justify-content-parent',
       type: 'rect',
       x: 100,
-      y: 10,
-      width: 100,
-      height: 100,
+      y: 100,
+      fill: 'grey',
       display: 'flex',
+      width: 200,
+      height: 250,
+      padding: 10,
       alignItems: 'center',
       justifyContent: 'center',
-    };
+      zIndex: 0,
+    } as const;
 
     const child = {
-      id: 'child',
-      parentId: 'parent',
+      id: 'yoga-align-items-justify-content-child1',
+      parentId: 'yoga-align-items-justify-content-parent',
       type: 'rect',
-      width: '50%',
-      height: '50%',
-    };
+      fill: TRANSFORMER_MASK_FILL_COLOR,
+      width: 50,
+      height: 50,
+      zIndex: 1,
+    } as const;
 
-    api.updateNodes([parent, child]);
+    const child2 = {
+      id: 'yoga-align-items-justify-content-child2',
+      parentId: 'yoga-align-items-justify-content-parent',
+      type: 'rect',
+      fill: TRANSFORMER_MASK_FILL_COLOR,
+      width: 50,
+      height: 50,
+      zIndex: 1,
+    } as const;
+
+    api.updateNodes([parent, child, child2]);
+    api.selectNodes([parent]);
+    api.record();
   };
 
   canvas.addEventListener(Event.READY, onReady);
@@ -110,6 +128,6 @@ onUnmounted(async () => {
 
 <template>
   <ic-spectrum-canvas ref="wrapper" style="width: 100%; height: 300px"
-    app-state='{"topbarVisible":true, "cameraZoom": 1}'>
+    app-state='{"topbarVisible":true, "cameraZoom": 0.6, "cameraX": -200, "cameraY": 50}'>
   </ic-spectrum-canvas>
 </template>
