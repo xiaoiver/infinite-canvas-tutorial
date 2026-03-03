@@ -47,7 +47,7 @@ This tutorial covers a basic 2D graphics rendering implementation based on WebGL
 -   [Lesson 16 - Text advanced features]
 -   [Lesson 25 - Drawing mode and brush]
 -   [Lesson 30 - Post-processing and render graph]
--   [Lesson 34 - Frame and Clipping]
+-   [Lesson 34 - Frame and clip]
 
 Also includes UI components implemented using Web Components technology:
 
@@ -81,4 +81,4 @@ The most important thing:
 [Lesson 25 - Drawing mode and brush]: /guide/lesson-025
 [Lesson 28 - Integrating with AI]: /guide/lesson-028
 [Lesson 30 - Post-processing and render graph]: /guide/lesson-030
-[Lesson 34 - Frame and Clipping]: /guide/lesson-034
+[Lesson 34 - Frame and clip]: /guide/lesson-034

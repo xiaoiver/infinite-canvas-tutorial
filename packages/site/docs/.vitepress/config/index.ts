@@ -12,6 +12,7 @@ import { shared } from './shared';
 import { en } from './en';
 import { zh } from './zh';
 import { ko } from './ko';
+import { resolve } from 'path';
 
 export default defineConfig({
   markdown: {
@@ -44,6 +45,15 @@ export default defineConfig({
     },
   },
   vite: {
+    // d3-color Hoisting problem: color is undefined
+    resolve: {
+      alias: [
+        {
+          find: 'd3-color',
+          replacement: resolve(__dirname, '../../../node_modules/d3-color/dist/d3-color.min.js')
+        }
+      ]
+    },
     build: {
       chunkSizeWarningLimit: 800,
     },

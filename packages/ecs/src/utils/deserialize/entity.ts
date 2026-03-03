@@ -86,6 +86,10 @@ import { EdgeState, updateFixedTerminalPoints, updateFloatingTerminalPoints, upd
 import simplify from 'simplify-js';
 
 export function inferXYWidthHeight(node: SerializedNode) {
+  if (node.type === 'g') {
+    return node;
+  }
+
   const { x, y, width, height } = node;
   // Already resolved: x/y/width/height are number | undefined
   if (
