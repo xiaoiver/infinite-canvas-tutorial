@@ -12,7 +12,7 @@ import Cropping from '../components/Cropping.vue'
 import BrushWithEraser from '../components/BrushWithEraser.vue'
 </script>
 
-# Lesson 34 - Frame and Clipping
+# Lesson 34 - Frame and clip
 
 Currently our `Group / g` is a logical grouping without geometric bounds (e.g. `x/y/width/height`), so it does not apply clipping to children. tldraw provides both Group and Frame as [Structural shapes].
 

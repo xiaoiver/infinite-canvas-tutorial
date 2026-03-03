@@ -296,19 +296,32 @@ export class API {
 
   getAbsoluteTransformAndSize(node: SerializedNode) {
     const entity = this.getEntity(node);
-    const { width, height } = entity.read(ComputedBounds).obb;
-    const { translation, rotation, scale } = entity.read(Transform);
+    if (entity.has(ComputedBounds)) {
+      const { width, height } = entity.read(ComputedBounds).obb;
+      const { translation, rotation, scale } = entity.read(Transform);
 
-    return {
-      id: node.id,
-      x: translation.x,
-      y: translation.y,
-      width,
-      height,
-      rotation,
-      scaleX: scale[0],
-      scaleY: scale[1],
-    };
+      return {
+        id: node.id,
+        x: translation.x,
+        y: translation.y,
+        width,
+        height,
+        rotation,
+        scaleX: scale[0],
+        scaleY: scale[1],
+      };
+    } else {
+      return {
+        id: node.id,
+        x: node.x ?? 0,
+        y: node.y ?? 0,
+        width: node.width ?? 0,
+        height: node.height ?? 0,
+        rotation: node.rotation ?? 0,
+        scaleX: node.scaleX ?? 1,
+        scaleY: node.scaleY ?? 1,
+      };
+    }
   }
 
   getCanvas() {

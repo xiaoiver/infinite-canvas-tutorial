@@ -8,6 +8,7 @@ publish: false
 import Mermaid from '../components/Mermaid.vue'
 import MermaidRough from '../components/MermaidRough.vue'
 import D2 from '../components/D2.vue'
+import Drawio from '../components/Drawio.vue'
 </script>
 
 # Lesson 32 - Text to diagram
@@ -112,13 +113,17 @@ x -> y: hello world
 
 <D2 />
 
-## [WIP] drawio {#drawio}
+Text labels on the edge must always be positioned at the geometric center. We will cover the implementation method in the next section [Lesson 33 - Layout Engine].
+
+## drawio {#drawio}
 
 ```ts
-import { parseDrawIO } from "mxgraphdata";
+import { parseDrawIO } from 'mxgraphdata';
 const mxfile = await parseDrawIO(xml);
 console.log(mxfile.diagram);
 ```
+
+<Drawio />
 
 ## Extended reading {#extended-reading}
 
@@ -130,3 +135,4 @@ console.log(mxfile.diagram);
 [D2]: https://github.com/terrastruct/d2
 [draw.io]: https://app.diagrams.net/
 [Discussion in HN]: https://news.ycombinator.com/item?id=44954524
+[Lesson 33 - Layout engine]: /guide/lesson-033

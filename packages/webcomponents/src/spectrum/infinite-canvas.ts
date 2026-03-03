@@ -97,6 +97,7 @@ import '@spectrum-web-components/icons-workflow/icons/sp-icon-region-select.js';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-crop.js';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-checkmark.js';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-cancel.js';
+import '@spectrum-web-components/icons-workflow/icons/sp-icon-group.js';
 
 export const TOP_NAVBAR_HEIGHT = 48;
 

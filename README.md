@@ -403,16 +403,17 @@ If you want to use it in your own project, you can refer to:
 
 -   Parse Mermaid and render in our canvas
 -   Parse D2 and render in our canvas
+-   Parse draw.io and render in our canvas
 
-|                Mermaid flowchart                 |                 D2 flowchart                  |
-| :----------------------------------------------: | :-------------------------------------------: |
-| ![mermaid flowchart](./screenshots/lesson32.png) | ![d2 flowchart](./screenshots/lesson32-2.png) |
+|                Mermaid flowchart                 |                 D2 flowchart                  |          Draw.io flowchart          |
+| :----------------------------------------------: | :-------------------------------------------: | :---------------------------------: |
+| ![mermaid flowchart](./screenshots/lesson32.png) | ![d2 flowchart](./screenshots/lesson32-2.png) | ![drawio](./screenshots/drawio.png) |
 
 ## Lesson 33 - Layout engine [🔗](https://infinitecanvas.cc/guide/lesson-033)
 
 -   Implement Flexbox layout with Yoga
 
-## Lesson 34 - Frame and Clipping [🔗](https://infinitecanvas.cc/guide/lesson-034)
+## Lesson 34 - Frame and clip [🔗](https://infinitecanvas.cc/guide/lesson-034)
 
 -   Implement clip and mask effect with stencil buffer
 -   Crop an image

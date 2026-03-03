@@ -39,7 +39,7 @@ export class LayerThumbnail extends LitElement {
       overflow: hidden;
     }
 
-    sp-icon-text, sp-icon-code, sp-icon-crop {
+    sp-icon-text, sp-icon-code, sp-icon-crop, sp-icon-group {
       display: block;
     }
   `;
@@ -67,7 +67,9 @@ export class LayerThumbnail extends LitElement {
   render() {
     const entity = this.api.getEntity(this.node);
     if (!entity.has(ComputedBounds)) {
-      return;
+      return html`<sp-thumbnail size="1000" ?focused=${this.selected}>
+        <sp-icon-group></sp-icon-group>
+      </sp-thumbnail>`;
     }
 
     const { minX, minY, maxX, maxY } = entity.read(ComputedBounds).renderBounds;

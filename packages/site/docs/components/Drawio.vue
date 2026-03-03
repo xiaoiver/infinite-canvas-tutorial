@@ -29,60 +29,81 @@ onMounted(async () => {
       penbarAll: [Pen.SELECT],
     });
 
-    const nodes = await parseMxgraphDataToSerializedNodes(`<mxGraphModel>
+    const nodes = await parseMxgraphDataToSerializedNodes(`<mxGraphModel dx="1422" dy="794" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
   <root>
-    <mxCell id="0"/>
-    <mxCell id="1" parent="0"/>
-    <mxCell id="2" customId="2" value="&lt;img src=&quot;editors/images/overlays/user3.png&quot;&gt;&lt;br&gt;&lt;b&gt;Last, First&lt;/b&gt;&lt;br&gt;Status&lt;br&gt;Info" vertex="1" parent="1">
-      <mxGeometry x="0" y="0" width="80" height="70" as="geometry"/>
+    <mxCell id="0" />
+    <mxCell id="1" parent="0" />
+ 
+    <mxCell id="start" value="开始" style="ellipse;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=14;" vertex="1" parent="1">
+      <mxGeometry x="340" y="40" width="120" height="60" as="geometry" />
     </mxCell>
-    <mxCell id="3" customId="3" value="&lt;img src=&quot;editors/images/overlays/error.png&quot;&gt;&lt;br&gt;&lt;b&gt;Errorcode&lt;/b&gt;&lt;br&gt;Status&lt;br&gt;Info" vertex="1" parent="1">
-      <mxGeometry x="0" y="0" width="80" height="70" as="geometry"/>
+ 
+    <mxCell id="input" value="输入用户名和密码" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=14;" vertex="1" parent="1">
+      <mxGeometry x="320" y="140" width="160" height="60" as="geometry" />
     </mxCell>
-    <mxCell id="4" customId="4" value="&lt;img src=&quot;editors/images/overlays/flash.png&quot;&gt;&lt;br&gt;&lt;b&gt;Warning&lt;/b&gt;&lt;br&gt;Status&lt;br&gt;Info" vertex="1" parent="1">
-      <mxGeometry x="0" y="0" width="120" height="70" as="geometry"/>
+ 
+    <mxCell id="edge1" value="" style="edgeStyle=orthogonalEdgeStyle;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;" edge="1" parent="1" source="start" target="input">
+      <mxGeometry relative="1" as="geometry" />
     </mxCell>
-    <mxCell id="5" customId="5" value="&lt;img src=&quot;editors/images/overlays/users3.png&quot;&gt;&lt;br&gt;&lt;b&gt;Groupname&lt;/b&gt;&lt;br&gt;Status&lt;br&gt;Info" vertex="1" parent="1">
-      <mxGeometry x="0" y="0" width="80" height="70" as="geometry"/>
+ 
+    <mxCell id="validate" value="验证用户信息" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=14;" vertex="1" parent="1">
+      <mxGeometry x="320" y="240" width="160" height="60" as="geometry" />
     </mxCell>
-    <mxCell id="6" customId="6" value="&lt;img src=&quot;editors/images/overlays/workplace.png&quot;&gt;&lt;br&gt;&lt;b&gt;Workplace&lt;/b&gt;&lt;br&gt;Status&lt;br&gt;Info" vertex="1" parent="1">
-      <mxGeometry x="0" y="0" width="80" height="70" as="geometry"/>
+ 
+    <mxCell id="edge2" value="" style="edgeStyle=orthogonalEdgeStyle;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;" edge="1" parent="1" source="input" target="validate">
+      <mxGeometry relative="1" as="geometry" />
     </mxCell>
-    <mxCell id="7" customId="6" value="&lt;img src=&quot;editors/images/overlays/information.png&quot;&gt;&lt;br&gt;&lt;b&gt;Information&lt;/b&gt;&lt;br&gt;Status&lt;br&gt;Info" vertex="1" parent="1">
-      <mxGeometry x="0" y="0" width="80" height="70" as="geometry"/>
+ 
+    <mxCell id="decision" value="验证通过?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=14;" vertex="1" parent="1">
+      <mxGeometry x="340" y="340" width="120" height="80" as="geometry" />
     </mxCell>
-    <mxCell id="8" customId="7" value="&lt;img src=&quot;editors/images/overlays/printer.png&quot;&gt;&lt;br&gt;&lt;b&gt;Printername&lt;/b&gt;&lt;br&gt;Status&lt;br&gt;Info" vertex="1" parent="1">
-      <mxGeometry x="0" y="0" width="120" height="70" as="geometry"/>
+ 
+    <mxCell id="edge3" value="" style="edgeStyle=orthogonalEdgeStyle;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;" edge="1" parent="1" source="validate" target="decision">
+      <mxGeometry relative="1" as="geometry" />
     </mxCell>
-    <mxCell id="edge-1" customId="edge-1" value="&lt;img src=&quot;editors/images/overlays/lightbulb_on.png&quot;&gt; Hint" edge="1" parent="1" source="2" target="3">
-      <mxGeometry relative="1" as="geometry"/>
+ 
+    <mxCell id="success" value="登录成功&#xa;进入系统" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=14;" vertex="1" parent="1">
+      <mxGeometry x="520" y="350" width="120" height="60" as="geometry" />
     </mxCell>
-    <mxCell id="edge-2" customId="edge-2" value="&lt;img src=&quot;editors/images/overlays/help.png&quot;&gt; News" edge="1" parent="1" source="2" target="4">
-      <mxGeometry relative="1" as="geometry"/>
+ 
+    <mxCell id="edge4" value="是" style="edgeStyle=orthogonalEdgeStyle;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;" edge="1" parent="1" source="decision" target="success">
+      <mxGeometry relative="1" as="geometry" />
     </mxCell>
-    <mxCell id="edge-3" customId="edge-3" value="&lt;img src=&quot;editors/images/overlays/information.png&quot;&gt; Member" edge="1" parent="1" source="2" target="5">
-      <mxGeometry relative="1" as="geometry"/>
+ 
+    <mxCell id="fail" value="显示错误信息" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=14;" vertex="1" parent="1">
+      <mxGeometry x="160" y="350" width="120" height="60" as="geometry" />
     </mxCell>
-    <mxCell id="edge-4" customId="edge-4" value="&lt;img src=&quot;editors/images/overlays/pencil.png&quot;&gt; Details" edge="1" parent="1" source="6" target="7">
-      <mxGeometry relative="1" as="geometry"/>
+ 
+    <mxCell id="edge5" value="否" style="edgeStyle=orthogonalEdgeStyle;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;" edge="1" parent="1" source="decision" target="fail">
+      <mxGeometry relative="1" as="geometry" />
     </mxCell>
-    <mxCell id="edge-5" customId="edge-5" value="&lt;img src=&quot;editors/images/overlays/check.png&quot;&gt; Access" edge="1" parent="1" source="6" target="8">
-      <mxGeometry relative="1" as="geometry"/>
+ 
+    <mxCell id="end" value="结束" style="ellipse;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=14;" vertex="1" parent="1">
+      <mxGeometry x="340" y="480" width="120" height="60" as="geometry" />
     </mxCell>
-    <mxCell id="edge-6" customId="edge-6" value="&lt;img src=&quot;editors/images/overlays/forbidden.png&quot;&gt; Access" edge="1" parent="1" source="5" target="6">
-      <mxGeometry relative="1" as="geometry"/>
+ 
+    <mxCell id="edge6" value="" style="edgeStyle=orthogonalEdgeStyle;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;" edge="1" parent="1" source="fail" target="end">
+      <mxGeometry relative="1" as="geometry">
+        <Array as="points">
+          <mxPoint x="220" y="510" />
+        </Array>
+      </mxGeometry>
     </mxCell>
-    <mxCell id="edge-7" customId="edge-7" value="&lt;img src=&quot;editors/images/overlays/lightbulb_on.png&quot;&gt; 2-Way" style="2way" edge="1" parent="1" source="2" target="6">
-      <mxGeometry relative="1" as="geometry"/>
+ 
+    <mxCell id="edge7" value="" style="edgeStyle=orthogonalEdgeStyle;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;" edge="1" parent="1" source="success" target="end">
+      <mxGeometry relative="1" as="geometry">
+        <Array as="points">
+          <mxPoint x="580" y="510" />
+        </Array>
+      </mxGeometry>
     </mxCell>
+ 
   </root>
 </mxGraphModel>`);
 
-console.log(nodes);
-
-    // api.runAtNextTick(() => {
-    //   api.updateNodes(nodes);
-    // });
+    api.runAtNextTick(() => {
+      api.updateNodes(nodes);
+    });
   };
 
   canvas.addEventListener(Event.READY, onReady);
@@ -142,7 +163,7 @@ onUnmounted(async () => {
 </script>
 
 <template>
-  <ic-spectrum-canvas ref="wrapper" style="width: 100%; height: 300px"
-    app-state='{"topbarVisible":true, "cameraZoom": 0.6, "cameraX": -500, "cameraY": -100}'>
+  <ic-spectrum-canvas ref="wrapper" style="width: 100%; height: 400px"
+    app-state='{"topbarVisible":true, "cameraZoom": 0.5, "cameraX": -200, "cameraY": 0}'>
   </ic-spectrum-canvas>
 </template>
