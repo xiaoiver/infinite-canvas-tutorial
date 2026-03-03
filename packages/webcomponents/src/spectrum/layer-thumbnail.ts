@@ -107,12 +107,12 @@ export class LayerThumbnail extends LitElement {
       $el.setAttribute('x2', `${(this.node as LineSerializedNode).x2}`);
       $el.setAttribute('y2', `${(this.node as LineSerializedNode).y2}`);
     } else if (type === 'rough-rect') {
-      const options = getRoughOptions(this.api.getEntity(this.node));
+      const options = getRoughOptions(this.node);
       $el = this.#roughSvg.rectangle(minX, minY, width, height, {
         ...options,
       });
     } else if (type === 'rough-ellipse') {
-      const options = getRoughOptions(this.api.getEntity(this.node));
+      const options = getRoughOptions(this.node);
       $el = this.#roughSvg.ellipse(
         minX + width / 2,
         minY + height / 2,
