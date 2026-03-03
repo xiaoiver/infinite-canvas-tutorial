@@ -187,7 +187,9 @@ export class ComputedRough {
   declare drawableSets: Drawable['sets'];
 }
 
-export function getRoughOptions(node: Omit<SerializedNode, 'id' | 'zIndex'>): Options {
+export function getRoughOptions(
+  node: Omit<SerializedNode, 'id' | 'zIndex'> & Partial<Pick<SerializedNode, 'id' | 'zIndex'>>,
+): Options {
   const {
     stroke, strokeWidth, fill, strokeDasharray: strokeDasharrayString, strokeDashoffset,
     roughSeed,
