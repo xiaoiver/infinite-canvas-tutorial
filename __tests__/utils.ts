@@ -46,13 +46,31 @@ export function getCanvas(width = 100, height = 100) {
     height,
     // @ts-ignore
     getContext: (contextId: string) => {
+      let context;
       if (contextId === '2d') {
-        return canvas.getContext('2d');
+        context = canvas.getContext('2d');
       } else {
         // @ts-ignore
         gl.canvas = mockedCanvas;
-        return gl;
+        context = gl;
       }
+      context.measureText = (text: string) => {
+        return {
+          actualBoundingBoxAscent: 18,
+          actualBoundingBoxDescent: 18,
+          actualBoundingBoxLeft: 0,
+          actualBoundingBoxRight: text.length * 18,
+          alphabeticBaseline: 18,
+          fontBoundingBoxAscent: 18,
+          fontBoundingBoxDescent: 18,
+          hangingBaseline: 18,
+          ideographicBaseline: 18,
+          width: text.length * 18,
+          emHeightAscent: 18,
+          emHeightDescent: 18,
+        };
+      };
+      return context;
     },
     dispatchEvent: (event) => {
       document.dispatchEvent(event);
