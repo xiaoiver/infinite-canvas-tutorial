@@ -20,6 +20,20 @@ import BrushWithEraser from '../../components/BrushWithEraser.vue'
 
 在 tldraw 中，裁剪是通过 CSS [clip-path] 实现的，在父元素上通过重载 `getClipPath` 定义，内置的 Frame 就是这样实现的。在 Figma 中该属性称作 `clip content`，详见 [Frame properties in Figma]。
 
+而在 [pencil.dev] 中，Frame 的定义如下，它是一个可以拥有子元素的矩形，具备裁剪能力：
+
+```ts
+/** A frame is a rectangle that can have children. */
+export interface Frame extends Rectangleish, CanHaveChildren, Layout {
+    type: 'frame';
+    /** Visually clip content that overflows the frame bounds. Default is false. */
+    clip?: BooleanOrVariable;
+    placeholder?: boolean;
+    /** The presence of this property indicates that this frame is a "slot" - which means that it is intended be customized with children in instances of the parent component. Each element of the array is an ID of a "recommended" reusable component, one which fits semantically as a child here (e.g. inside a menu bar, the content slot would recommend IDs of various menu item components). */
+    slot?: string[];
+}
+```
+
 考虑通用性，我们希望每个图形都可以成为裁剪父容器，超出容器范围的子元素都会被裁切，同时这个父元素也可以正常渲染，`fill/stroke` 这些属性都可以正常应用。属性声明如下：
 
 ```ts
@@ -289,3 +303,4 @@ this.api.runAtNextTick(() => {
 [课程 2 - SDF]: /zh/guide/lesson-002#sdf
 [Crop an image]: https://help.figma.com/hc/en-us/articles/360040675194-Crop-an-image
 [image cropping in excalidraw]: https://github.com/excalidraw/excalidraw/pull/8613
+[pencil.dev]: https://docs.pencil.dev/for-developers/the-pen-format#typescript-schema

@@ -407,8 +407,12 @@ export async function serializeNodesToSVGElements(
 
       if (textBaseline === 'middle') {
         y = (height ?? 0) / 2;
-      } else if (textBaseline === 'alphabetic' || textBaseline === 'hanging') {
-        y = fontBoundingBoxAscent;
+      } else if (textBaseline === 'hanging' || textBaseline === 'top') {
+        y = 0;
+      } else if (textBaseline === 'alphabetic') {
+        y = (height ?? 0) * 0.75;
+      } else if (textBaseline === 'ideographic' || textBaseline === 'bottom') {
+        y = height ?? 0;
       }
 
       element.setAttribute('x', `${toFixedAndRemoveTrailingZeros(x)}`);
@@ -421,8 +425,10 @@ export async function serializeNodesToSVGElements(
       // @see https://developer.mozilla.org/en-US/docs/Web/SVG/Reference/Attribute/text-anchor
       if (textAlign === 'center') {
         element.setAttribute('text-anchor', 'middle');
-      } else {
-        element.setAttribute('text-anchor', textAlign);
+      } else if (textAlign === 'right' || textAlign === 'end') {
+        element.setAttribute('text-anchor', 'end');
+      } else if (textAlign === 'left' || textAlign === 'start') {
+        element.setAttribute('text-anchor', 'start');
       }
     }
 

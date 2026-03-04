@@ -385,6 +385,7 @@ export interface BrushAttributes {
 }
 export interface BrushSerializedNode
   extends BaseSerializeNode<'brush'>,
+  Partial<StrokeAttributes>,
   Partial<BrushAttributes>,
   Partial<WireframeAttributes>,
   Partial<BindedAttributes> { }

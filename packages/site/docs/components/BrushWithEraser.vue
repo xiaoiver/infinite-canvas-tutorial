@@ -5,13 +5,15 @@ import {
   DefaultPlugins,
   BrushType,
   inferXYWidthHeight,
+  PathSerializedNode,
 } from '@infinite-canvas-tutorial/ecs';
 import { ref, onMounted, onUnmounted } from 'vue';
 import { Event, UIPlugin } from '@infinite-canvas-tutorial/webcomponents';
 import { LaserPointerPlugin } from '@infinite-canvas-tutorial/laser-pointer';
 import { LassoPlugin } from '@infinite-canvas-tutorial/lasso';
 import { EraserPlugin } from '@infinite-canvas-tutorial/eraser';
-
+import { YogaPlugin } from '@infinite-canvas-tutorial/yoga';
+import { BrushSerializedNode } from '@infinite-canvas-tutorial/ecs';
 
 const wrapper = ref<HTMLElement | null>(null);
 let api: any | undefined;
@@ -54,16 +56,17 @@ onMounted(async () => {
       radius.push(r);
     }
 
-    const clipParent = {
+    const clipParent: PathSerializedNode = {
       id: 'brush-with-eraser-1',
       type: 'path',
       clipMode: 'erase',
       // vertical stripes, width 100, height 200, gap 50
       d: 'M 0 0 L 50 0 L 50 200 L 0 200 Z M 100 0 L 150 0 L 150 200 L 100 200 Z M 200 0 L 250 0 L 250 200 L 200 200 Z',
       fill: 'none',
+      zIndex: 0,
     };
 
-    const node = {
+    const node: BrushSerializedNode = {
       id: 'brush-with-eraser-2',
       type: 'brush',
       parentId: 'brush-with-eraser-1',
@@ -76,6 +79,7 @@ onMounted(async () => {
       stroke: 'red',
       strokeWidth: 10,
       strokeOpacity: 1,
+      zIndex: 0,
     };
 
     inferXYWidthHeight(node);
@@ -95,7 +99,7 @@ onMounted(async () => {
     await import('@infinite-canvas-tutorial/lasso/spectrum');
     await import('@infinite-canvas-tutorial/eraser/spectrum');
     await import('@infinite-canvas-tutorial/laser-pointer/spectrum');
-    new App().addPlugins(...DefaultPlugins, UIPlugin, LaserPointerPlugin, LassoPlugin, EraserPlugin).run();
+    new App().addPlugins(...DefaultPlugins, UIPlugin, LaserPointerPlugin, LassoPlugin, EraserPlugin, YogaPlugin).run();
   } else {
     // 等待组件更新完成后检查API是否已经准备好
     setTimeout(() => {

@@ -20,6 +20,20 @@ Currently our `Group / g` is a logical grouping without geometric bounds (e.g. `
 
 In tldraw, clipping is done via CSS [clip-path], defined on the parent by overriding `getClipPath`; the built-in Frame is implemented this way. In Figma this property is called `clip content`; see [Frame properties in Figma].
 
+In [pencil.dev], the Frame is defined as follows: it is a rectangle that can contain child elements and possesses clipping capabilities:
+
+```ts
+/** A frame is a rectangle that can have children. */
+export interface Frame extends Rectangleish, CanHaveChildren, Layout {
+    type: 'frame';
+    /** Visually clip content that overflows the frame bounds. Default is false. */
+    clip?: BooleanOrVariable;
+    placeholder?: boolean;
+    /** The presence of this property indicates that this frame is a "slot" - which means that it is intended be customized with children in instances of the parent component. Each element of the array is an ID of a "recommended" reusable component, one which fits semantically as a child here (e.g. inside a menu bar, the content slot would recommend IDs of various menu item components). */
+    slot?: string[];
+}
+```
+
 For generality, we want any shape to be able to act as a clipping parent: children outside the shape are clipped, while the parent itself still renders normally with `fill`/`stroke` applied. The property is declared as:
 
 ```ts
@@ -288,3 +302,4 @@ this.api.runAtNextTick(() => {
 [Lesson 2 - SDF]: /guide/lesson-002#sdf
 [Crop an image]: https://help.figma.com/hc/en-us/articles/360040675194-Crop-an-image
 [image cropping in excalidraw]: https://github.com/excalidraw/excalidraw/pull/8613
+[pencil.dev]: https://docs.pencil.dev/for-developers/the-pen-format#typescript-schema

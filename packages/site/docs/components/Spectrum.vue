@@ -11,6 +11,7 @@ import { Event, UIPlugin } from '@infinite-canvas-tutorial/webcomponents';
 import { LaserPointerPlugin } from '@infinite-canvas-tutorial/laser-pointer';
 import { LassoPlugin } from '@infinite-canvas-tutorial/lasso';
 import { EraserPlugin } from '@infinite-canvas-tutorial/eraser';
+import { YogaPlugin } from '@infinite-canvas-tutorial/yoga';
 
 const wrapper = ref<HTMLElement | null>(null);
 let api: any | undefined;
@@ -70,7 +71,7 @@ onMounted(async () => {
     await import('@infinite-canvas-tutorial/lasso/spectrum');
     await import('@infinite-canvas-tutorial/eraser/spectrum');
     await import('@infinite-canvas-tutorial/laser-pointer/spectrum');
-    new App().addPlugins(...DefaultPlugins, UIPlugin, LaserPointerPlugin, LassoPlugin, EraserPlugin).run();
+    new App().addPlugins(...DefaultPlugins, UIPlugin, LaserPointerPlugin, LassoPlugin, EraserPlugin, YogaPlugin).run();
   } else {
     // 当App已经初始化时，需要等待canvas组件准备好并检查API
     await import('@infinite-canvas-tutorial/webcomponents/spectrum');

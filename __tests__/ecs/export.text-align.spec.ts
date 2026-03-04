@@ -31,13 +31,14 @@ import {
   Screenshot,
   Text,
   TextDecoration,
+  Line,
 } from '../../packages/ecs/src';
 import { NodeJSAdapter, sleep } from '../utils';
 
 DOMAdapter.set(NodeJSAdapter);
 
 describe('Export SVG', () => {
-  it('should export radial gradient correctly', (done) => {
+  it('should export text align correctly', (done) => {
     const app = new App();
 
     let api: API | undefined;
@@ -75,6 +76,7 @@ describe('Export SVG', () => {
             ZIndex,
             Text,
             TextDecoration,
+            Line
           ).write,
       );
 
@@ -95,7 +97,18 @@ describe('Export SVG', () => {
 
         api.updateNodes([
           {
-            id: '1',
+            id: 'baseline-1',
+            type: 'line',
+            x1: 50,
+            y1: 0,
+            x2: 50,
+            y2: 200,
+            stroke: 'red',
+            strokeWidth: 1,
+            zIndex: 0,
+          },
+          {
+            id: 'text-1',
             type: 'text',
             fill: 'black',
             content: 'Test',
@@ -103,10 +116,31 @@ describe('Export SVG', () => {
             anchorY: 50,
             fontSize: 16,
             fontFamily: 'sans-serif',
-            // decorationColor: 'black',
-            // decorationStyle: 'solid',
-            // decorationThickness: 4,
-            // decorationLine: 'underline',
+            zIndex: 1,
+          },
+          {
+            id: 'text-2',
+            type: 'text',
+            fill: 'black',
+            content: 'Test',
+            anchorX: 50,
+            anchorY: 100,
+            fontSize: 16,
+            fontFamily: 'sans-serif',
+            textAlign: 'center',
+            zIndex: 2,
+          },
+          {
+            id: 'text-3',
+            type: 'text',
+            fill: 'black',
+            content: 'Test',
+            anchorX: 50,
+            anchorY: 150,
+            fontSize: 16,
+            fontFamily: 'sans-serif',
+            textAlign: 'right',
+            zIndex: 3,
           },
         ]);
       }
@@ -116,7 +150,7 @@ describe('Export SVG', () => {
           const { svg } = screenshot.read(Screenshot);
 
           const dir = `${__dirname}/snapshots`;
-          expect(svg).toMatchSVGSnapshot(dir, 'export-text-decoration');
+          expect(svg).toMatchSVGSnapshot(dir, 'export-text-align');
 
           setTimeout(() => {
             app.exit();

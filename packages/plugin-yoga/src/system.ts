@@ -23,6 +23,8 @@ import {
   Text,
   HTML,
   Embed,
+  FillGradient,
+  FillSolid,
 } from '@infinite-canvas-tutorial/ecs';
 import { YogaLayoutApplied } from './YogaLayoutApplied';
 // @ts-expect-error - import.meta is only available in ES modules, but this code will run in ES module environments
@@ -95,6 +97,8 @@ export class YogaSystem extends System {
             Parent,
             Children,
             UI,
+            FillGradient,
+            FillSolid,
             ZIndex,
           )
           .read.and.using(GlobalTransform, Transform, Transformable, Rect, Ellipse, Polyline, Path, Text, HTML, Embed, YogaLayoutApplied)

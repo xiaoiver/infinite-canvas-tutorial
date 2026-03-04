@@ -154,17 +154,16 @@ export function yOffsetFromTextBaseline(
   const {
     fontBoundingBoxAscent = 0,
     fontBoundingBoxDescent = 0,
-    hangingBaseline = 0,
-    ideographicBaseline = 0,
   } = fontMetrics;
+
   if (textBaseline === 'alphabetic') {
     offset -= fontBoundingBoxAscent;
   } else if (textBaseline === 'middle') {
     offset -= (fontBoundingBoxAscent + fontBoundingBoxDescent) / 2;
   } else if (textBaseline === 'hanging') {
-    offset -= hangingBaseline;
+    offset = 0;
   } else if (textBaseline === 'ideographic') {
-    offset -= ideographicBaseline;
+    offset -= fontBoundingBoxAscent + fontBoundingBoxDescent;
   } else if (textBaseline === 'bottom') {
     offset -= fontBoundingBoxAscent + fontBoundingBoxDescent;
   } else if (textBaseline === 'top') {

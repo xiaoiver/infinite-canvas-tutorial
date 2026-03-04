@@ -10,7 +10,8 @@ import { Event, UIPlugin } from '@infinite-canvas-tutorial/webcomponents';
 import { LaserPointerPlugin } from '@infinite-canvas-tutorial/laser-pointer';
 import { LassoPlugin } from '@infinite-canvas-tutorial/lasso';
 import { EraserPlugin } from '@infinite-canvas-tutorial/eraser';
-
+import { YogaPlugin } from '@infinite-canvas-tutorial/yoga';
+import { BrushSerializedNode } from '@infinite-canvas-tutorial/ecs';
 
 const wrapper = ref<HTMLElement | null>(null);
 let api: any | undefined;
@@ -51,7 +52,7 @@ onMounted(async () => {
       radius.push(r);
     }
 
-    const node = {
+    const node: BrushSerializedNode = {
       id: 'brush-1',
       type: 'brush',
       points: position.map(([x, y], i) => `${x},${y},${radius[i]}`).join(' '),
@@ -59,6 +60,7 @@ onMounted(async () => {
       stroke: 'grey',
       strokeWidth: 10,
       strokeOpacity: 1,
+      zIndex: 0,
     };
 
     api.updateNodes([
@@ -75,7 +77,7 @@ onMounted(async () => {
     await import('@infinite-canvas-tutorial/lasso/spectrum');
     await import('@infinite-canvas-tutorial/eraser/spectrum');
     await import('@infinite-canvas-tutorial/laser-pointer/spectrum');
-    new App().addPlugins(...DefaultPlugins, UIPlugin, LaserPointerPlugin, LassoPlugin, EraserPlugin).run();
+    new App().addPlugins(...DefaultPlugins, UIPlugin, LaserPointerPlugin, LassoPlugin, EraserPlugin, YogaPlugin).run();
   } else {
     // 等待组件更新完成后检查API是否已经准备好
     setTimeout(() => {

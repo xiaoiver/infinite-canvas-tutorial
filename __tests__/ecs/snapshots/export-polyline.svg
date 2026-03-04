@@ -1,1 +1,1 @@
-<svg width="200" height="200" style="background-color: #fbfbfb" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg"><polyline id="node-1" stroke="black" points="0,0 100,100 200,0" fill="none"/></svg>
+<svg width="200" height="200" style="background-color: #fbfbfb" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg"><polyline stroke="black" points="0,0 100,100 200,0" fill="none" id="node-1"/></svg>

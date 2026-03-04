@@ -505,7 +505,7 @@ export class SDFText extends Drawcall {
     bitmapFont: BitmapFont;
     fontScale: number;
   }) {
-    const { textAlign, textBaseline, bitmapFontKerning } = object.read(Text);
+    const { textAlign, bitmapFontKerning } = object.read(Text);
 
     const metrics = object.read(ComputedTextMetrics);
     const globalRenderOrder = object.has(GlobalRenderOrder)
@@ -525,23 +525,8 @@ export class SDFText extends Drawcall {
 
     const {
       fontBoundingBoxAscent = 0,
-      fontBoundingBoxDescent = 0,
-      hangingBaseline = 0,
-      ideographicBaseline = 0,
     } = metrics.fontMetrics;
-    if (textBaseline === 'alphabetic') {
-      y = fontBoundingBoxAscent;
-    } else if (textBaseline === 'middle') {
-      y = fontBoundingBoxAscent;
-    } else if (textBaseline === 'hanging') {
-      y = hangingBaseline;
-    } else if (textBaseline === 'ideographic') {
-      y = ideographicBaseline;
-    } else if (textBaseline === 'bottom') {
-      y = fontBoundingBoxAscent + fontBoundingBoxDescent;
-    } else if (textBaseline === 'top') {
-      y = 0;
-    }
+    y = fontBoundingBoxAscent;
 
     const charUVOffsetBuffer: number[] = [];
     const charPositionsBuffer: number[] = [];
