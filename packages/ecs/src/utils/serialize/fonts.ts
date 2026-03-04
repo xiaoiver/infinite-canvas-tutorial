@@ -1,3 +1,4 @@
+import { fontWeightMap } from '../..';
 import type { SerializedNode } from '../../types/serialized-node';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
@@ -23,8 +24,10 @@ function collectFontKeys(nodes: SerializedNode[]): Set<string> {
     if (node.type !== 'text') continue;
     const family = (node as { fontFamily?: string }).fontFamily ?? 'sans-serif';
     const weight = `${(node as { fontWeight?: string | number }).fontWeight ?? 'normal'}`;
+    // 将 weight 字面量转换成绝对值，例如 normal -> 400, bold -> 700
+    const weightValue = fontWeightMap[weight as keyof typeof fontWeightMap] ?? 400;
     const style = (node as { fontStyle?: string }).fontStyle ?? 'normal';
-    keys.add(fontKey(family, weight, style));
+    keys.add(fontKey(family, `${weightValue}`, style));
   }
   return keys;
 }
@@ -74,6 +77,7 @@ export async function generateFontFaceDeclarations(
     if (!wanted.has(key) || seen.has(key)) continue;
 
     try {
+      debugger;
       // @ts-expect-error
       const blob = await (fontFace as FontFace).blob();
       if (!blob || blob.size === 0) continue;

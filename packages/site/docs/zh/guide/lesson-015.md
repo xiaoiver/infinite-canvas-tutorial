@@ -8,6 +8,7 @@ import MSDFText from '../../components/MSDFText.vue';
 import BitmapFont from '../../components/BitmapFont.vue';
 import Emoji from '../../components/Emoji.vue';
 import Bidi from '../../components/Bidi.vue';
+import TextBaseline2 from '../../components/TextBaseline2.vue';
 </script>
 
 # 课程 15 - 绘制文本
@@ -92,6 +93,8 @@ interface TextMetrics {
 ![text-baseline](/text-baseline.png)
 
 最后 `fontBoundingBoxAscent/Descent` 是字体本身的最大边界，`actualBoundingBoxAscent/Descent` 是实际绘制时字体的最大边界，因此前者适合用来绘制一致的文本的背景，不会随内容变化而显得高低不平。
+
+<TextBaseline2 />
 
 ### measureText
 

@@ -68,7 +68,7 @@ const genericFontFamilies = [
 ];
 
 // https://developer.mozilla.org/en-US/docs/Web/CSS/font-weight#common_weight_name_mapping
-const fontWeightMap = {
+export const fontWeightMap = {
   thin: 100,
   extraLight: 200,
   ultraLight: 200,

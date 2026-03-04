@@ -178,15 +178,6 @@ export async function toSVGElement(
     }`,
   );
 
-  // Inline font faces so exported SVG is self-contained (see Excalidraw export.ts).
-  // const doc = $namespace.ownerDocument;
-  // const $fontStyle = await createFontFacesStyleElement(nodes, doc);
-  // if ($fontStyle) {
-  //   const $defs = createSVGElement('defs');
-  //   $defs.appendChild($fontStyle);
-  //   $namespace.appendChild($defs);
-  // }
-
   nodes = [...clipParentNodes, ...nodes];
 
   (await serializeNodesToSVGElements(nodes)).forEach((element) => {
