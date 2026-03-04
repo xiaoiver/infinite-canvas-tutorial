@@ -92,8 +92,6 @@ export function inferXYWidthHeight(node: SerializedNode) {
     return node;
   }
 
-  const { x, y, width, height } = node;
-  // Already resolved: x/y/width/height are number | undefined
   if (
     isNil(node.width) ||
     isNil(node.height) ||
@@ -418,10 +416,13 @@ export function serializedNodesToEntities(
       if (brushStamp) {
         loadImage(brushStamp, entityCommands.id());
       }
-    } else if (type === 'path') {
+    } else if (type === 'path' || type === 'rough-path') {
       const { d, fillRule, tessellationMethod } =
         attributes as PathSerializedNode;
       entityCommands.insert(new Path({ d, fillRule, tessellationMethod }));
+      if (type === 'rough-path') {
+        serializeRough(attributes as RoughAttributes, entityCommands);
+      }
     } else if (type === 'text') {
       const {
         anchorX,

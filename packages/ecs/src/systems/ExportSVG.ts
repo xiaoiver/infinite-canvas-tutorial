@@ -46,6 +46,7 @@ import {
   createSVGElement,
   serializeNodesToSVGElements,
   toSVGDataURL,
+  createFontFacesStyleElement,
 } from '../utils';
 import type { SerializedNode } from '../types/serialized-node';
 import { API } from '..';

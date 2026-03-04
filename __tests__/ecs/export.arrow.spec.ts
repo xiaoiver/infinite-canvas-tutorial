@@ -1,5 +1,6 @@
 import _gl from 'gl';
 import '../useSnapshotMatchers';
+import { expectToMatchSVGSnapshotWithDone } from '../toMatchSVGSnapshot';
 import {
   App,
   Camera,
@@ -115,13 +116,11 @@ describe('Export SVG', () => {
           const { svg } = screenshot.read(Screenshot);
 
           const dir = `${__dirname}/snapshots`;
-          expect(svg).toMatchSVGSnapshot(dir, 'export-arrow');
+          expectToMatchSVGSnapshotWithDone(svg, dir, 'export-arrow', done);
 
           setTimeout(() => {
             app.exit();
           });
-
-          done();
         });
       }
     }

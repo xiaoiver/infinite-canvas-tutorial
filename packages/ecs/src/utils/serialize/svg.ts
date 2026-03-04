@@ -1,4 +1,4 @@
-import { isNil, isNumber, isString } from '@antv/util';
+import { isNil, isNumber, isString, path2String } from '@antv/util';
 import toposort from 'toposort';
 import { Marker, Mat3 } from '../../components';
 import {
@@ -6,6 +6,7 @@ import {
   fontStringFromTextStyle,
   sortByFractionalIndex,
   measureText,
+  computeDrawableSets,
 } from '../../systems';
 import { createSVGElement } from '../browser';
 import {
@@ -30,6 +31,8 @@ import { generateGradientKey, generatePatternKey } from '../../resources';
 import { lineArrow } from '../marker';
 import { DOMAdapter } from '../../environment';
 import { imageToCanvas } from './image';
+import { opSet2Absolute } from '../rough';
+import { createFontFacesStyleElement } from './fonts';
 
 const strokeDefaultAttributes = {
   strokeOpacity: 1,
@@ -236,8 +239,10 @@ export async function serializeNodesToSVGElements(
   for (const id of sorted) {
     const node = idSerializedNodeMap.get(id);
     const { id: _, parentId, type, ...restAttributes } = node;
-    const element = createSVGElement(type);
-    element.id = `node-${id}`;
+
+    // Use <path> for rough elements.
+    const isRough = type?.startsWith('rough-');
+    const element = !isRough && createSVGElement(type);
 
     const {
       x = 0,
@@ -263,6 +268,9 @@ export async function serializeNodesToSVGElements(
       tessellationMethod,
       cornerRadius,
       zIndex,
+      /** Text attributes */
+      anchorX,
+      anchorY,
       fontFamily,
       fontSize,
       fontWeight,
@@ -298,20 +306,67 @@ export async function serializeNodesToSVGElements(
       versionNonce,
       updated,
       clipMode,
+      /** Yoga attributes */
+      display,
+      alignItems,
+      justifyContent,
+      padding,
+      margin,
+      gap,
+      rowGap,
+      columnGap,
+      flexBasis,
+      flexGrow,
+      flexShrink,
+      flexDirection,
+      flexWrap,
+      minWidth,
+      maxWidth,
+      minHeight,
+      maxHeight,
+      /** Binded attributes */
+      fromId,
+      toId,
+      orthogonal,
+      exitX,
+      exitY,
+      exitPerimeter,
+      exitDx,
+      exitDy,
+      entryX,
+      entryY,
+      entryPerimeter,
+      entryDx,
+      entryDy,
+      edgeStyle,
+      sourceJettySize,
+      targetJettySize,
+      jettySize,
+      sourcePortConstraint,
+      targetPortConstraint,
+      portConstraint,
       ...rest
     } = restAttributes as SerializedNodeAttributes;
 
-    Object.entries(rest).forEach(([key, value]) => {
-      if (
-        `${value}` !== '' &&
-        `${defaultAttributes[type][key]}` !== `${value}`
-      ) {
-        if (isNumber(value)) {
-          value = toFixedAndRemoveTrailingZeros(value);
+    if (element) {
+      Object.entries(rest).forEach(([key, value]) => {
+        if (
+          `${value}` !== '' &&
+          `${defaultAttributes[type][key]}` !== `${value}`
+        ) {
+          if (isNumber(value)) {
+            value = toFixedAndRemoveTrailingZeros(value);
+          }
+          element.setAttribute(camelToKebabCase(key), `${value}`);
         }
-        element.setAttribute(camelToKebabCase(key), `${value}`);
+      });
+    }
+
+    if (type === 'rect' || type === 'ellipse' || type === 'polyline' || type === 'path') {
+      if (!rest.fill) {
+        element.setAttribute('fill', 'none');
       }
-    });
+    }
 
     if (type === 'ellipse') {
       element.setAttribute('cx', `${isString(width) ? width : toFixedAndRemoveTrailingZeros(width / 2)}`);
@@ -342,10 +397,6 @@ export async function serializeNodesToSVGElements(
       //   element.setAttribute('width', `${Math.abs(width)}`);
       //   element.setAttribute('height', `${Math.abs(height)}`);
       // }
-    } else if (type === 'polyline' || type === 'path') {
-      if (!rest.fill) {
-        element.setAttribute('fill', 'none');
-      }
     } else if (type === 'text') {
       let x = 0;
       let y = 0;
@@ -357,13 +408,29 @@ export async function serializeNodesToSVGElements(
 
       if (textBaseline === 'middle') {
         y = (height ?? 0) / 2;
-      } else if (textBaseline === 'alphabetic' || textBaseline === 'hanging') {
-        y = fontBoundingBoxAscent;
+      } else if (textBaseline === 'hanging' || textBaseline === 'top') {
+        y = 0;
+      } else if (textBaseline === 'alphabetic') {
+        y = (height ?? 0) * 0.75;
+      } else if (textBaseline === 'ideographic' || textBaseline === 'bottom') {
+        y = height ?? 0;
       }
 
       element.setAttribute('x', `${toFixedAndRemoveTrailingZeros(x)}`);
       element.setAttribute('y', `${toFixedAndRemoveTrailingZeros(y)}`);
       element.removeAttribute('fill');
+
+      // 自定义字体
+      if (fontFamily === 'Gaegu') {
+        // Inline font faces so exported SVG is self-contained (see Excalidraw export.ts).
+        // const doc = $namespace.ownerDocument;
+        const $fontStyle = await createFontFacesStyleElement(nodes, DOMAdapter.get().getDocument());
+        if ($fontStyle) {
+          const $defs = createSVGElement('defs');
+          $defs.appendChild($fontStyle);
+          // $namespace.appendChild($defs);
+        }
+      }
     }
 
     if (textAlign) {
@@ -371,8 +438,10 @@ export async function serializeNodesToSVGElements(
       // @see https://developer.mozilla.org/en-US/docs/Web/SVG/Reference/Attribute/text-anchor
       if (textAlign === 'center') {
         element.setAttribute('text-anchor', 'middle');
-      } else {
-        element.setAttribute('text-anchor', textAlign);
+      } else if (textAlign === 'right' || textAlign === 'end') {
+        element.setAttribute('text-anchor', 'end');
+      } else if (textAlign === 'left' || textAlign === 'start') {
+        element.setAttribute('text-anchor', 'start');
       }
     }
 
@@ -401,8 +470,7 @@ export async function serializeNodesToSVGElements(
       rest.fill && isString(rest.fill) && isGradient(rest.fill);
     const hasFillPattern = rest.fill && isPattern(rest.fill);
     const hasClipMode = !!clipMode;
-    // const hasParentClipOrMask = !!(parentId && idSerializedNodeMap.get(parentId)?.clipMode);
-    const isRough = false;
+    
     const hasChildren = edges.some(([parentId]) => parentId === id);
 
     /**
@@ -472,7 +540,7 @@ export async function serializeNodesToSVGElements(
     if (hasFillGradient || hasFillPattern) {
       exportFillGradientOrPattern(node, element, $g);
     }
-    if (hasMarker) {
+    if (hasMarker && !isRough) {
       exportMarker(node, element, $g);
     }
     if (hasClipMode) {
@@ -480,6 +548,7 @@ export async function serializeNodesToSVGElements(
     }
 
     $g = $g || element;
+    $g.id = `node-${id}`;
 
     if (visibility === 'hidden') {
       // @see https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/visibility
@@ -490,8 +559,7 @@ export async function serializeNodesToSVGElements(
       $g.setAttribute('ry', `${cornerRadius}`);
     }
     if (isRough) {
-      // TODO:
-      // exportRough(node, $g);
+      exportRough(node, $g);
     }
     if (content) {
       exportText(node as TextSerializedNode, $g, element);
@@ -1153,6 +1221,31 @@ export async function exportClipOrMask(
   }
 }
 
+export function exportRough(node: SerializedNode, $g: SVGElement) {
+  const { stroke, fill, strokeWidth } = node as PathSerializedNode;
+  const drawableSets = computeDrawableSets(node);
+
+  drawableSets.forEach((drawableSet) => {
+    const { type } = drawableSet;
+    const commands = opSet2Absolute(drawableSet);
+    const d = path2String(commands, 2);
+    const $path = createSVGElement('path');
+    $path.setAttribute('d', d);
+    $g.appendChild($path);
+    if (type === 'fillSketch') {
+      $path.setAttribute('stroke', fill as string);
+      $path.setAttribute('stroke-width', `${strokeWidth}`);
+      $path.setAttribute('fill', 'none');
+    } else if (type === 'path') {
+      $path.setAttribute('stroke', stroke as string);
+      $path.setAttribute('fill', 'none');
+      $path.setAttribute('stroke-width', `${strokeWidth}`);
+    } else if (type === 'fillPath') {
+      $path.setAttribute('fill', fill as string);
+      $path.setAttribute('stroke', 'none');
+    }
+  });
+}
 
 /**
  * use <text> and <tspan> to render text.
@@ -1196,9 +1289,15 @@ export function exportText(
   if ($g === element) {
     $g.setAttribute('font-family', fontFamily);
     $g.setAttribute('font-size', `${fontSize}`);
-    $g.setAttribute('font-weight', `${fontWeight}`);
-    $g.setAttribute('font-style', fontStyle);
-    $g.setAttribute('font-variant', fontVariant);
+    if (fontWeight) {
+      $g.setAttribute('font-weight', `${fontWeight}`);
+    }
+    if (fontStyle) {
+      $g.setAttribute('font-style', fontStyle);
+    }
+    if (fontVariant) {
+      $g.setAttribute('font-variant', fontVariant);
+    }
     $g.setAttribute('fill', fill as string);
   } else {
     let styleCSSText = '';

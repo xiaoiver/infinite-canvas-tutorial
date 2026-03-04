@@ -10,6 +10,7 @@ import MSDFText from '../components/MSDFText.vue';
 import BitmapFont from '../components/BitmapFont.vue';
 import Emoji from '../components/Emoji.vue';
 import Bidi from '../components/Bidi.vue';
+import TextBaseline2 from '../components/TextBaseline2.vue';
 </script>
 
 # Lesson 15 - Text rendering
@@ -94,6 +95,8 @@ The value of `text-baseline` can refer to [text-baseline], as shown in the figur
 ![text-baseline](/text-baseline.png)
 
 Finally, `fontBoundingBoxAscent/Descent` is the maximum boundary of the font itself, and `actualBoundingBoxAscent/Descent` is the maximum boundary of the font when actually drawn, so the former is suitable for drawing a consistent background for text, which will not appear unevenly high or low with content changes.
+
+<TextBaseline2 />
 
 ### measureText
 

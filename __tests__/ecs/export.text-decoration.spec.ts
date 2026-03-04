@@ -1,5 +1,6 @@
 import _gl from 'gl';
 import '../useSnapshotMatchers';
+import { expectToMatchSVGSnapshotWithDone } from '../toMatchSVGSnapshot';
 import {
   App,
   Camera,
@@ -37,7 +38,7 @@ import { NodeJSAdapter, sleep } from '../utils';
 DOMAdapter.set(NodeJSAdapter);
 
 describe('Export SVG', () => {
-  it('should export radial gradient correctly', (done) => {
+  it('should export text decoration correctly', (done) => {
     const app = new App();
 
     let api: API | undefined;
@@ -103,10 +104,11 @@ describe('Export SVG', () => {
             anchorY: 50,
             fontSize: 16,
             fontFamily: 'sans-serif',
-            // decorationColor: 'black',
-            // decorationStyle: 'solid',
-            // decorationThickness: 4,
-            // decorationLine: 'underline',
+            zIndex: 0,
+            decorationColor: 'black',
+            decorationStyle: 'solid',
+            decorationThickness: 4,
+            decorationLine: 'underline',
           },
         ]);
       }
@@ -116,13 +118,11 @@ describe('Export SVG', () => {
           const { svg } = screenshot.read(Screenshot);
 
           const dir = `${__dirname}/snapshots`;
-          expect(svg).toMatchSVGSnapshot(dir, 'export-text-decoration');
+          expectToMatchSVGSnapshotWithDone(svg, dir, 'export-text-decoration', done);
 
           setTimeout(() => {
             app.exit();
           });
-
-          done();
         });
       }
     }

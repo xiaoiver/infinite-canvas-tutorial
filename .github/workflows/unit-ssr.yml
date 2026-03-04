@@ -50,12 +50,13 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload blob report to GitHub Actions Artifacts
-        if: always()
+        if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: snapshots
           path: |
-            __tests__/ssr/snapshots/**/*-actual.svg
-            __tests__/ssr/snapshots/**/*-actual.png
-            __tests__/ssr/snapshots/**/*-diff.png
+            __tests__/**/snapshots/**/*-actual.svg
+            __tests__/**/snapshots/**/*-actual.png
+            __tests__/**/snapshots/**/*-diff.png
+          if-no-files-found: ignore
           retention-days: 1

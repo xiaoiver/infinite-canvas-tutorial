@@ -13,6 +13,7 @@ import { LassoPlugin } from '@infinite-canvas-tutorial/lasso';
 import { EraserPlugin } from '@infinite-canvas-tutorial/eraser';
 import { ChatPlugin } from '@infinite-canvas-tutorial/chat';
 import { FalAIPlugin } from '@infinite-canvas-tutorial/fal-ai';
+import { YogaPlugin } from '@infinite-canvas-tutorial/yoga';
 
 const wrapper = ref<HTMLElement | null>(null);
 let api: any | undefined;
@@ -209,7 +210,7 @@ onMounted(async () => {
     await import('@infinite-canvas-tutorial/eraser/spectrum');
     await import('@infinite-canvas-tutorial/laser-pointer/spectrum');
     await import('@infinite-canvas-tutorial/chat/spectrum');
-    new App().addPlugins(...DefaultPlugins, UIPlugin, LaserPointerPlugin, LassoPlugin, EraserPlugin, ChatPlugin, FalAIPlugin.configure({
+    new App().addPlugins(...DefaultPlugins, UIPlugin, LaserPointerPlugin, LassoPlugin, EraserPlugin, YogaPlugin, ChatPlugin, FalAIPlugin.configure({
       credentials: 'your-fal-ai-credentials-here',
     })).run();
   } else {

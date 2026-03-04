@@ -19,6 +19,43 @@ For infinite canvas-like applications operating outside the DOM, you must implem
 
 ![source: https://www.figma.com/community/file/1284819663700490015](/figma-flexbox.png)
 
+Tools focused on design-to-code typically provide this capability. For details, see:
+[Layout in pencil.dev]
+
+> A parent object can take over the sizing and positioning of its children using a flexbox-style layout system via properties like layout, justifyContent and alignItems.
+
+```ts
+export interface Layout {
+    /** Enable flex layout. None means all children are absolutely positioned and will not be affected by layout properties. Frames default to horizontal, groups default to none. */
+    layout?: 'none' | 'vertical' | 'horizontal';
+    /** The gap between children in the main axis direction. Defaults to 0. */
+    gap?: NumberOrVariable;
+    layoutIncludeStroke?: boolean;
+    /** The Inside padding along the edge of the container */
+    padding?:
+        | /** The inside padding to all sides */ NumberOrVariable
+        | /** The inside horizontal and vertical padding */ [
+              NumberOrVariable,
+              NumberOrVariable,
+          ]
+        | /** Top, Right, Bottom, Left padding */ [
+              NumberOrVariable,
+              NumberOrVariable,
+              NumberOrVariable,
+              NumberOrVariable,
+          ];
+    /** Control the justify alignment of the children along the main axis. Defaults to 'start'. */
+    justifyContent?:
+        | 'start'
+        | 'center'
+        | 'end'
+        | 'space_between'
+        | 'space_around';
+    /** Control the alignment of children along the cross axis. Defaults to 'start'. */
+    alignItems?: 'start' | 'center' | 'end';
+}
+```
+
 ![source: https://developer.mozilla.org/en-US/docs/Web/CSS/Guides/Flexible_box_layout/Basic_concepts](https://developer.mozilla.org/en-US/docs/Web/CSS/Guides/Flexible_box_layout/Basic_concepts/basics1.svg)
 
 In this lesson, we will implement Flexbox layouts and support CSS properties with the same names on nodes:
@@ -261,3 +298,6 @@ const parent = {
 [taffy wasm bindings]: https://github.com/DioxusLabs/taffy/pull/394
 [Figma - Guide to auto layout]: https://help.figma.com/hc/en-us/articles/360040451373-Guide-to-auto-layout
 [react-pdf/yoga]: https://github.com/diegomura/react-pdf/blob/master/packages/layout/src/yoga/index.ts
+[Flex Basis, Grow, and Shrink]: https://www.yogalayout.dev/docs/styling/flex-basis-grow-shrink
+[Min/Max Width and Height]: https://www.yogalayout.dev/docs/styling/min-max-width-height
+[Layout in pencil.dev]: https://docs.pencil.dev/for-developers/the-pen-format#layout

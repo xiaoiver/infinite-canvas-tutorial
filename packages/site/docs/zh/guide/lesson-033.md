@@ -19,6 +19,42 @@ import YogaMinMaxWidthHeight from '../../components/YogaMinMaxWidthHeight.vue'
 
 ![source: https://www.figma.com/community/file/1284819663700490015](/figma-flexbox.png)
 
+专注在设计到代码的工具一般都会提供这个能力，详见：[Layout in pencil.dev]。
+
+> A parent object can take over the sizing and positioning of its children using a flexbox-style layout system via properties like layout, justifyContent and alignItems.
+
+```ts
+export interface Layout {
+    /** Enable flex layout. None means all children are absolutely positioned and will not be affected by layout properties. Frames default to horizontal, groups default to none. */
+    layout?: 'none' | 'vertical' | 'horizontal';
+    /** The gap between children in the main axis direction. Defaults to 0. */
+    gap?: NumberOrVariable;
+    layoutIncludeStroke?: boolean;
+    /** The Inside padding along the edge of the container */
+    padding?:
+        | /** The inside padding to all sides */ NumberOrVariable
+        | /** The inside horizontal and vertical padding */ [
+              NumberOrVariable,
+              NumberOrVariable,
+          ]
+        | /** Top, Right, Bottom, Left padding */ [
+              NumberOrVariable,
+              NumberOrVariable,
+              NumberOrVariable,
+              NumberOrVariable,
+          ];
+    /** Control the justify alignment of the children along the main axis. Defaults to 'start'. */
+    justifyContent?:
+        | 'start'
+        | 'center'
+        | 'end'
+        | 'space_between'
+        | 'space_around';
+    /** Control the alignment of children along the cross axis. Defaults to 'start'. */
+    alignItems?: 'start' | 'center' | 'end';
+}
+```
+
 ![source: https://developer.mozilla.org/en-US/docs/Web/CSS/Guides/Flexible_box_layout/Basic_concepts](https://developer.mozilla.org/en-US/docs/Web/CSS/Guides/Flexible_box_layout/Basic_concepts/basics1.svg)
 
 在本节课中我们将实现 Flexbox 布局，在节点上支持 CSS 同名属性：
@@ -261,3 +297,4 @@ const parent = {
 [react-pdf/yoga]: https://github.com/diegomura/react-pdf/blob/master/packages/layout/src/yoga/index.ts
 [Flex Basis, Grow, and Shrink]: https://www.yogalayout.dev/docs/styling/flex-basis-grow-shrink
 [Min/Max Width and Height]: https://www.yogalayout.dev/docs/styling/min-max-width-height
+[Layout in pencil.dev]: https://docs.pencil.dev/for-developers/the-pen-format#layout

@@ -1,5 +1,6 @@
 import _gl from 'gl';
 import '../useSnapshotMatchers';
+import { expectToMatchSVGSnapshotWithDone } from '../toMatchSVGSnapshot';
 import {
   App,
   Camera,
@@ -116,16 +117,16 @@ describe('Export SVG', () => {
           const { svg } = screenshot.read(Screenshot);
 
           const dir = `${__dirname}/snapshots`;
-          expect(svg).toMatchSVGSnapshot(
+          expectToMatchSVGSnapshotWithDone(
+            svg,
             dir,
             'export-stroke-alignment-inne-ellipse',
+            done,
           );
 
           setTimeout(() => {
             app.exit();
           });
-
-          done();
         });
       }
     }
