@@ -191,10 +191,10 @@ export default function ZoomToolbar({ canvasApi, canvasRef }: ZoomToolbarProps) 
   // 监听缩放变化事件
   useEffect(() => {
     canvasRef.current?.addEventListener('keydown', onKeyDown);
-    canvasRef.current?.addEventListener(Event.ZOOM_CHANGED, onZoomChanged as EventListener);
+    canvasRef.current?.addEventListener(Event.CAMERA_ZOOM_CHANGED, onZoomChanged as EventListener);
     return () => {
       canvasRef.current?.removeEventListener('keydown', onKeyDown);
-      canvasRef.current?.removeEventListener(Event.ZOOM_CHANGED, onZoomChanged as EventListener);
+      canvasRef.current?.removeEventListener(Event.CAMERA_ZOOM_CHANGED, onZoomChanged as EventListener);
     };
   }, [canvasRef, onZoomChanged, onKeyDown]);
 

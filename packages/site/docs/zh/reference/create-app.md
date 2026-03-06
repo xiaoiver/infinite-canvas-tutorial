@@ -67,7 +67,7 @@ canvas.addEventListener(Event.READY, async (e) => {
 
 当画布改变尺寸时触发。可以获取此时画布的宽高：`{ width: number; height: number }`
 
-### Event.ZOOM_CHANGED
+### Event.CAMERA_ZOOM_CHANGED
 
 当画布相机缩放等级改变时触发。可以获取当前的缩放等级：`{ zoom: number }`
 

@@ -1,9 +1,9 @@
-import { html, css, LitElement } from 'lit';
+import { html, css, LitElement, PropertyValues } from 'lit';
 import { customElement } from 'lit/decorators.js';
 import { when } from 'lit/directives/when.js';
 import { consume } from '@lit/context';
-import { apiContext } from '../context';
-import { Pen, Task, API } from '@infinite-canvas-tutorial/ecs';
+import { apiContext, appStateContext } from '../context';
+import { Task, API, AppState } from '@infinite-canvas-tutorial/ecs';
 import { localized, msg, str } from '@lit/localize';
 
 @customElement('ic-spectrum-taskbar')
@@ -35,8 +35,22 @@ export class Taskbar extends LitElement {
     }
   `;
 
+  @consume({ context: appStateContext, subscribe: true })
+  appState: AppState;
+
   @consume({ context: apiContext, subscribe: true })
   api: API;
+
+  private previousTaskbarVisible: boolean;
+
+  shouldUpdate(changedProperties: PropertyValues) {
+    const newTaskbarVisible = this.appState.taskbarVisible;
+    if (newTaskbarVisible !== this.previousTaskbarVisible) {
+      this.previousTaskbarVisible = newTaskbarVisible;
+      return true;
+    }
+    return super.shouldUpdate(changedProperties);
+  }
 
   private handleTaskChanged(e: CustomEvent) {
     this.api.setAppState({
@@ -49,7 +63,7 @@ export class Taskbar extends LitElement {
       return;
     }
 
-    const { taskbarAll, taskbarSelected, taskbarVisible, penbarSelected } =
+    const { taskbarSelected, taskbarVisible } =
       this.api.getAppState();
 
     return when(

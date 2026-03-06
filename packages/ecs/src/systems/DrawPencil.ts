@@ -185,10 +185,12 @@ export class DrawPencil extends System {
         api.runAtNextTick(() => {
           api.updateNode(brush, { visibility: 'hidden' }, false);
 
+          const maxZIndex = api.getNodes().reduce((max, node) => Math.max(max, node.zIndex ?? 0), 0);
+
           const node: PathSerializedNode | PolylineSerializedNode = {
             id: uuidv4(),
             version: 0,
-            zIndex: 0,
+            zIndex: maxZIndex + 1,
             ...appState.penbarPencil,
           };
           const points: [number, number][] = selection.points.map((p) => [

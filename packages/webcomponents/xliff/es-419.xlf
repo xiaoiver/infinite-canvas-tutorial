@@ -398,6 +398,34 @@
   <source>Portrait</source>
   <target>Vertical</target>
 </trans-unit>
+<trans-unit id="sa30f1981fd1cd441">
+  <source>Font size</source>
+  <target>Tamaño de fuente</target>
+</trans-unit>
+<trans-unit id="sf7c0eba7c822e3d6">
+  <source>Bold</source>
+  <target>Negrita</target>
+</trans-unit>
+<trans-unit id="s523eb9043213ff0d">
+  <source>Italic</source>
+  <target>Cursiva</target>
+</trans-unit>
+<trans-unit id="sb206d700d26b14ff">
+  <source>Underline</source>
+  <target>Subrayado</target>
+</trans-unit>
+<trans-unit id="s2de711db9d43b41d">
+  <source>Left align</source>
+  <target>Alinear a la izquierda</target>
+</trans-unit>
+<trans-unit id="s7cb7d5626af837f9">
+  <source>Center align</source>
+  <target>Alinear al centro</target>
+</trans-unit>
+<trans-unit id="sa4cba6ffa1d5e5e4">
+  <source>Right align</source>
+  <target>Alinear a la derecha</target>
+</trans-unit>
 </body>
 </file>
 </xliff>

@@ -32,7 +32,6 @@ import { lineArrow } from '../marker';
 import { DOMAdapter } from '../../environment';
 import { imageToCanvas } from './image';
 import { opSet2Absolute } from '../rough';
-import { createFontFacesStyleElement } from './fonts';
 
 const strokeDefaultAttributes = {
   strokeOpacity: 1,
@@ -420,17 +419,16 @@ export async function serializeNodesToSVGElements(
       element.setAttribute('y', `${toFixedAndRemoveTrailingZeros(y)}`);
       element.removeAttribute('fill');
 
-      // 自定义字体
-      if (fontFamily === 'Gaegu') {
-        // Inline font faces so exported SVG is self-contained (see Excalidraw export.ts).
-        // const doc = $namespace.ownerDocument;
-        const $fontStyle = await createFontFacesStyleElement(nodes, DOMAdapter.get().getDocument());
-        if ($fontStyle) {
-          const $defs = createSVGElement('defs');
-          $defs.appendChild($fontStyle);
-          // $namespace.appendChild($defs);
-        }
-      }
+      // if (fontFamily === 'Gaegu') {
+      //   // Inline font faces so exported SVG is self-contained (see Excalidraw export.ts).
+      //   // const doc = $namespace.ownerDocument;
+      //   const $fontStyle = await createFontFacesStyleElement(nodes, DOMAdapter.get().getDocument());
+      //   if ($fontStyle) {
+      //     const $defs = createSVGElement('defs');
+      //     $defs.appendChild($fontStyle);
+      //     // $namespace.appendChild($defs);
+      //   }
+      // }
     }
 
     if (textAlign) {

@@ -506,6 +506,12 @@ Object.entries(rest).forEach(([key, value]) => {
 });
 ```
 
+#### [WIP] 内联 Web 字体 {#inlined-web-font}
+
+导出成 SVG 时，如果使用了 Web 字体，希望能将它内联在文件中。当然由于字体文件的大小，需要在运行时做一些按需裁剪。下面是 Excalidraw 的处理过程，详见：[Font subsetting in excalidraw]
+
+![source: https://link.excalidraw.com/readonly/MbbnWPSWXgadXdtmzgeO](https://github.com/user-attachments/assets/e255df0a-13de-4cb6-ae2e-9e885b643c63)
+
 ### 导出 PDF {#to-pdf}
 
 现在像素和矢量图都有了，如果还想导出成 PDF 可以使用 [jsPDF]，它提供了添加图片的 API，限于篇幅这里就不介绍了。
@@ -961,3 +967,4 @@ function strokeOffset(
 [JSON objects in tldraw]: https://tldraw.dev/docs/shapes#The-shape-object
 [JSON schema in excalidraw]: https://docs.excalidraw.com/docs/codebase/json-schema
 [viewBox]: https://developer.mozilla.org/zh-CN/docs/Web/SVG/Reference/Attribute/viewBox
+[Font subsetting in excalidraw]: https://github.com/excalidraw/excalidraw/issues/1972#issuecomment-2417744618

@@ -101,7 +101,8 @@
       "rollup": ">=4.59.0",
       "tar": ">=7.5.8",
       "serialize-javascript": ">=7.0.3",
-      "markdown-it": ">=14.1.1"
+      "markdown-it": ">=14.1.1",
+      "hono": ">=4.12.4"
     }
   }
 }

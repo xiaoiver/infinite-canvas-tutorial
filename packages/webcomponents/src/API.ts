@@ -228,6 +228,7 @@ export class ExtendedAPI extends API {
       width = height * (image.width / image.height);
     }
 
+    const maxZIndex = this.getNodes().reduce((max, node) => Math.max(max, node.zIndex ?? 0), 0);
     const node: RectSerializedNode = {
       id: uuidv4(),
       type: 'rect',
@@ -237,7 +238,7 @@ export class ExtendedAPI extends API {
       height,
       fill: cdnUrl,
       lockAspectRatio: true,
-      zIndex: 0,
+      zIndex: maxZIndex + 1,
     };
     updateAndSelectNodes(this, this.getAppState(), [
       node,

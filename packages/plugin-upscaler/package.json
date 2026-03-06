@@ -1,6 +1,6 @@
 {
   "name": "@infinite-canvas-tutorial/upscaler",
-  "version": "0.0.1-alpha.39",
+  "version": "0.0.4",
   "description": "Use UpscalerJS in client side",
   "main": "lib/index.js",
   "module": "esm/index.js",
