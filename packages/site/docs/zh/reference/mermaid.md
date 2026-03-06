@@ -5,6 +5,7 @@ outline: deep
 <script setup>
 import Mermaid from '../../components/Mermaid.vue'
 import MermaidRough from '../../components/MermaidRough.vue'
+import MermaidFlowchart from '../../components/MermaidFlowchart.vue'
 </script>
 
 该插件提供了一个工具方法，将 Mermaid 语法转换成画布的场景图：
@@ -27,3 +28,7 @@ api.runAtNextTick(() => {
 也可以很容易地转换成手绘风格：
 
 <MermaidRough />
+
+一个稍微复杂一点的例子：
+
+<MermaidFlowchart />

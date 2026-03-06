@@ -27,7 +27,7 @@ jobs:
           cache: 'pnpm'
 
       - name: Install dependencies
-        run: pnpm install --no-frozen-lockfile
+        run: pnpm install
 
       - name: Build
         run: pnpm -r --filter '!@infinite-canvas-tutorial/app' run build
