@@ -153,7 +153,7 @@ canvas.addEventListener(Event.READY, (e) => {
 
 -   READY
 -   RESIZED
--   ZOOM_CHANGED
+-   CAMERA_ZOOM_CHANGED
 -   SCREENSHOT_REQUESTED
 -   SCREENSHOT_DOWNLOADED
 

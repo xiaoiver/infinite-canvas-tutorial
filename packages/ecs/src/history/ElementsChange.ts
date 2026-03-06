@@ -596,6 +596,8 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
     scaleY,
     points,
     d,
+    anchorX,
+    anchorY,
     fontWeight,
     fontStyle,
     textAlign,
@@ -854,6 +856,12 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
     safeAddComponent(entity, Marker, { factor: markerFactor });
   }
 
+  if (!isNil(anchorX)) {
+    entity.write(Text).anchorX = anchorX;
+  }
+  if (!isNil(anchorY)) {
+    entity.write(Text).anchorY = anchorY;
+  }
   if (!isNil(fontSize)) {
     entity.write(Text).fontSize = fontSize;
   }

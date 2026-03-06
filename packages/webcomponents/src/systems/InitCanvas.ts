@@ -133,6 +133,8 @@ export class InitCanvas extends System {
         api.createCanvas({ ...canvas, api });
         api.createCamera(camera);
 
+        console.log('canvas', canvas, canvas.element.width, canvas.element.height);
+
         try {
           const { getLocale, setLocale } = configureLocalization({
             sourceLocale,

@@ -1,6 +1,7 @@
 import {
   Camera,
   Canvas,
+  ComputedBounds,
   ComputedCamera,
   System,
   Transform,
@@ -10,7 +11,8 @@ import { Event } from '../event';
 import { ExtendedAPI } from '../API';
 
 export class ZoomLevel extends System {
-  #zoomEvent: CustomEvent;
+  #zoomChangedEvent: CustomEvent;
+  #positionChangedEvent: CustomEvent;
 
   private readonly cameras = this.query(
     (q) => q.changed.with(ComputedCamera).trackWrites,
@@ -18,13 +20,21 @@ export class ZoomLevel extends System {
 
   constructor() {
     super();
-    this.query((q) => q.using(Camera, Transform).write.and.using(Canvas).read);
+    this.query((q) => q.using(Camera, Transform).write.and.using(Canvas, ComputedBounds).read);
   }
 
   initialize() {
-    this.#zoomEvent = new CustomEvent(Event.ZOOM_CHANGED, {
+    this.#zoomChangedEvent = new CustomEvent(Event.CAMERA_ZOOM_CHANGED, {
       detail: {
         zoom: undefined,
+      },
+      bubbles: true,
+      composed: true,
+    });
+    this.#positionChangedEvent = new CustomEvent(Event.CAMERA_POSITION_CHANGED, {
+      detail: {
+        x: undefined,
+        y: undefined,
       },
       bubbles: true,
       composed: true,
@@ -59,9 +69,13 @@ export class ZoomLevel extends System {
 
       api.getHtmlLayer().style.transform = `matrix(${a}, ${b}, ${c}, ${d}, ${e}, ${f})`;
 
-      if (zoom !== this.#zoomEvent.detail.zoom) {
-        this.#zoomEvent.detail.zoom = zoom;
-        api.element.dispatchEvent(this.#zoomEvent);
+      if (zoom !== this.#zoomChangedEvent.detail.zoom) {
+        this.#zoomChangedEvent.detail.zoom = zoom;
+        api.element.dispatchEvent(this.#zoomChangedEvent);
+      } else if (x !== this.#positionChangedEvent.detail.x || y !== this.#positionChangedEvent.detail.y) {
+        this.#positionChangedEvent.detail.x = x;
+        this.#positionChangedEvent.detail.y = y;
+        api.element.dispatchEvent(this.#positionChangedEvent);
       }
     });
   }

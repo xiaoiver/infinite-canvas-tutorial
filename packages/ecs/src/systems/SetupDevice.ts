@@ -81,8 +81,8 @@ export class SetupDevice extends System {
 
       if (!this.#offscreenElement && isBrowser) {
         this.#offscreenElement = document.createElement('canvas');
-        this.#offscreenElement.width = width * devicePixelRatio;
-        this.#offscreenElement.height = height * devicePixelRatio;
+        this.#offscreenElement.width = Math.floor(width * devicePixelRatio);
+        this.#offscreenElement.height = Math.floor(height * devicePixelRatio);
         this.#offscreenGPUResource = {
           ...(await this.createGPUResource(
             renderer,
@@ -126,7 +126,7 @@ export class SetupDevice extends System {
       const heightDPR = height * devicePixelRatio;
 
       const { swapChain } = canvas.read(GPUResource);
-      swapChain.configureSwapChain(widthDPR, heightDPR);
+      swapChain.configureSwapChain(Math.floor(widthDPR), Math.floor(heightDPR));
     });
 
     this.canvases.removed.forEach((canvas) => {
@@ -184,7 +184,7 @@ export class SetupDevice extends System {
       element as HTMLCanvasElement,
     );
 
-    swapChain.configureSwapChain(widthDPR, heightDPR);
+    swapChain.configureSwapChain(Math.floor(widthDPR), Math.floor(heightDPR));
     const device = swapChain.getDevice();
     const renderCache = new RenderCache(device);
     const renderGraph = new RenderGraph(device);

@@ -1,6 +1,6 @@
 {
   "name": "@infinite-canvas-tutorial/chat",
-  "version": "0.0.1-alpha.39",
+  "version": "0.0.5",
   "description": "Use chatbox with canvas",
   "main": "lib/index.js",
   "module": "esm/index.js",

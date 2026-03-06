@@ -13,7 +13,6 @@ import { AppState, getDefaultAppState } from './context';
 import {
   BitmapFont,
   copyTextToClipboard,
-  createFontFacesStyleElement,
   createSVGElement,
   deserializeBrushPoints,
   deserializePoints,

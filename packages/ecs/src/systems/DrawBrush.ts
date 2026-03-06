@@ -174,11 +174,12 @@ export class DrawBrush extends System {
           const { stamps, stamp, ...rest } = api.getAppState().penbarBrush;
           api.updateNode(brush, { visibility: 'hidden' }, false);
 
+          const maxZIndex = api.getNodes().reduce((max, node) => Math.max(max, node.zIndex ?? 0), 0);
           const node: BrushSerializedNode = {
             id: uuidv4(),
             type: 'brush',
             version: 0,
-            zIndex: 0,
+            zIndex: maxZIndex + 1,
             points: brush.points,
             brushStamp: stamp, // Use stamp from current settings
             ...rest,

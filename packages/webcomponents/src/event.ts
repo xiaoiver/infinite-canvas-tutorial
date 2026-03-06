@@ -9,7 +9,8 @@ export enum Event {
   READY = 'ic-ready',
   DESTROY = 'ic-destroy',
   RESIZED = 'ic-resized',
-  ZOOM_CHANGED = 'ic-zoom-changed',
+  CAMERA_ZOOM_CHANGED = 'ic-camera-zoom-changed',
+  CAMERA_POSITION_CHANGED = 'ic-camera-position-changed',
   SCREENSHOT_DOWNLOADED = 'ic-screenshot-downloaded',
   // CHECKBOARD_STYLE_CHANGED = 'ic-checkboard-style-changed',
   // PEN_CHANGED = 'ic-pen-changed',
@@ -31,7 +32,8 @@ declare global {
   interface HTMLElementEventMap {
     [Event.READY]: CustomEvent<ExtendedAPI>;
     [Event.RESIZED]: CustomEvent<{ width: number; height: number }>;
-    [Event.ZOOM_CHANGED]: CustomEvent<{ zoom: number }>;
+    [Event.CAMERA_ZOOM_CHANGED]: CustomEvent<{ zoom: number }>;
+    [Event.CAMERA_POSITION_CHANGED]: CustomEvent<{ x: number; y: number }>;
     [Event.SCREENSHOT_DOWNLOADED]: CustomEvent<
       Pick<Screenshot, 'dataURL' | 'svg'>
     >;

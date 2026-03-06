@@ -1,6 +1,6 @@
 {
   "name": "@infinite-canvas-tutorial/d2",
-  "version": "0.0.1-alpha.39",
+  "version": "0.0.5",
   "description": "Use d2",
   "main": "lib/index.js",
   "module": "esm/index.js",

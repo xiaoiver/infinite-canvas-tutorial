@@ -510,6 +510,12 @@ Object.entries(rest).forEach(([key, value]) => {
 });
 ```
 
+#### [WIP] Inlined Web font {#inlined-web-font}
+
+When exporting to SVG, if web fonts are used, we aim to inline them within the file. Naturally, due to font file size constraints, some on-demand trimming is required during runtime. Below is Excalidraw's processing flow, detailed at: [Font subsetting in excalidraw]
+
+![source: https://link.excalidraw.com/readonly/MbbnWPSWXgadXdtmzgeO](https://github.com/user-attachments/assets/e255df0a-13de-4cb6-ae2e-9e885b643c63)
+
 ### Export PDF {#to-pdf}
 
 Now that pixels and vectors are available, if you still want to export to PDF you can use [jsPDF], which provides an API for adding images, which I won't cover here for lack of space.
@@ -958,3 +964,4 @@ With the richness of the canvas functionality, it is necessary to introduce test
 [JSON objects in tldraw]: https://tldraw.dev/docs/shapes#The-shape-object
 [JSON schema in excalidraw]: https://docs.excalidraw.com/docs/codebase/json-schema
 [viewBox]: https://developer.mozilla.org/en-US/docs/Web/SVG/Reference/Attribute/viewBox
+[Font subsetting in excalidraw]: https://github.com/excalidraw/excalidraw/issues/1972#issuecomment-2417744618

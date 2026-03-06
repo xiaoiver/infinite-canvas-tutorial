@@ -398,6 +398,34 @@
   <source>Portrait</source>
   <target>竖屏</target>
 </trans-unit>
+<trans-unit id="sa30f1981fd1cd441">
+  <source>Font size</source>
+  <target>字体大小</target>
+</trans-unit>
+<trans-unit id="sf7c0eba7c822e3d6">
+  <source>Bold</source>
+  <target>粗体</target>
+</trans-unit>
+<trans-unit id="s523eb9043213ff0d">
+  <source>Italic</source>
+  <target>斜体</target>
+</trans-unit>
+<trans-unit id="sb206d700d26b14ff">
+  <source>Underline</source>
+  <target>下划线</target>
+</trans-unit>
+<trans-unit id="s2de711db9d43b41d">
+  <source>Left align</source>
+  <target>左对齐</target>
+</trans-unit>
+<trans-unit id="s7cb7d5626af837f9">
+  <source>Center align</source>
+  <target>居中对齐</target>
+</trans-unit>
+<trans-unit id="sa4cba6ffa1d5e5e4">
+  <source>Right align</source>
+  <target>右对齐</target>
+</trans-unit>
 </body>
 </file>
 </xliff>

@@ -55,7 +55,6 @@
     "eslint": "^9",
     "eslint-plugin-jest": "24.3.6",
     "get-pixels": "3.3.3",
-    "gl": "^6.0.2",
     "globals": "^16.0.0",
     "grapheme-splitter": "^1.0.4",
     "husky": "^7.0.4",
@@ -73,6 +72,9 @@
     "typescript": "^5.8.3",
     "vite": "^5.4.18",
     "vue-eslint-parser": "^9.4.3"
+  },
+  "optionalDependencies": {
+    "gl": "^6.0.2"
   },
   "lint-staged": {
     "*.{md,json}": [
@@ -101,7 +103,8 @@
       "rollup": ">=4.59.0",
       "tar": ">=7.5.8",
       "serialize-javascript": ">=7.0.3",
-      "markdown-it": ">=14.1.1"
+      "markdown-it": ">=14.1.1",
+      "hono": ">=4.12.4"
     }
   }
 }

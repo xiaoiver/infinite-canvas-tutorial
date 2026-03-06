@@ -233,6 +233,7 @@ export class DrawRect extends System {
         api.runAtNextTick(() => {
           this.hideBrush(api, selection);
 
+          const maxZIndex = api.getNodes().reduce((max, node) => Math.max(max, node.zIndex ?? 0), 0);
           const node:
             | RectSerializedNode
             | EllipseSerializedNode
@@ -244,7 +245,7 @@ export class DrawRect extends System {
                 id: uuidv4(),
                 type: PEN_TO_TYPE[pen],
                 version: 0,
-                zIndex: 0,
+                zIndex: maxZIndex + 1,
               },
               defaultDrawParams[pen],
               pen === Pen.DRAW_LINE ||

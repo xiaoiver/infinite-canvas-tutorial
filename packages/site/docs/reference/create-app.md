@@ -67,7 +67,7 @@ Triggered when the canvas initialization is complete. `ExtendedAPI` can be obtai
 
 Triggered when the canvas resizes. You can retrieve the current canvas dimensions: `{ width: number; height: number }`
 
-### Event.ZOOM_CHANGED
+### Event.CAMERA_ZOOM_CHANGED
 
 Triggered when the canvas camera's zoom level changes. The current zoom level can be retrieved: `{ zoom: number }`
 
