@@ -1,5 +1,12 @@
 # @infinite-canvas-tutorial/drawio
 
+## 0.0.6
+
+### Patch Changes
+
+-   Updated dependencies
+    -   @infinite-canvas-tutorial/webcomponents@0.0.7
+
 ## 0.0.5
 
 ### Patch Changes

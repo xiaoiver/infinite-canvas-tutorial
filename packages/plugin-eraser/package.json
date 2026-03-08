@@ -1,6 +1,6 @@
 {
   "name": "@infinite-canvas-tutorial/eraser",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "description": "Use eraser",
   "main": "lib/index.js",
   "module": "esm/index.js",
@@ -53,8 +53,6 @@
     "localize:build": "lit-localize build"
   },
   "dependencies": {
-    "@infinite-canvas-tutorial/ecs": "workspace:*",
-    "@infinite-canvas-tutorial/webcomponents": "workspace:*",
     "@spectrum-web-components/icon": "^1.11.0",
     "@spectrum-web-components/icons-workflow": "^1.11.0",
     "@lit/context": "^1.1.2",
@@ -64,6 +62,10 @@
   },
   "devDependencies": {
     "@lit/localize-tools": "^0.8.1"
+  },
+  "peerDependencies": {
+    "@infinite-canvas-tutorial/ecs": "workspace:*",
+    "@infinite-canvas-tutorial/webcomponents": "workspace:*"
   },
   "publishConfig": {
     "access": "public"

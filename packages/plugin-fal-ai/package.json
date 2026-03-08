@@ -46,8 +46,11 @@
     "watch": "rimraf ./esm && tsc --module ESNext --outDir esm --watch"
   },
   "dependencies": {
-    "@infinite-canvas-tutorial/ecs": "workspace:*",
     "@fal-ai/client": "^1.6.2"
+  },
+  "peerDependencies": {
+    "@infinite-canvas-tutorial/ecs": "workspace:*",
+    "@infinite-canvas-tutorial/webcomponents": "workspace:*"
   },
   "publishConfig": {
     "access": "public"

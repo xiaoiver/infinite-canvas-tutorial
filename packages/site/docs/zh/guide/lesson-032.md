@@ -113,8 +113,6 @@ x -> y: hello world
 
 <D2 />
 
-边上的文本标签需要始终放置在几何中心，在下一节 [课程 33 - 布局引擎] 中我们会介绍实现方式。
-
 ## drawio {#drawio}
 
 ```ts
@@ -124,6 +122,21 @@ console.log(mxfile.diagram);
 ```
 
 <Drawio />
+
+## 边上的标签 {#label-on-edge}
+
+边上的文本标签需要始终放置在几何中心，在下一节 [课程 33 - 布局引擎] 中我们会介绍实现方式。
+
+在 Excalidraw 中，「edge（线/箭头）」上放置文本 label，核心不是“让 text 跟着 path 走、沿曲线排版”，而是更简单可靠的做法：
+
+1. label 仍然是一个独立的 text element（不是线的一部分渲染文本）
+2. 在数据上把 text 绑定到线（arrow/line）：text 记录它“属于哪条线”，线也会记录“它的 label text id”或等价关系
+3. 用几何计算给 text 一个锚点（anchor point）：通常取线的“中点”或某个 labelPosition（0~1 的参数），再根据线的形状（直线/折线/曲线）求出对应点
+4. 把 text 当成附着物（bound element）处理：当线移动、线端点拖动、折点变化、箭头翻转时，都会重新算 label 的位置，并更新 text 的坐标（同时处理避免与线重叠、偏移量、对齐方式）
+
+tldraw 的做法则不同，label 不是单独的 text shape，而是 arrow shape 自己的一个 props（richText）+ 一套几何定位与编辑交互。
+
+draw.io 里在 edge（连线）上放置文本 label，属于它的核心能力之一，实现方式更接近传统流程图编辑器：“Edge 有自己的 label（文本）能力，label 作为 edge 的子状态存在，并且位置用几何参数/偏移存储”，而不是单独创建一个文本节点再去绑定。
 
 ## 扩展阅读 {#extended-reading}
 

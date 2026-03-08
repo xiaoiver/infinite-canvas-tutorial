@@ -113,8 +113,6 @@ x -> y: hello world
 
 <D2 />
 
-Text labels on the edge must always be positioned at the geometric center. We will cover the implementation method in the next section [Lesson 33 - Layout Engine].
-
 ## drawio {#drawio}
 
 ```ts
@@ -124,6 +122,21 @@ console.log(mxfile.diagram);
 ```
 
 <Drawio />
+
+## Edge label {#label-on-edge}
+
+Text labels on the edge must always be positioned at the geometric center. We will cover the implementation method in the next section [Lesson 33 - Layout Engine].
+
+In Excalidraw, placing text labels on edges (lines/arrows) isn't fundamentally about “making text follow paths or wrap along curves.” Instead, it relies on a simpler, more reliable approach:
+
+1. The label remains an independent text element (not rendered as part of the line itself).
+2. Bind the text to the line (arrow/line) in the data: the text records “which line it belongs to,” and the line records “its label text ID” or an equivalent relationship.
+3. Use geometric calculations to assign an anchor point to the text: typically the line's “midpoint” or a labelPosition parameter (0~1), then calculate the corresponding point based on the line's shape (straight/polygonal/curved).
+4. Treat text as a bound element: When the line moves, endpoints are dragged, kinks change, or arrows flip, the label's position is recalculated and text coordinates are updated (while handling line overlap avoidance, offset, and alignment).
+
+tldraw takes a different approach: the label isn't a separate text shape but rather a prop (richText) of the arrow shape itself, combined with a set of geometric positioning and editing interactions.
+
+In draw.io, placing text labels on edges (connectors) is one of its core capabilities. Its implementation aligns more closely with traditional flowchart editors: “Edges possess their own label (text) functionality, where labels exist as child states of the edge, with positions stored via geometric parameters/offsets.” This approach avoids creating separate text nodes for binding.
 
 ## Extended reading {#extended-reading}
 

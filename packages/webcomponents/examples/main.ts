@@ -81,6 +81,7 @@ canvas.addEventListener(Event.READY, async (e) => {
       Pen.DRAW_ROUGH_RECT,
       Pen.DRAW_ROUGH_ELLIPSE,
       Pen.IMAGE,
+      Pen.LASSO,
       // Pen.TEXT,
       // Pen.PENCIL,
       // Pen.BRUSH,
@@ -90,6 +91,9 @@ canvas.addEventListener(Event.READY, async (e) => {
     penbarLasso: {
       ...api.getAppState().penbarLasso,
       mode: 'draw',
+      fill: 'none',
+      stroke: 'red',
+      strokeWidth: 2,
     },
     penbarText: {
       ...api.getAppState().penbarText,
@@ -105,7 +109,7 @@ canvas.addEventListener(Event.READY, async (e) => {
       Task.SHOW_LAYERS_PANEL,
       Task.SHOW_PROPERTIES_PANEL,
     ],
-    penbarVisible: false,
+    penbarVisible: true,
     taskbarVisible: true,
     checkboardStyle: CheckboardStyle.GRID,
     snapToPixelGridEnabled: true,
@@ -124,6 +128,7 @@ canvas.addEventListener(Event.READY, async (e) => {
     // rotateEnabled: false,
     flipEnabled: false,
     // filter: 'noise(0.5)',
+    layersLassoing: ['parent'],
   });
 
   const parent = {
@@ -131,7 +136,7 @@ canvas.addEventListener(Event.READY, async (e) => {
     type: 'rect',
     x: 100,
     y: 100,
-    fill: 'hsl(214.82, 100%, 50%)',
+    fill: '/canvas.png',
     // display: 'flex',
     width: 200,
     height: 250,
@@ -176,54 +181,9 @@ canvas.addEventListener(Event.READY, async (e) => {
   } as const;
 
   api.updateNodes([
-    {
-      id: 'baseline-1',
-      type: 'line',
-      x1: 50,
-      y1: 0,
-      x2: 50,
-      y2: 200,
-      stroke: 'red',
-      strokeWidth: 1,
-      zIndex: 0,
-    },
-    {
-      id: 'text-1',
-      type: 'text',
-      fill: 'black',
-      content: 'Test',
-      anchorX: 50,
-      anchorY: 50,
-      fontSize: 16,
-      fontFamily: 'sans-serif',
-      zIndex: 1,
-    },
-    {
-      id: 'text-2',
-      type: 'text',
-      fill: 'black',
-      content: 'Test',
-      anchorX: 50,
-      anchorY: 100,
-      fontSize: 16,
-      fontFamily: 'sans-serif',
-      textAlign: 'center',
-      zIndex: 2,
-    },
-    {
-      id: 'text-3',
-      type: 'text',
-      fill: 'black',
-      content: 'Test',
-      anchorX: 50,
-      anchorY: 150,
-      fontSize: 16,
-      fontFamily: 'sans-serif',
-      textAlign: 'right',
-      zIndex: 3,
-    },
+    parent,
   ]);
-  // api.selectNodes([parent]);
+  api.selectNodes([parent]);
   api.record();
 
   // api.updateNodes([node1]);

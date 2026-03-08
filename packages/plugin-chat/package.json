@@ -1,6 +1,6 @@
 {
   "name": "@infinite-canvas-tutorial/chat",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "description": "Use chatbox with canvas",
   "main": "lib/index.js",
   "module": "esm/index.js",
@@ -53,8 +53,6 @@
     "localize:build": "lit-localize build"
   },
   "dependencies": {
-    "@infinite-canvas-tutorial/ecs": "workspace:*",
-    "@infinite-canvas-tutorial/webcomponents": "workspace:*",
     "@loaders.gl/core": "^4.2.2",
     "@loaders.gl/images": "^4.2.2",
     "@spectrum-web-components/icon": "^1.11.0",
@@ -67,6 +65,10 @@
   },
   "devDependencies": {
     "@lit/localize-tools": "^0.8.1"
+  },
+  "peerDependencies": {
+    "@infinite-canvas-tutorial/ecs": "workspace:*",
+    "@infinite-canvas-tutorial/webcomponents": "workspace:*"
   },
   "publishConfig": {
     "access": "public"

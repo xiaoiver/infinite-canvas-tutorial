@@ -1,5 +1,13 @@
 # @infinite-canvas-tutorial/lasso
 
+## 0.0.6
+
+### Patch Changes
+
+-   Move ecs & webcomponents from deps to peerDeps
+-   Updated dependencies
+    -   @infinite-canvas-tutorial/webcomponents@0.0.7
+
 ## 0.0.5
 
 ### Patch Changes

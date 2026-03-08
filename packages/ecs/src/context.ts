@@ -98,6 +98,7 @@ export interface AppState {
    * @see https://github.com/excalidraw/excalidraw/pull/8613
    */
   layersCropping: SerializedNode['id'][];
+  layersLassoing: SerializedNode['id'][];
   /**
    * Allow rotate in transformer
    */
@@ -319,6 +320,7 @@ export const getDefaultAppState: () => AppState = () => {
     layersSelected: [],
     layersHighlighted: [],
     layersCropping: [],
+    layersLassoing: [],
     propertiesOpened: [],
     layersExpanded: [],
     rotateEnabled: false,

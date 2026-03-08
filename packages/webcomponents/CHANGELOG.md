@@ -1,5 +1,11 @@
 # @infinite-canvas-tutorial/webcomponents
 
+## 0.0.7
+
+### Patch Changes
+
+-   Move ecs & webcomponents from deps to peerDeps
+
 ## 0.0.6
 
 ### Patch Changes

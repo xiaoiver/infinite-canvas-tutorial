@@ -51,6 +51,8 @@ onMounted(async () => {
       }
     });
 
+    console.log('nodes', nodes);
+
     import('webfontloader').then((module) => {
       const WebFont = module.default;
       WebFont.load({

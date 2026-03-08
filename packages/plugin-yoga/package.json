@@ -46,8 +46,11 @@
     "watch": "rimraf ./esm && tsc --module ESNext --outDir esm --watch"
   },
   "dependencies": {
-    "@infinite-canvas-tutorial/ecs": "workspace:*",
     "yoga-layout": "^3.2.1"
+  },
+  "peerDependencies": {
+    "@infinite-canvas-tutorial/ecs": "workspace:*",
+    "@infinite-canvas-tutorial/webcomponents": "workspace:*"
   },
   "publishConfig": {
     "access": "public"
