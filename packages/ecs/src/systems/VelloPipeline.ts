@@ -71,7 +71,7 @@ import { safeAddComponent } from '../history';
 import { SetupDevice } from './SetupDevice';
 import { API } from '../API';
 import { PostProcessingRenderer } from '../render-graph/PostProcessingRenderer';
-import init, { addRect, addCircle, addText, registerDefaultFont, runWithCanvas } from '../../../vello-renderer/pkg/vello_renderer.js';
+// import init, { addRect, addCircle, addText, registerDefaultFont, runWithCanvas } from '../../../vello-renderer/pkg/vello_renderer.js';
 
 type GPURenderer = {
   uniformBuffer: Buffer;
@@ -444,19 +444,19 @@ export class VelloPipeline extends System {
   }
 
   async initialize() {
-    await init();
+    // await init();
 
-    this.canvases.current.forEach((canvas) => {
-      const $canvas = canvas.read(Canvas).element as HTMLCanvasElement;
+    // this.canvases.current.forEach((canvas) => {
+    //   const $canvas = canvas.read(Canvas).element as HTMLCanvasElement;
 
-      setTimeout(() => {
-        runWithCanvas($canvas, (canvasId: string) => {
+    //   setTimeout(() => {
+    //     runWithCanvas($canvas, (canvasId: string) => {
 
-          console.log('canvasId', canvasId);
-        //   this.canvasIds.set($canvas, canvasId);
-        });
-      });
-    });
+    //       console.log('canvasId', canvasId);
+    //     //   this.canvasIds.set($canvas, canvasId);
+    //     });
+    //   });
+    // });
   }
 
   execute() {
