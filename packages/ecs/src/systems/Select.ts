@@ -94,6 +94,7 @@ export enum SelectionMode {
   READY_TO_MOVE_CONTROL_POINT = 'READY_TO_MOVE_CONTROL_POINT',
   MOVE_CONTROL_POINT = 'MOVE_CONTROL_POINT',
   EDITING = 'EDITING',
+  LASSOING = 'LASSOING',
 }
 
 export interface SelectOBB {
@@ -897,6 +898,9 @@ export class Select extends System {
           if (layersCropping.length > 0) {
             api.applyCrop();
           }
+          // if (layersLassoing.length > 0) {
+          //   api.cancelLasso();
+          // }
         } else if (selection.mode === SelectionMode.READY_TO_SELECT) {
           selection.mode = SelectionMode.SELECT;
         } else if (selection.mode === SelectionMode.READY_TO_MOVE) {
@@ -984,61 +988,64 @@ export class Select extends System {
                   // (selection as SelectVectorNetwork).activeControlPointIndex =
                   //   index;
                 } else {
-                  const { rotation, scale } = mask.read(Transform);
-                  cursor.value =
-                    getCursor(
-                      cursorName,
-                      rotation,
-                      '',
-                      Math.sign(scale[0] * scale[1]) < 0,
-                    ) ?? cursorName;
-                  selection.resizingAnchorName = anchor;
-
-                  if (cursorName.includes('rotate')) {
-                    selection.mode = SelectionMode.READY_TO_ROTATE;
-                    toHighlight = undefined;
-                  } else if (
-                    cursorName.includes('resize') ||
-                    anchor === AnchorName.X1Y1 ||
-                    anchor === AnchorName.X2Y2
-                  ) {
-                    selection.mode = SelectionMode.READY_TO_RESIZE;
-                    toHighlight = undefined;
-                  } else if (anchor === AnchorName.INSIDE) {
-                    // Only in single transformer, we can select other objects.
-                    if (
-                      toHighlight &&
-                      toHighlight !== selecteds[0] &&
-                      selecteds.length === 1
-                    ) {
-                      selection.mode = SelectionMode.READY_TO_SELECT;
-                    } else {
-                      // In group can toggle selection.
-                      if (input.shiftKey) {
-                        selection.mode = SelectionMode.READY_TO_SELECT;
-                      } else {
-                        // Disable highlight, only allow move.
-                        toHighlight = undefined;
-
-                        if (
-                          // selection.mode !== SelectionMode.BRUSH &&
-                          selection.mode !== SelectionMode.MOVE
-                        ) {
-                          selection.mode = SelectionMode.READY_TO_MOVE;
-                        }
-                      }
-                    }
-                  } else if (toHighlight) {
-                    selection.mode = SelectionMode.READY_TO_SELECT;
-                  }
-
-                  if (layersCropping.length > 0) {
-                    if (anchor === AnchorName.INSIDE) {
-                      cursor.value = 'move';
-                    }
-                  } else if (layersLassoing.length > 0) {
+                  if (layersLassoing.length > 0) {
                     if (anchor === AnchorName.INSIDE) {
                       cursor.value = LASSO_CURSOR;
+                      selection.mode = SelectionMode.LASSOING;
+                    }
+                  } else {
+                    const { rotation, scale } = mask.read(Transform);
+                    cursor.value =
+                      getCursor(
+                        cursorName,
+                        rotation,
+                        '',
+                        Math.sign(scale[0] * scale[1]) < 0,
+                      ) ?? cursorName;
+                    selection.resizingAnchorName = anchor;
+
+                    if (cursorName.includes('rotate')) {
+                      selection.mode = SelectionMode.READY_TO_ROTATE;
+                      toHighlight = undefined;
+                    } else if (
+                      cursorName.includes('resize') ||
+                      anchor === AnchorName.X1Y1 ||
+                      anchor === AnchorName.X2Y2
+                    ) {
+                      selection.mode = SelectionMode.READY_TO_RESIZE;
+                      toHighlight = undefined;
+                    } else if (anchor === AnchorName.INSIDE) {
+                      // Only in single transformer, we can select other objects.
+                      if (
+                        toHighlight &&
+                        toHighlight !== selecteds[0] &&
+                        selecteds.length === 1
+                      ) {
+                        selection.mode = SelectionMode.READY_TO_SELECT;
+                      } else {
+                        // In group can toggle selection.
+                        if (input.shiftKey) {
+                          selection.mode = SelectionMode.READY_TO_SELECT;
+                        } else {
+                          // Disable highlight, only allow move.
+                          toHighlight = undefined;
+
+                          if (
+                            // selection.mode !== SelectionMode.BRUSH &&
+                            selection.mode !== SelectionMode.MOVE
+                          ) {
+                            selection.mode = SelectionMode.READY_TO_MOVE;
+                          }
+                        }
+                      }
+                    } else if (toHighlight) {
+                      selection.mode = SelectionMode.READY_TO_SELECT;
+                    }
+
+                    if (layersCropping.length > 0) {
+                      if (anchor === AnchorName.INSIDE) {
+                        cursor.value = 'move';
+                      }
                     }
                   }
                 }

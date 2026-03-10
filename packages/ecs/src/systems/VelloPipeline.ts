@@ -6,7 +6,6 @@ import {
   BufferFrequencyHint,
   BufferUsage,
   SwapChain,
-  TransparentWhite,
 } from '@antv/g-device-api';
 import {
   Camera,
@@ -65,34 +64,22 @@ import {
   ClipMode,
   Flex,
 } from '../components';
-import { Effect, paddingMat3, parseEffect } from '../utils';
+import { Effect, paddingMat3 } from '../utils';
 import type { SerializedNode } from '../types/serialized-node';
-import { GridRenderer } from '../render-graph/GridRenderer';
-import { BatchManager } from './BatchManager';
 import { getSceneRoot } from './Transform';
 import { safeAddComponent } from '../history';
 import { SetupDevice } from './SetupDevice';
 import { API } from '../API';
-import { RGAttachmentSlot } from '../render-graph/interface';
-import {
-  AntialiasingMode,
-  makeAttachmentClearDescriptor,
-  makeBackbufferDescSimple,
-  opaqueWhiteFullClearRenderPassDescriptor,
-} from '../render-graph/utils';
-import { RenderGraph } from '../render-graph/RenderGraph';
 import { PostProcessingRenderer } from '../render-graph/PostProcessingRenderer';
+import init, { addRect, addCircle, addText, registerDefaultFont, runWithCanvas } from '../../../vello-renderer/pkg/vello_renderer.js';
 
 type GPURenderer = {
   uniformBuffer: Buffer;
   uniformLegacyObject: Record<string, unknown>;
-  gridRenderer: GridRenderer;
-  batchManager: BatchManager;
   filters: Record<Effect['type'], PostProcessingRenderer>;
-  renderGraph: RenderGraph;
 };
 
-export class MeshPipeline extends System {
+export class VelloPipeline extends System {
   private setupDevice = this.attach(SetupDevice);
 
   private canvases = this.query((q) => q.current.with(Canvas).read);
@@ -210,6 +197,8 @@ export class MeshPipeline extends System {
     }[]
   > = new WeakMap();
 
+  private canvasIds: WeakMap<HTMLCanvasElement, string> = new WeakMap();
+
   constructor() {
     super();
     this.query(
@@ -286,7 +275,7 @@ export class MeshPipeline extends System {
   }
 
   private createRenderer(gpuResource: GPUResource, api: API) {
-    const { device, swapChain, renderCache, texturePool, renderGraph } =
+    const { device, swapChain, renderCache, texturePool } =
       gpuResource;
     return {
       uniformBuffer: device.createBuffer({
@@ -295,16 +284,7 @@ export class MeshPipeline extends System {
         hint: BufferFrequencyHint.DYNAMIC,
       }),
       uniformLegacyObject: null,
-      gridRenderer: new GridRenderer(),
       filters: {} as Record<Effect['type'], PostProcessingRenderer>,
-      batchManager: new BatchManager(
-        device,
-        swapChain,
-        renderCache,
-        texturePool,
-        api,
-      ),
-      renderGraph,
     };
   }
 
@@ -396,15 +376,10 @@ export class MeshPipeline extends System {
       renderer = this.renderers.get(camera);
     }
 
-    const { swapChain, device, renderCache, renderGraph } = gpuResource;
-    const { uniformBuffer, gridRenderer, batchManager, filters } = renderer;
+    const { swapChain, device, renderCache } = gpuResource;
+    const { uniformBuffer } = renderer;
 
-    const { width, height } = swapChain.getCanvas();
-    const onscreenTexture = swapChain.getOnscreenTexture();
-
-    if (request) {
-      batchManager.hideUIs();
-    }
+    const $canvas = swapChain.getCanvas() as HTMLCanvasElement;
 
     const [buffer, legacyObject] = this.updateUniform(
       canvas,
@@ -417,108 +392,47 @@ export class MeshPipeline extends System {
 
     uniformBuffer.setSubData(0, new Uint8Array(buffer.buffer));
 
-    const renderInput = {
-      backbufferWidth: width,
-      backbufferHeight: height,
-      antialiasingMode: AntialiasingMode.None,
-    };
-
-    const mainColorDesc = makeBackbufferDescSimple(
-      RGAttachmentSlot.Color0,
-      renderInput,
-      makeAttachmentClearDescriptor(TransparentWhite),
-    );
-    const mainDepthDesc = makeBackbufferDescSimple(
-      RGAttachmentSlot.DepthStencil,
-      renderInput,
-      opaqueWhiteFullClearRenderPassDescriptor,
-    );
-
-    const builder = renderGraph.newGraphBuilder();
-
-    const mainColorTargetID = builder.createRenderTargetID(
-      mainColorDesc,
-      'Main Color',
-    );
-    const mainDepthTargetID = builder.createRenderTargetID(
-      mainDepthDesc,
-      'Main Depth',
-    );
-    builder.pushPass((pass) => {
-      pass.setDebugName('Main Render Pass');
-      pass.attachRenderTargetID(RGAttachmentSlot.Color0, mainColorTargetID);
-      pass.attachRenderTargetID(
-        RGAttachmentSlot.DepthStencil,
-        mainDepthTargetID,
-      );
-      pass.exec((renderPass) => {
-        gridRenderer.render(device, renderPass, uniformBuffer, legacyObject);
-        if (shouldRenderPartially) {
-          const { api } = canvas.read(Canvas);
-          // Add clip parent if exists.
-          const clipParents = new Set<Entity>();
-          nodes.forEach((node: SerializedNode) => {
-            const parentNode = node.parentId && api.getNodeById(node.parentId);
-            const parentEntity = parentNode && api.getEntity(parentNode);
-            const needRenderClipParent = parentNode && !nodes.includes(parentNode) && parentNode.clipMode && !clipParents.has(parentEntity);
-            if (needRenderClipParent) {
-              clipParents.add(parentEntity);
-              batchManager.add(parentEntity);
-            }
-
-            const entity = api.getEntity(node);
-            batchManager.add(entity);
-          });
+    if (this.pendingRenderables.has(camera)) {
+      this.pendingRenderables.get(camera).forEach(({ type, entity }) => {
+        if (type === 'remove') {
+          // batchManager.remove(entity, !entity.has(Culled));
         } else {
-          if (this.pendingRenderables.has(camera)) {
-            this.pendingRenderables.get(camera).forEach(({ type, entity }) => {
-              if (type === 'remove') {
-                batchManager.remove(entity, !entity.has(Culled));
-              } else {
-                batchManager.add(entity);
-              }
-            });
-            this.pendingRenderables.delete(camera);
-          }
+          // addRect({
+          //   id: 'root',
+          //   x: 300,
+          //   y: 100,
+          //   width: 120,
+          //   height: 80,
+          //   radius: 10,
+          //   fill: [1, 0.6, 0.2, 1],
+          // });
+          // addCircle({
+          //   id: 'child',
+          //   parentId: 'root',
+          //   cx: 0,
+          //   cy: 0,
+          //   r: 25,
+          //   fill: [1, 0.5, 0.6, 1],
+          //   stroke: { width: 2, color: [1, 1, 1, 1] },
+          // });
+
+          // if (entity.has(Circle)) {
+          //   addCircle({
+          //     id: 'child',
+          //     parentId: 'root',
+          //     cx: 0,
+          //     cy: 0,
+          //     r: 25,
+          //     fill: [1, 0.5, 0.6, 1],
+          //     stroke: { width: 2, color: [1, 1, 1, 1] },
+          //   });
+          // } else if (entity.has(Rect)) {
+          //   addRect(entity);
+          // }
         }
-
-        if (sort) {
-          batchManager.sort();
-        }
-        batchManager.flush(renderPass, uniformBuffer, legacyObject, builder);
       });
-    });
-
-    parseEffect(filter).forEach((effect) => {
-      builder.pushPass((pass) => {
-        pass.setDebugName(effect.type.toUpperCase());
-        pass.attachRenderTargetID(RGAttachmentSlot.Color0, mainColorTargetID);
-
-        const mainColorResolveTextureID =
-          builder.resolveRenderTarget(mainColorTargetID);
-        pass.attachResolveTexture(mainColorResolveTextureID);
-        pass.exec((passRenderer, scope) => {
-          if (!filters[effect.type]) {
-            filters[effect.type] = new PostProcessingRenderer(
-              device,
-              swapChain,
-              renderCache,
-            );
-          }
-          filters[effect.type].render(
-            passRenderer,
-            scope.getResolveTextureForID(mainColorResolveTextureID),
-            effect,
-          );
-        });
-      });
-    });
-
-    builder.resolveRenderTargetToExternalTexture(
-      mainColorTargetID,
-      onscreenTexture,
-    );
-    renderGraph.execute();
+      this.pendingRenderables.delete(camera);
+    }
 
     if (request) {
       const dataURL = (swapChain.getCanvas() as HTMLCanvasElement).toDataURL(
@@ -526,8 +440,23 @@ export class MeshPipeline extends System {
         encoderOptions,
       );
       this.setScreenshotTrigger(canvas, dataURL, download);
-      batchManager.showUIs();
     }
+  }
+
+  async initialize() {
+    await init();
+
+    this.canvases.current.forEach((canvas) => {
+      const $canvas = canvas.read(Canvas).element as HTMLCanvasElement;
+
+      setTimeout(() => {
+        runWithCanvas($canvas, (canvasId: string) => {
+
+          console.log('canvasId', canvasId);
+        //   this.canvasIds.set($canvas, canvasId);
+        });
+      });
+    });
   }
 
   execute() {
@@ -655,17 +584,6 @@ export class MeshPipeline extends System {
   }
 
   finalize() {
-    this.renderers.forEach(
-      ({ gridRenderer, batchManager, renderGraph, filters }) => {
-        gridRenderer.destroy();
-        Object.values(filters).forEach((filter) => {
-          filter.destroy();
-        });
-        batchManager.clear();
-        batchManager.destroy();
-        renderGraph.destroy();
-      },
-    );
   }
 
   private updateUniform(

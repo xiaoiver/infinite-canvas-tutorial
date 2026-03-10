@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Vello Renderer (Wasm)</title>
+  <style>
+    body { margin: 0; background: #fff; color: #333; font-family: system-ui, sans-serif; }
+    #canvas-container { width: 100vw; height: 100vh; display: flex; align-items: center; justify-content: center; }
+    #canvas-container canvas { display: block; max-width: 100%; max-height: 100%; }
+    .hint { position: fixed; bottom: 8px; left: 50%; transform: translateX(-50%); font-size: 12px; opacity: 0.6; }
+  </style>
+</head>
+<body>
+  <div id="canvas-container"></div>
+  <p class="hint">需要支持 WebGPU 的浏览器（如 Chrome 113+）</p>
+  <script type="module">
+    // wgpu 在 wasm 里用 JS 异常做控制流，会抛出 "This isn't actually an error"，需捕获忽略
+    window.addEventListener('error', (e) => {
+      if (e.message && e.message.includes("isn't actually an error")) {
+        e.preventDefault();
+        e.stopPropagation();
+        return true;
+      }
+    }, true);
+    window.addEventListener('unhandledrejection', (e) => {
+      if (e.reason && String(e.reason).includes("isn't actually an error")) {
+        e.preventDefault();
+        e.stopPropagation();
+        return true;
+      }
+    }, true);
+
+    import init, { addRect, addCircle, addText, registerDefaultFont, runWithCanvas } from './pkg/vello_renderer.js';
+    try {
+      await init();
+      const container = document.getElementById('canvas-container');
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.max(1, container.clientWidth || 800);
+      canvas.height = Math.max(1, container.clientHeight || 600);
+      canvas.style.setProperty('width', '100%');
+      canvas.style.setProperty('height', '100%');
+      canvas.style.setProperty('display', 'block');
+      container.appendChild(canvas);
+      runWithCanvas(canvas, (canvasId) => {
+        // 演示 JS API：add* 第一个参数为 runWithCanvas 回调得到的 canvasId
+        setTimeout(() => {
+          addRect(canvasId, {
+            id: 'root',
+            x: 300,
+            y: 100,
+            width: 120,
+            height: 80,
+            radius: 10,
+            fill: [1, 0.6, 0.2, 1],
+          });
+          addCircle(canvasId, {
+            id: 'child',
+            parentId: 'root',
+            cx: 0,
+            cy: 0,
+            r: 25,
+            fill: [1, 0.5, 0.6, 1],
+            stroke: { width: 2, color: [1, 1, 1, 1] },
+          });
+        }, 500);
+        fetch('https://raw.githubusercontent.com/google/fonts/main/ofl/notosans/NotoSans-Regular.ttf')
+          .then((r) => r.arrayBuffer())
+          .then((buf) => {
+            registerDefaultFont(buf);
+            addText(canvasId, {
+              id: 't1',
+              content: 'Hello, Vello!',
+              anchorX: 120,
+              anchorY: 320,
+              fontSize: 28,
+              fill: [0.1, 0.1, 0.1, 1],
+            });
+          })
+          .catch(() => {});
+      });
+    } catch (err) {
+      if (!String(err).includes("isn't actually an error")) throw err;
+    }
+  </script>
+</body>
+</html>

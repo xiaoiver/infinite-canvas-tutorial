@@ -1,5 +1,11 @@
 # @infinite-canvas-tutorial/ecs
 
+## 0.0.6
+
+### Patch Changes
+
+-   Lasso draw mode.
+
 ## 0.0.5
 
 ### Patch Changes

@@ -18,7 +18,10 @@ import {
   deserializePoints,
   EASING_FUNCTION,
   getScale,
+  isDataUrl,
   isEntity,
+  isUrl,
+  loadImage,
   parsePath,
   serializeBrushPoints,
   serializedNodesToEntities,
@@ -953,6 +956,23 @@ export class API {
     this.record();
   }
 
+  cancelLasso() {
+    const [lassoingNodeId] = this.getAppState().layersLassoing;
+    const node = this.getNodeById(lassoingNodeId);
+    // Delete all children
+    const children = this.getChildren(node);
+    this.deleteNodesById(children.map((child) => this.getNodeByEntity(child).id));
+    this.setAppState({
+      layersLassoing: [],
+      penbarLasso: {
+        ...this.getAppState().penbarLasso,
+        mode: undefined,
+      }
+    });
+    this.selectNodes([node]);
+    this.record();
+  }
+
   /**
    * If diff is provided, no need to calculate diffs.
    */
@@ -1493,33 +1513,54 @@ export class API {
     return $namespace;
   }
 
-  renderToCanvas(node: SerializedNode, options: { canvas?: HTMLCanvasElement, width?: number, height?: number } = {}): HTMLCanvasElement {
+  async renderToCanvas(node: SerializedNode, options: { canvas?: HTMLCanvasElement, width?: number, height?: number } = {}): Promise<HTMLCanvasElement> {
     let { canvas, width = node.width ?? 0, height = node.height ?? 0 } = options;
     if (!canvas) {
       canvas = DOMAdapter.get().createCanvas(width, height) as HTMLCanvasElement;
     }
 
     const ctx = canvas.getContext('2d')!;
+    const opacity = (node as { opacity?: number }).opacity ?? 1;
+    const fillOpacity = (node as { fillOpacity?: number }).fillOpacity ?? 1;
+    const strokeOpacity = (node as { strokeOpacity?: number }).strokeOpacity ?? 1;
+
     if (node.type === 'rect' || node.type === 'rough-rect') {
       const { x, y, width, height, strokeWidth, strokeLinecap, strokeLinejoin, fill, stroke } = node;
-      ctx.fillStyle = fill;
-      ctx.fillRect(x ?? 0, y ?? 0, width ?? 0, height ?? 0);
+      ctx.save();
+      if (isDataUrl(fill) || isUrl(fill)) {
+        ctx.globalAlpha = opacity * fillOpacity;
+        const image = await DOMAdapter.get().createImage(fill) as ImageBitmap;
+        ctx.drawImage(image, x ?? 0, y ?? 0, width ?? 0, height ?? 0);
+      } else {
+        ctx.globalAlpha = opacity * fillOpacity;
+        ctx.fillStyle = fill;
+        ctx.fillRect(x ?? 0, y ?? 0, width ?? 0, height ?? 0);
+      }
+      ctx.globalAlpha = opacity * strokeOpacity;
       ctx.strokeStyle = stroke;
       ctx.lineWidth = strokeWidth;
       ctx.lineCap = strokeLinecap;
       ctx.lineJoin = strokeLinejoin;
       ctx.stroke();
+      ctx.restore();
     } else if (node.type === 'ellipse' || node.type === 'rough-ellipse') {
       const { x, y, width, height, strokeWidth, strokeLinecap, strokeLinejoin, fill, stroke } = node;
+      ctx.save();
+      ctx.globalAlpha = opacity * fillOpacity;
       ctx.fillStyle = fill;
-      ctx.ellipse(x ?? 0, y ?? 0, width ?? 0, height ?? 0, 0, 0, 2 * Math.PI);
+      ctx.ellipse((x ?? 0) + (width ?? 0) / 2, (y ?? 0) + (height ?? 0) / 2, (width ?? 0) / 2, (height ?? 0) / 2, 0, 0, 2 * Math.PI);
+      ctx.fill();
+      ctx.globalAlpha = opacity * strokeOpacity;
       ctx.strokeStyle = stroke;
       ctx.lineWidth = strokeWidth;
       ctx.lineCap = strokeLinecap;
       ctx.lineJoin = strokeLinejoin;
       ctx.stroke();
+      ctx.restore();
     } else if (node.type === 'path' || node.type === 'rough-path') {
       const { d, fill, stroke, strokeWidth } = node;
+      ctx.save();
+      ctx.globalAlpha = opacity * fillOpacity;
       ctx.fillStyle = fill;
       ctx.beginPath();
       path2Absolute(d).forEach(([command, ...data]) => {
@@ -1533,12 +1574,16 @@ export class API {
       });
       ctx.closePath();
       ctx.fill();
+      ctx.globalAlpha = opacity * strokeOpacity;
       ctx.strokeStyle = stroke;
       ctx.lineWidth = strokeWidth;
       ctx.stroke();
-      ctx.closePath();
+      ctx.restore();
     } else if (node.type === 'polyline' || node.type === 'rough-polyline') {
-      const { points, strokeWidth, strokeLinecap, strokeLinejoin, x, y } = node;
+      const { points, strokeWidth, strokeLinecap, strokeLinejoin, x, y, stroke } = node;
+      ctx.save();
+      ctx.globalAlpha = opacity * strokeOpacity;
+      ctx.strokeStyle = stroke;
       deserializePoints(points).forEach((point, index) => {
         if (index === 0) {
           ctx.moveTo(point[0] + (x ?? 0), point[1] + (y ?? 0));
@@ -1550,16 +1595,22 @@ export class API {
       ctx.lineCap = strokeLinecap;
       ctx.lineJoin = strokeLinejoin;
       ctx.stroke();
+      ctx.restore();
     } else if (node.type === 'line' || node.type === 'rough-line') {
       const { x1, y1, x2, y2, strokeWidth, strokeLinecap, strokeLinejoin, stroke } = node;
+      ctx.save();
+      ctx.globalAlpha = opacity * strokeOpacity;
+      ctx.strokeStyle = stroke;
       ctx.moveTo(x1 ?? 0, y1 ?? 0);
       ctx.lineTo(x2 ?? 0, y2 ?? 0);
       ctx.lineWidth = strokeWidth;
       ctx.lineCap = strokeLinecap;
       ctx.lineJoin = strokeLinejoin;
       ctx.stroke();
+      ctx.restore();
     }
-    this.getChildren(node).forEach(child => this.renderToCanvas(this.getNodeByEntity(child), { canvas }));
+
+    await Promise.all(this.getChildren(node).map(child => this.renderToCanvas(this.getNodeByEntity(child), { canvas })).filter(Boolean));
 
     return canvas;
   }

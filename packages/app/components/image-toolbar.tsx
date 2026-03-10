@@ -212,9 +212,9 @@ export function ImageToolbar() {
     }
   };
 
-  const handleDecomposeImage = () => {
+  const handleDecomposeImage = async () => {
     if (sendMessage && canvasApi) {
-      const files = convertToFiles(canvasApi, selectedNodes?.[0] as RectSerializedNode) as FileUIPart[];
+      const files = await convertToFiles(canvasApi, selectedNodes?.[0] as RectSerializedNode) as unknown as FileUIPart[];
       sendMessage(
         { 
           text: tChats('decomposeImageDescription'),
@@ -229,9 +229,9 @@ export function ImageToolbar() {
     }
   };
 
-  const handleVectorizeImage = () => {
+  const handleVectorizeImage = async () => {
     if (sendMessage && canvasApi) {
-      const files = convertToFiles(canvasApi, selectedNodes?.[0] as RectSerializedNode) as FileUIPart[];
+      const files = await convertToFiles(canvasApi, selectedNodes?.[0] as RectSerializedNode) as unknown as FileUIPart[];
       sendMessage(
         { text: tChats('vectorizeImageDescription'), files },
         {

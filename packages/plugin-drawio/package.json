@@ -1,6 +1,6 @@
 {
   "name": "@infinite-canvas-tutorial/drawio",
-  "version": "0.0.6",
+  "version": "0.0.7",
   "description": "Use d2",
   "main": "lib/index.js",
   "module": "esm/index.js",

@@ -1097,12 +1097,18 @@ importers:
       '@infinite-canvas-tutorial/ecs':
         specifier: workspace:*
         version: link:../ecs
+      '@infinite-canvas-tutorial/webcomponents':
+        specifier: workspace:*
+        version: link:../webcomponents
 
   packages/plugin-lama:
     dependencies:
       '@infinite-canvas-tutorial/ecs':
         specifier: workspace:*
         version: link:../ecs
+      '@infinite-canvas-tutorial/webcomponents':
+        specifier: workspace:*
+        version: link:../webcomponents
       onnxruntime-web:
         specifier: ^1.23.2
         version: 1.23.2
@@ -1229,6 +1235,9 @@ importers:
       '@infinite-canvas-tutorial/ecs':
         specifier: workspace:*
         version: link:../ecs
+      '@infinite-canvas-tutorial/webcomponents':
+        specifier: workspace:*
+        version: link:../webcomponents
       onnxruntime-web:
         specifier: ^1.23.2
         version: 1.23.2
@@ -1238,6 +1247,9 @@ importers:
       '@infinite-canvas-tutorial/ecs':
         specifier: workspace:*
         version: link:../ecs
+      '@infinite-canvas-tutorial/webcomponents':
+        specifier: workspace:*
+        version: link:../webcomponents
       '@tensorflow/tfjs':
         specifier: ~4.11.0
         version: 4.11.0(encoding@0.1.13)(seedrandom@3.0.5)
@@ -1253,6 +1265,9 @@ importers:
       '@infinite-canvas-tutorial/ecs':
         specifier: workspace:*
         version: link:../ecs
+      '@infinite-canvas-tutorial/webcomponents':
+        specifier: workspace:*
+        version: link:../webcomponents
       yoga-layout:
         specifier: ^3.2.1
         version: 3.2.1

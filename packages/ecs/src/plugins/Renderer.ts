@@ -19,6 +19,7 @@ import {
   Last,
   PropagateTransforms,
   ComputeVisibility,
+  ExportSVG,
 } from '../systems';
 import {
   Circle,
@@ -65,6 +66,8 @@ import {
   ClipMode,
   Flex
 } from '../components';
+// import { isBrowser } from '../utils';
+// import { VelloPipeline } from '../systems/VelloPipeline';
 
 export const RendererPlugin: Plugin = () => {
   /**
@@ -134,6 +137,12 @@ export const RendererPlugin: Plugin = () => {
   system((s) => s.after(PropagateTransforms, Sort))(ComputeBounds);
 
   system(Last)(SetCursor);
-  system(Last)(MeshPipeline);
+
+  // if (isBrowser) {
+  //   system(Last)(MeshPipeline);
+  // } else {
+    system(Last)(MeshPipeline);
+    system((s) => s.before(Deleter, ExportSVG))(MeshPipeline);
+  // }
   system(Last)(Deleter);
 };

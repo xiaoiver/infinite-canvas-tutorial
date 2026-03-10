@@ -1,5 +1,14 @@
 # @infinite-canvas-tutorial/lasso
 
+## 0.0.7
+
+### Patch Changes
+
+-   Lasso draw mode.
+-   Updated dependencies
+    -   @infinite-canvas-tutorial/webcomponents@0.0.8
+    -   @infinite-canvas-tutorial/ecs@0.0.6
+
 ## 0.0.6
 
 ### Patch Changes

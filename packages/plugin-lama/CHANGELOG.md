@@ -1,5 +1,13 @@
 # @infinite-canvas-tutorial/lama
 
+## 0.0.5
+
+### Patch Changes
+
+-   Updated dependencies
+    -   @infinite-canvas-tutorial/webcomponents@0.0.8
+    -   @infinite-canvas-tutorial/ecs@0.0.6
+
 ## 0.0.4
 
 ### Patch Changes

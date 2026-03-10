@@ -20,8 +20,6 @@ import {
   Transform,
   Marker,
   Name,
-  SizeAttenuation,
-  StrokeAttenuation,
   ZIndex,
   Visibility,
   Path,
@@ -38,13 +36,11 @@ import {
   isBrowser,
   TesselationMethod,
   PathSerializedNode,
-  TRANSFORMER_ANCHOR_STROKE_COLOR,
-  TRANSFORMER_MASK_FILL_COLOR,
   updateComputedPoints,
   updateGlobalTransform,
 } from '@infinite-canvas-tutorial/ecs';
-import { LassoTrail } from './lasso-trail';
 import { AnimationFrameHandler } from '@infinite-canvas-tutorial/webcomponents';
+import { LassoTrail } from './lasso-trail';
 export class LassoSystem extends System {
   private readonly cameras = this.query((q) => q.current.with(Camera).read);
 
@@ -96,6 +92,7 @@ export class LassoSystem extends System {
             Polyline,
             Ellipse,
             FractionalIndex,
+            ComputedBounds,
           ).read,
     );
   }
@@ -117,7 +114,7 @@ export class LassoSystem extends System {
 
       let selection = this.selections.get(camera.__id);
 
-      if (pen !== Pen.LASSO) {
+      if (pen !== Pen.LASSO && appState.penbarLasso.mode !== 'draw' && appState.layersLassoing.length === 0) {
         // Clear selection
         if (selection) {
           selection.lassoTrail.clearTrails();
@@ -154,6 +151,10 @@ export class LassoSystem extends System {
       if (input.key === 'Escape') {
         selection.lassoTrail.clearTrails();
         selection.lassoTrail.stop();
+
+        if (api.getAppState().layersLassoing.length > 0) {
+          api.cancelLasso();
+        }
       }
 
       // Dragging
@@ -191,11 +192,15 @@ export class LassoSystem extends System {
               tessellationMethod: TesselationMethod.LIBTESS,
               zIndex: 0,
             };
-            api.setAppState({
-              penbarSelected: Pen.SELECT,
-            });
             api.updateNode(node);
-            api.selectNodes([node]);
+            api.reparentNode(node, api.getNodeById(appState.layersLassoing[0]));
+            api.setAppState({
+              layersLassoing: [],
+              penbarLasso: {
+                ...api.getAppState().penbarLasso,
+                mode: undefined,
+              }
+            });
             api.record();
 
             const entity = api.getEntity(node);
@@ -206,7 +211,7 @@ export class LassoSystem extends System {
             // FIXME: Use the correct event name
             // @ts-ignore
             api.element.dispatchEvent(
-              new CustomEvent('ic-rect-drawn', {
+              new CustomEvent('ic-lasso-drawn', {
                 detail: {
                   node,
                 },

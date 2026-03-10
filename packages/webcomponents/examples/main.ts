@@ -139,7 +139,7 @@ canvas.addEventListener(Event.READY, async (e) => {
     fill: '/canvas.png',
     // display: 'flex',
     width: 200,
-    height: 250,
+    height: 200,
     // padding: 10,
     // flexWrap: 'wrap',
     // gap: 10,
