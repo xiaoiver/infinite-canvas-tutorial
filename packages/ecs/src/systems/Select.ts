@@ -77,6 +77,8 @@ import { DOMAdapter } from '../environment';
 import { hideLabel, initLabel, showLabel } from '..';
 import type { SerializedNode } from '../types/serialized-node';
 
+const LASSO_CURSOR = 'url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAACXBIWXMAAAsTAAALEwEAmpwYAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAOdEVYdFNvZnR3YXJlAEZpZ21hnrGWYwAABUFJREFUeAHtVltIXFcUPU6c0VGTWqdqRqtVTFrU+GFimgYpTUibQmm/JDZEKMF3rFjFigjFBi2I9ccPq6CIitEIvlFREYrioxYVK7UqPgk+2mh9j46jM/d07evVTjVpjTMN/eiGzT2ve/Y6+7HOYew/JLIjfQv2EuSMkXGhqqrq84iICG87O7vN/v7+VQnESwHCysrK4paXl3l1dTUnmZqaqiovL38PU3Jpyb8KRlZZWfmwra2No82dnZ0NsbGxfHR0lLAszszM1N69e9fjyD9mBWMbEBDgr9frdTY2NiIISQWA4S0tLYJWqyUwv9TV1cXcv3/fwwiEWYDYQM+vr6/PJCYmHgKQyWTcwsLioG/w9/cXAEYM0fT0dF1FRYW39L+MmSiUjA5JSUkPJicnRYNGho+BoRAhJHxjY4MjcT9iZhJ7KyurCzjcjpeX1zHjxn1ra2vBz8+Pz8/P89LS0ofMTGFQQB3b29sfZ2dnHzUuXL16lefk5FB1iCHY3NycbW5ufow5J6gtM4NQHM/FxMREUcLBsOHg5NeuXSObWwDXER0dnebu7h6M8UDoBagz+9MDJufCWejriO1UYGDgYczp5F1dXa1oU9L5IVRvKZVKV7Tl8fHx9ijf9Nra2gfmAGEJtS8sLMzr6+s7DAPxQUpKSjzaLtBXyHBoaOjZsbGxQvJMXl4en52d5SCzsOfse+IcoYWvent7v2PECQL5HzzxNtp2tCYyMlKNodXBwUGxEi5evMhHRkYoPwaRG492dnZ+wvzPILCSO3fueEp7n9gzSqiaOCEsLIxTtu/u7j7B2Hmau337ti0Zv3fvHlepVAYuiU6nM+Tn5/OgoCBuMBg4VVJubq4Ifnx8/NsXASFyQlxcXKRGoxFLDTHOI8/QJDZ7BHDkEcPe3h6Hp/Stra20TvDx8eGNjY0ioN7eXg7G5Lhf9LQPyjWIvUAoKM5eGRkZ35SUlJShTW5U4fRutDliTSfXwzNbICKdq6urnsbX1taeZGVllQYHB3+N5MwENk1RUZHg4eEhwCvr+Fqf1AuWuJKpvt3YfuKpoXKcIqqpqYm7ubnxpaWlaScnpxB4QQND2vDw8AysCZTL5f74kgZ4enp+QsTm4uIiIDc4wL1/zNBzAJDbVtg+OZHsQekUlxcWFlhmZiYDkL7FxcURlOMHMGqBuQ2Upxa5sEb/Q5VIwo25ublJqC9Kmq2srKglDwj/BIBJm+iN+jIQkOrmzZtiJyEhYRSfX3F6GZSGtNAtCSxVzw5Uh9M7Qxl4gqnVajkzQSyHh4frk5OTeUFBAe/u7i6XDnBGOpVxgonXdHp6+sfIE65QKMRquX79OoVGyU4pVnB9UmdnJ0cycdD1iGT8aGaLfXCFO2xqGhoaDIIg8IGBgR8wrIJas1PK2StXrlzGZrvFxcXiiUA+3z1rIZL1Bt1XUVFR3NHRkdbqfH19P8TUa8wEqibkKroBybi9vb0eScbBek9Rql9Aw9PS0j7b3t4eWF1d5UhQISQkxEAhwCPnK7ZfSSbdmjKpNL2GhoZ+hGvFVxLKkdfU1PCenh6RgFJTU8Xx+vp6YkE9CO1L9N9k++43+bZU4DHyBr4+uKy+P6Bheh0h08ULqaOjg94KHF6YvXTp0qeScQL+zIo7zUtGCRDOcL0tciLg1q1b7+KUNxwcHJQTExO/gZKf4oXdAwZsBi9oUAG/A9A6+2tJmwSAhPKB6Pqc1LaxtLSU6/cJgepfK32XodvMiHjMBYCESlAhAVBIfTK0C9VJXwLE/24TczwmLYy+B8Y4+19OKH8AGG0Nxm0lh+0AAAAASUVORK5CYII=") 0 4, pointer';
+
 export enum SelectionMode {
   IDLE = 'IDLE',
   READY_TO_BRUSH = 'READY_TO_BRUSH',
@@ -92,6 +94,7 @@ export enum SelectionMode {
   READY_TO_MOVE_CONTROL_POINT = 'READY_TO_MOVE_CONTROL_POINT',
   MOVE_CONTROL_POINT = 'MOVE_CONTROL_POINT',
   EDITING = 'EDITING',
+  LASSOING = 'LASSOING',
 }
 
 export interface SelectOBB {
@@ -773,7 +776,7 @@ export class Select extends System {
         }
       }
 
-      const { layersCropping } = api.getAppState();
+      const { layersCropping, layersLassoing } = api.getAppState();
       layersCropping.forEach((id) => {
         const node = api.getNodeById(id);
         if (node && node.clipMode !== 'soft') {
@@ -895,6 +898,9 @@ export class Select extends System {
           if (layersCropping.length > 0) {
             api.applyCrop();
           }
+          // if (layersLassoing.length > 0) {
+          //   api.cancelLasso();
+          // }
         } else if (selection.mode === SelectionMode.READY_TO_SELECT) {
           selection.mode = SelectionMode.SELECT;
         } else if (selection.mode === SelectionMode.READY_TO_MOVE) {
@@ -982,57 +988,64 @@ export class Select extends System {
                   // (selection as SelectVectorNetwork).activeControlPointIndex =
                   //   index;
                 } else {
-                  const { rotation, scale } = mask.read(Transform);
-                  cursor.value =
-                    getCursor(
-                      cursorName,
-                      rotation,
-                      '',
-                      Math.sign(scale[0] * scale[1]) < 0,
-                    ) ?? cursorName;
-                  selection.resizingAnchorName = anchor;
+                  if (layersLassoing.length > 0) {
+                    if (anchor === AnchorName.INSIDE) {
+                      cursor.value = LASSO_CURSOR;
+                      selection.mode = SelectionMode.LASSOING;
+                    }
+                  } else {
+                    const { rotation, scale } = mask.read(Transform);
+                    cursor.value =
+                      getCursor(
+                        cursorName,
+                        rotation,
+                        '',
+                        Math.sign(scale[0] * scale[1]) < 0,
+                      ) ?? cursorName;
+                    selection.resizingAnchorName = anchor;
 
-                  if (cursorName.includes('rotate')) {
-                    selection.mode = SelectionMode.READY_TO_ROTATE;
-                    toHighlight = undefined;
-                  } else if (
-                    cursorName.includes('resize') ||
-                    anchor === AnchorName.X1Y1 ||
-                    anchor === AnchorName.X2Y2
-                  ) {
-                    selection.mode = SelectionMode.READY_TO_RESIZE;
-                    toHighlight = undefined;
-                  } else if (anchor === AnchorName.INSIDE) {
-                    // Only in single transformer, we can select other objects.
-                    if (
-                      toHighlight &&
-                      toHighlight !== selecteds[0] &&
-                      selecteds.length === 1
+                    if (cursorName.includes('rotate')) {
+                      selection.mode = SelectionMode.READY_TO_ROTATE;
+                      toHighlight = undefined;
+                    } else if (
+                      cursorName.includes('resize') ||
+                      anchor === AnchorName.X1Y1 ||
+                      anchor === AnchorName.X2Y2
                     ) {
-                      selection.mode = SelectionMode.READY_TO_SELECT;
-                    } else {
-                      // In group can toggle selection.
-                      if (input.shiftKey) {
+                      selection.mode = SelectionMode.READY_TO_RESIZE;
+                      toHighlight = undefined;
+                    } else if (anchor === AnchorName.INSIDE) {
+                      // Only in single transformer, we can select other objects.
+                      if (
+                        toHighlight &&
+                        toHighlight !== selecteds[0] &&
+                        selecteds.length === 1
+                      ) {
                         selection.mode = SelectionMode.READY_TO_SELECT;
                       } else {
-                        // Disable highlight, only allow move.
-                        toHighlight = undefined;
+                        // In group can toggle selection.
+                        if (input.shiftKey) {
+                          selection.mode = SelectionMode.READY_TO_SELECT;
+                        } else {
+                          // Disable highlight, only allow move.
+                          toHighlight = undefined;
 
-                        if (
-                          // selection.mode !== SelectionMode.BRUSH &&
-                          selection.mode !== SelectionMode.MOVE
-                        ) {
-                          selection.mode = SelectionMode.READY_TO_MOVE;
+                          if (
+                            // selection.mode !== SelectionMode.BRUSH &&
+                            selection.mode !== SelectionMode.MOVE
+                          ) {
+                            selection.mode = SelectionMode.READY_TO_MOVE;
+                          }
                         }
                       }
+                    } else if (toHighlight) {
+                      selection.mode = SelectionMode.READY_TO_SELECT;
                     }
-                  } else if (toHighlight) {
-                    selection.mode = SelectionMode.READY_TO_SELECT;
-                  }
 
-                  if (layersCropping.length > 0) {
-                    if (anchor === AnchorName.INSIDE) {
-                      cursor.value = 'move';
+                    if (layersCropping.length > 0) {
+                      if (anchor === AnchorName.INSIDE) {
+                        cursor.value = 'move';
+                      }
                     }
                   }
                 }

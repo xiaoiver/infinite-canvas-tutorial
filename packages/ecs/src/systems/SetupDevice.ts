@@ -46,7 +46,7 @@ export class SetupDevice extends System {
 
   /**
    * Resize the offscreen canvas for partial export (e.g. export selected nodes to PNG).
-   * Call with pixel dimensions (logical size × devicePixelRatio).
+   * Call with desired output dimensions in pixels (for 1:1 export use logical width/height).
    */
   resizeOffscreen(pixelWidth: number, pixelHeight: number): void {
     if (!this.#offscreenElement || !this.#offscreenGPUResource) {

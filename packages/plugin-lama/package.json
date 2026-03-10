@@ -1,6 +1,6 @@
 {
   "name": "@infinite-canvas-tutorial/lama",
-  "version": "0.0.4",
+  "version": "0.0.6",
   "description": "Use LaMa in client side",
   "main": "lib/index.js",
   "module": "esm/index.js",
@@ -46,8 +46,11 @@
     "watch": "rimraf ./esm && tsc --module ESNext --outDir esm --watch"
   },
   "dependencies": {
-    "@infinite-canvas-tutorial/ecs": "workspace:*",
     "onnxruntime-web": "^1.23.2"
+  },
+  "peerDependencies": {
+    "@infinite-canvas-tutorial/ecs": "workspace:*",
+    "@infinite-canvas-tutorial/webcomponents": "workspace:*"
   },
   "publishConfig": {
     "access": "public"

@@ -46,15 +46,17 @@ const PromptInputAttachmentsDisplay = () => {
 
     try {
       controller.attachments.clear();
-      const files = selectedNodes.map(node => convertToFiles(canvasApi, node)).flat();
-      if (files.length > 0) {
-        files.filter(Boolean).forEach(file => {
-          // @ts-expect-error id is not typed correctly
-          if (!controller.attachments.files.find(f => f.id === file.id)) {
-            controller.attachments.add([file]);
-          }
-        });
-      }
+      (async () => {
+        const files = (await Promise.all(selectedNodes.map(node => convertToFiles(canvasApi, node)))).flat();
+        if (files.length > 0) {
+          files.filter(Boolean).forEach((file) => {
+            // @ts-expect-error id is not typed correctly
+            if (!controller.attachments.files.find(f => f.id === file.id)) {
+              controller.attachments.add([file]);
+            }
+          });
+        }
+      })();
     } catch (error) {
       console.error('Failed to convert base64 to File:', error);
     }
@@ -80,7 +82,7 @@ const PromptInputAttachmentsDisplay = () => {
         const label = getAttachmentLabel(attachment);
         const imageUrl = attachment.type === "file" ? (attachment as FileUIPart).url : attachment.type === "data-mask" ? (attachment as MaskPart).data : undefined;
         const mediaType = attachment.type === "file" ? (attachment as FileUIPart).mediaType : attachment.type === "data-mask" ? 'image/png' : undefined;
-        return <AttachmentHoverCard key={attachment.id}>
+        return <AttachmentHoverCard key={attachment.id ?? (attachment as FileUIPart).filename}>
           <AttachmentHoverCardTrigger asChild>
             <Attachment
               data={attachment}

@@ -1,0 +1,36 @@
+[package]
+name = "vello-renderer"
+version = "0.1.0"
+edition = "2021"
+description = "Minimal runnable example using Vello as 2D GPU renderer (reference: Graphite)"
+license = "MIT"
+publish = false
+
+[lib]
+name = "vello_renderer"
+path = "src/lib.rs"
+crate-type = ["cdylib", "rlib"]
+
+[[bin]]
+name = "vello-renderer"
+path = "src/main.rs"
+
+[dependencies]
+vello = "0.7"
+anyhow = "1.0"
+winit = "0.30"
+skrifa = "0.40"
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+pollster = "0.4"
+
+# wasm32: no block_on, need async init and panic hook
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+wasm-bindgen = "0.2"
+wasm-bindgen-futures = "0.4"
+serde = "1.0"
+serde-wasm-bindgen = "0.6"
+console_error_panic_hook = "0.1"
+getrandom = { version = "0.3", features = ["wasm_js"] }
+web-sys = { version = "0.3", features = ["Document", "Element", "HtmlCanvasElement", "Node", "Window", "console"] }
+js-sys = "0.3"

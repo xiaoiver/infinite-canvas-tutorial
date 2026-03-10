@@ -1,6 +1,6 @@
 {
   "name": "@infinite-canvas-tutorial/upscaler",
-  "version": "0.0.4",
+  "version": "0.0.6",
   "description": "Use UpscalerJS in client side",
   "main": "lib/index.js",
   "module": "esm/index.js",
@@ -46,10 +46,13 @@
     "watch": "rimraf ./esm && tsc --module ESNext --outDir esm --watch"
   },
   "dependencies": {
-    "@infinite-canvas-tutorial/ecs": "workspace:*",
     "@tensorflow/tfjs": "~4.11.0",
     "upscaler": "latest",
     "@upscalerjs/esrgan-medium": "latest"
+  },
+  "peerDependencies": {
+    "@infinite-canvas-tutorial/ecs": "workspace:*",
+    "@infinite-canvas-tutorial/webcomponents": "workspace:*"
   },
   "publishConfig": {
     "access": "public"

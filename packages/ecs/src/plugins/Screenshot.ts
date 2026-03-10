@@ -5,7 +5,7 @@ import {
   Screenshot,
   VectorScreenshotRequest,
 } from '../components';
-import { Deleter, ExportSVG, Last, MeshPipeline } from '../systems';
+import { Deleter, ExportSVG, Last } from '../systems';
 
 export const ScreenshotPlugin: Plugin = () => {
   component(RasterScreenshotRequest);
@@ -13,5 +13,5 @@ export const ScreenshotPlugin: Plugin = () => {
   component(Screenshot);
 
   system(Last)(ExportSVG);
-  system((s) => s.before(Deleter).after(MeshPipeline))(ExportSVG);
+  system((s) => s.before(Deleter))(ExportSVG);
 };
