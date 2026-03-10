@@ -1,5 +1,13 @@
 # @infinite-canvas-tutorial/webcomponents
 
+## 0.0.9
+
+### Patch Changes
+
+-   Keep the original size when exporting image.
+-   Updated dependencies
+    -   @infinite-canvas-tutorial/ecs@0.0.7
+
 ## 0.0.8
 
 ### Patch Changes

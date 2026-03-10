@@ -1,6 +1,6 @@
 {
   "name": "@infinite-canvas-tutorial/yoga",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "description": "Use Yoga for layout",
   "main": "lib/index.js",
   "module": "esm/index.js",
