@@ -1,6 +1,6 @@
 {
   "name": "@infinite-canvas-tutorial/ecs",
-  "version": "0.0.7",
+  "version": "0.0.8",
   "description": "An infinite canvas tutorial",
   "main": "lib/index.js",
   "module": "esm/index.js",

@@ -1,6 +1,6 @@
 {
   "name": "@infinite-canvas-tutorial/laser-pointer",
-  "version": "0.0.8",
+  "version": "0.0.9",
   "description": "Use laser pointer",
   "main": "lib/index.js",
   "module": "esm/index.js",

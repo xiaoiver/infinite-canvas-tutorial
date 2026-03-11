@@ -21,7 +21,7 @@
     "lint-staged": "lint-staged",
     "prepare": "husky install",
     "build": "pnpm -r run build",
-    "build:vello": "cd rust && wasm-pack build --target web && rm -f pkg/.gitignore",
+    "build:vello": "cd rust && wasm-pack build --target web --scope infinite-canvas-tutorial && rm -f pkg/.gitignore",
     "deploy": "npx wrangler pages deploy ./packages/site/docs/.vitepress/dist",
     "cov": "jest --coverage",
     "test:ecs": "jest -c ./jest.ecs.config.js --coverage",

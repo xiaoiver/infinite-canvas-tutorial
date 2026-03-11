@@ -1,5 +1,11 @@
 # @infinite-canvas-tutorial/ecs
 
+## 0.0.8
+
+### Patch Changes
+
+-   Safe remove Screenshot component from canvas.
+
 ## 0.0.7
 
 ### Patch Changes

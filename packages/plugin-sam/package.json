@@ -1,6 +1,6 @@
 {
   "name": "@infinite-canvas-tutorial/sam",
-  "version": "0.0.6",
+  "version": "0.0.7",
   "description": "Use Segment Anything Model in client side",
   "main": "lib/index.js",
   "module": "esm/index.js",

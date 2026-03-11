@@ -1265,12 +1265,12 @@ importers:
       '@infinite-canvas-tutorial/ecs':
         specifier: workspace:*
         version: link:../ecs
+      '@infinite-canvas-tutorial/vello-renderer':
+        specifier: workspace:*
+        version: link:../../rust/pkg
       '@infinite-canvas-tutorial/webcomponents':
         specifier: workspace:*
         version: link:../webcomponents
-      vello-renderer:
-        specifier: workspace:*
-        version: link:../../rust/pkg
 
   packages/plugin-yoga:
     dependencies:

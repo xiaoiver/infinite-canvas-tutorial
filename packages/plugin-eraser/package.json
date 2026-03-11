@@ -1,6 +1,6 @@
 {
   "name": "@infinite-canvas-tutorial/eraser",
-  "version": "0.0.8",
+  "version": "0.0.9",
   "description": "Use eraser",
   "main": "lib/index.js",
   "module": "esm/index.js",

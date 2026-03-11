@@ -62,7 +62,7 @@ import {
   getSceneRoot,
   SerializedNode
 } from '@infinite-canvas-tutorial/ecs';
-import init, { addRect, addCircle, addText, registerDefaultFont, runWithCanvas } from 'vello-renderer';
+import init, { addRect, addCircle, addText, registerDefaultFont, runWithCanvas } from '@infinite-canvas-tutorial/vello-renderer';
 import { InitVello } from './InitVello';
 
 type GPURenderer = {

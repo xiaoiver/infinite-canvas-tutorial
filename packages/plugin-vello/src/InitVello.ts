@@ -1,5 +1,5 @@
 import { Entity, System, Canvas, GPUResource, Grid, Theme } from '@infinite-canvas-tutorial/ecs';
-import init, { runWithCanvas } from 'vello-renderer';
+import init, { runWithCanvas } from '@infinite-canvas-tutorial/vello-renderer';
 
 export class InitVello extends System {
   private readonly canvases = this.query(

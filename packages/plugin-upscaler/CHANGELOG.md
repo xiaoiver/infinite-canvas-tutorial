@@ -1,5 +1,13 @@
 # @infinite-canvas-tutorial/upscaler
 
+## 0.0.7
+
+### Patch Changes
+
+-   Updated dependencies
+    -   @infinite-canvas-tutorial/ecs@0.0.8
+    -   @infinite-canvas-tutorial/webcomponents@0.0.10
+
 ## 0.0.6
 
 ### Patch Changes
