@@ -1,0 +1,17 @@
+{
+  "name": "vello-renderer",
+  "type": "module",
+  "description": "Minimal runnable example using Vello as 2D GPU renderer (reference: Graphite)",
+  "version": "0.1.0",
+  "license": "MIT",
+  "files": [
+    "vello_renderer_bg.wasm",
+    "vello_renderer.js",
+    "vello_renderer.d.ts"
+  ],
+  "main": "vello_renderer.js",
+  "types": "vello_renderer.d.ts",
+  "sideEffects": [
+    "./snippets/*"
+  ]
+}

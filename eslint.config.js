@@ -17,6 +17,7 @@ export default [
       '__tests__/**',
       'packages/site/docs/.vitepress/**',
       'packages/app/**', // app 包有自己的 eslint.config.mjs
+      'rust'
     ],
   },
   

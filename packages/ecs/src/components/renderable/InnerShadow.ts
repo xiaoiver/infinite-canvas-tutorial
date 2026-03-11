@@ -4,7 +4,7 @@ export class InnerShadow {
   /**
    * Specifies color for the inner shadow.
    */
-  @field.dynamicString(20) declare color: string;
+  @field.object declare color: string;
 
   /**
    * Horizontal offset.
