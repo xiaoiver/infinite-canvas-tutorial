@@ -13,5 +13,8 @@
   "types": "vello_renderer.d.ts",
   "sideEffects": [
     "./snippets/*"
-  ]
+  ],
+  "publishConfig": {
+    "access": "public"
+  }
 }

@@ -1,6 +1,6 @@
 {
   "name": "@infinite-canvas-tutorial/lasso",
-  "version": "0.0.9",
+  "version": "0.0.10",
   "description": "Use lasso selection tool",
   "main": "lib/index.js",
   "module": "esm/index.js",

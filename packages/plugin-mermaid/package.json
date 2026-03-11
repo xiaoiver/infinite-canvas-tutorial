@@ -1,6 +1,6 @@
 {
   "name": "@infinite-canvas-tutorial/mermaid",
-  "version": "0.0.9",
+  "version": "0.0.10",
   "description": "Use mermaid",
   "main": "lib/index.js",
   "module": "esm/index.js",

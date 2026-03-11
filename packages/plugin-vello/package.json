@@ -1,6 +1,6 @@
 {
   "name": "@infinite-canvas-tutorial/vello",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Use Vello for rendering",
   "main": "lib/index.js",
   "module": "esm/index.js",
