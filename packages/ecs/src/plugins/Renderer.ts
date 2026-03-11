@@ -20,6 +20,7 @@ import {
   PropagateTransforms,
   ComputeVisibility,
   ExportSVG,
+  Select,
 } from '../systems';
 import {
   Circle,
@@ -64,7 +65,8 @@ import {
   Filter,
   Locked,
   ClipMode,
-  Flex
+  Flex,
+  Canvas
 } from '../components';
 
 export interface RendererPluginOptions {
@@ -131,6 +133,7 @@ function createRendererPlugin(options: RendererPluginOptions = {}): Plugin {
 
     const SetupDeviceSystem = options.setupDeviceSystemCtor ?? SetupDevice;
     system(StartUp)(SetupDeviceSystem);
+    system((s) => s.before(Select))(SetupDeviceSystem);
     system(PreUpdate)(ComputePoints);
     system(PreUpdate)(ComputeRough);
     system(PreUpdate)(ComputeTextMetrics);
@@ -153,7 +156,8 @@ function createRendererPlugin(options: RendererPluginOptions = {}): Plugin {
 
 export const RendererPlugin: PluginWithConfig<RendererPluginOptions> = {
   configure(options) {
-    return createRendererPlugin(options);
+    const plugin = createRendererPlugin(options);
+    return plugin;
   },
 };
 

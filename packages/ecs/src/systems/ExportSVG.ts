@@ -48,7 +48,8 @@ import {
   toSVGDataURL,
 } from '../utils';
 import type { SerializedNode } from '../types/serialized-node';
-import { API, safeAddComponent, safeRemoveComponent } from '..';
+import { API } from '..';
+import { safeAddComponent, safeRemoveComponent } from '../history';
 
 export class ExportSVG extends System {
   private readonly vectorScreenshotRequests = this.query((q) =>

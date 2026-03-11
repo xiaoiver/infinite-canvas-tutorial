@@ -12,6 +12,7 @@ import {
   Last,
   RenderTransformer,
   RenderHighlighter,
+  StartUp,
 } from '@infinite-canvas-tutorial/ecs';
 import {
   Comment,

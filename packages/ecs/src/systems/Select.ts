@@ -141,12 +141,11 @@ export class Select extends System {
     this.query(
       (q) =>
         q
-          .using(Canvas, ComputedCameraControl, Culled, Brush, Input, Locked)
+          .using(Canvas, Camera, ComputedCameraControl, Culled, Brush, Input, Locked)
           .read.update.and.using(
             GlobalTransform,
             InputPoint,
             Cursor,
-            Camera,
             UI,
             Selected,
             Highlighted,

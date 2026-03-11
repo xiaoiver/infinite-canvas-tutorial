@@ -23,7 +23,7 @@
     "build": "pnpm -r run build",
     "build:vello": "cd rust && wasm-pack build --target web --scope infinite-canvas-tutorial && rm -f pkg/.gitignore && node -e \"const p=require('./pkg/package.json');p.publishConfig={access:'public'};require('fs').writeFileSync('./pkg/package.json',JSON.stringify(p,null,2))\"",
     "deploy": "npx wrangler pages deploy ./packages/site/docs/.vitepress/dist",
-    "cov": "jest --coverage",
+    "cov": "jest -c ./jest.ecs.config.js --coverage",
     "test:ecs": "jest -c ./jest.ecs.config.js --coverage",
     "test:e2e": "npx playwright test",
     "dev:e2e": "vite dev",

@@ -14,12 +14,10 @@ const esm = [
 
 module.exports = {
   testTimeout: 100000,
-  // CI 环境下使用单 worker，避免 coverage 等数据序列化时触发 RangeError: Invalid string length
-  maxWorkers: process.env.CI ? 1 : undefined,
   testMatch: ['**/ecs/*.spec.+(ts|tsx|js)'],
   preset: 'ts-jest',
   moduleFileExtensions: ['ts', 'tsx', 'js', 'json'],
-  modulePathIgnorePatterns: ['dist'],
+  modulePathIgnorePatterns: ['dist', '\\.next'],
   collectCoverageFrom: ['packages/ecs/src/**/*.ts'],
   transform: {
     '^.+\\.[tj]s$': [
