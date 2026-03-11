@@ -1,4 +1,4 @@
 packages:
   - 'packages/*'
-  - 'vello-renderer/*'
+  - 'rust/*'
   - '__tests__/*'

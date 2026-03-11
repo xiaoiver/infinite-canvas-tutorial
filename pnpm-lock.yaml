@@ -1270,7 +1270,7 @@ importers:
         version: link:../webcomponents
       vello-renderer:
         specifier: workspace:*
-        version: link:../../vello-renderer/pkg
+        version: link:../../rust/pkg
 
   packages/plugin-yoga:
     dependencies:
@@ -1671,7 +1671,7 @@ importers:
         specifier: ^1.6.28
         version: 1.6.28
 
-  vello-renderer/pkg: {}
+  rust/pkg: {}
 
 packages:
 
