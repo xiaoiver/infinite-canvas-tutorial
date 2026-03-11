@@ -6,16 +6,16 @@
 
 Vello 是基于 GPU Compute 的 2D 渲染引擎，使用 wgpu 访问 GPU，适合作为无限画布等 2D 场景的渲染后端。本示例演示：
 
--   使用 **winit** 创建窗口与事件循环
--   使用 **vello::util::RenderContext** 管理 wgpu 设备与 surface
--   构建 **Scene**（填充/描边图形），再通过 **Renderer::render_to_texture** 渲染到纹理
--   将渲染结果 blit 到窗口 surface 并 present
+- 使用 **winit** 创建窗口与事件循环
+- 使用 **vello::util::RenderContext** 管理 wgpu 设备与 surface
+- 构建 **Scene**（填充/描边图形），再通过 **Renderer::render_to_texture** 渲染到纹理
+- 将渲染结果 blit 到窗口 surface 并 present
 
 ## 环境要求
 
--   **Rust**：1.88 或更高（vello 0.7 需要 edition 2024）
-    -   若当前版本较低：`rustup update`
--   支持 **WebGPU/wgpu** 的 GPU 驱动（桌面：Vulkan / Metal / D3D12；浏览器：Chrome 113+ 等）
+- **Rust**：1.88 或更高（vello 0.7 需要 edition 2024）
+  - 若当前版本较低：`rustup update`
+- 支持 **WebGPU/wgpu** 的 GPU 驱动（桌面：Vulkan / Metal / D3D12；浏览器：Chrome 113+ 等）
 
 ## 运行
 
@@ -31,7 +31,8 @@ cargo run
 ### 浏览器（Wasm）
 
 1. 安装 [wasm-pack](https://rustwasm.github.io/wasm-pack/installer/)（若尚未安装）：`cargo install wasm-pack`
-2. 在 `packages/vello-renderer` 下执行：`wasm-pack build --target web`，会生成 `pkg/` 目录。
+2. 在项目根目录执行：`pnpm build:vello`，或在 `vello-renderer` 下执行：`wasm-pack build --target web`，会生成 `pkg/` 目录。  
+   - 使用 `pnpm build:vello` 会在构建后自动删除 `pkg/.gitignore`，便于将 pkg 纳入版本控制。
 3. 用本地服务器打开（需 HTTP，不能 file://）：`npx serve .`，然后访问提示的地址（如 <http://localhost:3000>）。
 
 需要支持 **WebGPU** 的浏览器（如 Chrome 113+、Edge 113+）。
@@ -71,13 +72,13 @@ runWithCanvas(canvas, (canvasId) => {
 | `registerDefaultFont(bytes)`     | 注册默认字体。`bytes` 为 **Uint8Array** 或 **ArrayBuffer**（TTF/OTF 字节），供后续 `addText` 渲染使用。     |
 | `clearShapes(canvasId)`          | 清空指定画布上由 JS 添加的所有图形。                                                                        |
 
--   **id**：必填，唯一标识，用于被 **parentId** 引用以建立父子关系。
--   **parentId**：可选；若传入则当前图形为该 id 对应图形的子节点，其坐标（x/y、cx/cy 等）为**父节点局部空间**；无 parentId 时为世界坐标。
--   **zIndex**：可选，整数，默认 0；数值越大越靠上绘制，同 zIndex 按添加顺序。
--   **fill** / **color**：RGBA 数组 `[r, g, b, a]`，取值 0–1；默认填充白色、描边黑色。
--   **stroke**：可选，`{ width, color? }`；不传或 `width ≤ 0` 表示不描边。
--   **radius**：矩形圆角，默认 0（直角）。
--   **strokeWidth**：线段线宽，默认 1。
+- **id**：必填，唯一标识，用于被 **parentId** 引用以建立父子关系。
+- **parentId**：可选；若传入则当前图形为该 id 对应图形的子节点，其坐标（x/y、cx/cy 等）为**父节点局部空间**；无 parentId 时为世界坐标。
+- **zIndex**：可选，整数，默认 0；数值越大越靠上绘制，同 zIndex 按添加顺序。
+- **fill** / **color**：RGBA 数组 `[r, g, b, a]`，取值 0–1；默认填充白色、描边黑色。
+- **stroke**：可选，`{ width, color? }`；不传或 `width ≤ 0` 表示不描边。
+- **radius**：矩形圆角，默认 0（直角）。
+- **strokeWidth**：线段线宽，默认 1。
 
 示例（在 `runWithCanvas` 的 `onReady` 回调中拿到 `canvasId` 后调用）：
 
@@ -167,6 +168,6 @@ packages/vello-renderer/
 
 ## 参考
 
--   [Vello - linebender](https://github.com/linebender/vello)
--   [Graphite - GraphiteEditor](https://github.com/GraphiteEditor/Graphite)
--   [Vello README 中的 Getting started](https://github.com/linebender/vello#getting-started)
+- [Vello - linebender](https://github.com/linebender/vello)
+- [Graphite - GraphiteEditor](https://github.com/GraphiteEditor/Graphite)
+- [Vello README 中的 Getting started](https://github.com/linebender/vello#getting-started)

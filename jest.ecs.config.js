@@ -1,3 +1,4 @@
+/* eslint-env node */
 const esm = [
   'd3-*',
   'earcut',
@@ -16,7 +17,7 @@ module.exports = {
   testMatch: ['**/ecs/*.spec.+(ts|tsx|js)'],
   preset: 'ts-jest',
   moduleFileExtensions: ['ts', 'tsx', 'js', 'json'],
-  modulePathIgnorePatterns: ['dist'],
+  modulePathIgnorePatterns: ['dist', '\\.next'],
   collectCoverageFrom: ['packages/ecs/src/**/*.ts'],
   transform: {
     '^.+\\.[tj]s$': [

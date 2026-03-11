@@ -70,7 +70,7 @@ import type { SerializedNode } from '../types/serialized-node';
 import { GridRenderer } from '../render-graph/GridRenderer';
 import { BatchManager } from './BatchManager';
 import { getSceneRoot } from './Transform';
-import { safeAddComponent } from '../history';
+import { safeAddComponent, safeRemoveComponent } from '../history';
 import { SetupDevice } from './SetupDevice';
 import { API } from '../API';
 import { RGAttachmentSlot } from '../render-graph/interface';
@@ -272,17 +272,14 @@ export class MeshPipeline extends System {
     dataURL: string,
     download: boolean,
   ): Generator {
-    if (!canvas.has(Screenshot)) {
-      canvas.add(Screenshot);
-    }
-
+    safeAddComponent(canvas, Screenshot);
     const screenshot = canvas.write(Screenshot);
 
     Object.assign(screenshot, { dataURL, canvas, download });
     yield;
 
-    canvas.remove(Screenshot);
-    canvas.remove(RasterScreenshotRequest);
+    safeRemoveComponent(canvas, Screenshot);
+    safeRemoveComponent(canvas, RasterScreenshotRequest);
   }
 
   private createRenderer(gpuResource: GPUResource, api: API) {

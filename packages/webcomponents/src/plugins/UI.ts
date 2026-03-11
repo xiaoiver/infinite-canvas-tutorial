@@ -6,13 +6,13 @@ import {
   Plugin,
   PreStartUp,
   PropagateTransforms,
-  SetupDevice,
   SyncSimpleTransforms,
   system,
   Select,
   Last,
   RenderTransformer,
   RenderHighlighter,
+  StartUp,
 } from '@infinite-canvas-tutorial/ecs';
 import {
   Comment,
@@ -51,8 +51,8 @@ export const UIPlugin: Plugin = () => {
   system((s) =>
     s
       .inAnyOrderWithWritersOf(Camera)
+      .afterWritersOf(Canvas)
       .after(
-        SetupDevice,
         SyncSimpleTransforms,
         PropagateTransforms,
         ComputeBounds,

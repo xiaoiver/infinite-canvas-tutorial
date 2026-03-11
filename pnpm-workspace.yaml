@@ -1,3 +1,4 @@
 packages:
   - 'packages/*'
+  - 'rust/*'
   - '__tests__/*'

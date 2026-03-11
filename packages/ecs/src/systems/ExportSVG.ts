@@ -49,6 +49,7 @@ import {
 } from '../utils';
 import type { SerializedNode } from '../types/serialized-node';
 import { API } from '..';
+import { safeAddComponent, safeRemoveComponent } from '../history';
 
 export class ExportSVG extends System {
   private readonly vectorScreenshotRequests = this.query((q) =>
@@ -61,17 +62,15 @@ export class ExportSVG extends System {
     svg: string,
     download: boolean,
   ): Generator {
-    if (!canvas.has(Screenshot)) {
-      canvas.add(Screenshot);
-    }
+    safeAddComponent(canvas, Screenshot);
 
     const screenshot = canvas.write(Screenshot);
 
     Object.assign(screenshot, { dataURL, canvas, svg, download });
     yield;
 
-    canvas.remove(Screenshot);
-    canvas.remove(VectorScreenshotRequest);
+    safeRemoveComponent(canvas, Screenshot);  
+    safeRemoveComponent(canvas, VectorScreenshotRequest);
   }
 
   constructor() {

@@ -1,7 +1,7 @@
 {
-  "name": "@infinite-canvas-tutorial/fal-ai",
-  "version": "0.0.8",
-  "description": "Use fal.ai in client side",
+  "name": "@infinite-canvas-tutorial/vello",
+  "version": "0.0.3",
+  "description": "Use Vello for rendering",
   "main": "lib/index.js",
   "module": "esm/index.js",
   "types": "lib/index.d.ts",
@@ -46,7 +46,7 @@
     "watch": "rimraf ./esm && tsc --module ESNext --outDir esm --watch"
   },
   "dependencies": {
-    "@fal-ai/client": "^1.6.2"
+    "@infinite-canvas-tutorial/vello-renderer": "workspace:*"
   },
   "peerDependencies": {
     "@infinite-canvas-tutorial/ecs": "workspace:*",

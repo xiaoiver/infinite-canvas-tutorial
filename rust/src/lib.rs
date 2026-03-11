@@ -934,13 +934,33 @@ pub fn run_native() -> anyhow::Result<()> {
 pub async fn run_wasm_async(canvas: web_sys::HtmlCanvasElement, on_ready: js_sys::Function) {
     use winit::platform::web::WindowAttributesExtWebSys;
 
-    let event_loop = EventLoop::new().expect("event loop");
+    fn log_vello(msg: &str) {
+        web_sys::console::log_1(&format!("[vello] {}", msg).into());
+    }
+    fn err_vello(msg: &str) {
+        web_sys::console::error_1(&format!("[vello] {}", msg).into());
+    }
+
+    log_vello("run_wasm_async: start");
+
+    let event_loop = match EventLoop::new() {
+        Ok(el) => {
+            log_vello("EventLoop::new ok");
+            el
+        }
+        Err(e) => {
+            err_vello(&format!("EventLoop::new failed: {}", e));
+            return;
+        }
+    };
     let canvas_id = NEXT_CANVAS_ID.with(|c| {
         let mut id = c.borrow_mut();
         let next = *id;
         *id = id.saturating_add(1);
         next
     });
+    log_vello(&format!("canvas_id = {}", canvas_id));
+
     CANVAS_SHAPES.with(|c| {
         c.borrow_mut().insert(canvas_id, Vec::new());
     });
@@ -950,11 +970,16 @@ pub async fn run_wasm_async(canvas: web_sys::HtmlCanvasElement, on_ready: js_sys
         .with_resizable(true)
         .with_title("Vello Renderer - Infinite Canvas");
     attrs = attrs.with_canvas(Some(canvas));
-    let window = Arc::new(
-        event_loop
-            .create_window(attrs)
-            .expect("create window"),
-    );
+    let window = match event_loop.create_window(attrs) {
+        Ok(w) => {
+            log_vello("create_window ok");
+            Arc::new(w)
+        }
+        Err(e) => {
+            err_vello(&format!("create_window failed: {}", e));
+            return;
+        }
+    };
     let (width, height) = {
         use winit::platform::web::WindowExtWebSys;
         if let Some(ref c) = window.canvas() {
@@ -967,6 +992,7 @@ pub async fn run_wasm_async(canvas: web_sys::HtmlCanvasElement, on_ready: js_sys
                 let ch = ch.max(MIN_SURFACE_HEIGHT);
                 c.set_width(cw);
                 c.set_height(ch);
+                log_vello(&format!("canvas size was 0, set to {}x{}", cw, ch));
                 (cw, ch)
             } else {
                 (w, h)
@@ -976,8 +1002,12 @@ pub async fn run_wasm_async(canvas: web_sys::HtmlCanvasElement, on_ready: js_sys
             (size.width.max(MIN_SURFACE_WIDTH), size.height.max(MIN_SURFACE_HEIGHT))
         }
     };
+    log_vello(&format!("surface size {}x{}", width, height));
+
     let mut context = RenderContext::new();
-    let surface = context
+    log_vello("RenderContext::new ok, creating surface (async)...");
+
+    let surface = match context
         .create_surface(
             window.clone(),
             width,
@@ -985,18 +1015,34 @@ pub async fn run_wasm_async(canvas: web_sys::HtmlCanvasElement, on_ready: js_sys
             wgpu::PresentMode::AutoVsync,
         )
         .await
-        .expect("create surface");
+    {
+        Ok(s) => {
+            log_vello("create_surface ok");
+            s
+        }
+        Err(e) => {
+            err_vello(&format!("create_surface failed: {}", e));
+            return;
+        }
+    };
 
     let mut renderers: Vec<Option<Renderer>> = vec![];
     renderers.resize_with(context.devices.len(), || None);
     let dev_id = surface.dev_id;
-    renderers[dev_id] = Some(
-        Renderer::new(
-            &context.devices[dev_id].device,
-            RendererOptions::default(),
-        )
-        .expect("create renderer"),
-    );
+    let renderer = match Renderer::new(
+        &context.devices[dev_id].device,
+        RendererOptions::default(),
+    ) {
+        Ok(r) => {
+            log_vello("Renderer::new ok");
+            r
+        }
+        Err(e) => {
+            err_vello(&format!("Renderer::new failed: {}", e));
+            return;
+        }
+    };
+    renderers[dev_id] = Some(renderer);
 
     let mut app = VelloRendererApp {
         context,
@@ -1013,8 +1059,10 @@ pub async fn run_wasm_async(canvas: web_sys::HtmlCanvasElement, on_ready: js_sys
         prior_position: None,
         touch_state: multi_touch::TouchState::new(),
     };
+    log_vello(&format!("calling on_ready(canvas_id={})", canvas_id));
     let _ = on_ready.call1(&JsValue::NULL, &JsValue::from(canvas_id));
     window.request_redraw();
+    log_vello("entering event_loop.run_app");
     let _ = event_loop.run_app(&mut app);
 }
 
@@ -1023,12 +1071,24 @@ pub async fn run_wasm_async(canvas: web_sys::HtmlCanvasElement, on_ready: js_sys
 #[wasm_bindgen(js_name = runWithCanvas)]
 pub fn run_with_canvas(canvas: JsValue, on_ready: JsValue) {
     use wasm_bindgen::JsCast;
-    let canvas: web_sys::HtmlCanvasElement = canvas
-        .dyn_into()
-        .expect("runWithCanvas: 第一个参数必须是 HTMLCanvasElement");
-    let on_ready: js_sys::Function = on_ready
-        .dyn_into()
-        .expect("runWithCanvas: 第二个参数必须是函数 (canvasId) => void");
+    let canvas: web_sys::HtmlCanvasElement = match canvas.dyn_into() {
+        Ok(c) => c,
+        Err(_) => {
+            web_sys::console::error_1(
+                &"[vello] runWithCanvas: 第一个参数必须是 HTMLCanvasElement".into(),
+            );
+            return;
+        }
+    };
+    let on_ready: js_sys::Function = match on_ready.dyn_into() {
+        Ok(f) => f,
+        Err(_) => {
+            web_sys::console::error_1(
+                &"[vello] runWithCanvas: 第二个参数必须是函数 (canvasId) => void".into(),
+            );
+            return;
+        }
+    };
     wasm_bindgen_futures::spawn_local(run_wasm_async(canvas, on_ready));
 }
 

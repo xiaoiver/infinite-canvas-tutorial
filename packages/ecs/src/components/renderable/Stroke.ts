@@ -7,7 +7,7 @@ export class Stroke {
    * Default to `none`.
    * @see https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/stroke
    */
-  @field({ type: Type.dynamicString(20), default: 'none' })
+  @field({ type: Type.object, default: 'none' })
   declare color: string;
 
   /**
