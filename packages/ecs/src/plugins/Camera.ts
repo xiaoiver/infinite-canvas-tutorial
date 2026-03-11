@@ -13,7 +13,6 @@ import {
   ComputeVisibility,
   EventWriter,
   PropagateTransforms,
-  SetupDevice,
   SyncSimpleTransforms,
 } from '../systems';
 
@@ -26,7 +25,6 @@ export const CameraPlugin: Plugin = () => {
   system((s) =>
     s.after(
       EventWriter,
-      SetupDevice,
       SyncSimpleTransforms,
       PropagateTransforms,
       ComputeVisibility,

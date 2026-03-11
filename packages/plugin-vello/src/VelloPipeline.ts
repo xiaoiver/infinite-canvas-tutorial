@@ -1,13 +1,6 @@
-import * as d3 from 'd3-color';
 import { mat3 } from 'gl-matrix';
-import { co, Entity, System } from '@lastolivegames/becsy';
 import {
-  Buffer,
-  BufferFrequencyHint,
-  BufferUsage,
-  SwapChain,
-} from '@antv/g-device-api';
-import {
+  co, Entity, System,
   Camera,
   Canvas,
   CheckboardStyle,
@@ -63,24 +56,22 @@ import {
   Locked,
   ClipMode,
   Flex,
-} from '../components';
-import { Effect, paddingMat3 } from '../utils';
-import type { SerializedNode } from '../types/serialized-node';
-import { getSceneRoot } from './Transform';
-import { safeAddComponent } from '../history';
-import { SetupDevice } from './SetupDevice';
-import { API } from '../API';
-import { PostProcessingRenderer } from '../render-graph/PostProcessingRenderer';
-// import init, { addRect, addCircle, addText, registerDefaultFont, runWithCanvas } from '../../../vello-renderer/pkg/vello_renderer.js';
+  Effect, 
+  API,
+  safeAddComponent,
+  getSceneRoot,
+  SerializedNode
+} from '@infinite-canvas-tutorial/ecs';
+import init, { addRect, addCircle, addText, registerDefaultFont, runWithCanvas } from 'vello-renderer';
+import { InitVello } from './InitVello';
 
 type GPURenderer = {
   uniformBuffer: Buffer;
   uniformLegacyObject: Record<string, unknown>;
-  filters: Record<Effect['type'], PostProcessingRenderer>;
 };
 
 export class VelloPipeline extends System {
-  private setupDevice = this.attach(SetupDevice);
+  private initVello = this.attach(InitVello);
 
   private canvases = this.query((q) => q.current.with(Canvas).read);
 
@@ -197,7 +188,7 @@ export class VelloPipeline extends System {
     }[]
   > = new WeakMap();
 
-  private canvasIds: WeakMap<HTMLCanvasElement, string> = new WeakMap();
+  
 
   constructor() {
     super();
@@ -256,207 +247,33 @@ export class VelloPipeline extends System {
     );
   }
 
-  @co private *setScreenshotTrigger(
-    canvas: Entity,
-    dataURL: string,
-    download: boolean,
-  ): Generator {
-    if (!canvas.has(Screenshot)) {
-      canvas.add(Screenshot);
-    }
-
-    const screenshot = canvas.write(Screenshot);
-
-    Object.assign(screenshot, { dataURL, canvas, download });
-    yield;
-
-    canvas.remove(Screenshot);
-    canvas.remove(RasterScreenshotRequest);
-  }
-
-  private createRenderer(gpuResource: GPUResource, api: API) {
-    const { device, swapChain, renderCache, texturePool } =
-      gpuResource;
-    return {
-      uniformBuffer: device.createBuffer({
-        viewOrSize: (16 * 3 + 4 * 5) * Float32Array.BYTES_PER_ELEMENT,
-        usage: BufferUsage.UNIFORM,
-        hint: BufferFrequencyHint.DYNAMIC,
-      }),
-      uniformLegacyObject: null,
-      filters: {} as Record<Effect['type'], PostProcessingRenderer>,
-    };
-  }
-
   private renderCamera(canvas: Entity, camera: Entity, sort = false) {
-    if (!canvas.has(GPUResource)) {
+    console.log('renderCamera', canvas, camera);
+
+    const { api, element } = canvas.read(Canvas);
+    const canvasId = this.initVello.canvasIds.get(element as HTMLCanvasElement);
+    if (!canvasId) {
       return;
     }
-
-    let renderer: GPURenderer;
-    let gpuResource = canvas.read(GPUResource);
-
-    const { api } = canvas.read(Canvas);
-    const { filter } = api.getAppState();
-
-    const request = canvas.has(RasterScreenshotRequest)
-      ? canvas.read(RasterScreenshotRequest)
-      : null;
-    const { type, encoderOptions, grid, download, nodes } = request ?? {
-      type: 'image/png',
-      encoderOptions: 1,
-      grid: false,
-      nodes: [],
-    };
-    const shouldRenderGrid = !request || grid;
-    const shouldRenderPartially = nodes.length > 0;
-
-    const PADDING = 0;
-    let exportViewOverride: {
-      projectionMatrix: Mat3;
-      viewMatrix: Mat3;
-      viewProjectionMatrixInv: Mat3;
-      zoom: number;
-    } | null = null;
-
-    if (shouldRenderPartially) {
-      const bounds = api.getBounds(nodes);
-      const exportLogicalWidth = bounds.maxX - bounds.minX + 2 * PADDING;
-      const exportLogicalHeight = bounds.maxY - bounds.minY + 2 * PADDING;
-      if (
-        bounds.minX <= bounds.maxX &&
-        bounds.minY <= bounds.maxY &&
-        exportLogicalWidth > 0 &&
-        exportLogicalHeight > 0
-      ) {
-        // Export at 1:1 (1 pixel per logical unit), do not scale by devicePixelRatio
-        // to avoid 2x size on HiDPI displays.
-        const exportPixelWidth = Math.ceil(exportLogicalWidth);
-        const exportPixelHeight = Math.ceil(exportLogicalHeight);
-        this.setupDevice.resizeOffscreen(exportPixelWidth, exportPixelHeight);
-
-        const viewMatrixGL = mat3.create();
-        mat3.translate(viewMatrixGL, viewMatrixGL, [
-          -(bounds.minX - PADDING),
-          -(bounds.minY - PADDING),
-        ]);
-        const projectionMatrixGL = mat3.projection(
-          mat3.create(),
-          exportLogicalWidth,
-          exportLogicalHeight,
-        );
-        const viewProjectionMatrix = mat3.multiply(
-          mat3.create(),
-          projectionMatrixGL,
-          viewMatrixGL,
-        );
-        const viewProjectionMatrixInv = mat3.invert(
-          mat3.create(),
-          viewProjectionMatrix,
-        );
-        exportViewOverride = {
-          projectionMatrix: Mat3.fromGLMat3(projectionMatrixGL),
-          viewMatrix: Mat3.fromGLMat3(viewMatrixGL),
-          viewProjectionMatrixInv: viewProjectionMatrixInv
-            ? Mat3.fromGLMat3(viewProjectionMatrixInv)
-            : Mat3.IDENTITY,
-          zoom: 1,
-        };
-      }
-    }
-
-    if (shouldRenderPartially) {
-      // Render to offscreen canvas.
-      gpuResource = this.setupDevice.getOffscreenGPUResource();
-      renderer = this.createRenderer(gpuResource, api);
-    } else {
-      if (!this.renderers.get(camera)) {
-        this.renderers.set(camera, this.createRenderer(gpuResource, api));
-      }
-      renderer = this.renderers.get(camera);
-    }
-
-    const { swapChain, device, renderCache } = gpuResource;
-    const { uniformBuffer } = renderer;
-
-    const $canvas = swapChain.getCanvas() as HTMLCanvasElement;
-
-    const [buffer, legacyObject] = this.updateUniform(
-      canvas,
-      camera,
-      shouldRenderGrid,
-      swapChain,
-      exportViewOverride,
-    );
-    renderer.uniformLegacyObject = legacyObject;
-
-    uniformBuffer.setSubData(0, new Uint8Array(buffer.buffer));
 
     if (this.pendingRenderables.has(camera)) {
       this.pendingRenderables.get(camera).forEach(({ type, entity }) => {
         if (type === 'remove') {
           // batchManager.remove(entity, !entity.has(Culled));
         } else {
-          // addRect({
-          //   id: 'root',
-          //   x: 300,
-          //   y: 100,
-          //   width: 120,
-          //   height: 80,
-          //   radius: 10,
-          //   fill: [1, 0.6, 0.2, 1],
-          // });
-          // addCircle({
-          //   id: 'child',
-          //   parentId: 'root',
-          //   cx: 0,
-          //   cy: 0,
-          //   r: 25,
-          //   fill: [1, 0.5, 0.6, 1],
-          //   stroke: { width: 2, color: [1, 1, 1, 1] },
-          // });
+          const node = api.getNodeByEntity(entity);
 
-          // if (entity.has(Circle)) {
-          //   addCircle({
-          //     id: 'child',
-          //     parentId: 'root',
-          //     cx: 0,
-          //     cy: 0,
-          //     r: 25,
-          //     fill: [1, 0.5, 0.6, 1],
-          //     stroke: { width: 2, color: [1, 1, 1, 1] },
-          //   });
-          // } else if (entity.has(Rect)) {
-          //   addRect(entity);
-          // }
+          console.log('node', node);
+          
+          if (entity.has(Circle)) {
+            addCircle(canvasId, node);
+          } else if (entity.has(Rect)) {
+            addRect(canvasId, node);
+          }
         }
       });
       this.pendingRenderables.delete(camera);
     }
-
-    if (request) {
-      const dataURL = (swapChain.getCanvas() as HTMLCanvasElement).toDataURL(
-        type,
-        encoderOptions,
-      );
-      this.setScreenshotTrigger(canvas, dataURL, download);
-    }
-  }
-
-  async initialize() {
-    // await init();
-
-    // this.canvases.current.forEach((canvas) => {
-    //   const $canvas = canvas.read(Canvas).element as HTMLCanvasElement;
-
-    //   setTimeout(() => {
-    //     runWithCanvas($canvas, (canvasId: string) => {
-
-    //       console.log('canvasId', canvasId);
-    //     //   this.canvasIds.set($canvas, canvasId);
-    //     });
-    //   });
-    // });
   }
 
   execute() {
@@ -498,6 +315,7 @@ export class VelloPipeline extends System {
       if (!this.pendingRenderables.has(camera)) {
         this.pendingRenderables.set(camera, []);
       }
+
       this.pendingRenderables.get(camera).push({
         type: 'add',
         entity,
@@ -584,80 +402,5 @@ export class VelloPipeline extends System {
   }
 
   finalize() {
-  }
-
-  private updateUniform(
-    canvas: Entity,
-    camera: Entity,
-    shouldRenderGrid: boolean,
-    swapChain: SwapChain,
-    viewOverride?: {
-      projectionMatrix: Mat3;
-      viewMatrix: Mat3;
-      viewProjectionMatrixInv: Mat3;
-      zoom: number;
-    } | null,
-  ): [Float32Array, Record<string, unknown>] {
-    const { mode, colors } = canvas.read(Theme);
-    const { checkboardStyle } = canvas.read(Grid);
-    const computedCamera = camera.read(ComputedCamera);
-
-    const { width, height } = swapChain.getCanvas();
-
-    const backgroundColor = colors[mode].background;
-    const gridColor = colors[mode].grid;
-
-    const {
-      r: br,
-      g: bg,
-      b: bb,
-      opacity: bo,
-    } = d3.rgb(backgroundColor)?.rgb() || d3.rgb(0, 0, 0, 1);
-    const {
-      r: gr,
-      g: gg,
-      b: gb,
-      opacity: go,
-    } = d3.rgb(gridColor)?.rgb() || d3.rgb(0, 0, 0, 1);
-
-    const { projectionMatrix, viewMatrix, viewProjectionMatrixInv, zoom } =
-      viewOverride ?? computedCamera;
-
-    const u_ProjectionMatrix = projectionMatrix;
-    const u_ViewMatrix = viewMatrix;
-    const u_ViewProjectionInvMatrix = viewProjectionMatrixInv;
-    const u_BackgroundColor = [br / 255, bg / 255, bb / 255, bo];
-    const u_GridColor = [gr / 255, gg / 255, gb / 255, go];
-    const u_ZoomScale = zoom;
-    const u_CheckboardStyle = shouldRenderGrid
-      ? [
-        CheckboardStyle.NONE,
-        CheckboardStyle.GRID,
-        CheckboardStyle.DOTS,
-      ].indexOf(checkboardStyle)
-      : 0;
-    const u_Viewport = [width, height];
-
-    const buffer = new Float32Array([
-      ...paddingMat3(u_ProjectionMatrix),
-      ...paddingMat3(u_ViewMatrix),
-      ...paddingMat3(u_ViewProjectionInvMatrix),
-      ...u_BackgroundColor,
-      ...u_GridColor,
-      u_ZoomScale,
-      u_CheckboardStyle,
-      ...u_Viewport,
-    ]);
-    const legacyObject = {
-      u_ProjectionMatrix: Mat3.toGLMat3(u_ProjectionMatrix),
-      u_ViewMatrix: Mat3.toGLMat3(u_ViewMatrix),
-      u_ViewProjectionInvMatrix: Mat3.toGLMat3(u_ViewProjectionInvMatrix),
-      u_BackgroundColor,
-      u_GridColor,
-      u_ZoomScale,
-      u_CheckboardStyle,
-      u_Viewport,
-    };
-    return [buffer, legacyObject];
   }
 }

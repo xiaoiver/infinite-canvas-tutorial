@@ -6,7 +6,6 @@ import {
   RenderHighlighter,
   RenderTransformer,
   Select,
-  SetupDevice,
   Sort,
   SyncSimpleTransforms,
   DrawRect,
@@ -40,7 +39,6 @@ export const PenPlugin: Plugin = () => {
     s
       .after(
         ComputeBounds,
-        SetupDevice,
         SyncSimpleTransforms,
         PropagateTransforms,
         Sort,

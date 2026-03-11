@@ -10,6 +10,8 @@ import {
   inferXYWidthHeight,
   StampMode,
   EdgeStyle,
+  DefaultRendererPlugin,
+  RendererPlugin,
 } from '../../ecs';
 import { Event, UIPlugin } from '../src';
 import '../src/spectrum';
@@ -17,6 +19,7 @@ import { LaserPointerPlugin } from '../../plugin-laser-pointer/src';
 import { EraserPlugin } from '../../plugin-eraser/src';
 import { LassoPlugin } from '../../plugin-lasso/src';
 import { YogaPlugin } from '../../plugin-yoga/src';
+import { InitVello, VelloPipeline } from '../../plugin-vello/src';
 import '../../plugin-laser-pointer/src/spectrum';
 import '../../plugin-eraser/src/spectrum';
 import '../../plugin-lasso/src/spectrum';
@@ -90,10 +93,10 @@ canvas.addEventListener(Event.READY, async (e) => {
     ],
     penbarLasso: {
       ...api.getAppState().penbarLasso,
-      mode: 'draw',
-      fill: 'none',
-      stroke: 'red',
-      strokeWidth: 2,
+      // mode: 'draw',
+      // fill: 'none',
+      // stroke: 'red',
+      // strokeWidth: 2,
     },
     penbarText: {
       ...api.getAppState().penbarText,
@@ -128,7 +131,7 @@ canvas.addEventListener(Event.READY, async (e) => {
     // rotateEnabled: false,
     flipEnabled: false,
     // filter: 'noise(0.5)',
-    layersLassoing: ['parent'],
+    // layersLassoing: ['parent'],
   });
 
   const parent = {
@@ -188,6 +191,12 @@ canvas.addEventListener(Event.READY, async (e) => {
 
   // api.updateNodes([node1]);
 });
+
+// const VelloRendererPlugin = RendererPlugin.configure({
+//   setupDeviceSystemCtor: InitVello,
+//   rendererSystemCtor: VelloPipeline,
+// });
+// DefaultPlugins.splice(DefaultPlugins.indexOf(DefaultRendererPlugin), 1, VelloRendererPlugin);
 
 try {
   const app = new App().addPlugins(

@@ -1,7 +1,7 @@
 import {
   type Plugin,
   HierarchyPlugin,
-  RendererPlugin,
+  DefaultRendererPlugin,
   TransformPlugin,
   CanvasPlugin,
   CameraPlugin,
@@ -20,6 +20,10 @@ export * from './plugins';
 export * from './systems';
 export * from './environment';
 export * from './context';
+export {
+  safeAddComponent,
+  safeRemoveComponent,
+} from './history';
 export {
   svgSvgElementToComputedCamera,
   svgElementsToSerializedNodes,
@@ -81,7 +85,7 @@ export const DefaultPlugins: Plugin[] = [
   CameraPlugin,
   EventPlugin,
   CullingPlugin,
-  RendererPlugin,
+  DefaultRendererPlugin,
   ScreenshotPlugin,
   PenPlugin,
   HTMLPlugin,

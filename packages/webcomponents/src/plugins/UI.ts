@@ -6,7 +6,6 @@ import {
   Plugin,
   PreStartUp,
   PropagateTransforms,
-  SetupDevice,
   SyncSimpleTransforms,
   system,
   Select,
@@ -51,8 +50,8 @@ export const UIPlugin: Plugin = () => {
   system((s) =>
     s
       .inAnyOrderWithWritersOf(Camera)
+      .afterWritersOf(Canvas)
       .after(
-        SetupDevice,
         SyncSimpleTransforms,
         PropagateTransforms,
         ComputeBounds,

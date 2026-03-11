@@ -1,3 +1,4 @@
 packages:
   - 'packages/*'
+  - 'vello-renderer/*'
   - '__tests__/*'

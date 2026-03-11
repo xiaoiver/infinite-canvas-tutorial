@@ -1260,6 +1260,18 @@ importers:
         specifier: latest
         version: 1.0.0-beta.19(@tensorflow/tfjs@4.11.0(encoding@0.1.13)(seedrandom@3.0.5))
 
+  packages/plugin-vello:
+    dependencies:
+      '@infinite-canvas-tutorial/ecs':
+        specifier: workspace:*
+        version: link:../ecs
+      '@infinite-canvas-tutorial/webcomponents':
+        specifier: workspace:*
+        version: link:../webcomponents
+      vello-renderer:
+        specifier: workspace:*
+        version: link:../../vello-renderer/pkg
+
   packages/plugin-yoga:
     dependencies:
       '@infinite-canvas-tutorial/ecs':
@@ -1658,6 +1670,8 @@ importers:
       webfontloader:
         specifier: ^1.6.28
         version: 1.6.28
+
+  vello-renderer/pkg: {}
 
 packages:
 

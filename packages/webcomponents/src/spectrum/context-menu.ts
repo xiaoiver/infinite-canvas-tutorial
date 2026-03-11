@@ -18,6 +18,7 @@ import {
   isUrl,
   Pen,
   RectSerializedNode,
+  GSerializedNode,
 } from '@infinite-canvas-tutorial/ecs';
 import { html, render } from '@spectrum-web-components/base';
 import { VirtualTrigger, openOverlay } from '@spectrum-web-components/overlay';
@@ -52,6 +53,10 @@ export function executeCut(
   api.record();
 }
 
+function getMaxZIndex(api: ExtendedAPI) {
+  return api.getNodes().reduce((max, node) => Math.max(max, node.zIndex ?? 0), 0);
+}
+
 function createSVG(
   api: ExtendedAPI,
   appState: AppState,
@@ -62,23 +67,35 @@ function createSVG(
   const doc = DOMAdapter.get()
     .getDOMParser()
     .parseFromString(svg, 'image/svg+xml');
-  const $svg = doc.documentElement;
+  const $svg = doc.documentElement as unknown as SVGSVGElement;
+
+  const width = $svg.width.baseVal.value;
+  const height = $svg.height.baseVal.value;
 
   // This method also works, but it may lose the namespace of the SVG element.
   // const $container = document.createElement('div');
   // $container.innerHTML = string;
   // const $svg = $container.children[0] as SVGSVGElement;
+
+  const root: RectSerializedNode = {
+    id: uuidv4(),
+    type: 'rect',
+    zIndex: getMaxZIndex(api) + 1,
+    x: position?.x ?? 0,
+    y: position?.y ?? 0,
+    width,
+    height,
+  };
+
   const nodes = svgElementsToSerializedNodes(
     Array.from($svg.children) as SVGElement[],
   );
-  if (position) {
-    // nodes.forEach((node) => {
-    //   node.x += position.x;
-    //   node.y += position.y;
-    // });
-  }
+  nodes.forEach((node) => {
+    node.parentId = root.id;
+    node.locked = true;
+  });
 
-  updateAndSelectNodes(api, appState, nodes);
+  updateAndSelectNodes(api, appState, [root, ...nodes]);
 }
 
 function createText(
@@ -97,7 +114,7 @@ function createText(
       fontSize: 16,
       fontFamily: 'system-ui',
       fill: 'black',
-      zIndex: 0,
+      zIndex: getMaxZIndex(api) + 1,
     },
   ]);
 }
@@ -119,7 +136,7 @@ function createHTML(
       width,
       height,
       html,
-      zIndex: 0,
+      zIndex: getMaxZIndex(api) + 1,
     },
   ]);
 }
