@@ -1,9 +1,9 @@
-import { mat3 } from 'gl-matrix';
+import * as d3 from 'd3-color';
 import {
-  co, Entity, System,
+  Entity,
+  System,
   Camera,
   Canvas,
-  CheckboardStyle,
   Children,
   Circle,
   ComputedBounds,
@@ -52,18 +52,116 @@ import {
   VectorNetwork,
   Filter,
   Transform,
-  Mat3,
   Locked,
   ClipMode,
   Flex,
-  Effect, 
-  API,
   safeAddComponent,
   getSceneRoot,
-  SerializedNode
+  getDescendants,
+  parseGradient,
+  computeLinearGradient,
+  computeRadialGradient,
+  computeConicGradient,
+  getRoughOptions,
 } from '@infinite-canvas-tutorial/ecs';
-import init, { addRect, addCircle, addText, registerDefaultFont, runWithCanvas } from '@infinite-canvas-tutorial/vello-renderer';
+import { addRect, addEllipse, addLine, addPath, addPolyline, addText, addImageRect, addGroup, addRoughRect,clearShapes, addRoughEllipse, addRoughLine } from '@infinite-canvas-tutorial/vello-renderer';
 import { InitVello } from './InitVello';
+
+/** 将 CSS 颜色字符串转为 [r,g,b,a]，取值 0–1。 */
+function colorToRgba(colorStr: string): [number, number, number, number] {
+  const rgb = d3.rgb(colorStr)?.rgb();
+  if (!rgb) return [0, 0, 0, 1];
+  return [rgb.r / 255, rgb.g / 255, rgb.b / 255, rgb.opacity];
+}
+
+type FillGradientSpec = {
+  type: string;
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
+  cx: number;
+  cy: number;
+  r: number;
+  startAngle: number;
+  endAngle: number;
+  stops: { offset: number; color: [number, number, number, number] }[];
+};
+
+function buildSingleGradient(
+  g: NonNullable<ReturnType<typeof parseGradient>>[number],
+  min: [number, number],
+  width: number,
+  height: number,
+): FillGradientSpec | null {
+  if (!g) return null;
+  const stops = g.steps.map((s) => ({
+    offset: s.offset.type === '%' ? s.offset.value / 100 : s.offset.value,
+    color: colorToRgba(s.color),
+  }));
+  if (g.type === 'linear-gradient') {
+    const { x1, y1, x2, y2 } = computeLinearGradient(min, width, height, g.angle);
+    return { type: 'linear', x1, y1, x2, y2, cx: 0, cy: 0, r: 0, startAngle: 0, endAngle: Math.PI * 2, stops };
+  }
+  if (g.type === 'radial-gradient') {
+    const { x, y, r } = computeRadialGradient(min, width, height, g.cx, g.cy, g.size);
+    return { type: 'radial', x1: 0, y1: 0, x2: 0, y2: 0, cx: x, cy: y, r, startAngle: 0, endAngle: Math.PI * 2, stops };
+  }
+  if (g.type === 'conic-gradient') {
+    const { x, y } = computeConicGradient(min, width, height, g.cx, g.cy);
+    const startAngle = ((g.angle ?? 0) * Math.PI) / 180;
+    return { type: 'conic', x1: 0, y1: 0, x2: 0, y2: 0, cx: x, cy: y, r: 0, startAngle, endAngle: startAngle + Math.PI * 2, stops };
+  }
+  return null;
+}
+
+/** 将 CSS 渐变字符串解析为 Rust fillGradient 格式，支持多渐变叠加。 */
+function buildFillGradients(
+  cssGradient: string,
+  min: [number, number],
+  width: number,
+  height: number,
+): FillGradientSpec[] {
+  const gradients = parseGradient(cssGradient);
+  if (!gradients?.length) return [];
+  const result: FillGradientSpec[] = [];
+  for (const g of gradients) {
+    const spec = buildSingleGradient(g, min, width, height);
+    if (spec) result.push(spec);
+  }
+  return result;
+}
+
+/** 将 TexImageSource 转为 RGBA；支持 ImageBitmap、HTMLImageElement 等。 */
+function imageToRgba(src: TexImageSource): { width: number; height: number; data: Uint8Array } | null {
+  try {
+    const width =
+      'width' in src && typeof src.width === 'number'
+        ? src.width
+        : 'naturalWidth' in src
+          ? (src as HTMLImageElement).naturalWidth
+          : 0;
+    const height =
+      'height' in src && typeof src.height === 'number'
+        ? src.height
+        : 'naturalHeight' in src
+          ? (src as HTMLImageElement).naturalHeight
+          : 0;
+    if (width === 0 || height === 0) return null;
+    const canvas = new OffscreenCanvas(width, height);
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return null;
+    ctx.drawImage(src as CanvasImageSource, 0, 0);
+    const imageData = ctx.getImageData(0, 0, width, height);
+    return {
+      width: imageData.width,
+      height: imageData.height,
+      data: new Uint8Array(imageData.data),
+    };
+  } catch {
+    return null;
+  }
+}
 
 type GPURenderer = {
   uniformBuffer: Buffer;
@@ -248,32 +346,251 @@ export class VelloPipeline extends System {
   }
 
   private renderCamera(canvas: Entity, camera: Entity, sort = false) {
-    console.log('renderCamera', canvas, camera);
-
     const { api, element } = canvas.read(Canvas);
     const canvasId = this.initVello.canvasIds.get(element as HTMLCanvasElement);
-    if (!canvasId) {
+    if (canvasId === undefined) {
       return;
     }
 
-    if (this.pendingRenderables.has(camera)) {
-      this.pendingRenderables.get(camera).forEach(({ type, entity }) => {
-        if (type === 'remove') {
-          // batchManager.remove(entity, !entity.has(Culled));
-        } else {
-          const node = api.getNodeByEntity(entity);
+    clearShapes(canvasId);
+    getDescendants(camera)
+      .filter((e) => !e.has(Culled))
+      .forEach((entity) => {
+        let zIndex = 0;
+        if (entity.has(ZIndex)) {
+          zIndex = entity.read(ZIndex).value;
+        }
 
-          console.log('node', node);
-          
-          if (entity.has(Circle)) {
-            addCircle(canvasId, node);
-          } else if (entity.has(Rect)) {
-            addRect(canvasId, node);
+        const transform = api.getTransform(entity);
+        // gl-matrix mat3 为列主序：col0=[0,1,2], col1=[3,4,5], col2=[6,7,8]
+        const localTransform = {
+          m00: transform[0],
+          m01: transform[3],
+          m02: transform[6],
+          m10: transform[1],
+          m11: transform[4],
+          m12: transform[7],
+          m20: transform[2],
+          m21: transform[5],
+          m22: transform[8],
+        };
+        const baseOpts: Record<string, unknown> = {
+          id: `${entity.__id}`,
+          parentId:
+            entity.has(Children) && !entity.read(Children).parent.has(Camera)
+              ? `${entity.read(Children).parent.__id}`
+              : undefined,
+          zIndex,
+          localTransform,
+          sizeAttenuation: entity.has(SizeAttenuation),
+          strokeAttenuation: entity.has(StrokeAttenuation),
+        };
+
+        if (entity.has(Renderable)) {
+          if (entity.has(FillSolid)) {
+            const fillSolid = entity.read(FillSolid).value;
+            const {
+              r,
+              g,
+              b,
+              opacity,
+            } = d3.rgb(fillSolid)?.rgb() || d3.rgb(0, 0, 0, 1);
+            baseOpts.fill = [r / 255, g / 255, b / 255, opacity];
           }
+          // FillGradient 在各自 shape 分支中根据 bounds 计算 fillGradient
+
+          if (entity.has(Stroke)) {
+            const { width, color, linecap, linejoin, miterlimit, dasharray, dashoffset } = entity.read(Stroke);
+            if (width > 0 && color !== 'none') {
+              const {
+                r,
+                g,
+                b,
+                opacity,
+              } = d3.rgb(color)?.rgb() ?? d3.rgb(0, 0, 0, 1);
+              baseOpts.stroke = {
+                width,
+                color: [r / 255, g / 255, b / 255, opacity],
+                linecap: linecap ?? 'butt',
+                linejoin: linejoin ?? 'miter',
+                miterLimit: miterlimit ?? 4,
+                dasharray: dasharray ?? [],
+                dashoffset: dashoffset ?? 0,
+              };
+            }
+          }
+
+          if (entity.has(Opacity)) {
+            const { opacity, fillOpacity, strokeOpacity } = entity.read(Opacity);
+            baseOpts.opacity = opacity;
+            baseOpts.fillOpacity = fillOpacity;
+            baseOpts.strokeOpacity = strokeOpacity;
+          }
+
+          if (entity.has(Circle)) {
+            const { cx, cy, r } = entity.read(Circle);
+            const opts: Record<string, unknown> = { ...baseOpts, cx, cy, rx: r, ry: r };
+            if (entity.has(FillGradient)) {
+              const grads = buildFillGradients(
+                entity.read(FillGradient).value,
+                [cx - r, cy - r],
+                2 * r,
+                2 * r,
+              );
+              if (grads.length) opts.fillGradients = grads;
+            }
+
+            if (entity.has(Rough)) { 
+              const { roughness, bowing, fillStyle, hachureAngle, hachureGap, curveStepCount, simplification } = entity.read(Rough);
+              addRoughEllipse(canvasId, {
+                ...opts,
+                roughness,
+                bowing,
+                fillStyle,
+                hachureAngle,
+                hachureGap,
+                curveStepCount,
+                simplification,
+              });
+            } else {
+              addEllipse(canvasId, opts);
+            }
+          } else if (entity.has(Ellipse)) {
+            const { cx, cy, rx, ry } = entity.read(Ellipse);
+            const opts: Record<string, unknown> = { ...baseOpts, cx, cy, rx, ry };
+            if (entity.has(FillGradient)) {
+              const grads = buildFillGradients(
+                entity.read(FillGradient).value,
+                [cx - rx, cy - ry],
+                2 * rx,
+                2 * ry,
+              );
+              if (grads.length) opts.fillGradients = grads;
+            }
+
+            if (entity.has(Rough)) { 
+              const { roughness, bowing, fillStyle, hachureAngle, hachureGap, curveStepCount, simplification } = entity.read(Rough);
+              addRoughEllipse(canvasId, {
+                ...opts,
+                roughness,
+                bowing,
+                fillStyle,
+                hachureAngle,
+                hachureGap,
+                curveStepCount,
+                simplification,
+              });
+            } else {
+              addEllipse(canvasId, opts);
+            }
+          } else if (entity.has(Line)) {
+            const { x1, y1, x2, y2 } = entity.read(Line);
+            const opts: Record<string, unknown> = {
+              ...baseOpts,
+              x1,
+              y1,
+              x2,
+              y2,
+            };
+
+            if (entity.has(Rough)) { 
+              const { roughness, bowing, simplification } = entity.read(Rough);
+              addRoughLine(canvasId, {
+                ...opts,
+                roughness,
+                bowing,
+                simplification,
+              });
+            } else {
+              addLine(canvasId, opts);
+            }
+          } else if (entity.has(Rect)) {
+            const { x, y, width, height, cornerRadius } = entity.read(Rect);
+            const opts: Record<string, unknown> = {
+              ...baseOpts,
+              x,
+              y,
+              width,
+              height,
+              radius: cornerRadius ?? 0,
+            };
+            if (entity.has(FillGradient)) {
+              const grads = buildFillGradients(entity.read(FillGradient).value, [x, y], width, height);
+              if (grads.length) opts.fillGradients = grads;
+            }
+            if (entity.has(FillImage)) {
+              const fillImage = entity.read(FillImage);
+              const imageData = imageToRgba(fillImage.src);
+              if (imageData) {
+                addImageRect(canvasId, {
+                  ...opts,
+                  imageWidth: imageData.width,
+                  imageHeight: imageData.height,
+                  imageData: imageData.data,
+                });
+              }
+            } else if (entity.has(Rough)) { 
+              const { roughness, bowing, fillStyle, hachureAngle, hachureGap, curveStepCount, simplification } = entity.read(Rough);
+              addRoughRect(canvasId, {
+                ...opts,
+                roughness,
+                bowing,
+                fillStyle,
+                hachureAngle,
+                hachureGap,
+                curveStepCount,
+                simplification,
+              });
+            } else {
+              addRect(canvasId, opts);
+            }
+          } else if (entity.has(Path)) {
+            const { d, fillRule } = entity.read(Path);
+            if (d) {
+              const opts: Record<string, unknown> = {
+                ...baseOpts,
+                d,
+                fillRule: fillRule ?? 'nonzero',
+              };
+              if (entity.has(FillGradient) && entity.has(ComputedBounds)) {
+                const { minX, minY, maxX, maxY } = entity.read(ComputedBounds).geometryBounds;
+                const grads = buildFillGradients(
+                  entity.read(FillGradient).value,
+                  [minX, minY],
+                  maxX - minX,
+                  maxY - minY,
+                );
+                if (grads.length) opts.fillGradients = grads;
+              }
+              addPath(canvasId, opts);
+            }
+          } else if (entity.has(Polyline)) {
+            const { points } = entity.read(Polyline);
+            if (points && points.length >= 2) {
+              const opts: Record<string, unknown> = {
+                ...baseOpts,
+                points,
+              };
+              addPolyline(canvasId, opts);
+            }
+          } else if (entity.has(Text)) {
+            const { content, fontSize, fontFamily, anchorX, anchorY } = entity.read(Text);
+            const opts: Record<string, unknown> = {
+              ...baseOpts,
+              content,
+              fontSize,
+              fontFamily,
+              anchorX,
+              anchorY,
+            };
+            addText(canvasId, opts);
+          }
+        } else {
+          // Group
+          addGroup(canvasId, baseOpts);
         }
       });
-      this.pendingRenderables.delete(camera);
-    }
+    this.pendingRenderables.delete(camera);
   }
 
   execute() {
@@ -287,8 +604,6 @@ export class VelloPipeline extends System {
       ...this.culleds.removed,
     ]).forEach((entity) => {
       const camera = getSceneRoot(entity);
-
-      // TODO: batchable
 
       if (this.renderables.added.includes(entity)) {
         safeAddComponent(entity, GeometryDirty);
@@ -399,8 +714,5 @@ export class VelloPipeline extends System {
         }
       });
     });
-  }
-
-  finalize() {
   }
 }

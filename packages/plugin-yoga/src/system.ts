@@ -127,13 +127,16 @@ export class YogaSystem extends System {
 
       const { api } = camera.read(Camera).canvas.read(Canvas);
       const styleTree = this.styleTrees.get(cameraId);
-      camera.read(Parent).children.filter((child) => !child.has(UI)).forEach((child) => {
-        addFlexSubtrees(api, child, styleTree);
-      });
 
-      process(Yoga, styleTree, (results) => {
-        this.updateCameraLayout(cameraId, results);
-      });
+      if (camera.has(Parent)) {
+        camera.read(Parent).children.filter((child) => !child.has(UI)).forEach((child) => {
+          addFlexSubtrees(api, child, styleTree);
+        });
+
+        process(Yoga, styleTree, (results) => {
+          this.updateCameraLayout(cameraId, results);
+        });
+      }
     });
 
     const cameras = new Set<Entity>();

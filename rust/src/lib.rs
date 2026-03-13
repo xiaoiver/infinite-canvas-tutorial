@@ -1,7 +1,7 @@
 //! Vello 2D GPU 渲染层：桌面与 wasm 共用逻辑。
 //! Reference: [Graphite](https://github.com/GraphiteEditor/Graphite), [Vello](https://github.com/linebender/vello).
-
-mod multi_touch;
+//!
+//! 相机 transform 完全由 JS 侧通过 setCameraTransform 同步，Rust 不再监听 Mouse/Cursor/Touch 事件。
 
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
@@ -14,21 +14,148 @@ use std::cell::RefCell;
 #[cfg(target_arch = "wasm32")]
 use std::collections::HashMap;
 use std::sync::Arc;
-use vello::kurbo::{Affine, Circle, Line, Point, RoundedRect, Stroke, Vec2};
+use vello::kurbo::{Affine, BezPath, Cap, Ellipse, Join, Line, PathEl, Point, Rect, RoundedRect, Shape, Stroke, Vec2};
+
+// roughr 用于手绘风格渲染
+#[cfg(target_arch = "wasm32")]
+use roughr::{core::Options, generator::Generator};
 use vello::peniko::color::palette;
-use vello::peniko::{Color, Fill};
+use vello::peniko::{Blob, Color, ColorStop, Fill, Gradient, ImageAlphaType, ImageBrush, ImageData, ImageFormat};
 use vello::util::{RenderContext, RenderSurface};
 use vello::wgpu;
 use vello::{AaConfig, Renderer, RendererOptions, Scene};
 use winit::application::ApplicationHandler;
 use winit::dpi::LogicalSize;
-use winit::event::{ElementState, MouseButton, MouseScrollDelta, WindowEvent};
+use winit::event::WindowEvent;
 use winit::event_loop::{ActiveEventLoop, EventLoop};
 use winit::window::Window;
 
 // ---------- JS API：由 JS 添加的图形，每帧从 thread_local 读取并绘制 ----------
 
+/// ECS Mat3 的 9 个分量 (m00, m01, m02, m10, m11, m12, m20, m21, m22)。
+pub type Mat3Array = [f64; 9];
+
+/// 渐变色阶，offset 0–1，color 为 RGBA。
+#[cfg(target_arch = "wasm32")]
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FillGradientStopOptions {
+    pub offset: f32,
+    pub color: [f32; 4],
+}
+
+/// 渐变填充选项，由 JS 解析 CSS 渐变后传入。
+#[cfg(target_arch = "wasm32")]
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FillGradientOptions {
+    /// "linear" | "radial" | "conic"
+    pub r#type: String,
+    /// 线性渐变起点
+    #[serde(default)]
+    pub x1: f64,
+    #[serde(default)]
+    pub y1: f64,
+    /// 线性渐变终点
+    #[serde(default)]
+    pub x2: f64,
+    #[serde(default)]
+    pub y2: f64,
+    /// 径向/圆锥渐变中心
+    #[serde(default)]
+    pub cx: f64,
+    #[serde(default)]
+    pub cy: f64,
+    /// 径向渐变半径
+    #[serde(default)]
+    pub r: f64,
+    /// 圆锥渐变角度（弧度），start_angle 到 end_angle
+    #[serde(default)]
+    pub start_angle: f64,
+    #[serde(default)]
+    pub end_angle: f64,
+    pub stops: Vec<FillGradientStopOptions>,
+}
+
+/// 描边属性，用于 linecap/linejoin 等。
+#[derive(Clone, Debug)]
+pub struct StrokeParams {
+    pub width: f64,
+    pub color: [f32; 4],
+    pub linecap: String,
+    pub linejoin: String,
+    pub miter_limit: f64,
+    pub stroke_dasharray: Option<Vec<f64>>,
+    pub stroke_dashoffset: f64,
+}
+
+impl StrokeParams {
+    fn to_kurbo_stroke(&self) -> Stroke {
+        let cap = match self.linecap.as_str() {
+            "round" => Cap::Round,
+            "square" => Cap::Square,
+            _ => Cap::Butt,
+        };
+        let join = match self.linejoin.as_str() {
+            "round" => Join::Round,
+            "bevel" => Join::Bevel,
+            _ => Join::Miter,
+        };
+        let mut stroke = Stroke::new(self.width)
+            .with_caps(cap)
+            .with_join(join)
+            .with_miter_limit(self.miter_limit);
+        // 添加虚线支持
+        if let Some(ref dasharray) = self.stroke_dasharray {
+            if dasharray.len() >= 2 {
+                stroke = stroke.with_dashes(self.stroke_dashoffset, dasharray.clone());
+            }
+        }
+        stroke
+    }
+    fn to_kurbo_stroke_with_width(&self, width: f64) -> Stroke {
+        let cap = match self.linecap.as_str() {
+            "round" => Cap::Round,
+            "square" => Cap::Square,
+            _ => Cap::Butt,
+        };
+        let join = match self.linejoin.as_str() {
+            "round" => Join::Round,
+            "bevel" => Join::Bevel,
+            _ => Join::Miter,
+        };
+        let mut stroke = Stroke::new(width)
+            .with_caps(cap)
+            .with_join(join)
+            .with_miter_limit(self.miter_limit);
+        // 添加虚线支持
+        if let Some(ref dasharray) = self.stroke_dasharray {
+            if dasharray.len() >= 2 {
+                stroke = stroke.with_dashes(self.stroke_dashoffset, dasharray.clone());
+            }
+        }
+        stroke
+    }
+}
+
+/// 渐变填充规格（与 wasm Options 解耦，供 add_js_shape_to_scene 使用）。
+#[derive(Clone, Debug)]
+pub struct FillGradientSpec {
+    pub kind: String,
+    pub x1: f64,
+    pub y1: f64,
+    pub x2: f64,
+    pub y2: f64,
+    pub cx: f64,
+    pub cy: f64,
+    pub r: f64,
+    pub start_angle: f64,
+    pub end_angle: f64,
+    pub stops: Vec<(f32, [f32; 4])>,
+}
+
 /// JS 可创建的图形类型。坐标为其父节点局部空间（无 parentId 则为世界坐标）。
+/// 可选 local_transform：将局部坐标变换到父空间；无则等价于 translate(x,y)。
 #[derive(Clone, Debug)]
 pub enum JsShape {
     Rect {
@@ -41,17 +168,32 @@ pub enum JsShape {
         height: f64,
         radius: f64,
         fill: [f32; 4],
-        stroke: Option<(f64, [f32; 4])>,
+        fill_gradients: Option<Vec<FillGradientSpec>>,
+        stroke: Option<StrokeParams>,
+        opacity: f32,
+        fill_opacity: f32,
+        stroke_opacity: f32,
+        local_transform: Option<Mat3Array>,
+        size_attenuation: bool,
+        stroke_attenuation: bool,
     },
-    Circle {
+    Ellipse {
         id: String,
         parent_id: Option<String>,
         z_index: i32,
         cx: f64,
         cy: f64,
-        r: f64,
+        rx: f64,
+        ry: f64,
         fill: [f32; 4],
-        stroke: Option<(f64, [f32; 4])>,
+        fill_gradients: Option<Vec<FillGradientSpec>>,
+        stroke: Option<StrokeParams>,
+        opacity: f32,
+        fill_opacity: f32,
+        stroke_opacity: f32,
+        local_transform: Option<Mat3Array>,
+        size_attenuation: bool,
+        stroke_attenuation: bool,
     },
     Line {
         id: String,
@@ -61,8 +203,12 @@ pub enum JsShape {
         y1: f64,
         x2: f64,
         y2: f64,
-        stroke_width: f64,
-        color: [f32; 4],
+        stroke: StrokeParams,
+        opacity: f32,
+        stroke_opacity: f32,
+        local_transform: Option<Mat3Array>,
+        size_attenuation: bool,
+        stroke_attenuation: bool,
     },
     /// 文本，属性对齐 ecs TextAttributes / TextSerializedNode
     Text {
@@ -88,6 +234,140 @@ pub enum JsShape {
         text_baseline: String,
         leading: f64,
         fill: [f32; 4],
+        opacity: f32,
+        fill_opacity: f32,
+        stroke_opacity: f32,
+        local_transform: Option<Mat3Array>,
+        size_attenuation: bool,
+    },
+    /// 图片填充的矩形，image_data 为 RGBA 像素数据。
+    ImageRect {
+        id: String,
+        parent_id: Option<String>,
+        z_index: i32,
+        x: f64,
+        y: f64,
+        width: f64,
+        height: f64,
+        radius: f64,
+        image_width: u32,
+        image_height: u32,
+        image_data: Vec<u8>,
+        stroke: Option<StrokeParams>,
+        opacity: f32,
+        fill_opacity: f32,
+        stroke_opacity: f32,
+        local_transform: Option<Mat3Array>,
+        size_attenuation: bool,
+        stroke_attenuation: bool,
+    },
+    /// SVG path，d 为 path 的 d 属性（如 "M 10 10 L 100 100 Z"）。
+    Path {
+        id: String,
+        parent_id: Option<String>,
+        z_index: i32,
+        d: String,
+        fill: [f32; 4],
+        fill_gradients: Option<Vec<FillGradientSpec>>,
+        stroke: Option<StrokeParams>,
+        fill_rule: String,
+        opacity: f32,
+        fill_opacity: f32,
+        stroke_opacity: f32,
+        local_transform: Option<Mat3Array>,
+        size_attenuation: bool,
+        stroke_attenuation: bool,
+    },
+    /// 折线，points 为 [[x,y],[x,y],...]。
+    Polyline {
+        id: String,
+        parent_id: Option<String>,
+        z_index: i32,
+        points: Vec<[f64; 2]>,
+        stroke: Option<StrokeParams>,
+        opacity: f32,
+        fill_opacity: f32,
+        stroke_opacity: f32,
+        local_transform: Option<Mat3Array>,
+        size_attenuation: bool,
+        stroke_attenuation: bool,
+    },
+    /// 组/容器，用于组织子元素。本身没有可见内容，只提供变换和层级。
+    Group {
+        id: String,
+        parent_id: Option<String>,
+        z_index: i32,
+        local_transform: Option<Mat3Array>,
+    },
+    /// 手绘风格矩形。
+    RoughRect {
+        id: String,
+        parent_id: Option<String>,
+        z_index: i32,
+        x: f64,
+        y: f64,
+        width: f64,
+        height: f64,
+        fill: [f32; 4],
+        stroke: Option<StrokeParams>,
+        opacity: f32,
+        fill_opacity: f32,
+        stroke_opacity: f32,
+        local_transform: Option<Mat3Array>,
+        /// roughness 参数：0 = 完美矩形，1 = 默认手绘风格，>1 = 更粗糙
+        roughness: f32,
+        /// bowing 参数：线条弯曲程度
+        bowing: f32,
+        /// 填充样式：hachure, solid, zigzag, cross-hatch, dots, dashed, zigzag-line
+        fill_style: String,
+        /// hachure 角度（度）
+        hachure_angle: f32,
+        /// hachure 间隙
+        hachure_gap: f32,
+        /// 曲线步数
+        curve_step_count: f32,
+        /// 简化程度
+        simplification: f32,
+    },
+    /// 手绘风格椭圆/圆。
+    RoughEllipse {
+        id: String,
+        parent_id: Option<String>,
+        z_index: i32,
+        cx: f64,
+        cy: f64,
+        rx: f64,
+        ry: f64,
+        fill: [f32; 4],
+        stroke: Option<StrokeParams>,
+        opacity: f32,
+        fill_opacity: f32,
+        stroke_opacity: f32,
+        local_transform: Option<Mat3Array>,
+        roughness: f32,
+        bowing: f32,
+        fill_style: String,
+        hachure_angle: f32,
+        hachure_gap: f32,
+        curve_step_count: f32,
+        simplification: f32,
+    },
+    /// 手绘风格线段。
+    RoughLine {
+        id: String,
+        parent_id: Option<String>,
+        z_index: i32,
+        x1: f64,
+        y1: f64,
+        x2: f64,
+        y2: f64,
+        stroke: StrokeParams,
+        opacity: f32,
+        stroke_opacity: f32,
+        local_transform: Option<Mat3Array>,
+        roughness: f32,
+        bowing: f32,
+        simplification: f32,
     },
 }
 
@@ -95,26 +375,33 @@ pub enum JsShape {
 impl JsShape {
     fn id(&self) -> &str {
         match self {
-            JsShape::Rect { id, .. } | JsShape::Circle { id, .. } | JsShape::Line { id, .. } | JsShape::Text { id, .. } => id,
+            JsShape::Rect { id, .. } | JsShape::Ellipse { id, .. } | JsShape::Line { id, .. } | JsShape::Text { id, .. } | JsShape::ImageRect { id, .. } | JsShape::Path { id, .. } | JsShape::Polyline { id, .. } | JsShape::Group { id, .. } | JsShape::RoughRect { id, .. } | JsShape::RoughEllipse { id, .. } | JsShape::RoughLine { id, .. } => id,
         }
     }
     fn parent_id(&self) -> Option<&str> {
         match self {
-            JsShape::Rect { parent_id, .. } | JsShape::Circle { parent_id, .. } | JsShape::Line { parent_id, .. } | JsShape::Text { parent_id, .. } => parent_id.as_deref(),
+            JsShape::Rect { parent_id, .. } | JsShape::Ellipse { parent_id, .. } | JsShape::Line { parent_id, .. } | JsShape::Text { parent_id, .. } | JsShape::ImageRect { parent_id, .. } | JsShape::Path { parent_id, .. } | JsShape::Polyline { parent_id, .. } | JsShape::Group { parent_id, .. } | JsShape::RoughRect { parent_id, .. } | JsShape::RoughEllipse { parent_id, .. } | JsShape::RoughLine { parent_id, .. } => parent_id.as_deref(),
         }
     }
     fn z_index(&self) -> i32 {
         match self {
-            JsShape::Rect { z_index, .. } | JsShape::Circle { z_index, .. } | JsShape::Line { z_index, .. } | JsShape::Text { z_index, .. } => *z_index,
+            JsShape::Rect { z_index, .. } | JsShape::Ellipse { z_index, .. } | JsShape::Line { z_index, .. } | JsShape::Text { z_index, .. } | JsShape::ImageRect { z_index, .. } | JsShape::Path { z_index, .. } | JsShape::Polyline { z_index, .. } | JsShape::Group { z_index, .. } | JsShape::RoughRect { z_index, .. } | JsShape::RoughEllipse { z_index, .. } | JsShape::RoughLine { z_index, .. } => *z_index,
         }
     }
-    /// 局部坐标系下的“原点”（用于计算相对父节点的偏移）。
+    /// 若存在则返回 local_transform（ECS Mat3 格式）。
+    fn local_transform(&self) -> Option<&Mat3Array> {
+        match self {
+            JsShape::Rect { local_transform, .. } | JsShape::Ellipse { local_transform, .. } | JsShape::Line { local_transform, .. } | JsShape::Text { local_transform, .. } | JsShape::ImageRect { local_transform, .. } | JsShape::Path { local_transform, .. } | JsShape::Polyline { local_transform, .. } | JsShape::Group { local_transform, .. } | JsShape::RoughRect { local_transform, .. } | JsShape::RoughEllipse { local_transform, .. } | JsShape::RoughLine { local_transform, .. } => local_transform.as_ref(),
+        }
+    }
+    /// 局部坐标系下的"原点"（用于计算相对父节点的偏移）。
     fn local_origin(&self) -> Point {
         match self {
-            JsShape::Rect { x, y, .. } => Point::new(*x, *y),
-            JsShape::Circle { cx, cy, .. } => Point::new(*cx, *cy),
-            JsShape::Line { x1, y1, .. } => Point::new(*x1, *y1),
+            JsShape::Rect { x, y, .. } | JsShape::ImageRect { x, y, .. } | JsShape::RoughRect { x, y, .. } => Point::new(*x, *y),
+            JsShape::Ellipse { cx, cy, .. } | JsShape::RoughEllipse { cx, cy, .. } => Point::new(*cx, *cy),
+            JsShape::Line { x1, y1, .. } | JsShape::RoughLine { x1, y1, .. } => Point::new(*x1, *y1),
             JsShape::Text { anchor_x, anchor_y, .. } => Point::new(*anchor_x, *anchor_y),
+            JsShape::Path { .. } | JsShape::Polyline { .. } | JsShape::Group { .. } => Point::ORIGIN,
         }
     }
 }
@@ -126,6 +413,10 @@ thread_local! {
     static NEXT_CANVAS_ID: RefCell<u32> = RefCell::new(0);
     /// 默认字体 TTF/OTF 字节，由 registerDefaultFont 设置后才能渲染文本。
     static FONT_BYTES: RefCell<Option<Vec<u8>>> = RefCell::new(None);
+    /// 待应用的相机变换，由 setCameraTransform 设置，下一帧渲染前应用。
+    static CAMERA_TRANSFORM_PENDING: RefCell<HashMap<u32, Affine>> = RefCell::new(HashMap::new());
+    /// canvas_id -> Window，用于 requestRedraw 由 JS 触发重绘。
+    static CANVAS_WINDOWS: RefCell<HashMap<u32, Arc<Window>>> = RefCell::new(HashMap::new());
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -149,6 +440,16 @@ fn clear_shapes_for_canvas(canvas_id: u32) {
     });
 }
 
+#[cfg(target_arch = "wasm32")]
+fn take_pending_camera_transform(canvas_id: Option<u32>) -> Option<Affine> {
+    canvas_id.and_then(|cid| CAMERA_TRANSFORM_PENDING.with(|c| c.borrow_mut().remove(&cid)))
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn take_pending_camera_transform(_canvas_id: Option<u32>) -> Option<Affine> {
+    None
+}
+
 /// JS 传入的选项对象（仅 wasm，用于对象格式 API）
 #[cfg(target_arch = "wasm32")]
 #[derive(Debug, Deserialize)]
@@ -164,18 +465,33 @@ pub struct RectOptions {
     pub y: f64,
     pub width: f64,
     pub height: f64,
-    #[serde(default)]
     pub radius: f64,
     #[serde(default = "default_rgba_fill")]
     pub fill: [f32; 4],
     #[serde(default)]
+    pub fill_gradient: Option<FillGradientOptions>,
+    #[serde(default)]
+    pub fill_gradients: Option<Vec<FillGradientOptions>>,
+    #[serde(default)]
     pub stroke: Option<StrokeOptions>,
+    #[serde(default = "default_opacity")]
+    pub opacity: f32,
+    #[serde(default = "default_opacity")]
+    pub fill_opacity: f32,
+    #[serde(default = "default_opacity")]
+    pub stroke_opacity: f32,
+    #[serde(default, deserialize_with = "deserialize_mat3_opt")]
+    pub local_transform: Option<Mat3Array>,
+    #[serde(default)]
+    pub size_attenuation: bool,
+    #[serde(default)]
+    pub stroke_attenuation: bool,
 }
 
 #[cfg(target_arch = "wasm32")]
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct CircleOptions {
+pub struct EllipseOptions {
     #[serde(deserialize_with = "deserialize_id")]
     pub id: String,
     #[serde(default, deserialize_with = "deserialize_parent_id")]
@@ -184,11 +500,28 @@ pub struct CircleOptions {
     pub z_index: i32,
     pub cx: f64,
     pub cy: f64,
-    pub r: f64,
+    pub rx: f64,
+    pub ry: f64,
     #[serde(default = "default_rgba_fill")]
     pub fill: [f32; 4],
     #[serde(default)]
+    pub fill_gradient: Option<FillGradientOptions>,
+    #[serde(default)]
+    pub fill_gradients: Option<Vec<FillGradientOptions>>,
+    #[serde(default)]
     pub stroke: Option<StrokeOptions>,
+    #[serde(default = "default_opacity")]
+    pub opacity: f32,
+    #[serde(default = "default_opacity")]
+    pub fill_opacity: f32,
+    #[serde(default = "default_opacity")]
+    pub stroke_opacity: f32,
+    #[serde(default, deserialize_with = "deserialize_mat3_opt")]
+    pub local_transform: Option<Mat3Array>,
+    #[serde(default)]
+    pub size_attenuation: bool,
+    #[serde(default)]
+    pub stroke_attenuation: bool,
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -205,10 +538,18 @@ pub struct LineOptions {
     pub y1: f64,
     pub x2: f64,
     pub y2: f64,
-    #[serde(default = "default_stroke_width")]
-    pub stroke_width: f64,
-    #[serde(default = "default_rgba_stroke")]
-    pub color: [f32; 4],
+    #[serde(default)]
+    pub stroke: Option<StrokeOptions>,
+    #[serde(default = "default_opacity")]
+    pub opacity: f32,
+    #[serde(default = "default_opacity")]
+    pub stroke_opacity: f32,
+    #[serde(default, deserialize_with = "deserialize_mat3_opt")]
+    pub local_transform: Option<Mat3Array>,
+    #[serde(default)]
+    pub size_attenuation: bool,
+    #[serde(default)]
+    pub stroke_attenuation: bool,
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -218,6 +559,334 @@ pub struct StrokeOptions {
     pub width: f64,
     #[serde(default = "default_rgba_stroke")]
     pub color: [f32; 4],
+    #[serde(default = "default_linecap")]
+    pub linecap: String,
+    #[serde(default = "default_linejoin")]
+    pub linejoin: String,
+    #[serde(default = "default_miter_limit")]
+    pub miter_limit: f64,
+    #[serde(rename = "dasharray", default)]
+    pub stroke_dasharray: Option<Vec<f64>>,
+    #[serde(rename = "dashoffset", default)]
+    pub stroke_dashoffset: f64,
+}
+
+#[cfg(target_arch = "wasm32")]
+fn default_linecap() -> String {
+    "butt".to_string()
+}
+#[cfg(target_arch = "wasm32")]
+fn default_linejoin() -> String {
+    "miter".to_string()
+}
+#[cfg(target_arch = "wasm32")]
+fn default_miter_limit() -> f64 {
+    4.0
+}
+
+/// 图片矩形选项。imageData 需由 JS 通过 Uint8Array 传入 RGBA 像素数据。
+#[cfg(target_arch = "wasm32")]
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ImageRectOptions {
+    #[serde(deserialize_with = "deserialize_id")]
+    pub id: String,
+    #[serde(default, deserialize_with = "deserialize_parent_id")]
+    pub parent_id: Option<String>,
+    #[serde(default)]
+    pub z_index: i32,
+    pub x: f64,
+    pub y: f64,
+    pub width: f64,
+    pub height: f64,
+    pub radius: f64,
+    pub image_width: u32,
+    pub image_height: u32,
+    #[serde(default)]
+    pub stroke: Option<StrokeOptions>,
+    #[serde(default = "default_opacity")]
+    pub opacity: f32,
+    #[serde(default = "default_opacity")]
+    pub fill_opacity: f32,
+    #[serde(default = "default_opacity")]
+    pub stroke_opacity: f32,
+    #[serde(default, deserialize_with = "deserialize_mat3_opt")]
+    pub local_transform: Option<Mat3Array>,
+    #[serde(default)]
+    pub size_attenuation: bool,
+    #[serde(default)]
+    pub stroke_attenuation: bool,
+}
+
+/// Path 选项。d 为 SVG path 的 d 属性。
+#[cfg(target_arch = "wasm32")]
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PathOptions {
+    #[serde(deserialize_with = "deserialize_id")]
+    pub id: String,
+    #[serde(default, deserialize_with = "deserialize_parent_id")]
+    pub parent_id: Option<String>,
+    #[serde(default)]
+    pub z_index: i32,
+    pub d: String,
+    #[serde(default = "default_rgba_fill")]
+    pub fill: [f32; 4],
+    #[serde(default)]
+    pub fill_gradient: Option<FillGradientOptions>,
+    #[serde(default)]
+    pub fill_gradients: Option<Vec<FillGradientOptions>>,
+    #[serde(default)]
+    pub stroke: Option<StrokeOptions>,
+    #[serde(default = "default_fill_rule")]
+    pub fill_rule: String,
+    #[serde(default = "default_opacity")]
+    pub opacity: f32,
+    #[serde(default = "default_opacity")]
+    pub fill_opacity: f32,
+    #[serde(default = "default_opacity")]
+    pub stroke_opacity: f32,
+    #[serde(default, deserialize_with = "deserialize_mat3_opt")]
+    pub local_transform: Option<Mat3Array>,
+    #[serde(default)]
+    pub size_attenuation: bool,
+    #[serde(default)]
+    pub stroke_attenuation: bool,
+}
+
+#[cfg(target_arch = "wasm32")]
+fn default_fill_rule() -> String {
+    "nonzero".to_string()
+}
+
+/// Polyline 选项。points 为 [[x,y],[x,y],...]。
+#[cfg(target_arch = "wasm32")]
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PolylineOptions {
+    #[serde(deserialize_with = "deserialize_id")]
+    pub id: String,
+    #[serde(default, deserialize_with = "deserialize_parent_id")]
+    pub parent_id: Option<String>,
+    #[serde(default)]
+    pub z_index: i32,
+    pub points: Vec<[f64; 2]>,
+    #[serde(default)]
+    pub stroke: Option<StrokeOptions>,
+    #[serde(default = "default_opacity")]
+    pub opacity: f32,
+    #[serde(default = "default_opacity")]
+    pub fill_opacity: f32,
+    #[serde(default = "default_opacity")]
+    pub stroke_opacity: f32,
+    #[serde(default, deserialize_with = "deserialize_mat3_opt")]
+    pub local_transform: Option<Mat3Array>,
+    #[serde(default)]
+    pub size_attenuation: bool,
+    #[serde(default)]
+    pub stroke_attenuation: bool,
+}
+
+/// Group 选项。用于创建组/容器，组织子元素。
+#[cfg(target_arch = "wasm32")]
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GroupOptions {
+    #[serde(deserialize_with = "deserialize_id")]
+    pub id: String,
+    #[serde(default, deserialize_with = "deserialize_parent_id")]
+    pub parent_id: Option<String>,
+    #[serde(default)]
+    pub z_index: i32,
+    #[serde(default, deserialize_with = "deserialize_mat3_opt")]
+    pub local_transform: Option<Mat3Array>,
+}
+
+/// Rough 填充样式。
+#[cfg(target_arch = "wasm32")]
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum RoughFillStyle {
+    Hachure,
+    Solid,
+    Zigzag,
+    #[serde(rename = "cross-hatch")]
+    CrossHatch,
+    Dots,
+    Dashed,
+    #[serde(rename = "zigzag-line")]
+    ZigzagLine,
+}
+
+#[cfg(target_arch = "wasm32")]
+impl Default for RoughFillStyle {
+    fn default() -> Self {
+        RoughFillStyle::Hachure
+    }
+}
+
+#[cfg(target_arch = "wasm32")]
+impl RoughFillStyle {
+    fn as_str(&self) -> &'static str {
+        match self {
+            RoughFillStyle::Hachure => "hachure",
+            RoughFillStyle::Solid => "solid",
+            RoughFillStyle::Zigzag => "zigzag",
+            RoughFillStyle::CrossHatch => "cross-hatch",
+            RoughFillStyle::Dots => "dots",
+            RoughFillStyle::Dashed => "dashed",
+            RoughFillStyle::ZigzagLine => "zigzag-line",
+        }
+    }
+}
+
+/// RoughRect 选项。手绘风格矩形。
+#[cfg(target_arch = "wasm32")]
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RoughRectOptions {
+    #[serde(deserialize_with = "deserialize_id")]
+    pub id: String,
+    #[serde(default, deserialize_with = "deserialize_parent_id")]
+    pub parent_id: Option<String>,
+    #[serde(default)]
+    pub z_index: i32,
+    pub x: f64,
+    pub y: f64,
+    pub width: f64,
+    pub height: f64,
+    #[serde(default = "default_rgba_fill")]
+    pub fill: [f32; 4],
+    #[serde(default)]
+    pub stroke: Option<StrokeOptions>,
+    #[serde(default = "default_opacity")]
+    pub opacity: f32,
+    #[serde(default = "default_opacity")]
+    pub fill_opacity: f32,
+    #[serde(default = "default_opacity")]
+    pub stroke_opacity: f32,
+    #[serde(default, deserialize_with = "deserialize_mat3_opt")]
+    pub local_transform: Option<Mat3Array>,
+    /// roughness 参数：0 = 完美矩形，1 = 默认手绘风格，>1 = 更粗糙
+    #[serde(default = "default_roughness")]
+    pub roughness: f32,
+    /// bowing 参数：线条弯曲程度
+    #[serde(default = "default_bowing")]
+    pub bowing: f32,
+    /// 填充样式
+    #[serde(default)]
+    pub fill_style: RoughFillStyle,
+    /// hachure 角度（度）
+    #[serde(default = "default_hachure_angle")]
+    pub hachure_angle: f32,
+    /// hachure 间隙
+    #[serde(default = "default_hachure_gap")]
+    pub hachure_gap: f32,
+    /// 曲线步数
+    #[serde(default = "default_curve_step_count")]
+    pub curve_step_count: f32,
+    /// 简化程度
+    #[serde(default)]
+    pub simplification: f32,
+}
+
+/// RoughEllipse 选项。手绘风格椭圆/圆。
+#[cfg(target_arch = "wasm32")]
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RoughEllipseOptions {
+    #[serde(deserialize_with = "deserialize_id")]
+    pub id: String,
+    #[serde(default, deserialize_with = "deserialize_parent_id")]
+    pub parent_id: Option<String>,
+    #[serde(default)]
+    pub z_index: i32,
+    pub cx: f64,
+    pub cy: f64,
+    pub rx: f64,
+    pub ry: f64,
+    #[serde(default = "default_rgba_fill")]
+    pub fill: [f32; 4],
+    #[serde(default)]
+    pub stroke: Option<StrokeOptions>,
+    #[serde(default = "default_opacity")]
+    pub opacity: f32,
+    #[serde(default = "default_opacity")]
+    pub fill_opacity: f32,
+    #[serde(default = "default_opacity")]
+    pub stroke_opacity: f32,
+    #[serde(default, deserialize_with = "deserialize_mat3_opt")]
+    pub local_transform: Option<Mat3Array>,
+    #[serde(default = "default_roughness")]
+    pub roughness: f32,
+    #[serde(default = "default_bowing")]
+    pub bowing: f32,
+    #[serde(default)]
+    pub fill_style: RoughFillStyle,
+    #[serde(default = "default_hachure_angle")]
+    pub hachure_angle: f32,
+    #[serde(default = "default_hachure_gap")]
+    pub hachure_gap: f32,
+    #[serde(default = "default_curve_step_count")]
+    pub curve_step_count: f32,
+    #[serde(default)]
+    pub simplification: f32,
+}
+
+/// RoughLine 选项。手绘风格线段。
+#[cfg(target_arch = "wasm32")]
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RoughLineOptions {
+    #[serde(deserialize_with = "deserialize_id")]
+    pub id: String,
+    #[serde(default, deserialize_with = "deserialize_parent_id")]
+    pub parent_id: Option<String>,
+    #[serde(default)]
+    pub z_index: i32,
+    pub x1: f64,
+    pub y1: f64,
+    pub x2: f64,
+    pub y2: f64,
+    #[serde(default)]
+    pub stroke: Option<StrokeOptions>,
+    #[serde(default = "default_opacity")]
+    pub opacity: f32,
+    #[serde(default = "default_opacity")]
+    pub stroke_opacity: f32,
+    #[serde(default, deserialize_with = "deserialize_mat3_opt")]
+    pub local_transform: Option<Mat3Array>,
+    #[serde(default = "default_roughness")]
+    pub roughness: f32,
+    #[serde(default = "default_bowing")]
+    pub bowing: f32,
+    #[serde(default)]
+    pub simplification: f32,
+}
+
+#[cfg(target_arch = "wasm32")]
+fn default_roughness() -> f32 {
+    1.0
+}
+
+#[cfg(target_arch = "wasm32")]
+fn default_bowing() -> f32 {
+    1.0
+}
+
+#[cfg(target_arch = "wasm32")]
+fn default_hachure_angle() -> f32 {
+    -41.0
+}
+
+#[cfg(target_arch = "wasm32")]
+fn default_hachure_gap() -> f32 {
+    4.0
+}
+
+#[cfg(target_arch = "wasm32")]
+fn default_curve_step_count() -> f32 {
+    9.0
 }
 
 /// 文本选项，对齐 ecs TextAttributes / TextSerializedNode（不含 bitmapFont / physical / esdt）
@@ -269,6 +938,16 @@ pub struct TextOptions {
     pub leading: f64,
     #[serde(default = "default_rgba_fill")]
     pub fill: [f32; 4],
+    #[serde(default = "default_opacity")]
+    pub opacity: f32,
+    #[serde(default = "default_opacity")]
+    pub fill_opacity: f32,
+    #[serde(default = "default_opacity")]
+    pub stroke_opacity: f32,
+    #[serde(default, deserialize_with = "deserialize_mat3_opt")]
+    pub local_transform: Option<Mat3Array>,
+    #[serde(default)]
+    pub size_attenuation: bool,
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -323,8 +1002,63 @@ fn default_rgba_stroke() -> [f32; 4] {
 }
 
 #[cfg(target_arch = "wasm32")]
-fn default_stroke_width() -> f64 {
+fn default_opacity() -> f32 {
     1.0
+}
+
+#[cfg(target_arch = "wasm32")]
+fn fill_gradient_options_to_spec(o: &FillGradientOptions) -> FillGradientSpec {
+    FillGradientSpec {
+        kind: o.r#type.clone(),
+        x1: o.x1,
+        y1: o.y1,
+        x2: o.x2,
+        y2: o.y2,
+        cx: o.cx,
+        cy: o.cy,
+        r: o.r,
+        start_angle: o.start_angle,
+        end_angle: o.end_angle,
+        stops: o.stops.iter().map(|s| (s.offset, s.color)).collect(),
+    }
+}
+
+#[cfg(target_arch = "wasm32")]
+fn resolve_fill_gradients(
+    fill_gradient: &Option<FillGradientOptions>,
+    fill_gradients: &Option<Vec<FillGradientOptions>>,
+) -> Option<Vec<FillGradientSpec>> {
+    if let Some(ref grads) = fill_gradients {
+        if !grads.is_empty() {
+            return Some(grads.iter().map(fill_gradient_options_to_spec).collect());
+        }
+    }
+    fill_gradient.as_ref().map(|g| vec![fill_gradient_options_to_spec(g)])
+}
+
+/// 将 FillGradientSpec 转为 peniko Gradient，用于 scene.fill。
+/// fill_opacity_mult 为 opacity * fill_opacity，用于乘到每个 stop 的 alpha 上。
+#[cfg(target_arch = "wasm32")]
+fn build_gradient_brush(spec: &FillGradientSpec, fill_opacity_mult: f32) -> Gradient {
+    let stops: Vec<ColorStop> = spec
+        .stops
+        .iter()
+        .map(|(offset, color)| {
+            let c = apply_opacity_to_color(*color, fill_opacity_mult, 1.0);
+            ColorStop::from((*offset, Color::new(c)))
+        })
+        .collect();
+    let gradient = match spec.kind.as_str() {
+        "linear" => Gradient::new_linear((spec.x1, spec.y1), (spec.x2, spec.y2)),
+        "radial" => Gradient::new_radial((spec.cx, spec.cy), spec.r as f32),
+        "conic" => Gradient::new_sweep(
+            (spec.cx, spec.cy),
+            spec.start_angle as f32,
+            spec.end_angle as f32,
+        ),
+        _ => Gradient::new_linear((spec.x1, spec.y1), (spec.x2, spec.y2)),
+    };
+    gradient.with_stops(stops.as_slice())
 }
 
 /// 反序列化 id：支持 JS 的 string 或 number。
@@ -394,10 +1128,49 @@ where
     d.deserialize_option(ParentIdVisitor)
 }
 
-/// 按父子关系解析世界坐标原点；子节点坐标为父节点局部空间。
+/// 反序列化可选的 transform（localTransform/globalTransform）：支持 { m00, m01, ... } 或 [m00..m22] 数组。
 #[cfg(target_arch = "wasm32")]
-fn compute_world_origins(shapes: &[JsShape]) -> HashMap<String, Point> {
-    let mut map: HashMap<String, Point> = HashMap::new();
+fn deserialize_mat3_opt<'de, D>(d: D) -> Result<Option<Mat3Array>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    struct Mat3Obj {
+        m00: f64, m01: f64, m02: f64,
+        m10: f64, m11: f64, m12: f64,
+        m20: f64, m21: f64, m22: f64,
+    }
+    #[derive(Deserialize)]
+    #[serde(untagged)]
+    enum Mat3Input {
+        Array([f64; 9]),
+        Object(Mat3Obj),
+    }
+    let opt: Option<Mat3Input> = Option::deserialize(d)?;
+    Ok(opt.map(|m| match m {
+        Mat3Input::Array(a) => a,
+        Mat3Input::Object(o) => [
+            o.m00, o.m01, o.m02, o.m10, o.m11, o.m12, o.m20, o.m21, o.m22,
+        ],
+    }))
+}
+
+/// 将 RGBA 颜色的 alpha 乘以 opacity 与 fill_opacity/stroke_opacity 的乘积。
+fn apply_opacity_to_color(mut color: [f32; 4], opacity: f32, fill_or_stroke_opacity: f32) -> [f32; 4] {
+    color[3] *= opacity * fill_or_stroke_opacity;
+    color
+}
+
+/// 将 ECS Mat3 (m00..m22) 转换为 kurbo Affine。
+fn mat3_to_affine(m: &Mat3Array) -> Affine {
+    let [m00, m01, m02, m10, m11, m12, _m20, _m21, _m22] = *m;
+    Affine::new([m00, m10, m01, m11, m02, m12])
+}
+
+/// 按父子关系解析世界变换；支持 local_transform，无则等价于 translate(local_origin)。
+#[cfg(target_arch = "wasm32")]
+fn compute_world_transforms(shapes: &[JsShape]) -> HashMap<String, Affine> {
+    let mut map: HashMap<String, Affine> = HashMap::new();
     let max_passes = shapes.len().max(1);
     for _ in 0..max_passes {
         let mut changed = false;
@@ -405,13 +1178,16 @@ fn compute_world_origins(shapes: &[JsShape]) -> HashMap<String, Point> {
             if map.contains_key(shape.id()) {
                 continue;
             }
-            let local = shape.local_origin();
+            let local_affine = match shape.local_transform() {
+                Some(m) => mat3_to_affine(m),
+                None => Affine::translate(shape.local_origin().to_vec2()),
+            };
             let world = match shape.parent_id() {
                 Some(pid) => map
                     .get(pid)
-                    .map(|p| *p + local.to_vec2())
-                    .unwrap_or(local),
-                None => local,
+                    .map(|p| *p * local_affine)
+                    .unwrap_or(local_affine),
+                None => local_affine,
             };
             map.insert(shape.id().to_string(), world);
             changed = true;
@@ -423,7 +1199,8 @@ fn compute_world_origins(shapes: &[JsShape]) -> HashMap<String, Point> {
     map
 }
 
-/// 使用 skrifa 将字符串与字体字节解析为 vello 可绘制的 Glyph 列表；同时返回 peniko FontData 供 draw_glyphs 使用。
+/// 使用 Parley 将字符串与字体字节解析为 vello 可绘制的 Glyph 列表；支持 kerning、ligatures、bidi 等。
+/// 返回 peniko FontData 供 draw_glyphs 使用。
 #[cfg(target_arch = "wasm32")]
 fn build_text_glyphs(
     font_bytes: &[u8],
@@ -431,26 +1208,55 @@ fn build_text_glyphs(
     font_size_px: f32,
     letter_spacing: f32,
 ) -> Option<(vello::peniko::FontData, Vec<vello::Glyph>, f32)> {
-    use skrifa::instance::Size;
-    use skrifa::prelude::LocationRef;
-    use skrifa::MetadataProvider;
-    use skrifa::FontRef;
-    let font_ref = FontRef::new(font_bytes).ok()?;
-    let size = Size::new(font_size_px);
-    let charmap = font_ref.charmap();
-    let glyph_metrics = font_ref.glyph_metrics(size, LocationRef::default());
-    let mut pen_x: f32 = 0.0;
-    let mut glyphs = Vec::new();
-    for ch in content.chars() {
-        let gid = charmap.map(ch as u32)?;
-        let advance = glyph_metrics.advance_width(gid).unwrap_or(0.0);
-        glyphs.push(vello::Glyph {
-            id: gid.to_u32(),
-            x: pen_x,
-            y: 0.0,
-        });
-        pen_x += advance + letter_spacing;
+    use std::borrow::Cow;
+    use parley::fontique::Blob;
+    use parley::layout::PositionedLayoutItem;
+    use parley::style::FontFamily;
+    use parley::{Alignment, AlignmentOptions, FontContext, LayoutContext, LineHeight, StyleProperty};
+
+    let mut font_cx = FontContext::new();
+    font_cx
+        .collection
+        .register_fonts(Blob::new(Arc::new(font_bytes.to_vec())), None);
+
+    let family_name = font_cx
+        .collection
+        .family_names()
+        .next()
+        .unwrap_or("sans-serif")
+        .to_string();
+
+    let mut layout_cx = LayoutContext::new();
+    let mut builder = layout_cx.ranged_builder(&mut font_cx, content, 1.0, true);
+
+    builder.push_default(FontFamily::Named(Cow::Borrowed(&family_name)));
+    builder.push_default(LineHeight::FontSizeRelative(1.0));
+    builder.push_default(StyleProperty::FontSize(font_size_px));
+    if letter_spacing != 0.0 {
+        builder.push_default(StyleProperty::LetterSpacing(letter_spacing));
     }
+
+    let mut layout: parley::Layout<()> = builder.build(content);
+    layout.break_all_lines(None);
+    layout.align(None, Alignment::Start, AlignmentOptions::default());
+
+    let mut glyphs = Vec::new();
+    let mut line_y = 0.0f32;
+    for line in layout.lines() {
+        for item in line.items() {
+            if let PositionedLayoutItem::GlyphRun(run) = item {
+                for g in run.positioned_glyphs() {
+                    glyphs.push(vello::Glyph {
+                        id: g.id,
+                        x: g.x,
+                        y: line_y + g.y,
+                    });
+                }
+            }
+        }
+        line_y += line.metrics().max_coord - line.metrics().min_coord;
+    }
+
     let blob = vello::peniko::Blob::from(font_bytes.to_vec());
     let font_data = vello::peniko::FontData::new(blob, 0);
     Some((font_data, glyphs, font_size_px))
@@ -459,6 +1265,20 @@ fn build_text_glyphs(
 /// 创建 surface 时使用的最小尺寸（浏览器中 canvas 可能尚未布局，inner_size 为 0）。
 const MIN_SURFACE_WIDTH: u32 = 800;
 const MIN_SURFACE_HEIGHT: u32 = 600;
+
+/// 获取设备像素比。wasm 下 canvas 的 width/height 是物理像素（CSS 尺寸 × dpr），
+/// 而 ECS 世界坐标是逻辑像素，需在变换中乘以 dpr 才能正确显示。
+#[cfg(target_arch = "wasm32")]
+fn device_pixel_ratio() -> f64 {
+    web_sys::window()
+        .map(|w| w.device_pixel_ratio())
+        .unwrap_or(1.0)
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn device_pixel_ratio() -> f64 {
+    1.0
+}
 
 /// 当前渲染状态：surface + 窗口。
 pub struct RenderState {
@@ -469,19 +1289,15 @@ pub struct RenderState {
     pub canvas_id: Option<u32>,
 }
 
-/// 最小应用：与 [vello with_winit](https://github.com/linebender/vello/blob/main/examples/with_winit/src/lib.rs) 一致，
-/// 使用单一 transform (Affine) 做平移与绕光标缩放。
+/// 最小应用：与 [vello with_winit](https://github.com/linebender/vello/blob/main/examples/with_winit/src/lib.rs) 一致。
+/// 相机 transform 完全由 JS 通过 setCameraTransform 同步，Rust 不监听输入事件。
 pub struct VelloRendererApp {
     pub context: RenderContext,
     pub renderers: Vec<Option<Renderer>>,
     pub state: Option<RenderState>,
     pub scene: Scene,
-    /// 场景变换（世界 → 屏幕），平移 + 绕 prior_position 缩放。
+    /// 场景变换（世界 → 屏幕），由 JS setCameraTransform 设置。
     pub transform: Affine,
-    pub mouse_pressed: bool,
-    /// 上一帧光标位置，用于平移 delta 与缩放中心。
-    pub prior_position: Option<Point>,
-    pub touch_state: multi_touch::TouchState,
 }
 
 impl VelloRendererApp {
@@ -492,9 +1308,6 @@ impl VelloRendererApp {
             state: None,
             scene: Scene::new(),
             transform: Affine::IDENTITY,
-            mouse_pressed: false,
-            prior_position: None,
-            touch_state: multi_touch::TouchState::new(),
         }
     }
 }
@@ -586,6 +1399,9 @@ impl ApplicationHandler for VelloRendererApp {
                     return;
                 }
                 let canvas_id = state.canvas_id;
+                if let Some(affine) = take_pending_camera_transform(canvas_id) {
+                    self.transform = affine;
+                }
                 let surface = &mut state.surface;
                 let width = surface.config.width;
                 let height = surface.config.height;
@@ -597,7 +1413,11 @@ impl ApplicationHandler for VelloRendererApp {
                 let device_handle = &self.context.devices[surface.dev_id];
 
                 self.scene.reset();
-                add_shapes_to_scene(&mut self.scene, self.transform, width, height, canvas_id);
+                // ECS 的相机变换基于 CSS 逻辑像素，Vello 渲染目标是物理像素
+                // 平移已经在 JS 侧乘以 DPR，但缩放需要在这里调整
+                let dpr = device_pixel_ratio();
+                let effective_transform = self.transform * Affine::scale(dpr);
+                add_shapes_to_scene(&mut self.scene, effective_transform, width, height, canvas_id);
 
                 self.renderers[surface.dev_id]
                     .as_mut()
@@ -637,80 +1457,11 @@ impl ApplicationHandler for VelloRendererApp {
                 surface_texture.present();
                 device_handle.device.poll(wgpu::PollType::Poll).unwrap();
             }
-            WindowEvent::MouseInput { state, button, .. } => {
-                if button == MouseButton::Left {
-                    self.mouse_pressed = state == ElementState::Pressed;
-                    if state == ElementState::Released {
-                        self.prior_position = None;
-                    }
-                }
-            }
-            WindowEvent::CursorMoved { position, .. } => {
-                let position = Point::new(position.x, position.y);
-                if self.mouse_pressed {
-                    if let Some(prior) = self.prior_position {
-                        self.transform = self.transform.then_translate(position - prior);
-                        state.window.request_redraw();
-                    }
-                }
-                self.prior_position = Some(position);
-            }
-            WindowEvent::MouseWheel { delta, .. } => {
-                const BASE: f64 = 1.05;
-                const PIXELS_PER_LINE: f64 = 20.0;
-                const MIN_ZOOM: f64 = 0.2;
-                const MAX_ZOOM: f64 = 4.0;
-                let surface = &state.surface;
-                let w = surface.config.width as f64;
-                let h = surface.config.height as f64;
-                let zoom_center = self.prior_position.unwrap_or(Point::new(w / 2.0, h / 2.0));
-                let exponent = match delta {
-                    MouseScrollDelta::PixelDelta(p) => p.y / PIXELS_PER_LINE,
-                    MouseScrollDelta::LineDelta(_, y) => y as f64,
-                };
-                let factor = BASE.powf(exponent);
-                if (factor - 1.0).abs() >= 1e-9 && w >= 1.0 && h >= 1.0 {
-                    let current_scale = affine_scale_factor(self.transform);
-                    let new_scale = (current_scale * factor).clamp(MIN_ZOOM, MAX_ZOOM);
-                    let effective_factor = new_scale / current_scale;
-                    let c = zoom_center.to_vec2();
-                    self.transform = Affine::translate(c)
-                        * Affine::scale(effective_factor)
-                        * Affine::translate(-c)
-                        * self.transform;
-                    state.window.request_redraw();
-                }
-            }
-            WindowEvent::CursorLeft { .. } => {
-                self.prior_position = None;
-            }
-            WindowEvent::Touch(touch) => {
-                self.touch_state.add_event(&touch);
-            }
             _ => {}
         }
     }
 
-    fn about_to_wait(&mut self, _event_loop: &ActiveEventLoop) {
-        self.touch_state.end_frame();
-        if let Some(touch_info) = self.touch_state.info() {
-            const MIN_ZOOM: f64 = 0.2;
-            const MAX_ZOOM: f64 = 4.0;
-            let current_scale = affine_scale_factor(self.transform);
-            let new_scale = (current_scale * touch_info.zoom_delta).clamp(MIN_ZOOM, MAX_ZOOM);
-            let effective_zoom_delta = new_scale / current_scale;
-            let centre = Vec2::new(touch_info.zoom_centre.x, touch_info.zoom_centre.y);
-            self.transform = Affine::translate(touch_info.translation_delta)
-                * Affine::translate(centre)
-                * Affine::scale(effective_zoom_delta)
-                * Affine::rotate(touch_info.rotation_delta)
-                * Affine::translate(-centre)
-                * self.transform;
-            if let Some(state) = &self.state {
-                state.window.request_redraw();
-            }
-        }
-    }
+    fn about_to_wait(&mut self, _event_loop: &ActiveEventLoop) {}
 }
 
 /// 从 Affine 提取线性缩放系数（均匀缩放时 = scale，非均匀时 ≈ 面积缩放的开方）。用于“固定像素线宽”：线宽/scale 再 stroke。
@@ -809,6 +1560,36 @@ fn add_grid_to_scene(scene: &mut Scene, transform: Affine, viewport_width: u32, 
     }
 }
 
+/// 按父级上下文排序：z_index 仅在兄弟节点间生效，类似 CSS stacking context。
+#[cfg(target_arch = "wasm32")]
+fn sort_shapes_by_parent_z_index(shapes: &[JsShape]) -> Vec<JsShape> {
+    use std::collections::HashMap;
+    let mut by_parent: HashMap<Option<String>, Vec<JsShape>> = HashMap::new();
+    for s in shapes {
+        let pid = s.parent_id().map(|s| s.to_string());
+        by_parent.entry(pid).or_default().push(s.clone());
+    }
+    for v in by_parent.values_mut() {
+        v.sort_by_key(|s| s.z_index());
+    }
+    let mut result = Vec::with_capacity(shapes.len());
+    fn visit(
+        parent_id: Option<String>,
+        by_parent: &HashMap<Option<String>, Vec<JsShape>>,
+        result: &mut Vec<JsShape>,
+    ) {
+        if let Some(children) = by_parent.get(&parent_id) {
+            for child in children {
+                let id = child.id().to_string();
+                result.push(child.clone());
+                visit(Some(id), by_parent, result);
+            }
+        }
+    }
+    visit(None, &by_parent, &mut result);
+    result
+}
+
 #[allow(unused_variables)]
 fn add_shapes_to_scene(
     scene: &mut Scene,
@@ -820,24 +1601,112 @@ fn add_shapes_to_scene(
     add_grid_to_scene(scene, transform, viewport_width, viewport_height);
     #[cfg(target_arch = "wasm32")]
     if let Some(cid) = canvas_id {
-        let mut shapes = get_user_shapes(cid);
-        shapes.sort_by_key(|s| s.z_index());
-        let world_origins = compute_world_origins(&shapes);
+        let shapes = sort_shapes_by_parent_z_index(&get_user_shapes(cid));
+        let world_transforms = compute_world_transforms(&shapes);
         for shape in shapes {
-            let world_origin = world_origins
-                .get(shape.id())
-                .copied()
-                .unwrap_or_else(|| shape.local_origin());
-            add_js_shape_to_scene(scene, transform, shape, world_origin);
+            add_js_shape_to_scene(scene, transform, shape, &world_transforms);
+        }
+    }
+}
+
+/// 将 JS fillStyle 字符串映射到 roughr FillStyle
+#[cfg(target_arch = "wasm32")]
+fn map_fill_style(style: &str) -> Option<roughr::core::FillStyle> {
+    use roughr::core::FillStyle;
+    match style {
+        "solid" => Some(FillStyle::Solid),
+        "zigzag" => Some(FillStyle::ZigZag),
+        "cross-hatch" => Some(FillStyle::CrossHatch),
+        "dots" => Some(FillStyle::Dots),
+        "dashed" => Some(FillStyle::Dashed),
+        "zigzag-line" => Some(FillStyle::ZigZagLine),
+        _ => Some(FillStyle::Hachure),
+    }
+}
+
+/// 将 roughr 的 Drawable 渲染到 Vello Scene
+#[cfg(target_arch = "wasm32")]
+fn render_rough_drawable(
+    scene: &mut Scene,
+    transform: Affine,
+    drawable: &roughr::core::Drawable<f32>,
+    fill_color: [f32; 4],
+    stroke_color: Option<[f32; 4]>,
+) {
+    use roughr::core::{OpSetType, OpType};
+
+    for set in &drawable.sets {
+        let mut bez_path = BezPath::new();
+        for op in &set.ops {
+            match op.op {
+                OpType::Move => {
+                    if op.data.len() >= 2 {
+                        bez_path.move_to((op.data[0] as f64, op.data[1] as f64));
+                    }
+                }
+                OpType::LineTo => {
+                    if op.data.len() >= 2 {
+                        bez_path.line_to((op.data[0] as f64, op.data[1] as f64));
+                    }
+                }
+                OpType::BCurveTo => {
+                    if op.data.len() >= 6 {
+                        bez_path.curve_to(
+                            (op.data[0] as f64, op.data[1] as f64),
+                            (op.data[2] as f64, op.data[3] as f64),
+                            (op.data[4] as f64, op.data[5] as f64),
+                        );
+                    }
+                }
+                _ => {}
+            }
+        }
+
+        match set.op_set_type {
+            OpSetType::FillPath | OpSetType::FillSketch => {
+                // Fill 路径使用传入的 fill_color
+                if fill_color[3] > 0.0 {
+                    scene.fill(Fill::NonZero, transform, Color::new(fill_color), None, &bez_path);
+                }
+            }
+            OpSetType::Path => {
+                // Stroke 路径使用传入的 stroke_color
+                if let Some(stroke) = stroke_color {
+                    if stroke[3] > 0.0 {
+                        let stroke_width = set.size.map(|s| s.x).unwrap_or(1.0);
+                        let kurbo_stroke = Stroke::new(stroke_width as f64);
+                        scene.stroke(&kurbo_stroke, transform, Color::new(stroke), None, &bez_path);
+                    }
+                }
+            }
         }
     }
 }
 
 #[cfg(target_arch = "wasm32")]
-fn add_js_shape_to_scene(scene: &mut Scene, transform: Affine, shape: JsShape, world_origin: Point) {
-    let local_origin = shape.local_origin();
-    let offset = world_origin.to_vec2() - local_origin.to_vec2();
-    let shape_transform = transform * Affine::translate(offset);
+fn add_js_shape_to_scene(
+    scene: &mut Scene,
+    transform: Affine,
+    shape: JsShape,
+    world_transforms: &HashMap<String, Affine>,
+) {
+    let world = world_transforms
+        .get(shape.id())
+        .copied()
+        .unwrap_or_else(|| Affine::translate(shape.local_origin().to_vec2()));
+    let shape_transform = transform * world;
+    // size_attenuation 应该只考虑相机缩放，不应该考虑 DPR
+    // transform 包含了 DPR 缩放，所以需要除以 DPR 得到纯粹的相机缩放
+    let dpr = device_pixel_ratio();
+    let scale = (affine_scale_factor(transform) / dpr).max(1e-6);
+    // 辅助函数：根据 stroke_attenuation 决定是否缩放线宽
+    let apply_stroke_attenuation = |stroke: &StrokeParams, attenuation: bool| -> Stroke {
+        if attenuation {
+            stroke.to_kurbo_stroke_with_width(stroke.width / scale)
+        } else {
+            stroke.to_kurbo_stroke()
+        }
+    };
     match shape {
         JsShape::Rect {
             x,
@@ -846,50 +1715,101 @@ fn add_js_shape_to_scene(scene: &mut Scene, transform: Affine, shape: JsShape, w
             height,
             radius,
             fill,
+            fill_gradients,
             stroke,
+            opacity,
+            fill_opacity,
+            stroke_opacity,
+            size_attenuation,
+            stroke_attenuation,
             ..
         } => {
-            let geom = if radius > 0.0 {
-                vello::kurbo::RoundedRect::new(x, y, x + width, y + height, radius)
+            let (w, h, r) = if size_attenuation {
+                (width / scale, height / scale, radius / scale)
             } else {
-                vello::kurbo::RoundedRect::from_rect(
-                    vello::kurbo::Rect::new(x, y, x + width, y + height),
-                    0.0,
-                )
+                (width, height, radius)
             };
-            let color = Color::new(fill);
-            scene.fill(Fill::NonZero, shape_transform, color, None, &geom);
-            if let Some((w, s)) = stroke {
-                scene.stroke(
-                    &Stroke::new(w),
-                    shape_transform,
-                    Color::new(s),
-                    None,
-                    &geom,
-                );
+            let (x0, y0, x1, y1) = (
+                x.min(x + w),
+                y.min(y + h),
+                x.max(x + w),
+                y.max(y + h),
+            );
+            let fill_mult = opacity * fill_opacity;
+            if r > 0.0 {
+                let geom = RoundedRect::new(x0, y0, x1, y1, r);
+                if let Some(ref grads) = fill_gradients {
+                    for g in grads.iter().rev() {
+                        let brush = vello::peniko::Brush::Gradient(build_gradient_brush(g, fill_mult));
+                        scene.fill(Fill::NonZero, shape_transform, &brush, None, &geom);
+                    }
+                } else {
+                    let fill_color = apply_opacity_to_color(fill, opacity, fill_opacity);
+                    let brush = vello::peniko::Brush::Solid(Color::new(fill_color));
+                    scene.fill(Fill::NonZero, shape_transform, &brush, None, &geom);
+                }
+                if let Some(ref s) = stroke {
+                    let stroke_color = apply_opacity_to_color(s.color, opacity, stroke_opacity);
+                    let kurbo_stroke = apply_stroke_attenuation(s, stroke_attenuation);
+                    scene.stroke(&kurbo_stroke, shape_transform, Color::new(stroke_color), None, &geom);
+                }
+            } else {
+                let geom = Rect::new(x0, y0, x1, y1);
+                if let Some(ref grads) = fill_gradients {
+                    for g in grads.iter().rev() {
+                        let brush = vello::peniko::Brush::Gradient(build_gradient_brush(g, fill_mult));
+                        scene.fill(Fill::NonZero, shape_transform, &brush, None, &geom);
+                    }
+                } else {
+                    let fill_color = apply_opacity_to_color(fill, opacity, fill_opacity);
+                    let brush = vello::peniko::Brush::Solid(Color::new(fill_color));
+                    scene.fill(Fill::NonZero, shape_transform, &brush, None, &geom);
+                }
+                if let Some(ref s) = stroke {
+                    let stroke_color = apply_opacity_to_color(s.color, opacity, stroke_opacity);
+                    let kurbo_stroke = apply_stroke_attenuation(s, stroke_attenuation);
+                    scene.stroke(&kurbo_stroke, shape_transform, Color::new(stroke_color), None, &geom);
+                }
             }
         }
-        JsShape::Circle { cx, cy, r, fill, stroke, .. } => {
-            let circle = Circle::new((cx, cy), r);
-            scene.fill(Fill::NonZero, shape_transform, Color::new(fill), None, &circle);
-            if let Some((w, s)) = stroke {
-                scene.stroke(&Stroke::new(w), shape_transform, Color::new(s), None, &circle);
+        JsShape::Ellipse { cx, cy, rx, ry, fill, fill_gradients, stroke, opacity, fill_opacity, stroke_opacity, size_attenuation, stroke_attenuation, .. } => {
+            let (rx_eff, ry_eff) = if size_attenuation {
+                (rx / scale, ry / scale)
+            } else {
+                (rx, ry)
+            };
+            let ellipse = Ellipse::new(Point::new(cx, cy), Vec2::new(rx_eff, ry_eff), 0.0);
+            let fill_mult = opacity * fill_opacity;
+            if let Some(ref grads) = fill_gradients {
+                for g in grads.iter().rev() {
+                    let brush = vello::peniko::Brush::Gradient(build_gradient_brush(g, fill_mult));
+                    scene.fill(Fill::NonZero, shape_transform, &brush, None, &ellipse);
+                }
+            } else {
+                let fill_color = apply_opacity_to_color(fill, opacity, fill_opacity);
+                let brush = vello::peniko::Brush::Solid(Color::new(fill_color));
+                scene.fill(Fill::NonZero, shape_transform, &brush, None, &ellipse);
+            }
+            if let Some(ref s) = stroke {
+                let stroke_color = apply_opacity_to_color(s.color, opacity, stroke_opacity);
+                let kurbo_stroke = apply_stroke_attenuation(s, stroke_attenuation);
+                scene.stroke(&kurbo_stroke, shape_transform, Color::new(stroke_color), None, &ellipse);
             }
         }
-        JsShape::Line {
-            x1,
-            y1,
-            x2,
-            y2,
-            stroke_width,
-            color,
-            ..
-        } => {
+        JsShape::Line { x1, y1, x2, y2, stroke, opacity, stroke_opacity, size_attenuation, stroke_attenuation, .. } => {
             let line = Line::new((x1, y1), (x2, y2));
+            let stroke_color = apply_opacity_to_color(stroke.color, opacity, stroke_opacity);
+            // Line 使用 size_attenuation 或 stroke_attenuation 都可以影响线宽
+            let use_attenuation = size_attenuation || stroke_attenuation;
+            let kurbo_stroke = if use_attenuation {
+                stroke.to_kurbo_stroke_with_width(stroke.width / scale)
+            } else {
+                stroke.to_kurbo_stroke()
+            };
             scene.stroke(
-                &Stroke::new(stroke_width),
+                &kurbo_stroke,
                 shape_transform,
-                Color::new(color),
+                Color::new(stroke_color),
                 None,
                 &line,
             );
@@ -899,14 +1819,23 @@ fn add_js_shape_to_scene(scene: &mut Scene, transform: Affine, shape: JsShape, w
             font_size,
             letter_spacing,
             fill,
+            opacity,
+            fill_opacity,
+            size_attenuation,
             ..
         } => {
+            let (font_size_eff, letter_spacing_eff) = if size_attenuation {
+                (font_size / scale, letter_spacing / scale)
+            } else {
+                (font_size, letter_spacing)
+            };
             let font_bytes = FONT_BYTES.with(|c| c.borrow().clone());
             if let Some(bytes) = font_bytes {
                 if let Some((font_data, glyphs, size)) =
-                    build_text_glyphs(&bytes, &content, font_size as f32, letter_spacing as f32)
+                    build_text_glyphs(&bytes, &content, font_size_eff as f32, letter_spacing_eff as f32)
                 {
-                    let color = Color::new(fill);
+                    let fill_color = apply_opacity_to_color(fill, opacity, fill_opacity);
+                    let color = Color::new(fill_color);
                     scene
                         .draw_glyphs(&font_data)
                         .font_size(size)
@@ -915,6 +1844,169 @@ fn add_js_shape_to_scene(scene: &mut Scene, transform: Affine, shape: JsShape, w
                         .draw(Fill::NonZero, glyphs.into_iter());
                 }
             }
+        }
+        JsShape::ImageRect {
+            x,
+            y,
+            width,
+            height,
+            radius,
+            image_width,
+            image_height,
+            image_data,
+            stroke,
+            opacity,
+            fill_opacity: _,
+            stroke_opacity,
+            size_attenuation,
+            stroke_attenuation,
+            ..
+        } => {
+            let (w, h, r) = if size_attenuation {
+                (width / scale, height / scale, radius / scale)
+            } else {
+                (width, height, radius)
+            };
+            let expected_len = image_width as usize * image_height as usize * 4;
+            if image_data.len() >= expected_len {
+                let image = ImageData {
+                    data: Blob::from(image_data.clone()),
+                    format: ImageFormat::Rgba8,
+                    alpha_type: ImageAlphaType::Alpha,
+                    width: image_width,
+                    height: image_height,
+                };
+                let brush = ImageBrush::new(image);
+                let brush_transform = Affine::translate(Vec2::new(x, y))
+                    * Affine::scale_non_uniform(w / image_width as f64, h / image_height as f64);
+                if r > 0.0 {
+                    let geom = RoundedRect::new(x, y, x + w, y + h, r);
+                    scene.fill(Fill::NonZero, shape_transform, brush.as_ref(), Some(brush_transform), &geom);
+                    if let Some(ref s) = stroke {
+                        let stroke_color = apply_opacity_to_color(s.color, opacity, stroke_opacity);
+                        let kurbo_stroke = apply_stroke_attenuation(s, stroke_attenuation);
+                        scene.stroke(&kurbo_stroke, shape_transform, Color::new(stroke_color), None, &geom);
+                    }
+                } else {
+                    let geom = Rect::new(x, y, x + w, y + h);
+                    scene.fill(Fill::NonZero, shape_transform, brush.as_ref(), Some(brush_transform), &geom);
+                    if let Some(ref s) = stroke {
+                        let stroke_color = apply_opacity_to_color(s.color, opacity, stroke_opacity);
+                        let kurbo_stroke = apply_stroke_attenuation(s, stroke_attenuation);
+                        scene.stroke(&kurbo_stroke, shape_transform, Color::new(stroke_color), None, &geom);
+                    }
+                }
+            }
+        }
+        JsShape::Path { d, fill, fill_gradients, stroke, fill_rule, opacity, fill_opacity, stroke_opacity, size_attenuation, stroke_attenuation, .. } => {
+            if let Ok(mut bez_path) = BezPath::from_svg(d.as_str()) {
+                if size_attenuation {
+                    let bbox = bez_path.bounding_box();
+                    let center = bbox.center();
+                    bez_path.apply_affine(Affine::scale_about(1.0 / scale, center));
+                }
+                let fill_mode = if fill_rule.as_str() == "evenodd" {
+                    Fill::EvenOdd
+                } else {
+                    Fill::NonZero
+                };
+                let fill_mult = opacity * fill_opacity;
+                if let Some(ref grads) = fill_gradients {
+                    for g in grads.iter().rev() {
+                        let brush = vello::peniko::Brush::Gradient(build_gradient_brush(g, fill_mult));
+                        scene.fill(fill_mode, shape_transform, &brush, None, &bez_path);
+                    }
+                } else {
+                    let fill_color = apply_opacity_to_color(fill, opacity, fill_opacity);
+                    let brush = vello::peniko::Brush::Solid(Color::new(fill_color));
+                    scene.fill(fill_mode, shape_transform, &brush, None, &bez_path);
+                }
+                if let Some(ref s) = stroke {
+                    let stroke_color = apply_opacity_to_color(s.color, opacity, stroke_opacity);
+                    let kurbo_stroke = apply_stroke_attenuation(s, stroke_attenuation);
+                    scene.stroke(&kurbo_stroke, shape_transform, Color::new(stroke_color), None, &bez_path);
+                }
+            }
+        }
+        JsShape::Polyline { points, stroke, opacity, stroke_opacity, size_attenuation, stroke_attenuation, .. } => {
+            if points.len() >= 2 {
+                let mut elements = vec![PathEl::MoveTo(Point::new(points[0][0], points[0][1]))];
+                for p in points.iter().skip(1) {
+                    elements.push(PathEl::LineTo(Point::new(p[0], p[1])));
+                }
+                let mut bez_path = BezPath::from_vec(elements);
+                if size_attenuation {
+                    let bbox = bez_path.bounding_box();
+                    let center = bbox.center();
+                    bez_path.apply_affine(Affine::scale_about(1.0 / scale, center));
+                }
+                if let Some(ref s) = stroke {
+                    let stroke_color = apply_opacity_to_color(s.color, opacity, stroke_opacity);
+                    let kurbo_stroke = apply_stroke_attenuation(s, stroke_attenuation);
+                    scene.stroke(&kurbo_stroke, shape_transform, Color::new(stroke_color), None, &bez_path);
+                }
+            }
+        }
+        JsShape::Group { .. } => {
+            // 组/容器本身没有可见内容，只提供变换和层级。
+            // 子元素通过 parent_id 关联，在 compute_world_transforms 中处理变换。
+        }
+        JsShape::RoughRect { x, y, width, height, fill, stroke, opacity, fill_opacity, stroke_opacity, roughness, bowing, fill_style, hachure_angle, hachure_gap, curve_step_count, simplification, .. } => {
+            // 手绘风格矩形 - 使用 roughr 生成手绘路径
+            let fill_color = apply_opacity_to_color(fill, opacity, fill_opacity);
+            let stroke_color = stroke.as_ref().map(|s| apply_opacity_to_color(s.color, opacity, stroke_opacity));
+            let options = Options {
+                roughness: Some(roughness),
+                bowing: Some(bowing),
+                fill: if fill_color[3] > 0.0 { Some(roughr::Srgba::new(fill_color[0], fill_color[1], fill_color[2], fill_color[3])) } else { None },
+                fill_style: map_fill_style(&fill_style),
+                hachure_angle: Some(hachure_angle),
+                hachure_gap: if hachure_gap > 0.0 { Some(hachure_gap) } else { Some(stroke.as_ref().map(|s| s.width as f32).unwrap_or(1.0) * 4.0) },
+                curve_step_count: Some(curve_step_count),
+                simplification: Some(simplification),
+                stroke: stroke_color.map(|c| roughr::Srgba::new(c[0], c[1], c[2], c[3])),
+                ..Options::default()
+            };
+            let generator = Generator::default();
+            let drawable = generator.rectangle(x as f32, y as f32, width as f32, height as f32, &Some(options));
+
+            render_rough_drawable(scene, shape_transform, &drawable, fill_color, stroke_color);
+        }
+        JsShape::RoughEllipse { cx, cy, rx, ry, fill, stroke, opacity, fill_opacity, stroke_opacity, roughness, bowing, fill_style, hachure_angle, hachure_gap, curve_step_count, simplification, .. } => {
+            // 手绘风格椭圆 - 使用 roughr 生成手绘路径
+            let fill_color = apply_opacity_to_color(fill, opacity, fill_opacity);
+            let stroke_color = stroke.as_ref().map(|s| apply_opacity_to_color(s.color, opacity, stroke_opacity));
+            let options = Options {
+                roughness: Some(roughness),
+                bowing: Some(bowing),
+                fill: if fill_color[3] > 0.0 { Some(roughr::Srgba::new(fill_color[0], fill_color[1], fill_color[2], fill_color[3])) } else { None },
+                fill_style: map_fill_style(&fill_style),
+                hachure_angle: Some(hachure_angle),
+                hachure_gap: if hachure_gap > 0.0 { Some(hachure_gap) } else { Some(stroke.as_ref().map(|s| s.width as f32).unwrap_or(1.0) * 4.0) },
+                curve_step_count: Some(curve_step_count),
+                simplification: Some(simplification),
+                stroke: stroke_color.map(|c| roughr::Srgba::new(c[0], c[1], c[2], c[3])),
+                ..Options::default()
+            };
+            let generator = Generator::default();
+            let drawable = generator.ellipse(cx as f32, cy as f32, rx as f32 * 2.0, ry as f32 * 2.0, &Some(options));
+
+            render_rough_drawable(scene, shape_transform, &drawable, fill_color, stroke_color);
+        }
+        JsShape::RoughLine { x1, y1, x2, y2, stroke, opacity, stroke_opacity, roughness, bowing, simplification, .. } => {
+            // 手绘风格线段 - 使用 roughr 生成手绘路径
+            let stroke_color_val = apply_opacity_to_color(stroke.color, opacity, stroke_opacity);
+            let options = Options {
+                roughness: Some(roughness),
+                bowing: Some(bowing),
+                simplification: Some(simplification),
+                stroke: Some(roughr::Srgba::new(stroke_color_val[0], stroke_color_val[1], stroke_color_val[2], stroke_color_val[3])),
+                ..Options::default()
+            };
+            let generator = Generator::default();
+            let drawable = generator.line(x1 as f32, y1 as f32, x2 as f32, y2 as f32, &Some(options));
+
+            render_rough_drawable(scene, shape_transform, &drawable, [0.0, 0.0, 0.0, 0.0], Some(stroke_color_val));
         }
     }
 }
@@ -928,30 +2020,15 @@ pub fn run_native() -> anyhow::Result<()> {
     Ok(())
 }
 
-/// wasm 入口：异步创建 surface 后再 run_app。创建完成后会调用 on_ready(canvasId)，之后 addRect/addCircle 等需传入该 id。
+/// wasm 入口：异步创建 surface 后再 run_app。创建完成后会调用 on_ready(canvasId)，之后 addRect/addEllipse 等需传入该 id。
 #[cfg(target_arch = "wasm32")]
 #[allow(deprecated)] // EventLoop::create_window 在 wasm 初始化时仍需使用
 pub async fn run_wasm_async(canvas: web_sys::HtmlCanvasElement, on_ready: js_sys::Function) {
     use winit::platform::web::WindowAttributesExtWebSys;
 
-    fn log_vello(msg: &str) {
-        web_sys::console::log_1(&format!("[vello] {}", msg).into());
-    }
-    fn err_vello(msg: &str) {
-        web_sys::console::error_1(&format!("[vello] {}", msg).into());
-    }
-
-    log_vello("run_wasm_async: start");
-
     let event_loop = match EventLoop::new() {
-        Ok(el) => {
-            log_vello("EventLoop::new ok");
-            el
-        }
-        Err(e) => {
-            err_vello(&format!("EventLoop::new failed: {}", e));
-            return;
-        }
+        Ok(el) => el,
+        Err(_) => return,
     };
     let canvas_id = NEXT_CANVAS_ID.with(|c| {
         let mut id = c.borrow_mut();
@@ -959,7 +2036,6 @@ pub async fn run_wasm_async(canvas: web_sys::HtmlCanvasElement, on_ready: js_sys
         *id = id.saturating_add(1);
         next
     });
-    log_vello(&format!("canvas_id = {}", canvas_id));
 
     CANVAS_SHAPES.with(|c| {
         c.borrow_mut().insert(canvas_id, Vec::new());
@@ -971,14 +2047,8 @@ pub async fn run_wasm_async(canvas: web_sys::HtmlCanvasElement, on_ready: js_sys
         .with_title("Vello Renderer - Infinite Canvas");
     attrs = attrs.with_canvas(Some(canvas));
     let window = match event_loop.create_window(attrs) {
-        Ok(w) => {
-            log_vello("create_window ok");
-            Arc::new(w)
-        }
-        Err(e) => {
-            err_vello(&format!("create_window failed: {}", e));
-            return;
-        }
+        Ok(w) => Arc::new(w),
+        Err(_) => return,
     };
     let (width, height) = {
         use winit::platform::web::WindowExtWebSys;
@@ -992,7 +2062,6 @@ pub async fn run_wasm_async(canvas: web_sys::HtmlCanvasElement, on_ready: js_sys
                 let ch = ch.max(MIN_SURFACE_HEIGHT);
                 c.set_width(cw);
                 c.set_height(ch);
-                log_vello(&format!("canvas size was 0, set to {}x{}", cw, ch));
                 (cw, ch)
             } else {
                 (w, h)
@@ -1002,10 +2071,8 @@ pub async fn run_wasm_async(canvas: web_sys::HtmlCanvasElement, on_ready: js_sys
             (size.width.max(MIN_SURFACE_WIDTH), size.height.max(MIN_SURFACE_HEIGHT))
         }
     };
-    log_vello(&format!("surface size {}x{}", width, height));
 
     let mut context = RenderContext::new();
-    log_vello("RenderContext::new ok, creating surface (async)...");
 
     let surface = match context
         .create_surface(
@@ -1016,14 +2083,8 @@ pub async fn run_wasm_async(canvas: web_sys::HtmlCanvasElement, on_ready: js_sys
         )
         .await
     {
-        Ok(s) => {
-            log_vello("create_surface ok");
-            s
-        }
-        Err(e) => {
-            err_vello(&format!("create_surface failed: {}", e));
-            return;
-        }
+        Ok(s) => s,
+        Err(_) => return,
     };
 
     let mut renderers: Vec<Option<Renderer>> = vec![];
@@ -1033,17 +2094,14 @@ pub async fn run_wasm_async(canvas: web_sys::HtmlCanvasElement, on_ready: js_sys
         &context.devices[dev_id].device,
         RendererOptions::default(),
     ) {
-        Ok(r) => {
-            log_vello("Renderer::new ok");
-            r
-        }
-        Err(e) => {
-            err_vello(&format!("Renderer::new failed: {}", e));
-            return;
-        }
+        Ok(r) => r,
+        Err(_) => return,
     };
     renderers[dev_id] = Some(renderer);
 
+    CANVAS_WINDOWS.with(|c| {
+        c.borrow_mut().insert(canvas_id, window.clone());
+    });
     let mut app = VelloRendererApp {
         context,
         renderers,
@@ -1055,18 +2113,13 @@ pub async fn run_wasm_async(canvas: web_sys::HtmlCanvasElement, on_ready: js_sys
         }),
         scene: Scene::new(),
         transform: Affine::IDENTITY,
-        mouse_pressed: false,
-        prior_position: None,
-        touch_state: multi_touch::TouchState::new(),
     };
-    log_vello(&format!("calling on_ready(canvas_id={})", canvas_id));
     let _ = on_ready.call1(&JsValue::NULL, &JsValue::from(canvas_id));
     window.request_redraw();
-    log_vello("entering event_loop.run_app");
     let _ = event_loop.run_app(&mut app);
 }
 
-/// 使用传入的 canvas 元素启动渲染。onReady(canvasId) 在画布就绪时调用，后续 addRect/addCircle 等需传入该 canvasId。
+/// 使用传入的 canvas 元素启动渲染。onReady(canvasId) 在画布就绪时调用，后续 addRect/addEllipse 等需传入该 canvasId。
 #[cfg(target_arch = "wasm32")]
 #[wasm_bindgen(js_name = runWithCanvas)]
 pub fn run_with_canvas(canvas: JsValue, on_ready: JsValue) {
@@ -1107,11 +2160,20 @@ pub fn js_add_rect(canvas_id: u32, opts: JsValue) {
     };
     let stroke = o.stroke.as_ref().and_then(|s| {
         if s.width > 0.0 {
-            Some((s.width, s.color))
+            Some(StrokeParams {
+                width: s.width,
+                color: s.color,
+                linecap: s.linecap.clone(),
+                linejoin: s.linejoin.clone(),
+                miter_limit: s.miter_limit,
+                stroke_dasharray: s.stroke_dasharray.clone(),
+                stroke_dashoffset: s.stroke_dashoffset,
+            })
         } else {
             None
         }
     });
+    let fill_gradients = resolve_fill_gradients(&o.fill_gradient, &o.fill_gradients);
     push_shape(canvas_id, JsShape::Rect {
         id: o.id,
         parent_id: o.parent_id,
@@ -1122,37 +2184,367 @@ pub fn js_add_rect(canvas_id: u32, opts: JsValue) {
         height: o.height,
         radius: o.radius,
         fill: o.fill,
+        fill_gradients,
         stroke,
+        opacity: o.opacity,
+        fill_opacity: o.fill_opacity,
+        stroke_opacity: o.stroke_opacity,
+        local_transform: o.local_transform,
+        size_attenuation: o.size_attenuation,
+        stroke_attenuation: o.stroke_attenuation,
     });
 }
 
-/// 添加圆形。
+/// 添加椭圆。
 #[cfg(target_arch = "wasm32")]
-#[wasm_bindgen(js_name = addCircle)]
-pub fn js_add_circle(canvas_id: u32, opts: JsValue) {
-    let o: CircleOptions = match serde_wasm_bindgen::from_value(opts) {
+#[wasm_bindgen(js_name = addEllipse)]
+pub fn js_add_ellipse(canvas_id: u32, opts: JsValue) {
+    let o: EllipseOptions = match serde_wasm_bindgen::from_value(opts) {
         Ok(v) => v,
         Err(e) => {
-            web_sys::console::error_1(&format!("addCircle: invalid options - {}", e).into());
+            web_sys::console::error_1(&format!("addEllipse: invalid options - {}", e).into());
             return;
         }
     };
     let stroke = o.stroke.as_ref().and_then(|s| {
         if s.width > 0.0 {
-            Some((s.width, s.color))
+            Some(StrokeParams {
+                width: s.width,
+                color: s.color,
+                linecap: s.linecap.clone(),
+                linejoin: s.linejoin.clone(),
+                miter_limit: s.miter_limit,
+                stroke_dasharray: s.stroke_dasharray.clone(),
+                stroke_dashoffset: s.stroke_dashoffset,
+            })
         } else {
             None
         }
     });
-    push_shape(canvas_id, JsShape::Circle {
+    let fill_gradients = resolve_fill_gradients(&o.fill_gradient, &o.fill_gradients);
+    push_shape(canvas_id, JsShape::Ellipse {
         id: o.id,
         parent_id: o.parent_id,
         z_index: o.z_index,
         cx: o.cx,
         cy: o.cy,
-        r: o.r,
+        rx: o.rx,
+        ry: o.ry,
+        fill: o.fill,
+        fill_gradients,
+        stroke,
+        opacity: o.opacity,
+        fill_opacity: o.fill_opacity,
+        stroke_opacity: o.stroke_opacity,
+        local_transform: o.local_transform,
+        size_attenuation: o.size_attenuation,
+        stroke_attenuation: o.stroke_attenuation,
+    });
+}
+
+/// 添加图片填充的矩形。opts 需包含 imageData (Uint8Array RGBA)、imageWidth、imageHeight。
+#[cfg(target_arch = "wasm32")]
+#[wasm_bindgen(js_name = addImageRect)]
+pub fn js_add_image_rect(canvas_id: u32, opts: JsValue) {
+    let image_data: Vec<u8> = js_sys::Reflect::get(&opts, &"imageData".into())
+        .ok()
+        .and_then(|v| v.dyn_into::<js_sys::Uint8Array>().ok())
+        .map(|a| a.to_vec())
+        .unwrap_or_default();
+    let o: ImageRectOptions = match serde_wasm_bindgen::from_value(opts) {
+        Ok(v) => v,
+        Err(e) => {
+            web_sys::console::error_1(&format!("addImageRect: invalid options - {}", e).into());
+            return;
+        }
+    };
+    let stroke = o.stroke.as_ref().and_then(|s| {
+        if s.width > 0.0 {
+            Some(StrokeParams {
+                width: s.width,
+                color: s.color,
+                linecap: s.linecap.clone(),
+                linejoin: s.linejoin.clone(),
+                miter_limit: s.miter_limit,
+                stroke_dasharray: s.stroke_dasharray.clone(),
+                stroke_dashoffset: s.stroke_dashoffset,
+            })
+        } else {
+            None
+        }
+    });
+    push_shape(canvas_id, JsShape::ImageRect {
+        id: o.id,
+        parent_id: o.parent_id,
+        z_index: o.z_index,
+        x: o.x,
+        y: o.y,
+        width: o.width,
+        height: o.height,
+        radius: o.radius,
+        image_width: o.image_width,
+        image_height: o.image_height,
+        image_data,
+        stroke,
+        opacity: o.opacity,
+        fill_opacity: o.fill_opacity,
+        stroke_opacity: o.stroke_opacity,
+        local_transform: o.local_transform,
+        size_attenuation: o.size_attenuation,
+        stroke_attenuation: o.stroke_attenuation,
+    });
+}
+
+/// 添加 path。opts 需包含 d（SVG path 的 d 属性）。
+#[cfg(target_arch = "wasm32")]
+#[wasm_bindgen(js_name = addPath)]
+pub fn js_add_path(canvas_id: u32, opts: JsValue) {
+    let o: PathOptions = match serde_wasm_bindgen::from_value(opts) {
+        Ok(v) => v,
+        Err(e) => {
+            web_sys::console::error_1(&format!("addPath: invalid options - {}", e).into());
+            return;
+        }
+    };
+    let stroke = o.stroke.as_ref().and_then(|s| {
+        if s.width > 0.0 {
+            Some(StrokeParams {
+                width: s.width,
+                color: s.color,
+                linecap: s.linecap.clone(),
+                linejoin: s.linejoin.clone(),
+                miter_limit: s.miter_limit,
+                stroke_dasharray: s.stroke_dasharray.clone(),
+                stroke_dashoffset: s.stroke_dashoffset,
+            })
+        } else {
+            None
+        }
+    });
+    let fill_gradients = resolve_fill_gradients(&o.fill_gradient, &o.fill_gradients);
+    push_shape(canvas_id, JsShape::Path {
+        id: o.id,
+        parent_id: o.parent_id,
+        z_index: o.z_index,
+        d: o.d,
+        fill: o.fill,
+        fill_gradients,
+        stroke,
+        fill_rule: o.fill_rule,
+        opacity: o.opacity,
+        fill_opacity: o.fill_opacity,
+        stroke_opacity: o.stroke_opacity,
+        local_transform: o.local_transform,
+        size_attenuation: o.size_attenuation,
+        stroke_attenuation: o.stroke_attenuation,
+    });
+}
+
+/// 添加折线。opts 需包含 points（[[x,y],[x,y],...]）。
+#[cfg(target_arch = "wasm32")]
+#[wasm_bindgen(js_name = addPolyline)]
+pub fn js_add_polyline(canvas_id: u32, opts: JsValue) {
+    let o: PolylineOptions = match serde_wasm_bindgen::from_value(opts) {
+        Ok(v) => v,
+        Err(e) => {
+            web_sys::console::error_1(&format!("addPolyline: invalid options - {}", e).into());
+            return;
+        }
+    };
+    let stroke = o.stroke.as_ref().map(|s| StrokeParams {
+        width: s.width.max(0.5),
+        color: s.color,
+        linecap: s.linecap.clone(),
+        linejoin: s.linejoin.clone(),
+        miter_limit: s.miter_limit,
+        stroke_dasharray: s.stroke_dasharray.clone(),
+        stroke_dashoffset: s.stroke_dashoffset,
+    }).unwrap_or_else(|| StrokeParams {
+        width: 1.0,
+        color: default_rgba_stroke(),
+        linecap: default_linecap(),
+        linejoin: default_linejoin(),
+        miter_limit: default_miter_limit(),
+        stroke_dasharray: None,
+        stroke_dashoffset: 0.0,
+    });
+    push_shape(canvas_id, JsShape::Polyline {
+        id: o.id,
+        parent_id: o.parent_id,
+        z_index: o.z_index,
+        points: o.points,
+        stroke: Some(stroke),
+        opacity: o.opacity,
+        fill_opacity: o.fill_opacity,
+        stroke_opacity: o.stroke_opacity,
+        local_transform: o.local_transform,
+        size_attenuation: o.size_attenuation,
+        stroke_attenuation: o.stroke_attenuation,
+    });
+}
+
+/// 添加组/容器。用于组织子元素，本身没有可见内容。
+#[cfg(target_arch = "wasm32")]
+#[wasm_bindgen(js_name = addGroup)]
+pub fn js_add_group(canvas_id: u32, opts: JsValue) {
+    let o: GroupOptions = match serde_wasm_bindgen::from_value(opts) {
+        Ok(v) => v,
+        Err(e) => {
+            web_sys::console::error_1(&format!("addGroup: invalid options - {}", e).into());
+            return;
+        }
+    };
+    push_shape(canvas_id, JsShape::Group {
+        id: o.id,
+        parent_id: o.parent_id,
+        z_index: o.z_index,
+        local_transform: o.local_transform,
+    });
+}
+
+/// 添加手绘风格矩形。
+#[cfg(target_arch = "wasm32")]
+#[wasm_bindgen(js_name = addRoughRect)]
+pub fn js_add_rough_rect(canvas_id: u32, opts: JsValue) {
+    let o: RoughRectOptions = match serde_wasm_bindgen::from_value(opts) {
+        Ok(v) => v,
+        Err(e) => {
+            web_sys::console::error_1(&format!("addRoughRect: invalid options - {}", e).into());
+            return;
+        }
+    };
+    let stroke = o.stroke.as_ref().and_then(|s| {
+        if s.width > 0.0 {
+            Some(StrokeParams {
+                width: s.width,
+                color: s.color,
+                linecap: s.linecap.clone(),
+                linejoin: s.linejoin.clone(),
+                miter_limit: s.miter_limit,
+                stroke_dasharray: s.stroke_dasharray.clone(),
+                stroke_dashoffset: s.stroke_dashoffset,
+            })
+        } else {
+            None
+        }
+    });
+    push_shape(canvas_id, JsShape::RoughRect {
+        id: o.id,
+        parent_id: o.parent_id,
+        z_index: o.z_index,
+        x: o.x,
+        y: o.y,
+        width: o.width,
+        height: o.height,
         fill: o.fill,
         stroke,
+        opacity: o.opacity,
+        fill_opacity: o.fill_opacity,
+        stroke_opacity: o.stroke_opacity,
+        local_transform: o.local_transform,
+        roughness: o.roughness,
+        bowing: o.bowing,
+        fill_style: o.fill_style.as_str().to_string(),
+        hachure_angle: o.hachure_angle,
+        hachure_gap: o.hachure_gap,
+        curve_step_count: o.curve_step_count,
+        simplification: o.simplification,
+    });
+}
+
+/// 添加手绘风格椭圆。
+#[cfg(target_arch = "wasm32")]
+#[wasm_bindgen(js_name = addRoughEllipse)]
+pub fn js_add_rough_ellipse(canvas_id: u32, opts: JsValue) {
+    let o: RoughEllipseOptions = match serde_wasm_bindgen::from_value(opts) {
+        Ok(v) => v,
+        Err(e) => {
+            web_sys::console::error_1(&format!("addRoughEllipse: invalid options - {}", e).into());
+            return;
+        }
+    };
+    let stroke = o.stroke.as_ref().and_then(|s| {
+        if s.width > 0.0 {
+            Some(StrokeParams {
+                width: s.width,
+                color: s.color,
+                linecap: s.linecap.clone(),
+                linejoin: s.linejoin.clone(),
+                miter_limit: s.miter_limit,
+                stroke_dasharray: s.stroke_dasharray.clone(),
+                stroke_dashoffset: s.stroke_dashoffset,
+            })
+        } else {
+            None
+        }
+    });
+    push_shape(canvas_id, JsShape::RoughEllipse {
+        id: o.id,
+        parent_id: o.parent_id,
+        z_index: o.z_index,
+        cx: o.cx,
+        cy: o.cy,
+        rx: o.rx,
+        ry: o.ry,
+        fill: o.fill,
+        stroke,
+        opacity: o.opacity,
+        fill_opacity: o.fill_opacity,
+        stroke_opacity: o.stroke_opacity,
+        local_transform: o.local_transform,
+        roughness: o.roughness,
+        bowing: o.bowing,
+        fill_style: o.fill_style.as_str().to_string(),
+        hachure_angle: o.hachure_angle,
+        hachure_gap: o.hachure_gap,
+        curve_step_count: o.curve_step_count,
+        simplification: o.simplification,
+    });
+}
+
+/// 添加手绘风格线段。
+#[cfg(target_arch = "wasm32")]
+#[wasm_bindgen(js_name = addRoughLine)]
+pub fn js_add_rough_line(canvas_id: u32, opts: JsValue) {
+    let o: RoughLineOptions = match serde_wasm_bindgen::from_value(opts) {
+        Ok(v) => v,
+        Err(e) => {
+            web_sys::console::error_1(&format!("addRoughLine: invalid options - {}", e).into());
+            return;
+        }
+    };
+    let stroke = o.stroke.as_ref().map(|s| StrokeParams {
+        width: s.width.max(0.5),
+        color: s.color,
+        linecap: s.linecap.clone(),
+        linejoin: s.linejoin.clone(),
+        miter_limit: s.miter_limit,
+        stroke_dasharray: s.stroke_dasharray.clone(),
+        stroke_dashoffset: s.stroke_dashoffset,
+    }).unwrap_or_else(|| StrokeParams {
+        width: 1.0,
+        color: default_rgba_stroke(),
+        linecap: default_linecap(),
+        linejoin: default_linejoin(),
+        miter_limit: default_miter_limit(),
+        stroke_dasharray: None,
+        stroke_dashoffset: 0.0,
+    });
+    push_shape(canvas_id, JsShape::RoughLine {
+        id: o.id,
+        parent_id: o.parent_id,
+        z_index: o.z_index,
+        x1: o.x1,
+        y1: o.y1,
+        x2: o.x2,
+        y2: o.y2,
+        stroke,
+        opacity: o.opacity,
+        stroke_opacity: o.stroke_opacity,
+        local_transform: o.local_transform,
+        roughness: o.roughness,
+        bowing: o.bowing,
+        simplification: o.simplification,
     });
 }
 
@@ -1167,6 +2559,23 @@ pub fn js_add_line(canvas_id: u32, opts: JsValue) {
             return;
         }
     };
+    let stroke = o.stroke.as_ref().map(|s| StrokeParams {
+        width: s.width.max(0.5),
+        color: s.color,
+        linecap: s.linecap.clone(),
+        linejoin: s.linejoin.clone(),
+        miter_limit: s.miter_limit,
+        stroke_dasharray: s.stroke_dasharray.clone(),
+        stroke_dashoffset: s.stroke_dashoffset,
+    }).unwrap_or_else(|| StrokeParams {
+        width: 1.0,
+        color: default_rgba_stroke(),
+        linecap: default_linecap(),
+        linejoin: default_linejoin(),
+        miter_limit: default_miter_limit(),
+        stroke_dasharray: None,
+        stroke_dashoffset: 0.0,
+    });
     push_shape(canvas_id, JsShape::Line {
         id: o.id,
         parent_id: o.parent_id,
@@ -1175,8 +2584,12 @@ pub fn js_add_line(canvas_id: u32, opts: JsValue) {
         y1: o.y1,
         x2: o.x2,
         y2: o.y2,
-        stroke_width: o.stroke_width.max(0.5),
-        color: o.color,
+        stroke,
+        opacity: o.opacity,
+        stroke_opacity: o.stroke_opacity,
+        local_transform: o.local_transform,
+        size_attenuation: o.size_attenuation,
+        stroke_attenuation: o.stroke_attenuation,
     });
 }
 
@@ -1214,6 +2627,11 @@ pub fn js_add_text(canvas_id: u32, opts: JsValue) {
         text_baseline: o.text_baseline,
         leading: o.leading,
         fill: o.fill,
+        opacity: o.opacity,
+        fill_opacity: o.fill_opacity,
+        stroke_opacity: o.stroke_opacity,
+        local_transform: o.local_transform,
+        size_attenuation: o.size_attenuation,
     });
 }
 
@@ -1230,4 +2648,62 @@ pub fn js_register_default_font(js_value: JsValue) {
 #[wasm_bindgen(js_name = clearShapes)]
 pub fn js_clear_shapes(canvas_id: u32) {
     clear_shapes_for_canvas(canvas_id);
+}
+
+/// 相机变换选项，用于 setCameraTransform。
+#[cfg(target_arch = "wasm32")]
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CameraTransformOptions {
+    #[serde(default)]
+    pub x: f64,
+    #[serde(default)]
+    pub y: f64,
+    #[serde(default = "default_scale")]
+    pub scale: f64,
+    #[serde(default)]
+    pub rotation: f64,
+}
+
+#[cfg(target_arch = "wasm32")]
+fn default_scale() -> f64 {
+    1.0
+}
+
+/// 设置画布相机变换。opts 支持 { x, y, scale, rotation }，下一帧渲染前生效。
+/// - x, y: 平移（世界坐标）
+/// - scale: 缩放因子，1 为原始大小，2 为 2 倍放大
+/// - rotation: 旋转弧度
+#[cfg(target_arch = "wasm32")]
+#[wasm_bindgen(js_name = setCameraTransform)]
+pub fn js_set_camera_transform(canvas_id: u32, opts: JsValue) {
+    let o: CameraTransformOptions = match serde_wasm_bindgen::from_value(opts) {
+        Ok(v) => v,
+        Err(e) => {
+            web_sys::console::error_1(&format!("setCameraTransform: invalid options - {}", e).into());
+            return;
+        }
+    };
+    // 构建与 ECS viewMatrix 等效的变换：S * R * T
+    // ECS viewMatrix = (T_camera * R_camera * S_camera)^-1 = S_camera^-1 * R_camera^-1 * T_camera^-1
+    // 其中 S_camera = S(1/zoom), R_camera = R(rotation), T_camera = T(x, y)
+    // 所以 viewMatrix = S(zoom) * R(-rotation) * T(-x, -y)
+    let affine = Affine::scale(o.scale)
+        * Affine::rotate(o.rotation)
+        * Affine::translate(Vec2::new(o.x, o.y));
+    CAMERA_TRANSFORM_PENDING.with(|c| {
+        c.borrow_mut().insert(canvas_id, affine);
+    });
+    if let Some(w) = CANVAS_WINDOWS.with(|c| c.borrow().get(&canvas_id).cloned()) {
+        w.request_redraw();
+    }
+}
+
+/// 请求画布重绘。JS 在更新相机或图形后调用，以触发下一帧渲染。
+#[cfg(target_arch = "wasm32")]
+#[wasm_bindgen(js_name = requestRedraw)]
+pub fn js_request_redraw(canvas_id: u32) {
+    if let Some(w) = CANVAS_WINDOWS.with(|c| c.borrow().get(&canvas_id).cloned()) {
+        w.request_redraw();
+    }
 }

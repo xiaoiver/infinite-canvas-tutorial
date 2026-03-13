@@ -66,11 +66,21 @@ runWithCanvas(canvas, (canvasId) => {
 | -------------------------------- | ----------------------------------------------------------------------------------------------------------- |
 | `runWithCanvas(canvas, onReady)` | 用指定 canvas 启动渲染。`onReady(canvasId)` 在画布就绪时调用，后续 add\* 需传入该 `canvasId`。支持多画布。  |
 | `addRect(canvasId, options)`     | 在指定画布上添加矩形。`options`: `{ id, parentId?, zIndex?, x, y, width, height, radius?, fill?, stroke? }` |
-| `addCircle(canvasId, options)`   | 在指定画布上添加圆形。`options`: `{ id, parentId?, zIndex?, cx, cy, r, fill?, stroke? }`                    |
-| `addLine(canvasId, options)`     | 在指定画布上添加线段。`options`: `{ id, parentId?, zIndex?, x1, y1, x2, y2, strokeWidth?, color? }`         |
+| `addEllipse(canvasId, options)` | 在指定画布上添加椭圆。`options`: `{ id, parentId?, zIndex?, cx, cy, rx, ry, fill?, stroke?, localTransform? }` |
+| `addLine(canvasId, options)`     | 在指定画布上添加线段。`options`: `{ id, parentId?, zIndex?, x1, y1, x2, y2, stroke? }`，stroke 同 addRect |
+| `addPath(canvasId, options)`     | 在指定画布上添加 path。`options`: `{ id, parentId?, zIndex?, d, fill?, stroke?, fillRule? }`，d 为 SVG path 的 d 属性 |
+| `addPolyline(canvasId, options)` | 在指定画布上添加折线。`options`: `{ id, parentId?, zIndex?, points, stroke? }`，points 为 [[x,y],[x,y],...]     |
 | `addText(canvasId, options)`     | 在指定画布上添加文本。需先调用 `registerDefaultFont(字体字节)`。`options` 同上。                            |
 | `registerDefaultFont(bytes)`     | 注册默认字体。`bytes` 为 **Uint8Array** 或 **ArrayBuffer**（TTF/OTF 字节），供后续 `addText` 渲染使用。     |
 | `clearShapes(canvasId)`          | 清空指定画布上由 JS 添加的所有图形。                                                                        |
+| `setCameraTransform(canvasId, opts)` | 设置画布相机变换。`opts`: `{ x?, y?, scale?, rotation? }`，下一帧渲染前生效。                             |
+| `requestRedraw(canvasId)`       | 请求画布重绘。JS 在更新相机或图形后调用，以触发下一帧渲染。                                                |
+| `addGroup(canvasId, options)`    | 添加组/容器，用于组织子元素。`options`: `{ id, parentId?, zIndex?, localTransform? }`                      |
+| `addRoughRect(canvasId, options)` | 添加手绘风格矩形。`options`: 同 addRect，额外支持 `roughness`, `bowing`, `fillStyle` 等                   |
+| `addRoughEllipse(canvasId, options)` | 添加手绘风格椭圆。`options`: 同 addEllipse，额外支持 `roughness`, `bowing`, `fillStyle` 等               |
+| `addRoughLine(canvasId, options)` | 添加手绘风格线段。`options`: 同 addLine，额外支持 `roughness`, `bowing` 等                                |
+
+**相机控制**：Rust 不再监听 Mouse/Cursor/Touch 事件，相机 transform 完全由 JS 通过 `setCameraTransform` 同步。JS 需自行监听 canvas 的鼠标/触摸事件，计算平移与缩放，并调用 `setCameraTransform` 实现拖拽、滚轮缩放等效果。
 
 - **id**：必填，唯一标识，用于被 **parentId** 引用以建立父子关系。
 - **parentId**：可选；若传入则当前图形为该 id 对应图形的子节点，其坐标（x/y、cx/cy 等）为**父节点局部空间**；无 parentId 时为世界坐标。
@@ -78,12 +88,82 @@ runWithCanvas(canvas, (canvasId) => {
 - **fill** / **color**：RGBA 数组 `[r, g, b, a]`，取值 0–1；默认填充白色、描边黑色。
 - **stroke**：可选，`{ width, color? }`；不传或 `width ≤ 0` 表示不描边。
 - **radius**：矩形圆角，默认 0（直角）。
-- **strokeWidth**：线段线宽，默认 1。
+- **stroke**：可选，`{ width, color?, linecap?, linejoin?, miterLimit? }`；不传时默认黑色线宽 1。
+
+### 组/容器 (addGroup)
+
+使用 `addGroup` 创建逻辑分组，子元素通过 `parentId` 关联到组。组本身不可见，只提供变换和层级：
+
+```js
+addGroup(canvasId, {
+  id: 'group1',
+  zIndex: 1,
+});
+
+addRect(canvasId, {
+  id: 'rect1',
+  parentId: 'group1',  // 成为 group1 的子元素
+  x: 0,
+  y: 0,
+  width: 100,
+  height: 100,
+  fill: [1, 0, 0, 1],
+});
+```
+
+### 手绘风格形状 (addRoughRect/addRoughEllipse/addRoughLine)
+
+Rough 形状模拟手绘/草图风格，支持以下额外参数：
+
+- **roughness**：粗糙度，0 = 完美形状，1 = 默认手绘风格，>1 = 更粗糙
+- **bowing**：线条弯曲程度，默认 1
+- **fillStyle**：填充样式，可选 `hachure`（默认）、`solid`、`zigzag`、`cross-hatch`、`dots`、`dashed`、`zigzag-line`
+- **hachureAngle**：hachure 填充角度（度），默认 -41
+- **hachureGap**：hachure 线间隙，默认 4
+- **curveStepCount**：曲线步数，默认 9
+- **simplification**：简化程度，0-1 之间
+
+```js
+addRoughRect(canvasId, {
+  id: 'rr1',
+  x: 100,
+  y: 100,
+  width: 120,
+  height: 80,
+  fill: [0.9, 0.9, 0.5, 1],
+  stroke: { width: 2, color: [0, 0, 0, 1] },
+  roughness: 2,
+  bowing: 1.5,
+  fillStyle: 'hachure',
+  hachureAngle: -45,
+});
+
+addRoughEllipse(canvasId, {
+  id: 're1',
+  cx: 300,
+  cy: 200,
+  rx: 60,
+  ry: 40,
+  fill: [0.5, 0.8, 0.9, 1],
+  roughness: 1.5,
+  fillStyle: 'dots',
+});
+
+addRoughLine(canvasId, {
+  id: 'rl1',
+  x1: 100,
+  y1: 300,
+  x2: 400,
+  y2: 350,
+  stroke: { width: 3, color: [0.8, 0.3, 0.3, 1] },
+  roughness: 2.5,
+});
+```
 
 示例（在 `runWithCanvas` 的 `onReady` 回调中拿到 `canvasId` 后调用）：
 
 ```js
-import init, { addRect, addCircle, addLine, clearShapes, runWithCanvas } from './pkg/vello_renderer.js';
+import init, { addRect, addEllipse, addLine, clearShapes, runWithCanvas } from './pkg/vello_renderer.js';
 await init();
 const canvas = document.createElement('canvas');
 canvas.width = 800;
@@ -101,21 +181,23 @@ runWithCanvas(canvas, (canvasId) => {
   fill: [1, 0.6, 0.2, 1],
 });
 
-  addCircle(canvasId, {
-  id: 'circle1',
+  addEllipse(canvasId, {
+  id: 'ellipse1',
   cx: 550,
   cy: 300,
-  r: 60,
+  rx: 60,
+  ry: 60,
   fill: [1, 0.5, 0.6, 1],
   stroke: { width: 2, color: [1, 1, 1, 1] },
 });
 
-  addCircle(canvasId, {
+  addEllipse(canvasId, {
   id: 'child1',
   parentId: 'rect1',
   cx: 60,
   cy: 40,
-  r: 25,
+  rx: 25,
+  ry: 25,
   fill: [1, 1, 0.8, 1],
 });
 
@@ -125,8 +207,7 @@ runWithCanvas(canvas, (canvasId) => {
   y1: 400,
   x2: 400,
   y2: 350,
-  strokeWidth: 4,
-  color: [0.3, 0.8, 1, 1],
+  stroke: { width: 4, color: [0.3, 0.8, 1, 1] },
 });
 
   // clearShapes(canvasId);

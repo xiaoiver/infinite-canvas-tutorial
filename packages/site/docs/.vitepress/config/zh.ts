@@ -85,6 +85,7 @@ export const zh = defineConfig({
               { text: '课程32 - 文本生成图表', link: 'lesson-032' },
               { text: '课程33 - 布局引擎', link: 'lesson-033' },
               { text: '课程34 - Frame 与裁切', link: 'lesson-034' },
+              { text: '课程35 - 基于瓦片的渲染', link: 'lesson-035' },
             ],
           },
         ],
