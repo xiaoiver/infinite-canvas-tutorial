@@ -280,6 +280,7 @@ export class RenderTransformer extends System {
           cy,
           r: TRANSFORMER_ANCHOR_RADIUS,
         }),
+        new StrokeAttenuation(),
         new SizeAttenuation(),
         new Visibility(),
       )

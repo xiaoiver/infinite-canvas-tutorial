@@ -329,7 +329,7 @@ void main() {
   compressed -= strokeAttenuation * SHIFT_LEFT22;
   float shape = compressed;
 
-  if (strokeAttenuation > 0.5) {
+  if (strokeAttenuation > 0.5 && sizeAttenuation < 0.5) {
     strokeWidth = strokeWidth / u_ZoomScale;
   }
 

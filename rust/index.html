@@ -31,7 +31,7 @@
       }
     }, true);
 
-    import init, { addRect, addCircle, addText, registerDefaultFont, runWithCanvas } from './pkg/vello_renderer.js';
+    import init, { addRect, addEllipse, addText, registerDefaultFont, runWithCanvas } from './pkg/vello_renderer.js';
     try {
       await init();
       const container = document.getElementById('canvas-container');
@@ -54,12 +54,13 @@
             radius: 10,
             fill: [1, 0.6, 0.2, 1],
           });
-          addCircle(canvasId, {
+          addEllipse(canvasId, {
             id: 'child',
             parentId: 'root',
             cx: 0,
             cy: 0,
-            r: 25,
+            rx: 25,
+            ry: 25,
             fill: [1, 0.5, 0.6, 1],
             stroke: { width: 2, color: [1, 1, 1, 1] },
           });

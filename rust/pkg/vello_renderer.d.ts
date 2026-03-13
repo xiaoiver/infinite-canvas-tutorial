@@ -2,9 +2,19 @@
 /* eslint-disable */
 
 /**
- * 添加圆形。
+ * 添加椭圆。
  */
-export function addCircle(canvas_id: number, opts: any): void;
+export function addEllipse(canvas_id: number, opts: any): void;
+
+/**
+ * 添加组/容器。用于组织子元素，本身没有可见内容。
+ */
+export function addGroup(canvas_id: number, opts: any): void;
+
+/**
+ * 添加图片填充的矩形。opts 需包含 imageData (Uint8Array RGBA)、imageWidth、imageHeight。
+ */
+export function addImageRect(canvas_id: number, opts: any): void;
 
 /**
  * 添加线段。
@@ -12,9 +22,34 @@ export function addCircle(canvas_id: number, opts: any): void;
 export function addLine(canvas_id: number, opts: any): void;
 
 /**
+ * 添加 path。opts 需包含 d（SVG path 的 d 属性）。
+ */
+export function addPath(canvas_id: number, opts: any): void;
+
+/**
+ * 添加折线。opts 需包含 points（[[x,y],[x,y],...]）。
+ */
+export function addPolyline(canvas_id: number, opts: any): void;
+
+/**
  * 添加矩形。canvas_id 由 runWithCanvas 的 onReady 回调传入；opts 同前。
  */
 export function addRect(canvas_id: number, opts: any): void;
+
+/**
+ * 添加手绘风格椭圆。
+ */
+export function addRoughEllipse(canvas_id: number, opts: any): void;
+
+/**
+ * 添加手绘风格线段。
+ */
+export function addRoughLine(canvas_id: number, opts: any): void;
+
+/**
+ * 添加手绘风格矩形。
+ */
+export function addRoughRect(canvas_id: number, opts: any): void;
 
 /**
  * 添加文本。
@@ -32,23 +67,45 @@ export function clearShapes(canvas_id: number): void;
 export function registerDefaultFont(js_value: any): void;
 
 /**
- * 使用传入的 canvas 元素启动渲染。onReady(canvasId) 在画布就绪时调用，后续 addRect/addCircle 等需传入该 canvasId。
+ * 请求画布重绘。JS 在更新相机或图形后调用，以触发下一帧渲染。
+ */
+export function requestRedraw(canvas_id: number): void;
+
+/**
+ * 使用传入的 canvas 元素启动渲染。onReady(canvasId) 在画布就绪时调用，后续 addRect/addEllipse 等需传入该 canvasId。
  */
 export function runWithCanvas(canvas: any, on_ready: any): void;
+
+/**
+ * 设置画布相机变换。opts 支持 { x, y, scale, rotation }，下一帧渲染前生效。
+ * - x, y: 平移（世界坐标）
+ * - scale: 缩放因子，1 为原始大小，2 为 2 倍放大
+ * - rotation: 旋转弧度
+ */
+export function setCameraTransform(canvas_id: number, opts: any): void;
 
 export type InitInput = RequestInfo | URL | Response | BufferSource | WebAssembly.Module;
 
 export interface InitOutput {
     readonly memory: WebAssembly.Memory;
-    readonly addCircle: (a: number, b: any) => void;
+    readonly addEllipse: (a: number, b: any) => void;
+    readonly addGroup: (a: number, b: any) => void;
+    readonly addImageRect: (a: number, b: any) => void;
     readonly addLine: (a: number, b: any) => void;
+    readonly addPath: (a: number, b: any) => void;
+    readonly addPolyline: (a: number, b: any) => void;
     readonly addRect: (a: number, b: any) => void;
+    readonly addRoughEllipse: (a: number, b: any) => void;
+    readonly addRoughLine: (a: number, b: any) => void;
+    readonly addRoughRect: (a: number, b: any) => void;
     readonly addText: (a: number, b: any) => void;
     readonly registerDefaultFont: (a: any) => void;
+    readonly requestRedraw: (a: number) => void;
     readonly runWithCanvas: (a: any, b: any) => void;
+    readonly setCameraTransform: (a: number, b: any) => void;
     readonly clearShapes: (a: number) => void;
     readonly wasm_bindgen__closure__destroy__h4c4fcff17bc9837f: (a: number, b: number) => void;
-    readonly wasm_bindgen__closure__destroy__h3d33b15ab84bb1d2: (a: number, b: number) => void;
+    readonly wasm_bindgen__closure__destroy__h7d99eab49b9cc750: (a: number, b: number) => void;
     readonly wasm_bindgen__closure__destroy__h50129e0239694893: (a: number, b: number) => void;
     readonly wasm_bindgen__convert__closures_____invoke__h3cf9993aa40a3601: (a: number, b: number, c: any, d: any) => void;
     readonly wasm_bindgen__convert__closures_____invoke__hcd95a0b94c308f8e: (a: number, b: number, c: any) => [number, number];
@@ -60,7 +117,7 @@ export interface InitOutput {
     readonly wasm_bindgen__convert__closures_____invoke__h02d8f1fff670202e_6: (a: number, b: number, c: any) => void;
     readonly wasm_bindgen__convert__closures_____invoke__h02d8f1fff670202e_7: (a: number, b: number, c: any) => void;
     readonly wasm_bindgen__convert__closures_____invoke__h02d8f1fff670202e_8: (a: number, b: number, c: any) => void;
-    readonly wasm_bindgen__convert__closures_____invoke__h4c82f214f856c24f: (a: number, b: number, c: any) => void;
+    readonly wasm_bindgen__convert__closures_____invoke__h9e7610466b162cc6: (a: number, b: number, c: any) => void;
     readonly wasm_bindgen__convert__closures_____invoke__h32bdbf5415e5a149: (a: number, b: number) => void;
     readonly __wbindgen_malloc: (a: number, b: number) => number;
     readonly __wbindgen_realloc: (a: number, b: number, c: number, d: number) => number;
