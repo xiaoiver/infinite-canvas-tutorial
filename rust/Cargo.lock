@@ -2409,6 +2409,7 @@ dependencies = [
  "roughr",
  "serde",
  "serde-wasm-bindgen",
+ "unicode-segmentation",
  "vello",
  "wasm-bindgen",
  "wasm-bindgen-futures",

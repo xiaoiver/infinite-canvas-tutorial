@@ -431,6 +431,10 @@ If you want to use it in your own project, you can refer to:
 | :--------------------------------------------: | :-------------------------------------------------------: |
 | ![crop image](./screenshots/crop-an-image.gif) | ![brush with eraser](./screenshots/brush-with-eraser.png) |
 
+## Lesson 35 - Tile-based rendering [🔗](https://infinitecanvas.cc/guide/lesson-035)
+
+-   Use vello as tile-based rendering engine via WASM, fully based on WebGPU compute shader
+
 [Online App]: app.infinitecanvas.cc
 [infinitecanvas]: https://infinitecanvas.tools/
 [Self-Deployment Guide]: /packages/app/README.md

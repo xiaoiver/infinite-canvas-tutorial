@@ -28,6 +28,8 @@ roughr = "0.12"
 # wasm32: no block_on, need async init and panic hook
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 roughr = { version = "0.12", default-features = false }
+# emoji 检测
+unicode-segmentation = "1.12"
 # roughr 依赖 getrandom 0.2，需要启用 js 特性
 getrandom02 = { package = "getrandom", version = "0.2", features = ["js"] }
 wasm-bindgen = "0.2"
@@ -36,5 +38,5 @@ serde = "1.0"
 serde-wasm-bindgen = "0.6"
 console_error_panic_hook = "0.1"
 getrandom = { version = "0.3", features = ["wasm_js"] }
-web-sys = { version = "0.3", features = ["Document", "Element", "HtmlCanvasElement", "Node", "Window", "console"] }
+web-sys = { version = "0.3", features = ["Document", "Element", "HtmlCanvasElement", "Node", "Window", "console", "CanvasRenderingContext2d", "ImageData", "HtmlElement"] }
 js-sys = "0.3"

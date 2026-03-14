@@ -432,6 +432,10 @@ pnpm run dev
 | :--------------------------------------------: | :-------------------------------------------------------: |
 | ![crop image](./screenshots/crop-an-image.gif) | ![brush with eraser](./screenshots/brush-with-eraser.png) |
 
+## 课程 35 - 基于瓦片的渲染 [🔗](https://infinitecanvas.cc/zh/guide/lesson-035)
+
+-   通过 WASM 使用 vello 作为渲染引擎，体验基于 WebGPU compute shader 的瓦片渲染
+
 [在线体验]: app.infinitecanvas.cc
 [infinitecanvas]: https://infinitecanvas.tools/
 [自部署指南]: /packages/app/README.md
