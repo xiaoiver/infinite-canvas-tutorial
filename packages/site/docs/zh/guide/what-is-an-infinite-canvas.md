@@ -38,6 +38,8 @@ description: '介绍无限画布的概念，包括高扩展性、缩放功能和
 
 ![rust stack](/rust.png)
 
+目前我已经基于 [vello] 实现了在 Rust 中渲染基础图形、手绘风格等特性，通过 WASM 调用。
+
 让我们开始吧！
 
 [infinitecanvas]: https://infinitecanvas.tools/
