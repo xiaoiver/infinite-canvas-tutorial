@@ -1374,6 +1374,9 @@ importers:
       '@infinite-canvas-tutorial/upscaler':
         specifier: workspace:*
         version: link:../plugin-upscaler
+      '@infinite-canvas-tutorial/vello':
+        specifier: workspace:*
+        version: link:../plugin-vello
       '@infinite-canvas-tutorial/webcomponents':
         specifier: workspace:*
         version: link:../webcomponents

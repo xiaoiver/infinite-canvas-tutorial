@@ -1,14 +1,23 @@
 import { Entity, System, Canvas, GPUResource, Grid, Theme, ComputedCamera, Camera } from '@infinite-canvas-tutorial/ecs';
 import init, { registerDefaultFont, runWithCanvas, setCameraTransform } from '@infinite-canvas-tutorial/vello-renderer';
 
+const FONT_URLS = [];
+export function registerFont(fontUrl: string) {
+  FONT_URLS.push(fontUrl);
+}
+
+/**
+ * InitVello System 基类，包含 canvasIds 用于 VelloPipeline 访问。
+ * 实际的 System 实现通过 InitVelloSystemImpl 创建。
+ */
 export class InitVello extends System {
+  canvasIds: WeakMap<HTMLCanvasElement, number> = new WeakMap();
+
   private readonly canvases = this.query(
     (q) => q.added.and.changed.and.removed.and.current.with(Canvas).trackWrites,
   );
 
   private readonly cameras = this.query((q) => q.with(Camera).changed.with(ComputedCamera).trackWrites);
-
-  canvasIds: WeakMap<HTMLCanvasElement, number> = new WeakMap();
 
   constructor() {
     super();
@@ -18,9 +27,11 @@ export class InitVello extends System {
   async prepare() {
     await init();
 
-    const r = await fetch('/NotoSans-Regular.ttf');
-    const buf = await r.arrayBuffer();
-    registerDefaultFont(buf);
+    for (const fontUrl of FONT_URLS) {
+      const r = await fetch(fontUrl);
+      const buf = await r.arrayBuffer();
+      registerDefaultFont(buf);
+    }
   }
 
   execute() {
@@ -37,7 +48,7 @@ export class InitVello extends System {
 
       runWithCanvas($canvas, (canvasId: number) => {
         this.canvasIds.set($canvas, canvasId);
-      });      
+      });
     });
 
     this.canvases.removed.forEach((canvas) => {

@@ -57,6 +57,21 @@ export function addRoughRect(canvas_id: number, opts: any): void;
 export function addText(canvas_id: number, opts: any): void;
 
 /**
+ * 清空所有缓存（emoji + 字形）。在切换字体或内存紧张时调用。
+ */
+export function clearAllCaches(): void;
+
+/**
+ * 清空 emoji 缓存，释放内存。在切换字体或长时间运行后调用。
+ */
+export function clearEmojiCache(): void;
+
+/**
+ * 清空字形缓存，释放内存。在切换字体或长时间运行后调用。
+ */
+export function clearGlyphCache(): void;
+
+/**
  * 清空指定画布上由 JS 添加的所有图形。
  */
 export function clearShapes(canvas_id: number): void;
@@ -103,22 +118,25 @@ export interface InitOutput {
     readonly requestRedraw: (a: number) => void;
     readonly runWithCanvas: (a: any, b: any) => void;
     readonly setCameraTransform: (a: number, b: any) => void;
+    readonly clearEmojiCache: () => void;
+    readonly clearGlyphCache: () => void;
     readonly clearShapes: (a: number) => void;
-    readonly wasm_bindgen__closure__destroy__h4c4fcff17bc9837f: (a: number, b: number) => void;
-    readonly wasm_bindgen__closure__destroy__h7d99eab49b9cc750: (a: number, b: number) => void;
+    readonly clearAllCaches: () => void;
+    readonly wasm_bindgen__closure__destroy__h2393627b061c6390: (a: number, b: number) => void;
+    readonly wasm_bindgen__closure__destroy__h5efe34e33761ee9b: (a: number, b: number) => void;
     readonly wasm_bindgen__closure__destroy__h50129e0239694893: (a: number, b: number) => void;
-    readonly wasm_bindgen__convert__closures_____invoke__h3cf9993aa40a3601: (a: number, b: number, c: any, d: any) => void;
+    readonly wasm_bindgen__convert__closures_____invoke__h26ef4de1d2f17d97: (a: number, b: number, c: any, d: any) => void;
     readonly wasm_bindgen__convert__closures_____invoke__hcd95a0b94c308f8e: (a: number, b: number, c: any) => [number, number];
-    readonly wasm_bindgen__convert__closures_____invoke__h02d8f1fff670202e: (a: number, b: number, c: any) => void;
-    readonly wasm_bindgen__convert__closures_____invoke__h02d8f1fff670202e_2: (a: number, b: number, c: any) => void;
-    readonly wasm_bindgen__convert__closures_____invoke__h02d8f1fff670202e_3: (a: number, b: number, c: any) => void;
-    readonly wasm_bindgen__convert__closures_____invoke__h02d8f1fff670202e_4: (a: number, b: number, c: any) => void;
-    readonly wasm_bindgen__convert__closures_____invoke__h02d8f1fff670202e_5: (a: number, b: number, c: any) => void;
-    readonly wasm_bindgen__convert__closures_____invoke__h02d8f1fff670202e_6: (a: number, b: number, c: any) => void;
-    readonly wasm_bindgen__convert__closures_____invoke__h02d8f1fff670202e_7: (a: number, b: number, c: any) => void;
-    readonly wasm_bindgen__convert__closures_____invoke__h02d8f1fff670202e_8: (a: number, b: number, c: any) => void;
-    readonly wasm_bindgen__convert__closures_____invoke__h9e7610466b162cc6: (a: number, b: number, c: any) => void;
-    readonly wasm_bindgen__convert__closures_____invoke__h32bdbf5415e5a149: (a: number, b: number) => void;
+    readonly wasm_bindgen__convert__closures_____invoke__h07b4cad2128613da: (a: number, b: number, c: any) => void;
+    readonly wasm_bindgen__convert__closures_____invoke__h07b4cad2128613da_2: (a: number, b: number, c: any) => void;
+    readonly wasm_bindgen__convert__closures_____invoke__h07b4cad2128613da_3: (a: number, b: number, c: any) => void;
+    readonly wasm_bindgen__convert__closures_____invoke__h07b4cad2128613da_4: (a: number, b: number, c: any) => void;
+    readonly wasm_bindgen__convert__closures_____invoke__h07b4cad2128613da_5: (a: number, b: number, c: any) => void;
+    readonly wasm_bindgen__convert__closures_____invoke__h07b4cad2128613da_6: (a: number, b: number, c: any) => void;
+    readonly wasm_bindgen__convert__closures_____invoke__h07b4cad2128613da_7: (a: number, b: number, c: any) => void;
+    readonly wasm_bindgen__convert__closures_____invoke__h07b4cad2128613da_8: (a: number, b: number, c: any) => void;
+    readonly wasm_bindgen__convert__closures_____invoke__h5ba874b0856b22eb: (a: number, b: number, c: any) => void;
+    readonly wasm_bindgen__convert__closures_____invoke__h0545557df07585f9: (a: number, b: number) => void;
     readonly __wbindgen_malloc: (a: number, b: number) => number;
     readonly __wbindgen_realloc: (a: number, b: number, c: number, d: number) => number;
     readonly __externref_table_alloc: () => number;
