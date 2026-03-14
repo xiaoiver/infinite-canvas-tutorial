@@ -37,6 +37,8 @@ I hope to rewrite the rendering part of the canvas with Rust in the future, but 
 
 ![rust stack](/rust.png)
 
+I have already implemented rendering of basic shapes, sketch style, and related features in Rust using [vello], invoked via WASM.
+
 Let's get started!
 
 [infinitecanvas]: https://infinitecanvas.tools/

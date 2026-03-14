@@ -48,6 +48,7 @@ This tutorial covers a basic 2D graphics rendering implementation based on WebGL
 -   [Lesson 25 - Drawing mode and brush]
 -   [Lesson 30 - Post-processing and render graph]
 -   [Lesson 34 - Frame and clip]
+-   [Lesson 35 - Tile-based rendering]
 
 Also includes UI components implemented using Web Components technology:
 
@@ -82,3 +83,4 @@ The most important thing:
 [Lesson 28 - Integrating with AI]: /guide/lesson-028
 [Lesson 30 - Post-processing and render graph]: /guide/lesson-030
 [Lesson 34 - Frame and clip]: /guide/lesson-034
+[Lesson 35 - Tile-based rendering]: /guide/lesson-035

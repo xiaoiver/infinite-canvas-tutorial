@@ -152,6 +152,10 @@ export const en = defineConfig({
                 text: 'Lesson 034 - Frame and clip',
                 link: 'lesson-034',
               },
+              {
+                text: 'Lesson 035 - Tile-based rendering',
+                link: 'lesson-035',
+              }
             ],
           },
         ],

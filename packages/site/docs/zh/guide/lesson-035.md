@@ -302,6 +302,8 @@ if let Some((font_data, glyphs, size)) =
 -   COLR/CPAL 彩色字体：作为图像（Image）渲染，通过 Vello 的图像合成管线
 -   位图字形（Emoji）：直接作为纹理 quad 渲染
 
+### 图像处理 {#image-post-processing}
+
 ## 其他功能的 Rust 实现 {#}
 
 ### 拾取 {#picking}
