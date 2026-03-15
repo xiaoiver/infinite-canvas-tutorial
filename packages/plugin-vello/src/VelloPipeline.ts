@@ -400,7 +400,7 @@ export class VelloPipeline extends System {
           // FillGradient 在各自 shape 分支中根据 bounds 计算 fillGradient
 
           if (entity.has(Stroke)) {
-            const { width, color, linecap, linejoin, miterlimit, dasharray, dashoffset } = entity.read(Stroke);
+            const { width, color, linecap, linejoin, miterlimit, dasharray, dashoffset, alignment } = entity.read(Stroke);
             if (width > 0 && color !== 'none') {
               const {
                 r,
@@ -416,6 +416,7 @@ export class VelloPipeline extends System {
                 miterLimit: miterlimit ?? 4,
                 dasharray: dasharray ?? [],
                 dashoffset: dashoffset ?? 0,
+                alignment: alignment ?? 'center',
               };
             }
           }

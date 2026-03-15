@@ -77,6 +77,25 @@ pub struct FillGradientOptions {
     pub stops: Vec<FillGradientStopOptions>,
 }
 
+/// 描边对齐方式
+#[derive(Clone, Debug, Default)]
+pub enum StrokeAlignment {
+    #[default]
+    Center,
+    Inner,
+    Outer,
+}
+
+impl StrokeAlignment {
+    fn from_str(s: &str) -> Self {
+        match s {
+            "inner" => StrokeAlignment::Inner,
+            "outer" => StrokeAlignment::Outer,
+            _ => StrokeAlignment::Center,
+        }
+    }
+}
+
 /// 描边属性，用于 linecap/linejoin 等。
 #[derive(Clone, Debug)]
 pub struct StrokeParams {
@@ -87,31 +106,12 @@ pub struct StrokeParams {
     pub miter_limit: f64,
     pub stroke_dasharray: Option<Vec<f64>>,
     pub stroke_dashoffset: f64,
+    pub alignment: StrokeAlignment,
 }
 
 impl StrokeParams {
     fn to_kurbo_stroke(&self) -> Stroke {
-        let cap = match self.linecap.as_str() {
-            "round" => Cap::Round,
-            "square" => Cap::Square,
-            _ => Cap::Butt,
-        };
-        let join = match self.linejoin.as_str() {
-            "round" => Join::Round,
-            "bevel" => Join::Bevel,
-            _ => Join::Miter,
-        };
-        let mut stroke = Stroke::new(self.width)
-            .with_caps(cap)
-            .with_join(join)
-            .with_miter_limit(self.miter_limit);
-        // 添加虚线支持
-        if let Some(ref dasharray) = self.stroke_dasharray {
-            if dasharray.len() >= 2 {
-                stroke = stroke.with_dashes(self.stroke_dashoffset, dasharray.clone());
-            }
-        }
-        stroke
+        self.to_kurbo_stroke_with_width(self.width)
     }
     fn to_kurbo_stroke_with_width(&self, width: f64) -> Stroke {
         let cap = match self.linecap.as_str() {
@@ -578,6 +578,8 @@ pub struct StrokeOptions {
     pub stroke_dasharray: Option<Vec<f64>>,
     #[serde(rename = "dashoffset", default)]
     pub stroke_dashoffset: f64,
+    #[serde(default = "default_stroke_alignment")]
+    pub alignment: String,
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -591,6 +593,10 @@ fn default_linejoin() -> String {
 #[cfg(target_arch = "wasm32")]
 fn default_miter_limit() -> f64 {
     4.0
+}
+#[cfg(target_arch = "wasm32")]
+fn default_stroke_alignment() -> String {
+    "center".to_string()
 }
 
 /// 图片矩形选项。imageData 需由 JS 通过 Uint8Array 传入 RGBA 像素数据。
@@ -1964,39 +1970,77 @@ fn add_js_shape_to_scene(
                 y.max(y + h),
             );
             let fill_mult = opacity * fill_opacity;
-            if r > 0.0 {
-                let geom = RoundedRect::new(x0, y0, x1, y1, r);
-                if let Some(ref grads) = fill_gradients {
-                    for g in grads.iter().rev() {
-                        let brush = vello::peniko::Brush::Gradient(build_gradient_brush(g, fill_mult));
-                        scene.fill(Fill::NonZero, shape_transform, &brush, None, &geom);
+
+            // 获取 stroke 配置
+            let stroke_config = stroke.as_ref().map(|s| {
+                let width = if stroke_attenuation { s.width / scale } else { s.width };
+                let color = apply_opacity_to_color(s.color, opacity, stroke_opacity);
+                (width, color, &s.alignment)
+            });
+
+            // 根据 stroke alignment 调整几何形状
+            let (fill_geom, stroke_geom) = if let Some((sw, _, alignment)) = stroke_config {
+                match alignment {
+                    StrokeAlignment::Inner => {
+                        // Inner: fill 区域向内收缩 sw，stroke 在 fill 的外边缘
+                        // 这样 stroke 会完全在原始矩形内部
+                        let fill_rect = RoundedRect::new(
+                            x0 + sw, y0 + sw,
+                            x1 - sw, y1 - sw,
+                            (r - sw).max(0.0)
+                        );
+                        // stroke 在 fill 的外边缘，即原始矩形的内边缘
+                        let stroke_rect = RoundedRect::new(
+                            x0 + sw / 2.0, y0 + sw / 2.0,
+                            x1 - sw / 2.0, y1 - sw / 2.0,
+                            (r - sw / 2.0).max(0.0)
+                        );
+                        (Some(fill_rect), Some((stroke_rect, sw)))
                     }
-                } else {
-                    let fill_color = apply_opacity_to_color(fill, opacity, fill_opacity);
-                    let brush = vello::peniko::Brush::Solid(Color::new(fill_color));
-                    scene.fill(Fill::NonZero, shape_transform, &brush, None, &geom);
-                }
-                if let Some(ref s) = stroke {
-                    let stroke_color = apply_opacity_to_color(s.color, opacity, stroke_opacity);
-                    let kurbo_stroke = apply_stroke_attenuation(s, stroke_attenuation);
-                    scene.stroke(&kurbo_stroke, shape_transform, Color::new(stroke_color), None, &geom);
+                    StrokeAlignment::Outer => {
+                        // Outer: fill 区域不变，stroke 在外部
+                        let offset = sw / 2.0;
+                        let fill_rect = RoundedRect::new(x0, y0, x1, y1, r);
+                        // stroke 圆角半径保持与 fill 相同，避免圆角过大
+                        let stroke_rect = RoundedRect::new(
+                            x0 - offset, y0 - offset,
+                            x1 + offset, y1 + offset,
+                            r
+                        );
+                        (Some(fill_rect), Some((stroke_rect, sw)))
+                    }
+                    StrokeAlignment::Center => {
+                        // Center: fill 和 stroke 使用相同的几何形状
+                        let rect = RoundedRect::new(x0, y0, x1, y1, r);
+                        (Some(rect), Some((rect, sw)))
+                    }
                 }
             } else {
-                let geom = Rect::new(x0, y0, x1, y1);
+                // 无 stroke，只有 fill
+                let fill_rect = RoundedRect::new(x0, y0, x1, y1, r);
+                (Some(fill_rect), None)
+            };
+
+            // 绘制 fill
+            if let Some(ref fill_geom) = fill_geom {
                 if let Some(ref grads) = fill_gradients {
                     for g in grads.iter().rev() {
                         let brush = vello::peniko::Brush::Gradient(build_gradient_brush(g, fill_mult));
-                        scene.fill(Fill::NonZero, shape_transform, &brush, None, &geom);
+                        scene.fill(Fill::NonZero, shape_transform, &brush, None, fill_geom);
                     }
                 } else {
                     let fill_color = apply_opacity_to_color(fill, opacity, fill_opacity);
                     let brush = vello::peniko::Brush::Solid(Color::new(fill_color));
-                    scene.fill(Fill::NonZero, shape_transform, &brush, None, &geom);
+                    scene.fill(Fill::NonZero, shape_transform, &brush, None, fill_geom);
                 }
+            }
+
+            // 绘制 stroke
+            if let Some((ref stroke_geom, sw)) = stroke_geom {
                 if let Some(ref s) = stroke {
                     let stroke_color = apply_opacity_to_color(s.color, opacity, stroke_opacity);
-                    let kurbo_stroke = apply_stroke_attenuation(s, stroke_attenuation);
-                    scene.stroke(&kurbo_stroke, shape_transform, Color::new(stroke_color), None, &geom);
+                    let kurbo_stroke = s.to_kurbo_stroke_with_width(sw);
+                    scene.stroke(&kurbo_stroke, shape_transform, Color::new(stroke_color), None, stroke_geom);
                 }
             }
         }
@@ -2006,22 +2050,78 @@ fn add_js_shape_to_scene(
             } else {
                 (rx, ry)
             };
-            let ellipse = Ellipse::new(Point::new(cx, cy), Vec2::new(rx_eff, ry_eff), 0.0);
             let fill_mult = opacity * fill_opacity;
-            if let Some(ref grads) = fill_gradients {
-                for g in grads.iter().rev() {
-                    let brush = vello::peniko::Brush::Gradient(build_gradient_brush(g, fill_mult));
-                    scene.fill(Fill::NonZero, shape_transform, &brush, None, &ellipse);
+
+            // 获取 stroke 配置
+            let stroke_config = stroke.as_ref().map(|s| {
+                let width = if stroke_attenuation { s.width / scale } else { s.width };
+                let color = apply_opacity_to_color(s.color, opacity, stroke_opacity);
+                (width, color, &s.alignment)
+            });
+
+            // 根据 stroke alignment 调整几何形状
+            let (fill_geom, stroke_geom) = if let Some((sw, _, alignment)) = stroke_config {
+                match alignment {
+                    StrokeAlignment::Inner => {
+                        // Inner: fill 区域向内收缩 sw，stroke 在 fill 的外边缘
+                        // 这样 stroke 会完全在原始椭圆内部
+                        let fill_ellipse = Ellipse::new(
+                            Point::new(cx, cy),
+                            Vec2::new((rx_eff - sw).max(0.0), (ry_eff - sw).max(0.0)),
+                            0.0
+                        );
+                        // stroke 在 fill 的外边缘，即原始椭圆的内边缘
+                        let stroke_ellipse = Ellipse::new(
+                            Point::new(cx, cy),
+                            Vec2::new((rx_eff - sw / 2.0).max(0.0), (ry_eff - sw / 2.0).max(0.0)),
+                            0.0
+                        );
+                        (Some(fill_ellipse), Some((stroke_ellipse, sw)))
+                    }
+                    StrokeAlignment::Outer => {
+                        // Outer: fill 区域不变，stroke 在外部
+                        let offset = sw / 2.0;
+                        let fill_ellipse = Ellipse::new(Point::new(cx, cy), Vec2::new(rx_eff, ry_eff), 0.0);
+                        let stroke_ellipse = Ellipse::new(
+                            Point::new(cx, cy),
+                            Vec2::new(rx_eff + offset, ry_eff + offset),
+                            0.0
+                        );
+                        (Some(fill_ellipse), Some((stroke_ellipse, sw)))
+                    }
+                    StrokeAlignment::Center => {
+                        // Center: fill 和 stroke 使用相同的几何形状
+                        let ellipse = Ellipse::new(Point::new(cx, cy), Vec2::new(rx_eff, ry_eff), 0.0);
+                        (Some(ellipse), Some((ellipse, sw)))
+                    }
                 }
             } else {
-                let fill_color = apply_opacity_to_color(fill, opacity, fill_opacity);
-                let brush = vello::peniko::Brush::Solid(Color::new(fill_color));
-                scene.fill(Fill::NonZero, shape_transform, &brush, None, &ellipse);
+                // 无 stroke，只有 fill
+                let fill_ellipse = Ellipse::new(Point::new(cx, cy), Vec2::new(rx_eff, ry_eff), 0.0);
+                (Some(fill_ellipse), None)
+            };
+
+            // 绘制 fill
+            if let Some(ref fill_geom) = fill_geom {
+                if let Some(ref grads) = fill_gradients {
+                    for g in grads.iter().rev() {
+                        let brush = vello::peniko::Brush::Gradient(build_gradient_brush(g, fill_mult));
+                        scene.fill(Fill::NonZero, shape_transform, &brush, None, fill_geom);
+                    }
+                } else {
+                    let fill_color = apply_opacity_to_color(fill, opacity, fill_opacity);
+                    let brush = vello::peniko::Brush::Solid(Color::new(fill_color));
+                    scene.fill(Fill::NonZero, shape_transform, &brush, None, fill_geom);
+                }
             }
-            if let Some(ref s) = stroke {
-                let stroke_color = apply_opacity_to_color(s.color, opacity, stroke_opacity);
-                let kurbo_stroke = apply_stroke_attenuation(s, stroke_attenuation);
-                scene.stroke(&kurbo_stroke, shape_transform, Color::new(stroke_color), None, &ellipse);
+
+            // 绘制 stroke
+            if let Some((ref stroke_geom, sw)) = stroke_geom {
+                if let Some(ref s) = stroke {
+                    let stroke_color = apply_opacity_to_color(s.color, opacity, stroke_opacity);
+                    let kurbo_stroke = s.to_kurbo_stroke_with_width(sw);
+                    scene.stroke(&kurbo_stroke, shape_transform, Color::new(stroke_color), None, stroke_geom);
+                }
             }
         }
         JsShape::Line { x1, y1, x2, y2, stroke, opacity, stroke_opacity, size_attenuation, stroke_attenuation, .. } => {
@@ -2197,21 +2297,77 @@ fn add_js_shape_to_scene(
                 let brush = ImageBrush::new(image);
                 let brush_transform = Affine::translate(Vec2::new(x, y))
                     * Affine::scale_non_uniform(w / image_width as f64, h / image_height as f64);
-                if r > 0.0 {
-                    let geom = RoundedRect::new(x, y, x + w, y + h, r);
-                    scene.fill(Fill::NonZero, shape_transform, brush.as_ref(), Some(brush_transform), &geom);
-                    if let Some(ref s) = stroke {
-                        let stroke_color = apply_opacity_to_color(s.color, opacity, stroke_opacity);
-                        let kurbo_stroke = apply_stroke_attenuation(s, stroke_attenuation);
-                        scene.stroke(&kurbo_stroke, shape_transform, Color::new(stroke_color), None, &geom);
+
+                // 获取 stroke 配置
+                let stroke_config = stroke.as_ref().map(|s| {
+                    let width = if stroke_attenuation { s.width / scale } else { s.width };
+                    let color = apply_opacity_to_color(s.color, opacity, stroke_opacity);
+                    (width, color, &s.alignment)
+                });
+
+                // 根据 stroke alignment 调整几何形状
+                let (fill_rect, stroke_rect, stroke_width) = if let Some((sw, _, alignment)) = stroke_config {
+                    match alignment {
+                        StrokeAlignment::Inner => {
+                            // Inner: fill 区域向内收缩 sw，stroke 在 fill 的外边缘
+                            // 这样 stroke 会完全在原始矩形内部
+                            let fill_r = (r - sw).max(0.0);
+                            let fill_x0 = x + sw;
+                            let fill_y0 = y + sw;
+                            let fill_x1 = x + w - sw;
+                            let fill_y1 = y + h - sw;
+                            // stroke 在 fill 的外边缘，即原始矩形的内边缘
+                            let stroke_r = (r - sw / 2.0).max(0.0);
+                            let stroke_x0 = x + sw / 2.0;
+                            let stroke_y0 = y + sw / 2.0;
+                            let stroke_x1 = x + w - sw / 2.0;
+                            let stroke_y1 = y + h - sw / 2.0;
+                            (Some((fill_x0, fill_y0, fill_x1, fill_y1, fill_r)), Some((stroke_x0, stroke_y0, stroke_x1, stroke_y1, stroke_r)), Some(sw))
+                        }
+                        StrokeAlignment::Outer => {
+                            // Outer: fill 区域不变，stroke 在外部
+                            let offset = sw / 2.0;
+                            // stroke 圆角半径保持与 fill 相同，避免圆角过大
+                            let stroke_r = r;
+                            let stroke_x0 = x - offset;
+                            let stroke_y0 = y - offset;
+                            let stroke_x1 = x + w + offset;
+                            let stroke_y1 = y + h + offset;
+                            (Some((x, y, x + w, y + h, r)), Some((stroke_x0, stroke_y0, stroke_x1, stroke_y1, stroke_r)), Some(sw))
+                        }
+                        StrokeAlignment::Center => {
+                            // Center: fill 和 stroke 使用相同的几何形状
+                            (Some((x, y, x + w, y + h, r)), Some((x, y, x + w, y + h, r)), Some(sw))
+                        }
                     }
                 } else {
-                    let geom = Rect::new(x, y, x + w, y + h);
-                    scene.fill(Fill::NonZero, shape_transform, brush.as_ref(), Some(brush_transform), &geom);
-                    if let Some(ref s) = stroke {
+                    // 无 stroke，只有 fill
+                    (Some((x, y, x + w, y + h, r)), None, None)
+                };
+
+                // 绘制 fill
+                if let Some((fx0, fy0, fx1, fy1, fr)) = fill_rect {
+                    if fr > 0.0 {
+                        let fill_geom = RoundedRect::new(fx0, fy0, fx1, fy1, fr);
+                        scene.fill(Fill::NonZero, shape_transform, brush.as_ref(), Some(brush_transform), &fill_geom);
+                    } else {
+                        let fill_geom = Rect::new(fx0, fy0, fx1, fy1);
+                        scene.fill(Fill::NonZero, shape_transform, brush.as_ref(), Some(brush_transform), &fill_geom);
+                    }
+                }
+
+                // 绘制 stroke
+                if let Some((sx0, sy0, sx1, sy1, sr)) = stroke_rect {
+                    if let (Some(ref s), Some(sw)) = (stroke, stroke_width) {
                         let stroke_color = apply_opacity_to_color(s.color, opacity, stroke_opacity);
-                        let kurbo_stroke = apply_stroke_attenuation(s, stroke_attenuation);
-                        scene.stroke(&kurbo_stroke, shape_transform, Color::new(stroke_color), None, &geom);
+                        let kurbo_stroke = s.to_kurbo_stroke_with_width(sw);
+                        if sr > 0.0 {
+                            let stroke_geom = RoundedRect::new(sx0, sy0, sx1, sy1, sr);
+                            scene.stroke(&kurbo_stroke, shape_transform, Color::new(stroke_color), None, &stroke_geom);
+                        } else {
+                            let stroke_geom = Rect::new(sx0, sy0, sx1, sy1);
+                            scene.stroke(&kurbo_stroke, shape_transform, Color::new(stroke_color), None, &stroke_geom);
+                        }
                     }
                 }
             }
@@ -2229,20 +2385,75 @@ fn add_js_shape_to_scene(
                     Fill::NonZero
                 };
                 let fill_mult = opacity * fill_opacity;
-                if let Some(ref grads) = fill_gradients {
-                    for g in grads.iter().rev() {
-                        let brush = vello::peniko::Brush::Gradient(build_gradient_brush(g, fill_mult));
-                        scene.fill(fill_mode, shape_transform, &brush, None, &bez_path);
+
+                // 获取 stroke 配置
+                let stroke_config = stroke.as_ref().map(|s| {
+                    let width = if stroke_attenuation { s.width / scale } else { s.width };
+                    let color = apply_opacity_to_color(s.color, opacity, stroke_opacity);
+                    (width, color, &s.alignment)
+                });
+
+                // 根据 stroke alignment 处理
+                match stroke_config {
+                    Some((sw, _, StrokeAlignment::Inner)) => {
+                        // Inner: 先绘制 fill，然后 clip 到 fill 区域再绘制 stroke
+                        if let Some(ref grads) = fill_gradients {
+                            for g in grads.iter().rev() {
+                                let brush = vello::peniko::Brush::Gradient(build_gradient_brush(g, fill_mult));
+                                scene.fill(fill_mode, shape_transform, &brush, None, &bez_path);
+                            }
+                        } else {
+                            let fill_color = apply_opacity_to_color(fill, opacity, fill_opacity);
+                            let brush = vello::peniko::Brush::Solid(Color::new(fill_color));
+                            scene.fill(fill_mode, shape_transform, &brush, None, &bez_path);
+                        }
+                        // Inner stroke: 使用 clip 限制 stroke 在 fill 内部
+                        if let Some(ref s) = stroke {
+                            let stroke_color = apply_opacity_to_color(s.color, opacity, stroke_opacity);
+                            let kurbo_stroke = s.to_kurbo_stroke_with_width(sw);
+                            scene.push_clip_layer(fill_mode, shape_transform, &bez_path);
+                            scene.stroke(&kurbo_stroke, shape_transform, Color::new(stroke_color), None, &bez_path);
+                            scene.pop_layer();
+                        }
                     }
-                } else {
-                    let fill_color = apply_opacity_to_color(fill, opacity, fill_opacity);
-                    let brush = vello::peniko::Brush::Solid(Color::new(fill_color));
-                    scene.fill(fill_mode, shape_transform, &brush, None, &bez_path);
-                }
-                if let Some(ref s) = stroke {
-                    let stroke_color = apply_opacity_to_color(s.color, opacity, stroke_opacity);
-                    let kurbo_stroke = apply_stroke_attenuation(s, stroke_attenuation);
-                    scene.stroke(&kurbo_stroke, shape_transform, Color::new(stroke_color), None, &bez_path);
+                    Some((sw, _, StrokeAlignment::Outer)) => {
+                        // Outer: 先绘制 stroke（不 clip），再绘制 fill
+                        if let Some(ref s) = stroke {
+                            let stroke_color = apply_opacity_to_color(s.color, opacity, stroke_opacity);
+                            let kurbo_stroke = s.to_kurbo_stroke_with_width(sw);
+                            scene.stroke(&kurbo_stroke, shape_transform, Color::new(stroke_color), None, &bez_path);
+                        }
+                        if let Some(ref grads) = fill_gradients {
+                            for g in grads.iter().rev() {
+                                let brush = vello::peniko::Brush::Gradient(build_gradient_brush(g, fill_mult));
+                                scene.fill(fill_mode, shape_transform, &brush, None, &bez_path);
+                            }
+                        } else {
+                            let fill_color = apply_opacity_to_color(fill, opacity, fill_opacity);
+                            let brush = vello::peniko::Brush::Solid(Color::new(fill_color));
+                            scene.fill(fill_mode, shape_transform, &brush, None, &bez_path);
+                        }
+                    }
+                    _ => {
+                        // Center 或无 stroke: 标准绘制
+                        if let Some(ref grads) = fill_gradients {
+                            for g in grads.iter().rev() {
+                                let brush = vello::peniko::Brush::Gradient(build_gradient_brush(g, fill_mult));
+                                scene.fill(fill_mode, shape_transform, &brush, None, &bez_path);
+                            }
+                        } else {
+                            let fill_color = apply_opacity_to_color(fill, opacity, fill_opacity);
+                            let brush = vello::peniko::Brush::Solid(Color::new(fill_color));
+                            scene.fill(fill_mode, shape_transform, &brush, None, &bez_path);
+                        }
+                        if let Some((sw, _, _)) = stroke_config {
+                            if let Some(ref s) = stroke {
+                                let stroke_color = apply_opacity_to_color(s.color, opacity, stroke_opacity);
+                                let kurbo_stroke = s.to_kurbo_stroke_with_width(sw);
+                                scene.stroke(&kurbo_stroke, shape_transform, Color::new(stroke_color), None, &bez_path);
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -2486,6 +2697,7 @@ pub fn js_add_rect(canvas_id: u32, opts: JsValue) {
                 miter_limit: s.miter_limit,
                 stroke_dasharray: s.stroke_dasharray.clone(),
                 stroke_dashoffset: s.stroke_dashoffset,
+                alignment: StrokeAlignment::from_str(&s.alignment),
             })
         } else {
             None
@@ -2534,6 +2746,7 @@ pub fn js_add_ellipse(canvas_id: u32, opts: JsValue) {
                 miter_limit: s.miter_limit,
                 stroke_dasharray: s.stroke_dasharray.clone(),
                 stroke_dashoffset: s.stroke_dashoffset,
+                alignment: StrokeAlignment::from_str(&s.alignment),
             })
         } else {
             None
@@ -2586,6 +2799,7 @@ pub fn js_add_image_rect(canvas_id: u32, opts: JsValue) {
                 miter_limit: s.miter_limit,
                 stroke_dasharray: s.stroke_dasharray.clone(),
                 stroke_dashoffset: s.stroke_dashoffset,
+                alignment: StrokeAlignment::from_str(&s.alignment),
             })
         } else {
             None
@@ -2634,6 +2848,7 @@ pub fn js_add_path(canvas_id: u32, opts: JsValue) {
                 miter_limit: s.miter_limit,
                 stroke_dasharray: s.stroke_dasharray.clone(),
                 stroke_dashoffset: s.stroke_dashoffset,
+                alignment: StrokeAlignment::from_str(&s.alignment),
             })
         } else {
             None
@@ -2677,6 +2892,7 @@ pub fn js_add_polyline(canvas_id: u32, opts: JsValue) {
         miter_limit: s.miter_limit,
         stroke_dasharray: s.stroke_dasharray.clone(),
         stroke_dashoffset: s.stroke_dashoffset,
+        alignment: StrokeAlignment::from_str(&s.alignment),
     }).unwrap_or_else(|| StrokeParams {
         width: 1.0,
         color: default_rgba_stroke(),
@@ -2685,6 +2901,7 @@ pub fn js_add_polyline(canvas_id: u32, opts: JsValue) {
         miter_limit: default_miter_limit(),
         stroke_dasharray: None,
         stroke_dashoffset: 0.0,
+        alignment: StrokeAlignment::Center,
     });
     push_shape(canvas_id, JsShape::Polyline {
         id: o.id,
@@ -2741,6 +2958,7 @@ pub fn js_add_rough_rect(canvas_id: u32, opts: JsValue) {
                 miter_limit: s.miter_limit,
                 stroke_dasharray: s.stroke_dasharray.clone(),
                 stroke_dashoffset: s.stroke_dashoffset,
+                alignment: StrokeAlignment::from_str(&s.alignment),
             })
         } else {
             None
@@ -2791,6 +3009,7 @@ pub fn js_add_rough_ellipse(canvas_id: u32, opts: JsValue) {
                 miter_limit: s.miter_limit,
                 stroke_dasharray: s.stroke_dasharray.clone(),
                 stroke_dashoffset: s.stroke_dashoffset,
+                alignment: StrokeAlignment::from_str(&s.alignment),
             })
         } else {
             None
@@ -2839,6 +3058,7 @@ pub fn js_add_rough_line(canvas_id: u32, opts: JsValue) {
         miter_limit: s.miter_limit,
         stroke_dasharray: s.stroke_dasharray.clone(),
         stroke_dashoffset: s.stroke_dashoffset,
+        alignment: StrokeAlignment::from_str(&s.alignment),
     }).unwrap_or_else(|| StrokeParams {
         width: 1.0,
         color: default_rgba_stroke(),
@@ -2847,6 +3067,7 @@ pub fn js_add_rough_line(canvas_id: u32, opts: JsValue) {
         miter_limit: default_miter_limit(),
         stroke_dasharray: None,
         stroke_dashoffset: 0.0,
+        alignment: StrokeAlignment::Center,
     });
     push_shape(canvas_id, JsShape::RoughLine {
         id: o.id,
@@ -2885,6 +3106,7 @@ pub fn js_add_line(canvas_id: u32, opts: JsValue) {
         miter_limit: s.miter_limit,
         stroke_dasharray: s.stroke_dasharray.clone(),
         stroke_dashoffset: s.stroke_dashoffset,
+        alignment: StrokeAlignment::from_str(&s.alignment),
     }).unwrap_or_else(|| StrokeParams {
         width: 1.0,
         color: default_rgba_stroke(),
@@ -2893,6 +3115,7 @@ pub fn js_add_line(canvas_id: u32, opts: JsValue) {
         miter_limit: default_miter_limit(),
         stroke_dasharray: None,
         stroke_dashoffset: 0.0,
+        alignment: StrokeAlignment::Center,
     });
     push_shape(canvas_id, JsShape::Line {
         id: o.id,
