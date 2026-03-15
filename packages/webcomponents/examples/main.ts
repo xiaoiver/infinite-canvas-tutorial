@@ -165,7 +165,8 @@ canvas.addEventListener(Event.READY, async (e) => {
     type: 'rect',
     x: 100,
     y: 100,
-    fill: '/canvas.png',
+    // fill: '/canvas.png',
+    fill: 'conic-gradient(red, blue, green)',
     // display: 'flex',
     width: 200,
     height: 200,
@@ -422,12 +423,12 @@ canvas.addEventListener(Event.READY, async (e) => {
   // api.updateNodes([node1]);
 });
 
-const VelloRendererPlugin = RendererPlugin.configure({
-  setupDeviceSystemCtor: InitVello,
-  rendererSystemCtor: VelloPipeline,
-});
-DefaultPlugins.splice(DefaultPlugins.indexOf(DefaultRendererPlugin), 1, VelloRendererPlugin);
-registerFont('/NotoSans-Regular.ttf');
+// const VelloRendererPlugin = RendererPlugin.configure({
+//   setupDeviceSystemCtor: InitVello,
+//   rendererSystemCtor: VelloPipeline,
+// });
+// DefaultPlugins.splice(DefaultPlugins.indexOf(DefaultRendererPlugin), 1, VelloRendererPlugin);
+// registerFont('/NotoSans-Regular.ttf');
 
 try {
   const app = new App().addPlugins(
