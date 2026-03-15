@@ -833,7 +833,9 @@ function createOrUpdateGradient(
   $def: SVGDefsElement,
   gradient: Gradient,
 ) {
-  const { x, y, width, height } = node;
+  const { width, height } = node;
+  const x = 0;
+  const y = 0;
 
   const gradientId = generateGradientKey({
     ...gradient,
