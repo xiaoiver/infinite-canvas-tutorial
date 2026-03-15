@@ -274,6 +274,10 @@ const parent = {
 
 <YogaMinMaxWidthHeight />
 
+## [WIP] Export SVG {#export-svg}
+
+Since CSS Flexbox only supports HTML elements as containers and not SVG elements, absolute positions after layout must still be used when exporting to SVG.
+
 ## Extended reading {#extended-reading}
 
 -   [Simplifying WebGL: Building an Effective Layout Engine]

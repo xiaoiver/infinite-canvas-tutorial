@@ -178,6 +178,8 @@ export async function toSVGElement(
 
   nodes = [...clipParentNodes, ...nodes];
 
+  // TODO: Handle flexbox layout, use calculated layout positions.
+
   (await serializeNodesToSVGElements(nodes)).forEach((element) => {
     $namespace.appendChild(element);
   });

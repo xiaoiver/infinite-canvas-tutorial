@@ -34,33 +34,176 @@ Tile-based rendering also has bad cases, for example when a huge shape covers th
 
 In this lesson we replace the rendering layer with a GPU tile-based renderer [vello], which runs entirely on compute shaders and takes full advantage of WebGPU.
 
+<Vello />
+
 ## vello {#vello}
 
-vello’s overall architecture looks like this:
+vello currently has three parallel implementations. See [Vello Sparse Strips]:
+
+-   vello (GPU) — pure GPU compute shader implementation
+-   vello CPU — CPU-only implementation with multithreading and SIMD
+-   vello hybrid — CPU/GPU hybrid mode
+
+All three share the same core algorithm (Sparse Strips), but differ in execution backend.
 
 ![source: https://www.datocms-assets.com/98516/1707130683-levien_2023.pdf](/vello-architecture.png)
 
-The screen is split into fixed-size tiles. This differs from the LOD-based approach used by map renderers:
+For vello CPU, the overall architecture looks like this:
 
-```plaintext
-+----+----+----+----+
-| T0 | T1 | T2 | T3 |
-+----+----+----+----+
-| T4 | T5 | T6 | T7 |
-+----+----+----+----+
+![source: https://ethz.ch/content/dam/ethz/special-interest/infk/inst-pls/plf-dam/documents/StudentProjects/MasterTheses/2025-Laurenz-Thesis.pdf](/vello-overview.png)
+
+### Encoding
+
+When we call vello draw commands, they are encoded into the following form and written into a buffer for use in the subsequent compute shader stages:
+
+```rust
+scene.fill(..., &rect)
+scene.stroke(..., &path)
 ```
 
-Each tile maintains a primitive list:
+<https://github.com/linebender/vello/blob/main/vello_encoding/src/path.rs#L248>
 
-```plaintext
-Tile 12
- ├─ path 5
- ├─ rect 8
- ├─ stroke 11
- └─ clip 3
+![path encoding](/vello-path-encoding.png)
+
+### Stroke expansion
+
+In [Lesson 12 - Drawing polylines] we introduced stroke expansion for line segments, rendering stroke and fill with separate meshes. vello also expands strokes with width; afterwards stroke and fill can be processed uniformly.
+
+> The output of stroke expansion and flattening is simply a multiset of lines for each path. On GPU, there is a large buffer ("line soup") consisting of all the lines from all the paths, but on CPU we use a single scratch buffer, processing a single path at a time (per thread, in the multithreaded case).
+
+![stroke expansion](/vello-stroke-expansion.png)
+
+Linecap and linejoin must be handled during expansion. Previously we used an analytic stroke approach in the fragment shader. vello does this on the CPU with [kurbo]; see [Stroke expansion]. A drawback is limited parallelism; also, because expansion happens in geometric space, a single large stroke can cover nearly all tiles at high zoom. For [stroke-alignment], kurbo's offset path can be used. Bezier curves are first converted to polylines before expansion.
+
+### Flattening {#flattening}
+
+We previously sampled curves and approximated them with polylines. vello also flattens cubic Bézier curves, quadratic Bézier curves, elliptic arcs, etc. into line segments using an adaptive subdivision algorithm that chooses subdivision depth from curvature, and runs in parallel on the GPU with each curve segment processed independently.
+
+![flattening](/vello-flattening.png)
+
+```wgsl
+// https://github.com/linebender/vello/blob/main/vello_shaders/shader/flatten.wgsl
+
+// This function flattens a cubic Bézier by first converting it into Euler spiral
+// segments, and then computes a near-optimal flattening of the parallel curves of
+// the Euler spiral segments.
+fn flatten_euler(
+    cubic: CubicPoints,
+    path_ix: u32,
+    local_to_device: Transform,
+    offset: f32,
+    start_p: vec2f,
+    end_p: vec2f,
+) {
+}
+
+@compute @workgroup_size(256)
+fn main(
+    @builtin(global_invocation_id) global_id: vec3<u32>,
+    @builtin(local_invocation_id) local_id: vec3<u32>,
+) {
+    // Decode path data
+    let seg_type = tag.tag_byte & PATH_TAG_SEG_TYPE;
+    if seg_type != 0u {
+        let is_stroke = (style_flags & STYLE_FLAGS_STYLE) != 0u;
+        if is_stroke {
+            //...
+        } else {
+            let offset = 0.;
+            flatten_euler(pts, path_ix, transform, offset, pts.p0, pts.p3);
+        }
+    }
+}
 ```
+
+### Tile generation {#tile-generation}
+
+Flattened paths are then assigned to horizontal strips. The screen is split into fixed-size 4×4 tiles—unlike the LOD-based approach used by map renderers. For each line segment, all 4×4 regions it crosses are computed; a Tile is created for each intersecting region and linked to that segment.
+
+![tile generation](/vello-tile-generation.png)
+
+Generated tiles must be sorted in row-major order: sort by Y first, then by X for the same Y. This ordering is required so that the subsequent Strip Generation stage can merge adjacent horizontal tiles efficiently.
+
+### Sparse strips
+
+Adjacent horizontal tiles (after row-major sort) are merged into Sparse Strips. Coverage is stored only in the horizontal strips actually traversed by paths, giving very high memory efficiency. The data structure looks like:
+
+```rust
+struct Strip {
+    x: u16,          // start X coordinate
+    width: u16,      // width in pixels (multiple of 4)
+    alpha_idx: u32,  // index into alpha values
+    fill_gap: bool,  // whether to fill the gap to the next strip
+}
+```
+
+For pixels within each 4×4 tile, coverage is computed with:
+
+-   Analytic antialiasing (Analytic AA)
+-   Subpixel coverage per pixel
+-   Only edge pixels with non-zero coverage stored; interior fill is implicit
+
+Memory optimization: compared to storing full coverage masks (e.g. 8×8 or 16×16), 4×4 tiles with Sparse Strips store only regions that actually have edges, greatly reducing memory bandwidth.
+
+[High-performance 2D graphics rendering on the CPU using sparse strips]
 
 ![source: https://docs.google.com/presentation/d/1f_vKBJMaD68ifBO2j83lBly9Zdk-2bsvj_DIHXxvcuk/edit?slide=id.g3577762aae3_0_24#slide=id.g3577762aae3_0_24](/vello-sparse-stripes.png)
+
+### Coarse rasterization {#coarse-rasterization}
+
+The coarse rasterization stage splits the canvas into 256×4 pixel Wide Tiles. Each Wide Tile holds a command vector with two command types:
+
+-   **Fill Command** — fills non-antialiased regions between strips (solid fill)
+-   **AlphaFill Command** — fills antialiased regions within strips (applies alpha mask)
+
+![coarse rasterization](/vello-coarse-rasterization.png)
+
+### Fine Rasterization {#fine-rasterization}
+
+The final pixel shader: each workgroup processes one Wide Tile (256×4 pixels).
+
+```wgsl
+// https://github.com/linebender/vello/blob/main/vello_shaders/shader/fine.wgsl
+
+// The X size should be 16 / PIXELS_PER_THREAD
+@compute @workgroup_size(4, 16)
+fn main(
+    @builtin(global_invocation_id) global_id: vec3<u32>,
+    @builtin(local_invocation_id) local_id: vec3<u32>,
+    @builtin(workgroup_id) wg_id: vec3<u32>,
+) {
+    let tile_ix = wg_id.y * config.width_in_tiles + wg_id.x;
+
+    while true {
+        let tag = ptcl[cmd_ix];
+        if tag == CMD_END {
+            break;
+        }
+        switch tag {
+            case CMD_FILL: { // process all FillCommands (solid fill)
+                let fill = read_fill(cmd_ix);
+                cmd_ix += 4u;
+            }
+            case CMD_SOLID: {
+            }
+        }
+    }
+
+// write to final framebuffer (convert to RGBA8)
+    let xy_uint = vec2<u32>(xy);
+    for (var i = 0u; i < PIXELS_PER_THREAD; i += 1u) {
+        let coords = xy_uint + vec2(i, 0u);
+        if coords.x < config.target_width && coords.y < config.target_height {
+            let fg = rgba[i];
+            // let fg = base_color * (1.0 - foreground.a) + foreground;
+            // Max with a small epsilon to avoid NaNs
+            let a_inv = 1.0 / max(fg.a, 1e-6);
+            let rgba_sep = vec4(fg.rgb * a_inv, fg.a);
+            textureStore(output, vec2<i32>(coords), rgba_sep);
+        }
+    }
+}
+```
 
 ## Replacing the Rendering Pipeline with ECS {#replace-rendering-pipeline}
 
@@ -85,8 +228,6 @@ DefaultPlugins.splice(
     VelloRendererPlugin,
 );
 ```
-
-<Vello />
 
 ### Using wasm-pack {#use-wasm-pack}
 
@@ -302,7 +443,9 @@ Although we do not use SDF for fonts here, vello also supports non-vector glyphs
 -   COLR/CPAL color fonts: rendered as images via vello’s image compositing pipeline
 -   Bitmap glyphs (e.g. emoji): rendered as texture quads
 
-## Other features implemented in Rust {#}
+### Image post-processing {#image-post-processing}
+
+## Other features implemented in Rust {#other-features-implemented-in-rust}
 
 ### Picking {#picking}
 
@@ -348,7 +491,9 @@ In [Lesson 33 - Layout engine] we used Yoga compiled to WASM. [taffy] is a Rust 
 
 ## Further reading {#extended-reading}
 
+-   [High-performance 2D graphics rendering on the CPU using sparse strips]
 -   [Faster, easier 2D vector rendering - Raph Levien]
+-   [Vello Sparse Strips Roadmap 2025-2026]
 -   [What does Tile based rendering mean?]
 -   [Motiff]
 -   [Pushing the limit with tilemap rendering]
@@ -361,6 +506,13 @@ In [Lesson 33 - Layout engine] we used Yoga compiled to WASM. [taffy] is a Rust 
 [Vector tiles introduction]: https://docs.mapbox.com/data/tilesets/guides/vector-tiles-introduction/
 [vello]: https://github.com/linebender/vello
 [peniko]: https://github.com/linebender/peniko
+[kurbo]: https://github.com/linebender/kurbo
+[Stroke expansion]: https://github.com/linebender/kurbo/issues/285
+[stroke-alignment]: /guide/lesson-010#stroke-alignment
+[Vello Sparse Strips]: https://github.com/linebender/vello/tree/main/sparse_strips
+[Lesson 12 - Drawing polylines]: /guide/lesson-012#extrude-segment
+[High-performance 2D graphics rendering on the CPU using sparse strips]: https://ethz.ch/content/dam/ethz/special-interest/infk/inst-pls/plf-dam/documents/StudentProjects/MasterTheses/2025-Laurenz-Thesis.pdf
+[Vello Sparse Strips Roadmap 2025-2026]: https://docs.google.com/document/d/1ZquH-53j2OedTbgEKCJBKTh4WLE11UveM10mNdnVARY/edit?tab=t.0#heading=h.uxa8f6wsnhj3
 [Lesson 15 - Drawing text]: /guide/lesson-015
 [Lesson 18 - Refactoring with ECS]: /guide/lesson-018
 [Lesson 33 - Layout engine]: /guide/lesson-033

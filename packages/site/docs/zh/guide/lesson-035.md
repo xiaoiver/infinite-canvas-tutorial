@@ -34,33 +34,179 @@ for tile:
 
 在本节课中，我们将尝试将渲染层替换成一个基于 GPU tile-based 的渲染器 [vello]，它完全基于 Compute Shader 运行，能充分发挥 WebGPU 的优势。
 
+<Vello />
+
 ## vello {#vello}
 
-vello 的整体架构如下：
+vello 目前实际上有三个并行的实现版本，详见 [Vello Sparse Strips]：
+
+-   vello (GPU) - 纯 GPU 计算着色器实现
+-   vello CPU - 纯 CPU 实现，使用多线程和 SIMD 加速
+-   vello hybrid - CPU/GPU 混合模式
+
+这三个版本共享核心算法（Sparse Strips/稀疏条带），但在执行后端上有所不同
 
 ![source: https://www.datocms-assets.com/98516/1707130683-levien_2023.pdf](/vello-architecture.png)
 
-屏幕会被切成固定大小的小块，这里和地图渲染器基于 LOD 的实现思路不同：
+以 vello cpu 为例，其整体架构如下：
 
-```plaintext
-+----+----+----+----+
-| T0 | T1 | T2 | T3 |
-+----+----+----+----+
-| T4 | T5 | T6 | T7 |
-+----+----+----+----+
+![source: https://ethz.ch/content/dam/ethz/special-interest/infk/inst-pls/plf-dam/documents/StudentProjects/MasterTheses/2025-Laurenz-Thesis.pdf](/vello-overview.png)
+
+### Encoding
+
+当我们调用类似 vello 的绘制命令时，最终被编码成如下格式放入 Buffer 中，用于后续在 compute shader 中操作：
+
+```rust
+scene.fill(..., &rect)
+scene.stroke(..., &path)
 ```
 
-每个 tile 会维护一个 primitive list：
+<https://github.com/linebender/vello/blob/main/vello_encoding/src/path.rs#L248>
 
-```plaintext
-Tile 12
- ├─ path 5
- ├─ rect 8
- ├─ stroke 11
- └─ clip 3
+![path encoding](/vello-path-encoding.png)
+
+### Stroke expansion
+
+在 [课程 12 - 绘制折线] 中，我们介绍过对线段进行拉伸后渲染，然后对与 stroke 和 fill 分别使用两个 mesh 进行绘制。vello 中同样需要对有宽度的线段进行拉伸，随后就可以将 stroke 和 fill 统一处理。
+
+> The output of stroke expansion and flattening is simply a multiset of lines for each path. On GPU, there is a large buffer (“line soup”) consisting of all the lines from all the paths, but on CPU we use a single scratch buffer, processing a single path at a time (per thread, in the multithreaded case).
+
+![stroke expansion](/vello-stroke-expansion.png)
+
+拉伸时同样需要考虑 linecap 和 linejoin，之前我们是使用了 Analytic Stroke 的思路在 fragment shader 中完成的。vello 在 CPU 侧使用 [kurbo] 完成，可以参考：[Stroke expansion]，缺点就是并行性较差，另外由于变换发生在几何空间，当缩放层级较高时就会覆盖几乎全部 tiles。
+
+对于 [stroke-alignment]，可以通过 kurbo 的 offset path 实现。另外对于贝塞尔曲线，会先转换成折线再拉伸。
+
+### 展平成线段 {#flattening}
+
+我们之前在曲线上进行采样，将其用折线拟合。vello 中也会将三次贝塞尔曲线、二次贝塞尔曲线、椭圆弧等展平为线段，使用自适应细分算法，根据曲率动态决定细分程度，同时使用 GPU 并行：每个曲线段独立处理。
+
+![flattening](/vello-flattening.png)
+
+```wgsl
+// https://github.com/linebender/vello/blob/main/vello_shaders/shader/flatten.wgsl
+
+// This function flattens a cubic Bézier by first converting it into Euler spiral
+// segments, and then computes a near-optimal flattening of the parallel curves of
+// the Euler spiral segments.
+fn flatten_euler(
+    cubic: CubicPoints,
+    path_ix: u32,
+    local_to_device: Transform,
+    offset: f32,
+    start_p: vec2f,
+    end_p: vec2f,
+) {
+}
+
+@compute @workgroup_size(256)
+fn main(
+    @builtin(global_invocation_id) global_id: vec3<u32>,
+    @builtin(local_invocation_id) local_id: vec3<u32>,
+) {
+    // Decode path data
+    let seg_type = tag.tag_byte & PATH_TAG_SEG_TYPE;
+    if seg_type != 0u {
+        let is_stroke = (style_flags & STYLE_FLAGS_STYLE) != 0u;
+        if is_stroke {
+            //...
+        } else {
+            let offset = 0.;
+            flatten_euler(pts, path_ix, transform, offset, pts.p0, pts.p3);
+        }
+    }
+}
 ```
+
+### 生成瓦片 {#tile-generation}
+
+接下来需要将扁平化后的路径分配到水平条带。屏幕会被切成固定大小的小块(4×4)，这里和地图渲染器基于 LOD 的实现思路不同。对每条线段，计算它跨越的所有 4×4 区域，为每个相交区域创建一个 Tile，关联到对应线段。
+
+![tile generation](/vello-tile-generation.png)
+
+生成的 Tiles 必须按行优先顺序（Row-Major Order）排序：先按 Y 坐标排序，相同 Y 的按 X 坐标排序。
+为什么需要排序呢？这是为了后续的 Strip Generation 阶段能够高效地水平合并相邻 Tiles。
+
+### Sparse strips
+
+接下来将按行优先排序过的、水平相邻的 Tiles 合并为 Sparse Strips。只在路径实际经过的水平条带（strips）上存储覆盖信息，内存效率极高，它的数据结构如下：
+
+```rust
+struct Strip {
+    x: u16,          // 起始 X 坐标
+    width: u16,      // 宽度（像素数，是4的倍数）
+    alpha_idx: u32,  // 指向 alpha 值的索引
+    fill_gap: bool,  // 是否与下一个 strip 之间需要填充
+}
+```
+
+对于每个 4×4 Tile 内的像素，计算覆盖值（Coverage）：
+
+-   使用分析性抗锯齿（Analytic AA）
+-   计算每个像素的子像素覆盖（Subpixel Coverage）
+-   只存储有变化的边缘像素，内部填充区域隐式表示
+
+内存优化：相比存储完整覆盖掩码（如 8×8 或 16×16），4×4 Tile 配合 Sparse Strips 只存储实际有边缘的区域，内存带宽大幅减少。
+
+[High-performance 2D graphics rendering on the CPU using sparse strips]
 
 ![source: https://docs.google.com/presentation/d/1f_vKBJMaD68ifBO2j83lBly9Zdk-2bsvj_DIHXxvcuk/edit?slide=id.g3577762aae3_0_24#slide=id.g3577762aae3_0_24](/vello-sparse-stripes.png)
+
+### 粗光栅化 {#coarse-rasterization}
+
+粗光栅化阶段将画布分割为 256×4 像素的 Wide Tiles。每个 Wide Tile 包含一个命令向量（Command Vector），存储两种命令：
+
+-   Fill Command 用于填充 strips 之间的非抗锯齿区域（纯色填充）
+-   AlphaFill Command 用于填充 strips 内的抗锯齿区域（需要应用 Alpha 遮罩）
+
+![coarse rasterization](/vello-coarse-rasterization.png)
+
+### Fine Rasterization
+
+最终的像素着色器，每个 Workgroup 处理一个 Wide Tile（256×4 像素）。
+
+```wgsl
+// https://github.com/linebender/vello/blob/main/vello_shaders/shader/fine.wgsl
+
+// The X size should be 16 / PIXELS_PER_THREAD
+@compute @workgroup_size(4, 16)
+fn main(
+    @builtin(global_invocation_id) global_id: vec3<u32>,
+    @builtin(local_invocation_id) local_id: vec3<u32>,
+    @builtin(workgroup_id) wg_id: vec3<u32>,
+) {
+    let tile_ix = wg_id.y * config.width_in_tiles + wg_id.x;
+
+    while true {
+        let tag = ptcl[cmd_ix];
+        if tag == CMD_END {
+            break;
+        }
+        switch tag {
+            case CMD_FILL: { // 处理所有 FillCommands（纯色填充）
+                let fill = read_fill(cmd_ix);
+                cmd_ix += 4u;
+            }
+            case CMD_SOLID: {
+            }
+        }
+    }
+
+// 写入最终帧缓冲区（转换为 RGBA8）
+    let xy_uint = vec2<u32>(xy);
+    for (var i = 0u; i < PIXELS_PER_THREAD; i += 1u) {
+        let coords = xy_uint + vec2(i, 0u);
+        if coords.x < config.target_width && coords.y < config.target_height {
+            let fg = rgba[i];
+            // let fg = base_color * (1.0 - foreground.a) + foreground;
+            // Max with a small epsilon to avoid NaNs
+            let a_inv = 1.0 / max(fg.a, 1e-6);
+            let rgba_sep = vec4(fg.rgb * a_inv, fg.a);
+            textureStore(output, vec2<i32>(coords), rgba_sep);
+        }
+    }
+}
+```
 
 ## 基于 ECS 替换渲染层 {#replace-rendering-pipeline}
 
@@ -85,8 +231,6 @@ DefaultPlugins.splice(
     VelloRendererPlugin,
 );
 ```
-
-<Vello />
 
 ### 使用 wasm-pack {#use-wasm-pack}
 
@@ -304,7 +448,7 @@ if let Some((font_data, glyphs, size)) =
 
 ### 图像处理 {#image-post-processing}
 
-## 其他功能的 Rust 实现 {#}
+## 其他功能的 Rust 实现 {#other-functions-implemented-with-rust}
 
 ### 拾取 {#picking}
 
@@ -350,7 +494,9 @@ impl ClickTarget {
 
 ## 扩展阅读 {#extended-reading}
 
+-   [High-performance 2D graphics rendering on the CPU using sparse strips]
 -   [Faster, easier 2D vector rendering - Raph Levien]
+-   [Vello Sparse Strips Roadmap 2025-2026]
 -   [What does Tile based rendering mean?]
 -   [Motiff]
 -   [Pushing the limit with tilemap rendering]
@@ -363,12 +509,15 @@ impl ClickTarget {
 [Vector tiles introduction]: https://docs.mapbox.com/data/tilesets/guides/vector-tiles-introduction/
 [vello]: https://github.com/linebender/vello
 [peniko]: https://github.com/linebender/peniko
+[kurbo]: https://github.com/linebender/kurbo
 [课程 15 - 绘制文本]: /zh/guide/lesson-015
 [课程 18 - 使用 ECS 重构]: /zh/guide/lesson-018
 [课程 33 - 布局引擎]: zh/guide/lesson-033
 [课程 10 - 图片导入导出]: /zh/guide/lesson-010#inlined-web-font
+[stroke-alignment]: /zh/guide/lesson-010#stroke-alignment
 [课程 13 - 绘制 Path & 手绘风格]: /zh/guide/lesson-013
 [课程 17 - 渐变和重复图案]: /zh/guide/lesson-017
+[课程 12 - 绘制折线]: zh/guide/lesson-012#extrude-segment
 [roughr]: https://github.com/orhanbalci/rough-rs/tree/main/roughr
 [taffy]: https://github.com/DioxusLabs/taffy
 [parley]: https://github.com/linebender/parley
@@ -376,3 +525,7 @@ impl ClickTarget {
 [wasm-bindgen]: https://wasm-bindgen.github.io/wasm-bindgen/
 [Round vertical hinting offset in Vello Classic]: https://github.com/linebender/vello/pull/963
 [Faster, easier 2D vector rendering - Raph Levien]: https://youtu.be/_sv8K190Zps
+[High-performance 2D graphics rendering on the CPU using sparse strips]: https://ethz.ch/content/dam/ethz/special-interest/infk/inst-pls/plf-dam/documents/StudentProjects/MasterTheses/2025-Laurenz-Thesis.pdf
+[Vello Sparse Strips]: https://github.com/linebender/vello/tree/main/sparse_strips
+[Vello Sparse Strips Roadmap 2025-2026]: https://docs.google.com/document/d/1ZquH-53j2OedTbgEKCJBKTh4WLE11UveM10mNdnVARY/edit?tab=t.0#heading=h.uxa8f6wsnhj3
+[Stroke expansion]: https://github.com/linebender/kurbo/issues/285
