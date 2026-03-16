@@ -63,6 +63,7 @@ import {
   computeRadialGradient,
   computeConicGradient,
   getRoughOptions,
+  parseEffect,
 } from '@infinite-canvas-tutorial/ecs';
 import { addRect, addEllipse, addLine, addPath, addPolyline, addText, addImageRect, addGroup, addRoughRect,clearShapes, addRoughEllipse, addRoughLine } from '@infinite-canvas-tutorial/vello-renderer';
 import { InitVello } from './InitVello';
@@ -428,6 +429,36 @@ export class VelloPipeline extends System {
             baseOpts.strokeOpacity = strokeOpacity;
           }
 
+          let fillBlur: number | undefined = undefined;
+          let dropShadow: {
+            color: [number, number, number, number];
+            blur: number;
+            offsetX: number;
+            offsetY: number;
+          } | undefined = undefined;
+          if (entity.has(Filter)) {
+            const { value } = entity.read(Filter);
+            const effects = parseEffect(value);
+            for (const effect of effects) {
+              if (effect.type === 'blur') {
+                fillBlur = effect.value;
+              } else if (effect.type === 'drop-shadow') {
+                const {
+                  r,
+                  g,
+                  b,
+                  opacity,
+                } = d3.rgb(effect.color)?.rgb() ?? d3.rgb(0, 0, 0, 1);
+                dropShadow = {
+                  color: [r / 255, g / 255, b / 255, opacity],
+                  blur: effect.blur,
+                  offsetX: effect.x,
+                  offsetY: effect.y,
+                };
+              }
+            }
+          }
+
           if (entity.has(Circle)) {
             const { cx, cy, r } = entity.read(Circle);
             const opts: Record<string, unknown> = { ...baseOpts, cx, cy, rx: r, ry: r };
@@ -514,6 +545,8 @@ export class VelloPipeline extends System {
               width,
               height,
               radius: cornerRadius ?? 0,
+              fillBlur: fillBlur ?? 0,
+              dropShadow: dropShadow ?? undefined,
             };
             if (entity.has(FillGradient)) {
               const grads = buildFillGradients(entity.read(FillGradient).value, [x, y], width, height);

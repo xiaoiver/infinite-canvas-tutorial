@@ -107,6 +107,8 @@ pub struct StrokeParams {
     pub stroke_dasharray: Option<Vec<f64>>,
     pub stroke_dashoffset: f64,
     pub alignment: StrokeAlignment,
+    /// 模糊半径（标准差），0 表示不模糊
+    pub blur: f64,
 }
 
 impl StrokeParams {
@@ -136,6 +138,15 @@ impl StrokeParams {
         }
         stroke
     }
+}
+
+/// Drop shadow 参数
+#[derive(Clone, Debug, Default)]
+pub struct DropShadow {
+    pub color: [f32; 4],
+    pub blur: f64,
+    pub offset_x: f64,
+    pub offset_y: f64,
 }
 
 /// 渐变填充规格（与 wasm Options 解耦，供 add_js_shape_to_scene 使用）。
@@ -176,6 +187,10 @@ pub enum JsShape {
         local_transform: Option<Mat3Array>,
         size_attenuation: bool,
         stroke_attenuation: bool,
+        /// fill 模糊半径（标准差）
+        fill_blur: f64,
+        /// drop shadow 效果
+        drop_shadow: Option<DropShadow>,
     },
     Ellipse {
         id: String,
@@ -194,6 +209,8 @@ pub enum JsShape {
         local_transform: Option<Mat3Array>,
         size_attenuation: bool,
         stroke_attenuation: bool,
+        /// drop shadow 效果
+        drop_shadow: Option<DropShadow>,
     },
     Line {
         id: String,
@@ -239,9 +256,6 @@ pub enum JsShape {
         stroke_opacity: f32,
         local_transform: Option<Mat3Array>,
         size_attenuation: bool,
-        /// 预计算的文本布局缓存
-        #[cfg(target_arch = "wasm32")]
-        cached_layout: Option<CachedTextLayout>,
     },
     /// 图片填充的矩形，image_data 为 RGBA 像素数据。
     ImageRect {
@@ -263,6 +277,8 @@ pub enum JsShape {
         local_transform: Option<Mat3Array>,
         size_attenuation: bool,
         stroke_attenuation: bool,
+        /// drop shadow 效果
+        drop_shadow: Option<DropShadow>,
     },
     /// SVG path，d 为 path 的 d 属性（如 "M 10 10 L 100 100 Z"）。
     Path {
@@ -280,6 +296,8 @@ pub enum JsShape {
         local_transform: Option<Mat3Array>,
         size_attenuation: bool,
         stroke_attenuation: bool,
+        /// drop shadow 效果
+        drop_shadow: Option<DropShadow>,
     },
     /// 折线，points 为 [[x,y],[x,y],...]。
     Polyline {
@@ -422,10 +440,12 @@ thread_local! {
     static CANVAS_WINDOWS: RefCell<HashMap<u32, Arc<Window>>> = RefCell::new(HashMap::new());
     /// emoji 图片缓存：字符 -> (RGBA 数据, 宽度, 高度)
     static EMOJI_CACHE: RefCell<HashMap<String, (Vec<u8>, u32, u32)>> = RefCell::new(HashMap::new());
-    /// 字形缓存：(文本, 字体大小) -> (FontData, glyphs, size)
-    static GLYPH_CACHE: RefCell<HashMap<(String, u32), (vello::peniko::FontData, Vec<vello::Glyph>, f32)>> = RefCell::new(HashMap::new());
+    /// 字形缓存：(文本, 字体大小) -> (FontData, glyphs, size, emoji_positions)，命中时直接使用，避免每帧重新排版（尤其对中文字体）
+    static GLYPH_CACHE: RefCell<HashMap<(String, u32), (vello::peniko::FontData, Vec<vello::Glyph>, f32, Vec<EmojiPosition>)>> = RefCell::new(HashMap::new());
     /// 全局 FontContext 缓存，避免每帧重建
     static FONT_CONTEXT: RefCell<Option<parley::FontContext>> = RefCell::new(None);
+    /// 已注册字体指纹（避免中文字体每帧重复 register_fonts）
+    static LAST_REGISTERED_FONT_FINGERPRINT: RefCell<Option<u64>> = RefCell::new(None);
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -495,6 +515,10 @@ pub struct RectOptions {
     pub size_attenuation: bool,
     #[serde(default)]
     pub stroke_attenuation: bool,
+    #[serde(default)]
+    pub fill_blur: f64,
+    #[serde(default)]
+    pub drop_shadow: Option<DropShadowOptions>,
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -531,6 +555,8 @@ pub struct EllipseOptions {
     pub size_attenuation: bool,
     #[serde(default)]
     pub stroke_attenuation: bool,
+    #[serde(default)]
+    pub drop_shadow: Option<DropShadowOptions>,
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -561,6 +587,21 @@ pub struct LineOptions {
     pub stroke_attenuation: bool,
 }
 
+/// Drop shadow 选项
+#[cfg(target_arch = "wasm32")]
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DropShadowOptions {
+    #[serde(default = "default_rgba")]
+    pub color: [f32; 4],
+    #[serde(default)]
+    pub blur: f64,
+    #[serde(default)]
+    pub offset_x: f64,
+    #[serde(default)]
+    pub offset_y: f64,
+}
+
 #[cfg(target_arch = "wasm32")]
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -580,6 +621,8 @@ pub struct StrokeOptions {
     pub stroke_dashoffset: f64,
     #[serde(default = "default_stroke_alignment")]
     pub alignment: String,
+    #[serde(default)]
+    pub blur: f64,
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -631,6 +674,8 @@ pub struct ImageRectOptions {
     pub size_attenuation: bool,
     #[serde(default)]
     pub stroke_attenuation: bool,
+    #[serde(default)]
+    pub drop_shadow: Option<DropShadowOptions>,
 }
 
 /// Path 选项。d 为 SVG path 的 d 属性。
@@ -667,6 +712,8 @@ pub struct PathOptions {
     pub size_attenuation: bool,
     #[serde(default)]
     pub stroke_attenuation: bool,
+    #[serde(default)]
+    pub drop_shadow: Option<DropShadowOptions>,
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -1007,6 +1054,11 @@ fn default_text_baseline() -> String {
 }
 
 #[cfg(target_arch = "wasm32")]
+fn default_rgba() -> [f32; 4] {
+    [0.0, 0.0, 0.0, 0.5]
+}
+
+#[cfg(target_arch = "wasm32")]
 fn default_rgba_fill() -> [f32; 4] {
     [1.0, 1.0, 1.0, 1.0]
 }
@@ -1197,7 +1249,7 @@ fn is_emoji(ch: char) -> bool {
         | 0x1FA00..=0x1FA6F   // Chess Symbols, Symbols and Pictographs Extended-A
         | 0x1FA70..=0x1FAFF   // Symbols and Pictographs Extended-B
         | 0xFE00..=0xFE0F     // Variation Selectors
-        | 0x1F3FB..=0x1F3FF   // Emoji modifiers (skin tone)
+        // 0x1F3FB..=0x1F3FF 被 0x1F300..=0x1F5FF 覆盖，跳过
         | 0x200D              // Zero Width Joiner (用于组合 emoji)
         | 0x20E3              // Combining Enclosing Keycap
         => true,
@@ -1228,15 +1280,6 @@ fn extract_emoji_at(text: &str, byte_pos: usize) -> Option<(String, usize)> {
     None
 }
 
-/// 文本片段（非 emoji）
-#[cfg(target_arch = "wasm32")]
-#[derive(Debug, Clone)]
-struct TextPart {
-    text: String,
-    offset_x: f64,
-    offset_y: f64,
-}
-
 /// Emoji 位置信息
 #[cfg(target_arch = "wasm32")]
 #[derive(Debug, Clone)]
@@ -1246,103 +1289,26 @@ struct EmojiPosition {
     y: f64,
 }
 
-/// 预计算的文本布局缓存
+/// 计算字体字节的指纹（长度 + 首尾若干字节），用于避免重复 register_fonts。
 #[cfg(target_arch = "wasm32")]
-#[derive(Debug, Clone)]
-struct CachedTextLayout {
-    /// 文本片段（非 emoji）
-    text_parts: Vec<TextPart>,
-    /// Emoji 位置
-    emoji_positions: Vec<EmojiPosition>,
-    /// 内容哈希，用于检测变化
-    content_hash: u64,
-}
-
-/// 计算字符串的简单哈希值
-#[cfg(target_arch = "wasm32")]
-fn compute_hash(s: &str) -> u64 {
+fn font_bytes_fingerprint(bytes: &[u8]) -> u64 {
     use std::collections::hash_map::DefaultHasher;
     use std::hash::{Hash, Hasher};
     let mut hasher = DefaultHasher::new();
-    s.hash(&mut hasher);
+    bytes.len().hash(&mut hasher);
+    let n = bytes.len().min(256);
+    if n > 0 {
+        bytes[..n].hash(&mut hasher);
+        let tail = bytes.len().saturating_sub(256);
+        if tail > n {
+            bytes[tail..].hash(&mut hasher);
+        }
+    }
     hasher.finish()
 }
 
-/// 分离文本中的 emoji 和普通字符，支持多行（按 \n 分割）
-/// 返回：(普通文本片段列表, emoji 位置列表)
-/// 位置以像素为单位，基于 font_size = 1.0 的基准计算
-#[cfg(target_arch = "wasm32")]
-fn separate_emoji_from_text(text: &str) -> (Vec<TextPart>, Vec<EmojiPosition>) {
-    use unicode_segmentation::UnicodeSegmentation;
-
-    let mut text_parts: Vec<TextPart> = Vec::new();
-    let mut emoji_positions: Vec<EmojiPosition> = Vec::new();
-
-    // 按行分割处理
-    let lines: Vec<&str> = text.split('\n').collect();
-
-    for (line_idx, line) in lines.iter().enumerate() {
-        let line_offset_y = line_idx as f64; // 每行偏移 1em
-        let graphemes: Vec<&str> = line.graphemes(true).collect();
-        let mut segments: Vec<(String, f64, bool)> = Vec::new(); // (内容, 起始位置, 是否是emoji)
-        let mut current_pos: f64 = 0.0;
-
-        // 第一遍：按顺序记录所有片段及其位置
-        let mut i = 0;
-        while i < graphemes.len() {
-            let g = graphemes[i];
-            let is_emoji_char = g.chars().any(|c| is_emoji(c));
-
-            if is_emoji_char {
-                segments.push((g.to_string(), current_pos, true));
-                // emoji 占 1em 宽度
-                current_pos += 1.0;
-                i += 1;
-            } else {
-                // 收集连续的非 emoji 文本
-                let mut text = String::new();
-                let start_pos = current_pos;
-                while i < graphemes.len() {
-                    let ch = graphemes[i];
-                    if ch.chars().any(|c| is_emoji(c)) {
-                        break;
-                    }
-                    text.push_str(ch);
-                    // 拉丁字符约 0.6em，CJK 字符 1em
-                    let is_wide = ch.chars().any(|c| {
-                        matches!(c as u32, 0x4E00..=0x9FFF | 0x3000..=0x303F | 0xFF00..=0xFFEF)
-                    });
-                    current_pos += if is_wide { 1.0 } else { 0.6 };
-                    i += 1;
-                }
-                if !text.is_empty() {
-                    segments.push((text, start_pos, false));
-                }
-            }
-        }
-
-        // 第二遍：转换为 TextPart 和 EmojiPosition
-        for (content, pos, is_emoji_flag) in segments {
-            if is_emoji_flag {
-                emoji_positions.push(EmojiPosition {
-                    emoji: content,
-                    x: pos,
-                    y: line_offset_y,
-                });
-            } else {
-                text_parts.push(TextPart {
-                    text: content,
-                    offset_x: pos,
-                    offset_y: line_offset_y,
-                });
-            }
-        }
-    }
-
-    (text_parts, emoji_positions)
-}
-
-/// 获取或创建 emoji 图片数据
+/// 获取或创建 emoji 图片数据。
+/// `size` 为渲染尺寸（像素），建议使用 2x 字体大小以得到高清图，绘制时再缩放到字体大小。
 #[cfg(target_arch = "wasm32")]
 fn get_or_create_emoji_image(emoji: &str, size: u32) -> Option<(Vec<u8>, u32, u32)> {
     let cache_key = format!("{}_{}", emoji, size);
@@ -1353,25 +1319,20 @@ fn get_or_create_emoji_image(emoji: &str, size: u32) -> Option<(Vec<u8>, u32, u3
         return Some(data);
     }
 
-    // 使用 HTML Canvas API 渲染 emoji
+    // 使用 HTML Canvas API 渲染 emoji（高清：canvas 再乘 DPR）
     let document = web_sys::window()?.document()?;
     let canvas = document.create_element("canvas").ok()?.dyn_into::<web_sys::HtmlCanvasElement>().ok()?;
 
-    // 设置 canvas 尺寸（考虑 HiDPI）
     let dpr = web_sys::window()?.device_pixel_ratio() as f32;
-    let canvas_size = (size as f32 * dpr) as u32;
+    let canvas_size = (size as f32 * dpr).ceil() as u32;
     canvas.set_width(canvas_size);
     canvas.set_height(canvas_size);
 
     let ctx = canvas.get_context("2d").ok()??.dyn_into::<web_sys::CanvasRenderingContext2d>().ok()?;
 
-    // 缩放以匹配 DPR
     ctx.scale(dpr as f64, dpr as f64).ok()?;
 
-    // 清除画布
     ctx.clear_rect(0.0, 0.0, size as f64, size as f64);
-
-    // 绘制 emoji
     ctx.set_text_align("center");
     ctx.set_text_baseline("middle");
     ctx.set_font(&format!("{}px sans-serif", size));
@@ -1425,15 +1386,15 @@ fn compute_world_transforms(shapes: &[JsShape]) -> HashMap<String, Affine> {
 }
 
 /// 使用 Parley 将字符串与字体字节解析为 vello 可绘制的 Glyph 列表；支持 kerning、ligatures、bidi 等。
-/// 返回 peniko FontData 供 draw_glyphs 使用。
+/// 返回 peniko FontData 供 draw_glyphs 使用，同时返回 emoji 的实际位置。
 /// 使用全局 FontContext 缓存以提高性能。
 #[cfg(target_arch = "wasm32")]
-fn build_text_glyphs(
+fn build_text_glyphs_with_emoji_positions(
     font_bytes: &[u8],
     content: &str,
     font_size_px: f32,
     letter_spacing: f32,
-) -> Option<(vello::peniko::FontData, Vec<vello::Glyph>, f32)> {
+) -> Option<(vello::peniko::FontData, Vec<vello::Glyph>, f32, Vec<EmojiPosition>)> {
     use std::borrow::Cow;
     use parley::fontique::Blob;
     use parley::layout::PositionedLayoutItem;
@@ -1445,12 +1406,25 @@ fn build_text_glyphs(
         if font_cx_ref.is_none() {
             *font_cx_ref = Some(parley::FontContext::new());
         }
-        
+
         let font_cx = font_cx_ref.as_mut()?;
 
-        // 只在字体未注册时注册
-        let font_blob = Blob::new(Arc::new(font_bytes.to_vec()));
-        font_cx.collection.register_fonts(font_blob, None);
+        // 仅当字体指纹变化时再注册，避免中文字体每帧重复 register_fonts 和大块分配
+        let fp = font_bytes_fingerprint(font_bytes);
+        let need_register = LAST_REGISTERED_FONT_FINGERPRINT.with(|r| {
+            let mut ref_mut = r.borrow_mut();
+            let prev = *ref_mut;
+            if prev != Some(fp) {
+                *ref_mut = Some(fp);
+                true
+            } else {
+                false
+            }
+        });
+        if need_register {
+            let font_blob = Blob::new(Arc::new(font_bytes.to_vec()));
+            font_cx.collection.register_fonts(font_blob, None);
+        }
 
         let family_name = font_cx
             .collection
@@ -1460,39 +1434,72 @@ fn build_text_glyphs(
             .to_string();
 
         let mut layout_cx = LayoutContext::new();
-        let mut builder = layout_cx.ranged_builder(font_cx, content, 1.0, true);
-
-        builder.push_default(FontFamily::Named(Cow::Borrowed(&family_name)));
-        builder.push_default(LineHeight::FontSizeRelative(1.0));
-        builder.push_default(StyleProperty::FontSize(font_size_px));
-        if letter_spacing != 0.0 {
-            builder.push_default(StyleProperty::LetterSpacing(letter_spacing));
-        }
-
-        let mut layout: parley::Layout<()> = builder.build(content);
-        layout.break_all_lines(None);
-        layout.align(None, Alignment::Start, AlignmentOptions::default());
-
         let mut glyphs = Vec::new();
+        let mut emoji_positions = Vec::new();
         let mut line_y = 0.0f32;
-        for line in layout.lines() {
-            for item in line.items() {
-                if let PositionedLayoutItem::GlyphRun(run) = item {
-                    for g in run.positioned_glyphs() {
-                        glyphs.push(vello::Glyph {
-                            id: g.id,
-                            x: g.x,
-                            y: line_y + g.y,
-                        });
+
+        // 与 separate_emoji_from_text 一致：按 \n 分割，每段单独排版，避免 Parley 把换行符当成单独一行
+        let line_segments: Vec<&str> = content.split('\n').collect();
+
+        for segment in line_segments {
+            if segment.is_empty() {
+                // 空行（如连续 \n）仍占一行高度
+                line_y += font_size_px;
+                continue;
+            }
+
+            let mut builder = layout_cx.ranged_builder(font_cx, segment, 1.0, true);
+            builder.push_default(FontFamily::Named(Cow::Borrowed(&family_name)));
+            builder.push_default(LineHeight::FontSizeRelative(1.0));
+            builder.push_default(StyleProperty::FontSize(font_size_px));
+            if letter_spacing != 0.0 {
+                builder.push_default(StyleProperty::LetterSpacing(letter_spacing));
+            }
+
+            let mut layout: parley::Layout<()> = builder.build(segment);
+            layout.break_all_lines(None);
+            layout.align(None, Alignment::Start, AlignmentOptions::default());
+
+            let segment_char_indices: Vec<(usize, char)> = segment.char_indices().collect();
+            let mut char_idx = 0usize;
+
+            let segment_lines: Vec<_> = layout.lines().collect();
+            for line in segment_lines {
+                for item in line.items() {
+                    if let PositionedLayoutItem::GlyphRun(run) = item {
+                        for g in run.positioned_glyphs() {
+                            if char_idx >= segment_char_indices.len() {
+                                break;
+                            }
+                            let (_byte_pos, ch) = segment_char_indices[char_idx];
+                            char_idx += 1;
+
+                            if is_emoji(ch) {
+                                let emoji_str = extract_emoji_at(segment, segment_char_indices[char_idx - 1].0)
+                                    .map(|(s, _)| s)
+                                    .unwrap_or_else(|| ch.to_string());
+                                emoji_positions.push(EmojiPosition {
+                                    emoji: emoji_str,
+                                    x: g.x as f64,
+                                    y: (line_y + g.y) as f64,
+                                });
+                            } else {
+                                glyphs.push(vello::Glyph {
+                                    id: g.id,
+                                    x: g.x,
+                                    y: line_y + g.y,
+                                });
+                            }
+                        }
                     }
                 }
+                line_y += line.metrics().max_coord - line.metrics().min_coord;
             }
-            line_y += line.metrics().max_coord - line.metrics().min_coord;
         }
 
         let blob = vello::peniko::Blob::from(font_bytes.to_vec());
         let font_data = vello::peniko::FontData::new(blob, 0);
-        Some((font_data, glyphs, font_size_px))
+        Some((font_data, glyphs, font_size_px, emoji_positions))
     })
 }
 
@@ -1892,7 +1899,6 @@ fn render_rough_drawable(
                         );
                     }
                 }
-                _ => {}
             }
         }
 
@@ -1956,6 +1962,8 @@ fn add_js_shape_to_scene(
             stroke_opacity,
             size_attenuation,
             stroke_attenuation,
+            fill_blur,
+            drop_shadow,
             ..
         } => {
             let (w, h, r) = if size_attenuation {
@@ -1963,6 +1971,8 @@ fn add_js_shape_to_scene(
             } else {
                 (width, height, radius)
             };
+            // blur 也随 size_attenuation 缩放
+            let blur_std_dev = if size_attenuation { fill_blur / scale } else { fill_blur };
             let (x0, y0, x1, y1) = (
                 x.min(x + w),
                 y.min(y + h),
@@ -2021,9 +2031,60 @@ fn add_js_shape_to_scene(
                 (Some(fill_rect), None)
             };
 
+            // 绘制 drop shadow（在 fill 之前）
+            if let Some(ref ds) = drop_shadow {
+                let ds_blur = if size_attenuation { ds.blur / scale } else { ds.blur };
+                let ds_offset_x = if size_attenuation { ds.offset_x / scale } else { ds.offset_x };
+                let ds_offset_y = if size_attenuation { ds.offset_y / scale } else { ds.offset_y };
+
+                if ds_blur > 0.0 {
+                    // 有模糊：使用 draw_blurred_rounded_rect 绘制模糊阴影
+                    let shadow_rect = Rect::new(x0 + ds_offset_x, y0 + ds_offset_y, x1 + ds_offset_x, y1 + ds_offset_y);
+                    let shadow_color = apply_opacity_to_color(ds.color, opacity, 1.0);
+                    scene.draw_blurred_rounded_rect(
+                        shape_transform,
+                        shadow_rect,
+                        Color::new(shadow_color),
+                        r,
+                        ds_blur
+                    );
+                } else {
+                    // 无模糊：直接绘制偏移的填充形状作为阴影
+                    let shadow_color = apply_opacity_to_color(ds.color, opacity, 1.0);
+                    let brush = vello::peniko::Brush::Solid(Color::new(shadow_color));
+                    if r > 0.0 {
+                        let shadow_rect = RoundedRect::new(
+                            x0 + ds_offset_x, y0 + ds_offset_y,
+                            x1 + ds_offset_x, y1 + ds_offset_y,
+                            r
+                        );
+                        scene.fill(Fill::NonZero, shape_transform, &brush, None, &shadow_rect);
+                    } else {
+                        let shadow_rect = Rect::new(
+                            x0 + ds_offset_x, y0 + ds_offset_y,
+                            x1 + ds_offset_x, y1 + ds_offset_y
+                        );
+                        scene.fill(Fill::NonZero, shape_transform, &brush, None, &shadow_rect);
+                    }
+                }
+            }
+
             // 绘制 fill
             if let Some(ref fill_geom) = fill_geom {
-                if let Some(ref grads) = fill_gradients {
+                // 检查是否需要模糊效果（需要圆角半径 > 0 且 blur > 0）
+                let use_blur = blur_std_dev > 0.0 && r > 0.0 && fill_gradients.is_none();
+                if use_blur {
+                    // 使用 draw_blurred_rounded_rect 绘制模糊圆角矩形
+                    let base_rect = Rect::new(x0, y0, x1, y1);
+                    let fill_color = apply_opacity_to_color(fill, opacity, fill_opacity);
+                    scene.draw_blurred_rounded_rect(
+                        shape_transform,
+                        base_rect,
+                        Color::new(fill_color),
+                        r,
+                        blur_std_dev
+                    );
+                } else if let Some(ref grads) = fill_gradients {
                     for g in grads.iter().rev() {
                         let brush = vello::peniko::Brush::Gradient(build_gradient_brush(g, fill_mult));
                         scene.fill(Fill::NonZero, shape_transform, &brush, None, fill_geom);
@@ -2150,7 +2211,6 @@ fn add_js_shape_to_scene(
             opacity,
             fill_opacity,
             size_attenuation,
-            cached_layout,
             ..
         } => {
             let (font_size_eff, letter_spacing_eff) = if size_attenuation {
@@ -2159,107 +2219,92 @@ fn add_js_shape_to_scene(
                 (font_size, letter_spacing)
             };
 
-            // 使用缓存的布局，如果没有则实时计算
-            let (text_parts, emoji_positions) = match cached_layout {
-                Some(layout) => (layout.text_parts.clone(), layout.emoji_positions.clone()),
-                None => separate_emoji_from_text(&content),
-            };
-
             let font_bytes = FONT_BYTES.with(|c| c.borrow().clone());
 
-            // 渲染普通文本（非 emoji 部分）
+            // 渲染文本（使用 Parley 布局整个文本，获取准确的 emoji 位置）
             if let Some(bytes) = font_bytes {
-                for part in &text_parts {
-                    let cache_key = (part.text.clone(), font_size_eff as u32);
+                let cache_key = (content.clone(), font_size_eff as u32);
 
-                    // 尝试从缓存获取字形
-                    let cached = GLYPH_CACHE.with(|c| c.borrow().get(&cache_key).cloned());
+                // 尝试从缓存获取；命中则直接使用，避免每帧重新排版（中文字体排版成本高）
+                let cached = GLYPH_CACHE.with(|c| c.borrow().get(&cache_key).cloned());
 
-                    let (font_data, glyphs, size) = match cached {
-                        Some(data) => data,
-                        None => {
-                            // 缓存未命中，构建字形
-                            match build_text_glyphs(
-                                &bytes,
-                                &part.text,
-                                font_size_eff as f32,
-                                letter_spacing_eff as f32,
-                            ) {
-                                Some(data) => {
-                                    // 存入缓存
-                                    GLYPH_CACHE.with(|c| {
-                                        c.borrow_mut().insert(cache_key, data.clone());
-                                    });
-                                    data
-                                }
-                                None => continue,
-                            }
-                        }
-                    };
-
-                    let fill_color = apply_opacity_to_color(fill, opacity, fill_opacity);
-                    let color = Color::new(fill_color);
-
-                    // 将 em 单位转换为实际像素偏移
-                    let pixel_offset_x = part.offset_x * font_size_eff;
-                    let pixel_offset_y = part.offset_y * font_size_eff;
-
-                    // 计算这段文本的偏移（支持多行）
-                    let part_transform =
-                        shape_transform * Affine::translate(Vec2::new(pixel_offset_x, pixel_offset_y));
-
-                    scene
-                        .draw_glyphs(&font_data)
-                        .font_size(size)
-                        .transform(part_transform)
-                        .brush(color)
-                        .draw(Fill::NonZero, glyphs.into_iter());
-                }
-            }
-
-            // 渲染 emoji 图片
-            for emoji_pos in &emoji_positions {
-                if let Some((image_data, img_width, img_height)) =
-                    get_or_create_emoji_image(&emoji_pos.emoji, font_size_eff as u32)
-                {
-                    let image = ImageData {
-                        data: Blob::from(image_data),
-                        format: ImageFormat::Rgba8,
-                        alpha_type: ImageAlphaType::Alpha,
-                        width: img_width,
-                        height: img_height,
-                    };
-                    let brush = ImageBrush::new(image);
-
-                    // emoji 尺寸（考虑 size_attenuation）
-                    let emoji_size = font_size_eff;
-
-                    // 将 em 单位转换为实际像素位置
-                    let emoji_x = emoji_pos.x * font_size_eff;
-                    // 基线对齐：emoji 底部对齐到文本基线
-                    // 文本基线通常在 y=0，emoji 需要向上偏移以基线对齐
-                    // 加上行的 Y 偏移（支持多行）
-                    let line_offset_y = emoji_pos.y * font_size_eff;
-                    let emoji_y = line_offset_y - emoji_size * 0.85;
-
-                    // 计算完整的变换：shape_transform * 位置 * 缩放
-                    let full_transform = shape_transform
-                        * Affine::translate(Vec2::new(emoji_x, emoji_y))
-                        * Affine::scale_non_uniform(
-                            emoji_size / img_width as f64,
-                            emoji_size / img_height as f64,
+                let (font_data, glyphs, size, emoji_positions) = match cached {
+                    Some((fd, g, s, em)) => (fd, g, s, em),
+                    None => {
+                        // 缓存未命中，构建字形和 emoji 位置后存入缓存
+                        let result = build_text_glyphs_with_emoji_positions(
+                            &bytes,
+                            &content,
+                            font_size_eff as f32,
+                            letter_spacing_eff as f32,
                         );
+                        match result {
+                            Some((fd, g, s, em)) => {
+                                GLYPH_CACHE.with(|c| {
+                                    c.borrow_mut().insert(cache_key, (fd.clone(), g.clone(), s, em.clone()));
+                                });
+                                (fd, g, s, em)
+                            }
+                            None => return,
+                        }
+                    }
+                };
 
-                    // 使用单位矩形作为几何体，变换在 brush_transform 中
-                    let geom = Rect::new(0.0, 0.0, img_width as f64, img_height as f64);
+                let fill_color = apply_opacity_to_color(fill, opacity, fill_opacity);
+                let color = Color::new(fill_color);
 
-                    scene.fill(
-                        Fill::NonZero,
-                        full_transform,
-                        brush.as_ref(),
-                        None, // 变换已包含在 full_transform 中
-                        &geom,
-                    );
+                // 渲染普通文本 glyphs（emoji 已经被过滤掉了）
+                scene
+                    .draw_glyphs(&font_data)
+                    .font_size(size)
+                    .transform(shape_transform)
+                    .brush(color)
+                    .draw(Fill::NonZero, glyphs.into_iter());
+
+                // 渲染 emoji 图片（在 glyph 位置上）；用 2x 分辨率渲染再缩放到字体大小，提升清晰度
+                let emoji_render_size = ((font_size_eff * 2.0).ceil() as u32).max(48);
+                for emoji_pos in &emoji_positions {
+                    if let Some((image_data, img_width, img_height)) =
+                        get_or_create_emoji_image(&emoji_pos.emoji, emoji_render_size)
+                    {
+                        let image = ImageData {
+                            data: Blob::from(image_data),
+                            format: ImageFormat::Rgba8,
+                            alpha_type: ImageAlphaType::Alpha,
+                            width: img_width,
+                            height: img_height,
+                        };
+                        let brush = ImageBrush::new(image);
+
+                        // emoji 尺寸
+                        let emoji_size = font_size_eff;
+
+                        // Parley 的 glyph 位置是基线系：x 为字形左缘，y 为基线。微调以对齐视觉中心。
+                        const EMOJI_NUDGE_LEFT: f64 = 0.0;    // 向左微调（0 = 不偏）
+                        const EMOJI_NUDGE_DOWN: f64 = 0.08;    // 向下微调，与 x-height 对齐
+                        let s = emoji_size as f64;
+                        let emoji_x = emoji_pos.x - s * 0.5 - s * EMOJI_NUDGE_LEFT;
+                        let emoji_y = emoji_pos.y - s + s * EMOJI_NUDGE_DOWN;
+
+                        // 计算完整的变换：shape_transform * 位置 * 缩放
+                        let full_transform = shape_transform
+                            * Affine::translate(Vec2::new(emoji_x as f64, emoji_y as f64))
+                            * Affine::scale_non_uniform(
+                                emoji_size / img_width as f64,
+                                emoji_size / img_height as f64,
+                            );
+
+                        // 使用单位矩形作为几何体
+                        let geom = Rect::new(0.0, 0.0, img_width as f64, img_height as f64);
+
+                        scene.fill(
+                            Fill::NonZero,
+                            full_transform,
+                            brush.as_ref(),
+                            None,
+                            &geom,
+                        );
+                    }
                 }
             }
         }
@@ -2278,6 +2323,7 @@ fn add_js_shape_to_scene(
             stroke_opacity,
             size_attenuation,
             stroke_attenuation,
+            drop_shadow,
             ..
         } => {
             let (w, h, r) = if size_attenuation {
@@ -2344,6 +2390,46 @@ fn add_js_shape_to_scene(
                     // 无 stroke，只有 fill
                     (Some((x, y, x + w, y + h, r)), None, None)
                 };
+
+                // 绘制 drop shadow（在 fill 之前）
+                if let Some(ref ds) = drop_shadow {
+                    let ds_blur = if size_attenuation { ds.blur / scale } else { ds.blur };
+                    let ds_offset_x = if size_attenuation { ds.offset_x / scale } else { ds.offset_x };
+                    let ds_offset_y = if size_attenuation { ds.offset_y / scale } else { ds.offset_y };
+
+                    // 计算阴影矩形位置
+                    let (sx0, sy0, sx1, sy1, sr) = fill_rect.unwrap_or((x, y, x + w, y + h, r));
+                    let shadow_rect = Rect::new(sx0 + ds_offset_x, sy0 + ds_offset_y, sx1 + ds_offset_x, sy1 + ds_offset_y);
+                    let shadow_color = apply_opacity_to_color(ds.color, opacity, 1.0);
+
+                    if ds_blur > 0.0 {
+                        // 使用 draw_blurred_rounded_rect 绘制模糊阴影
+                        scene.draw_blurred_rounded_rect(
+                            shape_transform,
+                            shadow_rect,
+                            Color::new(shadow_color),
+                            sr,
+                            ds_blur
+                        );
+                    } else {
+                        // 无模糊：直接绘制偏移的矩形作为阴影
+                        let brush = vello::peniko::Brush::Solid(Color::new(shadow_color));
+                        if sr > 0.0 {
+                            let shadow_geom = RoundedRect::new(
+                                sx0 + ds_offset_x, sy0 + ds_offset_y,
+                                sx1 + ds_offset_x, sy1 + ds_offset_y,
+                                sr
+                            );
+                            scene.fill(Fill::NonZero, shape_transform, &brush, None, &shadow_geom);
+                        } else {
+                            let shadow_geom = Rect::new(
+                                sx0 + ds_offset_x, sy0 + ds_offset_y,
+                                sx1 + ds_offset_x, sy1 + ds_offset_y
+                            );
+                            scene.fill(Fill::NonZero, shape_transform, &brush, None, &shadow_geom);
+                        }
+                    }
+                }
 
                 // 绘制 fill
                 if let Some((fx0, fy0, fx1, fy1, fr)) = fill_rect {
@@ -2698,12 +2784,19 @@ pub fn js_add_rect(canvas_id: u32, opts: JsValue) {
                 stroke_dasharray: s.stroke_dasharray.clone(),
                 stroke_dashoffset: s.stroke_dashoffset,
                 alignment: StrokeAlignment::from_str(&s.alignment),
+                blur: s.blur,
             })
         } else {
             None
         }
     });
     let fill_gradients = resolve_fill_gradients(&o.fill_gradient, &o.fill_gradients);
+    let drop_shadow = o.drop_shadow.map(|ds| DropShadow {
+        color: ds.color,
+        blur: ds.blur,
+        offset_x: ds.offset_x,
+        offset_y: ds.offset_y,
+    });
     push_shape(canvas_id, JsShape::Rect {
         id: o.id,
         parent_id: o.parent_id,
@@ -2722,6 +2815,8 @@ pub fn js_add_rect(canvas_id: u32, opts: JsValue) {
         local_transform: o.local_transform,
         size_attenuation: o.size_attenuation,
         stroke_attenuation: o.stroke_attenuation,
+        fill_blur: o.fill_blur,
+        drop_shadow,
     });
 }
 
@@ -2747,12 +2842,19 @@ pub fn js_add_ellipse(canvas_id: u32, opts: JsValue) {
                 stroke_dasharray: s.stroke_dasharray.clone(),
                 stroke_dashoffset: s.stroke_dashoffset,
                 alignment: StrokeAlignment::from_str(&s.alignment),
+                blur: s.blur,
             })
         } else {
             None
         }
     });
     let fill_gradients = resolve_fill_gradients(&o.fill_gradient, &o.fill_gradients);
+    let drop_shadow = o.drop_shadow.map(|ds| DropShadow {
+        color: ds.color,
+        blur: ds.blur,
+        offset_x: ds.offset_x,
+        offset_y: ds.offset_y,
+    });
     push_shape(canvas_id, JsShape::Ellipse {
         id: o.id,
         parent_id: o.parent_id,
@@ -2770,6 +2872,7 @@ pub fn js_add_ellipse(canvas_id: u32, opts: JsValue) {
         local_transform: o.local_transform,
         size_attenuation: o.size_attenuation,
         stroke_attenuation: o.stroke_attenuation,
+        drop_shadow,
     });
 }
 
@@ -2800,10 +2903,17 @@ pub fn js_add_image_rect(canvas_id: u32, opts: JsValue) {
                 stroke_dasharray: s.stroke_dasharray.clone(),
                 stroke_dashoffset: s.stroke_dashoffset,
                 alignment: StrokeAlignment::from_str(&s.alignment),
+                blur: s.blur,
             })
         } else {
             None
         }
+    });
+    let drop_shadow = o.drop_shadow.map(|ds| DropShadow {
+        color: ds.color,
+        blur: ds.blur,
+        offset_x: ds.offset_x,
+        offset_y: ds.offset_y,
     });
     push_shape(canvas_id, JsShape::ImageRect {
         id: o.id,
@@ -2824,6 +2934,7 @@ pub fn js_add_image_rect(canvas_id: u32, opts: JsValue) {
         local_transform: o.local_transform,
         size_attenuation: o.size_attenuation,
         stroke_attenuation: o.stroke_attenuation,
+        drop_shadow,
     });
 }
 
@@ -2849,12 +2960,19 @@ pub fn js_add_path(canvas_id: u32, opts: JsValue) {
                 stroke_dasharray: s.stroke_dasharray.clone(),
                 stroke_dashoffset: s.stroke_dashoffset,
                 alignment: StrokeAlignment::from_str(&s.alignment),
+                blur: s.blur,
             })
         } else {
             None
         }
     });
     let fill_gradients = resolve_fill_gradients(&o.fill_gradient, &o.fill_gradients);
+    let drop_shadow = o.drop_shadow.map(|ds| DropShadow {
+        color: ds.color,
+        blur: ds.blur,
+        offset_x: ds.offset_x,
+        offset_y: ds.offset_y,
+    });
     push_shape(canvas_id, JsShape::Path {
         id: o.id,
         parent_id: o.parent_id,
@@ -2870,6 +2988,7 @@ pub fn js_add_path(canvas_id: u32, opts: JsValue) {
         local_transform: o.local_transform,
         size_attenuation: o.size_attenuation,
         stroke_attenuation: o.stroke_attenuation,
+        drop_shadow,
     });
 }
 
@@ -2893,6 +3012,7 @@ pub fn js_add_polyline(canvas_id: u32, opts: JsValue) {
         stroke_dasharray: s.stroke_dasharray.clone(),
         stroke_dashoffset: s.stroke_dashoffset,
         alignment: StrokeAlignment::from_str(&s.alignment),
+        blur: s.blur,
     }).unwrap_or_else(|| StrokeParams {
         width: 1.0,
         color: default_rgba_stroke(),
@@ -2902,6 +3022,7 @@ pub fn js_add_polyline(canvas_id: u32, opts: JsValue) {
         stroke_dasharray: None,
         stroke_dashoffset: 0.0,
         alignment: StrokeAlignment::Center,
+        blur: 0.0,
     });
     push_shape(canvas_id, JsShape::Polyline {
         id: o.id,
@@ -2959,6 +3080,7 @@ pub fn js_add_rough_rect(canvas_id: u32, opts: JsValue) {
                 stroke_dasharray: s.stroke_dasharray.clone(),
                 stroke_dashoffset: s.stroke_dashoffset,
                 alignment: StrokeAlignment::from_str(&s.alignment),
+                blur: s.blur,
             })
         } else {
             None
@@ -3010,6 +3132,7 @@ pub fn js_add_rough_ellipse(canvas_id: u32, opts: JsValue) {
                 stroke_dasharray: s.stroke_dasharray.clone(),
                 stroke_dashoffset: s.stroke_dashoffset,
                 alignment: StrokeAlignment::from_str(&s.alignment),
+                blur: s.blur,
             })
         } else {
             None
@@ -3059,6 +3182,7 @@ pub fn js_add_rough_line(canvas_id: u32, opts: JsValue) {
         stroke_dasharray: s.stroke_dasharray.clone(),
         stroke_dashoffset: s.stroke_dashoffset,
         alignment: StrokeAlignment::from_str(&s.alignment),
+        blur: s.blur,
     }).unwrap_or_else(|| StrokeParams {
         width: 1.0,
         color: default_rgba_stroke(),
@@ -3068,6 +3192,7 @@ pub fn js_add_rough_line(canvas_id: u32, opts: JsValue) {
         stroke_dasharray: None,
         stroke_dashoffset: 0.0,
         alignment: StrokeAlignment::Center,
+        blur: 0.0,
     });
     push_shape(canvas_id, JsShape::RoughLine {
         id: o.id,
@@ -3107,6 +3232,7 @@ pub fn js_add_line(canvas_id: u32, opts: JsValue) {
         stroke_dasharray: s.stroke_dasharray.clone(),
         stroke_dashoffset: s.stroke_dashoffset,
         alignment: StrokeAlignment::from_str(&s.alignment),
+        blur: s.blur,
     }).unwrap_or_else(|| StrokeParams {
         width: 1.0,
         color: default_rgba_stroke(),
@@ -3116,6 +3242,7 @@ pub fn js_add_line(canvas_id: u32, opts: JsValue) {
         stroke_dasharray: None,
         stroke_dashoffset: 0.0,
         alignment: StrokeAlignment::Center,
+        blur: 0.0,
     });
     push_shape(canvas_id, JsShape::Line {
         id: o.id,
@@ -3145,9 +3272,6 @@ pub fn js_add_text(canvas_id: u32, opts: JsValue) {
             return;
         }
     };
-    // 预计算文本布局
-    let (text_parts, emoji_positions) = separate_emoji_from_text(&o.content);
-    let content_hash = compute_hash(&o.content);
 
     push_shape(canvas_id, JsShape::Text {
         id: o.id,
@@ -3177,11 +3301,6 @@ pub fn js_add_text(canvas_id: u32, opts: JsValue) {
         stroke_opacity: o.stroke_opacity,
         local_transform: o.local_transform,
         size_attenuation: o.size_attenuation,
-        cached_layout: Some(CachedTextLayout {
-            text_parts,
-            emoji_positions,
-            content_hash,
-        }),
     });
 }
 
