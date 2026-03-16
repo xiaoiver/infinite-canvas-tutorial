@@ -80,70 +80,105 @@ export class ComputeBounds extends System {
   }
 }
 
-function updateBounds(entity: Entity) {
+export type BoundsResult = {
+  geometryBounds?: AABB;
+  renderBounds?: AABB;
+};
+
+export type BoundsCalculator = (entity: Entity) => BoundsResult | null | undefined;
+
+const boundsCalculators: BoundsCalculator[] = [];
+
+export function registerBoundsCalculator(calculator: BoundsCalculator) {
+  boundsCalculators.push(calculator);
+}
+
+export function updateBounds(entity: Entity) {
   safeAddComponent(entity, ComputedBounds);
   const stroke = entity.has(Stroke) ? entity.read(Stroke) : undefined;
   const dropShadow = entity.has(DropShadow)
     ? entity.read(DropShadow)
     : undefined;
-  let geometryBounds: AABB;
-  let renderBounds: AABB;
-  if (entity.has(Circle)) {
-    geometryBounds = Circle.getGeometryBounds(entity.read(Circle));
-    renderBounds = Circle.getRenderBounds(entity.read(Circle), stroke);
-  } else if (entity.has(Ellipse)) {
-    geometryBounds = Ellipse.getGeometryBounds(entity.read(Ellipse));
-    renderBounds = Ellipse.getRenderBounds(entity.read(Ellipse), stroke);
-  } else if (entity.has(Rect)) {
-    geometryBounds = Rect.getGeometryBounds(entity.read(Rect));
-    renderBounds = Rect.getRenderBounds(entity.read(Rect), stroke, dropShadow);
-  } else if (entity.has(Line)) {
-    geometryBounds = Line.getGeometryBounds(entity.read(Line));
-    renderBounds = Line.getRenderBounds(entity.read(Line), stroke);
-  } else if (entity.has(Polyline)) {
-    geometryBounds = Polyline.getGeometryBounds({
-      ...entity.read(Polyline),
-      points: entity.read(ComputedPoints).shiftedPoints,
-    });
-    renderBounds = Polyline.getRenderBounds(entity.read(Polyline), stroke);
-  } else if (entity.has(Brush)) {
-    geometryBounds = Brush.getGeometryBounds(entity.read(Brush));
-    renderBounds = Brush.getRenderBounds(entity.read(Brush));
-  } else if (entity.has(Path)) {
-    geometryBounds = Path.getGeometryBounds(
-      entity.read(Path),
-      entity.read(ComputedPoints),
-    );
-    renderBounds = Path.getRenderBounds(
-      entity.read(Path),
-      entity.read(ComputedPoints),
-      stroke,
-    );
-  } else if (entity.has(Text)) {
-    geometryBounds = Text.getGeometryBounds(
-      entity.read(Text),
-      entity.read(ComputedTextMetrics),
-    );
-    renderBounds = Text.getRenderBounds(
-      entity.read(Text),
-      entity.read(ComputedTextMetrics),
-      stroke,
-      dropShadow,
-    );
-  } else if (entity.has(VectorNetwork)) {
-    geometryBounds = VectorNetwork.getGeometryBounds(
-      entity.read(VectorNetwork),
-    );
-    renderBounds = VectorNetwork.getRenderBounds(
-      entity.read(VectorNetwork),
-      stroke,
-    );
-  } else if (entity.has(HTML)) {
-    geometryBounds = HTML.getGeometryBounds(entity.read(HTML));
-    renderBounds = geometryBounds;
-  } else if (entity.has(Embed)) {
-    geometryBounds = Embed.getGeometryBounds(entity.read(Embed));
-    renderBounds = geometryBounds;
+  let geometryBounds: AABB | undefined;
+  let renderBounds: AABB | undefined;
+
+  // 1. 先让可扩展的计算器有机会处理
+  for (const calculator of boundsCalculators) {
+    const result = calculator(entity);
+    if (result) {
+      if (result.geometryBounds) {
+        geometryBounds = result.geometryBounds;
+      }
+      if (result.renderBounds) {
+        renderBounds = result.renderBounds;
+      }
+      break;
+    }
+  }
+
+  // 2. 若没有被扩展处理，则使用默认逻辑
+  if (!geometryBounds && !renderBounds) {
+    if (entity.has(Circle)) {
+      geometryBounds = Circle.getGeometryBounds(entity.read(Circle));
+      renderBounds = Circle.getRenderBounds(entity.read(Circle), stroke);
+    } else if (entity.has(Ellipse)) {
+      geometryBounds = Ellipse.getGeometryBounds(entity.read(Ellipse));
+      renderBounds = Ellipse.getRenderBounds(entity.read(Ellipse), stroke);
+    } else if (entity.has(Rect)) {
+      geometryBounds = Rect.getGeometryBounds(entity.read(Rect));
+      renderBounds = Rect.getRenderBounds(
+        entity.read(Rect),
+        stroke,
+        dropShadow,
+      );
+    } else if (entity.has(Line)) {
+      geometryBounds = Line.getGeometryBounds(entity.read(Line));
+      renderBounds = Line.getRenderBounds(entity.read(Line), stroke);
+    } else if (entity.has(Polyline)) {
+      geometryBounds = Polyline.getGeometryBounds({
+        ...entity.read(Polyline),
+        points: entity.read(ComputedPoints).shiftedPoints,
+      });
+      renderBounds = Polyline.getRenderBounds(entity.read(Polyline), stroke);
+    } else if (entity.has(Brush)) {
+      geometryBounds = Brush.getGeometryBounds(entity.read(Brush));
+      renderBounds = Brush.getRenderBounds(entity.read(Brush));
+    } else if (entity.has(Path)) {
+      geometryBounds = Path.getGeometryBounds(
+        entity.read(Path),
+        entity.read(ComputedPoints),
+      );
+      renderBounds = Path.getRenderBounds(
+        entity.read(Path),
+        entity.read(ComputedPoints),
+        stroke,
+      );
+    } else if (entity.has(Text)) {
+      geometryBounds = Text.getGeometryBounds(
+        entity.read(Text),
+        entity.read(ComputedTextMetrics),
+      );
+      renderBounds = Text.getRenderBounds(
+        entity.read(Text),
+        entity.read(ComputedTextMetrics),
+        stroke,
+        dropShadow,
+      );
+    } else if (entity.has(VectorNetwork)) {
+      geometryBounds = VectorNetwork.getGeometryBounds(
+        entity.read(VectorNetwork),
+      );
+      renderBounds = VectorNetwork.getRenderBounds(
+        entity.read(VectorNetwork),
+        stroke,
+      );
+    } else if (entity.has(HTML)) {
+      geometryBounds = HTML.getGeometryBounds(entity.read(HTML));
+      renderBounds = geometryBounds;
+    } else if (entity.has(Embed)) {
+      geometryBounds = Embed.getGeometryBounds(entity.read(Embed));
+      renderBounds = geometryBounds;
+    }
   }
 
   const hitArea = entity.has(Renderable)

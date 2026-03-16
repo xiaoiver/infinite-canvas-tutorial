@@ -6,6 +6,7 @@ publish: false
 
 <script setup>
 import Vello from '../components/Vello.vue'
+import VelloBlur from '../components/VelloBlur.vue'
 </script>
 
 # Lesson 35 - Tile-based Rendering
@@ -73,6 +74,16 @@ In [Lesson 12 - Drawing polylines] we introduced stroke expansion for line segme
 
 ![stroke expansion](/vello-stroke-expansion.png)
 
+![source: https://dl.acm.org/doi/pdf/10.1145/3675390](/vello-path-style.png)
+
+For thickened Bézier centerlines, the inner and outer offset curves (parallel curves) are difficult to compute robustly. [GPU-friendly Stroke Expansion] proposes a GPU-parallel algorithm that uses a special geometric approximation—Euler spirals—to avoid iterative solves. An Euler spiral is a curve whose curvature varies linearly with arc length. See: [Euler Spiral / Clothoid - An Illustrated Explanation].
+
+Its key properties:
+
+-   Can be approximated efficiently with just 1–2 cubic Bézier segments
+-   Naturally expresses the geometry of parallel curves
+-   Has closed-form expressions, making it well-suited to GPU computation
+
 Linecap and linejoin must be handled during expansion. Previously we used an analytic stroke approach in the fragment shader. vello does this on the CPU with [kurbo]; see [Stroke expansion]. A drawback is limited parallelism; also, because expansion happens in geometric space, a single large stroke can cover nearly all tiles at high zoom. For [stroke-alignment], kurbo's offset path can be used. Bezier curves are first converted to polylines before expansion.
 
 ### Flattening {#flattening}
@@ -80,6 +91,8 @@ Linecap and linejoin must be handled during expansion. Previously we used an ana
 We previously sampled curves and approximated them with polylines. vello also flattens cubic Bézier curves, quadratic Bézier curves, elliptic arcs, etc. into line segments using an adaptive subdivision algorithm that chooses subdivision depth from curvature, and runs in parallel on the GPU with each curve segment processed independently.
 
 ![flattening](/vello-flattening.png)
+
+![stroke expansion](/vello-stroke-expansion-gpu.png)
 
 ```wgsl
 // https://github.com/linebender/vello/blob/main/vello_shaders/shader/flatten.wgsl
@@ -115,6 +128,10 @@ fn main(
     }
 }
 ```
+
+You can find the full shader code here: <https://github.com/linebender/vello/blob/main/vello_shaders/shader/flatten.wgsl>
+
+![compute shader](/vello-compute-shader.png)
 
 ### Tile generation {#tile-generation}
 
@@ -548,6 +565,7 @@ In [Lesson 33 - Layout engine] we used Yoga compiled to WASM. [taffy] is a Rust 
 ## Further reading {#extended-reading}
 
 -   [High-performance 2D graphics rendering on the CPU using sparse strips]
+-   [GPU-friendly Stroke Expansion]
 -   [Faster, easier 2D vector rendering - Raph Levien]
 -   [Vello Sparse Strips Roadmap 2025-2026]
 -   [What does Tile based rendering mean?]
@@ -583,3 +601,5 @@ In [Lesson 33 - Layout engine] we used Yoga compiled to WASM. [taffy] is a Rust 
 [wasm-bindgen]: https://wasm-bindgen.github.io/wasm-bindgen/
 [Round vertical hinting offset in Vello Classic]: https://github.com/linebender/vello/pull/963
 [Faster, easier 2D vector rendering - Raph Levien]: https://youtu.be/_sv8K190Zps
+[GPU-friendly Stroke Expansion]: https://dl.acm.org/doi/pdf/10.1145/3675390
+[Graphite]: https://github.com/GraphiteEditor/Graphite

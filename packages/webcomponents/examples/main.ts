@@ -295,7 +295,7 @@ canvas.addEventListener(Event.READY, async (e) => {
       id: 'text-1',
       type: 'text',
       fill: 'black',
-      content: 'Abcdefghijklmnop (top) 🚀MM',
+      content: 'ABCג ב אDEFAbcdefghijklmnop (top) 🚀MM',
       anchorX: 50,
       anchorY: 50,
       fontSize: 16,
@@ -347,6 +347,7 @@ canvas.addEventListener(Event.READY, async (e) => {
       fontSize: 16,
       fontFamily: 'sans-serif',
       textBaseline: 'middle',
+      lineHeight: 32,
       zIndex: 6,
     },
     {
@@ -391,7 +392,7 @@ canvas.addEventListener(Event.READY, async (e) => {
       anchorX: 50,
       anchorY: 250,
       fontSize: 16,
-      fontFamily: 'sans-serif',
+      fontFamily: 'Gaegu',
       textBaseline: 'ideographic',
       zIndex: 6,
     },
@@ -414,7 +415,7 @@ canvas.addEventListener(Event.READY, async (e) => {
       anchorX: 50,
       anchorY: 300,
       fontSize: 16,
-      fontFamily: 'sans-serif',
+      fontFamily: 'sans serif',
       textBaseline: 'bottom',
       zIndex: 6,
     },
@@ -432,6 +433,8 @@ const VelloRendererPlugin = RendererPlugin.configure({
 });
 DefaultPlugins.splice(DefaultPlugins.indexOf(DefaultRendererPlugin), 1, VelloRendererPlugin);
 registerFont('/NotoSansCJKsc-VF.ttf');
+registerFont('/Gaegu-Regular.ttf');
+// registerFont('/NotoSansArabic.ttf');
 
 try {
   const app = new App().addPlugins(

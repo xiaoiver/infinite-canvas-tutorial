@@ -7,7 +7,7 @@
 use wasm_bindgen::prelude::*;
 
 #[cfg(target_arch = "wasm32")]
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 #[cfg(target_arch = "wasm32")]
 use std::cell::RefCell;
@@ -432,16 +432,22 @@ thread_local! {
     /// 每个画布 id 对应一份图形列表，支持多画布。
     static CANVAS_SHAPES: RefCell<HashMap<u32, Vec<JsShape>>> = RefCell::new(HashMap::new());
     static NEXT_CANVAS_ID: RefCell<u32> = RefCell::new(0);
-    /// 默认字体 TTF/OTF 字节，由 registerDefaultFont 设置后才能渲染文本。
-    static FONT_BYTES: RefCell<Option<Vec<u8>>> = RefCell::new(None);
+    /// 默认字体 TTF/OTF 字节列表，由 registerFont 等 API 设置后才能渲染文本。
+    /// 目前简化为使用第一个字体进行排版与渲染；未来可以在 Parley 侧扩展为真正的字体 fallback。
+    static FONT_BYTES: RefCell<Vec<Vec<u8>>> = RefCell::new(Vec::new());
     /// 待应用的相机变换，由 setCameraTransform 设置，下一帧渲染前应用。
     static CAMERA_TRANSFORM_PENDING: RefCell<HashMap<u32, Affine>> = RefCell::new(HashMap::new());
     /// canvas_id -> Window，用于 requestRedraw 由 JS 触发重绘。
     static CANVAS_WINDOWS: RefCell<HashMap<u32, Arc<Window>>> = RefCell::new(HashMap::new());
     /// emoji 图片缓存：字符 -> (RGBA 数据, 宽度, 高度)
     static EMOJI_CACHE: RefCell<HashMap<String, (Vec<u8>, u32, u32)>> = RefCell::new(HashMap::new());
-    /// 字形缓存：(文本, 字体大小) -> (FontData, glyphs, size, emoji_positions)，命中时直接使用，避免每帧重新排版（尤其对中文字体）
-    static GLYPH_CACHE: RefCell<HashMap<(String, u32), (vello::peniko::FontData, Vec<vello::Glyph>, f32, Vec<EmojiPosition>)>> = RefCell::new(HashMap::new());
+    /// 字形缓存：(文本, 字体大小, font_family) -> (FontData, glyphs, size, emoji_positions)，命中时直接使用，避免每帧重新排版（尤其对中文字体）
+    static GLYPH_CACHE: RefCell<
+        HashMap<
+            (String, u32, String),
+            (Vec<(vello::peniko::FontData, Vec<vello::Glyph>)>, f32, Vec<EmojiPosition>),
+        >,
+    > = RefCell::new(HashMap::new());
     /// 全局 FontContext 缓存，避免每帧重建
     static FONT_CONTEXT: RefCell<Option<parley::FontContext>> = RefCell::new(None);
     /// 已注册字体指纹（避免中文字体每帧重复 register_fonts）
@@ -1012,6 +1018,17 @@ pub struct TextOptions {
     pub size_attenuation: bool,
 }
 
+/// 文本几何包围盒（局部坐标系下，以文本锚点为原点）。
+/// JS 侧可在此基础上应用 local_transform / 世界变换，用于拾取或对齐。
+#[cfg(target_arch = "wasm32")]
+#[derive(Debug, Serialize)]
+pub struct TextBounds {
+    pub min_x: f64,
+    pub min_y: f64,
+    pub max_x: f64,
+    pub max_y: f64,
+}
+
 #[cfg(target_arch = "wasm32")]
 fn default_font_family() -> String {
     "sans-serif".to_string()
@@ -1388,18 +1405,24 @@ fn compute_world_transforms(shapes: &[JsShape]) -> HashMap<String, Affine> {
 /// 使用 Parley 将字符串与字体字节解析为 vello 可绘制的 Glyph 列表；支持 kerning、ligatures、bidi 等。
 /// 返回 peniko FontData 供 draw_glyphs 使用，同时返回 emoji 的实际位置。
 /// 使用全局 FontContext 缓存以提高性能。
+/// font_family: 请求的字体族名称（如 "Gaegu"、"Noto Sans"），若在已注册字体中存在则使用，否则回退到集合中第一个 family。
 #[cfg(target_arch = "wasm32")]
 fn build_text_glyphs_with_emoji_positions(
-    font_bytes: &[u8],
     content: &str,
     font_size_px: f32,
     letter_spacing: f32,
-) -> Option<(vello::peniko::FontData, Vec<vello::Glyph>, f32, Vec<EmojiPosition>)> {
+    font_family: &str,
+) -> Option<(Vec<(vello::peniko::FontData, Vec<vello::Glyph>)>, f32, Vec<EmojiPosition>, Option<(f32, f32, f32, f32)>)> {
     use std::borrow::Cow;
     use parley::fontique::Blob;
     use parley::layout::PositionedLayoutItem;
     use parley::style::FontFamily;
     use parley::{Alignment, AlignmentOptions, LayoutContext, LineHeight, StyleProperty};
+
+    let font_bytes_list = FONT_BYTES.with(|c| c.borrow().clone());
+    if font_bytes_list.is_empty() {
+        return None;
+    }
 
     FONT_CONTEXT.with(|fc| {
         let mut font_cx_ref = fc.borrow_mut();
@@ -1409,34 +1432,67 @@ fn build_text_glyphs_with_emoji_positions(
 
         let font_cx = font_cx_ref.as_mut()?;
 
-        // 仅当字体指纹变化时再注册，避免中文字体每帧重复 register_fonts 和大块分配
-        let fp = font_bytes_fingerprint(font_bytes);
+        // 为了让“字体集合”与注册顺序无关，这里按指纹排序后再注册。
+        // 同一组字体无论 registerFont 顺序如何，combined_fp 与内部顺序都保持一致。
+        let mut fonts_with_fp: Vec<(u64, Vec<u8>)> = font_bytes_list
+            .into_iter()
+            .map(|bytes| (font_bytes_fingerprint(&bytes), bytes))
+            .collect();
+        if fonts_with_fp.is_empty() {
+            return None;
+        }
+        fonts_with_fp.sort_by_key(|(fp, _)| *fp);
+
+        // 仅当字体集合变化时再注册，避免每帧重复 register_fonts 和大块分配。
+        // 指纹基于“已排序”的字体列表，保证顺序无关。
+        let mut combined_fp: u64 = 0;
+        for (fp, _) in &fonts_with_fp {
+            combined_fp = combined_fp.wrapping_mul(1315423911) ^ *fp;
+        }
         let need_register = LAST_REGISTERED_FONT_FINGERPRINT.with(|r| {
             let mut ref_mut = r.borrow_mut();
             let prev = *ref_mut;
-            if prev != Some(fp) {
-                *ref_mut = Some(fp);
+            if prev != Some(combined_fp) {
+                *ref_mut = Some(combined_fp);
                 true
             } else {
                 false
             }
         });
         if need_register {
-            let font_blob = Blob::new(Arc::new(font_bytes.to_vec()));
-            font_cx.collection.register_fonts(font_blob, None);
+            font_cx.collection.clear();
+            // 字体集合变化时，清空 glyph 缓存，避免用到旧字体布局结果。
+            GLYPH_CACHE.with(|c| c.borrow_mut().clear());
+            for (_, bytes) in &fonts_with_fp {
+                let font_blob = Blob::new(Arc::new(bytes.clone()));
+                font_cx.collection.register_fonts(font_blob, None);
+            }
         }
 
-        let family_name = font_cx
-            .collection
-            .family_names()
-            .next()
-            .unwrap_or("sans-serif")
-            .to_string();
+        // 根据请求的 font_family 选择已注册字体中的 family：精确匹配（忽略大小写）或前缀匹配（如 "Noto Sans" 匹配 "Noto Sans CJK SC"）
+        let requested = font_family.trim();
+        let family_names: Vec<String> = font_cx.collection.family_names().map(|s| s.to_string()).collect();
+        let family_name = if requested.is_empty() {
+            family_names.first().cloned().unwrap_or_else(|| "sans-serif".to_string())
+        } else {
+            family_names
+                .iter()
+                .find(|n| n.eq_ignore_ascii_case(requested) || n.starts_with(requested))
+                .cloned()
+                .or_else(|| family_names.first().cloned())
+                .unwrap_or_else(|| "sans-serif".to_string())
+        };
 
         let mut layout_cx = LayoutContext::new();
-        let mut glyphs = Vec::new();
+        // 按 run 收集：每个 run 用自己的 font 绘制，多字体 fallback 时不会错乱
+        let mut glyph_runs: Vec<(vello::peniko::FontData, Vec<vello::Glyph>)> = Vec::new();
         let mut emoji_positions = Vec::new();
         let mut line_y = 0.0f32;
+        // 用 Parley 的 line.metrics() 与 run.offset()/advance() 累加精确包围盒，避免每字 0.6/0.8/0.2 估计
+        let mut layout_min_x = f32::INFINITY;
+        let mut layout_min_y = f32::INFINITY;
+        let mut layout_max_x = f32::NEG_INFINITY;
+        let mut layout_max_y = f32::NEG_INFINITY;
 
         // 与 separate_emoji_from_text 一致：按 \n 分割，每段单独排版，避免 Parley 把换行符当成单独一行
         let line_segments: Vec<&str> = content.split('\n').collect();
@@ -1465,8 +1521,24 @@ fn build_text_glyphs_with_emoji_positions(
 
             let segment_lines: Vec<_> = layout.lines().collect();
             for line in segment_lines {
+                let line_min_y = line_y + line.metrics().min_coord;
+                let line_max_y = line_y + line.metrics().max_coord;
+                layout_min_y = layout_min_y.min(line_min_y);
+                layout_max_y = layout_max_y.max(line_max_y);
+
                 for item in line.items() {
                     if let PositionedLayoutItem::GlyphRun(run) = item {
+                        let run_min_x = run.offset();
+                        let run_max_x = run.offset() + run.advance();
+                        layout_min_x = layout_min_x.min(run_min_x);
+                        layout_max_x = layout_max_x.max(run_max_x);
+
+                        let font_ref = run.run().font();
+                        let bytes = font_ref.data.data().to_vec();
+                        let blob = vello::peniko::Blob::from(bytes);
+                        let font_data = vello::peniko::FontData::new(blob, font_ref.index);
+
+                        let mut run_glyphs = Vec::new();
                         for g in run.positioned_glyphs() {
                             if char_idx >= segment_char_indices.len() {
                                 break;
@@ -1484,12 +1556,15 @@ fn build_text_glyphs_with_emoji_positions(
                                     y: (line_y + g.y) as f64,
                                 });
                             } else {
-                                glyphs.push(vello::Glyph {
+                                run_glyphs.push(vello::Glyph {
                                     id: g.id,
                                     x: g.x,
                                     y: line_y + g.y,
                                 });
                             }
+                        }
+                        if !run_glyphs.is_empty() {
+                            glyph_runs.push((font_data, run_glyphs));
                         }
                     }
                 }
@@ -1497,9 +1572,94 @@ fn build_text_glyphs_with_emoji_positions(
             }
         }
 
-        let blob = vello::peniko::Blob::from(font_bytes.to_vec());
-        let font_data = vello::peniko::FontData::new(blob, 0);
-        Some((font_data, glyphs, font_size_px, emoji_positions))
+        let layout_bounds = if layout_min_x.is_finite() && layout_min_y.is_finite()
+            && layout_max_x.is_finite() && layout_max_y.is_finite()
+        {
+            Some((layout_min_x, layout_min_y, layout_max_x, layout_max_y))
+        } else {
+            None
+        };
+
+        Some((glyph_runs, font_size_px, emoji_positions, layout_bounds))
+    })
+}
+
+/// 计算文本在其局部坐标系中的 AABB，返回值不包含任何父级/相机变换。
+/// 坐标系约定与渲染时一致：锚点位于 (0, 0)，x 轴向右，y 轴向下。
+#[cfg(target_arch = "wasm32")]
+fn compute_text_bounds_internal(opts: &TextOptions) -> Option<TextBounds> {
+    // 当前实现与渲染逻辑一致：只考虑 font_size 与 letter_spacing；
+    // 其余如 line_height / white_space / word_wrap 等后续可以在 Parley 布局层面进一步利用。
+    let font_size_eff = opts.font_size as f32;
+    let letter_spacing_eff = opts.letter_spacing as f32;
+
+    let (glyph_runs, size_px, emoji_positions, layout_bounds) =
+        build_text_glyphs_with_emoji_positions(&opts.content, font_size_eff, letter_spacing_eff, &opts.font_family)?;
+
+    // 没有任何可见内容时，返回零大小包围盒。
+    if glyph_runs.is_empty() && emoji_positions.is_empty() {
+        return Some(TextBounds {
+            min_x: 0.0,
+            min_y: 0.0,
+            max_x: 0.0,
+            max_y: 0.0,
+        });
+    }
+
+    let fs = size_px as f64;
+
+    let (mut min_x, mut min_y, mut max_x, mut max_y) = match layout_bounds {
+        Some((lx, ly, rx, ry)) => (lx as f64, ly as f64, rx as f64, ry as f64),
+        None => {
+            // 无布局度量时（如空行仅换行）退回按 glyph 位置粗略估计
+            let mut mx = f64::INFINITY;
+            let mut my = f64::INFINITY;
+            let mut rx = f64::NEG_INFINITY;
+            let mut ry = f64::NEG_INFINITY;
+            for (_fd, run_glyphs) in &glyph_runs {
+                for g in run_glyphs {
+                    let gx = g.x as f64;
+                    let gy = g.y as f64;
+                    mx = mx.min(gx);
+                    my = my.min(gy - fs * 0.8);
+                    rx = rx.max(gx + fs * 0.6);
+                    ry = ry.max(gy + fs * 0.2);
+                }
+            }
+            (mx, my, rx, ry)
+        }
+    };
+
+    // emoji：渲染时使用大小约等于字体大小的正方形，这里按同样近似。
+    for emoji in &emoji_positions {
+        let ex = emoji.x;
+        let ey = emoji.y;
+
+        let left = ex - fs * 0.5;
+        let right = ex + fs * 0.5;
+        let top = ey - fs;
+        let bottom = ey;
+
+        min_x = min_x.min(left);
+        min_y = min_y.min(top);
+        max_x = max_x.max(right);
+        max_y = max_y.max(bottom);
+    }
+
+    if !min_x.is_finite() || !min_y.is_finite() || !max_x.is_finite() || !max_y.is_finite() {
+        return Some(TextBounds {
+            min_x: 0.0,
+            min_y: 0.0,
+            max_x: 0.0,
+            max_y: 0.0,
+        });
+    }
+
+    Some(TextBounds {
+        min_x,
+        min_y,
+        max_x,
+        max_y,
     })
 }
 
@@ -2206,6 +2366,7 @@ fn add_js_shape_to_scene(
         JsShape::Text {
             content,
             font_size,
+            font_family,
             letter_spacing,
             fill,
             opacity,
@@ -2219,31 +2380,29 @@ fn add_js_shape_to_scene(
                 (font_size, letter_spacing)
             };
 
-            let font_bytes = FONT_BYTES.with(|c| c.borrow().clone());
-
             // 渲染文本（使用 Parley 布局整个文本，获取准确的 emoji 位置）
-            if let Some(bytes) = font_bytes {
-                let cache_key = (content.clone(), font_size_eff as u32);
+            if !FONT_BYTES.with(|c| c.borrow().is_empty()) {
+                let cache_key = (content.clone(), font_size_eff as u32, font_family.clone());
 
                 // 尝试从缓存获取；命中则直接使用，避免每帧重新排版（中文字体排版成本高）
                 let cached = GLYPH_CACHE.with(|c| c.borrow().get(&cache_key).cloned());
 
-                let (font_data, glyphs, size, emoji_positions) = match cached {
-                    Some((fd, g, s, em)) => (fd, g, s, em),
+                let (glyph_runs, size, emoji_positions) = match cached {
+                    Some((runs, s, em)) => (runs, s, em),
                     None => {
                         // 缓存未命中，构建字形和 emoji 位置后存入缓存
                         let result = build_text_glyphs_with_emoji_positions(
-                            &bytes,
                             &content,
                             font_size_eff as f32,
                             letter_spacing_eff as f32,
+                            &font_family,
                         );
                         match result {
-                            Some((fd, g, s, em)) => {
+                            Some((runs, s, em, _)) => {
                                 GLYPH_CACHE.with(|c| {
-                                    c.borrow_mut().insert(cache_key, (fd.clone(), g.clone(), s, em.clone()));
+                                    c.borrow_mut().insert(cache_key, (runs.clone(), s, em.clone()));
                                 });
-                                (fd, g, s, em)
+                                (runs, s, em)
                             }
                             None => return,
                         }
@@ -2253,13 +2412,15 @@ fn add_js_shape_to_scene(
                 let fill_color = apply_opacity_to_color(fill, opacity, fill_opacity);
                 let color = Color::new(fill_color);
 
-                // 渲染普通文本 glyphs（emoji 已经被过滤掉了）
-                scene
-                    .draw_glyphs(&font_data)
-                    .font_size(size)
-                    .transform(shape_transform)
-                    .brush(color)
-                    .draw(Fill::NonZero, glyphs.into_iter());
+                // 按 run 用对应字体绘制，多字体 fallback 时每个 run 用自己的 FontData
+                for (font_data, glyphs) in &glyph_runs {
+                    scene
+                        .draw_glyphs(font_data)
+                        .font_size(size)
+                        .transform(shape_transform)
+                        .brush(color)
+                        .draw(Fill::NonZero, glyphs.clone().into_iter());
+                }
 
                 // 渲染 emoji 图片（在 glyph 位置上）；用 2x 分辨率渲染再缩放到字体大小，提升清晰度
                 let emoji_render_size = ((font_size_eff * 2.0).ceil() as u32).max(48);
@@ -3304,12 +3465,43 @@ pub fn js_add_text(canvas_id: u32, opts: JsValue) {
     });
 }
 
-/// 注册默认字体（TTF/OTF 字节）。用于 addText 渲染；传入 Uint8Array 或 ArrayBuffer。
+/// 计算文本在局部坐标系（锚点为原点）下的几何包围盒，用于拾取或布局。
+/// 入参与 addText 相同（除 canvasId 外），返回 { min_x, min_y, max_x, max_y }。
 #[cfg(target_arch = "wasm32")]
-#[wasm_bindgen(js_name = registerDefaultFont)]
-pub fn js_register_default_font(js_value: JsValue) {
+#[wasm_bindgen(js_name = computeTextBounds)]
+pub fn js_compute_text_bounds(opts: JsValue) -> JsValue {
+    let o: TextOptions = match serde_wasm_bindgen::from_value(opts) {
+        Ok(v) => v,
+        Err(e) => {
+            web_sys::console::error_1(&format!("computeTextBounds: invalid options - {}", e).into());
+            return JsValue::NULL;
+        }
+    };
+
+    match compute_text_bounds_internal(&o) {
+        Some(bounds) => match serde_wasm_bindgen::to_value(&bounds) {
+            Ok(v) => v,
+            Err(e) => {
+                web_sys::console::error_1(
+                    &format!("computeTextBounds: failed to serialize result - {}", e).into(),
+                );
+                JsValue::NULL
+            }
+        },
+        None => JsValue::NULL,
+    }
+}
+
+/// 追加一个字体（TTF/OTF 字节）到字体列表，用于多字体 / fallback。
+/// 注意：当前实现仍然只使用第一个字体进行排版与渲染，
+/// 该 API 主要用于未来在 Parley 侧扩展真正的多字体支持。
+#[cfg(target_arch = "wasm32")]
+#[wasm_bindgen(js_name = registerFont)]
+pub fn js_register_font(js_value: JsValue) {
     let bytes = js_sys::Uint8Array::new(&js_value).to_vec();
-    FONT_BYTES.with(|c| *c.borrow_mut() = Some(bytes));
+    FONT_BYTES.with(|c| {
+        c.borrow_mut().push(bytes);
+    });
 }
 
 /// 清空指定画布上由 JS 添加的所有图形。

@@ -74,9 +74,19 @@ scene.stroke(..., &path)
 
 ![stroke expansion](/vello-stroke-expansion.png)
 
-拉伸时同样需要考虑 linecap 和 linejoin，之前我们是使用了 Analytic Stroke 的思路在 fragment shader 中完成的。vello 在 CPU 侧使用 [kurbo] 完成，可以参考：[Stroke expansion]，缺点就是并行性较差，另外由于变换发生在几何空间，当缩放层级较高时就会覆盖几乎全部 tiles。
+拉伸时同样需要考虑 linecap 和 linejoin，之前我们是使用了 Analytic Stroke 的思路在 fragment shader 中完成的。
 
-对于 [stroke-alignment]，可以通过 kurbo 的 offset path 实现。另外对于贝塞尔曲线，会先转换成折线再拉伸。
+![source: https://dl.acm.org/doi/pdf/10.1145/3675390](/vello-path-style.png)
+
+对于作为中心线的贝塞尔曲线被加粗后，内侧和外侧的边界线（平行曲线）很难计算。[GPU-friendly Stroke Expansion] 一文提出了 GPU 并行算法，使用特殊的几何近似（欧拉螺旋 Euler Spiral）避免迭代计算，欧拉螺旋是曲率随弧长线性变化的曲线，详见：[Euler Spiral / Clothoid - An Illustrated Explanation]。
+
+它的关键性质如下：
+
+-   可以用三次贝塞尔高效近似（只需 1-2 段）
+-   天然适合描述平行曲线的几何特性
+-   有解析表达式，适合 GPU 计算
+
+vello CPU 会使用 [kurbo] 完成，可以参考：[Stroke expansion]，缺点就是并行性较差，另外由于变换发生在几何空间，当缩放层级较高时就会覆盖几乎全部 tiles。对于 [stroke-alignment]，可以通过 kurbo 的 offset path 实现。另外对于贝塞尔曲线，会先转换成折线再拉伸。
 
 ### 展平成线段 {#flattening}
 
@@ -84,9 +94,11 @@ scene.stroke(..., &path)
 
 ![flattening](/vello-flattening.png)
 
-```wgsl
-// https://github.com/linebender/vello/blob/main/vello_shaders/shader/flatten.wgsl
+而在 compute shader 中会展平成一组欧拉螺旋子曲线用于拟合，充分利用 GPU 的并行性：
 
+![stroke expansion](/vello-stroke-expansion-gpu.png)
+
+```wgsl
 // This function flattens a cubic Bézier by first converting it into Euler spiral
 // segments, and then computes a near-optimal flattening of the parallel curves of
 // the Euler spiral segments.
@@ -99,25 +111,11 @@ fn flatten_euler(
     end_p: vec2f,
 ) {
 }
-
-@compute @workgroup_size(256)
-fn main(
-    @builtin(global_invocation_id) global_id: vec3<u32>,
-    @builtin(local_invocation_id) local_id: vec3<u32>,
-) {
-    // Decode path data
-    let seg_type = tag.tag_byte & PATH_TAG_SEG_TYPE;
-    if seg_type != 0u {
-        let is_stroke = (style_flags & STYLE_FLAGS_STYLE) != 0u;
-        if is_stroke {
-            //...
-        } else {
-            let offset = 0.;
-            flatten_euler(pts, path_ix, transform, offset, pts.p0, pts.p3);
-        }
-    }
-}
 ```
+
+可以在这里看到完整代码：<https://github.com/linebender/vello/blob/main/vello_shaders/shader/flatten.wgsl>
+
+![compute shader](/vello-compute-shader.png)
 
 ### 生成瓦片 {#tile-generation}
 
@@ -162,7 +160,7 @@ struct Strip {
 
 ![coarse rasterization](/vello-coarse-rasterization.png)
 
-### Fine Rasterization
+### 细光栅化 {#fine-Rasterization}
 
 最终的像素着色器，每个 Workgroup 处理一个 Wide Tile（256×4 像素）。
 
@@ -496,6 +494,10 @@ scene.draw_blurred_rounded_rect(
 
 ## 其他功能的 Rust 实现 {#other-functions-implemented-with-rust}
 
+### 包围盒计算 {#compute-bounds}
+
+文本完全可以用 parley 度量，我们终于可以摆脱 BiDi、clusters 等灯。
+
 ### 拾取 {#picking}
 
 除了渲染，拾取也可以放在 WASM 中完成。例如在 [Graphite] 中
@@ -576,3 +578,6 @@ impl ClickTarget {
 [Vello Sparse Strips]: https://github.com/linebender/vello/tree/main/sparse_strips
 [Vello Sparse Strips Roadmap 2025-2026]: https://docs.google.com/document/d/1ZquH-53j2OedTbgEKCJBKTh4WLE11UveM10mNdnVARY/edit?tab=t.0#heading=h.uxa8f6wsnhj3
 [Stroke expansion]: https://github.com/linebender/kurbo/issues/285
+[GPU-friendly Stroke Expansion]: https://dl.acm.org/doi/pdf/10.1145/3675390
+[Euler Spiral / Clothoid - An Illustrated Explanation]: https://xixixao.github.io/euler-spiral-explanation/
+[Graphite]: https://github.com/GraphiteEditor/Graphite
