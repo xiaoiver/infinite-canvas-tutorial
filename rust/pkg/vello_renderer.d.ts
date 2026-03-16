@@ -77,9 +77,17 @@ export function clearGlyphCache(): void;
 export function clearShapes(canvas_id: number): void;
 
 /**
- * 注册默认字体（TTF/OTF 字节）。用于 addText 渲染；传入 Uint8Array 或 ArrayBuffer。
+ * 计算文本在局部坐标系（锚点为原点）下的几何包围盒，用于拾取或布局。
+ * 入参与 addText 相同（除 canvasId 外），返回 { min_x, min_y, max_x, max_y }。
  */
-export function registerDefaultFont(js_value: any): void;
+export function computeTextBounds(opts: any): any;
+
+/**
+ * 追加一个字体（TTF/OTF 字节）到字体列表，用于多字体 / fallback。
+ * 注意：当前实现仍然只使用第一个字体进行排版与渲染，
+ * 该 API 主要用于未来在 Parley 侧扩展真正的多字体支持。
+ */
+export function registerFont(js_value: any): void;
 
 /**
  * 请求画布重绘。JS 在更新相机或图形后调用，以触发下一帧渲染。
@@ -114,7 +122,8 @@ export interface InitOutput {
     readonly addRoughLine: (a: number, b: any) => void;
     readonly addRoughRect: (a: number, b: any) => void;
     readonly addText: (a: number, b: any) => void;
-    readonly registerDefaultFont: (a: any) => void;
+    readonly computeTextBounds: (a: any) => any;
+    readonly registerFont: (a: any) => void;
     readonly requestRedraw: (a: number) => void;
     readonly runWithCanvas: (a: any, b: any) => void;
     readonly setCameraTransform: (a: number, b: any) => void;

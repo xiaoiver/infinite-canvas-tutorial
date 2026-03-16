@@ -1,5 +1,6 @@
 import { Entity, System, Canvas, GPUResource, Grid, Theme, ComputedCamera, Camera } from '@infinite-canvas-tutorial/ecs';
-import init, { registerDefaultFont, runWithCanvas, setCameraTransform } from '@infinite-canvas-tutorial/vello-renderer';
+import init, { registerFont as registerFontVello, runWithCanvas, setCameraTransform } from '@infinite-canvas-tutorial/vello-renderer';
+import { registerVelloTextBounds } from './VelloBounds';
 
 const FONT_URLS = [];
 export function registerFont(fontUrl: string) {
@@ -27,10 +28,13 @@ export class InitVello extends System {
   async prepare() {
     await init();
 
+    // 使用 Vello 的文本度量扩展 ComputeBounds 的 Text 包围盒计算
+    registerVelloTextBounds();
+
     for (const fontUrl of FONT_URLS) {
       const r = await fetch(fontUrl);
       const buf = await r.arrayBuffer();
-      registerDefaultFont(buf);
+      registerFontVello(buf);
     }
   }
 
