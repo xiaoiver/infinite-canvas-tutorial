@@ -51,8 +51,11 @@ function convertFlowchartToSerializedNodes(vertices: Map<string, Vertex>, edges:
         break;
       }
       case VERTEX_TYPE.DIAMOND: {
-        (serializedNode as unknown as PathSerializedNode).type = "path";
-        (serializedNode as unknown as PathSerializedNode).d = "M 0 0 L 100 50 L 0 100 Z";
+        const width = vertex.width;
+        const height = vertex.height;
+        const pathSerializedNode = serializedNode as unknown as PathSerializedNode;
+        pathSerializedNode.type = "path";
+        pathSerializedNode.d = `M ${width / 2} 0 L ${width} ${height / 2} L ${width / 2} ${height} L 0 ${height / 2} Z`;
         break;
       }
     }

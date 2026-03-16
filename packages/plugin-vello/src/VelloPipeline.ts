@@ -150,7 +150,7 @@ function imageToRgba(src: TexImageSource): { width: number; height: number; data
           : 0;
     if (width === 0 || height === 0) return null;
     const canvas = new OffscreenCanvas(width, height);
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
     if (!ctx) return null;
     ctx.drawImage(src as CanvasImageSource, 0, 0);
     const imageData = ctx.getImageData(0, 0, width, height);
@@ -429,6 +429,13 @@ export class VelloPipeline extends System {
             baseOpts.strokeOpacity = strokeOpacity;
           }
 
+          if (entity.has(Marker)) {
+            const { start, end, factor } = entity.read(Marker);
+            baseOpts.markerStart = start;
+            baseOpts.markerEnd = end;
+            baseOpts.markerFactor = factor;
+          }
+
           let fillBlur: number | undefined = undefined;
           let dropShadow: {
             color: [number, number, number, number];
@@ -524,6 +531,12 @@ export class VelloPipeline extends System {
               x2,
               y2,
             };
+            if (entity.has(Marker)) {
+              const { start, end, factor } = entity.read(Marker);
+              opts.markerStart = start;
+              opts.markerEnd = end;
+              opts.markerFactor = factor;
+            }
 
             if (entity.has(Rough)) { 
               const { roughness, bowing, simplification } = entity.read(Rough);

@@ -405,9 +405,9 @@ If you want to use it in your own project, you can refer to:
 -   Parse D2 and render in our canvas
 -   Parse draw.io and render in our canvas
 
-|                Mermaid flowchart                 |                 D2 flowchart                  |          Draw.io flowchart          |
-| :----------------------------------------------: | :-------------------------------------------: | :---------------------------------: |
-| ![mermaid flowchart](./screenshots/lesson32.png) | ![d2 flowchart](./screenshots/lesson32-2.png) | ![drawio](./screenshots/drawio.png) |
+|                Mermaid flowchart                |                 D2 flowchart                  |          Draw.io flowchart          |
+| :---------------------------------------------: | :-------------------------------------------: | :---------------------------------: |
+| ![mermaid flowchart](./screenshots/mermaid.png) | ![d2 flowchart](./screenshots/lesson32-2.png) | ![drawio](./screenshots/drawio.png) |
 
 ## Lesson 33 - Layout engine [🔗](https://infinitecanvas.cc/guide/lesson-033)
 

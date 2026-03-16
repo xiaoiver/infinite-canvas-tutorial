@@ -226,6 +226,12 @@ pub enum JsShape {
         local_transform: Option<Mat3Array>,
         size_attenuation: bool,
         stroke_attenuation: bool,
+        /// 线段起点 marker：'none' | 'line'
+        marker_start: String,
+        /// 线段终点 marker：'none' | 'line'
+        marker_end: String,
+        /// marker 尺寸因子（如箭头长度）
+        marker_factor: f32,
     },
     /// 文本，属性对齐 ecs TextAttributes / TextSerializedNode
     Text {
@@ -591,6 +597,12 @@ pub struct LineOptions {
     pub size_attenuation: bool,
     #[serde(default)]
     pub stroke_attenuation: bool,
+    #[serde(default = "default_marker_start")]
+    pub marker_start: String,
+    #[serde(default = "default_marker_end")]
+    pub marker_end: String,
+    #[serde(default = "default_marker_factor")]
+    pub marker_factor: f32,
 }
 
 /// Drop shadow 选项
@@ -646,6 +658,18 @@ fn default_miter_limit() -> f64 {
 #[cfg(target_arch = "wasm32")]
 fn default_stroke_alignment() -> String {
     "center".to_string()
+}
+#[cfg(target_arch = "wasm32")]
+fn default_marker_start() -> String {
+    "none".to_string()
+}
+#[cfg(target_arch = "wasm32")]
+fn default_marker_end() -> String {
+    "none".to_string()
+}
+#[cfg(target_arch = "wasm32")]
+fn default_marker_factor() -> f32 {
+    3.0
 }
 
 /// 图片矩形选项。imageData 需由 JS 通过 Uint8Array 传入 RGBA 像素数据。
@@ -2345,7 +2369,7 @@ fn add_js_shape_to_scene(
                 }
             }
         }
-        JsShape::Line { x1, y1, x2, y2, stroke, opacity, stroke_opacity, size_attenuation, stroke_attenuation, .. } => {
+        JsShape::Line { x1, y1, x2, y2, stroke, opacity, stroke_opacity, size_attenuation, stroke_attenuation, marker_start, marker_end, marker_factor, .. } => {
             let line = Line::new((x1, y1), (x2, y2));
             let stroke_color = apply_opacity_to_color(stroke.color, opacity, stroke_opacity);
             // Line 使用 size_attenuation 或 stroke_attenuation 都可以影响线宽
@@ -2362,6 +2386,42 @@ fn add_js_shape_to_scene(
                 None,
                 &line,
             );
+            // 绘制起点/终点 marker（简单箭头）
+            if marker_factor > 0.0 && (marker_start == "line" || marker_end == "line") {
+                let dx = x2 - x1;
+                let dy = y2 - y1;
+                let len = (dx * dx + dy * dy).sqrt();
+                if len > 0.0 {
+                    let ux = dx / len;
+                    let uy = dy / len;
+                    let eff_width = if use_attenuation { stroke.width / scale } else { stroke.width };
+                    let arrow_len = eff_width * marker_factor as f64;
+                    let arrow_width = eff_width * marker_factor as f64 * 0.6;
+                    let mut draw_arrow = |bx: f64, by: f64, dirx: f64, diry: f64| {
+                        let tipx = bx + dirx * arrow_len;
+                        let tipy = by + diry * arrow_len;
+                        let nx = -diry;
+                        let ny = dirx;
+                        let leftx = bx + nx * (arrow_width * 0.5);
+                        let lefty = by + ny * (arrow_width * 0.5);
+                        let rightx = bx - nx * (arrow_width * 0.5);
+                        let righty = by - ny * (arrow_width * 0.5);
+                        let mut path = BezPath::new();
+                        path.move_to(Point::new(tipx, tipy));
+                        path.line_to(Point::new(leftx, lefty));
+                        path.line_to(Point::new(rightx, righty));
+                        path.close_path();
+                        let brush = vello::peniko::Brush::Solid(Color::new(stroke_color));
+                        scene.fill(Fill::NonZero, shape_transform, &brush, None, &path);
+                    };
+                    if marker_start == "line" {
+                        draw_arrow(x1, y1, ux, uy);
+                    }
+                    if marker_end == "line" {
+                        draw_arrow(x2, y2, -ux, -uy);
+                    }
+                }
+            }
         }
         JsShape::Text {
             content,
@@ -3419,6 +3479,9 @@ pub fn js_add_line(canvas_id: u32, opts: JsValue) {
         local_transform: o.local_transform,
         size_attenuation: o.size_attenuation,
         stroke_attenuation: o.stroke_attenuation,
+        marker_start: o.marker_start,
+        marker_end: o.marker_end,
+        marker_factor: o.marker_factor,
     });
 }
 

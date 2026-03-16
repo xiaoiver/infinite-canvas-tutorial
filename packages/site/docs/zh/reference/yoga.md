@@ -51,3 +51,6 @@ const parent = {
 [Min/Max Width and Height]
 
 <YogaMinMaxWidthHeight />
+
+[Flex Basis, Grow, and Shrink]: https://www.yogalayout.dev/docs/styling/flex-basis-grow-shrink
+[Min/Max Width and Height]: https://www.yogalayout.dev/docs/styling/min-max-width-height
