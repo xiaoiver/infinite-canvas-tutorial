@@ -211,6 +211,7 @@ export const en = defineConfig({
               { text: 'D2', link: 'd2' },
               { text: 'Drawio', link: 'drawio' },
               { text: 'Yoga', link: 'yoga' },
+              { text: 'Vello', link: 'vello' },
             ],
           },
           {
