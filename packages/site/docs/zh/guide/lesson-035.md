@@ -6,6 +6,7 @@ publish: false
 
 <script setup>
 import Vello from '../../components/Vello.vue'
+import VelloBlur from '../../components/VelloBlur.vue'
 </script>
 
 # 课程 35 - 基于瓦片的渲染
@@ -439,14 +440,59 @@ if let Some((font_data, glyphs, size)) =
 
 ![jank when rendering CJK glyphs in vello](/vello-text-jank.png)
 
-因此可以使用字体子集化方案。有趣的在 [课程 10 - 图片导入导出] 中我们介绍过 excalidraw 在将 Web 字体内联到 SVG 时也会做动态裁剪。
+因此我们需要充分利用缓存，避免每帧都对整段文本做一次 parley 排版以及拷贝中文字体数据。
+当然也可以考虑字体子集化方案，有趣的在 [课程 10 - 图片导入导出] 中我们介绍过 excalidraw 在将 Web 字体内联到 SVG 时也会做动态裁剪。
 
 虽然不需要使用 SDF 渲染字体，但 vello 也支持非矢量字形：
 
 -   COLR/CPAL 彩色字体：作为图像（Image）渲染，通过 Vello 的图像合成管线
 -   位图字形（Emoji）：直接作为纹理 quad 渲染
 
-### 图像处理 {#image-post-processing}
+首先使用 parley 对带有 emoji 的文本整体计算布局，再使用 Canvas API 绘制 emoji 并获取像素数据，随后用 vello 渲染：
+
+```rust
+fn get_or_create_emoji_image(emoji: &str, size: u32) -> Option<(Vec<u8>, u32, u32)> {
+    let document = web_sys::window()?.document()?;
+    let canvas = document.create_element("canvas").ok()?.dyn_into::<web_sys::HtmlCanvasElement>().ok()?;
+
+    let ctx = canvas.get_context("2d").ok()??.dyn_into::<web_sys::CanvasRenderingContext2d>().ok()?;
+    ctx.fill_text(emoji, (size / 2) as f64, (size / 2) as f64).ok()?;
+
+    // 获取像素数据
+    let image_data = ctx.get_image_data(0.0, 0.0, canvas_size as f64, canvas_size as f64).ok()?;
+    let data = image_data.data();
+    let rgba: Vec<u8> = data.to_vec();
+    let result = (rgba, canvas_size, canvas_size);
+}
+```
+
+### 后处理 {#post-processing}
+
+我们可以尝试实现一些后处理效果，类似 [课程 30 - 后处理与渲染图]。
+
+#### Blur {#blur}
+
+vello 提供了 [draw_blurred_rounded_rect](https://github.com/linebender/vello/blob/main/vello/src/scene.rs#L253) 方法，只适合圆角矩形，对其他图形不适用。
+
+```rust
+scene.draw_blurred_rounded_rect(
+    shape_transform,
+    base_rect,
+    Color::new(fill_color),
+    r,
+    blur_std_dev
+);
+```
+
+<VelloBlur />
+
+#### Dropshadow {#dropshadow}
+
+使用 vello 的 Layer 功能
+
+-   将形状绘制到离屏 layer
+-   应用模糊效果
+-   偏移后绘制到主场景
 
 ## 其他功能的 Rust 实现 {#other-functions-implemented-with-rust}
 
@@ -518,6 +564,7 @@ impl ClickTarget {
 [课程 13 - 绘制 Path & 手绘风格]: /zh/guide/lesson-013
 [课程 17 - 渐变和重复图案]: /zh/guide/lesson-017
 [课程 12 - 绘制折线]: zh/guide/lesson-012#extrude-segment
+[课程 30 - 后处理与渲染图]: /zh/guide/lesson-030
 [roughr]: https://github.com/orhanbalci/rough-rs/tree/main/roughr
 [taffy]: https://github.com/DioxusLabs/taffy
 [parley]: https://github.com/linebender/parley

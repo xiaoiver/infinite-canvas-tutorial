@@ -163,13 +163,28 @@ export function parseEffect(filter: string): Effect[] {
     } else if (filter.name === 'brightness') {
       effects.push({ type: 'brightness', value: parseFloat(filter.params) });
     } else if (filter.name === 'drop-shadow') {
-      const [x, y, blur, spread, color] = filter.params.split(' ');
+      // drop-shadow 标准格式: offset-x offset-y blur-radius [spread-radius] color
+      // 支持 3 个数+颜色(如 5px 5px 15px red) 或 4 个数+颜色
+      const parts = filter.params.trim().split(/\s+/);
+      const nums: number[] = [];
+      let colorStart = 0;
+      for (let i = 0; i < parts.length; i++) {
+        const num = parseFloat(parts[i]);
+        if (!Number.isNaN(num)) {
+          nums.push(num);
+          colorStart = i + 1;
+        } else {
+          break;
+        }
+      }
+      const color = parts.slice(colorStart).join(' ').trim() || 'black';
+      const [x = 0, y = 0, blur = 0, spread = 0] = nums;
       effects.push({
         type: 'drop-shadow',
-        x: parseFloat(x),
-        y: parseFloat(y),
-        blur: parseFloat(blur),
-        spread: parseFloat(spread),
+        x,
+        y,
+        blur,
+        spread,
         color,
       });
     } else if (filter.name === 'noise') {

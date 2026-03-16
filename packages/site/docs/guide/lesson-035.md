@@ -436,14 +436,70 @@ For CJK support you need to load CJK fonts. CJK font files are large (often 10MB
 
 ![jank when rendering CJK glyphs in vello](/vello-text-jank.png)
 
-Font subsetting can help. In [Lesson 10 - Image import/export] we mentioned that Excalidraw also does dynamic subsetting when inlining web fonts into SVG.
+We therefore need to make full use of caching and avoid running parley layout and copying large CJK font data for the entire text on every frame.
+Font subsetting is another option. In [Lesson 10 - Image import/export] we mentioned that Excalidraw also does dynamic subsetting when inlining web fonts into SVG.
 
 Although we do not use SDF for fonts here, vello also supports non-vector glyphs:
 
 -   COLR/CPAL color fonts: rendered as images via vello’s image compositing pipeline
 -   Bitmap glyphs (e.g. emoji): rendered as texture quads
 
+We can first use parley to compute layout for text containing emoji, then draw emoji via the Canvas API to obtain pixel data, and finally render it with vello:
+
+```rust
+fn get_or_create_emoji_image(emoji: &str, size: u32) -> Option<(Vec<u8>, u32, u32)> {
+    let document = web_sys::window()?.document()?;
+    let canvas = document
+        .create_element("canvas")
+        .ok()?
+        .dyn_into::<web_sys::HtmlCanvasElement>()
+        .ok()?;
+
+    let ctx = canvas
+        .get_context("2d")
+        .ok()??
+        .dyn_into::<web_sys::CanvasRenderingContext2d>()
+        .ok()?;
+
+    ctx.fill_text(emoji, (size / 2) as f64, (size / 2) as f64).ok()?;
+
+    // Read back pixel data
+    let image_data = ctx
+        .get_image_data(0.0, 0.0, size as f64, size as f64)
+        .ok()?;
+    let data = image_data.data();
+    let rgba: Vec<u8> = data.to_vec();
+    Some((rgba, size, size))
+}
+```
+
 ### Image post-processing {#image-post-processing}
+
+We can implement some post-processing effects, similar to [Lesson 30 - Post-processing and render passes].
+
+#### Blur {#blur}
+
+vello provides a helper [draw_blurred_rounded_rect](https://github.com/linebender/vello/blob/main/vello/src/scene.rs#L253), which is suitable only for rounded rectangles and does not apply to arbitrary shapes.
+
+```rust
+scene.draw_blurred_rounded_rect(
+    shape_transform,
+    base_rect,
+    Color::new(fill_color),
+    r,
+    blur_std_dev,
+);
+```
+
+<VelloBlur />
+
+#### Dropshadow {#dropshadow}
+
+Dropshadows can be built using vello’s layer functionality:
+
+-   Draw the shape into an off-screen layer
+-   Apply a blur
+-   Offset the result and draw it back into the main scene
 
 ## Other features implemented in Rust {#other-features-implemented-in-rust}
 
@@ -519,6 +575,7 @@ In [Lesson 33 - Layout engine] we used Yoga compiled to WASM. [taffy] is a Rust 
 [Lesson 10 - Image import/export]: /guide/lesson-010#inlined-web-font
 [Lesson 13 - Drawing paths & sketch style]: /guide/lesson-013
 [Lesson 17 - Gradients and repeating patterns]: /guide/lesson-017
+[Lesson 30 - Post-processing and render passes]: /guide/lesson-030
 [roughr]: https://github.com/orhanbalci/rough-rs/tree/main/roughr
 [taffy]: https://github.com/DioxusLabs/taffy
 [parley]: https://github.com/linebender/parley
