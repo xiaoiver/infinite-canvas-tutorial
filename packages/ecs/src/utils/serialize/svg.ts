@@ -1271,17 +1271,18 @@ export function exportText(
     decorationThickness,
   } = attributes;
 
-  const { lineHeight } = measureText(attributes);
-
-  const lines = content.split('\n');
+  const { lineHeight, lines } = measureText(attributes);
   if (lines.length > 1) {
-    lines.forEach((line, i) => {
+    lines.forEach((line) => {
       const $tspan = createSVGElement('tspan');
       $tspan.textContent = line;
       $tspan.setAttribute('x', '0');
-      $tspan.setAttribute('dy', `${i * lineHeight}`);
+      $tspan.setAttribute('dy', `${toFixedAndRemoveTrailingZeros(lineHeight)}`);
       $g.appendChild($tspan);
     });
+
+    const y = Number($g.getAttribute('y'));
+    $g.setAttribute('y', `${toFixedAndRemoveTrailingZeros(y - lines.length * lineHeight)}`);
   } else {
     $g.textContent = content;
   }
@@ -1382,7 +1383,7 @@ export function isUrl(url: string) {
   );
 }
 
-function toFixedAndRemoveTrailingZeros(value: number) {
+export function toFixedAndRemoveTrailingZeros(value: number) {
   return value.toFixed(3).replace(/\.?0+$/, '');
 }
 

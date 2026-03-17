@@ -51,7 +51,6 @@ export class InitVello extends System {
       const $canvas = canvas.read(Canvas).element as HTMLCanvasElement;
 
       runWithCanvas($canvas, (canvasId: number) => {
-        console.log('canvasId', $canvas, canvasId);
         this.canvasIds.set($canvas, canvasId);
       });
     });
