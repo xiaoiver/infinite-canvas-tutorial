@@ -136,7 +136,7 @@ void main() {
   if (sizeAttenuation > 0.5) {
     scale = 1.0 / u_ZoomScale;
   }
-  if (strokeAttenuation > 0.5) {
+  if (strokeAttenuation > 0.5 && sizeAttenuation < 0.5) {
     strokeWidth = strokeWidth / u_ZoomScale;
   }
 

@@ -434,7 +434,11 @@ const getVisibleGaps = (api: API) => {
   };
 };
 
-export const snapDraggedElements = (api: API, dragOffset: [number, number]) => {
+export const snapDraggedElements = (
+  api: API,
+  dragOffset: [number, number],
+  previousSnapOffset?: [number, number],
+) => {
   const { snapToObjectsEnabled, snapToObjectsDistance, layersSelected } =
     api.getAppState();
   if (!snapToObjectsEnabled) {
@@ -469,12 +473,23 @@ export const snapDraggedElements = (api: API, dragOffset: [number, number]) => {
   // Get gap snaps
   getGapSnaps(api, dragOffset, nearestSnapsX, nearestSnapsY, minOffset);
 
+  // When multiple snaps have the same distance, prefer the previous snap to avoid jitter
+  const pickStableSnap = (snaps: Snaps, axis: 0 | 1): number => {
+    if (snaps.length === 0) return 0;
+    const prev = previousSnapOffset?.[axis];
+    if (prev !== undefined) {
+      const match = snaps.find((s) => round(s.offset) === round(prev));
+      if (match !== undefined) return match.offset;
+    }
+    return snaps[0].offset;
+  };
+
   // using the nearest snaps to figure out how
   // much the elements need to be offset to be snapped
   // to some reference elements
   const snapOffset: [number, number] = [
-    nearestSnapsX[0]?.offset ?? 0,
-    nearestSnapsY[0]?.offset ?? 0,
+    pickStableSnap(nearestSnapsX, 0),
+    pickStableSnap(nearestSnapsY, 1),
   ];
 
   // once the elements are snapped
@@ -798,9 +813,10 @@ export const calculateOffset = (
   let nextY = y + dragOffset[1] + snapOffset[1];
 
   if (snapOffset[0] === 0 || snapOffset[1] === 0) {
+    // Round before grid snap to avoid floating-point boundary jitter (e.g. 7.9999999 vs 8.0000001)
     const [nextGridX, nextGridY] = getGridPoint(
-      x + dragOffset[0],
-      y + dragOffset[1],
+      round(x + dragOffset[0]),
+      round(y + dragOffset[1]),
       gridSize,
     );
 

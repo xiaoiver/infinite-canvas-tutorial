@@ -436,13 +436,13 @@ canvas.addEventListener(Event.READY, async (e) => {
   // api.updateNodes([node1]);
 });
 
-// const VelloRendererPlugin = RendererPlugin.configure({
-//   setupDeviceSystemCtor: InitVello,
-//   rendererSystemCtor: VelloPipeline,
-// });
-// DefaultPlugins.splice(DefaultPlugins.indexOf(DefaultRendererPlugin), 1, VelloRendererPlugin);
-// registerFont('/Gaegu-Regular.ttf');
-// registerFont('/NotoSansCJKsc-VF.ttf');
+const VelloRendererPlugin = RendererPlugin.configure({
+  setupDeviceSystemCtor: InitVello,
+  rendererSystemCtor: VelloPipeline,
+});
+DefaultPlugins.splice(DefaultPlugins.indexOf(DefaultRendererPlugin), 1, VelloRendererPlugin);
+registerFont('/Gaegu-Regular.ttf');
+registerFont('/NotoSansCJKsc-VF.ttf');
 // registerFont('/NotoSansArabic.ttf');
 
 try {
