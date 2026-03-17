@@ -302,6 +302,9 @@ pub enum JsShape {
         local_transform: Option<Mat3Array>,
         size_attenuation: bool,
         stroke_attenuation: bool,
+        marker_start: String,
+        marker_end: String,
+        marker_factor: f32,
         /// drop shadow 效果
         drop_shadow: Option<DropShadow>,
     },
@@ -318,6 +321,9 @@ pub enum JsShape {
         local_transform: Option<Mat3Array>,
         size_attenuation: bool,
         stroke_attenuation: bool,
+        marker_start: String,
+        marker_end: String,
+        marker_factor: f32,
     },
     /// 组/容器，用于组织子元素。本身没有可见内容，只提供变换和层级。
     Group {
@@ -742,6 +748,12 @@ pub struct PathOptions {
     pub size_attenuation: bool,
     #[serde(default)]
     pub stroke_attenuation: bool,
+    #[serde(default = "default_marker_start")]
+    pub marker_start: String,
+    #[serde(default = "default_marker_end")]
+    pub marker_end: String,
+    #[serde(default = "default_marker_factor")]
+    pub marker_factor: f32,
     #[serde(default)]
     pub drop_shadow: Option<DropShadowOptions>,
 }
@@ -777,6 +789,12 @@ pub struct PolylineOptions {
     pub size_attenuation: bool,
     #[serde(default)]
     pub stroke_attenuation: bool,
+    #[serde(default = "default_marker_start")]
+    pub marker_start: String,
+    #[serde(default = "default_marker_end")]
+    pub marker_end: String,
+    #[serde(default = "default_marker_factor")]
+    pub marker_factor: f32,
 }
 
 /// Group 选项。用于创建组/容器，组织子元素。
@@ -1267,6 +1285,87 @@ where
 fn apply_opacity_to_color(mut color: [f32; 4], opacity: f32, fill_or_stroke_opacity: f32) -> [f32; 4] {
     color[3] *= opacity * fill_or_stroke_opacity;
     color
+}
+
+/// 从 BezPath 得到起点/终点位置与切线方向（弧度），用于 marker 绘制。
+/// 返回 (start_pt, start_angle, end_pt, end_angle)。
+fn path_start_end_tangents(path: &BezPath) -> Option<((f64, f64), f64, (f64, f64), f64)> {
+    let el = path.elements();
+    if el.is_empty() {
+        return None;
+    }
+    let mut current = match el[0] {
+        PathEl::MoveTo(p) => p,
+        _ => return None,
+    };
+    let start_pt = (current.x, current.y);
+    let mut start_angle = None::<f64>;
+    let mut end_pt = (current.x, current.y);
+    let mut end_angle = None::<f64>;
+    let mut subpath_start = current;
+
+    for i in 1..el.len() {
+        match el[i] {
+            PathEl::LineTo(p) => {
+                let dx = p.x - current.x;
+                let dy = p.y - current.y;
+                let a = dy.atan2(dx);
+                if start_angle.is_none() {
+                    start_angle = Some(a);
+                }
+                end_angle = Some(a);
+                end_pt = (p.x, p.y);
+                current = p;
+            }
+            PathEl::QuadTo(p1, p2) => {
+                let dx = p1.x - current.x;
+                let dy = p1.y - current.y;
+                if start_angle.is_none() && (dx != 0.0 || dy != 0.0) {
+                    start_angle = Some(dy.atan2(dx));
+                }
+                let dxe = p2.x - p1.x;
+                let dye = p2.y - p1.y;
+                if dxe != 0.0 || dye != 0.0 {
+                    end_angle = Some(dye.atan2(dxe));
+                }
+                end_pt = (p2.x, p2.y);
+                current = p2;
+            }
+            PathEl::CurveTo(p1, p2, p3) => {
+                let dx = p1.x - current.x;
+                let dy = p1.y - current.y;
+                if start_angle.is_none() && (dx != 0.0 || dy != 0.0) {
+                    start_angle = Some(dy.atan2(dx));
+                }
+                let dxe = p3.x - p2.x;
+                let dye = p3.y - p2.y;
+                if dxe != 0.0 || dye != 0.0 {
+                    end_angle = Some(dye.atan2(dxe));
+                }
+                end_pt = (p3.x, p3.y);
+                current = p3;
+            }
+            PathEl::MoveTo(p) => {
+                subpath_start = p;
+                current = p;
+                end_pt = (p.x, p.y);
+                end_angle = None;
+                // 不重置 start_*，保留整条 path 的起点（第一个 subpath 的起点）
+            }
+            PathEl::ClosePath => {
+                let dx = subpath_start.x - current.x;
+                let dy = subpath_start.y - current.y;
+                if dx != 0.0 || dy != 0.0 {
+                    end_angle = Some(dy.atan2(dx));
+                }
+                end_pt = (subpath_start.x, subpath_start.y);
+                current = subpath_start;
+            }
+        }
+    }
+    let start_a = start_angle?;
+    let end_a = end_angle?;
+    Some((start_pt, start_a, end_pt, end_a))
 }
 
 /// 将 ECS Mat3 (m00..m22) 转换为 kurbo Affine。
@@ -2386,39 +2485,35 @@ fn add_js_shape_to_scene(
                 None,
                 &line,
             );
-            // 绘制起点/终点 marker（简单箭头）
+            // 绘制起点/终点 marker（line）：用一条折线 path 画 V 形，接头处用 stroke 的 join 绘制
+            // 端点 (x,y)，折线：left -> tip -> right，与 marker.ts lineArrow 角度一致
             if marker_factor > 0.0 && (marker_start == "line" || marker_end == "line") {
                 let dx = x2 - x1;
                 let dy = y2 - y1;
                 let len = (dx * dx + dy * dy).sqrt();
                 if len > 0.0 {
-                    let ux = dx / len;
-                    let uy = dy / len;
+                    let angle = dy.atan2(dx);
                     let eff_width = if use_attenuation { stroke.width / scale } else { stroke.width };
-                    let arrow_len = eff_width * marker_factor as f64;
-                    let arrow_width = eff_width * marker_factor as f64 * 0.6;
-                    let mut draw_arrow = |bx: f64, by: f64, dirx: f64, diry: f64| {
-                        let tipx = bx + dirx * arrow_len;
-                        let tipy = by + diry * arrow_len;
-                        let nx = -diry;
-                        let ny = dirx;
-                        let leftx = bx + nx * (arrow_width * 0.5);
-                        let lefty = by + ny * (arrow_width * 0.5);
-                        let rightx = bx - nx * (arrow_width * 0.5);
-                        let righty = by - ny * (arrow_width * 0.5);
+                    let r = eff_width * marker_factor as f64;
+                    const PI_6: f64 = std::f64::consts::FRAC_PI_6; // π/6
+                    let mut stroke_line_arrow = |tip_x: f64, tip_y: f64, a: f64| {
+                        let left_x = tip_x + r * (a + PI_6).cos();
+                        let left_y = tip_y + r * (a + PI_6).sin();
+                        let right_x = tip_x + r * (a - PI_6).cos();
+                        let right_y = tip_y + r * (a - PI_6).sin();
                         let mut path = BezPath::new();
-                        path.move_to(Point::new(tipx, tipy));
-                        path.line_to(Point::new(leftx, lefty));
-                        path.line_to(Point::new(rightx, righty));
-                        path.close_path();
-                        let brush = vello::peniko::Brush::Solid(Color::new(stroke_color));
-                        scene.fill(Fill::NonZero, shape_transform, &brush, None, &path);
+                        path.move_to(Point::new(left_x, left_y));
+                        path.line_to(Point::new(tip_x, tip_y));
+                        path.line_to(Point::new(right_x, right_y));
+                        scene.stroke(&kurbo_stroke, shape_transform, Color::new(stroke_color), None, &path);
                     };
                     if marker_start == "line" {
-                        draw_arrow(x1, y1, ux, uy);
+                        // 起点：V 的尖端在线段起点 (x1,y1)，开口朝向 (x2,y2)
+                        stroke_line_arrow(x1, y1, angle);
                     }
                     if marker_end == "line" {
-                        draw_arrow(x2, y2, -ux, -uy);
+                        // 终点：V 的尖端在线段终点 (x2,y2)，开口朝向 (x1,y1)
+                        stroke_line_arrow(x2, y2, angle + std::f64::consts::PI);
                     }
                 }
             }
@@ -2679,7 +2774,7 @@ fn add_js_shape_to_scene(
                 }
             }
         }
-        JsShape::Path { d, fill, fill_gradients, stroke, fill_rule, opacity, fill_opacity, stroke_opacity, size_attenuation, stroke_attenuation, .. } => {
+        JsShape::Path { d, fill, fill_gradients, stroke, fill_rule, opacity, fill_opacity, stroke_opacity, size_attenuation, stroke_attenuation, marker_start, marker_end, marker_factor, .. } => {
             if let Ok(mut bez_path) = BezPath::from_svg(d.as_str()) {
                 if size_attenuation {
                     let bbox = bez_path.bounding_box();
@@ -2762,9 +2857,38 @@ fn add_js_shape_to_scene(
                         }
                     }
                 }
+                // Path marker（line）：与 Line 相同的 V 形折线
+                if stroke.is_some() && marker_factor > 0.0 && (marker_start == "line" || marker_end == "line") {
+                    if let Some(ref s) = stroke {
+                        if let Some(((sx, sy), start_angle, (ex, ey), end_angle)) = path_start_end_tangents(&bez_path) {
+                            let sw = if stroke_attenuation { s.width / scale } else { s.width };
+                            let stroke_color = apply_opacity_to_color(s.color, opacity, stroke_opacity);
+                            let kurbo_stroke = s.to_kurbo_stroke_with_width(sw);
+                            let r = sw * marker_factor as f64;
+                            const PI_6: f64 = std::f64::consts::FRAC_PI_6;
+                            let mut stroke_line_arrow = |tip_x: f64, tip_y: f64, a: f64| {
+                                let left_x = tip_x + r * (a + PI_6).cos();
+                                let left_y = tip_y + r * (a + PI_6).sin();
+                                let right_x = tip_x + r * (a - PI_6).cos();
+                                let right_y = tip_y + r * (a - PI_6).sin();
+                                let mut path = BezPath::new();
+                                path.move_to(Point::new(left_x, left_y));
+                                path.line_to(Point::new(tip_x, tip_y));
+                                path.line_to(Point::new(right_x, right_y));
+                                scene.stroke(&kurbo_stroke, shape_transform, Color::new(stroke_color), None, &path);
+                            };
+                            if marker_start == "line" {
+                                stroke_line_arrow(sx, sy, start_angle);
+                            }
+                            if marker_end == "line" {
+                                stroke_line_arrow(ex, ey, end_angle + std::f64::consts::PI);
+                            }
+                        }
+                    }
+                }
             }
         }
-        JsShape::Polyline { points, stroke, opacity, stroke_opacity, size_attenuation, stroke_attenuation, .. } => {
+        JsShape::Polyline { points, stroke, opacity, stroke_opacity, size_attenuation, stroke_attenuation, marker_start, marker_end, marker_factor, .. } => {
             if points.len() >= 2 {
                 let mut elements = vec![PathEl::MoveTo(Point::new(points[0][0], points[0][1]))];
                 for p in points.iter().skip(1) {
@@ -2780,6 +2904,35 @@ fn add_js_shape_to_scene(
                     let stroke_color = apply_opacity_to_color(s.color, opacity, stroke_opacity);
                     let kurbo_stroke = apply_stroke_attenuation(s, stroke_attenuation);
                     scene.stroke(&kurbo_stroke, shape_transform, Color::new(stroke_color), None, &bez_path);
+                }
+                // Polyline marker（line）：与 Path 相同，用 path_start_end_tangents 保证与缩放后 path 一致
+                if stroke.is_some() && marker_factor > 0.0 && (marker_start == "line" || marker_end == "line") {
+                    if let Some(ref s) = stroke {
+                        if let Some(((sx, sy), start_angle, (ex, ey), end_angle)) = path_start_end_tangents(&bez_path) {
+                            let sw = if stroke_attenuation { s.width / scale } else { s.width };
+                            let stroke_color = apply_opacity_to_color(s.color, opacity, stroke_opacity);
+                            let kurbo_stroke = s.to_kurbo_stroke_with_width(sw);
+                            let r = sw * marker_factor as f64;
+                            const PI_6: f64 = std::f64::consts::FRAC_PI_6;
+                            let mut stroke_line_arrow = |tip_x: f64, tip_y: f64, a: f64| {
+                                let left_x = tip_x + r * (a + PI_6).cos();
+                                let left_y = tip_y + r * (a + PI_6).sin();
+                                let right_x = tip_x + r * (a - PI_6).cos();
+                                let right_y = tip_y + r * (a - PI_6).sin();
+                                let mut path = BezPath::new();
+                                path.move_to(Point::new(left_x, left_y));
+                                path.line_to(Point::new(tip_x, tip_y));
+                                path.line_to(Point::new(right_x, right_y));
+                                scene.stroke(&kurbo_stroke, shape_transform, Color::new(stroke_color), None, &path);
+                            };
+                            if marker_start == "line" {
+                                stroke_line_arrow(sx, sy, start_angle);
+                            }
+                            if marker_end == "line" {
+                                stroke_line_arrow(ex, ey, end_angle + std::f64::consts::PI);
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -3209,6 +3362,9 @@ pub fn js_add_path(canvas_id: u32, opts: JsValue) {
         local_transform: o.local_transform,
         size_attenuation: o.size_attenuation,
         stroke_attenuation: o.stroke_attenuation,
+        marker_start: o.marker_start,
+        marker_end: o.marker_end,
+        marker_factor: o.marker_factor,
         drop_shadow,
     });
 }
@@ -3257,6 +3413,9 @@ pub fn js_add_polyline(canvas_id: u32, opts: JsValue) {
         local_transform: o.local_transform,
         size_attenuation: o.size_attenuation,
         stroke_attenuation: o.stroke_attenuation,
+        marker_start: o.marker_start,
+        marker_end: o.marker_end,
+        marker_factor: o.marker_factor,
     });
 }
 

@@ -520,6 +520,10 @@ Dropshadows can be built using vello’s layer functionality:
 
 ## Other features implemented in Rust {#other-features-implemented-in-rust}
 
+### Compute bounds {#compute-bounds}
+
+We can use parley to handle BiDi, clusters and other features in text metrics.
+
 ### Picking {#picking}
 
 Besides rendering, picking can be done in WASM. For example in [Graphite]:
