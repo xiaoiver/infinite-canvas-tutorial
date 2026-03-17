@@ -122,6 +122,9 @@ export interface SelectOBB {
   label: HTMLDivElement;
 
   editing: Entity;
+
+  /** Previous snap offset during drag; used to avoid jitter when multiple snaps are equally close. */
+  lastSnapOffset?: [number, number];
 }
 
 /**
@@ -219,7 +222,12 @@ export class Select extends System {
 
       const dragOffset: [number, number] = [gridEx - gridSx, gridEy - gridSy];
 
-      const { snapOffset, snapLines } = snapDraggedElements(api, dragOffset);
+      const { snapOffset, snapLines } = snapDraggedElements(
+        api,
+        dragOffset,
+        selection.lastSnapOffset,
+      );
+      selection.lastSnapOffset = snapOffset;
 
       const obb = getOBB(camera);
       offset = calculateOffset(
@@ -265,6 +273,8 @@ export class Select extends System {
 
   private handleSelectedMoved(api: API, selection: SelectOBB) {
     const camera = api.getCamera();
+
+    delete selection.lastSnapOffset;
 
     api.setNodes(api.getNodes());
 
