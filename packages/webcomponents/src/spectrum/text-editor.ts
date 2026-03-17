@@ -15,7 +15,6 @@ import {
 import { v4 as uuidv4 } from 'uuid';
 import { apiContext, appStateContext } from '../context';
 import { ExtendedAPI } from '../API';
-import { mat3, vec2 } from 'gl-matrix';
 
 @customElement('ic-spectrum-text-editor')
 export class TextEditor extends LitElement {
@@ -301,8 +300,17 @@ export class TextEditor extends LitElement {
       const camera = this.api.getCamera();
       const { zoom } = camera.read(ComputedCamera);
 
-      const parentTransform = this.api.getParentTransform(this.api.getEntity(this.node));
-      const [canvasX, canvasY] = vec2.transformMat3(vec2.create(), [this.node.x, this.node.y], parentTransform);
+      let canvasX = this.node.x;
+      let canvasY = this.node.y;
+      const parent = this.api.getParent(this.node);
+      if (parent) {
+        const { x: parentX, y: parentY } = this.api.transformer2Canvas({
+          x: this.node.x,
+          y: this.node.y,
+        }, parent);
+        canvasX = parentX;
+        canvasY = parentY;
+      }
 
       const { x, y } = this.api.canvas2Viewport({
         x: canvasX,
