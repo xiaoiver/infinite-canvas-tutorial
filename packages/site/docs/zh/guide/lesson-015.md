@@ -742,7 +742,7 @@ float median(float r, float g, float b) {
 
 <BitmapFont />
 
-在运行时如果我们想获取 [font-kerning]，可以参考 <https://github.com/mapbox/tiny-sdf/issues/6#issuecomment-1532395796> 给出的方式：
+Canvas API 也提供了 [fontKerning]。在运行时如果我们想获取 [font-kerning]，可以参考 <https://github.com/mapbox/tiny-sdf/issues/6#issuecomment-1532395796> 给出的方式：
 
 ![font-kerning](https://developer.mozilla.org/en-US/docs/Web/CSS/font-kerning/font-kerning.png)
 
@@ -850,6 +850,7 @@ this.glyphAtlasTexture = device.createTexture({
 [BitmapFontLoader]: https://api.pixijs.io/@pixi/text-bitmap/PIXI/BitmapFontLoader.html
 [MSDF font generator]: https://msdf-bmfont.donmccurdy.com/
 [font-kerning]: https://developer.mozilla.org/en-US/docs/Web/CSS/font-kerning
+[fontKerning]: https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/fontKerning
 [BiDi in Pixi.js]: https://github.com/pixijs/pixijs/issues/4482
 [Rendering Crispy Text On The GPU]: https://osor.io/text
 [Localization, languages, and listening]: https://www.figma.com/blog/expanding-figmas-international-presence/

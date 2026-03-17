@@ -491,7 +491,7 @@ function wordWrapInternal(text: string, style: Partial<Text>, scale: number) {
         currentWidth = sumTextWidthByCache(lines[currentIndex] || '', cache);
       }
 
-      if (shouldBreakByKinsokuShorui(char, nextChar)) {
+      if (nextChar && shouldBreakByKinsokuShorui(char, nextChar)) {
         lines = trimByKinsokuShorui(lines);
         currentWidth += calcWidth(prevChar || '');
       }

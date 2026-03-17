@@ -18,7 +18,9 @@ export function registerVelloTextBounds() {
       return null;
     }
 
-    const { content, fontSize, fontFamily, anchorX, anchorY, textAlign, textBaseline, lineHeight } = entity.read(Text);
+    const text = entity.read(Text);
+    const { content, fontSize, fontFamily, anchorX, anchorY, textAlign, textBaseline, lineHeight, letterSpacing } = text;
+    const fontKerning = 'fontKerning' in text ? (text as { fontKerning?: boolean }).fontKerning : true;
 
     const opts: Record<string, unknown> = {
       id: entity.__id,
@@ -30,6 +32,8 @@ export function registerVelloTextBounds() {
       textAlign,
       textBaseline,
       lineHeight,
+      letterSpacing,
+      fontKerning,
     };
 
     const bounds = computeTextBounds(opts);

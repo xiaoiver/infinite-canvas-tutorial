@@ -35,14 +35,14 @@ onMounted(async () => {
     api.runAtNextTick(() => {
         api.updateNodes([
           {
-            id: 'vello-blur-1',
+            id: 'vello-dropshadow-1',
             type: 'rect',
             x: 100,
             y: 100,
             fill: 'red',
             width: 200,
             height: 200,
-            filter: 'blur(5px)',
+            filter: 'drop-shadow(10px 10px 5px black)',
             cornerRadius: 10,
             zIndex: 0,
           }

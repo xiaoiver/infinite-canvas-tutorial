@@ -7,6 +7,7 @@ publish: false
 <script setup>
 import Vello from '../components/Vello.vue'
 import VelloBlur from '../components/VelloBlur.vue'
+import VelloDropShadow from '../components/VelloDropShadow.vue'
 </script>
 
 # Lesson 35 - Tile-based Rendering
@@ -517,6 +518,8 @@ Dropshadows can be built using vello’s layer functionality:
 -   Draw the shape into an off-screen layer
 -   Apply a blur
 -   Offset the result and draw it back into the main scene
+
+<VelloDropShadow />
 
 ## Other features implemented in Rust {#other-features-implemented-in-rust}
 

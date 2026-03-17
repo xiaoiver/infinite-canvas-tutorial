@@ -621,7 +621,8 @@ export class VelloPipeline extends System {
               addPolyline(canvasId, opts);
             }
           } else if (entity.has(Text)) {
-            const { content, fontSize, fontFamily, anchorX, anchorY } = entity.read(Text);
+            const text = entity.read(Text);
+            const { content, fontSize, fontFamily, fontKerning, anchorX, anchorY, letterSpacing, lineHeight, wordWrap, wordWrapWidth } = text;
             const opts: Record<string, unknown> = {
               ...baseOpts,
               content,
@@ -629,6 +630,11 @@ export class VelloPipeline extends System {
               fontFamily,
               anchorX,
               anchorY,
+              letterSpacing,
+              lineHeight,
+              fontKerning,
+              wordWrap,
+              wordWrapWidth,
             };
             addText(canvasId, opts);
           }

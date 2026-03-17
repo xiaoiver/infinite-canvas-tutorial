@@ -142,6 +142,13 @@ export class Text {
   declare fontVariant: string;
 
   /**
+   * Font kerning.
+   * @see https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/fontKerning
+   */
+  @field({ type: Type.boolean, default: true })
+  declare fontKerning: boolean;
+
+  /**
    * Specifies the spacing between letters when drawing text in px.
    * @see https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/letterSpacing
    */

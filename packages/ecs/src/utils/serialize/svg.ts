@@ -275,6 +275,7 @@ export async function serializeNodesToSVGElements(
       fontWeight,
       fontStyle,
       fontVariant,
+      fontKerning,
       content,
       letterSpacing,
       lineHeight,

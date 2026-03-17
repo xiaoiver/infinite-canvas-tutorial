@@ -419,6 +419,7 @@ export interface TextAttributes
       | 'fontWeight'
       | 'fontStyle'
       | 'fontVariant'
+      | 'fontKerning'
       | 'letterSpacing'
       | 'lineHeight'
       | 'whiteSpace'

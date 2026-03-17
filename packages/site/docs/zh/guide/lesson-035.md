@@ -7,6 +7,7 @@ publish: false
 <script setup>
 import Vello from '../../components/Vello.vue'
 import VelloBlur from '../../components/VelloBlur.vue'
+import VelloDropShadow from '../../components/VelloDropShadow.vue'
 </script>
 
 # 课程 35 - 基于瓦片的渲染
@@ -489,6 +490,8 @@ scene.draw_blurred_rounded_rect(
 -   将形状绘制到离屏 layer
 -   应用模糊效果
 -   偏移后绘制到主场景
+
+<VelloDropShadow />
 
 ## 其他功能的 Rust 实现 {#other-functions-implemented-with-rust}
 
