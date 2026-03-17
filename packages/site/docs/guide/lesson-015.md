@@ -220,6 +220,44 @@ In CJK, some characters cannot appear at the beginning of a line, and some canno
 
 ![pixi-cjk](https://github.com/huang-yuwei/pixi-cjk/raw/main/docs/screenshot.png)
 
+Another common scenario for automatic line breaks is when a maximum width is specified, and the text wraps to the next line if it exceeds that width. Furthermore, you can set a maximum number of lines, and when this limit is exceeded, the [text-overflow] property is applied.
+
+```ts
+{
+    wordWrap: true,
+    wordWrapWidth: 100,
+    maxLines: 3,
+    textOverflow: TextOverflow.ELLIPSIS,
+}
+```
+
+We can refer to the implementation in Pixi.js: [CanvasTextMetrics]
+
+```ts
+for (let i = 0; i < chars.length; i++) {
+    const char = chars[i];
+    const prevChar = text[i - 1];
+    const nextChar = text[i + 1];
+    const charWidth = calcWidth(char);
+
+    if (currentWidth > 0 && currentWidth + charWidth > maxWidth) {
+        if (currentIndex + 1 >= maxLines) {
+            // 超出最大行数，添加省略号
+            appendEllipsis(currentIndex);
+            break;
+        }
+
+        currentIndex++;
+        currentWidth = 0;
+        lines[currentIndex] = '';
+
+        if (isBreakingSpace(char)) {
+            continue;
+        }
+    }
+}
+```
+
 ### BiDi {#bidi}
 
 HarfBuzz will not handle [BiDi], see [What HarfBuzz doesn't do]:
@@ -844,3 +882,5 @@ The biggest difference between this approach and SDF is that we cannot only pres
 [International Components for Unicode (ICU)]: http://site.icu-project.org/
 [rtl-text]: https://www.jsdelivr.com/package/npm/rtl-text
 [JavaScript-Arabic-Reshaper]: https://github.com/louy/JavaScript-Arabic-Reshaper
+[text-overflow]: https://developer.mozilla.org/en-US/docs/Web/CSS/text-overflow
+[CanvasTextMetrics]: https://github.com/pixijs/pixijs/blob/dev/src/scene/text/canvas/CanvasTextMetrics.ts#L369

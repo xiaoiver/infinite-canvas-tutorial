@@ -458,10 +458,10 @@ thread_local! {
     static CANVAS_WINDOWS: RefCell<HashMap<u32, Arc<Window>>> = RefCell::new(HashMap::new());
     /// emoji 图片缓存：字符 -> (RGBA 数据, 宽度, 高度)
     static EMOJI_CACHE: RefCell<HashMap<String, (Vec<u8>, u32, u32)>> = RefCell::new(HashMap::new());
-    /// 字形缓存：(文本, 字体大小, font_family, line_height_bits, letter_spacing_bits, font_kerning, word_wrap, word_wrap_width_bits) -> (FontData, glyphs, size, emoji_positions)，命中时直接使用，避免每帧重新排版（尤其对中文字体）
+    /// 字形缓存：(文本, 字体大小, font_family, line_height_bits, letter_spacing_bits, font_kerning, word_wrap, word_wrap_width_bits, text_align) -> (FontData, glyphs, size, emoji_positions)，命中时直接使用，避免每帧重新排版（尤其对中文字体）
     static GLYPH_CACHE: RefCell<
         HashMap<
-            (String, u32, String, u32, u32, bool, bool, u64),
+            (String, u32, String, u32, u32, bool, bool, u64, String),
             (Vec<(vello::peniko::FontData, Vec<vello::Glyph>)>, f32, Vec<EmojiPosition>),
         >,
     > = RefCell::new(HashMap::new());
@@ -1536,12 +1536,26 @@ fn compute_world_transforms(shapes: &[JsShape]) -> HashMap<String, Affine> {
     map
 }
 
+/// 将 Canvas textAlign 字符串映射为 Parley Alignment。
+#[cfg(target_arch = "wasm32")]
+fn text_align_to_parley(align: &str) -> parley::Alignment {
+    let a = align.trim();
+    if a.eq_ignore_ascii_case("center") {
+        parley::Alignment::Center
+    } else if a.eq_ignore_ascii_case("end") || a.eq_ignore_ascii_case("right") {
+        parley::Alignment::End
+    } else {
+        parley::Alignment::Start // "start" | "left" | "direction" 等
+    }
+}
+
 /// 使用 Parley 将字符串与字体字节解析为 vello 可绘制的 Glyph 列表；支持 kerning、ligatures、bidi 等。
 /// 返回 peniko FontData 供 draw_glyphs 使用，同时返回 emoji 的实际位置。
 /// 使用全局 FontContext 缓存以提高性能。
 /// font_family: 请求的字体族名称（如 "Gaegu"、"Noto Sans"），若在已注册字体中存在则使用，否则回退到集合中第一个 family。
 /// line_height: 行高（绝对像素）；≤0 时使用字号作为默认行高。
 /// font_kerning: 是否启用字距调整（对应 Canvas fontKerning）；false 时通过关闭 OpenType kern 特性实现。
+/// text_align: 行内对齐，对应 Canvas textAlign（"start"|"left"|"center"|"end"|"right"）。
 #[cfg(target_arch = "wasm32")]
 fn build_text_glyphs_with_emoji_positions(
     content: &str,
@@ -1552,6 +1566,7 @@ fn build_text_glyphs_with_emoji_positions(
     font_family: &str,
     word_wrap: bool,
     word_wrap_width: f64,
+    text_align: &str,
 ) -> Option<(Vec<(vello::peniko::FontData, Vec<vello::Glyph>)>, f32, Vec<EmojiPosition>, Option<(f32, f32, f32, f32)>)> {
     use std::borrow::Cow;
     use parley::fontique::Blob;
@@ -1672,7 +1687,8 @@ fn build_text_glyphs_with_emoji_positions(
                 None
             };
             layout.break_all_lines(max_advance);
-            layout.align(max_advance, Alignment::Start, AlignmentOptions::default());
+            let alignment = text_align_to_parley(text_align);
+            layout.align(max_advance, alignment, AlignmentOptions::default());
 
             let segment_char_indices: Vec<(usize, char)> = segment.char_indices().collect();
             let mut char_idx = 0usize;
@@ -1726,7 +1742,15 @@ fn build_text_glyphs_with_emoji_positions(
                         }
                     }
                 }
-                line_y += line.metrics().max_coord - line.metrics().min_coord;
+                // 行高累加：以内容高度为底，若设置了 line_height 则不超过该值，避免 Parley 的 line_height 偏大导致中间多出一空行
+                let content_h = line.metrics().max_coord - line.metrics().min_coord;
+                let line_advance = if line_height_px > 0.0 {
+                    let parley_lh = line.metrics().line_height;
+                    content_h.max(parley_lh.min(line_height_px))
+                } else {
+                    content_h
+                };
+                line_y += line_advance;
             }
         }
 
@@ -1759,6 +1783,7 @@ fn compute_text_bounds_internal(opts: &TextOptions) -> Option<TextBounds> {
         &opts.font_family,
         opts.word_wrap,
         opts.word_wrap_width,
+        &opts.text_align,
     )?;
 
     // 没有任何可见内容时，返回零大小包围盒。
@@ -2572,6 +2597,7 @@ fn add_js_shape_to_scene(
             font_kerning,
             word_wrap,
             word_wrap_width,
+            text_align,
             fill,
             opacity,
             fill_opacity,
@@ -2583,6 +2609,12 @@ fn add_js_shape_to_scene(
             } else {
                 (font_size, letter_spacing)
             };
+            // 与字体一致：有 size_attenuation 时在排版空间内按缩放后的宽度换行，视觉上才与给定 wordWrapWidth 一致
+            let word_wrap_width_eff = if size_attenuation {
+                word_wrap_width / scale
+            } else {
+                word_wrap_width
+            };
             let line_height_px = line_height as f32; // 绝对值（像素），≤0 时排版内部用字号作为默认
             let letter_spacing_px = letter_spacing_eff as f32;
             let cache_key = (
@@ -2593,7 +2625,8 @@ fn add_js_shape_to_scene(
                 letter_spacing_px.to_bits(),
                 font_kerning,
                 word_wrap,
-                word_wrap_width.to_bits(),
+                word_wrap_width_eff.to_bits(),
+                text_align.clone(),
             );
 
             // 渲染文本（使用 Parley 布局整个文本，获取准确的 emoji 位置）
@@ -2614,7 +2647,8 @@ fn add_js_shape_to_scene(
                             font_kerning,
                             &font_family,
                             word_wrap,
-                            word_wrap_width,
+                            word_wrap_width_eff,
+                            &text_align,
                         );
                         match result {
                             Some((runs, s, em, _)) => {

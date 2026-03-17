@@ -455,8 +455,6 @@ function wordWrapInternal(text: string, style: Partial<Text>, scale: number) {
 
       // exceed maxLines, break immediately
       if (currentIndex >= maxLines) {
-        // parsedStyle.isOverflowing = true;
-
         if (i < chars.length - 1) {
           appendEllipsis(currentIndex - 1);
         }
@@ -471,8 +469,6 @@ function wordWrapInternal(text: string, style: Partial<Text>, scale: number) {
 
     if (currentWidth > 0 && currentWidth + charWidth > maxWidth) {
       if (currentIndex + 1 >= maxLines) {
-        // parsedStyle.isOverflowing = true;
-
         appendEllipsis(currentIndex);
 
         break;
@@ -620,13 +616,6 @@ function measureTextInternal(
     const actualBoundingBoxLeft = -metrics.actualBoundingBoxLeft;
     const actualBoundingBoxRight = metrics.actualBoundingBoxRight;
     boundsWidth = actualBoundingBoxRight - actualBoundingBoxLeft;
-  }
-
-  if (metricWidth > 0) {
-    const val = (segments.length - 1) * letterSpacing;
-
-    metricWidth += val;
-    boundsWidth += val;
   }
 
   return Math.max(metricWidth, boundsWidth);

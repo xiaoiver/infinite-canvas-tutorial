@@ -195,6 +195,29 @@ export class TextEditor extends LitElement {
 
     this.editable.style.transformOrigin = `left top`;
     this.editable.focus();
+
+    // // 根据双击位置精确定位光标（下一帧 layout 后再取 caret 位置）
+    // const { clientX, clientY } = event;
+    // setTimeout(() => {
+    //   if (!this.editable) return;
+    //   const len = this.editable.value.length;
+    //   let index: number | null = null;
+    //   if (document.caretPositionFromPoint) {
+    //     const pos = document.caretPositionFromPoint(clientX, clientY);
+    //     if (pos && (pos.offsetNode === this.editable || this.editable.contains(pos.offsetNode))) {
+    //       index = pos.offset;
+    //     }
+    //   }
+    //   if (index == null && (document as Document & { caretRangeFromPoint?(x: number, y: number): Range }).caretRangeFromPoint) {
+    //     const range = (document as Document & { caretRangeFromPoint(x: number, y: number): Range }).caretRangeFromPoint(clientX, clientY);
+    //     if (range && (range.startContainer === this.editable || this.editable.contains(range.startContainer))) {
+    //       index = range.startOffset;
+    //     }
+    //   }
+    //   if (index != null && index >= 0 && index <= len) {
+    //     this.editable.setSelectionRange(index, index);
+    //   }
+    // }, 400);
   };
 
   private handleKeyDown = (event: KeyboardEvent) => {
@@ -304,33 +327,51 @@ export class TextEditor extends LitElement {
 
     if (fontFamily) {
       this.editable.style.fontFamily = fontFamily;
+    } else {
+      this.editable.style.removeProperty('font-family');
     }
     if (fontSize) {
       this.editable.style.fontSize = `${fontSize}px`;
+    } else {
+      this.editable.style.removeProperty('font-size');
     }
     if (fontWeight) {
       this.editable.style.fontWeight = fontWeight.toString();
+    } else {
+      this.editable.style.removeProperty('font-weight');
     }
     if (fontStyle) {
       this.editable.style.fontStyle = fontStyle;
+    } else {
+      this.editable.style.removeProperty('font-style');
     }
     if (fontVariant) {
       this.editable.style.fontVariant = fontVariant;
+    } else {
+      this.editable.style.removeProperty('font-variant');
     }
     if (fill) {
       this.editable.style.color = fill;
+    } else {
+      this.editable.style.removeProperty('color');
     }
     if (opacity) {
       this.editable.style.opacity = opacity.toString();
+    } else {
+      this.editable.style.removeProperty('opacity');
     }
     if (textAlign) {
       this.editable.style.textAlign = textAlign;
+    } else {
+      this.editable.style.removeProperty('text-align');
     }
     if (textBaseline) {
       // this.editable.style.textBaseline = textBaseline;
     }
     if (letterSpacing) {
       this.editable.style.letterSpacing = letterSpacing.toString();
+    } else {
+      this.editable.style.removeProperty('letter-spacing');
     }
   }
 
@@ -356,7 +397,7 @@ export class TextEditor extends LitElement {
     return html`<textarea
       dir="auto"
       tabindex="0"
-      wrap="off"
+      wrap="on"
       @blur=${this.handleBlur}
       @input=${this.handleInput}
       @keydown=${this.handleKeyDown}

@@ -238,12 +238,12 @@ export class Text {
    * @see https://developer.mozilla.org/en-US/docs/Web/CSS/text-overflow
    * @example
    * ```ts
-   * new Text({
-      text: 'abcde...',
+   * {
+      content: 'abcde...',
       textOverflow: TextOverflow.ELLIPSIS,
       wordWrapWidth: 100,
       maxLines: 3,
-    });
+    }
    */
   @field({ type: Type.staticString(['ellipsis', 'clip']) })
   declare textOverflow: 'ellipsis' | 'clip' | string;

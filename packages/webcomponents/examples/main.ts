@@ -397,7 +397,8 @@ canvas.addEventListener(Event.READY, async (e) => {
       textBaseline: 'ideographic',
       zIndex: 6,
       wordWrap: true,
-      wordWrapWidth: 100,
+      wordWrapWidth: 50,
+      maxLines: 3,
     },
     {
       id: 'baseline-6',
@@ -417,12 +418,13 @@ canvas.addEventListener(Event.READY, async (e) => {
       id: 'text-6',
       type: 'text',
       fill: 'black',
-      content: 'AVA Ta We',
+      content: 'AVA Ta We 你好',
       anchorX: 50,
       anchorY: 300,
       fontSize: 16,
       fontFamily: 'Noto Sans',
       textBaseline: 'bottom',
+      textAlign: 'center',
       fontKerning: false,
       zIndex: 6,
     },
@@ -434,13 +436,13 @@ canvas.addEventListener(Event.READY, async (e) => {
   // api.updateNodes([node1]);
 });
 
-const VelloRendererPlugin = RendererPlugin.configure({
-  setupDeviceSystemCtor: InitVello,
-  rendererSystemCtor: VelloPipeline,
-});
-DefaultPlugins.splice(DefaultPlugins.indexOf(DefaultRendererPlugin), 1, VelloRendererPlugin);
-registerFont('/NotoSansCJKsc-VF.ttf');
-registerFont('/Gaegu-Regular.ttf');
+// const VelloRendererPlugin = RendererPlugin.configure({
+//   setupDeviceSystemCtor: InitVello,
+//   rendererSystemCtor: VelloPipeline,
+// });
+// DefaultPlugins.splice(DefaultPlugins.indexOf(DefaultRendererPlugin), 1, VelloRendererPlugin);
+// registerFont('/Gaegu-Regular.ttf');
+// registerFont('/NotoSansCJKsc-VF.ttf');
 // registerFont('/NotoSansArabic.ttf');
 
 try {
