@@ -70,8 +70,6 @@ scene.stroke(..., &path)
 
 在 [课程 12 - 绘制折线] 中，我们介绍过对线段进行拉伸后渲染，然后对与 stroke 和 fill 分别使用两个 mesh 进行绘制。vello 中同样需要对有宽度的线段进行拉伸，随后就可以将 stroke 和 fill 统一处理。
 
-> The output of stroke expansion and flattening is simply a multiset of lines for each path. On GPU, there is a large buffer (“line soup”) consisting of all the lines from all the paths, but on CPU we use a single scratch buffer, processing a single path at a time (per thread, in the multithreaded case).
-
 ![stroke expansion](/vello-stroke-expansion.png)
 
 拉伸时同样需要考虑 linecap 和 linejoin，之前我们是使用了 Analytic Stroke 的思路在 fragment shader 中完成的。
@@ -496,7 +494,7 @@ scene.draw_blurred_rounded_rect(
 
 ### 包围盒计算 {#compute-bounds}
 
-文本完全可以用 parley 度量，我们终于可以摆脱 BiDi、clusters 等灯。
+我们可以将文本度量涉及的 BiDi、clusters 等交给 parley 处理。
 
 ### 拾取 {#picking}
 
