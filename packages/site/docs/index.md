@@ -38,33 +38,33 @@ features:
 
 This tutorial covers a basic 2D graphics rendering implementation based on WebGL / WebGPU:
 
--   [Lesson 2 - Draw a circle]
--   [Lesson 5 - Grid]
--   [Lesson 9 - Drawing ellipse and rectangle]
--   [Lesson 12 - Draw polyline]
--   [Lesson 13 - Drawing path and sketchy style]
--   [Lesson 15 - Text rendering]
--   [Lesson 16 - Text advanced features]
--   [Lesson 25 - Drawing mode and brush]
--   [Lesson 30 - Post-processing and render graph]
--   [Lesson 34 - Frame and clip]
--   [Lesson 35 - Tile-based rendering]
+-   [Lesson 2 - Draw a circle]: Learn WebGL basics, use SDF (Signed Distance Field) to render anti-aliased circles, understand coordinate transformation and color blending in fragment shaders
+-   [Lesson 5 - Grid]: Implement infinitely extending grid background, learn camera transformation matrices, handle conversion between screen and world coordinates
+-   [Lesson 9 - Drawing ellipse and rectangle]: Use SDF to draw ellipses and rounded rectangles, implement stroke and fill, support multiple corner radius configurations
+-   [Lesson 12 - Draw polyline]: Implement polyline rendering with butt, round, and square line caps, plus miter, round, and bevel line joins
+-   [Lesson 13 - Drawing path and sketchy style]: Integrate Rough.js for sketchy rendering, support hachure, solid, dots fill styles with adjustable roughness
+-   [Lesson 15 - Text rendering]: Implement text shaping using Canvas API, support text rendering, font loading, kerning, and emoji
+-   [Lesson 16 - Text advanced features]: Implement word wrap, multi-line text alignment (left/center/right), max lines limit and text overflow handling
+-   [Lesson 25 - Drawing mode and brush]: Draw rectangles and arrows, use pencil, brush, laser pointer and eraser tools
+-   [Lesson 30 - Post-processing and render graph]: Build Render Graph system, implement Gaussian blur, shadows, glow post-processing effects, support multi-pass rendering pipeline
+-   [Lesson 34 - Frame and clip]: Implement Frame container with clip mode (cropping overflow) and mask effects
+-   [Lesson 35 - Tile-based rendering]: Use tile-based rendering to optimize large-scale scenes
 
 Also includes UI components implemented using Web Components technology:
 
--   [Lesson 7 - Web UI]
--   [Lesson 18 - Refactor with ECS]
--   [Lesson 24 - Context menu and clipboard]
+-   [Lesson 7 - Web UI]: Build Web Components using Lit framework, implement property binding, event system and Shadow DOM encapsulation
+-   [Lesson 18 - Refactor with ECS]: Refactor core system using ECS (Entity-Component-System) architecture, implement data-driven design
+-   [Lesson 24 - Context menu and clipboard]: Implement custom context menu, integrate Clipboard API for copy/cut/paste, support SVG and PNG export
 
 And some interesting topics:
 
--   [Lesson 17 - Gradient and pattern]
--   [Lesson 19 - History]
--   [Lesson 22 - VectorNetwork]
+-   [Lesson 17 - Gradient and pattern]: Implement linear, radial and conic gradients with multi-stop support, plus pattern fills
+-   [Lesson 19 - History]: Implement Command Pattern history system with undo, redo and batch transaction support
+-   [Lesson 22 - VectorNetwork]: Implement Vector Network data structure, support Figma-style vector path editing including node connection, path merging and boolean operations
 
 The most important thing:
 
--   [Lesson 28 - Integrating with AI]
+-   [Lesson 28 - Integrating with AI]: Integrate Vercel AI SDK for intelligent drawing assistant, support natural language shape generation, image vectorization, layout suggestions and AI chat
 
 [Lesson 2 - Draw a circle]: /guide/lesson-002
 [Lesson 5 - Grid]: /guide/lesson-005

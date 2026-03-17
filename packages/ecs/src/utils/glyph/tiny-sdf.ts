@@ -109,6 +109,14 @@ export class TinySDF {
     ctx.fillStyle = fill; // If plain text mixed with emoji, we should use fill color instead of 'black'
   }
 
+  // measureKerning() {
+  //   const unkernedWidth =
+  //     this.ctx.measureText('A').width + this.ctx.measureText('V').width;
+  //   const kernedWidth = this.ctx.measureText('AV').width;
+  //   const kerning = kernedWidth - unkernedWidth; // a negative value indicates you should adjust the SDFs closer together by that much
+  //   return kerning;
+  // }
+
   draw(char: string, esdt = false, color = false) {
     const {
       width: glyphAdvance,

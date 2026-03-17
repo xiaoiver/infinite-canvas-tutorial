@@ -142,6 +142,13 @@ export class Text {
   declare fontVariant: string;
 
   /**
+   * Font kerning.
+   * @see https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/fontKerning
+   */
+  @field({ type: Type.boolean, default: true })
+  declare fontKerning: boolean;
+
+  /**
    * Specifies the spacing between letters when drawing text in px.
    * @see https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/letterSpacing
    */
@@ -231,12 +238,12 @@ export class Text {
    * @see https://developer.mozilla.org/en-US/docs/Web/CSS/text-overflow
    * @example
    * ```ts
-   * new Text({
-      text: 'abcde...',
+   * {
+      content: 'abcde...',
       textOverflow: TextOverflow.ELLIPSIS,
       wordWrapWidth: 100,
       maxLines: 3,
-    });
+    }
    */
   @field({ type: Type.staticString(['ellipsis', 'clip']) })
   declare textOverflow: 'ellipsis' | 'clip' | string;

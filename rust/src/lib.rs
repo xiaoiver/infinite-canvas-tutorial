@@ -10,7 +10,7 @@ use wasm_bindgen::prelude::*;
 use serde::{Deserialize, Serialize};
 
 #[cfg(target_arch = "wasm32")]
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 #[cfg(target_arch = "wasm32")]
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -248,6 +248,7 @@ pub enum JsShape {
         font_variant: String,
         letter_spacing: f64,
         line_height: f64,
+        font_kerning: bool,
         white_space: String,
         word_wrap: bool,
         word_wrap_width: f64,
@@ -444,6 +445,10 @@ thread_local! {
     /// 每个画布 id 对应一份图形列表，支持多画布。
     static CANVAS_SHAPES: RefCell<HashMap<u32, Vec<JsShape>>> = RefCell::new(HashMap::new());
     static NEXT_CANVAS_ID: RefCell<u32> = RefCell::new(0);
+    /// 多画布：在同一次 runWithCanvas 调用批次中收集的 (canvas, on_ready)，由 run_all_canvases_async 统一处理。
+    static PENDING_CANVASES: RefCell<Vec<(web_sys::HtmlCanvasElement, js_sys::Function)>> = RefCell::new(Vec::new());
+    /// 是否已调度过“统一 runner”，保证只启动一个 event loop。
+    static RUNNER_SCHEDULED: Cell<bool> = Cell::new(false);
     /// 默认字体 TTF/OTF 字节列表，由 registerFont 等 API 设置后才能渲染文本。
     /// 目前简化为使用第一个字体进行排版与渲染；未来可以在 Parley 侧扩展为真正的字体 fallback。
     static FONT_BYTES: RefCell<Vec<Vec<u8>>> = RefCell::new(Vec::new());
@@ -453,10 +458,10 @@ thread_local! {
     static CANVAS_WINDOWS: RefCell<HashMap<u32, Arc<Window>>> = RefCell::new(HashMap::new());
     /// emoji 图片缓存：字符 -> (RGBA 数据, 宽度, 高度)
     static EMOJI_CACHE: RefCell<HashMap<String, (Vec<u8>, u32, u32)>> = RefCell::new(HashMap::new());
-    /// 字形缓存：(文本, 字体大小, font_family) -> (FontData, glyphs, size, emoji_positions)，命中时直接使用，避免每帧重新排版（尤其对中文字体）
+    /// 字形缓存：(文本, 字体大小, font_family, line_height_bits, letter_spacing_bits, font_kerning, word_wrap, word_wrap_width_bits, text_align) -> (FontData, glyphs, size, emoji_positions)，命中时直接使用，避免每帧重新排版（尤其对中文字体）
     static GLYPH_CACHE: RefCell<
         HashMap<
-            (String, u32, String),
+            (String, u32, String, u32, u32, bool, bool, u64, String),
             (Vec<(vello::peniko::FontData, Vec<vello::Glyph>)>, f32, Vec<EmojiPosition>),
         >,
     > = RefCell::new(HashMap::new());
@@ -1030,6 +1035,8 @@ pub struct TextOptions {
     pub letter_spacing: f64,
     #[serde(default)]
     pub line_height: f64,
+    #[serde(default = "default_font_kerning")]
+    pub font_kerning: bool,
     #[serde(default = "default_white_space")]
     pub white_space: String,
     #[serde(default)]
@@ -1090,6 +1097,10 @@ fn default_font_style() -> String {
 #[cfg(target_arch = "wasm32")]
 fn default_font_variant() -> String {
     "normal".to_string()
+}
+#[cfg(target_arch = "wasm32")]
+fn default_font_kerning() -> bool {
+    true
 }
 #[cfg(target_arch = "wasm32")]
 fn default_white_space() -> String {
@@ -1525,21 +1536,42 @@ fn compute_world_transforms(shapes: &[JsShape]) -> HashMap<String, Affine> {
     map
 }
 
+/// 将 Canvas textAlign 字符串映射为 Parley Alignment。
+#[cfg(target_arch = "wasm32")]
+fn text_align_to_parley(align: &str) -> parley::Alignment {
+    let a = align.trim();
+    if a.eq_ignore_ascii_case("center") {
+        parley::Alignment::Center
+    } else if a.eq_ignore_ascii_case("end") || a.eq_ignore_ascii_case("right") {
+        parley::Alignment::End
+    } else {
+        parley::Alignment::Start // "start" | "left" | "direction" 等
+    }
+}
+
 /// 使用 Parley 将字符串与字体字节解析为 vello 可绘制的 Glyph 列表；支持 kerning、ligatures、bidi 等。
 /// 返回 peniko FontData 供 draw_glyphs 使用，同时返回 emoji 的实际位置。
 /// 使用全局 FontContext 缓存以提高性能。
 /// font_family: 请求的字体族名称（如 "Gaegu"、"Noto Sans"），若在已注册字体中存在则使用，否则回退到集合中第一个 family。
+/// line_height: 行高（绝对像素）；≤0 时使用字号作为默认行高。
+/// font_kerning: 是否启用字距调整（对应 Canvas fontKerning）；false 时通过关闭 OpenType kern 特性实现。
+/// text_align: 行内对齐，对应 Canvas textAlign（"start"|"left"|"center"|"end"|"right"）。
 #[cfg(target_arch = "wasm32")]
 fn build_text_glyphs_with_emoji_positions(
     content: &str,
     font_size_px: f32,
     letter_spacing: f32,
+    line_height_px: f32,
+    font_kerning: bool,
     font_family: &str,
+    word_wrap: bool,
+    word_wrap_width: f64,
+    text_align: &str,
 ) -> Option<(Vec<(vello::peniko::FontData, Vec<vello::Glyph>)>, f32, Vec<EmojiPosition>, Option<(f32, f32, f32, f32)>)> {
     use std::borrow::Cow;
     use parley::fontique::Blob;
     use parley::layout::PositionedLayoutItem;
-    use parley::style::FontFamily;
+    use parley::style::{FontFamily, FontFeature, FontSettings};
     use parley::{Alignment, AlignmentOptions, LayoutContext, LineHeight, StyleProperty};
 
     let font_bytes_list = FONT_BYTES.with(|c| c.borrow().clone());
@@ -1555,21 +1587,19 @@ fn build_text_glyphs_with_emoji_positions(
 
         let font_cx = font_cx_ref.as_mut()?;
 
-        // 为了让“字体集合”与注册顺序无关，这里按指纹排序后再注册。
-        // 同一组字体无论 registerFont 顺序如何，combined_fp 与内部顺序都保持一致。
-        let mut fonts_with_fp: Vec<(u64, Vec<u8>)> = font_bytes_list
-            .into_iter()
-            .map(|bytes| (font_bytes_fingerprint(&bytes), bytes))
+        // 按 registerFont 的原始顺序注册，保证多字体时每个 family 都能被正确解析（排序会导致“仅最后一种字体生效”）。
+        let fonts_for_fp: Vec<(u64, Vec<u8>)> = font_bytes_list
+            .iter()
+            .map(|bytes| (font_bytes_fingerprint(bytes), bytes.clone()))
             .collect();
-        if fonts_with_fp.is_empty() {
+        if fonts_for_fp.is_empty() {
             return None;
         }
-        fonts_with_fp.sort_by_key(|(fp, _)| *fp);
-
-        // 仅当字体集合变化时再注册，避免每帧重复 register_fonts 和大块分配。
-        // 指纹基于“已排序”的字体列表，保证顺序无关。
+        // 仅当字体集合变化时再注册；指纹用排序后的 fp 计算，使相同字体集合得到相同 combined_fp。
+        let mut fps_sorted: Vec<u64> = fonts_for_fp.iter().map(|(fp, _)| *fp).collect();
+        fps_sorted.sort_unstable();
         let mut combined_fp: u64 = 0;
-        for (fp, _) in &fonts_with_fp {
+        for fp in &fps_sorted {
             combined_fp = combined_fp.wrapping_mul(1315423911) ^ *fp;
         }
         let need_register = LAST_REGISTERED_FONT_FINGERPRINT.with(|r| {
@@ -1584,26 +1614,27 @@ fn build_text_glyphs_with_emoji_positions(
         });
         if need_register {
             font_cx.collection.clear();
-            // 字体集合变化时，清空 glyph 缓存，避免用到旧字体布局结果。
             GLYPH_CACHE.with(|c| c.borrow_mut().clear());
-            for (_, bytes) in &fonts_with_fp {
+            // 严格按 registerFont 顺序注册，便于 Parley 按 family 正确解析多字体。
+            for (_, bytes) in &fonts_for_fp {
                 let font_blob = Blob::new(Arc::new(bytes.clone()));
                 font_cx.collection.register_fonts(font_blob, None);
             }
         }
 
-        // 根据请求的 font_family 选择已注册字体中的 family：精确匹配（忽略大小写）或前缀匹配（如 "Noto Sans" 匹配 "Noto Sans CJK SC"）
+        // 根据请求的 font_family 选择已注册字体中的 family：精确匹配（忽略大小写）或前缀匹配（如 "Noto Sans" 匹配 "Noto Sans CJK SC"）。
+        // 按注册顺序，第一个注册的字体作为 fallback。
         let requested = font_family.trim();
         let family_names: Vec<String> = font_cx.collection.family_names().map(|s| s.to_string()).collect();
+        let fallback_family = family_names.first().cloned().unwrap_or_else(|| "sans-serif".to_string());
         let family_name = if requested.is_empty() {
-            family_names.first().cloned().unwrap_or_else(|| "sans-serif".to_string())
+            fallback_family
         } else {
             family_names
                 .iter()
                 .find(|n| n.eq_ignore_ascii_case(requested) || n.starts_with(requested))
                 .cloned()
-                .or_else(|| family_names.first().cloned())
-                .unwrap_or_else(|| "sans-serif".to_string())
+                .unwrap_or_else(|| fallback_family)
         };
 
         let mut layout_cx = LayoutContext::new();
@@ -1622,22 +1653,42 @@ fn build_text_glyphs_with_emoji_positions(
 
         for segment in line_segments {
             if segment.is_empty() {
-                // 空行（如连续 \n）仍占一行高度
-                line_y += font_size_px;
+                // 空行（如连续 \n）仍占一行高度；绝对值时用 line_height_px，否则用字号
+                line_y += if line_height_px > 0.0 { line_height_px } else { font_size_px };
                 continue;
             }
 
             let mut builder = layout_cx.ranged_builder(font_cx, segment, 1.0, true);
             builder.push_default(FontFamily::Named(Cow::Borrowed(&family_name)));
-            builder.push_default(LineHeight::FontSizeRelative(1.0));
+            builder.push_default(if line_height_px > 0.0 {
+                LineHeight::Absolute(line_height_px)
+            } else {
+                LineHeight::FontSizeRelative(1.0)
+            });
             builder.push_default(StyleProperty::FontSize(font_size_px));
             if letter_spacing != 0.0 {
                 builder.push_default(StyleProperty::LetterSpacing(letter_spacing));
             }
+            // fontKerning=false 时关闭 OpenType kern 特性
+            if !font_kerning {
+                if let Some(kern_off) = FontFeature::parse("kern=0") {
+                    let kern_off_arr = [kern_off];
+                    builder.push_default(StyleProperty::FontFeatures(FontSettings::List(
+                        Cow::Borrowed(&kern_off_arr),
+                    )));
+                }
+            }
 
             let mut layout: parley::Layout<()> = builder.build(segment);
-            layout.break_all_lines(None);
-            layout.align(None, Alignment::Start, AlignmentOptions::default());
+            // 当开启 wordWrap 且 wordWrapWidth > 0 时，按最大宽度换行（与 ECS Text 组件行为一致）
+            let max_advance = if word_wrap && word_wrap_width > 0.0 {
+                Some(word_wrap_width as f32)
+            } else {
+                None
+            };
+            layout.break_all_lines(max_advance);
+            let alignment = text_align_to_parley(text_align);
+            layout.align(max_advance, alignment, AlignmentOptions::default());
 
             let segment_char_indices: Vec<(usize, char)> = segment.char_indices().collect();
             let mut char_idx = 0usize;
@@ -1691,7 +1742,15 @@ fn build_text_glyphs_with_emoji_positions(
                         }
                     }
                 }
-                line_y += line.metrics().max_coord - line.metrics().min_coord;
+                // 行高累加：以内容高度为底，若设置了 line_height 则不超过该值，避免 Parley 的 line_height 偏大导致中间多出一空行
+                let content_h = line.metrics().max_coord - line.metrics().min_coord;
+                let line_advance = if line_height_px > 0.0 {
+                    let parley_lh = line.metrics().line_height;
+                    content_h.max(parley_lh.min(line_height_px))
+                } else {
+                    content_h
+                };
+                line_y += line_advance;
             }
         }
 
@@ -1711,13 +1770,21 @@ fn build_text_glyphs_with_emoji_positions(
 /// 坐标系约定与渲染时一致：锚点位于 (0, 0)，x 轴向右，y 轴向下。
 #[cfg(target_arch = "wasm32")]
 fn compute_text_bounds_internal(opts: &TextOptions) -> Option<TextBounds> {
-    // 当前实现与渲染逻辑一致：只考虑 font_size 与 letter_spacing；
-    // 其余如 line_height / white_space / word_wrap 等后续可以在 Parley 布局层面进一步利用。
     let font_size_eff = opts.font_size as f32;
     let letter_spacing_eff = opts.letter_spacing as f32;
+    let line_height_px = opts.line_height as f32; // 绝对值（像素），≤0 时排版内部用字号作为默认
 
-    let (glyph_runs, size_px, emoji_positions, layout_bounds) =
-        build_text_glyphs_with_emoji_positions(&opts.content, font_size_eff, letter_spacing_eff, &opts.font_family)?;
+    let (glyph_runs, size_px, emoji_positions, layout_bounds) = build_text_glyphs_with_emoji_positions(
+        &opts.content,
+        font_size_eff,
+        letter_spacing_eff,
+        line_height_px,
+        opts.font_kerning,
+        &opts.font_family,
+        opts.word_wrap,
+        opts.word_wrap_width,
+        &opts.text_align,
+    )?;
 
     // 没有任何可见内容时，返回零大小包围盒。
     if glyph_runs.is_empty() && emoji_positions.is_empty() {
@@ -1811,17 +1878,19 @@ pub struct RenderState {
     pub window: Arc<Window>,
     /// wasm 多画布：该 surface 对应的 canvas id；桌面为 None。
     pub canvas_id: Option<u32>,
+    /// 该窗口的相机变换，多画布时互不影响。
+    pub transform: Affine,
 }
 
 /// 最小应用：与 [vello with_winit](https://github.com/linebender/vello/blob/main/examples/with_winit/src/lib.rs) 一致。
 /// 相机 transform 完全由 JS 通过 setCameraTransform 同步，Rust 不监听输入事件。
+/// wasm 多画布时 states 含多个元素；桌面单窗口时 states.len() <= 1。
 pub struct VelloRendererApp {
     pub context: RenderContext,
     pub renderers: Vec<Option<Renderer>>,
-    pub state: Option<RenderState>,
+    /// 每个窗口一份渲染状态；wasm 多画布时多个，桌面单窗口时一个。
+    pub states: Vec<RenderState>,
     pub scene: Scene,
-    /// 场景变换（世界 → 屏幕），由 JS setCameraTransform 设置。
-    pub transform: Affine,
 }
 
 impl VelloRendererApp {
@@ -1829,9 +1898,8 @@ impl VelloRendererApp {
         Self {
             context: RenderContext::new(),
             renderers: vec![],
-            state: None,
+            states: vec![],
             scene: Scene::new(),
-            transform: Affine::IDENTITY,
         }
     }
 }
@@ -1843,7 +1911,7 @@ impl ApplicationHandler for VelloRendererApp {
 
         #[cfg(not(target_arch = "wasm32"))]
         {
-            if self.state.is_some() {
+            if !self.states.is_empty() {
                 return;
             }
             let window = Arc::new(
@@ -1875,11 +1943,12 @@ impl ApplicationHandler for VelloRendererApp {
                 .expect("create renderer")
             });
             window.request_redraw();
-            self.state = Some(RenderState {
+            self.states.push(RenderState {
                 surface,
                 valid_surface: true,
                 window,
                 canvas_id: None,
+                transform: Affine::IDENTITY,
             });
         }
     }
@@ -1890,12 +1959,13 @@ impl ApplicationHandler for VelloRendererApp {
         window_id: winit::window::WindowId,
         event: WindowEvent,
     ) {
-        let Some(state) = &mut self.state else {
+        let Some(state) = self
+            .states
+            .iter_mut()
+            .find(|s| s.window.id() == window_id)
+        else {
             return;
         };
-        if state.window.id() != window_id {
-            return;
-        }
         match event {
             WindowEvent::CloseRequested => event_loop.exit(),
             WindowEvent::Resized(size) => {
@@ -1924,7 +1994,7 @@ impl ApplicationHandler for VelloRendererApp {
                 }
                 let canvas_id = state.canvas_id;
                 if let Some(affine) = take_pending_camera_transform(canvas_id) {
-                    self.transform = affine;
+                    state.transform = affine;
                 }
                 let surface = &mut state.surface;
                 let width = surface.config.width;
@@ -1940,7 +2010,7 @@ impl ApplicationHandler for VelloRendererApp {
                 // ECS 的相机变换基于 CSS 逻辑像素，Vello 渲染目标是物理像素
                 // 平移已经在 JS 侧乘以 DPR，但缩放需要在这里调整
                 let dpr = device_pixel_ratio();
-                let effective_transform = self.transform * Affine::scale(dpr);
+                let effective_transform = state.transform * Affine::scale(dpr);
                 add_shapes_to_scene(&mut self.scene, effective_transform, width, height, canvas_id);
 
                 self.renderers[surface.dev_id]
@@ -2523,6 +2593,11 @@ fn add_js_shape_to_scene(
             font_size,
             font_family,
             letter_spacing,
+            line_height,
+            font_kerning,
+            word_wrap,
+            word_wrap_width,
+            text_align,
             fill,
             opacity,
             fill_opacity,
@@ -2534,10 +2609,28 @@ fn add_js_shape_to_scene(
             } else {
                 (font_size, letter_spacing)
             };
+            // 与字体一致：有 size_attenuation 时在排版空间内按缩放后的宽度换行，视觉上才与给定 wordWrapWidth 一致
+            let word_wrap_width_eff = if size_attenuation {
+                word_wrap_width / scale
+            } else {
+                word_wrap_width
+            };
+            let line_height_px = line_height as f32; // 绝对值（像素），≤0 时排版内部用字号作为默认
+            let letter_spacing_px = letter_spacing_eff as f32;
+            let cache_key = (
+                content.clone(),
+                font_size_eff as u32,
+                font_family.clone(),
+                line_height_px.to_bits(),
+                letter_spacing_px.to_bits(),
+                font_kerning,
+                word_wrap,
+                word_wrap_width_eff.to_bits(),
+                text_align.clone(),
+            );
 
             // 渲染文本（使用 Parley 布局整个文本，获取准确的 emoji 位置）
             if !FONT_BYTES.with(|c| c.borrow().is_empty()) {
-                let cache_key = (content.clone(), font_size_eff as u32, font_family.clone());
 
                 // 尝试从缓存获取；命中则直接使用，避免每帧重新排版（中文字体排版成本高）
                 let cached = GLYPH_CACHE.with(|c| c.borrow().get(&cache_key).cloned());
@@ -2550,7 +2643,12 @@ fn add_js_shape_to_scene(
                             &content,
                             font_size_eff as f32,
                             letter_spacing_eff as f32,
+                            line_height_px,
+                            font_kerning,
                             &font_family,
+                            word_wrap,
+                            word_wrap_width_eff,
+                            &text_align,
                         );
                         match result {
                             Some((runs, s, em, _)) => {
@@ -3009,106 +3107,143 @@ pub fn run_native() -> anyhow::Result<()> {
     Ok(())
 }
 
-/// wasm 入口：异步创建 surface 后再 run_app。创建完成后会调用 on_ready(canvasId)，之后 addRect/addEllipse 等需传入该 id。
+/// wasm 多画布：从 PENDING_CANVASES 取出本批次所有 canvas，共用一个 event loop 创建多窗口，全部就绪后调用各自 on_ready，再 run_app。
 #[cfg(target_arch = "wasm32")]
 #[allow(deprecated)] // EventLoop::create_window 在 wasm 初始化时仍需使用
-pub async fn run_wasm_async(canvas: web_sys::HtmlCanvasElement, on_ready: js_sys::Function) {
+async fn run_all_canvases_async() {
     use winit::platform::web::WindowAttributesExtWebSys;
+
+    let pending = PENDING_CANVASES.with(|c| c.borrow_mut().drain(..).collect::<Vec<_>>());
+    if pending.is_empty() {
+        RUNNER_SCHEDULED.set(false);
+        return;
+    }
 
     let event_loop = match EventLoop::new() {
         Ok(el) => el,
-        Err(_) => return,
-    };
-    let canvas_id = NEXT_CANVAS_ID.with(|c| {
-        let mut id = c.borrow_mut();
-        let next = *id;
-        *id = id.saturating_add(1);
-        next
-    });
-
-    CANVAS_SHAPES.with(|c| {
-        c.borrow_mut().insert(canvas_id, Vec::new());
-    });
-
-    let mut attrs = Window::default_attributes()
-        .with_inner_size(LogicalSize::new(800.0, 600.0))
-        .with_resizable(true)
-        .with_title("Vello Renderer - Infinite Canvas");
-    attrs = attrs.with_canvas(Some(canvas));
-    let window = match event_loop.create_window(attrs) {
-        Ok(w) => Arc::new(w),
-        Err(_) => return,
-    };
-    let (width, height) = {
-        use winit::platform::web::WindowExtWebSys;
-        if let Some(ref c) = window.canvas() {
-            let w = c.width().max(MIN_SURFACE_WIDTH);
-            let h = c.height().max(MIN_SURFACE_HEIGHT);
-            if w == 0 || h == 0 {
-                let cw = c.client_width().max(1) as u32;
-                let ch = c.client_height().max(1) as u32;
-                let cw = cw.max(MIN_SURFACE_WIDTH);
-                let ch = ch.max(MIN_SURFACE_HEIGHT);
-                c.set_width(cw);
-                c.set_height(ch);
-                (cw, ch)
-            } else {
-                (w, h)
-            }
-        } else {
-            let size = window.inner_size();
-            (size.width.max(MIN_SURFACE_WIDTH), size.height.max(MIN_SURFACE_HEIGHT))
+        Err(_) => {
+            RUNNER_SCHEDULED.set(false);
+            return;
         }
     };
 
+    // 1) 为每个 canvas 分配 id、创建 window，收集 (canvas_id, window, width, height, on_ready)
     let mut context = RenderContext::new();
+    let mut window_items: Vec<(u32, Arc<Window>, u32, u32, js_sys::Function)> =
+        Vec::with_capacity(pending.len());
 
-    let surface = match context
-        .create_surface(
-            window.clone(),
-            width,
-            height,
-            wgpu::PresentMode::AutoVsync,
-        )
-        .await
-    {
-        Ok(s) => s,
-        Err(_) => return,
-    };
+    for (canvas, on_ready) in pending {
+        let canvas_id = NEXT_CANVAS_ID.with(|c| {
+            let mut id = c.borrow_mut();
+            let next = *id;
+            *id = id.saturating_add(1);
+            next
+        });
+        CANVAS_SHAPES.with(|c| {
+            c.borrow_mut().insert(canvas_id, Vec::new());
+        });
+
+        let mut attrs = Window::default_attributes()
+            .with_inner_size(LogicalSize::new(800.0, 600.0))
+            .with_resizable(true)
+            .with_title("Vello Renderer - Infinite Canvas");
+        attrs = attrs.with_canvas(Some(canvas));
+        let window = match event_loop.create_window(attrs) {
+            Ok(w) => Arc::new(w),
+            Err(_) => continue,
+        };
+        let (width, height) = {
+            use winit::platform::web::WindowExtWebSys;
+            if let Some(ref c) = window.canvas() {
+                let w = c.width().max(MIN_SURFACE_WIDTH);
+                let h = c.height().max(MIN_SURFACE_HEIGHT);
+                if w == 0 || h == 0 {
+                    let cw = c.client_width().max(1) as u32;
+                    let ch = c.client_height().max(1) as u32;
+                    let cw = cw.max(MIN_SURFACE_WIDTH);
+                    let ch = ch.max(MIN_SURFACE_HEIGHT);
+                    c.set_width(cw);
+                    c.set_height(ch);
+                    (cw, ch)
+                } else {
+                    (w, h)
+                }
+            } else {
+                let size = window.inner_size();
+                (
+                    size.width.max(MIN_SURFACE_WIDTH),
+                    size.height.max(MIN_SURFACE_HEIGHT),
+                )
+            }
+        };
+        window_items.push((canvas_id, window, width, height, on_ready));
+    }
+
+    if window_items.is_empty() {
+        RUNNER_SCHEDULED.set(false);
+        return;
+    }
+
+    // 2) 串行为每个 window 创建 surface，收集 (canvas_id, window, surface, on_ready)
+    let mut built: Vec<(
+        u32,
+        Arc<Window>,
+        vello::util::RenderSurface<'static>,
+        js_sys::Function,
+    )> = Vec::with_capacity(window_items.len());
+    for (canvas_id, window, width, height, on_ready) in window_items {
+        let surface = match context
+            .create_surface(
+                window.clone(),
+                width,
+                height,
+                wgpu::PresentMode::AutoVsync,
+            )
+            .await
+        {
+            Ok(s) => s,
+            Err(_) => continue,
+        };
+        built.push((canvas_id, window, surface, on_ready));
+    }
 
     let mut renderers: Vec<Option<Renderer>> = vec![];
     renderers.resize_with(context.devices.len(), || None);
-    let dev_id = surface.dev_id;
-    let renderer = match Renderer::new(
-        &context.devices[dev_id].device,
-        RendererOptions::default(),
-    ) {
-        Ok(r) => r,
-        Err(_) => return,
-    };
-    renderers[dev_id] = Some(renderer);
-
-    CANVAS_WINDOWS.with(|c| {
-        c.borrow_mut().insert(canvas_id, window.clone());
-    });
-    let mut app = VelloRendererApp {
-        context,
-        renderers,
-        state: Some(RenderState {
+    let mut states: Vec<RenderState> = Vec::with_capacity(built.len());
+    for (canvas_id, window, surface, on_ready) in built {
+        let dev_id = surface.dev_id;
+        renderers[dev_id].get_or_insert_with(|| {
+            Renderer::new(
+                &context.devices[dev_id].device,
+                RendererOptions::default(),
+            )
+            .expect("create renderer")
+        });
+        CANVAS_WINDOWS.with(|c| {
+            c.borrow_mut().insert(canvas_id, window.clone());
+        });
+        states.push(RenderState {
             surface,
             valid_surface: true,
             window: window.clone(),
             canvas_id: Some(canvas_id),
-        }),
+            transform: Affine::IDENTITY,
+        });
+        let _ = on_ready.call1(&JsValue::NULL, &JsValue::from(canvas_id));
+        window.request_redraw();
+    }
+
+    let mut app = VelloRendererApp {
+        context,
+        renderers,
+        states,
         scene: Scene::new(),
-        transform: Affine::IDENTITY,
     };
-    let _ = on_ready.call1(&JsValue::NULL, &JsValue::from(canvas_id));
-    window.request_redraw();
     let _ = event_loop.run_app(&mut app);
 }
 
 /// 使用传入的 canvas 元素启动渲染。onReady(canvasId) 在画布就绪时调用，后续 addRect/addEllipse 等需传入该 canvasId。
+/// 支持多画布：同一同步批次内多次调用 runWithCanvas 会共用一个 event loop，每个 canvas 都会收到 on_ready。
 #[cfg(target_arch = "wasm32")]
 #[wasm_bindgen(js_name = runWithCanvas)]
 pub fn run_with_canvas(canvas: JsValue, on_ready: JsValue) {
@@ -3131,7 +3266,22 @@ pub fn run_with_canvas(canvas: JsValue, on_ready: JsValue) {
             return;
         }
     };
-    wasm_bindgen_futures::spawn_local(run_wasm_async(canvas, on_ready));
+    PENDING_CANVASES.with(|c| {
+        c.borrow_mut().push((canvas, on_ready));
+    });
+    if RUNNER_SCHEDULED.get() {
+        return;
+    }
+    RUNNER_SCHEDULED.set(true);
+    let closure = Closure::once(|| {
+        wasm_bindgen_futures::spawn_local(run_all_canvases_async());
+    });
+    if let Ok(qmt) = js_sys::eval("queueMicrotask") {
+        if let Some(f) = qmt.dyn_ref::<js_sys::Function>() {
+            let _ = f.call1(&JsValue::NULL, closure.as_ref());
+        }
+    }
+    closure.forget();
 }
 
 // ---------- JS API 导出：在画布上创建图形（世界坐标，随平移/缩放一起变换） ----------
@@ -3670,6 +3820,7 @@ pub fn js_add_text(canvas_id: u32, opts: JsValue) {
         font_variant: o.font_variant,
         letter_spacing: o.letter_spacing,
         line_height: o.line_height,
+        font_kerning: o.font_kerning,
         white_space: o.white_space,
         word_wrap: o.word_wrap,
         word_wrap_width: o.word_wrap_width,

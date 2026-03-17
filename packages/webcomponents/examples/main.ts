@@ -347,7 +347,8 @@ canvas.addEventListener(Event.READY, async (e) => {
       fontSize: 16,
       fontFamily: 'sans-serif',
       textBaseline: 'middle',
-      lineHeight: 32,
+      // lineHeight: 32,
+      letterSpacing: 4,
       zIndex: 6,
     },
     {
@@ -395,14 +396,17 @@ canvas.addEventListener(Event.READY, async (e) => {
       fontFamily: 'Gaegu',
       textBaseline: 'ideographic',
       zIndex: 6,
+      wordWrap: true,
+      wordWrapWidth: 50,
+      maxLines: 3,
     },
     {
       id: 'baseline-6',
       type: 'line',
-      // x1: 0,
-      // y1: 300,
-      // x2: 300,
-      // y2: 300,
+      x1: 0,
+      y1: 300,
+      x2: 300,
+      y2: 300,
       stroke: 'red',
       strokeWidth: 10,
       markerEnd: 'line',
@@ -414,12 +418,14 @@ canvas.addEventListener(Event.READY, async (e) => {
       id: 'text-6',
       type: 'text',
       fill: 'black',
-      content: 'Abcdefghijklmnop (bottom)\nAbcdefghijklmnop 你好世界',
+      content: 'AVA Ta We 你好',
       anchorX: 50,
       anchorY: 300,
       fontSize: 16,
-      fontFamily: 'sans serif',
+      fontFamily: 'Noto Sans',
       textBaseline: 'bottom',
+      textAlign: 'center',
+      fontKerning: false,
       zIndex: 6,
     },
     // child4, child5, child6, child7
@@ -430,13 +436,13 @@ canvas.addEventListener(Event.READY, async (e) => {
   // api.updateNodes([node1]);
 });
 
-const VelloRendererPlugin = RendererPlugin.configure({
-  setupDeviceSystemCtor: InitVello,
-  rendererSystemCtor: VelloPipeline,
-});
-DefaultPlugins.splice(DefaultPlugins.indexOf(DefaultRendererPlugin), 1, VelloRendererPlugin);
-registerFont('/NotoSansCJKsc-VF.ttf');
-registerFont('/Gaegu-Regular.ttf');
+// const VelloRendererPlugin = RendererPlugin.configure({
+//   setupDeviceSystemCtor: InitVello,
+//   rendererSystemCtor: VelloPipeline,
+// });
+// DefaultPlugins.splice(DefaultPlugins.indexOf(DefaultRendererPlugin), 1, VelloRendererPlugin);
+// registerFont('/Gaegu-Regular.ttf');
+// registerFont('/NotoSansCJKsc-VF.ttf');
 // registerFont('/NotoSansArabic.ttf');
 
 try {

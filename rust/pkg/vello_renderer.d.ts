@@ -96,6 +96,7 @@ export function requestRedraw(canvas_id: number): void;
 
 /**
  * 使用传入的 canvas 元素启动渲染。onReady(canvasId) 在画布就绪时调用，后续 addRect/addEllipse 等需传入该 canvasId。
+ * 支持多画布：同一同步批次内多次调用 runWithCanvas 会共用一个 event loop，每个 canvas 都会收到 on_ready。
  */
 export function runWithCanvas(canvas: any, on_ready: any): void;
 
