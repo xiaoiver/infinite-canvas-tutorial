@@ -300,9 +300,21 @@ export class TextEditor extends LitElement {
       const camera = this.api.getCamera();
       const { zoom } = camera.read(ComputedCamera);
 
+      let canvasX = this.node.x;
+      let canvasY = this.node.y;
+      const parent = this.api.getParent(this.node);
+      if (parent) {
+        const { x: parentX, y: parentY } = this.api.transformer2Canvas({
+          x: this.node.x,
+          y: this.node.y,
+        }, parent);
+        canvasX = parentX;
+        canvasY = parentY;
+      }
+
       const { x, y } = this.api.canvas2Viewport({
-        x: this.node.x as number,
-        y: this.node.y as number,
+        x: canvasX,
+        y: canvasY,
       });
 
       this.editable.style.left = `${x}px`;
