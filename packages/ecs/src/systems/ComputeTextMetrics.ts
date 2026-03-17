@@ -374,7 +374,7 @@ function wordWrapInternal(text: string, style: Partial<Text>, scale: number) {
     willReadFrequently: true,
   });
 
-  const { letterSpacing = 0, textOverflow, maxLines, bitmapFont } = style;
+  const { letterSpacing = 0, textOverflow = 'ellipsis', maxLines, bitmapFont } = style;
 
   // How to handle whitespaces
   // const collapseSpaces = this.collapseSpaces(whiteSpace);

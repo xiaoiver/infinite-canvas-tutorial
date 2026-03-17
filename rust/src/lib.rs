@@ -1571,7 +1571,7 @@ fn build_text_glyphs_with_emoji_positions(
     use std::borrow::Cow;
     use parley::fontique::Blob;
     use parley::layout::PositionedLayoutItem;
-    use parley::style::{FontFamily, FontFeature, FontSettings};
+    use parley::style::{FontFamily, FontFeature, FontSettings, OverflowWrap, WordBreakStrength};
     use parley::{Alignment, AlignmentOptions, LayoutContext, LineHeight, StyleProperty};
 
     let font_bytes_list = FONT_BYTES.with(|c| c.borrow().clone());
@@ -1677,6 +1677,11 @@ fn build_text_glyphs_with_emoji_positions(
                         Cow::Borrowed(&kern_off_arr),
                     )));
                 }
+            }
+            // 开启 wordWrap 时允许在任意字符处换行，否则无空格长串（如 "Abcdefghijklmnop"）会整行显示不换行
+            if word_wrap && word_wrap_width > 0.0 {
+                builder.push_default(StyleProperty::WordBreak(WordBreakStrength::BreakAll));
+                builder.push_default(StyleProperty::OverflowWrap(OverflowWrap::Anywhere));
             }
 
             let mut layout: parley::Layout<()> = builder.build(segment);
@@ -2609,9 +2614,9 @@ fn add_js_shape_to_scene(
             } else {
                 (font_size, letter_spacing)
             };
-            // 与字体一致：有 size_attenuation 时在排版空间内按缩放后的宽度换行，视觉上才与给定 wordWrapWidth 一致
+            // wordWrapWidth 为文档/局部空间固定值，不随相机缩放改变；仅 size_attenuation 时与字号一起换算
             let word_wrap_width_eff = if size_attenuation {
-                word_wrap_width / scale
+                (word_wrap_width / scale).max(1e-6)
             } else {
                 word_wrap_width
             };

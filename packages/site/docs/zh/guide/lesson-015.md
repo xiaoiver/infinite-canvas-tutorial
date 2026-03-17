@@ -813,7 +813,24 @@ this.glyphAtlasTexture = device.createTexture({
 
 ## 导出 SVG {#export-svg}
 
-多行文本导出 SVG
+多行文本导出 SVG 时可以使用 `<tspan>`，`dy` 设置为度量后的行高：
+
+```html
+<text
+    x="0"
+    y="0"
+    dominant-baseline="ideographic"
+    id="node-text-5"
+    font-family="Gaegu"
+    font-size="16"
+    fill="black"
+    transform="matrix(1,0,0,1,50,234)"
+>
+    <tspan x="0" dy="17.368">Abcdef</tspan>
+    <tspan x="0" dy="17.368">ghijklm</tspan>
+    <tspan x="0" dy="17.368">nop(ide</tspan>
+</text>
+```
 
 ## 扩展阅读 {#extended-reading}
 

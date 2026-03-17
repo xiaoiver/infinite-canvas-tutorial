@@ -798,6 +798,27 @@ The biggest difference between this approach and SDF is that we cannot only pres
 
 <Emoji />
 
+## Export SVG {#export-svg}
+
+When exporting multi-line text to SVG, you can use `<tspan>`, setting `dy` to the line height after measurement:
+
+```html
+<text
+    x="0"
+    y="0"
+    dominant-baseline="ideographic"
+    id="node-text-5"
+    font-family="Gaegu"
+    font-size="16"
+    fill="black"
+    transform="matrix(1,0,0,1,50,234)"
+>
+    <tspan x="0" dy="17.368">Abcdef</tspan>
+    <tspan x="0" dy="17.368">ghijklm</tspan>
+    <tspan x="0" dy="17.368">nop(ide</tspan>
+</text>
+```
+
 ## Extended reading {#extended-reading}
 
 -   [State of Text Rendering 2024]

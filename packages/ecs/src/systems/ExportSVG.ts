@@ -45,6 +45,7 @@ import { DOMAdapter } from '../environment';
 import {
   createSVGElement,
   serializeNodesToSVGElements,
+  toFixedAndRemoveTrailingZeros,
   toSVGDataURL,
 } from '../utils';
 import type { SerializedNode } from '../types/serialized-node';
@@ -166,14 +167,12 @@ export async function toSVGElement(
   const bounds = api.getBounds(nodes);
   const width = bounds.maxX - bounds.minX;
   const height = bounds.maxY - bounds.minY;
-  $namespace.setAttribute('width', `${width}`);
-  $namespace.setAttribute('height', `${height}`);
+  $namespace.setAttribute('width', `${toFixedAndRemoveTrailingZeros(width)}`);
+  $namespace.setAttribute('height', `${toFixedAndRemoveTrailingZeros(height)}`);
   // add padding with viewBox
   $namespace.setAttribute(
     'viewBox',
-    `${bounds.minX - padding} ${bounds.minY - padding} ${width + padding * 2} ${
-      height + padding * 2
-    }`,
+    `${toFixedAndRemoveTrailingZeros(bounds.minX - padding)} ${toFixedAndRemoveTrailingZeros(bounds.minY - padding)} ${toFixedAndRemoveTrailingZeros(width + padding * 2)} ${toFixedAndRemoveTrailingZeros(height + padding * 2)}`,
   );
 
   nodes = [...clipParentNodes, ...nodes];

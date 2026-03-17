@@ -115,7 +115,7 @@ canvas.addEventListener(Event.READY, async (e) => {
       // Pen.PENCIL,
       // Pen.BRUSH,
       Pen.ERASER,
-      // Pen.LASER_POINTER,
+      Pen.LASER_POINTER,
     ],
     penbarLasso: {
       ...api.getAppState().penbarLasso,
@@ -389,7 +389,7 @@ canvas.addEventListener(Event.READY, async (e) => {
       id: 'text-5',
       type: 'text',
       fill: 'black',
-      content: 'Abcdefghijklmnop (ideographic)',
+      content: 'Abcdefghijklmnop(ideographic)',
       anchorX: 50,
       anchorY: 250,
       fontSize: 16,
