@@ -427,7 +427,6 @@ canvas.addEventListener(Event.READY, async (e) => {
     {
       id: 'text-6',
       type: 'text',
-      parentId: 'container',
       fill: 'black',
       content: 'AVA Ta We 你好',
       anchorX: 50,
@@ -447,13 +446,13 @@ canvas.addEventListener(Event.READY, async (e) => {
   // api.updateNodes([node1]);
 });
 
-// const VelloRendererPlugin = RendererPlugin.configure({
-//   setupDeviceSystemCtor: InitVello,
-//   rendererSystemCtor: VelloPipeline,
-// });
-// DefaultPlugins.splice(DefaultPlugins.indexOf(DefaultRendererPlugin), 1, VelloRendererPlugin);
-// registerFont('/Gaegu-Regular.ttf');
-// registerFont('/NotoSansCJKsc-VF.ttf');
+const VelloRendererPlugin = RendererPlugin.configure({
+  setupDeviceSystemCtor: InitVello,
+  rendererSystemCtor: VelloPipeline,
+});
+DefaultPlugins.splice(DefaultPlugins.indexOf(DefaultRendererPlugin), 1, VelloRendererPlugin);
+registerFont('/Gaegu-Regular.ttf');
+registerFont('/NotoSansCJKsc-VF.ttf');
 // registerFont('/NotoSansArabic.ttf');
 
 try {

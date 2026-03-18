@@ -64,8 +64,12 @@ import {
   computeConicGradient,
   getRoughOptions,
   parseEffect,
+  safeRemoveComponent,
+  co,
 } from '@infinite-canvas-tutorial/ecs';
-import { addRect, addEllipse, addLine, addPath, addPolyline, addText, addImageRect, addGroup, addRoughRect,clearShapes, addRoughEllipse, addRoughLine } from '@infinite-canvas-tutorial/vello-renderer';
+import { addRect, addEllipse, addLine, addPath, addPolyline, addText, addImageRect, addGroup, addRoughRect, clearShapes, addRoughEllipse, addRoughLine, setExportView, restoreCanvasAfterExport } from '@infinite-canvas-tutorial/vello-renderer';
+import { setCanvasRenderOptions } from '@infinite-canvas-tutorial/vello-renderer';
+import type { SerializedNode } from '@infinite-canvas-tutorial/ecs';
 import { InitVello } from './InitVello';
 
 /** 将 CSS 颜色字符串转为 [r,g,b,a]，取值 0–1。 */
@@ -346,6 +350,40 @@ export class VelloPipeline extends System {
     );
   }
 
+  @co private *setScreenshotTrigger(
+    canvas: Entity,
+    element: HTMLCanvasElement,
+    type: string,
+    encoderOptions: number,
+    download: boolean,
+    exportAtCurrentFrame = false
+  ): Generator {
+    let dataURL = '';
+    if (exportAtCurrentFrame) {
+      dataURL = (element as HTMLCanvasElement).toDataURL(
+        type,
+        encoderOptions,
+      );
+
+      yield;
+    } else {
+      yield;
+      dataURL = (element as HTMLCanvasElement).toDataURL(
+        type,
+        encoderOptions,
+      );
+    } 
+
+    safeAddComponent(canvas, Screenshot);
+    const screenshot = canvas.write(Screenshot);
+
+    Object.assign(screenshot, { dataURL, canvas, download });
+    yield;
+
+    safeRemoveComponent(canvas, Screenshot);
+    safeRemoveComponent(canvas, RasterScreenshotRequest);
+  }
+
   private renderCamera(canvas: Entity, camera: Entity, sort = false) {
     const { api, element } = canvas.read(Canvas);
     const canvasId = this.initVello.canvasIds.get(element as HTMLCanvasElement);
@@ -353,10 +391,58 @@ export class VelloPipeline extends System {
       return;
     }
 
+    const request = canvas.has(RasterScreenshotRequest)
+      ? canvas.read(RasterScreenshotRequest)
+      : null;
+    const { type, encoderOptions, grid, download, nodes } = request ?? {
+      type: 'image/png',
+      encoderOptions: 1,
+      grid: false,
+      nodes: [],
+    };
+    const shouldRenderGrid = !request || grid;
+    const shouldRenderPartially = nodes.length > 0;
+
+    const PADDING = 0;
+    let exportLogicalWidth = 0;
+    let exportLogicalHeight = 0;
+    let bounds: { minX: number; minY: number; maxX: number; maxY: number } | null = null;
+    if (shouldRenderPartially) {
+      bounds = api.getBounds(nodes);
+      exportLogicalWidth = bounds.maxX - bounds.minX + 2 * PADDING;
+      exportLogicalHeight = bounds.maxY - bounds.minY + 2 * PADDING;
+    }
+
+    if (request) {
+      setCanvasRenderOptions(canvasId, { grid: shouldRenderGrid, ui: false });
+    }
+
     clearShapes(canvasId);
-    getDescendants(camera)
-      .filter((e) => !e.has(Culled))
-      .forEach((entity) => {
+    const entitiesToRender = shouldRenderPartially
+      ? (() => {
+          const clipParents = new Set<Entity>();
+          const entities: Entity[] = [];
+          nodes.forEach((node: SerializedNode) => {
+            const parentNode = node.parentId && api.getNodeById(node.parentId);
+            const parentEntity = parentNode && api.getEntity(parentNode);
+            const needRenderClipParent =
+              parentNode &&
+              !nodes.includes(parentNode) &&
+              parentNode.clipMode &&
+              parentEntity &&
+              !clipParents.has(parentEntity);
+            if (needRenderClipParent && parentEntity) {
+              clipParents.add(parentEntity);
+              entities.push(parentEntity);
+            }
+            const entity = api.getEntity(node);
+            if (entity) entities.push(entity);
+          });
+          return entities;
+        })()
+      : getDescendants(camera).filter((e) => !e.has(Culled));
+
+    entitiesToRender.forEach((entity) => {
         let zIndex = 0;
         if (entity.has(ZIndex)) {
           zIndex = entity.read(ZIndex).value;
@@ -382,6 +468,7 @@ export class VelloPipeline extends System {
               ? `${entity.read(Children).parent.__id}`
               : undefined,
           zIndex,
+          ui: entity.has(UI),
           localTransform,
           sizeAttenuation: entity.has(SizeAttenuation),
           strokeAttenuation: entity.has(StrokeAttenuation),
@@ -644,6 +731,26 @@ export class VelloPipeline extends System {
         }
       });
     this.pendingRenderables.delete(camera);
+
+    if (request) {
+      if (shouldRenderPartially && bounds && bounds.minX <= bounds.maxX && bounds.minY <= bounds.maxY && exportLogicalWidth > 0 && exportLogicalHeight > 0) {
+        const left = bounds.minX - PADDING;
+        const top = bounds.minY - PADDING;
+        // 这里会触发一次额外的 redraw（导出帧）。需要保证导出那一帧也禁用 grid/UI，
+        // 否则 Rust 侧 take_pending_canvas_render_options 可能已在上一帧被消费，导致导出帧仍画 grid。
+        setCanvasRenderOptions(canvasId, { grid: false, ui: false });
+        setExportView(
+          canvasId,
+          { left, top, width: exportLogicalWidth, height: exportLogicalHeight },
+          () => {
+            restoreCanvasAfterExport(canvasId);
+            this.setScreenshotTrigger(canvas, element as HTMLCanvasElement, type, encoderOptions, download, true);
+          },
+        );
+      } else {
+        this.setScreenshotTrigger(canvas, element as HTMLCanvasElement, type, encoderOptions, download);
+      }
+    }
   }
 
   execute() {

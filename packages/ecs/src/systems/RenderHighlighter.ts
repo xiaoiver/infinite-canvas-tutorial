@@ -31,6 +31,7 @@ import {
   Pen,
   Transformable,
   Visibility,
+  Line,
 } from '../components';
 import { Commands } from '../commands';
 import { getSceneRoot, updateGlobalTransform } from './Transform';
@@ -94,6 +95,7 @@ export class RenderHighlighter extends System {
             Ellipse,
             Path,
             Polyline,
+            Line,
             Text,
             Brush,
             ZIndex,
@@ -125,14 +127,14 @@ export class RenderHighlighter extends System {
       }
     });
 
-    this.highlighted.added.forEach((highlighted) => {
-      const camera = getSceneRoot(highlighted);
-      this.createOrUpdate(highlighted, camera);
-    });
-
     this.highlighted.removed.forEach((highlighted) => {
       const camera = getSceneRoot(highlighted);
       this.remove(highlighted, camera);
+    });
+
+    this.highlighted.added.forEach((highlighted) => {
+      const camera = getSceneRoot(highlighted);
+      this.createOrUpdate(highlighted, camera);
     });
 
     this.bounds.changed.forEach((entity) => {
@@ -227,6 +229,12 @@ export class RenderHighlighter extends System {
       const { points } = entity.read(Polyline);
       Object.assign(highlighter.write(Polyline), {
         points,
+      });
+    } else if (entity.has(Line)) {
+      safeAddComponent(highlighter, Polyline);
+      const { x1, y1, x2, y2 } = entity.read(Line);
+      Object.assign(highlighter.write(Polyline), {
+        points: [[x1, y1], [x2, y2]],
       });
     } else if (entity.has(Brush)) {
       safeAddComponent(highlighter, Polyline);

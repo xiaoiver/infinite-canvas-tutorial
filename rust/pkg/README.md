@@ -74,7 +74,6 @@ runWithCanvas(canvas, (canvasId) => {
 | `registerDefaultFont(bytes)`     | 注册默认字体。`bytes` 为 **Uint8Array** 或 **ArrayBuffer**（TTF/OTF 字节），供后续 `addText` 渲染使用。     |
 | `clearShapes(canvasId)`          | 清空指定画布上由 JS 添加的所有图形。                                                                        |
 | `setCameraTransform(canvasId, opts)` | 设置画布相机变换。`opts`: `{ x?, y?, scale?, rotation? }`，下一帧渲染前生效。                             |
-| `requestRedraw(canvasId)`       | 请求画布重绘。JS 在更新相机或图形后调用，以触发下一帧渲染。                                                |
 | `addGroup(canvasId, options)`    | 添加组/容器，用于组织子元素。`options`: `{ id, parentId?, zIndex?, localTransform? }`                      |
 | `addRoughRect(canvasId, options)` | 添加手绘风格矩形。`options`: 同 addRect，额外支持 `roughness`, `bowing`, `fillStyle` 等                   |
 | `addRoughEllipse(canvasId, options)` | 添加手绘风格椭圆。`options`: 同 addEllipse，额外支持 `roughness`, `bowing`, `fillStyle` 等               |

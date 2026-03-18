@@ -753,7 +753,7 @@ export class Select extends System {
       );
 
       // Select elements in the brush
-      this.applyBrushSelection(api, selection, true);
+      this.applyBrushSelection(api, selection, false);
     }
   }
 
@@ -968,8 +968,6 @@ export class Select extends System {
           selection.pointerMoveViewportX = x;
           selection.pointerMoveViewportY = y;
 
-          api.highlightNodes([]);
-
           // Highlight the topmost non-ui element
           toHighlight = this.getTopmostEntity(api, x, y, (e) => !e.has(UI));
           if (toHighlight) {
@@ -1036,9 +1034,6 @@ export class Select extends System {
                         if (input.shiftKey) {
                           selection.mode = SelectionMode.READY_TO_SELECT;
                         } else {
-                          // Disable highlight, only allow move.
-                          toHighlight = undefined;
-
                           if (
                             // selection.mode !== SelectionMode.BRUSH &&
                             selection.mode !== SelectionMode.MOVE
@@ -1067,6 +1062,8 @@ export class Select extends System {
             if (node) {
               api.highlightNodes([node]);
             }
+          } else {
+            api.highlightNodes([]);
           }
         }
       }

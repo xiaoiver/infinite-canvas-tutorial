@@ -474,7 +474,7 @@ export class ContextMenu extends LitElement {
       placement: 'right-start',
       offset: 0,
       notImmediatelyClosable: true,
-      type: 'auto',
+      type: 'modal',
     });
     trigger.insertAdjacentElement('afterend', overlay as unknown as Element);
 
@@ -754,36 +754,38 @@ export class ContextMenu extends LitElement {
 
   disconnectedCallback() {
     super.disconnectedCallback();
-    this.api?.element?.removeEventListener(
+
+    const $canvas = this.api.getCanvasElement();
+    $canvas.removeEventListener(
       'contextmenu',
       this.handleContextMenu,
     );
-    this.api?.element?.removeEventListener(
+    $canvas.removeEventListener(
       'pointermove',
       this.handlePointerMove,
     );
-    this.api?.element?.removeEventListener('drop', this.handleDrop);
-    document.removeEventListener('copy', this.handleCopy);
-    document.removeEventListener('cut', this.handleCut);
-    document.removeEventListener('paste', this.handlePaste);
-    // this.api
-    //   .getCanvasElement()
-    //   .removeEventListener('keydown', this.handleKeyDown);
+    $canvas.removeEventListener('drop', this.handleDrop);
+    $canvas.removeEventListener('paste', this.handlePaste);
+    $canvas.removeEventListener('copy', this.handleCopy);
+    $canvas.removeEventListener('cut', this.handleCut);
+    $canvas.removeEventListener('keydown', this.handleKeyDown);
   }
 
   render() {
     // FIXME: wait for the element to be ready.
     if (this.api?.element && !this.binded) {
-      this.api.element.addEventListener('contextmenu', this.handleContextMenu);
-      this.api.element.addEventListener('pointermove', this.handlePointerMove);
-      this.api.element.addEventListener('dragover', this.handleDragOver);
-      this.api.element.addEventListener('drop', this.handleDrop);
-      document.addEventListener('copy', this.handleCopy, { passive: false });
-      document.addEventListener('cut', this.handleCut, { passive: false });
-      document.addEventListener('paste', this.handlePaste, { passive: false });
-      this.api
-        .getCanvasElement()
-        .addEventListener('keydown', this.handleKeyDown);
+      const $canvas = this.api.getCanvasElement();
+
+      $canvas.addEventListener('contextmenu', this.handleContextMenu);
+      $canvas.addEventListener('pointermove', this.handlePointerMove);
+      $canvas.addEventListener('dragover', this.handleDragOver);
+      $canvas.addEventListener('drop', this.handleDrop);
+      $canvas.addEventListener('paste', this.handlePaste);
+      $canvas.addEventListener('copy', this.handleCopy, { passive: false });
+      $canvas.addEventListener('cut', this.handleCut, { passive: false });
+      $canvas.addEventListener('keydown', this.handleKeyDown);
+
+      this.binded = true;
     }
 
     return html``;
