@@ -292,7 +292,6 @@ export class Select extends System {
     camera.write(Transformable).status = TransformableStatus.MOVED;
 
     this.saveSelectedOBB(api, selection);
-    hideLabel(selection.label);
   }
 
   private handleSelectedRotating(
@@ -705,7 +704,6 @@ export class Select extends System {
     });
 
     this.saveSelectedOBB(api, selection);
-    hideLabel(selection.label);
   }
 
   private handleSelectedRotated(api: API, selection: SelectOBB) {
@@ -1139,6 +1137,8 @@ export class Select extends System {
       }
 
       if (input.pointerUpTrigger) {
+        hideLabel(selection.label);
+
         if (selection.mode === SelectionMode.BRUSH) {
           this.hideBrush(selection);
           this.applyBrushSelection(api, selection, false);
