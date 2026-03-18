@@ -90,9 +90,9 @@ export function computeTextBounds(opts: any): any;
 export function registerFont(js_value: any): void;
 
 /**
- * 请求画布重绘。JS 在更新相机或图形后调用，以触发下一帧渲染。
+ * 恢复画布尺寸与相机变换（在 setExportView 的 on_rendered 里 toDataURL 后调用）。
  */
-export function requestRedraw(canvas_id: number): void;
+export function restoreCanvasAfterExport(canvas_id: number): void;
 
 /**
  * 使用传入的 canvas 元素启动渲染。onReady(canvasId) 在画布就绪时调用，后续 addRect/addEllipse 等需传入该 canvasId。
@@ -107,6 +107,13 @@ export function runWithCanvas(canvas: any, on_ready: any): void;
  * - rotation: 旋转弧度
  */
 export function setCameraTransform(canvas_id: number, opts: any): void;
+
+export function setCanvasRenderOptions(canvas_id: number, opts: any): void;
+
+/**
+ * 设置下一帧“导出视口”：将画布临时改为 (width, height)，变换使世界坐标 (left, top) 到 (left+width, top+height) 1:1 映射到画布；渲染后调用 on_rendered(canvas_id)，再下一帧需调用 restoreCanvasAfterExport(canvas_id) 恢复。
+ */
+export function setExportView(canvas_id: number, opts: any, on_rendered: any): void;
 
 export type InitInput = RequestInfo | URL | Response | BufferSource | WebAssembly.Module;
 
@@ -125,9 +132,11 @@ export interface InitOutput {
     readonly addText: (a: number, b: any) => void;
     readonly computeTextBounds: (a: any) => any;
     readonly registerFont: (a: any) => void;
-    readonly requestRedraw: (a: number) => void;
+    readonly restoreCanvasAfterExport: (a: number) => void;
     readonly runWithCanvas: (a: any, b: any) => void;
     readonly setCameraTransform: (a: number, b: any) => void;
+    readonly setCanvasRenderOptions: (a: number, b: any) => void;
+    readonly setExportView: (a: number, b: any, c: any) => void;
     readonly clearEmojiCache: () => void;
     readonly clearGlyphCache: () => void;
     readonly clearShapes: (a: number) => void;

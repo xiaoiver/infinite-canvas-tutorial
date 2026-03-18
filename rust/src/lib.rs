@@ -172,7 +172,8 @@ pub enum JsShape {
     Rect {
         id: String,
         parent_id: Option<String>,
-        z_index: i32,
+        z_index: f32,
+        ui: bool,
         x: f64,
         y: f64,
         width: f64,
@@ -195,7 +196,8 @@ pub enum JsShape {
     Ellipse {
         id: String,
         parent_id: Option<String>,
-        z_index: i32,
+        z_index: f32,
+        ui: bool,
         cx: f64,
         cy: f64,
         rx: f64,
@@ -215,7 +217,8 @@ pub enum JsShape {
     Line {
         id: String,
         parent_id: Option<String>,
-        z_index: i32,
+        z_index: f32,
+        ui: bool,
         x1: f64,
         y1: f64,
         x2: f64,
@@ -237,7 +240,8 @@ pub enum JsShape {
     Text {
         id: String,
         parent_id: Option<String>,
-        z_index: i32,
+        z_index: f32,
+        ui: bool,
         anchor_x: f64,
         anchor_y: f64,
         content: String,
@@ -268,7 +272,8 @@ pub enum JsShape {
     ImageRect {
         id: String,
         parent_id: Option<String>,
-        z_index: i32,
+        z_index: f32,
+        ui: bool,
         x: f64,
         y: f64,
         width: f64,
@@ -291,7 +296,8 @@ pub enum JsShape {
     Path {
         id: String,
         parent_id: Option<String>,
-        z_index: i32,
+        z_index: f32,
+        ui: bool,
         d: String,
         fill: [f32; 4],
         fill_gradients: Option<Vec<FillGradientSpec>>,
@@ -313,7 +319,8 @@ pub enum JsShape {
     Polyline {
         id: String,
         parent_id: Option<String>,
-        z_index: i32,
+        z_index: f32,
+        ui: bool,
         points: Vec<[f64; 2]>,
         stroke: Option<StrokeParams>,
         opacity: f32,
@@ -330,14 +337,16 @@ pub enum JsShape {
     Group {
         id: String,
         parent_id: Option<String>,
-        z_index: i32,
+        z_index: f32,
+        ui: bool,
         local_transform: Option<Mat3Array>,
     },
     /// 手绘风格矩形。
     RoughRect {
         id: String,
         parent_id: Option<String>,
-        z_index: i32,
+        z_index: f32,
+        ui: bool,
         x: f64,
         y: f64,
         width: f64,
@@ -367,7 +376,8 @@ pub enum JsShape {
     RoughEllipse {
         id: String,
         parent_id: Option<String>,
-        z_index: i32,
+        z_index: f32,
+        ui: bool,
         cx: f64,
         cy: f64,
         rx: f64,
@@ -390,7 +400,8 @@ pub enum JsShape {
     RoughLine {
         id: String,
         parent_id: Option<String>,
-        z_index: i32,
+        z_index: f32,
+        ui: bool,
         x1: f64,
         y1: f64,
         x2: f64,
@@ -417,9 +428,25 @@ impl JsShape {
             JsShape::Rect { parent_id, .. } | JsShape::Ellipse { parent_id, .. } | JsShape::Line { parent_id, .. } | JsShape::Text { parent_id, .. } | JsShape::ImageRect { parent_id, .. } | JsShape::Path { parent_id, .. } | JsShape::Polyline { parent_id, .. } | JsShape::Group { parent_id, .. } | JsShape::RoughRect { parent_id, .. } | JsShape::RoughEllipse { parent_id, .. } | JsShape::RoughLine { parent_id, .. } => parent_id.as_deref(),
         }
     }
-    fn z_index(&self) -> i32 {
+    fn z_index(&self) -> f32 {
         match self {
             JsShape::Rect { z_index, .. } | JsShape::Ellipse { z_index, .. } | JsShape::Line { z_index, .. } | JsShape::Text { z_index, .. } | JsShape::ImageRect { z_index, .. } | JsShape::Path { z_index, .. } | JsShape::Polyline { z_index, .. } | JsShape::Group { z_index, .. } | JsShape::RoughRect { z_index, .. } | JsShape::RoughEllipse { z_index, .. } | JsShape::RoughLine { z_index, .. } => *z_index,
+        }
+    }
+
+    fn ui(&self) -> bool {
+        match self {
+            JsShape::Rect { ui, .. }
+            | JsShape::Ellipse { ui, .. }
+            | JsShape::Line { ui, .. }
+            | JsShape::Text { ui, .. }
+            | JsShape::ImageRect { ui, .. }
+            | JsShape::Path { ui, .. }
+            | JsShape::Polyline { ui, .. }
+            | JsShape::Group { ui, .. }
+            | JsShape::RoughRect { ui, .. }
+            | JsShape::RoughEllipse { ui, .. }
+            | JsShape::RoughLine { ui, .. } => *ui,
         }
     }
     /// 若存在则返回 local_transform（ECS Mat3 格式）。
@@ -454,8 +481,17 @@ thread_local! {
     static FONT_BYTES: RefCell<Vec<Vec<u8>>> = RefCell::new(Vec::new());
     /// 待应用的相机变换，由 setCameraTransform 设置，下一帧渲染前应用。
     static CAMERA_TRANSFORM_PENDING: RefCell<HashMap<u32, Affine>> = RefCell::new(HashMap::new());
-    /// canvas_id -> Window，用于 requestRedraw 由 JS 触发重绘。
+    /// 待应用的 canvas 级渲染开关，由 setCanvasRenderOptions 设置，仅影响下一帧。
+    static CANVAS_RENDER_OPTIONS_PENDING: RefCell<HashMap<u32, CanvasRenderOptions>> =
+        RefCell::new(HashMap::new());
+    /// canvas_id -> Window，用于由 JS 触发重绘。
     static CANVAS_WINDOWS: RefCell<HashMap<u32, Arc<Window>>> = RefCell::new(HashMap::new());
+    /// 导出局部图：下一帧用给定视口渲染，渲染后调用 on_rendered，再下一帧恢复画布尺寸与变换。
+    static EXPORT_VIEW_PENDING: RefCell<HashMap<u32, (ExportViewOpts, js_sys::Function)>> = RefCell::new(HashMap::new());
+    /// 导出帧已渲染，下一帧需要恢复画布。
+    static RESTORE_PENDING: RefCell<HashMap<u32, ()>> = RefCell::new(HashMap::new());
+    /// 恢复用：保存的 (width, height, transform)。
+    static RESTORE_STATE: RefCell<HashMap<u32, (u32, u32, Affine)>> = RefCell::new(HashMap::new());
     /// emoji 图片缓存：字符 -> (RGBA 数据, 宽度, 高度)
     static EMOJI_CACHE: RefCell<HashMap<String, (Vec<u8>, u32, u32)>> = RefCell::new(HashMap::new());
     /// 字形缓存：(文本, 字体大小, font_family, line_height_bits, letter_spacing_bits, font_kerning, word_wrap, word_wrap_width_bits, text_align) -> (FontData, glyphs, size, emoji_positions)，命中时直接使用，避免每帧重新排版（尤其对中文字体）
@@ -502,6 +538,30 @@ fn take_pending_camera_transform(_canvas_id: Option<u32>) -> Option<Affine> {
     None
 }
 
+/// Canvas 级别渲染开关：用于控制下一帧是否绘制网格/UI 图形。
+pub struct CanvasRenderOptions {
+    pub grid: bool,
+    pub ui: bool,
+}
+
+impl Default for CanvasRenderOptions {
+    fn default() -> Self {
+        Self { grid: true, ui: true }
+    }
+}
+
+#[cfg(target_arch = "wasm32")]
+fn take_pending_canvas_render_options(canvas_id: Option<u32>) -> CanvasRenderOptions {
+    canvas_id
+        .and_then(|cid| CANVAS_RENDER_OPTIONS_PENDING.with(|c| c.borrow_mut().remove(&cid)))
+        .unwrap_or_default()
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn take_pending_canvas_render_options(_canvas_id: Option<u32>) -> CanvasRenderOptions {
+    CanvasRenderOptions::default()
+}
+
 /// JS 传入的选项对象（仅 wasm，用于对象格式 API）
 #[cfg(target_arch = "wasm32")]
 #[derive(Debug, Deserialize)]
@@ -512,7 +572,9 @@ pub struct RectOptions {
     #[serde(default, deserialize_with = "deserialize_parent_id")]
     pub parent_id: Option<String>,
     #[serde(default)]
-    pub z_index: i32,
+    pub z_index: f32,
+    #[serde(default)]
+    pub ui: bool,
     pub x: f64,
     pub y: f64,
     pub width: f64,
@@ -553,7 +615,9 @@ pub struct EllipseOptions {
     #[serde(default, deserialize_with = "deserialize_parent_id")]
     pub parent_id: Option<String>,
     #[serde(default)]
-    pub z_index: i32,
+    pub z_index: f32,
+    #[serde(default)]
+    pub ui: bool,
     pub cx: f64,
     pub cy: f64,
     pub rx: f64,
@@ -591,7 +655,9 @@ pub struct LineOptions {
     #[serde(default, deserialize_with = "deserialize_parent_id")]
     pub parent_id: Option<String>,
     #[serde(default)]
-    pub z_index: i32,
+    pub z_index: f32,
+    #[serde(default)]
+    pub ui: bool,
     pub x1: f64,
     pub y1: f64,
     pub x2: f64,
@@ -693,7 +759,9 @@ pub struct ImageRectOptions {
     #[serde(default, deserialize_with = "deserialize_parent_id")]
     pub parent_id: Option<String>,
     #[serde(default)]
-    pub z_index: i32,
+    pub z_index: f32,
+    #[serde(default)]
+    pub ui: bool,
     pub x: f64,
     pub y: f64,
     pub width: f64,
@@ -729,7 +797,9 @@ pub struct PathOptions {
     #[serde(default, deserialize_with = "deserialize_parent_id")]
     pub parent_id: Option<String>,
     #[serde(default)]
-    pub z_index: i32,
+    pub z_index: f32,
+    #[serde(default)]
+    pub ui: bool,
     pub d: String,
     #[serde(default = "default_rgba_fill")]
     pub fill: [f32; 4],
@@ -778,7 +848,9 @@ pub struct PolylineOptions {
     #[serde(default, deserialize_with = "deserialize_parent_id")]
     pub parent_id: Option<String>,
     #[serde(default)]
-    pub z_index: i32,
+    pub z_index: f32,
+    #[serde(default)]
+    pub ui: bool,
     pub points: Vec<[f64; 2]>,
     #[serde(default)]
     pub stroke: Option<StrokeOptions>,
@@ -812,7 +884,9 @@ pub struct GroupOptions {
     #[serde(default, deserialize_with = "deserialize_parent_id")]
     pub parent_id: Option<String>,
     #[serde(default)]
-    pub z_index: i32,
+    pub z_index: f32,
+    #[serde(default)]
+    pub ui: bool,
     #[serde(default, deserialize_with = "deserialize_mat3_opt")]
     pub local_transform: Option<Mat3Array>,
 }
@@ -865,7 +939,9 @@ pub struct RoughRectOptions {
     #[serde(default, deserialize_with = "deserialize_parent_id")]
     pub parent_id: Option<String>,
     #[serde(default)]
-    pub z_index: i32,
+    pub z_index: f32,
+    #[serde(default)]
+    pub ui: bool,
     pub x: f64,
     pub y: f64,
     pub width: f64,
@@ -915,7 +991,9 @@ pub struct RoughEllipseOptions {
     #[serde(default, deserialize_with = "deserialize_parent_id")]
     pub parent_id: Option<String>,
     #[serde(default)]
-    pub z_index: i32,
+    pub z_index: f32,
+    #[serde(default)]
+    pub ui: bool,
     pub cx: f64,
     pub cy: f64,
     pub rx: f64,
@@ -958,7 +1036,9 @@ pub struct RoughLineOptions {
     #[serde(default, deserialize_with = "deserialize_parent_id")]
     pub parent_id: Option<String>,
     #[serde(default)]
-    pub z_index: i32,
+    pub z_index: f32,
+    #[serde(default)]
+    pub ui: bool,
     pub x1: f64,
     pub y1: f64,
     pub x2: f64,
@@ -1014,7 +1094,9 @@ pub struct TextOptions {
     #[serde(default, deserialize_with = "deserialize_parent_id")]
     pub parent_id: Option<String>,
     #[serde(default)]
-    pub z_index: i32,
+    pub z_index: f32,
+    #[serde(default)]
+    pub ui: bool,
     #[serde(default)]
     pub anchor_x: f64,
     #[serde(default)]
@@ -1572,7 +1654,7 @@ fn build_text_glyphs_with_emoji_positions(
     use parley::fontique::Blob;
     use parley::layout::PositionedLayoutItem;
     use parley::style::{FontFamily, FontFeature, FontSettings, OverflowWrap, WordBreakStrength};
-    use parley::{Alignment, AlignmentOptions, LayoutContext, LineHeight, StyleProperty};
+    use parley::{AlignmentOptions, LayoutContext, LineHeight, StyleProperty};
 
     let font_bytes_list = FONT_BYTES.with(|c| c.borrow().clone());
     if font_bytes_list.is_empty() {
@@ -1998,12 +2080,101 @@ impl ApplicationHandler for VelloRendererApp {
                     return;
                 }
                 let canvas_id = state.canvas_id;
+                let surface = &mut state.surface;
+                let mut width = surface.config.width;
+                let mut height = surface.config.height;
+
+                #[cfg(target_arch = "wasm32")]
+                if let Some(cid) = canvas_id {
+                    let need_restore = RESTORE_PENDING.with(|c| c.borrow_mut().remove(&cid).is_some());
+                    if need_restore {
+                        if let Some((w, h, affine)) = RESTORE_STATE.with(|c| c.borrow_mut().remove(&cid)) {
+                            state.transform = affine;
+                            width = w;
+                            height = h;
+                            use winit::platform::web::WindowExtWebSys;
+                            if let Some(canvas) = state.window.canvas() {
+                                canvas.set_width(w);
+                                canvas.set_height(h);
+                            }
+                            // RenderContext::resize_surface 在当前版本返回 ()。
+                            self.context.resize_surface(surface, w, h);
+                        }
+                    } else if let Some((opts, on_rendered)) = EXPORT_VIEW_PENDING.with(|c| c.borrow_mut().remove(&cid)) {
+                        let export_w = opts.width.max(1.0).min(8192.0) as u32;
+                        let export_h = opts.height.max(1.0).min(8192.0) as u32;
+                        RESTORE_STATE.with(|c| {
+                            c.borrow_mut().insert(cid, (width, height, state.transform));
+                        });
+                        state.transform = Affine::translate(Vec2::new(-opts.left, -opts.top));
+                        use winit::platform::web::WindowExtWebSys;
+                        if let Some(canvas) = state.window.canvas() {
+                            canvas.set_width(export_w);
+                            canvas.set_height(export_h);
+                        }
+                        // RenderContext::resize_surface 在当前版本返回 ()。
+                        self.context
+                            .resize_surface(surface, export_w, export_h);
+                        let device_handle = &self.context.devices[surface.dev_id];
+                        // 导出局部图需要 1:1（1 像素 = 1 逻辑单位），不乘 DPR。
+                        // 同时 setExportView 设置的 left/top/width/height 也是逻辑坐标。
+                        let effective_transform = state.transform;
+                        let render_opts = take_pending_canvas_render_options(canvas_id);
+                        self.scene.reset();
+                        add_shapes_to_scene(
+                            &mut self.scene,
+                            effective_transform,
+                            export_w,
+                            export_h,
+                            canvas_id,
+                            render_opts,
+                        );
+                        self.renderers[surface.dev_id]
+                            .as_mut()
+                            .unwrap()
+                            .render_to_texture(
+                                &device_handle.device,
+                                &device_handle.queue,
+                                &self.scene,
+                                &surface.target_view,
+                                &vello::RenderParams {
+                                    base_color: palette::css::WHITE,
+                                    width: export_w,
+                                    height: export_h,
+                                    antialiasing_method: AaConfig::Msaa16,
+                                },
+                            )
+                            .expect("render to texture");
+                        let surface_texture = surface
+                            .surface
+                            .get_current_texture()
+                            .expect("get current texture");
+                        let mut encoder = device_handle
+                            .device
+                            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                                label: Some("Export Blit"),
+                            });
+                        surface.blitter.copy(
+                            &device_handle.device,
+                            &mut encoder,
+                            &surface.target_view,
+                            &surface_texture
+                                .texture
+                                .create_view(&wgpu::TextureViewDescriptor::default()),
+                        );
+                        device_handle.queue.submit([encoder.finish()]);
+                        surface_texture.present();
+                        device_handle.device.poll(wgpu::PollType::Poll).unwrap();
+                        let _ = on_rendered.call1(&JsValue::NULL, &JsValue::from(cid));
+                        RESTORE_PENDING.with(|c| c.borrow_mut().insert(cid, ()));
+                        state.window.request_redraw();
+                        return;
+                    }
+                }
+
                 if let Some(affine) = take_pending_camera_transform(canvas_id) {
                     state.transform = affine;
                 }
-                let surface = &mut state.surface;
-                let width = surface.config.width;
-                let height = surface.config.height;
                 if width == 0 || height == 0 {
                     state.window.request_redraw();
                     return;
@@ -2016,7 +2187,15 @@ impl ApplicationHandler for VelloRendererApp {
                 // 平移已经在 JS 侧乘以 DPR，但缩放需要在这里调整
                 let dpr = device_pixel_ratio();
                 let effective_transform = state.transform * Affine::scale(dpr);
-                add_shapes_to_scene(&mut self.scene, effective_transform, width, height, canvas_id);
+                let render_opts = take_pending_canvas_render_options(canvas_id);
+                add_shapes_to_scene(
+                    &mut self.scene,
+                    effective_transform,
+                    width,
+                    height,
+                    canvas_id,
+                    render_opts,
+                );
 
                 self.renderers[surface.dev_id]
                     .as_mut()
@@ -2169,7 +2348,7 @@ fn sort_shapes_by_parent_z_index(shapes: &[JsShape]) -> Vec<JsShape> {
         by_parent.entry(pid).or_default().push(s.clone());
     }
     for v in by_parent.values_mut() {
-        v.sort_by_key(|s| s.z_index());
+        v.sort_by(|a, b| a.z_index().partial_cmp(&b.z_index()).unwrap_or(std::cmp::Ordering::Equal));
     }
     let mut result = Vec::with_capacity(shapes.len());
     fn visit(
@@ -2196,11 +2375,67 @@ fn add_shapes_to_scene(
     viewport_width: u32,
     viewport_height: u32,
     canvas_id: Option<u32>,
+    render_opts: CanvasRenderOptions,
 ) {
-    add_grid_to_scene(scene, transform, viewport_width, viewport_height);
+    if render_opts.grid {
+        add_grid_to_scene(scene, transform, viewport_width, viewport_height);
+    }
     #[cfg(target_arch = "wasm32")]
     if let Some(cid) = canvas_id {
-        let shapes = sort_shapes_by_parent_z_index(&get_user_shapes(cid));
+        let shapes_all = get_user_shapes(cid);
+        let mut shapes = sort_shapes_by_parent_z_index(&shapes_all);
+
+        if !render_opts.ui {
+            use std::collections::{HashMap, HashSet};
+
+            // ui 会向下继承：只要自身或祖先带 ui=true，就视为 ui 节点。
+            let mut meta: HashMap<String, (Option<String>, bool)> = HashMap::new();
+            for s in &shapes_all {
+                meta.insert(
+                    s.id().to_string(),
+                    (s.parent_id().map(|p| p.to_string()), s.ui()),
+                );
+            }
+
+            let mut memo: HashMap<String, bool> = HashMap::new();
+            let mut visiting: HashSet<String> = HashSet::new();
+
+            fn effective_ui(
+                id: &str,
+                meta: &HashMap<String, (Option<String>, bool)>,
+                memo: &mut HashMap<String, bool>,
+                visiting: &mut HashSet<String>,
+            ) -> bool {
+                if let Some(v) = memo.get(id) {
+                    return *v;
+                }
+                if visiting.contains(id) {
+                    // 理论上不会有环，循环保护避免死递归。
+                    return false;
+                }
+                visiting.insert(id.to_string());
+
+                let Some((parent_id, self_ui)) = meta.get(id) else {
+                    memo.insert(id.to_string(), false);
+                    visiting.remove(id);
+                    return false;
+                };
+                let parent_ui = parent_id
+                    .as_deref()
+                    .map(|pid| effective_ui(pid, meta, memo, visiting))
+                    .unwrap_or(false);
+                let result = *self_ui || parent_ui;
+                memo.insert(id.to_string(), result);
+                visiting.remove(id);
+                result
+            }
+
+            shapes = shapes
+                .into_iter()
+                .filter(|s| !effective_ui(s.id(), &meta, &mut memo, &mut visiting))
+                .collect();
+        }
+
         let world_transforms = compute_world_transforms(&shapes);
         for shape in shapes {
             add_js_shape_to_scene(scene, transform, shape, &world_transforms);
@@ -3160,6 +3395,8 @@ async fn run_all_canvases_async() {
         let (width, height) = {
             use winit::platform::web::WindowExtWebSys;
             if let Some(ref c) = window.canvas() {
+                // Enable focus for clipboard events (paste, copy, cut)
+                c.set_attribute("tabindex", "0").ok();
                 let w = c.width().max(MIN_SURFACE_WIDTH);
                 let h = c.height().max(MIN_SURFACE_HEIGHT);
                 if w == 0 || h == 0 {
@@ -3227,6 +3464,12 @@ async fn run_all_canvases_async() {
         CANVAS_WINDOWS.with(|c| {
             c.borrow_mut().insert(canvas_id, window.clone());
         });
+        // Disable prevent_default to allow clipboard events (copy, paste, cut) to work
+        #[cfg(target_arch = "wasm32")]
+        {
+            use winit::platform::web::WindowExtWebSys;
+            window.set_prevent_default(false);
+        }
         states.push(RenderState {
             surface,
             valid_surface: true,
@@ -3330,6 +3573,7 @@ pub fn js_add_rect(canvas_id: u32, opts: JsValue) {
         id: o.id,
         parent_id: o.parent_id,
         z_index: o.z_index,
+        ui: o.ui,
         x: o.x,
         y: o.y,
         width: o.width,
@@ -3388,6 +3632,7 @@ pub fn js_add_ellipse(canvas_id: u32, opts: JsValue) {
         id: o.id,
         parent_id: o.parent_id,
         z_index: o.z_index,
+        ui: o.ui,
         cx: o.cx,
         cy: o.cy,
         rx: o.rx,
@@ -3448,6 +3693,7 @@ pub fn js_add_image_rect(canvas_id: u32, opts: JsValue) {
         id: o.id,
         parent_id: o.parent_id,
         z_index: o.z_index,
+        ui: o.ui,
         x: o.x,
         y: o.y,
         width: o.width,
@@ -3506,6 +3752,7 @@ pub fn js_add_path(canvas_id: u32, opts: JsValue) {
         id: o.id,
         parent_id: o.parent_id,
         z_index: o.z_index,
+        ui: o.ui,
         d: o.d,
         fill: o.fill,
         fill_gradients,
@@ -3560,6 +3807,7 @@ pub fn js_add_polyline(canvas_id: u32, opts: JsValue) {
         id: o.id,
         parent_id: o.parent_id,
         z_index: o.z_index,
+        ui: o.ui,
         points: o.points,
         stroke: Some(stroke),
         opacity: o.opacity,
@@ -3589,6 +3837,7 @@ pub fn js_add_group(canvas_id: u32, opts: JsValue) {
         id: o.id,
         parent_id: o.parent_id,
         z_index: o.z_index,
+        ui: o.ui,
         local_transform: o.local_transform,
     });
 }
@@ -3625,6 +3874,7 @@ pub fn js_add_rough_rect(canvas_id: u32, opts: JsValue) {
         id: o.id,
         parent_id: o.parent_id,
         z_index: o.z_index,
+        ui: o.ui,
         x: o.x,
         y: o.y,
         width: o.width,
@@ -3677,6 +3927,7 @@ pub fn js_add_rough_ellipse(canvas_id: u32, opts: JsValue) {
         id: o.id,
         parent_id: o.parent_id,
         z_index: o.z_index,
+        ui: o.ui,
         cx: o.cx,
         cy: o.cy,
         rx: o.rx,
@@ -3733,6 +3984,7 @@ pub fn js_add_rough_line(canvas_id: u32, opts: JsValue) {
         id: o.id,
         parent_id: o.parent_id,
         z_index: o.z_index,
+        ui: o.ui,
         x1: o.x1,
         y1: o.y1,
         x2: o.x2,
@@ -3783,6 +4035,7 @@ pub fn js_add_line(canvas_id: u32, opts: JsValue) {
         id: o.id,
         parent_id: o.parent_id,
         z_index: o.z_index,
+        ui: o.ui,
         x1: o.x1,
         y1: o.y1,
         x2: o.x2,
@@ -3815,6 +4068,7 @@ pub fn js_add_text(canvas_id: u32, opts: JsValue) {
         id: o.id,
         parent_id: o.parent_id,
         z_index: o.z_index,
+        ui: o.ui,
         anchor_x: o.anchor_x,
         anchor_y: o.anchor_y,
         content: o.content,
@@ -3889,6 +4143,17 @@ pub fn js_clear_shapes(canvas_id: u32) {
     clear_shapes_for_canvas(canvas_id);
 }
 
+/// 导出视口选项：逻辑坐标下 left, top, width, height；下一帧将画布临时改为 (width, height) 并设置变换使该区域 1:1 填满。
+#[cfg(target_arch = "wasm32")]
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ExportViewOpts {
+    pub left: f64,
+    pub top: f64,
+    pub width: f64,
+    pub height: f64,
+}
+
 /// 相机变换选项，用于 setCameraTransform。
 #[cfg(target_arch = "wasm32")]
 #[derive(Debug, Deserialize)]
@@ -3938,10 +4203,87 @@ pub fn js_set_camera_transform(canvas_id: u32, opts: JsValue) {
     }
 }
 
-/// 请求画布重绘。JS 在更新相机或图形后调用，以触发下一帧渲染。
+/// 画布级渲染开关。用于控制下一帧是否绘制 `grid` 以及 ui 节点。
 #[cfg(target_arch = "wasm32")]
-#[wasm_bindgen(js_name = requestRedraw)]
-pub fn js_request_redraw(canvas_id: u32) {
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CanvasRenderOptionsInput {
+    #[serde(default = "default_canvas_grid")]
+    pub grid: bool,
+    #[serde(default = "default_canvas_ui")]
+    pub ui: bool,
+}
+
+#[cfg(target_arch = "wasm32")]
+fn default_canvas_grid() -> bool {
+    true
+}
+
+#[cfg(target_arch = "wasm32")]
+fn default_canvas_ui() -> bool {
+    true
+}
+
+#[cfg(target_arch = "wasm32")]
+#[wasm_bindgen(js_name = setCanvasRenderOptions)]
+pub fn js_set_canvas_render_options(canvas_id: u32, opts: JsValue) {
+    let o: CanvasRenderOptionsInput = match serde_wasm_bindgen::from_value(opts) {
+        Ok(v) => v,
+        Err(e) => {
+            web_sys::console::error_1(
+                &format!("setCanvasRenderOptions: invalid options - {}", e).into(),
+            );
+            return;
+        }
+    };
+
+    let render_opts = CanvasRenderOptions { grid: o.grid, ui: o.ui };
+    CANVAS_RENDER_OPTIONS_PENDING.with(|c| {
+        c.borrow_mut().insert(canvas_id, render_opts);
+    });
+
+    if let Some(w) = CANVAS_WINDOWS.with(|c| c.borrow().get(&canvas_id).cloned()) {
+        w.request_redraw();
+    }
+}
+
+/// 设置下一帧“导出视口”：将画布临时改为 (width, height)，变换使世界坐标 (left, top) 到 (left+width, top+height) 1:1 映射到画布；渲染后调用 on_rendered(canvas_id)，再下一帧需调用 restoreCanvasAfterExport(canvas_id) 恢复。
+#[cfg(target_arch = "wasm32")]
+#[wasm_bindgen(js_name = setExportView)]
+pub fn js_set_export_view(canvas_id: u32, opts: JsValue, on_rendered: JsValue) {
+    let o: ExportViewOpts = match serde_wasm_bindgen::from_value(opts) {
+        Ok(v) => v,
+        Err(e) => {
+            web_sys::console::error_1(
+                &format!("setExportView: invalid options - {}", e).into(),
+            );
+            return;
+        }
+    };
+    let on_rendered: js_sys::Function = match on_rendered.dyn_into() {
+        Ok(f) => f,
+        Err(_) => {
+            web_sys::console::error_1(
+                &"[vello] setExportView: third argument must be function (canvasId) => void".into(),
+            );
+            return;
+        }
+    };
+    EXPORT_VIEW_PENDING.with(|c| {
+        c.borrow_mut().insert(canvas_id, (o, on_rendered));
+    });
+    if let Some(w) = CANVAS_WINDOWS.with(|c| c.borrow().get(&canvas_id).cloned()) {
+        w.request_redraw();
+    }
+}
+
+/// 恢复画布尺寸与相机变换（在 setExportView 的 on_rendered 里 toDataURL 后调用）。
+#[cfg(target_arch = "wasm32")]
+#[wasm_bindgen(js_name = restoreCanvasAfterExport)]
+pub fn js_restore_canvas_after_export(canvas_id: u32) {
+    RESTORE_PENDING.with(|c| {
+        c.borrow_mut().insert(canvas_id, ());
+    });
     if let Some(w) = CANVAS_WINDOWS.with(|c| c.borrow().get(&canvas_id).cloned()) {
         w.request_redraw();
     }

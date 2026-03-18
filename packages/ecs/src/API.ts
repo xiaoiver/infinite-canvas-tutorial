@@ -65,7 +65,7 @@ import {
   VectorScreenshotRequest,
   ZIndex,
 } from './components';
-import { History, mutateElement, safeAddComponent } from './history';
+import { History, mutateElement, safeAddComponent, safeRemoveComponent } from './history';
 import {
   drawDotsGrid,
   drawLinesGrid,
@@ -872,9 +872,7 @@ export class API {
     if (!preserveSelection) {
       this.getAppState().layersHighlighted.forEach((id) => {
         const entity = this.#idEntityMap.get(id)?.id();
-        if (entity && entity.has(Highlighted)) {
-          entity.remove(Highlighted);
-        }
+        safeRemoveComponent(entity, Highlighted);
       });
     }
 
@@ -897,18 +895,14 @@ export class API {
 
     layersHighlighted.forEach((id) => {
       const entity = this.#idEntityMap.get(id)?.id();
-      if (entity && !entity.has(Highlighted)) {
-        entity.add(Highlighted);
-      }
+      safeAddComponent(entity, Highlighted);
     });
   }
 
   unhighlightNodes(nodes: SerializedNode[]) {
     nodes.forEach((node) => {
       const entity = this.#idEntityMap.get(node.id)?.id();
-      if (entity && entity.has(Highlighted)) {
-        entity.remove(Highlighted);
-      }
+      safeRemoveComponent(entity, Highlighted);
     });
 
     const prevAppState = this.getAppState();
