@@ -460,6 +460,18 @@ export class ContextMenu extends LitElement {
 
     this.lastContextMenuPosition = { x: event.clientX, y: event.clientY };
 
+    // Select the node first.
+    const { x: vx, y: vy } = this.api.client2Viewport(this.lastContextMenuPosition);
+    const { x: cx, y: cy } = this.api.viewport2Canvas({ x: vx, y: vy });
+    const nodes = this.api.elementsFromBBox(cx, cy, cx, cy, false).filter((node) => !node.has(UI));
+    if (nodes.length > 0) {
+      const node = this.api.getNodeByEntity(nodes[0]);
+      if (node) {
+        this.api.selectNodes([node]);
+        this.api.highlightNodes([node]);
+      }
+    }
+
     const trigger = event.target as LitElement;
     const virtualTrigger = new VirtualTrigger(
       this.lastContextMenuPosition.x,
