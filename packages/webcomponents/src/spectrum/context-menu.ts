@@ -466,8 +466,10 @@ export class ContextMenu extends LitElement {
     const nodes = this.api.elementsFromBBox(cx, cy, cx, cy, false).filter((node) => !node.has(UI));
     if (nodes.length > 0) {
       const node = this.api.getNodeByEntity(nodes[0]);
-      this.api.selectNodes([node]);
-      this.api.highlightNodes([node]);
+      if (node) {
+        this.api.selectNodes([node]);
+        this.api.highlightNodes([node]);
+      }
     }
 
     const trigger = event.target as LitElement;
