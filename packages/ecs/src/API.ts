@@ -16,18 +16,22 @@ import {
   createSVGElement,
   deserializeBrushPoints,
   deserializePoints,
+  distanceBetweenPoints,
   EASING_FUNCTION,
   getScale,
+  inLine,
+  inPolyline,
   isDataUrl,
   isEntity,
+  isPointInEllipse,
   isUrl,
-  loadImage,
   parsePath,
   serializeBrushPoints,
   serializedNodesToEntities,
   serializeNodesToSVGElements,
   serializePoints,
   shiftPath,
+  strokeOffset,
   transformPath,
 } from './utils';
 import type { BrushSerializedNode, LineSerializedNode, PathSerializedNode, PolylineSerializedNode, SerializedNode } from './types/serialized-node';
@@ -38,9 +42,16 @@ import {
   Canvas,
   CheckboardStyle,
   Children,
+  Circle,
   ComputedBounds,
   ComputedCamera,
+  ComputedPoints,
   Cursor,
+  Ellipse,
+  FillGradient,
+  FillImage,
+  FillPattern,
+  FillSolid,
   Font,
   GlobalTransform,
   Grid,
@@ -56,7 +67,9 @@ import {
   Polyline,
   RasterScreenshotRequest,
   RBush,
+  Rect,
   Selected,
+  Stroke,
   Theme,
   ToBeDeleted,
   Transform,
@@ -504,6 +517,129 @@ export class API {
       .filter((entity) => entity.__valid && (!shouldFilterLocked || !entity.has(Locked)))
       .sort(sortByFractionalIndex)
       .reverse();
+  }
+
+  elementsFromPoint(point: IPointData, shouldFilterLocked = true) {
+    const entities = this.elementsFromBBox(point.x, point.y, point.x, point.y, shouldFilterLocked);
+    
+    const results: Entity[] = [];
+    entities.forEach((entity) => {
+      const matrix = Mat3.toGLMat3(entity.read(GlobalTransform).matrix);
+      const invMatrix = mat3.invert(mat3.create(), matrix);
+      const [x, y] = vec2.transformMat3(vec2.create(), [point.x, point.y], invMatrix);
+
+      let isIntersected = false;
+      const hasFill = entity.has(FillSolid) || entity.has(FillGradient) || entity.has(FillImage) || entity.has(FillPattern);
+      const fill = hasFill ? 'black' : undefined;
+      const hasStroke = entity.has(Stroke);
+      const stroke = hasStroke ? entity.read(Stroke) : undefined;
+      const halfStrokeWidth = hasStroke ? stroke.width / 2 : 0;
+      const offset = strokeOffset(stroke);
+
+      if (entity.has(Circle)) {
+        const { cx, cy, r } = entity.read(Circle);
+        const distance = distanceBetweenPoints(x, y, cx, cy)
+        if (hasFill && hasStroke) {
+          isIntersected = distance <= r + offset;
+        }
+        if (hasFill) {
+          isIntersected = distance <= r;
+        }
+        if (hasStroke) {
+          isIntersected = (
+            distance >= r + offset - halfStrokeWidth && distance <= r + offset + halfStrokeWidth
+          );
+        }
+      } else if (entity.has(Ellipse)) {
+        const { cx, cy, rx, ry } = entity.read(Ellipse);
+        if (hasFill && hasStroke) {
+          isIntersected =  isPointInEllipse(x, y, cx, cy, rx + offset, ry + offset);
+        }
+        if (hasFill) {
+          isIntersected =  isPointInEllipse(x, y, cx, cy, rx, ry);
+        }
+        if (hasStroke) {
+          isIntersected = (
+            !isPointInEllipse(
+              x,
+              y,
+              cx,
+              cy,
+              rx + offset - halfStrokeWidth * 2,
+              ry + offset - halfStrokeWidth * 2,
+            ) && isPointInEllipse(x, y, cx, cy, rx + offset, ry + offset)
+          );
+        }
+      } else if (entity.has(Line)) {
+        if (Line.hitTestProvider && hasStroke) {
+          const line = entity.read(Line);
+          isIntersected = Line.hitTestProvider({
+            x1: line.x1,
+            y1: line.y1,
+            x2: line.x2,
+            y2: line.y2,
+            x,
+            y,
+            stroke,
+          });
+        } else if (hasStroke) {
+          const { x1, y1, x2, y2 } = entity.read(Line);
+          isIntersected = inLine(x1, y1, x2, y2, stroke.width, x, y);
+        }
+      } else if (entity.has(Polyline)) {
+        if (Polyline.hitTestProvider && hasStroke) {
+          const { points } = entity.read(Polyline);
+          isIntersected = Polyline.hitTestProvider({
+            points,
+            x,
+            y,
+            stroke,
+          });
+        } else if (hasStroke) {
+          const { shiftedPoints } = entity.read(ComputedPoints);
+          isIntersected = inPolyline(shiftedPoints, stroke.width, x, y);
+        }
+      } else if (entity.has(Path)) {
+        const { d, fillRule } = entity.read(Path);
+        if (Path.hitTestProvider) {
+          isIntersected = Path.hitTestProvider({
+            d,
+            x,
+            y,
+            fill: hasFill,
+            fillRule: fillRule ?? 'nonzero',
+            stroke: hasStroke ? stroke : undefined,
+          });
+        } else {
+          const ctx = DOMAdapter.get().createCanvas(100, 100).getContext('2d');
+          const path = new Path2D(d);
+          if (hasStroke) {
+            ctx.strokeStyle = stroke.color;
+            ctx.lineWidth = stroke.width;
+            ctx.lineCap = stroke.linecap;
+            ctx.lineJoin = stroke.linejoin;
+            ctx.miterLimit = stroke.miterlimit;
+            ctx.stroke(path);
+          }
+          if (hasFill) {
+            ctx.fillStyle = fill;
+            ctx.fill(path, fillRule);
+          }
+          if (hasStroke && !hasFill) {
+            isIntersected = ctx.isPointInStroke(path, x, y);
+          } else if (hasFill) {
+            isIntersected = ctx.isPointInPath(path, x, y);
+          }
+        }
+      } else {
+        isIntersected = true;
+      }
+
+      if (isIntersected) {
+        results.push(entity);
+      }
+    });
+    return results;
   }
 
   getViewportBounds() {

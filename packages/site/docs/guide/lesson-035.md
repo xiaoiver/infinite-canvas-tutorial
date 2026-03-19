@@ -71,8 +71,6 @@ scene.stroke(..., &path)
 
 In [Lesson 12 - Drawing polylines] we introduced stroke expansion for line segments, rendering stroke and fill with separate meshes. vello also expands strokes with width; afterwards stroke and fill can be processed uniformly.
 
-> The output of stroke expansion and flattening is simply a multiset of lines for each path. On GPU, there is a large buffer ("line soup") consisting of all the lines from all the paths, but on CPU we use a single scratch buffer, processing a single path at a time (per thread, in the multithreaded case).
-
 ![stroke expansion](/vello-stroke-expansion.png)
 
 ![source: https://dl.acm.org/doi/pdf/10.1145/3675390](/vello-path-style.png)
@@ -93,11 +91,11 @@ We previously sampled curves and approximated them with polylines. vello also fl
 
 ![flattening](/vello-flattening.png)
 
+In the compute shader, flattening produces a set of Euler spiral sub-curves for fitting, making full use of GPU parallelism:
+
 ![stroke expansion](/vello-stroke-expansion-gpu.png)
 
 ```wgsl
-// https://github.com/linebender/vello/blob/main/vello_shaders/shader/flatten.wgsl
-
 // This function flattens a cubic Bézier by first converting it into Euler spiral
 // segments, and then computes a near-optimal flattening of the parallel curves of
 // the Euler spiral segments.
@@ -109,24 +107,6 @@ fn flatten_euler(
     start_p: vec2f,
     end_p: vec2f,
 ) {
-}
-
-@compute @workgroup_size(256)
-fn main(
-    @builtin(global_invocation_id) global_id: vec3<u32>,
-    @builtin(local_invocation_id) local_id: vec3<u32>,
-) {
-    // Decode path data
-    let seg_type = tag.tag_byte & PATH_TAG_SEG_TYPE;
-    if seg_type != 0u {
-        let is_stroke = (style_flags & STYLE_FLAGS_STYLE) != 0u;
-        if is_stroke {
-            //...
-        } else {
-            let offset = 0.;
-            flatten_euler(pts, path_ix, transform, offset, pts.p0, pts.p3);
-        }
-    }
 }
 ```
 
@@ -415,6 +395,16 @@ JsShape::RoughRect { x, y, width, height, .. } => {
 
 In [Lesson 15 - Drawing text] we used SDF / MSDF for text rendering and spent effort on shaping and layout. That can be done with [parley]. The flow is:
 
+```plaintext
+Layout (Parley) ← Shaping with HarfRust/Swash
+    ↓
+Outline (Skrifa) ← Convert glyph to BezPath
+    ↓
+Vello/Scene
+    ↓
+Peniko (Brush/Color/Gradient/Image)
+```
+
 -   FontContext: register fonts, using font data passed from JS
 -   LayoutContext: build text layout, with support for:
     -   font family, size, letter spacing
@@ -525,7 +515,44 @@ Dropshadows can be built using vello’s layer functionality:
 
 ### Compute bounds {#compute-bounds}
 
-We can use parley to handle BiDi, clusters and other features in text metrics.
+We can use [parley] to handle BiDi, clusters and other text metric features. For Polyline and Path with stroke, `linecap`, and `linejoin`, we previously used approximate bounds; we can now use [kurbo]’s `BezPath::bounding_box()` for more precise results:
+
+```rust
+/// Precise bounds: use BezPath::bounding_box() for fill; for stroke use Kurbo's stroke
+/// expansion to a path then take bbox; union both. See Graphite's approach: turning
+/// stroke geometry into fill outline then taking bounding_box is the closest to "exact".
+fn path_render_bounds(d: &str, stroke: Option<&StrokeParams>) -> Option<Rect> {
+    let bez = BezPath::from_svg(d).ok()?;
+    let fill_rect = bez.bounding_box();
+    let mut result = fill_rect;
+
+    if let Some(s) = stroke {
+        if s.width > 0.0 {
+            let kurbo_stroke = s.to_kurbo_stroke();
+            let opts = StrokeOpts::default();
+            const TOLERANCE: f64 = 0.1;
+            let stroke_path = vello::kurbo::stroke(bez.iter(), &kurbo_stroke, &opts, TOLERANCE);
+            let stroke_rect = stroke_path.bounding_box();
+            result = result.union(stroke_rect);
+        }
+    }
+
+    Some(result)
+}
+```
+
+Then at vello init time we plug it in:
+
+```ts
+import {
+    Path,
+    createGeometryBoundsProviderFromComputePathBounds,
+} from '@infinite-canvas-tutorial/ecs';
+import { computePathBounds } from '@infinite-canvas-tutorial/vello-renderer';
+
+Path.geometryBoundsProvider =
+    createGeometryBoundsProviderFromComputePathBounds(computePathBounds);
+```
 
 ### Picking {#picking}
 
@@ -562,6 +589,45 @@ impl ClickTarget {
             true
         }
     }
+}
+```
+
+Previously we tested whether a point was inside a path using the Canvas API [isPointInStroke] and [isPointInPath]:
+
+```ts
+const ctx = DOMAdapter.get().createCanvas(100, 100).getContext('2d');
+const { d } = entity.read(Path);
+const path = new Path2D(d);
+if (hasStroke) {
+    ctx.strokeStyle = stroke.color;
+    ctx.lineWidth = stroke.width;
+    ctx.lineCap = stroke.linecap;
+    ctx.lineJoin = stroke.linejoin;
+    ctx.miterLimit = stroke.miterlimit;
+    ctx.stroke(path);
+    isIntersected = ctx.isPointInStroke(path, x, y);
+}
+```
+
+We can also use [kurbo]: flatten the path into subpaths within a tolerance and run intersection tests:
+
+```rust
+fn is_point_in_path_fill(d: &str, x: f64, y: f64, fill_rule: &str) -> bool {
+    let Ok(bez) = BezPath::from_svg(d) else { return false; };
+    let subs = flatten_bez_path(&bez, 0.25);
+    let p = Point::new(x, y);
+
+    // nonzero: for each closed contour accumulate winding (here we approximate with
+    // per-contour test; for complex self-intersecting paths this is still approximate,
+    // but closer to Canvas2D than a simple bbox). A more precise approach would
+    // accumulate winding over all edges; the current implementation is enough for
+    // selection/picking.
+    for sp in subs.iter() {
+        if sp.closed && sp.points.len() >= 3 && point_in_polygon_nonzero(p, &sp.points) {
+            return true;
+        }
+    }
+    false
 }
 ```
 
@@ -610,3 +676,5 @@ In [Lesson 33 - Layout engine] we used Yoga compiled to WASM. [taffy] is a Rust 
 [Faster, easier 2D vector rendering - Raph Levien]: https://youtu.be/_sv8K190Zps
 [GPU-friendly Stroke Expansion]: https://dl.acm.org/doi/pdf/10.1145/3675390
 [Graphite]: https://github.com/GraphiteEditor/Graphite
+[isPointInStroke]: https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/isPointInStroke
+[isPointInPath]: https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/isPointInPath

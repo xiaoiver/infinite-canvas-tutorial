@@ -14,7 +14,7 @@ use std::cell::{Cell, RefCell};
 #[cfg(target_arch = "wasm32")]
 use std::collections::HashMap;
 use std::sync::Arc;
-use vello::kurbo::{Affine, BezPath, Cap, Ellipse, Join, Line, PathEl, Point, Rect, RoundedRect, Shape, Stroke, Vec2};
+use vello::kurbo::{Affine, BezPath, Cap, Ellipse, Join, Line, PathEl, Point, Rect, RoundedRect, Shape, Stroke, StrokeOpts, Vec2};
 
 // roughr 用于手绘风格渲染
 #[cfg(target_arch = "wasm32")]
@@ -138,6 +138,405 @@ impl StrokeParams {
         }
         stroke
     }
+}
+
+// ---------- 几何工具：Path 命中测试 & 包围盒（考虑 stroke 样式） ----------
+
+/// Path flatten 后的子路径（open/closed polyline）。
+#[derive(Clone, Debug)]
+struct FlattenedSubpath {
+    points: Vec<Point>,
+    closed: bool,
+}
+
+fn cap_from_str(s: &str) -> Cap {
+    match s {
+        "round" => Cap::Round,
+        "square" => Cap::Square,
+        _ => Cap::Butt,
+    }
+}
+
+fn join_from_str(s: &str) -> Join {
+    match s {
+        "round" => Join::Round,
+        "bevel" => Join::Bevel,
+        _ => Join::Miter,
+    }
+}
+
+fn flatten_bez_path(path: &BezPath, tolerance: f64) -> Vec<FlattenedSubpath> {
+    // kurbo 0.13 的 BezPath 不直接提供我们想要的“带 tolerance 的 flatten 回调”接口，
+    // 这里用采样把 Quad/Cubic 细分成折线，作为命中与 bounds 的近似基础。
+    let mut subs: Vec<FlattenedSubpath> = Vec::new();
+    let mut cur: Vec<Point> = Vec::new();
+    let mut closed = false;
+
+    let mut cur_pt = Point::ORIGIN;
+    let mut has_cur_pt = false;
+
+    let push_subpath_if_any = |subs: &mut Vec<FlattenedSubpath>, cur: &mut Vec<Point>, closed: bool| {
+        if cur.len() >= 2 {
+            subs.push(FlattenedSubpath {
+                points: cur.clone(),
+                closed,
+            });
+        }
+        cur.clear();
+    };
+
+    let quad_point = |p0: Point, p1: Point, p2: Point, t: f64| -> Point {
+        let mt = 1.0 - t;
+        let x = mt * mt * p0.x + 2.0 * mt * t * p1.x + t * t * p2.x;
+        let y = mt * mt * p0.y + 2.0 * mt * t * p1.y + t * t * p2.y;
+        Point::new(x, y)
+    };
+    let cubic_point = |p0: Point, p1: Point, p2: Point, p3: Point, t: f64| -> Point {
+        let mt = 1.0 - t;
+        let mt2 = mt * mt;
+        let t2 = t * t;
+        let x = mt2 * mt * p0.x
+            + 3.0 * mt2 * t * p1.x
+            + 3.0 * mt * t2 * p2.x
+            + t2 * t * p3.x;
+        let y = mt2 * mt * p0.y
+            + 3.0 * mt2 * t * p1.y
+            + 3.0 * mt * t2 * p2.y
+            + t2 * t * p3.y;
+        Point::new(x, y)
+    };
+
+    for el in path.iter() {
+        match el {
+            PathEl::MoveTo(p) => {
+                push_subpath_if_any(&mut subs, &mut cur, closed);
+                closed = false;
+                cur.push(p);
+                cur_pt = p;
+                has_cur_pt = true;
+            }
+            PathEl::LineTo(p) => {
+                if !has_cur_pt {
+                    cur.push(p);
+                    cur_pt = p;
+                    has_cur_pt = true;
+                } else {
+                    cur.push(p);
+                    cur_pt = p;
+                }
+            }
+            PathEl::QuadTo(p1, p2) => {
+                if !has_cur_pt {
+                    // 非法 path：没有起点，直接把终点当起点
+                    cur.push(p2);
+                    cur_pt = p2;
+                    has_cur_pt = true;
+                    continue;
+                }
+                let p0 = cur_pt;
+                let approx_len =
+                    ((p1.x - p0.x).hypot(p1.y - p0.y) + (p2.x - p1.x).hypot(p2.y - p1.y)).max(1e-6);
+                let mut n = (approx_len / tolerance.max(1e-3)).ceil() as usize;
+                n = n.clamp(1, 200);
+                for i in 1..=n {
+                    let t = i as f64 / n as f64;
+                    cur.push(quad_point(p0, p1, p2, t));
+                }
+                cur_pt = p2;
+            }
+            PathEl::CurveTo(p1, p2, p3) => {
+                if !has_cur_pt {
+                    cur.push(p3);
+                    cur_pt = p3;
+                    has_cur_pt = true;
+                    continue;
+                }
+                let p0 = cur_pt;
+                let approx_len = ((p1.x - p0.x).hypot(p1.y - p0.y)
+                    + (p2.x - p1.x).hypot(p2.y - p1.y)
+                    + (p3.x - p2.x).hypot(p3.y - p2.y))
+                    .max(1e-6);
+                let mut n = (approx_len / tolerance.max(1e-3)).ceil() as usize;
+                n = n.clamp(1, 300);
+                for i in 1..=n {
+                    let t = i as f64 / n as f64;
+                    cur.push(cubic_point(p0, p1, p2, p3, t));
+                }
+                cur_pt = p3;
+            }
+            PathEl::ClosePath => {
+                closed = true;
+            }
+        }
+    }
+
+    if cur.len() >= 2 {
+        subs.push(FlattenedSubpath { points: cur, closed });
+    }
+    subs
+}
+
+fn dist_point_to_segment(p: Point, a: Point, b: Point) -> f64 {
+    let ab = Vec2::new(b.x - a.x, b.y - a.y);
+    let ap = Vec2::new(p.x - a.x, p.y - a.y);
+    let denom = ab.x * ab.x + ab.y * ab.y;
+    if denom == 0.0 {
+        return ((p.x - a.x).powi(2) + (p.y - a.y).powi(2)).sqrt();
+    }
+    let mut t = (ap.x * ab.x + ap.y * ab.y) / denom;
+    if t < 0.0 {
+        t = 0.0;
+    } else if t > 1.0 {
+        t = 1.0;
+    }
+    let proj = Point::new(a.x + ab.x * t, a.y + ab.y * t);
+    ((p.x - proj.x).powi(2) + (p.y - proj.y).powi(2)).sqrt()
+}
+
+fn point_in_polygon_evenodd(p: Point, poly: &[Point]) -> bool {
+    // Ray casting, even-odd rule.
+    if poly.len() < 3 {
+        return false;
+    }
+    let mut inside = false;
+    let mut j = poly.len() - 1;
+    for i in 0..poly.len() {
+        let xi = poly[i].x;
+        let yi = poly[i].y;
+        let xj = poly[j].x;
+        let yj = poly[j].y;
+        // 避免水平边导致除零；水平边不会改变交点计数（采用常见的半开区间处理）。
+        let dy = yj - yi;
+        let intersect = (yi > p.y) != (yj > p.y)
+            && dy != 0.0
+            && (p.x < (xj - xi) * (p.y - yi) / dy + xi);
+        if intersect {
+            inside = !inside;
+        }
+        j = i;
+    }
+    inside
+}
+
+fn point_in_polygon_nonzero(p: Point, poly: &[Point]) -> bool {
+    // Nonzero winding rule.
+    if poly.len() < 3 {
+        return false;
+    }
+    let mut winding: i32 = 0;
+    let mut j = poly.len() - 1;
+    for i in 0..poly.len() {
+        let a = poly[j];
+        let b = poly[i];
+        if a.y <= p.y {
+            if b.y > p.y && (b.x - a.x) * (p.y - a.y) - (p.x - a.x) * (b.y - a.y) > 0.0 {
+                winding += 1;
+            }
+        } else if b.y <= p.y && (b.x - a.x) * (p.y - a.y) - (p.x - a.x) * (b.y - a.y) < 0.0 {
+            winding -= 1;
+        }
+        j = i;
+    }
+    winding != 0
+}
+
+fn is_point_in_path_fill(d: &str, x: f64, y: f64, fill_rule: &str) -> bool {
+    let Ok(bez) = BezPath::from_svg(d) else { return false; };
+    let subs = flatten_bez_path(&bez, 0.25);
+    let p = Point::new(x, y);
+
+    // SVG 的 fill-rule 作用于整个复合路径：evenodd/非零环绕。
+    if fill_rule == "evenodd" {
+        let mut inside = false;
+        for sp in subs.iter() {
+            if sp.closed && sp.points.len() >= 3 && point_in_polygon_evenodd(p, &sp.points) {
+                inside = !inside;
+            }
+        }
+        inside
+    } else {
+        // nonzero：对每个 closed contour 累加 winding（这里用“逐 contour 判断”近似；
+        // 对于复杂自交路径仍是近似，但比简单 bbox 更接近 Canvas2D）。
+        // 更精确的做法是对所有边统一累计 winding；当前实现已足够用于选择/拾取。
+        for sp in subs.iter() {
+            if sp.closed && sp.points.len() >= 3 && point_in_polygon_nonzero(p, &sp.points) {
+                return true;
+            }
+        }
+        false
+    }
+}
+
+fn stroke_effective_half_width(stroke: &StrokeParams) -> f64 {
+    let base = match stroke.alignment {
+        StrokeAlignment::Inner => 0.0,
+        StrokeAlignment::Outer => stroke.width,
+        StrokeAlignment::Center => stroke.width * 0.5,
+    };
+    let join = join_from_str(stroke.linejoin.as_str());
+    let join_factor = if matches!(join, Join::Miter) {
+        stroke.miter_limit.max(1.0)
+    } else {
+        1.0
+    };
+    // blur 以 3σ 近似可见范围
+    let blur_expand = (stroke.blur.max(0.0)) * 3.0;
+    base * join_factor + blur_expand
+}
+
+fn is_point_in_path_stroke(d: &str, x: f64, y: f64, stroke: &StrokeParams) -> bool {
+    let Ok(bez) = BezPath::from_svg(d) else { return false; };
+    let subs = flatten_bez_path(&bez, 0.25);
+    let p = Point::new(x, y);
+
+    // 注意：这里的命中是“近似 Canvas2D 的 isPointInStroke”，采用 flatten 后的线段距离。
+    // 对曲线越精确，tolerance 越小（但更慢）。
+    let cap = cap_from_str(stroke.linecap.as_str());
+    let join = join_from_str(stroke.linejoin.as_str());
+    let hw = stroke_effective_half_width(stroke);
+    if hw <= 0.0 {
+        return false;
+    }
+
+    for sp in subs.iter() {
+        if sp.points.len() < 2 {
+            continue;
+        }
+
+        // 线段距离
+        for i in 0..(sp.points.len() - 1) {
+            let a = sp.points[i];
+            let b = sp.points[i + 1];
+            if dist_point_to_segment(p, a, b) <= hw {
+                return true;
+            }
+        }
+        if sp.closed {
+            // close segment
+            let a = *sp.points.last().unwrap();
+            let b = sp.points[0];
+            if dist_point_to_segment(p, a, b) <= hw {
+                return true;
+            }
+        }
+
+        // join/cap 的“保守补偿”（避免锐角/端点附近漏选）
+        // - join：round/miter/bevel 在拐角外侧可能超出两条线段的距离阈值，这里用顶点圆近似补充
+        if sp.points.len() >= 3 {
+            for v in sp.points.iter().skip(1).take(sp.points.len() - 2) {
+                let dv = ((p.x - v.x).powi(2) + (p.y - v.y).powi(2)).sqrt();
+                let r = match join {
+                    Join::Miter => hw,
+                    _ => hw,
+                };
+                if dv <= r {
+                    return true;
+                }
+            }
+        }
+
+        // - cap：open path 需要考虑 round/square 的端帽区域
+        if !sp.closed {
+            let p0 = sp.points[0];
+            let p1 = sp.points[1];
+            let pn = *sp.points.last().unwrap();
+            let pn1 = sp.points[sp.points.len() - 2];
+
+            match cap {
+                Cap::Round => {
+                    let d0 = ((p.x - p0.x).powi(2) + (p.y - p0.y).powi(2)).sqrt();
+                    let dn = ((p.x - pn.x).powi(2) + (p.y - pn.y).powi(2)).sqrt();
+                    if d0 <= hw || dn <= hw {
+                        return true;
+                    }
+                }
+                Cap::Square => {
+                    // 端点沿切线方向外扩 hw 的矩形近似
+                    let dir0 = Vec2::new(p0.x - p1.x, p0.y - p1.y);
+                    let dirn = Vec2::new(pn.x - pn1.x, pn.y - pn1.y);
+
+                    let square_cap_hit = |end: Point, dir: Vec2| -> bool {
+                        let len = (dir.x * dir.x + dir.y * dir.y).sqrt();
+                        if len == 0.0 {
+                            return false;
+                        }
+                        let ux = dir.x / len;
+                        let uy = dir.y / len;
+                        // 投影到切线/法线坐标
+                        let dx = p.x - end.x;
+                        let dy = p.y - end.y;
+                        let t = dx * ux + dy * uy;
+                        let n = (-uy) * dx + ux * dy;
+                        t >= 0.0 && t <= hw && n.abs() <= hw
+                    };
+
+                    if square_cap_hit(p0, dir0) || square_cap_hit(pn, dirn) {
+                        return true;
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+    false
+}
+
+#[allow(dead_code)]
+fn path_geometry_bounds(d: &str) -> Option<Rect> {
+    let Ok(bez) = BezPath::from_svg(d) else { return None; };
+    let bbox = bez.bounding_box();
+    Some(bbox)
+}
+
+/// 精确包围盒：fill 用 BezPath::bounding_box()，stroke 用 Kurbo 的 stroke 展开成轮廓 path 再取 bbox，两者 union。
+/// 若提供 marker_start/marker_end 为 "line" 且 marker_factor > 0，则在起点/终点处按 marker 的 V 形范围（半径 r = stroke_width * marker_factor）扩张。
+fn path_render_bounds(
+    d: &str,
+    stroke: Option<&StrokeParams>,
+    marker_start: &str,
+    marker_end: &str,
+    marker_factor: f32,
+) -> Option<Rect> {
+    let bez = BezPath::from_svg(d).ok()?;
+    let fill_rect = bez.bounding_box();
+    let mut result = fill_rect;
+
+    if let Some(s) = stroke {
+        if s.width > 0.0 {
+            let kurbo_stroke = s.to_kurbo_stroke();
+            let opts = StrokeOpts::default();
+            const TOLERANCE: f64 = 0.1;
+            let stroke_path = vello::kurbo::stroke(bez.iter(), &kurbo_stroke, &opts, TOLERANCE);
+            let stroke_rect = stroke_path.bounding_box();
+            result = result.union(stroke_rect);
+        }
+        let blur = s.blur.max(0.0) * 3.0;
+        if blur > 0.0 {
+            result = Rect::new(
+                result.x0 - blur,
+                result.y0 - blur,
+                result.x1 + blur,
+                result.y1 + blur,
+            );
+        }
+        // marker（line）：起点/终点处 V 形箭头，半径 r = stroke_width * marker_factor，扩张 bbox
+        if marker_factor > 0.0 && (marker_start == "line" || marker_end == "line") {
+            if let Some(((sx, sy), _start_angle, (ex, ey), _end_angle)) = path_start_end_tangents(&bez) {
+                let r = s.width * marker_factor as f64;
+                let expand_marker = |rect: Rect, px: f64, py: f64| {
+                    rect.union(Rect::new(px - r, py - r, px + r, py + r))
+                };
+                if marker_start == "line" {
+                    result = expand_marker(result, sx, sy);
+                }
+                if marker_end == "line" {
+                    result = expand_marker(result, ex, ey);
+                }
+            }
+        }
+    }
+
+    Some(result)
 }
 
 /// Drop shadow 参数
@@ -4121,6 +4520,151 @@ pub fn js_compute_text_bounds(opts: JsValue) -> JsValue {
             }
         },
         None => JsValue::NULL,
+    }
+}
+
+/// Path 命中测试：近似 Canvas2D 的 isPointInStroke/isPointInPath（基于采样折线）。
+/// - 当传入 stroke 且 fill=false 时：仅做 stroke 命中
+/// - 否则：做 fill 命中（遵循 fillRule）
+#[cfg(target_arch = "wasm32")]
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PathHitTestOptions {
+    pub d: String,
+    pub x: f64,
+    pub y: f64,
+    /// 是否有 fill（用于对齐 TS：有 fill 时优先走 isPointInPath）
+    #[serde(default = "default_true")]
+    pub fill: bool,
+    /// "nonzero" | "evenodd"
+    #[serde(default = "default_fill_rule")]
+    pub fill_rule: String,
+    #[serde(default)]
+    pub stroke: Option<StrokeOptions>,
+}
+
+#[cfg(target_arch = "wasm32")]
+fn default_true() -> bool {
+    true
+}
+
+#[cfg(target_arch = "wasm32")]
+#[wasm_bindgen(js_name = hitTestPath)]
+pub fn js_hit_test_path(opts: JsValue) -> bool {
+    let o: PathHitTestOptions = match serde_wasm_bindgen::from_value(opts) {
+        Ok(v) => v,
+        Err(e) => {
+            web_sys::console::error_1(&format!("hitTestPath: invalid options - {}", e).into());
+            return false;
+        }
+    };
+
+    let stroke = o.stroke.as_ref().and_then(|s| {
+        if s.width > 0.0 {
+            Some(StrokeParams {
+                width: s.width,
+                color: s.color,
+                linecap: s.linecap.clone(),
+                linejoin: s.linejoin.clone(),
+                miter_limit: s.miter_limit,
+                stroke_dasharray: s.stroke_dasharray.clone(),
+                stroke_dashoffset: s.stroke_dashoffset,
+                alignment: StrokeAlignment::from_str(&s.alignment),
+                blur: s.blur,
+            })
+        } else {
+            None
+        }
+    });
+
+    if stroke.is_some() && !o.fill {
+        is_point_in_path_stroke(&o.d, o.x, o.y, stroke.as_ref().unwrap())
+    } else if o.fill {
+        is_point_in_path_fill(&o.d, o.x, o.y, &o.fill_rule)
+    } else {
+        false
+    }
+}
+
+/// 计算 Path 的包围盒（返回局部坐标系下 bounds），可选考虑 stroke 与 marker（起点/终点箭头）的扩张。
+#[cfg(target_arch = "wasm32")]
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PathBoundsOptions {
+    pub d: String,
+    #[serde(default)]
+    pub stroke: Option<StrokeOptions>,
+    /// 起点 marker：'none' | 'line'，为 "line" 时在起点扩张 r = stroke_width * marker_factor
+    #[serde(default = "default_marker_start")]
+    pub marker_start: String,
+    /// 终点 marker：'none' | 'line'
+    #[serde(default = "default_marker_end")]
+    pub marker_end: String,
+    #[serde(default = "default_marker_factor")]
+    pub marker_factor: f32,
+}
+
+#[cfg(target_arch = "wasm32")]
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Bounds {
+    pub min_x: f64,
+    pub min_y: f64,
+    pub max_x: f64,
+    pub max_y: f64,
+}
+
+#[cfg(target_arch = "wasm32")]
+#[wasm_bindgen(js_name = computePathBounds)]
+pub fn js_compute_path_bounds(opts: JsValue) -> JsValue {
+    let o: PathBoundsOptions = match serde_wasm_bindgen::from_value(opts) {
+        Ok(v) => v,
+        Err(e) => {
+            web_sys::console::error_1(&format!("computePathBounds: invalid options - {}", e).into());
+            return JsValue::NULL;
+        }
+    };
+
+    let stroke = o.stroke.as_ref().and_then(|s| {
+        if s.width > 0.0 {
+            Some(StrokeParams {
+                width: s.width,
+                color: s.color,
+                linecap: s.linecap.clone(),
+                linejoin: s.linejoin.clone(),
+                miter_limit: s.miter_limit,
+                stroke_dasharray: s.stroke_dasharray.clone(),
+                stroke_dashoffset: s.stroke_dashoffset,
+                alignment: StrokeAlignment::from_str(&s.alignment),
+                blur: s.blur,
+            })
+        } else {
+            None
+        }
+    });
+
+    let Some(rect) = path_render_bounds(
+        &o.d,
+        stroke.as_ref(),
+        &o.marker_start,
+        &o.marker_end,
+        o.marker_factor,
+    ) else { return JsValue::NULL; };
+    let out = Bounds {
+        min_x: rect.x0,
+        min_y: rect.y0,
+        max_x: rect.x1,
+        max_y: rect.y1,
+    };
+
+    match serde_wasm_bindgen::to_value(&out) {
+        Ok(v) => v,
+        Err(e) => {
+            web_sys::console::error_1(
+                &format!("computePathBounds: failed to serialize result - {}", e).into(),
+            );
+            JsValue::NULL
+        }
     }
 }
 

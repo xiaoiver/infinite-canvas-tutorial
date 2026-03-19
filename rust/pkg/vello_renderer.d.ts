@@ -76,11 +76,15 @@ export function clearGlyphCache(): void;
  */
 export function clearShapes(canvas_id: number): void;
 
+export function computePathBounds(opts: any): any;
+
 /**
  * 计算文本在局部坐标系（锚点为原点）下的几何包围盒，用于拾取或布局。
  * 入参与 addText 相同（除 canvasId 外），返回 { min_x, min_y, max_x, max_y }。
  */
 export function computeTextBounds(opts: any): any;
+
+export function hitTestPath(opts: any): boolean;
 
 /**
  * 追加一个字体（TTF/OTF 字节）到字体列表，用于多字体 / fallback。
@@ -130,7 +134,9 @@ export interface InitOutput {
     readonly addRoughLine: (a: number, b: any) => void;
     readonly addRoughRect: (a: number, b: any) => void;
     readonly addText: (a: number, b: any) => void;
+    readonly computePathBounds: (a: any) => any;
     readonly computeTextBounds: (a: any) => any;
+    readonly hitTestPath: (a: any) => number;
     readonly registerFont: (a: any) => void;
     readonly restoreCanvasAfterExport: (a: number) => void;
     readonly runWithCanvas: (a: any, b: any) => void;

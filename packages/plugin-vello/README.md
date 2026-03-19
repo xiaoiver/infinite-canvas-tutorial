@@ -10,9 +10,14 @@ import {
     DefaultRendererPlugin,
     DefaultPlugins,
 } from '@infinite-canvas-tutorial/ecs';
-import { VelloPipeline } from '@infinite-canvas-tutorial/vello';
+import {
+    InitVello,
+    VelloPipeline,
+    registerFont,
+} from '@infinite-canvas-tutorial/vello';
 
 const VelloRendererPlugin = RendererPlugin.configure({
+    setupDeviceSystemCtor: InitVello,
     rendererSystemCtor: VelloPipeline,
 });
 DefaultPlugins.splice(
@@ -20,6 +25,9 @@ DefaultPlugins.splice(
     1,
     VelloRendererPlugin,
 );
+
+registerFont('/Gaegu-Regular.ttf');
+registerFont('/NotoSansCJKsc-VF.ttf');
 
 new App().addPlugins(...DefaultPlugins, UIPlugin).run();
 ```
