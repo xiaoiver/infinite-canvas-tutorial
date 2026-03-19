@@ -145,8 +145,8 @@ export interface InitOutput {
     readonly setExportView: (a: number, b: any, c: any) => void;
     readonly clearEmojiCache: () => void;
     readonly clearGlyphCache: () => void;
-    readonly clearShapes: (a: number) => void;
     readonly clearAllCaches: () => void;
+    readonly clearShapes: (a: number) => void;
     readonly wasm_bindgen__closure__destroy__h2393627b061c6390: (a: number, b: number) => void;
     readonly wasm_bindgen__closure__destroy__h5efe34e33761ee9b: (a: number, b: number) => void;
     readonly wasm_bindgen__closure__destroy__h50129e0239694893: (a: number, b: number) => void;

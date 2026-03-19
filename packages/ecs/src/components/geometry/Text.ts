@@ -1,8 +1,9 @@
 import { field, Type } from '@lastolivegames/becsy';
 import { Rectangle } from '@pixi/math';
-import { BitmapFont, strokeOffset } from '../../utils';
+import { BitmapFont, filterUndefined, strokeOffset } from '../../utils';
 import {
   computeBidi,
+  fontWeightMap,
   measureText,
   yOffsetFromTextBaseline,
 } from '../../systems/ComputeTextMetrics';
@@ -11,15 +12,121 @@ import { DropShadow, Stroke } from '../renderable';
 
 export type TextStyleWhiteSpace = 'normal' | 'pre' | 'pre-line';
 
+export type TextGeometryBoundsProvider = (
+  text: Partial<Text>,
+  computed?: Partial<ComputedTextMetrics>,
+) => AABB;
+
+export interface ComputeTextBoundsOptions {
+  content: string;
+  fontSize: number | string;
+  fontFamily: string;
+  fontWeight?: string;
+  fontStyle?: string;
+  fontVariant?: string;
+  anchorX?: number;
+  anchorY?: number;
+  textAlign?: string;
+  textBaseline?: string;
+  lineHeight?: number;
+  letterSpacing?: number;
+  fontKerning?: boolean;
+  wordWrap?: boolean;
+  wordWrapWidth?: number;
+}
+
+export interface TextBoundsResult {
+  min_x: number;
+  min_y: number;
+  max_x: number;
+  max_y: number;
+}
+
+export function createGeometryBoundsProviderFromComputeTextBounds(
+  computeTextBounds: (opts: ComputeTextBoundsOptions) => TextBoundsResult | null | undefined,
+): TextGeometryBoundsProvider {
+  return (text: Partial<Text>, computed?: Partial<ComputedTextMetrics>) => {
+    const {
+      content,
+      fontSize = 12,
+      fontFamily = 'sans-serif',
+      fontWeight,
+      fontStyle,
+      fontVariant,
+      anchorX = 0,
+      anchorY = 0,
+      textAlign,
+      textBaseline,
+      lineHeight,
+      letterSpacing,
+      fontKerning,
+      wordWrap,
+      wordWrapWidth,
+    } = text;
+    if (!content) {
+      return new AABB(Infinity, Infinity, -Infinity, -Infinity);
+    }
+    let fontWeightValue: string | undefined;
+    if (fontWeight) {
+      fontWeightValue = `${
+        typeof fontWeight === 'string' ? fontWeightMap[fontWeight] ?? fontWeight : fontWeight
+      }`;
+    }
+    try {
+      const opts = {
+        id: '',
+        content,
+        fontSize,
+        fontFamily,
+        fontWeight: fontWeightValue,
+        fontStyle,
+        fontVariant,
+        anchorX,
+        anchorY,
+        textAlign,
+        textBaseline,
+        lineHeight,
+        letterSpacing,
+        fontKerning,
+        wordWrap: wordWrap ?? false,
+        wordWrapWidth: wordWrapWidth ?? 0,
+      };
+
+      const filteredOpts = filterUndefined(opts);
+      const result = computeTextBounds(filteredOpts as ComputeTextBoundsOptions);
+
+      if (
+        result &&
+        Number.isFinite(result.min_x + result.min_y + result.max_x + result.max_y)
+      ) {
+        return new AABB(result.min_x + anchorX, result.min_y + anchorY, result.max_x + anchorX, result.max_y + anchorY);
+      }
+    } catch {
+      // fallback to builtin
+    }
+    const prev = Text.geometryBoundsProvider;
+    Text.geometryBoundsProvider = null;
+    const aabb = Text.getGeometryBounds(text, computed);
+    Text.geometryBoundsProvider = prev;
+    return aabb;
+  };
+}
+
 /**
  * Draws a graphics element consisting of text.
  * @see https://developer.mozilla.org/en-US/docs/Web/SVG/Element/text
  */
 export class Text {
+  static geometryBoundsProvider: TextGeometryBoundsProvider | null = null;
+
   static getGeometryBounds(
     text: Partial<Text>,
     computed?: Partial<ComputedTextMetrics>,
   ) {
+    if (Text.geometryBoundsProvider) {
+      return Text.geometryBoundsProvider(text, computed);
+    }
+
     const {
       anchorX = 0,
       anchorY = 0,

@@ -66,6 +66,7 @@ import {
   parseEffect,
   safeRemoveComponent,
   co,
+  fontWeightMap,
 } from '@infinite-canvas-tutorial/ecs';
 import { addRect, addEllipse, addLine, addPath, addPolyline, addText, addImageRect, addGroup, addRoughRect, clearShapes, addRoughEllipse, addRoughLine, setExportView, restoreCanvasAfterExport } from '@infinite-canvas-tutorial/vello-renderer';
 import { setCanvasRenderOptions } from '@infinite-canvas-tutorial/vello-renderer';
@@ -709,17 +710,25 @@ export class VelloPipeline extends System {
             }
           } else if (entity.has(Text)) {
             const text = entity.read(Text);
-            const { content, fontSize, fontFamily, fontKerning, anchorX, anchorY, letterSpacing, lineHeight, wordWrap, wordWrapWidth } = text;
+            const { content, fontSize, fontFamily, fontWeight, fontStyle, fontVariant, fontKerning, anchorX, anchorY, letterSpacing, lineHeight, wordWrap, wordWrapWidth } = text;
+
+            let fontWeightValue: string | undefined = undefined;
+            if (fontWeight) {
+              fontWeightValue = `${typeof fontWeight === 'string' ? fontWeightMap[fontWeight] : fontWeight}`;
+            }
             const opts: Record<string, unknown> = {
               ...baseOpts,
               content,
               fontSize,
               fontFamily,
+              fontWeight: fontWeightValue,
+              fontStyle,
+              fontVariant,
+              fontKerning,
               anchorX,
               anchorY,
               letterSpacing,
               lineHeight,
-              fontKerning,
               wordWrap,
               wordWrapWidth,
             };

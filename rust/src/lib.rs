@@ -893,10 +893,10 @@ thread_local! {
     static RESTORE_STATE: RefCell<HashMap<u32, (u32, u32, Affine)>> = RefCell::new(HashMap::new());
     /// emoji 图片缓存：字符 -> (RGBA 数据, 宽度, 高度)
     static EMOJI_CACHE: RefCell<HashMap<String, (Vec<u8>, u32, u32)>> = RefCell::new(HashMap::new());
-    /// 字形缓存：(文本, 字体大小, font_family, line_height_bits, letter_spacing_bits, font_kerning, word_wrap, word_wrap_width_bits, text_align) -> (FontData, glyphs, size, emoji_positions)，命中时直接使用，避免每帧重新排版（尤其对中文字体）
+    /// 字形缓存：(文本, 字体大小, font_family, line_height_bits, letter_spacing_bits, font_kerning, word_wrap, word_wrap_width_bits, text_align, font_weight, font_style, font_variant) -> (FontData, glyphs, size, emoji_positions)，命中时直接使用，避免每帧重新排版（尤其对中文字体）
     static GLYPH_CACHE: RefCell<
         HashMap<
-            (String, u32, String, u32, u32, bool, bool, u64, String),
+            (String, u32, String, u32, u32, bool, bool, u64, String, String, String, String),
             (Vec<(vello::peniko::FontData, Vec<vello::Glyph>)>, f32, Vec<EmojiPosition>),
         >,
     > = RefCell::new(HashMap::new());
@@ -2017,6 +2017,46 @@ fn compute_world_transforms(shapes: &[JsShape]) -> HashMap<String, Affine> {
     map
 }
 
+/// 将 CSS font-variant 映射为 Parley FontFeature 列表（如 small-caps -> smcp）。
+#[cfg(target_arch = "wasm32")]
+fn font_variant_to_features(variant: &str) -> Vec<parley::style::FontFeature> {
+    use parley::style::FontFeature;
+    let v = variant.to_lowercase();
+    let v = v.trim();
+    if v.is_empty() || v == "normal" {
+        return Vec::new();
+    }
+    let mut out = Vec::new();
+    for part in v.split(|c: char| c == ' ' || c == ',') {
+        let part = part.trim();
+        if part == "small-caps" {
+            if let Some(f) = FontFeature::parse("smcp=1") {
+                out.push(f);
+            }
+        } else if part == "all-small-caps" {
+            if let Some(f) = FontFeature::parse("smcp=1") {
+                out.push(f);
+            }
+            if let Some(f) = FontFeature::parse("c2sc=1") {
+                out.push(f);
+            }
+        } else if part == "tabular-nums" {
+            if let Some(f) = FontFeature::parse("tnum=1") {
+                out.push(f);
+            }
+        } else if part == "lining-nums" {
+            if let Some(f) = FontFeature::parse("lnum=1") {
+                out.push(f);
+            }
+        } else if part == "oldstyle-nums" {
+            if let Some(f) = FontFeature::parse("onum=1") {
+                out.push(f);
+            }
+        }
+    }
+    out
+}
+
 /// 将 Canvas textAlign 字符串映射为 Parley Alignment。
 #[cfg(target_arch = "wasm32")]
 fn text_align_to_parley(align: &str) -> parley::Alignment {
@@ -2037,6 +2077,7 @@ fn text_align_to_parley(align: &str) -> parley::Alignment {
 /// line_height: 行高（绝对像素）；≤0 时使用字号作为默认行高。
 /// font_kerning: 是否启用字距调整（对应 Canvas fontKerning）；false 时通过关闭 OpenType kern 特性实现。
 /// text_align: 行内对齐，对应 Canvas textAlign（"start"|"left"|"center"|"end"|"right"）。
+/// font_weight / font_style / font_variant: 对应 CSS font-weight、font-style、font-variant（如 "bold"、"italic"、"small-caps"）。
 #[cfg(target_arch = "wasm32")]
 fn build_text_glyphs_with_emoji_positions(
     content: &str,
@@ -2045,6 +2086,9 @@ fn build_text_glyphs_with_emoji_positions(
     line_height_px: f32,
     font_kerning: bool,
     font_family: &str,
+    font_weight: &str,
+    font_style: &str,
+    font_variant: &str,
     word_wrap: bool,
     word_wrap_width: f64,
     text_align: &str,
@@ -2052,7 +2096,7 @@ fn build_text_glyphs_with_emoji_positions(
     use std::borrow::Cow;
     use parley::fontique::Blob;
     use parley::layout::PositionedLayoutItem;
-    use parley::style::{FontFamily, FontFeature, FontSettings, OverflowWrap, WordBreakStrength};
+    use parley::style::{FontFamily, FontFeature, FontSettings, FontStyle, FontWeight, OverflowWrap, WordBreakStrength};
     use parley::{AlignmentOptions, LayoutContext, LineHeight, StyleProperty};
 
     let font_bytes_list = FONT_BYTES.with(|c| c.borrow().clone());
@@ -2147,17 +2191,26 @@ fn build_text_glyphs_with_emoji_positions(
                 LineHeight::FontSizeRelative(1.0)
             });
             builder.push_default(StyleProperty::FontSize(font_size_px));
-            if letter_spacing != 0.0 {
-                builder.push_default(StyleProperty::LetterSpacing(letter_spacing));
+            if let Some(w) = FontWeight::parse(font_weight.trim()) {
+                builder.push_default(StyleProperty::FontWeight(w));
             }
-            // fontKerning=false 时关闭 OpenType kern 特性
+            if let Some(s) = FontStyle::parse(font_style.trim()) {
+                builder.push_default(StyleProperty::FontStyle(s));
+            }
+            // font-variant 映射到 OpenType 特性（如 small-caps -> smcp）；与 font_kerning 合并为一次 FontFeatures
+            let mut font_features = font_variant_to_features(font_variant.trim());
             if !font_kerning {
                 if let Some(kern_off) = FontFeature::parse("kern=0") {
-                    let kern_off_arr = [kern_off];
-                    builder.push_default(StyleProperty::FontFeatures(FontSettings::List(
-                        Cow::Borrowed(&kern_off_arr),
-                    )));
+                    font_features.push(kern_off);
                 }
+            }
+            if !font_features.is_empty() {
+                builder.push_default(StyleProperty::FontFeatures(FontSettings::List(Cow::Owned(
+                    font_features,
+                ))));
+            }
+            if letter_spacing != 0.0 {
+                builder.push_default(StyleProperty::LetterSpacing(letter_spacing));
             }
             // 开启 wordWrap 时允许在任意字符处换行，否则无空格长串（如 "Abcdefghijklmnop"）会整行显示不换行
             if word_wrap && word_wrap_width > 0.0 {
@@ -2267,6 +2320,9 @@ fn compute_text_bounds_internal(opts: &TextOptions) -> Option<TextBounds> {
         line_height_px,
         opts.font_kerning,
         &opts.font_family,
+        &opts.font_weight,
+        &opts.font_style,
+        &opts.font_variant,
         opts.word_wrap,
         opts.word_wrap_width,
         &opts.text_align,
@@ -3231,6 +3287,9 @@ fn add_js_shape_to_scene(
             content,
             font_size,
             font_family,
+            font_weight,
+            font_style,
+            font_variant,
             letter_spacing,
             line_height,
             font_kerning,
@@ -3266,6 +3325,9 @@ fn add_js_shape_to_scene(
                 word_wrap,
                 word_wrap_width_eff.to_bits(),
                 text_align.clone(),
+                font_weight.clone(),
+                font_style.clone(),
+                font_variant.clone(),
             );
 
             // 渲染文本（使用 Parley 布局整个文本，获取准确的 emoji 位置）
@@ -3285,6 +3347,9 @@ fn add_js_shape_to_scene(
                             line_height_px,
                             font_kerning,
                             &font_family,
+                            &font_weight,
+                            &font_style,
+                            &font_variant,
                             word_wrap,
                             word_wrap_width_eff,
                             &text_align,
