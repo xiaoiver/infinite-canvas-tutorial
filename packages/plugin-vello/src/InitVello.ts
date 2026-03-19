@@ -1,6 +1,5 @@
-import { Entity, System, Canvas, GPUResource, Grid, Theme, ComputedCamera, Camera, Path, createRenderBoundsProviderFromComputePathBounds, createGeometryBoundsProviderFromComputePathBounds, Polyline, createRenderBoundsProviderFromComputePathBoundsForPolyline, createGeometryBoundsProviderFromComputePathBoundsForPolyline, createHitTestProviderFromHitTestPath, createHitTestProviderFromHitTestPathForPolyline, Line, createGeometryBoundsProviderFromComputePathBoundsForLine, createHitTestProviderFromHitTestPathForLine, createRenderBoundsProviderFromComputePathBoundsForLine } from '@infinite-canvas-tutorial/ecs';
-import init, { registerFont as registerFontVello, runWithCanvas, setCameraTransform, computePathBounds, hitTestPath } from '@infinite-canvas-tutorial/vello-renderer';
-import { registerVelloTextBounds } from './VelloBounds';
+import { Entity, System, Canvas, GPUResource, Grid, Theme, ComputedCamera, Camera, Path, createRenderBoundsProviderFromComputePathBounds, createGeometryBoundsProviderFromComputePathBounds, Polyline, createRenderBoundsProviderFromComputePathBoundsForPolyline, createGeometryBoundsProviderFromComputePathBoundsForPolyline, createHitTestProviderFromHitTestPath, createHitTestProviderFromHitTestPathForPolyline, Line, createGeometryBoundsProviderFromComputePathBoundsForLine, createHitTestProviderFromHitTestPathForLine, createRenderBoundsProviderFromComputePathBoundsForLine, Text, createGeometryBoundsProviderFromComputeTextBounds } from '@infinite-canvas-tutorial/ecs';
+import init, { registerFont as registerFontVello, runWithCanvas, setCameraTransform, computePathBounds, hitTestPath, computeTextBounds } from '@infinite-canvas-tutorial/vello-renderer';
 
 const FONT_URLS = [];
 export function registerFont(fontUrl: string) {
@@ -28,9 +27,6 @@ export class InitVello extends System {
   async prepare() {
     await init();
 
-    // 使用 Vello 的文本度量扩展 ComputeBounds 的 Text 包围盒计算
-    registerVelloTextBounds();
-
     for (const fontUrl of FONT_URLS) {
       const r = await fetch(fontUrl);
       const buf = await r.arrayBuffer();
@@ -44,6 +40,7 @@ export class InitVello extends System {
     Polyline.renderBoundsProvider = createRenderBoundsProviderFromComputePathBoundsForPolyline(computePathBounds);
     Line.geometryBoundsProvider = createGeometryBoundsProviderFromComputePathBoundsForLine(computePathBounds);
     Line.renderBoundsProvider = createRenderBoundsProviderFromComputePathBoundsForLine(computePathBounds);
+    Text.geometryBoundsProvider = createGeometryBoundsProviderFromComputeTextBounds(computeTextBounds);
 
     // 使用 Vello 进行 hit testing
     Path.hitTestProvider = createHitTestProviderFromHitTestPath(hitTestPath);

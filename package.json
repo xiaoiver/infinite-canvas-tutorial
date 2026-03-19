@@ -106,7 +106,10 @@
       "serialize-javascript": ">=7.0.3",
       "markdown-it": ">=14.1.1",
       "hono": ">=4.12.4",
-      "express-rate-limit": ">=8.2.2"
+      "express-rate-limit": ">=8.2.2",
+      "undici": ">=6.24.0",
+      "flatted": ">=3.4.0",
+      "@hono/node-server": ">=1.19.10"
     }
   }
 }

@@ -213,12 +213,14 @@ canvas.addEventListener(Event.READY, async (e) => {
 
   const child3 = {
     id: 'child3',
-    parentId: 'parent',
+    // parentId: 'parent',
     type: 'rough-path',
-    d: 'M 100 100 L 200 200 L 300 100 Z',
+    d: 'M 100 120 L 200 200 L 300 100 Z',
     fill: 'red',
+    roughFillStyle: 'dots',
+    roughHachureGap: 10,
     stroke: 'black',
-    strokeWidth: 10,
+    strokeWidth: 1,
     zIndex: 3,
   } as const;
 
@@ -411,7 +413,7 @@ canvas.addEventListener(Event.READY, async (e) => {
       x2: 300,
       y2: 300,
       stroke: 'red',
-      strokeWidth: 50,
+      strokeWidth: 10,
       markerEnd: 'line',
       markerStart: 'line',
       markerFactor: 4,
@@ -439,21 +441,23 @@ canvas.addEventListener(Event.READY, async (e) => {
     },
     {
       id: 'text-6',
+      parentId: 'child3',
       type: 'text',
       fill: 'black',
-      content: 'AVA Ta We 你好',
-      anchorX: 50,
-      anchorY: 300,
+      content: 'AVA Ta We',
+      anchorX: 100,
+      anchorY: 50,
       fontSize: 16,
       fontFamily: 'Noto Sans',
-      fontWeight: 800,
+      fontWeight: 600,
       fontStyle: 'italic',
-      textBaseline: 'bottom',
+      textBaseline: 'middle',
       textAlign: 'center',
       fontKerning: false,
       zIndex: 6,
     },
-    child6,
+    // child6,
+    child3,
     // child4, child5, child6, child7
   ]);
   // api.selectNodes([parent]);
@@ -468,7 +472,10 @@ const VelloRendererPlugin = RendererPlugin.configure({
 });
 DefaultPlugins.splice(DefaultPlugins.indexOf(DefaultRendererPlugin), 1, VelloRendererPlugin);
 registerFont('/Gaegu-Regular.ttf');
-registerFont('/NotoSansCJKsc-VF.ttf');
+// registerFont('/NotoSansCJKsc-VF.ttf');
+registerFont('/NotoSans-Regular.ttf');
+registerFont('/NotoSans-Bold.ttf');
+registerFont('/NotoSans-Italic.ttf');
 // registerFont('/NotoSansArabic.ttf');
 
 try {

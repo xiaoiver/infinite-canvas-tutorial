@@ -47,6 +47,16 @@ export function addRoughEllipse(canvas_id: number, opts: any): void;
 export function addRoughLine(canvas_id: number, opts: any): void;
 
 /**
+ * 添加手绘风格 SVG path。
+ */
+export function addRoughPath(canvas_id: number, opts: any): void;
+
+/**
+ * 添加手绘风格折线。
+ */
+export function addRoughPolyline(canvas_id: number, opts: any): void;
+
+/**
  * 添加手绘风格矩形。
  */
 export function addRoughRect(canvas_id: number, opts: any): void;
@@ -132,6 +142,8 @@ export interface InitOutput {
     readonly addRect: (a: number, b: any) => void;
     readonly addRoughEllipse: (a: number, b: any) => void;
     readonly addRoughLine: (a: number, b: any) => void;
+    readonly addRoughPath: (a: number, b: any) => void;
+    readonly addRoughPolyline: (a: number, b: any) => void;
     readonly addRoughRect: (a: number, b: any) => void;
     readonly addText: (a: number, b: any) => void;
     readonly computePathBounds: (a: any) => any;
@@ -145,8 +157,8 @@ export interface InitOutput {
     readonly setExportView: (a: number, b: any, c: any) => void;
     readonly clearEmojiCache: () => void;
     readonly clearGlyphCache: () => void;
-    readonly clearShapes: (a: number) => void;
     readonly clearAllCaches: () => void;
+    readonly clearShapes: (a: number) => void;
     readonly wasm_bindgen__closure__destroy__h2393627b061c6390: (a: number, b: number) => void;
     readonly wasm_bindgen__closure__destroy__h5efe34e33761ee9b: (a: number, b: number) => void;
     readonly wasm_bindgen__closure__destroy__h50129e0239694893: (a: number, b: number) => void;

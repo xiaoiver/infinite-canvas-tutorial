@@ -813,23 +813,66 @@ pub enum JsShape {
         bowing: f32,
         simplification: f32,
     },
+    /// 手绘风格折线。
+    RoughPolyline {
+        id: String,
+        parent_id: Option<String>,
+        z_index: f32,
+        ui: bool,
+        points: Vec<[f64; 2]>,
+        fill: [f32; 4],
+        stroke: Option<StrokeParams>,
+        opacity: f32,
+        fill_opacity: f32,
+        stroke_opacity: f32,
+        local_transform: Option<Mat3Array>,
+        roughness: f32,
+        bowing: f32,
+        fill_style: String,
+        hachure_angle: f32,
+        hachure_gap: f32,
+        curve_step_count: f32,
+        simplification: f32,
+    },
+    /// 手绘风格 SVG path。
+    RoughPath {
+        id: String,
+        parent_id: Option<String>,
+        z_index: f32,
+        ui: bool,
+        d: String,
+        fill: [f32; 4],
+        stroke: Option<StrokeParams>,
+        fill_rule: String,
+        opacity: f32,
+        fill_opacity: f32,
+        stroke_opacity: f32,
+        local_transform: Option<Mat3Array>,
+        roughness: f32,
+        bowing: f32,
+        fill_style: String,
+        hachure_angle: f32,
+        hachure_gap: f32,
+        curve_step_count: f32,
+        simplification: f32,
+    },
 }
 
 #[cfg(target_arch = "wasm32")]
 impl JsShape {
     fn id(&self) -> &str {
         match self {
-            JsShape::Rect { id, .. } | JsShape::Ellipse { id, .. } | JsShape::Line { id, .. } | JsShape::Text { id, .. } | JsShape::ImageRect { id, .. } | JsShape::Path { id, .. } | JsShape::Polyline { id, .. } | JsShape::Group { id, .. } | JsShape::RoughRect { id, .. } | JsShape::RoughEllipse { id, .. } | JsShape::RoughLine { id, .. } => id,
+            JsShape::Rect { id, .. } | JsShape::Ellipse { id, .. } | JsShape::Line { id, .. } | JsShape::Text { id, .. } | JsShape::ImageRect { id, .. } | JsShape::Path { id, .. } | JsShape::Polyline { id, .. } | JsShape::Group { id, .. } | JsShape::RoughRect { id, .. } | JsShape::RoughEllipse { id, .. } | JsShape::RoughLine { id, .. } | JsShape::RoughPolyline { id, .. } | JsShape::RoughPath { id, .. } => id,
         }
     }
     fn parent_id(&self) -> Option<&str> {
         match self {
-            JsShape::Rect { parent_id, .. } | JsShape::Ellipse { parent_id, .. } | JsShape::Line { parent_id, .. } | JsShape::Text { parent_id, .. } | JsShape::ImageRect { parent_id, .. } | JsShape::Path { parent_id, .. } | JsShape::Polyline { parent_id, .. } | JsShape::Group { parent_id, .. } | JsShape::RoughRect { parent_id, .. } | JsShape::RoughEllipse { parent_id, .. } | JsShape::RoughLine { parent_id, .. } => parent_id.as_deref(),
+            JsShape::Rect { parent_id, .. } | JsShape::Ellipse { parent_id, .. } | JsShape::Line { parent_id, .. } | JsShape::Text { parent_id, .. } | JsShape::ImageRect { parent_id, .. } | JsShape::Path { parent_id, .. } | JsShape::Polyline { parent_id, .. } | JsShape::Group { parent_id, .. } | JsShape::RoughRect { parent_id, .. } | JsShape::RoughEllipse { parent_id, .. } | JsShape::RoughLine { parent_id, .. } | JsShape::RoughPolyline { parent_id, .. } | JsShape::RoughPath { parent_id, .. } => parent_id.as_deref(),
         }
     }
     fn z_index(&self) -> f32 {
         match self {
-            JsShape::Rect { z_index, .. } | JsShape::Ellipse { z_index, .. } | JsShape::Line { z_index, .. } | JsShape::Text { z_index, .. } | JsShape::ImageRect { z_index, .. } | JsShape::Path { z_index, .. } | JsShape::Polyline { z_index, .. } | JsShape::Group { z_index, .. } | JsShape::RoughRect { z_index, .. } | JsShape::RoughEllipse { z_index, .. } | JsShape::RoughLine { z_index, .. } => *z_index,
+            JsShape::Rect { z_index, .. } | JsShape::Ellipse { z_index, .. } | JsShape::Line { z_index, .. } | JsShape::Text { z_index, .. } | JsShape::ImageRect { z_index, .. } | JsShape::Path { z_index, .. } | JsShape::Polyline { z_index, .. } | JsShape::Group { z_index, .. } | JsShape::RoughRect { z_index, .. } | JsShape::RoughEllipse { z_index, .. } | JsShape::RoughLine { z_index, .. } | JsShape::RoughPolyline { z_index, .. } | JsShape::RoughPath { z_index, .. } => *z_index,
         }
     }
 
@@ -845,13 +888,15 @@ impl JsShape {
             | JsShape::Group { ui, .. }
             | JsShape::RoughRect { ui, .. }
             | JsShape::RoughEllipse { ui, .. }
-            | JsShape::RoughLine { ui, .. } => *ui,
+            | JsShape::RoughLine { ui, .. }
+            | JsShape::RoughPolyline { ui, .. }
+            | JsShape::RoughPath { ui, .. } => *ui,
         }
     }
     /// 若存在则返回 local_transform（ECS Mat3 格式）。
     fn local_transform(&self) -> Option<&Mat3Array> {
         match self {
-            JsShape::Rect { local_transform, .. } | JsShape::Ellipse { local_transform, .. } | JsShape::Line { local_transform, .. } | JsShape::Text { local_transform, .. } | JsShape::ImageRect { local_transform, .. } | JsShape::Path { local_transform, .. } | JsShape::Polyline { local_transform, .. } | JsShape::Group { local_transform, .. } | JsShape::RoughRect { local_transform, .. } | JsShape::RoughEllipse { local_transform, .. } | JsShape::RoughLine { local_transform, .. } => local_transform.as_ref(),
+            JsShape::Rect { local_transform, .. } | JsShape::Ellipse { local_transform, .. } | JsShape::Line { local_transform, .. } | JsShape::Text { local_transform, .. } | JsShape::ImageRect { local_transform, .. } | JsShape::Path { local_transform, .. } | JsShape::Polyline { local_transform, .. } | JsShape::Group { local_transform, .. } | JsShape::RoughRect { local_transform, .. } | JsShape::RoughEllipse { local_transform, .. } | JsShape::RoughLine { local_transform, .. } | JsShape::RoughPolyline { local_transform, .. } | JsShape::RoughPath { local_transform, .. } => local_transform.as_ref(),
         }
     }
     /// 局部坐标系下的"原点"（用于计算相对父节点的偏移）。
@@ -861,7 +906,7 @@ impl JsShape {
             JsShape::Ellipse { cx, cy, .. } | JsShape::RoughEllipse { cx, cy, .. } => Point::new(*cx, *cy),
             JsShape::Line { x1, y1, .. } | JsShape::RoughLine { x1, y1, .. } => Point::new(*x1, *y1),
             JsShape::Text { anchor_x, anchor_y, .. } => Point::new(*anchor_x, *anchor_y),
-            JsShape::Path { .. } | JsShape::Polyline { .. } | JsShape::Group { .. } => Point::ORIGIN,
+            JsShape::Path { .. } | JsShape::Polyline { .. } | JsShape::Group { .. } | JsShape::RoughPolyline { .. } | JsShape::RoughPath { .. } => Point::ORIGIN,
         }
     }
 }
@@ -893,10 +938,10 @@ thread_local! {
     static RESTORE_STATE: RefCell<HashMap<u32, (u32, u32, Affine)>> = RefCell::new(HashMap::new());
     /// emoji 图片缓存：字符 -> (RGBA 数据, 宽度, 高度)
     static EMOJI_CACHE: RefCell<HashMap<String, (Vec<u8>, u32, u32)>> = RefCell::new(HashMap::new());
-    /// 字形缓存：(文本, 字体大小, font_family, line_height_bits, letter_spacing_bits, font_kerning, word_wrap, word_wrap_width_bits, text_align) -> (FontData, glyphs, size, emoji_positions)，命中时直接使用，避免每帧重新排版（尤其对中文字体）
+    /// 字形缓存：(文本, 字体大小, font_family, line_height_bits, letter_spacing_bits, font_kerning, word_wrap, word_wrap_width_bits, text_align, font_weight, font_style, font_variant) -> (FontData, glyphs, size, emoji_positions)，命中时直接使用，避免每帧重新排版（尤其对中文字体）
     static GLYPH_CACHE: RefCell<
         HashMap<
-            (String, u32, String, u32, u32, bool, bool, u64, String),
+            (String, u32, String, u32, u32, bool, bool, u64, String, String, String, String),
             (Vec<(vello::peniko::FontData, Vec<vello::Glyph>)>, f32, Vec<EmojiPosition>),
         >,
     > = RefCell::new(HashMap::new());
@@ -1401,6 +1446,92 @@ pub struct RoughEllipseOptions {
     pub fill: [f32; 4],
     #[serde(default)]
     pub stroke: Option<StrokeOptions>,
+    #[serde(default = "default_opacity")]
+    pub opacity: f32,
+    #[serde(default = "default_opacity")]
+    pub fill_opacity: f32,
+    #[serde(default = "default_opacity")]
+    pub stroke_opacity: f32,
+    #[serde(default, deserialize_with = "deserialize_mat3_opt")]
+    pub local_transform: Option<Mat3Array>,
+    #[serde(default = "default_roughness")]
+    pub roughness: f32,
+    #[serde(default = "default_bowing")]
+    pub bowing: f32,
+    #[serde(default)]
+    pub fill_style: RoughFillStyle,
+    #[serde(default = "default_hachure_angle")]
+    pub hachure_angle: f32,
+    #[serde(default = "default_hachure_gap")]
+    pub hachure_gap: f32,
+    #[serde(default = "default_curve_step_count")]
+    pub curve_step_count: f32,
+    #[serde(default)]
+    pub simplification: f32,
+}
+
+/// RoughPolyline 选项。手绘风格折线。
+#[cfg(target_arch = "wasm32")]
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RoughPolylineOptions {
+    #[serde(deserialize_with = "deserialize_id")]
+    pub id: String,
+    #[serde(default, deserialize_with = "deserialize_parent_id")]
+    pub parent_id: Option<String>,
+    #[serde(default)]
+    pub z_index: f32,
+    #[serde(default)]
+    pub ui: bool,
+    pub points: Vec<[f64; 2]>,
+    #[serde(default = "default_rgba_fill")]
+    pub fill: [f32; 4],
+    #[serde(default)]
+    pub stroke: Option<StrokeOptions>,
+    #[serde(default = "default_opacity")]
+    pub opacity: f32,
+    #[serde(default = "default_opacity")]
+    pub fill_opacity: f32,
+    #[serde(default = "default_opacity")]
+    pub stroke_opacity: f32,
+    #[serde(default, deserialize_with = "deserialize_mat3_opt")]
+    pub local_transform: Option<Mat3Array>,
+    #[serde(default = "default_roughness")]
+    pub roughness: f32,
+    #[serde(default = "default_bowing")]
+    pub bowing: f32,
+    #[serde(default)]
+    pub fill_style: RoughFillStyle,
+    #[serde(default = "default_hachure_angle")]
+    pub hachure_angle: f32,
+    #[serde(default = "default_hachure_gap")]
+    pub hachure_gap: f32,
+    #[serde(default = "default_curve_step_count")]
+    pub curve_step_count: f32,
+    #[serde(default)]
+    pub simplification: f32,
+}
+
+/// RoughPath 选项。手绘风格 SVG path。
+#[cfg(target_arch = "wasm32")]
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RoughPathOptions {
+    #[serde(deserialize_with = "deserialize_id")]
+    pub id: String,
+    #[serde(default, deserialize_with = "deserialize_parent_id")]
+    pub parent_id: Option<String>,
+    #[serde(default)]
+    pub z_index: f32,
+    #[serde(default)]
+    pub ui: bool,
+    pub d: String,
+    #[serde(default = "default_rgba_fill")]
+    pub fill: [f32; 4],
+    #[serde(default)]
+    pub stroke: Option<StrokeOptions>,
+    #[serde(default = "default_fill_rule")]
+    pub fill_rule: String,
     #[serde(default = "default_opacity")]
     pub opacity: f32,
     #[serde(default = "default_opacity")]
@@ -2017,6 +2148,46 @@ fn compute_world_transforms(shapes: &[JsShape]) -> HashMap<String, Affine> {
     map
 }
 
+/// 将 CSS font-variant 映射为 Parley FontFeature 列表（如 small-caps -> smcp）。
+#[cfg(target_arch = "wasm32")]
+fn font_variant_to_features(variant: &str) -> Vec<parley::style::FontFeature> {
+    use parley::style::FontFeature;
+    let v = variant.to_lowercase();
+    let v = v.trim();
+    if v.is_empty() || v == "normal" {
+        return Vec::new();
+    }
+    let mut out = Vec::new();
+    for part in v.split(|c: char| c == ' ' || c == ',') {
+        let part = part.trim();
+        if part == "small-caps" {
+            if let Some(f) = FontFeature::parse("smcp=1") {
+                out.push(f);
+            }
+        } else if part == "all-small-caps" {
+            if let Some(f) = FontFeature::parse("smcp=1") {
+                out.push(f);
+            }
+            if let Some(f) = FontFeature::parse("c2sc=1") {
+                out.push(f);
+            }
+        } else if part == "tabular-nums" {
+            if let Some(f) = FontFeature::parse("tnum=1") {
+                out.push(f);
+            }
+        } else if part == "lining-nums" {
+            if let Some(f) = FontFeature::parse("lnum=1") {
+                out.push(f);
+            }
+        } else if part == "oldstyle-nums" {
+            if let Some(f) = FontFeature::parse("onum=1") {
+                out.push(f);
+            }
+        }
+    }
+    out
+}
+
 /// 将 Canvas textAlign 字符串映射为 Parley Alignment。
 #[cfg(target_arch = "wasm32")]
 fn text_align_to_parley(align: &str) -> parley::Alignment {
@@ -2037,6 +2208,7 @@ fn text_align_to_parley(align: &str) -> parley::Alignment {
 /// line_height: 行高（绝对像素）；≤0 时使用字号作为默认行高。
 /// font_kerning: 是否启用字距调整（对应 Canvas fontKerning）；false 时通过关闭 OpenType kern 特性实现。
 /// text_align: 行内对齐，对应 Canvas textAlign（"start"|"left"|"center"|"end"|"right"）。
+/// font_weight / font_style / font_variant: 对应 CSS font-weight、font-style、font-variant（如 "bold"、"italic"、"small-caps"）。
 #[cfg(target_arch = "wasm32")]
 fn build_text_glyphs_with_emoji_positions(
     content: &str,
@@ -2045,6 +2217,9 @@ fn build_text_glyphs_with_emoji_positions(
     line_height_px: f32,
     font_kerning: bool,
     font_family: &str,
+    font_weight: &str,
+    font_style: &str,
+    font_variant: &str,
     word_wrap: bool,
     word_wrap_width: f64,
     text_align: &str,
@@ -2052,7 +2227,7 @@ fn build_text_glyphs_with_emoji_positions(
     use std::borrow::Cow;
     use parley::fontique::Blob;
     use parley::layout::PositionedLayoutItem;
-    use parley::style::{FontFamily, FontFeature, FontSettings, OverflowWrap, WordBreakStrength};
+    use parley::style::{FontFamily, FontFeature, FontSettings, FontStyle, FontWeight, OverflowWrap, WordBreakStrength};
     use parley::{AlignmentOptions, LayoutContext, LineHeight, StyleProperty};
 
     let font_bytes_list = FONT_BYTES.with(|c| c.borrow().clone());
@@ -2147,17 +2322,26 @@ fn build_text_glyphs_with_emoji_positions(
                 LineHeight::FontSizeRelative(1.0)
             });
             builder.push_default(StyleProperty::FontSize(font_size_px));
-            if letter_spacing != 0.0 {
-                builder.push_default(StyleProperty::LetterSpacing(letter_spacing));
+            if let Some(w) = FontWeight::parse(font_weight.trim()) {
+                builder.push_default(StyleProperty::FontWeight(w));
             }
-            // fontKerning=false 时关闭 OpenType kern 特性
+            if let Some(s) = FontStyle::parse(font_style.trim()) {
+                builder.push_default(StyleProperty::FontStyle(s));
+            }
+            // font-variant 映射到 OpenType 特性（如 small-caps -> smcp）；与 font_kerning 合并为一次 FontFeatures
+            let mut font_features = font_variant_to_features(font_variant.trim());
             if !font_kerning {
                 if let Some(kern_off) = FontFeature::parse("kern=0") {
-                    let kern_off_arr = [kern_off];
-                    builder.push_default(StyleProperty::FontFeatures(FontSettings::List(
-                        Cow::Borrowed(&kern_off_arr),
-                    )));
+                    font_features.push(kern_off);
                 }
+            }
+            if !font_features.is_empty() {
+                builder.push_default(StyleProperty::FontFeatures(FontSettings::List(Cow::Owned(
+                    font_features,
+                ))));
+            }
+            if letter_spacing != 0.0 {
+                builder.push_default(StyleProperty::LetterSpacing(letter_spacing));
             }
             // 开启 wordWrap 时允许在任意字符处换行，否则无空格长串（如 "Abcdefghijklmnop"）会整行显示不换行
             if word_wrap && word_wrap_width > 0.0 {
@@ -2174,7 +2358,13 @@ fn build_text_glyphs_with_emoji_positions(
             };
             layout.break_all_lines(max_advance);
             let alignment = text_align_to_parley(text_align);
-            layout.align(max_advance, alignment, AlignmentOptions::default());
+            // text_align 对齐需要一个容器宽度作为参照；无 word_wrap 时用 layout 的实际宽度，
+            // 这样 center/end 对齐才能正确偏移字形 x 坐标（否则 Parley 无从计算）。
+            let align_width = max_advance.or_else(|| {
+                let w = layout.width();
+                if w > 0.0 { Some(w) } else { None }
+            });
+            layout.align(align_width, alignment, AlignmentOptions::default());
 
             let segment_char_indices: Vec<(usize, char)> = segment.char_indices().collect();
             let mut char_idx = 0usize;
@@ -2267,6 +2457,9 @@ fn compute_text_bounds_internal(opts: &TextOptions) -> Option<TextBounds> {
         line_height_px,
         opts.font_kerning,
         &opts.font_family,
+        &opts.font_weight,
+        &opts.font_style,
+        &opts.font_variant,
         opts.word_wrap,
         opts.word_wrap_width,
         &opts.text_align,
@@ -3231,6 +3424,9 @@ fn add_js_shape_to_scene(
             content,
             font_size,
             font_family,
+            font_weight,
+            font_style,
+            font_variant,
             letter_spacing,
             line_height,
             font_kerning,
@@ -3266,6 +3462,9 @@ fn add_js_shape_to_scene(
                 word_wrap,
                 word_wrap_width_eff.to_bits(),
                 text_align.clone(),
+                font_weight.clone(),
+                font_style.clone(),
+                font_variant.clone(),
             );
 
             // 渲染文本（使用 Parley 布局整个文本，获取准确的 emoji 位置）
@@ -3285,6 +3484,9 @@ fn add_js_shape_to_scene(
                             line_height_px,
                             font_kerning,
                             &font_family,
+                            &font_weight,
+                            &font_style,
+                            &font_variant,
                             word_wrap,
                             word_wrap_width_eff,
                             &text_align,
@@ -3733,6 +3935,47 @@ fn add_js_shape_to_scene(
             let drawable = generator.line(x1 as f32, y1 as f32, x2 as f32, y2 as f32, &Some(options));
 
             render_rough_drawable(scene, shape_transform, &drawable, [0.0, 0.0, 0.0, 0.0], Some(stroke_color_val));
+        }
+        JsShape::RoughPolyline { points, fill, stroke, opacity, fill_opacity, stroke_opacity, roughness, bowing, fill_style, hachure_angle, hachure_gap, curve_step_count, simplification, .. } => {
+            let fill_color = apply_opacity_to_color(fill, opacity, fill_opacity);
+            let stroke_color = stroke.as_ref().map(|s| apply_opacity_to_color(s.color, opacity, stroke_opacity));
+            let options = Options {
+                roughness: Some(roughness),
+                bowing: Some(bowing),
+                fill: if fill_color[3] > 0.0 { Some(roughr::Srgba::new(fill_color[0], fill_color[1], fill_color[2], fill_color[3])) } else { None },
+                fill_style: map_fill_style(&fill_style),
+                hachure_angle: Some(hachure_angle),
+                hachure_gap: if hachure_gap > 0.0 { Some(hachure_gap) } else { Some(stroke.as_ref().map(|s| s.width as f32).unwrap_or(1.0) * 4.0) },
+                curve_step_count: Some(curve_step_count),
+                simplification: Some(simplification),
+                stroke: stroke_color.map(|c| roughr::Srgba::new(c[0], c[1], c[2], c[3])),
+                ..Options::default()
+            };
+            let pts: Vec<roughr::Point2D<f32, _>> = points.iter().map(|p| roughr::Point2D::new(p[0] as f32, p[1] as f32)).collect();
+            let generator = Generator::default();
+            let drawable = generator.linear_path(&pts, false, &Some(options));
+
+            render_rough_drawable(scene, shape_transform, &drawable, fill_color, stroke_color);
+        }
+        JsShape::RoughPath { d, fill, stroke, opacity, fill_opacity, stroke_opacity, roughness, bowing, fill_style, hachure_angle, hachure_gap, curve_step_count, simplification, .. } => {
+            let fill_color = apply_opacity_to_color(fill, opacity, fill_opacity);
+            let stroke_color = stroke.as_ref().map(|s| apply_opacity_to_color(s.color, opacity, stroke_opacity));
+            let options = Options {
+                roughness: Some(roughness),
+                bowing: Some(bowing),
+                fill: if fill_color[3] > 0.0 { Some(roughr::Srgba::new(fill_color[0], fill_color[1], fill_color[2], fill_color[3])) } else { None },
+                fill_style: map_fill_style(&fill_style),
+                hachure_angle: Some(hachure_angle),
+                hachure_gap: if hachure_gap > 0.0 { Some(hachure_gap) } else { Some(stroke.as_ref().map(|s| s.width as f32).unwrap_or(1.0) * 4.0) },
+                curve_step_count: Some(curve_step_count),
+                simplification: Some(simplification),
+                stroke: stroke_color.map(|c| roughr::Srgba::new(c[0], c[1], c[2], c[3])),
+                ..Options::default()
+            };
+            let generator = Generator::default();
+            let drawable = generator.path(d.clone(), &Some(options));
+
+            render_rough_drawable(scene, shape_transform, &drawable, fill_color, stroke_color);
         }
     }
 }
@@ -4394,6 +4637,107 @@ pub fn js_add_rough_line(canvas_id: u32, opts: JsValue) {
         local_transform: o.local_transform,
         roughness: o.roughness,
         bowing: o.bowing,
+        simplification: o.simplification,
+    });
+}
+
+/// 添加手绘风格折线。
+#[cfg(target_arch = "wasm32")]
+#[wasm_bindgen(js_name = addRoughPolyline)]
+pub fn js_add_rough_polyline(canvas_id: u32, opts: JsValue) {
+    let o: RoughPolylineOptions = match serde_wasm_bindgen::from_value(opts) {
+        Ok(v) => v,
+        Err(e) => {
+            web_sys::console::error_1(&format!("addRoughPolyline: invalid options - {}", e).into());
+            return;
+        }
+    };
+    let stroke = o.stroke.as_ref().and_then(|s| {
+        if s.width > 0.0 {
+            Some(StrokeParams {
+                width: s.width,
+                color: s.color,
+                linecap: s.linecap.clone(),
+                linejoin: s.linejoin.clone(),
+                miter_limit: s.miter_limit,
+                stroke_dasharray: s.stroke_dasharray.clone(),
+                stroke_dashoffset: s.stroke_dashoffset,
+                alignment: StrokeAlignment::from_str(&s.alignment),
+                blur: s.blur,
+            })
+        } else {
+            None
+        }
+    });
+    push_shape(canvas_id, JsShape::RoughPolyline {
+        id: o.id,
+        parent_id: o.parent_id,
+        z_index: o.z_index,
+        ui: o.ui,
+        points: o.points,
+        fill: o.fill,
+        stroke,
+        opacity: o.opacity,
+        fill_opacity: o.fill_opacity,
+        stroke_opacity: o.stroke_opacity,
+        local_transform: o.local_transform,
+        roughness: o.roughness,
+        bowing: o.bowing,
+        fill_style: o.fill_style.as_str().to_string(),
+        hachure_angle: o.hachure_angle,
+        hachure_gap: o.hachure_gap,
+        curve_step_count: o.curve_step_count,
+        simplification: o.simplification,
+    });
+}
+
+/// 添加手绘风格 SVG path。
+#[cfg(target_arch = "wasm32")]
+#[wasm_bindgen(js_name = addRoughPath)]
+pub fn js_add_rough_path(canvas_id: u32, opts: JsValue) {
+    let o: RoughPathOptions = match serde_wasm_bindgen::from_value(opts) {
+        Ok(v) => v,
+        Err(e) => {
+            web_sys::console::error_1(&format!("addRoughPath: invalid options - {}", e).into());
+            return;
+        }
+    };
+    let stroke = o.stroke.as_ref().and_then(|s| {
+        if s.width > 0.0 {
+            Some(StrokeParams {
+                width: s.width,
+                color: s.color,
+                linecap: s.linecap.clone(),
+                linejoin: s.linejoin.clone(),
+                miter_limit: s.miter_limit,
+                stroke_dasharray: s.stroke_dasharray.clone(),
+                stroke_dashoffset: s.stroke_dashoffset,
+                alignment: StrokeAlignment::from_str(&s.alignment),
+                blur: s.blur,
+            })
+        } else {
+            None
+        }
+    });
+    push_shape(canvas_id, JsShape::RoughPath {
+        id: o.id,
+        parent_id: o.parent_id,
+        z_index: o.z_index,
+        ui: o.ui,
+        d: o.d,
+        fill: o.fill,
+        stroke,
+        fill_rule: o.fill_rule,
+        opacity: o.opacity,
+        fill_opacity: o.fill_opacity,
+        stroke_opacity: o.stroke_opacity,
+        local_transform: o.local_transform,
+        roughness: o.roughness,
+        bowing: o.bowing,
+        fill_style: o.fill_style.as_str().to_string(),
+        hachure_angle: o.hachure_angle,
+        hachure_gap: o.hachure_gap,
+        curve_step_count: o.curve_step_count,
         simplification: o.simplification,
     });
 }
