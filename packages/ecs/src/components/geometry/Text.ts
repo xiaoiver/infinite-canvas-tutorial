@@ -99,7 +99,7 @@ export function createGeometryBoundsProviderFromComputeTextBounds(
         result &&
         Number.isFinite(result.min_x + result.min_y + result.max_x + result.max_y)
       ) {
-        return new AABB(result.min_x + anchorX, result.min_y + anchorY, result.max_x + anchorX, result.max_y + anchorY);
+        return new AABB(result.min_x, result.min_y, result.max_x, result.max_y);
       }
     } catch {
       // fallback to builtin
@@ -123,9 +123,7 @@ export class Text {
     text: Partial<Text>,
     computed?: Partial<ComputedTextMetrics>,
   ) {
-    if (Text.geometryBoundsProvider) {
-      return Text.geometryBoundsProvider(text, computed);
-    }
+    
 
     const {
       anchorX = 0,
@@ -135,6 +133,13 @@ export class Text {
       content,
     } = text;
     let { width, height, fontMetrics } = computed ?? {};
+    if (Text.geometryBoundsProvider) {
+      const { minX, minY, maxX, maxY } = Text.geometryBoundsProvider(text, computed);
+      width = maxX - minX;
+      height = maxY - minY;
+      // TODO: add fontMetrics
+    }
+
     if (!width || !height || !fontMetrics) {
       computeBidi(content);
       const metrics = measureText(text);

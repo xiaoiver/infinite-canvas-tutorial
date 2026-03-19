@@ -68,7 +68,7 @@ import {
   co,
   fontWeightMap,
 } from '@infinite-canvas-tutorial/ecs';
-import { addRect, addEllipse, addLine, addPath, addPolyline, addText, addImageRect, addGroup, addRoughRect, clearShapes, addRoughEllipse, addRoughLine, setExportView, restoreCanvasAfterExport } from '@infinite-canvas-tutorial/vello-renderer';
+import { addRect, addEllipse, addLine, addPath, addPolyline, addText, addImageRect, addGroup, addRoughRect, clearShapes, addRoughEllipse, addRoughLine, setExportView, restoreCanvasAfterExport, addRoughPolyline, addRoughPath } from '@infinite-canvas-tutorial/vello-renderer';
 import { setCanvasRenderOptions } from '@infinite-canvas-tutorial/vello-renderer';
 import type { SerializedNode } from '@infinite-canvas-tutorial/ecs';
 import { InitVello } from './InitVello';
@@ -569,11 +569,16 @@ export class VelloPipeline extends System {
 
             if (entity.has(Rough)) { 
               const { roughness, bowing, fillStyle, hachureAngle, hachureGap, curveStepCount, simplification } = entity.read(Rough);
+              let fillStyleValue = fillStyle;
+              // @see https://github.com/xiaoiver/infinite-canvas-tutorial/issues/19
+              if (fillStyle === 'dashed') {
+                fillStyleValue = 'hachure';
+              }
               addRoughEllipse(canvasId, {
                 ...opts,
                 roughness,
                 bowing,
-                fillStyle,
+                fillStyle: fillStyleValue,
                 hachureAngle,
                 hachureGap,
                 curveStepCount,
@@ -597,11 +602,16 @@ export class VelloPipeline extends System {
 
             if (entity.has(Rough)) { 
               const { roughness, bowing, fillStyle, hachureAngle, hachureGap, curveStepCount, simplification } = entity.read(Rough);
+              let fillStyleValue = fillStyle;
+              // @see https://github.com/xiaoiver/infinite-canvas-tutorial/issues/19
+              if (fillStyle === 'dashed') {
+                fillStyleValue = 'hachure';
+              }
               addRoughEllipse(canvasId, {
                 ...opts,
                 roughness,
                 bowing,
-                fillStyle,
+                fillStyle: fillStyleValue,
                 hachureAngle,
                 hachureGap,
                 curveStepCount,
@@ -666,11 +676,16 @@ export class VelloPipeline extends System {
               }
             } else if (entity.has(Rough)) { 
               const { roughness, bowing, fillStyle, hachureAngle, hachureGap, curveStepCount, simplification } = entity.read(Rough);
+              let fillStyleValue = fillStyle;
+              // @see https://github.com/xiaoiver/infinite-canvas-tutorial/issues/19
+              if (fillStyle === 'dashed') {
+                fillStyleValue = 'hachure';
+              }
               addRoughRect(canvasId, {
                 ...opts,
                 roughness,
                 bowing,
-                fillStyle,
+                fillStyle: fillStyleValue,
                 hachureAngle,
                 hachureGap,
                 curveStepCount,
@@ -697,7 +712,27 @@ export class VelloPipeline extends System {
                 );
                 if (grads.length) opts.fillGradients = grads;
               }
-              addPath(canvasId, opts);
+
+              if (entity.has(Rough)) { 
+                const { roughness, bowing, fillStyle, hachureAngle, hachureGap, curveStepCount, simplification } = entity.read(Rough);
+                let fillStyleValue = fillStyle;
+                // @see https://github.com/xiaoiver/infinite-canvas-tutorial/issues/19
+                if (fillStyle === 'dashed') {
+                  fillStyleValue = 'hachure';
+                }
+                addRoughPath(canvasId, {
+                  ...opts,
+                  roughness,
+                  bowing,
+                  fillStyle: fillStyleValue,
+                  hachureAngle,
+                  hachureGap,
+                  curveStepCount,
+                  simplification,
+                });
+              } else {
+                addPath(canvasId, opts);
+              }
             }
           } else if (entity.has(Polyline)) {
             const { points } = entity.read(Polyline);
@@ -706,7 +741,26 @@ export class VelloPipeline extends System {
                 ...baseOpts,
                 points,
               };
-              addPolyline(canvasId, opts);
+              if (entity.has(Rough)) {
+                const { roughness, bowing, fillStyle, hachureAngle, hachureGap, curveStepCount, simplification } = entity.read(Rough);
+                let fillStyleValue = fillStyle;
+                // @see https://github.com/xiaoiver/infinite-canvas-tutorial/issues/19
+                if (fillStyle === 'dashed') {
+                  fillStyleValue = 'hachure';
+                }
+                addRoughPolyline(canvasId, {
+                  ...opts,
+                  roughness,
+                  bowing,
+                  fillStyle: fillStyleValue,
+                  hachureAngle,
+                  hachureGap,
+                  curveStepCount,
+                  simplification,
+                });
+              } else {
+                addPolyline(canvasId, opts);
+              }
             }
           } else if (entity.has(Text)) {
             const text = entity.read(Text);
