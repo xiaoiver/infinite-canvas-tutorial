@@ -1,5 +1,5 @@
-import { Entity, System, Canvas, GPUResource, Grid, Theme, ComputedCamera, Camera } from '@infinite-canvas-tutorial/ecs';
-import init, { registerFont as registerFontVello, runWithCanvas, setCameraTransform } from '@infinite-canvas-tutorial/vello-renderer';
+import { Entity, System, Canvas, GPUResource, Grid, Theme, ComputedCamera, Camera, Path, createRenderBoundsProviderFromComputePathBounds, createGeometryBoundsProviderFromComputePathBounds, Polyline, createRenderBoundsProviderFromComputePathBoundsForPolyline, createGeometryBoundsProviderFromComputePathBoundsForPolyline, createHitTestProviderFromHitTestPath, createHitTestProviderFromHitTestPathForPolyline, Line, createGeometryBoundsProviderFromComputePathBoundsForLine, createHitTestProviderFromHitTestPathForLine, createRenderBoundsProviderFromComputePathBoundsForLine } from '@infinite-canvas-tutorial/ecs';
+import init, { registerFont as registerFontVello, runWithCanvas, setCameraTransform, computePathBounds, hitTestPath } from '@infinite-canvas-tutorial/vello-renderer';
 import { registerVelloTextBounds } from './VelloBounds';
 
 const FONT_URLS = [];
@@ -36,6 +36,19 @@ export class InitVello extends System {
       const buf = await r.arrayBuffer();
       registerFontVello(buf);
     }
+
+    // 使用 Vello kurbo 计算包围盒
+    Path.geometryBoundsProvider = createGeometryBoundsProviderFromComputePathBounds(computePathBounds);
+    Path.renderBoundsProvider = createRenderBoundsProviderFromComputePathBounds(computePathBounds);
+    Polyline.geometryBoundsProvider = createGeometryBoundsProviderFromComputePathBoundsForPolyline(computePathBounds);
+    Polyline.renderBoundsProvider = createRenderBoundsProviderFromComputePathBoundsForPolyline(computePathBounds);
+    Line.geometryBoundsProvider = createGeometryBoundsProviderFromComputePathBoundsForLine(computePathBounds);
+    Line.renderBoundsProvider = createRenderBoundsProviderFromComputePathBoundsForLine(computePathBounds);
+
+    // 使用 Vello 进行 hit testing
+    Path.hitTestProvider = createHitTestProviderFromHitTestPath(hitTestPath);
+    Polyline.hitTestProvider = createHitTestProviderFromHitTestPathForPolyline(hitTestPath);
+    Line.hitTestProvider = createHitTestProviderFromHitTestPathForLine(hitTestPath);
   }
 
   execute() {

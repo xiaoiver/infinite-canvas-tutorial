@@ -49,6 +49,7 @@ import {
   Line,
   ClipMode,
   MaterialDirty,
+  FillGradient, FillImage, FillPattern, 
 } from '../components';
 import { Commands } from '../commands/Commands';
 import {
@@ -144,7 +145,7 @@ export class Select extends System {
     this.query(
       (q) =>
         q
-          .using(Canvas, Camera, ComputedCameraControl, Culled, Brush, Input, Locked)
+          .using(Canvas, Camera, ComputedCameraControl, Culled, Brush, Input, Locked, FillSolid, FillGradient, FillImage, FillPattern, Stroke)
           .read.update.and.using(
             GlobalTransform,
             InputPoint,
@@ -197,7 +198,7 @@ export class Select extends System {
       x,
       y,
     });
-    const entities = api.elementsFromBBox(wx, wy, wx, wy);
+    const entities = api.elementsFromPoint({ x: wx, y: wy });
 
     return entities.find(selector);
   }

@@ -154,3 +154,90 @@ export const rangeIntersection = (
 export function toDomPrecision(v: number) {
   return Math.round(v * 1e4) / 1e4;
 }
+
+export function isPointInEllipse(
+  x: number,
+  y: number,
+  h: number,
+  k: number,
+  a: number,
+  b: number,
+) {
+  // 计算点到椭圆中心的 x 和 y 坐标差
+  const dx = x - h;
+  const dy = y - k;
+
+  // 计算点相对于椭圆中心的坐标平方，然后除以半轴长度的平方
+  const squaredDistance = (dx * dx) / (a * a) + (dy * dy) / (b * b);
+
+  // 如果计算结果小于或等于 1，则点在椭圆内
+  return squaredDistance <= 1;
+}
+
+export function pointToLine(
+  x1: number,
+  y1: number,
+  x2: number,
+  y2: number,
+  x: number,
+  y: number,
+) {
+  const d: [number, number] = [x2 - x1, y2 - y1];
+  if (vec2.exactEquals(d, [0, 0])) {
+    return Math.sqrt((x - x1) * (x - x1) + (y - y1) * (y - y1));
+  }
+  const u: [number, number] = [-d[1], d[0]];
+  vec2.normalize(u, u);
+  const a: [number, number] = [x - x1, y - y1];
+  return Math.abs(vec2.dot(a, u));
+}
+
+export function inLine(
+  x1: number,
+  y1: number,
+  x2: number,
+  y2: number,
+  lineWidth: number,
+  x: number,
+  y: number,
+) {
+  const minX = Math.min(x1, x2);
+  const maxX = Math.max(x1, x2);
+  const minY = Math.min(y1, y2);
+  const maxY = Math.max(y1, y2);
+  const halfWidth = lineWidth / 2;
+  // 因为目前的方案是计算点到直线的距离，而有可能会在延长线上，所以要先判断是否在包围盒内
+  // 这种方案会在水平或者竖直的情况下载线的延长线上有半 lineWidth 的误差
+  if (
+    !(
+      x >= minX - halfWidth &&
+      x <= maxX + halfWidth &&
+      y >= minY - halfWidth &&
+      y <= maxY + halfWidth
+    )
+  ) {
+    return false;
+  }
+
+  return pointToLine(x1, y1, x2, y2, x, y) <= lineWidth / 2;
+}
+
+export function inPolyline(
+  points: [number, number][],
+  lineWidth: number,
+  x: number,
+  y: number,
+) {
+  for (let i = 0; i < points.length - 1; i++) {
+    const x1 = points[i][0];
+    const y1 = points[i][1];
+    const x2 = points[i + 1][0];
+    const y2 = points[i + 1][1];
+
+    if (inLine(x1, y1, x2, y2, lineWidth, x, y)) {
+      return true;
+    }
+  }
+
+  return false;
+}

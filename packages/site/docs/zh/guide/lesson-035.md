@@ -398,6 +398,16 @@ JsShape::RoughRect { x, y, width, height, .. } => {
 
 在 [课程 15 - 绘制文本] 中，我们使用 SDF / MSDF 完成文本的渲染，在文本 shaping 和 layout 上花了不少精力，这部分可以使用 [parley] 完成。大致步骤如下：
 
+```plaintext
+文本布局 (Parley) ← 使用 HarfRust/Swash 进行 Shaping
+    ↓
+字体解析 (Skrifa) ← 提取字形轮廓 (BezPath)
+    ↓
+Vello/Scene ← 渲染路径
+    ↓
+Peniko (Brush/Color/Gradient/Image)
+```
+
 -   FontContext: 注册字体，接收从 JS 侧传入的字体文件数据
 -   LayoutContext: 构建文本布局，支持：
     -   字体族、大小、字距 (letter_spacing)
@@ -497,7 +507,43 @@ scene.draw_blurred_rounded_rect(
 
 ### 包围盒计算 {#compute-bounds}
 
-我们可以将文本度量涉及的 BiDi、clusters 等交给 parley 处理。
+我们可以将文本度量涉及的 BiDi、clusters 等交给 [parley] 处理。另外对于带有描边、`linecap` `linejoin` 等属性的 Polyline 和 Path 的包围盒计算，之前也是用了近似估计的方式，现在我们就可以使用 [kurbo] 提供的 `BezPath::bounding_box()` 方法获得更精确的结果：
+
+```rust
+/// 精确包围盒：fill 用 BezPath::bounding_box()，stroke 用 Kurbo 的 stroke 展开成轮廓 path 再取 bbox，两者 union。
+/// 参考 Graphite 的实现：把 stroke 几何变成 fill 轮廓再取 bounding_box 是最接近“精确”的做法。
+fn path_render_bounds(d: &str, stroke: Option<&StrokeParams>) -> Option<Rect> {
+    let bez = BezPath::from_svg(d).ok()?;
+    let fill_rect = bez.bounding_box();
+    let mut result = fill_rect;
+
+    if let Some(s) = stroke {
+        if s.width > 0.0 {
+            let kurbo_stroke = s.to_kurbo_stroke();
+            let opts = StrokeOpts::default();
+            const TOLERANCE: f64 = 0.1;
+            let stroke_path = vello::kurbo::stroke(bez.iter(), &kurbo_stroke, &opts, TOLERANCE);
+            let stroke_rect = stroke_path.bounding_box();
+            result = result.union(stroke_rect);
+        }
+    }
+
+    Some(result)
+}
+```
+
+然后在 vello 初始化时动态扩展：
+
+```ts
+import {
+    Path,
+    createGeometryBoundsProviderFromComputePathBounds,
+} from '@infinite-canvas-tutorial/ecs';
+import { computePathBounds } from '@infinite-canvas-tutorial/vello-renderer';
+
+Path.geometryBoundsProvider =
+    createGeometryBoundsProviderFromComputePathBounds(computePathBounds);
+```
 
 ### 拾取 {#picking}
 
@@ -534,6 +580,43 @@ impl ClickTarget {
             true
         }
     }
+}
+```
+
+之前我们判断点是否在 Path 内需要使用 Canvas API [isPointInStroke] 和 [isPointInPath]：
+
+```ts
+const ctx = DOMAdapter.get().createCanvas(100, 100).getContext('2d');
+const { d } = entity.read(Path);
+const path = new Path2D(d);
+if (hasStroke) {
+    ctx.strokeStyle = stroke.color;
+    ctx.lineWidth = stroke.width;
+    ctx.lineCap = stroke.linecap;
+    ctx.lineJoin = stroke.linejoin;
+    ctx.miterLimit = stroke.miterlimit;
+    ctx.stroke(path);
+    isIntersected = ctx.isPointInStroke(path, x, y);
+}
+```
+
+现在也可以使用 [kurbo]，将 Path 在一定误差范围内展平成多个子路径，分别进行相交性检测：
+
+```rust
+fn is_point_in_path_fill(d: &str, x: f64, y: f64, fill_rule: &str) -> bool {
+    let Ok(bez) = BezPath::from_svg(d) else { return false; };
+    let subs = flatten_bez_path(&bez, 0.25);
+    let p = Point::new(x, y);
+
+    // nonzero：对每个 closed contour 累加 winding（这里用“逐 contour 判断”近似；
+    // 对于复杂自交路径仍是近似，但比简单 bbox 更接近 Canvas2D）。
+    // 更精确的做法是对所有边统一累计 winding；当前实现已足够用于选择/拾取。
+    for sp in subs.iter() {
+        if sp.closed && sp.points.len() >= 3 && point_in_polygon_nonzero(p, &sp.points) {
+            return true;
+        }
+    }
+    false
 }
 ```
 
@@ -582,3 +665,5 @@ impl ClickTarget {
 [GPU-friendly Stroke Expansion]: https://dl.acm.org/doi/pdf/10.1145/3675390
 [Euler Spiral / Clothoid - An Illustrated Explanation]: https://xixixao.github.io/euler-spiral-explanation/
 [Graphite]: https://github.com/GraphiteEditor/Graphite
+[isPointInStroke]: https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/isPointInStroke
+[isPointInPath]: https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/isPointInPath

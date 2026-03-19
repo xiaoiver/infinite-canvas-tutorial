@@ -254,11 +254,14 @@ canvas.addEventListener(Event.READY, async (e) => {
 
   const child6 = {
     id: 'child6',
-    type: 'path',
-    d: 'M 100 100 L 200 200 L 300 100 Z',
-    fill: 'red',
+    type: 'polyline',
+    // d: 'M 100 100 L 200 200 L 300 100 Z',
+    points: '100,100 200,200 300,100',
+    // fill: 'red',
     stroke: 'black',
-    strokeWidth: 10,
+    strokeWidth: 50,
+    strokeLinecap: 'round',
+    strokeLinejoin: 'round',
     zIndex: 6,
   } as const;
 
@@ -408,7 +411,7 @@ canvas.addEventListener(Event.READY, async (e) => {
       x2: 300,
       y2: 300,
       stroke: 'red',
-      strokeWidth: 10,
+      strokeWidth: 50,
       markerEnd: 'line',
       markerStart: 'line',
       markerFactor: 4,
@@ -425,6 +428,16 @@ canvas.addEventListener(Event.READY, async (e) => {
       zIndex: 5,
     },
     {
+      id: 'container-2',
+      type: 'ellipse',
+      x: 200,
+      y: 0,
+      width: 100,
+      height: 100,
+      fill: 'red',
+      zIndex: 5,
+    },
+    {
       id: 'text-6',
       type: 'text',
       fill: 'black',
@@ -433,11 +446,14 @@ canvas.addEventListener(Event.READY, async (e) => {
       anchorY: 300,
       fontSize: 16,
       fontFamily: 'Noto Sans',
+      fontWeight: 800,
+      fontStyle: 'italic',
       textBaseline: 'bottom',
       textAlign: 'center',
       fontKerning: false,
       zIndex: 6,
     },
+    child6,
     // child4, child5, child6, child7
   ]);
   // api.selectNodes([parent]);

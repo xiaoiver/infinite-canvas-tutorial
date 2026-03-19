@@ -13,6 +13,7 @@ import {
   GlobalTransform,
   HTML,
   Line,
+  Marker,
   Mat3,
   OBB,
   Parent,
@@ -65,6 +66,7 @@ export class ComputeBounds extends System {
           ComputedTextMetrics,
           Stroke,
           DropShadow,
+          Marker,
           HTML,
           Embed,
           Parent,
@@ -133,13 +135,21 @@ export function updateBounds(entity: Entity) {
       );
     } else if (entity.has(Line)) {
       geometryBounds = Line.getGeometryBounds(entity.read(Line));
-      renderBounds = Line.getRenderBounds(entity.read(Line), stroke);
+      renderBounds = Line.getRenderBounds(
+        entity.read(Line), 
+        stroke,
+        entity.has(Marker) ? entity.read(Marker) : undefined,
+      );
     } else if (entity.has(Polyline)) {
       geometryBounds = Polyline.getGeometryBounds({
         ...entity.read(Polyline),
         points: entity.read(ComputedPoints).shiftedPoints,
       });
-      renderBounds = Polyline.getRenderBounds(entity.read(Polyline), stroke);
+      renderBounds = Polyline.getRenderBounds(
+        entity.read(Polyline), 
+        stroke, 
+        entity.has(Marker) ? entity.read(Marker) : undefined
+      );
     } else if (entity.has(Brush)) {
       geometryBounds = Brush.getGeometryBounds(entity.read(Brush));
       renderBounds = Brush.getRenderBounds(entity.read(Brush));
@@ -152,6 +162,7 @@ export function updateBounds(entity: Entity) {
         entity.read(Path),
         entity.read(ComputedPoints),
         stroke,
+        entity.has(Marker) ? entity.read(Marker) : undefined,
       );
     } else if (entity.has(Text)) {
       geometryBounds = Text.getGeometryBounds(
