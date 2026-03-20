@@ -1,7 +1,6 @@
 /* @ts-self-types="./vello_renderer.d.ts" */
 
 /**
- * 添加椭圆。
  * @param {number} canvas_id
  * @param {any} opts
  */
@@ -10,7 +9,6 @@ export function addEllipse(canvas_id, opts) {
 }
 
 /**
- * 添加组/容器。用于组织子元素，本身没有可见内容。
  * @param {number} canvas_id
  * @param {any} opts
  */
@@ -19,7 +17,6 @@ export function addGroup(canvas_id, opts) {
 }
 
 /**
- * 添加图片填充的矩形。opts 需包含 imageData (Uint8Array RGBA)、imageWidth、imageHeight。
  * @param {number} canvas_id
  * @param {any} opts
  */
@@ -28,7 +25,6 @@ export function addImageRect(canvas_id, opts) {
 }
 
 /**
- * 添加线段。
  * @param {number} canvas_id
  * @param {any} opts
  */
@@ -37,7 +33,6 @@ export function addLine(canvas_id, opts) {
 }
 
 /**
- * 添加 path。opts 需包含 d（SVG path 的 d 属性）。
  * @param {number} canvas_id
  * @param {any} opts
  */
@@ -46,7 +41,6 @@ export function addPath(canvas_id, opts) {
 }
 
 /**
- * 添加折线。opts 需包含 points（[[x,y],[x,y],...]）。
  * @param {number} canvas_id
  * @param {any} opts
  */
@@ -55,7 +49,6 @@ export function addPolyline(canvas_id, opts) {
 }
 
 /**
- * 添加矩形。canvas_id 由 runWithCanvas 的 onReady 回调传入；opts 同前。
  * @param {number} canvas_id
  * @param {any} opts
  */
@@ -64,7 +57,6 @@ export function addRect(canvas_id, opts) {
 }
 
 /**
- * 添加手绘风格椭圆。
  * @param {number} canvas_id
  * @param {any} opts
  */
@@ -73,7 +65,6 @@ export function addRoughEllipse(canvas_id, opts) {
 }
 
 /**
- * 添加手绘风格线段。
  * @param {number} canvas_id
  * @param {any} opts
  */
@@ -82,7 +73,6 @@ export function addRoughLine(canvas_id, opts) {
 }
 
 /**
- * 添加手绘风格 SVG path。
  * @param {number} canvas_id
  * @param {any} opts
  */
@@ -91,7 +81,6 @@ export function addRoughPath(canvas_id, opts) {
 }
 
 /**
- * 添加手绘风格折线。
  * @param {number} canvas_id
  * @param {any} opts
  */
@@ -100,7 +89,6 @@ export function addRoughPolyline(canvas_id, opts) {
 }
 
 /**
- * 添加手绘风格矩形。
  * @param {number} canvas_id
  * @param {any} opts
  */
@@ -109,7 +97,6 @@ export function addRoughRect(canvas_id, opts) {
 }
 
 /**
- * 添加文本。
  * @param {number} canvas_id
  * @param {any} opts
  */
@@ -117,29 +104,19 @@ export function addText(canvas_id, opts) {
     wasm.addText(canvas_id, opts);
 }
 
-/**
- * 清空所有缓存（emoji + 字形）。在切换字体或内存紧张时调用。
- */
 export function clearAllCaches() {
     wasm.clearAllCaches();
 }
 
-/**
- * 清空 emoji 缓存，释放内存。在切换字体或长时间运行后调用。
- */
 export function clearEmojiCache() {
     wasm.clearEmojiCache();
 }
 
-/**
- * 清空字形缓存，释放内存。在切换字体或长时间运行后调用。
- */
 export function clearGlyphCache() {
     wasm.clearGlyphCache();
 }
 
 /**
- * 清空指定画布上由 JS 添加的所有图形。
  * @param {number} canvas_id
  */
 export function clearShapes(canvas_id) {
@@ -156,8 +133,6 @@ export function computePathBounds(opts) {
 }
 
 /**
- * 计算文本在局部坐标系（锚点为原点）下的几何包围盒，用于拾取或布局。
- * 入参与 addText 相同（除 canvasId 外），返回 { min_x, min_y, max_x, max_y }。
  * @param {any} opts
  * @returns {any}
  */
@@ -176,9 +151,6 @@ export function hitTestPath(opts) {
 }
 
 /**
- * 测量字体度量指标，等价于 TS 侧 measureFont()。
- * 返回 { fontBoundingBoxAscent, fontBoundingBoxDescent, fontSize }，
- * 可用于 yOffsetFromTextBaseline 计算 textBaseline 的 y 偏移。
  * @param {any} opts
  * @returns {any}
  */
@@ -188,9 +160,6 @@ export function measureFont(opts) {
 }
 
 /**
- * 追加一个字体（TTF/OTF 字节）到字体列表，用于多字体 / fallback。
- * 注意：当前实现仍然只使用第一个字体进行排版与渲染，
- * 该 API 主要用于未来在 Parley 侧扩展真正的多字体支持。
  * @param {any} js_value
  */
 export function registerFont(js_value) {
@@ -198,7 +167,6 @@ export function registerFont(js_value) {
 }
 
 /**
- * 恢复画布尺寸与相机变换（在 setExportView 的 on_rendered 里 toDataURL 后调用）。
  * @param {number} canvas_id
  */
 export function restoreCanvasAfterExport(canvas_id) {
@@ -206,8 +174,6 @@ export function restoreCanvasAfterExport(canvas_id) {
 }
 
 /**
- * 使用传入的 canvas 元素启动渲染。onReady(canvasId) 在画布就绪时调用，后续 addRect/addEllipse 等需传入该 canvasId。
- * 支持多画布：同一同步批次内多次调用 runWithCanvas 会共用一个 event loop，每个 canvas 都会收到 on_ready。
  * @param {any} canvas
  * @param {any} on_ready
  */
@@ -216,10 +182,6 @@ export function runWithCanvas(canvas, on_ready) {
 }
 
 /**
- * 设置画布相机变换。opts 支持 { x, y, scale, rotation }，下一帧渲染前生效。
- * - x, y: 平移（世界坐标）
- * - scale: 缩放因子，1 为原始大小，2 为 2 倍放大
- * - rotation: 旋转弧度
  * @param {number} canvas_id
  * @param {any} opts
  */
@@ -236,7 +198,6 @@ export function setCanvasRenderOptions(canvas_id, opts) {
 }
 
 /**
- * 设置下一帧“导出视口”：将画布临时改为 (width, height)，变换使世界坐标 (left, top) 到 (left+width, top+height) 1:1 映射到画布；渲染后调用 on_rendered(canvas_id)，再下一帧需调用 restoreCanvasAfterExport(canvas_id) 恢复。
  * @param {number} canvas_id
  * @param {any} opts
  * @param {any} on_rendered
@@ -1820,62 +1781,62 @@ function __wbg_get_imports() {
             arg0.writeTexture(arg1, arg2, arg3, arg4);
         }, arguments); },
         __wbindgen_cast_0000000000000001: function(arg0, arg1) {
-            // Cast intrinsic for `Closure(Closure { dtor_idx: 539, function: Function { arguments: [Externref], shim_idx: 540, ret: Unit, inner_ret: Some(Unit) }, mutable: true }) -> Externref`.
+            // Cast intrinsic for `Closure(Closure { dtor_idx: 558, function: Function { arguments: [Externref], shim_idx: 559, ret: Unit, inner_ret: Some(Unit) }, mutable: true }) -> Externref`.
             const ret = makeMutClosure(arg0, arg1, wasm.wasm_bindgen__closure__destroy__h2393627b061c6390, wasm_bindgen__convert__closures_____invoke__h07b4cad2128613da);
             return ret;
         },
         __wbindgen_cast_0000000000000002: function(arg0, arg1) {
-            // Cast intrinsic for `Closure(Closure { dtor_idx: 539, function: Function { arguments: [NamedExternref("Array<any>"), NamedExternref("ResizeObserver")], shim_idx: 549, ret: Unit, inner_ret: Some(Unit) }, mutable: true }) -> Externref`.
+            // Cast intrinsic for `Closure(Closure { dtor_idx: 558, function: Function { arguments: [NamedExternref("Array<any>"), NamedExternref("ResizeObserver")], shim_idx: 568, ret: Unit, inner_ret: Some(Unit) }, mutable: true }) -> Externref`.
             const ret = makeMutClosure(arg0, arg1, wasm.wasm_bindgen__closure__destroy__h2393627b061c6390, wasm_bindgen__convert__closures_____invoke__h26ef4de1d2f17d97);
             return ret;
         },
         __wbindgen_cast_0000000000000003: function(arg0, arg1) {
-            // Cast intrinsic for `Closure(Closure { dtor_idx: 539, function: Function { arguments: [NamedExternref("Array<any>")], shim_idx: 540, ret: Unit, inner_ret: Some(Unit) }, mutable: true }) -> Externref`.
+            // Cast intrinsic for `Closure(Closure { dtor_idx: 558, function: Function { arguments: [NamedExternref("Array<any>")], shim_idx: 559, ret: Unit, inner_ret: Some(Unit) }, mutable: true }) -> Externref`.
             const ret = makeMutClosure(arg0, arg1, wasm.wasm_bindgen__closure__destroy__h2393627b061c6390, wasm_bindgen__convert__closures_____invoke__h07b4cad2128613da_2);
             return ret;
         },
         __wbindgen_cast_0000000000000004: function(arg0, arg1) {
-            // Cast intrinsic for `Closure(Closure { dtor_idx: 539, function: Function { arguments: [NamedExternref("Event")], shim_idx: 540, ret: Unit, inner_ret: Some(Unit) }, mutable: true }) -> Externref`.
+            // Cast intrinsic for `Closure(Closure { dtor_idx: 558, function: Function { arguments: [NamedExternref("Event")], shim_idx: 559, ret: Unit, inner_ret: Some(Unit) }, mutable: true }) -> Externref`.
             const ret = makeMutClosure(arg0, arg1, wasm.wasm_bindgen__closure__destroy__h2393627b061c6390, wasm_bindgen__convert__closures_____invoke__h07b4cad2128613da_3);
             return ret;
         },
         __wbindgen_cast_0000000000000005: function(arg0, arg1) {
-            // Cast intrinsic for `Closure(Closure { dtor_idx: 539, function: Function { arguments: [NamedExternref("FocusEvent")], shim_idx: 540, ret: Unit, inner_ret: Some(Unit) }, mutable: true }) -> Externref`.
+            // Cast intrinsic for `Closure(Closure { dtor_idx: 558, function: Function { arguments: [NamedExternref("FocusEvent")], shim_idx: 559, ret: Unit, inner_ret: Some(Unit) }, mutable: true }) -> Externref`.
             const ret = makeMutClosure(arg0, arg1, wasm.wasm_bindgen__closure__destroy__h2393627b061c6390, wasm_bindgen__convert__closures_____invoke__h07b4cad2128613da_4);
             return ret;
         },
         __wbindgen_cast_0000000000000006: function(arg0, arg1) {
-            // Cast intrinsic for `Closure(Closure { dtor_idx: 539, function: Function { arguments: [NamedExternref("KeyboardEvent")], shim_idx: 540, ret: Unit, inner_ret: Some(Unit) }, mutable: true }) -> Externref`.
+            // Cast intrinsic for `Closure(Closure { dtor_idx: 558, function: Function { arguments: [NamedExternref("KeyboardEvent")], shim_idx: 559, ret: Unit, inner_ret: Some(Unit) }, mutable: true }) -> Externref`.
             const ret = makeMutClosure(arg0, arg1, wasm.wasm_bindgen__closure__destroy__h2393627b061c6390, wasm_bindgen__convert__closures_____invoke__h07b4cad2128613da_5);
             return ret;
         },
         __wbindgen_cast_0000000000000007: function(arg0, arg1) {
-            // Cast intrinsic for `Closure(Closure { dtor_idx: 539, function: Function { arguments: [NamedExternref("PageTransitionEvent")], shim_idx: 540, ret: Unit, inner_ret: Some(Unit) }, mutable: true }) -> Externref`.
+            // Cast intrinsic for `Closure(Closure { dtor_idx: 558, function: Function { arguments: [NamedExternref("PageTransitionEvent")], shim_idx: 559, ret: Unit, inner_ret: Some(Unit) }, mutable: true }) -> Externref`.
             const ret = makeMutClosure(arg0, arg1, wasm.wasm_bindgen__closure__destroy__h2393627b061c6390, wasm_bindgen__convert__closures_____invoke__h07b4cad2128613da_6);
             return ret;
         },
         __wbindgen_cast_0000000000000008: function(arg0, arg1) {
-            // Cast intrinsic for `Closure(Closure { dtor_idx: 539, function: Function { arguments: [NamedExternref("PointerEvent")], shim_idx: 540, ret: Unit, inner_ret: Some(Unit) }, mutable: true }) -> Externref`.
+            // Cast intrinsic for `Closure(Closure { dtor_idx: 558, function: Function { arguments: [NamedExternref("PointerEvent")], shim_idx: 559, ret: Unit, inner_ret: Some(Unit) }, mutable: true }) -> Externref`.
             const ret = makeMutClosure(arg0, arg1, wasm.wasm_bindgen__closure__destroy__h2393627b061c6390, wasm_bindgen__convert__closures_____invoke__h07b4cad2128613da_7);
             return ret;
         },
         __wbindgen_cast_0000000000000009: function(arg0, arg1) {
-            // Cast intrinsic for `Closure(Closure { dtor_idx: 539, function: Function { arguments: [NamedExternref("WheelEvent")], shim_idx: 540, ret: Unit, inner_ret: Some(Unit) }, mutable: true }) -> Externref`.
+            // Cast intrinsic for `Closure(Closure { dtor_idx: 558, function: Function { arguments: [NamedExternref("WheelEvent")], shim_idx: 559, ret: Unit, inner_ret: Some(Unit) }, mutable: true }) -> Externref`.
             const ret = makeMutClosure(arg0, arg1, wasm.wasm_bindgen__closure__destroy__h2393627b061c6390, wasm_bindgen__convert__closures_____invoke__h07b4cad2128613da_8);
             return ret;
         },
         __wbindgen_cast_000000000000000a: function(arg0, arg1) {
-            // Cast intrinsic for `Closure(Closure { dtor_idx: 539, function: Function { arguments: [], shim_idx: 542, ret: Unit, inner_ret: Some(Unit) }, mutable: true }) -> Externref`.
+            // Cast intrinsic for `Closure(Closure { dtor_idx: 558, function: Function { arguments: [], shim_idx: 561, ret: Unit, inner_ret: Some(Unit) }, mutable: true }) -> Externref`.
             const ret = makeMutClosure(arg0, arg1, wasm.wasm_bindgen__closure__destroy__h2393627b061c6390, wasm_bindgen__convert__closures_____invoke__h0545557df07585f9);
             return ret;
         },
         __wbindgen_cast_000000000000000b: function(arg0, arg1) {
-            // Cast intrinsic for `Closure(Closure { dtor_idx: 692, function: Function { arguments: [Externref], shim_idx: 693, ret: Unit, inner_ret: Some(Unit) }, mutable: true }) -> Externref`.
+            // Cast intrinsic for `Closure(Closure { dtor_idx: 695, function: Function { arguments: [Externref], shim_idx: 696, ret: Unit, inner_ret: Some(Unit) }, mutable: true }) -> Externref`.
             const ret = makeMutClosure(arg0, arg1, wasm.wasm_bindgen__closure__destroy__h5efe34e33761ee9b, wasm_bindgen__convert__closures_____invoke__h5ba874b0856b22eb);
             return ret;
         },
         __wbindgen_cast_000000000000000c: function(arg0, arg1) {
-            // Cast intrinsic for `Closure(Closure { dtor_idx: 702, function: Function { arguments: [Externref], shim_idx: 703, ret: Result(Unit), inner_ret: Some(Result(Unit)) }, mutable: true }) -> Externref`.
+            // Cast intrinsic for `Closure(Closure { dtor_idx: 705, function: Function { arguments: [Externref], shim_idx: 706, ret: Result(Unit), inner_ret: Some(Result(Unit)) }, mutable: true }) -> Externref`.
             const ret = makeMutClosure(arg0, arg1, wasm.wasm_bindgen__closure__destroy__h50129e0239694893, wasm_bindgen__convert__closures_____invoke__hcd95a0b94c308f8e);
             return ret;
         },

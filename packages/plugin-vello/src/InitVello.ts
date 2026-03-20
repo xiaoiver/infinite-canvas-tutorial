@@ -22,6 +22,7 @@ import {
   Text,
   createGeometryBoundsProviderFromComputeTextBounds,
   setMeasureFontFn,
+  setMeasureLineFn,
   fontWeightMap,
   filterUndefined
 } from '@infinite-canvas-tutorial/ecs';
@@ -71,6 +72,39 @@ export class InitVello extends System {
       const buf = await r.arrayBuffer();
       registerFontVello(buf);
     }
+
+    setMeasureLineFn((text, style) => {
+      let fontWeightValue: string | undefined = undefined;
+      const { fontWeight } = style;
+      if (fontWeight) {
+        fontWeightValue = `${typeof fontWeight === 'string' ? fontWeightMap[fontWeight] : fontWeight}`;
+      }
+
+      const { fontSize, fontFamily, fontStyle, fontVariant, anchorX, anchorY, textAlign, textBaseline, lineHeight, letterSpacing, fontKerning, wordWrap, wordWrapWidth } = style;
+      
+      const opts = {
+        id: '',
+        content: text,
+        fontSize,
+        fontFamily,
+        fontWeight: fontWeightValue,
+        fontStyle,
+        fontVariant,
+        anchorX,
+        anchorY,
+        textAlign,
+        textBaseline,
+        lineHeight,
+        letterSpacing,
+        fontKerning,
+        wordWrap: wordWrap ?? false,
+        wordWrapWidth: wordWrapWidth ?? 0,
+      };
+
+      const filteredOpts = filterUndefined(opts);
+      const bounds = computeTextBounds(filteredOpts);
+      return bounds ? bounds.maxX - bounds.minX : 0;
+    });
 
     setMeasureFontFn((style) => {
       let fontWeightValue: string | undefined = undefined;

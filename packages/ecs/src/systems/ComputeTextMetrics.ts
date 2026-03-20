@@ -190,16 +190,29 @@ export type FontMetricsResult = Pick<
 
 export type MeasureFontFn = (style: Partial<Text>) => FontMetricsResult;
 
+/**
+ * 测量给定文本字符串的像素宽度（单行）。
+ * text: 要测量的字符串（可以是一行文字，也可以是单个字符）
+ * style: 当前文字样式（字号、字体等）
+ * 返回值为像素宽度（不含 letterSpacing；letterSpacing 由调用方叠加）。
+ */
+export type MeasureLineFn = (text: string, style: Partial<Text>) => number;
+
 let canvas: OffscreenCanvas | HTMLCanvasElement;
 let context: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
 const fonts: Record<string, FontMetricsResult> = {};
 const bidi = bidiFactory();
 const bidiCache: Record<string, string> = {};
 
-let measureFontFn: MeasureFontFn = defaultMeasureFont;
+export let measureFontFn: MeasureFontFn = defaultMeasureFont;
+let measureLineFn: MeasureLineFn = defaultMeasureLine;
 
 export function setMeasureFontFn(fn: MeasureFontFn) {
   measureFontFn = fn;
+}
+
+export function setMeasureLineFn(fn: MeasureLineFn) {
+  measureLineFn = fn;
 }
 export class ComputeTextMetrics extends System {
   texts = this.query((q) => q.addedOrChanged.with(Text).trackWrites);
@@ -337,6 +350,7 @@ export function measureText(
       bitmapFont,
       bitmapFontKerning,
       scale,
+      style,
     );
     lineWidths[i] = lineWidth;
     maxLineWidth = Math.max(maxLineWidth, lineWidth);
@@ -443,6 +457,7 @@ function wordWrapInternal(text: string, style: Partial<Text>, scale: number) {
       context as CanvasRenderingContext2D,
       bitmapFont,
       scale,
+      style,
     );
   };
   const ellipsisWidth = Array.from(ellipsis).reduce((prev, cur) => {
@@ -615,12 +630,25 @@ function measureBitmapFont(bitmapFont: BitmapFont, fontSize: number) {
   };
 }
 
+function defaultMeasureLine(text: string, style: Partial<Text>): number {
+  if (!canvas) {
+    canvas = DOMAdapter.get().createCanvas(1, 1);
+    context = canvas.getContext('2d') as
+      | OffscreenCanvasRenderingContext2D
+      | CanvasRenderingContext2D;
+  }
+  context.font = fontStringFromTextStyle(style);
+  context.letterSpacing = `${style.letterSpacing ?? 0}px`;
+  return context.measureText(text).width;
+}
+
 function measureTextInternal(
   text: string,
-  letterSpacing: number,
+  _letterSpacing: number,
   bitmapFont: BitmapFont,
   bitmapFontKerning: boolean,
   scale: number,
+  style: Partial<Text>,
 ) {
   const segments = DOMAdapter.get().splitGraphemes(text);
 
@@ -641,13 +669,8 @@ function measureTextInternal(
     }, 0);
     boundsWidth = metricWidth;
   } else {
-    context.letterSpacing = `${letterSpacing}px`;
-
-    const metrics = context.measureText(text);
-    metricWidth = metrics.width;
-    const actualBoundingBoxLeft = -metrics.actualBoundingBoxLeft;
-    const actualBoundingBoxRight = metrics.actualBoundingBoxRight;
-    boundsWidth = actualBoundingBoxRight - actualBoundingBoxLeft;
+    metricWidth = measureLineFn(text, style);
+    boundsWidth = metricWidth;
   }
 
   return Math.max(metricWidth, boundsWidth);
@@ -731,9 +754,10 @@ function getFromCache(
   key: string,
   letterSpacing: number,
   cache: CharacterWidthCache,
-  context: CanvasRenderingContext2D,
+  _context: CanvasRenderingContext2D,
   bitmapFont: BitmapFont,
   scale: number,
+  style: Partial<Text>,
 ): number {
   let width = cache[key];
   if (typeof width !== 'number') {
@@ -741,7 +765,7 @@ function getFromCache(
     width =
       (bitmapFont
         ? bitmapFont.chars[key]?.xAdvance || 0
-        : context.measureText(key).width) *
+        : measureLineFn(key, style)) *
         scale +
       spacing;
     cache[key] = width;
