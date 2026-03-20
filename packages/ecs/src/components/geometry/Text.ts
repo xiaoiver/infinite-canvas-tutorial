@@ -305,7 +305,7 @@ export class Text {
    * Sets the height of a line box in horizontal writing modes. In vertical writing modes, it sets the width of a line box.
    * @see https://developer.mozilla.org/en-US/docs/Web/CSS/line-height
    */
-  @field({ type: Type.float32, default: 0 }) declare lineHeight: number;
+  @field({ type: Type.float32, default: 1 }) declare lineHeight: number;
 
   /**
    * Sets the distance between lines in px.

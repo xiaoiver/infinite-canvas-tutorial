@@ -46,6 +46,7 @@ export class TextEditor extends LitElement {
       letter-spacing: 0;
       width: auto;
       min-width: 1em;
+      line-height: 1;
     }
 
     textarea.wheel-transparent {
@@ -335,6 +336,7 @@ export class TextEditor extends LitElement {
       textAlign,
       textBaseline,
       letterSpacing,
+      lineHeight,
     } = node;
 
     if (fontFamily) {
@@ -384,6 +386,11 @@ export class TextEditor extends LitElement {
       this.editable.style.letterSpacing = letterSpacing.toString();
     } else {
       this.editable.style.removeProperty('letter-spacing');
+    }
+    if (lineHeight) {
+      this.editable.style.lineHeight = `${lineHeight}px`;
+    } else {
+      this.editable.style.lineHeight = '1';
     }
   }
 
