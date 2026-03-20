@@ -284,7 +284,7 @@ pub fn build_text_glyphs_with_emoji_positions(
             let mut char_idx = 0usize;
 
             let segment_lines: Vec<_> = layout.lines().collect();
-            for line in segment_lines {
+            for line in &segment_lines {
                 let line_min_y = line_y + line.metrics().min_coord;
                 let line_max_y = line_y + line.metrics().max_coord;
                 layout_min_y = layout_min_y.min(line_min_y);
@@ -332,16 +332,11 @@ pub fn build_text_glyphs_with_emoji_positions(
                         }
                     }
                 }
-
-                let content_h = line.metrics().max_coord - line.metrics().min_coord;
-                let line_advance = if line_height_px > 0.0 {
-                    let parley_lh = line.metrics().line_height;
-                    content_h.max(parley_lh.min(line_height_px))
-                } else {
-                    content_h
-                };
-                line_y += line_advance;
             }
+
+            let last_line = segment_lines.last();
+            let segment_total_h = last_line.map(|l| l.metrics().max_coord).unwrap_or(0.0);
+            line_y += segment_total_h;
         }
 
         let layout_bounds = if layout_min_x.is_finite() && layout_min_y.is_finite()

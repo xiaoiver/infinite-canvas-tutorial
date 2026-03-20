@@ -62,7 +62,6 @@ import {
   computeLinearGradient,
   computeRadialGradient,
   computeConicGradient,
-  getRoughOptions,
   parseEffect,
   safeRemoveComponent,
   co,

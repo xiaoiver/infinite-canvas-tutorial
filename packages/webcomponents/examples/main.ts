@@ -216,12 +216,17 @@ canvas.addEventListener(Event.READY, async (e) => {
     // parentId: 'parent',
     type: 'rough-path',
     d: 'M 100 120 L 200 200 L 300 100 Z',
+    // type: 'rough-rect',
+    // x: 100,
+    // y: 100,
+    // width: 50,
+    // height: 50,
     fill: 'red',
-    roughFillStyle: 'dots',
-    roughHachureGap: 10,
     stroke: 'black',
     strokeWidth: 1,
     zIndex: 3,
+    roughFillStyle: 'dots',
+    roughHachureGap: 10,
   } as const;
 
   const child4 = {
@@ -404,6 +409,7 @@ canvas.addEventListener(Event.READY, async (e) => {
       wordWrap: true,
       wordWrapWidth: 50,
       maxLines: 3,
+      lineHeight: 16,
     },
     {
       id: 'baseline-6',

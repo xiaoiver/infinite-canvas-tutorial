@@ -247,7 +247,7 @@ export class Mesh extends Drawcall {
     uniformBuffer: Buffer,
     sceneUniformLegacyObject: Record<string, unknown>,
   ) {
-    if (this.points.length === 0) {
+    if (this.points.length === 0 || (this.shapes[0].has(Rough) && this.shapes[0].read(Rough).fillStyle !== 'solid')) {
       return;
     }
 

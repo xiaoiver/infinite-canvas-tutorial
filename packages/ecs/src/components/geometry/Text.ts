@@ -129,14 +129,18 @@ export class Text {
       anchorY = 0,
       textAlign = 'start',
       textBaseline = 'alphabetic',
+      lineHeight,
+      fontSize,
       content,
     } = text;
     let { width, height, fontMetrics } = computed ?? {};
+    let lineHeightValue: number | undefined;
     if (Text.geometryBoundsProvider) {
       const { minX, minY, maxX, maxY } = Text.geometryBoundsProvider(text, computed);
       width = maxX - minX;
       height = maxY - minY;
       fontMetrics = measureFontFn(text);
+      lineHeightValue = lineHeight || fontSize as number;
     }
 
     if (!width || !height || !fontMetrics) {
@@ -145,6 +149,7 @@ export class Text {
       width = metrics.width;
       height = metrics.height;
       fontMetrics = metrics.fontMetrics;
+      lineHeightValue = metrics.lineHeight;
     }
 
     const hwidth = width / 2;
@@ -158,7 +163,17 @@ export class Text {
     }
 
     let lineYOffset = anchorY;
-    if (fontMetrics) {
+    if (lineHeightValue !== undefined) {
+      if (textBaseline === 'middle') {
+        lineYOffset -= lineHeightValue / 2;
+      } else if (
+        textBaseline === 'bottom' ||
+        textBaseline === 'alphabetic' ||
+        textBaseline === 'ideographic'
+      ) {
+        lineYOffset -= lineHeightValue;
+      }
+    } else if (fontMetrics) {
       lineYOffset += yOffsetFromTextBaseline(textBaseline, fontMetrics);
     }
 
@@ -305,7 +320,7 @@ export class Text {
    * Sets the height of a line box in horizontal writing modes. In vertical writing modes, it sets the width of a line box.
    * @see https://developer.mozilla.org/en-US/docs/Web/CSS/line-height
    */
-  @field({ type: Type.float32, default: 1 }) declare lineHeight: number;
+  @field({ type: Type.float32, default: 0 }) declare lineHeight: number;
 
   /**
    * Sets the distance between lines in px.
