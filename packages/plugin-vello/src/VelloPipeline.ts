@@ -139,7 +139,22 @@ function buildFillGradients(
 }
 
 /** 将 TexImageSource 转为 RGBA；支持 ImageBitmap、HTMLImageElement 等。 */
-function imageToRgba(src: TexImageSource): { width: number; height: number; data: Uint8Array } | null {
+type ImageRgbaData = { width: number; height: number; data: Uint8Array };
+
+// `src` 通常是稳定复用的 ImageBitmap/Canvas/OffscreenCanvas 对象；用 WeakMap 避免内存泄漏。
+// 注意：如果 `src` 是可变视频帧，这个缓存可能导致取到的仍是首次转换的帧。
+const imageToRgbaCache = new WeakMap<object, ImageRgbaData>();
+
+function imageToRgba(src: TexImageSource): ImageRgbaData | null {
+  // Video 帧可能会变化；为避免冻结首帧，这里不缓存。
+  const isVideo =
+    'currentTime' in src && typeof (src as unknown as { currentTime: unknown }).currentTime === 'number';
+  const cacheKey = src as unknown as object;
+  if (!isVideo) {
+    const cached = imageToRgbaCache.get(cacheKey);
+    if (cached) return cached;
+  }
+
   try {
     const width =
       'width' in src && typeof src.width === 'number'
@@ -159,11 +174,17 @@ function imageToRgba(src: TexImageSource): { width: number; height: number; data
     if (!ctx) return null;
     ctx.drawImage(src as CanvasImageSource, 0, 0);
     const imageData = ctx.getImageData(0, 0, width, height);
-    return {
+    const result = {
       width: imageData.width,
       height: imageData.height,
       data: new Uint8Array(imageData.data),
     };
+
+    if (!isVideo) {
+      imageToRgbaCache.set(cacheKey, result);
+    }
+
+    return result;
   } catch {
     return null;
   }
@@ -904,9 +925,9 @@ export class VelloPipeline extends System {
           toRender = !!pendingRenderables.length;
         }
 
-        if (!toRender && this.cameras.addedOrChanged.includes(camera)) {
-          toRender = true;
-        }
+        // 相机变换本身由 InitVello 负责：会调用 wasm 的 `setCameraTransform`
+        // 并触发 request_redraw。这里避免因 camera 变化就重新 clear/add 全量 shapes，
+        // 从而减少 JS->wasm 的数据传输（尤其是 FillImage 的 image_data 像素搬运）。
 
         if (
           !toRender &&

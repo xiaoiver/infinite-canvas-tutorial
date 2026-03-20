@@ -4,6 +4,7 @@ import { BitmapFont, filterUndefined, strokeOffset } from '../../utils';
 import {
   computeBidi,
   fontWeightMap,
+  measureFontFn,
   measureText,
   yOffsetFromTextBaseline,
 } from '../../systems/ComputeTextMetrics';
@@ -123,8 +124,6 @@ export class Text {
     text: Partial<Text>,
     computed?: Partial<ComputedTextMetrics>,
   ) {
-    
-
     const {
       anchorX = 0,
       anchorY = 0,
@@ -137,7 +136,7 @@ export class Text {
       const { minX, minY, maxX, maxY } = Text.geometryBoundsProvider(text, computed);
       width = maxX - minX;
       height = maxY - minY;
-      // TODO: add fontMetrics
+      fontMetrics = measureFontFn(text);
     }
 
     if (!width || !height || !fontMetrics) {

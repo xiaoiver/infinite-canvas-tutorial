@@ -1,132 +1,58 @@
 /* tslint:disable */
 /* eslint-disable */
 
-/**
- * 添加椭圆。
- */
 export function addEllipse(canvas_id: number, opts: any): void;
 
-/**
- * 添加组/容器。用于组织子元素，本身没有可见内容。
- */
 export function addGroup(canvas_id: number, opts: any): void;
 
-/**
- * 添加图片填充的矩形。opts 需包含 imageData (Uint8Array RGBA)、imageWidth、imageHeight。
- */
 export function addImageRect(canvas_id: number, opts: any): void;
 
-/**
- * 添加线段。
- */
 export function addLine(canvas_id: number, opts: any): void;
 
-/**
- * 添加 path。opts 需包含 d（SVG path 的 d 属性）。
- */
 export function addPath(canvas_id: number, opts: any): void;
 
-/**
- * 添加折线。opts 需包含 points（[[x,y],[x,y],...]）。
- */
 export function addPolyline(canvas_id: number, opts: any): void;
 
-/**
- * 添加矩形。canvas_id 由 runWithCanvas 的 onReady 回调传入；opts 同前。
- */
 export function addRect(canvas_id: number, opts: any): void;
 
-/**
- * 添加手绘风格椭圆。
- */
 export function addRoughEllipse(canvas_id: number, opts: any): void;
 
-/**
- * 添加手绘风格线段。
- */
 export function addRoughLine(canvas_id: number, opts: any): void;
 
-/**
- * 添加手绘风格 SVG path。
- */
 export function addRoughPath(canvas_id: number, opts: any): void;
 
-/**
- * 添加手绘风格折线。
- */
 export function addRoughPolyline(canvas_id: number, opts: any): void;
 
-/**
- * 添加手绘风格矩形。
- */
 export function addRoughRect(canvas_id: number, opts: any): void;
 
-/**
- * 添加文本。
- */
 export function addText(canvas_id: number, opts: any): void;
 
-/**
- * 清空所有缓存（emoji + 字形）。在切换字体或内存紧张时调用。
- */
 export function clearAllCaches(): void;
 
-/**
- * 清空 emoji 缓存，释放内存。在切换字体或长时间运行后调用。
- */
 export function clearEmojiCache(): void;
 
-/**
- * 清空字形缓存，释放内存。在切换字体或长时间运行后调用。
- */
 export function clearGlyphCache(): void;
 
-/**
- * 清空指定画布上由 JS 添加的所有图形。
- */
 export function clearShapes(canvas_id: number): void;
 
 export function computePathBounds(opts: any): any;
 
-/**
- * 计算文本在局部坐标系（锚点为原点）下的几何包围盒，用于拾取或布局。
- * 入参与 addText 相同（除 canvasId 外），返回 { min_x, min_y, max_x, max_y }。
- */
 export function computeTextBounds(opts: any): any;
 
 export function hitTestPath(opts: any): boolean;
 
-/**
- * 追加一个字体（TTF/OTF 字节）到字体列表，用于多字体 / fallback。
- * 注意：当前实现仍然只使用第一个字体进行排版与渲染，
- * 该 API 主要用于未来在 Parley 侧扩展真正的多字体支持。
- */
+export function measureFont(opts: any): any;
+
 export function registerFont(js_value: any): void;
 
-/**
- * 恢复画布尺寸与相机变换（在 setExportView 的 on_rendered 里 toDataURL 后调用）。
- */
 export function restoreCanvasAfterExport(canvas_id: number): void;
 
-/**
- * 使用传入的 canvas 元素启动渲染。onReady(canvasId) 在画布就绪时调用，后续 addRect/addEllipse 等需传入该 canvasId。
- * 支持多画布：同一同步批次内多次调用 runWithCanvas 会共用一个 event loop，每个 canvas 都会收到 on_ready。
- */
 export function runWithCanvas(canvas: any, on_ready: any): void;
 
-/**
- * 设置画布相机变换。opts 支持 { x, y, scale, rotation }，下一帧渲染前生效。
- * - x, y: 平移（世界坐标）
- * - scale: 缩放因子，1 为原始大小，2 为 2 倍放大
- * - rotation: 旋转弧度
- */
 export function setCameraTransform(canvas_id: number, opts: any): void;
 
 export function setCanvasRenderOptions(canvas_id: number, opts: any): void;
 
-/**
- * 设置下一帧“导出视口”：将画布临时改为 (width, height)，变换使世界坐标 (left, top) 到 (left+width, top+height) 1:1 映射到画布；渲染后调用 on_rendered(canvas_id)，再下一帧需调用 restoreCanvasAfterExport(canvas_id) 恢复。
- */
 export function setExportView(canvas_id: number, opts: any, on_rendered: any): void;
 
 export type InitInput = RequestInfo | URL | Response | BufferSource | WebAssembly.Module;
@@ -149,6 +75,7 @@ export interface InitOutput {
     readonly computePathBounds: (a: any) => any;
     readonly computeTextBounds: (a: any) => any;
     readonly hitTestPath: (a: any) => number;
+    readonly measureFont: (a: any) => any;
     readonly registerFont: (a: any) => void;
     readonly restoreCanvasAfterExport: (a: number) => void;
     readonly runWithCanvas: (a: any, b: any) => void;
@@ -157,8 +84,8 @@ export interface InitOutput {
     readonly setExportView: (a: number, b: any, c: any) => void;
     readonly clearEmojiCache: () => void;
     readonly clearGlyphCache: () => void;
-    readonly clearAllCaches: () => void;
     readonly clearShapes: (a: number) => void;
+    readonly clearAllCaches: () => void;
     readonly wasm_bindgen__closure__destroy__h2393627b061c6390: (a: number, b: number) => void;
     readonly wasm_bindgen__closure__destroy__h5efe34e33761ee9b: (a: number, b: number) => void;
     readonly wasm_bindgen__closure__destroy__h50129e0239694893: (a: number, b: number) => void;

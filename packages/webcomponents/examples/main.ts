@@ -375,7 +375,7 @@ canvas.addEventListener(Event.READY, async (e) => {
       anchorX: 50,
       anchorY: 200,
       fontSize: 16,
-      fontFamily: 'sans-serif',
+      fontFamily: 'Gaegu',
       textBaseline: 'alphabetic',
       zIndex: 6,
     },
@@ -473,9 +473,9 @@ const VelloRendererPlugin = RendererPlugin.configure({
 DefaultPlugins.splice(DefaultPlugins.indexOf(DefaultRendererPlugin), 1, VelloRendererPlugin);
 registerFont('/Gaegu-Regular.ttf');
 // registerFont('/NotoSansCJKsc-VF.ttf');
-registerFont('/NotoSans-Regular.ttf');
-registerFont('/NotoSans-Bold.ttf');
-registerFont('/NotoSans-Italic.ttf');
+// registerFont('/NotoSans-Regular.ttf');
+// registerFont('/NotoSans-Bold.ttf');
+// registerFont('/NotoSans-Italic.ttf');
 // registerFont('/NotoSansArabic.ttf');
 
 try {

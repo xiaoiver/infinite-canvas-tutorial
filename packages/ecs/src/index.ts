@@ -58,6 +58,7 @@ export {
   inferXYWidthHeight,
   getSvgPathFromStroke,
   distanceBetweenPoints,
+  filterUndefined,
   MIME_TYPES,
   IMAGE_MIME_TYPES,
   EdgeStyle,

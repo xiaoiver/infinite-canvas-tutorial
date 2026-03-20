@@ -1,5 +1,40 @@
-import { Entity, System, Canvas, GPUResource, Grid, Theme, ComputedCamera, Camera, Path, createRenderBoundsProviderFromComputePathBounds, createGeometryBoundsProviderFromComputePathBounds, Polyline, createRenderBoundsProviderFromComputePathBoundsForPolyline, createGeometryBoundsProviderFromComputePathBoundsForPolyline, createHitTestProviderFromHitTestPath, createHitTestProviderFromHitTestPathForPolyline, Line, createGeometryBoundsProviderFromComputePathBoundsForLine, createHitTestProviderFromHitTestPathForLine, createRenderBoundsProviderFromComputePathBoundsForLine, Text, createGeometryBoundsProviderFromComputeTextBounds } from '@infinite-canvas-tutorial/ecs';
-import init, { registerFont as registerFontVello, runWithCanvas, setCameraTransform, computePathBounds, hitTestPath, computeTextBounds } from '@infinite-canvas-tutorial/vello-renderer';
+import {
+  Entity,
+  System,
+  Canvas,
+  GPUResource,
+  Grid,
+  Theme,
+  ComputedCamera,
+  Camera,
+  Path,
+  createRenderBoundsProviderFromComputePathBounds,
+  createGeometryBoundsProviderFromComputePathBounds,
+  Polyline,
+  createRenderBoundsProviderFromComputePathBoundsForPolyline,
+  createGeometryBoundsProviderFromComputePathBoundsForPolyline,
+  createHitTestProviderFromHitTestPath,
+  createHitTestProviderFromHitTestPathForPolyline,
+  Line,
+  createGeometryBoundsProviderFromComputePathBoundsForLine,
+  createHitTestProviderFromHitTestPathForLine,
+  createRenderBoundsProviderFromComputePathBoundsForLine,
+  Text,
+  createGeometryBoundsProviderFromComputeTextBounds,
+  setMeasureFontFn,
+  setMeasureLineFn,
+  fontWeightMap,
+  filterUndefined
+} from '@infinite-canvas-tutorial/ecs';
+import init, {
+  registerFont as registerFontVello,
+  runWithCanvas,
+  setCameraTransform,
+  computePathBounds,
+  hitTestPath,
+  computeTextBounds,
+  measureFont,
+} from '@infinite-canvas-tutorial/vello-renderer';
 
 const FONT_URLS = [];
 export function registerFont(fontUrl: string) {
@@ -17,11 +52,16 @@ export class InitVello extends System {
     (q) => q.added.and.changed.and.removed.and.current.with(Canvas).trackWrites,
   );
 
-  private readonly cameras = this.query((q) => q.with(Camera).changed.with(ComputedCamera).trackWrites);
+  private readonly cameras = this.query(
+    (q) => q.with(Camera).changed.with(ComputedCamera).trackWrites,
+  );
 
   constructor() {
     super();
-    this.query((q) => q.using(GPUResource, Canvas, Theme, Grid).write.and.using(Camera).read);
+    this.query(
+      (q) =>
+        q.using(GPUResource, Canvas, Theme, Grid).write.and.using(Camera).read,
+    );
   }
 
   async prepare() {
@@ -33,19 +73,85 @@ export class InitVello extends System {
       registerFontVello(buf);
     }
 
+    setMeasureLineFn((text, style) => {
+      let fontWeightValue: string | undefined = undefined;
+      const { fontWeight } = style;
+      if (fontWeight) {
+        fontWeightValue = `${typeof fontWeight === 'string' ? fontWeightMap[fontWeight] : fontWeight}`;
+      }
+
+      const { fontSize, fontFamily, fontStyle, fontVariant, anchorX, anchorY, textAlign, textBaseline, lineHeight, letterSpacing, fontKerning, wordWrap, wordWrapWidth } = style;
+      
+      const opts = {
+        id: '',
+        content: text,
+        fontSize,
+        fontFamily,
+        fontWeight: fontWeightValue,
+        fontStyle,
+        fontVariant,
+        anchorX,
+        anchorY,
+        textAlign,
+        textBaseline,
+        lineHeight,
+        letterSpacing,
+        fontKerning,
+        wordWrap: wordWrap ?? false,
+        wordWrapWidth: wordWrapWidth ?? 0,
+      };
+
+      const filteredOpts = filterUndefined(opts);
+      const bounds = computeTextBounds(filteredOpts);
+      return bounds ? bounds.maxX - bounds.minX : 0;
+    });
+
+    setMeasureFontFn((style) => {
+      let fontWeightValue: string | undefined = undefined;
+      const { fontWeight } = style;
+      if (fontWeight) {
+        fontWeightValue = `${typeof fontWeight === 'string' ? fontWeightMap[fontWeight] : fontWeight}`;
+      }
+
+      const opts = filterUndefined({
+        fontFamily: style.fontFamily,
+        fontSize: style.fontSize as number,
+        fontWeight: fontWeightValue,
+        fontStyle: style.fontStyle ?? 'normal',
+        fontVariant: style.fontVariant ?? 'normal',
+        fontKerning: style.fontKerning ?? true,
+      });
+      return measureFont(opts);
+    });
+
     // 使用 Vello kurbo 计算包围盒
-    Path.geometryBoundsProvider = createGeometryBoundsProviderFromComputePathBounds(computePathBounds);
-    Path.renderBoundsProvider = createRenderBoundsProviderFromComputePathBounds(computePathBounds);
-    Polyline.geometryBoundsProvider = createGeometryBoundsProviderFromComputePathBoundsForPolyline(computePathBounds);
-    Polyline.renderBoundsProvider = createRenderBoundsProviderFromComputePathBoundsForPolyline(computePathBounds);
-    Line.geometryBoundsProvider = createGeometryBoundsProviderFromComputePathBoundsForLine(computePathBounds);
-    Line.renderBoundsProvider = createRenderBoundsProviderFromComputePathBoundsForLine(computePathBounds);
-    Text.geometryBoundsProvider = createGeometryBoundsProviderFromComputeTextBounds(computeTextBounds);
+    Path.geometryBoundsProvider =
+      createGeometryBoundsProviderFromComputePathBounds(computePathBounds);
+    Path.renderBoundsProvider =
+      createRenderBoundsProviderFromComputePathBounds(computePathBounds);
+    Polyline.geometryBoundsProvider =
+      createGeometryBoundsProviderFromComputePathBoundsForPolyline(
+        computePathBounds,
+      );
+    Polyline.renderBoundsProvider =
+      createRenderBoundsProviderFromComputePathBoundsForPolyline(
+        computePathBounds,
+      );
+    Line.geometryBoundsProvider =
+      createGeometryBoundsProviderFromComputePathBoundsForLine(
+        computePathBounds,
+      );
+    Line.renderBoundsProvider =
+      createRenderBoundsProviderFromComputePathBoundsForLine(computePathBounds);
+    Text.geometryBoundsProvider =
+      createGeometryBoundsProviderFromComputeTextBounds(computeTextBounds);
 
     // 使用 Vello 进行 hit testing
     Path.hitTestProvider = createHitTestProviderFromHitTestPath(hitTestPath);
-    Polyline.hitTestProvider = createHitTestProviderFromHitTestPathForPolyline(hitTestPath);
-    Line.hitTestProvider = createHitTestProviderFromHitTestPathForLine(hitTestPath);
+    Polyline.hitTestProvider =
+      createHitTestProviderFromHitTestPathForPolyline(hitTestPath);
+    Line.hitTestProvider =
+      createHitTestProviderFromHitTestPathForLine(hitTestPath);
   }
 
   execute() {
