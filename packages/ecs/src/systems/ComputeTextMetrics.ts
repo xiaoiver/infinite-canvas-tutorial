@@ -172,11 +172,35 @@ export function yOffsetFromTextBaseline(
   return offset;
 }
 
+export type FontMetricsResult = Pick<
+  globalThis.TextMetrics,
+  | 'fontBoundingBoxAscent'
+  | 'fontBoundingBoxDescent'
+  | 'actualBoundingBoxAscent'
+  | 'actualBoundingBoxDescent'
+  | 'actualBoundingBoxLeft'
+  | 'actualBoundingBoxRight'
+  | 'alphabeticBaseline'
+  | 'hangingBaseline'
+  | 'ideographicBaseline'
+  | 'emHeightAscent'
+  | 'emHeightDescent'
+  | 'width'
+> & { fontSize: number };
+
+export type MeasureFontFn = (style: Partial<Text>) => FontMetricsResult;
+
 let canvas: OffscreenCanvas | HTMLCanvasElement;
 let context: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
-const fonts: Record<string, globalThis.TextMetrics & { fontSize: number }> = {};
+const fonts: Record<string, FontMetricsResult> = {};
 const bidi = bidiFactory();
 const bidiCache: Record<string, string> = {};
+
+let measureFontFn: MeasureFontFn = defaultMeasureFont;
+
+export function setMeasureFontFn(fn: MeasureFontFn) {
+  measureFontFn = fn;
+}
 export class ComputeTextMetrics extends System {
   texts = this.query((q) => q.addedOrChanged.with(Text).trackWrites);
 
@@ -201,7 +225,15 @@ export class ComputeTextMetrics extends System {
   }
 }
 
-function measureFont(font: string) {
+function defaultMeasureFont(style: Partial<Text>): FontMetricsResult {
+  if (!canvas) {
+    canvas = DOMAdapter.get().createCanvas(1, 1);
+    context = canvas.getContext('2d') as
+      | OffscreenCanvasRenderingContext2D
+      | CanvasRenderingContext2D;
+  }
+
+  const font = fontStringFromTextStyle(style);
   if (fonts[font]) {
     return fonts[font];
   }
@@ -222,7 +254,7 @@ function measureFont(font: string) {
     emHeightDescent,
   } = context.measureText(METRICS_STRING + BASELINE_SYMBOL);
 
-  const properties: globalThis.TextMetrics & { fontSize: number } = {
+  const properties: FontMetricsResult = {
     actualBoundingBoxAscent,
     actualBoundingBoxDescent,
     actualBoundingBoxLeft,
@@ -272,7 +304,7 @@ export function measureText(
 
   let lineHeight = style.lineHeight ?? 0;
   const font = fontStringFromTextStyle(style);
-  let fontMetrics: globalThis.TextMetrics & { fontSize: number };
+  let fontMetrics: FontMetricsResult;
   let scale = 1;
 
   if (bitmapFont) {
@@ -281,7 +313,7 @@ export function measureText(
     fontMetrics = textMetrics.fontMetrics;
     scale = textMetrics.scale;
   } else {
-    fontMetrics = measureFont(font);
+    fontMetrics = measureFontFn(style);
     context.font = font;
   }
 
@@ -579,7 +611,7 @@ function measureBitmapFont(bitmapFont: BitmapFont, fontSize: number) {
       actualBoundingBoxAscent: fontMetrics.ascent * scale,
       actualBoundingBoxDescent: fontMetrics.descent * scale,
       fontSize,
-    } as globalThis.TextMetrics & { fontSize: number },
+    } as FontMetricsResult,
   };
 }
 

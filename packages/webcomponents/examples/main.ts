@@ -374,7 +374,7 @@ canvas.addEventListener(Event.READY, async (e) => {
       content: 'Abcdefghijklmnop (alphabetic)',
       anchorX: 50,
       anchorY: 200,
-      fontSize: 16,
+      fontSize: 32,
       fontFamily: 'sans-serif',
       textBaseline: 'alphabetic',
       zIndex: 6,

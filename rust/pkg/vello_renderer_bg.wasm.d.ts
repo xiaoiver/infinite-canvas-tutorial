@@ -17,6 +17,7 @@ export const addText: (a: number, b: any) => void;
 export const computePathBounds: (a: any) => any;
 export const computeTextBounds: (a: any) => any;
 export const hitTestPath: (a: any) => number;
+export const measureFont: (a: any) => any;
 export const registerFont: (a: any) => void;
 export const restoreCanvasAfterExport: (a: number) => void;
 export const runWithCanvas: (a: any, b: any) => void;

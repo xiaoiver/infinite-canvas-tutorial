@@ -4867,6 +4867,182 @@ pub fn js_compute_text_bounds(opts: JsValue) -> JsValue {
     }
 }
 
+/// 字体度量结果，等价于 TS 侧 measureFont 返回值。
+/// fontBoundingBoxAscent/Descent 来自 Parley line metrics（第一行），
+/// fontSize = ascent + descent，与 Canvas2D TextMetrics 语义一致。
+#[cfg(target_arch = "wasm32")]
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FontMetrics {
+    pub font_bounding_box_ascent: f64,
+    pub font_bounding_box_descent: f64,
+    pub font_size: f64,
+}
+
+/// 字体度量选项（与 TextOptions 共享字体相关字段）。
+#[cfg(target_arch = "wasm32")]
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MeasureFontOptions {
+    #[serde(default = "default_font_family")]
+    pub font_family: String,
+    #[serde(default = "default_font_size")]
+    pub font_size: f64,
+    #[serde(default = "default_font_weight")]
+    pub font_weight: String,
+    #[serde(default = "default_font_style")]
+    pub font_style: String,
+    #[serde(default = "default_font_variant")]
+    pub font_variant: String,
+    #[serde(default = "default_font_kerning")]
+    pub font_kerning: bool,
+}
+
+/// 测量字体度量指标，等价于 TS 侧 measureFont()。
+/// 返回 { fontBoundingBoxAscent, fontBoundingBoxDescent, fontSize }，
+/// 可用于 yOffsetFromTextBaseline 计算 textBaseline 的 y 偏移。
+#[cfg(target_arch = "wasm32")]
+#[wasm_bindgen(js_name = measureFont)]
+pub fn js_measure_font(opts: JsValue) -> JsValue {
+    let o: MeasureFontOptions = match serde_wasm_bindgen::from_value(opts) {
+        Ok(v) => v,
+        Err(e) => {
+            web_sys::console::error_1(&format!("measureFont: invalid options - {}", e).into());
+            return JsValue::NULL;
+        }
+    };
+
+    let metrics = measure_font_internal(
+        &o.font_family,
+        o.font_size as f32,
+        &o.font_weight,
+        &o.font_style,
+        &o.font_variant,
+        o.font_kerning,
+    );
+
+    match metrics {
+        Some(m) => match serde_wasm_bindgen::to_value(&m) {
+            Ok(v) => v,
+            Err(e) => {
+                web_sys::console::error_1(
+                    &format!("measureFont: failed to serialize result - {}", e).into(),
+                );
+                JsValue::NULL
+            }
+        },
+        None => JsValue::NULL,
+    }
+}
+
+/// 内部实现：用 Parley 排版一行测量字符串，提取 ascent/descent。
+#[cfg(target_arch = "wasm32")]
+fn measure_font_internal(
+    font_family: &str,
+    font_size_px: f32,
+    font_weight: &str,
+    font_style: &str,
+    font_variant: &str,
+    font_kerning: bool,
+) -> Option<FontMetrics> {
+    use std::borrow::Cow;
+    use parley::fontique::Blob;
+    use parley::style::{FontFamily, FontFeature, FontSettings, FontStyle, FontWeight};
+    use parley::{AlignmentOptions, LayoutContext, LineHeight, StyleProperty};
+
+    let font_bytes_list = FONT_BYTES.with(|c| c.borrow().clone());
+    if font_bytes_list.is_empty() {
+        return None;
+    }
+
+    FONT_CONTEXT.with(|fc| {
+        let mut font_cx_ref = fc.borrow_mut();
+        if font_cx_ref.is_none() {
+            *font_cx_ref = Some(parley::FontContext::new());
+        }
+        let font_cx = font_cx_ref.as_mut()?;
+
+        let fonts_for_fp: Vec<(u64, Vec<u8>)> = font_bytes_list
+            .iter()
+            .map(|bytes| (font_bytes_fingerprint(bytes), bytes.clone()))
+            .collect();
+        let mut fps_sorted: Vec<u64> = fonts_for_fp.iter().map(|(fp, _)| *fp).collect();
+        fps_sorted.sort_unstable();
+        let mut combined_fp: u64 = 0;
+        for fp in &fps_sorted {
+            combined_fp = combined_fp.wrapping_mul(1315423911) ^ *fp;
+        }
+        let need_register = LAST_REGISTERED_FONT_FINGERPRINT.with(|r| {
+            let prev = *r.borrow();
+            prev != Some(combined_fp)
+        });
+        if need_register {
+            font_cx.collection.clear();
+            for (_, bytes) in &fonts_for_fp {
+                let font_blob = Blob::new(Arc::new(bytes.clone()));
+                font_cx.collection.register_fonts(font_blob, None);
+            }
+        }
+
+        let requested = font_family.trim();
+        let family_names: Vec<String> =
+            font_cx.collection.family_names().map(|s| s.to_string()).collect();
+        let fallback_family =
+            family_names.first().cloned().unwrap_or_else(|| "sans-serif".to_string());
+        let family_name = if requested.is_empty() {
+            fallback_family
+        } else {
+            family_names
+                .iter()
+                .find(|n| n.eq_ignore_ascii_case(requested) || n.starts_with(requested))
+                .cloned()
+                .unwrap_or(fallback_family)
+        };
+
+        let mut layout_cx = LayoutContext::new();
+        let probe = "|ÉqÅM";
+        let mut builder = layout_cx.ranged_builder(font_cx, probe, 1.0, true);
+        builder.push_default(FontFamily::Named(Cow::Borrowed(&family_name)));
+        builder.push_default(LineHeight::FontSizeRelative(1.0));
+        builder.push_default(StyleProperty::FontSize(font_size_px));
+        if let Some(w) = FontWeight::parse(font_weight.trim()) {
+            builder.push_default(StyleProperty::FontWeight(w));
+        }
+        if let Some(s) = FontStyle::parse(font_style.trim()) {
+            builder.push_default(StyleProperty::FontStyle(s));
+        }
+        let mut font_features = font_variant_to_features(font_variant.trim());
+        if !font_kerning {
+            if let Some(kern_off) = FontFeature::parse("kern=0") {
+                font_features.push(kern_off);
+            }
+        }
+        if !font_features.is_empty() {
+            builder.push_default(StyleProperty::FontFeatures(FontSettings::List(Cow::Owned(
+                font_features,
+            ))));
+        }
+
+        let mut layout: parley::Layout<()> = builder.build(probe);
+        layout.break_all_lines(None);
+        layout.align(None, parley::Alignment::Start, AlignmentOptions::default());
+
+        let first_line = layout.lines().next()?;
+        let line_m = first_line.metrics();
+        // LineMetrics::ascent/descent 是纯字体排版值（不含 leading），
+        // 与 Canvas2D fontBoundingBoxAscent/fontBoundingBoxDescent 语义一致。
+        // min_coord/max_coord 是 layout 绝对坐标（baseline 偏移后），不能直接用。
+        let ascent = line_m.ascent.max(0.0) as f64;
+        let descent = line_m.descent.max(0.0) as f64;
+
+        Some(FontMetrics {
+            font_bounding_box_ascent: ascent,
+            font_bounding_box_descent: descent,
+            font_size: ascent + descent,
+        })
+    })
+}
+
 /// Path 命中测试：近似 Canvas2D 的 isPointInStroke/isPointInPath（基于采样折线）。
 /// - 当传入 stroke 且 fill=false 时：仅做 stroke 命中
 /// - 否则：做 fill 命中（遵循 fillRule）

@@ -97,6 +97,13 @@ export function computeTextBounds(opts: any): any;
 export function hitTestPath(opts: any): boolean;
 
 /**
+ * 测量字体度量指标，等价于 TS 侧 measureFont()。
+ * 返回 { fontBoundingBoxAscent, fontBoundingBoxDescent, fontSize }，
+ * 可用于 yOffsetFromTextBaseline 计算 textBaseline 的 y 偏移。
+ */
+export function measureFont(opts: any): any;
+
+/**
  * 追加一个字体（TTF/OTF 字节）到字体列表，用于多字体 / fallback。
  * 注意：当前实现仍然只使用第一个字体进行排版与渲染，
  * 该 API 主要用于未来在 Parley 侧扩展真正的多字体支持。
@@ -149,6 +156,7 @@ export interface InitOutput {
     readonly computePathBounds: (a: any) => any;
     readonly computeTextBounds: (a: any) => any;
     readonly hitTestPath: (a: any) => number;
+    readonly measureFont: (a: any) => any;
     readonly registerFont: (a: any) => void;
     readonly restoreCanvasAfterExport: (a: number) => void;
     readonly runWithCanvas: (a: any, b: any) => void;
