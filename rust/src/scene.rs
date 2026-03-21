@@ -682,11 +682,15 @@ pub fn add_js_shape_to_scene(
 
                         let emoji_size = font_size_eff;
 
+                        // `emoji_pos` matches `vello::Glyph` placement: x is the glyph origin (left edge
+                        // of the advance slot), y is the baseline — same as `build_text_glyphs_with_emoji_positions`.
+                        // Use dynamic vertical offset derived from run ascent/descent instead of a
+                        // single hard-coded value, so different fonts stay visually aligned.
                         const EMOJI_NUDGE_LEFT: f64 = 0.0;
-                        const EMOJI_NUDGE_DOWN: f64 = 0.08;
                         let s = emoji_size as f64;
-                        let emoji_x = emoji_pos.x - s * 0.5 - s * EMOJI_NUDGE_LEFT;
-                        let emoji_y = emoji_pos.y - s + s * EMOJI_NUDGE_DOWN;
+                        let nudge_down = (emoji_pos.descent_ratio as f64).clamp(0.10, 0.22);
+                        let emoji_x = emoji_pos.x - s * EMOJI_NUDGE_LEFT;
+                        let emoji_y = emoji_pos.y - s + s * nudge_down;
 
                         let full_transform = shape_transform
                             * Affine::translate(Vec2::new(emoji_x as f64, emoji_y as f64))

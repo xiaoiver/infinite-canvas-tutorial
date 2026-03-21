@@ -784,7 +784,8 @@ export class VelloPipeline extends System {
             }
           } else if (entity.has(Text)) {
             const text = entity.read(Text);
-            const { content, fontSize, fontFamily, fontWeight, fontStyle, fontVariant, fontKerning, anchorX, anchorY, letterSpacing, lineHeight, wordWrap, wordWrapWidth } = text;
+            const metrics = entity.read(ComputedTextMetrics);
+            const { fontSize, fontFamily, fontWeight, fontStyle, fontVariant, fontKerning, anchorX, anchorY, letterSpacing, lineHeight, wordWrap, wordWrapWidth } = text;
 
             let fontWeightValue: string | undefined = undefined;
             if (fontWeight) {
@@ -792,7 +793,7 @@ export class VelloPipeline extends System {
             }
             const opts: Record<string, unknown> = {
               ...baseOpts,
-              content,
+              content: metrics.lines.join('\n'),
               fontSize,
               fontFamily,
               fontWeight: fontWeightValue,

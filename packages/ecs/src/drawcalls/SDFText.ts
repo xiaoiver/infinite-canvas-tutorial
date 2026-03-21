@@ -544,7 +544,7 @@ export class SDFText extends Drawcall {
       fontScale,
       bitmapFontKerning,
       0,
-      0,
+      (lineHeight - metrics.fontMetrics.fontSize) / 2,
     );
 
     let positions: GlyphPositions;
