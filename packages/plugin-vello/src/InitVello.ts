@@ -19,8 +19,6 @@ import {
   createGeometryBoundsProviderFromComputePathBoundsForLine,
   createHitTestProviderFromHitTestPathForLine,
   createRenderBoundsProviderFromComputePathBoundsForLine,
-  Text,
-  createGeometryBoundsProviderFromComputeTextBounds,
   setMeasureFontFn,
   setMeasureLineFn,
   fontWeightMap,
@@ -103,7 +101,7 @@ export class InitVello extends System {
 
       const filteredOpts = filterUndefined(opts);
       const bounds = computeTextBounds(filteredOpts);
-      return bounds ? bounds.maxX - bounds.minX : 0;
+      return bounds ? bounds.max_x - bounds.min_x : 0;
     });
 
     setMeasureFontFn((style) => {
@@ -143,8 +141,6 @@ export class InitVello extends System {
       );
     Line.renderBoundsProvider =
       createRenderBoundsProviderFromComputePathBoundsForLine(computePathBounds);
-    Text.geometryBoundsProvider =
-      createGeometryBoundsProviderFromComputeTextBounds(computeTextBounds);
 
     // 使用 Vello 进行 hit testing
     Path.hitTestProvider = createHitTestProviderFromHitTestPath(hitTestPath);

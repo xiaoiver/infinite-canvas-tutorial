@@ -58,21 +58,21 @@ WebFont.load({
 
 // const res = await fetch('/Ghostscript_Tiger.svg');
 // const res = await fetch('/maslow-hierarchy.svg');
-const res = await fetch('/mindmap.svg');
+// const res = await fetch('/mindmap.svg');
 // const res = await fetch('/test-camera.svg');
 // const res = await fetch(
 //   '/62f5208ddbc232ac973f53d9cfd91ba463c50b8bfd846349247709fe4a7a9053.svg',
 // );
-const svg = await res.text();
+// const svg = await res.text();
 // TODO: extract semantic groups inside comments
-const $container = document.createElement('div');
-$container.innerHTML = svg;
-const $svg = $container.children[0] as SVGSVGElement;
+// const $container = document.createElement('div');
+// $container.innerHTML = svg;
+// const $svg = $container.children[0] as SVGSVGElement;
 
-const camera = svgSvgElementToComputedCamera($svg);
-const nodes = svgElementsToSerializedNodes(
-  Array.from($svg.children) as SVGElement[],
-);
+// const camera = svgSvgElementToComputedCamera($svg);
+// const nodes = svgElementsToSerializedNodes(
+//   Array.from($svg.children) as SVGElement[],
+// );
 
 // const root = {
 //   id: 'root',
@@ -142,10 +142,10 @@ canvas.addEventListener(Event.READY, async (e) => {
     taskbarVisible: true,
     checkboardStyle: CheckboardStyle.GRID,
     snapToPixelGridEnabled: true,
-    snapToPixelGridSize: 10,
+    snapToPixelGridSize: 1,
     // snapToPixelGridEnabled: false,
     // snapToPixelGridSize: 0,
-    // snapToObjectsEnabled: true,
+    snapToObjectsEnabled: true,
     // filter: 'brightness(0.8) noise(0.1)',
     // penbarDrawSizeLabelVisible: true,
     // checkboardStyle: CheckboardStyle.NONE,
@@ -305,12 +305,13 @@ canvas.addEventListener(Event.READY, async (e) => {
       id: 'text-1',
       type: 'text',
       fill: 'black',
-      content: 'ABCג ב אDEFAbcdefghijklmnop (top) 🚀MM',
+      content: 'ABCDEFAbcdefghijklmnop (top)😂🚀MM',
       anchorX: 50,
       anchorY: 50,
       fontSize: 16,
-      fontFamily: 'sans-serif',
+      fontFamily: 'Gaegu',
       textBaseline: 'top',
+      lineHeight: 32,
       zIndex: 1,
     },
     {
@@ -405,11 +406,11 @@ canvas.addEventListener(Event.READY, async (e) => {
       fontSize: 16,
       fontFamily: 'Gaegu',
       textBaseline: 'ideographic',
+      lineHeight: 32,
       zIndex: 6,
       wordWrap: true,
       wordWrapWidth: 50,
       maxLines: 3,
-      lineHeight: 16,
     },
     {
       id: 'baseline-6',
@@ -425,45 +426,45 @@ canvas.addEventListener(Event.READY, async (e) => {
       markerFactor: 4,
       zIndex: 5,
     },
-    {
-      id: 'container',
-      type: 'rect',
-      x: 0,
-      y: 0,
-      width: 100,
-      height: 100,
-      fill: 'red',
-      zIndex: 5,
-    },
-    {
-      id: 'container-2',
-      type: 'ellipse',
-      x: 200,
-      y: 0,
-      width: 100,
-      height: 100,
-      fill: 'red',
-      zIndex: 5,
-    },
-    {
-      id: 'text-6',
-      parentId: 'child3',
-      type: 'text',
-      fill: 'black',
-      content: 'AVA Ta We',
-      anchorX: 100,
-      anchorY: 50,
-      fontSize: 16,
-      fontFamily: 'Noto Sans',
-      fontWeight: 600,
-      fontStyle: 'italic',
-      textBaseline: 'middle',
-      textAlign: 'center',
-      fontKerning: false,
-      zIndex: 6,
-    },
+    // {
+    //   id: 'container',
+    //   type: 'rect',
+    //   x: 0,
+    //   y: 0,
+    //   width: 100,
+    //   height: 100,
+    //   fill: 'red',
+    //   zIndex: 5,
+    // },
+    // {
+    //   id: 'container-2',
+    //   type: 'ellipse',
+    //   x: 200,
+    //   y: 0,
+    //   width: 100,
+    //   height: 100,
+    //   fill: 'red',
+    //   zIndex: 5,
+    // },
+    // {
+    //   id: 'text-6',
+    //   parentId: 'child3',
+    //   type: 'text',
+    //   fill: 'black',
+    //   content: 'AVA Ta We',
+    //   anchorX: 100,
+    //   anchorY: 50,
+    //   fontSize: 16,
+    //   fontFamily: 'Noto Sans',
+    //   fontWeight: 600,
+    //   fontStyle: 'italic',
+    //   textBaseline: 'middle',
+    //   textAlign: 'center',
+    //   fontKerning: false,
+    //   zIndex: 6,
+    // },
     // child6,
-    child3,
+    // child3,
     // child4, child5, child6, child7
   ]);
   // api.selectNodes([parent]);

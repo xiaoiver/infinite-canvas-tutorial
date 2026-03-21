@@ -146,16 +146,9 @@ export class TextEditor extends LitElement {
       this.node = node;
 
       this.editable.value = node.content;
-      // this.editable.style.color = node.fill;
-      // this.editable.style.opacity = node.opacity && node.opacity.toString();
-      // this.editable.style.textAlign = node.textAlign;
-      // TODO: support textBaseline.
-      // this.editable.style.textBaseline = node.textBaseline;
-      // this.editable.style.letterSpacing =
-      //   node.letterSpacing && node.letterSpacing.toString();
       this.updateTextareaStyle(node);
 
-      this.editable.style.width = `${obb.width}px`;
+      // TODO: Should account for text overflow like ellipsis or clip.
       this.editable.style.height = `${obb.height}px`;
 
       this.api.deselectNodes([node]);

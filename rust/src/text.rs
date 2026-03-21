@@ -302,6 +302,7 @@ pub fn build_text_glyphs_with_emoji_positions(
                         let blob = vello::peniko::Blob::from(bytes);
                         let font_data = vello::peniko::FontData::new(blob, font_ref.index);
 
+                        let run_offset = run.offset();
                         let mut run_glyphs = Vec::new();
                         for g in run.positioned_glyphs() {
                             if char_idx >= segment_char_indices.len() {
@@ -314,9 +315,11 @@ pub fn build_text_glyphs_with_emoji_positions(
                                 let emoji_str = extract_emoji_at(segment, segment_char_indices[char_idx - 1].0)
                                     .map(|(s, _)| s)
                                     .unwrap_or_else(|| ch.to_string());
+                                let emoji_x = run_offset + g.x;
+                                layout_max_x = layout_max_x.max(emoji_x + font_size_px);
                                 emoji_positions.push(EmojiPosition {
                                     emoji: emoji_str,
-                                    x: g.x as f64,
+                                    x: emoji_x as f64,
                                     y: (line_y + g.y) as f64,
                                 });
                             } else {
@@ -402,9 +405,9 @@ pub fn compute_text_bounds_internal(opts: &TextOptions) -> Option<TextBounds> {
     for emoji in &emoji_positions {
         let ex = emoji.x;
         let ey = emoji.y;
-        min_x = min_x.min(ex - fs * 0.5);
+        min_x = min_x.min(ex);
         min_y = min_y.min(ey - fs);
-        max_x = max_x.max(ex + fs * 0.5);
+        max_x = max_x.max(ex + fs);
         max_y = max_y.max(ey);
     }
 
