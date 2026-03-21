@@ -148,8 +148,14 @@ export class TextEditor extends LitElement {
       this.editable.value = node.content;
       this.updateTextareaStyle(node);
 
+      
+      this.editable.style.width = `${obb.width}px`;
       // TODO: Should account for text overflow like ellipsis or clip.
+      // if (node.wordWrap && node.wordWrapWidth && node.maxLines) {
+      //   this.editable.style.height = `${node.maxLines * node.lineHeight}px`;
+      // } else {
       this.editable.style.height = `${obb.height}px`;
+      // }
 
       this.api.deselectNodes([node]);
       this.api.unhighlightNodes([node]);

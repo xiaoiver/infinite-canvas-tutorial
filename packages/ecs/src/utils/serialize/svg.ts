@@ -1269,6 +1269,7 @@ export function exportText(
     decorationStyle,
     decorationColor,
     decorationThickness,
+    letterSpacing,
   } = attributes;
 
   const { lineHeight, lines } = measureText(attributes);
@@ -1300,6 +1301,12 @@ export function exportText(
     if (fontVariant) {
       $g.setAttribute('font-variant', fontVariant);
     }
+    if (letterSpacing) {
+      $g.setAttribute(
+        'letter-spacing',
+        `${toFixedAndRemoveTrailingZeros(letterSpacing)}`,
+      );
+    }
     $g.setAttribute('fill', fill as string);
   } else {
     let styleCSSText = '';
@@ -1315,6 +1322,9 @@ export function exportText(
     }
     if (fill) {
       styleCSSText += `fill: ${fill as string};`;
+    }
+    if (letterSpacing !== 0) {
+      styleCSSText += `letter-spacing: ${toFixedAndRemoveTrailingZeros(letterSpacing)}px;`;
     }
     if (styleCSSText) {
       $g.setAttribute('style', styleCSSText);

@@ -13,6 +13,7 @@ pub struct EmojiPosition {
     pub emoji: String,
     pub x: f64,
     pub y: f64,
+    pub descent_ratio: f32,
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -292,44 +293,69 @@ pub fn build_text_glyphs_with_emoji_positions(
 
                 for item in line.items() {
                     if let PositionedLayoutItem::GlyphRun(run) = item {
-                        let run_min_x = run.offset();
-                        let run_max_x = run.offset() + run.advance();
-                        layout_min_x = layout_min_x.min(run_min_x);
-                        layout_max_x = layout_max_x.max(run_max_x);
-
                         let font_ref = run.run().font();
                         let bytes = font_ref.data.data().to_vec();
                         let blob = vello::peniko::Blob::from(bytes);
                         let font_data = vello::peniko::FontData::new(blob, font_ref.index);
 
-                        let run_offset = run.offset();
+                        // Parley's `positioned_glyphs` advances with each glyph's `advance`. Emoji
+                        // often get an unrealistically small advance from the bundled fonts; use
+                        // `font_size_px` as the horizontal advance so following glyphs and bounds
+                        // match the emoji canvas size (see `get_or_create_emoji_image`).
+                        let baseline = run.baseline();
+                        let run_metrics = run.run().metrics();
+                        let ascent = run_metrics.ascent.max(0.0);
+                        let descent = run_metrics.descent.max(0.0);
+                        let denom = (ascent + descent).max(1e-6);
+                        let descent_ratio = descent / denom;
                         let mut run_glyphs = Vec::new();
-                        for g in run.positioned_glyphs() {
-                            if char_idx >= segment_char_indices.len() {
-                                break;
-                            }
-                            let (_byte_pos, ch) = segment_char_indices[char_idx];
-                            char_idx += 1;
+                        let glyphs: Vec<_> = run.glyphs().collect();
+                        let mut run_x = run.offset();
+                        if glyphs.is_empty() {
+                            layout_min_x = layout_min_x.min(run.offset());
+                            layout_max_x = layout_max_x.max(run.offset() + run.advance());
+                        } else {
+                            for g in glyphs {
+                                if char_idx >= segment_char_indices.len() {
+                                    break;
+                                }
+                                let (_byte_pos, ch) = segment_char_indices[char_idx];
+                                char_idx += 1;
 
-                            if is_emoji(ch) {
-                                let emoji_str = extract_emoji_at(segment, segment_char_indices[char_idx - 1].0)
-                                    .map(|(s, _)| s)
-                                    .unwrap_or_else(|| ch.to_string());
-                                let emoji_x = run_offset + g.x;
-                                layout_max_x = layout_max_x.max(emoji_x + font_size_px);
-                                emoji_positions.push(EmojiPosition {
-                                    emoji: emoji_str,
-                                    x: emoji_x as f64,
-                                    y: (line_y + g.y) as f64,
-                                });
-                            } else {
-                                run_glyphs.push(vello::Glyph {
-                                    id: g.id,
-                                    x: g.x,
-                                    y: line_y + g.y,
-                                });
+                                let x = g.x + run_x;
+                                let y = g.y + baseline;
+                                let adv = if is_emoji(ch) {
+                                    font_size_px
+                                } else {
+                                    g.advance
+                                };
+                                run_x += adv;
+
+                                if is_emoji(ch) {
+                                    let emoji_str = extract_emoji_at(
+                                        segment,
+                                        segment_char_indices[char_idx - 1].0,
+                                    )
+                                        .map(|(s, _)| s)
+                                        .unwrap_or_else(|| ch.to_string());
+                                    emoji_positions.push(EmojiPosition {
+                                        emoji: emoji_str,
+                                        x: x as f64,
+                                        y: (line_y + y) as f64,
+                                        descent_ratio,
+                                    });
+                                } else {
+                                    run_glyphs.push(vello::Glyph {
+                                        id: g.id,
+                                        x,
+                                        y: line_y + y,
+                                    });
+                                }
                             }
+                            layout_min_x = layout_min_x.min(run.offset());
+                            layout_max_x = layout_max_x.max(run_x);
                         }
+
                         if !run_glyphs.is_empty() {
                             glyph_runs.push((font_data, run_glyphs));
                         }

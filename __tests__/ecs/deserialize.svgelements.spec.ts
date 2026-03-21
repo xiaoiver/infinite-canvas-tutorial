@@ -301,7 +301,7 @@ describe('Deserialize SVGElements to SerializedNodes', () => {
       type: 'text',
       content: 'Hello world',
       anchorX: 0,
-      anchorY: 18,
+      anchorY: 6,
       x: 0,
       y: 0,
       width: 59.513671875,
@@ -402,7 +402,7 @@ describe('Deserialize SVGElements to SerializedNodes', () => {
       y: 0,
       zIndex: 0,
       anchorX: 0,
-      anchorY: 18,
+      anchorY: 8,
     };
     const { x: x2, y: y2, width: width2, height: height2, ...rest2 } = nodes[0];
     expect(rest).toEqual(rest2);
