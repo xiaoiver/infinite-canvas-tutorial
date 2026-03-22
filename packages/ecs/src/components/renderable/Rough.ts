@@ -85,7 +85,7 @@ export class Rough {
    * Default value of the hachureGap is set to four times the strokeWidth of that shape.
    * @see https://github.com/rough-stuff/rough/wiki#hachuregap
    */
-  @field({ type: Type.float32, default: 0 })
+  @field({ type: Type.float32, default: -1 })
   declare hachureGap: Options['hachureGap'];
 
   /**
@@ -222,9 +222,9 @@ export function getRoughOptions(
     bowing: roughBowing,
     roughness: roughRoughness,
     fillStyle: roughFillStyle,
-    fillWeight: roughFillWeight > 0 ? roughFillWeight : strokeWidth / 2,
+    fillWeight: roughFillWeight !== -1 ? roughFillWeight : strokeWidth / 2,
     hachureAngle: roughHachureAngle,
-    hachureGap: roughHachureGap > 0 ? roughHachureGap : strokeWidth * 4,
+    hachureGap: roughHachureGap !== -1 ? roughHachureGap : strokeWidth * 4,
     curveStepCount: roughCurveStepCount,
     curveFitting: roughCurveFitting,
     disableMultiStroke: roughDisableMultiStroke,

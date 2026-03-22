@@ -460,6 +460,13 @@ export class SmoothPolyline extends Drawcall {
           dashoffset: 0,
         };
     const { r: sr, g: sg, b: sb, opacity: so } = parseColor(strokeColor);
+    let strokeWidth = width;
+    if (shape.has(Rough)) {
+      const { fillWeight } = shape.read(Rough);
+      if (fillWeight !== -1 && this.index === 2) {
+        strokeWidth = fillWeight;
+      }
+    }
 
     const { opacity, strokeOpacity, fillOpacity } = shape.has(Opacity)
       ? shape.read(Opacity)
@@ -469,7 +476,7 @@ export class SmoothPolyline extends Drawcall {
     const u_ZIndexStrokeWidth = [
       // Polyline should render after SDF
       (globalRenderOrder + 0.1) / ZINDEX_FACTOR,
-      width,
+      strokeWidth,
       miterlimit,
       strokeAlignmentMap[alignment],
     ];

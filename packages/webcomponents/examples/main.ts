@@ -347,6 +347,7 @@ canvas.addEventListener(Event.READY, async (e) => {
       height: 100,
       roughFillStyle: 'cross-hatch',
       roughHachureGap: 20,
+      roughFillWeight: 10,
       zIndex: 0,
     },
     {
@@ -357,19 +358,6 @@ canvas.addEventListener(Event.READY, async (e) => {
       strokeWidth: 10,
       zIndex: 0,
     },
-    {
-      "id": "C",
-      "type": "rough-path",
-      "x": 157.5546875,
-      "y": 280.5,
-      "width": 210.1328125,
-      "height": 210.1328125,
-      "stroke": "black",
-      "strokeWidth": 2,
-      "fill": "red",
-      "zIndex": 0,
-      "d": "M 105.06640625 0 L 210.1328125 105.06640625 L 105.06640625 210.1328125 L 0 105.06640625 Z"
-  }
   ]);
   // api.selectNodes([parent]);
   // api.record();
