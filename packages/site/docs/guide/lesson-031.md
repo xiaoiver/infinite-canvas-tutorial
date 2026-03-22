@@ -10,6 +10,7 @@ import BindingWithEllipse from '../components/BindingWithEllipse.vue'
 import BindingOrthogonal from '../components/BindingOrthogonal.vue'
 import BindingConstraint from '../components/BindingConstraint.vue'
 import BindingRouteOrthConnector from '../components/BindingRouteOrthConnector.vue'
+import BindingRounded from '../components/BindingRounded.vue'
 </script>
 
 # Lesson 31 - Bindings between shapes
@@ -137,7 +138,60 @@ class mxConnectionConstraint {
 }
 ```
 
-### Our design {#our-design}
+### JSON Canvas Spec {#json-canvas-spec}
+
+Obsidian publishes the [JSON Canvas Spec], which is structurally similar to `antv/g6`: the top level stores arrays of nodes and edges:
+
+```json
+{
+    "nodes": [],
+    "edges": []
+}
+```
+
+Edges look like the following — they carry no geometry, only logical connection:
+
+```json
+{
+    "id": "f67890123456789a",
+    "fromNode": "6f0ad84f44ce9c17",
+    "toNode": "a1b2c3d4e5f67890"
+}
+```
+
+## Our design {#our-design}
+
+On the schema we lean more on mxGraph’s approach. Logical relationships on an edge are expressed with `fromId` and `toId`, so we do not need geometric fields such as `x1/y1`. An arrow connecting `rect-1` and `rect-2` is declared like this:
+
+```ts
+const edge1 = {
+    id: 'line-1',
+    type: 'line',
+    fromId: 'rect-1',
+    toId: 'rect-2',
+    stroke: 'black',
+    strokeWidth: 10,
+    markerEnd: 'line',
+};
+```
+
+Constraints live on the node, similar to [mxConnectionConstraint]:
+
+```ts
+interface ConstraintAttributes {
+    /**
+     * Normalized point, relative to bounding box top-left.
+     */
+    point: [number, number];
+    /**
+     * Use perimeter.
+     */
+    perimeter: boolean;
+    name?: string;
+    dx?: number;
+    dy?: number;
+}
+```
 
 Similar to [Lesson 18 - Defining Parent-Child Components], we can implement bidirectional binding relationships:
 
@@ -151,20 +205,6 @@ class Binded {
     @field.backrefs(Binding, 'from') declare fromBindings: Entity[];
     @field.backrefs(Binding, 'to') declare toBindings: Entity[];
 }
-```
-
-To declare an arrow from `rect-1` pointing to `rect-2`, the method is as follows:
-
-```ts
-const edge = {
-    id: 'line-1',
-    type: 'line',
-    fromId: 'rect-1',
-    toId: 'rect-2',
-    stroke: 'black',
-    strokeWidth: 10,
-    markerEnd: 'line',
-};
 ```
 
 ## Auto update {#auto-update}
@@ -335,9 +375,9 @@ Node constraints define where and how connections can be made. They are not “p
 
 ```ts
 class mxConnectionConstraint {
-    point: mxPoint | null; // 归一化坐标 (0~1)
-    perimeter: boolean; // 是否投射到边界
-    name?: string; // 可选，端口名
+    point: mxPoint | null; // Normalized coordinates (0~1)
+    perimeter: boolean; // Whether to project onto the boundary
+    name?: string; // Optional port name
 }
 ```
 
@@ -543,7 +583,21 @@ for (var i = 0; i < routePattern.length; i++)
     }
 ```
 
-Finally, optimize adjacent points that are very close in the optimized path. For this part, we continue to use [simplify-js], which was already introduced in [Lesson 12 - Simplifying polyline].
+Finally, simplify adjacent path points that lie very close together. For this we continue to use [simplify-js], as in [Lesson 12 - Simplifying polyline].
+
+## Connector line style {#connectors-style}
+
+![source: https://www.drawio.com/doc/faq/connector-styles](https://www.drawio.com/assets/img/blog/style-tab-line-style.png)
+
+### Rounded {#rounded}
+
+Rounded corners mean we still use the polyline waypoints computed earlier, but replace sharp corners with smooth transitions at the joints. The steps are:
+
+-   Walk each bend in the polyline.
+-   On both sides of each corner, step back along the segment (by at most half the segment length).
+-   Use `quadTo` (or an equivalent curve command) to draw a smooth fillet at the corner.
+
+<BindingRounded />
 
 ## [WIP] Export SVG {#export-svg}
 
@@ -560,10 +614,12 @@ When exporting, it is no longer sufficient to save only geometric information; l
 -   When a node is selected, display available anchor points from which connections can be initiated.
 -   When an edge is selected, highlight dockable anchor points during dragging.
 
-[Lesson 23 - Mindmap]: /zh/guide/lesson-023
-[Lesson 25 - Drawing arrows]: /zh/guide/lesson-025#draw-arrow
-[Lesson 18 - Defining Parent-Child Components]: /zh/guide/lesson-018#定义-component
+[Lesson 23 - Mindmap]: /guide/lesson-023
+[Lesson 25 - Drawing arrows]: /guide/lesson-025#draw-arrow
+[Lesson 18 - Defining Parent-Child Components]: /guide/lesson-018#define-component
 [Change the shape perimeter]: https://www.drawio.com/doc/faq/shape-perimeter-change
+[JSON Canvas Spec]: https://jsoncanvas.org/spec/1.0/
+[mxConnectionConstraint]: https://github.com/jgraph/drawio/blob/81a267568da862d3c99970758c09a8e768dea973/src/main/webapp/mxgraph/src/view/mxConnectionConstraint.js#L23
 [OrthConnector]: https://github.com/jgraph/drawio/blob/dev/src/main/webapp/mxgraph/src/view/mxEdgeStyle.js#L1067
 [simplify-js]: https://github.com/mourner/simplify-js
 [Lesson 12 - Simplifying polyline]: /guide/lesson-012#simplify-polyline

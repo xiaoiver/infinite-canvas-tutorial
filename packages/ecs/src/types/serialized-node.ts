@@ -221,6 +221,13 @@ export interface BindingAttributes {
 
   sourcePortConstraint: typeof DIRECTION_NORTH | typeof DIRECTION_SOUTH | typeof DIRECTION_EAST | typeof DIRECTION_WEST;
   targetPortConstraint: typeof DIRECTION_NORTH | typeof DIRECTION_SOUTH | typeof DIRECTION_EAST | typeof DIRECTION_WEST;
+
+  /**
+   * This determines whether or not joins between edges segments are smoothed to a rounded finish
+   */
+  rounded: boolean;
+  curved: boolean;
+  bezier: boolean;
 }
 
 export interface MarkerAttributes {

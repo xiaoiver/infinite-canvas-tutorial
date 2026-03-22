@@ -31,6 +31,7 @@ import {
   inferXYWidthHeight,
   layoutTextAnchoredInParent,
   pointAlongPolylineByT,
+  polylineVertexApproxFromPathD,
 } from '../utils';
 
 export class RenderBindings extends System {
@@ -119,6 +120,14 @@ export class RenderBindings extends System {
           width: edge.width,
           height: edge.height,
         });
+      } else if (edge.type === 'path' || edge.type === 'rough-path') {
+        api.updateNode(edge, {
+          d: edge.d,
+          x: edge.x,
+          y: edge.y,
+          width: edge.width,
+          height: edge.height,
+        });
       }
 
       updateGlobalTransform(binding);
@@ -130,7 +139,9 @@ export class RenderBindings extends System {
               [binding.read(Line).x1, binding.read(Line).y1],
               [binding.read(Line).x2, binding.read(Line).y2],
             ]
-          : null;
+          : binding.has(Path)
+            ? polylineVertexApproxFromPathD(binding.read(Path).d)
+            : null;
 
       if (points && points.length >= 2 && binding.has(Parent)) {
         binding.read(Parent).children.forEach((child) => {
