@@ -43,6 +43,9 @@ onMounted(async () => {
         node.type = 'rough-polyline';
       } else if (node.type === 'text') {
         node.fontFamily = 'Gaegu';
+      } else if (node.type === 'path') {
+        // @ts-expect-error change type
+        node.type = 'rough-path';
       }
     });
 

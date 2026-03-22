@@ -149,11 +149,10 @@ const parseEdge = (
   const position = computeElementPosition(edge, containerEl);
   const edgePositionData = computeEdgePositions(edge, position);
 
-  // Remove irrelevant properties
-  data.length = undefined;
+  const { length: _length, ...rest } = data;
 
   return {
-    ...data,
+    ...rest,
     ...edgePositionData,
     text: entityCodesToText(data.text),
   };
@@ -164,10 +163,16 @@ export async function parseMermaid(
   config: Partial<MermaidConfig> = MERMAID_CONFIG
 ): Promise<ParsedMermaidData> {
   mermaid.initialize({ ...MERMAID_CONFIG, ...config });
-  const diagram = await mermaid.mermaidAPI.getDiagramFromText(definition);
 
-  // Render the SVG diagram
-  const { svg } = await mermaid.render("mermaid-to-excalidraw", definition);
+  // Unique id per call — reusing the same id causes duplicate SVG / marker ids and stale renders.
+  const renderId = `mermaid-parse-${crypto.randomUUID()}`;
+
+  // Render FIRST: mermaid.render() runs reset() + addDirective() + parse, so SVG matches global config.
+  // If getDiagramFromText runs before render, the first call often uses stale currentConfig and yy
+  // does not match the SVG (empty vertices / edges); a later call works after config was warmed up.
+  const { svg } = await mermaid.render(renderId, definition);
+
+  const diagram = await mermaid.mermaidAPI.getDiagramFromText(definition);
 
   // Append Svg to DOM
   const svgContainer = document.createElement("div");
@@ -176,7 +181,6 @@ export async function parseMermaid(
     `opacity: 0; position: relative; z-index: -1;`
   );
   svgContainer.innerHTML = svg;
-  svgContainer.id = "mermaid-diagram";
   document.body.appendChild(svgContainer);
 
   let data;
@@ -191,6 +195,7 @@ export async function parseMermaid(
   }
 
   svgContainer.remove();
+
   return data;
 }
 
@@ -204,10 +209,14 @@ function parseMermaidFlowChartDiagram(diagram: any, containerEl: Element): Parse
   // https://github.com/mermaid-js/mermaid/blob/e561cbd3be2a93b8bedfa4839484966faad92ccf/packages/mermaid/src/Diagram.ts#L43
 
   const mermaidParser = (diagram.parser as any).yy;
-  const vertices = mermaidParser.getVertices() as Map<string, Vertex>;
+  const rawVertices = mermaidParser.getVertices() as Map<string, Vertex>;
   const classes = mermaidParser.getClasses();
-  vertices.forEach((vertex, id) => {
-    vertices[id] = parseVertex(vertex, containerEl, classes);
+  const vertices = new Map<string, Vertex>();
+  rawVertices.forEach((vertex, id) => {
+    const parsed = parseVertex(vertex, containerEl, classes);
+    if (parsed) {
+      vertices.set(id, parsed);
+    }
   });
 
   // Track the count of edges based on the edge id

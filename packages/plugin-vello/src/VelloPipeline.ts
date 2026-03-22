@@ -588,7 +588,7 @@ export class VelloPipeline extends System {
             }
 
             if (entity.has(Rough)) { 
-              const { roughness, bowing, fillStyle, hachureAngle, hachureGap, curveStepCount, simplification } = entity.read(Rough);
+              const { roughness, bowing, fillStyle, fillWeight, hachureAngle, hachureGap, curveStepCount, simplification } = entity.read(Rough);
               let fillStyleValue = fillStyle;
               // @see https://github.com/xiaoiver/infinite-canvas-tutorial/issues/19
               if (fillStyle === 'dashed') {
@@ -599,6 +599,7 @@ export class VelloPipeline extends System {
                 roughness,
                 bowing,
                 fillStyle: fillStyleValue,
+                fillWeight,
                 hachureAngle,
                 hachureGap,
                 curveStepCount,
@@ -621,7 +622,7 @@ export class VelloPipeline extends System {
             }
 
             if (entity.has(Rough)) { 
-              const { roughness, bowing, fillStyle, hachureAngle, hachureGap, curveStepCount, simplification } = entity.read(Rough);
+              const { roughness, bowing, fillStyle, fillWeight, hachureAngle, hachureGap, curveStepCount, simplification } = entity.read(Rough);
               let fillStyleValue = fillStyle;
               // @see https://github.com/xiaoiver/infinite-canvas-tutorial/issues/19
               if (fillStyle === 'dashed') {
@@ -632,6 +633,7 @@ export class VelloPipeline extends System {
                 roughness,
                 bowing,
                 fillStyle: fillStyleValue,
+                fillWeight,
                 hachureAngle,
                 hachureGap,
                 curveStepCount,
@@ -695,7 +697,7 @@ export class VelloPipeline extends System {
                 });
               }
             } else if (entity.has(Rough)) { 
-              const { roughness, bowing, fillStyle, hachureAngle, hachureGap, curveStepCount, simplification } = entity.read(Rough);
+              const { roughness, bowing, fillStyle, fillWeight, hachureAngle, hachureGap, curveStepCount, simplification } = entity.read(Rough);
               let fillStyleValue = fillStyle;
               // @see https://github.com/xiaoiver/infinite-canvas-tutorial/issues/19
               if (fillStyle === 'dashed') {
@@ -706,6 +708,7 @@ export class VelloPipeline extends System {
                 roughness,
                 bowing,
                 fillStyle: fillStyleValue,
+                fillWeight,
                 hachureAngle,
                 hachureGap,
                 curveStepCount,
@@ -734,7 +737,7 @@ export class VelloPipeline extends System {
               }
 
               if (entity.has(Rough)) { 
-                const { roughness, bowing, fillStyle, hachureAngle, hachureGap, curveStepCount, simplification } = entity.read(Rough);
+                const { roughness, bowing, fillStyle, fillWeight, hachureAngle, hachureGap, curveStepCount, simplification } = entity.read(Rough);
                 let fillStyleValue = fillStyle;
                 // @see https://github.com/xiaoiver/infinite-canvas-tutorial/issues/19
                 if (fillStyle === 'dashed') {
@@ -745,6 +748,7 @@ export class VelloPipeline extends System {
                   roughness,
                   bowing,
                   fillStyle: fillStyleValue,
+                  fillWeight,
                   hachureAngle,
                   hachureGap,
                   curveStepCount,
@@ -762,17 +766,11 @@ export class VelloPipeline extends System {
                 points,
               };
               if (entity.has(Rough)) {
-                const { roughness, bowing, fillStyle, hachureAngle, hachureGap, curveStepCount, simplification } = entity.read(Rough);
-                let fillStyleValue = fillStyle;
-                // @see https://github.com/xiaoiver/infinite-canvas-tutorial/issues/19
-                if (fillStyle === 'dashed') {
-                  fillStyleValue = 'hachure';
-                }
+                const { roughness, bowing, hachureAngle, hachureGap, curveStepCount, simplification } = entity.read(Rough);
                 addRoughPolyline(canvasId, {
                   ...opts,
                   roughness,
                   bowing,
-                  fillStyle: fillStyleValue,
                   hachureAngle,
                   hachureGap,
                   curveStepCount,

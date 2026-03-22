@@ -260,6 +260,12 @@ fn render_rough_drawable(
 ) {
     use roughr::core::{OpSetType, OpType};
 
+    let stroke_width = drawable.options.stroke_width.unwrap_or(1.0);
+    let fill_weight = {
+        let fw = drawable.options.fill_weight.unwrap_or(-1.0);
+        if fw >= 0.0 { fw } else { stroke_width / 2.0 }
+    } as f64;
+    let stroke_width = stroke_width as f64;
     for set in &drawable.sets {
         let mut bez_path = BezPath::new();
         for op in &set.ops {
@@ -287,16 +293,21 @@ fn render_rough_drawable(
         }
 
         match set.op_set_type {
-            OpSetType::FillPath | OpSetType::FillSketch => {
+            OpSetType::FillPath => {
                 if fill_color[3] > 0.0 {
                     scene.fill(Fill::NonZero, transform, Color::new(fill_color), None, &bez_path);
+                }
+            }
+            OpSetType::FillSketch => {
+                if fill_color[3] > 0.0 {
+                    let kurbo_stroke = Stroke::new(fill_weight);
+                    scene.stroke(&kurbo_stroke, transform, Color::new(fill_color), None, &bez_path);
                 }
             }
             OpSetType::Path => {
                 if let Some(stroke) = stroke_color {
                     if stroke[3] > 0.0 {
-                        let stroke_width = set.size.map(|s| s.x).unwrap_or(1.0);
-                        let kurbo_stroke = Stroke::new(stroke_width as f64);
+                        let kurbo_stroke = Stroke::new(stroke_width);
                         scene.stroke(&kurbo_stroke, transform, Color::new(stroke), None, &bez_path);
                     }
                 }
@@ -1028,7 +1039,7 @@ pub fn add_js_shape_to_scene(
             }
         }
         JsShape::Group { .. } => {}
-        JsShape::RoughRect { x, y, width, height, fill, stroke, opacity, fill_opacity, stroke_opacity, roughness, bowing, fill_style, hachure_angle, hachure_gap, curve_step_count, simplification, .. } => {
+        JsShape::RoughRect { x, y, width, height, fill, stroke, opacity, fill_opacity, stroke_opacity, roughness, bowing, fill_style, hachure_angle, hachure_gap, fill_weight, curve_step_count, simplification, .. } => {
             let fill_color = apply_opacity_to_color(fill, opacity, fill_opacity);
             let stroke_color = stroke.as_ref().map(|s| apply_opacity_to_color(s.color, opacity, stroke_opacity));
             let options = Options {
@@ -1041,13 +1052,15 @@ pub fn add_js_shape_to_scene(
                 curve_step_count: Some(curve_step_count),
                 simplification: Some(simplification),
                 stroke: stroke_color.map(|c| roughr::Srgba::new(c[0], c[1], c[2], c[3])),
+                stroke_width: stroke.as_ref().map(|s| s.width as f32),
+                fill_weight: if fill_weight >= 0.0 { Some(fill_weight) } else { None },
                 ..Options::default()
             };
             let generator = Generator::default();
             let drawable = generator.rectangle(x as f32, y as f32, width as f32, height as f32, &Some(options));
             render_rough_drawable(scene, shape_transform, &drawable, fill_color, stroke_color);
         }
-        JsShape::RoughEllipse { cx, cy, rx, ry, fill, stroke, opacity, fill_opacity, stroke_opacity, roughness, bowing, fill_style, hachure_angle, hachure_gap, curve_step_count, simplification, .. } => {
+        JsShape::RoughEllipse { cx, cy, rx, ry, fill, stroke, opacity, fill_opacity, stroke_opacity, roughness, bowing, fill_style, hachure_angle, hachure_gap, fill_weight, curve_step_count, simplification, .. } => {
             let fill_color = apply_opacity_to_color(fill, opacity, fill_opacity);
             let stroke_color = stroke.as_ref().map(|s| apply_opacity_to_color(s.color, opacity, stroke_opacity));
             let options = Options {
@@ -1060,6 +1073,8 @@ pub fn add_js_shape_to_scene(
                 curve_step_count: Some(curve_step_count),
                 simplification: Some(simplification),
                 stroke: stroke_color.map(|c| roughr::Srgba::new(c[0], c[1], c[2], c[3])),
+                stroke_width: stroke.as_ref().map(|s| s.width as f32),
+                fill_weight: if fill_weight >= 0.0 { Some(fill_weight) } else { None },
                 ..Options::default()
             };
             let generator = Generator::default();
@@ -1073,13 +1088,14 @@ pub fn add_js_shape_to_scene(
                 bowing: Some(bowing),
                 simplification: Some(simplification),
                 stroke: Some(roughr::Srgba::new(stroke_color_val[0], stroke_color_val[1], stroke_color_val[2], stroke_color_val[3])),
+                stroke_width: Some(stroke.width as f32),
                 ..Options::default()
             };
             let generator = Generator::default();
             let drawable = generator.line(x1 as f32, y1 as f32, x2 as f32, y2 as f32, &Some(options));
             render_rough_drawable(scene, shape_transform, &drawable, [0.0, 0.0, 0.0, 0.0], Some(stroke_color_val));
         }
-        JsShape::RoughPolyline { points, fill, stroke, opacity, fill_opacity, stroke_opacity, roughness, bowing, fill_style, hachure_angle, hachure_gap, curve_step_count, simplification, .. } => {
+        JsShape::RoughPolyline { points, fill, stroke, opacity, fill_opacity, stroke_opacity, roughness, bowing, fill_style, hachure_angle, hachure_gap, fill_weight, curve_step_count, simplification, .. } => {
             let fill_color = apply_opacity_to_color(fill, opacity, fill_opacity);
             let stroke_color = stroke.as_ref().map(|s| apply_opacity_to_color(s.color, opacity, stroke_opacity));
             let options = Options {
@@ -1092,6 +1108,8 @@ pub fn add_js_shape_to_scene(
                 curve_step_count: Some(curve_step_count),
                 simplification: Some(simplification),
                 stroke: stroke_color.map(|c| roughr::Srgba::new(c[0], c[1], c[2], c[3])),
+                stroke_width: stroke.as_ref().map(|s| s.width as f32),
+                fill_weight: if fill_weight >= 0.0 { Some(fill_weight) } else { None },
                 ..Options::default()
             };
             let pts: Vec<roughr::Point2D<f32, _>> = points.iter().map(|p| roughr::Point2D::new(p[0] as f32, p[1] as f32)).collect();
@@ -1099,7 +1117,7 @@ pub fn add_js_shape_to_scene(
             let drawable = generator.linear_path(&pts, false, &Some(options));
             render_rough_drawable(scene, shape_transform, &drawable, fill_color, stroke_color);
         }
-        JsShape::RoughPath { d, fill, stroke, opacity, fill_opacity, stroke_opacity, roughness, bowing, fill_style, hachure_angle, hachure_gap, curve_step_count, simplification, .. } => {
+        JsShape::RoughPath { d, fill, stroke, opacity, fill_opacity, stroke_opacity, roughness, bowing, fill_style, hachure_angle, hachure_gap, fill_weight, curve_step_count, simplification, .. } => {
             let fill_color = apply_opacity_to_color(fill, opacity, fill_opacity);
             let stroke_color = stroke.as_ref().map(|s| apply_opacity_to_color(s.color, opacity, stroke_opacity));
             let options = Options {
@@ -1112,6 +1130,8 @@ pub fn add_js_shape_to_scene(
                 curve_step_count: Some(curve_step_count),
                 simplification: Some(simplification),
                 stroke: stroke_color.map(|c| roughr::Srgba::new(c[0], c[1], c[2], c[3])),
+                stroke_width: stroke.as_ref().map(|s| s.width as f32),
+                fill_weight: if fill_weight >= 0.0 { Some(fill_weight) } else { None },
                 ..Options::default()
             };
             let generator = Generator::default();

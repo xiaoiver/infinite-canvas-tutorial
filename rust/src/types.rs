@@ -303,6 +303,7 @@ pub enum JsShape {
         fill_style: String,
         hachure_angle: f32,
         hachure_gap: f32,
+        fill_weight: f32,
         curve_step_count: f32,
         simplification: f32,
     },
@@ -326,6 +327,7 @@ pub enum JsShape {
         fill_style: String,
         hachure_angle: f32,
         hachure_gap: f32,
+        fill_weight: f32,
         curve_step_count: f32,
         simplification: f32,
     },
@@ -363,6 +365,7 @@ pub enum JsShape {
         fill_style: String,
         hachure_angle: f32,
         hachure_gap: f32,
+        fill_weight: f32,
         curve_step_count: f32,
         simplification: f32,
     },
@@ -384,6 +387,7 @@ pub enum JsShape {
         fill_style: String,
         hachure_angle: f32,
         hachure_gap: f32,
+        fill_weight: f32,
         curve_step_count: f32,
         simplification: f32,
     },
@@ -599,6 +603,8 @@ pub fn default_rgba() -> [f32; 4] { [0.0, 0.0, 0.0, 0.5] }
 #[cfg(target_arch = "wasm32")]
 pub fn default_rgba_fill() -> [f32; 4] { [1.0, 1.0, 1.0, 1.0] }
 #[cfg(target_arch = "wasm32")]
+pub fn default_rgba_fill_transparent() -> [f32; 4] { [0.0, 0.0, 0.0, 0.0] }
+#[cfg(target_arch = "wasm32")]
 pub fn default_rgba_stroke() -> [f32; 4] { [0.0, 0.0, 0.0, 1.0] }
 #[cfg(target_arch = "wasm32")]
 pub fn default_opacity() -> f32 { 1.0 }
@@ -634,6 +640,8 @@ pub fn default_bowing() -> f32 { 1.0 }
 pub fn default_hachure_angle() -> f32 { -41.0 }
 #[cfg(target_arch = "wasm32")]
 pub fn default_hachure_gap() -> f32 { 4.0 }
+#[cfg(target_arch = "wasm32")]
+pub fn default_fill_weight() -> f32 { -1.0 }
 #[cfg(target_arch = "wasm32")]
 pub fn default_curve_step_count() -> f32 { 9.0 }
 #[cfg(target_arch = "wasm32")]
@@ -851,7 +859,7 @@ pub struct PathOptions {
     #[serde(default)]
     pub ui: bool,
     pub d: String,
-    #[serde(default = "default_rgba_fill")]
+    #[serde(default = "default_rgba_fill_transparent")]
     pub fill: [f32; 4],
     #[serde(default)]
     pub fill_gradient: Option<FillGradientOptions>,
@@ -1011,6 +1019,8 @@ pub struct RoughRectOptions {
     pub curve_step_count: f32,
     #[serde(default)]
     pub simplification: f32,
+    #[serde(default = "default_fill_weight")]
+    pub fill_weight: f32,
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -1055,6 +1065,8 @@ pub struct RoughEllipseOptions {
     pub curve_step_count: f32,
     #[serde(default)]
     pub simplification: f32,
+    #[serde(default = "default_fill_weight")]
+    pub fill_weight: f32,
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -1096,6 +1108,8 @@ pub struct RoughPolylineOptions {
     pub curve_step_count: f32,
     #[serde(default)]
     pub simplification: f32,
+    #[serde(default = "default_fill_weight")]
+    pub fill_weight: f32,
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -1139,6 +1153,8 @@ pub struct RoughPathOptions {
     pub curve_step_count: f32,
     #[serde(default)]
     pub simplification: f32,
+    #[serde(default = "default_fill_weight")]
+    pub fill_weight: f32,
 }
 
 #[cfg(target_arch = "wasm32")]

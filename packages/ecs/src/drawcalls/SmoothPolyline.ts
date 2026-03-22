@@ -98,7 +98,10 @@ export class SmoothPolyline extends Drawcall {
       (instance.has(Rough) &&
         instance.hasSomeOf(Circle, Ellipse, Rect, Polyline, Path, Line))
     ) {
-      return this.pointsBuffer.length / strideFloats - 3;
+      return Math.max(
+        0,
+        Math.floor(this.pointsBuffer.length / strideFloats) - 3,
+      );
     } else if (instance.has(Rect)) {
       return 6;
     } else if (instance.hasSomeOf(Circle, Ellipse)) {
@@ -457,6 +460,13 @@ export class SmoothPolyline extends Drawcall {
           dashoffset: 0,
         };
     const { r: sr, g: sg, b: sb, opacity: so } = parseColor(strokeColor);
+    let strokeWidth = width;
+    if (shape.has(Rough)) {
+      const { fillWeight } = shape.read(Rough);
+      if (fillWeight !== -1 && this.index === 2) {
+        strokeWidth = fillWeight;
+      }
+    }
 
     const { opacity, strokeOpacity, fillOpacity } = shape.has(Opacity)
       ? shape.read(Opacity)
@@ -466,7 +476,7 @@ export class SmoothPolyline extends Drawcall {
     const u_ZIndexStrokeWidth = [
       // Polyline should render after SDF
       (globalRenderOrder + 0.1) / ZINDEX_FACTOR,
-      width,
+      strokeWidth,
       miterlimit,
       strokeAlignmentMap[alignment],
     ];
@@ -635,10 +645,11 @@ export function updateBuffer(object: Entity, useRoughStroke = true) {
     object.hasSomeOf(Circle, Ellipse, Rect, Line, Polyline, Path)
   ) {
     const { strokePoints, fillPoints } = object.read(ComputedRough);
-    points = (useRoughStroke ? strokePoints : fillPoints)
+    const roughPointSets = useRoughStroke ? strokePoints : fillPoints;
+    points = roughPointSets
       .map((subPathPoints, i) => {
         return [...subPathPoints].concat(
-          i !== strokePoints.length - 1 ? [NaN, NaN] : [],
+          i !== roughPointSets.length - 1 ? [NaN, NaN] : [],
         );
       })
       .flat(2);
@@ -802,6 +813,12 @@ export function updateBuffer(object: Entity, useRoughStroke = true) {
   const travelBufferTotal: number[] = [];
 
   subPaths.forEach((points) => {
+    // Need at least two vertices; otherwise tail reads (e.g. points[length - 4]) are invalid.
+    // Empty fill sketch (e.g. fill: 'transparent' on Rough) must not emit a bogus instance.
+    if (points.length < stridePoints * 2) {
+      return;
+    }
+
     const pointsBuffer: number[] = [];
     const travelBuffer: number[] = [0];
     let j = (Math.round(0 / stridePoints) + 2) * strideFloats;
