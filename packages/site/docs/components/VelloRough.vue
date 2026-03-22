@@ -5,7 +5,6 @@ import {
   DefaultPlugins,
   RendererPlugin,
   DefaultRendererPlugin,
-  svgElementsToSerializedNodes,
 } from '@infinite-canvas-tutorial/ecs';
 import { ref, onMounted, onUnmounted } from 'vue';
 import { Event, UIPlugin } from '@infinite-canvas-tutorial/webcomponents';
@@ -18,6 +17,7 @@ import { InitVello, VelloPipeline, registerFont } from '@infinite-canvas-tutoria
 const wrapper = ref<HTMLElement | null>(null);
 let api: any | undefined;
 let onReady: ((api: CustomEvent<any>) => void) | undefined;
+let onReadyFired = false;
 
 onMounted(async () => {
   const canvas = wrapper.value;
@@ -26,6 +26,8 @@ onMounted(async () => {
   }
 
   onReady = async (e) => {
+    if (onReadyFired) return;
+    onReadyFired = true;
     api = e.detail;
 
     api.setAppState({
@@ -33,22 +35,81 @@ onMounted(async () => {
         penbarAll: [Pen.SELECT],
     });
 
-    api.runAtNextTick(() => {
-        api.updateNodes([
-          {
-            id: 'vello-dropshadow-1',
-            type: 'rect',
-            x: 200,
-            y: 20,
-            fill: 'red',
-            width: 100,
-            height: 100,
-            filter: 'drop-shadow(10px 10px 5px black)',
-            cornerRadius: 10,
-            zIndex: 0,
-          }
-        ]);
-    });
+    const path = {
+      id: 'vello-rough-3',
+      type: 'rough-path',
+      d: 'M 100 120 L 200 200 L 300 100 Z',
+      fill: 'red',
+      stroke: 'black',
+      roughFillStyle: 'dots',
+      roughHachureGap: 10,
+      zIndex: 0,
+    } as const;
+
+    const polyline = {
+      id: 'vello-rough-6',
+      type: 'rough-polyline',
+      points: '200,220 200,300 300,200',
+      stroke: 'black',
+      strokeWidth: 10,
+      zIndex: 0,
+    } as const;
+
+    api.updateNodes([
+      {
+        id: 'vello-rough-1',
+        type: 'rough-rect',
+        x: 200,
+        y: 20,
+        fill: 'red',
+        stroke: 'black',
+        width: 100,
+        height: 100,
+        roughFillStyle: 'hachure',
+        zIndex: 0,
+      },
+      {
+        id: 'vello-rough-2',
+        type: 'rough-ellipse',
+        x: 300,
+        y: 20,
+        fill: 'red',
+        stroke: 'black',
+        width: 100,
+        height: 100,
+        roughFillStyle: 'hachure',
+        roughHachureGap: 10,
+        zIndex: 0,
+      },
+      path,
+      {
+        id: 'vello-rough-4',
+        type: 'rough-rect',
+        x: 400,
+        y: 20,
+        fill: 'red',
+        stroke: 'black',
+        width: 100,
+        height: 100,
+        roughFillStyle: 'zigzag',
+        roughHachureGap: 20,
+        zIndex: 0,
+      },
+      {
+        id: 'vello-rough-5',
+        type: 'rough-rect',
+        x: 500,
+        y: 20,
+        fill: 'red',
+        stroke: 'black',
+        width: 100,
+        height: 100,
+        roughFillStyle: 'cross-hatch',
+        roughHachureGap: 20,
+        zIndex: 0,
+      },
+      polyline,
+    ]);
   };
 
   canvas.addEventListener(Event.READY, onReady);
@@ -83,9 +144,10 @@ onUnmounted(async () => {
   }
 
   api?.destroy();
+  onReadyFired = false;
 });
 </script>
 
 <template>
-  <ic-spectrum-canvas ref="wrapper" style="width: 100%; height: 200px"></ic-spectrum-canvas>
+  <ic-spectrum-canvas ref="wrapper" style="width: 100%; height: 400px"></ic-spectrum-canvas>
 </template>

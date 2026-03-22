@@ -30,6 +30,7 @@ onMounted(async () => {
 
     api.setAppState({
         penbarSelected: Pen.SELECT,
+        penbarAll: [Pen.SELECT],
     });
 
     api.runAtNextTick(() => {
@@ -37,11 +38,11 @@ onMounted(async () => {
           {
             id: 'vello-blur-1',
             type: 'rect',
-            x: 100,
-            y: 100,
+            x: 200,
+            y: 20,
             fill: 'red',
-            width: 200,
-            height: 200,
+            width: 100,
+            height: 100,
             filter: 'blur(5px)',
             cornerRadius: 10,
             zIndex: 0,
@@ -68,35 +69,6 @@ onMounted(async () => {
     registerFont('/fonts/NotoSans-Regular.ttf');
 
     new App().addPlugins(...DefaultPlugins, UIPlugin, LaserPointerPlugin, LassoPlugin, EraserPlugin, YogaPlugin).run();
-  } else {
-    // 等待组件更新完成后检查API是否已经准备好
-    setTimeout(() => {
-      // 检查canvas的apiProvider是否已经有值
-      const canvasElement = canvas as any;
-      if (canvasElement.apiProvider?.value) {
-        // 如果API已经准备好，手动触发onReady
-        const readyEvent = new CustomEvent(Event.READY, {
-          detail: canvasElement.apiProvider.value
-        });
-        onReady?.(readyEvent);
-      } else {
-        // 如果API还没准备好，监听API的变化
-        let checkCount = 0;
-        const checkInterval = setInterval(() => {
-          checkCount++;
-          if (canvasElement.apiProvider?.value) {
-            clearInterval(checkInterval);
-            const readyEvent = new CustomEvent(Event.READY, {
-              detail: canvasElement.apiProvider.value
-            });
-            onReady?.(readyEvent);
-          } else if (checkCount > 50) { // 5秒超时
-            clearInterval(checkInterval);
-            console.warn('Canvas API initialization timeout');
-          }
-        }, 100);
-      }
-    }, 100);
   }
 });
 
@@ -115,5 +87,5 @@ onUnmounted(async () => {
 </script>
 
 <template>
-  <ic-spectrum-canvas ref="wrapper" style="width: 100%; height: 400px"></ic-spectrum-canvas>
+  <ic-spectrum-canvas ref="wrapper" style="width: 100%; height: 200px"></ic-spectrum-canvas>
 </template>
