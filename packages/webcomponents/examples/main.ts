@@ -357,6 +357,19 @@ canvas.addEventListener(Event.READY, async (e) => {
       strokeWidth: 10,
       zIndex: 0,
     },
+    {
+      "id": "C",
+      "type": "rough-path",
+      "x": 157.5546875,
+      "y": 280.5,
+      "width": 210.1328125,
+      "height": 210.1328125,
+      "stroke": "black",
+      "strokeWidth": 2,
+      "fill": "red",
+      "zIndex": 0,
+      "d": "M 105.06640625 0 L 210.1328125 105.06640625 L 105.06640625 210.1328125 L 0 105.06640625 Z"
+  }
   ]);
   // api.selectNodes([parent]);
   // api.record();
@@ -364,12 +377,12 @@ canvas.addEventListener(Event.READY, async (e) => {
   // api.updateNodes([node1]);
 });
 
-const VelloRendererPlugin = RendererPlugin.configure({
-  setupDeviceSystemCtor: InitVello,
-  rendererSystemCtor: VelloPipeline,
-});
-DefaultPlugins.splice(DefaultPlugins.indexOf(DefaultRendererPlugin), 1, VelloRendererPlugin);
-registerFont('/Gaegu-Regular.ttf');
+// const VelloRendererPlugin = RendererPlugin.configure({
+//   setupDeviceSystemCtor: InitVello,
+//   rendererSystemCtor: VelloPipeline,
+// });
+// DefaultPlugins.splice(DefaultPlugins.indexOf(DefaultRendererPlugin), 1, VelloRendererPlugin);
+// registerFont('/Gaegu-Regular.ttf');
 // registerFont('/NotoSansCJKsc-VF.ttf');
 // registerFont('/NotoSans-Regular.ttf');
 // registerFont('/NotoSans-Bold.ttf');

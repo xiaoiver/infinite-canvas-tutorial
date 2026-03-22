@@ -423,6 +423,7 @@ pub fn js_add_rough_rect(canvas_id: u32, opts: JsValue) {
         fill_style: o.fill_style.as_str().to_string(),
         hachure_angle: o.hachure_angle,
         hachure_gap: o.hachure_gap,
+        fill_weight: o.fill_weight,
         curve_step_count: o.curve_step_count,
         simplification: o.simplification,
     });
@@ -475,6 +476,7 @@ pub fn js_add_rough_ellipse(canvas_id: u32, opts: JsValue) {
         fill_style: o.fill_style.as_str().to_string(),
         hachure_angle: o.hachure_angle,
         hachure_gap: o.hachure_gap,
+        fill_weight: o.fill_weight,
         curve_step_count: o.curve_step_count,
         simplification: o.simplification,
     });
@@ -574,6 +576,7 @@ pub fn js_add_rough_polyline(canvas_id: u32, opts: JsValue) {
         fill_style: o.fill_style.as_str().to_string(),
         hachure_angle: o.hachure_angle,
         hachure_gap: o.hachure_gap,
+        fill_weight: o.fill_weight,
         curve_step_count: o.curve_step_count,
         simplification: o.simplification,
     });
@@ -624,6 +627,7 @@ pub fn js_add_rough_path(canvas_id: u32, opts: JsValue) {
         fill_style: o.fill_style.as_str().to_string(),
         hachure_angle: o.hachure_angle,
         hachure_gap: o.hachure_gap,
+        fill_weight: o.fill_weight,
         curve_step_count: o.curve_step_count,
         simplification: o.simplification,
     });

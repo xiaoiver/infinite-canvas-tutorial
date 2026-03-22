@@ -70,7 +70,7 @@ export class Rough {
    * When using dots styles to fill the shape, this value represents the diameter of the dot.
    * @see https://github.com/rough-stuff/rough/wiki#fillweight
    */
-  @field({ type: Type.float32 })
+  @field({ type: Type.float32, default: -1 })
   declare fillWeight: Options['fillWeight'];
 
   /**

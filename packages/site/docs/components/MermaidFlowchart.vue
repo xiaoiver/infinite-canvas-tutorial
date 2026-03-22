@@ -48,11 +48,11 @@ onMounted(async () => {
         node.type = 'rough-polyline';
       } else if (node.type === 'text') {
         node.fontFamily = 'Gaegu';
+      } else if (node.type === 'path') {
+        // @ts-expect-error change type
+        node.type = 'rough-path';
       }
     });
-
-    console.log('nodes', nodes);
-
     import('webfontloader').then((module) => {
       const WebFont = module.default;
       WebFont.load({

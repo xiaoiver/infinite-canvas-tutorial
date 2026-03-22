@@ -18,8 +18,8 @@ function convertFlowchartToSerializedNodes(vertices: Map<string, Vertex>, edges:
   const { fontSize } = options;
 
   const serializedNodes: SerializedNode[] = [];
-  // Vertices
-  Object.values(vertices).forEach((vertex: Vertex) => {
+  // Vertices (ParsedMermaidData uses Map; Object.values(Map) is always [].)
+  Array.from(vertices.values()).forEach((vertex: Vertex) => {
     if (!vertex) {
       return;
     }
@@ -33,6 +33,7 @@ function convertFlowchartToSerializedNodes(vertices: Map<string, Vertex>, edges:
       height: vertex.height,
       stroke: 'black',
       strokeWidth: 2,
+      fill: 'transparent',
       zIndex: 0,
     };
 

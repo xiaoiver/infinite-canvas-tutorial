@@ -529,7 +529,7 @@ export class API {
       const [x, y] = vec2.transformMat3(vec2.create(), [point.x, point.y], invMatrix);
 
       let isIntersected = false;
-      const hasFill = entity.has(FillSolid) || entity.has(FillGradient) || entity.has(FillImage) || entity.has(FillPattern);
+      const hasFill = (entity.has(FillSolid) && entity.read(FillSolid).value !== 'none') || entity.has(FillGradient) || entity.has(FillImage) || entity.has(FillPattern);
       const fill = hasFill ? 'black' : undefined;
       const hasStroke = entity.has(Stroke);
       const stroke = hasStroke ? entity.read(Stroke) : undefined;
