@@ -63,12 +63,11 @@ export const parseD2ToSerializedNodes = async (definition: string) => {
         id: id + '-text',
         parentId: id,
         type: 'text',
-        anchorX: 0, // TODO: layout
-        anchorY: 0,
         content: label,
         fontSize,
         fontFamily: 'sans-serif',
         fill: colors.neutrals[color.toLowerCase()],
+        edgeLabelPosition: 0.5,
         textAlign: 'center',
         textBaseline: 'middle',
         zIndex: 0,
