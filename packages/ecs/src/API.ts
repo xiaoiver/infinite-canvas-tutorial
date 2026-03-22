@@ -541,11 +541,9 @@ export class API {
         const distance = distanceBetweenPoints(x, y, cx, cy)
         if (hasFill && hasStroke) {
           isIntersected = distance <= r + offset;
-        }
-        if (hasFill) {
+        } else if (hasFill) {
           isIntersected = distance <= r;
-        }
-        if (hasStroke) {
+        } else if (hasStroke) {
           isIntersected = (
             distance >= r + offset - halfStrokeWidth && distance <= r + offset + halfStrokeWidth
           );
@@ -554,11 +552,9 @@ export class API {
         const { cx, cy, rx, ry } = entity.read(Ellipse);
         if (hasFill && hasStroke) {
           isIntersected =  isPointInEllipse(x, y, cx, cy, rx + offset, ry + offset);
-        }
-        if (hasFill) {
+        } else if (hasFill) {
           isIntersected =  isPointInEllipse(x, y, cx, cy, rx, ry);
-        }
-        if (hasStroke) {
+        } else if (hasStroke) {
           isIntersected = (
             !isPointInEllipse(
               x,

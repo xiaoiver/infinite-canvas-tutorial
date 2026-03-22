@@ -8,6 +8,7 @@ publish: false
 import Vello from '../../components/Vello.vue'
 import VelloBlur from '../../components/VelloBlur.vue'
 import VelloDropShadow from '../../components/VelloDropShadow.vue'
+import VelloRough from '../../components/VelloRough.vue'
 </script>
 
 # 课程 35 - 基于瓦片的渲染
@@ -393,6 +394,8 @@ JsShape::RoughRect { x, y, width, height, .. } => {
     render_rough_drawable(scene, shape_transform, &drawable, fill_color, stroke_color);
 }
 ```
+
+<VelloRough />
 
 ### 文本 {#text}
 

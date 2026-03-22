@@ -8,6 +8,7 @@ publish: false
 import Vello from '../components/Vello.vue'
 import VelloBlur from '../components/VelloBlur.vue'
 import VelloDropShadow from '../components/VelloDropShadow.vue'
+import VelloRough from '../components/VelloRough.vue'
 </script>
 
 # Lesson 35 - Tile-based Rendering
@@ -390,6 +391,8 @@ JsShape::RoughRect { x, y, width, height, .. } => {
     render_rough_drawable(scene, shape_transform, &drawable, fill_color, stroke_color);
 }
 ```
+
+<VelloRough />
 
 ### Text {#text}
 

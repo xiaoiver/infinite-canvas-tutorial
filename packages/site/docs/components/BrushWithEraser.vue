@@ -4,7 +4,6 @@ import {
   Pen,
   DefaultPlugins,
   BrushType,
-  inferXYWidthHeight,
   PathSerializedNode,
 } from '@infinite-canvas-tutorial/ecs';
 import { ref, onMounted, onUnmounted } from 'vue';
@@ -61,7 +60,7 @@ onMounted(async () => {
       type: 'path',
       clipMode: 'erase',
       // vertical stripes, width 100, height 200, gap 50
-      d: 'M 0 0 L 50 0 L 50 200 L 0 200 Z M 100 0 L 150 0 L 150 200 L 100 200 Z M 200 0 L 250 0 L 250 200 L 200 200 Z',
+      d: 'M 0 100 L 50 100 L 50 300 L 0 300 Z M 100 100 L 150 100 L 150 300 L 100 300 Z M 200 100 L 250 100 L 250 300 L 200 300 Z',
       fill: 'none',
       zIndex: 0,
     };
@@ -82,12 +81,10 @@ onMounted(async () => {
       zIndex: 0,
     };
 
-    inferXYWidthHeight(node);
-    inferXYWidthHeight(clipParent);
-
     api.updateNodes([
       clipParent, node,
     ]);
+    api.selectNodes([clipParent]);
   };
 
   canvas.addEventListener(Event.READY, onReady);
@@ -100,35 +97,6 @@ onMounted(async () => {
     await import('@infinite-canvas-tutorial/eraser/spectrum');
     await import('@infinite-canvas-tutorial/laser-pointer/spectrum');
     new App().addPlugins(...DefaultPlugins, UIPlugin, LaserPointerPlugin, LassoPlugin, EraserPlugin, YogaPlugin).run();
-  } else {
-    // 等待组件更新完成后检查API是否已经准备好
-    setTimeout(() => {
-      // 检查canvas的apiProvider是否已经有值
-      const canvasElement = canvas as any;
-      if (canvasElement.apiProvider?.value) {
-        // 如果API已经准备好，手动触发onReady
-        const readyEvent = new CustomEvent(Event.READY, {
-          detail: canvasElement.apiProvider.value
-        });
-        onReady?.(readyEvent);
-      } else {
-        // 如果API还没准备好，监听API的变化
-        let checkCount = 0;
-        const checkInterval = setInterval(() => {
-          checkCount++;
-          if (canvasElement.apiProvider?.value) {
-            clearInterval(checkInterval);
-            const readyEvent = new CustomEvent(Event.READY, {
-              detail: canvasElement.apiProvider.value
-            });
-            onReady?.(readyEvent);
-          } else if (checkCount > 50) { // 5秒超时
-            clearInterval(checkInterval);
-            console.warn('Canvas API initialization timeout');
-          }
-        }, 100);
-      }
-    }, 100);
   }
 });
 
