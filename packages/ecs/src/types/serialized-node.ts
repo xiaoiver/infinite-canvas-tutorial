@@ -445,6 +445,11 @@ export interface TextSerializedNode
     fontBoundingBoxDescent: number;
     hangingBaseline: number;
     ideographicBaseline: number;
+    /**
+     * When set, this text is an edge label: parent should be a bound polyline/line.
+     * Value is 0–1 along total edge length (arc-length parameter).
+     */
+    edgeLabelPosition: number;
   }>,
   Partial<FillAttributes>,
   Partial<StrokeAttributes>,

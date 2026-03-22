@@ -1,4 +1,12 @@
-import { EdgeStyle, EllipseSerializedNode, PathSerializedNode, PolylineSerializedNode, RectSerializedNode, SerializedNode, TextSerializedNode } from "@infinite-canvas-tutorial/ecs";
+import {
+  EdgeStyle,
+  EllipseSerializedNode,
+  PathSerializedNode,
+  PolylineSerializedNode,
+  RectSerializedNode,
+  SerializedNode,
+  TextSerializedNode,
+} from "@infinite-canvas-tutorial/ecs";
 import { VERTEX_TYPE, type Edge, type ParsedMermaidData, type Vertex } from "./interfaces";
 import { getText } from "./utils";
 
@@ -82,7 +90,7 @@ function convertFlowchartToSerializedNodes(vertices: Map<string, Vertex>, edges:
     serializedNodes.push(textSerializedNode);
   });
 
-  // Edges
+  // Edges (bound polylines + optional Excalidraw-style text labels as children)
   edges.forEach((edge) => {
     // let groupIds: string[] = [];
     // const startParentId = getParentId(edge.start);
@@ -113,6 +121,26 @@ function convertFlowchartToSerializedNodes(vertices: Map<string, Vertex>, edges:
     };
 
     serializedNodes.push(serializedNode);
+
+    const labelText = getText(edge).trim();
+    if (!labelText) {
+      return;
+    }
+
+    const textSerializedNode: TextSerializedNode = {
+      id: `${serializedNode.id}-label`,
+      parentId: serializedNode.id,
+      type: 'text',
+      content: labelText,
+      fontSize,
+      fontFamily: 'sans-serif',
+      fill: 'black',
+      textAlign: 'center',
+      textBaseline: 'middle',
+      edgeLabelPosition: 0.5,
+      zIndex: 1,
+    };
+    serializedNodes.push(textSerializedNode);
   });
 
   return serializedNodes;

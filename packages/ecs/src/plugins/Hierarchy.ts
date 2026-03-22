@@ -8,6 +8,7 @@ import {
   Binded,
   Binding,
   Children,
+  EdgeLabel,
   FractionalIndex,
   Parent,
   ZIndex,
@@ -39,6 +40,7 @@ export const HierarchyPlugin: Plugin = () => {
   component(FractionalIndex);
   component(Binding);
   component(Binded);
+  component(EdgeLabel);
 
   system(PreUpdate)(ComputeZIndex);
 };

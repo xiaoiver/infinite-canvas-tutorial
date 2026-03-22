@@ -40,6 +40,7 @@ import {
   Filter,
   Binding,
   Binded,
+  EdgeLabel,
   Locked,
   ClipMode,
   Flex,
@@ -85,6 +86,7 @@ import { computeBidi, measureText } from '../../systems/ComputeTextMetrics';
 import { DOMAdapter } from '../../environment';
 import { safeAddComponent } from '../../history';
 import { EdgeState, updateFixedTerminalPoints, updateFloatingTerminalPoints, updatePoints } from '../binding';
+import { pointAlongPolylineByT } from '../polyline-arclength';
 import simplify from 'simplify-js';
 
 export function inferXYWidthHeight(node: SerializedNode) {
@@ -189,6 +191,71 @@ export function inferPointsWithFromIdAndToId(
     }));
   }
   delete state.absolutePoints;
+}
+
+/**
+ * After bound edge geometry is finalized ({@link inferXYWidthHeight}), place child `text` nodes
+ * with `edgeLabelPosition` on the edge in parent-local coordinates (same rules as {@link layoutTextAnchoredInParent}).
+ */
+function layoutSerializedEdgeLabelChildren(
+  edge: SerializedNode,
+  nodes: SerializedNode[],
+) {
+  const edgeId = edge.id;
+  if (!edgeId) {
+    return;
+  }
+  const labelNodes = nodes.filter(
+    (n): n is TextSerializedNode =>
+      n.type === 'text' &&
+      n.parentId === edgeId &&
+      (n as TextSerializedNode).edgeLabelPosition != null &&
+      !Number.isNaN((n as TextSerializedNode).edgeLabelPosition!),
+  );
+  if (labelNodes.length === 0) {
+    return;
+  }
+
+  let points: [number, number][] | null = null;
+  if (edge.type === 'polyline' || edge.type === 'rough-polyline') {
+    points = deserializePoints((edge as PolylineSerializedNode).points) as [
+      number,
+      number,
+    ][];
+  } else if (edge.type === 'line' || edge.type === 'rough-line') {
+    const l = edge as LineSerializedNode;
+    points = [
+      [l.x1, l.y1],
+      [l.x2, l.y2],
+    ];
+  }
+  if (!points || points.length < 2) {
+    return;
+  }
+
+  for (const labelNode of labelNodes) {
+    const t = labelNode.edgeLabelPosition ?? 0.5;
+    const [ax, ay] = pointAlongPolylineByT(points, t);
+    const copy = {
+      ...labelNode,
+      anchorX: ax,
+      anchorY: ay,
+    };
+    delete (copy as Partial<TextSerializedNode>).x;
+    delete (copy as Partial<TextSerializedNode>).y;
+    delete (copy as Partial<TextSerializedNode>).width;
+    delete (copy as Partial<TextSerializedNode>).height;
+    computeBidi(copy.content);
+    inferXYWidthHeight(copy as SerializedNode);
+    Object.assign(labelNode, {
+      x: copy.x,
+      y: copy.y,
+      width: copy.width,
+      height: copy.height,
+      anchorX: copy.anchorX,
+      anchorY: copy.anchorY,
+    });
+  }
 }
 
 export async function loadImage(url: string, entity: Entity) {
@@ -333,6 +400,18 @@ export function serializedNodesToEntities(
     // Make sure the entity has a width and height
     inferXYWidthHeight(attributes);
 
+    const edgeAttrs = attributes as EdgeSerializedNode;
+    if (
+      (type === 'line' ||
+        type === 'rough-line' ||
+        type === 'polyline' ||
+        type === 'rough-polyline') &&
+      edgeAttrs.fromId &&
+      edgeAttrs.toId
+    ) {
+      layoutSerializedEdgeLabelChildren(attributes, nodes);
+    }
+
     const { x, y, width, height, rotation = 0, scaleX = 1, scaleY = 1 } = attributes;
     const absoluteX = x ?? 0;
     const absoluteY = y ?? 0;
@@ -450,6 +529,7 @@ export function serializedNodesToEntities(
         // fontBoundingBoxDescent = 0,
         // hangingBaseline = 0,
         // ideographicBaseline = 0,
+        edgeLabelPosition,
       } = attributes as TextSerializedNode;
 
       // let anchorX = 0;
@@ -502,6 +582,15 @@ export function serializedNodesToEntities(
             style: decorationStyle,
             thickness: decorationThickness,
           }),
+        );
+      }
+
+      if (
+        edgeLabelPosition != null &&
+        !Number.isNaN(edgeLabelPosition)
+      ) {
+        entityCommands.insert(
+          new EdgeLabel({ labelPosition: edgeLabelPosition }),
         );
       }
     } else if (type === 'vector-network') {

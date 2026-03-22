@@ -89,8 +89,6 @@ export const parseMxgraphDataToSerializedNodes = async (definition: string) => {
         id: node.id + '-text',
         parentId: node.id,
         type: 'text',
-        anchorX: node.width / 2,
-        anchorY: node.height / 2,
         content: mxCell._value.replaceAll('&#xa;', '\n'),
         fontSize: style.fontSize ?? 12,
         fontFamily: 'sans-serif',
@@ -99,6 +97,13 @@ export const parseMxgraphDataToSerializedNodes = async (definition: string) => {
         textBaseline: 'middle',
         zIndex: 0,
       };
+
+      if (mxCell._edge) {
+        labelNode.edgeLabelPosition = 0.5;
+      } else {
+        labelNode.anchorX = node.width / 2;
+        labelNode.anchorY = node.height / 2;
+      }
       nodes.push(labelNode);
     }
 

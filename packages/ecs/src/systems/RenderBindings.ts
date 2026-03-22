@@ -6,6 +6,7 @@ import {
   Canvas,
   Children,
   ComputedBounds,
+  EdgeLabel,
   Ellipse,
   Embed,
   FractionalIndex,
@@ -14,6 +15,7 @@ import {
   Line,
   Parent,
   Rect,
+  Text,
   Transform,
   Transformable,
   UI,
@@ -22,10 +24,13 @@ import {
   Path,
 } from '../components';
 import { getSceneRoot, updateGlobalTransform } from './Transform';
+import type { TextSerializedNode } from '../types/serialized-node';
 import {
   EdgeState,
   inferPointsWithFromIdAndToId,
   inferXYWidthHeight,
+  layoutTextAnchoredInParent,
+  pointAlongPolylineByT,
 } from '../utils';
 
 export class RenderBindings extends System {
@@ -55,7 +60,16 @@ export class RenderBindings extends System {
             HTML,
             Embed,
           )
-          .read.and.using(GlobalTransform, Transform, Transformable, Line, Polyline, Path)
+          .read.and.using(
+            GlobalTransform,
+            Transform,
+            Transformable,
+            Line,
+            Polyline,
+            Path,
+            EdgeLabel,
+            Text,
+          )
           .write,
     );
   }
@@ -108,6 +122,33 @@ export class RenderBindings extends System {
       }
 
       updateGlobalTransform(binding);
+
+      const points: [number, number][] | null = binding.has(Polyline)
+        ? binding.read(Polyline).points
+        : binding.has(Line)
+          ? [
+              [binding.read(Line).x1, binding.read(Line).y1],
+              [binding.read(Line).x2, binding.read(Line).y2],
+            ]
+          : null;
+
+      if (points && points.length >= 2 && binding.has(Parent)) {
+        binding.read(Parent).children.forEach((child) => {
+          if (!child.has(EdgeLabel) || !child.has(Text)) {
+            return;
+          }
+          const t = child.read(EdgeLabel).labelPosition;
+          const [ax, ay] = pointAlongPolylineByT(points, t);
+          const labelNode = api.getNodeByEntity(child) as
+            | TextSerializedNode
+            | undefined;
+          if (!labelNode) {
+            return;
+          }
+          const layout = layoutTextAnchoredInParent(labelNode, ax, ay);
+          api.updateNode(labelNode, layout);
+        });
+      }
     });
   }
 }
