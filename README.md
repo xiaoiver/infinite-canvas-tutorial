@@ -404,6 +404,7 @@ If you want to use it in your own project, you can refer to:
 -   Parse Mermaid and render in our canvas
 -   Parse D2 and render in our canvas
 -   Parse draw.io and render in our canvas
+-   Implement label on edge and improve its readability
 
 |                Mermaid flowchart                |                 D2 flowchart                  |          Draw.io flowchart          |
 | :---------------------------------------------: | :-------------------------------------------: | :---------------------------------: |

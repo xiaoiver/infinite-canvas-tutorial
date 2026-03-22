@@ -10,6 +10,7 @@ import BindingWithEllipse from '../../components/BindingWithEllipse.vue'
 import BindingOrthogonal from '../../components/BindingOrthogonal.vue'
 import BindingConstraint from '../../components/BindingConstraint.vue'
 import BindingRouteOrthConnector from '../../components/BindingRouteOrthConnector.vue'
+import BindingRounded from '../../components/BindingRounded.vue'
 </script>
 
 # 课程 31 - 图形间的连接关系
@@ -583,6 +584,20 @@ for (var i = 0; i < routePattern.length; i++)
 ```
 
 最后优化路径中距离很近的相邻点，这部分我们继续使用 [simplify-js]，在 [课程 12 - 简化折线的顶点] 中已经介绍过了。
+
+## 连接线样式 {#connectors-style}
+
+![source: https://www.drawio.com/doc/faq/connector-styles](https://www.drawio.com/assets/img/blog/style-tab-line-style.png)
+
+### 圆角 {#rounded}
+
+圆角效果的本质是：仍然是使用之前计算的折线实际路径点，但在连接处用圆角过渡替换尖角。具体步骤如下：
+
+-   遍历每个折线拐点
+-   在拐点两侧各“退开”一段距离（不超过线段一半）
+-   用 quadTo（或等价曲线指令）在拐角处画一段圆滑过渡。
+
+<BindingRounded />
 
 ## [WIP] 导出 SVG {#export-svg}
 
