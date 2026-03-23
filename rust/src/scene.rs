@@ -316,6 +316,68 @@ fn render_rough_drawable(
     }
 }
 
+fn marker_enabled(marker: &str) -> bool {
+    matches!(marker, "line" | "triangle" | "diamond")
+}
+
+fn stroke_marker_path(
+    scene: &mut Scene,
+    shape_transform: Affine,
+    marker_type: &str,
+    tip_x: f64,
+    tip_y: f64,
+    a: f64,
+    r: f64,
+    kurbo_stroke: &Stroke,
+    stroke_color: [f32; 4],
+) {
+    const PI_6: f64 = std::f64::consts::FRAC_PI_6;
+    let left_x = tip_x + r * (a + PI_6).cos();
+    let left_y = tip_y + r * (a + PI_6).sin();
+    let right_x = tip_x + r * (a - PI_6).cos();
+    let right_y = tip_y + r * (a - PI_6).sin();
+    let mut path = BezPath::new();
+    match marker_type {
+        "line" => {
+            path.move_to(Point::new(left_x, left_y));
+            path.line_to(Point::new(tip_x, tip_y));
+            path.line_to(Point::new(right_x, right_y));
+        }
+        "triangle" => {
+            path.move_to(Point::new(left_x, left_y));
+            path.line_to(Point::new(tip_x, tip_y));
+            path.line_to(Point::new(right_x, right_y));
+            path.close_path();
+        }
+        "diamond" => {
+            let cos = a.cos();
+            let sin = a.sin();
+            let center_x = tip_x + cos * r * 0.5;
+            let center_y = tip_y + sin * r * 0.5;
+            let back_x = tip_x + cos * r;
+            let back_y = tip_y + sin * r;
+            let half_width = r * 0.4;
+            let d_left_x = center_x - sin * half_width;
+            let d_left_y = center_y + cos * half_width;
+            let d_right_x = center_x + sin * half_width;
+            let d_right_y = center_y - cos * half_width;
+            path.move_to(Point::new(tip_x, tip_y));
+            path.line_to(Point::new(d_left_x, d_left_y));
+            path.line_to(Point::new(back_x, back_y));
+            path.line_to(Point::new(d_right_x, d_right_y));
+            path.close_path();
+        }
+        _ => return,
+    }
+    scene.stroke(
+        kurbo_stroke,
+        shape_transform,
+        Color::new(stroke_color),
+        None,
+        &path,
+    );
+}
+
 #[cfg(target_arch = "wasm32")]
 pub fn add_js_shape_to_scene(
     scene: &mut Scene,
@@ -558,7 +620,10 @@ pub fn add_js_shape_to_scene(
                 stroke.to_kurbo_stroke()
             };
             scene.stroke(&kurbo_stroke, shape_transform, Color::new(stroke_color), None, &line);
-            if marker_factor > 0.0 && (marker_start == "line" || marker_end == "line") {
+            if marker_factor > 0.0
+                && (marker_enabled(marker_start.as_str())
+                    || marker_enabled(marker_end.as_str()))
+            {
                 let dx = x2 - x1;
                 let dy = y2 - y1;
                 let len = (dx * dx + dy * dy).sqrt();
@@ -566,23 +631,31 @@ pub fn add_js_shape_to_scene(
                     let angle = dy.atan2(dx);
                     let eff_width = if use_attenuation { stroke.width / scale } else { stroke.width };
                     let r = eff_width * marker_factor as f64;
-                    const PI_6: f64 = std::f64::consts::FRAC_PI_6;
-                    let mut stroke_line_arrow = |tip_x: f64, tip_y: f64, a: f64| {
-                        let left_x = tip_x + r * (a + PI_6).cos();
-                        let left_y = tip_y + r * (a + PI_6).sin();
-                        let right_x = tip_x + r * (a - PI_6).cos();
-                        let right_y = tip_y + r * (a - PI_6).sin();
-                        let mut path = BezPath::new();
-                        path.move_to(Point::new(left_x, left_y));
-                        path.line_to(Point::new(tip_x, tip_y));
-                        path.line_to(Point::new(right_x, right_y));
-                        scene.stroke(&kurbo_stroke, shape_transform, Color::new(stroke_color), None, &path);
-                    };
-                    if marker_start == "line" {
-                        stroke_line_arrow(x1, y1, angle);
+                    if marker_enabled(marker_start.as_str()) {
+                        stroke_marker_path(
+                            scene,
+                            shape_transform,
+                            marker_start.as_str(),
+                            x1,
+                            y1,
+                            angle,
+                            r,
+                            &kurbo_stroke,
+                            stroke_color,
+                        );
                     }
-                    if marker_end == "line" {
-                        stroke_line_arrow(x2, y2, angle + std::f64::consts::PI);
+                    if marker_enabled(marker_end.as_str()) {
+                        stroke_marker_path(
+                            scene,
+                            shape_transform,
+                            marker_end.as_str(),
+                            x2,
+                            y2,
+                            angle + std::f64::consts::PI,
+                            r,
+                            &kurbo_stroke,
+                            stroke_color,
+                        );
                     }
                 }
             }
@@ -990,30 +1063,42 @@ pub fn add_js_shape_to_scene(
                         }
                     }
                 }
-                if stroke.is_some() && marker_factor > 0.0 && (marker_start == "line" || marker_end == "line") {
+                if stroke.is_some()
+                    && marker_factor > 0.0
+                    && (marker_enabled(marker_start.as_str())
+                        || marker_enabled(marker_end.as_str()))
+                {
                     if let Some(ref s) = stroke {
                         if let Some(((sx, sy), start_angle, (ex, ey), end_angle)) = path_start_end_tangents(&bez_path) {
                             let sw = if stroke_attenuation { s.width / scale } else { s.width };
                             let stroke_color = apply_opacity_to_color(s.color, opacity, stroke_opacity);
                             let kurbo_stroke = s.to_kurbo_stroke_with_width(sw);
                             let r = sw * marker_factor as f64;
-                            const PI_6: f64 = std::f64::consts::FRAC_PI_6;
-                            let mut stroke_line_arrow = |tip_x: f64, tip_y: f64, a: f64| {
-                                let left_x = tip_x + r * (a + PI_6).cos();
-                                let left_y = tip_y + r * (a + PI_6).sin();
-                                let right_x = tip_x + r * (a - PI_6).cos();
-                                let right_y = tip_y + r * (a - PI_6).sin();
-                                let mut path = BezPath::new();
-                                path.move_to(Point::new(left_x, left_y));
-                                path.line_to(Point::new(tip_x, tip_y));
-                                path.line_to(Point::new(right_x, right_y));
-                                scene.stroke(&kurbo_stroke, shape_transform, Color::new(stroke_color), None, &path);
-                            };
-                            if marker_start == "line" {
-                                stroke_line_arrow(sx, sy, start_angle);
+                            if marker_enabled(marker_start.as_str()) {
+                                stroke_marker_path(
+                                    scene,
+                                    shape_transform,
+                                    marker_start.as_str(),
+                                    sx,
+                                    sy,
+                                    start_angle,
+                                    r,
+                                    &kurbo_stroke,
+                                    stroke_color,
+                                );
                             }
-                            if marker_end == "line" {
-                                stroke_line_arrow(ex, ey, end_angle + std::f64::consts::PI);
+                            if marker_enabled(marker_end.as_str()) {
+                                stroke_marker_path(
+                                    scene,
+                                    shape_transform,
+                                    marker_end.as_str(),
+                                    ex,
+                                    ey,
+                                    end_angle + std::f64::consts::PI,
+                                    r,
+                                    &kurbo_stroke,
+                                    stroke_color,
+                                );
                             }
                         }
                     }
@@ -1037,30 +1122,42 @@ pub fn add_js_shape_to_scene(
                     let kurbo_stroke = apply_stroke_attenuation(s, stroke_attenuation);
                     scene.stroke(&kurbo_stroke, shape_transform, Color::new(stroke_color), None, &bez_path);
                 }
-                if stroke.is_some() && marker_factor > 0.0 && (marker_start == "line" || marker_end == "line") {
+                if stroke.is_some()
+                    && marker_factor > 0.0
+                    && (marker_enabled(marker_start.as_str())
+                        || marker_enabled(marker_end.as_str()))
+                {
                     if let Some(ref s) = stroke {
                         if let Some(((sx, sy), start_angle, (ex, ey), end_angle)) = path_start_end_tangents(&bez_path) {
                             let sw = if stroke_attenuation { s.width / scale } else { s.width };
                             let stroke_color = apply_opacity_to_color(s.color, opacity, stroke_opacity);
                             let kurbo_stroke = s.to_kurbo_stroke_with_width(sw);
                             let r = sw * marker_factor as f64;
-                            const PI_6: f64 = std::f64::consts::FRAC_PI_6;
-                            let mut stroke_line_arrow = |tip_x: f64, tip_y: f64, a: f64| {
-                                let left_x = tip_x + r * (a + PI_6).cos();
-                                let left_y = tip_y + r * (a + PI_6).sin();
-                                let right_x = tip_x + r * (a - PI_6).cos();
-                                let right_y = tip_y + r * (a - PI_6).sin();
-                                let mut path = BezPath::new();
-                                path.move_to(Point::new(left_x, left_y));
-                                path.line_to(Point::new(tip_x, tip_y));
-                                path.line_to(Point::new(right_x, right_y));
-                                scene.stroke(&kurbo_stroke, shape_transform, Color::new(stroke_color), None, &path);
-                            };
-                            if marker_start == "line" {
-                                stroke_line_arrow(sx, sy, start_angle);
+                            if marker_enabled(marker_start.as_str()) {
+                                stroke_marker_path(
+                                    scene,
+                                    shape_transform,
+                                    marker_start.as_str(),
+                                    sx,
+                                    sy,
+                                    start_angle,
+                                    r,
+                                    &kurbo_stroke,
+                                    stroke_color,
+                                );
                             }
-                            if marker_end == "line" {
-                                stroke_line_arrow(ex, ey, end_angle + std::f64::consts::PI);
+                            if marker_enabled(marker_end.as_str()) {
+                                stroke_marker_path(
+                                    scene,
+                                    shape_transform,
+                                    marker_end.as_str(),
+                                    ex,
+                                    ey,
+                                    end_angle + std::f64::consts::PI,
+                                    r,
+                                    &kurbo_stroke,
+                                    stroke_color,
+                                );
                             }
                         }
                     }

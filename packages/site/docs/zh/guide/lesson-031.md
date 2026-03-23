@@ -209,6 +209,14 @@ class Binded {
 }
 ```
 
+### 特殊情况 {#special-case}
+
+在下一节课中我们会遇到一种特殊情况，即 `fromId/toId` 可能为空，比如下面顺序图中的虚线，`fromId: 'alice', toId: undefined`
+
+![Sequence Diagrams in D2](/d2.png)
+
+暂时我们可以先跳过渲染这样的连线。
+
 ## 自动更新 {#auto-update}
 
 当连接的图形位置发生变化时，需要重新计算绑定边的路径。我们可以查询所有持有 `Binded` 组件的图形，监听它们的包围盒变化，此时更新绑定的边：
@@ -641,7 +649,13 @@ if ((n - 1) % 3 === 0) {
 
 ## [WIP] 导出 SVG {#export-svg}
 
-在导出时，就不能只保存几何信息了，还需要将逻辑关系也一并持久化。
+在导出时，就不能只保存几何信息了，还需要将逻辑关系也一并持久化。例如 drawio 在导出时会将原始 mxfile 内容也保存到 `<svg>` 的 `content` 属性（这并不是规范的一部分）中：
+
+```html
+<svg content='&lt;mxfile host="app.diagrams.net" diagram name="Page-1"'></svg>
+```
+
+我们也可以将
 
 ```html
 <line x1="0" y1="0" data-binding="" />

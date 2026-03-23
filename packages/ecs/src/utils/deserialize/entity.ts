@@ -544,7 +544,7 @@ export function serializedNodesToEntities(
   const vertices = Array.from(
     new Set([...existedVertices, ...nodes.map((node) => node.id)]),
   );
-  const edges = nodes
+  let edges = nodes
     .filter((node) => !isNil(node.parentId))
     .map((node) => [node.parentId, node.id] as [string, string]);
 
@@ -564,6 +564,11 @@ export function serializedNodesToEntities(
         edges.push([toId, node.id]);
       }
     }
+  });
+
+  // remove edges that are not in the nodes
+  edges = edges.filter(([fromId, toId]) => {
+    return nodes.some((node) => node.id === fromId) && nodes.some((node) => node.id === toId);
   });
 
   const sorted = toposort.array(vertices, edges);
@@ -609,21 +614,21 @@ export function serializedNodesToEntities(
             toNode,
             attributes as EdgeState,
           );
+
+          const fromEntityCommands = idEntityMap.get(fromId);
+          const fromEntity = fromEntityCommands?.id().hold();
+          const toEntityCommands = idEntityMap.get(toId);
+          const toEntity = toEntityCommands?.id().hold();
+
+          safeAddComponent(fromEntity, Binded);
+          safeAddComponent(toEntity, Binded);
+          entityCommands.insert(
+            new Binding({
+              from: fromEntity,
+              to: toEntity,
+            }),
+          );
         }
-
-        const fromEntityCommands = idEntityMap.get(fromId);
-        const fromEntity = fromEntityCommands?.id().hold();
-        const toEntityCommands = idEntityMap.get(toId);
-        const toEntity = toEntityCommands?.id().hold();
-
-        safeAddComponent(fromEntity, Binded);
-        safeAddComponent(toEntity, Binded);
-        entityCommands.insert(
-          new Binding({
-            from: fromEntity,
-            to: toEntity,
-          }),
-        );
       }
     }
 

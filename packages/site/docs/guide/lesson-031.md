@@ -209,6 +209,14 @@ class Binded {
 }
 ```
 
+### Special case {#special-case}
+
+In the next lesson, we will encounter a special case where `fromId/toId` may be null, as indicated by the dashed lines in the sequence diagram below, `fromId: 'alice', toId: undefined`
+
+![Sequence Diagrams in D2](/d2.png)
+
+For now, we can skip rendering these lines.
+
 ## Auto update {#auto-update}
 
 When the position of connected shapes changes, the paths of bound edges need to be recalculated. We can query all shapes that have the `Binded` component, monitor their bounding box changes, and update bound edges at that time:
