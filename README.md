@@ -394,6 +394,7 @@ If you want to use it in your own project, you can refer to:
 -   Perimeter algorithm, including rectangle and ellipse
 -   Routing rules
     -   Orth Connector
+-   More line styles: rounded, curved and bezier
 
 |                Bindings                 |                 Orth Connector                  |
 | :-------------------------------------: | :---------------------------------------------: |

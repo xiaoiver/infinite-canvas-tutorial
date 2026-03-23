@@ -230,6 +230,10 @@ This way of separating the arrow endpoints from the body is very flexible. Howev
 
 ![Arrow in Figma](/arrow-in-figma.png)
 
+drawio also provides a lot of out-of-the-box arrow styles:
+
+![source: https://www.drawio.com/assets/img/blog/style-tab-line-start-line-end.png](https://www.drawio.com/assets/img/blog/style-tab-line-start-line-end.png)
+
 So in declarative usage, it's perfectly acceptable to sacrifice the feature of custom arrow styles and provide a set of built-in arrow style literals that generate the arrow endpoints along with the body when constructing the Polyline / Path. This idea can also be seen in [plot - arrow] rendered using SVG, which doesn't use `<marker>`, but a full `<path>` definition.
 
 ```ts

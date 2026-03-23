@@ -224,6 +224,10 @@ if (isSquare) {
 
 ![Arrow in Figma](/arrow-in-figma.png)
 
+再比如在 drawio 中也提供了一系列开箱即用的箭头字面量作为配置：
+
+![source: https://www.drawio.com/assets/img/blog/style-tab-line-start-line-end.png](https://www.drawio.com/assets/img/blog/style-tab-line-start-line-end.png)
+
 因此在声明式用法中，我们完全可以牺牲自定义箭头样式这一特性，提供一系列内置的箭头样式字面量，在构建 Polyline / Path 时将箭头端点和主体一并生成。这种思路在使用 SVG 渲染的 [plot - arrow] 中也可以看到，它并没有使用 `<marker>`，而是一个完整的 `<path>` 定义。
 
 ```ts

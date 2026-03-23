@@ -11,6 +11,8 @@ import BindingOrthogonal from '../../components/BindingOrthogonal.vue'
 import BindingConstraint from '../../components/BindingConstraint.vue'
 import BindingRouteOrthConnector from '../../components/BindingRouteOrthConnector.vue'
 import BindingRounded from '../../components/BindingRounded.vue'
+import BindingCurved from '../../components/BindingCurved.vue'
+import BindingBezier from '../../components/BindingBezier.vue'
 </script>
 
 # 课程 31 - 图形间的连接关系
@@ -598,6 +600,44 @@ for (var i = 0; i < routePattern.length; i++)
 -   用 quadTo（或等价曲线指令）在拐角处画一段圆滑过渡。
 
 <BindingRounded />
+
+### 二次贝塞尔曲线 {#curved}
+
+使用二次贝塞尔曲线连接相邻的控制点：
+
+```ts
+const p0 = pts[n - 2];
+const p1 = pts[n - 1];
+parts.push(
+    `Q ${formatNumber(p0.x)} ${formatNumber(p0.y)} ${formatNumber(
+        p1.x,
+    )} ${formatNumber(p1.y)}`,
+);
+```
+
+<BindingCurved />
+
+### 三次贝塞尔曲线 {#bezier}
+
+满足 `3n+1` 的情况下，直接把连接点点解释为三次贝塞尔控制点，否则退化成二次贝塞尔曲线。
+
+```ts
+if ((n - 1) % 3 === 0) {
+    for (let i = 1; i + 2 < n; i += 3) {
+        const cp1 = pts[i];
+        const cp2 = pts[i + 1];
+        const end = pts[i + 2];
+        parts.push(
+            `C ${formatNumber(cp1.x)} ${formatNumber(cp1.y)} ` +
+                `${formatNumber(cp2.x)} ${formatNumber(cp2.y)} ` +
+                `${formatNumber(end.x)} ${formatNumber(end.y)}`,
+        );
+    }
+    return parts.join(' ');
+}
+```
+
+<BindingBezier />
 
 ## [WIP] 导出 SVG {#export-svg}
 
