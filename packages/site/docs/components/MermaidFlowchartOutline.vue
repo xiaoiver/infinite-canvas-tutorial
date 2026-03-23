@@ -10,6 +10,7 @@ import { LaserPointerPlugin } from '@infinite-canvas-tutorial/laser-pointer';
 import { LassoPlugin } from '@infinite-canvas-tutorial/lasso';
 import { EraserPlugin } from '@infinite-canvas-tutorial/eraser';
 import { YogaPlugin } from '@infinite-canvas-tutorial/yoga';
+import { parseMermaidToSerializedNodes } from '@infinite-canvas-tutorial/mermaid';
 
 const wrapper = ref<HTMLElement | null>(null);
 let api: any | undefined;
@@ -25,42 +26,48 @@ onMounted(async () => {
     api = e.detail;
 
     api.setAppState({
-      penbarSelected: Pen.DRAW_ARROW,
-      penbarAll: [Pen.SELECT, Pen.DRAW_ARROW],
-      penbarDrawArrow: {
-        stroke: '#147af3',
-        strokeWidth: 4,
-        markerStart: 'none',
-        markerEnd: 'line',
-        markerFactor: 3,
-      },
+      penbarSelected: Pen.SELECT,
+      penbarAll: [Pen.SELECT],
     });
-    api.updateNodes([{
-      id: 'draw-arrow-1',
-      type: 'polyline',
-      x: 100,
-      y: 100,
-      width: 100,
-      height: 100,
-      points: '0,0 100,0 100,100',
-      stroke: '#147af3',
-      strokeWidth: 4,
-      markerStart: 'line',
-      markerEnd: 'line',
-    },
-    {
-      id: 'draw-arrow-2',
-      type: 'polyline',
-      x: 300,
-      y: 100,
-      width: 100,
-      height: 100,
-      points: '0,0 100,0 100,100 0,100',
-      stroke: '#147af3',
-      strokeWidth: 4,
-      markerStart: 'triangle',
-      markerEnd: 'diamond',
-    }]);
+
+    const nodes = await parseMermaidToSerializedNodes(`flowchart TD
+ A[Christmas] -->|Get money| B(Go shopping)
+ B --> C{Let me think}
+ C -->|One| D[Laptop]
+ C -->|Two| E[iPhone]
+ C -->|Three| F[Car]`);
+    nodes.forEach(node => {
+      if (node.type === 'rect') {
+        // @ts-expect-error change type
+        node.type = 'rough-rect';
+      } else if (node.type === 'line') {
+        // @ts-expect-error change type
+        node.type = 'rough-line';
+      }else if (node.type === 'polyline') {
+        // @ts-expect-error change type
+        node.type = 'rough-polyline';
+      } else if (node.type === 'text') {
+        node.fontFamily = 'Gaegu';
+        node.stroke = 'white';
+        node.strokeWidth = 4;
+      } else if (node.type === 'path') {
+        // @ts-expect-error change type
+        node.type = 'rough-path';
+      }
+    });
+    import('webfontloader').then((module) => {
+      const WebFont = module.default;
+      WebFont.load({
+        google: {
+          families: ['Gaegu'],
+        },
+        active: () => {
+          api.runAtNextTick(() => {
+            api.updateNodes(nodes);
+          });
+        }
+      });
+    });
   };
 
   canvas.addEventListener(Event.READY, onReady);
@@ -91,5 +98,7 @@ onUnmounted(async () => {
 </script>
 
 <template>
-  <ic-spectrum-canvas ref="wrapper" style="width: 100%; height: 300px"></ic-spectrum-canvas>
+  <ic-spectrum-canvas ref="wrapper" style="width: 100%; height: 400px"
+    app-state='{"topbarVisible":true, "cameraZoom": 0.45, "cameraX": -300, "cameraY": -100}'>
+  </ic-spectrum-canvas>
 </template>

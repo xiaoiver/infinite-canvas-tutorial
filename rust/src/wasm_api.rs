@@ -696,6 +696,24 @@ pub fn js_add_text(canvas_id: u32, opts: JsValue) {
         }
     };
 
+    let stroke = o.stroke.as_ref().and_then(|s| {
+        if s.width > 0.0 {
+            Some(StrokeParams {
+                width: s.width,
+                color: s.color,
+                linecap: s.linecap.clone(),
+                linejoin: s.linejoin.clone(),
+                miter_limit: s.miter_limit,
+                stroke_dasharray: s.stroke_dasharray.clone(),
+                stroke_dashoffset: s.stroke_dashoffset,
+                alignment: StrokeAlignment::from_str(&s.alignment),
+                blur: s.blur,
+            })
+        } else {
+            None
+        }
+    });
+
     push_shape(canvas_id, JsShape::Text {
         id: o.id,
         parent_id: o.parent_id,
@@ -721,6 +739,7 @@ pub fn js_add_text(canvas_id: u32, opts: JsValue) {
         text_baseline: o.text_baseline,
         leading: o.leading,
         fill: o.fill,
+        stroke,
         opacity: o.opacity,
         fill_opacity: o.fill_opacity,
         stroke_opacity: o.stroke_opacity,

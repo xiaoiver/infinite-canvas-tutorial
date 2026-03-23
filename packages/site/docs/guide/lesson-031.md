@@ -11,6 +11,8 @@ import BindingOrthogonal from '../components/BindingOrthogonal.vue'
 import BindingConstraint from '../components/BindingConstraint.vue'
 import BindingRouteOrthConnector from '../components/BindingRouteOrthConnector.vue'
 import BindingRounded from '../components/BindingRounded.vue'
+import BindingCurved from '../components/BindingCurved.vue'
+import BindingBezier from '../components/BindingBezier.vue'
 </script>
 
 # Lesson 31 - Bindings between shapes
@@ -206,6 +208,14 @@ class Binded {
     @field.backrefs(Binding, 'to') declare toBindings: Entity[];
 }
 ```
+
+### Special case {#special-case}
+
+In the next lesson, we will encounter a special case where `fromId/toId` may be null, as indicated by the dashed lines in the sequence diagram below, `fromId: 'alice', toId: undefined`
+
+![Sequence Diagrams in D2](/d2.png)
+
+For now, we can skip rendering these lines.
 
 ## Auto update {#auto-update}
 
@@ -598,6 +608,44 @@ Rounded corners mean we still use the polyline waypoints computed earlier, but r
 -   Use `quadTo` (or an equivalent curve command) to draw a smooth fillet at the corner.
 
 <BindingRounded />
+
+### Quadratic Bezier {#curved}
+
+Use quadratic Bezier segments to connect adjacent control points:
+
+```ts
+const p0 = pts[n - 2];
+const p1 = pts[n - 1];
+parts.push(
+    `Q ${formatNumber(p0.x)} ${formatNumber(p0.y)} ${formatNumber(
+        p1.x,
+    )} ${formatNumber(p1.y)}`,
+);
+```
+
+<BindingCurved />
+
+### Cubic Bezier {#bezier}
+
+When points satisfy `3n+1`, interpret them directly as cubic Bezier control points; otherwise fall back to quadratic Bezier.
+
+```ts
+if ((n - 1) % 3 === 0) {
+    for (let i = 1; i + 2 < n; i += 3) {
+        const cp1 = pts[i];
+        const cp2 = pts[i + 1];
+        const end = pts[i + 2];
+        parts.push(
+            `C ${formatNumber(cp1.x)} ${formatNumber(cp1.y)} ` +
+                `${formatNumber(cp2.x)} ${formatNumber(cp2.y)} ` +
+                `${formatNumber(end.x)} ${formatNumber(end.y)}`,
+        );
+    }
+    return parts.join(' ');
+}
+```
+
+<BindingBezier />
 
 ## [WIP] Export SVG {#export-svg}
 

@@ -437,6 +437,18 @@ pub fn compute_text_bounds_internal(opts: &TextOptions) -> Option<TextBounds> {
         max_y = max_y.max(ey);
     }
 
+    let stroke_pad = opts
+        .stroke
+        .as_ref()
+        .map(|s| (s.width.max(0.0)) * 0.5)
+        .unwrap_or(0.0);
+    if stroke_pad > 0.0 {
+        min_x -= stroke_pad;
+        min_y -= stroke_pad;
+        max_x += stroke_pad;
+        max_y += stroke_pad;
+    }
+
     if !min_x.is_finite() || !min_y.is_finite() || !max_x.is_finite() || !max_y.is_finite() {
         return Some(TextBounds { min_x: 0.0, min_y: 0.0, max_x: 0.0, max_y: 0.0 });
     }

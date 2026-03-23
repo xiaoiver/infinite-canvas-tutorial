@@ -608,6 +608,32 @@ function generateMarker(
       arrowRadius,
       angle,
     ).flat();
+  } else if (markerType === 'triangle') {
+    const arrowRadius = strokeWidth * factor;
+    const tip = startPoint;
+    const left = [
+      tip[0] + arrowRadius * Math.cos(angle + Math.PI / 6),
+      tip[1] + arrowRadius * Math.sin(angle + Math.PI / 6),
+    ];
+    const right = [
+      tip[0] + arrowRadius * Math.cos(angle - Math.PI / 6),
+      tip[1] + arrowRadius * Math.sin(angle - Math.PI / 6),
+    ];
+    markerPoints = [...left, ...tip, ...right, ...left];
+  } else if (markerType === 'diamond') {
+    const arrowRadius = strokeWidth * factor;
+    const cos = Math.cos(angle);
+    const sin = Math.sin(angle);
+    const tip = startPoint;
+    const center = [
+      tip[0] + cos * arrowRadius * 0.5,
+      tip[1] + sin * arrowRadius * 0.5,
+    ];
+    const back = [tip[0] + cos * arrowRadius, tip[1] + sin * arrowRadius];
+    const halfWidth = arrowRadius * 0.4;
+    const left = [center[0] - sin * halfWidth, center[1] + cos * halfWidth];
+    const right = [center[0] + sin * halfWidth, center[1] - cos * halfWidth];
+    markerPoints = [...tip, ...left, ...back, ...right, ...tip];
   }
 
   return [NaN, NaN, ...markerPoints, NaN, NaN];

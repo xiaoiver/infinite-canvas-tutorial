@@ -8,6 +8,7 @@ publish: false
 import Mermaid from '../components/Mermaid.vue'
 import MermaidRough from '../components/MermaidRough.vue'
 import MermaidFlowchart from '../components/MermaidFlowchart.vue'
+import MermaidFlowchartOutline from '../components/MermaidFlowchartOutline.vue'
 import D2 from '../components/D2.vue'
 import Drawio from '../components/Drawio.vue'
 </script>
@@ -186,10 +187,11 @@ Excalidraw and tldraw, as sketch-style tools, avoid heavy auto-layout for overla
 
 #### Text outline {#text-outline}
 
-A lighter alternative to a full background: stroke or shadow around glyphs for contrast.
+A lighter alternative to a full background: stroke or shadow around glyphs for contrast. tldraw draws a thin outline behind text when `showTextOutline` enabled so it stays readable when overlapping.
 
--   tldraw: `showTextOutline` (on by default except Safari) draws a thin outline behind text so it stays readable when overlapping.
--   General techniques: CSS `text-shadow` or Canvas `strokeText`, common for map labels.
+We already introduce this method in [Lesson 16 - Text stroke].
+
+<MermaidFlowchartOutline />
 
 ## Extended reading {#extended-reading}
 
@@ -202,3 +204,4 @@ A lighter alternative to a full background: stroke or shadow around glyphs for c
 [draw.io]: https://app.diagrams.net/
 [Discussion in HN]: https://news.ycombinator.com/item?id=44954524
 [Lesson 33 - Layout Engine]: /guide/lesson-033
+[Lesson 16 - Text stroke]: /zh/guide/lesson-016#text-stroke

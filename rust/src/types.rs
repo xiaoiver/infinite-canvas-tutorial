@@ -210,6 +210,7 @@ pub enum JsShape {
         text_baseline: String,
         leading: f64,
         fill: [f32; 4],
+        stroke: Option<StrokeParams>,
         opacity: f32,
         fill_opacity: f32,
         stroke_opacity: f32,
@@ -1241,6 +1242,8 @@ pub struct TextOptions {
     pub leading: f64,
     #[serde(default = "default_rgba_fill")]
     pub fill: [f32; 4],
+    #[serde(default)]
+    pub stroke: Option<StrokeOptions>,
     #[serde(default = "default_opacity")]
     pub opacity: f32,
     #[serde(default = "default_opacity")]

@@ -1092,10 +1092,35 @@ function createOrUpdateMarker(
     }
     $def.appendChild($marker);
 
-    if (marker === 'line') {
-      const points = lineArrow(0, 0, arrowRadius, Math.PI);
+    if (marker === 'line' || marker === 'triangle' || marker === 'diamond') {
       const $path = createSVGElement('path');
-      $path.setAttribute('fill', 'none');
+      let d = '';
+
+      if (marker === 'line') {
+        const points = lineArrow(0, 0, arrowRadius, Math.PI);
+        d = `M ${points[0][0]} ${points[0][1]} L ${points[1][0]} ${points[1][1]} L ${points[2][0]} ${points[2][1]}`;
+        $path.setAttribute('fill', 'none');
+      } else if (marker === 'triangle') {
+        const points = lineArrow(0, 0, arrowRadius, Math.PI);
+        d = `M ${points[0][0]} ${points[0][1]} L ${points[1][0]} ${points[1][1]} L ${points[2][0]} ${points[2][1]} Z`;
+        $path.setAttribute('fill', stroke);
+        if (!isNil(strokeOpacity)) {
+          $path.setAttribute('fill-opacity', `${strokeOpacity}`);
+        }
+      } else {
+        const tip = [0, 0] as const;
+        const center = [-(arrowRadius * 0.5), 0] as const;
+        const back = [-arrowRadius, 0] as const;
+        const halfWidth = arrowRadius * 0.4;
+        const left = [center[0], center[1] - halfWidth] as const;
+        const right = [center[0], center[1] + halfWidth] as const;
+        d = `M ${tip[0]} ${tip[1]} L ${left[0]} ${left[1]} L ${back[0]} ${back[1]} L ${right[0]} ${right[1]} Z`;
+        $path.setAttribute('fill', stroke);
+        if (!isNil(strokeOpacity)) {
+          $path.setAttribute('fill-opacity', `${strokeOpacity}`);
+        }
+      }
+
       $path.setAttribute('stroke', stroke);
       $path.setAttribute('stroke-width', `${strokeWidth}`);
       if (!isNil(strokeOpacity)) {
@@ -1107,10 +1132,7 @@ function createOrUpdateMarker(
       if (!isNil(strokeLinejoin)) {
         $path.setAttribute('stroke-linejoin', strokeLinejoin);
       }
-      $path.setAttribute(
-        'd',
-        `M ${points[0][0]} ${points[0][1]} L ${points[1][0]} ${points[1][1]} L ${points[2][0]} ${points[2][1]}`,
-      );
+      $path.setAttribute('d', d);
       $marker.appendChild($path);
     }
   }
@@ -1127,11 +1149,11 @@ export function exportMarker(
   const $defs = createSVGElement('defs') as SVGDefsElement;
   $g.prepend($defs);
 
-  if (markerStart === 'line') {
+  if (markerStart !== 'none') {
     const markerId = createOrUpdateMarker(node, $defs, markerStart);
     $el?.setAttribute('marker-start', `url(#${markerId})`);
   }
-  if (markerEnd === 'line') {
+  if (markerEnd !== 'none') {
     const markerId = createOrUpdateMarker(node, $defs, markerEnd, true);
     $el?.setAttribute('marker-end', `url(#${markerId})`);
   }

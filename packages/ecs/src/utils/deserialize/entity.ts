@@ -261,6 +261,72 @@ function addOpenPointsToPathD(pts: IPointData[], rounded: boolean, arcSize: numb
   return parts.join(' ');
 }
 
+/** 对齐 mxPolyline.paintCurvedLine：中间段终点取相邻点中点，末段收敛到最后一点。 */
+function addCurvedLineToPathD(pts: IPointData[]): string {
+  if (pts.length < 2) {
+    return '';
+  }
+
+  const parts: string[] = [
+    `M ${formatNumber(pts[0].x)} ${formatNumber(pts[0].y)}`,
+  ];
+  const n = pts.length;
+
+  for (let i = 1; i < n - 2; i++) {
+    const p0 = pts[i];
+    const p1 = pts[i + 1];
+    const ix = (p0.x + p1.x) / 2;
+    const iy = (p0.y + p1.y) / 2;
+    parts.push(
+      `Q ${formatNumber(p0.x)} ${formatNumber(p0.y)} ${formatNumber(ix)} ${formatNumber(iy)}`,
+    );
+  }
+
+  const p0 = pts[n - 2];
+  const p1 = pts[n - 1];
+  parts.push(
+    `Q ${formatNumber(p0.x)} ${formatNumber(p0.y)} ${formatNumber(p1.x)} ${formatNumber(p1.y)}`,
+  );
+
+  return parts.join(' ');
+}
+
+/** 对齐 mxPolyline.paintBezierLine。 */
+function addBezierLineToPathD(pts: IPointData[]): string {
+  const n = pts.length;
+  if (n < 2) {
+    return '';
+  }
+
+  const parts: string[] = [
+    `M ${formatNumber(pts[0].x)} ${formatNumber(pts[0].y)}`,
+  ];
+
+  // 2 点退化为直线
+  if (n === 2) {
+    parts.push(`L ${formatNumber(pts[1].x)} ${formatNumber(pts[1].y)}`);
+    return parts.join(' ');
+  }
+
+  // 3n+1：直接把点解释为三次贝塞尔控制点
+  if ((n - 1) % 3 === 0) {
+    for (let i = 1; i + 2 < n; i += 3) {
+      const cp1 = pts[i];
+      const cp2 = pts[i + 1];
+      const end = pts[i + 2];
+      parts.push(
+        `C ${formatNumber(cp1.x)} ${formatNumber(cp1.y)} ` +
+        `${formatNumber(cp2.x)} ${formatNumber(cp2.y)} ` +
+        `${formatNumber(end.x)} ${formatNumber(end.y)}`,
+      );
+    }
+    return parts.join(' ');
+  }
+
+  // 非 3n+1：与 draw.io 一样回退到曲线插值
+  return addCurvedLineToPathD(pts);
+}
+
 /** 用路径命令端点折线近似 `d`，供边标签沿路径插值（曲线段为弦近似）。 */
 export function polylineVertexApproxFromPathD(d: string | undefined): [number, number][] | null {
   if (!d) {
@@ -309,9 +375,15 @@ export function inferPointsWithFromIdAndToId(
     }));
   } else if (edge.type === 'path' || edge.type === 'rough-path') {
     if (edge.bezier) {
-      // this.paintBezierLine(c, pts);
+      const pts = state.absolutePoints.filter((p): p is IPointData => p != null);
+      if (pts.length >= 2) {
+        (edge as PathSerializedNode).d = addBezierLineToPathD(pts);
+      }
     } else if (edge.curved) {
-      // this.paintCurvedLine(c, pts);
+      const pts = state.absolutePoints.filter((p): p is IPointData => p != null);
+      if (pts.length >= 2) {
+        (edge as PathSerializedNode).d = addCurvedLineToPathD(pts);
+      }
     } else {
       const pts = state.absolutePoints.filter((p): p is IPointData => p != null);
       if (pts.length >= 2) {
@@ -472,7 +544,7 @@ export function serializedNodesToEntities(
   const vertices = Array.from(
     new Set([...existedVertices, ...nodes.map((node) => node.id)]),
   );
-  const edges = nodes
+  let edges = nodes
     .filter((node) => !isNil(node.parentId))
     .map((node) => [node.parentId, node.id] as [string, string]);
 
@@ -492,6 +564,11 @@ export function serializedNodesToEntities(
         edges.push([toId, node.id]);
       }
     }
+  });
+
+  // remove edges that are not in the nodes
+  edges = edges.filter(([fromId, toId]) => {
+    return nodes.some((node) => node.id === fromId) && nodes.some((node) => node.id === toId);
   });
 
   const sorted = toposort.array(vertices, edges);
@@ -537,21 +614,21 @@ export function serializedNodesToEntities(
             toNode,
             attributes as EdgeState,
           );
+
+          const fromEntityCommands = idEntityMap.get(fromId);
+          const fromEntity = fromEntityCommands?.id().hold();
+          const toEntityCommands = idEntityMap.get(toId);
+          const toEntity = toEntityCommands?.id().hold();
+
+          safeAddComponent(fromEntity, Binded);
+          safeAddComponent(toEntity, Binded);
+          entityCommands.insert(
+            new Binding({
+              from: fromEntity,
+              to: toEntity,
+            }),
+          );
         }
-
-        const fromEntityCommands = idEntityMap.get(fromId);
-        const fromEntity = fromEntityCommands?.id().hold();
-        const toEntityCommands = idEntityMap.get(toId);
-        const toEntity = toEntityCommands?.id().hold();
-
-        safeAddComponent(fromEntity, Binded);
-        safeAddComponent(toEntity, Binded);
-        entityCommands.insert(
-          new Binding({
-            from: fromEntity,
-            to: toEntity,
-          }),
-        );
       }
     }
 

@@ -11,6 +11,8 @@ import BindingOrthogonal from '../../components/BindingOrthogonal.vue'
 import BindingConstraint from '../../components/BindingConstraint.vue'
 import BindingRouteOrthConnector from '../../components/BindingRouteOrthConnector.vue'
 import BindingRounded from '../../components/BindingRounded.vue'
+import BindingCurved from '../../components/BindingCurved.vue'
+import BindingBezier from '../../components/BindingBezier.vue'
 </script>
 
 # 课程 31 - 图形间的连接关系
@@ -206,6 +208,14 @@ class Binded {
     @field.backrefs(Binding, 'to') declare toBindings: Entity[];
 }
 ```
+
+### 特殊情况 {#special-case}
+
+在下一节课中我们会遇到一种特殊情况，即 `fromId/toId` 可能为空，比如下面顺序图中的虚线，`fromId: 'alice', toId: undefined`
+
+![Sequence Diagrams in D2](/d2.png)
+
+暂时我们可以先跳过渲染这样的连线。
 
 ## 自动更新 {#auto-update}
 
@@ -599,9 +609,53 @@ for (var i = 0; i < routePattern.length; i++)
 
 <BindingRounded />
 
+### 二次贝塞尔曲线 {#curved}
+
+使用二次贝塞尔曲线连接相邻的控制点：
+
+```ts
+const p0 = pts[n - 2];
+const p1 = pts[n - 1];
+parts.push(
+    `Q ${formatNumber(p0.x)} ${formatNumber(p0.y)} ${formatNumber(
+        p1.x,
+    )} ${formatNumber(p1.y)}`,
+);
+```
+
+<BindingCurved />
+
+### 三次贝塞尔曲线 {#bezier}
+
+满足 `3n+1` 的情况下，则按 `[anchor, cp1, cp2, anchor, ...]` 直接把连接点点解释为三次贝塞尔控制点，否则退化成二次贝塞尔曲线。
+
+```ts
+if ((n - 1) % 3 === 0) {
+    for (let i = 1; i + 2 < n; i += 3) {
+        const cp1 = pts[i];
+        const cp2 = pts[i + 1];
+        const end = pts[i + 2];
+        parts.push(
+            `C ${formatNumber(cp1.x)} ${formatNumber(cp1.y)} ` +
+                `${formatNumber(cp2.x)} ${formatNumber(cp2.y)} ` +
+                `${formatNumber(end.x)} ${formatNumber(end.y)}`,
+        );
+    }
+    return parts.join(' ');
+}
+```
+
+<BindingBezier />
+
 ## [WIP] 导出 SVG {#export-svg}
 
-在导出时，就不能只保存几何信息了，还需要将逻辑关系也一并持久化。
+在导出时，就不能只保存几何信息了，还需要将逻辑关系也一并持久化。例如 drawio 在导出时会将原始 mxfile 内容也保存到 `<svg>` 的 `content` 属性（这并不是规范的一部分）中：
+
+```html
+<svg content='&lt;mxfile host="app.diagrams.net" diagram name="Page-1"'></svg>
+```
+
+我们也可以将
 
 ```html
 <line x1="0" y1="0" data-binding="" />

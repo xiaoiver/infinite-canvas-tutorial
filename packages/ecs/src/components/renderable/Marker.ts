@@ -9,10 +9,10 @@ export class Marker {
    * @see https://developer.mozilla.org/en-US/docs/Web/SVG/Reference/Attribute/marker-start
    */
   @field({
-    type: Type.staticString(['none', 'line']),
+    type: Type.staticString(['none', 'line', 'triangle', 'diamond']),
     default: 'none',
   })
-  declare start: 'none' | 'line';
+  declare start: 'none' | 'line' | 'triangle' | 'diamond';
 
   /**
    * Defines the arrowhead or polymarker that will be drawn at the final vertex of the given shape.
@@ -22,10 +22,10 @@ export class Marker {
    * @see https://developer.mozilla.org/en-US/docs/Web/SVG/Reference/Attribute/marker-end
    */
   @field({
-    type: Type.staticString(['none', 'line']),
+    type: Type.staticString(['none', 'line', 'triangle', 'diamond']),
     default: 'none',
   })
-  declare end: 'none' | 'line';
+  declare end: 'none' | 'line' | 'triangle' | 'diamond';
 
   @field({
     type: Type.float32,

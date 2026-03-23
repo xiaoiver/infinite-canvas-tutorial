@@ -10,6 +10,7 @@ import { LaserPointerPlugin } from '@infinite-canvas-tutorial/laser-pointer';
 import { LassoPlugin } from '@infinite-canvas-tutorial/lasso';
 import { EraserPlugin } from '@infinite-canvas-tutorial/eraser';
 import { YogaPlugin } from '@infinite-canvas-tutorial/yoga';
+import { parseD2ToSerializedNodes } from '@infinite-canvas-tutorial/d2';
 
 const wrapper = ref<HTMLElement | null>(null);
 let api: any | undefined;
@@ -25,42 +26,23 @@ onMounted(async () => {
     api = e.detail;
 
     api.setAppState({
-      penbarSelected: Pen.DRAW_ARROW,
-      penbarAll: [Pen.SELECT, Pen.DRAW_ARROW],
-      penbarDrawArrow: {
-        stroke: '#147af3',
-        strokeWidth: 4,
-        markerStart: 'none',
-        markerEnd: 'line',
-        markerFactor: 3,
-      },
+      penbarSelected: Pen.SELECT,
+      penbarAll: [Pen.SELECT],
     });
-    api.updateNodes([{
-      id: 'draw-arrow-1',
-      type: 'polyline',
-      x: 100,
-      y: 100,
-      width: 100,
-      height: 100,
-      points: '0,0 100,0 100,100',
-      stroke: '#147af3',
-      strokeWidth: 4,
-      markerStart: 'line',
-      markerEnd: 'line',
-    },
-    {
-      id: 'draw-arrow-2',
-      type: 'polyline',
-      x: 300,
-      y: 100,
-      width: 100,
-      height: 100,
-      points: '0,0 100,0 100,100 0,100',
-      stroke: '#147af3',
-      strokeWidth: 4,
-      markerStart: 'triangle',
-      markerEnd: 'diamond',
-    }]);
+
+    const nodes = await parseD2ToSerializedNodes(`good chips: {
+  doritos
+  ruffles
+}
+bad chips.lays
+bad chips.pringles
+
+chocolate.chip.cookies
+`);
+
+    api.runAtNextTick(() => {
+      api.updateNodes(nodes);
+    });
   };
 
   canvas.addEventListener(Event.READY, onReady);
@@ -91,5 +73,7 @@ onUnmounted(async () => {
 </script>
 
 <template>
-  <ic-spectrum-canvas ref="wrapper" style="width: 100%; height: 300px"></ic-spectrum-canvas>
+  <ic-spectrum-canvas ref="wrapper" style="width: 100%; height: 300px"
+    app-state='{"topbarVisible":true, "cameraZoom": 0.6, "cameraX": -100, "cameraY": -100}'>
+  </ic-spectrum-canvas>
 </template>
