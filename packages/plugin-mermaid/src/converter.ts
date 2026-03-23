@@ -135,6 +135,8 @@ function convertFlowchartToSerializedNodes(vertices: Map<string, Vertex>, edges:
       fontSize,
       fontFamily: 'sans-serif',
       fill: 'black',
+      stroke: 'white',
+      strokeWidth: 4,
       textAlign: 'center',
       textBaseline: 'middle',
       edgeLabelPosition: 0.5,

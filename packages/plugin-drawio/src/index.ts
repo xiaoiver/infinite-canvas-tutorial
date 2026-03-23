@@ -100,6 +100,8 @@ export const parseMxgraphDataToSerializedNodes = async (definition: string) => {
 
       if (mxCell._edge) {
         labelNode.edgeLabelPosition = 0.5;
+        labelNode.stroke = 'white';
+        labelNode.strokeWidth = 4;
       } else {
         labelNode.anchorX = node.width / 2;
         labelNode.anchorY = node.height / 2;

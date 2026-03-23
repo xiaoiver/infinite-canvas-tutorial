@@ -601,8 +601,10 @@ pub fn add_js_shape_to_scene(
             word_wrap_width,
             text_align,
             fill,
+            stroke,
             opacity,
             fill_opacity,
+            stroke_opacity,
             size_attenuation,
             ..
         } => {
@@ -666,14 +668,41 @@ pub fn add_js_shape_to_scene(
                 };
 
                 let fill_color = apply_opacity_to_color(fill, opacity, fill_opacity);
-                let color = Color::new(fill_color);
+                let fill_brush = Color::new(fill_color);
+
+                if let Some(ref s) = stroke {
+                    let stroke_width = if size_attenuation { s.width / scale } else { s.width };
+                    let stroke_color = apply_opacity_to_color(s.color, opacity, stroke_opacity);
+                    if stroke_width > 0.0 && stroke_color[3] > 0.0 {
+                        // Approximate text outline by drawing offset fills around glyphs.
+                        // This keeps the implementation lightweight without converting glyphs to paths.
+                        let radius = (stroke_width / 2.0).max(0.5);
+                        let samples = ((radius * 8.0).ceil() as usize).clamp(8, 48);
+                        let outline_brush = Color::new(stroke_color);
+                        for i in 0..samples {
+                            let t = i as f64 / samples as f64;
+                            let theta = t * std::f64::consts::TAU;
+                            let dx = radius * theta.cos();
+                            let dy = radius * theta.sin();
+                            let outline_transform = shape_transform * Affine::translate(Vec2::new(dx, dy));
+                            for (font_data, glyphs) in &glyph_runs {
+                                scene
+                                    .draw_glyphs(font_data)
+                                    .font_size(size)
+                                    .transform(outline_transform)
+                                    .brush(outline_brush)
+                                    .draw(Fill::NonZero, glyphs.clone().into_iter());
+                            }
+                        }
+                    }
+                }
 
                 for (font_data, glyphs) in &glyph_runs {
                     scene
                         .draw_glyphs(font_data)
                         .font_size(size)
                         .transform(shape_transform)
-                        .brush(color)
+                        .brush(fill_brush)
                         .draw(Fill::NonZero, glyphs.clone().into_iter());
                 }
 
