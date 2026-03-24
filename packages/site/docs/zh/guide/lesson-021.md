@@ -3,6 +3,11 @@ outline: deep
 description: '实现图形变换器，支持调整大小和旋转功能。学习锚点机制、坐标系转换、CSS光标自定义以及扩大拾取区域的直观图形编辑技术。'
 ---
 
+<script setup>
+import TransformerLine from '../../components/TransformerLine.vue'
+import TransformerPolyline from '../../components/TransformerPolyline.vue'
+</script>
+
 # 课程 21 - Transformer
 
 在 [课程 14] 中我们简单介绍过画布模式中的“选择模式”。在该模式下，选中图形后，在图形上覆盖一个操作层，可以通过拖拽行为移动它。在本节课中，我们将提供更多图形编辑能力，包括 resize 和旋转。
@@ -484,9 +489,13 @@ if (e.key === 'ArrowUp') {
 }
 ```
 
-## 直线的 Transformer {#transformer-for-line}
+## 其他图形的 Transformer {#transformer-for-other-shapes}
 
-最后，直线仅需要两个锚点，我们之前介绍的基于矩形包围盒的一系列处理都可以大幅简化。
+目前我们实现的 transformer 适合圆形、椭圆、矩形这样的图形，但对于直线、折线以及分段的曲线并不合适，后者需要更多控制点。
+
+### 直线 {#transformer-for-line}
+
+直线仅需要两个锚点，我们之前介绍的基于矩形包围盒的一系列处理都可以大幅简化。
 
 ```ts
 export class Transformable {
@@ -497,6 +506,21 @@ export class Transformable {
 ```
 
 ![Transformer for line](/line-transformer.gif)
+
+<TransformerLine />
+
+### 折线 {#transformer-for-polyline}
+
+对于折线，每个连接点都有一个对应的控制点：
+
+```ts
+export class Transformable {
+    @field.ref declare polylineMask: Entity;
+    @field.object declare controlPoints: Entity[];
+}
+```
+
+<TransformerPolyline />
 
 ## 扩展阅读 {#extended-reading}
 

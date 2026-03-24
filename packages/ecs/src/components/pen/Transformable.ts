@@ -26,6 +26,11 @@ export class Transformable {
   @field.ref declare lineMask: Entity;
 
   /**
+   * Transformer for polylines
+   */
+  @field.ref declare polylineMask: Entity;
+
+  /**
    * Transformer for cropping elements
    */
   @field.ref declare cropMask: Entity;
@@ -45,7 +50,7 @@ export class Transformable {
   @field.ref declare x2y2Anchor: Entity;
 
   /**
-   * Anchors in vector network
+   * Anchors in vector network or polyline
    */
   @field.object declare controlPoints: Entity[];
 

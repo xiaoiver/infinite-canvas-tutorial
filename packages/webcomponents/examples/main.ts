@@ -160,207 +160,31 @@ canvas.addEventListener(Event.READY, async (e) => {
     // layersLassoing: ['parent'],
   });
 
-  const parent = {
-    id: 'parent',
-    type: 'rect',
-    x: 100,
-    y: 100,
-    fill: 'red',
-    // fill: '/canvas.png',
-    // fill: 'conic-gradient(red, blue, green)',
-    // display: 'flex',
-    width: 100,
-    height: 200,
-    filter: 'drop-shadow(16px 16px 10px blue) blur(10px)',
-    cornerRadius: 10,
-    // padding: 10,
-    // flexWrap: 'wrap',
-    // gap: 10,
-    zIndex: 0,
-  } as const;
-
-  const child = {
-    id: 'child',
-    parentId: 'parent',
-    type: 'rough-rect',
-    // fill: 'red',
-    // fill: 'linear-gradient(to right, red, blue)',
-    // fill: 'radial-gradient(circle at center, red, blue)',
-    // fill: 'conic-gradient(red, blue, green)',
-    // fill: 'linear-gradient(to right, red, blue), radial-gradient(circle at center, green, blue)',
-    fill: 'red',
-    stroke: 'black',
+  const node1 = {
+    id: 'polyline-1',
+    type: 'polyline',
+    points: '100,100 200,200 300,100 400,200',
+    stroke: 'red',
     strokeWidth: 10,
-    x: 100,
-    y: 100,
-    width: 50,
-    height: 50,
     zIndex: 1,
-  } as const;
+  };
 
   api.updateNodes([
-    {
-      id: 'image-1',
-      type: 'rect',
-      fill: '/canvas.png',
-      x: 500,
-      y: 0,
-      width: 100,
-      height: 100,
-      zIndex: 0,
-    },
-    {
-      id: 'baseline-1',
-      type: 'line',
-      x1: 0,
-      y1: 50,
-      x2: 300,
-      y2: 50,
-      stroke: 'red',
-      strokeWidth: 1,
-      zIndex: 0,
-    },
-    {
-      id: 'text-1',
-      type: 'text',
-      fill: 'black',
-      content: 'Abcdefghijklmnop (top)',
-      anchorX: 50,
-      anchorY: 50,
-      fontSize: 16,
-      fontFamily: 'Noto Sans',
-      textBaseline: 'top',
-      zIndex: 1,
-    },
-    {
-      id: 'baseline-2',
-      type: 'line',
-      x1: 0,
-      y1: 100,
-      x2: 300,
-      y2: 100,
-      stroke: 'red',
-      strokeWidth: 1,
-      zIndex: 3,
-    },
-    {
-      id: 'text-2',
-      type: 'text',
-      fill: 'black',
-      content: 'Abcdefghijklmnop (hanging)',
-      anchorX: 50,
-      anchorY: 100,
-      fontSize: 16,
-      fontFamily: 'sans-serif',
-      textBaseline: 'hanging',
-      zIndex: 4,
-    },
-    {
-      id: 'baseline-3',
-      type: 'line',
-      x1: 0,
-      y1: 150,
-      x2: 300,
-      y2: 150,
-      stroke: 'red',
-      strokeWidth: 1,
-      zIndex: 5,
-    },
-    {
-      id: 'text-3',
-      type: 'text',
-      fill: 'black',
-      content: 'Abcdefghijklmnop (middle)',
-      anchorX: 50,
-      anchorY: 150,
-      fontSize: 16,
-      fontFamily: 'sans-serif',
-      textBaseline: 'middle',
-      zIndex: 6,
-    },
-    {
-      id: 'baseline-4',
-      type: 'line',
-      x1: 0,
-      y1: 200,
-      x2: 300,
-      y2: 200,
-      stroke: 'red',
-      strokeWidth: 1,
-      zIndex: 5,
-    },
-    {
-      id: 'text-4',
-      type: 'text',
-      fill: 'black',
-      content: 'Abcdefghijklmnop (alphabetic)',
-      anchorX: 50,
-      anchorY: 200,
-      fontSize: 16,
-      fontFamily: 'sans-serif',
-      textBaseline: 'alphabetic',
-      zIndex: 6,
-    },
-    {
-      id: 'baseline-5',
-      type: 'line',
-      x1: 0,
-      y1: 250,
-      x2: 300,
-      y2: 250,
-      stroke: 'red',
-      strokeWidth: 1,
-      zIndex: 5,
-    },
-    {
-      id: 'text-5',
-      type: 'text',
-      fill: 'black',
-      content: 'Abcdefghijklmnop (ideographic)',
-      anchorX: 50,
-      anchorY: 250,
-      fontSize: 16,
-      fontFamily: 'sans-serif',
-      textBaseline: 'ideographic',
-      zIndex: 6,
-    },
-    {
-      id: 'baseline-6',
-      type: 'line',
-      x1: 0,
-      y1: 300,
-      x2: 300,
-      y2: 300,
-      stroke: 'red',
-      strokeWidth: 1,
-      zIndex: 5,
-    },
-    {
-      id: 'text-6',
-      type: 'text',
-      fill: 'black',
-      content: 'Abcdefghijklmnop (bottom)\nAbcdefghijklmnop ',
-      anchorX: 50,
-      anchorY: 300,
-      fontSize: 16,
-      fontFamily: 'sans-serif',
-      textBaseline: 'bottom',
-      zIndex: 6,
-    },
+    node1
   ]);
-  // api.selectNodes([parent]);
+  api.selectNodes([node1]);
   // api.record();
 
   // api.updateNodes([node1]);
 });
 
-const VelloRendererPlugin = RendererPlugin.configure({
-  setupDeviceSystemCtor: InitVello,
-  rendererSystemCtor: VelloPipeline,
-});
-DefaultPlugins.splice(DefaultPlugins.indexOf(DefaultRendererPlugin), 1, VelloRendererPlugin);
-registerFont('/Gaegu-Regular.ttf');
-registerFont('/NotoSansCJKsc-VF.ttf');
+// const VelloRendererPlugin = RendererPlugin.configure({
+//   setupDeviceSystemCtor: InitVello,
+//   rendererSystemCtor: VelloPipeline,
+// });
+// DefaultPlugins.splice(DefaultPlugins.indexOf(DefaultRendererPlugin), 1, VelloRendererPlugin);
+// registerFont('/Gaegu-Regular.ttf');
+// registerFont('/NotoSansCJKsc-VF.ttf');
 // registerFont('/NotoSans-Regular.ttf');
 // registerFont('/NotoSans-Bold.ttf');
 // registerFont('/NotoSans-Italic.ttf');
