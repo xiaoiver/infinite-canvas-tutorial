@@ -348,6 +348,9 @@ pub enum JsShape {
         roughness: f32,
         bowing: f32,
         simplification: f32,
+        marker_start: String,
+        marker_end: String,
+        marker_factor: f32,
     },
     RoughPolyline {
         id: String,
@@ -369,6 +372,9 @@ pub enum JsShape {
         fill_weight: f32,
         curve_step_count: f32,
         simplification: f32,
+        marker_start: String,
+        marker_end: String,
+        marker_factor: f32,
     },
     RoughPath {
         id: String,
@@ -391,6 +397,9 @@ pub enum JsShape {
         fill_weight: f32,
         curve_step_count: f32,
         simplification: f32,
+        marker_start: String,
+        marker_end: String,
+        marker_factor: f32,
     },
 }
 
@@ -1111,6 +1120,12 @@ pub struct RoughPolylineOptions {
     pub simplification: f32,
     #[serde(default = "default_fill_weight")]
     pub fill_weight: f32,
+    #[serde(default = "default_marker_start")]
+    pub marker_start: String,
+    #[serde(default = "default_marker_end")]
+    pub marker_end: String,
+    #[serde(default = "default_marker_factor")]
+    pub marker_factor: f32,
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -1156,6 +1171,12 @@ pub struct RoughPathOptions {
     pub simplification: f32,
     #[serde(default = "default_fill_weight")]
     pub fill_weight: f32,
+    #[serde(default = "default_marker_start")]
+    pub marker_start: String,
+    #[serde(default = "default_marker_end")]
+    pub marker_end: String,
+    #[serde(default = "default_marker_factor")]
+    pub marker_factor: f32,
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -1188,6 +1209,12 @@ pub struct RoughLineOptions {
     pub bowing: f32,
     #[serde(default)]
     pub simplification: f32,
+    #[serde(default = "default_marker_start")]
+    pub marker_start: String,
+    #[serde(default = "default_marker_end")]
+    pub marker_end: String,
+    #[serde(default = "default_marker_factor")]
+    pub marker_factor: f32,
 }
 
 #[cfg(target_arch = "wasm32")]

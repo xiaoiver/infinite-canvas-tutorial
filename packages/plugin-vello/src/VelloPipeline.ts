@@ -739,12 +739,6 @@ export class VelloPipeline extends System {
             x2,
             y2,
           };
-          if (entity.has(Marker)) {
-            const { start, end, factor } = entity.read(Marker);
-            opts.markerStart = start;
-            opts.markerEnd = end;
-            opts.markerFactor = factor;
-          }
 
           if (entity.has(Rough)) {
             const { roughness, bowing, simplification } = entity.read(Rough);
