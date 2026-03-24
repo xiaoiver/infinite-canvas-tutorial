@@ -79,7 +79,14 @@ export class RenderTransformer extends System {
     this.query(
       (q) =>
         q
-          .using(ComputedBounds, ComputedCamera, Camera, FractionalIndex, Polyline, Line)
+          .using(
+            ComputedBounds,
+            ComputedCamera,
+            Camera,
+            FractionalIndex,
+            Polyline,
+            Line,
+          )
           .read.and.using(
             Canvas,
             GlobalTransform,
@@ -135,17 +142,17 @@ export class RenderTransformer extends System {
         controlPoint.write(Visibility).value = 'visible';
         updateGlobalTransform(controlPoint);
       });
-    // } else if (pen === Pen.CROP) {
-    //   if (!transformable.cropMask) {
-    //     this.createCropMask(camera, transformable);
-    //   }
-    //   const { cropMask } = camera.read(Transformable);
-    //   const { layersCropping } = api.getAppState();
-    //   if (layersCropping.length === 0) {
-    //     cropMask.write(Visibility).value = 'hidden';
-    //     return;
-    //   }
-    //   this.updateCropMask(camera);
+      // } else if (pen === Pen.CROP) {
+      //   if (!transformable.cropMask) {
+      //     this.createCropMask(camera, transformable);
+      //   }
+      //   const { cropMask } = camera.read(Transformable);
+      //   const { layersCropping } = api.getAppState();
+      //   if (layersCropping.length === 0) {
+      //     cropMask.write(Visibility).value = 'hidden';
+      //     return;
+      //   }
+      //   this.updateCropMask(camera);
     } else {
       if (!transformable.lineMask) {
         this.createLineMask(camera, transformable);
@@ -157,7 +164,8 @@ export class RenderTransformer extends System {
         this.createRectMask(camera, transformable);
       }
 
-      const { selecteds, mask, lineMask, polylineMask } = camera.read(Transformable);
+      const { selecteds, mask, lineMask, polylineMask } =
+        camera.read(Transformable);
       if (selecteds.length === 0) {
         mask.write(Visibility).value = 'hidden';
         lineMask.write(Visibility).value = 'hidden';
@@ -230,7 +238,10 @@ export class RenderTransformer extends System {
       }
 
       Object.assign(transformable, {
-        controlPoints: [...(transformable.controlPoints ?? []), ...controlPoints],
+        controlPoints: [
+          ...(transformable.controlPoints ?? []),
+          ...controlPoints,
+        ],
       });
       this.commands.execute();
       return;
@@ -545,20 +556,22 @@ export class RenderTransformer extends System {
     if (selecteds.length === 1 && selecteds[0].has(Polyline)) {
       const selected = selecteds[0];
       const { points } = selected.read(Polyline);
-      const toCreateAnchorNumber =
-        points.length - (controlPoints?.length ?? 0);
+      const toCreateAnchorNumber = points.length - (controlPoints?.length ?? 0);
       if (toCreateAnchorNumber > 0) {
         const controlPoints = [];
         for (let i = 0; i < toCreateAnchorNumber; i++) {
           const anchor = this.createAnchor(0, 0, AnchorName.CONTROL);
           this.commands
             .entity(polylineMask)
-            .appendChild(this.commands.entity(anchor))
+            .appendChild(this.commands.entity(anchor));
           controlPoints.push(anchor);
         }
 
         Object.assign(transformable, {
-          controlPoints: [...(transformable.controlPoints ?? []), ...controlPoints],
+          controlPoints: [
+            ...(transformable.controlPoints ?? []),
+            ...controlPoints,
+          ],
         });
       } else {
         // Remove redundant control points
@@ -575,7 +588,9 @@ export class RenderTransformer extends System {
       polylineMask,
     });
 
-    this.commands.entity(camera).appendChild(this.commands.entity(polylineMask));
+    this.commands
+      .entity(camera)
+      .appendChild(this.commands.entity(polylineMask));
     this.commands.execute();
   }
 
@@ -714,7 +729,10 @@ export function hitTest(api: API, { x, y }: IPointData) {
     x2y2Anchor,
   } = camera.read(Transformable);
 
-  if (penbarSelected === Pen.VECTOR_NETWORK || isSelectPolyline) {
+  if (
+    (penbarSelected === Pen.VECTOR_NETWORK || isSelectPolyline) &&
+    controlPoints
+  ) {
     for (let i = 0; i < controlPoints.length; i++) {
       const { cx, cy } = controlPoints[i].read(Circle);
       const { x: xx, y: yy } = api.canvas2Viewport({
