@@ -31,18 +31,31 @@ onMounted(async () => {
     });
 
     const node1 = {
-      id: 'transformer-line-1',
-      type: 'line',
-      x1: 100,
-      y1: 100,
-      x2: 300,
-      y2: 100,
+      id: 'transformer-rect-1',
+      type: 'rect',
+      x: 100,
+      y: 100,
+      width: 100,
+      height: 100,
+      fill: 'red',
+      stroke: 'black',
+      strokeWidth: 10,
+    };
+
+    const node2 = {
+      id: 'transformer-ellipse-1',
+      type: 'ellipse',
+      x: 300,
+      y: 100,
+      width: 100,
+      height: 100,
+      fill: 'red',
       stroke: 'black',
       strokeWidth: 10,
     };
 
     api.updateNodes([
-      node1,
+      node1, node2
     ]);
     api.selectNodes([node1]);
     api.record();

@@ -29,6 +29,8 @@ export class Input {
   @field.float32 declare deltaY: number;
 
   @field.float32 declare pressure: number;
+
+  @field.object declare event: PointerEvent | WheelEvent | KeyboardEvent;
 }
 
 export class InputPoint {

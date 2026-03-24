@@ -186,6 +186,7 @@ export class EventWriter extends System {
       }
 
       input.write(Input).key = e.key;
+      input.write(Input).event = e;
     };
 
     const onKeyUp = (e: KeyboardEvent) => {
@@ -201,6 +202,8 @@ export class EventWriter extends System {
       if (e.key === 'Alt') {
         input.write(Input).altKey = false;
       }
+
+      input.write(Input).event = e;
     };
 
     const addPointerEventListener = ($el: HTMLCanvasElement) => {
