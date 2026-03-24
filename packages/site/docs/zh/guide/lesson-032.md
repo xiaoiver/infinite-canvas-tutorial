@@ -178,6 +178,11 @@ tldraw 的做法则不同，label 不是单独的 text shape，而是 arrow shap
 
 draw.io 里在 edge（连线）上放置文本 label，属于它的核心能力之一，实现方式更接近传统流程图编辑器：“Edge 有自己的 label（文本）能力，label 作为 edge 的子状态存在，并且位置用几何参数/偏移存储”，而不是单独创建一个文本节点再去绑定。
 
+当用户拖动边上的标签时，mxEdgeHandler 负责处理并更新几何坐标：
+
+-   位置检测：通过 getRelativePoint 将鼠标位置转换为相对坐标
+-   边界处理：计算沿所有边段的总长度，找到对应比例点
+
 ### 我们的实现 {#our-implementation}
 
 采用 Excalidraw 式模型：边上的文案仍是独立的 text 节点，用 parentId 挂在该 polyline 上，并用 edgeLabelPosition（0–1，沿折线弧长） 表示“贴在边的哪一段上”。

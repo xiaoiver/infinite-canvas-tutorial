@@ -14,6 +14,7 @@ import { LassoPlugin } from '@infinite-canvas-tutorial/lasso';
 import { EraserPlugin } from '@infinite-canvas-tutorial/eraser';
 import { YogaPlugin } from '@infinite-canvas-tutorial/yoga';
 import { InitVello, VelloPipeline, registerFont } from '@infinite-canvas-tutorial/vello';
+import { parseMermaidToSerializedNodes } from '@infinite-canvas-tutorial/mermaid';
 
 const wrapper = ref<HTMLElement | null>(null);
 let api: any | undefined;
@@ -29,7 +30,9 @@ onMounted(async () => {
     api = e.detail;
 
     api.setAppState({
-        penbarSelected: Pen.SELECT,
+      cameraZoom: 0.5,
+      cameraX: -400,
+      penbarSelected: Pen.SELECT,
     });
 
     // Tiger SVG
@@ -256,6 +259,56 @@ onMounted(async () => {
         },
         ]);
     });
+
+    const mermaidGroup = {
+      id: 'mermaid-group',
+      type: 'g',
+      x: -400,
+      y: 0,
+      zIndex: 0,
+    };
+    const mermaidNodes = await parseMermaidToSerializedNodes(`flowchart TD
+ A[Christmas] -->|Get money| B(Go shopping)
+ B --> C{Let me think}
+ C -->|One| D[Laptop]
+ C -->|Two| E[iPhone]
+ C -->|Three| F[Car]`);
+    mermaidNodes.forEach(node => {
+      if (node.type === 'rect') {
+        // @ts-expect-error change type
+        node.type = 'rough-rect';
+      } else if (node.type === 'line') {
+        // @ts-expect-error change type
+        node.type = 'rough-line';
+      }else if (node.type === 'polyline') {
+        // @ts-expect-error change type
+        node.type = 'rough-polyline';
+      } else if (node.type === 'text') {
+        node.fontFamily = 'Gaegu';
+        node.stroke = 'white';
+        node.strokeWidth = 4;
+      } else if (node.type === 'path') {
+        // @ts-expect-error change type
+        node.type = 'rough-path';
+      }
+
+      if (!node.parentId) {
+        node.parentId = mermaidGroup.id;
+      }
+    });
+    import('webfontloader').then((module) => {
+      const WebFont = module.default;
+      WebFont.load({
+        google: {
+          families: ['Gaegu'],
+        },
+        active: () => {
+          api.runAtNextTick(() => {
+            api.updateNodes([mermaidGroup, ...mermaidNodes]);
+          });
+        }
+      });
+    });
   };
 
   canvas.addEventListener(Event.READY, onReady);
@@ -274,6 +327,7 @@ onMounted(async () => {
     });
     DefaultPlugins.splice(DefaultPlugins.indexOf(DefaultRendererPlugin), 1, VelloRendererPlugin);
     registerFont('/fonts/NotoSans-Regular.ttf');
+    registerFont('/fonts/Gaegu-Regular.ttf');
 
     new App().addPlugins(...DefaultPlugins, UIPlugin, LaserPointerPlugin, LassoPlugin, EraserPlugin, YogaPlugin).run();
   }

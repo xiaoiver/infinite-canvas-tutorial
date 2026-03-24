@@ -511,7 +511,6 @@ export const en = defineConfig({
             link: 'lama-in-worker',
           },
           { text: 'Audio visualizer', link: 'audio-visualizer' },
-          { text: 'Mermaid', link: 'mermaid' },
         ],
       },
     },
