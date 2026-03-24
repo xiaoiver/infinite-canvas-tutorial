@@ -302,8 +302,8 @@ export class TextEditor extends LitElement {
 
       let canvasX = this.node.x;
       let canvasY = this.node.y;
-      const parent = this.api.getParent(this.node);
-      if (parent) {
+      if (this.node.parentId) {
+        const parent = this.api.getParent(this.node);
         const { x: parentX, y: parentY } = this.api.transformer2Canvas({
           x: this.node.x,
           y: this.node.y,

@@ -28,16 +28,18 @@ import {
   DropShadow,
   ZIndex,
   ComputeZIndex,
-  RectSerializedNode,
   Selected,
   Pen,
+  Polyline,
+  Line,
+  LineSerializedNode
 } from '../../packages/ecs/src';
 import { NodeJSAdapter, sleep } from '../utils';
 
 DOMAdapter.set(NodeJSAdapter);
 
-describe('Transformer when rotate', () => {
-  it('should render transformer correctly', async () => {
+describe('Transformer', () => {
+  it('should render transformer for line correctly', async () => {
     const app = new App();
 
     let $canvas: HTMLCanvasElement;
@@ -72,6 +74,8 @@ describe('Transformer when rotate', () => {
             DropShadow,
             ZIndex,
             Selected,
+            Polyline,
+            Line,
           ).write,
       );
 
@@ -91,16 +95,15 @@ describe('Transformer when rotate', () => {
           zoom: 1,
         });
 
-        const node: RectSerializedNode = {
+        const node: LineSerializedNode = {
           id: '1',
-          type: 'rect',
-          fill: 'red',
-          x: 50,
-          y: 50,
-          width: 100,
-          height: 100,
-          rotation: Math.PI / 4,
-          visibility: 'visible',
+          type: 'line',
+          x1: 50,
+          y1: 50,
+          x2: 100,
+          y2: 100,
+          stroke: 'black',
+          strokeWidth: 10,
           zIndex: 0,
         };
         api.setAppState({
@@ -131,13 +134,12 @@ describe('Transformer when rotate', () => {
 
       const camera = cameraEntity.read(Camera);
       expect(camera.canvas.isSame(canvasEntity)).toBeTruthy();
-      expect(cameraEntity.read(Parent).children[0].isSame(entity)).toBeTruthy();
     }
 
     const dir = `${__dirname}/snapshots`;
     await expect($canvas!.getContext('webgl1')).toMatchWebGLSnapshot(
       dir,
-      'transformer-rotate',
+      'transformer-line',
     );
 
     await app.exit();

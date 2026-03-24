@@ -30,7 +30,7 @@ import {
   inferPointsWithFromIdAndToId,
   inferXYWidthHeight,
   layoutTextAnchoredInParent,
-  pointAlongPolylineByT,
+  pointAndNormalAlongPolylineByT,
   polylineVertexApproxFromPathD,
 } from '../utils';
 
@@ -148,8 +148,10 @@ export class RenderBindings extends System {
           if (!child.has(EdgeLabel) || !child.has(Text)) {
             return;
           }
-          const t = child.read(EdgeLabel).labelPosition;
-          const [ax, ay] = pointAlongPolylineByT(points, t);
+          const { labelPosition, labelOffset } = child.read(EdgeLabel);
+          const { point: [px, py], normal: [nx, ny] } = pointAndNormalAlongPolylineByT(points, labelPosition);
+          const ax = px + nx * labelOffset;
+          const ay = py + ny * labelOffset;
           const labelNode = api.getNodeByEntity(child) as
             | TextSerializedNode
             | undefined;

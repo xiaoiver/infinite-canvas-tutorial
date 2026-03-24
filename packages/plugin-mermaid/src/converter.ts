@@ -140,6 +140,7 @@ function convertFlowchartToSerializedNodes(vertices: Map<string, Vertex>, edges:
       textAlign: 'center',
       textBaseline: 'middle',
       edgeLabelPosition: 0.5,
+      edgeLabelOffset: -10,
       zIndex: 1,
     };
     serializedNodes.push(textSerializedNode);

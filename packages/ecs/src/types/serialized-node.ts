@@ -457,6 +457,11 @@ export interface TextSerializedNode
      * Value is 0–1 along total edge length (arc-length parameter).
      */
     edgeLabelPosition: number;
+    /**
+     * Signed offset in parent-local pixels along edge normal at `edgeLabelPosition`.
+     * Positive value moves to the "bottom" side of a left-to-right segment.
+     */
+    edgeLabelOffset: number;
   }>,
   Partial<FillAttributes>,
   Partial<StrokeAttributes>,

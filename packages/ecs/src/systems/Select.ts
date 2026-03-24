@@ -1,5 +1,5 @@
 import { Entity, System } from '@lastolivegames/becsy';
-import { mat3 } from 'gl-matrix';
+import { mat3, vec2 } from 'gl-matrix';
 import {
   Camera,
   Canvas,
@@ -101,6 +101,7 @@ export enum SelectionMode {
 export interface SelectOBB {
   mode: SelectionMode;
   resizingAnchorName: AnchorName;
+  activeControlPointIndex?: number;
   nodes: SerializedNode[];
 
   obb: {
@@ -690,6 +691,63 @@ export class Select extends System {
     }
   }
 
+  private handleSelectedMovingControlPoint(
+    api: API,
+    canvasX: number,
+    canvasY: number,
+    selection: SelectOBB,
+  ) {
+    const activeControlPointIndex = selection.activeControlPointIndex;
+    if (activeControlPointIndex === undefined || activeControlPointIndex < 0) {
+      return;
+    }
+
+    const layersSelected = api.getAppState().layersSelected;
+    if (layersSelected.length !== 1) {
+      return;
+    }
+
+    const node = api.getNodeById(layersSelected[0]);
+    if (
+      !node ||
+      (node.type !== 'polyline' && node.type !== 'rough-polyline')
+    ) {
+      return;
+    }
+
+    const selected = api.getEntity(node);
+    if (!selected?.has(Polyline)) {
+      return;
+    }
+
+    const { points } = selected.read(Polyline);
+    if (activeControlPointIndex >= points.length) {
+      return;
+    }
+
+    const inverse = mat3.invert(
+      mat3.create(),
+      selected.read(GlobalTransform).matrix as unknown as mat3,
+    );
+    if (!inverse) {
+      return;
+    }
+
+    const local = vec2.transformMat3(
+      vec2.create(),
+      [canvasX, canvasY],
+      inverse,
+    );
+    points[activeControlPointIndex] = [local[0], local[1]];
+
+    api.updateNode(node, {
+      points: points.map((point) => point.join(',')).join(' '),
+    });
+
+    updateGlobalTransform(selected);
+    updateComputedPoints(selected);
+  }
+
   private handleSelectedResized(api: API, selection: SelectOBB) {
     const camera = api.getCamera();
     camera.write(Transformable).status = TransformableStatus.RESIZED;
@@ -802,6 +860,7 @@ export class Select extends System {
         const selection = {
           mode: SelectionMode.IDLE,
           resizingAnchorName: AnchorName.INSIDE,
+          activeControlPointIndex: undefined,
           nodes: api.getNodes().map(node => ({
             ...node,
             ...api.getAbsoluteTransformAndSize(node)
@@ -928,10 +987,10 @@ export class Select extends System {
           } else if (selection.mode === SelectionMode.READY_TO_ROTATE) {
             selection.mode = SelectionMode.ROTATE;
           }
-          // } else if (
-          //   selection.mode === SelectionMode.READY_TO_MOVE_CONTROL_POINT
-          // ) {
-          //   selection.mode = SelectionMode.MOVE_CONTROL_POINT;
+        } else if (
+          selection.mode === SelectionMode.READY_TO_MOVE_CONTROL_POINT
+        ) {
+          selection.mode = SelectionMode.MOVE_CONTROL_POINT;
         }
 
         if (selection.mode === SelectionMode.SELECT) {
@@ -985,15 +1044,20 @@ export class Select extends System {
 
           // Hit test with transformer
           if (selecteds.length >= 1) {
-            const { anchor, cursor: cursorName } = hitTest(api, { x, y }) || {};
+            const { anchor, cursor: cursorName, index } = hitTest(api, {
+              x,
+              y,
+            }) || {};
 
             if (selection.mode !== SelectionMode.BRUSH) {
               if (anchor) {
                 if (anchor === AnchorName.CONTROL) {
-                  // cursor.value = 'move';
-                  // (selection as SelectVectorNetwork).activeControlPointIndex =
-                  //   index;
+                  cursor.value = 'crosshair';
+                  selection.activeControlPointIndex = index;
+                  selection.mode = SelectionMode.READY_TO_MOVE_CONTROL_POINT;
+                  toHighlight = undefined;
                 } else {
+                  selection.activeControlPointIndex = undefined;
                   if (layersLassoing.length > 0) {
                     if (anchor === AnchorName.INSIDE) {
                       cursor.value = LASSO_CURSOR;
@@ -1120,8 +1184,8 @@ export class Select extends System {
           );
         } else if (selection.mode === SelectionMode.ROTATE) {
           this.handleSelectedRotating(api, ex, ey);
-          // } else if (selection.mode === SelectionMode.MOVE_CONTROL_POINT) {
-          // this.handleSelectedMovingControlPoint(api, sx, sy, ex, ey);
+        } else if (selection.mode === SelectionMode.MOVE_CONTROL_POINT) {
+          this.handleSelectedMovingControlPoint(api, ex, ey, selection);
         }
       });
 
@@ -1155,12 +1219,8 @@ export class Select extends System {
         } else if (selection.mode === SelectionMode.ROTATE) {
           this.handleSelectedRotated(api, selection);
           selection.mode = SelectionMode.READY_TO_ROTATE;
-          // } else if (selection.mode === SelectionMode.MOVE_CONTROL_POINT) {
-          //   this.handleSelectedMovedControlPoint(
-          //     api,
-          //     selection as SelectVectorNetwork,
-          //   );
-          //   selection.mode = SelectionMode.READY_TO_MOVE_CONTROL_POINT;
+        } else if (selection.mode === SelectionMode.MOVE_CONTROL_POINT) {
+          selection.mode = SelectionMode.READY_TO_MOVE_CONTROL_POINT;
         }
 
         cursor.value = 'default';

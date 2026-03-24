@@ -65,7 +65,7 @@ import {
   ClipMode,
   Flex,
 } from '../components';
-import { Effect, paddingMat3, parseEffect } from '../utils';
+import { Effect, paddingMat3, parseColor, parseEffect } from '../utils';
 import type { SerializedNode } from '../types/serialized-node';
 import { GridRenderer } from '../render-graph/GridRenderer';
 import { BatchManager } from './BatchManager';
@@ -691,13 +691,13 @@ export class MeshPipeline extends System {
       g: bg,
       b: bb,
       opacity: bo,
-    } = d3.rgb(backgroundColor)?.rgb() || d3.rgb(0, 0, 0, 1);
+    } = parseColor(backgroundColor);
     const {
       r: gr,
       g: gg,
       b: gb,
       opacity: go,
-    } = d3.rgb(gridColor)?.rgb() || d3.rgb(0, 0, 0, 1);
+    } = parseColor(gridColor);
 
     const { projectionMatrix, viewMatrix, viewProjectionMatrixInv, zoom } =
       viewOverride ?? computedCamera;

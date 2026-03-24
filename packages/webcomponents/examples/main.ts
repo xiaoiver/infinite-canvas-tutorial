@@ -96,9 +96,9 @@ canvas.addEventListener(Event.READY, async (e) => {
 
   // api.runAtNextTick(() => {
   api.setAppState({
-    // cameraX: -200,
-    // cameraY: -200,
-    // cameraZoom: 0.5,
+    cameraX: -200,
+    cameraY: -200,
+    cameraZoom: 0.5,
     penbarSelected: Pen.SELECT,
     penbarAll: [
       Pen.HAND,
@@ -160,47 +160,19 @@ canvas.addEventListener(Event.READY, async (e) => {
     // layersLassoing: ['parent'],
   });
 
-  const parent = {
-    id: 'parent',
-    type: 'rect',
-    x: 100,
-    y: 100,
-    fill: 'red',
-    // fill: '/canvas.png',
-    // fill: 'conic-gradient(red, blue, green)',
-    // display: 'flex',
-    width: 100,
-    height: 200,
-    filter: 'drop-shadow(16px 16px 10px blue) blur(10px)',
-    cornerRadius: 10,
-    // padding: 10,
-    // flexWrap: 'wrap',
-    // gap: 10,
-    zIndex: 0,
-  } as const;
-
-  const child = {
-    id: 'child',
-    parentId: 'parent',
-    type: 'rough-rect',
-    // fill: 'red',
-    // fill: 'linear-gradient(to right, red, blue)',
-    // fill: 'radial-gradient(circle at center, red, blue)',
-    // fill: 'conic-gradient(red, blue, green)',
-    // fill: 'linear-gradient(to right, red, blue), radial-gradient(circle at center, green, blue)',
-    fill: 'red',
-    stroke: 'black',
+  const node1 = {
+    id: 'polyline-1',
+    type: 'polyline',
+    points: '100,100 200,200 300,100 400,200',
+    stroke: 'red',
     strokeWidth: 10,
-    x: 100,
-    y: 100,
-    width: 50,
-    height: 50,
     zIndex: 1,
-  } as const;
+  };
 
   api.updateNodes([
+    node1
   ]);
-  // api.selectNodes([parent]);
+  api.selectNodes([node1]);
   // api.record();
 
   // api.updateNodes([node1]);

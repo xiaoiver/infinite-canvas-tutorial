@@ -477,7 +477,7 @@ export class StrokeContent extends LitElement {
           @change=${this.handleMarkerStartChanged}
           id="marker-start"
         >
-          ${['none', 'line'].map(
+          ${['none', 'line', 'triangle', 'diamond'].map(
             (markerType) =>
               html`<sp-menu-item value=${markerType}
                 >${markerType}</sp-menu-item
@@ -497,7 +497,7 @@ export class StrokeContent extends LitElement {
           @change=${this.handleMarkerEndChanged}
           id="marker-end"
         >
-          ${['none', 'line'].map(
+          ${['none', 'line', 'triangle', 'diamond'].map(
             (markerType) =>
               html`<sp-menu-item value=${markerType}
                 >${markerType}</sp-menu-item

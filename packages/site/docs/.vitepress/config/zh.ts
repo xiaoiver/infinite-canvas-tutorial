@@ -441,7 +441,6 @@ export const zh = defineConfig({
             link: 'lama-in-worker',
           },
           { text: '音频可视化', link: 'audio-visualizer' },
-          { text: 'Mermaid', link: 'mermaid' },
         ],
       },
     },

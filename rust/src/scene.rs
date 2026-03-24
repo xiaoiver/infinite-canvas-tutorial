@@ -1207,7 +1207,7 @@ pub fn add_js_shape_to_scene(
             let drawable = generator.ellipse(cx as f32, cy as f32, rx as f32 * 2.0, ry as f32 * 2.0, &Some(options));
             render_rough_drawable(scene, shape_transform, &drawable, fill_color, stroke_color);
         }
-        JsShape::RoughLine { x1, y1, x2, y2, stroke, opacity, stroke_opacity, roughness, bowing, simplification, .. } => {
+        JsShape::RoughLine { x1, y1, x2, y2, stroke, opacity, stroke_opacity, roughness, bowing, simplification, marker_start, marker_end, marker_factor, .. } => {
             let stroke_color_val = apply_opacity_to_color(stroke.color, opacity, stroke_opacity);
             let options = Options {
                 roughness: Some(roughness),
@@ -1220,8 +1220,47 @@ pub fn add_js_shape_to_scene(
             let generator = Generator::default();
             let drawable = generator.line(x1 as f32, y1 as f32, x2 as f32, y2 as f32, &Some(options));
             render_rough_drawable(scene, shape_transform, &drawable, [0.0, 0.0, 0.0, 0.0], Some(stroke_color_val));
+            if marker_factor > 0.0
+                && (marker_enabled(marker_start.as_str())
+                    || marker_enabled(marker_end.as_str()))
+            {
+                let dx = x2 - x1;
+                let dy = y2 - y1;
+                let len = (dx * dx + dy * dy).sqrt();
+                if len > 0.0 {
+                    let angle = dy.atan2(dx);
+                    let r = stroke.width * marker_factor as f64;
+                    let kurbo_stroke = stroke.to_kurbo_stroke();
+                    if marker_enabled(marker_start.as_str()) {
+                        stroke_marker_path(
+                            scene,
+                            shape_transform,
+                            marker_start.as_str(),
+                            x1,
+                            y1,
+                            angle,
+                            r,
+                            &kurbo_stroke,
+                            stroke_color_val,
+                        );
+                    }
+                    if marker_enabled(marker_end.as_str()) {
+                        stroke_marker_path(
+                            scene,
+                            shape_transform,
+                            marker_end.as_str(),
+                            x2,
+                            y2,
+                            angle + std::f64::consts::PI,
+                            r,
+                            &kurbo_stroke,
+                            stroke_color_val,
+                        );
+                    }
+                }
+            }
         }
-        JsShape::RoughPolyline { points, fill, stroke, opacity, fill_opacity, stroke_opacity, roughness, bowing, fill_style, hachure_angle, hachure_gap, fill_weight, curve_step_count, simplification, .. } => {
+        JsShape::RoughPolyline { points, fill, stroke, opacity, fill_opacity, stroke_opacity, roughness, bowing, fill_style, hachure_angle, hachure_gap, fill_weight, curve_step_count, simplification, marker_start, marker_end, marker_factor, .. } => {
             let fill_color = apply_opacity_to_color(fill, opacity, fill_opacity);
             let stroke_color = stroke.as_ref().map(|s| apply_opacity_to_color(s.color, opacity, stroke_opacity));
             let options = Options {
@@ -1242,8 +1281,53 @@ pub fn add_js_shape_to_scene(
             let generator = Generator::default();
             let drawable = generator.linear_path(&pts, false, &Some(options));
             render_rough_drawable(scene, shape_transform, &drawable, fill_color, stroke_color);
+            if stroke.is_some()
+                && marker_factor > 0.0
+                && (marker_enabled(marker_start.as_str())
+                    || marker_enabled(marker_end.as_str()))
+                && points.len() >= 2
+            {
+                if let Some(ref s) = stroke {
+                    let mut elements = vec![PathEl::MoveTo(Point::new(points[0][0], points[0][1]))];
+                    for p in points.iter().skip(1) {
+                        elements.push(PathEl::LineTo(Point::new(p[0], p[1])));
+                    }
+                    let bez_path = BezPath::from_vec(elements);
+                    if let Some(((sx, sy), start_angle, (ex, ey), end_angle)) = path_start_end_tangents(&bez_path) {
+                        let stroke_color_val = apply_opacity_to_color(s.color, opacity, stroke_opacity);
+                        let kurbo_stroke = s.to_kurbo_stroke();
+                        let r = s.width * marker_factor as f64;
+                        if marker_enabled(marker_start.as_str()) {
+                            stroke_marker_path(
+                                scene,
+                                shape_transform,
+                                marker_start.as_str(),
+                                sx,
+                                sy,
+                                start_angle,
+                                r,
+                                &kurbo_stroke,
+                                stroke_color_val,
+                            );
+                        }
+                        if marker_enabled(marker_end.as_str()) {
+                            stroke_marker_path(
+                                scene,
+                                shape_transform,
+                                marker_end.as_str(),
+                                ex,
+                                ey,
+                                end_angle + std::f64::consts::PI,
+                                r,
+                                &kurbo_stroke,
+                                stroke_color_val,
+                            );
+                        }
+                    }
+                }
+            }
         }
-        JsShape::RoughPath { d, fill, stroke, opacity, fill_opacity, stroke_opacity, roughness, bowing, fill_style, hachure_angle, hachure_gap, fill_weight, curve_step_count, simplification, .. } => {
+        JsShape::RoughPath { d, fill, stroke, opacity, fill_opacity, stroke_opacity, roughness, bowing, fill_style, hachure_angle, hachure_gap, fill_weight, curve_step_count, simplification, marker_start, marker_end, marker_factor, .. } => {
             let fill_color = apply_opacity_to_color(fill, opacity, fill_opacity);
             let stroke_color = stroke.as_ref().map(|s| apply_opacity_to_color(s.color, opacity, stroke_opacity));
             let options = Options {
@@ -1263,6 +1347,47 @@ pub fn add_js_shape_to_scene(
             let generator = Generator::default();
             let drawable = generator.path(d.clone(), &Some(options));
             render_rough_drawable(scene, shape_transform, &drawable, fill_color, stroke_color);
+            if stroke.is_some()
+                && marker_factor > 0.0
+                && (marker_enabled(marker_start.as_str())
+                    || marker_enabled(marker_end.as_str()))
+            {
+                if let Ok(bez_path) = BezPath::from_svg(d.as_str()) {
+                    if let Some(ref s) = stroke {
+                        if let Some(((sx, sy), start_angle, (ex, ey), end_angle)) = path_start_end_tangents(&bez_path) {
+                            let stroke_color_val = apply_opacity_to_color(s.color, opacity, stroke_opacity);
+                            let kurbo_stroke = s.to_kurbo_stroke();
+                            let r = s.width * marker_factor as f64;
+                            if marker_enabled(marker_start.as_str()) {
+                                stroke_marker_path(
+                                    scene,
+                                    shape_transform,
+                                    marker_start.as_str(),
+                                    sx,
+                                    sy,
+                                    start_angle,
+                                    r,
+                                    &kurbo_stroke,
+                                    stroke_color_val,
+                                );
+                            }
+                            if marker_enabled(marker_end.as_str()) {
+                                stroke_marker_path(
+                                    scene,
+                                    shape_transform,
+                                    marker_end.as_str(),
+                                    ex,
+                                    ey,
+                                    end_angle + std::f64::consts::PI,
+                                    r,
+                                    &kurbo_stroke,
+                                    stroke_color_val,
+                                );
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }

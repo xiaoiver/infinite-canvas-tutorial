@@ -87,7 +87,7 @@ import { computeBidi, measureText } from '../../systems/ComputeTextMetrics';
 import { DOMAdapter } from '../../environment';
 import { safeAddComponent } from '../../history';
 import { EdgeState, updateFixedTerminalPoints, updateFloatingTerminalPoints, updatePoints } from '../binding';
-import { pointAlongPolylineByT } from '../polyline-arclength';
+import { pointAndNormalAlongPolylineByT } from '../polyline-arclength';
 import simplify from 'simplify-js';
 
 export function inferXYWidthHeight(node: SerializedNode) {
@@ -451,7 +451,10 @@ function layoutSerializedEdgeLabelChildren(
 
   for (const labelNode of labelNodes) {
     const t = labelNode.edgeLabelPosition ?? 0.5;
-    const [ax, ay] = pointAlongPolylineByT(points, t);
+    const offset = labelNode.edgeLabelOffset ?? 0;
+    const { point: [px, py], normal: [nx, ny] } = pointAndNormalAlongPolylineByT(points, t);
+    const ax = px + nx * offset;
+    const ay = py + ny * offset;
     const copy = {
       ...labelNode,
       anchorX: ax,
@@ -767,6 +770,7 @@ export function serializedNodesToEntities(
         // hangingBaseline = 0,
         // ideographicBaseline = 0,
         edgeLabelPosition,
+        edgeLabelOffset,
       } = attributes as TextSerializedNode;
 
       // let anchorX = 0;
@@ -827,7 +831,10 @@ export function serializedNodesToEntities(
         !Number.isNaN(edgeLabelPosition)
       ) {
         entityCommands.insert(
-          new EdgeLabel({ labelPosition: edgeLabelPosition }),
+          new EdgeLabel({
+            labelPosition: edgeLabelPosition,
+            labelOffset: edgeLabelOffset ?? 0,
+          }),
         );
       }
     } else if (type === 'vector-network') {
