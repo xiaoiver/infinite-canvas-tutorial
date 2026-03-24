@@ -4,6 +4,7 @@ description: '实现图形变换器，支持调整大小和旋转功能。学习
 ---
 
 <script setup>
+import TransformerRect from '../../components/TransformerRect.vue'
 import TransformerLine from '../../components/TransformerLine.vue'
 import TransformerPolyline from '../../components/TransformerPolyline.vue'
 </script>
@@ -18,6 +19,8 @@ import TransformerPolyline from '../../components/TransformerPolyline.vue'
 -   [Limit Dragging and Resizing]
 
 我们也选择使用 Transformer 这个名字，它看起来和图形的 AABB 非常相似，事实上它被称为 OBB(oriented bounding box)，是一个世界坐标系下带有旋转角度的矩形。
+
+<TransformerRect />
 
 ## 序列化变换矩阵和尺寸信息 {#serialize-transform-dimension}
 
@@ -511,14 +514,17 @@ export class Transformable {
 
 ### 折线 {#transformer-for-polyline}
 
-对于折线，每个连接点都有一个对应的控制点：
+对于折线，每个连接点都有一个对应的控制点，另外每一组相邻控制点中间再额外增加一个点，用于生成新的线段：
 
 ```ts
 export class Transformable {
     @field.ref declare polylineMask: Entity;
     @field.object declare controlPoints: Entity[];
+    @field.object declare segmentMidpoints: Entity[];
 }
 ```
+
+与之配套的交互是，悬停在控制点上，可以通过 <kbd>Delete</kbd> 删除
 
 <TransformerPolyline />
 

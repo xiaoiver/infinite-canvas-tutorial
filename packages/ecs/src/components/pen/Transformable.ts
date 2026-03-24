@@ -53,6 +53,7 @@ export class Transformable {
    * Anchors in vector network or polyline
    */
   @field.object declare controlPoints: Entity[];
+  @field.object declare segmentMidpoints: Entity[];
 
   /**
    * Selected list

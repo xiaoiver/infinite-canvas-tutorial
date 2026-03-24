@@ -12,6 +12,7 @@ export enum AnchorName {
   INSIDE = 'inside',
   OUTSIDE = 'outside',
   CONTROL = 'control',
+  SEGMENT_MIDPOINT = 'segment-midpoint',
   X1Y1 = 'x1y1',
   X2Y2 = 'x2y2',
 }

@@ -142,6 +142,9 @@ export class RenderTransformer extends System {
         controlPoint.write(Visibility).value = 'visible';
         updateGlobalTransform(controlPoint);
       });
+      transformable.segmentMidpoints?.forEach((midpoint) => {
+        midpoint.write(Visibility).value = 'hidden';
+      });
       // } else if (pen === Pen.CROP) {
       //   if (!transformable.cropMask) {
       //     this.createCropMask(camera, transformable);
@@ -199,11 +202,15 @@ export class RenderTransformer extends System {
       transformable.controlPoints?.forEach((controlPoint) => {
         controlPoint.write(Visibility).value = 'hidden';
       });
+      transformable.segmentMidpoints?.forEach((midpoint) => {
+        midpoint.write(Visibility).value = 'hidden';
+      });
       return;
     }
 
     const { points } = selected.read(Polyline);
     this.syncControlPoints(polylineMask, points.length, transformable);
+    this.syncSegmentMidpoints(polylineMask, Math.max(points.length - 1, 0), transformable);
 
     const matrix = Mat3.toGLMat3(selected.read(GlobalTransform).matrix);
     transformable.controlPoints.forEach((controlPoint, i) => {
@@ -219,6 +226,25 @@ export class RenderTransformer extends System {
         cy: transformed[1],
       });
       controlPoint.write(Visibility).value = 'visible';
+      updateGlobalTransform(controlPoint);
+    });
+
+    transformable.segmentMidpoints?.forEach((midpoint, i) => {
+      const point1 = points[i];
+      const point2 = points[i + 1];
+      if (!point1 || !point2) {
+        midpoint.write(Visibility).value = 'hidden';
+        return;
+      }
+      const midX = (point1[0] + point2[0]) / 2;
+      const midY = (point1[1] + point2[1]) / 2;
+      const transformed = vec2.transformMat3(vec2.create(), [midX, midY], matrix);
+      Object.assign(midpoint.write(Circle), {
+        cx: transformed[0],
+        cy: transformed[1],
+      });
+      midpoint.write(Visibility).value = 'visible';
+      updateGlobalTransform(midpoint);
     });
   }
 
@@ -258,6 +284,41 @@ export class RenderTransformer extends System {
     }
   }
 
+  private syncSegmentMidpoints(
+    parent: Entity,
+    targetCount: number,
+    transformable: Transformable,
+  ) {
+    const toCreateAnchorNumber =
+      targetCount - (transformable.segmentMidpoints?.length ?? 0);
+    if (toCreateAnchorNumber > 0) {
+      const segmentMidpoints = [];
+      for (let i = 0; i < toCreateAnchorNumber; i++) {
+        const anchor = this.createAnchor(0, 0, AnchorName.SEGMENT_MIDPOINT);
+        this.commands.entity(parent).appendChild(this.commands.entity(anchor));
+        segmentMidpoints.push(anchor);
+      }
+
+      Object.assign(transformable, {
+        segmentMidpoints: [
+          ...(transformable.segmentMidpoints ?? []),
+          ...segmentMidpoints,
+        ],
+      });
+      this.commands.execute();
+      return;
+    }
+
+    if (toCreateAnchorNumber < 0) {
+      for (let i = 0; i < Math.abs(toCreateAnchorNumber); i++) {
+        const anchor = transformable.segmentMidpoints.pop();
+        if (anchor) {
+          anchor.add(ToBeDeleted);
+        }
+      }
+    }
+  }
+
   execute() {
     this.cameras.current.forEach((camera) => {
       if (!camera.has(Camera)) {
@@ -287,7 +348,7 @@ export class RenderTransformer extends System {
           }
         }
         if (pen !== Pen.VECTOR_NETWORK) {
-          const { controlPoints } = camera.read(Transformable);
+          const { controlPoints, segmentMidpoints } = camera.read(Transformable);
           const { selecteds } = camera.read(Transformable);
           const isPolylineSelected =
             pen === Pen.SELECT &&
@@ -297,6 +358,10 @@ export class RenderTransformer extends System {
             controlPoints &&
               controlPoints.forEach((controlPoint) => {
                 controlPoint.write(Visibility).value = 'hidden';
+              });
+            segmentMidpoints &&
+              segmentMidpoints.forEach((midpoint) => {
+                midpoint.write(Visibility).value = 'hidden';
               });
           }
         }
@@ -342,7 +407,7 @@ export class RenderTransformer extends System {
         new Circle({
           cx,
           cy,
-          r: TRANSFORMER_ANCHOR_RADIUS,
+          r: name === AnchorName.SEGMENT_MIDPOINT ? TRANSFORMER_ANCHOR_RADIUS - 1 : TRANSFORMER_ANCHOR_RADIUS,
         }),
         new StrokeAttenuation(),
         new SizeAttenuation(),
@@ -551,39 +616,6 @@ export class RenderTransformer extends System {
       .id()
       .hold();
 
-    const { selecteds, controlPoints } = transformable;
-
-    if (selecteds.length === 1 && selecteds[0].has(Polyline)) {
-      const selected = selecteds[0];
-      const { points } = selected.read(Polyline);
-      const toCreateAnchorNumber = points.length - (controlPoints?.length ?? 0);
-      if (toCreateAnchorNumber > 0) {
-        const controlPoints = [];
-        for (let i = 0; i < toCreateAnchorNumber; i++) {
-          const anchor = this.createAnchor(0, 0, AnchorName.CONTROL);
-          this.commands
-            .entity(polylineMask)
-            .appendChild(this.commands.entity(anchor));
-          controlPoints.push(anchor);
-        }
-
-        Object.assign(transformable, {
-          controlPoints: [
-            ...(transformable.controlPoints ?? []),
-            ...controlPoints,
-          ],
-        });
-      } else {
-        // Remove redundant control points
-        for (let i = 0; i < Math.abs(toCreateAnchorNumber); i++) {
-          const anchor = controlPoints.pop();
-          if (anchor) {
-            anchor.add(ToBeDeleted);
-          }
-        }
-      }
-    }
-
     Object.assign(transformable, {
       polylineMask,
     });
@@ -722,6 +754,7 @@ export function hitTest(api: API, { x, y }: IPointData) {
     blAnchor,
     brAnchor,
     controlPoints,
+    segmentMidpoints,
     mask,
     lineMask,
     polylineMask,
@@ -743,6 +776,19 @@ export function hitTest(api: API, { x, y }: IPointData) {
       if (distance <= TRANSFORMER_ANCHOR_RESIZE_RADIUS) {
         return {
           anchor: AnchorName.CONTROL,
+          cursor: 'crosshair',
+          index: i,
+        };
+      }
+    }
+
+    for (let i = 0; i < segmentMidpoints.length; i++) {
+      const { cx, cy } = segmentMidpoints[i].read(Circle);
+      const { x: xx, y: yy } = api.canvas2Viewport({ x: cx, y: cy });
+      const distance = distanceBetweenPoints(x, y, xx, yy);
+      if (distance <= TRANSFORMER_ANCHOR_RESIZE_RADIUS) {
+        return {
+          anchor: AnchorName.SEGMENT_MIDPOINT,
           cursor: 'crosshair',
           index: i,
         };

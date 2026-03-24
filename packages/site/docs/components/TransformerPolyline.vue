@@ -43,6 +43,7 @@ onMounted(async () => {
       node1,
     ]);
     api.selectNodes([node1]);
+    api.record();
   };
 
   canvas.addEventListener(Event.READY, onReady);

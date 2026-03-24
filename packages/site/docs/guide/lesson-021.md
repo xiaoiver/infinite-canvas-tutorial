@@ -5,6 +5,12 @@ head:
     - ['meta', { property: 'og:title', content: 'Lesson 21 - Transformer' }]
 ---
 
+<script setup>
+import TransformerRect from '../components/TransformerRect.vue'
+import TransformerLine from '../components/TransformerLine.vue'
+import TransformerPolyline from '../components/TransformerPolyline.vue'
+</script>
+
 # Lesson 21 - Transformer
 
 In [Lesson 14], we briefly introduced the "selection mode" in canvas mode. In this mode, after selecting a shape, an operation layer is overlaid on the shape, allowing it to be moved through drag behavior. In this lesson, we will provide more shape editing capabilities, including resize and rotation.
@@ -15,6 +21,8 @@ In Konva, the operation layer on selected shapes is called [Transformer], which 
 -   [Limit Dragging and Resizing]
 
 We also chose to use the name Transformer, which looks very similar to the shape's AABB. In fact, it's called OBB (oriented bounding box), which is a rectangle with a rotation angle under the world coordinate.
+
+<TransformerRect />
 
 ## Serializing Transform Matrix and Dimension Information {#serialize-transform-dimension}
 
@@ -486,7 +494,11 @@ if (e.key === 'ArrowUp') {
 }
 ```
 
-## Transformer for line {#transformer-for-line}
+## Transformer for other shapes {#transformer-for-other-shapes}
+
+The transformer we have implemented so far is suitable for shapes such as circles, ellipses, and rectangles, but it is not suitable for straight lines, polyline segments, or piecewise curves, which require more control points.
+
+### Transformer for line {#transformer-for-line}
 
 Finally, a straight line requires only two anchor points, allowing the series of operations based on the bounding rectangle we previously introduced to be significantly simplified.
 
@@ -499,6 +511,24 @@ export class Transformable {
 ```
 
 ![Transformer for line](/line-transformer.gif)
+
+<TransformerLine />
+
+### Transformer for polyline {#transformer-for-polyline}
+
+For a polyline, each connection point has a corresponding control point, and an additional point is inserted between each pair of adjacent control points to generate a new line segment:
+
+```ts
+export class Transformable {
+    @field.ref declare polylineMask: Entity;
+    @field.object declare controlPoints: Entity[];
+    @field.object declare segmentMidpoints: Entity[];
+}
+```
+
+The corresponding interaction is that when you hover over a control point, you can press the <kbd>Delete</kbd> key to delete it.
+
+<TransformerPolyline />
 
 ## Extended Reading {#extended-reading}
 

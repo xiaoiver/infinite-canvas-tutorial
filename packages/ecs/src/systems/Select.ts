@@ -49,7 +49,9 @@ import {
   Line,
   ClipMode,
   MaterialDirty,
-  FillGradient, FillImage, FillPattern, 
+  FillGradient,
+  FillImage,
+  FillPattern,
 } from '../components';
 import { Commands } from '../commands/Commands';
 import {
@@ -78,7 +80,8 @@ import { DOMAdapter } from '../environment';
 import { hideLabel, initLabel, showLabel } from '..';
 import type { SerializedNode } from '../types/serialized-node';
 
-const LASSO_CURSOR = 'url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAACXBIWXMAAAsTAAALEwEAmpwYAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAOdEVYdFNvZnR3YXJlAEZpZ21hnrGWYwAABUFJREFUeAHtVltIXFcUPU6c0VGTWqdqRqtVTFrU+GFimgYpTUibQmm/JDZEKMF3rFjFigjFBi2I9ccPq6CIitEIvlFREYrioxYVK7UqPgk+2mh9j46jM/d07evVTjVpjTMN/eiGzT2ve/Y6+7HOYew/JLIjfQv2EuSMkXGhqqrq84iICG87O7vN/v7+VQnESwHCysrK4paXl3l1dTUnmZqaqiovL38PU3Jpyb8KRlZZWfmwra2No82dnZ0NsbGxfHR0lLAszszM1N69e9fjyD9mBWMbEBDgr9frdTY2NiIISQWA4S0tLYJWqyUwv9TV1cXcv3/fwwiEWYDYQM+vr6/PJCYmHgKQyWTcwsLioG/w9/cXAEYM0fT0dF1FRYW39L+MmSiUjA5JSUkPJicnRYNGho+BoRAhJHxjY4MjcT9iZhJ7KyurCzjcjpeX1zHjxn1ra2vBz8+Pz8/P89LS0ofMTGFQQB3b29sfZ2dnHzUuXL16lefk5FB1iCHY3NycbW5ufow5J6gtM4NQHM/FxMREUcLBsOHg5NeuXSObWwDXER0dnebu7h6M8UDoBagz+9MDJufCWejriO1UYGDgYczp5F1dXa1oU9L5IVRvKZVKV7Tl8fHx9ijf9Nra2gfmAGEJtS8sLMzr6+s7DAPxQUpKSjzaLtBXyHBoaOjZsbGxQvJMXl4en52d5SCzsOfse+IcoYWvent7v2PECQL5HzzxNtp2tCYyMlKNodXBwUGxEi5evMhHRkYoPwaRG492dnZ+wvzPILCSO3fueEp7n9gzSqiaOCEsLIxTtu/u7j7B2Hmau337ti0Zv3fvHlepVAYuiU6nM+Tn5/OgoCBuMBg4VVJubq4Ifnx8/NsXASFyQlxcXKRGoxFLDTHOI8/QJDZ7BHDkEcPe3h6Hp/Stra20TvDx8eGNjY0ioN7eXg7G5Lhf9LQPyjWIvUAoKM5eGRkZ35SUlJShTW5U4fRutDliTSfXwzNbICKdq6urnsbX1taeZGVllQYHB3+N5MwENk1RUZHg4eEhwCvr+Fqf1AuWuJKpvt3YfuKpoXKcIqqpqYm7ubnxpaWlaScnpxB4QQND2vDw8AysCZTL5f74kgZ4enp+QsTm4uIiIDc4wL1/zNBzAJDbVtg+OZHsQekUlxcWFlhmZiYDkL7FxcURlOMHMGqBuQ2Upxa5sEb/Q5VIwo25ublJqC9Kmq2srKglDwj/BIBJm+iN+jIQkOrmzZtiJyEhYRSfX3F6GZSGtNAtCSxVzw5Uh9M7Qxl4gqnVajkzQSyHh4frk5OTeUFBAe/u7i6XDnBGOpVxgonXdHp6+sfIE65QKMRquX79OoVGyU4pVnB9UmdnJ0cycdD1iGT8aGaLfXCFO2xqGhoaDIIg8IGBgR8wrIJas1PK2StXrlzGZrvFxcXiiUA+3z1rIZL1Bt1XUVFR3NHRkdbqfH19P8TUa8wEqibkKroBybi9vb0eScbBek9Rql9Aw9PS0j7b3t4eWF1d5UhQISQkxEAhwCPnK7ZfSSbdmjKpNL2GhoZ+hGvFVxLKkdfU1PCenh6RgFJTU8Xx+vp6YkE9CO1L9N9k++43+bZU4DHyBr4+uKy+P6Bheh0h08ULqaOjg94KHF6YvXTp0qeScQL+zIo7zUtGCRDOcL0tciLg1q1b7+KUNxwcHJQTExO/gZKf4oXdAwZsBi9oUAG/A9A6+2tJmwSAhPKB6Pqc1LaxtLSU6/cJgepfK32XodvMiHjMBYCESlAhAVBIfTK0C9VJXwLE/24TczwmLYy+B8Y4+19OKH8AGG0Nxm0lh+0AAAAASUVORK5CYII=") 0 4, pointer';
+const LASSO_CURSOR =
+  'url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAACXBIWXMAAAsTAAALEwEAmpwYAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAOdEVYdFNvZnR3YXJlAEZpZ21hnrGWYwAABUFJREFUeAHtVltIXFcUPU6c0VGTWqdqRqtVTFrU+GFimgYpTUibQmm/JDZEKMF3rFjFigjFBi2I9ccPq6CIitEIvlFREYrioxYVK7UqPgk+2mh9j46jM/d07evVTjVpjTMN/eiGzT2ve/Y6+7HOYew/JLIjfQv2EuSMkXGhqqrq84iICG87O7vN/v7+VQnESwHCysrK4paXl3l1dTUnmZqaqiovL38PU3Jpyb8KRlZZWfmwra2No82dnZ0NsbGxfHR0lLAszszM1N69e9fjyD9mBWMbEBDgr9frdTY2NiIISQWA4S0tLYJWqyUwv9TV1cXcv3/fwwiEWYDYQM+vr6/PJCYmHgKQyWTcwsLioG/w9/cXAEYM0fT0dF1FRYW39L+MmSiUjA5JSUkPJicnRYNGho+BoRAhJHxjY4MjcT9iZhJ7KyurCzjcjpeX1zHjxn1ra2vBz8+Pz8/P89LS0ofMTGFQQB3b29sfZ2dnHzUuXL16lefk5FB1iCHY3NycbW5ufow5J6gtM4NQHM/FxMREUcLBsOHg5NeuXSObWwDXER0dnebu7h6M8UDoBagz+9MDJufCWejriO1UYGDgYczp5F1dXa1oU9L5IVRvKZVKV7Tl8fHx9ijf9Nra2gfmAGEJtS8sLMzr6+s7DAPxQUpKSjzaLtBXyHBoaOjZsbGxQvJMXl4en52d5SCzsOfse+IcoYWvent7v2PECQL5HzzxNtp2tCYyMlKNodXBwUGxEi5evMhHRkYoPwaRG492dnZ+wvzPILCSO3fueEp7n9gzSqiaOCEsLIxTtu/u7j7B2Hmau337ti0Zv3fvHlepVAYuiU6nM+Tn5/OgoCBuMBg4VVJubq4Ifnx8/NsXASFyQlxcXKRGoxFLDTHOI8/QJDZ7BHDkEcPe3h6Hp/Stra20TvDx8eGNjY0ioN7eXg7G5Lhf9LQPyjWIvUAoKM5eGRkZ35SUlJShTW5U4fRutDliTSfXwzNbICKdq6urnsbX1taeZGVllQYHB3+N5MwENk1RUZHg4eEhwCvr+Fqf1AuWuJKpvt3YfuKpoXKcIqqpqYm7ubnxpaWlaScnpxB4QQND2vDw8AysCZTL5f74kgZ4enp+QsTm4uIiIDc4wL1/zNBzAJDbVtg+OZHsQekUlxcWFlhmZiYDkL7FxcURlOMHMGqBuQ2Upxa5sEb/Q5VIwo25ublJqC9Kmq2srKglDwj/BIBJm+iN+jIQkOrmzZtiJyEhYRSfX3F6GZSGtNAtCSxVzw5Uh9M7Qxl4gqnVajkzQSyHh4frk5OTeUFBAe/u7i6XDnBGOpVxgonXdHp6+sfIE65QKMRquX79OoVGyU4pVnB9UmdnJ0cycdD1iGT8aGaLfXCFO2xqGhoaDIIg8IGBgR8wrIJas1PK2StXrlzGZrvFxcXiiUA+3z1rIZL1Bt1XUVFR3NHRkdbqfH19P8TUa8wEqibkKroBybi9vb0eScbBek9Rql9Aw9PS0j7b3t4eWF1d5UhQISQkxEAhwCPnK7ZfSSbdmjKpNL2GhoZ+hGvFVxLKkdfU1PCenh6RgFJTU8Xx+vp6YkE9CO1L9N9k++43+bZU4DHyBr4+uKy+P6Bheh0h08ULqaOjg94KHF6YvXTp0qeScQL+zIo7zUtGCRDOcL0tciLg1q1b7+KUNxwcHJQTExO/gZKf4oXdAwZsBi9oUAG/A9A6+2tJmwSAhPKB6Pqc1LaxtLSU6/cJgepfK32XodvMiHjMBYCESlAhAVBIfTK0C9VJXwLE/24TczwmLYy+B8Y4+19OKH8AGG0Nxm0lh+0AAAAASUVORK5CYII=") 0 4, pointer';
 
 export enum SelectionMode {
   IDLE = 'IDLE',
@@ -102,6 +105,7 @@ export interface SelectOBB {
   mode: SelectionMode;
   resizingAnchorName: AnchorName;
   activeControlPointIndex?: number;
+  activeSegmentMidpointIndex?: number;
   nodes: SerializedNode[];
 
   obb: {
@@ -146,7 +150,20 @@ export class Select extends System {
     this.query(
       (q) =>
         q
-          .using(Canvas, Camera, ComputedCameraControl, Culled, Brush, Input, Locked, FillSolid, FillGradient, FillImage, FillPattern, Stroke)
+          .using(
+            Canvas,
+            Camera,
+            ComputedCameraControl,
+            Culled,
+            Brush,
+            Input,
+            Locked,
+            FillSolid,
+            FillGradient,
+            FillImage,
+            FillPattern,
+            Stroke,
+          )
           .read.update.and.using(
             GlobalTransform,
             InputPoint,
@@ -492,13 +509,13 @@ export class Select extends System {
         if (lockAspectRatio) {
           const comparePoint = centeredScaling
             ? {
-              x: obb.width / 2,
-              y: obb.height / 2,
-            }
+                x: obb.width / 2,
+                y: obb.height / 2,
+              }
             : {
-              x: brAnchor.read(Circle).cx,
-              y: brAnchor.read(Circle).cy,
-            };
+                x: brAnchor.read(Circle).cx,
+                y: brAnchor.read(Circle).cy,
+              };
           newHypotenuse = Math.sqrt(
             Math.pow(comparePoint.x - x, 2) + Math.pow(comparePoint.y - y, 2),
           );
@@ -516,13 +533,13 @@ export class Select extends System {
         if (lockAspectRatio) {
           const comparePoint = centeredScaling
             ? {
-              x: obb.width / 2,
-              y: obb.height / 2,
-            }
+                x: obb.width / 2,
+                y: obb.height / 2,
+              }
             : {
-              x: blAnchor.read(Circle).cx,
-              y: blAnchor.read(Circle).cy,
-            };
+                x: blAnchor.read(Circle).cx,
+                y: blAnchor.read(Circle).cy,
+              };
 
           newHypotenuse = Math.sqrt(
             Math.pow(x - comparePoint.x, 2) + Math.pow(comparePoint.y - y, 2),
@@ -544,13 +561,13 @@ export class Select extends System {
         if (lockAspectRatio) {
           const comparePoint = centeredScaling
             ? {
-              x: obb.width / 2,
-              y: obb.height / 2,
-            }
+                x: obb.width / 2,
+                y: obb.height / 2,
+              }
             : {
-              x: trAnchor.read(Circle).cx,
-              y: trAnchor.read(Circle).cy,
-            };
+                x: trAnchor.read(Circle).cx,
+                y: trAnchor.read(Circle).cy,
+              };
 
           newHypotenuse = Math.sqrt(
             Math.pow(comparePoint.x - x, 2) + Math.pow(y - comparePoint.y, 2),
@@ -571,13 +588,13 @@ export class Select extends System {
         if (lockAspectRatio) {
           const comparePoint = centeredScaling
             ? {
-              x: obb.width / 2,
-              y: obb.height / 2,
-            }
+                x: obb.width / 2,
+                y: obb.height / 2,
+              }
             : {
-              x: tlAnchor.read(Circle).cx,
-              y: tlAnchor.read(Circle).cy,
-            };
+                x: tlAnchor.read(Circle).cx,
+                y: tlAnchor.read(Circle).cy,
+              };
 
           newHypotenuse = Math.sqrt(
             Math.pow(x - comparePoint.x, 2) + Math.pow(y - comparePoint.y, 2),
@@ -691,12 +708,15 @@ export class Select extends System {
     }
   }
 
-  private handleSelectedMovingControlPoint(
+  private handleControlPointMoving(
     api: API,
     canvasX: number,
     canvasY: number,
     selection: SelectOBB,
   ) {
+    const camera = api.getCamera();
+    camera.write(Transformable).status = TransformableStatus.MOVING;
+
     const activeControlPointIndex = selection.activeControlPointIndex;
     if (activeControlPointIndex === undefined || activeControlPointIndex < 0) {
       return;
@@ -708,10 +728,7 @@ export class Select extends System {
     }
 
     const node = api.getNodeById(layersSelected[0]);
-    if (
-      !node ||
-      (node.type !== 'polyline' && node.type !== 'rough-polyline')
-    ) {
+    if (!node || (node.type !== 'polyline' && node.type !== 'rough-polyline')) {
       return;
     }
 
@@ -738,14 +755,134 @@ export class Select extends System {
       [canvasX, canvasY],
       inverse,
     );
-    points[activeControlPointIndex] = [local[0], local[1]];
+    const [prevX, prevY] = points[activeControlPointIndex];
+    const nextX = local[0];
+    const nextY = local[1];
+    if (prevX === nextX && prevY === nextY) {
+      return;
+    }
+    points[activeControlPointIndex] = [nextX, nextY];
 
     api.updateNode(node, {
       points: points.map((point) => point.join(',')).join(' '),
     });
+  }
 
+  private handleControlPointMoved(api: API, selection: SelectOBB) {
+    const camera = api.getCamera();
+
+    api.setNodes(api.getNodes());
+    api.record();
+
+    camera.write(Transformable).status = TransformableStatus.MOVED;
+    this.saveSelectedOBB(api, selection);
+  }
+
+  private insertControlPointFromMidpoint(
+    api: API,
+    canvasX: number,
+    canvasY: number,
+    selection: SelectOBB,
+  ) {
+    const activeSegmentMidpointIndex = selection.activeSegmentMidpointIndex;
+    if (
+      activeSegmentMidpointIndex === undefined ||
+      activeSegmentMidpointIndex < 0
+    ) {
+      return;
+    }
+
+    const layersSelected = api.getAppState().layersSelected;
+    if (layersSelected.length !== 1) {
+      return;
+    }
+
+    const node = api.getNodeById(layersSelected[0]);
+    if (!node || (node.type !== 'polyline' && node.type !== 'rough-polyline')) {
+      return;
+    }
+
+    const selected = api.getEntity(node);
+    if (!selected?.has(Polyline)) {
+      return;
+    }
+
+    const { points } = selected.read(Polyline);
+    if (activeSegmentMidpointIndex >= points.length - 1) {
+      return;
+    }
+
+    const inverse = mat3.invert(
+      mat3.create(),
+      selected.read(GlobalTransform).matrix as unknown as mat3,
+    );
+    if (!inverse) {
+      return;
+    }
+
+    const local = vec2.transformMat3(
+      vec2.create(),
+      [canvasX, canvasY],
+      inverse,
+    );
+    const nextPoints = [...points];
+    const insertIndex = activeSegmentMidpointIndex + 1;
+    nextPoints.splice(insertIndex, 0, [local[0], local[1]]);
+
+    api.updateNode(node, {
+      points: nextPoints.map((point) => point.join(',')).join(' '),
+    });
     updateGlobalTransform(selected);
     updateComputedPoints(selected);
+
+    selection.activeControlPointIndex = insertIndex;
+    selection.activeSegmentMidpointIndex = undefined;
+  }
+
+  private deleteActiveControlPoint(api: API, input: Input, selection: SelectOBB) {
+    const activeControlPointIndex = selection.activeControlPointIndex;
+    if (activeControlPointIndex === undefined || activeControlPointIndex < 0) {
+      return;
+    }
+
+    const layersSelected = api.getAppState().layersSelected;
+    if (layersSelected.length !== 1) {
+      return;
+    }
+
+    const node = api.getNodeById(layersSelected[0]);
+    if (!node || (node.type !== 'polyline' && node.type !== 'rough-polyline')) {
+      return;
+    }
+
+    const selected = api.getEntity(node);
+    if (!selected?.has(Polyline)) {
+      return;
+    }
+
+    const { points } = selected.read(Polyline);
+    if (points.length <= 2 || activeControlPointIndex >= points.length) {
+      return;
+    }
+
+    input.event.stopPropagation();
+
+    const nextPoints = [...points];
+    nextPoints.splice(activeControlPointIndex, 1);
+
+    api.updateNode(node, {
+      points: nextPoints.map((point) => point.join(',')).join(' '),
+    });
+    api.record();
+
+    selection.activeControlPointIndex = Math.min(
+      activeControlPointIndex,
+      nextPoints.length - 1,
+    );
+    selection.activeSegmentMidpointIndex = undefined;
+    if (selection.mode === SelectionMode.MOVE_CONTROL_POINT) {
+      selection.mode = SelectionMode.READY_TO_MOVE_CONTROL_POINT;
+    }
   }
 
   private handleSelectedResized(api: API, selection: SelectOBB) {
@@ -861,9 +998,11 @@ export class Select extends System {
           mode: SelectionMode.IDLE,
           resizingAnchorName: AnchorName.INSIDE,
           activeControlPointIndex: undefined,
-          nodes: api.getNodes().map(node => ({
+          activeSegmentMidpointIndex: undefined,
+          controlPointDirty: false,
+          nodes: api.getNodes().map((node) => ({
             ...node,
-            ...api.getAbsoluteTransformAndSize(node)
+            ...api.getAbsoluteTransformAndSize(node),
           })),
           obb: {
             x: 0,
@@ -990,6 +1129,8 @@ export class Select extends System {
         } else if (
           selection.mode === SelectionMode.READY_TO_MOVE_CONTROL_POINT
         ) {
+          const { x: canvasX, y: canvasY } = api.viewport2Canvas({ x, y });
+          this.insertControlPointFromMidpoint(api, canvasX, canvasY, selection);
           selection.mode = SelectionMode.MOVE_CONTROL_POINT;
         }
 
@@ -1044,7 +1185,11 @@ export class Select extends System {
 
           // Hit test with transformer
           if (selecteds.length >= 1) {
-            const { anchor, cursor: cursorName, index } = hitTest(api, {
+            const {
+              anchor,
+              cursor: cursorName,
+              index,
+            } = hitTest(api, {
               x,
               y,
             }) || {};
@@ -1054,10 +1199,18 @@ export class Select extends System {
                 if (anchor === AnchorName.CONTROL) {
                   cursor.value = 'crosshair';
                   selection.activeControlPointIndex = index;
+                  selection.activeSegmentMidpointIndex = undefined;
+                  selection.mode = SelectionMode.READY_TO_MOVE_CONTROL_POINT;
+                  toHighlight = undefined;
+                } else if (anchor === AnchorName.SEGMENT_MIDPOINT) {
+                  cursor.value = 'crosshair';
+                  selection.activeControlPointIndex = undefined;
+                  selection.activeSegmentMidpointIndex = index;
                   selection.mode = SelectionMode.READY_TO_MOVE_CONTROL_POINT;
                   toHighlight = undefined;
                 } else {
                   selection.activeControlPointIndex = undefined;
+                  selection.activeSegmentMidpointIndex = undefined;
                   if (layersLassoing.length > 0) {
                     if (anchor === AnchorName.INSIDE) {
                       cursor.value = LASSO_CURSOR;
@@ -1185,7 +1338,7 @@ export class Select extends System {
         } else if (selection.mode === SelectionMode.ROTATE) {
           this.handleSelectedRotating(api, ex, ey);
         } else if (selection.mode === SelectionMode.MOVE_CONTROL_POINT) {
-          this.handleSelectedMovingControlPoint(api, ex, ey, selection);
+          this.handleControlPointMoving(api, ex, ey, selection);
         }
       });
 
@@ -1199,6 +1352,8 @@ export class Select extends System {
         if (api.getAppState().layersCropping.length > 0) {
           api.cancelCrop();
         }
+      } else if (input.key === 'Backspace' || input.key === 'Delete') {
+        this.deleteActiveControlPoint(api, input, selection);
       }
 
       if (input.pointerUpTrigger) {
@@ -1219,7 +1374,11 @@ export class Select extends System {
         } else if (selection.mode === SelectionMode.ROTATE) {
           this.handleSelectedRotated(api, selection);
           selection.mode = SelectionMode.READY_TO_ROTATE;
-        } else if (selection.mode === SelectionMode.MOVE_CONTROL_POINT) {
+        } else if (
+          selection.mode === SelectionMode.MOVE_CONTROL_POINT ||
+          selection.mode === SelectionMode.READY_TO_MOVE_CONTROL_POINT
+        ) {
+          this.handleControlPointMoved(api, selection);
           selection.mode = SelectionMode.READY_TO_MOVE_CONTROL_POINT;
         }
 
@@ -1292,10 +1451,12 @@ export class Select extends System {
     const hypotenuse = Math.sqrt(Math.pow(width, 2) + Math.pow(height, 2));
     selection.sin = Math.abs(height / hypotenuse);
     selection.cos = Math.abs(width / hypotenuse);
-    selection.nodes = [...api.getNodes().map(node => ({
-      ...node,
-      ...api.getAbsoluteTransformAndSize(node)
-    }))];
+    selection.nodes = [
+      ...api.getNodes().map((node) => ({
+        ...node,
+        ...api.getAbsoluteTransformAndSize(node),
+      })),
+    ];
   }
 
   private fitSelected(api: API, newAttrs: OBB, selection: SelectOBB) {
@@ -1494,7 +1655,7 @@ export class Select extends System {
         });
         const distance = Math.sqrt(
           Math.pow(points[0][0] - points[1][0], 2) +
-          Math.pow(points[0][1] - points[1][1], 2),
+            Math.pow(points[0][1] - points[1][1], 2),
         );
         const from = [fromX, fromY] as [number, number];
         const to = [toX, toY] as [number, number];

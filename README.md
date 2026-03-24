@@ -287,6 +287,7 @@ If you want to use it in your own project, you can refer to:
 -   Resize, lock aspect ratio and centered scaling
 -   Rotate and change the rotation origin
 -   Nudge shapes with arrow key
+-   Edit Line, Polyline and Path with control points
 
 |                Rotate anchor                 |                 Resize anchor                  |                 Line transformer                  |
 | :------------------------------------------: | :--------------------------------------------: | :-----------------------------------------------: |
