@@ -162,6 +162,36 @@ const getEdgeLabelPosition = (
   }
 };
 
+const getEdgeLabelOffset = (
+  labelPosition: string | undefined,
+  strokeWidth: number,
+  labelHeight: number | undefined,
+) => {
+  const baseOffset = strokeWidth / 2 + D2_LABEL_PADDING + (labelHeight || 0) / 2;
+  switch (labelPosition) {
+    case 'OUTSIDE_TOP_LEFT':
+    case 'OUTSIDE_TOP_CENTER':
+    case 'OUTSIDE_TOP_RIGHT':
+    case 'UNLOCKED_TOP':
+      return -baseOffset;
+    case 'OUTSIDE_BOTTOM_LEFT':
+    case 'OUTSIDE_BOTTOM_CENTER':
+    case 'OUTSIDE_BOTTOM_RIGHT':
+    case 'UNLOCKED_BOTTOM':
+      return baseOffset;
+    default:
+      return 0;
+  }
+};
+
+const getEndpointLabelOffset = (
+  strokeWidth: number,
+  fontSize: number | undefined,
+) => {
+  const estimatedLabelHalfHeight = (fontSize || 14) * 0.5;
+  return strokeWidth / 2 + D2_LABEL_PADDING + estimatedLabelHalfHeight;
+};
+
 export const parseD2ToSerializedNodes = async (definition: string) => {
   const d2 = new D2();
   const { diagram, graph } = await d2.compile(definition);
@@ -236,6 +266,11 @@ export const parseD2ToSerializedNodes = async (definition: string) => {
   });
 
   connections.forEach((connection) => {
+    const edgeLabelOffset = getEdgeLabelOffset(
+      (connection as { labelPosition?: string }).labelPosition,
+      connection.strokeWidth,
+      (connection as { labelHeight?: number }).labelHeight,
+    );
     const edgeLabelPosition = getEdgeLabelPosition(
       (connection as { labelPosition?: string }).labelPosition,
       (connection as { labelPercentage?: number }).labelPercentage,
@@ -281,7 +316,7 @@ export const parseD2ToSerializedNodes = async (definition: string) => {
     }
 
     if (label) {
-      const labelNode: TextSerializedNode = {
+      const labelNode = {
         id: id + '-text',
         parentId: id,
         type: 'text',
@@ -294,11 +329,12 @@ export const parseD2ToSerializedNodes = async (definition: string) => {
         stroke: 'white',
         strokeWidth: 4,
         edgeLabelPosition,
+        edgeLabelOffset,
         textAlign: 'center',
         textBaseline: 'middle',
         decorationLine: underline ? 'underline' : 'none',
         zIndex: 0,
-      };
+      } as TextSerializedNode;
       nodes.push(labelNode);
     }
 
@@ -317,7 +353,8 @@ export const parseD2ToSerializedNodes = async (definition: string) => {
         stroke: 'white',
         strokeWidth: 4,
         zIndex: 0,
-        edgeLabelPosition: 0.1,
+        edgeLabelPosition: 0,
+        edgeLabelOffset: -getEndpointLabelOffset(strokeWidth, fontSize),
         textAlign: 'left',
         textBaseline: 'middle',
       };
@@ -339,7 +376,8 @@ export const parseD2ToSerializedNodes = async (definition: string) => {
         stroke: 'white',
         strokeWidth: 4,
         zIndex: 0,
-        edgeLabelPosition: 0.9,
+        edgeLabelPosition: 1,
+        edgeLabelOffset: -getEndpointLabelOffset(strokeWidth, fontSize),
         textAlign: 'left',
         textBaseline: 'middle',
       };

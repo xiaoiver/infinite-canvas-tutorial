@@ -188,7 +188,7 @@ onMounted(async () => {
           anchorX: 50,
           anchorY: 100,
           fontSize: 16,
-          fontFamily: 'sans-serif',
+          fontFamily: 'Noto Sans',
           textBaseline: 'hanging',
           zIndex: 4,
         },
@@ -211,7 +211,7 @@ onMounted(async () => {
           anchorX: 50,
           anchorY: 150,
           fontSize: 16,
-          fontFamily: 'sans-serif',
+          fontFamily: 'Noto Sans',
           textBaseline: 'middle',
           zIndex: 6,
         },
@@ -234,7 +234,7 @@ onMounted(async () => {
           anchorX: 50,
           anchorY: 200,
           fontSize: 16,
-          fontFamily: 'sans-serif',
+          fontFamily: 'Noto Sans',
           textBaseline: 'alphabetic',
           zIndex: 6,
         },
@@ -257,7 +257,7 @@ onMounted(async () => {
           anchorX: 50,
           anchorY: 250,
           fontSize: 16,
-          fontFamily: 'sans-serif',
+          fontFamily: 'Noto Sans',
           textBaseline: 'ideographic',
           zIndex: 6,
         },
@@ -280,7 +280,7 @@ onMounted(async () => {
           anchorX: 50,
           anchorY: 300,
           fontSize: 16,
-          fontFamily: 'sans-serif',
+          fontFamily: 'Noto Sans',
           textBaseline: 'bottom',
           zIndex: 6,
         },
@@ -357,8 +357,8 @@ onMounted(async () => {
       1,
       VelloRendererPlugin,
     );
-    registerFont('/fonts/Gaegu-Regular.ttf');
     registerFont('/fonts/NotoSans-Regular.ttf');
+    registerFont('/fonts/Gaegu-Regular.ttf');
 
     new App()
       .addPlugins(

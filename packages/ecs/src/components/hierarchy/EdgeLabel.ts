@@ -8,6 +8,9 @@ export class EdgeLabel {
   @field({ type: Type.float32, default: 0.5 })
   declare labelPosition: number;
 
+  @field({ type: Type.float32, default: 0 })
+  declare labelOffset: number;
+
   constructor(props?: Partial<EdgeLabel>) {
     Object.assign(this, props);
   }

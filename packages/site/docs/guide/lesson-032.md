@@ -179,7 +179,7 @@ An opaque background can hide the line underneath.
 
 #### Spacing and inset {#padding-inset}
 
-Perpendicular offset and internal padding keep glyphs physically away from the stroke.
+Perpendicular offset and internal padding keep glyphs physically away from the stroke. We’ve added the `edgeLabelOffset` property, which, unlike `edgeLabelPosition`, uses absolute units to define the offset along the normal direction.
 
 #### Automatic avoidance {#conflict-avoidance}
 
@@ -192,6 +192,10 @@ A lighter alternative to a full background: stroke or shadow around glyphs for c
 We already introduce this method in [Lesson 16 - Text stroke].
 
 <MermaidFlowchartOutline />
+
+## [WIP] Line jumps {#line-jumps}
+
+![source: https://www.drawio.com/doc/faq/connector-styles](https://www.drawio.com/assets/img/blog/style-tab-line-jumps.png)
 
 ## Extended reading {#extended-reading}
 
