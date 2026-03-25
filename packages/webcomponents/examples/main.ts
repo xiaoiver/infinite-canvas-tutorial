@@ -167,6 +167,7 @@ canvas.addEventListener(Event.READY, async (e) => {
     stroke: 'red',
     strokeWidth: 10,
     zIndex: 1,
+    hitStrokeWidth: 100,
   };
 
   api.updateNodes([

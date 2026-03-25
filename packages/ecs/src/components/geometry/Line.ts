@@ -245,6 +245,12 @@ export class Line {
   @field({ type: Type.float32, default: 0 }) declare x2: number;
   @field({ type: Type.float32, default: 0 }) declare y2: number;
 
+  /**
+   * Stroke width used for pointer hit-testing only (Konva `hitStrokeWidth`).
+   * `-1` means use `Stroke.width`.
+   */
+  @field({ type: Type.float32, default: -1 }) declare hitStrokeWidth: number;
+
   constructor(props?: Partial<Line>) {
     Object.assign(this, props);
   }

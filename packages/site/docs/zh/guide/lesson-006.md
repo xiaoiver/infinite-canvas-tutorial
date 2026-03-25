@@ -519,6 +519,12 @@ canvas.addEventListener('mousedown', (e: MouseEvent) => {}); // [!code --]
 root.addEventListener('pointerdown', (e: FederatedPointerEvent) => {}); // [!code ++]
 ```
 
+### hitStrokeWidth {#hit-stroke-width}
+
+对于 Line Polyline 和 Path，太小的 `strokeWidth` 不便于交互。Konva 提供了 `hitStrokeWidth` 用于扩大可交互的区域，详见 [What is hitStrokeWidth?]。
+
+我们也使用了这个属性名。
+
 ### 通过 API 方式拾取 {#picking-with-api}
 
 拾取功能不光可以通过交互事件完成，也可以以 API 形式暴露供显式调用，例如 [elementsFromPoint]。在下一节我们实现拖拽插件时就会用到。
@@ -614,3 +620,4 @@ zoomByPoint(point.x, point.y, (last / dist - 1) * PINCH_FACTOR);
 [target]: https://developer.mozilla.org/en-US/docs/Web/API/Event/target
 [Bubbling and capturing]: https://javascript.info/bubbling-and-capturing#capturing
 [Drag'n'Drop with mouse events]: https://javascript.info/mouse-drag-and-drop
+[What is hitStrokeWidth?]: https://konvajs.org/docs/events/Custom_Hit_Region.html#2-what-is-hitstrokewidth

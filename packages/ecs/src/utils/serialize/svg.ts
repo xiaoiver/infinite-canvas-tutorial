@@ -115,16 +115,19 @@ export const defaultAttributes: Record<
     y1: 0,
     x2: 0,
     y2: 0,
+    hitStrokeWidth: -1,
     ...commonDefaultAttributes,
     ...strokeDefaultAttributes,
   },
   'rough-polyline': {
+    hitStrokeWidth: -1,
     ...commonDefaultAttributes,
     ...fillDefaultAttributes,
     ...strokeDefaultAttributes,
     ...markerDefaultAttributes,
   },
   'rough-path': {
+    hitStrokeWidth: -1,
     ...commonDefaultAttributes,
     ...fillDefaultAttributes,
     ...strokeDefaultAttributes,
@@ -144,11 +147,13 @@ export const defaultAttributes: Record<
     y1: 0,
     x2: 0,
     y2: 0,
+    hitStrokeWidth: -1,
     ...commonDefaultAttributes,
     ...strokeDefaultAttributes,
     ...markerDefaultAttributes,
   },
   polyline: {
+    hitStrokeWidth: -1,
     ...commonDefaultAttributes,
     ...fillDefaultAttributes,
     ...strokeDefaultAttributes,
@@ -161,6 +166,7 @@ export const defaultAttributes: Record<
   },
   path: {
     fillRule: 'nonzero',
+    hitStrokeWidth: -1,
     ...commonDefaultAttributes,
     ...fillDefaultAttributes,
     ...strokeDefaultAttributes,
@@ -292,6 +298,8 @@ export async function serializeNodesToSVGElements(
       filter,
       sizeAttenuation,
       strokeAttenuation,
+      hitStrokeWidth,
+      svgDataAttributes,
       version,
       versionNonce,
       updated,
@@ -340,6 +348,9 @@ export async function serializeNodesToSVGElements(
 
     if (element) {
       Object.entries(rest).forEach(([key, value]) => {
+        if (key === 'hitStrokeWidth' || key === 'svgDataAttributes') {
+          return;
+        }
         if (
           `${value}` !== '' &&
           `${defaultAttributes[type][key]}` !== `${value}`
@@ -528,6 +539,11 @@ export async function serializeNodesToSVGElements(
     $g = $g || element;
     $g.id = `node-${id}`;
 
+    applySvgDataAttributesToElement($g, {
+      hitStrokeWidth,
+      svgDataAttributes,
+    });
+
     if (visibility === 'hidden') {
       // @see https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/visibility
       $g.setAttribute('visibility', 'hidden');
@@ -600,6 +616,40 @@ export async function serializeNodesToSVGElements(
 
 export function camelToKebabCase(str: string) {
   return str.replace(/[A-Z]/g, (match) => `-${match.toLowerCase()}`);
+}
+
+/** `myKey` → `data-my-key`; `data-foo` → `data-foo`. */
+function svgDataAttributeName(key: string): string {
+  if (key.startsWith('data-')) {
+    return key;
+  }
+  return `data-${camelToKebabCase(key)}`;
+}
+
+/**
+ * Writes interaction / app metadata on the exported SVG root for each node (`<g>` or leaf).
+ */
+export function applySvgDataAttributesToElement(
+  el: SVGElement,
+  options: {
+    hitStrokeWidth?: number;
+    svgDataAttributes?: Record<string, string>;
+  },
+): void {
+  const { hitStrokeWidth, svgDataAttributes } = options;
+  if (
+    hitStrokeWidth != null &&
+    Number.isFinite(hitStrokeWidth) &&
+    hitStrokeWidth >= 0
+  ) {
+    el.setAttribute('data-hit-stroke-width', String(hitStrokeWidth));
+  }
+  if (svgDataAttributes && typeof svgDataAttributes === 'object') {
+    for (const [k, v] of Object.entries(svgDataAttributes)) {
+      if (v == null || String(v) === '') continue;
+      el.setAttribute(svgDataAttributeName(k), String(v));
+    }
+  }
 }
 
 /**

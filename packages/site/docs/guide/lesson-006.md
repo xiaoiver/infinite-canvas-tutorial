@@ -521,6 +521,12 @@ canvas.addEventListener('mousedown', (e: MouseEvent) => {}); // [!code --]
 root.addEventListener('pointerdown', (e: FederatedPointerEvent) => {}); // [!code ++]
 ```
 
+### hitStrokeWidth {#hit-stroke-width}
+
+For `Line`, `Polyline`, and `Path`, a `strokeWidth` that is too small makes interaction difficult. Konva provides `hitStrokeWidth` to expand the interactive area, see [What is hitStrokeWidth?]
+
+We also use this property name.
+
 ### Picking with API
 
 The picking functionality can not only be achieved through interactive events but can also be exposed as an API for explicit calls, similar to [elementsFromPoint]. This will be utilized when we implement the drag-and-drop plugin in the next section.
@@ -613,3 +619,4 @@ Here's the effect on iOS simulator.
 [target]: https://developer.mozilla.org/en-US/docs/Web/API/Event/target
 [Bubbling and capturing]: https://javascript.info/bubbling-and-capturing#capturing
 [Drag'n'Drop with mouse events]: https://javascript.info/mouse-drag-and-drop
+[What is hitStrokeWidth?]: https://konvajs.org/docs/events/Custom_Hit_Region.html#2-what-is-hitstrokewidth

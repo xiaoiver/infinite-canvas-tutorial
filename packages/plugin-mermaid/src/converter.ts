@@ -115,6 +115,7 @@ function convertFlowchartToSerializedNodes(vertices: Map<string, Vertex>, edges:
       toId: edge.end,
       stroke: 'black',
       strokeWidth: 2,
+      hitStrokeWidth: 2 * 4,
       markerEnd: 'line',
       edgeStyle: EdgeStyle.ORTHOGONAL,
       zIndex: 0,

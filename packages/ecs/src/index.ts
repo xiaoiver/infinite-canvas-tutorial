@@ -29,6 +29,7 @@ export {
   svgElementsToSerializedNodes,
   serializedNodesToEntities,
   serializeNodesToSVGElements,
+  applySvgDataAttributesToElement,
   imageToCanvas,
   randomInteger,
   isGradient,

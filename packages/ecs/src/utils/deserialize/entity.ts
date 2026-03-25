@@ -698,16 +698,31 @@ export function serializedNodesToEntities(
         serializeRough(attributes as RoughAttributes, entityCommands);
       }
     } else if (type === 'polyline' || type === 'rough-polyline') {
-      const { points } = attributes as PolylineSerializedNode;
+      const { points, hitStrokeWidth } = attributes as PolylineSerializedNode;
       entityCommands.insert(
-        new Polyline({ points: deserializePoints(points) }),
+        new Polyline({
+          points: deserializePoints(points),
+          ...(hitStrokeWidth != null && hitStrokeWidth >= 0
+            ? { hitStrokeWidth }
+            : {}),
+        }),
       );
       if (type === 'rough-polyline') {
         serializeRough(attributes as RoughAttributes, entityCommands);
       }
     } else if (type === 'line' || type === 'rough-line') {
-      const { x1, y1, x2, y2 } = attributes as LineSerializedNode;
-      entityCommands.insert(new Line({ x1, y1, x2, y2 }));
+      const { x1, y1, x2, y2, hitStrokeWidth } = attributes as LineSerializedNode;
+      entityCommands.insert(
+        new Line({
+          x1,
+          y1,
+          x2,
+          y2,
+          ...(hitStrokeWidth != null && hitStrokeWidth >= 0
+            ? { hitStrokeWidth }
+            : {}),
+        }),
+      );
       if (type === 'rough-line') {
         serializeRough(attributes as RoughAttributes, entityCommands);
       }
@@ -736,9 +751,18 @@ export function serializedNodesToEntities(
         loadImage(brushStamp, entityCommands.id());
       }
     } else if (type === 'path' || type === 'rough-path') {
-      const { d, fillRule, tessellationMethod } =
+      const { d, fillRule, tessellationMethod, hitStrokeWidth } =
         attributes as PathSerializedNode;
-      entityCommands.insert(new Path({ d, fillRule, tessellationMethod }));
+      entityCommands.insert(
+        new Path({
+          d,
+          fillRule,
+          tessellationMethod,
+          ...(hitStrokeWidth != null && hitStrokeWidth >= 0
+            ? { hitStrokeWidth }
+            : {}),
+        }),
+      );
       if (type === 'rough-path') {
         serializeRough(attributes as RoughAttributes, entityCommands);
       }

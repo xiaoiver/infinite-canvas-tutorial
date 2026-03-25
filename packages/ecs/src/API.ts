@@ -32,6 +32,8 @@ import {
   serializePoints,
   shiftPath,
   strokeOffset,
+  strokeWidthForHitTest,
+  cloneStrokeWithHitTestWidth,
   transformPath,
 } from './utils';
 import type { BrushSerializedNode, LineSerializedNode, PathSerializedNode, PolylineSerializedNode, SerializedNode } from './types/serialized-node';
@@ -534,6 +536,9 @@ export class API {
       const hasStroke = entity.has(Stroke);
       const stroke = hasStroke ? entity.read(Stroke) : undefined;
       const halfStrokeWidth = hasStroke ? stroke.width / 2 : 0;
+      const lineHitStrokeWidth = hasStroke
+        ? strokeWidthForHitTest(entity, stroke)
+        : 0;
       const offset = strokeOffset(stroke);
 
       if (entity.has(Circle)) {
@@ -569,6 +574,7 @@ export class API {
       } else if (entity.has(Line)) {
         if (Line.hitTestProvider && hasStroke) {
           const line = entity.read(Line);
+          const strokeForHit = cloneStrokeWithHitTestWidth(entity, stroke);
           isIntersected = Line.hitTestProvider({
             x1: line.x1,
             y1: line.y1,
@@ -576,42 +582,46 @@ export class API {
             y2: line.y2,
             x,
             y,
-            stroke,
+            stroke: strokeForHit,
           });
         } else if (hasStroke) {
           const { x1, y1, x2, y2 } = entity.read(Line);
-          isIntersected = inLine(x1, y1, x2, y2, stroke.width, x, y);
+          isIntersected = inLine(x1, y1, x2, y2, lineHitStrokeWidth, x, y);
         }
       } else if (entity.has(Polyline)) {
         if (Polyline.hitTestProvider && hasStroke) {
           const { points } = entity.read(Polyline);
+          const strokeForHit = cloneStrokeWithHitTestWidth(entity, stroke);
           isIntersected = Polyline.hitTestProvider({
             points,
             x,
             y,
-            stroke,
+            stroke: strokeForHit,
           });
         } else if (hasStroke) {
           const { shiftedPoints } = entity.read(ComputedPoints);
-          isIntersected = inPolyline(shiftedPoints, stroke.width, x, y);
+          isIntersected = inPolyline(shiftedPoints, lineHitStrokeWidth, x, y);
         }
       } else if (entity.has(Path)) {
         const { d, fillRule } = entity.read(Path);
         if (Path.hitTestProvider) {
+          const strokeForHit = hasStroke
+            ? cloneStrokeWithHitTestWidth(entity, stroke)
+            : undefined;
           isIntersected = Path.hitTestProvider({
             d,
             x,
             y,
             fill: hasFill,
             fillRule: fillRule ?? 'nonzero',
-            stroke: hasStroke ? stroke : undefined,
+            stroke: strokeForHit,
           });
         } else {
           const ctx = DOMAdapter.get().createCanvas(100, 100).getContext('2d');
           const path = new Path2D(d);
           if (hasStroke) {
             ctx.strokeStyle = stroke.color;
-            ctx.lineWidth = stroke.width;
+            ctx.lineWidth = lineHitStrokeWidth;
             ctx.lineCap = stroke.linecap;
             ctx.lineJoin = stroke.linejoin;
             ctx.miterLimit = stroke.miterlimit;
