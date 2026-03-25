@@ -30,12 +30,10 @@ onMounted(async () => {
       penbarAll: [Pen.SELECT],
     });
 
-    const nodes = await parseMermaidToSerializedNodes(`flowchart TD
- A[Christmas] -->|Get money| B(Go shopping)
- B --> C{Let me think}
- C -->|One| D[Laptop]
- C -->|Two| E[iPhone]
- C -->|Three| F[Car]`);
+    const nodes = await parseMermaidToSerializedNodes(`stateDiagram-v2
+    [*] --> Idle
+    Idle --> Active: Start
+    Active --> [*]`);
     nodes.forEach(node => {
       if (node.type === 'rect') {
         // @ts-expect-error change type
@@ -97,6 +95,6 @@ onUnmounted(async () => {
 
 <template>
   <ic-spectrum-canvas ref="wrapper" style="width: 100%; height: 400px"
-    app-state='{"topbarVisible":true, "cameraZoom": 0.45, "cameraX": -300, "cameraY": -100}'>
+    app-state='{"topbarVisible":true, "cameraZoom": 0.8, "cameraX": -200, "cameraY": -100}'>
   </ic-spectrum-canvas>
 </template>

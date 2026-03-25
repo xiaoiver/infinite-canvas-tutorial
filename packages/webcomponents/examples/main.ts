@@ -145,7 +145,7 @@ canvas.addEventListener(Event.READY, async (e) => {
     snapToPixelGridSize: 1,
     // snapToPixelGridEnabled: false,
     // snapToPixelGridSize: 0,
-    snapToObjectsEnabled: true,
+    // snapToObjectsEnabled: true,
     // filter: 'brightness(0.8) noise(0.1)',
     // penbarDrawSizeLabelVisible: true,
     // checkboardStyle: CheckboardStyle.NONE,
@@ -160,20 +160,40 @@ canvas.addEventListener(Event.READY, async (e) => {
     // layersLassoing: ['parent'],
   });
 
+  const g = {
+    id: 'g-1',
+    type: 'g',
+  };
+
   const node1 = {
     id: 'polyline-1',
+    parentId: 'g-1',
     type: 'polyline',
     points: '100,100 200,200 300,100 400,200',
     stroke: 'red',
     strokeWidth: 10,
     zIndex: 1,
-    hitStrokeWidth: 100,
+    hitStrokeWidth: 10,
   };
 
+  const node2 = {
+    id: 'rect-2',
+    parentId: 'g-1',
+    type: 'rect',
+    x: 100,
+    y: 100,
+    width: 100,
+    height: 100,
+    fill: 'blue',
+    zIndex: 2,
+  }
+
   api.updateNodes([
-    node1
+    g,
+    node1,
+    node2,
   ]);
-  api.selectNodes([node1]);
+  api.selectNodes([g]);
   api.record();
 
   // api.updateNodes([node1]);

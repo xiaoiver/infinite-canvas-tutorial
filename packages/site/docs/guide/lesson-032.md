@@ -9,7 +9,11 @@ import Mermaid from '../components/Mermaid.vue'
 import MermaidRough from '../components/MermaidRough.vue'
 import MermaidFlowchart from '../components/MermaidFlowchart.vue'
 import MermaidFlowchartOutline from '../components/MermaidFlowchartOutline.vue'
+import MermaidSequence from '../components/MermaidSequence.vue'
+import MermaidState from '../components/MermaidState.vue'
 import D2 from '../components/D2.vue'
+import D2Containers from '../components/D2Containers.vue'
+import D2Connections from '../components/D2Connections.vue'
 import Drawio from '../components/Drawio.vue'
 </script>
 
@@ -96,6 +100,12 @@ nodes.forEach((node) => {
 
 <MermaidRough />
 
+### Sequence {#mermaid-sequence}
+
+<MermaidSequence />
+
+### [WIP] State {#mermaid-state}
+
 ## D2 {#d2}
 
 Compared with Mermaid, D2 ships with a convenient parser out of the box.
@@ -116,6 +126,36 @@ x -> y: hello world
 ```
 
 <D2 />
+
+### Container
+
+```d2
+good chips: {
+  doritos
+  ruffles
+}
+bad chips.lays
+bad chips.pringles
+
+chocolate.chip.cookies
+```
+
+<D2Containers />
+
+### Connections
+
+```d2
+dogs -> cats -> mice: chase
+replica 1 <-> replica 2
+a -> b: To err is human, to moo bovine {
+  source-arrowhead: 1
+  target-arrowhead: * {
+    shape: diamond
+  }
+}
+```
+
+<D2Connections />
 
 ## drawio {#drawio}
 

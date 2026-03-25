@@ -653,6 +653,68 @@ export class RenderTransformer extends System {
   }
 }
 
+function calculateOBBRecursive(entities: Entity[]): OBB {
+  // Merge all descendants' bounds into one OBB without rotation & scale.
+  const bounds = entities
+    .map((entity) => {
+      if (entity.has(ComputedBounds)) {
+        const { geometryWorldBounds } = entity.read(ComputedBounds);
+        return {
+          minX: geometryWorldBounds.minX,
+          minY: geometryWorldBounds.minY,
+          maxX: geometryWorldBounds.maxX,
+          maxY: geometryWorldBounds.maxY,
+        };
+      }
+
+      if (entity.has(Parent)) {
+        const { children } = entity.read(Parent);
+        const childOBB = calculateOBBRecursive(children);
+        return {
+          minX: childOBB.x,
+          minY: childOBB.y,
+          maxX: childOBB.x + childOBB.width,
+          maxY: childOBB.y + childOBB.height,
+        };
+      }
+    })
+    .filter((bound) => bound !== undefined);
+
+  if (bounds.length === 0) {
+    return {
+      x: 0,
+      y: 0,
+      width: 0,
+      height: 0,
+      rotation: 0,
+      scaleX: 1,
+      scaleY: 1,
+    };
+  }
+
+  const { minX, minY, maxX, maxY } = bounds.reduce(
+    (acc, bound) => {
+      return {
+        minX: Math.min(acc.minX, bound.minX),
+        minY: Math.min(acc.minY, bound.minY),
+        maxX: Math.max(acc.maxX, bound.maxX),
+        maxY: Math.max(acc.maxY, bound.maxY),
+      };
+    },
+    { minX: Infinity, minY: Infinity, maxX: -Infinity, maxY: -Infinity },
+  );
+
+  return {
+    x: minX,
+    y: minY,
+    width: maxX - minX,
+    height: maxY - minY,
+    rotation: 0,
+    scaleX: 1,
+    scaleY: 1,
+  };
+}
+
 /**
  * Get the OBB of the selected nodes.
  */
@@ -660,48 +722,20 @@ export function getOBB(camera: Entity): OBB {
   const { selecteds } = camera.read(Transformable);
 
   // Single selected, keep the original OBB include rotation & scale.
-  if (selecteds.length === 1 && selecteds[0].has(ComputedBounds)) {
+  if (selecteds.length === 1) {
     const selected = selecteds[0];
-    const { obb } = selected.read(ComputedBounds);
-    return obb;
+    if (selected.has(ComputedBounds)) {
+      const { obb } = selected.read(ComputedBounds);
+      return obb;
+    } else if (selected.has(Parent)) {
+      // group
+      const { children } = selected.read(Parent);
+      return calculateOBBRecursive(children);
+    }
   }
 
   if (selecteds.length > 1) {
-    // Merge all the OBBs into one without rotation & scale.
-    const { minX, minY, maxX, maxY } = selecteds
-      .map((selected) => {
-        if (selected.has(ComputedBounds)) {
-          const { geometryWorldBounds } = selected.read(ComputedBounds);
-          return {
-            minX: geometryWorldBounds.minX,
-            minY: geometryWorldBounds.minY,
-            maxX: geometryWorldBounds.maxX,
-            maxY: geometryWorldBounds.maxY,
-          };
-        }
-      })
-      .filter((bound) => bound !== undefined) // Group has no geometryWorldBounds
-      .reduce(
-        (acc, bound) => {
-          return {
-            minX: Math.min(acc.minX, bound.minX),
-            minY: Math.min(acc.minY, bound.minY),
-            maxX: Math.max(acc.maxX, bound.maxX),
-            maxY: Math.max(acc.maxY, bound.maxY),
-          };
-        },
-        { minX: Infinity, minY: Infinity, maxX: -Infinity, maxY: -Infinity },
-      );
-
-    return {
-      x: minX,
-      y: minY,
-      width: maxX - minX,
-      height: maxY - minY,
-      rotation: 0,
-      scaleX: 1,
-      scaleY: 1,
-    };
+    return calculateOBBRecursive(selecteds);
   }
 
   return {
