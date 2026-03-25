@@ -71,6 +71,7 @@ export const parseMxgraphDataToSerializedNodes = async (definition: string) => {
       (node as PolylineSerializedNode).toId = `drawio-${mxCell._target}`;
       (node as PolylineSerializedNode).stroke = 'black';
       (node as PolylineSerializedNode).strokeWidth = 2;
+      (node as PolylineSerializedNode).hitStrokeWidth = 2 * 4;
       (node as PolylineSerializedNode).markerEnd = 'line';
       (node as PolylineSerializedNode).exitX = exitX;
       (node as PolylineSerializedNode).exitY = exitY;

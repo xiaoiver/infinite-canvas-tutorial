@@ -302,6 +302,7 @@ export const parseD2ToSerializedNodes = async (definition: string) => {
       toId: dst,
       stroke: colors[stroke.toLowerCase()],
       strokeWidth,
+      hitStrokeWidth: strokeWidth * 4,
       markerStart: D2_ARROW_HEAD_MAP[srcArrow],
       markerEnd: D2_ARROW_HEAD_MAP[dstArrow],
       curved: isCurve,

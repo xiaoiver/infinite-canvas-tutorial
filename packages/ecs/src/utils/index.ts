@@ -27,3 +27,4 @@ export * from './filter';
 export * from './binding';
 export * from './edge-label';
 export * from './polyline-arclength';
+export * from './hitStrokeWidth';

@@ -286,7 +286,13 @@ export class Polyline {
   })
   declare points: [number, number][];
 
+  /**
+   * Stroke width used for pointer hit-testing only (Konva `hitStrokeWidth`).
+   * `-1` means use `Stroke.width`.
+   */
+  @field({ type: Type.float32, default: -1 }) declare hitStrokeWidth: number;
+
   constructor(props?: Partial<Polyline>) {
-    this.points = props?.points;
+    Object.assign(this, props);
   }
 }

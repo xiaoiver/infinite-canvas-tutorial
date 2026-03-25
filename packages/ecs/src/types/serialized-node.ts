@@ -70,6 +70,13 @@ export interface BaseSerializeNode<Type extends string>
    * Locked layer cannot be interactive.
    */
   locked?: boolean;
+
+  /**
+   * Extra `data-*` attributes written on the exported SVG wrapper (`<g>` or primitive element).
+   * Keys without a `data-` prefix become `data-` + kebab-case (e.g. `myKey` → `data-my-key`).
+   * Keys that already start with `data-` are used as-is.
+   */
+  svgDataAttributes?: Record<string, string>;
 }
 
 export interface EditableAttributes {
@@ -142,6 +149,11 @@ export interface StrokeAttributes {
   strokeDasharray: string;
   strokeDashoffset: Stroke['dashoffset'];
   strokeOpacity: Opacity['strokeOpacity'];
+}
+
+/** Wider hit target for thin stroked lines / paths (Konva `hitStrokeWidth`). */
+export interface HitStrokeInteractionAttributes {
+  hitStrokeWidth?: number;
 }
 
 export interface FlexboxLayoutAttributes {
@@ -339,6 +351,7 @@ export interface RoughLineSerializedNode
   extends BaseSerializeNode<'rough-line'>,
   Partial<Pick<Line, 'x1' | 'y1' | 'x2' | 'y2'>>,
   Partial<StrokeAttributes>,
+  Partial<HitStrokeInteractionAttributes>,
   Partial<Pick<AttenuationAttributes, 'strokeAttenuation'>>,
   Partial<MarkerAttributes>,
   Partial<BindingAttributes> { }
@@ -346,6 +359,7 @@ export interface RoughPolylineSerializedNode
   extends BaseSerializeNode<'rough-polyline'>,
   Partial<PolylineAttributes>,
   Partial<StrokeAttributes>,
+  Partial<HitStrokeInteractionAttributes>,
   Partial<RoughAttributes>,
   Partial<MarkerAttributes>,
   Partial<BindingAttributes> { }
@@ -355,6 +369,7 @@ export interface RoughPathSerializedNode
   Partial<PathAttributes>,
   Partial<FillAttributes>,
   Partial<StrokeAttributes>,
+  Partial<HitStrokeInteractionAttributes>,
   Partial<RoughAttributes>,
   Partial<MarkerAttributes>,
   Partial<BindingAttributes>,
@@ -363,6 +378,7 @@ export interface LineSerializedNode
   extends BaseSerializeNode<'line'>,
   Partial<Pick<Line, 'x1' | 'y1' | 'x2' | 'y2'>>,
   Partial<StrokeAttributes>,
+  Partial<HitStrokeInteractionAttributes>,
   Partial<Pick<AttenuationAttributes, 'strokeAttenuation'>>,
   Partial<MarkerAttributes>,
   Partial<BindingAttributes> { }
@@ -374,6 +390,7 @@ export interface PolylineSerializedNode
   extends BaseSerializeNode<'polyline'>,
   Partial<PolylineAttributes>,
   Partial<StrokeAttributes>,
+  Partial<HitStrokeInteractionAttributes>,
   Partial<Pick<AttenuationAttributes, 'strokeAttenuation'>>,
   Partial<WireframeAttributes>,
   Partial<MarkerAttributes>,
@@ -407,6 +424,7 @@ export interface PathSerializedNode
   Partial<PathAttributes>,
   Partial<FillAttributes>,
   Partial<StrokeAttributes>,
+  Partial<HitStrokeInteractionAttributes>,
   Partial<AttenuationAttributes>,
   Partial<WireframeAttributes>,
   Partial<MarkerAttributes>,

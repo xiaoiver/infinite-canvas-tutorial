@@ -666,10 +666,10 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
   if ('zIndex' in updates) {
     entity.write(ZIndex).value = zIndex ?? 0;
   }
-  if (!isNil(visibility)) {
+  if ('visibility' in updates) {
     entity.write(Visibility).value = visibility;
   }
-  if (!isNil(fill)) {
+  if ('fill' in updates) {
     if (isGradient(fill)) {
       safeRemoveComponent(entity, FillSolid);
       safeRemoveComponent(entity, FillImage);
@@ -693,12 +693,12 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
       safeAddComponent(entity, FillSolid, { value: fill });
     }
   }
-  if (!isNil(brushStamp)) {
+  if ('brushStamp' in updates) {
     if (isDataUrl(brushStamp) || isUrl(brushStamp)) {
       loadImage(brushStamp, entity);
     }
   }
-  if (!isNil(clipMode)) {
+  if ('clipMode' in updates) {
     safeAddComponent(entity, ClipMode, { value: clipMode });
     safeAddComponent(entity, MaterialDirty);
     // Should mark children cascade as dirty
@@ -706,202 +706,202 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
       safeAddComponent(child, MaterialDirty);
     });
   }
-  if (!isNil(stroke)) {
+  if ('stroke' in updates) {
     safeAddComponent(entity, Stroke, { color: stroke });
   }
-  if (!isNil(strokeWidth)) {
+  if ('strokeWidth' in updates) {
     safeAddComponent(entity, Stroke, { width: strokeWidth });
   }
-  if (!isNil(strokeLinecap)) {
+  if ('strokeLinecap' in updates) {
     safeAddComponent(entity, Stroke, { linecap: strokeLinecap });
   }
-  if (!isNil(strokeLinejoin)) {
+  if ('strokeLinejoin' in updates) {
     safeAddComponent(entity, Stroke, { linejoin: strokeLinejoin });
   }
-  if (!isNil(strokeAlignment)) {
+  if ('strokeAlignment' in updates) {
     safeAddComponent(entity, Stroke, { alignment: strokeAlignment });
   }
-  if (!isNil(opacity)) {
+  if ('opacity' in updates) {
     safeAddComponent(entity, Opacity, { opacity });
   }
-  if (!isNil(fillOpacity)) {
+  if ('fillOpacity' in updates) {
     safeAddComponent(entity, Opacity, { fillOpacity });
   }
-  if (!isNil(strokeOpacity)) {
+  if ('strokeOpacity' in updates) {
     safeAddComponent(entity, Opacity, { strokeOpacity });
   }
-  if (!isNil(dropShadowColor)) {
+  if ('dropShadowColor' in updates) {
     safeAddComponent(entity, DropShadow, { color: dropShadowColor });
   }
-  if (!isNil(dropShadowBlurRadius)) {
+  if ('dropShadowBlurRadius' in updates) {
     safeAddComponent(entity, DropShadow, { blurRadius: dropShadowBlurRadius });
   }
-  if (!isNil(dropShadowOffsetX)) {
+  if ('dropShadowOffsetX' in updates) {
     safeAddComponent(entity, DropShadow, { offsetX: dropShadowOffsetX });
   }
-  if (!isNil(dropShadowOffsetY)) {
+  if ('dropShadowOffsetY' in updates) {
     safeAddComponent(entity, DropShadow, { offsetY: dropShadowOffsetY });
   }
-  if (!isNil(innerShadowColor)) {
+  if ('innerShadowColor' in updates) {
     safeAddComponent(entity, InnerShadow, { color: innerShadowColor });
   }
-  if (!isNil(innerShadowBlurRadius)) {
+  if ('innerShadowBlurRadius' in updates) {
     safeAddComponent(entity, InnerShadow, {
       blurRadius: innerShadowBlurRadius,
     });
   }
-  if (!isNil(innerShadowOffsetX)) {
+  if ('innerShadowOffsetX' in updates) {
     safeAddComponent(entity, InnerShadow, { offsetX: innerShadowOffsetX });
   }
-  if (!isNil(innerShadowOffsetY)) {
+  if ('innerShadowOffsetY' in updates) {
     safeAddComponent(entity, InnerShadow, { offsetY: innerShadowOffsetY });
   }
-  if (!isNil(sizeAttenuation)) {
+  if ('sizeAttenuation' in updates) {
     if (sizeAttenuation) {
       safeAddComponent(entity, SizeAttenuation);
     } else {
       safeRemoveComponent(entity, SizeAttenuation);
     }
   }
-  if (!isNil(strokeAttenuation)) {
+  if ('strokeAttenuation' in updates) {
     if (strokeAttenuation) {
       safeAddComponent(entity, StrokeAttenuation);
     } else {
       safeRemoveComponent(entity, StrokeAttenuation);
     }
   }
-  if (!isNil(decorationColor)) {
+  if ('decorationColor' in updates) {
     safeAddComponent(entity, TextDecoration, { color: decorationColor });
   }
-  if (!isNil(decorationLine)) {
+  if ('decorationLine' in updates) {
     safeAddComponent(entity, TextDecoration, { line: decorationLine });
   }
-  if (!isNil(decorationStyle)) {
+  if ('decorationStyle' in updates) {
     safeAddComponent(entity, TextDecoration, { style: decorationStyle });
   }
-  if (!isNil(decorationThickness)) {
+  if ('decorationThickness' in updates) {
     safeAddComponent(entity, TextDecoration, {
       thickness: decorationThickness,
     });
   }
-  if (!isNil(roughRoughness)) {
+  if ('roughRoughness' in updates) {
     safeAddComponent(entity, Rough, { roughness: roughRoughness });
   }
-  if (!isNil(roughBowing)) {
+  if ('roughBowing' in updates) {
     safeAddComponent(entity, Rough, { bowing: roughBowing });
   }
-  if (!isNil(roughFillStyle)) {
+  if ('roughFillStyle' in updates) {
     safeAddComponent(entity, Rough, { fillStyle: roughFillStyle });
   }
-  if (!isNil(roughFillWeight)) {
+  if ('roughFillWeight' in updates) {
     safeAddComponent(entity, Rough, { fillWeight: roughFillWeight });
   }
-  if (!isNil(roughHachureAngle)) {
+  if ('roughHachureAngle' in updates) {
     safeAddComponent(entity, Rough, { hachureAngle: roughHachureAngle });
   }
-  if (!isNil(roughHachureGap)) {
+  if ('roughHachureGap' in updates) {
     safeAddComponent(entity, Rough, { hachureGap: roughHachureGap });
   }
-  if (!isNil(roughCurveStepCount)) {
+  if ('roughCurveStepCount' in updates) {
     safeAddComponent(entity, Rough, { curveStepCount: roughCurveStepCount });
   }
-  if (!isNil(roughCurveFitting)) {
+  if ('roughCurveFitting' in updates) {
     safeAddComponent(entity, Rough, { curveFitting: roughCurveFitting });
   }
-  if (!isNil(roughDisableMultiStroke)) {
+  if ('roughDisableMultiStroke' in updates) {
     safeAddComponent(entity, Rough, {
       disableMultiStroke: roughDisableMultiStroke,
     });
   }
-  if (!isNil(roughDisableMultiStrokeFill)) {
+  if ('roughDisableMultiStrokeFill' in updates) {
     safeAddComponent(entity, Rough, {
       disableMultiStrokeFill: roughDisableMultiStrokeFill,
     });
   }
-  if (!isNil(roughSimplification)) {
+  if ('roughSimplification' in updates) {
     safeAddComponent(entity, Rough, { simplification: roughSimplification });
   }
-  if (!isNil(roughDashOffset)) {
+  if ('roughDashOffset' in updates) {
     safeAddComponent(entity, Rough, { dashOffset: roughDashOffset });
   }
-  if (!isNil(roughDashGap)) {
+  if ('roughDashGap' in updates) {
     safeAddComponent(entity, Rough, { dashGap: roughDashGap });
   }
-  if (!isNil(roughZigzagOffset)) {
+  if ('roughZigzagOffset' in updates) {
     safeAddComponent(entity, Rough, { zigzagOffset: roughZigzagOffset });
   }
-  if (!isNil(roughPreserveVertices)) {
+  if ('roughPreserveVertices' in updates) {
     safeAddComponent(entity, Rough, {
       preserveVertices: roughPreserveVertices,
     });
   }
-  if (!isNil(roughFillLineDash)) {
+  if ('roughFillLineDash' in updates) {
     safeAddComponent(entity, Rough, { fillLineDash: roughFillLineDash });
   }
-  if (!isNil(roughFillLineDashOffset)) {
+  if ('roughFillLineDashOffset' in updates) {
     safeAddComponent(entity, Rough, {
       fillLineDashOffset: roughFillLineDashOffset,
     });
   }
-  if (!isNil(roughSeed)) {
+  if ('roughSeed' in updates) {
     safeAddComponent(entity, Rough, { seed: roughSeed });
   }
 
-  if (!isNil(markerStart)) {
+  if ('markerStart' in updates) {
     safeAddComponent(entity, Marker, { start: markerStart });
   }
-  if (!isNil(markerEnd)) {
+  if ('markerEnd' in updates) {
     safeAddComponent(entity, Marker, { end: markerEnd });
   }
-  if (!isNil(markerFactor)) {
+  if ('markerFactor' in updates) {
     safeAddComponent(entity, Marker, { factor: markerFactor });
   }
 
-  if (!isNil(anchorX)) {
+  if ('anchorX' in updates) {
     entity.write(Text).anchorX = anchorX;
   }
-  if (!isNil(anchorY)) {
+  if ('anchorY' in updates) {
     entity.write(Text).anchorY = anchorY;
   }
-  if (!isNil(fontSize)) {
+  if ('fontSize' in updates) {
     entity.write(Text).fontSize = fontSize;
   }
-  if (!isNil(fontWeight)) {
+  if ('fontWeight' in updates) {
     entity.write(Text).fontWeight = fontWeight;
   }
-  if (!isNil(fontStyle)) {
+  if ('fontStyle' in updates) {
     entity.write(Text).fontStyle = fontStyle;
   }
-  if (!isNil(fontKerning)) {
+  if ('fontKerning' in updates) {
     entity.write(Text).fontKerning = fontKerning;
   }
-  if (!isNil(textAlign)) {
+  if ('textAlign' in updates) {
     entity.write(Text).textAlign = textAlign;
   }
-  if (!isNil(textBaseline)) {
+  if ('textBaseline' in updates) {
     entity.write(Text).textBaseline = textBaseline;
   }
-  if (!isNil(content)) {
+  if ('content' in updates) {
     entity.write(Text).content = content;
   }
   // TODO: Other text properties e.g. fontFamily
 
-  if (!isNil(x) && !isString(x)) {
+  if ('x' in updates && !isString(x)) {
     entity.write(Transform).translation.x = x;
   }
-  if (!isNil(y) && !isString(y)) {
+  if ('y' in updates && !isString(y)) {
     entity.write(Transform).translation.y = y;
   }
-  if (!isNil(rotation)) {
+  if ('rotation' in updates) {
     entity.write(Transform).rotation = rotation;
   }
-  if (!isNil(scaleX)) {
+  if ('scaleX' in updates) {
     entity.write(Transform).scale.x = scaleX;
   }
-  if (!isNil(scaleY)) {
+  if ('scaleY' in updates) {
     entity.write(Transform).scale.y = scaleY;
   }
-  if (!isNil(width) && !isString(width)) {
+  if ('width' in updates && !isString(width)) {
     if (entity.has(Rect)) {
       entity.write(Rect).width = width;
     } else if (entity.has(Ellipse)) {
@@ -915,7 +915,7 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
       entity.write(Embed).width = width;
     }
   }
-  if (!isNil(height) && !isString(height)) {
+  if ('height' in updates && !isString(height)) {
     if (entity.has(Rect)) {
       entity.write(Rect).height = height;
     } else if (entity.has(Ellipse)) {
@@ -929,39 +929,52 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
       entity.write(Embed).height = height;
     }
   }
-  if (!isNil(points)) {
+  if ('points' in updates) {
     if (entity.has(Polyline)) {
       entity.write(Polyline).points = deserializePoints(points);
     } else if (entity.has(Brush)) {
       entity.write(Brush).points = deserializeBrushPoints(points);
     }
   }
-  if (!isNil(d)) {
+  if ('d' in updates) {
     if (entity.has(Path)) {
       entity.write(Path).d = d;
     }
   }
-  if (!isNil(x1)) {
+  if ('x1' in updates) {
     entity.write(Line).x1 = x1;
   }
-  if (!isNil(y1)) {
+  if ('y1' in updates) {
     entity.write(Line).y1 = y1;
   }
-  if (!isNil(x2)) {
+  if ('x2' in updates) {
     entity.write(Line).x2 = x2;
   }
-  if (!isNil(y2)) {
+  if ('y2' in updates) {
     entity.write(Line).y2 = y2;
   }
 
-  if (!isNil(editable)) {
+  if ('hitStrokeWidth' in updates) {
+    const v = (updates as { hitStrokeWidth?: number }).hitStrokeWidth;
+    const next =
+      v != null && Number.isFinite(v) && v >= 0 ? v : -1;
+    if (entity.has(Line)) {
+      entity.write(Line).hitStrokeWidth = next;
+    } else if (entity.has(Polyline)) {
+      entity.write(Polyline).hitStrokeWidth = next;
+    } else if (entity.has(Path)) {
+      entity.write(Path).hitStrokeWidth = next;
+    }
+  }
+
+  if ('editable' in updates) {
     if (editable) {
       safeAddComponent(entity, Editable);
     } else {
       safeRemoveComponent(entity, Editable);
     }
   }
-  if (!isNil(isEditing)) {
+  if ('isEditing' in updates) {
     safeAddComponent(entity, Editable);
     entity.write(Editable).isEditing = !!isEditing;
   }
@@ -977,11 +990,11 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
     }
   }
 
-  if (!isNil(filter)) {
+  if ('filter' in updates) {
     safeAddComponent(entity, Filter, { value: filter });
   }
 
-  if (isNil(element.version)) {
+  if ('version' in updates) {
     element.version = 0;
   }
 

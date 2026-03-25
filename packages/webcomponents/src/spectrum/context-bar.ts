@@ -127,7 +127,7 @@ export class ContextBar extends LitElement {
       if (layersSelected.length === 1 && layersCropping.length === 0) {
         const node =
           layersSelected[0] && this.api.getNodeById(layersSelected[0]);
-        if (!node) {
+        if (!node || node.type === 'g') {
           return html``;
         }
 

@@ -26,7 +26,7 @@ import {
   Transform,
   VectorNetwork,
 } from '../components';
-import { decompose } from '../utils';
+import { cloneStrokeWithHitTestWidth, decompose } from '../utils';
 import { safeAddComponent } from '../history';
 
 export class ComputeBounds extends System {
@@ -106,9 +106,11 @@ export function updateBounds(entity: Entity) {
     );
   } else if (entity.has(Line)) {
     geometryBounds = Line.getGeometryBounds(entity.read(Line));
+    const lineStroke =
+      stroke == null ? undefined : cloneStrokeWithHitTestWidth(entity, stroke);
     renderBounds = Line.getRenderBounds(
-      entity.read(Line), 
-      stroke,
+      entity.read(Line),
+      lineStroke,
       entity.has(Marker) ? entity.read(Marker) : undefined,
     );
   } else if (entity.has(Polyline)) {
@@ -116,10 +118,12 @@ export function updateBounds(entity: Entity) {
       ...entity.read(Polyline),
       points: entity.read(ComputedPoints).shiftedPoints,
     });
+    const polyStroke =
+      stroke == null ? undefined : cloneStrokeWithHitTestWidth(entity, stroke);
     renderBounds = Polyline.getRenderBounds(
-      entity.read(Polyline), 
-      stroke, 
-      entity.has(Marker) ? entity.read(Marker) : undefined
+      entity.read(Polyline),
+      polyStroke,
+      entity.has(Marker) ? entity.read(Marker) : undefined,
     );
   } else if (entity.has(Brush)) {
     geometryBounds = Brush.getGeometryBounds(entity.read(Brush));
@@ -129,10 +133,12 @@ export function updateBounds(entity: Entity) {
       entity.read(Path),
       entity.read(ComputedPoints),
     );
+    const pathStroke =
+      stroke == null ? undefined : cloneStrokeWithHitTestWidth(entity, stroke);
     renderBounds = Path.getRenderBounds(
       entity.read(Path),
       entity.read(ComputedPoints),
-      stroke,
+      pathStroke,
       entity.has(Marker) ? entity.read(Marker) : undefined,
     );
   } else if (entity.has(Text)) {

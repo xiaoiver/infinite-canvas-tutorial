@@ -307,10 +307,14 @@ export class Path {
   @field({ type: Type.staticString(['earcut', 'libtess']), default: 'earcut' })
   declare tessellationMethod: TesselationMethod;
 
+  /**
+   * Stroke width used for pointer hit-testing only (Konva `hitStrokeWidth`).
+   * `-1` means use `Stroke.width`.
+   */
+  @field({ type: Type.float32, default: -1 }) declare hitStrokeWidth: number;
+
   constructor(props?: Partial<Path>) {
-    this.d = props?.d;
-    this.fillRule = props?.fillRule;
-    this.tessellationMethod = props?.tessellationMethod;
+    Object.assign(this, props);
   }
 }
 
