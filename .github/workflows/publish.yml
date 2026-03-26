@@ -30,6 +30,9 @@ jobs:
         run: pnpm install
 
       - name: Build
+        env:
+          ADSENSE_ENABLED: ${{ vars.ADSENSE_ENABLED || secrets.ADSENSE_ENABLED }}
+          ADSENSE_CLIENT: ${{ secrets.ADSENSE_CLIENT }}
         run: pnpm -r --filter '!@infinite-canvas-tutorial/app' run build
 
       - name: Publish to Cloudflare Pages

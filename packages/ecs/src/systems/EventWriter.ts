@@ -75,6 +75,7 @@ export class EventWriter extends System {
     const pointerIds = this.pointerIds.get(entity.__id);
     let previousPinchDistance: number | null = null;
     let isPinching = false;
+    let primaryTouchPointerId: number | null = null;
 
     const syncCtrlShiftAltMeta = (e: PointerEvent | WheelEvent) => {
       if (e.ctrlKey) {
@@ -93,6 +94,13 @@ export class EventWriter extends System {
 
     const onPointerMove = (e: PointerEvent) => {
       if (e.pointerType === 'touch' && isPinching) return;
+      if (
+        e.pointerType === 'touch' &&
+        primaryTouchPointerId !== null &&
+        e.pointerId !== primaryTouchPointerId
+      ) {
+        return;
+      }
 
       // @see https://stackoverflow.com/questions/49500339/cant-prevent-touchmove-from-scrolling-window-on-ios
       // ev.preventDefault();
@@ -115,6 +123,9 @@ export class EventWriter extends System {
     const onPointerUp = (e: PointerEvent) => {
       if (e.pointerType === 'touch' && isPinching) {
         pointerIds.delete(e.pointerId);
+        if (e.pointerId === primaryTouchPointerId) {
+          primaryTouchPointerId = null;
+        }
         if (pointerIds.size < 2) {
           isPinching = false;
         }
@@ -123,6 +134,9 @@ export class EventWriter extends System {
 
       this.setInputTrigger(input, 'pointerUpTrigger');
       pointerIds.delete(e.pointerId);
+      if (e.pointerType === 'touch' && e.pointerId === primaryTouchPointerId) {
+        primaryTouchPointerId = null;
+      }
     };
 
     const onPointerDown = (e: PointerEvent) => {
@@ -135,7 +149,12 @@ export class EventWriter extends System {
       // ignore right click for now
       if (pointerIds.size > 1 || e.button === 2) {
         if (e.pointerType === 'touch') {
+          if (!isPinching && primaryTouchPointerId !== null) {
+            // Stop any active single-touch drawing before pinch starts.
+            this.setInputTrigger(input, 'pointerUpTrigger');
+          }
           isPinching = true;
+          primaryTouchPointerId = null;
         }
         return;
       }
@@ -150,6 +169,9 @@ export class EventWriter extends System {
       this.setInputTrigger(input, 'pointerDownTrigger');
 
       if (pointerIds.size === 1) {
+        if (e.pointerType === 'touch') {
+          primaryTouchPointerId = e.pointerId;
+        }
         const viewport = api.client2Viewport({
           x: e.clientX,
           y: e.clientY,
@@ -167,6 +189,9 @@ export class EventWriter extends System {
 
     const onPointerCancel = (e: PointerEvent) => {
       pointerIds.delete(e.pointerId);
+      if (e.pointerId === primaryTouchPointerId) {
+        primaryTouchPointerId = null;
+      }
       if (e.pointerType === 'touch' && pointerIds.size < 2) {
         isPinching = false;
       }
@@ -204,6 +229,11 @@ export class EventWriter extends System {
 
           const currentDistance = da[0];
           if (first || previousPinchDistance === null) {
+            if (primaryTouchPointerId !== null) {
+              // Ensure brush systems exit drag mode when pinch starts.
+              this.setInputTrigger(input, 'pointerUpTrigger');
+              primaryTouchPointerId = null;
+            }
             isPinching = true;
             previousPinchDistance = currentDistance;
             return;
