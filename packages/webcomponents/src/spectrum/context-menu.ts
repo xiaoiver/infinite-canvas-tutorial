@@ -18,7 +18,6 @@ import {
   isUrl,
   Pen,
   RectSerializedNode,
-  GSerializedNode,
 } from '@infinite-canvas-tutorial/ecs';
 import { html, render } from '@spectrum-web-components/base';
 import { VirtualTrigger, openOverlay } from '@spectrum-web-components/overlay';
@@ -290,6 +289,10 @@ export class ContextMenu extends LitElement {
       this.executeToggleLock();
     } else if (value === 'crop') {
       this.executeCrop();
+    } else if (value === 'group') {
+      this.executeGroup();
+    } else if (value === 'ungroup') {
+      this.executeUngroup();
     }
   };
 
@@ -326,6 +329,7 @@ export class ContextMenu extends LitElement {
     let sendBackwardDisabled = false;
     let isLocked = false;
     let isVisible = true;
+    let isGrouped = false;
 
     if (layersSelected.length === 1) {
       const node = this.api.getNodeById(layersSelected[0]);
@@ -347,6 +351,7 @@ export class ContextMenu extends LitElement {
       }
       isLocked = node.locked;
       isVisible = node.visibility !== 'hidden';
+      isGrouped = node.type === 'g';
     }
 
     return html`${when(
@@ -422,6 +427,17 @@ export class ContextMenu extends LitElement {
               ></sp-icon-layers-send-to-back>
               ${msg(str`Send to back`)}
               <kbd slot="value">⌥⌘[</kbd>
+            </sp-menu-item>
+            <sp-menu-divider></sp-menu-divider>
+            <sp-menu-item ?disabled=${isSelectedEmpty || isGrouped || layersSelected.length < 2} value="group">
+              <sp-icon-group slot="icon"></sp-icon-group>
+              ${msg(str`Group`)}
+              <kbd slot="value">⌘G</kbd>
+            </sp-menu-item>
+            <sp-menu-item ?disabled=${isSelectedEmpty || !isGrouped} value="ungroup">
+              <sp-icon-ungroup slot="icon"></sp-icon-ungroup>
+              ${msg(str`Ungroup`)}
+              <kbd slot="value">⌘⇧G</kbd>
             </sp-menu-item>
             <sp-menu-divider></sp-menu-divider>
             <sp-menu-item ?disabled=${isSelectedEmpty} value="crop">
@@ -611,6 +627,14 @@ export class ContextMenu extends LitElement {
       event.preventDefault();
       this.api.selectNodes([]);
       this.api.record();
+    } else if (event.key === 'g' && event.metaKey) {
+      this.executeGroup();
+      event.preventDefault();
+      event.stopPropagation();
+    } else if (event.key === 'g' && event.metaKey && event.shiftKey) {
+      this.executeUngroup();
+      event.preventDefault();
+      event.stopPropagation();
     }
   };
 
@@ -754,12 +778,26 @@ export class ContextMenu extends LitElement {
       children.forEach((child) => {
         this.api.reparentNode(child, clipParent);
       });
-      
+
       this.api.setAppState({
         layersCropping: [clipParent.id],
         penbarSelected: Pen.SELECT,
       });
 
+      this.api.record();
+    });
+  }
+
+  private executeGroup() {
+    this.api.runAtNextTick(() => {
+      this.api.group(this.appState.layersSelected.map((id) => this.api.getNodeById(id)));
+      this.api.record();
+    });
+  }
+
+  private executeUngroup() {
+    this.api.runAtNextTick(() => {
+      this.api.ungroup(this.api.getNodeById(this.appState.layersSelected[0]));
       this.api.record();
     });
   }

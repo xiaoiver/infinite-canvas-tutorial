@@ -24,5 +24,13 @@ export class ComputedBounds {
    */
   @field(aabbType) declare geometryWorldBounds: AABB;
 
-  @field(obbType) declare obb: OBB;
+  /**
+   * 与 Transform / Konva 式 resize 一致：decompose(GlobalTransform) 的平移 + 局部几何宽高 + rotation/scale。
+   */
+  @field(obbType) declare transformOBB: OBB;
+
+  /**
+   * 选中框、变换器、getOBB：普通图元与 transformOBB 相同；Group 为世界轴对齐子并集包络。
+   */
+  @field(obbType) declare selectionOBB: OBB;
 }

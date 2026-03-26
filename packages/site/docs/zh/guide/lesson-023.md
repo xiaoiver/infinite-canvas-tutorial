@@ -301,6 +301,7 @@ function moveSubtree(wm, wp, shift) {
 
 ## 扩展阅读 {#extended-reading}
 
+-   [How to mind map]
 -   [HN discussion]
 -   [Drawing Presentable Trees]
 -   [A Node-Positioning Algorithm for General Trees]
@@ -331,3 +332,4 @@ function moveSubtree(wm, wp, shift) {
 [mindmap-layouts]: https://github.com/leungwensen/mindmap-layouts
 [dagre]: https://github.com/dagrejs/dagre
 [elkjs]: https://github.com/kieler/elkjs
+[How to mind map]: https://www.figma.com/resource-library/how-to-mind-map/

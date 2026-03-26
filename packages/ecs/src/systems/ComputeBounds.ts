@@ -1,7 +1,9 @@
+import { mat3 } from 'gl-matrix';
 import { Entity, System } from '@lastolivegames/becsy';
 import {
   AABB,
   Brush,
+  Canvas,
   Children,
   Circle,
   ComputedBounds,
@@ -11,6 +13,7 @@ import {
   Ellipse,
   Embed,
   GlobalTransform,
+  Group,
   HTML,
   Line,
   Marker,
@@ -29,6 +32,49 @@ import {
 import { cloneStrokeWithHitTestWidth, decompose } from '../utils';
 import { safeAddComponent } from '../history';
 
+function isValidAabb(a: AABB): boolean {
+  return (
+    Number.isFinite(a.minX) &&
+    Number.isFinite(a.minY) &&
+    Number.isFinite(a.maxX) &&
+    Number.isFinite(a.maxY) &&
+    a.minX <= a.maxX &&
+    a.minY <= a.maxY
+  );
+}
+
+/** Union of child world-space AABBs (geometry or render). */
+function mergeChildrenWorldAabb(
+  entity: Entity,
+  kind: 'geometryWorldBounds' | 'renderWorldBounds',
+): AABB {
+  const merged = new AABB(Infinity, Infinity, -Infinity, -Infinity);
+  if (!entity.has(Parent)) {
+    return merged;
+  }
+  for (const child of entity.read(Parent).children) {
+    if (!child.has(ComputedBounds)) {
+      continue;
+    }
+    const wb = child.read(ComputedBounds)[kind];
+    if (!isValidAabb(wb)) {
+      continue;
+    }
+    merged.minX = Math.min(merged.minX, wb.minX);
+    merged.minY = Math.min(merged.minY, wb.minY);
+    merged.maxX = Math.max(merged.maxX, wb.maxX);
+    merged.maxY = Math.max(merged.maxY, wb.maxY);
+  }
+  return merged;
+}
+
+/** Map a world-space axis-aligned box into parent local space using inverse global matrix. */
+function worldAabbToLocal(aabb: AABB, invGlobal: Mat3): AABB {
+  const local = new AABB();
+  local.addFrame(aabb.minX, aabb.minY, aabb.maxX, aabb.maxY, invGlobal);
+  return local;
+}
+
 export class ComputeBounds extends System {
   renderables = this.query(
     (q) =>
@@ -45,6 +91,7 @@ export class ComputeBounds extends System {
           Text,
           Brush,
           VectorNetwork,
+          Group,
         ).trackWrites,
   );
 
@@ -54,6 +101,7 @@ export class ComputeBounds extends System {
     this.query(
       (q) =>
         q.using(
+          Canvas,
           Circle,
           Ellipse,
           Rect,
@@ -76,8 +124,23 @@ export class ComputeBounds extends System {
   }
 
   execute() {
+    const groupAncestorsToRefresh = new Set<Entity>();
+
     this.renderables.addedOrChanged.forEach((entity) => {
       updateBounds(entity);
+      // 子节点变化时 Group 不在 addedOrChanged，需沿父链刷新 Group 的并集 bounds
+      let e: Entity | undefined = entity;
+      while (e?.has(Children)) {
+        const parent = e.read(Children).parent;
+        if (parent.has(Group)) {
+          groupAncestorsToRefresh.add(parent);
+        }
+        e = parent;
+      }
+    });
+
+    groupAncestorsToRefresh.forEach((group) => {
+      updateBounds(group);
     });
   }
 }
@@ -166,6 +229,33 @@ export function updateBounds(entity: Entity) {
   } else if (entity.has(Embed)) {
     geometryBounds = Embed.getGeometryBounds(entity.read(Embed));
     renderBounds = geometryBounds;
+  } else if (entity.has(Group)) {
+    if (entity.has(Parent)) {
+      entity.read(Parent).children.forEach((child) => {
+        updateBounds(child);
+      });
+    }
+    const geomWorld = mergeChildrenWorldAabb(entity, 'geometryWorldBounds');
+    const renderWorld = mergeChildrenWorldAabb(entity, 'renderWorldBounds');
+    const empty = new AABB(Infinity, Infinity, -Infinity, -Infinity);
+
+    const invGl = mat3.create();
+    const invOk = mat3.invert(
+      invGl,
+      Mat3.toGLMat3(entity.read(GlobalTransform).matrix),
+    );
+    const inv = invOk ? Mat3.fromGLMat3(invGl) : null;
+
+    if (isValidAabb(geomWorld)) {
+      geometryBounds = inv ? worldAabbToLocal(geomWorld, inv) : geomWorld;
+    } else {
+      geometryBounds = empty;
+    }
+    if (isValidAabb(renderWorld)) {
+      renderBounds = inv ? worldAabbToLocal(renderWorld, inv) : renderWorld;
+    } else {
+      renderBounds = empty;
+    }
   }
 
   const hitArea = entity.has(Renderable)
@@ -199,7 +289,7 @@ export function updateBounds(entity: Entity) {
     const renderWorldBounds = new AABB();
     renderWorldBounds.addBounds(renderBounds, matrix);
 
-    const obb = new OBB({
+    const transformOBB = new OBB({
       x: translation[0],
       y: translation[1],
       width: geometryBounds.maxX - geometryBounds.minX,
@@ -209,14 +299,35 @@ export function updateBounds(entity: Entity) {
       scaleY: scale[1],
     });
 
+    const selectionOBB = entity.has(Group)
+      ? new OBB({
+          x: geometryWorldBounds.minX,
+          y: geometryWorldBounds.minY,
+          width: geometryWorldBounds.maxX - geometryWorldBounds.minX,
+          height: geometryWorldBounds.maxY - geometryWorldBounds.minY,
+          rotation: 0,
+          scaleX: 1,
+          scaleY: 1,
+        })
+      : new OBB({
+          x: transformOBB.x,
+          y: transformOBB.y,
+          width: transformOBB.width,
+          height: transformOBB.height,
+          rotation: transformOBB.rotation,
+          scaleX: transformOBB.scaleX,
+          scaleY: transformOBB.scaleY,
+        });
+
     Object.assign(entity.write(ComputedBounds), {
       renderWorldBounds,
       geometryWorldBounds,
-      obb,
+      transformOBB,
+      selectionOBB,
     });
   }
 
-  if (entity.has(Parent)) {
+  if (entity.has(Parent) && !entity.has(Group)) {
     entity.read(Parent).children.forEach((child) => {
       updateBounds(child);
     });

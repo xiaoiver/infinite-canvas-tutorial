@@ -145,7 +145,7 @@ export abstract class Drawcall {
     protected instanced: boolean,
     protected index: number,
     protected api: API,
-  ) {}
+  ) { }
 
   abstract createGeometry(): void;
   abstract createMaterial(define: string, uniformBuffer: Buffer): void;
@@ -294,8 +294,8 @@ export abstract class Drawcall {
         compare: CompareFunction.ALWAYS,
         passOp: StencilOp.REPLACE,
       } : this.parentClipMode ? {
-          compare: this.parentClipMode === 'erase' ? CompareFunction.NOTEQUAL : CompareFunction.EQUAL,
-          passOp: StencilOp.KEEP,
+        compare: this.parentClipMode === 'erase' ? CompareFunction.NOTEQUAL : CompareFunction.EQUAL,
+        passOp: StencilOp.KEEP,
       } : {
         compare: CompareFunction.ALWAYS,
         passOp: StencilOp.KEEP,
@@ -337,19 +337,19 @@ export abstract class Drawcall {
   }
 
   protected get parentClipMode() {
-    const parent = this.shapes[0].has(Children) && this.shapes[0].read(Children).parent;
+    const parent = this.shapes[0].has(Children) ? this.shapes[0].read(Children).parent : null;
     return parent?.has(ClipMode) ? parent.read(ClipMode).value : null;
   }
 
   /** When parent ClipMode is 'soft', alpha for content outside the mask (0–1). */
   protected get parentOutsideAlpha() {
-    const parent = this.shapes[0].has(Children) && this.shapes[0].read(Children).parent;
+    const parent = this.shapes[0].has(Children) ? this.shapes[0].read(Children).parent : null;
     return parent?.has(ClipMode) ? parent.read(ClipMode).outsideAlpha : 0.5;
   }
 
   protected get useWireframe() {
     return (
-      this.shapes[0]?.has(Wireframe) && this.shapes[0]?.read(Wireframe).enabled
+      this.shapes[0]?.has(Wireframe) ? this.shapes[0]?.read(Wireframe).enabled : false
     );
   }
 
@@ -437,7 +437,7 @@ export abstract class Drawcall {
 
     // create barycentric attributes
     const barycentricBufferData = new Float32Array(indiceNum * 3);
-    for (let i = 0; i < indiceNum; ) {
+    for (let i = 0; i < indiceNum;) {
       for (let j = 0; j < 3; j++) {
         const ii = uniqueIndices[i++];
         barycentricBufferData[ii * 3 + j] = 1;

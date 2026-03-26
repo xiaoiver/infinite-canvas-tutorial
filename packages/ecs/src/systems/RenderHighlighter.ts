@@ -27,15 +27,18 @@ import {
   Camera,
   FractionalIndex,
   ComputedCamera,
+  Group,
   Brush,
   Pen,
   Transformable,
   Visibility,
   Line,
+  OBB,
 } from '../components';
 import { Commands } from '../commands';
 import { getSceneRoot, updateGlobalTransform } from './Transform';
 import {
+  calculateOBBRecursive,
   TRANSFORMER_ANCHOR_FILL_COLOR,
   TRANSFORMER_ANCHOR_STROKE_COLOR,
 } from './RenderTransformer';
@@ -97,6 +100,7 @@ export class RenderHighlighter extends System {
             Polyline,
             Line,
             Text,
+            Group,
             Brush,
             ZIndex,
             SizeAttenuation,
@@ -138,17 +142,25 @@ export class RenderHighlighter extends System {
     });
 
     this.bounds.changed.forEach((entity) => {
-      if (entity.has(Highlighted)) {
-        const camera = getSceneRoot(entity);
-        this.createOrUpdate(entity, camera);
+      // 与 RenderTransformer 一致：hover 在 Group 上时 Highlighted 挂在 Group，子节点 bounds 变化需沿父链找到高亮目标
+      let e: Entity | undefined = entity;
+      while (e) {
+        if (e.has(Highlighted)) {
+          const camera = getSceneRoot(e);
+          this.createOrUpdate(e, camera);
+          break;
+        }
+        if (!e.has(Children)) {
+          break;
+        }
+        e = e.read(Children).parent;
       }
     });
   }
 
   createOrUpdate(entity: Entity, camera: Entity) {
-    if (!entity.has(ComputedBounds)) {
-      return;
-    }
+    const obb = entity.read(ComputedBounds).selectionOBB;
+    const { x, y, width, height, rotation, scaleX, scaleY } = obb;
 
     let highlighter = this.#highlighters.get(entity);
     if (!highlighter) {
@@ -181,9 +193,7 @@ export class RenderHighlighter extends System {
     safeRemoveComponent(highlighter, Polyline);
     highlighter.write(Visibility).value = 'visible';
 
-    const {
-      obb: { x, y, width, height, rotation, scaleX, scaleY },
-    } = entity.read(ComputedBounds);
+
     Object.assign(highlighter.write(Transform), {
       translation: {
         x,
@@ -218,6 +228,12 @@ export class RenderHighlighter extends System {
         width,
         height,
       });
+    } else if (entity.has(Group)) {
+      safeAddComponent(highlighter, Rect);
+      Object.assign(highlighter.write(Rect), {
+        width,
+        height,
+      });
     } else if (entity.has(Path)) {
       safeAddComponent(highlighter, Path);
       const { d } = entity.read(Path);
@@ -245,7 +261,7 @@ export class RenderHighlighter extends System {
     } else if (entity.has(Text)) {
       safeAddComponent(highlighter, Polyline);
       const {
-        obb: { width, height },
+        selectionOBB: { width, height },
       } = entity.read(ComputedBounds);
       Object.assign(highlighter.write(Polyline), {
         points: [
