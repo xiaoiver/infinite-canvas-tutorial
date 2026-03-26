@@ -501,6 +501,9 @@ importers:
       '@pixi/math':
         specifier: ^7.4.2
         version: 7.4.2
+      '@use-gesture/vanilla':
+        specifier: ^10.3.1
+        version: 10.3.1
       arabic-reshaper:
         specifier: ^1.1.0
         version: 1.1.0
@@ -5568,6 +5571,12 @@ packages:
     resolution: {integrity: sha512-p5QU+pFktEUWo5sHnAleMM6LkcxOtnhfhRbv0I5Kq4fmRHGjpJOdEz1p14CDsRokUH1GbC2EOi8V5kgOt4exdA==}
     peerDependencies:
       '@tensorflow/tfjs': ~4.11.0
+
+  '@use-gesture/core@10.3.1':
+    resolution: {integrity: sha512-WcINiDt8WjqBdUXye25anHiNxPc0VOrlT8F6LLkU6cycrOGUDyY/yyFmsg3k8i5OLvv25llc0QC45GhR/C8llw==}
+
+  '@use-gesture/vanilla@10.3.1':
+    resolution: {integrity: sha512-lT4scGLu59ovA3zmtUonukAGcA0AdOOh+iwNDS05Bsu7Lq9aZToDHhI6D8Q2qvsVraovtsLLYwPrWdG/noMAKw==}
 
   '@vercel/blob@2.0.1':
     resolution: {integrity: sha512-DeJmC/B5oH1ExazYh/UvjbN6Mg0q0wlDz29GPIPNhi4COjVzqYRkyPYjOcAZd+RgXVzWqGXholZWtGcLCPuL8A==}
@@ -16710,6 +16719,12 @@ snapshots:
   '@upscalerjs/esrgan-medium@1.0.0-beta.13(@tensorflow/tfjs@4.11.0(encoding@0.1.13)(seedrandom@3.0.5))':
     dependencies:
       '@tensorflow/tfjs': 4.11.0(encoding@0.1.13)(seedrandom@3.0.5)
+
+  '@use-gesture/core@10.3.1': {}
+
+  '@use-gesture/vanilla@10.3.1':
+    dependencies:
+      '@use-gesture/core': 10.3.1
 
   '@vercel/blob@2.0.1':
     dependencies:
