@@ -1,4 +1,5 @@
 import { co, Entity, System } from '@lastolivegames/becsy';
+import { Gesture } from '@use-gesture/vanilla';
 import { Canvas, Input, Cursor } from '../components';
 import { safeAddComponent } from '../history';
 import { DOMAdapter } from '../environment';
@@ -72,6 +73,8 @@ export class EventWriter extends System {
 
     this.pointerIds.set(entity.__id, new Set());
     const pointerIds = this.pointerIds.get(entity.__id);
+    let previousPinchDistance: number | null = null;
+    let isPinching = false;
 
     const syncCtrlShiftAltMeta = (e: PointerEvent | WheelEvent) => {
       if (e.ctrlKey) {
@@ -89,6 +92,8 @@ export class EventWriter extends System {
     };
 
     const onPointerMove = (e: PointerEvent) => {
+      if (e.pointerType === 'touch' && isPinching) return;
+
       // @see https://stackoverflow.com/questions/49500339/cant-prevent-touchmove-from-scrolling-window-on-ios
       // ev.preventDefault();
 
@@ -108,6 +113,14 @@ export class EventWriter extends System {
     };
 
     const onPointerUp = (e: PointerEvent) => {
+      if (e.pointerType === 'touch' && isPinching) {
+        pointerIds.delete(e.pointerId);
+        if (pointerIds.size < 2) {
+          isPinching = false;
+        }
+        return;
+      }
+
       this.setInputTrigger(input, 'pointerUpTrigger');
       pointerIds.delete(e.pointerId);
     };
@@ -121,6 +134,9 @@ export class EventWriter extends System {
 
       // ignore right click for now
       if (pointerIds.size > 1 || e.button === 2) {
+        if (e.pointerType === 'touch') {
+          isPinching = true;
+        }
         return;
       }
 
@@ -151,6 +167,9 @@ export class EventWriter extends System {
 
     const onPointerCancel = (e: PointerEvent) => {
       pointerIds.delete(e.pointerId);
+      if (e.pointerType === 'touch' && pointerIds.size < 2) {
+        isPinching = false;
+      }
     };
 
     const onPointerWheel = (e: WheelEvent) => {
@@ -170,6 +189,56 @@ export class EventWriter extends System {
         pointerViewport: [viewport.x, viewport.y],
       });
     };
+
+    const gesture = new Gesture(
+      element as HTMLCanvasElement,
+      {
+        onPinch: ({ event, first, last, da, origin }) => {
+          if (!Number.isFinite(da[0])) {
+            previousPinchDistance = null;
+            return;
+          }
+
+          // Needed on iOS to stop native page zoom while pinching on canvas.
+          event.preventDefault();
+
+          const currentDistance = da[0];
+          if (first || previousPinchDistance === null) {
+            isPinching = true;
+            previousPinchDistance = currentDistance;
+            return;
+          }
+
+          const distanceDelta = currentDistance - previousPinchDistance;
+          previousPinchDistance = currentDistance;
+
+          const center = { x: origin[0], y: origin[1] };
+          const viewport = api.client2Viewport({ x: center.x, y: center.y });
+          const inputState = input.write(Input);
+
+          // Match CameraControl wheel+ctrl zoom path for touch pinch.
+          inputState.wheelTrigger = true;
+          inputState.ctrlKey = true;
+          inputState.deltaX = 0;
+          inputState.deltaY = -distanceDelta;
+          inputState.pointerClient = [center.x, center.y];
+          inputState.pointerViewport = [viewport.x, viewport.y];
+
+          if (last) {
+            previousPinchDistance = null;
+            isPinching = false;
+          }
+        },
+      },
+      {
+        pinch: {
+          preventDefault: true,
+        },
+        eventOptions: {
+          capture: true,
+        },
+      },
+    );
 
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Control') {
@@ -277,6 +346,8 @@ export class EventWriter extends System {
               removeTouchEventListener(element as HTMLCanvasElement);
             }
           }
+
+          gesture.destroy();
 
           element.removeEventListener('wheel', onPointerWheel, true);
           globalThis.removeEventListener('keydown', onKeyDown, true);
