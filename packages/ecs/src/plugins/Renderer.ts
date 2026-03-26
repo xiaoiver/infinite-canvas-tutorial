@@ -66,7 +66,7 @@ import {
   Locked,
   ClipMode,
   Flex,
-  Canvas
+  Group,
 } from '../components';
 
 export interface RendererPluginOptions {
@@ -118,6 +118,7 @@ function createRendererPlugin(options: RendererPluginOptions = {}): Plugin {
     /**
      * Geometry
      */
+    component(Group);
     component(Circle);
     component(Ellipse);
     component(Rect);
@@ -145,7 +146,7 @@ function createRendererPlugin(options: RendererPluginOptions = {}): Plugin {
     system((s) => s.after(PropagateTransforms, Sort))(ComputeBounds);
 
     system(Last)(SetCursor);
-    
+
     const RenderSystem = options.rendererSystemCtor ?? MeshPipeline;
     system(Last)(RenderSystem);
     system((s) => s.before(Deleter, ExportSVG))(RenderSystem);

@@ -2,7 +2,7 @@
  * Borrow from https://github.com/excalidraw/excalidraw/blob/master/packages/excalidraw/change.ts#L399
  */
 import { ComponentType, Entity } from '@lastolivegames/becsy';
-import { isNil, isString } from '@antv/util';
+import { isString } from '@antv/util';
 import { Change } from './Change';
 import { Delta } from './Delta';
 import { newElementWith } from './Snapshot';
@@ -493,18 +493,64 @@ export class ElementsChange implements Change<SceneElementsMap> {
     const removedElements = applyDeltas(this.removed);
     const updatedElements = applyDeltas(this.updated);
 
+    const changedElements = new Map([
+      ...addedElements,
+      ...removedElements,
+      ...updatedElements,
+    ]);
+
     if (this.api) {
-      this.added.forEach((delta, id) => {
-        const { inserted, deleted } = delta;
-        const element = addedElements.get(id);
-        if (element) {
-          Object.keys(deleted).forEach((key) => {
-            delete element[key];
-          });
-          Object.assign(element, inserted);
-          this.api.updateNode(element, delta.inserted);
+      const touchedIds = new Set<string>();
+      const pendingAdded = Array.from(this.added.entries());
+      const processedAddedIds = new Set<string>();
+
+      // parent-first apply for batched add deltas
+      while (pendingAdded.length > 0) {
+        let progressed = false;
+
+        for (let i = 0; i < pendingAdded.length;) {
+          const [id, delta] = pendingAdded[i];
+          const parentId = delta.inserted.parentId as string | undefined;
+          const parentReady =
+            !parentId ||
+            !!this.api.getNodeById(parentId) ||
+            processedAddedIds.has(parentId);
+
+          if (!parentReady) {
+            i++;
+            continue;
+          }
+
+          const { inserted, deleted } = delta;
+          const element = addedElements.get(id);
+          if (element) {
+            Object.keys(deleted).forEach((key) => {
+              delete element[key];
+            });
+            Object.assign(element, inserted);
+            this.api.updateNode(element, delta.inserted);
+            touchedIds.add(id);
+          }
+          processedAddedIds.add(id);
+          pendingAdded.splice(i, 1);
+          progressed = true;
         }
-      });
+
+        if (!progressed) {
+          const [id, delta] = pendingAdded.shift()!;
+          const { inserted, deleted } = delta;
+          const element = addedElements.get(id);
+          if (element) {
+            Object.keys(deleted).forEach((key) => {
+              delete element[key];
+            });
+            Object.assign(element, inserted);
+            this.api.updateNode(element, delta.inserted);
+            touchedIds.add(id);
+          }
+          processedAddedIds.add(id);
+        }
+      }
 
       this.removed.forEach((delta, id) => {
         const element = nextElements.get(id);
@@ -522,7 +568,31 @@ export class ElementsChange implements Change<SceneElementsMap> {
           });
           Object.assign(element, inserted);
           this.api.updateNode(element, delta.inserted);
+          touchedIds.add(id);
         }
+      });
+
+      // Reconcile serialized parentId with ECS relation after batch apply.
+      touchedIds.forEach((id) => {
+        const node = nextElements.get(id);
+        if (!node) {
+          return;
+        }
+
+        const entity = this.api.getEntity(node);
+        safeAddComponent(entity, Children);
+
+        if (node.parentId) {
+          const parentNode = this.api.getNodeById(node.parentId);
+          if (parentNode) {
+            const parentEntity = this.api.getEntity(parentNode);
+            safeAddComponent(parentEntity, Parent);
+            entity.write(Children).parent = parentEntity;
+            return;
+          }
+        }
+
+        entity.write(Children).parent = this.api.getCamera();
       });
     }
 
@@ -554,10 +624,10 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
   for (const key in updates) {
     const value = (updates as any)[key];
     // if (typeof value !== 'undefined') {
-      if (!skipOverrideKeys.includes(key)) {
-        (element as any)[key] = value;
-      }
-      didChange = true;
+    if (!skipOverrideKeys.includes(key)) {
+      (element as any)[key] = value;
+    }
+    didChange = true;
     // }
   }
 
@@ -644,19 +714,27 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
     clipMode,
   } = updates as unknown as SerializedNodeAttributes;
 
-  if (!isNil(parentId)) {
-    const newParentEntity = api.getEntity(api.getNodeById(parentId));
-    if (entity.has(Children)) {
-      const oldParentEntity = entity.read(Children).parent;
-      safeAddComponent(newParentEntity, Parent);
-      entity.write(Children).parent = newParentEntity;
+  if ('parentId' in updates) {
+    if (parentId) {
+      const parentNode = api.getNodeById(parentId);
+      if (parentNode) {
+        const newParentEntity = api.getEntity(parentNode);
+        safeAddComponent(entity, Children);
+        // const oldParentEntity = entity.read(Children).parent;
+        safeAddComponent(newParentEntity, Parent);
+        entity.write(Children).parent = newParentEntity;
+      }
+    } else {
+      // Remove the entity from the parent's children
+      safeAddComponent(entity, Children);
+      entity.write(Children).parent = api.getCamera();
     }
   }
 
-  if (!isNil(name)) {
+  if ('name' in updates) {
     entity.write(Name).value = name;
   }
-  if (!isNil(lockAspectRatio)) {
+  if ('lockAspectRatio' in updates) {
     if (lockAspectRatio) {
       safeAddComponent(entity, LockAspectRatio);
     } else {
@@ -886,47 +964,61 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
   }
   // TODO: Other text properties e.g. fontFamily
 
-  if ('x' in updates && !isString(x)) {
-    entity.write(Transform).translation.x = x;
-  }
-  if ('y' in updates && !isString(y)) {
-    entity.write(Transform).translation.y = y;
-  }
-  if ('rotation' in updates) {
-    entity.write(Transform).rotation = rotation;
-  }
-  if ('scaleX' in updates) {
-    entity.write(Transform).scale.x = scaleX;
-  }
-  if ('scaleY' in updates) {
-    entity.write(Transform).scale.y = scaleY;
-  }
-  if ('width' in updates && !isString(width)) {
-    if (entity.has(Rect)) {
-      entity.write(Rect).width = width;
-    } else if (entity.has(Ellipse)) {
-      Object.assign(entity.write(Ellipse), {
-        rx: width / 2,
-        cx: width / 2,
-      });
-    } else if (entity.has(HTML)) {
-      entity.write(HTML).width = width;
-    } else if (entity.has(Embed)) {
-      entity.write(Embed).width = width;
+  if ('x' in updates) {
+    if (x !== undefined && !isString(x)) {
+      entity.write(Transform).translation.x = x;
     }
   }
-  if ('height' in updates && !isString(height)) {
-    if (entity.has(Rect)) {
-      entity.write(Rect).height = height;
-    } else if (entity.has(Ellipse)) {
-      Object.assign(entity.write(Ellipse), {
-        ry: height / 2,
-        cy: height / 2,
-      });
-    } else if (entity.has(HTML)) {
-      entity.write(HTML).height = height;
-    } else if (entity.has(Embed)) {
-      entity.write(Embed).height = height;
+  if ('y' in updates) {
+    if (y !== undefined && !isString(y)) {
+      entity.write(Transform).translation.y = y;
+    }
+  }
+  if ('rotation' in updates) {
+    if (rotation !== undefined) {
+      entity.write(Transform).rotation = rotation;
+    }
+  }
+  if ('scaleX' in updates) {
+    if (scaleX !== undefined) {
+      entity.write(Transform).scale.x = scaleX;
+    }
+  }
+  if ('scaleY' in updates) {
+    if (scaleY !== undefined) {
+      entity.write(Transform).scale.y = scaleY;
+    }
+  }
+  if ('width' in updates) {
+    if (width !== undefined && !isString(width)) {
+      if (entity.has(Rect)) {
+        entity.write(Rect).width = width;
+      } else if (entity.has(Ellipse)) {
+        Object.assign(entity.write(Ellipse), {
+          rx: width / 2,
+          cx: width / 2,
+        });
+      } else if (entity.has(HTML)) {
+        entity.write(HTML).width = width;
+      } else if (entity.has(Embed)) {
+        entity.write(Embed).width = width;
+      }
+    }
+  }
+  if ('height' in updates) {
+    if (height !== undefined && !isString(height)) {
+      if (entity.has(Rect)) {
+        entity.write(Rect).height = height;
+      } else if (entity.has(Ellipse)) {
+        Object.assign(entity.write(Ellipse), {
+          ry: height / 2,
+          cy: height / 2,
+        });
+      } else if (entity.has(HTML)) {
+        entity.write(HTML).height = height;
+      } else if (entity.has(Embed)) {
+        entity.write(Embed).height = height;
+      }
     }
   }
   if ('points' in updates) {

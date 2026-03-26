@@ -8,6 +8,20 @@ import { Change } from './Change';
 import { Delta } from './Delta';
 import { SceneElementsMap } from './ElementsChange';
 
+const NON_UNDOABLE_APP_STATE_KEYS = [
+  'cameraZoom',
+  'cameraX',
+  'cameraY',
+] as const satisfies readonly (keyof AppState)[];
+
+const stripNonUndoableAppState = <T extends Partial<AppState>>(state: T): T => {
+  const next = { ...state };
+  NON_UNDOABLE_APP_STATE_KEYS.forEach((key) => {
+    delete next[key];
+  });
+  return next;
+};
+
 export class AppStateChange implements Change<AppState> {
   private constructor(
     private readonly delta: Delta<AppState>,
@@ -23,9 +37,12 @@ export class AppStateChange implements Change<AppState> {
     nextAppState: T,
     api: API,
   ): AppStateChange {
+    const prevFiltered = stripNonUndoableAppState(prevAppState);
+    const nextFiltered = stripNonUndoableAppState(nextAppState);
+
     const delta = Delta.calculate(
-      prevAppState,
-      nextAppState,
+      prevFiltered,
+      nextFiltered,
       undefined,
       // AppStateChange.postProcess,
     );
@@ -68,7 +85,7 @@ export class AppStateChange implements Change<AppState> {
     appState: AppState,
     nextElements: SceneElementsMap,
   ): [AppState, boolean] {
-    const directlyApplicablePartial = this.delta.inserted;
+    const directlyApplicablePartial = stripNonUndoableAppState(this.delta.inserted);
 
     const nextAppState = {
       ...appState,

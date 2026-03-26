@@ -36,7 +36,15 @@ import {
   cloneStrokeWithHitTestWidth,
   transformPath,
 } from './utils';
-import type { BrushSerializedNode, LineSerializedNode, PathSerializedNode, PolylineSerializedNode, SerializedNode } from './types/serialized-node';
+import type {
+  BrushSerializedNode,
+  GSerializedNode,
+  LineSerializedNode,
+  PathSerializedNode,
+  PolylineSerializedNode,
+  SerializedNode,
+} from './types/serialized-node';
+import { v4 as uuidv4 } from 'uuid';
 import {
   AABB,
   Brush,
@@ -57,6 +65,7 @@ import {
   Font,
   GlobalTransform,
   Grid,
+  Group,
   Highlighted,
   Landmark,
   LandmarkAnimationEffectTiming,
@@ -313,9 +322,8 @@ export class API {
   getAbsoluteTransformAndSize(node: SerializedNode) {
     const entity = this.getEntity(node);
     if (entity.has(ComputedBounds)) {
-      const { width, height } = entity.read(ComputedBounds).obb;
       const { translation, rotation, scale } = entity.read(Transform);
-
+      const { width, height } = entity.read(ComputedBounds).transformOBB;
       return {
         id: node.id,
         x: translation.x,
@@ -523,9 +531,14 @@ export class API {
 
   elementsFromPoint(point: IPointData, shouldFilterLocked = true) {
     const entities = this.elementsFromBBox(point.x, point.y, point.x, point.y, shouldFilterLocked);
-    
+
     const results: Entity[] = [];
     entities.forEach((entity) => {
+      if (!entity.has(GlobalTransform)) {
+        console.warn('entity has no GlobalTransform', entity.__id);
+        return;
+      }
+
       const matrix = Mat3.toGLMat3(entity.read(GlobalTransform).matrix);
       const invMatrix = mat3.invert(mat3.create(), matrix);
       const [x, y] = vec2.transformMat3(vec2.create(), [point.x, point.y], invMatrix);
@@ -556,9 +569,9 @@ export class API {
       } else if (entity.has(Ellipse)) {
         const { cx, cy, rx, ry } = entity.read(Ellipse);
         if (hasFill && hasStroke) {
-          isIntersected =  isPointInEllipse(x, y, cx, cy, rx + offset, ry + offset);
+          isIntersected = isPointInEllipse(x, y, cx, cy, rx + offset, ry + offset);
         } else if (hasFill) {
-          isIntersected =  isPointInEllipse(x, y, cx, cy, rx, ry);
+          isIntersected = isPointInEllipse(x, y, cx, cy, rx, ry);
         } else if (hasStroke) {
           isIntersected = (
             !isPointInEllipse(
@@ -1524,6 +1537,79 @@ export class API {
     }
 
     this.updateNode(node, { zIndex: minZIndex - 1 });
+  }
+
+  group(nodes: SerializedNode[]) {
+    const targets = [...new Map(nodes.map((n) => [n.id, n])).values()].filter(
+      Boolean,
+    );
+    if (targets.length === 0) {
+      return;
+    }
+
+    const bounds = this.getGeometryBounds(targets);
+    if (
+      !Number.isFinite(bounds.minX) ||
+      !Number.isFinite(bounds.minY) ||
+      !Number.isFinite(bounds.maxX) ||
+      !Number.isFinite(bounds.maxY)
+    ) {
+      return;
+    }
+
+    const parentIds = new Set(targets.map((n) => n.parentId ?? '__ROOT__'));
+    const commonParentId =
+      parentIds.size === 1 ? (targets[0].parentId ?? undefined) : undefined;
+
+    const zIndex = Math.max(...targets.map((n) => n.zIndex ?? 0), 0);
+    const groupNode: GSerializedNode = {
+      id: uuidv4(),
+      type: 'g',
+      parentId: commonParentId,
+      zIndex,
+    };
+
+    this.updateNode(groupNode);
+
+    targets.forEach((node) => {
+      if (node.id === groupNode.id) {
+        return;
+      }
+      this.reparentNode(node, groupNode);
+    });
+
+    this.selectNodes([groupNode]);
+  }
+
+  ungroup(node: SerializedNode) {
+    if (node.type !== 'g') {
+      return;
+    }
+
+    const parentId = node.parentId;
+    const groupX = node.x ?? 0;
+    const groupY = node.y ?? 0;
+    const groupZ = node.zIndex ?? 0;
+
+    const children = this.getChildren(node)
+      .map((child) => this.getNodeByEntity(child))
+      .filter(Boolean);
+    if (children.length === 0) {
+      this.deleteNodesById([node.id]);
+      return;
+    }
+
+    children.forEach((child, index) => {
+      this.updateNode(child, {
+        parentId,
+        x: (child.x ?? 0) + groupX,
+        y: (child.y ?? 0) + groupY,
+        zIndex: groupZ + index * 0.001,
+      });
+    });
+
+    this.deleteNodesById([node.id]);
+    this.selectNodes(children);
   }
 
   /**

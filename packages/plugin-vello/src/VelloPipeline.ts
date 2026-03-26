@@ -67,6 +67,7 @@ import {
   co,
   fontWeightMap,
   parseColor,
+  Group,
 } from '@infinite-canvas-tutorial/ecs';
 import {
   addRect,
@@ -215,7 +216,7 @@ function imageToRgba(src: TexImageSource): ImageRgbaData | null {
   const isVideo =
     'currentTime' in src &&
     typeof (src as unknown as { currentTime: unknown }).currentTime ===
-      'number';
+    'number';
   const cacheKey = src as unknown as object;
   if (!isVideo) {
     const cached = imageToRgbaCache.get(cacheKey);
@@ -227,14 +228,14 @@ function imageToRgba(src: TexImageSource): ImageRgbaData | null {
       'width' in src && typeof src.width === 'number'
         ? src.width
         : 'naturalWidth' in src
-        ? (src as HTMLImageElement).naturalWidth
-        : 0;
+          ? (src as HTMLImageElement).naturalWidth
+          : 0;
     const height =
       'height' in src && typeof src.height === 'number'
         ? src.height
         : 'naturalHeight' in src
-        ? (src as HTMLImageElement).naturalHeight
-        : 0;
+          ? (src as HTMLImageElement).naturalHeight
+          : 0;
     if (width === 0 || height === 0) return null;
     const canvas = new OffscreenCanvas(width, height);
     const ctx = canvas.getContext('2d', { willReadFrequently: true });
@@ -267,10 +268,6 @@ export class VelloPipeline extends System {
 
   private canvases = this.query((q) => q.current.with(Canvas).read);
 
-  private cameras = this.query(
-    (q) => q.addedOrChanged.with(ComputedCamera).trackWrites,
-  );
-
   private renderables = this.query(
     (q) =>
       q.added.and.changed.and.removed
@@ -286,6 +283,7 @@ export class VelloPipeline extends System {
           Brush,
           VectorNetwork,
           Transform,
+          Group,
         ).trackWrites,
   );
 
@@ -393,6 +391,7 @@ export class VelloPipeline extends System {
             ComputedCamera,
             Parent,
             Children,
+            Group,
             Circle,
             Ellipse,
             Rect,
@@ -506,26 +505,26 @@ export class VelloPipeline extends System {
     clearShapes(canvasId);
     const entitiesToRender = shouldRenderPartially
       ? (() => {
-          const clipParents = new Set<Entity>();
-          const entities: Entity[] = [];
-          nodes.forEach((node: SerializedNode) => {
-            const parentNode = node.parentId && api.getNodeById(node.parentId);
-            const parentEntity = parentNode && api.getEntity(parentNode);
-            const needRenderClipParent =
-              parentNode &&
-              !nodes.includes(parentNode) &&
-              parentNode.clipMode &&
-              parentEntity &&
-              !clipParents.has(parentEntity);
-            if (needRenderClipParent && parentEntity) {
-              clipParents.add(parentEntity);
-              entities.push(parentEntity);
-            }
-            const entity = api.getEntity(node);
-            if (entity) entities.push(entity);
-          });
-          return entities;
-        })()
+        const clipParents = new Set<Entity>();
+        const entities: Entity[] = [];
+        nodes.forEach((node: SerializedNode) => {
+          const parentNode = node.parentId && api.getNodeById(node.parentId);
+          const parentEntity = parentNode && api.getEntity(parentNode);
+          const needRenderClipParent =
+            parentNode &&
+            !nodes.includes(parentNode) &&
+            parentNode.clipMode &&
+            parentEntity &&
+            !clipParents.has(parentEntity);
+          if (needRenderClipParent && parentEntity) {
+            clipParents.add(parentEntity);
+            entities.push(parentEntity);
+          }
+          const entity = api.getEntity(node);
+          if (entity) entities.push(entity);
+        });
+        return entities;
+      })()
       : getDescendants(camera).filter((e) => !e.has(Culled));
 
     entitiesToRender.forEach((entity) => {
@@ -613,11 +612,11 @@ export class VelloPipeline extends System {
         let fillBlur: number | undefined = undefined;
         let dropShadow:
           | {
-              color: [number, number, number, number];
-              blur: number;
-              offsetX: number;
-              offsetY: number;
-            }
+            color: [number, number, number, number];
+            blur: number;
+            offsetX: number;
+            offsetY: number;
+          }
           | undefined = undefined;
         if (entity.has(Filter)) {
           const { value } = entity.read(Filter);
@@ -913,11 +912,10 @@ export class VelloPipeline extends System {
 
           let fontWeightValue: string | undefined = undefined;
           if (fontWeight) {
-            fontWeightValue = `${
-              typeof fontWeight === 'string'
-                ? fontWeightMap[fontWeight]
-                : fontWeight
-            }`;
+            fontWeightValue = `${typeof fontWeight === 'string'
+              ? fontWeightMap[fontWeight]
+              : fontWeight
+              }`;
           }
           const opts: Record<string, unknown> = {
             ...baseOpts,
@@ -936,10 +934,9 @@ export class VelloPipeline extends System {
             wordWrapWidth,
           };
           addText(canvasId, opts);
+        } else if (entity.has(Group)) {
+          addGroup(canvasId, baseOpts);
         }
-      } else {
-        // Group
-        addGroup(canvasId, baseOpts);
       }
     });
     this.pendingRenderables.delete(camera);

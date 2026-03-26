@@ -44,6 +44,7 @@ import {
   Locked,
   ClipMode,
   Flex,
+  Group,
 } from '../../components';
 import type {
   AttenuationAttributes,
@@ -672,11 +673,11 @@ export function serializedNodesToEntities(
       }),
     );
 
-    if (type !== 'g') {
-      entityCommands.insert(new Renderable());
-    }
+    entityCommands.insert(new Renderable());
 
-    if (type === 'ellipse' || type === 'rough-ellipse') {
+    if (type === 'g') {
+      entityCommands.insert(new Group());
+    } else if (type === 'ellipse' || type === 'rough-ellipse') {
       entityCommands.insert(
         new Ellipse({
           cx: absoluteWidth / 2,

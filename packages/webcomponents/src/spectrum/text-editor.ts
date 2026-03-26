@@ -142,19 +142,20 @@ export class TextEditor extends LitElement {
       // Edit the existing text node.
       const node = this.api.getNodeByEntity(entity) as TextSerializedNode;
 
-      const { obb } = entity.read(ComputedBounds);
+      const { geometryBounds } = entity.read(ComputedBounds);
+      const textW = geometryBounds.maxX - geometryBounds.minX;
+      const textH = geometryBounds.maxY - geometryBounds.minY;
       this.node = node;
 
       this.editable.value = node.content;
       this.updateTextareaStyle(node);
 
-      
-      this.editable.style.width = `${obb.width}px`;
+      this.editable.style.width = `${textW}px`;
       // TODO: Should account for text overflow like ellipsis or clip.
       // if (node.wordWrap && node.wordWrapWidth && node.maxLines) {
       //   this.editable.style.height = `${node.maxLines * node.lineHeight}px`;
       // } else {
-      this.editable.style.height = `${obb.height}px`;
+      this.editable.style.height = `${textH}px`;
       // }
 
       this.api.deselectNodes([node]);

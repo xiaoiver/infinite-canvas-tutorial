@@ -111,7 +111,7 @@ canvas.addEventListener(Event.READY, async (e) => {
       Pen.DRAW_ROUGH_ELLIPSE,
       Pen.IMAGE,
       Pen.LASSO,
-      // Pen.TEXT,
+      Pen.TEXT,
       // Pen.PENCIL,
       // Pen.BRUSH,
       Pen.ERASER,
@@ -165,9 +165,15 @@ canvas.addEventListener(Event.READY, async (e) => {
     type: 'g',
   };
 
+  const g2 = {
+    id: 'g-2',
+    type: 'g',
+    parentId: 'g-1',
+  };
+
   const node1 = {
     id: 'polyline-1',
-    parentId: 'g-1',
+    // parentId: 'g-1',
     type: 'polyline',
     points: '100,100 200,200 300,100 400,200',
     stroke: 'red',
@@ -178,33 +184,60 @@ canvas.addEventListener(Event.READY, async (e) => {
 
   const node2 = {
     id: 'rect-2',
-    parentId: 'g-1',
+    // parentId: 'g-1',
     type: 'rect',
     x: 100,
-    y: 100,
+    y: 300,
     width: 100,
     height: 100,
     fill: 'blue',
     zIndex: 2,
+  };
+
+  const node3 = {
+    id: 'rect-3',
+    parentId: 'g-2',
+    type: 'rect',
+    x: 300,
+    y: 300,
+    width: 100,
+    height: 100,
+    fill: 'green',
+    zIndex: 3,
+  }
+
+  const node4 = {
+    id: 'rect-4',
+    parentId: 'g-2',
+    type: 'rect',
+    x: 400,
+    y: 400,
+    width: 100,
+    height: 100,
+    fill: 'green',
+    zIndex: 3,
   }
 
   api.updateNodes([
-    g,
+    // g,
     node1,
     node2,
+    // g2,
+    // node3,
+    // node4,
   ]);
-  api.selectNodes([g]);
+  api.selectNodes([node1]);
   api.record();
 
   // api.updateNodes([node1]);
 });
 
-const VelloRendererPlugin = RendererPlugin.configure({
-  setupDeviceSystemCtor: InitVello,
-  rendererSystemCtor: VelloPipeline,
-});
-DefaultPlugins.splice(DefaultPlugins.indexOf(DefaultRendererPlugin), 1, VelloRendererPlugin);
-registerFont('/Gaegu-Regular.ttf');
+// const VelloRendererPlugin = RendererPlugin.configure({
+//   setupDeviceSystemCtor: InitVello,
+//   rendererSystemCtor: VelloPipeline,
+// });
+// DefaultPlugins.splice(DefaultPlugins.indexOf(DefaultRendererPlugin), 1, VelloRendererPlugin);
+// registerFont('/Gaegu-Regular.ttf');
 // registerFont('/NotoSansCJKsc-VF.ttf');
 // registerFont('/NotoSans-Regular.ttf');
 // registerFont('/NotoSans-Bold.ttf');

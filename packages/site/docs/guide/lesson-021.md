@@ -9,6 +9,7 @@ head:
 import TransformerRect from '../components/TransformerRect.vue'
 import TransformerLine from '../components/TransformerLine.vue'
 import TransformerPolyline from '../components/TransformerPolyline.vue'
+import TransformerGroup from '../components/TransformerGroup.vue'
 </script>
 
 # Lesson 21 - Transformer
@@ -530,6 +531,19 @@ The corresponding interaction is that when you hover over a control point, you c
 
 <TransformerPolyline />
 
+### Group {#transformer-for-group}
+
+In Figma, a group essentially acts as a “container,” similar to a folder. For more details, see: [The difference between frames and groups]
+
+-   Treat multiple elements as a single unit for operations (moving, scaling, etc.)
+-   Clicking selects the entire group by default; the group's size is automatically determined by its child elements
+-   Double-clicking allows you to enter the group and edit individual elements
+-   Group/Ungroup
+    -   Use context menus and keyboard shortcuts
+    -   Drag and drop in the Layers panel
+
+<TransformerGroup />
+
 ## Extended Reading {#extended-reading}
 
 -   [Graphics Editor Development: Custom Cursor]
@@ -552,3 +566,4 @@ The corresponding interaction is that when you hover over a control point, you c
 [SerializedNode]: /guide/lesson-010#shape-to-serialized-node
 [fig-file-parser]: https://madebyevan.com/figma/fig-file-parser
 [Is there a way to keep the image aspect ratio on transform?]: https://github.com/konvajs/react-konva/issues/407
+[The difference between frames and groups]: https://help.figma.com/hc/en-us/articles/360039832054-The-difference-between-frames-and-groups?utm_source=chatgpt.com

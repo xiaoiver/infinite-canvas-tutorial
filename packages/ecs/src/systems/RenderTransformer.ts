@@ -385,8 +385,17 @@ export class RenderTransformer extends System {
     this.accessRecentlyDeletedData(false);
 
     this.bounds.changed.forEach((entity) => {
-      if (entity.has(Selected)) {
-        camerasToUpdate.add(entity.read(Selected).camera);
+      // 选中 Group 时 bounds 写在 Group 上；子节点 resize 只触发子 ComputedBounds 变化
+      let e: Entity | undefined = entity;
+      while (e) {
+        if (e.has(Selected)) {
+          camerasToUpdate.add(e.read(Selected).camera);
+          break;
+        }
+        if (!e.has(Children)) {
+          break;
+        }
+        e = e.read(Children).parent;
       }
     });
 
@@ -653,7 +662,7 @@ export class RenderTransformer extends System {
   }
 }
 
-function calculateOBBRecursive(entities: Entity[]): OBB {
+export function calculateOBBRecursive(entities: Entity[]): OBB {
   // Merge all descendants' bounds into one OBB without rotation & scale.
   const bounds = entities
     .map((entity) => {
@@ -725,12 +734,8 @@ export function getOBB(camera: Entity): OBB {
   if (selecteds.length === 1) {
     const selected = selecteds[0];
     if (selected.has(ComputedBounds)) {
-      const { obb } = selected.read(ComputedBounds);
-      return obb;
-    } else if (selected.has(Parent)) {
-      // group
-      const { children } = selected.read(Parent);
-      return calculateOBBRecursive(children);
+      const { selectionOBB } = selected.read(ComputedBounds);
+      return selectionOBB;
     }
   }
 
