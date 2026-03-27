@@ -18,6 +18,7 @@ import {
   isUrl,
   Pen,
   RectSerializedNode,
+  GSerializedNode,
 } from '@infinite-canvas-tutorial/ecs';
 import { html, render } from '@spectrum-web-components/base';
 import { VirtualTrigger, openOverlay } from '@spectrum-web-components/overlay';
@@ -76,14 +77,12 @@ function createSVG(
   // $container.innerHTML = string;
   // const $svg = $container.children[0] as SVGSVGElement;
 
-  const root: RectSerializedNode = {
+  const root: GSerializedNode = {
     id: uuidv4(),
-    type: 'rect',
+    type: 'g',
     zIndex: getMaxZIndex(api) + 1,
     x: position?.x ?? 0,
     y: position?.y ?? 0,
-    width,
-    height,
   };
 
   const nodes = svgElementsToSerializedNodes(

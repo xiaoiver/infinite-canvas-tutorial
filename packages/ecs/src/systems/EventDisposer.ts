@@ -34,6 +34,8 @@ export class EventDisposer extends System {
         metaKey: false,
         shiftKey: false,
         key: undefined,
+        touchPanDeltaX: 0,
+        touchPanDeltaY: 0,
       });
     });
   }
