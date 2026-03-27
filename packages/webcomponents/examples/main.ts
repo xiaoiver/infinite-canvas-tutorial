@@ -173,7 +173,7 @@ canvas.addEventListener(Event.READY, async (e) => {
 
   const node1 = {
     id: 'polyline-1',
-    // parentId: 'g-1',
+    parentId: 'g-1',
     type: 'polyline',
     points: '100,100 200,200 300,100 400,200',
     stroke: 'red',
@@ -184,7 +184,7 @@ canvas.addEventListener(Event.READY, async (e) => {
 
   const node2 = {
     id: 'rect-2',
-    // parentId: 'g-1',
+    parentId: 'g-1',
     type: 'rect',
     x: 100,
     y: 300,
@@ -219,7 +219,7 @@ canvas.addEventListener(Event.READY, async (e) => {
   }
 
   api.updateNodes([
-    // g,
+    g,
     node1,
     node2,
     // g2,

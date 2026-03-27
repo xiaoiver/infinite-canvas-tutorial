@@ -7,7 +7,6 @@ description: '实现图形变换器，支持调整大小和旋转功能。学习
 import TransformerRect from '../../components/TransformerRect.vue'
 import TransformerLine from '../../components/TransformerLine.vue'
 import TransformerPolyline from '../../components/TransformerPolyline.vue'
-import TransformerGroup from '../../components/TransformerGroup.vue'
 </script>
 
 # 课程 21 - Transformer
@@ -529,19 +528,6 @@ export class Transformable {
 
 <TransformerPolyline />
 
-### Group {#transformer-for-group}
-
-在 Figma 里，group 本质就是一个“容器”，类似文件夹，详见：[The difference between frames and groups]
-
--   把多个元素当作一个整体操作（移动、缩放等）
--   点击时默认选中整个 group，group 的大小会 自动由子元素决定
--   双击可以进入内部编辑单个元素
--   成组/取消成组
-    -   使用上下文菜单和快捷键
-    -   在图层列表中通过拖拽完成
-
-<TransformerGroup />
-
 ## 扩展阅读 {#extended-reading}
 
 -   [图形编辑器开发：自定义光标]
@@ -564,4 +550,3 @@ export class Transformable {
 [SerializedNode]: /zh/guide/lesson-010#shape-to-serialized-node
 [fig-file-parser]: https://madebyevan.com/figma/fig-file-parser
 [Is there a way to keep the image aspect ratio on transform?]: https://github.com/konvajs/react-konva/issues/407
-[The difference between frames and groups]: https://help.figma.com/hc/en-us/articles/360039832054-The-difference-between-frames-and-groups?utm_source=chatgpt.com

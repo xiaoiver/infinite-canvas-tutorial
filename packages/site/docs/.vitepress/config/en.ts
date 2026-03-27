@@ -149,7 +149,7 @@ export const en = defineConfig({
                 link: 'lesson-033',
               },
               {
-                text: 'Lesson 034 - Frame and clip',
+                text: 'Lesson 034 - Group, Frame and clip',
                 link: 'lesson-034',
               },
               {

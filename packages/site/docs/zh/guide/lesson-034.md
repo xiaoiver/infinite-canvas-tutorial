@@ -10,11 +10,69 @@ import Mask from '../../components/Mask.vue'
 import ClipPathSoft from '../../components/ClipPathSoft.vue'
 import Cropping from '../../components/Cropping.vue'
 import BrushWithEraser from '../../components/BrushWithEraser.vue'
+import TransformerGroup from '../../components/TransformerGroup.vue'
 </script>
 
-# 课程 34 - Frame 与裁切
+# 课程 34 - Group, Frame 与裁切
 
 目前我们的 `Group / g` 是一种逻辑分组，它没有几何边界，例如 `x/y/width/height`，因此也不会对子元素应用裁剪。tldraw 就提供了 Group 和 Frame 这两种 [Structural shapes]。
+
+## Group {#group}
+
+在 Figma 里，group 本质就是一个“容器”，类似文件夹，详见：[The difference between frames and groups]
+
+-   把多个元素当作一个整体操作（移动、缩放等）
+-   点击时默认选中整个 group，group 的大小会 自动由子元素决定
+-   双击可以进入内部编辑单个元素
+-   成组/取消成组
+    -   使用上下文菜单和快捷键
+    -   在图层列表中通过拖拽完成
+
+<TransformerGroup />
+
+### 拖拽图层成组 {#group-ungroup-with-dnd}
+
+在实现拖拽成组前，我们可以使用 [sortablejs] 先实现同级列表内图形的拖拽排序。
+
+```ts
+import Sortable from 'sortablejs';
+
+const lists = root.querySelectorAll<HTMLElement>('.layer-siblings');
+lists.forEach((el) => {
+    const parentId = el.dataset.layerParentId ?? '';
+    const sortable = Sortable.create(el, {
+        animation: 150,
+        draggable: '.layer-branch',
+        filter: '.layer-branch--locked', // 锁定图层无法拖拽
+        preventOnFilter: false,
+        group: {
+            name: `layers-${parentId || 'root'}`,
+            pull: true,
+            put: true,
+        },
+        onEnd: (evt) => {
+            if (evt.oldIndex === evt.newIndex) {
+                return;
+            }
+            const to = evt.to as HTMLElement;
+            const orderedIds = Array.from(to.children)
+                .filter((c): c is HTMLElement =>
+                    c.classList.contains('layer-branch'),
+                )
+                .map((c) => c.dataset.nodeId)
+                .filter((id): id is string => !!id);
+            // 所有兄弟节点重新排序，依次设置 zIndex
+            this.applyLayerSiblingOrder(
+                to.dataset.layerParentId ?? '',
+                orderedIds,
+            );
+        },
+    });
+    this.sortableInstances.push(sortable);
+});
+```
+
+拖拽成组/解除绑定需要跨组操作。
 
 ## StencilBuffer {#stencil-buffer}
 
@@ -304,3 +362,5 @@ this.api.runAtNextTick(() => {
 [Crop an image]: https://help.figma.com/hc/en-us/articles/360040675194-Crop-an-image
 [image cropping in excalidraw]: https://github.com/excalidraw/excalidraw/pull/8613
 [pencil.dev]: https://docs.pencil.dev/for-developers/the-pen-format#typescript-schema
+[The difference between frames and groups]: https://help.figma.com/hc/en-us/articles/360039832054-The-difference-between-frames-and-groups?utm_source=chatgpt.com
+[sortablejs]: https://github.com/sortablejs/Sortable
