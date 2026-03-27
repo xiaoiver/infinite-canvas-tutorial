@@ -1136,12 +1136,23 @@ export class Select extends System {
         } else if (selection.mode === SelectionMode.READY_TO_SELECT) {
           selection.mode = SelectionMode.SELECT;
         } else if (selection.mode === SelectionMode.READY_TO_MOVE) {
-          if (layersCropping.length > 0) {
-            cursor.value = 'move';
+          const toSelect = this.getTopmostEntity(api, x, y, (e) => !e.has(UI));
+          const targetNode = toSelect ? api.getNodeByEntity(toSelect) : undefined;
+          const selectedIds = api.getAppState().layersSelected;
+          const hitUnselectedTarget =
+            !!targetNode && !selectedIds.includes(targetNode.id);
+
+          // Prioritize tap-to-select when clicking another shape.
+          if (hitUnselectedTarget || input.shiftKey) {
+            selection.mode = SelectionMode.SELECT;
           } else {
-            cursor.value = 'grab';
+            if (layersCropping.length > 0) {
+              cursor.value = 'move';
+            } else {
+              cursor.value = 'grab';
+            }
+            selection.mode = SelectionMode.MOVE;
           }
-          selection.mode = SelectionMode.MOVE;
         } else if (
           selection.mode === SelectionMode.READY_TO_RESIZE ||
           selection.mode === SelectionMode.READY_TO_ROTATE
@@ -1160,7 +1171,10 @@ export class Select extends System {
           selection.mode = SelectionMode.MOVE_CONTROL_POINT;
         }
 
-        if (selection.mode === SelectionMode.SELECT) {
+        if (
+          selection.mode === SelectionMode.SELECT ||
+          selection.mode === SelectionMode.READY_TO_BRUSH
+        ) {
           const toSelect = this.getTopmostEntity(api, x, y, (e) => !e.has(UI));
           if (toSelect) {
             const selected = api.getNodeByEntity(toSelect);
@@ -1174,6 +1188,11 @@ export class Select extends System {
               } else {
                 api.selectNodes([selected], input.shiftKey); // single or multi select
               }
+            }
+            // Touch devices do not have hover, so keep click-to-select working
+            // by promoting READY_TO_BRUSH to SELECT when a hit target exists.
+            if (selection.mode === SelectionMode.READY_TO_BRUSH) {
+              selection.mode = SelectionMode.SELECT;
             }
           }
 

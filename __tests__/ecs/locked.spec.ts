@@ -31,6 +31,7 @@ import {
   RectSerializedNode,
   Selected,
   Rect,
+  Locked,
 } from '../../packages/ecs/src';
 import { NodeJSAdapter, sleep, createMouseEvent } from '../utils';
 
@@ -72,6 +73,7 @@ describe('Locked', () => {
             ZIndex,
             Selected,
             Ellipse,
+            Locked,
           ).write,
       );
 
@@ -103,6 +105,7 @@ describe('Locked', () => {
           width: 100,
           height: 100,
           zIndex: 0,
+          locked: true,
         };
         api.setAppState({
           penbarSelected: Pen.SELECT,

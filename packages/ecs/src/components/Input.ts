@@ -28,6 +28,13 @@ export class Input {
 
   @field.float32 declare deltaY: number;
 
+  /**
+   * Two-finger pan delta in viewport space (from touch centroid), applied after pinch zoom.
+   */
+  @field.float32 declare touchPanDeltaX: number;
+
+  @field.float32 declare touchPanDeltaY: number;
+
   @field.float32 declare pressure: number;
 
   @field.object declare event: PointerEvent | WheelEvent | KeyboardEvent;

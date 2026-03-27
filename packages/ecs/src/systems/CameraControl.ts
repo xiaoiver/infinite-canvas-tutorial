@@ -181,6 +181,18 @@ export class CameraControl extends System {
           });
         }
       }
+
+      if (input.touchPanDeltaX !== 0 || input.touchPanDeltaY !== 0) {
+        const { x, y, zoom } = entity.read(ComputedCamera);
+        const transform = entity.write(Transform);
+        Object.assign(transform, {
+          translation: {
+            x: x + input.touchPanDeltaX / zoom,
+            y: y + input.touchPanDeltaY / zoom,
+          },
+          rotation: rotation,
+        });
+      }
     });
   }
 

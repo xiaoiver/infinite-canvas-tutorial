@@ -76,6 +76,7 @@ export class EventWriter extends System {
     let previousPinchDistance: number | null = null;
     let isPinching = false;
     let primaryTouchPointerId: number | null = null;
+    let prevTwoFingerCenterClient: { x: number; y: number } | null = null;
 
     const syncCtrlShiftAltMeta = (e: PointerEvent | WheelEvent) => {
       if (e.ctrlKey) {
@@ -213,6 +214,45 @@ export class EventWriter extends System {
         pointerClient: [e.clientX, e.clientY],
         pointerViewport: [viewport.x, viewport.y],
       });
+    };
+
+    const onTwoFingerTouchStart = (e: TouchEvent) => {
+      if (e.touches.length < 2) return;
+      const cx = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+      const cy = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+      prevTwoFingerCenterClient = { x: cx, y: cy };
+    };
+
+    const onTwoFingerTouchMove = (e: TouchEvent) => {
+      if (e.touches.length < 2) return;
+      e.preventDefault();
+
+      const cx = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+      const cy = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+      if (prevTwoFingerCenterClient === null) {
+        prevTwoFingerCenterClient = { x: cx, y: cy };
+        return;
+      }
+
+      const v0 = api.client2Viewport(prevTwoFingerCenterClient);
+      const v1 = api.client2Viewport({ x: cx, y: cy });
+      const dvx = v1.x - v0.x;
+      const dvy = v1.y - v0.y;
+      prevTwoFingerCenterClient = { x: cx, y: cy };
+      if (dvx === 0 && dvy === 0) return;
+
+      const inputState = input.write(Input);
+      inputState.touchPanDeltaX += dvx;
+      inputState.touchPanDeltaY += dvy;
+      const viewport = api.client2Viewport({ x: cx, y: cy });
+      inputState.pointerClient = [Math.round(cx), Math.round(cy)];
+      inputState.pointerViewport = [viewport.x, viewport.y];
+    };
+
+    const onTwoFingerTouchEndOrCancel = (e: TouchEvent) => {
+      if (e.touches.length < 2) {
+        prevTwoFingerCenterClient = null;
+      }
     };
 
     const gesture = new Gesture(
@@ -356,6 +396,20 @@ export class EventWriter extends System {
         }
       }
 
+      if (supportsTouchEvents) {
+        const $el = element as HTMLCanvasElement;
+        $el.addEventListener('touchstart', onTwoFingerTouchStart, {
+          capture: true,
+          passive: true,
+        });
+        $el.addEventListener('touchmove', onTwoFingerTouchMove, {
+          capture: true,
+          passive: false,
+        });
+        $el.addEventListener('touchend', onTwoFingerTouchEndOrCancel, true);
+        $el.addEventListener('touchcancel', onTwoFingerTouchEndOrCancel, true);
+      }
+
       // use passive event listeners
       // @see https://zhuanlan.zhihu.com/p/24555031
       element.addEventListener('wheel', onPointerWheel, {
@@ -378,6 +432,14 @@ export class EventWriter extends System {
           }
 
           gesture.destroy();
+
+          if (supportsTouchEvents) {
+            const $el = element as HTMLCanvasElement;
+            $el.removeEventListener('touchstart', onTwoFingerTouchStart, true);
+            $el.removeEventListener('touchmove', onTwoFingerTouchMove, true);
+            $el.removeEventListener('touchend', onTwoFingerTouchEndOrCancel, true);
+            $el.removeEventListener('touchcancel', onTwoFingerTouchEndOrCancel, true);
+          }
 
           element.removeEventListener('wheel', onPointerWheel, true);
           globalThis.removeEventListener('keydown', onKeyDown, true);
