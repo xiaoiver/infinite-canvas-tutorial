@@ -158,6 +158,7 @@ export const defaultAttributes: Record<
     ...fillDefaultAttributes,
     ...strokeDefaultAttributes,
     ...markerDefaultAttributes,
+    fill: 'none',
   },
   brush: {
     ...commonDefaultAttributes,
@@ -171,6 +172,7 @@ export const defaultAttributes: Record<
     ...fillDefaultAttributes,
     ...strokeDefaultAttributes,
     ...markerDefaultAttributes,
+    fill: 'none',
   },
   text: {
     fontFamily: 'sans-serif',
@@ -459,7 +461,7 @@ export async function serializeNodesToSVGElements(
       rest.fill && isString(rest.fill) && isGradient(rest.fill);
     const hasFillPattern = rest.fill && isPattern(rest.fill);
     const hasClipMode = !!clipMode;
-    
+
     const hasChildren = edges.some(([parentId]) => parentId === id);
 
     /**
@@ -1220,7 +1222,7 @@ async function createOrUpdateClipPath(
     const $clipPath = createSVGElement(isMask ? 'mask' : 'clipPath') as SVGClipPathElement;
     $clipPath.setAttribute('id', clipPathId);
 
-    const { clipMode, ... rest } = node;
+    const { clipMode, ...rest } = node;
     const [$parentNode] = await serializeNodesToSVGElements([rest]);
 
     /**
