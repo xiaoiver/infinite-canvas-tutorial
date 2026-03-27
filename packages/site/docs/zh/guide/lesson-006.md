@@ -597,6 +597,19 @@ zoomByPoint(point.x, point.y, (last / dist - 1) * PINCH_FACTOR);
 
 ![Pinch in ios simulator](/pinch-ios-simulator.gif)
 
+### 使用 use-gesture {#use-gesture}
+
+我们也可以使用开箱即用的手势库，例如：[@use-gesture/vanilla]。双指缩放对应相机 zoomIn/Out，双指平移对应相机平移。
+
+```ts
+import { Gesture } from '@use-gesture/vanilla';
+
+const gesture = new Gesture(element as HTMLCanvasElement, {
+    // 对应 zoom in/out
+    onPinch: ({ event, first, last, da, origin }) => {},
+});
+```
+
 ## 扩展阅读 {#extended-reading}
 
 -   [The brief history of PointerEvent]
@@ -621,3 +634,4 @@ zoomByPoint(point.x, point.y, (last / dist - 1) * PINCH_FACTOR);
 [Bubbling and capturing]: https://javascript.info/bubbling-and-capturing#capturing
 [Drag'n'Drop with mouse events]: https://javascript.info/mouse-drag-and-drop
 [What is hitStrokeWidth?]: https://konvajs.org/docs/events/Custom_Hit_Region.html#2-what-is-hitstrokewidth
+[@use-gesture/vanilla]: https://github.com/pmndrs/use-gesture
