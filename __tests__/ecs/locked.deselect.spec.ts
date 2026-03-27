@@ -32,6 +32,7 @@ import {
   Selected,
   Rect,
   Highlighted,
+  Locked,
 } from '../../packages/ecs/src';
 import { NodeJSAdapter, sleep } from '../utils';
 
@@ -77,6 +78,7 @@ describe('Locked', () => {
             Ellipse,
             Highlighted,
             Selected,
+            Locked,
           ).write,
       );
 
@@ -117,7 +119,7 @@ describe('Locked', () => {
         api.highlightNodes([node]);
 
         entity = api
-            .getEntity(node)
+          .getEntity(node)
           ?.hold();
       }
     }
