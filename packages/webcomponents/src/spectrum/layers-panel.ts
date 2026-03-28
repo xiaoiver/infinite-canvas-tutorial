@@ -1,13 +1,17 @@
-import { html, css, LitElement } from 'lit';
+import { html, css, LitElement, type PropertyValues } from 'lit';
 import { consume } from '@lit/context';
 import { map } from 'lit/directives/map.js';
 import { when } from 'lit/directives/when.js';
+import { classMap } from 'lit/directives/class-map.js';
 import { customElement } from 'lit/decorators.js';
+import Sortable from 'sortablejs';
 import {
   SerializedNode,
   Task,
   AppState,
   sortByFractionalIndex,
+  SIBLINGS_MAX_Z_INDEX,
+  SIBLINGS_MIN_Z_INDEX,
   UI,
   ZIndex,
 } from '@infinite-canvas-tutorial/ecs';
@@ -55,6 +59,24 @@ export class LayersPanel extends LitElement {
       scroll-behavior: smooth;
       scroll-padding: 8px;
     }
+
+    .layer-siblings {
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+
+    .layer-branch {
+      flex: 0 0 auto;
+    }
+
+    .layer-branch.sortable-ghost {
+      opacity: 0.45;
+    }
+
+    .layer-branch.sortable-drag {
+      cursor: grabbing;
+    }
   `;
 
   @consume({ context: appStateContext, subscribe: true })
@@ -65,6 +87,10 @@ export class LayersPanel extends LitElement {
 
   @consume({ context: apiContext, subscribe: true })
   api: ExtendedAPI;
+
+  private sortableInstances: Sortable[] = [];
+
+  private sortableInitRaf = 0;
 
   connectedCallback(): void {
     super.connectedCallback();
@@ -103,6 +129,220 @@ export class LayersPanel extends LitElement {
         }
       }
     });
+  }
+
+  disconnectedCallback(): void {
+    super.disconnectedCallback();
+    cancelAnimationFrame(this.sortableInitRaf);
+    this.destroySortables();
+  }
+
+  protected updated(_changedProperties: PropertyValues): void {
+    super.updated(_changedProperties);
+    if (!this.appState.taskbarSelected.includes(Task.SHOW_LAYERS_PANEL)) {
+      this.destroySortables();
+      return;
+    }
+    cancelAnimationFrame(this.sortableInitRaf);
+    this.sortableInitRaf = requestAnimationFrame(() => {
+      this.destroySortables();
+      this.initSortables();
+    });
+  }
+
+  private destroySortables() {
+    this.sortableInstances.forEach((s) => s.destroy());
+    this.sortableInstances = [];
+  }
+
+  private initSortables() {
+    const root = this.shadowRoot;
+    if (!root) {
+      return;
+    }
+
+    const lists = root.querySelectorAll<HTMLElement>('.layer-siblings');
+    lists.forEach((el) => {
+      const sortable = Sortable.create(el, {
+        animation: 150,
+        draggable: '.layer-branch',
+        filter: '.layer-branch--locked',
+        preventOnFilter: false,
+        group: {
+          name: 'layers',
+          pull: true,
+          put: true,
+        },
+        onEnd: (evt) => this.handleSortableEnd(evt),
+      });
+      this.sortableInstances.push(sortable);
+    });
+  }
+
+  /**
+   * Translation-only world position of a node's local origin (consistent with group / ungroup).
+   */
+  private layerNodeWorldTranslation(node: SerializedNode): {
+    x: number;
+    y: number;
+  } {
+    let x = node.x ?? 0;
+    let y = node.y ?? 0;
+    let id = node.parentId;
+    while (id) {
+      const p = this.api.getNodeById(id);
+      if (!p) {
+        break;
+      }
+      x += p.x ?? 0;
+      y += p.y ?? 0;
+      id = p.parentId;
+    }
+    return { x, y };
+  }
+
+  /**
+   * World position of parent node's local origin (0,0).
+   */
+  private layerParentOriginWorld(parent: SerializedNode): { x: number; y: number } {
+    let x = parent.x ?? 0;
+    let y = parent.y ?? 0;
+    let id = parent.parentId;
+    while (id) {
+      const p = this.api.getNodeById(id);
+      if (!p) {
+        break;
+      }
+      x += p.x ?? 0;
+      y += p.y ?? 0;
+      id = p.parentId;
+    }
+    return { x, y };
+  }
+
+  private isUnderAncestor(ancestorId: string, node: SerializedNode): boolean {
+    let id: string | undefined = node.parentId;
+    while (id) {
+      if (id === ancestorId) {
+        return true;
+      }
+      const p = this.api.getNodeById(id);
+      id = p?.parentId;
+    }
+    return false;
+  }
+
+  /**
+   * Reparent for layers panel: keep visual placement (translation stack only).
+   */
+  private reparentLayerNodeMaintainingWorldPosition(
+    node: SerializedNode,
+    newParent: SerializedNode | undefined,
+  ) {
+    const world = this.layerNodeWorldTranslation(node);
+    if (newParent === undefined) {
+      this.api.updateNode(node, {
+        parentId: undefined,
+        x: world.x,
+        y: world.y,
+      });
+      return;
+    }
+    const origin = this.layerParentOriginWorld(newParent);
+    this.api.updateNode(node, {
+      parentId: newParent.id,
+      x: world.x - origin.x,
+      y: world.y - origin.y,
+    });
+  }
+
+  private collectBranchIds(container: HTMLElement): string[] {
+    return Array.from(container.children)
+      .filter((c): c is HTMLElement => c.classList.contains('layer-branch'))
+      .map((c) => c.dataset.nodeId)
+      .filter((id): id is string => !!id);
+  }
+
+  private handleSortableEnd(evt: Sortable.SortableEvent) {
+    const from = evt.from as HTMLElement;
+    const to = evt.to as HTMLElement;
+    const toPid = to.dataset.layerParentId ?? '';
+
+    const item = evt.item as HTMLElement;
+    const movedId = item.dataset.nodeId;
+    if (!movedId) {
+      return;
+    }
+
+    const movedNode = this.api.getNodeById(movedId);
+    if (!movedNode) {
+      this.requestUpdate();
+      return;
+    }
+
+    const orderedIds = this.collectBranchIds(to);
+
+    if (from !== to) {
+      const newParent =
+        toPid === '' ? undefined : this.api.getNodeById(toPid);
+      if (toPid !== '' && !newParent) {
+        this.requestUpdate();
+        return;
+      }
+      if (
+        newParent &&
+        (newParent.id === movedNode.id ||
+          this.isUnderAncestor(movedNode.id, newParent))
+      ) {
+        this.requestUpdate();
+        return;
+      }
+      this.reparentLayerNodeMaintainingWorldPosition(movedNode, newParent);
+    } else if (evt.oldIndex === evt.newIndex) {
+      return;
+    }
+
+    this.applyLayerSiblingOrder(toPid, orderedIds);
+  }
+
+  /**
+   * Reassign sibling z-index order to match the layers panel (expects all ids to share parent toPid).
+   */
+  private applyLayerSiblingOrder(parentIdAttr: string, orderedIds: string[]) {
+    if (orderedIds.length === 0) {
+      return;
+    }
+
+    const parentId =
+      parentIdAttr === '' ? undefined : parentIdAttr;
+
+    const nodes = orderedIds
+      .map((id) => this.api.getNodeById(id))
+      .filter((n): n is SerializedNode => !!n);
+
+    if (nodes.length !== orderedIds.length) {
+      this.requestUpdate();
+      return;
+    }
+
+    for (const node of nodes) {
+      const pid = node.parentId ?? undefined;
+      if (pid !== parentId) {
+        this.requestUpdate();
+        return;
+      }
+    }
+
+    const n = nodes.length;
+    if (n >= 2) {
+      const span = SIBLINGS_MAX_Z_INDEX - SIBLINGS_MIN_Z_INDEX;
+      nodes.forEach((node, i) => {
+        const z =
+          SIBLINGS_MIN_Z_INDEX + ((i + 1) / (n + 1)) * span;
+        this.api.updateNode(node, { zIndex: z });
+      });
+    }
+    this.api.record();
   }
 
   private generateLayersPanelItemId(node: SerializedNode) {
@@ -294,15 +534,17 @@ export class LayersPanel extends LitElement {
             </sp-action-button>
           </sp-action-group>
           <div class="container">
-            ${map(sortedNodes, (node) => {
-              return this.renderParentNode(node);
-            })}
+            <div class="layer-siblings" data-layer-parent-id="">
+              ${map(sortedNodes, (node) => {
+                return this.renderLayerBranch(node, 0);
+              })}
+            </div>
           </div>
         </section>`
       : null;
   }
 
-  private renderParentNode(node: SerializedNode, depth = 0) {
+  private renderLayerBranch(node: SerializedNode, depth: number) {
     const children = this.api.getChildren(node);
     const sortedNodes = children.sort(sortByFractionalIndex).map((entity) => {
       return this.api.getNodeByEntity(entity);
@@ -312,25 +554,33 @@ export class LayersPanel extends LitElement {
     const hasChildren = sortedNodes.length > 0;
     const isExpanded = layersExpanded.includes(node.id);
 
-    return html`<ic-spectrum-layers-panel-item
-        id=${this.generateLayersPanelItemId(node)}
-        .node=${node}
-        .depth=${depth}
-        .hasChildren=${hasChildren}
-        draggable
-        @click=${(e: MouseEvent) => this.handleSelect(e, node.id)}
-        ?selected=${layersSelected.includes(node.id)}
-        ?highlighted=${layersHighlighted.includes(node.id)}
-      ></ic-spectrum-layers-panel-item>
-      ${when(
-        hasChildren && isExpanded,
-        () => html`
-          ${map(sortedNodes, (node) => {
-            // TODO: virtual scroll for better performance
-            return this.renderParentNode(node, depth + 1);
-          })}
-        `,
-      )}`;
+    return html`<div
+        class=${classMap({
+          'layer-branch': true,
+          'layer-branch--locked': !!node.locked,
+        })}
+        data-node-id=${node.id}
+      >
+        <ic-spectrum-layers-panel-item
+          id=${this.generateLayersPanelItemId(node)}
+          .node=${node}
+          .depth=${depth}
+          .hasChildren=${hasChildren}
+          @click=${(e: MouseEvent) => this.handleSelect(e, node.id)}
+          ?selected=${layersSelected.includes(node.id)}
+          ?highlighted=${layersHighlighted.includes(node.id)}
+        ></ic-spectrum-layers-panel-item>
+        ${when(
+          hasChildren && isExpanded,
+          () => html`
+            <div class="layer-siblings" data-layer-parent-id=${node.id}>
+              ${map(sortedNodes, (child) => {
+                return this.renderLayerBranch(child, depth + 1);
+              })}
+            </div>
+          `,
+        )}
+      </div>`;
   }
 }
 

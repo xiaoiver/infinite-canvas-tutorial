@@ -10,11 +10,69 @@ import Mask from '../components/Mask.vue'
 import ClipPathSoft from '../components/ClipPathSoft.vue'
 import Cropping from '../components/Cropping.vue'
 import BrushWithEraser from '../components/BrushWithEraser.vue'
+import TransformerGroup from '../components/TransformerGroup.vue'
 </script>
 
-# Lesson 34 - Frame and clip
+# Lesson 34 - Group, Frame and clip
 
 Currently our `Group / g` is a logical grouping without geometric bounds (e.g. `x/y/width/height`), so it does not apply clipping to children. tldraw provides both Group and Frame as [Structural shapes].
+
+## Group {#group}
+
+In Figma, a group essentially acts as a “container,” similar to a folder. For more details, see: [The difference between frames and groups]
+
+-   Treat multiple elements as a single unit for operations (moving, scaling, etc.)
+-   Clicking selects the entire group by default; the group's size is automatically determined by its child elements
+-   Double-clicking allows you to enter the group and edit individual elements
+-   Group/Ungroup
+    -   Use context menus and keyboard shortcuts
+    -   Drag and drop in the Layers panel
+
+<TransformerGroup />
+
+### Group with dnd {#group-ungroup-with-dnd}
+
+Before implementing drag-and-drop grouping, we can use [sortablejs] to first enable drag-and-drop sorting of items within the same-level list.
+
+```ts
+import Sortable from 'sortablejs';
+
+const lists = root.querySelectorAll<HTMLElement>('.layer-siblings');
+lists.forEach((el) => {
+    const parentId = el.dataset.layerParentId ?? '';
+    const sortable = Sortable.create(el, {
+        animation: 150,
+        draggable: '.layer-branch',
+        filter: '.layer-branch--locked', // 锁定图层无法拖拽
+        preventOnFilter: false,
+        group: {
+            name: `layers-${parentId || 'root'}`,
+            pull: true,
+            put: true,
+        },
+        onEnd: (evt) => {
+            if (evt.oldIndex === evt.newIndex) {
+                return;
+            }
+            const to = evt.to as HTMLElement;
+            const orderedIds = Array.from(to.children)
+                .filter((c): c is HTMLElement =>
+                    c.classList.contains('layer-branch'),
+                )
+                .map((c) => c.dataset.nodeId)
+                .filter((id): id is string => !!id);
+            // 所有兄弟节点重新排序，依次设置 zIndex
+            this.applyLayerSiblingOrder(
+                to.dataset.layerParentId ?? '',
+                orderedIds,
+            );
+        },
+    });
+    this.sortableInstances.push(sortable);
+});
+```
+
+Dragging to group or ungrouping requires cross-group operations.
 
 ## Stencil Buffer {#stencil-buffer}
 
@@ -303,3 +361,5 @@ this.api.runAtNextTick(() => {
 [Crop an image]: https://help.figma.com/hc/en-us/articles/360040675194-Crop-an-image
 [image cropping in excalidraw]: https://github.com/excalidraw/excalidraw/pull/8613
 [pencil.dev]: https://docs.pencil.dev/for-developers/the-pen-format#typescript-schema
+[The difference between frames and groups]: https://help.figma.com/hc/en-us/articles/360039832054-The-difference-between-frames-and-groups?utm_source=chatgpt.com
+[sortablejs]: https://github.com/sortablejs/Sortable
