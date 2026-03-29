@@ -120,7 +120,11 @@ pub fn add_shapes_to_scene(
     render_opts: CanvasRenderOptions,
     gpu_procedural_grid: bool,
 ) {
-    if render_opts.grid && !gpu_procedural_grid {
+    // Vello line grid only if GPU procedural path is off but a line/dot style is still requested.
+    if render_opts.grid
+        && !gpu_procedural_grid
+        && render_opts.checkboard_style > 0
+    {
         add_grid_to_scene(scene, transform, viewport_width, viewport_height);
     }
     #[cfg(target_arch = "wasm32")]

@@ -4,6 +4,7 @@ import {
   Canvas,
   GPUResource,
   Grid,
+  CheckboardStyle,
   Theme,
   ComputedCamera,
   Camera,
@@ -24,9 +25,11 @@ import {
   fontWeightMap,
   filterUndefined
 } from '@infinite-canvas-tutorial/ecs';
+import { velloCanvasGridColors } from './velloGridTheme';
 import init, {
   registerFont as registerFontVello,
   runWithCanvas,
+  setCanvasRenderOptions,
   setCameraTransform,
   computePathBounds,
   hitTestPath,
@@ -164,6 +167,24 @@ export class InitVello extends System {
 
       runWithCanvas($canvas, (canvasId: number) => {
         this.canvasIds.set($canvas, canvasId);
+        // 首帧 redraw 早于 VelloPipeline 时 canvasId 尚未注册，不会调用 setCanvasRenderOptions；
+        // Rust 侧会落到默认 checkboard_style。此处与 VelloPipeline.renderCamera 对齐，保证首帧即正确。
+        const { checkboardStyle } = canvas.read(Grid);
+        const checkboardOrder: CheckboardStyle[] = [
+          CheckboardStyle.NONE,
+          CheckboardStyle.GRID,
+          CheckboardStyle.DOTS,
+        ];
+        let checkboardStyleIdx = checkboardOrder.indexOf(checkboardStyle);
+        if (checkboardStyleIdx < 0) {
+          checkboardStyleIdx = 1;
+        }
+        setCanvasRenderOptions(canvasId, {
+          grid: true,
+          ui: true,
+          checkboardStyle: checkboardStyleIdx,
+          ...velloCanvasGridColors(canvas),
+        });
       });
     });
 

@@ -20,8 +20,8 @@ use crate::text::{compute_text_bounds_internal, measure_font_internal};
 use crate::path_utils::{is_point_in_path_fill, is_point_in_path_stroke, path_render_bounds};
 #[cfg(target_arch = "wasm32")]
 use crate::types::{
-    CanvasRenderOptions, DropShadow, EllipseOptions, ExportViewOpts, GroupOptions,
-    ImageRectOptions, JsShape, LineOptions, PathBoundsOptions, PathHitTestOptions,
+    CanvasRenderOptions, CanvasRenderOptionsInput, DropShadow, EllipseOptions, ExportViewOpts,
+    GroupOptions, ImageRectOptions, JsShape, LineOptions, PathBoundsOptions, PathHitTestOptions,
     PathOptions, PolylineOptions, RectOptions, RoughEllipseOptions, RoughLineOptions,
     RoughPathOptions, RoughPolylineOptions, RoughRectOptions, StrokeAlignment, StrokeParams,
     TextOptions,
@@ -987,26 +987,6 @@ pub fn js_set_camera_transform(canvas_id: u32, opts: JsValue) {
 }
 
 #[cfg(target_arch = "wasm32")]
-fn default_canvas_grid() -> bool {
-    true
-}
-
-#[cfg(target_arch = "wasm32")]
-fn default_canvas_ui() -> bool {
-    true
-}
-
-#[cfg(target_arch = "wasm32")]
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct CanvasRenderOptionsInput {
-    #[serde(default = "default_canvas_grid")]
-    pub grid: bool,
-    #[serde(default = "default_canvas_ui")]
-    pub ui: bool,
-}
-
-#[cfg(target_arch = "wasm32")]
 #[wasm_bindgen(js_name = setCanvasRenderOptions)]
 pub fn js_set_canvas_render_options(canvas_id: u32, opts: JsValue) {
     let o: CanvasRenderOptionsInput = match serde_wasm_bindgen::from_value(opts) {
@@ -1019,7 +999,13 @@ pub fn js_set_canvas_render_options(canvas_id: u32, opts: JsValue) {
         }
     };
 
-    let render_opts = CanvasRenderOptions { grid: o.grid, ui: o.ui };
+    let render_opts = CanvasRenderOptions {
+        grid: o.grid,
+        ui: o.ui,
+        checkboard_style: o.checkboard_style.min(2),
+        background_rgba: o.background_color,
+        grid_rgba: o.grid_color,
+    };
     CANVAS_RENDER_OPTIONS_PENDING.with(|c| {
         c.borrow_mut().insert(canvas_id, render_opts);
     });

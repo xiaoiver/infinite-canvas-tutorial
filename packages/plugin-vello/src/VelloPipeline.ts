@@ -24,6 +24,7 @@ import {
   GlobalTransform,
   GPUResource,
   Grid,
+  CheckboardStyle,
   InnerShadow,
   Line,
   Opacity,
@@ -88,6 +89,7 @@ import {
   addRoughPath,
 } from '@infinite-canvas-tutorial/vello-renderer';
 import { setCanvasRenderOptions } from '@infinite-canvas-tutorial/vello-renderer';
+import { velloCanvasGridColors } from './velloGridTheme';
 import type { SerializedNode } from '@infinite-canvas-tutorial/ecs';
 import { InitVello } from './InitVello';
 
@@ -483,6 +485,25 @@ export class VelloPipeline extends System {
     const shouldRenderGrid = !request || grid;
     const shouldRenderPartially = nodes.length > 0;
 
+    const { checkboardStyle } = canvas.read(Grid);
+    const checkboardOrder: CheckboardStyle[] = [
+      CheckboardStyle.NONE,
+      CheckboardStyle.GRID,
+      CheckboardStyle.DOTS,
+    ];
+    let checkboardStyleIdx = checkboardOrder.indexOf(checkboardStyle);
+    if (checkboardStyleIdx < 0) {
+      checkboardStyleIdx = 1;
+    }
+    const checkboardStyleForWasm = shouldRenderGrid ? checkboardStyleIdx : 0;
+
+    setCanvasRenderOptions(canvasId, {
+      grid: shouldRenderGrid,
+      ui: !request,
+      checkboardStyle: checkboardStyleForWasm,
+      ...velloCanvasGridColors(canvas),
+    });
+
     const PADDING = 0;
     let exportLogicalWidth = 0;
     let exportLogicalHeight = 0;
@@ -496,10 +517,6 @@ export class VelloPipeline extends System {
       bounds = api.getBounds(nodes);
       exportLogicalWidth = bounds.maxX - bounds.minX + 2 * PADDING;
       exportLogicalHeight = bounds.maxY - bounds.minY + 2 * PADDING;
-    }
-
-    if (request) {
-      setCanvasRenderOptions(canvasId, { grid: shouldRenderGrid, ui: false });
     }
 
     clearShapes(canvasId);
@@ -954,7 +971,12 @@ export class VelloPipeline extends System {
         const top = bounds.minY - PADDING;
         // 这里会触发一次额外的 redraw（导出帧）。需要保证导出那一帧也禁用 grid/UI，
         // 否则 Rust 侧 take_pending_canvas_render_options 可能已在上一帧被消费，导致导出帧仍画 grid。
-        setCanvasRenderOptions(canvasId, { grid: false, ui: false });
+        setCanvasRenderOptions(canvasId, {
+          grid: false,
+          ui: false,
+          checkboardStyle: 0,
+          ...velloCanvasGridColors(canvas),
+        });
         setExportView(
           canvasId,
           { left, top, width: exportLogicalWidth, height: exportLogicalHeight },

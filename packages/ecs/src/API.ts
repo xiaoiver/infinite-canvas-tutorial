@@ -216,12 +216,14 @@ export class API {
 
   setAppState(appState: Partial<AppState>) {
     const oldAppState = this.getAppState();
-    const { checkboardStyle, cameraZoom, cameraX, cameraY, cameraRotation } =
-      appState;
+    const { cameraZoom, cameraX, cameraY, cameraRotation } = appState;
 
-    if (checkboardStyle && checkboardStyle !== oldAppState.checkboardStyle) {
+    if (
+      Object.prototype.hasOwnProperty.call(appState, 'checkboardStyle') &&
+      appState.checkboardStyle !== oldAppState.checkboardStyle
+    ) {
       safeAddComponent(this.#canvas, Grid, {
-        checkboardStyle,
+        checkboardStyle: appState.checkboardStyle as CheckboardStyle,
       });
     }
 
