@@ -438,6 +438,8 @@ pnpm run dev
 ## 课程 35 - 基于瓦片的渲染 [🔗](https://infinitecanvas.cc/zh/guide/lesson-035)
 
 -   通过 WASM 使用 vello 作为渲染引擎，体验基于 WebGPU compute shader 的瓦片渲染
+-   基于 parley 对文本进行 Shaping、BiDi 等处理
+-   基于 kurbo 对 Polyline、Path 进行更精确的包围盒与拾取计算
 
 [在线体验]: app.infinitecanvas.cc
 [infinitecanvas]: https://infinitecanvas.tools/
