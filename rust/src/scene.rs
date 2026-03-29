@@ -118,8 +118,9 @@ pub fn add_shapes_to_scene(
     viewport_height: u32,
     canvas_id: Option<u32>,
     render_opts: CanvasRenderOptions,
+    gpu_procedural_grid: bool,
 ) {
-    if render_opts.grid {
+    if render_opts.grid && !gpu_procedural_grid {
         add_grid_to_scene(scene, transform, viewport_width, viewport_height);
     }
     #[cfg(target_arch = "wasm32")]
