@@ -65,7 +65,7 @@ export function cloneStrokeWithHitTestWidth(
     linejoin: stroke.linejoin,
     miterlimit: stroke.miterlimit,
     alignment: stroke.alignment,
-    dasharray: stroke.dasharray,
+    dasharray: [stroke.dasharray[0], stroke.dasharray[1]],
     dashoffset: stroke.dashoffset,
   } as Stroke;
 }

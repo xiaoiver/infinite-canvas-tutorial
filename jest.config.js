@@ -1,9 +1,17 @@
-const esm = ['d3-*', 'earcut', 'potpack', '@mapbox', 'roughjs']
+const esm = [
+  'd3-*',
+  'earcut',
+  'potpack',
+  '@mapbox',
+  'roughjs',
+  '@chenglou/pretext',
+]
   .map((d) => `_${d}|${d}`)
   .join('|');
 
 module.exports = {
   testTimeout: 100000,
+  setupFiles: ['<rootDir>/__tests__/jest-pretext-canvas.js'],
   testMatch: [
     '<rootDir>/__tests__/**/*/*.spec.+(ts|tsx|js)',
     '!**/e2e/*.spec.+(ts|tsx|js)',
@@ -28,5 +36,8 @@ module.exports = {
       },
     ],
   },
-  transformIgnorePatterns: [`<rootDir>/node_modules/(?!(?:.pnpm/)?(${esm}))`],
+  // pnpm nests deps at .pnpm/<name>@<ver>/node_modules/<name>/ — whitelist must include that prefix
+  transformIgnorePatterns: [
+    `<rootDir>/node_modules/(?!(?:\\.pnpm/[^/]+/node_modules/)?(${esm}))`,
+  ],
 };

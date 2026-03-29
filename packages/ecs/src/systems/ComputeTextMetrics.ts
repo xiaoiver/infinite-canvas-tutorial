@@ -1,14 +1,15 @@
+import { prepareWithSegments, layoutWithLines } from '@chenglou/pretext';
 import { System } from '@lastolivegames/becsy';
 import { Rectangle } from '@pixi/math';
-import bidiFactory from 'bidi-js';
-import ArabicReshaper from 'arabic-reshaper';
 import { ComputedTextMetrics, Text } from '../components';
 import { DOMAdapter } from '../environment';
 import { BitmapFont } from '../utils';
 import { safeAddComponent } from '../history';
 
-type TextSegment = { text: string; direction: 'ltr' | 'rtl' };
 type CharacterWidthCache = Record<string, number>;
+
+/** Used as max line width when `wordWrap` is off (Pretext still respects hard breaks in pre-wrap). */
+const PRETEXT_SOFT_WRAP_MAX = 16_777_216;
 
 const METRICS_STRING = '|ÉqÅ';
 const BASELINE_SYMBOL = 'M';
@@ -201,8 +202,6 @@ export type MeasureLineFn = (text: string, style: Partial<Text>) => number;
 let canvas: OffscreenCanvas | HTMLCanvasElement;
 let context: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
 const fonts: Record<string, FontMetricsResult> = {};
-const bidi = bidiFactory();
-const bidiCache: Record<string, string> = {};
 
 export let measureFontFn: MeasureFontFn = defaultMeasureFont;
 let measureLineFn: MeasureLineFn = defaultMeasureLine;
@@ -225,15 +224,11 @@ export class ComputeTextMetrics extends System {
   execute() {
     this.texts.addedOrChanged.forEach((entity) => {
       const text = entity.read(Text);
-      const bidiChars = computeBidi(text.content);
       const metrics = measureText(text);
 
       safeAddComponent(entity, ComputedTextMetrics);
 
-      Object.assign(entity.write(ComputedTextMetrics), {
-        bidiChars,
-        ...metrics,
-      });
+      Object.assign(entity.write(ComputedTextMetrics), metrics);
     });
   }
 }
@@ -298,8 +293,7 @@ export function measureText(
       | CanvasRenderingContext2D;
   }
 
-  const { content } = style;
-  const bidiChars = bidiCache[content] ?? content;
+  const content = style.content ?? '';
 
   const {
     wordWrap,
@@ -337,10 +331,54 @@ export function measureText(
     fontMetrics.fontSize = fontSize as number;
   }
 
-  const outputText = wordWrap
-    ? wordWrapInternal(bidiChars, style, scale)
-    : bidiChars;
-  const lines = outputText.split(/(?:\r\n|\r|\n)/);
+  const pretextLineHeight = Math.max(
+    1,
+    lineHeight || fontMetrics.fontSize + strokeWidth || Number(fontSize) || 16,
+  );
+
+  let lines: string[];
+
+  if (bitmapFont) {
+    const prepared = prepareWithSegments(content, font, {
+      whiteSpace: 'pre-wrap',
+    });
+    const { lines: visualLines } = layoutWithLines(
+      prepared,
+      PRETEXT_SOFT_WRAP_MAX,
+      pretextLineHeight,
+    );
+    const visualFlattened = visualLines.map((l) => l.text).join('\n');
+    const outputText = wordWrap
+      ? wordWrapInternal(visualFlattened, style, scale)
+      : visualFlattened;
+    lines = outputText.split(/(?:\r\n|\r|\n)/);
+  } else {
+    const prepared = prepareWithSegments(content, font, {
+      whiteSpace: 'pre-wrap',
+    });
+    const maxW =
+      wordWrap && (style.wordWrapWidth ?? 0) > 0
+        ? style.wordWrapWidth! + letterSpacing
+        : PRETEXT_SOFT_WRAP_MAX;
+    const { lines: layoutLines } = layoutWithLines(
+      prepared,
+      maxW,
+      pretextLineHeight,
+    );
+    let lineTexts = layoutLines.map((l) => l.text);
+    if (
+      wordWrap &&
+      Number.isFinite(style.maxLines) &&
+      style.maxLines > 0 &&
+      lineTexts.length > style.maxLines
+    ) {
+      lineTexts = lineTexts.slice(0, style.maxLines);
+      applyEllipsisForTruncatedLines(lineTexts, style.maxLines - 1, style, scale);
+    }
+    lines = lineTexts;
+  }
+
+  const bidiChars = lines.join('');
   const lineWidths = new Array<number>(lines.length);
   let maxLineWidth = 0;
   for (let i = 0; i < lines.length; i++) {
@@ -385,6 +423,7 @@ export function measureText(
   }
 
   return {
+    bidiChars,
     font,
     width,
     height,
@@ -412,6 +451,72 @@ export function measureText(
   };
 }
 
+function ellipsisString(style: Partial<Text>): string {
+  const textOverflow = style.textOverflow ?? 'ellipsis';
+  if (textOverflow === 'ellipsis') {
+    return '...';
+  }
+  if (textOverflow && textOverflow !== 'clip') {
+    return textOverflow;
+  }
+  return '';
+}
+
+function applyEllipsisToLine(
+  lines: string[],
+  lineIndex: number,
+  ellipsis: string,
+  ellipsisWidth: number,
+  maxWidth: number,
+  charWidth: (char: string) => number,
+): void {
+  if (ellipsisWidth <= 0 || ellipsisWidth > maxWidth) {
+    return;
+  }
+  const line = lines[lineIndex] ?? '';
+  let lastLineWidth = 0;
+  let lastLineIndex = line.length;
+  for (let i = 0; i < line.length; i++) {
+    const w = charWidth(line[i]!);
+    if (lastLineWidth + w + ellipsisWidth > maxWidth) {
+      lastLineIndex = i;
+      break;
+    }
+    lastLineWidth += w;
+  }
+  lines[lineIndex] = line.slice(0, lastLineIndex) + ellipsis;
+}
+
+/** After slicing Pretext lines to `maxLines`, trim the last line and append an ellipsis. */
+function applyEllipsisForTruncatedLines(
+  lines: string[],
+  lastLineIndex: number,
+  style: Partial<Text>,
+  scale: number,
+): void {
+  const ellipsis = ellipsisString(style);
+  if (!ellipsis) {
+    return;
+  }
+  const { letterSpacing = 0, wordWrapWidth = 0 } = style;
+  const maxWidth = wordWrapWidth + letterSpacing;
+  const ctx = canvas.getContext('2d', {
+    willReadFrequently: true,
+  }) as CanvasRenderingContext2D;
+  const cache: CharacterWidthCache = {};
+  const charW = (ch: string) =>
+    getFromCache(ch, letterSpacing, cache, ctx, undefined, scale, style);
+  const ellipsisWidth = Array.from(ellipsis).reduce((p, c) => p + charW(c), 0);
+  applyEllipsisToLine(
+    lines,
+    lastLineIndex,
+    ellipsis,
+    ellipsisWidth,
+    maxWidth,
+    charW,
+  );
+}
+
 /**
  * @see https://github.com/pixijs/pixijs/blob/dev/src/scene/text/canvas/CanvasTextMetrics.ts#L369
  */
@@ -420,7 +525,7 @@ function wordWrapInternal(text: string, style: Partial<Text>, scale: number) {
     willReadFrequently: true,
   });
 
-  const { letterSpacing = 0, textOverflow = 'ellipsis', maxLines, bitmapFont } = style;
+  const { letterSpacing = 0, maxLines, bitmapFont } = style;
 
   // How to handle whitespaces
   // const collapseSpaces = this.collapseSpaces(whiteSpace);
@@ -437,12 +542,7 @@ function wordWrapInternal(text: string, style: Partial<Text>, scale: number) {
   // And then the final space is simply no appended to each line
   const maxWidth = style.wordWrapWidth + letterSpacing;
 
-  let ellipsis = '';
-  if (textOverflow === 'ellipsis') {
-    ellipsis = '...';
-  } else if (textOverflow && textOverflow !== 'clip') {
-    ellipsis = textOverflow;
-  }
+  const ellipsis = ellipsisString(style);
 
   let lines: string[] = [];
   let currentIndex = 0;
@@ -465,28 +565,14 @@ function wordWrapInternal(text: string, style: Partial<Text>, scale: number) {
   }, 0);
 
   function appendEllipsis(lineIndex: number) {
-    // If there is not enough space to display the string itself, it is clipped.
-    // @see https://developer.mozilla.org/en-US/docs/Web/CSS/text-overflow#values
-    if (ellipsisWidth <= 0 || ellipsisWidth > maxWidth) {
-      return;
-    }
-
-    // Backspace from line's end.
-    const currentLineLength = lines[lineIndex].length;
-    let lastLineWidth = 0;
-    let lastLineIndex = currentLineLength;
-    for (let i = 0; i < currentLineLength; i++) {
-      const width = calcWidth(lines[lineIndex][i]);
-      if (lastLineWidth + width + ellipsisWidth > maxWidth) {
-        lastLineIndex = i;
-        break;
-      }
-
-      lastLineWidth += width;
-    }
-
-    lines[lineIndex] =
-      (lines[lineIndex] || '').slice(0, lastLineIndex) + ellipsis;
+    applyEllipsisToLine(
+      lines,
+      lineIndex,
+      ellipsis,
+      ellipsisWidth,
+      maxWidth,
+      calcWidth,
+    );
   }
 
   const chars = Array.from(text);
@@ -545,75 +631,6 @@ function wordWrapInternal(text: string, style: Partial<Text>, scale: number) {
   }
 
   return lines.join('\n');
-}
-
-export function computeBidi(text: string) {
-  if (!bidiCache[text]) {
-    // @see https://github.com/beanandbean/font-mesh-pipeline/blob/main/packages/harfbuzz-modern-wrapper/src/harfbuzz.ts#L50
-    const segmentStack = [new Array<TextSegment>()];
-
-    const reduceStack = (stack: TextSegment[][], target: number) => {
-      const validatedTarget = target < 0 ? 0 : target;
-      while (stack.length > validatedTarget + 1) {
-        const current = stack.pop()!;
-        stack[stack.length - 1]!.push(...current.reverse());
-      }
-    };
-    const pushInStack = (
-      stack: TextSegment[][],
-      text: string,
-      level: number,
-    ) => {
-      if (level + 1 > stack.length) {
-        stack.push(
-          ...Array.from(
-            { length: level + 1 - stack.length },
-            () => new Array<TextSegment>(),
-          ),
-        );
-      } else {
-        reduceStack(stack, level);
-      }
-      stack[level]!.push({
-        text,
-        direction: level % 2 === 0 ? 'ltr' : 'rtl',
-      });
-    };
-
-    const embeddingLevels = bidi.getEmbeddingLevels(text);
-    const iter = embeddingLevels.levels.entries();
-    const first = iter.next();
-    if (!first.done) {
-      let [prevIndex, prevLevel] = first.value;
-      for (const [i, level] of iter) {
-        if (level !== prevLevel) {
-          pushInStack(segmentStack, text.slice(prevIndex, i), prevLevel);
-          prevIndex = i;
-          prevLevel = level;
-        }
-      }
-      pushInStack(segmentStack, text.slice(prevIndex), prevLevel);
-      reduceStack(segmentStack, 0);
-    }
-
-    let bidiChars = '';
-    for (const segment of segmentStack[0]!) {
-      const { text, direction } = segment;
-
-      if (direction === 'ltr') {
-        bidiChars += text;
-      } else {
-        bidiChars += ArabicReshaper.convertArabic(text)
-          .split('')
-          .reverse()
-          .join('');
-      }
-    }
-
-    bidiCache[text] = bidiChars;
-  }
-
-  return bidiCache[text];
 }
 
 function measureBitmapFont(bitmapFont: BitmapFont, fontSize: number) {
@@ -755,7 +772,7 @@ function getFromCache(
   letterSpacing: number,
   cache: CharacterWidthCache,
   _context: CanvasRenderingContext2D,
-  bitmapFont: BitmapFont,
+  bitmapFont: BitmapFont | undefined,
   scale: number,
   style: Partial<Text>,
 ): number {
