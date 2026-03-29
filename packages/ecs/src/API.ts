@@ -34,6 +34,7 @@ import {
   strokeOffset,
   strokeWidthForHitTest,
   cloneStrokeWithHitTestWidth,
+  cloneSerializedNodes,
   transformPath,
 } from './utils';
 import type {
@@ -1853,6 +1854,14 @@ export class API {
       }),
     );
     this.commands.execute();
+  }
+
+  /**
+   * 克隆一组序列化节点：为每个节点生成新 id，并在本批次内重写 parentId，保持原有父子关系。
+   * 不修改入参。若某节点的父 id 不在 `nodes` 中，则其 `parentId` 置为 undefined。
+   */
+  cloneNodes(nodes: readonly SerializedNode[]): SerializedNode[] {
+    return cloneSerializedNodes(nodes);
   }
 
   async copyToClipboard(

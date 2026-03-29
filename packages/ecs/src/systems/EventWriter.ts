@@ -159,6 +159,8 @@ export class EventWriter extends System {
     };
 
     const onPointerDown = (e: PointerEvent) => {
+      api.getCanvasElement().focus({ preventScroll: true });
+
       const mouseButtons = [0, 1, 2];
 
       if (e.pointerType === 'mouse' && !mouseButtons.includes(e.button)) return;

@@ -36,8 +36,17 @@ export function executeCopy(
   appState: AppState,
   event?: ClipboardEvent,
 ) {
+
+  const nodes = appState.layersSelected.map((selectedId) => {
+    const node = api.getNodeById(selectedId);
+    if (node) {
+      return [node, ...api.getChildrenRecursively(node)];
+    }
+    return [];
+  }).flat();
+
   api.copyToClipboard(
-    appState.layersSelected.map((id) => api.getNodeById(id)),
+    nodes,
     event,
   );
 }
@@ -198,21 +207,24 @@ export async function executePaste(
         createText(api, appState, data.text, canvasPosition);
       }
     } else if (data.elements) {
-      const nodes = data.elements.map((node) => {
-        node.id = uuidv4();
-        if (node.zIndex) {
-          node.zIndex += ZINDEX_OFFSET;
-        }
+      const nodes = api.cloneNodes(data.elements);
 
-        if (canvasPosition) {
-          node.x = canvasPosition.x;
-          node.y = canvasPosition.y;
-        } else {
-          node.x = (node.x as number) + 10;
-          node.y = (node.y as number) + 10;
+      // 仅对粘贴树中的根节点做位移与 zIndex，子节点保持相对父级的变换
+      for (const node of nodes) {
+        if (!node.parentId) {
+          if (node.zIndex) {
+            node.zIndex += ZINDEX_OFFSET;
+          }
+
+          if (canvasPosition) {
+            node.x = canvasPosition.x;
+            node.y = canvasPosition.y;
+          } else {
+            node.x = (node.x as number) + 10;
+            node.y = (node.y as number) + 10;
+          }
         }
-        return node;
-      });
+      }
 
       updateAndSelectNodes(api, appState, nodes);
     }
@@ -801,8 +813,39 @@ export class ContextMenu extends LitElement {
     });
   }
 
+  private tryBindListeners() {
+    if (!this.api?.element || this.binded) {
+      return;
+    }
+
+    const $canvas = this.api.getCanvasElement();
+    $canvas.addEventListener('contextmenu', this.handleContextMenu);
+    $canvas.addEventListener('pointermove', this.handlePointerMove);
+    $canvas.addEventListener('dragover', this.handleDragOver);
+    $canvas.addEventListener('drop', this.handleDrop);
+    $canvas.addEventListener('paste', this.handlePaste);
+    $canvas.addEventListener('copy', this.handleCopy, { passive: false });
+    $canvas.addEventListener('cut', this.handleCut, { passive: false });
+    $canvas.addEventListener('keydown', this.handleKeyDown);
+
+    this.binded = true;
+  }
+
+  connectedCallback() {
+    super.connectedCallback();
+    this.tryBindListeners();
+  }
+
+  protected updated() {
+    this.tryBindListeners();
+  }
+
   disconnectedCallback() {
     super.disconnectedCallback();
+
+    if (!this.api?.element || !this.binded) {
+      return;
+    }
 
     const $canvas = this.api.getCanvasElement();
     $canvas.removeEventListener(
@@ -813,30 +856,17 @@ export class ContextMenu extends LitElement {
       'pointermove',
       this.handlePointerMove,
     );
+    $canvas.removeEventListener('dragover', this.handleDragOver);
     $canvas.removeEventListener('drop', this.handleDrop);
     $canvas.removeEventListener('paste', this.handlePaste);
     $canvas.removeEventListener('copy', this.handleCopy);
     $canvas.removeEventListener('cut', this.handleCut);
     $canvas.removeEventListener('keydown', this.handleKeyDown);
+
+    this.binded = false;
   }
 
   render() {
-    // FIXME: wait for the element to be ready.
-    if (this.api?.element && !this.binded) {
-      const $canvas = this.api.getCanvasElement();
-
-      $canvas.addEventListener('contextmenu', this.handleContextMenu);
-      $canvas.addEventListener('pointermove', this.handlePointerMove);
-      $canvas.addEventListener('dragover', this.handleDragOver);
-      $canvas.addEventListener('drop', this.handleDrop);
-      $canvas.addEventListener('paste', this.handlePaste);
-      $canvas.addEventListener('copy', this.handleCopy, { passive: false });
-      $canvas.addEventListener('cut', this.handleCut, { passive: false });
-      $canvas.addEventListener('keydown', this.handleKeyDown);
-
-      this.binded = true;
-    }
-
     return html``;
   }
 }

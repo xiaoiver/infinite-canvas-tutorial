@@ -19,6 +19,7 @@ export * from './deserialize';
 export * from './easing';
 export * from './cursor';
 export * from './clipboard';
+export * from './cloneSerializedNodes';
 export * from './marker';
 export * from './snapping';
 export * from './embed';

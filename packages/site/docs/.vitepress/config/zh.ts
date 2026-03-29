@@ -441,6 +441,7 @@ export const zh = defineConfig({
             link: 'lama-in-worker',
           },
           { text: '音频可视化', link: 'audio-visualizer' },
+          { text: '使用 vello 渲染', link: 'vello' },
         ],
       },
     },

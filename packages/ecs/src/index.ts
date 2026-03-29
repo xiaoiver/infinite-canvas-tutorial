@@ -54,6 +54,7 @@ export {
   toDomPrecision,
   loadBitmapFont,
   parseClipboard,
+  cloneSerializedNodes,
   createPasteEvent,
   readSystemClipboard,
   isSupportedImageFileType,
