@@ -111,7 +111,9 @@
       "flatted": ">=3.4.0",
       "@hono/node-server": ">=1.19.10",
       "dompurify": ">=3.3.2",
-      "picomatch": ">=4.0.4"
+      "picomatch": ">=4.0.4",
+      "brace-expansion": ">=5.0.5",
+      "path-to-regexp": ">=8.4.0"
     }
   }
 }

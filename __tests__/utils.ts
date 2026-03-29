@@ -145,7 +145,7 @@ export const NodeJSAdapter: Adapter = {
   getXMLSerializer: () => new XMLSerializer(),
   // @ts-expect-error compatible with @xmldom/xmldom
   getDOMParser: () => new DOMParser(),
-  setCursor: () => {},
+  setCursor: () => { },
   splitGraphemes: (s: string) => {
     const splitter = new GraphemeSplitter();
     return splitter.splitGraphemes(s);

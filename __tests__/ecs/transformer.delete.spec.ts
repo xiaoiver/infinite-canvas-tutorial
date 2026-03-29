@@ -137,7 +137,7 @@ describe('Transformer', () => {
 
     await app.run();
 
-    await sleep(300);
+    await sleep(1000);
 
     if (canvasEntity && cameraEntity) {
       const canvas = canvasEntity.read(Canvas);

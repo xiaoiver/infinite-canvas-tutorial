@@ -3,6 +3,7 @@ import { Gesture } from '@use-gesture/vanilla';
 import { Canvas, Input, Cursor } from '../components';
 import { safeAddComponent } from '../history';
 import { DOMAdapter } from '../environment';
+import { isBrowser } from '../utils';
 
 const DOUBLE_CLICK_DELAY = 300;
 
@@ -159,7 +160,9 @@ export class EventWriter extends System {
     };
 
     const onPointerDown = (e: PointerEvent) => {
-      api.getCanvasElement().focus({ preventScroll: true });
+      if (isBrowser) {
+        api.getCanvasElement().focus({ preventScroll: true });
+      }
 
       const mouseButtons = [0, 1, 2];
 
