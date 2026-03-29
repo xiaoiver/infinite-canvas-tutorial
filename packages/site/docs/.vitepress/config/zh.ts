@@ -291,6 +291,10 @@ export const zh = defineConfig({
                     text: '文本编辑器',
                     link: 'text-editor',
                   },
+                  {
+                    text: '使用 Pretext 度量文本',
+                    link: 'pretext',
+                  }
                 ],
               },
               {
