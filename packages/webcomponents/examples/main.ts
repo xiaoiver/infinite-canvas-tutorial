@@ -56,23 +56,24 @@ WebFont.load({
   },
 });
 
-// const res = await fetch('/Ghostscript_Tiger.svg');
+const res = await fetch('/Ghostscript_Tiger.svg');
 // const res = await fetch('/maslow-hierarchy.svg');
 // const res = await fetch('/mindmap.svg');
 // const res = await fetch('/test-camera.svg');
 // const res = await fetch(
 //   '/62f5208ddbc232ac973f53d9cfd91ba463c50b8bfd846349247709fe4a7a9053.svg',
 // );
-// const svg = await res.text();
+const svg = await res.text();
 // TODO: extract semantic groups inside comments
-// const $container = document.createElement('div');
-// $container.innerHTML = svg;
-// const $svg = $container.children[0] as SVGSVGElement;
+const $container = document.createElement('div');
+$container.innerHTML = svg;
+const $svg = $container.children[0] as SVGSVGElement;
 
 // const camera = svgSvgElementToComputedCamera($svg);
-// const nodes = svgElementsToSerializedNodes(
-//   Array.from($svg.children) as SVGElement[],
-// );
+const nodes = svgElementsToSerializedNodes(
+  Array.from($svg.children) as SVGElement[],
+);
+nodes[0].x = 500;
 
 // const root = {
 //   id: 'root',
@@ -182,27 +183,15 @@ canvas.addEventListener(Event.READY, async (e) => {
     hitStrokeWidth: 10,
   };
 
-  const node2 = {
-    id: 'rect-2',
-    parentId: 'g-1',
-    type: 'rect',
-    x: 100,
-    y: 300,
-    width: 100,
-    height: 100,
-    fill: 'blue',
-    zIndex: 2,
-  };
-
   const node3 = {
     id: 'rect-3',
-    parentId: 'g-2',
+    // parentId: 'g-2',
     type: 'rect',
     x: 300,
-    y: 300,
+    y: 500,
     width: 100,
     height: 100,
-    fill: 'green',
+    fill: '/stamp.png',
     zIndex: 3,
   }
 
@@ -219,9 +208,9 @@ canvas.addEventListener(Event.READY, async (e) => {
   }
 
   api.updateNodes([
-    g,
     node1,
-    node2,
+    ...nodes,
+    node3,
     // g2,
     // node3,
     // node4,
@@ -232,12 +221,12 @@ canvas.addEventListener(Event.READY, async (e) => {
   // api.updateNodes([node1]);
 });
 
-// const VelloRendererPlugin = RendererPlugin.configure({
-//   setupDeviceSystemCtor: InitVello,
-//   rendererSystemCtor: VelloPipeline,
-// });
-// DefaultPlugins.splice(DefaultPlugins.indexOf(DefaultRendererPlugin), 1, VelloRendererPlugin);
-// registerFont('/Gaegu-Regular.ttf');
+const VelloRendererPlugin = RendererPlugin.configure({
+  setupDeviceSystemCtor: InitVello,
+  rendererSystemCtor: VelloPipeline,
+});
+DefaultPlugins.splice(DefaultPlugins.indexOf(DefaultRendererPlugin), 1, VelloRendererPlugin);
+registerFont('/Gaegu-Regular.ttf');
 // registerFont('/NotoSansCJKsc-VF.ttf');
 // registerFont('/NotoSans-Regular.ttf');
 // registerFont('/NotoSans-Bold.ttf');

@@ -65,28 +65,28 @@ export class App {
     // Create a global init system.
     @system(PreStartUp)
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    class PreStartUpPlaceHolder extends System {}
+    class PreStartUpPlaceHolder extends System { }
     @system(StartUp)
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    class StartUpPlaceHolder extends System {}
+    class StartUpPlaceHolder extends System { }
     @system(PostStartUp)
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    class PostStartUpPlaceHolder extends System {}
+    class PostStartUpPlaceHolder extends System { }
     @system(PreUpdate)
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    class PreUpdatePlaceHolder extends System {}
+    class PreUpdatePlaceHolder extends System { }
     @system(Update)
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    class UpdatePlaceHolder extends System {}
+    class UpdatePlaceHolder extends System { }
     @system(PostUpdate)
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    class PostUpdatePlaceHolder extends System {}
+    class PostUpdatePlaceHolder extends System { }
     @system(First)
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    class FirstPlaceHolder extends System {}
+    class FirstPlaceHolder extends System { }
     @system(Last)
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    class LastPlaceHolder extends System {}
+    class LastPlaceHolder extends System { }
 
     // Build all plugins.
     for (const plugin of this.#plugins) {
@@ -114,6 +114,8 @@ export class App {
     this.world = await World.create({
       // Multithreading is not supported yet.
       threads: 1,
+      maxEntities: 4194304,
+      maxLimboComponents: 4194304,
     });
 
     const tick = async () => {

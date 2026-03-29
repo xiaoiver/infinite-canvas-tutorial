@@ -388,8 +388,5 @@ onUnmounted(async () => {
 </script>
 
 <template>
-  <ic-spectrum-canvas
-    ref="wrapper"
-    style="width: 100%; height: 400px"
-  ></ic-spectrum-canvas>
+  <ic-spectrum-canvas ref="wrapper" style="width: 100%; height: 400px"></ic-spectrum-canvas>
 </template>
