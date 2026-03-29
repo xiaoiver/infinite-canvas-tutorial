@@ -492,6 +492,9 @@ importers:
       '@antv/util':
         specifier: ^3.3.10
         version: 3.3.10
+      '@chenglou/pretext':
+        specifier: ^0.0.3
+        version: 0.0.3
       '@lastolivegames/becsy':
         specifier: ^0.16.0
         version: 0.16.0
@@ -507,18 +510,12 @@ importers:
       '@use-gesture/vanilla':
         specifier: ^10.3.1
         version: 10.3.1
-      arabic-reshaper:
-        specifier: ^1.1.0
-        version: 1.1.0
       bezier-easing:
         specifier: ^2.1.0
         version: 2.1.0
       bezier-js:
         specifier: ^6.1.4
         version: 6.1.4
-      bidi-js:
-        specifier: ^1.0.3
-        version: 1.0.3
       d3-color:
         specifier: ^3.1.0
         version: 3.1.0
@@ -2307,6 +2304,9 @@ packages:
 
   '@changesets/write@0.4.0':
     resolution: {integrity: sha512-CdTLvIOPiCNuH71pyDu3rA+Q0n65cmAbXnwWH84rKGiFumFzkmHNT8KHTMEchcxN+Kl8I54xGUhJ7l3E7X396Q==}
+
+  '@chenglou/pretext@0.0.3':
+    resolution: {integrity: sha512-RQmqMqUAPRCyv4R3LlRi/ao6KbNWYclqLA+V1HS7sWgyUUbjn3JmmlfXZSY/BjM4rbmIaMSyIVisYocYGYftiQ==}
 
   '@chevrotain/cst-dts-gen@11.0.3':
     resolution: {integrity: sha512-BvIKpRLeS/8UbfxXxgC33xOumsacaeCKAjAeLyOn7Pcp95HiRbrpl14S+9vaZLolnbssPIUuiUd8IvgkRyt6NQ==}
@@ -13065,6 +13065,8 @@ snapshots:
       fs-extra: 7.0.1
       human-id: 4.1.1
       prettier: 2.8.8
+
+  '@chenglou/pretext@0.0.3': {}
 
   '@chevrotain/cst-dts-gen@11.0.3':
     dependencies:

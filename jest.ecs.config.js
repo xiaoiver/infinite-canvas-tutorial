@@ -8,12 +8,14 @@ const esm = [
   'roughjs',
   'fractional-indexing',
   'point-to-segment-2d',
+  '@chenglou/pretext',
 ]
   .map((d) => `_${d}|${d}`)
   .join('|');
 
 module.exports = {
   testTimeout: 100000,
+  setupFiles: ['<rootDir>/__tests__/jest-pretext-canvas.js'],
   testMatch: ['**/ecs/*.spec.+(ts|tsx|js)'],
   preset: 'ts-jest',
   moduleFileExtensions: ['ts', 'tsx', 'js', 'json'],
@@ -32,5 +34,7 @@ module.exports = {
       },
     ],
   },
-  transformIgnorePatterns: [`<rootDir>/node_modules/(?!(?:.pnpm/)?(${esm}))`],
+  transformIgnorePatterns: [
+    `<rootDir>/node_modules/(?!(?:\\.pnpm/[^/]+/node_modules/)?(${esm}))`,
+  ],
 };

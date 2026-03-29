@@ -14,13 +14,12 @@ import { SerializedNode } from '../../types/serialized-node';
 import { serializePoints } from './points';
 import { deserializePoints } from '../deserialize';
 import { getGeometryBounds } from '../style';
-import { computeBidi, measureText } from '../../systems/ComputeTextMetrics';
+import { measureText } from '../../systems/ComputeTextMetrics';
 import { ComputedTextMetrics } from '../../components';
 
 export function fixTransform(transform: string, attributes: SerializedNode) {
   let metrics: Partial<ComputedTextMetrics>;
   if (attributes.type === 'text') {
-    computeBidi(attributes.content);
     metrics = measureText(attributes);
     attributes.fontBoundingBoxAscent =
       metrics.fontMetrics.fontBoundingBoxAscent;

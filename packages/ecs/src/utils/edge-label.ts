@@ -1,5 +1,4 @@
 import type { SerializedNode, TextSerializedNode } from '../types/serialized-node';
-import { computeBidi } from '../systems/ComputeTextMetrics';
 import { inferXYWidthHeight } from './deserialize/entity';
 
 export { pointAlongPolylineByT } from './polyline-arclength';
@@ -22,7 +21,6 @@ export function layoutTextAnchoredInParent(
   delete (copy as Partial<TextSerializedNode>).y;
   delete (copy as Partial<TextSerializedNode>).width;
   delete (copy as Partial<TextSerializedNode>).height;
-  computeBidi(copy.content);
   inferXYWidthHeight(copy as SerializedNode);
   return {
     x: copy.x!,

@@ -2,7 +2,6 @@ import { field, Type } from '@lastolivegames/becsy';
 import { Rectangle } from '@pixi/math';
 import { BitmapFont, strokeOffset } from '../../utils';
 import {
-  computeBidi,
   measureText,
   yOffsetFromTextBaseline,
 } from '../../systems/ComputeTextMetrics';
@@ -32,7 +31,6 @@ export class Text {
     let { width, height, fontMetrics } = computed ?? {};
     let lineHeightValue = lineHeight || fontSize as number;
     if (!width || !height || !fontMetrics) {
-      computeBidi(content);
       const metrics = measureText(text);
       width = metrics.width;
       height = metrics.height;

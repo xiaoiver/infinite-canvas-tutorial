@@ -587,13 +587,13 @@ export class API {
         }
       } else if (entity.has(Line)) {
         if (Line.hitTestProvider && hasStroke) {
-          const line = entity.read(Line);
+          const { x1, y1, x2, y2 } = entity.read(Line);
           const strokeForHit = cloneStrokeWithHitTestWidth(entity, stroke);
           isIntersected = Line.hitTestProvider({
-            x1: line.x1,
-            y1: line.y1,
-            x2: line.x2,
-            y2: line.y2,
+            x1,
+            y1,
+            x2,
+            y2,
             x,
             y,
             stroke: strokeForHit,
