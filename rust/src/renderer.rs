@@ -90,7 +90,7 @@ impl VelloRendererApp {
             grid_pass.push(None);
         }
 
-        let gpu_grid = render_opts.grid;
+        let gpu_grid = render_opts.grid && render_opts.checkboard_style != 0;
 
         scene.reset();
         add_shapes_to_scene(
@@ -124,7 +124,14 @@ impl VelloRendererApp {
 
             let inv = effective_transform.inverse();
             let zoom = affine_scale_factor(effective_transform).max(1e-6);
-            gp.write_uniforms(&device_handle.queue, inv, width, height, zoom);
+            gp.write_uniforms(
+                &device_handle.queue,
+                inv,
+                width,
+                height,
+                zoom,
+                &render_opts,
+            );
 
             let mut grid_enc = device_handle
                 .device

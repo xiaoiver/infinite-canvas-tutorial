@@ -453,14 +453,32 @@ impl JsShape {
     }
 }
 
+/// 与 `Theme.ts` 浅色默认、`MeshPipeline` 经 `parseColor` 写入的 sRGB 0–1 一致。
+pub const DEFAULT_LIGHT_CANVAS_BACKGROUND_RGBA: [f32; 4] =
+    [0xfb as f32 / 255.0, 0xfb as f32 / 255.0, 0xfb as f32 / 255.0, 1.0];
+pub const DEFAULT_LIGHT_CANVAS_GRID_RGBA: [f32; 4] =
+    [0xde as f32 / 255.0, 0xde as f32 / 255.0, 0xde as f32 / 255.0, 1.0];
+
+#[derive(Clone, Copy)]
 pub struct CanvasRenderOptions {
     pub grid: bool,
     pub ui: bool,
+    /// `0` = none, `1` = grid, `2` = dots — matches ECS `CheckboardStyle` / `u_CheckboardStyle`.
+    pub checkboard_style: u8,
+    /// sRGB 通道 0–1，与 TS `parseColor` + `/255` 一致。
+    pub background_rgba: [f32; 4],
+    pub grid_rgba: [f32; 4],
 }
 
 impl Default for CanvasRenderOptions {
     fn default() -> Self {
-        Self { grid: true, ui: true }
+        Self {
+            grid: true,
+            ui: true,
+            checkboard_style: 1,
+            background_rgba: DEFAULT_LIGHT_CANVAS_BACKGROUND_RGBA,
+            grid_rgba: DEFAULT_LIGHT_CANVAS_GRID_RGBA,
+        }
     }
 }
 
@@ -660,6 +678,20 @@ pub fn default_scale() -> f64 { 1.0 }
 pub fn default_canvas_grid() -> bool { true }
 #[cfg(target_arch = "wasm32")]
 pub fn default_canvas_ui() -> bool { true }
+#[cfg(target_arch = "wasm32")]
+pub fn default_checkboard_style_index() -> u8 {
+    1
+}
+
+#[cfg(target_arch = "wasm32")]
+pub fn default_canvas_background_rgba() -> [f32; 4] {
+    DEFAULT_LIGHT_CANVAS_BACKGROUND_RGBA
+}
+
+#[cfg(target_arch = "wasm32")]
+pub fn default_canvas_grid_rgba() -> [f32; 4] {
+    DEFAULT_LIGHT_CANVAS_GRID_RGBA
+}
 #[cfg(target_arch = "wasm32")]
 pub fn default_true() -> bool { true }
 
@@ -1345,4 +1377,10 @@ pub struct CanvasRenderOptionsInput {
     pub grid: bool,
     #[serde(default = "default_canvas_ui")]
     pub ui: bool,
+    #[serde(default = "default_checkboard_style_index")]
+    pub checkboard_style: u8,
+    #[serde(default = "default_canvas_background_rgba")]
+    pub background_color: [f32; 4],
+    #[serde(default = "default_canvas_grid_rgba")]
+    pub grid_color: [f32; 4],
 }

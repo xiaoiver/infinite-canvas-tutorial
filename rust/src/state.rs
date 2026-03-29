@@ -22,6 +22,9 @@ thread_local! {
     pub static FONT_BYTES: RefCell<Vec<Vec<u8>>> = RefCell::new(Vec::new());
     pub static CAMERA_TRANSFORM_PENDING: RefCell<HashMap<u32, Affine>> = RefCell::new(HashMap::new());
     pub static CANVAS_RENDER_OPTIONS_PENDING: RefCell<HashMap<u32, CanvasRenderOptions>> = RefCell::new(HashMap::new());
+    /// 最近一次已成功应用的选项。`take_pending_canvas_render_options` 在 pending 为空时回退到此，
+    /// 避免同一帧内 `request_redraw` 触发第二次绘制时因 pending 已被消费而落回默认（例如 checkboard_style=1）。
+    pub static LAST_CANVAS_RENDER_OPTIONS: RefCell<HashMap<u32, CanvasRenderOptions>> = RefCell::new(HashMap::new());
     pub static CANVAS_WINDOWS: RefCell<HashMap<u32, Arc<Window>>> = RefCell::new(HashMap::new());
     pub static EXPORT_VIEW_PENDING: RefCell<HashMap<u32, (ExportViewOpts, js_sys::Function)>> = RefCell::new(HashMap::new());
     pub static RESTORE_PENDING: RefCell<HashMap<u32, ()>> = RefCell::new(HashMap::new());
@@ -79,9 +82,21 @@ pub fn take_pending_camera_transform(_canvas_id: Option<u32>) -> Option<Affine> 
 
 #[cfg(target_arch = "wasm32")]
 pub fn take_pending_canvas_render_options(canvas_id: Option<u32>) -> CanvasRenderOptions {
-    canvas_id
-        .and_then(|cid| CANVAS_RENDER_OPTIONS_PENDING.with(|c| c.borrow_mut().remove(&cid)))
-        .unwrap_or_default()
+    let Some(cid) = canvas_id else {
+        return CanvasRenderOptions::default();
+    };
+    CANVAS_RENDER_OPTIONS_PENDING.with(|pending| {
+        LAST_CANVAS_RENDER_OPTIONS.with(|last| {
+            let mut p = pending.borrow_mut();
+            let mut l = last.borrow_mut();
+            if let Some(opts) = p.remove(&cid) {
+                l.insert(cid, opts);
+                opts
+            } else {
+                l.get(&cid).copied().unwrap_or_default()
+            }
+        })
+    })
 }
 
 #[cfg(not(target_arch = "wasm32"))]

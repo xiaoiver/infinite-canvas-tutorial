@@ -2,6 +2,8 @@
 //! Logic aligned with `packages/ecs/src/shaders/grid.ts`.
 
 use vello::kurbo::Affine;
+
+use crate::types::CanvasRenderOptions;
 use vello::wgpu::{
     self, BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayout,
     BindGroupLayoutDescriptor, BindGroupLayoutEntry, BindingResource, BindingType,
@@ -413,14 +415,14 @@ impl GridPass {
         width: u32,
         height: u32,
         zoom_scale: f64,
+        render_opts: &CanvasRenderOptions,
     ) {
         let m = world_from_clip_matrix(inv_transform, width, height);
         let col0 = [m[0][0], m[1][0], m[2][0], 0.0_f32];
         let col1 = [m[0][1], m[1][1], m[2][1], 0.0_f32];
         let col2 = [m[0][2], m[1][2], m[2][2], 0.0_f32];
-        const BG: [f32; 4] = [1.0, 1.0, 1.0, 1.0];
-        const GRID: [f32; 4] = [0.82, 0.82, 0.82, 1.0];
-        let zoom_style = [zoom_scale as f32, 1.0_f32, 0.0, 0.0];
+        let style_f = (render_opts.checkboard_style.min(2)) as f32;
+        let zoom_style = [zoom_scale as f32, style_f, 0.0, 0.0];
         let mut raw = [0u8; 96];
         fn pack4(raw: &mut [u8], off: usize, v: [f32; 4]) {
             for i in 0..4 {
@@ -430,8 +432,8 @@ impl GridPass {
         pack4(&mut raw, 0, col0);
         pack4(&mut raw, 16, col1);
         pack4(&mut raw, 32, col2);
-        pack4(&mut raw, 48, BG);
-        pack4(&mut raw, 64, GRID);
+        pack4(&mut raw, 48, render_opts.background_rgba);
+        pack4(&mut raw, 64, render_opts.grid_rgba);
         pack4(&mut raw, 80, zoom_style);
         queue.write_buffer(&self.uniform_buf, 0, &raw);
     }
