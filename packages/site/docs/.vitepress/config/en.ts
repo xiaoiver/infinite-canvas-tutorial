@@ -361,6 +361,10 @@ export const en = defineConfig({
                     text: 'Text editor',
                     link: 'text-editor',
                   },
+                  {
+                    text: 'Use Pretext to measure text',
+                    link: 'pretext',
+                  },
                 ],
               },
               {
