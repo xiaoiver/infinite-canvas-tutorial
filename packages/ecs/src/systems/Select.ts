@@ -913,7 +913,10 @@ export class Select extends System {
 
   private handleSelectedResized(api: API, selection: SelectOBB) {
     const camera = api.getCamera();
-    camera.write(Transformable).status = TransformableStatus.RESIZED;
+    const tfDone = camera.write(Transformable);
+    tfDone.status = TransformableStatus.RESIZED;
+    tfDone.resizeWidth = -1;
+    tfDone.resizeHeight = -1;
 
     api.setNodes(api.getNodes());
     api.record();
@@ -1574,6 +1577,7 @@ export class Select extends System {
     };
     selecteds.forEach((selected) => collectSelectedAndDescendants(selected));
 
+    let resizePreviewSet = false;
     entitiesToUpdate.forEach((selected) => {
       const node = api.getNodeByEntity(selected);
       if (!node) {
@@ -1622,9 +1626,25 @@ export class Select extends System {
       selection.obb.scaleX = obb.scaleX;
       selection.obb.scaleY = obb.scaleY;
 
+      if (selecteds.length === 1 && selected.has(Text)) {
+        const t = selected.read(Text);
+        if (t.wordWrap && (t.wordWrapWidth ?? 0) > 0) {
+          const tf = camera.write(Transformable);
+          tf.resizeWidth = obb.width;
+          tf.resizeHeight = obb.height;
+          resizePreviewSet = true;
+        }
+      }
+
       updateGlobalTransform(selected);
       updateComputedPoints(selected);
     });
+
+    if (!resizePreviewSet) {
+      const tf = camera.write(Transformable);
+      tf.resizeWidth = -1;
+      tf.resizeHeight = -1;
+    }
   }
 
   private hideBrush(selection: SelectOBB) {

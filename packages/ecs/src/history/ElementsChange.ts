@@ -945,6 +945,12 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
   if ('fontSize' in updates) {
     entity.write(Text).fontSize = fontSize;
   }
+  if ('wordWrapWidth' in updates) {
+    const w = (updates as { wordWrapWidth?: number }).wordWrapWidth;
+    if (w !== undefined) {
+      entity.write(Text).wordWrapWidth = w;
+    }
+  }
   if ('fontWeight' in updates) {
     entity.write(Text).fontWeight = fontWeight;
   }

@@ -24,6 +24,7 @@ import {
   UIType,
   ZIndex,
   Transformable,
+  TransformableStatus,
   AnchorName,
   Visibility,
   Text,
@@ -111,6 +112,7 @@ export class RenderTransformer extends System {
             Visibility,
             Anchor,
             VectorNetwork,
+            Text,
           ).write,
     );
   }
@@ -728,13 +730,34 @@ export function calculateOBBRecursive(entities: Entity[]): OBB {
  * Get the OBB of the selected nodes.
  */
 export function getOBB(camera: Entity): OBB {
-  const { selecteds } = camera.read(Transformable);
+  const tf = camera.read(Transformable);
+  const { selecteds, status, resizeWidth, resizeHeight } = tf;
 
   // Single selected, keep the original OBB include rotation & scale.
   if (selecteds.length === 1) {
     const selected = selecteds[0];
     if (selected.has(ComputedBounds)) {
       const { selectionOBB } = selected.read(ComputedBounds);
+      if (
+        status === TransformableStatus.RESIZING &&
+        resizeWidth >= 0 &&
+        resizeHeight >= 0 &&
+        selected.has(Text)
+      ) {
+        const text = selected.read(Text);
+        if (text.wordWrap && (text.wordWrapWidth ?? 0) > 0) {
+          const o = selectionOBB;
+          return new OBB({
+            x: o.x,
+            y: o.y,
+            width: resizeWidth,
+            height: resizeHeight,
+            rotation: o.rotation,
+            scaleX: o.scaleX,
+            scaleY: o.scaleY,
+          });
+        }
+      }
       return selectionOBB;
     }
   }
@@ -978,22 +1001,6 @@ export function hitTest(api: API, { x, y }: IPointData) {
         [brX, brY],
         [blX, blY],
       ]);
-
-      // Text's transform is not supported yet.
-      const { selecteds } = camera.read(Transformable);
-      if (selecteds.length === 1 && selecteds[0].has(Text)) {
-        if (isInside) {
-          return {
-            anchor: AnchorName.INSIDE,
-            cursor: 'default',
-          };
-        } else {
-          return {
-            anchor: AnchorName.OUTSIDE,
-            cursor: 'default',
-          };
-        }
-      }
 
       const distanceToTL = distanceBetweenPoints(x, y, tlX, tlY);
       const distanceToTR = distanceBetweenPoints(x, y, trX, trY);

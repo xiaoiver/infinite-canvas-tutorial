@@ -116,7 +116,6 @@ onMounted(async () => {
       1,
       VelloRendererPlugin,
     );
-    registerFont('/fonts/NotoSans-Regular.ttf');
     registerFont('/fonts/Gaegu-Regular.ttf');
 
     new App()
