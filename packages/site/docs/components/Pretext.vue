@@ -198,6 +198,18 @@ onMounted(async () => {
           textOverflow: 'ellipsis',
           zIndex: 7,
         },
+        {
+          id: 'text-8',
+          type: 'text',
+          fill: 'black',
+          content: 'سلام ABC גבא DEF 😁🚀',
+          anchorX: 120,
+          anchorY: 350,
+          fontSize: 16,
+          fontFamily: 'Gaegu',
+          textBaseline: 'bottom',
+          zIndex: 7,
+        }
       ];
 
       import('webfontloader').then((module) => {
