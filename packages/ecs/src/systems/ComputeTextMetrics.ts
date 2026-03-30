@@ -1,15 +1,28 @@
 import { prepareWithSegments, layoutWithLines } from '@chenglou/pretext';
 import { System } from '@lastolivegames/becsy';
 import { Rectangle } from '@pixi/math';
+import bidiFactory from 'bidi-js';
+import ArabicReshaper from 'arabic-reshaper';
 import { ComputedTextMetrics, Text } from '../components';
 import { DOMAdapter } from '../environment';
 import { BitmapFont } from '../utils';
 import { safeAddComponent } from '../history';
 
 type CharacterWidthCache = Record<string, number>;
+type TextSegment = { text: string; direction: 'ltr' | 'rtl' };
+
+/**
+ * Pretext 的 `line.text` 面向整段 `fillText`，与 SDF/TinySDF 按 grapheme 单独光栅化、再 LTR 排 advance 的管线不兼容
+ *（阿拉伯等需要展示字形与正确视觉顺序）。含这些脚本时仍走 legacy BiDi + reshape 生成 `lines` / `bidiChars`。
+ */
+const LEGACY_GLYPH_LAYOUT_SCRIPT_RE =
+  /[\u0590-\u05FF\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/;
 
 /** Used as max line width when `wordWrap` is off (Pretext still respects hard breaks in pre-wrap). */
 const PRETEXT_SOFT_WRAP_MAX = 16_777_216;
+
+const bidi = bidiFactory();
+const bidiCache: Record<string, string> = {};
 
 const METRICS_STRING = '|ÉqÅ';
 const BASELINE_SYMBOL = 'M';
@@ -283,6 +296,79 @@ function defaultMeasureFont(style: Partial<Text>): FontMetricsResult {
   return properties;
 }
 
+function needsLegacyGlyphLayoutForRtlScripts(text: string): boolean {
+  return LEGACY_GLYPH_LAYOUT_SCRIPT_RE.test(text);
+}
+
+/** 与原先 `computeBidi` 一致：供 SDF 逐字 atlas 使用的视觉顺序串（含阿拉伯展示形 + RTL 段反转）。 */
+function computeBidiForGlyphAtlas(text: string): string {
+  if (!bidiCache[text]) {
+    const segmentStack = [new Array<TextSegment>()];
+
+    const reduceStack = (stack: TextSegment[][], target: number) => {
+      const validatedTarget = target < 0 ? 0 : target;
+      while (stack.length > validatedTarget + 1) {
+        const current = stack.pop()!;
+        stack[stack.length - 1]!.push(...current.reverse());
+      }
+    };
+    const pushInStack = (
+      stack: TextSegment[][],
+      seg: string,
+      level: number,
+    ) => {
+      if (level + 1 > stack.length) {
+        stack.push(
+          ...Array.from(
+            { length: level + 1 - stack.length },
+            () => new Array<TextSegment>(),
+          ),
+        );
+      } else {
+        reduceStack(stack, level);
+      }
+      stack[level]!.push({
+        text: seg,
+        direction: level % 2 === 0 ? 'ltr' : 'rtl',
+      });
+    };
+
+    const embeddingLevels = bidi.getEmbeddingLevels(text);
+    const iter = embeddingLevels.levels.entries();
+    const first = iter.next();
+    if (!first.done) {
+      let [prevIndex, prevLevel] = first.value;
+      for (const [i, level] of iter) {
+        if (level !== prevLevel) {
+          pushInStack(segmentStack, text.slice(prevIndex, i), prevLevel);
+          prevIndex = i;
+          prevLevel = level;
+        }
+      }
+      pushInStack(segmentStack, text.slice(prevIndex), prevLevel);
+      reduceStack(segmentStack, 0);
+    }
+
+    let bidiChars = '';
+    for (const segment of segmentStack[0]!) {
+      const { text: seg, direction } = segment;
+
+      if (direction === 'ltr') {
+        bidiChars += seg;
+      } else {
+        bidiChars += ArabicReshaper.convertArabic(seg)
+          .split('')
+          .reverse()
+          .join('');
+      }
+    }
+
+    bidiCache[text] = bidiChars;
+  }
+
+  return bidiCache[text];
+}
+
 export function measureText(
   style: Partial<Text>,
 ): Partial<ComputedTextMetrics> {
@@ -338,7 +424,13 @@ export function measureText(
 
   let lines: string[];
 
-  if (bitmapFont) {
+  if (needsLegacyGlyphLayoutForRtlScripts(content)) {
+    const visual = computeBidiForGlyphAtlas(content);
+    const outputText = wordWrap
+      ? wordWrapInternal(visual, style, scale)
+      : visual;
+    lines = outputText.split(/(?:\r\n|\r|\n)/);
+  } else if (bitmapFont) {
     const prepared = prepareWithSegments(content, font, {
       whiteSpace: 'pre-wrap',
     });

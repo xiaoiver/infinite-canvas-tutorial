@@ -510,12 +510,18 @@ importers:
       '@use-gesture/vanilla':
         specifier: ^10.3.1
         version: 10.3.1
+      arabic-reshaper:
+        specifier: ^1.1.0
+        version: 1.1.0
       bezier-easing:
         specifier: ^2.1.0
         version: 2.1.0
       bezier-js:
         specifier: ^6.1.4
         version: 6.1.4
+      bidi-js:
+        specifier: ^1.0.3
+        version: 1.0.3
       d3-color:
         specifier: ^3.1.0
         version: 3.1.0
