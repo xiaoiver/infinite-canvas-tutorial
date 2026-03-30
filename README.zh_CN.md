@@ -184,10 +184,11 @@ pnpm run dev
     -   正确处理路径中的孔洞
     -   支持 `fillRule` 属性
 -   实现一些手绘风格图形
+-   实现水彩效果
 
-|                Path and rough shapes                 |                 Fill rule                  |
-| :--------------------------------------------------: | :----------------------------------------: |
-| ![Path and rough shapes](./screenshots/lesson13.png) | ![Fill rule](./screenshots/lesson13-2.png) |
+|                Path and rough shapes                 |                 Fill rule                  |                 Watercolor                  |
+| :--------------------------------------------------: | :----------------------------------------: | :-----------------------------------------: |
+| ![Path and rough shapes](./screenshots/lesson13.png) | ![Fill rule](./screenshots/lesson13-2.png) | ![watercolor](./screenshots/watercolor.png) |
 
 ## 课程 14 - 画布模式 [🔗](https://infinitecanvas.cc/zh/guide/lesson-014)
 

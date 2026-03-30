@@ -870,6 +870,7 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
   }
   if ('roughFillStyle' in updates) {
     safeAddComponent(entity, Rough, { fillStyle: roughFillStyle });
+    safeAddComponent(entity, MaterialDirty);
   }
   if ('roughFillWeight' in updates) {
     safeAddComponent(entity, Rough, { fillWeight: roughFillWeight });

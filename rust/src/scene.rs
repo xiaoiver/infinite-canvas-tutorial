@@ -11,6 +11,10 @@ use roughr::{core::Options, generator::Generator};
 use crate::types::{CanvasRenderOptions, FillGradientSpec, JsShape, StrokeAlignment, StrokeParams};
 use crate::types::{apply_opacity_to_color, mat3_to_affine};
 #[cfg(target_arch = "wasm32")]
+use crate::path_utils::svg_path_first_closed_polygon;
+#[cfg(target_arch = "wasm32")]
+use crate::watercolor::{self, WatercolorProfile};
+#[cfg(target_arch = "wasm32")]
 use crate::state::{get_user_shapes, FONT_BYTES, GLYPH_CACHE, IMAGE_BRUSH_CACHE};
 #[cfg(target_arch = "wasm32")]
 use crate::text::{build_text_glyphs_with_emoji_positions, get_or_create_emoji_image};
@@ -252,6 +256,48 @@ fn map_fill_style(style: &str) -> Option<roughr::core::FillStyle> {
         "dashed" => Some(FillStyle::Dashed),
         "zigzag-line" => Some(FillStyle::ZigZagLine),
         _ => Some(FillStyle::Hachure),
+    }
+}
+
+#[cfg(target_arch = "wasm32")]
+fn fill_style_is_watercolor(s: &str) -> bool {
+    s == "watercolor"
+}
+
+#[cfg(target_arch = "wasm32")]
+fn polygon_to_bezpath(points: &[[f64; 2]]) -> BezPath {
+    let mut p = BezPath::new();
+    if points.len() < 3 {
+        return p;
+    }
+    p.move_to(Point::new(points[0][0], points[0][1]));
+    for q in points.iter().skip(1) {
+        p.line_to(Point::new(q[0], q[1]));
+    }
+    p.close_path();
+    p
+}
+
+#[cfg(target_arch = "wasm32")]
+fn render_watercolor_fill_layers(
+    scene: &mut Scene,
+    shape_transform: Affine,
+    base_polygon: Vec<[f64; 2]>,
+    profile: WatercolorProfile,
+    fill_color: [f32; 4],
+    roughness: f32,
+    seed: i32,
+) {
+    if base_polygon.len() < 3 {
+        return;
+    }
+    let params = watercolor::watercolor_params(base_polygon.len(), roughness, profile, seed);
+    let layers = watercolor::watercolor_layers(base_polygon, &params, seed);
+    let la = (watercolor::WATERCOLOR_LAYER_FILL_OPACITY as f32) * fill_color[3];
+    let layer_color = [fill_color[0], fill_color[1], fill_color[2], la];
+    for layer in layers {
+        let bp = polygon_to_bezpath(&layer);
+        scene.fill(Fill::NonZero, shape_transform, Color::new(layer_color), None, &bp);
     }
 }
 
@@ -1170,14 +1216,38 @@ pub fn add_js_shape_to_scene(
             }
         }
         JsShape::Group { .. } => {}
-        JsShape::RoughRect { x, y, width, height, fill, stroke, opacity, fill_opacity, stroke_opacity, roughness, bowing, fill_style, hachure_angle, hachure_gap, fill_weight, curve_step_count, simplification, .. } => {
+        JsShape::RoughRect { x, y, width, height, fill, stroke, opacity, fill_opacity, stroke_opacity, roughness, bowing, fill_style, hachure_angle, hachure_gap, fill_weight, curve_step_count, simplification, rough_seed, .. } => {
             let fill_color = apply_opacity_to_color(fill, opacity, fill_opacity);
             let stroke_color = stroke.as_ref().map(|s| apply_opacity_to_color(s.color, opacity, stroke_opacity));
+            let wc = fill_style_is_watercolor(&fill_style) && fill_color[3] > 0.0;
+            if wc {
+                let div = ((width * width + height * height).sqrt() / 40.0).round().clamp(4.0, 16.0) as usize;
+                let mut base = watercolor::subdivide_axis_aligned_rect(width, height, div);
+                for p in &mut base {
+                    p[0] += x;
+                    p[1] += y;
+                }
+                render_watercolor_fill_layers(
+                    scene,
+                    shape_transform,
+                    base,
+                    WatercolorProfile::Rect,
+                    fill_color,
+                    roughness,
+                    rough_seed,
+                );
+            }
             let options = Options {
                 roughness: Some(roughness),
                 bowing: Some(bowing),
-                fill: if fill_color[3] > 0.0 { Some(roughr::Srgba::new(fill_color[0], fill_color[1], fill_color[2], fill_color[3])) } else { None },
-                fill_style: map_fill_style(&fill_style),
+                fill: if wc {
+                    None
+                } else if fill_color[3] > 0.0 {
+                    Some(roughr::Srgba::new(fill_color[0], fill_color[1], fill_color[2], fill_color[3]))
+                } else {
+                    None
+                },
+                fill_style: if wc { map_fill_style("solid") } else { map_fill_style(&fill_style) },
                 hachure_angle: Some(hachure_angle),
                 hachure_gap: if hachure_gap > 0.0 { Some(hachure_gap) } else { Some(stroke.as_ref().map(|s| s.width as f32).unwrap_or(1.0) * 4.0) },
                 curve_step_count: Some(curve_step_count),
@@ -1189,16 +1259,41 @@ pub fn add_js_shape_to_scene(
             };
             let generator = Generator::default();
             let drawable = generator.rectangle(x as f32, y as f32, width as f32, height as f32, &Some(options));
-            render_rough_drawable(scene, shape_transform, &drawable, fill_color, stroke_color);
+            render_rough_drawable(
+                scene,
+                shape_transform,
+                &drawable,
+                if wc { [0.0, 0.0, 0.0, 0.0] } else { fill_color },
+                stroke_color,
+            );
         }
-        JsShape::RoughEllipse { cx, cy, rx, ry, fill, stroke, opacity, fill_opacity, stroke_opacity, roughness, bowing, fill_style, hachure_angle, hachure_gap, fill_weight, curve_step_count, simplification, .. } => {
+        JsShape::RoughEllipse { cx, cy, rx, ry, fill, stroke, opacity, fill_opacity, stroke_opacity, roughness, bowing, fill_style, hachure_angle, hachure_gap, fill_weight, curve_step_count, simplification, rough_seed, .. } => {
             let fill_color = apply_opacity_to_color(fill, opacity, fill_opacity);
             let stroke_color = stroke.as_ref().map(|s| apply_opacity_to_color(s.color, opacity, stroke_opacity));
+            let wc = fill_style_is_watercolor(&fill_style) && fill_color[3] > 0.0;
+            if wc {
+                let base = watercolor::sample_ellipse(cx, cy, rx, ry, 40);
+                render_watercolor_fill_layers(
+                    scene,
+                    shape_transform,
+                    base,
+                    WatercolorProfile::Default,
+                    fill_color,
+                    roughness,
+                    rough_seed,
+                );
+            }
             let options = Options {
                 roughness: Some(roughness),
                 bowing: Some(bowing),
-                fill: if fill_color[3] > 0.0 { Some(roughr::Srgba::new(fill_color[0], fill_color[1], fill_color[2], fill_color[3])) } else { None },
-                fill_style: map_fill_style(&fill_style),
+                fill: if wc {
+                    None
+                } else if fill_color[3] > 0.0 {
+                    Some(roughr::Srgba::new(fill_color[0], fill_color[1], fill_color[2], fill_color[3]))
+                } else {
+                    None
+                },
+                fill_style: if wc { map_fill_style("solid") } else { map_fill_style(&fill_style) },
                 hachure_angle: Some(hachure_angle),
                 hachure_gap: if hachure_gap > 0.0 { Some(hachure_gap) } else { Some(stroke.as_ref().map(|s| s.width as f32).unwrap_or(1.0) * 4.0) },
                 curve_step_count: Some(curve_step_count),
@@ -1210,7 +1305,13 @@ pub fn add_js_shape_to_scene(
             };
             let generator = Generator::default();
             let drawable = generator.ellipse(cx as f32, cy as f32, rx as f32 * 2.0, ry as f32 * 2.0, &Some(options));
-            render_rough_drawable(scene, shape_transform, &drawable, fill_color, stroke_color);
+            render_rough_drawable(
+                scene,
+                shape_transform,
+                &drawable,
+                if wc { [0.0, 0.0, 0.0, 0.0] } else { fill_color },
+                stroke_color,
+            );
         }
         JsShape::RoughLine { x1, y1, x2, y2, stroke, opacity, stroke_opacity, roughness, bowing, simplification, marker_start, marker_end, marker_factor, .. } => {
             let stroke_color_val = apply_opacity_to_color(stroke.color, opacity, stroke_opacity);
@@ -1265,14 +1366,41 @@ pub fn add_js_shape_to_scene(
                 }
             }
         }
-        JsShape::RoughPolyline { points, fill, stroke, opacity, fill_opacity, stroke_opacity, roughness, bowing, fill_style, hachure_angle, hachure_gap, fill_weight, curve_step_count, simplification, marker_start, marker_end, marker_factor, .. } => {
+        JsShape::RoughPolyline { points, fill, stroke, opacity, fill_opacity, stroke_opacity, roughness, bowing, fill_style, hachure_angle, hachure_gap, fill_weight, curve_step_count, simplification, marker_start, marker_end, marker_factor, rough_seed, .. } => {
             let fill_color = apply_opacity_to_color(fill, opacity, fill_opacity);
             let stroke_color = stroke.as_ref().map(|s| apply_opacity_to_color(s.color, opacity, stroke_opacity));
+            let wc_requested = fill_style_is_watercolor(&fill_style) && fill_color[3] > 0.0;
+            let mut base: Vec<[f64; 2]> = points.iter().map(|p| [p[0], p[1]]).collect();
+            if base.len() >= 3 {
+                let first = base[0];
+                let last = *base.last().unwrap();
+                if (first[0] - last[0]).abs() > 1e-9 || (first[1] - last[1]).abs() > 1e-9 {
+                    base.push(first);
+                }
+            }
+            let wc = wc_requested && base.len() >= 3;
+            if wc {
+                render_watercolor_fill_layers(
+                    scene,
+                    shape_transform,
+                    base,
+                    WatercolorProfile::Default,
+                    fill_color,
+                    roughness,
+                    rough_seed,
+                );
+            }
             let options = Options {
                 roughness: Some(roughness),
                 bowing: Some(bowing),
-                fill: if fill_color[3] > 0.0 { Some(roughr::Srgba::new(fill_color[0], fill_color[1], fill_color[2], fill_color[3])) } else { None },
-                fill_style: map_fill_style(&fill_style),
+                fill: if wc {
+                    None
+                } else if fill_color[3] > 0.0 {
+                    Some(roughr::Srgba::new(fill_color[0], fill_color[1], fill_color[2], fill_color[3]))
+                } else {
+                    None
+                },
+                fill_style: if wc { map_fill_style("solid") } else { map_fill_style(&fill_style) },
                 hachure_angle: Some(hachure_angle),
                 hachure_gap: if hachure_gap > 0.0 { Some(hachure_gap) } else { Some(stroke.as_ref().map(|s| s.width as f32).unwrap_or(1.0) * 4.0) },
                 curve_step_count: Some(curve_step_count),
@@ -1285,7 +1413,13 @@ pub fn add_js_shape_to_scene(
             let pts: Vec<roughr::Point2D<f32, _>> = points.iter().map(|p| roughr::Point2D::new(p[0] as f32, p[1] as f32)).collect();
             let generator = Generator::default();
             let drawable = generator.linear_path(&pts, false, &Some(options));
-            render_rough_drawable(scene, shape_transform, &drawable, fill_color, stroke_color);
+            render_rough_drawable(
+                scene,
+                shape_transform,
+                &drawable,
+                if wc { [0.0, 0.0, 0.0, 0.0] } else { fill_color },
+                stroke_color,
+            );
             if stroke.is_some()
                 && marker_factor > 0.0
                 && (marker_enabled(marker_start.as_str())
@@ -1332,14 +1466,34 @@ pub fn add_js_shape_to_scene(
                 }
             }
         }
-        JsShape::RoughPath { d, fill, stroke, opacity, fill_opacity, stroke_opacity, roughness, bowing, fill_style, hachure_angle, hachure_gap, fill_weight, curve_step_count, simplification, marker_start, marker_end, marker_factor, .. } => {
+        JsShape::RoughPath { d, fill, stroke, opacity, fill_opacity, stroke_opacity, roughness, bowing, fill_style, hachure_angle, hachure_gap, fill_weight, curve_step_count, simplification, marker_start, marker_end, marker_factor, rough_seed, .. } => {
             let fill_color = apply_opacity_to_color(fill, opacity, fill_opacity);
             let stroke_color = stroke.as_ref().map(|s| apply_opacity_to_color(s.color, opacity, stroke_opacity));
+            let wc_requested = fill_style_is_watercolor(&fill_style) && fill_color[3] > 0.0;
+            let wc_base = wc_requested.then(|| svg_path_first_closed_polygon(d.as_str(), 0.25)).flatten();
+            let wc = wc_base.is_some();
+            if let Some(ref base) = wc_base {
+                render_watercolor_fill_layers(
+                    scene,
+                    shape_transform,
+                    base.clone(),
+                    WatercolorProfile::Default,
+                    fill_color,
+                    roughness,
+                    rough_seed,
+                );
+            }
             let options = Options {
                 roughness: Some(roughness),
                 bowing: Some(bowing),
-                fill: if fill_color[3] > 0.0 { Some(roughr::Srgba::new(fill_color[0], fill_color[1], fill_color[2], fill_color[3])) } else { None },
-                fill_style: map_fill_style(&fill_style),
+                fill: if wc {
+                    None
+                } else if fill_color[3] > 0.0 {
+                    Some(roughr::Srgba::new(fill_color[0], fill_color[1], fill_color[2], fill_color[3]))
+                } else {
+                    None
+                },
+                fill_style: if wc { map_fill_style("solid") } else { map_fill_style(&fill_style) },
                 hachure_angle: Some(hachure_angle),
                 hachure_gap: if hachure_gap > 0.0 { Some(hachure_gap) } else { Some(stroke.as_ref().map(|s| s.width as f32).unwrap_or(1.0) * 4.0) },
                 curve_step_count: Some(curve_step_count),
@@ -1351,7 +1505,13 @@ pub fn add_js_shape_to_scene(
             };
             let generator = Generator::default();
             let drawable = generator.path(d.clone(), &Some(options));
-            render_rough_drawable(scene, shape_transform, &drawable, fill_color, stroke_color);
+            render_rough_drawable(
+                scene,
+                shape_transform,
+                &drawable,
+                if wc { [0.0, 0.0, 0.0, 0.0] } else { fill_color },
+                stroke_color,
+            );
             if stroke.is_some()
                 && marker_factor > 0.0
                 && (marker_enabled(marker_start.as_str())

@@ -13,6 +13,7 @@ import {
   InnerShadowAttributes,
   PathSerializedNode,
   RectSerializedNode,
+  RoughAttributes,
   SerializedNode,
   SerializedNodeAttributes,
   StrokeAttributes,
@@ -32,6 +33,11 @@ import { lineArrow } from '../marker';
 import { DOMAdapter } from '../../environment';
 import { imageToCanvas } from './image';
 import { opSet2Absolute } from '../rough';
+import {
+  getWatercolorFillContoursFromSerializedNode,
+  polygonToPathD,
+  WATERCOLOR_LAYER_FILL_OPACITY,
+} from '../watercolor-rough';
 
 const strokeDefaultAttributes = {
   strokeOpacity: 1,
@@ -1276,7 +1282,27 @@ export async function exportClipOrMask(
 }
 
 export function exportRough(node: SerializedNode, $g: SVGElement) {
-  const { stroke, fill, strokeWidth } = node as PathSerializedNode;
+  const { stroke, fill, strokeWidth, fillOpacity = 1 } =
+    node as PathSerializedNode;
+  const roughFillStyle = (node as RoughAttributes).roughFillStyle;
+
+  if (roughFillStyle === 'watercolor') {
+    const wc = getWatercolorFillContoursFromSerializedNode(node);
+    if (wc) {
+      wc.forEach((layer) => {
+        const $path = createSVGElement('path');
+        $path.setAttribute('d', polygonToPathD(layer));
+        $path.setAttribute('fill', fill as string);
+        $path.setAttribute(
+          'fill-opacity',
+          String(WATERCOLOR_LAYER_FILL_OPACITY * fillOpacity),
+        );
+        $path.setAttribute('stroke', 'none');
+        $g.appendChild($path);
+      });
+    }
+  }
+
   const drawableSets = computeDrawableSets(node);
 
   drawableSets.forEach((drawableSet) => {

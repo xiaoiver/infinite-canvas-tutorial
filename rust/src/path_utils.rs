@@ -126,6 +126,18 @@ fn flatten_bez_path(path: &BezPath, tolerance: f64) -> Vec<FlattenedSubpath> {
     subs
 }
 
+/// 取 SVG `d` 中第一条闭合子路径，用于水彩填充的底多边形（与 ECS `ComputedPoints` 首轮廓语义一致）。
+pub fn svg_path_first_closed_polygon(d: &str, tolerance: f64) -> Option<Vec<[f64; 2]>> {
+    let bez = BezPath::from_svg(d).ok()?;
+    let subs = flatten_bez_path(&bez, tolerance);
+    subs.into_iter().find(|s| s.closed && s.points.len() >= 3).map(|s| {
+        s.points
+            .iter()
+            .map(|p| [p.x, p.y])
+            .collect()
+    })
+}
+
 fn dist_point_to_segment(p: Point, a: Point, b: Point) -> f64 {
     let ab = Vec2::new(b.x - a.x, b.y - a.y);
     let ap = Vec2::new(p.x - a.x, p.y - a.y);

@@ -53,6 +53,7 @@ export class Rough {
       'dots',
       'dashed',
       'zigzag-line',
+      'watercolor',
     ]),
     default: 'hachure',
   })
@@ -63,7 +64,8 @@ export class Rough {
     | 'cross-hatch'
     | 'dots'
     | 'dashed'
-    | 'zigzag-line';
+    | 'zigzag-line'
+    | 'watercolor';
 
   /**
    * Numeric value representing the width of the hachure lines. Default value of the fillWeight is set to half the strokeWidth of that shape.
@@ -214,14 +216,16 @@ export function getRoughOptions(
 
   const strokeDasharray = strokeDasharrayString ? deserializePoints(strokeDasharrayString) : [0, 0];
 
+  const isWatercolor = roughFillStyle === 'watercolor';
+
   return filterUndefined({
-    fill,
+    fill: isWatercolor ? '' : fill,
     stroke,
     strokeWidth,
     seed: roughSeed,
     bowing: roughBowing,
     roughness: roughRoughness,
-    fillStyle: roughFillStyle,
+    fillStyle: (isWatercolor ? 'solid' : roughFillStyle) as Options['fillStyle'],
     fillWeight: roughFillWeight !== -1 ? roughFillWeight : strokeWidth / 2,
     hachureAngle: roughHachureAngle,
     hachureGap: roughHachureGap !== -1 ? roughHachureGap : strokeWidth * 4,

@@ -446,6 +446,7 @@ export const zh = defineConfig({
           },
           { text: '音频可视化', link: 'audio-visualizer' },
           { text: '使用 vello 渲染', link: 'vello' },
+          { text: 'Mermaid 水彩风格', link: 'mermaid-watercolor' },
         ],
       },
     },

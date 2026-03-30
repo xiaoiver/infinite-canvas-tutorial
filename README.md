@@ -184,10 +184,11 @@ If you want to use it in your own project, you can refer to:
     -   Handle holes in the path correctly
     -   Support `fillRule` property
 -   Draw some hand-drawn shapes
+-   Watercolor effect
 
-|                Path and rough shapes                 |                 Fill rule                  |
-| :--------------------------------------------------: | :----------------------------------------: |
-| ![Path and rough shapes](./screenshots/lesson13.png) | ![Fill rule](./screenshots/lesson13-2.png) |
+|                Path and rough shapes                 |                 Fill rule                  |                 Watercolor                  |
+| :--------------------------------------------------: | :----------------------------------------: | :-----------------------------------------: |
+| ![Path and rough shapes](./screenshots/lesson13.png) | ![Fill rule](./screenshots/lesson13-2.png) | ![watercolor](./screenshots/watercolor.png) |
 
 ## Lesson 14 - Canvas mode and auxiliary UI [🔗](https://infinitecanvas.cc/guide/lesson-014)
 

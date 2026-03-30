@@ -3,6 +3,7 @@ import { Drawable } from 'roughjs/bin/core';
 import {
   Canvas,
   Circle,
+  ComputedPoints,
   ComputedRough,
   Ellipse,
   FillSolid,
@@ -15,7 +16,13 @@ import {
   Rough,
   Stroke,
 } from '../components';
-import { deserializePoints, generator, inferXYWidthHeight, parsePath, serializePoints, shiftPath } from '../utils';
+import {
+  deserializePoints,
+  generator,
+  parsePath,
+  shiftPath,
+} from '../utils';
+import { getWatercolorFillContoursFromEntity } from '../utils/watercolor-rough';
 import { safeAddComponent } from '../history';
 import { SerializedNode } from '../types/serialized-node';
 
@@ -31,7 +38,7 @@ export class ComputeRough extends System {
   constructor() {
     super();
     this.query((q) => q.current.with(ComputedRough).write);
-    this.query((q) => q.using(Canvas, FractionalIndex).read);
+    this.query((q) => q.using(Canvas, FractionalIndex, ComputedPoints).read);
   }
 
   execute() {
@@ -115,6 +122,15 @@ export class ComputeRough extends System {
           fillPoints = points;
         }
       });
+
+      if (rough.fillStyle === 'watercolor') {
+        const wc = getWatercolorFillContoursFromEntity(entity);
+        if (wc) {
+          fillPathPoints = wc;
+          fillPoints = [];
+        }
+      }
+
       safeAddComponent(entity, ComputedRough, {
         drawableSets,
         strokePoints,

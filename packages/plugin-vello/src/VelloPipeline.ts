@@ -683,22 +683,22 @@ export class VelloPipeline extends System {
               hachureGap,
               curveStepCount,
               simplification,
+              seed,
             } = entity.read(Rough);
-            let fillStyleValue = fillStyle;
-            // @see https://github.com/xiaoiver/infinite-canvas-tutorial/issues/19
-            if (fillStyle === 'dashed') {
-              fillStyleValue = 'hachure';
-            }
+            // WASM 需原始 fillStyle（含 watercolor）；dashed 见 issue #19
+            const fillStyleWasm =
+              fillStyle === 'dashed' ? 'hachure' : fillStyle;
             addRoughEllipse(canvasId, {
               ...opts,
               roughness,
               bowing,
-              fillStyle: fillStyleValue,
+              fillStyle: fillStyleWasm,
               fillWeight,
               hachureAngle,
               hachureGap,
               curveStepCount,
               simplification,
+              roughSeed: seed | 0,
             });
           } else {
             addEllipse(canvasId, opts);
@@ -726,22 +726,21 @@ export class VelloPipeline extends System {
               hachureGap,
               curveStepCount,
               simplification,
+              seed,
             } = entity.read(Rough);
-            let fillStyleValue = fillStyle;
-            // @see https://github.com/xiaoiver/infinite-canvas-tutorial/issues/19
-            if (fillStyle === 'dashed') {
-              fillStyleValue = 'hachure';
-            }
+            const fillStyleWasm =
+              fillStyle === 'dashed' ? 'hachure' : fillStyle;
             addRoughEllipse(canvasId, {
               ...opts,
               roughness,
               bowing,
-              fillStyle: fillStyleValue,
+              fillStyle: fillStyleWasm,
               fillWeight,
               hachureAngle,
               hachureGap,
               curveStepCount,
               simplification,
+              roughSeed: seed | 0,
             });
           } else {
             addEllipse(canvasId, opts);
@@ -809,22 +808,21 @@ export class VelloPipeline extends System {
               hachureGap,
               curveStepCount,
               simplification,
+              seed,
             } = entity.read(Rough);
-            let fillStyleValue = fillStyle;
-            // @see https://github.com/xiaoiver/infinite-canvas-tutorial/issues/19
-            if (fillStyle === 'dashed') {
-              fillStyleValue = 'hachure';
-            }
+            const fillStyleWasm =
+              fillStyle === 'dashed' ? 'hachure' : fillStyle;
             addRoughRect(canvasId, {
               ...opts,
               roughness,
               bowing,
-              fillStyle: fillStyleValue,
+              fillStyle: fillStyleWasm,
               fillWeight,
               hachureAngle,
               hachureGap,
               curveStepCount,
               simplification,
+              roughSeed: seed | 0,
             });
           } else {
             addRect(canvasId, opts);
@@ -859,22 +857,21 @@ export class VelloPipeline extends System {
                 hachureGap,
                 curveStepCount,
                 simplification,
+                seed,
               } = entity.read(Rough);
-              let fillStyleValue = fillStyle;
-              // @see https://github.com/xiaoiver/infinite-canvas-tutorial/issues/19
-              if (fillStyle === 'dashed') {
-                fillStyleValue = 'hachure';
-              }
+              const fillStyleWasm =
+                fillStyle === 'dashed' ? 'hachure' : fillStyle;
               addRoughPath(canvasId, {
                 ...opts,
                 roughness,
                 bowing,
-                fillStyle: fillStyleValue,
+                fillStyle: fillStyleWasm,
                 fillWeight,
                 hachureAngle,
                 hachureGap,
                 curveStepCount,
                 simplification,
+                roughSeed: seed | 0,
               });
             } else {
               addPath(canvasId, opts);
@@ -891,19 +888,27 @@ export class VelloPipeline extends System {
               const {
                 roughness,
                 bowing,
+                fillStyle,
+                fillWeight,
                 hachureAngle,
                 hachureGap,
                 curveStepCount,
                 simplification,
+                seed,
               } = entity.read(Rough);
+              const fillStyleWasm =
+                fillStyle === 'dashed' ? 'hachure' : fillStyle;
               addRoughPolyline(canvasId, {
                 ...opts,
                 roughness,
                 bowing,
+                fillStyle: fillStyleWasm,
+                fillWeight,
                 hachureAngle,
                 hachureGap,
                 curveStepCount,
                 simplification,
+                roughSeed: seed | 0,
               });
             } else {
               addPolyline(canvasId, opts);

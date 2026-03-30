@@ -69,6 +69,15 @@ export class Mesh extends Drawcall {
       return true;
     }
 
+    const wc0 =
+      this.shapes[0].has(Rough) &&
+      this.shapes[0].read(Rough).fillStyle === 'watercolor';
+    const wc1 =
+      shape.has(Rough) && shape.read(Rough).fillStyle === 'watercolor';
+    if (wc0 !== wc1) {
+      return false;
+    }
+
     if (this.shapes[0].read(Path).d !== shape.read(Path).d) {
       return false;
     }
@@ -93,16 +102,16 @@ export class Mesh extends Drawcall {
     let rawPoints: [number, number][][];
     let tessellationMethod: TesselationMethod;
 
-    if (instance.has(Path)) {
-      rawPoints = instance.read(ComputedPoints).points;
-      tessellationMethod = instance.read(Path).tessellationMethod;
-    } else if (
+    if (
       instance.has(Rough) &&
       instance.has(ComputedRough) &&
       instance.hasSomeOf(Circle, Ellipse, Rect, Path)
     ) {
       rawPoints = instance.read(ComputedRough).fillPathPoints;
       tessellationMethod = TesselationMethod.EARCUT;
+    } else if (instance.has(Path)) {
+      rawPoints = instance.read(ComputedPoints).points;
+      tessellationMethod = instance.read(Path).tessellationMethod;
     }
 
     const points = rawPoints.flat(2);
@@ -220,7 +229,10 @@ export class Mesh extends Drawcall {
           },
         ],
         blendConstant: TransparentBlack,
-        depthWrite: true,
+        // Watercolor fills many overlapping triangles at the same z; with depthWrite
+        // + GREATER, the first fragment wins and later overlapping fragments fail the
+        // depth test — alpha never stacks. Solid earcut meshes rarely self-overlap.
+        depthWrite: !this.isWatercolorRoughMesh(),
         depthCompare: CompareFunction.GREATER,
         ...this.stencilDescriptor,
       },
@@ -242,12 +254,28 @@ export class Mesh extends Drawcall {
     this.bindings = this.renderCache.createBindings(bindings);
   }
 
+  /** Rough.js solid fill is one contour; watercolor uses many overlapping layers. */
+  private isWatercolorRoughMesh(): boolean {
+    return (
+      !!this.shapes[0]?.has(Rough) &&
+      this.shapes[0].read(Rough).fillStyle === 'watercolor'
+    );
+  }
+
   render(
     renderPass: RenderPass,
     uniformBuffer: Buffer,
     sceneUniformLegacyObject: Record<string, unknown>,
   ) {
-    if (this.points.length === 0 || (this.shapes[0].has(Rough) && this.shapes[0].read(Rough).fillStyle !== 'solid')) {
+    const roughFill = this.shapes[0].has(Rough)
+      ? this.shapes[0].read(Rough).fillStyle
+      : null;
+    if (
+      this.points.length === 0 ||
+      (roughFill !== null &&
+        roughFill !== 'solid' &&
+        roughFill !== 'watercolor')
+    ) {
       return;
     }
 
@@ -336,8 +364,8 @@ export class Mesh extends Drawcall {
       width,
       alignment,
     } = shape.has(Stroke)
-      ? shape.read(Stroke)
-      : { color: null, width: 0, alignment: 'center' };
+        ? shape.read(Stroke)
+        : { color: null, width: 0, alignment: 'center' };
     const { r: sr, g: sg, b: sb, opacity: so } = parseColor(strokeColor);
 
     const u_FillColor = [fr / 255, fg / 255, fb / 255, fo];
@@ -354,6 +382,10 @@ export class Mesh extends Drawcall {
       strokeOpacity,
       sizeAttenuation ? 1 : 0,
     ];
+
+    if (this.isWatercolorRoughMesh()) {
+      u_Opacity[1] *= 0.05;
+    }
 
     return [
       [...u_FillColor, ...u_StrokeColor, ...u_ZIndexStrokeWidth, ...u_Opacity],

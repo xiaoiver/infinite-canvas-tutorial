@@ -426,6 +426,7 @@ pub fn js_add_rough_rect(canvas_id: u32, opts: JsValue) {
         fill_weight: o.fill_weight,
         curve_step_count: o.curve_step_count,
         simplification: o.simplification,
+        rough_seed: o.rough_seed,
     });
 }
 
@@ -479,6 +480,7 @@ pub fn js_add_rough_ellipse(canvas_id: u32, opts: JsValue) {
         fill_weight: o.fill_weight,
         curve_step_count: o.curve_step_count,
         simplification: o.simplification,
+        rough_seed: o.rough_seed,
     });
 }
 
@@ -585,6 +587,7 @@ pub fn js_add_rough_polyline(canvas_id: u32, opts: JsValue) {
         marker_start: o.marker_start,
         marker_end: o.marker_end,
         marker_factor: o.marker_factor,
+        rough_seed: o.rough_seed,
     });
 }
 
@@ -639,6 +642,7 @@ pub fn js_add_rough_path(canvas_id: u32, opts: JsValue) {
         marker_start: o.marker_start,
         marker_end: o.marker_end,
         marker_factor: o.marker_factor,
+        rough_seed: o.rough_seed,
     });
 }
 

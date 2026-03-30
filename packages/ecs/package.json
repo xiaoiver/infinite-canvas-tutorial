@@ -51,6 +51,8 @@
     "@loaders.gl/images": "^4.2.2",
     "@pixi/math": "^7.4.2",
     "@use-gesture/vanilla": "^10.3.1",
+    "@watercolorizer/watercolorizer": "^1.1.2",
+    "@watercolorizer/convolution": "^1.0.4",
     "arabic-reshaper": "^1.1.0",
     "@chenglou/pretext": "^0.0.3",
     "bidi-js": "^1.0.3",

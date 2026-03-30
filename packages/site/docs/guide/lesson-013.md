@@ -14,6 +14,7 @@ head:
 <script setup>
 import Holes from '../components/Holes.vue';
 import FillRule from '../components/FillRule.vue';
+import Watercolor from '../components/Watercolor.vue';
 </script>
 
 # Lesson 13 - Drawing path and sketchy style
@@ -756,6 +757,14 @@ export function exportRough(
 }
 ```
 
+## Watercolor style {#watercolor}
+
+Using [watercolorizer], we add a new `fillStyle: 'watercolor'`.
+
+Notably, rectangles are no longer modeled with only four vertices. Instead we use `subdivideAxisAlignedRect` to choose a per-edge subdivision count between 4 and 16 from the size (via `hypot(w, h) / 40`), so the outline behaves more like a high-vertex-count polygon and the uniform outward bulge of a bare quad is reduced.
+
+<Watercolor />
+
 ## Extended reading {#extended-reading}
 
 -   [Rendering SVG Paths in WebGL]
@@ -764,6 +773,8 @@ export function exportRough(
 -   [Fun with WebGL 2.0 : 027 : Bezier Curves in 3D]
 -   [GPU-accelerated Path Rendering]
 -   [Making plot sketchy]
+-   [How to Hack a Painting]
+-   [A Guide to Simulating Watercolor Paint with Generative Art]
 
 [Paths]: https://developer.mozilla.org/en-US/docs/Web/SVG/Tutorial/Paths
 [Quadratic Bezier - distance 2D]: https://www.shadertoy.com/view/MlKcDD
@@ -805,3 +816,6 @@ export function exportRough(
 [how does fill-rule="evenodd" work on a star SVG]: https://stackoverflow.com/a/46145333/4639324
 [Triangulation By Ear Clipping]: https://www.geometrictools.com/Documentation/TriangulationByEarClipping.pdf
 [Making plot sketchy]: https://observablehq.com/@jwolondon/making-plot-sketchy
+[watercolorizer]: https://github.com/32bitkid/watercolorizer
+[How to Hack a Painting]: https://www.tylerxhobbs.com/words/how-to-hack-a-painting
+[A Guide to Simulating Watercolor Paint with Generative Art]: https://www.tylerxhobbs.com/words/a-guide-to-simulating-watercolor-paint-with-generative-art
