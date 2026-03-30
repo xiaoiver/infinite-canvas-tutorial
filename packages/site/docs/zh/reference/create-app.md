@@ -77,8 +77,6 @@ canvas.addEventListener(Event.READY, async (e) => {
 
 ### Event.NODES_UPDATED
 
-### Event.NODE_UPDATED
-
 ### Event.NODE_DELETED
 
 ### Event.SELECTED_NODES_CHANGED

@@ -77,8 +77,6 @@ Triggered when the image export request completes. You can retrieve the export r
 
 ### Event.NODES_UPDATED
 
-### Event.NODE_UPDATED
-
 ### Event.NODE_DELETED
 
 ### Event.SELECTED_NODES_CHANGED
