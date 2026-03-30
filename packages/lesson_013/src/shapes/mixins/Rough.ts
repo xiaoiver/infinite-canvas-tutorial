@@ -42,7 +42,8 @@ export interface IRough
     | 'cross-hatch'
     | 'dots'
     | 'dashed'
-    | 'zigzag-line';
+    | 'zigzag-line'
+    | 'watercolor';
 
   /**
    * Numeric value representing the width of the hachure lines. Default value of the fillWeight is set to half the strokeWidth of that shape.

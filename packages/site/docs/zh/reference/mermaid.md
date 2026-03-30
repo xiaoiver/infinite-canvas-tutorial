@@ -6,6 +6,7 @@ outline: deep
 import Mermaid from '../../components/Mermaid.vue'
 import MermaidRough from '../../components/MermaidRough.vue'
 import MermaidFlowchart from '../../components/MermaidFlowchart.vue'
+import MermaidFlowchartWatercolor from '../../components/MermaidFlowchartWatercolor.vue'
 import MermaidSequence from '../../components/MermaidSequence.vue'
 import MermaidState from '../../components/MermaidState.vue'
 </script>
@@ -34,6 +35,10 @@ api.runAtNextTick(() => {
 一个稍微复杂一点的例子：
 
 <MermaidFlowchart />
+
+水彩风格：
+
+<MermaidFlowchartWatercolor />
 
 ## sequence
 

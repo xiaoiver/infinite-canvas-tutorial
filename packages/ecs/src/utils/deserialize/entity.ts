@@ -487,6 +487,7 @@ export async function loadImage(url: string, entity: Entity) {
 
 function serializeRough(attributes: RoughAttributes, entity: EntityCommands) {
   const {
+    roughSeed,
     roughRoughness,
     roughBowing,
     roughFillStyle,
@@ -507,6 +508,7 @@ function serializeRough(attributes: RoughAttributes, entity: EntityCommands) {
   } = attributes;
   entity.insert(
     new Rough({
+      seed: roughSeed,
       roughness: roughRoughness,
       bowing: roughBowing,
       fillStyle: roughFillStyle,

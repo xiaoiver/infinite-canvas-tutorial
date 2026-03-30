@@ -358,6 +358,7 @@ export class PenbarDrawSettings extends LitElement {
                 <sp-menu-item value="cross-hatch">Cross hatch</sp-menu-item>
                 <sp-menu-item value="dots">Dots</sp-menu-item>
                 <sp-menu-item value="dashed">Dashed</sp-menu-item>
+                <sp-menu-item value="watercolor">Watercolor</sp-menu-item>
               </sp-picker>
             </div>
 

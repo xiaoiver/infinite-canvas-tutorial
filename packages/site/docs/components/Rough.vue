@@ -66,6 +66,7 @@ onMounted(() => {
     'dots',
     'dashed',
     'zigzag-line',
+    'watercolor',
   ]).onChange((fillStyle) => {
     rect.fillStyle = fillStyle;
   });

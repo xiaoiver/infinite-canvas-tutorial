@@ -1,6 +1,6 @@
 ---
 outline: deep
-description: '学习绘制复杂路径并实现手绘风格。使用SDF试验路径绘制，采用三角化方法处理填充，配合rough.js创建草图风格效果。'
+description: '学习绘制复杂路径并实现手绘风格。使用SDF试验路径绘制，采用三角化方法处理填充，配合rough.js创建草图风格效果，使用watercolor创建水彩风格效果。'
 head:
     - - meta
       - name: description
@@ -13,6 +13,7 @@ head:
 <script setup>
 import Holes from '../../components/Holes.vue';
 import FillRule from '../../components/FillRule.vue';
+import Watercolor from '../../components/Watercolor.vue';
 </script>
 
 # 课程 13 - 绘制 Path & 手绘风格
@@ -756,6 +757,12 @@ export function exportRough(
 }
 ```
 
+## 水彩风格 {#watercolor}
+
+使用 [watercolorizer]，我们新增一种 `fillStyle: 'watercolor'`
+
+<Watercolor />
+
 ## 扩展阅读 {#extended-reading}
 
 -   [Rendering SVG Paths in WebGL]
@@ -764,6 +771,8 @@ export function exportRough(
 -   [Fun with WebGL 2.0 : 027 : Bezier Curves in 3D]
 -   [GPU-accelerated Path Rendering]
 -   [Making plot sketchy]
+-   [How to Hack a Painting]
+-   [A Guide to Simulating Watercolor Paint with Generative Art]
 
 [Paths]: https://developer.mozilla.org/en-US/docs/Web/SVG/Tutorial/Paths
 [Quadratic Bezier - distance 2D]: https://www.shadertoy.com/view/MlKcDD
@@ -805,3 +814,6 @@ export function exportRough(
 [how does fill-rule="evenodd" work on a star SVG]: https://stackoverflow.com/a/46145333/4639324
 [Triangulation By Ear Clipping]: https://www.geometrictools.com/Documentation/TriangulationByEarClipping.pdf
 [Making plot sketchy]: https://observablehq.com/@jwolondon/making-plot-sketchy
+[watercolorizer]: https://github.com/32bitkid/watercolorizer
+[How to Hack a Painting]: https://www.tylerxhobbs.com/words/how-to-hack-a-painting
+[A Guide to Simulating Watercolor Paint with Generative Art]: https://www.tylerxhobbs.com/words/a-guide-to-simulating-watercolor-paint-with-generative-art

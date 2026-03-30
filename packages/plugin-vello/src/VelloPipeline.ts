@@ -688,6 +688,8 @@ export class VelloPipeline extends System {
             // @see https://github.com/xiaoiver/infinite-canvas-tutorial/issues/19
             if (fillStyle === 'dashed') {
               fillStyleValue = 'hachure';
+            } else if ((fillStyle as string) === 'watercolor') {
+              fillStyleValue = 'solid';
             }
             addRoughEllipse(canvasId, {
               ...opts,
@@ -731,6 +733,8 @@ export class VelloPipeline extends System {
             // @see https://github.com/xiaoiver/infinite-canvas-tutorial/issues/19
             if (fillStyle === 'dashed') {
               fillStyleValue = 'hachure';
+            } else if ((fillStyle as string) === 'watercolor') {
+              fillStyleValue = 'solid';
             }
             addRoughEllipse(canvasId, {
               ...opts,
@@ -814,6 +818,8 @@ export class VelloPipeline extends System {
             // @see https://github.com/xiaoiver/infinite-canvas-tutorial/issues/19
             if (fillStyle === 'dashed') {
               fillStyleValue = 'hachure';
+            } else if ((fillStyle as string) === 'watercolor') {
+              fillStyleValue = 'solid';
             }
             addRoughRect(canvasId, {
               ...opts,
@@ -864,6 +870,8 @@ export class VelloPipeline extends System {
               // @see https://github.com/xiaoiver/infinite-canvas-tutorial/issues/19
               if (fillStyle === 'dashed') {
                 fillStyleValue = 'hachure';
+              } else if ((fillStyle as string) === 'watercolor') {
+                fillStyleValue = 'solid';
               }
               addRoughPath(canvasId, {
                 ...opts,

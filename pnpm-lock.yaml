@@ -510,6 +510,12 @@ importers:
       '@use-gesture/vanilla':
         specifier: ^10.3.1
         version: 10.3.1
+      '@watercolorizer/convolution':
+        specifier: ^1.0.4
+        version: 1.0.4
+      '@watercolorizer/watercolorizer':
+        specifier: ^1.1.2
+        version: 1.1.2
       arabic-reshaper:
         specifier: ^1.1.0
         version: 1.1.0
@@ -1713,6 +1719,9 @@ importers:
   rust/pkg: {}
 
 packages:
+
+  '@4bitlabs/vec2@1.2.0':
+    resolution: {integrity: sha512-pPm2cbLE6moLS7b1/XGv05Xp9SzQq35fx15NGjibbqJp2rtz0c7yjUq6mUKCr04rhUADfbtvmgs2q/jjQ5MckA==}
 
   '@ai-sdk/fal@2.0.18':
     resolution: {integrity: sha512-KUb9KGtzq/O5iaX6oO0OnehnCDmHr9R70mOGw6+xztpbK7MlXeNfFrc/vxlmzo59CrlAQj7PCmylS/Pao9H2Eg==}
@@ -5909,6 +5918,12 @@ packages:
   '@vueuse/shared@12.8.2':
     resolution: {integrity: sha512-dznP38YzxZoNloI0qpEfpkms8knDtaoQ6Y/sfS0L7Yki4zh40LFHEhur0odJC6xTHG5dxWVPiUWBXn+wCG2s5w==}
 
+  '@watercolorizer/convolution@1.0.4':
+    resolution: {integrity: sha512-sIHcdEB41p/JiRCy41N5QFhNaig27c0rqF5cZmv61iWCrzdpA6E2W/uW6CiPOXR4Ss2UZJCJ4zHfuTak9KI7Pw==}
+
+  '@watercolorizer/watercolorizer@1.1.2':
+    resolution: {integrity: sha512-e9psBjC4yagWKKiGxO3sgJDIGgK+BGd9ek2sm6qglYItlc4EvyPv2p0LuL8q5iI5CXzvE0dt2ySiuUpyU6ZQwQ==}
+
   '@webassemblyjs/ast@1.14.1':
     resolution: {integrity: sha512-nuBEDgQfm1ccRp/8bCQrx1frohyufl4JlbMMZ4P1wpeOfDhF6FQkxZJ1b/e+PLwr6X1Nhw6OLme5usuBWYBvuQ==}
 
@@ -5963,10 +5978,12 @@ packages:
   '@xmldom/xmldom@0.8.11':
     resolution: {integrity: sha512-cQzWCtO6C8TQiYl1ruKNn2U6Ao4o4WBBcbL61yJl84x+j5sOWWFU9X7DpND8XZG3daDppSsigMdfAIl2upQBRw==}
     engines: {node: '>=10.0.0'}
+    deprecated: this version has critical issues, please update to the latest version
 
   '@xmldom/xmldom@0.9.8':
     resolution: {integrity: sha512-p96FSY54r+WJ50FIOsCOjyj/wavs8921hG5+kVMmZgKcvIKxMXHTrjNJvRgWa/zuX3B6t2lijLNFaOyuxUH+2A==}
     engines: {node: '>=14.6'}
+    deprecated: this version has critical issues, please update to the latest version
 
   '@xtuc/ieee754@1.2.0':
     resolution: {integrity: sha512-DX8nKgqcGwsc0eJSqYt5lwP4DH5FlHnmuWWBRy7X0NcaGR0ZtuyeESgMwTYVEtxmsNGY+qit4QYT/MIYTOTPeA==}
@@ -10956,6 +10973,9 @@ packages:
   simplify-js@1.2.4:
     resolution: {integrity: sha512-vITfSlwt7h/oyrU42R83mtzFpwYk3+mkH9bOHqq/Qw6n8rtR7aE3NZQ5fbcyCUVVmuMJR6ynsAhOfK2qoah8Jg==}
 
+  simplify-ts@1.0.2:
+    resolution: {integrity: sha512-fDfgIdW3IbsOvEArM/VIEiX863+wqXD44mYWgsC3lsUJnk8+kXbBDt2rIpPA6JVndmp1B758dhi2bIThPiRkCg==}
+
   sirv@3.0.0:
     resolution: {integrity: sha512-BPwJGUeDaDCHihkORDchNyyTvWFhcusy1XMmhEVTQTwGeybFbp8YEmB+njbPnth1FibULBSBVwCQni25XlCUDg==}
     engines: {node: '>=18'}
@@ -12180,6 +12200,8 @@ packages:
     resolution: {integrity: sha512-bXE4cR/kVZhKZX/RjPEflHaKVhUVl85noU3v6b8apfQEc1x4A+zBxjZ4lN8LqGd6WZ3dl98pY4o717VFmoPp+A==}
 
 snapshots:
+
+  '@4bitlabs/vec2@1.2.0': {}
 
   '@ai-sdk/fal@2.0.18(zod@4.3.6)':
     dependencies:
@@ -17178,6 +17200,14 @@ snapshots:
       vue: 3.5.13(typescript@5.9.3)
     transitivePeerDependencies:
       - typescript
+
+  '@watercolorizer/convolution@1.0.4': {}
+
+  '@watercolorizer/watercolorizer@1.1.2':
+    dependencies:
+      '@4bitlabs/vec2': 1.2.0
+      '@watercolorizer/convolution': 1.0.4
+      simplify-ts: 1.0.2
 
   '@webassemblyjs/ast@1.14.1':
     dependencies:
@@ -23427,6 +23457,8 @@ snapshots:
       simple-concat: 1.0.1
 
   simplify-js@1.2.4: {}
+
+  simplify-ts@1.0.2: {}
 
   sirv@3.0.0:
     dependencies:

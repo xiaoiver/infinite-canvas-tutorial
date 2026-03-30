@@ -997,6 +997,7 @@ pub enum RoughFillStyle {
     Dashed,
     #[serde(rename = "zigzag-line")]
     ZigzagLine,
+    Watercolor,
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -1015,6 +1016,7 @@ impl RoughFillStyle {
             RoughFillStyle::Dots => "dots",
             RoughFillStyle::Dashed => "dashed",
             RoughFillStyle::ZigzagLine => "zigzag-line",
+            RoughFillStyle::Watercolor => "watercolor",
         }
     }
 }
