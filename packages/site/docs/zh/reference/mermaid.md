@@ -11,7 +11,7 @@ import MermaidSequence from '../../components/MermaidSequence.vue'
 import MermaidState from '../../components/MermaidState.vue'
 </script>
 
-该插件提供了一个工具方法，将 Mermaid 语法转换成画布的场景图：
+该插件提供了一个工具方法，将 Mermaid 语法转换成画布的场景图，详见：[课程 32 - 文本生成图表]
 
 ```ts
 import { parseMermaidToSerializedNodes } from '@infinite-canvas-tutorial/mermaid';
@@ -28,6 +28,8 @@ api.runAtNextTick(() => {
 
 <Mermaid />
 
+### rough
+
 也可以很容易地转换成手绘风格：
 
 <MermaidRough />
@@ -36,7 +38,9 @@ api.runAtNextTick(() => {
 
 <MermaidFlowchart />
 
-水彩风格：
+### watercolor
+
+基于 [watercolorizer] 实现的水彩风格：
 
 <MermaidFlowchartWatercolor />
 
@@ -47,3 +51,6 @@ api.runAtNextTick(() => {
 ## [WIP] state
 
 <!-- <MermaidState /> -->
+
+[课程 32 - 文本生成图表]: /zh/guide/lesson-032
+[watercolorizer]: https://github.com/32bitkid/watercolorizer

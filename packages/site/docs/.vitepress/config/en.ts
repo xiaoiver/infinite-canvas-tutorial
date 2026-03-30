@@ -516,6 +516,7 @@ export const en = defineConfig({
           },
           { text: 'Audio visualizer', link: 'audio-visualizer' },
           { text: 'Use vello', link: 'vello' },
+          { text: 'Mermaid watercolor', link: 'mermaid-watercolor' },
         ],
       },
     },

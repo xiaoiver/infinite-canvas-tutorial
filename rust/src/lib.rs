@@ -1,5 +1,6 @@
 pub mod types;
 pub mod path_utils;
+pub mod watercolor;
 pub mod state;
 pub mod text;
 pub mod renderer;

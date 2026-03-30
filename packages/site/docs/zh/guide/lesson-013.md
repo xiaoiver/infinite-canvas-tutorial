@@ -759,7 +759,9 @@ export function exportRough(
 
 ## 水彩风格 {#watercolor}
 
-使用 [watercolorizer]，我们新增一种 `fillStyle: 'watercolor'`
+使用 [watercolorizer]，我们新增一种 `fillStyle: 'watercolor'`。
+
+值得注意的，矩形不再只用 4 个顶点，而是用 `subdivideAxisAlignedRect`，按尺寸在 4 ～ 16 段之间取边分段数（与 `hypot(w,h)/40` 相关），让轮廓更接近「高边数多边形」，减轻只有 4 个点时的整体外鼓。
 
 <Watercolor />
 

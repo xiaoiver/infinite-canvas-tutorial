@@ -307,6 +307,8 @@ pub enum JsShape {
         fill_weight: f32,
         curve_step_count: f32,
         simplification: f32,
+        /// `roughSeed` — watercolor / reproducible rough; `0` = default.
+        rough_seed: i32,
     },
     RoughEllipse {
         id: String,
@@ -331,6 +333,7 @@ pub enum JsShape {
         fill_weight: f32,
         curve_step_count: f32,
         simplification: f32,
+        rough_seed: i32,
     },
     RoughLine {
         id: String,
@@ -375,6 +378,7 @@ pub enum JsShape {
         marker_start: String,
         marker_end: String,
         marker_factor: f32,
+        rough_seed: i32,
     },
     RoughPath {
         id: String,
@@ -400,6 +404,7 @@ pub enum JsShape {
         marker_start: String,
         marker_end: String,
         marker_factor: f32,
+        rough_seed: i32,
     },
 }
 
@@ -662,6 +667,10 @@ pub fn default_text_align() -> String { "start".to_string() }
 pub fn default_text_baseline() -> String { "alphabetic".to_string() }
 #[cfg(target_arch = "wasm32")]
 pub fn default_roughness() -> f32 { 1.0 }
+
+pub fn default_rough_seed() -> i32 {
+    0
+}
 #[cfg(target_arch = "wasm32")]
 pub fn default_bowing() -> f32 { 1.0 }
 #[cfg(target_arch = "wasm32")]
@@ -1065,6 +1074,8 @@ pub struct RoughRectOptions {
     pub simplification: f32,
     #[serde(default = "default_fill_weight")]
     pub fill_weight: f32,
+    #[serde(default = "default_rough_seed")]
+    pub rough_seed: i32,
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -1111,6 +1122,8 @@ pub struct RoughEllipseOptions {
     pub simplification: f32,
     #[serde(default = "default_fill_weight")]
     pub fill_weight: f32,
+    #[serde(default = "default_rough_seed")]
+    pub rough_seed: i32,
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -1160,6 +1173,8 @@ pub struct RoughPolylineOptions {
     pub marker_end: String,
     #[serde(default = "default_marker_factor")]
     pub marker_factor: f32,
+    #[serde(default = "default_rough_seed")]
+    pub rough_seed: i32,
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -1211,6 +1226,8 @@ pub struct RoughPathOptions {
     pub marker_end: String,
     #[serde(default = "default_marker_factor")]
     pub marker_factor: f32,
+    #[serde(default = "default_rough_seed")]
+    pub rough_seed: i32,
 }
 
 #[cfg(target_arch = "wasm32")]

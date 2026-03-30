@@ -383,6 +383,10 @@ export class Mesh extends Drawcall {
       sizeAttenuation ? 1 : 0,
     ];
 
+    if (this.isWatercolorRoughMesh()) {
+      u_Opacity[1] *= 0.05;
+    }
+
     return [
       [...u_FillColor, ...u_StrokeColor, ...u_ZIndexStrokeWidth, ...u_Opacity],
       {
