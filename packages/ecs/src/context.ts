@@ -323,7 +323,7 @@ export const getDefaultAppState: () => AppState = () => {
     layersLassoing: [],
     propertiesOpened: [],
     layersExpanded: [],
-    rotateEnabled: false,
+    rotateEnabled: true,
     flipEnabled: false,
     snapToPixelGridEnabled: false,
     snapToPixelGridSize: 10,

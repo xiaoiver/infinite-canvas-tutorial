@@ -133,6 +133,11 @@ export interface SelectOBB {
 
   /** Previous snap offset during drag; used to avoid jitter when multiple snaps are equally close. */
   lastSnapOffset?: [number, number];
+
+  /** Pointer angle (rad) vs. {@link SelectOBB.obb} center on last rotate sample; for incremental drag. */
+  rotateLastPointerAngle?: number;
+  /** Total rotation applied during current rotate gesture (rad), relative to saved {@link SelectOBB.obb}. */
+  rotateAccumulated?: number;
 }
 
 /**
@@ -339,43 +344,80 @@ export class Select extends System {
     this.saveSelectedOBB(api, selection);
   }
 
+  /** 选区 OBB 在画布坐标系下的几何中心（与 mask 的 Transform × Rect 一致）。 */
+  private obbWorldCenter(obb: SelectOBB['obb']): [number, number] {
+    const { x, y, width, height, rotation, scaleX, scaleY } = obb;
+    const lx = width / 2;
+    const ly = height / 2;
+    const c = Math.cos(rotation);
+    const s = Math.sin(rotation);
+    return [
+      x + lx * scaleX * c - ly * scaleY * s,
+      y + lx * scaleX * s + ly * scaleY * c,
+    ];
+  }
+
+  /** 保持中心不动，仅改变旋转角时，反推新的 OBB 原点 (x, y)。 */
+  private alignObbOriginToFixedCenter(
+    obb: SelectOBB['obb'],
+    centerX: number,
+    centerY: number,
+    newRotation: number,
+  ) {
+    const lx = obb.width / 2;
+    const ly = obb.height / 2;
+    const c = Math.cos(newRotation);
+    const s = Math.sin(newRotation);
+    const { scaleX, scaleY, width, height } = obb;
+    return {
+      x: centerX - lx * scaleX * c + ly * scaleY * s,
+      y: centerY - lx * scaleX * s - ly * scaleY * c,
+      width,
+      height,
+      rotation: newRotation,
+      scaleX,
+      scaleY,
+    };
+  }
+
   private handleSelectedRotating(
     api: API,
-    anchorNodeX: number,
-    anchorNodeY: number,
+    canvasX: number,
+    canvasY: number,
   ) {
-    // const camera = api.getCamera();
-    // const { mask } = camera.read(Transformable);
-    // camera.write(Transformable).status = TransformableStatus.ROTATING;
-    // const { obb } = this.selections.get(camera.__id);
-    // const sl = api.canvas2Transformer(
-    //   {
-    //     x: anchorNodeX,
-    //     y: anchorNodeY,
-    //   },
-    //   mask,
-    // );
-    // const x = sl.x - obb.width / 2;
-    // const y = sl.y - obb.height / 2;
-    // let delta = Math.atan2(-y, x) + Math.PI / 2;
-    // const {
-    //   scale: { sx, sy },
-    //   rotation: { angle },
-    //   translate: { tx, ty },
-    // } = decomposeTSR(
-    //   rotateDEG(delta * RAD_TO_DEG, this.#center[0], this.#center[1]),
-    // );
-    // this.fitSelected(api, {
-    //   x: obb.minX,
-    //   y: obb.minY,
-    //   width: obb.maxX - obb.minX,
-    //   height: obb.maxY - obb.minY,
-    //   transform: {
-    //     scale: { x: sx, y: sy },
-    //     rotation: angle,
-    //     translation: { x: tx, y: ty },
-    //   },
-    // });
+    const camera = api.getCamera();
+    const selection = this.selections.get(camera.__id);
+    if (selection.rotateLastPointerAngle === undefined) {
+      return;
+    }
+    if (selection.rotateAccumulated === undefined) {
+      selection.rotateAccumulated = 0;
+    }
+
+    camera.write(Transformable).status = TransformableStatus.ROTATING;
+
+    const { selecteds } = camera.read(Transformable);
+    selecteds.forEach((selected) => {
+      if (selected.has(Highlighted)) {
+        selected.remove(Highlighted);
+      }
+    });
+
+    const [px, py] = this.obbWorldCenter(selection.obb);
+    const cur = Math.atan2(canvasY - py, canvasX - px);
+    let delta = cur - selection.rotateLastPointerAngle;
+    delta = Math.atan2(Math.sin(delta), Math.cos(delta));
+    selection.rotateLastPointerAngle = cur;
+    selection.rotateAccumulated += delta;
+
+    const newRotation = selection.obb.rotation + selection.rotateAccumulated;
+    const newAttrs = this.alignObbOriginToFixedCenter(
+      selection.obb,
+      px,
+      py,
+      newRotation,
+    );
+    this.fitSelected(api, newAttrs, selection);
   }
 
   private handleSelectedResizing(
@@ -935,6 +977,9 @@ export class Select extends System {
     const camera = api.getCamera();
     camera.write(Transformable).status = TransformableStatus.ROTATED;
 
+    delete selection.rotateLastPointerAngle;
+    delete selection.rotateAccumulated;
+
     api.setNodes(api.getNodes());
     api.record();
 
@@ -1162,8 +1207,20 @@ export class Select extends System {
         ) {
           this.saveSelectedOBB(api, selection);
           if (selection.mode === SelectionMode.READY_TO_RESIZE) {
+            delete selection.rotateLastPointerAngle;
+            delete selection.rotateAccumulated;
             selection.mode = SelectionMode.RESIZE;
           } else if (selection.mode === SelectionMode.READY_TO_ROTATE) {
+            const [px, py] = this.obbWorldCenter(selection.obb);
+            let { x: cx, y: cy } = api.viewport2Canvas({ x, y });
+            const { snapToPixelGridEnabled, snapToPixelGridSize } =
+              api.getAppState();
+            if (snapToPixelGridEnabled) {
+              cx = snapToGrid(cx, snapToPixelGridSize);
+              cy = snapToGrid(cy, snapToPixelGridSize);
+            }
+            selection.rotateLastPointerAngle = Math.atan2(cy - py, cx - px);
+            selection.rotateAccumulated = 0;
             selection.mode = SelectionMode.ROTATE;
           }
         } else if (
