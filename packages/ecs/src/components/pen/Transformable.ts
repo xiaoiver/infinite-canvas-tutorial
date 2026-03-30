@@ -74,6 +74,13 @@ export class Transformable {
   })
   declare status: TransformableStatus;
 
+  /**
+   * During resize, local width/height from the drag (Konva delta), for word-wrapped text only.
+   * When reflow reduces line count, intrinsic text height can shrink while the handle rect does not — use these for the transformer so the box does not "collapse" mid-drag. -1 means unset.
+   */
+  @field({ type: Type.float32, default: -1 }) declare resizeWidth: number;
+  @field({ type: Type.float32, default: -1 }) declare resizeHeight: number;
+
   constructor(transformable?: Partial<Transformable>) {
     Object.assign(this, transformable);
   }

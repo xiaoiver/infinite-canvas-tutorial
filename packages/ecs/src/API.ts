@@ -35,6 +35,7 @@ import {
   strokeWidthForHitTest,
   cloneStrokeWithHitTestWidth,
   cloneSerializedNodes,
+  decompose,
   transformPath,
 } from './utils';
 import type {
@@ -44,6 +45,7 @@ import type {
   PathSerializedNode,
   PolylineSerializedNode,
   SerializedNode,
+  TextSerializedNode,
 } from './types/serialized-node';
 import { v4 as uuidv4 } from 'uuid';
 import {
@@ -82,6 +84,7 @@ import {
   Rect,
   Selected,
   Stroke,
+  Text,
   Theme,
   ToBeDeleted,
   Transform,
@@ -97,6 +100,7 @@ import {
   maybeShiftPoints,
   sortByFractionalIndex,
   toSVGElement,
+  measureText,
   updateMatrix,
 } from './systems';
 import { DOMAdapter } from './environment';
@@ -1337,6 +1341,55 @@ export class API {
             radius: point.radius,
           })),
         );
+      } else if (node.type === 'text') {
+        const textOld = (oldNode ?? node) as TextSerializedNode;
+        const metrics = measureText(textOld);
+        const { minX, minY, maxX, maxY } = Text.getGeometryBounds(
+          textOld,
+          metrics,
+        );
+
+        const corners: [number, number][] = [
+          [minX, minY],
+          [maxX, minY],
+          [maxX, maxY],
+          [minX, maxY],
+        ];
+        let nxMin = Infinity;
+        let nyMin = Infinity;
+        let nxMax = -Infinity;
+        let nyMax = -Infinity;
+        for (const [px, py] of corners) {
+          const [nx, ny] = vec2.transformMat3(vec2.create(), [px, py], delta);
+          nxMin = Math.min(nxMin, nx);
+          nyMin = Math.min(nyMin, ny);
+          nxMax = Math.max(nxMax, nx);
+          nyMax = Math.max(nyMax, ny);
+        }
+        const [naX, naY] = vec2.transformMat3(
+          vec2.create(),
+          [textOld.anchorX ?? 0, textOld.anchorY ?? 0],
+          delta,
+        );
+        (diff as TextSerializedNode).anchorX = naX - nxMin;
+        (diff as TextSerializedNode).anchorY = naY - nyMin;
+
+        const { scale } = decompose(delta);
+        const sX = Math.abs(scale[0]);
+        const sY = Math.abs(scale[1]);
+        const fs = textOld.fontSize;
+        const oldFontSize =
+          typeof fs === 'number'
+            ? fs
+            : typeof fs === 'string'
+              ? parseFloat(fs) || 12
+              : 12;
+        (diff as TextSerializedNode).fontSize = oldFontSize * sY;
+
+        const ww = textOld.wordWrapWidth ?? 0;
+        if (ww > 0) {
+          (diff as TextSerializedNode).wordWrapWidth = ww * sX;
+        }
       }
     }
 
