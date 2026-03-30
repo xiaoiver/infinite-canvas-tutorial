@@ -269,7 +269,7 @@ export class API {
   }
 
   setNodes(nodes: SerializedNode[]) {
-    this.stateManagement.setNodes(JSON.parse(JSON.stringify(nodes)));
+    this.stateManagement.setNodes(nodes.slice());
   }
 
   getEntityCommands() {

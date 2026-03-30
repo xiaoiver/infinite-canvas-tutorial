@@ -38,7 +38,6 @@ declare global {
       Pick<Screenshot, 'dataURL' | 'svg'>
     >;
     [Event.NODES_UPDATED]: CustomEvent<{ nodes: SerializedNode[] }>;
-    [Event.NODE_UPDATED]: CustomEvent<{ node: SerializedNode }>;
     [Event.NODE_DELETED]: CustomEvent<{ nodes: SerializedNode[] }>;
     [Event.SELECTED_NODES_CHANGED]: CustomEvent<{
       selected: SerializedNode[];
