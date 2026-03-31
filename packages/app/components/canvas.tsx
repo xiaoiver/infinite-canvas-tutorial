@@ -137,7 +137,7 @@ const Canvas = ({ id = 'default', initialData }: CanvasProps) => {
       snapToObjectsDistance: 8,
       taskbarVisible: true,
       contextBarVisible: false,
-      rotateEnabled: false,
+      rotateEnabled: true,
       flipEnabled: false,
     });
 
@@ -160,16 +160,16 @@ const Canvas = ({ id = 'default', initialData }: CanvasProps) => {
     // ) {
     //   return;
     // }
-    
+
     setSelectedNodes(newSelectedNodes);
   };
 
   useEffect(() => {
     if (!appRunning) {
       new App().addPlugins(...DefaultPlugins, UIPlugin
-        , LaserPointerPlugin, LassoPlugin, EraserPlugin, 
+        , LaserPointerPlugin, LassoPlugin, EraserPlugin,
         // SAMPlugin
-    ).run();
+      ).run();
       appRunning = true;
     }
   }, []);
@@ -209,14 +209,14 @@ const Canvas = ({ id = 'default', initialData }: CanvasProps) => {
     import('@infinite-canvas-tutorial/laser-pointer/spectrum');
   }, []);
 
-  return ( 
+  return (
     <div className="relative w-full h-full">
       <ic-spectrum-canvas ref={canvasRef} className="w-full h-full" app-state='{"topbarVisible":false}'>
         <ic-spectrum-penbar-laser-pointer slot="penbar-item" />
         <ic-spectrum-penbar-eraser slot="penbar-item" />
       </ic-spectrum-canvas>
-      <ZoomToolbar 
-        canvasApi={canvasApi} 
+      <ZoomToolbar
+        canvasApi={canvasApi}
         canvasRef={canvasRef}
       />
     </div>
