@@ -441,6 +441,10 @@ If you want to use it in your own project, you can refer to:
 -   Text shaping, BiDi with parley
 -   Compute bounds of Polyline, Path and hit-testing with kurbo
 
+|               Vello               |     |
+| :-------------------------------: | :-: |
+| ![vello](./screenshots/vello.png) |     |
+
 [Online App]: app.infinitecanvas.cc
 [infinitecanvas]: https://infinitecanvas.tools/
 [Self-Deployment Guide]: /packages/app/README.md

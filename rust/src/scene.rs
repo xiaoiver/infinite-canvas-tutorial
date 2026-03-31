@@ -1215,6 +1215,9 @@ pub fn add_js_shape_to_scene(
                 }
             }
         }
+        JsShape::Brush { .. } => {
+            // Brush is rendered by the dedicated GPU brush pass.
+        }
         JsShape::Group { .. } => {}
         JsShape::RoughRect { x, y, width, height, fill, stroke, opacity, fill_opacity, stroke_opacity, roughness, bowing, fill_style, hachure_angle, hachure_gap, fill_weight, curve_step_count, simplification, rough_seed, .. } => {
             let fill_color = apply_opacity_to_color(fill, opacity, fill_opacity);

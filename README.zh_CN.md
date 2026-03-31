@@ -442,6 +442,10 @@ pnpm run dev
 -   基于 parley 对文本进行 Shaping、BiDi 等处理
 -   基于 kurbo 对 Polyline、Path 进行更精确的包围盒与拾取计算
 
+|               Vello               |     |
+| :-------------------------------: | :-: |
+| ![vello](./screenshots/vello.png) |     |
+
 [在线体验]: app.infinitecanvas.cc
 [infinitecanvas]: https://infinitecanvas.tools/
 [自部署指南]: /packages/app/README.md

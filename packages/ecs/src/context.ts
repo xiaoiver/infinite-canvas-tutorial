@@ -66,8 +66,7 @@ export interface AppState {
   penbarBrush: Partial<
     BrushAttributes &
     StrokeAttributes & {
-      stamps: { src: string; name: string; preview: string }[];
-      stamp: string;
+      stamps: { src: string; name: string; preview: string; active?: boolean }[];
     }
   >;
   penbarText: Partial<
@@ -277,6 +276,7 @@ export const getDefaultAppState: () => AppState = () => {
           src: '/stamp1.png',
           name: 'Stamp 1',
           preview: '/stamp1.png',
+          active: true,
         },
         {
           src: '/stamp2.png',
@@ -284,9 +284,7 @@ export const getDefaultAppState: () => AppState = () => {
           preview: '/stamp2.png',
         },
       ],
-      stamp: '/stamp1.png',
       brushType: BrushType.STAMP,
-      brushStamp: '/stamp1.png',
       stampInterval: 0.4,
       stampMode: StampMode.RATIO_DISTANCE,
       stampNoiseFactor: 0.4,

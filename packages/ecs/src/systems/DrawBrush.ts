@@ -171,9 +171,10 @@ export class DrawBrush extends System {
         }
 
         api.runAtNextTick(() => {
-          const { stamps, stamp, ...rest } = api.getAppState().penbarBrush;
+          const { stamps, ...rest } = api.getAppState().penbarBrush;
           api.updateNode(brush, { visibility: 'hidden' }, false);
 
+          const activeStamp = stamps?.find((stamp) => stamp.active) ?? stamps?.[0];
           const maxZIndex = api.getNodes().reduce((max, node) => Math.max(max, node.zIndex ?? 0), 0);
           const node: BrushSerializedNode = {
             id: uuidv4(),
@@ -181,7 +182,7 @@ export class DrawBrush extends System {
             version: 0,
             zIndex: maxZIndex + 1,
             points: brush.points,
-            brushStamp: stamp, // Use stamp from current settings
+            brushStamp: activeStamp?.src, // Use stamp from current settings
             ...rest,
           };
 
@@ -205,7 +206,8 @@ export class DrawBrush extends System {
     const camera = api.getCamera();
     const selection = this.selections.get(camera.__id);
     const defaultDrawParams = api.getAppState().penbarBrush;
-    const { stamps, stamp, ...rest } = defaultDrawParams;
+    const { stamps, ...rest } = defaultDrawParams;
+    const activeStamp = stamps?.find((stamp) => stamp.active) ?? stamps?.[0];
 
     const { pointerDownViewportX, pointerDownViewportY } = camera.read(
       ComputedCameraControl,
@@ -271,7 +273,7 @@ export class DrawBrush extends System {
                 radius: pressure * rest.strokeWidth,
               })),
             ),
-            brushStamp: stamp, // Use stamp from current settings
+            brushStamp: activeStamp?.src, // Use stamp from current settings
             ...rest,
           },
           false,
