@@ -7,6 +7,7 @@ head:
 
 <script setup>
 import TransformerRect from '../components/TransformerRect.vue'
+import TransformerRectRotated from '../components/TransformerRectRotated.vue'
 import TransformerLine from '../components/TransformerLine.vue'
 import TransformerPolyline from '../components/TransformerPolyline.vue'
 </script>
@@ -466,15 +467,41 @@ We use a gradient background to show this flipping effect more clearly:
 
 ![Flip a rect with gradient fill](/rotate-when-flipped.png)
 
-## [WIP] Rotation {#rotation}
+## Rotation {#rotation}
 
-Figma
+Rotation in Figma:
 
 > Hover just outside one of the layer's bounds until the icon appears.
 > Click and drag to rotate your selection:
 > Drag clockwise to create a negative angle (towards -180° ).
 > Drag counterclockwise to create a positive angle (towards 180° )
 > Hold down Shift to snap rotation values to increments of 15.
+
+1. First, compute the geometric center of the OBB, taking rotation into account.
+2. Then accumulate the rotation angle by taking the `atan2` delta relative to the previous sample point, and normalize it to `((-\pi,\pi])` with `atan2(sin, cos)` to avoid discontinuities when crossing `(\pm\pi)`.
+3. On pointer down, initialize `rotateLastPointerAngle` and `rotateAccumulated = 0` in canvas coordinates (with the same pixel-aligned snapping used by move logic). Keep the center fixed. When only changing rotation, use `alignObbOriginToFixedCenter` to derive the new `x/y` so the center stays at `(px, py)`, then call the existing `fitSelected` to reuse the same Konva-style delta transform pipeline as resize.
+
+```ts
+// 1.
+const [px, py] = this.obbWorldCenter(selection.obb);
+// 2.
+const cur = Math.atan2(canvasY - py, canvasX - px);
+let delta = cur - selection.rotateLastPointerAngle;
+delta = Math.atan2(Math.sin(delta), Math.cos(delta));
+selection.rotateLastPointerAngle = cur;
+selection.rotateAccumulated += delta;
+// 3.
+const newRotation = selection.obb.rotation + selection.rotateAccumulated;
+const newAttrs = this.alignObbOriginToFixedCenter(
+    selection.obb,
+    px,
+    py,
+    newRotation,
+);
+this.fitSelected(api, newAttrs, selection);
+```
+
+<TransformerRectRotated />
 
 ### Change the Rotation Origin {#change-the-rotation-origin}
 

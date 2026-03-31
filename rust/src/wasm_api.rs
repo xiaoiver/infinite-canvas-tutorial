@@ -12,7 +12,8 @@ use crate::state::{
     CAMERA_TRANSFORM_PENDING, CANVAS_RENDER_OPTIONS_PENDING, CANVAS_WINDOWS,
     EMOJI_CACHE, EXPORT_VIEW_PENDING, FONT_BYTES, GLYPH_CACHE, PENDING_CANVASES,
     RESTORE_PENDING, RUNNER_SCHEDULED,
-    clear_image_brush_cache, clear_shapes_for_canvas, push_shape,
+    clear_brush_stamp_cache, clear_image_brush_cache, clear_shapes_for_canvas, push_shape,
+    set_brush_stamp_image,
 };
 #[cfg(target_arch = "wasm32")]
 use crate::text::{compute_text_bounds_internal, measure_font_internal};
@@ -20,7 +21,7 @@ use crate::text::{compute_text_bounds_internal, measure_font_internal};
 use crate::path_utils::{is_point_in_path_fill, is_point_in_path_stroke, path_render_bounds};
 #[cfg(target_arch = "wasm32")]
 use crate::types::{
-    CanvasRenderOptions, CanvasRenderOptionsInput, DropShadow, EllipseOptions, ExportViewOpts,
+    BrushOptions, CanvasRenderOptions, CanvasRenderOptionsInput, DropShadow, EllipseOptions, ExportViewOpts,
     GroupOptions, ImageRectOptions, JsShape, LineOptions, PathBoundsOptions, PathHitTestOptions,
     PathOptions, PolylineOptions, RectOptions, RoughEllipseOptions, RoughLineOptions,
     RoughPathOptions, RoughPolylineOptions, RoughRectOptions, StrokeAlignment, StrokeParams,
@@ -72,6 +73,29 @@ pub fn run_with_canvas(canvas: JsValue, on_ready: JsValue) {
         }
     }
     closure.forget();
+}
+
+#[cfg(target_arch = "wasm32")]
+fn parse_brush_points(points_text: &str) -> Vec<[f64; 3]> {
+    points_text
+        .split_whitespace()
+        .filter_map(|token| {
+            let mut it = token.split(',');
+            let x = it.next()?.trim().parse::<f64>().ok()?;
+            let y = it.next()?.trim().parse::<f64>().ok()?;
+            // Radius is geometric magnitude and must be non-negative for brush segment math.
+            let r = it
+                .next()
+                .and_then(|s| s.trim().parse::<f64>().ok())
+                .unwrap_or(0.0)
+                .abs();
+            if x.is_finite() && y.is_finite() && r.is_finite() {
+                Some([x, y, r])
+            } else {
+                None
+            }
+        })
+        .collect()
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -304,6 +328,94 @@ pub fn js_add_path(canvas_id: u32, opts: JsValue) {
         marker_end: o.marker_end,
         marker_factor: o.marker_factor,
         drop_shadow,
+    });
+}
+
+#[cfg(target_arch = "wasm32")]
+#[wasm_bindgen(js_name = addBrush)]
+pub fn js_add_brush(canvas_id: u32, opts: JsValue) {
+    let image_data: Vec<u8> = js_sys::Reflect::get(&opts, &"imageData".into())
+        .ok()
+        .and_then(|v| v.dyn_into::<js_sys::Uint8Array>().ok())
+        .map(|a| a.to_vec())
+        .unwrap_or_default();
+    let o: BrushOptions = match serde_wasm_bindgen::from_value(opts) {
+        Ok(v) => v,
+        Err(e) => {
+            web_sys::console::error_1(&format!("addBrush: invalid options - {}", e).into());
+            return;
+        }
+    };
+    let brush_points = parse_brush_points(&o.points);
+    if brush_points.len() < 2 {
+        web_sys::console::error_1(&"addBrush: points need at least 2 entries".into());
+        return;
+    }
+    let inferred_width = {
+        let mut sum = 0.0;
+        let mut count = 0usize;
+        for p in &brush_points {
+            if p[2] > 0.0 {
+                sum += p[2] * 2.0;
+                count += 1;
+            }
+        }
+        if count > 0 { sum / count as f64 } else { 1.0 }
+    };
+    let stroke_width = if o.stroke_width > 0.0 {
+        o.stroke_width
+    } else {
+        inferred_width.max(0.5)
+    };
+    let stroke_color = o.stroke.unwrap_or_else(default_rgba_stroke);
+    let stamp_mode_ratio = match o.stamp_mode.as_deref() {
+        Some("equi_distance") => false,
+        Some("ratio_distance") => true,
+        _ => true,
+    };
+    let stamp_noise_factor = o.stamp_noise_factor.max(0.0);
+    let stamp_rotation_factor = o.stamp_rotation_factor;
+    let _ = (&o.brush_type, &o.brush_stamp, o.stamp_interval);
+
+    let expected_len = o.image_width as usize * o.image_height as usize * 4;
+    if o.image_width > 0
+        && o.image_height > 0
+        && image_data.len() >= expected_len
+    {
+        set_brush_stamp_image(
+            o.id.clone(),
+            image_data,
+            o.image_width,
+            o.image_height,
+        );
+    }
+
+    push_shape(canvas_id, JsShape::Brush {
+        id: o.id,
+        parent_id: o.parent_id,
+        z_index: o.z_index,
+        ui: o.ui,
+        points: brush_points,
+        stroke: Some(StrokeParams {
+            width: stroke_width,
+            color: stroke_color,
+            linecap: "round".to_string(),
+            linejoin: "round".to_string(),
+            miter_limit: default_miter_limit(),
+            stroke_dasharray: None,
+            stroke_dashoffset: 0.0,
+            alignment: StrokeAlignment::Center,
+            blur: 0.0,
+        }),
+        opacity: o.opacity,
+        stroke_opacity: o.stroke_opacity,
+        local_transform: o.local_transform,
+        size_attenuation: o.size_attenuation,
+        stroke_attenuation: o.stroke_attenuation,
+        stamp_interval: o.stamp_interval.max(1e-4),
+        stamp_mode_ratio,
+        stamp_noise_factor,
+        stamp_rotation_factor,
     });
 }
 
@@ -948,6 +1060,7 @@ pub fn js_clear_shapes(canvas_id: u32) {
     // 同一帧内的 camera 重绘不应触发清理；该函数只会在 JS 重建 shapes 时调用。
     // 清理 ImageRect 缓存可避免 shape id 复用导致的纹理过期。
     clear_image_brush_cache();
+    clear_brush_stamp_cache();
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -1076,4 +1189,5 @@ pub fn js_clear_glyph_cache() {
 pub fn js_clear_all_caches() {
     EMOJI_CACHE.with(|c| c.borrow_mut().clear());
     GLYPH_CACHE.with(|c| c.borrow_mut().clear());
+    clear_brush_stamp_cache();
 }

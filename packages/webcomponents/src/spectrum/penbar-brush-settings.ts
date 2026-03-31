@@ -76,11 +76,14 @@ export class PenbarBrushSettings extends LitElement {
   }
 
   private handleStampChanged(e: Event & { target: HTMLInputElement }) {
-    const stamp = (e.target as any).value;
+    const activeStampSrc = (e.target as any).value as string;
     this.api.setAppState({
       penbarBrush: {
         ...this.api.getAppState().penbarBrush,
-        stamp,
+        stamps: this.api.getAppState().penbarBrush.stamps.map((stamp) => ({
+          ...stamp,
+          active: stamp.src === activeStampSrc,
+        })),
       },
     });
     this.api.record();
@@ -108,7 +111,7 @@ export class PenbarBrushSettings extends LitElement {
         <sp-picker
           style="width: 100%; margin-bottom: 4px; margin-top: 4px;"
           label=${msg(str`Stamp`)}
-          value=${penbarBrush.stamp}
+          value=${penbarBrush.stamps.find((stamp) => stamp.active)?.src}
           @change=${this.handleStampChanged}
           id="font-family"
         >

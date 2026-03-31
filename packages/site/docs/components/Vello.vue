@@ -6,6 +6,7 @@ import {
   RendererPlugin,
   DefaultRendererPlugin,
   svgElementsToSerializedNodes,
+  BrushType,
 } from '@infinite-canvas-tutorial/ecs';
 import { ref, onMounted, onUnmounted } from 'vue';
 import { Event, UIPlugin } from '@infinite-canvas-tutorial/webcomponents';
@@ -131,11 +132,58 @@ onMounted(async () => {
       },
     ];
 
+    // Generate sinewave geometry
+    const maxRadius = (1 / 3) * 100;
+    const segmentCount = 32;
+
+    const position: [number, number][] = [];
+    const radius: number[] = [];
+
+    const gr = (1 + Math.sqrt(5)) / 2; // golden ratio
+    const pi = Math.PI;
+
+    for (let i = 0; i <= segmentCount; ++i) {
+      let a = i / segmentCount;
+      let x = -pi + 2 * pi * a;
+      let y = Math.sin(x) / gr;
+      let r = Math.cos(x / 2.0) * maxRadius;
+
+      position.push([x * 100 + 360, y * 100 + 120]);
+      radius.push(r);
+    }
+    const brushes = [
+      {
+        id: 'brush-with-stamp-1',
+        type: 'brush',
+        brushType: BrushType.STAMP,
+        brushStamp: '/stamp1.png',
+        stampInterval: 0.4,
+        points: position.map(([x, y], i) => `${x},${y + 300},${radius[i]}`).join(' '),
+        stroke: 'red',
+        strokeWidth: 10,
+        strokeOpacity: 1,
+        zIndex: 1,
+      },
+      {
+        id: 'brush-with-stamp-2',
+        type: 'brush',
+        brushType: BrushType.STAMP,
+        brushStamp: '/stamp2.png',
+        stampInterval: 0.4,
+        points: position.map(([x, y], i) => `${x},${y + 400},${radius[i]}`).join(' '),
+        stroke: 'red',
+        strokeWidth: 10,
+        strokeOpacity: 0.3,
+        zIndex: 1,
+      },
+    ];
+
     api.runAtNextTick(() => {
       api.updateNodes([
         ...nodes,
         ...gradients,
         ...roughs,
+        ...brushes,
         {
           id: 'image-1',
           type: 'rect',

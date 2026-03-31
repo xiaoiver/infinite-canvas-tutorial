@@ -5,6 +5,7 @@ description: '实现图形变换器，支持调整大小和旋转功能。学习
 
 <script setup>
 import TransformerRect from '../../components/TransformerRect.vue'
+import TransformerRectRotated from '../../components/TransformerRectRotated.vue'
 import TransformerLine from '../../components/TransformerLine.vue'
 import TransformerPolyline from '../../components/TransformerPolyline.vue'
 </script>
@@ -464,15 +465,41 @@ if (centeredScaling) {
 
 ![Flip a rect with gradient fill](/rotate-when-flipped.png)
 
-## [WIP] 旋转 {#rotation}
+## 旋转 {#rotation}
 
-Figma
+Figma 中的旋转交互如下：
 
 > Hover just outside one of the layer's bounds until the icon appears.
 > Click and drag to rotate your selection:
 > Drag clockwise to create a negative angle (towards -180° ).
 > Drag counterclockwise to create a positive angle (towards 180° )
 > Hold down Shift to snap rotation values to increments of 15.
+
+1. 首先需要计算 OBB 的几何中心，需要考虑旋转。
+2. 然后累积转角，用 `atan2` 相对上一采样点的差值，并用 `atan2(sin, cos)` 归一化到 `((-\pi,\pi])`，避免跨过 `(\pm\pi)` 时突变。
+3. 指针按下时在画布坐标（并与移动逻辑一致地做像素对齐栅格）下初始化 `rotateLastPointerAngle` 与 `rotateAccumulated = 0`。 保持中心不动。只改 rotation 时，用 `alignObbOriginToFixedCenter` 反推新的 `x/y`，使中心点仍在 `(px, py)`，再调用现有的 `fitSelected`，与 resize 共用同一套 Konva 式 delta 变换。
+
+```ts
+// 1.
+const [px, py] = this.obbWorldCenter(selection.obb);
+// 2.
+const cur = Math.atan2(canvasY - py, canvasX - px);
+let delta = cur - selection.rotateLastPointerAngle;
+delta = Math.atan2(Math.sin(delta), Math.cos(delta));
+selection.rotateLastPointerAngle = cur;
+selection.rotateAccumulated += delta;
+// 3.
+const newRotation = selection.obb.rotation + selection.rotateAccumulated;
+const newAttrs = this.alignObbOriginToFixedCenter(
+    selection.obb,
+    px,
+    py,
+    newRotation,
+);
+this.fitSelected(api, newAttrs, selection);
+```
+
+<TransformerRectRotated />
 
 ### 调整旋转中心 {#change-the-rotation-origin}
 

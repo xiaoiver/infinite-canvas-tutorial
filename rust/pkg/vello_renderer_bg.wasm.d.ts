@@ -1,6 +1,7 @@
 /* tslint:disable */
 /* eslint-disable */
 export const memory: WebAssembly.Memory;
+export const addBrush: (a: number, b: any) => void;
 export const addEllipse: (a: number, b: any) => void;
 export const addGroup: (a: number, b: any) => void;
 export const addImageRect: (a: number, b: any) => void;
@@ -24,9 +25,9 @@ export const runWithCanvas: (a: any, b: any) => void;
 export const setCameraTransform: (a: number, b: any) => void;
 export const setCanvasRenderOptions: (a: number, b: any) => void;
 export const setExportView: (a: number, b: any, c: any) => void;
+export const clearShapes: (a: number) => void;
 export const clearEmojiCache: () => void;
 export const clearGlyphCache: () => void;
-export const clearShapes: (a: number) => void;
 export const clearAllCaches: () => void;
 export const wasm_bindgen__closure__destroy__h2393627b061c6390: (a: number, b: number) => void;
 export const wasm_bindgen__closure__destroy__h5efe34e33761ee9b: (a: number, b: number) => void;

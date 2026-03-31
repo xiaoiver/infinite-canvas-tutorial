@@ -1,6 +1,8 @@
 use std::sync::Arc;
 
-use vello::kurbo::{Affine, Vec2};
+use vello::kurbo::Affine;
+#[cfg(target_arch = "wasm32")]
+use vello::kurbo::{Point, Vec2};
 use vello::peniko::color::palette;
 use vello::util::{RenderContext, RenderSurface};
 use vello::wgpu;
@@ -11,16 +13,220 @@ use winit::event::WindowEvent;
 use winit::event_loop::ActiveEventLoop;
 use winit::window::Window;
 
+use crate::brush_pass::BrushPass;
 use crate::grid_pass::{GridLayerTextures, GridPass};
 use crate::scene::{add_shapes_to_scene, affine_scale_factor};
 use crate::state::{take_pending_camera_transform, take_pending_canvas_render_options};
 use crate::types::CanvasRenderOptions;
+#[cfg(target_arch = "wasm32")]
+use crate::scene::{compute_world_transforms, sort_shapes_by_parent_z_index};
+#[cfg(target_arch = "wasm32")]
+use crate::state::{get_brush_stamp_image, get_user_shapes};
+#[cfg(target_arch = "wasm32")]
+use crate::types::{apply_opacity_to_color, JsShape};
 
 pub const MIN_SURFACE_WIDTH: u32 = 800;
 pub const MIN_SURFACE_HEIGHT: u32 = 600;
+#[cfg(not(target_arch = "wasm32"))]
+const GPU_BRUSH_DEBUG_ENV: &str = "VELLO_GPU_BRUSH_DEBUG";
 
 const VELLO_CLEAR_TRANSPARENT: vello::peniko::Color =
     vello::peniko::Color::new([0.0f32, 0.0, 0.0, 0.0]);
+
+#[cfg(target_arch = "wasm32")]
+struct BrushSegmentSample {
+    id: String,
+    stroke_color: [f32; 4],
+    p0: [f32; 2],
+    p1: [f32; 2],
+    r0: f32,
+    r1: f32,
+    l0: f32,
+    l1: f32,
+    stamp_interval: f32,
+    stamp_mode_ratio: bool,
+    stamp_noise_factor: f32,
+    stamp_rotation_factor: f32,
+}
+
+#[cfg(target_arch = "wasm32")]
+fn extract_brush_segment_samples(canvas_id: Option<u32>, zoom: f64) -> Vec<BrushSegmentSample> {
+    let Some(cid) = canvas_id else {
+        return Vec::new();
+    };
+    let shapes_all = get_user_shapes(cid);
+    if shapes_all.is_empty() {
+        return Vec::new();
+    }
+    let shapes = sort_shapes_by_parent_z_index(&shapes_all);
+    let world_transforms = compute_world_transforms(&shapes);
+    let mut samples = Vec::new();
+    for shape in shapes {
+        match shape {
+            JsShape::Polyline {
+                id,
+                points,
+                stroke,
+                opacity,
+                stroke_opacity,
+                ui,
+                stroke_attenuation,
+                ..
+            } => {
+                if ui || points.len() < 2 {
+                    continue;
+                }
+                let Some(stroke) = stroke else {
+                    continue;
+                };
+                let world = world_transforms
+                    .get(id.as_str())
+                    .copied()
+                    .unwrap_or(Affine::IDENTITY);
+                let mut width_world = stroke.width;
+                if stroke_attenuation {
+                    width_world /= zoom.max(1e-6);
+                }
+                let radius = (width_world as f32 * 0.5).max(0.25);
+                let stamp_interval = (radius * 0.9).max(0.5);
+                let stroke_color =
+                    apply_opacity_to_color(stroke.color, opacity, stroke_opacity);
+                let mut cumulative_len = 0.0_f32;
+                for i in 0..(points.len() - 1) {
+                    let p0w: Point = world * Point::new(points[i][0], points[i][1]);
+                    let p1w: Point = world * Point::new(points[i + 1][0], points[i + 1][1]);
+                    let seg_len =
+                        ((p1w.x - p0w.x).powi(2) + (p1w.y - p0w.y).powi(2)).sqrt() as f32;
+                    let l0 = cumulative_len;
+                    cumulative_len += seg_len;
+                    let l1 = cumulative_len;
+                    samples.push(BrushSegmentSample {
+                        id: id.clone(),
+                        stroke_color,
+                        p0: [p0w.x as f32, p0w.y as f32],
+                        p1: [p1w.x as f32, p1w.y as f32],
+                        r0: radius,
+                        r1: radius,
+                        l0,
+                        l1,
+                        stamp_interval,
+                        stamp_mode_ratio: false,
+                        stamp_noise_factor: 0.0,
+                        stamp_rotation_factor: 0.0,
+                    });
+                }
+            }
+            JsShape::Brush {
+                id,
+                points,
+                stroke,
+                opacity,
+                stroke_opacity,
+                stroke_attenuation,
+                stamp_interval,
+                stamp_mode_ratio,
+                stamp_noise_factor,
+                stamp_rotation_factor,
+                ..
+            } => {
+                if points.len() < 2 {
+                    continue;
+                }
+                let Some(stroke) = stroke else {
+                    continue;
+                };
+                let world = world_transforms
+                    .get(id.as_str())
+                    .copied()
+                    .unwrap_or(Affine::IDENTITY);
+                let stroke_color =
+                    apply_opacity_to_color(stroke.color, opacity, stroke_opacity);
+                let seg_count = points.len().saturating_sub(1);
+                let mut cumulative_len = 0.0_f32;
+                for i in 0..seg_count {
+                    let p0w: Point = world * Point::new(points[i][0], points[i][1]);
+                    let p1w: Point = world * Point::new(points[i + 1][0], points[i + 1][1]);
+                    let mut r0 = points[i][2] as f32;
+                    let mut r1 = points[i + 1][2] as f32;
+                    if stroke_attenuation {
+                        let inv_zoom = (1.0 / zoom.max(1e-6)) as f32;
+                        r0 *= inv_zoom;
+                        r1 *= inv_zoom;
+                    }
+                    let seg_len =
+                        ((p1w.x - p0w.x).powi(2) + (p1w.y - p0w.y).powi(2)).sqrt() as f32;
+                    let l0 = cumulative_len;
+                    cumulative_len += seg_len;
+                    let l1 = cumulative_len;
+                    samples.push(BrushSegmentSample {
+                        id: id.clone(),
+                        stroke_color,
+                        p0: [p0w.x as f32, p0w.y as f32],
+                        p1: [p1w.x as f32, p1w.y as f32],
+                        r0: r0.max(0.25),
+                        r1: r1.max(0.25),
+                        l0,
+                        l1,
+                        stamp_interval: stamp_interval.max(1e-4),
+                        stamp_mode_ratio,
+                        stamp_noise_factor,
+                        stamp_rotation_factor,
+                    });
+                }
+            }
+            JsShape::RoughPolyline {
+                id,
+                points,
+                stroke,
+                opacity,
+                stroke_opacity,
+                ui,
+                ..
+            } => {
+                if ui || points.len() < 2 {
+                    continue;
+                }
+                let Some(stroke) = stroke else {
+                    continue;
+                };
+                let world = world_transforms
+                    .get(id.as_str())
+                    .copied()
+                    .unwrap_or(Affine::IDENTITY);
+                let radius = (stroke.width as f32 * 0.5).max(0.25);
+                let stamp_interval = (radius * 0.9).max(0.5);
+                let stroke_color =
+                    apply_opacity_to_color(stroke.color, opacity, stroke_opacity);
+                let mut cumulative_len = 0.0_f32;
+                for i in 0..(points.len() - 1) {
+                    let p0w: Point = world * Point::new(points[i][0], points[i][1]);
+                    let p1w: Point = world * Point::new(points[i + 1][0], points[i + 1][1]);
+                    let seg_len =
+                        ((p1w.x - p0w.x).powi(2) + (p1w.y - p0w.y).powi(2)).sqrt() as f32;
+                    let l0 = cumulative_len;
+                    cumulative_len += seg_len;
+                    let l1 = cumulative_len;
+                    samples.push(BrushSegmentSample {
+                        id: id.clone(),
+                        stroke_color,
+                        p0: [p0w.x as f32, p0w.y as f32],
+                        p1: [p1w.x as f32, p1w.y as f32],
+                        r0: radius,
+                        r1: radius,
+                        l0,
+                        l1,
+                        stamp_interval,
+                        stamp_mode_ratio: false,
+                        stamp_noise_factor: 0.0,
+                        stamp_rotation_factor: 0.0,
+                    });
+                }
+            }
+            _ => {}
+        }
+    }
+    samples
+}
 
 #[cfg(target_arch = "wasm32")]
 pub fn device_pixel_ratio() -> f64 {
@@ -48,6 +254,7 @@ pub struct VelloRendererApp {
     pub context: RenderContext,
     pub renderers: Vec<Option<Renderer>>,
     pub grid_pass: Vec<Option<GridPass>>,
+    pub brush_pass: Vec<Option<BrushPass>>,
     pub states: Vec<RenderState>,
     pub scene: Scene,
 }
@@ -58,6 +265,7 @@ impl VelloRendererApp {
             context: RenderContext::new(),
             renderers: vec![],
             grid_pass: vec![],
+            brush_pass: vec![],
             states: vec![],
             scene: Scene::new(),
         }
@@ -77,6 +285,7 @@ impl VelloRendererApp {
             context,
             renderers,
             grid_pass,
+            brush_pass,
             states,
             scene,
         } = self;
@@ -88,6 +297,9 @@ impl VelloRendererApp {
 
         while grid_pass.len() <= dev_id {
             grid_pass.push(None);
+        }
+        while brush_pass.len() <= dev_id {
+            brush_pass.push(None);
         }
 
         let gpu_grid = render_opts.grid && render_opts.checkboard_style != 0;
@@ -107,6 +319,9 @@ impl VelloRendererApp {
             let gp = grid_pass[dev_id].get_or_insert_with(|| {
                 GridPass::new(&device_handle.device)
             });
+            let bp = brush_pass[dev_id].get_or_insert_with(|| {
+                BrushPass::new(&device_handle.device, &device_handle.queue)
+            });
 
             let need_new = state
                 .grid_layers
@@ -123,6 +338,7 @@ impl VelloRendererApp {
             let layers = state.grid_layers.as_ref().expect("grid layers");
 
             let inv = effective_transform.inverse();
+            #[cfg(target_arch = "wasm32")]
             let zoom = affine_scale_factor(effective_transform).max(1e-6);
             gp.write_uniforms(
                 &device_handle.queue,
@@ -140,6 +356,130 @@ impl VelloRendererApp {
                 });
             gp.encode_grid_pass(&mut grid_enc, &layers.bg_view);
             device_handle.queue.submit([grid_enc.finish()]);
+
+            #[cfg(target_arch = "wasm32")]
+            {
+                let samples = extract_brush_segment_samples(canvas_id, zoom);
+                if samples.is_empty() {
+                    bp.update_stamp_texture(
+                        &device_handle.device,
+                        &device_handle.queue,
+                        None,
+                    );
+                    bp.write_uniforms_disabled(
+                        &device_handle.queue,
+                        inv,
+                        width,
+                        height,
+                    );
+                    let mut brush_enc = device_handle
+                        .device
+                        .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                            label: Some("brush_overlay_empty"),
+                        });
+                    bp.encode_pass(&mut brush_enc, &layers.bg_view);
+                    device_handle.queue.submit([brush_enc.finish()]);
+                } else {
+                    let mut current_stamp_id: Option<String> = None;
+                    for sample in samples {
+                        if current_stamp_id.as_deref() != Some(sample.id.as_str()) {
+                            let stamp_image = get_brush_stamp_image(sample.id.as_str());
+                            if let Some((bytes, w, h)) = stamp_image {
+                                bp.update_stamp_texture(
+                                    &device_handle.device,
+                                    &device_handle.queue,
+                                    Some((bytes.as_slice(), w, h)),
+                                );
+                            } else {
+                                bp.update_stamp_texture(
+                                    &device_handle.device,
+                                    &device_handle.queue,
+                                    None,
+                                );
+                            }
+                            current_stamp_id = Some(sample.id.clone());
+                        }
+                        bp.write_uniforms_segment(
+                            &device_handle.queue,
+                            inv,
+                            width,
+                            height,
+                            sample.stroke_color,
+                            sample.p0,
+                            sample.r0,
+                            sample.p1,
+                            sample.r1,
+                            sample.l0,
+                            sample.l1,
+                            sample.stamp_interval,
+                            sample.stamp_mode_ratio,
+                            sample.stamp_noise_factor,
+                            sample.stamp_rotation_factor,
+                        );
+                        let mut brush_enc = device_handle
+                            .device
+                            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                                label: Some("brush_overlay_segment"),
+                            });
+                        bp.encode_pass(&mut brush_enc, &layers.bg_view);
+                        device_handle.queue.submit([brush_enc.finish()]);
+                    }
+                }
+            }
+
+            #[cfg(not(target_arch = "wasm32"))]
+            {
+                let brush_debug_enabled = std::env::var(GPU_BRUSH_DEBUG_ENV)
+                    .map(|v| matches!(v.as_str(), "1" | "true" | "TRUE" | "on" | "ON"))
+                    .unwrap_or(false);
+                if brush_debug_enabled {
+                    bp.update_stamp_texture(
+                        &device_handle.device,
+                        &device_handle.queue,
+                        None,
+                    );
+                    // Native debug-only sample segment to validate the WGPU brush path end-to-end.
+                    bp.write_uniforms_segment(
+                        &device_handle.queue,
+                        inv,
+                        width,
+                        height,
+                        [0.10, 0.10, 0.10, 0.85],
+                        [120.0, 120.0],
+                        16.0,
+                        [420.0, 260.0],
+                        10.0,
+                        0.0,
+                        ((420.0_f32 - 120.0).powi(2) + (260.0_f32 - 120.0).powi(2)).sqrt(),
+                        10.0,
+                        false,
+                        0.4,
+                        0.75,
+                    );
+                } else {
+                    bp.update_stamp_texture(
+                        &device_handle.device,
+                        &device_handle.queue,
+                        None,
+                    );
+                    bp.write_uniforms_disabled(
+                        &device_handle.queue,
+                        inv,
+                        width,
+                        height,
+                    );
+                }
+            }
+            #[cfg(not(target_arch = "wasm32"))]
+            {
+                let mut brush_enc = device_handle
+                    .device
+                    .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                        label: Some("brush_overlay"),
+                    });
+                bp.encode_pass(&mut brush_enc, &layers.bg_view);
+                device_handle.queue.submit([brush_enc.finish()]);
+            }
 
             renderers[dev_id]
                 .as_mut()
@@ -187,6 +527,9 @@ impl VelloRendererApp {
             device_handle.device.poll(wgpu::PollType::Poll).unwrap();
         } else {
             state.grid_layers = None;
+            let bp = brush_pass[dev_id].get_or_insert_with(|| {
+                BrushPass::new(&device_handle.device, &device_handle.queue)
+            });
             renderers[dev_id]
                 .as_mut()
                 .expect("renderer")
@@ -203,6 +546,128 @@ impl VelloRendererApp {
                     },
                 )
                 .expect("render to texture");
+
+            let inv = effective_transform.inverse();
+            let zoom = affine_scale_factor(effective_transform).max(1e-6);
+            #[cfg(target_arch = "wasm32")]
+            {
+                let samples = extract_brush_segment_samples(canvas_id, zoom);
+                if samples.is_empty() {
+                    bp.update_stamp_texture(
+                        &device_handle.device,
+                        &device_handle.queue,
+                        None,
+                    );
+                    bp.write_uniforms_disabled(
+                        &device_handle.queue,
+                        inv,
+                        width,
+                        height,
+                    );
+                    let mut brush_enc = device_handle
+                        .device
+                        .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                            label: Some("brush_overlay_empty_surface"),
+                        });
+                    bp.encode_pass(&mut brush_enc, &surface.target_view);
+                    device_handle.queue.submit([brush_enc.finish()]);
+                } else {
+                    let mut current_stamp_id: Option<String> = None;
+                    for sample in samples {
+                        if current_stamp_id.as_deref() != Some(sample.id.as_str()) {
+                            let stamp_image = get_brush_stamp_image(sample.id.as_str());
+                            if let Some((bytes, w, h)) = stamp_image {
+                                bp.update_stamp_texture(
+                                    &device_handle.device,
+                                    &device_handle.queue,
+                                    Some((bytes.as_slice(), w, h)),
+                                );
+                            } else {
+                                bp.update_stamp_texture(
+                                    &device_handle.device,
+                                    &device_handle.queue,
+                                    None,
+                                );
+                            }
+                            current_stamp_id = Some(sample.id.clone());
+                        }
+                        bp.write_uniforms_segment(
+                            &device_handle.queue,
+                            inv,
+                            width,
+                            height,
+                            sample.stroke_color,
+                            sample.p0,
+                            sample.r0,
+                            sample.p1,
+                            sample.r1,
+                            sample.l0,
+                            sample.l1,
+                            sample.stamp_interval,
+                            sample.stamp_mode_ratio,
+                            sample.stamp_noise_factor,
+                            sample.stamp_rotation_factor,
+                        );
+                        let mut brush_enc = device_handle
+                            .device
+                            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                                label: Some("brush_overlay_segment_surface"),
+                            });
+                        bp.encode_pass(&mut brush_enc, &surface.target_view);
+                        device_handle.queue.submit([brush_enc.finish()]);
+                    }
+                }
+            }
+
+            #[cfg(not(target_arch = "wasm32"))]
+            {
+                let brush_debug_enabled = std::env::var(GPU_BRUSH_DEBUG_ENV)
+                    .map(|v| matches!(v.as_str(), "1" | "true" | "TRUE" | "on" | "ON"))
+                    .unwrap_or(false);
+                if brush_debug_enabled {
+                    bp.update_stamp_texture(
+                        &device_handle.device,
+                        &device_handle.queue,
+                        None,
+                    );
+                    bp.write_uniforms_segment(
+                        &device_handle.queue,
+                        inv,
+                        width,
+                        height,
+                        [0.10, 0.10, 0.10, 0.85],
+                        [120.0, 120.0],
+                        16.0,
+                        [420.0, 260.0],
+                        10.0,
+                        0.0,
+                        ((420.0_f32 - 120.0).powi(2) + (260.0_f32 - 120.0).powi(2)).sqrt(),
+                        10.0,
+                        false,
+                        0.4,
+                        0.75,
+                    );
+                } else {
+                    bp.update_stamp_texture(
+                        &device_handle.device,
+                        &device_handle.queue,
+                        None,
+                    );
+                    bp.write_uniforms_disabled(
+                        &device_handle.queue,
+                        inv,
+                        width,
+                        height,
+                    );
+                }
+                let mut brush_enc = device_handle
+                    .device
+                    .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                        label: Some("brush_overlay_surface"),
+                    });
+                bp.encode_pass(&mut brush_enc, &surface.target_view);
+                device_handle.queue.submit([brush_enc.finish()]);
+            }
 
             let surface_texture = surface
                 .surface
@@ -533,6 +998,7 @@ pub async fn run_all_canvases_async() {
         context,
         renderers,
         grid_pass: vec![],
+        brush_pass: vec![],
         states,
         scene: Scene::new(),
     };

@@ -42,6 +42,8 @@ thread_local! {
     // Cache ImageRect -> ImageBrush, to avoid recreating/uploading textures on every redraw.
     // Key by JsShape `id`.
     pub static IMAGE_BRUSH_CACHE: RefCell<HashMap<String, ImageBrush>> = RefCell::new(HashMap::new());
+    // Cache brush stamp RGBA image bytes by Brush `id`.
+    pub static BRUSH_STAMP_CACHE: RefCell<HashMap<String, (Vec<u8>, u32, u32)>> = RefCell::new(HashMap::new());
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -68,6 +70,23 @@ pub fn clear_shapes_for_canvas(canvas_id: u32) {
 #[cfg(target_arch = "wasm32")]
 pub fn clear_image_brush_cache() {
     IMAGE_BRUSH_CACHE.with(|c| c.borrow_mut().clear());
+}
+
+#[cfg(target_arch = "wasm32")]
+pub fn set_brush_stamp_image(id: String, image_data: Vec<u8>, image_width: u32, image_height: u32) {
+    BRUSH_STAMP_CACHE.with(|c| {
+        c.borrow_mut().insert(id, (image_data, image_width, image_height));
+    });
+}
+
+#[cfg(target_arch = "wasm32")]
+pub fn clear_brush_stamp_cache() {
+    BRUSH_STAMP_CACHE.with(|c| c.borrow_mut().clear());
+}
+
+#[cfg(target_arch = "wasm32")]
+pub fn get_brush_stamp_image(id: &str) -> Option<(Vec<u8>, u32, u32)> {
+    BRUSH_STAMP_CACHE.with(|c| c.borrow().get(id).cloned())
 }
 
 #[cfg(target_arch = "wasm32")]

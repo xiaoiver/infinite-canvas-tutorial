@@ -75,6 +75,7 @@ import {
   addEllipse,
   addLine,
   addPath,
+  addBrush,
   addPolyline,
   addText,
   addImageRect,
@@ -876,6 +877,40 @@ export class VelloPipeline extends System {
             } else {
               addPath(canvasId, opts);
             }
+          }
+        } else if (entity.has(Brush)) {
+          const brush = entity.read(Brush);
+          if (brush.points && brush.points.length >= 2) {
+            const opts: Record<string, unknown> = {
+              ...baseOpts,
+              points: brush.points
+                .map(({ x, y, radius }) => `${x},${y},${radius}`)
+                .join(' '),
+              brushType: brush.type,
+              stampInterval: brush.stampInterval,
+              stampMode: brush.stampMode,
+              stampNoiseFactor: brush.stampNoiseFactor,
+              stampRotationFactor: brush.stampRotationFactor,
+            };
+            if (entity.has(Stroke)) {
+              const { width, color } = entity.read(Stroke);
+              opts.strokeWidth = width;
+              const { r, g, b, opacity } =
+                d3.rgb(color)?.rgb() ?? d3.rgb(0, 0, 0, 1);
+              opts.stroke = [r / 255, g / 255, b / 255, opacity];
+            }
+            if (entity.has(FillImage)) {
+              const { src } = entity.read(FillImage);
+              const imageData = imageToRgba(src);
+              if (imageData) {
+                opts.imageWidth = imageData.width;
+                opts.imageHeight = imageData.height;
+                opts.imageData = imageData.data;
+              } else {
+                opts.brushStamp = src;
+              }
+            }
+            addBrush(canvasId, opts);
           }
         } else if (entity.has(Polyline)) {
           const { points } = entity.read(Polyline);

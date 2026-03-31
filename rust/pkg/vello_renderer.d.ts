@@ -1,6 +1,8 @@
 /* tslint:disable */
 /* eslint-disable */
 
+export function addBrush(canvas_id: number, opts: any): void;
+
 export function addEllipse(canvas_id: number, opts: any): void;
 
 export function addGroup(canvas_id: number, opts: any): void;
@@ -59,6 +61,7 @@ export type InitInput = RequestInfo | URL | Response | BufferSource | WebAssembl
 
 export interface InitOutput {
     readonly memory: WebAssembly.Memory;
+    readonly addBrush: (a: number, b: any) => void;
     readonly addEllipse: (a: number, b: any) => void;
     readonly addGroup: (a: number, b: any) => void;
     readonly addImageRect: (a: number, b: any) => void;
@@ -82,9 +85,9 @@ export interface InitOutput {
     readonly setCameraTransform: (a: number, b: any) => void;
     readonly setCanvasRenderOptions: (a: number, b: any) => void;
     readonly setExportView: (a: number, b: any, c: any) => void;
+    readonly clearShapes: (a: number) => void;
     readonly clearEmojiCache: () => void;
     readonly clearGlyphCache: () => void;
-    readonly clearShapes: (a: number) => void;
     readonly clearAllCaches: () => void;
     readonly wasm_bindgen__closure__destroy__h2393627b061c6390: (a: number, b: number) => void;
     readonly wasm_bindgen__closure__destroy__h5efe34e33761ee9b: (a: number, b: number) => void;

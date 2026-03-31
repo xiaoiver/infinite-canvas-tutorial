@@ -4,6 +4,14 @@
  * @param {number} canvas_id
  * @param {any} opts
  */
+export function addBrush(canvas_id, opts) {
+    wasm.addBrush(canvas_id, opts);
+}
+
+/**
+ * @param {number} canvas_id
+ * @param {any} opts
+ */
 export function addEllipse(canvas_id, opts) {
     wasm.addEllipse(canvas_id, opts);
 }
