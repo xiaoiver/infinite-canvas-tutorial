@@ -152,7 +152,7 @@ canvas.addEventListener(Event.READY, async (e) => {
     // penbarVisible: false,
     // taskbarVisible: false,
     rotateEnabled: true,
-    flipEnabled: false,
+    flipEnabled: true,
     // filter: 'noise(0.5)',
     // layersLassoing: ['parent'],
   });
@@ -197,23 +197,23 @@ canvas.addEventListener(Event.READY, async (e) => {
   const node4 = {
     id: 'rect-4',
     // parentId: 'g-2',
-    type: 'rough-rect',
+    type: 'rect',
     x: 100,
     y: 100,
     width: 200,
     height: 200,
-    fill: 'green',
-    fillOpacity: 0.05,
-    roughFillStyle: 'watercolor',
+    fill: '/stamp.png',
     zIndex: 3,
   }
 
   const node5 = {
     id: 'rect-5',
-    type: 'rough-path',
+    type: 'path',
     d: 'M 100 100 L 200 100 L 200 200 Z',
     fill: 'green',
-    roughFillStyle: 'watercolor',
+    stroke: 'black',
+    strokeWidth: 10,
+    // roughFillStyle: 'watercolor',
     zIndex: 3,
   }
 
@@ -243,8 +243,8 @@ canvas.addEventListener(Event.READY, async (e) => {
     // node3,
     // g2,
     // node3,
-    // node4,
-    // node5,
+    node4,
+    node5,
     // {
     //   id: 'baseline-1',
     //   type: 'line',
@@ -387,20 +387,20 @@ canvas.addEventListener(Event.READY, async (e) => {
     //   textOverflow: 'ellipsis',
     //   zIndex: 6,
     // },
-    {
-      id: 'brush-with-stamp-1',
-      type: 'brush',
-      // brushType: BrushType.VANILLA,
-      brushType: BrushType.STAMP,
-      brushStamp: '/stamp2.png',
-      stampInterval: 0.4,
-      // brushStamp: '/brush.jpg',
-      points: position.map(([x, y], i) => `${x},${y},${radius[i]}`).join(' '),
-      stroke: 'red',
-      strokeWidth: 10,
-      strokeOpacity: 0.2,
-      zIndex: 1,
-    }
+    // {
+    //   id: 'brush-with-stamp-1',
+    //   type: 'brush',
+    //   // brushType: BrushType.VANILLA,
+    //   brushType: BrushType.STAMP,
+    //   brushStamp: '/stamp2.png',
+    //   stampInterval: 0.4,
+    //   // brushStamp: '/brush.jpg',
+    //   points: position.map(([x, y], i) => `${x},${y},${radius[i]}`).join(' '),
+    //   stroke: 'red',
+    //   strokeWidth: 10,
+    //   strokeOpacity: 0.2,
+    //   zIndex: 1,
+    // }
   ]);
   // api.selectNodes([node1]);
   // api.record();

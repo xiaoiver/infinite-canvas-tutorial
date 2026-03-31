@@ -529,7 +529,7 @@ export class Select extends System {
       );
 
       let anchor: Entity;
-      const anchorName = resizingAnchorName;
+      let anchorName = resizingAnchorName;
       if (anchorName === AnchorName.TOP_LEFT) {
         anchor = tlAnchor;
       } else if (anchorName === AnchorName.TOP_RIGHT) {
@@ -574,6 +574,19 @@ export class Select extends System {
       let newHypotenuse: number;
 
       if (anchorName === AnchorName.TOP_LEFT) {
+        if (flipEnabled && !lockAspectRatio) {
+          const { cx: oppositeX, cy: oppositeY } = brAnchor.read(Circle);
+          if (x > oppositeX && y <= oppositeY) {
+            anchorName = AnchorName.TOP_RIGHT;
+            selection.resizingAnchorName = AnchorName.TOP_RIGHT;
+          } else if (x <= oppositeX && y > oppositeY) {
+            anchorName = AnchorName.BOTTOM_LEFT;
+            selection.resizingAnchorName = AnchorName.BOTTOM_LEFT;
+          } else if (x > oppositeX && y > oppositeY) {
+            anchorName = AnchorName.BOTTOM_RIGHT;
+            selection.resizingAnchorName = AnchorName.BOTTOM_RIGHT;
+          }
+        }
         if (lockAspectRatio) {
           const comparePoint = centeredScaling
             ? {
@@ -598,6 +611,19 @@ export class Select extends System {
           });
         }
       } else if (anchorName === AnchorName.TOP_RIGHT) {
+        if (flipEnabled && !lockAspectRatio) {
+          const { cx: oppositeX, cy: oppositeY } = blAnchor.read(Circle);
+          if (x < oppositeX && y <= oppositeY) {
+            anchorName = AnchorName.TOP_LEFT;
+            selection.resizingAnchorName = AnchorName.TOP_LEFT;
+          } else if (x >= oppositeX && y > oppositeY) {
+            anchorName = AnchorName.BOTTOM_RIGHT;
+            selection.resizingAnchorName = AnchorName.BOTTOM_RIGHT;
+          } else if (x < oppositeX && y > oppositeY) {
+            anchorName = AnchorName.BOTTOM_LEFT;
+            selection.resizingAnchorName = AnchorName.BOTTOM_LEFT;
+          }
+        }
         if (lockAspectRatio) {
           const comparePoint = centeredScaling
             ? {
@@ -626,6 +652,19 @@ export class Select extends System {
         tlAnchor.write(Circle).cy = trAnchor.read(Circle).cy;
         brAnchor.write(Circle).cx = trAnchor.read(Circle).cx;
       } else if (anchorName === AnchorName.BOTTOM_LEFT) {
+        if (flipEnabled && !lockAspectRatio) {
+          const { cx: oppositeX, cy: oppositeY } = trAnchor.read(Circle);
+          if (x <= oppositeX && y < oppositeY) {
+            anchorName = AnchorName.TOP_LEFT;
+            selection.resizingAnchorName = AnchorName.TOP_LEFT;
+          } else if (x > oppositeX && y >= oppositeY) {
+            anchorName = AnchorName.BOTTOM_RIGHT;
+            selection.resizingAnchorName = AnchorName.BOTTOM_RIGHT;
+          } else if (x > oppositeX && y < oppositeY) {
+            anchorName = AnchorName.TOP_RIGHT;
+            selection.resizingAnchorName = AnchorName.TOP_RIGHT;
+          }
+        }
         if (lockAspectRatio) {
           const comparePoint = centeredScaling
             ? {
@@ -653,6 +692,19 @@ export class Select extends System {
         tlAnchor.write(Circle).cx = blAnchor.read(Circle).cx;
         brAnchor.write(Circle).cy = blAnchor.read(Circle).cy;
       } else if (anchorName === AnchorName.BOTTOM_RIGHT) {
+        if (flipEnabled && !lockAspectRatio) {
+          const { cx: oppositeX, cy: oppositeY } = tlAnchor.read(Circle);
+          if (x < oppositeX && y >= oppositeY) {
+            anchorName = AnchorName.BOTTOM_LEFT;
+            selection.resizingAnchorName = AnchorName.BOTTOM_LEFT;
+          } else if (x >= oppositeX && y < oppositeY) {
+            anchorName = AnchorName.TOP_RIGHT;
+            selection.resizingAnchorName = AnchorName.TOP_RIGHT;
+          } else if (x < oppositeX && y < oppositeY) {
+            anchorName = AnchorName.TOP_LEFT;
+            selection.resizingAnchorName = AnchorName.TOP_LEFT;
+          }
+        }
         if (lockAspectRatio) {
           const comparePoint = centeredScaling
             ? {
@@ -679,26 +731,57 @@ export class Select extends System {
         if (!flipEnabled) {
           tlAnchor.write(Circle).cy = Math.min(y, brAnchor.read(Circle).cy);
         } else {
+          const prevBrY = brAnchor.read(Circle).cy;
           tlAnchor.write(Circle).cy = y;
+          if (y > prevBrY) {
+            // Crossing over: dragged edge becomes bottom edge.
+            tlAnchor.write(Circle).cy = prevBrY;
+            brAnchor.write(Circle).cy = y;
+            anchorName = AnchorName.BOTTOM_CENTER;
+            selection.resizingAnchorName = AnchorName.BOTTOM_CENTER;
+          }
         }
-        tlAnchor.write(Circle).cy = y;
       } else if (anchorName === AnchorName.BOTTOM_CENTER) {
         if (!flipEnabled) {
           brAnchor.write(Circle).cy = Math.max(y, tlAnchor.read(Circle).cy);
         } else {
+          const prevTlY = tlAnchor.read(Circle).cy;
           brAnchor.write(Circle).cy = y;
+          if (y < prevTlY) {
+            // Crossing over: dragged edge becomes top edge.
+            brAnchor.write(Circle).cy = prevTlY;
+            tlAnchor.write(Circle).cy = y;
+            anchorName = AnchorName.TOP_CENTER;
+            selection.resizingAnchorName = AnchorName.TOP_CENTER;
+          }
         }
       } else if (anchorName === AnchorName.MIDDLE_LEFT) {
         if (!flipEnabled) {
           tlAnchor.write(Circle).cx = Math.min(x, brAnchor.read(Circle).cx);
         } else {
+          const prevBrX = brAnchor.read(Circle).cx;
           tlAnchor.write(Circle).cx = x;
+          if (x > prevBrX) {
+            // Crossing over: dragged edge becomes right edge.
+            tlAnchor.write(Circle).cx = prevBrX;
+            brAnchor.write(Circle).cx = x;
+            anchorName = AnchorName.MIDDLE_RIGHT;
+            selection.resizingAnchorName = AnchorName.MIDDLE_RIGHT;
+          }
         }
       } else if (anchorName === AnchorName.MIDDLE_RIGHT) {
         if (!flipEnabled) {
           brAnchor.write(Circle).cx = Math.max(x, tlAnchor.read(Circle).cx);
         } else {
+          const prevTlX = tlAnchor.read(Circle).cx;
           brAnchor.write(Circle).cx = x;
+          if (x < prevTlX) {
+            // Crossing over: dragged edge becomes left edge.
+            brAnchor.write(Circle).cx = prevTlX;
+            tlAnchor.write(Circle).cx = x;
+            anchorName = AnchorName.MIDDLE_LEFT;
+            selection.resizingAnchorName = AnchorName.MIDDLE_LEFT;
+          }
         }
       }
 
@@ -1666,8 +1749,9 @@ export class Select extends System {
       const obb = {
         x: translation[0],
         y: translation[1],
-        width: Math.max(oldNode.width * scale[0], epsilon),
-        height: Math.max(oldNode.height * scale[1], epsilon),
+        // Keep geometry size positive; flip sign is carried by scaleX/scaleY.
+        width: Math.max(Math.abs(oldNode.width * scale[0]), epsilon),
+        height: Math.max(Math.abs(oldNode.height * scale[1]), epsilon),
         rotation,
         scaleX: oldAttrs.scaleX * (Math.sign(width) || 1),
         scaleY: oldAttrs.scaleY * (Math.sign(height) || 1),
@@ -1680,8 +1764,6 @@ export class Select extends System {
         newLocalTransform,
         oldNode,
       );
-      selection.obb.scaleX = obb.scaleX;
-      selection.obb.scaleY = obb.scaleY;
 
       if (selecteds.length === 1 && selected.has(Text)) {
         const t = selected.read(Text);
