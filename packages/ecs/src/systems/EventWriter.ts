@@ -239,6 +239,7 @@ export class EventWriter extends System {
       });
     };
 
+    const gestureWindow = DOMAdapter.get().getWindow();
     const gesture = new Gesture(
       element as HTMLCanvasElement,
       {
@@ -326,6 +327,8 @@ export class EventWriter extends System {
         },
       },
       {
+        // Without global `window` (e.g. Jest node env), @use-gesture leaves shared.window undefined.
+        window: gestureWindow,
         pinch: {
           preventDefault: true,
           eventOptions: { passive: false },

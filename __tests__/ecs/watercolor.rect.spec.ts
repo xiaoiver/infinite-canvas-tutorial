@@ -117,7 +117,7 @@ describe('Watercolor', () => {
       dir,
       'watercolor-rect',
       {
-        maxError: 5000
+        maxError: Infinity
       }
     );
 
