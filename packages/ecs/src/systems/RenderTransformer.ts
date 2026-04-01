@@ -942,6 +942,21 @@ export function getOBB(camera: Entity): OBB {
   }
 
   if (selecteds.length > 1) {
+    if (
+      status === TransformableStatus.ROTATING &&
+      tf.transformerObbFrozenDuringRotate
+    ) {
+      const g = tf.gestureFrozenSelectionOBB;
+      return new OBB({
+        x: g.x,
+        y: g.y,
+        width: g.width,
+        height: g.height,
+        rotation: g.rotation,
+        scaleX: g.scaleX,
+        scaleY: g.scaleY,
+      });
+    }
     return calculateOBBRecursive(selecteds);
   }
 

@@ -384,7 +384,7 @@ canvas.addEventListener(Event.READY, async (e) => {
     // }
   ]);
   // api.selectNodes([node1]);
-  // api.record();
+  api.record();
 
   // api.updateNodes([node1]);
 });
