@@ -102,6 +102,8 @@ export enum SelectionMode {
   RESIZE = 'RESIZE',
   READY_TO_ROTATE = 'READY_TO_ROTATE',
   ROTATE = 'ROTATE',
+  READY_TO_MOVE_PIVOT = 'READY_TO_MOVE_PIVOT',
+  MOVE_PIVOT = 'MOVE_PIVOT',
   READY_TO_MOVE_CONTROL_POINT = 'READY_TO_MOVE_CONTROL_POINT',
   MOVE_CONTROL_POINT = 'MOVE_CONTROL_POINT',
   EDITING = 'EDITING',
@@ -144,6 +146,7 @@ export interface SelectOBB {
   rotateLastPointerAngle?: number;
   /** Total rotation applied during current rotate gesture (rad), relative to saved {@link SelectOBB.obb}. */
   rotateAccumulated?: number;
+  selectedNodeIds?: string[];
 }
 
 /**
@@ -363,27 +366,54 @@ export class Select extends System {
     ];
   }
 
-  /** 保持中心不动，仅改变旋转角时，反推新的 OBB 原点 (x, y)。 */
-  private alignObbOriginToFixedCenter(
+  /** 保持任意本地 pivot 的世界坐标不动，仅改变旋转角时，反推新的 OBB 原点 (x, y)。 */
+  private alignObbOriginToFixedPivot(
     obb: SelectOBB['obb'],
+    pivotLocalX: number,
+    pivotLocalY: number,
     centerX: number,
     centerY: number,
     newRotation: number,
   ) {
-    const lx = obb.width / 2;
-    const ly = obb.height / 2;
     const c = Math.cos(newRotation);
     const s = Math.sin(newRotation);
     const { scaleX, scaleY, width, height } = obb;
     return {
-      x: centerX - lx * scaleX * c + ly * scaleY * s,
-      y: centerY - lx * scaleX * s - ly * scaleY * c,
+      x: centerX - pivotLocalX * scaleX * c + pivotLocalY * scaleY * s,
+      y: centerY - pivotLocalX * scaleX * s - pivotLocalY * scaleY * c,
       width,
       height,
       rotation: newRotation,
       scaleX,
       scaleY,
     };
+  }
+
+  private getRotatePivotWorld(api: API, selection: SelectOBB): [number, number] {
+    const camera = api.getCamera();
+    const { mask, rotatePivotX, rotatePivotY } = camera.read(Transformable);
+    if (!Number.isNaN(rotatePivotX) && !Number.isNaN(rotatePivotY) && mask) {
+      const { x, y } = api.transformer2Canvas({ x: rotatePivotX, y: rotatePivotY }, mask);
+      return [x, y];
+    }
+    return this.obbWorldCenter(selection.obb);
+  }
+
+  private handleRotatePivotMoving(api: API, canvasX: number, canvasY: number) {
+    const camera = api.getCamera();
+    const { mask, centerAnchor } = camera.read(Transformable);
+    if (!mask) {
+      return;
+    }
+    const { x, y } = api.canvas2Transformer({ x: canvasX, y: canvasY }, mask);
+    const tf = camera.write(Transformable);
+    tf.rotatePivotX = x;
+    tf.rotatePivotY = y;
+    tf.rotatePivotPinned = true;
+    if (centerAnchor?.has(Circle)) {
+      Object.assign(centerAnchor.write(Circle), { cx: x, cy: y });
+      updateGlobalTransform(centerAnchor);
+    }
   }
 
   private handleSelectedRotating(
@@ -409,7 +439,14 @@ export class Select extends System {
       }
     });
 
-    const [px, py] = this.obbWorldCenter(selection.obb);
+    const [px, py] = this.getRotatePivotWorld(api, selection);
+    const cameraTf = camera.read(Transformable);
+    const pivotLocalX = Number.isNaN(cameraTf.rotatePivotX)
+      ? selection.obb.width / 2
+      : cameraTf.rotatePivotX;
+    const pivotLocalY = Number.isNaN(cameraTf.rotatePivotY)
+      ? selection.obb.height / 2
+      : cameraTf.rotatePivotY;
     const cur = Math.atan2(canvasY - py, canvasX - px);
     let delta = cur - selection.rotateLastPointerAngle;
     delta = Math.atan2(Math.sin(delta), Math.cos(delta));
@@ -417,8 +454,10 @@ export class Select extends System {
     selection.rotateAccumulated += delta;
 
     const newRotation = selection.obb.rotation + selection.rotateAccumulated;
-    const newAttrs = this.alignObbOriginToFixedCenter(
+    const newAttrs = this.alignObbOriginToFixedPivot(
       selection.obb,
+      pivotLocalX,
+      pivotLocalY,
       px,
       py,
       newRotation,
@@ -1324,7 +1363,7 @@ export class Select extends System {
             delete selection.rotateAccumulated;
             selection.mode = SelectionMode.RESIZE;
           } else if (selection.mode === SelectionMode.READY_TO_ROTATE) {
-            const [px, py] = this.obbWorldCenter(selection.obb);
+            const [px, py] = this.getRotatePivotWorld(api, selection);
             let { x: cx, y: cy } = api.viewport2Canvas({ x, y });
             const { snapToPixelGridEnabled, snapToPixelGridSize } =
               api.getAppState();
@@ -1336,6 +1375,8 @@ export class Select extends System {
             selection.rotateAccumulated = 0;
             selection.mode = SelectionMode.ROTATE;
           }
+        } else if (selection.mode === SelectionMode.READY_TO_MOVE_PIVOT) {
+          selection.mode = SelectionMode.MOVE_PIVOT;
         } else if (
           selection.mode === SelectionMode.READY_TO_MOVE_CONTROL_POINT
         ) {
@@ -1420,6 +1461,12 @@ export class Select extends System {
                   selection.activeControlPointIndex = index;
                   selection.activeSegmentMidpointIndex = undefined;
                   selection.mode = SelectionMode.READY_TO_MOVE_CONTROL_POINT;
+                  toHighlight = undefined;
+                } else if (anchor === AnchorName.CENTER) {
+                  cursor.value = 'move';
+                  selection.activeControlPointIndex = undefined;
+                  selection.activeSegmentMidpointIndex = undefined;
+                  selection.mode = SelectionMode.READY_TO_MOVE_PIVOT;
                   toHighlight = undefined;
                 } else if (anchor === AnchorName.SEGMENT_MIDPOINT) {
                   cursor.value = 'crosshair';
@@ -1556,6 +1603,8 @@ export class Select extends System {
           );
         } else if (selection.mode === SelectionMode.ROTATE) {
           this.handleSelectedRotating(api, ex, ey);
+        } else if (selection.mode === SelectionMode.MOVE_PIVOT) {
+          this.handleRotatePivotMoving(api, ex, ey);
         } else if (selection.mode === SelectionMode.MOVE_CONTROL_POINT) {
           this.handleControlPointMoving(api, ex, ey, selection);
         }
@@ -1593,6 +1642,11 @@ export class Select extends System {
         } else if (selection.mode === SelectionMode.ROTATE) {
           this.handleSelectedRotated(api, selection);
           selection.mode = SelectionMode.READY_TO_ROTATE;
+        } else if (
+          selection.mode === SelectionMode.MOVE_PIVOT ||
+          selection.mode === SelectionMode.READY_TO_MOVE_PIVOT
+        ) {
+          selection.mode = SelectionMode.READY_TO_MOVE_PIVOT;
         } else if (
           selection.mode === SelectionMode.MOVE_CONTROL_POINT ||
           selection.mode === SelectionMode.READY_TO_MOVE_CONTROL_POINT
@@ -1656,6 +1710,17 @@ export class Select extends System {
 
   private saveSelectedOBB(api: API, selection: SelectOBB) {
     const camera = api.getCamera();
+    const selectedNodeIds = [...api.getAppState().layersSelected].sort();
+    const prevSelectedNodeIds = [...(selection.selectedNodeIds ?? [])].sort();
+    const selectedChanged =
+      selectedNodeIds.length !== prevSelectedNodeIds.length ||
+      selectedNodeIds.some((id, i) => id !== prevSelectedNodeIds[i]);
+    if (selectedChanged) {
+      const tf = camera.write(Transformable);
+      tf.rotatePivotPinned = false;
+      tf.rotatePivotX = NaN;
+      tf.rotatePivotY = NaN;
+    }
     const obb = getOBB(camera);
     selection.obb = {
       x: obb.x,
@@ -1676,6 +1741,7 @@ export class Select extends System {
         ...api.getAbsoluteTransformAndSize(node),
       })),
     ];
+    selection.selectedNodeIds = selectedNodeIds;
   }
 
   private fitSelected(api: API, newAttrs: OBB, selection: SelectOBB) {

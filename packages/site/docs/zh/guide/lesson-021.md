@@ -456,7 +456,7 @@ if (centeredScaling) {
 }
 ```
 
-### [WIP] 翻转 {#flip}
+### 翻转 {#flip}
 
 当拖拽锚点或者边到反方向时，会出现翻转现象，下图为 Figma 中的效果，注意 Rotation 的变化：
 
@@ -507,6 +507,42 @@ this.fitSelected(api, newAttrs, selection);
 下图是 Figma [Change the rotation origin] 的效果：
 
 ![Change the rotation origin](https://help.figma.com/hc/article_attachments/31937330391447)
+
+实现要点如下：
+
+1. 在 transformer 的 mask 上新增中心锚点（`AnchorName.CENTER`），并支持拖拽。
+2. 将自定义旋转中心保存为 transformer 局部坐标（`rotatePivotX/Y`），用 `rotatePivotPinned` 标记是否由用户显式设置。
+3. 拖拽中心锚点时，把画布坐标转换到 transformer 局部坐标：
+
+```ts
+const { x, y } = api.canvas2Transformer({ x: canvasX, y: canvasY }, mask);
+tf.rotatePivotX = x;
+tf.rotatePivotY = y;
+tf.rotatePivotPinned = true;
+```
+
+4. 旋转时优先使用该 pivot（未设置时回退几何中心），并在求解新 OBB 原点时保持该 pivot 的世界坐标不变：
+
+```ts
+const [px, py] = this.getRotatePivotWorld(api, selection);
+const pivotLocalX = Number.isNaN(tf.rotatePivotX)
+  ? selection.obb.width / 2
+  : tf.rotatePivotX;
+const pivotLocalY = Number.isNaN(tf.rotatePivotY)
+  ? selection.obb.height / 2
+  : tf.rotatePivotY;
+
+const newAttrs = this.alignObbOriginToFixedPivot(
+  selection.obb,
+  pivotLocalX,
+  pivotLocalY,
+  px,
+  py,
+  newRotation,
+);
+```
+
+5. 当选中对象集合变化时，将 pivot 重置回几何中心。
 
 ## 使用方向键移动图形 {#nudge-the-position}
 

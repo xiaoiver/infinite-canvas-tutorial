@@ -458,7 +458,7 @@ if (centeredScaling) {
 }
 ```
 
-### [WIP] Flip {#flip}
+### Flip {#flip}
 
 When dragging an anchor point or edge to the opposite direction, flipping occurs. The following is the effect in Figma, note the change in Rotation:
 
@@ -509,6 +509,42 @@ this.fitSelected(api, newAttrs, selection);
 The following is the effect of Figma's [Change the rotation origin]:
 
 ![Change the rotation origin](https://help.figma.com/hc/article_attachments/31937330391447)
+
+Implementation notes:
+
+1. Add a center anchor (`AnchorName.CENTER`) to the transformer mask. This anchor is draggable.
+2. Store the custom rotation origin in transformer-local coordinates (`rotatePivotX/Y`) and mark whether it is user-pinned (`rotatePivotPinned`).
+3. On pointer move while dragging the center anchor, convert canvas coordinates into transformer-local coordinates:
+
+```ts
+const { x, y } = api.canvas2Transformer({ x: canvasX, y: canvasY }, mask);
+tf.rotatePivotX = x;
+tf.rotatePivotY = y;
+tf.rotatePivotPinned = true;
+```
+
+4. During rotation, use this pivot (fall back to geometric center if unset), then keep the pivot's world position fixed while solving new OBB origin:
+
+```ts
+const [px, py] = this.getRotatePivotWorld(api, selection);
+const pivotLocalX = Number.isNaN(tf.rotatePivotX)
+    ? selection.obb.width / 2
+    : tf.rotatePivotX;
+const pivotLocalY = Number.isNaN(tf.rotatePivotY)
+    ? selection.obb.height / 2
+    : tf.rotatePivotY;
+
+const newAttrs = this.alignObbOriginToFixedPivot(
+    selection.obb,
+    pivotLocalX,
+    pivotLocalY,
+    px,
+    py,
+    newRotation,
+);
+```
+
+5. Reset pivot to center when the selected node set changes.
 
 ## Move Shapes with Arrow Keys {#nudge-the-position}
 

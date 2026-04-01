@@ -15,6 +15,7 @@ export enum AnchorName {
   SEGMENT_MIDPOINT = 'segment-midpoint',
   X1Y1 = 'x1y1',
   X2Y2 = 'x2y2',
+  CENTER = 'center',
 }
 
 export class Anchor {

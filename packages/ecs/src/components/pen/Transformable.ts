@@ -42,6 +42,7 @@ export class Transformable {
   @field.ref declare trAnchor: Entity;
   @field.ref declare blAnchor: Entity;
   @field.ref declare brAnchor: Entity;
+  @field.ref declare centerAnchor: Entity;
 
   /**
    * Anchors in line or arrow
@@ -84,6 +85,9 @@ export class Transformable {
    */
   @field({ type: Type.float32, default: -1 }) declare resizeWidth: number;
   @field({ type: Type.float32, default: -1 }) declare resizeHeight: number;
+  @field({ type: Type.float32, default: NaN }) declare rotatePivotX: number;
+  @field({ type: Type.float32, default: NaN }) declare rotatePivotY: number;
+  @field({ type: Type.boolean, default: false }) declare rotatePivotPinned: boolean;
 
   constructor(transformable?: Partial<Transformable>) {
     Object.assign(this, transformable);
