@@ -561,7 +561,12 @@ export class RenderTransformer extends System {
         new Circle({
           cx,
           cy,
-          r: name === AnchorName.SEGMENT_MIDPOINT ? TRANSFORMER_ANCHOR_RADIUS - 1 : TRANSFORMER_ANCHOR_RADIUS,
+          r:
+            name === AnchorName.SEGMENT_MIDPOINT
+              ? TRANSFORMER_ANCHOR_RADIUS - 1
+              : name === AnchorName.CENTER
+                ? TRANSFORMER_ANCHOR_RADIUS - 1
+                : TRANSFORMER_ANCHOR_RADIUS,
         }),
         new StrokeAttenuation(),
         new SizeAttenuation(),
@@ -594,13 +599,15 @@ export class RenderTransformer extends System {
     const trAnchor = this.createAnchor(0, 0, AnchorName.TOP_RIGHT);
     const blAnchor = this.createAnchor(0, 0, AnchorName.BOTTOM_LEFT);
     const brAnchor = this.createAnchor(0, 0, AnchorName.BOTTOM_RIGHT);
+    const centerAnchor = this.createAnchor(0, 0, AnchorName.CENTER);
 
     this.commands
       .entity(mask)
       .appendChild(this.commands.entity(tlAnchor))
       .appendChild(this.commands.entity(trAnchor))
       .appendChild(this.commands.entity(blAnchor))
-      .appendChild(this.commands.entity(brAnchor));
+      .appendChild(this.commands.entity(brAnchor))
+      .appendChild(this.commands.entity(centerAnchor));
 
     this.commands.entity(camera).appendChild(this.commands.entity(mask));
     this.commands.execute();
@@ -611,13 +618,14 @@ export class RenderTransformer extends System {
       trAnchor,
       blAnchor,
       brAnchor,
+      centerAnchor,
     });
   }
 
   private updateRectMask(camera: Entity) {
     const { x, y, width, height, rotation, scaleX, scaleY } = getOBB(camera);
 
-    const { tlAnchor, trAnchor, blAnchor, brAnchor, mask } =
+    const { tlAnchor, trAnchor, blAnchor, brAnchor, centerAnchor, mask } =
       camera.read(Transformable);
 
     // if (width === 0 && height === 0) {
@@ -663,6 +671,19 @@ export class RenderTransformer extends System {
     Object.assign(brAnchor.write(Circle), {
       cx: width,
       cy: height,
+    });
+    const tf = camera.write(Transformable);
+    if (
+      !tf.rotatePivotPinned ||
+      Number.isNaN(tf.rotatePivotX) ||
+      Number.isNaN(tf.rotatePivotY)
+    ) {
+      tf.rotatePivotX = width / 2;
+      tf.rotatePivotY = height / 2;
+    }
+    Object.assign(centerAnchor.write(Circle), {
+      cx: tf.rotatePivotX,
+      cy: tf.rotatePivotY,
     });
 
     updateGlobalTransform(mask);
@@ -972,6 +993,7 @@ export function hitTest(api: API, { x, y }: IPointData) {
     polylineMask,
     x1y1Anchor,
     x2y2Anchor,
+    centerAnchor,
   } = camera.read(Transformable);
 
   if (
@@ -1172,6 +1194,15 @@ export function hitTest(api: API, { x, y }: IPointData) {
           mask,
         ),
       );
+      const { x: centerX, y: centerY } = api.canvas2Viewport(
+        api.transformer2Canvas(
+          {
+            x: centerAnchor.read(Circle).cx,
+            y: centerAnchor.read(Circle).cy,
+          },
+          mask,
+        ),
+      );
 
       const isInside = inside(point, [
         [tlX, tlY],
@@ -1184,6 +1215,14 @@ export function hitTest(api: API, { x, y }: IPointData) {
       const distanceToTR = distanceBetweenPoints(x, y, trX, trY);
       const distanceToBL = distanceBetweenPoints(x, y, blX, blY);
       const distanceToBR = distanceBetweenPoints(x, y, brX, brY);
+      const distanceToCenter = distanceBetweenPoints(x, y, centerX, centerY);
+
+      if (distanceToCenter <= TRANSFORMER_ANCHOR_RESIZE_RADIUS + 1) {
+        return {
+          anchor: AnchorName.CENTER,
+          cursor: 'move',
+        };
+      }
 
       const minDistanceToAnchors = Math.min(
         distanceToTL,
