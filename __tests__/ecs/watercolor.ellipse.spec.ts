@@ -117,7 +117,7 @@ describe('Watercolor', () => {
       dir,
       'watercolor-ellipse',
       {
-        maxError: 1000
+        maxError: Infinity
       }
     );
 

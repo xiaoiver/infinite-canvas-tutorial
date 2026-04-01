@@ -7,6 +7,46 @@ import GraphemeSplitter from 'grapheme-splitter';
 import parsePNG from 'pngparse-sync';
 import { Adapter } from '../packages/core/src/environment';
 
+/** One JSDOM per Jest worker so MouseEvent/CustomEvent share a realm with mocked canvases. */
+let testJsdom: JSDOM | null = null;
+function getTestJsdom(): JSDOM {
+  if (!testJsdom) {
+    testJsdom = new JSDOM();
+    // ECS tests run in Jest `node` env. Some libs (e.g. @use-gesture/core)
+    // access global document/window directly.
+    const win = testJsdom.window as any;
+    if (typeof (globalThis as any).window === 'undefined') {
+      (globalThis as any).window = win;
+    }
+    if (typeof (globalThis as any).document === 'undefined') {
+      (globalThis as any).document = win.document;
+    }
+    // Keep DOM constructors available for `instanceof` checks in node env.
+    if (typeof (globalThis as any).HTMLElement === 'undefined') {
+      (globalThis as any).HTMLElement = win.HTMLElement;
+    }
+    if (typeof (globalThis as any).Element === 'undefined') {
+      (globalThis as any).Element = win.Element;
+    }
+    if (typeof (globalThis as any).EventTarget === 'undefined') {
+      (globalThis as any).EventTarget = win.EventTarget;
+    }
+  }
+  return testJsdom;
+}
+
+type ListenerEntry = { fn: EventListener; capture: boolean };
+
+function getCaptureFlag(options?: boolean | AddEventListenerOptions): boolean {
+  if (typeof options === 'boolean') {
+    return options;
+  }
+  if (options && typeof options === 'object' && options !== null && 'capture' in options) {
+    return Boolean((options as AddEventListenerOptions).capture);
+  }
+  return false;
+}
+
 export function sleep(n: number) {
   return new Promise((resolve) => {
     setTimeout(resolve, n);
@@ -38,8 +78,9 @@ export function getCanvas(width = 100, height = 100) {
 
   const canvas = createCanvas(width, height);
 
-  const dom = new JSDOM();
-  const document = dom.window._document;
+  getTestJsdom();
+
+  const listenerMap = new Map<string, ListenerEntry[]>();
 
   const mockedCanvas: HTMLCanvasElement = {
     width,
@@ -72,16 +113,78 @@ export function getCanvas(width = 100, height = 100) {
       };
       return context;
     },
-    dispatchEvent: (event) => {
-      document.dispatchEvent(event);
-      return true;
+    // Local EventTarget: forwarding to `document` made `event.target` the Document and broke
+    // @use-gesture (expects the canvas) and did not match listeners registered on this object.
+    dispatchEvent: (event: Event) => {
+      const entries = [...(listenerMap.get(event.type) ?? [])];
+      const captureListeners = entries.filter((e) => e.capture);
+      const bubbleListeners = entries.filter((e) => !e.capture);
+      Object.defineProperty(event, 'target', {
+        value: mockedCanvas,
+        configurable: true,
+      });
+      for (const { fn } of captureListeners) {
+        Object.defineProperty(event, 'currentTarget', {
+          value: mockedCanvas,
+          configurable: true,
+        });
+        fn.call(mockedCanvas as unknown as EventTarget, event);
+      }
+      for (const { fn } of bubbleListeners) {
+        Object.defineProperty(event, 'currentTarget', {
+          value: mockedCanvas,
+          configurable: true,
+        });
+        fn.call(mockedCanvas as unknown as EventTarget, event);
+      }
+      return !event.defaultPrevented;
     },
-    addEventListener: (type, listener) => {
-      document.addEventListener(type, listener);
+    addEventListener: (
+      type: string,
+      listener: EventListenerOrEventListenerObject,
+      options?: boolean | AddEventListenerOptions,
+    ) => {
+      const capture = getCaptureFlag(options);
+      const fn: EventListener =
+        typeof listener === 'function'
+          ? listener
+          : (e) => (listener as EventListenerObject).handleEvent(e);
+      if (!listenerMap.has(type)) {
+        listenerMap.set(type, []);
+      }
+      listenerMap.get(type)!.push({ fn, capture });
     },
-    removeEventListener: (type, listener) => {
-      // document.removeEventListener(type, listener);
+    removeEventListener: (
+      type: string,
+      listener: EventListenerOrEventListenerObject,
+      options?: boolean | AddEventListenerOptions,
+    ) => {
+      const capture = getCaptureFlag(options);
+      const fn: EventListener =
+        typeof listener === 'function'
+          ? listener
+          : (listener as EventListenerObject).handleEvent.bind(listener);
+      const list = listenerMap.get(type);
+      if (!list) {
+        return;
+      }
+      const idx = list.findIndex((e) => e.fn === fn && e.capture === capture);
+      if (idx >= 0) {
+        list.splice(idx, 1);
+      }
     },
+    focus: () => {},
+    getBoundingClientRect: () => ({
+      x: 0,
+      y: 0,
+      width,
+      height,
+      top: 0,
+      left: 0,
+      bottom: height,
+      right: width,
+      toJSON: () => ({}),
+    }),
     // @ts-ignore
     toDataURL: (...args) => canvas.toDataURL(...args),
     // @ts-ignore
@@ -92,7 +195,7 @@ export function getCanvas(width = 100, height = 100) {
 }
 
 export function createMouseEvent(type: string, options: any = {}) {
-  const window = new JSDOM().window;
+  const window = getTestJsdom().window;
   return new (window as any).MouseEvent(type, {
     altKey: false,
     bubbles: true,
