@@ -13,6 +13,7 @@ import BindingRouteOrthConnector from '../components/BindingRouteOrthConnector.v
 import BindingRounded from '../components/BindingRounded.vue'
 import BindingCurved from '../components/BindingCurved.vue'
 import BindingBezier from '../components/BindingBezier.vue'
+import BindingArrow from '../components/BindingArrow.vue'
 </script>
 
 # Lesson 31 - Bindings between shapes
@@ -661,6 +662,8 @@ When exporting, it is no longer sufficient to save only geometric information; l
 
 -   When a node is selected, display available anchor points from which connections can be initiated.
 -   When an edge is selected, highlight dockable anchor points during dragging.
+
+<BindingArrow />
 
 [Lesson 23 - Mindmap]: /guide/lesson-023
 [Lesson 25 - Drawing arrows]: /guide/lesson-025#draw-arrow

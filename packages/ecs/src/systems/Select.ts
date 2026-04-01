@@ -53,6 +53,7 @@ import {
   FillGradient,
   FillImage,
   FillPattern,
+  Binding,
 } from '../components';
 import { Commands } from '../commands/Commands';
 import {
@@ -79,7 +80,8 @@ import { safeAddComponent } from '../history';
 import { updateComputedPoints } from './ComputePoints';
 import { DOMAdapter } from '../environment';
 import { hideLabel, initLabel, showLabel } from '..';
-import type { SerializedNode } from '../types/serialized-node';
+import type { EdgeSerializedNode, SerializedNode } from '../types/serialized-node';
+import { constraintAttrsFromCanvasPoint } from '../utils/binding/constraint-from-point';
 import {
   PathControlHandleMeta,
   PathCommand,
@@ -146,7 +148,14 @@ export interface SelectOBB {
   rotateLastPointerAngle?: number;
   /** Total rotation applied during current rotate gesture (rad), relative to saved {@link SelectOBB.obb}. */
   rotateAccumulated?: number;
+  /** 旋转手势开始时锁定的枢轴（画布坐标）；避免拖拽中 mask 每帧更新导致 `transformer2Canvas(pivot, mask)` 漂移。 */
+  rotatePivotWorldFixed?: [number, number];
+  /** 与 {@link SelectOBB.obb} 手势快照一致的局部枢轴；避免 `updateRectMask` 每帧按新 union 宽高重写 rotatePivot。 */
+  rotatePivotLocalFixed?: [number, number];
   selectedNodeIds?: string[];
+
+  /** 绑定边重接时最后一次指针位置（画布坐标） */
+  bindingRebindLastCanvas?: { x: number; y: number };
 }
 
 /**
@@ -204,6 +213,7 @@ export class Select extends System {
             Path,
             Polyline,
             Line,
+            Binding,
             Brush,
             Visibility,
             ZIndex,
@@ -399,6 +409,14 @@ export class Select extends System {
     return this.obbWorldCenter(selection.obb);
   }
 
+  /** 旋转拖拽全程使用指针按下时锁定的世界枢轴（见 {@link SelectOBB.rotatePivotWorldFixed}）。 */
+  private getRotatePivotWorldStable(api: API, selection: SelectOBB): [number, number] {
+    if (selection.rotatePivotWorldFixed) {
+      return selection.rotatePivotWorldFixed;
+    }
+    return this.getRotatePivotWorld(api, selection);
+  }
+
   private handleRotatePivotMoving(api: API, canvasX: number, canvasY: number) {
     const camera = api.getCamera();
     const { mask, centerAnchor } = camera.read(Transformable);
@@ -439,14 +457,18 @@ export class Select extends System {
       }
     });
 
-    const [px, py] = this.getRotatePivotWorld(api, selection);
+    const [px, py] = this.getRotatePivotWorldStable(api, selection);
     const cameraTf = camera.read(Transformable);
-    const pivotLocalX = Number.isNaN(cameraTf.rotatePivotX)
-      ? selection.obb.width / 2
-      : cameraTf.rotatePivotX;
-    const pivotLocalY = Number.isNaN(cameraTf.rotatePivotY)
-      ? selection.obb.height / 2
-      : cameraTf.rotatePivotY;
+    const pivotLocalX = selection.rotatePivotLocalFixed
+      ? selection.rotatePivotLocalFixed[0]
+      : Number.isNaN(cameraTf.rotatePivotX)
+        ? selection.obb.width / 2
+        : cameraTf.rotatePivotX;
+    const pivotLocalY = selection.rotatePivotLocalFixed
+      ? selection.rotatePivotLocalFixed[1]
+      : Number.isNaN(cameraTf.rotatePivotY)
+        ? selection.obb.height / 2
+        : cameraTf.rotatePivotY;
     const cur = Math.atan2(canvasY - py, canvasX - px);
     let delta = cur - selection.rotateLastPointerAngle;
     delta = Math.atan2(Math.sin(delta), Math.cos(delta));
@@ -491,6 +513,14 @@ export class Select extends System {
       resizingAnchorName === AnchorName.X2Y2
     ) {
       const { x1y1Anchor, x2y2Anchor, lineMask } = camera.read(Transformable);
+      const edgeNode = api.getNodeById(layersSelected[0]);
+      const edgeEntity = edgeNode ? api.getEntity(edgeNode) : undefined;
+      if (edgeEntity?.has(Binding)) {
+        selection.bindingRebindLastCanvas = { x: canvasX, y: canvasY };
+        this.applyBindingRebindHover(api, canvasX, canvasY);
+        return;
+      }
+
       const { x, y } = api.canvas2Transformer(
         {
           x: canvasX,
@@ -1105,7 +1135,56 @@ export class Select extends System {
     }
   }
 
+  private applyBindingRebindHover(api: API, canvasX: number, canvasY: number) {
+    const hits = api.elementsFromPoint({ x: canvasX, y: canvasY });
+    for (const entity of hits) {
+      if (entity.has(UI)) {
+        continue;
+      }
+      if (!entity.has(Rect) && !entity.has(Ellipse)) {
+        continue;
+      }
+      const node = api.getNodeByEntity(entity);
+      if (!node) {
+        continue;
+      }
+      const t = node.type;
+      if (
+        t === 'rect' ||
+        t === 'ellipse' ||
+        t === 'rough-rect' ||
+        t === 'rough-ellipse'
+      ) {
+        api.highlightNodes([node]);
+        return;
+      }
+    }
+
+    api.highlightNodes([]);
+  }
+
   private handleSelectedResized(api: API, selection: SelectOBB) {
+    const { layersSelected } = api.getAppState();
+    if (
+      layersSelected.length === 1 &&
+      selection.bindingRebindLastCanvas &&
+      (selection.resizingAnchorName === AnchorName.X1Y1 ||
+        selection.resizingAnchorName === AnchorName.X2Y2)
+    ) {
+      const edgeNode = api.getNodeById(layersSelected[0]);
+      const entity = edgeNode ? api.getEntity(edgeNode) : undefined;
+      if (entity?.has(Binding) && edgeNode) {
+        const pt = selection.bindingRebindLastCanvas;
+        delete selection.bindingRebindLastCanvas;
+        this.applyBindingRebindAt(
+          api,
+          edgeNode as EdgeSerializedNode,
+          selection.resizingAnchorName,
+          pt,
+        );
+      }
+    }
+
     const camera = api.getCamera();
     const tfDone = camera.write(Transformable);
     tfDone.status = TransformableStatus.RESIZED;
@@ -1125,12 +1204,72 @@ export class Select extends System {
     this.saveSelectedOBB(api, selection);
   }
 
+  private applyBindingRebindAt(
+    api: API,
+    edgeNode: EdgeSerializedNode,
+    anchor: AnchorName,
+    canvas: { x: number; y: number },
+  ) {
+    const hits = api.elementsFromPoint({ x: canvas.x, y: canvas.y });
+    let targetNode: SerializedNode | undefined;
+    for (const entity of hits) {
+      if (entity.has(UI)) {
+        continue;
+      }
+      if (!entity.has(Rect) && !entity.has(Ellipse)) {
+        continue;
+      }
+      const n = api.getNodeByEntity(entity);
+      if (!n) {
+        continue;
+      }
+      const t = n.type;
+      if (
+        t === 'rect' ||
+        t === 'ellipse' ||
+        t === 'rough-rect' ||
+        t === 'rough-ellipse'
+      ) {
+        targetNode = n;
+        break;
+      }
+    }
+    if (!targetNode) {
+      return;
+    }
+
+    const c = constraintAttrsFromCanvasPoint(targetNode, canvas.x, canvas.y);
+    if (anchor === AnchorName.X1Y1) {
+      api.updateNode(edgeNode as SerializedNode, {
+        fromId: targetNode.id,
+        exitX: c.x,
+        exitY: c.y,
+        exitPerimeter: c.perimeter,
+        exitDx: c.dx,
+        exitDy: c.dy,
+      });
+    } else {
+      api.updateNode(edgeNode as SerializedNode, {
+        toId: targetNode.id,
+        entryX: c.x,
+        entryY: c.y,
+        entryPerimeter: c.perimeter,
+        entryDx: c.dx,
+        entryDy: c.dy,
+      });
+    }
+  }
+
   private handleSelectedRotated(api: API, selection: SelectOBB) {
     const camera = api.getCamera();
-    camera.write(Transformable).status = TransformableStatus.ROTATED;
+    const tfDone = camera.write(Transformable);
+    tfDone.status = TransformableStatus.ROTATED;
+    tfDone.transformerObbFrozenDuringRotate = false;
 
     delete selection.rotateLastPointerAngle;
     delete selection.rotateAccumulated;
+    delete selection.rotatePivotWorldFixed;
+    delete selection.rotatePivotLocalFixed;
 
     api.setNodes(api.getNodes());
     api.record();
@@ -1198,9 +1337,11 @@ export class Select extends System {
         if (pen !== Pen.VECTOR_NETWORK && pen !== Pen.ERASER) {
           api.selectNodes([]);
         }
-        api.highlightNodes([]);
 
         if (pen !== Pen.VECTOR_NETWORK) {
+          if (this.selections.has(camera.__id)) {
+            this.saveSelectedOBB(api, this.selections.get(camera.__id)!);
+          }
           return;
         }
       }
@@ -1361,9 +1502,36 @@ export class Select extends System {
           if (selection.mode === SelectionMode.READY_TO_RESIZE) {
             delete selection.rotateLastPointerAngle;
             delete selection.rotateAccumulated;
+            delete selection.rotatePivotWorldFixed;
+            delete selection.rotatePivotLocalFixed;
+            camera.write(Transformable).transformerObbFrozenDuringRotate = false;
             selection.mode = SelectionMode.RESIZE;
           } else if (selection.mode === SelectionMode.READY_TO_ROTATE) {
             const [px, py] = this.getRotatePivotWorld(api, selection);
+            selection.rotatePivotWorldFixed = [px, py];
+            const cameraTfAtDown = camera.read(Transformable);
+            const plx = Number.isNaN(cameraTfAtDown.rotatePivotX)
+              ? selection.obb.width / 2
+              : cameraTfAtDown.rotatePivotX;
+            const ply = Number.isNaN(cameraTfAtDown.rotatePivotY)
+              ? selection.obb.height / 2
+              : cameraTfAtDown.rotatePivotY;
+            selection.rotatePivotLocalFixed = [plx, ply];
+
+            if (api.getAppState().layersSelected.length > 1) {
+              const tf = camera.write(Transformable);
+              tf.transformerObbFrozenDuringRotate = true;
+              const g = tf.gestureFrozenSelectionOBB;
+              const obb = selection.obb;
+              g.x = obb.x;
+              g.y = obb.y;
+              g.width = obb.width;
+              g.height = obb.height;
+              g.rotation = obb.rotation;
+              g.scaleX = obb.scaleX;
+              g.scaleY = obb.scaleY;
+            }
+
             let { x: cx, y: cy } = api.viewport2Canvas({ x, y });
             const { snapToPixelGridEnabled, snapToPixelGridSize } =
               api.getAppState();
@@ -1414,6 +1582,9 @@ export class Select extends System {
             selection.mode = SelectionMode.MOVE;
           }
         }
+
+        // 点击/框选等改变 layersSelected 时同步 OBB，并重置旋转枢轴（与上一选中项的 origin 脱钩）
+        this.saveSelectedOBB(api, selection);
       }
 
       let toHighlight: Entity | undefined;
@@ -1432,11 +1603,21 @@ export class Select extends System {
             toHighlight = this.resolveHighlightEntityFromHit(toHighlight, camera);
             if (
               selection.mode !== SelectionMode.BRUSH &&
-              selection.mode !== SelectionMode.MOVE
+              selection.mode !== SelectionMode.MOVE &&
+              selection.mode !== SelectionMode.ROTATE &&
+              selection.mode !== SelectionMode.RESIZE &&
+              selection.mode !== SelectionMode.MOVE_PIVOT &&
+              selection.mode !== SelectionMode.MOVE_CONTROL_POINT
             ) {
               selection.mode = SelectionMode.READY_TO_SELECT;
             }
-          } else if (selection.mode !== SelectionMode.BRUSH) {
+          } else if (
+            selection.mode !== SelectionMode.BRUSH &&
+            selection.mode !== SelectionMode.ROTATE &&
+            selection.mode !== SelectionMode.RESIZE &&
+            selection.mode !== SelectionMode.MOVE_PIVOT &&
+            selection.mode !== SelectionMode.MOVE_CONTROL_POINT
+          ) {
             selection.mode = SelectionMode.IDLE;
           }
           const { mask, selecteds } = camera.read(Transformable);
@@ -1494,14 +1675,18 @@ export class Select extends System {
                     selection.resizingAnchorName = anchor;
 
                     if (cursorName.includes('rotate')) {
-                      selection.mode = SelectionMode.READY_TO_ROTATE;
+                      if (selection.mode !== SelectionMode.ROTATE) {
+                        selection.mode = SelectionMode.READY_TO_ROTATE;
+                      }
                       toHighlight = undefined;
                     } else if (
                       cursorName.includes('resize') ||
                       anchor === AnchorName.X1Y1 ||
                       anchor === AnchorName.X2Y2
                     ) {
-                      selection.mode = SelectionMode.READY_TO_RESIZE;
+                      if (selection.mode !== SelectionMode.RESIZE) {
+                        selection.mode = SelectionMode.READY_TO_RESIZE;
+                      }
                       toHighlight = undefined;
                     } else if (anchor === AnchorName.INSIDE) {
                       // Only in single transformer, we can select other objects.
@@ -1518,13 +1703,19 @@ export class Select extends System {
                         } else {
                           if (
                             // selection.mode !== SelectionMode.BRUSH &&
-                            selection.mode !== SelectionMode.MOVE
+                            selection.mode !== SelectionMode.MOVE &&
+                            selection.mode !== SelectionMode.ROTATE &&
+                            selection.mode !== SelectionMode.RESIZE
                           ) {
                             selection.mode = SelectionMode.READY_TO_MOVE;
                           }
                         }
                       }
-                    } else if (toHighlight) {
+                    } else if (
+                      toHighlight &&
+                      selection.mode !== SelectionMode.ROTATE &&
+                      selection.mode !== SelectionMode.RESIZE
+                    ) {
                       selection.mode = SelectionMode.READY_TO_SELECT;
                     }
 
@@ -1613,8 +1804,20 @@ export class Select extends System {
       if (input.key === 'Escape') {
         api.selectNodes([]);
         api.highlightNodes([]);
+        this.saveSelectedOBB(api, selection);
         if (selection.mode === SelectionMode.BRUSH) {
           this.hideBrush(selection);
+        }
+
+        if (
+          selection.mode === SelectionMode.ROTATE ||
+          selection.mode === SelectionMode.READY_TO_ROTATE
+        ) {
+          delete selection.rotateLastPointerAngle;
+          delete selection.rotateAccumulated;
+          delete selection.rotatePivotWorldFixed;
+          delete selection.rotatePivotLocalFixed;
+          camera.write(Transformable).transformerObbFrozenDuringRotate = false;
         }
 
         if (api.getAppState().layersCropping.length > 0) {
@@ -1705,6 +1908,7 @@ export class Select extends System {
       if (needHighlight) {
         api.highlightNodes(selecteds);
       }
+      this.saveSelectedOBB(api, selection);
     }
   }
 
@@ -1758,41 +1962,53 @@ export class Select extends System {
       scaleX: selection.obb.scaleX,
       scaleY: selection.obb.scaleY,
     };
-    const baseSize = 10000000;
-    const oldTr = mat3.create();
-    mat3.translate(oldTr, oldTr, [oldAttrs.x, oldAttrs.y]);
-    mat3.rotate(oldTr, oldTr, oldAttrs.rotation);
-    mat3.scale(oldTr, oldTr, [
-      oldAttrs.width / baseSize,
-      oldAttrs.height / baseSize,
-    ]);
-    const newTr = mat3.create();
-    const newScaleX = newAttrs.width / baseSize;
-    const newScaleY = newAttrs.height / baseSize;
 
-    const { flipEnabled } = api.getAppState();
-    if (flipEnabled) {
-      mat3.translate(newTr, newTr, [newAttrs.x, newAttrs.y]);
-      mat3.rotate(newTr, newTr, newAttrs.rotation);
-      mat3.scale(newTr, newTr, [newScaleX, newScaleY]);
+    const tfStatus = camera.read(Transformable).status;
+    /** 多选时选区 OBB 是子项世界包络的轴对齐框，与各节点局部变换不在同一「虚拟框」坐标系；Konva 式 delta 对框成立，但不能左乘到多个独立 local 上得到绕枢轴旋转。 */
+    const useWorldPivotRotate =
+      selecteds.length > 1 && tfStatus === TransformableStatus.ROTATING;
+
+    const delta = mat3.create();
+    if (useWorldPivotRotate) {
+      const theta = newAttrs.rotation - oldAttrs.rotation;
+      const [px, py] = this.getRotatePivotWorldStable(api, selection);
+      mat3.identity(delta);
+      mat3.translate(delta, delta, [px, py]);
+      mat3.rotate(delta, delta, theta);
+      mat3.translate(delta, delta, [-px, -py]);
     } else {
-      mat3.translate(newTr, newTr, [newAttrs.x, newAttrs.y]);
-      mat3.rotate(newTr, newTr, newAttrs.rotation);
-      mat3.translate(newTr, newTr, [
-        newAttrs.width < 0 ? newAttrs.width : 0,
-        newAttrs.height < 0 ? newAttrs.height : 0,
+      const baseSize = 10000000;
+      const oldTr = mat3.create();
+      mat3.translate(oldTr, oldTr, [oldAttrs.x, oldAttrs.y]);
+      mat3.rotate(oldTr, oldTr, oldAttrs.rotation);
+      mat3.scale(oldTr, oldTr, [
+        oldAttrs.width / baseSize,
+        oldAttrs.height / baseSize,
       ]);
-      mat3.scale(newTr, newTr, [Math.abs(newScaleX), Math.abs(newScaleY)]);
-    }
+      const newTr = mat3.create();
+      const newScaleX = newAttrs.width / baseSize;
+      const newScaleY = newAttrs.height / baseSize;
 
-    // Borrow from Konva.js
-    // @see https://github.com/konvajs/konva/blob/9a9bd00cd377a6d12cce3ee7c9fbf906afa55de5/src/shapes/Transformer.ts#L1103
-    // [delta transform] = [new transform] * [old transform inverted]
-    const delta = mat3.multiply(
-      newTr,
-      newTr,
-      mat3.invert(mat3.create(), oldTr),
-    );
+      const { flipEnabled } = api.getAppState();
+      if (flipEnabled) {
+        mat3.translate(newTr, newTr, [newAttrs.x, newAttrs.y]);
+        mat3.rotate(newTr, newTr, newAttrs.rotation);
+        mat3.scale(newTr, newTr, [newScaleX, newScaleY]);
+      } else {
+        mat3.translate(newTr, newTr, [newAttrs.x, newAttrs.y]);
+        mat3.rotate(newTr, newTr, newAttrs.rotation);
+        mat3.translate(newTr, newTr, [
+          newAttrs.width < 0 ? newAttrs.width : 0,
+          newAttrs.height < 0 ? newAttrs.height : 0,
+        ]);
+        mat3.scale(newTr, newTr, [Math.abs(newScaleX), Math.abs(newScaleY)]);
+      }
+
+      // Borrow from Konva.js
+      // @see https://github.com/konvajs/konva/blob/9a9bd00cd377a6d12cce3ee7c9fbf906afa55de5/src/shapes/Transformer.ts#L1103
+      // [delta transform] = [new transform] * [old transform inverted]
+      mat3.multiply(delta, newTr, mat3.invert(mat3.create(), oldTr));
+    }
 
     const entitiesToUpdate: Entity[] = [];
     const visited = new Set<Entity>();

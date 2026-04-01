@@ -13,6 +13,7 @@ import BindingRouteOrthConnector from '../../components/BindingRouteOrthConnecto
 import BindingRounded from '../../components/BindingRounded.vue'
 import BindingCurved from '../../components/BindingCurved.vue'
 import BindingBezier from '../../components/BindingBezier.vue'
+import BindingArrow from '../../components/BindingArrow.vue'
 </script>
 
 # 课程 31 - 图形间的连接关系
@@ -667,6 +668,8 @@ if ((n - 1) % 3 === 0) {
 
 -   选中节点时，展示可用的锚点，从锚点可以发起连线。
 -   选中边时，拖拽时高亮可停靠的锚点。
+
+<BindingArrow />
 
 [课程 23 - 思维导图]: /zh/guide/lesson-023
 [课程 25 - 绘制箭头]: /zh/guide/lesson-025#draw-arrow

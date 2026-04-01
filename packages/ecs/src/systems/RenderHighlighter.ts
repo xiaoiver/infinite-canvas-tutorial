@@ -125,10 +125,10 @@ export class RenderHighlighter extends System {
 
       const { api } = canvas.read(Canvas);
       const pen = api.getAppState().penbarSelected;
-      if (pen !== Pen.SELECT) {
-        api.highlightNodes([]);
-        return;
-      }
+      // if (pen !== Pen.SELECT && pen !== Pen.DRAW_ARROW) {
+      //   api.highlightNodes([]);
+      //   return;
+      // }
     });
 
     this.highlighted.removed.forEach((highlighted) => {

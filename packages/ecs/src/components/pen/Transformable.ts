@@ -1,4 +1,5 @@
 import { Entity, field, Type } from '@lastolivegames/becsy';
+import { OBB, obbType } from '../math/OBB';
 import { Selected } from './Selected';
 
 export enum TransformableStatus {
@@ -88,6 +89,12 @@ export class Transformable {
   @field({ type: Type.float32, default: NaN }) declare rotatePivotX: number;
   @field({ type: Type.float32, default: NaN }) declare rotatePivotY: number;
   @field({ type: Type.boolean, default: false }) declare rotatePivotPinned: boolean;
+
+  /**
+   * 多选旋转时：{@link getOBB} 返回此快照而非实时 union AABB，避免拖拽中包围盒跳动导致枢轴与 transformer 框漂移。
+   */
+  @field({ type: Type.boolean, default: false }) declare transformerObbFrozenDuringRotate: boolean;
+  @field(obbType) declare gestureFrozenSelectionOBB: OBB;
 
   constructor(transformable?: Partial<Transformable>) {
     Object.assign(this, transformable);

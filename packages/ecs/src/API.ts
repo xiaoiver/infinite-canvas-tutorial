@@ -272,6 +272,20 @@ export class API {
     return this.stateManagement.getNodes();
   }
 
+  /**
+   * 增量 {@link updateNode} / {@link updateNodes} 只传入「本批」节点时，边的 `fromId`/`toId` 仍需从完整场景解析。
+   */
+  #mergeSceneWithBatchForEdgeLookup(batch: SerializedNode[]): SerializedNode[] {
+    const merged = new Map<string, SerializedNode>();
+    for (const n of this.getNodes()) {
+      merged.set(n.id, n);
+    }
+    for (const n of batch) {
+      merged.set(n.id, n);
+    }
+    return [...merged.values()];
+  }
+
   setNodes(nodes: SerializedNode[]) {
     this.stateManagement.setNodes(nodes.slice());
   }
@@ -520,6 +534,10 @@ export class API {
    * Search entites within a bounding box. Use rbush under the hood to accelerate the search.
    */
   elementsFromBBox(minX: number, minY: number, maxX: number, maxY: number, shouldFilterLocked = true) {
+    if (!this.#camera.has(RBush)) {
+      return [];
+    }
+
     const rBush = this.#camera.read(RBush).value;
     const rBushNodes = rBush.search({
       minX,
@@ -1150,6 +1168,7 @@ export class API {
         this.#canvas.read(Canvas).fonts,
         this.commands,
         this.#idEntityMap,
+        { lookupNodes: this.#mergeSceneWithBatchForEdgeLookup([node]) },
       );
       this.#idEntityMap.set(node.id, idEntityMap.get(node.id));
 
@@ -1205,6 +1224,10 @@ export class API {
         this.#canvas.read(Canvas).fonts,
         this.commands,
         this.#idEntityMap,
+        {
+          lookupNodes:
+            this.#mergeSceneWithBatchForEdgeLookup(nonExistentNodes),
+        },
       );
       nonExistentNodes.forEach((node) => {
         this.#idEntityMap.set(node.id, idEntityMap.get(node.id));

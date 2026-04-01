@@ -40,6 +40,7 @@ import {
   Line,
   ComputedCamera,
   ComputedPoints,
+  Binding,
 } from '../components';
 import { Commands } from '../commands';
 import { updateGlobalTransform } from './Transform';
@@ -124,6 +125,7 @@ export class RenderTransformer extends System {
             VectorNetwork,
             Text,
             Line,
+            Binding,
           ).write,
     );
   }
@@ -494,7 +496,8 @@ export class RenderTransformer extends System {
           const isPolylineSelected =
             pen === Pen.SELECT &&
             selecteds.length === 1 &&
-            selecteds[0].hasSomeOf(Polyline, Path);
+            selecteds[0].hasSomeOf(Polyline, Path) &&
+            !(selecteds[0].has(Binding) && selecteds[0].has(Polyline));
           if (!isPolylineSelected) {
             controlPoints &&
               controlPoints.forEach((controlPoint) => {
@@ -732,8 +735,13 @@ export class RenderTransformer extends System {
       const { points } = selected.read(Polyline);
       point1 = points[0];
       point2 = points[points.length - 1];
-      x1y1Anchor.write(Visibility).value = 'hidden';
-      x2y2Anchor.write(Visibility).value = 'hidden';
+      if (selected.has(Binding)) {
+        x1y1Anchor.write(Visibility).value = 'visible';
+        x2y2Anchor.write(Visibility).value = 'visible';
+      } else {
+        x1y1Anchor.write(Visibility).value = 'hidden';
+        x2y2Anchor.write(Visibility).value = 'hidden';
+      }
     } else if (selected.has(Line)) {
       const { x1, y1, x2, y2 } = selected.read(Line);
       point1 = [x1, y1];
@@ -934,6 +942,21 @@ export function getOBB(camera: Entity): OBB {
   }
 
   if (selecteds.length > 1) {
+    if (
+      status === TransformableStatus.ROTATING &&
+      tf.transformerObbFrozenDuringRotate
+    ) {
+      const g = tf.gestureFrozenSelectionOBB;
+      return new OBB({
+        x: g.x,
+        y: g.y,
+        width: g.width,
+        height: g.height,
+        rotation: g.rotation,
+        scaleX: g.scaleX,
+        scaleY: g.scaleY,
+      });
+    }
     return calculateOBBRecursive(selecteds);
   }
 
@@ -951,8 +974,15 @@ export function getOBB(camera: Entity): OBB {
 function useLineMask(camera: Entity) {
   const { selecteds } = camera.read(Transformable);
 
-  // Single selected line
-  if (selecteds.length === 1 && selecteds[0].has(Line)) {
+  if (selecteds.length !== 1) {
+    return false;
+  }
+  const selected = selecteds[0];
+  if (selected.has(Line)) {
+    return true;
+  }
+  // 绑定边：用线段两端锚点改接，不编辑折线顶点
+  if (selected.has(Binding) && selected.has(Polyline)) {
     return true;
   }
 
@@ -963,6 +993,9 @@ function usePolylineMask(camera: Entity) {
   const { selecteds } = camera.read(Transformable);
 
   if (selecteds.length === 1 && selecteds[0].hasSomeOf(Polyline, Path)) {
+    if (selecteds[0].has(Binding) && selecteds[0].has(Polyline)) {
+      return false;
+    }
     return true;
   }
 
@@ -980,7 +1013,8 @@ export function hitTest(api: API, { x, y }: IPointData) {
   const isSelectPolyline =
     penbarSelected === Pen.SELECT &&
     selecteds.length === 1 &&
-    selecteds[0].hasSomeOf(Polyline, Path);
+    selecteds[0].hasSomeOf(Polyline, Path) &&
+    !(selecteds[0].has(Binding) && selecteds[0].has(Polyline));
   const {
     tlAnchor,
     trAnchor,

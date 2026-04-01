@@ -53,7 +53,6 @@ export class Penbar extends LitElement {
     | Pen.DRAW_RECT
     | Pen.DRAW_ELLIPSE
     | Pen.DRAW_LINE
-    | Pen.DRAW_ARROW
     | Pen.DRAW_ROUGH_RECT
     | Pen.DRAW_ROUGH_ELLIPSE
     | Pen.DRAW_ROUGH_LINE;
@@ -94,7 +93,6 @@ export class Penbar extends LitElement {
       pen === Pen.DRAW_RECT ||
       pen === Pen.DRAW_ELLIPSE ||
       pen === Pen.DRAW_LINE ||
-      pen === Pen.DRAW_ARROW ||
       pen === Pen.DRAW_ROUGH_RECT ||
       pen === Pen.DRAW_ROUGH_ELLIPSE ||
       pen === Pen.DRAW_ROUGH_LINE
@@ -145,7 +143,9 @@ export class Penbar extends LitElement {
       this.api.setAppState({
         penbarSelected: pen,
       });
-      this.lastDrawPen = pen;
+      if (pen !== Pen.DRAW_ARROW) {
+        this.lastDrawPen = pen;
+      }
     }
   }
 
@@ -184,7 +184,6 @@ export class Penbar extends LitElement {
         pen === Pen.DRAW_RECT ||
           pen === Pen.DRAW_ELLIPSE ||
           pen === Pen.DRAW_LINE ||
-          pen === Pen.DRAW_ARROW ||
           pen === Pen.DRAW_ROUGH_RECT ||
           pen === Pen.DRAW_ROUGH_ELLIPSE ||
           pen === Pen.DRAW_ROUGH_LINE
@@ -231,7 +230,6 @@ export class Penbar extends LitElement {
         penbarAll.includes(Pen.DRAW_RECT) ||
         penbarAll.includes(Pen.DRAW_ELLIPSE) ||
         penbarAll.includes(Pen.DRAW_LINE) ||
-        penbarAll.includes(Pen.DRAW_ARROW) ||
         penbarAll.includes(Pen.DRAW_ROUGH_RECT) ||
         penbarAll.includes(Pen.DRAW_ROUGH_ELLIPSE) ||
         penbarAll.includes(Pen.DRAW_ROUGH_LINE),
@@ -254,13 +252,6 @@ export class Penbar extends LitElement {
                   ${when(
           this.lastDrawPen === Pen.DRAW_LINE,
           () => html`<sp-icon-line slot="icon"></sp-icon-line>`,
-        )}
-                  ${when(
-          this.lastDrawPen === Pen.DRAW_ARROW,
-          () =>
-            html`<sp-icon-arrow-up-right
-                        slot="icon"
-                      ></sp-icon-arrow-up-right>`,
         )}
                   ${when(
           this.lastDrawPen === Pen.DRAW_ROUGH_RECT,
@@ -314,16 +305,6 @@ export class Penbar extends LitElement {
                       </sp-menu-item>`,
         )}
                     ${when(
-          penbarAll.includes(Pen.DRAW_ARROW),
-          () => html` <sp-menu-item value="${Pen.DRAW_ARROW}">
-                        <sp-icon-arrow-up-right
-                          slot="icon"
-                        ></sp-icon-arrow-up-right>
-                        ${msg(str`Arrow`)}
-                        <kbd slot="value">⇧L</kbd>
-                      </sp-menu-item>`,
-        )}
-                    ${when(
           penbarAll.includes(Pen.DRAW_ROUGH_RECT),
           () => html` <sp-menu-item value="${Pen.DRAW_ROUGH_RECT}">
                         <sp-icon-rect-select slot="icon"></sp-icon-rect-select>
@@ -347,6 +328,26 @@ export class Penbar extends LitElement {
                       </sp-menu-item>`,
         )}
                   </sp-menu>
+                </sp-popover>
+              </overlay-trigger>
+            `,
+      )}
+          ${when(
+        penbarAll.includes(Pen.DRAW_ARROW),
+        () => html`
+              <overlay-trigger placement="right">
+                <sp-action-button value="${Pen.DRAW_ARROW}" slot="trigger">
+                  <sp-icon-arrow-up-right
+                    slot="icon"
+                  ></sp-icon-arrow-up-right>
+                  <sp-tooltip self-managed placement="right">
+                    ${msg(str`Arrow (⇧L)`)}
+                  </sp-tooltip>
+                </sp-action-button>
+                <sp-popover slot="hover-content" style="padding: 8px;">
+                  <ic-spectrum-penbar-draw-settings
+                    .pen=${Pen.DRAW_ARROW}
+                  ></ic-spectrum-penbar-draw-settings>
                 </sp-popover>
               </overlay-trigger>
             `,

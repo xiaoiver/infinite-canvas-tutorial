@@ -182,12 +182,12 @@ export class PenbarDrawSettings extends LitElement {
     return this.pen === Pen.DRAW_RECT
       ? 'penbarDrawRect'
       : this.pen === Pen.DRAW_ELLIPSE
-      ? 'penbarDrawEllipse'
-      : this.pen === Pen.DRAW_LINE
-      ? 'penbarDrawLine'
-      : this.pen === Pen.DRAW_ARROW
-      ? 'penbarDrawArrow'
-      : 'penbarDrawRoughRect';
+        ? 'penbarDrawEllipse'
+        : this.pen === Pen.DRAW_LINE
+          ? 'penbarDrawLine'
+          : this.pen === Pen.DRAW_ARROW
+            ? 'penbarDrawArrow'
+            : 'penbarDrawRoughRect';
   }
 
   get penbarDraw() {
@@ -201,12 +201,12 @@ export class PenbarDrawSettings extends LitElement {
     return this.pen === Pen.DRAW_RECT
       ? penbarDrawRect
       : this.pen === Pen.DRAW_ELLIPSE
-      ? penbarDrawEllipse
-      : this.pen === Pen.DRAW_LINE
-      ? penbarDrawLine
-      : this.pen === Pen.DRAW_ARROW
-      ? penbarDrawArrow
-      : penbarDrawRoughRect;
+        ? penbarDrawEllipse
+        : this.pen === Pen.DRAW_LINE
+          ? penbarDrawLine
+          : this.pen === Pen.DRAW_ARROW
+            ? penbarDrawArrow
+            : penbarDrawRoughRect;
   }
 
   render() {
@@ -217,10 +217,10 @@ export class PenbarDrawSettings extends LitElement {
 
       <div style="display: flex; flex-direction: column; gap: 4px;">
         ${when(
-          this.pen === Pen.DRAW_RECT ||
-            this.pen === Pen.DRAW_ELLIPSE ||
-            this.pen === Pen.DRAW_ROUGH_RECT,
-          () => html`
+      this.pen === Pen.DRAW_RECT ||
+      this.pen === Pen.DRAW_ELLIPSE ||
+      this.pen === Pen.DRAW_ROUGH_RECT,
+      () => html`
             <div>
               <sp-field-label for="fill">${msg(str`Fill`)}</sp-field-label>
               <sp-swatch-group
@@ -230,9 +230,9 @@ export class PenbarDrawSettings extends LitElement {
                 @change=${this.handleFillColorChanged}
               >
                 ${theme.colors[theme.mode].swatches.map(
-                  (color) =>
-                    html` <sp-swatch color=${color} size="s"></sp-swatch> `,
-                )}
+        (color) =>
+          html` <sp-swatch color=${color} size="s"></sp-swatch> `,
+      )}
               </sp-swatch-group>
             </div>
 
@@ -249,7 +249,7 @@ export class PenbarDrawSettings extends LitElement {
               ></sp-slider>
             </div>
           `,
-        )}
+    )}
 
         <div>
           <sp-field-label for="stroke">${msg(str`Stroke`)}</sp-field-label>
@@ -260,9 +260,9 @@ export class PenbarDrawSettings extends LitElement {
             @change=${this.handleStrokeColorChanged}
           >
             ${theme.colors[theme.mode].swatches.map(
-              (color) =>
-                html` <sp-swatch color=${color} size="s"></sp-swatch> `,
-            )}
+      (color) =>
+        html` <sp-swatch color=${color} size="s"></sp-swatch> `,
+    )}
           </sp-swatch-group>
         </div>
         <div class="line">
@@ -296,8 +296,8 @@ export class PenbarDrawSettings extends LitElement {
         </div>
 
         ${when(
-          this.pen === Pen.DRAW_ARROW,
-          () => html`
+      this.pen === Pen.DRAW_ARROW,
+      () => html`
             <div class="line">
               <sp-field-label for="marker-start" side-aligned="start"
                 >${msg(str`Marker start`)}</sp-field-label
@@ -309,12 +309,12 @@ export class PenbarDrawSettings extends LitElement {
                 @change=${this.handleMarkerStartChanged}
                 id="marker-start"
               >
-                ${['none', 'line'].map(
-                  (markerType) =>
-                    html`<sp-menu-item value=${markerType}
+                ${['none', 'line', 'triangle', 'diamond'].map(
+        (markerType) =>
+          html`<sp-menu-item value=${markerType}
                       >${markerType}</sp-menu-item
                     >`,
-                )}
+      )}
               </sp-picker>
             </div>
 
@@ -329,19 +329,19 @@ export class PenbarDrawSettings extends LitElement {
                 @change=${this.handleMarkerEndChanged}
                 id="marker-end"
               >
-                ${['none', 'line'].map(
-                  (markerType) =>
-                    html`<sp-menu-item value=${markerType}
+                ${['none', 'line', 'triangle', 'diamond'].map(
+        (markerType) =>
+          html`<sp-menu-item value=${markerType}
                       >${markerType}</sp-menu-item
                     >`,
-                )}
+      )}
               </sp-picker>
             </div>
           `,
-        )}
+    )}
         ${when(
-          this.pen === Pen.DRAW_ROUGH_RECT,
-          () => html`
+      this.pen === Pen.DRAW_ROUGH_RECT,
+      () => html`
             <div>
               <sp-field-label for="rough-fill-style"
                 >${msg(str`Rough fill style`)}</sp-field-label
@@ -388,7 +388,7 @@ export class PenbarDrawSettings extends LitElement {
               ></sp-slider>
             </div>
           `,
-        )}
+    )}
       </div> `;
   }
 }
