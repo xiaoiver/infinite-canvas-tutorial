@@ -10,6 +10,7 @@ import TransformerRect from '../components/TransformerRect.vue'
 import TransformerRectRotated from '../components/TransformerRectRotated.vue'
 import TransformerLine from '../components/TransformerLine.vue'
 import TransformerPolyline from '../components/TransformerPolyline.vue'
+import TransformerPath from '../components/TransformerPath.vue'
 </script>
 
 # Lesson 21 - Transformer
@@ -557,6 +558,37 @@ The corresponding interaction is that when you hover over a control point, you c
 
 <TransformerPolyline />
 
+### Path {#transformer-for-path}
+
+tldraw provides an example: [cubic-bezier-shape]. For interactive editing, two problems need to be solved:
+
+1. **Stable editable points**: every anchor and every Bézier control point can be selected and dragged, and changes are written back to `d`.
+2. **Round-trip without losing semantics**: use a small, predictable set of command types where possible, and avoid hand-rolling a full path parser in the editor.
+
+So we normalize `d` into a small vocabulary of commands (e.g. convert relative commands to absolute), then use **command index + coordinate offset in the array** as each handle’s identity. While dragging, only numeric coordinates change; finally `path2String` serializes back to a string.
+
+| Command | Handles produced | `meta` meaning                                                                        |
+| ------- | ---------------- | ------------------------------------------------------------------------------------- |
+| M / L   | One vertex       | `coordOffset: 1` → that point `(x, y)`                                                |
+| Q       | Control + end    | offsets `1` and `3`                                                                   |
+| C       | cp1, cp2, end    | offsets `1`, `3`, `5`                                                                 |
+| A       | End point only   | offset `6` (arcs have no Bézier handles in this editor; only the endpoint is exposed) |
+
+```ts
+interface PathControlHandleMeta {
+    commandIndex: number; // Index in the normalized command array.
+    coordOffset: number; // Start index of this handle’s coordinates (1-based, since `command[0]` is the command letter).
+}
+
+type HandlePoint = {
+    x: number;
+    y: number;
+    meta: PathControlHandleMeta;
+};
+```
+
+<TransformerPath />
+
 ## Extended Reading {#extended-reading}
 
 -   [Graphics Editor Development: Custom Cursor]
@@ -579,3 +611,4 @@ The corresponding interaction is that when you hover over a control point, you c
 [SerializedNode]: /guide/lesson-010#shape-to-serialized-node
 [fig-file-parser]: https://madebyevan.com/figma/fig-file-parser
 [Is there a way to keep the image aspect ratio on transform?]: https://github.com/konvajs/react-konva/issues/407
+[cubic-bezier-shape]: https://examples.tldraw.com/cubic-bezier-shape

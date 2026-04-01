@@ -54,6 +54,10 @@ export class Transformable {
    */
   @field.object declare controlPoints: Entity[];
   @field.object declare segmentMidpoints: Entity[];
+  @field.object declare controlPointMeta: unknown[];
+  @field.object declare pathControlCommands: (string | number)[][];
+  /** Path 编辑时锚点与 handle 之间的虚线（本地 Line 实体） */
+  @field.object declare pathHandleLines: Entity[];
 
   /**
    * Selected list
