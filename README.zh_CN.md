@@ -290,9 +290,9 @@ pnpm run dev
 -   使用方向键移动图形
 -   为直线、折线和 Path 提供交互式编辑能力
 
-|                Rotate anchor                 |                 Resize anchor                  |                 Line transformer                  |
-| :------------------------------------------: | :--------------------------------------------: | :-----------------------------------------------: |
-| ![Rotate anchor](./screenshots/lesson21.png) | ![Resize anchor](./screenshots/lesson21-2.png) | ![Line transformer](./screenshots/lesson21-3.gif) |
+|                Rotate anchor                 |                 Resize anchor                  |                 Line transformer                  |                    Path transformer                     |
+| :------------------------------------------: | :--------------------------------------------: | :-----------------------------------------------: | :-----------------------------------------------------: |
+| ![Rotate anchor](./screenshots/lesson21.png) | ![Resize anchor](./screenshots/lesson21-2.png) | ![Line transformer](./screenshots/lesson21-3.gif) | ![Path transformer](./screenshots/transformer-path.png) |
 
 ## 课程 22 - VectorNetwork [🔗](https://infinitecanvas.cc/zh/guide/lesson-022)
 

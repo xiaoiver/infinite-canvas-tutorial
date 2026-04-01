@@ -8,6 +8,7 @@ import TransformerRect from '../../components/TransformerRect.vue'
 import TransformerRectRotated from '../../components/TransformerRectRotated.vue'
 import TransformerLine from '../../components/TransformerLine.vue'
 import TransformerPolyline from '../../components/TransformerPolyline.vue'
+import TransformerPath from '../../components/TransformerPath.vue'
 </script>
 
 # 课程 21 - Transformer
@@ -555,6 +556,37 @@ export class Transformable {
 
 <TransformerPolyline />
 
+### Path {#transformer-for-path}
+
+tldraw 提供了一个例子：[cubic-bezier-shape]。对于交互编辑来说，需要解决两个问题：
+
+1. 稳定的可编辑点：每个锚点、每个贝塞尔控制点都能被选中、拖拽，且拖拽后写回 `d`。
+2. 写回不丢语义：尽量用统一、可预测的命令序列，避免在编辑器里手写解析器。
+
+因此我们需要先把 `d` 归一成少量命令类型（例如相对命令转换成绝对命令），再用「命令下标 + 坐标在数组里的偏移」当作 handle 的身份证，拖拽时只改数字，最后用 `path2String` 再序列化回字符串。
+
+| 命令  | 产生的 handle  | meta 含义                                                  |
+| ----- | -------------- | ---------------------------------------------------------- |
+| M / L | 1 个点（顶点） | `coordOffset: 1` → 该点 `(x,y)`                            |
+| Q     | 控制点 + 终点  | offset `1` 与 `3`                                          |
+| C     | cp1、cp2、终点 | offset `1`、`3`、`5`                                       |
+| A     | 仅终点         | offset `6`（弧本身不提供可拖拽的「贝塞尔柄」，只暴露终点） |
+
+```ts
+interface PathControlHandleMeta {
+    commandIndex: number; // 归一化后命令数组里的下标。
+    coordOffset: number; // 该 handle 对应坐标的起始下标（从 1 开始，因为 command[0] 是命令字）。
+}
+
+type HandlePoint = {
+    x: number;
+    y: number;
+    meta: PathControlHandleMeta;
+};
+```
+
+<TransformerPath />
+
 ## 扩展阅读 {#extended-reading}
 
 -   [图形编辑器开发：自定义光标]
@@ -577,3 +609,4 @@ export class Transformable {
 [SerializedNode]: /zh/guide/lesson-010#shape-to-serialized-node
 [fig-file-parser]: https://madebyevan.com/figma/fig-file-parser
 [Is there a way to keep the image aspect ratio on transform?]: https://github.com/konvajs/react-konva/issues/407
+[cubic-bezier-shape]: https://examples.tldraw.com/cubic-bezier-shape

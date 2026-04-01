@@ -290,9 +290,9 @@ If you want to use it in your own project, you can refer to:
 -   Nudge shapes with arrow key
 -   Edit Line, Polyline and Path with control points
 
-|                Rotate anchor                 |                 Resize anchor                  |                 Line transformer                  |
-| :------------------------------------------: | :--------------------------------------------: | :-----------------------------------------------: |
-| ![Rotate anchor](./screenshots/lesson21.png) | ![Resize anchor](./screenshots/lesson21-2.png) | ![Line transformer](./screenshots/lesson21-3.gif) |
+|                Rotate anchor                 |                 Resize anchor                  |                 Line transformer                  |                    Path transformer                     |
+| :------------------------------------------: | :--------------------------------------------: | :-----------------------------------------------: | :-----------------------------------------------------: |
+| ![Rotate anchor](./screenshots/lesson21.png) | ![Resize anchor](./screenshots/lesson21-2.png) | ![Line transformer](./screenshots/lesson21-3.gif) | ![Path transformer](./screenshots/transformer-path.png) |
 
 ## Lesson 22 - VectorNetwork [🔗](https://infinitecanvas.cc/guide/lesson-022)
 

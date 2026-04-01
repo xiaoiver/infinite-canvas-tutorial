@@ -209,8 +209,8 @@ canvas.addEventListener(Event.READY, async (e) => {
   const node5 = {
     id: 'rect-5',
     type: 'path',
-    d: 'M 100 100 L 200 100 L 200 200 Z',
-    fill: 'green',
+    d: 'M 100 100 C 200 100, 200 200, 100 200',
+    // fill: 'green',
     stroke: 'black',
     strokeWidth: 10,
     // roughFillStyle: 'watercolor',
