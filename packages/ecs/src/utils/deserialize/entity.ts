@@ -530,15 +530,27 @@ function serializeRough(attributes: RoughAttributes, entity: EntityCommands) {
   );
 }
 
+export type SerializedNodesToEntitiesOptions = {
+  /**
+   * 用于解析边的 `fromId`/`toId`、绑定边拓扑与边标签子节点。
+   * 不传时仅使用入参 `nodes`（例如整图反序列化）。
+   * 增量添加（如 {@link API.updateNode} 只传入新节点）时应传入「当前场景 + 本批节点」合并后的列表。
+   */
+  lookupNodes?: SerializedNode[];
+};
+
 export function serializedNodesToEntities(
   nodes: SerializedNode[],
   fonts: Entity[],
   commands: Commands,
   idEntityMap?: Map<string, EntityCommands>,
+  options?: SerializedNodesToEntitiesOptions,
 ): {
   entities: Entity[];
   idEntityMap: Map<string, EntityCommands>;
 } {
+  const graph = options?.lookupNodes ?? nodes;
+
   // The old entities are already added to canvas.
   let existedVertices: string[] = [];
   if (idEntityMap) {
@@ -570,9 +582,12 @@ export function serializedNodesToEntities(
     }
   });
 
-  // remove edges that are not in the nodes
+  // remove edges that are not in the graph (batch or full lookup)
   edges = edges.filter(([fromId, toId]) => {
-    return nodes.some((node) => node.id === fromId) && nodes.some((node) => node.id === toId);
+    return (
+      graph.some((node) => node.id === fromId) &&
+      graph.some((node) => node.id === toId)
+    );
   });
 
   const sorted = toposort.array(vertices, edges);
@@ -583,7 +598,7 @@ export function serializedNodesToEntities(
 
   const entities: Entity[] = [];
   for (const id of sorted) {
-    const node = nodes.find((node) => node.id === id);
+    const node = nodes.find((n) => n.id === id);
 
     if (!node) {
       continue;
@@ -610,8 +625,8 @@ export function serializedNodesToEntities(
     ) {
       const { fromId, toId } = attributes as EdgeSerializedNode;
       if (fromId && toId) {
-        const fromNode = nodes.find((node) => node.id === fromId);
-        const toNode = nodes.find((node) => node.id === toId);
+        const fromNode = graph.find((n) => n.id === fromId);
+        const toNode = graph.find((n) => n.id === toId);
         if (fromNode && toNode) {
           inferPointsWithFromIdAndToId(
             fromNode,
@@ -650,7 +665,7 @@ export function serializedNodesToEntities(
       edgeAttrs.fromId &&
       edgeAttrs.toId
     ) {
-      layoutSerializedEdgeLabelChildren(attributes, nodes);
+      layoutSerializedEdgeLabelChildren(attributes, graph);
     }
 
     const { x, y, width, height, rotation = 0, scaleX = 1, scaleY = 1 } = attributes;

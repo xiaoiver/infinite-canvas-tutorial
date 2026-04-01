@@ -9,6 +9,7 @@ import {
   Sort,
   SyncSimpleTransforms,
   DrawRect,
+  DrawArrowConnect,
   CameraControl,
   ComputeCamera,
   Last,
@@ -49,7 +50,8 @@ export const PenPlugin: Plugin = () => {
       .before(Last),
   )(Select);
   system((s) => s.after(Select).before(Last))(RenderBindings);
-  system((s) => s.after(RenderBindings).before(Last))(DrawRect);
+  system((s) => s.after(RenderBindings).before(Last))(DrawArrowConnect);
+  system((s) => s.after(DrawArrowConnect).before(Last))(DrawRect);
   system((s) => s.after(DrawRect).before(Last))(DrawBrush);
   system((s) => s.after(DrawBrush).before(Last))(DrawPoint);
   system((s) => s.after(DrawPoint).before(Last))(DrawPencil);

@@ -23,6 +23,7 @@ export * from './Deleter';
 export * from './RenderTransformer';
 export * from './RenderHighlighter';
 export * from './DrawRect';
+export * from './DrawArrowConnect';
 export * from './DrawPencil';
 export * from './DrawBrush';
 export * from './RenderHTML';

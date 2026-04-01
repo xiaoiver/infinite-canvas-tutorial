@@ -53,6 +53,7 @@ import {
   FillGradient,
   FillImage,
   FillPattern,
+  Binding,
 } from '../components';
 import { Commands } from '../commands/Commands';
 import {
@@ -79,7 +80,8 @@ import { safeAddComponent } from '../history';
 import { updateComputedPoints } from './ComputePoints';
 import { DOMAdapter } from '../environment';
 import { hideLabel, initLabel, showLabel } from '..';
-import type { SerializedNode } from '../types/serialized-node';
+import type { EdgeSerializedNode, SerializedNode } from '../types/serialized-node';
+import { constraintAttrsFromCanvasPoint } from '../utils/binding/constraint-from-point';
 import {
   PathControlHandleMeta,
   PathCommand,
@@ -147,6 +149,9 @@ export interface SelectOBB {
   /** Total rotation applied during current rotate gesture (rad), relative to saved {@link SelectOBB.obb}. */
   rotateAccumulated?: number;
   selectedNodeIds?: string[];
+
+  /** 绑定边重接时最后一次指针位置（画布坐标） */
+  bindingRebindLastCanvas?: { x: number; y: number };
 }
 
 /**
@@ -204,6 +209,7 @@ export class Select extends System {
             Path,
             Polyline,
             Line,
+            Binding,
             Brush,
             Visibility,
             ZIndex,
@@ -491,6 +497,14 @@ export class Select extends System {
       resizingAnchorName === AnchorName.X2Y2
     ) {
       const { x1y1Anchor, x2y2Anchor, lineMask } = camera.read(Transformable);
+      const edgeNode = api.getNodeById(layersSelected[0]);
+      const edgeEntity = edgeNode ? api.getEntity(edgeNode) : undefined;
+      if (edgeEntity?.has(Binding)) {
+        selection.bindingRebindLastCanvas = { x: canvasX, y: canvasY };
+        this.applyBindingRebindHover(api, canvasX, canvasY);
+        return;
+      }
+
       const { x, y } = api.canvas2Transformer(
         {
           x: canvasX,
@@ -1105,7 +1119,56 @@ export class Select extends System {
     }
   }
 
+  private applyBindingRebindHover(api: API, canvasX: number, canvasY: number) {
+    const hits = api.elementsFromPoint({ x: canvasX, y: canvasY });
+    for (const entity of hits) {
+      if (entity.has(UI)) {
+        continue;
+      }
+      if (!entity.has(Rect) && !entity.has(Ellipse)) {
+        continue;
+      }
+      const node = api.getNodeByEntity(entity);
+      if (!node) {
+        continue;
+      }
+      const t = node.type;
+      if (
+        t === 'rect' ||
+        t === 'ellipse' ||
+        t === 'rough-rect' ||
+        t === 'rough-ellipse'
+      ) {
+        api.highlightNodes([node]);
+        return;
+      }
+    }
+
+    api.highlightNodes([]);
+  }
+
   private handleSelectedResized(api: API, selection: SelectOBB) {
+    const { layersSelected } = api.getAppState();
+    if (
+      layersSelected.length === 1 &&
+      selection.bindingRebindLastCanvas &&
+      (selection.resizingAnchorName === AnchorName.X1Y1 ||
+        selection.resizingAnchorName === AnchorName.X2Y2)
+    ) {
+      const edgeNode = api.getNodeById(layersSelected[0]);
+      const entity = edgeNode ? api.getEntity(edgeNode) : undefined;
+      if (entity?.has(Binding) && edgeNode) {
+        const pt = selection.bindingRebindLastCanvas;
+        delete selection.bindingRebindLastCanvas;
+        this.applyBindingRebindAt(
+          api,
+          edgeNode as EdgeSerializedNode,
+          selection.resizingAnchorName,
+          pt,
+        );
+      }
+    }
+
     const camera = api.getCamera();
     const tfDone = camera.write(Transformable);
     tfDone.status = TransformableStatus.RESIZED;
@@ -1123,6 +1186,62 @@ export class Select extends System {
     });
 
     this.saveSelectedOBB(api, selection);
+  }
+
+  private applyBindingRebindAt(
+    api: API,
+    edgeNode: EdgeSerializedNode,
+    anchor: AnchorName,
+    canvas: { x: number; y: number },
+  ) {
+    const hits = api.elementsFromPoint({ x: canvas.x, y: canvas.y });
+    let targetNode: SerializedNode | undefined;
+    for (const entity of hits) {
+      if (entity.has(UI)) {
+        continue;
+      }
+      if (!entity.has(Rect) && !entity.has(Ellipse)) {
+        continue;
+      }
+      const n = api.getNodeByEntity(entity);
+      if (!n) {
+        continue;
+      }
+      const t = n.type;
+      if (
+        t === 'rect' ||
+        t === 'ellipse' ||
+        t === 'rough-rect' ||
+        t === 'rough-ellipse'
+      ) {
+        targetNode = n;
+        break;
+      }
+    }
+    if (!targetNode) {
+      return;
+    }
+
+    const c = constraintAttrsFromCanvasPoint(targetNode, canvas.x, canvas.y);
+    if (anchor === AnchorName.X1Y1) {
+      api.updateNode(edgeNode as SerializedNode, {
+        fromId: targetNode.id,
+        exitX: c.x,
+        exitY: c.y,
+        exitPerimeter: c.perimeter,
+        exitDx: c.dx,
+        exitDy: c.dy,
+      });
+    } else {
+      api.updateNode(edgeNode as SerializedNode, {
+        toId: targetNode.id,
+        entryX: c.x,
+        entryY: c.y,
+        entryPerimeter: c.perimeter,
+        entryDx: c.dx,
+        entryDy: c.dy,
+      });
+    }
   }
 
   private handleSelectedRotated(api: API, selection: SelectOBB) {
@@ -1198,7 +1317,6 @@ export class Select extends System {
         if (pen !== Pen.VECTOR_NETWORK && pen !== Pen.ERASER) {
           api.selectNodes([]);
         }
-        api.highlightNodes([]);
 
         if (pen !== Pen.VECTOR_NETWORK) {
           return;

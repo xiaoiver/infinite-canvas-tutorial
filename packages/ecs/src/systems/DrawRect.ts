@@ -135,7 +135,6 @@ export class DrawRect extends System {
         | Pen.DRAW_RECT
         | Pen.DRAW_ELLIPSE
         | Pen.DRAW_LINE
-        | Pen.DRAW_ARROW
         | Pen.DRAW_ROUGH_RECT
         | Pen.DRAW_ROUGH_ELLIPSE
         | Pen.DRAW_ROUGH_LINE,
@@ -144,17 +143,19 @@ export class DrawRect extends System {
         [Pen.DRAW_RECT]: appState.penbarDrawRect,
         [Pen.DRAW_ELLIPSE]: appState.penbarDrawEllipse,
         [Pen.DRAW_LINE]: appState.penbarDrawLine,
-        [Pen.DRAW_ARROW]: appState.penbarDrawArrow,
         [Pen.DRAW_ROUGH_RECT]: appState.penbarDrawRoughRect,
         [Pen.DRAW_ROUGH_ELLIPSE]: appState.penbarDrawRoughEllipse,
         [Pen.DRAW_ROUGH_LINE]: appState.penbarDrawRoughLine,
       };
 
+      if (pen === Pen.DRAW_ARROW) {
+        return;
+      }
+
       if (
         pen !== Pen.DRAW_RECT &&
         pen !== Pen.DRAW_ELLIPSE &&
         pen !== Pen.DRAW_LINE &&
-        pen !== Pen.DRAW_ARROW &&
         pen !== Pen.DRAW_ROUGH_RECT &&
         pen !== Pen.DRAW_ROUGH_ELLIPSE &&
         pen !== Pen.DRAW_ROUGH_LINE
@@ -248,9 +249,7 @@ export class DrawRect extends System {
                 zIndex: maxZIndex + 1,
               },
               defaultDrawParams[pen],
-              pen === Pen.DRAW_LINE ||
-                pen === Pen.DRAW_ARROW ||
-                pen === Pen.DRAW_ROUGH_LINE
+              pen === Pen.DRAW_LINE || pen === Pen.DRAW_ROUGH_LINE
                 ? {
                   points: `${x},${y} ${x + width},${y + height}`,
                 }
@@ -346,9 +345,7 @@ export class DrawRect extends System {
             zIndex: DRAW_RECT_Z_INDEX,
             strokeAttenuation: true,
           },
-          pen === Pen.DRAW_LINE ||
-            pen === Pen.DRAW_ARROW ||
-            pen === Pen.DRAW_ROUGH_LINE
+          pen === Pen.DRAW_LINE || pen === Pen.DRAW_ROUGH_LINE
             ? {
               points: '0,0 0,0',
             }
@@ -397,9 +394,7 @@ export class DrawRect extends System {
       let height = cy - y;
 
       const isLine =
-        pen === Pen.DRAW_LINE ||
-        pen === Pen.DRAW_ARROW ||
-        pen === Pen.DRAW_ROUGH_LINE;
+        pen === Pen.DRAW_LINE || pen === Pen.DRAW_ROUGH_LINE;
 
       if (!isLine) {
         if (isSquare) {
@@ -422,9 +417,7 @@ export class DrawRect extends System {
 
       api.updateNode(
         brush,
-        pen === Pen.DRAW_LINE ||
-          pen === Pen.DRAW_ARROW ||
-          pen === Pen.DRAW_ROUGH_LINE
+        pen === Pen.DRAW_LINE || pen === Pen.DRAW_ROUGH_LINE
           ? {
             ...defaultDrawParams,
             visibility: 'visible',
