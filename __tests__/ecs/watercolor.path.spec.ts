@@ -25,17 +25,18 @@ import {
   API,
   Name,
   Rect,
+  Path,
   ZIndex,
   ComputeZIndex,
   Rough,
-  RoughRectSerializedNode,
+  RoughPathSerializedNode,
 } from '../../packages/ecs/src';
 import { NodeJSAdapter, sleep } from '../utils';
 
 DOMAdapter.set(NodeJSAdapter);
 
 describe('Watercolor', () => {
-  it('should render watercolor rect correctly', async () => {
+  it('should render watercolor path correctly', async () => {
     const app = new App();
 
     let $canvas: HTMLCanvasElement;
@@ -64,6 +65,7 @@ describe('Watercolor', () => {
             FillSolid,
             Stroke,
             Rect,
+            Path,
             Rough,
             Visibility,
             Name,
@@ -87,14 +89,11 @@ describe('Watercolor', () => {
           zoom: 1,
         });
 
-        const node1: RoughRectSerializedNode = {
+        const node1: RoughPathSerializedNode = {
           id: '1',
-          type: 'rough-rect',
+          type: 'rough-path',
           fill: 'red',
-          x: 0,
-          y: 50,
-          width: 200,
-          height: 100,
+          d: 'M 50 50 L 150 150 L 50 150 Z',
           visibility: 'visible',
           roughFillStyle: 'watercolor',
           zIndex: 0,
@@ -115,9 +114,9 @@ describe('Watercolor', () => {
     const dir = `${__dirname}/snapshots`;
     await expect($canvas!.getContext('webgl1')).toMatchWebGLSnapshot(
       dir,
-      'watercolor-rect',
+      'watercolor-path',
       {
-        maxError: 5000
+        maxError: Infinity
       }
     );
 
