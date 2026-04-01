@@ -217,26 +217,6 @@ canvas.addEventListener(Event.READY, async (e) => {
     zIndex: 3,
   }
 
-  // Generate sinewave geometry
-  const maxRadius = (1 / 3) * 100;
-  const segmentCount = 32;
-
-  const position: [number, number][] = [];
-  const radius: number[] = [];
-
-  const gr = (1 + Math.sqrt(5)) / 2; // golden ratio
-  const pi = Math.PI;
-
-  for (let i = 0; i <= segmentCount; ++i) {
-    let a = i / segmentCount;
-    let x = -pi + 2 * pi * a;
-    let y = Math.sin(x) / gr;
-    let r = Math.cos(x / 2.0) * maxRadius;
-
-    position.push([x * 100 + 360, y * 100 + 120]);
-    radius.push(r);
-  }
-
   api.updateNodes([
     // node1,
     // ...nodes,
@@ -244,7 +224,7 @@ canvas.addEventListener(Event.READY, async (e) => {
     // g2,
     // node3,
     node4,
-    node5,
+    // node5,
     // {
     //   id: 'baseline-1',
     //   type: 'line',
@@ -256,18 +236,19 @@ canvas.addEventListener(Event.READY, async (e) => {
     //   strokeWidth: 1,
     //   zIndex: 0,
     // },
-    // {
-    //   id: 'text-1',
-    //   type: 'text',
-    //   fill: 'black',
-    //   content: 'Abcdefghijklmnop (top)',
-    //   anchorX: 50,
-    //   anchorY: 50,
-    //   fontSize: 16,
-    //   fontFamily: 'sans-serif',
-    //   textBaseline: 'top',
-    //   zIndex: 1,
-    // },
+    {
+      id: 'text-1',
+      parentId: 'rect-4',
+      type: 'text',
+      fill: 'black',
+      content: 'Abcdefghijklmnop (top)',
+      anchorX: 0,
+      anchorY: 0,
+      fontSize: 16,
+      fontFamily: 'sans-serif',
+      textBaseline: 'top',
+      zIndex: 1,
+    },
     // {
     //   id: 'baseline-2',
     //   type: 'line',

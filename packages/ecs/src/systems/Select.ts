@@ -1735,15 +1735,17 @@ export class Select extends System {
         return;
       }
       visited.add(entity);
-      // Group 的 selection OBB 是世界 AABB（min 角 + 尺寸），与 Transform 原点不一致；
-      // 对 Group 根套用 Konva 式 delta 会错。只把变换下发到子节点（与多选 resize 一致）。
-      if (!entity.has(Group)) {
-        entitiesToUpdate.push(entity);
+      // Group：selection OBB 是世界子并集 AABB，与 Group 根 Transform 不一致，不能对根套用 Konva delta；
+      // 只把 delta 下发到子树（与多选 resize 一致）。
+      if (entity.has(Group)) {
+        if (entity.has(Parent)) {
+          const { children } = entity.read(Parent);
+          children.forEach((child) => collectSelectedAndDescendants(child));
+        }
+        return;
       }
-      if (entity.has(Parent)) {
-        const { children } = entity.read(Parent);
-        children.forEach((child) => collectSelectedAndDescendants(child));
-      }
+      // 非 Group：只更新该节点。子节点随父级 Transform 级联，若再对子节点套用同一 delta 会在世界空间叠加两次变换。
+      entitiesToUpdate.push(entity);
     };
     selecteds.forEach((selected) => collectSelectedAndDescendants(selected));
 
