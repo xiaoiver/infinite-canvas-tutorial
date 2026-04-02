@@ -15,6 +15,7 @@ import BindingCurved from '../../components/BindingCurved.vue'
 import BindingBezier from '../../components/BindingBezier.vue'
 import BindingArrow from '../../components/BindingArrow.vue'
 import BindingDangling from '../../components/BindingDangling.vue'
+import BindingLoop from '../../components/BindingLoop.vue'
 </script>
 
 # 课程 31 - 图形间的连接关系
@@ -619,6 +620,8 @@ OrthConnector 更偏自动路由，当用户显式指定了控制点 `controlHin
 
 当起点和终点重合时，就需要创建自环了。
 
+<BindingLoop />
+
 ## 连接线样式 {#connectors-style}
 
 ![source: https://www.drawio.com/doc/faq/connector-styles](https://www.drawio.com/assets/img/blog/style-tab-line-style.png)
@@ -685,7 +688,7 @@ if ((n - 1) % 3 === 0) {
 <line x1="0" y1="0" data-binding="" />
 ```
 
-## [WIP] 编辑器 {#editor}
+## 编辑器 {#editor}
 
 ### 高亮锚点 {#highlight-anchors}
 

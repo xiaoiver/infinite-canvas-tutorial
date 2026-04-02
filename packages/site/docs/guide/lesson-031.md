@@ -14,6 +14,8 @@ import BindingRounded from '../components/BindingRounded.vue'
 import BindingCurved from '../components/BindingCurved.vue'
 import BindingBezier from '../components/BindingBezier.vue'
 import BindingArrow from '../components/BindingArrow.vue'
+import BindingDangling from '../components/BindingDangling.vue'
+import BindingLoop from '../components/BindingLoop.vue'
 </script>
 
 # Lesson 31 - Bindings between shapes
@@ -216,7 +218,21 @@ In the next lesson, we will encounter a special case where `fromId/toId` may be 
 
 ![Sequence Diagrams in D2](/d2.png)
 
-For now, we can skip rendering these lines.
+We introduce a new component that records a relationship with only one associated node:
+
+```ts
+/**
+ * Edge with only one end attached to a shape; the other end is fixed by `sourcePoint` / `targetPoint`.
+ * `attached` is the entity on the connected side; `sourceIsAttached === 1` means the connection is on the source (`fromId`) side.
+ */
+class PartialBinding {
+    @field.ref declare attached: Entity;
+    /** 1 = source (from) side attached to node, 0 = target (to) side */
+    @field.int32 declare sourceIsAttached: number;
+}
+```
+
+<BindingDangling />
 
 ## Auto update {#auto-update}
 
@@ -470,7 +486,7 @@ mxGraph uses EdgeStyle functions to implement routing rules, which are responsib
 | EntityRelation   | Database relationship diagram specific, generates flexible paths         | Database ER diagrams, bidirectional relationships                  |
 | Loop             | Implements self-loop connections                                         | Self-loop relationships in state diagrams or automaton charts      |
 
-### OrthConnector {orth-connector}
+### OrthConnector {#orth-connector}
 
 [OrthConnector] is the most common routing algorithm, with the core objective of creating a path between the source and destination nodes that consists solely of horizontal and vertical line segments, avoiding diagonal lines. The specific steps are as follows:
 
@@ -596,6 +612,16 @@ for (var i = 0; i < routePattern.length; i++)
 
 Finally, simplify adjacent path points that lie very close together. For this we continue to use [simplify-js], as in [Lesson 12 - Simplifying polyline].
 
+### SegmentConnector {#segment-connector}
+
+OrthConnector leans toward automatic routing. When the user explicitly specifies control points `controlHints`, SegmentConnector turns those hints into waypoints that must be passed through or aligned to, and the resulting polyline is largely built around these hints—so it is more predictable and consistent for interactive editing.
+
+### LoopConnector {#loop-connector}
+
+When the start and end coincide, we need a self-loop.
+
+<BindingLoop />
+
 ## Connector line style {#connectors-style}
 
 ![source: https://www.drawio.com/doc/faq/connector-styles](https://www.drawio.com/assets/img/blog/style-tab-line-style.png)
@@ -628,7 +654,7 @@ parts.push(
 
 ### Cubic Bezier {#bezier}
 
-When points satisfy `3n+1`, interpret them directly as cubic Bezier control points; otherwise fall back to quadratic Bezier.
+When there are `3n+1` points, interpret them directly as cubic Bezier control points in the form `[anchor, cp1, cp2, anchor, ...]`; otherwise fall back to quadratic Bezier segments.
 
 ```ts
 if ((n - 1) % 3 === 0) {
@@ -650,13 +676,19 @@ if ((n - 1) % 3 === 0) {
 
 ## [WIP] Export SVG {#export-svg}
 
-When exporting, it is no longer sufficient to save only geometric information; logical relationships must also be persisted.
+When exporting, it is no longer sufficient to save only geometric information; logical relationships must also be persisted. For example, draw.io saves the original mxfile content in the `<svg>` `content` attribute when exporting (this is not part of any formal spec):
+
+```html
+<svg content='&lt;mxfile host="app.diagrams.net" diagram name="Page-1"'></svg>
+```
+
+We might also use:
 
 ```html
 <line x1="0" y1="0" data-binding="" />
 ```
 
-## [WIP] Editor {#editor}
+## Editor {#editor}
 
 ### Highlight anchors {#highlight-anchors}
 
