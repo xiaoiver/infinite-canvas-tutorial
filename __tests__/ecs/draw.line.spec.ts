@@ -28,6 +28,10 @@ import {
   ZIndex,
   ComputeZIndex,
   Pen,
+  ToBeDeleted,
+  PartialBinding,
+  Binded,
+  Binding,
 } from '../../packages/ecs/src';
 import { NodeJSAdapter, sleep, createMouseEvent } from '../utils';
 
@@ -64,6 +68,10 @@ describe('Draw line', () => {
             Stroke,
             Ellipse,
             Visibility,
+            Binding,
+            Binded,
+            PartialBinding,
+            ToBeDeleted,
             Name,
             ZIndex,
           ).write,
@@ -100,6 +108,13 @@ describe('Draw line', () => {
     if ($canvas) {
       $canvas.dispatchEvent(
         createMouseEvent('mousedown', { clientX: 50, clientY: 50 }),
+      ); await sleep(100);
+      $canvas.dispatchEvent(
+        createMouseEvent('mousemove', { clientX: 50, clientY: 50 }),
+      );
+      await sleep(100);
+      $canvas.dispatchEvent(
+        createMouseEvent('mousemove', { clientX: 100, clientY: 100 }),
       );
       await sleep(100);
       $canvas.dispatchEvent(

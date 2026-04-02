@@ -397,11 +397,13 @@ pnpm run dev
 -   连线边界算法，包括矩形和椭圆边界
 -   连线的路由规则
     -   Orth Connector
+    -   Segment Connector
+    -   Loop Connector
 -   支持更多连线样式：圆角、二次和三次贝塞尔曲线
 
-|                Bindings                 |                 Orth Connector                  |
-| :-------------------------------------: | :---------------------------------------------: |
-| ![bindings](./screenshots/lesson31.gif) | ![orth connector](./screenshots/lesson31-2.png) |
+|                Bindings                 |                   Orth Connector                    |                   Loop Connector                    |
+| :-------------------------------------: | :-------------------------------------------------: | :-------------------------------------------------: |
+| ![bindings](./screenshots/bindings.gif) | ![orth connector](./screenshots/orth-connector.png) | ![loop connector](./screenshots/loop-connector.png) |
 
 ## 课程 32 - 文本生成图表 [🔗](https://infinitecanvas.cc/zh/guide/lesson-032)
 

@@ -3,8 +3,20 @@ import type { IPointData } from "@pixi/math";
 import type { BindingAttributes, ConstraintAttributes, EdgeSerializedNode, NodeSerializedNode, SerializedNode } from "../../types/serialized-node";
 import { getPerimeterPoint } from "./perimeter";
 import { EdgeStyle, orthConnector } from "./edge-style";
+import { DIRECTION_EAST, DIRECTION_NORTH, DIRECTION_SOUTH, DIRECTION_WEST } from "./constants";
 
 export type EdgeState = EdgeSerializedNode & { width: number; height: number; x: number; y: number } & { absolutePoints: (IPointData | null)[] };
+
+function rotatePoint(point: IPointData, cx: number, cy: number, angle: number): IPointData {
+  const cos = Math.cos(angle);
+  const sin = Math.sin(angle);
+  const dx = point.x - cx;
+  const dy = point.y - cy;
+  return {
+    x: cx + dx * cos - dy * sin,
+    y: cy + dx * sin + dy * cos,
+  };
+}
 
 /**
  * Returns an <mxConnectionConstraint> that describes the given connection
@@ -45,7 +57,11 @@ export function getConnectionConstraint(edge: EdgeSerializedNode, terminal: Seri
   };
 }
 
-function getNextPoint(edge: EdgeState, opposite: SerializedNode & { width: number; height: number; x: number; y: number }, source: boolean) {
+function getNextPoint(
+  edge: EdgeState,
+  opposite: (SerializedNode & { width: number; height: number; x: number; y: number }) | null,
+  source: boolean,
+) {
   const pts = edge.absolutePoints;
   let point: IPointData | null = null;
 
@@ -60,7 +76,12 @@ function getNextPoint(edge: EdgeState, opposite: SerializedNode & { width: numbe
   return point;
 }
 
-export function getFloatingTerminalPoint(state: EdgeState, start: SerializedNode & { width: number; height: number; x: number; y: number }, end: SerializedNode & { width: number; height: number; x: number; y: number }, source: boolean) {
+export function getFloatingTerminalPoint(
+  state: EdgeState,
+  start: SerializedNode & { width: number; height: number; x: number; y: number },
+  end: (SerializedNode & { width: number; height: number; x: number; y: number }) | null,
+  source: boolean,
+) {
   // start = getTerminalPort(state, start, source);
   const next = getNextPoint(state, end, source);
   const orth = (state as BindingAttributes).orthogonal;
@@ -68,34 +89,34 @@ export function getFloatingTerminalPoint(state: EdgeState, start: SerializedNode
   return pt;
 }
 
-export function getFixedTerminalPoint(edge: SerializedNode & { width: number; height: number; x: number; y: number }, terminal: SerializedNode & { width: number; height: number; x: number; y: number }, source: boolean, constraint: ConstraintAttributes) {
+export function getFixedTerminalPoint(
+  edge: EdgeSerializedNode & { width: number; height: number; x: number; y: number },
+  terminal: (SerializedNode & { width: number; height: number; x: number; y: number }) | null,
+  source: boolean,
+  constraint: ConstraintAttributes | null,
+): IPointData | null {
   let pt: IPointData | null = null;
-  // 步骤1：如果有约束，通过 getConnectionPoint 计算实际连接点
-  if (!isNil(constraint)) {
+
+  if (
+    terminal != null &&
+    !isNil(constraint) &&
+    !isNil(constraint.x) &&
+    !isNil(constraint.y)
+  ) {
     pt = getConnectionPoint(terminal, constraint);
   }
 
-  // 步骤2：如果没有终端节点（悬空边），从边的几何信息中获取终端点
-  // if (pt == null && terminal == null) {
-  // 	var s = this.scale;
-  // 	var tr = this.translate;
-  // 	var orig = edge.origin;
-  // 	var geo = this.graph.getCellGeometry(edge. cell);
-  // 	pt = geo.getTerminalPoint(source);
-
-  // 	if (pt != null) {
-  // 		// 将相对坐标转换为绝对坐标
-  // 		pt = {
-  // 			x: s * (tr.x + pt.x + orig.x),
-  // 			y: s * (tr.y + pt.y + orig.y)
-  // 		};
-  // 	}
-  // }
+  if (pt == null && terminal == null) {
+    const raw = source ? edge.sourcePoint : edge.targetPoint;
+    if (raw != null && Number.isFinite(raw.x) && Number.isFinite(raw.y)) {
+      pt = { x: raw.x, y: raw.y };
+    }
+  }
 
   return pt;
 }
 
-export function getConnectionPoint(vertex: SerializedNode & { width: number; height: number; x: number; y: number } | null, constraint: ConstraintAttributes): IPointData | null {
+export function getConnectionPoint(vertex: (SerializedNode & { width: number; height: number; x: number; y: number; rotation?: number }) | null, constraint: ConstraintAttributes): IPointData | null {
   let point: IPointData | null = null;
 
   // 步骤1：如果有约束点信息，计算基于约束的连接点
@@ -106,10 +127,12 @@ export function getConnectionPoint(vertex: SerializedNode & { width: number; hei
     // 步骤2：计算相对坐标的实际点位置
     // constraint.x/y 是归一化坐标 (0-1范围)
     // constraint.dx, constraint.dy 是像素偏移
-    point = {
+    const rawPoint = {
       x: x + constraint.x * width + (constraint.dx ?? 0),
       y: y + constraint.y * height + (constraint.dy ?? 0)
     };
+    const rotation = vertex.rotation ?? 0;
+    point = rotation === 0 ? rawPoint : rotatePoint(rawPoint, x, y, rotation);
 
     if (constraint.perimeter) {
       point = getPerimeterPoint(vertex, point, false);
@@ -119,18 +142,22 @@ export function getConnectionPoint(vertex: SerializedNode & { width: number; hei
   return point;
 }
 
-export function updateFloatingTerminalPoints(state: EdgeState, source: SerializedNode & { width: number; height: number; x: number; y: number }, target: SerializedNode & { width: number; height: number; x: number; y: number }) {
+export function updateFloatingTerminalPoints(
+  state: EdgeState,
+  source: (SerializedNode & { width: number; height: number; x: number; y: number }) | null,
+  target: (SerializedNode & { width: number; height: number; x: number; y: number }) | null,
+) {
   const pts = state.absolutePoints;
 
   if (!isNil(pts)) {
     const p0 = pts[0];
     const pe = pts[pts.length - 1];
 
-    if (isNil(pe) && !isNil(target)) {
+    if (isNil(pe) && target != null) {
       updateFloatingTerminalPoint(state, target, source, false);
     }
 
-    if (isNil(p0) && !isNil(source)) {
+    if (isNil(p0) && source != null) {
       updateFloatingTerminalPoint(state, source, target, true);
     }
   }
@@ -140,15 +167,30 @@ export function updateFloatingTerminalPoints(state: EdgeState, source: Serialize
  * Updates the absolute terminal point in the given state for the given
  * start and end state, where start is the source if source is true.
  */
-function updateFloatingTerminalPoint(edge: EdgeState, start: SerializedNode & { width: number; height: number; x: number; y: number }, end: SerializedNode & { width: number; height: number; x: number; y: number }, source: boolean) {
+function updateFloatingTerminalPoint(
+  edge: EdgeState,
+  start: SerializedNode & { width: number; height: number; x: number; y: number },
+  end: (SerializedNode & { width: number; height: number; x: number; y: number }) | null,
+  source: boolean,
+) {
   setAbsoluteTerminalPoint(edge, getFloatingTerminalPoint(edge, start, end, source), source);
 }
 
 /**
  * Sets the fixed source or target terminal point on the given edge.
  */
-function updateFixedTerminalPoint(edge: EdgeState & { width: number; height: number; x: number; y: number }, terminal: SerializedNode & { width: number; height: number; x: number; y: number }, source: boolean, constraint: ConstraintAttributes) {
-  setAbsoluteTerminalPoint(edge, getFixedTerminalPoint(edge, terminal, source, constraint), source);
+function updateFixedTerminalPoint(
+  edge: EdgeState & { width: number; height: number; x: number; y: number },
+  terminal: (SerializedNode & { width: number; height: number; x: number; y: number }) | null,
+  source: boolean,
+) {
+  const constraint =
+    terminal != null ? getConnectionConstraint(edge, terminal, source) : null;
+  setAbsoluteTerminalPoint(
+    edge,
+    getFixedTerminalPoint(edge, terminal, source, constraint),
+    source,
+  );
 }
 
 function setAbsoluteTerminalPoint(edge: EdgeState, point: IPointData | null, source: boolean) {
@@ -179,13 +221,128 @@ function getEdgeStyle(edge: EdgeState, points: IPointData[], source: SerializedN
 
 }
 
+function pointInBounds(
+  bounds: { x: number; y: number; width: number; height: number },
+  point: IPointData,
+): boolean {
+  return (
+    point.x >= bounds.x &&
+    point.x <= bounds.x + bounds.width &&
+    point.y >= bounds.y &&
+    point.y <= bounds.y + bounds.height
+  );
+}
+
+function getNodeBounds(node: NodeSerializedNode): { x: number; y: number; width: number; height: number } | null {
+  if (
+    Number.isFinite(node.x) &&
+    Number.isFinite(node.y) &&
+    Number.isFinite(node.width) &&
+    Number.isFinite(node.height)
+  ) {
+    return {
+      x: node.x,
+      y: node.y,
+      width: node.width,
+      height: node.height,
+    };
+  }
+
+  return null;
+}
+
+function loopConnector(
+  edge: EdgeState,
+  source: NodeSerializedNode | null,
+  points: IPointData[] | null | undefined,
+  result: IPointData[],
+): void {
+  const pts = edge.absolutePoints;
+  const p0 = pts[0];
+  const pe = pts[pts.length - 1];
+
+  // If both terminals are fixed, loop style keeps provided control points.
+  if (!isNil(p0) && !isNil(pe)) {
+    if (!isNil(points) && points.length > 0) {
+      for (let i = 0; i < points.length; i++) {
+        const pt = points[i];
+        if (!isNil(pt)) {
+          result.push(transformControlPoint(edge, { x: pt.x, y: pt.y }));
+        }
+      }
+    }
+    return;
+  }
+
+  if (isNil(source)) {
+    return;
+  }
+  const sourceBounds = getNodeBounds(source);
+  if (isNil(sourceBounds)) {
+    return;
+  }
+
+  let pt = !isNil(points) && points.length > 0 ? points[0] : null;
+  if (!isNil(pt)) {
+    pt = transformControlPoint(edge, { x: pt.x, y: pt.y });
+    if (pointInBounds(sourceBounds, pt)) {
+      pt = null;
+    }
+  }
+
+  let x = 0;
+  let dx = 0;
+  let y = 0;
+  let dy = 0;
+
+  const scale = edge.scaleX ?? 1;
+  const segment = ((edge as EdgeState & { segment?: number }).segment ?? 10) * scale;
+  const direction = (edge as EdgeState & { direction?: string }).direction ?? DIRECTION_WEST;
+
+  if (direction === DIRECTION_NORTH || direction === DIRECTION_SOUTH) {
+    x = sourceBounds.x + sourceBounds.width / 2;
+    dx = segment;
+  } else {
+    y = sourceBounds.y + sourceBounds.height / 2;
+    dy = segment;
+  }
+
+  if (isNil(pt) || pt.x < sourceBounds.x || pt.x > sourceBounds.x + sourceBounds.width) {
+    if (!isNil(pt)) {
+      x = pt.x;
+      dy = Math.max(Math.abs(y - pt.y), dy);
+    } else if (direction === DIRECTION_NORTH) {
+      y = sourceBounds.y - 2 * dx;
+    } else if (direction === DIRECTION_SOUTH) {
+      y = sourceBounds.y + sourceBounds.height + 2 * dx;
+    } else if (direction === DIRECTION_EAST) {
+      x = sourceBounds.x - 2 * dy;
+    } else {
+      x = sourceBounds.x + sourceBounds.width + 2 * dy;
+    }
+  } else if (!isNil(pt)) {
+    x = sourceBounds.x + sourceBounds.width / 2;
+    dx = Math.max(Math.abs(x - pt.x), dy);
+    y = pt.y;
+    dy = 0;
+  }
+
+  result.push({ x: x - dx, y: y - dy });
+  result.push({ x: x + dx, y: y + dy });
+}
+
 /**
  * Updates the absolute points in the given state using the specified array
  * of Points as the relative points.
  * 
  * @see https://github.com/jgraph/drawio/blob/81a267568da862d3c99970758c09a8e768dea973/src/main/webapp/mxgraph/src/view/mxGraphView.js#L1435C1-L1448C76
  */
-export function updatePoints(edge: EdgeState, points: IPointData[], source: NodeSerializedNode, target: NodeSerializedNode) {
+export function updatePoints(
+  edge: EdgeState,
+  points: IPointData[],
+  source: NodeSerializedNode | null,
+  target: NodeSerializedNode | null,
+) {
   if (edge !== null && edge.absolutePoints !== null &&
     edge.absolutePoints.length > 0) {
     const pts: IPointData[] = [];
@@ -198,6 +355,10 @@ export function updatePoints(edge: EdgeState, points: IPointData[], source: Node
       // @see https://github.com/jgraph/drawio/blob/81a267568da862d3c99970758c09a8e768dea973/src/main/webapp/mxgraph/src/view/mxGraphView.js#L1459
       if (edge.edgeStyle === EdgeStyle.ORTHOGONAL) {
         orthConnector(edge, source, target, points, pts);
+      } else if (edge.edgeStyle === EdgeStyle.SEGMENT) {
+
+      } else if (edge.edgeStyle === EdgeStyle.LOOP) {
+        loopConnector(edge, source, points, pts);
       }
     } else if (!isNil(points)) {
       for (let i = 0; i < points.length; i++) {
@@ -218,17 +379,23 @@ function transformControlPoint(state: EdgeState, pt: IPointData, ignoreScale = f
   if (state != null && pt != null) {
     const scaleX = ignoreScale ? 1 : (state.scaleX ?? 1);
     const scaleY = ignoreScale ? 1 : (state.scaleY ?? 1);
+    const ox = state.x ?? 0;
+    const oy = state.y ?? 0;
 
     return {
-      x: scaleX * (pt.x + state.x),
-      y: scaleY * (pt.y + state.y)
+      x: scaleX * (pt.x + ox),
+      y: scaleY * (pt.y + oy),
     };
   }
 
   return null;
 }
 
-export function updateFixedTerminalPoints(edge: EdgeState & { width: number; height: number; x: number; y: number }, source: SerializedNode & { width: number; height: number; x: number; y: number }, target: SerializedNode & { width: number; height: number; x: number; y: number }) {
-  updateFixedTerminalPoint(edge, source, true, getConnectionConstraint(edge, source, true));
-  updateFixedTerminalPoint(edge, target, false, getConnectionConstraint(edge, target, false));
+export function updateFixedTerminalPoints(
+  edge: EdgeState & { width: number; height: number; x: number; y: number },
+  source: (SerializedNode & { width: number; height: number; x: number; y: number }) | null,
+  target: (SerializedNode & { width: number; height: number; x: number; y: number }) | null,
+) {
+  updateFixedTerminalPoint(edge, source, true);
+  updateFixedTerminalPoint(edge, target, false);
 }

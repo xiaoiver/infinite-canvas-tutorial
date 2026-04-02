@@ -396,11 +396,13 @@ If you want to use it in your own project, you can refer to:
 -   Perimeter algorithm, including rectangle and ellipse
 -   Routing rules
     -   Orth Connector
+    -   Segment Connector
+    -   Loop Connector
 -   More line styles: rounded, curved and bezier
 
-|                Bindings                 |                 Orth Connector                  |
-| :-------------------------------------: | :---------------------------------------------: |
-| ![bindings](./screenshots/lesson31.gif) | ![orth connector](./screenshots/lesson31-2.png) |
+|                Bindings                 |                   Orth Connector                    |                   Loop Connector                    |
+| :-------------------------------------: | :-------------------------------------------------: | :-------------------------------------------------: |
+| ![bindings](./screenshots/bindings.gif) | ![orth connector](./screenshots/orth-connector.png) | ![loop connector](./screenshots/loop-connector.png) |
 
 ## Lesson 32 - Text to diagram [🔗](https://infinitecanvas.cc/guide/lesson-032)
 

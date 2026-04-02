@@ -98,7 +98,7 @@ canvas.addEventListener(Event.READY, async (e) => {
   // api.runAtNextTick(() => {
   api.setAppState({
     cameraZoom: 1,
-    penbarSelected: Pen.DRAW_ARROW,
+    penbarSelected: Pen.SELECT,
     penbarAll: [
       Pen.HAND,
       Pen.SELECT,
@@ -111,8 +111,8 @@ canvas.addEventListener(Event.READY, async (e) => {
       Pen.IMAGE,
       Pen.LASSO,
       Pen.TEXT,
-      // Pen.PENCIL,
-      // Pen.BRUSH,
+      Pen.PENCIL,
+      Pen.BRUSH,
       Pen.ERASER,
       Pen.LASER_POINTER,
     ],
@@ -157,234 +157,76 @@ canvas.addEventListener(Event.READY, async (e) => {
     // layersLassoing: ['parent'],
   });
 
-  const g = {
-    id: 'g-1',
-    type: 'g',
-  };
-
-  const g2 = {
-    id: 'g-2',
-    type: 'g',
-    parentId: 'g-1',
-  };
-
   const node1 = {
-    id: 'polyline-1',
-    parentId: 'g-1',
-    type: 'polyline',
-    points: '100,100 200,200 300,100 400,200',
-    stroke: 'red',
-    strokeWidth: 10,
-    zIndex: 1,
-    hitStrokeWidth: 10,
+    id: 'binding-curved-rect-1',
+    type: 'rect',
+    x: 100,
+    y: 0,
+    width: 100,
+    height: 100,
+    fill: 'grey',
   };
-
+  const node2 = {
+    id: 'binding-curved-rect-2',
+    type: 'ellipse',
+    x: 225,
+    y: 120,
+    width: 100,
+    height: 100,
+    fill: 'red',
+  };
   const node3 = {
-    id: 'rect-3',
-    // parentId: 'g-2',
+    id: 'binding-curved-rect-3',
     type: 'rect',
     x: 400,
-    y: 200,
+    y: 150,
     width: 100,
     height: 100,
     fill: 'green',
-    // fillOpacity: 0.05,
-    // roughFillStyle: 'watercolor',
-    // fill: '/stamp.png',
-    zIndex: 3,
-  }
-
-  const node4 = {
-    id: 'rect-4',
-    // parentId: 'g-2',
-    type: 'rect',
-    x: 100,
-    y: 100,
-    width: 200,
-    height: 200,
-    fill: '/stamp.png',
-    zIndex: 3,
-  }
-
-  const node5 = {
-    id: 'rect-5',
+  };
+  const edge1 = {
+    id: 'binding-curved-line-1',
     type: 'path',
-    d: 'M 100 100 C 200 100, 200 200, 100 200',
-    // fill: 'green',
+    // type: 'polyline',
+    // type: 'line',
+    fromId: 'binding-curved-rect-1',
+    toId: 'binding-curved-rect-1',
+    // targetPoint: {
+    //   x: 300,
+    //   y: 0,
+    // },
     stroke: 'black',
     strokeWidth: 10,
-    // roughFillStyle: 'watercolor',
-    zIndex: 3,
-  }
+    markerEnd: 'line',
+    edgeStyle: EdgeStyle.ORTHOGONAL,
+    // exitX: 0.5,
+    // exitY: 0.5,
+    // exitDx: 0,
+    // exitDy: 50,
+    curved: true,
+  };
+  const edge2 = {
+    id: 'binding-curved-line-2',
+    type: 'path',
+    fromId: 'binding-curved-rect-2',
+    toId: 'binding-curved-rect-3',
+    stroke: 'black',
+    strokeWidth: 10,
+    markerEnd: 'line',
+    edgeStyle: EdgeStyle.ORTHOGONAL,
+    curved: true,
+  };
 
   api.updateNodes([
-    // node1,
-    // ...nodes,
-    // node3,
-    // g2,
-    node3,
-    node4,
-    // node5,
-    // {
-    //   id: 'baseline-1',
-    //   type: 'line',
-    //   x1: 0,
-    //   y1: 50,
-    //   x2: 300,
-    //   y2: 50,
-    //   stroke: 'red',
-    //   strokeWidth: 1,
-    //   zIndex: 0,
-    // },
-    {
-      id: 'text-1',
-      parentId: 'rect-4',
-      type: 'text',
-      fill: 'black',
-      content: 'Abcdefghijklmnop (top)',
-      anchorX: 0,
-      anchorY: 0,
-      fontSize: 16,
-      fontFamily: 'sans-serif',
-      textBaseline: 'top',
-      zIndex: 1,
-    },
-    // {
-    //   id: 'baseline-2',
-    //   type: 'line',
-    //   x1: 0,
-    //   y1: 100,
-    //   x2: 300,
-    //   y2: 100,
-    //   stroke: 'red',
-    //   strokeWidth: 1,
-    //   zIndex: 3,
-    // },
-    // {
-    //   id: 'text-2',
-    //   type: 'text',
-    //   fill: 'black',
-    //   content: 'Abcdefghijklmnop (hanging)',
-    //   anchorX: 50,
-    //   anchorY: 100,
-    //   fontSize: 16,
-    //   fontFamily: 'sans-serif',
-    //   textBaseline: 'hanging',
-    //   zIndex: 4,
-    // },
-    // {
-    //   id: 'baseline-3',
-    //   type: 'line',
-    //   x1: 0,
-    //   y1: 150,
-    //   x2: 300,
-    //   y2: 150,
-    //   stroke: 'red',
-    //   strokeWidth: 1,
-    //   zIndex: 5,
-    // },
-    // {
-    //   id: 'text-3',
-    //   type: 'text',
-    //   fill: 'black',
-    //   content: 'Abcdefghijklmnop (middle)',
-    //   anchorX: 50,
-    //   anchorY: 150,
-    //   fontSize: 16,
-    //   fontFamily: 'sans-serif',
-    //   textBaseline: 'middle',
-    //   zIndex: 6,
-    // },
-    // {
-    //   id: 'baseline-4',
-    //   type: 'line',
-    //   x1: 0,
-    //   y1: 200,
-    //   x2: 300,
-    //   y2: 200,
-    //   stroke: 'red',
-    //   strokeWidth: 1,
-    //   zIndex: 5,
-    // },
-    // {
-    //   id: 'text-4',
-    //   type: 'text',
-    //   fill: 'black',
-    //   content: 'Abcdefghijklmnop (alphabetic)',
-    //   anchorX: 50,
-    //   anchorY: 200,
-    //   fontSize: 16,
-    //   fontFamily: 'sans-serif',
-    //   textBaseline: 'alphabetic',
-    //   zIndex: 6,
-    // },
-    // {
-    //   id: 'baseline-5',
-    //   type: 'line',
-    //   x1: 0,
-    //   y1: 250,
-    //   x2: 300,
-    //   y2: 250,
-    //   stroke: 'red',
-    //   strokeWidth: 1,
-    //   zIndex: 5,
-    // },
-    // {
-    //   id: 'text-5',
-    //   type: 'text',
-    //   fill: 'black',
-    //   content: 'Abcdefghijklmnop (ideographic)',
-    //   anchorX: 50,
-    //   anchorY: 250,
-    //   fontSize: 16,
-    //   fontFamily: 'sans-serif',
-    //   textBaseline: 'ideographic',
-    //   zIndex: 6,
-    // },
-    // {
-    //   id: 'baseline-6',
-    //   type: 'line',
-    //   x1: 0,
-    //   y1: 300,
-    //   x2: 300,
-    //   y2: 300,
-    //   stroke: 'red',
-    //   strokeWidth: 1,
-    //   zIndex: 5,
-    // },
-    // {
-    //   id: 'text-6',
-    //   type: 'text',
-    //   fill: 'black',
-    //   content: 'Abcdefghijklmnop (bottom)',
-    //   anchorX: 50,
-    //   anchorY: 300,
-    //   fontSize: 16,
-    //   fontFamily: 'Gaegu',
-    //   textBaseline: 'bottom',
-    //   wordWrap: true,
-    //   wordWrapWidth: 30,
-    //   maxLines: 3,
-    //   textOverflow: 'ellipsis',
-    //   zIndex: 6,
-    // },
-    // {
-    //   id: 'brush-with-stamp-1',
-    //   type: 'brush',
-    //   // brushType: BrushType.VANILLA,
-    //   brushType: BrushType.STAMP,
-    //   brushStamp: '/stamp2.png',
-    //   stampInterval: 0.4,
-    //   // brushStamp: '/brush.jpg',
-    //   points: position.map(([x, y], i) => `${x},${y},${radius[i]}`).join(' '),
-    //   stroke: 'red',
-    //   strokeWidth: 10,
-    //   strokeOpacity: 0.2,
-    //   zIndex: 1,
-    // }
+    node1, node2, node3, edge1, edge2
   ]);
-  // api.selectNodes([node1]);
-  api.record();
+  api.selectNodes([node1])
+
+  setTimeout(() => {
+    api.updateNode(node1, {
+      locked: true,
+    })
+  }, 1000);
 
   // api.updateNodes([node1]);
 });

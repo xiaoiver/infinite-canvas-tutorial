@@ -14,6 +14,8 @@ import BindingRounded from '../../components/BindingRounded.vue'
 import BindingCurved from '../../components/BindingCurved.vue'
 import BindingBezier from '../../components/BindingBezier.vue'
 import BindingArrow from '../../components/BindingArrow.vue'
+import BindingDangling from '../../components/BindingDangling.vue'
+import BindingLoop from '../../components/BindingLoop.vue'
 </script>
 
 # 课程 31 - 图形间的连接关系
@@ -216,7 +218,21 @@ class Binded {
 
 ![Sequence Diagrams in D2](/d2.png)
 
-暂时我们可以先跳过渲染这样的连线。
+我们新增一种新的组件，记录仅有一侧关联节点的关系：
+
+```ts
+/**
+ * 仅一端连接图元、另一端由 `sourcePoint` / `targetPoint` 固定的边。
+ * `attached` 为已连接侧的实体；`sourceIsAttached === true` 表示连接在 source（`fromId`）侧。
+ */
+class PartialBinding {
+    @field.ref declare attached: Entity;
+    /** 1 = source（from）侧连接节点，0 = target（to）侧 */
+    @field.int32 declare sourceIsAttached: number;
+}
+```
+
+<BindingDangling />
 
 ## 自动更新 {#auto-update}
 
@@ -470,7 +486,7 @@ mxGraph 使用 EdgeStyle 函数来实现路由规则，这些函数负责：
 | EntityRelation   | 数据库关系图专用，生成灵活的路径 | 数据库 ER 图，双向关系            |
 | Loop             | 实现自环连接                     | 状态图或自动机图表的自循环关系    |
 
-### OrthConnector {orth-connector}
+### OrthConnector {#orth-connector}
 
 [OrthConnector] 是最常见的路由算法，核心目标是在源节点和目标节点之间创建一条只包含水平和垂直线段的路径，避免斜线。具体步骤如下：
 
@@ -596,6 +612,16 @@ for (var i = 0; i < routePattern.length; i++)
 
 最后优化路径中距离很近的相邻点，这部分我们继续使用 [simplify-js]，在 [课程 12 - 简化折线的顶点] 中已经介绍过了。
 
+### SegmentConnector {#segment-connector}
+
+OrthConnector 更偏自动路由，当用户显式指定了控制点 `controlHints` 时，SegmentConnector 会把 hints 变成“必须经过/对齐”的拐点，最终折线基本围绕这些 hints 构造，因此它更可预测、交互编辑体验更一致。
+
+### LoopConnector {#loop-connector}
+
+当起点和终点重合时，就需要创建自环了。
+
+<BindingLoop />
+
 ## 连接线样式 {#connectors-style}
 
 ![source: https://www.drawio.com/doc/faq/connector-styles](https://www.drawio.com/assets/img/blog/style-tab-line-style.png)
@@ -662,7 +688,7 @@ if ((n - 1) % 3 === 0) {
 <line x1="0" y1="0" data-binding="" />
 ```
 
-## [WIP] 编辑器 {#editor}
+## 编辑器 {#editor}
 
 ### 高亮锚点 {#highlight-anchors}
 

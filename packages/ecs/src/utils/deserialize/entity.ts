@@ -1,6 +1,7 @@
 import { isNil, path2Absolute } from '@antv/util';
 import toposort from 'toposort';
 import { Entity } from '@lastolivegames/becsy';
+import { mat3, vec2 } from 'gl-matrix';
 import { IPointData } from '@pixi/math';
 import {
   Ellipse,
@@ -40,6 +41,7 @@ import {
   Filter,
   Binding,
   Binded,
+  PartialBinding,
   EdgeLabel,
   Locked,
   ClipMode,
@@ -77,8 +79,10 @@ import {
   isUrl,
   serializePoints,
   shiftPath,
+  transformPath,
   serializeBrushPoints,
 } from '../serialize';
+import { Mat3 } from '../../components/math/Mat3';
 import { formatNumber } from '../serialize/points';
 import { deserializeBrushPoints, deserializePoints } from './points';
 import { EntityCommands, Commands } from '../../commands';
@@ -87,7 +91,17 @@ import { isPattern } from '../pattern';
 import { measureText } from '../../systems/ComputeTextMetrics';
 import { DOMAdapter } from '../../environment';
 import { safeAddComponent } from '../../history';
-import { EdgeState, updateFixedTerminalPoints, updateFloatingTerminalPoints, updatePoints } from '../binding';
+import {
+  EdgeState,
+  updateFixedTerminalPoints,
+  updateFloatingTerminalPoints,
+  updatePoints,
+} from '../binding';
+import {
+  normalizePathCommands,
+  toPathData,
+  type PathCommand,
+} from '../path-edit';
 import { pointAndNormalAlongPolylineByT } from '../polyline-arclength';
 import simplify from 'simplify-js';
 
@@ -347,28 +361,386 @@ export function polylineVertexApproxFromPathD(d: string | undefined): [number, n
   return pts.length >= 2 ? pts : null;
 }
 
-export function inferPointsWithFromIdAndToId(
-  from: SerializedNode,
-  to: SerializedNode,
+export function hasTerminalPoint(p?: { x: number; y: number } | null): boolean {
+  return p != null && Number.isFinite(p.x) && Number.isFinite(p.y);
+}
+
+/**
+ * 边几何在画布/父级坐标系下的起点或终点（`inferXYWidthHeight` 之后的局部坐标 + `edge.x`/`edge.y`）。
+ * 用于将浮动端的 `sourcePoint` / `targetPoint` 与当前 stroke 保持一致并写回场景数据。
+ */
+export function getWorldTerminalOfEdge(
+  edge: SerializedNode & { x?: number; y?: number },
+  which: 'start' | 'end',
+): { x: number; y: number } | null {
+  const ox = edge.x ?? 0;
+  const oy = edge.y ?? 0;
+  const t = edge.type;
+  if (t === 'line' || t === 'rough-line') {
+    const e = edge as LineSerializedNode & {
+      x1: number;
+      y1: number;
+      x2: number;
+      y2: number;
+    };
+    if (which === 'start') {
+      return { x: ox + e.x1, y: oy + e.y1 };
+    }
+    return { x: ox + e.x2, y: oy + e.y2 };
+  }
+  if (t === 'polyline' || t === 'rough-polyline') {
+    const pts = deserializePoints((edge as PolylineSerializedNode).points);
+    if (pts.length < 1) {
+      return null;
+    }
+    const p = which === 'start' ? pts[0] : pts[pts.length - 1];
+    return { x: ox + p[0], y: oy + p[1] };
+  }
+  if (t === 'path' || t === 'rough-path') {
+    const pts = polylineVertexApproxFromPathD((edge as PathSerializedNode).d);
+    if (!pts || pts.length < 1) {
+      return null;
+    }
+    const p = which === 'start' ? pts[0] : pts[pts.length - 1];
+    return { x: ox + p[0], y: oy + p[1] };
+  }
+  return null;
+}
+
+/**
+ * 边的两端是否都能解析：一侧为连接节点，或提供了对应的 `sourcePoint` / `targetPoint`（画布坐标）。
+ */
+export function edgeEndsResolvable(
+  edge: EdgeSerializedNode,
+  fromNode: SerializedNode | undefined | null,
+  toNode: SerializedNode | undefined | null,
+): boolean {
+  const hasStart = fromNode != null || hasTerminalPoint(edge.sourcePoint);
+  const hasEnd = toNode != null || hasTerminalPoint(edge.targetPoint);
+  return hasStart && hasEnd;
+}
+
+/**
+ * 归一化后为「单段贝塞尔」且紧跟在 M 之后：一段 C，或一段 Q（无 C/Q 混用、无多段 Q 链）。
+ * 多段正交曲线（多 Q）仍走整条 {@link inferEdgePoints}。
+ */
+function pathHasPreservableSingleBezierSegment(d: string | undefined): boolean {
+  if (!d) {
+    return false;
+  }
+  const cmds = normalizePathCommands(d);
+  const cCount = cmds.filter((c) => c[0] === 'C').length;
+  const qCount = cmds.filter((c) => c[0] === 'Q').length;
+  if (cCount > 0 && qCount > 0) {
+    return false;
+  }
+  if (cmds.length < 2 || cmds[0][0] !== 'M') {
+    return false;
+  }
+  const firstSeg = cmds[1][0];
+  if (cCount === 1 && qCount === 0) {
+    return firstSeg === 'C';
+  }
+  if (cCount === 0 && qCount === 1) {
+    return firstSeg === 'Q';
+  }
+  return false;
+}
+
+/**
+ * 绑定 preserve 时缓存的 path 局部几何与 {@link Transform} 一致字段。
+ * 仅用 {@link shiftPath(d, x, y)} 会把局部点当成只平移，忽略 scale/rotation，与画布上真实位置不一致。
+ */
+export interface EdgePathPreserveSnapshot {
+  d: string;
+  x: number;
+  y: number;
+  rotation?: number;
+  scaleX?: number;
+  scaleY?: number;
+}
+
+function pathLocalToWorldPathD(d: string, snap: EdgePathPreserveSnapshot): string {
+  const m = Mat3.toGLMat3(
+    Mat3.fromTransform(
+      new Transform({
+        translation: { x: snap.x, y: snap.y },
+        rotation: snap.rotation ?? 0,
+        scale: { x: snap.scaleX ?? 1, y: snap.scaleY ?? 1 },
+      }),
+    ),
+  );
+  return transformPath(d, m);
+}
+
+function pathWorldToLocalPathD(worldD: string, snap: EdgePathPreserveSnapshot): string {
+  const m = Mat3.toGLMat3(
+    Mat3.fromTransform(
+      new Transform({
+        translation: { x: snap.x, y: snap.y },
+        rotation: snap.rotation ?? 0,
+        scale: { x: snap.scaleX ?? 1, y: snap.scaleY ?? 1 },
+      }),
+    ),
+  );
+  const inv = mat3.create();
+  if (!mat3.invert(inv, m)) {
+    return worldD;
+  }
+  return transformPath(worldD, inv);
+}
+
+/**
+ * preserve 写入局部 `d` 后：按与 {@link inferXYWidthHeight} 相同方式用 {@link shiftPath} 把 bbox 最小角贴到局部原点，
+ * 再用快照中的旋转/缩放把「归一化前的 bbox 角」映射到世界坐标写回 `x/y`。
+ * 切勿在无 `x/y` 时直接调用 {@link inferXYWidthHeight}：会把 `translation` 设成 `d` 的局部 min（常为 0），丢失画布平移。
+ */
+function applyPathPreserveLayoutFromSnapshot(
+  edge: SerializedNode,
+  prev: EdgePathPreserveSnapshot,
+): void {
+  const pn = edge as PathSerializedNode;
+  const b = Path.getGeometryBounds({ d: pn.d });
+  const mPrev = Mat3.toGLMat3(
+    Mat3.fromTransform(
+      new Transform({
+        translation: { x: prev.x, y: prev.y },
+        rotation: prev.rotation ?? 0,
+        scale: { x: prev.scaleX ?? 1, y: prev.scaleY ?? 1 },
+      }),
+    ),
+  );
+  const corner = vec2.transformMat3(vec2.create(), [b.minX, b.minY], mPrev);
+  pn.d = shiftPath(pn.d, -b.minX, -b.minY);
+  edge.x = corner[0];
+  edge.y = corner[1];
+  edge.rotation = prev.rotation ?? 0;
+  edge.scaleX = prev.scaleX ?? 1;
+  edge.scaleY = prev.scaleY ?? 1;
+  const b2 = Path.getGeometryBounds({ d: pn.d });
+  edge.width = b2.maxX - b2.minX;
+  edge.height = b2.maxY - b2.minY;
+}
+
+/** 与 {@link Mat3.fromTransform}+{@link transformPath} 一致的世界坐标端点（勿用仅平移的 shiftPath）。 */
+function pathEndpointsWorldFromPreserveSnapshot(
+  snap: EdgePathPreserveSnapshot,
+): { start: IPointData; end: IPointData } | null {
+  const worldD = pathLocalToWorldPathD(snap.d, snap);
+  const cmds = normalizePathCommands(worldD);
+  return extractBezierEndpointsFromNormalizedCmds(cmds);
+}
+
+function extractBezierEndpointsFromNormalizedCmds(
+  cmds: PathCommand[],
+): { start: IPointData; end: IPointData } | null {
+  if (cmds.length < 1 || cmds[0][0] !== 'M') {
+    return null;
+  }
+  const m = cmds[0];
+  const start = { x: m[1] as number, y: m[2] as number };
+  const last = cmds[cmds.length - 1];
+  const t = last[0];
+  let end: IPointData;
+  if (t === 'C') {
+    end = { x: last[5] as number, y: last[6] as number };
+  } else if (t === 'Q') {
+    end = { x: last[3] as number, y: last[4] as number };
+  } else if (t === 'L') {
+    end = { x: last[1] as number, y: last[2] as number };
+  } else {
+    return null;
+  }
+  return { start, end };
+}
+
+/**
+ * 与 {@link inferEdgePoints} 相同的路由输入，只计算两端在世界坐标系下的位置（不写回 `d`）。
+ */
+export function inferEdgeTerminalWorldPoints(
+  from: SerializedNode | null,
+  to: SerializedNode | null,
+  edge: EdgeSerializedNode,
+): { start: IPointData; end: IPointData } | null {
+  if (from) {
+    inferXYWidthHeight(from);
+  }
+  if (to) {
+    inferXYWidthHeight(to);
+  }
+
+  type NodeWithBounds = SerializedNode & {
+    width: number;
+    height: number;
+    x: number;
+    y: number;
+  };
+  const state = edge as PolylineSerializedNode & {
+    width: number;
+    height: number;
+    x: number;
+    y: number;
+  } & { absolutePoints: (IPointData | null)[] };
+  state.absolutePoints = [null, null];
+  updateFixedTerminalPoints(
+    state,
+    from as NodeWithBounds | null,
+    to as NodeWithBounds | null,
+  );
+  updatePoints(state, null, from as NodeSerializedNode | null, to as NodeSerializedNode | null);
+  updateFloatingTerminalPoints(
+    state,
+    from as NodeWithBounds | null,
+    to as NodeWithBounds | null,
+  );
+
+  /** 勿对 absolutePoints 做 simplify：会挪动首尾点，与真实绑定点不一致，preserve 时产生整体偏移。 */
+  const pts = state.absolutePoints?.filter((p): p is IPointData => p != null);
+  delete state.absolutePoints;
+  if (!pts || pts.length < 2) {
+    return null;
+  }
+  return { start: pts[0], end: pts[pts.length - 1] };
+}
+
+function applyEndpointDeltasToPathCommands(
+  cmds: PathCommand[],
+  dSx: number,
+  dSy: number,
+  dEx: number,
+  dEy: number,
+): PathCommand[] {
+  const out = cmds.map((c) => [...c] as PathCommand);
+  if (out.length === 0) {
+    return out;
+  }
+  const m = out[0];
+  if (m[0] === 'M') {
+    (m[1] as number) += dSx;
+    (m[2] as number) += dSy;
+  }
+  if (out.length > 1) {
+    const s = out[1];
+    if (s[0] === 'C') {
+      (s[1] as number) += dSx;
+      (s[2] as number) += dSy;
+    } else if (s[0] === 'Q') {
+      (s[1] as number) += dSx;
+      (s[2] as number) += dSy;
+    }
+  }
+  const last = out[out.length - 1];
+  if (last[0] === 'C') {
+    (last[3] as number) += dEx;
+    (last[4] as number) += dEy;
+    (last[5] as number) += dEx;
+    (last[6] as number) += dEy;
+  } else if (last[0] === 'Q') {
+    (last[1] as number) += dEx;
+    (last[2] as number) += dEy;
+    (last[3] as number) += dEx;
+    (last[4] as number) += dEy;
+  } else if (last[0] === 'L') {
+    (last[1] as number) += dEx;
+    (last[2] as number) += dEy;
+  }
+  return out;
+}
+
+/**
+ * 绑定变更时若当前 `d` 为单段 C 或单段 Q（紧跟 M，用户拖过 Handle），只平移端点与相邻控制点，避免整条被正交路由覆盖。
+ *
+ * @returns `true` 表示已写回 `d` 并完成布局（归一化 `d` 并恢复 `x/y/width/height`）；`false` 时应回退到 {@link inferEdgePoints}。
+ */
+export function inferEdgePointsPreservingBezierHandles(
+  from: SerializedNode | null,
+  to: SerializedNode | null,
+  edge: EdgeState,
+  prev: EdgePathPreserveSnapshot,
+): boolean {
+  const t = edge.type;
+  if ((t !== 'path' && t !== 'rough-path') || !pathHasPreservableSingleBezierSegment(prev.d)) {
+    return false;
+  }
+
+  const edgeNode = edge as SerializedNode as EdgeSerializedNode;
+
+  const oldEnds = pathEndpointsWorldFromPreserveSnapshot(prev);
+  const newPts = inferEdgeTerminalWorldPoints(from, to, edgeNode);
+  if (!oldEnds || !newPts) {
+    return false;
+  }
+
+  // 仅对已绑定端应用「绑定路由」带来的位移。悬空端的 targetPoint/sourcePoint 往往在用户拖 path 端点时尚未更新，
+  // 若仍用 inferEdgeTerminalWorldPoints 会与 d 冲突，表现为整条曲线被平移或端点被拉回。
+  const applyStart = Boolean(edgeNode.fromId);
+  const applyEnd = Boolean(edgeNode.toId);
+  const dSx = applyStart ? newPts.start.x - oldEnds.start.x : 0;
+  const dSy = applyStart ? newPts.start.y - oldEnds.start.y : 0;
+  const dEx = applyEnd ? newPts.end.x - oldEnds.end.x : 0;
+  const dEy = applyEnd ? newPts.end.y - oldEnds.end.y : 0;
+
+  const eps = 1e-5;
+  if (
+    Math.abs(dSx) < eps &&
+    Math.abs(dSy) < eps &&
+    Math.abs(dEx) < eps &&
+    Math.abs(dEy) < eps
+  ) {
+    (edge as PathSerializedNode).d = prev.d;
+    applyPathPreserveLayoutFromSnapshot(edge as SerializedNode, prev);
+    return true;
+  }
+
+  const worldD = pathLocalToWorldPathD(prev.d, prev);
+  const cmds = normalizePathCommands(worldD);
+  const next = applyEndpointDeltasToPathCommands(cmds, dSx, dSy, dEx, dEy);
+  const worldOut = toPathData(next);
+  (edge as PathSerializedNode).d = pathWorldToLocalPathD(worldOut, prev);
+  applyPathPreserveLayoutFromSnapshot(edge as SerializedNode, prev);
+  return true;
+}
+
+/** @deprecated 使用 {@link inferEdgePointsPreservingBezierHandles}（已支持 Q） */
+export const inferEdgePointsPreservingCubicHandles = inferEdgePointsPreservingBezierHandles;
+
+/**
+ * 根据 `from` / `to` 节点与可选的 `sourcePoint` / `targetPoint` 计算边几何（与 mxGraph 悬空端语义一致）。
+ */
+export function inferEdgePoints(
+  from: SerializedNode | null,
+  to: SerializedNode | null,
   edge: EdgeState,
 ) {
-  inferXYWidthHeight(from);
-  inferXYWidthHeight(to);
+  if (from) {
+    inferXYWidthHeight(from);
+  }
+  if (to) {
+    inferXYWidthHeight(to);
+  }
 
   type NodeWithBounds = SerializedNode & { width: number; height: number; x: number; y: number };
   const state = edge as PolylineSerializedNode & { width: number; height: number; x: number; y: number } & { absolutePoints: (IPointData | null)[] };
   state.absolutePoints = [null, null];
-  updateFixedTerminalPoints(state, from as NodeWithBounds, to as NodeWithBounds);
-  updatePoints(state, null, from as NodeSerializedNode, to as NodeSerializedNode);
-  updateFloatingTerminalPoints(state, from as NodeWithBounds, to as NodeWithBounds);
+  updateFixedTerminalPoints(
+    state,
+    from as NodeWithBounds | null,
+    to as NodeWithBounds | null,
+  );
+  updatePoints(state, null, from as NodeSerializedNode | null, to as NodeSerializedNode | null);
+  updateFloatingTerminalPoints(state, from as NodeWithBounds | null, to as NodeWithBounds | null);
 
   state.absolutePoints = simplify(state.absolutePoints);
 
   if (edge.type === 'line' || edge.type === 'rough-line') {
-    edge.x1 = state.absolutePoints[0].x;
-    edge.y1 = state.absolutePoints[0].y;
-    edge.x2 = state.absolutePoints[1].x;
-    edge.y2 = state.absolutePoints[1].y;
+    const pts = state.absolutePoints.filter((p): p is IPointData => p != null);
+    if (pts.length >= 2) {
+      edge.x1 = pts[0].x;
+      edge.y1 = pts[0].y;
+      const end = pts[pts.length - 1];
+      edge.x2 = end.x;
+      edge.y2 = end.y;
+    }
   } else if (edge.type === 'polyline' || edge.type === 'rough-polyline') {
     edge.points = serializePoints(state.absolutePoints.map((point) => {
       return [point.x, point.y];
@@ -405,6 +777,14 @@ export function inferPointsWithFromIdAndToId(
     }
   }
   delete state.absolutePoints;
+}
+
+export function inferPointsWithFromIdAndToId(
+  from: SerializedNode,
+  to: SerializedNode,
+  edge: EdgeState,
+) {
+  inferEdgePoints(from, to, edge);
 }
 
 /**
@@ -575,8 +955,10 @@ export function serializedNodesToEntities(
       node.type === 'rough-path'
     ) {
       const { fromId, toId } = node as EdgeSerializedNode;
-      if (fromId && toId) {
+      if (fromId) {
         edges.push([fromId, node.id]);
+      }
+      if (toId) {
         edges.push([toId, node.id]);
       }
     }
@@ -614,7 +996,7 @@ export function serializedNodesToEntities(
     const entityCommands = commands.spawn();
     idEntityMap.set(id, entityCommands);
 
-    // Infer points with fromId and toId first
+    // Infer points: full binding,或仅 sourcePoint/targetPoint / 单侧节点
     if (
       type === 'line' ||
       type === 'rough-line' ||
@@ -623,17 +1005,19 @@ export function serializedNodesToEntities(
       type === 'path' ||
       type === 'rough-path'
     ) {
-      const { fromId, toId } = attributes as EdgeSerializedNode;
-      if (fromId && toId) {
-        const fromNode = graph.find((n) => n.id === fromId);
-        const toNode = graph.find((n) => n.id === toId);
-        if (fromNode && toNode) {
-          inferPointsWithFromIdAndToId(
-            fromNode,
-            toNode,
-            attributes as EdgeState,
-          );
+      const edgeAttrs = attributes as EdgeSerializedNode;
+      const { fromId, toId } = edgeAttrs;
+      const fromNode = fromId ? graph.find((n) => n.id === fromId) : undefined;
+      const toNode = toId ? graph.find((n) => n.id === toId) : undefined;
 
+      if (edgeEndsResolvable(edgeAttrs, fromNode, toNode)) {
+        inferEdgePoints(
+          fromNode ?? null,
+          toNode ?? null,
+          attributes as EdgeState,
+        );
+
+        if (fromId && toId && fromNode && toNode) {
           const fromEntityCommands = idEntityMap.get(fromId);
           const fromEntity = fromEntityCommands?.id().hold();
           const toEntityCommands = idEntityMap.get(toId);
@@ -647,6 +1031,26 @@ export function serializedNodesToEntities(
               to: toEntity,
             }),
           );
+        } else if (fromNode && !toNode) {
+          const fromEntityCommands = idEntityMap.get(fromId!);
+          const fromEntity = fromEntityCommands?.id().hold();
+          safeAddComponent(fromEntity, Binded);
+          entityCommands.insert(
+            new PartialBinding({
+              attached: fromEntity,
+              sourceIsAttached: 1,
+            }),
+          );
+        } else if (toNode && !fromNode) {
+          const toEntityCommands = idEntityMap.get(toId!);
+          const toEntity = toEntityCommands?.id().hold();
+          safeAddComponent(toEntity, Binded);
+          entityCommands.insert(
+            new PartialBinding({
+              attached: toEntity,
+              sourceIsAttached: 0,
+            }),
+          );
         }
       }
     }
@@ -654,7 +1058,7 @@ export function serializedNodesToEntities(
     // Make sure the entity has a width and height
     inferXYWidthHeight(attributes);
 
-    const edgeAttrs = attributes as EdgeSerializedNode;
+    const edgeAttrsForLabel = attributes as EdgeSerializedNode;
     if (
       (type === 'line' ||
         type === 'rough-line' ||
@@ -662,8 +1066,15 @@ export function serializedNodesToEntities(
         type === 'rough-polyline' ||
         type === 'path' ||
         type === 'rough-path') &&
-      edgeAttrs.fromId &&
-      edgeAttrs.toId
+      edgeEndsResolvable(
+        edgeAttrsForLabel,
+        edgeAttrsForLabel.fromId
+          ? graph.find((n) => n.id === edgeAttrsForLabel.fromId)
+          : undefined,
+        edgeAttrsForLabel.toId
+          ? graph.find((n) => n.id === edgeAttrsForLabel.toId)
+          : undefined,
+      )
     ) {
       layoutSerializedEdgeLabelChildren(attributes, graph);
     }

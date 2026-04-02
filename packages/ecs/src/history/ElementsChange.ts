@@ -1099,7 +1099,20 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
   }
 
   if (
-    ('fromId' in updates || 'toId' in updates) &&
+    ('fromId' in updates ||
+      'toId' in updates ||
+      'sourcePoint' in updates ||
+      'targetPoint' in updates ||
+      'exitX' in updates ||
+      'exitY' in updates ||
+      'exitPerimeter' in updates ||
+      'exitDx' in updates ||
+      'exitDy' in updates ||
+      'entryX' in updates ||
+      'entryY' in updates ||
+      'entryPerimeter' in updates ||
+      'entryDx' in updates ||
+      'entryDy' in updates) &&
     (entity.has(Polyline) || entity.has(Line) || entity.has(Path))
   ) {
     syncEdgeBindingForEntity(api, entity, element);

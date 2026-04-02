@@ -41,6 +41,8 @@ import {
   ComputedCamera,
   ComputedPoints,
   Binding,
+  PartialBinding,
+  hasFullOrPartialEdgeBinding,
 } from '../components';
 import { Commands } from '../commands';
 import { updateGlobalTransform } from './Transform';
@@ -126,6 +128,7 @@ export class RenderTransformer extends System {
             Text,
             Line,
             Binding,
+            PartialBinding,
           ).write,
     );
   }
@@ -497,7 +500,10 @@ export class RenderTransformer extends System {
             pen === Pen.SELECT &&
             selecteds.length === 1 &&
             selecteds[0].hasSomeOf(Polyline, Path) &&
-            !(selecteds[0].has(Binding) && selecteds[0].has(Polyline));
+            !(
+              hasFullOrPartialEdgeBinding(selecteds[0]) &&
+              selecteds[0].has(Polyline)
+            );
           if (!isPolylineSelected) {
             controlPoints &&
               controlPoints.forEach((controlPoint) => {
@@ -735,7 +741,7 @@ export class RenderTransformer extends System {
       const { points } = selected.read(Polyline);
       point1 = points[0];
       point2 = points[points.length - 1];
-      if (selected.has(Binding)) {
+      if (hasFullOrPartialEdgeBinding(selected)) {
         x1y1Anchor.write(Visibility).value = 'visible';
         x2y2Anchor.write(Visibility).value = 'visible';
       } else {
@@ -982,7 +988,7 @@ function useLineMask(camera: Entity) {
     return true;
   }
   // 绑定边：用线段两端锚点改接，不编辑折线顶点
-  if (selected.has(Binding) && selected.has(Polyline)) {
+  if (hasFullOrPartialEdgeBinding(selected) && selected.has(Polyline)) {
     return true;
   }
 
@@ -993,7 +999,10 @@ function usePolylineMask(camera: Entity) {
   const { selecteds } = camera.read(Transformable);
 
   if (selecteds.length === 1 && selecteds[0].hasSomeOf(Polyline, Path)) {
-    if (selecteds[0].has(Binding) && selecteds[0].has(Polyline)) {
+    if (
+      hasFullOrPartialEdgeBinding(selecteds[0]) &&
+      selecteds[0].has(Polyline)
+    ) {
       return false;
     }
     return true;
@@ -1014,7 +1023,10 @@ export function hitTest(api: API, { x, y }: IPointData) {
     penbarSelected === Pen.SELECT &&
     selecteds.length === 1 &&
     selecteds[0].hasSomeOf(Polyline, Path) &&
-    !(selecteds[0].has(Binding) && selecteds[0].has(Polyline));
+    !(
+      hasFullOrPartialEdgeBinding(selecteds[0]) &&
+      selecteds[0].has(Polyline)
+    );
   const {
     tlAnchor,
     trAnchor,

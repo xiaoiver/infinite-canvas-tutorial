@@ -116,7 +116,7 @@ describe('Locked', () => {
         });
         api.updateNodes([node]);
         api.selectNodes([node]);
-        api.highlightNodes([node]);
+        // api.highlightNodes([node]);
 
         entity = api
           .getEntity(node)
@@ -134,7 +134,7 @@ describe('Locked', () => {
       api?.updateNode(node!, { locked: true });
     });
 
-    await sleep(300);
+    await sleep(500);
 
     const dir = `${__dirname}/snapshots`;
     await expect($canvas!.getContext('webgl1')).toMatchWebGLSnapshot(

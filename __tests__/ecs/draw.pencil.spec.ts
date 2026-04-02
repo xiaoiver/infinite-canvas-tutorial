@@ -103,6 +103,10 @@ describe('Draw polyline in pencil canvas mode', () => {
       );
       await sleep(100);
       $canvas.dispatchEvent(
+        createMouseEvent('mousemove', { clientX: 50, clientY: 50 }),
+      );
+      await sleep(100);
+      $canvas.dispatchEvent(
         createMouseEvent('mousemove', { clientX: 100, clientY: 50 }),
       );
       await sleep(100);
@@ -119,7 +123,7 @@ describe('Draw polyline in pencil canvas mode', () => {
       );
     }
 
-    await sleep(300);
+    await sleep(500);
 
     const dir = `${__dirname}/snapshots`;
     await expect($canvas!.getContext('webgl1')).toMatchWebGLSnapshot(
