@@ -50,6 +50,10 @@ drawio 中通过动画表示连接线的方向：
 
 > Export your diagram to a SVG file to include the connector animation when you publish it in a web page or on a content platform that supports SVG images.
 
+## 动画编辑器
+
+[lottielab]
+
 ## 扩展阅读
 
 -   [Magic Animator]
@@ -64,3 +68,4 @@ drawio 中通过动画表示连接线的方向：
 [vectalign]: https://github.com/bonnyfone/vectalign
 [Magic Animator]: https://magicanimator.com/
 [Discussion in HN]: https://news.ycombinator.com/item?id=44994071
+[lottielab]: https://www.lottielab.com/

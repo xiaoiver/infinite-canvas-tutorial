@@ -1,10 +1,11 @@
 import type { Entity } from '@lastolivegames/becsy';
-import { Binded, Binding, Line, Path, Polyline } from '../../components';
+import { Binded, Binding, Line, PartialBinding, Path, Polyline, Transform } from '../../components';
 import type { API } from '../../API';
 import type { EdgeSerializedNode, SerializedNode } from '../../types/serialized-node';
 import { safeAddComponent, safeRemoveComponent } from '../../history/ElementsChange';
 import {
-  inferPointsWithFromIdAndToId,
+  edgeEndsResolvable,
+  inferEdgePoints,
   inferXYWidthHeight,
 } from '../deserialize/entity';
 import { deserializePoints } from '../deserialize/points';
@@ -36,29 +37,58 @@ export function syncEdgeBindingForEntity(
   if (entity.has(Binding)) {
     safeRemoveComponent(entity, Binding);
   }
+  if (entity.has(PartialBinding)) {
+    safeRemoveComponent(entity, PartialBinding);
+  }
 
   const edge = node as EdgeSerializedNode;
-  if (!edge.fromId || !edge.toId) {
+  const fromNode = edge.fromId ? api.getNodeById(edge.fromId) : undefined;
+  const toNode = edge.toId ? api.getNodeById(edge.toId) : undefined;
+
+  if (!edgeEndsResolvable(edge, fromNode, toNode)) {
     return;
   }
 
-  const fromNode = api.getNodeById(edge.fromId);
-  const toNode = api.getNodeById(edge.toId);
-  if (!fromNode || !toNode) {
-    return;
+  if (edge.fromId && edge.toId && fromNode && toNode) {
+    const fromEntity = api.getEntity(fromNode);
+    const toEntity = api.getEntity(toNode);
+    safeAddComponent(fromEntity, Binded);
+    safeAddComponent(toEntity, Binded);
+    safeAddComponent(entity, Binding, {
+      from: fromEntity,
+      to: toEntity,
+    });
+  } else if (fromNode && !toNode) {
+    const fromEntity = api.getEntity(fromNode);
+    safeAddComponent(fromEntity, Binded);
+    safeAddComponent(entity, PartialBinding, {
+      attached: fromEntity,
+      sourceIsAttached: 1,
+    });
+  } else if (toNode && !fromNode) {
+    const toEntity = api.getEntity(toNode);
+    safeAddComponent(toEntity, Binded);
+    safeAddComponent(entity, PartialBinding, {
+      attached: toEntity,
+      sourceIsAttached: 0,
+    });
   }
 
-  const fromEntity = api.getEntity(fromNode);
-  const toEntity = api.getEntity(toNode);
-  safeAddComponent(fromEntity, Binded);
-  safeAddComponent(toEntity, Binded);
-  safeAddComponent(entity, Binding, {
-    from: fromEntity,
-    to: toEntity,
-  });
+  delete (node as EdgeSerializedNode & { x?: number }).x;
+  delete (node as EdgeSerializedNode & { y?: number }).y;
+  delete (node as EdgeSerializedNode & { width?: number }).width;
+  delete (node as EdgeSerializedNode & { height?: number }).height;
 
-  inferPointsWithFromIdAndToId(fromNode, toNode, node as EdgeState);
+  inferEdgePoints(fromNode ?? null, toNode ?? null, node as EdgeState);
   inferXYWidthHeight(node);
+
+  // Keep ECS transform aligned with newly inferred edge local geometry.
+  if (typeof node.x === 'number') {
+    entity.write(Transform).translation.x = node.x;
+  }
+  if (typeof node.y === 'number') {
+    entity.write(Transform).translation.y = node.y;
+  }
 
   if (node.type === 'line' || node.type === 'rough-line') {
     const l = node as EdgeSerializedNode & {

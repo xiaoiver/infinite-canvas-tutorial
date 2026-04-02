@@ -1,9 +1,42 @@
 import { IPointData } from '@pixi/math';
 import { SerializedNode } from '../../types/serialized-node';
 
-export function getPerimeterPoint(vertex: SerializedNode & { width: number; height: number; x: number; y: number }, point: IPointData, orthogonal: boolean): IPointData {
+type VertexWithBounds = SerializedNode & {
+  width: number;
+  height: number;
+  x: number;
+  y: number;
+  rotation?: number;
+};
+
+function rotatePoint(point: IPointData, cx: number, cy: number, angle: number): IPointData {
+  const cos = Math.cos(angle);
+  const sin = Math.sin(angle);
+  const dx = point.x - cx;
+  const dy = point.y - cy;
+  return {
+    x: cx + dx * cos - dy * sin,
+    y: cy + dx * sin + dy * cos,
+  };
+}
+
+export function getPerimeterPoint(vertex: VertexWithBounds, point: IPointData, orthogonal: boolean): IPointData {
+  const rotation = vertex.rotation ?? 0;
+  if (rotation === 0) {
+    const perimeter = vertex.type === 'ellipse' ? ellipsePerimeter : rectanglePerimeter;
+    return perimeter(vertex, point, orthogonal);
+  }
+
+  const ox = vertex.x;
+  const oy = vertex.y;
+  const unrotatedNext = rotatePoint(point, ox, oy, -rotation);
+  const axisAlignedVertex = {
+    ...vertex,
+    rotation: 0,
+  };
   const perimeter = vertex.type === 'ellipse' ? ellipsePerimeter : rectanglePerimeter;
-  return perimeter(vertex, point, orthogonal);
+  const localHit = perimeter(axisAlignedVertex, unrotatedNext, orthogonal);
+  return rotatePoint(localHit, ox, oy, rotation);
 }
 
 function rectanglePerimeter(

@@ -207,6 +207,11 @@ export interface BindedAttributes {
 export interface BindingAttributes {
   fromId: string;
   toId: string;
+  /**
+   * 画布坐标系下的端点（与节点 `x`/`y` 同空间）。当对应侧未连接节点（无 `fromId` / `toId` 或解析不到节点）时使用，对应 mxGraph `mxGeometry` 的 `sourcePoint` / `targetPoint`。
+   */
+  sourcePoint?: { x: number; y: number };
+  targetPoint?: { x: number; y: number };
   orthogonal: boolean;
   exitX: number;
   exitY: number;

@@ -40,6 +40,7 @@ import {
   Filter,
   Binding,
   Binded,
+  PartialBinding,
   EdgeLabel,
   Locked,
   ClipMode,
@@ -87,7 +88,12 @@ import { isPattern } from '../pattern';
 import { measureText } from '../../systems/ComputeTextMetrics';
 import { DOMAdapter } from '../../environment';
 import { safeAddComponent } from '../../history';
-import { EdgeState, updateFixedTerminalPoints, updateFloatingTerminalPoints, updatePoints } from '../binding';
+import {
+  EdgeState,
+  updateFixedTerminalPoints,
+  updateFloatingTerminalPoints,
+  updatePoints,
+} from '../binding';
 import { pointAndNormalAlongPolylineByT } from '../polyline-arclength';
 import simplify from 'simplify-js';
 
@@ -347,28 +353,102 @@ export function polylineVertexApproxFromPathD(d: string | undefined): [number, n
   return pts.length >= 2 ? pts : null;
 }
 
-export function inferPointsWithFromIdAndToId(
-  from: SerializedNode,
-  to: SerializedNode,
+export function hasTerminalPoint(p?: { x: number; y: number } | null): boolean {
+  return p != null && Number.isFinite(p.x) && Number.isFinite(p.y);
+}
+
+/**
+ * 边几何在画布/父级坐标系下的起点或终点（`inferXYWidthHeight` 之后的局部坐标 + `edge.x`/`edge.y`）。
+ * 用于将浮动端的 `sourcePoint` / `targetPoint` 与当前 stroke 保持一致并写回场景数据。
+ */
+export function getWorldTerminalOfEdge(
+  edge: SerializedNode & { x?: number; y?: number },
+  which: 'start' | 'end',
+): { x: number; y: number } | null {
+  const ox = edge.x ?? 0;
+  const oy = edge.y ?? 0;
+  const t = edge.type;
+  if (t === 'line' || t === 'rough-line') {
+    const e = edge as LineSerializedNode & {
+      x1: number;
+      y1: number;
+      x2: number;
+      y2: number;
+    };
+    if (which === 'start') {
+      return { x: ox + e.x1, y: oy + e.y1 };
+    }
+    return { x: ox + e.x2, y: oy + e.y2 };
+  }
+  if (t === 'polyline' || t === 'rough-polyline') {
+    const pts = deserializePoints((edge as PolylineSerializedNode).points);
+    if (pts.length < 1) {
+      return null;
+    }
+    const p = which === 'start' ? pts[0] : pts[pts.length - 1];
+    return { x: ox + p[0], y: oy + p[1] };
+  }
+  if (t === 'path' || t === 'rough-path') {
+    const pts = polylineVertexApproxFromPathD((edge as PathSerializedNode).d);
+    if (!pts || pts.length < 1) {
+      return null;
+    }
+    const p = which === 'start' ? pts[0] : pts[pts.length - 1];
+    return { x: ox + p[0], y: oy + p[1] };
+  }
+  return null;
+}
+
+/**
+ * 边的两端是否都能解析：一侧为连接节点，或提供了对应的 `sourcePoint` / `targetPoint`（画布坐标）。
+ */
+export function edgeEndsResolvable(
+  edge: EdgeSerializedNode,
+  fromNode: SerializedNode | undefined | null,
+  toNode: SerializedNode | undefined | null,
+): boolean {
+  const hasStart = fromNode != null || hasTerminalPoint(edge.sourcePoint);
+  const hasEnd = toNode != null || hasTerminalPoint(edge.targetPoint);
+  return hasStart && hasEnd;
+}
+
+/**
+ * 根据 `from` / `to` 节点与可选的 `sourcePoint` / `targetPoint` 计算边几何（与 mxGraph 悬空端语义一致）。
+ */
+export function inferEdgePoints(
+  from: SerializedNode | null,
+  to: SerializedNode | null,
   edge: EdgeState,
 ) {
-  inferXYWidthHeight(from);
-  inferXYWidthHeight(to);
+  if (from) {
+    inferXYWidthHeight(from);
+  }
+  if (to) {
+    inferXYWidthHeight(to);
+  }
 
   type NodeWithBounds = SerializedNode & { width: number; height: number; x: number; y: number };
   const state = edge as PolylineSerializedNode & { width: number; height: number; x: number; y: number } & { absolutePoints: (IPointData | null)[] };
   state.absolutePoints = [null, null];
-  updateFixedTerminalPoints(state, from as NodeWithBounds, to as NodeWithBounds);
-  updatePoints(state, null, from as NodeSerializedNode, to as NodeSerializedNode);
-  updateFloatingTerminalPoints(state, from as NodeWithBounds, to as NodeWithBounds);
+  updateFixedTerminalPoints(
+    state,
+    from as NodeWithBounds | null,
+    to as NodeWithBounds | null,
+  );
+  updatePoints(state, null, from as NodeSerializedNode | null, to as NodeSerializedNode | null);
+  updateFloatingTerminalPoints(state, from as NodeWithBounds | null, to as NodeWithBounds | null);
 
   state.absolutePoints = simplify(state.absolutePoints);
 
   if (edge.type === 'line' || edge.type === 'rough-line') {
-    edge.x1 = state.absolutePoints[0].x;
-    edge.y1 = state.absolutePoints[0].y;
-    edge.x2 = state.absolutePoints[1].x;
-    edge.y2 = state.absolutePoints[1].y;
+    const pts = state.absolutePoints.filter((p): p is IPointData => p != null);
+    if (pts.length >= 2) {
+      edge.x1 = pts[0].x;
+      edge.y1 = pts[0].y;
+      const end = pts[pts.length - 1];
+      edge.x2 = end.x;
+      edge.y2 = end.y;
+    }
   } else if (edge.type === 'polyline' || edge.type === 'rough-polyline') {
     edge.points = serializePoints(state.absolutePoints.map((point) => {
       return [point.x, point.y];
@@ -405,6 +485,14 @@ export function inferPointsWithFromIdAndToId(
     }
   }
   delete state.absolutePoints;
+}
+
+export function inferPointsWithFromIdAndToId(
+  from: SerializedNode,
+  to: SerializedNode,
+  edge: EdgeState,
+) {
+  inferEdgePoints(from, to, edge);
 }
 
 /**
@@ -575,8 +663,10 @@ export function serializedNodesToEntities(
       node.type === 'rough-path'
     ) {
       const { fromId, toId } = node as EdgeSerializedNode;
-      if (fromId && toId) {
+      if (fromId) {
         edges.push([fromId, node.id]);
+      }
+      if (toId) {
         edges.push([toId, node.id]);
       }
     }
@@ -614,7 +704,7 @@ export function serializedNodesToEntities(
     const entityCommands = commands.spawn();
     idEntityMap.set(id, entityCommands);
 
-    // Infer points with fromId and toId first
+    // Infer points: full binding,或仅 sourcePoint/targetPoint / 单侧节点
     if (
       type === 'line' ||
       type === 'rough-line' ||
@@ -623,17 +713,19 @@ export function serializedNodesToEntities(
       type === 'path' ||
       type === 'rough-path'
     ) {
-      const { fromId, toId } = attributes as EdgeSerializedNode;
-      if (fromId && toId) {
-        const fromNode = graph.find((n) => n.id === fromId);
-        const toNode = graph.find((n) => n.id === toId);
-        if (fromNode && toNode) {
-          inferPointsWithFromIdAndToId(
-            fromNode,
-            toNode,
-            attributes as EdgeState,
-          );
+      const edgeAttrs = attributes as EdgeSerializedNode;
+      const { fromId, toId } = edgeAttrs;
+      const fromNode = fromId ? graph.find((n) => n.id === fromId) : undefined;
+      const toNode = toId ? graph.find((n) => n.id === toId) : undefined;
 
+      if (edgeEndsResolvable(edgeAttrs, fromNode, toNode)) {
+        inferEdgePoints(
+          fromNode ?? null,
+          toNode ?? null,
+          attributes as EdgeState,
+        );
+
+        if (fromId && toId && fromNode && toNode) {
           const fromEntityCommands = idEntityMap.get(fromId);
           const fromEntity = fromEntityCommands?.id().hold();
           const toEntityCommands = idEntityMap.get(toId);
@@ -647,6 +739,26 @@ export function serializedNodesToEntities(
               to: toEntity,
             }),
           );
+        } else if (fromNode && !toNode) {
+          const fromEntityCommands = idEntityMap.get(fromId!);
+          const fromEntity = fromEntityCommands?.id().hold();
+          safeAddComponent(fromEntity, Binded);
+          entityCommands.insert(
+            new PartialBinding({
+              attached: fromEntity,
+              sourceIsAttached: 1,
+            }),
+          );
+        } else if (toNode && !fromNode) {
+          const toEntityCommands = idEntityMap.get(toId!);
+          const toEntity = toEntityCommands?.id().hold();
+          safeAddComponent(toEntity, Binded);
+          entityCommands.insert(
+            new PartialBinding({
+              attached: toEntity,
+              sourceIsAttached: 0,
+            }),
+          );
         }
       }
     }
@@ -654,7 +766,7 @@ export function serializedNodesToEntities(
     // Make sure the entity has a width and height
     inferXYWidthHeight(attributes);
 
-    const edgeAttrs = attributes as EdgeSerializedNode;
+    const edgeAttrsForLabel = attributes as EdgeSerializedNode;
     if (
       (type === 'line' ||
         type === 'rough-line' ||
@@ -662,8 +774,15 @@ export function serializedNodesToEntities(
         type === 'rough-polyline' ||
         type === 'path' ||
         type === 'rough-path') &&
-      edgeAttrs.fromId &&
-      edgeAttrs.toId
+      edgeEndsResolvable(
+        edgeAttrsForLabel,
+        edgeAttrsForLabel.fromId
+          ? graph.find((n) => n.id === edgeAttrsForLabel.fromId)
+          : undefined,
+        edgeAttrsForLabel.toId
+          ? graph.find((n) => n.id === edgeAttrsForLabel.toId)
+          : undefined,
+      )
     ) {
       layoutSerializedEdgeLabelChildren(attributes, graph);
     }

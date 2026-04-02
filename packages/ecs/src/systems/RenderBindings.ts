@@ -3,6 +3,7 @@ import {
   Camera,
   Binded,
   Binding,
+  PartialBinding,
   Canvas,
   Children,
   ComputedBounds,
@@ -24,15 +25,32 @@ import {
   Path,
 } from '../components';
 import { getSceneRoot, updateGlobalTransform } from './Transform';
-import type { TextSerializedNode } from '../types/serialized-node';
+import type {
+  EdgeSerializedNode,
+  SerializedNode,
+  TextSerializedNode,
+} from '../types/serialized-node';
 import {
   EdgeState,
+  hasTerminalPoint,
+  inferEdgePoints,
   inferPointsWithFromIdAndToId,
   inferXYWidthHeight,
   layoutTextAnchoredInParent,
   pointAndNormalAlongPolylineByT,
   polylineVertexApproxFromPathD,
 } from '../utils';
+
+function edgeBindingPointsPayload(edge: EdgeSerializedNode): Partial<EdgeSerializedNode> {
+  const o: Partial<EdgeSerializedNode> = {};
+  if (hasTerminalPoint(edge.targetPoint)) {
+    o.targetPoint = { x: edge.targetPoint!.x, y: edge.targetPoint!.y };
+  }
+  if (hasTerminalPoint(edge.sourcePoint)) {
+    o.sourcePoint = { x: edge.sourcePoint!.x, y: edge.sourcePoint!.y };
+  }
+  return o;
+}
 
 export class RenderBindings extends System {
   private readonly boundeds = this.query(
@@ -49,7 +67,6 @@ export class RenderBindings extends System {
             ComputedBounds,
             Camera,
             Canvas,
-            Binded,
             Binding,
             FractionalIndex,
             Parent,
@@ -70,6 +87,8 @@ export class RenderBindings extends System {
             Path,
             EdgeLabel,
             Text,
+            Binded,
+            PartialBinding,
           )
           .write,
     );
@@ -78,28 +97,46 @@ export class RenderBindings extends System {
   execute() {
     const bindingsToUpdate = new Set<Entity>();
     this.boundeds.changed.forEach((entity) => {
-      const { fromBindings, toBindings } = entity.read(Binded);
-      [...fromBindings, ...toBindings].forEach((binding) => {
-        bindingsToUpdate.add(binding);
+      const { fromBindings, toBindings, partialBindings } = entity.read(Binded);
+      [...fromBindings, ...toBindings, ...partialBindings].forEach((edgeEntity) => {
+        bindingsToUpdate.add(edgeEntity);
       });
     });
 
-    bindingsToUpdate.forEach((binding) => {
-      const { from, to } = binding.read(Binding);
-      const camera = getSceneRoot(binding);
+    bindingsToUpdate.forEach((edgeEntity) => {
+      const camera = getSceneRoot(edgeEntity);
       const { canvas } = camera.read(Camera);
       const { api } = canvas.read(Canvas);
 
-      const edge = api.getNodeByEntity(binding) as EdgeState;
-      const fromNode = api.getNodeByEntity(from);
-      const toNode = api.getNodeByEntity(to);
+      const edge = api.getNodeByEntity(edgeEntity) as EdgeState;
 
-      inferPointsWithFromIdAndToId(fromNode, toNode, edge);
+      // 必须先清掉上一帧的包围盒，再推理：否则 edge.x/y 仍是旧值，与已移动的端点节点坐标混用会导致整条边偏移（首次无 x/y 故无此问题）
       delete edge.x;
       delete edge.y;
       delete edge.width;
       delete edge.height;
+
+      if (edgeEntity.has(Binding)) {
+        const { from, to } = edgeEntity.read(Binding);
+        const fromNode = api.getNodeByEntity(from);
+        const toNode = api.getNodeByEntity(to);
+        inferPointsWithFromIdAndToId(fromNode, toNode, edge);
+      } else if (edgeEntity.has(PartialBinding)) {
+        const { attached, sourceIsAttached } = edgeEntity.read(PartialBinding);
+        const attachedNode = api.getNodeByEntity(attached);
+        const attachSource = sourceIsAttached !== 0;
+        inferEdgePoints(
+          attachSource ? attachedNode : null,
+          attachSource ? null : attachedNode,
+          edge,
+        );
+      } else {
+        return;
+      }
       inferXYWidthHeight(edge);
+
+      // 随几何更新一并写回 targetPoint/sourcePoint（勿用 stroke 反推覆盖，正交/曲线近似会与真实约束点不一致导致偏移）
+      const persistBindingPts = edgeBindingPointsPayload(edge as EdgeSerializedNode);
 
       if (edge.type === 'line' || edge.type === 'rough-line') {
         api.updateNode(edge, {
@@ -111,7 +148,8 @@ export class RenderBindings extends System {
           y: edge.y,
           width: edge.width,
           height: edge.height,
-        });
+          ...persistBindingPts,
+        } as Partial<SerializedNode>);
       } else if (edge.type === 'polyline' || edge.type === 'rough-polyline') {
         api.updateNode(edge, {
           points: edge.points,
@@ -119,7 +157,8 @@ export class RenderBindings extends System {
           y: edge.y,
           width: edge.width,
           height: edge.height,
-        });
+          ...persistBindingPts,
+        } as Partial<SerializedNode>);
       } else if (edge.type === 'path' || edge.type === 'rough-path') {
         api.updateNode(edge, {
           d: edge.d,
@@ -127,24 +166,25 @@ export class RenderBindings extends System {
           y: edge.y,
           width: edge.width,
           height: edge.height,
-        });
+          ...persistBindingPts,
+        } as Partial<SerializedNode>);
       }
 
-      updateGlobalTransform(binding);
+      updateGlobalTransform(edgeEntity);
 
-      const points: [number, number][] | null = binding.has(Polyline)
-        ? binding.read(Polyline).points
-        : binding.has(Line)
+      const points: [number, number][] | null = edgeEntity.has(Polyline)
+        ? edgeEntity.read(Polyline).points
+        : edgeEntity.has(Line)
           ? [
-              [binding.read(Line).x1, binding.read(Line).y1],
-              [binding.read(Line).x2, binding.read(Line).y2],
-            ]
-          : binding.has(Path)
-            ? polylineVertexApproxFromPathD(binding.read(Path).d)
+            [edgeEntity.read(Line).x1, edgeEntity.read(Line).y1],
+            [edgeEntity.read(Line).x2, edgeEntity.read(Line).y2],
+          ]
+          : edgeEntity.has(Path)
+            ? polylineVertexApproxFromPathD(edgeEntity.read(Path).d)
             : null;
 
-      if (points && points.length >= 2 && binding.has(Parent)) {
-        binding.read(Parent).children.forEach((child) => {
+      if (points && points.length >= 2 && edgeEntity.has(Parent)) {
+        edgeEntity.read(Parent).children.forEach((child) => {
           if (!child.has(EdgeLabel) || !child.has(Text)) {
             return;
           }
