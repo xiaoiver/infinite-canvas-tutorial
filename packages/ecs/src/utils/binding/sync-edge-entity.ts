@@ -6,7 +6,9 @@ import { safeAddComponent, safeRemoveComponent } from '../../history/ElementsCha
 import {
   edgeEndsResolvable,
   inferEdgePoints,
+  inferEdgePointsPreservingBezierHandles,
   inferXYWidthHeight,
+  type EdgePathPreserveSnapshot,
 } from '../deserialize/entity';
 import { deserializePoints } from '../deserialize/points';
 import type { EdgeState } from '../binding';
@@ -74,12 +76,44 @@ export function syncEdgeBindingForEntity(
     });
   }
 
+  let pathPreserve: EdgePathPreserveSnapshot | undefined;
+  if (node.type === 'path' || node.type === 'rough-path') {
+    const pe = node as EdgeSerializedNode & {
+      d?: string;
+      x?: number;
+      y?: number;
+      rotation?: number;
+      scaleX?: number;
+      scaleY?: number;
+    };
+    if (pe.d) {
+      pathPreserve = {
+        d: pe.d,
+        x: pe.x ?? 0,
+        y: pe.y ?? 0,
+        rotation: pe.rotation ?? 0,
+        scaleX: pe.scaleX ?? 1,
+        scaleY: pe.scaleY ?? 1,
+      };
+    }
+  }
+
   delete (node as EdgeSerializedNode & { x?: number }).x;
   delete (node as EdgeSerializedNode & { y?: number }).y;
   delete (node as EdgeSerializedNode & { width?: number }).width;
   delete (node as EdgeSerializedNode & { height?: number }).height;
 
-  inferEdgePoints(fromNode ?? null, toNode ?? null, node as EdgeState);
+  const preserved =
+    pathPreserve != null &&
+    inferEdgePointsPreservingBezierHandles(
+      fromNode ?? null,
+      toNode ?? null,
+      node as EdgeState,
+      pathPreserve,
+    );
+  if (!preserved) {
+    inferEdgePoints(fromNode ?? null, toNode ?? null, node as EdgeState);
+  }
   inferXYWidthHeight(node);
 
   // Keep ECS transform aligned with newly inferred edge local geometry.

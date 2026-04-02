@@ -28,6 +28,10 @@ import {
   ZIndex,
   ComputeZIndex,
   Pen,
+  ToBeDeleted,
+  PartialBinding,
+  Binded,
+  Binding,
 } from '../../packages/ecs/src';
 import { NodeJSAdapter, sleep, createMouseEvent } from '../utils';
 
@@ -66,6 +70,10 @@ describe('Draw arrow', () => {
             Visibility,
             Name,
             ZIndex,
+            Binding,
+            Binded,
+            PartialBinding,
+            ToBeDeleted,
           ).write,
       );
 
@@ -110,6 +118,14 @@ describe('Draw arrow', () => {
       );
       await sleep(100);
       $canvas.dispatchEvent(
+        createMouseEvent('mousemove', { clientX: 50, clientY: 50 }),
+      );
+      await sleep(100);
+      $canvas.dispatchEvent(
+        createMouseEvent('mousemove', { clientX: 100, clientY: 100 }),
+      );
+      await sleep(100);
+      $canvas.dispatchEvent(
         createMouseEvent('mousemove', { clientX: 150, clientY: 150 }),
       );
       await sleep(100);
@@ -118,7 +134,7 @@ describe('Draw arrow', () => {
       );
     }
 
-    await sleep(300);
+    await sleep(500);
 
     const dir = `${__dirname}/snapshots`;
     await expect($canvas!.getContext('webgl1')).toMatchWebGLSnapshot(

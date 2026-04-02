@@ -87,6 +87,7 @@ import { hideLabel, initLabel, showLabel } from '..';
 import type { EdgeSerializedNode, SerializedNode } from '../types/serialized-node';
 import { constraintAttrsFromCanvasPoint } from '../utils/binding/constraint-from-point';
 import {
+  collectPathControlHandles,
   PathControlHandleMeta,
   PathCommand,
   setPathHandlePoint,
@@ -178,6 +179,51 @@ function isEdgeBindingRebindCandidate(
     hasTerminalPoint(edgeNode.sourcePoint) ||
     hasTerminalPoint(edgeNode.targetPoint)
   );
+}
+
+/**
+ * 控制点拖拽结束时：仅当拖的是边的起点/终点（非贝塞尔中间柄）才应对应 X1Y1/X2Y2 做绑定重接。
+ * 否则误用旧的 {@link SelectOBB.resizingAnchorName} 会把端点写到控制柄位置上。
+ */
+function getEdgeRebindAnchorForControlPointDrag(
+  edgeNode: SerializedNode,
+  activeControlPointIndex: number | undefined,
+  pathCommands: PathCommand[] | undefined,
+  polylinePointCount: number | undefined,
+): AnchorName.X1Y1 | AnchorName.X2Y2 | null {
+  if (activeControlPointIndex === undefined || activeControlPointIndex < 0) {
+    return null;
+  }
+  const t = edgeNode.type;
+  if (t === 'polyline' || t === 'rough-polyline') {
+    if (polylinePointCount == null || polylinePointCount < 2) {
+      return null;
+    }
+    if (activeControlPointIndex === 0) {
+      return AnchorName.X1Y1;
+    }
+    if (activeControlPointIndex === polylinePointCount - 1) {
+      return AnchorName.X2Y2;
+    }
+    return null;
+  }
+  if (t === 'path' || t === 'rough-path') {
+    if (!pathCommands?.length) {
+      return null;
+    }
+    const handles = collectPathControlHandles(pathCommands);
+    if (handles.length < 2) {
+      return null;
+    }
+    if (activeControlPointIndex === 0) {
+      return AnchorName.X1Y1;
+    }
+    if (activeControlPointIndex === handles.length - 1) {
+      return AnchorName.X2Y2;
+    }
+    return null;
+  }
+  return null;
 }
 
 /**
@@ -1058,18 +1104,33 @@ export class Select extends System {
     ) {
       const edgeNode = api.getNodeById(layersSelected[0]);
       const entity = edgeNode ? api.getEntity(edgeNode) : undefined;
+      const pt = selection.bindingRebindLastCanvas;
+      delete selection.bindingRebindLastCanvas;
+
       if (
         edgeNode &&
         isEdgeBindingRebindCandidate(entity, edgeNode as EdgeSerializedNode)
       ) {
-        const pt = selection.bindingRebindLastCanvas;
-        delete selection.bindingRebindLastCanvas;
-        this.applyBindingRebindAt(
-          api,
-          edgeNode as EdgeSerializedNode,
-          selection.resizingAnchorName,
-          pt,
+        const camera = api.getCamera();
+        const { pathControlCommands } = camera.read(Transformable);
+        let polylinePointCount: number | undefined;
+        if (entity?.has(Polyline)) {
+          polylinePointCount = entity.read(Polyline).points.length;
+        }
+        const rebindAnchor = getEdgeRebindAnchorForControlPointDrag(
+          edgeNode,
+          selection.activeControlPointIndex,
+          pathControlCommands as PathCommand[] | undefined,
+          polylinePointCount,
         );
+        if (rebindAnchor != null) {
+          this.applyBindingRebindAt(
+            api,
+            edgeNode as EdgeSerializedNode,
+            rebindAnchor,
+            pt,
+          );
+        }
       }
     }
 
@@ -1319,17 +1380,6 @@ export class Select extends System {
 
     const c = constraintAttrsFromCanvasPoint(targetNode, canvas.x, canvas.y);
     if (anchor === AnchorName.X1Y1) {
-
-      console.log({
-        fromId: targetNode.id,
-        sourcePoint: undefined,
-        exitX: c.x,
-        exitY: c.y,
-        exitPerimeter: c.perimeter,
-        exitDx: c.dx,
-        exitDy: c.dy,
-      });
-
       api.updateNode(edgeNode as SerializedNode, {
         fromId: targetNode.id,
         sourcePoint: undefined,

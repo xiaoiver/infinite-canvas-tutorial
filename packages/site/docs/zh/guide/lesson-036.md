@@ -52,7 +52,8 @@ drawio 中通过动画表示连接线的方向：
 
 ## 动画编辑器
 
-[lottielab]
+-   [lottielab]
+-   [omnilottie]
 
 ## 扩展阅读
 
@@ -69,3 +70,4 @@ drawio 中通过动画表示连接线的方向：
 [Magic Animator]: https://magicanimator.com/
 [Discussion in HN]: https://news.ycombinator.com/item?id=44994071
 [lottielab]: https://www.lottielab.com/
+[omnilottie]: https://fal.ai/models/fal-ai/omnilottie/api

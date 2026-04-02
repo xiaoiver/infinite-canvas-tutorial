@@ -111,8 +111,8 @@ canvas.addEventListener(Event.READY, async (e) => {
       Pen.IMAGE,
       Pen.LASSO,
       Pen.TEXT,
-      // Pen.PENCIL,
-      // Pen.BRUSH,
+      Pen.PENCIL,
+      Pen.BRUSH,
       Pen.ERASER,
       Pen.LASER_POINTER,
     ],
@@ -220,17 +220,23 @@ canvas.addEventListener(Event.READY, async (e) => {
   api.updateNodes([
     node1, node2, node3, edge1, edge2
   ]);
-  // api.selectNodes([edge1])
+  api.selectNodes([node1])
+
+  setTimeout(() => {
+    api.updateNode(node1, {
+      locked: true,
+    })
+  }, 1000);
 
   // api.updateNodes([node1]);
 });
 
-const VelloRendererPlugin = RendererPlugin.configure({
-  setupDeviceSystemCtor: InitVello,
-  rendererSystemCtor: VelloPipeline,
-});
-DefaultPlugins.splice(DefaultPlugins.indexOf(DefaultRendererPlugin), 1, VelloRendererPlugin);
-registerFont('/Gaegu-Regular.ttf');
+// const VelloRendererPlugin = RendererPlugin.configure({
+//   setupDeviceSystemCtor: InitVello,
+//   rendererSystemCtor: VelloPipeline,
+// });
+// DefaultPlugins.splice(DefaultPlugins.indexOf(DefaultRendererPlugin), 1, VelloRendererPlugin);
+// registerFont('/Gaegu-Regular.ttf');
 // registerFont('/NotoSansCJKsc-VF.ttf');
 // registerFont('/NotoSans-Regular.ttf');
 // registerFont('/NotoSans-Bold.ttf');

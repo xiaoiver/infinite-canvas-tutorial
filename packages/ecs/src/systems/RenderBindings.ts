@@ -34,11 +34,13 @@ import {
   EdgeState,
   hasTerminalPoint,
   inferEdgePoints,
+  inferEdgePointsPreservingBezierHandles,
   inferPointsWithFromIdAndToId,
   inferXYWidthHeight,
   layoutTextAnchoredInParent,
   pointAndNormalAlongPolylineByT,
   polylineVertexApproxFromPathD,
+  type EdgePathPreserveSnapshot,
 } from '../utils';
 
 function edgeBindingPointsPayload(edge: EdgeSerializedNode): Partial<EdgeSerializedNode> {
@@ -110,6 +112,28 @@ export class RenderBindings extends System {
 
       const edge = api.getNodeByEntity(edgeEntity) as EdgeState;
 
+      let pathPreserve: EdgePathPreserveSnapshot | undefined;
+      if (edge.type === 'path' || edge.type === 'rough-path') {
+        const pe = edge as EdgeState & {
+          d?: string;
+          x?: number;
+          y?: number;
+          rotation?: number;
+          scaleX?: number;
+          scaleY?: number;
+        };
+        if (pe.d) {
+          pathPreserve = {
+            d: pe.d,
+            x: pe.x ?? 0,
+            y: pe.y ?? 0,
+            rotation: pe.rotation ?? 0,
+            scaleX: pe.scaleX ?? 1,
+            scaleY: pe.scaleY ?? 1,
+          };
+        }
+      }
+
       // 必须先清掉上一帧的包围盒，再推理：否则 edge.x/y 仍是旧值，与已移动的端点节点坐标混用会导致整条边偏移（首次无 x/y 故无此问题）
       delete edge.x;
       delete edge.y;
@@ -120,16 +144,29 @@ export class RenderBindings extends System {
         const { from, to } = edgeEntity.read(Binding);
         const fromNode = api.getNodeByEntity(from);
         const toNode = api.getNodeByEntity(to);
-        inferPointsWithFromIdAndToId(fromNode, toNode, edge);
+        const preserved =
+          pathPreserve != null &&
+          inferEdgePointsPreservingBezierHandles(
+            fromNode,
+            toNode,
+            edge,
+            pathPreserve,
+          );
+        if (!preserved) {
+          inferPointsWithFromIdAndToId(fromNode, toNode, edge);
+        }
       } else if (edgeEntity.has(PartialBinding)) {
         const { attached, sourceIsAttached } = edgeEntity.read(PartialBinding);
         const attachedNode = api.getNodeByEntity(attached);
         const attachSource = sourceIsAttached !== 0;
-        inferEdgePoints(
-          attachSource ? attachedNode : null,
-          attachSource ? null : attachedNode,
-          edge,
-        );
+        const fromN = attachSource ? attachedNode : null;
+        const toN = attachSource ? null : attachedNode;
+        const preserved =
+          pathPreserve != null &&
+          inferEdgePointsPreservingBezierHandles(fromN, toN, edge, pathPreserve);
+        if (!preserved) {
+          inferEdgePoints(fromN, toN, edge);
+        }
       } else {
         return;
       }
