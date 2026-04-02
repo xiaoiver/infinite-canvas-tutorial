@@ -3,6 +3,7 @@ import type { IPointData } from "@pixi/math";
 import type { BindingAttributes, ConstraintAttributes, EdgeSerializedNode, NodeSerializedNode, SerializedNode } from "../../types/serialized-node";
 import { getPerimeterPoint } from "./perimeter";
 import { EdgeStyle, orthConnector } from "./edge-style";
+import { DIRECTION_EAST, DIRECTION_NORTH, DIRECTION_SOUTH, DIRECTION_WEST } from "./constants";
 
 export type EdgeState = EdgeSerializedNode & { width: number; height: number; x: number; y: number } & { absolutePoints: (IPointData | null)[] };
 
@@ -220,6 +221,116 @@ function getEdgeStyle(edge: EdgeState, points: IPointData[], source: SerializedN
 
 }
 
+function pointInBounds(
+  bounds: { x: number; y: number; width: number; height: number },
+  point: IPointData,
+): boolean {
+  return (
+    point.x >= bounds.x &&
+    point.x <= bounds.x + bounds.width &&
+    point.y >= bounds.y &&
+    point.y <= bounds.y + bounds.height
+  );
+}
+
+function getNodeBounds(node: NodeSerializedNode): { x: number; y: number; width: number; height: number } | null {
+  if (
+    Number.isFinite(node.x) &&
+    Number.isFinite(node.y) &&
+    Number.isFinite(node.width) &&
+    Number.isFinite(node.height)
+  ) {
+    return {
+      x: node.x,
+      y: node.y,
+      width: node.width,
+      height: node.height,
+    };
+  }
+
+  return null;
+}
+
+function loopConnector(
+  edge: EdgeState,
+  source: NodeSerializedNode | null,
+  points: IPointData[] | null | undefined,
+  result: IPointData[],
+): void {
+  const pts = edge.absolutePoints;
+  const p0 = pts[0];
+  const pe = pts[pts.length - 1];
+
+  // If both terminals are fixed, loop style keeps provided control points.
+  if (!isNil(p0) && !isNil(pe)) {
+    if (!isNil(points) && points.length > 0) {
+      for (let i = 0; i < points.length; i++) {
+        const pt = points[i];
+        if (!isNil(pt)) {
+          result.push(transformControlPoint(edge, { x: pt.x, y: pt.y }));
+        }
+      }
+    }
+    return;
+  }
+
+  if (isNil(source)) {
+    return;
+  }
+  const sourceBounds = getNodeBounds(source);
+  if (isNil(sourceBounds)) {
+    return;
+  }
+
+  let pt = !isNil(points) && points.length > 0 ? points[0] : null;
+  if (!isNil(pt)) {
+    pt = transformControlPoint(edge, { x: pt.x, y: pt.y });
+    if (pointInBounds(sourceBounds, pt)) {
+      pt = null;
+    }
+  }
+
+  let x = 0;
+  let dx = 0;
+  let y = 0;
+  let dy = 0;
+
+  const scale = edge.scaleX ?? 1;
+  const segment = ((edge as EdgeState & { segment?: number }).segment ?? 10) * scale;
+  const direction = (edge as EdgeState & { direction?: string }).direction ?? DIRECTION_WEST;
+
+  if (direction === DIRECTION_NORTH || direction === DIRECTION_SOUTH) {
+    x = sourceBounds.x + sourceBounds.width / 2;
+    dx = segment;
+  } else {
+    y = sourceBounds.y + sourceBounds.height / 2;
+    dy = segment;
+  }
+
+  if (isNil(pt) || pt.x < sourceBounds.x || pt.x > sourceBounds.x + sourceBounds.width) {
+    if (!isNil(pt)) {
+      x = pt.x;
+      dy = Math.max(Math.abs(y - pt.y), dy);
+    } else if (direction === DIRECTION_NORTH) {
+      y = sourceBounds.y - 2 * dx;
+    } else if (direction === DIRECTION_SOUTH) {
+      y = sourceBounds.y + sourceBounds.height + 2 * dx;
+    } else if (direction === DIRECTION_EAST) {
+      x = sourceBounds.x - 2 * dy;
+    } else {
+      x = sourceBounds.x + sourceBounds.width + 2 * dy;
+    }
+  } else if (!isNil(pt)) {
+    x = sourceBounds.x + sourceBounds.width / 2;
+    dx = Math.max(Math.abs(x - pt.x), dy);
+    y = pt.y;
+    dy = 0;
+  }
+
+  result.push({ x: x - dx, y: y - dy });
+  result.push({ x: x + dx, y: y + dy });
+}
+
 /**
  * Updates the absolute points in the given state using the specified array
  * of Points as the relative points.
@@ -246,7 +357,9 @@ export function updatePoints(
         orthConnector(edge, source, target, points, pts);
       } else if (edge.edgeStyle === EdgeStyle.SEGMENT) {
 
-      } else if (edge.edgeStyle === EdgeStyle.LOOP) { }
+      } else if (edge.edgeStyle === EdgeStyle.LOOP) {
+        loopConnector(edge, source, points, pts);
+      }
     } else if (!isNil(points)) {
       for (let i = 0; i < points.length; i++) {
         if (!isNil(points[i])) {
