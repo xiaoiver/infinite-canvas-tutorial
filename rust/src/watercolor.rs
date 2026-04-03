@@ -70,7 +70,7 @@ impl Mulberry32 {
 
     pub fn next_f64(&mut self) -> f64 {
         self.0 = self.0.wrapping_add(0x6d2b79f5);
-        let mut t = self.0;
+        let t = self.0;
         let mut r = (t ^ (t >> 15)).wrapping_mul(t | 1);
         r ^= r.wrapping_add(r.wrapping_mul(r ^ (r >> 7)).wrapping_mul(r | 61));
         ((r ^ (r >> 14)) as f64) / 4294967296.0
@@ -109,7 +109,7 @@ fn seeded_random_weights(len: usize, seed: u32, floor: f64) -> Vec<f64> {
         return vec![];
     }
     let mut rng = Mulberry32::new(seed);
-    let mut initial: Vec<f64> = (0..len).map(|_| rng.next_f64()).collect();
+    let initial: Vec<f64> = (0..len).map(|_| rng.next_f64()).collect();
     let smoothed = conv1d_wrap_gauss5(&initial);
     let mut min = f64::INFINITY;
     let mut max = f64::NEG_INFINITY;

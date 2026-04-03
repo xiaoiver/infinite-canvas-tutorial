@@ -165,6 +165,7 @@ canvas.addEventListener(Event.READY, async (e) => {
     width: 100,
     height: 100,
     fill: 'grey',
+    zIndex: 1,
   };
   const node2 = {
     id: 'binding-curved-rect-2',
@@ -218,25 +219,21 @@ canvas.addEventListener(Event.READY, async (e) => {
   };
 
   api.updateNodes([
-    node1, node2, node3, edge1, edge2
+    node1,
+    // node2, node3,
+    // edge1, edge2
   ]);
-  api.selectNodes([node1])
-
-  setTimeout(() => {
-    api.updateNode(node1, {
-      locked: true,
-    })
-  }, 1000);
+  // api.selectNodes([node1])
 
   // api.updateNodes([node1]);
 });
 
-// const VelloRendererPlugin = RendererPlugin.configure({
-//   setupDeviceSystemCtor: InitVello,
-//   rendererSystemCtor: VelloPipeline,
-// });
-// DefaultPlugins.splice(DefaultPlugins.indexOf(DefaultRendererPlugin), 1, VelloRendererPlugin);
-// registerFont('/Gaegu-Regular.ttf');
+const VelloRendererPlugin = RendererPlugin.configure({
+  setupDeviceSystemCtor: InitVello,
+  rendererSystemCtor: VelloPipeline,
+});
+DefaultPlugins.splice(DefaultPlugins.indexOf(DefaultRendererPlugin), 1, VelloRendererPlugin);
+registerFont('/Gaegu-Regular.ttf');
 // registerFont('/NotoSansCJKsc-VF.ttf');
 // registerFont('/NotoSans-Regular.ttf');
 // registerFont('/NotoSans-Bold.ttf');

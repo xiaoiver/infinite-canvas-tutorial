@@ -263,6 +263,8 @@ pub struct BrushPass {
     stamp_texture: Texture,
     stamp_view: TextureView,
     bind_group: BindGroup,
+    /// When false, `stamp_texture` is the shared 1×1 default; skip realloc on repeated `update_stamp_texture(None)`.
+    stamp_is_custom: bool,
 }
 
 impl BrushPass {
@@ -367,7 +369,7 @@ impl BrushPass {
         let pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
             label: Some("brush_pl"),
             bind_group_layouts: &[&layout],
-            push_constant_ranges: &[],
+            immediate_size: 0,
         });
 
         let pipeline = device.create_render_pipeline(&RenderPipelineDescriptor {
@@ -395,7 +397,7 @@ impl BrushPass {
             },
             depth_stencil: None,
             multisample: MultisampleState::default(),
-            multiview: None,
+            multiview_mask: None,
             cache: None,
         });
 
@@ -439,6 +441,7 @@ impl BrushPass {
             stamp_texture,
             stamp_view,
             bind_group,
+            stamp_is_custom: false,
         }
     }
 
@@ -484,13 +487,18 @@ impl BrushPass {
                     },
                 );
                 self.stamp_view = self.stamp_texture.create_view(&TextureViewDescriptor::default());
+                self.stamp_is_custom = true;
                 self.rebuild_bind_group(device);
                 return;
             }
         }
+        if !self.stamp_is_custom {
+            return;
+        }
         let (tex, view) = Self::create_default_stamp_texture(device, queue);
         self.stamp_texture = tex;
         self.stamp_view = view;
+        self.stamp_is_custom = false;
         self.rebuild_bind_group(device);
     }
 
@@ -593,6 +601,7 @@ impl BrushPass {
             depth_stencil_attachment: None,
             timestamp_writes: None,
             occlusion_query_set: None,
+            multiview_mask: None,
         });
         pass.set_pipeline(&self.pipeline);
         pass.set_bind_group(0, &self.bind_group, &[]);

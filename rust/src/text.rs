@@ -109,7 +109,12 @@ pub fn get_or_create_emoji_image(emoji: &str, size: u32) -> Option<(Vec<u8>, u32
 
 #[cfg(target_arch = "wasm32")]
 pub fn font_variant_to_features(variant: &str) -> Vec<parley::style::FontFeature> {
-    use parley::style::FontFeature;
+    use parley::setting::{FontFeature, Tag};
+    fn push_tag(out: &mut Vec<FontFeature>, tag: &str, value: u16) {
+        if let Some(t) = Tag::parse(tag) {
+            out.push(FontFeature::new(t, value));
+        }
+    }
     let v = variant.to_lowercase();
     let v = v.trim();
     if v.is_empty() || v == "normal" { return Vec::new(); }
@@ -117,16 +122,16 @@ pub fn font_variant_to_features(variant: &str) -> Vec<parley::style::FontFeature
     for part in v.split(|c: char| c == ' ' || c == ',') {
         let part = part.trim();
         if part == "small-caps" {
-            if let Some(f) = FontFeature::parse("smcp=1") { out.push(f); }
+            push_tag(&mut out, "smcp", 1);
         } else if part == "all-small-caps" {
-            if let Some(f) = FontFeature::parse("smcp=1") { out.push(f); }
-            if let Some(f) = FontFeature::parse("c2sc=1") { out.push(f); }
+            push_tag(&mut out, "smcp", 1);
+            push_tag(&mut out, "c2sc", 1);
         } else if part == "tabular-nums" {
-            if let Some(f) = FontFeature::parse("tnum=1") { out.push(f); }
+            push_tag(&mut out, "tnum", 1);
         } else if part == "lining-nums" {
-            if let Some(f) = FontFeature::parse("lnum=1") { out.push(f); }
+            push_tag(&mut out, "lnum", 1);
         } else if part == "oldstyle-nums" {
-            if let Some(f) = FontFeature::parse("onum=1") { out.push(f); }
+            push_tag(&mut out, "onum", 1);
         }
     }
     out
@@ -162,7 +167,7 @@ pub fn build_text_glyphs_with_emoji_positions(
     use std::borrow::Cow;
     use parley::fontique::Blob;
     use parley::layout::PositionedLayoutItem;
-    use parley::style::{FontFamily, FontFeature, FontSettings, FontStyle, FontWeight, OverflowWrap, WordBreakStrength};
+    use parley::style::{FontFamily, FontFeature, FontFeatures, FontStyle, FontWeight, OverflowWrap, WordBreak};
     use parley::{AlignmentOptions, LayoutContext, LineHeight, StyleProperty};
 
     let font_bytes_list = FONT_BYTES.with(|c| c.borrow().clone());
@@ -237,33 +242,34 @@ pub fn build_text_glyphs_with_emoji_positions(
             }
 
             let mut builder = layout_cx.ranged_builder(font_cx, segment, 1.0, true);
-            builder.push_default(FontFamily::Named(Cow::Borrowed(&family_name)));
+            builder.push_default(FontFamily::named(family_name.as_str()));
             builder.push_default(if line_height_px > 0.0 {
                 LineHeight::Absolute(line_height_px)
             } else {
                 LineHeight::FontSizeRelative(1.0)
             });
             builder.push_default(StyleProperty::FontSize(font_size_px));
-            if let Some(w) = FontWeight::parse(font_weight.trim()) {
+            if let Some(w) = FontWeight::parse_css(font_weight.trim()) {
                 builder.push_default(StyleProperty::FontWeight(w));
             }
-            if let Some(s) = FontStyle::parse(font_style.trim()) {
+            if let Some(s) = FontStyle::parse_css(font_style.trim()) {
                 builder.push_default(StyleProperty::FontStyle(s));
             }
             let mut font_features = font_variant_to_features(font_variant.trim());
             if !font_kerning {
-                if let Some(kern_off) = FontFeature::parse("kern=0") {
-                    font_features.push(kern_off);
+                use parley::setting::Tag;
+                if let Some(t) = Tag::parse("kern") {
+                    font_features.push(FontFeature::new(t, 0));
                 }
             }
             if !font_features.is_empty() {
-                builder.push_default(StyleProperty::FontFeatures(FontSettings::List(Cow::Owned(font_features))));
+                builder.push_default(StyleProperty::FontFeatures(FontFeatures::List(Cow::Owned(font_features))));
             }
             if letter_spacing != 0.0 {
                 builder.push_default(StyleProperty::LetterSpacing(letter_spacing));
             }
             if word_wrap && word_wrap_width > 0.0 {
-                builder.push_default(StyleProperty::WordBreak(WordBreakStrength::BreakAll));
+                builder.push_default(StyleProperty::WordBreak(WordBreak::BreakAll));
                 builder.push_default(StyleProperty::OverflowWrap(OverflowWrap::Anywhere));
             }
 
@@ -476,7 +482,7 @@ pub fn measure_font_internal(
 ) -> Option<FontMetrics> {
     use std::borrow::Cow;
     use parley::fontique::Blob;
-    use parley::style::{FontFamily, FontFeature, FontSettings, FontStyle, FontWeight};
+    use parley::style::{FontFamily, FontFeature, FontFeatures, FontStyle, FontWeight};
     use parley::{AlignmentOptions, LayoutContext, LineHeight, StyleProperty};
 
     let font_bytes_list = FONT_BYTES.with(|c| c.borrow().clone());
@@ -529,23 +535,24 @@ pub fn measure_font_internal(
         let mut layout_cx = LayoutContext::new();
         let probe = "|ÉqÅM";
         let mut builder = layout_cx.ranged_builder(font_cx, probe, 1.0, true);
-        builder.push_default(FontFamily::Named(Cow::Borrowed(&family_name)));
+        builder.push_default(FontFamily::named(family_name.as_str()));
         builder.push_default(LineHeight::FontSizeRelative(1.0));
         builder.push_default(StyleProperty::FontSize(font_size_px));
-        if let Some(w) = FontWeight::parse(font_weight.trim()) {
+        if let Some(w) = FontWeight::parse_css(font_weight.trim()) {
             builder.push_default(StyleProperty::FontWeight(w));
         }
-        if let Some(s) = FontStyle::parse(font_style.trim()) {
+        if let Some(s) = FontStyle::parse_css(font_style.trim()) {
             builder.push_default(StyleProperty::FontStyle(s));
         }
         let mut font_features = font_variant_to_features(font_variant.trim());
         if !font_kerning {
-            if let Some(kern_off) = FontFeature::parse("kern=0") {
-                font_features.push(kern_off);
+            use parley::setting::Tag;
+            if let Some(t) = Tag::parse("kern") {
+                font_features.push(FontFeature::new(t, 0));
             }
         }
         if !font_features.is_empty() {
-            builder.push_default(StyleProperty::FontFeatures(FontSettings::List(Cow::Owned(font_features))));
+            builder.push_default(StyleProperty::FontFeatures(FontFeatures::List(Cow::Owned(font_features))));
         }
 
         let mut layout: parley::Layout<()> = builder.build(probe);

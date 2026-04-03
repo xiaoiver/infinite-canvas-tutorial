@@ -10,8 +10,10 @@ publish: false
 -   [Building Real-Time Global Illumination]
 -   [Radiance Cascades]
 -   [akari]
+-   [compute toys]
 
 [Fundamentals of Radiance Cascades]: https://m4xc.dev/articles/fundamental-rc/
 [Building Real-Time Global Illumination]: https://jason.today/gi
 [Radiance Cascades]: https://jason.today/rc
 [akari]: https://akari.lusion.co/#home
+[compute toys]: https://compute.toys/view/1397

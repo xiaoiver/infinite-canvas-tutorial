@@ -276,7 +276,7 @@ impl GridPass {
         let grid_pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
             label: Some("grid_pl"),
             bind_group_layouts: &[&grid_layout],
-            push_constant_ranges: &[],
+            immediate_size: 0,
         });
 
         let grid_pipeline = device.create_render_pipeline(&RenderPipelineDescriptor {
@@ -304,7 +304,7 @@ impl GridPass {
             },
             depth_stencil: None,
             multisample: MultisampleState::default(),
-            multiview: None,
+            multiview_mask: None,
             cache: None,
         });
 
@@ -343,7 +343,7 @@ impl GridPass {
         let composite_pl = device.create_pipeline_layout(&PipelineLayoutDescriptor {
             label: Some("composite_pl"),
             bind_group_layouts: &[&composite_layout],
-            push_constant_ranges: &[],
+            immediate_size: 0,
         });
 
         let composite_pipeline = device.create_render_pipeline(&RenderPipelineDescriptor {
@@ -371,7 +371,7 @@ impl GridPass {
             },
             depth_stencil: None,
             multisample: MultisampleState::default(),
-            multiview: None,
+            multiview_mask: None,
             cache: None,
         });
 
@@ -453,6 +453,7 @@ impl GridPass {
             depth_stencil_attachment: None,
             timestamp_writes: None,
             occlusion_query_set: None,
+            multiview_mask: None,
         });
         pass.set_pipeline(&self.grid_pipeline);
         pass.set_bind_group(0, &self.grid_bind_group, &[]);
@@ -500,6 +501,7 @@ impl GridPass {
             depth_stencil_attachment: None,
             timestamp_writes: None,
             occlusion_query_set: None,
+            multiview_mask: None,
         });
         pass.set_pipeline(&self.composite_pipeline);
         pass.set_bind_group(0, &bind, &[]);
