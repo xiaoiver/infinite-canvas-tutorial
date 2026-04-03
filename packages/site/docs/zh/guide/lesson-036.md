@@ -34,21 +34,29 @@ animate(values, { x: 200, color: '#00f' });
 
 <https://motioncanvas.io/docs/flow>
 
-## Manim
+## SVG 动画
 
-<https://github.com/3b1b/manim>
-
--   [Discussion in HN]
-
-## SVG 路径动画
+### 形变效果 {#morphing}
 
 -   [vectalign]
+
+### 虚线偏移 {#dashline-offset}
 
 drawio 中通过动画表示连接线的方向：
 
 ![source: https://www.drawio.com/doc/faq/connector-animate](https://www.drawio.com/assets/img/blog/connector-flow-animation.svg)
 
 > Export your diagram to a SVG file to include the connector animation when you publish it in a web page or on a content platform that supports SVG images.
+
+## Lottie
+
+## Rive
+
+## Manim
+
+<https://github.com/3b1b/manim>
+
+-   [Discussion in HN]
 
 ## 动画编辑器
 

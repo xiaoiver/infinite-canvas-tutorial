@@ -15,6 +15,7 @@ use winit::window::Window;
 
 use crate::brush_pass::BrushPass;
 use crate::grid_pass::{GridLayerTextures, GridPass};
+use crate::rc_pass::{collect_gpu_primitives, RcPass, RcPassTextures};
 use crate::scene::{add_shapes_to_scene, affine_scale_factor};
 use crate::state::{take_pending_camera_transform, take_pending_canvas_render_options};
 use crate::types::CanvasRenderOptions;
@@ -248,6 +249,8 @@ pub struct RenderState {
     pub transform: Affine,
     /// Intermediate targets when using the WGPU procedural grid + Vello composite path.
     pub grid_layers: Option<GridLayerTextures>,
+    /// GI distance + RC targets when [`CanvasRenderOptions::gi_enabled`].
+    pub rc_layers: Option<RcPassTextures>,
 }
 
 pub struct VelloRendererApp {
@@ -255,6 +258,7 @@ pub struct VelloRendererApp {
     pub renderers: Vec<Option<Renderer>>,
     pub grid_pass: Vec<Option<GridPass>>,
     pub brush_pass: Vec<Option<BrushPass>>,
+    pub rc_pass: Vec<Option<RcPass>>,
     pub states: Vec<RenderState>,
     pub scene: Scene,
 }
@@ -266,6 +270,7 @@ impl VelloRendererApp {
             renderers: vec![],
             grid_pass: vec![],
             brush_pass: vec![],
+            rc_pass: vec![],
             states: vec![],
             scene: Scene::new(),
         }
@@ -286,6 +291,7 @@ impl VelloRendererApp {
             renderers,
             grid_pass,
             brush_pass,
+            rc_pass,
             states,
             scene,
         } = self;
@@ -301,8 +307,12 @@ impl VelloRendererApp {
         while brush_pass.len() <= dev_id {
             brush_pass.push(None);
         }
+        while rc_pass.len() <= dev_id {
+            rc_pass.push(None);
+        }
 
         let gpu_grid = render_opts.grid && render_opts.checkboard_style != 0;
+        let offscreen = gpu_grid || render_opts.gi_enabled;
 
         scene.reset();
         add_shapes_to_scene(
@@ -315,7 +325,7 @@ impl VelloRendererApp {
             gpu_grid,
         );
 
-        if gpu_grid && width > 0 && height > 0 {
+        if offscreen && width > 0 && height > 0 {
             let gp = grid_pass[dev_id].get_or_insert_with(|| {
                 GridPass::new(&device_handle.device)
             });
@@ -335,26 +345,76 @@ impl VelloRendererApp {
                     height,
                 ));
             }
+            if render_opts.gi_enabled {
+                let need_rc = state
+                    .rc_layers
+                    .as_ref()
+                    .map(|r| r.width != width || r.height != height)
+                    .unwrap_or(true);
+                if need_rc {
+                    state.rc_layers = Some(RcPassTextures::new(
+                        &device_handle.device,
+                        width,
+                        height,
+                    ));
+                }
+            } else {
+                state.rc_layers = None;
+            }
             let layers = state.grid_layers.as_ref().expect("grid layers");
 
             let inv = effective_transform.inverse();
             let zoom = affine_scale_factor(effective_transform).max(1e-6);
-            gp.write_uniforms(
-                &device_handle.queue,
-                inv,
-                width,
-                height,
-                zoom,
-                &render_opts,
-            );
+            if gpu_grid {
+                gp.write_uniforms(
+                    &device_handle.queue,
+                    inv,
+                    width,
+                    height,
+                    zoom,
+                    &render_opts,
+                );
 
-            let mut grid_enc = device_handle
-                .device
-                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                    label: Some("grid_background"),
-                });
-            gp.encode_grid_pass(&mut grid_enc, &layers.bg_view);
-            device_handle.queue.submit([grid_enc.finish()]);
+                let mut grid_enc = device_handle
+                    .device
+                    .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                        label: Some("grid_background"),
+                    });
+                gp.encode_grid_pass(&mut grid_enc, &layers.bg_view);
+                device_handle.queue.submit([grid_enc.finish()]);
+            } else {
+                let bg = render_opts.background_rgba;
+                let clear_c = wgpu::Color {
+                    r: bg[0] as f64,
+                    g: bg[1] as f64,
+                    b: bg[2] as f64,
+                    a: bg[3] as f64,
+                };
+                let mut clear_enc = device_handle
+                    .device
+                    .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                        label: Some("solid_background"),
+                    });
+                {
+                    let _pass = clear_enc.begin_render_pass(&wgpu::RenderPassDescriptor {
+                        label: Some("bg_clear"),
+                        color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                            view: &layers.bg_view,
+                            depth_slice: None,
+                            resolve_target: None,
+                            ops: wgpu::Operations {
+                                load: wgpu::LoadOp::Clear(clear_c),
+                                store: wgpu::StoreOp::Store,
+                            },
+                        })],
+                        depth_stencil_attachment: None,
+                        timestamp_writes: None,
+                        occlusion_query_set: None,
+                        multiview_mask: None,
+                    });
+                }
+                device_handle.queue.submit([clear_enc.finish()]);
+            }
 
             #[cfg(target_arch = "wasm32")]
             {
@@ -497,6 +557,69 @@ impl VelloRendererApp {
                 )
                 .expect("render to texture");
 
+            if render_opts.gi_enabled {
+                if let Some(rc_tex) = state.rc_layers.as_ref() {
+                    let rp = rc_pass[dev_id].get_or_insert_with(|| {
+                        RcPass::new(&device_handle.device)
+                    });
+                    let prims = canvas_id
+                        .map(|cid| {
+                            collect_gpu_primitives(cid, effective_transform, &render_opts)
+                        })
+                        .unwrap_or_default();
+                    rp.write_dist_data(
+                        &device_handle.queue,
+                        width,
+                        height,
+                        &prims,
+                    );
+                    let mut rc_enc = device_handle
+                        .device
+                        .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                            label: Some("rc_gi"),
+                        });
+                    rp.encode_distance_pass(
+                        &device_handle.device,
+                        &mut rc_enc,
+                        &rc_tex.dist_view,
+                        prims.len(),
+                    );
+                    rp.encode_rc_cascade_passes(
+                        &device_handle.device,
+                        &device_handle.queue,
+                        &mut rc_enc,
+                        &rc_tex.rc_a_view,
+                        &rc_tex.rc_b_view,
+                        &rc_tex.rc_b,
+                        &rc_tex.rc_first_pass_snapshot,
+                        &rc_tex.dist_view,
+                        &layers.vello_view,
+                        rc_tex.gi_width,
+                        rc_tex.gi_height,
+                        width,
+                        height,
+                        rc_tex.cascade_count,
+                    );
+                    rp.encode_rc_mipmap(
+                        &device_handle.device,
+                        &device_handle.queue,
+                        &mut rc_enc,
+                        rc_tex.gi_cascade_output_view(),
+                        &rc_tex.rc_mipmap_view,
+                        rc_tex.mipmap_width,
+                        rc_tex.mipmap_height,
+                    );
+                    rp.encode_rc_apply(
+                        &device_handle.device,
+                        &mut rc_enc,
+                        &layers.vello_view,
+                        &rc_tex.rc_mipmap_view,
+                        &rc_tex.rc_final_view,
+                    );
+                    device_handle.queue.submit([rc_enc.finish()]);
+                }
+            }
+
             let surface_texture = surface
                 .surface
                 .get_current_texture()
@@ -513,10 +636,30 @@ impl VelloRendererApp {
                 &layers.bg_view,
                 &layers.vello_view,
             );
+            let blit_src = if render_opts.gi_enabled {
+                if let (Some(rc_tex), Some(rp)) =
+                    (state.rc_layers.as_ref(), rc_pass[dev_id].as_ref())
+                {
+                    rp.write_gi_blend_uniforms(&device_handle.queue, render_opts.gi_strength);
+                    rp.encode_gi_blend(
+                        &device_handle.device,
+                        &mut encoder,
+                        &layers.composite_view,
+                        &rc_tex.rc_final_view,
+                        &layers.vello_view,
+                        &rc_tex.gi_out_view,
+                    );
+                    &rc_tex.gi_out_view
+                } else {
+                    &layers.composite_view
+                }
+            } else {
+                &layers.composite_view
+            };
             surface.blitter.copy(
                 &device_handle.device,
                 &mut encoder,
-                &layers.composite_view,
+                blit_src,
                 &surface_texture
                     .texture
                     .create_view(&wgpu::TextureViewDescriptor::default()),
@@ -526,6 +669,7 @@ impl VelloRendererApp {
             device_handle.device.poll(wgpu::PollType::Poll).unwrap();
         } else {
             state.grid_layers = None;
+            state.rc_layers = None;
             let bp = brush_pass[dev_id].get_or_insert_with(|| {
                 BrushPass::new(&device_handle.device, &device_handle.queue)
             });
@@ -735,6 +879,7 @@ impl ApplicationHandler for VelloRendererApp {
                 canvas_id: None,
                 transform: Affine::IDENTITY,
                 grid_layers: None,
+                rc_layers: None,
             });
         }
     }
@@ -988,6 +1133,7 @@ pub async fn run_all_canvases_async() {
             canvas_id: Some(canvas_id),
             transform: Affine::IDENTITY,
             grid_layers: None,
+            rc_layers: None,
         });
         let _ = on_ready.call1(&JsValue::NULL, &JsValue::from(canvas_id));
         window.request_redraw();
@@ -998,6 +1144,7 @@ pub async fn run_all_canvases_async() {
         renderers,
         grid_pass: vec![],
         brush_pass: vec![],
+        rc_pass: vec![],
         states,
         scene: Scene::new(),
     };

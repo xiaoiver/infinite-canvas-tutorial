@@ -139,7 +139,7 @@ canvas.addEventListener(Event.READY, async (e) => {
     ],
     penbarVisible: true,
     taskbarVisible: true,
-    // checkboardStyle: CheckboardStyle.GRID,
+    checkboardStyle: CheckboardStyle.NONE,
     snapToPixelGridEnabled: true,
     snapToPixelGridSize: 1,
     // snapToPixelGridEnabled: false,
@@ -164,7 +164,7 @@ canvas.addEventListener(Event.READY, async (e) => {
     y: 0,
     width: 100,
     height: 100,
-    fill: 'grey',
+    fill: 'green',
     zIndex: 1,
   };
   const node2 = {
@@ -220,7 +220,8 @@ canvas.addEventListener(Event.READY, async (e) => {
 
   api.updateNodes([
     node1,
-    // node2, node3,
+    node2,
+    // node3,
     // edge1, edge2
   ]);
   // api.selectNodes([node1])

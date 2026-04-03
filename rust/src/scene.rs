@@ -21,6 +21,11 @@ use crate::text::{build_text_glyphs_with_emoji_positions, get_or_create_emoji_im
 use crate::path_utils::path_start_end_tangents;
 use crate::renderer::device_pixel_ratio;
 
+pub use crate::sdf_primitives::{
+    fill_sdf_primitive_from_js_shape, min_scene_sdf_distance, sdf_circle, sdf_ellipse,
+    sdf_fill_primitive_canvas, sdf_fill_primitive_local, sdf_rounded_box, FillSdfPrimitive,
+};
+
 pub fn affine_scale_factor(affine: Affine) -> f64 {
     let det = affine.determinant();
     det.abs().sqrt()
@@ -114,6 +119,68 @@ pub fn sort_shapes_by_parent_z_index(shapes: &[JsShape]) -> Vec<JsShape> {
     result
 }
 
+/// Same shape list + world transforms as [`add_js_shape_to_scene`] uses (sorted, UI filter).
+#[cfg(target_arch = "wasm32")]
+pub fn filtered_shapes_and_world_transforms(
+    canvas_id: u32,
+    render_opts: &CanvasRenderOptions,
+) -> Option<(Vec<JsShape>, HashMap<String, Affine>)> {
+    let shapes_all = get_user_shapes(canvas_id);
+    let mut shapes = sort_shapes_by_parent_z_index(&shapes_all);
+
+    if !render_opts.ui {
+        use std::collections::HashSet;
+
+        let mut meta: HashMap<String, (Option<String>, bool)> = HashMap::new();
+        for s in &shapes_all {
+            meta.insert(
+                s.id().to_string(),
+                (s.parent_id().map(|p| p.to_string()), s.ui()),
+            );
+        }
+
+        let mut memo: HashMap<String, bool> = HashMap::new();
+        let mut visiting: HashSet<String> = HashSet::new();
+
+        fn effective_ui(
+            id: &str,
+            meta: &HashMap<String, (Option<String>, bool)>,
+            memo: &mut HashMap<String, bool>,
+            visiting: &mut HashSet<String>,
+        ) -> bool {
+            if let Some(v) = memo.get(id) {
+                return *v;
+            }
+            if visiting.contains(id) {
+                return false;
+            }
+            visiting.insert(id.to_string());
+
+            let Some((parent_id, self_ui)) = meta.get(id) else {
+                memo.insert(id.to_string(), false);
+                visiting.remove(id);
+                return false;
+            };
+            let parent_ui = parent_id
+                .as_deref()
+                .map(|pid| effective_ui(pid, meta, memo, visiting))
+                .unwrap_or(false);
+            let result = *self_ui || parent_ui;
+            memo.insert(id.to_string(), result);
+            visiting.remove(id);
+            result
+        }
+
+        shapes = shapes
+            .into_iter()
+            .filter(|s| !effective_ui(s.id(), &meta, &mut memo, &mut visiting))
+            .collect();
+    }
+
+    let world_transforms = compute_world_transforms(&shapes);
+    Some((shapes, world_transforms))
+}
+
 #[allow(unused_variables)]
 pub fn add_shapes_to_scene(
     scene: &mut Scene,
@@ -133,61 +200,12 @@ pub fn add_shapes_to_scene(
     }
     #[cfg(target_arch = "wasm32")]
     if let Some(cid) = canvas_id {
-        let shapes_all = get_user_shapes(cid);
-        let mut shapes = sort_shapes_by_parent_z_index(&shapes_all);
-
-        if !render_opts.ui {
-            use std::collections::{HashMap, HashSet};
-
-            let mut meta: HashMap<String, (Option<String>, bool)> = HashMap::new();
-            for s in &shapes_all {
-                meta.insert(
-                    s.id().to_string(),
-                    (s.parent_id().map(|p| p.to_string()), s.ui()),
-                );
+        if let Some((shapes, world_transforms)) =
+            filtered_shapes_and_world_transforms(cid, &render_opts)
+        {
+            for shape in shapes {
+                add_js_shape_to_scene(scene, transform, shape, &world_transforms);
             }
-
-            let mut memo: HashMap<String, bool> = HashMap::new();
-            let mut visiting: HashSet<String> = HashSet::new();
-
-            fn effective_ui(
-                id: &str,
-                meta: &HashMap<String, (Option<String>, bool)>,
-                memo: &mut HashMap<String, bool>,
-                visiting: &mut HashSet<String>,
-            ) -> bool {
-                if let Some(v) = memo.get(id) {
-                    return *v;
-                }
-                if visiting.contains(id) {
-                    return false;
-                }
-                visiting.insert(id.to_string());
-
-                let Some((parent_id, self_ui)) = meta.get(id) else {
-                    memo.insert(id.to_string(), false);
-                    visiting.remove(id);
-                    return false;
-                };
-                let parent_ui = parent_id
-                    .as_deref()
-                    .map(|pid| effective_ui(pid, meta, memo, visiting))
-                    .unwrap_or(false);
-                let result = *self_ui || parent_ui;
-                memo.insert(id.to_string(), result);
-                visiting.remove(id);
-                result
-            }
-
-            shapes = shapes
-                .into_iter()
-                .filter(|s| !effective_ui(s.id(), &meta, &mut memo, &mut visiting))
-                .collect();
-        }
-
-        let world_transforms = compute_world_transforms(&shapes);
-        for shape in shapes {
-            add_js_shape_to_scene(scene, transform, shape, &world_transforms);
         }
     }
 }

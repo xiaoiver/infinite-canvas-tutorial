@@ -503,6 +503,9 @@ export class VelloPipeline extends System {
       ui: !request,
       checkboardStyle: checkboardStyleForWasm,
       ...velloCanvasGridColors(canvas),
+      backgroundColor: [0, 0, 0, 1],
+      giEnabled: true,
+      giStrength: 0.1,
     });
 
     const PADDING = 0;

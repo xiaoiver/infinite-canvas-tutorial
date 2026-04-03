@@ -129,7 +129,8 @@ fn composite_fs(i: VsOut) -> @location(0) vec4<f32> {
     let bg = textureSample(t_bg, samp, uv);
     let fg = textureSample(t_vello, samp, uv);
     let a = clamp(fg.a, 0.0, 1.0);
-    let rgb = fg.rgb * a + bg.rgb * (1.0 - a);
+    // Vello 离屏层为预乘 RGBA；须用预乘 over，勿再用 `fg.rgb * a`（会二次乘 alpha）。
+    let rgb = fg.rgb + bg.rgb * (1.0 - a);
     return vec4(rgb, 1.0);
 }
 "#;
@@ -219,8 +220,25 @@ fn mat3_mul(a: &[[f64; 3]; 3], b: &[[f64; 3]; 3]) -> [[f64; 3]; 3] {
     r
 }
 
-/// `world_from_clip` such that `world.xy = M * vec3(ndc.xy, 1)` matches `inverse(transform) * pixel`.
-fn world_from_clip_matrix(inv: Affine, width: u32, height: u32) -> [[f32; 3]; 3] {
+/// NDC → 帧缓冲 **物理像素** `(px, py)`（与 `GpuRcPrim.inv = inverse(canvas_transform * world)` 左乘一致）。
+/// 网格/背景等「画布空间」应继续用 [`world_from_clip_matrix`]（`inverse(transform) * pixel`）。
+pub fn pixel_from_ndc_matrix(width: u32, height: u32) -> [[f32; 3]; 3] {
+    let w = width.max(1) as f64;
+    let h = height.max(1) as f64;
+    let p = [
+        [w / 2.0, 0.0, w / 2.0],
+        [0.0, -h / 2.0, h / 2.0],
+        [0.0, 0.0, 1.0],
+    ];
+    [
+        [p[0][0] as f32, p[0][1] as f32, p[0][2] as f32],
+        [p[1][0] as f32, p[1][1] as f32, p[1][2] as f32],
+        [p[2][0] as f32, p[2][1] as f32, p[2][2] as f32],
+    ]
+}
+
+/// `world.xy = M * vec3(ndc.xy, 1)` 与 `inverse(transform) * pixel` 一致（画布/相机空间，供网格等）。
+pub fn world_from_clip_matrix(inv: Affine, width: u32, height: u32) -> [[f32; 3]; 3] {
     let w = width.max(1) as f64;
     let h = height.max(1) as f64;
     let c = inv.as_coeffs();
