@@ -338,7 +338,6 @@ impl VelloRendererApp {
             let layers = state.grid_layers.as_ref().expect("grid layers");
 
             let inv = effective_transform.inverse();
-            #[cfg(target_arch = "wasm32")]
             let zoom = affine_scale_factor(effective_transform).max(1e-6);
             gp.write_uniforms(
                 &device_handle.queue,
@@ -548,9 +547,9 @@ impl VelloRendererApp {
                 .expect("render to texture");
 
             let inv = effective_transform.inverse();
-            let zoom = affine_scale_factor(effective_transform).max(1e-6);
             #[cfg(target_arch = "wasm32")]
             {
+                let zoom = affine_scale_factor(effective_transform).max(1e-6);
                 let samples = extract_brush_segment_samples(canvas_id, zoom);
                 if samples.is_empty() {
                     bp.update_stamp_texture(

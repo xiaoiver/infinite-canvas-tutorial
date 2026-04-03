@@ -16,10 +16,10 @@ name = "vello-renderer"
 path = "src/main.rs"
 
 [dependencies]
-vello = "0.7"
+vello = "0.8"
 anyhow = "1.0"
 winit = "0.30"
-parley = { version = "0.7", default-features = true, features = ["std"] }
+parley = { version = "0.8", default-features = true, features = ["std"] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 pollster = "0.4"

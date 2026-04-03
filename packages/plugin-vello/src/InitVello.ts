@@ -82,7 +82,7 @@ export class InitVello extends System {
       }
 
       const { fontSize, fontFamily, fontStyle, fontVariant, anchorX, anchorY, textAlign, textBaseline, lineHeight, letterSpacing, fontKerning, wordWrap, wordWrapWidth } = style;
-      
+
       const opts = {
         id: '',
         content: text,
@@ -215,5 +215,5 @@ export class InitVello extends System {
     });
   }
 
-  private destroyCanvas(canvas: Entity) {}
+  private destroyCanvas(canvas: Entity) { }
 }
