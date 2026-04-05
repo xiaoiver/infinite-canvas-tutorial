@@ -94,10 +94,6 @@
   <source>Line</source>
   <target>线条</target>
 </trans-unit>
-<trans-unit id="s6b2fedc1891a9da6">
-  <source>Arrow</source>
-  <target>箭头</target>
-</trans-unit>
 <trans-unit id="s7d3b22d8d4ef60bb">
   <source>Rough Rectangle</source>
   <target>手绘矩形</target>
@@ -425,6 +421,22 @@
 <trans-unit id="sa4cba6ffa1d5e5e4">
   <source>Right align</source>
   <target>右对齐</target>
+</trans-unit>
+<trans-unit id="s9508c3b595b0ccc9">
+  <source>Select a color</source>
+  <target>选择颜色</target>
+</trans-unit>
+<trans-unit id="s98b1cb8fb62909ec">
+  <source>Group</source>
+  <target>成组</target>
+</trans-unit>
+<trans-unit id="s536ea6b320f9600d">
+  <source>Ungroup</source>
+  <target>取消成组</target>
+</trans-unit>
+<trans-unit id="s5959334e292647e4">
+  <source>Arrow (⇧L)</source>
+  <target>箭头 (⇧L)</target>
 </trans-unit>
 </body>
 </file>

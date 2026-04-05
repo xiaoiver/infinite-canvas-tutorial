@@ -8,6 +8,7 @@ import {
 } from '@infinite-canvas-tutorial/ecs';
 import { apiContext, appStateContext } from '../context';
 import { ExtendedAPI } from '../API';
+import { normalizeSolidCssValue } from './normalize-solid-css';
 
 @customElement('ic-spectrum-fill-action-button')
 export class FillActionButton extends LitElement {
@@ -34,12 +35,7 @@ export class FillActionButton extends LitElement {
   private handleFillChanged(e: CustomEvent) {
     const { type, value } = e.detail;
     this.api.updateNode(this.node, {
-      fill:
-        type === 'solid'
-          ? value.startsWith('#')
-            ? value
-            : `#${value}`
-          : value,
+      fill: type === 'solid' ? normalizeSolidCssValue(value) : value,
     });
     this.api.record();
   }

@@ -1642,6 +1642,9 @@ importers:
       '@spectrum-web-components/number-field':
         specifier: ^1.11.2
         version: 1.11.2
+      '@spectrum-web-components/opacity-checkerboard':
+        specifier: ^1.11.2
+        version: 1.11.2
       '@spectrum-web-components/overlay':
         specifier: ^1.11.2
         version: 1.11.2

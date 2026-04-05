@@ -94,10 +94,6 @@
   <source>Line</source>
   <target>Línea</target>
 </trans-unit>
-<trans-unit id="s6b2fedc1891a9da6">
-  <source>Arrow</source>
-  <target>Flecha</target>
-</trans-unit>
 <trans-unit id="s7d3b22d8d4ef60bb">
   <source>Rough Rectangle</source>
   <target>Rectángulo aproximado</target>
@@ -425,6 +421,22 @@
 <trans-unit id="sa4cba6ffa1d5e5e4">
   <source>Right align</source>
   <target>Alinear a la derecha</target>
+</trans-unit>
+<trans-unit id="s9508c3b595b0ccc9">
+  <source>Select a color</source>
+  <target>Seleccionar un color</target>
+</trans-unit>
+<trans-unit id="s98b1cb8fb62909ec">
+  <source>Group</source>
+  <target>Grupo</target>
+</trans-unit>
+<trans-unit id="s536ea6b320f9600d">
+  <source>Ungroup</source>
+  <target>Desagrupar</target>
+</trans-unit>
+<trans-unit id="s5959334e292647e4">
+  <source>Arrow (⇧L)</source>
+  <target>Flecha (⇧L)</target>
 </trans-unit>
 </body>
 </file>
