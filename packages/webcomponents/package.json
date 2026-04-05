@@ -80,6 +80,7 @@
     "@spectrum-web-components/menu": "^1.11.2",
     "@spectrum-web-components/number-field": "^1.11.2",
     "@spectrum-web-components/overlay": "^1.11.2",
+    "@spectrum-web-components/opacity-checkerboard": "^1.11.2",
     "@spectrum-web-components/picker": "^1.11.2",
     "@spectrum-web-components/popover": "^1.11.2",
     "@spectrum-web-components/slider": "^1.11.2",

@@ -9,6 +9,7 @@ import {
 import { apiContext, appStateContext } from '../context';
 import { ExtendedAPI } from '../API';
 import { ColorType } from './color-picker';
+import { normalizeSolidCssValue } from './normalize-solid-css';
 
 @customElement('ic-spectrum-stroke-action-button')
 export class StrokeActionButton extends LitElement {
@@ -35,12 +36,7 @@ export class StrokeActionButton extends LitElement {
   private handleStrokeChanged(e: CustomEvent) {
     const { type, value } = e.detail;
     this.api.updateNode(this.node, {
-      stroke:
-        type === 'solid'
-          ? value.startsWith('#')
-            ? value
-            : `#${value}`
-          : value,
+      stroke: type === 'solid' ? normalizeSolidCssValue(value) : value,
     });
     this.api.record();
   }

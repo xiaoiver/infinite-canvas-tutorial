@@ -43,6 +43,7 @@ export {
   computeConicGradient,
   parseEffect,
   parseColor,
+  cssColorToHex,
   serializePoints,
   deserializePoints,
   createSVGElement,

@@ -24,3 +24,13 @@ export function parseColor(color: string): d3.RGBColor {
   }
   return rgb;
 }
+
+/** 将任意 CSS 颜色（含命名色如 `grey`）规范为 Hex，供取色器等需要 `#rrggbb` 的 UI 使用。 */
+export function cssColorToHex(color: string): string {
+  if (!color || color === 'none') {
+    return '#000000';
+  }
+  const rgb = parseColor(color);
+  const c = d3.rgb(rgb.r, rgb.g, rgb.b, rgb.opacity);
+  return c.opacity < 1 ? c.formatHex8() : c.formatHex();
+}
