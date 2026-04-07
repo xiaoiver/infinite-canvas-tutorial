@@ -159,7 +159,18 @@ export class RenderHighlighter extends System {
   }
 
   createOrUpdate(entity: Entity, camera: Entity) {
-    const obb = entity.read(ComputedBounds).selectionOBB;
+    const { selectionOBB, transformOBB } = entity.read(ComputedBounds);
+    /**
+     * Polyline / Path / Line / Brush 的高亮几何是拷贝实体局部点；须与实体世界原点变换一致（transformOBB）。
+     * selectionOBB 对边类可为「包围盒 min 角」对齐，用于变换器，若用于高亮会与局部点错位。
+     */
+    const obb =
+      entity.has(Polyline) ||
+      entity.has(Path) ||
+      entity.has(Line) ||
+      entity.has(Brush)
+        ? transformOBB
+        : selectionOBB;
     const { x, y, width, height, rotation, scaleX, scaleY } = obb;
 
     let highlighter = this.#highlighters.get(entity);

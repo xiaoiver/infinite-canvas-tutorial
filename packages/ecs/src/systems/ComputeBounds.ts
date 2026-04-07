@@ -289,6 +289,13 @@ export function updateBounds(entity: Entity) {
     const renderWorldBounds = new AABB();
     renderWorldBounds.addBounds(renderBounds, matrix);
 
+    /**
+     * transformOBB：始终用 decompose 的平移 + 局部几何宽高（与实体局部坐标原点一致）。
+     * Hover 高亮等「直接拷贝 Polyline/Path 局部点」的场景必须用此 OBB。
+     *
+     * selectionOBB：变换器 / getOBB；对 Polyline/Path/Line，(x,y) 对齐局部包围盒 min 角的世界坐标
+     *（编辑顶点后点集可相对原点漂移）。@see AABB.addFrame
+     */
     const transformOBB = new OBB({
       x: translation[0],
       y: translation[1],
@@ -298,6 +305,16 @@ export function updateBounds(entity: Entity) {
       scaleX: scale[0],
       scaleY: scale[1],
     });
+
+    let selectionX = transformOBB.x;
+    let selectionY = transformOBB.y;
+    if (entity.has(Polyline) || entity.has(Path) || entity.has(Line)) {
+      const gx = geometryBounds.minX;
+      const gy = geometryBounds.minY;
+      const { m00, m01, m10, m11, m20, m21 } = matrix;
+      selectionX = m00 * gx + m10 * gy + m20;
+      selectionY = m01 * gx + m11 * gy + m21;
+    }
 
     const selectionOBB = entity.has(Group)
       ? new OBB({
@@ -310,8 +327,8 @@ export function updateBounds(entity: Entity) {
           scaleY: 1,
         })
       : new OBB({
-          x: transformOBB.x,
-          y: transformOBB.y,
+          x: selectionX,
+          y: selectionY,
           width: transformOBB.width,
           height: transformOBB.height,
           rotation: transformOBB.rotation,

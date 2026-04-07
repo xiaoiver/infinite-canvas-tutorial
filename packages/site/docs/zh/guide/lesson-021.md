@@ -2,6 +2,7 @@
 outline: deep
 description: '实现图形变换器，支持调整大小和旋转功能。学习锚点机制、坐标系转换、CSS光标自定义以及扩大拾取区域的直观图形编辑技术。'
 ---
+
 <script setup>
 import TransformerRect from '../../components/TransformerRect.vue'
 import TransformerRectRotated from '../../components/TransformerRectRotated.vue'
@@ -525,19 +526,19 @@ tf.rotatePivotPinned = true;
 ```ts
 const [px, py] = this.getRotatePivotWorld(api, selection);
 const pivotLocalX = Number.isNaN(tf.rotatePivotX)
-  ? selection.obb.width / 2
-  : tf.rotatePivotX;
+    ? selection.obb.width / 2
+    : tf.rotatePivotX;
 const pivotLocalY = Number.isNaN(tf.rotatePivotY)
-  ? selection.obb.height / 2
-  : tf.rotatePivotY;
+    ? selection.obb.height / 2
+    : tf.rotatePivotY;
 
 const newAttrs = this.alignObbOriginToFixedPivot(
-  selection.obb,
-  pivotLocalX,
-  pivotLocalY,
-  px,
-  py,
-  newRotation,
+    selection.obb,
+    pivotLocalX,
+    pivotLocalY,
+    px,
+    py,
+    newRotation,
 );
 ```
 
@@ -587,7 +588,7 @@ export class Transformable {
 }
 ```
 
-与之配套的交互是，悬停在控制点上，可以通过 <kbd>Delete</kbd> 删除
+与之配套的交互是，悬停在控制点上，可以通过 <kbd>Delete</kbd> 删除。为了兼顾通过矩形 Transformer resize 和旋转的能力，我们增加双击进入控制点编辑模式的交互。
 
 <TransformerPolyline />
 
@@ -619,6 +620,8 @@ type HandlePoint = {
     meta: PathControlHandleMeta;
 };
 ```
+
+同样，双击可以进入控制点编辑模式。
 
 <TransformerPath />
 

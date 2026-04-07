@@ -60,6 +60,8 @@ fn dist_fs(i: VsOut) -> @location(0) vec4<f32> {
 }
 ```
 
+目前我们暂时只支持 Rect Ellipse Line Polyline，其他 SDF 可以参考 [distfunctions2d]
+
 ### JFA {#jfa}
 
 Jump Flood Algorithm (JFA) 是一种并行距离场生成算法。它的核心思想是：通过指数级递减的"跳跃步长"，让信息在 `log₂(N)` 轮内传遍整个网格。
@@ -182,7 +184,6 @@ fn raymarch(origin: vec2<f32>, ray_dir: vec2<f32>, range: f32) -> vec4<f32> {
     covered_range = covered_range + dist;
   }
   return color;
-}
 ```
 
 ### mipmap
@@ -234,3 +235,4 @@ main + radiance_mipmap，把间接光加回 HDR 主色
 [课程 2 - 绘制圆]: /zh/guide/lesson-002#sdf
 [课程 9 - 绘制椭圆和矩形]: /zh/guide/lesson-009#stretch-approximately-method
 [课程 35 - 基于瓦片的渲染]: /zh/guide/lesson-035
+[distfunctions2d]: https://iquilezles.org/articles/distfunctions2d/

@@ -17,6 +17,7 @@ import {
 } from '../utils';
 import type { SerializedNode, SerializedNodeAttributes } from '../types/serialized-node';
 import { API } from '../API';
+import { refreshComputedRoughForEntity } from '../systems/ComputeRough';
 import {
   Name,
   FillSolid,
@@ -52,6 +53,7 @@ import {
   Parent,
   Locked,
   ClipMode,
+  GeometryDirty,
 } from '../components';
 import { getDescendants } from '../systems';
 import { syncEdgeBindingForEntity } from '../utils/binding/sync-edge-entity';
@@ -1052,6 +1054,15 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
   }
   if ('y2' in updates) {
     entity.write(Line).y2 = y2;
+  }
+  if (
+    entity.has(Line) &&
+    ('x1' in updates || 'y1' in updates || 'x2' in updates || 'y2' in updates)
+  ) {
+    safeAddComponent(entity, GeometryDirty);
+    if (entity.has(Rough)) {
+      refreshComputedRoughForEntity(entity);
+    }
   }
 
   if ('hitStrokeWidth' in updates) {

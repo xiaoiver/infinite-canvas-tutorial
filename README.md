@@ -451,6 +451,10 @@ If you want to use it in your own project, you can refer to:
 
 ## Lesson 37 - Global illumination with radiance cascades [🔗](https://infinitecanvas.cc/guide/lesson-037)
 
+-   Implement radiance cascades with WebGPU Compute Shader
+    -   Generate SDF with analytic geometry methods
+    -   Raymarch
+
 |               Radiance Cascades               |
 | :-------------------------------------------: |
 | ![vello](./screenshots/radiance-cascades.png) |
