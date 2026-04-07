@@ -94,6 +94,26 @@ import { velloCanvasGridColors } from './velloGridTheme';
 import type { SerializedNode } from '@infinite-canvas-tutorial/ecs';
 import { InitVello } from './InitVello';
 
+/**
+ * Rust 侧按 `z_index` 对整棵 shape 树排序；子实体若没有 {@link ZIndex}（如变换器锚点圆、部分 UI 子节点），
+ * 会落到默认 0，易被用户内容盖住。Mesh 管线用 BatchManager 的全局序，不受此影响。
+ * 此处沿 parent 链继承最近的 ZIndex，与「挂在 mask 上的装饰」语义一致。
+ */
+function resolveZIndexForVello(entity: Entity): number {
+  let e: Entity | undefined = entity;
+  for (let depth = 0; depth < 64 && e; depth++) {
+    if (e.has(ZIndex)) {
+      return e.read(ZIndex).value;
+    }
+    if (e.has(Children)) {
+      e = e.read(Children).parent;
+    } else {
+      break;
+    }
+  }
+  return 0;
+}
+
 /** 将 CSS 颜色字符串转为 [r,g,b,a]，取值 0–1。 */
 function colorToRgba(colorStr: string): [number, number, number, number] {
   const rgb = parseColor(colorStr);
@@ -473,6 +493,7 @@ export class VelloPipeline extends System {
     if (canvasId === undefined) {
       return;
     }
+    const { giEnabled, giStrength } = api.getAppState();
 
     const request = canvas.has(RasterScreenshotRequest)
       ? canvas.read(RasterScreenshotRequest)
@@ -502,6 +523,8 @@ export class VelloPipeline extends System {
       grid: shouldRenderGrid,
       ui: !request,
       checkboardStyle: checkboardStyleForWasm,
+      giEnabled,
+      giStrength,
       ...velloCanvasGridColors(canvas),
     });
 
@@ -546,10 +569,7 @@ export class VelloPipeline extends System {
       : getDescendants(camera).filter((e) => !e.has(Culled));
 
     entitiesToRender.forEach((entity) => {
-      let zIndex = 0;
-      if (entity.has(ZIndex)) {
-        zIndex = entity.read(ZIndex).value;
-      }
+      const zIndex = resolveZIndexForVello(entity);
 
       const transform = api.getTransform(entity);
       // gl-matrix mat3 为列主序：col0=[0,1,2], col1=[3,4,5], col2=[6,7,8]
@@ -1015,6 +1035,8 @@ export class VelloPipeline extends System {
           grid: false,
           ui: false,
           checkboardStyle: 0,
+          giEnabled,
+          giStrength,
           ...velloCanvasGridColors(canvas),
         });
         setExportView(

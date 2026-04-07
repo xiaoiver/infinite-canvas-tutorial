@@ -4,7 +4,6 @@ description: 'Build framework-agnostic Web UI components using Lit and Shoelace.
 head:
     - ['meta', { property: 'og:title', content: 'Lesson 7 - Web UI' }]
 ---
-
 # Lesson 7 - Web UI
 
 In this lesson, you will learn the following:

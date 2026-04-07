@@ -7,7 +7,6 @@ head:
           { property: 'og:title', content: 'Lesson 17 - Gradient and pattern' },
       ]
 ---
-
 <script setup>
 import Gradient from '../components/Gradient.vue';
 import MeshGradient from '../components/MeshGradient.vue';

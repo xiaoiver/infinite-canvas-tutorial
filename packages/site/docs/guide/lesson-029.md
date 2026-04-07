@@ -10,7 +10,6 @@ head:
           },
       ]
 ---
-
 <script setup>
 import HTML from '../components/HTML.vue'
 import Iframe from '../components/Iframe.vue'

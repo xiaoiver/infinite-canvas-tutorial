@@ -1,8 +1,6 @@
 ---
 outline: deep
-publish: false
 ---
-
 # Rect
 
 See SVG [rect].

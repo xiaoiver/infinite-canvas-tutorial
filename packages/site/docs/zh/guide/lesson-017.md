@@ -2,7 +2,6 @@
 outline: deep
 description: '使用CanvasGradient API实现渐变和图案，通过着色器创建包含噪声效果的网格渐变，构建渐变编辑器面板。支持CSS渐变语法和重复图案。'
 ---
-
 <script setup>
 import Gradient from '../../components/Gradient.vue';
 import MeshGradient from '../../components/MeshGradient.vue';

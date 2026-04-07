@@ -140,7 +140,9 @@ export class TopNavbar extends LitElement {
       themeMode = window.matchMedia('(prefers-color-scheme: dark)').matches ? ThemeMode.DARK : ThemeMode.LIGHT;
     }
 
-    this.api.setThemeMode(themeMode);
+    this.api.setAppState({
+      themeMode,
+    });
   }
 
   private handleUndo() {

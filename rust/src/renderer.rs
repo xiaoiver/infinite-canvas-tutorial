@@ -3,7 +3,6 @@ use std::sync::Arc;
 use vello::kurbo::Affine;
 #[cfg(target_arch = "wasm32")]
 use vello::kurbo::{Point, Vec2};
-use vello::peniko::color::palette;
 use vello::util::{RenderContext, RenderSurface};
 use vello::wgpu;
 use vello::{AaConfig, Renderer, RendererOptions, Scene};
@@ -15,7 +14,8 @@ use winit::window::Window;
 
 use crate::brush_pass::BrushPass;
 use crate::grid_pass::{GridLayerTextures, GridPass};
-use crate::scene::{add_shapes_to_scene, affine_scale_factor};
+use crate::rc_pass::{collect_gpu_primitives, RcPass, RcPassTextures};
+use crate::scene::{add_shapes_to_scene, affine_scale_factor, UiShapeFilter};
 use crate::state::{take_pending_camera_transform, take_pending_canvas_render_options};
 use crate::types::CanvasRenderOptions;
 #[cfg(target_arch = "wasm32")]
@@ -240,6 +240,55 @@ pub fn device_pixel_ratio() -> f64 {
     1.0
 }
 
+/// 非离屏路径下 Vello 写入的 `RenderSurface::target_view` 无 `RENDER_ATTACHMENT`；
+/// brush 与最终 blit 使用本纹理（全屏采样自 storage target 后再作为 RT）。
+struct SurfaceBrushRt {
+    width: u32,
+    height: u32,
+    #[allow(dead_code)]
+    texture: wgpu::Texture,
+    view: wgpu::TextureView,
+}
+
+fn ensure_surface_brush_rt<'a>(
+    device: &wgpu::Device,
+    slot: &'a mut Option<SurfaceBrushRt>,
+    width: u32,
+    height: u32,
+) -> &'a wgpu::TextureView {
+    let need = slot
+        .as_ref()
+        .map(|s| s.width != width || s.height != height)
+        .unwrap_or(true);
+    if need {
+        let size = wgpu::Extent3d {
+            width,
+            height,
+            depth_or_array_layers: 1,
+        };
+        let texture = device.create_texture(&wgpu::TextureDescriptor {
+            label: Some("surface_brush_rt"),
+            size,
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: wgpu::TextureFormat::Rgba8Unorm,
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT
+                | wgpu::TextureUsages::TEXTURE_BINDING
+                | wgpu::TextureUsages::COPY_SRC,
+            view_formats: &[],
+        });
+        let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
+        *slot = Some(SurfaceBrushRt {
+            width,
+            height,
+            texture,
+            view,
+        });
+    }
+    &slot.as_ref().unwrap().view
+}
+
 pub struct RenderState {
     pub surface: RenderSurface<'static>,
     pub valid_surface: bool,
@@ -248,6 +297,10 @@ pub struct RenderState {
     pub transform: Affine,
     /// Intermediate targets when using the WGPU procedural grid + Vello composite path.
     pub grid_layers: Option<GridLayerTextures>,
+    /// GI distance + RC targets when [`CanvasRenderOptions::gi_enabled`].
+    pub rc_layers: Option<RcPassTextures>,
+    /// 非离屏：可渲染的 Vello 拷贝 + brush 目标（`target_view` 本身不可作 RT）。
+    surface_brush_rt: Option<SurfaceBrushRt>,
 }
 
 pub struct VelloRendererApp {
@@ -255,6 +308,7 @@ pub struct VelloRendererApp {
     pub renderers: Vec<Option<Renderer>>,
     pub grid_pass: Vec<Option<GridPass>>,
     pub brush_pass: Vec<Option<BrushPass>>,
+    pub rc_pass: Vec<Option<RcPass>>,
     pub states: Vec<RenderState>,
     pub scene: Scene,
 }
@@ -266,6 +320,7 @@ impl VelloRendererApp {
             renderers: vec![],
             grid_pass: vec![],
             brush_pass: vec![],
+            rc_pass: vec![],
             states: vec![],
             scene: Scene::new(),
         }
@@ -286,6 +341,7 @@ impl VelloRendererApp {
             renderers,
             grid_pass,
             brush_pass,
+            rc_pass,
             states,
             scene,
         } = self;
@@ -301,10 +357,19 @@ impl VelloRendererApp {
         while brush_pass.len() <= dev_id {
             brush_pass.push(None);
         }
+        while rc_pass.len() <= dev_id {
+            rc_pass.push(None);
+        }
 
         let gpu_grid = render_opts.grid && render_opts.checkboard_style != 0;
+        let offscreen = gpu_grid || render_opts.gi_enabled;
 
         scene.reset();
+        let ui_shape_filter = if render_opts.gi_enabled {
+            UiShapeFilter::ExcludeUiMarked
+        } else {
+            UiShapeFilter::RespectCanvasOptions
+        };
         add_shapes_to_scene(
             scene,
             effective_transform,
@@ -313,9 +378,10 @@ impl VelloRendererApp {
             canvas_id,
             render_opts,
             gpu_grid,
+            ui_shape_filter,
         );
 
-        if gpu_grid && width > 0 && height > 0 {
+        if offscreen && width > 0 && height > 0 {
             let gp = grid_pass[dev_id].get_or_insert_with(|| {
                 GridPass::new(&device_handle.device)
             });
@@ -335,26 +401,76 @@ impl VelloRendererApp {
                     height,
                 ));
             }
+            if render_opts.gi_enabled {
+                let need_rc = state
+                    .rc_layers
+                    .as_ref()
+                    .map(|r| r.width != width || r.height != height)
+                    .unwrap_or(true);
+                if need_rc {
+                    state.rc_layers = Some(RcPassTextures::new(
+                        &device_handle.device,
+                        width,
+                        height,
+                    ));
+                }
+            } else {
+                state.rc_layers = None;
+            }
             let layers = state.grid_layers.as_ref().expect("grid layers");
 
             let inv = effective_transform.inverse();
             let zoom = affine_scale_factor(effective_transform).max(1e-6);
-            gp.write_uniforms(
-                &device_handle.queue,
-                inv,
-                width,
-                height,
-                zoom,
-                &render_opts,
-            );
+            if gpu_grid {
+                gp.write_uniforms(
+                    &device_handle.queue,
+                    inv,
+                    width,
+                    height,
+                    zoom,
+                    &render_opts,
+                );
 
-            let mut grid_enc = device_handle
-                .device
-                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                    label: Some("grid_background"),
-                });
-            gp.encode_grid_pass(&mut grid_enc, &layers.bg_view);
-            device_handle.queue.submit([grid_enc.finish()]);
+                let mut grid_enc = device_handle
+                    .device
+                    .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                        label: Some("grid_background"),
+                    });
+                gp.encode_grid_pass(&mut grid_enc, &layers.bg_view);
+                device_handle.queue.submit([grid_enc.finish()]);
+            } else {
+                let bg = render_opts.background_rgba;
+                let clear_c = wgpu::Color {
+                    r: bg[0] as f64,
+                    g: bg[1] as f64,
+                    b: bg[2] as f64,
+                    a: bg[3] as f64,
+                };
+                let mut clear_enc = device_handle
+                    .device
+                    .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                        label: Some("solid_background"),
+                    });
+                {
+                    let _pass = clear_enc.begin_render_pass(&wgpu::RenderPassDescriptor {
+                        label: Some("bg_clear"),
+                        color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                            view: &layers.bg_view,
+                            depth_slice: None,
+                            resolve_target: None,
+                            ops: wgpu::Operations {
+                                load: wgpu::LoadOp::Clear(clear_c),
+                                store: wgpu::StoreOp::Store,
+                            },
+                        })],
+                        depth_stencil_attachment: None,
+                        timestamp_writes: None,
+                        occlusion_query_set: None,
+                        multiview_mask: None,
+                    });
+                }
+                device_handle.queue.submit([clear_enc.finish()]);
+            }
 
             #[cfg(target_arch = "wasm32")]
             {
@@ -497,6 +613,99 @@ impl VelloRendererApp {
                 )
                 .expect("render to texture");
 
+            if render_opts.gi_enabled {
+                scene.reset();
+                add_shapes_to_scene(
+                    scene,
+                    effective_transform,
+                    width,
+                    height,
+                    canvas_id,
+                    render_opts,
+                    gpu_grid,
+                    UiShapeFilter::UiMarkedOnly,
+                );
+                renderers[dev_id]
+                    .as_mut()
+                    .expect("renderer")
+                    .render_to_texture(
+                        &device_handle.device,
+                        &device_handle.queue,
+                        scene,
+                        &layers.vello_ui_view,
+                        &vello::RenderParams {
+                            base_color: VELLO_CLEAR_TRANSPARENT,
+                            width,
+                            height,
+                            antialiasing_method: AaConfig::Msaa16,
+                        },
+                    )
+                    .expect("render ui layer to texture");
+            }
+
+            if render_opts.gi_enabled {
+                if let Some(rc_tex) = state.rc_layers.as_ref() {
+                    let rp = rc_pass[dev_id].get_or_insert_with(|| {
+                        RcPass::new(&device_handle.device)
+                    });
+                    let prims = canvas_id
+                        .map(|cid| {
+                            collect_gpu_primitives(cid, effective_transform, &render_opts)
+                        })
+                        .unwrap_or_default();
+                    rp.write_dist_data(
+                        &device_handle.queue,
+                        width,
+                        height,
+                        &prims,
+                    );
+                    let mut rc_enc = device_handle
+                        .device
+                        .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                            label: Some("rc_gi"),
+                        });
+                    rp.encode_distance_pass(
+                        &device_handle.device,
+                        &mut rc_enc,
+                        &rc_tex.dist_view,
+                        prims.len(),
+                    );
+                    rp.encode_rc_cascade_passes(
+                        &device_handle.device,
+                        &device_handle.queue,
+                        &mut rc_enc,
+                        &rc_tex.rc_a_view,
+                        &rc_tex.rc_b_view,
+                        &rc_tex.rc_b,
+                        &rc_tex.rc_first_pass_snapshot,
+                        &rc_tex.dist_view,
+                        &layers.vello_view,
+                        rc_tex.gi_width,
+                        rc_tex.gi_height,
+                        width,
+                        height,
+                        rc_tex.cascade_count,
+                    );
+                    rp.encode_rc_mipmap(
+                        &device_handle.device,
+                        &device_handle.queue,
+                        &mut rc_enc,
+                        rc_tex.gi_cascade_output_view(),
+                        &rc_tex.rc_mipmap_view,
+                        rc_tex.mipmap_width,
+                        rc_tex.mipmap_height,
+                    );
+                    rp.encode_rc_apply(
+                        &device_handle.device,
+                        &mut rc_enc,
+                        &layers.vello_view,
+                        &rc_tex.rc_mipmap_view,
+                        &rc_tex.rc_final_view,
+                    );
+                    device_handle.queue.submit([rc_enc.finish()]);
+                }
+            }
+
             let surface_texture = surface
                 .surface
                 .get_current_texture()
@@ -513,10 +722,38 @@ impl VelloRendererApp {
                 &layers.bg_view,
                 &layers.vello_view,
             );
+            let blit_src = if render_opts.gi_enabled {
+                if let (Some(rc_tex), Some(rp)) =
+                    (state.rc_layers.as_ref(), rc_pass[dev_id].as_ref())
+                {
+                    rp.write_gi_blend_uniforms(&device_handle.queue, render_opts.gi_strength);
+                    rp.encode_gi_blend(
+                        &device_handle.device,
+                        &mut encoder,
+                        &layers.composite_view,
+                        &rc_tex.rc_final_view,
+                        &layers.vello_view,
+                        &rc_tex.gi_out_view,
+                    );
+                    // 预乘 UI 层盖在 GI 结果上（与 grid composite 相同 shader：fg over bg）。
+                    gp.encode_composite_pass(
+                        &device_handle.device,
+                        &mut encoder,
+                        &layers.composite_view,
+                        &rc_tex.gi_out_view,
+                        &layers.vello_ui_view,
+                    );
+                    &layers.composite_view
+                } else {
+                    &layers.composite_view
+                }
+            } else {
+                &layers.composite_view
+            };
             surface.blitter.copy(
                 &device_handle.device,
                 &mut encoder,
-                &layers.composite_view,
+                blit_src,
                 &surface_texture
                     .texture
                     .create_view(&wgpu::TextureViewDescriptor::default()),
@@ -526,6 +763,10 @@ impl VelloRendererApp {
             device_handle.device.poll(wgpu::PollType::Poll).unwrap();
         } else {
             state.grid_layers = None;
+            state.rc_layers = None;
+            let gp = grid_pass[dev_id].get_or_insert_with(|| {
+                GridPass::new(&device_handle.device)
+            });
             let bp = brush_pass[dev_id].get_or_insert_with(|| {
                 BrushPass::new(&device_handle.device, &device_handle.queue)
             });
@@ -538,13 +779,22 @@ impl VelloRendererApp {
                     scene,
                     &surface.target_view,
                     &vello::RenderParams {
-                        base_color: palette::css::WHITE,
+                        // 与离屏路径中 `solid_background` / GridPass 一致：使用 JS 传入的主题画布底色。
+                        // 此前固定为白底，导致 `gi_enabled == false` 且不走离屏合成时主题色不生效。
+                        base_color: vello::peniko::Color::new(render_opts.background_rgba),
                         width,
                         height,
                         antialiasing_method: AaConfig::Msaa16,
                     },
                 )
                 .expect("render to texture");
+
+            let brush_rt_view = ensure_surface_brush_rt(
+                &device_handle.device,
+                &mut state.surface_brush_rt,
+                width,
+                height,
+            );
 
             let inv = effective_transform.inverse();
             #[cfg(target_arch = "wasm32")]
@@ -568,11 +818,17 @@ impl VelloRendererApp {
                         .create_command_encoder(&wgpu::CommandEncoderDescriptor {
                             label: Some("brush_overlay_empty_surface"),
                         });
-                    bp.encode_pass(&mut brush_enc, &surface.target_view);
+                    gp.encode_copy_vello_storage_to_render_target(
+                        &device_handle.device,
+                        &mut brush_enc,
+                        brush_rt_view,
+                        &surface.target_view,
+                    );
+                    bp.encode_pass(&mut brush_enc, brush_rt_view);
                     device_handle.queue.submit([brush_enc.finish()]);
                 } else {
                     let mut current_stamp_id: Option<String> = None;
-                    for sample in samples {
+                    for (seg_i, sample) in samples.iter().enumerate() {
                         if current_stamp_id.as_deref() != Some(sample.id.as_str()) {
                             let stamp_image = get_brush_stamp_image(sample.id.as_str());
                             if let Some((bytes, w, h)) = stamp_image {
@@ -612,7 +868,15 @@ impl VelloRendererApp {
                             .create_command_encoder(&wgpu::CommandEncoderDescriptor {
                                 label: Some("brush_overlay_segment_surface"),
                             });
-                        bp.encode_pass(&mut brush_enc, &surface.target_view);
+                        if seg_i == 0 {
+                            gp.encode_copy_vello_storage_to_render_target(
+                                &device_handle.device,
+                                &mut brush_enc,
+                                brush_rt_view,
+                                &surface.target_view,
+                            );
+                        }
+                        bp.encode_pass(&mut brush_enc, brush_rt_view);
                         device_handle.queue.submit([brush_enc.finish()]);
                     }
                 }
@@ -664,7 +928,13 @@ impl VelloRendererApp {
                     .create_command_encoder(&wgpu::CommandEncoderDescriptor {
                         label: Some("brush_overlay_surface"),
                     });
-                bp.encode_pass(&mut brush_enc, &surface.target_view);
+                gp.encode_copy_vello_storage_to_render_target(
+                    &device_handle.device,
+                    &mut brush_enc,
+                    brush_rt_view,
+                    &surface.target_view,
+                );
+                bp.encode_pass(&mut brush_enc, brush_rt_view);
                 device_handle.queue.submit([brush_enc.finish()]);
             }
 
@@ -680,7 +950,7 @@ impl VelloRendererApp {
             surface.blitter.copy(
                 &device_handle.device,
                 &mut encoder,
-                &surface.target_view,
+                brush_rt_view,
                 &surface_texture
                     .texture
                     .create_view(&wgpu::TextureViewDescriptor::default()),
@@ -735,6 +1005,8 @@ impl ApplicationHandler for VelloRendererApp {
                 canvas_id: None,
                 transform: Affine::IDENTITY,
                 grid_layers: None,
+                rc_layers: None,
+                surface_brush_rt: None,
             });
         }
     }
@@ -988,6 +1260,8 @@ pub async fn run_all_canvases_async() {
             canvas_id: Some(canvas_id),
             transform: Affine::IDENTITY,
             grid_layers: None,
+            rc_layers: None,
+            surface_brush_rt: None,
         });
         let _ = on_ready.call1(&JsValue::NULL, &JsValue::from(canvas_id));
         window.request_redraw();
@@ -998,6 +1272,7 @@ pub async fn run_all_canvases_async() {
         renderers,
         grid_pass: vec![],
         brush_pass: vec![],
+        rc_pass: vec![],
         states,
         scene: Scene::new(),
     };

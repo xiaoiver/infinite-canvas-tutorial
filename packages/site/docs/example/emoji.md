@@ -1,6 +1,14 @@
 ---
-publish: false
+title: "Color emoji alongside plain text"
+description: "Render emoji glyphs with the same text pipeline as Latin text."
 ---
+<!-- example-intro:en -->
+
+# Color emoji alongside plain text
+
+Emoji require **color** tables and often different fallback fonts. This sample extends the baseline text lesson ([Lesson 15](/guide/lesson-015)) with multi-codepoint sequences in one string.
+
+Verify line height and baseline when mixing emoji with math or CJK.
 
 <a href="/guide/lesson-015">Draw text</a>
 

@@ -2,7 +2,6 @@
 outline: deep
 description: '使用CRDT（无冲突复制数据类型）实现多用户协同编辑。基于Loro实现本地优先软件原则，支持分数索引和实时同步。'
 ---
-
 <script setup>
 import LoroCRDT from '../../components/LoroCRDT.vue';
 import YjsCRDT from '../../components/YjsCRDT.vue';

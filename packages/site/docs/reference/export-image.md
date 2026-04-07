@@ -1,8 +1,6 @@
 ---
 outline: deep
-publish: false
 ---
-
 See [Lesson 10 - Importing and exporting images] for more information.
 
 ```ts

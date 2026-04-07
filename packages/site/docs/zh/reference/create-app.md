@@ -1,8 +1,6 @@
 ---
 outline: deep
-publish: false
 ---
-
 首先在全局创建一个 App 并使用默认的插件集，详见：[课程 18 - 使用 ECS 重构]
 
 ```ts

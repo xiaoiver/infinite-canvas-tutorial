@@ -1,7 +1,6 @@
 ---
 outline: deep
 ---
-
 使用 SAM 实现 [AI 相关 API] 中的分割图片部分
 
 ```ts

@@ -2,7 +2,6 @@
 outline: deep
 description: '实现图形变换器，支持调整大小和旋转功能。学习锚点机制、坐标系转换、CSS光标自定义以及扩大拾取区域的直观图形编辑技术。'
 ---
-
 <script setup>
 import TransformerRect from '../../components/TransformerRect.vue'
 import TransformerRectRotated from '../../components/TransformerRectRotated.vue'

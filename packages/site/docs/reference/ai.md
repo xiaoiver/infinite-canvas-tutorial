@@ -1,8 +1,6 @@
 ---
 outline: deep
-publish: false
 ---
-
 Various AI functionalities are provided by implementing relevant interfaces. For details, see: [Lesson 28 - Integration with AI]. In practice, these functionalities should be encapsulated on the server side and provided to applications via API.
 
 ## upload

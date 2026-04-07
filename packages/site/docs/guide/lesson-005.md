@@ -4,7 +4,6 @@ description: 'Learn to draw straight lines using line geometry and screen-space 
 head:
     - ['meta', { property: 'og:title', content: 'Lesson 5 - Grid' }]
 ---
-
 # Lesson 5 - Grid
 
 In this lesson, you will learn about the following:

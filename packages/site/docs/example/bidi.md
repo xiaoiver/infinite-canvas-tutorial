@@ -1,6 +1,14 @@
 ---
-publish: false
+title: "Bidirectional text layout"
+description: "Mix LTR and RTL scripts with correct intrinsic ordering."
 ---
+<!-- example-intro:en -->
+
+# Bidirectional text layout
+
+**Bidi** layout is required for Arabic and Hebrew mixed with English. HarfBuzz-level shaping (see related examples) resolves levels; this page shows canvas-level integration.
+
+Test caret movement and selection with mixed-direction paragraphs.
 
 Use [bidi-js] to handle BiDi.
 

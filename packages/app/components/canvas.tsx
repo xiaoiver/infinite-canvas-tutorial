@@ -84,7 +84,6 @@ const Canvas = ({ id = 'default', initialData }: CanvasProps) => {
     setCanvasApi(api);
 
     api.setLocale(locale);
-    api.setThemeMode(resolvedTheme === 'dark' ? ThemeMode.DARK : ThemeMode.LIGHT);
     api.upload = async (file: File) => {
       // TODO: if already uploaded, return the url directly
       const blob = await upload(file.name, file, {
@@ -198,7 +197,9 @@ const Canvas = ({ id = 'default', initialData }: CanvasProps) => {
 
   useEffect(() => {
     if (canvasApi && resolvedTheme) {
-      canvasApi.setThemeMode(resolvedTheme === 'dark' ? ThemeMode.DARK : ThemeMode.LIGHT);
+      canvasApi.setAppState({
+        themeMode: resolvedTheme === 'dark' ? ThemeMode.DARK : ThemeMode.LIGHT,
+      });
     }
   }, [resolvedTheme]);
 

@@ -1,6 +1,16 @@
 ---
-publish: false
+title: "Shaping with Opentype.js"
+description: "Pure-JS parsing and layout for lighter deployments."
 ---
+<!-- example-intro:en -->
+
+# Shaping with Opentype.js
+
+**Opentype.js** parses fonts in JavaScript—useful when you cannot ship HarfBuzz WASM or need quick prototypes. Coverage of complex scripts differs; validate against your target languages.
+
+Pair with Canvas text metrics when tuning line breaks.
+
+## Interactive demo
 
 <script setup>
 import Opentype from '../components/Opentype.vue'

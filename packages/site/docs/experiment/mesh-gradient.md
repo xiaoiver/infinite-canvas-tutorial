@@ -1,7 +1,3 @@
----
-publish: false
----
-
 See [Mesh Gradient]
 
 <script setup>

@@ -1,7 +1,6 @@
 ---
 outline: deep
 ---
-
 <script setup>
 import Mermaid from '../../components/Mermaid.vue'
 import MermaidRough from '../../components/MermaidRough.vue'

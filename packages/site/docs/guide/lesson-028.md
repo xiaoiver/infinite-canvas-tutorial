@@ -7,7 +7,6 @@ head:
           { property: 'og:title', content: 'Lesson 28 - Integrating with AI' },
       ]
 ---
-
 <script setup>
 import WhenCanvasMeetsChat from '../components/WhenCanvasMeetsChat.vue'
 </script>

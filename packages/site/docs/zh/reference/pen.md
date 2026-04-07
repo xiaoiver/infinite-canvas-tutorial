@@ -1,7 +1,6 @@
 ---
 outline: deep
 ---
-
 <script setup>
 import TextEditor from '../../components/TextEditor.vue';
 import DrawRect from '../../components/DrawRect.vue';

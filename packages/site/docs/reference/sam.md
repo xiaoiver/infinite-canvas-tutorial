@@ -1,7 +1,6 @@
 ---
 outline: deep
 ---
-
 Use SAM to implement [AI API]
 
 ```ts

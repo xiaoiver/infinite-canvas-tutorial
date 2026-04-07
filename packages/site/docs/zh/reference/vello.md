@@ -1,7 +1,6 @@
 ---
 outline: deep
 ---
-
 <script setup>
 import Vello from '../../components/Vello.vue'
 </script>

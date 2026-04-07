@@ -1,9 +1,7 @@
 ---
 outline: deep
 description: 'Implement selection tools.'
-publish: false
 ---
-
 <script setup>
 import MultiSelection from '../components/MultiSelection.vue'
 import Lasso from '../components/Lasso.vue'

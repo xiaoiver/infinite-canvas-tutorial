@@ -1,9 +1,7 @@
 ---
 outline: deep
 description: 'Learn to generate diagrams from text on an infinite canvas: parse Mermaid flowcharts, D2, and draw.io syntax into a scene graph, using mermaid-to-excalidraw, @terrastruct/d2, and mxgraph for hand-drawn style diagrams.'
-publish: false
 ---
-
 <script setup>
 import Mermaid from '../components/Mermaid.vue'
 import MermaidRough from '../components/MermaidRough.vue'

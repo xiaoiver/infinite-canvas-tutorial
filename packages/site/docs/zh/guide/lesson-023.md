@@ -4,7 +4,6 @@ description: '实现思维导图功能和树布局算法。深入研究从d3-tre
 head:
     - ['meta', { property: 'og:title', content: '课程 23 - 思维导图' }]
 ---
-
 <script setup>
 import Tree from '../../components/Tree.vue';
 import FlexTree from '../../components/FlexTree.vue';

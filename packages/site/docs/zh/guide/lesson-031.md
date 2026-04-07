@@ -1,9 +1,7 @@
 ---
 outline: deep
 description: ''
-publish: false
 ---
-
 <script setup>
 import Binding from '../../components/Binding.vue'
 import BindingWithEllipse from '../../components/BindingWithEllipse.vue'

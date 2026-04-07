@@ -1,8 +1,6 @@
 ---
 outline: deep
-publish: false
 ---
-
 # 图形基类
 
 Shape 是所有图形的基类，提供了以下通用属性和方法。

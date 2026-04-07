@@ -491,6 +491,10 @@ pub struct CanvasRenderOptions {
     /// sRGB 通道 0–1，与 TS `parseColor` + `/255` 一致。
     pub background_rgba: [f32; 4],
     pub grid_rgba: [f32; 4],
+    /// Radiance-cascade style screen-space GI (WGPU). Requires offscreen Vello + shapes on wasm.
+    pub gi_enabled: bool,
+    /// GI 强度；合成见 `gi_blend`（对 `rc_final - vello` 间接光增量做 LDR 加权 + 增益）。
+    pub gi_strength: f32,
 }
 
 impl Default for CanvasRenderOptions {
@@ -501,6 +505,8 @@ impl Default for CanvasRenderOptions {
             checkboard_style: 1,
             background_rgba: DEFAULT_LIGHT_CANVAS_BACKGROUND_RGBA,
             grid_rgba: DEFAULT_LIGHT_CANVAS_GRID_RGBA,
+            gi_enabled: false,
+            gi_strength: 1.0,
         }
     }
 }
@@ -1466,4 +1472,13 @@ pub struct CanvasRenderOptionsInput {
     pub background_color: [f32; 4],
     #[serde(default = "default_canvas_grid_rgba")]
     pub grid_color: [f32; 4],
+    #[serde(default)]
+    pub gi_enabled: bool,
+    #[serde(default = "default_gi_strength")]
+    pub gi_strength: f32,
+}
+
+#[cfg(target_arch = "wasm32")]
+fn default_gi_strength() -> f32 {
+    1.0
 }

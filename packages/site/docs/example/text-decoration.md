@@ -1,6 +1,16 @@
 ---
-publish: false
+title: "Underline and text decorations"
+description: "Apply underlines, skips, and thickness consistent with typographic norms."
 ---
+<!-- example-intro:en -->
+
+# Underline and text decorations
+
+Decorations participate in **selection**, **accessibility**, and export to PDF/SVG. This sample isolates decoration parameters for experimentation.
+
+Match platform conventions when mirroring native text fields.
+
+## Interactive demo
 
 <script setup>
 import TextDecoration from '../components/TextDecoration.vue'

@@ -10,7 +10,6 @@ head:
           },
       ]
 ---
-
 <script setup>
 import ImageProcessing from '../components/ImageProcessing.vue'
 import GlobalEffects from '../components/GlobalEffects.vue'

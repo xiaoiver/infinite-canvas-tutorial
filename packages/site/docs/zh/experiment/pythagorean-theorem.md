@@ -1,7 +1,3 @@
----
-publish: false
----
-
 <script setup>
 import PythagoreanTheorem from '../../components/PythagoreanTheorem.vue'
 </script>

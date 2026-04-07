@@ -1,8 +1,6 @@
 ---
 outline: deep
-publish: false
 ---
-
 # Base Shape Class
 
 Shape is the base class for all shapes, providing the following common properties and methods.

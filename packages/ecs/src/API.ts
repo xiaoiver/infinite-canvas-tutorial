@@ -86,6 +86,7 @@ import {
   Stroke,
   Text,
   Theme,
+  ThemeMode,
   ToBeDeleted,
   Transform,
   UI,
@@ -228,6 +229,16 @@ export class API {
     ) {
       safeAddComponent(this.#canvas, Grid, {
         checkboardStyle: appState.checkboardStyle as CheckboardStyle,
+      });
+    }
+
+    if (
+      Object.prototype.hasOwnProperty.call(appState, 'themeMode') &&
+      appState.themeMode !== undefined &&
+      appState.themeMode !== oldAppState.themeMode
+    ) {
+      safeAddComponent(this.#canvas, Theme, {
+        mode: appState.themeMode as ThemeMode,
       });
     }
 

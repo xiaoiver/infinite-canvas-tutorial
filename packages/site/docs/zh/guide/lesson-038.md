@@ -1,9 +1,7 @@
 ---
 outline: deep
 description: ''
-publish: false
 ---
-
 # 课程 36 - 3D Gaussian
 
 ## 扩展阅读 {#extended-reading}

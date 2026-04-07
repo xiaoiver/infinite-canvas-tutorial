@@ -1122,6 +1122,8 @@ pub fn js_set_canvas_render_options(canvas_id: u32, opts: JsValue) {
         checkboard_style: o.checkboard_style.min(2),
         background_rgba: o.background_color,
         grid_rgba: o.grid_color,
+        gi_enabled: o.gi_enabled,
+        gi_strength: o.gi_strength.clamp(0.0, 12.0),
     };
     CANVAS_RENDER_OPTIONS_PENDING.with(|c| {
         c.borrow_mut().insert(canvas_id, render_opts);

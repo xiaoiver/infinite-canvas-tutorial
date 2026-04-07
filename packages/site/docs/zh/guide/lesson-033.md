@@ -1,9 +1,7 @@
 ---
 outline: deep
 description: '集成Flex布局系统，支持Yoga排版引擎。探索WebGL环境下的布局引擎构建，实现响应式界面设计。'
-publish: false
 ---
-
 <script setup>
 import YogaGap from '../../components/YogaGap.vue'
 import YogaFlexBasisGrowShrink from '../../components/YogaFlexBasisGrowShrink.vue'

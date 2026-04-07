@@ -35,7 +35,6 @@ features:
     - title: 可交互
       details: 基于 <a href="https://genji-md.dev">genji</a> 实现的可交互代码块
 ---
-
 这份教程包含基于 WebGL / WebGPU 的基础 2D 图形渲染实现：
 
 -   [课程 2 - 绘制圆]：学习 WebGL 基础，使用 SDF（有向距离场）技术绘制抗锯齿圆形，理解片元着色器中的坐标变换和颜色混合

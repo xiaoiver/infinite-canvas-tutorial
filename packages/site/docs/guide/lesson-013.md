@@ -10,7 +10,6 @@ head:
           },
       ]
 ---
-
 <script setup>
 import Holes from '../components/Holes.vue';
 import FillRule from '../components/FillRule.vue';

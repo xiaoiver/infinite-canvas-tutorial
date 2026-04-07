@@ -35,7 +35,6 @@ features:
     - title: Interactive
       details: Executable code blocks via <a href="https://genji-md.dev">genji</a>
 ---
-
 This tutorial covers a basic 2D graphics rendering implementation based on WebGL / WebGPU:
 
 -   [Lesson 2 - Draw a circle]: Learn WebGL basics, use SDF (Signed Distance Field) to render anti-aliased circles, understand coordinate transformation and color blending in fragment shaders

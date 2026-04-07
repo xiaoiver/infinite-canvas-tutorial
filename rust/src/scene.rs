@@ -1,5 +1,5 @@
 #[cfg(target_arch = "wasm32")]
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use vello::kurbo::{Affine, BezPath, Ellipse, Line, PathEl, Point, Rect, RoundedRect, Shape, Stroke, Vec2};
 use vello::peniko::{Blob, Color, ColorStop, Fill, Gradient, ImageAlphaType, ImageBrush, ImageData, ImageFormat};
@@ -20,6 +20,11 @@ use crate::state::{get_user_shapes, FONT_BYTES, GLYPH_CACHE, IMAGE_BRUSH_CACHE};
 use crate::text::{build_text_glyphs_with_emoji_positions, get_or_create_emoji_image};
 use crate::path_utils::path_start_end_tangents;
 use crate::renderer::device_pixel_ratio;
+
+pub use crate::sdf_primitives::{
+    fill_sdf_primitive_from_js_shape, min_scene_sdf_distance, sdf_circle, sdf_ellipse,
+    sdf_fill_primitive_canvas, sdf_fill_primitive_local, sdf_rounded_box, FillSdfPrimitive,
+};
 
 pub fn affine_scale_factor(affine: Affine) -> f64 {
     let det = affine.determinant();
@@ -114,6 +119,100 @@ pub fn sort_shapes_by_parent_z_index(shapes: &[JsShape]) -> Vec<JsShape> {
     result
 }
 
+/// 按 ECS `UI` 组件（及父链）筛选参与 Vello / GI 的图形。
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum UiShapeFilter {
+    /// 与原先画布选项一致：`render_opts.ui == false`（如导出截图）时排除带 UI 标记的实体。
+    RespectCanvasOptions,
+    /// GI / SDF 与「场景」基底：排除带 UI 标记的图形（单独图层盖在最上）。
+    ExcludeUiMarked,
+    /// 仅带 UI 标记的图形（预乘 RGBA 盖在 GI 合成结果之上）。
+    UiMarkedOnly,
+}
+
+#[cfg(target_arch = "wasm32")]
+fn build_ui_meta(shapes_all: &[JsShape]) -> HashMap<String, (Option<String>, bool)> {
+    let mut meta: HashMap<String, (Option<String>, bool)> = HashMap::new();
+    for s in shapes_all {
+        meta.insert(
+            s.id().to_string(),
+            (s.parent_id().map(|p| p.to_string()), s.ui()),
+        );
+    }
+    meta
+}
+
+#[cfg(target_arch = "wasm32")]
+fn effective_ui_marked(
+    id: &str,
+    meta: &HashMap<String, (Option<String>, bool)>,
+    memo: &mut HashMap<String, bool>,
+    visiting: &mut HashSet<String>,
+) -> bool {
+    if let Some(v) = memo.get(id) {
+        return *v;
+    }
+    if visiting.contains(id) {
+        return false;
+    }
+    visiting.insert(id.to_string());
+
+    let Some((parent_id, self_ui)) = meta.get(id) else {
+        memo.insert(id.to_string(), false);
+        visiting.remove(id);
+        return false;
+    };
+    let parent_ui = parent_id
+        .as_deref()
+        .map(|pid| effective_ui_marked(pid, meta, memo, visiting))
+        .unwrap_or(false);
+    let result = *self_ui || parent_ui;
+    memo.insert(id.to_string(), result);
+    visiting.remove(id);
+    result
+}
+
+/// 与 [`add_js_shape_to_scene`] 相同排序；`world_transforms` 始终基于**完整**图列表计算，保证父级变换正确。
+#[cfg(target_arch = "wasm32")]
+pub fn filtered_shapes_and_world_transforms(
+    canvas_id: u32,
+    render_opts: &CanvasRenderOptions,
+    filter: UiShapeFilter,
+) -> Option<(Vec<JsShape>, HashMap<String, Affine>)> {
+    let shapes_all = get_user_shapes(canvas_id);
+    let meta = build_ui_meta(&shapes_all);
+    let sorted_full = sort_shapes_by_parent_z_index(&shapes_all);
+    let world_transforms = compute_world_transforms(&sorted_full);
+
+    let mut memo: HashMap<String, bool> = HashMap::new();
+    let mut visiting: HashSet<String> = HashSet::new();
+
+    let shapes: Vec<JsShape> = match filter {
+        UiShapeFilter::RespectCanvasOptions => {
+            if !render_opts.ui {
+                sorted_full
+                    .into_iter()
+                    .filter(|s| {
+                        !effective_ui_marked(s.id(), &meta, &mut memo, &mut visiting)
+                    })
+                    .collect()
+            } else {
+                sorted_full
+            }
+        }
+        UiShapeFilter::ExcludeUiMarked => sorted_full
+            .into_iter()
+            .filter(|s| !effective_ui_marked(s.id(), &meta, &mut memo, &mut visiting))
+            .collect(),
+        UiShapeFilter::UiMarkedOnly => sorted_full
+            .into_iter()
+            .filter(|s| effective_ui_marked(s.id(), &meta, &mut memo, &mut visiting))
+            .collect(),
+    };
+
+    Some((shapes, world_transforms))
+}
+
 #[allow(unused_variables)]
 pub fn add_shapes_to_scene(
     scene: &mut Scene,
@@ -123,71 +222,24 @@ pub fn add_shapes_to_scene(
     canvas_id: Option<u32>,
     render_opts: CanvasRenderOptions,
     gpu_procedural_grid: bool,
+    ui_shape_filter: UiShapeFilter,
 ) {
-    // Vello line grid only if GPU procedural path is off but a line/dot style is still requested.
+    // Vello 折线网格只画在场景基底上；UI 单独图层不再画一遍网格。
     if render_opts.grid
         && !gpu_procedural_grid
         && render_opts.checkboard_style > 0
+        && ui_shape_filter != UiShapeFilter::UiMarkedOnly
     {
         add_grid_to_scene(scene, transform, viewport_width, viewport_height);
     }
     #[cfg(target_arch = "wasm32")]
     if let Some(cid) = canvas_id {
-        let shapes_all = get_user_shapes(cid);
-        let mut shapes = sort_shapes_by_parent_z_index(&shapes_all);
-
-        if !render_opts.ui {
-            use std::collections::{HashMap, HashSet};
-
-            let mut meta: HashMap<String, (Option<String>, bool)> = HashMap::new();
-            for s in &shapes_all {
-                meta.insert(
-                    s.id().to_string(),
-                    (s.parent_id().map(|p| p.to_string()), s.ui()),
-                );
+        if let Some((shapes, world_transforms)) =
+            filtered_shapes_and_world_transforms(cid, &render_opts, ui_shape_filter)
+        {
+            for shape in shapes {
+                add_js_shape_to_scene(scene, transform, shape, &world_transforms);
             }
-
-            let mut memo: HashMap<String, bool> = HashMap::new();
-            let mut visiting: HashSet<String> = HashSet::new();
-
-            fn effective_ui(
-                id: &str,
-                meta: &HashMap<String, (Option<String>, bool)>,
-                memo: &mut HashMap<String, bool>,
-                visiting: &mut HashSet<String>,
-            ) -> bool {
-                if let Some(v) = memo.get(id) {
-                    return *v;
-                }
-                if visiting.contains(id) {
-                    return false;
-                }
-                visiting.insert(id.to_string());
-
-                let Some((parent_id, self_ui)) = meta.get(id) else {
-                    memo.insert(id.to_string(), false);
-                    visiting.remove(id);
-                    return false;
-                };
-                let parent_ui = parent_id
-                    .as_deref()
-                    .map(|pid| effective_ui(pid, meta, memo, visiting))
-                    .unwrap_or(false);
-                let result = *self_ui || parent_ui;
-                memo.insert(id.to_string(), result);
-                visiting.remove(id);
-                result
-            }
-
-            shapes = shapes
-                .into_iter()
-                .filter(|s| !effective_ui(s.id(), &meta, &mut memo, &mut visiting))
-                .collect();
-        }
-
-        let world_transforms = compute_world_transforms(&shapes);
-        for shape in shapes {
-            add_js_shape_to_scene(scene, transform, shape, &world_transforms);
         }
     }
 }

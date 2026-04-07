@@ -1,6 +1,16 @@
 ---
-publish: false
+title: "填充规则：even-odd 与 non-zero"
+description: "同一几何在不同填充规则下会得到不同填充区域。"
 ---
+<!-- example-intro:zh -->
+
+# 填充规则：even-odd 与 non-zero
+
+**填充规则** 决定自相交或嵌套路径的「内部」区域，交互设计工具通常提供显式切换，对 SVG 导入的可预期性很重要。
+
+可与带孔复合路径、导入器问题对照排查异常填充。
+
+## 交互示例
 
 <script setup>
 import FillRule from '../../components/FillRule.vue'

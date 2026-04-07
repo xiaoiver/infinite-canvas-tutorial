@@ -4,7 +4,6 @@ description: 'Explore VectorNetwork as an advanced alternative to SVG paths. Lea
 head:
     - ['meta', { property: 'og:title', content: 'Lesson 22 - VectorNetwork' }]
 ---
-
 # Lesson 22 - VectorNetwork
 
 In this lesson, you will learn about:

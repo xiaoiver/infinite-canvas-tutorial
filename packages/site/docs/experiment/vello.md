@@ -2,7 +2,6 @@
 layout: 'doc'
 aside: false
 ---
-
 <script setup>
 import Vello from '../components/Vello.vue'
 </script>

@@ -1,6 +1,16 @@
 ---
-publish: false
+title: "Even-odd vs non-zero fill rules"
+description: "See how the same path geometry fills differently under each rule."
 ---
+<!-- example-intro:en -->
+
+# Even-odd vs non-zero fill rules
+
+The **fill rule** decides which regions are inside a self-intersecting or nested path. Interactive design tools expose this as a first-class toggle—essential for predictable SVG import.
+
+Pair this page with compound paths and holes when debugging unexpected fills.
+
+## Interactive demo
 
 <script setup>
 import FillRule from '../components/FillRule.vue'

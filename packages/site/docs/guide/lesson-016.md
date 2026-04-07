@@ -10,7 +10,6 @@ head:
           },
       ]
 ---
-
 <script setup>
 import WebFontLoader from '../components/WebFontLoader.vue';
 import Opentype from '../components/Opentype.vue';
