@@ -2,6 +2,7 @@
 outline: deep
 description: '实现动画系统，包括声明式动画API设计、Web Animations API兼容性、生成器函数动画流程以及SVG路径动画技术。'
 ---
+
 # 课程 36 - Animation
 
 在这节课中你将学习到以下内容：
@@ -18,19 +19,29 @@ description: '实现动画系统，包括声明式动画API设计、Web Animatio
 
 ### Web Animations API {#waapi}
 
-Motion 是完全兼容 WAAPI 的，详见：[Improvements to Web Animations API]
+Motion 是完全兼容 WAAPI 的，详见：[Improvements to Web Animations API]。它直接调用浏览器原生的 `element.animate()`，享受 GPU 加速、独立渲染线程、不阻塞主线程的优势。同时用 JavaScript 轻量实现 WAAPI 缺失的能力：
+
+-   Spring 物理动画（WAAPI 只支持贝塞尔曲线）
+-   独立 transform 属性（单独动画 x, y, scale 而非组合 transform）
+-   Timeline 序列控制 `sequence()`, `stagger()`
 
 ```ts
-const values = {
-    x: 100,
-    color: '#f00',
-};
-animate(values, { x: 200, color: '#00f' });
+import { animate, stagger } from 'motion';
+
+// 返回动画控制器，可暂停、播放、反向
+const controls = animate(
+    '.box',
+    { x: [0, 100], opacity: [0, 1] }, // keyframes
+    { duration: 0.5, delay: stagger(0.1), easing: 'spring(1, 100, 10, 0)' },
+);
+
+// 可序列化的控制指令
+controls.pause();
+controls.play();
+controls.reverse();
 ```
 
-### Animation flow with generator functions
-
-<https://motioncanvas.io/docs/flow>
+其中 Keyframes 和 Options 是纯对象，可直接 JSON 化。但运行时状态：`animate()` 返回的 Animation 对象包含与 DOM 的绑定、当前播放时间、velocity 等运行时状态，无法序列化。
 
 ## SVG 动画
 

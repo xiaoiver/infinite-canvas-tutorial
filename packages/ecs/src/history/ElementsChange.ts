@@ -1056,12 +1056,13 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
     entity.write(Line).y2 = y2;
   }
   if (
-    entity.has(Line) &&
     ('x1' in updates || 'y1' in updates || 'x2' in updates || 'y2' in updates)
   ) {
-    safeAddComponent(entity, GeometryDirty);
-    if (entity.has(Rough)) {
-      refreshComputedRoughForEntity(entity);
+    if (entity.has(Line)) {
+      safeAddComponent(entity, GeometryDirty);
+      if (entity.has(Rough)) {
+        refreshComputedRoughForEntity(entity);
+      }
     }
   }
 
