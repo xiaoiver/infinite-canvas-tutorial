@@ -10,7 +10,6 @@ head:
           },
       ]
 ---
-
 # Lesson 11 - Test and server-side rendering
 
 Currently our canvas functionality is getting progressively more complex and it's time to introduce tests to improve the quality of the project. In this lesson you will learn the following:

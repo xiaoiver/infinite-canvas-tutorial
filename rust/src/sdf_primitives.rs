@@ -1,4 +1,5 @@
-//! Analytic signed distance helpers for filled [`crate::types::JsShape::Rect`] / [`crate::types::JsShape::Ellipse`],
+//! Analytic signed distance helpers for filled [`crate::types::JsShape::Rect`] / [`crate::types::JsShape::Ellipse`]
+//! and stroked [`crate::types::JsShape::Line`] / [`crate::types::JsShape::Polyline`] (segment union + half-width),
 //! aligned with `packages/core/src/shaders/sdf.ts` (`sdf_circle` / `sdf_ellipse` / `sdf_rounded_box`).
 //! Inside the shape is **negative**, outside **positive**.
 
@@ -25,6 +26,19 @@ pub enum FillSdfPrimitive {
         cy: f64,
         rx: f64,
         ry: f64,
+    },
+    /// 线段 `(x0,y0)-(x1,y1)` 的笔画区域：`sdSegment` 无符号距离 − `half_width`（内负外正）。
+    Segment {
+        x0: f64,
+        y0: f64,
+        x1: f64,
+        y1: f64,
+        half_width: f64,
+    },
+    /// 折线笔画：各相邻顶点对的线段 SDF 取 `min`（与多段 `Line` 并集一致）。
+    PolylineStroke {
+        points: Vec<[f64; 2]>,
+        half_width: f64,
     },
 }
 
@@ -69,6 +83,21 @@ pub fn sdf_rounded_box(p: Point, half: Point, r: f64) -> f64 {
     q.x.max(q.y).min(0.0) + point_len(Point::new(q.x.max(0.0), q.y.max(0.0))) - r
 }
 
+/// 无符号距离到线段 `a`–`b`（与 IQ `sdSegment` 一致）。
+#[inline]
+pub fn sdf_segment_unsigned(p: Point, a: Point, b: Point) -> f64 {
+    let pa = Point::new(p.x - a.x, p.y - a.y);
+    let ba = Point::new(b.x - a.x, b.y - a.y);
+    let ba_len_sq = ba.x * ba.x + ba.y * ba.y;
+    if ba_len_sq < EPS {
+        return f64::hypot(p.x - a.x, p.y - a.y);
+    }
+    let h = ((pa.x * ba.x + pa.y * ba.y) / ba_len_sq).clamp(0.0, 1.0);
+    let hx = pa.x - ba.x * h;
+    let hy = pa.y - ba.y * h;
+    (hx * hx + hy * hy).sqrt()
+}
+
 /// Distance in shape **local** space (same coordinates as `JsShape` fields).
 pub fn sdf_fill_primitive_local(p: Point, prim: &FillSdfPrimitive) -> f64 {
     match prim {
@@ -88,6 +117,30 @@ pub fn sdf_fill_primitive_local(p: Point, prim: &FillSdfPrimitive) -> f64 {
         }
         FillSdfPrimitive::Ellipse { cx, cy, rx, ry } => {
             sdf_ellipse(Point::new(p.x - cx, p.y - cy), *rx, *ry)
+        }
+        FillSdfPrimitive::Segment {
+            x0,
+            y0,
+            x1,
+            y1,
+            half_width,
+        } => {
+            let a = Point::new(*x0, *y0);
+            let b = Point::new(*x1, *y1);
+            sdf_segment_unsigned(p, a, b) - half_width
+        }
+        FillSdfPrimitive::PolylineStroke { points, half_width } => {
+            if points.len() < 2 {
+                return f64::MAX;
+            }
+            let mut m = f64::MAX;
+            for w in points.windows(2) {
+                let a = Point::new(w[0][0], w[0][1]);
+                let b = Point::new(w[1][0], w[1][1]);
+                let d = sdf_segment_unsigned(p, a, b) - half_width;
+                m = m.min(d);
+            }
+            m
         }
     }
 }
@@ -211,11 +264,68 @@ pub fn fill_sdf_primitive_from_js_shape(
                 ry,
             })
         }
+        JsShape::Line {
+            x1,
+            y1,
+            x2,
+            y2,
+            stroke,
+            size_attenuation,
+            stroke_attenuation,
+            ..
+        } => {
+            let (x0, y0, x1e, y1e) = if *size_attenuation {
+                (x1 / scale, y1 / scale, x2 / scale, y2 / scale)
+            } else {
+                (*x1, *y1, *x2, *y2)
+            };
+            let sw = if *stroke_attenuation {
+                stroke.width / scale
+            } else {
+                stroke.width
+            };
+            // 笔画有厚度；宽度过小时仍给最小半宽，避免 GI 仅落在零测集上。
+            let half_w = (sw * 0.5).max(0.25);
+            Some(FillSdfPrimitive::Segment {
+                x0,
+                y0,
+                x1: x1e,
+                y1: y1e,
+                half_width: half_w,
+            })
+        }
+        JsShape::Polyline {
+            points,
+            stroke,
+            size_attenuation,
+            stroke_attenuation,
+            ..
+        } => {
+            let stroke = stroke.as_ref()?;
+            if points.len() < 2 {
+                return None;
+            }
+            let pts: Vec<[f64; 2]> = if *size_attenuation {
+                points.iter().map(|[x, y]| [x / scale, y / scale]).collect()
+            } else {
+                points.clone()
+            };
+            let sw = if *stroke_attenuation {
+                stroke.width / scale
+            } else {
+                stroke.width
+            };
+            let half_w = (sw * 0.5).max(0.25);
+            Some(FillSdfPrimitive::PolylineStroke {
+                points: pts,
+                half_width: half_w,
+            })
+        }
         _ => None,
     }
 }
 
-/// Union of filled primitives: `min` of per-shape distances. Skips non-Rect/Ellipse shapes.
+/// Union of filled primitives: `min` of per-shape distances. Skips shapes without SDF (`fill_sdf_primitive_from_js_shape` none).
 pub fn min_scene_sdf_distance(
     p_canvas: Point,
     canvas_transform: Affine,
@@ -229,12 +339,23 @@ pub fn min_scene_sdf_distance(
             continue;
         };
         let id = match shape {
-            JsShape::Rect { id, .. } | JsShape::Ellipse { id, .. } => id.as_str(),
+            JsShape::Rect { id, .. }
+            | JsShape::Ellipse { id, .. }
+            | JsShape::Line { id, .. }
+            | JsShape::Polyline { id, .. } => id.as_str(),
             _ => continue,
         };
         let origin = match shape {
             JsShape::Rect { x, y, .. } => Point::new(*x, *y),
             JsShape::Ellipse { cx, cy, .. } => Point::new(*cx, *cy),
+            JsShape::Line { x1, y1, .. } => Point::new(*x1, *y1),
+            JsShape::Polyline { points, .. } => {
+                if points.is_empty() {
+                    Point::ORIGIN
+                } else {
+                    Point::new(points[0][0], points[0][1])
+                }
+            }
             _ => Point::ORIGIN,
         };
         let world = world_transforms
@@ -250,6 +371,21 @@ pub fn min_scene_sdf_distance(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::types::{JsShape, StrokeAlignment, StrokeParams};
+
+    fn stroke_w4() -> StrokeParams {
+        StrokeParams {
+            width: 4.0,
+            color: [0.0, 0.0, 0.0, 1.0],
+            linecap: "round".into(),
+            linejoin: "round".into(),
+            miter_limit: 4.0,
+            stroke_dasharray: None,
+            stroke_dashoffset: 0.0,
+            alignment: StrokeAlignment::Center,
+            blur: 0.0,
+        }
+    }
 
     #[test]
     fn circle_center_inside() {
@@ -304,6 +440,59 @@ mod tests {
         assert!(sdf_fill_primitive_local(c, &prim) < 0.0);
         let d = sdf_fill_primitive_local(Point::new(500.0, 40.0), &prim);
         assert!(d > 100.0);
+    }
+
+    #[test]
+    fn segment_stroke_signed_distance() {
+        let prim = FillSdfPrimitive::Segment {
+            x0: 0.0,
+            y0: 0.0,
+            x1: 10.0,
+            y1: 0.0,
+            half_width: 2.0,
+        };
+        // 中心线上方、笔画内
+        assert!(sdf_fill_primitive_local(Point::new(5.0, 0.0), &prim) < 0.0);
+        // 远离线段
+        assert!(sdf_fill_primitive_local(Point::new(5.0, 5.0), &prim) > 0.0);
+    }
+
+    #[test]
+    fn polyline_stroke_is_min_of_segments() {
+        let prim = FillSdfPrimitive::PolylineStroke {
+            points: vec![[0.0, 0.0], [10.0, 0.0], [10.0, 10.0]],
+            half_width: 2.0,
+        };
+        assert!(sdf_fill_primitive_local(Point::new(5.0, 0.0), &prim) < 0.0);
+        assert!(sdf_fill_primitive_local(Point::new(10.0, 5.0), &prim) < 0.0);
+        assert!(sdf_fill_primitive_local(Point::new(10.0, 0.0), &prim) < 0.0);
+        assert!(sdf_fill_primitive_local(Point::new(50.0, 50.0), &prim) > 0.0);
+    }
+
+    #[test]
+    fn min_scene_polyline_matches_union() {
+        let pl = JsShape::Polyline {
+            id: "p".into(),
+            parent_id: None,
+            z_index: 0.0,
+            ui: false,
+            points: vec![[0.0, 0.0], [10.0, 0.0], [10.0, 10.0]],
+            stroke: Some(stroke_w4()),
+            opacity: 1.0,
+            fill_opacity: 1.0,
+            stroke_opacity: 1.0,
+            local_transform: None,
+            size_attenuation: false,
+            stroke_attenuation: false,
+            marker_start: String::new(),
+            marker_end: String::new(),
+            marker_factor: 1.0,
+        };
+        let shapes = vec![pl];
+        let mut map = HashMap::new();
+        map.insert("p".into(), Affine::IDENTITY);
+        let m = min_scene_sdf_distance(Point::new(5.0, 0.0), Affine::IDENTITY, 1.0, &shapes, &map);
+        assert!(m.is_some() && m.unwrap() < 0.0);
     }
 
     #[test]

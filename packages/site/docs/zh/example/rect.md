@@ -1,8 +1,14 @@
 ---
-publish: false
+title: "矩形几何与实时参数"
+description: "交互调节位置、尺寸、圆角与填充，理解圆角矩形各属性。"
 ---
+<!-- example-intro:zh -->
 
-参考 <a href="/zh/guide/lesson-009">渲染矩形和椭圆</a>
+# 矩形几何与实时参数
+
+矩形（含圆角）是界面与图示中最常用的图元之一。下方滑块对应 [第 9 课 — 绘制椭圆与矩形](/zh/guide/lesson-009) 中的位置、尺寸、`cornerRadius` 与填充等概念。
+
+内嵌 **genji** 代码块可在不刷新页面的情况下每帧更新参数，适合教学与快速试验。
 
 ```js eval code=false
 x = Inputs.range([50, 300], { label: 'x', value: 100, step: 1 });

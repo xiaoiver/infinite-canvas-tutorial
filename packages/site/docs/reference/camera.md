@@ -1,8 +1,6 @@
 ---
 outline: deep
-publish: false
 ---
-
 For camera-related content, refer to: [Lesson 4 - Camera]. After [Getting the API], you can call the related methods:
 
 ```ts

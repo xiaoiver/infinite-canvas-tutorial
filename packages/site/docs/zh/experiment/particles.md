@@ -1,7 +1,3 @@
----
-publish: false
----
-
 我们使用 WebGPU WGSL compute shader 和 @antv/g-device-api。更多信息：<https://observablehq.com/@antv/compute-toys>。所以必须使用 `ic-canvas` 并设置 `renderer="webgpu"`。
 
 ```html

@@ -1,8 +1,6 @@
 ---
 outline: deep
-publish: false
 ---
-
 # Text
 
 See SVG [text], supporting features like Bitmap Font, MSDF, Emoji, and bidirectional text.

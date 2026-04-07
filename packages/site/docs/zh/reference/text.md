@@ -1,8 +1,6 @@
 ---
 outline: deep
-publish: false
 ---
-
 # Text
 
 参考 SVG [text]，支持 Bitmap Font、MSDF、Emoji、双向文本等特性。

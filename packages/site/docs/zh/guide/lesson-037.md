@@ -1,12 +1,17 @@
 ---
 outline: deep
 description: '探索Radiance Cascades技术，实现实时全局光照效果。学习现代图形渲染中的高级光照技术和性能优化方法。'
-publish: false
 ---
+
+<script setup>
+import RadianceCascades from '../../components/RadianceCascades.vue'
+</script>
 
 # 课程 37 - 基于 Radiance Cascades 的 GI
 
-[Fundamentals of Radiance Cascades]
+在 [课程 35 - 基于瓦片的渲染] 中我们使用了基于 WebGPU Compute Shader 的渲染器 vello。在本节中我们可以尝试一种同样基于 Compute Shader 的全局光照效果。
+
+完整原理介绍详见：[Fundamentals of Radiance Cascades]
 
 > What we've observed is that the further we are from the closest object in the scene:
 >
@@ -28,13 +33,15 @@ rp.encode_rc_apply();
 device_handle.queue.submit([rc_enc.finish()]);
 ```
 
+<RadianceCascades />
+
 ## 生成距离场 {#distance-pass}
 
-先使用解析几何。
+先使用解析几何。在 [课程 2 - 绘制圆] 和 [课程 9 - 绘制椭圆和矩形] 中我们已经介绍过 Circle Ellipse 和 Rect 的 SDF，在图形边缘和内部距离为 `0`。下图为可视化效果，使用 `saturate(d * DIST_FIELD_VIZ_SCALE)` 将原始距离映射到 `[0,1]`：
 
-![gi sdf](/gi-sdf.png)
+![rc sdf](/rc-sdf.png)
 
-Vertex shader 依然使用一个全屏三角形，`prims` 记录了场景中图形基础几何信息，便于使用 `sdf_prim` 生成解析几何距离场。最终结果写入 `rc_dist` 纹理中，该纹理使用全画布分辨率，格式为 `R16F` 存储无符号距离。
+为了生成距离场纹理，Vertex shader 依然使用一个全屏三角形（类似之前 post processing 中的做法），`prims` 记录了场景中图形基础几何信息，便于使用 `sdf_prim` 生成解析几何距离场。最终结果写入 `rc_dist` 纹理中，该纹理使用全画布分辨率，格式为 `R16F` 存储无符号距离。
 
 ```wgsl
 @group(0) @binding(0) var<uniform> header: DistHeader;
@@ -48,12 +55,82 @@ fn dist_fs(i: VsOut) -> @location(0) vec4<f32> {
     if i >= n { break; }
     d = min(d, sdf_prim(p_canvas, prims[i]));
   }
-  // `d` 为并集 SDF：形内 <0、形外 >0、边 ≈0。R 存 max(d,0)：实心内部与边上为 0，外部为到边界的正距离。
+  // d 为并集 SDF：形内 <0、形外 >0、边 ≈0。R 存 max(d,0)：实心内部与边上为 0，外部为到边界的正距离。
   return vec4(max(d, 0.0), 0.0, 0.0, 1.0);
 }
 ```
 
 ### JFA {#jfa}
+
+Jump Flood Algorithm (JFA) 是一种并行距离场生成算法。它的核心思想是：通过指数级递减的"跳跃步长"，让信息在 `log₂(N)` 轮内传遍整个网格。
+
+[bevy_radiance_cascades]
+
+-   输入：JFA 的 `texture_2d<u32>`（存种子坐标）。
+-   输出：当前像素到该种子的欧氏距离，写入 R16Float 距离图。
+
+这样射线步进可以用较大的步长跳到下一个“安全”距离，而不是固定小步长。
+
+```wgsl
+@group(0) @binding(0) var<uniform> step_size: i32;
+@group(0) @binding(1) var tex_jfa_source: texture_2d<u32>;
+@group(0) @binding(2) var tex_jfa_destination: texture_storage_2d<rg16uint, write>;
+
+const OFFSET_COUNT = 8;
+
+@compute
+@workgroup_size(8, 8, 1)
+fn jfa(
+    @builtin(global_invocation_id) global_id: vec3<u32>,
+    @builtin(local_invocation_id) local_id: vec3<u32>
+) {
+    let base_coord = vec2<i32>(global_id.xy);
+    let base_coordf = vec2<f32>(base_coord);
+    let dimension = vec2<i32>(textureDimensions(tex_jfa_source, 0));
+
+    if any(base_coord >= dimension) {
+        return;
+    }
+
+    var uv_offsets = array<vec2<i32>, OFFSET_COUNT>(
+        vec2<i32>(-1, 1),
+        vec2<i32>(0, 1),
+        vec2<i32>(1, 1),
+        vec2<i32>(-1, 0),
+        vec2<i32>(1, 0),
+        vec2<i32>(-1, -1),
+        vec2<i32>(0, -1),
+        vec2<i32>(1, -1),
+    );
+
+    var best_coord = textureLoad(tex_jfa_source, base_coord, 0).rg;
+    let delta = vec2<f32>(best_coord) - base_coordf;
+    var min_distance = dot(delta, delta);
+
+    for (var i = 0; i < OFFSET_COUNT; i++) {
+        let offset_coord = base_coord + uv_offsets[i] * step_size;
+        if any(offset_coord >= dimension) || any(offset_coord < vec2<i32>(0)) {
+            continue;
+        }
+
+        let offset_tex = textureLoad(tex_jfa_source, offset_coord, 0).rg;
+
+        let delta = vec2<f32>(offset_tex) - base_coordf;
+        let dist = dot(delta, delta);
+
+        if dist < min_distance {
+            min_distance = dist;
+            best_coord = offset_tex;
+        }
+    }
+
+    textureStore(
+        tex_jfa_destination,
+        base_coord,
+        vec4<u32>(best_coord, 0, 0)
+    );
+}
+```
 
 ## Cascade compute {#cascade-compute}
 
@@ -108,6 +185,10 @@ fn raymarch(origin: vec2<f32>, ray_dir: vec2<f32>, range: f32) -> vec4<f32> {
 }
 ```
 
+### mipmap
+
+把最后一级联结果按 probe 网格做平均，写到缩小的 radiance_mipmap
+
 radiance_dispatch：每个 GI texel 对应一个 probe 内的一条方向；origin 用 probe 中心 × gi_scale（当前为 1）+ probe_start；未命中且 merge 开启时加上 merge() 从上一级纹理插值来的辐射。
 
 ```wgsl
@@ -121,6 +202,10 @@ fn radiance_dispatch(merge_flag: u32, gid: vec3<u32>) {
   textureStore(tex_radiance_cascades_destination, ...);
 }
 ```
+
+### 合成最终结果
+
+main + radiance_mipmap，把间接光加回 HDR 主色
 
 -   rc_a/rc_b：GI 分辨率（当前 GI_RC_DOWNSCALE=1 时与画布一致），RGBA16F，级联 ping-pong。
 -   rc_mipmap：尺寸为 ceil(gi/pw) × ceil(gi/pw)，每 texel 对应 cascade0 一个 probe 的方向平均。
@@ -146,3 +231,6 @@ fn radiance_dispatch(merge_flag: u32, gid: vec3<u32>) {
 [POC / Radiance Cascades]: https://tmpvar.com/poc/radiance-cascades/
 [bevy_radiance_cascades]: https://github.com/nixonyh/bevy_radiance_cascades
 [Guest: Radiance Cascades]: https://mini.gmshaders.com/p/radiance-cascades
+[课程 2 - 绘制圆]: /zh/guide/lesson-002#sdf
+[课程 9 - 绘制椭圆和矩形]: /zh/guide/lesson-009#stretch-approximately-method
+[课程 35 - 基于瓦片的渲染]: /zh/guide/lesson-035

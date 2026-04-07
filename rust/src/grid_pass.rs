@@ -133,6 +133,16 @@ fn composite_fs(i: VsOut) -> @location(0) vec4<f32> {
     let rgb = fg.rgb + bg.rgb * (1.0 - a);
     return vec4(rgb, 1.0);
 }
+
+/// Vello `target_view` 仅有 storage+binding，需先拷入带 `RENDER_ATTACHMENT` 的纹理再跑需要 RT 的 pass（如 brush）。
+@group(0) @binding(0) var t_vello_storage: texture_2d<f32>;
+@group(0) @binding(1) var samp_vello_copy: sampler;
+
+@fragment
+fn copy_vello_fs(i: VsOut) -> @location(0) vec4<f32> {
+    let uv = vec2(i.ndc.x * 0.5 + 0.5, 0.5 - i.ndc.y * 0.5);
+    return textureSample(t_vello_storage, samp_vello_copy, uv);
+}
 "#;
 
 /// Intermediate textures: grid background, Vello layer, and composite output (render target).
@@ -145,6 +155,9 @@ pub struct GridLayerTextures {
     pub bg_view: TextureView,
     pub vello: Texture,
     pub vello_view: TextureView,
+    /// 带 ECS `UI` 组件的图形单独渲染到此层，再盖在 GI 合成结果之上（与 `vello` 同格式）。
+    pub vello_ui: Texture,
+    pub vello_ui_view: TextureView,
     pub composite: Texture,
     pub composite_view: TextureView,
 }
@@ -182,6 +195,12 @@ impl GridLayerTextures {
         let vello = device.create_texture(&desc_vello);
         let vello_view = vello.create_view(&wgpu::TextureViewDescriptor::default());
 
+        let vello_ui = device.create_texture(&TextureDescriptor {
+            label: Some("vello_ui_layer"),
+            ..desc_vello
+        });
+        let vello_ui_view = vello_ui.create_view(&wgpu::TextureViewDescriptor::default());
+
         let desc_composite = TextureDescriptor {
             label: Some("grid_composite_out"),
             size,
@@ -202,6 +221,8 @@ impl GridLayerTextures {
             bg_view,
             vello,
             vello_view,
+            vello_ui,
+            vello_ui_view,
             composite,
             composite_view,
         }
@@ -265,6 +286,8 @@ pub struct GridPass {
     grid_pipeline: RenderPipeline,
     composite_pipeline: RenderPipeline,
     composite_layout: BindGroupLayout,
+    copy_vello_pipeline: RenderPipeline,
+    copy_vello_layout: BindGroupLayout,
     sampler: Sampler,
     uniform_buf: Buffer,
     grid_bind_group: BindGroup,
@@ -393,6 +416,63 @@ impl GridPass {
             cache: None,
         });
 
+        let copy_vello_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
+            label: Some("copy_vello_layout"),
+            entries: &[
+                BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: BindingType::Texture {
+                        sample_type: TextureSampleType::Float { filterable: true },
+                        view_dimension: TextureViewDimension::D2,
+                        multisampled: false,
+                    },
+                    count: None,
+                },
+                BindGroupLayoutEntry {
+                    binding: 1,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: BindingType::Sampler(SamplerBindingType::Filtering),
+                    count: None,
+                },
+            ],
+        });
+
+        let copy_vello_pl = device.create_pipeline_layout(&PipelineLayoutDescriptor {
+            label: Some("copy_vello_pl"),
+            bind_group_layouts: &[&copy_vello_layout],
+            immediate_size: 0,
+        });
+
+        let copy_vello_pipeline = device.create_render_pipeline(&RenderPipelineDescriptor {
+            label: Some("copy_vello_storage_to_rt"),
+            layout: Some(&copy_vello_pl),
+            vertex: VertexState {
+                module: &module,
+                entry_point: Some("composite_vs"),
+                compilation_options: PipelineCompilationOptions::default(),
+                buffers: &[],
+            },
+            fragment: Some(FragmentState {
+                module: &module,
+                entry_point: Some("copy_vello_fs"),
+                compilation_options: PipelineCompilationOptions::default(),
+                targets: &[Some(ColorTargetState {
+                    format: TextureFormat::Rgba8Unorm,
+                    blend: Some(wgpu::BlendState::REPLACE),
+                    write_mask: ColorWrites::ALL,
+                })],
+            }),
+            primitive: PrimitiveState {
+                front_face: FrontFace::Ccw,
+                ..Default::default()
+            },
+            depth_stencil: None,
+            multisample: MultisampleState::default(),
+            multiview_mask: None,
+            cache: None,
+        });
+
         let uniform_buf = device.create_buffer(&BufferDescriptor {
             label: Some("grid_uniforms"),
             size: 96,
@@ -420,6 +500,8 @@ impl GridPass {
             grid_pipeline,
             composite_pipeline,
             composite_layout,
+            copy_vello_pipeline,
+            copy_vello_layout,
             sampler,
             uniform_buf,
             grid_bind_group,
@@ -522,6 +604,50 @@ impl GridPass {
             multiview_mask: None,
         });
         pass.set_pipeline(&self.composite_pipeline);
+        pass.set_bind_group(0, &bind, &[]);
+        pass.draw(0..3, 0..1);
+    }
+
+    /// 将 Vello 离屏 storage 纹理（无 `RENDER_ATTACHMENT`）采样写入可渲染目标，供 brush 等 pass 使用。
+    pub fn encode_copy_vello_storage_to_render_target(
+        &self,
+        device: &Device,
+        encoder: &mut CommandEncoder,
+        dst_render_target: &TextureView,
+        vello_target_view: &TextureView,
+    ) {
+        let bind = device.create_bind_group(&BindGroupDescriptor {
+            label: Some("copy_vello_bind"),
+            layout: &self.copy_vello_layout,
+            entries: &[
+                BindGroupEntry {
+                    binding: 0,
+                    resource: BindingResource::TextureView(vello_target_view),
+                },
+                BindGroupEntry {
+                    binding: 1,
+                    resource: BindingResource::Sampler(&self.sampler),
+                },
+            ],
+        });
+
+        let mut pass = encoder.begin_render_pass(&RenderPassDescriptor {
+            label: Some("copy_vello_to_rt"),
+            color_attachments: &[Some(RenderPassColorAttachment {
+                view: dst_render_target,
+                depth_slice: None,
+                resolve_target: None,
+                ops: Operations {
+                    load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
+                    store: wgpu::StoreOp::Store,
+                },
+            })],
+            depth_stencil_attachment: None,
+            timestamp_writes: None,
+            occlusion_query_set: None,
+            multiview_mask: None,
+        });
+        pass.set_pipeline(&self.copy_vello_pipeline);
         pass.set_bind_group(0, &bind, &[]);
         pass.draw(0..3, 0..1);
     }

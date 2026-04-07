@@ -37,6 +37,7 @@ import {
   TextDecoration,
   Line,
   Plugin,
+  ThemeMode,
 } from '../../ecs';
 import { Event, UIPlugin } from '../src';
 import '../src/spectrum';
@@ -153,6 +154,9 @@ canvas.addEventListener(Event.READY, async (e) => {
     // taskbarVisible: false,
     rotateEnabled: true,
     flipEnabled: true,
+    giEnabled: false,
+    giStrength: 0.05,
+    themeMode: ThemeMode.DARK,
     // filter: 'noise(0.5)',
     // layersLassoing: ['parent'],
   });
@@ -175,6 +179,7 @@ canvas.addEventListener(Event.READY, async (e) => {
     width: 100,
     height: 100,
     fill: 'red',
+    zIndex: 2,
   };
   const node3 = {
     id: 'binding-curved-rect-3',
@@ -218,9 +223,31 @@ canvas.addEventListener(Event.READY, async (e) => {
     curved: true,
   };
 
+  const line = {
+    id: 'line-1',
+    type: 'line',
+    x1: 100,
+    y1: 0,
+    x2: 200,
+    y2: 100,
+    stroke: 'white',
+    strokeWidth: 10,
+  };
+
+  const polyline = {
+    id: 'polyline-1',
+    type: 'polyline',
+    points: '100,0 200,100 300,0',
+    stroke: 'white',
+    strokeWidth: 10,
+    zIndex: 3,
+  };
+
   api.updateNodes([
     node1,
     node2,
+    // line
+    polyline
     // node3,
     // edge1, edge2
   ]);

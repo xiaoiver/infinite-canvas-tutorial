@@ -179,10 +179,13 @@ export class InitVello extends System {
         if (checkboardStyleIdx < 0) {
           checkboardStyleIdx = 1;
         }
+        const { giEnabled, giStrength } = canvas.read(Canvas).api.getAppState();
         setCanvasRenderOptions(canvasId, {
           grid: true,
           ui: true,
           checkboardStyle: checkboardStyleIdx,
+          giEnabled,
+          giStrength,
           ...velloCanvasGridColors(canvas),
         });
       });

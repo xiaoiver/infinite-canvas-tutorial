@@ -4,7 +4,6 @@ description: 'Implement a DOM-compatible event system with shape picking, drag-a
 head:
     - ['meta', { property: 'og:title', content: 'Lesson 6 - Event system' }]
 ---
-
 # Lesson 6 - Event system
 
 In this lesson, you will learn the following:

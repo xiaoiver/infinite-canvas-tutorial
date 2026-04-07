@@ -4,7 +4,6 @@ description: 'Learn how to add shapes to canvas and draw a circle using SDF (Sig
 head:
     - ['meta', { property: 'og:title', content: 'Lesson 2 - Draw a circle' }]
 ---
-
 # Lesson 2 - Draw a circle
 
 In this lesson you will learn the following:

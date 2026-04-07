@@ -7,7 +7,6 @@ head:
           { property: 'og:title', content: 'Lesson 18 - Refactor with ECS' },
       ]
 ---
-
 <script setup>
 import Spectrum from '../components/Spectrum.vue'
 </script>

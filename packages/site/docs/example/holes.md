@@ -1,6 +1,16 @@
 ---
-publish: false
+title: "Compound paths with holes"
+description: "Use winding rules and subpaths to cut holes in filled regions."
 ---
+<!-- example-intro:en -->
+
+# Compound paths with holes
+
+Boolean-like holes appear in icons, donuts, and masks. This sample exercises path construction where **outer** and **inner** contours interact—see fill rules in [Lesson 13](/guide/lesson-013) and clipping in [Lesson 34](/guide/lesson-034).
+
+Test both even-odd and non-zero rules if your importer emits ambiguous geometry.
+
+## Interactive demo
 
 <script setup>
 import Holes from '../components/Holes.vue'

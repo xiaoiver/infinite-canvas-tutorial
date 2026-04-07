@@ -1,9 +1,7 @@
 ---
 outline: deep
 description: 'Introduction to tile-based rendering: principles, performance optimization strategies, and examples in infinite canvas applications.'
-publish: false
 ---
-
 <script setup>
 import Vello from '../components/Vello.vue'
 import VelloBlur from '../components/VelloBlur.vue'

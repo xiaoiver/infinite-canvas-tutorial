@@ -1,7 +1,6 @@
 ---
 outline: deep
 ---
-
 <script setup>
 import YogaGap from '../components/YogaGap.vue'
 import YogaFlexBasisGrowShrink from '../components/YogaFlexBasisGrowShrink.vue'

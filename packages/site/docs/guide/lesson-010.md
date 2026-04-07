@@ -10,7 +10,6 @@ head:
           },
       ]
 ---
-
 # Lesson 10 - Importing and Exporting Images
 
 Image import and export is a very important feature in Infinite Canvas, and through the exported image it can be interfaced with other tools. So while our canvas drawing capabilities are currently limited, it's good to think ahead about issues related to images. In this lesson you will learn the following:

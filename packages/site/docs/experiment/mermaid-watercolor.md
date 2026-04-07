@@ -1,7 +1,3 @@
----
-publish: false
----
-
 <script setup>
 import MermaidWatercolor from '../components/MermaidWatercolor.vue'
 </script>

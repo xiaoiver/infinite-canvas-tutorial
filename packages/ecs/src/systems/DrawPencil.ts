@@ -32,6 +32,7 @@ import {
   ComputedCameraControl,
   Name,
   TesselationMethod,
+  FractionalIndex,
 } from '../components';
 import { API } from '../API';
 import {
@@ -66,7 +67,7 @@ export class DrawPencil extends System {
     this.query(
       (q) =>
         q
-          .using(ComputedBounds, ComputedCamera, ComputedCameraControl)
+          .using(ComputedBounds, ComputedCamera, ComputedCameraControl, FractionalIndex)
           .read.update.and.using(
             Canvas,
             GlobalTransform,

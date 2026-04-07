@@ -1,8 +1,6 @@
 ---
 outline: deep
-publish: false
 ---
-
 # RoughCircle
 
 See SVG [circle].

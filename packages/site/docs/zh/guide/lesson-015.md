@@ -2,7 +2,6 @@
 outline: deep
 description: '掌握复杂的文本渲染技术，包括TextMetrics、HarfBuzz shaping、文本分段、BiDi支持、SDF图集生成以及国际化排版的emoji处理。'
 ---
-
 <script setup>
 import MSDFText from '../../components/MSDFText.vue';
 import BitmapFont from '../../components/BitmapFont.vue';

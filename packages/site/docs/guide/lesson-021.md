@@ -4,7 +4,6 @@ description: 'Implement shape transformer with resize and rotation capabilities.
 head:
     - ['meta', { property: 'og:title', content: 'Lesson 21 - Transformer' }]
 ---
-
 <script setup>
 import TransformerRect from '../components/TransformerRect.vue'
 import TransformerRectRotated from '../components/TransformerRectRotated.vue'

@@ -1,6 +1,16 @@
 ---
-publish: false
+title: "Liveblocks presence and storage"
+description: "Use Liveblocks for rooms, presence, and persisted storage."
 ---
+<!-- example-intro:en -->
+
+# Liveblocks presence and storage
+
+**Liveblocks** bundles presence, storage, and comments for multiplayer products—good when you want managed infrastructure. Compare self-hosted CRDT costs before choosing.
+
+Comments overlay example extends the same stack.
+
+## Interactive demo
 
 <script setup>
 import Liveblocks from '../components/Liveblocks.vue'

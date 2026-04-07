@@ -1,6 +1,16 @@
 ---
-publish: false
+title: "Drop shadow on text"
+description: "Layer shadow blur and offset for readable labels over busy backgrounds."
 ---
+<!-- example-intro:en -->
+
+# Drop shadow on text
+
+Text shadows improve **contrast** on photos and gradients. Parameters mirror CSS-like shadow syntax; balance blur vs performance on low-end GPUs.
+
+Related styling topics appear in [Lesson 16](/guide/lesson-016).
+
+## Interactive demo
 
 <script setup>
 import TextDropShadow from '../components/TextDropShadow.vue'

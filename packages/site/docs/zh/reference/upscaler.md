@@ -1,7 +1,6 @@
 ---
 outline: deep
 ---
-
 使用 [UpscalerJS] 实现 [AI API] 中的 `upscaleImage` 方法：
 
 -   在 WebWorker 中运行不阻塞主线程，使用 tensorflow.js 运行时

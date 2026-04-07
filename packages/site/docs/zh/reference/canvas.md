@@ -1,7 +1,6 @@
 ---
 outline: deep
 ---
-
 在 [获取 API] 后，可以调用相关方法：
 
 ## get/setAppState

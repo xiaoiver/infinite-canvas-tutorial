@@ -1,6 +1,16 @@
 ---
-publish: false
+title: "Smoothed remote cursors"
+description: "Interpolate collaborator pointer streams for stable visuals."
 ---
+<!-- example-intro:en -->
+
+# Smoothed remote cursors
+
+**Perfect-cursors** (or similar easing) reduces jitter when rendering peers’ pointers—important for perceived quality in multiplayer whiteboards.
+
+Pair with Liveblocks/Yjs presence channels.
+
+## Interactive demo
 
 <script setup>
 import PerfectCursors from '../components/PerfectCursors.vue'

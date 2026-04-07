@@ -1,8 +1,6 @@
 ---
 outline: deep
-publish: false
 ---
-
 First, create a global App with the default plugin set. For more details, see: [Lesson 18 - Refactor with ECS]
 
 ```ts

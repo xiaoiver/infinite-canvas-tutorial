@@ -1,8 +1,6 @@
 ---
 outline: deep
-publish: false
 ---
-
 After [Getting the API], you can call the related methods:
 
 ## get/setAppState

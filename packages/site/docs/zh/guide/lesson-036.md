@@ -1,9 +1,7 @@
 ---
 outline: deep
 description: '实现动画系统，包括声明式动画API设计、Web Animations API兼容性、生成器函数动画流程以及SVG路径动画技术。'
-publish: false
 ---
-
 # 课程 36 - Animation
 
 在这节课中你将学习到以下内容：

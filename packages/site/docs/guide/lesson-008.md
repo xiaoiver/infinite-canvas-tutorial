@@ -7,7 +7,6 @@ head:
           { property: 'og:title', content: 'Lesson 8 - Optimize performance' },
       ]
 ---
-
 # Lesson 8 - Optimize performance
 
 In this lesson you will learn the following:

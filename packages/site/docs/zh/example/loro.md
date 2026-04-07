@@ -1,6 +1,16 @@
 ---
-publish: false
+title: "使用 Loro CRDT 协同"
+description: "用 Loro 的 CRDT 数据结构同步文档状态。"
 ---
+<!-- example-intro:zh -->
+
+# 使用 Loro CRDT 协同
+
+**Loro** 提供多种 CRDT 类型，可与旁边的 Yjs 示例对照；冲突虽自动合并，UI 仍需收敛到合理视图。
+
+架构背景见 [第 20 课 — 协同](/zh/guide/lesson-020)。
+
+## 交互示例
 
 <script setup>
 import LoroCRDT from '../../components/LoroCRDT.vue'

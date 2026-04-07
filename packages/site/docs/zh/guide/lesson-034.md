@@ -1,9 +1,7 @@
 ---
 outline: deep
 description: '介绍 Frame 与裁切：使用 Stencil Buffer 实现 clip/erase，以及导出 PNG/SVG 时 clip-path 与 mask 的处理。'
-publish: false
 ---
-
 <script setup>
 import ClipPath from '../../components/ClipPath.vue'
 import Mask from '../../components/Mask.vue'

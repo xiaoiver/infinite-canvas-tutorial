@@ -1,8 +1,6 @@
 ---
 outline: deep
-publish: false
 ---
-
 # Polyline
 
 See SVG [polyline].

@@ -10,7 +10,6 @@ head:
           },
       ]
 ---
-
 # Lesson 3 - Scene graph and transform
 
 In the last lesson we drew a circle, in this lesson you will learn the following:

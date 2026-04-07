@@ -1,5 +1,5 @@
 //! Screen-space GI: analytic SDF + Bevy-style ping-pong radiance cascades (probe grid + spatial merge).
-//! See <https://github.com/nixonyh/bevy_radiance_cascades>. WASM: Rect/Ellipse fills.
+//! See <https://github.com/nixonyh/bevy_radiance_cascades>. WASM: Rect/Ellipse fills + Line / Polyline stroke (segment SDF).
 
 use bytemuck::{Pod, Zeroable};
 use vello::kurbo::Affine;
@@ -110,10 +110,28 @@ fn apply_inv(p: vec2<f32>, m: array<f32, 6>) -> vec2<f32> {
   );
 }
 
+// IQ sdSegment：到线段 a–b 的无符号距离
+fn sdf_segment_unsigned(p: vec2<f32>, a: vec2<f32>, b: vec2<f32>) -> f32 {
+  let pa = p - a;
+  let ba = b - a;
+  let ba_len_sq = dot(ba, ba);
+  if ba_len_sq < 1e-18 {
+    return length(pa);
+  }
+  let h = clamp(dot(pa, ba) / ba_len_sq, 0.0, 1.0);
+  return length(pa - ba * h);
+}
+
 fn sdf_prim(p_canvas: vec2<f32>, prim: GpuRcPrim) -> f32 {
   let pl = apply_inv(p_canvas, prim.inv);
   if prim.kind == 0u {
     return sdf_ellipse(pl - vec2(prim.p0.x, prim.p0.y), prim.p0.z, prim.p0.w);
+  }
+  if prim.kind == 2u {
+    let a = prim.p0.xy;
+    let b = prim.p0.zw;
+    let hw = prim.p1.x;
+    return sdf_segment_unsigned(pl, a, b) - hw;
   }
   let x0 = prim.p0.x;
   let y0 = prim.p0.y;
@@ -511,6 +529,23 @@ fn affine_inv_to_wgsl(inv: Affine) -> [f32; 6] {
     ]
 }
 
+/// `kind == 2`：线段笔画 SDF（与 `FillSdfPrimitive::Segment` 一致）。
+#[cfg(target_arch = "wasm32")]
+fn set_gpu_rc_prim_segment_payload(
+    inv_wgsl: [f32; 6],
+    x0: f64,
+    y0: f64,
+    x1: f64,
+    y1: f64,
+    half_width: f64,
+    out: &mut GpuRcPrim,
+) {
+    out.inv = inv_wgsl;
+    out.kind = 2;
+    out.p0 = [x0 as f32, y0 as f32, x1 as f32, y1 as f32];
+    out.p1 = [half_width as f32, 0.0, 0.0, 0.0];
+}
+
 #[cfg(target_arch = "wasm32")]
 fn fill_prim_gpu(
     shape: &JsShape,
@@ -523,13 +558,15 @@ fn fill_prim_gpu(
         return false;
     };
     let shape_affine = canvas_transform * world;
-    let inv = shape_affine.inverse();
-    out.inv = affine_inv_to_wgsl(inv);
+    let inv_wgsl = affine_inv_to_wgsl(shape_affine.inverse());
     match fill {
+        FillSdfPrimitive::PolylineStroke { .. } => false,
         FillSdfPrimitive::Ellipse { cx, cy, rx, ry } => {
+            out.inv = inv_wgsl;
             out.kind = 0;
             out.p0 = [cx as f32, cy as f32, rx as f32, ry as f32];
             out.p1 = [0.0; 4];
+            true
         }
         FillSdfPrimitive::RoundedRect {
             x0,
@@ -538,12 +575,23 @@ fn fill_prim_gpu(
             y1,
             corner_r,
         } => {
+            out.inv = inv_wgsl;
             out.kind = 1;
             out.p0 = [x0 as f32, y0 as f32, x1 as f32, y1 as f32];
             out.p1 = [corner_r as f32, 0.0, 0.0, 0.0];
+            true
+        }
+        FillSdfPrimitive::Segment {
+            x0,
+            y0,
+            x1,
+            y1,
+            half_width,
+        } => {
+            set_gpu_rc_prim_segment_payload(inv_wgsl, x0, y0, x1, y1, half_width, out);
+            true
         }
     }
-    true
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -553,7 +601,9 @@ pub fn collect_gpu_primitives(
     render_opts: &CanvasRenderOptions,
 ) -> Vec<GpuRcPrim> {
     use crate::scene::filtered_shapes_and_world_transforms;
-    let Some((shapes, world_map)) = filtered_shapes_and_world_transforms(canvas_id, render_opts)
+    use crate::scene::UiShapeFilter;
+    let Some((shapes, world_map)) =
+        filtered_shapes_and_world_transforms(canvas_id, render_opts, UiShapeFilter::ExcludeUiMarked)
     else {
         return Vec::new();
     };
@@ -563,9 +613,47 @@ pub fn collect_gpu_primitives(
         if v.len() >= MAX_RC_PRIMITIVES {
             break;
         }
+        if let JsShape::Polyline { id, points, .. } = shape {
+            let origin = if points.is_empty() {
+                Point::ORIGIN
+            } else {
+                Point::new(points[0][0], points[0][1])
+            };
+            let world = world_map
+                .get(id.as_str())
+                .copied()
+                .unwrap_or_else(|| Affine::translate(origin.to_vec2()));
+            if let Some(FillSdfPrimitive::PolylineStroke {
+                points: pts,
+                half_width,
+            }) = fill_sdf_primitive_from_js_shape(shape, canvas_transform, dpr)
+            {
+                let shape_affine = canvas_transform * world;
+                let inv_wgsl = affine_inv_to_wgsl(shape_affine.inverse());
+                for w in pts.windows(2) {
+                    if v.len() >= MAX_RC_PRIMITIVES {
+                        break;
+                    }
+                    let mut g = GpuRcPrim::default();
+                    set_gpu_rc_prim_segment_payload(
+                        inv_wgsl,
+                        w[0][0],
+                        w[0][1],
+                        w[1][0],
+                        w[1][1],
+                        half_width,
+                        &mut g,
+                    );
+                    v.push(g);
+                }
+            }
+            continue;
+        }
+
         let (id, origin) = match shape {
             JsShape::Rect { id, x, y, .. } => (id.as_str(), Point::new(*x, *y)),
             JsShape::Ellipse { id, cx, cy, .. } => (id.as_str(), Point::new(*cx, *cy)),
+            JsShape::Line { id, x1, y1, .. } => (id.as_str(), Point::new(*x1, *y1)),
             _ => continue,
         };
         let world = world_map

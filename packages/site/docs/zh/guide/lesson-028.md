@@ -4,7 +4,6 @@ description: '与 AI 结合，使用聊天对话框配合生图模型，例如 g
 head:
     - ['meta', { property: 'og:title', content: '课程 28 - 与 AI 结合' }]
 ---
-
 <script setup>
 import WhenCanvasMeetsChat from '../../components/WhenCanvasMeetsChat.vue'
 import SAM from '../../components/SAM.vue'

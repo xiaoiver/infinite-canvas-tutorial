@@ -140,6 +140,15 @@ export interface AppState {
    * Global effects
    */
   filter: string;
+
+  /**
+   * Global illumination with radiance cascades
+   */
+  giEnabled: boolean;
+  /**
+   * Global illumination strength
+   */
+  giStrength: number;
 }
 
 export const getDefaultAppState: () => AppState = () => {
@@ -333,6 +342,8 @@ export const getDefaultAppState: () => AppState = () => {
     loading: false,
     loadingMessage: '',
     filter: '',
+    giEnabled: false,
+    giStrength: 0.1,
   };
 };
 

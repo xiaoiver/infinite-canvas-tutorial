@@ -4,7 +4,6 @@ description: 'Snap and align'
 head:
     - ['meta', { property: 'og:title', content: 'Lesson 27 - Snap and align' }]
 ---
-
 <script setup>
 import SnapToPixelGrid from '../components/SnapToPixelGrid.vue'
 import SnapToObjects from '../components/SnapToObjects.vue'

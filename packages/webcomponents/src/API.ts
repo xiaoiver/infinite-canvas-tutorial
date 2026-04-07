@@ -10,6 +10,7 @@ import {
   DOMAdapter,
   deserializePoints,
   RectSerializedNode,
+  AppState,
 } from '@infinite-canvas-tutorial/ecs';
 import { type LitElement } from 'lit';
 import { Event } from './event';
@@ -159,20 +160,19 @@ export class ExtendedAPI extends API {
     throw new Error('Method not implemented.');
   }
 
-  setThemeMode(themeMode: ThemeMode) {
-    this.element.dispatchEvent(
-      new CustomEvent('theme-change', {
-        detail: {
-          themeMode,
-        },
-        bubbles: true,
-        composed: true,
-      }),
-    );
-
-    this.setAppState({
-      themeMode,
-    });
+  setAppState(appState: Partial<AppState>) {
+    super.setAppState(appState);
+    if ('themeMode' in appState) {
+      this.element.dispatchEvent(
+        new CustomEvent('theme-change', {
+          detail: {
+            themeMode: appState.themeMode as ThemeMode,
+          },
+          bubbles: true,
+          composed: true,
+        }),
+      );
+    }
   }
 
   async createImageFromFile(file: File | string, {

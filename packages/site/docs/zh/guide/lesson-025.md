@@ -4,7 +4,6 @@ description: '绘制矩形模式。实现画笔功能，包括画线消抖动算
 head:
     - ['meta', { property: 'og:title', content: '课程 25 - 绘制模式与笔刷' }]
 ---
-
 <script setup>
 import DrawRect from '../../components/DrawRect.vue'
 import DrawArrow from '../../components/DrawArrow.vue'

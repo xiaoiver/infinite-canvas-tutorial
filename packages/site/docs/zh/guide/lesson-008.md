@@ -2,7 +2,6 @@
 outline: deep
 description: '通过理解draw call原理来优化渲染性能。实现视口剔除、draw call合批、空间索引拾取以及基于GPU的颜色拾取技术。'
 ---
-
 # 课程 8 - 性能优化
 
 在这节课中你将学习到以下内容：

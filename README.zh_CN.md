@@ -448,6 +448,14 @@ pnpm run dev
 | :-------------------------------: | :-: |
 | ![vello](./screenshots/vello.png) |     |
 
+## 课程 36 - 动画 [🔗](https://infinitecanvas.cc/zh/guide/lesson-036)
+
+## 课程 37 - 基于 Radiance Cascades 的 GI [🔗](https://infinitecanvas.cc/zh/guide/lesson-037)
+
+|               Radiance Cascades               |
+| :-------------------------------------------: |
+| ![vello](./screenshots/radiance-cascades.png) |
+
 [在线体验]: app.infinitecanvas.cc
 [infinitecanvas]: https://infinitecanvas.tools/
 [自部署指南]: /packages/app/README.md

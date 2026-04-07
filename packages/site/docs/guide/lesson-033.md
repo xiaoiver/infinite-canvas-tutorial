@@ -1,9 +1,7 @@
 ---
 outline: deep
 description: 'Integrated Flex layout system with support for the Yoga typesetting engine. Exploring layout engine development within the WebGL environment to achieve responsive interface design.'
-publish: false
 ---
-
 <script setup>
 import YogaGap from '../components/YogaGap.vue'
 import YogaFlexBasisGrowShrink from '../components/YogaFlexBasisGrowShrink.vue'

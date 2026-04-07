@@ -1,9 +1,7 @@
 ---
 outline: deep
 description: 'Frame and clipping: implementing clip/erase with Stencil Buffer, and handling clip-path vs mask when exporting PNG/SVG.'
-publish: false
 ---
-
 <script setup>
 import ClipPath from '../components/ClipPath.vue'
 import Mask from '../components/Mask.vue'

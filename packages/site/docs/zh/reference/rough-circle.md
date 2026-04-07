@@ -1,8 +1,6 @@
 ---
 outline: deep
-publish: false
 ---
-
 # RoughCircle
 
 参考 SVG [circle]。

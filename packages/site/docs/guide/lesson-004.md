@@ -4,7 +4,6 @@ description: 'Understand camera concepts, projection transformations, and camera
 head:
     - ['meta', { property: 'og:title', content: 'Lesson 4 - Camera' }]
 ---
-
 # Lesson 4 - Camera
 
 In this lesson you will learn the following:

@@ -1,8 +1,6 @@
 ---
 outline: deep
-publish: false
 ---
-
 # Rect
 
 参考 SVG [rect]。

@@ -4,7 +4,6 @@ description: 'Implement mind map functionality with tree layout algorithms. Stud
 head:
     - ['meta', { property: 'og:title', content: 'Lesson 23 - Mindmap' }]
 ---
-
 <script setup>
 import Tree from '../components/Tree.vue';
 import FlexTree from '../components/FlexTree.vue';

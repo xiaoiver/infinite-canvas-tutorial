@@ -10,7 +10,6 @@ head:
           },
       ]
 ---
-
 <script setup>
 import DrawRect from '../components/DrawRect.vue'
 import DrawArrow from '../components/DrawArrow.vue'

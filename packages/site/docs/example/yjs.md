@@ -1,6 +1,16 @@
 ---
-publish: false
+title: "Real-time collaboration with Yjs"
+description: "Mirror canvas snapshots through Y.Doc and providers."
 ---
+<!-- example-intro:en -->
+
+# Real-time collaboration with Yjs
+
+**Yjs** is widely used for shared editing. This sample wires canvas changes into a `Y.Doc` and syncs via **BroadcastChannel** for local demos—production would use WebRTC or a websocket provider.
+
+Deep patterns live in [Lesson 20 — Collaboration](/guide/lesson-020).
+
+## Interactive demo
 
 <script setup>
 import YjsCRDT from '../components/YjsCRDT.vue'

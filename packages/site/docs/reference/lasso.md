@@ -1,7 +1,6 @@
 ---
 outline: deep
 ---
-
 <script setup>
 import Lasso from '../components/Lasso.vue'
 </script>

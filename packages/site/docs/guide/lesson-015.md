@@ -4,7 +4,6 @@ description: 'Master complex text rendering including TextMetrics, shaping with 
 head:
     - ['meta', { property: 'og:title', content: 'Lesson 15 - Text rendering' }]
 ---
-
 <script setup>
 import MSDFText from '../components/MSDFText.vue';
 import BitmapFont from '../components/BitmapFont.vue';
