@@ -57,6 +57,11 @@ import {
   Binded,
   PartialBinding,
   hasFullOrPartialEdgeBinding,
+  GeometryDirty,
+  Rough,
+  Marker,
+  Mat3,
+  ComputedTextMetrics,
 } from '../components';
 import { Commands } from '../commands/Commands';
 import {
@@ -93,6 +98,7 @@ import {
   setPathHandlePoint,
   toPathData,
 } from '../utils/path-edit';
+import { rebasePolylinePathGeometryToLocalOrigin } from '../utils/rebase-edge-geometry';
 
 const LASSO_CURSOR =
   'url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAACXBIWXMAAAsTAAALEwEAmpwYAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAOdEVYdFNvZnR3YXJlAEZpZ21hnrGWYwAABUFJREFUeAHtVltIXFcUPU6c0VGTWqdqRqtVTFrU+GFimgYpTUibQmm/JDZEKMF3rFjFigjFBi2I9ccPq6CIitEIvlFREYrioxYVK7UqPgk+2mh9j46jM/d07evVTjVpjTMN/eiGzT2ve/Y6+7HOYew/JLIjfQv2EuSMkXGhqqrq84iICG87O7vN/v7+VQnESwHCysrK4paXl3l1dTUnmZqaqiovL38PU3Jpyb8KRlZZWfmwra2No82dnZ0NsbGxfHR0lLAszszM1N69e9fjyD9mBWMbEBDgr9frdTY2NiIISQWA4S0tLYJWqyUwv9TV1cXcv3/fwwiEWYDYQM+vr6/PJCYmHgKQyWTcwsLioG/w9/cXAEYM0fT0dF1FRYW39L+MmSiUjA5JSUkPJicnRYNGho+BoRAhJHxjY4MjcT9iZhJ7KyurCzjcjpeX1zHjxn1ra2vBz8+Pz8/P89LS0ofMTGFQQB3b29sfZ2dnHzUuXL16lefk5FB1iCHY3NycbW5ufow5J6gtM4NQHM/FxMREUcLBsOHg5NeuXSObWwDXER0dnebu7h6M8UDoBagz+9MDJufCWejriO1UYGDgYczp5F1dXa1oU9L5IVRvKZVKV7Tl8fHx9ijf9Nra2gfmAGEJtS8sLMzr6+s7DAPxQUpKSjzaLtBXyHBoaOjZsbGxQvJMXl4en52d5SCzsOfse+IcoYWvent7v2PECQL5HzzxNtp2tCYyMlKNodXBwUGxEi5evMhHRkYoPwaRG492dnZ+wvzPILCSO3fueEp7n9gzSqiaOCEsLIxTtu/u7j7B2Hmau337ti0Zv3fvHlepVAYuiU6nM+Tn5/OgoCBuMBg4VVJubq4Ifnx8/NsXASFyQlxcXKRGoxFLDTHOI8/QJDZ7BHDkEcPe3h6Hp/Stra20TvDx8eGNjY0ioN7eXg7G5Lhf9LQPyjWIvUAoKM5eGRkZ35SUlJShTW5U4fRutDliTSfXwzNbICKdq6urnsbX1taeZGVllQYHB3+N5MwENk1RUZHg4eEhwCvr+Fqf1AuWuJKpvt3YfuKpoXKcIqqpqYm7ubnxpaWlaScnpxB4QQND2vDw8AysCZTL5f74kgZ4enp+QsTm4uIiIDc4wL1/zNBzAJDbVtg+OZHsQekUlxcWFlhmZiYDkL7FxcURlOMHMGqBuQ2Upxa5sEb/Q5VIwo25ublJqC9Kmq2srKglDwj/BIBJm+iN+jIQkOrmzZtiJyEhYRSfX3F6GZSGtNAtCSxVzw5Uh9M7Qxl4gqnVajkzQSyHh4frk5OTeUFBAe/u7i6XDnBGOpVxgonXdHp6+sfIE65QKMRquX79OoVGyU4pVnB9UmdnJ0cycdD1iGT8aGaLfXCFO2xqGhoaDIIg8IGBgR8wrIJas1PK2StXrlzGZrvFxcXiiUA+3z1rIZL1Bt1XUVFR3NHRkdbqfH19P8TUa8wEqibkKroBybi9vb0eScbBek9Rql9Aw9PS0j7b3t4eWF1d5UhQISQkxEAhwCPnK7ZfSSbdmjKpNL2GhoZ+hGvFVxLKkdfU1PCenh6RgFJTU8Xx+vp6YkE9CO1L9N9k++43+bZU4DHyBr4+uKy+P6Bheh0h08ULqaOjg94KHF6YvXTp0qeScQL+zIo7zUtGCRDOcL0tciLg1q1b7+KUNxwcHJQTExO/gZKf4oXdAwZsBi9oUAG/A9A6+2tJmwSAhPKB6Pqc1LaxtLSU6/cJgepfK32XodvMiHjMBYCESlAhAVBIfTK0C9VJXwLE/24TczwmLYy+B8Y4+19OKH8AGG0Nxm0lh+0AAAAASUVORK5CYII=") 0 4, pointer';
@@ -256,6 +262,8 @@ export class Select extends System {
             FillImage,
             FillPattern,
             Stroke,
+            Rough,
+            ComputedTextMetrics,
           )
           .read.update.and.using(
             GlobalTransform,
@@ -297,7 +305,9 @@ export class Select extends System {
             Editable,
             ClipMode,
             MaterialDirty,
+            GeometryDirty,
             Locked,
+            Marker
           ).write,
     );
     this.query((q) => q.using(ComputedCamera, FractionalIndex, RBush).read);
@@ -582,76 +592,96 @@ export class Select extends System {
       resizingAnchorName === AnchorName.X1Y1 ||
       resizingAnchorName === AnchorName.X2Y2
     ) {
-      const { x1y1Anchor, x2y2Anchor, lineMask } = camera.read(Transformable);
-      const edgeNode = api.getNodeById(layersSelected[0]);
-      const edgeEntity = edgeNode ? api.getEntity(edgeNode) : undefined;
+      const node = api.getNodeById(layersSelected[0]);
+      if (!node) {
+        return;
+      }
+      const selected = api.getEntity(node);
+      if (!selected?.has(GlobalTransform)) {
+        return;
+      }
+
+      const edgeNode = node;
+      const edgeEntity = selected;
       if (isEdgeBindingRebindCandidate(edgeEntity, edgeNode as EdgeSerializedNode)) {
         selection.bindingRebindLastCanvas = { x: canvasX, y: canvasY };
         this.applyBindingRebindHover(api, canvasX, canvasY);
       }
 
-      const { x, y } = api.canvas2Transformer(
-        {
-          x: canvasX,
-          y: canvasY,
-        },
-        lineMask,
+      const isX1Y1 = resizingAnchorName === AnchorName.X1Y1;
+
+      const inv = mat3.invert(
+        mat3.create(),
+        Mat3.toGLMat3(selected.read(GlobalTransform).matrix),
+      );
+      if (!inv) {
+        return;
+      }
+      const local = vec2.transformMat3(
+        vec2.create(),
+        [canvasX, canvasY],
+        inv,
       );
 
-      const isX1Y1 = resizingAnchorName === AnchorName.X1Y1;
-      const isX2Y2 = resizingAnchorName === AnchorName.X2Y2;
-      if (isX1Y1) {
-        Object.assign(x1y1Anchor.write(Circle), {
-          cx: x,
-          cy: y,
-        });
-      } else if (isX2Y2) {
-        Object.assign(x2y2Anchor.write(Circle), {
-          cx: x,
-          cy: y,
-        });
-      }
-
-      const node = api.getNodeById(layersSelected[0]);
-      const { cx: x1y1Cx, cy: x1y1Cy } = x1y1Anchor.read(Circle);
-      const { cx: x2y2Cx, cy: x2y2Cy } = x2y2Anchor.read(Circle);
-      const points = [
-        [x1y1Cx, x1y1Cy],
-        [x2y2Cx, x2y2Cy],
-      ];
-
       if (node.type === 'line' || node.type === 'rough-line') {
+        if (!selected.has(Line)) {
+          return;
+        }
+        const line = selected.read(Line);
+        let x1 = line.x1;
+        let y1 = line.y1;
+        let x2 = line.x2;
+        let y2 = line.y2;
+        if (isX1Y1) {
+          x1 = local[0];
+          y1 = local[1];
+        } else {
+          x2 = local[0];
+          y2 = local[1];
+        }
+        api.updateNode(node, { x1, y1, x2, y2 });
+      } else if (selected.has(Polyline)) {
+        const { points } = selected.read(Polyline);
+        const next = points.map((p) => [p[0], p[1]] as [number, number]);
+        if (isX1Y1) {
+          next[0] = [local[0], local[1]];
+        } else {
+          next[next.length - 1] = [local[0], local[1]];
+        }
         api.updateNode(node, {
-          x1: x1y1Cx,
-          y1: x1y1Cy,
-          x2: x2y2Cx,
-          y2: x2y2Cy,
+          points: next.map((p) => p.join(',')).join(' '),
         });
       } else {
-        api.updateNode(node, {
-          points: points.map((point) => point.join(',')).join(' '),
-        });
+        return;
       }
 
-      const selected = api.getEntity(node);
       updateGlobalTransform(selected);
       updateComputedPoints(selected);
 
       {
-        const cx = canvasX;
-        const cy = canvasY;
-        const { x, y } = api.transformer2Canvas(
-          {
-            x: isX1Y1 ? x2y2Cx : x1y1Cx,
-            y: isX1Y1 ? x2y2Cy : x1y1Cy,
-          },
-          lineMask,
+        const m = Mat3.toGLMat3(selected.read(GlobalTransform).matrix);
+        let fixedLocalX: number;
+        let fixedLocalY: number;
+        if (node.type === 'line' || node.type === 'rough-line') {
+          const ln = selected.read(Line);
+          fixedLocalX = isX1Y1 ? ln.x2 : ln.x1;
+          fixedLocalY = isX1Y1 ? ln.y2 : ln.y1;
+        } else {
+          const { points } = selected.read(Polyline);
+          const fp = isX1Y1 ? points[points.length - 1] : points[0];
+          fixedLocalX = fp[0];
+          fixedLocalY = fp[1];
+        }
+        const otherCanvas = vec2.transformMat3(
+          vec2.create(),
+          [fixedLocalX, fixedLocalY],
+          m,
         );
-        const width = cx - x;
-        const height = cy - y;
+        const width = canvasX - otherCanvas[0];
+        const height = canvasY - otherCanvas[1];
         showLabel(label, api, {
-          x,
-          y,
+          x: otherCanvas[0],
+          y: otherCanvas[1],
           width,
           height,
           rotate: true,
@@ -1067,6 +1097,8 @@ export class Select extends System {
       api.updateNode(node, {
         points: points.map((point) => point.join(',')).join(' '),
       });
+      updateGlobalTransform(selected);
+      updateComputedPoints(selected);
       if (isEdgeBindingRebindCandidate(selected, node as EdgeSerializedNode)) {
         selection.bindingRebindLastCanvas = { x: canvasX, y: canvasY };
         this.applyBindingRebindHover(api, canvasX, canvasY);
@@ -1087,6 +1119,7 @@ export class Select extends System {
     api.updateNode(node, {
       d: toPathData(nextCommands),
     });
+
     camera.write(Transformable).pathControlCommands =
       nextCommands as unknown as (string | number)[][];
 
@@ -1138,6 +1171,17 @@ export class Select extends System {
 
     api.setNodes(api.getNodes());
     api.record();
+
+    const { layersSelected: movedLayers } = api.getAppState();
+    if (movedLayers.length === 1) {
+      const movedNode = api.getNodeById(movedLayers[0]);
+      const movedEntity = movedNode ? api.getEntity(movedNode) : undefined;
+      if (movedNode && movedEntity) {
+        updateGlobalTransform(movedEntity);
+        updateComputedPoints(movedEntity);
+        rebasePolylinePathGeometryToLocalOrigin(api, movedNode);
+      }
+    }
 
     camera.write(Transformable).status = TransformableStatus.MOVED;
     this.saveSelectedOBB(api, selection);
@@ -1238,6 +1282,9 @@ export class Select extends System {
     api.updateNode(node, {
       points: nextPoints.map((point) => point.join(',')).join(' '),
     });
+    updateGlobalTransform(selected);
+    updateComputedPoints(selected);
+    rebasePolylinePathGeometryToLocalOrigin(api, api.getNodeById(node.id)!);
     api.record();
 
     selection.activeControlPointIndex = Math.min(
@@ -1311,6 +1358,17 @@ export class Select extends System {
 
     api.setNodes(api.getNodes());
     api.record();
+
+    if (
+      layersSelected.length === 1 &&
+      (selection.resizingAnchorName === AnchorName.X1Y1 ||
+        selection.resizingAnchorName === AnchorName.X2Y2)
+    ) {
+      const lineNode = api.getNodeById(layersSelected[0]);
+      if (lineNode?.type === 'line' || lineNode?.type === 'rough-line') {
+        rebasePolylinePathGeometryToLocalOrigin(api, lineNode);
+      }
+    }
 
     const { selecteds } = camera.read(Transformable);
     selecteds.forEach((selected) => {
@@ -1583,27 +1641,62 @@ export class Select extends System {
       // }
 
       const selection = this.selections.get(camera.__id);
+
+      if (input.doubleClickTrigger && pen === Pen.SELECT) {
+        const { selecteds } = camera.read(Transformable);
+        if (selecteds.length === 1) {
+          const selected = selecteds[0];
+          if (!selected.has(Locked)) {
+            const node = api.getNodeByEntity(selected);
+            if (
+              node &&
+              selected.hasSomeOf(Polyline, Path) &&
+              !(
+                hasFullOrPartialEdgeBinding(selected) &&
+                selected.has(Polyline)
+              )
+            ) {
+              const t = node.type;
+              if (
+                t === 'polyline' ||
+                t === 'rough-polyline' ||
+                t === 'path' ||
+                t === 'rough-path'
+              ) {
+                safeAddComponent(selected, Editable);
+                selected.write(Editable).isEditing = true;
+                api.updateNode(node, { isEditing: true });
+                selection.editing = selected;
+                return;
+              }
+            }
+          }
+        }
+      }
+
       if (input.pointerDownTrigger) {
         const [x, y] = input.pointerViewport;
 
         if (selection.editing) {
           if (selection.mode === SelectionMode.IDLE) {
-            api.updateNode(api.getNodeByEntity(selection.editing), {
-              isEditing: false,
-            });
+            safeAddComponent(selection.editing, Editable);
+            selection.editing.write(Editable).isEditing = false;
+            api.updateNode(api.getNodeByEntity(selection.editing), { isEditing: false });
 
             selection.editing = undefined;
             selection.mode = SelectionMode.SELECT;
             api.setAppState({
               editingPoints: [],
             });
-          } else if (selection.mode === SelectionMode.READY_TO_MOVE) {
+            return;
+          }
+          if (selection.mode === SelectionMode.READY_TO_MOVE) {
             api.setAppState({
               editingPoints: [[x, y]],
             });
+            return;
           }
-
-          return;
+          // 编辑态下仍需允许控制点 / 缩放 / 旋转等 transformer 手势，勿在此处统一 return
         }
 
         if (selection.mode === SelectionMode.IDLE) {
@@ -1944,6 +2037,16 @@ export class Select extends System {
       });
 
       if (input.key === 'Escape') {
+        if (selection.editing) {
+          const editingNode = api.getNodeByEntity(selection.editing);
+          safeAddComponent(selection.editing, Editable);
+          selection.editing.write(Editable).isEditing = false;
+          if (editingNode) {
+            api.updateNode(editingNode, { isEditing: false });
+          }
+          selection.editing = undefined;
+          api.setAppState({ editingPoints: [] });
+        }
         api.selectNodes([]);
         api.highlightNodes([]);
         this.saveSelectedOBB(api, selection);
@@ -2066,6 +2169,22 @@ export class Select extends System {
       tf.rotatePivotPinned = false;
       tf.rotatePivotX = NaN;
       tf.rotatePivotY = NaN;
+
+      if (selection.editing) {
+        const editingNode = api.getNodeByEntity(selection.editing);
+        const editingId = editingNode?.id;
+        const stillSame =
+          selectedNodeIds.length === 1 && selectedNodeIds[0] === editingId;
+        if (!stillSame) {
+          safeAddComponent(selection.editing, Editable);
+          selection.editing.write(Editable).isEditing = false;
+          if (editingNode) {
+            api.updateNode(editingNode, { isEditing: false });
+          }
+          selection.editing = undefined;
+          api.setAppState({ editingPoints: [] });
+        }
+      }
     }
     const obb = getOBB(camera);
     selection.obb = {

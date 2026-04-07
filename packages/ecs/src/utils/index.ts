@@ -27,5 +27,6 @@ export * from './encryption';
 export * from './filter';
 export * from './binding';
 export * from './edge-label';
+export * from './rebase-edge-geometry';
 export * from './polyline-arclength';
 export * from './hitStrokeWidth';

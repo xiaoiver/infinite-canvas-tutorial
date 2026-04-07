@@ -452,6 +452,10 @@ pnpm run dev
 
 ## 课程 37 - 基于 Radiance Cascades 的 GI [🔗](https://infinitecanvas.cc/zh/guide/lesson-037)
 
+-   使用 WebGPU Compute Shader 实现 Radiance Cascades
+    -   使用解析几何生成距离场
+    -   raymarch
+
 |               Radiance Cascades               |
 | :-------------------------------------------: |
 | ![vello](./screenshots/radiance-cascades.png) |

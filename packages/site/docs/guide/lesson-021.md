@@ -4,6 +4,7 @@ description: 'Implement shape transformer with resize and rotation capabilities.
 head:
     - ['meta', { property: 'og:title', content: 'Lesson 21 - Transformer' }]
 ---
+
 <script setup>
 import TransformerRect from '../components/TransformerRect.vue'
 import TransformerRectRotated from '../components/TransformerRectRotated.vue'
@@ -589,7 +590,7 @@ export class Transformable {
 }
 ```
 
-The corresponding interaction is that when you hover over a control point, you can press the <kbd>Delete</kbd> key to delete it.
+The corresponding interaction is that when you hover over a control point, you can press the <kbd>Delete</kbd> key to delete it. To accommodate both the rectangular Transformer's resize and rotate behavior and vertex editing, we also support double-clicking to enter control point editing mode.
 
 <TransformerPolyline />
 
@@ -621,6 +622,8 @@ type HandlePoint = {
     meta: PathControlHandleMeta;
 };
 ```
+
+Similarly, double-click to enter control point editing mode.
 
 <TransformerPath />
 

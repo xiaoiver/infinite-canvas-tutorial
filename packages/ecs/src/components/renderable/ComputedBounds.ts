@@ -25,12 +25,14 @@ export class ComputedBounds {
   @field(aabbType) declare geometryWorldBounds: AABB;
 
   /**
-   * 与 Transform / Konva 式 resize 一致：decompose(GlobalTransform) 的平移 + 局部几何宽高 + rotation/scale。
+   * decompose(GlobalTransform) 的平移 + 局部几何宽高 + rotation/scale（与实体局部原点一致）。
+   * Hover 高亮等直接复用局部 Polyline/Path 点时使用。
    */
   @field(obbType) declare transformOBB: OBB;
 
   /**
-   * 选中框、变换器、getOBB：普通图元与 transformOBB 相同；Group 为世界轴对齐子并集包络。
+   * 选中框、变换器、getOBB。Group 为世界轴对齐子并集包络；
+   * Polyline/Path/Line 为包围盒 min 角对齐的世界坐标，便于 Rect mask。
    */
   @field(obbType) declare selectionOBB: OBB;
 }

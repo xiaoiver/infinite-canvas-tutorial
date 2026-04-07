@@ -43,9 +43,10 @@ import {
   Binding,
   PartialBinding,
   hasFullOrPartialEdgeBinding,
+  Editable,
 } from '../components';
 import { Commands } from '../commands';
-import { updateGlobalTransform } from './Transform';
+import { getSceneRoot, updateGlobalTransform } from './Transform';
 import { API } from '../API';
 import { inside } from '../utils/math';
 import { distanceBetweenPoints } from '../utils/matrix';
@@ -84,6 +85,10 @@ export class RenderTransformer extends System {
     (q) => q.changed.with(ComputedBounds).trackWrites,
   );
 
+  private readonly editable = this.query((q) =>
+    q.changed.with(Editable).trackWrites,
+  );
+
   constructor() {
     super();
 
@@ -99,6 +104,7 @@ export class RenderTransformer extends System {
             Path,
             Line,
             ComputedPoints,
+            Editable,
           )
           .read.and.using(
             Canvas,
@@ -189,21 +195,21 @@ export class RenderTransformer extends System {
         camera.read(Transformable);
       if (selecteds.length === 0) {
         mask.write(Visibility).value = 'hidden';
-        lineMask.write(Visibility).value = 'hidden';
+        this.hideLineMaskAndEndpointAnchors(camera.read(Transformable));
         polylineMask.write(Visibility).value = 'hidden';
         return;
       }
 
       if (usePolylineMask(camera)) {
         mask.write(Visibility).value = 'hidden';
-        lineMask.write(Visibility).value = 'hidden';
+        this.hideLineMaskAndEndpointAnchors(camera.read(Transformable));
         this.updatePolylineMask(camera);
       } else if (useLineMask(camera)) {
         mask.write(Visibility).value = 'hidden';
         polylineMask.write(Visibility).value = 'hidden';
         this.updateLineMask(camera);
       } else {
-        lineMask.write(Visibility).value = 'hidden';
+        this.hideLineMaskAndEndpointAnchors(camera.read(Transformable));
         polylineMask.write(Visibility).value = 'hidden';
         this.updateRectMask(camera);
       }
@@ -484,12 +490,10 @@ export class RenderTransformer extends System {
           if (mask) {
             mask.write(Visibility).value = 'hidden';
           }
-          const { lineMask, polylineMask } = camera.read(Transformable);
-          if (lineMask) {
-            lineMask.write(Visibility).value = 'hidden';
-          }
-          if (polylineMask) {
-            polylineMask.write(Visibility).value = 'hidden';
+          const tf = camera.read(Transformable);
+          this.hideLineMaskAndEndpointAnchors(tf);
+          if (tf.polylineMask) {
+            tf.polylineMask.write(Visibility).value = 'hidden';
           }
         }
         if (pen !== Pen.VECTOR_NETWORK) {
@@ -503,7 +507,9 @@ export class RenderTransformer extends System {
             !(
               hasFullOrPartialEdgeBinding(selecteds[0]) &&
               selecteds[0].has(Polyline)
-            );
+            ) &&
+            selecteds[0].has(Editable) &&
+            selecteds[0].read(Editable).isEditing;
           if (!isPolylineSelected) {
             controlPoints &&
               controlPoints.forEach((controlPoint) => {
@@ -553,6 +559,10 @@ export class RenderTransformer extends System {
       }
     });
 
+    this.editable.changed.forEach((entity) => {
+      camerasToUpdate.add(getSceneRoot(entity));
+    });
+
     camerasToUpdate.forEach((camera) => {
       this.createOrUpdate(camera);
     });
@@ -580,11 +590,31 @@ export class RenderTransformer extends System {
         new StrokeAttenuation(),
         new SizeAttenuation(),
         new Visibility(),
+        new ZIndex(TRANSFORMER_Z_INDEX),
       )
       .id()
       .hold();
 
     return anchor;
+  }
+
+  /**
+   * Hides the line transformer mask and its endpoint anchors together.
+   * Endpoint anchors are often {@link Visibility} `'visible'` after {@link updateLineMask};
+   * they do not receive parent cascade from a hidden mask (only `'inherited'` children do),
+   * so hiding the mask alone would leave stale visible handles.
+   */
+  private hideLineMaskAndEndpointAnchors(tf: Transformable) {
+    const { lineMask, x1y1Anchor, x2y2Anchor } = tf;
+    if (lineMask) {
+      lineMask.write(Visibility).value = 'hidden';
+    }
+    if (x1y1Anchor) {
+      x1y1Anchor.write(Visibility).value = 'hidden';
+    }
+    if (x2y2Anchor) {
+      x2y2Anchor.write(Visibility).value = 'hidden';
+    }
   }
 
   private createRectMask(camera: Entity, transformable: Transformable) {
@@ -739,8 +769,14 @@ export class RenderTransformer extends System {
     let point2: [number, number];
     if (selected.has(Polyline)) {
       const { points } = selected.read(Polyline);
-      point1 = points[0];
-      point2 = points[points.length - 1];
+      const b = Polyline.getGeometryBounds({ points });
+      const ox = b.minX;
+      const oy = b.minY;
+      point1 = [points[0][0] - ox, points[0][1] - oy];
+      point2 = [
+        points[points.length - 1][0] - ox,
+        points[points.length - 1][1] - oy,
+      ];
       if (hasFullOrPartialEdgeBinding(selected)) {
         x1y1Anchor.write(Visibility).value = 'visible';
         x2y2Anchor.write(Visibility).value = 'visible';
@@ -750,8 +786,11 @@ export class RenderTransformer extends System {
       }
     } else if (selected.has(Line)) {
       const { x1, y1, x2, y2 } = selected.read(Line);
-      point1 = [x1, y1];
-      point2 = [x2, y2];
+      const b = Line.getGeometryBounds({ x1, y1, x2, y2 });
+      const ox = b.minX;
+      const oy = b.minY;
+      point1 = [x1 - ox, y1 - oy];
+      point2 = [x2 - ox, y2 - oy];
       x1y1Anchor.write(Visibility).value = 'visible';
       x2y2Anchor.write(Visibility).value = 'visible';
     }
@@ -1005,7 +1044,8 @@ function usePolylineMask(camera: Entity) {
     ) {
       return false;
     }
-    return true;
+    const selected = selecteds[0];
+    return selected.has(Editable) && selected.read(Editable).isEditing;
   }
 
   return false;
@@ -1026,7 +1066,9 @@ export function hitTest(api: API, { x, y }: IPointData) {
     !(
       hasFullOrPartialEdgeBinding(selecteds[0]) &&
       selecteds[0].has(Polyline)
-    );
+    ) &&
+    selecteds[0].has(Editable) &&
+    selecteds[0].read(Editable).isEditing;
   const {
     tlAnchor,
     trAnchor,
