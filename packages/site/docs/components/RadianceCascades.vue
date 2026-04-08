@@ -23,6 +23,7 @@ import {
 const wrapper = ref<HTMLElement | null>(null);
 let api: any | undefined;
 let onReady: ((api: CustomEvent<any>) => void) | undefined;
+const giStrength = ref(0.1);
 
 onMounted(async () => {
   const canvas = wrapper.value;
@@ -36,9 +37,25 @@ onMounted(async () => {
     api.setAppState({
       ...api.getAppState(),
       penbarSelected: Pen.SELECT,
-      penbarAll: [Pen.SELECT, Pen.HAND],
       checkboardStyle: CheckboardStyle.NONE,
       themeMode: ThemeMode.DARK,
+      penbarDrawRect: {
+        ...api.getAppState().penbarDrawRect,
+        fill: 'yellow',
+        fillOpacity: 1,
+        strokeWidth: 0,
+      },
+      penbarDrawEllipse: {
+        ...api.getAppState().penbarDrawEllipse,
+        fill: 'yellow',
+        fillOpacity: 1,
+        strokeWidth: 0,
+      },
+      penbarDrawLine: {
+        ...api.getAppState().penbarDrawLine,
+        stroke: 'blue',
+        strokeWidth: 6,
+      },
       giEnabled: true,
       giStrength: 0.1,
     });
@@ -46,11 +63,11 @@ onMounted(async () => {
     const node1 = {
       id: 'radiance-rect-1',
       type: 'rect',
-      x: 100,
-      y: 0,
+      x: 200,
+      y: 120,
       width: 100,
       height: 100,
-      fill: 'grey',
+      fill: 'black',
     };
     const node2 = {
       id: 'radiance-rect-2',
@@ -70,24 +87,6 @@ onMounted(async () => {
       height: 100,
       fill: 'green',
     };
-    const edge1 = {
-      id: 'radiance-line-1',
-      type: 'line',
-      fromId: 'rect-1',
-      toId: 'rect-2',
-      stroke: 'black',
-      strokeWidth: 10,
-      markerEnd: 'line',
-    };
-    const edge2 = {
-      id: 'radiance-line-2',
-      type: 'line',
-      fromId: 'rect-2',
-      toId: 'rect-3',
-      stroke: 'black',
-      strokeWidth: 10,
-      markerEnd: 'line',
-    };
 
     const line = {
       id: 'radiance-line-3',
@@ -105,11 +104,11 @@ onMounted(async () => {
       type: 'polyline',
       points: '500,0 600,100 700,0',
       stroke: 'grey',
-      strokeWidth: 10,
+      strokeWidth: 4,
     };
 
     api.updateNodes([
-      node1, node2, node3, edge1, edge2,
+      node1, node2, node3,
       line, polyline,
     ]);
   };
@@ -161,8 +160,21 @@ onUnmounted(async () => {
 
   api?.destroy();
 });
+
+const onGiStrengthChange = (e: CustomEvent<number>) => {
+  if (!api) {
+    return;
+  }
+
+  const giStrength = parseFloat((e.target as HTMLInputElement).value);
+  api.setAppState({
+    giStrength,
+  });
+};
 </script>
 
 <template>
-  <ic-spectrum-canvas ref="wrapper" style="width: 100%; height: 400px"></ic-spectrum-canvas>
+  <ic-spectrum-canvas ref="wrapper" style="width: 100%; height: 500px"></ic-spectrum-canvas>
+  <label for="giStrength">GI Strength: {{ giStrength }}</label>
+  <input id="giStrength" type="range" min="0" max="0.2" step="0.01" v-model="giStrength" @input="onGiStrengthChange" />
 </template>

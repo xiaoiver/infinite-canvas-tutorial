@@ -693,9 +693,6 @@ pub struct RcPassTextures {
     pub rc_a_view: TextureView,
     pub rc_b: Texture,
     pub rc_b_view: TextureView,
-    /// Bevy `radiance_first_pass_snapshot`：`rc_b` 首趟结果 `COPY_DST` 写入处。
-    pub rc_first_pass_snapshot: Texture,
-    pub rc_first_pass_snapshot_view: TextureView,
     /// `rc_apply` 全屏输出：`vello + radiance`（Bevy apply），供 `gi_blend` 与 `vello` 作差得间接光增量；尺寸与 GI 一致。
     pub rc_final: Texture,
     pub rc_final_view: TextureView,
@@ -743,9 +740,7 @@ impl RcPassTextures {
             width,
             height,
         );
-        // Bevy `cascade_texture_desc`：`COPY_SRC` 供首趟后 `copy_texture_to_texture` → snapshot。
-        let rc_usage =
-            TextureUsages::STORAGE_BINDING | TextureUsages::TEXTURE_BINDING | TextureUsages::COPY_SRC;
+        let rc_usage = TextureUsages::STORAGE_BINDING | TextureUsages::TEXTURE_BINDING;
         let (rc_a, rc_a_view) = mk_sz(
             device,
             "rc_ping_a",
@@ -759,14 +754,6 @@ impl RcPassTextures {
             "rc_ping_b",
             TextureFormat::Rgba16Float,
             rc_usage,
-            gi_width,
-            gi_height,
-        );
-        let (rc_first_pass_snapshot, rc_first_pass_snapshot_view) = mk_sz(
-            device,
-            "rc_first_pass_snapshot",
-            TextureFormat::Rgba16Float,
-            TextureUsages::TEXTURE_BINDING | TextureUsages::COPY_DST,
             gi_width,
             gi_height,
         );
@@ -806,8 +793,6 @@ impl RcPassTextures {
             rc_a_view,
             rc_b,
             rc_b_view,
-            rc_first_pass_snapshot,
-            rc_first_pass_snapshot_view,
             rc_final,
             rc_final_view,
             mipmap_width,
@@ -1405,7 +1390,7 @@ impl RcPass {
         pass.draw(0..3, 0..1);
     }
 
-    /// 与 Bevy `RadianceCascadesNode` 一致：**首趟 no-merge** 单独 compute pass → **`copy_texture_to_texture` → snapshot** → **merge** 单独 compute pass（probe 序与 01/10 ping-pong 同前）。
+    /// 与 Bevy `RadianceCascadesNode` 一致：**首趟 no-merge** 单独 compute pass → **merge** 单独 compute pass（probe 序与 01/10 ping-pong 同前）。
     pub fn encode_rc_cascade_passes(
         &self,
         device: &Device,
@@ -1413,8 +1398,6 @@ impl RcPass {
         encoder: &mut CommandEncoder,
         rc_a_view: &TextureView,
         rc_b_view: &TextureView,
-        rc_b_tex: &Texture,
-        rc_first_pass_snapshot_tex: &Texture,
         dist_view: &TextureView,
         scene_view: &TextureView,
         gi_width: u32,
@@ -1530,17 +1513,6 @@ impl RcPass {
             pass.set_bind_group(0, &radiance_cascades_10, &[first_offset]);
             pass.dispatch_workgroups(gw, gh, 1);
         }
-
-        let copy_size = Extent3d {
-            width: gi_width,
-            height: gi_height,
-            depth_or_array_layers: 1,
-        };
-        encoder.copy_texture_to_texture(
-            rc_b_tex.as_image_copy(),
-            rc_first_pass_snapshot_tex.as_image_copy(),
-            copy_size,
-        );
 
         // --- radiance_cascades_merge_passes ---
         if cascade_count <= 1 {

@@ -43,6 +43,10 @@ controls.reverse();
 
 其中 Keyframes 和 Options 是纯对象，可直接 JSON 化。但运行时状态：`animate()` 返回的 Animation 对象包含与 DOM 的绑定、当前播放时间、velocity 等运行时状态，无法序列化。
 
+### Polyfill
+
+[web-animations-js]
+
 ## SVG 动画
 
 ### 形变效果 {#morphing}
@@ -88,3 +92,4 @@ drawio 中通过动画表示连接线的方向：
 [Discussion in HN]: https://news.ycombinator.com/item?id=44994071
 [lottielab]: https://www.lottielab.com/
 [omnilottie]: https://fal.ai/models/fal-ai/omnilottie/api
+[web-animations-js]: https://github.com/web-animations/web-animations-js
