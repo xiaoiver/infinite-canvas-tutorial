@@ -182,6 +182,18 @@ export function shiftPath(d: string, dx: number, dy: number) {
   return path2String(absoluteArray);
 }
 
+/**
+ * 局部路径/折线顶点在「几何 min 归一化」坐标系下，不应再叠加节点位姿里的平移（m20/m21），
+ * 否则 transformPath / 点乘会与 obb 里的 x,y 重复平移。
+ */
+export function mat3WithoutTranslation(m: mat3): mat3 {
+  const out = mat3.clone(m);
+  out[6] = 0;
+  out[7] = 0;
+  out[8] = 1;
+  return out;
+}
+
 export function transformPath(d: string, transform: mat3) {
   const absoluteArray = path2Absolute(d);
 

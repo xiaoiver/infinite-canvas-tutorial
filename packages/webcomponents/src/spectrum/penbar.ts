@@ -51,6 +51,9 @@ export class Penbar extends LitElement {
   @state()
   lastDrawPen:
     | Pen.DRAW_RECT
+    | Pen.DRAW_TRIANGLE
+    | Pen.DRAW_PENTAGON
+    | Pen.DRAW_HEXAGON
     | Pen.DRAW_ELLIPSE
     | Pen.DRAW_LINE
     | Pen.DRAW_ROUGH_RECT
@@ -91,6 +94,9 @@ export class Penbar extends LitElement {
 
     if (
       pen === Pen.DRAW_RECT ||
+      pen === Pen.DRAW_TRIANGLE ||
+      pen === Pen.DRAW_PENTAGON ||
+      pen === Pen.DRAW_HEXAGON ||
       pen === Pen.DRAW_ELLIPSE ||
       pen === Pen.DRAW_LINE ||
       pen === Pen.DRAW_ROUGH_RECT ||
@@ -126,7 +132,14 @@ export class Penbar extends LitElement {
 
   private setPenWithKeyboard(
     event: KeyboardEvent,
-    pen: Pen.DRAW_RECT | Pen.DRAW_ELLIPSE | Pen.DRAW_LINE | Pen.DRAW_ARROW,
+    pen:
+      | Pen.DRAW_RECT
+      | Pen.DRAW_TRIANGLE
+      | Pen.DRAW_PENTAGON
+      | Pen.DRAW_HEXAGON
+      | Pen.DRAW_ELLIPSE
+      | Pen.DRAW_LINE
+      | Pen.DRAW_ARROW,
     targetKey: string,
     shiftKey: boolean = false,
   ) {
@@ -155,6 +168,9 @@ export class Penbar extends LitElement {
       return;
     }
     this.setPenWithKeyboard(event, Pen.DRAW_RECT, 'R');
+    this.setPenWithKeyboard(event, Pen.DRAW_TRIANGLE, 'T');
+    this.setPenWithKeyboard(event, Pen.DRAW_PENTAGON, '5');
+    this.setPenWithKeyboard(event, Pen.DRAW_HEXAGON, '6');
     this.setPenWithKeyboard(event, Pen.DRAW_LINE, 'L');
     this.setPenWithKeyboard(event, Pen.DRAW_ELLIPSE, 'O');
     this.setPenWithKeyboard(event, Pen.DRAW_ARROW, 'L', true);
@@ -182,6 +198,9 @@ export class Penbar extends LitElement {
       const pen = this.api.getAppState().penbarSelected;
       this.lastDrawPen =
         pen === Pen.DRAW_RECT ||
+          pen === Pen.DRAW_TRIANGLE ||
+          pen === Pen.DRAW_PENTAGON ||
+          pen === Pen.DRAW_HEXAGON ||
           pen === Pen.DRAW_ELLIPSE ||
           pen === Pen.DRAW_LINE ||
           pen === Pen.DRAW_ROUGH_RECT ||
@@ -228,6 +247,9 @@ export class Penbar extends LitElement {
       )}
           ${when(
         penbarAll.includes(Pen.DRAW_RECT) ||
+        penbarAll.includes(Pen.DRAW_TRIANGLE) ||
+        penbarAll.includes(Pen.DRAW_PENTAGON) ||
+        penbarAll.includes(Pen.DRAW_HEXAGON) ||
         penbarAll.includes(Pen.DRAW_ELLIPSE) ||
         penbarAll.includes(Pen.DRAW_LINE) ||
         penbarAll.includes(Pen.DRAW_ROUGH_RECT) ||
@@ -244,6 +266,18 @@ export class Penbar extends LitElement {
           this.lastDrawPen === Pen.DRAW_RECT,
           () =>
             html`<sp-icon-rectangle slot="icon"></sp-icon-rectangle>`,
+        )}
+                  ${when(
+          this.lastDrawPen === Pen.DRAW_TRIANGLE,
+          () => html`<sp-icon-triangle slot="icon"></sp-icon-triangle>`,
+        )}
+                  ${when(
+          this.lastDrawPen === Pen.DRAW_PENTAGON,
+          () => html`<sp-icon-pentagon slot="icon"></sp-icon-pentagon>`,
+        )}
+                  ${when(
+          this.lastDrawPen === Pen.DRAW_HEXAGON,
+          () => html`<sp-icon-polygon slot="icon"></sp-icon-polygon>`,
         )}
                   ${when(
           this.lastDrawPen === Pen.DRAW_ELLIPSE,
@@ -286,6 +320,30 @@ export class Penbar extends LitElement {
                         <sp-icon-rectangle slot="icon"></sp-icon-rectangle>
                         ${msg(str`Rectangle`)}
                         <kbd slot="value">R</kbd>
+                      </sp-menu-item>`,
+        )}
+                    ${when(
+          penbarAll.includes(Pen.DRAW_TRIANGLE),
+          () => html` <sp-menu-item value="${Pen.DRAW_TRIANGLE}">
+                        <sp-icon-triangle slot="icon"></sp-icon-triangle>
+                        ${msg(str`Triangle`)}
+                        <kbd slot="value">T</kbd>
+                      </sp-menu-item>`,
+        )}
+                    ${when(
+          penbarAll.includes(Pen.DRAW_PENTAGON),
+          () => html` <sp-menu-item value="${Pen.DRAW_PENTAGON}">
+                        <sp-icon-pentagon slot="icon"></sp-icon-pentagon>
+                        ${msg(str`Pentagon`)}
+                        <kbd slot="value">5</kbd>
+                      </sp-menu-item>`,
+        )}
+                    ${when(
+          penbarAll.includes(Pen.DRAW_HEXAGON),
+          () => html` <sp-menu-item value="${Pen.DRAW_HEXAGON}">
+                        <sp-icon-polygon slot="icon"></sp-icon-polygon>
+                        ${msg(str`Hexagon`)}
+                        <kbd slot="value">6</kbd>
                       </sp-menu-item>`,
         )}
                     ${when(

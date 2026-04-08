@@ -89,6 +89,8 @@ import '@spectrum-web-components/icons-workflow/icons/sp-icon-image.js';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-arrow-up-right.js';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-send.js';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-find-and-replace.js';
+import '@spectrum-web-components/icons-workflow/icons/sp-icon-polygon.js';
+import '@spectrum-web-components/icons-workflow/icons/sp-icon-sharpen.js';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-polygon-select.js';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-comment.js';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-image-auto-mode.js';
@@ -99,6 +101,8 @@ import '@spectrum-web-components/icons-workflow/icons/sp-icon-checkmark.js';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-cancel.js';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-group.js';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-ungroup.js';
+import './icons/sp-icon-pentagon';
+import './icons/sp-icon-triangle';
 
 export const TOP_NAVBAR_HEIGHT = 48;
 

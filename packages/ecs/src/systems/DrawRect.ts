@@ -39,14 +39,18 @@ import { API } from '../API';
 import {
   distanceBetweenPoints,
   isBrowser,
+  regularPolygonPathInRect,
   snapToGrid,
 } from '../utils';
-import type { EllipseSerializedNode, FillAttributes, PolylineSerializedNode, RectSerializedNode, RoughAttributes, RoughEllipseSerializedNode, RoughPolylineSerializedNode, RoughRectSerializedNode, StrokeAttributes } from '../types/serialized-node';
+import type { EllipseSerializedNode, FillAttributes, PathSerializedNode, PolylineSerializedNode, RectSerializedNode, RoughAttributes, RoughEllipseSerializedNode, RoughPolylineSerializedNode, RoughRectSerializedNode, StrokeAttributes } from '../types/serialized-node';
 import { DRAW_RECT_Z_INDEX } from '../context';
 import { DOMAdapter, TRANSFORMER_ANCHOR_STROKE_COLOR } from '..';
 
 const PEN_TO_TYPE = {
   [Pen.DRAW_RECT]: 'rect',
+  [Pen.DRAW_TRIANGLE]: 'path',
+  [Pen.DRAW_PENTAGON]: 'path',
+  [Pen.DRAW_HEXAGON]: 'path',
   [Pen.DRAW_ELLIPSE]: 'ellipse',
   [Pen.DRAW_LINE]: 'polyline',
   [Pen.DRAW_ARROW]: 'polyline',
@@ -57,6 +61,9 @@ const PEN_TO_TYPE = {
 
 interface DrawRectSelection {
   rectBrush: RectSerializedNode;
+  triangleBrush: PathSerializedNode;
+  pentagonBrush: PathSerializedNode;
+  hexagonBrush: PathSerializedNode;
   ellipseBrush: EllipseSerializedNode;
   lineBrush: PolylineSerializedNode;
   arrowBrush: PolylineSerializedNode;
@@ -133,6 +140,9 @@ export class DrawRect extends System {
       const pen = appState.penbarSelected;
       const defaultDrawParams: Record<
         | Pen.DRAW_RECT
+        | Pen.DRAW_TRIANGLE
+        | Pen.DRAW_PENTAGON
+        | Pen.DRAW_HEXAGON
         | Pen.DRAW_ELLIPSE
         | Pen.DRAW_LINE
         | Pen.DRAW_ROUGH_RECT
@@ -141,6 +151,9 @@ export class DrawRect extends System {
         Partial<RoughAttributes & StrokeAttributes & FillAttributes>
       > = {
         [Pen.DRAW_RECT]: appState.penbarDrawRect,
+        [Pen.DRAW_TRIANGLE]: appState.penbarDrawTriangle,
+        [Pen.DRAW_PENTAGON]: appState.penbarDrawPentagon,
+        [Pen.DRAW_HEXAGON]: appState.penbarDrawHexagon,
         [Pen.DRAW_ELLIPSE]: appState.penbarDrawEllipse,
         [Pen.DRAW_LINE]: appState.penbarDrawLine,
         [Pen.DRAW_ROUGH_RECT]: appState.penbarDrawRoughRect,
@@ -154,6 +167,9 @@ export class DrawRect extends System {
 
       if (
         pen !== Pen.DRAW_RECT &&
+        pen !== Pen.DRAW_TRIANGLE &&
+        pen !== Pen.DRAW_PENTAGON &&
+        pen !== Pen.DRAW_HEXAGON &&
         pen !== Pen.DRAW_ELLIPSE &&
         pen !== Pen.DRAW_LINE &&
         pen !== Pen.DRAW_ROUGH_RECT &&
@@ -172,6 +188,9 @@ export class DrawRect extends System {
       if (!selection) {
         selection = {
           rectBrush: undefined,
+          triangleBrush: undefined,
+          pentagonBrush: undefined,
+          hexagonBrush: undefined,
           ellipseBrush: undefined,
           lineBrush: undefined,
           arrowBrush: undefined,
@@ -237,6 +256,7 @@ export class DrawRect extends System {
           const maxZIndex = api.getNodes().reduce((max, node) => Math.max(max, node.zIndex ?? 0), 0);
           const node:
             | RectSerializedNode
+            | PathSerializedNode
             | EllipseSerializedNode
             | PolylineSerializedNode
             | RoughEllipseSerializedNode
@@ -253,6 +273,24 @@ export class DrawRect extends System {
                 ? {
                   points: `${x},${y} ${x + width},${y + height}`,
                 }
+                : pen === Pen.DRAW_TRIANGLE ||
+                    pen === Pen.DRAW_PENTAGON ||
+                    pen === Pen.DRAW_HEXAGON
+                  ? {
+                    x,
+                    y,
+                    width,
+                    height,
+                    d: regularPolygonPathInRect(
+                      pen === Pen.DRAW_TRIANGLE
+                        ? 3
+                        : pen === Pen.DRAW_PENTAGON
+                          ? 5
+                          : 6,
+                      width,
+                      height,
+                    ),
+                  }
                 : {
                   x,
                   y,
@@ -324,6 +362,12 @@ export class DrawRect extends System {
       let brush =
         pen === Pen.DRAW_RECT
           ? selection.rectBrush
+          : pen === Pen.DRAW_TRIANGLE
+            ? selection.triangleBrush
+            : pen === Pen.DRAW_PENTAGON
+              ? selection.pentagonBrush
+              : pen === Pen.DRAW_HEXAGON
+                ? selection.hexagonBrush
           : pen === Pen.DRAW_ROUGH_RECT
             ? selection.roughRectBrush
             : pen === Pen.DRAW_ELLIPSE
@@ -349,6 +393,16 @@ export class DrawRect extends System {
             ? {
               points: '0,0 0,0',
             }
+            : pen === Pen.DRAW_TRIANGLE ||
+                pen === Pen.DRAW_PENTAGON ||
+                pen === Pen.DRAW_HEXAGON
+              ? {
+                x: 0,
+                y: 0,
+                width: 0,
+                height: 0,
+                d: '',
+              }
             : {
               x: 0,
               y: 0,
@@ -361,6 +415,12 @@ export class DrawRect extends System {
           selection.rectBrush = brush as RectSerializedNode;
         } else if (pen === Pen.DRAW_ROUGH_RECT) {
           selection.roughRectBrush = brush as RoughRectSerializedNode;
+        } else if (pen === Pen.DRAW_TRIANGLE) {
+          selection.triangleBrush = brush as PathSerializedNode;
+        } else if (pen === Pen.DRAW_PENTAGON) {
+          selection.pentagonBrush = brush as PathSerializedNode;
+        } else if (pen === Pen.DRAW_HEXAGON) {
+          selection.hexagonBrush = brush as PathSerializedNode;
         } else if (pen === Pen.DRAW_ELLIPSE) {
           selection.ellipseBrush = brush as EllipseSerializedNode;
         } else if (pen === Pen.DRAW_LINE) {
@@ -395,6 +455,10 @@ export class DrawRect extends System {
 
       const isLine =
         pen === Pen.DRAW_LINE || pen === Pen.DRAW_ROUGH_LINE;
+      const isPolygon =
+        pen === Pen.DRAW_TRIANGLE ||
+        pen === Pen.DRAW_PENTAGON ||
+        pen === Pen.DRAW_HEXAGON;
 
       if (!isLine) {
         if (isSquare) {
@@ -423,6 +487,20 @@ export class DrawRect extends System {
             visibility: 'visible',
             points: `${x},${y} ${cx},${cy}`,
           }
+          : isPolygon
+            ? {
+              ...defaultDrawParams,
+              visibility: 'visible',
+              x,
+              y,
+              width,
+              height,
+              d: regularPolygonPathInRect(
+                pen === Pen.DRAW_TRIANGLE ? 3 : pen === Pen.DRAW_PENTAGON ? 5 : 6,
+                width,
+                height,
+              ),
+            }
           : {
             ...defaultDrawParams,
             visibility: 'visible',
@@ -458,6 +536,9 @@ export class DrawRect extends System {
   private getBrush(selection: DrawRectSelection, pen: Pen) {
     const {
       rectBrush,
+      triangleBrush,
+      pentagonBrush,
+      hexagonBrush,
       roughRectBrush,
       roughEllipseBrush,
       ellipseBrush,
@@ -468,6 +549,12 @@ export class DrawRect extends System {
     const brush =
       pen === Pen.DRAW_RECT
         ? rectBrush
+        : pen === Pen.DRAW_TRIANGLE
+          ? triangleBrush
+          : pen === Pen.DRAW_PENTAGON
+            ? pentagonBrush
+            : pen === Pen.DRAW_HEXAGON
+              ? hexagonBrush
         : pen === Pen.DRAW_ROUGH_RECT
           ? roughRectBrush
           : pen === Pen.DRAW_ROUGH_ELLIPSE

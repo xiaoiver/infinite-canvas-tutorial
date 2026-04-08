@@ -957,7 +957,6 @@ export function getOBB(camera: Entity): OBB {
   const tf = camera.read(Transformable);
   const { selecteds, status, resizeWidth, resizeHeight } = tf;
 
-  // Single selected, keep the original OBB include rotation & scale.
   if (selecteds.length === 1) {
     const selected = selecteds[0];
     if (selected.has(ComputedBounds)) {
@@ -982,26 +981,37 @@ export function getOBB(camera: Entity): OBB {
           });
         }
       }
-      return selectionOBB;
+    }
+  }
+
+  /**
+   * 多选旋转时 union AABB 每帧重算会跳动；用手势开始时的 gestureFrozenSelectionOBB。
+   */
+  if (
+    status === TransformableStatus.ROTATING &&
+    tf.transformerObbFrozenDuringRotate &&
+    selecteds.length > 1
+  ) {
+    const g = tf.gestureFrozenSelectionOBB;
+    return new OBB({
+      x: g.x,
+      y: g.y,
+      width: g.width,
+      height: g.height,
+      rotation: g.rotation,
+      scaleX: g.scaleX,
+      scaleY: g.scaleY,
+    });
+  }
+
+  if (selecteds.length === 1) {
+    const selected = selecteds[0];
+    if (selected.has(ComputedBounds)) {
+      return selected.read(ComputedBounds).selectionOBB;
     }
   }
 
   if (selecteds.length > 1) {
-    if (
-      status === TransformableStatus.ROTATING &&
-      tf.transformerObbFrozenDuringRotate
-    ) {
-      const g = tf.gestureFrozenSelectionOBB;
-      return new OBB({
-        x: g.x,
-        y: g.y,
-        width: g.width,
-        height: g.height,
-        rotation: g.rotation,
-        scaleX: g.scaleX,
-        scaleY: g.scaleY,
-      });
-    }
     return calculateOBBRecursive(selecteds);
   }
 
