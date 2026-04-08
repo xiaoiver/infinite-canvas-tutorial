@@ -1,19 +1,19 @@
 ---
 outline: deep
-description: '探索Radiance Cascades技术，实现实时全局光照效果。学习现代图形渲染中的高级光照技术和性能优化方法。'
+description: 'Explore Radiance Cascades and implement real-time global illumination. Learn advanced lighting techniques and performance optimization in modern rendering.'
 ---
 
 <script setup>
-import RadianceCascades from '../../components/RadianceCascades.vue'
+import RadianceCascades from '../components/RadianceCascades.vue'
 </script>
 
-# 课程 37 - 基于 Radiance Cascades 的 GI
+# Lesson 37 - GI with Radiance Cascades
 
-在 [课程 35 - 基于瓦片的渲染] 中我们使用了基于 WebGPU Compute Shader 的渲染器 [vello]。在本节中我们可以尝试一种同样基于 Compute Shader 的全局光照效果，并将它和已有的渲染流程结合起来。
+In [Lesson 35 - Tile-based Rendering], we used the WebGPU Compute Shader-based renderer [vello]. In this lesson, we will try a global illumination approach that is also compute-shader-based, and integrate it with the existing rendering pipeline.
 
 <RadianceCascades />
 
-完整原理介绍详见：[Fundamentals of Radiance Cascades]
+For a complete explanation of the theory, see: [Fundamentals of Radiance Cascades]
 
 > What we've observed is that the further we are from the closest object in the scene:
 >
@@ -22,7 +22,7 @@ import RadianceCascades from '../../components/RadianceCascades.vue'
 
 ![source: https://arxiv.org/pdf/2408.14425](/rc-penumbra.png)
 
-整体流程如下：
+The overall pipeline is:
 
 ```rust
 let mut rc_enc = device_handle
@@ -37,13 +37,13 @@ rp.encode_rc_apply();
 device_handle.queue.submit([rc_enc.finish()]);
 ```
 
-## 生成距离场 {#distance-pass}
+## Generate Distance Field {#distance-pass}
 
-先使用解析几何。在 [课程 2 - 绘制圆] 和 [课程 9 - 绘制椭圆和矩形] 中我们已经介绍过 Circle Ellipse 和 Rect 的 SDF，在图形边缘和内部距离为 `0`。下图为使用灰度图的可视化效果，使用 `saturate(d * DIST_FIELD_VIZ_SCALE)` 将原始距离映射到 `[0,1]`：
+We start with analytic geometry. In [Lesson 2 - Draw a Circle] and [Lesson 9 - Draw Ellipses and Rectangles], we already introduced SDFs for circles, ellipses, and rectangles. The distance is `0` on shape boundaries and inside shapes. The figure below visualizes it in grayscale, mapping raw distance into `[0,1]` with `saturate(d * DIST_FIELD_VIZ_SCALE)`:
 
 ![SDF of rect and ellipse](/rc-sdf.png)
 
-为了生成距离场纹理，Vertex shader 依然使用一个全屏三角形（类似之前 post processing 中的做法），`prims` 记录了场景中图形基础几何信息，便于使用 `sdf_prim` 生成解析几何距离场。最终结果写入 `rc_dist` 纹理中，该纹理使用全画布分辨率，格式为 `R16F` 存储无符号距离。
+To generate the distance field texture, the vertex shader still uses a full-screen triangle (similar to our previous post-processing passes). `prims` stores basic scene primitive geometry, so `sdf_prim` can evaluate analytic distance fields. The final result is written into `rc_dist`, a full-canvas texture in `R16F` format storing unsigned distance.
 
 ```wgsl
 @group(0) @binding(0) var<uniform> header: DistHeader;
@@ -57,23 +57,23 @@ fn dist_fs(i: VsOut) -> @location(0) vec4<f32> {
     if i >= n { break; }
     d = min(d, sdf_prim(p_canvas, prims[i]));
   }
-  // d 为并集 SDF：形内 <0、形外 >0、边 ≈0。R 存 max(d,0)：实心内部与边上为 0，外部为到边界的正距离。
+  // d is union SDF: inside <0, outside >0, boundary ~=0. R stores max(d,0): 0 inside and on edges, positive outside as distance to boundary.
   return vec4(max(d, 0.0), 0.0, 0.0, 1.0);
 }
 ```
 
-目前我们暂时只支持 Rect Ellipse Line Polyline，其他 SDF 可以参考 [distfunctions2d]
+Right now we only support Rect, Ellipse, Line, and Polyline. For other SDFs, refer to [distfunctions2d].
 
 ### JFA {#jfa}
 
-[bevy_radiance_cascades] 使用的 Jump Flood Algorithm (JFA) 是一种并行距离场生成算法。它的核心思想是：通过指数级递减的"跳跃步长"，让信息在 `log₂(N)` 轮内传遍整个网格。
+The [bevy_radiance_cascades] implementation uses Jump Flood Algorithm (JFA), a parallel method for generating distance fields. The core idea is to propagate information through the entire grid in `log₂(N)` rounds with exponentially decreasing "jump steps".
 
--   输入：JFA 的 `texture_2d<u32>`（存种子坐标）。
--   输出：当前像素到该种子的欧氏距离，写入 R16Float 距离图。
+-   Input: JFA `texture_2d<u32>` (stores seed coordinates).
+-   Output: Euclidean distance from current pixel to the seed, written into an R16Float distance map.
 
-这样射线步进可以用较大的步长跳到下一个“安全”距离，而不是固定小步长。
+This allows ray marching to take large, safe steps to the next surface instead of using fixed tiny steps.
 
-## 计算 cascade {#cascade-compute}
+## Compute Cascades {#cascade-compute}
 
 [Fundamentals of Radiance Cascades]
 
@@ -81,13 +81,13 @@ fn dist_fs(i: VsOut) -> @location(0) vec4<f32> {
 
 <video autoplay="" class="video" loop="" muted="" playsinline="" style="width:360px"><source src="https://m4xc.dev/anim/articles/fundamental-rc/spatial-exploit-anim.mp4" type="video/mp4"> Video tag is not supported.</video>
 
-每个 Probe 结构如下，后续传入 GPU 按 std140 对齐时需要考虑 padding：
+Each Probe is structured like this. When uploading to GPU with std140 alignment, padding must be considered:
 
 ```rust
 pub struct Probe {
-    pub width: u32, // 每个 probe 占多少格纹理、多少条方向采样（角度离散度）
-    pub start: f32, // 这条射线从离中心多远开始算（跳过已由更内层级联覆盖的近距）
-    pub range: f32, // 从该起点沿射线再追踪多远（当前级联负责的深度段长度）
+    pub width: u32, // texel footprint per probe and ray count (angular discretization)
+    pub start: f32, // where this ray segment starts from the probe center
+    pub range: f32, // how far this cascade traces along the ray from start
 }
 
 pub fn probe_for_cascade(c: u32, resolution_factor: u32, interval0: f32) -> Probe {
@@ -104,7 +104,7 @@ pub fn probe_for_cascade(c: u32, resolution_factor: u32, interval0: f32) -> Prob
 
 ![Increasing angular resolution for more distant “rings”. source: https://m4xc.dev/articles/fundamental-rc/](https://m4xc.dev/img/articles/fundamental-rc/inc-angular-split.png)
 
-根据画布对角线长度计算所需的 cascade 数目：
+Compute required cascade count from canvas diagonal length:
 
 ```rust
 pub fn cascade_count_for_gi_size(gi_w: u32, gi_h: u32) -> usize {
@@ -116,7 +116,7 @@ pub const RC_INTERVAL0: f32 = 2.0;
 pub const RC_MAX_CASCADES: usize = 16;
 ```
 
-在画布初始化时分配 Probe：
+Allocate Probe uniforms when initializing the canvas:
 
 ```rust
 for c in 0..cascade_count {
@@ -130,9 +130,9 @@ for c in 0..cascade_count {
 }
 ```
 
-### CPU 调度与 ping-pong {#ping-pong}
+### CPU Scheduling and Ping-Pong {#ping-pong}
 
-CPU 侧调度分成两个 pipeline，需要准备 `rc_ping_a` 和 `rc_ping_b` 两张纹理。
+CPU-side scheduling is split into two pipelines, and requires two textures: `rc_ping_a` and `rc_ping_b`.
 
 ```rust
 let rc_usage =
@@ -145,10 +145,10 @@ let (rc_a, rc_a_view) = mk_sz(
     gi_width,
     gi_height,
 );
-// rc_ping_b 同上
+// rc_ping_b is the same
 ```
 
-首先是第一个 pipeline，它负责读 `rc_ping_a`，写 `rc_ping_b`，先计算最远段。
+The first pipeline reads `rc_ping_a` and writes `rc_ping_b`, starting from the farthest segment first.
 
 ```rust
 let mut pass = encoder.begin_compute_pass(&ComputePassDescriptor {
@@ -160,7 +160,7 @@ pass.set_bind_group(0, &radiance_cascades_10, &[first_offset]);
 pass.dispatch_workgroups(gw, gh, 1);
 ```
 
-第二个 pipeline 会交替使用 `radiance_cascades_01 / 10` 两套 bind group 做 ping-pong（依次写 `rc_ping_a` / `rc_ping_b`）。逐级向更小的 c 合并，每步用对应的 Probe 偏移。
+The second pipeline alternates between `radiance_cascades_01 / 10` bind groups for ping-pong (`rc_ping_a` / `rc_ping_b` writes in turn). It then merges level by level toward smaller `c`, using the matching Probe offset each step.
 
 ```rust
 let mut merge_pass = encoder.begin_compute_pass(&ComputePassDescriptor {
@@ -182,7 +182,7 @@ for pass_i in 1..cascade_count {
 }
 ```
 
-无论是首次还是后续 ping-pong 的 compute pass，它们派发射线的逻辑都是一样的。
+Both the first pass and subsequent ping-pong compute passes use the same ray dispatch logic.
 
 ```wgsl
 @compute @workgroup_size(8, 8, 1)
@@ -196,41 +196,41 @@ fn rc_cascade_merge(@builtin(global_invocation_id) gid: vec3<u32>) {
 }
 ```
 
-### 派发射线 {#dispatch-ray}
+### Dispatch Rays {#dispatch-ray}
 
-每个 Compute Shader 线程处理 GI 级联纹理里的 一个 texel：
+Each Compute Shader thread handles one texel in the GI cascade texture:
 
-1. 先根据在 width² 块内的位置选定方向
-2. 再根据块在整图上的位置 得到 probe 中心的全分辨率坐标
-3. 最后沿射线偏移 start 得到本次 raymarch 的起点。
+1. Select a direction from the local position inside the `width²` block.
+2. Use the block's position in the full texture to get the probe center in full-resolution coordinates.
+3. Offset by `start` along the ray to get the ray-march start point.
 
-在同一块 probe 里，不同 texel = 不同方向；块内铺满 width² 个方向采样。下面的解释视频来自：[Fundamentals of Radiance Cascades]
+Inside one probe block, different texels represent different directions; the block packs `width²` directional samples. The explanation video below is from [Fundamentals of Radiance Cascades]:
 
 <video class="video" loop="" muted="" playsinline="" style="width:360px" controls=""><source src="https://m4xc.dev/anim/articles/fundamental-rc/probe-memory-anim.mp4" type="video/mp4"> Video tag is not supported.</video>
 
 ```wgsl
 let probe_texel = vec2<u32>(base_coord.x % probe_w, base_coord.y % probe_w);
 
-// 把二维局部坐标压平成 0 … probe_w²-1 的射线编号（每个 texel 对应一条固定方向）。
+// Flatten 2D local coords into ray IDs in 0 … probe_w²-1.
 let ray_index = probe_texel.x + probe_texel.y * probe_w;
 let ray_count = probe_w * probe_w;
 
-// 在 一整圈 [0, 2π) 上 均匀 划分 ray_count 个方向。
-// + 0.5 取每个扇区的中心角，避免把边界落在两条射线的接缝上。
+// Uniformly split [0, 2π) into ray_count directions.
+// +0.5 samples the center of each angular sector.
 let ray_angle = (f32(ray_index) + 0.5) / f32(ray_count) * PI2;
 let ray_dir = normalize(vec2(cos(ray_angle), sin(ray_angle)));
 
-// 当前 texel 属于第几行、第几列 probe（整除）。
+// Probe row/column index this texel belongs to.
 let probe_cell = vec2<u32>(base_coord.x / probe_w, base_coord.y / probe_w);
-// 该 probe 在 GI 纹理 里的 左上角 像素坐标。
+// Top-left coordinate of this probe in GI texture.
 let probe_coord = vec2<u32>(probe_cell.x * probe_w, probe_cell.y * probe_w);
-// 该 probe 的 中心（GI 纹理像素坐标，整数像素中心用 +w/2 近似）。
+// Probe center in GI texture.
 let probe_coord_center = probe_coord + vec2<u32>(probe_w / 2u, probe_w / 2u);
-// 当前 probe 中心在 全分辨率 下的位置（用于「从哪一点出发往四周看」）。
+// Probe center in full resolution.
 let center_full = vec2<f32>(probe_coord_center) * rs.gi_scale;
 ```
 
-未命中且 merge 开启时加上 `merge()` 从上一级纹理插值来的辐射。
+If no hit is found and merge is enabled, add interpolated radiance from the upper cascade via `merge()`.
 
 ```wgsl
 @group(0) @binding(5) var tex_radiance_cascades_destination: texture_storage_2d<rgba16float, write>;
@@ -238,8 +238,8 @@ let center_full = vec2<f32>(probe_coord_center) * rs.gi_scale;
 fn radiance_dispatch(merge_flag: u32, gid: vec3<u32>) {
   // ...
 
-  // 不在中心直接起步，而是沿 ray_dir 前移 probe.start。
-  // 这是 Radiance Cascades 里 按级联划分的距离段：内层 cascade 已覆盖近处，这里从 start 开始只负责更远一段，避免重复累加。
+  // Start from center + ray_dir * probe.start, not exactly at center.
+  // Inner cascades already cover near field; this cascade handles farther range only.
   let origin = center_full + ray_dir * ru.probe_start;
   var color = raymarch(origin, ray_dir, ru.probe_range);
   if merge_flag != 0u && color.a != 1.0 {
@@ -251,7 +251,7 @@ fn radiance_dispatch(merge_flag: u32, gid: vec3<u32>) {
 
 ### Raymarch {#raymarch}
 
-对于每一根从像素点出发，沿指定方向前进的射线，最多向前步进 `MAX_RAYMARCH` 步。每一步读取上一步生成的距离场 `tex_dist_field`，按 `dist` 沿射线前进；若距离 `< EPSILON` 就认为击中表面或者图形内部，直接读取 `tex_main` 作为颜色。
+For each ray starting from a pixel and marching along a direction, we take at most `MAX_RAYMARCH` steps. In each step, we sample the previously generated distance field `tex_dist_field` and move forward by `dist`. If distance is `< EPSILON`, we treat it as hitting a surface (or being inside geometry), then directly sample `tex_main` for color.
 
 ```wgsl
 fn raymarch(origin: vec2<f32>, ray_dir: vec2<f32>, range: f32) -> vec4<f32> {
@@ -259,7 +259,7 @@ fn raymarch(origin: vec2<f32>, ray_dir: vec2<f32>, range: f32) -> vec4<f32> {
     var color = vec4(0.0);
     var covered_range = 0.0;
     for (var r = 0u; r < MAX_RAYMARCH; r = r + 1u) {
-        if ( // 终止条件
+        if ( // termination
             covered_range >= range ||
             any(position >= dimensions)
         ) {
@@ -278,18 +278,18 @@ fn raymarch(origin: vec2<f32>, ray_dir: vec2<f32>, range: f32) -> vec4<f32> {
 }
 ```
 
-### 合并 cascade {#merge-cascade}
+### Merge Cascades {#merge-cascade}
 
-「从内层（更细）级联合并到当前层」：当前层每个 probe 的 width = W，上一层（已写在 `tex_radiance_cascades_source` 里）对应的是 prev_width = 2W，即每个 probe 有 2 倍边长 → 4 倍条数 的方向采样。合并时要：
+"Merge from inner (finer) cascade into current layer": if current probe width is `W`, then previous cascade (already written in `tex_radiance_cascades_source`) has `prev_width = 2W`, i.e. 2x probe edge length and 4x directional samples. During merge:
 
--   把 4 条细方向（ray_index\*4 … +3）对应到当前这一条粗方向；
--   在空间上对 上一层更密的 probe 网格 做 双线性插值（四个角 TL/TR/BL/BR）。
+-   Map 4 fine directions (`ray_index*4 … +3`) onto the current coarse direction.
+-   Perform bilinear interpolation in space over the denser previous probe grid (TL/TR/BL/BR).
 
 ```wgsl
 fn merge(probe_cell: vec2<u32>, ray_index: u32) -> vec4<f32> {
     let dimensions = textureDimensions(tex_radiance_cascades_source);
-    // 上一层级联里，每个 probe 在纹理里占的边长（texel 数）。
-    // 当前层是 W，上一层是 2W，方向数是 ((2W)^2)，是当前的 4 倍。
+    // Probe edge length in previous cascade texture.
+    // Current is W, previous is 2W, so previous has 4x rays.
     let prev_width = probe.width * 2u;
 
     let prev_ray_index_start = ray_index * 4u;
@@ -300,7 +300,7 @@ fn merge(probe_cell: vec2<u32>, ray_index: u32) -> vec4<f32> {
             prev_ray_index / prev_width,
         );
 
-        // 对四个空间角各采一次样
+        // Sample all four spatial corners
         TL = TL + fetch_cascade(
             probe_cell_i,
             probe_correction_offset + vec2<i32>(-1, -1),
@@ -308,29 +308,29 @@ fn merge(probe_cell: vec2<u32>, ray_index: u32) -> vec4<f32> {
             dimensions,
             prev_width,
         );
-        // 省略 TR BL BR 方向
+        // TR / BL / BR omitted
     }
 
     let weight = vec2<f32>(0.75, 0.75)
         - vec2<f32>(f32(probe_correction_offset.x), f32(probe_correction_offset.y)) * 0.5;
-    // 对四个角上的 累加 radiance 做 空间双线性。
+    // Bilinear interpolation over accumulated corner radiance.
     return mix(mix(TL, TR, weight.x), mix(BL, BR, weight.x), weight.y)
-    // 把前面 4 个 p（4 条细射线）的和 平均 成一条粗方向上的合并结果。
+    // Average the 4 fine rays into one coarse-direction result.
         * 0.25;
 }
 ```
 
 ![Merging with 4 bilinear probes. source: https://m4xc.dev/articles/fundamental-rc/](https://m4xc.dev/img/articles/fundamental-rc/bilinear-probes.png)
 
-使用 WebGPU inspector 可以查看 `rc_ping_b` 最终的合并结果，可以看出未击中部分需要被补全，得到更平滑的半影效果。
+With WebGPU Inspector, you can inspect the final merged result in `rc_ping_b`. You can clearly see that non-hit areas get filled in, producing smoother penumbra.
 
-![合并后的结果](/rc-pingpong.png)
+![Merged result](/rc-pingpong.png)
 
 ## mipmap
 
-当探针间距大于阴影细节尺度时，插值会平均化明暗边界。
+When probe spacing becomes larger than the shadow detail scale, interpolation blurs light-dark boundaries.
 
-把最后一级联结果按 probe 网格做平均，写到缩小的 radiance_mipmap。
+Average the final cascade result over the probe grid and write it to a downsampled `radiance_mipmap`.
 
 ```wgsl
 @group(0) @binding(0) var<uniform> probe: MipmapProbe;
@@ -359,11 +359,11 @@ fn rc_radiance_mipmap(@builtin(global_invocation_id) global_id: vec3<u32>) {
 }
 ```
 
-![生成 mipmap](/rc-mipmap.png)
+![Generate mipmap](/rc-mipmap.png)
 
-## 合成最终结果 {#composite}
+## Composite Final Result {#composite}
 
-main + radiance_mipmap，把间接光加回主色
+`main + radiance_mipmap`: add indirect lighting back into the main color.
 
 ```wgsl
 @group(0) @binding(0) var tex_main: texture_2d<f32>;
@@ -380,7 +380,7 @@ fn rc_apply_fs(i: VsOut) -> @location(0) vec4<f32> {
 }
 ```
 
-对 mipmap 使用线性采样器
+Use a linear sampler for the mipmap:
 
 ```rust
 let sampler_rc_mipmap = device.create_sampler(&SamplerDescriptor {
@@ -392,17 +392,17 @@ let sampler_rc_mipmap = device.create_sampler(&SamplerDescriptor {
 });
 ```
 
-## 继续优化
+## Further Optimization
 
 [Radiance Cascades: A Novel High-Resolution Formal Solution for Multidimensional Non-LTE Radiative Transfer]
 
-| 经典 RC (2024 及之前)                              | 全息 RC (HRC)                                                      |
-| -------------------------------------------------- | ------------------------------------------------------------------ |
-| **离散探针**（Probes）：规则网格点上存储射线平均值 | **全息边界**（Holographic Boundaries）：边界面上存储方向性光照信息 |
-| **双线性插值**：探针间插值导致硬阴影边缘被平滑     | **边界积分重构**：从边界向内部插值，保留不连续性                   |
-| **仅软阴影**：适合间接光/环境光，点光源阴影模糊    | **硬+软阴影**：点光源产生的清晰阴影边界得以保留                    |
+| Classic RC (2024 and earlier)                           | Holographic RC (HRC)                                                  |
+| ------------------------------------------------------- | --------------------------------------------------------------------- |
+| **Discrete Probes**: ray averages stored on grid points | **Holographic Boundaries**: directional lighting stored on boundaries |
+| **Bilinear Interpolation**: softens hard shadow edges   | **Boundary Integral Reconstruction**: preserves discontinuities       |
+| **Soft Shadows Only**: good for indirect/ambient light  | **Hard + Soft Shadows**: preserves crisp point-light shadow edges     |
 
-## 扩展阅读 {#extended-reading}
+## Extended Reading {#extended-reading}
 
 -   [RadianceCascadesPaper]
 -   [Radiance Cascades: A Novel High-Resolution Formal Solution for
@@ -426,8 +426,8 @@ let sampler_rc_mipmap = device.create_sampler(&SamplerDescriptor {
 [POC / Radiance Cascades]: https://tmpvar.com/poc/radiance-cascades/
 [bevy_radiance_cascades]: https://github.com/nixonyh/bevy_radiance_cascades
 [Guest: Radiance Cascades]: https://mini.gmshaders.com/p/radiance-cascades
-[课程 2 - 绘制圆]: /zh/guide/lesson-002#sdf
-[课程 9 - 绘制椭圆和矩形]: /zh/guide/lesson-009#stretch-approximately-method
-[课程 35 - 基于瓦片的渲染]: /zh/guide/lesson-035
+[Lesson 2 - Draw a Circle]: /guide/lesson-002#sdf
+[Lesson 9 - Draw Ellipses and Rectangles]: /guide/lesson-009#stretch-approximately-method
+[Lesson 35 - Tile-based Rendering]: /guide/lesson-035
 [distfunctions2d]: https://iquilezles.org/articles/distfunctions2d/
 [vello]: https://github.com/linebender/vello

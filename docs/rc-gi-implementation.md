@@ -13,7 +13,7 @@
 1. **背景**：网格或纯色 → `bg`。
 2. **Vello** → `vello` 纹理。
 3. **`rc_dist`**：`dist_fs` 写入有符号距离（**R** 通道）。
-4. **Ping-pong cascade（compute）**：与 Bevy 相同——**首趟 no-merge** 单独 pass → **`copy_texture_to_texture` 到 `rc_first_pass_snapshot`** → **merge** 单独 pass；`rc_ping_a` / `rc_ping_b` 交替，纹理带 `COPY_SRC`；**全分辨率**（`GI_RC_DOWNSCALE = 1`）与解析 SDF `dist` 对齐。
+4. **Ping-pong cascade（compute）**：与 Bevy 相同——**首趟 no-merge** 单独 pass → **merge** 单独 pass；`rc_ping_a` / `rc_ping_b` 交替；**全分辨率**（`GI_RC_DOWNSCALE = 1`）与解析 SDF `dist` 对齐。
 5. **`rc_radiance_mipmap`（compute）**：对齐 Bevy `radiance_cascades_mipmap.wgsl`——对 **cascade 0** 每个 probe 块内方向求平均，输出 **缩小网格** `rc_mipmap`（约 `ceil(W/pw)×ceil(H/pw)`）。
 6. **`rc_apply`（fullscreen）**：对齐 Bevy `radiance_cascades_apply` 的**滤波上采样**思路——对 `rc_mipmap` **线性**采样（`sampler` 含 `mipmap_filter`，当前纹理仅 mip0），写入全分辨率 **`rc_final`**，仅 **RGB 间接光**（供 `gi_blend` 乘强度叠加）。
 7. **`gi_out`**：`gi_blend` 以 `composite` 为底，叠加 `rc_final`。

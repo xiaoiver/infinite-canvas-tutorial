@@ -155,7 +155,15 @@ export const en = defineConfig({
               {
                 text: 'Lesson 035 - Tile-based rendering',
                 link: 'lesson-035',
-              }
+              },
+              {
+                text: 'Lesson 036 - Animation',
+                link: 'lesson-036',
+              },
+              {
+                text: 'Lesson 037 - GI with Radiance Cascades',
+                link: 'lesson-037',
+              },
             ],
           },
         ],

@@ -676,8 +676,6 @@ impl VelloRendererApp {
                         &mut rc_enc,
                         &rc_tex.rc_a_view,
                         &rc_tex.rc_b_view,
-                        &rc_tex.rc_b,
-                        &rc_tex.rc_first_pass_snapshot,
                         &rc_tex.dist_view,
                         &layers.vello_view,
                         rc_tex.gi_width,
