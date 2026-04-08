@@ -48,6 +48,9 @@ export interface AppState {
   penbarSelected: Pen;
   penbarDrawSizeLabelVisible: boolean;
   penbarDrawRect: Partial<StrokeAttributes & FillAttributes>;
+  penbarDrawTriangle: Partial<StrokeAttributes & FillAttributes>;
+  penbarDrawPentagon: Partial<StrokeAttributes & FillAttributes>;
+  penbarDrawHexagon: Partial<StrokeAttributes & FillAttributes>;
   penbarDrawEllipse: Partial<StrokeAttributes & FillAttributes>;
   penbarDrawLine: Partial<StrokeAttributes>;
   penbarDrawArrow: Partial<StrokeAttributes & MarkerAttributes>;
@@ -197,6 +200,9 @@ export const getDefaultAppState: () => AppState = () => {
       Pen.HAND,
       Pen.SELECT,
       Pen.DRAW_RECT,
+      Pen.DRAW_TRIANGLE,
+      Pen.DRAW_PENTAGON,
+      Pen.DRAW_HEXAGON,
       Pen.DRAW_ELLIPSE,
       Pen.DRAW_LINE,
       Pen.DRAW_ARROW,
@@ -215,6 +221,27 @@ export const getDefaultAppState: () => AppState = () => {
     penbarSelected: Pen.HAND,
     penbarDrawSizeLabelVisible: true,
     penbarDrawRect: {
+      fill: TRANSFORMER_MASK_FILL_COLOR,
+      fillOpacity: 0.5,
+      stroke: TRANSFORMER_ANCHOR_STROKE_COLOR,
+      strokeWidth: 1,
+      strokeOpacity: 1,
+    },
+    penbarDrawTriangle: {
+      fill: TRANSFORMER_MASK_FILL_COLOR,
+      fillOpacity: 0.5,
+      stroke: TRANSFORMER_ANCHOR_STROKE_COLOR,
+      strokeWidth: 1,
+      strokeOpacity: 1,
+    },
+    penbarDrawPentagon: {
+      fill: TRANSFORMER_MASK_FILL_COLOR,
+      fillOpacity: 0.5,
+      stroke: TRANSFORMER_ANCHOR_STROKE_COLOR,
+      strokeWidth: 1,
+      strokeOpacity: 1,
+    },
+    penbarDrawHexagon: {
       fill: TRANSFORMER_MASK_FILL_COLOR,
       fillOpacity: 0.5,
       stroke: TRANSFORMER_ANCHOR_STROKE_COLOR,

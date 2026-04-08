@@ -37,6 +37,7 @@ import {
   cloneSerializedNodes,
   decompose,
   transformPath,
+  mat3WithoutTranslation,
 } from './utils';
 import type {
   BrushSerializedNode,
@@ -1310,6 +1311,7 @@ export class API {
     }
 
     if (delta) {
+      const geomDelta = mat3WithoutTranslation(delta);
       if (node.type === 'polyline' || node.type === 'rough-polyline') {
         const { strokeAlignment = 'center', strokeWidth = 1 } = node;
         const shiftedPoints = maybeShiftPoints(
@@ -1319,7 +1321,7 @@ export class API {
               const [newX, newY] = vec2.transformMat3(
                 vec2.create(),
                 [x, y],
-                delta,
+                geomDelta,
               );
               return [newX, newY] as [number, number];
             },
@@ -1336,7 +1338,7 @@ export class API {
           shiftedPoints.map((point) => [point[0] - minX, point[1] - minY]),
         );
       } else if (node.type === 'path' || node.type === 'rough-path') {
-        const d = transformPath((oldNode as PathSerializedNode).d, delta);
+        const d = transformPath((oldNode as PathSerializedNode).d, geomDelta);
         const { subPaths } = parsePath(d);
         const points = subPaths.map((subPath) =>
           subPath
@@ -1348,8 +1350,16 @@ export class API {
         (diff as PathSerializedNode).d = shiftPath(d, -minX, -minY);
       } else if (node.type === 'line' || node.type === 'rough-line') {
         const { x1, y1, x2, y2 } = oldNode as LineSerializedNode;
-        const [newX1, newY1] = vec2.transformMat3(vec2.create(), [x1, y1], delta);
-        const [newX2, newY2] = vec2.transformMat3(vec2.create(), [x2, y2], delta);
+        const [newX1, newY1] = vec2.transformMat3(
+          vec2.create(),
+          [x1, y1],
+          geomDelta,
+        );
+        const [newX2, newY2] = vec2.transformMat3(
+          vec2.create(),
+          [x2, y2],
+          geomDelta,
+        );
         const { minX, minY } = Line.getGeometryBounds({ x1: newX1, y1: newY1, x2: newX2, y2: newY2 });
         (diff as LineSerializedNode).x1 = newX1 - minX;
         (diff as LineSerializedNode).y1 = newY1 - minY;

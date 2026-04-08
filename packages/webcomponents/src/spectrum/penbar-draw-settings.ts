@@ -57,6 +57,9 @@ export class PenbarDrawSettings extends LitElement {
   @property({ type: String })
   pen:
     | Pen.DRAW_RECT
+    | Pen.DRAW_TRIANGLE
+    | Pen.DRAW_PENTAGON
+    | Pen.DRAW_HEXAGON
     | Pen.DRAW_ELLIPSE
     | Pen.DRAW_LINE
     | Pen.DRAW_ARROW
@@ -181,6 +184,12 @@ export class PenbarDrawSettings extends LitElement {
   get penbarDrawKey() {
     return this.pen === Pen.DRAW_RECT
       ? 'penbarDrawRect'
+      : this.pen === Pen.DRAW_TRIANGLE
+        ? 'penbarDrawTriangle'
+        : this.pen === Pen.DRAW_PENTAGON
+          ? 'penbarDrawPentagon'
+          : this.pen === Pen.DRAW_HEXAGON
+            ? 'penbarDrawHexagon'
       : this.pen === Pen.DRAW_ELLIPSE
         ? 'penbarDrawEllipse'
         : this.pen === Pen.DRAW_LINE
@@ -193,6 +202,9 @@ export class PenbarDrawSettings extends LitElement {
   get penbarDraw() {
     const {
       penbarDrawRect,
+      penbarDrawTriangle,
+      penbarDrawPentagon,
+      penbarDrawHexagon,
       penbarDrawEllipse,
       penbarDrawLine,
       penbarDrawArrow,
@@ -200,6 +212,12 @@ export class PenbarDrawSettings extends LitElement {
     } = this.appState;
     return this.pen === Pen.DRAW_RECT
       ? penbarDrawRect
+      : this.pen === Pen.DRAW_TRIANGLE
+        ? penbarDrawTriangle
+        : this.pen === Pen.DRAW_PENTAGON
+          ? penbarDrawPentagon
+          : this.pen === Pen.DRAW_HEXAGON
+            ? penbarDrawHexagon
       : this.pen === Pen.DRAW_ELLIPSE
         ? penbarDrawEllipse
         : this.pen === Pen.DRAW_LINE
@@ -218,6 +236,9 @@ export class PenbarDrawSettings extends LitElement {
       <div style="display: flex; flex-direction: column; gap: 4px;">
         ${when(
       this.pen === Pen.DRAW_RECT ||
+      this.pen === Pen.DRAW_TRIANGLE ||
+      this.pen === Pen.DRAW_PENTAGON ||
+      this.pen === Pen.DRAW_HEXAGON ||
       this.pen === Pen.DRAW_ELLIPSE ||
       this.pen === Pen.DRAW_ROUGH_RECT,
       () => html`

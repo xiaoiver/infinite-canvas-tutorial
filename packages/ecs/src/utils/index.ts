@@ -30,3 +30,4 @@ export * from './edge-label';
 export * from './rebase-edge-geometry';
 export * from './polyline-arclength';
 export * from './hitStrokeWidth';
+export * from './polygon';

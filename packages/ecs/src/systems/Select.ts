@@ -2332,11 +2332,29 @@ export class Select extends System {
         scaleY: oldAttrs.scaleY * (Math.sign(height) || 1),
       };
 
+      /**
+       * 旋转：仅改 Transform，不烘焙 d/points（避免 transformPath + rebase 与 Konva 框抖动）。
+       * resize / 其它：烘焙局部几何（API 内用 mat3WithoutTranslation 避免平移重复），缩放进路径定义；
+       * 此时 Transform 的 scale 若再乘 decompose 的尺度会与 d 双重叠加，故只保留翻转符号（±1）。
+       */
+      const skipGeometryDeltaForEdge =
+        selection.mode === SelectionMode.ROTATE &&
+        selected.hasSomeOf(Polyline, Path, Line);
+      if (
+        !skipGeometryDeltaForEdge &&
+        selected.hasSomeOf(Polyline, Path, Line)
+      ) {
+        const signW = Math.sign(width) || 1;
+        const signH = Math.sign(height) || 1;
+        obb.scaleX = Math.sign(oldAttrs.scaleX || 1) * signW;
+        obb.scaleY = Math.sign(oldAttrs.scaleY || 1) * signH;
+      }
+
       api.updateNodeOBB(
         node,
         obb,
         node.lockAspectRatio,
-        newLocalTransform,
+        skipGeometryDeltaForEdge ? undefined : newLocalTransform,
         oldNode,
       );
 
