@@ -1,4 +1,4 @@
-import { css, CSSResultArray, html, LitElement } from 'lit';
+import { css, CSSResultArray, html, LitElement, PropertyValues } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { when } from 'lit/directives/when.js';
 import * as d3 from 'd3-color';
@@ -10,6 +10,13 @@ import '@spectrum-web-components/action-button/sp-action-button.js';
 import '@spectrum-web-components/slider/sp-slider.js';
 
 export type SolidColorFormat = 'hex' | 'rgb' | 'css' | 'hsl' | 'hsb';
+
+/** `opacity-change` 事件的 detail（滑块 / 百分比输入仅改透明度时触发）。 */
+export type SolidOpacityChangeDetail = {
+  opacity: number;
+  fillOpacity?: number;
+  strokeOpacity?: number;
+};
 
 function clamp255(n: number): number {
   return Math.max(0, Math.min(255, Math.round(n)));
@@ -83,6 +90,18 @@ function rgbToHsv(r255: number, g255: number, b255: number) {
   const s = max === 0 ? 0 : d / max;
   const v = max;
   return { h: h * 360, s: s * 100, v: v * 100 };
+}
+
+/** 用户是否在 CSS 中显式写了 alpha（与仅写 #rgb / 命名色等区分）。 */
+function cssStringHasExplicitAlpha(raw: string): boolean {
+  const s = raw.trim().toLowerCase();
+  if (s === 'transparent') return true;
+  if (/#[0-9a-f]{8}\b/i.test(s)) return true;
+  if (/\b(rgba|hsla|hsba|hwba)\s*\(/i.test(s)) return true;
+  if (/\b(?:rgb|hsl|hwb|color|lab|lch|oklab|oklch)\s*\([^)]*\/[^)]*\)/i.test(s)) {
+    return true;
+  }
+  return false;
 }
 
 @customElement('ic-spectrum-input-solid')
@@ -186,6 +205,9 @@ export class InputSolid extends LitElement {
 
     .slider-row .color-opacity {
       flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
     }
 
     .slider-row sp-color-slider {
@@ -197,30 +219,19 @@ export class InputSolid extends LitElement {
       flex: 1;
       min-width: 0;
       min-inline-size: 0;
+      border-radius: var(--spectrum-color-slider-border-rounding);
     }
 
-    /* 与 sp-slider 轨道同宽的条带：棋盘格 + 透明→当前 RGB 的渐变 */
-    .opacity-slider-stack .opacity-track-band {
+    .opacity-track-gradient {
       position: absolute;
-      z-index: 0;
-      /* 与 Spectrum slider 轨道左右缩进一致（手柄半径） */
-      left: calc(var(--spectrum-slider-handle-size, 16px) / 2);
-      right: calc(var(--spectrum-slider-handle-size, 16px) / 2);
-      top: 50%;
-      transform: translateY(-50%);
-      block-size: var(--spectrum-slider-track-thickness, 10px);
-      border-radius: var(--spectrum-slider-track-corner-radius, 999px);
-      overflow: hidden;
-      pointer-events: none;
-    }
-
-    .opacity-slider-stack .opacity-track-band.opacity-track-gradient {
-      /* 叠在棋盘格之上：自左向右透明 → 当前 RGB 不透明 */
+      width: 100%;
+      height: 100%;
       background: linear-gradient(
         to right,
         rgb(0 0 0 / 0%),
         rgb(var(--opacity-slider-rgb, 255 255 255) / 100%)
       );
+      border-radius: var(--spectrum-color-slider-border-rounding);
     }
 
     .opacity-slider-stack sp-slider {
@@ -244,8 +255,55 @@ export class InputSolid extends LitElement {
   @property()
   value: string;
 
+  /**
+   * 与 `strokeOpacity` 二选一或单独使用：存在时作为透明度来源（0–1），
+   * 不再从 `value` 的 alpha 解析。用于编辑 fill 时由父组件传入。
+   */
+  @property({ type: Number })
+  fillOpacity: number | undefined;
+
+  /**
+   * 与 `fillOpacity` 二选一：存在时作为透明度来源（0–1）。
+   * 若同时设置，优先使用 `fillOpacity`。
+   */
+  @property({ type: Number })
+  strokeOpacity: number | undefined;
+
   @state()
   private format: SolidColorFormat = 'hex';
+
+  /** 滑块 / 百分比框交互中的 0–100 预览，与 props 同步后清空。 */
+  @state()
+  private opacityPctOverride: number | undefined;
+
+  protected override willUpdate(changedProperties: PropertyValues<this>): void {
+    super.willUpdate(changedProperties);
+    if (
+      changedProperties.has('value') ||
+      changedProperties.has('fillOpacity') ||
+      changedProperties.has('strokeOpacity')
+    ) {
+      this.opacityPctOverride = undefined;
+    }
+  }
+
+  /** 当前 UI 使用的透明度：优先外部属性，否则从 `value` 解析。 */
+  private getEffectiveOpacity(): number {
+    if (this.fillOpacity != null && !Number.isNaN(this.fillOpacity)) {
+      return clamp01(this.fillOpacity);
+    }
+    if (this.strokeOpacity != null && !Number.isNaN(this.strokeOpacity)) {
+      return clamp01(this.strokeOpacity);
+    }
+    return clamp01(parseColor(this.value).opacity);
+  }
+
+  private usesExternalOpacity(): boolean {
+    return (
+      (this.fillOpacity != null && !Number.isNaN(this.fillOpacity)) ||
+      (this.strokeOpacity != null && !Number.isNaN(this.strokeOpacity))
+    );
+  }
 
   private get eyeDropperSupported(): boolean {
     return typeof window !== 'undefined' && 'EyeDropper' in window;
@@ -261,8 +319,7 @@ export class InputSolid extends LitElement {
     try {
       const result = await new E().open();
       const rgb = parseColor(result.sRGBHex);
-      const prev = parseColor(this.value);
-      this.emitSolid(rgb.r, rgb.g, rgb.b, prev.opacity);
+      this.emitSolid(rgb.r, rgb.g, rgb.b, this.getEffectiveOpacity());
     } catch {
       /* 用户取消或权限失败 */
     }
@@ -274,13 +331,48 @@ export class InputSolid extends LitElement {
     const B = clamp255(b);
     const A = clamp01(a);
     const c = d3.rgb(R, G, B, A);
-    const out = A < 1 ? c.formatRgb() : c.formatHex();
+    const external = this.usesExternalOpacity();
+    const out = external
+      ? d3.rgb(R, G, B, 1).formatHex()
+      : A < 1
+        ? c.formatRgb()
+        : c.formatHex();
+    const detail: {
+      type: 'solid';
+      value: string;
+      fillOpacity?: number;
+      strokeOpacity?: number;
+    } = {
+      type: 'solid',
+      value: out,
+    };
+    if (this.fillOpacity != null && !Number.isNaN(this.fillOpacity)) {
+      detail.fillOpacity = A;
+    }
+    if (this.strokeOpacity != null && !Number.isNaN(this.strokeOpacity)) {
+      detail.strokeOpacity = A;
+    }
     this.dispatchEvent(
       new CustomEvent('color-change', {
-        detail: {
-          type: 'solid',
-          value: out,
-        },
+        detail,
+        bubbles: true,
+        composed: true,
+      }),
+    );
+  }
+
+  private emitOpacityChange(a: number) {
+    const A = clamp01(a);
+    const detail: SolidOpacityChangeDetail = { opacity: A };
+    if (this.fillOpacity != null && !Number.isNaN(this.fillOpacity)) {
+      detail.fillOpacity = A;
+    }
+    if (this.strokeOpacity != null && !Number.isNaN(this.strokeOpacity)) {
+      detail.strokeOpacity = A;
+    }
+    this.dispatchEvent(
+      new CustomEvent<SolidOpacityChangeDetail>('opacity-change', {
+        detail,
         bubbles: true,
         composed: true,
       }),
@@ -296,32 +388,49 @@ export class InputSolid extends LitElement {
   private handlePickerRgbChanged(e: Event) {
     const t = e.target as ColorArea | { color: { toString(): string } };
     const next = parseColor(t.color.toString());
-    const prev = parseColor(this.value);
-    this.emitSolid(next.r, next.g, next.b, prev.opacity);
+    this.emitSolid(next.r, next.g, next.b, this.getEffectiveOpacity());
   }
 
   private handleRChanged(e: CustomEvent) {
     const v = Number((e.target as HTMLElement & { value: number }).value);
     const p = parseColor(this.value);
-    this.emitSolid(v, p.g, p.b, p.opacity);
+    this.emitSolid(v, p.g, p.b, this.getEffectiveOpacity());
   }
 
   private handleGChanged(e: CustomEvent) {
     const v = Number((e.target as HTMLElement & { value: number }).value);
     const p = parseColor(this.value);
-    this.emitSolid(p.r, v, p.b, p.opacity);
+    this.emitSolid(p.r, v, p.b, this.getEffectiveOpacity());
   }
 
   private handleBChanged(e: CustomEvent) {
     const v = Number((e.target as HTMLElement & { value: number }).value);
     const p = parseColor(this.value);
-    this.emitSolid(p.r, p.g, v, p.opacity);
+    this.emitSolid(p.r, p.g, v, this.getEffectiveOpacity());
+  }
+
+  private handleOpacityPercentInput(e: CustomEvent) {
+    const raw = Number((e.target as HTMLElement & { value: number }).value);
+    if (Number.isNaN(raw)) return;
+    this.opacityPctOverride = Math.max(0, Math.min(100, Math.round(raw)));
   }
 
   private handleOpacityPercentChanged(e: CustomEvent) {
     const pct = Number((e.target as HTMLElement & { value: number }).value);
     const p = parseColor(this.value);
-    this.emitSolid(p.r, p.g, p.b, clamp01(pct / 100));
+    const a = clamp01(pct / 100);
+    this.emitOpacityChange(a);
+    if (this.usesExternalOpacity()) {
+      return;
+    }
+    this.emitSolid(p.r, p.g, p.b, a);
+  }
+
+  private handleOpacitySliderInput(e: Event) {
+    const t = e.currentTarget as HTMLElement & { value: number };
+    const pct = Number(t.value);
+    if (Number.isNaN(pct)) return;
+    this.opacityPctOverride = Math.max(0, Math.min(100, Math.round(pct)));
   }
 
   private handleOpacitySliderChanged(e: Event) {
@@ -329,13 +438,22 @@ export class InputSolid extends LitElement {
     const pct = Number(t.value);
     if (Number.isNaN(pct)) return;
     const p = parseColor(this.value);
-    this.emitSolid(p.r, p.g, p.b, clamp01(pct / 100));
+    const a = clamp01(pct / 100);
+    this.emitOpacityChange(a);
+    if (this.usesExternalOpacity()) {
+      return;
+    }
+    this.emitSolid(p.r, p.g, p.b, a);
   }
 
   private handleCssChanged(e: CustomEvent) {
     const raw = (e.target as HTMLInputElement).value.trim();
     const parsed = parseColor(raw);
-    this.emitSolid(parsed.r, parsed.g, parsed.b, parsed.opacity);
+    const a =
+      this.usesExternalOpacity() && !cssStringHasExplicitAlpha(raw)
+        ? this.getEffectiveOpacity()
+        : clamp01(parsed.opacity);
+    this.emitSolid(parsed.r, parsed.g, parsed.b, a);
   }
 
   private handleHslHChanged(e: CustomEvent) {
@@ -345,7 +463,7 @@ export class InputSolid extends LitElement {
     const s = Number.isNaN(hsl.s) ? 0 : hsl.s;
     const l = Number.isNaN(hsl.l) ? 0 : hsl.l;
     const c = d3.rgb(d3.hsl(v, s, l));
-    this.emitSolid(c.r, c.g, c.b, p.opacity);
+    this.emitSolid(c.r, c.g, c.b, this.getEffectiveOpacity());
   }
 
   private handleHslSChanged(e: CustomEvent) {
@@ -355,7 +473,7 @@ export class InputSolid extends LitElement {
     const h = Number.isNaN(hsl.h) ? 0 : hsl.h;
     const l = Number.isNaN(hsl.l) ? 0 : hsl.l;
     const c = d3.rgb(d3.hsl(h, clamp01(sPct / 100), l));
-    this.emitSolid(c.r, c.g, c.b, p.opacity);
+    this.emitSolid(c.r, c.g, c.b, this.getEffectiveOpacity());
   }
 
   private handleHslLChanged(e: CustomEvent) {
@@ -365,7 +483,7 @@ export class InputSolid extends LitElement {
     const h = Number.isNaN(hsl.h) ? 0 : hsl.h;
     const s = Number.isNaN(hsl.s) ? 0 : hsl.s;
     const c = d3.rgb(d3.hsl(h, s, clamp01(lPct / 100)));
-    this.emitSolid(c.r, c.g, c.b, p.opacity);
+    this.emitSolid(c.r, c.g, c.b, this.getEffectiveOpacity());
   }
 
   private handleHsbHChanged(e: CustomEvent) {
@@ -373,7 +491,7 @@ export class InputSolid extends LitElement {
     const p = parseColor(this.value);
     const { s, v } = rgbToHsv(p.r, p.g, p.b);
     const { r, g, b } = hsvToRgb(h, s, v);
-    this.emitSolid(r, g, b, p.opacity);
+    this.emitSolid(r, g, b, this.getEffectiveOpacity());
   }
 
   private handleHsbSChanged(e: CustomEvent) {
@@ -381,7 +499,7 @@ export class InputSolid extends LitElement {
     const p = parseColor(this.value);
     const { h, v } = rgbToHsv(p.r, p.g, p.b);
     const { r, g, b } = hsvToRgb(h, s, v);
-    this.emitSolid(r, g, b, p.opacity);
+    this.emitSolid(r, g, b, this.getEffectiveOpacity());
   }
 
   private handleHsbVChanged(e: CustomEvent) {
@@ -389,7 +507,7 @@ export class InputSolid extends LitElement {
     const p = parseColor(this.value);
     const { h, s } = rgbToHsv(p.r, p.g, p.b);
     const rgb = hsvToRgb(h, s, v);
-    this.emitSolid(rgb.r, rgb.g, rgb.b, p.opacity);
+    this.emitSolid(rgb.r, rgb.g, rgb.b, this.getEffectiveOpacity());
   }
 
   render() {
@@ -397,8 +515,10 @@ export class InputSolid extends LitElement {
     const r = clamp255(p.r);
     const g = clamp255(p.g);
     const b = clamp255(p.b);
-    const a = clamp01(p.opacity);
+    const a = this.getEffectiveOpacity();
     const opacityPct = Math.round(a * 100);
+    const displayOpacityPct =
+      this.opacityPctOverride ?? opacityPct;
     const hex6 = d3.rgb(r, g, b, 1).formatHex();
     const pickerColor = cssColorToHex(this.value);
 
@@ -530,15 +650,11 @@ export class InputSolid extends LitElement {
             @input=${this.handlePickerRgbChanged}
           ></sp-color-slider>
           <div
-            class="opacity-slider-stack"
+            class="opacity-slider-stack opacity-checkerboard"
             style=${`--opacity-slider-rgb: ${r} ${g} ${b}`}
           >
             <div
-              class="opacity-track-band opacity-checkerboard"
-              aria-hidden="true"
-            ></div>
-            <div
-              class="opacity-track-band opacity-track-gradient"
+              class="opacity-track-gradient"
               aria-hidden="true"
             ></div>
             <sp-slider
@@ -547,8 +663,9 @@ export class InputSolid extends LitElement {
               min="0"
               max="100"
               step="1"
-              value=${opacityPct}
+              value=${displayOpacityPct}
               aria-label="Opacity"
+              @input=${this.handleOpacitySliderInput}
               @change=${this.handleOpacitySliderChanged}
             ></sp-slider>
           </div>
@@ -622,8 +739,9 @@ export class InputSolid extends LitElement {
             min="0"
             max="100"
             step="1"
-            value=${opacityPct}
+            value=${displayOpacityPct}
             aria-label="Opacity percent"
+            @input=${this.handleOpacityPercentInput}
             @change=${this.handleOpacityPercentChanged}
           ></sp-number-field>
           <span class="pct-suffix">%</span>

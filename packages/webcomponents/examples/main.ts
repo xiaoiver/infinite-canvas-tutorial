@@ -157,9 +157,9 @@ canvas.addEventListener(Event.READY, async (e) => {
     // taskbarVisible: false,
     rotateEnabled: true,
     flipEnabled: true,
-    giEnabled: true,
-    giStrength: 0.05,
-    themeMode: ThemeMode.DARK,
+    // giEnabled: true,
+    // giStrength: 0.05,
+    // themeMode: ThemeMode.DARK,
     // filter: 'noise(0.5)',
     // layersLassoing: ['parent'],
   });
@@ -255,10 +255,48 @@ canvas.addEventListener(Event.READY, async (e) => {
     zIndex: 3,
   }
 
+  const vn = {
+    type: 'vector-network',
+    id: 'vn-1',
+    zIndex: 3,
+    stroke: 'black',
+    strokeWidth: 10,
+
+    // The vertices of the triangle
+    vertices: [
+      { x: 100, y: 0 },
+      { x: 200, y: 100 },
+      { x: 300, y: 0 },
+    ],
+
+    // The edges of the triangle. 'start' and 'end' refer to indices in the vertices array.
+    segments: [
+      {
+        start: 0,
+        tangentStart: { x: 0, y: 0 }, // optional
+        end: 1,
+        tangentEnd: { x: 0, y: 0 }, // optional
+      },
+      {
+        start: 1,
+        end: 2,
+      },
+      {
+        start: 2,
+        end: 0,
+      },
+    ],
+
+    // The loop that forms the triangle. Each loop is a
+    // sequence of indices into the segments array.
+    regions: [{ windingRule: 'NONZERO', loops: [[0, 1, 2]] }],
+  };
+
   api.updateNodes([
-    node1,
-    node2,
-    line,
+    vn,
+    // node1,
+    // node2,
+    // line,
     // polyline,
     // path
     // node3,
@@ -269,12 +307,12 @@ canvas.addEventListener(Event.READY, async (e) => {
   // api.updateNodes([node1]);
 });
 
-const VelloRendererPlugin = RendererPlugin.configure({
-  setupDeviceSystemCtor: InitVello,
-  rendererSystemCtor: VelloPipeline,
-});
-DefaultPlugins.splice(DefaultPlugins.indexOf(DefaultRendererPlugin), 1, VelloRendererPlugin);
-registerFont('/Gaegu-Regular.ttf');
+// const VelloRendererPlugin = RendererPlugin.configure({
+//   setupDeviceSystemCtor: InitVello,
+//   rendererSystemCtor: VelloPipeline,
+// });
+// DefaultPlugins.splice(DefaultPlugins.indexOf(DefaultRendererPlugin), 1, VelloRendererPlugin);
+// registerFont('/Gaegu-Regular.ttf');
 // registerFont('/NotoSansCJKsc-VF.ttf');
 // registerFont('/NotoSans-Regular.ttf');
 // registerFont('/NotoSans-Bold.ttf');

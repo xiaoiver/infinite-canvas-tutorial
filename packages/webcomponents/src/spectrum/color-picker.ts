@@ -13,6 +13,9 @@ export enum ColorType {
 export type ColorPickerChangeDetail = {
   type: ColorType;
   value: string;
+  /** 与 `ic-spectrum-input-solid` 一致：由父组件传入并回传。 */
+  fillOpacity?: number;
+  strokeOpacity?: number;
 };
 
 /** Spectrum `sp-action-group` host exposes `selected`. */
@@ -25,6 +28,8 @@ type ChildColorChangeDetail = {
   type: string;
   value: string;
   opacity?: number;
+  fillOpacity?: number;
+  strokeOpacity?: number;
 };
 
 function isColorType(s: string): s is ColorType {
@@ -56,6 +61,14 @@ export class ColorPicker extends LitElement {
 
   @property()
   types: ColorType[] = [ColorType.None, ColorType.Solid, ColorType.Gradient];
+
+  /** 传给 `ic-spectrum-input-solid`（例如编辑 fill 时）。 */
+  @property({ type: Number })
+  fillOpacity: number | undefined;
+
+  /** 传给 `ic-spectrum-input-solid`（例如编辑 stroke 时）。 */
+  @property({ type: Number })
+  strokeOpacity: number | undefined;
 
   @state()
   type: ColorType = ColorType.None;
@@ -171,6 +184,8 @@ export class ColorPicker extends LitElement {
       () => html`
           <ic-spectrum-input-solid
             value=${this.prevColors[ColorType.Solid]}
+            .fillOpacity=${this.fillOpacity}
+            .strokeOpacity=${this.strokeOpacity}
             @color-change=${this.handleColorChanged}
           ></ic-spectrum-input-solid>
         `,

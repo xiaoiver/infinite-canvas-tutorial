@@ -21,6 +21,7 @@ import {
   paddingMat3,
   parseColor,
   parsePath,
+  vectorNetworkToFlatStrokePoints,
 } from '../utils';
 import {
   Circle,
@@ -689,16 +690,7 @@ export function updateBuffer(object: Entity, useRoughStroke = true) {
     points = [x1, y1, x2, y2];
   } else if (object.has(VectorNetwork)) {
     const { vertices, segments } = object.read(VectorNetwork);
-    for (let i = 0; i < segments.length; i++) {
-      if (i > 0) {
-        points.push(NaN, NaN);
-      }
-
-      const segment = segments[i];
-      const start = vertices[segment.start];
-      const end = vertices[segment.end];
-      points.push(start.x, start.y, end.x, end.y);
-    }
+    points = vectorNetworkToFlatStrokePoints(vertices, segments);
   } else if (object.has(Path)) {
     const computed = object.read(ComputedPoints).points;
     points = computed
@@ -805,7 +797,12 @@ export function updateBuffer(object: Entity, useRoughStroke = true) {
     });
   }
 
-  if (object.has(Line) || object.has(Polyline) || object.has(Path)) {
+  if (
+    object.has(Line) ||
+    object.has(Polyline) ||
+    object.has(Path) ||
+    object.has(VectorNetwork)
+  ) {
     points.push(
       ...generateMarkerPoints(points, start, end, strokeWidth, factor),
     );

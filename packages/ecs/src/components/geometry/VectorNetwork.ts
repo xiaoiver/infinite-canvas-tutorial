@@ -8,7 +8,7 @@ import type {
   VectorNetworkSerializedNode,
   SerializedNode,
 } from '../../types/serialized-node';
-import { serializePoints } from '../../utils';
+import { expandBoundsWithVectorSegments, serializePoints } from '../../utils';
 import { AABB } from '../math';
 import { Stroke } from '../renderable';
 
@@ -53,6 +53,19 @@ export class VectorNetwork {
     const maxY = Math.max(
       ...vertices.map(({ y }) => (isNaN(y) ? -Infinity : y)),
     );
+
+    const { segments } = vectorNetwork;
+    if (segments?.length) {
+      const b = expandBoundsWithVectorSegments(
+        vertices,
+        segments,
+        minX,
+        minY,
+        maxX,
+        maxY,
+      );
+      return new AABB(b.minX, b.minY, b.maxX, b.maxY);
+    }
 
     return new AABB(minX, minY, maxX, maxY);
   }

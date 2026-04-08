@@ -394,6 +394,8 @@ let sampler_rc_mipmap = device.create_sampler(&SamplerDescriptor {
 
 ## 继续优化
 
+目前我们的 demo 会出现 ringing、漏光、边界附近拉扯等 artifacts，尤其在 probe 相对几何特征较粗时。
+
 [Radiance Cascades: A Novel High-Resolution Formal Solution for Multidimensional Non-LTE Radiative Transfer]
 
 | 经典 RC (2024 及之前)                              | 全息 RC (HRC)                                                      |
@@ -401,6 +403,10 @@ let sampler_rc_mipmap = device.create_sampler(&SamplerDescriptor {
 | **离散探针**（Probes）：规则网格点上存储射线平均值 | **全息边界**（Holographic Boundaries）：边界面上存储方向性光照信息 |
 | **双线性插值**：探针间插值导致硬阴影边缘被平滑     | **边界积分重构**：从边界向内部插值，保留不连续性                   |
 | **仅软阴影**：适合间接光/环境光，点光源阴影模糊    | **硬+软阴影**：点光源产生的清晰阴影边界得以保留                    |
+
+实现：
+
+-   [folk-holographic-rc]
 
 ## 扩展阅读 {#extended-reading}
 
@@ -431,3 +437,4 @@ let sampler_rc_mipmap = device.create_sampler(&SamplerDescriptor {
 [课程 35 - 基于瓦片的渲染]: /zh/guide/lesson-035
 [distfunctions2d]: https://iquilezles.org/articles/distfunctions2d/
 [vello]: https://github.com/linebender/vello
+[folk-holographic-rc]: https://github.com/folk-js/folkjs/blob/main/packages/labs/src/folk-holographic-rc.ts
