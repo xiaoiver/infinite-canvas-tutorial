@@ -34,10 +34,20 @@ export class StrokeActionButton extends LitElement {
   node: SerializedNode;
 
   private handleStrokeChanged(e: CustomEvent) {
-    const { type, value } = e.detail;
+    const { type, value, strokeOpacity } = e.detail;
     this.api.updateNode(this.node, {
       stroke: type === 'solid' ? normalizeSolidCssValue(value) : value,
+      ...(strokeOpacity !== undefined && { strokeOpacity }),
     });
+    this.api.record();
+  }
+
+  private handleStrokeOpacityChanged(
+    e: CustomEvent<{ strokeOpacity?: number }>,
+  ) {
+    const { strokeOpacity } = e.detail;
+    if (strokeOpacity === undefined) return;
+    this.api.updateNode(this.node, { strokeOpacity });
     this.api.record();
   }
 
@@ -46,7 +56,7 @@ export class StrokeActionButton extends LitElement {
       return html``;
     }
 
-    const { stroke } = this.node as TextSerializedNode;
+    const { stroke, strokeOpacity = 1 } = this.node as TextSerializedNode;
 
     return html`<sp-action-button quiet size="m" id="stroke">
         <ic-spectrum-stroke-icon
@@ -59,8 +69,10 @@ export class StrokeActionButton extends LitElement {
         <sp-popover dialog>
           <ic-spectrum-color-picker
             value=${stroke}
+            .strokeOpacity=${strokeOpacity}
             .types=${[ColorType.None, ColorType.Solid]}
             @color-change=${this.handleStrokeChanged}
+            @opacity-change=${this.handleStrokeOpacityChanged}
           ></ic-spectrum-color-picker>
         </sp-popover>
       </sp-overlay>`;
