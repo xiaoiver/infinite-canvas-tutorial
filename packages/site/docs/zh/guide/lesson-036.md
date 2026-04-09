@@ -3,24 +3,31 @@ outline: deep
 description: '实现动画系统，包括声明式动画API设计、Web Animations API兼容性、生成器函数动画流程以及SVG路径动画技术。'
 ---
 
+<script setup>
+import AnimationController from '../../components/AnimationController.vue';
+import AnimationEasing from '../../components/AnimationEasing.vue';
+import AnimationTransformOrigin from '../../components/AnimationTransformOrigin.vue';
+import AnimationDasharray from '../../components/AnimationDasharray.vue';
+import AnimationDashoffset from '../../components/AnimationDashoffset.vue';
+import AnimationMorphing from '../../components/AnimationMorphing.vue';
+</script>
+
 # 课程 36 - Animation
 
 在这节课中你将学习到以下内容：
 
 -   如何设计动画 API
+-   参考 Web Animation API 实现声明式 Keyframe 与控制器
+-   实现路径、笔迹、形变等动画效果
+-   支持 Lottie 等格式
 
 ## 如何设计动画 API {#api-design}
 
-声明式动画 API 的优点：
-
--   易于理解和使用
--   易于调试和优化
--   易于扩展和维护
-
-Motion 是完全兼容 WAAPI 的，详见：[Improvements to Web Animations API]。它直接调用浏览器原生的 `element.animate()`，享受 GPU 加速、独立渲染线程、不阻塞主线程的优势。同时用 JavaScript 轻量实现 WAAPI 缺失的能力：
+Motion 是完全兼容声明式动画 WAAPI 的，详见：[Improvements to Web Animations API]。它直接调用浏览器原生的 `element.animate()`，享受 GPU 加速、独立渲染线程、不阻塞主线程的优势。同时用 JavaScript 轻量实现 WAAPI 缺失的能力：
 
 -   Spring 物理动画（WAAPI 只支持贝塞尔曲线）
--   独立 transform 属性（单独动画 x, y, scale 而非组合 transform）
+-   独立 `transform` 属性（单独动画 x, y, scale 而非组合 transform）
+-   可以指定缩放和旋转中心 `transformOrigin`
 -   Timeline 序列控制 `sequence()`, `stagger()`
 
 ```ts
@@ -92,6 +99,8 @@ animation.play();
 animation.finish();
 ```
 
+<AnimationController />
+
 ### 变量插值 {#interpolation}
 
 像 `x/y/opacity` 这种数字很容易插值，对于 `fill/stroke` 这样的颜色值，需要先用 `d3-color` 解析出 rgba 各个分量再分别插值。
@@ -133,6 +142,12 @@ function evaluateEasing(easing: string, t: number) {
 }
 ```
 
+<AnimationEasing />
+
+### 变换中心 {#transform-origin}
+
+<AnimationTransformOrigin />
+
 ## 特殊的动画效果 {#special-effects}
 
 ### 路径动画 {#path-animation}
@@ -169,6 +184,8 @@ api.animate(
 );
 ```
 
+<AnimationDasharray />
+
 ### 虚线偏移 {#dashline-offset}
 
 drawio 中通过动画表示连接线的方向：
@@ -184,19 +201,22 @@ api.animate(node, [{ strokeDashoffset: -20 }, { strokeDashoffset: 0 }], {
 });
 ```
 
+<AnimationDashoffset />
+
 ### 形变效果 {#morphing}
 
 在很多 SVG 相关的库中都能看到形变动画的例子，例如：
 
--   Paper.js
--   Kute.js 提供了 Morph 和 CubicMorph 两个组件
--   Snap.svg
+-   [Paper.js]
+-   [Kute.js] 提供了 Morph 和 CubicMorph 两个组件
 -   GreenSocks 提供的 MorphSVGPlugin 插件甚至能在 Canvas 中渲染
 -   [vectalign]
 
 以上部分库会要求变换前后的路径定义包含相同的分段，不然无法进行插值。
 
 参考 Kute.js 中的 CubicMorph，首先将 Path 定义中的各个部分转成三阶贝塞尔曲线表示，然后利用三阶贝塞尔曲线易于分割的特性，将变换前后的路径规范到相同数目的分段，最后对各个分段中的控制点进行插值实现动画效果
+
+<AnimationMorphing />
 
 ## Lottie
 
@@ -233,3 +253,5 @@ api.animate(node, [{ strokeDashoffset: -20 }, { strokeDashoffset: 0 }], {
 [omnilottie]: https://fal.ai/models/fal-ai/omnilottie/api
 [web-animations-js]: https://github.com/web-animations/web-animations-js
 [lottie json schema]: https://lottiefiles.github.io/lottie-docs/schema/
+[Paper.js]: http://paperjs.org/
+[Kute.js]: https://thednp.github.io/kute.js/

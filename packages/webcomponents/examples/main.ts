@@ -167,16 +167,10 @@ canvas.addEventListener(Event.READY, async (e) => {
 
   const node1: RectSerializedNode = {
     id: 'binding-curved-rect-1',
-    type: 'rect',
-    x: 100,
-    y: 0,
-    width: 100,
-    height: 100,
-    fill: 'green',
+    type: 'path',
+    d: 'M 100 0 L 200 100 L 300 0 Z',
     stroke: 'black',
     strokeWidth: 10,
-    strokeDasharray: '10 5',
-    strokeDashoffset: 0,
     zIndex: 1,
   };
   const node2 = {
@@ -630,8 +624,8 @@ canvas.addEventListener(Event.READY, async (e) => {
   const animation = api.animate(
     node1,
     [
-      { x: 100, fill: 'green', strokeDashoffset: 0, strokeDasharray: '10 5' },
-      { x: 200, fill: 'red', strokeDashoffset: -20, strokeDasharray: '10 10' },
+      { fill: 'green', d: 'M 100 0 L 200 100 L 300 0 Z' },
+      { fill: 'red', d: 'M 100 0 L 200 100 L 300 0 Q 400 100 500 0' },
     ],
     { duration: 1000, direction: 'alternate', iterations: 'infinite', easing: 'ease-in-out' },
   );

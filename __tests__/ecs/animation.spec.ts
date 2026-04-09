@@ -3,6 +3,7 @@ import {
   normalizeAnimationOptions,
   normalizeKeyframes,
 } from '../../packages/ecs/src/animation';
+import { computeTranslationWithTransformOrigin } from '../../packages/ecs/src/systems/Animation';
 
 describe('Animation', () => {
   describe('normalizeAnimationOptions', () => {
@@ -16,6 +17,14 @@ describe('Animation', () => {
         fill: 'none',
         easing: 'linear',
       });
+    });
+
+    it('should keep transformOrigin when valid', () => {
+      const options = normalizeAnimationOptions({
+        duration: 300,
+        transformOrigin: { x: 50, y: 25 },
+      });
+      expect(options.transformOrigin).toEqual({ x: 50, y: 25 });
     });
   });
 
@@ -86,6 +95,23 @@ describe('Animation', () => {
 
       controller.seek(100);
       expect(controller.getCurrentValues()).toBeNull();
+    });
+  });
+
+  describe('transform origin compensation', () => {
+    it('should keep origin world position unchanged when rotating', () => {
+      const result = computeTranslationWithTransformOrigin({
+        currentTranslation: { x: 0, y: 0 },
+        currentScale: { x: 1, y: 1 },
+        currentRotation: 0,
+        nextScale: { x: 1, y: 1 },
+        nextRotation: Math.PI / 2,
+        origin: { x: 10, y: 0 },
+      });
+
+      // rotate around (10,0): entity origin should move to (10,-10)
+      expect(result.x).toBeCloseTo(10, 6);
+      expect(result.y).toBeCloseTo(-10, 6);
     });
   });
 });

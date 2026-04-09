@@ -1,5 +1,22 @@
-import { EASING_FUNCTION } from '../utils/easing';
+import type {
+  AbsoluteArray,
+  CurveArray,
+  PathArray,
+  PathSegment,
+} from '@antv/util';
+import {
+  clonePath,
+  equalizeSegments,
+  getDrawDirection,
+  getRotatedCurve,
+  normalizePath,
+  path2Curve,
+  path2String,
+  reverseCurve,
+} from '@antv/util';
 import { color as parseD3Color } from 'd3-color';
+import { PathSerializedNode } from '../types/serialized-node';
+import { EASING_FUNCTION } from '../utils/easing';
 
 export type AnimationDirection = 'normal' | 'reverse' | 'alternate';
 export type AnimationFillMode = 'none' | 'forwards' | 'backwards' | 'both';
@@ -19,6 +36,10 @@ export interface AnimationOptions {
   direction?: AnimationDirection;
   fill?: AnimationFillMode;
   easing?: string;
+  transformOrigin?: {
+    x: number;
+    y: number;
+  };
 }
 
 export interface NormalizedKeyframe extends Omit<Keyframe, 'offset' | 'easing'> {
@@ -33,6 +54,10 @@ export interface NormalizedAnimationOptions {
   direction: AnimationDirection;
   fill: AnimationFillMode;
   easing: string;
+  transformOrigin?: {
+    x: number;
+    y: number;
+  };
 }
 
 export interface AnimationSnapshot {
@@ -102,6 +127,11 @@ export function normalizeAnimationOptions(
   const fill = options.fill ?? DEFAULT_ANIMATION_OPTIONS.fill;
   const iterations = options.iterations ?? DEFAULT_ANIMATION_OPTIONS.iterations;
   const easing = getValidEasing(options.easing, DEFAULT_ANIMATION_OPTIONS.easing);
+  const transformOrigin = options.transformOrigin
+    && isFiniteNumber(options.transformOrigin.x)
+    && isFiniteNumber(options.transformOrigin.y)
+    ? { x: options.transformOrigin.x, y: options.transformOrigin.y }
+    : undefined;
 
   return {
     duration,
@@ -110,6 +140,7 @@ export function normalizeAnimationOptions(
     fill,
     iterations,
     easing,
+    transformOrigin,
   };
 }
 
@@ -298,6 +329,135 @@ function parseDasharray(value: unknown): [number, number] | null {
   return null;
 }
 
+function parsePath(path: PathSerializedNode['d'] | PathArray): { absolutePath: AbsoluteArray | []; curve: CurveArray | null } {
+  if (path === '' || (Array.isArray(path) && path.length === 0)) {
+    return {
+      absolutePath: [],
+      curve: null
+    };
+  }
+
+  let absolutePath: AbsoluteArray;
+  try {
+    absolutePath = normalizePath(path);
+  } catch {
+    absolutePath = normalizePath('');
+    console.error(`[g]: Invalid SVG Path definition: ${path}`);
+  }
+
+  // removeRedundantMCommand(absolutePath);
+
+  return {
+    absolutePath,
+    curve: null
+  };
+}
+
+function mergePaths(
+  left: { absolutePath: AbsoluteArray; curve: CurveArray | null },
+  right: { absolutePath: AbsoluteArray; curve: CurveArray | null },
+): [CurveArray, CurveArray, (b: CurveArray) => CurveArray] {
+  let curve1 = left.curve;
+  let curve2 = right.curve;
+  if (!curve1 || curve1.length === 0) {
+    // convert to curves to do morphing & picking later
+    // @see http://thednp.github.io/kute.js/svgCubicMorph.html
+    curve1 = path2Curve(left.absolutePath, false) as CurveArray;
+    left.curve = curve1;
+  }
+  if (!curve2 || curve2.length === 0) {
+    curve2 = path2Curve(right.absolutePath, false) as CurveArray;
+    right.curve = curve2;
+  }
+
+  let curves = [curve1, curve2];
+  if (curve1.length !== curve2.length) {
+    curves = equalizeSegments(curve1, curve2);
+  }
+
+  const curve0 =
+    getDrawDirection(curves[0]) !== getDrawDirection(curves[1])
+      ? reverseCurve(curves[0])
+      : (clonePath(curves[0]) as CurveArray);
+
+  return [
+    curve0,
+    getRotatedCurve(curves[1], curve0) as CurveArray,
+    (pathArray: CurveArray) => {
+      // need converting to path string?
+      return pathArray;
+    },
+  ];
+}
+
+function isPathArrayLike(value: unknown): value is PathArray {
+  return Array.isArray(value)
+    && value.length > 0
+    && Array.isArray(value[0])
+    && typeof (value[0] as string[])[0] === 'string';
+}
+
+/**
+ * 在 {@link mergePaths} 对齐后的两条 cubic 曲线之间做逐点线性插值，输出仍为 {@link CurveArray}。
+ */
+function interpolateCurveArrays(c0: CurveArray, c1: CurveArray, t: number): CurveArray {
+  const out: PathArray = [] as unknown as PathArray;
+  const n = Math.min(c0.length, c1.length);
+  for (let i = 0; i < n; i++) {
+    const s0 = c0[i];
+    const s1 = c1[i];
+    const cmd = s0[0];
+    if (cmd === 'M') {
+      out.push([
+        'M',
+        interpolateNumber(s0[1], s1[1], t),
+        interpolateNumber(s0[2], s1[2], t),
+      ]);
+    } else if (cmd === 'C') {
+      out.push([
+        'C',
+        interpolateNumber(s0[1], s1[1], t),
+        interpolateNumber(s0[2], s1[2], t),
+        interpolateNumber(s0[3], s1[3], t),
+        interpolateNumber(s0[4], s1[4], t),
+        interpolateNumber(s0[5], s1[5], t),
+        interpolateNumber(s0[6], s1[6], t),
+      ]);
+    } else {
+      out.push([...s0] as PathSegment);
+    }
+  }
+  return out as CurveArray;
+}
+
+/**
+ * 对 SVG Path `d`（字符串或 {@link PathArray}）做 morph：先用 {@link mergePaths} 对齐段，再插值，最后 {@link path2String}。
+ */
+function interpolatePathD(from: unknown, to: unknown, t: number): string | null {
+  const fromOk = typeof from === 'string' || isPathArrayLike(from);
+  const toOk = typeof to === 'string' || isPathArrayLike(to);
+  if (!fromOk || !toOk) {
+    return null;
+  }
+
+  const left = parsePath(from as PathSerializedNode['d'] | PathArray);
+  const right = parsePath(to as PathSerializedNode['d'] | PathArray);
+  if (left.absolutePath.length === 0 || right.absolutePath.length === 0) {
+    return null;
+  }
+
+  try {
+    const [curve0, curve1] = mergePaths(
+      left as { absolutePath: AbsoluteArray; curve: CurveArray | null },
+      right as { absolutePath: AbsoluteArray; curve: CurveArray | null },
+    );
+    const blended = interpolateCurveArrays(curve0, curve1, t);
+    return path2String(blended, 'off');
+  } catch {
+    return null;
+  }
+}
+
 function interpolateValue(from: unknown, to: unknown, t: number) {
   if (isFiniteNumber(from) && isFiniteNumber(to)) {
     return interpolateNumber(from, to, t);
@@ -322,6 +482,12 @@ function interpolateValue(from: unknown, to: unknown, t: number) {
       a: interpolateNumber(fromColor.a, toColor.a, t),
     });
   }
+
+  const morphedD = interpolatePathD(from, to, t);
+  if (morphedD !== null) {
+    return morphedD;
+  }
+
   return t < 1 ? from : to;
 }
 

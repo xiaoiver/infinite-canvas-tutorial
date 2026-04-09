@@ -3,10 +3,11 @@ import {
   AnimationPlayer,
   FillSolid,
   Opacity,
+  Path,
   Stroke,
   Transform,
 } from '../components';
-import { safeAddComponent } from '..';
+import { safeAddComponent } from '../history';
 
 function isFiniteNumber(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value);
@@ -19,12 +20,47 @@ function isDasharray(value: unknown): value is [number, number] {
     && isFiniteNumber(value[1]);
 }
 
+export function computeTranslationWithTransformOrigin(input: {
+  currentTranslation: { x: number; y: number };
+  currentScale: { x: number; y: number };
+  currentRotation: number;
+  nextScale: { x: number; y: number };
+  nextRotation: number;
+  origin: { x: number; y: number };
+}) {
+  const {
+    currentTranslation,
+    currentScale,
+    currentRotation,
+    nextScale,
+    nextRotation,
+    origin,
+  } = input;
+
+  const cosCurrent = Math.cos(currentRotation);
+  const sinCurrent = Math.sin(currentRotation);
+  const currentLocalX = origin.x * currentScale.x;
+  const currentLocalY = origin.y * currentScale.y;
+  const anchorX = currentTranslation.x + currentLocalX * cosCurrent - currentLocalY * sinCurrent;
+  const anchorY = currentTranslation.y + currentLocalX * sinCurrent + currentLocalY * cosCurrent;
+
+  const cosNext = Math.cos(nextRotation);
+  const sinNext = Math.sin(nextRotation);
+  const nextLocalX = origin.x * nextScale.x;
+  const nextLocalY = origin.y * nextScale.y;
+
+  return {
+    x: anchorX - (nextLocalX * cosNext - nextLocalY * sinNext),
+    y: anchorY - (nextLocalX * sinNext + nextLocalY * cosNext),
+  };
+}
+
 export class AnimationSystem extends System {
   animations = this.query((q) =>
     q.current
       .with(AnimationPlayer)
       .using(AnimationPlayer).write
-      .using(Transform, Opacity, FillSolid, Stroke).write,
+      .using(Transform, Opacity, FillSolid, Stroke, Path).write,
   );
 
   execute(): void {
@@ -49,25 +85,60 @@ export class AnimationSystem extends System {
 
       if (entity.has(Transform)) {
         const transform = entity.write(Transform);
-        if (isFiniteNumber(values.x)) {
-          transform.translation.x = values.x;
+        const currentTranslation = {
+          x: transform.translation.x,
+          y: transform.translation.y,
+        };
+        const currentScale = {
+          x: transform.scale.x,
+          y: transform.scale.y,
+        };
+        const currentRotation = transform.rotation;
+
+        const nextTranslation = {
+          x: isFiniteNumber(values.x) ? values.x : currentTranslation.x,
+          y: isFiniteNumber(values.y) ? values.y : currentTranslation.y,
+        };
+        const nextScale = {
+          x: isFiniteNumber(values.scaleX)
+            ? values.scaleX
+            : isFiniteNumber(values.scale)
+              ? values.scale
+              : currentScale.x,
+          y: isFiniteNumber(values.scaleY)
+            ? values.scaleY
+            : isFiniteNumber(values.scale)
+              ? values.scale
+              : currentScale.y,
+        };
+        const nextRotation = isFiniteNumber(values.rotation)
+          ? values.rotation
+          : currentRotation;
+
+        const hasTransformOrigin = !!controller.getOptions().transformOrigin;
+        const hasTransformAnimation =
+          isFiniteNumber(values.scale)
+          || isFiniteNumber(values.scaleX)
+          || isFiniteNumber(values.scaleY)
+          || isFiniteNumber(values.rotation);
+        if (hasTransformOrigin && hasTransformAnimation) {
+          const compensated = computeTranslationWithTransformOrigin({
+            currentTranslation,
+            currentScale,
+            currentRotation,
+            nextScale,
+            nextRotation,
+            origin: controller.getOptions().transformOrigin!,
+          });
+          nextTranslation.x = compensated.x;
+          nextTranslation.y = compensated.y;
         }
-        if (isFiniteNumber(values.y)) {
-          transform.translation.y = values.y;
-        }
-        if (isFiniteNumber(values.scale)) {
-          transform.scale.x = values.scale;
-          transform.scale.y = values.scale;
-        }
-        if (isFiniteNumber(values.scaleX)) {
-          transform.scale.x = values.scaleX;
-        }
-        if (isFiniteNumber(values.scaleY)) {
-          transform.scale.y = values.scaleY;
-        }
-        if (isFiniteNumber(values.rotation)) {
-          transform.rotation = values.rotation;
-        }
+
+        transform.translation.x = nextTranslation.x;
+        transform.translation.y = nextTranslation.y;
+        transform.scale.x = nextScale.x;
+        transform.scale.y = nextScale.y;
+        transform.rotation = nextRotation;
       }
 
       if (
@@ -107,6 +178,10 @@ export class AnimationSystem extends System {
           : undefined;
       if (strokeDashoffset !== undefined) {
         safeAddComponent(entity, Stroke, { dashoffset: strokeDashoffset });
+      }
+
+      if (typeof values.d === 'string') {
+        safeAddComponent(entity, Path, { d: values.d });
       }
     });
   }
