@@ -38,6 +38,7 @@ import {
   Line,
   Plugin,
   ThemeMode,
+  RectSerializedNode,
 } from '../../ecs';
 import { Event, UIPlugin } from '../src';
 import '../src/spectrum';
@@ -164,7 +165,7 @@ canvas.addEventListener(Event.READY, async (e) => {
     // layersLassoing: ['parent'],
   });
 
-  const node1 = {
+  const node1: RectSerializedNode = {
     id: 'binding-curved-rect-1',
     type: 'rect',
     x: 100,
@@ -172,6 +173,10 @@ canvas.addEventListener(Event.READY, async (e) => {
     width: 100,
     height: 100,
     fill: 'green',
+    stroke: 'black',
+    strokeWidth: 10,
+    strokeDasharray: '10 5',
+    strokeDashoffset: 0,
     zIndex: 1,
   };
   const node2 = {
@@ -607,10 +612,10 @@ canvas.addEventListener(Event.READY, async (e) => {
   }
 
   api.updateNodes([
-    vn,
-    vn2,
-    vn3,
-    // node1,
+    // vn,
+    // vn2,
+    // vn3,
+    node1,
     // node2,
     // line,
     // polyline,
@@ -621,6 +626,17 @@ canvas.addEventListener(Event.READY, async (e) => {
   // api.selectNodes([node1])
 
   // api.updateNodes([node1]);
+
+  const animation = api.animate(
+    node1,
+    [
+      { x: 100, fill: 'green', strokeDashoffset: 0, strokeDasharray: '10 5' },
+      { x: 200, fill: 'red', strokeDashoffset: -20, strokeDasharray: '10 10' },
+    ],
+    { duration: 1000, direction: 'alternate', iterations: 'infinite', easing: 'ease-in-out' },
+  );
+
+  // animation.finish();
 });
 
 const VelloRendererPlugin = RendererPlugin.configure({
@@ -628,7 +644,7 @@ const VelloRendererPlugin = RendererPlugin.configure({
   rendererSystemCtor: VelloPipeline,
 });
 DefaultPlugins.splice(DefaultPlugins.indexOf(DefaultRendererPlugin), 1, VelloRendererPlugin);
-registerFont('/Gaegu-Regular.ttf');
+// registerFont('/Gaegu-Regular.ttf');
 // registerFont('/NotoSansCJKsc-VF.ttf');
 // registerFont('/NotoSans-Regular.ttf');
 // registerFont('/NotoSans-Bold.ttf');

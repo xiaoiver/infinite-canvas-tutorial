@@ -51,7 +51,8 @@ import {
   ClipMode,
   Flex,
   Group,
-  Theme
+  Theme,
+  AnimationPlayer,
 } from '@infinite-canvas-tutorial/ecs';
 import { Event } from '../event';
 import { ExtendedAPI, pendingCanvases } from '../API';
@@ -115,6 +116,7 @@ export class InitCanvas extends System {
             ClipMode,
             Flex,
             Theme,
+            AnimationPlayer,
           ).write,
     );
   }
