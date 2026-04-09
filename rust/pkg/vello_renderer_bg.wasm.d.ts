@@ -15,6 +15,7 @@ export const addRoughPath: (a: number, b: any) => void;
 export const addRoughPolyline: (a: number, b: any) => void;
 export const addRoughRect: (a: number, b: any) => void;
 export const addText: (a: number, b: any) => void;
+export const addVectorNetwork: (a: number, b: any) => void;
 export const computePathBounds: (a: any) => any;
 export const computeTextBounds: (a: any) => any;
 export const hitTestPath: (a: any) => number;

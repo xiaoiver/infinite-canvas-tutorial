@@ -29,6 +29,8 @@ export function addRoughRect(canvas_id: number, opts: any): void;
 
 export function addText(canvas_id: number, opts: any): void;
 
+export function addVectorNetwork(canvas_id: number, opts: any): void;
+
 export function clearAllCaches(): void;
 
 export function clearEmojiCache(): void;
@@ -75,6 +77,7 @@ export interface InitOutput {
     readonly addRoughPolyline: (a: number, b: any) => void;
     readonly addRoughRect: (a: number, b: any) => void;
     readonly addText: (a: number, b: any) => void;
+    readonly addVectorNetwork: (a: number, b: any) => void;
     readonly computePathBounds: (a: any) => any;
     readonly computeTextBounds: (a: any) => any;
     readonly hitTestPath: (a: any) => number;

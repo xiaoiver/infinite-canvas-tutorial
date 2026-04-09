@@ -43,9 +43,38 @@ controls.reverse();
 
 其中 Keyframes 和 Options 是纯对象，可直接 JSON 化。但运行时状态：`animate()` 返回的 Animation 对象包含与 DOM 的绑定、当前播放时间、velocity 等运行时状态，无法序列化。
 
-### Polyfill
+### 参考 Polyfill {#polyfill}
 
-[web-animations-js]
+我们可以参考 WAAPI 的 polyfill [web-animations-js]，结合我们的 ECS 系统实现。
+
+在数据层使用类 WAAPI 的 Keyframes 格式（可序列化）
+
+```ts
+// 类似 WAAPI 的 Keyframe 格式，但完全可 JSON 序列化
+interface Keyframe {
+    offset?: number; // 0-1，对应 WAAPI 的 offset
+    [property: string]: any; // x, y, scale, fill, strokeWidth...
+    easing?: string; // "ease-out", "spring(1, 100)"
+}
+
+interface AnimationOptions {
+    duration: number; // ms
+    delay?: number;
+    iterations?: number | 'infinite';
+    direction?: 'normal' | 'reverse' | 'alternate';
+    fill?: 'forwards' | 'backwards' | 'both';
+    easing?: string; // 全局缓动（若 keyframe 未指定）
+}
+```
+
+在控制层实现类 WAAPI 的 Animation 控制器。
+
+与真正 WAAPI polyfill 的区别：
+
+-   不要解析 CSS 字符串。WAAPI 支持 `{ transform: 'translate(100px)' }` 这类 CSS 字符串，解析成本高。直接支持 `{ x: 100 }`（类似 Motion 的独立 transform 属性）
+-   内置 `ease`, `ease-in`, `ease-out`, `linear`，以及 Motion 风格的 `spring(mass, stiffness, damping)`
+-   Composite 模式。参考 WAAPI 的 `composite: 'add' | 'replace'`，支持动画叠加到基础值上（如 Entity 已有位置，动画在其上叠加偏移）
+-   Timeline 支持。像 Motion 的 `timeline()` 或 WAAPI 的 GroupEffect，支持多 Entity 的 stagger 动画
 
 ## SVG 动画
 
@@ -62,6 +91,8 @@ drawio 中通过动画表示连接线的方向：
 > Export your diagram to a SVG file to include the connector animation when you publish it in a web page or on a content platform that supports SVG images.
 
 ## Lottie
+
+[lottie json schema]
 
 ## Rive
 
@@ -93,3 +124,4 @@ drawio 中通过动画表示连接线的方向：
 [lottielab]: https://www.lottielab.com/
 [omnilottie]: https://fal.ai/models/fal-ai/omnilottie/api
 [web-animations-js]: https://github.com/web-animations/web-animations-js
+[lottie json schema]: https://lottiefiles.github.io/lottie-docs/schema/

@@ -1267,6 +1267,170 @@ pub fn add_js_shape_to_scene(
                 }
             }
         }
+        JsShape::VectorNetwork {
+            vertices,
+            segments,
+            regions,
+            fill,
+            fill_gradients,
+            stroke,
+            opacity,
+            fill_opacity,
+            stroke_opacity,
+            size_attenuation,
+            stroke_attenuation,
+            marker_start,
+            marker_end,
+            marker_factor,
+            drop_shadow,
+            ..
+        } => {
+            if vertices.is_empty() || segments.is_empty() {
+                return;
+            }
+            let verts = vertices.as_slice();
+            let segs = segments.as_slice();
+            let regs = regions.as_slice();
+
+            let Some(bounds) = crate::vector_network::geometry_rect(verts, segs) else {
+                return;
+            };
+            let center = bounds.center();
+            let fill_mult = opacity * fill_opacity;
+
+            let sw_stroke = stroke.as_ref().and_then(|s| {
+                if s.width > 0.0 {
+                    Some((
+                        if stroke_attenuation { s.width / scale } else { s.width },
+                        apply_opacity_to_color(s.color, opacity, stroke_opacity),
+                        s,
+                    ))
+                } else {
+                    None
+                }
+            });
+
+            let mut sx0 = bounds.x0;
+            let mut sy0 = bounds.y0;
+            let mut sx1 = bounds.x1;
+            let mut sy1 = bounds.y1;
+            if size_attenuation {
+                let cx = center.x;
+                let cy = center.y;
+                let hw = (sx1 - sx0) / (2.0 * scale);
+                let hh = (sy1 - sy0) / (2.0 * scale);
+                sx0 = cx - hw;
+                sy0 = cy - hh;
+                sx1 = cx + hw;
+                sy1 = cy + hh;
+            }
+
+            if let Some(ref ds) = drop_shadow {
+                let ds_blur = if size_attenuation { ds.blur / scale } else { ds.blur };
+                let ds_offset_x = if size_attenuation { ds.offset_x / scale } else { ds.offset_x };
+                let ds_offset_y = if size_attenuation { ds.offset_y / scale } else { ds.offset_y };
+                let shadow_rect = Rect::new(
+                    sx0 + ds_offset_x,
+                    sy0 + ds_offset_y,
+                    sx1 + ds_offset_x,
+                    sy1 + ds_offset_y,
+                );
+                let shadow_color = apply_opacity_to_color(ds.color, opacity, 1.0);
+                if ds_blur > 0.0 {
+                    scene.draw_blurred_rounded_rect(
+                        shape_transform,
+                        shadow_rect,
+                        Color::new(shadow_color),
+                        0.0,
+                        ds_blur,
+                    );
+                } else {
+                    let brush = vello::peniko::Brush::Solid(Color::new(shadow_color));
+                    scene.fill(Fill::NonZero, shape_transform, &brush, None, &shadow_rect);
+                }
+            }
+
+            for region in regs {
+                let Some(mut fill_bp) = crate::vector_network::region_to_bezpath(verts, segs, region) else {
+                    continue;
+                };
+                if size_attenuation {
+                    fill_bp.apply_affine(Affine::scale_about(1.0 / scale, center));
+                }
+                let fill_mode = if region.fill_rule_even_odd {
+                    Fill::EvenOdd
+                } else {
+                    Fill::NonZero
+                };
+                if let Some(ref grads) = fill_gradients {
+                    for g in grads.iter().rev() {
+                        let brush = vello::peniko::Brush::Gradient(build_gradient_brush(g, fill_mult));
+                        scene.fill(fill_mode, shape_transform, &brush, None, &fill_bp);
+                    }
+                } else if fill[3] > 0.0 {
+                    let fill_color = apply_opacity_to_color(fill, opacity, fill_opacity);
+                    let brush = vello::peniko::Brush::Solid(Color::new(fill_color));
+                    scene.fill(fill_mode, shape_transform, &brush, None, &fill_bp);
+                }
+            }
+
+            let mut stroke_paths = crate::vector_network::stroke_bezpaths(verts, segs);
+            for sp in &mut stroke_paths {
+                if size_attenuation {
+                    sp.apply_affine(Affine::scale_about(1.0 / scale, center));
+                }
+            }
+
+            if let Some((sw, stroke_color, s)) = sw_stroke {
+                let kurbo_stroke = s.to_kurbo_stroke_with_width(sw);
+                for sp in &stroke_paths {
+                    scene.stroke(&kurbo_stroke, shape_transform, Color::new(stroke_color), None, sp);
+                }
+            }
+
+            if stroke.is_some()
+                && marker_factor > 0.0
+                && stroke_paths.len() == 1
+                && (marker_enabled(marker_start.as_str()) || marker_enabled(marker_end.as_str()))
+            {
+                if let Some(ref s) = stroke {
+                    if let Some(((sx, sy), start_angle, (ex, ey), end_angle)) =
+                        path_start_end_tangents(&stroke_paths[0])
+                    {
+                        let sw = if stroke_attenuation { s.width / scale } else { s.width };
+                        let stroke_color = apply_opacity_to_color(s.color, opacity, stroke_opacity);
+                        let kurbo_stroke = s.to_kurbo_stroke_with_width(sw);
+                        let r = sw * marker_factor as f64;
+                        if marker_enabled(marker_start.as_str()) {
+                            stroke_marker_path(
+                                scene,
+                                shape_transform,
+                                marker_start.as_str(),
+                                sx,
+                                sy,
+                                start_angle,
+                                r,
+                                &kurbo_stroke,
+                                stroke_color,
+                            );
+                        }
+                        if marker_enabled(marker_end.as_str()) {
+                            stroke_marker_path(
+                                scene,
+                                shape_transform,
+                                marker_end.as_str(),
+                                ex,
+                                ey,
+                                end_angle + std::f64::consts::PI,
+                                r,
+                                &kurbo_stroke,
+                                stroke_color,
+                            );
+                        }
+                    }
+                }
+            }
+        }
         JsShape::Brush { .. } => {
             // Brush is rendered by the dedicated GPU brush pass.
         }

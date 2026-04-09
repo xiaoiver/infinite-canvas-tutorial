@@ -3,6 +3,8 @@ use serde::{Deserialize, Serialize};
 
 use vello::kurbo::{Affine, Point};
 
+use crate::vector_network::{VnRegion, VnSegment, VnVertex};
+
 pub type Mat3Array = [f64; 9];
 
 #[cfg(target_arch = "wasm32")]
@@ -423,23 +425,45 @@ pub enum JsShape {
         marker_factor: f32,
         rough_seed: i32,
     },
+    VectorNetwork {
+        id: String,
+        parent_id: Option<String>,
+        z_index: f32,
+        ui: bool,
+        vertices: Vec<VnVertex>,
+        segments: Vec<VnSegment>,
+        regions: Vec<VnRegion>,
+        fill: [f32; 4],
+        fill_gradients: Option<Vec<FillGradientSpec>>,
+        stroke: Option<StrokeParams>,
+        opacity: f32,
+        fill_opacity: f32,
+        stroke_opacity: f32,
+        local_transform: Option<Mat3Array>,
+        size_attenuation: bool,
+        stroke_attenuation: bool,
+        marker_start: String,
+        marker_end: String,
+        marker_factor: f32,
+        drop_shadow: Option<DropShadow>,
+    },
 }
 
 #[cfg(target_arch = "wasm32")]
 impl JsShape {
     pub fn id(&self) -> &str {
         match self {
-            JsShape::Rect { id, .. } | JsShape::Ellipse { id, .. } | JsShape::Line { id, .. } | JsShape::Text { id, .. } | JsShape::ImageRect { id, .. } | JsShape::Path { id, .. } | JsShape::Polyline { id, .. } | JsShape::Brush { id, .. } | JsShape::Group { id, .. } | JsShape::RoughRect { id, .. } | JsShape::RoughEllipse { id, .. } | JsShape::RoughLine { id, .. } | JsShape::RoughPolyline { id, .. } | JsShape::RoughPath { id, .. } => id,
+            JsShape::Rect { id, .. } | JsShape::Ellipse { id, .. } | JsShape::Line { id, .. } | JsShape::Text { id, .. } | JsShape::ImageRect { id, .. } | JsShape::Path { id, .. } | JsShape::Polyline { id, .. } | JsShape::Brush { id, .. } | JsShape::Group { id, .. } | JsShape::RoughRect { id, .. } | JsShape::RoughEllipse { id, .. } | JsShape::RoughLine { id, .. } | JsShape::RoughPolyline { id, .. } | JsShape::RoughPath { id, .. } | JsShape::VectorNetwork { id, .. } => id,
         }
     }
     pub fn parent_id(&self) -> Option<&str> {
         match self {
-            JsShape::Rect { parent_id, .. } | JsShape::Ellipse { parent_id, .. } | JsShape::Line { parent_id, .. } | JsShape::Text { parent_id, .. } | JsShape::ImageRect { parent_id, .. } | JsShape::Path { parent_id, .. } | JsShape::Polyline { parent_id, .. } | JsShape::Brush { parent_id, .. } | JsShape::Group { parent_id, .. } | JsShape::RoughRect { parent_id, .. } | JsShape::RoughEllipse { parent_id, .. } | JsShape::RoughLine { parent_id, .. } | JsShape::RoughPolyline { parent_id, .. } | JsShape::RoughPath { parent_id, .. } => parent_id.as_deref(),
+            JsShape::Rect { parent_id, .. } | JsShape::Ellipse { parent_id, .. } | JsShape::Line { parent_id, .. } | JsShape::Text { parent_id, .. } | JsShape::ImageRect { parent_id, .. } | JsShape::Path { parent_id, .. } | JsShape::Polyline { parent_id, .. } | JsShape::Brush { parent_id, .. } | JsShape::Group { parent_id, .. } | JsShape::RoughRect { parent_id, .. } | JsShape::RoughEllipse { parent_id, .. } | JsShape::RoughLine { parent_id, .. } | JsShape::RoughPolyline { parent_id, .. } | JsShape::RoughPath { parent_id, .. } | JsShape::VectorNetwork { parent_id, .. } => parent_id.as_deref(),
         }
     }
     pub fn z_index(&self) -> f32 {
         match self {
-            JsShape::Rect { z_index, .. } | JsShape::Ellipse { z_index, .. } | JsShape::Line { z_index, .. } | JsShape::Text { z_index, .. } | JsShape::ImageRect { z_index, .. } | JsShape::Path { z_index, .. } | JsShape::Polyline { z_index, .. } | JsShape::Brush { z_index, .. } | JsShape::Group { z_index, .. } | JsShape::RoughRect { z_index, .. } | JsShape::RoughEllipse { z_index, .. } | JsShape::RoughLine { z_index, .. } | JsShape::RoughPolyline { z_index, .. } | JsShape::RoughPath { z_index, .. } => *z_index,
+            JsShape::Rect { z_index, .. } | JsShape::Ellipse { z_index, .. } | JsShape::Line { z_index, .. } | JsShape::Text { z_index, .. } | JsShape::ImageRect { z_index, .. } | JsShape::Path { z_index, .. } | JsShape::Polyline { z_index, .. } | JsShape::Brush { z_index, .. } | JsShape::Group { z_index, .. } | JsShape::RoughRect { z_index, .. } | JsShape::RoughEllipse { z_index, .. } | JsShape::RoughLine { z_index, .. } | JsShape::RoughPolyline { z_index, .. } | JsShape::RoughPath { z_index, .. } | JsShape::VectorNetwork { z_index, .. } => *z_index,
         }
     }
     pub fn ui(&self) -> bool {
@@ -457,12 +481,13 @@ impl JsShape {
             | JsShape::RoughEllipse { ui, .. }
             | JsShape::RoughLine { ui, .. }
             | JsShape::RoughPolyline { ui, .. }
-            | JsShape::RoughPath { ui, .. } => *ui,
+            | JsShape::RoughPath { ui, .. }
+            | JsShape::VectorNetwork { ui, .. } => *ui,
         }
     }
     pub fn local_transform(&self) -> Option<&Mat3Array> {
         match self {
-            JsShape::Rect { local_transform, .. } | JsShape::Ellipse { local_transform, .. } | JsShape::Line { local_transform, .. } | JsShape::Text { local_transform, .. } | JsShape::ImageRect { local_transform, .. } | JsShape::Path { local_transform, .. } | JsShape::Polyline { local_transform, .. } | JsShape::Brush { local_transform, .. } | JsShape::Group { local_transform, .. } | JsShape::RoughRect { local_transform, .. } | JsShape::RoughEllipse { local_transform, .. } | JsShape::RoughLine { local_transform, .. } | JsShape::RoughPolyline { local_transform, .. } | JsShape::RoughPath { local_transform, .. } => local_transform.as_ref(),
+            JsShape::Rect { local_transform, .. } | JsShape::Ellipse { local_transform, .. } | JsShape::Line { local_transform, .. } | JsShape::Text { local_transform, .. } | JsShape::ImageRect { local_transform, .. } | JsShape::Path { local_transform, .. } | JsShape::Polyline { local_transform, .. } | JsShape::Brush { local_transform, .. } | JsShape::Group { local_transform, .. } | JsShape::RoughRect { local_transform, .. } | JsShape::RoughEllipse { local_transform, .. } | JsShape::RoughLine { local_transform, .. } | JsShape::RoughPolyline { local_transform, .. } | JsShape::RoughPath { local_transform, .. } | JsShape::VectorNetwork { local_transform, .. } => local_transform.as_ref(),
         }
     }
     pub fn local_origin(&self) -> Point {
@@ -471,6 +496,10 @@ impl JsShape {
             JsShape::Ellipse { cx, cy, .. } | JsShape::RoughEllipse { cx, cy, .. } => Point::new(*cx, *cy),
             JsShape::Line { x1, y1, .. } | JsShape::RoughLine { x1, y1, .. } => Point::new(*x1, *y1),
             JsShape::Text { anchor_x, anchor_y, .. } => Point::new(*anchor_x, *anchor_y),
+            JsShape::VectorNetwork { vertices, .. } => vertices
+                .first()
+                .map(|v| Point::new(v.x, v.y))
+                .unwrap_or(Point::ORIGIN),
             JsShape::Path { .. } | JsShape::Polyline { .. } | JsShape::Brush { .. } | JsShape::Group { .. } | JsShape::RoughPolyline { .. } | JsShape::RoughPath { .. } => Point::ORIGIN,
         }
     }
@@ -944,6 +973,92 @@ pub struct PathOptions {
     pub stroke: Option<StrokeOptions>,
     #[serde(default = "default_fill_rule")]
     pub fill_rule: String,
+    #[serde(default = "default_opacity")]
+    pub opacity: f32,
+    #[serde(default = "default_opacity")]
+    pub fill_opacity: f32,
+    #[serde(default = "default_opacity")]
+    pub stroke_opacity: f32,
+    #[serde(default, deserialize_with = "deserialize_mat3_opt")]
+    pub local_transform: Option<Mat3Array>,
+    #[serde(default)]
+    pub size_attenuation: bool,
+    #[serde(default)]
+    pub stroke_attenuation: bool,
+    #[serde(default = "default_marker_start")]
+    pub marker_start: String,
+    #[serde(default = "default_marker_end")]
+    pub marker_end: String,
+    #[serde(default = "default_marker_factor")]
+    pub marker_factor: f32,
+    #[serde(default)]
+    pub drop_shadow: Option<DropShadowOptions>,
+}
+
+#[cfg(target_arch = "wasm32")]
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VectorTangentOpts {
+    pub x: f64,
+    pub y: f64,
+}
+
+#[cfg(target_arch = "wasm32")]
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VectorNetworkVertexOpts {
+    pub x: f64,
+    pub y: f64,
+}
+
+#[cfg(target_arch = "wasm32")]
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VectorNetworkSegmentOpts {
+    pub start: usize,
+    pub end: usize,
+    #[serde(default)]
+    pub tangent_start: Option<VectorTangentOpts>,
+    #[serde(default)]
+    pub tangent_end: Option<VectorTangentOpts>,
+}
+
+#[cfg(target_arch = "wasm32")]
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VectorNetworkRegionOpts {
+    #[serde(default)]
+    pub fill_rule: Option<String>,
+    #[serde(default)]
+    pub winding_rule: Option<String>,
+    #[serde(default)]
+    pub loops: Vec<Vec<usize>>,
+}
+
+#[cfg(target_arch = "wasm32")]
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VectorNetworkOptions {
+    #[serde(deserialize_with = "deserialize_id")]
+    pub id: String,
+    #[serde(default, deserialize_with = "deserialize_parent_id")]
+    pub parent_id: Option<String>,
+    #[serde(default)]
+    pub z_index: f32,
+    #[serde(default)]
+    pub ui: bool,
+    pub vertices: Vec<VectorNetworkVertexOpts>,
+    pub segments: Vec<VectorNetworkSegmentOpts>,
+    #[serde(default)]
+    pub regions: Option<Vec<VectorNetworkRegionOpts>>,
+    #[serde(default = "default_rgba_fill_transparent")]
+    pub fill: [f32; 4],
+    #[serde(default)]
+    pub fill_gradient: Option<FillGradientOptions>,
+    #[serde(default)]
+    pub fill_gradients: Option<Vec<FillGradientOptions>>,
+    #[serde(default)]
+    pub stroke: Option<StrokeOptions>,
     #[serde(default = "default_opacity")]
     pub opacity: f32,
     #[serde(default = "default_opacity")]

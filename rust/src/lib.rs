@@ -1,3 +1,4 @@
+pub mod vector_network;
 pub mod types;
 pub mod path_utils;
 pub mod watercolor;
