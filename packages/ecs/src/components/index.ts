@@ -18,3 +18,4 @@ export * from './math';
 export * from './geometry';
 export * from './pen';
 export * from './html';
+export * from './animation';

@@ -38,6 +38,7 @@ import {
   Line,
   Plugin,
   ThemeMode,
+  RectSerializedNode,
 } from '../../ecs';
 import { Event, UIPlugin } from '../src';
 import '../src/spectrum';
@@ -164,14 +165,12 @@ canvas.addEventListener(Event.READY, async (e) => {
     // layersLassoing: ['parent'],
   });
 
-  const node1 = {
+  const node1: RectSerializedNode = {
     id: 'binding-curved-rect-1',
-    type: 'rect',
-    x: 100,
-    y: 0,
-    width: 100,
-    height: 100,
-    fill: 'green',
+    type: 'path',
+    d: 'M 100 0 L 200 100 L 300 0 Z',
+    stroke: 'black',
+    strokeWidth: 10,
     zIndex: 1,
   };
   const node2 = {
@@ -607,10 +606,10 @@ canvas.addEventListener(Event.READY, async (e) => {
   }
 
   api.updateNodes([
-    vn,
-    vn2,
-    vn3,
-    // node1,
+    // vn,
+    // vn2,
+    // vn3,
+    node1,
     // node2,
     // line,
     // polyline,
@@ -621,13 +620,24 @@ canvas.addEventListener(Event.READY, async (e) => {
   // api.selectNodes([node1])
 
   // api.updateNodes([node1]);
+
+  const animation = api.animate(
+    node1,
+    [
+      { fill: 'green', d: 'M 100 0 L 200 100 L 300 0 Z' },
+      { fill: 'red', d: 'M 100 0 L 200 100 L 300 0 Q 400 100 500 0' },
+    ],
+    { duration: 1000, direction: 'alternate', iterations: 'infinite', easing: 'ease-in-out' },
+  );
+
+  // animation.finish();
 });
 
-// const VelloRendererPlugin = RendererPlugin.configure({
-//   setupDeviceSystemCtor: InitVello,
-//   rendererSystemCtor: VelloPipeline,
-// });
-// DefaultPlugins.splice(DefaultPlugins.indexOf(DefaultRendererPlugin), 1, VelloRendererPlugin);
+const VelloRendererPlugin = RendererPlugin.configure({
+  setupDeviceSystemCtor: InitVello,
+  rendererSystemCtor: VelloPipeline,
+});
+DefaultPlugins.splice(DefaultPlugins.indexOf(DefaultRendererPlugin), 1, VelloRendererPlugin);
 // registerFont('/Gaegu-Regular.ttf');
 // registerFont('/NotoSansCJKsc-VF.ttf');
 // registerFont('/NotoSans-Regular.ttf');

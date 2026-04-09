@@ -24,6 +24,7 @@ use crate::types::{
     BrushOptions, CanvasRenderOptions, CanvasRenderOptionsInput, DropShadow, EllipseOptions, ExportViewOpts,
     GroupOptions, ImageRectOptions, JsShape, LineOptions, PathBoundsOptions, PathHitTestOptions,
     PathOptions, PolylineOptions, RectOptions, RoughEllipseOptions, RoughLineOptions,
+    VectorNetworkOptions, VectorNetworkRegionOpts,
     RoughPathOptions, RoughPolylineOptions, RoughRectOptions, StrokeAlignment, StrokeParams,
     TextOptions,
     default_font_family, default_font_kerning, default_font_size, default_font_style,
@@ -34,6 +35,8 @@ use crate::types::{
 
 #[cfg(target_arch = "wasm32")]
 use crate::renderer::run_all_canvases_async;
+#[cfg(target_arch = "wasm32")]
+use crate::vector_network::{VnRegion, VnSegment, VnVertex};
 
 #[cfg(target_arch = "wasm32")]
 #[wasm_bindgen(js_name = runWithCanvas)]
@@ -318,6 +321,106 @@ pub fn js_add_path(canvas_id: u32, opts: JsValue) {
         fill_gradients,
         stroke,
         fill_rule: o.fill_rule,
+        opacity: o.opacity,
+        fill_opacity: o.fill_opacity,
+        stroke_opacity: o.stroke_opacity,
+        local_transform: o.local_transform,
+        size_attenuation: o.size_attenuation,
+        stroke_attenuation: o.stroke_attenuation,
+        marker_start: o.marker_start,
+        marker_end: o.marker_end,
+        marker_factor: o.marker_factor,
+        drop_shadow,
+    });
+}
+
+#[cfg(target_arch = "wasm32")]
+fn vn_region_from_opts(r: VectorNetworkRegionOpts) -> VnRegion {
+    let even_odd = if let Some(fr) = r.fill_rule.as_deref() {
+        fr.eq_ignore_ascii_case("evenodd")
+    } else if let Some(w) = r.winding_rule.as_deref() {
+        w.eq_ignore_ascii_case("evenodd") || w == "EVENODD"
+    } else {
+        false
+    };
+    VnRegion {
+        fill_rule_even_odd: even_odd,
+        loops: r.loops,
+    }
+}
+
+#[cfg(target_arch = "wasm32")]
+#[wasm_bindgen(js_name = addVectorNetwork)]
+pub fn js_add_vector_network(canvas_id: u32, opts: JsValue) {
+    let o: VectorNetworkOptions = match serde_wasm_bindgen::from_value(opts) {
+        Ok(v) => v,
+        Err(e) => {
+            web_sys::console::error_1(&format!("addVectorNetwork: invalid options - {}", e).into());
+            return;
+        }
+    };
+    let stroke = o.stroke.as_ref().and_then(|s| {
+        if s.width > 0.0 {
+            Some(StrokeParams {
+                width: s.width,
+                color: s.color,
+                linecap: s.linecap.clone(),
+                linejoin: s.linejoin.clone(),
+                miter_limit: s.miter_limit,
+                stroke_dasharray: s.stroke_dasharray.clone(),
+                stroke_dashoffset: s.stroke_dashoffset,
+                alignment: StrokeAlignment::from_str(&s.alignment),
+                blur: s.blur,
+            })
+        } else {
+            None
+        }
+    });
+    let fill_gradients = resolve_fill_gradients(&o.fill_gradient, &o.fill_gradients);
+    let drop_shadow = o.drop_shadow.map(|ds| DropShadow {
+        color: ds.color,
+        blur: ds.blur,
+        offset_x: ds.offset_x,
+        offset_y: ds.offset_y,
+    });
+    let vertices: Vec<VnVertex> = o
+        .vertices
+        .into_iter()
+        .map(|v| VnVertex { x: v.x, y: v.y })
+        .collect();
+    let segments: Vec<VnSegment> = o
+        .segments
+        .into_iter()
+        .map(|s| VnSegment {
+            start: s.start,
+            end: s.end,
+            tangent_start: [
+                s.tangent_start.as_ref().map(|t| t.x).unwrap_or(0.0),
+                s.tangent_start.as_ref().map(|t| t.y).unwrap_or(0.0),
+            ],
+            tangent_end: [
+                s.tangent_end.as_ref().map(|t| t.x).unwrap_or(0.0),
+                s.tangent_end.as_ref().map(|t| t.y).unwrap_or(0.0),
+            ],
+        })
+        .collect();
+    let regions: Vec<VnRegion> = o
+        .regions
+        .unwrap_or_default()
+        .into_iter()
+        .map(vn_region_from_opts)
+        .collect();
+    push_shape(canvas_id, JsShape::VectorNetwork {
+        id: o.id,
+        parent_id: o.parent_id,
+        z_index: o.z_index,
+        ui: o.ui,
+        vertices,
+        segments,
+        regions,
+        fill: o.fill,
+        fill_gradients,
+        stroke,
         opacity: o.opacity,
         fill_opacity: o.fill_opacity,
         stroke_opacity: o.stroke_opacity,

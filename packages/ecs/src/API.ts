@@ -92,9 +92,11 @@ import {
   Transform,
   UI,
   VectorNetwork,
+  AnimationPlayer,
   VectorScreenshotRequest,
   ZIndex,
 } from './components';
+import { AnimationController, AnimationOptions, Keyframe } from './animation';
 import { History, mutateElement, safeAddComponent, safeRemoveComponent } from './history';
 import {
   drawDotsGrid,
@@ -898,6 +900,35 @@ export class API {
     if (this.#landmarkAnimationID !== undefined) {
       DOMAdapter.get().cancelAnimationFrame(this.#landmarkAnimationID);
     }
+  }
+
+  animate(
+    target: Entity | SerializedNode | SerializedNode['id'],
+    keyframes: Keyframe[],
+    options: AnimationOptions,
+  ) {
+    let entity: Entity | undefined;
+    if (typeof target === 'string') {
+      const node = this.getNodeById(target);
+      entity = node ? this.getEntity(node) : undefined;
+    } else if (isEntity(target)) {
+      entity = target;
+    } else {
+      entity = this.getEntity(target);
+    }
+
+    if (!entity) {
+      return undefined;
+    }
+
+    const controller = new AnimationController(keyframes, options);
+    if (entity.has(AnimationPlayer)) {
+      entity.write(AnimationPlayer).controller = controller;
+    } else {
+      entity.add(AnimationPlayer, new AnimationPlayer({ controller }));
+    }
+    this.commands.execute();
+    return controller;
   }
 
   private getSceneGraphBounds() {

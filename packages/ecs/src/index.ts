@@ -10,6 +10,7 @@ import {
   PenPlugin,
   CullingPlugin,
   HTMLPlugin,
+  AnimationPlugin,
 } from './plugins';
 
 export * from './API';
@@ -17,6 +18,7 @@ export * from './App';
 export * from './commands';
 export * from './components';
 export * from './plugins';
+export * from './animation';
 export * from './systems';
 export * from './environment';
 export * from './context';
@@ -104,4 +106,5 @@ export const DefaultPlugins: Plugin[] = [
   ScreenshotPlugin,
   PenPlugin,
   HTMLPlugin,
+  AnimationPlugin,
 ];

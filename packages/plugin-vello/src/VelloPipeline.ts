@@ -75,6 +75,7 @@ import {
   addEllipse,
   addLine,
   addPath,
+  addVectorNetwork,
   addBrush,
   addPolyline,
   addText,
@@ -898,6 +899,51 @@ export class VelloPipeline extends System {
               addPath(canvasId, opts);
             }
           }
+        } else if (entity.has(VectorNetwork)) {
+          const { vertices, segments, regions } = entity.read(VectorNetwork);
+          if (vertices?.length && segments?.length) {
+            const opts: Record<string, unknown> = {
+              ...baseOpts,
+              vertices,
+              segments: segments.map(
+                (s: {
+                  start: number;
+                  end: number;
+                  tangentStart?: { x: number; y: number };
+                  tangentEnd?: { x: number; y: number };
+                }) => ({
+                  start: s.start,
+                  end: s.end,
+                  tangentStart: s.tangentStart,
+                  tangentEnd: s.tangentEnd,
+                }),
+              ),
+              regions:
+                regions?.map(
+                  (r: {
+                    fillRule?: string;
+                    windingRule?: string;
+                    loops: readonly (readonly number[])[];
+                  }) => ({
+                    fillRule: r.fillRule,
+                    windingRule: r.windingRule,
+                    loops: r.loops.map((loop) => [...loop]),
+                  }),
+                ) ?? [],
+            };
+            if (entity.has(FillGradient) && entity.has(ComputedBounds)) {
+              const { minX, minY, maxX, maxY } =
+                entity.read(ComputedBounds).geometryBounds;
+              const grads = buildFillGradients(
+                entity.read(FillGradient).value,
+                [minX, minY],
+                maxX - minX,
+                maxY - minY,
+              );
+              if (grads.length) opts.fillGradients = grads;
+            }
+            addVectorNetwork(canvasId, opts);
+          }
         } else if (entity.has(Brush)) {
           const brush = entity.read(Brush);
           if (brush.points && brush.points.length >= 2) {
@@ -1088,6 +1134,7 @@ export class VelloPipeline extends System {
           entity.has(Line) ||
           entity.has(Polyline) ||
           entity.has(Path) ||
+          entity.has(VectorNetwork) ||
           entity.has(Text) ||
           entity.has(Rough) ||
           entity.has(Brush)
@@ -1136,7 +1183,12 @@ export class VelloPipeline extends System {
       ...this.strokes.addedChangedOrRemoved,
       ...this.markers.addedChangedOrRemoved,
     ].forEach((entity) => {
-      if (entity.has(Polyline) || entity.has(Path) || entity.has(Line)) {
+      if (
+        entity.has(Polyline) ||
+        entity.has(Path) ||
+        entity.has(Line) ||
+        entity.has(VectorNetwork)
+      ) {
         safeAddComponent(entity, GeometryDirty);
       }
     });
