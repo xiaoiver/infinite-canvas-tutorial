@@ -13,6 +13,7 @@ import { en } from './en';
 import { zh } from './zh';
 import { ko } from './ko';
 import { resolve } from 'path';
+import { adsenseAdsTxtPlugin } from '../adsense-ads-txt';
 
 export default defineConfig({
   markdown: {
@@ -70,6 +71,7 @@ export default defineConfig({
       ],
     },
     plugins: [
+      adsenseAdsTxtPlugin(),
       VueMacros({
         plugins: {
           vueJsx: vueJsx(),
