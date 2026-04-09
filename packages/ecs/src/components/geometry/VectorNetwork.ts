@@ -12,9 +12,27 @@ import { expandBoundsWithVectorSegments, serializePoints } from '../../utils';
 import { AABB } from '../math';
 import { Stroke } from '../renderable';
 
+/**
+ * How two curve handles behave relative to one another.
+ * The possible values are:
+ * - "NONE": the two vector handles are independent from each other
+ * - "ANGLE": the two vector handles form a single tangent line, but the length of each handle is independent
+ * - "ANGLE_AND_LENGTH": the two vector handles form a single tangent line, equidistant on both sides of the vertex
+ * @see https://developers.figma.com/docs/plugins/api/HandleMirroring
+ */
+type HandleMirroring = "NONE" | "ANGLE" | "ANGLE_AND_LENGTH";
+
+/**
+ * Each vertex is a point in the graph, defined by its position.
+ * @see https://developers.figma.com/docs/plugins/api/VectorNetwork/#vectorvertex
+ */
 interface VectorVertex {
   x: number;
   y: number;
+  strokeLinecap?: Stroke['linecap'];
+  strokeLinejoin?: Stroke['linejoin'];
+  cornerRadius?: number;
+  handleMirroring?: HandleMirroring;
 }
 
 interface VectorSegment {

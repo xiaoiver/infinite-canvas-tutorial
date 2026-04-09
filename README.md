@@ -453,7 +453,9 @@ If you want to use it in your own project, you can refer to:
 
 -   Implement radiance cascades with WebGPU Compute Shader
     -   Generate SDF with analytic geometry methods
-    -   Raymarch
+    -   Compute cascade: ping-pong, dispatch rays, raymarch and merge
+    -   Generate mipmap
+    -   Composite with vello pipeline
 
 |               Radiance Cascades               |
 | :-------------------------------------------: |

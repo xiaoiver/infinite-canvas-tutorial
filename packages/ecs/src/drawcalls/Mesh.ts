@@ -19,7 +19,13 @@ import { mat3 } from 'gl-matrix';
 import earcut from 'earcut';
 import { Drawcall, ZINDEX_FACTOR, STENCIL_CLIP_REF } from './Drawcall';
 import { vert, frag, Location } from '../shaders/mesh';
-import { isClockWise, paddingMat3, parseColor, triangulate } from '../utils';
+import {
+  buildVectorNetworkFillMesh,
+  isClockWise,
+  paddingMat3,
+  parseColor,
+  triangulate,
+} from '../utils';
 import {
   ComputedPoints,
   Ellipse,
@@ -36,6 +42,7 @@ import {
   Circle,
   ComputedRough,
   Mat3,
+  VectorNetwork,
 } from '../components';
 
 const strokeAlignmentMap = {
@@ -78,8 +85,31 @@ export class Mesh extends Drawcall {
       return false;
     }
 
-    if (this.shapes[0].read(Path).d !== shape.read(Path).d) {
+    if (
+      this.shapes[0].has(Path) &&
+      shape.has(Path) &&
+      this.shapes[0].read(Path).d !== shape.read(Path).d
+    ) {
       return false;
+    }
+
+    const vn0 = this.shapes[0].has(VectorNetwork)
+      ? this.shapes[0].read(VectorNetwork)
+      : null;
+    const vn1 = shape.has(VectorNetwork) ? shape.read(VectorNetwork) : null;
+    if ((vn0 === null) !== (vn1 === null)) {
+      return false;
+    }
+    if (vn0 && vn1) {
+      const vnKey = (v: typeof vn0) =>
+        JSON.stringify({
+          vertices: v.vertices,
+          segments: v.segments,
+          regions: v.regions,
+        });
+      if (vnKey(vn0) !== vnKey(vn1)) {
+        return false;
+      }
     }
 
     const isInstanceFillImage = this.shapes[0].has(FillImage);
@@ -99,8 +129,9 @@ export class Mesh extends Drawcall {
   createGeometry(): void {
     const instance = this.shapes[0];
 
-    let rawPoints: [number, number][][];
-    let tessellationMethod: TesselationMethod;
+    let rawPoints: [number, number][][] | undefined;
+    let tessellationMethod: TesselationMethod | undefined;
+    let vnFillMesh: { points: number[]; indices: number[] } | undefined;
 
     if (
       instance.has(Rough) &&
@@ -112,54 +143,67 @@ export class Mesh extends Drawcall {
     } else if (instance.has(Path)) {
       rawPoints = instance.read(ComputedPoints).points;
       tessellationMethod = instance.read(Path).tessellationMethod;
+    } else if (instance.has(VectorNetwork)) {
+      const { vertices, segments, regions } = instance.read(VectorNetwork);
+      vnFillMesh = buildVectorNetworkFillMesh(vertices, segments, regions);
     }
 
-    const points = rawPoints.flat(2);
+    if (vnFillMesh !== undefined) {
+      this.points = vnFillMesh.points;
+      this.indexBufferData = new Uint32Array(vnFillMesh.indices);
+    } else if (rawPoints !== undefined && tessellationMethod !== undefined) {
+      const points = rawPoints.flat(2);
 
-    if (points.length > 0) {
-      if (tessellationMethod === TesselationMethod.EARCUT) {
-        let holes = [];
-        let contours = [];
-        const indices = [];
-        let indexOffset = 0;
+      if (points.length > 0) {
+        if (tessellationMethod === TesselationMethod.EARCUT) {
+          let holes = [];
+          let contours = [];
+          const indices = [];
+          let indexOffset = 0;
 
-        let firstClockWise = isClockWise(rawPoints[0]);
+          let firstClockWise = isClockWise(rawPoints[0]);
 
-        rawPoints.forEach((points) => {
-          const isHole = isClockWise(points) !== firstClockWise;
-          if (isHole) {
-            holes.push(contours.length);
-          } else {
-            firstClockWise = isClockWise(points);
+          rawPoints.forEach((points) => {
+            const isHole = isClockWise(points) !== firstClockWise;
+            if (isHole) {
+              holes.push(contours.length);
+            } else {
+              firstClockWise = isClockWise(points);
 
-            if (holes.length > 0) {
-              indices.push(
-                ...earcut(contours.flat(), holes).map((i) => i + indexOffset),
-              );
-              indexOffset += contours.length;
-              holes = [];
-              contours = [];
+              if (holes.length > 0) {
+                indices.push(
+                  ...earcut(contours.flat(), holes).map((i) => i + indexOffset),
+                );
+                indexOffset += contours.length;
+                holes = [];
+                contours = [];
+              }
             }
+            contours.push(...points);
+          });
+
+          if (contours.length) {
+            indices.push(
+              ...earcut(contours.flat(), holes).map((i) => i + indexOffset),
+            );
           }
-          contours.push(...points);
-        });
 
-        if (contours.length) {
-          indices.push(
-            ...earcut(contours.flat(), holes).map((i) => i + indexOffset),
+          this.indexBufferData = new Uint32Array(indices);
+          this.points = points;
+        } else if (tessellationMethod === TesselationMethod.LIBTESS) {
+          const newPoints = triangulate(rawPoints, instance.read(Path).fillRule);
+          this.indexBufferData = new Uint32Array(
+            new Array(newPoints.length / 2).fill(undefined).map((_, i) => i),
           );
+          this.points = newPoints;
         }
-
-        this.indexBufferData = new Uint32Array(indices);
-        this.points = points;
-        // const err = deviation(vertices, holes, dimensions, indices);
-      } else if (tessellationMethod === TesselationMethod.LIBTESS) {
-        const newPoints = triangulate(rawPoints, instance.read(Path).fillRule);
-        this.indexBufferData = new Uint32Array(
-          new Array(newPoints.length / 2).fill(undefined).map((_, i) => i),
-        );
-        this.points = newPoints;
+      } else {
+        this.points = [];
+        this.indexBufferData = new Uint32Array([]);
       }
+    } else {
+      this.points = [];
+      this.indexBufferData = new Uint32Array([]);
     }
 
     if (this.vertexBuffers[0]) {
