@@ -192,15 +192,15 @@ export interface ConstraintAttributes {
 export interface BindedAttributes {
   constraints: ConstraintAttributes[];
   /**
-	 * Variable: STYLE_PORT_CONSTRAINT
-	 * 
-	 * Defines the direction(s) that edges are allowed to connect to cells in.
-	 * Possible values are "DIRECTION_NORTH, DIRECTION_SOUTH, 
-	 * DIRECTION_EAST" and "DIRECTION_WEST". Value is
-	 * "portConstraint".
+   * Variable: STYLE_PORT_CONSTRAINT
+   * 
+   * Defines the direction(s) that edges are allowed to connect to cells in.
+   * Possible values are "DIRECTION_NORTH, DIRECTION_SOUTH, 
+   * DIRECTION_EAST" and "DIRECTION_WEST". Value is
+   * "portConstraint".
    * 
    * e.g. "north,south"
-	 */
+   */
   portConstraint: string;
 }
 
@@ -501,6 +501,8 @@ export interface VectorNetworkAttributes {
 }
 export interface VectorNetworkSerializedNode
   extends BaseSerializeNode<'vector-network'>,
+  Partial<FillAttributes>,
+  Partial<StrokeAttributes>,
   Partial<VectorNetworkAttributes> { }
 
 export interface HtmlAttributes {

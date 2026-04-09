@@ -21,7 +21,7 @@ import {
   paddingMat3,
   parseColor,
   parsePath,
-  vectorNetworkToFlatStrokePoints,
+  vectorNetworkToFlatStrokePointsWithMeta,
 } from '../utils';
 import {
   Circle,
@@ -665,6 +665,8 @@ export function updateBuffer(object: Entity, useRoughStroke = true) {
     : ({ start: 'none', end: 'none', factor: 3 } as const);
 
   let points: number[] = [];
+  let vnLinejoin: (CanvasLineJoin | undefined)[] | undefined;
+  let vnLinecap: (CanvasLineCap | undefined)[] | undefined;
 
   if (
     object.has(Rough) &&
@@ -690,7 +692,10 @@ export function updateBuffer(object: Entity, useRoughStroke = true) {
     points = [x1, y1, x2, y2];
   } else if (object.has(VectorNetwork)) {
     const { vertices, segments } = object.read(VectorNetwork);
-    points = vectorNetworkToFlatStrokePoints(vertices, segments);
+    const vn = vectorNetworkToFlatStrokePointsWithMeta(vertices, segments);
+    points = vn.points;
+    vnLinejoin = vn.linejoin;
+    vnLinecap = vn.linecap;
   } else if (object.has(Path)) {
     const computed = object.read(ComputedPoints).points;
     points = computed
@@ -808,6 +813,14 @@ export function updateBuffer(object: Entity, useRoughStroke = true) {
     );
   }
 
+  if (vnLinejoin && vnLinejoin.length < points.length / 2) {
+    const add = points.length / 2 - vnLinejoin.length;
+    vnLinejoin = [...vnLinejoin, ...Array(add).fill(undefined)];
+    if (vnLinecap) {
+      vnLinecap = [...vnLinecap, ...Array(add).fill(undefined)];
+    }
+  }
+
   const jointType = getJointType(linejoin);
   const capType = getCapType(linecap);
   let endJoint = capType;
@@ -835,7 +848,8 @@ export function updateBuffer(object: Entity, useRoughStroke = true) {
   const pointsBufferTotal: number[] = [];
   const travelBufferTotal: number[] = [];
 
-  subPaths.forEach((points) => {
+  let fullPairCursor = 0;
+  subPaths.forEach((points, spIndex) => {
     // Need at least two vertices; otherwise tail reads (e.g. points[length - 4]) are invalid.
     // Empty fill sketch (e.g. fill: 'transparent' on Rough) must not emit a bogus instance.
     if (points.length < stridePoints * 2) {
@@ -860,6 +874,25 @@ export function updateBuffer(object: Entity, useRoughStroke = true) {
     }
 
     for (let i = 0; i < points.length; i += stridePoints) {
+      const gi = fullPairCursor + i / stridePoints;
+      const lj =
+        vnLinejoin?.[gi] !== undefined ? vnLinejoin[gi]! : undefined;
+      const lc =
+        vnLinecap?.[gi] !== undefined ? vnLinecap[gi]! : undefined;
+      const jt = lj !== undefined ? getJointType(lj) : jointType;
+      const capStart = lc !== undefined ? getCapType(lc) : capType;
+      const endCap = lc !== undefined ? getCapType(lc) : capType;
+      let endJointLocal = endCap;
+      if (endCap === JointType.CAP_ROUND) {
+        endJointLocal = JointType.JOINT_CAP_ROUND;
+      }
+      if (endCap === JointType.CAP_BUTT) {
+        endJointLocal = JointType.JOINT_CAP_BUTT;
+      }
+      if (endCap === JointType.CAP_SQUARE) {
+        endJointLocal = JointType.JOINT_CAP_SQUARE;
+      }
+
       // calc travel
       if (i > 1) {
         if (!(zCommand && i >= points.length - stridePoints)) {
@@ -873,10 +906,10 @@ export function updateBuffer(object: Entity, useRoughStroke = true) {
 
       pointsBuffer[j++] = points[i];
       pointsBuffer[j++] = points[i + 1];
-      pointsBuffer[j] = jointType;
+      pointsBuffer[j] = jt;
       if (i == 0) {
-        if (capType !== JointType.CAP_ROUND) {
-          pointsBuffer[j] += capType;
+        if (capStart !== JointType.CAP_ROUND) {
+          pointsBuffer[j] += capStart;
         }
       } else {
         if (isNaN(points[i - 2]) || isNaN(points[i - 1])) {
@@ -888,7 +921,7 @@ export function updateBuffer(object: Entity, useRoughStroke = true) {
         isNaN(points[i + 4]) ||
         isNaN(points[i + 5])
       ) {
-        pointsBuffer[j] += endJoint - jointType;
+        pointsBuffer[j] += endJointLocal - jt;
       } else if (
         i + stridePoints >= points.length ||
         isNaN(points[i + 2]) ||
@@ -906,12 +939,20 @@ export function updateBuffer(object: Entity, useRoughStroke = true) {
     pointsBuffer[2] = 0;
     pointsBuffer[3] = points[2];
     pointsBuffer[4] = points[3];
-    pointsBuffer[5] = capType === JointType.CAP_ROUND ? capType : 0;
+    const firstGi = fullPairCursor;
+    const firstLc =
+      vnLinecap?.[firstGi] !== undefined ? vnLinecap[firstGi]! : undefined;
+    const cap0 = firstLc !== undefined ? getCapType(firstLc) : capType;
+    pointsBuffer[5] = cap0 === JointType.CAP_ROUND ? cap0 : 0;
 
     // instancedCount += Math.round(points.length / stridePoints);
 
     pointsBufferTotal.push(...pointsBuffer);
     travelBufferTotal.push(...travelBuffer);
+    fullPairCursor += points.length / stridePoints;
+    if (spIndex < subPaths.length - 1) {
+      fullPairCursor += 1;
+    }
   });
 
   return {

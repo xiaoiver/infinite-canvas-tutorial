@@ -261,6 +261,7 @@ canvas.addEventListener(Event.READY, async (e) => {
     zIndex: 3,
     stroke: 'black',
     strokeWidth: 10,
+    fill: 'red',
 
     // The vertices of the triangle
     vertices: [
@@ -289,11 +290,326 @@ canvas.addEventListener(Event.READY, async (e) => {
 
     // The loop that forms the triangle. Each loop is a
     // sequence of indices into the segments array.
-    regions: [{ windingRule: 'NONZERO', loops: [[0, 1, 2]] }],
+    regions: [{ fillRule: 'nonzero', loops: [[0, 1, 2]] }],
   };
+
+  // Bezier
+  const vn2 = {
+    type: 'vector-network',
+    id: 'vn-2',
+    zIndex: 3,
+    stroke: 'black',
+    strokeWidth: 10,
+    vertices: [
+      {
+        x: 0,
+        y: 0,
+        strokeLinecap: 'round',
+        strokeLinejoin: 'round',
+      },
+      {
+        x: 100,
+        y: 0,
+        strokeLinecap: 'round',
+        strokeLinejoin: 'round',
+      }
+    ],
+    segments: [
+      {
+        start: 0,
+        end: 1,
+        tangentStart: { x: 50, y: -50 },
+        tangentEnd: { x: -50, y: -50 }
+      }
+    ],
+    regions: []
+  };
+
+  const vn3 = {
+    type: 'vector-network',
+    id: 'vn-3',
+    zIndex: 3,
+    stroke: 'black',
+    strokeWidth: 10,
+    fill: 'red',
+    "regions": [
+      {
+        "fillRule": "nonzero",
+        "loops": [
+          [
+            10,
+            11,
+            12,
+            13
+          ]
+        ],
+        "fills": [
+          {
+            "type": "SOLID",
+            "visible": true,
+            "opacity": 1,
+            "blendMode": "NORMAL",
+            "color": {
+              "r": 0.9882352948188782,
+              "g": 0.5411764979362488,
+              "b": 0.4117647111415863
+            },
+            "boundVariables": {}
+          }
+        ],
+        "fillStyleId": ""
+      }
+    ],
+    "segments": [
+      {
+        "start": 0,
+        "end": 1,
+        "tangentStart": {
+          "x": 10.685233116149902,
+          "y": -64.4997329711914
+        },
+        "tangentEnd": {
+          "x": -70.5,
+          "y": -8.500020027160645
+        }
+      },
+      {
+        "start": 1,
+        "end": 2,
+        "tangentStart": {
+          "x": 34.5614013671875,
+          "y": 64.82703399658203
+        },
+        "tangentEnd": {
+          "x": 0,
+          "y": 0
+        }
+      },
+      {
+        "start": 2,
+        "end": 3,
+        "tangentStart": {
+          "x": 0,
+          "y": 0
+        },
+        "tangentEnd": {
+          "x": 17.183069229125977,
+          "y": -48.62030029296875
+        }
+      },
+      {
+        "start": 3,
+        "end": 4,
+        "tangentStart": {
+          "x": -74,
+          "y": 39.99969482421875
+        },
+        "tangentEnd": {
+          "x": 0,
+          "y": 0
+        }
+      },
+      {
+        "start": 4,
+        "end": 0,
+        "tangentStart": {
+          "x": 10.739418029785156,
+          "y": -64.82703399658203
+        },
+        "tangentEnd": {
+          "x": -10.685233116149902,
+          "y": 64.4997329711914
+        }
+      },
+      {
+        "start": 5,
+        "end": 1,
+        "tangentStart": {
+          "x": 0,
+          "y": 0
+        },
+        "tangentEnd": {
+          "x": -11.520466804504395,
+          "y": 50.96342086791992
+        }
+      },
+      {
+        "start": 3,
+        "end": 5,
+        "tangentStart": {
+          "x": -28.8987979888916,
+          "y": -62.483909606933594
+        },
+        "tangentEnd": {
+          "x": 0,
+          "y": 0
+        }
+      },
+      {
+        "start": 4,
+        "end": 5,
+        "tangentStart": {
+          "x": 0,
+          "y": 0
+        },
+        "tangentEnd": {
+          "x": 0,
+          "y": 0
+        }
+      },
+      {
+        "start": 6,
+        "end": 7,
+        "tangentStart": {
+          "x": 0,
+          "y": 0
+        },
+        "tangentEnd": {
+          "x": 0,
+          "y": 0
+        }
+      },
+      {
+        "start": 7,
+        "end": 8,
+        "tangentStart": {
+          "x": 0,
+          "y": 0
+        },
+        "tangentEnd": {
+          "x": 0,
+          "y": 0
+        }
+      },
+      {
+        "start": 2,
+        "end": 1,
+        "tangentStart": {
+          "x": 0,
+          "y": 0
+        },
+        "tangentEnd": {
+          "x": 0,
+          "y": 0
+        }
+      },
+      {
+        "start": 1,
+        "end": 5,
+        "tangentStart": {
+          "x": 0,
+          "y": 0
+        },
+        "tangentEnd": {
+          "x": 0,
+          "y": 0
+        }
+      },
+      {
+        "start": 5,
+        "end": 3,
+        "tangentStart": {
+          "x": 0,
+          "y": 0
+        },
+        "tangentEnd": {
+          "x": 0,
+          "y": 0
+        }
+      },
+      {
+        "start": 3,
+        "end": 2,
+        "tangentStart": {
+          "x": 0,
+          "y": 0
+        },
+        "tangentEnd": {
+          "x": 0,
+          "y": 0
+        }
+      }
+    ],
+    "vertices": [
+      {
+        "x": 144,
+        "y": 73.6352767944336,
+        "strokeCap": "NONE",
+        "strokeJoin": "MITER",
+        "cornerRadius": 0,
+        "handleMirroring": "ANGLE_AND_LENGTH"
+      },
+      {
+        "x": 294.5,
+        "y": 2.135254383087158,
+        "strokeCap": "NONE",
+        "strokeJoin": "MITER",
+        "cornerRadius": 0,
+        "handleMirroring": "ANGLE_AND_LENGTH"
+      },
+      {
+        "x": 383,
+        "y": 168.13525390625,
+        "strokeCap": "NONE",
+        "strokeJoin": "MITER",
+        "cornerRadius": 0,
+        "handleMirroring": "NONE"
+      },
+      {
+        "x": 339,
+        "y": 292.63531494140625,
+        "strokeCap": "NONE",
+        "strokeJoin": "MITER",
+        "cornerRadius": 0,
+        "handleMirroring": "ANGLE_AND_LENGTH"
+      },
+      {
+        "x": 116.5,
+        "y": 239.63525390625,
+        "strokeCap": "NONE",
+        "strokeJoin": "MITER",
+        "cornerRadius": 0,
+        "handleMirroring": "NONE"
+      },
+      {
+        "x": 265,
+        "y": 132.63525390625,
+        "strokeCap": "NONE",
+        "strokeJoin": "MITER",
+        "cornerRadius": 0,
+        "handleMirroring": "NONE"
+      },
+      {
+        "x": 51,
+        "y": 37.135257720947266,
+        "strokeCap": "ARROW_LINES",
+        "strokeJoin": "MITER",
+        "cornerRadius": 0,
+        "handleMirroring": "NONE"
+      },
+      {
+        "x": 33,
+        "y": 177.13525390625,
+        "strokeCap": "NONE",
+        "strokeJoin": "MITER",
+        "cornerRadius": 0,
+        "handleMirroring": "NONE"
+      },
+      {
+        "x": 0,
+        "y": 85.6352767944336,
+        "strokeCap": "NONE",
+        "strokeJoin": "MITER",
+        "cornerRadius": 0,
+        "handleMirroring": "NONE"
+      }
+    ]
+  }
 
   api.updateNodes([
     vn,
+    vn2,
+    vn3,
     // node1,
     // node2,
     // line,

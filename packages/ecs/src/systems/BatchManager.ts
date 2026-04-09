@@ -76,7 +76,7 @@ function getDrawcallCtors(shape: Entity) {
   } else if (shape.has(Brush)) {
     SHAPE_DRAWCALL_CTORS.push(StampBrush);
   } else if (shape.has(VectorNetwork)) {
-    SHAPE_DRAWCALL_CTORS.push(SmoothPolyline);
+    SHAPE_DRAWCALL_CTORS.push(Mesh, SmoothPolyline);
   }
   return SHAPE_DRAWCALL_CTORS;
 }

@@ -4,6 +4,11 @@ description: 'Explore VectorNetwork as an advanced alternative to SVG paths. Lea
 head:
     - ['meta', { property: 'og:title', content: 'Lesson 22 - VectorNetwork' }]
 ---
+
+<script setup>
+import VectorNetwork from '../components/VectorNetwork.vue';
+</script>
+
 # Lesson 22 - VectorNetwork
 
 In this lesson, you will learn about:
@@ -14,7 +19,7 @@ In this lesson, you will learn about:
 
 ## Limitations of SVG Path {#limitations-of-svg-path}
 
-In [Lesson 13], we learned about Path drawing. Figma also provides the [VectorPath API], which supports a subset of SVG Path commands (see: [VectorPath-data]) and [fillRule] (called windingRule in Figma).
+In [Lesson 13 - Drawing path and sketchy style] we learned how to draw paths. Figma also provides the [VectorPath API], which supports a subset of SVG Path commands (see: [VectorPath-data]) and [fillRule] (called windingRule in Figma).
 
 ```ts
 node.vectorPaths = [
@@ -105,13 +110,113 @@ node.vectorNetwork = {
 };
 ```
 
+Following the Figma convention for cubics: *P*₀ is the start anchor, *P*₃ the end anchor, *P*₁ = *P*₀ + `tangentStart`, *P*₂ = *P*₃ + `tangentEnd`. When both handles coincide with their anchors (straight line), use two points; otherwise sample with `CubicBezierCurve.getPoints`, choosing a segment count from chord length and control hull (roughly 8–64).
+
 In editing scenarios, vertices and edges are defined by users, while filled regions need to be automatically calculated by the system. So how do we find these filled regions?
 
-## Filling
+### Filling
 
 In operations like `click to fill`, we need to find the minimum loop formed by vertices.
 
 ![Source: https://www.figma.com/blog/introducing-vector-networks/](https://alexharri.com/images/posts/vector-networks/40.gif)
+
+### Convert to VectorNetwork {#convert-to-vector-network}
+
+Following [figma-fill-rule-editor], we use these type definitions:
+
+```ts
+export class VectorNetwork {
+    @field.object declare vertices: VectorVertex[];
+    @field.object declare segments: VectorSegment[];
+    @field.object declare regions?: VectorRegion[];
+}
+
+interface VectorVertex {
+    x: number;
+    y: number;
+    strokeLinecap?: Stroke['linecap'];
+    strokeLinejoin?: Stroke['linejoin'];
+    cornerRadius?: number;
+    handleMirroring?: HandleMirroring;
+}
+
+interface VectorSegment {
+    start: number;
+    end: number;
+    tangentStart?: VectorVertex;
+    tangentEnd?: VectorVertex;
+}
+
+interface VectorRegion {
+    fillRule: CanvasFillRule;
+    loops: ReadonlyArray<ReadonlyArray<number>>;
+}
+```
+
+[Polyline] is the easiest geometry to convert into a VectorNetwork:
+
+```ts
+class VectorNetwork {
+    static fromEntity(entity: Entity): VectorNetwork {
+        if (entity.has(Polyline)) {
+            const { points } = entity.read(Polyline);
+            const vertices: VectorVertex[] = points.map(([x, y]) => ({ x, y }));
+            const segments: VectorSegment[] = points.slice(1).map((_, i) => ({
+                start: i,
+                end: i + 1,
+            }));
+
+            return { vertices, segments };
+        }
+    }
+}
+```
+
+## Tessellation {#tessellatation}
+
+### Stroke
+
+We turn the graph into polylines and render them with the approach from [Lesson 12 - Draw polyline].
+
+-   Maintain adjacency per vertex.
+-   Walk unused edges: extend forward and backward from a starting edge, continuing only when the current vertex has exactly one unused edge left, so degree-2 junctions become one polyline (join instead of cap).
+-   Stop at branches (degree ≥ 3); separate subpaths with `NaN`.
+
+For each traversed edge:
+
+-   Use the Figma cubic: *P*₀ and *P*₃ are anchors, *P*₁ = *P*₀ + `tangentStart`, *P*₂ = *P*₃ + `tangentEnd`.
+-   Straight edges (handles at anchors) use two points.
+-   Otherwise use `CubicBezierCurve.getPoints` with a segment count derived from chord length and control hull.
+
+```ts
+function tessellateVectorSegment(
+    vertices: VectorVertexLike[],
+    seg: VectorSegmentLike,
+): number[] {
+    const a = vertices[seg.start];
+    const b = vertices[seg.end];
+    const p0 = vec2.fromValues(a.x, a.y);
+    const p3 = vec2.fromValues(b.x, b.y);
+
+    const ts = seg.tangentStart;
+    const te = seg.tangentEnd;
+    const p1 = vec2.create();
+    const p2 = vec2.create();
+    vec2.add(p1, p0, vec2.fromValues(ts?.x ?? 0, ts?.y ?? 0));
+    vec2.add(p2, p3, vec2.fromValues(te?.x ?? 0, te?.y ?? 0));
+}
+```
+
+<VectorNetwork />
+
+### Fill
+
+Walk each Figma `loops` entry (ordered segment indices), tessellate every edge—including cubics—with the same `tessellateVectorSegment`, stitch in traversal order, drop duplicate points, and close the ring.
+
+-   For each region and each loop, build one closed contour.
+-   **nonzero** (or Figma `windingRule: 'NONZERO'`): same earcut + holes path as Path fills in `Mesh` (`isClockWise` separates outer rings from holes).
+-   **evenodd** (or `EVENODD`): `triangulate` (libtess).
+-   Multiple regions are triangulated in sequence; vertices and indices are concatenated into one mesh with a running vertex offset.
 
 ## Bending
 
@@ -123,7 +228,32 @@ The following is from [Introducing Vector Networks - Bending]. For Bezier curve 
 
 In VectorNetwork's edge definition, `tangentStart` and `tangentEnd` can define the two control points of a cubic Bezier curve. When both are `[0, 0]`, it degenerates into a straight line.
 
+You can also try the Konva example [How to modify line points with anchors?] or [bezierjs].
+
+Following Figma, double-click a shape to enter VectorNetwork edit mode; see [Edit vector layers].
+
+![Vector edit mode in Figma](/figma-vectornetwork-mode.png)
+
+```ts
+export enum Pen {
+    SELECT = 'select',
+    HAND = 'hand',
+    VECTOR_NETWORK = 'vector-network', // [!code ++]
+}
+```
+
+Unlike the OBB-based approach in [Lesson 21 - Transformer]:
+
+-   Dragging a `VectorSegment` moves the whole shape, like OBB drag.
+-   Dragging a `VectorVertex` adjusts that vertex.
+
 ## Topological operators
+
+Figma supports [Boolean operations], for example union.
+
+![source: https://help.figma.com/hc/en-us/articles/360039957534-Boolean-operations](https://help.figma.com/hc/article_attachments/30101990451607)
+
+Paper.js may be a useful reference for implementations.
 
 ### Creation & delete
 
@@ -158,5 +288,13 @@ In VectorNetwork's edge definition, `tangentStart` and `tangentEnd` can define t
 [vpaint]: https://github.com/dalboris/vpaint
 [penpot]: https://github.com/penpot/penpot
 [图形编辑器开发：钢笔工具的实现]: https://zhuanlan.zhihu.com/p/694407842
-[Lesson 13]: /guide/lesson-013
+[Lesson 12 - Draw polyline]: /guide/lesson-012
+[Lesson 13 - Drawing path and sketchy style]: /guide/lesson-013
 [fillRule]: /guide/lesson-013#fill-rule
+[How to modify line points with anchors?]: https://konvajs.org/docs/sandbox/Modify_Curves_with_Anchor_Points.html
+[bezierjs]: http://pomax.github.io/bezierjs
+[figma-fill-rule-editor]: https://github.com/evanw/figma-fill-rule-editor
+[Polyline]: /guide/lesson-012
+[Lesson 21 - Transformer]: /guide/lesson-021
+[Edit vector layers]: https://help.figma.com/hc/en-us/articles/360039957634-Edit-vector-layers#h_01JYM29VEN8ABWTDXJR529446R
+[Boolean operations]: https://help.figma.com/hc/en-us/articles/360039957534-Boolean-operations

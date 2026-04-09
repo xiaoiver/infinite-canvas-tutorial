@@ -7,6 +7,10 @@ const EPS = 1e-6;
 export interface VectorVertexLike {
   x: number;
   y: number;
+  /** Per-vertex stroke cap (open chain endpoints use the corresponding vertex). */
+  strokeLinecap?: CanvasLineCap;
+  /** Per-vertex stroke join (graph corners; tessellation interior uses global join). */
+  strokeLinejoin?: CanvasLineJoin;
 }
 
 export interface VectorSegmentLike {
@@ -162,6 +166,245 @@ function tessellateOriented(
   return [];
 }
 
+/** -1 = tessellation interior (use global stroke linejoin). */
+type VertexId = number | -1;
+
+function tessellateVectorSegmentWithVertexIds(
+  vertices: VectorVertexLike[],
+  seg: VectorSegmentLike,
+): { xy: number[]; vid: VertexId[] } {
+  const xy = tessellateVectorSegment(vertices, seg);
+  const n = xy.length / 2;
+  if (n === 0) {
+    return { xy, vid: [] };
+  }
+  const vid: VertexId[] = new Array(n).fill(-1);
+  vid[0] = seg.start;
+  vid[n - 1] = seg.end;
+  return { xy, vid };
+}
+
+function reverseVid(vid: VertexId[]): VertexId[] {
+  return [...vid].reverse();
+}
+
+function tessellateOrientedWithVertexIds(
+  vertices: VectorVertexLike[],
+  seg: VectorSegmentLike,
+  from: number,
+  to: number,
+): { xy: number[]; vid: VertexId[] } {
+  const { xy, vid } = tessellateVectorSegmentWithVertexIds(vertices, seg);
+  if (xy.length === 0) {
+    return { xy, vid: [] };
+  }
+  if (seg.start === from && seg.end === to) {
+    return { xy, vid };
+  }
+  if (seg.end === from && seg.start === to) {
+    return { xy: reverseFlatPoints(xy), vid: reverseVid(vid) };
+  }
+  return { xy: [], vid: [] };
+}
+
+function appendWithoutDuplicateJoinWithVertexIds(
+  base: number[],
+  baseVid: VertexId[],
+  extension: number[],
+  extVid: VertexId[],
+): void {
+  if (extension.length === 0) {
+    return;
+  }
+  if (base.length >= 2) {
+    const lx = base[base.length - 2];
+    const ly = base[base.length - 1];
+    const fx = extension[0];
+    const fy = extension[1];
+    if (
+      Math.abs(lx - fx) < EPS &&
+      Math.abs(ly - fy) < EPS
+    ) {
+      base.push(...extension.slice(2));
+      baseVid.push(...extVid.slice(1));
+      return;
+    }
+  }
+  base.push(...extension);
+  baseVid.push(...extVid);
+}
+
+function prependWithoutDuplicateJoinWithVertexIds(
+  base: number[],
+  baseVid: VertexId[],
+  prefix: number[],
+  prefixVid: VertexId[],
+): void {
+  if (prefix.length === 0) {
+    return;
+  }
+  if (base.length >= 2 && prefix.length >= 2) {
+    const bx = base[0];
+    const by = base[1];
+    const lx = prefix[prefix.length - 2];
+    const ly = prefix[prefix.length - 1];
+    if (
+      Math.abs(lx - bx) < EPS &&
+      Math.abs(ly - by) < EPS
+    ) {
+      base.unshift(...prefix.slice(0, -2));
+      baseVid.unshift(...prefixVid.slice(0, -1));
+      return;
+    }
+  }
+  base.unshift(...prefix);
+  baseVid.unshift(...prefixVid);
+}
+
+function strokeMetaForChainPoints(
+  vertices: VectorVertexLike[],
+  vid: VertexId[],
+  n: number,
+): { linejoin: (CanvasLineJoin | undefined)[]; linecap: (CanvasLineCap | undefined)[] } {
+  const linejoin: (CanvasLineJoin | undefined)[] = new Array(n);
+  const linecap: (CanvasLineCap | undefined)[] = new Array(n);
+  for (let i = 0; i < n; i++) {
+    linejoin[i] = undefined;
+    linecap[i] = undefined;
+    const vi = vid[i];
+    if (vi < 0) {
+      continue;
+    }
+    const vx = vertices[vi];
+    if (!vx) {
+      continue;
+    }
+    if (i === 0 || i === n - 1) {
+      if (vx.strokeLinecap !== undefined) {
+        linecap[i] = vx.strokeLinecap;
+      }
+    }
+    if (i > 0 && i < n - 1 && vi >= 0) {
+      if (vx.strokeLinejoin !== undefined) {
+        linejoin[i] = vx.strokeLinejoin;
+      }
+    }
+  }
+  return { linejoin, linecap };
+}
+
+export type VectorNetworkStrokePointMeta = {
+  /** Length = points.length / 2, aligned with [x,y] pairs (including NaN separators). */
+  linejoin?: (CanvasLineJoin | undefined)[];
+  linecap?: (CanvasLineCap | undefined)[];
+};
+
+/**
+ * Same as {@link vectorNetworkToFlatStrokePoints} plus optional per-vertex stroke overrides
+ * from {@link VectorVertexLike.strokeLinecap} / {@link VectorVertexLike.strokeLinejoin}.
+ */
+export function vectorNetworkToFlatStrokePointsWithMeta(
+  vertices: VectorVertexLike[],
+  segments: VectorSegmentLike[],
+): { points: number[] } & VectorNetworkStrokePointMeta {
+  if (!vertices?.length || !segments?.length) {
+    return { points: [] };
+  }
+
+  const vertexCount = vertices.length;
+  const adj = buildAdjacency(segments, vertexCount);
+  const used = new Array(segments.length).fill(false);
+  const out: number[] = [];
+  const linejoinOut: (CanvasLineJoin | undefined)[] = [];
+  const linecapOut: (CanvasLineCap | undefined)[] = [];
+
+  for (let si = 0; si < segments.length; si++) {
+    if (used[si]) {
+      continue;
+    }
+
+    const s = segments[si];
+    const chain0 = tessellateOrientedWithVertexIds(vertices, s, s.start, s.end);
+    const chain = chain0.xy;
+    const chainVid = chain0.vid;
+    used[si] = true;
+
+    let current = s.end;
+    while (true) {
+      const next = pickSingleUnusedEdge(current, adj, used);
+      if (!next) {
+        break;
+      }
+      const piece = tessellateOrientedWithVertexIds(
+        vertices,
+        segments[next.seg],
+        current,
+        next.other,
+      );
+      appendWithoutDuplicateJoinWithVertexIds(
+        chain,
+        chainVid,
+        piece.xy,
+        piece.vid,
+      );
+      used[next.seg] = true;
+      current = next.other;
+    }
+
+    current = s.start;
+    while (true) {
+      const next = pickSingleUnusedEdge(current, adj, used);
+      if (!next) {
+        break;
+      }
+      const piece = tessellateOrientedWithVertexIds(
+        vertices,
+        segments[next.seg],
+        current,
+        next.other,
+      );
+      prependWithoutDuplicateJoinWithVertexIds(
+        chain,
+        chainVid,
+        piece.xy,
+        piece.vid,
+      );
+      used[next.seg] = true;
+      current = next.other;
+    }
+
+    if (chain.length === 0) {
+      continue;
+    }
+
+    const nPt = chain.length / 2;
+    const strokeMeta = strokeMetaForChainPoints(vertices, chainVid, nPt);
+
+    if (out.length > 0) {
+      out.push(NaN, NaN);
+      linejoinOut.push(undefined);
+      linecapOut.push(undefined);
+    }
+    for (let k = 0; k < nPt; k++) {
+      linejoinOut.push(strokeMeta.linejoin[k]);
+      linecapOut.push(strokeMeta.linecap[k]);
+    }
+    out.push(...chain);
+  }
+
+  const hasAny =
+    linejoinOut.some((v) => v !== undefined) ||
+    linecapOut.some((v) => v !== undefined);
+  if (!hasAny || out.length === 0) {
+    return { points: out };
+  }
+  return {
+    points: out,
+    linejoin: linejoinOut,
+    linecap: linecapOut,
+  };
+}
+
 type AdjEntry = { seg: number; other: number };
 
 function buildAdjacency(
@@ -217,68 +460,7 @@ export function vectorNetworkToFlatStrokePoints(
   vertices: VectorVertexLike[],
   segments: VectorSegmentLike[],
 ): number[] {
-  if (!vertices?.length || !segments?.length) {
-    return [];
-  }
-
-  const vertexCount = vertices.length;
-  const adj = buildAdjacency(segments, vertexCount);
-  const used = new Array(segments.length).fill(false);
-  const out: number[] = [];
-
-  for (let si = 0; si < segments.length; si++) {
-    if (used[si]) {
-      continue;
-    }
-
-    const s = segments[si];
-    const chain = tessellateOriented(vertices, s, s.start, s.end);
-    used[si] = true;
-
-    let current = s.end;
-    while (true) {
-      const next = pickSingleUnusedEdge(current, adj, used);
-      if (!next) {
-        break;
-      }
-      const piece = tessellateOriented(
-        vertices,
-        segments[next.seg],
-        current,
-        next.other,
-      );
-      appendWithoutDuplicateJoin(chain, piece);
-      used[next.seg] = true;
-      current = next.other;
-    }
-
-    current = s.start;
-    while (true) {
-      const next = pickSingleUnusedEdge(current, adj, used);
-      if (!next) {
-        break;
-      }
-      const piece = tessellateOriented(
-        vertices,
-        segments[next.seg],
-        current,
-        next.other,
-      );
-      prependWithoutDuplicateJoin(chain, piece);
-      used[next.seg] = true;
-      current = next.other;
-    }
-
-    if (chain.length === 0) {
-      continue;
-    }
-    if (out.length > 0) {
-      out.push(NaN, NaN);
-    }
-    out.push(...chain);
-  }
-
-  return out;
+  return vectorNetworkToFlatStrokePointsWithMeta(vertices, segments).points;
 }
 
 /**

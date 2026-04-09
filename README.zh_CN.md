@@ -454,7 +454,9 @@ pnpm run dev
 
 -   使用 WebGPU Compute Shader 实现 Radiance Cascades
     -   使用解析几何生成距离场
-    -   raymarch
+    -   计算 cascade：CPU 调度与 ping-pong、派发射线、raymarch 与合并
+    -   生成 mipmap
+    -   与 vello 渲染管线结合，合成最终结果
 
 |               Radiance Cascades               |
 | :-------------------------------------------: |
