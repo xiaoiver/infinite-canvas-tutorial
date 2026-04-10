@@ -46,6 +46,7 @@ import { LaserPointerPlugin } from '../../plugin-laser-pointer/src';
 import { EraserPlugin } from '../../plugin-eraser/src';
 import { LassoPlugin } from '../../plugin-lasso/src';
 import { YogaPlugin } from '../../plugin-yoga/src';
+import { loadAnimation } from '../../plugin-lottie/src';
 import { InitVello, VelloPipeline, registerFont } from '../../plugin-vello/src';
 import '../../plugin-laser-pointer/src/spectrum';
 import '../../plugin-eraser/src/spectrum';
@@ -144,7 +145,7 @@ canvas.addEventListener(Event.READY, async (e) => {
     ],
     penbarVisible: true,
     taskbarVisible: true,
-    checkboardStyle: CheckboardStyle.NONE,
+    checkboardStyle: CheckboardStyle.GRID,
     snapToPixelGridEnabled: true,
     snapToPixelGridSize: 1,
     // snapToPixelGridEnabled: false,
@@ -165,14 +166,6 @@ canvas.addEventListener(Event.READY, async (e) => {
     // layersLassoing: ['parent'],
   });
 
-  const node1: RectSerializedNode = {
-    id: 'binding-curved-rect-1',
-    type: 'path',
-    d: 'M 100 0 L 200 100 L 300 0 Z',
-    stroke: 'black',
-    strokeWidth: 10,
-    zIndex: 1,
-  };
   const node2 = {
     id: 'binding-curved-rect-2',
     type: 'ellipse',
@@ -254,383 +247,20 @@ canvas.addEventListener(Event.READY, async (e) => {
     zIndex: 3,
   }
 
-  const vn = {
-    type: 'vector-network',
-    id: 'vn-1',
-    zIndex: 3,
-    stroke: 'black',
-    strokeWidth: 10,
-    fill: 'red',
-
-    // The vertices of the triangle
-    vertices: [
-      { x: 100, y: 0 },
-      { x: 200, y: 100 },
-      { x: 300, y: 0 },
-    ],
-
-    // The edges of the triangle. 'start' and 'end' refer to indices in the vertices array.
-    segments: [
-      {
-        start: 0,
-        tangentStart: { x: 0, y: 0 }, // optional
-        end: 1,
-        tangentEnd: { x: 0, y: 0 }, // optional
-      },
-      {
-        start: 1,
-        end: 2,
-      },
-      {
-        start: 2,
-        end: 0,
-      },
-    ],
-
-    // The loop that forms the triangle. Each loop is a
-    // sequence of indices into the segments array.
-    regions: [{ fillRule: 'nonzero', loops: [[0, 1, 2]] }],
-  };
-
-  // Bezier
-  const vn2 = {
-    type: 'vector-network',
-    id: 'vn-2',
-    zIndex: 3,
-    stroke: 'black',
-    strokeWidth: 10,
-    vertices: [
-      {
-        x: 0,
-        y: 0,
-        strokeLinecap: 'round',
-        strokeLinejoin: 'round',
-      },
-      {
-        x: 100,
-        y: 0,
-        strokeLinecap: 'round',
-        strokeLinejoin: 'round',
-      }
-    ],
-    segments: [
-      {
-        start: 0,
-        end: 1,
-        tangentStart: { x: 50, y: -50 },
-        tangentEnd: { x: -50, y: -50 }
-      }
-    ],
-    regions: []
-  };
-
-  const vn3 = {
-    type: 'vector-network',
-    id: 'vn-3',
-    zIndex: 3,
-    stroke: 'black',
-    strokeWidth: 10,
-    fill: 'red',
-    "regions": [
-      {
-        "fillRule": "nonzero",
-        "loops": [
-          [
-            10,
-            11,
-            12,
-            13
-          ]
-        ],
-        "fills": [
-          {
-            "type": "SOLID",
-            "visible": true,
-            "opacity": 1,
-            "blendMode": "NORMAL",
-            "color": {
-              "r": 0.9882352948188782,
-              "g": 0.5411764979362488,
-              "b": 0.4117647111415863
-            },
-            "boundVariables": {}
-          }
-        ],
-        "fillStyleId": ""
-      }
-    ],
-    "segments": [
-      {
-        "start": 0,
-        "end": 1,
-        "tangentStart": {
-          "x": 10.685233116149902,
-          "y": -64.4997329711914
-        },
-        "tangentEnd": {
-          "x": -70.5,
-          "y": -8.500020027160645
-        }
-      },
-      {
-        "start": 1,
-        "end": 2,
-        "tangentStart": {
-          "x": 34.5614013671875,
-          "y": 64.82703399658203
-        },
-        "tangentEnd": {
-          "x": 0,
-          "y": 0
-        }
-      },
-      {
-        "start": 2,
-        "end": 3,
-        "tangentStart": {
-          "x": 0,
-          "y": 0
-        },
-        "tangentEnd": {
-          "x": 17.183069229125977,
-          "y": -48.62030029296875
-        }
-      },
-      {
-        "start": 3,
-        "end": 4,
-        "tangentStart": {
-          "x": -74,
-          "y": 39.99969482421875
-        },
-        "tangentEnd": {
-          "x": 0,
-          "y": 0
-        }
-      },
-      {
-        "start": 4,
-        "end": 0,
-        "tangentStart": {
-          "x": 10.739418029785156,
-          "y": -64.82703399658203
-        },
-        "tangentEnd": {
-          "x": -10.685233116149902,
-          "y": 64.4997329711914
-        }
-      },
-      {
-        "start": 5,
-        "end": 1,
-        "tangentStart": {
-          "x": 0,
-          "y": 0
-        },
-        "tangentEnd": {
-          "x": -11.520466804504395,
-          "y": 50.96342086791992
-        }
-      },
-      {
-        "start": 3,
-        "end": 5,
-        "tangentStart": {
-          "x": -28.8987979888916,
-          "y": -62.483909606933594
-        },
-        "tangentEnd": {
-          "x": 0,
-          "y": 0
-        }
-      },
-      {
-        "start": 4,
-        "end": 5,
-        "tangentStart": {
-          "x": 0,
-          "y": 0
-        },
-        "tangentEnd": {
-          "x": 0,
-          "y": 0
-        }
-      },
-      {
-        "start": 6,
-        "end": 7,
-        "tangentStart": {
-          "x": 0,
-          "y": 0
-        },
-        "tangentEnd": {
-          "x": 0,
-          "y": 0
-        }
-      },
-      {
-        "start": 7,
-        "end": 8,
-        "tangentStart": {
-          "x": 0,
-          "y": 0
-        },
-        "tangentEnd": {
-          "x": 0,
-          "y": 0
-        }
-      },
-      {
-        "start": 2,
-        "end": 1,
-        "tangentStart": {
-          "x": 0,
-          "y": 0
-        },
-        "tangentEnd": {
-          "x": 0,
-          "y": 0
-        }
-      },
-      {
-        "start": 1,
-        "end": 5,
-        "tangentStart": {
-          "x": 0,
-          "y": 0
-        },
-        "tangentEnd": {
-          "x": 0,
-          "y": 0
-        }
-      },
-      {
-        "start": 5,
-        "end": 3,
-        "tangentStart": {
-          "x": 0,
-          "y": 0
-        },
-        "tangentEnd": {
-          "x": 0,
-          "y": 0
-        }
-      },
-      {
-        "start": 3,
-        "end": 2,
-        "tangentStart": {
-          "x": 0,
-          "y": 0
-        },
-        "tangentEnd": {
-          "x": 0,
-          "y": 0
-        }
-      }
-    ],
-    "vertices": [
-      {
-        "x": 144,
-        "y": 73.6352767944336,
-        "strokeCap": "NONE",
-        "strokeJoin": "MITER",
-        "cornerRadius": 0,
-        "handleMirroring": "ANGLE_AND_LENGTH"
-      },
-      {
-        "x": 294.5,
-        "y": 2.135254383087158,
-        "strokeCap": "NONE",
-        "strokeJoin": "MITER",
-        "cornerRadius": 0,
-        "handleMirroring": "ANGLE_AND_LENGTH"
-      },
-      {
-        "x": 383,
-        "y": 168.13525390625,
-        "strokeCap": "NONE",
-        "strokeJoin": "MITER",
-        "cornerRadius": 0,
-        "handleMirroring": "NONE"
-      },
-      {
-        "x": 339,
-        "y": 292.63531494140625,
-        "strokeCap": "NONE",
-        "strokeJoin": "MITER",
-        "cornerRadius": 0,
-        "handleMirroring": "ANGLE_AND_LENGTH"
-      },
-      {
-        "x": 116.5,
-        "y": 239.63525390625,
-        "strokeCap": "NONE",
-        "strokeJoin": "MITER",
-        "cornerRadius": 0,
-        "handleMirroring": "NONE"
-      },
-      {
-        "x": 265,
-        "y": 132.63525390625,
-        "strokeCap": "NONE",
-        "strokeJoin": "MITER",
-        "cornerRadius": 0,
-        "handleMirroring": "NONE"
-      },
-      {
-        "x": 51,
-        "y": 37.135257720947266,
-        "strokeCap": "ARROW_LINES",
-        "strokeJoin": "MITER",
-        "cornerRadius": 0,
-        "handleMirroring": "NONE"
-      },
-      {
-        "x": 33,
-        "y": 177.13525390625,
-        "strokeCap": "NONE",
-        "strokeJoin": "MITER",
-        "cornerRadius": 0,
-        "handleMirroring": "NONE"
-      },
-      {
-        "x": 0,
-        "y": 85.6352767944336,
-        "strokeCap": "NONE",
-        "strokeJoin": "MITER",
-        "cornerRadius": 0,
-        "handleMirroring": "NONE"
-      }
-    ]
-  }
-
-  api.updateNodes([
-    // vn,
-    // vn2,
-    // vn3,
-    node1,
-    // node2,
-    // line,
-    // polyline,
-    // path
-    // node3,
-    // edge1, edge2
-  ]);
   // api.selectNodes([node1])
-
   // api.updateNodes([node1]);
 
-  const animation = api.animate(
-    node1,
-    [
-      { fill: 'green', d: 'M 100 0 L 200 100 L 300 0 Z' },
-      { fill: 'red', d: 'M 100 0 L 200 100 L 300 0 Q 400 100 500 0' },
-    ],
-    { duration: 1000, direction: 'alternate', iterations: 'infinite', easing: 'ease-in-out' },
-  );
+  fetch('/bouncy_ball.json').then(res => res.json()).then(data => {
+    const animation = loadAnimation(data, {
+      loop: true,
+      autoplay: true,
+    });
 
-  // animation.finish();
+    api.runAtNextTick(() => {
+      animation.render(api);
+      animation.play();
+    });
+  });
 });
 
 const VelloRendererPlugin = RendererPlugin.configure({

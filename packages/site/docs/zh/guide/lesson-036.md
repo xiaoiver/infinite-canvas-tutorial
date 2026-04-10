@@ -220,7 +220,10 @@ api.animate(node, [{ strokeDashoffset: -20 }, { strokeDashoffset: 0 }], {
 
 ## Lottie
 
-[lottie json schema]
+-   [lottie json schema]
+-   [Tips for rendering]
+-   [lottie-parser]
+-   [velato] 是一个使用 vello 的渲染器
 
 ## Rive
 
@@ -255,3 +258,6 @@ api.animate(node, [{ strokeDashoffset: -20 }, { strokeDashoffset: 0 }], {
 [lottie json schema]: https://lottiefiles.github.io/lottie-docs/schema/
 [Paper.js]: http://paperjs.org/
 [Kute.js]: https://thednp.github.io/kute.js/
+[Tips for rendering]: https://lottiefiles.github.io/lottie-docs/rendering/
+[lottie-parser]: https://github.com/pissang/lottie-parser
+[velato]: https://github.com/linebender/velato
