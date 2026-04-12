@@ -54,7 +54,7 @@
     "@watercolorizer/watercolorizer": "^1.1.2",
     "@watercolorizer/convolution": "^1.0.4",
     "arabic-reshaper": "^1.1.0",
-    "@chenglou/pretext": "^0.0.3",
+    "@chenglou/pretext": "^0.0.5",
     "bidi-js": "^1.0.3",
     "bezier-easing": "^2.1.0",
     "bezier-js": "^6.1.4",

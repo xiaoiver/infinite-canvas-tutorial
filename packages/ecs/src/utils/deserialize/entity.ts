@@ -500,8 +500,10 @@ function pathWorldToLocalPathD(worldD: string, snap: EdgePathPreserveSnapshot): 
  * preserve 写入局部 `d` 后：按与 {@link inferXYWidthHeight} 相同方式用 {@link shiftPath} 把 bbox 最小角贴到局部原点，
  * 再用快照中的旋转/缩放把「归一化前的 bbox 角」映射到世界坐标写回 `x/y`。
  * 切勿在无 `x/y` 时直接调用 {@link inferXYWidthHeight}：会把 `translation` 设成 `d` 的局部 min（常为 0），丢失画布平移。
+ *
+ * 亦用于 {@link applyElementUpdates}：仅更新 `d` 时保持与边绑定一致的布局语义。
  */
-function applyPathPreserveLayoutFromSnapshot(
+export function applyPathPreserveLayoutFromSnapshot(
   edge: SerializedNode,
   prev: EdgePathPreserveSnapshot,
 ): void {

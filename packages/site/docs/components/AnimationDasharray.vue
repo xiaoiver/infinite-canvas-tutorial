@@ -136,7 +136,7 @@ onUnmounted(() => {
 <template>
   <div class="animation-easing-demo">
     <div class="toolbar controls-row" role="group" aria-label="播放控制">
-      <span class="state">状态：<code>{{ playStateLabel }}</code></span>
+      <span class="state">State:<code>{{ playStateLabel }}</code></span>
       <button type="button" class="btn" @click="onPlay">Play</button>
       <button type="button" class="btn" @click="onPause">Pause</button>
       <button type="button" class="btn" @click="onFinish">Finish</button>

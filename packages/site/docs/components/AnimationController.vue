@@ -136,7 +136,7 @@ onUnmounted(() => {
 <template>
   <div class="animation-controller-demo">
     <div class="toolbar" role="group" aria-label="动画控制器">
-      <span class="state">状态：<code>{{ playStateLabel }}</code></span>
+      <span class="state">State:<code>{{ playStateLabel }}</code></span>
       <button type="button" class="btn" @click="onPlay">Play</button>
       <button type="button" class="btn" @click="onPause">Pause</button>
       <button type="button" class="btn" @click="onFinish">Finish</button>
@@ -147,11 +147,7 @@ onUnmounted(() => {
       矩形在 <code>x: 100 ↔ 200</code> 之间往复，填充在 <code>green</code> 与
       <code>red</code> 之间插值；可用按钮控制同一 <code>AnimationController</code>。
     </p>
-    <ic-spectrum-canvas
-      ref="wrapper"
-      class="canvas"
-      style="width: 100%; height: 280px"
-    />
+    <ic-spectrum-canvas ref="wrapper" class="canvas" style="width: 100%; height: 280px" />
   </div>
 </template>
 

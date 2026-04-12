@@ -1,0 +1,58 @@
+{
+  "name": "@infinite-canvas-tutorial/lottie",
+  "version": "0.0.1",
+  "description": "Use lottie plugin for infinite canvas",
+  "main": "lib/index.js",
+  "module": "esm/index.js",
+  "types": "lib/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./lib/index.d.ts",
+      "import": "./esm/index.js",
+      "require": "./lib/index.js"
+    }
+  },
+  "files": [
+    "package.json",
+    "esm",
+    "lib",
+    "README.md"
+  ],
+  "keywords": [
+    "whiteboard",
+    "infinite canvas",
+    "webgl",
+    "webgpu",
+    "webcomponents",
+    "lottie"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/xiaoiver/infinite-canvas-tutorial"
+  },
+  "license": "MIT",
+  "author": {
+    "name": "xiaoiver",
+    "url": "https://github.com/xiaoiver"
+  },
+  "scripts": {
+    "dev": "vite dev",
+    "deploy": "vite build",
+    "preview": "vite preview",
+    "build:cjs": "rimraf ./lib && tsc --module commonjs --outDir lib && mkdir -p lib/vendor && cp src/vendor/lottie-expression-manager.bundle.mjs lib/vendor/",
+    "build:esm": "rimraf ./esm && tsc --module ESNext --outDir esm && mkdir -p esm/vendor && cp src/vendor/lottie-expression-manager.bundle.mjs esm/vendor/",
+    "build": "run-p build:*",
+    "watch": "rimraf ./esm && tsc --module ESNext --outDir esm --watch"
+  },
+  "dependencies": {
+    "@antv/util": "^3.3.10",
+    "uuid": "^11.1.0"
+  },
+  "peerDependencies": {
+    "@infinite-canvas-tutorial/ecs": "workspace:*",
+    "@infinite-canvas-tutorial/webcomponents": "workspace:*"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

@@ -10,6 +10,7 @@ import AnimationTransformOrigin from '../../components/AnimationTransformOrigin.
 import AnimationDasharray from '../../components/AnimationDasharray.vue';
 import AnimationDashoffset from '../../components/AnimationDashoffset.vue';
 import AnimationMorphing from '../../components/AnimationMorphing.vue';
+import AnimationLottieBouncyBall from '../../components/AnimationLottieBouncyBall.vue';
 </script>
 
 # 课程 36 - Animation
@@ -216,11 +217,126 @@ api.animate(node, [{ strokeDashoffset: -20 }, { strokeDashoffset: 0 }], {
 
 参考 Kute.js 中的 CubicMorph，首先将 Path 定义中的各个部分转成三阶贝塞尔曲线表示，然后利用三阶贝塞尔曲线易于分割的特性，将变换前后的路径规范到相同数目的分段，最后对各个分段中的控制点进行插值实现动画效果
 
+```ts
+function mergePaths(
+    left: { absolutePath: AbsoluteArray; curve: CurveArray | null },
+    right: { absolutePath: AbsoluteArray; curve: CurveArray | null },
+): [CurveArray, CurveArray, (b: CurveArray) => CurveArray] {
+    let curve1 = left.curve;
+    let curve2 = right.curve;
+    if (!curve1 || curve1.length === 0) {
+        // convert to curves to do morphing & picking later
+        // @see http://thednp.github.io/kute.js/svgCubicMorph.html
+        curve1 = path2Curve(left.absolutePath, false) as CurveArray;
+        left.curve = curve1;
+    }
+    if (!curve2 || curve2.length === 0) {
+        curve2 = path2Curve(right.absolutePath, false) as CurveArray;
+        right.curve = curve2;
+    }
+
+    let curves = [curve1, curve2];
+    if (curve1.length !== curve2.length) {
+        curves = equalizeSegments(curve1, curve2);
+    }
+
+    const curve0 =
+        getDrawDirection(curves[0]) !== getDrawDirection(curves[1])
+            ? reverseCurve(curves[0])
+            : (clonePath(curves[0]) as CurveArray);
+
+    return [
+        curve0,
+        getRotatedCurve(curves[1], curve0) as CurveArray,
+        (pathArray: CurveArray) => {
+            // need converting to path string?
+            return pathArray;
+        },
+    ];
+}
+```
+
 <AnimationMorphing />
 
 ## Lottie
 
-[lottie json schema]
+-   [lottie json schema]
+-   [Tips for rendering]
+-   [lottie-parser] 我们主要参考它的解析逻辑
+-   [velato] 是一个使用 vello 的渲染器
+
+### 使用方法 {#lottie-usage}
+
+我们实现了一个插件，将 lottie json 转换成图形和 keyframes，以下是一些实现要点：
+
+-   支持 Shape Layer 中定义的以下元素：
+    -   [Rectangle](https://lottiefiles.github.io/lottie-docs/shapes/#rectangle)
+    -   [Ellipse](https://lottiefiles.github.io/lottie-docs/shapes/#ellipse)
+    -   [Path](https://lottiefiles.github.io/lottie-docs/shapes/#path)
+    -   [Group](https://lottiefiles.github.io/lottie-docs/shapes/#group)
+    -   [PolyStar](https://lottiefiles.github.io/lottie-docs/shapes/#polystar)
+-   lottie 中的 `anchorX/anchorY` 表示缩放和旋转中心，相对于图形的包围盒左上角，在映射到 `transformOrigin` 时需要注意
+-   将多组动画轨道合并成一组 keyframes，补全缺失的属性
+
+```ts
+import { loadAnimation } from '@infinite-canvas-tutorial/lottie';
+
+fetch('/bouncy_ball.json')
+    .then((res) => res.json())
+    .then((data) => {
+        const animation = loadAnimation(data, {
+            loop: true,
+            autoplay: true,
+        });
+
+        api.runAtNextTick(() => {
+            animation.render(api);
+            animation.play();
+        });
+    });
+```
+
+下面是官方示例的运行效果：[Bouncy Ball]
+
+<AnimationLottieBouncyBall />
+
+### 贝塞尔曲线 {#beziers-in-lottie}
+
+[Beziers in Lottie]
+
+-   `v` is an array of vertices.
+-   `i` is an array of "in" tangent points, relative to `v`.
+-   `o` is an array of "out" tangent points, relative to `v`.
+-   `c` is a boolean determining whether the polybezier is closed. If it is, there's an additional bezier segment between the last point in `v` and the first.
+
+### 表达式 {#expression}
+
+[Expressions]
+
+```json
+{
+    "ty": "sh",
+    "ks": {
+        "a": 0,
+        "k": {
+            "i": [],
+            "o": [],
+            "v": []
+        },
+        "x": "var group = thisLayer.content(\"Quadratic Points\");\nvar num_points = 3;\nvar points = [];\nvar ip = [];\nvar op = [];\nfor ( var i = 0; i < num_points; i++ )\n{\n    var pos = group.content(\"p\" + i).position;\n    points.push(pos);\n    ip.push(pos);\n    op.push(pos);\n}\nvar $bm_rt = {\n    v: points,\n    i: ip,\n    o: op\n};\n"
+    }
+}
+```
+
+### Text layer
+
+### Clipping mask
+
+[clipping-masks]
+
+### Layer effects
+
+[Layer Effects]
 
 ## Rive
 
@@ -255,3 +371,11 @@ api.animate(node, [{ strokeDashoffset: -20 }, { strokeDashoffset: 0 }], {
 [lottie json schema]: https://lottiefiles.github.io/lottie-docs/schema/
 [Paper.js]: http://paperjs.org/
 [Kute.js]: https://thednp.github.io/kute.js/
+[Tips for rendering]: https://lottiefiles.github.io/lottie-docs/rendering/
+[lottie-parser]: https://github.com/pissang/lottie-parser
+[velato]: https://github.com/linebender/velato
+[Bouncy Ball]: https://lottiefiles.github.io/lottie-docs/breakdown/bouncy_ball/
+[Beziers in Lottie]: https://lottiefiles.github.io/lottie-docs/breakdown/bezier/#beziers-in-lottie
+[Expressions]: https://lottiefiles.github.io/lottie-docs/expressions/
+[clipping-masks]: https://lottie-animation-community.github.io/docs/specs/layers/common/#clipping-masks
+[Layer Effects]: https://lottiefiles.github.io/lottie-docs/effects/#layer-effects

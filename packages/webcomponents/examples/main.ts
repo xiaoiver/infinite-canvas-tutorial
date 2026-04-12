@@ -46,6 +46,7 @@ import { LaserPointerPlugin } from '../../plugin-laser-pointer/src';
 import { EraserPlugin } from '../../plugin-eraser/src';
 import { LassoPlugin } from '../../plugin-lasso/src';
 import { YogaPlugin } from '../../plugin-yoga/src';
+import { loadAnimation } from '../../plugin-lottie/src';
 import { InitVello, VelloPipeline, registerFont } from '../../plugin-vello/src';
 import '../../plugin-laser-pointer/src/spectrum';
 import '../../plugin-eraser/src/spectrum';
@@ -144,7 +145,7 @@ canvas.addEventListener(Event.READY, async (e) => {
     ],
     penbarVisible: true,
     taskbarVisible: true,
-    checkboardStyle: CheckboardStyle.NONE,
+    checkboardStyle: CheckboardStyle.GRID,
     snapToPixelGridEnabled: true,
     snapToPixelGridSize: 1,
     // snapToPixelGridEnabled: false,
@@ -165,14 +166,6 @@ canvas.addEventListener(Event.READY, async (e) => {
     // layersLassoing: ['parent'],
   });
 
-  const node1: RectSerializedNode = {
-    id: 'binding-curved-rect-1',
-    type: 'path',
-    d: 'M 100 0 L 200 100 L 300 0 Z',
-    stroke: 'black',
-    strokeWidth: 10,
-    zIndex: 1,
-  };
   const node2 = {
     id: 'binding-curved-rect-2',
     type: 'ellipse',
@@ -245,399 +238,146 @@ canvas.addEventListener(Event.READY, async (e) => {
     zIndex: 3,
   };
 
-  const path = {
-    id: 'path-1',
-    type: 'path',
-    d: 'M 100 0 L 200 100 L 300 0 Z',
-    stroke: 'black',
-    strokeWidth: 10,
-    zIndex: 3,
-  }
+  const nodes = [
+    {
+      "id": "b8ca2b72-6d88-4a5d-b1c8-14e9c66b7a37",
+      "type": "g",
+      "name": "Shapes"
+    },
+    {
+      "id": "6a9cdc05-9a6e-4ff6-90a9-0a8ece844e53",
+      "type": "g",
+      "name": "Cubic Lines",
+      "parentId": "b8ca2b72-6d88-4a5d-b1c8-14e9c66b7a37"
+    },
+    {
+      "id": "c612e1ca-8f7d-4694-8ddb-bf3919124b2a",
+      "type": "path",
+      "d": "M0 230C0 230 105 0 105 0C105 0 325 60 325 60C325 60 460 230 460 230",
+      "zIndex": 0,
+      "scaleX": 1,
+      "scaleY": 1,
+      "stroke": "rgba(0,0,0,1)",
+      "strokeOpacity": 1,
+      "strokeWidth": 10,
+      "parentId": "6a9cdc05-9a6e-4ff6-90a9-0a8ece844e53",
+      "x": 25,
+      "y": 170,
+      "width": 460,
+      "height": 230
+    },
+    {
+      "id": "ca406efb-1f72-4cf0-9321-84434fb08901",
+      "type": "g",
+      "name": "Cubic Points",
+      "parentId": "b8ca2b72-6d88-4a5d-b1c8-14e9c66b7a37"
+    },
+    {
+      "id": "1663295b-b600-48c9-a02c-67c2a371bfa6",
+      "type": "ellipse",
+      "cx": 485,
+      "cy": 400,
+      "rx": 16,
+      "ry": 16,
+      "zIndex": 0,
+      "name": "p3",
+      "scaleX": 1,
+      "scaleY": 1,
+      "fill": "rgba(0,0,0,1)",
+      "fillRule": "nonzero",
+      "fillOpacity": 1,
+      "parentId": "ca406efb-1f72-4cf0-9321-84434fb08901",
+      "x": 469,
+      "y": 384,
+      "width": 32,
+      "height": 32
+    },
+    {
+      "id": "661c734c-b854-4e0f-af55-8ce12a3b7aff",
+      "type": "ellipse",
+      "cx": 350,
+      "cy": 230,
+      "rx": 16,
+      "ry": 16,
+      "zIndex": 0,
+      "name": "p2",
+      "scaleX": 1,
+      "scaleY": 1,
+      "fill": "rgba(0,0,0,1)",
+      "fillRule": "nonzero",
+      "fillOpacity": 1,
+      "parentId": "ca406efb-1f72-4cf0-9321-84434fb08901",
+      "x": 334,
+      "y": 214,
+      "width": 32,
+      "height": 32
+    },
+    {
+      "id": "3c21ca95-1d92-4327-bcf1-54c9c4c1e44e",
+      "type": "ellipse",
+      "cx": 130,
+      "cy": 170,
+      "rx": 16,
+      "ry": 16,
+      "zIndex": 0,
+      "name": "p1",
+      "scaleX": 1,
+      "scaleY": 1,
+      "fill": "rgba(0,0,0,1)",
+      "fillRule": "nonzero",
+      "fillOpacity": 1,
+      "parentId": "ca406efb-1f72-4cf0-9321-84434fb08901",
+      "x": 114,
+      "y": 154,
+      "width": 32,
+      "height": 32
+    },
+    {
+      "id": "bbfd5f51-d8b2-45df-b902-0e10b01992c9",
+      "type": "ellipse",
+      "cx": 25,
+      "cy": 400,
+      "rx": 16,
+      "ry": 16,
+      "zIndex": 0,
+      "name": "p0",
+      "scaleX": 1,
+      "scaleY": 1,
+      "fill": "rgba(0,0,0,1)",
+      "fillRule": "nonzero",
+      "fillOpacity": 1,
+      "parentId": "ca406efb-1f72-4cf0-9321-84434fb08901",
+      "x": 9,
+      "y": 384,
+      "width": 32,
+      "height": 32
+    }
+  ];
 
-  const vn = {
-    type: 'vector-network',
-    id: 'vn-1',
-    zIndex: 3,
-    stroke: 'black',
-    strokeWidth: 10,
-    fill: 'red',
+  // api.updateNodes(nodes);
 
-    // The vertices of the triangle
-    vertices: [
-      { x: 100, y: 0 },
-      { x: 200, y: 100 },
-      { x: 300, y: 0 },
-    ],
-
-    // The edges of the triangle. 'start' and 'end' refer to indices in the vertices array.
-    segments: [
-      {
-        start: 0,
-        tangentStart: { x: 0, y: 0 }, // optional
-        end: 1,
-        tangentEnd: { x: 0, y: 0 }, // optional
-      },
-      {
-        start: 1,
-        end: 2,
-      },
-      {
-        start: 2,
-        end: 0,
-      },
-    ],
-
-    // The loop that forms the triangle. Each loop is a
-    // sequence of indices into the segments array.
-    regions: [{ fillRule: 'nonzero', loops: [[0, 1, 2]] }],
-  };
-
-  // Bezier
-  const vn2 = {
-    type: 'vector-network',
-    id: 'vn-2',
-    zIndex: 3,
-    stroke: 'black',
-    strokeWidth: 10,
-    vertices: [
-      {
-        x: 0,
-        y: 0,
-        strokeLinecap: 'round',
-        strokeLinejoin: 'round',
-      },
-      {
-        x: 100,
-        y: 0,
-        strokeLinecap: 'round',
-        strokeLinejoin: 'round',
-      }
-    ],
-    segments: [
-      {
-        start: 0,
-        end: 1,
-        tangentStart: { x: 50, y: -50 },
-        tangentEnd: { x: -50, y: -50 }
-      }
-    ],
-    regions: []
-  };
-
-  const vn3 = {
-    type: 'vector-network',
-    id: 'vn-3',
-    zIndex: 3,
-    stroke: 'black',
-    strokeWidth: 10,
-    fill: 'red',
-    "regions": [
-      {
-        "fillRule": "nonzero",
-        "loops": [
-          [
-            10,
-            11,
-            12,
-            13
-          ]
-        ],
-        "fills": [
-          {
-            "type": "SOLID",
-            "visible": true,
-            "opacity": 1,
-            "blendMode": "NORMAL",
-            "color": {
-              "r": 0.9882352948188782,
-              "g": 0.5411764979362488,
-              "b": 0.4117647111415863
-            },
-            "boundVariables": {}
-          }
-        ],
-        "fillStyleId": ""
-      }
-    ],
-    "segments": [
-      {
-        "start": 0,
-        "end": 1,
-        "tangentStart": {
-          "x": 10.685233116149902,
-          "y": -64.4997329711914
-        },
-        "tangentEnd": {
-          "x": -70.5,
-          "y": -8.500020027160645
-        }
-      },
-      {
-        "start": 1,
-        "end": 2,
-        "tangentStart": {
-          "x": 34.5614013671875,
-          "y": 64.82703399658203
-        },
-        "tangentEnd": {
-          "x": 0,
-          "y": 0
-        }
-      },
-      {
-        "start": 2,
-        "end": 3,
-        "tangentStart": {
-          "x": 0,
-          "y": 0
-        },
-        "tangentEnd": {
-          "x": 17.183069229125977,
-          "y": -48.62030029296875
-        }
-      },
-      {
-        "start": 3,
-        "end": 4,
-        "tangentStart": {
-          "x": -74,
-          "y": 39.99969482421875
-        },
-        "tangentEnd": {
-          "x": 0,
-          "y": 0
-        }
-      },
-      {
-        "start": 4,
-        "end": 0,
-        "tangentStart": {
-          "x": 10.739418029785156,
-          "y": -64.82703399658203
-        },
-        "tangentEnd": {
-          "x": -10.685233116149902,
-          "y": 64.4997329711914
-        }
-      },
-      {
-        "start": 5,
-        "end": 1,
-        "tangentStart": {
-          "x": 0,
-          "y": 0
-        },
-        "tangentEnd": {
-          "x": -11.520466804504395,
-          "y": 50.96342086791992
-        }
-      },
-      {
-        "start": 3,
-        "end": 5,
-        "tangentStart": {
-          "x": -28.8987979888916,
-          "y": -62.483909606933594
-        },
-        "tangentEnd": {
-          "x": 0,
-          "y": 0
-        }
-      },
-      {
-        "start": 4,
-        "end": 5,
-        "tangentStart": {
-          "x": 0,
-          "y": 0
-        },
-        "tangentEnd": {
-          "x": 0,
-          "y": 0
-        }
-      },
-      {
-        "start": 6,
-        "end": 7,
-        "tangentStart": {
-          "x": 0,
-          "y": 0
-        },
-        "tangentEnd": {
-          "x": 0,
-          "y": 0
-        }
-      },
-      {
-        "start": 7,
-        "end": 8,
-        "tangentStart": {
-          "x": 0,
-          "y": 0
-        },
-        "tangentEnd": {
-          "x": 0,
-          "y": 0
-        }
-      },
-      {
-        "start": 2,
-        "end": 1,
-        "tangentStart": {
-          "x": 0,
-          "y": 0
-        },
-        "tangentEnd": {
-          "x": 0,
-          "y": 0
-        }
-      },
-      {
-        "start": 1,
-        "end": 5,
-        "tangentStart": {
-          "x": 0,
-          "y": 0
-        },
-        "tangentEnd": {
-          "x": 0,
-          "y": 0
-        }
-      },
-      {
-        "start": 5,
-        "end": 3,
-        "tangentStart": {
-          "x": 0,
-          "y": 0
-        },
-        "tangentEnd": {
-          "x": 0,
-          "y": 0
-        }
-      },
-      {
-        "start": 3,
-        "end": 2,
-        "tangentStart": {
-          "x": 0,
-          "y": 0
-        },
-        "tangentEnd": {
-          "x": 0,
-          "y": 0
-        }
-      }
-    ],
-    "vertices": [
-      {
-        "x": 144,
-        "y": 73.6352767944336,
-        "strokeCap": "NONE",
-        "strokeJoin": "MITER",
-        "cornerRadius": 0,
-        "handleMirroring": "ANGLE_AND_LENGTH"
-      },
-      {
-        "x": 294.5,
-        "y": 2.135254383087158,
-        "strokeCap": "NONE",
-        "strokeJoin": "MITER",
-        "cornerRadius": 0,
-        "handleMirroring": "ANGLE_AND_LENGTH"
-      },
-      {
-        "x": 383,
-        "y": 168.13525390625,
-        "strokeCap": "NONE",
-        "strokeJoin": "MITER",
-        "cornerRadius": 0,
-        "handleMirroring": "NONE"
-      },
-      {
-        "x": 339,
-        "y": 292.63531494140625,
-        "strokeCap": "NONE",
-        "strokeJoin": "MITER",
-        "cornerRadius": 0,
-        "handleMirroring": "ANGLE_AND_LENGTH"
-      },
-      {
-        "x": 116.5,
-        "y": 239.63525390625,
-        "strokeCap": "NONE",
-        "strokeJoin": "MITER",
-        "cornerRadius": 0,
-        "handleMirroring": "NONE"
-      },
-      {
-        "x": 265,
-        "y": 132.63525390625,
-        "strokeCap": "NONE",
-        "strokeJoin": "MITER",
-        "cornerRadius": 0,
-        "handleMirroring": "NONE"
-      },
-      {
-        "x": 51,
-        "y": 37.135257720947266,
-        "strokeCap": "ARROW_LINES",
-        "strokeJoin": "MITER",
-        "cornerRadius": 0,
-        "handleMirroring": "NONE"
-      },
-      {
-        "x": 33,
-        "y": 177.13525390625,
-        "strokeCap": "NONE",
-        "strokeJoin": "MITER",
-        "cornerRadius": 0,
-        "handleMirroring": "NONE"
-      },
-      {
-        "x": 0,
-        "y": 85.6352767944336,
-        "strokeCap": "NONE",
-        "strokeJoin": "MITER",
-        "cornerRadius": 0,
-        "handleMirroring": "NONE"
-      }
-    ]
-  }
-
-  api.updateNodes([
-    // vn,
-    // vn2,
-    // vn3,
-    node1,
-    // node2,
-    // line,
-    // polyline,
-    // path
-    // node3,
-    // edge1, edge2
-  ]);
   // api.selectNodes([node1])
 
-  // api.updateNodes([node1]);
+  fetch('/bezier.json').then(res => res.json()).then(data => {
+    const animation = loadAnimation(data, {
+      loop: true,
+      autoplay: true,
+      expressions: true,
+      expressionEngine: 'lottie-web',
+    });
 
-  const animation = api.animate(
-    node1,
-    [
-      { fill: 'green', d: 'M 100 0 L 200 100 L 300 0 Z' },
-      { fill: 'red', d: 'M 100 0 L 200 100 L 300 0 Q 400 100 500 0' },
-    ],
-    { duration: 1000, direction: 'alternate', iterations: 'infinite', easing: 'ease-in-out' },
-  );
-
-  // animation.finish();
+    api.runAtNextTick(() => {
+      animation.render(api);
+      animation.play();
+    });
+  });
 });
 
-const VelloRendererPlugin = RendererPlugin.configure({
-  setupDeviceSystemCtor: InitVello,
-  rendererSystemCtor: VelloPipeline,
-});
-DefaultPlugins.splice(DefaultPlugins.indexOf(DefaultRendererPlugin), 1, VelloRendererPlugin);
+// const VelloRendererPlugin = RendererPlugin.configure({
+//   setupDeviceSystemCtor: InitVello,
+//   rendererSystemCtor: VelloPipeline,
+// });
+// DefaultPlugins.splice(DefaultPlugins.indexOf(DefaultRendererPlugin), 1, VelloRendererPlugin);
 // registerFont('/Gaegu-Regular.ttf');
 // registerFont('/NotoSansCJKsc-VF.ttf');
 // registerFont('/NotoSans-Regular.ttf');

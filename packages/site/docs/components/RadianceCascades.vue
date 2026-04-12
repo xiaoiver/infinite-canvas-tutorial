@@ -19,6 +19,7 @@ import {
   VelloPipeline,
   registerFont,
 } from '@infinite-canvas-tutorial/vello';
+import { parseMermaidToSerializedNodes } from '@infinite-canvas-tutorial/mermaid';
 
 const wrapper = ref<HTMLElement | null>(null);
 let api: any | undefined;
@@ -36,6 +37,9 @@ onMounted(async () => {
 
     api.setAppState({
       ...api.getAppState(),
+      cameraZoom: 0.53,
+      cameraX: -300,
+      cameraY: -100,
       penbarSelected: Pen.SELECT,
       checkboardStyle: CheckboardStyle.NONE,
       themeMode: ThemeMode.DARK,
@@ -63,7 +67,7 @@ onMounted(async () => {
     const node1 = {
       id: 'radiance-rect-1',
       type: 'rect',
-      x: 200,
+      x: 500,
       y: 120,
       width: 100,
       height: 100,
@@ -72,7 +76,7 @@ onMounted(async () => {
     const node2 = {
       id: 'radiance-rect-2',
       type: 'ellipse',
-      x: 300,
+      x: -100,
       y: 0,
       width: 100,
       height: 100,
@@ -81,20 +85,21 @@ onMounted(async () => {
     const node3 = {
       id: 'radiance-rect-3',
       type: 'rect',
-      x: 400,
-      y: 150,
+      x: 600,
+      y: 550,
       width: 100,
-      height: 100,
+      height: 200,
+      rotation: Math.PI / 6,
       fill: 'green',
     };
 
     const line = {
       id: 'radiance-line-3',
       type: 'line',
-      x1: 100,
-      y1: 200,
-      x2: 200,
-      y2: 300,
+      x1: -100,
+      y1: 500,
+      x2: 0,
+      y2: 700,
       stroke: 'grey',
       strokeWidth: 10,
     };
@@ -102,15 +107,53 @@ onMounted(async () => {
     const polyline = {
       id: 'radiance-polyline-1',
       type: 'polyline',
-      points: '500,0 600,100 700,0',
+      points: '400,100 500,200 600,100',
       stroke: 'grey',
       strokeWidth: 4,
+      rotation: -Math.PI / 1.5,
     };
 
     api.updateNodes([
       node1, node2, node3,
       line, polyline,
     ]);
+
+    const nodes = await parseMermaidToSerializedNodes(`flowchart TD
+ A[Christmas] -->|Get money| B(Go shopping)
+ B --> C{Let me think}
+ C -->|One| D[Laptop]
+ C -->|Two| E[iPhone]
+ C -->|Three| F[Car]`);
+    nodes.forEach(node => {
+      if (node.type === 'rect') {
+        node.fill = 'black';
+        node.strokeWidth = 0;
+      } else if (node.type === 'line') {
+        node.stroke = '#454343';
+      } else if (node.type === 'polyline') {
+        node.stroke = '#454343';
+      } else if (node.type === 'text') {
+        node.fontFamily = 'Gaegu';
+        node.fill = 'white';
+        node.stroke = 'none';
+      } else if (node.type === 'path') {
+        node.fill = '#454343';
+        node.strokeWidth = 0;
+      }
+    });
+    // import('webfontloader').then((module) => {
+    //   const WebFont = module.default;
+    //   WebFont.load({
+    //     google: {
+    //       families: ['Gaegu'],
+    //     },
+    //     active: () => {
+    api.runAtNextTick(() => {
+      api.updateNodes(nodes);
+    });
+    //     }
+    //   });
+    // });
   };
 
   canvas.addEventListener(Event.READY, onReady);

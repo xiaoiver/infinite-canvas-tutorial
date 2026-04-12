@@ -494,8 +494,8 @@ importers:
         specifier: ^3.3.10
         version: 3.3.10
       '@chenglou/pretext':
-        specifier: ^0.0.3
-        version: 0.0.3
+        specifier: ^0.0.5
+        version: 0.0.5
       '@lastolivegames/becsy':
         specifier: ^0.16.0
         version: 0.16.0
@@ -1211,6 +1211,21 @@ importers:
         specifier: ^0.8.1
         version: 0.8.1
 
+  packages/plugin-lottie:
+    dependencies:
+      '@antv/util':
+        specifier: ^3.3.10
+        version: 3.3.10
+      '@infinite-canvas-tutorial/ecs':
+        specifier: workspace:*
+        version: link:../ecs
+      '@infinite-canvas-tutorial/webcomponents':
+        specifier: workspace:*
+        version: link:../webcomponents
+      uuid:
+        specifier: ^11.1.0
+        version: 11.1.0
+
   packages/plugin-mermaid:
     dependencies:
       '@antv/util':
@@ -1389,6 +1404,9 @@ importers:
       '@infinite-canvas-tutorial/lesson9':
         specifier: workspace:*
         version: link:../lesson_009
+      '@infinite-canvas-tutorial/lottie':
+        specifier: workspace:*
+        version: link:../plugin-lottie
       '@infinite-canvas-tutorial/mermaid':
         specifier: workspace:*
         version: link:../plugin-mermaid
@@ -2324,8 +2342,8 @@ packages:
   '@changesets/write@0.4.0':
     resolution: {integrity: sha512-CdTLvIOPiCNuH71pyDu3rA+Q0n65cmAbXnwWH84rKGiFumFzkmHNT8KHTMEchcxN+Kl8I54xGUhJ7l3E7X396Q==}
 
-  '@chenglou/pretext@0.0.3':
-    resolution: {integrity: sha512-RQmqMqUAPRCyv4R3LlRi/ao6KbNWYclqLA+V1HS7sWgyUUbjn3JmmlfXZSY/BjM4rbmIaMSyIVisYocYGYftiQ==}
+  '@chenglou/pretext@0.0.5':
+    resolution: {integrity: sha512-A8GZN10REdFGsyuiUgLV8jjPDDFMg5GmgxGWV0I3igxBOnzj+jgz2VMmVD7g+SFyoctfeqHFxbNatKSzVRWtRg==}
 
   '@chevrotain/cst-dts-gen@11.0.3':
     resolution: {integrity: sha512-BvIKpRLeS/8UbfxXxgC33xOumsacaeCKAjAeLyOn7Pcp95HiRbrpl14S+9vaZLolnbssPIUuiUd8IvgkRyt6NQ==}
@@ -13137,7 +13155,7 @@ snapshots:
       human-id: 4.1.1
       prettier: 2.8.8
 
-  '@chenglou/pretext@0.0.3': {}
+  '@chenglou/pretext@0.0.5': {}
 
   '@chevrotain/cst-dts-gen@11.0.3':
     dependencies:
