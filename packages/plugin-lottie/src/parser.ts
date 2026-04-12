@@ -5,8 +5,15 @@ import {
   isNil,
   getTotalLength,
 } from '@antv/util';
-import type { LoadAnimationOptions } from './';
+import type { LoadAnimationOptions } from './load-animation-options';
 import { completeData } from './complete-data';
+import {
+  bakeScalarExpressionTrack,
+  bakeShapePathExpressionTrack,
+  bakeVectorExpressionTrack,
+  propertyHasExpression,
+  type BakedKeyframeAnimation,
+} from './expressions';
 import * as Lottie from './type';
 import { filterUndefined } from '@infinite-canvas-tutorial/ecs';
 
@@ -64,9 +71,80 @@ export class ParseContext {
   fill: FillMode = 'auto';
   iterations = 0;
 
+  /** Composition size (for expression `width` / `height`). */
+  compWidth = 0;
+  compHeight = 0;
+
+  /**
+   * Bake AE expression strings (`x` on properties) into keyframes.
+   * Uses a minimal evaluator unless {@link expressionEngine} is `lottie-web`; disable if untrusted JSON.
+   */
+  expressions = true;
+
+  /**
+   * @see LoadAnimationOptions.expressionEngine
+   */
+  expressionEngine: 'simple' | 'lottie-web' = 'simple';
+
+  /** Current JSON while parsing a layer (for lottie-web ExpressionManager `thisLayer`). */
+  expressionLayer?: Record<string, unknown>;
+
+  /** Root animation JSON (optional future use for comp-wide expression APIs). */
+  animation?: Lottie.Animation;
+
   assetsMap: Map<string, Lottie.Asset> = new Map();
 
   layerOffsetTime: number;
+}
+
+function expressionBakeContext(ctx: ParseContext) {
+  return {
+    startFrame: ctx.startFrame,
+    endFrame: ctx.endFrame,
+    fps: ctx.fps,
+    frameTime: ctx.frameTime,
+    compWidth: ctx.compWidth,
+    compHeight: ctx.compHeight,
+    expressionEngine: ctx.expressionEngine,
+    expressionLayer: ctx.expressionLayer,
+  };
+}
+
+/**
+ * Expression bake returns only `keyframes`; we still need static `attrs` for initial
+ * {@link LottieAnimation.buildHierachy} (e.g. `shape.cx` / `cy`). Otherwise `formatKeyframes` →
+ * empty animation leaves the ellipse/path with undefined geometry.
+ */
+function seedTargetFromBakedOrStaticK(
+  baked: BakedKeyframeAnimation,
+  lottieVal: Lottie.MultiDimensional | Lottie.Value,
+  target: Record<string, any>,
+  targetPropName: string,
+  propNames: string[],
+  convertVal?: (val: number) => number,
+) {
+  const row = baked.keyframes[0] as Record<string, unknown>;
+  const payload = targetPropName ? row[targetPropName] : row;
+  if (payload && typeof payload === 'object' && !Array.isArray(payload)) {
+    for (const n of propNames) {
+      const v = (payload as Record<string, unknown>)[n];
+      if (typeof v === 'number' && Number.isFinite(v)) {
+        target[n] = convertVal ? convertVal(v) : v;
+      }
+    }
+  }
+  for (const n of propNames) {
+    if (typeof target[n] === 'number' && Number.isFinite(target[n])) {
+      continue;
+    }
+    if (isMultiDimensionalValue(lottieVal)) {
+      const i = propNames.indexOf(n);
+      const val = getMultiDimensionValue(lottieVal.k as number[], i);
+      target[n] = convertVal ? convertVal(val) : val;
+    } else if (isValue(lottieVal) && propNames.length === 1 && n === propNames[0]) {
+      target[n] = convertVal ? convertVal(lottieVal.k as number) : (lottieVal.k as number);
+    }
+  }
 }
 
 function isNumberArray(val: any): val is number[] {
@@ -349,6 +427,48 @@ function parseValue(
   }
   const target = targetPropName ? attrs[targetPropName] : attrs;
 
+  if (context.expressions && propertyHasExpression(lottieVal as { x?: string })) {
+    const code = String((lottieVal as unknown as { x: string }).x);
+    const bakeCtx = expressionBakeContext(context);
+    let baked = null;
+
+    if (isValue(lottieVal) || isKeyframedValue(lottieVal)) {
+      baked = bakeScalarExpressionTrack(
+        code,
+        lottieVal as Lottie.Value,
+        bakeCtx,
+        targetPropName,
+        propNames[0],
+        convertVal,
+      );
+    } else if (
+      isMultiDimensionalValue(lottieVal)
+      || isMultiDimensionalKeyframedValue(lottieVal)
+    ) {
+      baked = bakeVectorExpressionTrack(
+        code,
+        lottieVal as Lottie.MultiDimensional,
+        bakeCtx,
+        targetPropName,
+        propNames,
+        convertVal,
+      );
+    }
+
+    if (baked) {
+      animations.push(baked);
+      seedTargetFromBakedOrStaticK(
+        baked,
+        lottieVal,
+        target,
+        targetPropName,
+        propNames,
+        convertVal,
+      );
+      return;
+    }
+  }
+
   if (isValue(lottieVal)) {
     const val = lottieVal.k;
     target[propNames[0]] = convertVal ? convertVal(val) : val;
@@ -401,7 +521,7 @@ function parseTransforms(
   },
 ) {
   // @see https://lottiefiles.github.io/lottie-docs/concepts/#split-vector
-  if ((ks.p as Lottie.Position).s) {
+  if ((ks.p as Lottie.Position)?.s) {
     parseValue(
       (ks.p as Lottie.Position).x,
       attrs,
@@ -644,8 +764,16 @@ function parseStroke(
   }
 }
 
+/** Non-empty vertex list; empty `v` is often a placeholder when `ks.x` holds the path expression. */
 function isBezier(k: any): k is Lottie.Bezier {
-  return k && k.i && k.o && k.v;
+  return (
+    k
+    && k.i
+    && k.o
+    && k.v
+    && Array.isArray(k.v)
+    && k.v.length > 0
+  );
 }
 
 /**
@@ -664,6 +792,19 @@ function parseShapePaths(
       stroke: 'none',
     },
   };
+  const ks = shape.ks as Lottie.ShapeProperty & { x?: string };
+
+  if (context.expressions && propertyHasExpression(ks as { x?: string })) {
+    const bakeCtx = expressionBakeContext(context);
+    const baked = bakeShapePathExpressionTrack(String(ks.x), ks, bakeCtx);
+    if (baked) {
+      animations.push(baked);
+      const first = baked.keyframes[0] as { shape?: Record<string, unknown> };
+      attrs.shape = first?.shape ?? { in: [], out: [], v: [] };
+      return attrs;
+    }
+  }
+
   // @see https://lottiefiles.github.io/lottie-docs/concepts/#bezier
   if (isBezier(shape.ks.k)) {
     attrs.shape = {
@@ -895,7 +1036,9 @@ function parseShapeLayer(layer: Lottie.ShapeLayer, context: ParseContext) {
         return;
       }
 
-      let ecEl;
+      let ecEl: CustomElementOption | undefined;
+      /** Indices into {@link keyframeAnimations} for this shape only (path / ellipse / rect). */
+      let ownKfRange: [number, number] | undefined;
       switch (shape.ty) {
         case Lottie.ShapeType.Group:
           ecEl = {
@@ -935,14 +1078,32 @@ function parseShapeLayer(layer: Lottie.ShapeLayer, context: ParseContext) {
           );
           break;
         // TODO Multiple shapes.
-        default:
+        default: {
+          const kfStart = keyframeAnimations.length;
           ecEl = tryCreateShape(shape, keyframeAnimations);
+          if (ecEl) {
+            ownKfRange = [kfStart, keyframeAnimations.length];
+          }
+        }
       }
       if (ecEl) {
         ecEl.name = shape.nm;
+        if (ownKfRange) {
+          (ecEl as CustomElementOption & { _ownKfRange?: [number, number] })._ownKfRange
+            = ownKfRange;
+        }
         ecEls.push(ecEl);
       }
     });
+
+    const sharedPrefixEnd = ecEls.reduce<number | undefined>((acc, el) => {
+      const r = (el as CustomElementOption & { _ownKfRange?: [number, number] })._ownKfRange;
+      if (!r) {
+        return acc;
+      }
+      const start = r[0];
+      return acc === undefined ? start : Math.min(acc, start);
+    }, undefined) ?? 0;
 
     ecEls.forEach((el, idx) => {
       // Apply modifiers first
@@ -953,10 +1114,25 @@ function parseShapeLayer(layer: Lottie.ShapeLayer, context: ParseContext) {
       };
 
       if (keyframeAnimations.length || modifiers.keyframeAnimations.length) {
-        el.keyframeAnimation = [
-          ...modifiers.keyframeAnimations,
-          ...keyframeAnimations,
-        ];
+        const ownRange = (el as CustomElementOption & { _ownKfRange?: [number, number] })
+          ._ownKfRange;
+        delete (el as CustomElementOption & { _ownKfRange?: [number, number] })._ownKfRange;
+
+        if (ownRange) {
+          const shared = keyframeAnimations.slice(0, sharedPrefixEnd);
+          const own = keyframeAnimations.slice(ownRange[0], ownRange[1]);
+          el.keyframeAnimation = [
+            ...modifiers.keyframeAnimations,
+            ...shared,
+            ...own,
+          ];
+        } else {
+          // e.g. `ty: gr` — no shape-local track appended in this iteration.
+          el.keyframeAnimation = [
+            ...modifiers.keyframeAnimations,
+            ...keyframeAnimations,
+          ];
+        }
       }
 
       ecEls[idx] = el;
@@ -1050,6 +1226,8 @@ function parseLayers(
   const offsetTime = precompLayerTl?.st || 0;
 
   layers?.forEach((layer) => {
+    context.expressionLayer = layer as unknown as Record<string, unknown>;
+
     // Layer time is offseted by the precomp layer.
 
     // Use the ip, op, st of ref from.
@@ -1194,13 +1372,15 @@ const DEFAULT_LOAD_ANIMATION_OPTIONS: LoadAnimationOptions = {
   loop: true,
   autoplay: false,
   fill: 'both',
+  expressions: true,
+  expressionEngine: 'simple',
 };
 export function parse(
   data: Lottie.Animation,
   options: Partial<LoadAnimationOptions>,
 ) {
   completeData(data);
-  const { loop, autoplay, fill } = {
+  const { loop, autoplay, fill, expressions, expressionEngine } = {
     ...DEFAULT_LOAD_ANIMATION_OPTIONS,
     ...options,
   };
@@ -1213,6 +1393,11 @@ export function parse(
   context.version = data.v;
   context.autoplay = !!autoplay;
   context.fill = fill;
+  context.expressions = expressions !== false;
+  context.expressionEngine = expressionEngine ?? 'simple';
+  context.animation = data;
+  context.compWidth = data.w ?? 0;
+  context.compHeight = data.h ?? 0;
   // eslint-disable-next-line no-nested-ternary
   context.iterations = isNumber(loop) ? loop : loop ? Infinity : 1 as number;
   // @see https://lottiefiles.github.io/lottie-docs/assets/

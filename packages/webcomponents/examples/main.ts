@@ -238,22 +238,132 @@ canvas.addEventListener(Event.READY, async (e) => {
     zIndex: 3,
   };
 
-  const path = {
-    id: 'path-1',
-    type: 'path',
-    d: 'M 100 0 L 200 100 L 300 0 Z',
-    stroke: 'black',
-    strokeWidth: 10,
-    zIndex: 3,
-  }
+  const nodes = [
+    {
+      "id": "b8ca2b72-6d88-4a5d-b1c8-14e9c66b7a37",
+      "type": "g",
+      "name": "Shapes"
+    },
+    {
+      "id": "6a9cdc05-9a6e-4ff6-90a9-0a8ece844e53",
+      "type": "g",
+      "name": "Cubic Lines",
+      "parentId": "b8ca2b72-6d88-4a5d-b1c8-14e9c66b7a37"
+    },
+    {
+      "id": "c612e1ca-8f7d-4694-8ddb-bf3919124b2a",
+      "type": "path",
+      "d": "M0 230C0 230 105 0 105 0C105 0 325 60 325 60C325 60 460 230 460 230",
+      "zIndex": 0,
+      "scaleX": 1,
+      "scaleY": 1,
+      "stroke": "rgba(0,0,0,1)",
+      "strokeOpacity": 1,
+      "strokeWidth": 10,
+      "parentId": "6a9cdc05-9a6e-4ff6-90a9-0a8ece844e53",
+      "x": 25,
+      "y": 170,
+      "width": 460,
+      "height": 230
+    },
+    {
+      "id": "ca406efb-1f72-4cf0-9321-84434fb08901",
+      "type": "g",
+      "name": "Cubic Points",
+      "parentId": "b8ca2b72-6d88-4a5d-b1c8-14e9c66b7a37"
+    },
+    {
+      "id": "1663295b-b600-48c9-a02c-67c2a371bfa6",
+      "type": "ellipse",
+      "cx": 485,
+      "cy": 400,
+      "rx": 16,
+      "ry": 16,
+      "zIndex": 0,
+      "name": "p3",
+      "scaleX": 1,
+      "scaleY": 1,
+      "fill": "rgba(0,0,0,1)",
+      "fillRule": "nonzero",
+      "fillOpacity": 1,
+      "parentId": "ca406efb-1f72-4cf0-9321-84434fb08901",
+      "x": 469,
+      "y": 384,
+      "width": 32,
+      "height": 32
+    },
+    {
+      "id": "661c734c-b854-4e0f-af55-8ce12a3b7aff",
+      "type": "ellipse",
+      "cx": 350,
+      "cy": 230,
+      "rx": 16,
+      "ry": 16,
+      "zIndex": 0,
+      "name": "p2",
+      "scaleX": 1,
+      "scaleY": 1,
+      "fill": "rgba(0,0,0,1)",
+      "fillRule": "nonzero",
+      "fillOpacity": 1,
+      "parentId": "ca406efb-1f72-4cf0-9321-84434fb08901",
+      "x": 334,
+      "y": 214,
+      "width": 32,
+      "height": 32
+    },
+    {
+      "id": "3c21ca95-1d92-4327-bcf1-54c9c4c1e44e",
+      "type": "ellipse",
+      "cx": 130,
+      "cy": 170,
+      "rx": 16,
+      "ry": 16,
+      "zIndex": 0,
+      "name": "p1",
+      "scaleX": 1,
+      "scaleY": 1,
+      "fill": "rgba(0,0,0,1)",
+      "fillRule": "nonzero",
+      "fillOpacity": 1,
+      "parentId": "ca406efb-1f72-4cf0-9321-84434fb08901",
+      "x": 114,
+      "y": 154,
+      "width": 32,
+      "height": 32
+    },
+    {
+      "id": "bbfd5f51-d8b2-45df-b902-0e10b01992c9",
+      "type": "ellipse",
+      "cx": 25,
+      "cy": 400,
+      "rx": 16,
+      "ry": 16,
+      "zIndex": 0,
+      "name": "p0",
+      "scaleX": 1,
+      "scaleY": 1,
+      "fill": "rgba(0,0,0,1)",
+      "fillRule": "nonzero",
+      "fillOpacity": 1,
+      "parentId": "ca406efb-1f72-4cf0-9321-84434fb08901",
+      "x": 9,
+      "y": 384,
+      "width": 32,
+      "height": 32
+    }
+  ];
+
+  // api.updateNodes(nodes);
 
   // api.selectNodes([node1])
-  // api.updateNodes([node1]);
 
-  fetch('/bouncy_ball.json').then(res => res.json()).then(data => {
+  fetch('/bezier.json').then(res => res.json()).then(data => {
     const animation = loadAnimation(data, {
       loop: true,
       autoplay: true,
+      expressions: true,
+      expressionEngine: 'lottie-web',
     });
 
     api.runAtNextTick(() => {
@@ -263,11 +373,11 @@ canvas.addEventListener(Event.READY, async (e) => {
   });
 });
 
-const VelloRendererPlugin = RendererPlugin.configure({
-  setupDeviceSystemCtor: InitVello,
-  rendererSystemCtor: VelloPipeline,
-});
-DefaultPlugins.splice(DefaultPlugins.indexOf(DefaultRendererPlugin), 1, VelloRendererPlugin);
+// const VelloRendererPlugin = RendererPlugin.configure({
+//   setupDeviceSystemCtor: InitVello,
+//   rendererSystemCtor: VelloPipeline,
+// });
+// DefaultPlugins.splice(DefaultPlugins.indexOf(DefaultRendererPlugin), 1, VelloRendererPlugin);
 // registerFont('/Gaegu-Regular.ttf');
 // registerFont('/NotoSansCJKsc-VF.ttf');
 // registerFont('/NotoSans-Regular.ttf');

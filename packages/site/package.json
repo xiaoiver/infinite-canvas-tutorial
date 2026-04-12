@@ -45,6 +45,7 @@
     "@infinite-canvas-tutorial/yoga": "workspace:*",
     "@infinite-canvas-tutorial/vello": "workspace:*",
     "@infinite-canvas-tutorial/mermaid": "workspace:*",
+    "@infinite-canvas-tutorial/lottie": "workspace:*",
     "@infinite-canvas-tutorial/lesson1": "workspace:*",
     "@infinite-canvas-tutorial/lesson2": "workspace:*",
     "@infinite-canvas-tutorial/lesson3": "workspace:*",

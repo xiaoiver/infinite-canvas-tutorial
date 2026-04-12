@@ -1,23 +1,20 @@
 import type * as Lottie from './type';
+import type { LoadAnimationOptions } from './load-animation-options';
 import { LottieAnimation } from './LottieAnimation';
 import { parse } from './parser';
 
-export interface LoadAnimationOptions {
-  /**
-   * @see https://github.com/airbnb/lottie-web/blob/master/player/js/animation/AnimationItem.js#L43
-   */
-  loop: boolean | number;
+export type { LoadAnimationOptions } from './load-animation-options';
 
-  /**
-   * @see https://github.com/airbnb/lottie-web/blob/master/player/js/animation/AnimationItem.js#L42
-   */
-  autoplay: boolean;
-
-  /**
-   * @see https://developer.mozilla.org/en-US/docs/Web/API/EffectTiming/fill
-   */
-  fill: FillMode;
-}
+export {
+  evaluateLottieExpression,
+  propertyHasExpression,
+} from './expressions';
+export type {
+  BakedKeyframeAnimation,
+  ExpressionBakeContext,
+  ExpressionKeyframe,
+  LottieExpressionEvalContext,
+} from './expressions';
 
 /**
  * @see https://github.com/airbnb/lottie-web/wiki/loadAnimation-options

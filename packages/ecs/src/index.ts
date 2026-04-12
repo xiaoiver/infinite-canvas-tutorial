@@ -62,6 +62,7 @@ export {
   readSystemClipboard,
   isSupportedImageFileType,
   inferXYWidthHeight,
+  applyPathPreserveLayoutFromSnapshot,
   inferPointsWithFromIdAndToId,
   inferEdgePoints,
   edgeEndsResolvable,

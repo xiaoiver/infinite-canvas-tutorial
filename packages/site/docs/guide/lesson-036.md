@@ -10,6 +10,7 @@ import AnimationTransformOrigin from '../components/AnimationTransformOrigin.vue
 import AnimationDasharray from '../components/AnimationDasharray.vue';
 import AnimationDashoffset from '../components/AnimationDashoffset.vue';
 import AnimationMorphing from '../components/AnimationMorphing.vue';
+import AnimationLottieBouncyBall from '../components/AnimationLottieBouncyBall.vue';
 </script>
 
 # Lesson 36 - Animation
@@ -216,11 +217,126 @@ Some libraries require matching segment structure before and after the morph, or
 
 Following Kute.js’s CubicMorph: convert path segments to cubic Béziers, use easy subdivision to normalize both paths to the same segment count, then interpolate control points per segment.
 
+```ts
+function mergePaths(
+    left: { absolutePath: AbsoluteArray; curve: CurveArray | null },
+    right: { absolutePath: AbsoluteArray; curve: CurveArray | null },
+): [CurveArray, CurveArray, (b: CurveArray) => CurveArray] {
+    let curve1 = left.curve;
+    let curve2 = right.curve;
+    if (!curve1 || curve1.length === 0) {
+        // convert to curves to do morphing & picking later
+        // @see http://thednp.github.io/kute.js/svgCubicMorph.html
+        curve1 = path2Curve(left.absolutePath, false) as CurveArray;
+        left.curve = curve1;
+    }
+    if (!curve2 || curve2.length === 0) {
+        curve2 = path2Curve(right.absolutePath, false) as CurveArray;
+        right.curve = curve2;
+    }
+
+    let curves = [curve1, curve2];
+    if (curve1.length !== curve2.length) {
+        curves = equalizeSegments(curve1, curve2);
+    }
+
+    const curve0 =
+        getDrawDirection(curves[0]) !== getDrawDirection(curves[1])
+            ? reverseCurve(curves[0])
+            : (clonePath(curves[0]) as CurveArray);
+
+    return [
+        curve0,
+        getRotatedCurve(curves[1], curve0) as CurveArray,
+        (pathArray: CurveArray) => {
+            // need converting to path string?
+            return pathArray;
+        },
+    ];
+}
+```
+
 <AnimationMorphing />
 
 ## Lottie
 
-[lottie json schema]
+-   [lottie json schema]
+-   [Tips for rendering]
+-   [lottie-parser] — we mainly follow its parsing logic
+-   [velato] — a renderer built on Vello
+
+### Usage {#lottie-usage}
+
+We implemented a plugin that converts Lottie JSON into graphics and keyframes. Highlights:
+
+-   Supports the following elements from Shape layers:
+    -   [Rectangle](https://lottiefiles.github.io/lottie-docs/shapes/#rectangle)
+    -   [Ellipse](https://lottiefiles.github.io/lottie-docs/shapes/#ellipse)
+    -   [Path](https://lottiefiles.github.io/lottie-docs/shapes/#path)
+    -   [Group](https://lottiefiles.github.io/lottie-docs/shapes/#group)
+    -   [PolyStar](https://lottiefiles.github.io/lottie-docs/shapes/#polystar)
+-   In Lottie, `anchorX` / `anchorY` define the scale and rotation center relative to the top-left of the shape’s bounding box—take care when mapping to `transformOrigin`
+-   Merge multiple animation tracks into one keyframe set and fill in missing properties
+
+```ts
+import { loadAnimation } from '@infinite-canvas-tutorial/lottie';
+
+fetch('/bouncy_ball.json')
+    .then((res) => res.json())
+    .then((data) => {
+        const animation = loadAnimation(data, {
+            loop: true,
+            autoplay: true,
+        });
+
+        api.runAtNextTick(() => {
+            animation.render(api);
+            animation.play();
+        });
+    });
+```
+
+Below is the official sample running in our setup: [Bouncy Ball]
+
+<AnimationLottieBouncyBall />
+
+### Bézier curves in Lottie {#beziers-in-lottie}
+
+[Beziers in Lottie]
+
+-   `v` is an array of vertices.
+-   `i` is an array of “in” tangent points, relative to `v`.
+-   `o` is an array of “out” tangent points, relative to `v`.
+-   `c` is a boolean determining whether the poly-Bézier is closed. If it is, there is an extra Bézier segment between the last point in `v` and the first.
+
+### Expressions {#expression}
+
+[Expressions]
+
+```json
+{
+    "ty": "sh",
+    "ks": {
+        "a": 0,
+        "k": {
+            "i": [],
+            "o": [],
+            "v": []
+        },
+        "x": "var group = thisLayer.content(\"Quadratic Points\");\nvar num_points = 3;\nvar points = [];\nvar ip = [];\nvar op = [];\nfor ( var i = 0; i < num_points; i++ )\n{\n    var pos = group.content(\"p\" + i).position;\n    points.push(pos);\n    ip.push(pos);\n    op.push(pos);\n}\nvar $bm_rt = {\n    v: points,\n    i: ip,\n    o: op\n};\n"
+    }
+}
+```
+
+### Text layer
+
+### Clipping mask
+
+[clipping-masks]
+
+### Layer effects
+
+[Layer Effects]
 
 ## Rive
 
@@ -255,3 +371,11 @@ Following Kute.js’s CubicMorph: convert path segments to cubic Béziers, use e
 [lottie json schema]: https://lottiefiles.github.io/lottie-docs/schema/
 [Paper.js]: http://paperjs.org/
 [Kute.js]: https://thednp.github.io/kute.js/
+[Tips for rendering]: https://lottiefiles.github.io/lottie-docs/rendering/
+[lottie-parser]: https://github.com/pissang/lottie-parser
+[velato]: https://github.com/linebender/velato
+[Bouncy Ball]: https://lottiefiles.github.io/lottie-docs/breakdown/bouncy_ball/
+[Beziers in Lottie]: https://lottiefiles.github.io/lottie-docs/breakdown/bezier/#beziers-in-lottie
+[Expressions]: https://lottiefiles.github.io/lottie-docs/expressions/
+[clipping-masks]: https://lottie-animation-community.github.io/docs/specs/layers/common/#clipping-masks
+[Layer Effects]: https://lottiefiles.github.io/lottie-docs/effects/#layer-effects

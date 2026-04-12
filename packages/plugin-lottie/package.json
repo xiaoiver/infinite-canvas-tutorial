@@ -39,8 +39,8 @@
     "dev": "vite dev",
     "deploy": "vite build",
     "preview": "vite preview",
-    "build:cjs": "rimraf ./lib && tsc --module commonjs --outDir lib",
-    "build:esm": "rimraf ./esm && tsc --module ESNext --outDir esm",
+    "build:cjs": "rimraf ./lib && tsc --module commonjs --outDir lib && mkdir -p lib/vendor && cp src/vendor/lottie-expression-manager.bundle.mjs lib/vendor/",
+    "build:esm": "rimraf ./esm && tsc --module ESNext --outDir esm && mkdir -p esm/vendor && cp src/vendor/lottie-expression-manager.bundle.mjs esm/vendor/",
     "build": "run-p build:*",
     "watch": "rimraf ./esm && tsc --module ESNext --outDir esm --watch"
   },

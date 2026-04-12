@@ -595,6 +595,8 @@ export type ShapeProperty = {
   ix: number;
   /** [0-1] Whether it's animated. */
   a?: number;
+  /** After Effects expression string (Bodymovin `x`). */
+  x?: string;
 };
 
 export type PathShape = ShapeElement & {
@@ -619,6 +621,8 @@ export type MultiDimensional = {
   ix?: number;
   /** [0-1] Whether it's animated. */
   a?: number;
+  /** After Effects expression string (Bodymovin `x`). */
+  x?: string;
   /** ??? */
   l?: number;
 };
@@ -633,6 +637,8 @@ export type Value = {
   ix?: number;
   /** [0-1] Whether it's animated. */
   a?: number;
+  /** After Effects expression string (Bodymovin `x`). */
+  x?: string;
   /** Split values (???) */
   s?: boolean;
 };

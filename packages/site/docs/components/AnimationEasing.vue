@@ -158,21 +158,15 @@ onUnmounted(() => {
     <div class="toolbar easing-row" role="group" aria-label="缓动曲线">
       <span class="toolbar-label">缓动</span>
       <div class="easing-chips">
-        <button
-          v-for="preset in EASING_PRESETS"
-          :key="preset.value"
-          type="button"
-          class="chip"
-          :class="{ active: selectedEasing === preset.value }"
-          :title="preset.value"
-          @click="selectEasing(preset.value)"
-        >
+        <button v-for="preset in EASING_PRESETS" :key="preset.value" type="button" class="chip"
+          :class="{ active: selectedEasing === preset.value }" :title="preset.value"
+          @click="selectEasing(preset.value)">
           {{ preset.label }}
         </button>
       </div>
     </div>
     <div class="toolbar controls-row" role="group" aria-label="播放控制">
-      <span class="state">状态：<code>{{ playStateLabel }}</code></span>
+      <span class="state">State:<code>{{ playStateLabel }}</code></span>
       <button type="button" class="btn" @click="onPlay">Play</button>
       <button type="button" class="btn" @click="onPause">Pause</button>
       <button type="button" class="btn" @click="onFinish">Finish</button>
@@ -183,11 +177,7 @@ onUnmounted(() => {
       切换缓动会<strong>重新创建</strong>动画（新 <code>easing</code> 在构造时生效）。矩形仍在
       <code>x: 100 ↔ 200</code> 往复，便于对比不同曲线的加减速感。
     </p>
-    <ic-spectrum-canvas
-      ref="wrapper"
-      class="canvas"
-      style="width: 100%; height: 280px"
-    />
+    <ic-spectrum-canvas ref="wrapper" class="canvas" style="width: 100%; height: 280px" />
   </div>
 </template>
 

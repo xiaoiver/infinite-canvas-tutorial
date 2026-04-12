@@ -1,0 +1,682 @@
+{
+    "nm": "Animation",
+    "fr": 60,
+    "ip": 0,
+    "op": 280,
+    "w": 512,
+    "h": 512,
+    "ddd": 0,
+    "assets": [],
+    "chars": [],
+    "layers": [
+        {
+            "nm": "Shapes",
+            "ddd": 0,
+            "hd": false,
+            "ks": {},
+            "ao": 0,
+            "ip": 0,
+            "op": 280,
+            "st": 0,
+            "hasMask": false,
+            "masksProperties": [],
+            "ef": [
+                {
+                    "ef": [
+                        {
+                            "ty": 0,
+                            "nm": "Slider",
+                            "v": {
+                                "a": 1,
+                                "k": [
+                                    {
+                                        "t": 0,
+                                        "i": {
+                                            "x": [
+                                                0.667
+                                            ],
+                                            "y": [
+                                                1
+                                            ]
+                                        },
+                                        "o": {
+                                            "x": [
+                                                0.333
+                                            ],
+                                            "y": [
+                                                0
+                                            ]
+                                        },
+                                        "s": [
+                                            0
+                                        ]
+                                    },
+                                    {
+                                        "t": 120,
+                                        "i": {
+                                            "x": [
+                                                0.667
+                                            ],
+                                            "y": [
+                                                1
+                                            ]
+                                        },
+                                        "o": {
+                                            "x": [
+                                                0.333
+                                            ],
+                                            "y": [
+                                                0
+                                            ]
+                                        },
+                                        "s": [
+                                            1
+                                        ]
+                                    },
+                                    {
+                                        "t": 140,
+                                        "i": {
+                                            "x": [
+                                                0.667
+                                            ],
+                                            "y": [
+                                                1
+                                            ]
+                                        },
+                                        "o": {
+                                            "x": [
+                                                0.333
+                                            ],
+                                            "y": [
+                                                0
+                                            ]
+                                        },
+                                        "s": [
+                                            1
+                                        ]
+                                    },
+                                    {
+                                        "t": 260,
+                                        "s": [
+                                            0
+                                        ]
+                                    }
+                                ]
+                            }
+                        }
+                    ],
+                    "ty": 5,
+                    "nm": "Slider"
+                }
+            ],
+            "mb": false,
+            "ty": 4,
+            "shapes": [
+                {
+                    "nm": "Bezier Point",
+                    "hd": false,
+                    "ty": "gr",
+                    "it": [
+                        {
+                            "nm": "p0",
+                            "hd": false,
+                            "ty": "el",
+                            "p": {
+                                "a": 0,
+                                "k": [
+                                    25,
+                                    400
+                                ],
+                                "x": "var group = thisLayer.content(\"Linear Points\");\nvar pt_index = 0;\nvar pt_from = group.content(\"p\"+pt_index).position;\nvar pt_to = group.content(\"p\"+(pt_index+1)).position;\nvar t = thisLayer.effect(\"Slider\")(\"Slider\");\nvar $bm_rt = linear(t, pt_from, pt_to);\n"
+                            },
+                            "s": {
+                                "a": 0,
+                                "k": [
+                                    32,
+                                    32
+                                ]
+                            }
+                        },
+                        {
+                            "hd": false,
+                            "ty": "fl",
+                            "o": {
+                                "a": 0,
+                                "k": 100
+                            },
+                            "c": {
+                                "a": 0,
+                                "k": [
+                                    1,
+                                    0.125,
+                                    0
+                                ]
+                            }
+                        },
+                        {
+                            "hd": false,
+                            "ty": "tr",
+                            "s": {
+                                "a": 0,
+                                "k": [
+                                    100,
+                                    100
+                                ]
+                            },
+                            "o": {
+                                "a": 0,
+                                "k": 100
+                            }
+                        }
+                    ]
+                },
+                {
+                    "nm": "Linear Points",
+                    "hd": false,
+                    "ty": "gr",
+                    "it": [
+                        {
+                            "nm": "p0",
+                            "hd": false,
+                            "ty": "el",
+                            "p": {
+                                "a": 0,
+                                "k": [
+                                    25,
+                                    400
+                                ],
+                                "x": "var group = thisLayer.content(\"Quadratic Points\");\nvar pt_index = 0;\nvar pt_from = group.content(\"p\"+pt_index).position;\nvar pt_to = group.content(\"p\"+(pt_index+1)).position;\nvar t = thisLayer.effect(\"Slider\")(\"Slider\");\nvar $bm_rt = linear(t, pt_from, pt_to);\n"
+                            },
+                            "s": {
+                                "a": 0,
+                                "k": [
+                                    32,
+                                    32
+                                ]
+                            }
+                        },
+                        {
+                            "nm": "p1",
+                            "hd": false,
+                            "ty": "el",
+                            "p": {
+                                "a": 0,
+                                "k": [
+                                    130,
+                                    170
+                                ],
+                                "x": "var group = thisLayer.content(\"Quadratic Points\");\nvar pt_index = 1;\nvar pt_from = group.content(\"p\"+pt_index).position;\nvar pt_to = group.content(\"p\"+(pt_index+1)).position;\nvar t = thisLayer.effect(\"Slider\")(\"Slider\");\nvar $bm_rt = linear(t, pt_from, pt_to);\n"
+                            },
+                            "s": {
+                                "a": 0,
+                                "k": [
+                                    32,
+                                    32
+                                ]
+                            }
+                        },
+                        {
+                            "hd": false,
+                            "ty": "fl",
+                            "o": {
+                                "a": 0,
+                                "k": 100
+                            },
+                            "c": {
+                                "a": 0,
+                                "k": [
+                                    1,
+                                    0.8,
+                                    0
+                                ]
+                            }
+                        },
+                        {
+                            "hd": false,
+                            "ty": "tr",
+                            "s": {
+                                "a": 0,
+                                "k": [
+                                    100,
+                                    100
+                                ]
+                            },
+                            "o": {
+                                "a": 0,
+                                "k": 100
+                            }
+                        }
+                    ]
+                },
+                {
+                    "nm": "Linear Lines",
+                    "hd": false,
+                    "ty": "gr",
+                    "it": [
+                        {
+                            "ty": "sh",
+                            "ks": {
+                                "a": 0,
+                                "k": {
+                                    "i": [],
+                                    "o": [],
+                                    "v": []
+                                },
+                                "x": "var group = thisLayer.content(\"Linear Points\");\nvar num_points = 2;\nvar points = [];\nvar ip = [];\nvar op = [];\nfor ( var i = 0; i < num_points; i++ )\n{\n    var pos = group.content(\"p\" + i).position;\n    points.push(pos);\n    ip.push(pos);\n    op.push(pos);\n}\nvar $bm_rt = {\n    v: points,\n    i: ip,\n    o: op\n};\n"
+                            }
+                        },
+                        {
+                            "hd": false,
+                            "ty": "st",
+                            "o": {
+                                "a": 0,
+                                "k": 100
+                            },
+                            "c": {
+                                "a": 0,
+                                "k": [
+                                    1,
+                                    0.8,
+                                    0
+                                ]
+                            },
+                            "w": {
+                                "a": 0,
+                                "k": 10
+                            }
+                        },
+                        {
+                            "hd": false,
+                            "ty": "tr",
+                            "s": {
+                                "a": 0,
+                                "k": [
+                                    100,
+                                    100
+                                ]
+                            },
+                            "o": {
+                                "a": 0,
+                                "k": 100
+                            }
+                        }
+                    ]
+                },
+                {
+                    "nm": "Quadratic Points",
+                    "hd": false,
+                    "ty": "gr",
+                    "it": [
+                        {
+                            "nm": "p0",
+                            "hd": false,
+                            "ty": "el",
+                            "p": {
+                                "a": 0,
+                                "k": [
+                                    25,
+                                    400
+                                ],
+                                "x": "var group = thisLayer.content(\"Cubic Points\");\nvar pt_index = 0;\nvar pt_from = group.content(\"p\"+pt_index).position;\nvar pt_to = group.content(\"p\"+(pt_index+1)).position;\nvar t = thisLayer.effect(\"Slider\")(\"Slider\");\nvar $bm_rt = linear(t, pt_from, pt_to);\n"
+                            },
+                            "s": {
+                                "a": 0,
+                                "k": [
+                                    32,
+                                    32
+                                ]
+                            }
+                        },
+                        {
+                            "nm": "p1",
+                            "hd": false,
+                            "ty": "el",
+                            "p": {
+                                "a": 0,
+                                "k": [
+                                    130,
+                                    170
+                                ],
+                                "x": "var group = thisLayer.content(\"Cubic Points\");\nvar pt_index = 1;\nvar pt_from = group.content(\"p\"+pt_index).position;\nvar pt_to = group.content(\"p\"+(pt_index+1)).position;\nvar t = thisLayer.effect(\"Slider\")(\"Slider\");\nvar $bm_rt = linear(t, pt_from, pt_to);\n"
+                            },
+                            "s": {
+                                "a": 0,
+                                "k": [
+                                    32,
+                                    32
+                                ]
+                            }
+                        },
+                        {
+                            "nm": "p2",
+                            "hd": false,
+                            "ty": "el",
+                            "p": {
+                                "a": 0,
+                                "k": [
+                                    350,
+                                    230
+                                ],
+                                "x": "var group = thisLayer.content(\"Cubic Points\");\nvar pt_index = 2;\nvar pt_from = group.content(\"p\"+pt_index).position;\nvar pt_to = group.content(\"p\"+(pt_index+1)).position;\nvar t = thisLayer.effect(\"Slider\")(\"Slider\");\nvar $bm_rt = linear(t, pt_from, pt_to);\n"
+                            },
+                            "s": {
+                                "a": 0,
+                                "k": [
+                                    32,
+                                    32
+                                ]
+                            }
+                        },
+                        {
+                            "hd": false,
+                            "ty": "fl",
+                            "o": {
+                                "a": 0,
+                                "k": 100
+                            },
+                            "c": {
+                                "a": 0,
+                                "k": [
+                                    0.2,
+                                    0.2,
+                                    1
+                                ]
+                            }
+                        },
+                        {
+                            "hd": false,
+                            "ty": "tr",
+                            "s": {
+                                "a": 0,
+                                "k": [
+                                    100,
+                                    100
+                                ]
+                            },
+                            "o": {
+                                "a": 0,
+                                "k": 100
+                            }
+                        }
+                    ]
+                },
+                {
+                    "nm": "Quadratic Lines",
+                    "hd": false,
+                    "ty": "gr",
+                    "it": [
+                        {
+                            "ty": "sh",
+                            "ks": {
+                                "a": 0,
+                                "k": {
+                                    "i": [],
+                                    "o": [],
+                                    "v": []
+                                },
+                                "x": "var group = thisLayer.content(\"Quadratic Points\");\nvar num_points = 3;\nvar points = [];\nvar ip = [];\nvar op = [];\nfor ( var i = 0; i < num_points; i++ )\n{\n    var pos = group.content(\"p\" + i).position;\n    points.push(pos);\n    ip.push(pos);\n    op.push(pos);\n}\nvar $bm_rt = {\n    v: points,\n    i: ip,\n    o: op\n};\n"
+                            }
+                        },
+                        {
+                            "hd": false,
+                            "ty": "st",
+                            "o": {
+                                "a": 0,
+                                "k": 100
+                            },
+                            "c": {
+                                "a": 0,
+                                "k": [
+                                    0.2,
+                                    0.2,
+                                    1
+                                ]
+                            },
+                            "w": {
+                                "a": 0,
+                                "k": 10
+                            }
+                        },
+                        {
+                            "hd": false,
+                            "ty": "tr",
+                            "s": {
+                                "a": 0,
+                                "k": [
+                                    100,
+                                    100
+                                ]
+                            },
+                            "o": {
+                                "a": 0,
+                                "k": 100
+                            }
+                        }
+                    ]
+                },
+                {
+                    "nm": "Cubic Points",
+                    "hd": false,
+                    "ty": "gr",
+                    "it": [
+                        {
+                            "nm": "p0",
+                            "hd": false,
+                            "ty": "el",
+                            "p": {
+                                "a": 0,
+                                "k": [
+                                    25,
+                                    400
+                                ]
+                            },
+                            "s": {
+                                "a": 0,
+                                "k": [
+                                    32,
+                                    32
+                                ]
+                            }
+                        },
+                        {
+                            "nm": "p1",
+                            "hd": false,
+                            "ty": "el",
+                            "p": {
+                                "a": 0,
+                                "k": [
+                                    130,
+                                    170
+                                ]
+                            },
+                            "s": {
+                                "a": 0,
+                                "k": [
+                                    32,
+                                    32
+                                ]
+                            }
+                        },
+                        {
+                            "nm": "p2",
+                            "hd": false,
+                            "ty": "el",
+                            "p": {
+                                "a": 0,
+                                "k": [
+                                    350,
+                                    230
+                                ]
+                            },
+                            "s": {
+                                "a": 0,
+                                "k": [
+                                    32,
+                                    32
+                                ]
+                            }
+                        },
+                        {
+                            "nm": "p3",
+                            "hd": false,
+                            "ty": "el",
+                            "p": {
+                                "a": 0,
+                                "k": [
+                                    485,
+                                    400
+                                ]
+                            },
+                            "s": {
+                                "a": 0,
+                                "k": [
+                                    32,
+                                    32
+                                ]
+                            }
+                        },
+                        {
+                            "hd": false,
+                            "ty": "fl",
+                            "o": {
+                                "a": 0,
+                                "k": 100
+                            },
+                            "c": {
+                                "a": 0,
+                                "k": [
+                                    0,
+                                    0,
+                                    0
+                                ]
+                            }
+                        },
+                        {
+                            "hd": false,
+                            "ty": "tr",
+                            "s": {
+                                "a": 0,
+                                "k": [
+                                    100,
+                                    100
+                                ]
+                            },
+                            "o": {
+                                "a": 0,
+                                "k": 100
+                            }
+                        }
+                    ]
+                },
+                {
+                    "nm": "Cubic Lines",
+                    "hd": false,
+                    "ty": "gr",
+                    "it": [
+                        {
+                            "ty": "sh",
+                            "ks": {
+                                "a": 0,
+                                "k": {
+                                    "i": [],
+                                    "o": [],
+                                    "v": []
+                                },
+                                "x": "var group = thisLayer.content(\"Cubic Points\");\nvar num_points = 4;\nvar points = [];\nvar ip = [];\nvar op = [];\nfor ( var i = 0; i < num_points; i++ )\n{\n    var pos = group.content(\"p\" + i).position;\n    points.push(pos);\n    ip.push(pos);\n    op.push(pos);\n}\nvar $bm_rt = {\n    v: points,\n    i: ip,\n    o: op\n};\n"
+                            }
+                        },
+                        {
+                            "hd": false,
+                            "ty": "st",
+                            "o": {
+                                "a": 0,
+                                "k": 100
+                            },
+                            "c": {
+                                "a": 0,
+                                "k": [
+                                    0,
+                                    0,
+                                    0
+                                ]
+                            },
+                            "w": {
+                                "a": 0,
+                                "k": 10
+                            }
+                        },
+                        {
+                            "hd": false,
+                            "ty": "tr",
+                            "s": {
+                                "a": 0,
+                                "k": [
+                                    100,
+                                    100
+                                ]
+                            },
+                            "o": {
+                                "a": 0,
+                                "k": 100
+                            }
+                        }
+                    ]
+                },
+                {
+                    "nm": "Bezier Result",
+                    "hd": false,
+                    "ty": "gr",
+                    "it": [
+                        {
+                            "ty": "sh",
+                            "ks": {
+                                "a": 0,
+                                "k": {
+                                    "i": [],
+                                    "o": [],
+                                    "v": []
+                                },
+                                "x": "var group = thisLayer.content(\"Cubic Points\");\nvar $bm_rt = {\n    v: [group.content(\"p0\").position, group.content(\"p3\").position],\n    i: [[0, 0], group.content(\"p2\").position],\n    o: [group.content(\"p1\").position, [0,0]]\n};\n"
+                            }
+                        },
+                        {
+                            "hd": false,
+                            "ty": "st",
+                            "o": {
+                                "a": 0,
+                                "k": 100
+                            },
+                            "c": {
+                                "a": 0,
+                                "k": [
+                                    0,
+                                    0.8,
+                                    0
+                                ]
+                            },
+                            "w": {
+                                "a": 0,
+                                "k": 10
+                            }
+                        },
+                        {
+                            "hd": false,
+                            "ty": "tr",
+                            "s": {
+                                "a": 0,
+                                "k": [
+                                    100,
+                                    100
+                                ]
+                            },
+                            "o": {
+                                "a": 0,
+                                "k": 100
+                            }
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+}

@@ -8,6 +8,7 @@ import {
   Transform,
 } from '../components';
 import { safeAddComponent } from '../history';
+import { Canvas, inferXYWidthHeight, PathSerializedNode } from '..';
 
 function isFiniteNumber(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value);
@@ -59,12 +60,14 @@ export class AnimationSystem extends System {
   animations = this.query((q) =>
     q.current
       .with(AnimationPlayer)
-      .using(AnimationPlayer).write
-      .using(Transform, Opacity, FillSolid, Stroke, Path).write,
+      .using(Canvas).read
+      .using(Transform, Opacity, FillSolid, Stroke, Path, AnimationPlayer).write,
   );
 
   execute(): void {
-    const now = Date.now();
+    // 与 AnimationController.play/tick 默认时间基准一致（performance.now），避免与 UI 里无参
+    // controller.play() 混用 Date.now 导致 pause 后 resume 时 startTime 算错、像从头播放。
+    const now = performance.now();
 
     this.animations.current.forEach((entity) => {
       const player = entity.write(AnimationPlayer);
@@ -121,7 +124,12 @@ export class AnimationSystem extends System {
           || isFiniteNumber(values.scaleX)
           || isFiniteNumber(values.scaleY)
           || isFiniteNumber(values.rotation);
-        if (hasTransformOrigin && hasTransformAnimation) {
+        // Pivot compensation keeps the origin fixed in world space when only scale/rotation are
+        // keyframed. If x/y are interpolated (e.g. Lottie position + scale), must use those — do not
+        // overwrite with computeTranslationWithTransformOrigin, which ignores values.x/y.
+        const translationFromKeyframes =
+          isFiniteNumber(values.x) && isFiniteNumber(values.y);
+        if (hasTransformOrigin && hasTransformAnimation && !translationFromKeyframes) {
           const compensated = computeTranslationWithTransformOrigin({
             currentTranslation,
             currentScale,
@@ -181,7 +189,21 @@ export class AnimationSystem extends System {
       }
 
       if (typeof values.d === 'string') {
-        safeAddComponent(entity, Path, { d: values.d });
+        const transform = entity.write(Transform);
+
+        const path = {
+          d: values.d,
+        }
+        const inferred = inferXYWidthHeight({
+          ...path,
+          id: '',
+          type: 'path',
+          zIndex: 0,
+        }) as PathSerializedNode;
+        transform.translation.x = inferred.x;
+        transform.translation.y = inferred.y;
+
+        safeAddComponent(entity, Path, { d: inferred.d });
       }
     });
   }
