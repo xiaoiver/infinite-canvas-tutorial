@@ -293,11 +293,11 @@ function reconcileEcsTranslationFromLottieP(
     );
     const pivotShape =
       element.type === 'ellipse'
-      && element.shape
-      && typeof px === 'number'
-      && typeof py === 'number'
-      && Number.isFinite(px)
-      && Number.isFinite(py)
+        && element.shape
+        && typeof px === 'number'
+        && typeof py === 'number'
+        && Number.isFinite(px)
+        && Number.isFinite(py)
         ? { ...element.shape, cx: px, cy: py }
         : element.shape;
     const { x: kAx, y: kAy } = lottieLayerAnchorToLocalPivot(
