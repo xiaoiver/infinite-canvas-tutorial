@@ -2,6 +2,7 @@
 outline: deep
 description: 'Learn to generate diagrams from text on an infinite canvas: parse Mermaid flowcharts, D2, and draw.io syntax into a scene graph, using mermaid-to-excalidraw, @terrastruct/d2, and mxgraph for hand-drawn style diagrams.'
 ---
+
 <script setup>
 import Mermaid from '../components/Mermaid.vue'
 import MermaidRough from '../components/MermaidRough.vue'
@@ -119,7 +120,7 @@ const {
 } = graph;
 ```
 
-```d2
+```txt
 x -> y: hello world
 ```
 
@@ -127,7 +128,7 @@ x -> y: hello world
 
 ### Container
 
-```d2
+```txt
 good chips: {
   doritos
   ruffles
@@ -142,7 +143,7 @@ chocolate.chip.cookies
 
 ### Connections
 
-```d2
+```txt
 dogs -> cats -> mice: chase
 replica 1 <-> replica 2
 a -> b: To err is human, to moo bovine {

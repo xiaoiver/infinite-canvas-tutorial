@@ -67,16 +67,36 @@ export const pendingCanvases: {
 //   },
 // };
 
+export type MermaidPasteStyleFn = (nodes: SerializedNode[]) => void;
+
 /**
  * Emit CustomEvents for the canvas.
  */
 export class ExtendedAPI extends API {
+  #mermaidPasteStyler?: MermaidPasteStyleFn;
+
   constructor(
     stateManagement: StateManagement,
     commands: Commands,
     public element: LitElement,
   ) {
     super(stateManagement, commands);
+  }
+
+  registerMermaidPasteStyler(fn: MermaidPasteStyleFn): void {
+    this.#mermaidPasteStyler = fn;
+  }
+
+  unregisterMermaidPasteStyler(): void {
+    this.#mermaidPasteStyler = undefined;
+  }
+
+  /**
+   * Invokes the styler from {@link registerMermaidPasteStyler}, if any.
+   * Used by the Mermaid paste handler (`tryPasteMermaid` in mermaid-paste).
+   */
+  applyMermaidPasteStyler(nodes: SerializedNode[]): void {
+    this.#mermaidPasteStyler?.(nodes);
   }
 
   resizeCanvas(width: number, height: number) {
