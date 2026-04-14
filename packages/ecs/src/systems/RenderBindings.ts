@@ -110,7 +110,10 @@ export class RenderBindings extends System {
       const { canvas } = camera.read(Camera);
       const { api } = canvas.read(Canvas);
 
-      const edge = api.getNodeByEntity(edgeEntity) as EdgeState;
+      const edge = api.getNodeByEntity(edgeEntity) as EdgeState | undefined;
+      if (!edge) {
+        return;
+      }
 
       let pathPreserve: EdgePathPreserveSnapshot | undefined;
       if (edge.type === 'path' || edge.type === 'rough-path') {

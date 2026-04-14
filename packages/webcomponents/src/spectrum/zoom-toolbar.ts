@@ -87,10 +87,16 @@ export class ZoomToolbar extends LitElement {
   };
 
   private toggleFullScreen() {
-    if (!document.fullscreenElement) {
-      document.documentElement.requestFullscreen();
-    } else if (document.exitFullscreen) {
-      document.exitFullscreen();
+    const canvasHost = this.api?.element;
+    if (!canvasHost) {
+      return;
+    }
+    if (document.fullscreenElement === canvasHost) {
+      void document.exitFullscreen?.();
+    } else if (document.fullscreenElement) {
+      void document.exitFullscreen?.();
+    } else {
+      void canvasHost.requestFullscreen();
     }
   }
 

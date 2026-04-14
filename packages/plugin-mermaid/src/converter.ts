@@ -29,6 +29,22 @@ import {
   Text,
 } from '@excalidraw/mermaid-to-excalidraw/dist/elementSkeleton';
 
+/** Mermaid FlowEdge.type：双向为 double_arrow_point / double_arrow_circle / double_arrow_cross 等 */
+function markersFromMermaidFlowEdgeType(
+  edgeType: string | undefined,
+): Pick<PolylineSerializedNode, 'markerStart' | 'markerEnd' | 'markerFactor'> {
+  if (edgeType?.startsWith('double_arrow')) {
+    return {
+      markerStart: 'line',
+      markerEnd: 'line',
+      markerFactor: 4,
+    };
+  }
+  return {
+    markerEnd: 'line',
+  };
+}
+
 export function convertParsedMermaidDataToSerializedNodes(
   parsedMermaidData: Flowchart | Sequence,
   options: { fontSize: number },
@@ -61,7 +77,12 @@ function convertFlowchartToSerializedNodes(
 ): SerializedNode[] {
   const { fontSize } = options;
 
-  const serializedNodes: SerializedNode[] = [];
+  const root: GSerializedNode = {
+    id: uuidv4(),
+    type: 'g',
+    zIndex: 0,
+  }
+  const serializedNodes: SerializedNode[] = [root];
   // Vertices (ParsedMermaidData uses Map; Object.values(Map) is always [].)
   Object.values(vertices).forEach((vertex: Vertex) => {
     if (!vertex) {
@@ -70,6 +91,7 @@ function convertFlowchartToSerializedNodes(
 
     const serializedNode: SerializedNode = {
       id: vertex.id,
+      parentId: root.id,
       type: 'rect',
       x: vertex.x,
       y: vertex.y,
@@ -148,13 +170,14 @@ function convertFlowchartToSerializedNodes(
 
     const serializedNode: PolylineSerializedNode = {
       id: edge.id,
+      parentId: root.id,
       type: 'polyline',
       fromId: edge.start,
       toId: edge.end,
       stroke: 'black',
       strokeWidth: 2,
       hitStrokeWidth: 2 * 4,
-      markerEnd: 'line',
+      ...markersFromMermaidFlowEdgeType(edge.type),
       edgeStyle: EdgeStyle.ORTHOGONAL,
       zIndex: 0,
     };
@@ -198,7 +221,12 @@ function convertSequenceToSerializedNodes(
 ): SerializedNode[] {
   const { fontSize } = options;
 
-  const serializedNodes: SerializedNode[] = [];
+  const root: GSerializedNode = {
+    id: uuidv4(),
+    type: 'g',
+    zIndex: 0,
+  }
+  const serializedNodes: SerializedNode[] = [root];
 
   Object.values(nodes).forEach((node) => {
     if (!node || !node.length) {

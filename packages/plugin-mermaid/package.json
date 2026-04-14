@@ -54,7 +54,7 @@
   },
   "dependencies": {
     "@antv/util": "^3.3.10",
-    "@excalidraw/mermaid-to-excalidraw": "2.1.1",
+    "@excalidraw/mermaid-to-excalidraw": "^2.2.2",
     "@spectrum-web-components/icon": "^1.11.2",
     "@spectrum-web-components/icons-workflow": "^1.11.2",
     "@lit/context": "^1.1.2",
@@ -69,8 +69,7 @@
     "@lit/localize-tools": "^0.8.1"
   },
   "peerDependencies": {
-    "@infinite-canvas-tutorial/ecs": "workspace:*",
-    "@infinite-canvas-tutorial/webcomponents": "workspace:*"
+    "@infinite-canvas-tutorial/ecs": "workspace:*"
   },
   "publishConfig": {
     "access": "public"

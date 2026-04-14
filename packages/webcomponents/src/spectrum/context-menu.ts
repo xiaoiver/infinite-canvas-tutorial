@@ -28,6 +28,7 @@ import { ExtendedAPI } from '../API';
 import { extractExternalUrlMetadata } from '../utils/url';
 import { measureHTML } from '../utils';
 import { updateAndSelectNodes } from '../utils/common';
+import { isLikelyMermaidSyntax, tryPasteMermaid } from './mermaid-paste';
 
 const ZINDEX_OFFSET = 0.0001;
 
@@ -198,6 +199,16 @@ export async function executePaste(
         // TODO: create bookmark asset
       } else if (string.startsWith('<svg') && string.endsWith('</svg>')) {
         createSVG(api, appState, string, canvasPosition);
+      } else if (isLikelyMermaidSyntax(string)) {
+        const pasted = await tryPasteMermaid(
+          api,
+          appState,
+          string,
+          canvasPosition,
+        );
+        if (!pasted) {
+          createText(api, appState, data.text, canvasPosition);
+        }
       } else {
         // const nonEmptyLines = data.text
         // .replace(/\r?\n|\r/g, '\n')
@@ -684,6 +695,18 @@ export class ContextMenu extends LitElement {
     }
     const text = event.dataTransfer.getData('text/plain');
     if (text) {
+      const trimmed = text.trim();
+      if (
+        isLikelyMermaidSyntax(trimmed) &&
+        (await tryPasteMermaid(
+          this.api,
+          this.appState,
+          trimmed,
+          canvasPosition,
+        ))
+      ) {
+        return;
+      }
       createText(this.api, this.appState, text, canvasPosition);
       return;
     }
