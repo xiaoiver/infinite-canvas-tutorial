@@ -84,7 +84,7 @@ export class ParseContext {
   /**
    * @see LoadAnimationOptions.expressionEngine
    */
-  expressionEngine: 'simple' | 'lottie-web' = 'simple';
+  expressionEngine: 'simple' | 'lottie-web' = 'lottie-web';
 
   /** Current JSON while parsing a layer (for lottie-web ExpressionManager `thisLayer`). */
   expressionLayer?: Record<string, unknown>;
@@ -592,6 +592,18 @@ function parseTransforms(
     animations,
     context,
   );
+
+  // Group/layer transform opacity is a style property (0~100 -> 0~1),
+  // not a geometric transform component.
+  parseValue(
+    ks.o as unknown as Lottie.Value,
+    attrs,
+    'style',
+    ['opacity'],
+    animations,
+    context,
+    (val) => val / 100,
+  );
 }
 
 function isGradientFillOrStroke(
@@ -916,6 +928,51 @@ function parseShapeEllipse(
 }
 
 function parseShapeLayer(layer: Lottie.ShapeLayer, context: ParseContext) {
+  const GROUP_TRANSFORM_ATTR_KEYS = new Set([
+    'x',
+    'y',
+    'scaleX',
+    'scaleY',
+    'rotation',
+    'anchorX',
+    'anchorY',
+    'skew',
+    'skewAxis',
+  ]);
+
+  const stripGroupTransformAttrs = <T extends CustomElementOption>(el: T): T => {
+    const next = { ...el } as Record<string, any>;
+    GROUP_TRANSFORM_ATTR_KEYS.forEach((key) => {
+      if (key in next) {
+        delete next[key];
+      }
+    });
+    return next as T;
+  };
+
+  const pickGroupTransformAttrs = (
+    attrs: Record<string, any>,
+  ): Partial<CustomElementOption> => {
+    const out: Record<string, any> = {};
+    GROUP_TRANSFORM_ATTR_KEYS.forEach((key) => {
+      if (typeof attrs[key] === 'number' && Number.isFinite(attrs[key])) {
+        out[key] = attrs[key];
+      }
+    });
+    return out;
+  };
+
+  const isGroupTransformAnimationTrack = (animation: KeyframeAnimation): boolean =>
+    animation.keyframes.some((kf) => {
+      const payload = Object.keys(kf).filter(
+        (k) => k !== 'offset' && k !== 'easing',
+      );
+      if (payload.some((k) => GROUP_TRANSFORM_ATTR_KEYS.has(k))) {
+        return true;
+      }
+      return false;
+    });
+
   function tryCreateShape(
     shape: Lottie.ShapeElement,
     keyframeAnimations: KeyframeAnimation[],
@@ -1020,6 +1077,7 @@ function parseShapeLayer(layer: Lottie.ShapeLayer, context: ParseContext) {
       attrs: Record<string, any>;
       keyframeAnimations: KeyframeAnimation[];
     },
+    keepTransformOnGroup = false,
   ) {
     const ecEls: CustomElementOption[] = [];
     const attrs: Record<string, any> = {};
@@ -1047,6 +1105,7 @@ function parseShapeLayer(layer: Lottie.ShapeLayer, context: ParseContext) {
               (shape as Lottie.GroupShapeElement).it,
               // Modifiers will be applied to all childrens.
               modifiers,
+              true,
             ),
           };
           break;
@@ -1107,11 +1166,12 @@ function parseShapeLayer(layer: Lottie.ShapeLayer, context: ParseContext) {
 
     ecEls.forEach((el, idx) => {
       // Apply modifiers first
-      el = {
+      const merged = {
         ...el,
         ...filterUndefined(modifiers.attrs),
         ...attrs,
       };
+      el = keepTransformOnGroup ? stripGroupTransformAttrs(merged) : merged;
 
       if (keyframeAnimations.length || modifiers.keyframeAnimations.length) {
         const ownRange = (el as CustomElementOption & { _ownKfRange?: [number, number] })
@@ -1133,10 +1193,40 @@ function parseShapeLayer(layer: Lottie.ShapeLayer, context: ParseContext) {
             ...keyframeAnimations,
           ];
         }
+        if (keepTransformOnGroup && el.keyframeAnimation?.length) {
+          el.keyframeAnimation = el.keyframeAnimation.filter(
+            (animation) => !isGroupTransformAnimationTrack(animation),
+          );
+          if (!el.keyframeAnimation.length) {
+            delete el.keyframeAnimation;
+          }
+        }
       }
+
+      applyGroupOpacityToChildren(el);
 
       ecEls[idx] = el;
     });
+    if (keepTransformOnGroup) {
+      const groupTransformAttrs = pickGroupTransformAttrs(attrs);
+      const groupTransformAnimations = keyframeAnimations.filter(
+        (animation) => isGroupTransformAnimationTrack(animation),
+      );
+      if (
+        Object.keys(groupTransformAttrs).length
+        || groupTransformAnimations.length
+      ) {
+        const groupNode: CustomElementOption = {
+          type: 'g',
+          children: ecEls,
+          ...(groupTransformAttrs as CustomElementOption),
+        };
+        if (groupTransformAnimations.length) {
+          groupNode.keyframeAnimation = groupTransformAnimations;
+        }
+        return [groupNode];
+      }
+    }
     return ecEls;
   }
 
@@ -1158,6 +1248,124 @@ function traverse(
     el.children?.forEach((child) => {
       traverse(child, cb);
     });
+  }
+}
+
+function pickOpacityFromKeyframe(keyframe: Record<string, any>) {
+  if (typeof keyframe.opacity === 'number' && Number.isFinite(keyframe.opacity)) {
+    return keyframe.opacity;
+  }
+  if (
+    keyframe.style
+    && typeof keyframe.style === 'object'
+    && typeof keyframe.style.opacity === 'number'
+    && Number.isFinite(keyframe.style.opacity)
+  ) {
+    return keyframe.style.opacity;
+  }
+}
+
+function extractOpacityAnimations(
+  animations: KeyframeAnimation[] | undefined,
+): KeyframeAnimation[] {
+  if (!animations?.length) {
+    return [];
+  }
+  const result: KeyframeAnimation[] = [];
+  animations.forEach((animation) => {
+    const opacityKeyframes = animation.keyframes
+      .map((keyframe) => {
+        const opacity = pickOpacityFromKeyframe(keyframe as Record<string, any>);
+        if (typeof opacity !== 'number') {
+          return null;
+        }
+        return {
+          offset: keyframe.offset,
+          style: { opacity },
+        };
+      })
+      .filter((keyframe): keyframe is { offset: number; style: { opacity: number } } => !!keyframe);
+    if (opacityKeyframes.length) {
+      result.push({
+        ...animation,
+        keyframes: opacityKeyframes,
+      });
+    }
+  });
+  return result;
+}
+
+function stripOpacityAnimations(
+  animations: KeyframeAnimation[] | undefined,
+): KeyframeAnimation[] {
+  if (!animations?.length) {
+    return [];
+  }
+  return animations
+    .map((animation) => {
+      const stripped = animation.keyframes
+        .map((keyframe) => {
+          const next = { ...keyframe } as Record<string, any>;
+          delete next.opacity;
+          if (next.style && typeof next.style === 'object') {
+            next.style = { ...next.style };
+            delete next.style.opacity;
+            if (!Object.keys(next.style).length) {
+              delete next.style;
+            }
+          }
+          const hasPayload = Object.keys(next).some((key) => key !== 'offset');
+          return hasPayload ? next : null;
+        })
+        .filter((keyframe): keyframe is KeyframeAnimation['keyframes'][number] => !!keyframe);
+      if (!stripped.length) {
+        return null;
+      }
+      return {
+        ...animation,
+        keyframes: stripped,
+      };
+    })
+    .filter((animation): animation is KeyframeAnimation => !!animation);
+}
+
+function applyGroupOpacityToChildren(el: CustomElementOption) {
+  if (el.type !== 'g') {
+    return;
+  }
+
+  const staticOpacity = el.style?.opacity;
+  const hasStaticOpacity = typeof staticOpacity === 'number' && Number.isFinite(staticOpacity);
+  const opacityAnimations = extractOpacityAnimations(el.keyframeAnimation);
+  if (!hasStaticOpacity && !opacityAnimations.length) {
+    return;
+  }
+
+  traverse(el, (current) => {
+    if (current === el || current.type === 'g') {
+      return;
+    }
+    current.style = current.style || {};
+    if (hasStaticOpacity) {
+      const baseOpacity = typeof current.style.opacity === 'number' ? current.style.opacity : 1;
+      current.style.opacity = baseOpacity * staticOpacity;
+    }
+    if (opacityAnimations.length) {
+      current.keyframeAnimation = (current.keyframeAnimation || []).concat(opacityAnimations);
+    }
+  });
+
+  if (el.style && typeof el.style === 'object' && 'opacity' in el.style) {
+    delete el.style.opacity;
+    if (!Object.keys(el.style).length) {
+      delete el.style;
+    }
+  }
+  if (el.keyframeAnimation?.length) {
+    el.keyframeAnimation = stripOpacityAnimations(el.keyframeAnimation);
+    if (!el.keyframeAnimation.length) {
+      delete el.keyframeAnimation;
+    }
   }
 }
 
@@ -1373,7 +1581,7 @@ const DEFAULT_LOAD_ANIMATION_OPTIONS: LoadAnimationOptions = {
   autoplay: false,
   fill: 'both',
   expressions: true,
-  expressionEngine: 'simple',
+  expressionEngine: 'lottie-web',
 };
 export function parse(
   data: Lottie.Animation,

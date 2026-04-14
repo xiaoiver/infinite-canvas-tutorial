@@ -154,11 +154,17 @@ export class AnimationSystem extends System {
         || isFiniteNumber(values.fillOpacity)
         || isFiniteNumber(values.strokeOpacity)
       ) {
-        safeAddComponent(entity, Opacity, {
-          opacity: isFiniteNumber(values.opacity) ? values.opacity : undefined,
-          fillOpacity: isFiniteNumber(values.fillOpacity) ? values.fillOpacity : undefined,
-          strokeOpacity: isFiniteNumber(values.strokeOpacity) ? values.strokeOpacity : undefined,
-        });
+        const opacityPatch: Partial<Opacity> = {};
+        if (isFiniteNumber(values.opacity)) {
+          opacityPatch.opacity = values.opacity;
+        }
+        if (isFiniteNumber(values.fillOpacity)) {
+          opacityPatch.fillOpacity = values.fillOpacity;
+        }
+        if (isFiniteNumber(values.strokeOpacity)) {
+          opacityPatch.strokeOpacity = values.strokeOpacity;
+        }
+        safeAddComponent(entity, Opacity, opacityPatch);
       }
 
       if (typeof values.fill === 'string') {

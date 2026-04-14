@@ -85,6 +85,28 @@ function lottieLayerAnchorToLocalPivot(
       };
     }
   }
+  if (type === 'path') {
+    const verts = shape?.v;
+    if (Array.isArray(verts) && verts.length > 0) {
+      let minX = Infinity;
+      let minY = Infinity;
+      for (let i = 0; i < verts.length; i++) {
+        const p = verts[i];
+        const px = Array.isArray(p) ? p[0] : undefined;
+        const py = Array.isArray(p) ? p[1] : undefined;
+        if (Number.isFinite(px) && Number.isFinite(py)) {
+          minX = Math.min(minX, px);
+          minY = Math.min(minY, py);
+        }
+      }
+      if (Number.isFinite(minX) && Number.isFinite(minY)) {
+        return {
+          x: layerAnchorX - minX,
+          y: layerAnchorY - minY,
+        };
+      }
+    }
+  }
   return { x: layerAnchorX, y: layerAnchorY };
 }
 
@@ -582,7 +604,11 @@ export class LottieAnimation {
 
     if (parentId) {
       displayObject.parentId = parentId;
+      displayObject.locked = true;
     }
+
+
+    displayObject.version = 0;
 
     this.displayObjectElementMap.set(displayObject, element);
 
@@ -708,6 +734,7 @@ export class LottieAnimation {
    * render Lottie Group to canvas or a mounted display object
    */
   render(api: API) {
+    console.log(this.displayObjects);
     api.updateNodes(this.displayObjects);
 
     this.displayObjects.forEach((child) => {
@@ -816,7 +843,20 @@ export class LottieAnimation {
               );
 
               if (existedKeyframe) {
+                const mergedStyle
+                  = existedKeyframe.style
+                    && currentKeyframe.style
+                    && typeof existedKeyframe.style === 'object'
+                    && typeof currentKeyframe.style === 'object'
+                    ? {
+                      ...(existedKeyframe.style as Record<string, unknown>),
+                      ...(currentKeyframe.style as Record<string, unknown>),
+                    }
+                    : undefined;
                 Object.assign(existedKeyframe, currentKeyframe);
+                if (mergedStyle) {
+                  existedKeyframe.style = mergedStyle;
+                }
               } else {
                 existingKeyframes.push({ ...currentKeyframe });
               }
@@ -833,6 +873,8 @@ export class LottieAnimation {
             .map(([merged, options]) => {
               // format interpolated properties, e.g. scaleX -> transform
               const formatted = this.formatKeyframes(merged, child, element);
+
+              console.log('formatted', formatted, options, child);
 
               if (formatted.length) {
                 // @ts-expect-error 

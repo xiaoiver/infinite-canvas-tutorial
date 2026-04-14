@@ -3,6 +3,21 @@
  */
 import type * as Lottie from './type';
 
+/**
+ * Bodymovin stores scalar properties as one-element arrays, e.g. `"s": [0]` / `[1]`.
+ * Using raw `s` in `v0 + (v1 - v0) * u` breaks: `[0] + 0.5` string-concatenates instead of adding.
+ */
+export function scalarKeyframeValue(s: unknown): number {
+  if (typeof s === 'number' && Number.isFinite(s)) {
+    return s;
+  }
+  if (Array.isArray(s) && s.length > 0) {
+    const n = Number(s[0]);
+    return Number.isFinite(n) ? n : 0;
+  }
+  return 0;
+}
+
 export function sampleScalarAtFrame(
   kfs: Lottie.OffsetKeyframe[],
   frame: number,
@@ -11,25 +26,25 @@ export function sampleScalarAtFrame(
     return 0;
   }
   if (frame <= kfs[0].t) {
-    return kfs[0].s as number;
+    return scalarKeyframeValue(kfs[0].s);
   }
   for (let i = 0; i < kfs.length - 1; i++) {
     const cur = kfs[i];
     const next = kfs[i + 1];
     if (frame >= cur.t && frame < next.t) {
       if (cur.h === 1) {
-        return cur.s as number;
+        return scalarKeyframeValue(cur.s);
       }
       const t0 = cur.t;
       const t1 = next.t;
-      const v0 = cur.s as number;
-      const v1 = next.s as number;
+      const v0 = scalarKeyframeValue(cur.s);
+      const v1 = scalarKeyframeValue(next.s);
       const u = (frame - t0) / (t1 - t0);
       return v0 + (v1 - v0) * u;
     }
   }
   const last = kfs[kfs.length - 1];
-  return last.s as number;
+  return scalarKeyframeValue(last.s);
 }
 
 export function sampleVectorAtFrame(

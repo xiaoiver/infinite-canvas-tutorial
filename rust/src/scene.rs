@@ -423,6 +423,112 @@ fn marker_enabled(marker: &str) -> bool {
     matches!(marker, "line" | "triangle" | "diamond")
 }
 
+fn degenerate_closed_dot_center(path: &BezPath) -> Option<Point> {
+    let elements = path.elements();
+    if elements.is_empty() {
+        return None;
+    }
+
+    let mut move_to_count = 0usize;
+    let mut has_close = false;
+    let mut min_x = f64::INFINITY;
+    let mut min_y = f64::INFINITY;
+    let mut max_x = f64::NEG_INFINITY;
+    let mut max_y = f64::NEG_INFINITY;
+    let mut first_move: Option<Point> = None;
+
+    let mut include_point = |p: Point| {
+        min_x = min_x.min(p.x);
+        min_y = min_y.min(p.y);
+        max_x = max_x.max(p.x);
+        max_y = max_y.max(p.y);
+    };
+
+    for el in elements {
+        match *el {
+            PathEl::MoveTo(p) => {
+                move_to_count += 1;
+                if first_move.is_none() {
+                    first_move = Some(p);
+                }
+                include_point(p);
+            }
+            PathEl::LineTo(p) => include_point(p),
+            PathEl::QuadTo(p1, p2) => {
+                include_point(p1);
+                include_point(p2);
+            }
+            PathEl::CurveTo(p1, p2, p3) => {
+                include_point(p1);
+                include_point(p2);
+                include_point(p3);
+            }
+            PathEl::ClosePath => {
+                has_close = true;
+            }
+        }
+    }
+
+    if move_to_count != 1 || !has_close || !min_x.is_finite() || !min_y.is_finite() {
+        return None;
+    }
+
+    let w = max_x - min_x;
+    let h = max_y - min_y;
+    if w.abs() <= 1e-9 && h.abs() <= 1e-9 {
+        return first_move;
+    }
+    None
+}
+
+fn strip_redundant_closepath(path: &BezPath) -> BezPath {
+    const EPS: f64 = 1e-9;
+    let elements = path.elements();
+    if elements.is_empty() {
+        return path.clone();
+    }
+
+    let mut out: Vec<PathEl> = Vec::with_capacity(elements.len());
+    let mut subpath_start: Option<Point> = None;
+    let mut current: Option<Point> = None;
+
+    for el in elements {
+        match *el {
+            PathEl::MoveTo(p) => {
+                subpath_start = Some(p);
+                current = Some(p);
+                out.push(PathEl::MoveTo(p));
+            }
+            PathEl::LineTo(p) => {
+                current = Some(p);
+                out.push(PathEl::LineTo(p));
+            }
+            PathEl::QuadTo(p1, p2) => {
+                current = Some(p2);
+                out.push(PathEl::QuadTo(p1, p2));
+            }
+            PathEl::CurveTo(p1, p2, p3) => {
+                current = Some(p3);
+                out.push(PathEl::CurveTo(p1, p2, p3));
+            }
+            PathEl::ClosePath => {
+                let redundant = match (subpath_start, current) {
+                    (Some(s), Some(c)) => (c.x - s.x).abs() <= EPS && (c.y - s.y).abs() <= EPS,
+                    _ => false,
+                };
+                if !redundant {
+                    out.push(PathEl::ClosePath);
+                }
+                if let Some(s) = subpath_start {
+                    current = Some(s);
+                }
+            }
+        }
+    }
+
+    BezPath::from_vec(out)
+}
+
 fn stroke_marker_path(
     scene: &mut Scene,
     shape_transform: Affine,
@@ -1096,18 +1202,57 @@ pub fn add_js_shape_to_scene(
                     let center = bbox.center();
                     bez_path.apply_affine(Affine::scale_about(1.0 / scale, center));
                 }
+                let stroke_config = stroke.as_ref().map(|s| {
+                    let width = if stroke_attenuation { s.width / scale } else { s.width };
+                    let color = apply_opacity_to_color(s.color, opacity, stroke_opacity);
+                    (width, color, &s.alignment)
+                });
+
+                if let Some(center) = degenerate_closed_dot_center(&bez_path) {
+                    let fill_color = apply_opacity_to_color(fill, opacity, fill_opacity);
+                    let dot_radius = stroke_config
+                        .as_ref()
+                        .map(|(sw, _, _)| (sw / 2.0).max(0.75))
+                        .unwrap_or(0.75);
+                    let dot = Ellipse::new(center, Vec2::new(dot_radius, dot_radius), 0.0);
+
+                    if let Some((_, stroke_color, _)) = stroke_config {
+                        if stroke_color[3] > 0.0 {
+                            scene.fill(
+                                Fill::NonZero,
+                                shape_transform,
+                                Color::new(stroke_color),
+                                None,
+                                &dot,
+                            );
+                        } else if fill_color[3] > 0.0 {
+                            scene.fill(
+                                Fill::NonZero,
+                                shape_transform,
+                                Color::new(fill_color),
+                                None,
+                                &dot,
+                            );
+                        }
+                    } else if fill_color[3] > 0.0 {
+                        scene.fill(
+                            Fill::NonZero,
+                            shape_transform,
+                            Color::new(fill_color),
+                            None,
+                            &dot,
+                        );
+                    }
+                    return;
+                }
+
                 let fill_mode = if fill_rule.as_str() == "evenodd" {
                     Fill::EvenOdd
                 } else {
                     Fill::NonZero
                 };
                 let fill_mult = opacity * fill_opacity;
-
-                let stroke_config = stroke.as_ref().map(|s| {
-                    let width = if stroke_attenuation { s.width / scale } else { s.width };
-                    let color = apply_opacity_to_color(s.color, opacity, stroke_opacity);
-                    (width, color, &s.alignment)
-                });
+                let stroke_bez_path = strip_redundant_closepath(&bez_path);
 
                 match stroke_config {
                     Some((sw, _, StrokeAlignment::Inner)) => {
@@ -1125,7 +1270,7 @@ pub fn add_js_shape_to_scene(
                             let stroke_color = apply_opacity_to_color(s.color, opacity, stroke_opacity);
                             let kurbo_stroke = s.to_kurbo_stroke_with_width(sw);
                             scene.push_clip_layer(fill_mode, shape_transform, &bez_path);
-                            scene.stroke(&kurbo_stroke, shape_transform, Color::new(stroke_color), None, &bez_path);
+                            scene.stroke(&kurbo_stroke, shape_transform, Color::new(stroke_color), None, &stroke_bez_path);
                             scene.pop_layer();
                         }
                     }
@@ -1133,7 +1278,7 @@ pub fn add_js_shape_to_scene(
                         if let Some(ref s) = stroke {
                             let stroke_color = apply_opacity_to_color(s.color, opacity, stroke_opacity);
                             let kurbo_stroke = s.to_kurbo_stroke_with_width(sw);
-                            scene.stroke(&kurbo_stroke, shape_transform, Color::new(stroke_color), None, &bez_path);
+                            scene.stroke(&kurbo_stroke, shape_transform, Color::new(stroke_color), None, &stroke_bez_path);
                         }
                         if let Some(ref grads) = fill_gradients {
                             for g in grads.iter().rev() {
@@ -1161,7 +1306,7 @@ pub fn add_js_shape_to_scene(
                             if let Some(ref s) = stroke {
                                 let stroke_color = apply_opacity_to_color(s.color, opacity, stroke_opacity);
                                 let kurbo_stroke = s.to_kurbo_stroke_with_width(sw);
-                                scene.stroke(&kurbo_stroke, shape_transform, Color::new(stroke_color), None, &bez_path);
+                                scene.stroke(&kurbo_stroke, shape_transform, Color::new(stroke_color), None, &stroke_bez_path);
                             }
                         }
                     }
@@ -1172,7 +1317,7 @@ pub fn add_js_shape_to_scene(
                         || marker_enabled(marker_end.as_str()))
                 {
                     if let Some(ref s) = stroke {
-                        if let Some(((sx, sy), start_angle, (ex, ey), end_angle)) = path_start_end_tangents(&bez_path) {
+                        if let Some(((sx, sy), start_angle, (ex, ey), end_angle)) = path_start_end_tangents(&stroke_bez_path) {
                             let sw = if stroke_attenuation { s.width / scale } else { s.width };
                             let stroke_color = apply_opacity_to_color(s.color, opacity, stroke_opacity);
                             let kurbo_stroke = s.to_kurbo_stroke_with_width(sw);

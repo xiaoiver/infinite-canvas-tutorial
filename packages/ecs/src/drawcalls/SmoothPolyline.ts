@@ -705,6 +705,11 @@ export function updateBuffer(object: Entity, useRoughStroke = true) {
         );
       })
       .flat(2);
+
+    // degenerated path, draw a circle instead
+    if (points.length === 2) {
+      points.push(points[0] + epsilon, points[1]);
+    }
   } else if (object.has(Rect)) {
     const { x, y, width, height } = object.read(Rect);
     points = [

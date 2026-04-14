@@ -55,8 +55,17 @@ type EllipsePositionExprCache = {
   elem: Record<string, unknown>;
 };
 
-/** One `initiateExpression` per shape `el` with `p.x` — reused across frames; frame comes from {@link CompMock.renderedFrame}. */
-const ellipsePositionExprCache = new WeakMap<Record<string, unknown>, EllipsePositionExprCache>();
+/**
+ * One `initiateExpression` per (ellipse `item`, {@link CompMock}) with `p.x`.
+ * Must not share cache across different `comp` instances: each bake (`bakeFramesWithExpressionManager`,
+ * path bake, …) creates its own `createCompMock`; reusing `elem`/`property` from another `comp` leaves
+ * `this.comp.renderedFrame` stale and lottie-web ExpressionManager early-returns static `value` (see
+ * `executeExpression` `frameExpressionId === elem.globalData.frameId`).
+ */
+const ellipsePositionExprCache = new WeakMap<
+  Record<string, unknown>,
+  WeakMap<CompMock, EllipsePositionExprCache>
+>();
 
 /**
  * Ellipse `position` in expressions: Bodymovin may attach `p.x`. Static {@link readMultiValue} ignores it,
@@ -74,7 +83,12 @@ function readEllipsePositionWithExpression(
     return readMultiValue(p, comp);
   }
 
-  let cache = ellipsePositionExprCache.get(item);
+  let perComp = ellipsePositionExprCache.get(item);
+  if (!perComp) {
+    perComp = new WeakMap<CompMock, EllipsePositionExprCache>();
+    ellipsePositionExprCache.set(item, perComp);
+  }
+  let cache = perComp.get(comp);
   if (!cache) {
     const elem = createElemMock(layer, comp) as Record<string, unknown>;
     (elem as { sourceRectAtTime?: () => unknown }).sourceRectAtTime = () => ({
@@ -100,7 +114,7 @@ function readEllipsePositionWithExpression(
       return readMultiValue(p, comp);
     }
     cache = { execute, property, elem };
-    ellipsePositionExprCache.set(item, cache);
+    perComp.set(comp, cache);
   }
 
   const { execute, property, elem } = cache;
