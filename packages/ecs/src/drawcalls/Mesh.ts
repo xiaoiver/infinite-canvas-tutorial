@@ -13,6 +13,7 @@ import {
   TransparentBlack,
   Texture,
   PrimitiveTopology,
+  TextureUsage,
 } from '@antv/g-device-api';
 import { Entity } from '@lastolivegames/becsy';
 import { mat3 } from 'gl-matrix';
@@ -24,13 +25,18 @@ import {
   isClockWise,
   paddingMat3,
   parseColor,
+  parseGradient,
   triangulate,
 } from '../utils';
 import {
   ComputedPoints,
+  ComputedBounds,
   Ellipse,
+  FillGradient,
   FillImage,
+  FillPattern,
   FillSolid,
+  FillTexture,
   GlobalRenderOrder,
   GlobalTransform,
   Opacity,
@@ -114,13 +120,35 @@ export class Mesh extends Drawcall {
 
     const isInstanceFillImage = this.shapes[0].has(FillImage);
     const isShapeFillImage = shape.has(FillImage);
+    const isInstanceFillGradient = this.shapes[0].has(FillGradient);
+    const isShapeFillGradient = shape.has(FillGradient);
+    const isInstanceFillPattern = this.shapes[0].has(FillPattern);
+    const isShapeFillPattern = shape.has(FillPattern);
+    const isInstanceFillTexture = this.shapes[0].has(FillTexture);
+    const isShapeFillTexture = shape.has(FillTexture);
 
     if (isInstanceFillImage !== isShapeFillImage) {
       return false;
     }
 
+    if (isInstanceFillGradient !== isShapeFillGradient) {
+      return false;
+    }
+
+    if (isInstanceFillPattern !== isShapeFillPattern) {
+      return false;
+    }
+
+    if (isInstanceFillTexture !== isShapeFillTexture) {
+      return false;
+    }
+
     if (isInstanceFillImage && isShapeFillImage) {
       return this.shapes[0].read(FillImage).src === shape.read(FillImage).src;
+    }
+
+    if (isInstanceFillGradient && isShapeFillGradient) {
+      return this.shapes[0].read(FillGradient) === shape.read(FillGradient);
     }
 
     return true;
@@ -244,7 +272,8 @@ export class Mesh extends Drawcall {
     this.createProgram(vert, frag, defines);
     if (!this.#uniformBuffer) {
       this.#uniformBuffer = this.device.createBuffer({
-        viewOrSize: Float32Array.BYTES_PER_ELEMENT * (16 + 4 + 4 + 4 + 4 + 4),
+        viewOrSize:
+          Float32Array.BYTES_PER_ELEMENT * (16 + 4 + 4 + 4 + 4 + 4 + 4),
         usage: BufferUsage.UNIFORM,
         hint: BufferFrequencyHint.DYNAMIC,
       });
@@ -294,6 +323,60 @@ export class Mesh extends Drawcall {
         },
       ],
     };
+
+    if (this.useFillImage) {
+      if (this.bindings) {
+        this.bindings.destroy();
+      }
+
+      const instance = this.shapes[0];
+
+      if (instance.has(FillGradient) || instance.has(FillPattern)) {
+        const { minX, minY, maxX, maxY } =
+          instance.read(ComputedBounds).geometryBounds;
+        const width = maxX - minX;
+        const height = maxY - minY;
+        const canvas = instance.has(FillPattern)
+          ? this.texturePool.getOrCreatePattern({
+            pattern: instance.read(FillPattern),
+            width,
+            height,
+          })
+          : this.texturePool.getOrCreateGradient({
+            gradients: parseGradient(instance.read(FillGradient).value),
+            min: [minX, minY],
+            width,
+            height,
+          });
+        const texture = this.device.createTexture({
+          format: Format.U8_RGBA_NORM,
+          width: 128,
+          height: 128,
+          usage: TextureUsage.SAMPLED,
+        });
+        texture.setImageData([canvas]);
+        this.#texture = texture;
+      } else if (instance.has(FillTexture)) {
+        this.#texture = instance.read(FillTexture).value;
+      } else if (instance.has(FillImage)) {
+        const src = instance.read(FillImage).src as ImageBitmap;
+        const texture = this.device.createTexture({
+          format: Format.U8_RGBA_NORM,
+          width: src.width,
+          height: src.height,
+          usage: TextureUsage.SAMPLED,
+        });
+        texture.setImageData([src]);
+        this.#texture = texture;
+      }
+
+      bindings.samplerBindings = [
+        {
+          texture: this.#texture,
+          sampler: this.createSampler(),
+        },
+      ];
+    }
 
     this.bindings = this.renderCache.createBindings(bindings);
   }
@@ -412,6 +495,25 @@ export class Mesh extends Drawcall {
         : { color: null, width: 0, alignment: 'center' };
     const { r: sr, g: sg, b: sb, opacity: so } = parseColor(strokeColor);
 
+    let minX = 0;
+    let minY = 0;
+    let invWidth = 0;
+    let invHeight = 0;
+    if (shape.has(FillGradient) || shape.has(FillPattern)) {
+      const { minX: gMinX, minY: gMinY, maxX: gMaxX, maxY: gMaxY } = shape.read(ComputedBounds).geometryBounds;
+      const geometryWidth = gMaxX - gMinX;
+      const geometryHeight = gMaxY - gMinY;
+      minX = gMinX;
+      minY = gMinY;
+      invWidth = geometryWidth === 0 ? 0 : 1 / geometryWidth;
+      invHeight = geometryHeight === 0 ? 0 : 1 / geometryHeight;
+    } else {
+      minX = 0;
+      minY = 0;
+      invWidth = 0;
+      invHeight = 0;
+    }
+
     const u_FillColor = [fr / 255, fg / 255, fb / 255, fo];
     const u_StrokeColor = [sr / 255, sg / 255, sb / 255, so];
     const u_ZIndexStrokeWidth = [
@@ -426,18 +528,26 @@ export class Mesh extends Drawcall {
       strokeOpacity,
       sizeAttenuation ? 1 : 0,
     ];
+    const u_FillUVRect = [minX, minY, invWidth, invHeight];
 
     if (this.isWatercolorRoughMesh()) {
       u_Opacity[1] *= 0.05;
     }
 
     return [
-      [...u_FillColor, ...u_StrokeColor, ...u_ZIndexStrokeWidth, ...u_Opacity],
+      [
+        ...u_FillColor,
+        ...u_StrokeColor,
+        ...u_ZIndexStrokeWidth,
+        ...u_Opacity,
+        ...u_FillUVRect,
+      ],
       {
         u_FillColor,
         u_StrokeColor,
         u_ZIndexStrokeWidth,
         u_Opacity,
+        u_FillUVRect,
       },
     ];
   }

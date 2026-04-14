@@ -17,6 +17,10 @@ import {
 import { color as parseD3Color } from 'd3-color';
 import { PathSerializedNode } from '../types/serialized-node';
 import { EASING_FUNCTION } from '../utils/easing';
+import {
+  parseGradient as parseCssGradient,
+  type LinearGradient as CssLinearGradient,
+} from '../utils/gradient';
 
 export type AnimationDirection = 'normal' | 'reverse' | 'alternate';
 export type AnimationFillMode = 'none' | 'forwards' | 'backwards' | 'both';
@@ -305,6 +309,176 @@ function interpolateNumber(from: number, to: number, t: number) {
   return from + (to - from) * t;
 }
 
+/** 与 {@link packages/plugin-lottie/src/parser.ts} `parseGradient` 输出的 `linear-gradient(…deg, …)` 对齐，用于运行时插值。 */
+interface ParsedLinearGradientStop {
+  /** 0–1，与 Lottie `offset` 一致 */
+  offset: number;
+  r: number;
+  g: number;
+  b: number;
+  a: number;
+}
+
+interface ParsedLinearGradient {
+  angleDeg: number;
+  stops: ParsedLinearGradientStop[];
+}
+
+function parseLinearGradientString(value: string): ParsedLinearGradient | null {
+  let parsed: ReturnType<typeof parseCssGradient>;
+  try {
+    parsed = parseCssGradient(value);
+  } catch {
+    return null;
+  }
+  if (!parsed || parsed.length === 0) {
+    return null;
+  }
+  const first = parsed[0];
+  if (!first || first.type !== 'linear-gradient') {
+    return null;
+  }
+  const linear = first as CssLinearGradient;
+  const stops: ParsedLinearGradientStop[] = linear.steps
+    .map((step) => {
+      const c = parseColor(step.color);
+      if (!c) {
+        return null;
+      }
+      // gradient.ts 的 step.offset 可能是 % / px / em；Lottie 这里主要是 %，其余类型退化到 [0,1]。
+      let offset = step.offset.value;
+      if (step.offset.type === '%') {
+        offset /= 100;
+      }
+      return {
+        offset: clamp01(offset),
+        r: c.r,
+        g: c.g,
+        b: c.b,
+        a: c.a,
+      } as ParsedLinearGradientStop;
+    })
+    .filter((s): s is ParsedLinearGradientStop => !!s);
+  if (stops.length === 0) {
+    return null;
+  }
+  return { angleDeg: linear.angle, stops };
+}
+
+function evalColorAtGradientOffset(
+  stops: ParsedLinearGradientStop[],
+  u: number,
+): Omit<ParsedLinearGradientStop, 'offset'> {
+  const sorted = [...stops].sort((a, b) => a.offset - b.offset);
+  const uu = clamp01(u);
+  if (sorted.length === 1) {
+    const s = sorted[0];
+    return { r: s.r, g: s.g, b: s.b, a: s.a };
+  }
+  if (uu <= sorted[0].offset) {
+    const s = sorted[0];
+    return { r: s.r, g: s.g, b: s.b, a: s.a };
+  }
+  const last = sorted[sorted.length - 1];
+  if (uu >= last.offset) {
+    return { r: last.r, g: last.g, b: last.b, a: last.a };
+  }
+  for (let i = 0; i < sorted.length - 1; i++) {
+    const a = sorted[i];
+    const b = sorted[i + 1];
+    if (uu >= a.offset && uu <= b.offset) {
+      const span = b.offset - a.offset;
+      const seg = span < 1e-12 ? 0 : (uu - a.offset) / span;
+      return {
+        r: interpolateNumber(a.r, b.r, seg),
+        g: interpolateNumber(a.g, b.g, seg),
+        b: interpolateNumber(a.b, b.b, seg),
+        a: interpolateNumber(a.a, b.a, seg),
+      };
+    }
+  }
+  const s = sorted[0];
+  return { r: s.r, g: s.g, b: s.b, a: s.a };
+}
+
+function resampleLinearGradientStops(
+  stops: ParsedLinearGradientStop[],
+  n: number,
+): ParsedLinearGradientStop[] {
+  if (stops.length === 0 || n < 1) {
+    return [];
+  }
+  const out: ParsedLinearGradientStop[] = [];
+  for (let i = 0; i < n; i++) {
+    const u = n === 1 ? stops[0].offset : i / (n - 1);
+    const c = evalColorAtGradientOffset(stops, u);
+    out.push({
+      offset: u,
+      r: c.r,
+      g: c.g,
+      b: c.b,
+      a: c.a,
+    });
+  }
+  return out;
+}
+
+function formatGradientStopPercent(offset: number): string {
+  const p = offset * 100;
+  const rounded = Math.round(p * 1e6) / 1e6;
+  return `${rounded}%`;
+}
+
+function serializeLinearGradient(g: ParsedLinearGradient): string {
+  const parts = g.stops.map((s) => {
+    const r = Math.round(clamp255(s.r));
+    const gch = Math.round(clamp255(s.g));
+    const b = Math.round(clamp255(s.b));
+    const a = s.a;
+    const color
+      = a < 1 - 1e-6
+        ? `rgba(${r}, ${gch}, ${b}, ${clamp01(a)})`
+        : `rgb(${r}, ${gch}, ${b})`;
+    return `${color} ${formatGradientStopPercent(s.offset)}`;
+  });
+  return `linear-gradient(${g.angleDeg}deg, ${parts.join(', ')})`;
+}
+
+/**
+ * 在两段 `linear-gradient(...)` 之间插值（角度 + 重采样后的色标）。
+ * 与 Lottie `parseGradient` 输出格式一致。
+ */
+function interpolateLinearGradientPaint(
+  from: unknown,
+  to: unknown,
+  t: number,
+): string | null {
+  if (typeof from !== 'string' || typeof to !== 'string') {
+    return null;
+  }
+  const a = parseLinearGradientString(from.trim());
+  const b = parseLinearGradientString(to.trim());
+  if (!a || !b) {
+    return null;
+  }
+  const n = Math.max(a.stops.length, b.stops.length, 2);
+  const sa = resampleLinearGradientStops(a.stops, n);
+  const sb = resampleLinearGradientStops(b.stops, n);
+  if (sa.length !== n || sb.length !== n) {
+    return null;
+  }
+  const angleDeg = interpolateNumber(a.angleDeg, b.angleDeg, t);
+  const stops: ParsedLinearGradientStop[] = sa.map((s, i) => ({
+    offset: clamp01(interpolateNumber(s.offset, sb[i].offset, t)),
+    r: interpolateNumber(s.r, sb[i].r, t),
+    g: interpolateNumber(s.g, sb[i].g, t),
+    b: interpolateNumber(s.b, sb[i].b, t),
+    a: interpolateNumber(s.a, sb[i].a, t),
+  }));
+  stops.sort((x, y) => x.offset - y.offset);
+  return serializeLinearGradient({ angleDeg, stops });
+}
+
 function parseDasharray(value: unknown): [number, number] | null {
   if (Array.isArray(value) && value.length >= 2) {
     const first = Number(value[0]);
@@ -327,6 +501,22 @@ function parseDasharray(value: unknown): [number, number] | null {
   }
 
   return null;
+}
+
+/** CSS paint that is a string but must never go through {@link normalizePath} / path morphing. */
+function isNonSvgPathPaintString(value: unknown): boolean {
+  if (typeof value !== 'string') {
+    return false;
+  }
+  const s = value.trim();
+  if (!s) {
+    return false;
+  }
+  return (
+    /^(linear|radial|conic)-gradient\(/i.test(s)
+    || /^url\(/i.test(s)
+    || /^(none|inherit|currentcolor)$/i.test(s)
+  );
 }
 
 function parsePath(path: PathSerializedNode['d'] | PathArray): { absolutePath: AbsoluteArray | []; curve: CurveArray | null } {
@@ -439,6 +629,11 @@ function interpolatePathD(from: unknown, to: unknown, t: number): string | null 
   if (!fromOk || !toOk) {
     return null;
   }
+  // `interpolateValue` runs for every animated prop; `fill` can be `linear-gradient(...)`.
+  // Those are strings but not SVG `d` — do not call `normalizePath` on them.
+  if (isNonSvgPathPaintString(from) || isNonSvgPathPaintString(to)) {
+    return null;
+  }
 
   const left = parsePath(from as PathSerializedNode['d'] | PathArray);
   const right = parsePath(to as PathSerializedNode['d'] | PathArray);
@@ -481,6 +676,11 @@ function interpolateValue(from: unknown, to: unknown, t: number) {
       b: interpolateNumber(fromColor.b, toColor.b, t),
       a: interpolateNumber(fromColor.a, toColor.a, t),
     });
+  }
+
+  const morphedLinearGradient = interpolateLinearGradientPaint(from, to, t);
+  if (morphedLinearGradient !== null) {
+    return morphedLinearGradient;
   }
 
   const morphedD = interpolatePathD(from, to, t);

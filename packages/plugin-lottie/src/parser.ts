@@ -612,6 +612,34 @@ function isGradientFillOrStroke(
   return fl.g && fl.s && fl.e;
 }
 
+function toFinitePoint(value: number[] | undefined): [number, number] {
+  const x = value?.[0];
+  const y = value?.[1];
+  return [
+    typeof x === 'number' && Number.isFinite(x) ? x : 0,
+    typeof y === 'number' && Number.isFinite(y) ? y : 0,
+  ];
+}
+
+function pickFirstArraySample(value?: { k?: any }): number[] | undefined {
+  const k = value?.k;
+  if (!Array.isArray(k) || k.length === 0) {
+    return undefined;
+  }
+
+  // static: { a:0, k:[...] }
+  if (typeof k[0] === 'number') {
+    return k as number[];
+  }
+
+  // keyframed: { a:1, k:[{ t, s:[...] }, ...] }
+  if (k[0] && typeof k[0] === 'object' && Array.isArray(k[0].s)) {
+    return k[0].s as number[];
+  }
+
+  return undefined;
+}
+
 function convertColorStops(arr: number[], count: number) {
   const colorStops = [];
   for (let i = 0; i < count * 4;) {
@@ -619,6 +647,14 @@ function convertColorStops(arr: number[], count: number) {
     const r = Math.round(arr[i++] * 255);
     const g = Math.round(arr[i++] * 255);
     const b = Math.round(arr[i++] * 255);
+    if (
+      !Number.isFinite(offset)
+      || !Number.isFinite(r)
+      || !Number.isFinite(g)
+      || !Number.isFinite(b)
+    ) {
+      continue;
+    }
     colorStops.push({
       offset,
       color: `rgb(${r}, ${g}, ${b})`,
@@ -643,15 +679,29 @@ function joinColorStops(colorStops: any[]) {
  */
 function parseGradient(
   shape: Lottie.GradientFillShape | Lottie.GradientStrokeShape,
+  gradientSample?: number[],
 ) {
-  const colorArr = shape.g.k.k as number[];
+  const colorArr = gradientSample ?? pickFirstArraySample(shape.g.k as { k?: any }) ?? [];
   const colorStops = convertColorStops(colorArr, shape.g.p);
+  if (!colorStops.length) {
+    return '#000';
+  }
+  const start = toFinitePoint(
+    isMultiDimensionalValue(shape.s)
+      ? (shape.s.k as number[])
+      : pickFirstArraySample(shape.s as { k?: any }),
+  );
+  const end = toFinitePoint(
+    isMultiDimensionalValue(shape.e)
+      ? (shape.e.k as number[])
+      : pickFirstArraySample(shape.e as { k?: any }),
+  );
   // @see https://lottiefiles.github.io/lottie-docs/constants/#gradienttype
   if (shape.t === Lottie.GradientType.Linear) {
     const angle = rad2deg(
       Math.atan2(
-        (shape.e.k[1] as number) - (shape.s.k[1] as number),
-        (shape.e.k[0] as number) - (shape.s.k[0] as number),
+        end[1] - start[1],
+        end[0] - start[0],
       ),
     );
 
@@ -663,16 +713,41 @@ function parseGradient(
     // Highlight Length, as a percentage between s and e
     // Highlight Angle, relative to the direction from s to e
     const size = distanceSquareRoot(
-      shape.e.k as [number, number],
-      shape.s.k as [number, number],
+      end,
+      start,
     );
 
     // @see https://g-next.antv.vision/zh/docs/api/css/css-properties-values-api#radial-gradient
-    return `radial-gradient(circle ${size}px at ${shape.s.k[0] as number}px ${shape.s.k[1] as number
+    return `radial-gradient(circle ${size}px at ${start[0]}px ${start[1]
       }px, ${joinColorStops(colorStops)})`;
   }
   // Invalid gradient
   return '#000';
+}
+
+function parseGradientOffsetKeyframe(
+  shape: Lottie.GradientFillShape | Lottie.GradientStrokeShape,
+  targetPropName: string,
+  propName: string,
+  keyframeAnimations: KeyframeAnimation[],
+  context: ParseContext,
+) {
+  if (!isMultiDimensionalKeyframedValue(shape.g.k as { k?: any })) {
+    return;
+  }
+  const keyframeAnim = parseKeyframe(
+    (shape.g.k as { k: Lottie.OffsetKeyframe[] }).k,
+    0,
+    context,
+    (outKeyframe, startVal) => {
+      (targetPropName
+        ? (outKeyframe[targetPropName] = {} as any)
+        : outKeyframe)[propName] = parseGradient(shape, startVal as number[]);
+    },
+  );
+  if (keyframeAnim.keyframes.length) {
+    keyframeAnimations.push(keyframeAnim);
+  }
 }
 function parseFill(
   fl: Lottie.FillShape | Lottie.GradientFillShape,
@@ -684,6 +759,7 @@ function parseFill(
   // Color
   if (isGradientFillOrStroke(fl)) {
     attrs.style.fill = parseGradient(fl);
+    parseGradientOffsetKeyframe(fl, 'style', 'fill', animations, context);
   } else if (isMultiDimensionalValue(fl.c)) {
     attrs.style.fill = toColorString(fl.c.k);
   } else if (isMultiDimensionalKeyframedValue(fl.c)) {
@@ -716,6 +792,7 @@ function parseStroke(
   // Color
   if (isGradientFillOrStroke(st)) {
     attrs.style.stroke = parseGradient(st);
+    parseGradientOffsetKeyframe(st, 'style', 'stroke', animations, context);
   } else if (isMultiDimensionalValue(st.c)) {
     attrs.style.stroke = toColorString(st.c.k);
   } else if (isMultiDimensionalKeyframedValue(st.c)) {

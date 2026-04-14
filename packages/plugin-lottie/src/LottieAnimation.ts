@@ -684,6 +684,10 @@ export class LottieAnimation {
   }
 
   private generatePathFromShape(shape: Record<string, any>): PathArray {
+    if (!shape) {
+      return [] as unknown as PathArray;
+    }
+
     // @see https://lottiefiles.github.io/lottie-docs/shapes/#path
     const { close, v: verts, in: ins, out: outs } = shape;
     const v = verts ?? [];
@@ -740,43 +744,44 @@ export class LottieAnimation {
     this.displayObjects.forEach((child) => {
       let keyframeAnimation = this.keyframeAnimationMap.get(child);
 
-      // console.log('keyframeAnimation', keyframeAnimation);
-
       const element = this.displayObjectElementMap.get(child);
-      // if (element && element.clipPath) {
-      //   const { shape, keyframeAnimation } = element.clipPath;
+      if (element && element.clipPath) {
+        const { shape, keyframeAnimation } = element.clipPath;
 
-      //   const clipPath = new Path();
-      //   // use clipPath as target's siblings
-      //   child.parentElement.appendChild(clipPath);
-      //   child.style.clipPath = clipPath;
-      //   if (shape) {
-      //     clipPath.style.d = this.generatePathFromShape(shape);
-      //   }
+        //   const clipPath = new Path();
+        //   // use clipPath as target's siblings
+        //   child.parentElement.appendChild(clipPath);
+        //   child.style.clipPath = clipPath;
+        if (shape) {
+          const d = this.generatePathFromShape(shape);
+          child.type = 'path';
+          (child as PathSerializedNode).d = path2String(d);
+          child.clipMode = 'clip';
+        }
 
-      //   // TODO: only support one clipPath now
-      //   if (keyframeAnimation && keyframeAnimation.length) {
-      //     const { delay, duration, easing, keyframes } = keyframeAnimation[0];
+        //   // TODO: only support one clipPath now
+        //   if (keyframeAnimation && keyframeAnimation.length) {
+        //     const { delay, duration, easing, keyframes } = keyframeAnimation[0];
 
-      //     // animate clipPath with its `d` property
-      //     const clipPathAnimation = clipPath.animate(
-      //       keyframes.map(({ offset, shape, easing }) => {
-      //         return {
-      //           offset,
-      //           d: path2String(this.generatePathFromShape(shape)),
-      //           easing,
-      //         };
-      //       }),
-      //       {
-      //         delay,
-      //         duration,
-      //         easing,
-      //         iterations: this.context.iterations,
-      //       },
-      //     );
-      //     this.animations.push(clipPathAnimation);
-      //   }
-      // }
+        //     // animate clipPath with its `d` property
+        //     const clipPathAnimation = clipPath.animate(
+        //       keyframes.map(({ offset, shape, easing }) => {
+        //         return {
+        //           offset,
+        //           d: path2String(this.generatePathFromShape(shape)),
+        //           easing,
+        //         };
+        //       }),
+        //       {
+        //         delay,
+        //         duration,
+        //         easing,
+        //         iterations: this.context.iterations,
+        //       },
+        //     );
+        //     this.animations.push(clipPathAnimation);
+        //   }
+      }
 
       // account for animation only apply to visibility, e.g. spring
       const { visibilityStartOffset, visibilityEndOffset, visibilityFrame } =

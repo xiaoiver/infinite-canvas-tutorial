@@ -207,19 +207,57 @@ canvas.addEventListener(Event.READY, async (e) => {
     curved: true,
   };
 
+  const path = {
+    "id": "d1522006-323e-41c6-bcd5-90003f6e8878",
+    "type": "path",
+    "name": "形状图层 19 合成 1",
+    d: "M0 0 L100 0 L100 100 L0 100 Z",
+    "fill": "linear-gradient(0deg, rgb(0, 255, 255) 0%, rgb(255, 255, 255) 1%, rgb(0, 255, 255) 2.5%, rgb(255, 255, 0) 15.690000000000001%)",
+  }
+
+  // const child = {
+  //   id: '22',
+  //   type: 'ellipse',
+  //   x: 0,
+  //   y: 0,
+  //   width: 100,
+  //   height: 100,
+  //   fill: 'red',
+  //   parentId: 'd1522006-323e-41c6-bcd5-90003f6e8878',
+  // }
+
+  api.updateNodes([path])
+
+  // const animation = api.animate(path, [
+  //   {
+  //     "offset": 0,
+  //     "fill": "linear-gradient(0deg, rgb(255, 255, 255) 0%, rgb(255, 255, 255) 1%, rgb(255, 255, 255) 2.5%, rgb(255, 255, 255) 15.690000000000001%)"
+  //   },
+  //   {
+  //     "offset": 1,
+  //     "fill": "linear-gradient(0deg, rgb(0, 255, 255) 81.3%, rgb(255, 0, 255) 97.16%, rgb(255, 255, 255) 98.16%, rgb(255, 255, 255) 100%)"
+  //   }
+  // ], {
+  //   delay: 0,
+  //   duration: 2000,
+  //   easing: 'cubic-bezier(0.42,0,1,1)',
+  //   iterations: 'infinite',
+  // });
+
+  // animation.play();
   // api.selectNodes([node1])
 
-  fetch('/alert.json').then(res => res.json()).then(data => {
-    const animation = loadAnimation(data, {
-      loop: true,
-      autoplay: true,
-    });
+  // fetch('/gradient-text.json').then(res => res.json()).then(data => {
+  //   const animation = loadAnimation(data, {
+  //     loop: true,
+  //     autoplay: true,
+  //   });
 
-    api.runAtNextTick(() => {
-      animation.render(api);
-      animation.play();
-    });
-  });
+  //   api.runAtNextTick(() => {
+  //     animation.render(api);
+  //     animation.play();
+  //   });
+  // });
 });
 
 // const VelloRendererPlugin = RendererPlugin.configure({

@@ -31,7 +31,12 @@ layout(std140) uniform ShapeUniforms {
   vec4 u_StrokeColor;
   vec4 u_ZIndexStrokeWidth;
   vec4 u_Opacity;
+  vec4 u_FillUVRect;
 };
+
+#ifdef USE_FILLIMAGE
+out vec2 v_Uv;
+#endif
 
 void main() {
   ${wireframe_vert}
@@ -55,6 +60,10 @@ void main() {
   if (sizeAttenuation > 0.5) {
     scale = 1.0 / u_ZoomScale;
   }
+
+  #ifdef USE_FILLIMAGE
+    v_Uv = (a_Position - u_FillUVRect.xy) * u_FillUVRect.zw;
+  #endif
 
   gl_Position = vec4((u_ProjectionMatrix 
     * u_ViewMatrix
@@ -80,11 +89,17 @@ layout(std140) uniform ShapeUniforms {
   vec4 u_StrokeColor;
   vec4 u_ZIndexStrokeWidth;
   vec4 u_Opacity;
+  vec4 u_FillUVRect;
 };
 
 ${wireframe_frag_declaration}
 
 out vec4 outputColor;
+
+#ifdef USE_FILLIMAGE
+in vec2 v_Uv;
+uniform sampler2D u_Texture;
+#endif
 
 float epsilon = 0.000001;
 
@@ -106,6 +121,10 @@ void main() {
   strokeOpacity = u_Opacity.z;
   cornerRadius = u_ZIndexStrokeWidth.z;
   strokeAlignment = u_ZIndexStrokeWidth.w;
+
+  #ifdef USE_FILLIMAGE
+    fillColor = texture(SAMPLER_2D(u_Texture), v_Uv);
+  #endif
 
   // based on the target alpha compositing mode.
   fillColor.a *= fillOpacity;

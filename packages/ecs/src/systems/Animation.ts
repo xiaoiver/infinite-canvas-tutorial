@@ -2,13 +2,14 @@ import { System } from '@lastolivegames/becsy';
 import {
   AnimationPlayer,
   FillSolid,
+  FillGradient,
   Opacity,
   Path,
   Stroke,
   Transform,
 } from '../components';
 import { safeAddComponent } from '../history';
-import { Canvas, inferXYWidthHeight, PathSerializedNode } from '..';
+import { Canvas, inferXYWidthHeight, isGradient, PathSerializedNode } from '..';
 
 function isFiniteNumber(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value);
@@ -61,7 +62,7 @@ export class AnimationSystem extends System {
     q.current
       .with(AnimationPlayer)
       .using(Canvas).read
-      .using(Transform, Opacity, FillSolid, Stroke, Path, AnimationPlayer).write,
+      .using(Transform, Opacity, FillSolid, FillGradient, Stroke, Path, AnimationPlayer).write,
   );
 
   execute(): void {
@@ -168,7 +169,11 @@ export class AnimationSystem extends System {
       }
 
       if (typeof values.fill === 'string') {
-        safeAddComponent(entity, FillSolid, { value: values.fill });
+        if (isGradient(values.fill)) {
+          safeAddComponent(entity, FillGradient, { value: values.fill });
+        } else {
+          safeAddComponent(entity, FillSolid, { value: values.fill });
+        }
       }
 
       if (isFiniteNumber(values.strokeWidth)) {
