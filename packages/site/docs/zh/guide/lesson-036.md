@@ -11,6 +11,7 @@ import AnimationDasharray from '../../components/AnimationDasharray.vue';
 import AnimationDashoffset from '../../components/AnimationDashoffset.vue';
 import AnimationMorphing from '../../components/AnimationMorphing.vue';
 import AnimationLottieBouncyBall from '../../components/AnimationLottieBouncyBall.vue';
+import AnimationLottieBezier from '../../components/AnimationLottieBezier.vue';
 </script>
 
 # 课程 36 - Animation
@@ -300,18 +301,11 @@ fetch('/bouncy_ball.json')
 
 <AnimationLottieBouncyBall />
 
-### 贝塞尔曲线 {#beziers-in-lottie}
-
-[Beziers in Lottie]
-
--   `v` is an array of vertices.
--   `i` is an array of "in" tangent points, relative to `v`.
--   `o` is an array of "out" tangent points, relative to `v`.
--   `c` is a boolean determining whether the polybezier is closed. If it is, there's an additional bezier segment between the last point in `v` and the first.
-
 ### 表达式 {#expression}
 
-[Expressions]
+[Expressions] 描述了 After Effects 导出到 Bodymovin JSON 时，如何在属性上挂一段 JavaScript（属性对象上的字符串字段 `x`）。本教程里的 Lottie 插件**不会在每一帧实时执行**这些脚本，而是在 **`loadAnimation` / `parse` 时按合成时间范围把表达式烘焙成普通关键帧**，再交给现有的 Web Animations API 驱动，因此行为与 AE 接近，但依赖「烘焙」这一实现策略。
+
+下面是一段路径属性上的表达式示例（运行时仍表现为普通 shape 关键帧动画）：
 
 ```json
 {
@@ -327,6 +321,10 @@ fetch('/bouncy_ball.json')
     }
 }
 ```
+
+下面的示例来自：[Beziers in Lottie]
+
+<AnimationLottieBezier />
 
 ### Text layer
 
