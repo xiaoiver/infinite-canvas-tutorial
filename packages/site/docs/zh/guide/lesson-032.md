@@ -2,6 +2,7 @@
 outline: deep
 description: '学习在无限画布中从文本生成图表：用 Mermaid 流程图、D2 与 draw.io 语法解析并渲染为场景图，结合 mermaid-to-excalidraw、@terrastruct/d2 与 mxgraph 实现手绘风格图表。'
 ---
+
 <script setup>
 import Mermaid from '../../components/Mermaid.vue'
 import MermaidRough from '../../components/MermaidRough.vue'
@@ -119,7 +120,7 @@ const {
 } = graph;
 ```
 
-```d2
+```txt
 x -> y: hello world
 ```
 
@@ -127,7 +128,7 @@ x -> y: hello world
 
 ### Container
 
-```d2
+```txt
 good chips: {
   doritos
   ruffles
@@ -142,7 +143,7 @@ chocolate.chip.cookies
 
 ### Connections
 
-```d2
+```txt
 dogs -> cats -> mice: chase
 replica 1 <-> replica 2
 a -> b: To err is human, to moo bovine {

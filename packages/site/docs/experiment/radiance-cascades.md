@@ -7,24 +7,15 @@ aside: false
 import RadianceCascades from '../components/RadianceCascades.vue'
 </script>
 
-[Lesson 37 - GI with Radiance Cascades]
+Light up your mermaid flowchart with global illumination!
+
+-   2D Radiance cascades based on [bevy_radiance_cascades]
+-   Rendering uses vello, so you need a browser with WebGPU support
+-   Use mermaid-to-excalidraw to parse Mermaid flowchart syntax
+
+For more details, see: [Lesson 37 - GI with Radiance Cascades]
 
 <RadianceCascades />
-
-[bevy_radiance_cascades]
-
-```rust
-let mut rc_enc = device_handle
-    .device
-    .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-        label: Some("rc_gi"),
-    });
-rp.encode_distance_pass();
-rp.encode_rc_cascade_passes();
-rp.encode_rc_mipmap();
-rp.encode_rc_apply();
-device_handle.queue.submit([rc_enc.finish()]);
-```
 
 [Lesson 37 - GI with Radiance Cascades]: /guide/lesson-037
 [bevy_radiance_cascades]: https://github.com/nixonyh/bevy_radiance_cascades

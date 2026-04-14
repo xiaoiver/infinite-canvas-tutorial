@@ -44,21 +44,6 @@ export function isLikelyMermaidSyntax(text: string): boolean {
 
 const ZINDEX_OFFSET = 0.0001;
 
-export type MermaidPasteStyleFn = (nodes: SerializedNode[]) => void;
-
-const pasteStylersByApi = new WeakMap<ExtendedAPI, MermaidPasteStyleFn>();
-
-export function registerMermaidPasteStyler(
-  api: ExtendedAPI,
-  fn: MermaidPasteStyleFn,
-) {
-  pasteStylersByApi.set(api, fn);
-}
-
-export function unregisterMermaidPasteStyler(api: ExtendedAPI) {
-  pasteStylersByApi.delete(api);
-}
-
 function getMaxZIndex(api: ExtendedAPI) {
   return api.getNodes().reduce((max, node) => Math.max(max, node.zIndex ?? 0), 0);
 }
@@ -204,22 +189,9 @@ function layoutMermaidPasteNodes(
   nodes: SerializedNode[],
   canvasPosition: { x: number; y: number } | null,
 ) {
-  const bbox = computeMermaidNodesBBox(nodes);
-  if (!bbox) {
-    return;
-  }
-
-  let dx = -bbox.minX;
-  let dy = -bbox.minY;
-  if (canvasPosition) {
-    dx += canvasPosition.x;
-    dy += canvasPosition.y;
-  } else {
-    dx += 10;
-    dy += 10;
-  }
-
-  translateSerializedNodes(nodes, dx, dy);
+  const root = nodes[0];
+  root.x = canvasPosition?.x ?? 0;
+  root.y = canvasPosition?.y ?? 0;
 
   const baseZ = getMaxZIndex(api) + 1;
   nodes.forEach((n, i) => {
@@ -228,8 +200,8 @@ function layoutMermaidPasteNodes(
 }
 
 /**
- * Parse clipboard Mermaid source into nodes, optionally apply a demo-specific styler
- * registered via {@link registerMermaidPasteStyler}, then insert like other paste paths.
+ * Parse clipboard Mermaid source into nodes, optionally apply a styler
+ * registered via {@link ExtendedAPI.registerMermaidPasteStyler}, then insert like other paste paths.
  */
 export async function tryPasteMermaid(
   api: ExtendedAPI,
@@ -243,7 +215,7 @@ export async function tryPasteMermaid(
     );
     let nodes = await parseMermaidToSerializedNodes(definition);
     nodes = remapMermaidPasteNodeIds(nodes);
-    pasteStylersByApi.get(api)?.(nodes);
+    api.applyMermaidPasteStyler(nodes);
     layoutMermaidPasteNodes(api, nodes, canvasPosition);
     updateAndSelectNodes(api, appState, nodes);
     return true;

@@ -11,10 +11,6 @@ import {
 } from '@infinite-canvas-tutorial/ecs';
 import { ref, onMounted, onUnmounted } from 'vue';
 import { Event, UIPlugin } from '@infinite-canvas-tutorial/webcomponents';
-import {
-  registerMermaidPasteStyler,
-  unregisterMermaidPasteStyler,
-} from '@infinite-canvas-tutorial/webcomponents/spectrum';
 import { LaserPointerPlugin } from '@infinite-canvas-tutorial/laser-pointer';
 import { LassoPlugin } from '@infinite-canvas-tutorial/lasso';
 import { EraserPlugin } from '@infinite-canvas-tutorial/eraser';
@@ -52,7 +48,7 @@ function styleRadianceMermaidNodes(nodes: SerializedNode[]) {
 }
 const giStrength = ref(0.1);
 
-/** Ready-to-paste Mermaid snippets (styled via registerMermaidPasteStyler). */
+/** Ready-to-paste Mermaid snippets (styled via api.registerMermaidPasteStyler). */
 const mermaidPasteExamples: { id: string; title: string; description: string; code: string }[] = [
   {
     id: 'flowchart-td',
@@ -119,7 +115,7 @@ onMounted(async () => {
 
   onReady = async (e) => {
     api = e.detail;
-    registerMermaidPasteStyler(api, styleRadianceMermaidNodes);
+    api.registerMermaidPasteStyler(styleRadianceMermaidNodes);
 
     api.setAppState({
       ...api.getAppState(),
@@ -276,49 +272,47 @@ onUnmounted(async () => {
   }
 
   if (api) {
-    unregisterMermaidPasteStyler(api);
+    api.unregisterMermaidPasteStyler();
   }
 
   api?.destroy();
 });
 
-const onGiStrengthChange = (e: CustomEvent<number>) => {
+function syncGiStrengthToApi() {
   if (!api) {
     return;
   }
 
-  const giStrength = parseFloat((e.target as HTMLInputElement).value);
   api.setAppState({
-    giStrength,
+    giStrength: giStrength.value,
   });
-};
+}
 </script>
 
 <template>
   <ic-spectrum-canvas ref="wrapper" style="width: 100%; height: 600px"></ic-spectrum-canvas>
-  <label for="giStrength">GI Strength: {{ giStrength }}</label>
-  <input id="giStrength" type="range" min="0" max="0.2" step="0.01" v-model="giStrength" @input="onGiStrengthChange" />
+
+  <div class="radiance-gi-control">
+    <div class="radiance-gi-control__row">
+      <label class="radiance-gi-control__label" for="giStrength">GI strength</label>
+      <span class="radiance-gi-control__value" aria-live="polite">{{ giStrength.toFixed(2) }}</span>
+    </div>
+    <input id="giStrength" class="radiance-gi-control__range" type="range" min="0" max="0.2" step="0.01"
+      v-model.number="giStrength" @input="syncGiStrengthToApi" />
+  </div>
 
   <section class="mermaid-paste-examples" aria-label="Mermaid paste examples">
     <h3 class="mermaid-paste-examples__title">Mermaid examples (copy, then paste on the canvas)</h3>
     <p class="mermaid-paste-examples__hint">
       Paste while the canvas is focused to use the same styling as the demo above (dark theme, Gaegu font, etc.).
     </p>
-    <article
-      v-for="ex in mermaidPasteExamples"
-      :key="ex.id"
-      class="mermaid-paste-examples__card"
-    >
+    <article v-for="ex in mermaidPasteExamples" :key="ex.id" class="mermaid-paste-examples__card">
       <header class="mermaid-paste-examples__head">
         <div>
           <h4 class="mermaid-paste-examples__card-title">{{ ex.title }}</h4>
           <p class="mermaid-paste-examples__desc">{{ ex.description }}</p>
         </div>
-        <button
-          type="button"
-          class="mermaid-paste-examples__copy"
-          @click="copyMermaidExample(ex.code, ex.id)"
-        >
+        <button type="button" class="mermaid-paste-examples__copy" @click="copyMermaidExample(ex.code, ex.id)">
           {{ copiedExampleId === ex.id ? 'Copied' : 'Copy' }}
         </button>
       </header>
@@ -328,6 +322,86 @@ const onGiStrengthChange = (e: CustomEvent<number>) => {
 </template>
 
 <style scoped>
+.radiance-gi-control {
+  margin-top: 1rem;
+  max-width: 52rem;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  border: 1px solid var(--vp-c-divider, rgba(128, 128, 128, 0.35));
+  background: var(--vp-c-bg-soft, rgba(127, 127, 127, 0.08));
+}
+
+.radiance-gi-control__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.radiance-gi-control__label {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--vp-c-text-1, inherit);
+}
+
+.radiance-gi-control__value {
+  font-variant-numeric: tabular-nums;
+  font-size: 0.8rem;
+  min-width: 2.75rem;
+  text-align: right;
+  padding: 0.2rem 0.5rem;
+  border-radius: 6px;
+  font-weight: 600;
+  color: var(--vp-c-brand-1, #646cff);
+  background: color-mix(in srgb, var(--vp-c-brand-1, #646cff) 12%, transparent);
+}
+
+.radiance-gi-control__range {
+  display: block;
+  width: 100%;
+  height: 0.35rem;
+  margin: 0;
+  cursor: pointer;
+  accent-color: var(--vp-c-brand-1, #646cff);
+  border-radius: 4px;
+  background: transparent;
+}
+
+.radiance-gi-control__range::-webkit-slider-runnable-track {
+  height: 0.35rem;
+  border-radius: 4px;
+  background: var(--vp-c-divider, rgba(128, 128, 128, 0.45));
+}
+
+.radiance-gi-control__range::-webkit-slider-thumb {
+  appearance: none;
+  width: 1rem;
+  height: 1rem;
+  margin-top: -0.325rem;
+  border-radius: 50%;
+  background: var(--vp-c-brand-1, #646cff);
+  border: 2px solid var(--vp-c-bg, #fff);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.radiance-gi-control__range::-moz-range-track {
+  height: 0.35rem;
+  border-radius: 4px;
+  background: var(--vp-c-divider, rgba(128, 128, 128, 0.45));
+}
+
+.radiance-gi-control__range::-moz-range-thumb {
+  width: 1rem;
+  height: 1rem;
+  border-radius: 50%;
+  background: var(--vp-c-brand-1, #646cff);
+  border: 2px solid var(--vp-c-bg, #fff);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
 .mermaid-paste-examples {
   margin-top: 1.25rem;
   max-width: 52rem;
