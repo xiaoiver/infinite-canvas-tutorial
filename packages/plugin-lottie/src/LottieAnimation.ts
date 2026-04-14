@@ -687,6 +687,16 @@ export class LottieAnimation {
     if (!shape) {
       return [] as unknown as PathArray;
     }
+    if (Array.isArray(shape.compounds)) {
+      const d: PathArray = [] as unknown as PathArray;
+      shape.compounds.forEach((subShape: Record<string, any>) => {
+        const sub = this.generatePathFromShape(subShape);
+        if (Array.isArray(sub) && sub.length) {
+          d.push(...sub);
+        }
+      });
+      return d;
+    }
 
     // @see https://lottiefiles.github.io/lottie-docs/shapes/#path
     const { close, v: verts, in: ins, out: outs } = shape;
@@ -747,7 +757,6 @@ export class LottieAnimation {
       const element = this.displayObjectElementMap.get(child);
       if (element && element.clipPath) {
         const { shape, keyframeAnimation } = element.clipPath;
-
         //   const clipPath = new Path();
         //   // use clipPath as target's siblings
         //   child.parentElement.appendChild(clipPath);

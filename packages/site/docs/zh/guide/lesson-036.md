@@ -348,6 +348,7 @@ fetch('/bouncy_ball.json')
 
 -   [lottielab]
 -   [omnilottie]
+-   [thorvg.viewer]
 
 ## 扩展阅读
 
@@ -377,3 +378,4 @@ fetch('/bouncy_ball.json')
 [Expressions]: https://lottiefiles.github.io/lottie-docs/expressions/
 [clipping-masks]: https://lottie-animation-community.github.io/docs/specs/layers/common/#clipping-masks
 [Layer Effects]: https://lottiefiles.github.io/lottie-docs/effects/#layer-effects
+[thorvg.viewer]: https://github.com/thorvg/thorvg.viewer

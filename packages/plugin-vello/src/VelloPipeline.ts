@@ -593,6 +593,9 @@ export class VelloPipeline extends System {
             : undefined,
         zIndex,
         ui: entity.has(UI),
+        ...(entity.has(ClipMode)
+          ? { clipMode: entity.read(ClipMode).value }
+          : {}),
         localTransform,
         sizeAttenuation: entity.has(SizeAttenuation),
         strokeAttenuation: entity.has(StrokeAttenuation),
