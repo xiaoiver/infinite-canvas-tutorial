@@ -562,6 +562,10 @@ export class MeshPipeline extends System {
         }
       }
 
+      if (entity.has(FillGradient)) {
+        safeAddComponent(entity, MaterialDirty);
+      }
+
       // The gpu resources is not ready for the camera.
       if (!this.pendingRenderables.has(camera)) {
         this.pendingRenderables.set(camera, []);
