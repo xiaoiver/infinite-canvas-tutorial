@@ -156,6 +156,7 @@ pub fn js_add_rect(canvas_id: u32, opts: JsValue) {
         stroke_attenuation: o.stroke_attenuation,
         fill_blur: o.fill_blur,
         drop_shadow,
+        clip_mode: o.clip_mode.clone(),
     });
 }
 
@@ -212,6 +213,7 @@ pub fn js_add_ellipse(canvas_id: u32, opts: JsValue) {
         size_attenuation: o.size_attenuation,
         stroke_attenuation: o.stroke_attenuation,
         drop_shadow,
+        clip_mode: o.clip_mode.clone(),
     });
 }
 
@@ -274,6 +276,7 @@ pub fn js_add_image_rect(canvas_id: u32, opts: JsValue) {
         size_attenuation: o.size_attenuation,
         stroke_attenuation: o.stroke_attenuation,
         drop_shadow,
+        clip_mode: o.clip_mode.clone(),
     });
 }
 
@@ -331,6 +334,7 @@ pub fn js_add_path(canvas_id: u32, opts: JsValue) {
         marker_end: o.marker_end,
         marker_factor: o.marker_factor,
         drop_shadow,
+        clip_mode: o.clip_mode.clone(),
     });
 }
 
@@ -431,6 +435,7 @@ pub fn js_add_vector_network(canvas_id: u32, opts: JsValue) {
         marker_end: o.marker_end,
         marker_factor: o.marker_factor,
         drop_shadow,
+        clip_mode: o.clip_mode.clone(),
     });
 }
 
@@ -519,6 +524,7 @@ pub fn js_add_brush(canvas_id: u32, opts: JsValue) {
         stamp_mode_ratio,
         stamp_noise_factor,
         stamp_rotation_factor,
+        clip_mode: o.clip_mode.clone(),
     });
 }
 
@@ -569,6 +575,7 @@ pub fn js_add_polyline(canvas_id: u32, opts: JsValue) {
         marker_start: o.marker_start,
         marker_end: o.marker_end,
         marker_factor: o.marker_factor,
+        clip_mode: o.clip_mode.clone(),
     });
 }
 
@@ -588,6 +595,7 @@ pub fn js_add_group(canvas_id: u32, opts: JsValue) {
         z_index: o.z_index,
         ui: o.ui,
         local_transform: o.local_transform,
+        clip_mode: o.clip_mode.clone(),
     });
 }
 
@@ -642,6 +650,7 @@ pub fn js_add_rough_rect(canvas_id: u32, opts: JsValue) {
         curve_step_count: o.curve_step_count,
         simplification: o.simplification,
         rough_seed: o.rough_seed,
+        clip_mode: o.clip_mode.clone(),
     });
 }
 
@@ -696,6 +705,7 @@ pub fn js_add_rough_ellipse(canvas_id: u32, opts: JsValue) {
         curve_step_count: o.curve_step_count,
         simplification: o.simplification,
         rough_seed: o.rough_seed,
+        clip_mode: o.clip_mode.clone(),
     });
 }
 
@@ -749,6 +759,7 @@ pub fn js_add_rough_line(canvas_id: u32, opts: JsValue) {
         marker_start: o.marker_start,
         marker_end: o.marker_end,
         marker_factor: o.marker_factor,
+        clip_mode: o.clip_mode.clone(),
     });
 }
 
@@ -803,6 +814,7 @@ pub fn js_add_rough_polyline(canvas_id: u32, opts: JsValue) {
         marker_end: o.marker_end,
         marker_factor: o.marker_factor,
         rough_seed: o.rough_seed,
+        clip_mode: o.clip_mode.clone(),
     });
 }
 
@@ -858,6 +870,7 @@ pub fn js_add_rough_path(canvas_id: u32, opts: JsValue) {
         marker_end: o.marker_end,
         marker_factor: o.marker_factor,
         rough_seed: o.rough_seed,
+        clip_mode: o.clip_mode.clone(),
     });
 }
 
@@ -910,6 +923,7 @@ pub fn js_add_line(canvas_id: u32, opts: JsValue) {
         marker_start: o.marker_start,
         marker_end: o.marker_end,
         marker_factor: o.marker_factor,
+        clip_mode: o.clip_mode.clone(),
     });
 }
 
@@ -973,6 +987,7 @@ pub fn js_add_text(canvas_id: u32, opts: JsValue) {
         stroke_opacity: o.stroke_opacity,
         local_transform: o.local_transform,
         size_attenuation: o.size_attenuation,
+        clip_mode: o.clip_mode.clone(),
     });
 }
 

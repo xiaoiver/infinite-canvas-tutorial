@@ -15,7 +15,7 @@ import {
   type BakedKeyframeAnimation,
 } from './expressions';
 import * as Lottie from './type';
-import { filterUndefined } from '@infinite-canvas-tutorial/ecs';
+import { filterUndefined, formatNumber } from '@infinite-canvas-tutorial/ecs';
 
 const rad2deg = (rad: number) => rad * (180 / Math.PI);
 
@@ -641,7 +641,7 @@ function pickFirstArraySample(value?: { k?: any }): number[] | undefined {
 }
 
 function convertColorStops(arr: number[], count: number) {
-  const colorStops = [];
+  const colorStops: { offset: number; r: number; g: number; b: number }[] = [];
   for (let i = 0; i < count * 4;) {
     const offset = arr[i++];
     const r = Math.round(arr[i++] * 255);
@@ -657,13 +657,112 @@ function convertColorStops(arr: number[], count: number) {
     }
     colorStops.push({
       offset,
-      color: `rgb(${r}, ${g}, ${b})`,
+      r,
+      g,
+      b,
     });
   }
   return colorStops;
 }
 
-function joinColorStops(colorStops: any[]) {
+function convertOpacityStops(arr: number[], count: number) {
+  const opacityStops: { offset: number; alpha: number }[] = [];
+  // Lottie gradient array layout:
+  // [color stops (count * 4), opacity stops (offset, alpha) ...]
+  for (let i = count * 4; i + 1 < arr.length; i += 2) {
+    const offset = arr[i];
+    const alpha = arr[i + 1];
+    if (!Number.isFinite(offset) || !Number.isFinite(alpha)) {
+      continue;
+    }
+    opacityStops.push({
+      offset,
+      alpha: Math.max(0, Math.min(1, alpha)),
+    });
+  }
+  return opacityStops;
+}
+
+function sampleChannelAtOffset(
+  stops: { offset: number; value: number }[],
+  offset: number,
+): number {
+  const finiteStops = stops.filter(
+    (s) => Number.isFinite(s.offset) && Number.isFinite(s.value),
+  );
+  if (!finiteStops.length) {
+    return 0;
+  }
+  if (!Number.isFinite(offset)) {
+    return finiteStops[0].value;
+  }
+  if (offset <= finiteStops[0].offset) {
+    return finiteStops[0].value;
+  }
+  const last = finiteStops[finiteStops.length - 1];
+  if (offset >= last.offset) {
+    return last.value;
+  }
+  for (let i = 0; i < finiteStops.length - 1; i++) {
+    const a = finiteStops[i];
+    const b = finiteStops[i + 1];
+    if (offset >= a.offset && offset <= b.offset) {
+      const span = b.offset - a.offset;
+      const t = span < 1e-9 ? 0 : (offset - a.offset) / span;
+      return a.value + (b.value - a.value) * t;
+    }
+  }
+  return last.value;
+}
+
+function mergeGradientStops(
+  colorStops: { offset: number; r: number; g: number; b: number }[],
+  opacityStops: { offset: number; alpha: number }[],
+) {
+  const validColorStops = colorStops.filter((s) =>
+    Number.isFinite(s.offset)
+    && Number.isFinite(s.r)
+    && Number.isFinite(s.g)
+    && Number.isFinite(s.b));
+  if (!validColorStops.length) {
+    return [];
+  }
+  const offsets = new Set<number>();
+  validColorStops.forEach(({ offset }) => offsets.add(offset));
+  opacityStops
+    .filter((s) => Number.isFinite(s.offset) && Number.isFinite(s.alpha))
+    .forEach(({ offset }) => offsets.add(offset));
+  const sortedOffsets = [...offsets].sort((a, b) => a - b);
+
+  const rStops = validColorStops.map(({ offset, r }) => ({ offset, value: r }));
+  const gStops = validColorStops.map(({ offset, g }) => ({ offset, value: g }));
+  const bStops = validColorStops.map(({ offset, b }) => ({ offset, value: b }));
+  const aStops = (opacityStops.length
+    ? opacityStops
+    : [{ offset: validColorStops[0].offset, alpha: 1 }]).map(({ offset, alpha }) => ({
+      offset,
+      value: alpha,
+    }));
+
+  return sortedOffsets.map((offset) => {
+    const r = sampleChannelAtOffset(rStops, offset);
+    const g = sampleChannelAtOffset(gStops, offset);
+    const b = sampleChannelAtOffset(bStops, offset);
+    const alpha = sampleChannelAtOffset(aStops, offset);
+    const safeR = Number.isFinite(r) ? Math.round(r) : 0;
+    const safeG = Number.isFinite(g) ? Math.round(g) : 0;
+    const safeB = Number.isFinite(b) ? Math.round(b) : 0;
+    const safeA = Number.isFinite(alpha)
+      ? Math.max(0, Math.min(1, alpha))
+      : 1;
+    return {
+      offset,
+      color: `rgba(${safeR},${safeG},${safeB},${formatNumber(safeA)})`,
+    };
+  });
+}
+
+function joinColorStops(colorStops: { offset: number; color: string }[]) {
   return `${colorStops
     .map(({ offset, color }) => `${color} ${offset * 100}%`)
     .join(', ')}`;
@@ -683,7 +782,9 @@ function parseGradient(
 ) {
   const colorArr = gradientSample ?? pickFirstArraySample(shape.g.k as { k?: any }) ?? [];
   const colorStops = convertColorStops(colorArr, shape.g.p);
-  if (!colorStops.length) {
+  const opacityStops = convertOpacityStops(colorArr, shape.g.p);
+  const mergedStops = mergeGradientStops(colorStops, opacityStops);
+  if (!mergedStops.length) {
     return '#000';
   }
   const start = toFinitePoint(
@@ -706,7 +807,7 @@ function parseGradient(
     );
 
     // @see https://g-next.antv.vision/zh/docs/api/css/css-properties-values-api#linear-gradient
-    return `linear-gradient(${angle}deg, ${joinColorStops(colorStops)})`;
+    return `linear-gradient(${angle}deg, ${joinColorStops(mergedStops)})`;
   }
   if (shape.t === Lottie.GradientType.Radial) {
     // TODO: highlight length & angle (h & a)
@@ -719,7 +820,7 @@ function parseGradient(
 
     // @see https://g-next.antv.vision/zh/docs/api/css/css-properties-values-api#radial-gradient
     return `radial-gradient(circle ${size}px at ${start[0]}px ${start[1]
-      }px, ${joinColorStops(colorStops)})`;
+      }px, ${joinColorStops(mergedStops)})`;
   }
   // Invalid gradient
   return '#000';
@@ -1342,6 +1443,32 @@ function pickOpacityFromKeyframe(keyframe: Record<string, any>) {
   }
 }
 
+function pickFillFromKeyframe(keyframe: Record<string, any>) {
+  if (typeof keyframe.fill === 'string') {
+    return keyframe.fill;
+  }
+  if (
+    keyframe.style
+    && typeof keyframe.style === 'object'
+    && typeof keyframe.style.fill === 'string'
+  ) {
+    return keyframe.style.fill;
+  }
+}
+
+function pickFillRuleFromKeyframe(keyframe: Record<string, any>) {
+  if (typeof keyframe.fillRule === 'string') {
+    return keyframe.fillRule;
+  }
+  if (
+    keyframe.style
+    && typeof keyframe.style === 'object'
+    && typeof keyframe.style.fillRule === 'string'
+  ) {
+    return keyframe.style.fillRule;
+  }
+}
+
 function extractOpacityAnimations(
   animations: KeyframeAnimation[] | undefined,
 ): KeyframeAnimation[] {
@@ -1366,6 +1493,66 @@ function extractOpacityAnimations(
       result.push({
         ...animation,
         keyframes: opacityKeyframes,
+      });
+    }
+  });
+  return result;
+}
+
+function extractFillAnimations(
+  animations: KeyframeAnimation[] | undefined,
+): KeyframeAnimation[] {
+  if (!animations?.length) {
+    return [];
+  }
+  const result: KeyframeAnimation[] = [];
+  animations.forEach((animation) => {
+    const fillKeyframes = animation.keyframes
+      .map((keyframe) => {
+        const fill = pickFillFromKeyframe(keyframe as Record<string, any>);
+        if (typeof fill !== 'string') {
+          return null;
+        }
+        return {
+          offset: keyframe.offset,
+          style: { fill },
+        };
+      })
+      .filter((keyframe): keyframe is { offset: number; style: { fill: string } } => !!keyframe);
+    if (fillKeyframes.length) {
+      result.push({
+        ...animation,
+        keyframes: fillKeyframes,
+      });
+    }
+  });
+  return result;
+}
+
+function extractFillRuleAnimations(
+  animations: KeyframeAnimation[] | undefined,
+): KeyframeAnimation[] {
+  if (!animations?.length) {
+    return [];
+  }
+  const result: KeyframeAnimation[] = [];
+  animations.forEach((animation) => {
+    const fillRuleKeyframes = animation.keyframes
+      .map((keyframe) => {
+        const fillRule = pickFillRuleFromKeyframe(keyframe as Record<string, any>);
+        if (typeof fillRule !== 'string') {
+          return null;
+        }
+        return {
+          offset: keyframe.offset,
+          style: { fillRule },
+        };
+      })
+      .filter((keyframe): keyframe is { offset: number; style: { fillRule: string } } => !!keyframe);
+    if (fillRuleKeyframes.length) {
+      result.push({
+        ...animation,
+        keyframes: fillRuleKeyframes,
       });
     }
   });
@@ -1406,6 +1593,191 @@ function stripOpacityAnimations(
     .filter((animation): animation is KeyframeAnimation => !!animation);
 }
 
+function stripFillAnimations(
+  animations: KeyframeAnimation[] | undefined,
+): KeyframeAnimation[] {
+  if (!animations?.length) {
+    return [];
+  }
+  return animations
+    .map((animation) => {
+      const stripped = animation.keyframes
+        .map((keyframe) => {
+          const next = { ...keyframe } as Record<string, any>;
+          delete next.fill;
+          if (next.style && typeof next.style === 'object') {
+            next.style = { ...next.style };
+            delete next.style.fill;
+            if (!Object.keys(next.style).length) {
+              delete next.style;
+            }
+          }
+          const hasPayload = Object.keys(next).some((key) => key !== 'offset');
+          return hasPayload ? next : null;
+        })
+        .filter((keyframe): keyframe is KeyframeAnimation['keyframes'][number] => !!keyframe);
+      if (!stripped.length) {
+        return null;
+      }
+      return {
+        ...animation,
+        keyframes: stripped,
+      };
+    })
+    .filter((animation): animation is KeyframeAnimation => !!animation);
+}
+
+function stripFillRuleAnimations(
+  animations: KeyframeAnimation[] | undefined,
+): KeyframeAnimation[] {
+  if (!animations?.length) {
+    return [];
+  }
+  return animations
+    .map((animation) => {
+      const stripped = animation.keyframes
+        .map((keyframe) => {
+          const next = { ...keyframe } as Record<string, any>;
+          delete next.fillRule;
+          if (next.style && typeof next.style === 'object') {
+            next.style = { ...next.style };
+            delete next.style.fillRule;
+            if (!Object.keys(next.style).length) {
+              delete next.style;
+            }
+          }
+          const hasPayload = Object.keys(next).some((key) => key !== 'offset');
+          return hasPayload ? next : null;
+        })
+        .filter((keyframe): keyframe is KeyframeAnimation['keyframes'][number] => !!keyframe);
+      if (!stripped.length) {
+        return null;
+      }
+      return {
+        ...animation,
+        keyframes: stripped,
+      };
+    })
+    .filter((animation): animation is KeyframeAnimation => !!animation);
+}
+
+function hasFillAnimation(
+  animations: KeyframeAnimation[] | undefined,
+): boolean {
+  if (!animations?.length) {
+    return false;
+  }
+  return animations.some((animation) =>
+    animation.keyframes.some((keyframe) => {
+      const kf = keyframe as Record<string, any>;
+      if (typeof kf.fill === 'string') {
+        return true;
+      }
+      return (
+        kf.style
+        && typeof kf.style === 'object'
+        && typeof kf.style.fill === 'string'
+      );
+    }));
+}
+
+function hasFillRuleAnimation(
+  animations: KeyframeAnimation[] | undefined,
+): boolean {
+  if (!animations?.length) {
+    return false;
+  }
+  return animations.some((animation) =>
+    animation.keyframes.some((keyframe) => {
+      const kf = keyframe as Record<string, any>;
+      if (typeof kf.fillRule === 'string') {
+        return true;
+      }
+      return (
+        kf.style
+        && typeof kf.style === 'object'
+        && typeof kf.style.fillRule === 'string'
+      );
+    }));
+}
+
+function pathHasGeometryAnimation(el: CustomElementOption): boolean {
+  if (!el.keyframeAnimation?.length) {
+    return false;
+  }
+  return el.keyframeAnimation.some((animation) =>
+    animation.keyframes.some((keyframe) => {
+      const kf = keyframe as Record<string, any>;
+      return !!kf.shape || typeof kf.d === 'string';
+    }));
+}
+
+function compoundFillKey(style: Record<string, any> | undefined): string | null {
+  const fill = style?.fill ?? '__no_fill__';
+  const fillRule = style?.fillRule ?? 'nonzero';
+  const stroke = style?.stroke ?? '__no_stroke__';
+  const strokeWidth = style?.strokeWidth ?? '__no_stroke_width__';
+  return `${JSON.stringify(fill)}|${String(fillRule)}|${JSON.stringify(stroke)}|${JSON.stringify(strokeWidth)}`;
+}
+
+function isCompoundMergeablePath(el: CustomElementOption): boolean {
+  if (el.type !== 'path' || !el.shape || pathHasGeometryAnimation(el)) {
+    return false;
+  }
+  if (Array.isArray((el.shape as Record<string, any>).compounds)) {
+    return false;
+  }
+  const shape = el.shape as Record<string, any>;
+  return Array.isArray(shape.v) && shape.v.length > 0;
+}
+
+function mergeGroupCompoundFillPaths(group: CustomElementOption) {
+  if (!group.children?.length) {
+    return;
+  }
+  const mergedChildren: CustomElementOption[] = [];
+  const src = group.children;
+  let i = 0;
+  while (i < src.length) {
+    const first = src[i];
+    if (!isCompoundMergeablePath(first)) {
+      mergedChildren.push(first);
+      i++;
+      continue;
+    }
+    const key = compoundFillKey(first.style);
+    const bucket = [first];
+    let j = i + 1;
+    while (j < src.length) {
+      const next = src[j];
+      if (!isCompoundMergeablePath(next) || compoundFillKey(next.style) !== key) {
+        break;
+      }
+      bucket.push(next);
+      j++;
+    }
+    if (bucket.length === 1) {
+      mergedChildren.push(first);
+    } else {
+      const base = bucket[0];
+      mergedChildren.push({
+        ...base,
+        // Keep one drawable path so fillRule runs on all subpaths together.
+        shape: {
+          compounds: bucket.map((item) => item.shape as Record<string, any>),
+        },
+      });
+    }
+    i = j;
+  }
+  group.children = mergedChildren;
+  group.children.forEach((child) => {
+    if (child.type === 'g') {
+      mergeGroupCompoundFillPaths(child);
+    }
+  });
+}
+
 function applyGroupOpacityToChildren(el: CustomElementOption) {
   if (el.type !== 'g') {
     return;
@@ -1413,8 +1785,21 @@ function applyGroupOpacityToChildren(el: CustomElementOption) {
 
   const staticOpacity = el.style?.opacity;
   const hasStaticOpacity = typeof staticOpacity === 'number' && Number.isFinite(staticOpacity);
+  const staticFill = el.style?.fill;
+  const hasStaticFill = typeof staticFill === 'string';
+  const staticFillRule = el.style?.fillRule;
+  const hasStaticFillRule = typeof staticFillRule === 'string';
   const opacityAnimations = extractOpacityAnimations(el.keyframeAnimation);
-  if (!hasStaticOpacity && !opacityAnimations.length) {
+  const fillAnimations = extractFillAnimations(el.keyframeAnimation);
+  const fillRuleAnimations = extractFillRuleAnimations(el.keyframeAnimation);
+  if (
+    !hasStaticOpacity
+    && !opacityAnimations.length
+    && !hasStaticFill
+    && !fillAnimations.length
+    && !hasStaticFillRule
+    && !fillRuleAnimations.length
+  ) {
     return;
   }
 
@@ -1427,8 +1812,24 @@ function applyGroupOpacityToChildren(el: CustomElementOption) {
       const baseOpacity = typeof current.style.opacity === 'number' ? current.style.opacity : 1;
       current.style.opacity = baseOpacity * staticOpacity;
     }
+    if (hasStaticFill && current.style.fill == null) {
+      current.style.fill = staticFill;
+    }
+    if (hasStaticFillRule && current.style.fillRule == null) {
+      current.style.fillRule = staticFillRule;
+    }
     if (opacityAnimations.length) {
       current.keyframeAnimation = (current.keyframeAnimation || []).concat(opacityAnimations);
+    }
+    if (fillAnimations.length && current.style.fill == null && !hasFillAnimation(current.keyframeAnimation)) {
+      current.keyframeAnimation = (current.keyframeAnimation || []).concat(fillAnimations);
+    }
+    if (
+      fillRuleAnimations.length
+      && current.style.fillRule == null
+      && !hasFillRuleAnimation(current.keyframeAnimation)
+    ) {
+      current.keyframeAnimation = (current.keyframeAnimation || []).concat(fillRuleAnimations);
     }
   });
 
@@ -1438,12 +1839,27 @@ function applyGroupOpacityToChildren(el: CustomElementOption) {
       delete el.style;
     }
   }
+  if (el.style && typeof el.style === 'object' && 'fill' in el.style) {
+    delete el.style.fill;
+    if (!Object.keys(el.style).length) {
+      delete el.style;
+    }
+  }
+  if (el.style && typeof el.style === 'object' && 'fillRule' in el.style) {
+    delete el.style.fillRule;
+    if (!Object.keys(el.style).length) {
+      delete el.style;
+    }
+  }
   if (el.keyframeAnimation?.length) {
     el.keyframeAnimation = stripOpacityAnimations(el.keyframeAnimation);
+    el.keyframeAnimation = stripFillAnimations(el.keyframeAnimation);
+    el.keyframeAnimation = stripFillRuleAnimations(el.keyframeAnimation);
     if (!el.keyframeAnimation.length) {
       delete el.keyframeAnimation;
     }
   }
+  mergeGroupCompoundFillPaths(el);
 }
 
 function addLayerOpacity(

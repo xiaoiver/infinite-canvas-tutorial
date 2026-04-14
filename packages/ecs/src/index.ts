@@ -39,6 +39,7 @@ export {
   isDataUrl,
   isUrl,
   isBrowser,
+  formatNumber,
   parseGradient,
   computeLinearGradient,
   computeRadialGradient,

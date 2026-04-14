@@ -487,6 +487,7 @@ mod tests {
             marker_start: String::new(),
             marker_end: String::new(),
             marker_factor: 1.0,
+            clip_mode: None,
         };
         let shapes = vec![pl];
         let mut map = HashMap::new();
@@ -518,6 +519,7 @@ mod tests {
             stroke_attenuation: false,
             fill_blur: 0.0,
             drop_shadow: None,
+            clip_mode: None,
         };
         let b = JsShape::Rect {
             id: "b".into(),
@@ -540,6 +542,7 @@ mod tests {
             stroke_attenuation: false,
             fill_blur: 0.0,
             drop_shadow: None,
+            clip_mode: None,
         };
         let shapes = vec![a, b];
         let mut map = HashMap::new();

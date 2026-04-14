@@ -1232,14 +1232,11 @@ importers:
         specifier: ^3.3.10
         version: 3.3.10
       '@excalidraw/mermaid-to-excalidraw':
-        specifier: 2.1.1
-        version: 2.1.1
+        specifier: ^2.2.2
+        version: 2.2.2
       '@infinite-canvas-tutorial/ecs':
         specifier: workspace:*
         version: link:../ecs
-      '@infinite-canvas-tutorial/webcomponents':
-        specifier: workspace:*
-        version: link:../webcomponents
       '@lit/context':
         specifier: ^1.1.2
         version: 1.1.2
@@ -1598,6 +1595,9 @@ importers:
       '@infinite-canvas-tutorial/ecs':
         specifier: workspace:*
         version: link:../ecs
+      '@infinite-canvas-tutorial/mermaid':
+        specifier: workspace:*
+        version: link:../plugin-mermaid
       '@lit/context':
         specifier: ^1.1.2
         version: 1.1.2
@@ -2697,8 +2697,8 @@ packages:
   '@excalidraw/markdown-to-text@0.1.2':
     resolution: {integrity: sha512-1nDXBNAojfi3oSFwJswKREkFm5wrSjqay81QlyRv2pkITG/XYB5v+oChENVBQLcxQwX4IUATWvXM5BcaNhPiIg==}
 
-  '@excalidraw/mermaid-to-excalidraw@2.1.1':
-    resolution: {integrity: sha512-jU+frqcxazsY+t5yOBf2mgrQy+WUrbrzA36if3SQB/Vwaf2qOJjnWxucNafgZZk/3+9xGmRotUeOviSOJG+wYA==}
+  '@excalidraw/mermaid-to-excalidraw@2.2.2':
+    resolution: {integrity: sha512-5VKQq5CdRocC82vOIUpQ5ufJOVV9FpBTdHGA+ULqazeIVV+cr299877omQCibsdS3Bpitz2fsnTwnIXEmLVDSg==}
 
   '@fal-ai/client@1.6.2':
     resolution: {integrity: sha512-y89jNGAZUpvt+IZfsIczULN95fGQlPxTt2c9bNFWkKe6OBnhOY+qHHH7IO4XgCsbmCwgfzzaSHUItx1nQ3ifHQ==}
@@ -13499,7 +13499,7 @@ snapshots:
 
   '@excalidraw/markdown-to-text@0.1.2': {}
 
-  '@excalidraw/mermaid-to-excalidraw@2.1.1':
+  '@excalidraw/mermaid-to-excalidraw@2.2.2':
     dependencies:
       '@excalidraw/markdown-to-text': 0.1.2
       '@mermaid-js/parser': 0.6.3

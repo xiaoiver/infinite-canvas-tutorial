@@ -31,6 +31,198 @@ pub fn affine_scale_factor(affine: Affine) -> f64 {
     det.abs().sqrt()
 }
 
+/// 父节点 `clipMode: 'clip'` 时，用与填充一致的几何在子树内建立 Vello clip layer。
+#[cfg(target_arch = "wasm32")]
+fn shape_parent_map(shapes: &[JsShape]) -> HashMap<String, Option<String>> {
+    shapes
+        .iter()
+        .map(|s| (s.id().to_string(), s.parent_id().map(|p| p.to_string())))
+        .collect()
+}
+
+#[cfg(target_arch = "wasm32")]
+fn is_strict_ancestor_of_shape(
+    ancestor: &str,
+    descendant_id: &str,
+    parents: &HashMap<String, Option<String>>,
+) -> bool {
+    let mut cur = parents.get(descendant_id).cloned().flatten();
+    while let Some(id) = cur {
+        if id == ancestor {
+            return true;
+        }
+        cur = parents.get(&id).cloned().flatten();
+    }
+    false
+}
+
+#[cfg(target_arch = "wasm32")]
+fn sync_scene_clip_stack_for_next_shape(
+    scene: &mut Scene,
+    parents: &HashMap<String, Option<String>>,
+    clip_stack: &mut Vec<String>,
+    next_shape_id: &str,
+) {
+    while let Some(top) = clip_stack.last() {
+        if !is_strict_ancestor_of_shape(top.as_str(), next_shape_id, parents) {
+            scene.pop_layer();
+            clip_stack.pop();
+        } else {
+            break;
+        }
+    }
+}
+
+#[cfg(target_arch = "wasm32")]
+fn clip_bezpath_local_for_js_shape(shape: &JsShape, scale: f64) -> Option<(Fill, BezPath)> {
+    match shape {
+        JsShape::Rect {
+            x,
+            y,
+            width,
+            height,
+            radius,
+            size_attenuation,
+            ..
+        } => {
+            let (w, h, r) = if *size_attenuation {
+                (width / scale, height / scale, radius / scale)
+            } else {
+                (*width, *height, *radius)
+            };
+            let (x0, y0, x1, y1) = (
+                x.min(x + w),
+                y.min(y + h),
+                x.max(x + w),
+                y.max(y + h),
+            );
+            let rr = RoundedRect::new(x0, y0, x1, y1, r);
+            Some((Fill::NonZero, rr.to_path(0.25)))
+        }
+        JsShape::Ellipse {
+            cx,
+            cy,
+            rx,
+            ry,
+            size_attenuation,
+            ..
+        } => {
+            let (rx_eff, ry_eff) = if *size_attenuation {
+                (rx / scale, ry / scale)
+            } else {
+                (*rx, *ry)
+            };
+            let e = Ellipse::new(Point::new(*cx, *cy), Vec2::new(rx_eff, ry_eff), 0.0);
+            Some((Fill::NonZero, e.to_path(0.25)))
+        }
+        JsShape::Path {
+            d,
+            fill_rule,
+            size_attenuation,
+            ..
+        } => {
+            let mut bez_path = BezPath::from_svg(d.as_str()).ok()?;
+            if *size_attenuation {
+                let bbox = bez_path.bounding_box();
+                let center = bbox.center();
+                bez_path.apply_affine(Affine::scale_about(1.0 / scale, center));
+            }
+            let fill_mode = if fill_rule.as_str() == "evenodd" {
+                Fill::EvenOdd
+            } else {
+                Fill::NonZero
+            };
+            Some((fill_mode, bez_path))
+        }
+        JsShape::ImageRect {
+            x,
+            y,
+            width,
+            height,
+            radius,
+            size_attenuation,
+            ..
+        } => {
+            let (w, h, r) = if *size_attenuation {
+                (width / scale, height / scale, radius / scale)
+            } else {
+                (*width, *height, *radius)
+            };
+            let (fx0, fy0, fx1, fy1) = (
+                x.min(x + w),
+                y.min(y + h),
+                x.max(x + w),
+                y.max(y + h),
+            );
+            if r > 0.0 {
+                let rr = RoundedRect::new(fx0, fy0, fx1, fy1, r);
+                Some((Fill::NonZero, rr.to_path(0.25)))
+            } else {
+                let rect = Rect::new(fx0, fy0, fx1, fy1);
+                Some((Fill::NonZero, rect.to_path(0.25)))
+            }
+        }
+        JsShape::VectorNetwork {
+            vertices,
+            segments,
+            ..
+        } => {
+            let verts = vertices.as_slice();
+            let segs = segments.as_slice();
+            let bounds = crate::vector_network::geometry_rect(verts, segs)?;
+            let rect = Rect::new(bounds.x0, bounds.y0, bounds.x1, bounds.y1);
+            Some((Fill::NonZero, rect.to_path(0.25)))
+        }
+        JsShape::RoughRect {
+            x,
+            y,
+            width,
+            height,
+            ..
+        } => {
+            let (x0, y0, x1, y1) = (
+                x.min(x + width),
+                y.min(y + height),
+                x.max(x + width),
+                y.max(y + height),
+            );
+            let rect = RoundedRect::new(x0, y0, x1, y1, 0.0);
+            Some((Fill::NonZero, rect.to_path(0.25)))
+        }
+        JsShape::RoughEllipse { cx, cy, rx, ry, .. } => {
+            let e = Ellipse::new(Point::new(*cx, *cy), Vec2::new(*rx, *ry), 0.0);
+            Some((Fill::NonZero, e.to_path(0.25)))
+        }
+        JsShape::RoughPath { d, fill_rule, .. } => {
+            let bez_path = BezPath::from_svg(d.as_str()).ok()?;
+            let fill_mode = if fill_rule.as_str() == "evenodd" {
+                Fill::EvenOdd
+            } else {
+                Fill::NonZero
+            };
+            Some((fill_mode, bez_path))
+        }
+        _ => None,
+    }
+}
+
+#[cfg(target_arch = "wasm32")]
+fn clip_layer_after_draw_js_shape(
+    shape: &JsShape,
+    canvas_transform: Affine,
+    world_transforms: &HashMap<String, Affine>,
+) -> Option<(Fill, BezPath, Affine)> {
+    if shape.clip_mode_str()? != "clip" {
+        return None;
+    }
+    let world = world_transforms.get(shape.id())?;
+    let shape_tf = canvas_transform * *world;
+    let dpr = device_pixel_ratio();
+    let scale = (affine_scale_factor(canvas_transform) / dpr).max(1e-6);
+    let (fill, path) = clip_bezpath_local_for_js_shape(shape, scale)?;
+    Some((fill, path, shape_tf))
+}
+
 pub fn add_grid_to_scene(scene: &mut Scene, transform: Affine, viewport_width: u32, viewport_height: u32) {
     const GRID_MAJOR_STEP: f64 = 100.0;
     const GRID_MINOR_STEP: f64 = 10.0;
@@ -237,8 +429,21 @@ pub fn add_shapes_to_scene(
         if let Some((shapes, world_transforms)) =
             filtered_shapes_and_world_transforms(cid, &render_opts, ui_shape_filter)
         {
+            let parent_map = shape_parent_map(&shapes);
+            let mut clip_stack: Vec<String> = Vec::new();
             for shape in shapes {
+                let sid = shape.id().to_string();
+                sync_scene_clip_stack_for_next_shape(scene, &parent_map, &mut clip_stack, &sid);
+                let clip_push = clip_layer_after_draw_js_shape(&shape, transform, &world_transforms);
                 add_js_shape_to_scene(scene, transform, shape, &world_transforms);
+                if let Some((fill, bez, tf)) = clip_push {
+                    scene.push_clip_layer(fill, tf, &bez);
+                    clip_stack.push(sid);
+                }
+            }
+            while !clip_stack.is_empty() {
+                scene.pop_layer();
+                clip_stack.pop();
             }
         }
     }

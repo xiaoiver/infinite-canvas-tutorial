@@ -291,11 +291,17 @@ function parseColor(value: unknown): ParsedColor | null {
   const parsed = parseD3Color(normalized);
   if (parsed) {
     const rgb = parsed.rgb();
+    // d3-color may output NaN channels when alpha <= 0 (eg. rgba(..., 0)).
+    // Keep interpolation numerically stable by sanitizing channels.
+    const safeR = Number.isFinite(rgb.r) ? rgb.r : 0;
+    const safeG = Number.isFinite(rgb.g) ? rgb.g : 0;
+    const safeB = Number.isFinite(rgb.b) ? rgb.b : 0;
+    const safeA = Number.isFinite(rgb.opacity) ? rgb.opacity : 1;
     return {
-      r: clamp255(rgb.r),
-      g: clamp255(rgb.g),
-      b: clamp255(rgb.b),
-      a: clamp01(rgb.opacity),
+      r: clamp255(safeR),
+      g: clamp255(safeG),
+      b: clamp255(safeB),
+      a: clamp01(safeA),
     };
   }
   return null;

@@ -147,6 +147,7 @@ pub enum JsShape {
         stroke_attenuation: bool,
         fill_blur: f64,
         drop_shadow: Option<DropShadow>,
+        clip_mode: Option<String>,
     },
     Ellipse {
         id: String,
@@ -167,6 +168,7 @@ pub enum JsShape {
         size_attenuation: bool,
         stroke_attenuation: bool,
         drop_shadow: Option<DropShadow>,
+        clip_mode: Option<String>,
     },
     Line {
         id: String,
@@ -186,6 +188,7 @@ pub enum JsShape {
         marker_start: String,
         marker_end: String,
         marker_factor: f32,
+        clip_mode: Option<String>,
     },
     Text {
         id: String,
@@ -218,6 +221,7 @@ pub enum JsShape {
         stroke_opacity: f32,
         local_transform: Option<Mat3Array>,
         size_attenuation: bool,
+        clip_mode: Option<String>,
     },
     ImageRect {
         id: String,
@@ -240,6 +244,7 @@ pub enum JsShape {
         size_attenuation: bool,
         stroke_attenuation: bool,
         drop_shadow: Option<DropShadow>,
+        clip_mode: Option<String>,
     },
     Path {
         id: String,
@@ -261,6 +266,7 @@ pub enum JsShape {
         marker_end: String,
         marker_factor: f32,
         drop_shadow: Option<DropShadow>,
+        clip_mode: Option<String>,
     },
     Polyline {
         id: String,
@@ -278,6 +284,7 @@ pub enum JsShape {
         marker_start: String,
         marker_end: String,
         marker_factor: f32,
+        clip_mode: Option<String>,
     },
     Brush {
         id: String,
@@ -295,6 +302,7 @@ pub enum JsShape {
         stamp_mode_ratio: bool,
         stamp_noise_factor: f32,
         stamp_rotation_factor: f32,
+        clip_mode: Option<String>,
     },
     Group {
         id: String,
@@ -302,6 +310,7 @@ pub enum JsShape {
         z_index: f32,
         ui: bool,
         local_transform: Option<Mat3Array>,
+        clip_mode: Option<String>,
     },
     RoughRect {
         id: String,
@@ -328,6 +337,7 @@ pub enum JsShape {
         simplification: f32,
         /// `roughSeed` — watercolor / reproducible rough; `0` = default.
         rough_seed: i32,
+        clip_mode: Option<String>,
     },
     RoughEllipse {
         id: String,
@@ -353,6 +363,7 @@ pub enum JsShape {
         curve_step_count: f32,
         simplification: f32,
         rough_seed: i32,
+        clip_mode: Option<String>,
     },
     RoughLine {
         id: String,
@@ -373,6 +384,7 @@ pub enum JsShape {
         marker_start: String,
         marker_end: String,
         marker_factor: f32,
+        clip_mode: Option<String>,
     },
     RoughPolyline {
         id: String,
@@ -398,6 +410,7 @@ pub enum JsShape {
         marker_end: String,
         marker_factor: f32,
         rough_seed: i32,
+        clip_mode: Option<String>,
     },
     RoughPath {
         id: String,
@@ -424,6 +437,7 @@ pub enum JsShape {
         marker_end: String,
         marker_factor: f32,
         rough_seed: i32,
+        clip_mode: Option<String>,
     },
     VectorNetwork {
         id: String,
@@ -446,6 +460,7 @@ pub enum JsShape {
         marker_end: String,
         marker_factor: f32,
         drop_shadow: Option<DropShadow>,
+        clip_mode: Option<String>,
     },
 }
 
@@ -483,6 +498,25 @@ impl JsShape {
             | JsShape::RoughPolyline { ui, .. }
             | JsShape::RoughPath { ui, .. }
             | JsShape::VectorNetwork { ui, .. } => *ui,
+        }
+    }
+    pub fn clip_mode_str(&self) -> Option<&str> {
+        match self {
+            JsShape::Rect { clip_mode, .. }
+            | JsShape::Ellipse { clip_mode, .. }
+            | JsShape::Line { clip_mode, .. }
+            | JsShape::Text { clip_mode, .. }
+            | JsShape::ImageRect { clip_mode, .. }
+            | JsShape::Path { clip_mode, .. }
+            | JsShape::Polyline { clip_mode, .. }
+            | JsShape::Brush { clip_mode, .. }
+            | JsShape::Group { clip_mode, .. }
+            | JsShape::RoughRect { clip_mode, .. }
+            | JsShape::RoughEllipse { clip_mode, .. }
+            | JsShape::RoughLine { clip_mode, .. }
+            | JsShape::RoughPolyline { clip_mode, .. }
+            | JsShape::RoughPath { clip_mode, .. }
+            | JsShape::VectorNetwork { clip_mode, .. } => clip_mode.as_deref(),
         }
     }
     pub fn local_transform(&self) -> Option<&Mat3Array> {
@@ -835,6 +869,8 @@ pub struct RectOptions {
     pub fill_blur: f64,
     #[serde(default)]
     pub drop_shadow: Option<DropShadowOptions>,
+    #[serde(default)]
+    pub clip_mode: Option<String>,
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -875,6 +911,8 @@ pub struct EllipseOptions {
     pub stroke_attenuation: bool,
     #[serde(default)]
     pub drop_shadow: Option<DropShadowOptions>,
+    #[serde(default)]
+    pub clip_mode: Option<String>,
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -911,6 +949,8 @@ pub struct LineOptions {
     pub marker_end: String,
     #[serde(default = "default_marker_factor")]
     pub marker_factor: f32,
+    #[serde(default)]
+    pub clip_mode: Option<String>,
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -948,6 +988,8 @@ pub struct ImageRectOptions {
     pub stroke_attenuation: bool,
     #[serde(default)]
     pub drop_shadow: Option<DropShadowOptions>,
+    #[serde(default)]
+    pub clip_mode: Option<String>,
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -993,6 +1035,8 @@ pub struct PathOptions {
     pub marker_factor: f32,
     #[serde(default)]
     pub drop_shadow: Option<DropShadowOptions>,
+    #[serde(default)]
+    pub clip_mode: Option<String>,
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -1079,6 +1123,8 @@ pub struct VectorNetworkOptions {
     pub marker_factor: f32,
     #[serde(default)]
     pub drop_shadow: Option<DropShadowOptions>,
+    #[serde(default)]
+    pub clip_mode: Option<String>,
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -1114,6 +1160,8 @@ pub struct PolylineOptions {
     pub marker_end: String,
     #[serde(default = "default_marker_factor")]
     pub marker_factor: f32,
+    #[serde(default)]
+    pub clip_mode: Option<String>,
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -1160,6 +1208,8 @@ pub struct BrushOptions {
     pub size_attenuation: bool,
     #[serde(default)]
     pub stroke_attenuation: bool,
+    #[serde(default)]
+    pub clip_mode: Option<String>,
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -1176,6 +1226,8 @@ pub struct GroupOptions {
     pub ui: bool,
     #[serde(default, deserialize_with = "deserialize_mat3_opt")]
     pub local_transform: Option<Mat3Array>,
+    #[serde(default)]
+    pub clip_mode: Option<String>,
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -1261,6 +1313,8 @@ pub struct RoughRectOptions {
     pub fill_weight: f32,
     #[serde(default = "default_rough_seed")]
     pub rough_seed: i32,
+    #[serde(default)]
+    pub clip_mode: Option<String>,
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -1309,6 +1363,8 @@ pub struct RoughEllipseOptions {
     pub fill_weight: f32,
     #[serde(default = "default_rough_seed")]
     pub rough_seed: i32,
+    #[serde(default)]
+    pub clip_mode: Option<String>,
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -1360,6 +1416,8 @@ pub struct RoughPolylineOptions {
     pub marker_factor: f32,
     #[serde(default = "default_rough_seed")]
     pub rough_seed: i32,
+    #[serde(default)]
+    pub clip_mode: Option<String>,
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -1413,6 +1471,8 @@ pub struct RoughPathOptions {
     pub marker_factor: f32,
     #[serde(default = "default_rough_seed")]
     pub rough_seed: i32,
+    #[serde(default)]
+    pub clip_mode: Option<String>,
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -1451,6 +1511,8 @@ pub struct RoughLineOptions {
     pub marker_end: String,
     #[serde(default = "default_marker_factor")]
     pub marker_factor: f32,
+    #[serde(default)]
+    pub clip_mode: Option<String>,
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -1517,6 +1579,8 @@ pub struct TextOptions {
     pub local_transform: Option<Mat3Array>,
     #[serde(default)]
     pub size_attenuation: bool,
+    #[serde(default)]
+    pub clip_mode: Option<String>,
 }
 
 #[cfg(target_arch = "wasm32")]

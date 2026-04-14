@@ -24,6 +24,10 @@ export * from './context-bar';
 export * from './context-common-bar';
 export * from './context-image-edit-bar';
 export * from './context-menu';
+export {
+  registerMermaidPasteStyler,
+  unregisterMermaidPasteStyler,
+} from './mermaid-paste';
 export * from './fill-action-button';
 export * from './stroke-action-button';
 export * from './stroke-content';
