@@ -10,11 +10,6 @@
       "types": "./lib/index.d.ts",
       "import": "./esm/index.js",
       "require": "./lib/index.js"
-    },
-    "./spectrum": {
-      "types": "./lib/spectrum/index.d.ts",
-      "import": "./esm/spectrum/index.js",
-      "require": "./lib/spectrum/index.js"
     }
   },
   "files": [
@@ -53,6 +48,7 @@
     "localize:build": "lit-localize build"
   },
   "dependencies": {
+    "@antv/hierarchy": "^0.6.14",
     "@antv/util": "^3.3.10",
     "@excalidraw/mermaid-to-excalidraw": "^2.2.2",
     "@spectrum-web-components/icon": "^1.11.2",

@@ -11,6 +11,10 @@ import {
   deserializePoints,
   serializePoints,
   TextSerializedNode,
+  DIRECTION_EAST,
+  DIRECTION_NORTH,
+  DIRECTION_SOUTH,
+  DIRECTION_WEST,
 } from '@infinite-canvas-tutorial/ecs';
 import {
   Edge,
@@ -37,6 +41,51 @@ import {
 import { State } from '@excalidraw/mermaid-to-excalidraw/dist/parser/state';
 import { ERD } from '@excalidraw/mermaid-to-excalidraw/dist/parser/er';
 import { Class } from '@excalidraw/mermaid-to-excalidraw/dist/parser/class';
+import type { MindmapNodeItem, MindmapParsed } from './mindmapFromSvg';
+import { applyAntvMindmapLayout } from './mindmapAntvLayout';
+
+/** 与 {@link BindingAttributes#sourcePortConstraint} 一致 */
+type MindmapPortDir = 'north' | 'south' | 'east' | 'west';
+
+/**
+ * 按两端节点中心相对位置选择正交边的出口/入口侧，与 Mindmap.vue 中左右子树连线思路一致。
+ */
+function mindmapEdgePortConstraints(
+  from: MindmapNodeItem,
+  to: MindmapNodeItem,
+): {
+  sourcePortConstraint: MindmapPortDir;
+  targetPortConstraint: MindmapPortDir;
+} {
+  const fcx = from.x + from.width / 2;
+  const fcy = from.y + from.height / 2;
+  const tcx = to.x + to.width / 2;
+  const tcy = to.y + to.height / 2;
+  const dx = tcx - fcx;
+  const dy = tcy - fcy;
+  if (Math.abs(dx) >= Math.abs(dy)) {
+    if (dx >= 0) {
+      return {
+        sourcePortConstraint: DIRECTION_EAST,
+        targetPortConstraint: DIRECTION_WEST,
+      };
+    }
+    return {
+      sourcePortConstraint: DIRECTION_WEST,
+      targetPortConstraint: DIRECTION_EAST,
+    };
+  }
+  if (dy >= 0) {
+    return {
+      sourcePortConstraint: DIRECTION_SOUTH,
+      targetPortConstraint: DIRECTION_NORTH,
+    };
+  }
+  return {
+    sourcePortConstraint: DIRECTION_NORTH,
+    targetPortConstraint: DIRECTION_SOUTH,
+  };
+}
 
 /** Mermaid FlowEdge.type：双向为 double_arrow_point / double_arrow_circle / double_arrow_cross 等 */
 function markersFromMermaidFlowEdgeType(
@@ -55,7 +104,7 @@ function markersFromMermaidFlowEdgeType(
 }
 
 export function convertParsedMermaidDataToSerializedNodes(
-  parsedMermaidData: Flowchart | Sequence | State | ERD | Class,
+  parsedMermaidData: Flowchart | Sequence | State | ERD | Class | MindmapParsed,
   options: { fontSize: number },
 ): SerializedNode[] {
   const { type } = parsedMermaidData;
@@ -82,14 +131,131 @@ export function convertParsedMermaidDataToSerializedNodes(
     }
     case 'class': {
       const classChart = parsedMermaidData as Class;
-
-      console.log(classChart);
       return convertClassToSerializedNodes(classChart, options);
+    }
+    case 'mindmap': {
+      const mindmap = parsedMermaidData as MindmapParsed;
+      return convertMindmapToSerializedNodes(mindmap, options);
     }
     default: {
       throw new Error(`Unsupported diagram type: ${type}`);
     }
   }
+}
+
+function convertMindmapToSerializedNodes(
+  chart: MindmapParsed,
+  options: { fontSize: number },
+): SerializedNode[] {
+  const { fontSize } = options;
+  const laidOut = applyAntvMindmapLayout(chart, { fontSize });
+  const root: GSerializedNode = {
+    id: uuidv4(),
+    type: 'g',
+    zIndex: 0,
+  };
+  const serializedNodes: SerializedNode[] = [root];
+
+  laidOut.nodes.forEach((n) => {
+    /** 与 Mermaid 节点 id 一致，便于边 fromId/toId 绑定 */
+    const nodeId = n.id;
+    const stroke = n.stroke ?? '#555';
+    const strokeW = n.strokeWidth ?? 2;
+    const fill = n.fill ?? 'rgba(200,220,255,0.35)';
+
+    if (n.shape === 'ellipse') {
+      const ell: EllipseSerializedNode = {
+        id: nodeId,
+        parentId: root.id,
+        type: 'ellipse',
+        x: n.x,
+        y: n.y,
+        width: n.width,
+        height: n.height,
+        stroke,
+        strokeWidth: strokeW,
+        fill,
+        zIndex: 1,
+        version: 0,
+      };
+      serializedNodes.push(ell);
+    } else {
+      const rect: RectSerializedNode = {
+        id: nodeId,
+        parentId: root.id,
+        type: 'rect',
+        x: n.x,
+        y: n.y,
+        width: n.width,
+        height: n.height,
+        stroke,
+        strokeWidth: strokeW,
+        fill,
+        zIndex: 1,
+        cornerRadius: 6,
+        version: 0,
+      };
+      serializedNodes.push(rect);
+    }
+
+    const label = n.label.trim() || ' ';
+    const textNode: TextSerializedNode = {
+      id: `${nodeId}-text`,
+      parentId: nodeId,
+      type: 'text',
+      anchorX: n.width / 2,
+      anchorY: n.height / 2,
+      content: normalizeText(label),
+      fontSize,
+      fontFamily: 'sans-serif',
+      fill: '#111',
+      textAlign: 'center',
+      textBaseline: 'middle',
+      zIndex: 2,
+      version: 0,
+      wordWrap: true,
+      wordWrapWidth: Math.max(8, n.width - 8),
+    };
+    serializedNodes.push(textNode);
+  });
+
+  const nodeById = new Map(laidOut.nodes.map((n) => [n.id, n]));
+  laidOut.edges.forEach((e) => {
+    const fromNode = nodeById.get(e.fromId);
+    const toNode = nodeById.get(e.toId);
+    const ports: {
+      sourcePortConstraint: MindmapPortDir;
+      targetPortConstraint: MindmapPortDir;
+    } =
+      fromNode && toNode
+        ? mindmapEdgePortConstraints(fromNode, toNode)
+        : {
+          sourcePortConstraint: DIRECTION_EAST as MindmapPortDir,
+          targetPortConstraint: DIRECTION_WEST as MindmapPortDir,
+        };
+
+    serializedNodes.push({
+      id: e.id,
+      parentId: root.id,
+      type: 'path',
+      fromId: e.fromId,
+      toId: e.toId,
+      edgeStyle: EdgeStyle.ORTHOGONAL,
+      bezier: true,
+      curved: true,
+      sourcePortConstraint: ports.sourcePortConstraint,
+      targetPortConstraint: ports.targetPortConstraint,
+      stroke: '#888',
+      strokeWidth: 2,
+      hitStrokeWidth: 8,
+      markerEnd: 'line',
+      markerFactor: 4,
+      zIndex: 0,
+      version: 0,
+    });
+  });
+
+  return serializedNodes;
 }
 
 /** ER / Class 解析结果中相同的 SVG 骨架字段（类图另有 namespaces，见下方说明） */
