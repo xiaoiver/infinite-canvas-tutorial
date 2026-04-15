@@ -466,9 +466,9 @@ If you want to use it in your own project, you can refer to:
     -   Generate mipmap
     -   Composite with vello pipeline
 
-|               Radiance Cascades               |
-| :-------------------------------------------: |
-| ![vello](./screenshots/radiance-cascades.png) |
+|               Radiance Cascades               | with mermaid flowchart, mindmap, state diagram |
+| :-------------------------------------------: | :--------------------------------------------: |
+| ![vello](./screenshots/radiance-cascades.png) |    ![mermaid](./screenshots/rc-mermaid.png)    |
 
 [Online App]: app.infinitecanvas.cc
 [infinitecanvas]: https://infinitecanvas.tools/

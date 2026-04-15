@@ -467,9 +467,9 @@ pnpm run dev
     -   生成 mipmap
     -   与 vello 渲染管线结合，合成最终结果
 
-|               Radiance Cascades               |
-| :-------------------------------------------: |
-| ![vello](./screenshots/radiance-cascades.png) |
+|               Radiance Cascades               | with mermaid flowchart, mindmap, state diagram |
+| :-------------------------------------------: | :--------------------------------------------: |
+| ![vello](./screenshots/radiance-cascades.png) |    ![mermaid](./screenshots/rc-mermaid.png)    |
 
 [在线体验]: app.infinitecanvas.cc
 [infinitecanvas]: https://infinitecanvas.tools/
