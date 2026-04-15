@@ -30,14 +30,27 @@ onMounted(async () => {
       penbarAll: [Pen.SELECT],
     });
 
-    const nodes = await parseMermaidToSerializedNodes(`stateDiagram-v2
-    classDef yourState fill:#ffec99,stroke:#c92a2a,color:#1864ab,stroke-width:2px
-    yswsii: Your state with spaces in it
-    [*] --> yswsii:::yourState
-    [*] --> SomeOtherState
-    SomeOtherState --> YetAnotherState
-    yswsii --> YetAnotherState
-    YetAnotherState --> [*]`);
+    const nodes = await parseMermaidToSerializedNodes(`erDiagram
+  CAR ||--o{ NAMED-DRIVER : allows
+  CAR {
+    string registrationNumber PK
+    string make
+    string model
+    string[] parts
+  }
+  PERSON ||--o{ NAMED-DRIVER : is
+  PERSON {
+    string driversLicense PK "The license #"
+    string(99) firstName "Only 99 characters are allowed"
+    string lastName
+    string phone UK
+    int age
+  }
+  NAMED-DRIVER {
+    string carRegistrationNumber PK, FK
+    string driverLicence PK, FK
+  }
+  MANUFACTURER only one to zero or more CAR : makes`);
     nodes.forEach(node => {
       if (node.type === 'rect') {
         // @ts-expect-error change type
@@ -99,6 +112,6 @@ onUnmounted(async () => {
 
 <template>
   <ic-spectrum-canvas ref="wrapper" style="width: 100%; height: 400px"
-    app-state='{"topbarVisible":true, "cameraZoom": 0.8, "cameraX": -200, "cameraY": -100}'>
+    app-state='{"topbarVisible":true, "cameraZoom": 0.38, "cameraX": -200, "cameraY": -100}'>
   </ic-spectrum-canvas>
 </template>

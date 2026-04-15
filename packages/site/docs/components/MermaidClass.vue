@@ -30,14 +30,9 @@ onMounted(async () => {
       penbarAll: [Pen.SELECT],
     });
 
-    const nodes = await parseMermaidToSerializedNodes(`stateDiagram-v2
-    classDef yourState fill:#ffec99,stroke:#c92a2a,color:#1864ab,stroke-width:2px
-    yswsii: Your state with spaces in it
-    [*] --> yswsii:::yourState
-    [*] --> SomeOtherState
-    SomeOtherState --> YetAnotherState
-    yswsii --> YetAnotherState
-    YetAnotherState --> [*]`);
+    const nodes = await parseMermaidToSerializedNodes(`classDiagram
+  class Animal
+  Vehicle <|-- Car`);
     nodes.forEach(node => {
       if (node.type === 'rect') {
         // @ts-expect-error change type
@@ -99,6 +94,6 @@ onUnmounted(async () => {
 
 <template>
   <ic-spectrum-canvas ref="wrapper" style="width: 100%; height: 400px"
-    app-state='{"topbarVisible":true, "cameraZoom": 0.8, "cameraX": -200, "cameraY": -100}'>
+    app-state='{"topbarVisible":true, "cameraZoom": 0.38, "cameraX": -200, "cameraY": -100}'>
   </ic-spectrum-canvas>
 </template>

@@ -3,6 +3,10 @@ import { convertParsedMermaidDataToSerializedNodes } from './converter';
 import { parseMermaid } from '@excalidraw/mermaid-to-excalidraw/dist/parseMermaid';
 import { Flowchart } from '@excalidraw/mermaid-to-excalidraw/dist/parser/flowchart';
 import { Sequence } from '@excalidraw/mermaid-to-excalidraw/dist/parser/sequence';
+import { State } from '@excalidraw/mermaid-to-excalidraw/dist/parser/state';
+import { ERD } from '@excalidraw/mermaid-to-excalidraw/dist/parser/er';
+import { Class } from '@excalidraw/mermaid-to-excalidraw/dist/parser/class';
+
 /**
  * @see https://github.com/excalidraw/mermaid-to-excalidraw/blob/master/src/constants.ts#L9
  */
@@ -30,7 +34,7 @@ export async function parseMermaidToSerializedNodes(
   });
 
   // Only font size supported for excalidraw elements
-  const serializedNodes = convertParsedMermaidDataToSerializedNodes(parsedMermaidData as Flowchart | Sequence, {
+  const serializedNodes = convertParsedMermaidDataToSerializedNodes(parsedMermaidData as Flowchart | Sequence | State | ERD | Class, {
     fontSize,
   });
   return serializedNodes;

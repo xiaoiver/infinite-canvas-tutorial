@@ -1,6 +1,7 @@
 ---
 outline: deep
 ---
+
 <script setup>
 import Mermaid from '../components/Mermaid.vue'
 import MermaidRough from '../components/MermaidRough.vue'
@@ -8,9 +9,11 @@ import MermaidFlowchart from '../components/MermaidFlowchart.vue'
 import MermaidFlowchartWatercolor from '../components/MermaidFlowchartWatercolor.vue'
 import MermaidSequence from '../components/MermaidSequence.vue'
 import MermaidState from '../components/MermaidState.vue'
+import MermaidERD from '../components/MermaidERD.vue'
+import MermaidClass from '../components/MermaidClass.vue'
 </script>
 
-This plugin provides a utility method that converts Mermaid syntax into a scene graph for the canvas:
+This plugin provides a utility method that converts Mermaid syntax into a scene graph for the canvas, see [Lesson 32 - Text to diagram]:
 
 ```ts
 import { parseMermaidToSerializedNodes } from '@infinite-canvas-tutorial/mermaid';
@@ -35,7 +38,7 @@ A more complicated example:
 
 <MermaidFlowchart />
 
-Watercolor:
+Watercolor with [watercolorizer]:
 
 <MermaidFlowchartWatercolor />
 
@@ -43,6 +46,17 @@ Watercolor:
 
 <MermaidSequence />
 
-## [WIP] state
+## state
 
-<!-- <MermaidState /> -->
+<MermaidState />
+
+## ERD
+
+<MermaidERD />
+
+## Class
+
+<MermaidClass />
+
+[Lesson 32 - Text to diagram]: /guide/lesson-032
+[watercolorizer]: https://github.com/32bitkid/watercolorizer
