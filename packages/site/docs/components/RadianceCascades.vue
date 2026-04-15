@@ -51,17 +51,6 @@ const giStrength = ref(0.1);
 /** Ready-to-paste Mermaid snippets (styled via api.registerMermaidPasteStyler). */
 const mermaidPasteExamples: { id: string; title: string; description: string; code: string }[] = [
   {
-    id: 'flowchart-td',
-    title: 'Flowchart (top-down)',
-    description: 'Diamond decisions, labeled edges, and common node shapes.',
-    code: `flowchart TD
-  A[Christmas] -->|Get money| B(Go shopping)
-  B --> C{Let me think}
-  C -->|One| D[Laptop]
-  C -->|Two| E[iPhone]
-  C -->|Three| F[Car]`,
-  },
-  {
     id: 'flowchart-bidir',
     title: 'Bidirectional edges',
     description: 'Two-way links: o--o, <-->, x--x.',
@@ -71,12 +60,25 @@ const mermaidPasteExamples: { id: string; title: string; description: string; co
   C x--x D`,
   },
   {
-    id: 'flowchart-simple',
-    title: 'Simple left-to-right',
-    description: 'LR direction with basic shapes.',
-    code: `flowchart LR
-  Start([Start]) --> Step[Process]
-  Step --> End([End])`,
+    id: 'state',
+    title: 'nested-composite-states',
+    description: 'Nested composite states with inner states.',
+    code: `stateDiagram-v2
+[*] --> First
+First --> Second
+First --> Third
+state First {
+  [*] --> fir
+  fir --> [*]
+}
+state Second {
+  [*] --> sec
+  sec --> [*]
+}
+state Third {
+  [*] --> thi
+  thi --> [*]
+}`,
   },
   {
     id: 'sequence',

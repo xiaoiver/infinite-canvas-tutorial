@@ -69,7 +69,6 @@ export class RenderBindings extends System {
             ComputedBounds,
             Camera,
             Canvas,
-            Binding,
             FractionalIndex,
             Parent,
             Children,
@@ -90,6 +89,7 @@ export class RenderBindings extends System {
             EdgeLabel,
             Text,
             Binded,
+            Binding,
             PartialBinding,
           )
           .write,
