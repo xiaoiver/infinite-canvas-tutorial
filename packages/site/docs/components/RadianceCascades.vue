@@ -207,19 +207,19 @@ onMounted(async () => {
  C -->|Two| E[iPhone]
  C -->|Three| F[Car]`);
     styleRadianceMermaidNodes(nodes);
-    // import('webfontloader').then((module) => {
-    //   const WebFont = module.default;
-    //   WebFont.load({
-    //     google: {
-    //       families: ['Gaegu'],
-    //     },
-    //     active: () => {
-    api.runAtNextTick(() => {
-      api.updateNodes(nodes);
+    import('webfontloader').then((module) => {
+      const WebFont = module.default;
+      WebFont.load({
+        google: {
+          families: ['Gaegu'],
+        },
+        active: () => {
+          api.runAtNextTick(() => {
+            api.updateNodes(nodes);
+          });
+        }
+      });
     });
-    //     }
-    //   });
-    // });
   };
 
   canvas.addEventListener(Event.READY, onReady);
@@ -241,7 +241,6 @@ onMounted(async () => {
       1,
       VelloRendererPlugin,
     );
-    registerFont('/fonts/NotoSans-Regular.ttf');
     registerFont('/fonts/Gaegu-Regular.ttf');
 
     new App()
