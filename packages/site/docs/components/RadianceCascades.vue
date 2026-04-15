@@ -31,6 +31,9 @@ function styleRadianceMermaidNodes(nodes: SerializedNode[]) {
     if (node.type === 'rect') {
       node.fill = 'black';
       node.strokeWidth = 0;
+    } else if (node.type === 'ellipse') {
+      node.fill = '#454343';
+      node.strokeWidth = 0;
     } else if (node.type === 'line') {
       node.stroke = '#454343';
     } else if (node.type === 'polyline') {
@@ -41,8 +44,12 @@ function styleRadianceMermaidNodes(nodes: SerializedNode[]) {
       node.fill = 'white';
       node.stroke = 'none';
     } else if (node.type === 'path') {
-      node.fill = '#454343';
-      node.strokeWidth = 0;
+      if (node.fromId) {
+        node.stroke = '#454343';
+      } else {
+        node.fill = '#454343';
+        node.strokeWidth = 0;
+      }
     }
   });
 }
@@ -60,25 +67,35 @@ const mermaidPasteExamples: { id: string; title: string; description: string; co
   C x--x D`,
   },
   {
+    id: 'mindmap',
+    title: 'Mindmap',
+    description: 'Mindmap',
+    code: `mindmap
+  root((mindmap))
+    Origins
+      Long history
+      ::icon(fa fa-book)
+      Popularisation
+        British popular psychology<br/> author Tony Buzan
+    Research
+      On effectiveness<br/>and features
+      On Automatic creation
+        Uses
+            Creative techniques
+            Strategic planning
+            Argument mapping
+    Tools
+      Pen and paper
+      Mermaid`,
+  },
+  {
     id: 'state',
     title: 'nested-composite-states',
     description: 'Nested composite states with inner states.',
     code: `stateDiagram-v2
-[*] --> First
-First --> Second
-First --> Third
-state First {
-  [*] --> fir
-  fir --> [*]
-}
-state Second {
-  [*] --> sec
-  sec --> [*]
-}
-state Third {
-  [*] --> thi
-  thi --> [*]
-}`,
+    [*] --> Idle
+    Idle --> Active: Start
+    Active --> [*]`,
   },
   {
     id: 'sequence',
@@ -89,6 +106,7 @@ state Third {
   John-->>Alice: Great!
   Alice-)John: See you later!`,
   },
+
 ];
 
 const copiedExampleId = ref<string | null>(null);

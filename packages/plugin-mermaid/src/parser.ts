@@ -1,11 +1,15 @@
+import { v4 as uuidv4 } from 'uuid';
 import { MermaidConfig } from 'mermaid';
 import { convertParsedMermaidDataToSerializedNodes } from './converter';
-import { parseMermaid } from '@excalidraw/mermaid-to-excalidraw/dist/parseMermaid';
+import { parseMermaid } from './parseMermaid';
 import { Flowchart } from '@excalidraw/mermaid-to-excalidraw/dist/parser/flowchart';
 import { Sequence } from '@excalidraw/mermaid-to-excalidraw/dist/parser/sequence';
 import { State } from '@excalidraw/mermaid-to-excalidraw/dist/parser/state';
 import { ERD } from '@excalidraw/mermaid-to-excalidraw/dist/parser/er';
 import { Class } from '@excalidraw/mermaid-to-excalidraw/dist/parser/class';
+import type { MindmapParsed } from './mindmapFromSvg';
+import { LineSerializedNode, PathSerializedNode, SerializedNode } from '@infinite-canvas-tutorial/ecs';
+import { PolylineSerializedNode } from '@infinite-canvas-tutorial/ecs';
 
 /**
  * @see https://github.com/excalidraw/mermaid-to-excalidraw/blob/master/src/constants.ts#L9
@@ -34,8 +38,37 @@ export async function parseMermaidToSerializedNodes(
   });
 
   // Only font size supported for excalidraw elements
-  const serializedNodes = convertParsedMermaidDataToSerializedNodes(parsedMermaidData as Flowchart | Sequence | State | ERD | Class, {
-    fontSize,
-  });
-  return serializedNodes;
+  const serializedNodes = convertParsedMermaidDataToSerializedNodes(
+    parsedMermaidData as Flowchart | Sequence | State | ERD | Class | MindmapParsed,
+    {
+      fontSize,
+    },
+  );
+
+  return remapMermaidPasteNodeIds(serializedNodes);
+}
+
+
+function remapMermaidPasteNodeIds(nodes: SerializedNode[]): SerializedNode[] {
+  const cloned = structuredClone(nodes) as SerializedNode[];
+  const idMap = new Map<string, string>();
+  for (const n of cloned) {
+    idMap.set(n.id, uuidv4());
+  }
+  for (const n of cloned) {
+    n.id = idMap.get(n.id)!;
+    if (n.parentId) {
+      n.parentId = idMap.get(n.parentId) ?? n.parentId;
+    }
+    if (n.type === 'polyline' || n.type === 'line' || n.type === 'path') {
+      const edge = n as PolylineSerializedNode | LineSerializedNode | PathSerializedNode;
+      if (edge.fromId) {
+        edge.fromId = idMap.get(edge.fromId) ?? edge.fromId;
+      }
+      if (edge.toId) {
+        edge.toId = idMap.get(edge.toId) ?? edge.toId;
+      }
+    }
+  }
+  return cloned;
 }

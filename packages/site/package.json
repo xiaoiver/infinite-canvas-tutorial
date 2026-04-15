@@ -19,9 +19,9 @@
     "url": "https://github.com/xiaoiver"
   },
   "scripts": {
-    "dev": "vitepress dev docs",
+    "dev": "NODE_OPTIONS='--max-http-header-size=65536' vitepress dev docs",
     "build": "vitepress build docs",
-    "preview": "vitepress preview docs"
+    "preview": "NODE_OPTIONS='--max-http-header-size=65536' vitepress preview docs"
   },
   "dependencies": {
     "@loaders.gl/core": "^4.2.2",

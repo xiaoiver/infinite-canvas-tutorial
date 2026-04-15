@@ -11,6 +11,7 @@ import MermaidSequence from '../components/MermaidSequence.vue'
 import MermaidState from '../components/MermaidState.vue'
 import MermaidERD from '../components/MermaidERD.vue'
 import MermaidClass from '../components/MermaidClass.vue'
+import MermaidMindmap from '../components/MermaidMindmap.vue'
 </script>
 
 This plugin provides a utility method that converts Mermaid syntax into a scene graph for the canvas, see [Lesson 32 - Text to diagram]:
@@ -58,5 +59,12 @@ Watercolor with [watercolorizer]:
 
 <MermaidClass />
 
+## Mindmap
+
+[Lesson 23 - Mindmap]
+
+<MermaidMindmap />
+
 [Lesson 32 - Text to diagram]: /guide/lesson-032
+[Lesson 23 - Mindmap]: /guide/lesson-023
 [watercolorizer]: https://github.com/32bitkid/watercolorizer
