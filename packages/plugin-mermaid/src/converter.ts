@@ -80,27 +80,38 @@ export function convertParsedMermaidDataToSerializedNodes(
       const erd = parsedMermaidData as ERD;
       return convertERDToSerializedNodes(erd, options);
     }
+    case 'class': {
+      const classChart = parsedMermaidData as Class;
+
+      console.log(classChart);
+      return convertClassToSerializedNodes(classChart, options);
+    }
     default: {
       throw new Error(`Unsupported diagram type: ${type}`);
     }
   }
 }
 
+/** ER / Class 解析结果中相同的 SVG 骨架字段（类图另有 namespaces，见下方说明） */
+type SvgSkeletonChart = Pick<ERD, 'nodes' | 'lines' | 'arrows' | 'text'>;
+
 /**
+ * ER 与 Class 图共用：容器、线、箭头、独立文本。
+ *
  * @see https://github.com/excalidraw/mermaid-to-excalidraw/blob/master/src/converter/types/er.ts
+ * @see https://github.com/excalidraw/mermaid-to-excalidraw/blob/master/src/converter/types/class.ts
+ *
+ * Class 的 `namespaces` 在 Excalidraw 侧会生成 frame；当前序列化模型不表达 frame，故不输出命名空间框，仅渲染类框与关系等图元。
  */
-function convertERDToSerializedNodes(
-  chart: ERD,
-  _options: { fontSize: number },
-): SerializedNode[] {
+function convertSvgSkeletonChartToSerializedNodes(chart: SvgSkeletonChart): SerializedNode[] {
   const root: GSerializedNode = {
     id: uuidv4(),
     type: 'g',
     zIndex: 0,
   };
   const serializedNodes: SerializedNode[] = [root];
-  /** ER 表：解析器里 entity.id 与 groupId(nanoid) 可能不同，关系边仍引用 entity.id，需映射到画布节点 id（groupId） */
-  const erBindingIdRemap = new Map<string, string>();
+  /** entity/class 的 element.id 与 groupId 可能不一致，边仍引用 id，需映射到画布容器 id */
+  const bindingIdRemap = new Map<string, string>();
 
   chart.nodes.forEach((node) => {
     if (!node || !node.length) {
@@ -114,7 +125,7 @@ function convertERDToSerializedNodes(
           break;
         case 'rectangle':
         case 'ellipse':
-          transformToContainer(element, serializedNodes, root.id, erBindingIdRemap);
+          transformToContainer(element, serializedNodes, root.id, bindingIdRemap);
           break;
         case 'text':
           transformToText(element, serializedNodes, root.id);
@@ -137,7 +148,7 @@ function convertERDToSerializedNodes(
     if (!arrow) {
       return;
     }
-    transformToArrow(arrow, serializedNodes, root.id, erBindingIdRemap);
+    transformToArrow(arrow, serializedNodes, root.id, bindingIdRemap);
   });
 
   chart.text.forEach((textElement) => {
@@ -148,6 +159,20 @@ function convertERDToSerializedNodes(
   });
 
   return serializedNodes;
+}
+
+function convertERDToSerializedNodes(
+  chart: ERD,
+  _options: { fontSize: number },
+): SerializedNode[] {
+  return convertSvgSkeletonChartToSerializedNodes(chart);
+}
+
+function convertClassToSerializedNodes(
+  chart: Class,
+  _options: { fontSize: number },
+): SerializedNode[] {
+  return convertSvgSkeletonChartToSerializedNodes(chart);
 }
 
 function convertFlowchartToSerializedNodes(
@@ -482,6 +507,9 @@ const transformToContainer = (
     bindingIdRemap?.set(element.id, containerId);
   }
 
+  const strokeDasharray =
+    element.strokeStyle === 'dashed' ? '10 4' : undefined;
+
   const container: RectSerializedNode | EllipseSerializedNode = {
     id: containerId,
     type: element.type === "rectangle" ? "rect" : "ellipse",
@@ -489,9 +517,9 @@ const transformToContainer = (
     y: element.y,
     width: element.width,
     height: element.height,
-    // strokeStyle: element?.strokeStyle,
-    strokeWidth: (element as Container)?.strokeWidth ?? 1,
+    strokeWidth: Number.isFinite(element.strokeWidth) ? element.strokeWidth : 1,
     stroke: (element as Container)?.strokeColor ?? '#000',
+    strokeDasharray,
     fill: (element as Container)?.bgColor,
     zIndex: 0,
     ...extraProps,

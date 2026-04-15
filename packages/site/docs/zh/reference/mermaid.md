@@ -26,7 +26,7 @@ api.runAtNextTick(() => {
 });
 ```
 
-<!-- ## flowchart
+## flowchart
 
 <Mermaid />
 
@@ -56,7 +56,7 @@ api.runAtNextTick(() => {
 
 ## ERD
 
-<MermaidERD /> -->
+<MermaidERD />
 
 ## Class
 
