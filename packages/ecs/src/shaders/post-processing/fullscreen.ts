@@ -18,9 +18,9 @@ void main() {
   
   gl_Position = vec4((a_Position * 2.0 - 1.0) * u_OutputTexture.xy / u_OutputFrame.zw * u_OutputTexture.z, 0.0, 1.0);
 
-  // #ifdef VIEWPORT_ORIGIN_TL
-  //   v_Uv.y = 1.0 - v_Uv.y;
-  // #endif
-  v_Uv.y = 1.0 - v_Uv.y;
+  // u_OutputTexture.w: 1 = flip Y for canvas-subrect copy; 0 = keep Y for full texture (FillImage filter in texture space).
+  if (u_OutputTexture.w > 0.5) {
+    v_Uv.y = 1.0 - v_Uv.y;
+  }
 }
 `;

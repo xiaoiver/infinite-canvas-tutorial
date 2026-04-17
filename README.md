@@ -383,12 +383,13 @@ If you want to use it in your own project, you can refer to:
 ## Lesson 30 - Image processing and render graph [🔗](https://infinitecanvas.cc/guide/lesson-030)
 
 -   Image processing, including brightness, noise, etc.
+-   Effects panel
 -   The design concept and implementation of Render graph
 -   Use FXAA render pass
 
-|                Image processing                 |     |
-| :---------------------------------------------: | :-: |
-| ![image processing](./screenshots/lesson30.png) |     |
+|                Image processing                 |                Effects panel                 |
+| :---------------------------------------------: | :------------------------------------------: |
+| ![image processing](./screenshots/lesson30.png) | ![effects panel](./screenshots/halftone.png) |
 
 ## Lesson 31 - Bindings between shapes [🔗](https://infinitecanvas.cc/guide/lesson-031)
 

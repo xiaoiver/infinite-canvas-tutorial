@@ -128,8 +128,100 @@ export class PostProcessingRenderer {
       uniformLegacyObject.u_Noise = effect.value;
       uniformBuffer.push(effect.value);
     } else if (effect.type === 'brightness') {
-      uniformLegacyObject.u_Brightness = effect.value;
-      uniformBuffer.push(effect.value);
+      uniformLegacyObject.u_BrightnessContrast = [
+        effect.value,
+        0,
+        0,
+        0,
+      ];
+      uniformBuffer.push(effect.value, 0, 0, 0);
+    } else if (effect.type === 'contrast') {
+      uniformLegacyObject.u_BrightnessContrast = [
+        0,
+        effect.value,
+        0,
+        0,
+      ];
+      uniformBuffer.push(0, effect.value, 0, 0);
+    } else if (effect.type === 'hueSaturation') {
+      uniformLegacyObject.u_HueSaturation = [
+        effect.hue,
+        effect.saturation,
+        0,
+        0,
+      ];
+      uniformBuffer.push(effect.hue, effect.saturation, 0, 0);
+    } else if (effect.type === 'pixelate') {
+      const { width, height } = this.swapChain.getCanvas();
+      const tw = Math.max(1, width);
+      const th = Math.max(1, height);
+      let bw = effect.size;
+      let bh = effect.size;
+      if (!Number.isFinite(bw)) {
+        bw = 1;
+      }
+      if (!Number.isFinite(bh)) {
+        bh = 1;
+      }
+      bw = Math.max(1, Math.min(bw, tw));
+      bh = Math.max(1, Math.min(bh, th));
+      uniformLegacyObject.u_Pixelate = [bw, bh, tw, th];
+      uniformBuffer.push(bw, bh, tw, th);
+    } else if (effect.type === 'dot') {
+      const { width, height } = this.swapChain.getCanvas();
+      const tw = Math.max(1, width);
+      const th = Math.max(1, height);
+      const a = Number.isFinite(effect.angle) ? effect.angle : 5;
+      const sc = Number.isFinite(effect.scale) ? effect.scale : 1;
+      const g = effect.grayscale > 0.5 ? 1 : 0;
+      uniformLegacyObject.u_Dot = [a, sc, g, 0];
+      uniformLegacyObject.u_InputSize = [tw, th, 0, 0];
+      uniformBuffer.push(a, sc, g, 0, tw, th, 0, 0);
+    } else if (effect.type === 'colorHalftone') {
+      const { width, height } = this.swapChain.getCanvas();
+      const tw = Math.max(1, width);
+      const th = Math.max(1, height);
+      let cx = effect.centerX;
+      let cy = effect.centerY;
+      if (
+        cx === undefined ||
+        cy === undefined ||
+        !Number.isFinite(cx) ||
+        !Number.isFinite(cy)
+      ) {
+        cx = tw * 0.5;
+        cy = th * 0.5;
+      }
+      const angle = Number.isFinite(effect.angle) ? effect.angle : 0;
+      let size = effect.size;
+      if (!Number.isFinite(size) || size <= 0) {
+        size = 4;
+      }
+      const scale = Math.PI / size;
+      uniformLegacyObject.u_CH0 = [cx, cy, angle, scale];
+      uniformLegacyObject.u_CH1 = [tw, th, 0, 0];
+      uniformBuffer.push(cx, cy, angle, scale, tw, th, 0, 0);
+    } else if (effect.type === 'adjustment') {
+      uniformLegacyObject.u_Gamma = effect.gamma;
+      uniformLegacyObject.u_Contrast = effect.contrast;
+      uniformLegacyObject.u_Saturation = effect.saturation;
+      uniformLegacyObject.u_Brightness = effect.brightness;
+      uniformLegacyObject.u_Color = [
+        effect.red,
+        effect.green,
+        effect.blue,
+        effect.alpha,
+      ];
+      uniformBuffer.push(
+        effect.gamma,
+        effect.contrast,
+        effect.saturation,
+        effect.brightness,
+        effect.red,
+        effect.green,
+        effect.blue,
+        effect.alpha,
+      );
     }
 
     this.#bigTriangleUniformBuffer.setSubData(

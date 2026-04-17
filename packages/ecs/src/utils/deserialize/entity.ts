@@ -1457,6 +1457,7 @@ export function serializedNodesToEntities(
     const { filter } = attributes as FilterAttributes;
     if (filter) {
       entityCommands.insert(new Filter({ value: filter }));
+      entityCommands.insert(new MaterialDirty());
     }
 
     const { display } = attributes as FlexboxLayoutAttributes;

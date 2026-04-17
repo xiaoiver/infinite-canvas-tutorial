@@ -338,6 +338,10 @@ fetch('/bouncy_ball.json')
 
 ## Rive
 
+[Rive vs Lottie]
+
+![source: https://rive.app/blog/rive-as-a-lottie-alternative](https://framerusercontent.com/images/gKzhMgEDMMUPLVkhMtTDfQdQrQ.png?width=1920&height=800)
+
 ## Manim
 
 <https://github.com/3b1b/manim>
@@ -379,3 +383,4 @@ fetch('/bouncy_ball.json')
 [clipping-masks]: https://lottie-animation-community.github.io/docs/specs/layers/common/#clipping-masks
 [Layer Effects]: https://lottiefiles.github.io/lottie-docs/effects/#layer-effects
 [thorvg.viewer]: https://github.com/thorvg/thorvg.viewer
+[Rive vs Lottie]: https://rive.app/blog/rive-as-a-lottie-alternative

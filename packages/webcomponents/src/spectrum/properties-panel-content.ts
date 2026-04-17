@@ -368,7 +368,9 @@ export class PropertiesPanelContent extends LitElement {
           : ''}
         ${this.transformTemplate()}
         <sp-accordion-item label=${msg(str`Effects`)} open>
-          <div class="content"></div>
+          <div class="content">
+            <ic-spectrum-effects-panel .node=${this.node}></ic-spectrum-effects-panel>
+          </div>
         </sp-accordion-item>
       </sp-accordion>
     `;

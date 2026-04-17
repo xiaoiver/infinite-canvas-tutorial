@@ -96,6 +96,9 @@
     ]
   },
   "pnpm": {
+    "patchedDependencies": {
+      "@antv/g-device-api@1.6.13": "patches/@antv+g-device-api@1.6.13.patch"
+    },
     "overrides": {
       "esbuild": "0.23.1",
       "playwright": "1.49.1",

@@ -2,6 +2,7 @@
 outline: deep
 description: 'Integrated Flex layout system with support for the Yoga typesetting engine. Exploring layout engine development within the WebGL environment to achieve responsive interface design.'
 ---
+
 <script setup>
 import YogaGap from '../components/YogaGap.vue'
 import YogaFlexBasisGrowShrink from '../components/YogaFlexBasisGrowShrink.vue'
@@ -282,6 +283,7 @@ Since CSS Flexbox only supports HTML elements as containers and not SVG elements
 -   [clay]
 -   [react-three-flex]
 -   [Figma - Guide to auto layout]
+-   [Layout in rive]
 
 [Yoga]: https://yogalayout.com/
 [yoga-layout-prebuilt]: https://github.com/vadimdemedes/yoga-layout-prebuilt
@@ -303,3 +305,4 @@ Since CSS Flexbox only supports HTML elements as containers and not SVG elements
 [Flex Basis, Grow, and Shrink]: https://www.yogalayout.dev/docs/styling/flex-basis-grow-shrink
 [Min/Max Width and Height]: https://www.yogalayout.dev/docs/styling/min-max-width-height
 [Layout in pencil.dev]: https://docs.pencil.dev/for-developers/the-pen-format#layout
+[Layout in rive]: https://rive.app/docs/editor/layouts/layouts-overview

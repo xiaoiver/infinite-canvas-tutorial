@@ -147,7 +147,7 @@ canvas.addEventListener(Event.READY, async (e) => {
     taskbarVisible: true,
     checkboardStyle: CheckboardStyle.GRID,
     snapToPixelGridEnabled: true,
-    snapToPixelGridSize: 1,
+    snapToPixelGridSize: 10,
     // snapToPixelGridEnabled: false,
     // snapToPixelGridSize: 0,
     // snapToObjectsEnabled: true,
@@ -166,72 +166,36 @@ canvas.addEventListener(Event.READY, async (e) => {
     // layersLassoing: ['parent'],
   });
 
-  const node2 = {
-    id: 'binding-curved-rect-2',
-    type: 'ellipse',
-    x: 225,
-    y: 120,
-    width: 100,
-    height: 100,
-    fill: 'red',
-    zIndex: 2,
-  };
-  const node3 = {
-    id: 'binding-curved-rect-3',
-    type: 'rect',
-    x: 400,
-    y: 150,
-    width: 100,
-    height: 100,
-    fill: 'green',
-  };
-  const edge1 = {
-    id: 'binding-curved-line-1',
-    type: 'path',
-    // type: 'polyline',
-    // type: 'line',
-    fromId: 'binding-curved-rect-1',
-    toId: 'binding-curved-rect-1',
-    // targetPoint: {
-    //   x: 300,
-    //   y: 0,
-    // },
-    stroke: 'black',
-    strokeWidth: 10,
-    markerEnd: 'line',
-    edgeStyle: EdgeStyle.ORTHOGONAL,
-    // exitX: 0.5,
-    // exitY: 0.5,
-    // exitDx: 0,
-    // exitDy: 50,
-    curved: true,
-  };
+  const text = {
+    id: 'text',
+    type: 'text',
+    anchorX: 100,
+    anchorY: 100,
+    content: 'Hello, world!',
+    fontFamily: 'system-ui',
+    fontSize: 16,
+    lineHeight: 20,
+    fill: 'black',
+    zIndex: 1,
+  }
 
-  const parent = {
-    id: 'parent-1',
-    type: 'ellipse',
-    clipMode: 'clip',
-    x: 200,
-    y: 100,
-    width: 100,
-    height: 100,
-    fill: 'grey',
-  };
-  const child = {
-    id: 'rect-1',
+  const image = {
+    id: 'image',
     type: 'rect',
-    parentId: 'parent-1',
-    x: -50,
-    y: -50,
-    width: 100,
-    height: 100,
-    fill: 'red',
-  };
+    x: 0,
+    y: 0,
+    width: 300,
+    height: 300,
+    fill: '/canvas.png',
+    zIndex: 1,
+    // brightness/contrast: glfx offset in [-1, 1], 0 = unchanged (not CSS multipliers)
+    filter: 'noise(0.1)',
+  }
 
-  api.updateNodes([
-    parent, child,
-  ]);
-  api.selectNodes([child]);
+  api.runAtNextTick(() => {
+    api.updateNodes([image]);
+    // api.selectNodes([image]);
+  });
 
   // fetch('/gradient-text.json').then(res => res.json()).then(data => {
   //   const animation = loadAnimation(data, {
@@ -246,11 +210,11 @@ canvas.addEventListener(Event.READY, async (e) => {
   // });
 });
 
-const VelloRendererPlugin = RendererPlugin.configure({
-  setupDeviceSystemCtor: InitVello,
-  rendererSystemCtor: VelloPipeline,
-});
-DefaultPlugins.splice(DefaultPlugins.indexOf(DefaultRendererPlugin), 1, VelloRendererPlugin);
+// const VelloRendererPlugin = RendererPlugin.configure({
+//   setupDeviceSystemCtor: InitVello,
+//   rendererSystemCtor: VelloPipeline,
+// });
+// DefaultPlugins.splice(DefaultPlugins.indexOf(DefaultRendererPlugin), 1, VelloRendererPlugin);
 // registerFont('/Gaegu-Regular.ttf');
 // registerFont('/NotoSansCJKsc-VF.ttf');
 // registerFont('/NotoSans-Regular.ttf');

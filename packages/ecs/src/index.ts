@@ -45,6 +45,8 @@ export {
   computeRadialGradient,
   computeConicGradient,
   parseEffect,
+  formatFilter,
+  ADJUSTMENT_DEFAULTS,
   parseColor,
   cssColorToHex,
   serializePoints,

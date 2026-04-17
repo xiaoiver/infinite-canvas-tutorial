@@ -2,6 +2,7 @@
 outline: deep
 description: '集成Flex布局系统，支持Yoga排版引擎。探索WebGL环境下的布局引擎构建，实现响应式界面设计。'
 ---
+
 <script setup>
 import YogaGap from '../../components/YogaGap.vue'
 import YogaFlexBasisGrowShrink from '../../components/YogaFlexBasisGrowShrink.vue'
@@ -279,6 +280,7 @@ const parent = {
 -   [clay]
 -   [react-three-flex]
 -   [Figma - Guide to auto layout]
+-   [Layout in rive]
 
 [Yoga]: https://yogalayout.com/
 [yoga-layout-prebuilt]: https://github.com/vadimdemedes/yoga-layout-prebuilt
@@ -300,3 +302,4 @@ const parent = {
 [Flex Basis, Grow, and Shrink]: https://www.yogalayout.dev/docs/styling/flex-basis-grow-shrink
 [Min/Max Width and Height]: https://www.yogalayout.dev/docs/styling/min-max-width-height
 [Layout in pencil.dev]: https://docs.pencil.dev/for-developers/the-pen-format#layout
+[Layout in rive]: https://rive.app/docs/editor/layouts/layouts-overview

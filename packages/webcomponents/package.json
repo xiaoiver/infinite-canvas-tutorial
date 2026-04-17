@@ -42,7 +42,7 @@
     "url": "https://github.com/xiaoiver"
   },
   "scripts": {
-    "dev": "vite dev",
+    "dev": "NODE_OPTIONS='--max-http-header-size=65536' vite dev",
     "deploy": "vite build",
     "preview": "vite preview",
     "build:cjs": "rimraf ./lib && tsc --module commonjs --outDir lib",
