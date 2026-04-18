@@ -28,31 +28,34 @@ onMounted(async () => {
       ...api.getAppState(),
       penbarSelected: Pen.SELECT,
       penbarAll: [Pen.HAND, Pen.SELECT],
-      filter: 'fxaa() brightness(0.1) noise(0.1)',
     });
 
-    api.updateNodes([
-      {
-        id: 'global-effect-1',
-        type: 'rect',
-        fill: 'https://v3b.fal.media/files/b/tiger/v1lf1EcPP1X1pw_YOKM4o.jpg',
-        x: 50,
-        y: 50,
-        width: 200,
-        height: 200,
-        lockAspectRatio: true,
-      },
-      {
-        id: 'global-effect-2',
-        type: 'rect',
-        fill: 'red',
-        x: 300,
-        y: 50,
-        width: 200,
-        height: 100,
-        lockAspectRatio: true,
-      },
-    ]);
+    const image = {
+      id: 'halftone-1',
+      type: 'rect',
+      fill: 'https://v3b.fal.media/files/b/tiger/v1lf1EcPP1X1pw_YOKM4o.jpg',
+      x: 50,
+      y: 50,
+      width: 200,
+      height: 200,
+      lockAspectRatio: true,
+      filter: 'color-halftone(16, 0.52) dot(0.95, 1.65, 0) noise(0.28)',
+    };
+
+    const image2 = {
+      id: 'halftone-dots-1',
+      type: 'rect',
+      fill: 'https://v3b.fal.media/files/b/tiger/v1lf1EcPP1X1pw_YOKM4o.jpg',
+      x: 300,
+      y: 50,
+      width: 200,
+      height: 200,
+      lockAspectRatio: true,
+      filter: 'halftone-dots(0.5, 1.25, 0.4, 1, 1, 0) noise(0.8)',
+    };
+
+    api.updateNodes([image, image2]);
+    api.selectNodes([image]);
   };
 
   canvas.addEventListener(Event.READY, onReady);

@@ -12,6 +12,49 @@ import { apiContext, appStateContext } from '../context';
 import { ExtendedAPI } from '../API';
 import { localized, msg, str } from '@lit/localize';
 import '@spectrum-web-components/action-button/sp-action-button.js';
+import '@spectrum-web-components/switch/sp-switch.js';
+
+/** Matches ecs `HalftoneDotsEffect` (filter `halftone-dots`). */
+interface HalftoneDotsEffectRow {
+  type: 'halftoneDots';
+  size: number;
+  radius: number;
+  contrast: number;
+  grid: number;
+  dotStyle: number;
+  originalColors?: boolean;
+}
+
+function isHalftoneDotsEffect(e: Effect): boolean {
+  return (e as { type?: string }).type === 'halftoneDots';
+}
+
+function isFlutedGlassEffect(e: Effect): boolean {
+  return (e as { type?: string }).type === 'flutedGlass';
+}
+
+/** Mirrors ecs `FlutedGlassEffect` / {@link FLUTED_GLASS_DEFAULTS} for panel defaults. */
+const FLUTED_GLASS_PANEL_DEFAULTS = {
+  size: 0.5,
+  shadows: 0.6,
+  angle: 45,
+  stretch: 0.2,
+  shape: 1,
+  distortion: 0.5,
+  highlights: 0.4,
+  distortionShape: 1,
+  shift: 0,
+  blur: 0.15,
+  edges: 0.3,
+  marginLeft: 0,
+  marginRight: 0,
+  marginTop: 0,
+  marginBottom: 0,
+  grainMixer: 0,
+  grainOverlay: 0,
+} as const;
+
+type FlutedGlassEffectRow = { type: 'flutedGlass' } & typeof FLUTED_GLASS_PANEL_DEFAULTS;
 
 /** Picker / menu value for an effect row (maps `adjustment` from saturate to `saturate`). */
 type EffectKind =
@@ -23,7 +66,9 @@ type EffectKind =
   | 'blur'
   | 'pixelate'
   | 'dot'
-  | 'colorHalftone';
+  | 'colorHalftone'
+  | 'halftoneDots'
+  | 'flutedGlass';
 
 function effectKind(
   effect: Effect,
@@ -34,6 +79,12 @@ function effectKind(
   | 'unknown' {
   if (effect.type === 'adjustment') {
     return isSaturateOnlyAdjustment(effect) ? 'saturate' : 'adjustment-full';
+  }
+  if (isHalftoneDotsEffect(effect)) {
+    return 'halftoneDots';
+  }
+  if (isFlutedGlassEffect(effect)) {
+    return 'flutedGlass';
   }
   if (
     effect.type === 'brightness' ||
@@ -71,6 +122,21 @@ function createDefaultEffect(kind: EffectKind): Effect {
       return { type: 'dot', scale: 1, angle: 5, grayscale: 1 };
     case 'colorHalftone':
       return { type: 'colorHalftone', angle: 0, size: 5 };
+    case 'halftoneDots':
+      return {
+        type: 'halftoneDots',
+        size: 0.5,
+        radius: 0.5,
+        contrast: 0.5,
+        grid: 0,
+        dotStyle: 0,
+        originalColors: true,
+      } as unknown as Effect;
+    case 'flutedGlass':
+      return {
+        type: 'flutedGlass',
+        ...FLUTED_GLASS_PANEL_DEFAULTS,
+      } as unknown as Effect;
     case 'saturate':
       return {
         type: 'adjustment',
@@ -160,8 +226,6 @@ export class EffectsPanel extends LitElement {
   private commit(next: Effect[]) {
     this.effects = next;
     this.api.updateNode(this.node, { filter: formatFilter(next) });
-
-    console.log(formatFilter(next))
     this.api.record();
   }
 
@@ -230,6 +294,12 @@ export class EffectsPanel extends LitElement {
                   <sp-menu-item value="dot">${msg(str`Dot screen`)}</sp-menu-item>
                   <sp-menu-item value="colorHalftone"
                     >${msg(str`Color halftone`)}</sp-menu-item
+                  >
+                  <sp-menu-item value="halftoneDots"
+                    >${msg(str`Halftone dots`)}</sp-menu-item
+                  >
+                  <sp-menu-item value="flutedGlass"
+                    >${msg(str`Fluted glass`)}</sp-menu-item
                   >
                 </sp-picker>
               `
@@ -450,6 +520,209 @@ export class EffectsPanel extends LitElement {
         ></sp-slider>
       `;
     }
+    if (isHalftoneDotsEffect(effect)) {
+      const h = effect as unknown as HalftoneDotsEffectRow;
+      return html`
+        <sp-slider
+          size="s"
+          label=${msg(str`Size`)}
+          min="0"
+          max="1"
+          step="0.01"
+          .value=${h.size}
+          editable
+          @change=${(e: Event & { target: HTMLInputElement }) => {
+          const v = parseFloat(e.target.value);
+          const next = [...this.effects];
+          next[index] = {
+            ...h,
+            size: Number.isFinite(v) ? v : h.size,
+          } as unknown as Effect;
+          this.commit(next);
+        }}
+        ></sp-slider>
+        <sp-slider
+          size="s"
+          label=${msg(str`Radius`)}
+          min="0"
+          max="2"
+          step="0.01"
+          .value=${h.radius}
+          editable
+          @change=${(e: Event & { target: HTMLInputElement }) => {
+          const v = parseFloat(e.target.value);
+          const next = [...this.effects];
+          next[index] = {
+            ...h,
+            radius: Number.isFinite(v) ? v : h.radius,
+          } as unknown as Effect;
+          this.commit(next);
+        }}
+        ></sp-slider>
+        <sp-slider
+          size="s"
+          label=${msg(str`Contrast`)}
+          min="0"
+          max="1"
+          step="0.01"
+          .value=${h.contrast}
+          editable
+          @change=${(e: Event & { target: HTMLInputElement }) => {
+          const v = parseFloat(e.target.value);
+          const next = [...this.effects];
+          next[index] = {
+            ...h,
+            contrast: Number.isFinite(v) ? v : h.contrast,
+          } as unknown as Effect;
+          this.commit(next);
+        }}
+        ></sp-slider>
+        <sp-picker
+          size="s"
+          label=${msg(str`Grid`)}
+          .value=${String(h.grid)}
+          @change=${(e: Event & { target: HTMLInputElement }) => {
+          const v = parseInt(e.target.value, 10);
+          const next = [...this.effects];
+          next[index] = {
+            ...h,
+            grid: v === 1 ? 1 : 0,
+          } as unknown as Effect;
+          this.commit(next);
+        }}
+        >
+          <sp-menu-item value="0">${msg(str`Square`)}</sp-menu-item>
+          <sp-menu-item value="1">${msg(str`Hex`)}</sp-menu-item>
+        </sp-picker>
+        <sp-picker
+          size="s"
+          label=${msg(str`Dot style`)}
+          .value=${String(h.dotStyle)}
+          @change=${(e: Event & { target: HTMLInputElement }) => {
+          const v = parseInt(e.target.value, 10);
+          const next = [...this.effects];
+          next[index] = {
+            ...h,
+            dotStyle: Math.max(0, Math.min(3, v)),
+          } as unknown as Effect;
+          this.commit(next);
+        }}
+        >
+          <sp-menu-item value="0">${msg(str`Classic`)}</sp-menu-item>
+          <sp-menu-item value="1">${msg(str`Gooey`)}</sp-menu-item>
+          <sp-menu-item value="2">${msg(str`Holes`)}</sp-menu-item>
+          <sp-menu-item value="3">${msg(str`Soft`)}</sp-menu-item>
+        </sp-picker>
+        <sp-switch
+          size="s"
+          ?checked=${h.originalColors !== false}
+          @change=${(e: Event & { target: HTMLInputElement }) => {
+          const checked = (e.target as { checked?: boolean }).checked === true;
+          const next = [...this.effects];
+          next[index] = {
+            ...h,
+            originalColors: checked,
+          } as unknown as Effect;
+          this.commit(next);
+        }}
+        >${msg(str`Original colors`)}</sp-switch>
+      `;
+    }
+    if (isFlutedGlassEffect(effect)) {
+      const h = effect as unknown as FlutedGlassEffectRow;
+      return html`
+        <sp-slider
+          size="s"
+          label=${msg(str`Size`)}
+          min="0"
+          max="1"
+          step="0.01"
+          .value=${h.size}
+          editable
+          @change=${(e: Event & { target: HTMLInputElement }) => {
+          const v = parseFloat(e.target.value);
+          const next = [...this.effects];
+          next[index] = {
+            ...h,
+            size: Number.isFinite(v) ? v : h.size,
+          } as unknown as Effect;
+          this.commit(next);
+        }}
+        ></sp-slider>
+        <sp-slider
+          size="s"
+          label=${msg(str`Angle`)}
+          min="0"
+          max="180"
+          step="1"
+          .value=${h.angle}
+          editable
+          @change=${(e: Event & { target: HTMLInputElement }) => {
+          const v = parseFloat(e.target.value);
+          const next = [...this.effects];
+          next[index] = {
+            ...h,
+            angle: Number.isFinite(v) ? v : h.angle,
+          } as unknown as Effect;
+          this.commit(next);
+        }}
+        ></sp-slider>
+        <sp-slider
+          size="s"
+          label=${msg(str`Distortion`)}
+          min="0"
+          max="1"
+          step="0.01"
+          .value=${h.distortion}
+          editable
+          @change=${(e: Event & { target: HTMLInputElement }) => {
+          const v = parseFloat(e.target.value);
+          const next = [...this.effects];
+          next[index] = {
+            ...h,
+            distortion: Number.isFinite(v) ? v : h.distortion,
+          } as unknown as Effect;
+          this.commit(next);
+        }}
+        ></sp-slider>
+        <sp-slider
+          size="s"
+          label=${msg(str`Blur`)}
+          min="0"
+          max="1"
+          step="0.01"
+          .value=${h.blur}
+          editable
+          @change=${(e: Event & { target: HTMLInputElement }) => {
+          const v = parseFloat(e.target.value);
+          const next = [...this.effects];
+          next[index] = {
+            ...h,
+            blur: Number.isFinite(v) ? v : h.blur,
+          } as unknown as Effect;
+          this.commit(next);
+        }}
+        ></sp-slider>
+        <sp-slider
+          size="s"
+          label=${msg(str`Edges`)}
+          min="0"
+          max="1"
+          step="0.01"
+          .value=${h.edges}
+          editable
+          @change=${(e: Event & { target: HTMLInputElement }) => {
+          const v = parseFloat(e.target.value);
+          const next = [...this.effects];
+          next[index] = {
+            ...h,
+            edges: Number.isFinite(v) ? v : h.edges,
+          } as unknown as Effect;
+          this.commit(next);
+        }}
+        ></sp-slider>
+      `;
+    }
     if (effect.type === 'adjustment') {
       return html`
         <sp-slider
@@ -512,6 +785,12 @@ export class EffectsPanel extends LitElement {
           <sp-menu-item value="dot">${msg(str`Dot screen`)}</sp-menu-item>
           <sp-menu-item value="colorHalftone"
             >${msg(str`Color halftone`)}</sp-menu-item
+          >
+          <sp-menu-item value="halftoneDots"
+            >${msg(str`Halftone dots`)}</sp-menu-item
+          >
+          <sp-menu-item value="flutedGlass"
+            >${msg(str`Fluted glass`)}</sp-menu-item
           >
         </sp-action-menu>
       </div>

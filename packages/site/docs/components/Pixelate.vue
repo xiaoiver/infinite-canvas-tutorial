@@ -31,7 +31,7 @@ onMounted(async () => {
     });
 
     const image = {
-      id: 'halftone-1',
+      id: 'pixelate-1',
       type: 'rect',
       fill: 'https://v3b.fal.media/files/b/tiger/v1lf1EcPP1X1pw_YOKM4o.jpg',
       x: 50,
@@ -39,10 +39,22 @@ onMounted(async () => {
       width: 200,
       height: 200,
       lockAspectRatio: true,
-      filter: 'color-halftone(16, 0.52) dot(0.95, 1.65, 0) noise(0.28)',
+      filter: 'pixelate(12px)',
     };
 
-    api.updateNodes([image]);
+    const image2 = {
+      id: 'pixelate-2',
+      type: 'rect',
+      fill: 'linear-gradient(to right, red, blue)',
+      x: 300,
+      y: 50,
+      width: 200,
+      height: 200,
+      lockAspectRatio: true,
+      filter: 'noise(0.2) pixelate(6px) ',
+    };
+
+    api.updateNodes([image, image2]);
     api.selectNodes([image]);
   };
 

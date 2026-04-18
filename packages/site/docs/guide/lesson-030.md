@@ -13,7 +13,8 @@ head:
 
 <script setup>
 import ImageProcessing from '../components/ImageProcessing.vue'
-import Halftone from '../components/Halftone.vue'
+import HalftoneDots from '../components/HalftoneDots.vue'
+import Pixelate from '../components/Pixelate.vue'
 import GlobalEffects from '../components/GlobalEffects.vue'
 </script>
 
@@ -141,13 +142,58 @@ In the `filter` string you can write `noise(0.1)`; the value in parentheses is s
 
 ### Halftone {#halftone}
 
-Halftone modulates lightness with a regular pattern to simulate print dots. Related approaches in this project include:
+Halftone modulates lightness with a regular pattern to simulate print dots.
 
 -   **Dot (halftone screen)**: See [Pixi `dot.frag`][dot.frag]: sample `sin(x)·sin(y)` in rotated coordinates for black-and-white dots; can pair with grayscale for old print and comic halftone. `filter` example: `dot(1, 5, 1)` (scale, angle, grayscale on/off).
 -   **Color halftone**: See [glfx `colorhalftone.js`][colorhalftone.js]: treat RGB in a CMY/K style and modulate cyan, magenta, yellow, and black with four sine grids at different phases for a color-print look. Shorthand `color-halftone(6)` (dot diameter only), or `color-halftone(6, 0.5)` (diameter and angle in radians); the full four-parameter form can set pattern center and angle.
--   **Pixelate**: Sample and enlarge blocks for a mosaic; see [Pixi `pixelate.frag`][pixelate.frag], e.g. `pixelate(12px)`.
 
-<Halftone />
+```glsl
+float halftonePattern(float rotAngle) {
+// Continuous sine screen; no dot shape, grain, hex grid, etc.
+  float s = sin(rotAngle), c = cos(rotAngle);
+  vec2 tex = v_Uv * u_CH1.xy - u_CH0.xy;
+  vec2 point = vec2(
+    c * tex.x - s * tex.y,
+    s * tex.x + c * tex.y
+  ) * u_CH0.w;
+  return (sin(point.x) * sin(point.y)) * 4.0;
+}
+
+void main() {
+  vec4 color = texture(SAMPLER_2D(u_Texture), v_Uv);
+  // ...
+  vec3 cmy = 1.0 - color.rgb; // CMYK separation
+  float k = min(cmy.x, min(cmy.y, cmy.z));
+  // ...
+  cmy = clamp(
+    cmy * 10.0 - 3.0 + vec3(
+      halftonePattern(baseAngle + 0.26179),
+      halftonePattern(baseAngle + 1.30899),
+      halftonePattern(baseAngle)
+    ),
+    0.0,
+    1.0
+  );
+  k = clamp(k * 10.0 - 5.0 + halftonePattern(baseAngle + 0.78539), 0.0, 1.0);
+  vec3 rgb = 1.0 - cmy - vec3(k);
+  // ...
+}
+```
+
+[Paper Shaders] takes another approach, supporting large newspaper-style dots, dot size tied to lightness, and swappable dot shapes, hex grids, grain, and more.
+
+<HalftoneDots />
+
+### Pixelate {#pixelate}
+
+Sample and enlarge blocks for a mosaic; see [Pixi `pixelate.frag`][pixelate.frag], e.g. `pixelate(12px)`.
+
+<Pixelate />
+
+### Glitch {#glitch}
+
+-   [CSSGlitchEffect]
+-   [unityglitch]
 
 ## Render graph {#render-graph}
 
@@ -276,3 +322,5 @@ api.setAppState({
 [pixelate.frag]: https://github.com/pixijs/filters/blob/main/src/pixelate/pixelate.frag
 [Blob Tracking]: https://www.shadertoy.com/view/3fBXDD
 [Optimizing Triangles for a Full-screen Pass]: https://wallisc.github.io/rendering/2021/04/18/Fullscreen-Pass.html
+[CSSGlitchEffect]: https://tympanus.net/Tutorials/CSSGlitchEffect/
+[unityglitch]: https://github.com/staffantan/unityglitch/blob/master/GlitchShader.shader

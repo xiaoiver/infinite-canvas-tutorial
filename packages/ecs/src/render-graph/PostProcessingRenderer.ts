@@ -19,7 +19,12 @@ import {
   AddressMode,
   FilterMode,
 } from '@infinite-canvas-tutorial/device-api';
-import { Effect, RenderCache } from '../utils';
+import {
+  Effect,
+  flutedGlassUniformValues,
+  halftoneDotsUniformValues,
+  RenderCache,
+} from '../utils';
 
 /**
  * Use big triangle to render post processing effects.
@@ -46,7 +51,7 @@ export class PostProcessingRenderer {
   render(renderPass: RenderPass, texture: Texture, effect: Effect) {
     if (!this.#bigTriangleProgram) {
       this.#bigTriangleUniformBuffer = this.device.createBuffer({
-        viewOrSize: Float32Array.BYTES_PER_ELEMENT * 4 * 4,
+        viewOrSize: Float32Array.BYTES_PER_ELEMENT * 36,
         usage: BufferUsage.UNIFORM,
         hint: BufferFrequencyHint.DYNAMIC,
       });
@@ -201,6 +206,16 @@ export class PostProcessingRenderer {
       uniformLegacyObject.u_CH0 = [cx, cy, angle, scale];
       uniformLegacyObject.u_CH1 = [tw, th, 0, 0];
       uniformBuffer.push(cx, cy, angle, scale, tw, th, 0, 0);
+    } else if (effect.type === 'halftoneDots') {
+      const { width, height } = this.swapChain.getCanvas();
+      const tw = Math.max(1, width);
+      const th = Math.max(1, height);
+      uniformBuffer.push(...halftoneDotsUniformValues(effect, tw, th));
+    } else if (effect.type === 'flutedGlass') {
+      const { width, height } = this.swapChain.getCanvas();
+      const tw = Math.max(1, width);
+      const th = Math.max(1, height);
+      uniformBuffer.push(...flutedGlassUniformValues(effect, tw, th));
     } else if (effect.type === 'adjustment') {
       uniformLegacyObject.u_Gamma = effect.gamma;
       uniformLegacyObject.u_Contrast = effect.contrast;
