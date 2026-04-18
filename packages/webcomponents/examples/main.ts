@@ -186,10 +186,10 @@ canvas.addEventListener(Event.READY, async (e) => {
     y: 0,
     width: 300,
     height: 300,
-    fill: '/canvas.png',
+    fill: 'https://v3b.fal.media/files/b/tiger/v1lf1EcPP1X1pw_YOKM4o.jpg',
     zIndex: 1,
     // brightness/contrast: glfx offset in [-1, 1], 0 = unchanged (not CSS multipliers)
-    filter: 'noise(0.1)',
+    filter: 'fluted-glass(0.8, 0.6, 0, 0.2, 1, 0.5, 0.4, 1, 0, 0.15, 0.3, 0, 0, 0, 0, 0, 0)',
   }
 
   api.runAtNextTick(() => {

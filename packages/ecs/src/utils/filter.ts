@@ -13,6 +13,8 @@ export type Effect =
   | PixelateEffect
   | DotEffect
   | ColorHalftoneEffect
+  | HalftoneDotsEffect
+  | FlutedGlassEffect
   | AdjustmentEffect
   | DropShadowEffect
   | BlurEffect
@@ -97,6 +99,209 @@ export interface ColorHalftoneEffect {
   size: number;
 }
 
+/**
+ * paper-design {@link https://github.com/paper-design/shaders/blob/main/packages/shaders/src/shaders/halftone-dots.ts halftone-dots}
+ * (minimal: no sizing transform in vertex).
+ */
+export interface HalftoneDotsEffect {
+  type: 'halftoneDots';
+  /** Grid density 0–1 (`u_size`). */
+  size: number;
+  /** Max dot size vs cell 0–2 (`u_radius`). */
+  radius: number;
+  /** Luminance contrast 0–1 (`u_contrast`). */
+  contrast: number;
+  /** 0 = square, 1 = hex. */
+  grid: number;
+  /** 0 classic, 1 gooey, 2 holes, 3 soft. */
+  dotStyle: number;
+  /**
+   * When true (default), dot color comes from sampled image; when false, uses foreground/background colors (`u_H3`/`u_H4`).
+   */
+  originalColors?: boolean;
+}
+
+/** Uniform packing for {@link HalftoneDotsEffect} (5 × vec4, std140). */
+export function halftoneDotsUniformValues(
+  effect: HalftoneDotsEffect,
+  textureWidth: number,
+  textureHeight: number,
+): number[] {
+  const tw = Math.max(1, textureWidth);
+  const th = Math.max(1, textureHeight);
+  let size = Number.isFinite(effect.size) ? effect.size : 0.5;
+  size = Math.max(0, Math.min(1, size));
+  let radius = Number.isFinite(effect.radius) ? effect.radius : 0.5;
+  radius = Math.max(0, Math.min(2, radius));
+  let contrast = Number.isFinite(effect.contrast) ? effect.contrast : 0.5;
+  contrast = Math.max(0, Math.min(1, contrast));
+  let grid = Number.isFinite(effect.grid) ? effect.grid : 0;
+  grid = grid > 0.5 ? 1 : 0;
+  let dotStyle = Number.isFinite(effect.dotStyle) ? effect.dotStyle : 0;
+  dotStyle = Math.max(0, Math.min(3, Math.floor(dotStyle)));
+  const aspect = tw / th;
+  const originalColors = effect.originalColors === false ? 0 : 1;
+  return [
+    size,
+    radius,
+    contrast,
+    aspect,
+    grid,
+    dotStyle,
+    originalColors,
+    0,
+    0,
+    0,
+    0.5,
+    0,
+    0,
+    0,
+    0,
+    1,
+    1,
+    1,
+    1,
+    1,
+  ];
+}
+
+/** Defaults for {@link FlutedGlassEffect} (paper-design ranges). */
+export const FLUTED_GLASS_DEFAULTS = {
+  size: 0.5,
+  shadows: 0.6,
+  angle: 45,
+  stretch: 0.2,
+  shape: 1,
+  distortion: 0.5,
+  highlights: 0.4,
+  distortionShape: 1,
+  shift: 0,
+  blur: 0.15,
+  edges: 0.3,
+  marginLeft: 0,
+  marginRight: 0,
+  marginTop: 0,
+  marginBottom: 0,
+  grainMixer: 0,
+  grainOverlay: 0,
+} as const;
+
+/**
+ * paper-design {@link https://github.com/paper-design/shaders/blob/main/packages/shaders/src/shaders/fluted-glass.ts fluted-glass}
+ * (post-process: `v_Uv`, no vertex sizing).
+ */
+export interface FlutedGlassEffect {
+  type: 'flutedGlass';
+  size: number;
+  shadows: number;
+  angle: number;
+  stretch: number;
+  /** 1 lines … 5 pattern ({@link GlassGridShapes}). */
+  shape: number;
+  distortion: number;
+  highlights: number;
+  /** 1 prism … 5 flat ({@link GlassDistortionShapes}). */
+  distortionShape: number;
+  shift: number;
+  blur: number;
+  edges: number;
+  marginLeft: number;
+  marginRight: number;
+  marginTop: number;
+  marginBottom: number;
+  grainMixer: number;
+  grainOverlay: number;
+}
+
+export const GlassGridShapes = {
+  lines: 1,
+  linesIrregular: 2,
+  wave: 3,
+  zigzag: 4,
+  pattern: 5,
+} as const;
+
+export const GlassDistortionShapes = {
+  prism: 1,
+  lens: 2,
+  contour: 3,
+  cascade: 4,
+  flat: 5,
+} as const;
+
+/** 9 × vec4 std140 → 36 floats (`u_FG0`…`u_FG8`). */
+export function flutedGlassUniformValues(
+  effect: FlutedGlassEffect,
+  textureWidth: number,
+  textureHeight: number,
+): number[] {
+  const tw = Math.max(1, textureWidth);
+  const th = Math.max(1, textureHeight);
+  const d = FLUTED_GLASS_DEFAULTS;
+  const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
+  const z = (v: number | undefined, def: number) =>
+    Number.isFinite(v as number) ? (v as number) : def;
+
+  const size = clamp01(z(effect.size, d.size));
+  const shadows = clamp01(z(effect.shadows, d.shadows));
+  let angle = z(effect.angle, d.angle);
+  angle = Math.max(0, Math.min(180, angle));
+  const stretch = clamp01(z(effect.stretch, d.stretch));
+  let shape = Math.round(z(effect.shape, d.shape));
+  shape = Math.max(1, Math.min(5, shape));
+  const distortion = clamp01(z(effect.distortion, d.distortion));
+  const highlights = clamp01(z(effect.highlights, d.highlights));
+  let distortionShape = Math.round(z(effect.distortionShape, d.distortionShape));
+  distortionShape = Math.max(1, Math.min(5, distortionShape));
+  let shift = z(effect.shift, d.shift);
+  shift = Math.max(-1, Math.min(1, shift));
+  const blur = clamp01(z(effect.blur, d.blur));
+  const edges = clamp01(z(effect.edges, d.edges));
+  const marginLeft = clamp01(z(effect.marginLeft, d.marginLeft));
+  const marginRight = clamp01(z(effect.marginRight, d.marginRight));
+  const marginTop = clamp01(z(effect.marginTop, d.marginTop));
+  const marginBottom = clamp01(z(effect.marginBottom, d.marginBottom));
+  const grainMixer = clamp01(z(effect.grainMixer, d.grainMixer));
+  const grainOverlay = clamp01(z(effect.grainOverlay, d.grainOverlay));
+
+  const aspect = tw / th;
+  const pixelRatio = 1;
+
+  const colorBack: [number, number, number, number] = [1, 1, 1, 1];
+  const colorShadow: [number, number, number, number] = [0.15, 0.15, 0.18, 1];
+  const colorHighlight: [number, number, number, number] = [0.92, 0.92, 0.96, 1];
+
+  return [
+    tw,
+    th,
+    pixelRatio,
+    aspect,
+    ...colorBack,
+    ...colorShadow,
+    ...colorHighlight,
+    size,
+    shadows,
+    angle,
+    stretch,
+    shape,
+    distortion,
+    highlights,
+    distortionShape,
+    shift,
+    blur,
+    edges,
+    grainMixer,
+    marginLeft,
+    marginRight,
+    marginTop,
+    marginBottom,
+    grainOverlay,
+    0,
+    0,
+    0,
+  ];
+}
+
 export interface DropShadowEffect {
   type: 'drop-shadow';
   x: number;
@@ -128,6 +333,8 @@ const RASTER_POST_EFFECT_TYPES = new Set<Effect['type']>([
   'pixelate',
   'dot',
   'colorHalftone',
+  'halftoneDots',
+  'flutedGlass',
 ]);
 
 /** True when `adjustment` only changes saturation (Pixi/CSS-style `saturate()`). */
@@ -511,6 +718,97 @@ export function parseEffect(filter: string): Effect[] {
           size: Number.isFinite(size) && size > 0 ? size : 4,
         });
       }
+    } else if (filter.name === 'halftone-dots') {
+      const raw = filter.params.trim();
+      const parts = raw.length
+        ? raw.split(',').map((s) => s.trim()).filter((s) => s.length > 0)
+        : [];
+      const size = parts[0] !== undefined ? parseFloat(parts[0]) : 0.5;
+      const radius = parts[1] !== undefined ? parseFloat(parts[1]) : 0.5;
+      const contrast = parts[2] !== undefined ? parseFloat(parts[2]) : 0.5;
+      let grid = 0;
+      if (parts[3] !== undefined) {
+        const g = parts[3].toLowerCase();
+        if (g === 'hex' || g === '1') {
+          grid = 1;
+        } else {
+          const gn = parseFloat(parts[3]);
+          if (Number.isFinite(gn)) {
+            grid = gn > 0.5 ? 1 : 0;
+          }
+        }
+      }
+      let dotStyle = 0;
+      if (parts[4] !== undefined) {
+        const t = parts[4].toLowerCase();
+        if (t === 'gooey') {
+          dotStyle = 1;
+        } else if (t === 'holes') {
+          dotStyle = 2;
+        } else if (t === 'soft') {
+          dotStyle = 3;
+        } else if (t === 'classic') {
+          dotStyle = 0;
+        } else {
+          const n = parseFloat(parts[4]);
+          if (Number.isFinite(n)) {
+            dotStyle = Math.max(0, Math.min(3, Math.round(n)));
+          }
+        }
+      }
+      let originalColors: boolean | undefined;
+      if (parts[5] !== undefined) {
+        const p = parts[5].toLowerCase();
+        if (p === 'false' || p === '0' || p === 'no') {
+          originalColors = false;
+        } else if (p === 'true' || p === '1' || p === 'yes') {
+          originalColors = true;
+        } else {
+          const n = parseFloat(parts[5]);
+          if (Number.isFinite(n)) {
+            originalColors = n > 0.5;
+          }
+        }
+      }
+      effects.push({
+        type: 'halftoneDots',
+        size: Number.isFinite(size) ? size : 0.5,
+        radius: Number.isFinite(radius) ? radius : 0.5,
+        contrast: Number.isFinite(contrast) ? contrast : 0.5,
+        grid,
+        dotStyle,
+        ...(originalColors !== undefined ? { originalColors } : {}),
+      });
+    } else if (filter.name === 'fluted-glass') {
+      const raw = filter.params.trim();
+      const parts = raw.length
+        ? raw.split(',').map((s) => s.trim()).filter((s) => s.length > 0)
+        : [];
+      const D = FLUTED_GLASS_DEFAULTS;
+      const pf = (i: number, def: number) => {
+        const v = parts[i] !== undefined ? parseFloat(parts[i]) : def;
+        return Number.isFinite(v) ? v : def;
+      };
+      effects.push({
+        type: 'flutedGlass',
+        size: pf(0, D.size),
+        shadows: pf(1, D.shadows),
+        angle: pf(2, D.angle),
+        stretch: pf(3, D.stretch),
+        shape: pf(4, D.shape),
+        distortion: pf(5, D.distortion),
+        highlights: pf(6, D.highlights),
+        distortionShape: pf(7, D.distortionShape),
+        shift: pf(8, D.shift),
+        blur: pf(9, D.blur),
+        edges: pf(10, D.edges),
+        marginLeft: pf(11, D.marginLeft),
+        marginRight: pf(12, D.marginRight),
+        marginTop: pf(13, D.marginTop),
+        marginBottom: pf(14, D.marginBottom),
+        grainMixer: pf(15, D.grainMixer),
+        grainOverlay: pf(16, D.grainOverlay),
+      });
     } else if (filter.name === 'fxaa') {
       effects.push({ type: 'fxaa' });
     }
@@ -567,6 +865,20 @@ export function formatFilter(effects: Effect[]): string {
           }
         }
         break;
+      case 'halftoneDots': {
+        const oc = effect.originalColors === false ? 0 : 1;
+        parts.push(
+          `halftone-dots(${effect.size}, ${effect.radius}, ${effect.contrast}, ${effect.grid}, ${effect.dotStyle}, ${oc})`,
+        );
+        break;
+      }
+      case 'flutedGlass': {
+        const e = effect;
+        parts.push(
+          `fluted-glass(${e.size}, ${e.shadows}, ${e.angle}, ${e.stretch}, ${e.shape}, ${e.distortion}, ${e.highlights}, ${e.distortionShape}, ${e.shift}, ${e.blur}, ${e.edges}, ${e.marginLeft}, ${e.marginRight}, ${e.marginTop}, ${e.marginBottom}, ${e.grainMixer}, ${e.grainOverlay})`,
+        );
+        break;
+      }
       case 'fxaa':
         parts.push('fxaa()');
         break;

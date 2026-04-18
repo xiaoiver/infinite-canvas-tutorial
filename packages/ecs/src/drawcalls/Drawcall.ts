@@ -29,7 +29,13 @@ import {
   type MegaStateDescriptor,
 } from '@infinite-canvas-tutorial/device-api';
 import { Entity } from '@lastolivegames/becsy';
-import { RenderCache, Effect, uid } from '../utils';
+import {
+  RenderCache,
+  Effect,
+  uid,
+  halftoneDotsUniformValues,
+  flutedGlassUniformValues,
+} from '../utils';
 import { Location } from '../shaders/wireframe';
 import { TexturePool } from '../resources';
 import {
@@ -54,6 +60,8 @@ import { frag as hueSaturationFrag } from '../shaders/post-processing/hueSaturat
 import { frag as pixelateFrag } from '../shaders/post-processing/pixelate';
 import { frag as dotFrag } from '../shaders/post-processing/dot';
 import { frag as colorHalftoneFrag } from '../shaders/post-processing/colorHalftone';
+import { frag as halftoneDotsFrag } from '../shaders/post-processing/halftoneDots';
+import { frag as flutedGlassFrag } from '../shaders/post-processing/flutedGlass';
 import type { RGGraphBuilder } from '../render-graph/interface';
 
 const FRAG_MAP: Record<
@@ -81,6 +89,12 @@ const FRAG_MAP: Record<
   colorHalftone: {
     shader: colorHalftoneFrag,
   },
+  halftoneDots: {
+    shader: halftoneDotsFrag,
+  },
+  flutedGlass: {
+    shader: flutedGlassFrag,
+  },
 };
 
 function postEffectUniformFloatCount(effect: Effect): number {
@@ -93,6 +107,10 @@ function postEffectUniformFloatCount(effect: Effect): number {
     case 'dot':
     case 'colorHalftone':
       return 8;
+    case 'halftoneDots':
+      return 20;
+    case 'flutedGlass':
+      return 36;
     case 'drop-shadow':
       return 2;
     case 'fxaa':
@@ -242,6 +260,24 @@ function setPostEffectUniformData(
       data[i++] = th;
       data[i++] = 0;
       data[i++] = 0;
+      break;
+    }
+    case 'halftoneDots': {
+      const tw = Math.max(1, textureWidth ?? 1);
+      const th = Math.max(1, textureHeight ?? 1);
+      const u = halftoneDotsUniformValues(effect, tw, th);
+      for (let j = 0; j < u.length; j++) {
+        data[i++] = u[j]!;
+      }
+      break;
+    }
+    case 'flutedGlass': {
+      const tw = Math.max(1, textureWidth ?? 1);
+      const th = Math.max(1, textureHeight ?? 1);
+      const u = flutedGlassUniformValues(effect, tw, th);
+      for (let j = 0; j < u.length; j++) {
+        data[i++] = u[j]!;
+      }
       break;
     }
     case 'drop-shadow':

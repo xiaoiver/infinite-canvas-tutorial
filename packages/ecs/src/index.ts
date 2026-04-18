@@ -76,6 +76,7 @@ export {
   distanceBetweenPoints,
   filterUndefined,
   isSaturateOnlyAdjustment,
+  FLUTED_GLASS_DEFAULTS,
   DIRECTION_EAST,
   DIRECTION_NORTH,
   DIRECTION_SOUTH,
@@ -85,6 +86,7 @@ export {
   EdgeStyle,
   type Gradient,
   type Effect,
+  type FlutedGlassEffect,
 } from './utils';
 export * from './types/serialized-node';
 export type { EdgeState } from './utils/binding/connection';

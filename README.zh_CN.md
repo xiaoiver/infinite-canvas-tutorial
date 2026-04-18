@@ -388,9 +388,9 @@ pnpm run dev
 -   渲染图的设计思路与实现
 -   使用 FXAA 进行快速抗锯齿
 
-|                Image processing                 |                Effects panel                 |
-| :---------------------------------------------: | :------------------------------------------: |
-| ![image processing](./screenshots/lesson30.png) | ![effects panel](./screenshots/halftone.png) |
+|                                       Image processing                                       |                Effects panel                 |
+| :------------------------------------------------------------------------------------------: | :------------------------------------------: |
+| ![image processing](./screenshots/lesson30.png) ![effects panel](./screenshots/pixelate.png) | ![effects panel](./screenshots/halftone.png) |
 
 ## 课程 31 - 图形间的绑定关系 [🔗](https://infinitecanvas.cc/zh/guide/lesson-031)
 
