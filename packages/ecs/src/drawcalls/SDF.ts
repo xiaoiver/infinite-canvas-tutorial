@@ -16,12 +16,13 @@ import {
   StencilOp,
   CullMode,
   InputLayout,
-} from '@antv/g-device-api';
+} from '@infinite-canvas-tutorial/device-api';
 import { mat3 } from 'gl-matrix';
 import { Entity } from '@lastolivegames/becsy';
 import { Drawcall, ZINDEX_FACTOR, STENCIL_CLIP_REF } from './Drawcall';
 import { vert, frag, Location } from '../shaders/sdf';
-import { paddingMat3, parseColor, parseGradient } from '../utils';
+import { paddingMat3, parseColor, parseGradient, parseEffect } from '../utils';
+import { filterRasterPostEffects } from '../utils/filter';
 import {
   Circle,
   ComputedBounds,
@@ -54,12 +55,72 @@ export class SDF extends Drawcall {
 
   #uniformBuffer: Buffer;
   #texture: Texture;
+  /** Unfiltered image GPU texture when applying {@link Filter} (chain samples this). */
+  #rawFillImageTexture: Texture | null = null;
+  /** True when {@link #texture} references the post-process chain output (do not `destroy` in SDF.destroy). */
+  #fillTextureFromPostChain = false;
 
   static useDash(shape: Entity) {
     const { dasharray } = shape.has(Stroke)
       ? shape.read(Stroke)
       : { dasharray: [0, 0] };
     return dasharray[0] > 0 && dasharray[1] > 0;
+  }
+
+  /**
+   * Run GPU post chain on `raw` when {@link Filter} lists raster-supported effects
+   * ({@link filterRasterPostEffects}).
+   */
+  private applyRasterFilterChainIfNeeded(
+    instance: Entity,
+    raw: Texture,
+    tw: number,
+    th: number,
+  ): Texture {
+    if (
+      this.instanced ||
+      !instance.has(Filter) ||
+      !instance.read(Filter).value
+    ) {
+      return raw;
+    }
+    const effects = filterRasterPostEffects(
+      parseEffect(instance.read(Filter).value),
+    );
+    if (effects.length === 0) {
+      return raw;
+    }
+    this.#rawFillImageTexture = raw;
+    this.createPostProcessing(effects, raw, tw, th);
+    const { texture: filtered } = this.renderPostProcessingTextureSpace(tw, th);
+    this.#fillTextureFromPostChain = true;
+    return filtered;
+  }
+
+  /** Rasterize {@link FillSolid} for texture-space filters (same alpha as `u_FillColor` before `fillOpacity`). */
+  private createSolidFillRasterCanvas(
+    shape: Entity,
+    tw: number,
+    th: number,
+  ): HTMLCanvasElement | OffscreenCanvas {
+    const fill = shape.read(FillSolid).value;
+    const { r: fr, g: fg, b: fb, opacity: fo } = parseColor(fill);
+    let canvas: HTMLCanvasElement | OffscreenCanvas;
+    if (typeof document !== 'undefined') {
+      const c = document.createElement('canvas');
+      c.width = tw;
+      c.height = th;
+      canvas = c;
+    } else {
+      canvas = new OffscreenCanvas(tw, th);
+    }
+    const ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
+    if (!ctx) {
+      throw new Error('Canvas 2D required for solid fill + filter');
+    }
+    ctx.fillStyle = `rgba(${fr},${fg},${fb},${fo})`;
+    ctx.fillRect(0, 0, tw, th);
+    return canvas;
   }
 
   validate(shape: Entity) {
@@ -272,8 +333,6 @@ export class SDF extends Drawcall {
     });
     this.device.setResourceName(this.pipeline, 'SDFPipeline');
 
-    // const hasFilter = this.shapes[0].has(Filter);
-
     const bindings: BindingsDescriptor = {
       pipeline: this.pipeline,
       uniformBufferBindings: [
@@ -295,83 +354,14 @@ export class SDF extends Drawcall {
 
       const instance = this.shapes[0];
 
-      let outputTexture: Texture;
-
-      // if (hasFilter) {
-      //   this.#inputPipeline = this.renderCache.createRenderPipeline({
-      //     inputLayout: this.inputLayout,
-      //     program: this.program,
-      //     colorAttachmentFormats: [Format.U8_RGBA_RT],
-      //     depthStencilAttachmentFormat: null,
-      //     megaStateDescriptor: {
-      //       attachmentsState: [
-      //         {
-      //           channelWriteMask: ChannelWriteMask.ALL,
-      //           rgbBlendState: {
-      //             blendMode: BlendMode.ADD,
-      //             blendSrcFactor: BlendFactor.SRC_ALPHA,
-      //             blendDstFactor: BlendFactor.ONE_MINUS_SRC_ALPHA,
-      //           },
-      //           alphaBlendState: {
-      //             blendMode: BlendMode.ADD,
-      //             blendSrcFactor: BlendFactor.ONE,
-      //             blendDstFactor: BlendFactor.ONE_MINUS_SRC_ALPHA,
-      //           },
-      //         },
-      //       ],
-      //       blendConstant: TransparentBlack,
-      //       depthWrite: false,
-      //       depthCompare: CompareFunction.ALWAYS,
-      //       stencilWrite: false,
-      //       stencilFront: {
-      //         compare: CompareFunction.ALWAYS,
-      //         passOp: StencilOp.KEEP,
-      //         failOp: StencilOp.KEEP,
-      //         depthFailOp: StencilOp.KEEP,
-      //       },
-      //       stencilBack: {
-      //         compare: CompareFunction.ALWAYS,
-      //         passOp: StencilOp.KEEP,
-      //         failOp: StencilOp.KEEP,
-      //         depthFailOp: StencilOp.KEEP,
-      //       },
-      //     },
-      //   });
-
-      //   const { minX, minY, maxX, maxY } =
-      //     this.shapes[0].read(ComputedBounds).renderWorldBounds;
-      //   const width = Math.round(maxX - minX);
-      //   const height = Math.round(maxY - minY);
-
-      //   const { width: canvasWidth, height: canvasHeight } =
-      //     this.swapChain.getCanvas();
-      //   const inputTexture = this.device.createTexture({
-      //     format: Format.U8_RGBA_RT,
-      //     width: canvasWidth,
-      //     height: canvasHeight,
-      //     usage: TextureUsage.RENDER_TARGET,
-      //   });
-      //   this.#inputRenderTarget =
-      //     this.device.createRenderTargetFromTexture(inputTexture);
-      //   this.#inputDepthRenderTarget =
-      //     this.device.createRenderTargetFromTexture(
-      //       this.device.createTexture({
-      //         format: Format.D24_S8,
-      //         width: canvasWidth,
-      //         height: canvasHeight,
-      //         usage: TextureUsage.RENDER_TARGET,
-      //       }),
-      //     );
-
-      //   const effects = parseEffect(this.shapes[0].read(Filter).value);
-      //   const { texture } = this.createPostProcessing(
-      //     effects,
-      //     inputTexture,
-      //     width,
-      //     height,
-      //   );
-      //   outputTexture = texture;
-      // }
+      this.#fillTextureFromPostChain = false;
+      if (!instance.has(Filter)) {
+        this.destroyFullPostProcessingChain();
+      }
+      if (this.#rawFillImageTexture) {
+        this.#rawFillImageTexture.destroy();
+        this.#rawFillImageTexture = null;
+      }
 
       if (instance.has(FillGradient) || instance.has(FillPattern)) {
         const { minX, minY, maxX, maxY } =
@@ -398,24 +388,56 @@ export class SDF extends Drawcall {
           usage: TextureUsage.SAMPLED,
         });
         texture.setImageData([canvas]);
-        this.#texture = texture;
+        this.#texture = this.applyRasterFilterChainIfNeeded(
+          instance,
+          texture,
+          128,
+          128,
+        );
       } else if (instance.has(FillTexture)) {
+        // `Texture` has no public size here; per-shape filter on FillTexture needs GPU size API.
         this.#texture = instance.read(FillTexture).value;
       } else if (instance.has(FillImage)) {
         const src = instance.read(FillImage).src as ImageBitmap;
-        const texture = this.device.createTexture({
+        const tw = Math.max(1, src.width);
+        const th = Math.max(1, src.height);
+        const raw = this.device.createTexture({
           format: Format.U8_RGBA_NORM,
-          width: src.width,
-          height: src.height,
+          width: tw,
+          height: th,
           usage: TextureUsage.SAMPLED,
         });
-        texture.setImageData([src]);
-        this.#texture = texture;
+        raw.setImageData([src]);
+        this.#texture = this.applyRasterFilterChainIfNeeded(
+          instance,
+          raw,
+          tw,
+          th,
+        );
+      } else if (instance.has(FillSolid)) {
+        const { minX, minY, maxX, maxY } =
+          instance.read(ComputedBounds).geometryBounds;
+        const tw = Math.max(1, Math.ceil(maxX - minX));
+        const th = Math.max(1, Math.ceil(maxY - minY));
+        const canvas = this.createSolidFillRasterCanvas(instance, tw, th);
+        const raw = this.device.createTexture({
+          format: Format.U8_RGBA_NORM,
+          width: tw,
+          height: th,
+          usage: TextureUsage.SAMPLED,
+        });
+        raw.setImageData([canvas as HTMLCanvasElement]);
+        this.#texture = this.applyRasterFilterChainIfNeeded(
+          instance,
+          raw,
+          tw,
+          th,
+        );
       }
 
       bindings.samplerBindings = [
         {
-          texture: outputTexture ?? this.#texture,
+          texture: this.#texture,
           sampler: this.createSampler(),
         },
       ];
@@ -492,7 +514,6 @@ export class SDF extends Drawcall {
     uniformBuffer: Buffer,
     sceneUniformLegacyObject: Record<string, unknown>,
   ) {
-    // const hasFilter = this.shapes[0].has(Filter);
     let drawLegacy: Record<string, unknown> = { ...sceneUniformLegacyObject };
 
     if (this.instanced) {
@@ -565,47 +586,6 @@ export class SDF extends Drawcall {
       this.generateWireframe();
     }
 
-    // if (hasFilter) {
-    //   const { minX, minY, maxX, maxY } =
-    //     this.shapes[0].read(ComputedBounds).renderWorldBounds;
-
-    //   const tl = this.api.canvas2Viewport({ x: minX, y: minY });
-    //   const br = this.api.canvas2Viewport({ x: maxX, y: maxY });
-
-    //   const { resized, texture } = this.renderPostProcessing(
-    //     tl.x,
-    //     tl.y,
-    //     Math.round(br.x - tl.x),
-    //     Math.round(br.y - tl.y),
-    //     Math.round(maxX - minX),
-    //     Math.round(maxY - minY),
-    //     this.api.getAppState().cameraZoom,
-    //   );
-
-    //   if (resized) {
-    //     const bindings: BindingsDescriptor = {
-    //       pipeline: this.pipeline,
-    //       uniformBufferBindings: [
-    //         {
-    //           buffer: uniformBuffer,
-    //         },
-    //       ],
-    //     };
-    //     bindings.uniformBufferBindings!.push({
-    //       buffer: this.#uniformBuffer,
-    //     });
-    //     bindings.samplerBindings = [
-    //       {
-    //         texture,
-    //         sampler: this.createSampler(),
-    //       },
-    //     ];
-
-    //     this.bindings = this.renderCache.createBindings(bindings);
-    //   }
-    //   renderPass.setViewport(0, 0, width, height);
-    // }
-
     this.program.setUniformsLegacy(drawLegacy);
     renderPass.setPipeline(this.pipeline);
 
@@ -637,12 +617,18 @@ export class SDF extends Drawcall {
   }
 
   destroy(): void {
+    this.destroyFullPostProcessingChain();
+    this.#rawFillImageTexture?.destroy();
+    this.#rawFillImageTexture = null;
+    if (!this.#fillTextureFromPostChain) {
+      this.#texture?.destroy?.();
+    }
+    this.#texture = null;
+    this.#fillTextureFromPostChain = false;
     super.destroy();
     if (this.program) {
       this.#uniformBuffer?.destroy();
-      this.#texture?.destroy?.();
       this.#uniformBuffer = null;
-      this.#texture = null;
     }
   }
 

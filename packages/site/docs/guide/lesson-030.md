@@ -10,12 +10,16 @@ head:
           },
       ]
 ---
+
 <script setup>
 import ImageProcessing from '../components/ImageProcessing.vue'
+import Halftone from '../components/Halftone.vue'
 import GlobalEffects from '../components/GlobalEffects.vue'
 </script>
 
 # Lesson 30 - Post-processing and render graph
+
+In this lesson, we revisit traditional shader-based post-processing techniques for image processing.
 
 ## Post-processing Effects {#post-processing}
 
@@ -33,7 +37,9 @@ For more effects, see:
 
 In implementation, [Pixi.js filters] calculate the application area based on the object's bounding box, render the object onto a temporary render texture, and then apply shader effects to that texture.
 
-### RenderTarget {#render-to-render-target}
+### Render to RenderTarget {#render-to-render-target}
+
+In Pixi.js:
 
 ```ts
 // src/filters/FilterSystem.ts
@@ -89,24 +95,39 @@ void main() {
 }
 ```
 
-### Brightness {#brightness}
+### Brightness and contrast {#brightness-contrast}
 
 We can use the [CSS filter] syntax, for example `filter: brightness(0.4);`
+
+In implementation, a single shader suffices; see [brightnesscontrast.js].
 
 ```glsl
 uniform sampler2D u_Texture;
 in vec2 v_Uv;
 
 layout(std140) uniform PostProcessingUniforms {
-  float u_Brightness;
+  vec4 u_BrightnessContrast;
 };
 
 out vec4 outputColor;
 
 void main() {
-  outputColor = texture(SAMPLER_2D(u_Texture), v_Uv);
+  vec4 color = texture(SAMPLER_2D(u_Texture), v_Uv);
+  float brightness = u_BrightnessContrast.x;
+  float contrast = u_BrightnessContrast.y;
 
-  outputColor.rgb *= u_Brightness;
+  if (color.a > 0.0) {
+    color.rgb /= color.a;
+    color.rgb += brightness;
+    if (contrast > 0.0) {
+      color.rgb = (color.rgb - 0.5) / (1.0 - contrast) + 0.5;
+    } else {
+      color.rgb = (color.rgb - 0.5) * (1.0 + contrast) + 0.5;
+    }
+    color.rgb *= color.a;
+  }
+
+  outputColor = color;
 }
 ```
 
@@ -114,18 +135,30 @@ void main() {
 
 ### Noise {#noise}
 
-[Spline - Noise Layer]
+Noise in post-processing is usually generated from screen UV as pseudo-random values overlaid on RGB, simulating film grain, signal interference, and similar effects. The implementation in this tutorial follows [glfx.js’s noise filter][glfx-noise], using uniform randomness and a strength factor `u_Noise` to control the perturbation. Before writing, colors are unpremultiplied and multiplied back by alpha to avoid gray edges on transparency.
+
+In the `filter` string you can write `noise(0.1)`; the value in parentheses is strength (roughly 0–1). If you start from design tools, you can also compare [Spline’s Noise Layer][Spline - Noise Layer]: it similarly stacks procedural noise on materials/fills; here we apply a full-screen pass on an already rasterized texture.
+
+### Halftone {#halftone}
+
+Halftone modulates lightness with a regular pattern to simulate print dots. Related approaches in this project include:
+
+-   **Dot (halftone screen)**: See [Pixi `dot.frag`][dot.frag]: sample `sin(x)·sin(y)` in rotated coordinates for black-and-white dots; can pair with grayscale for old print and comic halftone. `filter` example: `dot(1, 5, 1)` (scale, angle, grayscale on/off).
+-   **Color halftone**: See [glfx `colorhalftone.js`][colorhalftone.js]: treat RGB in a CMY/K style and modulate cyan, magenta, yellow, and black with four sine grids at different phases for a color-print look. Shorthand `color-halftone(6)` (dot diameter only), or `color-halftone(6, 0.5)` (diameter and angle in radians); the full four-parameter form can set pattern center and angle.
+-   **Pixelate**: Sample and enlarge blocks for a mosaic; see [Pixi `pixelate.frag`][pixelate.frag], e.g. `pixelate(12px)`.
+
+<Halftone />
 
 ## Render graph {#render-graph}
 
-Render Graph（有时称为 FrameGraph）是一种将渲染过程抽象为有向无环图（DAG）的现代渲染架构。在这一架构下，每个渲染 Pass 以及它们使用的资源都被视为图节点与边，通过图结构自动管理资源状态转换、同步和生命周期。
+A Render Graph (sometimes called a FrameGraph) is a modern rendering architecture that models the rendering process as a directed acyclic graph (DAG). In this model, each rendering pass and the resources it uses are treated as nodes and edges; the graph structure automatically manages resource state transitions, synchronization, and lifetimes.
 
 -   [FrameGraph: Extensible Rendering Architecture in Frostbite]
 -   [Why Talking About Render Graphs]
 
 ![Frame graph example](/frame-graph.png)
 
-[Render graph in bevy]
+Usage in [Render graph in bevy] is as follows:
 
 ```rs
 // @see https://docs.rs/bevy/latest/bevy/render/render_graph/struct.RenderGraph.html
@@ -182,9 +215,7 @@ renderGraph.execute();
 
 ### FXAA {#fxaa}
 
-We now create a separate FXAA pass outside the main render pass for fast anti-aliasing. It detects edge directions, performs multi-sample blending along edge directions, and applies brightness range validation to prevent excessive blurring. Compared to MSAA, it is lighter and better suited for real-time rendering.
-
-This method converts RGB to grayscale using NTSC weights `0.299R + 0.587G + 0.114B` for edge detection.
+We now create a separate FXAA pass outside the main render pass for fast anti-aliasing. Unlike traditional methods such as MSAA based on geometric sampling, FXAA does not require extra samples or knowledge of scene geometry; it processes the final pixels directly, so the performance cost is very low. This method converts RGB to grayscale using NTSC weights `0.299R + 0.587G + 0.114B` for edge detection:
 
 ```glsl
 float MonochromeNTSC(vec3 t_Color) {
@@ -193,7 +224,7 @@ float MonochromeNTSC(vec3 t_Color) {
 }
 ```
 
-Returning to the declarative syntax of the render graph. First, obtain the ColorRT from the previous step.
+Returning to the declarative syntax of the render graph. First, obtain the ColorRT from the previous step:
 
 ```ts
 builder.pushPass((pass) => {
@@ -213,7 +244,7 @@ builder.pushPass((pass) => {
 });
 ```
 
-We apply 3 post processing effects for the whole canvas:
+We apply the following three post-processing effects to the whole canvas:
 
 ```ts
 api.setAppState({
@@ -232,11 +263,16 @@ api.setAppState({
 [CSS filter]: https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/filter
 [Image Processing]: https://luma.gl/docs/api-reference/shadertools/shader-passes/image-processing
 [glfx.js]: https://github.com/evanw/glfx.js
+[brightnesscontrast.js]: https://github.com/evanw/glfx.js/blob/master/src/filters/adjust/brightnesscontrast.js
 [FrameGraph: Extensible Rendering Architecture in Frostbite]: https://www.gdcvault.com/play/1024612/FrameGraph-Extensible-Rendering-Architecture-in
 [Why Talking About Render Graphs]: https://logins.github.io/graphics/2021/05/31/RenderGraphs.html
 [Render graph in bevy]: https://github.com/bevyengine/bevy/discussions/2524
 [noclip]: https://github.com/magcius/noclip.website
 [Lesson 2]: /guide/lesson-002
 [Spline - Noise Layer]: https://docs.spline.design/materials-shading/noise-layer
+[glfx-noise]: https://github.com/evanw/glfx.js/blob/master/src/filters/adjust/noise.js
+[dot.frag]: https://github.com/pixijs/filters/blob/main/src/dot/dot.frag
+[colorhalftone.js]: https://github.com/evanw/glfx.js/blob/master/src/filters/fun/colorhalftone.js
+[pixelate.frag]: https://github.com/pixijs/filters/blob/main/src/pixelate/pixelate.frag
 [Blob Tracking]: https://www.shadertoy.com/view/3fBXDD
 [Optimizing Triangles for a Full-screen Pass]: https://wallisc.github.io/rendering/2021/04/18/Fullscreen-Pass.html

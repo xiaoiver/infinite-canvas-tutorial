@@ -2,8 +2,8 @@ import type {
   QueryPool,
   RenderPassDescriptor,
   Texture,
-} from '@antv/g-device-api';
-import { assert } from '@antv/g-device-api';
+} from '@infinite-canvas-tutorial/device-api';
+import { assert } from '@infinite-canvas-tutorial/device-api';
 import type {
   IRenderGraphPass,
   PassExecFunc,

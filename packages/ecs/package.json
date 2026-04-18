@@ -44,7 +44,7 @@
     "watch": "rimraf ./esm && tsc --module ESNext --outDir esm --watch"
   },
   "dependencies": {
-    "@antv/g-device-api": "^1.6.12",
+    "@infinite-canvas-tutorial/device-api": "workspace:*",
     "@antv/util": "^3.3.10",
     "@lastolivegames/becsy": "^0.16.0",
     "@loaders.gl/core": "^4.2.2",

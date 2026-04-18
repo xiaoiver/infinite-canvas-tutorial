@@ -14,7 +14,7 @@ import {
   Texture,
   PrimitiveTopology,
   TextureUsage,
-} from '@antv/g-device-api';
+} from '@infinite-canvas-tutorial/device-api';
 import { Entity } from '@lastolivegames/becsy';
 import { mat3 } from 'gl-matrix';
 import earcut from 'earcut';
@@ -28,6 +28,7 @@ import {
   parseGradient,
   triangulate,
 } from '../utils';
+import { parseEffect, filterRasterPostEffects } from '../utils/filter';
 import {
   ComputedPoints,
   ComputedBounds,
@@ -49,6 +50,7 @@ import {
   ComputedRough,
   Mat3,
   VectorNetwork,
+  Filter,
 } from '../components';
 
 const strokeAlignmentMap = {
@@ -60,6 +62,10 @@ const strokeAlignmentMap = {
 export class Mesh extends Drawcall {
   #uniformBuffer: Buffer;
   #texture: Texture;
+  /** Unfiltered GPU texture when applying {@link Filter} (chain samples this). */
+  #rawFillImageTexture: Texture | null = null;
+  /** True when {@link #texture} is the post-process chain output (do not `destroy` in Mesh.destroy). */
+  #fillTextureFromPostChain = false;
 
   points: number[] = [];
 
@@ -70,6 +76,62 @@ export class Mesh extends Drawcall {
       ? shape.read(Stroke)
       : { dasharray: [] };
     return dasharray[0] > 0 && dasharray[1] > 0;
+  }
+
+  /**
+   * Run GPU post chain on `raw` when {@link Filter} lists raster-supported effects
+   * ({@link filterRasterPostEffects}).
+   */
+  private applyRasterFilterChainIfNeeded(
+    instance: Entity,
+    raw: Texture,
+    tw: number,
+    th: number,
+  ): Texture {
+    if (
+      this.instanced ||
+      !instance.has(Filter) ||
+      !instance.read(Filter).value
+    ) {
+      return raw;
+    }
+    const effects = filterRasterPostEffects(
+      parseEffect(instance.read(Filter).value),
+    );
+    if (effects.length === 0) {
+      return raw;
+    }
+    this.#rawFillImageTexture = raw;
+    this.createPostProcessing(effects, raw, tw, th);
+    const { texture: filtered } = this.renderPostProcessingTextureSpace(tw, th);
+    this.#fillTextureFromPostChain = true;
+    return filtered;
+  }
+
+  /** Rasterize {@link FillSolid} for texture-space filters (same alpha as `u_FillColor` before `fillOpacity`). */
+  private createSolidFillRasterCanvas(
+    shape: Entity,
+    tw: number,
+    th: number,
+  ): HTMLCanvasElement | OffscreenCanvas {
+    const fill = shape.read(FillSolid).value;
+    const { r: fr, g: fg, b: fb, opacity: fo } = parseColor(fill);
+    let canvas: HTMLCanvasElement | OffscreenCanvas;
+    if (typeof document !== 'undefined') {
+      const c = document.createElement('canvas');
+      c.width = tw;
+      c.height = th;
+      canvas = c;
+    } else {
+      canvas = new OffscreenCanvas(tw, th);
+    }
+    const ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
+    if (!ctx) {
+      throw new Error('Canvas 2D required for solid fill + filter');
+    }
+    ctx.fillStyle = `rgba(${fr},${fg},${fb},${fo})`;
+    ctx.fillRect(0, 0, tw, th);
+    return canvas;
   }
 
   validate(shape: Entity) {
@@ -149,6 +211,10 @@ export class Mesh extends Drawcall {
 
     if (isInstanceFillGradient && isShapeFillGradient) {
       return this.shapes[0].read(FillGradient) === shape.read(FillGradient);
+    }
+
+    if (this.shapes[0].has(Filter) || shape.has(Filter)) {
+      return false;
     }
 
     return true;
@@ -331,6 +397,15 @@ export class Mesh extends Drawcall {
 
       const instance = this.shapes[0];
 
+      this.#fillTextureFromPostChain = false;
+      if (!instance.has(Filter)) {
+        this.destroyFullPostProcessingChain();
+      }
+      if (this.#rawFillImageTexture) {
+        this.#rawFillImageTexture.destroy();
+        this.#rawFillImageTexture = null;
+      }
+
       if (instance.has(FillGradient) || instance.has(FillPattern)) {
         const { minX, minY, maxX, maxY } =
           instance.read(ComputedBounds).geometryBounds;
@@ -355,19 +430,50 @@ export class Mesh extends Drawcall {
           usage: TextureUsage.SAMPLED,
         });
         texture.setImageData([canvas]);
-        this.#texture = texture;
+        this.#texture = this.applyRasterFilterChainIfNeeded(
+          instance,
+          texture,
+          128,
+          128,
+        );
       } else if (instance.has(FillTexture)) {
         this.#texture = instance.read(FillTexture).value;
       } else if (instance.has(FillImage)) {
         const src = instance.read(FillImage).src as ImageBitmap;
-        const texture = this.device.createTexture({
+        const tw = Math.max(1, src.width);
+        const th = Math.max(1, src.height);
+        const raw = this.device.createTexture({
           format: Format.U8_RGBA_NORM,
-          width: src.width,
-          height: src.height,
+          width: tw,
+          height: th,
           usage: TextureUsage.SAMPLED,
         });
-        texture.setImageData([src]);
-        this.#texture = texture;
+        raw.setImageData([src]);
+        this.#texture = this.applyRasterFilterChainIfNeeded(
+          instance,
+          raw,
+          tw,
+          th,
+        );
+      } else if (instance.has(FillSolid)) {
+        const { minX, minY, maxX, maxY } =
+          instance.read(ComputedBounds).geometryBounds;
+        const tw = Math.max(1, Math.ceil(maxX - minX));
+        const th = Math.max(1, Math.ceil(maxY - minY));
+        const canvas = this.createSolidFillRasterCanvas(instance, tw, th);
+        const raw = this.device.createTexture({
+          format: Format.U8_RGBA_NORM,
+          width: tw,
+          height: th,
+          usage: TextureUsage.SAMPLED,
+        });
+        raw.setImageData([canvas as HTMLCanvasElement]);
+        this.#texture = this.applyRasterFilterChainIfNeeded(
+          instance,
+          raw,
+          tw,
+          th,
+        );
       }
 
       bindings.samplerBindings = [
@@ -464,10 +570,17 @@ export class Mesh extends Drawcall {
   }
 
   destroy(): void {
+    this.destroyFullPostProcessingChain();
+    this.#rawFillImageTexture?.destroy();
+    this.#rawFillImageTexture = null;
+    if (!this.#fillTextureFromPostChain) {
+      this.#texture?.destroy?.();
+    }
+    this.#texture = null;
+    this.#fillTextureFromPostChain = false;
     super.destroy();
     if (this.program) {
       this.#uniformBuffer?.destroy();
-      this.#texture?.destroy();
     }
   }
 

@@ -1,4 +1,4 @@
-import { Texture } from '@antv/g-device-api';
+import { Texture } from '@infinite-canvas-tutorial/device-api';
 import { DOMAdapter } from '../../environment';
 import { isBrowser } from '..';
 

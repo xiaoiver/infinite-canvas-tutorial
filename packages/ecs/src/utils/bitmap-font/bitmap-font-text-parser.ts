@@ -1,4 +1,4 @@
-import { Texture } from '@antv/g-device-api';
+import { Texture } from '@infinite-canvas-tutorial/device-api';
 
 /** @memberof text */
 export interface CharData {

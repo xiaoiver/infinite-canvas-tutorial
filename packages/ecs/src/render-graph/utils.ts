@@ -1,10 +1,10 @@
-import type { Color } from '@antv/g-device-api';
+import type { Color } from '@infinite-canvas-tutorial/device-api';
 import {
   Format,
   colorNewFromRGBA,
   OpaqueBlack,
   OpaqueWhite,
-} from '@antv/g-device-api';
+} from '@infinite-canvas-tutorial/device-api';
 // import { reverseDepthForClearValue } from '../platform/utils';
 import { RGAttachmentSlot } from './interface';
 import { RGRenderTargetDescription } from './RenderTargetDescription';

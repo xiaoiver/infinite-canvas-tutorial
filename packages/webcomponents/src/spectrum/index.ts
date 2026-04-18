@@ -19,7 +19,7 @@ export * from './stroke-icon';
 export * from './color-picker';
 export * from './input-solid';
 export * from './input-gradient';
-export * from './input-effect';
+export * from './effects-panel';
 export * from './context-bar';
 export * from './context-common-bar';
 export * from './context-image-edit-bar';

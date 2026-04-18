@@ -1,5 +1,5 @@
 import { field, Type } from '@lastolivegames/becsy';
-import { Texture } from '@antv/g-device-api';
+import { Texture } from '@infinite-canvas-tutorial/device-api';
 import { type Pattern } from '../../utils';
 
 export class FillSolid {

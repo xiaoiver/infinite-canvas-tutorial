@@ -16,7 +16,7 @@ import {
   TransparentBlack,
   Texture,
   StencilOp,
-} from '@antv/g-device-api';
+} from '@infinite-canvas-tutorial/device-api';
 import { Entity } from '@lastolivegames/becsy';
 import { mat3 } from 'gl-matrix';
 import { Drawcall, ZINDEX_FACTOR, STENCIL_CLIP_REF } from './Drawcall';
@@ -439,8 +439,8 @@ export class SDFText extends Drawcall {
       offsetY,
       blurRadius,
     } = shape.has(DropShadow)
-      ? shape.read(DropShadow)
-      : { color: null, offsetX: 0, offsetY: 0, blurRadius: 0 };
+        ? shape.read(DropShadow)
+        : { color: null, offsetX: 0, offsetY: 0, blurRadius: 0 };
     const {
       r: dsR,
       g: dsG,

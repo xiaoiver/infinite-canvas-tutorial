@@ -7,7 +7,7 @@ import {
   BufferUsage,
   SwapChain,
   TransparentWhite,
-} from '@antv/g-device-api';
+} from '@infinite-canvas-tutorial/device-api';
 import {
   Camera,
   Canvas,
