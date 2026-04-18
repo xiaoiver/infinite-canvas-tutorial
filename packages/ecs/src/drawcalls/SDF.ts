@@ -16,7 +16,7 @@ import {
   StencilOp,
   CullMode,
   InputLayout,
-} from '@antv/g-device-api';
+} from '@infinite-canvas-tutorial/device-api';
 import { mat3 } from 'gl-matrix';
 import { Entity } from '@lastolivegames/becsy';
 import { Drawcall, ZINDEX_FACTOR, STENCIL_CLIP_REF } from './Drawcall';

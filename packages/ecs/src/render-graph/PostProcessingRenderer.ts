@@ -18,7 +18,7 @@ import {
   MipmapFilterMode,
   AddressMode,
   FilterMode,
-} from '@antv/g-device-api';
+} from '@infinite-canvas-tutorial/device-api';
 import { Effect, RenderCache } from '../utils';
 
 /**
@@ -41,7 +41,7 @@ export class PostProcessingRenderer {
     private readonly device: Device,
     private readonly swapChain: SwapChain,
     private readonly renderCache: RenderCache,
-  ) {}
+  ) { }
 
   render(renderPass: RenderPass, texture: Texture, effect: Effect) {
     if (!this.#bigTriangleProgram) {

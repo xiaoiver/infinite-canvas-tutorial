@@ -3,7 +3,7 @@ import type {
   RenderPass,
   RenderTarget,
   Texture,
-} from '@antv/g-device-api';
+} from '@infinite-canvas-tutorial/device-api';
 import type { RGRenderTargetDescription } from './RenderTargetDescription';
 
 export enum RGAttachmentSlot {

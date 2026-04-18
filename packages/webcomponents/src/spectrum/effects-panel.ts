@@ -2,13 +2,12 @@ import { css, html, LitElement, PropertyValues } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { map } from 'lit/directives/map.js';
 import { consume } from '@lit/context';
-import { AppState, parseEffect, type SerializedNode } from '@infinite-canvas-tutorial/ecs';
 import {
-  ADJUSTMENT_DEFAULTS,
+  AppState, parseEffect, ADJUSTMENT_DEFAULTS,
   formatFilter,
   isSaturateOnlyAdjustment,
-  type Effect,
-} from '../../../ecs/src/utils/filter';
+  type Effect, type SerializedNode
+} from '@infinite-canvas-tutorial/ecs';
 import { apiContext, appStateContext } from '../context';
 import { ExtendedAPI } from '../API';
 import { localized, msg, str } from '@lit/localize';

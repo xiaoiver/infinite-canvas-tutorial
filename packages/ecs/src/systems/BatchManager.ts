@@ -1,4 +1,4 @@
-import { Buffer, Device, RenderPass, SwapChain } from '@antv/g-device-api';
+import { Buffer, Device, RenderPass, SwapChain } from '@infinite-canvas-tutorial/device-api';
 import { type RGGraphBuilder } from '../render-graph/interface';
 import { Entity } from '@lastolivegames/becsy';
 import {

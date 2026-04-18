@@ -75,6 +75,7 @@ export {
   getSvgPathFromStroke,
   distanceBetweenPoints,
   filterUndefined,
+  isSaturateOnlyAdjustment,
   DIRECTION_EAST,
   DIRECTION_NORTH,
   DIRECTION_SOUTH,

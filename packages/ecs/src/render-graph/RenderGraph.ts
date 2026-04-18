@@ -1,6 +1,6 @@
 /* eslint-disable max-classes-per-file */
-import type { Device, RenderTarget, Texture } from '@antv/g-device-api';
-import { assert, assertExists, fillArray } from '@antv/g-device-api';
+import type { Device, RenderTarget, Texture } from '@infinite-canvas-tutorial/device-api';
+import { assert, assertExists, fillArray } from '@infinite-canvas-tutorial/device-api';
 import type {
   PassSetupFunc,
   RGGraphBuilder,
@@ -157,7 +157,7 @@ export class RenderGraph implements RGGraphBuilder {
     // Check that the pass isn't resolving its attachment to another texture. Can't do both!
     assert(
       renderPass.resolveTextureOutputExternalTextures[attachmentSlot] ===
-        undefined,
+      undefined,
     );
 
     return renderPass;
@@ -340,7 +340,7 @@ export class RenderGraph implements RGGraphBuilder {
     if (hasResolveTextureOutputID) {
       assert(
         graph.resolveTextureRenderTargetIDs[resolveTextureOutputID] ===
-          renderTargetID,
+        renderTargetID,
       );
       assert(this.resolveTextureUseCount[resolveTextureOutputID] > 0);
       assert(this.renderTargetOutputCount[renderTargetID] > 0);
@@ -443,12 +443,12 @@ export class RenderGraph implements RGGraphBuilder {
     pass.descriptor.depthClearValue =
       depthStencilRenderTarget !== null && depthStencilRenderTarget.needsClear
         ? graph.renderTargetDescriptions[depthStencilRenderTargetID]
-            .depthClearValue
+          .depthClearValue
         : 'load';
     pass.descriptor.stencilClearValue =
       depthStencilRenderTarget !== null && depthStencilRenderTarget.needsClear
         ? graph.renderTargetDescriptions[depthStencilRenderTargetID]
-            .stencilClearValue
+          .stencilClearValue
         : 'load';
 
     let rtWidth = 0;

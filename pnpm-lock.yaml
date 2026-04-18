@@ -24,18 +24,13 @@ overrides:
   path-to-regexp: '>=8.4.0'
   defu: '>=6.1.5'
 
-patchedDependencies:
-  '@antv/g-device-api@1.6.13':
-    hash: c5afed6130d6168e4a64d2b40b1ad48e0f3933790f3708f21022cb9572a42d54
-    path: patches/@antv+g-device-api@1.6.13.patch
-
 importers:
 
   .:
     devDependencies:
       '@antv/g-device-api':
         specifier: ^1.6.13
-        version: 1.6.13(patch_hash=c5afed6130d6168e4a64d2b40b1ad48e0f3933790f3708f21022cb9572a42d54)
+        version: 1.6.13
       '@changesets/cli':
         specifier: ^2.28.1
         version: 2.28.1
@@ -433,7 +428,7 @@ importers:
     dependencies:
       '@antv/g-device-api':
         specifier: ^1.6.12
-        version: 1.6.13(patch_hash=c5afed6130d6168e4a64d2b40b1ad48e0f3933790f3708f21022cb9572a42d54)
+        version: 1.6.13
       '@antv/util':
         specifier: ^3.3.10
         version: 3.3.10
@@ -490,17 +485,32 @@ importers:
         specifier: ^3.0.0
         version: 3.0.0
 
+  packages/device-api:
+    dependencies:
+      '@antv/util':
+        specifier: ^3.3.10
+        version: 3.3.10
+      '@webgpu/types':
+        specifier: ^0.1.34
+        version: 0.1.54
+      eventemitter3:
+        specifier: ^5.0.1
+        version: 5.0.1
+      gl-matrix:
+        specifier: ^3.4.3
+        version: 3.4.3
+
   packages/ecs:
     dependencies:
-      '@antv/g-device-api':
-        specifier: ^1.6.12
-        version: 1.6.13(patch_hash=c5afed6130d6168e4a64d2b40b1ad48e0f3933790f3708f21022cb9572a42d54)
       '@antv/util':
         specifier: ^3.3.10
         version: 3.3.10
       '@chenglou/pretext':
         specifier: ^0.0.5
         version: 0.0.5
+      '@infinite-canvas-tutorial/device-api':
+        specifier: workspace:*
+        version: link:../device-api
       '@lastolivegames/becsy':
         specifier: ^0.16.0
         version: 0.16.0
@@ -603,13 +613,13 @@ importers:
     dependencies:
       '@antv/g-device-api':
         specifier: ^1.6.12
-        version: 1.6.13(patch_hash=c5afed6130d6168e4a64d2b40b1ad48e0f3933790f3708f21022cb9572a42d54)
+        version: 1.6.13
 
   packages/lesson_002:
     dependencies:
       '@antv/g-device-api':
         specifier: ^1.6.12
-        version: 1.6.13(patch_hash=c5afed6130d6168e4a64d2b40b1ad48e0f3933790f3708f21022cb9572a42d54)
+        version: 1.6.13
       d3-color:
         specifier: ^3.1.0
         version: 3.1.0
@@ -622,7 +632,7 @@ importers:
     dependencies:
       '@antv/g-device-api':
         specifier: ^1.6.12
-        version: 1.6.13(patch_hash=c5afed6130d6168e4a64d2b40b1ad48e0f3933790f3708f21022cb9572a42d54)
+        version: 1.6.13
       '@pixi/math':
         specifier: ^7.4.2
         version: 7.4.2
@@ -638,7 +648,7 @@ importers:
     dependencies:
       '@antv/g-device-api':
         specifier: ^1.6.12
-        version: 1.6.13(patch_hash=c5afed6130d6168e4a64d2b40b1ad48e0f3933790f3708f21022cb9572a42d54)
+        version: 1.6.13
       '@pixi/math':
         specifier: ^7.4.2
         version: 7.4.2
@@ -660,7 +670,7 @@ importers:
     dependencies:
       '@antv/g-device-api':
         specifier: ^1.6.12
-        version: 1.6.13(patch_hash=c5afed6130d6168e4a64d2b40b1ad48e0f3933790f3708f21022cb9572a42d54)
+        version: 1.6.13
       '@pixi/math':
         specifier: ^7.4.2
         version: 7.4.2
@@ -682,7 +692,7 @@ importers:
     dependencies:
       '@antv/g-device-api':
         specifier: ^1.6.12
-        version: 1.6.13(patch_hash=c5afed6130d6168e4a64d2b40b1ad48e0f3933790f3708f21022cb9572a42d54)
+        version: 1.6.13
       '@pixi/math':
         specifier: ^7.4.2
         version: 7.4.2
@@ -707,7 +717,7 @@ importers:
     dependencies:
       '@antv/g-device-api':
         specifier: ^1.6.12
-        version: 1.6.13(patch_hash=c5afed6130d6168e4a64d2b40b1ad48e0f3933790f3708f21022cb9572a42d54)
+        version: 1.6.13
       '@lit/context':
         specifier: ^1.1.2
         version: 1.1.2
@@ -741,7 +751,7 @@ importers:
     dependencies:
       '@antv/g-device-api':
         specifier: ^1.6.12
-        version: 1.6.13(patch_hash=c5afed6130d6168e4a64d2b40b1ad48e0f3933790f3708f21022cb9572a42d54)
+        version: 1.6.13
       '@lit/context':
         specifier: ^1.1.2
         version: 1.1.2
@@ -781,7 +791,7 @@ importers:
     dependencies:
       '@antv/g-device-api':
         specifier: ^1.6.12
-        version: 1.6.13(patch_hash=c5afed6130d6168e4a64d2b40b1ad48e0f3933790f3708f21022cb9572a42d54)
+        version: 1.6.13
       '@lit/context':
         specifier: ^1.1.2
         version: 1.1.2
@@ -821,7 +831,7 @@ importers:
     dependencies:
       '@antv/g-device-api':
         specifier: ^1.6.12
-        version: 1.6.13(patch_hash=c5afed6130d6168e4a64d2b40b1ad48e0f3933790f3708f21022cb9572a42d54)
+        version: 1.6.13
       '@lit/context':
         specifier: ^1.1.2
         version: 1.1.2
@@ -867,7 +877,7 @@ importers:
     dependencies:
       '@antv/g-device-api':
         specifier: ^1.6.12
-        version: 1.6.13(patch_hash=c5afed6130d6168e4a64d2b40b1ad48e0f3933790f3708f21022cb9572a42d54)
+        version: 1.6.13
       '@lit/context':
         specifier: ^1.1.2
         version: 1.1.2
@@ -913,7 +923,7 @@ importers:
     dependencies:
       '@antv/g-device-api':
         specifier: ^1.6.12
-        version: 1.6.13(patch_hash=c5afed6130d6168e4a64d2b40b1ad48e0f3933790f3708f21022cb9572a42d54)
+        version: 1.6.13
       '@antv/util':
         specifier: ^3.3.10
         version: 3.3.10
@@ -1314,7 +1324,7 @@ importers:
         version: link:../ecs
       '@infinite-canvas-tutorial/vello-renderer':
         specifier: workspace:*
-        version: link:../../rust/pkg
+        version: link:../../rust/vello-renderer/pkg
       '@infinite-canvas-tutorial/webcomponents':
         specifier: workspace:*
         version: link:../webcomponents
@@ -1746,7 +1756,7 @@ importers:
         specifier: ^1.6.28
         version: 1.6.28
 
-  rust/pkg: {}
+  rust/vello-renderer/pkg: {}
 
 packages:
 
@@ -12478,7 +12488,7 @@ snapshots:
 
   '@antfu/utils@0.7.10': {}
 
-  '@antv/g-device-api@1.6.13(patch_hash=c5afed6130d6168e4a64d2b40b1ad48e0f3933790f3708f21022cb9572a42d54)':
+  '@antv/g-device-api@1.6.13':
     dependencies:
       '@antv/util': 3.3.10
       '@webgpu/types': 0.1.54

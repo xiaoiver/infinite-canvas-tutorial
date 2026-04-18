@@ -2,8 +2,8 @@
  * @see https://github.com/mapbox/mapbox-gl-js/blob/main/src/render/glyph_manager.ts
  */
 
-import type { Device, Texture } from '@antv/g-device-api';
-import { Format, makeTextureDescriptor2D } from '@antv/g-device-api';
+import type { Device, Texture } from '@infinite-canvas-tutorial/device-api';
+import { Format, makeTextureDescriptor2D } from '@infinite-canvas-tutorial/device-api';
 import type { StyleGlyph } from './alpha-image';
 import { RGBAImage } from './alpha-image';
 import { BASE_FONT_BUFFER, BASE_FONT_WIDTH, GlyphAtlas, RADIUS, SDF_SCALE } from './glyph-atlas';

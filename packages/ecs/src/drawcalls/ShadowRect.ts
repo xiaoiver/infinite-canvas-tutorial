@@ -10,7 +10,7 @@ import {
   VertexStepMode,
   CompareFunction,
   TransparentBlack,
-} from '@antv/g-device-api';
+} from '@infinite-canvas-tutorial/device-api';
 import { mat3 } from 'gl-matrix';
 import { Drawcall, ZINDEX_FACTOR, STENCIL_CLIP_REF } from './Drawcall';
 import { vert, frag, Location } from '../shaders/shadow_rect';

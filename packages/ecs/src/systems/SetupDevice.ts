@@ -3,7 +3,7 @@ import {
   DeviceContribution,
   WebGLDeviceContribution,
   WebGPUDeviceContribution,
-} from '@antv/g-device-api';
+} from '@infinite-canvas-tutorial/device-api';
 import { Canvas, GPUResource, Grid, Theme } from '../components';
 import { isBrowser, RenderCache } from '../utils';
 import { TexturePool } from '../resources';
@@ -169,14 +169,14 @@ export class SetupDevice extends System {
         antialias: true,
         shaderDebug: true,
         trackResources: false,
-        onContextCreationError: () => {},
-        onContextLost: () => {},
-        onContextRestored(e) {},
+        onContextCreationError: () => { },
+        onContextLost: () => { },
+        onContextRestored(e) { },
       });
     } else {
       deviceContribution = new WebGPUDeviceContribution({
         shaderCompilerPath,
-        onContextLost: () => {},
+        onContextLost: () => { },
       });
     }
 

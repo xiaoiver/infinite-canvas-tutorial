@@ -11,7 +11,7 @@ import {
   PrimitiveTopology,
   BufferUsage,
   BufferFrequencyHint,
-} from '@antv/g-device-api';
+} from '@infinite-canvas-tutorial/device-api';
 import { vert, frag } from '../shaders/grid';
 import { DataArray } from '../utils';
 

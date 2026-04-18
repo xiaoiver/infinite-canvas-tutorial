@@ -17,7 +17,7 @@ import {
   MipmapFilterMode,
   FilterMode,
   AddressMode,
-} from '@antv/g-device-api';
+} from '@infinite-canvas-tutorial/device-api';
 import { Entity } from '@lastolivegames/becsy';
 import { mat3 } from 'gl-matrix';
 import { Drawcall, ZINDEX_FACTOR, STENCIL_CLIP_REF } from './Drawcall';

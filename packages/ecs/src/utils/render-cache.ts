@@ -14,7 +14,7 @@ import type {
   RenderPipelineDescriptor,
   Sampler,
   SamplerDescriptor,
-} from '@antv/g-device-api';
+} from '@infinite-canvas-tutorial/device-api';
 import {
   TransparentBlack,
   bindingsDescriptorCopy,
@@ -24,7 +24,7 @@ import {
   renderPipelineDescriptorCopy,
   renderPipelineDescriptorEquals,
   samplerDescriptorEquals,
-} from '@antv/g-device-api';
+} from '@infinite-canvas-tutorial/device-api';
 import {
   HashMap,
   hashCodeNumberFinish,
@@ -156,7 +156,7 @@ function programDescriptorCopy(
 }
 
 export class RenderCache {
-  constructor(private device: Device) {}
+  constructor(private device: Device) { }
 
   private bindingsCache = new HashMap<BindingsDescriptor, Bindings>(
     bindingsDescriptorEquals,

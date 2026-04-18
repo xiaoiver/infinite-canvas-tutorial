@@ -1,0 +1,23 @@
+[package]
+name = "glsl-wgsl-compiler"
+version = "0.1.0"
+authors = ["The wasm-bindgen Developers"]
+edition = "2018"
+
+[package.metadata.wasm-pack.profile.release]
+wasm-opt = false
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+wasm-bindgen = "0.2.79"
+wee_alloc = { version = "0.4.5", optional = true }
+naga = { version = "0.19.2", features = ["glsl-in", "wgsl-in", "wgsl-out"] }
+naga_oil = "0.13.0"
+
+[dependencies.web-sys]
+version = "0.3.4"
+features = [
+  'console'
+]

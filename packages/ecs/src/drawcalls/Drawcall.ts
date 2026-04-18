@@ -27,7 +27,7 @@ import {
   ChannelWriteMask,
   CullMode,
   type MegaStateDescriptor,
-} from '@antv/g-device-api';
+} from '@infinite-canvas-tutorial/device-api';
 import { Entity } from '@lastolivegames/becsy';
 import { RenderCache, Effect, uid } from '../utils';
 import { Location } from '../shaders/wireframe';
