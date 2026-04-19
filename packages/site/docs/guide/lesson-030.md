@@ -15,6 +15,7 @@ head:
 import ImageProcessing from '../components/ImageProcessing.vue'
 import HalftoneDots from '../components/HalftoneDots.vue'
 import Pixelate from '../components/Pixelate.vue'
+import CRT from '../components/CRT.vue'
 import GlobalEffects from '../components/GlobalEffects.vue'
 </script>
 
@@ -186,14 +187,44 @@ void main() {
 
 ### Pixelate {#pixelate}
 
-Sample and enlarge blocks for a mosaic; see [Pixi `pixelate.frag`][pixelate.frag], e.g. `pixelate(12px)`.
+Sample and enlarge blocks for a mosaic; see [Pixi `pixelate.frag`][pixelate.frag], e.g. `pixelate(12px)`. You can also apply it to gradients with noise overlaid.
 
 <Pixelate />
+
+### CRT & vignette {#crt-vignette}
+
+Mimic an old CRT look, plus vignette:
+
+<CRT />
 
 ### Glitch {#glitch}
 
 -   [CSSGlitchEffect]
 -   [unityglitch]
+
+### Ascii {#ascii}
+
+First divide the image into cells using `uSize` and compute grayscale; pick a bitmap constant `n` from the gray level, then for each pixel in the cell use bits of `n` to decide light/dark and multiply into the color. This is the usual bitmap-font / ASCII-art approach—not vector glyphs or textured fonts.
+
+```glsl
+float n = 65536.0;
+if (gray > 0.2) n = 65600.0; // .
+if (gray > 0.3) n = 332772.0; // :
+if (gray > 0.4) n = 15255086.0; // *
+if (gray > 0.5) n = 23385164.0; // o
+```
+
+### Time animation {#time-animation}
+
+Some post-processing effects can be animated; typically a per-frame time value is passed in (similar to `u_Time` on Shadertoy):
+
+```ts
+export class PostEffectTime extends System {
+    execute() {
+        setPostEffectEngineTimeSeconds(perf.now() / 1000);
+    }
+}
+```
 
 ## Render graph {#render-graph}
 

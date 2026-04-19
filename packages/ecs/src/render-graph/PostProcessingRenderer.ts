@@ -21,8 +21,11 @@ import {
 } from '@infinite-canvas-tutorial/device-api';
 import {
   Effect,
+  crtUniformValues,
   flutedGlassUniformValues,
   halftoneDotsUniformValues,
+  vignetteUniformValues,
+  asciiUniformValues,
   RenderCache,
 } from '../utils';
 
@@ -216,6 +219,20 @@ export class PostProcessingRenderer {
       const tw = Math.max(1, width);
       const th = Math.max(1, height);
       uniformBuffer.push(...flutedGlassUniformValues(effect, tw, th));
+    } else if (effect.type === 'crt') {
+      const { width, height } = this.swapChain.getCanvas();
+      const tw = Math.max(1, width);
+      const th = Math.max(1, height);
+      uniformBuffer.push(...crtUniformValues(effect, tw, th));
+    } else if (effect.type === 'vignette') {
+      const u = vignetteUniformValues(effect);
+      uniformLegacyObject.u_Vignette = u;
+      uniformBuffer.push(...u);
+    } else if (effect.type === 'ascii') {
+      const { width, height } = this.swapChain.getCanvas();
+      const tw = Math.max(1, width);
+      const th = Math.max(1, height);
+      uniformBuffer.push(...asciiUniformValues(effect, tw, th));
     } else if (effect.type === 'adjustment') {
       uniformLegacyObject.u_Gamma = effect.gamma;
       uniformLegacyObject.u_Contrast = effect.contrast;

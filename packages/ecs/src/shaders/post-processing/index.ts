@@ -8,3 +8,6 @@ export { frag as dot } from './dot';
 export { frag as hueSaturation } from './hueSaturation';
 export { frag as noise } from './noise';
 export { frag as pixelate } from './pixelate';
+export { frag as crt } from './crt';
+export { frag as vignette } from './vignette';
+export { frag as ascii } from './ascii';

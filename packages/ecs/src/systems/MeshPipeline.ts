@@ -65,7 +65,13 @@ import {
   ClipMode,
   Flex,
 } from '../components';
-import { Effect, paddingMat3, parseColor, parseEffect } from '../utils';
+import {
+  Effect,
+  filterStringUsesEngineTimeCrt,
+  paddingMat3,
+  parseColor,
+  parseEffect,
+} from '../utils';
 import type { SerializedNode } from '../types/serialized-node';
 import { GridRenderer } from '../render-graph/GridRenderer';
 import { BatchManager } from './BatchManager';
@@ -196,6 +202,8 @@ export class MeshPipeline extends System {
   private filters = this.query(
     (q) => q.addedChangedOrRemoved.with(Filter).trackWrites,
   );
+  /** Used to force continuous frames when CRT `useEngineTime` animates without component churn. */
+  private filtersCurrent = this.query((q) => q.current.with(Filter).read);
   private clipModes = this.query(
     (q) => q.addedChangedOrRemoved.with(ClipMode).trackWrites,
   );
@@ -527,6 +535,16 @@ export class MeshPipeline extends System {
     }
   }
 
+  private anyFilterUsesEngineTimeCrt(): boolean {
+    for (const entity of this.filtersCurrent.current) {
+      const { value } = entity.read(Filter);
+      if (filterStringUsesEngineTimeCrt(value)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   execute() {
     new Set([
       ...this.renderables.added,
@@ -607,11 +625,14 @@ export class MeshPipeline extends System {
       }
     });
 
+    const engineTimeNeedsContinuousRender = this.anyFilterUsesEngineTimeCrt();
+
     this.canvases.current.forEach((canvas) => {
       let toRender =
         this.grids.addedChangedOrRemoved.includes(canvas) ||
         this.themes.addedChangedOrRemoved.includes(canvas) ||
-        this.rasterScreenshotRequests.addedChangedOrRemoved.includes(canvas);
+        this.rasterScreenshotRequests.addedChangedOrRemoved.includes(canvas) ||
+        engineTimeNeedsContinuousRender;
 
       const { cameras } = canvas.read(Canvas);
       cameras.forEach((camera) => {

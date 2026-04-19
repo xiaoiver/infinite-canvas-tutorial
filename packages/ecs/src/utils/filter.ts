@@ -1,6 +1,9 @@
 /**
  * CSS Filter / Effect
  */
+import { cssColorToHex, parseColor } from './color';
+import { getPostEffectEngineTimeSeconds } from './postEffectEngineTime';
+
 export interface FilterObject {
   name: string;
   params: string;
@@ -15,6 +18,9 @@ export type Effect =
   | ColorHalftoneEffect
   | HalftoneDotsEffect
   | FlutedGlassEffect
+  | CrtEffect
+  | VignetteEffect
+  | AsciiEffect
   | AdjustmentEffect
   | DropShadowEffect
   | BlurEffect
@@ -302,6 +308,136 @@ export function flutedGlassUniformValues(
   ];
 }
 
+/** CRT filter defaults (no vignette — use {@link VignetteEffect} / `vignette()`). */
+export const CRT_DEFAULTS = {
+  curvature: 1,
+  lineWidth: 1,
+  lineContrast: 0.25,
+  verticalLine: 0,
+  time: 0,
+} as const;
+
+/**
+ * CRT-style scanlines only (see {@link crtUniformValues} / post-processing `crt` shader).
+ */
+export interface CrtEffect {
+  type: 'crt';
+  curvature: number;
+  lineWidth: number;
+  lineContrast: number;
+  /** 0 = horizontal scanlines, 1 = vertical */
+  verticalLine: number;
+  /** Animates scanlines when changed over time (ignored when {@link useEngineTime} is true) */
+  time: number;
+  /** When true, GPU uses the global frame clock from `PostEffectTime` instead of `time`. */
+  useEngineTime?: boolean;
+}
+
+/** Defaults for {@link VignetteEffect} / `vignette(size, amount)`. */
+export const VIGNETTE_DEFAULTS = {
+  size: 0.5,
+  amount: 0.5,
+} as const;
+
+/**
+ * Radial lens vignette (`smoothstep` on UV distance), separate pass from CRT.
+ */
+export interface VignetteEffect {
+  type: 'vignette';
+  /** 0 = center of frame, 1 = edge */
+  size: number;
+  /** 0 = no darkening, 1 = max */
+  amount: number;
+}
+
+/** 3 × vec4 (`u_CRT0`…`u_CRT2`), std140. */
+export function crtUniformValues(
+  effect: CrtEffect,
+  textureWidth: number,
+  textureHeight: number,
+): number[] {
+  const w = Math.max(1, textureWidth);
+  const h = Math.max(1, textureHeight);
+  const D = CRT_DEFAULTS;
+  const z = (v: number | undefined, def: number) =>
+    Number.isFinite(v as number) ? (v as number) : def;
+
+  const curvature = z(effect.curvature, D.curvature);
+  const lineWidth = Math.max(0, z(effect.lineWidth, D.lineWidth));
+  const lineContrast = z(effect.lineContrast, D.lineContrast);
+  const verticalLine = z(effect.verticalLine, D.verticalLine) > 0.5 ? 1 : 0;
+  const time = effect.useEngineTime
+    ? getPostEffectEngineTimeSeconds()
+    : z(effect.time, D.time);
+
+  return [
+    curvature,
+    lineWidth,
+    lineContrast,
+    verticalLine,
+    0,
+    0,
+    0,
+    time,
+    w,
+    h,
+    w,
+    h,
+  ];
+}
+
+/** `u_Vignette`: vec4(size, amount, 0, 0), std140. */
+export function vignetteUniformValues(effect: VignetteEffect): number[] {
+  const D = VIGNETTE_DEFAULTS;
+  const z = (v: number | undefined, def: number) =>
+    Number.isFinite(v as number) ? (v as number) : def;
+  const size = Math.max(0, Math.min(1, z(effect.size, D.size)));
+  const amount = Math.max(0, Math.min(1, z(effect.amount, D.amount)));
+  return [size, amount, 0, 0];
+}
+
+/** Pixi {@link https://github.com/pixijs/filters/blob/main/src/ascii/ascii.frag ASCIIFilter} defaults. */
+export const ASCII_DEFAULTS = {
+  size: 8,
+  replaceColor: false,
+  color: '#ffffff',
+} as const;
+
+/**
+ * ASCII / bitmap-font style blocks from luminance (Pixi `ASCIIFilter`).
+ */
+export interface AsciiEffect {
+  type: 'ascii';
+  /** Cell size in pixels (`uSize`) */
+  size: number;
+  /** Solid `color` for glyphs vs sampled tint (`uReplaceColor`) */
+  replaceColor: boolean;
+  /** CSS color when replacing */
+  color: string;
+}
+
+/** 3 × vec4 std140: `u_ASCII0`, `u_ASCII1`, `u_InputSizeAscii`. */
+export function asciiUniformValues(
+  effect: AsciiEffect,
+  textureWidth: number,
+  textureHeight: number,
+): number[] {
+  const w = Math.max(1, textureWidth);
+  const h = Math.max(1, textureHeight);
+  const D = ASCII_DEFAULTS;
+  let cell = effect.size;
+  if (!Number.isFinite(cell) || cell < 1) {
+    cell = D.size;
+  }
+  cell = Math.max(1, Math.min(cell, Math.min(w, h)));
+  const rgb = parseColor(effect.color?.trim() ? effect.color : D.color);
+  const r = rgb.r / 255;
+  const g = rgb.g / 255;
+  const b = rgb.b / 255;
+  const rep = effect.replaceColor ? 1 : 0;
+  return [cell, rep, r, g, b, 0, 0, 0, w, h, 0, 0];
+}
+
 export interface DropShadowEffect {
   type: 'drop-shadow';
   x: number;
@@ -335,6 +471,9 @@ const RASTER_POST_EFFECT_TYPES = new Set<Effect['type']>([
   'colorHalftone',
   'halftoneDots',
   'flutedGlass',
+  'crt',
+  'vignette',
+  'ascii',
 ]);
 
 /** True when `adjustment` only changes saturation (Pixi/CSS-style `saturate()`). */
@@ -809,12 +948,100 @@ export function parseEffect(filter: string): Effect[] {
         grainMixer: pf(15, D.grainMixer),
         grainOverlay: pf(16, D.grainOverlay),
       });
+    } else if (filter.name === 'crt') {
+      const raw = filter.params.trim();
+      const parts = raw.length
+        ? raw.split(',').map((s) => s.trim()).filter((s) => s.length > 0)
+        : [];
+      const D = CRT_DEFAULTS;
+      const pf = (i: number, def: number) => {
+        const v = parts[i] !== undefined ? parseFloat(parts[i]) : def;
+        return Number.isFinite(v) ? v : def;
+      };
+      const n = parts.length;
+      /** Legacy 11-arg Pixi (`time` at index 7); 8-arg had trailing vignette (ignored here). New: 5 args, `time` at 4. */
+      const timeIdx = n >= 11 ? 7 : 4;
+      let useEngineTime = false;
+      let time: number = D.time;
+      const timeToken = parts[timeIdx]?.trim().toLowerCase();
+      if (timeToken === 'auto' || timeToken === 'engine') {
+        useEngineTime = true;
+      } else {
+        time = pf(timeIdx, D.time);
+      }
+      effects.push({
+        type: 'crt',
+        curvature: pf(0, D.curvature),
+        lineWidth: pf(1, D.lineWidth),
+        lineContrast: pf(2, D.lineContrast),
+        verticalLine: pf(3, D.verticalLine),
+        time,
+        ...(useEngineTime ? { useEngineTime: true } : {}),
+      });
+    } else if (filter.name === 'vignette') {
+      const raw = filter.params.trim();
+      const parts = raw.length
+        ? raw.split(',').map((s) => s.trim()).filter((s) => s.length > 0)
+        : [];
+      const D = VIGNETTE_DEFAULTS;
+      const pf = (i: number, def: number) => {
+        const v = parts[i] !== undefined ? parseFloat(parts[i]) : def;
+        return Number.isFinite(v) ? v : def;
+      };
+      effects.push({
+        type: 'vignette',
+        size: pf(0, D.size),
+        amount: pf(1, D.amount),
+      });
+    } else if (filter.name === 'ascii') {
+      const raw = filter.params.trim();
+      const parts = raw.length
+        ? raw.split(',').map((s) => s.trim()).filter((s) => s.length > 0)
+        : [];
+      const D = ASCII_DEFAULTS;
+      const pf = (i: number, def: number) => {
+        const v = parts[i] !== undefined ? parseFloat(parts[i]) : def;
+        return Number.isFinite(v) ? v : def;
+      };
+      const size = Math.max(1, pf(0, D.size));
+      let replaceColor: boolean = D.replaceColor;
+      if (parts[1] !== undefined) {
+        replaceColor = parseFloat(parts[1]) > 0.5;
+      }
+      let color: string = D.color;
+      if (parts.length >= 3) {
+        color = parts.slice(2).join(',').trim();
+      }
+      effects.push({
+        type: 'ascii',
+        size,
+        replaceColor,
+        color,
+      });
     } else if (filter.name === 'fxaa') {
       effects.push({ type: 'fxaa' });
     }
   }
 
   return effects;
+}
+
+/**
+ * True when the filter string includes CRT with `useEngineTime` / `time: auto`, which must
+ * redraw every frame even if no component changes (see {@link MeshPipeline}).
+ */
+export function filterStringUsesEngineTimeCrt(
+  filterValue: string | undefined | null,
+): boolean {
+  if (filterValue == null || !String(filterValue).trim()) {
+    return false;
+  }
+  for (const e of parseEffect(filterValue)) {
+    if (e.type === 'crt' && e.useEngineTime) {
+      return true;
+    }
+  }
+  return false;
 }
 
 /**
@@ -877,6 +1104,25 @@ export function formatFilter(effects: Effect[]): string {
         parts.push(
           `fluted-glass(${e.size}, ${e.shadows}, ${e.angle}, ${e.stretch}, ${e.shape}, ${e.distortion}, ${e.highlights}, ${e.distortionShape}, ${e.shift}, ${e.blur}, ${e.edges}, ${e.marginLeft}, ${e.marginRight}, ${e.marginTop}, ${e.marginBottom}, ${e.grainMixer}, ${e.grainOverlay})`,
         );
+        break;
+      }
+      case 'crt': {
+        const e = effect;
+        const timeParam = e.useEngineTime ? 'auto' : e.time;
+        parts.push(
+          `crt(${e.curvature}, ${e.lineWidth}, ${e.lineContrast}, ${e.verticalLine}, ${timeParam})`,
+        );
+        break;
+      }
+      case 'vignette': {
+        const e = effect;
+        parts.push(`vignette(${e.size}, ${e.amount})`);
+        break;
+      }
+      case 'ascii': {
+        const e = effect;
+        const rep = e.replaceColor ? 1 : 0;
+        parts.push(`ascii(${e.size}, ${rep}, ${cssColorToHex(e.color)})`);
         break;
       }
       case 'fxaa':
