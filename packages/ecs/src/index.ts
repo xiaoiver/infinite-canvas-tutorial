@@ -46,6 +46,7 @@ export {
   computeConicGradient,
   parseEffect,
   formatFilter,
+  filterStringUsesEngineTimeCrt,
   ADJUSTMENT_DEFAULTS,
   parseColor,
   cssColorToHex,
@@ -77,6 +78,11 @@ export {
   filterUndefined,
   isSaturateOnlyAdjustment,
   FLUTED_GLASS_DEFAULTS,
+  CRT_DEFAULTS,
+  VIGNETTE_DEFAULTS,
+  vignetteUniformValues,
+  ASCII_DEFAULTS,
+  asciiUniformValues,
   DIRECTION_EAST,
   DIRECTION_NORTH,
   DIRECTION_SOUTH,
@@ -87,6 +93,9 @@ export {
   type Gradient,
   type Effect,
   type FlutedGlassEffect,
+  type CrtEffect,
+  type VignetteEffect,
+  type AsciiEffect,
 } from './utils';
 export * from './types/serialized-node';
 export type { EdgeState } from './utils/binding/connection';

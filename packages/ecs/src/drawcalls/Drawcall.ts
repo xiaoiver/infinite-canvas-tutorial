@@ -35,6 +35,9 @@ import {
   uid,
   halftoneDotsUniformValues,
   flutedGlassUniformValues,
+  crtUniformValues,
+  vignetteUniformValues,
+  asciiUniformValues,
 } from '../utils';
 import { Location } from '../shaders/wireframe';
 import { TexturePool } from '../resources';
@@ -49,7 +52,10 @@ import {
   ClipMode,
   Wireframe,
 } from '../components';
-import { hasRasterPostEffects } from '../utils/filter';
+import {
+  filterStringUsesEngineTimeCrt,
+  hasRasterPostEffects,
+} from '../utils/filter';
 import { API } from '../API';
 import { vert as postProcessingVert } from '../shaders/post-processing/fullscreen';
 import { vert as bigTriangleVert } from '../shaders/post-processing/big-triangle';
@@ -62,6 +68,9 @@ import { frag as dotFrag } from '../shaders/post-processing/dot';
 import { frag as colorHalftoneFrag } from '../shaders/post-processing/colorHalftone';
 import { frag as halftoneDotsFrag } from '../shaders/post-processing/halftoneDots';
 import { frag as flutedGlassFrag } from '../shaders/post-processing/flutedGlass';
+import { frag as crtFrag } from '../shaders/post-processing/crt';
+import { frag as vignetteFrag } from '../shaders/post-processing/vignette';
+import { frag as asciiFrag } from '../shaders/post-processing/ascii';
 import type { RGGraphBuilder } from '../render-graph/interface';
 
 const FRAG_MAP: Record<
@@ -95,6 +104,15 @@ const FRAG_MAP: Record<
   flutedGlass: {
     shader: flutedGlassFrag,
   },
+  crt: {
+    shader: crtFrag,
+  },
+  vignette: {
+    shader: vignetteFrag,
+  },
+  ascii: {
+    shader: asciiFrag,
+  },
 };
 
 function postEffectUniformFloatCount(effect: Effect): number {
@@ -111,6 +129,12 @@ function postEffectUniformFloatCount(effect: Effect): number {
       return 20;
     case 'flutedGlass':
       return 36;
+    case 'crt':
+      return 12;
+    case 'vignette':
+      return 4;
+    case 'ascii':
+      return 12;
     case 'drop-shadow':
       return 2;
     case 'fxaa':
@@ -275,6 +299,31 @@ function setPostEffectUniformData(
       const tw = Math.max(1, textureWidth ?? 1);
       const th = Math.max(1, textureHeight ?? 1);
       const u = flutedGlassUniformValues(effect, tw, th);
+      for (let j = 0; j < u.length; j++) {
+        data[i++] = u[j]!;
+      }
+      break;
+    }
+    case 'crt': {
+      const tw = Math.max(1, textureWidth ?? 1);
+      const th = Math.max(1, textureHeight ?? 1);
+      const u = crtUniformValues(effect, tw, th);
+      for (let j = 0; j < u.length; j++) {
+        data[i++] = u[j]!;
+      }
+      break;
+    }
+    case 'vignette': {
+      const u = vignetteUniformValues(effect);
+      for (let j = 0; j < u.length; j++) {
+        data[i++] = u[j]!;
+      }
+      break;
+    }
+    case 'ascii': {
+      const tw = Math.max(1, textureWidth ?? 1);
+      const th = Math.max(1, textureHeight ?? 1);
+      const u = asciiUniformValues(effect, tw, th);
       for (let j = 0; j < u.length; j++) {
         data[i++] = u[j]!;
       }
@@ -448,6 +497,20 @@ export abstract class Drawcall {
       // main pass viewport so subsequent draws use the full backbuffer (WebGL may not restore).
       const { width, height } = this.swapChain.getCanvas();
       renderPass.setViewport(0, 0, width, height);
+    } else if (
+      this.useFillImage &&
+      this.shapes.length > 0 &&
+      this.#filterChainReady
+    ) {
+      const shape = this.shapes[0];
+      if (
+        shape.has(Filter) &&
+        filterStringUsesEngineTimeCrt(shape.read(Filter).value)
+      ) {
+        this.renderPostProcessingTextureSpace(this.#filterWidth, this.#filterHeight);
+        const { width, height } = this.swapChain.getCanvas();
+        renderPass.setViewport(0, 0, width, height);
+      }
     }
 
     void builder;

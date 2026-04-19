@@ -9,6 +9,7 @@ head:
 import ImageProcessing from '../../components/ImageProcessing.vue'
 import HalftoneDots from '../../components/HalftoneDots.vue'
 import Pixelate from '../../components/Pixelate.vue'
+import CRT from '../../components/CRT.vue'
 import GlobalEffects from '../../components/GlobalEffects.vue'
 </script>
 
@@ -180,14 +181,44 @@ void main() {
 
 ### Pixelate {#pixelate}
 
-按像素块取样放大马赛克，见 [Pixi `pixelate.frag`][pixelate.frag]，例如 `pixelate(12px)`。
+按像素块取样放大马赛克，见 [Pixi `pixelate.frag`][pixelate.frag]，例如 `pixelate(12px)`。也可以对叠加了噪声的渐变效果应用。
 
 <Pixelate />
+
+### CRT & vignette {#crt-vignette}
+
+模仿老电视机的效果，加上暗角：
+
+<CRT />
 
 ### Glitch {#glitch}
 
 -   [CSSGlitchEffect]
 -   [unityglitch]
+
+### Ascii {#ascii}
+
+先把画面按 uSize 分格并算灰度，用灰度选一个 位图常数 n，再在格内每个像素用 n 的 bit 决定亮/暗，乘到颜色上。这是典型的 bitmap font / ASCII art 做法，不是矢量字或纹理字。
+
+```glsl
+float n = 65536.0;
+if (gray > 0.2) n = 65600.0; // .
+if (gray > 0.3) n = 332772.0; // :
+if (gray > 0.4) n = 15255086.0; // *
+if (gray > 0.5) n = 23385164.0; // o
+```
+
+### 时间动画 {#time-animation}
+
+一些后处理效果可以应用动画，通常会传入一个每一帧更新的时间变量（例如 shadertoy 中的 `u_Time`）
+
+```ts
+export class PostEffectTime extends System {
+    execute() {
+        setPostEffectEngineTimeSeconds(perf.now() / 1000);
+    }
+}
+```
 
 ## 渲染图 {#render-graph}
 

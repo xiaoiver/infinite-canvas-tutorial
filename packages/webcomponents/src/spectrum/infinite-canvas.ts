@@ -87,6 +87,8 @@ import '@spectrum-web-components/icons-workflow/icons/sp-icon-brush.js';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-rect-select.js';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-image.js';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-arrow-up-right.js';
+import '@spectrum-web-components/icons-workflow/icons/sp-icon-arrow-up.js';
+import '@spectrum-web-components/icons-workflow/icons/sp-icon-arrow-down.js';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-send.js';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-find-and-replace.js';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-polygon.js';
