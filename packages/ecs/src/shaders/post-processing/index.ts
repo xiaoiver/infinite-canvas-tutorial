@@ -12,3 +12,4 @@ export { frag as crt } from './crt';
 export { frag as vignette } from './vignette';
 export { frag as ascii } from './ascii';
 export { frag as glitch } from './glitch';
+export { frag as liquidGlass } from './liquidGlass';

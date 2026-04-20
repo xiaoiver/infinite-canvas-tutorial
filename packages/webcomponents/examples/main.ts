@@ -189,7 +189,7 @@ canvas.addEventListener(Event.READY, async (e) => {
     fill: 'https://v3b.fal.media/files/b/tiger/v1lf1EcPP1X1pw_YOKM4o.jpg',
     zIndex: 1,
     // brightness/contrast: glfx offset in [-1, 1], 0 = unchanged (not CSS multipliers)
-    filter: 'crt(4, 4, 0.4, 0.27, 0.41, 1) vignette(0.5, 0.5) glitch(0.29, 0.1, 0)',
+    filter: 'crt(4, 4, 0.4, 0.27, 0.41, 1) vignette(0.5, 0.5) glitch(0.29, 0.15, auto, 0.29)',
   }
 
   api.runAtNextTick(() => {

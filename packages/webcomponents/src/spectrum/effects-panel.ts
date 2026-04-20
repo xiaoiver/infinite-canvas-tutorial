@@ -53,6 +53,10 @@ function isGlitchEffect(e: Effect): boolean {
   return (e as { type?: string }).type === 'glitch';
 }
 
+function isLiquidGlassEffect(e: Effect): boolean {
+  return (e as { type?: string }).type === 'liquidGlass';
+}
+
 /** Mirrors ecs `CRT_DEFAULTS`. */
 const CRT_PANEL_DEFAULTS = {
   curvature: 1,
@@ -87,13 +91,38 @@ type AsciiEffectRow = typeof ASCII_PANEL_DEFAULTS;
 /** Mirrors ecs `GLITCH_DEFAULTS`; `useEngineTime` defaults on so the effect animates. */
 const GLITCH_PANEL_DEFAULTS = {
   type: 'glitch' as const,
-  amount: 0.45,
+  jitter: 0.45,
+  blocks: 0,
   rgbSplit: 0.004,
   time: 0,
   useEngineTime: true,
 } as const;
 
 type GlitchEffectRow = typeof GLITCH_PANEL_DEFAULTS;
+
+/** Mirrors ecs `LIQUID_GLASS_DEFAULTS` / `LiquidGlassEffect`. */
+const LIQUID_GLASS_PANEL_DEFAULTS = {
+  type: 'liquidGlass' as const,
+  powerFactor: 4,
+  fPower: 3,
+  noise: 0.1,
+  glowWeight: 0.3,
+  glowBias: 0,
+  glowEdge0: 0.06,
+  glowEdge1: 0,
+  a: 0.7,
+  b: 2.3,
+  c: 5.2,
+  d: 6.9,
+  centerX: 0.5,
+  centerY: 0.5,
+  scaleX: 1,
+  scaleY: 1,
+  ellipseSizeX: 1,
+  ellipseSizeY: 1,
+};
+
+type LiquidGlassEffectRow = typeof LIQUID_GLASS_PANEL_DEFAULTS;
 
 /** Mirrors ecs `FlutedGlassEffect` / {@link FLUTED_GLASS_DEFAULTS} for panel defaults. */
 const FLUTED_GLASS_PANEL_DEFAULTS = {
@@ -134,7 +163,8 @@ type EffectKind =
   | 'crt'
   | 'vignette'
   | 'ascii'
-  | 'glitch';
+  | 'glitch'
+  | 'liquidGlass';
 
 function effectKind(
   effect: Effect,
@@ -163,6 +193,9 @@ function effectKind(
   }
   if (isGlitchEffect(effect)) {
     return 'glitch';
+  }
+  if (isLiquidGlassEffect(effect)) {
+    return 'liquidGlass';
   }
   if (
     effect.type === 'brightness' ||
@@ -226,6 +259,8 @@ function createDefaultEffect(kind: EffectKind): Effect {
       return { ...ASCII_PANEL_DEFAULTS } as unknown as Effect;
     case 'glitch':
       return { ...GLITCH_PANEL_DEFAULTS } as unknown as Effect;
+    case 'liquidGlass':
+      return { ...LIQUID_GLASS_PANEL_DEFAULTS } as unknown as Effect;
     case 'saturate':
       return {
         type: 'adjustment',
@@ -396,6 +431,9 @@ export class EffectsPanel extends LitElement {
                   >
                   <sp-menu-item value="ascii">${msg(str`ASCII`)}</sp-menu-item>
                   <sp-menu-item value="glitch">${msg(str`Glitch`)}</sp-menu-item>
+                  <sp-menu-item value="liquidGlass"
+                    >${msg(str`Liquid glass`)}</sp-menu-item
+                  >
                 </sp-picker>
               `
         : html`
@@ -938,18 +976,36 @@ export class EffectsPanel extends LitElement {
       return html`
         <sp-slider
           size="s"
-          label=${msg(str`Amount`)}
+          label=${msg(str`Jitter`)}
           min="0"
           max="1"
           step="0.01"
-          .value=${h.amount}
+          .value=${h.jitter}
           editable
           @change=${(e: Event & { target: HTMLInputElement }) => {
           const v = parseFloat(e.target.value);
           const next = [...this.effects];
           next[index] = {
             ...h,
-            amount: Number.isFinite(v) ? v : h.amount,
+            jitter: Number.isFinite(v) ? v : h.jitter,
+          } as unknown as Effect;
+          this.commit(next);
+        }}
+        ></sp-slider>
+        <sp-slider
+          size="s"
+          label=${msg(str`Blocks`)}
+          min="0"
+          max="1"
+          step="0.01"
+          .value=${h.blocks}
+          editable
+          @change=${(e: Event & { target: HTMLInputElement }) => {
+          const v = parseFloat(e.target.value);
+          const next = [...this.effects];
+          next[index] = {
+            ...h,
+            blocks: Number.isFinite(v) ? v : h.blocks,
           } as unknown as Effect;
           this.commit(next);
         }}
@@ -1010,6 +1066,172 @@ export class EffectsPanel extends LitElement {
             }}
         ></sp-slider>
       `}
+      `;
+    }
+    if (isLiquidGlassEffect(effect)) {
+      const h = effect as unknown as LiquidGlassEffectRow;
+      const patch = (partial: Partial<LiquidGlassEffectRow>) => {
+        const next = [...this.effects];
+        next[index] = { ...h, ...partial } as unknown as Effect;
+        this.commit(next);
+      };
+      const num = (
+        e: Event & { target: HTMLInputElement },
+        cur: number,
+        fn: (v: number) => Partial<LiquidGlassEffectRow>,
+      ) => {
+        const v = parseFloat(e.target.value);
+        patch(Number.isFinite(v) ? fn(v) : fn(cur));
+      };
+      return html`
+        <sp-slider
+          size="s"
+          label=${msg(str`Superellipse power`)}
+          min="2"
+          max="16"
+          step="0.1"
+          .value=${h.powerFactor}
+          editable
+          @change=${(e: Event & { target: HTMLInputElement }) =>
+          num(e, h.powerFactor, (v) => ({ powerFactor: v }))}
+        ></sp-slider>
+        <sp-slider
+          size="s"
+          label=${msg(str`Ellipse size X`)}
+          min="0.2"
+          max="3"
+          step="0.02"
+          .value=${h.ellipseSizeX ?? 1}
+          editable
+          @change=${(e: Event & { target: HTMLInputElement }) =>
+          num(e, h.ellipseSizeX ?? 1, (v) => ({ ellipseSizeX: v }))}
+        ></sp-slider>
+        <sp-slider
+          size="s"
+          label=${msg(str`Ellipse size Y`)}
+          min="0.2"
+          max="3"
+          step="0.02"
+          .value=${h.ellipseSizeY ?? 1}
+          editable
+          @change=${(e: Event & { target: HTMLInputElement }) =>
+          num(e, h.ellipseSizeY ?? 1, (v) => ({ ellipseSizeY: v }))}
+        ></sp-slider>
+        <sp-slider
+          size="s"
+          label=${msg(str`Refraction power`)}
+          min="0.5"
+          max="8"
+          step="0.05"
+          .value=${h.fPower}
+          editable
+          @change=${(e: Event & { target: HTMLInputElement }) =>
+          num(e, h.fPower, (v) => ({ fPower: v }))}
+        ></sp-slider>
+        <sp-slider
+          size="s"
+          label=${msg(str`Grain`)}
+          min="0"
+          max="0.5"
+          step="0.01"
+          .value=${h.noise}
+          editable
+          @change=${(e: Event & { target: HTMLInputElement }) =>
+          num(e, h.noise, (v) => ({ noise: v }))}
+        ></sp-slider>
+        <sp-slider
+          size="s"
+          label=${msg(str`Glow weight`)}
+          min="0"
+          max="1"
+          step="0.01"
+          .value=${h.glowWeight}
+          editable
+          @change=${(e: Event & { target: HTMLInputElement }) =>
+          num(e, h.glowWeight, (v) => ({ glowWeight: v }))}
+        ></sp-slider>
+        <sp-slider
+          size="s"
+          label=${msg(str`Glow bias`)}
+          min="-0.5"
+          max="0.5"
+          step="0.01"
+          .value=${h.glowBias}
+          editable
+          @change=${(e: Event & { target: HTMLInputElement }) =>
+          num(e, h.glowBias, (v) => ({ glowBias: v }))}
+        ></sp-slider>
+        <sp-slider
+          size="s"
+          label=${msg(str`Glow edge start`)}
+          min="0"
+          max="0.2"
+          step="0.005"
+          .value=${h.glowEdge0}
+          editable
+          @change=${(e: Event & { target: HTMLInputElement }) =>
+          num(e, h.glowEdge0, (v) => ({ glowEdge0: v }))}
+        ></sp-slider>
+        <sp-slider
+          size="s"
+          label=${msg(str`Glow edge end`)}
+          min="0"
+          max="0.2"
+          step="0.005"
+          .value=${h.glowEdge1}
+          editable
+          @change=${(e: Event & { target: HTMLInputElement }) =>
+          num(e, h.glowEdge1, (v) => ({ glowEdge1: v }))}
+        ></sp-slider>
+        <sp-slider
+          size="s"
+          label=${msg(str`Center X`)}
+          min="0"
+          max="1"
+          step="0.01"
+          .value=${h.centerX}
+          editable
+          @change=${(e: Event & { target: HTMLInputElement }) =>
+          num(e, h.centerX, (v) => ({ centerX: v }))}
+        ></sp-slider>
+        <sp-slider
+          size="s"
+          label=${msg(str`Center Y`)}
+          min="0"
+          max="1"
+          step="0.01"
+          .value=${h.centerY}
+          editable
+          @change=${(e: Event & { target: HTMLInputElement }) =>
+          num(e, h.centerY, (v) => ({ centerY: v }))}
+        ></sp-slider>
+        <sp-slider
+          size="s"
+          label=${msg(str`Scale X`)}
+          min="0.25"
+          max="2"
+          step="0.01"
+          .value=${h.scaleX}
+          editable
+          @change=${(e: Event & { target: HTMLInputElement }) =>
+          num(e, h.scaleX, (v) => ({ scaleX: v }))}
+        ></sp-slider>
+        <sp-slider
+          size="s"
+          label=${msg(str`Scale Y`)}
+          min="0.25"
+          max="2"
+          step="0.01"
+          .value=${h.scaleY}
+          editable
+          @change=${(e: Event & { target: HTMLInputElement }) =>
+          num(e, h.scaleY, (v) => ({ scaleY: v }))}
+        ></sp-slider>
+        <span class="hint"
+          >${msg(
+            str`f(dist) coefficients a–d use defaults; edit the filter string to tune them.`,
+          )}</span
+        >
       `;
     }
     if (isVignetteEffect(effect)) {
@@ -1178,6 +1400,9 @@ export class EffectsPanel extends LitElement {
           <sp-menu-item value="vignette">${msg(str`Vignette`)}</sp-menu-item>
           <sp-menu-item value="ascii">${msg(str`ASCII`)}</sp-menu-item>
           <sp-menu-item value="glitch">${msg(str`Glitch`)}</sp-menu-item>
+          <sp-menu-item value="liquidGlass"
+            >${msg(str`Liquid glass`)}</sp-menu-item
+          >
         </sp-action-menu>
       </div>
     `;

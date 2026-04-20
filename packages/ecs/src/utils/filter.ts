@@ -22,6 +22,7 @@ export type Effect =
   | VignetteEffect
   | AsciiEffect
   | GlitchEffect
+  | LiquidGlassEffect
   | AdjustmentEffect
   | DropShadowEffect
   | BlurEffect
@@ -458,17 +459,21 @@ export interface NoiseEffect {
   value: number;
 }
 
-/** Digital block glitch + RGB split; `filter` e.g. `glitch(0.45, 0.004, auto)` for animated time. */
+/** Digital block glitch + RGB split; `filter` e.g. `glitch(0.45, 0.004, auto, 0.35)` — jitter, rgbSplit, time, blocks. */
 export const GLITCH_DEFAULTS = {
-  amount: 0.45,
+  jitter: 0.45,
+  /** 0–1 digital block glitch strength (independent of {@link jitter}). */
+  blocks: 0,
   rgbSplit: 0.004,
   time: 0,
 } as const;
 
 export interface GlitchEffect {
   type: 'glitch';
-  /** 0–1 strength (block density + jitter). */
-  amount: number;
+  /** 0–1 UV jitter strength (does not affect block glitch). */
+  jitter: number;
+  /** 0–1 block / digital glitch strength (does not affect jitter). */
+  blocks: number;
   /** Horizontal channel separation scale (shader maps to pixel offset). */
   rgbSplit: number;
   /** Seconds; ignored when {@link useEngineTime} is true. */
@@ -488,12 +493,102 @@ export function glitchUniformValues(
   const D = GLITCH_DEFAULTS;
   const z = (v: number | undefined, def: number) =>
     Number.isFinite(v as number) ? (v as number) : def;
-  const amount = Math.max(0, Math.min(1, z(effect.amount, D.amount)));
+  const jitter = Math.max(0, Math.min(1, z(effect.jitter, D.jitter)));
+  const blocks = Math.max(0, Math.min(1, z(effect.blocks, D.blocks)));
   const rgbSplit = Math.max(0, z(effect.rgbSplit, D.rgbSplit));
   const time = effect.useEngineTime
     ? getPostEffectEngineTimeSeconds()
     : z(effect.time, D.time);
-  return [amount, rgbSplit, time, 0, w, h, 0, 0];
+  return [jitter, rgbSplit, time, blocks, w, h, 0, 0];
+}
+
+/** Defaults aligned with {@link https://github.com/OverShifted/LiquidGlass/blob/master/assets/shaders/BatchRenderer2D.glsl OverShifted LiquidGlass} uniforms. */
+export const LIQUID_GLASS_DEFAULTS = {
+  powerFactor: 4,
+  fPower: 3,
+  noise: 0.1,
+  glowWeight: 0.3,
+  glowBias: 0,
+  glowEdge0: 0.06,
+  glowEdge1: 0,
+  a: 0.7,
+  b: 2.3,
+  c: 5.2,
+  d: 6.9,
+  centerX: 0.5,
+  centerY: 0.5,
+  scaleX: 1,
+  scaleY: 1,
+  ellipseSizeX: 1,
+  ellipseSizeY: 1,
+} as const;
+
+export interface LiquidGlassEffect {
+  type: 'liquidGlass';
+  /** Superellipse exponent (higher → squarer silhouette). */
+  powerFactor: number;
+  /** Refractive fall-off power on `f(dist)`. */
+  fPower: number;
+  /** RGB grain strength. */
+  noise: number;
+  glowWeight: number;
+  glowBias: number;
+  glowEdge0: number;
+  glowEdge1: number;
+  /** `f(dist)` coefficients (see reference shader). */
+  a: number;
+  b: number;
+  c: number;
+  d: number;
+  /** Lens center X in normalized texture UV [0, 1] (same space as post-process `v_Uv`). */
+  centerX: number;
+  /** Lens center Y in normalized texture UV [0, 1]. */
+  centerY: number;
+  /** Per-axis scale on the refracted offset in NDC (reference `v_QuadNDC2ScreenNDCScale`). */
+  scaleX: number;
+  scaleY: number;
+  /**
+   * Horizontal / vertical size of the superellipse in lens space (shader: `pShape = p / vec2(ellipseSizeX, ellipseSizeY)`).
+   * Default `1` matches the old fixed shape; **larger** values stretch the lens wider/taller on that axis.
+   */
+  ellipseSizeX: number;
+  ellipseSizeY: number;
+}
+
+/** 5 × vec4 std140: `u_LG0`–`u_LG4`. */
+export function liquidGlassUniformValues(
+  effect: LiquidGlassEffect,
+  textureWidth: number,
+  textureHeight: number,
+): number[] {
+  const w = Math.max(1, textureWidth);
+  const h = Math.max(1, textureHeight);
+  const D = LIQUID_GLASS_DEFAULTS;
+  const z = (v: number | undefined, def: number) =>
+    Number.isFinite(v as number) ? (v as number) : def;
+  const aspect = w / h;
+  return [
+    z(effect.powerFactor, D.powerFactor),
+    z(effect.fPower, D.fPower),
+    z(effect.noise, D.noise),
+    z(effect.glowWeight, D.glowWeight),
+    z(effect.glowBias, D.glowBias),
+    z(effect.glowEdge0, D.glowEdge0),
+    z(effect.glowEdge1, D.glowEdge1),
+    aspect,
+    z(effect.a, D.a),
+    z(effect.b, D.b),
+    z(effect.c, D.c),
+    z(effect.d, D.d),
+    z(effect.centerX, D.centerX),
+    z(effect.centerY, D.centerY),
+    z(effect.scaleX, D.scaleX),
+    z(effect.scaleY, D.scaleY),
+    w,
+    h,
+    z(effect.ellipseSizeX, D.ellipseSizeX),
+    z(effect.ellipseSizeY, D.ellipseSizeY),
+  ];
 }
 
 export interface FXAA {
@@ -514,6 +609,7 @@ const RASTER_POST_EFFECT_TYPES = new Set<Effect['type']>([
   'vignette',
   'ascii',
   'glitch',
+  'liquidGlass',
 ]);
 
 /** True when `adjustment` only changes saturation (Pixi/CSS-style `saturate()`). */
@@ -1079,12 +1175,45 @@ export function parseEffect(filter: string): Effect[] {
           time = Number.isFinite(tv) ? tv : D.time;
         }
       }
+      const blocks =
+        parts.length >= 4 ? pf(3, D.blocks) : D.blocks;
       effects.push({
         type: 'glitch',
-        amount: parts[0] !== undefined ? pf(0, D.amount) : D.amount,
+        jitter: parts[0] !== undefined ? pf(0, D.jitter) : D.jitter,
+        blocks,
         rgbSplit: parts[1] !== undefined ? pf(1, D.rgbSplit) : D.rgbSplit,
         time,
         ...(useEngineTime ? { useEngineTime: true } : {}),
+      });
+    } else if (filter.name === 'liquid-glass') {
+      const raw = filter.params.trim();
+      const parts = raw.length
+        ? raw.split(',').map((s) => s.trim()).filter((s) => s.length > 0)
+        : [];
+      const D = LIQUID_GLASS_DEFAULTS;
+      const pf = (i: number, def: number) => {
+        const v = parts[i] !== undefined ? parseFloat(parts[i]) : def;
+        return Number.isFinite(v) ? v : def;
+      };
+      effects.push({
+        type: 'liquidGlass',
+        powerFactor: pf(0, D.powerFactor),
+        fPower: pf(1, D.fPower),
+        noise: pf(2, D.noise),
+        glowWeight: pf(3, D.glowWeight),
+        glowBias: pf(4, D.glowBias),
+        glowEdge0: pf(5, D.glowEdge0),
+        glowEdge1: pf(6, D.glowEdge1),
+        a: pf(7, D.a),
+        b: pf(8, D.b),
+        c: pf(9, D.c),
+        d: pf(10, D.d),
+        centerX: pf(11, D.centerX),
+        centerY: pf(12, D.centerY),
+        scaleX: pf(13, D.scaleX),
+        scaleY: pf(14, D.scaleY),
+        ellipseSizeX: pf(15, D.ellipseSizeX),
+        ellipseSizeY: pf(16, D.ellipseSizeY),
       });
     } else if (filter.name === 'fxaa') {
       effects.push({ type: 'fxaa' });
@@ -1221,7 +1350,16 @@ export function formatFilter(effects: Effect[]): string {
       case 'glitch': {
         const e = effect;
         const timeParam = e.useEngineTime ? 'auto' : e.time;
-        parts.push(`glitch(${e.amount}, ${e.rgbSplit}, ${timeParam})`);
+        parts.push(
+          `glitch(${e.jitter}, ${e.rgbSplit}, ${timeParam}, ${e.blocks})`,
+        );
+        break;
+      }
+      case 'liquidGlass': {
+        const e = effect;
+        parts.push(
+          `liquid-glass(${e.powerFactor}, ${e.fPower}, ${e.noise}, ${e.glowWeight}, ${e.glowBias}, ${e.glowEdge0}, ${e.glowEdge1}, ${e.a}, ${e.b}, ${e.c}, ${e.d}, ${e.centerX}, ${e.centerY}, ${e.scaleX}, ${e.scaleY}, ${e.ellipseSizeX}, ${e.ellipseSizeY})`,
+        );
         break;
       }
       case 'fxaa':

@@ -39,6 +39,7 @@ import {
   vignetteUniformValues,
   asciiUniformValues,
   glitchUniformValues,
+  liquidGlassUniformValues,
 } from '../utils';
 import { Location } from '../shaders/wireframe';
 import { TexturePool } from '../resources';
@@ -73,6 +74,7 @@ import { frag as crtFrag } from '../shaders/post-processing/crt';
 import { frag as vignetteFrag } from '../shaders/post-processing/vignette';
 import { frag as asciiFrag } from '../shaders/post-processing/ascii';
 import { frag as glitchFrag } from '../shaders/post-processing/glitch';
+import { frag as liquidGlassFrag } from '../shaders/post-processing/liquidGlass';
 import type { RGGraphBuilder } from '../render-graph/interface';
 
 const FRAG_MAP: Record<
@@ -118,6 +120,9 @@ const FRAG_MAP: Record<
   glitch: {
     shader: glitchFrag,
   },
+  liquidGlass: {
+    shader: liquidGlassFrag,
+  },
 };
 
 function postEffectUniformFloatCount(effect: Effect): number {
@@ -142,6 +147,8 @@ function postEffectUniformFloatCount(effect: Effect): number {
       return 12;
     case 'glitch':
       return 8;
+    case 'liquidGlass':
+      return 20;
     case 'drop-shadow':
       return 2;
     case 'fxaa':
@@ -340,6 +347,15 @@ function setPostEffectUniformData(
       const tw = Math.max(1, textureWidth ?? 1);
       const th = Math.max(1, textureHeight ?? 1);
       const u = glitchUniformValues(effect, tw, th);
+      for (let j = 0; j < u.length; j++) {
+        data[i++] = u[j]!;
+      }
+      break;
+    }
+    case 'liquidGlass': {
+      const tw = Math.max(1, textureWidth ?? 1);
+      const th = Math.max(1, textureHeight ?? 1);
+      const u = liquidGlassUniformValues(effect, tw, th);
       for (let j = 0; j < u.length; j++) {
         data[i++] = u[j]!;
       }
