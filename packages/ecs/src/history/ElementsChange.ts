@@ -54,6 +54,8 @@ import {
   Locked,
   ClipMode,
   GeometryDirty,
+  Flex,
+  FlexLayoutDirty,
 } from '../components';
 import { getDescendants } from '../systems';
 import { syncEdgeBindingForEntity } from '../utils/binding/sync-edge-entity';
@@ -72,6 +74,32 @@ export type Mutable<T> = {
 };
 
 export const getUpdatedTimestamp = () => Date.now();
+
+/** 与 serialized-node 中 FlexboxLayoutAttributes 字段一致，变更时需让 Yoga 重新计算布局（即使 ComputedBounds 未变） */
+const FLEX_LAYOUT_MUTATION_KEYS: readonly string[] = [
+  'display',
+  'padding',
+  'margin',
+  'gap',
+  'rowGap',
+  'columnGap',
+  'alignItems',
+  'justifyContent',
+  'flexDirection',
+  'flexWrap',
+  'flexGrow',
+  'flexShrink',
+  'flexBasis',
+  'flex',
+  'minWidth',
+  'maxWidth',
+  'minHeight',
+  'maxHeight',
+];
+
+function updatesAffectFlexLayout(updates: object): boolean {
+  return FLEX_LAYOUT_MUTATION_KEYS.some((k) => k in updates);
+}
 
 export function safeAddComponent<T>(
   entity: Entity,
@@ -1105,6 +1133,20 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
   if ('filter' in updates) {
     safeAddComponent(entity, Filter, { value: filter });
     safeAddComponent(entity, MaterialDirty);
+  }
+
+  if ('display' in updates) {
+    const d = (updates as { display?: string }).display;
+    if (d === 'flex') {
+      safeAddComponent(entity, Flex);
+    } else {
+      safeRemoveComponent(entity, Flex);
+      safeRemoveComponent(entity, FlexLayoutDirty);
+    }
+  }
+
+  if (entity.has(Flex) && updatesAffectFlexLayout(updates)) {
+    safeAddComponent(entity, FlexLayoutDirty);
   }
 
   if ('version' in updates) {

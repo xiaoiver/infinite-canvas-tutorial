@@ -166,8 +166,9 @@ export interface FlexboxLayoutAttributes {
   flexShrink: number;
   flexBasis: number;
   flex: number;
-  padding: number;
-  margin: number;
+  /** 数字为四边同值；`[vertical, horizontal]` 或 `[top, right, bottom, left]` 与 Yoga 一致 */
+  padding: number | number[];
+  margin: number | number[];
   gap: number;
   rowGap: number;
   columnGap: number;

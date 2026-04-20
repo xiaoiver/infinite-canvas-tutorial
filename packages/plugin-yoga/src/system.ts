@@ -14,9 +14,11 @@ import {
   getSceneRoot,
   Entity,
   API,
+  safeRemoveComponent,
   Rect,
   ComputedCamera,
   Flex,
+  FlexLayoutDirty,
   Ellipse,
   Polyline,
   Path,
@@ -68,14 +70,18 @@ export class YogaSystem extends System {
     q.current.with(YogaLayoutApplied),
   );
 
+  private readonly flexLayoutDirty = this.query((q) =>
+    q.added.with(FlexLayoutDirty),
+  );
+
   /**
    * Each camera has a style tree.
    */
   private styleTrees: Map<number, StyleTreeNode> = new Map();
 
   /**
-   * Cache previous frame's bounds per entity to detect position vs size change.
-   * Key: entity.__id, Value: { minX, minY, width, height } from renderWorldBounds.
+   * 缓存上一帧用于判断「位移 vs 尺寸」变化。
+   * minX/minY 取世界 AABB 角点（便于跟平移一致）；width/height 取局部几何×scale（与旋转解耦，避免世界盒随转角变化误触 relayout）。
    */
   private previousBoundsByEntity: Map<
     number,
@@ -101,7 +107,7 @@ export class YogaSystem extends System {
             FillSolid,
             ZIndex,
           )
-          .read.and.using(GlobalTransform, Transform, Transformable, Rect, Ellipse, Polyline, Path, Text, HTML, Embed, YogaLayoutApplied)
+          .read.and.using(GlobalTransform, Transform, Transformable, Rect, Ellipse, Polyline, Path, Text, HTML, Embed, YogaLayoutApplied, FlexLayoutDirty)
           .write,
     );
   }
@@ -112,6 +118,21 @@ export class YogaSystem extends System {
   }
 
   execute() {
+    this.flexLayoutDirty.added.forEach((entity) => {
+      safeRemoveComponent(entity, FlexLayoutDirty);
+      if (!entity.has(Flex)) {
+        return;
+      }
+      const camera = getSceneRoot(entity);
+      const { api } = camera.read(Camera).canvas.read(Canvas);
+      const subtreeRoot = this.buildSubtreeForFlex(api, entity);
+      if (subtreeRoot) {
+        process(Yoga, subtreeRoot, (results) => {
+          this.updateCameraLayout(camera.__id, results, subtreeRoot.id);
+        });
+      }
+    });
+
     this.cameras.added.forEach((camera) => {
       const cameraId = camera.__id;
       if (!this.styleTrees.has(cameraId)) {
@@ -174,9 +195,25 @@ export class YogaSystem extends System {
     constructStyleTree(api, flexEntity, parentTree);
     if (parentTree.children.length === 0) return null;
     const subtreeRoot = parentTree.children[0];
-    const b = flexEntity.read(ComputedBounds).renderWorldBounds;
-    subtreeRoot.width = b.maxX - b.minX;
-    subtreeRoot.height = b.maxY - b.minY;
+    const obb = flexEntity.read(ComputedBounds).transformOBB;
+    let w = Math.abs(obb.width * obb.scaleX);
+    let h = Math.abs(obb.height * obb.scaleY);
+    if (w <= 0 || h <= 0) {
+      const node = api.getNodeByEntity(flexEntity);
+      if (node) {
+        const nw = node.width;
+        const nh = node.height;
+        if (typeof nw === 'number' && nw > 0) w = nw;
+        if (typeof nh === 'number' && nh > 0) h = nh;
+      }
+      if (flexEntity.has(Rect)) {
+        const r = flexEntity.read(Rect);
+        if (w <= 0 && typeof r.width === 'number' && r.width > 0) w = r.width;
+        if (h <= 0 && typeof r.height === 'number' && r.height > 0) h = r.height;
+      }
+    }
+    subtreeRoot.width = w;
+    subtreeRoot.height = h;
     return subtreeRoot;
   }
 
@@ -190,12 +227,11 @@ export class YogaSystem extends System {
     sizeChanged: boolean;
   } {
     const id = entity.__id;
-    const b = entity.read(ComputedBounds).renderWorldBounds;
-    const minX = b.minX;
-    const minY = b.minY;
-    const width = b.maxX - b.minX;
-    const height = b.maxY - b.minY;
-    const current = { minX, minY, width, height };
+    const cb = entity.read(ComputedBounds);
+    const obb = cb.transformOBB;
+    const width = Math.abs(obb.width * obb.scaleX);
+    const height = Math.abs(obb.height * obb.scaleY);
+    const current = { minX: obb.x, minY: obb.y, width, height };
 
     const prev = this.previousBoundsByEntity.get(id);
     this.previousBoundsByEntity.set(id, current);
@@ -259,6 +295,13 @@ export function constructStyleTree(api: API, entity: Entity, tree: StyleTreeNode
     children: [],
   };
   tree.children.push(treeNode);
+
+  if (treeNode.width === 0) {
+    delete treeNode.width;
+  }
+  if (treeNode.height === 0) {
+    delete treeNode.height;
+  }
 
   // 只有 display: flex 的容器才参与子元素的 Yoga 布局
   if (entity.has(Flex) && entity.has(Parent)) {
@@ -377,28 +420,28 @@ sides.forEach(side => {
     })
   })
 
-  // 简写：padding / margin 单值或数组，同 CSS
-  const setPaddingOrMargin = (styleProp: 'padding' | 'margin') => {
-    const setter = styleProp === 'padding' ? 'setPadding' : 'setMargin'
-    const edgeKeys = ['top', 'right', 'bottom', 'left']
-    YOGA_SETTERS[styleProp] = (yogaNode: unknown, value: number | number[]) => {
-      const vals = Array.isArray(value)
-        ? value.length === 1
-          ? [value[0], value[0], value[0], value[0]]
-          : value.length === 2
-            ? [value[0], value[1], value[0], value[1]]
-            : value.length === 4
-              ? value
-              : [value[0], value[0], value[0], value[0]]
-        : [value, value, value, value]
-      edgeKeys.forEach((key, i) => {
-        const edgeConst = YOGA_VALUE_MAPPINGS.edge[key]
-        yogaNode[setter](Yoga[edgeConst], vals[i])
-      })
-    }
+// 简写：padding / margin 单值或数组，同 CSS
+const setPaddingOrMargin = (styleProp: 'padding' | 'margin') => {
+  const setter = styleProp === 'padding' ? 'setPadding' : 'setMargin'
+  const edgeKeys = ['top', 'right', 'bottom', 'left']
+  YOGA_SETTERS[styleProp] = (yogaNode: unknown, value: number | number[]) => {
+    const vals = Array.isArray(value)
+      ? value.length === 1
+        ? [value[0], value[0], value[0], value[0]]
+        : value.length === 2
+          ? [value[0], value[1], value[0], value[1]]
+          : value.length === 4
+            ? value
+            : [value[0], value[0], value[0], value[0]]
+      : [value, value, value, value]
+    edgeKeys.forEach((key, i) => {
+      const edgeConst = YOGA_VALUE_MAPPINGS.edge[key]
+      yogaNode[setter](Yoga[edgeConst], vals[i])
+    })
   }
-  setPaddingOrMargin('padding')
-  setPaddingOrMargin('margin')
+}
+setPaddingOrMargin('padding')
+setPaddingOrMargin('margin')
 
 // Gap（Yoga 2.0+）：flex 子项之间的行/列间距，需在 Yoga 加载后注册
 function registerGapSetters() {
@@ -428,6 +471,7 @@ function process(Yoga, styleTree: StyleTreeNode, callback: (results: LayoutResul
   // Init common node config
   const yogaConfig = Yoga.Config.create();
   yogaConfig.setPointScaleFactor(0); //disable value rounding
+  yogaConfig.setUseWebDefaults(false); // 与 Web/CSS flex 一致：默认 row、flex-shrink 等
 
   function populateNode(yogaNode, styleNode) {
     if (!styleNode) {

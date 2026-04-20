@@ -39,6 +39,7 @@ import {
   Plugin,
   ThemeMode,
   RectSerializedNode,
+  TRANSFORMER_MASK_FILL_COLOR,
 } from '../../ecs';
 import { Event, UIPlugin } from '../src';
 import '../src/spectrum';
@@ -166,36 +167,40 @@ canvas.addEventListener(Event.READY, async (e) => {
     // layersLassoing: ['parent'],
   });
 
-  const text = {
-    id: 'text',
-    type: 'text',
-    anchorX: 100,
-    anchorY: 100,
-    content: 'Hello, world!',
-    fontFamily: 'system-ui',
-    fontSize: 16,
-    lineHeight: 20,
-    fill: 'black',
-    zIndex: 1,
-  }
-
-  const image = {
-    id: 'image',
+  const parent = {
+    id: 'yoga-flex-basis-grow-shrink-parent',
     type: 'rect',
-    x: 0,
-    y: 0,
-    width: 300,
-    height: 300,
-    fill: 'https://v3b.fal.media/files/b/tiger/v1lf1EcPP1X1pw_YOKM4o.jpg',
-    zIndex: 1,
-    // brightness/contrast: glfx offset in [-1, 1], 0 = unchanged (not CSS multipliers)
-    filter: 'crt(4, 4, 0.4, 0.27, 0.41, 1) vignette(0.5, 0.5) glitch(0.29, 0.15, auto, 0.29)',
-  }
+    x: 100,
+    y: 100,
+    fill: 'grey',
+    display: 'flex',
+    width: 200,
+    height: 250,
+    padding: 10,
+    zIndex: 0,
+  } as const;
 
-  api.runAtNextTick(() => {
-    api.updateNodes([image]);
-    // api.selectNodes([image]);
-  });
+  const child = {
+    id: 'yoga-flex-basis-grow-shrink-child1',
+    parentId: 'yoga-flex-basis-grow-shrink-parent',
+    type: 'rect',
+    fill: TRANSFORMER_MASK_FILL_COLOR,
+    flexGrow: 0.25,
+    margin: 5,
+    zIndex: 1,
+  } as const;
+
+  const child2 = {
+    id: 'yoga-flex-basis-grow-shrink-child2',
+    parentId: 'yoga-flex-basis-grow-shrink-parent',
+    type: 'rect',
+    fill: TRANSFORMER_MASK_FILL_COLOR,
+    flexGrow: 0.75,
+    margin: 5,
+    zIndex: 1,
+  } as const;
+
+  api.updateNodes([parent, child, child2]);
 
   // fetch('/gradient-text.json').then(res => res.json()).then(data => {
   //   const animation = loadAnimation(data, {

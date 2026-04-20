@@ -5,12 +5,66 @@ import {
   SerializedNode,
   AppState,
   FillAttributes,
+  type FlexboxLayoutAttributes,
 } from '@infinite-canvas-tutorial/ecs';
 import { when } from 'lit/directives/when.js';
 import { DEG_TO_RAD, RAD_TO_DEG } from '@pixi/math';
 import { apiContext, appStateContext } from '../context';
 import { ExtendedAPI } from '../API';
 import { localized, msg, str } from '@lit/localize';
+import '@spectrum-web-components/picker/sp-picker.js';
+import '@spectrum-web-components/menu/sp-menu-item.js';
+import '@spectrum-web-components/overlay/sp-overlay.js';
+import '@spectrum-web-components/action-button/sp-action-button.js';
+import '@spectrum-web-components/icons-workflow/icons/sp-icon-padding-left.js';
+import '@spectrum-web-components/icons-workflow/icons/sp-icon-padding-top.js';
+import '@spectrum-web-components/icons-workflow/icons/sp-icon-padding-right.js';
+import '@spectrum-web-components/icons-workflow/icons/sp-icon-padding-bottom.js';
+import '@spectrum-web-components/icons-workflow/icons/sp-icon-margin-left.js';
+import '@spectrum-web-components/icons-workflow/icons/sp-icon-margin-top.js';
+import '@spectrum-web-components/icons-workflow/icons/sp-icon-margin-right.js';
+import '@spectrum-web-components/icons-workflow/icons/sp-icon-margin-bottom.js';
+import '@spectrum-web-components/tooltip/sp-tooltip.js';
+
+type FlexNode = SerializedNode & Partial<FlexboxLayoutAttributes>;
+
+/** Yoga：`number` / `[上下, 左右]` / `[上,右,下,左]`，用于 padding / margin */
+function normalizeBoxSides(
+  p: number | number[] | undefined,
+): [number, number, number, number] {
+  if (p == null) {
+    return [0, 0, 0, 0];
+  }
+  if (typeof p === 'number' && Number.isFinite(p)) {
+    return [p, p, p, p];
+  }
+  if (Array.isArray(p)) {
+    if (p.length === 1) {
+      return [p[0], p[0], p[0], p[0]];
+    }
+    if (p.length === 2) {
+      return [p[0], p[1], p[0], p[1]];
+    }
+    if (p.length >= 4) {
+      return [p[0], p[1], p[2], p[3]];
+    }
+  }
+  return [0, 0, 0, 0];
+}
+
+function sidesToBoxValue(
+  s: [number, number, number, number],
+): number | number[] {
+  const [t, r, b, l] = s;
+  if (t === r && r === b && b === l) {
+    return t;
+  }
+  return [t, r, b, l];
+}
+
+function boxSidesUniform(s: [number, number, number, number]): boolean {
+  return s[0] === s[1] && s[1] === s[2] && s[2] === s[3];
+}
 @customElement('ic-spectrum-properties-panel-content')
 @localized()
 export class PropertiesPanelContent extends LitElement {
@@ -47,7 +101,7 @@ export class PropertiesPanelContent extends LitElement {
     .content {
       display: flex;
       flex-direction: column;
-      gap: 8px;
+      gap: 4px;
       position: relative;
     }
 
@@ -94,7 +148,57 @@ export class PropertiesPanelContent extends LitElement {
     .lock-button {
       position: absolute;
       left: 128px;
-      top: 22px;
+      top: 18px;
+    }
+
+    .layout-group {
+      .line {
+        gap: 4px;
+
+        sp-field-label {
+          width: 100px;
+          flex-shrink: 0;
+        }
+
+        sp-picker {
+          width: 80px;
+        }
+      }
+
+      .layout-inset-inline {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        flex: 1 1 auto;
+        min-width: 0;
+        justify-content: flex-end;
+      }
+
+      .layout-inset-sides-popover {
+        padding: 10px;
+        min-width: 200px;
+      }
+
+      .layout-inset-sides-popover .side-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 4px;
+        margin-bottom: 4px;
+      }
+
+      .layout-inset-sides-popover .side-row:last-child {
+        margin-bottom: 0;
+      }
+
+      .layout-inset-sides-popover sp-field-label {
+        width: 72px;
+        flex-shrink: 0;
+      }
+
+      .layout-inset-sides-popover sp-number-field {
+        width: 80px;
+      }
     }
   `;
 
@@ -172,6 +276,455 @@ export class PropertiesPanelContent extends LitElement {
     this.lockAspectRatio = !this.lockAspectRatio;
   }
 
+  private handleLayoutPaddingChanged(e: Event & { target: HTMLInputElement }) {
+    const v = parseFloat(e.target.value);
+    this.api.updateNode(this.node, {
+      padding: Number.isFinite(v) ? v : undefined,
+    });
+    this.api.record();
+  }
+
+  private handlePaddingSideChanged(
+    index: 0 | 1 | 2 | 3,
+    e: Event & { target: HTMLInputElement },
+  ) {
+    const raw = parseFloat(e.target.value);
+    const next = Number.isFinite(raw) ? raw : 0;
+    const sides = normalizeBoxSides(
+      (this.node as FlexNode).padding,
+    ) as [number, number, number, number];
+    sides[index] = next;
+    this.api.updateNode(this.node, {
+      padding: sidesToBoxValue(sides),
+    } as Partial<SerializedNode>);
+    this.api.record();
+  }
+
+  private handleLayoutMarginChanged(e: Event & { target: HTMLInputElement }) {
+    const v = parseFloat(e.target.value);
+    this.api.updateNode(this.node, {
+      margin: Number.isFinite(v) ? v : undefined,
+    });
+    this.api.record();
+  }
+
+  private handleMarginSideChanged(
+    index: 0 | 1 | 2 | 3,
+    e: Event & { target: HTMLInputElement },
+  ) {
+    const raw = parseFloat(e.target.value);
+    const next = Number.isFinite(raw) ? raw : 0;
+    const sides = normalizeBoxSides(
+      (this.node as FlexNode).margin,
+    ) as [number, number, number, number];
+    sides[index] = next;
+    this.api.updateNode(this.node, {
+      margin: sidesToBoxValue(sides),
+    } as Partial<SerializedNode>);
+    this.api.record();
+  }
+
+  private handleLayoutGapChanged(e: Event & { target: HTMLInputElement }) {
+    const v = parseFloat(e.target.value);
+    this.api.updateNode(this.node, {
+      gap: Number.isFinite(v) ? v : undefined,
+    });
+    this.api.record();
+  }
+
+  private handleLayoutRowGapChanged(e: Event & { target: HTMLInputElement }) {
+    const v = parseFloat(e.target.value);
+    this.api.updateNode(this.node, {
+      rowGap: Number.isFinite(v) ? v : undefined,
+    });
+    this.api.record();
+  }
+
+  private handleLayoutColumnGapChanged(e: Event & { target: HTMLInputElement }) {
+    const v = parseFloat(e.target.value);
+    this.api.updateNode(this.node, {
+      columnGap: Number.isFinite(v) ? v : undefined,
+    });
+    this.api.record();
+  }
+
+  private handleFlexDirectionChanged(e: Event & { target: HTMLInputElement }) {
+    const v = e.target.value as FlexboxLayoutAttributes['flexDirection'];
+    this.api.updateNode(this.node, { flexDirection: v });
+    this.api.record();
+  }
+
+  private handleAlignItemsChanged(e: Event & { target: HTMLInputElement }) {
+    const v = e.target.value as FlexboxLayoutAttributes['alignItems'];
+    this.api.updateNode(this.node, { alignItems: v });
+    this.api.record();
+  }
+
+  private handleJustifyContentChanged(e: Event & { target: HTMLInputElement }) {
+    const v = e.target.value as FlexboxLayoutAttributes['justifyContent'];
+    this.api.updateNode(this.node, { justifyContent: v });
+    this.api.record();
+  }
+
+  private handleFlexWrapChanged(e: Event & { target: HTMLInputElement }) {
+    const v = e.target.value as FlexboxLayoutAttributes['flexWrap'];
+    this.api.updateNode(this.node, { flexWrap: v });
+    this.api.record();
+  }
+
+  private layoutTemplate() {
+    const n = this.node as FlexNode;
+    const paddingSides = normalizeBoxSides(n.padding);
+    const paddingUniform = boxSidesUniform(paddingSides);
+    const padTriggerId = `ic-pad-trg-${this.node.id.replace(/[^a-zA-Z0-9_-]/g, '_')}`;
+    const marginSides = normalizeBoxSides(n.margin);
+    const marginUniform = boxSidesUniform(marginSides);
+    const marTriggerId = `ic-mar-trg-${this.node.id.replace(/[^a-zA-Z0-9_-]/g, '_')}`;
+    const gap = n.gap ?? 0;
+    const rowGap = n.rowGap ?? 0;
+    const columnGap = n.columnGap ?? 0;
+    const flexDirection = n.flexDirection ?? 'row';
+    const alignItems = n.alignItems ?? 'stretch';
+    const justifyContent = n.justifyContent ?? 'flex-start';
+    const flexWrap = n.flexWrap ?? 'nowrap';
+
+    return html`<sp-accordion-item label=${msg(str`Layout`)} open>
+      <div class="content layout-group style-group">
+        <div class="line">
+          <sp-field-label for="flex-pad" side-aligned="start"
+            >${msg(str`Padding`)}</sp-field-label
+          >
+          <div class="layout-inset-inline">
+            <sp-action-button
+              quiet
+              size="s"
+              id=${padTriggerId}
+              label=${msg(str`Padding per side`)}
+            >
+              <sp-tooltip self-managed placement="bottom">
+                ${msg(str`Padding per side`)}
+              </sp-tooltip>
+              <sp-icon-padding-left slot="icon"></sp-icon-padding-left>
+            </sp-action-button>
+            <sp-overlay
+              trigger=${`${padTriggerId}@click`}
+              placement="bottom"
+              type="auto"
+            >
+              <sp-popover class="layout-inset-sides-popover">
+                <div class="side-row">
+                  <sp-field-label for="pad-t" side-aligned="start"
+                    >${msg(str`Top`)}</sp-field-label
+                  >
+                  <sp-icon-padding-top slot="icon"></sp-icon-padding-top>
+                  <sp-number-field
+                    id="pad-t"
+                    size="s"
+                    value=${paddingSides[0]}
+                    @change=${(e: Event & { target: HTMLInputElement }) =>
+        this.handlePaddingSideChanged(0, e)}
+                    hide-stepper
+                    autocomplete="off"
+                    min="0"
+                    format-options='{"style":"unit","unit":"px"}'
+                  ></sp-number-field>
+                </div>
+                <div class="side-row">
+                  <sp-field-label for="pad-r" side-aligned="start"
+                    >${msg(str`Right`)}</sp-field-label
+                  >
+                  <sp-icon-padding-right slot="icon"></sp-icon-padding-right>
+                  <sp-number-field
+                    id="pad-r"
+                    size="s"
+                    value=${paddingSides[1]}
+                    @change=${(e: Event & { target: HTMLInputElement }) =>
+        this.handlePaddingSideChanged(1, e)}
+                    hide-stepper
+                    autocomplete="off"
+                    min="0"
+                    format-options='{"style":"unit","unit":"px"}'
+                  ></sp-number-field>
+                </div>
+                <div class="side-row">
+                  <sp-field-label for="pad-b" side-aligned="start"
+                    >${msg(str`Bottom`)}</sp-field-label
+                  >
+                  <sp-icon-padding-bottom slot="icon"></sp-icon-padding-bottom>
+                  <sp-number-field
+                    id="pad-b"
+                    size="s"
+                    value=${paddingSides[2]}
+                    @change=${(e: Event & { target: HTMLInputElement }) =>
+        this.handlePaddingSideChanged(2, e)}
+                    hide-stepper
+                    autocomplete="off"
+                    min="0"
+                    format-options='{"style":"unit","unit":"px"}'
+                  ></sp-number-field>
+                </div>
+                <div class="side-row">
+                  <sp-field-label for="pad-l" side-aligned="start"
+                    >${msg(str`Left`)}</sp-field-label
+                  >
+                  <sp-icon-padding-left slot="icon"></sp-icon-padding-left>
+                  <sp-number-field
+                    id="pad-l"
+                    size="s"
+                    value=${paddingSides[3]}
+                    @change=${(e: Event & { target: HTMLInputElement }) =>
+        this.handlePaddingSideChanged(3, e)}
+                    hide-stepper
+                    autocomplete="off"
+                    min="0"
+                    format-options='{"style":"unit","unit":"px"}'
+                  ></sp-number-field>
+                </div>
+              </sp-popover>
+            </sp-overlay>
+            <sp-number-field
+              id="flex-pad"
+              size="s"
+              value=${paddingUniform ? paddingSides[0] : ''}
+              placeholder=${paddingUniform ? '' : '—'}
+              ?readonly=${!paddingUniform}
+              @change=${this.handleLayoutPaddingChanged}
+              hide-stepper
+              autocomplete="off"
+              min="0"
+              format-options='{"style":"unit","unit":"px"}'
+            ></sp-number-field>
+          </div>
+        </div>
+        <div class="line">
+          <sp-field-label for="flex-margin" side-aligned="start"
+            >${msg(str`Margin`)}</sp-field-label
+          >
+          <div class="layout-inset-inline">
+            <sp-action-button
+              quiet
+              size="s"
+              id=${marTriggerId}
+              label=${msg(str`Margin per side`)}
+            >
+              <sp-tooltip self-managed placement="bottom">
+                ${msg(str`Margin per side`)}
+              </sp-tooltip>
+              <sp-icon-margin-left slot="icon"></sp-icon-margin-left>
+            </sp-action-button>
+            <sp-overlay
+              trigger=${`${marTriggerId}@click`}
+              placement="bottom"
+              type="auto"
+            >
+              <sp-popover class="layout-inset-sides-popover">
+                <div class="side-row">
+                  <sp-field-label for="mar-t" side-aligned="start"
+                    >${msg(str`Top`)}</sp-field-label
+                  >
+                  <sp-icon-margin-top slot="icon"></sp-icon-margin-top>
+                  <sp-number-field
+                    id="mar-t"
+                    size="s"
+                    value=${marginSides[0]}
+                    @change=${(e: Event & { target: HTMLInputElement }) =>
+                      this.handleMarginSideChanged(0, e)}
+                    hide-stepper
+                    autocomplete="off"
+                    min="0"
+                    format-options='{"style":"unit","unit":"px"}'
+                  ></sp-number-field>
+                </div>
+                <div class="side-row">
+                  <sp-field-label for="mar-r" side-aligned="start"
+                    >${msg(str`Right`)}</sp-field-label
+                  >
+                  <sp-icon-margin-right slot="icon"></sp-icon-margin-right>
+                  <sp-number-field
+                    id="mar-r"
+                    size="s"
+                    value=${marginSides[1]}
+                    @change=${(e: Event & { target: HTMLInputElement }) =>
+                      this.handleMarginSideChanged(1, e)}
+                    hide-stepper
+                    autocomplete="off"
+                    min="0"
+                    format-options='{"style":"unit","unit":"px"}'
+                  ></sp-number-field>
+                </div>
+                <div class="side-row">
+                  <sp-field-label for="mar-b" side-aligned="start"
+                    >${msg(str`Bottom`)}</sp-field-label
+                  >
+                  <sp-icon-margin-bottom slot="icon"></sp-icon-margin-bottom>
+                  <sp-number-field
+                    id="mar-b"
+                    size="s"
+                    value=${marginSides[2]}
+                    @change=${(e: Event & { target: HTMLInputElement }) =>
+                      this.handleMarginSideChanged(2, e)}
+                    hide-stepper
+                    autocomplete="off"
+                    min="0"
+                    format-options='{"style":"unit","unit":"px"}'
+                  ></sp-number-field>
+                </div>
+                <div class="side-row">
+                  <sp-field-label for="mar-l" side-aligned="start"
+                    >${msg(str`Left`)}</sp-field-label
+                  >
+                  <sp-icon-margin-left slot="icon"></sp-icon-margin-left>
+                  <sp-number-field
+                    id="mar-l"
+                    size="s"
+                    value=${marginSides[3]}
+                    @change=${(e: Event & { target: HTMLInputElement }) =>
+                      this.handleMarginSideChanged(3, e)}
+                    hide-stepper
+                    autocomplete="off"
+                    min="0"
+                    format-options='{"style":"unit","unit":"px"}'
+                  ></sp-number-field>
+                </div>
+              </sp-popover>
+            </sp-overlay>
+            <sp-number-field
+              id="flex-margin"
+              size="s"
+              value=${marginUniform ? marginSides[0] : ''}
+              placeholder=${marginUniform ? '' : '—'}
+              ?readonly=${!marginUniform}
+              @change=${this.handleLayoutMarginChanged}
+              hide-stepper
+              autocomplete="off"
+              min="0"
+              format-options='{"style":"unit","unit":"px"}'
+            ></sp-number-field>
+          </div>
+        </div>
+        <div class="line">
+          <sp-field-label for="flex-gap" side-aligned="start"
+            >${msg(str`Gap`)}</sp-field-label
+          >
+          <sp-number-field
+            id="flex-gap"
+            size="s"
+            value=${gap}
+            @change=${this.handleLayoutGapChanged}
+            hide-stepper
+            autocomplete="off"
+            min="0"
+            format-options='{"style":"unit","unit":"px"}'
+          ></sp-number-field>
+        </div>
+        <div class="line">
+          <sp-field-label for="flex-rowgap" side-aligned="start"
+            >${msg(str`Row gap`)}</sp-field-label
+          >
+          <sp-number-field
+            id="flex-rowgap"
+            size="s"
+            value=${rowGap}
+            @change=${this.handleLayoutRowGapChanged}
+            hide-stepper
+            autocomplete="off"
+            min="0"
+            format-options='{"style":"unit","unit":"px"}'
+          ></sp-number-field>
+        </div>
+        <div class="line">
+          <sp-field-label for="flex-colgap" side-aligned="start"
+            >${msg(str`Column gap`)}</sp-field-label
+          >
+          <sp-number-field
+            id="flex-colgap"
+            size="s"
+            value=${columnGap}
+            @change=${this.handleLayoutColumnGapChanged}
+            hide-stepper
+            autocomplete="off"
+            min="0"
+            format-options='{"style":"unit","unit":"px"}'
+          ></sp-number-field>
+        </div>
+        <div class="line">
+          <sp-field-label side-aligned="start"
+            >${msg(str`Direction`)}</sp-field-label
+          >
+          <sp-picker
+            size="s"
+            .value=${flexDirection}
+            @change=${this.handleFlexDirectionChanged}
+          >
+            <sp-menu-item value="row">${msg(str`Row`)}</sp-menu-item>
+            <sp-menu-item value="row-reverse"
+              >${msg(str`Row reverse`)}</sp-menu-item
+            >
+            <sp-menu-item value="column">${msg(str`Column`)}</sp-menu-item>
+            <sp-menu-item value="column-reverse"
+              >${msg(str`Column reverse`)}</sp-menu-item
+            >
+          </sp-picker>
+        </div>
+        <div class="line">
+          <sp-field-label side-aligned="start"
+            >${msg(str`Align items`)}</sp-field-label
+          >
+          <sp-picker
+            size="s"
+            .value=${alignItems}
+            @change=${this.handleAlignItemsChanged}
+          >
+            <sp-menu-item value="flex-start"
+              >${msg(str`Start`)}</sp-menu-item
+            >
+            <sp-menu-item value="center">${msg(str`Center`)}</sp-menu-item>
+            <sp-menu-item value="flex-end">${msg(str`End`)}</sp-menu-item>
+            <sp-menu-item value="stretch">${msg(str`Stretch`)}</sp-menu-item>
+            <sp-menu-item value="baseline">${msg(str`Baseline`)}</sp-menu-item>
+          </sp-picker>
+        </div>
+        <div class="line">
+          <sp-field-label side-aligned="start"
+            >${msg(str`Justify content`)}</sp-field-label
+          >
+          <sp-picker
+            size="s"
+            .value=${justifyContent}
+            @change=${this.handleJustifyContentChanged}
+          >
+            <sp-menu-item value="flex-start"
+              >${msg(str`Start`)}</sp-menu-item
+            >
+            <sp-menu-item value="center">${msg(str`Center`)}</sp-menu-item>
+            <sp-menu-item value="flex-end">${msg(str`End`)}</sp-menu-item>
+            <sp-menu-item value="space-between"
+              >${msg(str`Space between`)}</sp-menu-item
+            >
+            <sp-menu-item value="space-around"
+              >${msg(str`Space around`)}</sp-menu-item
+            >
+            <sp-menu-item value="space-evenly"
+              >${msg(str`Space evenly`)}</sp-menu-item
+            >
+          </sp-picker>
+        </div>
+        <div class="line">
+          <sp-field-label side-aligned="start"
+            >${msg(str`Wrap`)}</sp-field-label
+          >
+          <sp-picker size="s" .value=${flexWrap} @change=${this.handleFlexWrapChanged}>
+            <sp-menu-item value="nowrap">${msg(str`No wrap`)}</sp-menu-item>
+            <sp-menu-item value="wrap">${msg(str`Wrap`)}</sp-menu-item>
+            <sp-menu-item value="wrap-reverse"
+              >${msg(str`Wrap reverse`)}</sp-menu-item
+            >
+          </sp-picker>
+        </div>
+      </div>
+    </sp-accordion-item>`;
+  }
+
   private transformTemplate() {
     const { width, height, x, y, rotation } = this.node;
     const angle = rotation ? rotation * RAD_TO_DEG : 0;
@@ -183,6 +736,7 @@ export class PropertiesPanelContent extends LitElement {
             <sp-field-label for="w" side-aligned="start">W</sp-field-label>
             <sp-number-field
               id="w"
+              size="s"
               value=${width}
               @change=${this.handleWidthChanged}
               hide-stepper
@@ -214,6 +768,7 @@ export class PropertiesPanelContent extends LitElement {
             <sp-field-label for="x" side-aligned="end">X</sp-field-label>
             <sp-number-field
               id="x"
+              size="s"
               value=${x}
               @change=${this.handleXChanged}
               hide-stepper
@@ -231,6 +786,7 @@ export class PropertiesPanelContent extends LitElement {
             <sp-field-label for="h" side-aligned="start">H</sp-field-label>
             <sp-number-field
               id="h"
+              size="s"
               value=${height}
               @change=${this.handleHeightChanged}
               hide-stepper
@@ -262,6 +818,7 @@ export class PropertiesPanelContent extends LitElement {
             <sp-field-label for="y" side-aligned="end">Y</sp-field-label>
             <sp-number-field
               id="y"
+              size="s"
               value=${y}
               @change=${this.handleYChanged}
               hide-stepper
@@ -307,6 +864,7 @@ export class PropertiesPanelContent extends LitElement {
             >
             <sp-number-field
               id="angle"
+              size="s"
               value=${angle}
               @change=${this.handleAngleChanged}
               hide-stepper
@@ -384,6 +942,10 @@ export class PropertiesPanelContent extends LitElement {
             `
         : ''}
         ${this.transformTemplate()}
+        ${when(
+          this.node.display === 'flex',
+          () => this.layoutTemplate(),
+        )}
         <sp-accordion-item label=${msg(str`Effects`)} open>
           <div class="content">
             <ic-spectrum-effects-panel .node=${this.node}></ic-spectrum-effects-panel>

@@ -17,7 +17,7 @@ export class StrokeContent extends LitElement {
     :host {
       display: flex;
       flex-direction: column;
-      gap: 8px;
+      gap: 4px;
     }
 
     .line {
@@ -158,6 +158,7 @@ export class StrokeContent extends LitElement {
         >
         <sp-action-group
           id="stroke-alignment"
+          size="s"
           compact
           selects="single"
           .selected=${[strokeAlignment]}
@@ -173,8 +174,8 @@ export class StrokeContent extends LitElement {
                 fill="currentColor"
                 viewBox="0 0 20 20"
                 id="-icon"
-                width="20"
-                height="20"
+                width="16"
+                height="16"
                 aria-hidden="true"
                 aria-label=""
                 focusable="false"
@@ -203,8 +204,8 @@ export class StrokeContent extends LitElement {
                 fill="currentColor"
                 viewBox="0 0 20 20"
                 id="-icon"
-                width="20"
-                height="20"
+                width="16"
+                height="16"
                 aria-hidden="true"
                 aria-label=""
                 focusable="false"
@@ -235,8 +236,8 @@ export class StrokeContent extends LitElement {
                 fill="currentColor"
                 viewBox="0 0 20 20"
                 id="-icon"
-                width="20"
-                height="20"
+                width="16"
+                height="16"
                 aria-hidden="true"
                 aria-label=""
                 focusable="false"
@@ -264,6 +265,7 @@ export class StrokeContent extends LitElement {
         >
         <sp-action-group
           id="stroke-linecap"
+          size="s"
           compact
           selects="single"
           .selected=${[strokeLinecap]}
@@ -279,8 +281,8 @@ export class StrokeContent extends LitElement {
                 fill="currentColor"
                 viewBox="0 0 20 20"
                 id="-icon"
-                width="20"
-                height="20"
+                width="16"
+                height="16"
                 aria-hidden="true"
                 aria-label=""
                 focusable="false"
@@ -309,8 +311,8 @@ export class StrokeContent extends LitElement {
                 fill="currentColor"
                 viewBox="0 0 20 20"
                 id="-icon"
-                width="20"
-                height="20"
+                width="16"
+                height="16"
                 aria-hidden="true"
                 aria-label=""
                 focusable="false"
@@ -339,8 +341,8 @@ export class StrokeContent extends LitElement {
                 fill="currentColor"
                 viewBox="0 0 20 20"
                 id="-icon"
-                width="20"
-                height="20"
+                width="16"
+                height="16"
                 aria-hidden="true"
                 aria-label=""
                 focusable="false"
@@ -368,6 +370,7 @@ export class StrokeContent extends LitElement {
         >
         <sp-action-group
           id="stroke-linejoin"
+          size="s"
           compact
           selects="single"
           .selected=${[strokeLinejoin]}
@@ -383,8 +386,8 @@ export class StrokeContent extends LitElement {
                 fill="currentColor"
                 viewBox="0 0 20 20"
                 id="-icon"
-                width="20"
-                height="20"
+                width="16"
+                height="16"
                 aria-hidden="true"
                 aria-label=""
                 focusable="false"
@@ -413,8 +416,8 @@ export class StrokeContent extends LitElement {
                 fill="currentColor"
                 viewBox="0 0 20 20"
                 id="-icon"
-                width="20"
-                height="20"
+                width="16"
+                height="16"
                 aria-hidden="true"
                 aria-label=""
                 focusable="false"
@@ -443,8 +446,8 @@ export class StrokeContent extends LitElement {
                 fill="currentColor"
                 viewBox="0 0 20 20"
                 id="-icon"
-                width="20"
-                height="20"
+                width="16"
+                height="16"
                 aria-hidden="true"
                 aria-label=""
                 focusable="false"
@@ -471,6 +474,7 @@ export class StrokeContent extends LitElement {
           >${msg(str`Marker start`)}</sp-field-label
         >
         <sp-picker
+          size="s"
           style="width: 80px;"
           label=${msg(str`Marker start`)}
           value=${markerStart}
@@ -478,11 +482,11 @@ export class StrokeContent extends LitElement {
           id="marker-start"
         >
           ${['none', 'line', 'triangle', 'diamond'].map(
-            (markerType) =>
-              html`<sp-menu-item value=${markerType}
+      (markerType) =>
+        html`<sp-menu-item value=${markerType}
                 >${markerType}</sp-menu-item
               >`,
-          )}
+    )}
         </sp-picker>
       </div>
 
@@ -491,6 +495,7 @@ export class StrokeContent extends LitElement {
           >${msg(str`Marker end`)}</sp-field-label
         >
         <sp-picker
+          size="s"
           style="width: 80px;"
           label=${msg(str`Marker end`)}
           value=${markerEnd}
@@ -498,11 +503,11 @@ export class StrokeContent extends LitElement {
           id="marker-end"
         >
           ${['none', 'line', 'triangle', 'diamond'].map(
-            (markerType) =>
-              html`<sp-menu-item value=${markerType}
+      (markerType) =>
+        html`<sp-menu-item value=${markerType}
                 >${markerType}</sp-menu-item
               >`,
-          )}
+    )}
         </sp-picker>
       </div>`;
   }

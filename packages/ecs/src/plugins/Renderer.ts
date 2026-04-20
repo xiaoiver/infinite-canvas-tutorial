@@ -67,6 +67,7 @@ import {
   Locked,
   ClipMode,
   Flex,
+  FlexLayoutDirty,
   Group,
 } from '../components';
 
@@ -96,6 +97,7 @@ function createRendererPlugin(options: RendererPluginOptions = {}): Plugin {
     component(Editable);
     component(Locked);
     component(Flex);
+    component(FlexLayoutDirty);
 
     /**
      * Style

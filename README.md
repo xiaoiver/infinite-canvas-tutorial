@@ -424,9 +424,9 @@ If you want to use it in your own project, you can refer to:
     -   Flex Basis, Grow, and Shrink
     -   Min/Max Width and Height
 
-|                   Gap                   |          AlignItems & JustifyContent           |
-| :-------------------------------------: | :--------------------------------------------: |
-| ![Yoga gap](./screenshots/yoga-gap.gif) | ![Yoga gap](./screenshots/yoga-alignitems.gif) |
+|                   Gap                   |          AlignItems & JustifyContent           |                  Layout panel                   |
+| :-------------------------------------: | :--------------------------------------------: | :---------------------------------------------: |
+| ![Yoga gap](./screenshots/yoga-gap.gif) | ![Yoga gap](./screenshots/yoga-alignitems.gif) | ![layout panel](./screenshots/layout-panel.png) |
 
 ## Lesson 34 - Frame and clip [🔗](https://infinitecanvas.cc/guide/lesson-034)
 
