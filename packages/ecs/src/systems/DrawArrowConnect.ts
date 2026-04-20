@@ -45,6 +45,7 @@ import {
   PartialBinding,
   ToBeDeleted,
   Binded,
+  Theme,
 } from '../components';
 import { API } from '../API';
 import type { PathSerializedNode, SerializedNode } from '../types/serialized-node';
@@ -94,6 +95,7 @@ export class DrawArrowConnect extends System {
             ComputedCameraControl,
             FractionalIndex,
             RBush,
+            Theme,
           )
           .read.update.and.using(
             Canvas,
