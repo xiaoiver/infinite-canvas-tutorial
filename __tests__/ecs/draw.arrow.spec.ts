@@ -32,6 +32,7 @@ import {
   PartialBinding,
   Binded,
   Binding,
+  Flex,
 } from '../../packages/ecs/src';
 import { NodeJSAdapter, sleep, createMouseEvent } from '../utils';
 
@@ -74,6 +75,7 @@ describe('Draw arrow', () => {
             Binded,
             PartialBinding,
             ToBeDeleted,
+            Flex,
           ).write,
       );
 
