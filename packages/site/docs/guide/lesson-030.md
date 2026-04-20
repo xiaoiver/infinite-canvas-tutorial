@@ -16,12 +16,14 @@ import ImageProcessing from '../components/ImageProcessing.vue'
 import HalftoneDots from '../components/HalftoneDots.vue'
 import Pixelate from '../components/Pixelate.vue'
 import CRT from '../components/CRT.vue'
+import Glitch from '../components/Glitch.vue'
+import LiquidGlass from '../components/LiquidGlass.vue'
 import GlobalEffects from '../components/GlobalEffects.vue'
 </script>
 
 # Lesson 30 - Post-processing and render graph
 
-In this lesson, we revisit traditional shader-based post-processing techniques for image processing.
+In this lesson, we revisit traditional shader-based post-processing for images (fullscreen passes, sampling, and common effects), then introduce how to use a render graph to organize multiple passes, manage render targets and synchronization, and optimize the full post-processing pipeline.
 
 ## Post-processing Effects {#post-processing}
 
@@ -202,6 +204,8 @@ Mimic an old CRT look, plus vignette:
 -   [CSSGlitchEffect]
 -   [unityglitch]
 
+<Glitch />
+
 ### Ascii {#ascii}
 
 First divide the image into cells using `uSize` and compute grayscale; pick a bitmap constant `n` from the gray level, then for each pixel in the cell use bits of `n` to decide light/dark and multiply into the color. This is the usual bitmap-font / ASCII-art approach—not vector glyphs or textured fonts.
@@ -213,6 +217,10 @@ if (gray > 0.3) n = 332772.0; // :
 if (gray > 0.4) n = 15255086.0; // *
 if (gray > 0.5) n = 23385164.0; // o
 ```
+
+### Liquid glass {#liquid-glass}
+
+<LiquidGlass />
 
 ### Time animation {#time-animation}
 

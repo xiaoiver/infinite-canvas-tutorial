@@ -31,7 +31,7 @@ onMounted(async () => {
     });
 
     const image = {
-      id: 'crt-1',
+      id: 'glitch-1',
       type: 'rect',
       fill: 'https://v3b.fal.media/files/b/tiger/v1lf1EcPP1X1pw_YOKM4o.jpg',
       x: 50,
@@ -39,19 +39,19 @@ onMounted(async () => {
       width: 200,
       height: 200,
       lockAspectRatio: true,
-      filter: 'crt(4, 4, 0.4, 0.27, 0.41, 1) vignette(0.5, 0.5)',
+      filter: 'crt(4, 4, 0.4, 0.27, 0.41, 1) vignette(0.5, 0.5) glitch(0.29, 0.15, 0.1, 0.29)',
     };
 
     const image2 = {
-      id: 'crt-2',
+      id: 'glitch-2',
       type: 'rect',
-      fill: 'linear-gradient(to right, red, blue)',
+      fill: 'https://v3b.fal.media/files/b/tiger/v1lf1EcPP1X1pw_YOKM4o.jpg',
       x: 300,
       y: 50,
       width: 200,
       height: 200,
       lockAspectRatio: true,
-      filter: 'noise(0.2) pixelate(6px) ',
+      filter: 'crt(4, 4, 0.4, 0.27, 0.41, 1) vignette(0.5, 0.5) glitch(0.29, 0.15, auto, 0.29)',
     };
 
     api.updateNodes([image, image2]);

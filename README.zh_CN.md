@@ -383,7 +383,7 @@ pnpm run dev
 
 ## 课程 30 - 图像后处理与渲染图 [🔗](https://infinitecanvas.cc/zh/guide/lesson-030)
 
--   图像后处理，例如噪声、亮度调整、halftone 等效果
+-   图像后处理，例如噪声、亮度调整、halftone、液态玻璃、CRT、Glitch、Ascii 等效果
 -   配套的可叠加的滤镜效果编辑面板
 -   渲染图的设计思路与实现
 -   使用 FXAA 进行快速抗锯齿

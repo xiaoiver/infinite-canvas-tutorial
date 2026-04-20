@@ -10,12 +10,14 @@ import ImageProcessing from '../../components/ImageProcessing.vue'
 import HalftoneDots from '../../components/HalftoneDots.vue'
 import Pixelate from '../../components/Pixelate.vue'
 import CRT from '../../components/CRT.vue'
+import Glitch from '../../components/Glitch.vue'
+import LiquidGlass from '../../components/LiquidGlass.vue'
 import GlobalEffects from '../../components/GlobalEffects.vue'
 </script>
 
 # 课程 30 - 后处理与渲染图
 
-本节课中我们会回顾下传统基于 Shader 后处理的图像处理手段。
+本节课中我们会回顾传统基于 Shader 的后处理图像手段（全屏 Pass、采样与常见效果），并在此基础上介绍如何用渲染图（Render Graph）组织多 Pass、管理渲染目标与同步，以优化整条后处理管线。
 
 ## 基于后处理的效果 {#post-processing}
 
@@ -196,6 +198,8 @@ void main() {
 -   [CSSGlitchEffect]
 -   [unityglitch]
 
+<Glitch />
+
 ### Ascii {#ascii}
 
 先把画面按 uSize 分格并算灰度，用灰度选一个 位图常数 n，再在格内每个像素用 n 的 bit 决定亮/暗，乘到颜色上。这是典型的 bitmap font / ASCII art 做法，不是矢量字或纹理字。
@@ -207,6 +211,10 @@ if (gray > 0.3) n = 332772.0; // :
 if (gray > 0.4) n = 15255086.0; // *
 if (gray > 0.5) n = 23385164.0; // o
 ```
+
+### 液态玻璃 {#liquid-glass}
+
+<LiquidGlass />
 
 ### 时间动画 {#time-animation}
 

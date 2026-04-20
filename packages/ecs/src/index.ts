@@ -87,6 +87,8 @@ export {
   asciiUniformValues,
   GLITCH_DEFAULTS,
   glitchUniformValues,
+  LIQUID_GLASS_DEFAULTS,
+  liquidGlassUniformValues,
   DIRECTION_EAST,
   DIRECTION_NORTH,
   DIRECTION_SOUTH,
@@ -101,6 +103,7 @@ export {
   type VignetteEffect,
   type AsciiEffect,
   type GlitchEffect,
+  type LiquidGlassEffect,
 } from './utils';
 export * from './types/serialized-node';
 export type { EdgeState } from './utils/binding/connection';
