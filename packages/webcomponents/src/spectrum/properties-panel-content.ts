@@ -7,7 +7,7 @@ import {
   FillAttributes,
 } from '@infinite-canvas-tutorial/ecs';
 import { when } from 'lit/directives/when.js';
-import { RAD_TO_DEG } from '@pixi/math';
+import { DEG_TO_RAD, RAD_TO_DEG } from '@pixi/math';
 import { apiContext, appStateContext } from '../context';
 import { ExtendedAPI } from '../API';
 import { localized, msg, str } from '@lit/localize';
@@ -20,9 +20,16 @@ export class PropertiesPanelContent extends LitElement {
       flex-direction: column;
       padding: 0;
       overflow: hidden;
+      min-height: 0;
+      max-height: 400px;
 
       --system-accordion-size-s-item-header-font-size: 14px;
       --mod-accordion-item-header-font-size: 14px;
+    }
+
+    :host(.fills-panel) {
+      height: 100%;
+      max-height: none;
     }
 
     sp-popover {
@@ -30,9 +37,11 @@ export class PropertiesPanelContent extends LitElement {
     }
 
     sp-accordion {
+      flex: 1 1 auto;
+      min-height: 0;
       overflow-y: overlay;
       overflow: hidden auto;
-      max-height: 400px;
+      max-height: none;
     }
 
     .content {
@@ -152,13 +161,20 @@ export class PropertiesPanelContent extends LitElement {
     this.api.record();
   }
 
+  private handleAngleChanged(e: Event & { target: HTMLInputElement }) {
+    this.api.updateNode(this.node, {
+      rotation: parseFloat(e.target.value) * DEG_TO_RAD,
+    });
+    this.api.record();
+  }
+
   private handleLockAspectRatioChanged() {
     this.lockAspectRatio = !this.lockAspectRatio;
   }
 
   private transformTemplate() {
     const { width, height, x, y, rotation } = this.node;
-    const angle = rotation * RAD_TO_DEG;
+    const angle = rotation ? rotation * RAD_TO_DEG : 0;
 
     return html`<sp-accordion-item label=${msg(str`Transform`)} open>
       <div class="content">
@@ -266,16 +282,16 @@ export class PropertiesPanelContent extends LitElement {
         >
           <sp-tooltip self-managed placement="bottom">
             ${when(
-              this.lockAspectRatio,
-              () => msg(str`Constrain aspect ratio`),
-              () => msg(str`Do not constrain aspect ratio`),
-            )}
+      this.lockAspectRatio,
+      () => msg(str`Constrain aspect ratio`),
+      () => msg(str`Do not constrain aspect ratio`),
+    )}
           </sp-tooltip>
           ${when(
-            this.lockAspectRatio,
-            () => html`<sp-icon-lock-closed slot="icon"></sp-icon-lock-closed>`,
-            () => html`<sp-icon-lock-open slot="icon"></sp-icon-lock-open>`,
-          )}
+      this.lockAspectRatio,
+      () => html`<sp-icon-lock-closed slot="icon"></sp-icon-lock-closed>`,
+      () => html`<sp-icon-lock-open slot="icon"></sp-icon-lock-open>`,
+    )}
         </sp-action-button>
 
         <div class="line">
@@ -292,6 +308,7 @@ export class PropertiesPanelContent extends LitElement {
             <sp-number-field
               id="angle"
               value=${angle}
+              @change=${this.handleAngleChanged}
               hide-stepper
               autocomplete="off"
               format-options='{
@@ -319,7 +336,7 @@ export class PropertiesPanelContent extends LitElement {
     return html`
       <sp-accordion allow-multiple size="s">
         ${!isGroup
-          ? html`
+        ? html`
               <sp-accordion-item label=${'Shape ' + this.node.type} open>
                 <div class="content style-group">
                   <div class="line">
@@ -331,11 +348,11 @@ export class PropertiesPanelContent extends LitElement {
                         .node=${this.node}
                       ></ic-spectrum-fill-action-button>
                       ${when(
-                        !isText,
-                        () => html` <ic-spectrum-stroke-action-button
+          !isText,
+          () => html` <ic-spectrum-stroke-action-button
                           .node=${this.node}
                         ></ic-spectrum-stroke-action-button>`,
-                      )}
+        )}
                     </div>
                   </div>
 
@@ -354,18 +371,18 @@ export class PropertiesPanelContent extends LitElement {
                   </div>
 
                   ${when(
-                    !isText,
-                    () => html`<ic-spectrum-stroke-content
+          !isText,
+          () => html`<ic-spectrum-stroke-content
                       .node=${this.node}
                     ></ic-spectrum-stroke-content>`,
-                    () => html`<ic-spectrum-text-content
+          () => html`<ic-spectrum-text-content
                       .node=${this.node}
                     ></ic-spectrum-text-content>`,
-                  )}
+        )}
                 </div>
               </sp-accordion-item>
             `
-          : ''}
+        : ''}
         ${this.transformTemplate()}
         <sp-accordion-item label=${msg(str`Effects`)} open>
           <div class="content">

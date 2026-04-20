@@ -3,6 +3,7 @@ import {
   CheckboardStyle,
   Theme,
   ThemeMode,
+  DEFAULT_THEME_COLORS,
   BrushType,
   StampMode,
 } from './components';
@@ -157,12 +158,12 @@ export interface AppState {
 export const getDefaultAppState: () => AppState = () => {
   return {
     language: 'en',
-    // TODO: Flatten theme
     themeMode: ThemeMode.LIGHT,
     theme: {
       mode: ThemeMode.LIGHT,
       colors: {
         [ThemeMode.LIGHT]: {
+          ...DEFAULT_THEME_COLORS[ThemeMode.LIGHT],
           swatches: [
             TRANSFORMER_ANCHOR_STROKE_COLOR,
             TRANSFORMER_MASK_FILL_COLOR,
@@ -174,6 +175,7 @@ export const getDefaultAppState: () => AppState = () => {
           ],
         },
         [ThemeMode.DARK]: {
+          ...DEFAULT_THEME_COLORS[ThemeMode.DARK],
           swatches: [
             TRANSFORMER_ANCHOR_STROKE_COLOR,
             TRANSFORMER_MASK_FILL_COLOR,

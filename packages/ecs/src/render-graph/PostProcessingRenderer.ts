@@ -26,6 +26,7 @@ import {
   halftoneDotsUniformValues,
   vignetteUniformValues,
   asciiUniformValues,
+  glitchUniformValues,
   RenderCache,
 } from '../utils';
 
@@ -233,6 +234,11 @@ export class PostProcessingRenderer {
       const tw = Math.max(1, width);
       const th = Math.max(1, height);
       uniformBuffer.push(...asciiUniformValues(effect, tw, th));
+    } else if (effect.type === 'glitch') {
+      const { width, height } = this.swapChain.getCanvas();
+      const tw = Math.max(1, width);
+      const th = Math.max(1, height);
+      uniformBuffer.push(...glitchUniformValues(effect, tw, th));
     } else if (effect.type === 'adjustment') {
       uniformLegacyObject.u_Gamma = effect.gamma;
       uniformLegacyObject.u_Contrast = effect.contrast;

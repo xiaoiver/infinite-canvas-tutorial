@@ -158,6 +158,12 @@ export class InitCanvas extends System {
 
         this.commands.execute();
 
+        const initialAppState = stateManagement.getAppState();
+        api.setAppState({
+          theme: initialAppState.theme,
+          themeMode: initialAppState.themeMode,
+        });
+
         container.dispatchEvent(new CustomEvent(Event.READY, { detail: api }));
       });
       pendingCanvases.length = 0;

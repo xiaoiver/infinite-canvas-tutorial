@@ -88,6 +88,7 @@ import {
   Text,
   Theme,
   ThemeMode,
+  mergeThemeState,
   ToBeDeleted,
   Transform,
   UI,
@@ -235,14 +236,36 @@ export class API {
       });
     }
 
+    let themeAppStatePatch: Partial<AppState> = {};
+
     if (
-      Object.prototype.hasOwnProperty.call(appState, 'themeMode') &&
-      appState.themeMode !== undefined &&
-      appState.themeMode !== oldAppState.themeMode
+      Object.prototype.hasOwnProperty.call(appState, 'theme') ||
+      Object.prototype.hasOwnProperty.call(appState, 'themeMode')
     ) {
-      safeAddComponent(this.#canvas, Theme, {
-        mode: appState.themeMode as ThemeMode,
-      });
+      const nextThemeMode =
+        appState.themeMode !== undefined
+          ? appState.themeMode
+          : oldAppState.themeMode;
+      const mergedTheme = mergeThemeState(
+        { ...oldAppState.theme, mode: oldAppState.themeMode },
+        {
+          ...(appState.theme ?? {}),
+          mode: nextThemeMode,
+        },
+      );
+      themeAppStatePatch = {
+        themeMode: nextThemeMode,
+        theme: {
+          mode: mergedTheme.mode,
+          colors: mergedTheme.colors,
+        },
+      };
+      if (this.#canvas?.has(Theme)) {
+        safeAddComponent(this.#canvas, Theme, {
+          mode: mergedTheme.mode,
+          colors: mergedTheme.colors,
+        });
+      }
     }
 
     if (
@@ -279,6 +302,7 @@ export class API {
     this.stateManagement.setAppState({
       ...oldAppState,
       ...appState,
+      ...themeAppStatePatch,
     });
   }
 

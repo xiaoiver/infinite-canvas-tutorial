@@ -6,6 +6,7 @@ import {
   System,
   Transform,
   toDomPrecision,
+  Theme
 } from '@infinite-canvas-tutorial/ecs';
 import { Event } from '../event';
 import { ExtendedAPI } from '../API';
@@ -20,7 +21,7 @@ export class ZoomLevel extends System {
 
   constructor() {
     super();
-    this.query((q) => q.using(Camera, Transform).write.and.using(Canvas, ComputedBounds).read);
+    this.query((q) => q.using(Camera, Transform, Theme).write.and.using(Canvas, ComputedBounds).read);
   }
 
   initialize() {

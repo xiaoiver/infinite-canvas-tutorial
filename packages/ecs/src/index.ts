@@ -47,6 +47,8 @@ export {
   parseEffect,
   formatFilter,
   filterStringUsesEngineTimeCrt,
+  filterStringUsesEngineTimePost,
+  filterStringUsesEngineTimeGlitch,
   ADJUSTMENT_DEFAULTS,
   parseColor,
   cssColorToHex,
@@ -83,6 +85,8 @@ export {
   vignetteUniformValues,
   ASCII_DEFAULTS,
   asciiUniformValues,
+  GLITCH_DEFAULTS,
+  glitchUniformValues,
   DIRECTION_EAST,
   DIRECTION_NORTH,
   DIRECTION_SOUTH,
@@ -96,6 +100,7 @@ export {
   type CrtEffect,
   type VignetteEffect,
   type AsciiEffect,
+  type GlitchEffect,
 } from './utils';
 export * from './types/serialized-node';
 export type { EdgeState } from './utils/binding/connection';

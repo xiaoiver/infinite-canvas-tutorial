@@ -115,7 +115,8 @@
       "brace-expansion": ">=5.0.5",
       "path-to-regexp": ">=8.4.0",
       "defu": ">=6.1.5",
-      "protobufjs": ">=7.5.5"
+      "protobufjs": ">=7.5.5",
+      "protocol-buffers-schema": ">=3.6.1"
     }
   }
 }
