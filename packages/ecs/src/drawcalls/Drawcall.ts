@@ -38,6 +38,7 @@ import {
   crtUniformValues,
   vignetteUniformValues,
   asciiUniformValues,
+  glitchUniformValues,
 } from '../utils';
 import { Location } from '../shaders/wireframe';
 import { TexturePool } from '../resources';
@@ -53,7 +54,7 @@ import {
   Wireframe,
 } from '../components';
 import {
-  filterStringUsesEngineTimeCrt,
+  filterStringUsesEngineTimePost,
   hasRasterPostEffects,
 } from '../utils/filter';
 import { API } from '../API';
@@ -71,6 +72,7 @@ import { frag as flutedGlassFrag } from '../shaders/post-processing/flutedGlass'
 import { frag as crtFrag } from '../shaders/post-processing/crt';
 import { frag as vignetteFrag } from '../shaders/post-processing/vignette';
 import { frag as asciiFrag } from '../shaders/post-processing/ascii';
+import { frag as glitchFrag } from '../shaders/post-processing/glitch';
 import type { RGGraphBuilder } from '../render-graph/interface';
 
 const FRAG_MAP: Record<
@@ -113,6 +115,9 @@ const FRAG_MAP: Record<
   ascii: {
     shader: asciiFrag,
   },
+  glitch: {
+    shader: glitchFrag,
+  },
 };
 
 function postEffectUniformFloatCount(effect: Effect): number {
@@ -135,6 +140,8 @@ function postEffectUniformFloatCount(effect: Effect): number {
       return 4;
     case 'ascii':
       return 12;
+    case 'glitch':
+      return 8;
     case 'drop-shadow':
       return 2;
     case 'fxaa':
@@ -329,6 +336,15 @@ function setPostEffectUniformData(
       }
       break;
     }
+    case 'glitch': {
+      const tw = Math.max(1, textureWidth ?? 1);
+      const th = Math.max(1, textureHeight ?? 1);
+      const u = glitchUniformValues(effect, tw, th);
+      for (let j = 0; j < u.length; j++) {
+        data[i++] = u[j]!;
+      }
+      break;
+    }
     case 'drop-shadow':
       data[i++] = effect.x;
       data[i++] = effect.y;
@@ -505,7 +521,7 @@ export abstract class Drawcall {
       const shape = this.shapes[0];
       if (
         shape.has(Filter) &&
-        filterStringUsesEngineTimeCrt(shape.read(Filter).value)
+        filterStringUsesEngineTimePost(shape.read(Filter).value)
       ) {
         this.renderPostProcessingTextureSpace(this.#filterWidth, this.#filterHeight);
         const { width, height } = this.swapChain.getCanvas();

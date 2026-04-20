@@ -62,6 +62,8 @@ import {
   Marker,
   Mat3,
   ComputedTextMetrics,
+  Theme,
+  DEFAULT_THEME_COLORS,
 } from '../components';
 import { Commands } from '../commands/Commands';
 import {
@@ -78,12 +80,7 @@ import {
   snapToGrid,
 } from '../utils';
 import { API } from '../API';
-import {
-  getOBB,
-  hitTest,
-  TRANSFORMER_ANCHOR_STROKE_COLOR,
-  TRANSFORMER_MASK_FILL_COLOR,
-} from './RenderTransformer';
+import { getOBB, hitTest } from './RenderTransformer';
 import { updateGlobalTransform } from './Transform';
 import { safeAddComponent } from '../history';
 import { updateComputedPoints } from './ComputePoints';
@@ -307,7 +304,8 @@ export class Select extends System {
             MaterialDirty,
             GeometryDirty,
             Locked,
-            Marker
+            Marker,
+            Theme,
           ).write,
     );
     this.query((q) => q.using(ComputedCamera, FractionalIndex, RBush).read);
@@ -1503,6 +1501,7 @@ export class Select extends System {
 
     if (shouldShowSelectionBrush) {
       this.renderBrush(
+        api,
         selection,
         // <rect> attribute height: A negative value is not valid. So we need to use the absolute value.
         Math.min(pointerDownViewportX, viewportX),
@@ -2387,6 +2386,7 @@ export class Select extends System {
   }
 
   private renderBrush(
+    api: API,
     selection: SelectOBB,
     x: number,
     y: number,
@@ -2396,6 +2396,13 @@ export class Select extends System {
     const { brushContainer } = selection;
     brushContainer.setAttribute('visibility', 'visible');
 
+    const canvas = api.getCamera().read(Camera).canvas;
+    const { mode, colors } = canvas.read(Theme);
+    const palette = {
+      ...DEFAULT_THEME_COLORS[mode],
+      ...(colors[mode] ?? {}),
+    };
+
     let brush = brushContainer.firstChild as SVGRectElement;
     if (!brush) {
       brush = createSVGElement('rect') as SVGRectElement;
@@ -2404,12 +2411,12 @@ export class Select extends System {
       brush.setAttribute('width', '0');
       brush.setAttribute('height', '0');
       brush.setAttribute('opacity', '0.5');
-      brush.setAttribute('fill', TRANSFORMER_MASK_FILL_COLOR);
-      brush.setAttribute('stroke', TRANSFORMER_ANCHOR_STROKE_COLOR);
       brush.setAttribute('stroke-width', '1');
       brushContainer.appendChild(brush);
     }
 
+    brush.setAttribute('fill', palette.selectionBrushFill);
+    brush.setAttribute('stroke', palette.selectionBrushStroke);
     brush.setAttribute('x', x.toString());
     brush.setAttribute('y', y.toString());
     brush.setAttribute('width', width.toString());

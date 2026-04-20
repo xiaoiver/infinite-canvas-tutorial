@@ -3,7 +3,7 @@ import { consume } from '@lit/context';
 import { map } from 'lit/directives/map.js';
 import { when } from 'lit/directives/when.js';
 import { classMap } from 'lit/directives/class-map.js';
-import { customElement } from 'lit/decorators.js';
+import { customElement, state } from 'lit/decorators.js';
 import Sortable from 'sortablejs';
 import {
   SerializedNode,
@@ -20,6 +20,11 @@ import { Event } from '../event';
 import { ExtendedAPI } from '../API';
 import { localized, msg, str } from '@lit/localize';
 
+const LAYERS_PANEL_HEIGHT_STORAGE_KEY = 'ic-spectrum-layers-panel-body-height';
+const DEFAULT_LAYERS_PANEL_BODY_HEIGHT = 300;
+const MIN_LAYERS_PANEL_BODY_HEIGHT = 120;
+const MAX_LAYERS_PANEL_BODY_HEIGHT = 900;
+
 @customElement('ic-spectrum-layers-panel')
 @localized()
 export class LayersPanel extends LitElement {
@@ -27,6 +32,7 @@ export class LayersPanel extends LitElement {
     section {
       display: flex;
       flex-direction: column;
+      min-height: 0;
       background: var(--spectrum-gray-100);
       border-radius: var(--spectrum-corner-radius-200);
 
@@ -53,11 +59,37 @@ export class LayersPanel extends LitElement {
     }
 
     .container {
-      height: 300px;
+      box-sizing: border-box;
+      min-height: 0;
       overflow: hidden;
       overflow-y: auto;
       scroll-behavior: smooth;
       scroll-padding: 8px;
+    }
+
+    .resize-handle {
+      flex-shrink: 0;
+      height: 10px;
+      margin: 0 4px 2px;
+      cursor: ns-resize;
+      touch-action: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: var(--spectrum-corner-radius-100);
+    }
+
+    .resize-handle:hover,
+    .resize-handle:focus-visible {
+      background: var(--spectrum-gray-300);
+    }
+
+    .resize-handle::after {
+      content: '';
+      width: 36px;
+      height: 3px;
+      border-radius: 2px;
+      background: var(--spectrum-gray-500);
     }
 
     .layer-siblings {
@@ -88,12 +120,31 @@ export class LayersPanel extends LitElement {
   @consume({ context: apiContext, subscribe: true })
   api: ExtendedAPI;
 
+  @state()
+  private panelBodyHeight = DEFAULT_LAYERS_PANEL_BODY_HEIGHT;
+
+  private resizePointerId: number | null = null;
+
+  private resizeStartY = 0;
+
+  private resizeStartHeight = 0;
+
   private sortableInstances: Sortable[] = [];
 
   private sortableInitRaf = 0;
 
   connectedCallback(): void {
     super.connectedCallback();
+
+    if (typeof localStorage !== 'undefined') {
+      const stored = localStorage.getItem(LAYERS_PANEL_HEIGHT_STORAGE_KEY);
+      if (stored) {
+        const n = parseInt(stored, 10);
+        if (!Number.isNaN(n)) {
+          this.panelBodyHeight = this.clampLayersPanelHeight(n);
+        }
+      }
+    }
 
     this.api.element.addEventListener(Event.SELECTED_NODES_CHANGED, (e) => {
       const { selected } = e.detail;
@@ -129,6 +180,53 @@ export class LayersPanel extends LitElement {
         }
       }
     });
+  }
+
+  private clampLayersPanelHeight(h: number): number {
+    const max = Math.min(
+      MAX_LAYERS_PANEL_BODY_HEIGHT,
+      typeof window !== 'undefined'
+        ? Math.floor(window.innerHeight * 0.85)
+        : MAX_LAYERS_PANEL_BODY_HEIGHT,
+    );
+    return Math.min(max, Math.max(MIN_LAYERS_PANEL_BODY_HEIGHT, Math.round(h)));
+  }
+
+  private handleResizePointerDown(e: PointerEvent) {
+    e.preventDefault();
+    this.resizePointerId = e.pointerId;
+    this.resizeStartY = e.clientY;
+    this.resizeStartHeight = this.panelBodyHeight;
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+  }
+
+  private handleResizePointerMove(e: PointerEvent) {
+    if (this.resizePointerId !== e.pointerId) {
+      return;
+    }
+    const dy = e.clientY - this.resizeStartY;
+    const next = this.clampLayersPanelHeight(this.resizeStartHeight + dy);
+    if (next !== this.panelBodyHeight) {
+      this.panelBodyHeight = next;
+    }
+  }
+
+  private endResize(e: PointerEvent) {
+    if (this.resizePointerId !== e.pointerId) {
+      return;
+    }
+    this.resizePointerId = null;
+    try {
+      (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
+    } catch {
+      /* already released */
+    }
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(
+        LAYERS_PANEL_HEIGHT_STORAGE_KEY,
+        String(this.panelBodyHeight),
+      );
+    }
   }
 
   disconnectedCallback(): void {
@@ -533,13 +631,29 @@ export class LayersPanel extends LitElement {
               <sp-icon-delete slot="icon"></sp-icon-delete>
             </sp-action-button>
           </sp-action-group>
-          <div class="container">
+          <div
+            class="container"
+            style=${`height:${this.panelBodyHeight}px`}
+          >
             <div class="layer-siblings" data-layer-parent-id="">
               ${map(sortedNodes, (node) => {
                 return this.renderLayerBranch(node, 0);
               })}
             </div>
           </div>
+          <div
+            class="resize-handle"
+            tabindex="0"
+            role="separator"
+            aria-orientation="horizontal"
+            aria-valuenow=${this.panelBodyHeight}
+            aria-valuemin=${MIN_LAYERS_PANEL_BODY_HEIGHT}
+            aria-valuemax=${MAX_LAYERS_PANEL_BODY_HEIGHT}
+            @pointerdown=${this.handleResizePointerDown}
+            @pointermove=${this.handleResizePointerMove}
+            @pointerup=${this.endResize}
+            @pointercancel=${this.endResize}
+          ></div>
         </section>`
       : null;
   }

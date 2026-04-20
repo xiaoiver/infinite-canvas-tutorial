@@ -326,10 +326,6 @@
   <source>Style</source>
   <target>Estilo</target>
 </trans-unit>
-<trans-unit id="sf9caa9d2834ca145">
-  <source>Add effect</source>
-  <target>Agregar efecto</target>
-</trans-unit>
 <trans-unit id="s3432f264e3842154">
   <source>Brush settings</source>
   <target>Configuración de la brocha</target>
@@ -437,6 +433,242 @@
 <trans-unit id="s5959334e292647e4">
   <source>Arrow (⇧L)</source>
   <target>Flecha (⇧L)</target>
+</trans-unit>
+<trans-unit id="s3de321c88c79c73f">
+  <source>Canvas background</source>
+  <target>Fondo del lienzo</target>
+</trans-unit>
+<trans-unit id="s310941c6a4577116">
+  <source>Selection fill</source>
+  <target>Relleno de selección</target>
+</trans-unit>
+<trans-unit id="s27a71df63873a0ef">
+  <source>Selection stroke</source>
+  <target>Trazo de selección</target>
+</trans-unit>
+<trans-unit id="sbb922fb7db16d35d">
+  <source>Filter type</source>
+  <target>Tipo de filtro</target>
+</trans-unit>
+<trans-unit id="sf7ef7bd814fbaa8a">
+  <source>Brightness</source>
+  <target>Brillo</target>
+</trans-unit>
+<trans-unit id="sda9eb7b6b70799f3">
+  <source>Contrast</source>
+  <target>Contraste</target>
+</trans-unit>
+<trans-unit id="s086e6c267ade2609">
+  <source>Saturation</source>
+  <target>Saturación</target>
+</trans-unit>
+<trans-unit id="s2bc80ed8441b0831">
+  <source>Noise</source>
+  <target>Ruido</target>
+</trans-unit>
+<trans-unit id="sb722af54c0442fa5">
+  <source>Pixelate</source>
+  <target>Pixelado</target>
+</trans-unit>
+<trans-unit id="s436c264f94710784">
+  <source>Dot screen</source>
+  <target>Pantalla de puntos</target>
+</trans-unit>
+<trans-unit id="se07f367d897e680d">
+  <source>Color halftone</source>
+  <target>Halftone de color</target>
+</trans-unit>
+<trans-unit id="sd9cec6099cc165b0">
+  <source>Halftone dots</source>
+  <target>Puntos de halftone</target>
+</trans-unit>
+<trans-unit id="s226a979f3606d1e3">
+  <source>Fluted glass</source>
+  <target>Vidrio ondulado</target>
+</trans-unit>
+<trans-unit id="s0b3ef519aa0aa4bc">
+  <source>CRT</source>
+  <target>CRT</target>
+</trans-unit>
+<trans-unit id="s154ae0b0d29de3b3">
+  <source>Vignette</source>
+  <target>Vignette</target>
+</trans-unit>
+<trans-unit id="s187fa1d813d0b3b0">
+  <source>ASCII</source>
+  <target>ASCII</target>
+</trans-unit>
+<trans-unit id="s60d2e29c01b02508">
+  <source>Glitch</source>
+  <target>Glitch</target>
+</trans-unit>
+<trans-unit id="sc7a385a1886e110f">
+  <source>Drop shadow (view only — remove or edit in code)</source>
+  <target>Sombra (solo vista — eliminar o editar en código)</target>
+</trans-unit>
+<trans-unit id="sd66cf221eb6aa66e">
+  <source>Color adjustment (view only — remove or edit in code)</source>
+  <target>Ajuste de color (solo vista — eliminar o editar en código)</target>
+</trans-unit>
+<trans-unit id="sf7a820033cc74dc1">
+  <source>Unsupported effect</source>
+  <target>Efecto no soportado</target>
+</trans-unit>
+<trans-unit id="s4ea0f21fc2a338a1">
+  <source>Move up</source>
+  <target>Mover arriba</target>
+</trans-unit>
+<trans-unit id="sb233557012dcb328">
+  <source>Move down</source>
+  <target>Mover abajo</target>
+</trans-unit>
+<trans-unit id="sea4f08110bb8f15d">
+  <source>Remove</source>
+  <target>Eliminar</target>
+</trans-unit>
+<trans-unit id="sba98a7152d80b949">
+  <source>Amount</source>
+  <target>Cantidad</target>
+</trans-unit>
+<trans-unit id="s8afc8c5aafb392d3">
+  <source>Radius</source>
+  <target>Radio</target>
+</trans-unit>
+<trans-unit id="s7f543f1d6017d187">
+  <source>Block size</source>
+  <target>Tamaño de bloque</target>
+</trans-unit>
+<trans-unit id="s2706a162264c46f1">
+  <source>Scale</source>
+  <target>Escala</target>
+</trans-unit>
+<trans-unit id="s5bb297d85a6de998">
+  <source>Angle</source>
+  <target>Ángulo</target>
+</trans-unit>
+<trans-unit id="s82caaf657b01a4d0">
+  <source>Grayscale</source>
+  <target>Escala de grises</target>
+</trans-unit>
+<trans-unit id="s50644a9c7e6bb571">
+  <source>Dot size</source>
+  <target>Tamaño de punto</target>
+</trans-unit>
+<trans-unit id="s78789724e789221c">
+  <source>Size</source>
+  <target>Tamaño</target>
+</trans-unit>
+<trans-unit id="s49534419cd9c812a">
+  <source>Hex</source>
+  <target>Hex</target>
+</trans-unit>
+<trans-unit id="s604383defa6060a5">
+  <source>Dot style</source>
+  <target>Estilo de punto</target>
+</trans-unit>
+<trans-unit id="s98aa8b9481114f33">
+  <source>Classic</source>
+  <target>Clásico</target>
+</trans-unit>
+<trans-unit id="s4bb1b0305e23ebd6">
+  <source>Gooey</source>
+  <target>Gooey</target>
+</trans-unit>
+<trans-unit id="s30d40fe142b0b028">
+  <source>Holes</source>
+  <target>Huecos</target>
+</trans-unit>
+<trans-unit id="s8aa4de24f21199d5">
+  <source>Soft</source>
+  <target>Suave</target>
+</trans-unit>
+<trans-unit id="s34de4da33d70127e">
+  <source>Original colors</source>
+  <target>Colores originales</target>
+</trans-unit>
+<trans-unit id="s8588deb1eb539dea">
+  <source>Distortion</source>
+  <target>Distorsión</target>
+</trans-unit>
+<trans-unit id="secf3bca7c1691718">
+  <source>Blur</source>
+  <target>Desenfoque</target>
+</trans-unit>
+<trans-unit id="s86ccc5d1f7cb6bdd">
+  <source>Edges</source>
+  <target>Bordes</target>
+</trans-unit>
+<trans-unit id="seb351085fc33c702">
+  <source>Curvature</source>
+  <target>Curvatura</target>
+</trans-unit>
+<trans-unit id="s5cda68f59fd34ebf">
+  <source>Line width</source>
+  <target>Ancho de línea</target>
+</trans-unit>
+<trans-unit id="s0a742747a1d9e913">
+  <source>Line contrast</source>
+  <target>Contraste de línea</target>
+</trans-unit>
+<trans-unit id="s90d5c6db54e85367">
+  <source>Vertical scanlines</source>
+  <target>Líneas de escaneo vertical</target>
+</trans-unit>
+<trans-unit id="s64d7653a61ba007a">
+  <source>Engine time (animate)</source>
+  <target>Tiempo del motor (animar)</target>
+</trans-unit>
+<trans-unit id="sade05f284771d6a6">
+  <source>Time uniform follows the app clock each frame.</source>
+  <target>El tiempo uniforme sigue el reloj de la aplicación cada fotograma.</target>
+</trans-unit>
+<trans-unit id="s48e186fb300e5464">
+  <source>Time</source>
+  <target>Tiempo</target>
+</trans-unit>
+<trans-unit id="s2481d786fecc56ec">
+  <source>RGB split</source>
+  <target>Separación RGB</target>
+</trans-unit>
+<trans-unit id="s007bd0735715b53d">
+  <source>Cell size (px)</source>
+  <target>Tamaño de celda (px)</target>
+</trans-unit>
+<trans-unit id="sf093cddb281a92d9">
+  <source>Solid glyph color</source>
+  <target>Color de glifo sólido</target>
+</trans-unit>
+<trans-unit id="s344ea8f4939cdc98">
+  <source>Color</source>
+  <target>Color</target>
+</trans-unit>
+<trans-unit id="sc1126085391aff00">
+  <source>No parameters.</source>
+  <target>Sin parámetros.</target>
+</trans-unit>
+<trans-unit id="s8ba2b22eee9bb57e">
+  <source>Add filter</source>
+  <target>Agregar filtro</target>
+</trans-unit>
+<trans-unit id="s8b7ef4d2210175a8">
+  <source>Smoothing (FXAA)</source>
+  <target>Suavizado (FXAA)</target>
+</trans-unit>
+<trans-unit id="sdebf6287e31d18e5">
+  <source>Triangle</source>
+  <target>Triángulo</target>
+</trans-unit>
+<trans-unit id="sfd4354bbd26740b9">
+  <source>Pentagon</source>
+  <target>Pentágono</target>
+</trans-unit>
+<trans-unit id="sc937e3c89bb3029b">
+  <source>Hexagon</source>
+  <target>Hexágono</target>
+</trans-unit>
+<trans-unit id="s408c49e886847982">
+  <source>No layer selected.</source>
+  <target>No hay capa seleccionada.</target>
 </trans-unit>
 </body>
 </file>

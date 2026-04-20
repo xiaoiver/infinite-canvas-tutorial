@@ -14,6 +14,7 @@ export * from './penbar-text-settings';
 export * from './penbar-crop';
 export * from './properties-panel-content';
 export * from './properties-panel';
+export * from './document-theme-settings';
 export * from './fill-icon';
 export * from './stroke-icon';
 export * from './color-picker';

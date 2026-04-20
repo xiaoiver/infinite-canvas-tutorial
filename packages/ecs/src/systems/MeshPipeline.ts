@@ -67,7 +67,7 @@ import {
 } from '../components';
 import {
   Effect,
-  filterStringUsesEngineTimeCrt,
+  filterStringUsesEngineTimePost,
   paddingMat3,
   parseColor,
   parseEffect,
@@ -535,10 +535,10 @@ export class MeshPipeline extends System {
     }
   }
 
-  private anyFilterUsesEngineTimeCrt(): boolean {
+  private anyFilterUsesEngineTimePost(): boolean {
     for (const entity of this.filtersCurrent.current) {
       const { value } = entity.read(Filter);
-      if (filterStringUsesEngineTimeCrt(value)) {
+      if (filterStringUsesEngineTimePost(value)) {
         return true;
       }
     }
@@ -625,7 +625,7 @@ export class MeshPipeline extends System {
       }
     });
 
-    const engineTimeNeedsContinuousRender = this.anyFilterUsesEngineTimeCrt();
+    const engineTimeNeedsContinuousRender = this.anyFilterUsesEngineTimePost();
 
     this.canvases.current.forEach((canvas) => {
       let toRender =

@@ -11,3 +11,4 @@ export { frag as pixelate } from './pixelate';
 export { frag as crt } from './crt';
 export { frag as vignette } from './vignette';
 export { frag as ascii } from './ascii';
+export { frag as glitch } from './glitch';

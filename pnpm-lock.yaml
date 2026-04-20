@@ -1668,6 +1668,9 @@ importers:
       '@spectrum-web-components/divider':
         specifier: ^1.11.2
         version: 1.11.2
+      '@spectrum-web-components/field-label':
+        specifier: ^1.11.2
+        version: 1.11.2
       '@spectrum-web-components/icon':
         specifier: ^1.11.2
         version: 1.11.2

@@ -326,10 +326,6 @@
   <source>Style</source>
   <target>样式</target>
 </trans-unit>
-<trans-unit id="sf9caa9d2834ca145">
-  <source>Add effect</source>
-  <target>添加效果</target>
-</trans-unit>
 <trans-unit id="s3432f264e3842154">
   <source>Brush settings</source>
   <target>画笔设置</target>
@@ -437,6 +433,241 @@
 <trans-unit id="s5959334e292647e4">
   <source>Arrow (⇧L)</source>
   <target>箭头 (⇧L)</target>
+</trans-unit>
+<trans-unit id="s3de321c88c79c73f">
+  <source>Canvas background</source>
+  <target>画布背景</target>
+</trans-unit>
+<trans-unit id="s310941c6a4577116">
+  <source>Selection fill</source>
+  <target>框选填充</target>
+</trans-unit>
+<trans-unit id="s27a71df63873a0ef">
+  <source>Selection stroke</source>
+  <target>框选描边</target>
+</trans-unit>
+<trans-unit id="sbb922fb7db16d35d">
+  <source>Filter type</source>
+  <target>滤镜类型</target>
+</trans-unit>
+<trans-unit id="sf7ef7bd814fbaa8a">
+  <source>Brightness</source>
+  <target>亮度</target>
+</trans-unit>
+<trans-unit id="sda9eb7b6b70799f3">
+  <source>Contrast</source>
+  <target>对比度</target>
+</trans-unit>
+<trans-unit id="s086e6c267ade2609">
+  <source>Saturation</source>
+  <target>饱和度</target>
+</trans-unit>
+<trans-unit id="s2bc80ed8441b0831">
+  <source>Noise</source>
+  <target>噪点</target>
+</trans-unit>
+<trans-unit id="sb722af54c0442fa5">
+  <source>Pixelate</source>
+  <target>像素化</target>
+</trans-unit>
+<trans-unit id="s436c264f94710784">
+  <source>Dot screen</source>
+  <target>点阵</target>
+</trans-unit>
+<trans-unit id="se07f367d897e680d">
+  <source>Color halftone</source>
+  <target>彩色半色调</target>
+</trans-unit>
+<trans-unit id="sd9cec6099cc165b0">
+  <source>Halftone dots</source>
+  <target>半色调点</target>
+</trans-unit>
+<trans-unit id="s226a979f3606d1e3">
+  <source>Fluted glass</source>
+  <target>褶皱玻璃</target>
+</trans-unit>
+<trans-unit id="s0b3ef519aa0aa4bc">
+  <source>CRT</source>
+  <target>CRT</target>
+</trans-unit>
+<trans-unit id="s154ae0b0d29de3b3">
+  <source>Vignette</source>
+  <target>晕影</target>
+</trans-unit>
+<trans-unit id="s187fa1d813d0b3b0">
+  <source>ASCII</source>
+  <target>ASCII</target>
+</trans-unit>
+<trans-unit id="s60d2e29c01b02508">
+  <source>Glitch</source>
+  <target>故障</target>
+</trans-unit>
+<trans-unit id="sc7a385a1886e110f">
+  <source>Drop shadow (view only — remove or edit in code)</source>
+  <target>阴影 (仅查看 — 删除或编辑代码)</target>
+</trans-unit>
+<trans-unit id="sd66cf221eb6aa66e">
+  <source>Color adjustment (view only — remove or edit in code)</source>
+  <target>颜色调整 (仅查看 — 删除或编辑代码)</target>
+</trans-unit>
+<trans-unit id="sf7a820033cc74dc1">
+  <source>Unsupported effect</source>
+  <target>不支持的效果</target>
+</trans-unit>
+<trans-unit id="s4ea0f21fc2a338a1">
+  <source>Move up</source>
+  <target>上移</target>
+</trans-unit>
+<trans-unit id="sb233557012dcb328">
+  <target>下移</target>
+  <source>Move down</source>
+</trans-unit>
+<trans-unit id="sea4f08110bb8f15d">
+  <source>Remove</source>
+  <target>删除</target>
+</trans-unit>
+<trans-unit id="sba98a7152d80b949">
+  <source>Amount</source>
+  <target>数量</target>
+</trans-unit>
+<trans-unit id="s8afc8c5aafb392d3">
+  <source>Radius</source>
+  <target>半径</target>
+</trans-unit>
+<trans-unit id="s7f543f1d6017d187">
+  <source>Block size</source>
+  <target>块大小</target>
+</trans-unit>
+<trans-unit id="s2706a162264c46f1">
+  <source>Scale</source>
+  <target>缩放</target>
+</trans-unit>
+<trans-unit id="s5bb297d85a6de998">
+  <source>Angle</source>
+  <target>角度</target>
+</trans-unit>
+<trans-unit id="s82caaf657b01a4d0">
+  <source>Grayscale</source>
+  <target>灰度</target>
+</trans-unit>
+<trans-unit id="s50644a9c7e6bb571">
+  <source>Dot size</source>
+  <target>点大小</target>
+</trans-unit>
+<trans-unit id="s78789724e789221c">
+  <source>Size</source>
+  <target>大小</target>
+</trans-unit>
+<trans-unit id="s49534419cd9c812a">
+  <source>Hex</source>
+  <target>十六进制</target>
+</trans-unit>
+<trans-unit id="s604383defa6060a5">
+  <source>Dot style</source>
+  <target>点样式</target>
+</trans-unit>
+<trans-unit id="s98aa8b9481114f33">
+  <source>Classic</source>
+  <target>经典</target>
+</trans-unit>
+<trans-unit id="s4bb1b0305e23ebd6">
+  <source>Gooey</source>
+  <target>果冻</target>
+</trans-unit>
+<trans-unit id="s30d40fe142b0b028">
+  <source>Holes</source>
+  <target>孔洞</target>
+</trans-unit>
+<trans-unit id="s8aa4de24f21199d5">
+  <source>Soft</source>
+  <target>软</target>
+</trans-unit>
+<trans-unit id="s34de4da33d70127e">
+  <source>Original colors</source>
+  <target>原始颜色</target>
+</trans-unit>
+<trans-unit id="s8588deb1eb539dea">
+  <source>Distortion</source>
+  <target>扭曲</target>
+</trans-unit>
+<trans-unit id="secf3bca7c1691718">
+  <source>Blur</source>
+  <target>模糊</target>
+</trans-unit>
+<trans-unit id="s86ccc5d1f7cb6bdd">
+  <source>Edges</source>
+  <target>边缘</target>
+</trans-unit>
+<trans-unit id="seb351085fc33c702">
+  <source>Curvature</source>
+  <target>曲率</target>
+</trans-unit>
+<trans-unit id="s5cda68f59fd34ebf">
+  <source>Line width</source>
+  <target>线宽度</target>
+</trans-unit>
+<trans-unit id="s0a742747a1d9e913">
+  <source>Line contrast</source>
+  <target>线对比度</target>
+</trans-unit>
+<trans-unit id="s90d5c6db54e85367">
+  <source>Vertical scanlines</source>
+  <target>垂直扫描线</target>
+</trans-unit>
+<trans-unit id="s64d7653a61ba007a">
+  <source>Engine time (animate)</source>
+  <target>引擎时间 (动画)</target>
+</trans-unit>
+<trans-unit id="sade05f284771d6a6">
+  <source>Time uniform follows the app clock each frame.</source>
+  <target>时间均匀跟随应用时钟每帧。</target>
+</trans-unit>
+<trans-unit id="s48e186fb300e5464">
+  <source>Time</source>
+  <target>时间</target>
+</trans-unit>
+<trans-unit id="s2481d786fecc56ec">
+  <source>RGB split</source>
+  <target>RGB 分割</target>
+</trans-unit>
+<trans-unit id="s007bd0735715b53d">
+  <source>Cell size (px)</source>
+  <target>单元格大小 (px)</target>
+</trans-unit>
+<trans-unit id="sf093cddb281a92d9">
+  <source>Solid glyph color</source>
+  <target>实心字符颜色</target>
+</trans-unit>
+<trans-unit id="s344ea8f4939cdc98">
+  <source>Color</source>
+  <target>颜色</target>
+</trans-unit>
+<trans-unit id="sc1126085391aff00">
+  <source>No parameters.</source>
+  <target>无参数。</target>
+</trans-unit>
+<trans-unit id="s8ba2b22eee9bb57e">
+  <source>Add filter</source>
+  <target>添加滤镜</target>
+</trans-unit>
+<trans-unit id="s8b7ef4d2210175a8">
+  <source>Smoothing (FXAA)</source>
+</trans-unit>
+<trans-unit id="sdebf6287e31d18e5">
+  <source>Triangle</source>
+  <target>三角形</target>
+</trans-unit>
+<trans-unit id="sfd4354bbd26740b9">
+  <source>Pentagon</source>
+  <target>五边形</target>
+</trans-unit>
+<trans-unit id="sc937e3c89bb3029b">
+  <source>Hexagon</source>
+  <target>六边形</target>
+</trans-unit>
+<trans-unit id="s408c49e886847982">
+  <source>No layer selected.</source>
+  <target>未选中图层。</target>
 </trans-unit>
 </body>
 </file>

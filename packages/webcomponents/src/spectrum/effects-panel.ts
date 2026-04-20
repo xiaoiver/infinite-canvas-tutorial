@@ -49,6 +49,10 @@ function isAsciiEffect(e: Effect): boolean {
   return (e as { type?: string }).type === 'ascii';
 }
 
+function isGlitchEffect(e: Effect): boolean {
+  return (e as { type?: string }).type === 'glitch';
+}
+
 /** Mirrors ecs `CRT_DEFAULTS`. */
 const CRT_PANEL_DEFAULTS = {
   curvature: 1,
@@ -79,6 +83,17 @@ const ASCII_PANEL_DEFAULTS = {
 };
 
 type AsciiEffectRow = typeof ASCII_PANEL_DEFAULTS;
+
+/** Mirrors ecs `GLITCH_DEFAULTS`; `useEngineTime` defaults on so the effect animates. */
+const GLITCH_PANEL_DEFAULTS = {
+  type: 'glitch' as const,
+  amount: 0.45,
+  rgbSplit: 0.004,
+  time: 0,
+  useEngineTime: true,
+} as const;
+
+type GlitchEffectRow = typeof GLITCH_PANEL_DEFAULTS;
 
 /** Mirrors ecs `FlutedGlassEffect` / {@link FLUTED_GLASS_DEFAULTS} for panel defaults. */
 const FLUTED_GLASS_PANEL_DEFAULTS = {
@@ -118,7 +133,8 @@ type EffectKind =
   | 'flutedGlass'
   | 'crt'
   | 'vignette'
-  | 'ascii';
+  | 'ascii'
+  | 'glitch';
 
 function effectKind(
   effect: Effect,
@@ -144,6 +160,9 @@ function effectKind(
   }
   if (isAsciiEffect(effect)) {
     return 'ascii';
+  }
+  if (isGlitchEffect(effect)) {
+    return 'glitch';
   }
   if (
     effect.type === 'brightness' ||
@@ -205,6 +224,8 @@ function createDefaultEffect(kind: EffectKind): Effect {
       return { ...VIGNETTE_PANEL_DEFAULTS } as unknown as Effect;
     case 'ascii':
       return { ...ASCII_PANEL_DEFAULTS } as unknown as Effect;
+    case 'glitch':
+      return { ...GLITCH_PANEL_DEFAULTS } as unknown as Effect;
     case 'saturate':
       return {
         type: 'adjustment',
@@ -374,6 +395,7 @@ export class EffectsPanel extends LitElement {
                     >${msg(str`Vignette`)}</sp-menu-item
                   >
                   <sp-menu-item value="ascii">${msg(str`ASCII`)}</sp-menu-item>
+                  <sp-menu-item value="glitch">${msg(str`Glitch`)}</sp-menu-item>
                 </sp-picker>
               `
         : html`
@@ -911,6 +933,85 @@ export class EffectsPanel extends LitElement {
       `}
       `;
     }
+    if (isGlitchEffect(effect)) {
+      const h = effect as unknown as GlitchEffectRow;
+      return html`
+        <sp-slider
+          size="s"
+          label=${msg(str`Amount`)}
+          min="0"
+          max="1"
+          step="0.01"
+          .value=${h.amount}
+          editable
+          @change=${(e: Event & { target: HTMLInputElement }) => {
+          const v = parseFloat(e.target.value);
+          const next = [...this.effects];
+          next[index] = {
+            ...h,
+            amount: Number.isFinite(v) ? v : h.amount,
+          } as unknown as Effect;
+          this.commit(next);
+        }}
+        ></sp-slider>
+        <sp-slider
+          size="s"
+          label=${msg(str`RGB split`)}
+          min="0"
+          max="0.5"
+          step="0.05"
+          .value=${h.rgbSplit}
+          editable
+          @change=${(e: Event & { target: HTMLInputElement }) => {
+          const v = parseFloat(e.target.value);
+          const next = [...this.effects];
+          next[index] = {
+            ...h,
+            rgbSplit: Number.isFinite(v) ? v : h.rgbSplit,
+          } as unknown as Effect;
+          this.commit(next);
+        }}
+        ></sp-slider>
+        <div class="row-head">
+          <sp-switch
+            size="s"
+            ?checked=${!!h.useEngineTime}
+            @change=${(e: Event & { target: HTMLInputElement }) => {
+          const checked = (e.target as HTMLInputElement).checked;
+          const next = [...this.effects];
+          next[index] = {
+            ...h,
+            useEngineTime: checked,
+          } as unknown as Effect;
+          this.commit(next);
+        }}
+            >${msg(str`Engine time (animate)`)}</sp-switch
+          >
+        </div>
+        ${h.useEngineTime
+          ? html`<span class="hint">${msg(str`Time uniform follows the app clock each frame.`)}</span>`
+          : html`
+        <sp-slider
+          size="s"
+          label=${msg(str`Time`)}
+          min="0"
+          max="100"
+          step="0.1"
+          .value=${h.time}
+          editable
+          @change=${(e: Event & { target: HTMLInputElement }) => {
+              const v = parseFloat(e.target.value);
+              const next = [...this.effects];
+              next[index] = {
+                ...h,
+                time: Number.isFinite(v) ? v : h.time,
+              } as unknown as Effect;
+              this.commit(next);
+            }}
+        ></sp-slider>
+      `}
+      `;
+    }
     if (isVignetteEffect(effect)) {
       const h = effect as unknown as VignetteEffectRow;
       return html`
@@ -995,11 +1096,11 @@ export class EffectsPanel extends LitElement {
               label=${msg(str`Color`)}
               .value=${h.color}
               @change=${(e: Event & { target: HTMLInputElement }) => {
-          const v = e.target.value.trim();
-          const next = [...this.effects];
-          next[index] = { ...h, color: v || h.color } as unknown as Effect;
-          this.commit(next);
-        }}
+              const v = e.target.value.trim();
+              const next = [...this.effects];
+              next[index] = { ...h, color: v || h.color } as unknown as Effect;
+              this.commit(next);
+            }}
             ></sp-textfield>`
           : null}
       `;
@@ -1076,6 +1177,7 @@ export class EffectsPanel extends LitElement {
           <sp-menu-item value="crt">${msg(str`CRT`)}</sp-menu-item>
           <sp-menu-item value="vignette">${msg(str`Vignette`)}</sp-menu-item>
           <sp-menu-item value="ascii">${msg(str`ASCII`)}</sp-menu-item>
+          <sp-menu-item value="glitch">${msg(str`Glitch`)}</sp-menu-item>
         </sp-action-menu>
       </div>
     `;

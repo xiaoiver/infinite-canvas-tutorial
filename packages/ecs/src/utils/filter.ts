@@ -21,6 +21,7 @@ export type Effect =
   | CrtEffect
   | VignetteEffect
   | AsciiEffect
+  | GlitchEffect
   | AdjustmentEffect
   | DropShadowEffect
   | BlurEffect
@@ -457,6 +458,44 @@ export interface NoiseEffect {
   value: number;
 }
 
+/** Digital block glitch + RGB split; `filter` e.g. `glitch(0.45, 0.004, auto)` for animated time. */
+export const GLITCH_DEFAULTS = {
+  amount: 0.45,
+  rgbSplit: 0.004,
+  time: 0,
+} as const;
+
+export interface GlitchEffect {
+  type: 'glitch';
+  /** 0–1 strength (block density + jitter). */
+  amount: number;
+  /** Horizontal channel separation scale (shader maps to pixel offset). */
+  rgbSplit: number;
+  /** Seconds; ignored when {@link useEngineTime} is true. */
+  time: number;
+  /** When true, uses engine time from `PostEffectTime` / `setPostEffectEngineTimeSeconds`. */
+  useEngineTime?: boolean;
+}
+
+/** 2 × vec4 std140: `u_Glitch0`, `u_Glitch1`. */
+export function glitchUniformValues(
+  effect: GlitchEffect,
+  textureWidth: number,
+  textureHeight: number,
+): number[] {
+  const w = Math.max(1, textureWidth);
+  const h = Math.max(1, textureHeight);
+  const D = GLITCH_DEFAULTS;
+  const z = (v: number | undefined, def: number) =>
+    Number.isFinite(v as number) ? (v as number) : def;
+  const amount = Math.max(0, Math.min(1, z(effect.amount, D.amount)));
+  const rgbSplit = Math.max(0, z(effect.rgbSplit, D.rgbSplit));
+  const time = effect.useEngineTime
+    ? getPostEffectEngineTimeSeconds()
+    : z(effect.time, D.time);
+  return [amount, rgbSplit, time, 0, w, h, 0, 0];
+}
+
 export interface FXAA {
   type: 'fxaa';
 }
@@ -474,6 +513,7 @@ const RASTER_POST_EFFECT_TYPES = new Set<Effect['type']>([
   'crt',
   'vignette',
   'ascii',
+  'glitch',
 ]);
 
 /** True when `adjustment` only changes saturation (Pixi/CSS-style `saturate()`). */
@@ -1018,6 +1058,34 @@ export function parseEffect(filter: string): Effect[] {
         replaceColor,
         color,
       });
+    } else if (filter.name === 'glitch') {
+      const raw = filter.params.trim();
+      const parts = raw.length
+        ? raw.split(',').map((s) => s.trim()).filter((s) => s.length > 0)
+        : [];
+      const D = GLITCH_DEFAULTS;
+      const pf = (i: number, def: number) => {
+        const v = parts[i] !== undefined ? parseFloat(parts[i]) : def;
+        return Number.isFinite(v) ? v : def;
+      };
+      let useEngineTime = false;
+      let time: number = D.time;
+      if (parts.length >= 3) {
+        const rawT = parts[2]!.trim().toLowerCase();
+        if (rawT === 'auto' || rawT === 'engine') {
+          useEngineTime = true;
+        } else {
+          const tv = parseFloat(parts[2]!);
+          time = Number.isFinite(tv) ? tv : D.time;
+        }
+      }
+      effects.push({
+        type: 'glitch',
+        amount: parts[0] !== undefined ? pf(0, D.amount) : D.amount,
+        rgbSplit: parts[1] !== undefined ? pf(1, D.rgbSplit) : D.rgbSplit,
+        time,
+        ...(useEngineTime ? { useEngineTime: true } : {}),
+      });
     } else if (filter.name === 'fxaa') {
       effects.push({ type: 'fxaa' });
     }
@@ -1042,6 +1110,31 @@ export function filterStringUsesEngineTimeCrt(
     }
   }
   return false;
+}
+
+/** True when the filter string uses glitch with engine time (`auto`), for continuous redraw. */
+export function filterStringUsesEngineTimeGlitch(
+  filterValue: string | undefined | null,
+): boolean {
+  if (filterValue == null || !String(filterValue).trim()) {
+    return false;
+  }
+  for (const e of parseEffect(filterValue)) {
+    if (e.type === 'glitch' && e.useEngineTime) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/** CRT or glitch with `useEngineTime` — either needs {@link PostEffectTime} + per-frame render. */
+export function filterStringUsesEngineTimePost(
+  filterValue: string | undefined | null,
+): boolean {
+  return (
+    filterStringUsesEngineTimeCrt(filterValue) ||
+    filterStringUsesEngineTimeGlitch(filterValue)
+  );
 }
 
 /**
@@ -1123,6 +1216,12 @@ export function formatFilter(effects: Effect[]): string {
         const e = effect;
         const rep = e.replaceColor ? 1 : 0;
         parts.push(`ascii(${e.size}, ${rep}, ${cssColorToHex(e.color)})`);
+        break;
+      }
+      case 'glitch': {
+        const e = effect;
+        const timeParam = e.useEngineTime ? 'auto' : e.time;
+        parts.push(`glitch(${e.amount}, ${e.rgbSplit}, ${timeParam})`);
         break;
       }
       case 'fxaa':

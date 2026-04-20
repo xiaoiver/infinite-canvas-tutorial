@@ -20,9 +20,16 @@ export class PropertiesPanelContent extends LitElement {
       flex-direction: column;
       padding: 0;
       overflow: hidden;
+      min-height: 0;
+      max-height: 400px;
 
       --system-accordion-size-s-item-header-font-size: 14px;
       --mod-accordion-item-header-font-size: 14px;
+    }
+
+    :host(.fills-panel) {
+      height: 100%;
+      max-height: none;
     }
 
     sp-popover {
@@ -30,9 +37,11 @@ export class PropertiesPanelContent extends LitElement {
     }
 
     sp-accordion {
+      flex: 1 1 auto;
+      min-height: 0;
       overflow-y: overlay;
       overflow: hidden auto;
-      max-height: 400px;
+      max-height: none;
     }
 
     .content {
