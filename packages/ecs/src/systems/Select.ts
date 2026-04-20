@@ -63,6 +63,7 @@ import {
   Mat3,
   ComputedTextMetrics,
   Theme,
+  Flex,
   DEFAULT_THEME_COLORS,
 } from '../components';
 import { Commands } from '../commands/Commands';
@@ -261,6 +262,7 @@ export class Select extends System {
             Stroke,
             Rough,
             ComputedTextMetrics,
+            Flex,
           )
           .read.update.and.using(
             GlobalTransform,

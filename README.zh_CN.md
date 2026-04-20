@@ -425,9 +425,9 @@ pnpm run dev
     -   Flex Basis, Grow, and Shrink
     -   Min/Max Width and Height
 
-|                   Gap                   |          AlignItems & JustifyContent           |
-| :-------------------------------------: | :--------------------------------------------: |
-| ![Yoga gap](./screenshots/yoga-gap.gif) | ![Yoga gap](./screenshots/yoga-alignitems.gif) |
+|                   Gap                   |          AlignItems & JustifyContent           |                  Layout panel                   |
+| :-------------------------------------: | :--------------------------------------------: | :---------------------------------------------: |
+| ![Yoga gap](./screenshots/yoga-gap.gif) | ![Yoga gap](./screenshots/yoga-alignitems.gif) | ![layout panel](./screenshots/layout-panel.png) |
 
 ## 课程 34 - Frame 与裁切 [🔗](https://infinitecanvas.cc/zh/guide/lesson-034)
 

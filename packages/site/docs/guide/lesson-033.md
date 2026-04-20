@@ -7,6 +7,7 @@ description: 'Integrated Flex layout system with support for the Yoga typesettin
 import YogaGap from '../components/YogaGap.vue'
 import YogaFlexBasisGrowShrink from '../components/YogaFlexBasisGrowShrink.vue'
 import YogaAlignItemsJustifyContent from '../components/YogaAlignItemsJustifyContent.vue'
+import YogaButton from '../components/YogaButton.vue'
 import YogaMinMaxWidthHeight from '../components/YogaMinMaxWidthHeight.vue'
 </script>
 
@@ -235,6 +236,10 @@ class YogaSystem extends System {
 The most common use is centering content with these two properties:
 
 <YogaAlignItemsJustifyContent />
+
+To implement buttons with centered text:
+
+<YogaButton />
 
 ### Gap {#gap}
 

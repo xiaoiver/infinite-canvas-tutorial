@@ -1059,16 +1059,22 @@ export class API {
     preserveSelection = false,
     updateAppState = true,
   ) {
+    const prevAppState = this.getAppState();
+    const prevSelectedIds = prevAppState.layersSelected;
+
     if (!preserveSelection) {
-      this.getAppState().layersSelected.forEach((id) => {
+      prevSelectedIds.forEach((id) => {
         const entity = this.#idEntityMap.get(id)?.id();
         if (entity && entity.has(Selected)) {
           entity.remove(Selected);
         }
+        // 与 handleSelectedMoved 等路径写入的 Highlighted 同步清理，否则取消选中后仍残留描边高亮
+        if (entity) {
+          safeRemoveComponent(entity, Highlighted);
+        }
       });
     }
 
-    const prevAppState = this.getAppState();
     // remove duplicates
     const layersSelected = preserveSelection
       ? [
@@ -1079,9 +1085,16 @@ export class API {
         .map((node) => node.id)
         .filter((id, index, self) => self.indexOf(id) === index);
     if (updateAppState) {
+      const layersHighlighted = preserveSelection
+        ? prevAppState.layersHighlighted
+        : prevAppState.layersHighlighted.filter(
+            (id) =>
+              !prevSelectedIds.includes(id) || layersSelected.includes(id),
+          );
       this.setAppState({
         ...prevAppState,
         layersSelected,
+        layersHighlighted,
       });
     }
 
@@ -1095,10 +1108,14 @@ export class API {
   }
 
   deselectNodes(nodes: SerializedNode[]) {
+    const deselectIds = nodes.map((node) => node.id);
     nodes.forEach((node) => {
       const entity = this.#idEntityMap.get(node.id)?.id();
       if (entity && entity.has(Selected)) {
         entity.remove(Selected);
+      }
+      if (entity) {
+        safeRemoveComponent(entity, Highlighted);
       }
     });
 
@@ -1106,7 +1123,10 @@ export class API {
     this.setAppState({
       ...prevAppState,
       layersSelected: prevAppState.layersSelected.filter(
-        (id) => !nodes.map((node) => node.id).includes(id),
+        (id) => !deselectIds.includes(id),
+      ),
+      layersHighlighted: prevAppState.layersHighlighted.filter(
+        (id) => !deselectIds.includes(id),
       ),
     });
   }
