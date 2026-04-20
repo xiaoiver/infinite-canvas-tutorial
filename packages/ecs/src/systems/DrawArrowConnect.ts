@@ -95,7 +95,6 @@ export class DrawArrowConnect extends System {
             ComputedCameraControl,
             FractionalIndex,
             RBush,
-            Theme,
           )
           .read.update.and.using(
             Canvas,
@@ -135,7 +134,8 @@ export class DrawArrowConnect extends System {
             PartialBinding,
             Binded,
             ToBeDeleted,
-            ComputedPoints
+            ComputedPoints,
+            Theme,
           ).write,
     );
   }
