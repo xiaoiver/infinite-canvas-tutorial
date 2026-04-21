@@ -420,6 +420,25 @@ export class API {
     }
   }
 
+  /**
+   * 浅拷贝节点列表，并用 ECS 当前几何覆盖 x/y/width/height/rotation/scale（如 Flex/Yoga 仅写 ECS、序列化节点未同步时，导出 SVG 前调用）。
+   */
+  readLayoutFromECS(nodes: SerializedNode[]): SerializedNode[] {
+    return nodes.map((node) => {
+      const g = this.getAbsoluteTransformAndSize(node);
+      return {
+        ...node,
+        x: g.x,
+        y: g.y,
+        width: g.width,
+        height: g.height,
+        rotation: g.rotation,
+        scaleX: g.scaleX,
+        scaleY: g.scaleY,
+      };
+    });
+  }
+
   getCanvas() {
     return this.#canvas;
   }
@@ -1916,7 +1935,7 @@ export class API {
     }
 
     (await serializeNodesToSVGElements(
-      api.getNodes()
+      api.readLayoutFromECS(api.getNodes()),
     )).forEach((element) => {
       $namespace.appendChild(element);
     });

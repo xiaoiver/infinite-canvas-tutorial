@@ -1,4 +1,4 @@
-import { html, css, LitElement } from 'lit';
+import { html, css, LitElement, type TemplateResult } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { consume } from '@lit/context';
 import {
@@ -313,20 +313,20 @@ export class PropertiesPanelContent extends LitElement {
     this.lockAspectRatio = !this.lockAspectRatio;
   }
 
-  private handleLayoutPaddingChanged(e: Event & { target: HTMLInputElement }) {
-    const v = parseFloat(e.target.value);
+  private handleLayoutPaddingChanged(e: Event) {
+    const v = PropertiesPanelContent.parseNumberFieldValue(e);
     this.api.updateNode(this.node, {
-      padding: Number.isFinite(v) ? v : undefined,
-    });
+      padding: v,
+    } as Partial<SerializedNode>);
     this.api.record();
   }
 
   private handlePaddingSideChanged(
     index: 0 | 1 | 2 | 3,
-    e: Event & { target: HTMLInputElement },
+    e: Event,
   ) {
-    const raw = parseFloat(e.target.value);
-    const next = Number.isFinite(raw) ? raw : 0;
+    const raw = PropertiesPanelContent.parseNumberFieldValue(e);
+    const next = raw !== undefined && Number.isFinite(raw) ? raw : 0;
     const sides = normalizeBoxSides(
       (this.node as FlexNode).padding,
     ) as [number, number, number, number];
@@ -337,20 +337,20 @@ export class PropertiesPanelContent extends LitElement {
     this.api.record();
   }
 
-  private handleLayoutMarginChanged(e: Event & { target: HTMLInputElement }) {
-    const v = parseFloat(e.target.value);
+  private handleLayoutMarginChanged(e: Event) {
+    const v = PropertiesPanelContent.parseNumberFieldValue(e);
     this.api.updateNode(this.node, {
-      margin: Number.isFinite(v) ? v : undefined,
-    });
+      margin: v,
+    } as Partial<SerializedNode>);
     this.api.record();
   }
 
   private handleMarginSideChanged(
     index: 0 | 1 | 2 | 3,
-    e: Event & { target: HTMLInputElement },
+    e: Event,
   ) {
-    const raw = parseFloat(e.target.value);
-    const next = Number.isFinite(raw) ? raw : 0;
+    const raw = PropertiesPanelContent.parseNumberFieldValue(e);
+    const next = raw !== undefined && Number.isFinite(raw) ? raw : 0;
     const sides = normalizeBoxSides(
       (this.node as FlexNode).margin,
     ) as [number, number, number, number];
@@ -472,8 +472,273 @@ export class PropertiesPanelContent extends LitElement {
     this.api.record();
   }
 
+  private handleMinWidthChanged(e: Event) {
+    const v = PropertiesPanelContent.parseNumberFieldValue(e);
+    this.api.updateNode(this.node, { minWidth: v } as Partial<SerializedNode>);
+    this.api.record();
+  }
+
+  private handleMaxWidthChanged(e: Event) {
+    const v = PropertiesPanelContent.parseNumberFieldValue(e);
+    this.api.updateNode(this.node, { maxWidth: v } as Partial<SerializedNode>);
+    this.api.record();
+  }
+
+  private handleMinHeightChanged(e: Event) {
+    const v = PropertiesPanelContent.parseNumberFieldValue(e);
+    this.api.updateNode(this.node, { minHeight: v } as Partial<SerializedNode>);
+    this.api.record();
+  }
+
+  private handleMaxHeightChanged(e: Event) {
+    const v = PropertiesPanelContent.parseNumberFieldValue(e);
+    this.api.updateNode(this.node, { maxHeight: v } as Partial<SerializedNode>);
+    this.api.record();
+  }
+
+  /** Flex 子项上的 padding / margin（与 Layout 相同交互，id 前缀避免与容器区块冲突） */
+  private flexItemPaddingMarginMinMaxRows(safeId: string): TemplateResult {
+    const n = this.node as FlexNode;
+    const paddingSides = normalizeBoxSides(n.padding);
+    const paddingUniform = boxSidesUniform(paddingSides);
+    const padTriggerId = `fi-pad-${safeId}`;
+    const marginSides = normalizeBoxSides(n.margin);
+    const marginUniform = boxSidesUniform(marginSides);
+    const marTriggerId = `fi-mar-${safeId}`;
+    const minW = n.minWidth;
+    const maxW = n.maxWidth;
+    const minH = n.minHeight;
+    const maxH = n.maxHeight;
+
+    return html`
+      <div class="line">
+        <sp-field-label for=${`fi-pad-main-${safeId}`} side-aligned="start"
+          >${msg(str`Padding`)}</sp-field-label
+        >
+        <div class="layout-inset-inline">
+          <sp-action-button
+            quiet
+            size="s"
+            id=${padTriggerId}
+            label=${msg(str`Padding per side`)}
+          >
+            <sp-tooltip self-managed placement="bottom">
+              ${msg(str`Padding per side`)}
+            </sp-tooltip>
+            <sp-icon-padding-left slot="icon"></sp-icon-padding-left>
+          </sp-action-button>
+          <sp-overlay
+            trigger=${`${padTriggerId}@click`}
+            placement="bottom"
+            type="auto"
+          >
+            <sp-popover class="layout-inset-sides-popover">
+              ${[0, 1, 2, 3].map(
+        (i) => html`
+                <div class="side-row">
+                  <sp-field-label
+                    for=${`fi-pad-${safeId}-${i}`}
+                    side-aligned="start"
+                    >${i === 0
+        ? msg(str`Top`)
+        : i === 1
+          ? msg(str`Right`)
+          : i === 2
+            ? msg(str`Bottom`)
+            : msg(str`Left`)}</sp-field-label
+                  >
+                  ${i === 0
+        ? html`<sp-icon-padding-top slot="icon"></sp-icon-padding-top>`
+        : i === 1
+          ? html`<sp-icon-padding-right
+                        slot="icon"
+                      ></sp-icon-padding-right>`
+          : i === 2
+            ? html`<sp-icon-padding-bottom
+                        slot="icon"
+                      ></sp-icon-padding-bottom>`
+            : html`<sp-icon-padding-left
+                        slot="icon"
+                      ></sp-icon-padding-left>`}
+                  <sp-number-field
+                    id=${`fi-pad-${safeId}-${i}`}
+                    size="s"
+                    .value=${paddingSides[i]}
+                    @change=${(e: Event) =>
+        this.handlePaddingSideChanged(i as 0 | 1 | 2 | 3, e)}
+                    hide-stepper
+                    autocomplete="off"
+                    min="0"
+                    format-options='{"style":"unit","unit":"px"}'
+                  ></sp-number-field>
+                </div>
+              `,
+      )}
+            </sp-popover>
+          </sp-overlay>
+          <sp-number-field
+            id=${`fi-pad-main-${safeId}`}
+            size="s"
+            .value=${paddingUniform ? paddingSides[0] : ''}
+            placeholder=${paddingUniform ? '' : '—'}
+            ?readonly=${!paddingUniform}
+            @change=${this.handleLayoutPaddingChanged}
+            hide-stepper
+            autocomplete="off"
+            min="0"
+            format-options='{"style":"unit","unit":"px"}'
+          ></sp-number-field>
+        </div>
+      </div>
+      <div class="line">
+        <sp-field-label for=${`fi-mar-main-${safeId}`} side-aligned="start"
+          >${msg(str`Margin`)}</sp-field-label
+        >
+        <div class="layout-inset-inline">
+          <sp-action-button
+            quiet
+            size="s"
+            id=${marTriggerId}
+            label=${msg(str`Margin per side`)}
+          >
+            <sp-tooltip self-managed placement="bottom">
+              ${msg(str`Margin per side`)}
+            </sp-tooltip>
+            <sp-icon-margin-left slot="icon"></sp-icon-margin-left>
+          </sp-action-button>
+          <sp-overlay
+            trigger=${`${marTriggerId}@click`}
+            placement="bottom"
+            type="auto"
+          >
+            <sp-popover class="layout-inset-sides-popover">
+              ${[0, 1, 2, 3].map(
+        (i) => html`
+                <div class="side-row">
+                  <sp-field-label
+                    for=${`fi-mar-${safeId}-${i}`}
+                    side-aligned="start"
+                    >${i === 0
+        ? msg(str`Top`)
+        : i === 1
+          ? msg(str`Right`)
+          : i === 2
+            ? msg(str`Bottom`)
+            : msg(str`Left`)}</sp-field-label
+                  >
+                  ${i === 0
+        ? html`<sp-icon-margin-top slot="icon"></sp-icon-margin-top>`
+        : i === 1
+          ? html`<sp-icon-margin-right
+                        slot="icon"
+                      ></sp-icon-margin-right>`
+          : i === 2
+            ? html`<sp-icon-margin-bottom
+                        slot="icon"
+                      ></sp-icon-margin-bottom>`
+            : html`<sp-icon-margin-left
+                        slot="icon"
+                      ></sp-icon-margin-left>`}
+                  <sp-number-field
+                    id=${`fi-mar-${safeId}-${i}`}
+                    size="s"
+                    .value=${marginSides[i]}
+                    @change=${(e: Event) =>
+        this.handleMarginSideChanged(i as 0 | 1 | 2 | 3, e)}
+                    hide-stepper
+                    autocomplete="off"
+                    min="0"
+                    format-options='{"style":"unit","unit":"px"}'
+                  ></sp-number-field>
+                </div>
+              `,
+      )}
+            </sp-popover>
+          </sp-overlay>
+          <sp-number-field
+            id=${`fi-mar-main-${safeId}`}
+            size="s"
+            .value=${marginUniform ? marginSides[0] : ''}
+            placeholder=${marginUniform ? '' : '—'}
+            ?readonly=${!marginUniform}
+            @change=${this.handleLayoutMarginChanged}
+            hide-stepper
+            autocomplete="off"
+            min="0"
+            format-options='{"style":"unit","unit":"px"}'
+          ></sp-number-field>
+        </div>
+      </div>
+      <div class="line">
+        <sp-field-label for=${`fi-minw-${safeId}`} side-aligned="start"
+          >${msg(str`Min width`)}</sp-field-label
+        >
+        <sp-number-field
+          id=${`fi-minw-${safeId}`}
+          size="s"
+          .value=${minW !== undefined && Number.isFinite(minW) ? minW : undefined}
+          placeholder=${msg(str`Auto`)}
+          @change=${this.handleMinWidthChanged}
+          hide-stepper
+          autocomplete="off"
+          min="0"
+          format-options='{"style":"unit","unit":"px"}'
+        ></sp-number-field>
+      </div>
+      <div class="line">
+        <sp-field-label for=${`fi-maxw-${safeId}`} side-aligned="start"
+          >${msg(str`Max width`)}</sp-field-label
+        >
+        <sp-number-field
+          id=${`fi-maxw-${safeId}`}
+          size="s"
+          .value=${maxW !== undefined && Number.isFinite(maxW) ? maxW : undefined}
+          placeholder=${msg(str`Auto`)}
+          @change=${this.handleMaxWidthChanged}
+          hide-stepper
+          autocomplete="off"
+          min="0"
+          format-options='{"style":"unit","unit":"px"}'
+        ></sp-number-field>
+      </div>
+      <div class="line">
+        <sp-field-label for=${`fi-minh-${safeId}`} side-aligned="start"
+          >${msg(str`Min height`)}</sp-field-label
+        >
+        <sp-number-field
+          id=${`fi-minh-${safeId}`}
+          size="s"
+          .value=${minH !== undefined && Number.isFinite(minH) ? minH : undefined}
+          placeholder=${msg(str`Auto`)}
+          @change=${this.handleMinHeightChanged}
+          hide-stepper
+          autocomplete="off"
+          min="0"
+          format-options='{"style":"unit","unit":"px"}'
+        ></sp-number-field>
+      </div>
+      <div class="line">
+        <sp-field-label for=${`fi-maxh-${safeId}`} side-aligned="start"
+          >${msg(str`Max height`)}</sp-field-label
+        >
+        <sp-number-field
+          id=${`fi-maxh-${safeId}`}
+          size="s"
+          .value=${maxH !== undefined && Number.isFinite(maxH) ? maxH : undefined}
+          placeholder=${msg(str`Auto`)}
+          @change=${this.handleMaxHeightChanged}
+          hide-stepper
+          autocomplete="off"
+          min="0"
+          format-options='{"style":"unit","unit":"px"}'
+        ></sp-number-field>
+      </div>
+    `;
+  }
+
   private flexItemTemplate() {
     const n = this.node as FlexNode & { alignSelf?: string };
+    const safeId = this.node.id.replace(/[^a-zA-Z0-9_-]/g, '_');
     const alignSelf = n.alignSelf ?? 'auto';
     const flexGrow = n.flexGrow ?? 0;
     const flexShrink = n.flexShrink ?? 1;
@@ -553,6 +818,7 @@ export class PropertiesPanelContent extends LitElement {
             format-options='{"style":"unit","unit":"px"}'
           ></sp-number-field>
         </div>
+        ${this.flexItemPaddingMarginMinMaxRows(safeId)}
       </div>
     </sp-accordion-item>`;
   }

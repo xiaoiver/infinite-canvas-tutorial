@@ -70,7 +70,7 @@ export class ExportSVG extends System {
     Object.assign(screenshot, { dataURL, canvas, svg, download });
     yield;
 
-    safeRemoveComponent(canvas, Screenshot);  
+    safeRemoveComponent(canvas, Screenshot);
     safeRemoveComponent(canvas, VectorScreenshotRequest);
   }
 
@@ -177,9 +177,9 @@ export async function toSVGElement(
 
   nodes = [...clipParentNodes, ...nodes];
 
-  // TODO: Handle flexbox layout, use calculated layout positions.
+  const layoutNodes = api.readLayoutFromECS(nodes);
 
-  (await serializeNodesToSVGElements(nodes)).forEach((element) => {
+  (await serializeNodesToSVGElements(layoutNodes)).forEach((element) => {
     $namespace.appendChild(element);
   });
   return $namespace;

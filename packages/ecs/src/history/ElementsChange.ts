@@ -102,12 +102,18 @@ function updatesAffectFlexLayout(updates: object): boolean {
   return FLEX_LAYOUT_MUTATION_KEYS.some((k) => k in updates);
 }
 
-/** 子项上的 flexGrow / alignSelf 等：实体无 Flex 组件，需标记父级 flex 容器以触发 Yoga */
+/** 子项上影响 Yoga 的布局键：实体无 Flex 组件，需标记父级 flex 容器以触发 Yoga */
 const FLEX_ITEM_PARENT_RELAYOUT_KEYS: readonly string[] = [
   'flexGrow',
   'flexShrink',
   'flexBasis',
   'alignSelf',
+  'padding',
+  'margin',
+  'minWidth',
+  'maxWidth',
+  'minHeight',
+  'maxHeight',
 ];
 
 function updatesAffectFlexItemInParentTree(updates: object): boolean {

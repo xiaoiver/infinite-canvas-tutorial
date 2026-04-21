@@ -278,9 +278,17 @@ const parent = {
 
 <YogaMinMaxWidthHeight />
 
-## [WIP] Export SVG {#export-svg}
+## Export SVG {#export-svg}
 
 Since CSS Flexbox only supports HTML elements as containers and not SVG elements, absolute positions after layout must still be used when exporting to SVG.
+
+```ts
+const layoutNodes = api.readLayoutFromECS(nodes);
+
+(await serializeNodesToSVGElements(layoutNodes)).forEach((element) => {
+    $namespace.appendChild(element);
+});
+```
 
 ## Extended reading {#extended-reading}
 

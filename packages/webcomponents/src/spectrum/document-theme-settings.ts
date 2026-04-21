@@ -56,7 +56,6 @@ export class DocumentThemeSettings extends LitElement {
       align-items: center;
       justify-content: space-between;
       gap: var(--spectrum-global-dimension-size-100);
-      margin-bottom: var(--spectrum-global-dimension-size-75);
     }
 
     .color-row:last-child {

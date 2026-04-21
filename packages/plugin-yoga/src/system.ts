@@ -263,7 +263,12 @@ export class YogaSystem extends System {
           const node = api.getNodeById(key);
           if (node) {
             const { x, y, width, height } = results[key];
-            api.updateNode(node, { x, y, width, height }, false, ['x', 'y', 'width', 'height']);
+            api.updateNode(node, { x, y, width, height }, false, [
+              'x',
+              'y',
+              'width',
+              'height',
+            ]);
             const entity = api.getEntity(node);
             if (entity && !entity.has(YogaLayoutApplied)) entity.add(YogaLayoutApplied);
           }
