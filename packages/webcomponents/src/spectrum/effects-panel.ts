@@ -286,8 +286,8 @@ export class EffectsPanel extends LitElement {
     .effect-row {
       display: flex;
       flex-direction: column;
-      gap: 6px;
-      padding: 8px;
+      gap: 4px;
+      padding: 4px;
       border: 1px solid var(--spectrum-gray-300);
       border-radius: var(--spectrum-corner-radius-100);
       background: var(--spectrum-gray-75);

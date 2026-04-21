@@ -18,6 +18,7 @@ import Pixelate from '../components/Pixelate.vue'
 import CRT from '../components/CRT.vue'
 import Glitch from '../components/Glitch.vue'
 import LiquidGlass from '../components/LiquidGlass.vue'
+import Ascii from '../components/Ascii.vue'
 import GlobalEffects from '../components/GlobalEffects.vue'
 </script>
 
@@ -217,6 +218,8 @@ if (gray > 0.3) n = 332772.0; // :
 if (gray > 0.4) n = 15255086.0; // *
 if (gray > 0.5) n = 23385164.0; // o
 ```
+
+<Ascii />
 
 ### Liquid glass {#liquid-glass}
 

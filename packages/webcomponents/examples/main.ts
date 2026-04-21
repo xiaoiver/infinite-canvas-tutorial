@@ -144,6 +144,16 @@ canvas.addEventListener(Event.READY, async (e) => {
       Task.SHOW_LAYERS_PANEL,
       Task.SHOW_PROPERTIES_PANEL,
     ],
+    taskbarSelected: [
+      Task.SHOW_PROPERTIES_PANEL,
+    ],
+    propertiesPanelSectionsOpen: {
+      shape: false,
+      transform: false,
+      layout: false,
+      flexItem: true,
+      effects: false,
+    },
     penbarVisible: true,
     taskbarVisible: true,
     checkboardStyle: CheckboardStyle.GRID,

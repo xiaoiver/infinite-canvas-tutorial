@@ -268,6 +268,18 @@ export class API {
       }
     }
 
+    let propertiesPanelSectionsOpenPatch: Partial<AppState> = {};
+    if (
+      Object.prototype.hasOwnProperty.call(appState, 'propertiesPanelSectionsOpen')
+    ) {
+      propertiesPanelSectionsOpenPatch = {
+        propertiesPanelSectionsOpen: {
+          ...oldAppState.propertiesPanelSectionsOpen,
+          ...appState.propertiesPanelSectionsOpen,
+        },
+      };
+    }
+
     if (
       (cameraZoom && cameraZoom !== oldAppState.cameraZoom) ||
       (cameraX && cameraX !== oldAppState.cameraX) ||
@@ -303,6 +315,7 @@ export class API {
       ...oldAppState,
       ...appState,
       ...themeAppStatePatch,
+      ...propertiesPanelSectionsOpenPatch,
     });
   }
 

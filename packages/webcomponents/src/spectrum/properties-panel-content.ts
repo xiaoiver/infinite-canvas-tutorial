@@ -214,6 +214,43 @@ export class PropertiesPanelContent extends LitElement {
   @state()
   lockAspectRatio: boolean = true;
 
+  private get propertiesPanelSectionsOpenResolved(): {
+    shape: boolean;
+    transform: boolean;
+    layout: boolean;
+    flexItem: boolean;
+    effects: boolean;
+  } {
+    const s = (
+      this.appState as AppState & {
+        propertiesPanelSectionsOpen?: Partial<{
+          shape: boolean;
+          transform: boolean;
+          layout: boolean;
+          flexItem: boolean;
+          effects: boolean;
+        }>;
+      }
+    )?.propertiesPanelSectionsOpen;
+    return {
+      shape: s?.shape ?? true,
+      transform: s?.transform ?? true,
+      layout: s?.layout ?? true,
+      flexItem: s?.flexItem ?? true,
+      effects: s?.effects ?? true,
+    };
+  }
+
+  /** 父节点为 flex 容器时，当前节点可作为 flex 子项配置 align-self / flex-grow 等 */
+  private isFlexChild(): boolean {
+    const pid = this.node.parentId;
+    if (!pid) {
+      return false;
+    }
+    const parent = this.api.getNodeById(pid);
+    return parent?.display === 'flex';
+  }
+
   private handleFillOpacityChanged(e: Event & { target: HTMLInputElement }) {
     this.api.updateNode(this.node, {
       fillOpacity: parseFloat(e.target.value),
@@ -372,6 +409,154 @@ export class PropertiesPanelContent extends LitElement {
     this.api.record();
   }
 
+  private handleAlignSelfChanged(e: Event & { target: HTMLInputElement }) {
+    const v = e.target.value;
+    if (v === 'auto') {
+      this.api.updateNode(this.node, {
+        alignSelf: undefined,
+      } as Partial<SerializedNode>);
+    } else {
+      this.api.updateNode(this.node, {
+        alignSelf: v as
+          | 'center'
+          | 'flex-start'
+          | 'flex-end'
+          | 'stretch'
+          | 'baseline',
+      } as Partial<SerializedNode>);
+    }
+    this.api.record();
+  }
+
+  /** sp-number-field 的 value 可能在自定义元素上，且为 number */
+  private static parseNumberFieldValue(e: Event): number | undefined {
+    const t = e.target as HTMLElement & { value?: number | string };
+    if (t.value === undefined || t.value === '') {
+      return undefined;
+    }
+    const n =
+      typeof t.value === 'number' ? t.value : parseFloat(String(t.value));
+    return Number.isFinite(n) ? n : undefined;
+  }
+
+  private handleFlexGrowChanged(e: Event) {
+    const v = PropertiesPanelContent.parseNumberFieldValue(e);
+    this.api.updateNode(this.node, {
+      flexGrow: v,
+    } as Partial<SerializedNode>);
+    this.api.record();
+  }
+
+  private handleFlexShrinkChanged(e: Event) {
+    const v = PropertiesPanelContent.parseNumberFieldValue(e);
+    this.api.updateNode(this.node, {
+      flexShrink: v,
+    } as Partial<SerializedNode>);
+    this.api.record();
+  }
+
+  private handleFlexBasisChanged(e: Event) {
+    const t = e.target as HTMLElement & { value?: number | string };
+    const raw =
+      t.value === undefined || t.value === ''
+        ? ''
+        : String(t.value).trim();
+    if (raw === '') {
+      this.api.updateNode(this.node, { flexBasis: undefined } as Partial<SerializedNode>);
+    } else {
+      const v = parseFloat(raw);
+      this.api.updateNode(this.node, {
+        flexBasis: Number.isFinite(v) ? v : undefined,
+      } as Partial<SerializedNode>);
+    }
+    this.api.record();
+  }
+
+  private flexItemTemplate() {
+    const n = this.node as FlexNode & { alignSelf?: string };
+    const alignSelf = n.alignSelf ?? 'auto';
+    const flexGrow = n.flexGrow ?? 0;
+    const flexShrink = n.flexShrink ?? 1;
+    const flexBasis = n.flexBasis;
+    const flexBasisStr =
+      flexBasis !== undefined && Number.isFinite(flexBasis) ? flexBasis : '';
+
+    return html`<sp-accordion-item
+      label=${msg(str`Flex item`)}
+      ?open=${this.propertiesPanelSectionsOpenResolved.flexItem}
+    >
+      <div class="content layout-group style-group">
+        <div class="line">
+          <sp-field-label side-aligned="start"
+            >${msg(str`Align self`)}</sp-field-label
+          >
+          <sp-picker
+            size="s"
+            .value=${alignSelf}
+            @change=${this.handleAlignSelfChanged}
+          >
+            <sp-menu-item value="auto">${msg(str`Auto`)}</sp-menu-item>
+            <sp-menu-item value="flex-start"
+              >${msg(str`Start`)}</sp-menu-item
+            >
+            <sp-menu-item value="center">${msg(str`Center`)}</sp-menu-item>
+            <sp-menu-item value="flex-end">${msg(str`End`)}</sp-menu-item>
+            <sp-menu-item value="stretch">${msg(str`Stretch`)}</sp-menu-item>
+            <sp-menu-item value="baseline">${msg(str`Baseline`)}</sp-menu-item>
+          </sp-picker>
+        </div>
+        <div class="line">
+          <sp-field-label for="flex-grow" side-aligned="start"
+            >${msg(str`Grow`)}</sp-field-label
+          >
+          <sp-number-field
+            id="flex-grow"
+            size="s"
+            .value=${flexGrow}
+            @change=${this.handleFlexGrowChanged}
+            hide-stepper
+            autocomplete="off"
+            min="0"
+            step="0.01"
+            format-options='{"maximumFractionDigits":2}'
+          ></sp-number-field>
+        </div>
+        <div class="line">
+          <sp-field-label for="flex-shrink" side-aligned="start"
+            >${msg(str`Shrink`)}</sp-field-label
+          >
+          <sp-number-field
+            id="flex-shrink"
+            size="s"
+            .value=${flexShrink}
+            @change=${this.handleFlexShrinkChanged}
+            hide-stepper
+            autocomplete="off"
+            min="0"
+            step="0.01"
+            format-options='{"maximumFractionDigits":2}'
+          ></sp-number-field>
+        </div>
+        <div class="line">
+          <sp-field-label for="flex-basis" side-aligned="start"
+            >${msg(str`Basis`)}</sp-field-label
+          >
+          <sp-number-field
+            id="flex-basis"
+            size="s"
+            .value=${flexBasisStr === '' ? undefined : flexBasisStr}
+            placeholder=${msg(str`Auto`)}
+            @change=${this.handleFlexBasisChanged}
+            hide-stepper
+            autocomplete="off"
+            min="0"
+            format-options='{"style":"unit","unit":"px"}'
+          ></sp-number-field>
+        </div>
+      </div>
+    </sp-accordion-item>`;
+  }
+
   private layoutTemplate() {
     const n = this.node as FlexNode;
     const paddingSides = normalizeBoxSides(n.padding);
@@ -388,7 +573,10 @@ export class PropertiesPanelContent extends LitElement {
     const justifyContent = n.justifyContent ?? 'flex-start';
     const flexWrap = n.flexWrap ?? 'nowrap';
 
-    return html`<sp-accordion-item label=${msg(str`Layout`)} open>
+    return html`<sp-accordion-item
+      label=${msg(str`Layout`)}
+      ?open=${this.propertiesPanelSectionsOpenResolved.layout}
+    >
       <div class="content layout-group style-group">
         <div class="line">
           <sp-field-label for="flex-pad" side-aligned="start"
@@ -528,7 +716,7 @@ export class PropertiesPanelContent extends LitElement {
                     size="s"
                     value=${marginSides[0]}
                     @change=${(e: Event & { target: HTMLInputElement }) =>
-                      this.handleMarginSideChanged(0, e)}
+        this.handleMarginSideChanged(0, e)}
                     hide-stepper
                     autocomplete="off"
                     min="0"
@@ -545,7 +733,7 @@ export class PropertiesPanelContent extends LitElement {
                     size="s"
                     value=${marginSides[1]}
                     @change=${(e: Event & { target: HTMLInputElement }) =>
-                      this.handleMarginSideChanged(1, e)}
+        this.handleMarginSideChanged(1, e)}
                     hide-stepper
                     autocomplete="off"
                     min="0"
@@ -562,7 +750,7 @@ export class PropertiesPanelContent extends LitElement {
                     size="s"
                     value=${marginSides[2]}
                     @change=${(e: Event & { target: HTMLInputElement }) =>
-                      this.handleMarginSideChanged(2, e)}
+        this.handleMarginSideChanged(2, e)}
                     hide-stepper
                     autocomplete="off"
                     min="0"
@@ -579,7 +767,7 @@ export class PropertiesPanelContent extends LitElement {
                     size="s"
                     value=${marginSides[3]}
                     @change=${(e: Event & { target: HTMLInputElement }) =>
-                      this.handleMarginSideChanged(3, e)}
+        this.handleMarginSideChanged(3, e)}
                     hide-stepper
                     autocomplete="off"
                     min="0"
@@ -729,7 +917,10 @@ export class PropertiesPanelContent extends LitElement {
     const { width, height, x, y, rotation } = this.node;
     const angle = rotation ? rotation * RAD_TO_DEG : 0;
 
-    return html`<sp-accordion-item label=${msg(str`Transform`)} open>
+    return html`<sp-accordion-item
+      label=${msg(str`Transform`)}
+      ?open=${this.propertiesPanelSectionsOpenResolved.transform}
+    >
       <div class="content">
         <div class="line">
           <div>
@@ -895,7 +1086,10 @@ export class PropertiesPanelContent extends LitElement {
       <sp-accordion allow-multiple size="s">
         ${!isGroup
         ? html`
-              <sp-accordion-item label=${'Shape ' + this.node.type} open>
+              <sp-accordion-item
+                label=${'Shape ' + this.node.type}
+                ?open=${this.propertiesPanelSectionsOpenResolved.shape}
+              >
                 <div class="content style-group">
                   <div class="line">
                     <sp-field-label for="style" side-aligned="start"
@@ -946,7 +1140,11 @@ export class PropertiesPanelContent extends LitElement {
           this.node.display === 'flex',
           () => this.layoutTemplate(),
         )}
-        <sp-accordion-item label=${msg(str`Effects`)} open>
+        ${when(this.isFlexChild(), () => this.flexItemTemplate())}
+        <sp-accordion-item
+          label=${msg(str`Effects`)}
+          ?open=${this.propertiesPanelSectionsOpenResolved.effects}
+        >
           <div class="content">
             <ic-spectrum-effects-panel .node=${this.node}></ic-spectrum-effects-panel>
           </div>

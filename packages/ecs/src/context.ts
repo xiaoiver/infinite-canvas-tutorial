@@ -28,6 +28,19 @@ export enum Task {
 }
 
 /**
+ * 属性面板各分区（accordion）的初始展开状态；`true` 为展开。
+ * 可通过 `api.setAppState({ propertiesPanelSectionsOpen: { ... } })` 配置。
+ */
+export interface PropertiesPanelSectionsOpen {
+  shape: boolean;
+  transform: boolean;
+  layout: boolean;
+  /** 父级为 flex 容器时，子项的 flex 属性（align-self、flex-grow 等） */
+  flexItem: boolean;
+  effects: boolean;
+}
+
+/**
  * Prefer flat objects.
  * @see https://docs.excalidraw.com/docs/@excalidraw/excalidraw/api/props/initialdata
  */
@@ -96,6 +109,10 @@ export interface AppState {
   layersHighlighted: SerializedNode['id'][];
   layersExpanded: SerializedNode['id'][];
   propertiesOpened: SerializedNode['id'][];
+  /**
+   * 属性面板 Shape / Transform / Layout / Effects 分区的默认展开状态
+   */
+  propertiesPanelSectionsOpen: PropertiesPanelSectionsOpen;
   /**
    * Like croppingElementId in Excalidraw
    * @see https://github.com/excalidraw/excalidraw/pull/8613
@@ -358,6 +375,13 @@ export const getDefaultAppState: () => AppState = () => {
     layersCropping: [],
     layersLassoing: [],
     propertiesOpened: [],
+    propertiesPanelSectionsOpen: {
+      shape: true,
+      transform: true,
+      layout: true,
+      flexItem: true,
+      effects: true,
+    },
     layersExpanded: [],
     rotateEnabled: true,
     flipEnabled: false,

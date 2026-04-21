@@ -12,6 +12,8 @@ const NON_UNDOABLE_APP_STATE_KEYS = [
   'cameraZoom',
   'cameraX',
   'cameraY',
+  /** 属性面板分区展开为纯 UI，不参与撤销栈 */
+  'propertiesPanelSectionsOpen',
 ] as const satisfies readonly (keyof AppState)[];
 
 const stripNonUndoableAppState = <T extends Partial<AppState>>(state: T): T => {

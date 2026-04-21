@@ -84,6 +84,7 @@ const FLEX_LAYOUT_MUTATION_KEYS: readonly string[] = [
   'rowGap',
   'columnGap',
   'alignItems',
+  'alignSelf',
   'justifyContent',
   'flexDirection',
   'flexWrap',
@@ -99,6 +100,18 @@ const FLEX_LAYOUT_MUTATION_KEYS: readonly string[] = [
 
 function updatesAffectFlexLayout(updates: object): boolean {
   return FLEX_LAYOUT_MUTATION_KEYS.some((k) => k in updates);
+}
+
+/** 子项上的 flexGrow / alignSelf 等：实体无 Flex 组件，需标记父级 flex 容器以触发 Yoga */
+const FLEX_ITEM_PARENT_RELAYOUT_KEYS: readonly string[] = [
+  'flexGrow',
+  'flexShrink',
+  'flexBasis',
+  'alignSelf',
+];
+
+function updatesAffectFlexItemInParentTree(updates: object): boolean {
+  return FLEX_ITEM_PARENT_RELAYOUT_KEYS.some((k) => k in updates);
 }
 
 export function safeAddComponent<T>(
@@ -1147,6 +1160,19 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
 
   if (entity.has(Flex) && updatesAffectFlexLayout(updates)) {
     safeAddComponent(entity, FlexLayoutDirty);
+  }
+
+  if (updatesAffectFlexItemInParentTree(updates)) {
+    const pid = element.parentId;
+    if (pid) {
+      const parentNode = api.getNodeById(pid);
+      if (parentNode && (parentNode as { display?: string }).display === 'flex') {
+        const parentEntity = api.getEntity(parentNode);
+        if (parentEntity?.has(Flex)) {
+          safeAddComponent(parentEntity, FlexLayoutDirty);
+        }
+      }
+    }
   }
 
   if ('version' in updates) {
