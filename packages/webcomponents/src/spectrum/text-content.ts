@@ -3,13 +3,20 @@ import { customElement, property } from 'lit/decorators.js';
 import { consume } from '@lit/context';
 import {
   AppState,
+  designVariableRefKeyFromWire,
   inferXYWidthHeight,
+  isDesignVariableReference,
+  resolveDesignVariableValue,
   SerializedNode,
   TextSerializedNode,
 } from '@infinite-canvas-tutorial/ecs';
 import { apiContext, appStateContext } from '../context';
 import { ExtendedAPI } from '../API';
 import { localized, msg, str } from '@lit/localize';
+import '@spectrum-web-components/action-button/sp-action-button.js';
+import { when } from 'lit/directives/when.js';
+import type { DesignVariablePickDetail } from './design-variable-picker';
+import './design-variable-picker.js';
 
 @customElement('ic-spectrum-text-content')
 @localized()
@@ -31,7 +38,7 @@ export class TextContent extends LitElement {
       }
 
       sp-number-field {
-        width: 80px;
+        width: 70px;
       }
 
       > div {
@@ -49,6 +56,22 @@ export class TextContent extends LitElement {
     .stroke-width-field {
       position: relative;
       top: 10px;
+    }
+
+    .dv-badge {
+      font-size: var(--spectrum-font-size-75);
+      color: var(--spectrum-purple-900);
+      background: var(--spectrum-purple-100);
+      border-radius: 4px;
+      padding: 2px 6px;
+    }
+
+    .dv-var-block {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      flex: 1;
+      min-width: 0;
     }
   `;
 
@@ -79,6 +102,28 @@ export class TextContent extends LitElement {
     this.api.record();
   }
 
+  private handleFontSizeVariablePick(
+    e: CustomEvent<DesignVariablePickDetail>,
+  ) {
+    this.api.updateNode(this.node, {
+      fontSize: `$${e.detail.key}` as unknown as number,
+    });
+    this.api.record();
+  }
+
+  private handleFontSizeUnbind() {
+    const fs = (this.node as TextSerializedNode).fontSize;
+    const resolved = resolveDesignVariableValue(fs, this.appState.variables);
+    const n =
+      typeof resolved === 'number'
+        ? resolved
+        : parseFloat(String(resolved ?? ''));
+    if (Number.isFinite(n)) {
+      this.api.updateNode(this.node, { fontSize: n });
+      this.api.record();
+    }
+  }
+
   private handleTextAlignChanged(e: Event & { target: HTMLInputElement }) {
     const selected = (e.target as any).selected;
 
@@ -87,7 +132,7 @@ export class TextContent extends LitElement {
     const { x, y, width, height, ...rest } = this.node;
 
     const { x: newX, y: newY, width: newWidth, height: newHeight } =
-     inferXYWidthHeight({...rest, anchorX: newAnchorX, anchorY: newAnchorY, textAlign: selected[0]} as TextSerializedNode);
+      inferXYWidthHeight({ ...rest, anchorX: newAnchorX, anchorY: newAnchorY, textAlign: selected[0] } as TextSerializedNode);
 
     this.api.updateNode(this.node, {
       textAlign: selected[0],
@@ -112,21 +157,58 @@ export class TextContent extends LitElement {
 
     const formattedTextAlign = textAlign === 'left' ? 'start' : textAlign === 'center' ? 'center' : textAlign === 'right' ? 'end' : textAlign;
 
+    const fontSizeResolved = resolveDesignVariableValue(
+      fontSize,
+      this.appState.variables,
+    );
+    const fontSizeShow = (() => {
+      if (typeof fontSizeResolved === 'number') {
+        return fontSizeResolved;
+      }
+      const n = parseFloat(String(fontSizeResolved ?? ''));
+      return Number.isFinite(n) ? n : 0;
+    })();
+    const fontSizeBound =
+      typeof fontSize === 'string' && isDesignVariableReference(fontSize);
+
     return html`<div class="line">
         <sp-field-label for="font-size" side-aligned="start"
           >${msg(str`Font size`)}</sp-field-label
         >
-        <sp-number-field
-          id="font-size"
-          value=${fontSize}
-          hide-stepper
-          autocomplete="off"
-          @change=${this.handleFontSizeChanged}
-          format-options='{
+        <div class="dv-var-block">
+          ${when(
+      fontSizeBound,
+      () =>
+        html`<div
+                style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;"
+              >
+                <span class="dv-badge">${String(fontSize)}</span>
+                <sp-action-button
+                  quiet
+                  size="s"
+                  @click=${this.handleFontSizeUnbind}
+                  >${msg(str`解除绑定`)}</sp-action-button
+                >
+              </div>`,
+    )}
+          <sp-number-field
+            id="font-size"
+            value=${fontSizeShow}
+            hide-stepper
+            autocomplete="off"
+            @change=${this.handleFontSizeChanged}
+            format-options='{
           "style": "unit",
           "unit": "px"
         }'
-        ></sp-number-field>
+          ></sp-number-field>
+          <ic-spectrum-design-variable-picker
+            match-type="number"
+            selected-key=${designVariableRefKeyFromWire(fontSize)}
+            label=${msg(str`绑定字号变量`)}
+            @ic-variable-pick=${this.handleFontSizeVariablePick}
+          ></ic-spectrum-design-variable-picker>
+        </div>
       </div>
       <div class="line">
         <sp-action-group
@@ -134,10 +216,10 @@ export class TextContent extends LitElement {
           size="m"
           selects="multiple"
           .selected=${this.node &&
-          [
-            fontWeight === 'bold' ? 'bold' : undefined,
-            fontStyle === 'italic' ? 'italic' : undefined,
-          ].filter(Boolean)}
+      [
+        fontWeight === 'bold' ? 'bold' : undefined,
+        fontStyle === 'italic' ? 'italic' : undefined,
+      ].filter(Boolean)}
           @change=${this.handleFontStyleChanged}
         >
           <sp-action-button value="bold">

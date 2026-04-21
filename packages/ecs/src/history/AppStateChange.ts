@@ -101,7 +101,7 @@ export class AppStateChange implements Change<AppState> {
     );
 
     if (this.api) {
-      this.api.setAppState(nextAppState);
+      this.api.setAppState(nextAppState, { recordDesignVariableUndo: false });
 
       // reselect or rehighlight nodes
       const {

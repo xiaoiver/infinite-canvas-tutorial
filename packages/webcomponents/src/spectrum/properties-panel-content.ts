@@ -5,7 +5,11 @@ import {
   SerializedNode,
   AppState,
   FillAttributes,
+  designVariableRefKeyFromWire,
+  isDesignVariableReference,
+  resolveDesignVariableValue,
   type FlexboxLayoutAttributes,
+  type RectSerializedNode,
 } from '@infinite-canvas-tutorial/ecs';
 import { when } from 'lit/directives/when.js';
 import { DEG_TO_RAD, RAD_TO_DEG } from '@pixi/math';
@@ -24,7 +28,11 @@ import '@spectrum-web-components/icons-workflow/icons/sp-icon-margin-left.js';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-margin-top.js';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-margin-right.js';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-margin-bottom.js';
+import '@spectrum-web-components/icons-workflow/icons/sp-icon-link.js';
+import '@spectrum-web-components/icons-workflow/icons/sp-icon-unlink.js';
 import '@spectrum-web-components/tooltip/sp-tooltip.js';
+import type { DesignVariablePickDetail } from './design-variable-picker';
+import './design-variable-picker.js';
 
 type FlexNode = SerializedNode & Partial<FlexboxLayoutAttributes>;
 
@@ -111,6 +119,39 @@ export class PropertiesPanelContent extends LitElement {
           width: 100px;
         }
       }
+
+      .fill-opacity-controls {
+        display: flex;
+        flex: 1;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 4px;
+        min-width: 0;
+      }
+
+      .dv-popover-body {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        min-width: 220px;
+        padding: 8px;
+        box-sizing: border-box;
+      }
+
+      .dv-row {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .dv-badge {
+        font-size: var(--spectrum-font-size-75);
+        color: var(--spectrum-purple-900);
+        background: var(--spectrum-purple-100);
+        border-radius: 4px;
+        padding: 2px 6px;
+      }
     }
 
     .line {
@@ -123,7 +164,7 @@ export class PropertiesPanelContent extends LitElement {
       }
 
       sp-number-field {
-        width: 80px;
+        width: 70px;
       }
 
       > div {
@@ -147,7 +188,7 @@ export class PropertiesPanelContent extends LitElement {
 
     .lock-button {
       position: absolute;
-      left: 128px;
+      left: 118px;
       top: 18px;
     }
 
@@ -161,7 +202,7 @@ export class PropertiesPanelContent extends LitElement {
         }
 
         sp-picker {
-          width: 80px;
+          width: 70px;
         }
       }
 
@@ -197,7 +238,7 @@ export class PropertiesPanelContent extends LitElement {
       }
 
       .layout-inset-sides-popover sp-number-field {
-        width: 80px;
+        width: 70px;
       }
     }
   `;
@@ -256,6 +297,71 @@ export class PropertiesPanelContent extends LitElement {
       fillOpacity: parseFloat(e.target.value),
     });
     this.api.record();
+  }
+
+  private handleFillOpacityVariablePick(
+    e: CustomEvent<DesignVariablePickDetail>,
+  ) {
+    this.api.updateNode(this.node, {
+      fillOpacity: `$${e.detail.key}` as unknown as number,
+    });
+    this.api.record();
+  }
+
+  private handleFillOpacityVariableUnbind() {
+    const raw = (this.node as FillAttributes).fillOpacity;
+    const resolved = resolveDesignVariableValue(
+      raw,
+      this.appState.variables,
+    );
+    const n =
+      typeof resolved === 'number'
+        ? resolved
+        : parseFloat(String(resolved ?? ''));
+    if (Number.isFinite(n)) {
+      this.api.updateNode(this.node, {
+        fillOpacity: Math.max(0, Math.min(1, n)),
+      });
+      this.api.record();
+    }
+  }
+
+  private handleCornerRadiusChanged(e: Event & { target: HTMLInputElement }) {
+    const v = parseFloat(e.target.value);
+    if (!Number.isFinite(v)) {
+      return;
+    }
+    this.api.updateNode(this.node, {
+      cornerRadius: Math.max(0, v),
+    });
+    this.api.record();
+  }
+
+  private handleCornerRadiusVariablePick(
+    e: CustomEvent<DesignVariablePickDetail>,
+  ) {
+    this.api.updateNode(this.node, {
+      cornerRadius: `$${e.detail.key}` as unknown as number,
+    });
+    this.api.record();
+  }
+
+  private handleCornerRadiusVariableUnbind() {
+    const raw = (this.node as RectSerializedNode).cornerRadius;
+    const resolved = resolveDesignVariableValue(
+      raw,
+      this.appState.variables,
+    );
+    const n =
+      typeof resolved === 'number'
+        ? resolved
+        : parseFloat(String(resolved ?? ''));
+    if (Number.isFinite(n)) {
+      this.api.updateNode(this.node, {
+        cornerRadius: Math.max(0, n),
+      });
+      this.api.record();
+    }
   }
 
   private handleWidthChanged(e: Event & { target: HTMLInputElement }) {
@@ -534,30 +640,30 @@ export class PropertiesPanelContent extends LitElement {
           >
             <sp-popover class="layout-inset-sides-popover">
               ${[0, 1, 2, 3].map(
-        (i) => html`
+      (i) => html`
                 <div class="side-row">
                   <sp-field-label
                     for=${`fi-pad-${safeId}-${i}`}
                     side-aligned="start"
                     >${i === 0
-        ? msg(str`Top`)
-        : i === 1
-          ? msg(str`Right`)
-          : i === 2
-            ? msg(str`Bottom`)
-            : msg(str`Left`)}</sp-field-label
+          ? msg(str`Top`)
+          : i === 1
+            ? msg(str`Right`)
+            : i === 2
+              ? msg(str`Bottom`)
+              : msg(str`Left`)}</sp-field-label
                   >
                   ${i === 0
-        ? html`<sp-icon-padding-top slot="icon"></sp-icon-padding-top>`
-        : i === 1
-          ? html`<sp-icon-padding-right
+          ? html`<sp-icon-padding-top slot="icon"></sp-icon-padding-top>`
+          : i === 1
+            ? html`<sp-icon-padding-right
                         slot="icon"
                       ></sp-icon-padding-right>`
-          : i === 2
-            ? html`<sp-icon-padding-bottom
+            : i === 2
+              ? html`<sp-icon-padding-bottom
                         slot="icon"
                       ></sp-icon-padding-bottom>`
-            : html`<sp-icon-padding-left
+              : html`<sp-icon-padding-left
                         slot="icon"
                       ></sp-icon-padding-left>`}
                   <sp-number-field
@@ -565,7 +671,7 @@ export class PropertiesPanelContent extends LitElement {
                     size="s"
                     .value=${paddingSides[i]}
                     @change=${(e: Event) =>
-        this.handlePaddingSideChanged(i as 0 | 1 | 2 | 3, e)}
+          this.handlePaddingSideChanged(i as 0 | 1 | 2 | 3, e)}
                     hide-stepper
                     autocomplete="off"
                     min="0"
@@ -573,7 +679,7 @@ export class PropertiesPanelContent extends LitElement {
                   ></sp-number-field>
                 </div>
               `,
-      )}
+    )}
             </sp-popover>
           </sp-overlay>
           <sp-number-field
@@ -613,30 +719,30 @@ export class PropertiesPanelContent extends LitElement {
           >
             <sp-popover class="layout-inset-sides-popover">
               ${[0, 1, 2, 3].map(
-        (i) => html`
+      (i) => html`
                 <div class="side-row">
                   <sp-field-label
                     for=${`fi-mar-${safeId}-${i}`}
                     side-aligned="start"
                     >${i === 0
-        ? msg(str`Top`)
-        : i === 1
-          ? msg(str`Right`)
-          : i === 2
-            ? msg(str`Bottom`)
-            : msg(str`Left`)}</sp-field-label
+          ? msg(str`Top`)
+          : i === 1
+            ? msg(str`Right`)
+            : i === 2
+              ? msg(str`Bottom`)
+              : msg(str`Left`)}</sp-field-label
                   >
                   ${i === 0
-        ? html`<sp-icon-margin-top slot="icon"></sp-icon-margin-top>`
-        : i === 1
-          ? html`<sp-icon-margin-right
+          ? html`<sp-icon-margin-top slot="icon"></sp-icon-margin-top>`
+          : i === 1
+            ? html`<sp-icon-margin-right
                         slot="icon"
                       ></sp-icon-margin-right>`
-          : i === 2
-            ? html`<sp-icon-margin-bottom
+            : i === 2
+              ? html`<sp-icon-margin-bottom
                         slot="icon"
                       ></sp-icon-margin-bottom>`
-            : html`<sp-icon-margin-left
+              : html`<sp-icon-margin-left
                         slot="icon"
                       ></sp-icon-margin-left>`}
                   <sp-number-field
@@ -644,7 +750,7 @@ export class PropertiesPanelContent extends LitElement {
                     size="s"
                     .value=${marginSides[i]}
                     @change=${(e: Event) =>
-        this.handleMarginSideChanged(i as 0 | 1 | 2 | 3, e)}
+          this.handleMarginSideChanged(i as 0 | 1 | 2 | 3, e)}
                     hide-stepper
                     autocomplete="off"
                     min="0"
@@ -652,7 +758,7 @@ export class PropertiesPanelContent extends LitElement {
                   ></sp-number-field>
                 </div>
               `,
-      )}
+    )}
             </sp-popover>
           </sp-overlay>
           <sp-number-field
@@ -1345,6 +1451,43 @@ export class PropertiesPanelContent extends LitElement {
     const { type } = this.node;
     const isGroup = type === 'g';
     const isText = type === 'text';
+    const isRect = type === 'rect';
+
+    const fillOpRaw = (this.node as FillAttributes).fillOpacity ?? 1;
+    const fillOpacityResolved = resolveDesignVariableValue(
+      fillOpRaw,
+      this.appState.variables,
+    );
+    const fillOpacityShow = (() => {
+      if (typeof fillOpacityResolved === 'number') {
+        return fillOpacityResolved;
+      }
+      const n = parseFloat(String(fillOpacityResolved ?? ''));
+      return Number.isFinite(n) ? n : 1;
+    })();
+    const fillOpacityBound =
+      typeof fillOpRaw === 'string' && isDesignVariableReference(fillOpRaw);
+
+    let cornerRadiusShow = 0;
+    let cornerRadiusBound = false;
+    let cornerRadiusRaw: number | string | undefined;
+    if (isRect) {
+      cornerRadiusRaw = (this.node as RectSerializedNode).cornerRadius;
+      const crResolved = resolveDesignVariableValue(
+        cornerRadiusRaw,
+        this.appState.variables,
+      );
+      cornerRadiusShow = (() => {
+        if (typeof crResolved === 'number') {
+          return crResolved;
+        }
+        const n = parseFloat(String(crResolved ?? ''));
+        return Number.isFinite(n) ? n : 0;
+      })();
+      cornerRadiusBound =
+        typeof cornerRadiusRaw === 'string' &&
+        isDesignVariableReference(cornerRadiusRaw);
+    }
 
     // const { fontSize } = this.node as TextSerializedNode;
 
@@ -1375,28 +1518,169 @@ export class PropertiesPanelContent extends LitElement {
                   </div>
 
                   <div class="line">
-                    <sp-slider
-                      style="flex: 1;"
-                      label=${msg(str`Fill opacity`)}
-                      size="s"
-                      max="1"
-                      min="0"
-                      value=${(this.node as FillAttributes).fillOpacity ?? 1}
-                      step="0.01"
-                      editable
-                      @change=${this.handleFillOpacityChanged}
-                    ></sp-slider>
+                    <sp-field-label for="fill-opacity" side-aligned="start"
+                      >${msg(str`Fill opacity`)}</sp-field-label
+                    >
+                    <div class="fill-opacity-controls">
+                      <sp-action-button
+                        quiet
+                        size="s"
+                        id="props-fill-opacity-dv-trigger"
+                      >
+                        <sp-icon-link slot="icon"></sp-icon-link>
+                        <sp-tooltip self-managed placement="bottom">
+                          ${msg(str`Attach a variable`)}
+                        </sp-tooltip>
+                      </sp-action-button>
+                      <sp-number-field
+                        id="fill-opacity"
+                        size="s"
+                        value=${fillOpacityShow}
+                        min="0"
+                        max="1"
+                        step="0.01"
+                        hide-stepper
+                        autocomplete="off"
+                        @change=${this.handleFillOpacityChanged}
+                      ></sp-number-field>
+                      <sp-overlay
+                        trigger="props-fill-opacity-dv-trigger@click"
+                        placement="bottom"
+                        type="auto"
+                      >
+                        <sp-popover dialog>
+                          <div class="dv-popover-body">
+                            ${when(
+          fillOpacityBound,
+          () =>
+            html`<div class="dv-row">
+                                  <span
+                                    class="dv-badge"
+                                    title=${String(fillOpRaw)}
+                                    >${String(fillOpRaw)}</span
+                                  >
+                                  <sp-action-button
+                                    quiet
+                                    size="s"
+                                    @click=${this.handleFillOpacityVariableUnbind}
+                                  >
+                                    <sp-icon-unlink slot="icon"></sp-icon-unlink>
+                                    <sp-tooltip
+                                      self-managed
+                                      placement="right"
+                                    >
+                                      ${msg(str`Detach variable`)}
+                                    </sp-tooltip>
+                                  </sp-action-button>
+                                </div>`,
+        )}
+                            <ic-spectrum-design-variable-picker
+                              match-type="number"
+                              selected-key=${designVariableRefKeyFromWire(
+          fillOpRaw,
+        )}
+                              @ic-variable-pick=${this
+            .handleFillOpacityVariablePick}
+                            ></ic-spectrum-design-variable-picker>
+                          </div>
+                        </sp-popover>
+                      </sp-overlay>
+                    </div>
                   </div>
 
                   ${when(
-          !isText,
-          () => html`<ic-spectrum-stroke-content
+              isRect,
+              () => html`
+                      <div class="line">
+                        <sp-field-label
+                          for="corner-radius"
+                          side-aligned="start"
+                          >${msg(str`Corner radius`)}</sp-field-label
+                        >
+                        <div class="fill-opacity-controls">
+                          <sp-action-button
+                            quiet
+                            size="s"
+                            id="props-corner-radius-dv-trigger"
+                          >
+                            <sp-icon-link slot="icon"></sp-icon-link>
+                            <sp-tooltip self-managed placement="bottom">
+                              ${msg(str`Attach a variable`)}
+                            </sp-tooltip>
+                          </sp-action-button>
+                          <sp-number-field
+                            id="corner-radius"
+                            size="s"
+                            value=${cornerRadiusShow}
+                            min="0"
+                            step="1"
+                            hide-stepper
+                            autocomplete="off"
+                            @change=${this.handleCornerRadiusChanged}
+                            format-options='{
+                              "style": "unit",
+                              "unit": "px"
+                            }'
+                          ></sp-number-field>
+                          <sp-overlay
+                            trigger="props-corner-radius-dv-trigger@click"
+                            placement="bottom"
+                            type="auto"
+                          >
+                            <sp-popover dialog>
+                              <div class="dv-popover-body">
+                                ${when(
+                cornerRadiusBound,
+                () =>
+                  html`<div class="dv-row">
+                                      <span
+                                        class="dv-badge"
+                                        title=${String(cornerRadiusRaw)}
+                                        >${String(cornerRadiusRaw)}</span
+                                      >
+                                      <sp-action-button
+                                        quiet
+                                        size="s"
+                                        @click=${this
+                      .handleCornerRadiusVariableUnbind}
+                                      >
+                                        <sp-icon-unlink
+                                          slot="icon"
+                                        ></sp-icon-unlink>
+                                        <sp-tooltip
+                                          self-managed
+                                          placement="right"
+                                        >
+                                          ${msg(str`Detach variable`)}
+                                        </sp-tooltip>
+                                      </sp-action-button>
+                                    </div>`,
+              )}
+                                <ic-spectrum-design-variable-picker
+                                  match-type="number"
+                                  selected-key=${designVariableRefKeyFromWire(
+                cornerRadiusRaw,
+              )}
+                                  @ic-variable-pick=${this
+                  .handleCornerRadiusVariablePick}
+                                ></ic-spectrum-design-variable-picker>
+                              </div>
+                            </sp-popover>
+                          </sp-overlay>
+                        </div>
+                      </div>
+                    `,
+            )}
+
+                  ${when(
+              !isText,
+              () => html`<ic-spectrum-stroke-content
                       .node=${this.node}
                     ></ic-spectrum-stroke-content>`,
-          () => html`<ic-spectrum-text-content
+              () => html`<ic-spectrum-text-content
                       .node=${this.node}
                     ></ic-spectrum-text-content>`,
-        )}
+            )}
                 </div>
               </sp-accordion-item>
             `

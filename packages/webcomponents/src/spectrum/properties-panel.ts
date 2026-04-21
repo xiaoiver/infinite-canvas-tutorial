@@ -62,15 +62,10 @@ export class PropertiesPanel extends LitElement {
 
     .document-settings-placeholder {
       box-sizing: border-box;
-      padding: var(--spectrum-global-dimension-size-100);
       overflow: hidden auto;
       color: var(--spectrum-gray-800);
       font-size: var(--spectrum-font-size-75);
       line-height: 1.45;
-    }
-
-    .document-settings-placeholder .hint {
-      margin: 0 0 var(--spectrum-global-dimension-size-100) 0;
     }
 
     ic-spectrum-document-theme-settings {
@@ -214,7 +209,6 @@ export class PropertiesPanel extends LitElement {
         class="panel-body document-settings-placeholder"
         style=${`height:${this.panelBodyHeight}px`}
       >
-        <p class="hint">${msg(str`No layer selected.`)}</p>
         <ic-spectrum-document-theme-settings></ic-spectrum-document-theme-settings>
       </div>
       ${this.renderResizeHandle()}

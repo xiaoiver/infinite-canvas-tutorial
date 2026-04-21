@@ -35,6 +35,9 @@ import {
   strokeWidthForHitTest,
   cloneStrokeWithHitTestWidth,
   cloneSerializedNodes,
+  resolveSerializedNodesDesignVariables,
+  prepareSerializedNodesForSvgExport,
+  type DesignVariablesSvgExportMode,
   decompose,
   transformPath,
   mat3WithoutTranslation,
@@ -89,6 +92,7 @@ import {
   Theme,
   ThemeMode,
   mergeThemeState,
+  resolveThemeModeFromPreference,
   ToBeDeleted,
   Transform,
   UI,
@@ -223,33 +227,50 @@ export class API {
     return this.stateManagement.getAppState();
   }
 
-  setAppState(appState: Partial<AppState>) {
+  setAppState(
+    appState: Partial<AppState>,
+    options?: {
+      recordDesignVariableUndo?: boolean;
+      /** 为 true 时 `variables` 整表替换（用于删除键等），默认与旧键合并 */
+      replaceVariables?: boolean;
+    },
+  ) {
+    const patch: Partial<AppState> = { ...appState };
+    if (
+      Object.prototype.hasOwnProperty.call(patch, 'themePreference') &&
+      patch.themePreference !== undefined &&
+      !Object.prototype.hasOwnProperty.call(patch, 'themeMode')
+    ) {
+      patch.themeMode = resolveThemeModeFromPreference(patch.themePreference);
+    }
+
     const oldAppState = this.getAppState();
-    const { cameraZoom, cameraX, cameraY, cameraRotation } = appState;
+    const { cameraZoom, cameraX, cameraY, cameraRotation } = patch;
 
     if (
-      Object.prototype.hasOwnProperty.call(appState, 'checkboardStyle') &&
-      appState.checkboardStyle !== oldAppState.checkboardStyle
+      Object.prototype.hasOwnProperty.call(patch, 'checkboardStyle') &&
+      patch.checkboardStyle !== oldAppState.checkboardStyle
     ) {
       safeAddComponent(this.#canvas, Grid, {
-        checkboardStyle: appState.checkboardStyle as CheckboardStyle,
+        checkboardStyle: patch.checkboardStyle as CheckboardStyle,
       });
     }
 
     let themeAppStatePatch: Partial<AppState> = {};
 
     if (
-      Object.prototype.hasOwnProperty.call(appState, 'theme') ||
-      Object.prototype.hasOwnProperty.call(appState, 'themeMode')
+      Object.prototype.hasOwnProperty.call(patch, 'theme') ||
+      Object.prototype.hasOwnProperty.call(patch, 'themeMode') ||
+      Object.prototype.hasOwnProperty.call(patch, 'themePreference')
     ) {
       const nextThemeMode =
-        appState.themeMode !== undefined
-          ? appState.themeMode
+        patch.themeMode !== undefined
+          ? patch.themeMode
           : oldAppState.themeMode;
       const mergedTheme = mergeThemeState(
         { ...oldAppState.theme, mode: oldAppState.themeMode },
         {
-          ...(appState.theme ?? {}),
+          ...(patch.theme ?? {}),
           mode: nextThemeMode,
         },
       );
@@ -270,14 +291,26 @@ export class API {
 
     let propertiesPanelSectionsOpenPatch: Partial<AppState> = {};
     if (
-      Object.prototype.hasOwnProperty.call(appState, 'propertiesPanelSectionsOpen')
+      Object.prototype.hasOwnProperty.call(patch, 'propertiesPanelSectionsOpen')
     ) {
       propertiesPanelSectionsOpenPatch = {
         propertiesPanelSectionsOpen: {
           ...oldAppState.propertiesPanelSectionsOpen,
-          ...appState.propertiesPanelSectionsOpen,
+          ...patch.propertiesPanelSectionsOpen,
         },
       };
+    }
+
+    let variablesPatch: Partial<AppState> = {};
+    const prevVariables = oldAppState.variables ?? {};
+    if (Object.prototype.hasOwnProperty.call(patch, 'variables')) {
+      const mergedVariables = options?.replaceVariables
+        ? (patch.variables as NonNullable<AppState['variables']>)
+        : {
+          ...prevVariables,
+          ...patch.variables,
+        };
+      variablesPatch = { variables: mergedVariables };
     }
 
     if (
@@ -313,10 +346,30 @@ export class API {
 
     this.stateManagement.setAppState({
       ...oldAppState,
-      ...appState,
+      ...patch,
       ...themeAppStatePatch,
       ...propertiesPanelSectionsOpenPatch,
+      ...variablesPatch,
     });
+
+    const variablesActuallyChanged =
+      Object.prototype.hasOwnProperty.call(patch, 'variables') &&
+      JSON.stringify((variablesPatch as { variables?: object }).variables) !==
+        JSON.stringify(prevVariables);
+
+    if (variablesActuallyChanged) {
+      this.runAtNextTick(() => {
+        for (const node of this.getNodes()) {
+          if (this.#idEntityMap.has(node.id)) {
+            this.updateNode(node, undefined, false);
+          }
+        }
+        // 撤销/重做应用 AppState 时不要再次 record（见 {@link AppStateChange.applyTo}）
+        if (options?.recordDesignVariableUndo !== false) {
+          this.record();
+        }
+      });
+    }
   }
 
   getNodes() {
@@ -1120,9 +1173,9 @@ export class API {
       const layersHighlighted = preserveSelection
         ? prevAppState.layersHighlighted
         : prevAppState.layersHighlighted.filter(
-            (id) =>
-              !prevSelectedIds.includes(id) || layersSelected.includes(id),
-          );
+          (id) =>
+            !prevSelectedIds.includes(id) || layersSelected.includes(id),
+        );
       this.setAppState({
         ...prevAppState,
         layersSelected,
@@ -1287,7 +1340,10 @@ export class API {
         this.#canvas.read(Canvas).fonts,
         this.commands,
         this.#idEntityMap,
-        { lookupNodes: this.#mergeSceneWithBatchForEdgeLookup([node]) },
+        {
+          lookupNodes: this.#mergeSceneWithBatchForEdgeLookup([node]),
+          variables: this.getAppState().variables,
+        },
       );
       this.#idEntityMap.set(node.id, idEntityMap.get(node.id));
 
@@ -1346,6 +1402,7 @@ export class API {
         {
           lookupNodes:
             this.#mergeSceneWithBatchForEdgeLookup(nonExistentNodes),
+          variables: this.getAppState().variables,
         },
       );
       nonExistentNodes.forEach((node) => {
@@ -1894,9 +1951,15 @@ export class API {
   async renderToSVG(nodes: SerializedNode[], options: Partial<{
     grid: boolean;
     padding?: number;
+    /** 默认 `resolved`；`css-var` 会注入 `:root` 变量并输出 `var(--token)` */
+    designVariablesExport?: DesignVariablesSvgExportMode;
   }> = {}) {
     const canvas = this.#canvas;
-    const { grid: gridEnabled, padding = 0 } = options;
+    const {
+      grid: gridEnabled,
+      padding = 0,
+      designVariablesExport = 'resolved',
+    } = options;
     const { cameras, api } = canvas.read(Canvas);
     const { width, height } = canvas.read(Canvas);
     const { mode, colors } = canvas.read(Theme);
@@ -1905,7 +1968,7 @@ export class API {
     const hasNodes = nodes && nodes.length;
 
     if (hasNodes) {
-      return toSVGElement(api, nodes, padding);
+      return toSVGElement(api, nodes, padding, { designVariablesExport });
     }
 
     const $namespace = createSVGElement('svg');
@@ -1934,9 +1997,21 @@ export class API {
       }
     }
 
-    (await serializeNodesToSVGElements(
+    const prep = prepareSerializedNodesForSvgExport(
       api.readLayoutFromECS(api.getNodes()),
-    )).forEach((element) => {
+      api.getAppState().variables,
+      designVariablesExport,
+    );
+    if (prep.cssRootStyle) {
+      const $defs = createSVGElement('defs');
+      const $style = DOMAdapter.get()
+        .getDocument()
+        .createElementNS('http://www.w3.org/2000/svg', 'style');
+      $style.textContent = prep.cssRootStyle;
+      $defs.appendChild($style);
+      $namespace.insertBefore($defs, $namespace.firstChild);
+    }
+    (await serializeNodesToSVGElements(prep.nodes)).forEach((element) => {
       $namespace.appendChild(element);
     });
     return $namespace;

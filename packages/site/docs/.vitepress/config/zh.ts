@@ -88,6 +88,7 @@ export const zh = defineConfig({
               { text: '课程35 - 基于瓦片的渲染', link: 'lesson-035' },
               { text: '课程36 - 动画', link: 'lesson-036' },
               { text: '课程37 - 基于 Radiance Cascades 的 GI', link: 'lesson-037' },
+              { text: '课程38 - 从设计到代码', link: 'lesson-038' },
             ],
           },
         ],

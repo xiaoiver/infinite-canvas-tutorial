@@ -6,6 +6,43 @@ export enum ThemeMode {
   DARK = 'dark',
 }
 
+/** 用户主题偏好；{@link ThemeMode} 为当前画布/面板实际生效模式 */
+export type ThemePreference = 'light' | 'dark' | 'system';
+
+export function resolveThemeModeFromPreference(
+  pref: ThemePreference,
+): ThemeMode {
+  if (pref === 'light') {
+    return ThemeMode.LIGHT;
+  }
+  if (pref === 'dark') {
+    return ThemeMode.DARK;
+  }
+  if (
+    typeof globalThis === 'undefined' ||
+    typeof (globalThis as Window & typeof globalThis).matchMedia !==
+      'function'
+  ) {
+    return ThemeMode.LIGHT;
+  }
+  return (globalThis as Window & typeof globalThis)
+    .matchMedia('(prefers-color-scheme: dark)')
+    .matches
+    ? ThemeMode.DARK
+    : ThemeMode.LIGHT;
+}
+
+/** 无 `themePreference` 的旧状态：由 `themeMode` 反推菜单选中项 */
+export function effectiveThemePreference(state: {
+  themePreference?: ThemePreference;
+  themeMode: ThemeMode;
+}): ThemePreference {
+  if (state.themePreference != null) {
+    return state.themePreference;
+  }
+  return state.themeMode === ThemeMode.DARK ? 'dark' : 'light';
+}
+
 export interface ThemeColors {
   /**
    * Background color of page.

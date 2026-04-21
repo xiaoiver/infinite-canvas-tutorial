@@ -3,6 +3,8 @@ import {
   CheckboardStyle,
   Theme,
   ThemeMode,
+  ThemePreference,
+  resolveThemeModeFromPreference,
   DEFAULT_THEME_COLORS,
   BrushType,
   StampMode,
@@ -20,6 +22,7 @@ import type {
   StrokeAttributes,
   TextSerializedNode,
 } from './types/serialized-node';
+import type { DesignVariablesMap } from './utils/design-variables';
 
 export enum Task {
   SHOW_LAYERS_PANEL = 'show-layers-panel',
@@ -46,8 +49,16 @@ export interface PropertiesPanelSectionsOpen {
  */
 export interface AppState {
   language: string;
+  /**
+   * 文档级设计变量（Pencil 式 token）；节点属性可用 `$token.name` 引用。
+   */
+  variables: DesignVariablesMap;
   theme: Theme;
   themeMode: ThemeMode;
+  /**
+   * 用户选择的亮/暗/跟随系统；`themeMode` 为解析后的当前生效模式。
+   */
+  themePreference: ThemePreference;
   checkboardStyle: CheckboardStyle;
   cameraZoom: number;
   cameraX: number;
@@ -173,11 +184,15 @@ export interface AppState {
 }
 
 export const getDefaultAppState: () => AppState = () => {
+  const themePreference: ThemePreference = 'system';
+  const themeMode = resolveThemeModeFromPreference(themePreference);
   return {
     language: 'en',
-    themeMode: ThemeMode.LIGHT,
+    variables: {},
+    themePreference,
+    themeMode,
     theme: {
-      mode: ThemeMode.LIGHT,
+      mode: themeMode,
       colors: {
         [ThemeMode.LIGHT]: {
           ...DEFAULT_THEME_COLORS[ThemeMode.LIGHT],

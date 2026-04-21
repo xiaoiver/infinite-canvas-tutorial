@@ -28,7 +28,7 @@ export class PenbarDrawSettings extends LitElement {
       }
 
       sp-number-field {
-        width: 80px;
+        width: 70px;
       }
 
       > div {
@@ -190,13 +190,13 @@ export class PenbarDrawSettings extends LitElement {
           ? 'penbarDrawPentagon'
           : this.pen === Pen.DRAW_HEXAGON
             ? 'penbarDrawHexagon'
-      : this.pen === Pen.DRAW_ELLIPSE
-        ? 'penbarDrawEllipse'
-        : this.pen === Pen.DRAW_LINE
-          ? 'penbarDrawLine'
-          : this.pen === Pen.DRAW_ARROW
-            ? 'penbarDrawArrow'
-            : 'penbarDrawRoughRect';
+            : this.pen === Pen.DRAW_ELLIPSE
+              ? 'penbarDrawEllipse'
+              : this.pen === Pen.DRAW_LINE
+                ? 'penbarDrawLine'
+                : this.pen === Pen.DRAW_ARROW
+                  ? 'penbarDrawArrow'
+                  : 'penbarDrawRoughRect';
   }
 
   get penbarDraw() {
@@ -218,13 +218,13 @@ export class PenbarDrawSettings extends LitElement {
           ? penbarDrawPentagon
           : this.pen === Pen.DRAW_HEXAGON
             ? penbarDrawHexagon
-      : this.pen === Pen.DRAW_ELLIPSE
-        ? penbarDrawEllipse
-        : this.pen === Pen.DRAW_LINE
-          ? penbarDrawLine
-          : this.pen === Pen.DRAW_ARROW
-            ? penbarDrawArrow
-            : penbarDrawRoughRect;
+            : this.pen === Pen.DRAW_ELLIPSE
+              ? penbarDrawEllipse
+              : this.pen === Pen.DRAW_LINE
+                ? penbarDrawLine
+                : this.pen === Pen.DRAW_ARROW
+                  ? penbarDrawArrow
+                  : penbarDrawRoughRect;
   }
 
   render() {
@@ -324,7 +324,7 @@ export class PenbarDrawSettings extends LitElement {
                 >${msg(str`Marker start`)}</sp-field-label
               >
               <sp-picker
-                style="width: 80px;"
+                style="width: 70px;"
                 label=${msg(str`Marker start`)}
                 value=${(this.penbarDraw as MarkerAttributes).markerStart}
                 @change=${this.handleMarkerStartChanged}
@@ -344,7 +344,7 @@ export class PenbarDrawSettings extends LitElement {
                 >${msg(str`Marker end`)}</sp-field-label
               >
               <sp-picker
-                style="width: 80px;"
+                style="width: 70px;"
                 label=${msg(str`Marker end`)}
                 value=${(this.penbarDraw as MarkerAttributes).markerEnd}
                 @change=${this.handleMarkerEndChanged}

@@ -2,6 +2,8 @@ export * from './browser';
 export * from './converter';
 export * from './matrix';
 export * from './gradient';
+export * from './design-variables';
+export * from './entity-design-bindings';
 export * from './pattern';
 export * from './render-cache';
 export * from './uid';

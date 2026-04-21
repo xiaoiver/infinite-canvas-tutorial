@@ -105,6 +105,8 @@ export {
   type GlitchEffect,
   type LiquidGlassEffect,
 } from './utils';
+export * from './utils/design-variables';
+export * from './utils/entity-design-bindings';
 export * from './types/serialized-node';
 export type { EdgeState } from './utils/binding/connection';
 export { TexturePool } from './resources';

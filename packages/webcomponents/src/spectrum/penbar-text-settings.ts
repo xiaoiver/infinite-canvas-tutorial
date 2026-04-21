@@ -66,13 +66,13 @@ export class PenbarTextSettings extends LitElement {
         id="font-family"
       >
         ${penbarText.fontFamilies.map(
-          (fontFamily) =>
-            html`<sp-menu-item
+      (fontFamily) =>
+        html`<sp-menu-item
               value=${fontFamily}
               style="font-family: ${fontFamily};"
               >${fontFamily}</sp-menu-item
             >`,
-        )}
+    )}
       </sp-picker>
 
       <div
@@ -91,7 +91,7 @@ export class PenbarTextSettings extends LitElement {
         </sp-picker>
 
         <sp-number-field
-          style="width: 80px;"
+          style="width: 70px;"
           value=${penbarText.fontSize}
           @change=${this.handleFontSizeChanged}
           autocomplete="off"
@@ -107,8 +107,8 @@ export class PenbarTextSettings extends LitElement {
         @change=${this.handleFillColorChanged}
       >
         ${theme.colors[theme.mode].swatches.map(
-          (color) => html` <sp-swatch color=${color} size="s"></sp-swatch> `,
-        )}
+      (color) => html` <sp-swatch color=${color} size="s"></sp-swatch> `,
+    )}
       </sp-swatch-group> `;
   }
 }

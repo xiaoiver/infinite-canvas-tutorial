@@ -47,6 +47,8 @@ import {
   serializeNodesToSVGElements,
   toFixedAndRemoveTrailingZeros,
   toSVGDataURL,
+  prepareSerializedNodesForSvgExport,
+  type DesignVariablesSvgExportMode,
 } from '../utils';
 import type { SerializedNode } from '../types/serialized-node';
 import { API } from '..';
@@ -147,7 +149,9 @@ export async function toSVGElement(
   api: API,
   nodes: SerializedNode[],
   padding: number = 0,
+  options?: { designVariablesExport?: DesignVariablesSvgExportMode },
 ) {
+  const designVariablesExport = options?.designVariablesExport ?? 'resolved';
   const clipParentNodes = new Set<SerializedNode>();
   nodes.forEach((node) => {
     const parentEntity = api.getParent(node);
@@ -177,7 +181,22 @@ export async function toSVGElement(
 
   nodes = [...clipParentNodes, ...nodes];
 
-  const layoutNodes = api.readLayoutFromECS(nodes);
+  const prep = prepareSerializedNodesForSvgExport(
+    nodes,
+    api.getAppState().variables,
+    designVariablesExport,
+  );
+  const layoutNodes = api.readLayoutFromECS(prep.nodes);
+
+  if (prep.cssRootStyle) {
+    const $defs = createSVGElement('defs');
+    const $style = DOMAdapter.get()
+      .getDocument()
+      .createElementNS('http://www.w3.org/2000/svg', 'style');
+    $style.textContent = prep.cssRootStyle;
+    $defs.appendChild($style);
+    $namespace.insertBefore($defs, $namespace.firstChild);
+  }
 
   (await serializeNodesToSVGElements(layoutNodes)).forEach((element) => {
     $namespace.appendChild(element);
