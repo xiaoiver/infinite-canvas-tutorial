@@ -143,7 +143,7 @@ function buildSingleGradient(
   height: number,
 ): FillGradientSpec | null {
   if (!g) return null;
-  const stops = g.steps.map((s) => ({
+  const stops = (g as any).steps.map((s) => ({
     offset: s.offset.type === '%' ? s.offset.value / 100 : s.offset.value,
     color: colorToRgba(s.color),
   }));
