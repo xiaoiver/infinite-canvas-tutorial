@@ -1,6 +1,8 @@
 import { Entity } from '@lastolivegames/becsy';
 import { IPointData } from '@pixi/math';
 import { mat3, vec2 } from 'gl-matrix';
+import { updateGlobalTransform } from './systems/Transform';
+import { updateComputedPoints } from './systems/ComputePoints';
 import { isNil, path2Absolute } from '@antv/util';
 import {
   CaptureUpdateAction,
@@ -122,6 +124,15 @@ export interface StateManagement {
   setNodes: (nodes: SerializedNode[]) => void;
   onChange: (snapshot: { appState: AppState; nodes: SerializedNode[] }) => void;
 }
+
+/** 多选时按选区几何包络（世界坐标系）对齐，与 {@link API.alignSelectedNodes} 一致。 */
+export type NodeAlignment =
+  | 'left'
+  | 'right'
+  | 'top'
+  | 'bottom'
+  | 'centerH'
+  | 'centerV';
 
 export enum ExportFormat {
   SVG = 'svg',
@@ -1641,6 +1652,134 @@ export class API {
       }
     });
     return bounds;
+  }
+
+  /**
+   * 将选中的多个节点在**世界空间**中按各节点 {@link ComputedBounds.geometryWorldBounds} 的并集对齐
+   *（与变换器多选选区同语义）。跳过 {@link SerializedNode.locked|locked} 的节点；至少两个未锁定。
+   */
+  alignSelectedNodes(alignment: NodeAlignment, nodeIds?: string[]) {
+    const ids = nodeIds ?? this.getAppState().layersSelected;
+    if (ids.length < 2) {
+      return;
+    }
+    const nodes = ids
+      .map((id) => this.getNodeById(id))
+      .filter(
+        (n): n is SerializedNode => !!n && n.locked !== true,
+      );
+    if (nodes.length < 2) {
+      return;
+    }
+    const union = this.getGeometryBounds(nodes);
+    if (
+      !Number.isFinite(union.minX) ||
+      !Number.isFinite(union.maxX) ||
+      !Number.isFinite(union.minY) ||
+      !Number.isFinite(union.maxY) ||
+      union.minX > union.maxX ||
+      union.minY > union.maxY
+    ) {
+      return;
+    }
+    const epsilon = 0.01;
+
+    for (const node of nodes) {
+      const entity = this.getEntity(node);
+      if (!entity?.has(ComputedBounds)) {
+        continue;
+      }
+      const g = entity.read(ComputedBounds).geometryWorldBounds;
+      if (
+        !Number.isFinite(g.minX) ||
+        !Number.isFinite(g.maxX) ||
+        !Number.isFinite(g.minY) ||
+        !Number.isFinite(g.maxY) ||
+        g.minX > g.maxX ||
+        g.minY > g.maxY
+      ) {
+        continue;
+      }
+      let dx = 0;
+      let dy = 0;
+      if (alignment === 'left') {
+        dx = union.minX - g.minX;
+      } else if (alignment === 'right') {
+        dx = union.maxX - g.maxX;
+      } else if (alignment === 'top') {
+        dy = union.minY - g.minY;
+      } else if (alignment === 'bottom') {
+        dy = union.maxY - g.maxY;
+      } else if (alignment === 'centerH') {
+        const gc = (g.minX + g.maxX) * 0.5;
+        const uc = (union.minX + union.maxX) * 0.5;
+        dx = uc - gc;
+      } else {
+        const gc = (g.minY + g.maxY) * 0.5;
+        const uc = (union.minY + union.maxY) * 0.5;
+        dy = uc - gc;
+      }
+      if (Math.abs(dx) < 1e-9 && Math.abs(dy) < 1e-9) {
+        continue;
+      }
+      const oldNode = { ...node, ...this.getAbsoluteTransformAndSize(node) };
+      const oldAttrs = {
+        x: oldNode.x ?? 0,
+        y: oldNode.y ?? 0,
+        width: oldNode.width ?? 0,
+        height: oldNode.height ?? 0,
+        rotation: oldNode.rotation ?? 0,
+        scaleX: oldNode.scaleX ?? 1,
+        scaleY: oldNode.scaleY ?? 1,
+      };
+      const wSign = oldAttrs.width;
+      const hSign = oldAttrs.height;
+      const delta = mat3.create();
+      mat3.fromTranslation(delta, [dx, dy]);
+      const parentTransform = this.getParentTransform(entity);
+      const localTransform = this.getTransform(oldNode);
+      const newLocalTransform = mat3.create();
+      mat3.multiply(newLocalTransform, parentTransform, localTransform);
+      mat3.multiply(newLocalTransform, delta, newLocalTransform);
+      mat3.multiply(
+        newLocalTransform,
+        mat3.invert(mat3.create(), parentTransform),
+        newLocalTransform,
+      );
+      const { rotation, translation, scale } = decompose(newLocalTransform);
+      const obb = {
+        x: translation[0],
+        y: translation[1],
+        width: Math.max(
+          Math.abs((oldNode.width ?? 0) * scale[0]),
+          epsilon,
+        ),
+        height: Math.max(
+          Math.abs((oldNode.height ?? 0) * scale[1]),
+          epsilon,
+        ),
+        rotation,
+        scaleX: oldAttrs.scaleX * (Math.sign(wSign) || 1),
+        scaleY: oldAttrs.scaleY * (Math.sign(hSign) || 1),
+      };
+      if (entity.hasSomeOf(Polyline, Path, Line)) {
+        const signW = Math.sign(wSign) || 1;
+        const signH = Math.sign(hSign) || 1;
+        obb.scaleX = Math.sign(oldAttrs.scaleX || 1) * signW;
+        obb.scaleY = Math.sign(oldAttrs.scaleY || 1) * signH;
+      }
+      this.updateNodeOBB(
+        node,
+        obb,
+        node.lockAspectRatio,
+        undefined,
+        oldNode,
+      );
+      updateGlobalTransform(entity);
+      updateComputedPoints(entity);
+    }
+
+    this.record();
   }
 
   deleteNodesById(ids: SerializedNode['id'][]) {
