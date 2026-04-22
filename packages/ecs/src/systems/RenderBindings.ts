@@ -23,6 +23,7 @@ import {
   ZIndex,
   Polyline,
   Path,
+  Flex,
 } from '../components';
 import { getSceneRoot, updateGlobalTransform } from './Transform';
 import type {
@@ -91,6 +92,7 @@ export class RenderBindings extends System {
             Binded,
             Binding,
             PartialBinding,
+            Flex
           )
           .write,
     );

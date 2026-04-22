@@ -159,6 +159,14 @@ export interface HitStrokeInteractionAttributes {
 export interface FlexboxLayoutAttributes {
   display: 'flex';
   alignItems: 'center' | 'flex-start' | 'flex-end' | 'stretch' | 'baseline';
+  /** 覆盖父容器 align-items，作为 flex 子项时生效 */
+  alignSelf?:
+    | 'auto'
+    | 'center'
+    | 'flex-start'
+    | 'flex-end'
+    | 'stretch'
+    | 'baseline';
   justifyContent: 'center' | 'flex-start' | 'flex-end' | 'space-between' | 'space-around' | 'space-evenly';
   flexDirection: 'row' | 'row-reverse' | 'column' | 'column-reverse';
   flexWrap: 'nowrap' | 'wrap' | 'wrap-reverse';

@@ -7,7 +7,9 @@ import {
   CheckboardStyle,
   AppState,
   readSystemClipboard,
-  ThemeMode,
+  effectiveThemePreference,
+  resolveThemeModeFromPreference,
+  type ThemePreference,
 } from '@infinite-canvas-tutorial/ecs';
 import { apiContext, appStateContext } from '../context';
 import { ExtendedAPI } from '../API';
@@ -134,13 +136,14 @@ export class TopNavbar extends LitElement {
   }
 
   private handleConfigTheme(event: CustomEvent) {
-    const selected = (event.target as any).selected[0];
-    let themeMode = selected === 'dark' ? ThemeMode.DARK : ThemeMode.LIGHT;
-    if (selected === 'system') {
-      themeMode = window.matchMedia('(prefers-color-scheme: dark)').matches ? ThemeMode.DARK : ThemeMode.LIGHT;
-    }
-
+    const raw = (event.target as any).selected[0] as string;
+    const themePreference: ThemePreference =
+      raw === 'light' || raw === 'dark' || raw === 'system'
+        ? raw
+        : 'system';
+    const themeMode = resolveThemeModeFromPreference(themePreference);
     this.api.setAppState({
+      themePreference,
       themeMode,
     });
   }
@@ -274,7 +277,9 @@ export class TopNavbar extends LitElement {
                     <sp-menu
                       slot="submenu"
                       selects="single"
-                      .selected=${[this.appState.themeMode]}
+                      .selected=${[
+                        effectiveThemePreference(this.appState),
+                      ]}
                       @change=${this.handleConfigTheme}
                     >
                       <sp-menu-item value="light">

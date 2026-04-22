@@ -12,8 +12,20 @@ export class FillSolid {
   @field({ type: Type.object, default: 'black' })
   declare value: string;
 
-  constructor(value?: string) {
-    this.value = value;
+  /**
+   * 设计变量绑定：变量表键名（与 `$` 后一致，如 `color.background`）。
+   * 空串表示字面量填充，渲染使用 {@link value}（已解析）。
+   */
+  @field({ type: Type.dynamicString(200), default: '' })
+  declare fillVariableRef: string;
+
+  constructor(value?: string, fillVariableRef?: string) {
+    if (value !== undefined) {
+      this.value = value;
+    }
+    if (fillVariableRef) {
+      this.fillVariableRef = fillVariableRef;
+    }
   }
 }
 

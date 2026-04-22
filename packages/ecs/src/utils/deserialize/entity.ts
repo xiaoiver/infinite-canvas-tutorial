@@ -88,6 +88,11 @@ import { deserializeBrushPoints, deserializePoints } from './points';
 import { EntityCommands, Commands } from '../../commands';
 import { isGradient } from '../gradient';
 import { isPattern } from '../pattern';
+import {
+  resolveDesignVariableValue,
+  designVariableRefKeyFromWire,
+  type DesignVariablesMap,
+} from '../design-variables';
 import { measureText } from '../../systems/ComputeTextMetrics';
 import { DOMAdapter } from '../../environment';
 import { safeAddComponent } from '../../history';
@@ -925,6 +930,8 @@ export type SerializedNodesToEntitiesOptions = {
    * 增量添加（如 {@link API.updateNode} 只传入新节点）时应传入「当前场景 + 本批节点」合并后的列表。
    */
   lookupNodes?: SerializedNode[];
+  /** 文档级设计变量，用于解析 `$token` 形式的 fill/stroke/fontSize 等 */
+  variables?: DesignVariablesMap;
 };
 
 export function serializedNodesToEntities(
@@ -1000,6 +1007,7 @@ export function serializedNodesToEntities(
     }
 
     const { parentId, type } = node;
+    const designVariables = options?.variables;
 
     const entityCommands = commands.spawn();
     idEntityMap.set(id, entityCommands);
@@ -1126,8 +1134,28 @@ export function serializedNodesToEntities(
       }
     } else if (type === 'rect' || type === 'rough-rect') {
       const { cornerRadius } = attributes as RectSerializedNode;
+      const resolvedCr = resolveDesignVariableValue(
+        cornerRadius,
+        designVariables,
+      );
+      const crNum = (() => {
+        if (resolvedCr === undefined || resolvedCr === null) {
+          return undefined;
+        }
+        const n =
+          typeof resolvedCr === 'number'
+            ? resolvedCr
+            : parseFloat(String(resolvedCr));
+        return Number.isFinite(n) ? Math.max(0, n) : undefined;
+      })();
       entityCommands.insert(
-        new Rect({ x: 0, y: 0, width: absoluteWidth, height: absoluteHeight, cornerRadius }),
+        new Rect({
+          x: 0,
+          y: 0,
+          width: absoluteWidth,
+          height: absoluteHeight,
+          cornerRadius: crNum ?? 0,
+        }),
       );
       if (type === 'rough-rect') {
         serializeRough(attributes as RoughAttributes, entityCommands);
@@ -1232,6 +1260,15 @@ export function serializedNodesToEntities(
         edgeLabelOffset,
       } = attributes as TextSerializedNode;
 
+      const resolvedFontSize = resolveDesignVariableValue(
+        fontSize,
+        designVariables,
+      );
+      const resolvedDecorationColor = resolveDesignVariableValue(
+        decorationColor,
+        designVariables,
+      );
+
       // let anchorX = 0;
       // let anchorY = 0;
       // if (textAlign === 'center') {
@@ -1257,7 +1294,11 @@ export function serializedNodesToEntities(
           anchorY,
           content,
           fontFamily,
-          fontSize,
+          fontSize:
+            typeof resolvedFontSize === 'number'
+              ? resolvedFontSize
+              : Number(resolvedFontSize),
+          fontSizeVariableRef: designVariableRefKeyFromWire(fontSize),
           fontWeight,
           fontStyle,
           fontVariant,
@@ -1277,7 +1318,7 @@ export function serializedNodesToEntities(
       if (decorationLine !== 'none' && decorationThickness > 0) {
         entityCommands.insert(
           new TextDecoration({
-            color: decorationColor,
+            color: resolvedDecorationColor,
             line: decorationLine,
             style: decorationStyle,
             thickness: decorationThickness,
@@ -1315,19 +1356,25 @@ export function serializedNodesToEntities(
     }
 
     const { fill, fillOpacity, opacity } = attributes as FillAttributes;
-    if (fill) {
-      if (isGradient(fill)) {
-        entityCommands.insert(new FillGradient(fill));
-      } else if (isDataUrl(fill) || isUrl(fill)) {
-        loadImage(fill, entityCommands.id());
+    const resolvedFill = resolveDesignVariableValue(fill, designVariables);
+    if (resolvedFill) {
+      if (isGradient(resolvedFill)) {
+        entityCommands.insert(new FillGradient(resolvedFill));
+      } else if (isDataUrl(resolvedFill) || isUrl(resolvedFill)) {
+        loadImage(resolvedFill, entityCommands.id());
       } else {
         try {
-          const parsed = JSON.parse(fill) as FillPattern;
+          const parsed = JSON.parse(resolvedFill as string) as FillPattern;
           if (isPattern(parsed)) {
             entityCommands.insert(new FillPattern(parsed));
           }
         } catch (e) {
-          entityCommands.insert(new FillSolid(fill));
+          entityCommands.insert(
+            new FillSolid(
+              resolvedFill as string,
+              designVariableRefKeyFromWire(fill),
+            ),
+          );
         }
       }
     }
@@ -1343,11 +1390,26 @@ export function serializedNodesToEntities(
       strokeDashoffset,
       strokeAlignment,
     } = attributes as StrokeAttributes;
-    if (stroke) {
+    const resolvedStroke = resolveDesignVariableValue(stroke, designVariables);
+    const resolvedStrokeWidth = resolveDesignVariableValue(
+      strokeWidth,
+      designVariables,
+    );
+    if (resolvedStroke) {
+      const rawW =
+        resolvedStrokeWidth !== undefined ? resolvedStrokeWidth : strokeWidth;
+      const widthInit =
+        rawW !== undefined && rawW !== null
+          ? {
+              width: typeof rawW === 'number' ? rawW : Number(rawW),
+            }
+          : {};
       entityCommands.insert(
         new Stroke({
-          color: stroke,
-          width: strokeWidth,
+          color: resolvedStroke,
+          ...widthInit,
+          colorVariableRef: designVariableRefKeyFromWire(stroke),
+          widthVariableRef: designVariableRefKeyFromWire(strokeWidth),
           // comma and/or white space separated
           dasharray:
             strokeDasharray === 'none'
@@ -1378,11 +1440,20 @@ export function serializedNodesToEntities(
     }
 
     if (opacity || fillOpacity || strokeOpacity) {
+      const rfo = resolveDesignVariableValue(fillOpacity, designVariables);
+      const rso = resolveDesignVariableValue(strokeOpacity, designVariables);
+      const to01 = (v: unknown): number => {
+        if (v === undefined || v === null) {
+          return 1;
+        }
+        const n = typeof v === 'number' ? v : parseFloat(String(v));
+        return Number.isFinite(n) ? Math.max(0, Math.min(1, n)) : 1;
+      };
       entityCommands.insert(
         new Opacity({
           opacity,
-          fillOpacity,
-          strokeOpacity,
+          fillOpacity: to01(rfo),
+          strokeOpacity: to01(rso),
         }),
       );
     }
@@ -1396,7 +1467,7 @@ export function serializedNodesToEntities(
     if (dropShadowBlurRadius) {
       entityCommands.insert(
         new DropShadow({
-          color: dropShadowColor,
+          color: resolveDesignVariableValue(dropShadowColor, designVariables),
           blurRadius: dropShadowBlurRadius,
           offsetX: dropShadowOffsetX,
           offsetY: dropShadowOffsetY,
@@ -1413,7 +1484,7 @@ export function serializedNodesToEntities(
     if (innerShadowBlurRadius) {
       entityCommands.insert(
         new InnerShadow({
-          color: innerShadowColor,
+          color: resolveDesignVariableValue(innerShadowColor, designVariables),
           blurRadius: innerShadowBlurRadius,
           offsetX: innerShadowOffsetX,
           offsetY: innerShadowOffsetY,

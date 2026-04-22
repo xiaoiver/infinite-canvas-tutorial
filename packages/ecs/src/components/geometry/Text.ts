@@ -119,6 +119,10 @@ export class Text {
    */
   @field({ type: Type.object, default: 12 }) declare fontSize: number | string;
 
+  /** 当 `fontSize` 为 `$token` 时存键名，否则为空串 */
+  @field({ type: Type.dynamicString(200), default: '' })
+  declare fontSizeVariableRef: string;
+
   /**
    * Specifies the weight of the font.
    * @see https://developer.mozilla.org/en-US/docs/Web/CSS/font-weight

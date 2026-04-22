@@ -87,6 +87,14 @@ export class Stroke {
    */
   @field({ type: Type.float32, default: 0 }) declare dashoffset: number;
 
+  /** 与 {@link FillSolid.fillVariableRef} 相同语义，作用于 {@link color} */
+  @field({ type: Type.dynamicString(200), default: '' })
+  declare colorVariableRef: string;
+
+  /** 作用于 {@link width} */
+  @field({ type: Type.dynamicString(200), default: '' })
+  declare widthVariableRef: string;
+
   constructor(props?: Partial<Stroke>) {
     Object.assign(this, props);
   }

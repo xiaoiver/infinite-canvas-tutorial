@@ -3,6 +3,7 @@ import {
   App,
   Pen,
   DefaultPlugins,
+  Task,
 } from '@infinite-canvas-tutorial/ecs';
 import { ref, onMounted, onUnmounted } from 'vue';
 import { Event, UIPlugin } from '@infinite-canvas-tutorial/webcomponents';
@@ -28,6 +29,15 @@ onMounted(async () => {
       ...api.getAppState(),
       penbarSelected: Pen.SELECT,
       penbarAll: [Pen.HAND, Pen.SELECT],
+      taskbarSelected: [
+        Task.SHOW_PROPERTIES_PANEL,
+      ],
+      propertiesPanelSectionsOpen: {
+        shape: false,
+        transform: false,
+        layout: false,
+        effects: true,
+      },
     });
 
     const image = {
@@ -42,19 +52,7 @@ onMounted(async () => {
       filter: 'crt(4, 4, 0.4, 0.27, 0.41, 1) vignette(0.5, 0.5)',
     };
 
-    const image2 = {
-      id: 'crt-2',
-      type: 'rect',
-      fill: 'linear-gradient(to right, red, blue)',
-      x: 300,
-      y: 50,
-      width: 200,
-      height: 200,
-      lockAspectRatio: true,
-      filter: 'noise(0.2) pixelate(6px) ',
-    };
-
-    api.updateNodes([image, image2]);
+    api.updateNodes([image]);
     api.selectNodes([image]);
   };
 
@@ -86,5 +84,5 @@ onUnmounted(async () => {
 </script>
 
 <template>
-  <ic-spectrum-canvas ref="wrapper" style="width: 100%; height: 300px" renderer="webgl"></ic-spectrum-canvas>
+  <ic-spectrum-canvas ref="wrapper" style="width: 100%; height: 500px" renderer="webgl"></ic-spectrum-canvas>
 </template>

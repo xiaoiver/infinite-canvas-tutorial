@@ -1,12 +1,25 @@
+import { resolveDesignVariableValue, type AppState } from '@infinite-canvas-tutorial/ecs';
 import { html, LitElement } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
+import { consume } from '@lit/context';
+import { appStateContext } from '../context';
 
 @customElement('ic-spectrum-stroke-icon')
 export class StrokeIcon extends LitElement {
+  @consume({ context: appStateContext, subscribe: true })
+  appState: AppState;
+
   @property()
   value: string;
 
   render() {
+    const resolved = resolveDesignVariableValue(
+      this.value,
+      this.appState?.variables,
+    );
+    const display =
+      typeof resolved === 'string' ? resolved : String(resolved ?? 'none');
+
     return html`
       <svg
         xmlns="http://www.w3.org/2000/svg"
@@ -16,7 +29,7 @@ export class StrokeIcon extends LitElement {
       >
         <style>
           .picker {
-            fill: ${this.value || 'none'};
+            fill: ${display || 'none'};
             stroke: var(--spectrum-gray-800);
             stroke-width: var(--spectrum-border-width-100);
           }

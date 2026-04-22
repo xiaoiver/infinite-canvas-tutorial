@@ -162,6 +162,7 @@ export class InitCanvas extends System {
         api.setAppState({
           theme: initialAppState.theme,
           themeMode: initialAppState.themeMode,
+          themePreference: initialAppState.themePreference,
         });
 
         container.dispatchEvent(new CustomEvent(Event.READY, { detail: api }));

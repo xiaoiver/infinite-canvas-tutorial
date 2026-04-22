@@ -49,7 +49,7 @@ onMounted(async () => {
       width: 200,
       height: 200,
       lockAspectRatio: true,
-      filter: 'liquid-glass()',
+      filter: 'ascii()',
     };
 
     api.updateNodes([image]);
@@ -84,5 +84,5 @@ onUnmounted(async () => {
 </script>
 
 <template>
-  <ic-spectrum-canvas ref="wrapper" style="width: 100%; height: 500px" renderer="webgl"></ic-spectrum-canvas>
+  <ic-spectrum-canvas ref="wrapper" style="width: 100%; height: 400px" renderer="webgl"></ic-spectrum-canvas>
 </template>

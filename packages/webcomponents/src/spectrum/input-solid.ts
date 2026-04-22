@@ -1,13 +1,24 @@
 import { css, CSSResultArray, html, LitElement, PropertyValues } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
+import { consume } from '@lit/context';
 import { when } from 'lit/directives/when.js';
 import * as d3 from 'd3-color';
 import { ColorArea } from '@spectrum-web-components/color-area';
-import { parseColor, cssColorToHex } from '@infinite-canvas-tutorial/ecs';
+import {
+  parseColor,
+  cssColorToHex,
+  resolveDesignVariableValue,
+  isDesignVariableReference,
+  designVariableRefKeyFromWire,
+  type AppState,
+} from '@infinite-canvas-tutorial/ecs';
+import { appStateContext } from '../context';
 import opacityCheckerBoardStyles from '@spectrum-web-components/opacity-checkerboard/src/opacity-checkerboard.css.js';
+import { localized, msg, str } from '@lit/localize';
+import type { DesignVariablePickDetail } from './design-variable-picker';
+import './design-variable-picker.js';
 
 import '@spectrum-web-components/action-button/sp-action-button.js';
-import '@spectrum-web-components/slider/sp-slider.js';
 
 export type SolidColorFormat = 'hex' | 'rgb' | 'css' | 'hsl' | 'hsb';
 
@@ -105,6 +116,7 @@ function cssStringHasExplicitAlpha(raw: string): boolean {
 }
 
 @customElement('ic-spectrum-input-solid')
+@localized()
 export class InputSolid extends LitElement {
   public static override get styles(): CSSResultArray {
     return [opacityCheckerBoardStyles, css`
@@ -214,32 +226,39 @@ export class InputSolid extends LitElement {
       width: 100%
     }
 
-    .opacity-slider-stack {
-      position: relative;
-      flex: 1;
-      min-width: 0;
-      min-inline-size: 0;
-      border-radius: var(--spectrum-color-slider-border-rounding);
+    sp-popover {
+      padding: 0;
     }
 
-    .opacity-track-gradient {
-      position: absolute;
-      width: 100%;
-      height: 100%;
-      background: linear-gradient(
-        to right,
-        rgb(0 0 0 / 0%),
-        rgb(var(--opacity-slider-rgb, 255 255 255) / 100%)
-      );
-      border-radius: var(--spectrum-color-slider-border-rounding);
+    .dv-popover-body {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      min-width: 220px;
+      padding: 8px;
+      box-sizing: border-box;
     }
 
-    .opacity-slider-stack sp-slider {
-      position: relative;
-      z-index: 1;
-      inline-size: 100%;
-      --spectrum-slider-track-color: transparent;
-      --spectrum-slider-track-fill-color: transparent;
+    .dv-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .dv-badge {
+      font-size: var(--spectrum-font-size-75);
+      color: var(--spectrum-purple-900);
+      background: var(--spectrum-purple-100);
+      border-radius: 4px;
+      padding: 2px 6px;
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .opacity-dv-trigger {
+      flex: 0 0 auto;
     }
 
     .eyedropper-btn {
@@ -257,17 +276,24 @@ export class InputSolid extends LitElement {
 
   /**
    * 与 `strokeOpacity` 二选一或单独使用：存在时作为透明度来源（0–1），
-   * 不再从 `value` 的 alpha 解析。用于编辑 fill 时由父组件传入。
+   * 可为 `$token` 设计变量引用。不再从 `value` 的 alpha 解析。
    */
-  @property({ type: Number })
-  fillOpacity: number | undefined;
+  @property()
+  fillOpacity: number | string | undefined;
 
   /**
-   * 与 `fillOpacity` 二选一：存在时作为透明度来源（0–1）。
+   * 与 `fillOpacity` 二选一：存在时作为透明度来源（0–1），可为 `$token`。
    * 若同时设置，优先使用 `fillOpacity`。
    */
-  @property({ type: Number })
-  strokeOpacity: number | undefined;
+  @property()
+  strokeOpacity: number | string | undefined;
+
+  /** 为 true 时在透明度旁显示「绑定变量」Popover（由填充/描边工具条使用） */
+  @property({ type: Boolean, attribute: 'enable-opacity-variable-binding' })
+  enableOpacityVariableBinding = false;
+
+  @consume({ context: appStateContext, subscribe: true })
+  appState!: AppState;
 
   @state()
   private format: SolidColorFormat = 'hex';
@@ -287,21 +313,74 @@ export class InputSolid extends LitElement {
     }
   }
 
-  /** 当前 UI 使用的透明度：优先外部属性，否则从 `value` 解析。 */
+  /** 当前 UI 使用的透明度：优先外部属性（含变量解析），否则从 `value` 解析。 */
   private getEffectiveOpacity(): number {
-    if (this.fillOpacity != null && !Number.isNaN(this.fillOpacity)) {
-      return clamp01(this.fillOpacity);
-    }
-    if (this.strokeOpacity != null && !Number.isNaN(this.strokeOpacity)) {
-      return clamp01(this.strokeOpacity);
+    const ext = this.fillOpacity ?? this.strokeOpacity;
+    if (ext !== undefined && ext !== null && ext !== '') {
+      const resolved = resolveDesignVariableValue(
+        ext as number | string,
+        this.appState?.variables,
+      );
+      const n =
+        typeof resolved === 'number'
+          ? resolved
+          : parseFloat(String(resolved ?? ''));
+      if (Number.isFinite(n)) {
+        return clamp01(n);
+      }
     }
     return clamp01(parseColor(this.value).opacity);
   }
 
   private usesExternalOpacity(): boolean {
     return (
-      (this.fillOpacity != null && !Number.isNaN(this.fillOpacity)) ||
-      (this.strokeOpacity != null && !Number.isNaN(this.strokeOpacity))
+      this.fillOpacity !== undefined &&
+      this.fillOpacity !== null &&
+      this.fillOpacity !== ''
+    ) ||
+      (this.strokeOpacity !== undefined &&
+        this.strokeOpacity !== null &&
+        this.strokeOpacity !== '');
+  }
+
+  private getOpacityBindMode(): 'fill' | 'stroke' {
+    if (
+      this.fillOpacity !== undefined &&
+      this.fillOpacity !== null &&
+      this.fillOpacity !== ''
+    ) {
+      return 'fill';
+    }
+    return 'stroke';
+  }
+
+  private getOpacityWireRaw(): number | string | undefined {
+    return this.fillOpacity ?? this.strokeOpacity;
+  }
+
+  private handleOpacityVariablePick(e: CustomEvent<DesignVariablePickDetail>) {
+    this.dispatchEvent(
+      new CustomEvent<{
+        mode: 'fill' | 'stroke';
+        key: string;
+      }>('opacity-variable-pick', {
+        detail: { mode: this.getOpacityBindMode(), key: e.detail.key },
+        bubbles: true,
+        composed: true,
+      }),
+    );
+  }
+
+  private handleOpacityVariableUnbind() {
+    this.dispatchEvent(
+      new CustomEvent<{ mode: 'fill' | 'stroke' }>(
+        'opacity-variable-unbind',
+        {
+          detail: { mode: this.getOpacityBindMode() },
+          bubbles: true,
+          composed: true,
+        },
+      ),
     );
   }
 
@@ -346,10 +425,18 @@ export class InputSolid extends LitElement {
       type: 'solid',
       value: out,
     };
-    if (this.fillOpacity != null && !Number.isNaN(this.fillOpacity)) {
+    if (
+      this.fillOpacity !== undefined &&
+      this.fillOpacity !== null &&
+      this.fillOpacity !== ''
+    ) {
       detail.fillOpacity = A;
     }
-    if (this.strokeOpacity != null && !Number.isNaN(this.strokeOpacity)) {
+    if (
+      this.strokeOpacity !== undefined &&
+      this.strokeOpacity !== null &&
+      this.strokeOpacity !== ''
+    ) {
       detail.strokeOpacity = A;
     }
     this.dispatchEvent(
@@ -364,10 +451,18 @@ export class InputSolid extends LitElement {
   private emitOpacityChange(a: number) {
     const A = clamp01(a);
     const detail: SolidOpacityChangeDetail = { opacity: A };
-    if (this.fillOpacity != null && !Number.isNaN(this.fillOpacity)) {
+    if (
+      this.fillOpacity !== undefined &&
+      this.fillOpacity !== null &&
+      this.fillOpacity !== ''
+    ) {
       detail.fillOpacity = A;
     }
-    if (this.strokeOpacity != null && !Number.isNaN(this.strokeOpacity)) {
+    if (
+      this.strokeOpacity !== undefined &&
+      this.strokeOpacity !== null &&
+      this.strokeOpacity !== ''
+    ) {
       detail.strokeOpacity = A;
     }
     this.dispatchEvent(
@@ -417,26 +512,6 @@ export class InputSolid extends LitElement {
 
   private handleOpacityPercentChanged(e: CustomEvent) {
     const pct = Number((e.target as HTMLElement & { value: number }).value);
-    const p = parseColor(this.value);
-    const a = clamp01(pct / 100);
-    this.emitOpacityChange(a);
-    if (this.usesExternalOpacity()) {
-      return;
-    }
-    this.emitSolid(p.r, p.g, p.b, a);
-  }
-
-  private handleOpacitySliderInput(e: Event) {
-    const t = e.currentTarget as HTMLElement & { value: number };
-    const pct = Number(t.value);
-    if (Number.isNaN(pct)) return;
-    this.opacityPctOverride = Math.max(0, Math.min(100, Math.round(pct)));
-  }
-
-  private handleOpacitySliderChanged(e: Event) {
-    const t = e.currentTarget as HTMLElement & { value: number };
-    const pct = Number(t.value);
-    if (Number.isNaN(pct)) return;
     const p = parseColor(this.value);
     const a = clamp01(pct / 100);
     this.emitOpacityChange(a);
@@ -533,6 +608,10 @@ export class InputSolid extends LitElement {
     const hsbV = Math.round(hsv.v);
 
     const cssDisplay = d3.rgb(r, g, b, a).formatRgb();
+
+    const wire = this.getOpacityWireRaw();
+    const opacityBound =
+      typeof wire === 'string' && isDesignVariableReference(wire);
 
     const fmtRgb = () => html`
       <div class="rgb-inline">
@@ -649,26 +728,6 @@ export class InputSolid extends LitElement {
             color=${pickerColor}
             @input=${this.handlePickerRgbChanged}
           ></sp-color-slider>
-          <div
-            class="opacity-slider-stack opacity-checkerboard"
-            style=${`--opacity-slider-rgb: ${r} ${g} ${b}`}
-          >
-            <div
-              class="opacity-track-gradient"
-              aria-hidden="true"
-            ></div>
-            <sp-slider
-              label-visibility="none"
-              size="s"
-              min="0"
-              max="100"
-              step="1"
-              value=${displayOpacityPct}
-              aria-label="Opacity"
-              @input=${this.handleOpacitySliderInput}
-              @change=${this.handleOpacitySliderChanged}
-            ></sp-slider>
-          </div>
         </div>
         ${when(
       this.eyeDropperSupported,
@@ -746,6 +805,56 @@ export class InputSolid extends LitElement {
           ></sp-number-field>
           <span class="pct-suffix">%</span>
         </div>
+        ${when(
+          this.enableOpacityVariableBinding && this.usesExternalOpacity(),
+          () => html`
+            <sp-action-button
+              class="opacity-dv-trigger"
+              quiet
+              size="s"
+              id="input-solid-opacity-dv-trigger"
+            >
+              <sp-icon-link slot="icon"></sp-icon-link>
+              <sp-tooltip self-managed placement="bottom">
+                ${msg(str`绑定透明度变量`)}
+              </sp-tooltip>
+            </sp-action-button>
+            <sp-overlay
+              trigger="input-solid-opacity-dv-trigger@click"
+              placement="bottom"
+              type="auto"
+            >
+              <sp-popover dialog>
+                <div class="dv-popover-body">
+                  ${when(
+                    opacityBound,
+                    () =>
+                      html`<div class="dv-row">
+                        <span class="dv-badge" title=${String(wire)}
+                          >${String(wire)}</span
+                        >
+                        <sp-action-button
+                          quiet
+                          size="s"
+                          @click=${this.handleOpacityVariableUnbind}
+                        >
+                          <sp-icon-unlink slot="icon"></sp-icon-unlink>
+                          <sp-tooltip self-managed placement="right">
+                            ${msg(str`解除绑定`)}
+                          </sp-tooltip>
+                        </sp-action-button>
+                      </div>`,
+                  )}
+                  <ic-spectrum-design-variable-picker
+                    match-type="number"
+                    selected-key=${designVariableRefKeyFromWire(wire)}
+                    @ic-variable-pick=${this.handleOpacityVariablePick}
+                  ></ic-spectrum-design-variable-picker>
+                </div>
+              </sp-popover>
+            </sp-overlay>
+          `,
+        )}
       </div>`;
   }
 }

@@ -3,6 +3,8 @@ import {
   CheckboardStyle,
   Theme,
   ThemeMode,
+  ThemePreference,
+  resolveThemeModeFromPreference,
   DEFAULT_THEME_COLORS,
   BrushType,
   StampMode,
@@ -20,6 +22,7 @@ import type {
   StrokeAttributes,
   TextSerializedNode,
 } from './types/serialized-node';
+import type { DesignVariablesMap } from './utils/design-variables';
 
 export enum Task {
   SHOW_LAYERS_PANEL = 'show-layers-panel',
@@ -28,13 +31,34 @@ export enum Task {
 }
 
 /**
+ * 属性面板各分区（accordion）的初始展开状态；`true` 为展开。
+ * 可通过 `api.setAppState({ propertiesPanelSectionsOpen: { ... } })` 配置。
+ */
+export interface PropertiesPanelSectionsOpen {
+  shape: boolean;
+  transform: boolean;
+  layout: boolean;
+  /** 父级为 flex 容器时，子项的 flex 属性（align-self、flex-grow 等） */
+  flexItem: boolean;
+  effects: boolean;
+}
+
+/**
  * Prefer flat objects.
  * @see https://docs.excalidraw.com/docs/@excalidraw/excalidraw/api/props/initialdata
  */
 export interface AppState {
   language: string;
+  /**
+   * 文档级设计变量（Pencil 式 token）；节点属性可用 `$token.name` 引用。
+   */
+  variables: DesignVariablesMap;
   theme: Theme;
   themeMode: ThemeMode;
+  /**
+   * 用户选择的亮/暗/跟随系统；`themeMode` 为解析后的当前生效模式。
+   */
+  themePreference: ThemePreference;
   checkboardStyle: CheckboardStyle;
   cameraZoom: number;
   cameraX: number;
@@ -97,6 +121,10 @@ export interface AppState {
   layersExpanded: SerializedNode['id'][];
   propertiesOpened: SerializedNode['id'][];
   /**
+   * 属性面板 Shape / Transform / Layout / Effects 分区的默认展开状态
+   */
+  propertiesPanelSectionsOpen: PropertiesPanelSectionsOpen;
+  /**
    * Like croppingElementId in Excalidraw
    * @see https://github.com/excalidraw/excalidraw/pull/8613
    */
@@ -156,11 +184,15 @@ export interface AppState {
 }
 
 export const getDefaultAppState: () => AppState = () => {
+  const themePreference: ThemePreference = 'system';
+  const themeMode = resolveThemeModeFromPreference(themePreference);
   return {
     language: 'en',
-    themeMode: ThemeMode.LIGHT,
+    variables: {},
+    themePreference,
+    themeMode,
     theme: {
-      mode: ThemeMode.LIGHT,
+      mode: themeMode,
       colors: {
         [ThemeMode.LIGHT]: {
           ...DEFAULT_THEME_COLORS[ThemeMode.LIGHT],
@@ -358,6 +390,13 @@ export const getDefaultAppState: () => AppState = () => {
     layersCropping: [],
     layersLassoing: [],
     propertiesOpened: [],
+    propertiesPanelSectionsOpen: {
+      shape: true,
+      transform: true,
+      layout: true,
+      flexItem: true,
+      effects: true,
+    },
     layersExpanded: [],
     rotateEnabled: true,
     flipEnabled: false,

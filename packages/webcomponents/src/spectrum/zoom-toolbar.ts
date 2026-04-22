@@ -18,6 +18,26 @@ export const findZoomFloor = (zoom: number) => {
   return [...ZOOM_STEPS].reverse().find((step) => step < zoom) || ZOOM_STEPS[0];
 };
 
+/** 事件是否来自可编辑区域（含 Shadow DOM 内的 input），避免与画布快捷键冲突 */
+function isKeyboardEventFromEditableTarget(e: KeyboardEvent): boolean {
+  for (const n of e.composedPath()) {
+    if (!(n instanceof HTMLElement)) {
+      continue;
+    }
+    const tag = n.tagName;
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') {
+      return true;
+    }
+    if (n.isContentEditable) {
+      return true;
+    }
+    if (n.getAttribute('role') === 'textbox') {
+      return true;
+    }
+  }
+  return false;
+}
+
 @customElement('ic-spectrum-zoom-toolbar')
 @localized()
 export class ZoomToolbar extends LitElement {
@@ -60,6 +80,9 @@ export class ZoomToolbar extends LitElement {
   }
 
   private handleKeyDown = (e: KeyboardEvent) => {
+    if (isKeyboardEventFromEditableTarget(e)) {
+      return;
+    }
     // Canvas is focused
     if (!this.api || document.activeElement !== this.api.element) {
       return;

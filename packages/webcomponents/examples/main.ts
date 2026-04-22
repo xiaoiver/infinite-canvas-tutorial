@@ -144,6 +144,16 @@ canvas.addEventListener(Event.READY, async (e) => {
       Task.SHOW_LAYERS_PANEL,
       Task.SHOW_PROPERTIES_PANEL,
     ],
+    taskbarSelected: [
+      Task.SHOW_PROPERTIES_PANEL,
+    ],
+    propertiesPanelSectionsOpen: {
+      shape: false,
+      transform: false,
+      layout: false,
+      flexItem: true,
+      effects: false,
+    },
     penbarVisible: true,
     taskbarVisible: true,
     checkboardStyle: CheckboardStyle.GRID,
@@ -167,40 +177,29 @@ canvas.addEventListener(Event.READY, async (e) => {
     // layersLassoing: ['parent'],
   });
 
-  const parent = {
-    id: 'yoga-flex-basis-grow-shrink-parent',
-    type: 'rect',
-    x: 100,
-    y: 100,
-    fill: 'grey',
-    display: 'flex',
-    width: 200,
-    height: 250,
-    padding: 10,
-    zIndex: 0,
-  } as const;
-
-  const child = {
-    id: 'yoga-flex-basis-grow-shrink-child1',
-    parentId: 'yoga-flex-basis-grow-shrink-parent',
-    type: 'rect',
-    fill: TRANSFORMER_MASK_FILL_COLOR,
-    flexGrow: 0.25,
-    margin: 5,
-    zIndex: 1,
-  } as const;
-
-  const child2 = {
-    id: 'yoga-flex-basis-grow-shrink-child2',
-    parentId: 'yoga-flex-basis-grow-shrink-parent',
-    type: 'rect',
-    fill: TRANSFORMER_MASK_FILL_COLOR,
-    flexGrow: 0.75,
-    margin: 5,
-    zIndex: 1,
-  } as const;
-
-  api.updateNodes([parent, child, child2]);
+  api.setAppState({
+    variables: {
+      // 避免用 #FFFFFF：默认画布背景为浅色（如 #fbfbfb），白填充/白描边会几乎看不见
+      'color.background': { type: 'color', value: '#2563EB' },
+      'color.stroke': { type: 'color', value: 'red' },
+      'text.title': { type: 'number', value: 72 },
+    },
+  });
+  api.updateNodes([
+    {
+      id: 'r1',
+      type: 'rect',
+      x: 0,
+      y: 0,
+      width: 100,
+      height: 100,
+      zIndex: 1,
+      fill: '$color.background',
+      stroke: '$color.stroke',
+      strokeWidth: 2,
+      cornerRadius: 10,
+    },
+  ]);
 
   // fetch('/gradient-text.json').then(res => res.json()).then(data => {
   //   const animation = loadAnimation(data, {

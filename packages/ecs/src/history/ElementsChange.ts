@@ -15,6 +15,10 @@ import {
   loadImage,
   deserializeBrushPoints,
 } from '../utils';
+import {
+  resolveDesignVariableValue,
+  designVariableRefKeyFromWire,
+} from '../utils/design-variables';
 import type { SerializedNode, SerializedNodeAttributes } from '../types/serialized-node';
 import { API } from '../API';
 import { refreshComputedRoughForEntity } from '../systems/ComputeRough';
@@ -84,6 +88,7 @@ const FLEX_LAYOUT_MUTATION_KEYS: readonly string[] = [
   'rowGap',
   'columnGap',
   'alignItems',
+  'alignSelf',
   'justifyContent',
   'flexDirection',
   'flexWrap',
@@ -99,6 +104,24 @@ const FLEX_LAYOUT_MUTATION_KEYS: readonly string[] = [
 
 function updatesAffectFlexLayout(updates: object): boolean {
   return FLEX_LAYOUT_MUTATION_KEYS.some((k) => k in updates);
+}
+
+/** 子项上影响 Yoga 的布局键：实体无 Flex 组件，需标记父级 flex 容器以触发 Yoga */
+const FLEX_ITEM_PARENT_RELAYOUT_KEYS: readonly string[] = [
+  'flexGrow',
+  'flexShrink',
+  'flexBasis',
+  'alignSelf',
+  'padding',
+  'margin',
+  'minWidth',
+  'maxWidth',
+  'minHeight',
+  'maxHeight',
+];
+
+function updatesAffectFlexItemInParentTree(updates: object): boolean {
+  return FLEX_ITEM_PARENT_RELAYOUT_KEYS.some((k) => k in updates);
 }
 
 export function safeAddComponent<T>(
@@ -666,6 +689,8 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
     return element;
   }
 
+  const designVariables = api.getAppState().variables;
+
   const { name, visibility } = updates;
   const {
     parentId,
@@ -692,6 +717,7 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
     y,
     width,
     height,
+    cornerRadius,
     rotation,
     scaleX,
     scaleY,
@@ -779,27 +805,33 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
     entity.write(Visibility).value = visibility;
   }
   if ('fill' in updates) {
-    if (isGradient(fill)) {
+    const resolvedFill = resolveDesignVariableValue(fill, designVariables);
+    if (isGradient(resolvedFill)) {
       safeRemoveComponent(entity, FillSolid);
       safeRemoveComponent(entity, FillImage);
       safeRemoveComponent(entity, FillPattern);
 
       safeAddComponent(entity, MaterialDirty);
-      safeAddComponent(entity, FillGradient, { value: fill });
-    } else if (isDataUrl(fill) || isUrl(fill)) {
+      safeAddComponent(entity, FillGradient, { value: resolvedFill });
+    } else if (isDataUrl(resolvedFill) || isUrl(resolvedFill)) {
       safeRemoveComponent(entity, FillSolid);
       safeRemoveComponent(entity, FillGradient);
       safeRemoveComponent(entity, FillPattern);
 
       safeAddComponent(entity, MaterialDirty);
-      loadImage(fill, entity);
+      loadImage(resolvedFill, entity);
     } else {
       if (entity.has(FillGradient)) {
         safeAddComponent(entity, MaterialDirty);
       }
 
       safeRemoveComponent(entity, FillGradient);
-      safeAddComponent(entity, FillSolid, { value: fill });
+      safeAddComponent(entity, FillSolid, {
+        value: resolvedFill as string,
+        fillVariableRef: designVariableRefKeyFromWire(
+          typeof fill === 'string' ? fill : undefined,
+        ),
+      });
     }
   }
   if ('brushStamp' in updates) {
@@ -816,10 +848,21 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
     });
   }
   if ('stroke' in updates) {
-    safeAddComponent(entity, Stroke, { color: stroke });
+    safeAddComponent(entity, Stroke, {
+      color: resolveDesignVariableValue(stroke, designVariables),
+      colorVariableRef: designVariableRefKeyFromWire(
+        typeof stroke === 'string' ? stroke : undefined,
+      ),
+    });
   }
   if ('strokeWidth' in updates) {
-    safeAddComponent(entity, Stroke, { width: strokeWidth });
+    const w = resolveDesignVariableValue(strokeWidth, designVariables);
+    safeAddComponent(entity, Stroke, {
+      ...(w !== undefined && w !== null
+        ? { width: typeof w === 'number' ? w : Number(w) }
+        : {}),
+      widthVariableRef: designVariableRefKeyFromWire(strokeWidth),
+    });
   }
   if ('strokeLinecap' in updates) {
     safeAddComponent(entity, Stroke, { linecap: strokeLinecap });
@@ -834,13 +877,31 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
     safeAddComponent(entity, Opacity, { opacity });
   }
   if ('fillOpacity' in updates) {
-    safeAddComponent(entity, Opacity, { fillOpacity });
+    const fo = resolveDesignVariableValue(fillOpacity, designVariables);
+    const n =
+      fo !== undefined && fo !== null
+        ? typeof fo === 'number'
+          ? fo
+          : parseFloat(String(fo))
+        : NaN;
+    const v = Number.isFinite(n) ? Math.max(0, Math.min(1, n)) : 1;
+    safeAddComponent(entity, Opacity, { fillOpacity: v });
   }
   if ('strokeOpacity' in updates) {
-    safeAddComponent(entity, Opacity, { strokeOpacity });
+    const so = resolveDesignVariableValue(strokeOpacity, designVariables);
+    const n =
+      so !== undefined && so !== null
+        ? typeof so === 'number'
+          ? so
+          : parseFloat(String(so))
+        : NaN;
+    const v = Number.isFinite(n) ? Math.max(0, Math.min(1, n)) : 1;
+    safeAddComponent(entity, Opacity, { strokeOpacity: v });
   }
   if ('dropShadowColor' in updates) {
-    safeAddComponent(entity, DropShadow, { color: dropShadowColor });
+    safeAddComponent(entity, DropShadow, {
+      color: resolveDesignVariableValue(dropShadowColor, designVariables),
+    });
   }
   if ('dropShadowBlurRadius' in updates) {
     safeAddComponent(entity, DropShadow, { blurRadius: dropShadowBlurRadius });
@@ -852,7 +913,9 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
     safeAddComponent(entity, DropShadow, { offsetY: dropShadowOffsetY });
   }
   if ('innerShadowColor' in updates) {
-    safeAddComponent(entity, InnerShadow, { color: innerShadowColor });
+    safeAddComponent(entity, InnerShadow, {
+      color: resolveDesignVariableValue(innerShadowColor, designVariables),
+    });
   }
   if ('innerShadowBlurRadius' in updates) {
     safeAddComponent(entity, InnerShadow, {
@@ -880,7 +943,9 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
     }
   }
   if ('decorationColor' in updates) {
-    safeAddComponent(entity, TextDecoration, { color: decorationColor });
+    safeAddComponent(entity, TextDecoration, {
+      color: resolveDesignVariableValue(decorationColor, designVariables),
+    });
   }
   if ('decorationLine' in updates) {
     safeAddComponent(entity, TextDecoration, { line: decorationLine });
@@ -974,7 +1039,11 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
     entity.write(Text).anchorY = anchorY;
   }
   if ('fontSize' in updates) {
-    entity.write(Text).fontSize = fontSize;
+    const fs = resolveDesignVariableValue(fontSize, designVariables);
+    entity.write(Text).fontSize =
+      typeof fs === 'number' ? fs : Number(fs);
+    entity.write(Text).fontSizeVariableRef =
+      designVariableRefKeyFromWire(fontSize);
   }
   if ('wordWrapWidth' in updates) {
     const w = (updates as { wordWrapWidth?: number }).wordWrapWidth;
@@ -1057,6 +1126,19 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
       } else if (entity.has(Embed)) {
         entity.write(Embed).height = height;
       }
+    }
+  }
+  if ('cornerRadius' in updates && cornerRadius !== undefined && entity.has(Rect)) {
+    const resolved = resolveDesignVariableValue(
+      cornerRadius,
+      designVariables,
+    );
+    const n =
+      typeof resolved === 'number'
+        ? resolved
+        : parseFloat(String(resolved ?? ''));
+    if (Number.isFinite(n)) {
+      entity.write(Rect).cornerRadius = Math.max(0, n);
     }
   }
   if ('points' in updates) {
@@ -1147,6 +1229,19 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
 
   if (entity.has(Flex) && updatesAffectFlexLayout(updates)) {
     safeAddComponent(entity, FlexLayoutDirty);
+  }
+
+  if (updatesAffectFlexItemInParentTree(updates)) {
+    const pid = element.parentId;
+    if (pid) {
+      const parentNode = api.getNodeById(pid);
+      if (parentNode && (parentNode as { display?: string }).display === 'flex') {
+        const parentEntity = api.getEntity(parentNode);
+        if (parentEntity?.has(Flex)) {
+          safeAddComponent(parentEntity, FlexLayoutDirty);
+        }
+      }
+    }
   }
 
   if ('version' in updates) {

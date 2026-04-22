@@ -670,6 +670,179 @@
   <source>No layer selected.</source>
   <target>No hay capa seleccionada.</target>
 </trans-unit>
+<trans-unit id="s60f96e59025b5e75">
+  <source>Liquid glass</source>
+  <target>Vidrio líquido</target>
+</trans-unit>
+<trans-unit id="s16d7f19d81e4bfb3">
+  <source>Jitter</source>
+  <target>Jitter</target>
+</trans-unit>
+<trans-unit id="s5168cd5936a0aac3">
+  <source>Blocks</source>
+  <target>Bloques</target>
+</trans-unit>
+<trans-unit id="s5923a17744b5193f">
+  <source>Superellipse power</source>
+  <target>Potencia de superelipse</target>
+</trans-unit>
+<trans-unit id="sd6b7d8e3b483331a">
+  <source>Ellipse size X</source>
+  <target>Tamaño de elipse X</target>
+</trans-unit>
+<trans-unit id="sd6b7d9e3b48334cd">
+  <source>Ellipse size Y</source>
+  <target>Tamaño de elipse Y</target>
+</trans-unit>
+<trans-unit id="sf2747aaf366495ef">
+  <source>Refraction power</source>
+  <target>Potencia de refracción</target>
+</trans-unit>
+<trans-unit id="sef275b8fe7158e2c">
+  <source>Grain</source>
+  <target>Granos</target>
+</trans-unit>
+<trans-unit id="s5386b74564039f44">
+  <source>Glow weight</source>
+  <target>Peso de la luz</target>
+</trans-unit>
+<trans-unit id="s5f123ba0ba0ee919">
+  <source>Glow bias</source>
+  <target>Bias de la luz</target>
+</trans-unit>
+<trans-unit id="s61b934b34daa3a39">
+  <source>Glow edge start</source>
+  <target>Inicio del borde de la luz</target>
+</trans-unit>
+<trans-unit id="s9af865ce765314a8">
+  <source>Glow edge end</source>
+  <target>Fin del borde de la luz</target>
+</trans-unit>
+<trans-unit id="sbe3eb643ceef95fc">
+  <source>Center X</source>
+  <target>Centro X</target>
+</trans-unit>
+<trans-unit id="sbe3eb743ceef97af">
+  <source>Center Y</source>
+  <target>Centro Y</target>
+</trans-unit>
+<trans-unit id="s9c98cb4652a54001">
+  <source>Scale X</source>
+  <target>Escala X</target>
+</trans-unit>
+<trans-unit id="s9c98ca4652a53e4e">
+  <source>Scale Y</source>
+  <target>Escala Y</target>
+</trans-unit>
+<trans-unit id="s235371e20fb1b261">
+  <source>f(dist) coefficients a–d use defaults; edit the filter string to tune them.</source>
+  <target>Los coeficientes f(dist) a–d usan valores por defecto; edite la cadena de filtro para ajustarlos.</target>
+</trans-unit>
+<trans-unit id="s177d1b8ad205f175">
+  <source>Flex item</source>
+</trans-unit>
+<trans-unit id="s5a053ed77fa9c1bc">
+  <source>Align self</source>
+</trans-unit>
+<trans-unit id="sdb73788b3c975f16">
+  <source>Auto</source>
+</trans-unit>
+<trans-unit id="sae1c7f13b7c0c47f">
+  <source>Start</source>
+</trans-unit>
+<trans-unit id="sd8f923198e0c5c6a">
+  <source>End</source>
+</trans-unit>
+<trans-unit id="s1749014f3f87fa6a">
+  <source>Stretch</source>
+</trans-unit>
+<trans-unit id="s0c4593d81f147042">
+  <source>Baseline</source>
+</trans-unit>
+<trans-unit id="s25daad7e4546237a">
+  <source>Grow</source>
+</trans-unit>
+<trans-unit id="s16de78e6a34998f0">
+  <source>Shrink</source>
+</trans-unit>
+<trans-unit id="sed2d55e3f811e34d">
+  <source>Basis</source>
+</trans-unit>
+<trans-unit id="s2e4818861000b13f">
+  <source>Layout</source>
+</trans-unit>
+<trans-unit id="s7d8103f6f06f83d6">
+  <source>Padding</source>
+</trans-unit>
+<trans-unit id="sf0e20b3d00cae9e8">
+  <source>Padding per side</source>
+</trans-unit>
+<trans-unit id="s6d02dc19e21eb49c">
+  <source>Top</source>
+</trans-unit>
+<trans-unit id="s366991b9c9287765">
+  <source>Right</source>
+</trans-unit>
+<trans-unit id="sc980855a000b76ea">
+  <source>Bottom</source>
+</trans-unit>
+<trans-unit id="sa5c371b4bb75e590">
+  <source>Left</source>
+</trans-unit>
+<trans-unit id="s3f1e7a3f2b283d3b">
+  <source>Margin</source>
+</trans-unit>
+<trans-unit id="sf989bd309d52876b">
+  <source>Margin per side</source>
+</trans-unit>
+<trans-unit id="seaf97719986faf4f">
+  <source>Gap</source>
+</trans-unit>
+<trans-unit id="s97881699a2b21d5b">
+  <source>Row gap</source>
+</trans-unit>
+<trans-unit id="s1aa1cb63ad44bc6f">
+  <source>Column gap</source>
+</trans-unit>
+<trans-unit id="sd23ee5e66df8400a">
+  <source>Direction</source>
+</trans-unit>
+<trans-unit id="sa013e119fec906fb">
+  <source>Row</source>
+</trans-unit>
+<trans-unit id="s69e69d90b504f889">
+  <source>Row reverse</source>
+</trans-unit>
+<trans-unit id="s9e40e59654c8ad67">
+  <source>Column</source>
+</trans-unit>
+<trans-unit id="s344a758af71a1ce5">
+  <source>Column reverse</source>
+</trans-unit>
+<trans-unit id="sb4d3986485cf1326">
+  <source>Align items</source>
+</trans-unit>
+<trans-unit id="sbe6283ffe834c65a">
+  <source>Justify content</source>
+</trans-unit>
+<trans-unit id="s1af8b67d1c85c811">
+  <source>Space between</source>
+</trans-unit>
+<trans-unit id="s456a8d744313852a">
+  <source>Space around</source>
+</trans-unit>
+<trans-unit id="s66765c420ee578e4">
+  <source>Space evenly</source>
+</trans-unit>
+<trans-unit id="se619a501d1bfe6a5">
+  <source>Wrap</source>
+</trans-unit>
+<trans-unit id="sd28b1ebf1010108a">
+  <source>No wrap</source>
+</trans-unit>
+<trans-unit id="se935f4fce5fafa2b">
+  <source>Wrap reverse</source>
+</trans-unit>
 </body>
 </file>
 </xliff>

@@ -4,14 +4,21 @@ import {
   SerializedNode,
   createSVGElement,
   isPattern,
+  resolveDesignVariableValue,
+  type AppState,
 } from '@infinite-canvas-tutorial/ecs';
 import { html, LitElement } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
+import { consume } from '@lit/context';
 import { unsafeSVG } from 'lit/directives/unsafe-svg.js';
 import { when } from 'lit/directives/when.js';
+import { appStateContext } from '../context';
 
 @customElement('ic-spectrum-fill-icon')
 export class FillIcon extends LitElement {
+  @consume({ context: appStateContext, subscribe: true })
+  appState: AppState;
+
   @property()
   node: SerializedNode;
 
@@ -19,20 +26,27 @@ export class FillIcon extends LitElement {
   value: string;
 
   render() {
+    const variables = this.appState?.variables;
+    const resolved = resolveDesignVariableValue(this.value, variables);
+    const displayValue =
+      typeof resolved === 'string' ? resolved : String(resolved);
+
     const $circle = createSVGElement('circle') as SVGCircleElement;
     $circle.setAttribute('cx', '50');
     $circle.setAttribute('cy', '50');
     $circle.setAttribute('r', '48');
-    $circle.setAttribute('fill', this.value);
+    $circle.setAttribute('fill', displayValue);
     $circle.classList.add('picker');
 
-    const isGradientOrPattern = isGradient(this.value) || isPattern(this.value);
+    const isGradientOrPattern =
+      isGradient(displayValue) || isPattern(displayValue);
     let defsHTML = '';
     if (isGradientOrPattern) {
       const $g = createSVGElement('g') as SVGElement;
       exportFillGradientOrPattern(
         {
           ...this.node,
+          fill: displayValue,
           type: 'ellipse',
           x: 0,
           y: 0,

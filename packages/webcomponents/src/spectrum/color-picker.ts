@@ -62,13 +62,17 @@ export class ColorPicker extends LitElement {
   @property()
   types: ColorType[] = [ColorType.None, ColorType.Solid, ColorType.Gradient];
 
-  /** 传给 `ic-spectrum-input-solid`（例如编辑 fill 时）。 */
-  @property({ type: Number })
-  fillOpacity: number | undefined;
+  /** 传给 `ic-spectrum-input-solid`（例如编辑 fill 时）；可为 `$token`。 */
+  @property()
+  fillOpacity: number | string | undefined;
 
-  /** 传给 `ic-spectrum-input-solid`（例如编辑 stroke 时）。 */
-  @property({ type: Number })
-  strokeOpacity: number | undefined;
+  /** 传给 `ic-spectrum-input-solid`（例如编辑 stroke 时）；可为 `$token`。 */
+  @property()
+  strokeOpacity: number | string | undefined;
+
+  /** 与工具条一致：透明度可绑定数字变量 */
+  @property({ type: Boolean, attribute: 'enable-opacity-variable-binding' })
+  enableOpacityVariableBinding = false;
 
   @state()
   type: ColorType = ColorType.None;
@@ -125,7 +129,6 @@ export class ColorPicker extends LitElement {
   render() {
     const headingId = 'color-picker-heading';
     return html`
-      <h4 id=${headingId}>${msg(str`Select a color`)}</h4>
       ${when(
       this.types.length > 1,
       () => html`<sp-action-group
@@ -186,6 +189,8 @@ export class ColorPicker extends LitElement {
             value=${this.prevColors[ColorType.Solid]}
             .fillOpacity=${this.fillOpacity}
             .strokeOpacity=${this.strokeOpacity}
+            ?enable-opacity-variable-binding=${this
+              .enableOpacityVariableBinding}
             @color-change=${this.handleColorChanged}
           ></ic-spectrum-input-solid>
         `,

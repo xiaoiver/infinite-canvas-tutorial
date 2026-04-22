@@ -7,6 +7,8 @@ import {
   StateManagement,
   Commands,
   ThemeMode,
+  ThemePreference,
+  resolveThemeModeFromPreference,
   DOMAdapter,
   deserializePoints,
   RectSerializedNode,
@@ -18,6 +20,7 @@ import { ImageLoader } from '@loaders.gl/images';
 import { load } from '@loaders.gl/core';
 import { getDataURL, updateAndSelectNodes } from './utils';
 import { isString, path2Absolute } from '@antv/util';
+import { persistThemePreference } from './theme-preference-storage';
 
 export interface Comment {
   type: 'comment';
@@ -75,12 +78,35 @@ export type MermaidPasteStyleFn = (nodes: SerializedNode[]) => void;
 export class ExtendedAPI extends API {
   #mermaidPasteStyler?: MermaidPasteStyleFn;
 
+  #colorSchemeMql?: MediaQueryList;
+
+  #onColorSchemeChange = () => {
+    const s = this.getAppState();
+    if (s.themePreference !== 'system') {
+      return;
+    }
+    const next = resolveThemeModeFromPreference('system');
+    if (next === s.themeMode) {
+      return;
+    }
+    this.setAppState({ themeMode: next });
+  };
+
   constructor(
     stateManagement: StateManagement,
     commands: Commands,
     public element: LitElement,
   ) {
     super(stateManagement, commands);
+    if (typeof window !== 'undefined') {
+      this.#colorSchemeMql = window.matchMedia(
+        '(prefers-color-scheme: dark)',
+      );
+      this.#colorSchemeMql.addEventListener(
+        'change',
+        this.#onColorSchemeChange,
+      );
+    }
   }
 
   registerMermaidPasteStyler(fn: MermaidPasteStyleFn): void {
@@ -153,6 +179,11 @@ export class ExtendedAPI extends API {
    * Delete Canvas component
    */
   destroy() {
+    this.#colorSchemeMql?.removeEventListener(
+      'change',
+      this.#onColorSchemeChange,
+    );
+    this.#colorSchemeMql = undefined;
     super.destroy();
     this.element.dispatchEvent(new CustomEvent(Event.DESTROY));
   }
@@ -180,13 +211,30 @@ export class ExtendedAPI extends API {
     throw new Error('Method not implemented.');
   }
 
-  setAppState(appState: Partial<AppState>) {
-    super.setAppState(appState);
-    if ('themeMode' in appState) {
+  setAppState(
+    appState: Partial<AppState>,
+    options?: {
+      recordDesignVariableUndo?: boolean;
+      /** 透传 ECS：为 true 时整表替换 `variables` */
+      replaceVariables?: boolean;
+    },
+  ) {
+    super.setAppState(appState, options);
+    if (
+      Object.prototype.hasOwnProperty.call(appState, 'themePreference') &&
+      appState.themePreference !== undefined
+    ) {
+      persistThemePreference(appState.themePreference as ThemePreference);
+    }
+    if (
+      Object.prototype.hasOwnProperty.call(appState, 'themeMode') ||
+      Object.prototype.hasOwnProperty.call(appState, 'themePreference')
+    ) {
+      const { themeMode } = this.getAppState();
       this.element.dispatchEvent(
         new CustomEvent('theme-change', {
           detail: {
-            themeMode: appState.themeMode as ThemeMode,
+            themeMode,
           },
           bubbles: true,
           composed: true,

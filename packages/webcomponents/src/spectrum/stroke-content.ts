@@ -3,13 +3,19 @@ import { customElement, property } from 'lit/decorators.js';
 import { consume } from '@lit/context';
 import {
   AppState,
+  designVariableRefKeyFromWire,
+  isDesignVariableReference,
   Marker,
   PolylineSerializedNode,
+  resolveDesignVariableValue,
   SerializedNode,
 } from '@infinite-canvas-tutorial/ecs';
 import { apiContext, appStateContext } from '../context';
 import { ExtendedAPI } from '../API';
 import { localized, msg, str } from '@lit/localize';
+import { when } from 'lit/directives/when.js';
+import type { DesignVariablePickDetail } from './design-variable-picker';
+import './design-variable-picker.js';
 @customElement('ic-spectrum-stroke-content')
 @localized()
 export class StrokeContent extends LitElement {
@@ -30,7 +36,7 @@ export class StrokeContent extends LitElement {
       }
 
       sp-number-field {
-        width: 80px;
+        width: 70px;
       }
 
       > div {
@@ -40,13 +46,40 @@ export class StrokeContent extends LitElement {
       }
     }
 
-    sp-slider {
-      flex: 1;
+    .dv-badge {
+      font-size: var(--spectrum-font-size-75);
+      color: var(--spectrum-purple-900);
+      background: var(--spectrum-purple-100);
+      border-radius: 4px;
+      padding: 2px 6px;
     }
 
-    .stroke-width-field {
-      position: relative;
-      top: 10px;
+    .stroke-width-controls {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 4px;
+      min-width: 0;
+    }
+
+    sp-popover {
+      padding: 0;
+    }
+
+    .dv-popover-body {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      min-width: 220px;
+      padding: 8px;
+      box-sizing: border-box;
+    }
+
+    .dv-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
     }
   `;
 
@@ -60,7 +93,7 @@ export class StrokeContent extends LitElement {
   node: SerializedNode;
 
   private handleStrokeWidthChanged(e: Event & { target: HTMLInputElement }) {
-    const strokeWidth = parseInt(e.target.value);
+    const strokeWidth = parseFloat(e.target.value);
     this.api.updateNode(this.node, {
       strokeWidth,
     });
@@ -107,6 +140,55 @@ export class StrokeContent extends LitElement {
     this.api.record();
   }
 
+  private handleStrokeWidthVariablePick(
+    e: CustomEvent<DesignVariablePickDetail>,
+  ) {
+    this.api.updateNode(this.node, {
+      strokeWidth: `$${e.detail.key}` as unknown as number,
+    });
+    this.api.record();
+  }
+
+  private handleStrokeWidthUnbind() {
+    const sw = (this.node as PolylineSerializedNode).strokeWidth;
+    const resolved = resolveDesignVariableValue(sw, this.appState.variables);
+    const n =
+      typeof resolved === 'number'
+        ? resolved
+        : parseFloat(String(resolved ?? ''));
+    if (Number.isFinite(n)) {
+      this.api.updateNode(this.node, { strokeWidth: n });
+      this.api.record();
+    }
+  }
+
+  private handleStrokeOpacityVariablePick(
+    e: CustomEvent<DesignVariablePickDetail>,
+  ) {
+    this.api.updateNode(this.node, {
+      strokeOpacity: `$${e.detail.key}` as unknown as number,
+    });
+    this.api.record();
+  }
+
+  private handleStrokeOpacityUnbind() {
+    const raw = (this.node as PolylineSerializedNode).strokeOpacity;
+    const resolved = resolveDesignVariableValue(
+      raw,
+      this.appState.variables,
+    );
+    const n =
+      typeof resolved === 'number'
+        ? resolved
+        : parseFloat(String(resolved ?? ''));
+    if (Number.isFinite(n)) {
+      this.api.updateNode(this.node, {
+        strokeOpacity: Math.max(0, Math.min(1, n)),
+      });
+      this.api.record();
+    }
+  }
+
   render() {
     if (!this.node) {
       return html``;
@@ -122,34 +204,163 @@ export class StrokeContent extends LitElement {
       markerEnd = 'none',
     } = this.node as PolylineSerializedNode;
 
+    const strokeWidthResolved = resolveDesignVariableValue(
+      strokeWidth,
+      this.appState.variables,
+    );
+    const strokeWidthShow = (() => {
+      if (typeof strokeWidthResolved === 'number') {
+        return strokeWidthResolved;
+      }
+      const n = parseFloat(String(strokeWidthResolved ?? ''));
+      return Number.isFinite(n) ? n : 0;
+    })();
+    const strokeWidthBound =
+      typeof strokeWidth === 'string' &&
+      isDesignVariableReference(strokeWidth);
+
+    const strokeOpacityResolved = resolveDesignVariableValue(
+      strokeOpacity,
+      this.appState.variables,
+    );
+    const strokeOpacityShow = (() => {
+      if (typeof strokeOpacityResolved === 'number') {
+        return strokeOpacityResolved;
+      }
+      const n = parseFloat(String(strokeOpacityResolved ?? ''));
+      return Number.isFinite(n) ? n : 1;
+    })();
+    const strokeOpacityBound =
+      typeof strokeOpacity === 'string' &&
+      isDesignVariableReference(strokeOpacity);
+
     return html`<div class="line">
-        <sp-slider
-          label=${msg(str`Stroke width`)}
-          size="s"
-          max="20"
-          min="0"
-          value=${strokeWidth}
-          step="1"
-          editable
-          format-options='{
-            "style": "unit",
-            "unit": "px"
-          }'
-          @change=${this.handleStrokeWidthChanged}
-        ></sp-slider>
+        <sp-field-label for="stroke-width" side-aligned="start"
+          >${msg(str`Stroke width`)}</sp-field-label
+        >
+        <div class="stroke-width-controls">
+          <sp-action-button
+            quiet
+            size="s"
+            id="stroke-width-dv-trigger"
+          >
+            <sp-icon-link slot="icon"></sp-icon-link>
+            <sp-tooltip self-managed placement="bottom">
+              ${msg(str`Attach a variable`)}
+            </sp-tooltip>
+          </sp-action-button>
+          <sp-number-field
+            id="stroke-width"
+            size="s"
+            value=${strokeWidthShow}
+            min="0"
+            max="20"
+            step="1"
+            autocomplete="off"
+            @change=${this.handleStrokeWidthChanged}
+            format-options='{
+              "style": "unit",
+              "unit": "px"
+            }'
+          ></sp-number-field>
+          <sp-overlay
+            trigger="stroke-width-dv-trigger@click"
+            placement="bottom"
+            type="auto"
+          >
+            <sp-popover dialog>
+              <div class="dv-popover-body">
+                ${when(
+      strokeWidthBound,
+      () =>
+        html`<div class="dv-row">
+                      <span class="dv-badge" title=${String(strokeWidth)}
+                        >${String(strokeWidth)}</span
+                      >
+                      <sp-action-button
+                        quiet
+                        size="s"
+                        @click=${this.handleStrokeWidthUnbind}
+                      >
+                        <sp-icon-unlink slot="icon"></sp-icon-unlink>
+                        <sp-tooltip self-managed placement="right">
+                          ${msg(str`Detach variable`)}
+                        </sp-tooltip>
+                      </sp-action-button>
+                    </div>`,
+    )}
+                <ic-spectrum-design-variable-picker
+                  match-type="number"
+                  selected-key=${designVariableRefKeyFromWire(strokeWidth)}
+                  @ic-variable-pick=${this.handleStrokeWidthVariablePick}
+                ></ic-spectrum-design-variable-picker>
+              </div>
+            </sp-popover>
+          </sp-overlay>
+        </div>
       </div>
 
       <div class="line">
-        <sp-slider
-          label=${msg(str`Stroke opacity`)}
-          size="s"
-          max="1"
-          min="0"
-          value=${strokeOpacity}
-          step="0.01"
-          editable
-          @change=${this.handleStrokeOpacityChanged}
-        ></sp-slider>
+        <sp-field-label for="stroke-opacity" side-aligned="start"
+          >${msg(str`Stroke opacity`)}</sp-field-label
+        >
+        <div class="stroke-width-controls">
+          <sp-action-button
+            quiet
+            size="s"
+            id="stroke-opacity-dv-trigger"
+          >
+            <sp-icon-link slot="icon"></sp-icon-link>
+            <sp-tooltip self-managed placement="bottom">
+              ${msg(str`Attach a variable`)}
+            </sp-tooltip>
+          </sp-action-button>
+          <sp-number-field
+            id="stroke-opacity"
+            size="s"
+            value=${strokeOpacityShow}
+            min="0"
+            max="1"
+            step="0.01"
+            hide-stepper
+            autocomplete="off"
+            @change=${this.handleStrokeOpacityChanged}
+          ></sp-number-field>
+          <sp-overlay
+            trigger="stroke-opacity-dv-trigger@click"
+            placement="bottom"
+            type="auto"
+          >
+            <sp-popover dialog>
+              <div class="dv-popover-body">
+                ${when(
+      strokeOpacityBound,
+      () =>
+        html`<div class="dv-row">
+                      <span class="dv-badge" title=${String(strokeOpacity)}
+                        >${String(strokeOpacity)}</span
+                      >
+                      <sp-action-button
+                        quiet
+                        size="s"
+                        @click=${this.handleStrokeOpacityUnbind}
+                      >
+                        <sp-icon-unlink slot="icon"></sp-icon-unlink>
+                        <sp-tooltip self-managed placement="right">
+                          ${msg(str`Detach variable`)}
+                        </sp-tooltip>
+                      </sp-action-button>
+                    </div>`,
+    )}
+                <ic-spectrum-design-variable-picker
+                  match-type="number"
+                  selected-key=${designVariableRefKeyFromWire(strokeOpacity)}
+                  @ic-variable-pick=${this.handleStrokeOpacityVariablePick}
+                ></ic-spectrum-design-variable-picker>
+              </div>
+            </sp-popover>
+          </sp-overlay>
+        </div>
       </div>
 
       <div class="line">
@@ -475,7 +686,7 @@ export class StrokeContent extends LitElement {
         >
         <sp-picker
           size="s"
-          style="width: 80px;"
+          style="width: 70px;"
           label=${msg(str`Marker start`)}
           value=${markerStart}
           @change=${this.handleMarkerStartChanged}
@@ -496,7 +707,7 @@ export class StrokeContent extends LitElement {
         >
         <sp-picker
           size="s"
-          style="width: 80px;"
+          style="width: 70px;"
           label=${msg(str`Marker end`)}
           value=${markerEnd}
           @change=${this.handleMarkerEndChanged}

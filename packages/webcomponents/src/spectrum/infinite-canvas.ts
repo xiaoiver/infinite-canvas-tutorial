@@ -11,6 +11,7 @@ import {
 
 import { apiContext, appStateContext, nodesContext } from '../context';
 import { pendingCanvases } from '../API';
+import { readStoredThemePreference } from '../theme-preference-storage';
 
 import '@spectrum-web-components/theme/sp-theme.js';
 import '@spectrum-web-components/theme/src/themes.js';
@@ -117,6 +118,8 @@ import '@spectrum-web-components/icons-workflow/icons/sp-icon-checkmark.js';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-cancel.js';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-group.js';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-ungroup.js';
+import '@spectrum-web-components/icons-workflow/icons/sp-icon-link.js';
+import '@spectrum-web-components/icons-workflow/icons/sp-icon-unlink.js';
 import './icons/sp-icon-pentagon';
 import './icons/sp-icon-triangle';
 
@@ -243,6 +246,7 @@ export class InfiniteCanvas extends LitElement {
 
       this.appStateProvider.value = {
         ...getDefaultAppState(),
+        ...readStoredThemePreference(),
         ...this.appState,
       };
       this.nodesProvider.value = this.nodes;
