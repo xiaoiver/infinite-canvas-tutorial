@@ -114,7 +114,7 @@ export class DesignVariablePicker extends LitElement {
     return html`
       <sp-picker
         size="s"
-        style="width: 240px"
+        style="width: 180px"
         value=${this.pickerValue}
         @change=${this.handleChange}
       >

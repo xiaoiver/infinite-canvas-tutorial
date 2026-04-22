@@ -70,7 +70,6 @@ export class StrokeContent extends LitElement {
       display: flex;
       flex-direction: column;
       gap: 8px;
-      min-width: 220px;
       padding: 8px;
       box-sizing: border-box;
     }

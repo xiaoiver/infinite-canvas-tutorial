@@ -1,14 +1,18 @@
 import { html, css, LitElement } from 'lit';
 import { consume } from '@lit/context';
 import { customElement, state } from 'lit/decorators.js';
-import {
-  SerializedNode,
-  Task,
-  AppState,
-  API,
-} from '@infinite-canvas-tutorial/ecs';
+import { SerializedNode, Task, AppState, NodeAlignment } from '@infinite-canvas-tutorial/ecs';
 import { apiContext, appStateContext, nodesContext } from '../context';
+import { type ExtendedAPI } from '../API';
 import { localized, msg, str } from '@lit/localize';
+import '@spectrum-web-components/action-button/sp-action-button.js';
+import '@spectrum-web-components/icons-workflow/icons/sp-icon-align-bottom.js';
+import '@spectrum-web-components/icons-workflow/icons/sp-icon-align-center.js';
+import '@spectrum-web-components/icons-workflow/icons/sp-icon-align-left.js';
+import '@spectrum-web-components/icons-workflow/icons/sp-icon-align-middle.js';
+import '@spectrum-web-components/icons-workflow/icons/sp-icon-align-right.js';
+import '@spectrum-web-components/icons-workflow/icons/sp-icon-align-top.js';
+import '@spectrum-web-components/icons-workflow/icons/sp-icon-close.js';
 import './document-theme-settings';
 
 const PANEL_HEIGHT_STORAGE_KEY = 'ic-spectrum-properties-panel-body-height';
@@ -68,6 +72,19 @@ export class PropertiesPanel extends LitElement {
       line-height: 1.45;
     }
 
+    .multi-select-hint {
+      margin: 0 0 var(--spectrum-global-dimension-size-100) 0;
+      color: var(--spectrum-gray-800);
+      font-size: var(--spectrum-font-size-75);
+    }
+
+    .align-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--spectrum-global-dimension-size-50);
+      align-items: center;
+    }
+
     ic-spectrum-document-theme-settings {
       display: block;
       min-height: 0;
@@ -106,7 +123,7 @@ export class PropertiesPanel extends LitElement {
   nodes: SerializedNode[];
 
   @consume({ context: apiContext, subscribe: true })
-  api: API;
+  api: ExtendedAPI;
 
   @state()
   private panelBodyHeight = DEFAULT_PANEL_BODY_HEIGHT;
@@ -186,6 +203,10 @@ export class PropertiesPanel extends LitElement {
     });
   }
 
+  private handleAlign(alignment: NodeAlignment) {
+    this.api?.alignSelectedNodes(alignment);
+  }
+
   private renderResizeHandle() {
     return html`<div
       class="resize-handle"
@@ -235,7 +256,60 @@ export class PropertiesPanel extends LitElement {
           class="panel-body container"
           style=${`height:${this.panelBodyHeight}px`}
         >
-          ${layersSelected.length} selected
+          <p class="multi-select-hint">
+            ${layersSelected.length}
+            ${msg(str` selected`)}
+          </p>
+          <div class="align-toolbar" role="toolbar" aria-label=${msg(str`Alignment`)}>
+            <sp-action-button
+              quiet
+              size="s"
+              @click=${() => this.handleAlign('left')}
+              label=${msg(str`Align left`)}
+            >
+              <sp-icon-align-left slot="icon"></sp-icon-align-left>
+            </sp-action-button>
+            <sp-action-button
+              quiet
+              size="s"
+              @click=${() => this.handleAlign('centerH')}
+              label=${msg(str`Align center horizontally`)}
+            >
+              <sp-icon-align-center slot="icon"></sp-icon-align-center>
+            </sp-action-button>
+            <sp-action-button
+              quiet
+              size="s"
+              @click=${() => this.handleAlign('right')}
+              label=${msg(str`Align right`)}
+            >
+              <sp-icon-align-right slot="icon"></sp-icon-align-right>
+            </sp-action-button>
+            <sp-action-button
+              quiet
+              size="s"
+              @click=${() => this.handleAlign('top')}
+              label=${msg(str`Align top`)}
+            >
+              <sp-icon-align-top slot="icon"></sp-icon-align-top>
+            </sp-action-button>
+            <sp-action-button
+              quiet
+              size="s"
+              @click=${() => this.handleAlign('centerV')}
+              label=${msg(str`Align middle vertically`)}
+            >
+              <sp-icon-align-middle slot="icon"></sp-icon-align-middle>
+            </sp-action-button>
+            <sp-action-button
+              quiet
+              size="s"
+              @click=${() => this.handleAlign('bottom')}
+              label=${msg(str`Align bottom`)}
+            >
+              <sp-icon-align-bottom slot="icon"></sp-icon-align-bottom>
+            </sp-action-button>
+          </div>
         </div>
         ${this.renderResizeHandle()}
       </section>`;

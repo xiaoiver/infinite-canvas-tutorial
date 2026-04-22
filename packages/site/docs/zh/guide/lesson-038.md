@@ -114,6 +114,39 @@ export type DesignVariablesSvgExportMode =
 }
 ```
 
+## icon {#icon}
+
+Pencil 支持
+
+```ts
+export interface IconFont extends Entity, Size, CanHaveEffects {
+    type: 'icon_font';
+    /** Name of the icon in the icon font */
+    iconFontName?: StringOrVariable;
+    /** Icon font to use. Valid fonts are 'lucide', 'feather', 'Material Symbols Outlined', 'Material Symbols Rounded', 'Material Symbols Sharp', 'phosphor' */
+    iconFontFamily?: StringOrVariable;
+    /** Variable font weight, only valid for icon fonts with variable weight. Values from 100 to 700. */
+    weight?: NumberOrVariable;
+    fill?: Fills;
+}
+```
+
+OpenPencil 的 iconLookup 是可注入的函数，这意味着：
+
+-   灵活性：可以接入任何图标源（Iconify、Lucide、自定义）
+-   AI 负担：AI 只需要输出 iconFontName: "SearchIcon"，具体路径由运行时解析
+
+```ts
+private drawIconFont(canvas, node, x, y, w, h, opacity) {
+  const iconName = iNode.iconFontName ?? iNode.name ?? '';
+  const iconMatch = this.iconLookup?.(iconName) ?? null;
+  const iconD = iconMatch?.d ?? FALLBACK_ICON_D;  // SVG path data
+  const iconStyle = iconMatch?.style ?? 'stroke';   // stroke or fill
+
+  // 解析 SVG path → Skia Path → 缩放适配 → 绘制
+}
+```
+
 ## Design ↔ Code {#design-to-code}
 
 [Design ↔ Code]

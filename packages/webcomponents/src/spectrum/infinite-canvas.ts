@@ -50,6 +50,8 @@ import '@spectrum-web-components/icons-workflow/icons/sp-icon-align-left.js';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-align-middle.js';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-align-right.js';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-align-top.js';
+import '@spectrum-web-components/icons-workflow/icons/sp-icon-distribute-space-horiz.js';
+import '@spectrum-web-components/icons-workflow/icons/sp-icon-distribute-space-vert.js';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-margin-bottom.js';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-margin-left.js';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-margin-right.js';

@@ -6,6 +6,8 @@
 import { distanceSquareRoot, isNil, isString } from '@antv/util';
 import { DEG_TO_RAD } from '@pixi/math';
 
+import { DEFAULT_MESH_GRADIENT_CORNER_POSITIONS } from './mesh-gradient-padding';
+
 export interface LinearGradientNode {
   type: 'linear-gradient';
   orientation?: DirectionalNode | AngularNode | undefined;
@@ -32,6 +34,31 @@ export interface ConicGradientNode {
     | (ShapeNode | DefaultRadialNode | ExtentKeywordNode)[]
     | undefined;
   colorStops: ColorStop[];
+}
+
+/**
+ * 单个角点：颜色 + 可选的归一化 UV `x y`（0～1），在串里可写作 `#rgb 0.1 0.2`。
+ */
+export interface MeshGradientCorner {
+  color: ColorStop;
+  uv?: [number, number];
+}
+
+/**
+ * 3×3 网格角点（行主序，AST 中 1～9 个）+ 背景色。`parseGradient` 不足 9 个角点用背景色填充；未写 UV
+ * 的角点使用默认 3×3 网格位置。
+ */
+export interface MeshGradientNode {
+  type: 'mesh-gradient';
+  background: ColorStop;
+  corners: MeshGradientCorner[];
+  /** 与 `gtype()` / `wshape()` / `warp()` / `time()` / `points()` 等尾部函数字段对应。 */
+  gradientTypeIndex?: number;
+  warpShapeIndex?: number;
+  warpSize?: number;
+  warpRatio?: number;
+  time?: number;
+  pointsNum?: number;
 }
 
 export interface RepeatingRadialGradientNode {
@@ -153,7 +180,8 @@ export type GradientNode =
   | RepeatingLinearGradientNode
   | RadialGradientNode
   | RepeatingRadialGradientNode
-  | ConicGradientNode;
+  | ConicGradientNode
+  | MeshGradientNode;
 
 export function colorStopToString(colorStop: ColorStop) {
   const { type, value } = colorStop;
@@ -179,6 +207,7 @@ export const parseGradientAST = (function () {
      * @see https://projects.verou.me/conic-gradient/
      */
     conicGradient: /^(conic\-gradient)/i,
+    meshGradient: /^(mesh\-gradient)/i,
     sideOrCorner:
       /^to (left (top|bottom)|right (top|bottom)|top (left|right)|bottom (left|right)|left|right|top|bottom)/i,
     extentKeywords:
@@ -191,7 +220,9 @@ export const parseGradientAST = (function () {
     startCall: /^\(/,
     endCall: /^\)/,
     comma: /^,/,
-    hexColor: /^\#([0-9a-fA-F]+)/,
+    // 仅 3/4/6/8 位，避免把「#rrggbb + 0.5 0.5」里的 0 吃进 hex，导致后面数字无法按 UV 解析
+    hexColor:
+      /^\#([0-9a-fA-F]{8}|[0-9a-fA-F]{6}|[0-9a-fA-F]{4}|[0-9a-fA-F]{3})/i,
     literalColor: /^([a-zA-Z]+)/,
     rgbColor: /^rgb/i,
     rgbaColor: /^rgba/i,
@@ -218,8 +249,193 @@ export const parseGradientAST = (function () {
     return matchListing(matchDefinition);
   }
 
+  /** 角点列表之后是否以 `warp(…)` 等函数字段开头。 */
+  function isMeshFunctionExtraNext() {
+    const s = input.replace(/^\s+/, '');
+    return (
+      /^warp\s*\(/i.test(s) ||
+      /^gtype\s*\(/i.test(s) ||
+      /^wshape\s*\(/i.test(s) ||
+      /^time\s*\(/i.test(s) ||
+      /^points\s*\(/i.test(s)
+    );
+  }
+
+  function parseMeshGradientExtras(): {
+    extras: {
+      gradientTypeIndex?: number;
+      warpShapeIndex?: number;
+      warpSize?: number;
+      warpRatio?: number;
+      time?: number;
+      pointsNum?: number;
+    };
+  } {
+    const extras: {
+      gradientTypeIndex?: number;
+      warpShapeIndex?: number;
+      warpSize?: number;
+      warpRatio?: number;
+      time?: number;
+      pointsNum?: number;
+    } = {};
+
+    function tryReadWarp(): boolean {
+      if (!scan(/^warp\s*\(/i)) {
+        return false;
+      }
+      const a = tryScanNumber();
+      if (a === null) {
+        error('mesh-gradient: warp() expects a number');
+      }
+      if (!scan(tokens.comma)) {
+        error('mesh-gradient: warp() expected comma between numbers');
+      }
+      const b = tryScanNumber();
+      if (b === null) {
+        error('mesh-gradient: warp() expects two numbers');
+      }
+      if (!scan(tokens.endCall)) {
+        error('mesh-gradient: warp() expected )');
+      }
+      extras.warpSize = a;
+      extras.warpRatio = b;
+      return true;
+    }
+
+    function tryReadOneArg(
+      pattern: RegExp,
+      key: 'gradientTypeIndex' | 'warpShapeIndex' | 'time' | 'pointsNum',
+    ): boolean {
+      if (!scan(pattern)) {
+        return false;
+      }
+      const n = tryScanNumber();
+      if (n === null) {
+        error('mesh-gradient: expected number in ()');
+      }
+      if (!scan(tokens.endCall)) {
+        error('mesh-gradient: expected )');
+      }
+      extras[key] = n;
+      return true;
+    }
+
+    let atStart = true;
+    for (;;) {
+      if (/^\s*\)/.test(input)) {
+        return { extras };
+      }
+      if (atStart) {
+        atStart = false;
+        if (scan(tokens.comma)) {
+          // 常规：`, warp(…` 前导逗号
+        } else if (isMeshFunctionExtraNext()) {
+          // 角点不足 9 个且下一项是尾部参数时，前面已消费了逗号，这里不再要求逗号
+        } else if (/^\s*\)/.test(input)) {
+          return { extras };
+        } else {
+          error('mesh-gradient: expected color / tail options or )');
+        }
+      } else if (!scan(tokens.comma)) {
+        if (/^\s*\)/.test(input)) {
+          return { extras };
+        }
+        error('mesh-gradient: expected , or )');
+      }
+
+      if (tryReadWarp()) {
+        continue;
+      }
+      if (tryReadOneArg(/^gtype\s*\(/i, 'gradientTypeIndex')) {
+        continue;
+      }
+      if (tryReadOneArg(/^wshape\s*\(/i, 'warpShapeIndex')) {
+        continue;
+      }
+      if (tryReadOneArg(/^time\s*\(/i, 'time')) {
+        continue;
+      }
+      if (tryReadOneArg(/^points\s*\(/i, 'pointsNum')) {
+        continue;
+      }
+      error('mesh-gradient: expected warp(), gtype(), wshape(), time() or points()');
+    }
+  }
+
+  function tryScanNumber(): number | null {
+    const cap = scan(tokens.number);
+    if (!cap) {
+      return null;
+    }
+    return Number(cap[1]);
+  }
+
+  function matchMeshCorner():
+    | { color: ColorStop; uv?: [number, number] }
+    | null {
+    const color = matchColor();
+    if (!color) {
+      return null;
+    }
+    const saved = input;
+    const u = tryScanNumber();
+    if (u === null) {
+      return { color };
+    }
+    const v = tryScanNumber();
+    if (v === null) {
+      input = saved;
+      error(
+        'mesh-gradient: after a corner color, either omit U V or provide two numbers',
+      );
+    }
+    return { color, uv: [u, v] as [number, number] };
+  }
+
+  function matchMeshGradient() {
+    return matchCall(tokens.meshGradient, function () {
+      const background = matchColor();
+      if (!background) {
+        error('mesh-gradient: expected background color');
+      }
+      if (!scan(tokens.comma)) {
+        error('mesh-gradient: expected comma after background color');
+      }
+      const c0 = matchMeshCorner();
+      if (!c0) {
+        error('mesh-gradient: expected at least one corner color');
+      }
+      const corners: {
+        color: ColorStop;
+        uv?: [number, number];
+      }[] = [c0];
+      while (corners.length < 9) {
+        if (!scan(tokens.comma)) {
+          break;
+        }
+        if (isMeshFunctionExtraNext()) {
+          break;
+        }
+        const c = matchMeshCorner();
+        if (!c) {
+          error('mesh-gradient: expected color or tail options after comma');
+        }
+        corners.push(c);
+      }
+      const { extras } = parseMeshGradientExtras();
+      return {
+        type: 'mesh-gradient',
+        background,
+        corners,
+        ...extras,
+      };
+    });
+  }
+
   function matchDefinition() {
     return (
+      matchMeshGradient() ||
       matchGradient(
         'linear-gradient',
         tokens.linearGradient,
@@ -808,21 +1024,173 @@ export interface ConicGradient {
   }[];
 }
 
-export type Gradient = LinearGradient | RadialGradient | ConicGradient;
+/**
+ * 3×3 UV 网格渐变（Canvas2D 无法表达），由 GPU 全屏 pass 光栅化，与站点
+ * `shaders/mesh-gradient.ts` 的 `Uniforms` 一致。`colors` 为行主序 9 个角点色；可选字段用于
+ * warp/类型/非默认 UV，缺省为静态 3×3 网格、无 warp。
+ */
+export interface MeshGradient {
+  type: 'mesh-gradient';
+  backgroundColor: string;
+  colors: string[];
+  /** 每点 [0,1]² UV，最多 10 点；缺省为 3×3 网格 9 点 + 占位 */
+  positions?: [number, number][];
+  /**
+   * 片元中参与混合的点数；解析时默认等于 `mesh-gradient` 里**显式写出的**角点色个数（1～9），
+   * 无需再写 `points(2)`。仅 UBO 第 10 点会序列化为 `points(10)`。
+   */
+  pointsNum?: number;
+  /** 0–3：original warp / bezier / mesh(3×3) / enhanced bezier，默认 2 */
+  gradientTypeIndex?: number;
+  warpShapeIndex?: number;
+  warpSize?: number;
+  /** 0 为关闭 warp */
+  warpRatio?: number;
+  time?: number;
+}
+
+export type Gradient = LinearGradient | RadialGradient | ConicGradient | MeshGradient;
+
+export function isMeshGradientGradient(g: Gradient): g is MeshGradient {
+  return g.type === 'mesh-gradient';
+}
+
+function meshGradientFillColorEquals(a: string, b: string): boolean {
+  return a.replace(/\s/g, '').toLowerCase() === b.replace(/\s/g, '').toLowerCase();
+}
+
+/**
+ * 与 `parseGradient` 在 `pointsNum` 缺省时的推断一致（显式角点 / 与 background 截断），
+ * 供 {@link MeshGradientPass} 等在非 gtype(2) 时设置 `u_PointsNum`，避免 `?? 9` 与真实 1～8 点不符导致首帧错。
+ */
+export function effectiveMeshGradientPointsNum(g: MeshGradient): number {
+  if (g.pointsNum != null) {
+    return Math.min(9, Math.max(1, g.pointsNum));
+  }
+  if (g.colors.length < 9) {
+    return Math.max(1, g.colors.length);
+  }
+  const bg = g.backgroundColor;
+  for (let i = 0; i < 9; i++) {
+    const c = g.colors[i];
+    if (c == null) {
+      return Math.max(1, i);
+    }
+    if (meshGradientFillColorEquals(c, bg)) {
+      return Math.max(1, i);
+    }
+  }
+  return 9;
+}
+
+/**
+ * 将 mesh 渐变的标量参数序列化为 `mesh-gradient(…)` 尾部的 `, gtype(…)` / `warp(…)` 等片段。
+ * 与 `parseMeshGradientExtras` / `parseGradient` 对称；与默认一致时省略以缩短串。
+ */
+export function formatMeshGradientStringSuffix(
+  g: Pick<
+    MeshGradient,
+    | 'gradientTypeIndex'
+    | 'warpShapeIndex'
+    | 'warpSize'
+    | 'warpRatio'
+    | 'pointsNum'
+    | 'time'
+  >,
+): string {
+  const parts: string[] = [];
+  if (g.gradientTypeIndex != null && g.gradientTypeIndex !== 2) {
+    parts.push(`gtype(${g.gradientTypeIndex})`);
+  }
+  if (g.warpShapeIndex != null && g.warpShapeIndex !== 0) {
+    parts.push(`wshape(${g.warpShapeIndex})`);
+  }
+  const needWarp =
+    (g.warpSize != null && g.warpSize !== 0.5) ||
+    (g.warpRatio != null && g.warpRatio !== 0);
+  if (needWarp) {
+    const ws = g.warpSize ?? 0.5;
+    const wr = g.warpRatio ?? 0;
+    parts.push(`warp(${ws}, ${wr})`);
+  }
+  if (g.time != null && g.time !== 0) {
+    parts.push(`time(${g.time})`);
+  }
+  // 1～9 个点由 `mesh-gradient` 中显式写出的角点色个数反映；仅第 10 个逻辑点无法从
+  // 9 角列表推断，需保留 `points(10)`（与 UBO 第 10 槽位一致）
+  if (g.pointsNum === 10) {
+    parts.push('points(10)');
+  }
+  if (parts.length === 0) {
+    return '';
+  }
+  return `, ${parts.join(', ')}`;
+}
+
+export { DEFAULT_MESH_GRADIENT_CORNER_POSITIONS } from './mesh-gradient-padding';
 
 export function isGradient(colorStr: string) {
   return (
     isString(colorStr) &&
     (colorStr.indexOf('linear') > -1 ||
       colorStr.indexOf('radial') > -1 ||
-      colorStr.indexOf('conic') > -1)
+      colorStr.indexOf('conic') > -1 ||
+      colorStr.indexOf('mesh-gradient') > -1)
   );
 }
 
-export function parseGradient(colorStr: string): Gradient[] {
-  if (colorStr && isGradient(colorStr)) {
-    const ast = parseGradientAST(colorStr);
-    return ast.map((node) => {
+export function parseGradient(colorStr: string): Gradient[] | undefined {
+  if (!colorStr || !isGradient(colorStr)) {
+    return undefined;
+  }
+  const ast = parseGradientAST(colorStr);
+  return ast
+    .map((node): Gradient | undefined => {
+      if (node.type === 'mesh-gradient') {
+        const backgroundColor = colorStopToString(node.background);
+        const def = DEFAULT_MESH_GRADIENT_CORNER_POSITIONS;
+        const colors: string[] = [];
+        const positions: [number, number][] = [];
+        for (let i = 0; i < 9; i++) {
+          const cc = node.corners[i];
+          if (cc) {
+            colors.push(colorStopToString(cc.color));
+            positions[i] = cc.uv
+              ? [cc.uv[0], cc.uv[1]]
+              : [def[i]![0], def[i]![1]];
+          } else {
+            colors.push(backgroundColor);
+            positions[i] = [def[i]![0], def[i]![1]];
+          }
+        }
+        positions[9] = [def[9]![0], def[9]![1]];
+        const m: MeshGradient = {
+          type: 'mesh-gradient',
+          backgroundColor,
+          colors,
+          positions,
+        };
+        if (node.gradientTypeIndex != null) {
+          m.gradientTypeIndex = node.gradientTypeIndex;
+        }
+        if (node.warpShapeIndex != null) {
+          m.warpShapeIndex = node.warpShapeIndex;
+        }
+        if (node.warpSize != null) {
+          m.warpSize = node.warpSize;
+        }
+        if (node.warpRatio != null) {
+          m.warpRatio = node.warpRatio;
+        }
+        if (node.time != null) {
+          m.time = node.time;
+        }
+        m.pointsNum =
+          node.pointsNum != null
+            ? node.pointsNum
+            : Math.min(9, Math.max(1, node.corners.length));
+        return m;
+      }
       const { type, colorStops } = node;
       let { orientation } = node;
 
@@ -908,6 +1276,6 @@ export function parseGradient(colorStr: string): Gradient[] {
       // TODO: repeating-radial-gradient
 
       return undefined;
-    });
-  }
+    })
+    .filter((g): g is Gradient => g != null);
 }
