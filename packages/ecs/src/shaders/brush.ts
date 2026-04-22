@@ -169,6 +169,7 @@ export const frag = /* wgsl */ `
       if(r0 == r1) return x/(stampInterval*r0);
       else return -L / stampInterval / (r0 - r1) * log(1.0 - (1.0 - r1/r0)/L * x);
     }
+    return 0.0;
   }
 
   float n2x(float n){
@@ -180,6 +181,7 @@ export const frag = /* wgsl */ `
       if(r0 == r1) return n * stampInterval * r0;
       else return L * (1.0-exp(-(r0-r1)*n*stampInterval/L)) / (1.0-r1/r0);
     }
+    return 0.0;
   }
 
   mat2 rotate(float angle){
