@@ -1,11 +1,5 @@
 {
   "extends": "../../tsconfig.json",
-  "compilerOptions": {
-    "baseUrl": ".",
-    "paths": {
-      "@infinite-canvas-tutorial/ecs": ["../ecs/src/index.ts"]
-    }
-  },
   "include": [
     "src/**/*"
   ],
