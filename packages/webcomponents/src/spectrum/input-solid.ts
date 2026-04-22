@@ -234,7 +234,6 @@ export class InputSolid extends LitElement {
       display: flex;
       flex-direction: column;
       gap: 8px;
-      min-width: 220px;
       padding: 8px;
       box-sizing: border-box;
     }
@@ -806,8 +805,8 @@ export class InputSolid extends LitElement {
           <span class="pct-suffix">%</span>
         </div>
         ${when(
-          this.enableOpacityVariableBinding && this.usesExternalOpacity(),
-          () => html`
+      this.enableOpacityVariableBinding && this.usesExternalOpacity(),
+      () => html`
             <sp-action-button
               class="opacity-dv-trigger"
               quiet
@@ -827,9 +826,9 @@ export class InputSolid extends LitElement {
               <sp-popover dialog>
                 <div class="dv-popover-body">
                   ${when(
-                    opacityBound,
-                    () =>
-                      html`<div class="dv-row">
+        opacityBound,
+        () =>
+          html`<div class="dv-row">
                         <span class="dv-badge" title=${String(wire)}
                           >${String(wire)}</span
                         >
@@ -844,7 +843,7 @@ export class InputSolid extends LitElement {
                           </sp-tooltip>
                         </sp-action-button>
                       </div>`,
-                  )}
+      )}
                   <ic-spectrum-design-variable-picker
                     match-type="number"
                     selected-key=${designVariableRefKeyFromWire(wire)}
@@ -854,7 +853,7 @@ export class InputSolid extends LitElement {
               </sp-popover>
             </sp-overlay>
           `,
-        )}
+    )}
       </div>`;
   }
 }

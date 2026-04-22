@@ -21,7 +21,13 @@ import { mat3 } from 'gl-matrix';
 import { Entity } from '@lastolivegames/becsy';
 import { Drawcall, ZINDEX_FACTOR, STENCIL_CLIP_REF } from './Drawcall';
 import { vert, frag, Location } from '../shaders/sdf';
-import { paddingMat3, parseColor, parseGradient, parseEffect } from '../utils';
+import {
+  paddingMat3,
+  parseColor,
+  parseGradient,
+  isMeshGradientGradient,
+  parseEffect,
+} from '../utils';
 import { filterRasterPostEffects } from '../utils/filter';
 import {
   Circle,
@@ -369,31 +375,60 @@ export class SDF extends Drawcall {
         const width = maxX - minX;
         const height = maxY - minY;
 
-        const canvas = instance.has(FillPattern)
-          ? this.texturePool.getOrCreatePattern({
+        const fillGradients = instance.has(FillGradient)
+          ? parseGradient(instance.read(FillGradient).value)
+          : undefined;
+        const meshFill =
+          fillGradients?.length === 1 ? fillGradients[0] : undefined;
+
+        if (instance.has(FillPattern)) {
+          const canvas = this.texturePool.getOrCreatePattern({
             pattern: instance.read(FillPattern),
             width,
             height,
-          })
-          : this.texturePool.getOrCreateGradient({
-            gradients: parseGradient(instance.read(FillGradient).value),
+          });
+          const texture = this.device.createTexture({
+            format: Format.U8_RGBA_NORM,
+            width: 128,
+            height: 128,
+            usage: TextureUsage.SAMPLED,
+          });
+          texture.setImageData([canvas]);
+          this.#texture = this.applyRasterFilterChainIfNeeded(
+            instance,
+            texture,
+            128,
+            128,
+          );
+        } else if (meshFill && isMeshGradientGradient(meshFill)) {
+          const raw = this.renderMeshGradientTexture(meshFill, 128, 128);
+          this.#texture = this.applyRasterFilterChainIfNeeded(
+            instance,
+            raw,
+            128,
+            128,
+          );
+        } else {
+          const canvas = this.texturePool.getOrCreateGradient({
+            gradients: fillGradients ?? [],
             min: [minX, minY],
             width,
             height,
           });
-        const texture = this.device.createTexture({
-          format: Format.U8_RGBA_NORM,
-          width: 128,
-          height: 128,
-          usage: TextureUsage.SAMPLED,
-        });
-        texture.setImageData([canvas]);
-        this.#texture = this.applyRasterFilterChainIfNeeded(
-          instance,
-          texture,
-          128,
-          128,
-        );
+          const texture = this.device.createTexture({
+            format: Format.U8_RGBA_NORM,
+            width: 128,
+            height: 128,
+            usage: TextureUsage.SAMPLED,
+          });
+          texture.setImageData([canvas]);
+          this.#texture = this.applyRasterFilterChainIfNeeded(
+            instance,
+            texture,
+            128,
+            128,
+          );
+        }
       } else if (instance.has(FillTexture)) {
         // `Texture` has no public size here; per-shape filter on FillTexture needs GPU size API.
         this.#texture = instance.read(FillTexture).value;

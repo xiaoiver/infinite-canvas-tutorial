@@ -59,6 +59,8 @@ import {
   hasRasterPostEffects,
 } from '../utils/filter';
 import { API } from '../API';
+import { MeshGradientPass } from '../render-graph/MeshGradientPass';
+import type { MeshGradient } from '../utils/gradient';
 import { vert as postProcessingVert } from '../shaders/post-processing/fullscreen';
 import { vert as bigTriangleVert } from '../shaders/post-processing/big-triangle';
 import { frag as copyFrag } from '../shaders/post-processing/copy';
@@ -459,6 +461,8 @@ export abstract class Drawcall {
 
   /** True after {@link createPostProcessing} completes; drives teardown in {@link destroyFullPostProcessingChain}. */
   #filterChainReady = false;
+
+  static #meshGradientPassByDevice = new WeakMap<Device, MeshGradientPass>();
 
   constructor(
     protected device: Device,
@@ -1051,6 +1055,23 @@ export abstract class Drawcall {
       outputTexture[3] = isWebGPU ? 1 : 0;
       return { inputSize, outputFrame, outputTexture };
     });
+  }
+
+  /**
+   * 将 `mesh-gradient` 全屏光栅化到 GPU 纹理（与 FillGradient 的 128×128 贴图策略一致）。
+   * `width`/`height` 若无效会在 {@link MeshGradientPass} 内夹紧，避免 WebGL 0×0 附件。
+   */
+  protected renderMeshGradientTexture(
+    gradient: MeshGradient,
+    width: number,
+    height: number,
+  ): Texture {
+    let pass = Drawcall.#meshGradientPassByDevice.get(this.device);
+    if (!pass) {
+      pass = new MeshGradientPass(this.device, this.renderCache);
+      Drawcall.#meshGradientPassByDevice.set(this.device, pass);
+    }
+    return pass.render(gradient, width, height);
   }
 
   #runPostProcessingWithUniforms(
