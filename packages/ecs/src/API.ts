@@ -503,11 +503,12 @@ export class API {
 
   /**
    * 浅拷贝节点列表，并用 ECS 当前几何覆盖 x/y/width/height/rotation/scale（如 Flex/Yoga 仅写 ECS、序列化节点未同步时，导出 SVG 前调用）。
+   * 对带 {@link Rect} 的 `rect` / `rough-rect` 同时覆盖 `cornerRadius`，保证导出与运行时一致。
    */
   readLayoutFromECS(nodes: SerializedNode[]): SerializedNode[] {
     return nodes.map((node) => {
       const g = this.getAbsoluteTransformAndSize(node);
-      return {
+      const out: SerializedNode = {
         ...node,
         x: g.x,
         y: g.y,
@@ -517,6 +518,17 @@ export class API {
         scaleX: g.scaleX,
         scaleY: g.scaleY,
       };
+      const entity = this.getEntity(node);
+      if (
+        entity &&
+        entity.has(Rect) &&
+        (node.type === 'rect' || node.type === 'rough-rect')
+      ) {
+        (out as { cornerRadius?: number }).cornerRadius = entity.read(
+          Rect,
+        ).cornerRadius;
+      }
+      return out;
     });
   }
 
@@ -1500,6 +1512,11 @@ export class API {
         diff.width = height * aspectRatio;
       }
       diff.height = height;
+    }
+
+    if ((node as { display?: string }).display === 'flex') {
+      if (!isNil(width)) (diff as { flexHugWidth?: boolean }).flexHugWidth = false;
+      if (!isNil(height)) (diff as { flexHugHeight?: boolean }).flexHugHeight = false;
     }
 
     if (delta) {

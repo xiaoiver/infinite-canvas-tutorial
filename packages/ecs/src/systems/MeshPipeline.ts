@@ -360,7 +360,8 @@ export class MeshPipeline extends System {
           0.25,
           Math.min(8, Number.isFinite(rasterScale) ? rasterScale : 1),
         );
-        // 1:1 逻辑单位对应 s 个像素；s=1 时与原先 1 像素/逻辑单位一致
+        // 与主画布一致：投影用「逻辑」选区宽高，离屏 buffer 为 逻辑×s 像素，使 1 个世界单位在图像上占 s 个像素。
+        // 若投影也乘 s，则正交范围变成 0..(逻辑×s)，而节点仍在 0..逻辑 内，内容只会占图像的 1/s 区域。
         const exportPixelWidth = Math.max(1, Math.ceil(exportLogicalWidth * s));
         const exportPixelHeight = Math.max(
           1,
@@ -373,12 +374,10 @@ export class MeshPipeline extends System {
           -(bounds.minX - PADDING),
           -(bounds.minY - PADDING),
         ]);
-        const projectionW = exportLogicalWidth * s;
-        const projectionH = exportLogicalHeight * s;
         const projectionMatrixGL = mat3.projection(
           mat3.create(),
-          projectionW,
-          projectionH,
+          exportLogicalWidth,
+          exportLogicalHeight,
         );
         const viewProjectionMatrix = mat3.multiply(
           mat3.create(),
