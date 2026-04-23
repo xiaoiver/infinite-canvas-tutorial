@@ -339,6 +339,7 @@ api.setAppState({
 ## 扩展阅读 {#extended-reading}
 
 -   [Blob Tracking]
+-   [reveals.cool]
 
 [Paper Shaders]: https://shaders.paper.design/
 [Pixi.js filters]: https://github.com/pixijs/filters
@@ -360,3 +361,4 @@ api.setAppState({
 [Optimizing Triangles for a Full-screen Pass]: https://wallisc.github.io/rendering/2021/04/18/Fullscreen-Pass.html
 [CSSGlitchEffect]: https://tympanus.net/Tutorials/CSSGlitchEffect/
 [unityglitch]: https://github.com/staffantan/unityglitch/blob/master/GlitchShader.shader
+[reveals.cool]: https://reveals.cool/

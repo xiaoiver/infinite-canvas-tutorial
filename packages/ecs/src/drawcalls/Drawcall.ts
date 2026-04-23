@@ -35,6 +35,7 @@ import {
   uid,
   halftoneDotsUniformValues,
   flutedGlassUniformValues,
+  tsunamiUniformValues,
   crtUniformValues,
   vignetteUniformValues,
   asciiUniformValues,
@@ -72,6 +73,7 @@ import { frag as dotFrag } from '../shaders/post-processing/dot';
 import { frag as colorHalftoneFrag } from '../shaders/post-processing/colorHalftone';
 import { frag as halftoneDotsFrag } from '../shaders/post-processing/halftoneDots';
 import { frag as flutedGlassFrag } from '../shaders/post-processing/flutedGlass';
+import { frag as tsunamiFrag } from '../shaders/post-processing/tsunami';
 import { frag as crtFrag } from '../shaders/post-processing/crt';
 import { frag as vignetteFrag } from '../shaders/post-processing/vignette';
 import { frag as asciiFrag } from '../shaders/post-processing/ascii';
@@ -110,6 +112,9 @@ const FRAG_MAP: Record<
   flutedGlass: {
     shader: flutedGlassFrag,
   },
+  tsunami: {
+    shader: tsunamiFrag,
+  },
   crt: {
     shader: crtFrag,
   },
@@ -141,6 +146,8 @@ function postEffectUniformFloatCount(effect: Effect): number {
       return 20;
     case 'flutedGlass':
       return 36;
+    case 'tsunami':
+      return 16;
     case 'crt':
       return 12;
     case 'vignette':
@@ -315,6 +322,15 @@ function setPostEffectUniformData(
       const tw = Math.max(1, textureWidth ?? 1);
       const th = Math.max(1, textureHeight ?? 1);
       const u = flutedGlassUniformValues(effect, tw, th);
+      for (let j = 0; j < u.length; j++) {
+        data[i++] = u[j]!;
+      }
+      break;
+    }
+    case 'tsunami': {
+      const tw = Math.max(1, textureWidth ?? 1);
+      const th = Math.max(1, textureHeight ?? 1);
+      const u = tsunamiUniformValues(effect, tw, th);
       for (let j = 0; j < u.length; j++) {
         data[i++] = u[j]!;
       }

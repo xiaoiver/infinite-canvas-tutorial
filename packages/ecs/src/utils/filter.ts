@@ -18,6 +18,7 @@ export type Effect =
   | ColorHalftoneEffect
   | HalftoneDotsEffect
   | FlutedGlassEffect
+  | TsunamiEffect
   | CrtEffect
   | VignetteEffect
   | AsciiEffect
@@ -304,6 +305,89 @@ export function flutedGlassUniformValues(
     marginTop,
     marginBottom,
     grainOverlay,
+    0,
+    0,
+    0,
+  ];
+}
+
+/** Defaults for {@link TsunamiEffect} (ribbed refraction pass). */
+export const TSUNAMI_DEFAULTS = {
+  stripeCount: 32,
+  /** Degrees; converted to radians for the GPU. */
+  stripeAngle: 0,
+  distortion: 1,
+  reflection: 0.2,
+  disturbance: 0.15,
+  contortion: 0.1,
+  /** 0/1 — modulate highlight with luminance when 1. */
+  blend: 0,
+  dispersion: 0.15,
+  drift: 0,
+  shadowIntensity: 0.5,
+  offset: 0,
+} as const;
+
+/**
+ * Tsunami ribbed-glass style post-process (stripes + refraction + optional RGB split).
+ * 4 × vec4 std140 → `u_TS0`…`u_TS3` (16 floats).
+ */
+export interface TsunamiEffect {
+  type: 'tsunami';
+  stripeCount: number;
+  stripeAngle: number;
+  distortion: number;
+  reflection: number;
+  disturbance: number;
+  contortion: number;
+  blend: number;
+  dispersion: number;
+  drift: number;
+  shadowIntensity: number;
+  offset: number;
+}
+
+export function tsunamiUniformValues(
+  effect: TsunamiEffect,
+  textureWidth: number,
+  textureHeight: number,
+): number[] {
+  const tw = Math.max(1, textureWidth);
+  const th = Math.max(1, textureHeight);
+  const D = TSUNAMI_DEFAULTS;
+  const z = (v: number | undefined, def: number) =>
+    Number.isFinite(v as number) ? (v as number) : def;
+
+  let stripeCount = z(effect.stripeCount, D.stripeCount);
+  stripeCount = Math.max(1, Math.min(256, stripeCount));
+  let stripeAngleDeg = z(effect.stripeAngle, D.stripeAngle);
+  stripeAngleDeg = Math.max(-180, Math.min(180, stripeAngleDeg));
+  const stripeAngleRad = (stripeAngleDeg * Math.PI) / 180;
+
+  const distortion = Math.max(0, z(effect.distortion, D.distortion));
+  const reflection = Math.max(0, z(effect.reflection, D.reflection));
+  const disturbance = Math.max(0, Math.min(1, z(effect.disturbance, D.disturbance)));
+  const contortion = Math.max(0, z(effect.contortion, D.contortion));
+  const blend = z(effect.blend, D.blend) > 0.5 ? 1 : 0;
+  const dispersion = Math.max(0, z(effect.dispersion, D.dispersion));
+  const drift = Math.max(-1, Math.min(1, z(effect.drift, D.drift)));
+  const shadowIntensity = Math.max(0, z(effect.shadowIntensity, D.shadowIntensity));
+  const offset = z(effect.offset, D.offset);
+
+  return [
+    tw,
+    th,
+    stripeCount,
+    stripeAngleRad,
+    distortion,
+    reflection,
+    disturbance,
+    contortion,
+    blend,
+    dispersion,
+    drift,
+    shadowIntensity,
+    offset,
     0,
     0,
     0,
@@ -605,6 +689,7 @@ const RASTER_POST_EFFECT_TYPES = new Set<Effect['type']>([
   'colorHalftone',
   'halftoneDots',
   'flutedGlass',
+  'tsunami',
   'crt',
   'vignette',
   'ascii',
@@ -1084,6 +1169,30 @@ export function parseEffect(filter: string): Effect[] {
         grainMixer: pf(15, D.grainMixer),
         grainOverlay: pf(16, D.grainOverlay),
       });
+    } else if (filter.name === 'tsunami') {
+      const raw = filter.params.trim();
+      const parts = raw.length
+        ? raw.split(',').map((s) => s.trim()).filter((s) => s.length > 0)
+        : [];
+      const D = TSUNAMI_DEFAULTS;
+      const pf = (i: number, def: number) => {
+        const v = parts[i] !== undefined ? parseFloat(parts[i]) : def;
+        return Number.isFinite(v) ? v : def;
+      };
+      effects.push({
+        type: 'tsunami',
+        stripeCount: pf(0, D.stripeCount),
+        stripeAngle: pf(1, D.stripeAngle),
+        distortion: pf(2, D.distortion),
+        reflection: pf(3, D.reflection),
+        disturbance: pf(4, D.disturbance),
+        contortion: pf(5, D.contortion),
+        blend: pf(6, D.blend),
+        dispersion: pf(7, D.dispersion),
+        drift: pf(8, D.drift),
+        shadowIntensity: pf(9, D.shadowIntensity),
+        offset: pf(10, D.offset),
+      });
     } else if (filter.name === 'crt') {
       const raw = filter.params.trim();
       const parts = raw.length
@@ -1325,6 +1434,13 @@ export function formatFilter(effects: Effect[]): string {
         const e = effect;
         parts.push(
           `fluted-glass(${e.size}, ${e.shadows}, ${e.angle}, ${e.stretch}, ${e.shape}, ${e.distortion}, ${e.highlights}, ${e.distortionShape}, ${e.shift}, ${e.blur}, ${e.edges}, ${e.marginLeft}, ${e.marginRight}, ${e.marginTop}, ${e.marginBottom}, ${e.grainMixer}, ${e.grainOverlay})`,
+        );
+        break;
+      }
+      case 'tsunami': {
+        const e = effect;
+        parts.push(
+          `tsunami(${e.stripeCount}, ${e.stripeAngle}, ${e.distortion}, ${e.reflection}, ${e.disturbance}, ${e.contortion}, ${e.blend}, ${e.dispersion}, ${e.drift}, ${e.shadowIntensity}, ${e.offset})`,
         );
         break;
       }

@@ -23,6 +23,7 @@ import {
   Effect,
   crtUniformValues,
   flutedGlassUniformValues,
+  tsunamiUniformValues,
   halftoneDotsUniformValues,
   vignetteUniformValues,
   asciiUniformValues,
@@ -221,6 +222,11 @@ export class PostProcessingRenderer {
       const tw = Math.max(1, width);
       const th = Math.max(1, height);
       uniformBuffer.push(...flutedGlassUniformValues(effect, tw, th));
+    } else if (effect.type === 'tsunami') {
+      const { width, height } = this.swapChain.getCanvas();
+      const tw = Math.max(1, width);
+      const th = Math.max(1, height);
+      uniformBuffer.push(...tsunamiUniformValues(effect, tw, th));
     } else if (effect.type === 'crt') {
       const { width, height } = this.swapChain.getCanvas();
       const tw = Math.max(1, width);

@@ -37,6 +37,8 @@ onMounted(async () => {
         transform: false,
         layout: false,
         effects: true,
+        multiSelectAlignment: true,
+        multiSelectEffects: true,
       },
     });
 
