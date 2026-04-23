@@ -19,6 +19,7 @@ import {
   TransparentBlack,
   bindingsDescriptorCopy,
   bindingsDescriptorEquals,
+  defaultMegaState,
   inputLayoutDescriptorCopy,
   inputLayoutDescriptorEquals,
   renderPipelineDescriptorCopy,
@@ -80,7 +81,11 @@ function renderPipelineDescriptorHash(a: RenderPipelineDescriptor): number {
   hash = hashCodeNumberUpdate(hash, a.program.id);
   if (a.inputLayout !== null)
     hash = hashCodeNumberUpdate(hash, a.inputLayout.id);
-  hash = megaStateDescriptorHash(hash, a.megaStateDescriptor!);
+  // 与 `Device` / `RenderPipeline`：未传 `megaStateDescriptor` 时使用 `defaultMegaState`
+  hash = megaStateDescriptorHash(
+    hash,
+    a.megaStateDescriptor ?? defaultMegaState,
+  );
   for (let i = 0; i < a.colorAttachmentFormats.length; i++)
     hash = hashCodeNumberUpdate(hash, a.colorAttachmentFormats[i] || 0);
   hash = hashCodeNumberUpdate(hash, a.depthStencilAttachmentFormat || 0);

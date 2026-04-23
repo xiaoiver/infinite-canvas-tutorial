@@ -2,11 +2,6 @@ import {
   Buffer,
   BufferFrequencyHint,
   BufferUsage,
-  BlendFactor,
-  BlendMode,
-  ChannelWriteMask,
-  CompareFunction,
-  CullMode,
   Device,
   Format,
   InputLayout,
@@ -14,11 +9,8 @@ import {
   RenderPipeline,
   Texture,
   TextureUsage,
-  TransparentBlack,
   TransparentWhite,
-  StencilOp,
   VertexStepMode,
-  type MegaStateDescriptor,
 } from '@infinite-canvas-tutorial/device-api';
 import { vert, frag } from '../shaders/mesh-fill-gradient';
 import { parseColor } from '../utils/color';
@@ -29,41 +21,6 @@ import {
 } from '../utils/mesh-gradient-padding';
 import { effectiveMeshGradientPointsNum, type MeshGradient } from '../utils/gradient';
 import type { RenderCache } from '../utils/render-cache';
-
-const MESH_GRADIENT_MEGA: MegaStateDescriptor = {
-  attachmentsState: [
-    {
-      channelWriteMask: ChannelWriteMask.ALL,
-      rgbBlendState: {
-        blendMode: BlendMode.ADD,
-        blendSrcFactor: BlendFactor.ONE,
-        blendDstFactor: BlendFactor.ZERO,
-      },
-      alphaBlendState: {
-        blendMode: BlendMode.ADD,
-        blendSrcFactor: BlendFactor.ONE,
-        blendDstFactor: BlendFactor.ZERO,
-      },
-    },
-  ],
-  blendConstant: TransparentBlack,
-  cullMode: CullMode.NONE,
-  depthWrite: false,
-  depthCompare: CompareFunction.ALWAYS,
-  stencilWrite: false,
-  stencilFront: {
-    compare: CompareFunction.ALWAYS,
-    passOp: StencilOp.KEEP,
-    failOp: StencilOp.KEEP,
-    depthFailOp: StencilOp.KEEP,
-  },
-  stencilBack: {
-    compare: CompareFunction.ALWAYS,
-    passOp: StencilOp.KEEP,
-    failOp: StencilOp.KEEP,
-    depthFailOp: StencilOp.KEEP,
-  },
-};
 
 function colorToLinearRgb(color: string): [number, number, number] {
   const { r, g, b } = parseColor(color);
@@ -86,6 +43,9 @@ function clampRenderTargetSize(n: number): number {
  *
  * WebGL2：同一块 `Uniforms` 必须出现在 **vertex** 与 fragment，见
  * `mesh-fill-gradient.ts`（`Device.setPipeline` 只扫描 VS 做 `uniformBlockBinding`）。
+ *
+ * 资源与 `packages/site/docs/components/MeshGradient.vue` 已验证路径对齐：`U8_RGBA_NORM`、
+ * 默认 megaState（不单独写 depth=ALWAYS 等），避免与站点行为不一致导致离屏全黑。
  */
 export class MeshGradientPass {
   #program: Program | null = null;
@@ -97,7 +57,7 @@ export class MeshGradientPass {
   constructor(
     private readonly device: Device,
     private readonly renderCache: RenderCache,
-  ) {}
+  ) { }
 
   render(gradient: MeshGradient, width: number, height: number): Texture {
     const w = clampRenderTargetSize(width);
@@ -105,7 +65,7 @@ export class MeshGradientPass {
     this.#ensurePipeline();
 
     const texture = this.device.createTexture({
-      format: Format.U8_RGBA_RT,
+      format: Format.U8_RGBA_NORM,
       width: w,
       height: h,
       usage: TextureUsage.RENDER_TARGET | TextureUsage.SAMPLED,
@@ -193,16 +153,17 @@ export class MeshGradientPass {
       depthStencilResolveTo: null,
     });
 
-    if (!isWebGPU) {
-      renderPass.setViewport(0, 0, w, h);
-    }
+    // 与 MeshGradient.vue：setPipeline → setBindings → setVertexInput → (WebGL) setViewport → draw
     renderPass.setPipeline(this.#pipeline!);
+    renderPass.setBindings(bindings);
     renderPass.setVertexInput(
       this.#inputLayout!,
       [{ buffer: this.#vertexBuffer! }],
       null,
     );
-    renderPass.setBindings(bindings);
+    if (!isWebGPU) {
+      renderPass.setViewport(0, 0, w, h);
+    }
     renderPass.draw(3);
     this.device.submitPass(renderPass);
 
@@ -262,9 +223,8 @@ export class MeshGradientPass {
     this.#pipeline = this.renderCache.createRenderPipeline({
       inputLayout: this.#inputLayout,
       program: this.#program,
-      colorAttachmentFormats: [Format.U8_RGBA_RT],
+      colorAttachmentFormats: [Format.U8_RGBA_NORM],
       depthStencilAttachmentFormat: null,
-      megaStateDescriptor: MESH_GRADIENT_MEGA,
     });
   }
 }

@@ -513,9 +513,9 @@ export class Device_GL implements SwapChain, Device {
     return this.scTexture;
   }
 
-  beginFrame(): void {}
+  beginFrame(): void { }
 
-  endFrame(): void {}
+  endFrame(): void { }
   //#endregion
 
   //#region Device
@@ -552,8 +552,8 @@ export class Device_GL implements SwapChain, Device {
         return isWebGL2(this.gl)
           ? GL.RGBA32F
           : isRenderbufferStorage
-          ? this.WEBGL_color_buffer_float.RGBA32F_EXT
-          : GL.RGBA;
+            ? this.WEBGL_color_buffer_float.RGBA32F_EXT
+            : GL.RGBA;
       case Format.U8_R_NORM:
         return GL.R8;
       case Format.U8_RG_NORM:
@@ -572,8 +572,8 @@ export class Device_GL implements SwapChain, Device {
         return isWebGL2(this.gl)
           ? GL.RGBA8
           : isRenderbufferStorage
-          ? GL.RGBA4
-          : GL.RGBA;
+            ? GL.RGBA4
+            : GL.RGBA;
       case Format.U8_RGBA:
         return GL.RGBA;
       case Format.U8_RGBA_SRGB:
@@ -626,26 +626,26 @@ export class Device_GL implements SwapChain, Device {
         return isWebGL2(this.gl)
           ? GL.DEPTH32F_STENCIL8
           : this.WEBGL_depth_texture
-          ? GL.DEPTH_STENCIL
-          : GL.DEPTH_COMPONENT16;
+            ? GL.DEPTH_STENCIL
+            : GL.DEPTH_COMPONENT16;
       case Format.D24_S8:
         return isWebGL2(this.gl)
           ? GL.DEPTH24_STENCIL8
           : this.WEBGL_depth_texture
-          ? GL.DEPTH_STENCIL
-          : GL.DEPTH_COMPONENT16;
+            ? GL.DEPTH_STENCIL
+            : GL.DEPTH_COMPONENT16;
       case Format.D32F:
         return isWebGL2(this.gl)
           ? GL.DEPTH_COMPONENT32F
           : this.WEBGL_depth_texture
-          ? GL.DEPTH_COMPONENT
-          : GL.DEPTH_COMPONENT16;
+            ? GL.DEPTH_COMPONENT
+            : GL.DEPTH_COMPONENT16;
       case Format.D24:
         return isWebGL2(this.gl)
           ? GL.DEPTH_COMPONENT24
           : this.WEBGL_depth_texture
-          ? GL.DEPTH_COMPONENT
-          : GL.DEPTH_COMPONENT16;
+            ? GL.DEPTH_COMPONENT
+            : GL.DEPTH_COMPONENT16;
       default:
         throw new Error('whoops');
     }
@@ -672,21 +672,21 @@ export class Device_GL implements SwapChain, Device {
         return isWebGL2(this.gl)
           ? GL.FLOAT
           : this.WEBGL_depth_texture
-          ? GL.UNSIGNED_INT
-          : GL.UNSIGNED_BYTE;
+            ? GL.UNSIGNED_INT
+            : GL.UNSIGNED_BYTE;
       case FormatTypeFlags.D24:
         return isWebGL2(this.gl)
           ? GL.UNSIGNED_INT_24_8
           : this.WEBGL_depth_texture
-          ? GL.UNSIGNED_SHORT
-          : GL.UNSIGNED_BYTE;
+            ? GL.UNSIGNED_SHORT
+            : GL.UNSIGNED_BYTE;
       case FormatTypeFlags.D24S8:
         // @see https://developer.mozilla.org/en-US/docs/Web/API/WEBGL_depth_texture
         return isWebGL2(this.gl)
           ? GL.UNSIGNED_INT_24_8
           : this.WEBGL_depth_texture
-          ? GL.UNSIGNED_INT_24_8_WEBGL
-          : GL.UNSIGNED_BYTE;
+            ? GL.UNSIGNED_INT_24_8_WEBGL
+            : GL.UNSIGNED_BYTE;
       case FormatTypeFlags.D32FS8:
         return GL.FLOAT_32_UNSIGNED_INT_24_8_REV;
       default:
@@ -1270,11 +1270,11 @@ export class Device_GL implements SwapChain, Device {
       this.resourceCreationTracker.checkForLeaks();
   }
 
-  pushDebugGroup(name: string): void {}
+  pushDebugGroup(name: string): void { }
 
-  popDebugGroup(): void {}
+  popDebugGroup(): void { }
 
-  insertDebugMarker(markerLabel: string) {}
+  insertDebugMarker(markerLabel: string) { }
 
   // pushDebugGroup(debugGroup: DebugGroup): void {
   //   this.debugGroupStack.push(debugGroup);
@@ -1523,21 +1523,30 @@ export class Device_GL implements SwapChain, Device {
       }
 
       if (isWebGL2(gl)) {
-        gl.drawBuffers([
-          GL.COLOR_ATTACHMENT0,
-          GL.COLOR_ATTACHMENT1,
-          GL.COLOR_ATTACHMENT2,
-          GL.COLOR_ATTACHMENT3,
-        ]);
+        // All four slots were previously enabled; single-RT passes only bind
+        // COLOR_ATTACHMENT0. In WebGL2, drawBuffers() must use NONE for slots
+        // with no image or the FBO is incomplete (e.g. MeshGradient offscreen).
+        const maxDrawBufferSlots = 4;
+        const bufs: GLenum[] = [];
+        for (let s = 0; s < maxDrawBufferSlots; s++) {
+          bufs.push(
+            s < numColorAttachments ? GL.COLOR_ATTACHMENT0 + s : GL.NONE,
+          );
+        }
+        gl.drawBuffers(bufs);
       } else {
         if (!this.inBlitRenderPass && this.WEBGL_draw_buffers) {
           // MRT @see https://github.com/shrekshao/MoveWebGL1EngineToWebGL2/blob/master/Move-a-WebGL-1-Engine-To-WebGL-2-Blog-1.md#multiple-render-targets
-          this.WEBGL_draw_buffers.drawBuffersWEBGL([
-            GL.COLOR_ATTACHMENT0_WEBGL, // gl_FragData[0]
-            GL.COLOR_ATTACHMENT1_WEBGL, // gl_FragData[1]
-            GL.COLOR_ATTACHMENT2_WEBGL, // gl_FragData[2]
-            GL.COLOR_ATTACHMENT3_WEBGL, // gl_FragData[3]
-          ]);
+          const maxDrawBufferSlots = 4;
+          const bufs: GLenum[] = [];
+          for (let s = 0; s < maxDrawBufferSlots; s++) {
+            bufs.push(
+              s < numColorAttachments
+                ? GL.COLOR_ATTACHMENT0_WEBGL + s
+                : GL.NONE,
+            );
+          }
+          this.WEBGL_draw_buffers.drawBuffersWEBGL(bufs);
         }
       }
 
@@ -1591,7 +1600,11 @@ export class Device_GL implements SwapChain, Device {
       this.currentColorAttachments[i] = colorAttachment;
       this.currentColorAttachmentLevels[i] = attachmentLevel;
 
-      if (!skipBlit && (gl2 || (!gl2 && this.WEBGL_draw_buffers))) {
+      // WebGL1: FBO color 0 is core; WEBGL_draw_buffers is only for MRT.
+      if (
+        !skipBlit &&
+        (gl2 || i === 0 || this.WEBGL_draw_buffers)
+      ) {
         this.bindFramebufferAttachment(
           gl2 ? GL.DRAW_FRAMEBUFFER : GL.FRAMEBUFFER,
           (gl2 ? GL.COLOR_ATTACHMENT0 : GL.COLOR_ATTACHMENT0_WEBGL) + i,
@@ -1869,18 +1882,18 @@ export class Device_GL implements SwapChain, Device {
 
     const blendModeChanged =
       currentAttachmentState.rgbBlendState.blendMode !==
-        newAttachmentState.rgbBlendState.blendMode ||
+      newAttachmentState.rgbBlendState.blendMode ||
       currentAttachmentState.alphaBlendState.blendMode !==
-        newAttachmentState.alphaBlendState.blendMode;
+      newAttachmentState.alphaBlendState.blendMode;
     const blendFuncChanged =
       currentAttachmentState.rgbBlendState.blendSrcFactor !==
-        newAttachmentState.rgbBlendState.blendSrcFactor ||
+      newAttachmentState.rgbBlendState.blendSrcFactor ||
       currentAttachmentState.alphaBlendState.blendSrcFactor !==
-        newAttachmentState.alphaBlendState.blendSrcFactor ||
+      newAttachmentState.alphaBlendState.blendSrcFactor ||
       currentAttachmentState.rgbBlendState.blendDstFactor !==
-        newAttachmentState.rgbBlendState.blendDstFactor ||
+      newAttachmentState.rgbBlendState.blendDstFactor ||
       currentAttachmentState.alphaBlendState.blendDstFactor !==
-        newAttachmentState.alphaBlendState.blendDstFactor;
+      newAttachmentState.alphaBlendState.blendDstFactor;
 
     if (blendFuncChanged || blendModeChanged) {
       if (
@@ -1948,18 +1961,18 @@ export class Device_GL implements SwapChain, Device {
 
     const blendModeChanged =
       currentAttachmentState.rgbBlendState.blendMode !==
-        newAttachmentState.rgbBlendState.blendMode ||
+      newAttachmentState.rgbBlendState.blendMode ||
       currentAttachmentState.alphaBlendState.blendMode !==
-        newAttachmentState.alphaBlendState.blendMode;
+      newAttachmentState.alphaBlendState.blendMode;
     const blendFuncChanged =
       currentAttachmentState.rgbBlendState.blendSrcFactor !==
-        newAttachmentState.rgbBlendState.blendSrcFactor ||
+      newAttachmentState.rgbBlendState.blendSrcFactor ||
       currentAttachmentState.alphaBlendState.blendSrcFactor !==
-        newAttachmentState.alphaBlendState.blendSrcFactor ||
+      newAttachmentState.alphaBlendState.blendSrcFactor ||
       currentAttachmentState.rgbBlendState.blendDstFactor !==
-        newAttachmentState.rgbBlendState.blendDstFactor ||
+      newAttachmentState.rgbBlendState.blendDstFactor ||
       currentAttachmentState.alphaBlendState.blendDstFactor !==
-        newAttachmentState.alphaBlendState.blendDstFactor;
+      newAttachmentState.alphaBlendState.blendDstFactor;
 
     if (blendFuncChanged || blendModeChanged) {
       if (
@@ -2155,7 +2168,7 @@ export class Device_GL implements SwapChain, Device {
 
     if (
       currentMegaState.polygonOffsetFactor !==
-        newMegaState.polygonOffsetFactor ||
+      newMegaState.polygonOffsetFactor ||
       currentMegaState.polygonOffsetUnits !== newMegaState.polygonOffsetUnits
     ) {
       gl.polygonOffset(
@@ -2177,7 +2190,7 @@ export class Device_GL implements SwapChain, Device {
     if (this.currentDepthStencilAttachment) {
       assert(
         this.currentDepthStencilAttachment.format ===
-          pipeline.depthStencilAttachmentFormat,
+        pipeline.depthStencilAttachmentFormat,
       );
     }
 
@@ -2427,9 +2440,9 @@ export class Device_GL implements SwapChain, Device {
   /**
    * @see https://www.w3.org/TR/webgpu/#dom-gpurendercommandsmixin-drawindirect
    */
-  drawIndirect(indirectBuffer: Buffer, indirectOffset: number) {}
+  drawIndirect(indirectBuffer: Buffer, indirectOffset: number) { }
 
-  drawIndexedIndirect(indirectBuffer: Buffer, indirectOffset: number) {}
+  drawIndexedIndirect(indirectBuffer: Buffer, indirectOffset: number) { }
 
   beginOcclusionQuery(queryIndex: number): void {
     const gl = this.gl;
@@ -2478,7 +2491,7 @@ export class Device_GL implements SwapChain, Device {
         if (colorResolveTo !== null) {
           assert(
             colorResolveFrom.width === colorResolveTo.width &&
-              colorResolveFrom.height === colorResolveTo.height,
+            colorResolveFrom.height === colorResolveTo.height,
           );
           // assert(colorResolveFrom.format === colorResolveTo.format);
 
@@ -2588,7 +2601,7 @@ export class Device_GL implements SwapChain, Device {
       if (depthStencilResolveTo) {
         assert(
           depthStencilResolveFrom.width === depthStencilResolveTo.width &&
-            depthStencilResolveFrom.height === depthStencilResolveTo.height,
+          depthStencilResolveFrom.height === depthStencilResolveTo.height,
         );
 
         this.setScissorRectEnabled(false);

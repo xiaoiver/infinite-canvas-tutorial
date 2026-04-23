@@ -69,7 +69,11 @@ export class Texture_GL extends ResourceBase_GL implements Texture {
     let gl_target: GLenum;
     let gl_texture: WebGLTexture;
     const mipLevelCount = this.clampmipLevelCount(descriptor);
-    this.immutable = descriptor.usage === TextureUsage.RENDER_TARGET;
+    // RENDER_TARGET is a bit flag; `RENDER_TARGET | SAMPLED` must still allocate
+    // storage (e.g. MeshGradient offscreen) — strict `===` skipped texStorage and
+    // caused incomplete FBO: "Attachment has zero size".
+    this.immutable =
+      (descriptor.usage & TextureUsage.RENDER_TARGET) !== 0;
     this.pixelStore = descriptor.pixelStore;
     this.format = descriptor.format;
     this.dimension = descriptor.dimension;
