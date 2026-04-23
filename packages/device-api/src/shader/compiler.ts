@@ -440,23 +440,27 @@ ${rest}
       .join('\n')}` +
           concat.substring(lastIndexOfMain);
       } else {
-        let glFragColor: string;
+        // `out vec4 outColor` → at end of main, assign gl_FragColor. For vec4, use
+        // `gl_FragColor = outColor` (not `vec4(outColor)`): some WebGL1 drivers reject
+        // or mis-compile vec4-to-vec4 "conversion", causing link failure or black.
+        let fragOut: { dataType: string; name: string } | null = null;
         concat = concat.replace(
-          /^\s*out\s+(\S+)\s*(.*);$/gm,
+          /^\s*out\s+(\S+)\s+(\S+)\s*;$/gm,
           (_, dataType, name) => {
-            glFragColor = name;
+            fragOut = { dataType, name };
             return `${dataType} ${name};\n`;
           },
         );
 
-        if (glFragColor) {
+        if (fragOut) {
+          const { dataType, name } = fragOut;
           const lastIndexOfMain = concat.lastIndexOf('}');
+          const copyLine =
+            dataType === 'vec4'
+              ? `  gl_FragColor = ${name};\n`
+              : `  gl_FragColor = ${dataType}(${name});\n`;
           concat =
-            concat.substring(0, lastIndexOfMain) +
-            `
-  gl_FragColor = vec4(${glFragColor});
-` +
-            concat.substring(lastIndexOfMain);
+            concat.substring(0, lastIndexOfMain) + copyLine + concat.substring(lastIndexOfMain);
         }
       }
     }

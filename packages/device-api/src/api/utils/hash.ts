@@ -17,7 +17,7 @@ import type {
   VertexAttributeDescriptor,
 } from '../interfaces';
 import { colorEqual } from './color';
-import { copyMegaState } from './states';
+import { copyMegaState, defaultMegaState } from './states';
 
 type EqualFunc<K> = (a: K, b: K) => boolean;
 export function arrayEqual<T>(a: T[], b: T[], e: EqualFunc<T>): boolean {
@@ -203,9 +203,10 @@ export function renderPipelineDescriptorEquals(
   if (a.inputLayout !== b.inputLayout) return false;
   if (a.sampleCount !== b.sampleCount) return false;
   if (
-    a.megaStateDescriptor &&
-    b.megaStateDescriptor &&
-    !megaStateDescriptorEquals(a.megaStateDescriptor, b.megaStateDescriptor)
+    !megaStateDescriptorEquals(
+      a.megaStateDescriptor ?? defaultMegaState,
+      b.megaStateDescriptor ?? defaultMegaState,
+    )
   )
     return false;
   if (!programEquals(a.program, b.program)) return false;

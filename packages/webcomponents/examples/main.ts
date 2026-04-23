@@ -195,9 +195,12 @@ canvas.addEventListener(Event.READY, async (e) => {
       height: 200,
       zIndex: 1,
       fill: 'mesh-gradient(#24145f, #50b4fd 0.28 0.26, warp(0.5, 0.8), gtype(0), wshape(0))',
+      // fill: 'radial-gradient(circle at center, red, blue)',
+      // fill: '/canvas.png',
       stroke: '$color.stroke',
       strokeWidth: 2,
       cornerRadius: 10,
+      filter: 'pixelate(10px)',
     },
   ]);
 
