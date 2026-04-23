@@ -132,7 +132,7 @@ describe('Export SVG', () => {
     app.run().then(() => {
       sleep(1000).then(() => {
         if (api) {
-          api.export(ExportFormat.SVG, false);
+          api.export({ format: ExportFormat.SVG, download: false });
         }
       });
     });

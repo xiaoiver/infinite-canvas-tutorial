@@ -327,12 +327,14 @@ export class MeshPipeline extends System {
     const request = canvas.has(RasterScreenshotRequest)
       ? canvas.read(RasterScreenshotRequest)
       : null;
-    const { type, encoderOptions, grid, download, nodes } = request ?? {
-      type: 'image/png',
-      encoderOptions: 1,
-      grid: false,
-      nodes: [],
-    };
+    const { type, encoderOptions, grid, download, nodes, scale: rasterScale = 1 } =
+      request ?? {
+        type: 'image/png',
+        encoderOptions: 1,
+        grid: false,
+        nodes: [],
+        scale: 1,
+      };
     const shouldRenderGrid = !request || grid;
     const shouldRenderPartially = nodes.length > 0;
 
@@ -354,10 +356,16 @@ export class MeshPipeline extends System {
         exportLogicalWidth > 0 &&
         exportLogicalHeight > 0
       ) {
-        // Export at 1:1 (1 pixel per logical unit), do not scale by devicePixelRatio
-        // to avoid 2x size on HiDPI displays.
-        const exportPixelWidth = Math.ceil(exportLogicalWidth);
-        const exportPixelHeight = Math.ceil(exportLogicalHeight);
+        const s = Math.max(
+          0.25,
+          Math.min(8, Number.isFinite(rasterScale) ? rasterScale : 1),
+        );
+        // 1:1 逻辑单位对应 s 个像素；s=1 时与原先 1 像素/逻辑单位一致
+        const exportPixelWidth = Math.max(1, Math.ceil(exportLogicalWidth * s));
+        const exportPixelHeight = Math.max(
+          1,
+          Math.ceil(exportLogicalHeight * s),
+        );
         this.setupDevice.resizeOffscreen(exportPixelWidth, exportPixelHeight);
 
         const viewMatrixGL = mat3.create();
@@ -365,10 +373,12 @@ export class MeshPipeline extends System {
           -(bounds.minX - PADDING),
           -(bounds.minY - PADDING),
         ]);
+        const projectionW = exportLogicalWidth * s;
+        const projectionH = exportLogicalHeight * s;
         const projectionMatrixGL = mat3.projection(
           mat3.create(),
-          exportLogicalWidth,
-          exportLogicalHeight,
+          projectionW,
+          projectionH,
         );
         const viewProjectionMatrix = mat3.multiply(
           mat3.create(),

@@ -564,6 +564,7 @@ export class DocumentThemeSettings extends LitElement {
         ${this.modeSection(ThemeMode.LIGHT, msg(str`Light`))}
         ${this.modeSection(ThemeMode.DARK, msg(str`Dark`))}
         ${this.variablesSection()}
+        <slot name="extra-accordion-items"></slot>
       </sp-accordion>
       <slot name="document-settings"></slot>
     `;

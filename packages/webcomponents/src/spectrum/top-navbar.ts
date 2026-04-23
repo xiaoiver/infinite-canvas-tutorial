@@ -96,7 +96,7 @@ export class TopNavbar extends LitElement {
   private handleExport(event: CustomEvent) {
     const format = (event.target as any).value as ExportFormat;
 
-    this.api.export(format);
+    this.api.export({ format });
   }
 
   private handleEdit(event: CustomEvent) {

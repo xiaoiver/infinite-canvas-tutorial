@@ -143,6 +143,20 @@ export enum ExportFormat {
   JPEG = 'jpeg',
 }
 
+/** {@link API.export} 的选项：格式、下载行为、目标节点、栅格倍率等。 */
+export interface ExportOptions {
+  format: ExportFormat;
+  /** 为 `true` 时触发下载；默认 `true`。 */
+  download?: boolean;
+  /** 要导出的节点；空数组表示整幅画布。默认 `[]`。 */
+  nodes?: SerializedNode[];
+  /**
+   * 局部栅格导出的边长倍率（相对逻辑选区），仅对 PNG / JPEG 等有效；默认 `1`。
+   * @see RasterScreenshotRequest.scale
+   */
+  scale?: number;
+}
+
 export class DefaultStateManagement implements StateManagement {
   #appState = getDefaultAppState();
   #nodes: SerializedNode[] = [];
@@ -2183,7 +2197,12 @@ export class API {
     this.#history.clear();
   }
 
-  export(format: ExportFormat, download = true, nodes: SerializedNode[] = []) {
+  export(options: ExportOptions) {
+    const {
+      format,
+      download = true,
+      nodes = [],
+    } = options;
     if (format === ExportFormat.SVG) {
       safeAddComponent(this.#canvas, VectorScreenshotRequest, {
         canvas: this.#canvas,
@@ -2191,11 +2210,16 @@ export class API {
         nodes,
       });
     } else if (format === ExportFormat.PNG || format === ExportFormat.JPEG) {
+      const scale =
+        options.scale != null && Number.isFinite(options.scale)
+          ? Math.max(0.25, Math.min(8, options.scale))
+          : 1;
       safeAddComponent(this.#canvas, RasterScreenshotRequest, {
         canvas: this.#canvas,
         type: `image/${format}`,
         download,
         nodes,
+        scale,
       });
     }
 

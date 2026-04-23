@@ -6,7 +6,6 @@ import {
   API,
   StateManagement,
   Commands,
-  ThemeMode,
   ThemePreference,
   resolveThemeModeFromPreference,
   DOMAdapter,

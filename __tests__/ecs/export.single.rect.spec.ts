@@ -127,7 +127,7 @@ describe('Export SVG', () => {
     app.run().then(() => {
       sleep(300).then(() => {
         if (api) {
-          api.export(ExportFormat.SVG, false, [node!]);
+          api.export({ format: ExportFormat.SVG, download: false, nodes: [node!] });
         }
       });
     });
