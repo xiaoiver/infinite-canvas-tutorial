@@ -38,6 +38,8 @@ onMounted(async () => {
         layout: false,
         flexItem: true,
         effects: false,
+        multiSelectAlignment: true,
+        multiSelectEffects: true,
       },
     });
 

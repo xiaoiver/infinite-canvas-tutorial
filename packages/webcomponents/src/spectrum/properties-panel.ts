@@ -1,7 +1,7 @@
 import { html, css, LitElement } from 'lit';
 import { consume } from '@lit/context';
 import { customElement, state } from 'lit/decorators.js';
-import { SerializedNode, Task, AppState, NodeAlignment } from '@infinite-canvas-tutorial/ecs';
+import { NodeAlignment, SerializedNode, Task, AppState } from '@infinite-canvas-tutorial/ecs';
 import { apiContext, appStateContext, nodesContext } from '../context';
 import { type ExtendedAPI } from '../API';
 import { localized, msg, str } from '@lit/localize';
@@ -13,7 +13,13 @@ import '@spectrum-web-components/icons-workflow/icons/sp-icon-align-middle.js';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-align-right.js';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-align-top.js';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-close.js';
+import '@spectrum-web-components/icons-workflow/icons/sp-icon-distribute-space-horiz.js';
+import '@spectrum-web-components/icons-workflow/icons/sp-icon-distribute-space-vert.js';
+import '@spectrum-web-components/tooltip/sp-tooltip.js';
 import './document-theme-settings';
+import './effects-panel';
+import '@spectrum-web-components/accordion/sp-accordion.js';
+import '@spectrum-web-components/accordion/sp-accordion-item.js';
 
 const PANEL_HEIGHT_STORAGE_KEY = 'ic-spectrum-properties-panel-body-height';
 const DEFAULT_PANEL_BODY_HEIGHT = 400;
@@ -74,6 +80,7 @@ export class PropertiesPanel extends LitElement {
 
     .multi-select-hint {
       margin: 0 0 var(--spectrum-global-dimension-size-100) 0;
+      padding: 0 var(--spectrum-global-dimension-size-100);
       color: var(--spectrum-gray-800);
       font-size: var(--spectrum-font-size-75);
     }
@@ -83,6 +90,24 @@ export class PropertiesPanel extends LitElement {
       flex-wrap: wrap;
       gap: var(--spectrum-global-dimension-size-50);
       align-items: center;
+    }
+
+    .multi-select-accordion {
+      flex: 1 1 auto;
+      min-height: 0;
+      --system-accordion-size-s-item-header-font-size: 14px;
+      --mod-accordion-item-header-font-size: 14px;
+    }
+
+    .multi-select-accordion .content {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      position: relative;
+    }
+
+    .multi-select-accordion .effects-hint {
+      margin: 0 0 var(--spectrum-global-dimension-size-50) 0;
     }
 
     ic-spectrum-document-theme-settings {
@@ -133,6 +158,20 @@ export class PropertiesPanel extends LitElement {
   private resizeStartY = 0;
 
   private resizeStartHeight = 0;
+
+  private get multiSelectSectionsOpenResolved(): {
+    alignment: boolean;
+    effects: boolean;
+  } {
+    const s = this.appState.propertiesPanelSectionsOpen as AppState['propertiesPanelSectionsOpen'] & {
+      multiSelectAlignment?: boolean;
+      multiSelectEffects?: boolean;
+    };
+    return {
+      alignment: s.multiSelectAlignment ?? true,
+      effects: s.multiSelectEffects ?? true,
+    };
+  }
 
   connectedCallback(): void {
     super.connectedCallback();
@@ -207,6 +246,10 @@ export class PropertiesPanel extends LitElement {
     this.api?.alignSelectedNodes(alignment);
   }
 
+  private handleDistributeSpacing(axis: 'horizontal' | 'vertical') {
+    this.api?.distributeSelectedNodesSpacing(axis);
+  }
+
   private renderResizeHandle() {
     return html`<div
       class="resize-handle"
@@ -245,6 +288,20 @@ export class PropertiesPanel extends LitElement {
     }
 
     if (layersSelected.length > 1) {
+      const selectedNodes = layersSelected
+        .map((id) => this.api?.getNodeById(id))
+        .filter((n): n is SerializedNode => n != null);
+      const firstNode = selectedNodes[0];
+      const filterWire = (n: SerializedNode) =>
+        (n as { filter?: string }).filter ?? '';
+      const allIdsResolved = selectedNodes.length === layersSelected.length;
+      const firstF =
+        selectedNodes.length > 0 ? filterWire(selectedNodes[0]) : '';
+      const filtersMatch =
+        allIdsResolved &&
+        selectedNodes.length > 0 &&
+        selectedNodes.every((n) => filterWire(n) === firstF);
+      const filtersMixed = !filtersMatch;
       return html`<section>
         <h4>
           ${msg(str`Properties`)}
@@ -253,63 +310,153 @@ export class PropertiesPanel extends LitElement {
           </sp-action-button>
         </h4>
         <div
-          class="panel-body container"
-          style=${`height:${this.panelBodyHeight}px`}
+          class="panel-body"
+          style=${`height:${this.panelBodyHeight}px; overflow: auto;`}
         >
           <p class="multi-select-hint">
             ${layersSelected.length}
             ${msg(str` selected`)}
           </p>
-          <div class="align-toolbar" role="toolbar" aria-label=${msg(str`Alignment`)}>
-            <sp-action-button
-              quiet
-              size="s"
-              @click=${() => this.handleAlign('left')}
-              label=${msg(str`Align left`)}
+          <sp-accordion
+            class="multi-select-accordion"
+            allow-multiple
+            size="s"
+          >
+            <sp-accordion-item
+              label=${msg(str`Alignment`)}
+              ?open=${this.multiSelectSectionsOpenResolved.alignment}
             >
-              <sp-icon-align-left slot="icon"></sp-icon-align-left>
-            </sp-action-button>
-            <sp-action-button
-              quiet
-              size="s"
-              @click=${() => this.handleAlign('centerH')}
-              label=${msg(str`Align center horizontally`)}
-            >
-              <sp-icon-align-center slot="icon"></sp-icon-align-center>
-            </sp-action-button>
-            <sp-action-button
-              quiet
-              size="s"
-              @click=${() => this.handleAlign('right')}
-              label=${msg(str`Align right`)}
-            >
-              <sp-icon-align-right slot="icon"></sp-icon-align-right>
-            </sp-action-button>
-            <sp-action-button
-              quiet
-              size="s"
-              @click=${() => this.handleAlign('top')}
-              label=${msg(str`Align top`)}
-            >
-              <sp-icon-align-top slot="icon"></sp-icon-align-top>
-            </sp-action-button>
-            <sp-action-button
-              quiet
-              size="s"
-              @click=${() => this.handleAlign('centerV')}
-              label=${msg(str`Align middle vertically`)}
-            >
-              <sp-icon-align-middle slot="icon"></sp-icon-align-middle>
-            </sp-action-button>
-            <sp-action-button
-              quiet
-              size="s"
-              @click=${() => this.handleAlign('bottom')}
-              label=${msg(str`Align bottom`)}
-            >
-              <sp-icon-align-bottom slot="icon"></sp-icon-align-bottom>
-            </sp-action-button>
-          </div>
+              <div class="content">
+                <div
+                  class="align-toolbar"
+                  role="toolbar"
+                  aria-label=${msg(str`Alignment`)}
+                >
+                  <sp-action-button
+                    quiet
+                    size="s"
+                    @click=${() => this.handleAlign('left')}
+                    label=${msg(str`Align left`)}
+                  >
+                    <sp-icon-align-left slot="icon"></sp-icon-align-left>
+                    <sp-tooltip self-managed placement="bottom">
+                      ${msg(str`Align left`)}
+                    </sp-tooltip>
+                  </sp-action-button>
+                  <sp-action-button
+                    quiet
+                    size="s"
+                    @click=${() => this.handleAlign('centerH')}
+                    label=${msg(str`Align center horizontally`)}
+                  >
+                    <sp-icon-align-center slot="icon"></sp-icon-align-center>
+                    <sp-tooltip self-managed placement="bottom">
+                      ${msg(str`Align center horizontally`)}
+                    </sp-tooltip>
+                  </sp-action-button>
+                  <sp-action-button
+                    quiet
+                    size="s"
+                    @click=${() => this.handleAlign('right')}
+                    label=${msg(str`Align right`)}
+                  >
+                    <sp-icon-align-right slot="icon"></sp-icon-align-right>
+                    <sp-tooltip self-managed placement="bottom">
+                      ${msg(str`Align right`)}
+                    </sp-tooltip>
+                  </sp-action-button>
+                  <sp-action-button
+                    quiet
+                    size="s"
+                    @click=${() => this.handleAlign('top')}
+                    label=${msg(str`Align top`)}
+                  >
+                    <sp-icon-align-top slot="icon"></sp-icon-align-top>
+                    <sp-tooltip self-managed placement="bottom">
+                      ${msg(str`Align top`)}
+                    </sp-tooltip>
+                  </sp-action-button>
+                  <sp-action-button
+                    quiet
+                    size="s"
+                    @click=${() => this.handleAlign('centerV')}
+                    label=${msg(str`Align middle vertically`)}
+                  >
+                    <sp-icon-align-middle
+                      slot="icon"
+                    ></sp-icon-align-middle>
+                    <sp-tooltip self-managed placement="bottom">
+                      ${msg(str`Align middle vertically`)}
+                    </sp-tooltip>
+                  </sp-action-button>
+                  <sp-action-button
+                    quiet
+                    size="s"
+                    @click=${() => this.handleAlign('bottom')}
+                    label=${msg(str`Align bottom`)}
+                  >
+                    <sp-icon-align-bottom
+                      slot="icon"
+                    ></sp-icon-align-bottom>
+                    <sp-tooltip self-managed placement="bottom">
+                      ${msg(str`Align bottom`)}
+                    </sp-tooltip>
+                  </sp-action-button>
+                  <sp-action-button
+                    quiet
+                    size="s"
+                    @click=${() =>
+          this.handleDistributeSpacing('horizontal')}
+                    label=${msg(str`Distribute horizontal spacing`)}
+                  >
+                    <sp-icon-distribute-space-horiz
+                      slot="icon"
+                    ></sp-icon-distribute-space-horiz>
+                    <sp-tooltip self-managed placement="bottom">
+                      ${msg(str`Distribute horizontal spacing`)}
+                    </sp-tooltip>
+                  </sp-action-button>
+                  <sp-action-button
+                    quiet
+                    size="s"
+                    @click=${() =>
+          this.handleDistributeSpacing('vertical')}
+                    label=${msg(str`Distribute vertical spacing`)}
+                  >
+                    <sp-icon-distribute-space-vert
+                      slot="icon"
+                    ></sp-icon-distribute-space-vert>
+                    <sp-tooltip self-managed placement="bottom">
+                      ${msg(str`Distribute vertical spacing`)}
+                    </sp-tooltip>
+                  </sp-action-button>
+                </div>
+              </div>
+            </sp-accordion-item>
+            ${firstNode
+          ? html`
+                  <sp-accordion-item
+                    label=${msg(str`Effects`)}
+                    ?open=${this.multiSelectSectionsOpenResolved.effects}
+                  >
+                    <div class="content">
+                      <p class="multi-select-hint effects-hint">
+                        ${filtersMatch
+              ? msg(str`Edits apply to all selected items.`)
+              : msg(
+                str`Selected items have different filters. Nothing is listed; add a filter to set the same chain for all.`,
+              )}
+                      </p>
+                      <ic-spectrum-effects-panel
+                        .node=${firstNode}
+                        .targetNodeIds=${layersSelected}
+                        .filtersMixed=${filtersMixed}
+                      ></ic-spectrum-effects-panel>
+                    </div>
+                  </sp-accordion-item>
+                `
+          : null}
+          </sp-accordion>
         </div>
         ${this.renderResizeHandle()}
       </section>`;

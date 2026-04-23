@@ -134,6 +134,9 @@ export type NodeAlignment =
   | 'centerH'
   | 'centerV';
 
+/** 多选时按几何包络在水平或竖直方向作等间距分布。 */
+export type DistributeSpacingAxis = 'horizontal' | 'vertical';
+
 export enum ExportFormat {
   SVG = 'svg',
   PNG = 'png',
@@ -1682,7 +1685,6 @@ export class API {
     ) {
       return;
     }
-    const epsilon = 0.01;
 
     for (const node of nodes) {
       const entity = this.getEntity(node);
@@ -1719,67 +1721,183 @@ export class API {
         const uc = (union.minY + union.maxY) * 0.5;
         dy = uc - gc;
       }
-      if (Math.abs(dx) < 1e-9 && Math.abs(dy) < 1e-9) {
-        continue;
-      }
-      const oldNode = { ...node, ...this.getAbsoluteTransformAndSize(node) };
-      const oldAttrs = {
-        x: oldNode.x ?? 0,
-        y: oldNode.y ?? 0,
-        width: oldNode.width ?? 0,
-        height: oldNode.height ?? 0,
-        rotation: oldNode.rotation ?? 0,
-        scaleX: oldNode.scaleX ?? 1,
-        scaleY: oldNode.scaleY ?? 1,
-      };
-      const wSign = oldAttrs.width;
-      const hSign = oldAttrs.height;
-      const delta = mat3.create();
-      mat3.fromTranslation(delta, [dx, dy]);
-      const parentTransform = this.getParentTransform(entity);
-      const localTransform = this.getTransform(oldNode);
-      const newLocalTransform = mat3.create();
-      mat3.multiply(newLocalTransform, parentTransform, localTransform);
-      mat3.multiply(newLocalTransform, delta, newLocalTransform);
-      mat3.multiply(
-        newLocalTransform,
-        mat3.invert(mat3.create(), parentTransform),
-        newLocalTransform,
-      );
-      const { rotation, translation, scale } = decompose(newLocalTransform);
-      const obb = {
-        x: translation[0],
-        y: translation[1],
-        width: Math.max(
-          Math.abs((oldNode.width ?? 0) * scale[0]),
-          epsilon,
-        ),
-        height: Math.max(
-          Math.abs((oldNode.height ?? 0) * scale[1]),
-          epsilon,
-        ),
-        rotation,
-        scaleX: oldAttrs.scaleX * (Math.sign(wSign) || 1),
-        scaleY: oldAttrs.scaleY * (Math.sign(hSign) || 1),
-      };
-      if (entity.hasSomeOf(Polyline, Path, Line)) {
-        const signW = Math.sign(wSign) || 1;
-        const signH = Math.sign(hSign) || 1;
-        obb.scaleX = Math.sign(oldAttrs.scaleX || 1) * signW;
-        obb.scaleY = Math.sign(oldAttrs.scaleY || 1) * signH;
-      }
-      this.updateNodeOBB(
-        node,
-        obb,
-        node.lockAspectRatio,
-        undefined,
-        oldNode,
-      );
-      updateGlobalTransform(entity);
-      updateComputedPoints(entity);
+      this.#applyNodeWorldDelta(node, dx, dy);
     }
 
     this.record();
+  }
+
+  /**
+   * 将多个选中节点在**世界空间**中沿水平或竖直方向做**等间距**分布：固定整体首尾（沿该轴的 min/max
+   * 几何包络），在相邻两物体之间使用相同间隔；基于 {@link ComputedBounds.geometryWorldBounds} 与
+   * {@link alignSelectedNodes} 相同的 OBB 更新。跳过 `locked` 的节点，至少两个未锁。
+   */
+  distributeSelectedNodesSpacing(
+    axis: DistributeSpacingAxis,
+    nodeIds?: string[],
+  ) {
+    const ids = nodeIds ?? this.getAppState().layersSelected;
+    if (ids.length < 2) {
+      return;
+    }
+    const nodes = ids
+      .map((id) => this.getNodeById(id))
+      .filter(
+        (n): n is SerializedNode => !!n && n.locked !== true,
+      );
+    if (nodes.length < 2) {
+      return;
+    }
+    const entries: {
+      node: SerializedNode;
+      minX: number;
+      maxX: number;
+      minY: number;
+      maxY: number;
+      w: number;
+      h: number;
+    }[] = [];
+    for (const node of nodes) {
+      const entity = this.getEntity(node);
+      if (!entity?.has(ComputedBounds)) {
+        continue;
+      }
+      const g = entity.read(ComputedBounds).geometryWorldBounds;
+      if (
+        !Number.isFinite(g.minX) ||
+        !Number.isFinite(g.maxX) ||
+        !Number.isFinite(g.minY) ||
+        !Number.isFinite(g.maxY) ||
+        g.minX > g.maxX ||
+        g.minY > g.maxY
+      ) {
+        continue;
+      }
+      entries.push({
+        node,
+        minX: g.minX,
+        maxX: g.maxX,
+        minY: g.minY,
+        maxY: g.maxY,
+        w: g.maxX - g.minX,
+        h: g.maxY - g.minY,
+      });
+    }
+    if (entries.length < 2) {
+      return;
+    }
+    if (axis === 'horizontal') {
+      entries.sort((a, b) => a.minX - b.minX);
+    } else {
+      entries.sort((a, b) => a.minY - b.minY);
+    }
+    const n = entries.length;
+    if (axis === 'horizontal') {
+      const sumW = entries.reduce((s, e) => s + e.w, 0);
+      const span = entries[n - 1]!.maxX - entries[0]!.minX;
+      const gGap = (span - sumW) / (n - 1);
+      if (!Number.isFinite(gGap)) {
+        return;
+      }
+      const targetMinX: number[] = new Array(n);
+      targetMinX[0] = entries[0]!.minX;
+      for (let i = 1; i < n; i++) {
+        targetMinX[i] = targetMinX[i - 1]! + entries[i - 1]!.w + gGap;
+      }
+      for (let i = 0; i < n; i++) {
+        this.#applyNodeWorldDelta(
+          entries[i]!.node,
+          targetMinX[i]! - entries[i]!.minX,
+          0,
+        );
+      }
+    } else {
+      const sumH = entries.reduce((s, e) => s + e.h, 0);
+      const span = entries[n - 1]!.maxY - entries[0]!.minY;
+      const gGap = (span - sumH) / (n - 1);
+      if (!Number.isFinite(gGap)) {
+        return;
+      }
+      const targetMinY: number[] = new Array(n);
+      targetMinY[0] = entries[0]!.minY;
+      for (let i = 1; i < n; i++) {
+        targetMinY[i] = targetMinY[i - 1]! + entries[i - 1]!.h + gGap;
+      }
+      for (let i = 0; i < n; i++) {
+        this.#applyNodeWorldDelta(
+          entries[i]!.node,
+          0,
+          targetMinY[i]! - entries[i]!.minY,
+        );
+      }
+    }
+    this.record();
+  }
+
+  #applyNodeWorldDelta(node: SerializedNode, dx: number, dy: number) {
+    if (Math.abs(dx) < 1e-9 && Math.abs(dy) < 1e-9) {
+      return;
+    }
+    const entity = this.getEntity(node);
+    if (!entity) {
+      return;
+    }
+    const epsilon = 0.01;
+    const oldNode = { ...node, ...this.getAbsoluteTransformAndSize(node) };
+    const oldAttrs = {
+      x: oldNode.x ?? 0,
+      y: oldNode.y ?? 0,
+      width: oldNode.width ?? 0,
+      height: oldNode.height ?? 0,
+      rotation: oldNode.rotation ?? 0,
+      scaleX: oldNode.scaleX ?? 1,
+      scaleY: oldNode.scaleY ?? 1,
+    };
+    const wSign = oldAttrs.width;
+    const hSign = oldAttrs.height;
+    const delta = mat3.create();
+    mat3.fromTranslation(delta, [dx, dy]);
+    const parentTransform = this.getParentTransform(entity);
+    const localTransform = this.getTransform(oldNode);
+    const newLocalTransform = mat3.create();
+    mat3.multiply(newLocalTransform, parentTransform, localTransform);
+    mat3.multiply(newLocalTransform, delta, newLocalTransform);
+    mat3.multiply(
+      newLocalTransform,
+      mat3.invert(mat3.create(), parentTransform),
+      newLocalTransform,
+    );
+    const { rotation, translation, scale } = decompose(newLocalTransform);
+    const obb = {
+      x: translation[0],
+      y: translation[1],
+      width: Math.max(
+        Math.abs((oldNode.width ?? 0) * scale[0]),
+        epsilon,
+      ),
+      height: Math.max(
+        Math.abs((oldNode.height ?? 0) * scale[1]),
+        epsilon,
+      ),
+      rotation,
+      scaleX: oldAttrs.scaleX * (Math.sign(wSign) || 1),
+      scaleY: oldAttrs.scaleY * (Math.sign(hSign) || 1),
+    };
+    if (entity.hasSomeOf(Polyline, Path, Line)) {
+      const signW = Math.sign(wSign) || 1;
+      const signH = Math.sign(hSign) || 1;
+      obb.scaleX = Math.sign(oldAttrs.scaleX || 1) * signW;
+      obb.scaleY = Math.sign(oldAttrs.scaleY || 1) * signH;
+    }
+    this.updateNodeOBB(
+      node,
+      obb,
+      node.lockAspectRatio,
+      undefined,
+      oldNode,
+    );
+    updateGlobalTransform(entity);
+    updateComputedPoints(entity);
   }
 
   deleteNodesById(ids: SerializedNode['id'][]) {

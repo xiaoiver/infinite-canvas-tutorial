@@ -57,6 +57,10 @@ function isLiquidGlassEffect(e: Effect): boolean {
   return (e as { type?: string }).type === 'liquidGlass';
 }
 
+function isTsunamiEffect(e: Effect): boolean {
+  return (e as { type?: string }).type === 'tsunami';
+}
+
 /** Mirrors ecs `CRT_DEFAULTS`. */
 const CRT_PANEL_DEFAULTS = {
   curvature: 1,
@@ -147,6 +151,23 @@ const FLUTED_GLASS_PANEL_DEFAULTS = {
 
 type FlutedGlassEffectRow = { type: 'flutedGlass' } & typeof FLUTED_GLASS_PANEL_DEFAULTS;
 
+/** Mirrors ecs `TSUNAMI_DEFAULTS` / `TsunamiEffect`. */
+const TSUNAMI_PANEL_DEFAULTS = {
+  stripeCount: 32,
+  stripeAngle: 0,
+  distortion: 1,
+  reflection: 0.2,
+  disturbance: 0.15,
+  contortion: 0.1,
+  blend: 0,
+  dispersion: 0.15,
+  drift: 0,
+  shadowIntensity: 0.5,
+  offset: 0,
+} as const;
+
+type TsunamiEffectRow = { type: 'tsunami' } & typeof TSUNAMI_PANEL_DEFAULTS;
+
 /** Picker / menu value for an effect row (maps `adjustment` from saturate to `saturate`). */
 type EffectKind =
   | 'brightness'
@@ -164,7 +185,8 @@ type EffectKind =
   | 'vignette'
   | 'ascii'
   | 'glitch'
-  | 'liquidGlass';
+  | 'liquidGlass'
+  | 'tsunami';
 
 function effectKind(
   effect: Effect,
@@ -196,6 +218,9 @@ function effectKind(
   }
   if (isLiquidGlassEffect(effect)) {
     return 'liquidGlass';
+  }
+  if (isTsunamiEffect(effect)) {
+    return 'tsunami';
   }
   if (
     effect.type === 'brightness' ||
@@ -261,6 +286,11 @@ function createDefaultEffect(kind: EffectKind): Effect {
       return { ...GLITCH_PANEL_DEFAULTS } as unknown as Effect;
     case 'liquidGlass':
       return { ...LIQUID_GLASS_PANEL_DEFAULTS } as unknown as Effect;
+    case 'tsunami':
+      return {
+        type: 'tsunami',
+        ...TSUNAMI_PANEL_DEFAULTS,
+      } as unknown as Effect;
     case 'saturate':
       return {
         type: 'adjustment',
@@ -337,19 +367,46 @@ export class EffectsPanel extends LitElement {
   @property({ type: Object })
   node: SerializedNode;
 
+  /** 多选时传入与 `layersSelected` 一致的 id 列表；提交时将相同 `filter` 写到所有这些节点。 */
+  @property({ type: Array, attribute: false })
+  targetNodeIds?: SerializedNode['id'][];
+
+  /**
+   * 多选且各对象 `filter` 字符串不一致时（Figma 式 “mixed”）：不展示任何已有个滤镜行，仅保留「添加」；
+   * 自空白添加或统一提交后，会写入选中全部对象。
+   */
+  @property({ type: Boolean, attribute: false })
+  filtersMixed = false;
+
   @state()
   private effects: Effect[] = [];
 
   protected willUpdate(changed: PropertyValues<this>): void {
-    if (changed.has('node') && this.node) {
-      const f = (this.node as { filter?: string }).filter ?? '';
-      this.effects = f ? parseEffect(f) : [];
+    if (changed.has('filtersMixed') || (changed.has('node') && this.node)) {
+      if (this.filtersMixed) {
+        this.effects = [];
+      } else if (this.node) {
+        const f = (this.node as { filter?: string }).filter ?? '';
+        this.effects = f ? parseEffect(f) : [];
+      }
     }
   }
 
   private commit(next: Effect[]) {
     this.effects = next;
-    this.api.updateNode(this.node, { filter: formatFilter(next) });
+    const filter = formatFilter(next);
+    const ids =
+      this.targetNodeIds && this.targetNodeIds.length > 0
+        ? this.targetNodeIds
+        : this.node
+          ? [this.node.id]
+          : [];
+    for (const id of ids) {
+      const n = this.api.getNodeById(id);
+      if (n) {
+        this.api.updateNode(n, { filter });
+      }
+    }
     this.api.record();
   }
 
@@ -433,6 +490,9 @@ export class EffectsPanel extends LitElement {
                   <sp-menu-item value="glitch">${msg(str`Glitch`)}</sp-menu-item>
                   <sp-menu-item value="liquidGlass"
                     >${msg(str`Liquid glass`)}</sp-menu-item
+                  >
+                  <sp-menu-item value="tsunami"
+                    >${msg(str`Tsunami`)}</sp-menu-item
                   >
                 </sp-picker>
               `
@@ -854,6 +914,166 @@ export class EffectsPanel extends LitElement {
           this.commit(next);
         }}
         ></sp-slider>
+      `;
+    }
+    if (isTsunamiEffect(effect)) {
+      const h = effect as unknown as TsunamiEffectRow;
+      const num = (
+        key: keyof Omit<TsunamiEffectRow, 'type'>,
+        v: number,
+      ) => {
+        const next = [...this.effects];
+        next[index] = {
+          ...h,
+          [key]: v,
+        } as unknown as Effect;
+        this.commit(next);
+      };
+      return html`
+        <sp-slider
+          size="s"
+          label=${msg(str`Stripe count`)}
+          min="4"
+          max="128"
+          step="1"
+          .value=${h.stripeCount}
+          editable
+          @change=${(e: Event & { target: HTMLInputElement }) => {
+          const v = parseFloat(e.target.value);
+          num('stripeCount', Number.isFinite(v) ? v : h.stripeCount);
+        }}
+        ></sp-slider>
+        <sp-slider
+          size="s"
+          label=${msg(str`Stripe angle`)}
+          min="-180"
+          max="180"
+          step="1"
+          .value=${h.stripeAngle}
+          editable
+          @change=${(e: Event & { target: HTMLInputElement }) => {
+          const v = parseFloat(e.target.value);
+          num('stripeAngle', Number.isFinite(v) ? v : h.stripeAngle);
+        }}
+        ></sp-slider>
+        <sp-slider
+          size="s"
+          label=${msg(str`Distortion`)}
+          min="0"
+          max="4"
+          step="0.01"
+          .value=${h.distortion}
+          editable
+          @change=${(e: Event & { target: HTMLInputElement }) => {
+          const v = parseFloat(e.target.value);
+          num('distortion', Number.isFinite(v) ? v : h.distortion);
+        }}
+        ></sp-slider>
+        <sp-slider
+          size="s"
+          label=${msg(str`Reflection`)}
+          min="0"
+          max="2"
+          step="0.01"
+          .value=${h.reflection}
+          editable
+          @change=${(e: Event & { target: HTMLInputElement }) => {
+          const v = parseFloat(e.target.value);
+          num('reflection', Number.isFinite(v) ? v : h.reflection);
+        }}
+        ></sp-slider>
+        <sp-slider
+          size="s"
+          label=${msg(str`Disturbance`)}
+          min="0"
+          max="1"
+          step="0.01"
+          .value=${h.disturbance}
+          editable
+          @change=${(e: Event & { target: HTMLInputElement }) => {
+          const v = parseFloat(e.target.value);
+          num('disturbance', Number.isFinite(v) ? v : h.disturbance);
+        }}
+        ></sp-slider>
+        <sp-slider
+          size="s"
+          label=${msg(str`Contortion`)}
+          min="0"
+          max="2"
+          step="0.01"
+          .value=${h.contortion}
+          editable
+          @change=${(e: Event & { target: HTMLInputElement }) => {
+          const v = parseFloat(e.target.value);
+          num('contortion', Number.isFinite(v) ? v : h.contortion);
+        }}
+        ></sp-slider>
+        <sp-slider
+          size="s"
+          label=${msg(str`Dispersion`)}
+          min="0"
+          max="1"
+          step="0.01"
+          .value=${h.dispersion}
+          editable
+          @change=${(e: Event & { target: HTMLInputElement }) => {
+          const v = parseFloat(e.target.value);
+          num('dispersion', Number.isFinite(v) ? v : h.dispersion);
+        }}
+        ></sp-slider>
+        <sp-slider
+          size="s"
+          label=${msg(str`Drift`)}
+          min="-1"
+          max="1"
+          step="0.01"
+          .value=${h.drift}
+          editable
+          @change=${(e: Event & { target: HTMLInputElement }) => {
+          const v = parseFloat(e.target.value);
+          num('drift', Number.isFinite(v) ? v : h.drift);
+        }}
+        ></sp-slider>
+        <sp-slider
+          size="s"
+          label=${msg(str`Shadow`)}
+          min="0"
+          max="2"
+          step="0.01"
+          .value=${h.shadowIntensity}
+          editable
+          @change=${(e: Event & { target: HTMLInputElement }) => {
+          const v = parseFloat(e.target.value);
+          num('shadowIntensity', Number.isFinite(v) ? v : h.shadowIntensity);
+        }}
+        ></sp-slider>
+        <sp-slider
+          size="s"
+          label=${msg(str`Offset`)}
+          min="-0.5"
+          max="0.5"
+          step="0.001"
+          .value=${h.offset}
+          editable
+          @change=${(e: Event & { target: HTMLInputElement }) => {
+          const v = parseFloat(e.target.value);
+          num('offset', Number.isFinite(v) ? v : h.offset);
+        }}
+        ></sp-slider>
+        <sp-switch
+          size="s"
+          ?checked=${h.blend > 0.5}
+          @change=${(e: Event & { target: HTMLInputElement }) => {
+          const checked = (e.target as { checked?: boolean }).checked === true;
+          const next = [...this.effects];
+          next[index] = {
+            ...h,
+            blend: checked ? 1 : 0,
+          } as unknown as Effect;
+          this.commit(next);
+        }}
+        >${msg(str`Luminance blend (reflection)`)}
+        </sp-switch>
       `;
     }
     if (isCrtEffect(effect)) {
@@ -1403,6 +1623,7 @@ export class EffectsPanel extends LitElement {
           <sp-menu-item value="liquidGlass"
             >${msg(str`Liquid glass`)}</sp-menu-item
           >
+          <sp-menu-item value="tsunami">${msg(str`Tsunami`)}</sp-menu-item>
         </sp-action-menu>
       </div>
     `;

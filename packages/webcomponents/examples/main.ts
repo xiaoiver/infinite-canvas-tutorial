@@ -153,6 +153,8 @@ canvas.addEventListener(Event.READY, async (e) => {
       layout: false,
       flexItem: true,
       effects: false,
+      multiSelectAlignment: true,
+      multiSelectEffects: true,
     },
     penbarVisible: true,
     taskbarVisible: true,

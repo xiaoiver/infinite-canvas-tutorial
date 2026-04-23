@@ -41,6 +41,10 @@ export interface PropertiesPanelSectionsOpen {
   /** 父级为 flex 容器时，子项的 flex 属性（align-self、flex-grow 等） */
   flexItem: boolean;
   effects: boolean;
+  /** 多选时「对齐」手风琴 */
+  multiSelectAlignment: boolean;
+  /** 多选时「效果」手风琴 */
+  multiSelectEffects: boolean;
 }
 
 /**
@@ -121,7 +125,7 @@ export interface AppState {
   layersExpanded: SerializedNode['id'][];
   propertiesOpened: SerializedNode['id'][];
   /**
-   * 属性面板 Shape / Transform / Layout / Effects 分区的默认展开状态
+   * 属性面板 Shape / Transform / Layout / Effects / 多选对齐与效果 分区的默认展开状态
    */
   propertiesPanelSectionsOpen: PropertiesPanelSectionsOpen;
   /**
@@ -396,6 +400,8 @@ export const getDefaultAppState: () => AppState = () => {
       layout: true,
       flexItem: true,
       effects: true,
+      multiSelectAlignment: true,
+      multiSelectEffects: true,
     },
     layersExpanded: [],
     rotateEnabled: true,
