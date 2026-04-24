@@ -102,8 +102,42 @@ const FLEX_LAYOUT_MUTATION_KEYS: readonly string[] = [
   'maxHeight',
 ];
 
-function updatesAffectFlexLayout(updates: object): boolean {
-  return FLEX_LAYOUT_MUTATION_KEYS.some((k) => k in updates);
+function flexLayoutKeysChanged(
+  updates: object,
+  skipOverrideKeys: readonly string[],
+  previous: Record<string, unknown>,
+  keys: readonly string[],
+): boolean {
+  return keys.some(
+    (k) =>
+      k in updates &&
+      !skipOverrideKeys.includes(k) &&
+      (updates as Record<string, unknown>)[k] !== previous[k],
+  );
+}
+
+/** 整表 `updateNode(node, undefined)` 时 updates 与 element 同引用，值与快照总相等，须按「键在」标脏，否则首帧/加载后不会 markFlexLayoutDirty。变量表刷新已改为窄 patch。 */
+function shouldMarkFlexContainerForLayout(
+  entity: Entity,
+  updates: object,
+  element: object,
+  skipOverrideKeys: readonly string[],
+  preFlexLayout: Record<string, unknown>,
+): boolean {
+  if (!entity.has(Flex)) {
+    return false;
+  }
+  if (Object.is(updates, element)) {
+    return FLEX_LAYOUT_MUTATION_KEYS.some(
+      (k) => k in updates && !skipOverrideKeys.includes(k),
+    );
+  }
+  return flexLayoutKeysChanged(
+    updates,
+    skipOverrideKeys,
+    preFlexLayout,
+    FLEX_LAYOUT_MUTATION_KEYS,
+  );
 }
 
 /** 子项上影响 Yoga 的布局键：实体无 Flex 组件，需标记父级 flex 容器以触发 Yoga */
@@ -129,13 +163,23 @@ const FLEX_ITEM_PARENT_RELAYOUT_KEYS: readonly string[] = [
   'height',
 ];
 
-/** @param skipOverrideKeys 与 {@link mutateElement} 一致：Yoga 等写回子项 x/y/width/height 时跳过写入序列化对象，但 diff 中仍带这些键；不应因此再标父级 FlexLayoutDirty，否则会与 Yoga 交替触发。 */
+/**
+ * 见 {@link flexLayoutKeysChanged} 与 `previous` 比较。整表自同步（updates===element）不标父级，免变量表式全量 `updateNode` 误伤。
+ */
 function updatesAffectFlexItemInParentTree(
   updates: object,
-  skipOverrideKeys: readonly string[] = [],
+  element: object,
+  skipOverrideKeys: readonly string[],
+  previous: Record<string, unknown>,
 ): boolean {
-  return FLEX_ITEM_PARENT_RELAYOUT_KEYS.some(
-    (k) => k in updates && !skipOverrideKeys.includes(k),
+  if (Object.is(updates, element)) {
+    return false;
+  }
+  return flexLayoutKeysChanged(
+    updates,
+    skipOverrideKeys,
+    previous,
+    FLEX_ITEM_PARENT_RELAYOUT_KEYS,
   );
 }
 
@@ -698,6 +742,20 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
   api: API,
 ): TElement => {
   let didChange = false;
+
+  const el = element as Record<string, unknown>;
+  const preFlexLayout: Record<string, unknown> = {};
+  for (const k of FLEX_LAYOUT_MUTATION_KEYS) {
+    if (k in updates && !skipOverrideKeys.includes(k)) {
+      preFlexLayout[k] = el[k];
+    }
+  }
+  const preFlexItemParent: Record<string, unknown> = {};
+  for (const k of FLEX_ITEM_PARENT_RELAYOUT_KEYS) {
+    if (k in updates && !skipOverrideKeys.includes(k)) {
+      preFlexItemParent[k] = el[k];
+    }
+  }
 
   for (const key in updates) {
     const value = (updates as any)[key];
@@ -1290,11 +1348,26 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
     }
   }
 
-  if (entity.has(Flex) && updatesAffectFlexLayout(updates)) {
+  if (
+    shouldMarkFlexContainerForLayout(
+      entity,
+      updates,
+      element,
+      skipOverrideKeys,
+      preFlexLayout,
+    )
+  ) {
     markFlexLayoutDirty(entity);
   }
 
-  if (updatesAffectFlexItemInParentTree(updates, skipOverrideKeys)) {
+  if (
+    updatesAffectFlexItemInParentTree(
+      updates,
+      element,
+      skipOverrideKeys,
+      preFlexItemParent,
+    )
+  ) {
     const pid = element.parentId;
     if (pid) {
       const parentNode = api.getNodeById(pid);

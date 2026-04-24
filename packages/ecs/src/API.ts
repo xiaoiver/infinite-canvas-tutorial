@@ -37,12 +37,12 @@ import {
   strokeWidthForHitTest,
   cloneStrokeWithHitTestWidth,
   cloneSerializedNodes,
-  resolveSerializedNodesDesignVariables,
   prepareSerializedNodesForSvgExport,
   type DesignVariablesSvgExportMode,
   decompose,
   transformPath,
   mat3WithoutTranslation,
+  buildDesignVariableRefreshPatch,
 } from './utils';
 import type {
   BrushSerializedNode,
@@ -383,13 +383,16 @@ export class API {
     const variablesActuallyChanged =
       Object.prototype.hasOwnProperty.call(patch, 'variables') &&
       JSON.stringify((variablesPatch as { variables?: object }).variables) !==
-        JSON.stringify(prevVariables);
+      JSON.stringify(prevVariables);
 
     if (variablesActuallyChanged) {
       this.runAtNextTick(() => {
         for (const node of this.getNodes()) {
           if (this.#idEntityMap.has(node.id)) {
-            this.updateNode(node, undefined, false);
+            const varPatch = buildDesignVariableRefreshPatch(node);
+            if (Object.keys(varPatch).length > 0) {
+              this.updateNode(node, varPatch, false);
+            }
           }
         }
         // 撤销/重做应用 AppState 时不要再次 record（见 {@link AppStateChange.applyTo}）
