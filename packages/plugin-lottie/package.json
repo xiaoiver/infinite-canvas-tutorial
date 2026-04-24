@@ -46,7 +46,7 @@
   },
   "dependencies": {
     "@antv/util": "^3.3.10",
-    "uuid": "^11.1.0"
+    "uuid": "^14.0.0"
   },
   "peerDependencies": {
     "@infinite-canvas-tutorial/ecs": "workspace:*",

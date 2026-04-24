@@ -150,7 +150,11 @@ export class StrokeContent extends LitElement {
 
   private handleStrokeWidthUnbind() {
     const sw = (this.node as PolylineSerializedNode).strokeWidth;
-    const resolved = resolveDesignVariableValue(sw, this.appState.variables);
+    const resolved = resolveDesignVariableValue(
+      sw,
+      this.appState.variables,
+      this.appState.themeMode,
+    );
     const n =
       typeof resolved === 'number'
         ? resolved
@@ -175,6 +179,7 @@ export class StrokeContent extends LitElement {
     const resolved = resolveDesignVariableValue(
       raw,
       this.appState.variables,
+      this.appState.themeMode,
     );
     const n =
       typeof resolved === 'number'
@@ -206,6 +211,7 @@ export class StrokeContent extends LitElement {
     const strokeWidthResolved = resolveDesignVariableValue(
       strokeWidth,
       this.appState.variables,
+      this.appState.themeMode,
     );
     const strokeWidthShow = (() => {
       if (typeof strokeWidthResolved === 'number') {
@@ -221,6 +227,7 @@ export class StrokeContent extends LitElement {
     const strokeOpacityResolved = resolveDesignVariableValue(
       strokeOpacity,
       this.appState.variables,
+      this.appState.themeMode,
     );
     const strokeOpacityShow = (() => {
       if (typeof strokeOpacityResolved === 'number') {

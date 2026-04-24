@@ -134,7 +134,11 @@ export class TextContent extends LitElement {
 
   private handleLetterSpacingUnbind() {
     const raw = (this.node as TextSerializedNode).letterSpacing;
-    const resolved = resolveDesignVariableValue(raw, this.appState.variables);
+    const resolved = resolveDesignVariableValue(
+      raw,
+      this.appState.variables,
+      this.appState.themeMode,
+    );
     const n =
       typeof resolved === 'number'
         ? resolved
@@ -165,7 +169,11 @@ export class TextContent extends LitElement {
 
   private handleLineHeightUnbind() {
     const raw = (this.node as TextSerializedNode).lineHeight;
-    const resolved = resolveDesignVariableValue(raw, this.appState.variables);
+    const resolved = resolveDesignVariableValue(
+      raw,
+      this.appState.variables,
+      this.appState.themeMode,
+    );
     const n =
       typeof resolved === 'number'
         ? resolved
@@ -205,7 +213,11 @@ export class TextContent extends LitElement {
 
   private handleFontSizeUnbind() {
     const fs = (this.node as TextSerializedNode).fontSize;
-    const resolved = resolveDesignVariableValue(fs, this.appState.variables);
+    const resolved = resolveDesignVariableValue(
+      fs,
+      this.appState.variables,
+      this.appState.themeMode,
+    );
     const n =
       typeof resolved === 'number'
         ? resolved
@@ -262,6 +274,7 @@ export class TextContent extends LitElement {
     const fontSizeResolved = resolveDesignVariableValue(
       fontSize,
       this.appState.variables,
+      this.appState.themeMode,
     );
     const fontSizeShow = (() => {
       if (typeof fontSizeResolved === 'number') {
@@ -277,6 +290,7 @@ export class TextContent extends LitElement {
     const letterSpacingResolved = resolveDesignVariableValue(
       letterSpacingRaw ?? 0,
       this.appState.variables,
+      this.appState.themeMode,
     );
     const letterSpacingShow = (() => {
       if (typeof letterSpacingResolved === 'number') {
@@ -293,6 +307,7 @@ export class TextContent extends LitElement {
     const lineHeightResolved = resolveDesignVariableValue(
       lineHeightRaw ?? 0,
       this.appState.variables,
+      this.appState.themeMode,
     );
     const lineHeightNumeric = (() => {
       if (typeof lineHeightResolved === 'number') {

@@ -1,4 +1,4 @@
-import { html, css, LitElement, nothing } from 'lit';
+import { html, css, LitElement, nothing, type TemplateResult } from 'lit';
 import { consume } from '@lit/context';
 import { customElement, state } from 'lit/decorators.js';
 import { NodeAlignment, SerializedNode, Task, AppState } from '@infinite-canvas-tutorial/ecs';
@@ -23,21 +23,64 @@ import '@spectrum-web-components/accordion/sp-accordion.js';
 import '@spectrum-web-components/accordion/sp-accordion-item.js';
 
 const PANEL_HEIGHT_STORAGE_KEY = 'ic-spectrum-properties-panel-body-height';
+const PANEL_WIDTH_STORAGE_KEY = 'ic-spectrum-properties-panel-width';
 const DEFAULT_PANEL_BODY_HEIGHT = 400;
+const DEFAULT_PANEL_WIDTH_PX = 320;
 const MIN_PANEL_BODY_HEIGHT = 120;
 const MAX_PANEL_BODY_HEIGHT = 900;
 /** 无选中时内容为空，仍需保持侧栏可读宽度；后续可放画布背景、全局 token 等 */
 const MIN_PANEL_WIDTH_PX = 260;
+const MAX_PANEL_WIDTH_PX = 720;
 
 @customElement('ic-spectrum-properties-panel')
 @localized()
 export class PropertiesPanel extends LitElement {
   static styles = css`
+    :host {
+      display: block;
+      max-width: 100%;
+    }
+
+    .panel-root {
+      display: flex;
+      flex-direction: row;
+      align-items: stretch;
+      box-sizing: border-box;
+      min-width: ${MIN_PANEL_WIDTH_PX}px;
+      max-width: 100%;
+    }
+
+    .width-resize-handle {
+      flex-shrink: 0;
+      width: 10px;
+      margin: 4px 0 4px 0;
+      cursor: ew-resize;
+      touch-action: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: var(--spectrum-corner-radius-100);
+    }
+
+    .width-resize-handle:hover,
+    .width-resize-handle:focus-visible {
+      background: var(--spectrum-gray-300);
+    }
+
+    .width-resize-handle::after {
+      content: '';
+      width: 3px;
+      height: 36px;
+      border-radius: 2px;
+      background: var(--spectrum-gray-500);
+    }
+
     section {
       display: flex;
       flex-direction: column;
+      flex: 1;
+      min-width: 0;
       box-sizing: border-box;
-      min-width: ${MIN_PANEL_WIDTH_PX}px;
       min-height: 0;
       background: var(--spectrum-gray-100);
       border-radius: var(--spectrum-corner-radius-200);
@@ -141,11 +184,20 @@ export class PropertiesPanel extends LitElement {
   @state()
   private panelBodyHeight = DEFAULT_PANEL_BODY_HEIGHT;
 
+  @state()
+  private panelWidth = DEFAULT_PANEL_WIDTH_PX;
+
   private resizePointerId: number | null = null;
 
   private resizeStartY = 0;
 
   private resizeStartHeight = 0;
+
+  private widthResizePointerId: number | null = null;
+
+  private widthResizeStartX = 0;
+
+  private widthResizeStartW = 0;
 
   private get multiSelectSectionsOpenResolved(): {
     alignment: boolean;
@@ -187,11 +239,18 @@ export class PropertiesPanel extends LitElement {
     if (typeof localStorage === 'undefined') {
       return;
     }
-    const stored = localStorage.getItem(PANEL_HEIGHT_STORAGE_KEY);
-    if (stored) {
-      const n = parseInt(stored, 10);
+    const storedH = localStorage.getItem(PANEL_HEIGHT_STORAGE_KEY);
+    if (storedH) {
+      const n = parseInt(storedH, 10);
       if (!Number.isNaN(n)) {
         this.panelBodyHeight = this.clampPanelHeight(n);
+      }
+    }
+    const storedW = localStorage.getItem(PANEL_WIDTH_STORAGE_KEY);
+    if (storedW) {
+      const n = parseInt(storedW, 10);
+      if (!Number.isNaN(n)) {
+        this.panelWidth = this.clampPanelWidth(n);
       }
     }
   }
@@ -204,6 +263,19 @@ export class PropertiesPanel extends LitElement {
         : MAX_PANEL_BODY_HEIGHT,
     );
     return Math.min(max, Math.max(MIN_PANEL_BODY_HEIGHT, Math.round(h)));
+  }
+
+  private clampPanelWidth(w: number): number {
+    const max = Math.min(
+      MAX_PANEL_WIDTH_PX,
+      typeof window !== 'undefined'
+        ? Math.max(
+          MIN_PANEL_WIDTH_PX,
+          Math.floor(window.innerWidth - 80),
+        )
+        : MAX_PANEL_WIDTH_PX,
+    );
+    return Math.min(max, Math.max(MIN_PANEL_WIDTH_PX, Math.round(w)));
   }
 
   private handleResizePointerDown(e: PointerEvent) {
@@ -243,6 +315,41 @@ export class PropertiesPanel extends LitElement {
     }
   }
 
+  private handleWidthResizePointerDown(e: PointerEvent) {
+    e.preventDefault();
+    this.widthResizePointerId = e.pointerId;
+    this.widthResizeStartX = e.clientX;
+    this.widthResizeStartW = this.panelWidth;
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+  }
+
+  private handleWidthResizePointerMove(e: PointerEvent) {
+    if (this.widthResizePointerId !== e.pointerId) {
+      return;
+    }
+    const dx = e.clientX - this.widthResizeStartX;
+    // 向左拖（dx<0）加宽
+    const next = this.clampPanelWidth(this.widthResizeStartW - dx);
+    if (next !== this.panelWidth) {
+      this.panelWidth = next;
+    }
+  }
+
+  private endWidthResize(e: PointerEvent) {
+    if (this.widthResizePointerId !== e.pointerId) {
+      return;
+    }
+    this.widthResizePointerId = null;
+    try {
+      (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
+    } catch {
+      /* already released */
+    }
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(PANEL_WIDTH_STORAGE_KEY, String(this.panelWidth));
+    }
+  }
+
   private handleClose() {
     this.api.setAppState({
       taskbarSelected: this.appState.taskbarSelected.filter(
@@ -259,6 +366,23 @@ export class PropertiesPanel extends LitElement {
     this.api?.distributeSelectedNodesSpacing(axis);
   }
 
+  private renderWidthResizeHandle() {
+    return html`<div
+      class="width-resize-handle"
+      tabindex="0"
+      role="separator"
+      aria-orientation="vertical"
+      aria-label=${msg(str`Resize panel width`)}
+      aria-valuenow=${this.panelWidth}
+      aria-valuemin=${MIN_PANEL_WIDTH_PX}
+      aria-valuemax=${this.maxPanelWidthResolved}
+      @pointerdown=${this.handleWidthResizePointerDown}
+      @pointermove=${this.handleWidthResizePointerMove}
+      @pointerup=${this.endWidthResize}
+      @pointercancel=${this.endWidthResize}
+    ></div>`;
+  }
+
   private renderResizeHandle() {
     return html`<div
       class="resize-handle"
@@ -273,6 +397,27 @@ export class PropertiesPanel extends LitElement {
       @pointerup=${this.endResize}
       @pointercancel=${this.endResize}
     ></div>`;
+  }
+
+  private get maxPanelWidthResolved(): number {
+    return typeof window !== 'undefined'
+      ? Math.max(
+        MIN_PANEL_WIDTH_PX,
+        Math.min(MAX_PANEL_WIDTH_PX, window.innerWidth - 80),
+      )
+      : MAX_PANEL_WIDTH_PX;
+  }
+
+  private renderPanelRoot(inner: TemplateResult) {
+    return html`
+      <div
+        class="panel-root"
+        style=${`width: ${this.panelWidth}px; max-width: 100%;`}
+      >
+        ${this.renderWidthResizeHandle()}
+        ${inner}
+      </div>
+    `;
   }
 
   /** 未选中或选中 id 无效时：画布级设置（主题色等） */
@@ -313,7 +458,7 @@ export class PropertiesPanel extends LitElement {
         selectedNodes.length > 0 &&
         selectedNodes.every((n) => filterWire(n) === firstF);
       const filtersMixed = !filtersMatch;
-      return html`<section>
+      return this.renderPanelRoot(html`<section>
         <h4>
           ${msg(str`Properties`)}
           <sp-action-button quiet size="s" @click=${this.handleClose}>
@@ -471,7 +616,7 @@ export class PropertiesPanel extends LitElement {
           </sp-accordion>
         </div>
         ${this.renderResizeHandle()}
-      </section>`;
+      </section>`);
     }
 
     const node =
@@ -480,7 +625,7 @@ export class PropertiesPanel extends LitElement {
         : undefined;
 
     if (!node) {
-      return html`<section>
+      return this.renderPanelRoot(html`<section>
         <h4>
           ${msg(str`Properties`)}
           <sp-action-button quiet size="s" @click=${this.handleClose}>
@@ -488,10 +633,10 @@ export class PropertiesPanel extends LitElement {
           </sp-action-button>
         </h4>
         ${this.renderDocumentSettingsPlaceholder()}
-      </section>`;
+      </section>`);
     }
 
-    return html`<section>
+    return this.renderPanelRoot(html`<section>
       <h4>
         ${msg(str`Properties`)}
         <sp-action-button quiet size="s" @click=${this.handleClose}>
@@ -508,7 +653,7 @@ export class PropertiesPanel extends LitElement {
         ></ic-spectrum-properties-panel-content>
       </div>
       ${this.renderResizeHandle()}
-    </section>`;
+    </section>`);
   }
 }
 

@@ -180,6 +180,23 @@ canvas.addEventListener(Event.READY, async (e) => {
     // layersLassoing: ['parent'],
   });
 
+  /**
+   * Paper `Heatmap` 风：diamond + 7 色渐变、黑底、auto 时间（需引擎跑 PostEffectTime）。
+   * filter 串无 `speed`/`scale`；节点 width/height 与 URL 位图即「尺寸 + 图」。
+   */
+  const image = {
+    id: 'cj03l-image',
+    type: 'rect',
+    width: 400,
+    height: 300,
+    x: 0,
+    y: 0,
+    fill: 'https://shaders.paper.design/images/logos/diamond.svg',
+    // fill: 'black',
+    filter:
+      'gem-smoke(0.5, 0.5, 0.5, 0.5, 0, 0, 0.5, 3, 1, 1, auto, #000000, #ffffff, #88ccff, #ffffff, #ffaaee, #6644ff, #3322aa, #110066)',
+  } as const;
+
   const button = {
     "id": "cj03l",
     type: 'rect',
@@ -220,6 +237,7 @@ canvas.addEventListener(Event.READY, async (e) => {
     },
   });
   api.updateNodes([
+    // image,
     button,
     text,
   ]);

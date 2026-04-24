@@ -372,20 +372,27 @@ export class API {
       }
     }
 
-    this.stateManagement.setAppState({
+    const nextAppState = {
       ...oldAppState,
       ...patch,
       ...themeAppStatePatch,
       ...propertiesPanelSectionsOpenPatch,
       ...variablesPatch,
-    });
+    };
+    const themeModeChanged = nextAppState.themeMode !== oldAppState.themeMode;
+
+    this.stateManagement.setAppState(nextAppState);
 
     const variablesActuallyChanged =
       Object.prototype.hasOwnProperty.call(patch, 'variables') &&
       JSON.stringify((variablesPatch as { variables?: object }).variables) !==
       JSON.stringify(prevVariables);
 
-    if (variablesActuallyChanged) {
+    const shouldRefreshDesignVariableBindings =
+      variablesActuallyChanged ||
+      (themeModeChanged && Object.keys(nextAppState.variables ?? {}).length > 0);
+
+    if (shouldRefreshDesignVariableBindings) {
       this.runAtNextTick(() => {
         for (const node of this.getNodes()) {
           if (this.#idEntityMap.has(node.id)) {
@@ -1386,6 +1393,7 @@ export class API {
         {
           lookupNodes: this.#mergeSceneWithBatchForEdgeLookup([node]),
           variables: this.getAppState().variables,
+          themeMode: this.getAppState().themeMode,
         },
       );
       this.#idEntityMap.set(node.id, idEntityMap.get(node.id));
@@ -1446,6 +1454,7 @@ export class API {
           lookupNodes:
             this.#mergeSceneWithBatchForEdgeLookup(nonExistentNodes),
           variables: this.getAppState().variables,
+          themeMode: this.getAppState().themeMode,
         },
       );
       nonExistentNodes.forEach((node) => {
@@ -2302,6 +2311,7 @@ export class API {
       api.readLayoutFromECS(api.getNodes()),
       api.getAppState().variables,
       designVariablesExport,
+      api.getAppState().themeMode,
     );
     if (prep.cssRootStyle) {
       const $defs = createSVGElement('defs');

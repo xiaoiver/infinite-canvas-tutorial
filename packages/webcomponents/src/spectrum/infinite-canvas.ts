@@ -122,6 +122,7 @@ import '@spectrum-web-components/icons-workflow/icons/sp-icon-group.js';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-ungroup.js';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-link.js';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-unlink.js';
+import '@spectrum-web-components/icons-workflow/icons/sp-icon-color-palette.js';
 import './icons/sp-icon-pentagon';
 import './icons/sp-icon-triangle';
 

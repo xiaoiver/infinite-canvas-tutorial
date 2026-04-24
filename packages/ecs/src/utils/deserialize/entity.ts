@@ -93,6 +93,7 @@ import {
   designVariableRefKeyFromWire,
   type DesignVariablesMap,
 } from '../design-variables';
+import type { ThemeMode } from '../../components/Theme';
 import { measureText } from '../../systems/ComputeTextMetrics';
 import { DOMAdapter } from '../../environment';
 import { safeAddComponent } from '../../history';
@@ -932,6 +933,8 @@ export type SerializedNodesToEntitiesOptions = {
   lookupNodes?: SerializedNode[];
   /** 文档级设计变量，用于解析 `$token` 形式的 fill/stroke/fontSize 等 */
   variables?: DesignVariablesMap;
+  /** 用于多主题设计变量条目的条件匹配 */
+  themeMode?: ThemeMode;
 };
 
 export function serializedNodesToEntities(
@@ -1008,6 +1011,7 @@ export function serializedNodesToEntities(
 
     const { parentId, type } = node;
     const designVariables = options?.variables;
+    const themeMode = options?.themeMode;
 
     const entityCommands = commands.spawn();
     idEntityMap.set(id, entityCommands);
@@ -1137,6 +1141,7 @@ export function serializedNodesToEntities(
       const resolvedCr = resolveDesignVariableValue(
         cornerRadius,
         designVariables,
+        themeMode,
       );
       const crNum = (() => {
         if (resolvedCr === undefined || resolvedCr === null) {
@@ -1263,10 +1268,12 @@ export function serializedNodesToEntities(
       const resolvedFontSize = resolveDesignVariableValue(
         fontSize,
         designVariables,
+        themeMode,
       );
       const resolvedDecorationColor = resolveDesignVariableValue(
         decorationColor,
         designVariables,
+        themeMode,
       );
 
       // let anchorX = 0;
@@ -1356,7 +1363,11 @@ export function serializedNodesToEntities(
     }
 
     const { fill, fillOpacity, opacity } = attributes as FillAttributes;
-    const resolvedFill = resolveDesignVariableValue(fill, designVariables);
+    const resolvedFill = resolveDesignVariableValue(
+      fill,
+      designVariables,
+      themeMode,
+    );
     if (resolvedFill) {
       if (isGradient(resolvedFill)) {
         entityCommands.insert(new FillGradient(resolvedFill));
@@ -1390,10 +1401,15 @@ export function serializedNodesToEntities(
       strokeDashoffset,
       strokeAlignment,
     } = attributes as StrokeAttributes;
-    const resolvedStroke = resolveDesignVariableValue(stroke, designVariables);
+    const resolvedStroke = resolveDesignVariableValue(
+      stroke,
+      designVariables,
+      themeMode,
+    );
     const resolvedStrokeWidth = resolveDesignVariableValue(
       strokeWidth,
       designVariables,
+      themeMode,
     );
     if (resolvedStroke) {
       const rawW =
@@ -1440,8 +1456,16 @@ export function serializedNodesToEntities(
     }
 
     if (opacity || fillOpacity || strokeOpacity) {
-      const rfo = resolveDesignVariableValue(fillOpacity, designVariables);
-      const rso = resolveDesignVariableValue(strokeOpacity, designVariables);
+      const rfo = resolveDesignVariableValue(
+        fillOpacity,
+        designVariables,
+        themeMode,
+      );
+      const rso = resolveDesignVariableValue(
+        strokeOpacity,
+        designVariables,
+        themeMode,
+      );
       const to01 = (v: unknown): number => {
         if (v === undefined || v === null) {
           return 1;
@@ -1467,7 +1491,11 @@ export function serializedNodesToEntities(
     if (dropShadowBlurRadius) {
       entityCommands.insert(
         new DropShadow({
-          color: resolveDesignVariableValue(dropShadowColor, designVariables),
+          color: resolveDesignVariableValue(
+            dropShadowColor,
+            designVariables,
+            themeMode,
+          ),
           blurRadius: dropShadowBlurRadius,
           offsetX: dropShadowOffsetX,
           offsetY: dropShadowOffsetY,
@@ -1484,7 +1512,11 @@ export function serializedNodesToEntities(
     if (innerShadowBlurRadius) {
       entityCommands.insert(
         new InnerShadow({
-          color: resolveDesignVariableValue(innerShadowColor, designVariables),
+          color: resolveDesignVariableValue(
+            innerShadowColor,
+            designVariables,
+            themeMode,
+          ),
           blurRadius: innerShadowBlurRadius,
           offsetX: innerShadowOffsetX,
           offsetY: innerShadowOffsetY,

@@ -24,11 +24,15 @@ import {
   crtUniformValues,
   flutedGlassUniformValues,
   tsunamiUniformValues,
+  burnUniformValues,
   halftoneDotsUniformValues,
   vignetteUniformValues,
   asciiUniformValues,
   glitchUniformValues,
   liquidGlassUniformValues,
+  liquidMetalUniformValues,
+  heatmapUniformValues,
+  gemSmokeUniformValues,
   RenderCache,
 } from '../utils';
 
@@ -57,7 +61,7 @@ export class PostProcessingRenderer {
   render(renderPass: RenderPass, texture: Texture, effect: Effect) {
     if (!this.#bigTriangleProgram) {
       this.#bigTriangleUniformBuffer = this.device.createBuffer({
-        viewOrSize: Float32Array.BYTES_PER_ELEMENT * 36,
+        viewOrSize: Float32Array.BYTES_PER_ELEMENT * 56,
         usage: BufferUsage.UNIFORM,
         hint: BufferFrequencyHint.DYNAMIC,
       });
@@ -227,6 +231,11 @@ export class PostProcessingRenderer {
       const tw = Math.max(1, width);
       const th = Math.max(1, height);
       uniformBuffer.push(...tsunamiUniformValues(effect, tw, th));
+    } else if (effect.type === 'burn') {
+      const { width, height } = this.swapChain.getCanvas();
+      const tw = Math.max(1, width);
+      const th = Math.max(1, height);
+      uniformBuffer.push(...burnUniformValues(effect, tw, th));
     } else if (effect.type === 'crt') {
       const { width, height } = this.swapChain.getCanvas();
       const tw = Math.max(1, width);
@@ -251,6 +260,21 @@ export class PostProcessingRenderer {
       const tw = Math.max(1, width);
       const th = Math.max(1, height);
       uniformBuffer.push(...liquidGlassUniformValues(effect, tw, th));
+    } else if (effect.type === 'liquidMetal') {
+      const { width, height } = this.swapChain.getCanvas();
+      const tw = Math.max(1, width);
+      const th = Math.max(1, height);
+      uniformBuffer.push(...liquidMetalUniformValues(effect, tw, th));
+    } else if (effect.type === 'heatmap') {
+      const { width, height } = this.swapChain.getCanvas();
+      const tw = Math.max(1, width);
+      const th = Math.max(1, height);
+      uniformBuffer.push(...heatmapUniformValues(effect, tw, th));
+    } else if (effect.type === 'gemSmoke') {
+      const { width, height } = this.swapChain.getCanvas();
+      const tw = Math.max(1, width);
+      const th = Math.max(1, height);
+      uniformBuffer.push(...gemSmokeUniformValues(effect, tw, th));
     } else if (effect.type === 'adjustment') {
       uniformLegacyObject.u_Gamma = effect.gamma;
       uniformLegacyObject.u_Contrast = effect.contrast;

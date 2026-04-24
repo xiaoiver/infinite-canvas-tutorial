@@ -772,6 +772,7 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
   }
 
   const designVariables = api.getAppState().variables;
+  const themeMode = api.getAppState().themeMode;
 
   const { name, visibility } = updates;
   const {
@@ -889,7 +890,11 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
     entity.write(Visibility).value = visibility;
   }
   if ('fill' in updates) {
-    const resolvedFill = resolveDesignVariableValue(fill, designVariables);
+    const resolvedFill = resolveDesignVariableValue(
+      fill,
+      designVariables,
+      themeMode,
+    );
     if (isGradient(resolvedFill)) {
       safeRemoveComponent(entity, FillSolid);
       safeRemoveComponent(entity, FillImage);
@@ -933,14 +938,18 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
   }
   if ('stroke' in updates) {
     safeAddComponent(entity, Stroke, {
-      color: resolveDesignVariableValue(stroke, designVariables),
+      color: resolveDesignVariableValue(stroke, designVariables, themeMode),
       colorVariableRef: designVariableRefKeyFromWire(
         typeof stroke === 'string' ? stroke : undefined,
       ),
     });
   }
   if ('strokeWidth' in updates) {
-    const w = resolveDesignVariableValue(strokeWidth, designVariables);
+    const w = resolveDesignVariableValue(
+      strokeWidth,
+      designVariables,
+      themeMode,
+    );
     safeAddComponent(entity, Stroke, {
       ...(w !== undefined && w !== null
         ? { width: typeof w === 'number' ? w : Number(w) }
@@ -961,7 +970,11 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
     safeAddComponent(entity, Opacity, { opacity });
   }
   if ('fillOpacity' in updates) {
-    const fo = resolveDesignVariableValue(fillOpacity, designVariables);
+    const fo = resolveDesignVariableValue(
+      fillOpacity,
+      designVariables,
+      themeMode,
+    );
     const n =
       fo !== undefined && fo !== null
         ? typeof fo === 'number'
@@ -972,7 +985,11 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
     safeAddComponent(entity, Opacity, { fillOpacity: v });
   }
   if ('strokeOpacity' in updates) {
-    const so = resolveDesignVariableValue(strokeOpacity, designVariables);
+    const so = resolveDesignVariableValue(
+      strokeOpacity,
+      designVariables,
+      themeMode,
+    );
     const n =
       so !== undefined && so !== null
         ? typeof so === 'number'
@@ -984,7 +1001,11 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
   }
   if ('dropShadowColor' in updates) {
     safeAddComponent(entity, DropShadow, {
-      color: resolveDesignVariableValue(dropShadowColor, designVariables),
+      color: resolveDesignVariableValue(
+        dropShadowColor,
+        designVariables,
+        themeMode,
+      ),
     });
   }
   if ('dropShadowBlurRadius' in updates) {
@@ -998,7 +1019,11 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
   }
   if ('innerShadowColor' in updates) {
     safeAddComponent(entity, InnerShadow, {
-      color: resolveDesignVariableValue(innerShadowColor, designVariables),
+      color: resolveDesignVariableValue(
+        innerShadowColor,
+        designVariables,
+        themeMode,
+      ),
     });
   }
   if ('innerShadowBlurRadius' in updates) {
@@ -1028,7 +1053,11 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
   }
   if ('decorationColor' in updates) {
     safeAddComponent(entity, TextDecoration, {
-      color: resolveDesignVariableValue(decorationColor, designVariables),
+      color: resolveDesignVariableValue(
+        decorationColor,
+        designVariables,
+        themeMode,
+      ),
     });
   }
   if ('decorationLine' in updates) {
@@ -1123,7 +1152,11 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
     entity.write(Text).anchorY = anchorY;
   }
   if ('fontSize' in updates) {
-    const fs = resolveDesignVariableValue(fontSize, designVariables);
+    const fs = resolveDesignVariableValue(
+      fontSize,
+      designVariables,
+      themeMode,
+    );
     entity.write(Text).fontSize =
       typeof fs === 'number' ? fs : Number(fs);
     entity.write(Text).fontSizeVariableRef =
@@ -1137,7 +1170,11 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
   }
   if ('fontFamily' in updates) {
     const raw = (updates as { fontFamily?: string }).fontFamily;
-    const resolved = resolveDesignVariableValue(raw, designVariables);
+    const resolved = resolveDesignVariableValue(
+      raw,
+      designVariables,
+      themeMode,
+    );
     const s =
       resolved != null && String(resolved).trim() !== ''
         ? String(resolved)
@@ -1152,7 +1189,11 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
   }
   if ('fontVariant' in updates) {
     const raw = (updates as { fontVariant?: string }).fontVariant;
-    const resolved = resolveDesignVariableValue(raw, designVariables);
+    const resolved = resolveDesignVariableValue(
+      raw,
+      designVariables,
+      themeMode,
+    );
     if (resolved != null) {
       entity.write(Text).fontVariant = String(resolved);
     }
@@ -1162,7 +1203,11 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
   }
   if ('letterSpacing' in updates) {
     const raw = (updates as { letterSpacing?: number | string }).letterSpacing;
-    const resolved = resolveDesignVariableValue(raw, designVariables);
+    const resolved = resolveDesignVariableValue(
+      raw,
+      designVariables,
+      themeMode,
+    );
     const n =
       typeof resolved === 'number'
         ? resolved
@@ -1173,7 +1218,11 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
   }
   if ('lineHeight' in updates) {
     const raw = (updates as { lineHeight?: number | string }).lineHeight;
-    const resolved = resolveDesignVariableValue(raw, designVariables);
+    const resolved = resolveDesignVariableValue(
+      raw,
+      designVariables,
+      themeMode,
+    );
     const n =
       typeof resolved === 'number'
         ? resolved
@@ -1253,6 +1302,7 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
     const resolved = resolveDesignVariableValue(
       cornerRadius,
       designVariables,
+      themeMode,
     );
     const n =
       typeof resolved === 'number'

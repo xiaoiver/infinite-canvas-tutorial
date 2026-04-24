@@ -199,6 +199,7 @@ export class StrokeActionButton extends LitElement {
     const resolved = resolveDesignVariableValue(
       stroke,
       this.appState.variables,
+      this.appState.themeMode,
     );
     const next =
       typeof resolved === 'string'
@@ -231,7 +232,11 @@ export class StrokeActionButton extends LitElement {
       return;
     }
     const raw = (this.node as TextSerializedNode).strokeOpacity;
-    const resolved = resolveDesignVariableValue(raw, this.appState.variables);
+    const resolved = resolveDesignVariableValue(
+      raw,
+      this.appState.variables,
+      this.appState.themeMode,
+    );
     const n =
       typeof resolved === 'number'
         ? resolved
@@ -251,7 +256,11 @@ export class StrokeActionButton extends LitElement {
 
     const { stroke, strokeOpacity = 1 } = this.node as TextSerializedNode;
     const strokeResolved = String(
-      resolveDesignVariableValue(stroke, this.appState.variables),
+      resolveDesignVariableValue(
+        stroke,
+        this.appState.variables,
+        this.appState.themeMode,
+      ),
     );
     const bound = isDesignVariableReference(stroke);
     const tab = this.strokePanelTab;
