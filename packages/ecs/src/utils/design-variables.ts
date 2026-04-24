@@ -31,6 +31,46 @@ export const SERIALIZED_NODE_VARIABLE_KEYS = [
   'lineHeight',
 ] as const;
 
+/** 变量表变更时 {@link buildDesignVariableRefreshPatch} 会从节点上抄这些键，避免 `updateNode(node, undefined)` 整表自同步误触 flex。 */
+const DESIGN_VARIABLE_REFRESH_EXTRA_KEYS = [
+  'filter',
+  'opacity',
+  'fontFamily',
+  'fontWeight',
+  'fontStyle',
+  'fontKerning',
+  'textAlign',
+  'textBaseline',
+  'dropShadowBlurRadius',
+  'dropShadowOffsetX',
+  'dropShadowOffsetY',
+  'innerShadowBlurRadius',
+  'innerShadowOffsetX',
+  'innerShadowOffsetY',
+  'markerStart',
+  'markerEnd',
+] as const;
+
+/**
+ * 仅包含可能含 `$` 设计变量、需在变量表变化后重走 {@link resolveDesignVariableValue} 的字段；勿含 width/height/x/y。
+ */
+export function buildDesignVariableRefreshPatch(
+  node: SerializedNode,
+): Partial<SerializedNode> {
+  const keys = new Set<string>([
+    ...SERIALIZED_NODE_VARIABLE_KEYS,
+    ...DESIGN_VARIABLE_REFRESH_EXTRA_KEYS,
+  ]);
+  const n = node as unknown as Record<string, unknown>;
+  const out: Record<string, unknown> = {};
+  for (const key of keys) {
+    if (Object.prototype.hasOwnProperty.call(n, key)) {
+      out[key] = n[key];
+    }
+  }
+  return out as Partial<SerializedNode>;
+}
+
 export function isDesignVariableReference(value: unknown): value is string {
   return typeof value === 'string' && value.startsWith('$') && value.length > 1;
 }
