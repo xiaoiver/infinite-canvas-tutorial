@@ -24,11 +24,13 @@ import {
   crtUniformValues,
   flutedGlassUniformValues,
   tsunamiUniformValues,
+  burnUniformValues,
   halftoneDotsUniformValues,
   vignetteUniformValues,
   asciiUniformValues,
   glitchUniformValues,
   liquidGlassUniformValues,
+  liquidMetalUniformValues,
   RenderCache,
 } from '../utils';
 
@@ -227,6 +229,11 @@ export class PostProcessingRenderer {
       const tw = Math.max(1, width);
       const th = Math.max(1, height);
       uniformBuffer.push(...tsunamiUniformValues(effect, tw, th));
+    } else if (effect.type === 'burn') {
+      const { width, height } = this.swapChain.getCanvas();
+      const tw = Math.max(1, width);
+      const th = Math.max(1, height);
+      uniformBuffer.push(...burnUniformValues(effect, tw, th));
     } else if (effect.type === 'crt') {
       const { width, height } = this.swapChain.getCanvas();
       const tw = Math.max(1, width);
@@ -251,6 +258,11 @@ export class PostProcessingRenderer {
       const tw = Math.max(1, width);
       const th = Math.max(1, height);
       uniformBuffer.push(...liquidGlassUniformValues(effect, tw, th));
+    } else if (effect.type === 'liquidMetal') {
+      const { width, height } = this.swapChain.getCanvas();
+      const tw = Math.max(1, width);
+      const th = Math.max(1, height);
+      uniformBuffer.push(...liquidMetalUniformValues(effect, tw, th));
     } else if (effect.type === 'adjustment') {
       uniformLegacyObject.u_Gamma = effect.gamma;
       uniformLegacyObject.u_Contrast = effect.contrast;

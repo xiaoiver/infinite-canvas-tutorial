@@ -19,11 +19,13 @@ export type Effect =
   | HalftoneDotsEffect
   | FlutedGlassEffect
   | TsunamiEffect
+  | BurnEffect
   | CrtEffect
   | VignetteEffect
   | AsciiEffect
   | GlitchEffect
   | LiquidGlassEffect
+  | LiquidMetalEffect
   | AdjustmentEffect
   | DropShadowEffect
   | BlurEffect
@@ -394,6 +396,75 @@ export function tsunamiUniformValues(
   ];
 }
 
+/** Defaults for {@link BurnEffect} (radial burn + optional wave distortion + dispersion). */
+export const BURN_DEFAULTS = {
+  burn: 0.5,
+  density: 1,
+  softness: 0.2,
+  /** Chromatic edge strength in the burn pass (GPU scales internally). */
+  dispersion: 0.1,
+  /** First-pass style UV wave amount (0 = off). */
+  distortion: 0.3,
+  edgeColor: '#ff6600',
+  maskColor: '#ffffff',
+  invertMask: false,
+  transparent: false,
+} as const;
+
+/**
+ * Single-pass burn with optional pre-warp. 4 × vec4 std140 → `u_BR0`…`u_BR3` (16 floats).
+ */
+export interface BurnEffect {
+  type: 'burn';
+  burn: number;
+  density: number;
+  softness: number;
+  dispersion: number;
+  distortion: number;
+  edgeColor: string;
+  maskColor: string;
+  invertMask: boolean;
+  transparent: boolean;
+}
+
+export function burnUniformValues(
+  effect: BurnEffect,
+  _textureWidth: number,
+  _textureHeight: number,
+): number[] {
+  const D = BURN_DEFAULTS;
+  const z = (v: number | undefined, def: number) =>
+    Number.isFinite(v as number) ? (v as number) : def;
+
+  const burn = Math.max(0, Math.min(1, z(effect.burn, D.burn)));
+  const density = Math.max(0.01, z(effect.density, D.density));
+  const softness = Math.max(0, z(effect.softness, D.softness));
+  const dispersion = Math.max(0, z(effect.dispersion, D.dispersion));
+  const distortion = z(effect.distortion, D.distortion);
+
+  const e = parseColor(effect.edgeColor?.trim() ? effect.edgeColor : D.edgeColor);
+  const m = parseColor(effect.maskColor?.trim() ? effect.maskColor : D.maskColor);
+
+  return [
+    burn,
+    density,
+    softness,
+    dispersion,
+    distortion,
+    effect.invertMask ? 1 : 0,
+    effect.transparent ? 1 : 0,
+    0,
+    e.r / 255,
+    e.g / 255,
+    e.b / 255,
+    e.opacity,
+    m.r / 255,
+    m.g / 255,
+    m.b / 255,
+    m.opacity,
+  ];
+}
+
 /** CRT filter defaults (no vignette — use {@link VignetteEffect} / `vignette()`). */
 export const CRT_DEFAULTS = {
   curvature: 1,
@@ -675,6 +746,93 @@ export function liquidGlassUniformValues(
   ];
 }
 
+/**
+ * Paper Design {@link https://github.com/paper-design/shaders/blob/main/packages/shaders/src/shaders/liquid-metal.ts liquid-metal} (raster); edge from scene alpha, not Poisson pre-pass.
+ */
+export const LIQUID_METAL_DEFAULTS = {
+  colorBack: '#0a0a0c',
+  colorTint: '#8ab4ff',
+  /** Stripe density 1–10. */
+  repetition: 3,
+  softness: 0.5,
+  shiftRed: 10,
+  shiftBlue: -8,
+  distortion: 0.3,
+  contour: 0.5,
+  angle: 0,
+  /** 0=none, 1=circle, 2=daisy, 3=diamond, 4=metaballs (no scene mask). */
+  shape: 0,
+  useImage: true,
+  time: 0,
+} as const;
+
+export interface LiquidMetalEffect {
+  type: 'liquidMetal';
+  colorBack: string;
+  colorTint: string;
+  repetition: number;
+  softness: number;
+  shiftRed: number;
+  shiftBlue: number;
+  distortion: number;
+  contour: number;
+  angle: number;
+  shape: number;
+  useImage: boolean;
+  time: number;
+  useEngineTime?: boolean;
+}
+
+/** 6 × vec4 std140: `u_LM0`–`u_LM5` (24 floats). */
+export function liquidMetalUniformValues(
+  effect: LiquidMetalEffect,
+  textureWidth: number,
+  textureHeight: number,
+): number[] {
+  const w = Math.max(1, textureWidth);
+  const h = Math.max(1, textureHeight);
+  const D = LIQUID_METAL_DEFAULTS;
+  const z = (v: number | undefined, def: number) =>
+    Number.isFinite(v as number) ? (v as number) : def;
+  const time = effect.useEngineTime
+    ? getPostEffectEngineTimeSeconds()
+    : z(effect.time, D.time);
+  const colorBack = parseColor(
+    effect.colorBack?.trim() ? effect.colorBack : D.colorBack,
+  );
+  const colorTint = parseColor(
+    effect.colorTint?.trim() ? effect.colorTint : D.colorTint,
+  );
+  const shape = Math.max(0, Math.min(4, Math.floor(z(effect.shape, D.shape))));
+  const repetition = Math.max(1, Math.min(10, z(effect.repetition, D.repetition)));
+  return [
+    w,
+    h,
+    time,
+    w / h,
+    colorBack.r / 255,
+    colorBack.g / 255,
+    colorBack.b / 255,
+    colorBack.opacity,
+    colorTint.r / 255,
+    colorTint.g / 255,
+    colorTint.b / 255,
+    colorTint.opacity,
+    repetition,
+    z(effect.softness, D.softness),
+    z(effect.shiftRed, D.shiftRed),
+    z(effect.shiftBlue, D.shiftBlue),
+    z(effect.distortion, D.distortion),
+    z(effect.contour, D.contour),
+    z(effect.angle, D.angle),
+    shape,
+    effect.useImage ? 1 : 0,
+    0,
+    0,
+    0,
+  ];
+}
+
 export interface FXAA {
   type: 'fxaa';
 }
@@ -690,11 +848,13 @@ const RASTER_POST_EFFECT_TYPES = new Set<Effect['type']>([
   'halftoneDots',
   'flutedGlass',
   'tsunami',
+  'burn',
   'crt',
   'vignette',
   'ascii',
   'glitch',
   'liquidGlass',
+  'liquidMetal',
 ]);
 
 /** True when `adjustment` only changes saturation (Pixi/CSS-style `saturate()`). */
@@ -1193,6 +1353,42 @@ export function parseEffect(filter: string): Effect[] {
         shadowIntensity: pf(9, D.shadowIntensity),
         offset: pf(10, D.offset),
       });
+    } else if (filter.name === 'burn') {
+      const raw = filter.params.trim();
+      const parts = raw.length
+        ? raw.split(',').map((s) => s.trim()).filter((s) => s.length > 0)
+        : [];
+      const D = BURN_DEFAULTS;
+      const pf = (i: number, def: number) => {
+        const v = parts[i] !== undefined ? parseFloat(parts[i]) : def;
+        return Number.isFinite(v) ? v : def;
+      };
+      let edgeColor: string = D.edgeColor;
+      let maskColor: string = D.maskColor;
+      if (parts.length >= 7) {
+        edgeColor = parts[5]!.trim();
+        maskColor = parts[6]!.trim();
+      }
+      let invertMask: boolean = D.invertMask;
+      if (parts[7] !== undefined) {
+        invertMask = parseFloat(parts[7]) > 0.5;
+      }
+      let transparent: boolean = D.transparent;
+      if (parts[8] !== undefined) {
+        transparent = parseFloat(parts[8]) > 0.5;
+      }
+      effects.push({
+        type: 'burn',
+        burn: pf(0, D.burn),
+        density: pf(1, D.density),
+        softness: pf(2, D.softness),
+        dispersion: pf(3, D.dispersion),
+        distortion: pf(4, D.distortion),
+        edgeColor,
+        maskColor,
+        invertMask,
+        transparent,
+      });
     } else if (filter.name === 'crt') {
       const raw = filter.params.trim();
       const parts = raw.length
@@ -1324,6 +1520,56 @@ export function parseEffect(filter: string): Effect[] {
         ellipseSizeX: pf(15, D.ellipseSizeX),
         ellipseSizeY: pf(16, D.ellipseSizeY),
       });
+    } else if (filter.name === 'liquid-metal') {
+      const raw = filter.params.trim();
+      const parts = raw.length
+        ? raw.split(',').map((s) => s.trim()).filter((s) => s.length > 0)
+        : [];
+      const D = LIQUID_METAL_DEFAULTS;
+      const pf = (i: number, def: number) => {
+        const v = parts[i] !== undefined ? parseFloat(parts[i]) : def;
+        return Number.isFinite(v) ? v : def;
+      };
+      let colorBack: string = D.colorBack;
+      let colorTint: string = D.colorTint;
+      if (parts.length >= 11) {
+        colorBack = parts[9]!.trim();
+        colorTint = parts[10]!.trim();
+      } else if (parts.length === 10) {
+        colorBack = parts[9]!.trim();
+      }
+      let useImage: boolean = D.useImage;
+      if (parts.length > 8) {
+        useImage = parseFloat(parts[8]!) > 0.5;
+      }
+      let useEngineTime = false;
+      let time: number = D.time;
+      if (parts.length >= 12) {
+        const rawT = parts[11]!.trim().toLowerCase();
+        if (rawT === 'auto' || rawT === 'engine') {
+          useEngineTime = true;
+        } else {
+          const tv = parseFloat(parts[11]!);
+          time = Number.isFinite(tv) ? tv : D.time;
+        }
+      }
+      const shape = Math.max(0, Math.min(4, Math.floor(pf(7, D.shape))));
+      effects.push({
+        type: 'liquidMetal',
+        repetition: pf(0, D.repetition),
+        softness: pf(1, D.softness),
+        shiftRed: pf(2, D.shiftRed),
+        shiftBlue: pf(3, D.shiftBlue),
+        distortion: pf(4, D.distortion),
+        contour: pf(5, D.contour),
+        angle: pf(6, D.angle),
+        shape,
+        useImage,
+        colorBack,
+        colorTint,
+        time,
+        ...(useEngineTime ? { useEngineTime: true } : {}),
+      });
     } else if (filter.name === 'fxaa') {
       effects.push({ type: 'fxaa' });
     }
@@ -1369,6 +1615,14 @@ export function filterStringUsesEngineTimeGlitch(
 export function filterStringUsesEngineTimePost(
   filterValue: string | undefined | null,
 ): boolean {
+  if (filterValue == null || !String(filterValue).trim()) {
+    return false;
+  }
+  for (const e of parseEffect(filterValue)) {
+    if (e.type === 'liquidMetal' && e.useEngineTime) {
+      return true;
+    }
+  }
   return (
     filterStringUsesEngineTimeCrt(filterValue) ||
     filterStringUsesEngineTimeGlitch(filterValue)
@@ -1444,6 +1698,13 @@ export function formatFilter(effects: Effect[]): string {
         );
         break;
       }
+      case 'burn': {
+        const e = effect;
+        parts.push(
+          `burn(${e.burn}, ${e.density}, ${e.softness}, ${e.dispersion}, ${e.distortion}, ${cssColorToHex(e.edgeColor)}, ${cssColorToHex(e.maskColor)}, ${e.invertMask ? 1 : 0}, ${e.transparent ? 1 : 0})`,
+        );
+        break;
+      }
       case 'crt': {
         const e = effect;
         const timeParam = e.useEngineTime ? 'auto' : e.time;
@@ -1475,6 +1736,14 @@ export function formatFilter(effects: Effect[]): string {
         const e = effect;
         parts.push(
           `liquid-glass(${e.powerFactor}, ${e.fPower}, ${e.noise}, ${e.glowWeight}, ${e.glowBias}, ${e.glowEdge0}, ${e.glowEdge1}, ${e.a}, ${e.b}, ${e.c}, ${e.d}, ${e.centerX}, ${e.centerY}, ${e.scaleX}, ${e.scaleY}, ${e.ellipseSizeX}, ${e.ellipseSizeY})`,
+        );
+        break;
+      }
+      case 'liquidMetal': {
+        const e = effect;
+        const timeParam = e.useEngineTime ? 'auto' : e.time;
+        parts.push(
+          `liquid-metal(${e.repetition}, ${e.softness}, ${e.shiftRed}, ${e.shiftBlue}, ${e.distortion}, ${e.contour}, ${e.angle}, ${e.shape}, ${e.useImage ? 1 : 0}, ${cssColorToHex(e.colorBack)}, ${cssColorToHex(e.colorTint)}, ${timeParam})`,
         );
         break;
       }

@@ -91,8 +91,12 @@ export {
   glitchUniformValues,
   LIQUID_GLASS_DEFAULTS,
   liquidGlassUniformValues,
+  LIQUID_METAL_DEFAULTS,
+  liquidMetalUniformValues,
   TSUNAMI_DEFAULTS,
   tsunamiUniformValues,
+  BURN_DEFAULTS,
+  burnUniformValues,
   DIRECTION_EAST,
   DIRECTION_NORTH,
   DIRECTION_SOUTH,
@@ -107,11 +111,13 @@ export {
   type Effect,
   type FlutedGlassEffect,
   type TsunamiEffect,
+  type BurnEffect,
   type CrtEffect,
   type VignetteEffect,
   type AsciiEffect,
   type GlitchEffect,
   type LiquidGlassEffect,
+  type LiquidMetalEffect,
 } from './utils';
 export * from './utils/design-variables';
 export * from './utils/entity-design-bindings';

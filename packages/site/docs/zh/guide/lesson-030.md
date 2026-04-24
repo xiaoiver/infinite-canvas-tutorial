@@ -13,6 +13,7 @@ import CRT from '../../components/CRT.vue'
 import Glitch from '../../components/Glitch.vue'
 import LiquidGlass from '../../components/LiquidGlass.vue'
 import Ascii from '../../components/Ascii.vue'
+import Burn from '../../components/Burn.vue'
 import GlobalEffects from '../../components/GlobalEffects.vue'
 </script>
 
@@ -219,6 +220,12 @@ if (gray > 0.5) n = 23385164.0; // o
 
 <LiquidGlass />
 
+### 灼烧 {#burn}
+
+<Burn />
+
+### 液态金属 {#liquid-metal}
+
 ### 时间动画 {#time-animation}
 
 一些后处理效果可以应用动画，通常会传入一个每一帧更新的时间变量（例如 shadertoy 中的 `u_Time`）
@@ -340,6 +347,7 @@ api.setAppState({
 
 -   [Blob Tracking]
 -   [reveals.cool]
+-   [Liquid Metal Logo]
 
 [Paper Shaders]: https://shaders.paper.design/
 [Pixi.js filters]: https://github.com/pixijs/filters
@@ -362,3 +370,4 @@ api.setAppState({
 [CSSGlitchEffect]: https://tympanus.net/Tutorials/CSSGlitchEffect/
 [unityglitch]: https://github.com/staffantan/unityglitch/blob/master/GlitchShader.shader
 [reveals.cool]: https://reveals.cool/
+[Liquid Metal Logo]: https://github.com/paper-design/shaders/blob/main/packages/shaders/src/shaders/liquid-metal.ts

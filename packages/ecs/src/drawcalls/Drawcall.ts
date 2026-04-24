@@ -36,11 +36,13 @@ import {
   halftoneDotsUniformValues,
   flutedGlassUniformValues,
   tsunamiUniformValues,
+  burnUniformValues,
   crtUniformValues,
   vignetteUniformValues,
   asciiUniformValues,
   glitchUniformValues,
   liquidGlassUniformValues,
+  liquidMetalUniformValues,
 } from '../utils';
 import { Location } from '../shaders/wireframe';
 import { TexturePool } from '../resources';
@@ -74,11 +76,13 @@ import { frag as colorHalftoneFrag } from '../shaders/post-processing/colorHalft
 import { frag as halftoneDotsFrag } from '../shaders/post-processing/halftoneDots';
 import { frag as flutedGlassFrag } from '../shaders/post-processing/flutedGlass';
 import { frag as tsunamiFrag } from '../shaders/post-processing/tsunami';
+import { frag as burnFrag } from '../shaders/post-processing/burn';
 import { frag as crtFrag } from '../shaders/post-processing/crt';
 import { frag as vignetteFrag } from '../shaders/post-processing/vignette';
 import { frag as asciiFrag } from '../shaders/post-processing/ascii';
 import { frag as glitchFrag } from '../shaders/post-processing/glitch';
 import { frag as liquidGlassFrag } from '../shaders/post-processing/liquidGlass';
+import { frag as liquidMetalFrag } from '../shaders/post-processing/liquidMetal';
 import type { RGGraphBuilder } from '../render-graph/interface';
 
 const FRAG_MAP: Record<
@@ -115,6 +119,9 @@ const FRAG_MAP: Record<
   tsunami: {
     shader: tsunamiFrag,
   },
+  burn: {
+    shader: burnFrag,
+  },
   crt: {
     shader: crtFrag,
   },
@@ -129,6 +136,9 @@ const FRAG_MAP: Record<
   },
   liquidGlass: {
     shader: liquidGlassFrag,
+  },
+  liquidMetal: {
+    shader: liquidMetalFrag,
   },
 };
 
@@ -148,6 +158,8 @@ function postEffectUniformFloatCount(effect: Effect): number {
       return 36;
     case 'tsunami':
       return 16;
+    case 'burn':
+      return 16;
     case 'crt':
       return 12;
     case 'vignette':
@@ -158,6 +170,8 @@ function postEffectUniformFloatCount(effect: Effect): number {
       return 8;
     case 'liquidGlass':
       return 20;
+    case 'liquidMetal':
+      return 24;
     case 'drop-shadow':
       return 2;
     case 'fxaa':
@@ -336,6 +350,15 @@ function setPostEffectUniformData(
       }
       break;
     }
+    case 'burn': {
+      const tw = Math.max(1, textureWidth ?? 1);
+      const th = Math.max(1, textureHeight ?? 1);
+      const u = burnUniformValues(effect, tw, th);
+      for (let j = 0; j < u.length; j++) {
+        data[i++] = u[j]!;
+      }
+      break;
+    }
     case 'crt': {
       const tw = Math.max(1, textureWidth ?? 1);
       const th = Math.max(1, textureHeight ?? 1);
@@ -374,6 +397,15 @@ function setPostEffectUniformData(
       const tw = Math.max(1, textureWidth ?? 1);
       const th = Math.max(1, textureHeight ?? 1);
       const u = liquidGlassUniformValues(effect, tw, th);
+      for (let j = 0; j < u.length; j++) {
+        data[i++] = u[j]!;
+      }
+      break;
+    }
+    case 'liquidMetal': {
+      const tw = Math.max(1, textureWidth ?? 1);
+      const th = Math.max(1, textureHeight ?? 1);
+      const u = liquidMetalUniformValues(effect, tw, th);
       for (let j = 0; j < u.length; j++) {
         data[i++] = u[j]!;
       }

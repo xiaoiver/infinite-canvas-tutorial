@@ -73,7 +73,7 @@
     "simplify-js": "^1.2.4",
     "toposort": "^2.0.2",
     "transformation-matrix": "^3.0.0",
-    "uuid": "^11.1.0"
+    "uuid": "^14.0.0"
   },
   "devDependencies": {
     "@types/bezier-js": "^4.1.3",

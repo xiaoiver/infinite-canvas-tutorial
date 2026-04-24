@@ -47,7 +47,7 @@
   },
   "dependencies": {
     "d3-color": "^3.1.0",
-    "uuid": "^11.1.0",
+    "uuid": "^14.0.0",
     "@infinite-canvas-tutorial/vello-renderer": "workspace:*"
   },
   "devDependencies": {

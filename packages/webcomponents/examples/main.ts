@@ -180,6 +180,17 @@ canvas.addEventListener(Event.READY, async (e) => {
     // layersLassoing: ['parent'],
   });
 
+  const image = {
+    id: 'cj03l-image',
+    type: 'rect',
+    fill: 'https://framerusercontent.com/images/K54OdkNAJ7dNPCQlcqviSKRrXAY.jpg?width=1920&height=1282',
+    width: 200,
+    height: 200,
+    x: 100,
+    y: 100,
+    filter: 'liquid-metal(3, 0.5, 10, -8, 0.3, 0.5, 0, 0, 1, #0a0a0c, #8ab4ff, auto)'
+  } as const;
+
   const button = {
     "id": "cj03l",
     type: 'rect',
@@ -220,6 +231,7 @@ canvas.addEventListener(Event.READY, async (e) => {
     },
   });
   api.updateNodes([
+    image,
     button,
     text,
   ]);
