@@ -1225,8 +1225,10 @@ export class EffectsPanel extends LitElement {
       `;
     }
     if (isLiquidMetalEffect(effect)) {
-      const h = effect as unknown as LiquidMetalEffect;
-      const patch = (partial: Partial<LiquidMetalEffect>) => {
+      /** `ecs` 源码含 `usePoisson`；构建产物 `lib` 需重新 `build` 后声明才会同步。 */
+      type Lm = LiquidMetalEffect & { usePoisson?: boolean };
+      const h = effect as unknown as Lm;
+      const patch = (partial: Partial<Lm>) => {
         const next = [...this.effects];
         next[index] = { ...h, ...partial, type: 'liquidMetal' } as unknown as Effect;
         this.commit(next);
@@ -1351,6 +1353,17 @@ export class EffectsPanel extends LitElement {
         }}
         >${msg(str`Use layer as mask`)}</sp-switch
         >
+        ${h.useImage
+          ? html`<sp-switch
+            size="s"
+            ?checked=${h.usePoisson !== false}
+            @change=${(e: Event & { target: HTMLInputElement }) => {
+            const checked = (e.target as { checked?: boolean }).checked === true;
+            patch({ usePoisson: checked });
+          }}
+            >${msg(str`CPU Poisson edge (WebGL; Paper-style R/G)`)}</sp-switch
+            >`
+          : ''}
         <sp-textfield
           size="s"
           label=${msg(str`Background color`)}

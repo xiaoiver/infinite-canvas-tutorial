@@ -12,6 +12,9 @@ import Pixelate from '../../components/Pixelate.vue'
 import CRT from '../../components/CRT.vue'
 import Glitch from '../../components/Glitch.vue'
 import LiquidGlass from '../../components/LiquidGlass.vue'
+import LiquidMetal from '../../components/LiquidMetal.vue'
+import Heatmap from '../../components/Heatmap.vue'
+import GenSmoke from '../../components/GenSmoke.vue'
 import Ascii from '../../components/Ascii.vue'
 import Burn from '../../components/Burn.vue'
 import GlobalEffects from '../../components/GlobalEffects.vue'
@@ -225,6 +228,16 @@ if (gray > 0.5) n = 23385164.0; // o
 <Burn />
 
 ### 液态金属 {#liquid-metal}
+
+<LiquidMetal />
+
+### 热力图 {#heatmap}
+
+<Heatmap />
+
+### 烟雾 {#gen-smoke}
+
+<GenSmoke />
 
 ### 时间动画 {#time-animation}
 

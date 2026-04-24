@@ -14,6 +14,7 @@ import {
   SwapChain,
   RenderTarget,
   Texture,
+  Readback,
   MipmapFilterMode,
   AddressMode,
   FilterMode,
@@ -42,7 +43,11 @@ import {
   asciiUniformValues,
   glitchUniformValues,
   liquidGlassUniformValues,
+  heatmapUniformValues,
+  imageDataToHeatmapProcessed,
+  gemSmokeUniformValues,
   liquidMetalUniformValues,
+  imageDataToLiquidMetalPoissonMap,
 } from '../utils';
 import { Location } from '../shaders/wireframe';
 import { TexturePool } from '../resources';
@@ -83,6 +88,8 @@ import { frag as asciiFrag } from '../shaders/post-processing/ascii';
 import { frag as glitchFrag } from '../shaders/post-processing/glitch';
 import { frag as liquidGlassFrag } from '../shaders/post-processing/liquidGlass';
 import { frag as liquidMetalFrag } from '../shaders/post-processing/liquidMetal';
+import { frag as heatmapFrag } from '../shaders/post-processing/heatmap';
+import { frag as gemSmokeFrag } from '../shaders/post-processing/gemSmoke';
 import type { RGGraphBuilder } from '../render-graph/interface';
 
 const FRAG_MAP: Record<
@@ -140,6 +147,12 @@ const FRAG_MAP: Record<
   liquidMetal: {
     shader: liquidMetalFrag,
   },
+  heatmap: {
+    shader: heatmapFrag,
+  },
+  gemSmoke: {
+    shader: gemSmokeFrag,
+  },
 };
 
 function postEffectUniformFloatCount(effect: Effect): number {
@@ -172,6 +185,10 @@ function postEffectUniformFloatCount(effect: Effect): number {
       return 20;
     case 'liquidMetal':
       return 24;
+    case 'heatmap':
+      return 56;
+    case 'gemSmoke':
+      return 48;
     case 'drop-shadow':
       return 2;
     case 'fxaa':
@@ -216,6 +233,13 @@ const POST_PROCESS_FULLSCREEN_MEGA: MegaStateDescriptor = {
     depthFailOp: StencilOp.KEEP,
   },
 };
+
+/** `u_LM5` y component in std140 block (24 floats for liquid metal). */
+const LIQUID_METAL_U_LM5_Y_OFFSET_FLOATS = 21;
+/** `u_HM2.z` in std140 block (56 floats for heatmap: third vec4, .z). */
+const HEATMAP_U_HM2_Z_OFFSET_FLOATS = 10;
+/** `u_GS5.z` in std140 (48 floats for gem-smoke: sixth vec4, .z). */
+const GEM_SMOKE_U_GS5_Z_OFFSET_FLOATS = 22;
 
 function setPostEffectUniformData(
   effect: Effect,
@@ -411,6 +435,24 @@ function setPostEffectUniformData(
       }
       break;
     }
+    case 'heatmap': {
+      const tw = Math.max(1, textureWidth ?? 1);
+      const th = Math.max(1, textureHeight ?? 1);
+      const u = heatmapUniformValues(effect, tw, th);
+      for (let j = 0; j < u.length; j++) {
+        data[i++] = u[j]!;
+      }
+      break;
+    }
+    case 'gemSmoke': {
+      const tw = Math.max(1, textureWidth ?? 1);
+      const th = Math.max(1, textureHeight ?? 1);
+      const u = gemSmokeUniformValues(effect, tw, th);
+      for (let j = 0; j < u.length; j++) {
+        data[i++] = u[j]!;
+      }
+      break;
+    }
     case 'drop-shadow':
       data[i++] = effect.x;
       data[i++] = effect.y;
@@ -505,7 +547,43 @@ export abstract class Drawcall {
     /** Sample from #filterTexture when true, else #pingPongTexture */
     srcIsT0: boolean;
     effect: Effect;
+    /**
+     * When true, try WebGL readback + CPU Poisson before this pass (see
+     * {@link #prepareLiquidMetalPoissonForPass}).
+     */
+    liquidMetalPoissonAttempt?: boolean;
+    /**
+     * When true, try WebGL readback + `imageDataToHeatmapProcessed` before this pass
+     * (see {@link #prepareHeatmapForPass}).
+     */
+    heatmapPreprocessAttempt?: boolean;
+    /** Same R/G CPU map as liquid metal ({@link imageDataToLiquidMetalPoissonMap}). */
+    gemSmokePoissonAttempt?: boolean;
   }[] = [];
+
+  /** GPU upload target for Poisson R/G; same size as the post chain. */
+  #liquidMetalPoissonTexture: Texture | null = null;
+  #liquidMetalPoissonWidth = 0;
+  #liquidMetalPoissonHeight = 0;
+  #readback: Readback | null = null;
+
+  /**
+   * When true, the post chain has exactly one pass that uses CPU Poisson, so a single
+   * `#liquidMetalPoissonTexture` is unambiguous. If 2+ Poisson passes existed, reusing
+   * one buffer between passes would be wrong — always recompute each pass.
+   */
+  #liquidMetalPoissonEngineTimeCacheAllowed = false;
+  /**
+   * After first successful Poisson upload for `useEngineTime` (single pass only), skip
+   * readback + `imageDataToLiquidMetalPoissonMap` (Poisson field does not depend on time).
+   */
+  #liquidMetalPoissonEngineTimeCacheValid = false;
+
+  #heatmapProcessedTexture: Texture | null = null;
+  #heatmapWidth = 0;
+  #heatmapHeight = 0;
+  #heatmapEngineTimeCacheAllowed = false;
+  #heatmapEngineTimeCacheValid = false;
 
   /** True after {@link createPostProcessing} completes; drives teardown in {@link destroyFullPostProcessingChain}. */
   #filterChainReady = false;
@@ -538,6 +616,8 @@ export abstract class Drawcall {
       this.vertexBufferDatas = [];
       this.vertexBufferDescriptors = [];
     }
+    this.#readback?.destroy();
+    this.#readback = null;
     this.destroyed = true;
   }
 
@@ -840,6 +920,8 @@ export abstract class Drawcall {
     this.#filterTexture.destroy();
     this.#pingPongRenderTarget.destroy();
     this.#pingPongTexture.destroy();
+    this.#destroyLiquidMetalPoissonTexture();
+    this.#destroyHeatmapProcessedTexture();
   }
 
   #rebuildPostEffectPassBindings(): void {
@@ -861,6 +943,290 @@ export abstract class Drawcall {
         ],
       });
     }
+  }
+
+  #getReadback(): Readback {
+    if (!this.#readback) {
+      this.#readback = this.device.createReadback();
+    }
+    return this.#readback;
+  }
+
+  #ensureLiquidMetalPoissonTexture(width: number, height: number): Texture {
+    if (
+      this.#liquidMetalPoissonTexture &&
+      this.#liquidMetalPoissonWidth === width &&
+      this.#liquidMetalPoissonHeight === height
+    ) {
+      return this.#liquidMetalPoissonTexture;
+    }
+    this.#liquidMetalPoissonTexture?.destroy();
+    this.#liquidMetalPoissonWidth = width;
+    this.#liquidMetalPoissonHeight = height;
+    this.#liquidMetalPoissonTexture = this.device.createTexture({
+      format: Format.U8_RGBA_RT,
+      width,
+      height,
+      usage: TextureUsage.RENDER_TARGET,
+    });
+    return this.#liquidMetalPoissonTexture;
+  }
+
+  #createPostEffectPassSamplerBindings(
+    pipeline: RenderPipeline,
+    uniformBuffer: Buffer,
+    sampleTexture: Texture,
+  ): Bindings {
+    return this.renderCache.createBindings({
+      pipeline,
+      samplerBindings: [
+        {
+          texture: sampleTexture,
+          sampler: this.createSampler(),
+        },
+      ],
+      uniformBufferBindings: [
+        {
+          buffer: uniformBuffer,
+        },
+      ],
+    });
+  }
+
+  #patchLiquidMetalPoissonMode(uniformBuffer: Buffer, y: number): void {
+    uniformBuffer.setSubData(
+      LIQUID_METAL_U_LM5_Y_OFFSET_FLOATS * Float32Array.BYTES_PER_ELEMENT,
+      new Uint8Array(new Float32Array([y]).buffer),
+    );
+  }
+
+  #patchGemSmokePoissonMode(uniformBuffer: Buffer, z: number): void {
+    uniformBuffer.setSubData(
+      GEM_SMOKE_U_GS5_Z_OFFSET_FLOATS * Float32Array.BYTES_PER_ELEMENT,
+      new Uint8Array(new Float32Array([z]).buffer),
+    );
+  }
+
+  /**
+   * Per pass: read scene texture, build Poisson R/G map (liquid metal + gem-smoke), or fall back.
+   */
+  #prepareLiquidMetalPoissonForPass(
+    pass: {
+      effect: Effect;
+      liquidMetalPoissonAttempt?: boolean;
+      gemSmokePoissonAttempt?: boolean;
+      pipeline: RenderPipeline;
+      uniformBuffer: Buffer;
+      bindings: Bindings;
+    },
+    srcTex: Texture,
+    isWebGPU: boolean,
+  ): void {
+    if (!pass.liquidMetalPoissonAttempt && !pass.gemSmokePoissonAttempt) {
+      return;
+    }
+    if (isWebGPU) {
+      if (pass.liquidMetalPoissonAttempt) {
+        this.#patchLiquidMetalPoissonMode(pass.uniformBuffer, 0);
+      }
+      if (pass.gemSmokePoissonAttempt) {
+        this.#patchGemSmokePoissonMode(pass.uniformBuffer, 0);
+      }
+      return;
+    }
+    const w = this.#filterWidth;
+    const h = this.#filterHeight;
+    const eff = pass.effect;
+    const poissonForEffect =
+      (eff.type === 'liquidMetal' && (eff as { usePoisson?: boolean }).usePoisson !== false) ||
+      (eff.type === 'gemSmoke' && (eff as { usePoisson?: boolean }).usePoisson !== false);
+    const canReuseEngineTimePoisson =
+      (eff.type === 'liquidMetal' || eff.type === 'gemSmoke') &&
+      eff.useEngineTime === true &&
+      poissonForEffect &&
+      (eff as { useImage: boolean }).useImage &&
+      this.#liquidMetalPoissonEngineTimeCacheAllowed &&
+      this.#liquidMetalPoissonEngineTimeCacheValid &&
+      this.#liquidMetalPoissonTexture != null &&
+      this.#liquidMetalPoissonWidth === w &&
+      this.#liquidMetalPoissonHeight === h;
+    if (canReuseEngineTimePoisson) {
+      pass.bindings = this.#createPostEffectPassSamplerBindings(
+        pass.pipeline,
+        pass.uniformBuffer,
+        this.#liquidMetalPoissonTexture!,
+      );
+      if (eff.type === 'liquidMetal') {
+        this.#patchLiquidMetalPoissonMode(pass.uniformBuffer, 1);
+      }
+      if (eff.type === 'gemSmoke') {
+        this.#patchGemSmokePoissonMode(pass.uniformBuffer, 1);
+      }
+      return;
+    }
+    try {
+      const data = new Uint8Array(w * h * 4);
+      this.#getReadback().readTextureSync(srcTex, 0, 0, w, h, data);
+      const imageData = new ImageData(
+        new Uint8ClampedArray(
+          data.buffer,
+          data.byteOffset,
+          w * h * 4,
+        ),
+        w,
+        h,
+      );
+      const poisson = imageDataToLiquidMetalPoissonMap(imageData);
+      const dest = this.#ensureLiquidMetalPoissonTexture(w, h);
+      dest.setImageData([poisson], 0);
+      pass.bindings = this.#createPostEffectPassSamplerBindings(
+        pass.pipeline,
+        pass.uniformBuffer,
+        dest,
+      );
+      if (eff.type === 'liquidMetal') {
+        this.#patchLiquidMetalPoissonMode(pass.uniformBuffer, 1);
+      }
+      if (eff.type === 'gemSmoke') {
+        this.#patchGemSmokePoissonMode(pass.uniformBuffer, 1);
+      }
+      this.#liquidMetalPoissonEngineTimeCacheValid =
+        (eff.type === 'liquidMetal' || eff.type === 'gemSmoke') &&
+        eff.useEngineTime === true &&
+        this.#liquidMetalPoissonEngineTimeCacheAllowed;
+    } catch {
+      this.#liquidMetalPoissonEngineTimeCacheValid = false;
+      if (eff.type === 'liquidMetal') {
+        this.#patchLiquidMetalPoissonMode(pass.uniformBuffer, 0);
+      }
+      if (eff.type === 'gemSmoke') {
+        this.#patchGemSmokePoissonMode(pass.uniformBuffer, 0);
+      }
+      pass.bindings = this.#createPostEffectPassSamplerBindings(
+        pass.pipeline,
+        pass.uniformBuffer,
+        srcTex,
+      );
+    }
+  }
+
+  #destroyLiquidMetalPoissonTexture(): void {
+    this.#liquidMetalPoissonTexture?.destroy();
+    this.#liquidMetalPoissonTexture = null;
+    this.#liquidMetalPoissonWidth = 0;
+    this.#liquidMetalPoissonHeight = 0;
+    this.#liquidMetalPoissonEngineTimeCacheValid = false;
+  }
+
+  #patchHeatmapPreprocessed(uniformBuffer: Buffer, z: number): void {
+    uniformBuffer.setSubData(
+      HEATMAP_U_HM2_Z_OFFSET_FLOATS * Float32Array.BYTES_PER_ELEMENT,
+      new Uint8Array(new Float32Array([z]).buffer),
+    );
+  }
+
+  #ensureHeatmapProcessedTexture(width: number, height: number): Texture {
+    if (
+      this.#heatmapProcessedTexture &&
+      this.#heatmapWidth === width &&
+      this.#heatmapHeight === height
+    ) {
+      return this.#heatmapProcessedTexture;
+    }
+    this.#heatmapProcessedTexture?.destroy();
+    this.#heatmapWidth = width;
+    this.#heatmapHeight = height;
+    this.#heatmapProcessedTexture = this.device.createTexture({
+      format: Format.U8_RGBA_RT,
+      width,
+      height,
+      usage: TextureUsage.RENDER_TARGET,
+    });
+    return this.#heatmapProcessedTexture;
+  }
+
+  #prepareHeatmapForPass(
+    pass: {
+      effect: Effect;
+      heatmapPreprocessAttempt?: boolean;
+      pipeline: RenderPipeline;
+      uniformBuffer: Buffer;
+      bindings: Bindings;
+    },
+    srcTex: Texture,
+    isWebGPU: boolean,
+  ): void {
+    if (!pass.heatmapPreprocessAttempt) {
+      return;
+    }
+    if (isWebGPU) {
+      this.#patchHeatmapPreprocessed(pass.uniformBuffer, 0);
+      return;
+    }
+    const w = this.#filterWidth;
+    const h = this.#filterHeight;
+    const eff = pass.effect;
+    const canReuseEngineTime =
+      eff.type === 'heatmap' &&
+      eff.useEngineTime === true &&
+      (eff.usePreprocess !== false) &&
+      eff.useImage &&
+      this.#heatmapEngineTimeCacheAllowed &&
+      this.#heatmapEngineTimeCacheValid &&
+      this.#heatmapProcessedTexture != null &&
+      this.#heatmapWidth === w &&
+      this.#heatmapHeight === h;
+    if (canReuseEngineTime) {
+      pass.bindings = this.#createPostEffectPassSamplerBindings(
+        pass.pipeline,
+        pass.uniformBuffer,
+        this.#heatmapProcessedTexture!,
+      );
+      this.#patchHeatmapPreprocessed(pass.uniformBuffer, 1);
+      return;
+    }
+    try {
+      const data = new Uint8Array(w * h * 4);
+      this.#getReadback().readTextureSync(srcTex, 0, 0, w, h, data);
+      const imageData = new ImageData(
+        new Uint8ClampedArray(
+          data.buffer,
+          data.byteOffset,
+          w * h * 4,
+        ),
+        w,
+        h,
+      );
+      const processed = imageDataToHeatmapProcessed(imageData);
+      const dest = this.#ensureHeatmapProcessedTexture(w, h);
+      dest.setImageData([processed], 0);
+      pass.bindings = this.#createPostEffectPassSamplerBindings(
+        pass.pipeline,
+        pass.uniformBuffer,
+        dest,
+      );
+      this.#patchHeatmapPreprocessed(pass.uniformBuffer, 1);
+      this.#heatmapEngineTimeCacheValid =
+        eff.type === 'heatmap' &&
+        eff.useEngineTime === true &&
+        this.#heatmapEngineTimeCacheAllowed;
+    } catch {
+      this.#heatmapEngineTimeCacheValid = false;
+      this.#patchHeatmapPreprocessed(pass.uniformBuffer, 0);
+      pass.bindings = this.#createPostEffectPassSamplerBindings(
+        pass.pipeline,
+        pass.uniformBuffer,
+        srcTex,
+      );
+    }
+  }
+
+  #destroyHeatmapProcessedTexture(): void {
+    this.#heatmapProcessedTexture?.destroy();
+    this.#heatmapProcessedTexture = null;
+    this.#heatmapWidth = 0;
+    this.#heatmapHeight = 0;
+    this.#heatmapEngineTimeCacheValid = false;
   }
 
   protected createPostProcessing(
@@ -1033,6 +1399,18 @@ export abstract class Drawcall {
       });
 
       const srcTexture = srcIsT0 ? t0 : t1;
+      const liquidMetalPoissonAttempt =
+        effect.type === 'liquidMetal' &&
+        effect.useImage &&
+        effect.usePoisson !== false;
+      const heatmapPreprocessAttempt =
+        effect.type === 'heatmap' &&
+        effect.useImage &&
+        effect.usePreprocess !== false;
+      const gemSmokePoissonAttempt =
+        effect.type === 'gemSmoke' &&
+        effect.useImage &&
+        effect.usePoisson !== false;
       const bindings = this.renderCache.createBindings({
         pipeline,
         samplerBindings: [
@@ -1057,8 +1435,29 @@ export abstract class Drawcall {
         bindings,
         srcIsT0,
         effect,
+        liquidMetalPoissonAttempt,
+        heatmapPreprocessAttempt,
+        gemSmokePoissonAttempt,
       });
     }
+
+    let nPoissonRgPass = 0;
+    for (const p of this.#postEffectPasses) {
+      if (p.liquidMetalPoissonAttempt || p.gemSmokePoissonAttempt) {
+        nPoissonRgPass++;
+      }
+    }
+    this.#liquidMetalPoissonEngineTimeCacheAllowed = nPoissonRgPass === 1;
+    this.#liquidMetalPoissonEngineTimeCacheValid = false;
+
+    let nHeatmap = 0;
+    for (const p of this.#postEffectPasses) {
+      if (p.heatmapPreprocessAttempt) {
+        nHeatmap++;
+      }
+    }
+    this.#heatmapEngineTimeCacheAllowed = nHeatmap === 1;
+    this.#heatmapEngineTimeCacheValid = false;
 
     const n = this.#postEffectPasses.length;
     const lastTexture =
@@ -1159,6 +1558,8 @@ export abstract class Drawcall {
         );
 
         this.#rebuildPostEffectPassBindings();
+        this.#destroyLiquidMetalPoissonTexture();
+        this.#destroyHeatmapProcessedTexture();
       }
       this.#filterWidth = width;
       this.#filterHeight = height;
@@ -1187,6 +1588,9 @@ export abstract class Drawcall {
       );
     }
 
+    const isWebGPU =
+      this.device.queryVendorInfo().platformString === 'WebGPU';
+
     const filterRenderPass = this.device.createRenderPass({
       colorAttachment: [this.#filterRenderTarget],
       colorResolveTo: [null],
@@ -1207,8 +1611,20 @@ export abstract class Drawcall {
     filterRenderPass.drawIndexed(6, 1);
     this.device.submitPass(filterRenderPass);
 
+    const t0 = this.#filterTexture;
+    const t1 = this.#pingPongTexture;
     for (let pi = 0; pi < this.#postEffectPasses.length; pi++) {
-      const pass = this.#postEffectPasses[pi];
+      const pass = this.#postEffectPasses[pi]!;
+      this.#prepareLiquidMetalPoissonForPass(
+        pass,
+        pass.srcIsT0 ? t0 : t1,
+        isWebGPU,
+      );
+      this.#prepareHeatmapForPass(
+        pass,
+        pass.srcIsT0 ? t0 : t1,
+        isWebGPU,
+      );
       const dstRT =
         pi % 2 === 0 ? this.#pingPongRenderTarget : this.#filterRenderTarget;
       const effectPass = this.device.createRenderPass({

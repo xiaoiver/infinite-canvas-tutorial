@@ -26,6 +26,8 @@ export type Effect =
   | GlitchEffect
   | LiquidGlassEffect
   | LiquidMetalEffect
+  | HeatmapEffect
+  | GemSmokeEffect
   | AdjustmentEffect
   | DropShadowEffect
   | BlurEffect
@@ -747,7 +749,7 @@ export function liquidGlassUniformValues(
 }
 
 /**
- * Paper Design {@link https://github.com/paper-design/shaders/blob/main/packages/shaders/src/shaders/liquid-metal.ts liquid-metal} (raster); edge from scene alpha, not Poisson pre-pass.
+ * Paper Design {@link https://github.com/paper-design/shaders/blob/main/packages/shaders/src/shaders/liquid-metal.ts liquid-metal} (raster). Optional CPU Poisson + R/G when `useImage`+`usePoisson` and WebGL readback.
  */
 export const LIQUID_METAL_DEFAULTS = {
   colorBack: '#0a0a0c',
@@ -764,6 +766,8 @@ export const LIQUID_METAL_DEFAULTS = {
   shape: 0,
   useImage: true,
   time: 0,
+  /** When `useImage` and WebGL: CPU Poisson map (paper R/G). WebGPU cannot sync-readback; falls back in Drawcall. */
+  usePoisson: true,
 } as const;
 
 export interface LiquidMetalEffect {
@@ -781,6 +785,8 @@ export interface LiquidMetalEffect {
   useImage: boolean;
   time: number;
   useEngineTime?: boolean;
+  /** Use CPU Poisson + R/G texture when `useImage` (see {@link LIQUID_METAL_DEFAULTS.usePoisson}). */
+  usePoisson?: boolean;
 }
 
 /** 6 × vec4 std140: `u_LM0`–`u_LM5` (24 floats). */
@@ -805,6 +811,8 @@ export function liquidMetalUniformValues(
   );
   const shape = Math.max(0, Math.min(4, Math.floor(z(effect.shape, D.shape))));
   const repetition = Math.max(1, Math.min(10, z(effect.repetition, D.repetition)));
+  const usePoissonWanted =
+    effect.useImage && (effect.usePoisson !== false);
   return [
     w,
     h,
@@ -827,9 +835,213 @@ export function liquidMetalUniformValues(
     z(effect.angle, D.angle),
     shape,
     effect.useImage ? 1 : 0,
+    usePoissonWanted ? 1 : 0,
     0,
     0,
+  ];
+}
+
+const HM_PAD = 10;
+
+/** Defaults from Paper heatmap; colors are gradient stops (max 10). */
+export const HEATMAP_DEFAULTS = {
+  contour: 0.5,
+  angle: 0,
+  noise: 0.05,
+  innerGlow: 0.5,
+  outerGlow: 0.5,
+  useImage: true,
+  usePreprocess: true,
+  time: 0,
+  colorBack: 'rgba(0,0,0,0)',
+  colors: ['#ff5c2e', '#ffc62e', '#2effb7', '#2e5cff'],
+} as const;
+
+export interface HeatmapEffect {
+  type: 'heatmap';
+  contour: number;
+  angle: number;
+  noise: number;
+  innerGlow: number;
+  outerGlow: number;
+  useImage: boolean;
+  time: number;
+  useEngineTime?: boolean;
+  /** When `useImage` + WebGL: run CPU R/G/B blur pass (see {@link HEATMAP_DEFAULTS.usePreprocess}). */
+  usePreprocess?: boolean;
+  colorBack: string;
+  /** Up to 10 gradient colors (see Paper `maxColorCount: 10`). */
+  colors: string[];
+}
+
+/** 14×vec4 std140: `u_HM0`…`u_HM3` + `u_hmC[10]` (56 floats). */
+export function heatmapUniformValues(
+  effect: HeatmapEffect,
+  textureWidth: number,
+  textureHeight: number,
+): number[] {
+  const w = Math.max(1, textureWidth);
+  const h = Math.max(1, textureHeight);
+  const D = HEATMAP_DEFAULTS;
+  const zf = (v: number | undefined, def: number) =>
+    Number.isFinite(v as number) ? (v as number) : def;
+  const time = effect.useEngineTime
+    ? getPostEffectEngineTimeSeconds()
+    : zf(effect.time, D.time);
+  const colorBack = parseColor(
+    effect.colorBack?.trim() ? effect.colorBack : D.colorBack,
+  );
+  const palette: string[] =
+    effect.colors?.length > 0 ? [...effect.colors] : [...D.colors];
+  const nColors = Math.max(1, Math.min(10, palette.length));
+  const uColors: [number, number, number, number][] = [];
+  for (let i = 0; i < 10; i++) {
+    if (i >= nColors) {
+      uColors.push([0, 0, 0, 0]);
+      continue;
+    }
+    const s = palette[Math.min(i, palette.length - 1)]!;
+    const c = parseColor(s);
+    uColors.push([c.r / 255, c.g / 255, c.b / 255, c.opacity]);
+  }
+  const out: number[] = [
+    w,
+    h,
+    time,
+    nColors,
+    w / h,
+    zf(effect.noise, D.noise),
+    zf(effect.contour, D.contour),
+    zf(effect.angle, D.angle),
+    zf(effect.innerGlow, D.innerGlow),
+    zf(effect.outerGlow, D.outerGlow),
+    0.0,
+    0.0,
+    colorBack.r / 255,
+    colorBack.g / 255,
+    colorBack.b / 255,
+    colorBack.opacity,
+  ];
+  for (let j = 0; j < HM_PAD; j++) {
+    out.push(
+      uColors[j]![0]!,
+      uColors[j]![1]!,
+      uColors[j]![2]!,
+      uColors[j]![3]!,
+    );
+  }
+  return out;
+}
+
+const GS_COLOR_PAD = 6;
+
+/** Paper gem-smoke; up to 6 smoke colors. */
+export const GEM_SMOKE_DEFAULTS = {
+  innerDistortion: 0.5,
+  outerDistortion: 0.5,
+  outerGlow: 0.5,
+  innerGlow: 0.5,
+  offset: 0,
+  angle: 0,
+  size: 0.5,
+  /** 0=full canvas, 1=circle, 2=daisy, 3=diamond, 4=metaballs */
+  shape: 3,
+  useImage: true,
+  usePoisson: true,
+  time: 0,
+  colorBack: '#000000',
+  colorInner: 'rgba(255,255,255,0.15)',
+  colors: [
+    '#88ccff',
+    '#ffffff',
+    '#ffaaee',
+    '#6644ff',
+    '#3322aa',
+    '#110066',
+  ],
+} as const;
+
+export interface GemSmokeEffect {
+  type: 'gemSmoke';
+  innerDistortion: number;
+  outerDistortion: number;
+  outerGlow: number;
+  innerGlow: number;
+  offset: number;
+  angle: number;
+  size: number;
+  shape: number;
+  useImage: boolean;
+  time: number;
+  useEngineTime?: boolean;
+  /** WebGL + `useImage`: CPU Poisson R/G 与 liquid metal 同格式（见 {@link imageDataToLiquidMetalPoissonMap}）。 */
+  usePoisson?: boolean;
+  colorBack: string;
+  colorInner: string;
+  colors: string[];
+}
+
+/** 12×vec4 std140: `u_GS0`…`u_GS5` + `u_gsC[6]`（48 floats）。 */
+export function gemSmokeUniformValues(
+  effect: GemSmokeEffect,
+  textureWidth: number,
+  textureHeight: number,
+): number[] {
+  const w = Math.max(1, textureWidth);
+  const h = Math.max(1, textureHeight);
+  const D = GEM_SMOKE_DEFAULTS;
+  const zf = (v: number | undefined, def: number) =>
+    Number.isFinite(v as number) ? (v as number) : def;
+  const time = effect.useEngineTime
+    ? getPostEffectEngineTimeSeconds()
+    : zf(effect.time, D.time);
+  const colorBack = parseColor(
+    effect.colorBack?.trim() ? effect.colorBack : D.colorBack,
+  );
+  const colorInner = parseColor(
+    effect.colorInner?.trim() ? effect.colorInner : D.colorInner,
+  );
+  const palette: string[] =
+    effect.colors?.length > 0 ? [...effect.colors] : [...D.colors];
+  const nColors = Math.max(1, Math.min(GS_COLOR_PAD, palette.length));
+  const shape = Math.max(0, Math.min(4, Math.floor(zf(effect.shape, D.shape))));
+  const usePoissonWanted = effect.useImage && (effect.usePoisson !== false);
+  const uColors: [number, number, number, number][] = [];
+  for (let i = 0; i < GS_COLOR_PAD; i++) {
+    if (i >= nColors) {
+      uColors.push([0, 0, 0, 0]);
+      continue;
+    }
+    const s = palette[Math.min(i, palette.length - 1)]!;
+    const c = parseColor(s);
+    uColors.push([c.r / 255, c.g / 255, c.b / 255, c.opacity]);
+  }
+  return [
+    w,
+    h,
+    time,
+    w / h,
+    nColors,
+    zf(effect.innerDistortion, D.innerDistortion),
+    zf(effect.outerDistortion, D.outerDistortion),
+    zf(effect.outerGlow, D.outerGlow),
+    zf(effect.innerGlow, D.innerGlow),
+    zf(effect.offset, D.offset),
+    zf(effect.angle, D.angle),
+    zf(effect.size, D.size),
+    colorBack.r / 255,
+    colorBack.g / 255,
+    colorBack.b / 255,
+    colorBack.opacity,
+    colorInner.r / 255,
+    colorInner.g / 255,
+    colorInner.b / 255,
+    colorInner.opacity,
+    shape,
+    effect.useImage ? 1 : 0,
+    usePoissonWanted ? 1 : 0,
     0,
+    ...uColors.flatMap((c) => [c[0]!, c[1]!, c[2]!, c[3]!]),
   ];
 }
 
@@ -855,6 +1067,8 @@ const RASTER_POST_EFFECT_TYPES = new Set<Effect['type']>([
   'glitch',
   'liquidGlass',
   'liquidMetal',
+  'heatmap',
+  'gemSmoke',
 ]);
 
 /** True when `adjustment` only changes saturation (Pixi/CSS-style `saturate()`). */
@@ -1554,6 +1768,10 @@ export function parseEffect(filter: string): Effect[] {
         }
       }
       const shape = Math.max(0, Math.min(4, Math.floor(pf(7, D.shape))));
+      let usePoisson: boolean = D.usePoisson;
+      if (parts.length > 12) {
+        usePoisson = parseFloat(parts[12]!) > 0.5;
+      }
       effects.push({
         type: 'liquidMetal',
         repetition: pf(0, D.repetition),
@@ -1568,6 +1786,117 @@ export function parseEffect(filter: string): Effect[] {
         colorBack,
         colorTint,
         time,
+        usePoisson,
+        ...(useEngineTime ? { useEngineTime: true } : {}),
+      });
+    } else if (filter.name === 'heat-map' || filter.name === 'heatmap') {
+      const raw = filter.params.trim();
+      const parts = raw.length
+        ? raw.split(',').map((s) => s.trim()).filter((s) => s.length > 0)
+        : [];
+      const D = HEATMAP_DEFAULTS;
+      const pf = (i: number, def: number) => {
+        const v = parts[i] !== undefined ? parseFloat(parts[i]!) : def;
+        return Number.isFinite(v) ? v : def;
+      };
+      let useImage: boolean = D.useImage;
+      if (parts.length > 5) {
+        useImage = parseFloat(parts[5]!) > 0.5;
+      }
+      let usePreprocess: boolean = D.usePreprocess;
+      if (parts.length > 6) {
+        usePreprocess = parseFloat(parts[6]!) > 0.5;
+      }
+      let useEngineTime = false;
+      let time: number = D.time;
+      if (parts.length > 7) {
+        const rawT = parts[7]!.trim().toLowerCase();
+        if (rawT === 'auto' || rawT === 'engine') {
+          useEngineTime = true;
+        } else {
+          const tv = parseFloat(parts[7]!);
+          time = Number.isFinite(tv) ? tv : D.time;
+        }
+      }
+      let colorBack: string = D.colorBack;
+      const gradColors: string[] = [];
+      if (parts.length > 8) {
+        colorBack = parts[8]!.trim();
+        for (let c = 9; c < parts.length && c < 8 + 10; c++) {
+          gradColors.push(parts[c]!.trim());
+        }
+      }
+      effects.push({
+        type: 'heatmap',
+        contour: pf(0, D.contour),
+        angle: pf(1, D.angle),
+        noise: pf(2, D.noise),
+        innerGlow: pf(3, D.innerGlow),
+        outerGlow: pf(4, D.outerGlow),
+        useImage,
+        usePreprocess,
+        time,
+        colorBack,
+        colors: gradColors.length > 0 ? gradColors : [...D.colors],
+        ...(useEngineTime ? { useEngineTime: true } : {}),
+      });
+    } else if (filter.name === 'gem-smoke' || filter.name === 'gemSmoke') {
+      const raw = filter.params.trim();
+      const parts = raw.length
+        ? raw.split(',').map((s) => s.trim()).filter((s) => s.length > 0)
+        : [];
+      const D = GEM_SMOKE_DEFAULTS;
+      const pf = (i: number, def: number) => {
+        const v = parts[i] !== undefined ? parseFloat(parts[i]!) : def;
+        return Number.isFinite(v) ? v : def;
+      };
+      let useImage: boolean = D.useImage;
+      if (parts.length > 8) {
+        useImage = parseFloat(parts[8]!) > 0.5;
+      }
+      let usePoisson: boolean = D.usePoisson;
+      if (parts.length > 9) {
+        usePoisson = parseFloat(parts[9]!) > 0.5;
+      }
+      let useEngineTime = false;
+      let time: number = D.time;
+      if (parts.length > 10) {
+        const rawT = parts[10]!.trim().toLowerCase();
+        if (rawT === 'auto' || rawT === 'engine') {
+          useEngineTime = true;
+        } else {
+          const tv = parseFloat(parts[10]!);
+          time = Number.isFinite(tv) ? tv : D.time;
+        }
+      }
+      let colorBack: string = D.colorBack;
+      let colorInner: string = D.colorInner;
+      const gradColors: string[] = [];
+      if (parts.length > 11) {
+        colorBack = parts[11]!.trim();
+      }
+      if (parts.length > 12) {
+        colorInner = parts[12]!.trim();
+        for (let c = 13; c < parts.length && c < 13 + 6; c++) {
+          gradColors.push(parts[c]!.trim());
+        }
+      }
+      effects.push({
+        type: 'gemSmoke',
+        innerDistortion: pf(0, D.innerDistortion),
+        outerDistortion: pf(1, D.outerDistortion),
+        outerGlow: pf(2, D.outerGlow),
+        innerGlow: pf(3, D.innerGlow),
+        offset: pf(4, D.offset),
+        angle: pf(5, D.angle),
+        size: pf(6, D.size),
+        shape: Math.max(0, Math.min(4, Math.floor(pf(7, D.shape)))),
+        useImage,
+        usePoisson,
+        time,
+        colorBack,
+        colorInner,
+        colors: gradColors.length > 0 ? gradColors : [...D.colors],
         ...(useEngineTime ? { useEngineTime: true } : {}),
       });
     } else if (filter.name === 'fxaa') {
@@ -1620,6 +1949,12 @@ export function filterStringUsesEngineTimePost(
   }
   for (const e of parseEffect(filterValue)) {
     if (e.type === 'liquidMetal' && e.useEngineTime) {
+      return true;
+    }
+    if (e.type === 'heatmap' && e.useEngineTime) {
+      return true;
+    }
+    if (e.type === 'gemSmoke' && e.useEngineTime) {
       return true;
     }
   }
@@ -1742,8 +2077,33 @@ export function formatFilter(effects: Effect[]): string {
       case 'liquidMetal': {
         const e = effect;
         const timeParam = e.useEngineTime ? 'auto' : e.time;
+        const pois = e.usePoisson !== false ? 1 : 0;
         parts.push(
-          `liquid-metal(${e.repetition}, ${e.softness}, ${e.shiftRed}, ${e.shiftBlue}, ${e.distortion}, ${e.contour}, ${e.angle}, ${e.shape}, ${e.useImage ? 1 : 0}, ${cssColorToHex(e.colorBack)}, ${cssColorToHex(e.colorTint)}, ${timeParam})`,
+          `liquid-metal(${e.repetition}, ${e.softness}, ${e.shiftRed}, ${e.shiftBlue}, ${e.distortion}, ${e.contour}, ${e.angle}, ${e.shape}, ${e.useImage ? 1 : 0}, ${cssColorToHex(e.colorBack)}, ${cssColorToHex(e.colorTint)}, ${timeParam}, ${pois})`,
+        );
+        break;
+      }
+      case 'heatmap': {
+        const e = effect;
+        const timeParam = e.useEngineTime ? 'auto' : e.time;
+        const pre = e.usePreprocess !== false ? 1 : 0;
+        const grad = (e.colors?.length ? e.colors : [...HEATMAP_DEFAULTS.colors])
+          .map((s) => cssColorToHex(s))
+          .join(', ');
+        parts.push(
+          `heat-map(${e.contour}, ${e.angle}, ${e.noise}, ${e.innerGlow}, ${e.outerGlow}, ${e.useImage ? 1 : 0}, ${pre}, ${timeParam}, ${cssColorToHex(e.colorBack)}, ${grad})`,
+        );
+        break;
+      }
+      case 'gemSmoke': {
+        const e = effect;
+        const timeParam = e.useEngineTime ? 'auto' : e.time;
+        const pois = e.usePoisson !== false ? 1 : 0;
+        const grad = (e.colors?.length ? e.colors : [...GEM_SMOKE_DEFAULTS.colors])
+          .map((s) => cssColorToHex(s))
+          .join(', ');
+        parts.push(
+          `gem-smoke(${e.innerDistortion}, ${e.outerDistortion}, ${e.outerGlow}, ${e.innerGlow}, ${e.offset}, ${e.angle}, ${e.size}, ${e.shape}, ${e.useImage ? 1 : 0}, ${pois}, ${timeParam}, ${cssColorToHex(e.colorBack)}, ${cssColorToHex(e.colorInner)}, ${grad})`,
         );
         break;
       }

@@ -30,6 +30,7 @@ import {
   triangulate,
 } from '../utils';
 import { parseEffect, filterRasterPostEffects } from '../utils/filter';
+import { createSolidFillMaskRasterForFilter } from '../utils/solidShapeRasterForFilter';
 import {
   ComputedPoints,
   ComputedBounds,
@@ -109,7 +110,10 @@ export class Mesh extends Drawcall {
     return filtered;
   }
 
-  /** Rasterize {@link FillSolid} for texture-space filters (same alpha as `u_FillColor` before `fillOpacity`). */
+  /**
+   * Rasterize {@link FillSolid} geometry to a mask bitmap for texture-space filters
+   * (vector silhouette + premultiplied-ish RGBA, same bounds as {@link ComputedBounds} used for `u_FillUVRect`).
+   */
   private createSolidFillRasterCanvas(
     shape: Entity,
     tw: number,
@@ -117,22 +121,15 @@ export class Mesh extends Drawcall {
   ): HTMLCanvasElement | OffscreenCanvas {
     const fill = shape.read(FillSolid).value;
     const { r: fr, g: fg, b: fb, opacity: fo } = parseColor(fill);
-    let canvas: HTMLCanvasElement | OffscreenCanvas;
-    if (typeof document !== 'undefined') {
-      const c = document.createElement('canvas');
-      c.width = tw;
-      c.height = th;
-      canvas = c;
-    } else {
-      canvas = new OffscreenCanvas(tw, th);
-    }
-    const ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
-    if (!ctx) {
-      throw new Error('Canvas 2D required for solid fill + filter');
-    }
-    ctx.fillStyle = `rgba(${fr},${fg},${fb},${fo})`;
-    ctx.fillRect(0, 0, tw, th);
-    return canvas;
+    const fillRgba = `rgba(${fr},${fg},${fb},${fo})`;
+    const { minX, minY, maxX, maxY } = shape.read(ComputedBounds).geometryBounds;
+    return createSolidFillMaskRasterForFilter(
+      shape,
+      fillRgba,
+      { minX, minY, maxX, maxY },
+      tw,
+      th,
+    );
   }
 
   validate(shape: Entity) {
@@ -642,6 +639,14 @@ export class Mesh extends Drawcall {
     let invWidth = 0;
     let invHeight = 0;
     if (shape.has(FillGradient) || shape.has(FillPattern)) {
+      const { minX: gMinX, minY: gMinY, maxX: gMaxX, maxY: gMaxY } = shape.read(ComputedBounds).geometryBounds;
+      const geometryWidth = gMaxX - gMinX;
+      const geometryHeight = gMaxY - gMinY;
+      minX = gMinX;
+      minY = gMinY;
+      invWidth = geometryWidth === 0 ? 0 : 1 / geometryWidth;
+      invHeight = geometryHeight === 0 ? 0 : 1 / geometryHeight;
+    } else if (this.useFillImage && shape.has(ComputedBounds)) {
       const { minX: gMinX, minY: gMinY, maxX: gMaxX, maxY: gMaxY } = shape.read(ComputedBounds).geometryBounds;
       const geometryWidth = gMaxX - gMinX;
       const geometryHeight = gMaxY - gMinY;

@@ -16,3 +16,5 @@ export { frag as ascii } from './ascii';
 export { frag as glitch } from './glitch';
 export { frag as liquidGlass } from './liquidGlass';
 export { frag as liquidMetal } from './liquidMetal';
+export { frag as heatmap } from './heatmap';
+export { frag as gemSmoke } from './gemSmoke';

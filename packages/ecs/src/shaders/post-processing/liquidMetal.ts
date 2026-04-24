@@ -2,8 +2,8 @@
  * Liquid metal: ported from
  * {@link https://github.com/paper-design/shaders/blob/main/packages/shaders/src/shaders/liquid-metal.ts paper-design/liquid-metal}.
  * Fullscreen post: `v_Uv` / `u_Texture` stand in for `v_imageUV` / `u_image` when `u_isImage>0.5`.
- * Edge/opacity is approximated from the scene texture (not Poisson R+G pre-pass).
- * Uniforms: {@link liquidMetalUniformValues} → `u_LM0`…`u_LM5` (6 × vec4).
+ * When `u_LM5.y>0.5` (CPU Poisson map bound to `u_Texture`), R=edge field and G=opacity (paper);
+ * else uses scene alpha for edge (fast path). Uniforms: {@link liquidMetalUniformValues} → `u_LM0`…`u_LM5`.
  */
 export const frag = /* wgsl */ `
 
@@ -84,20 +84,39 @@ float getImgFrameLm(vec2 uv, float th) {
 }
 
 float blurEdge3x3Lm(
-  sampler2D tex, vec2 uv, vec2 dudx, vec2 dudy, float radius, float centerSample) {
+  PD_SAMPLER_2D(tex), vec2 uv, vec2 dudx, vec2 dudy, float radius, float centerSample) {
   vec2 texel = 1.0 / max(u_LM0.xy, vec2(1.0));
   vec2 r = radius * texel;
   float w1 = 1.0, w2 = 2.0, w4 = 4.0;
   float norm = 16.0;
   float sum = w4 * centerSample;
-  sum += w2 * textureGrad(SAMPLER_2D(tex), uv + vec2(0.0, -r.y), dudx, dudy).a;
-  sum += w2 * textureGrad(SAMPLER_2D(tex), uv + vec2(0.0, r.y), dudx, dudy).a;
-  sum += w2 * textureGrad(SAMPLER_2D(tex), uv + vec2(-r.x, 0.0), dudx, dudy).a;
-  sum += w2 * textureGrad(SAMPLER_2D(tex), uv + vec2(r.x, 0.0), dudx, dudy).a;
-  sum += w1 * textureGrad(SAMPLER_2D(tex), uv + vec2(-r.x, -r.y), dudx, dudy).a;
-  sum += w1 * textureGrad(SAMPLER_2D(tex), uv + vec2(r.x, -r.y), dudx, dudy).a;
-  sum += w1 * textureGrad(SAMPLER_2D(tex), uv + vec2(-r.x, r.y), dudx, dudy).a;
-  sum += w1 * textureGrad(SAMPLER_2D(tex), uv + vec2(r.x, r.y), dudx, dudy).a;
+  sum += w2 * textureGrad(PU_SAMPLER_2D(tex), uv + vec2(0.0, -r.y), dudx, dudy).a;
+  sum += w2 * textureGrad(PU_SAMPLER_2D(tex), uv + vec2(0.0, r.y), dudx, dudy).a;
+  sum += w2 * textureGrad(PU_SAMPLER_2D(tex), uv + vec2(-r.x, 0.0), dudx, dudy).a;
+  sum += w2 * textureGrad(PU_SAMPLER_2D(tex), uv + vec2(r.x, 0.0), dudx, dudy).a;
+  sum += w1 * textureGrad(PU_SAMPLER_2D(tex), uv + vec2(-r.x, -r.y), dudx, dudy).a;
+  sum += w1 * textureGrad(PU_SAMPLER_2D(tex), uv + vec2(r.x, -r.y), dudx, dudy).a;
+  sum += w1 * textureGrad(PU_SAMPLER_2D(tex), uv + vec2(-r.x, r.y), dudx, dudy).a;
+  sum += w1 * textureGrad(PU_SAMPLER_2D(tex), uv + vec2(r.x, r.y), dudx, dudy).a;
+  return sum / norm;
+}
+
+// Paper: blur on R (Poisson gradient), same 3x3 as blurEdge3x3Lm.
+float blurEdge3x3LmR(
+  PD_SAMPLER_2D(tex), vec2 uv, vec2 dudx, vec2 dudy, float radius, float centerSample) {
+  vec2 texel = 1.0 / max(u_LM0.xy, vec2(1.0));
+  vec2 r = radius * texel;
+  float w1 = 1.0, w2 = 2.0, w4 = 4.0;
+  float norm = 16.0;
+  float sum = w4 * centerSample;
+  sum += w2 * textureGrad(PU_SAMPLER_2D(tex), uv + vec2(0.0, -r.y), dudx, dudy).r;
+  sum += w2 * textureGrad(PU_SAMPLER_2D(tex), uv + vec2(0.0, r.y), dudx, dudy).r;
+  sum += w2 * textureGrad(PU_SAMPLER_2D(tex), uv + vec2(-r.x, 0.0), dudx, dudy).r;
+  sum += w2 * textureGrad(PU_SAMPLER_2D(tex), uv + vec2(r.x, 0.0), dudx, dudy).r;
+  sum += w1 * textureGrad(PU_SAMPLER_2D(tex), uv + vec2(-r.x, -r.y), dudx, dudy).r;
+  sum += w1 * textureGrad(PU_SAMPLER_2D(tex), uv + vec2(r.x, -r.y), dudx, dudy).r;
+  sum += w1 * textureGrad(PU_SAMPLER_2D(tex), uv + vec2(-r.x, r.y), dudx, dudy).r;
+  sum += w1 * textureGrad(PU_SAMPLER_2D(tex), uv + vec2(r.x, r.y), dudx, dudy).r;
   return sum / norm;
 }
 
@@ -114,6 +133,7 @@ void main() {
   float u_angle = u_LM4.z;
   float u_shape = u_LM4.w;
   float u_isImage = u_LM5.x;
+  float u_poissonMode = u_LM5.y;
 
   vec2 uv0 = v_Uv;
   vec2 dudx = dFdx(v_Uv);
@@ -146,11 +166,17 @@ void main() {
   bool imageMode = u_isImage > 0.5;
 
   if (imageMode) {
-    float edgeRaw = length(vec2(dFdx(img0.a), dFdy(img0.a)))
-      * min(u_LM0.x, u_LM0.y) * 1.2;
-    edgeRaw = min(edgeRaw, 1.0);
-    edge = blurEdge3x3Lm(u_Texture, uv0, dudx, dudy, 6.0, edgeRaw);
-    edge = pow(max(edge, 0.0), 1.6);
+    if (u_poissonMode > 0.5) {
+      float edgeRaw = img0.r;
+      edge = blurEdge3x3LmR(PP_SAMPLER_2D(u_Texture), uv0, dudx, dudy, 6.0, edgeRaw);
+      edge = pow(edge, 1.6);
+    } else {
+      float edgeRaw = length(vec2(dFdx(img0.a), dFdy(img0.a)))
+        * min(u_LM0.x, u_LM0.y) * 1.2;
+      edgeRaw = min(edgeRaw, 1.0);
+      edge = blurEdge3x3Lm(PP_SAMPLER_2D(u_Texture), uv0, dudx, dudy, 6.0, edgeRaw);
+      edge = pow(max(edge, 0.0), 1.6);
+    }
     edge *= mix(0.0, 1.0, smoothstep(0.0, 0.4, u_contour));
     uv = uv0;
   } else {
@@ -224,7 +250,11 @@ void main() {
 
   float opacity = 0.0;
   if (imageMode) {
-    opacity = img0.a;
+    if (u_poissonMode > 0.5) {
+      opacity = img0.g;
+    } else {
+      opacity = img0.a;
+    }
     float frame = getImgFrameLm(v_Uv, 0.0);
     opacity *= frame;
   } else {

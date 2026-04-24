@@ -92,7 +92,15 @@ export {
   LIQUID_GLASS_DEFAULTS,
   liquidGlassUniformValues,
   LIQUID_METAL_DEFAULTS,
+  LIQUID_METAL_POISSON_DEFAULTS,
   liquidMetalUniformValues,
+  imageDataToLiquidMetalPoissonMap,
+  isLiquidMetalReadbackSyncSupported,
+  HEATMAP_DEFAULTS,
+  heatmapUniformValues,
+  imageDataToHeatmapProcessed,
+  GEM_SMOKE_DEFAULTS,
+  gemSmokeUniformValues,
   TSUNAMI_DEFAULTS,
   tsunamiUniformValues,
   BURN_DEFAULTS,
@@ -118,6 +126,8 @@ export {
   type GlitchEffect,
   type LiquidGlassEffect,
   type LiquidMetalEffect,
+  type HeatmapEffect,
+  type GemSmokeEffect,
 } from './utils';
 export * from './utils/design-variables';
 export * from './utils/entity-design-bindings';
