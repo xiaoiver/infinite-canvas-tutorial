@@ -319,6 +319,7 @@ export class InputSolid extends LitElement {
       const resolved = resolveDesignVariableValue(
         ext as number | string,
         this.appState?.variables,
+        this.appState?.themeMode,
       );
       const n =
         typeof resolved === 'number'

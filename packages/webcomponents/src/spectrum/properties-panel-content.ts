@@ -316,6 +316,7 @@ export class PropertiesPanelContent extends LitElement {
     const resolved = resolveDesignVariableValue(
       raw,
       this.appState.variables,
+      this.appState.themeMode,
     );
     const n =
       typeof resolved === 'number'
@@ -354,6 +355,7 @@ export class PropertiesPanelContent extends LitElement {
     const resolved = resolveDesignVariableValue(
       raw,
       this.appState.variables,
+      this.appState.themeMode,
     );
     const n =
       typeof resolved === 'number'
@@ -1460,6 +1462,7 @@ export class PropertiesPanelContent extends LitElement {
     const fillOpacityResolved = resolveDesignVariableValue(
       fillOpRaw,
       this.appState.variables,
+      this.appState.themeMode,
     );
     const fillOpacityShow = (() => {
       if (typeof fillOpacityResolved === 'number') {
@@ -1479,6 +1482,7 @@ export class PropertiesPanelContent extends LitElement {
       const crResolved = resolveDesignVariableValue(
         cornerRadiusRaw,
         this.appState.variables,
+        this.appState.themeMode,
       );
       cornerRadiusShow = (() => {
         if (typeof crResolved === 'number') {

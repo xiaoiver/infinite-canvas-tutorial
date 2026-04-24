@@ -1,10 +1,14 @@
 import { RectSerializedNode } from '../../packages/ecs/src';
+import { ThemeMode } from '../../packages/ecs/src/components/Theme';
 import {
   isDesignVariableReference,
   resolveDesignVariableValue,
   resolveSerializedNodesDesignVariables,
   prepareSerializedNodesForSvgExport,
   buildDesignVariablesCssRootBlock,
+  buildDesignVariableThemeContext,
+  getDesignVariableLightDarkValues,
+  setDesignVariableLightDarkColumn,
 } from '../../packages/ecs/src/utils/design-variables';
 
 describe('design variables', () => {
@@ -73,5 +77,58 @@ describe('design variables', () => {
         'text.size': { type: 'number', value: 16 },
       }),
     ).toContain('--text-size:16px');
+  });
+
+  it('resolves themed variable entries (Pencil style)', () => {
+    const variables = {
+      '--primary': {
+        type: 'color' as const,
+        value: [
+          { value: '#AAAAAA' },
+          { value: '#FF8400', theme: { Mode: 'Dark' } },
+        ],
+      },
+    };
+    expect(
+      resolveDesignVariableValue(
+        '$--primary',
+        variables,
+        ThemeMode.LIGHT,
+      ),
+    ).toBe('#AAAAAA');
+    expect(
+      resolveDesignVariableValue(
+        '$--primary',
+        variables,
+        ThemeMode.DARK,
+      ),
+    ).toBe('#FF8400');
+  });
+
+  it('buildDesignVariableThemeContext exposes mode and Mode', () => {
+    const c = buildDesignVariableThemeContext(ThemeMode.DARK);
+    expect(c.mode).toBe('dark');
+    expect(c.Mode).toBe('Dark');
+  });
+
+  it('setDesignVariableLightDarkColumn keeps peer column and normalizes to Light/Dark', () => {
+    const def: {
+      type: 'color';
+      value: { value: string; theme?: { Mode: string } }[];
+    } = {
+      type: 'color',
+      value: [
+        { value: '#000000', theme: { Mode: 'Light' } },
+        { value: '#111111', theme: { Mode: 'Dark' } },
+      ],
+    };
+    const next = setDesignVariableLightDarkColumn(
+      def,
+      ThemeMode.LIGHT,
+      '#ffffff',
+    );
+    const pair = getDesignVariableLightDarkValues(next);
+    expect(pair.light).toBe('#ffffff');
+    expect(pair.dark).toBe('#111111');
   });
 });

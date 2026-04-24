@@ -16,6 +16,7 @@ export class StrokeIcon extends LitElement {
     const resolved = resolveDesignVariableValue(
       this.value,
       this.appState?.variables,
+      this.appState?.themeMode,
     );
     const display =
       typeof resolved === 'string' ? resolved : String(resolved ?? 'none');

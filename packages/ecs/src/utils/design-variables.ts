@@ -4,16 +4,248 @@
  */
 
 import type { SerializedNode } from '../types/serialized-node';
+import { ThemeMode } from '../components/Theme';
 
 export type DesignVariableType = 'color' | 'number' | 'string';
 
+/** 单条条件取值，如 `{ "value": "#fff", "theme": { "Mode": "Dark" } }`；键名大小写不敏感。 */
+export type DesignVariableThemeAxis = Record<string, string>;
+
+export interface DesignVariableThemedEntry {
+  value: string | number;
+  /** 如 `{ Mode: "Dark" }`；全满足 `context` 时视为匹配。无或空对象表示默认/回退。 */
+  theme?: DesignVariableThemeAxis;
+}
+
+export type DesignVariableValue = string | number | DesignVariableThemedEntry[];
+
 export interface DesignVariable {
   type: DesignVariableType;
-  value: string | number;
+  value: DesignVariableValue;
 }
 
 /** 变量名 → 定义；键为不含 `$` 前缀的名称，如 `color.background` */
 export type DesignVariablesMap = Record<string, DesignVariable>;
+
+/**
+ * 由当前亮/暗模式构建主题上下文，与 Pencil（`Mode`/`mode` 等）多种写法兼容。
+ */
+export function buildDesignVariableThemeContext(
+  mode: ThemeMode,
+): DesignVariableThemeAxis {
+  const dark = mode === ThemeMode.DARK;
+  return {
+    mode: dark ? 'dark' : 'light',
+    Mode: dark ? 'Dark' : 'Light',
+  };
+}
+
+function stringEqualsCi(a: string, b: string): boolean {
+  return a.trim().toLowerCase() === b.trim().toLowerCase();
+}
+
+function getContextValueForKey(
+  context: DesignVariableThemeAxis,
+  key: string,
+): string | undefined {
+  for (const [k, v] of Object.entries(context)) {
+    if (stringEqualsCi(k, key)) {
+      return v;
+    }
+  }
+  return undefined;
+}
+
+/**
+ * 判断 `entryTheme` 是否被 `context` 完全满足（轴名、取值均支持大小写不敏感）。
+ */
+export function designVariableThemeMatches(
+  entryTheme: DesignVariableThemeAxis | undefined,
+  context: DesignVariableThemeAxis,
+): boolean {
+  if (!entryTheme || Object.keys(entryTheme).length === 0) {
+    return true;
+  }
+  for (const [k, expected] of Object.entries(entryTheme)) {
+    const found = getContextValueForKey(context, k);
+    if (found === undefined || !stringEqualsCi(found, String(expected))) {
+      return false;
+    }
+  }
+  return true;
+}
+
+/**
+ * 从 Pencil 式 `value[]` 中按当前 `themeMode` 选出标量；无主题时优先无 `theme` 的项。
+ */
+export function pickThemedValueFromVariableEntries(
+  entries: DesignVariableThemedEntry[],
+  themeMode?: ThemeMode,
+): string | number {
+  if (entries.length === 0) {
+    return '';
+  }
+  if (themeMode == null) {
+    const d = entries.find(
+      (e) => !e.theme || Object.keys(e.theme).length === 0,
+    );
+    return (d ?? entries[0]).value;
+  }
+  const context = buildDesignVariableThemeContext(themeMode);
+  const matches: { i: number; n: number; e: DesignVariableThemedEntry }[] = [];
+  for (let i = 0; i < entries.length; i++) {
+    const e = entries[i];
+    if (e.theme && Object.keys(e.theme).length > 0) {
+      if (designVariableThemeMatches(e.theme, context)) {
+        matches.push({ i, n: Object.keys(e.theme).length, e });
+      }
+    }
+  }
+  if (matches.length > 0) {
+    const maxN = Math.max(...matches.map((m) => m.n));
+    const top = matches.filter((m) => m.n === maxN);
+    top.sort((a, b) => a.i - b.i);
+    return top[top.length - 1].e.value;
+  }
+  const d = entries.find(
+    (e) => !e.theme || Object.keys(e.theme).length === 0,
+  );
+  return (d ?? entries[0]).value;
+}
+
+/**
+ * 为当前 `themeMode` 从变量定义中解析出实际标量值。
+ */
+export function resolveDesignVariableDefinitionScalar(
+  def: DesignVariable,
+  themeMode?: ThemeMode,
+): string | number {
+  if (!Array.isArray(def.value)) {
+    return def.value;
+  }
+  return pickThemedValueFromVariableEntries(def.value, themeMode);
+}
+
+/**
+ * 在「带多主题 `value` 数组」时，对应当前模式、会被写入/展示的那条下标。
+ */
+export function findThemedValueEntryIndexForMode(
+  entries: DesignVariableThemedEntry[],
+  themeMode: ThemeMode,
+): number {
+  if (entries.length === 0) {
+    return 0;
+  }
+  const context = buildDesignVariableThemeContext(themeMode);
+  const matches: { i: number; n: number }[] = [];
+  for (let i = 0; i < entries.length; i++) {
+    const e = entries[i];
+    if (e.theme && Object.keys(e.theme).length > 0) {
+      if (designVariableThemeMatches(e.theme, context)) {
+        matches.push({ i, n: Object.keys(e.theme).length });
+      }
+    }
+  }
+  if (matches.length > 0) {
+    const maxN = Math.max(...matches.map((m) => m.n));
+    const top = matches.filter((m) => m.n === maxN);
+    top.sort((a, b) => a.i - b.i);
+    return top[top.length - 1].i;
+  }
+  const d = entries.findIndex(
+    (e) => !e.theme || Object.keys(e.theme).length === 0,
+  );
+  return d >= 0 ? d : 0;
+}
+
+/**
+ * 在保留其它主题条目的前提下，只更新与当前 `themeMode` 对应（或默认）的那一条。
+ */
+export function updateDesignVariableValueForMode(
+  def: DesignVariable,
+  themeMode: ThemeMode,
+  newValue: string | number,
+): DesignVariable {
+  if (!Array.isArray(def.value)) {
+    return { ...def, value: newValue };
+  }
+  const arr: DesignVariableThemedEntry[] = def.value.map((e) => ({ ...e }));
+  if (arr.length === 0) {
+    return { ...def, value: newValue };
+  }
+  const idx = findThemedValueEntryIndexForMode(arr, themeMode);
+  arr[idx] = { ...arr[idx], value: newValue };
+  return { ...def, value: arr };
+}
+
+function coerceValueForType(
+  type: DesignVariableType,
+  raw: string | number,
+): string | number {
+  if (type === 'color') {
+    return typeof raw === 'string' ? raw : String(raw);
+  }
+  if (type === 'number') {
+    if (typeof raw === 'number' && Number.isFinite(raw)) {
+      return raw;
+    }
+    const n = parseFloat(String(raw));
+    return Number.isFinite(n) ? n : 0;
+  }
+  return String(raw);
+}
+
+/**
+ * 切换 `type` 时：标量直转；`value[]` 为每条子值分别转型并保留 `theme`。
+ */
+export function coerceDesignVariableType(
+  def: DesignVariable,
+  newType: DesignVariableType,
+): DesignVariable {
+  if (!Array.isArray(def.value)) {
+    return {
+      type: newType,
+      value: coerceValueForType(newType, def.value),
+    };
+  }
+  return {
+    type: newType,
+    value: def.value.map((e) => ({
+      ...e,
+      value: coerceValueForType(newType, e.value),
+    })),
+  };
+}
+
+/**
+ * 同时取 Light / Dark 下解析结果（Pencil 式双列编辑）。
+ */
+export function getDesignVariableLightDarkValues(
+  def: DesignVariable,
+): { light: string | number; dark: string | number } {
+  return {
+    light: resolveDesignVariableDefinitionScalar(def, ThemeMode.LIGHT),
+    dark: resolveDesignVariableDefinitionScalar(def, ThemeMode.DARK),
+  };
+}
+
+/**
+ * 更新 Light 或 Dark 其中一列，并规范为两条 `theme: { Mode }`；未改列保持当前解析值。
+ */
+export function setDesignVariableLightDarkColumn(
+  def: DesignVariable,
+  mode: ThemeMode,
+  newValue: string | number,
+): DesignVariable {
+  const { light, dark } = getDesignVariableLightDarkValues(def);
+  return {
+    ...def,
+    value: [
+      { value: mode === ThemeMode.LIGHT ? newValue : light, theme: { Mode: 'Light' } },
+      { value: mode === ThemeMode.DARK ? newValue : dark, theme: { Mode: 'Dark' } },
+    ],
+  };
+}
 
 export const SERIALIZED_NODE_VARIABLE_KEYS = [
   'fill',
@@ -119,14 +351,15 @@ function mapSerializedNodeToCssVarPlaceholders(
   return (changed ? next : node) as SerializedNode;
 }
 
-/** 将文档变量表写成一段可放入 SVG `<style>` 的 `:root{...}` */
+/** 将文档变量表写成一段可放入 SVG `<style>` 的 `:root{...}`；多主题时按 `themeMode` 解析为当前一种取值。 */
 export function buildDesignVariablesCssRootBlock(
   variables: DesignVariablesMap,
+  themeMode?: ThemeMode,
 ): string {
   const parts: string[] = [];
   for (const [k, def] of Object.entries(variables)) {
     const name = designTokenKeyToCssCustomProperty(k);
-    const v = def.value;
+    const v = resolveDesignVariableDefinitionScalar(def, themeMode);
     const css =
       def.type === 'number' ? `${v}px` : typeof v === 'string' ? v : String(v);
     parts.push(`${name}:${css}`);
@@ -141,13 +374,14 @@ export function prepareSerializedNodesForSvgExport(
   nodes: SerializedNode[],
   variables: DesignVariablesMap | undefined,
   mode: DesignVariablesSvgExportMode,
+  themeMode?: ThemeMode,
 ): { nodes: SerializedNode[]; cssRootStyle?: string } {
   if (mode === 'preserve-token') {
     return { nodes };
   }
   if (mode === 'resolved') {
     return {
-      nodes: resolveSerializedNodesDesignVariables(nodes, variables),
+      nodes: resolveSerializedNodesDesignVariables(nodes, variables, themeMode),
     };
   }
   if (!variables || Object.keys(variables).length === 0) {
@@ -155,7 +389,7 @@ export function prepareSerializedNodesForSvgExport(
   }
   return {
     nodes: nodes.map((n) => mapSerializedNodeToCssVarPlaceholders(n)),
-    cssRootStyle: buildDesignVariablesCssRootBlock(variables),
+    cssRootStyle: buildDesignVariablesCssRootBlock(variables, themeMode),
   };
 }
 
@@ -165,6 +399,7 @@ export function prepareSerializedNodesForSvgExport(
 export function resolveDesignVariableValue<T>(
   value: T,
   variables: DesignVariablesMap | undefined,
+  themeMode?: ThemeMode,
 ): T {
   if (variables == null || !isDesignVariableReference(value)) {
     return value;
@@ -174,7 +409,7 @@ export function resolveDesignVariableValue<T>(
   if (!def) {
     return value;
   }
-  return def.value as T;
+  return resolveDesignVariableDefinitionScalar(def, themeMode) as T;
 }
 
 /**
@@ -183,6 +418,7 @@ export function resolveDesignVariableValue<T>(
 export function resolveSerializedNodesDesignVariables(
   nodes: SerializedNode[],
   variables: DesignVariablesMap | undefined,
+  themeMode?: ThemeMode,
 ): SerializedNode[] {
   if (!variables || Object.keys(variables).length === 0) {
     return nodes;
@@ -199,6 +435,7 @@ export function resolveSerializedNodesDesignVariables(
       const resolved = resolveDesignVariableValue(
         raw as string | number,
         variables,
+        themeMode,
       );
       if (resolved !== raw) {
         next[key] = resolved;

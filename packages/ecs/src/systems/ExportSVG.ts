@@ -185,6 +185,7 @@ export async function toSVGElement(
     nodes,
     api.getAppState().variables,
     designVariablesExport,
+    api.getAppState().themeMode,
   );
   const layoutNodes = api.readLayoutFromECS(prep.nodes);
 

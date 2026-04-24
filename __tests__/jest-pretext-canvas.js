@@ -3,6 +3,12 @@
  * In Node neither exists; provide OffscreenCanvas backed by node-canvas.
  * measureText matches __tests__/utils.ts (getCanvas) so text metrics tests stay stable.
  */
+const { webcrypto } = require('node:crypto');
+// uuid (v9+) and other ESM shims expect global Web Crypto; ensure before any test imports.
+if (typeof globalThis.crypto === 'undefined') {
+  globalThis.crypto = webcrypto;
+}
+
 const { createCanvas } = require('canvas');
 
 function patchMeasureText(ctx) {

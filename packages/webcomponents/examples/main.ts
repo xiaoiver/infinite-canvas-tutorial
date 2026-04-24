@@ -237,7 +237,7 @@ canvas.addEventListener(Event.READY, async (e) => {
     },
   });
   api.updateNodes([
-    image,
+    // image,
     button,
     text,
   ]);

@@ -27,7 +27,11 @@ export class FillIcon extends LitElement {
 
   render() {
     const variables = this.appState?.variables;
-    const resolved = resolveDesignVariableValue(this.value, variables);
+    const resolved = resolveDesignVariableValue(
+      this.value,
+      variables,
+      this.appState?.themeMode,
+    );
     const displayValue =
       typeof resolved === 'string' ? resolved : String(resolved);
 

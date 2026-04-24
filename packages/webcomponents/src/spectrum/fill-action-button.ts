@@ -196,6 +196,7 @@ export class FillActionButton extends LitElement {
     const resolved = resolveDesignVariableValue(
       fill,
       this.appState.variables,
+      this.appState.themeMode,
     );
     const next =
       typeof resolved === 'string'
@@ -228,7 +229,11 @@ export class FillActionButton extends LitElement {
       return;
     }
     const raw = (this.node as TextSerializedNode).fillOpacity;
-    const resolved = resolveDesignVariableValue(raw, this.appState.variables);
+    const resolved = resolveDesignVariableValue(
+      raw,
+      this.appState.variables,
+      this.appState.themeMode,
+    );
     const n =
       typeof resolved === 'number'
         ? resolved
@@ -248,7 +253,11 @@ export class FillActionButton extends LitElement {
 
     const { fill, fillOpacity = 1 } = this.node as TextSerializedNode;
     const fillResolved = String(
-      resolveDesignVariableValue(fill, this.appState.variables),
+      resolveDesignVariableValue(
+        fill,
+        this.appState.variables,
+        this.appState.themeMode,
+      ),
     );
     const bound = isDesignVariableReference(fill);
     const tab = this.fillPanelTab;
