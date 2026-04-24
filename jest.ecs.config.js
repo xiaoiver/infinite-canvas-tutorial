@@ -9,6 +9,7 @@ const esm = [
   'fractional-indexing',
   'point-to-segment-2d',
   '@chenglou/pretext',
+  'uuid',
 ]
   .map((d) => `_${d}|${d}`)
   .join('|');

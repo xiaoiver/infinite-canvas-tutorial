@@ -5,6 +5,7 @@ const esm = [
   '@mapbox',
   'roughjs',
   '@chenglou/pretext',
+  'uuid',
 ]
   .map((d) => `_${d}|${d}`)
   .join('|');
