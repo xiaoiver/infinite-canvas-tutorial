@@ -328,7 +328,7 @@ export class ContextMenu extends LitElement {
     const allNodes = nodes.flatMap((node) => {
       return [node, ...this.api.getChildrenRecursively(node)];
     });
-    this.api.export(format, true, allNodes);
+    this.api.export({ format, nodes: allNodes });
   };
 
   private contextMenuTemplate() {

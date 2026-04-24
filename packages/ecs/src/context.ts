@@ -45,6 +45,8 @@ export interface PropertiesPanelSectionsOpen {
   multiSelectAlignment: boolean;
   /** 多选时「效果」手风琴 */
   multiSelectEffects: boolean;
+  /** 属性面板「Export」手风琴 */
+  exportSection: boolean;
 }
 
 /**
@@ -402,6 +404,7 @@ export const getDefaultAppState: () => AppState = () => {
       effects: true,
       multiSelectAlignment: true,
       multiSelectEffects: true,
+      exportSection: true,
     },
     layersExpanded: [],
     rotateEnabled: true,

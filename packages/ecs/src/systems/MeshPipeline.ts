@@ -327,12 +327,14 @@ export class MeshPipeline extends System {
     const request = canvas.has(RasterScreenshotRequest)
       ? canvas.read(RasterScreenshotRequest)
       : null;
-    const { type, encoderOptions, grid, download, nodes } = request ?? {
-      type: 'image/png',
-      encoderOptions: 1,
-      grid: false,
-      nodes: [],
-    };
+    const { type, encoderOptions, grid, download, nodes, scale: rasterScale = 1 } =
+      request ?? {
+        type: 'image/png',
+        encoderOptions: 1,
+        grid: false,
+        nodes: [],
+        scale: 1,
+      };
     const shouldRenderGrid = !request || grid;
     const shouldRenderPartially = nodes.length > 0;
 
@@ -354,10 +356,17 @@ export class MeshPipeline extends System {
         exportLogicalWidth > 0 &&
         exportLogicalHeight > 0
       ) {
-        // Export at 1:1 (1 pixel per logical unit), do not scale by devicePixelRatio
-        // to avoid 2x size on HiDPI displays.
-        const exportPixelWidth = Math.ceil(exportLogicalWidth);
-        const exportPixelHeight = Math.ceil(exportLogicalHeight);
+        const s = Math.max(
+          0.25,
+          Math.min(8, Number.isFinite(rasterScale) ? rasterScale : 1),
+        );
+        // 与主画布一致：投影用「逻辑」选区宽高，离屏 buffer 为 逻辑×s 像素，使 1 个世界单位在图像上占 s 个像素。
+        // 若投影也乘 s，则正交范围变成 0..(逻辑×s)，而节点仍在 0..逻辑 内，内容只会占图像的 1/s 区域。
+        const exportPixelWidth = Math.max(1, Math.ceil(exportLogicalWidth * s));
+        const exportPixelHeight = Math.max(
+          1,
+          Math.ceil(exportLogicalHeight * s),
+        );
         this.setupDevice.resizeOffscreen(exportPixelWidth, exportPixelHeight);
 
         const viewMatrixGL = mat3.create();

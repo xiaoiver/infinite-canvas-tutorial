@@ -27,6 +27,8 @@ import {
   Embed,
   FillGradient,
   FillSolid,
+  measureText,
+  type SerializedNode,
 } from '@infinite-canvas-tutorial/ecs';
 import { YogaLayoutApplied } from './YogaLayoutApplied';
 // @ts-expect-error - import.meta is only available in ES modules, but this code will run in ES module environments
@@ -56,6 +58,38 @@ interface StyleTreeNode {
 /** Yoga 算出的布局结果：节点 id -> 位置与尺寸 */
 interface LayoutResults {
   [nodeId: string]: { x: number; y: number; width: number; height: number };
+}
+
+/** 节点该轴是否在数据/几何上显式指定了正尺寸（与「由子级撑开」相对） */
+function hasExplicitSizeOnAxis(
+  node: SerializedNode | undefined,
+  entity: Entity,
+  axis: 'width' | 'height',
+): boolean {
+  const v = node?.[axis];
+  if (typeof v === 'number' && v > 0) return true;
+  if (entity.has(Rect)) {
+    const r = entity.read(Rect);
+    const rv = r[axis];
+    if (typeof rv === 'number' && rv > 0) return true;
+  }
+  return false;
+}
+
+/** 是否在该轴上让 Yoga 用子项算根盒并回写；由 flexHug* 与显式尺寸共同决定 */
+function shouldHugAxis(
+  node: SerializedNode | undefined,
+  entity: Entity,
+  axis: 'width' | 'height',
+): boolean {
+  if (!node) {
+    return !hasExplicitSizeOnAxis(undefined, entity, axis);
+  }
+  const key = axis === 'width' ? 'flexHugWidth' : 'flexHugHeight';
+  const flag = (node as unknown as Record<string, boolean | undefined>)[key];
+  if (flag === true) return true;
+  if (flag === false) return false;
+  return !hasExplicitSizeOnAxis(node, entity, axis);
 }
 
 export class YogaSystem extends System {
@@ -125,10 +159,14 @@ export class YogaSystem extends System {
       }
       const camera = getSceneRoot(entity);
       const { api } = camera.read(Camera).canvas.read(Canvas);
-      const subtreeRoot = this.buildSubtreeForFlex(api, entity);
-      if (subtreeRoot) {
+      const built = this.buildSubtreeForFlex(api, entity);
+      if (built) {
+        const { subtreeRoot, hugWidth, hugHeight } = built;
         process(Yoga, subtreeRoot, (results) => {
-          this.updateCameraLayout(camera.__id, results, subtreeRoot.id);
+          this.updateCameraLayout(camera.__id, results, subtreeRoot.id, {
+            width: hugWidth,
+            height: hugHeight,
+          });
         });
       }
     });
@@ -168,10 +206,14 @@ export class YogaSystem extends System {
         const camera = getSceneRoot(entity);
         cameras.add(camera);
         const { api } = camera.read(Camera).canvas.read(Canvas);
-        const subtreeRoot = this.buildSubtreeForFlex(api, entity);
-        if (subtreeRoot) {
+        const built = this.buildSubtreeForFlex(api, entity);
+        if (built) {
+          const { subtreeRoot, hugWidth, hugHeight } = built;
           process(Yoga, subtreeRoot, (results) => {
-            this.updateCameraLayout(camera.__id, results, subtreeRoot.id);
+            this.updateCameraLayout(camera.__id, results, subtreeRoot.id, {
+              width: hugWidth,
+              height: hugHeight,
+            });
           });
         }
       }
@@ -188,18 +230,24 @@ export class YogaSystem extends System {
 
   /**
    * 以当前 Flex 节点为根，构建包含其所有子节点的 style 子树，并设好根节点的宽高供 Yoga 计算。
-   * 用于在 bounds 变化时只对该子树跑 layout 并只更新这些节点。
+   * 某轴未在节点/Rect 上显式指定正尺寸时视为「hug」：不从 OBB 写死该轴，由 Yoga 依子项算根盒，见 updateCameraLayout 写回。
    */
-  private buildSubtreeForFlex(api: API, flexEntity: Entity): StyleTreeNode | null {
+  private buildSubtreeForFlex(
+    api: API,
+    flexEntity: Entity,
+  ): { subtreeRoot: StyleTreeNode; hugWidth: boolean; hugHeight: boolean } | null {
     const parentTree: StyleTreeNode = { id: '_', children: [] };
-    constructStyleTree(api, flexEntity, parentTree);
+    constructStyleTree(api, flexEntity, parentTree, false);
     if (parentTree.children.length === 0) return null;
     const subtreeRoot = parentTree.children[0];
+    const node = api.getNodeByEntity(flexEntity);
+    const hugWidth = shouldHugAxis(node, flexEntity, 'width');
+    const hugHeight = shouldHugAxis(node, flexEntity, 'height');
+
     const obb = flexEntity.read(ComputedBounds).transformOBB;
     let w = Math.abs(obb.width * obb.scaleX);
     let h = Math.abs(obb.height * obb.scaleY);
     if (w <= 0 || h <= 0) {
-      const node = api.getNodeByEntity(flexEntity);
       if (node) {
         const nw = node.width;
         const nh = node.height;
@@ -212,9 +260,17 @@ export class YogaSystem extends System {
         if (h <= 0 && typeof r.height === 'number' && r.height > 0) h = r.height;
       }
     }
-    subtreeRoot.width = w;
-    subtreeRoot.height = h;
-    return subtreeRoot;
+    if (hugWidth) {
+      delete subtreeRoot.width;
+    } else {
+      subtreeRoot.width = w;
+    }
+    if (hugHeight) {
+      delete subtreeRoot.height;
+    } else {
+      subtreeRoot.height = h;
+    }
+    return { subtreeRoot, hugWidth, hugHeight };
   }
 
   /**
@@ -254,22 +310,62 @@ export class YogaSystem extends System {
     // }
   }
 
-  private updateCameraLayout(cameraId: number, results: LayoutResults, skipRootId?: string): void {
+  private updateCameraLayout(
+    cameraId: number,
+    results: LayoutResults,
+    skipRootId?: string,
+    applyIntrinsicRootSize?: { width: boolean; height: boolean },
+  ): void {
     this.cameraEntities.current.forEach((camera) => {
       if (camera.__id === cameraId) {
         const { api } = camera.read(Camera).canvas.read(Canvas);
         Object.keys(results).forEach((key) => {
-          if (skipRootId != null && key === skipRootId) return;
+          if (skipRootId != null && key === skipRootId) {
+            const apply =
+              applyIntrinsicRootSize &&
+              (applyIntrinsicRootSize.width || applyIntrinsicRootSize.height);
+            if (apply) {
+              const node = api.getNodeById(key);
+              if (node) {
+                const box = results[key];
+                const diff: Partial<SerializedNode> = {};
+                if (applyIntrinsicRootSize!.width) {
+                  diff.width = box.width;
+                  (diff as { flexHugWidth?: boolean }).flexHugWidth = true;
+                }
+                if (applyIntrinsicRootSize!.height) {
+                  diff.height = box.height;
+                  (diff as { flexHugHeight?: boolean }).flexHugHeight = true;
+                }
+                if (Object.keys(diff).length > 0) {
+                  api.updateNode(node, diff, false, []);
+                  const ent = api.getEntity(node);
+                  if (ent && !ent.has(YogaLayoutApplied)) ent.add(YogaLayoutApplied);
+                }
+              }
+            }
+            return;
+          }
           const node = api.getNodeById(key);
           if (node) {
             const { x, y, width, height } = results[key];
-            api.updateNode(node, { x, y, width, height }, false, [
+            const entity = api.getEntity(node);
+            const diff: Partial<SerializedNode> = { x, y, width, height };
+            if (entity && (node as { display?: string }).display === 'flex') {
+              const flexFlags = node as { flexHugWidth?: boolean; flexHugHeight?: boolean };
+              if (flexFlags.flexHugWidth == null && !hasExplicitSizeOnAxis(node, entity, 'width')) {
+                (diff as { flexHugWidth?: boolean }).flexHugWidth = true;
+              }
+              if (flexFlags.flexHugHeight == null && !hasExplicitSizeOnAxis(node, entity, 'height')) {
+                (diff as { flexHugHeight?: boolean }).flexHugHeight = true;
+              }
+            }
+            api.updateNode(node, diff, false, [
               'x',
               'y',
               'width',
               'height',
             ]);
-            const entity = api.getEntity(node);
             if (entity && !entity.has(YogaLayoutApplied)) entity.add(YogaLayoutApplied);
           }
         });
@@ -281,7 +377,7 @@ export class YogaSystem extends System {
 /** 只将 Flex 容器及其子树加入 style tree，非 Flex 节点不参与 Yoga 布局 */
 function addFlexSubtrees(api: API, entity: Entity, tree: StyleTreeNode): void {
   if (entity.has(Flex)) {
-    constructStyleTree(api, entity, tree);
+    constructStyleTree(api, entity, tree, false);
     return;
   }
   if (entity.has(Parent)) {
@@ -291,8 +387,19 @@ function addFlexSubtrees(api: API, entity: Entity, tree: StyleTreeNode): void {
   }
 }
 
-export function constructStyleTree(api: API, entity: Entity, tree: StyleTreeNode): void {
+/**
+ * @param isFlexItem 当前节点是否为其父 flex 容器的直接子项；为 true 时，流式子项不传入 node 上的 left/top，避免旧坐标干扰 Yoga，由一次 calculateLayout 后写回。
+ */
+export function constructStyleTree(
+  api: API,
+  entity: Entity,
+  tree: StyleTreeNode,
+  isFlexItem = false,
+): void {
   const node = api.getNodeByEntity(entity);
+  if (!node) {
+    return;
+  }
   const treeNode: StyleTreeNode = {
     ...node,
     top: node.y,
@@ -308,10 +415,27 @@ export function constructStyleTree(api: API, entity: Entity, tree: StyleTreeNode
     delete treeNode.height;
   }
 
+  const isAbsolute =
+    (node as { position?: string }).position === 'absolute';
+  if (isFlexItem && !isAbsolute) {
+    delete treeNode.left;
+    delete treeNode.top;
+  }
+
+  if ((node as SerializedNode).type === 'text' && (treeNode.width == null || treeNode.height == null)) {
+    const m = measureText(node as Parameters<typeof measureText>[0]);
+    if (treeNode.width == null && typeof m.width === 'number' && m.width > 0) {
+      treeNode.width = m.width;
+    }
+    if (treeNode.height == null && typeof m.height === 'number' && m.height > 0) {
+      treeNode.height = m.height;
+    }
+  }
+
   // 只有 display: flex 的容器才参与子元素的 Yoga 布局
   if (entity.has(Flex) && entity.has(Parent)) {
     entity.read(Parent).children.forEach((child) => {
-      constructStyleTree(api, child, treeNode);
+      constructStyleTree(api, child, treeNode, true);
     });
   }
 }
@@ -511,7 +635,7 @@ function process(Yoga, styleTree: StyleTreeNode, callback: (results: LayoutResul
   populateNode(root, styleTree);
 
   // Perform the layout and collect the results as a flat id-to-computed-layout map
-  root.calculateLayout();
+  root.calculateLayout(undefined, undefined);
   const results = Object.create(null);
   walkStyleTree(styleTree, styleNode => {
     const { id, yogaNode } = styleNode;

@@ -118,10 +118,34 @@ const FLEX_ITEM_PARENT_RELAYOUT_KEYS: readonly string[] = [
   'maxWidth',
   'minHeight',
   'maxHeight',
+  'content',
+  'fontSize',
+  'lineHeight',
+  'fontFamily',
+  'fontWeight',
+  'fontStyle',
+  'letterSpacing',
+  'width',
+  'height',
 ];
 
-function updatesAffectFlexItemInParentTree(updates: object): boolean {
-  return FLEX_ITEM_PARENT_RELAYOUT_KEYS.some((k) => k in updates);
+/** @param skipOverrideKeys 与 {@link mutateElement} 一致：Yoga 等写回子项 x/y/width/height 时跳过写入序列化对象，但 diff 中仍带这些键；不应因此再标父级 FlexLayoutDirty，否则会与 Yoga 交替触发。 */
+function updatesAffectFlexItemInParentTree(
+  updates: object,
+  skipOverrideKeys: readonly string[] = [],
+): boolean {
+  return FLEX_ITEM_PARENT_RELAYOUT_KEYS.some(
+    (k) => k in updates && !skipOverrideKeys.includes(k),
+  );
+}
+
+/**
+ * YogaSystem 用 `q.added.with(FlexLayoutDirty)` 驱动；`safeAddComponent` 在组件已存在时
+ * 不会再次 `add`，已脏的节点上连续改 padding 等会无法二次触发。先移除再添加以保证每帧可侦测到 added。
+ */
+function markFlexLayoutDirty(entity: Entity) {
+  safeRemoveComponent(entity, FlexLayoutDirty);
+  safeAddComponent(entity, FlexLayoutDirty);
 }
 
 export function safeAddComponent<T>(
@@ -728,6 +752,8 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
     fontWeight,
     fontStyle,
     fontKerning,
+    letterSpacing,
+    lineHeight,
     textAlign,
     textBaseline,
     content,
@@ -1051,14 +1077,52 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
       entity.write(Text).wordWrapWidth = w;
     }
   }
+  if ('fontFamily' in updates) {
+    const raw = (updates as { fontFamily?: string }).fontFamily;
+    const resolved = resolveDesignVariableValue(raw, designVariables);
+    const s =
+      resolved != null && String(resolved).trim() !== ''
+        ? String(resolved)
+        : 'sans-serif';
+    entity.write(Text).fontFamily = s;
+  }
   if ('fontWeight' in updates) {
     entity.write(Text).fontWeight = fontWeight;
   }
   if ('fontStyle' in updates) {
     entity.write(Text).fontStyle = fontStyle;
   }
+  if ('fontVariant' in updates) {
+    const raw = (updates as { fontVariant?: string }).fontVariant;
+    const resolved = resolveDesignVariableValue(raw, designVariables);
+    if (resolved != null) {
+      entity.write(Text).fontVariant = String(resolved);
+    }
+  }
   if ('fontKerning' in updates) {
     entity.write(Text).fontKerning = fontKerning;
+  }
+  if ('letterSpacing' in updates) {
+    const raw = (updates as { letterSpacing?: number | string }).letterSpacing;
+    const resolved = resolveDesignVariableValue(raw, designVariables);
+    const n =
+      typeof resolved === 'number'
+        ? resolved
+        : parseFloat(String(resolved ?? ''));
+    if (Number.isFinite(n)) {
+      entity.write(Text).letterSpacing = n;
+    }
+  }
+  if ('lineHeight' in updates) {
+    const raw = (updates as { lineHeight?: number | string }).lineHeight;
+    const resolved = resolveDesignVariableValue(raw, designVariables);
+    const n =
+      typeof resolved === 'number'
+        ? resolved
+        : parseFloat(String(resolved ?? ''));
+    if (Number.isFinite(n) && n >= 0) {
+      entity.write(Text).lineHeight = n;
+    }
   }
   if ('textAlign' in updates) {
     entity.write(Text).textAlign = textAlign;
@@ -1069,7 +1133,6 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
   if ('content' in updates) {
     entity.write(Text).content = content;
   }
-  // TODO: Other text properties e.g. fontFamily
 
   if ('x' in updates) {
     if (x !== undefined && !isString(x)) {
@@ -1228,17 +1291,17 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
   }
 
   if (entity.has(Flex) && updatesAffectFlexLayout(updates)) {
-    safeAddComponent(entity, FlexLayoutDirty);
+    markFlexLayoutDirty(entity);
   }
 
-  if (updatesAffectFlexItemInParentTree(updates)) {
+  if (updatesAffectFlexItemInParentTree(updates, skipOverrideKeys)) {
     const pid = element.parentId;
     if (pid) {
       const parentNode = api.getNodeById(pid);
       if (parentNode && (parentNode as { display?: string }).display === 'flex') {
         const parentEntity = api.getEntity(parentNode);
         if (parentEntity?.has(Flex)) {
-          safeAddComponent(parentEntity, FlexLayoutDirty);
+          markFlexLayoutDirty(parentEntity);
         }
       }
     }

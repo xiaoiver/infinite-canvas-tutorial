@@ -337,7 +337,10 @@ export function ProjectDetailClient({
     const nodes = canvasApi
       .getAppState()
       .layersSelected.map((id) => canvasApi.getNodeById(id));
-    canvasApi.export(format, true, nodes);
+    canvasApi.export({
+      format,
+      nodes: nodes.filter((n): n is SerializedNode => n != null),
+    });
   };
 
   const handleEditOpenChange = () => {

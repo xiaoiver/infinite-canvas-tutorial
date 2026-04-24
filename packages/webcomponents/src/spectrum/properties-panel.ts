@@ -1,4 +1,4 @@
-import { html, css, LitElement } from 'lit';
+import { html, css, LitElement, nothing } from 'lit';
 import { consume } from '@lit/context';
 import { customElement, state } from 'lit/decorators.js';
 import { NodeAlignment, SerializedNode, Task, AppState } from '@infinite-canvas-tutorial/ecs';
@@ -18,6 +18,7 @@ import '@spectrum-web-components/icons-workflow/icons/sp-icon-distribute-space-v
 import '@spectrum-web-components/tooltip/sp-tooltip.js';
 import './document-theme-settings';
 import './effects-panel';
+import './export-panel';
 import '@spectrum-web-components/accordion/sp-accordion.js';
 import '@spectrum-web-components/accordion/sp-accordion-item.js';
 
@@ -70,14 +71,6 @@ export class PropertiesPanel extends LitElement {
       flex-direction: column;
     }
 
-    .document-settings-placeholder {
-      box-sizing: border-box;
-      overflow: hidden auto;
-      color: var(--spectrum-gray-800);
-      font-size: var(--spectrum-font-size-75);
-      line-height: 1.45;
-    }
-
     .multi-select-hint {
       margin: 0 0 var(--spectrum-global-dimension-size-100) 0;
       padding: 0 var(--spectrum-global-dimension-size-100);
@@ -108,11 +101,6 @@ export class PropertiesPanel extends LitElement {
 
     .multi-select-accordion .effects-hint {
       margin: 0 0 var(--spectrum-global-dimension-size-50) 0;
-    }
-
-    ic-spectrum-document-theme-settings {
-      display: block;
-      min-height: 0;
     }
 
     .resize-handle {
@@ -171,6 +159,27 @@ export class PropertiesPanel extends LitElement {
       alignment: s.multiSelectAlignment ?? true,
       effects: s.multiSelectEffects ?? true,
     };
+  }
+
+  private get exportSectionOpenResolved(): boolean {
+    const s = this.appState.propertiesPanelSectionsOpen as AppState['propertiesPanelSectionsOpen'] & {
+      exportSection?: boolean;
+    };
+    return s.exportSection ?? true;
+  }
+
+  private renderExportAccordionItem(accordionItemSlot?: string) {
+    return html`
+      <sp-accordion-item
+        label=${msg(str`Export`)}
+        ?open=${this.exportSectionOpenResolved}
+        slot=${accordionItemSlot ?? nothing}
+      >
+        <div class="content">
+          <ic-spectrum-export-panel></ic-spectrum-export-panel>
+        </div>
+      </sp-accordion-item>
+    `;
   }
 
   connectedCallback(): void {
@@ -270,10 +279,12 @@ export class PropertiesPanel extends LitElement {
   private renderDocumentSettingsPlaceholder() {
     return html`
       <div
-        class="panel-body document-settings-placeholder"
-        style=${`height:${this.panelBodyHeight}px`}
+        class="panel-body"
+        style=${`height:${this.panelBodyHeight}px; overflow: auto;`}
       >
-        <ic-spectrum-document-theme-settings></ic-spectrum-document-theme-settings>
+        <ic-spectrum-document-theme-settings>
+          ${this.renderExportAccordionItem('extra-accordion-items')}
+        </ic-spectrum-document-theme-settings>
       </div>
       ${this.renderResizeHandle()}
     `;
@@ -456,6 +467,7 @@ export class PropertiesPanel extends LitElement {
                   </sp-accordion-item>
                 `
           : null}
+            ${this.renderExportAccordionItem()}
           </sp-accordion>
         </div>
         ${this.renderResizeHandle()}
@@ -488,7 +500,7 @@ export class PropertiesPanel extends LitElement {
       </h4>
       <div
         class="panel-body"
-        style=${`height:${this.panelBodyHeight}px`}
+        style=${`height:${this.panelBodyHeight}px; overflow: auto;`}
       >
         <ic-spectrum-properties-panel-content
           class="fills-panel"

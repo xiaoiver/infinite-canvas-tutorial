@@ -64,6 +64,7 @@ import {
   ComputedTextMetrics,
   Theme,
   Flex,
+  FlexLayoutDirty,
   DEFAULT_THEME_COLORS,
 } from '../components';
 import { Commands } from '../commands/Commands';
@@ -305,6 +306,7 @@ export class Select extends System {
             ClipMode,
             MaterialDirty,
             GeometryDirty,
+            FlexLayoutDirty,
             Locked,
             Marker,
             Theme,

@@ -39,6 +39,7 @@ onMounted(async () => {
         effects: false,
         multiSelectAlignment: true,
         multiSelectEffects: true,
+        exportSection: true,
       },
     });
 

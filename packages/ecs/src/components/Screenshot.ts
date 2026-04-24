@@ -50,6 +50,12 @@ export class RasterScreenshotRequest {
    * Nodes to export.
    */
   @field.object declare nodes: SerializedNode[];
+
+  /**
+   * 局部栅格导出倍率（相对逻辑选区尺寸），如 2 表示约 2× 像素边长。
+   */
+  @field({ type: Type.float32, default: 1 })
+  declare scale: number;
 }
 
 export class VectorScreenshotRequest {

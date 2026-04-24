@@ -135,7 +135,6 @@ export class DocumentThemeSettings extends LitElement {
 
     .add-block {
       margin-top: var(--spectrum-global-dimension-size-100);
-      padding-top: var(--spectrum-global-dimension-size-100);
       border-top: 1px solid var(--spectrum-gray-300);
     }
 
@@ -143,7 +142,7 @@ export class DocumentThemeSettings extends LitElement {
       display: flex;
       flex-wrap: wrap;
       align-items: flex-end;
-      gap: 8px;
+      gap: var(--spectrum-global-dimension-size-50);
     }
 
     .add-row sp-textfield {
@@ -559,11 +558,12 @@ export class DocumentThemeSettings extends LitElement {
   }
 
   render() {
+    // ${this.modeSection(ThemeMode.LIGHT, msg(str`Light`))}
+    // ${this.modeSection(ThemeMode.DARK, msg(str`Dark`))}
     return html`
       <sp-accordion size="s" allow-multiple>
-        ${this.modeSection(ThemeMode.LIGHT, msg(str`Light`))}
-        ${this.modeSection(ThemeMode.DARK, msg(str`Dark`))}
         ${this.variablesSection()}
+        <slot name="extra-accordion-items"></slot>
       </sp-accordion>
       <slot name="document-settings"></slot>
     `;

@@ -221,6 +221,25 @@ export const defaultAttributes: Record<
   },
 };
 
+/**
+ * Max rx/ry for a rect of size (w,h) is min(w,h)/2, same as half-extent
+ * clamp in {@link packages/ecs/src/shaders/sdf.ts} (effective_round_rect_radius).
+ */
+function effectiveSvgRectCornerRadius(
+  w: number | string | undefined,
+  h: number | string | undefined,
+  r: number,
+): number {
+  if (!Number.isFinite(r) || r <= 0) return 0;
+  const rw = isString(w) ? parseFloat(w) : Number(w ?? 0);
+  const rh = isString(h) ? parseFloat(h) : Number(h ?? 0);
+  if (!Number.isFinite(rw) || !Number.isFinite(rh) || rw <= 0 || rh <= 0) {
+    return 0;
+  }
+  const cap = Math.min(rw, rh) / 2;
+  return Math.min(r, cap);
+}
+
 export async function serializeNodesToSVGElements(
   nodes: SerializedNode[],
 ): Promise<SVGElement[]> {
@@ -395,6 +414,14 @@ export async function serializeNodesToSVGElements(
         'height',
         `${isString(height) ? height : toFixedAndRemoveTrailingZeros(height)}`,
       );
+      {
+        const rEff = effectiveSvgRectCornerRadius(width, height, Number(cornerRadius) || 0);
+        if (rEff > 0) {
+          const r = toFixedAndRemoveTrailingZeros(rEff);
+          element.setAttribute('rx', r);
+          element.setAttribute('ry', r);
+        }
+      }
       // const { width, height, x, y } = node;
       // // Handle negative size of rect.
       // if (width < 0 || height < 0) {
@@ -557,9 +584,15 @@ export async function serializeNodesToSVGElements(
       // @see https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/visibility
       $g.setAttribute('visibility', 'hidden');
     }
-    if (cornerRadius) {
-      $g.setAttribute('rx', `${cornerRadius}`);
-      $g.setAttribute('ry', `${cornerRadius}`);
+    // Rounded <rect> uses rx/ry on the <rect> element (set above for type 'rect');
+    // applying rx/ry on a parent <g> is ignored by SVG and broke export when a <g> wrapped the rect.
+    if (cornerRadius && type !== 'rect') {
+      const rEff = effectiveSvgRectCornerRadius(width, height, Number(cornerRadius) || 0);
+      if (rEff > 0) {
+        const r = toFixedAndRemoveTrailingZeros(rEff);
+        $g.setAttribute('rx', r);
+        $g.setAttribute('ry', r);
+      }
     }
     if (isRough) {
       exportRough(node, $g);
@@ -712,7 +745,10 @@ function exportInnerOrOuterStrokeAlignment(
         `${toFixedAndRemoveTrailingZeros((height ?? 0) / 2 + offset)}`,
       );
     } else if (type === 'rect') {
-      const { width, height, strokeWidth } = attributes;
+      const { width, height, strokeWidth, cornerRadius: cr } =
+        attributes as RectSerializedNode;
+      const sw = (width ?? 0) + (innerStrokeAlignment ? -strokeWidth : strokeWidth);
+      const sh = (height ?? 0) + (innerStrokeAlignment ? -strokeWidth : strokeWidth);
       $stroke.setAttribute(
         'x',
         `${toFixedAndRemoveTrailingZeros(
@@ -727,16 +763,20 @@ function exportInnerOrOuterStrokeAlignment(
       );
       $stroke.setAttribute(
         'width',
-        `${toFixedAndRemoveTrailingZeros(
-          (width ?? 0) + (innerStrokeAlignment ? -strokeWidth : strokeWidth),
-        )}`,
+        `${toFixedAndRemoveTrailingZeros(sw)}`,
       );
       $stroke.setAttribute(
         'height',
-        `${toFixedAndRemoveTrailingZeros(
-          (height ?? 0) + (innerStrokeAlignment ? -strokeWidth : strokeWidth),
-        )}`,
+        `${toFixedAndRemoveTrailingZeros(sh)}`,
       );
+      if (cr) {
+        const r = effectiveSvgRectCornerRadius(sw, sh, cr);
+        if (r > 0) {
+          const rStr = toFixedAndRemoveTrailingZeros(r);
+          $stroke.setAttribute('rx', rStr);
+          $stroke.setAttribute('ry', rStr);
+        }
+      }
     }
 
     $g.appendChild($stroke);

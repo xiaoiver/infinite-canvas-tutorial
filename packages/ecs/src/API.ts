@@ -143,6 +143,20 @@ export enum ExportFormat {
   JPEG = 'jpeg',
 }
 
+/** {@link API.export} 的选项：格式、下载行为、目标节点、栅格倍率等。 */
+export interface ExportOptions {
+  format: ExportFormat;
+  /** 为 `true` 时触发下载；默认 `true`。 */
+  download?: boolean;
+  /** 要导出的节点；空数组表示整幅画布。默认 `[]`。 */
+  nodes?: SerializedNode[];
+  /**
+   * 局部栅格导出的边长倍率（相对逻辑选区），仅对 PNG / JPEG 等有效；默认 `1`。
+   * @see RasterScreenshotRequest.scale
+   */
+  scale?: number;
+}
+
 export class DefaultStateManagement implements StateManagement {
   #appState = getDefaultAppState();
   #nodes: SerializedNode[] = [];
@@ -489,11 +503,12 @@ export class API {
 
   /**
    * 浅拷贝节点列表，并用 ECS 当前几何覆盖 x/y/width/height/rotation/scale（如 Flex/Yoga 仅写 ECS、序列化节点未同步时，导出 SVG 前调用）。
+   * 对带 {@link Rect} 的 `rect` / `rough-rect` 同时覆盖 `cornerRadius`，保证导出与运行时一致。
    */
   readLayoutFromECS(nodes: SerializedNode[]): SerializedNode[] {
     return nodes.map((node) => {
       const g = this.getAbsoluteTransformAndSize(node);
-      return {
+      const out: SerializedNode = {
         ...node,
         x: g.x,
         y: g.y,
@@ -503,6 +518,17 @@ export class API {
         scaleX: g.scaleX,
         scaleY: g.scaleY,
       };
+      const entity = this.getEntity(node);
+      if (
+        entity &&
+        entity.has(Rect) &&
+        (node.type === 'rect' || node.type === 'rough-rect')
+      ) {
+        (out as { cornerRadius?: number }).cornerRadius = entity.read(
+          Rect,
+        ).cornerRadius;
+      }
+      return out;
     });
   }
 
@@ -1488,6 +1514,11 @@ export class API {
       diff.height = height;
     }
 
+    if ((node as { display?: string }).display === 'flex') {
+      if (!isNil(width)) (diff as { flexHugWidth?: boolean }).flexHugWidth = false;
+      if (!isNil(height)) (diff as { flexHugHeight?: boolean }).flexHugHeight = false;
+    }
+
     if (delta) {
       const geomDelta = mat3WithoutTranslation(delta);
       if (node.type === 'polyline' || node.type === 'rough-polyline') {
@@ -2183,7 +2214,12 @@ export class API {
     this.#history.clear();
   }
 
-  export(format: ExportFormat, download = true, nodes: SerializedNode[] = []) {
+  export(options: ExportOptions) {
+    const {
+      format,
+      download = true,
+      nodes = [],
+    } = options;
     if (format === ExportFormat.SVG) {
       safeAddComponent(this.#canvas, VectorScreenshotRequest, {
         canvas: this.#canvas,
@@ -2191,11 +2227,16 @@ export class API {
         nodes,
       });
     } else if (format === ExportFormat.PNG || format === ExportFormat.JPEG) {
+      const scale =
+        options.scale != null && Number.isFinite(options.scale)
+          ? Math.max(0.25, Math.min(8, options.scale))
+          : 1;
       safeAddComponent(this.#canvas, RasterScreenshotRequest, {
         canvas: this.#canvas,
         type: `image/${format}`,
         download,
         nodes,
+        scale,
       });
     }
 

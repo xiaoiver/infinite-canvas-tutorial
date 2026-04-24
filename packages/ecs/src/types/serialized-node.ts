@@ -184,6 +184,16 @@ export interface FlexboxLayoutAttributes {
   maxWidth: number;
   minHeight: number;
   maxHeight: number;
+  /**
+   * `true`：主尺寸由子项在 Yoga 中决定（布局后回写 width）；
+   * `false`：该轴为固定，使用 `width`；
+   * 未设置：无正数 `width` 时随内容，有则固定。由布局在 hug 时写回为 `true`；用户变换框改宽时置为 `false`。
+   */
+  flexHugWidth?: boolean;
+  /**
+   * 与 `flexHugWidth` 相同语义，对应 `height`。
+   */
+  flexHugHeight?: boolean;
 }
 
 export interface ConstraintAttributes {

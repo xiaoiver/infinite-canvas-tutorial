@@ -155,12 +155,13 @@ canvas.addEventListener(Event.READY, async (e) => {
       effects: false,
       multiSelectAlignment: true,
       multiSelectEffects: true,
+      exportSection: true,
     },
     penbarVisible: true,
     taskbarVisible: true,
     checkboardStyle: CheckboardStyle.GRID,
     snapToPixelGridEnabled: true,
-    snapToPixelGridSize: 10,
+    snapToPixelGridSize: 1,
     // snapToPixelGridEnabled: false,
     // snapToPixelGridSize: 0,
     // snapToObjectsEnabled: true,
@@ -179,31 +180,48 @@ canvas.addEventListener(Event.READY, async (e) => {
     // layersLassoing: ['parent'],
   });
 
+  const button = {
+    "id": "cj03l",
+    type: 'rect',
+    display: 'flex',
+    "x": 100,
+    "y": 100,
+    "name": "Button/Default",
+    "height": 40,
+    "fill": "$--primary",
+    "cornerRadius": "$--radius-pill",
+    "gap": 6,
+    "padding": [10, 16],
+    "justifyContent": "center",
+    "alignItems": "center",
+    zIndex: 0,
+  } as const;
+
+  const text = {
+    id: 'cj03l-text',
+    parentId: 'cj03l',
+    type: 'text',
+    content: 'Button',
+    fontFamily: 'sans-serif',
+    fontSize: 14,
+    lineHeight: 20,
+    "fill": "$--primary-foreground",
+    textAlign: 'center',
+    textBaseline: 'middle',
+    zIndex: 1,
+  } as const;
+
   api.setAppState({
     variables: {
       // 避免用 #FFFFFF：默认画布背景为浅色（如 #fbfbfb），白填充/白描边会几乎看不见
-      'color.background': { type: 'color', value: '#2563EB' },
-      'color.stroke': { type: 'color', value: 'red' },
-      'text.title': { type: 'number', value: 72 },
+      '--primary': { type: 'color', value: '#FF8400' },
+      '--primary-foreground': { type: 'color', value: '#111111' },
+      '--radius-pill': { type: 'number', value: 999 },
     },
   });
   api.updateNodes([
-    {
-      id: 'r1',
-      type: 'rect',
-      x: 0,
-      y: 0,
-      width: 200,
-      height: 200,
-      zIndex: 1,
-      fill: 'mesh-gradient(#24145f, #50b4fd 0.28 0.26, warp(0.5, 0.8), gtype(0), wshape(0))',
-      // fill: 'radial-gradient(circle at center, red, blue)',
-      // fill: '/canvas.png',
-      stroke: '$color.stroke',
-      strokeWidth: 2,
-      cornerRadius: 10,
-      filter: 'pixelate(10px)',
-    },
+    button,
+    text,
   ]);
 
   // fetch('/gradient-text.json').then(res => res.json()).then(data => {
@@ -224,7 +242,7 @@ canvas.addEventListener(Event.READY, async (e) => {
 //   rendererSystemCtor: VelloPipeline,
 // });
 // DefaultPlugins.splice(DefaultPlugins.indexOf(DefaultRendererPlugin), 1, VelloRendererPlugin);
-// registerFont('/Gaegu-Regular.ttf');
+// // registerFont('/Gaegu-Regular.ttf');
 // registerFont('/NotoSansCJKsc-VF.ttf');
 // registerFont('/NotoSans-Regular.ttf');
 // registerFont('/NotoSans-Bold.ttf');

@@ -243,6 +243,13 @@ float sdf_rounded_box(vec2 p, vec2 b, float r) {
   return min(max(q.x, q.y), 0.0) + length(max(q, 0.0)) - r;
 }
 
+// sdf_rounded_box is only valid for 0 <= r <= min(b.x, b.y); larger r inverts
+// the field so the interior reads as outside and the rect disappears. Clamp
+// to max corner radius (pill / CSS-style when r exceeds the short side).
+float effective_round_rect_radius(vec2 b, float r) {
+  return min(max(r, 0.0), min(b.x, b.y));
+}
+
 vec4 over(vec4 below, vec4 above) {
   vec4 result;
   float alpha = above.a + below.a * (1.0 - above.a);
@@ -273,7 +280,7 @@ float make_shadow(vec2 pos, vec2 halfSize, float cornerRd, float blurRd, float d
   } else if (shape < 1.5) {
     distance = sdf_ellipse(pos, halfSize);
   } else if (shape < 2.5) {
-    distance = sdf_rounded_box(pos, halfSize, cornerRd + blurRd);
+    distance = sdf_rounded_box(pos, halfSize, effective_round_rect_radius(halfSize, cornerRd + blurRd));
   }
   float dist = sigmoid(distMul * distance / blurRd);
   return clamp(dist, 0.0, 1.0);
@@ -340,7 +347,7 @@ void main() {
   } else if (shape < 1.5) {
     distance = sdf_ellipse(v_FragCoord, v_Radius);
   } else if (shape < 2.5) {
-    distance = sdf_rounded_box(v_FragCoord, v_Radius, cornerRadius);
+    distance = sdf_rounded_box(v_FragCoord, v_Radius, effective_round_rect_radius(v_Radius, cornerRadius));
     // TODO: Fast path when the quad is not rounded and doesn't have any border.
   }
 

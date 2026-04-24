@@ -6,6 +6,7 @@ import {
   Canvas,
   ComputedBounds,
   ComputedCamera,
+  GlobalTransform,
   Pen,
   Text,
   TextSerializedNode,
@@ -301,16 +302,14 @@ export class TextEditor extends LitElement {
       const camera = this.api.getCamera();
       const { zoom } = camera.read(ComputedCamera);
 
+      // 文本实体局部 (0,0) → 画布；父×(x,y) 会漏子项旋转/缩放。
       let canvasX = this.node.x;
       let canvasY = this.node.y;
-      if (this.node.parentId) {
-        const parent = this.api.getParent(this.node);
-        const { x: parentX, y: parentY } = this.api.transformer2Canvas({
-          x: this.node.x,
-          y: this.node.y,
-        }, parent);
-        canvasX = parentX;
-        canvasY = parentY;
+      const textEntity = this.api.getEntity(this.node);
+      if (textEntity?.has(GlobalTransform)) {
+        const p = this.api.transformer2Canvas({ x: 0, y: 0 }, textEntity);
+        canvasX = p.x;
+        canvasY = p.y;
       }
 
       const { x, y } = this.api.canvas2Viewport({

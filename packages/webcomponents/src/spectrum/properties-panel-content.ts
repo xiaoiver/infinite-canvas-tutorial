@@ -33,6 +33,7 @@ import '@spectrum-web-components/icons-workflow/icons/sp-icon-unlink.js';
 import '@spectrum-web-components/tooltip/sp-tooltip.js';
 import type { DesignVariablePickDetail } from './design-variable-picker';
 import './design-variable-picker.js';
+import './export-panel';
 
 type FlexNode = SerializedNode & Partial<FlexboxLayoutAttributes>;
 
@@ -260,6 +261,7 @@ export class PropertiesPanelContent extends LitElement {
     layout: boolean;
     flexItem: boolean;
     effects: boolean;
+    exportSection: boolean;
   } {
     const s = (
       this.appState as AppState & {
@@ -269,6 +271,7 @@ export class PropertiesPanelContent extends LitElement {
           layout: boolean;
           flexItem: boolean;
           effects: boolean;
+          exportSection: boolean;
         }>;
       }
     )?.propertiesPanelSectionsOpen;
@@ -278,6 +281,7 @@ export class PropertiesPanelContent extends LitElement {
       layout: s?.layout ?? true,
       flexItem: s?.flexItem ?? true,
       effects: s?.effects ?? true,
+      exportSection: s?.exportSection ?? true,
     };
   }
 
@@ -1696,6 +1700,14 @@ export class PropertiesPanelContent extends LitElement {
         >
           <div class="content">
             <ic-spectrum-effects-panel .node=${this.node}></ic-spectrum-effects-panel>
+          </div>
+        </sp-accordion-item>
+        <sp-accordion-item
+          label=${msg(str`Export`)}
+          ?open=${this.propertiesPanelSectionsOpenResolved.exportSection}
+        >
+          <div class="content">
+            <ic-spectrum-export-panel></ic-spectrum-export-panel>
           </div>
         </sp-accordion-item>
       </sp-accordion>

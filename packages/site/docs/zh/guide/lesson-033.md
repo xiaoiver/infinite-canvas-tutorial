@@ -275,6 +275,12 @@ const parent = {
 
 <YogaMinMaxWidthHeight />
 
+### Hug contents {#hug}
+
+在某一轴或两轴上，父级不给出（或只给部分）外扩尺寸，由子级测量结果 + `padding/gap` 决定父级宽高。这在 Figma 中称作 [Hug contents]。
+
+而在 Yoga 的实现中，只要不把节点设成固定宽高，就会根据子节点算出父节点的尺寸，当然前提是子节点可以被测量，Yoga 会在布局后给出容器的 `getComputedWidth() / getComputedHeight()`，这就是「由内容撑开父级」。
+
 ## 导出 SVG {#export-svg}
 
 由于 CSS Flexbox 只支持 HTML 元素作为容器，SVG 元素不可以。因此在导出 SVG 时，仍然需要使用布局之后的绝对位置。
@@ -316,3 +322,4 @@ const layoutNodes = api.readLayoutFromECS(nodes);
 [Min/Max Width and Height]: https://www.yogalayout.dev/docs/styling/min-max-width-height
 [Layout in pencil.dev]: https://docs.pencil.dev/for-developers/the-pen-format#layout
 [Layout in rive]: https://rive.app/docs/editor/layouts/layouts-overview
+[Hug contents]: https://help.figma.com/hc/en-us/articles/360040451373-Guide-to-auto-layout#hug
