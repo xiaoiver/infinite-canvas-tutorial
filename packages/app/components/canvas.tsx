@@ -16,6 +16,7 @@ import { Event, UIPlugin, ExtendedAPI } from '@infinite-canvas-tutorial/webcompo
 import { LaserPointerPlugin } from '@infinite-canvas-tutorial/laser-pointer';
 import { LassoPlugin } from '@infinite-canvas-tutorial/lasso';
 import { EraserPlugin } from '@infinite-canvas-tutorial/eraser';
+import { YogaPlugin } from '@infinite-canvas-tutorial/yoga';
 import { useEffect, useRef, useCallback } from 'react';
 import { useTheme } from 'next-themes';
 import { useParams } from 'next/navigation';
@@ -166,7 +167,7 @@ const Canvas = ({ id = 'default', initialData }: CanvasProps) => {
   useEffect(() => {
     if (!appRunning) {
       new App().addPlugins(...DefaultPlugins, UIPlugin
-        , LaserPointerPlugin, LassoPlugin, EraserPlugin,
+        , LaserPointerPlugin, LassoPlugin, EraserPlugin, YogaPlugin
         // SAMPlugin
       ).run();
       appRunning = true;

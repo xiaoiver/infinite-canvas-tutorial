@@ -6,10 +6,12 @@ import type { Entity } from '@lastolivegames/becsy';
 import {
   Circle,
   ComputedRough,
+  ComputedTextMetrics,
   Ellipse,
   Path,
   Rect,
   Rough,
+  Text,
   VectorNetwork,
 } from '../components';
 import { buildVectorNetworkFillMesh } from './vector-network-fill';
@@ -72,6 +74,57 @@ function drawFillPathContours(
 }
 
 /**
+ * System-font text: rasterize with the same `ComputedTextMetrics.lineMetrics` / anchor
+ * convention as `measureText` + `SDFText` (bitmapFont is not supported here).
+ */
+function tryDrawSolidFillTextMask(
+  ctx: BitmapCanvas2D,
+  shape: Entity,
+  fillRgba: string,
+): boolean {
+  if (!shape.has(Text) || !shape.has(ComputedTextMetrics)) {
+    return false;
+  }
+  const text = shape.read(Text);
+  if (text.bitmapFont) {
+    return false;
+  }
+  const metrics = shape.read(ComputedTextMetrics);
+  const { lines, lineMetrics, font } = metrics;
+  if (!font || !lines?.length || !lineMetrics?.length) {
+    return false;
+  }
+
+  ctx.fillStyle = fillRgba;
+  ctx.font = font;
+  ctx.textBaseline = 'top';
+  ctx.textAlign = text.textAlign;
+  if ('fontKerning' in ctx) {
+    try {
+      (ctx as CanvasRenderingContext2D & { fontKerning: string }).fontKerning =
+        text.fontKerning ? 'normal' : 'none';
+    } catch {
+      // ignore
+    }
+  }
+  const ls = text.letterSpacing;
+  if (ls && 'letterSpacing' in ctx) {
+    (ctx as CanvasRenderingContext2D & { letterSpacing: string }).letterSpacing =
+      `${ls}px`;
+  }
+
+  const { anchorX, anchorY } = text;
+  for (let i = 0; i < lines.length; i++) {
+    const m = lineMetrics[i];
+    if (!m) {
+      continue;
+    }
+    ctx.fillText(lines[i] ?? '', anchorX, anchorY + m.y);
+  }
+  return true;
+}
+
+/**
  * Paints the solid fill shape in world space into an `tw`×`th` bitmap whose pixel (0,0)
  * maps to bounds min corner — same convention as {@link Mesh} `u_FillUVRect` when using
  * {@link ComputedBounds} geometry bounds.
@@ -107,6 +160,10 @@ export function createSolidFillMaskRasterForFilter(
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.fillStyle = fillRgba;
     ctx.fillRect(0, 0, tw, th);
+    return canvas;
+  }
+
+  if (tryDrawSolidFillTextMask(ctx, shape, fillRgba)) {
     return canvas;
   }
 
