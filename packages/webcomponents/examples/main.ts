@@ -180,21 +180,23 @@ canvas.addEventListener(Event.READY, async (e) => {
     // layersLassoing: ['parent'],
   });
 
-  /**
-   * Paper `Heatmap` 风：diamond + 7 色渐变、黑底、auto 时间（需引擎跑 PostEffectTime）。
-   * filter 串无 `speed`/`scale`；节点 width/height 与 URL 位图即「尺寸 + 图」。
-   */
+  /** 对齐 https://shaders.paper.design 的 `<LiquidMetal image=… fit=contain … />` 典型参数（ ecs 的 filter 串无 speed/scale/fit，由节点尺寸与 fill 位图体现）。 */
   const image = {
     id: 'cj03l-image',
-    type: 'rect',
-    width: 400,
-    height: 300,
-    x: 0,
-    y: 0,
-    fill: 'https://shaders.paper.design/images/logos/diamond.svg',
-    // fill: 'black',
+    type: 'text',
+    // width: 400,
+    // height: 300,
+    // x: 0,
+    // y: 0,
+    // fill: 'https://shaders.paper.design/images/logos/diamond.svg',
+    content: 'Test',
+    fontFamily: 'sans-serif',
+    fontSize: 100,
+    anchorX: 100,
+    anchorY: 100,
+    fill: 'black',
     filter:
-      'gem-smoke(0.5, 0.5, 0.5, 0.5, 0, 0, 0.5, 3, 1, 1, auto, #000000, #ffffff, #88ccff, #ffffff, #ffaaee, #6644ff, #3322aa, #110066)',
+      'liquid-metal(2, 0.1, 0.3, 0.3, 0.07, 0.4, 70, 3, 1, transparent, #ffffff, auto, 1)',
   } as const;
 
   const button = {
@@ -237,7 +239,7 @@ canvas.addEventListener(Event.READY, async (e) => {
     },
   });
   api.updateNodes([
-    // image,
+    image,
     button,
     text,
   ]);
