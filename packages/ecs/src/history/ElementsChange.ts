@@ -66,6 +66,7 @@ import {
   Flex,
   FlexLayoutDirty,
   Group,
+  IconFont,
 } from '../components';
 import { getDescendants } from '../systems';
 import { syncEdgeBindingForEntity } from '../utils/binding/sync-edge-entity';
@@ -330,6 +331,11 @@ function syncIconFontChildrenFromUpdatedNode(
       safeRemoveComponent(child, FillSolid);
     }
     safeAddComponent(child, MaterialDirty);
+  }
+  if (rootEntity.has(IconFont) && w > 0 && h > 0) {
+    const iw = rootEntity.write(IconFont);
+    iw.layoutWidth = w;
+    iw.layoutHeight = h;
   }
   safeAddComponent(rootEntity, Group, groupPres);
   safeRemoveComponent(rootEntity, FillSolid);

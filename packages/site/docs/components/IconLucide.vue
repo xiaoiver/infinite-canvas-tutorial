@@ -201,8 +201,34 @@ onMounted(async () => {
       lockAspectRatio: true,
     };
 
+    const ClaudeIcon = {
+      id: 'claude-icon-material-icon-theme',
+      type: 'iconfont' as const,
+      x: 200,
+      y: 300,
+      width: 32,
+      height: 32,
+      zIndex: 1,
+      iconFontName: 'claude',
+      iconFontFamily: 'material-icon-theme',
+      lockAspectRatio: true,
+    };
+
+    const CudaIcon = {
+      id: 'cuda-icon-material-icon-theme',
+      type: 'iconfont' as const,
+      x: 250,
+      y: 300,
+      width: 32,
+      height: 32,
+      zIndex: 1,
+      iconFontName: 'cuda',
+      iconFontFamily: 'material-icon-theme',
+      lockAspectRatio: true,
+    };
+
     api.runAtNextTick(() => {
-      api.updateNodes([SearchIcon, AtomIcon, AudioLinesIcon, CarrotIcon, AArrowDownIcon, AlgorithmIcon, AnnoyedIcon, GiftIcon, AndroidIcon, BlenderIcon]);
+      api.updateNodes([SearchIcon, AtomIcon, AudioLinesIcon, CarrotIcon, AArrowDownIcon, AlgorithmIcon, AnnoyedIcon, GiftIcon, AndroidIcon, BlenderIcon, ClaudeIcon, CudaIcon]);
       api.selectNodes([SearchIcon]);
     });
   };
